@@ -1,0 +1,266 @@
+bundle_gen.o: ../../common/ipfec_targ_info/gen/bundle_gen.cxx \
+  ../../common/ipfec_targ_info/gen/bundle_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+bypass_gen.o: ../../common/ipfec_targ_info/gen/bypass_gen.cxx \
+  ../../common/ipfec_targ_info/gen/bypass_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+cache_info_gen.o: ../../common/ipfec_targ_info/gen/cache_info_gen.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/gen/cache_info_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h
+cggrp_ptn_table.o: cggrp_ptn_table.cxx ../../common/com/defs.h \
+  ../include/bstring.h ../../common/util/errors.h \
+  ../../common/util/errdesc.h ../../common/com/defs.h \
+  ../../common/com/err_host.h targ_isa_bundle.h topcode.h \
+  cggrp_ptn_table.h ../../common/ipfec_targ_info/msched/cggrp_ptn.h \
+  ../../common/com/defs.h ../../common/util/errors.h ./targ_issue_port.h \
+  ./topcode.h ./targ_isa_bundle.h
+cggrp_ptn_table_mck.o: cggrp_ptn_table_mck.cxx ../../common/com/defs.h \
+  ../include/bstring.h ../../common/util/errors.h \
+  ../../common/util/errdesc.h ../../common/com/defs.h \
+  ../../common/com/err_host.h targ_isa_bundle.h topcode.h \
+  cggrp_ptn_table.h ../../common/ipfec_targ_info/msched/cggrp_ptn.h \
+  ../../common/com/defs.h ../../common/util/errors.h ./targ_issue_port.h \
+  ./topcode.h ./targ_isa_bundle.h
+ekapi_bundle.o: ../../common/ipfec_targ_info/access/ekapi_bundle.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_bypass.o: ../../common/ipfec_targ_info/access/ekapi_bypass.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_cache_info.o:  \
+ ../../common/ipfec_targ_info/access/ekapi_cache_info.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_enums.o: ../../common/ipfec_targ_info/access/ekapi_enums.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_itanium.o: ../../common/ipfec_targ_info/access/ekapi_itanium.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h \
+  ../../common/ipfec_targ_info/access/ekapi_itanium.h
+ekapi_lits.o: ../../common/ipfec_targ_info/access/ekapi_lits.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_opcode_access.o:  \
+ ../../common/ipfec_targ_info/access/ekapi_opcode_access.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_operands.o: ../../common/ipfec_targ_info/access/ekapi_operands.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_properties.o:  \
+ ../../common/ipfec_targ_info/access/ekapi_properties.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_register.o: ../../common/ipfec_targ_info/access/ekapi_register.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_subset.o: ../../common/ipfec_targ_info/access/ekapi_subset.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+ekapi_util.o: ../../common/ipfec_targ_info/access/ekapi_util.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_util.h
+enums_gen.o: ../../common/ipfec_targ_info/gen/enums_gen.cxx \
+  ../../common/ipfec_targ_info/gen/enums_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+gen_base.o: ../../common/ipfec_targ_info/gen/gen_base.cxx \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+gen_util.o: ../../common/targ_info/generate/gen_util.cxx \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h
+ipfec_targ_gen.o: ../../common/ipfec_targ_info/ipfec_targ_gen.cxx \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/gen/issue_port_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h \
+  ../../common/ipfec_targ_info/gen/opcode_gen.h \
+  ../../common/ipfec_targ_info/gen/subset_gen.h \
+  ../../common/ipfec_targ_info/gen/properties_gen.h \
+  ../../common/ipfec_targ_info/gen/operands_gen.h \
+  ../../common/ipfec_targ_info/gen/enums_gen.h \
+  ../../common/ipfec_targ_info/gen/lits_gen.h \
+  ../../common/ipfec_targ_info/gen/bundle_gen.h \
+  ../../common/ipfec_targ_info/gen/reg_gen.h \
+  ../../common/ipfec_targ_info/gen/itanium_gen.h \
+  ../../common/ipfec_targ_info/gen/bypass_gen.h \
+  ../../common/ipfec_targ_info/gen/proc_gen_new.h \
+  ../../common/ipfec_targ_info/gen/proc_properties_gen_new.h \
+  ../../common/ipfec_targ_info/gen/cache_info_gen.h
+isa_decode.o: ../../common/targ_info/isa/ia64/isa_decode.cxx ./topcode.h \
+  ../../common/targ_info/generate/isa_decode_gen.h ./targ_isa_bundle.h \
+  ./topcode.h
+isa_decode_gen.o: ../../common/targ_info/generate/isa_decode_gen.cxx \
+  ./topcode.h ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_decode_gen.h
+isa_hazards.o: ../../common/targ_info/isa/ia64/isa_hazards.cxx \
+  ./topcode.h ./targ_isa_subset.h ./topcode.h \
+  ../../common/targ_info/generate/isa_hazards_gen.h
+isa_hazards_gen.o: ../../common/targ_info/generate/isa_hazards_gen.cxx \
+  ./topcode.h ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h ./targ_isa_subset.h \
+  ./topcode.h ../../common/targ_info/generate/isa_hazards_gen.h
+isa_pack.o: ../../common/targ_info/isa/ia64/isa_pack.cxx ./topcode.h \
+  ../../common/targ_info/generate/isa_pack_gen.h
+isa_pack_gen.o: ../../common/targ_info/generate/isa_pack_gen.cxx \
+  ./topcode.h ./targ_isa_properties.h \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_pack_gen.h
+isa_print.o: ../../common/targ_info/isa/ia64/isa_print.cxx ./topcode.h \
+  ../../common/targ_info/generate/isa_print_gen.h \
+  ../../common/targ_info/generate/gen_util_gen.h
+isa_print_gen.o: ../../common/targ_info/generate/isa_print_gen.cxx \
+  ./topcode.h ./targ_isa_properties.h \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_print_gen.h
+isa_pseudo.o: ../../common/targ_info/isa/ia64/isa_pseudo.cxx ./topcode.h \
+  ../../common/targ_info/generate/isa_pseudo_gen.h
+isa_pseudo_gen.o: ../../common/targ_info/generate/isa_pseudo_gen.cxx \
+  ./topcode.h ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h ./targ_isa_operands.h \
+  ./topcode.h ./targ_isa_registers.h ./targ_isa_subset.h \
+  ./targ_isa_enums.h ./targ_isa_lits.h \
+  ../../common/targ_info/generate/isa_pseudo_gen.h
+issue_port_gen.o: ../../common/ipfec_targ_info/gen/issue_port_gen.cxx \
+  ../../common/ipfec_targ_info/gen/issue_port_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+itanium.o: itanium.c ../../common/targ_info/access/ti_si.h ./topcode.h
+itanium_gen.o: ../../common/ipfec_targ_info/gen/itanium_gen.cxx \
+  ../../common/ipfec_targ_info/gen/itanium_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h \
+  ../../common/ipfec_targ_info/access/ekapi_itanium.h
+itanium_mck.o: itanium_mck.c ../../common/targ_info/access/ti_si.h \
+  ./topcode.h
+lits_gen.o: ../../common/ipfec_targ_info/gen/lits_gen.cxx \
+  ../../common/ipfec_targ_info/gen/lits_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+opcode_gen.o: ../../common/ipfec_targ_info/gen/opcode_gen.cxx \
+  ../../common/ipfec_targ_info/gen/opcode_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+operands_gen.o: ../../common/ipfec_targ_info/gen/operands_gen.cxx \
+  ../../common/ipfec_targ_info/gen/operands_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+proc_gen_new.o: ../../common/ipfec_targ_info/gen/proc_gen_new.cxx \
+  ../../common/ipfec_targ_info/gen/proc_gen_new.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+proc_properties_gen_new.o:  \
+ ../../common/ipfec_targ_info/gen/proc_properties_gen_new.cxx \
+  ../../common/ipfec_targ_info/gen/proc_properties_gen_new.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+properties_gen.o: ../../common/ipfec_targ_info/gen/properties_gen.cxx \
+  ../../common/ipfec_targ_info/gen/properties_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+ptn_table_gen.o: ../../common/ipfec_targ_info/msched/ptn_table_gen.cxx \
+  ./targ_isa_bundle.h ./topcode.h ./targ_issue_port.h ./targ_proc.h
+reg_gen.o: ../../common/ipfec_targ_info/gen/reg_gen.cxx \
+  ../../common/ipfec_targ_info/gen/reg_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+subset_gen.o: ../../common/ipfec_targ_info/gen/subset_gen.cxx \
+  ../../common/ipfec_targ_info/gen/subset_gen.h \
+  ../../common/ipfec_targ_info/gen/gen_base.h \
+  ../../common/ipfec_targ_info/access/ekapi_ia64.h ../../libkapi/kapi.h \
+  ../../libkapi/kapi_bv.h ../../libkapi/kapi_ia64.h ../../libkapi/kapi.h
+targ_abi_properties.o: targ_abi_properties.c targ_abi_properties.h \
+  targ_isa_registers.h targ_isa_subset.h topcode.h
+targ_bypass.o: targ_bypass.cxx ../../common/util/errors.h \
+  ../../common/util/errdesc.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/err_host.h targ_isa_lits.h \
+  targ_isa_bundle.h topcode.h targ_isa_registers.h targ_isa_subset.h \
+  targ_issue_port.h targ_isa_operands.h targ_isa_enums.h \
+  targ_bypass_mck.h
+targ_bypass_mck.o: targ_bypass_mck.cxx ../../common/util/errors.h \
+  ../../common/util/errdesc.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/err_host.h targ_isa_lits.h \
+  targ_isa_bundle.h topcode.h targ_isa_registers.h targ_isa_subset.h \
+  targ_issue_port.h targ_isa_operands.h targ_isa_enums.h \
+  targ_bypass_mck.h
+targ_cache_info.o: targ_cache_info.cxx targ_cache_info.h
+targ_cache_info_mck.o: targ_cache_info_mck.cxx targ_cache_info.h
+targ_isa_bundle.o: targ_isa_bundle.c targ_isa_bundle.h topcode.h
+targ_isa_decode.o: targ_isa_decode.c topcode.h targ_isa_bundle.h \
+  targ_isa_pack.h targ_isa_decode.h
+targ_isa_enums.o: targ_isa_enums.c targ_isa_enums.h
+targ_isa_hazards.o: targ_isa_hazards.c topcode.h targ_isa_subset.h \
+  targ_isa_hazards.h
+targ_isa_lits.o: targ_isa_lits.c targ_isa_lits.h
+targ_isa_operands.o: targ_isa_operands.c targ_isa_operands.h topcode.h \
+  targ_isa_registers.h targ_isa_subset.h targ_isa_enums.h targ_isa_lits.h \
+  targ_isa_properties.h
+targ_isa_pack.o: targ_isa_pack.c topcode.h targ_isa_pack.h
+targ_isa_print.o: targ_isa_print.c topcode.h targ_isa_print.h
+targ_isa_properties.o: targ_isa_properties.c targ_isa_properties.h
+targ_isa_pseudo.o: targ_isa_pseudo.c topcode.h targ_isa_pseudo.h
+targ_isa_registers.o: targ_isa_registers.c targ_isa_subset.h topcode.h \
+  targ_isa_registers.h
+targ_isa_subset.o: targ_isa_subset.c topcode.h targ_isa_subset.h
+targ_issue_port.o: targ_issue_port.cxx targ_issue_port.h topcode.h
+targ_issue_port_mck.o: targ_issue_port_mck.cxx targ_issue_port.h \
+  topcode.h
+targ_proc.o: targ_proc.c targ_proc.h
+targ_proc_properties.o: targ_proc_properties.c targ_proc_properties.h \
+  targ_proc.h
+ti_asm.o: ../../common/targ_info/access/ti_asm.c ./topcode.h \
+  ./targ_isa_operands.h ./topcode.h ./targ_isa_registers.h \
+  ./targ_isa_subset.h ./targ_isa_enums.h ./targ_isa_lits.h \
+  ./targ_isa_print.h ./targ_isa_pack.h ./targ_isa_bundle.h \
+  ./targ_isa_decode.h ./targ_isa_bundle.h ./targ_isa_pack.h \
+  ./targ_isa_pseudo.h ./targ_isa_enums.h ./targ_abi_properties.h \
+  ./targ_proc_properties.h ./targ_proc.h \
+  ../../common/targ_info/access/ti_errors.h \
+  ../../common/targ_info/access/ti_asm.h
+ti_bundle.o: ../../common/targ_info/access/ti_bundle.c \
+  ../../common/targ_info/access/ti_si.h ./topcode.h \
+  ../../common/targ_info/access/ti_errors.h ./targ_isa_bundle.h \
+  ./topcode.h ../../common/targ_info/access/ti_bundle.h
+ti_errors.o: ../../common/targ_info/access/ti_errors.c \
+  ../../common/targ_info/access/ti_errors.h
+ti_latency.o: ../../common/targ_info/access/ti_latency.c \
+  ../../common/targ_info/access/ti_si.h ./topcode.h \
+  ./targ_isa_properties.h ./targ_isa_hazards.h ./targ_isa_subset.h \
+  ./topcode.h ./targ_isa_subset.h \
+  ../../common/targ_info/access/ti_errors.h \
+  ../../common/targ_info/access/ti_latency.h
+topcode.o: topcode.c topcode.h

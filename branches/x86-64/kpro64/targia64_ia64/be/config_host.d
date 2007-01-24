@@ -1,0 +1,6 @@
+config_host.o: ../../common/com/ia64/config_host.c \
+  ../../common/com/defs.h ../include/bstring.h ../../common/com/config.h \
+  ../../common/com/config_host.h ../../common/com/ia64/config_targ.h \
+  ../../common/com/mtypes.h ../../common/util/mempool.h \
+  ../../common/com/defs.h ../../common/util/flags.h \
+  ../../common/com/language.h

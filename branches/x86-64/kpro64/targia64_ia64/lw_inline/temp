@@ -1,0 +1,432 @@
+ipl_summarize_util.o(.gnu.linkonce.t._ZNSt14__simple_allocISt6vectorI11IPL_ST_INFOSaIS1_EESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x82): In function `std::__simple_alloc<std::vector<IPL_ST_INFO, std::allocator<IPL_ST_INFO> >, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipl_summarize_util.o(.gnu.linkonce.t._ZNSt14__simple_allocI11IPL_ST_INFOSt24__default_alloc_templateILb1ELi0EEE10deallocateEPS0_m+0x82): In function `std::__simple_alloc<IPL_ST_INFO, std::__default_alloc_template<true, 0> >::deallocate(IPL_ST_INFO*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipl_summarize_util.o(.gnu.linkonce.t._ZNSt14__simple_allocI11IPL_ST_INFOSt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<IPL_ST_INFO, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipl_summarize_util.o(.gnu.linkonce.t._ZNSt14__simple_allocISt6vectorI11IPL_ST_INFOSaIS1_EESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS3_m+0xa2): In function `std::__simple_alloc<std::vector<IPL_ST_INFO, std::allocator<IPL_ST_INFO> >, std::__default_alloc_template<true, 0> >::deallocate(std::vector<IPL_ST_INFO, std::allocator<IPL_ST_INFO> >*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipl_summarize_util.o(.gnu.linkonce.t._ZNSt14__simple_allocI7FB_FREQSt24__default_alloc_templateILb1ELi0EEE10deallocateEPS0_m+0x82): In function `std::__simple_alloc<FB_FREQ, std::__default_alloc_template<true, 0> >::deallocate(FB_FREQ*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipl_summarize_util.o(.gnu.linkonce.t._ZNSt14__simple_allocI7FB_FREQSt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<FB_FREQ, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipc_option.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKPKcjEEESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<char const* const, unsigned int> >*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipc_option.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKijEEESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<int const, unsigned int> >*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipc_option.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKPKcjEEESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS8_m+0x82): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<char const* const, unsigned int> >*, std::__default_alloc_template<true, 0> >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<char const* const, unsigned int> >**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipc_option.o(.gnu.linkonce.t._ZNSaIN9__gnu_cxx15_Hashtable_nodeISt4pairIKPKcjEEEE10deallocateEPS6_m+0x82): In function `std::allocator<__gnu_cxx::_Hashtable_node<std::pair<char const* const, unsigned int> > >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<char const* const, unsigned int> >*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:683: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipc_option.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKijEEESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS6_m+0x82): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<int const, unsigned int> >*, std::__default_alloc_template<true, 0> >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<int const, unsigned int> >**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipc_option.o(.gnu.linkonce.t._ZNSaIN9__gnu_cxx15_Hashtable_nodeISt4pairIKijEEEE10deallocateEPS4_m+0x72): In function `std::allocator<__gnu_cxx::_Hashtable_node<std::pair<int const, unsigned int> > >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<int const, unsigned int> >*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:683: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipc_option.o(.gnu.linkonce.t._ZNSaIN9__gnu_cxx15_Hashtable_nodeISt4pairIKPKcjEEEE8allocateEmPKv+0x112): In function `std::allocator<__gnu_cxx::_Hashtable_node<std::pair<char const* const, unsigned int> > >::allocate(unsigned long, void const*)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:673: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipc_option.o(.gnu.linkonce.t._ZNSaIN9__gnu_cxx15_Hashtable_nodeISt4pairIKijEEEE8allocateEmPKv+0xf2): In function `std::allocator<__gnu_cxx::_Hashtable_node<std::pair<int const, unsigned int> > >::allocate(unsigned long, void const*)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:673: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipc_utils.o(.text+0x6e0): In function `Next_Archive_Member(char*, long, long long)':
+/home/yhd/pathscale/pathscale-2.2.1/kpro64/targia64_ia64_nodebug/lw_inline/../../ipa/common/ipc_utils.cxx:294: undefined reference to `__ctype_b'
+ipc_utils.o(.text+0x6e1):/home/yhd/pathscale/pathscale-2.2.1/kpro64/targia64_ia64_nodebug/lw_inline/../../ipa/common/ipc_utils.cxx:294: undefined reference to `__ctype_b'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocISt13_Rb_tree_nodeISt4pairIKP2WNjEESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS6_m+0xa2): In function `std::__simple_alloc<std::_Rb_tree_node<std::pair<WN* const, unsigned int> >, std::__default_alloc_template<true, 0> >::deallocate(std::_Rb_tree_node<std::pair<WN* const, unsigned int> >*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocISt13_Rb_tree_nodeISt4pairIKjP2STEESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS6_m+0xa2): In function `std::__simple_alloc<std::_Rb_tree_node<std::pair<unsigned int const, ST*> >, std::__default_alloc_template<true, 0> >::deallocate(std::_Rb_tree_node<std::pair<unsigned int const, ST*> >*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIjSt24__default_alloc_templateILb1ELi0EEE10deallocateEPjm+0x82): In function `std::__simple_alloc<unsigned int, std::__default_alloc_template<true, 0> >::deallocate(unsigned int*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocISt13_Rb_tree_nodeISt4pairIKyP8IPA_NODEEESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x82): In function `std::__simple_alloc<std::_Rb_tree_node<std::pair<unsigned long long const, IPA_NODE*> >, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocISt13_Rb_tree_nodeISt4pairIKP2WNjEESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x82): In function `std::__simple_alloc<std::_Rb_tree_node<std::pair<WN* const, unsigned int> >, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocISt13_Rb_tree_nodeISt4pairIKjP2STEESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x82): In function `std::__simple_alloc<std::_Rb_tree_node<std::pair<unsigned int const, ST*> >, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKP8IPA_NODES4_EEESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS8_m+0x82): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<IPA_NODE* const, IPA_NODE*> >*, std::__default_alloc_template<true, 0> >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<IPA_NODE* const, IPA_NODE*> >**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIP13Nodes_To_EdgeSt24__default_alloc_templateILb1ELi0EEE10deallocateEPS1_m+0x82): In function `std::__simple_alloc<Nodes_To_Edge*, std::__default_alloc_template<true, 0> >::deallocate(Nodes_To_Edge**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKP8IPA_NODES4_EEESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<IPA_NODE* const, IPA_NODE*> >*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIP13Nodes_To_EdgeSt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<Nodes_To_Edge*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIP8IPA_EDGESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS1_m+0x82): In function `std::__simple_alloc<IPA_EDGE*, std::__default_alloc_template<true, 0> >::deallocate(IPA_EDGE**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIP8IPA_EDGESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<IPA_EDGE*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIP8IPA_NODESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS1_m+0x82): In function `std::__simple_alloc<IPA_NODE*, std::__default_alloc_template<true, 0> >::deallocate(IPA_NODE**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIP8IPA_NODESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<IPA_NODE*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSaIN9__gnu_cxx15_Hashtable_nodeISt4pairIKP8IPA_NODES3_EEEE10deallocateEPS6_m+0x82): In function `std::allocator<__gnu_cxx::_Hashtable_node<std::pair<IPA_NODE* const, IPA_NODE*> > >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<IPA_NODE* const, IPA_NODE*> >*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:683: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSaIN9__gnu_cxx15_Hashtable_nodeISt4pairIKP8IPA_NODES3_EEEE8allocateEmPKv+0x112): In function `std::allocator<__gnu_cxx::_Hashtable_node<std::pair<IPA_NODE* const, IPA_NODE*> > >::allocate(unsigned long, void const*)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:673: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocISt13_Rb_tree_nodeISt4pairIKyP8IPA_NODEEESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS6_m+0xa2): In function `std::__simple_alloc<std::_Rb_tree_node<std::pair<unsigned long long const, IPA_NODE*> >, std::__default_alloc_template<true, 0> >::deallocate(std::_Rb_tree_node<std::pair<unsigned long long const, IPA_NODE*> >*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIP14IPA_ICALL_NODESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS1_m+0x82): In function `std::__simple_alloc<IPA_ICALL_NODE*, std::__default_alloc_template<true, 0> >::deallocate(IPA_ICALL_NODE**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIP14IPA_ICALL_NODESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<IPA_ICALL_NODE*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_cg.o(.gnu.linkonce.t._ZNSt14__simple_allocIPcSt24__default_alloc_templateILb1ELi0EEE10deallocateEPS0_m+0x82): In function `std::__simple_alloc<char*, std::__default_alloc_template<true, 0> >::deallocate(char**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_inline.o(.gnu.linkonce.t._ZNSt14__simple_allocIPcSt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<char*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_inline.o(.gnu.linkonce.t._ZNSt14__simple_allocIjSt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<unsigned int, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_nested_pu.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKjjEEESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<unsigned int const, unsigned int> >*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipa_nested_pu.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKjjEEESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS6_m+0x82): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<unsigned int const, unsigned int> >*, std::__default_alloc_template<true, 0> >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<unsigned int const, unsigned int> >**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipa_nested_pu.o(.gnu.linkonce.t._ZNSaIN9__gnu_cxx15_Hashtable_nodeISt4pairIKjjEEEE8allocateEmPKv+0xf2): In function `std::allocator<__gnu_cxx::_Hashtable_node<std::pair<unsigned int const, unsigned int> > >::allocate(unsigned long, void const*)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:673: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+inline.o(.gnu.linkonce.t._ZNSt14__simple_allocISt4pairIP2WNiESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS3_m+0x82): In function `std::__simple_alloc<std::pair<WN*, int>, std::__default_alloc_template<true, 0> >::deallocate(std::pair<WN*, int>*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+inline.o(.gnu.linkonce.t._ZNSt14__simple_allocISt4pairIP2WNiESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<std::pair<WN*, int>, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+inline.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKP2WN10branch_dirEEESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS9_m+0x82): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<WN* const, branch_dir> >*, std::__default_alloc_template<true, 0> >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<WN* const, branch_dir> >**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+inline.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKjP21SUMMARY_STRUCT_ACCESSEEESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS8_m+0x82): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<unsigned int const, SUMMARY_STRUCT_ACCESS*> >*, std::__default_alloc_template<true, 0> >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<unsigned int const, SUMMARY_STRUCT_ACCESS*> >**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+inline.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKP2WN10branch_dirEEESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<WN* const, branch_dir> >*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+inline.o(.gnu.linkonce.t._ZNSaIN9__gnu_cxx15_Hashtable_nodeISt4pairIKP2WN10branch_dirEEEE10deallocateEPS7_m+0x82): In function `std::allocator<__gnu_cxx::_Hashtable_node<std::pair<WN* const, branch_dir> > >::deallocate(__gnu_cxx::_Hashtable_node<std::pair<WN* const, branch_dir> >*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:683: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+inline.o(.gnu.linkonce.t._ZNSt14__simple_allocIPN9__gnu_cxx15_Hashtable_nodeISt4pairIKjP21SUMMARY_STRUCT_ACCESSEEESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<__gnu_cxx::_Hashtable_node<std::pair<unsigned int const, SUMMARY_STRUCT_ACCESS*> >*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+inline.o(.gnu.linkonce.t._ZNSt14__simple_allocISt4pairIPK2WNiESt24__default_alloc_templateILb1ELi0EEE10deallocateEPS4_m+0x82): In function `std::__simple_alloc<std::pair<WN const*, int>, std::__default_alloc_template<true, 0> >::deallocate(std::pair<WN const*, int>*, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+inline.o(.gnu.linkonce.t._ZNSt14__simple_allocISt4pairIPK2WNiESt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<std::pair<WN const*, int>, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+ipo_inline.o(.gnu.linkonce.t._ZNSt14__simple_allocIP2STSt24__default_alloc_templateILb1ELi0EEE10deallocateEPS1_m+0x82): In function `std::__simple_alloc<ST*, std::__default_alloc_template<true, 0> >::deallocate(ST**, unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:242: undefined reference to `std::__default_alloc_template<true, 0>::deallocate(void*, unsigned long)'
+ipo_inline.o(.gnu.linkonce.t._ZNSt14__simple_allocIP2STSt24__default_alloc_templateILb1ELi0EEE8allocateEm+0x72): In function `std::__simple_alloc<ST*, std::__default_alloc_template<true, 0> >::allocate(unsigned long)':
+/usr/local/include/c++/3.3.4/bits/stl_alloc.h:232: undefined reference to `std::__default_alloc_template<true, 0>::allocate(unsigned long)'
+dwarf_DST_producer.o(.text+0x342): In function `DST_mk_name':
+/home/yhd/pathscale/pathscale-2.2.1/kpro64/targia64_ia64_nodebug/lw_inline/../../common/com/dwarf_DST_producer.cxx:150: undefined reference to `__ctype_b'
+dwarf_DST_producer.o(.text+0x350):/home/yhd/pathscale/pathscale-2.2.1/kpro64/targia64_ia64_nodebug/lw_inline/../../common/com/dwarf_DST_producer.cxx:150: undefined reference to `__ctype_b'
+GNU ld version 2.15.92.0.2 20040927
+  Supported emulations:
+   elf64_ia64
+   elf_i386
+   i386linux
+using internal linker script:
+==================================================
+/* Script for -z combreloc: combine and sort reloc sections */
+OUTPUT_FORMAT("elf64-ia64-little", "elf64-ia64-little",
+	      "elf64-ia64-little")
+OUTPUT_ARCH(ia64)
+ENTRY(_start)
+SEARCH_DIR("/usr/ia64-redhat-linux/lib"); SEARCH_DIR("/usr/local/lib"); SEARCH_DIR("/lib"); SEARCH_DIR("/usr/lib");
+/* Do we need any of these for elf?
+   __DYNAMIC = 0;    */
+SECTIONS
+{
+  /* Read-only sections, merged into text segment: */
+  PROVIDE (__executable_start = 0x4000000000000000); . = 0x4000000000000000 + SIZEOF_HEADERS;
+  .interp         : { *(.interp) }
+  .hash           : { *(.hash) }
+  .dynsym         : { *(.dynsym) }
+  .dynstr         : { *(.dynstr) }
+  .gnu.version    : { *(.gnu.version) }
+  .gnu.version_d  : { *(.gnu.version_d) }
+  .gnu.version_r  : { *(.gnu.version_r) }
+  .rel.dyn        :
+    {
+      *(.rel.init)
+      *(.rel.text .rel.text.* .rel.gnu.linkonce.t.*)
+      *(.rel.fini)
+      *(.rel.rodata .rel.rodata.* .rel.gnu.linkonce.r.*)
+      *(.rel.data.rel.ro*)
+      *(.rel.data .rel.data.* .rel.gnu.linkonce.d.*)
+      *(.rel.tdata .rel.tdata.* .rel.gnu.linkonce.td.*)
+      *(.rel.tbss .rel.tbss.* .rel.gnu.linkonce.tb.*)
+      *(.rel.ctors)
+      *(.rel.dtors)
+      *(.rel.got)
+      *(.rel.sdata .rel.sdata.* .rel.gnu.linkonce.s.*)
+      *(.rel.sbss .rel.sbss.* .rel.gnu.linkonce.sb.*)
+      *(.rel.sdata2 .rel.sdata2.* .rel.gnu.linkonce.s2.*)
+      *(.rel.sbss2 .rel.sbss2.* .rel.gnu.linkonce.sb2.*)
+      *(.rel.bss .rel.bss.* .rel.gnu.linkonce.b.*)
+    }
+  .rela.dyn       :
+    {
+      *(.rela.init)
+      *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+      *(.rela.fini)
+      *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*)
+      *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*)
+      *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*)
+      *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*)
+      *(.rela.ctors)
+      *(.rela.dtors)
+      *(.rela.got)
+      *(.rela.sdata .rela.sdata.* .rela.gnu.linkonce.s.*)
+      *(.rela.sbss .rela.sbss.* .rela.gnu.linkonce.sb.*)
+      *(.rela.sdata2 .rela.sdata2.* .rela.gnu.linkonce.s2.*)
+      *(.rela.sbss2 .rela.sbss2.* .rela.gnu.linkonce.sb2.*)
+      *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*)
+    }
+  .rel.plt        : { *(.rel.plt) }
+  .rela.plt       : { *(.rela.plt) }
+  .rela.IA_64.pltoff   : { *(.rela.IA_64.pltoff) }
+  .init           :
+  {
+    KEEP (*(.init))
+  } =0x00300000010070000002000001000400
+  .plt            : { *(.plt) }
+  .text           :
+  {
+    *(.text .stub .text.* .gnu.linkonce.t.*)
+    KEEP (*(.text.*personality*))
+    /* .gnu.warning sections are handled specially by elf32.em.  */
+    *(.gnu.warning)
+  } =0x00300000010070000002000001000400
+  .fini           :
+  {
+    KEEP (*(.fini))
+  } =0x00300000010070000002000001000400
+  PROVIDE (__etext = .);
+  PROVIDE (_etext = .);
+  PROVIDE (etext = .);
+  .rodata         : { *(.rodata .rodata.* .gnu.linkonce.r.*) }
+  .rodata1        : { *(.rodata1) }
+  .sdata2         : { *(.sdata2 .sdata2.* .gnu.linkonce.s2.*) }
+  .sbss2          : { *(.sbss2 .sbss2.* .gnu.linkonce.sb2.*) }
+  .opd            : { *(.opd) }
+  .IA_64.unwind_info   : { *(.IA_64.unwind_info* .gnu.linkonce.ia64unwi.*) }
+  .IA_64.unwind   : { *(.IA_64.unwind* .gnu.linkonce.ia64unw.*) }
+  .eh_frame_hdr : { *(.eh_frame_hdr) }
+  .eh_frame       : ONLY_IF_RO { KEEP (*(.eh_frame)) }
+  .gcc_except_table   : ONLY_IF_RO { KEEP (*(.gcc_except_table)) *(.gcc_except_table.*) }
+  /* Adjust the address for the data segment.  We want to adjust up to
+     the same address within the page on the next page up.  */
+  . = 0x6000000000000000 + (. & (0x10000 - 1));
+  /* Exception handling  */
+  .eh_frame       : ONLY_IF_RW { KEEP (*(.eh_frame)) }
+  .gcc_except_table   : ONLY_IF_RW { KEEP (*(.gcc_except_table)) *(.gcc_except_table.*) }
+  /* Thread Local Storage sections  */
+  .tdata	  : { *(.tdata .tdata.* .gnu.linkonce.td.*) }
+  .tbss		  : { *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon) }
+  /* Ensure the __preinit_array_start label is properly aligned.  We
+     could instead move the label definition inside the section, but
+     the linker would then create the section even if it turns out to
+     be empty, which isn't pretty.  */
+  . = ALIGN(64 / 8);
+  PROVIDE (__preinit_array_start = .);
+  .preinit_array     : { KEEP (*(.preinit_array)) }
+  PROVIDE (__preinit_array_end = .);
+  PROVIDE (__init_array_start = .);
+  .init_array     : { KEEP (*(.init_array)) }
+  PROVIDE (__init_array_end = .);
+  PROVIDE (__fini_array_start = .);
+  .fini_array     : { KEEP (*(.fini_array)) }
+  PROVIDE (__fini_array_end = .);
+  .ctors          :
+  {
+    /* gcc uses crtbegin.o to find the start of
+       the constructors, so we make sure it is
+       first.  Because this is a wildcard, it
+       doesn't matter if the user does not
+       actually link against crtbegin.o; the
+       linker won't look for a file to match a
+       wildcard.  The wildcard also means that it
+       doesn't matter which directory crtbegin.o
+       is in.  */
+    KEEP (*crtbegin*.o(.ctors))
+    /* We don't want to include the .ctor section from
+       from the crtend.o file until after the sorted ctors.
+       The .ctor section from the crtend file contains the
+       end of ctors marker and it must be last */
+    KEEP (*(EXCLUDE_FILE (*crtend*.o ) .ctors))
+    KEEP (*(SORT(.ctors.*)))
+    KEEP (*(.ctors))
+  }
+  .dtors          :
+  {
+    KEEP (*crtbegin*.o(.dtors))
+    KEEP (*(EXCLUDE_FILE (*crtend*.o ) .dtors))
+    KEEP (*(SORT(.dtors.*)))
+    KEEP (*(.dtors))
+  }
+  .jcr            : { KEEP (*(.jcr)) }
+  .data.rel.ro : { *(.data.rel.ro.local) *(.data.rel.ro*) }
+  .dynamic        : { *(.dynamic) }
+  .data           :
+  {
+    *(.data .data.* .gnu.linkonce.d.*)
+    KEEP (*(.gnu.linkonce.d.*personality*))
+    SORT(CONSTRUCTORS)
+  }
+  .data1          : { *(.data1) }
+  .got            : { *(.got.plt) *(.got) }
+  .IA_64.pltoff   : { *(.IA_64.pltoff) }
+  /* We want the small data sections together, so single-instruction offsets
+     can access them all, and initialized data all before uninitialized, so
+     we can shorten the on-disk segment size.  */
+  .sdata          :
+  {
+    *(.sdata .sdata.* .gnu.linkonce.s.*)
+  }
+  _edata = .;
+  PROVIDE (edata = .);
+  __bss_start = .;
+  .sbss           :
+  {
+    PROVIDE (__sbss_start = .);
+    PROVIDE (___sbss_start = .);
+    *(.dynsbss)
+    *(.sbss .sbss.* .gnu.linkonce.sb.*)
+    *(.scommon)
+    PROVIDE (__sbss_end = .);
+    PROVIDE (___sbss_end = .);
+  }
+  .bss            :
+  {
+   *(.dynbss)
+   *(.bss .bss.* .gnu.linkonce.b.*)
+   *(COMMON)
+   /* Align here to ensure that the .bss section occupies space up to
+      _end.  Align after .bss to ensure correct alignment even if the
+      .bss section disappears because there are no input sections.  */
+   . = ALIGN(64 / 8);
+  }
+  . = ALIGN(64 / 8);
+  _end = .;
+  PROVIDE (end = .);
+  /* Stabs debugging sections.  */
+  .stab          0 : { *(.stab) }
+  .stabstr       0 : { *(.stabstr) }
+  .stab.excl     0 : { *(.stab.excl) }
+  .stab.exclstr  0 : { *(.stab.exclstr) }
+  .stab.index    0 : { *(.stab.index) }
+  .stab.indexstr 0 : { *(.stab.indexstr) }
+  .comment       0 : { *(.comment) }
+  /* DWARF debug sections.
+     Symbols in the DWARF debugging sections are relative to the beginning
+     of the section so we begin them at 0.  */
+  /* DWARF 1 */
+  .debug          0 : { *(.debug) }
+  .line           0 : { *(.line) }
+  /* GNU DWARF 1 extensions */
+  .debug_srcinfo  0 : { *(.debug_srcinfo) }
+  .debug_sfnames  0 : { *(.debug_sfnames) }
+  /* DWARF 1.1 and DWARF 2 */
+  .debug_aranges  0 : { *(.debug_aranges) }
+  .debug_pubnames 0 : { *(.debug_pubnames) }
+  /* DWARF 2 */
+  .debug_info     0 : { *(.debug_info .gnu.linkonce.wi.*) }
+  .debug_abbrev   0 : { *(.debug_abbrev) }
+  .debug_line     0 : { *(.debug_line) }
+  .debug_frame    0 : { *(.debug_frame) }
+  .debug_str      0 : { *(.debug_str) }
+  .debug_loc      0 : { *(.debug_loc) }
+  .debug_macinfo  0 : { *(.debug_macinfo) }
+  /* SGI/MIPS DWARF 2 extensions */
+  .debug_weaknames 0 : { *(.debug_weaknames) }
+  .debug_funcnames 0 : { *(.debug_funcnames) }
+  .debug_typenames 0 : { *(.debug_typenames) }
+  .debug_varnames  0 : { *(.debug_varnames) }
+  /DISCARD/ : { *(.note.GNU-stack) }
+}
+
+
+==================================================
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../crt1.o succeeded
+/usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../crt1.o
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../crti.o succeeded
+/usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../crti.o
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/crtbegin.o succeeded
+/usr/lib/gcc/ia64-redhat-linux/3.4.3/crtbegin.o
+attempt to open ipo_parent.o succeeded
+ipo_parent.o
+attempt to open ipl_summarize_util.o succeeded
+ipl_summarize_util.o
+attempt to open ipc_bread.o succeeded
+ipc_bread.o
+attempt to open ipc_file.o succeeded
+ipc_file.o
+attempt to open ip_graph.o succeeded
+ip_graph.o
+attempt to open ipc_option.o succeeded
+ipc_option.o
+attempt to open ipc_utils.o succeeded
+ipc_utils.o
+attempt to open ipc_dst_utils.o succeeded
+ipc_dst_utils.o
+attempt to open ip_graph_trav.o succeeded
+ip_graph_trav.o
+attempt to open ipa_cg.o succeeded
+ipa_cg.o
+attempt to open ipa_inline.o succeeded
+ipa_inline.o
+attempt to open ipa_nested_pu.o succeeded
+ipa_nested_pu.o
+attempt to open ipa_summary.o succeeded
+ipa_summary.o
+attempt to open inline_driver.o succeeded
+inline_driver.o
+attempt to open inline_stub.o succeeded
+inline_stub.o
+attempt to open inline.o succeeded
+inline.o
+attempt to open inline_utils.o succeeded
+inline_utils.o
+attempt to open timelib.o succeeded
+timelib.o
+attempt to open ipo_tlog_utils.o succeeded
+ipo_tlog_utils.o
+attempt to open ipo_inline_util.o succeeded
+ipo_inline_util.o
+attempt to open ipo_inline.o succeeded
+ipo_inline.o
+attempt to open ipo_clone.o succeeded
+ipo_clone.o
+attempt to open dwarf_DST.o succeeded
+dwarf_DST.o
+attempt to open dwarf_DST_mem.o succeeded
+dwarf_DST_mem.o
+attempt to open dwarf_DST_producer.o succeeded
+dwarf_DST_producer.o
+attempt to open cxx_template.o succeeded
+cxx_template.o
+attempt to open clone.o succeeded
+clone.o
+attempt to open ipl_lno_util.o succeeded
+ipl_lno_util.o
+attempt to open lwn_util.o succeeded
+lwn_util.o
+attempt to open be.so succeeded
+be.so
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libstdc++.so succeeded
+-lstdc++ (/usr/lib/gcc/ia64-redhat-linux/3.4.3/libstdc++.so)
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libm.so failed
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libm.a failed
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libm.so failed
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libm.a failed
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../libm.so succeeded
+-lm (/usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../libm.so)
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libgcc_s.so succeeded
+-lgcc_s (/usr/lib/gcc/ia64-redhat-linux/3.4.3/libgcc_s.so)
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libgcc.so failed
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libgcc.a succeeded
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libc.so failed
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libc.a failed
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libc.so failed
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/libc.a failed
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../libc.so succeeded
+opened script file /usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../libc.so
+opened script file /usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../libc.so
+attempt to open /lib/libc.so.6.1 succeeded
+/lib/libc.so.6.1
+attempt to open /usr/lib/libc_nonshared.a succeeded
+(/usr/lib/libc_nonshared.a)elf-init.oS
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/crtend.o succeeded
+/usr/lib/gcc/ia64-redhat-linux/3.4.3/crtend.o
+attempt to open /usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../crtn.o succeeded
+/usr/lib/gcc/ia64-redhat-linux/3.4.3/../../../crtn.o
+libdl.so.2 needed by be.so
+found libdl.so.2 at /lib/libdl.so.2
+ld-linux-ia64.so.2 needed by /lib/libc.so.6.1
+found ld-linux-ia64.so.2 at /lib/ld-linux-ia64.so.2
+collect2: ld returned 1 exit status

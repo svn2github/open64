@@ -1,0 +1,2017 @@
+libffio.a(_ffopen.o): ../../libu/ffio/_ffopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fflock.h
+libffio.a(_ffopen.pg.o): ../../libu/ffio/_ffopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fflock.h
+libffio.a(_ffopen.pic.o): ../../libu/ffio/_ffopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fflock.h
+libffio.a(_pack.o): ../../libu/util/mpp/_pack.c
+libffio.a(_pack.pg.o): ../../libu/util/mpp/_pack.c
+libffio.a(_pack.pic.o): ../../libu/util/mpp/_pack.c
+libffio.a(_string_cmp.o): ../../libu/util/_string_cmp.c ../../libu/util/utildefs.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(_string_cmp.pg.o): ../../libu/util/_string_cmp.c \
+  ../../libu/util/utildefs.h ../../clibinc/cray/assign.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h
+libffio.a(_string_cmp.pic.o): ../../libu/util/_string_cmp.c \
+  ../../libu/util/utildefs.h ../../clibinc/cray/assign.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h
+libffio.a(_unpack.o): ../../libu/util/mpp/_unpack.c
+libffio.a(_unpack.pg.o): ../../libu/util/mpp/_unpack.c
+libffio.a(_unpack.pic.o): ../../libu/util/mpp/_unpack.c
+libffio.a(asgrls.o): ../../libu/ffio/asgrls.c ../../libu/ffio/spec_parse.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h
+libffio.a(asgrls.pg.o): ../../libu/ffio/asgrls.c ../../libu/ffio/spec_parse.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h
+libffio.a(asgrls.pic.o): ../../libu/ffio/asgrls.c ../../libu/ffio/spec_parse.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h
+libffio.a(asnenv.o): ../../libu/util/asnenv.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/cray/mtlock.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(asnenv.pg.o): ../../libu/util/asnenv.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/cray/mtlock.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(asnenv.pic.o): ../../libu/util/asnenv.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/cray/mtlock.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(asnlib.o): ../../libu/util/asnlib.c ../../clibinc/fortran.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/assign.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(asnlib.pg.o): ../../libu/util/asnlib.c ../../clibinc/fortran.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/assign.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(asnlib.pic.o): ../../libu/util/asnlib.c ../../clibinc/fortran.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/assign.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(asnparse.o): ../../libu/util/asnparse.c ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../clibinc/cray/fndc.h ../../clibinc/cray/nassert.h
+libffio.a(asnparse.pg.o): ../../libu/util/asnparse.c ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../clibinc/cray/fndc.h ../../clibinc/cray/nassert.h
+libffio.a(asnparse.pic.o): ../../libu/util/asnparse.c ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../clibinc/cray/fndc.h ../../clibinc/cray/nassert.h
+libffio.a(asnquery.o): ../../libu/util/asnquery.c ../../clibinc/fortran.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/assign.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(asnquery.pg.o): ../../libu/util/asnquery.c ../../clibinc/fortran.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/assign.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(asnquery.pic.o): ../../libu/util/asnquery.c ../../clibinc/fortran.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/assign.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(asntools.o): ../../libu/util/asntools.c ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h
+libffio.a(asntools.pg.o): ../../libu/util/asntools.c ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h
+libffio.a(asntools.pic.o): ../../libu/util/asntools.c ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/assign.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h
+libffio.a(binhex.o): ../../libu/ffio/binhex.c ../../clibinc/cray/portdefs.h \
+  ../../libu/ffio/spec_parse.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h
+libffio.a(binhex.pg.o): ../../libu/ffio/binhex.c ../../clibinc/cray/portdefs.h \
+  ../../libu/ffio/spec_parse.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h
+libffio.a(binhex.pic.o): ../../libu/ffio/binhex.c ../../clibinc/cray/portdefs.h \
+  ../../libu/ffio/spec_parse.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h
+libffio.a(boizu2s.o): ../../libu/numconv/mpp/boizu2s.c ../../clibinc/cray/fmtconv.h \
+  ../../clibinc/cray/portdefs.h
+libffio.a(boizu2s.pg.o): ../../libu/numconv/mpp/boizu2s.c \
+  ../../clibinc/cray/fmtconv.h ../../clibinc/cray/portdefs.h
+libffio.a(boizu2s.pic.o): ../../libu/numconv/mpp/boizu2s.c \
+  ../../clibinc/cray/fmtconv.h ../../clibinc/cray/portdefs.h
+libffio.a(c2fcpy.o): ../../libu/util/c2fcpy.c ../../clibinc/fortran.h
+libffio.a(c2fcpy.pg.o): ../../libu/util/c2fcpy.c ../../clibinc/fortran.h
+libffio.a(c2fcpy.pic.o): ../../libu/util/c2fcpy.c ../../clibinc/fortran.h
+libffio.a(catgetmsg.o): ../../libcsup/msgnew/catgetmsg.c \
+  ../../clibinc/cray/nlcatmsg.h
+libffio.a(catgetmsg.pg.o): ../../libcsup/msgnew/catgetmsg.c \
+  ../../clibinc/cray/nlcatmsg.h
+libffio.a(catgetmsg.pic.o): ../../libcsup/msgnew/catgetmsg.c \
+  ../../clibinc/cray/nlcatmsg.h
+libffio.a(catmsgfmt.o): ../../libcsup/msgnew/catmsgfmt.c \
+  ../../clibinc/cray/nlcatmsg.h
+libffio.a(catmsgfmt.pg.o): ../../libcsup/msgnew/catmsgfmt.c \
+  ../../clibinc/cray/nlcatmsg.h
+libffio.a(catmsgfmt.pic.o): ../../libcsup/msgnew/catmsgfmt.c \
+  ../../clibinc/cray/nlcatmsg.h
+libffio.a(ccaclearpg.o): ../../libu/ffio/ccaclearpg.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaclearpg.pg.o): ../../libu/ffio/ccaclearpg.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaclearpg.pic.o): ../../libu/ffio/ccaclearpg.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaclose.o): ../../libu/ffio/ccaclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaclose.pg.o): ../../libu/ffio/ccaclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaclose.pic.o): ../../libu/ffio/ccaclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccafcntl.o): ../../libu/ffio/ccafcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccafcntl.pg.o): ../../libu/ffio/ccafcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccafcntl.pic.o): ../../libu/ffio/ccafcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaflush.o): ../../libu/ffio/ccaflush.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaflush.pg.o): ../../libu/ffio/ccaflush.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaflush.pic.o): ../../libu/ffio/ccaflush.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccagetblk.o): ../../libu/ffio/ccagetblk.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccagetblk.pg.o): ../../libu/ffio/ccagetblk.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccagetblk.pic.o): ../../libu/ffio/ccagetblk.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccagetblkp.o): ../../libu/ffio/ccagetblkp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccagetblkp.pg.o): ../../libu/ffio/ccagetblkp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccagetblkp.pic.o): ../../libu/ffio/ccagetblkp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaopen.o): ../../libu/ffio/ccaopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../clibinc/cray/nassert.h ../../libu/ffio/ccaio.h \
+  ../../libu/ffio/cchio.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/fflock.h
+libffio.a(ccaopen.pg.o): ../../libu/ffio/ccaopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../clibinc/cray/nassert.h ../../libu/ffio/ccaio.h \
+  ../../libu/ffio/cchio.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/fflock.h
+libffio.a(ccaopen.pic.o): ../../libu/ffio/ccaopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../clibinc/cray/nassert.h ../../libu/ffio/ccaio.h \
+  ../../libu/ffio/cchio.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/fflock.h
+libffio.a(ccardabuf.o): ../../libu/ffio/ccardabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccardabuf.pg.o): ../../libu/ffio/ccardabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccardabuf.pic.o): ../../libu/ffio/ccardabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaread.o): ../../libu/ffio/ccaread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaread.pg.o): ../../libu/ffio/ccaread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaread.pic.o): ../../libu/ffio/ccaread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaseek.o): ../../libu/ffio/ccaseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaseek.pg.o): ../../libu/ffio/ccaseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaseek.pic.o): ../../libu/ffio/ccaseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccasyncpage.o): ../../libu/ffio/ccasyncpage.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccasyncpage.pg.o): ../../libu/ffio/ccasyncpage.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccasyncpage.pic.o): ../../libu/ffio/ccasyncpage.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccatracker.o): ../../libu/ffio/ccatracker.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccatracker.pg.o): ../../libu/ffio/ccatracker.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccatracker.pic.o): ../../libu/ffio/ccatracker.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaweod.o): ../../libu/ffio/ccaweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaweod.pg.o): ../../libu/ffio/ccaweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccaweod.pic.o): ../../libu/ffio/ccaweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccawrabuf.o): ../../libu/ffio/ccawrabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/listio_mips.h \
+  ../../libu/ffio/ccaio.h
+libffio.a(ccawrabuf.pg.o): ../../libu/ffio/ccawrabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/listio_mips.h \
+  ../../libu/ffio/ccaio.h
+libffio.a(ccawrabuf.pic.o): ../../libu/ffio/ccawrabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/listio_mips.h \
+  ../../libu/ffio/ccaio.h
+libffio.a(ccawrite.o): ../../libu/ffio/ccawrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccawrite.pg.o): ../../libu/ffio/ccawrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(ccawrite.pic.o): ../../libu/ffio/ccawrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/ccaio.h
+libffio.a(cchclose.o): ../../libu/ffio/cchclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchclose.pg.o): ../../libu/ffio/cchclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchclose.pic.o): ../../libu/ffio/cchclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchfcntl.o): ../../libu/ffio/cchfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchfcntl.pg.o): ../../libu/ffio/cchfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchfcntl.pic.o): ../../libu/ffio/cchfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchgetblk.o): ../../libu/ffio/cchgetblk.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchgetblk.pg.o): ../../libu/ffio/cchgetblk.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchgetblk.pic.o): ../../libu/ffio/cchgetblk.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchopen.o): ../../libu/ffio/cchopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/cchio.h ../../libu/ffio/fxlist.h
+libffio.a(cchopen.pg.o): ../../libu/ffio/cchopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/cchio.h ../../libu/ffio/fxlist.h
+libffio.a(cchopen.pic.o): ../../libu/ffio/cchopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/cchio.h ../../libu/ffio/fxlist.h
+libffio.a(cchrdabuf.o): ../../libu/ffio/cchrdabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(cchrdabuf.pg.o): ../../libu/ffio/cchrdabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(cchrdabuf.pic.o): ../../libu/ffio/cchrdabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(cchread.o): ../../libu/ffio/cchread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchread.pg.o): ../../libu/ffio/cchread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchread.pic.o): ../../libu/ffio/cchread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchseek.o): ../../libu/ffio/cchseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchseek.pg.o): ../../libu/ffio/cchseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchseek.pic.o): ../../libu/ffio/cchseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchweod.o): ../../libu/ffio/cchweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchweod.pg.o): ../../libu/ffio/cchweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchweod.pic.o): ../../libu/ffio/cchweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchwrabuf.o): ../../libu/ffio/cchwrabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(cchwrabuf.pg.o): ../../libu/ffio/cchwrabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(cchwrabuf.pic.o): ../../libu/ffio/cchwrabuf.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(cchwrite.o): ../../libu/ffio/cchwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchwrite.pg.o): ../../libu/ffio/cchwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(cchwrite.pic.o): ../../libu/ffio/cchwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cchio.h
+libffio.a(class_mr_sds_check.o): ../../libu/ffio/class_mr_sds_check.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h
+libffio.a(class_mr_sds_check.pg.o): ../../libu/ffio/class_mr_sds_check.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h
+libffio.a(class_mr_sds_check.pic.o): ../../libu/ffio/class_mr_sds_check.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h
+libffio.a(class_vf_check.o): ../../libu/ffio/class_vf_check.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/layer_def.h \
+  ../../libu/ffio/spec_parse.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/gvio.h
+libffio.a(class_vf_check.pg.o): ../../libu/ffio/class_vf_check.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/gfio.h ../../libu/ffio/gvio.h
+libffio.a(class_vf_check.pic.o): ../../libu/ffio/class_vf_check.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/gfio.h ../../libu/ffio/gvio.h
+libffio.a(class_vms_check.o): ../../libu/ffio/class_vms_check.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/layer_def.h \
+  ../../libu/ffio/spec_parse.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/gvio.h ../../libu/ffio/vms_def.h
+libffio.a(class_vms_check.pg.o): ../../libu/ffio/class_vms_check.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/gfio.h ../../libu/ffio/gvio.h ../../libu/ffio/vms_def.h
+libffio.a(class_vms_check.pic.o): ../../libu/ffio/class_vms_check.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/gfio.h ../../libu/ffio/gvio.h ../../libu/ffio/vms_def.h
+libffio.a(cliblevel.o): ../../libu/util/cliblevel.c \
+  ../../clibinc/cray/clibinc_config.h
+libffio.a(cliblevel.pg.o): ../../libu/util/cliblevel.c \
+  ../../clibinc/cray/clibinc_config.h
+libffio.a(cliblevel.pic.o): ../../libu/util/cliblevel.c \
+  ../../clibinc/cray/clibinc_config.h
+libffio.a(convertc.o): ../../libu/ffio/convertc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/fndc.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(convertc.pg.o): ../../libu/ffio/convertc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/fndc.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(convertc.pic.o): ../../libu/ffio/convertc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/fndc.h \
+  ../../clibinc/cray/nassert.h
+libffio.a(cosbksp.o): ../../libu/ffio/cosbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosbksp.pg.o): ../../libu/ffio/cosbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosbksp.pic.o): ../../libu/ffio/cosbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosclose.o): ../../libu/ffio/cosclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosclose.pg.o): ../../libu/ffio/cosclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosclose.pic.o): ../../libu/ffio/cosclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosfcntl.o): ../../libu/ffio/cosfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosfcntl.pg.o): ../../libu/ffio/cosfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosfcntl.pic.o): ../../libu/ffio/cosfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosopen.o): ../../libu/ffio/cosopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(cosopen.pg.o): ../../libu/ffio/cosopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(cosopen.pic.o): ../../libu/ffio/cosopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(cospos.o): ../../libu/ffio/cospos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cospos.pg.o): ../../libu/ffio/cospos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cospos.pic.o): ../../libu/ffio/cospos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosread.o): ../../libu/ffio/cosread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosread.pg.o): ../../libu/ffio/cosread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosread.pic.o): ../../libu/ffio/cosread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosseek.o): ../../libu/ffio/cosseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosseek.pg.o): ../../libu/ffio/cosseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cosseek.pic.o): ../../libu/ffio/cosseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(coswrite.o): ../../libu/ffio/coswrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(coswrite.pg.o): ../../libu/ffio/coswrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(coswrite.pic.o): ../../libu/ffio/coswrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/cosio.h
+libffio.a(cri_cintrin.o): ../../libu/util/posix/cri_cintrin.c \
+  ../../clibinc/cray/portdefs.h
+libffio.a(cri_cintrin.pg.o): ../../libu/util/posix/cri_cintrin.c \
+  ../../clibinc/cray/portdefs.h
+libffio.a(cri_cintrin.pic.o): ../../libu/util/posix/cri_cintrin.c \
+  ../../clibinc/cray/portdefs.h
+libffio.a(defgu2s.o): ../../libu/numconv/mpp/defgu2s.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(defgu2s.pg.o): ../../libu/numconv/mpp/defgu2s.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(defgu2s.pic.o): ../../libu/numconv/mpp/defgu2s.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(evnt_close_diags.o): ../../libu/ffio/evnt_close_diags.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_close_diags.pg.o): ../../libu/ffio/evnt_close_diags.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_close_diags.pic.o): ../../libu/ffio/evnt_close_diags.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_get_parent_child.o): ../../libu/ffio/evnt_get_parent_child.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_get_parent_child.pg.o): ../../libu/ffio/evnt_get_parent_child.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_get_parent_child.pic.o): ../../libu/ffio/evnt_get_parent_child.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_get_tracker.o): ../../libu/ffio/evnt_get_tracker.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_get_tracker.pg.o): ../../libu/ffio/evnt_get_tracker.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_get_tracker.pic.o): ../../libu/ffio/evnt_get_tracker.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_trace_flush.o): ../../libu/ffio/evnt_trace_flush.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_trace_flush.pg.o): ../../libu/ffio/evnt_trace_flush.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evnt_trace_flush.pic.o): ../../libu/ffio/evnt_trace_flush.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evntatexit.o): ../../libu/ffio/evntatexit.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntatexit.pg.o): ../../libu/ffio/evntatexit.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntatexit.pic.o): ../../libu/ffio/evntatexit.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntbksp.o): ../../libu/ffio/evntbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntbksp.pg.o): ../../libu/ffio/evntbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntbksp.pic.o): ../../libu/ffio/evntbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntclose.o): ../../libu/ffio/evntclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntclose.pg.o): ../../libu/ffio/evntclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntclose.pic.o): ../../libu/ffio/evntclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntfcntl.o): ../../libu/ffio/evntfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntfcntl.pg.o): ../../libu/ffio/evntfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntfcntl.pic.o): ../../libu/ffio/evntfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntflush.o): ../../libu/ffio/evntflush.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntflush.pg.o): ../../libu/ffio/evntflush.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntflush.pic.o): ../../libu/ffio/evntflush.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntlistio.o): ../../libu/ffio/evntlistio.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/listio_mips.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evntlistio.pg.o): ../../libu/ffio/evntlistio.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/listio_mips.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evntlistio.pic.o): ../../libu/ffio/evntlistio.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/listio_mips.h \
+  ../../libu/ffio/evntio.h
+libffio.a(evntopen.o): ../../libu/ffio/evntopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/evntio.h ../../libu/ffio/fxlist.h
+libffio.a(evntopen.pg.o): ../../libu/ffio/evntopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/evntio.h ../../libu/ffio/fxlist.h
+libffio.a(evntopen.pic.o): ../../libu/ffio/evntopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/evntio.h ../../libu/ffio/fxlist.h
+libffio.a(evntread.o): ../../libu/ffio/evntread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntread.pg.o): ../../libu/ffio/evntread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntread.pic.o): ../../libu/ffio/evntread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntreada.o): ../../libu/ffio/evntreada.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntreada.pg.o): ../../libu/ffio/evntreada.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntreada.pic.o): ../../libu/ffio/evntreada.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntreadc.o): ../../libu/ffio/evntreadc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntreadc.pg.o): ../../libu/ffio/evntreadc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntreadc.pic.o): ../../libu/ffio/evntreadc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntseek.o): ../../libu/ffio/evntseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntseek.pg.o): ../../libu/ffio/evntseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntseek.pic.o): ../../libu/ffio/evntseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntweod.o): ../../libu/ffio/evntweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntweod.pg.o): ../../libu/ffio/evntweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntweod.pic.o): ../../libu/ffio/evntweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntweof.o): ../../libu/ffio/evntweof.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntweof.pg.o): ../../libu/ffio/evntweof.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntweof.pic.o): ../../libu/ffio/evntweof.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntwrite.o): ../../libu/ffio/evntwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntwrite.pg.o): ../../libu/ffio/evntwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntwrite.pic.o): ../../libu/ffio/evntwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntwritea.o): ../../libu/ffio/evntwritea.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntwritea.pg.o): ../../libu/ffio/evntwritea.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntwritea.pic.o): ../../libu/ffio/evntwritea.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntwritec.o): ../../libu/ffio/evntwritec.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntwritec.pg.o): ../../libu/ffio/evntwritec.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(evntwritec.pic.o): ../../libu/ffio/evntwritec.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/evntio.h
+libffio.a(exit.o): ../../libu/clib/exit.c ../../clibinc/fortran.h
+libffio.a(exit.pg.o): ../../libu/clib/exit.c ../../clibinc/fortran.h
+libffio.a(exit.pic.o): ../../libu/clib/exit.c ../../clibinc/fortran.h
+libffio.a(f2ccpy.o): ../../libu/util/f2ccpy.c ../../clibinc/fortran.h
+libffio.a(f2ccpy.pg.o): ../../libu/util/f2ccpy.c ../../clibinc/fortran.h
+libffio.a(f2ccpy.pic.o): ../../libu/util/f2ccpy.c ../../clibinc/fortran.h
+libffio.a(f77bksp.o): ../../libu/ffio/f77bksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77bksp.pg.o): ../../libu/ffio/f77bksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77bksp.pic.o): ../../libu/ffio/f77bksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77close.o): ../../libu/ffio/f77close.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/f77io.h
+libffio.a(f77close.pg.o): ../../libu/ffio/f77close.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/f77io.h
+libffio.a(f77close.pic.o): ../../libu/ffio/f77close.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/f77io.h
+libffio.a(f77fcntl.o): ../../libu/ffio/f77fcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77fcntl.pg.o): ../../libu/ffio/f77fcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77fcntl.pic.o): ../../libu/ffio/f77fcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77open.o): ../../libu/ffio/f77open.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/f77io.h
+libffio.a(f77open.pg.o): ../../libu/ffio/f77open.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/f77io.h
+libffio.a(f77open.pic.o): ../../libu/ffio/f77open.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/f77io.h
+libffio.a(f77read.o): ../../libu/ffio/f77read.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77read.pg.o): ../../libu/ffio/f77read.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77read.pic.o): ../../libu/ffio/f77read.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77write.o): ../../libu/ffio/f77write.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77write.pg.o): ../../libu/ffio/f77write.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(f77write.pic.o): ../../libu/ffio/f77write.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/f77io.h
+libffio.a(fd_open.o): ../../libu/ffio/fd_open.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h \
+  ../../libu/ffio/fdio.h ../../libu/ffio/fxlist.h
+libffio.a(fd_open.pg.o): ../../libu/ffio/fd_open.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h \
+  ../../libu/ffio/fdio.h ../../libu/ffio/fxlist.h
+libffio.a(fd_open.pic.o): ../../libu/ffio/fd_open.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h \
+  ../../libu/ffio/fdio.h ../../libu/ffio/fxlist.h
+libffio.a(ffbksp.o): ../../libu/ffio/ffbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffbksp.pg.o): ../../libu/ffio/ffbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffbksp.pic.o): ../../libu/ffio/ffbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffclose.o): ../../libu/ffio/ffclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffclose.pg.o): ../../libu/ffio/ffclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffclose.pic.o): ../../libu/ffio/ffclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(fferr.o): ../../libu/ffio/fferr.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h
+libffio.a(fferr.pg.o): ../../libu/ffio/fferr.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h
+libffio.a(fferr.pic.o): ../../libu/ffio/fferr.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h
+libffio.a(fffcntl.o): ../../libu/ffio/fffcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(fffcntl.pg.o): ../../libu/ffio/fffcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(fffcntl.pic.o): ../../libu/ffio/fffcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffflush.o): ../../libu/ffio/ffflush.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffflush.pg.o): ../../libu/ffio/ffflush.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffflush.pic.o): ../../libu/ffio/ffflush.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffnoop.o): ../../libu/ffio/ffnoop.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffnoop.pg.o): ../../libu/ffio/ffnoop.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffnoop.pic.o): ../../libu/ffio/ffnoop.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffopen.o): ../../libu/ffio/ffopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fflock.h
+libffio.a(ffopen.pg.o): ../../libu/ffio/ffopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fflock.h
+libffio.a(ffopen.pic.o): ../../libu/ffio/ffopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fflock.h
+libffio.a(ffopens.o): ../../libu/ffio/ffopens.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/fflock.h
+libffio.a(ffopens.pg.o): ../../libu/ffio/ffopens.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/fflock.h
+libffio.a(ffopens.pic.o): ../../libu/ffio/ffopens.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/fflock.h
+libffio.a(ffopensg.o): ../../libu/ffio/ffopensg.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/fflock.h
+libffio.a(ffopensg.pg.o): ../../libu/ffio/ffopensg.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/fflock.h
+libffio.a(ffopensg.pic.o): ../../libu/ffio/ffopensg.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/spec_parse.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/fflock.h
+libffio.a(ffpos.o): ../../libu/ffio/ffpos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffpos.pg.o): ../../libu/ffio/ffpos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffpos.pic.o): ../../libu/ffio/ffpos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffread.o): ../../libu/ffio/ffread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffread.pg.o): ../../libu/ffio/ffread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffread.pic.o): ../../libu/ffio/ffread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffreadc.o): ../../libu/ffio/ffreadc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffreadc.pg.o): ../../libu/ffio/ffreadc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffreadc.pic.o): ../../libu/ffio/ffreadc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffseek.o): ../../libu/ffio/ffseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffseek.pg.o): ../../libu/ffio/ffseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffseek.pic.o): ../../libu/ffio/ffseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffspec.o): ../../libu/ffio/ffspec.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffspec.pg.o): ../../libu/ffio/ffspec.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffspec.pic.o): ../../libu/ffio/ffspec.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffstrerror.o): ../../libu/ffio/ffstrerror.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/nlcatmsg.h
+libffio.a(ffstrerror.pg.o): ../../libu/ffio/ffstrerror.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/nlcatmsg.h
+libffio.a(ffstrerror.pic.o): ../../libu/ffio/ffstrerror.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/nlcatmsg.h
+libffio.a(ffweof.o): ../../libu/ffio/ffweof.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffweof.pg.o): ../../libu/ffio/ffweof.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffweof.pic.o): ../../libu/ffio/ffweof.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffwrite.o): ../../libu/ffio/ffwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffwrite.pg.o): ../../libu/ffio/ffwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffwrite.pic.o): ../../libu/ffio/ffwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffwritec.o): ../../libu/ffio/ffwritec.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffwritec.pg.o): ../../libu/ffio/ffwritec.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(ffwritec.pic.o): ../../libu/ffio/ffwritec.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(fsztab.o): ../../libu/util/fsztab.c ../../clibinc/fdcconfig.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../clibinc/cray/fndc.h
+libffio.a(fsztab.pg.o): ../../libu/util/fsztab.c ../../clibinc/fdcconfig.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../clibinc/cray/fndc.h
+libffio.a(fsztab.pic.o): ../../libu/util/fsztab.c ../../clibinc/fdcconfig.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../clibinc/cray/fndc.h
+libffio.a(fxrmain.o): ../../libu/ffio/fxrmain.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/fdcconfig.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(fxrmain.pg.o): ../../libu/ffio/fxrmain.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/fdcconfig.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(fxrmain.pic.o): ../../libu/ffio/fxrmain.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/fdcconfig.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(fxrmisc.o): ../../libu/ffio/fxrmisc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/fdcconfig.h \
+  ../../libu/ffio/cdcio.h ../../libu/ffio/gxio.h ../../libu/ffio/gvio.h \
+  ../../libu/ffio/gfio.h
+libffio.a(fxrmisc.pg.o): ../../libu/ffio/fxrmisc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/fdcconfig.h \
+  ../../libu/ffio/cdcio.h ../../libu/ffio/gxio.h ../../libu/ffio/gvio.h \
+  ../../libu/ffio/gfio.h
+libffio.a(fxrmisc.pic.o): ../../libu/ffio/fxrmisc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/fdcconfig.h \
+  ../../libu/ffio/cdcio.h ../../libu/ffio/gxio.h ../../libu/ffio/gvio.h \
+  ../../libu/ffio/gfio.h
+libffio.a(gchrpck.o): ../../libu/ieg/gchrpck.c ../../clibinc/fortran.h
+libffio.a(gchrpck.pg.o): ../../libu/ieg/gchrpck.c ../../clibinc/fortran.h
+libffio.a(gchrpck.pic.o): ../../libu/ieg/gchrpck.c ../../clibinc/fortran.h
+libffio.a(gffcntl.o): ../../libu/ffio/gffcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(gffcntl.pg.o): ../../libu/ffio/gffcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(gffcntl.pic.o): ../../libu/ffio/gffcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h
+libffio.a(gfopen.o): ../../libu/ffio/gfopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(gfopen.pg.o): ../../libu/ffio/gfopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(gfopen.pic.o): ../../libu/ffio/gfopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(gfread.o): ../../libu/ffio/gfread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gfio.h
+libffio.a(gfread.pg.o): ../../libu/ffio/gfread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gfio.h
+libffio.a(gfread.pic.o): ../../libu/ffio/gfread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gfio.h
+libffio.a(gfwrite.o): ../../libu/ffio/gfwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gfio.h
+libffio.a(gfwrite.pg.o): ../../libu/ffio/gfwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gfio.h
+libffio.a(gfwrite.pic.o): ../../libu/ffio/gfwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gfio.h
+libffio.a(gvfcntl.o): ../../libu/ffio/gvfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h
+libffio.a(gvfcntl.pg.o): ../../libu/ffio/gvfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h
+libffio.a(gvfcntl.pic.o): ../../libu/ffio/gvfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h
+libffio.a(gvopen.o): ../../libu/ffio/gvopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(gvopen.pg.o): ../../libu/ffio/gvopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(gvopen.pic.o): ../../libu/ffio/gvopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(gvread.o): ../../libu/ffio/gvread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h
+libffio.a(gvread.pg.o): ../../libu/ffio/gvread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h
+libffio.a(gvread.pic.o): ../../libu/ffio/gvread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h
+libffio.a(gvwrite.o): ../../libu/ffio/gvwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h
+libffio.a(gvwrite.pg.o): ../../libu/ffio/gvwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h
+libffio.a(gvwrite.pic.o): ../../libu/ffio/gvwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/gvio.h
+libffio.a(ieeetran.o): ../../libu/ieg/ieeetran.c ../../clibinc/fortran.h \
+  ../../clibinc/cray/portdefs.h ../../clibroot/complex.h
+libffio.a(ieeetran.pg.o): ../../libu/ieg/ieeetran.c ../../clibinc/fortran.h \
+  ../../clibinc/cray/portdefs.h ../../clibroot/complex.h
+libffio.a(ieeetran.pic.o): ../../libu/ieg/ieeetran.c ../../clibinc/fortran.h \
+  ../../clibinc/cray/portdefs.h ../../clibroot/complex.h
+libffio.a(inttran.o): ../../libu/ieg/inttran.c ../../clibinc/fortran.h
+libffio.a(inttran.pg.o): ../../libu/ieg/inttran.c ../../clibinc/fortran.h
+libffio.a(inttran.pic.o): ../../libu/ieg/inttran.c ../../clibinc/fortran.h
+libffio.a(ishell.o): ../../libu/util/ishell.c ../../clibinc/fortran.h
+libffio.a(ishell.pg.o): ../../libu/util/ishell.c ../../clibinc/fortran.h
+libffio.a(ishell.pic.o): ../../libu/util/ishell.c ../../clibinc/fortran.h
+libffio.a(kill.o): ../../libu/clib/kill.c
+libffio.a(kill.pg.o): ../../libu/clib/kill.c
+libffio.a(kill.pic.o): ../../libu/clib/kill.c
+libffio.a(lerror.o): ../../libu/errmsg/lerror.c ../../clibinc/liberrno.h
+libffio.a(lerror.pg.o): ../../libu/errmsg/lerror.c ../../clibinc/liberrno.h
+libffio.a(lerror.pic.o): ../../libu/errmsg/lerror.c ../../clibinc/liberrno.h
+libffio.a(lmessage.o): ../../libu/errmsg/lmessage.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/nlcatmsg.h ../../clibinc/cray/portdefs.h
+libffio.a(lmessage.pg.o): ../../libu/errmsg/lmessage.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/nlcatmsg.h ../../clibinc/cray/portdefs.h
+libffio.a(lmessage.pic.o): ../../libu/errmsg/lmessage.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/nlcatmsg.h ../../clibinc/cray/portdefs.h
+libffio.a(lockclose.o): ../../libu/ffio/lockclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/nassert.h \
+  ../../libu/ffio/locklyr.h ../../libu/ffio/fflock.h
+libffio.a(lockclose.pg.o): ../../libu/ffio/lockclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/nassert.h \
+  ../../libu/ffio/locklyr.h ../../libu/ffio/fflock.h
+libffio.a(lockclose.pic.o): ../../libu/ffio/lockclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/nassert.h \
+  ../../libu/ffio/locklyr.h ../../libu/ffio/fflock.h
+libffio.a(lockfcntl.o): ../../libu/ffio/lockfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockfcntl.pg.o): ../../libu/ffio/lockfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockfcntl.pic.o): ../../libu/ffio/lockfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockopen.o): ../../libu/ffio/lockopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/locklyr.h ../../libu/ffio/fflock.h
+libffio.a(lockopen.pg.o): ../../libu/ffio/lockopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/locklyr.h ../../libu/ffio/fflock.h
+libffio.a(lockopen.pic.o): ../../libu/ffio/lockopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/fxlist.h \
+  ../../libu/ffio/locklyr.h ../../libu/ffio/fflock.h
+libffio.a(lockpos.o): ../../libu/ffio/lockpos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockpos.pg.o): ../../libu/ffio/lockpos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockpos.pic.o): ../../libu/ffio/lockpos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockread.o): ../../libu/ffio/lockread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockread.pg.o): ../../libu/ffio/lockread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockread.pic.o): ../../libu/ffio/lockread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockwrite.o): ../../libu/ffio/lockwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockwrite.pg.o): ../../libu/ffio/lockwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lockwrite.pic.o): ../../libu/ffio/lockwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/locklyr.h \
+  ../../libu/ffio/fflock.h
+libffio.a(lwarn.o): ../../libu/errmsg/lwarn.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/portdefs.h
+libffio.a(lwarn.pg.o): ../../libu/errmsg/lwarn.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/portdefs.h
+libffio.a(lwarn.pic.o): ../../libu/errmsg/lwarn.c ../../clibinc/liberrno.h \
+  ../../clibinc/cray/portdefs.h
+libffio.a(memwcpy_c.o): ../../libcsup/gen/memwcpy_c.c
+libffio.a(memwcpy_c.pg.o): ../../libcsup/gen/memwcpy_c.c
+libffio.a(memwcpy_c.pic.o): ../../libcsup/gen/memwcpy_c.c
+libffio.a(mipstran.o): ../../libu/ieg/mipstran.c ../../clibinc/fortran.h
+libffio.a(mipstran.pg.o): ../../libu/ieg/mipstran.c ../../clibinc/fortran.h
+libffio.a(mipstran.pic.o): ../../libu/ieg/mipstran.c ../../clibinc/fortran.h
+libffio.a(movbit.o): ../../libu/util/mpp/movbit.c ../../clibinc/fortran.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h
+libffio.a(movbit.pg.o): ../../libu/util/mpp/movbit.c ../../clibinc/fortran.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h
+libffio.a(movbit.pic.o): ../../libu/util/mpp/movbit.c ../../clibinc/fortran.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h
+libffio.a(ncon.o): ../../libu/numconv/mpp/ncon.c
+libffio.a(ncon.pg.o): ../../libu/numconv/mpp/ncon.c
+libffio.a(ncon.pic.o): ../../libu/numconv/mpp/ncon.c
+libffio.a(outputnaninf.o): ../../libu/numconv/mpp/outputnaninf.c \
+  ../../clibinc/cray/portdefs.h ../../clibinc/cray/fmtconv.h
+libffio.a(outputnaninf.pg.o): ../../libu/numconv/mpp/outputnaninf.c \
+  ../../clibinc/cray/portdefs.h ../../clibinc/cray/fmtconv.h
+libffio.a(outputnaninf.pic.o): ../../libu/numconv/mpp/outputnaninf.c \
+  ../../clibinc/cray/portdefs.h ../../clibinc/cray/fmtconv.h
+libffio.a(parse_data.o): ../../libu/ffio/parse_data.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/fndc.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/fd_parse.h \
+  ../../libu/ffio/f77_parse.h ../../libu/ffio/f77io.h \
+  ../../libu/ffio/common_parse.h ../../libu/ffio/null_parse.h \
+  ../../libu/ffio/sysio.h ../../libu/ffio/sys_parse.h \
+  ../../libu/ffio/syscall_parse.h ../../libu/ffio/user_parse.h \
+  ../../libu/ffio/text_parse.h ../../libu/ffio/txtio.h \
+  ../../libu/ffio/cca_parse.h ../../libu/ffio/ccaio.h \
+  ../../libu/ffio/cos_parse.h ../../libu/ffio/cosio.h \
+  ../../libu/ffio/cch_parse.h ../../libu/ffio/cchio.h \
+  ../../libu/ffio/bufa_parse.h ../../libu/ffio/global_parse.h \
+  ../../libu/ffio/globio.h ../../libu/ffio/event_parse.h \
+  ../../libu/ffio/evntio.h ../../libu/ffio/tmf_parse.h \
+  ../../libu/ffio/ibm_parse.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/gvio.h ../../libu/ffio/vms_parse.h \
+  ../../libu/ffio/spec_parse.h ../../libu/ffio/gxio.h \
+  ../../libu/ffio/vms_def.h
+libffio.a(parse_data.pg.o): ../../libu/ffio/parse_data.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/fndc.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/fd_parse.h \
+  ../../libu/ffio/f77_parse.h ../../libu/ffio/f77io.h \
+  ../../libu/ffio/common_parse.h ../../libu/ffio/null_parse.h \
+  ../../libu/ffio/sysio.h ../../libu/ffio/sys_parse.h \
+  ../../libu/ffio/syscall_parse.h ../../libu/ffio/user_parse.h \
+  ../../libu/ffio/text_parse.h ../../libu/ffio/txtio.h \
+  ../../libu/ffio/cca_parse.h ../../libu/ffio/ccaio.h \
+  ../../libu/ffio/cos_parse.h ../../libu/ffio/cosio.h \
+  ../../libu/ffio/cch_parse.h ../../libu/ffio/cchio.h \
+  ../../libu/ffio/bufa_parse.h ../../libu/ffio/global_parse.h \
+  ../../libu/ffio/globio.h ../../libu/ffio/event_parse.h \
+  ../../libu/ffio/evntio.h ../../libu/ffio/tmf_parse.h \
+  ../../libu/ffio/ibm_parse.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/gvio.h ../../libu/ffio/vms_parse.h \
+  ../../libu/ffio/spec_parse.h ../../libu/ffio/gxio.h \
+  ../../libu/ffio/vms_def.h
+libffio.a(parse_data.pic.o): ../../libu/ffio/parse_data.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/fndc.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/fd_parse.h \
+  ../../libu/ffio/f77_parse.h ../../libu/ffio/f77io.h \
+  ../../libu/ffio/common_parse.h ../../libu/ffio/null_parse.h \
+  ../../libu/ffio/sysio.h ../../libu/ffio/sys_parse.h \
+  ../../libu/ffio/syscall_parse.h ../../libu/ffio/user_parse.h \
+  ../../libu/ffio/text_parse.h ../../libu/ffio/txtio.h \
+  ../../libu/ffio/cca_parse.h ../../libu/ffio/ccaio.h \
+  ../../libu/ffio/cos_parse.h ../../libu/ffio/cosio.h \
+  ../../libu/ffio/cch_parse.h ../../libu/ffio/cchio.h \
+  ../../libu/ffio/bufa_parse.h ../../libu/ffio/global_parse.h \
+  ../../libu/ffio/globio.h ../../libu/ffio/event_parse.h \
+  ../../libu/ffio/evntio.h ../../libu/ffio/tmf_parse.h \
+  ../../libu/ffio/ibm_parse.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/gvio.h ../../libu/ffio/vms_parse.h \
+  ../../libu/ffio/spec_parse.h ../../libu/ffio/gxio.h \
+  ../../libu/ffio/vms_def.h
+libffio.a(qqroutines.o): ../../libu/numconv/mpp/qqroutines.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(qqroutines.pg.o): ../../libu/numconv/mpp/qqroutines.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(qqroutines.pic.o): ../../libu/numconv/mpp/qqroutines.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(rtc.o): ../../libu/util/rtc.c
+libffio.a(rtc.pg.o): ../../libu/util/rtc.c
+libffio.a(rtc.pic.o): ../../libu/util/rtc.c
+libffio.a(s2uboiz.o): ../../libu/numconv/mpp/s2uboiz.c ../../clibinc/cray/fmtconv.h \
+  ../../clibinc/cray/portdefs.h
+libffio.a(s2uboiz.pg.o): ../../libu/numconv/mpp/s2uboiz.c \
+  ../../clibinc/cray/fmtconv.h ../../clibinc/cray/portdefs.h
+libffio.a(s2uboiz.pic.o): ../../libu/numconv/mpp/s2uboiz.c \
+  ../../clibinc/cray/fmtconv.h ../../clibinc/cray/portdefs.h
+libffio.a(sd2udee.o): ../../libu/numconv/mpp/sd2udee.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2udee.pg.o): ../../libu/numconv/mpp/sd2udee.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2udee.pic.o): ../../libu/numconv/mpp/sd2udee.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2udeeq.o): ../../libu/numconv/mpp/sd2udeeq.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2udeeq.pg.o): ../../libu/numconv/mpp/sd2udeeq.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2udeeq.pic.o): ../../libu/numconv/mpp/sd2udeeq.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2uene.o): ../../libu/numconv/mpp/sd2uene.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2uene.pg.o): ../../libu/numconv/mpp/sd2uene.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2uene.pic.o): ../../libu/numconv/mpp/sd2uene.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2ueneq.o): ../../libu/numconv/mpp/sd2ueneq.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2ueneq.pg.o): ../../libu/numconv/mpp/sd2ueneq.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2ueneq.pic.o): ../../libu/numconv/mpp/sd2ueneq.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2uese.o): ../../libu/numconv/mpp/sd2uese.c ../../clibinc/cray/fmtconv.h
+libffio.a(sd2uese.pg.o): ../../libu/numconv/mpp/sd2uese.c \
+  ../../clibinc/cray/fmtconv.h
+libffio.a(sd2uese.pic.o): ../../libu/numconv/mpp/sd2uese.c \
+  ../../clibinc/cray/fmtconv.h
+libffio.a(sd2uf.o): ../../libu/numconv/mpp/sd2uf.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2uf.pg.o): ../../libu/numconv/mpp/sd2uf.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2uf.pic.o): ../../libu/numconv/mpp/sd2uf.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2ufq.o): ../../libu/numconv/mpp/sd2ufq.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2ufq.pg.o): ../../libu/numconv/mpp/sd2ufq.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2ufq.pic.o): ../../libu/numconv/mpp/sd2ufq.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2uge.o): ../../libu/numconv/mpp/sd2uge.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2uge.pg.o): ../../libu/numconv/mpp/sd2uge.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2uge.pic.o): ../../libu/numconv/mpp/sd2uge.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2ugeq.o): ../../libu/numconv/mpp/sd2ugeq.c ../../clibinc/cray/fmtconv.h \
+  ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2ugeq.pg.o): ../../libu/numconv/mpp/sd2ugeq.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(sd2ugeq.pic.o): ../../libu/numconv/mpp/sd2ugeq.c \
+  ../../clibinc/cray/fmtconv.h ../../libu/numconv/mpp/qq_routines.h
+libffio.a(second.o): ../../libu/util/second.c ../../clibinc/fortran.h \
+  ../../libU77/pathf90_libU_intrin.h
+libffio.a(second.pg.o): ../../libu/util/second.c ../../clibinc/fortran.h \
+  ../../libU77/pathf90_libU_intrin.h
+libffio.a(second.pic.o): ../../libu/util/second.c ../../clibinc/fortran.h \
+  ../../libU77/pathf90_libU_intrin.h
+libffio.a(secondr.o): ../../libu/util/secondr.c ../../clibinc/fortran.h
+libffio.a(secondr.pg.o): ../../libu/util/secondr.c ../../clibinc/fortran.h
+libffio.a(secondr.pic.o): ../../libu/util/secondr.c ../../clibinc/fortran.h
+libffio.a(set_layer_options.o): ../../libu/ffio/set_layer_options.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h
+libffio.a(set_layer_options.pg.o): ../../libu/ffio/set_layer_options.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h
+libffio.a(set_layer_options.pic.o): ../../libu/ffio/set_layer_options.c \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/spec_parse.h
+libffio.a(signal.o): ../../libu/clib/signal.c
+libffio.a(signal.pg.o): ../../libu/clib/signal.c
+libffio.a(signal.pic.o): ../../libu/clib/signal.c
+libffio.a(sqbclose.o): ../../libu/ffio/sqbclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbclose.pg.o): ../../libu/ffio/sqbclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbclose.pic.o): ../../libu/ffio/sqbclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbfcntl.o): ../../libu/ffio/sqbfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbfcntl.pg.o): ../../libu/ffio/sqbfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbfcntl.pic.o): ../../libu/ffio/sqbfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbopen.o): ../../libu/ffio/sqbopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fxlist.h ../../libu/ffio/sqbio.h
+libffio.a(sqbopen.pg.o): ../../libu/ffio/sqbopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fxlist.h ../../libu/ffio/sqbio.h
+libffio.a(sqbopen.pic.o): ../../libu/ffio/sqbopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fxlist.h ../../libu/ffio/sqbio.h
+libffio.a(sqbpos.o): ../../libu/ffio/sqbpos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbpos.pg.o): ../../libu/ffio/sqbpos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbpos.pic.o): ../../libu/ffio/sqbpos.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbread.o): ../../libu/ffio/sqbread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbread.pg.o): ../../libu/ffio/sqbread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbread.pic.o): ../../libu/ffio/sqbread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbseek.o): ../../libu/ffio/sqbseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbseek.pg.o): ../../libu/ffio/sqbseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbseek.pic.o): ../../libu/ffio/sqbseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbweod.o): ../../libu/ffio/sqbweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbweod.pg.o): ../../libu/ffio/sqbweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbweod.pic.o): ../../libu/ffio/sqbweod.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbweof.o): ../../libu/ffio/sqbweof.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbweof.pg.o): ../../libu/ffio/sqbweof.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbweof.pic.o): ../../libu/ffio/sqbweof.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbwrite.o): ../../libu/ffio/sqbwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbwrite.pg.o): ../../libu/ffio/sqbwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(sqbwrite.pic.o): ../../libu/ffio/sqbwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sqbio.h
+libffio.a(strnrstrn.o): ../../libcsup/gen/strnrstrn.c
+libffio.a(strnrstrn.pg.o): ../../libcsup/gen/strnrstrn.c
+libffio.a(strnrstrn.pic.o): ../../libcsup/gen/strnrstrn.c
+libffio.a(strnstrn.o): ../../libcsup/gen/strnstrn.c
+libffio.a(strnstrn.pg.o): ../../libcsup/gen/strnstrn.c
+libffio.a(strnstrn.pic.o): ../../libcsup/gen/strnstrn.c
+libffio.a(sysasg.o): ../../libu/ffio/sysasg.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/fndc.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/blxio.h \
+  ../../libu/ffio/cchio.h ../../libu/ffio/cdcio.h ../../libu/ffio/cosio.h \
+  ../../libu/ffio/evntio.h ../../libu/ffio/fssio.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/globio.h ../../libu/ffio/gvio.h ../../libu/ffio/gxio.h \
+  ../../libu/ffio/txtio.h ../../libu/ffio/trcio.h \
+  ../../libu/ffio/spec_parse.h
+libffio.a(sysasg.pg.o): ../../libu/ffio/sysasg.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/fndc.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/blxio.h \
+  ../../libu/ffio/cchio.h ../../libu/ffio/cdcio.h ../../libu/ffio/cosio.h \
+  ../../libu/ffio/evntio.h ../../libu/ffio/fssio.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/globio.h ../../libu/ffio/gvio.h ../../libu/ffio/gxio.h \
+  ../../libu/ffio/txtio.h ../../libu/ffio/trcio.h \
+  ../../libu/ffio/spec_parse.h
+libffio.a(sysasg.pic.o): ../../libu/ffio/sysasg.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/fndc.h \
+  ../../libu/ffio/layer_def.h ../../libu/ffio/blxio.h \
+  ../../libu/ffio/cchio.h ../../libu/ffio/cdcio.h ../../libu/ffio/cosio.h \
+  ../../libu/ffio/evntio.h ../../libu/ffio/fssio.h ../../libu/ffio/gfio.h \
+  ../../libu/ffio/globio.h ../../libu/ffio/gvio.h ../../libu/ffio/gxio.h \
+  ../../libu/ffio/txtio.h ../../libu/ffio/trcio.h \
+  ../../libu/ffio/spec_parse.h
+libffio.a(sysclose.o): ../../libu/ffio/sysclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(sysclose.pg.o): ../../libu/ffio/sysclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(sysclose.pic.o): ../../libu/ffio/sysclose.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(sysfcntl.o): ../../libu/ffio/sysfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(sysfcntl.pg.o): ../../libu/ffio/sysfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(sysfcntl.pic.o): ../../libu/ffio/sysfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(syslistio.o): ../../libu/ffio/syslistio.c ../../libu/ffio/listio_mips.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/sysio.h
+libffio.a(syslistio.pg.o): ../../libu/ffio/syslistio.c ../../libu/ffio/listio_mips.h \
+  ../../clibinc/ffio.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/fortio.h ../../clibinc/cray/portdefs.h \
+  ../../clibinc/liberrno.h ../../clibinc/cray/mtlock.h \
+  ../../libu/ffio/sysio.h
+libffio.a(syslistio.pic.o): ../../libu/ffio/syslistio.c \
+  ../../libu/ffio/listio_mips.h ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(syslseek.o): ../../libu/ffio/syslseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(syslseek.pg.o): ../../libu/ffio/syslseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(syslseek.pic.o): ../../libu/ffio/syslseek.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(sysopen.o): ../../libu/ffio/sysopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h \
+  ../../libu/ffio/fdio.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(sysopen.pg.o): ../../libu/ffio/sysopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h \
+  ../../libu/ffio/fdio.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(sysopen.pic.o): ../../libu/ffio/sysopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h \
+  ../../libu/ffio/fdio.h ../../clibinc/cray/assign.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(sysread.o): ../../libu/ffio/sysread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(sysread.pg.o): ../../libu/ffio/sysread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(sysread.pic.o): ../../libu/ffio/sysread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(systrunc.o): ../../libu/ffio/systrunc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(systrunc.pg.o): ../../libu/ffio/systrunc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(systrunc.pic.o): ../../libu/ffio/systrunc.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(syswrite.o): ../../libu/ffio/syswrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(syswrite.pg.o): ../../libu/ffio/syswrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(syswrite.pic.o): ../../libu/ffio/syswrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/sysio.h
+libffio.a(timef.o): ../../libu/util/timef.c ../../clibinc/fortran.h
+libffio.a(timef.pg.o): ../../libu/util/timef.c ../../clibinc/fortran.h
+libffio.a(timef.pic.o): ../../libu/util/timef.c ../../clibinc/fortran.h
+libffio.a(txtbksp.o): ../../libu/ffio/txtbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/nassert.h \
+  ../../libu/ffio/txtio.h
+libffio.a(txtbksp.pg.o): ../../libu/ffio/txtbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/nassert.h \
+  ../../libu/ffio/txtio.h
+libffio.a(txtbksp.pic.o): ../../libu/ffio/txtbksp.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../clibinc/cray/nassert.h \
+  ../../libu/ffio/txtio.h
+libffio.a(txtfcntl.o): ../../libu/ffio/txtfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h
+libffio.a(txtfcntl.pg.o): ../../libu/ffio/txtfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h
+libffio.a(txtfcntl.pic.o): ../../libu/ffio/txtfcntl.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h
+libffio.a(txtopen.o): ../../libu/ffio/txtopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(txtopen.pg.o): ../../libu/ffio/txtopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(txtopen.pic.o): ../../libu/ffio/txtopen.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h \
+  ../../libu/ffio/fxlist.h
+libffio.a(txtread.o): ../../libu/ffio/txtread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h
+libffio.a(txtread.pg.o): ../../libu/ffio/txtread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h
+libffio.a(txtread.pic.o): ../../libu/ffio/txtread.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h
+libffio.a(txtwrite.o): ../../libu/ffio/txtwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h
+libffio.a(txtwrite.pg.o): ../../libu/ffio/txtwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h
+libffio.a(txtwrite.pic.o): ../../libu/ffio/txtwrite.c ../../clibinc/ffio.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/fortio.h \
+  ../../clibinc/cray/portdefs.h ../../clibinc/liberrno.h \
+  ../../clibinc/cray/mtlock.h ../../libu/ffio/txtio.h
+libffio.a(utilintrin.o): ../../libu/util/posix/utilintrin.c ../../clibinc/fortran.h \
+  ../../clibinc/clibdefs.h ../../clibinc/cray/portdefs.h
+libffio.a(utilintrin.pg.o): ../../libu/util/posix/utilintrin.c \
+  ../../clibinc/fortran.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/portdefs.h
+libffio.a(utilintrin.pic.o): ../../libu/util/posix/utilintrin.c \
+  ../../clibinc/fortran.h ../../clibinc/clibdefs.h \
+  ../../clibinc/cray/portdefs.h

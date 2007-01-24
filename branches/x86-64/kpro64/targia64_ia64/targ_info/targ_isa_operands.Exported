@@ -1,0 +1,9 @@
+ISA_OPERAND_operand_types
+ISA_OPERAND_info
+ISA_OPERAND_info_index
+ISA_OPERAND_relocatable_opnd
+TOP_Immediate_Operand
+TOP_Relocatable_Operand
+TOP_Can_Have_Immediate
+TOP_Find_Operand_Use
+TOP_Operand_Uses

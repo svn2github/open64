@@ -1,0 +1,27 @@
+./cg_gcov.cxx:1325:    Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+./cg_gcov.cxx:1367:	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+./cgexp.cxx:162:		Expand_Load (opcode, result, op1, op2, ops);
+./cgexp.cxx:164:		Expand_Load (opcode, result, op1, op2, variant, ops);
+./cgexp_internals.h:139:extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, OPS *ops);
+./cgexp_internals.h:142:extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, VARIANT variant, OPS *ops);
+./ia64/exp_branch.cxx:294:      Expand_Load (opc, GP_TN, target, Gen_Literal_TN(8, 4), V_NONE, ops);
+./ia64/exp_branch.cxx:295:      Expand_Load (opc, tmp1, target, Gen_Literal_TN(0, 4), V_NONE, ops);
+./ia64/exp_loadstore.cxx:151:Expand_Load (OPCODE opcode, TN *result, TN *base, TN *ofst, 
+./ia64/exp_loadstore.cxx:399:    Expand_Load ( new_opcode, tmpV[idx], base, disp, variant, ops);
+./ia64/exp_loadstore.cxx:585:	Expand_Load (OPCODE_make_signed_op(OPR_LDID, 
+./ia64/exp_loadstore.cxx:608:		Expand_Load (opcode, tn, base_tn, ofst_tn, variant, &newops);
+./ia64/exp_loadstore.cxx:804:	Expand_Load (
+./ia64/expand.cxx:3447:        Expand_Load (
+./x8664/exp_loadstore.cxx:247:Expand_Load (OPCODE opcode, TN *result, TN *base, TN *ofst, OPS *ops)
+./x8664/exp_loadstore.cxx:264:  Is_True (TN_is_constant(ofst), ("Expand_Load: Illegal offset TN"));
+./x8664/exp_loadstore.cxx:539:  return Expand_Load( op, result, base, disp, ops );
+./x8664/exp_loadstore.cxx:934:	Expand_Load ( opcode, tn, base_tn, ofst_tn, &newops );
+./x8664/expand.cxx:3042:    Expand_Load(OPCODE_make_op(OPR_LDID, imtype, imtype), dest, base_tn, ofst_tn, ops);
+./.bk.ia64/exp_branch.cxx:290:      Expand_Load (opc, GP_TN, target, Gen_Literal_TN(8, 4), V_NONE, ops);
+./.bk.ia64/exp_branch.cxx:291:      Expand_Load (opc, tmp1, target, Gen_Literal_TN(0, 4), V_NONE, ops);
+./.bk.ia64/exp_loadstore.cxx:151:Expand_Load (OPCODE opcode, TN *result, TN *base, TN *ofst, 
+./.bk.ia64/exp_loadstore.cxx:399:    Expand_Load ( new_opcode, tmpV[idx], base, disp, variant, ops);
+./.bk.ia64/exp_loadstore.cxx:585:	Expand_Load (OPCODE_make_signed_op(OPR_LDID, 
+./.bk.ia64/exp_loadstore.cxx:608:		Expand_Load (opcode, tn, base_tn, ofst_tn, variant, &newops);
+./.bk.ia64/exp_loadstore.cxx:804:	Expand_Load (
+./.bk.ia64/expand.cxx:3447:        Expand_Load (

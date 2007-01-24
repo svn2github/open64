@@ -1,0 +1,387 @@
+#!/bin/sh
+#
+#
+#  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+
+VER_MAJOR="3"
+VER_MINOR="0"
+PATCH_LEVEL=""
+VERSION="${VER_MAJOR}.${VER_MINOR}"
+[ x"$PATCH_LEVEL" != x"" ] && VERSION="${VERSION}.${PATCH_LEVEL}"
+    # set the build host
+BUILD_HOST="ia32"
+#[ `uname -m | grep -i 'i[0-9]86' | wc -l` -eq 1 ] && BUILD_HOST="ia32"
+
+    # set the target host, it must be "ia64"
+TARG_HOST="x8664"
+
+    # set the TARGET O.S, only linux is supported currently 
+TARG_OS="linux"
+
+    # set the building host's O.S, currently only linux is supported.
+BUILD_OS="linux" 
+#[ `uname -s | grep -i linux | wc -l` -eq 1 ] && BUILD_OS="linux"
+
+    # everything we will install is under $ROOT
+ROOT=${PSC_INSTALL_PREFIX}
+
+#INTERPOSE=${TARG_HOST}-pathscale-${TARG_OS}
+#[ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
+
+AREA="targia32_x8664"
+
+PHASEPATH=${ROOT}/lib/${VERSION}
+NATIVE_LIB_DIR=${ROOT}/lib/${VERSION}
+[ "${TARG_HOST}" = "ia32" ] && NATIVE_LIB_DIR="${NATIVE_LIB_DIR}/32"
+BIN_DIR=${ROOT}/bin
+#ALT_BIN_DIR=${ROOT}/usr/${INTERPOSE}/altbin
+
+INSTALL="/usr/bin/install -D"
+INSTALL_DATA="/usr/bin/install -D -m 644"
+
+INSTALL_EXEC_SUB () {
+
+    [ $# -ne 2 ] && echo "Usage: INSTALL_EXEC_SUB SRC_file DEST_file" && return 1
+    
+    [ ! -e "$1" ] && echo "$1 does not exist" && return 1
+
+    echo -e "$2 : $1 \n\t${INSTALL} $1 $2\n" | make -f - |\
+    grep -v "Entering directory\|Leaving directory\|up to date"
+
+    return 0;
+}
+
+INSTALL_DATA_SUB () {
+
+    [ $# -ne 2 ] && echo "Usage: INSTALL_DATA_SUB SRC_file DEST_file" && exit 1
+
+    [ ! -e "$1" ] && echo "$1 does not exist" && return 1
+
+    echo -e "$2 : $1 \n\t${INSTALL_DATA} $1 $2\n" | make -f - |\
+    grep -v "Entering directory\|Leaving directory\|up to date"
+
+    return 0
+}
+
+
+INSTALL_DRIVER () {
+# ln -s or copy? TODO:
+# default search paths differ
+
+#    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
+
+    [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
+#    [ ! -e ${BIN_DIR}/pathcc  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathcc
+#    [ ! -e ${BIN_DIR}/pathCC  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathCC
+#    [ ! -e ${BIN_DIR}/pathf90 ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathf90
+#    [ ! -e ${BIN_DIR}/pathf95 ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathf95
+#    [ ! -e ${BIN_DIR}/pathcc-${VERSION}  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathcc-${VERSION}
+#    [ ! -e ${BIN_DIR}/pathCC-${VERSION}  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathCC-${VERSION}
+#    [ ! -e ${BIN_DIR}/pathf90-${VERSION} ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathf90-${VERSION}
+#    [ ! -e ${BIN_DIR}/pathf95-${VERSION} ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathf95-${VERSION}
+
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathcc
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathCC
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathf90
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathf95
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathcc-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathCC-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathf90-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathf95-${VERSION}
+
+    return 0
+}
+
+   # Install front-end components
+INSTALL_FE () {
+
+    INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
+    INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
+
+    # Currently we do not install fortran 90/95 front-end
+    INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
+    INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/cf95.cat ${PHASEPATH}/cf95.cat
+
+    return 0
+}
+
+  # Install back-end components 
+INSTALL_BE () {
+    INSTALL_EXEC_SUB ${AREA}/be/be  ${PHASEPATH}/be
+    INSTALL_EXEC_SUB ${AREA}/be/be.so ${PHASEPATH}/be.so
+
+    return 0
+}
+
+  # Install IPA-related components
+INSTALL_IPA () {
+
+    INSTALL_EXEC_SUB ${AREA}/ipa/ipa.so ${PHASEPATH}/ipa.so
+    INSTALL_EXEC_SUB ${AREA}/ipl/ipl.so ${PHASEPATH}/ipl.so
+
+    ld_new_dir="targcygnus_ia32_x8664/ld"
+
+    INSTALL_EXEC_SUB ${ld_new_dir}/ld-new  ${PHASEPATH}/ipa_link
+
+    ln -sf ${PHASEPATH}/be ${PHASEPATH}/ipl 
+
+    return 0
+}
+
+INSTALL_CG () {
+    INSTALL_EXEC_SUB ${AREA}/cg/cg.so                ${PHASEPATH}/cg.so
+
+    return 0
+}
+
+INSTALL_WHIRL_STUFF () {
+    echo "asasf"
+    INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c    ${PHASEPATH}/whirl2c
+    INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f    ${PHASEPATH}/whirl2f
+    INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c.so ${PHASEPATH}/whirl2c.so
+    INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f.so ${PHASEPATH}/whirl2f.so
+
+    ln -sf ${PHASEPATH}/be ${PHASEPATH}/whirl2c_be
+    ln -sf ${PHASEPATH}/be ${PHASEPATH}/whirl2f_be 
+
+    INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
+    echo "end of install whirl stuff"
+    return 0
+}
+
+
+
+    # Install those archieves that are deemed as part of compiler, so 
+    # we put them where the orcc-phases reside.
+INSTALL_PHASE_SPECIFIC_ARCHIVES () {
+
+        # f90 related archieves 
+#    INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.cat  ${PHASEPATH}/lib.cat
+#    INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.exp  ${PHASEPATH}/lib.exp
+
+        # instrument archieves.
+    d="targ${TARG_HOST}_builton${BUILD_HOST}"
+    INSTALL_DATA_SUB $d/libinstr2/libinstr.a      ${NATIVE_LIB_DIR}/libinstr.a 
+    INSTALL_DATA_SUB $d/libinstr2/libinstr_p.a      ${NATIVE_LIB_DIR}/libinstr_p.a 
+    INSTALL_DATA_SUB $d/libinstr2/libinstr.so.1      ${NATIVE_LIB_DIR}/libinstr.so.1
+    ln -sf ${NATIVE_LIB_DIR}/libinstr.so.1    ${NATIVE_LIB_DIR}/libinstr.so
+
+    return 0
+}
+
+   
+INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
+
+#    d="targ${TARG_HOST}_builton${BUILD_HOST}"
+     d="${AREA}"
+
+    INSTALL_DATA_SUB ${d}/libfortran/libfortran.a ${NATIVE_LIB_DIR}/libpathfortran.a
+    INSTALL_DATA_SUB ${d}/libfortran/libfortran_p.a ${NATIVE_LIB_DIR}/libpathfortran_p.a
+    INSTALL_DATA_SUB ${d}/libfortran/libfortran.so ${NATIVE_LIB_DIR}/libpathfortran.so.1
+    ln -sf ${NATIVE_LIB_DIR}/libpathfortran.so.1       ${NATIVE_LIB_DIR}/libpathfortran.so
+
+    INSTALL_DATA_SUB ${d}/libu/libffio.a          ${NATIVE_LIB_DIR}/libffio.a
+    INSTALL_DATA_SUB ${d}/libu/libffio_p.a          ${NATIVE_LIB_DIR}/libffio_p.a
+    INSTALL_DATA_SUB ${d}/libu/libffio.so          ${NATIVE_LIB_DIR}/libffio.so
+
+    INSTALL_DATA_SUB ${d}/libF77/libF77.a          ${NATIVE_LIB_DIR}/libF77.a
+    INSTALL_DATA_SUB ${d}/libF77/libF77_p.a          ${NATIVE_LIB_DIR}/libF77_p.a
+    INSTALL_DATA_SUB ${d}/libF77/libF77.so          ${NATIVE_LIB_DIR}/libF77.so
+    
+    INSTALL_DATA_SUB ${d}/libm/libmpath.a       ${NATIVE_LIB_DIR}/libmpath.a
+    INSTALL_DATA_SUB ${d}/libm/libmpath_p.a       ${NATIVE_LIB_DIR}/libmpath_p.a
+    INSTALL_DATA_SUB ${d}/libm/libmpath.so.1       ${NATIVE_LIB_DIR}/libmpath.so.1
+    ln -sf ${NATIVE_LIB_DIR}/libmpath.so.1       ${NATIVE_LIB_DIR}/libmpath.so
+
+    INSTALL_DATA_SUB ${d}/libmv/libmv.a           ${NATIVE_LIB_DIR}/libmv.a
+    INSTALL_DATA_SUB ${d}/libmv/libmv_p.a           ${NATIVE_LIB_DIR}/libmv_p.a
+    INSTALL_DATA_SUB ${d}/libmv/libmv.so.1           ${NATIVE_LIB_DIR}/libmv.so.1
+    ln -sf ${NATIVE_LIB_DIR}/libmv.so.1           ${NATIVE_LIB_DIR}/libmv.so
+        
+    return 0
+}
+
+INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
+
+    for i in ../lib/${TARG_HOST}-${TARG_OS}/crt/* ; do 
+	[ "`basename $i`" = "CVS" ] && continue
+        INSTALL_DATA_SUB $i ${PHASEPATH}/`basename $i`
+    done 
+    
+    return 0
+}
+
+
+INSTALL_PREBUILD_OPEN64_NATIVE_LIB () {
+
+    for i in ../lib/${TARG_HOST}-${TARG_OS}/open64/* ; do 
+
+        x=`basename $i`
+        [ "$x" = "CVS" ] && continue;
+
+        [ "$x" = "libinstr.a" ] &&
+            INSTALL_DATA_SUB $i ${PHASEPATH}/$x && continue;
+            
+        [ "$x" = "libcginstr.a" ] &&
+            INSTALL_DATA_SUB $i ${PHASEPATH}/$x && continue;
+
+        INSTALL_DATA_SUB $i ${NATIVE_LIB_DIR}/$x
+    done
+
+    return 0
+}
+
+   # Install GNU glic-devel package. this is perform only for cross compilation. 
+   # On native environment, we requires the end user install glibc-devel before 
+   # hand.
+INSTALL_PREBUILD_GLIBC_NATIVE_LIB () {
+
+    for i in ../lib/${TARG_HOST}-${TARG_OS}/gnu/* ; do 
+        x=`basename $i`
+        [ "$x" = "CVS" ] && continue;
+        [ "$x" = "libgcc.a"    ] && continue;
+        [ "$x" = "libstdc++.a" ] && continue;
+        INSTALL_EXEC_SUB $i ${NATIVE_LIB_DIR}/`basename $i`
+    done  
+    
+    return 0
+}
+
+INSTALL_PREBUILD_PHASE () {
+
+        # Some prebuild
+    for i in ../bin/${BUILD_HOST}-${BUILD_OS}/phase/* ; do 
+	[ "`basename $i`" = "CVS" ] && continue
+        INSTALL_EXEC_SUB $i ${PHASEPATH}/`basename $i`
+    done
+
+    return 0
+}
+
+INSTALL_CROSS_UTIL () {
+
+    for i in ../bin/${BUILD_HOST}-${BUILD_OS}/util/* ; do 
+	[ "`basename $i`" = "CVS" ] && continue
+        INSTALL_EXEC_SUB $i ${BIN_DIR}/`basename $i`
+    done
+
+    return 0
+}
+
+INSTALL_NATIVE_HEADER () {
+
+#    INSTALL_DATA_SUB osprey1.0/include/nue/stdarg.h  ${PHASEPATH}/include/stdarg.h
+#    INSTALL_DATA_SUB osprey1.0/include/nue/va-ia64.h  ${PHASEPATH}/include/va-ia64.h
+#
+#    cp -f -a osprey1.0/include ${PHASEPATH}/ 
+    INSTALL_DATA_SUB ${AREA}/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
+    INSTALL_DATA_SUB ${AREA}/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
+
+    INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/include/${VERSION}/dwarf.h
+    INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/include/${VERSION}/libdwarf.h
+    INSTALL_DATA_SUB ${AREA}/include/libelf/libelf.h  ${ROOT}/include/${VERSION}/libelf/libelf.h
+    INSTALL_DATA_SUB ${AREA}/include/libelf/sys_elf.h  ${ROOT}/include/${VERSION}/libelf/sys_elf.h
+
+    return 0
+}
+
+INSTALL_MAN_PAGE () {
+
+    d1=osprey1.0/man/linux/man1
+    d2=$ROOT/usr/man/man1
+
+    INSTALL_DATA_SUB $d1/sgicc.1 $d2 
+    INSTALL_DATA_SUB $d1/sgif90.1 $d2
+
+    ln -sf $d2/sgicc.1  $d2/sgiCC.1
+
+    return 0
+}
+
+INSTALL_MISC () {
+    INSTALL_EXEC_SUB ${AREA}/wopt/wopt.so         ${PHASEPATH}/wopt.so
+    INSTALL_EXEC_SUB ${AREA}/lw_inline/lw_inline  ${PHASEPATH}/inline
+    INSTALL_EXEC_SUB ${AREA}/lno/lno.so           ${PHASEPATH}/lno.so
+    INSTALL_EXEC_SUB ${AREA}/targ_info/itanium.so ${PHASEPATH}/itanium.so
+    INSTALL_EXEC_SUB ${AREA}/targ_info/itanium2.so ${PHASEPATH}/itanium2.so
+    INSTALL_EXEC_SUB ${AREA}/targ_info/opteron.so ${PHASEPATH}/opteron.so
+    INSTALL_EXEC_SUB ${AREA}/targ_info/em64t.so ${PHASEPATH}/em64t.so
+#    [ "$BUILD_HOST" != "$TARG_HOST" ] && ln -s /nue/usr/bin ${ALT_BIN_DIR} 2>/dev/null
+
+        # install some scripts
+#    for i in ../bin/misc/* ; do 
+#        [ -f "$i" ] && INSTALL_EXEC_SUB ${i} ${BIN_DIR}/`basename $i`
+#    done
+
+    return 0
+}
+
+cd `dirname $0`
+
+[ -z ${PSC_INSTALL_PREFIX} ] && echo -e "please set environment variable PSC_INSTALL_PREFIX !\n    Notes: everything will be installed under \$PSC_INSTALL_PREFIX" && exit 1
+
+INSTALL_DRIVER 
+INSTALL_FE 
+INSTALL_BE 
+INSTALL_IPA 
+INSTALL_CG 
+INSTALL_WHIRL_STUFF 
+
+    # Install archieves 
+#cat << _EOF_
+# ------------------------------------------------------------------------
+# NOTE: Following archives may not present. these archives are built on 
+#   Native or NUE platform (by 'make build -f Make.NUE.lib'), but do not
+#   worry, prebuild verion of them are provided.
+#     
+#   osprey1.0/targia64/{libcginstr.a libinstr.a ftz.o libfortran.a libffio.a
+#                       libmsgi.a libmv.a}
+#       
+#   Normally, you need not to build these archives.
+# ------------------------------------------------------------------------
+#_EOF_
+
+INSTALL_PHASE_SPECIFIC_ARCHIVES 
+#[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_PREBUILD_GLIBC_NATIVE_LIB
+#[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_NATIVE_HEADER
+INSTALL_NATIVE_HEADER 
+#INSTALL_PREBUILD_OPEN64_NATIVE_LIB 
+INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES
+#INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP 
+
+#[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_CROSS_UTIL
+#INSTALL_PREBUILD_PHASE 
+
+INSTALL_MISC
+
+exit 0
