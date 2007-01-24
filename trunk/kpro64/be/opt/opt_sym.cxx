@@ -2910,7 +2910,7 @@ OPT_STAB::Identify_vsym(WN *memop_wn)
           vsym_id = Create_vsym(EXPR_IS_ANY);
           AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
           vsym->Set_stype(VT_UNIQUE_VSYM);
-          vsym->Points_to()->Set_alias_class (vsym_id);
+          vsym->Points_to()->Set_alias_class (ac);
           _ac_2_vsym_map.Insert(ac, vsym_id);
         }
         return vsym_id;
