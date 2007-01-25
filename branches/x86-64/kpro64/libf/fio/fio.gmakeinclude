@@ -135,5 +135,7 @@ CFILES += \
     xarg.c \
     $(IRFILES)
 
+CFILES += main.c
+
 SRC_DIRS += \
    $(BUILD_TOT)/libf/fio

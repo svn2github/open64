@@ -43,8 +43,7 @@
 #  which other directories depend on.
 #
 INCLUDE_SUBDIRS := \
-	include 
-INCLUDE_SUBDIRS1 := \
+	include \
 	targ_info
 
 #
@@ -59,8 +58,10 @@ LIBRARY_SUBDIRS := \
 	libdwarf \
 	libelfutil \
 	libiberty \
-	#libfortran \
-	#libu 
+	libfortran \
+	libu \
+	libmv \
+	libmsgi \
 
 
 #
@@ -81,11 +82,11 @@ TOOL_SUBDIRS := \
 	whirl2f \
 	wopt \
 	wgen \
-	#crayf90 \
+	crayf90 \
 	#f95_coco 
 
 
-SUBDIRS := $(INCLUDE_SUBDIRS1) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
+SUBDIRS := $(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
 
 default clean clobber:
 	+@for d in $(SUBDIRS); do \

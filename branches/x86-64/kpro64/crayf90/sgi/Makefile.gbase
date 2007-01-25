@@ -132,6 +132,9 @@ else
 INCLUDE_DIR 		= $(ROOT)/usr/include
 endif
 
+ifeq ($(BUILD_TARGET), X8664)
+LIBFORTRAN_DIR          = $(TARGDIR)/libfortran
+endif
 LIBCOMUTIL_DIR 		= $(BUILD_TOT)/libcomutil
 
 TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
@@ -276,6 +279,9 @@ LIBRARIES = $(FE90_TARG_DIR)/fe90.a $(ARITH_TARG_DIR)/arith.a \
 ifeq ($(BUILD_TARGET), IA64)
 LIBRARIES += $(F90SGI_TARG_DIR)/libf90sgi.a
 endif
+ifeq ($(BUILD_TARGET), X8664)
+LIBRARIES += $(F90SGI_TARG_DIR)/libf90sgi.a
+endif
 
 LLDLIBS += $(LIBRARIES)
 ifeq ($(BUILD_ARCH), IA64)
@@ -308,6 +314,9 @@ first:
 	$(call submake,$(ARITH_TARG_DIR))
 	$(call submake,$(FE90_TARG_DIR))
 ifeq ($(BUILD_TARGET),IA64)
+	$(call submake,$(F90SGI_TARG_DIR))
+endif
+ifeq ($(BUILD_TARGET),X8664)
 	$(call submake,$(F90SGI_TARG_DIR))
 endif
 
@@ -351,13 +360,21 @@ ifeq ($(BUILD_ARCH),IA32)
 ifeq ($(BUILD_TARGET),IA64)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(F90_RTLIBS) -m32 -lm
 else
+ifeq ($(BUILD_TARGET),X8664)
+	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(LIBFORTRAN_DIR)/libfortran.a
+else
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $$($(F90) -m32 -print-file-name=lib$(PSC_NAME_PREFIX)fortran.a)
+endif
 endif
 else
 ifeq ($(BUILD_TARGET),IA64)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(F90_RTLIBS) -lm
 else
+ifeq ($(BUILD_TARGET),X8664)
+	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(F90_RTLIBS) -lm
+else
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(PSC_PREFIX)/lib/libm.a
+endif
 endif
 endif
 

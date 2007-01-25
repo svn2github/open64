@@ -120,7 +120,9 @@ F90FLAGS += \
 
 # Program gen_ieee_cpp_macros generates file ieee_cpp_macros.h, which is
 # needed by the TR15580/F2003 IEEE intrinsic modules
-gen_ieee_cpp_macros: gen_ieee_cpp_macros.c
+gen_ieee_cpp_macros: gen_ieee_cpp_macros.o
+
+gen_ieee_cpp_macros.o: gen_ieee_cpp_macros.c
 
 ieee_cpp_macros.h: gen_ieee_cpp_macros
 	./gen_ieee_cpp_macros > ieee_cpp_macros.h

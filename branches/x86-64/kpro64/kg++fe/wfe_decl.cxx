@@ -1596,6 +1596,7 @@ WFE_Add_Init_Block(void)
   last_aggregate_initv = inv_blk;
 }
 
+#ifdef TARG_IA64
 void 
 WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 {
@@ -1627,7 +1628,75 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
     Set_INITO_val(aggregate_inito, inv);
   last_aggregate_initv = inv;
 } /* WGE_Add_Aggregate_Init_Real */
+#else
+#ifdef KEY	// kgccfe uses WFE_Add_Aggregrate_Init_Real instead of
+		// WFE_Add_Aggregate_Init_Double.  Use the former because it is
+		// newer and can handle REAL_VALUE_TYPE, which is needed for
+		// i386.
+	
+void 
+WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
+{
+  if (aggregate_inito == 0) return;
+  INITV_IDX inv = New_INITV();
+  TCON    tc;
+  int     t1;
+#ifdef KEY
+  long     buffer [4];
+#else	
+// KEY is already defined above, but this is just to keep what we had earlier
+  int     buffer [4];
+#endif // KEY
+  switch (size) {
+    case 4:
+      REAL_VALUE_TO_TARGET_SINGLE (real, t1);
+      tc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
+      break;
+    case 8:
+      REAL_VALUE_TO_TARGET_DOUBLE (real, buffer);
+      WFE_Convert_To_Host_Order(buffer);
+      tc = Host_To_Targ_Float (MTYPE_F8, *(double *) &buffer);
+      break;
+#ifdef KEY
+    case 12:
+    case 16:
+      REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, buffer);
+      WFE_Convert_To_Host_Order(buffer);
+      tc = Host_To_Targ_Quad (*(long double *) &buffer);
+      break;
+#endif
+    default:
+      FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Real unexpected size"));
+      break;
+  }
+  INITV_Set_VAL (Initv_Table[inv], Enter_tcon(tc), 1);
+  if (last_aggregate_initv != 0)
+    Set_INITV_next(last_aggregate_initv, inv);
+  else if (! not_at_root)
+    Set_INITO_val(aggregate_inito, inv);
+  last_aggregate_initv = inv;
+} /* WGE_Add_Aggregate_Init_Real */
 
+#else
+
+void 
+WFE_Add_Aggregate_Init_Double (double val, INT size)
+{
+  if (aggregate_inito == 0) return;
+  INITV_IDX inv = New_INITV();
+  TYPE_ID mtype;
+  if (size == 4) mtype = MTYPE_F4;
+  else if (size == 8) mtype = MTYPE_F8;
+  else FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Double unexpected size"));
+  INITV_Init_Float (inv, mtype, val);
+  if (last_aggregate_initv != 0)
+    Set_INITV_next(last_aggregate_initv, inv);
+  else if (! not_at_root)
+    Set_INITO_val(aggregate_inito, inv);
+  last_aggregate_initv = inv;
+}
+#endif	// KEY
+#endif
 void 
 WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT size)
 {

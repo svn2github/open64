@@ -150,7 +150,7 @@ include $(BUILD_TOT)/libfi/prodsum/prodsum.makeinclude
 # from libF77
 
 ifeq ($(BUILD_OS), LINUX)
-#  include $(BUILD_TOT)/libF77/libF77aslibfortran.gmakeinclude
+  include $(BUILD_TOT)/libF77/libF77aslibfortran.gmakeinclude
 endif
 
 LCINCS += -I$(BUILD_TOT)/libfi/include

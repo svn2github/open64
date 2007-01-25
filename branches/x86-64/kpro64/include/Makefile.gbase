@@ -106,6 +106,7 @@ INCLUDE_HFILES = \
 	rld_interface.h \
 	stamp.h \
 	svr4_math.h \
+	defalias.h \
 	pathscale_defs.h
 
 CMPLR_HFILES = \
@@ -207,4 +208,5 @@ clean:
 clobber:
 	@rm -rf *.h *.sg $(CMPLR_DIRS) $(LIBELF_DIRS) ia64 stl
 	@cd sys; rm -rf *.h $(SYS_DIRS)
+
 force: ;

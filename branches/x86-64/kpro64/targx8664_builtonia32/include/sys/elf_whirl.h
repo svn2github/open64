@@ -1,1 +1,0 @@
-../../../include/sys/elf_whirl.h

@@ -43,7 +43,7 @@ BUILD_HOST="ia32"
 #[ `uname -m | grep -i 'i[0-9]86' | wc -l` -eq 1 ] && BUILD_HOST="ia32"
 
     # set the target host, it must be "ia64"
-TARG_HOST="x8664"
+TARG_HOST="ia32"
 
     # set the TARGET O.S, only linux is supported currently 
 TARG_OS="linux"
@@ -151,7 +151,7 @@ INSTALL_IPA () {
 
     ld_new_dir="targcygnus_ia32_x8664/ld"
 
-    INSTALL_EXEC_SUB ${ld_new_dir}/ld-new  ${PHASEPATH}/ipa_link
+   # INSTALL_EXEC_SUB ${ld_new_dir}/ld-new  ${PHASEPATH}/ipa_link
 
     ln -sf ${PHASEPATH}/be ${PHASEPATH}/ipl 
 
@@ -159,13 +159,13 @@ INSTALL_IPA () {
 }
 
 INSTALL_CG () {
-    INSTALL_EXEC_SUB ${AREA}/cg/cg.so                ${PHASEPATH}/cg.so
+   # INSTALL_EXEC_SUB ${AREA}/cg/cg.so                ${PHASEPATH}/cg.so
 
     return 0
 }
 
 INSTALL_WHIRL_STUFF () {
-    echo "asasf"
+
     INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c    ${PHASEPATH}/whirl2c
     INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f    ${PHASEPATH}/whirl2f
     INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c.so ${PHASEPATH}/whirl2c.so
@@ -175,7 +175,7 @@ INSTALL_WHIRL_STUFF () {
     ln -sf ${PHASEPATH}/be ${PHASEPATH}/whirl2f_be 
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
-    echo "end of install whirl stuff"
+
     return 0
 }
 
@@ -190,11 +190,11 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 #    INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.exp  ${PHASEPATH}/lib.exp
 
         # instrument archieves.
-    d="targ${TARG_HOST}_builton${BUILD_HOST}"
-    INSTALL_DATA_SUB $d/libinstr2/libinstr.a      ${NATIVE_LIB_DIR}/libinstr.a 
-    INSTALL_DATA_SUB $d/libinstr2/libinstr_p.a      ${NATIVE_LIB_DIR}/libinstr_p.a 
-    INSTALL_DATA_SUB $d/libinstr2/libinstr.so.1      ${NATIVE_LIB_DIR}/libinstr.so.1
-    ln -sf ${NATIVE_LIB_DIR}/libinstr.so.1    ${NATIVE_LIB_DIR}/libinstr.so
+   #d="targ${TARG_HOST}_builton${BUILD_HOST}"
+  #  INSTALL_DATA_SUB ${AREA}/libinstr2/libinstr.a      ${NATIVE_LIB_DIR}/libinstr.a 
+   # INSTALL_DATA_SUB ${AREA}/libinstr2/libinstr_p.a      ${NATIVE_LIB_DIR}/libinstr_p.a 
+   # INSTALL_DATA_SUB ${AREA}/libinstr2/libinstr.so.1      ${NATIVE_LIB_DIR}/libinstr.so.1
+   # ln -sf ${NATIVE_LIB_DIR}/libinstr.so.1    ${NATIVE_LIB_DIR}/libinstr.so
 
     return 0
 }
@@ -202,32 +202,37 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
    
 INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 
-#    d="targ${TARG_HOST}_builton${BUILD_HOST}"
-     d="${AREA}"
+  #  d="targ${TARG_HOST}_builton${BUILD_HOST}"
+    d="targ${TARG_HOST}_${BUILD_HOST}"
 
-    INSTALL_DATA_SUB ${d}/libfortran/libfortran.a ${NATIVE_LIB_DIR}/libpathfortran.a
-    INSTALL_DATA_SUB ${d}/libfortran/libfortran_p.a ${NATIVE_LIB_DIR}/libpathfortran_p.a
-    INSTALL_DATA_SUB ${d}/libfortran/libfortran.so ${NATIVE_LIB_DIR}/libpathfortran.so.1
-    ln -sf ${NATIVE_LIB_DIR}/libpathfortran.so.1       ${NATIVE_LIB_DIR}/libpathfortran.so
+    INSTALL_DATA_SUB ${AREA}/libfortran/libfortran.a ${NATIVE_LIB_DIR}/libfortran.a
+    INSTALL_DATA_SUB ${AREA}/libfortran/libfortran_p.a ${NATIVE_LIB_DIR}/libfortran_p.a
+    INSTALL_DATA_SUB ${AREA}/libfortran/libfortran.so ${NATIVE_LIB_DIR}/libfortran.so.1
+    ln -sf ${NATIVE_LIB_DIR}/libfortran.so.1       ${NATIVE_LIB_DIR}/libfortran.so
 
-    INSTALL_DATA_SUB ${d}/libu/libffio.a          ${NATIVE_LIB_DIR}/libffio.a
-    INSTALL_DATA_SUB ${d}/libu/libffio_p.a          ${NATIVE_LIB_DIR}/libffio_p.a
-    INSTALL_DATA_SUB ${d}/libu/libffio.so          ${NATIVE_LIB_DIR}/libffio.so
+    INSTALL_DATA_SUB ${AREA}/libu/libffio.a          ${NATIVE_LIB_DIR}/libffio.a
+    INSTALL_DATA_SUB ${AREA}/libu/libffio_p.a          ${NATIVE_LIB_DIR}/libffio_p.a
+    INSTALL_DATA_SUB ${AREA}/libu/libffio.so          ${NATIVE_LIB_DIR}/libffio.so
 
-    INSTALL_DATA_SUB ${d}/libF77/libF77.a          ${NATIVE_LIB_DIR}/libF77.a
-    INSTALL_DATA_SUB ${d}/libF77/libF77_p.a          ${NATIVE_LIB_DIR}/libF77_p.a
-    INSTALL_DATA_SUB ${d}/libF77/libF77.so          ${NATIVE_LIB_DIR}/libF77.so
-    
-    INSTALL_DATA_SUB ${d}/libm/libmpath.a       ${NATIVE_LIB_DIR}/libmpath.a
-    INSTALL_DATA_SUB ${d}/libm/libmpath_p.a       ${NATIVE_LIB_DIR}/libmpath_p.a
-    INSTALL_DATA_SUB ${d}/libm/libmpath.so.1       ${NATIVE_LIB_DIR}/libmpath.so.1
-    ln -sf ${NATIVE_LIB_DIR}/libmpath.so.1       ${NATIVE_LIB_DIR}/libmpath.so
+  # INSTALL_DATA_SUB ${AREA}/libF77/libF77.a          ${NATIVE_LIB_DIR}/libF77.a
+  # INSTALL_DATA_SUB ${AREA}/libF77/libF77_p.a          ${NATIVE_LIB_DIR}/libF77_p.a
+  # INSTALL_DATA_SUB ${AREA}/libF77/libF77.so          ${NATIVE_LIB_DIR}/libF77.so
+   
+  # INSTALL_DATA_SUB ${AREA}/libm/libmpath.a       ${NATIVE_LIB_DIR}/libmpath.a
+  # INSTALL_DATA_SUB ${AREA}/libm/libmpath_p.a       ${NATIVE_LIB_DIR}/libmpath_p.a
+  # INSTALL_DATA_SUB ${AREA}/libm/libmpath.so.1       ${NATIVE_LIB_DIR}/libmpath.so.1
+  # ln -sf ${NATIVE_LIB_DIR}/libmpath.so.1       ${NATIVE_LIB_DIR}/libmpath.so
 
-    INSTALL_DATA_SUB ${d}/libmv/libmv.a           ${NATIVE_LIB_DIR}/libmv.a
-    INSTALL_DATA_SUB ${d}/libmv/libmv_p.a           ${NATIVE_LIB_DIR}/libmv_p.a
-    INSTALL_DATA_SUB ${d}/libmv/libmv.so.1           ${NATIVE_LIB_DIR}/libmv.so.1
+    INSTALL_DATA_SUB ${AREA}/libmv/libmv.a           ${NATIVE_LIB_DIR}/libmv.a
+    INSTALL_DATA_SUB ${AREA}/libmv/libmv_p.a           ${NATIVE_LIB_DIR}/libmv_p.a
+    INSTALL_DATA_SUB ${AREA}/libmv/libmv.so.1           ${NATIVE_LIB_DIR}/libmv.so.1
     ln -sf ${NATIVE_LIB_DIR}/libmv.so.1           ${NATIVE_LIB_DIR}/libmv.so
         
+    INSTALL_DATA_SUB ${AREA}/libmsgi/libm.a           ${NATIVE_LIB_DIR}/libmsgi.a
+    INSTALL_DATA_SUB ${AREA}/libmsgi/libm_p.a           ${NATIVE_LIB_DIR}/libmsgi_p.a
+  #  INSTALL_DATA_SUB ${AREA}/libmsgi/libm.so.1           ${NATIVE_LIB_DIR}/libmsgi.so.1
+  #  ln -sf ${NATIVE_LIB_DIR}/libmsgi.so.1           ${NATIVE_LIB_DIR}/libmsgi.so
+
     return 0
 }
 
@@ -304,8 +309,10 @@ INSTALL_NATIVE_HEADER () {
 #    INSTALL_DATA_SUB osprey1.0/include/nue/va-ia64.h  ${PHASEPATH}/include/va-ia64.h
 #
 #    cp -f -a osprey1.0/include ${PHASEPATH}/ 
-    INSTALL_DATA_SUB ${AREA}/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
-    INSTALL_DATA_SUB ${AREA}/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
+  # INSTALL_DATA_SUB ${AREA}/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
+  # INSTALL_DATA_SUB ${AREA}/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
+    INSTALL_DATA_SUB ${ROOT}/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
+    INSTALL_DATA_SUB ${ROOT}/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
 
     INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/include/${VERSION}/dwarf.h
     INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/include/${VERSION}/libdwarf.h
@@ -329,11 +336,10 @@ INSTALL_MAN_PAGE () {
 }
 
 INSTALL_MISC () {
+
     INSTALL_EXEC_SUB ${AREA}/wopt/wopt.so         ${PHASEPATH}/wopt.so
     INSTALL_EXEC_SUB ${AREA}/lw_inline/lw_inline  ${PHASEPATH}/inline
     INSTALL_EXEC_SUB ${AREA}/lno/lno.so           ${PHASEPATH}/lno.so
-    INSTALL_EXEC_SUB ${AREA}/targ_info/itanium.so ${PHASEPATH}/itanium.so
-    INSTALL_EXEC_SUB ${AREA}/targ_info/itanium2.so ${PHASEPATH}/itanium2.so
     INSTALL_EXEC_SUB ${AREA}/targ_info/opteron.so ${PHASEPATH}/opteron.so
     INSTALL_EXEC_SUB ${AREA}/targ_info/em64t.so ${PHASEPATH}/em64t.so
 #    [ "$BUILD_HOST" != "$TARG_HOST" ] && ln -s /nue/usr/bin ${ALT_BIN_DIR} 2>/dev/null

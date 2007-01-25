@@ -1635,6 +1635,7 @@ add_final_ld_args (string_list_t *args)
 	
 	if (shared != RELOCATABLE) {
 	    if (invoked_lang == L_f90) {
+        /*
 		if (!option_was_seen(O_shared)) {
 			add_library(args, PSC_NAME_PREFIX "fstart");
 		}
@@ -1642,12 +1643,16 @@ add_final_ld_args (string_list_t *args)
 		if (!option_was_seen(O_shared)) {
 			add_library(args, PSC_NAME_PREFIX "fstart");
 		}
+		*/
+		add_library(args, "fortran");
 		add_string(args, "-lmv");
-		add_string(args, "-lm" PSC_NAME_PREFIX);
+	//	add_string(args, "-lm" PSC_NAME_PREFIX);
 		add_string(args, "-lm");
 		add_library(args, "mv");
-		add_library(args, "m" PSC_NAME_PREFIX);
+	//	add_library(args, "m" PSC_NAME_PREFIX);
 		add_library(args, "m");
+		add_library(args, "ffio");
+		add_library(args, "msgi");
 	    }
 #ifdef KEY
 	    if (option_was_seen(O_mp) ||
@@ -1697,7 +1702,7 @@ add_final_ld_args (string_list_t *args)
 	    */
 	    if (invoked_lang != L_cc) {
 	      add_library(args, "mv");			// bug 5527
-	      add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
+	     // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
 	    }
 	  }
 	}
@@ -2481,6 +2486,9 @@ run_compiler (int argc, char *argv[])
 	}
 	input_source = source_file;
 
+#ifdef PSCSUB
+        //obtain_license (get_phase_dir (P_be), argc, argv) ;
+#endif
 
 #ifdef KEY
 	// Set stack size to the hard limit.  Bug 3212.

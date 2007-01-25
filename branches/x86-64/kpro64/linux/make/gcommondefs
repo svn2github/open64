@@ -104,9 +104,14 @@ CCNAME  = $(PSC_NAME_PREFIX)cc -m32 -march=anyx86 -mno-sse2
 C++NAME = $(PSC_NAME_PREFIX)CC -m32 -march=anyx86 -mno-sse2
 endif
 AR      = ar
-F90 = gfortran #$(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90 -march=anyx86
+ifeq ($(BUILD_TARGET), IA64)
+F90 = openf90
+endif
 ifeq ($(BUILD_TARGET), IA32)
-F90 += -m32 -mno-sse2
+F90 = pathf90 -m32 -mno-sse2
+endif
+ifeq ($(BUILD_TARGET), X8664)
+F90 = pathf90
 endif
 F77 = $(F90)
 endif

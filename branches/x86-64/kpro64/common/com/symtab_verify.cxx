@@ -165,9 +165,26 @@ ST_Verify_Sclass_Export (ST_SCLASS storage_class, ST_EXPORT export_class,
     case SCLASS_DISTR_ARRAY:
     case SCLASS_THREAD_PRIVATE_FUNCS:
     case SCLASS_COMMENT:
+#ifdef PATHSCALE_MERGE
+      // bug fix for OSP_145
+      if ( export_class == EXPORT_PREEMPTIBLE ) {
+        // maybe alias to FSTATIC
+	ST_IDX base_idx = ST_base_idx (st);
+        Is_True ( base_idx != ST_st_idx (st),
+	        (msg, Export_Name(export_class), Sclass_Name (storage_class)));
+	Is_True ( storage_class == ST_sclass(St_Table[base_idx]),
+		(msg, Export_Name(export_class), Sclass_Name (storage_class)));
+      }
+      else {
+	Is_True (export_class == EXPORT_LOCAL ||
+                 export_class == EXPORT_LOCAL_INTERNAL,
+                (msg, Export_Name(export_class), Sclass_Name (storage_class)));
+      }
+#else
       Is_True (export_class == EXPORT_LOCAL ||
                export_class == EXPORT_LOCAL_INTERNAL,
                (msg, Export_Name(export_class), Sclass_Name (storage_class)));
+#endif
       break;
     case SCLASS_COMMON:
     case SCLASS_DGLOBAL:
@@ -571,6 +588,12 @@ void INITV::Verify(UINT) const
     Is_True ( repeat1 != 0,
               (msg, "repeat1: should not be 0"));
     break;
+#ifdef PATHSCALE_MERGE
+  case INITVKIND_SYMIPLT:		// for function discriptor
+    Is_True ( repeat1 != 0,
+              (msg, "repeat1: should not be 0"));
+    break;
+#endif
   case INITVKIND_ZERO:
     Is_True ( repeat1 == 0,
               (msg, "repeat1: should be 0"));

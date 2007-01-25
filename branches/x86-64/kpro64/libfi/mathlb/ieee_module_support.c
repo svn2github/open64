@@ -460,14 +460,20 @@ void _Ieee_save(FENV_T *state) {
   FEGETENV(state);
 #if defined(X86)
   unsigned int save_status = state->__status_word;
+#ifdef IA64
   unsigned int save_mxcsr = state->__mxcsr;
+#endif
   state->__status_word &= ~FE_ALL_EXCEPT;
+#ifdef IA64
   if (IS_SSE2_PRESENT()) {
     state->__mxcsr &= ~FE_ALL_EXCEPT;
   }
+#endif
   FESETENV(state);
   state->__status_word = save_status;
+#ifdef IA64
   state->__mxcsr = save_mxcsr;
+#endif
 #elif defined(TARG_MIPS64)
   FENV_T newstate = *state;
   newstate->__fp_control_register &= ~FE_ALL_EXCEPT;
@@ -485,12 +491,14 @@ int _Ieee_restore(const FENV_T *state) {
     state->__status_word | (temp.__status_word & FE_ALL_EXCEPT);
   temp.__control_word = state->__control_word;
   __asm__("fldenv %0" : : "m" (*&temp));
+#ifdef IA64
   if (IS_SSE2_PRESENT()) {
     unsigned int mxcsr_temp;
     __asm__("stmxcsr %0" : "=m" (*&mxcsr_temp));
     mxcsr_temp = state->__mxcsr | (mxcsr_temp & FE_ALL_EXCEPT);
     __asm__("ldmxcsr %0" : : "m" (*&mxcsr_temp));
     }
+#endif
   return 0;
   }
 #else /* defined(X86) */
