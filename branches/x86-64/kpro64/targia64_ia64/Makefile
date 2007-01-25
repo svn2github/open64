@@ -59,7 +59,11 @@ LIBRARY_SUBDIRS = \
 	libunwind \
 	libunwindP \
 	libunwind_gdb \
-        #libfortran
+    libiberty  \
+    libfortran   \
+    libu  \
+    libmv  \
+    libmsgi \
 
 
 #
@@ -83,7 +87,7 @@ TOOL_SUBDIRS = \
 	whirl2f \
 	wopt \
 	be_driver\
-	#crayf90 \
+	crayf90 \
 	#dwarfdump \
 	#elfdump \
 	#fec_238 \
