@@ -645,7 +645,7 @@ output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
         ErrMsg (EC_No_Mem, "pu_tree_add_comment"); 
     }
 
-    sprintf(buf, " %d: %s", count++, pu_name);
+    sprintf(buf, " %lu: %s", (unsigned long)(count++), pu_name);
     ipacom_add_comment(index, buf);
 
     if (buf != static_buf)

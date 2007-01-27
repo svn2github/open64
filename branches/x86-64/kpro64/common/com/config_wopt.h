@@ -1,9 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -45,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_wopt.h
- * $Revision: 1.20 $
- * $Date: 05/11/30 21:00:36-08:00 $
- * $Author: fchow@fluorspar.internal.keyresearch.com $
- * $Source: common/com/SCCS/s.config_wopt.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_wopt.h,v $
  *
  * Revision history:
  *  05-May-96 - Extracted from be/opt/opt_config.h.
@@ -100,6 +96,8 @@ extern BOOL WOPT_Enable_Aggressive_Lftr;
 extern BOOL WOPT_Enable_Aggressive_Phi_Simp;
 extern UINT32 WOPT_Enable_Autoaggstr_Reduction_Threshold;
 extern BOOL WOPT_Enable_Alias_Classification;
+extern BOOL WOPT_Enable_Aggressive_Alias_Classification;
+extern BOOL  WOPT_Enable_Disambiguate_Heap_Obj;
 extern BOOL WOPT_Enable_Alias_Class_Fortran_Rule;
 extern BOOL WOPT_Enable_Avoid_Rehash;	/* SSAPRE to try to minimize rehashing*/
 extern BOOL WOPT_Enable_Backedge_Placement; /* BB on critical backedge */
@@ -282,6 +280,8 @@ extern BOOL  WOPT_Enable_Lpre_Before_Ivr; // For running lpre early
 extern BOOL  WOPT_Enable_Spre_Before_Ivr; // For running spre early
 extern BOOL  WOPT_Enable_Bdce_Before_Ivr; // For running bdce early
 extern BOOL  WOPT_Enable_New_Phase_Ordering; // Enables some phases before ivr
+extern BOOL  WOPT_Enable_Pt_Keep_Track_Ptr;  // POINTS_TO keep track pointer of ild/istore
+
 #ifdef KEY
 extern BOOL  WOPT_Enable_Preserve_Mem_Opnds; // if TRUE, suppress EPRE on 
 				// iloads that are operands of FP operations
@@ -302,5 +302,6 @@ extern BOOL WOPT_Enable_Subword_Opt; // whether to replace 1- or 2-byte-sized
 			              // load/store with EXTRACT/COMPOSE
 extern BOOL WOPT_Enable_New_Vsym_Allocation;
 #endif
+extern BOOL  WOPT_Enable_WOVP; // For running write-once variable promotion
 #endif /* config_wopt_INCLUDED */
 

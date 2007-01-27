@@ -343,7 +343,8 @@ search_for_symoff_initv (INITV_IDX initv_idx)
 {
     while (initv_idx) {
 	const INITV& initv = Initv_Table[initv_idx];
-	if (INITV_kind (initv) == INITVKIND_SYMOFF) {
+	if (INITV_kind (initv) == INITVKIND_SYMOFF ||
+		 	INITV_kind (initv) == INITVKIND_SYMIPLT) {
 	    ST_IDX st_idx = INITV_st (initv);
 	    Aux_Symbol[st_idx].addr_saved = TRUE;
 	} else if (INITV_kind (initv) == INITVKIND_BLOCK)
@@ -511,7 +512,8 @@ struct process_compile_time_addr_saved
 	sum (s), aux_st_info (Aux_Symbol_Info[GLOBAL_SYMTAB]) {}
 
     void operator() (UINT32, const INITV* initv) const {
-	if (INITV_kind (*initv) != INITVKIND_SYMOFF)
+	if (INITV_kind (*initv) != INITVKIND_SYMOFF &&
+			INITV_kind (*initv) != INITVKIND_SYMIPLT)
 	    return;
 	ST_IDX st_idx = INITV_st (*initv);
 	if (ST_IDX_level (st_idx) != GLOBAL_SYMTAB)
@@ -1223,7 +1225,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     BOOL Has_local_pragma = FALSE;
 #ifdef KEY
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback;
-    LABEL_WN_MAP label_use_map;
+    LABEL_WN_MAP label_use_map;     
+    INT icall_site[100];
+    INT icall_cnt = 0;
 #else
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback&& IPA_Enable_Reorder;//and other things, such as Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO]
 #endif // KEY
@@ -1290,6 +1294,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    proc->Set_feedback_index (Get_feedback_idx ());
 #endif
 	    fb->Set_frequency_count (freq);
+//		printf("&&&&&&&&&&&&& %s -> %f\n",ST_name(WN_st(w)), fb->Get_frequency_count()._value);
 	}
 	else {
 	  // FB_PU_Has_Feedback = FALSE;
@@ -1497,6 +1502,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
                 (WN_Fake_Call_EH_Region(w2, Parent_Map)))
               break;
 
+            proc->Incr_call_count ();
 #ifdef KEY
 	    float probability = -1;
 	    // Remove the use of this flag in future
@@ -1533,7 +1539,18 @@ SUMMARIZE<program>::Process_procedure (WN* w)
             Direct_Mod_Ref = TRUE;
 #endif
             proc->Incr_callsite_count ();
+            Direct_Mod_Ref = TRUE;
 
+#ifdef KEY
+	    if( Cur_PU_Feedback != NULL &&
+		WN_operator(w2) == OPR_ICALL ){
+	      FB_FREQ freq = Cur_PU_Feedback->Query(w2, FB_EDGE_CALL_INCOMING);
+	      if( freq.Known() ){
+		icall_site[icall_cnt] =  Get_callsite_idx();
+		icall_cnt++;
+	      }
+	    }
+#endif	      
             // update actual parameter count
             if (Do_common_const && 
                 !Process_control_dependence (w2, Get_callsite_idx())) {
@@ -1547,9 +1564,14 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    Process_callsite (w2, proc->Get_callsite_count (), get_loopnest (w2));
 #else
 	    Process_callsite (w2, proc->Get_callsite_count (), loopnest);
+#ifdef PATHSCALE_MERGE_ZHC
 	    Direct_Mod_Ref = TRUE;
 #endif
+#endif
 	    proc->Incr_callsite_count ();
+#ifndef PATHSCALE_MERGE_ZHC
+	    Direct_Mod_Ref = TRUE;
+#endif
 	    break;
 	    
 	case OPR_ARRAY: {
@@ -1726,7 +1748,8 @@ SUMMARIZE<program>::Process_procedure (WN* w)
             if (WN_pragma(w2) == WN_PRAGMA_THREADPRIVATE)
             {
               ST * thdprv_st = ST_ptr (WN_pragma_arg2(w2));
-              Get_symbol_index (thdprv_st);
+              Get_symbol_index (thdprv_st);  
+              WN_pragma_arg2(w2) = Get_symbol_index (thdprv_st);
               Record_global_ref (w2, thdprv_st, OPR_PRAGMA, TRUE);
 
               // increment modcount
@@ -1893,10 +1916,42 @@ SUMMARIZE<program>::Process_procedure (WN* w)
                  ("Expected all labels to be included in bb count"));
         proc->Set_bb_count (bbs - unused_labels);
       }
-    }
 
+      if_map.clear ();
+    }
+#endif // KEY
+
+#ifndef PATHSCALE_MERGE_ZHC
+{
+#ifdef KEY
     if_map.clear ();
-#endif // KEY    
+    /* Append a list of free slots to the currnet callsite_array for
+       the future use by IPA_Convert_Icalls.
+    */
+    FmtAssert( icall_cnt < sizeof(icall_site) / sizeof(icall_site[0]),
+	       ("icall array is too small.") );
+    for( int i = 0; i < icall_cnt; i++ ){
+      SUMMARY_CALLSITE* icall_info = Get_callsite (icall_site[i]);
+      SUMMARY_CALLSITE* callsite = New_callsite ();
+
+      callsite->Set_callsite_id( proc->Get_callsite_count()  );
+      callsite->Set_icall_slot();
+
+      callsite->Set_param_count( icall_info->Get_param_count() );
+      callsite->Set_return_type( icall_info->Get_return_type() );
+      callsite->Set_map_id( icall_info->Get_map_id() );
+      callsite->Set_loopnest( icall_info->Get_loopnest() );
+      callsite->Set_probability( icall_info->Get_probability() );
+
+      if( callsite->Get_param_count() > 0 ){
+	callsite->Set_actual_index( icall_info->Get_actual_index() );
+      }
+
+      proc->Incr_callsite_count();
+    }
+#endif // KEY 
+}
+#endif
 
     /*loop_count_stack may not be empty! and loopnest may not be empty!!*/
     if (proc->Get_callsite_count () > 0)
@@ -2449,6 +2504,14 @@ SUMMARIZE<program>::Process_actual (WN* w)
           actual->Set_ty(parm_ty);
           if (OPERATOR_has_sym(opr)) {
             actual->Set_symbol_index(Get_symbol_index(WN_st(kid))); 
+#ifdef KEY
+          // bug 6229: Process any constant string instead of 
+          // treating it as an indirect ref.
+          ST * actual_st = WN_st (kid);
+          if (opr == OPR_LDA && ST_class (actual_st) == CLASS_CONST &&
+              TY_kind (ST_type (actual_st)) == KIND_ARRAY)
+            w = WN_kid0(w);
+#endif
           }
         }
       }

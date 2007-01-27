@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_alias_class.h
-// $Revision: 1.7 $
-// $Date: 05/02/10 12:00:52-08:00 $
-// $Author: fchow@fluorspar.keyresearch $
-// $Source: be/opt/SCCS/s.opt_alias_class.h $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_alias_class.h,v $
 //
 // ====================================================================
 //
@@ -547,6 +547,7 @@ private:
   WN                 *Classify_wn_and_kids(WN *);
 
   AC_PTR_OBJ_PAIR     Classify_lhs_of_store(WN *);
+  BOOL                Expr_may_containt_pointer (WN* const expr);
   AC_PTR_OBJ_PAIR     Classify_deref_of_expr(WN *, BOOL);
 
   void                Set_collapsed_nested_references(void)
@@ -554,6 +555,7 @@ private:
   BOOL                Collapsed_nested_references(void)
     { return _collapsed_nested_references; }
 
+  BOOL                Assignment_may_xfer_pointer (WN* const); 
   WN                 *Handle_assignment(WN *);
   WN                 *Handle_call(WN *);
   void                Handle_call_of_nested_PU(ST *);

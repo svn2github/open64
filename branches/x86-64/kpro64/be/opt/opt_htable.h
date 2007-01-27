@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_htable.h
-// $Revision: 1.26 $
-// $Date: 05/10/14 18:28:23-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_htable.h $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_htable.h,v $
 //
 // Revision history:
 //  27-SEP-94 shin - Original Version
@@ -1008,7 +1004,7 @@ public:
 					return (TY_IDX)(INTPTR)u2.isivar.base[2]; }
   void      Set_ilod_ty(TY_IDX ty)    { Is_True(Kind() == CK_IVAR,
 				       ("CODEREP::Set_ilod_ty, illegal kind"));
-					u2.isivar.base[2] = (CODEREP*)ty; }
+					u2.isivar.base[2] = (CODEREP*)(INTPTR)ty; }
   CODEREP  *Mstore_size(void) const   { Is_True(Kind() == CK_IVAR,
 				       ("CODEREP::Mstore_size, illegal kind"));
 					return u2.isivar.base[4]; }
@@ -1029,7 +1025,7 @@ public:
 					return (TY_IDX)(INTPTR) u2.isivar.base[4]; }
   void      Set_ilod_base_ty(TY_IDX ty){ Is_True(Kind() == CK_IVAR,
 						 ("CODEREP::Set_ilod_base_ty, illegal kind"));
-					 u2.isivar.base[4] = (CODEREP*)ty; }
+					 u2.isivar.base[4] = (CODEREP*)(INTPTR)ty; }
 
   void      Set_ivar_mu_node(MU_NODE *mu){ Is_True(Kind() == CK_IVAR,
 						   ("CODEREP::Set_ivar_mu_node, illegal kind"));
@@ -2080,6 +2076,8 @@ public:
                                         // assign to the same lhs.
   BOOL      Redefines_var( AUX_ID var );// check if this redefs var
   BOOL      References_var( AUX_ID var );// check if this refs var
+  BOOL      Is_incr(void) const;        // is v = v +/- const, the RHS
+                                        // pattern is recursively defined.
   void      Find_ind_incr(CFG *,        // Find the induction
                           ITABLE *);    // expression that would
                                         // require update after this

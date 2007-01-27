@@ -41,7 +41,7 @@
 // ====================================================================
 //
 // Module: ipaa.cxx
-// $Source: ipa/main/analyze/SCCS/s.ipaa.cxx $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipaa.cxx,v $
 //
 // Revision history:
 //  14-Jun-95 - Original Version

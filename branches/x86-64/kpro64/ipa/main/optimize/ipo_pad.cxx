@@ -41,10 +41,10 @@
 // ====================================================================
 // ====================================================================
 //
-// $Revision: 1.5 $
-// $Date: 04/12/21 14:57:42-08:00 $
-// $Author: bos@eng-25.internal.keyresearch.com $
-// $Source: /home/bos/bk/kpro64-pending/ipa/main/optimize/SCCS/s.ipo_pad.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/optimize/ipo_pad.cxx,v $
 //
 // Revision history:
 //  2-May-98 - Original Version

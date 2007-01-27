@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_base.h
-// $Revision: 1.8 $
-// $Date: 05/01/26 14:58:09-08:00 $
-// $Author: fchow@fluorspar.keyresearch $
-// $Source: be/opt/SCCS/s.opt_base.h $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_base.h,v $
 //
 // Revision history:
 //  8-SEP-94 shin - Original Version

@@ -3,9 +3,9 @@
 // ====================================================================
 //
 // Module: opt_leaf_iter.cxx
-// $Revision$
-// $Date$
-// $Author$
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
 // $Source: /isms/cmplrs.src/osprey1.0/be/opt/RCS/opt_leaf_iter.cxx
 //
 // ====================================================================

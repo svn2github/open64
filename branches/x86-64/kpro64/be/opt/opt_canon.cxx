@@ -7,10 +7,10 @@
 // ====================================================================
 //
 // Module: opt_canon.cxx
-// $Revision: 1.8 $
-// $Date: 05/01/22 01:02:59-08:00 $
-// $Author: fchow@fluorspar.keyresearch $
-// $Source: be/opt/SCCS/s.opt_canon.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_canon.cxx,v $
 //
 // Revision history:
 //  3-MAY-95 dahl - Original Version

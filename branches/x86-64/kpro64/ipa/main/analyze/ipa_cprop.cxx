@@ -41,7 +41,7 @@
 // ====================================================================
 //
 // Module: ipa_cprop.cxx
-// $Source: /home/bos/bk/kpro64-pending/ipa/main/analyze/SCCS/s.ipa_cprop.cxx $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipa_cprop.cxx,v $
 //
 // Revision history:
 //  28-Jun-95 - Original Version
@@ -745,6 +745,11 @@ Connect_indirect_call (IPA_NODE* caller)
 
 	if (!call->Is_func_ptr ())
 	    continue;
+
+#ifdef KEY
+	if( call->Is_icall_slot() )
+	  continue;
+#endif
 
 	SUMMARY_VALUE &value = (*icall_iter)->Value();
 	if (!value.Is_addr_of () || !value.Is_global ())

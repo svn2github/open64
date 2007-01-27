@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_vnfre.cxx
-// $Revision: 1.8 $
-// $Date: 04/12/21 14:57:20-08:00 $
-// $Author: bos@eng-25.internal.keyresearch.com $
-// $Source: /home/bos/bk/kpro64-pending/be/opt/SCCS/s.opt_vnfre.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_vnfre.cxx,v $
 //
 // ====================================================================
 //
@@ -567,10 +567,14 @@ private:
 			      VN_VALNUM       remove_valnum,
 			      BOOL            is_istr_lhs,
 			      BOOL            within_valnum);
-
-#ifdef KEY // bug 9114
-   BOOL _ivc_loop_variant(BB_NODE *, VN_VALNUM);
-#endif
+   
+   // bug fix for OSP_101 & & OSP_103 & OSP_117 & OSP_189
+   //
+   BOOL _check_cr_compatible (VN_VALNUM valnum);
+   
+#ifdef KEY // bug 9114              
+  BOOL _ivc_loop_variant(BB_NODE *, VN_VALNUM);
+#endif                          
 
 public:
 
@@ -843,6 +847,13 @@ VALNUM_FRE::apply(void)
 	 //
 	 OPT_POOL_Push(_lpool, -1);
 	 OPT_POOL_Push(_vpool, -1);
+	 
+	 // bug fix for OSP_101 & OSP_103 $ OSP_117 & OSP_189		
+	 //
+	 if (_check_cr_compatible(valnum)) {
+	   _set_do_vnfre(valnum, FALSE);
+	   continue;
+	 }
 	 if (_do_vnfre(valnum))
 	 {
 	    EXP_WORKLST *worklst = _worklst(valnum);
@@ -1213,6 +1224,43 @@ VALNUM_FRE::_remove_nested_occurs(const CODEREP  *enclosing_cr,
       }
    }
 } // VALNUM_FRE::_remove_nested_occurs
+
+
+// bug fix for OSP_101 & OSP_103 & OSP_117 & OSP_189
+// check the compatibility of codereps which are mapped to the same value number,
+// they are not compatible, if Dtyp() and Dsctyp() of one coderep are all MTYPE_B,
+// while there existing coderep whose Dtyp() and Dsctyp() are all not MTYPE_B
+// TODO: Is it better to do not map these uncompatible codereps to the same value number?
+//
+BOOL
+VALNUM_FRE::_check_cr_compatible (VN_VALNUM valnum)
+{
+   BOOL has_uncompatible_cr = FALSE;
+   BOOL mtype_bool = FALSE;
+   BOOL mtype_non_bool = FALSE;
+
+   EXP_WORKLST *worklist = _worklst(valnum);
+   EXP_OCCURS  *occ;
+   EXP_OCCURS_ITER  occ_iter;
+
+   if (worklist == NULL)
+     return has_uncompatible_cr;
+   FOR_ALL_NODE(occ, occ_iter, Init(worklist->Real_occurs().Head()))
+   {
+     CODEREP *cr = occ->Occurrence();
+     if (cr->Dtyp() == MTYPE_B && cr->Dsctyp() == MTYPE_B)
+       mtype_bool = TRUE;
+     else if (cr->Dtyp() != MTYPE_B && cr->Dsctyp() != MTYPE_B)
+     //else if (cr->Dtyp() == MTYPE_I4 && cr->Dsctyp() == MTYPE_I4)
+       mtype_non_bool = TRUE;
+
+     if (mtype_bool == TRUE && mtype_non_bool == TRUE) {
+       has_uncompatible_cr = TRUE;
+     }
+   }
+   
+   return has_uncompatible_cr;
+}
 
 
 // ---------------------------------------------------------------------------

@@ -41,7 +41,7 @@
  * ====================================================================
  *
  * Module: ipc_weak.h
- * $Source: /home/bos/bk/kpro64-pending/ipa/common/SCCS/s.ipc_weak.h $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/common/ipc_weak.h,v $
  *
  * Revision history:
  *  14-Jun-95 - Original Version

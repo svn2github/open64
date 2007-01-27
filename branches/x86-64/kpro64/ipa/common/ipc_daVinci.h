@@ -42,10 +42,10 @@
  * ====================================================================
  *
  * Module: ipc_daVinci.h
- * $Revision: 1.3 $
- * $Date: 04/12/21 14:57:36-08:00 $
- * $Author: bos@eng-25.internal.keyresearch.com $
- * $Source: /home/bos/bk/kpro64-pending/ipa/common/SCCS/s.ipc_daVinci.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/common/ipc_daVinci.h,v $
  *
  * Description:
  *	Class definition for the interface to daVinci.

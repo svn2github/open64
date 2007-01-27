@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_emit_template.h
-// $Revision: 1.35 $
-// $Date: 05/11/22 17:29:23-08:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_emit_template.h $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_emit_template.h,v $
 //
 // Revision history:
 //  03-OCT-96 shin - Original Version
@@ -796,12 +792,16 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 				 0);
 	}
 	else {
-	  prag = WN_CreateXpragma(WN_PRAGMA_ASM_CLOBBER,
-				  (ST_IDX) 0,
+	  // bug fix for OSP_87 & OSP_90
+          prag = WN_CreateXpragma(WN_PRAGMA_ASM_CLOBBER,
+				  (ST_IDX) p->clobber_string_idx,
 				  1);
 	  WN_kid0(prag) = WN_CreateIdname(p->preg_number,
 					  p->preg_st_idx);
-	  WN_pragma_arg2(prag) = p->clobber_string_idx;
+#ifndef PATHSCALE_MERGE_ZHC
+	  if(WN_kid0(prag) == 0)
+#endif
+	    WN_pragma_arg2(prag) = p->clobber_string_idx;
 	}
 	WN_INSERT_BlockAfter(clobber_block,
 			     WN_last (clobber_block),

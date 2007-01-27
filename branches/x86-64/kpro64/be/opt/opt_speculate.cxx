@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_speculate.h
-// $Revision: 1.5 $
-// $Date: 04/12/21 14:57:19-08:00 $
-// $Author: bos@eng-25.internal.keyresearch.com $
-// $Source: /home/bos/bk/kpro64-pending/be/opt/SCCS/s.opt_speculate.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_speculate.cxx,v $
 //
 // ====================================================================
 //
@@ -259,7 +259,7 @@ EXP_WORKLST::Estimate_cost(ETABLE *etable, PRE_KIND pre_kind)
 
   if (Get_Trace(TP_WOPT2, FB_PRE_FLAG)) {
     fprintf(TFile, "==== Estimate cost ====\n");
-    fprintf(TFile, " num components=%d\n", component.size());
+    fprintf(TFile, " num components=%d\n", (INT)component.size());
     for (int i = 0; i < component.size(); ++i) {
       if (original_count[i] > 0) {
 	fprintf(TFile, "%s: enum=%d %s=%lld no_opt=%d pre=%d fb_pre=%d\n",

@@ -1,9 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,7 +42,7 @@
 // ====================================================================
 //
 // Module: ipa_inline.cxx
-// $Source: ipa/main/analyze/SCCS/s.ipa_inline.cxx $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipa_inline.cxx,v $
 //
 // Revision history:
 //  16-Nov-96 - Original Version
@@ -73,6 +69,8 @@
 #if 0
 #include "ipo_defs.h"			// IPA_NODE_CONTEXT
 #endif
+
+#include "symtab_access.h"
 
 //^INLINING_TUNING
 #define MINI_APPLICATION	10000
@@ -115,8 +113,13 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   OPC_U8STID,     /* MTYPE_U8 */
   OPC_F4STID,     /* MTYPE_F4 */
   OPC_F8STID,     /* MTYPE_F8 */
-  OPC_UNKNOWN,    /* MTYPE_F10 */
-  OPC_UNKNOWN,    /* MTYPE_F16 */
+#ifdef TARG_IA64
+  OPC_F10STID,    /* MTYPE_F10 */
+  OPC_F16STID,    /* MTYPE_F16 */
+#elif TARG_X8664
+  OPC_UNKNOWN,    /* MTYPE_F10 */ 
+  OPC_UNKNOWN,    /* MTYPE_F16 */ 
+#endif
   OPC_UNKNOWN,    /* MTYPE_STR */
   OPC_FQSTID,     /* MTYPE_FQ */
   OPC_UNKNOWN,    /* MTYPE_M */
@@ -480,6 +483,7 @@ void inline_do_it (IPA_EDGE * ed, IPA_NODE * caller, IPA_NODE * callee,
 						  callee);
     if (Trace_IPA || Trace_Perf) {
         UINT32 callee_weight = Effective_weight (callee);
+	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
 	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
 	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n", DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
     }
@@ -534,6 +538,10 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     UINT32 caller_weight = caller->Weight ();
     UINT32 callee_weight = Effective_weight (callee);
     UINT32 combined_weight = Get_combined_weight (caller->PU_Size(), callee->PU_Size(), callee);
+
+    if (PU_is_operator(callee->Get_PU()) && ed->Num_Actuals() <= 2)
+      combined_weight = 1;
+
 #ifdef KEY
     float hotness = callee->Get_feedback() == NULL ? 0.0 :
       compute_hotness (ed, callee, callee_weight);       
@@ -657,9 +665,9 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	
 	if (ed->Has_frequency ()) {
 #ifdef KEY
-	    if(ed->Get_frequency ().Value() == 0.0)
+	    if(ed->Get_frequency ().Value() == 0.0f)
 #else
-	    if(ed->Get_frequency ()._value == 0.0)
+	    if(ed->Get_frequency ()._value == 0.0f)
 #endif
 	    {
 		ed->Set_reason_id(32);
@@ -680,11 +688,20 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	    return FALSE;
 	}
 
+	if (callee_weight >= non_aggr_callee_limit && 
+	    hotness < (float)IPA_Min_Hotness &&
+	    ed->Summary_Callsite ()->Is_in_case_clause ()) {
+	    ed->Set_reason_id(34);
+	    Report_Reason (callee, caller, "Infrequent callee in switch statements", ed);
+	    return FALSE;
+	}
+
         if (callee_weight > IPA_PU_Minimum_Size) {
             if (combined_weight > IPA_PU_Limit) {
 		ed->Set_reason_id(26);
 		ed->Set_reason_data((float)combined_weight);
-		Report_Limit_Reason ( callee, caller, ed, "combined size(%f) exceeds -IPA:plimit=%f", combined_weight,IPA_PU_Limit  );
+		Report_Limit_Reason (callee, caller, ed, "combined size(%f) exceeds -IPA:plimit=%f", 
+	                             combined_weight,IPA_PU_Limit);
 		return FALSE;
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
 	    } 
@@ -728,7 +745,11 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		return FALSE;
 #endif // _STANDALONE_INLINER
 	    }else{ // 1.
-                if (callee_weight > IPA_Small_Callee_Limit && cg->Num_In_Edges(callee) > 1) {
+#ifndef PATHSCALE_MERGE_ZHC
+                if (callee_weight > IPA_Small_Callee_Limit && cg->Num_In_Edges(callee) > 2) {
+#else
+		if (callee_weight > IPA_Small_Callee_Limit && cg->Num_In_Edges(callee) > 1) {
+#endif
                     /* We try to screen out callees that are too large, but
                      * accept those that have only one caller:
                      */
@@ -740,7 +761,12 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
                     }
                 }
 
-                if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 0 && callee_weight > non_aggr_callee_limit) {
+#ifndef PATHSCALE_MERGE_ZHC
+                if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 1 && 
+                    callee_weight > non_aggr_callee_limit) {
+#else
+		if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 0 && callee_weight > non_aggr_callee_limit) {
+#endif
                     /* Less aggressive inlining: don't inline unless it is
                      * either small, leaf, or called from a loop. 
                      */
@@ -965,14 +991,16 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	    TY_IDX formal = base_type_of_array (ty_formal);
 	    TYPE_ID actual_type = BASETYPE (ty_actual);
 	    TYPE_ID formal_type = BASETYPE (formal);
-	    if ((actual_type == MTYPE_C8 && formal_type == MTYPE_F8) ||
-	        (actual_type == MTYPE_C4 && formal_type == MTYPE_F4))
+	    if ((actual_type == MTYPE_C10 && formal_type == MTYPE_F10) ||
+		(actual_type == MTYPE_C8 && formal_type == MTYPE_F8) ||
+		(actual_type == MTYPE_C4 && formal_type == MTYPE_F4))
 	      return TRUE;
 
 	    // Actual can be complex, and formal can be array of 1 formal or
 	    // of variable size where size should be 1.
-	    if ((actual_type == MTYPE_C8 && formal_type == MTYPE_C8) ||
-	        (actual_type == MTYPE_C4 && formal_type == MTYPE_C4))
+	    if ((actual_type == MTYPE_C10 && formal_type == MTYPE_C10) ||
+		(actual_type == MTYPE_C8 && formal_type == MTYPE_C8) ||
+		(actual_type == MTYPE_C4 && formal_type == MTYPE_C4))
 	      return TRUE;
 	  }
 	}
@@ -1005,8 +1033,10 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	if (INLINE_Check_Compatibility == RELAXED_CHECK)
 	{
 	  if (actual_is_array && formal_is_array &&
-	      ((actual_element_size==MTYPE_C8 && 
-	        formal_element_size==MTYPE_F8) ||
+	      ((actual_element_size==MTYPE_C10 &&
+		formal_element_size==MTYPE_F10) ||
+	       (actual_element_size==MTYPE_C8 &&
+		formal_element_size==MTYPE_F8) ||
 	       (actual_element_size==MTYPE_C4 && 
 	        formal_element_size==MTYPE_F4)))
 	  {
@@ -1016,7 +1046,9 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	  }
 	  // the other way
 	  if (actual_is_array && formal_is_array &&
-	      ((actual_element_size==MTYPE_F8 && 
+	      ((actual_element_size==MTYPE_F10 && 
+	        formal_element_size==MTYPE_C10) ||
+	       (actual_element_size==MTYPE_F8 && 
 	        formal_element_size==MTYPE_C8) ||
 	       (actual_element_size==MTYPE_F4 && 
 	        formal_element_size==MTYPE_C4)))
@@ -1199,7 +1231,7 @@ IPA_NODE::UpdateSize (IPA_NODE *callee, IPA_EDGE *ed)
 // count, set the edge to no_inline, adjust the total program
 // size
 //--------------------------------------------------------------
-static void
+void
 Update_Call_Graph (IPA_NODE *n)
 {
 
@@ -1601,13 +1633,14 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
     } 
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     else if (Opt_Options_Inconsistent && 
-    	     caller->File_Id() != callee->File_Id() &&
-             // The caller and callee come from different files, check if they
-             // are to be compiled with different options
-             different_options (caller, callee)) {
+    	     caller->File_Id() != callee->File_Id()) {
+    // The caller and callee come from different files, check if they
+    // are to be compiled with different options
+    	if (different_options (caller, callee)) {
 	    result = FALSE;
 	    reason = "optimization options are different for caller and callee";
 	    ed->Set_reason_id (34);
+	}
     }
     else if (IPA_Enable_Pure_Call_Opt && 
              !callee->Summary_Proc()->Has_side_effect() &&

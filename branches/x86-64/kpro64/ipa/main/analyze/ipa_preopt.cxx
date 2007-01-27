@@ -42,10 +42,10 @@
 // ====================================================================
 //
 // Module: ipa_preopt.cxx
-// $Revision: 1.6 $
-// $Date: 05/07/07 15:20:51-07:00 $
-// $Author: gautam@jacinth.keyresearch $
-// $Source: ipa/main/analyze/SCCS/s.ipa_preopt.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipa_preopt.cxx,v $
 //
 // Revision history:
 //  7-15-98 - Original Version

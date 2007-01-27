@@ -183,15 +183,13 @@ ST_is_export_local (const ST *s)
 	return (ST_export(s) == EXPORT_LOCAL ||
 		ST_export(s) == EXPORT_LOCAL_INTERNAL);
 }
-#ifdef PATHSCALE_MERGE
+
 // bug fix for OSP_155
 inline BOOL
 ST_is_export_hidden (const ST *s)
 {
-    return (ST_export(s) == EXPORT_HIDDEN);
+	return (ST_export(s) == EXPORT_HIDDEN);
 }
-
-#endif
 
 inline TY_IDX
 ST_pu_type (const ST* s)

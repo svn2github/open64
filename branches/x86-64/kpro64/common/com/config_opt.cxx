@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_opt.cxx
- * $Revision: 1.35 $
- * $Date: 05/12/02 16:59:45-08:00 $
- * $Author: fchow@fluorspar.internal.keyresearch.com $
- * $Source: common/com/SCCS/s.config_opt.cxx $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_opt.cxx,v $
  *
  * Revision history:
  *  08-Sep-94 - Original Version (wodriver.c)
@@ -84,7 +84,11 @@ BOOL Show_OPT_Warnings = TRUE;          /* Display OPT warning messages */
 OPTION_LIST *Alias_Option = NULL;
 BOOL Alias_Pointer_Parms = TRUE;        /* Parms ptr indep? */
 BOOL Alias_Pointer_Cray = FALSE;        /* Cray pointer semantics? */
-BOOL Alias_Pointer_Types = FALSE;	/* Ptrs to distinct basic types indep? */
+#ifndef PATHSCALE_MERGE_ZHC
+BOOL Alias_Pointer_Types = TRUE;	/* Ptrs to distinct basic types indep? */
+#else
+BOOL Alias_Pointer_Types = FALSE;        /* Ptrs to distinct basic types indep? */
+#endif
 BOOL Alias_Not_In_Union  = FALSE;	/* Ptrs point to non-union types */
 BOOL Alias_Pointer_Strongly_Typed = FALSE; /* Ptrs to distinct types indep? */
 BOOL Alias_Pointer_Named_Data = FALSE;	/* No pointers to named data? */
@@ -162,8 +166,8 @@ BOOL GCM_Speculative_Ptr_Deref= TRUE;  /* allow load speculation of a memory
 BOOL GCM_Speculative_Ptr_Deref_Set=FALSE;   /* ... option seen? */
 
 /***** Limits on optimization *****/
-#define DEFAULT_OLIMIT		6000
-#define DEFAULT_O3_OLIMIT	9000	/* allow more time for -O3 compiles */
+#define DEFAULT_OLIMIT		24000
+#define DEFAULT_O3_OLIMIT	30000	/* allow more time for -O3 compiles */
 #define MAX_OLIMIT		INT32_MAX
 INT32 Olimit = DEFAULT_OLIMIT;
 static BOOL Olimit_Set = FALSE;
@@ -181,6 +185,7 @@ SKIPLIST *Goto_Skip_List = NULL;		/* Processed list */
 #endif
 
 /***** Miscellaneous -OPT: group options *****/
+BOOL Olegacy = FALSE;    /* -OPT:Olegacy to resume original default flag*/
 char *Ofast = NULL;		/* -OPT:Ofast platform name */
 BOOL OPT_Pad_Common = FALSE;	/* Do internal common block padding? */
 BOOL OPT_Reorg_Common = FALSE;	/* Do common block reorganization (split)? */
@@ -224,6 +229,8 @@ BOOL Instrumentation_Enabled = FALSE;
 UINT32 Instrumentation_Actions = 0;
 BOOL Instrumentation_Unique_Output = FALSE; // always create unique output
 OPTION_LIST *Feedback_Option = NULL;
+BOOL Outlining_Enabled = FALSE;
+BOOL Instrumentation_Enabled_Before = FALSE;
 
 #ifdef KEY
 BOOL   Asm_Memory = FALSE;
@@ -716,6 +723,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL, OV_VISIBLE,     FALSE, "ansi_setjmp",           "ansi_setjmp",
     0, 0, 0,  &LANG_Ansi_Setjmp_On,   &LANG_Ansi_Setjmp_Set,
     "C/C++: enable optimization of functions with calls to setjmp" },
+
+  { OVK_BOOL,   OV_SHY,       FALSE, "Olegacy",    "Olegacy",
+    0, 0, 0,    &Olegacy,               NULL,
+    "default options for performance on shared and alias" },
 
 #ifdef __linux__
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wfe_dfe",	"wfe_dfe",

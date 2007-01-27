@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_dse.cxx
-// $Revision: 1.17 $
-// $Date: 05/06/13 20:16:52-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_dse.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_dse.cxx,v $
 //
 // Revision history:
 //  21-DEC-94 streich - Original Version

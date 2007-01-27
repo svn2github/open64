@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*- 
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_sym.cxx
-// $Revision: 1.37 $
-// $Date: 05/06/27 19:22:30-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_sym.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_sym.cxx,v $
 //
 // ====================================================================
 //

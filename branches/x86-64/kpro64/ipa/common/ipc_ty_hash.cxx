@@ -620,6 +620,10 @@ static UINT collecting_recursive_ty = 0;
 void
 Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 {
+#if 0
+    // why make following assumption?, the sizeof() and __alignof__ 
+    // may varies from system to system. - sxyang, 3/19/2006
+    
     // check if the assumption used by fast comparision of structs are valid
 #ifdef  __GNUC__
 
@@ -637,7 +641,7 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
     Is_True (sizeof(ARB) == 32 && __builtin_alignof (ARB) == 8,
 	     ("Invalid size/alignment assumption"));
 #endif
-
+#endif
     ty_hash_table = CXX_NEW (TY_HASH_TABLE (1000, TY_HASH (), equal_to<TY>(), 
 					    TY_EXTRACT_KEY (), pool),
 			     pool);

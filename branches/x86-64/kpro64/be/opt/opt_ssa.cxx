@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_ssa.cxx
-// $Revision: 1.24 $
-// $Date: 05/09/15 15:45:49-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_ssa.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_ssa.cxx,v $
 //
 // Revision history:
 //  3-OCT-94 lo - Initial Version
@@ -1038,10 +1038,10 @@ SSA::Get_zero_version_CR(AUX_ID aux_id, OPT_STAB *opt_stab, VER_ID du)
 				   opt_stab->St_ofst(aux_id), ty, 0, TRUE);
     cr->Set_flag(CF_MADEUP_TYPE);
     cr->Set_flag(CF_IS_ZERO_VERSION);
-#ifdef KEY
-    if (opt_stab->Is_volatile(aux_id))
+    // begin - fix for bug OSP 194
+    if( opt_stab->Is_volatile(aux_id) )
       cr->Set_var_volatile();
-#endif
+    // end - fix for bug OSP 194 
     opt_stab->Set_zero_cr(aux_id, cr);
   }
 

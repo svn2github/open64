@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_estr.cxx
-// $Revision: 1.12 $
-// $Date: 05/04/25 21:42:38-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_estr.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_estr.cxx,v $
 //
 // ====================================================================
 //

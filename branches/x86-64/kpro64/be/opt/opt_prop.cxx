@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_prop.cxx
-// $Revision: 1.23 $
-// $Date: 05/07/20 20:47:32-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_prop.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_prop.cxx,v $
 //
 // Revision history:
 //  20-DEC-94 - Original Version
@@ -1798,6 +1794,8 @@ COPYPROP::Propagatable_thru_phis(CODEREP *lexp, CODEREP *rexp,
     PROP_THRU_PHI_PREFERENCE pref0;
     BOOL can_prop = TRUE;
     *ppref = EITHER_SIDE;
+    Is_True(lexp->Kid_count() == rexp->Kid_count(),
+            ("COPYPROP::Propagatable_thru_phis: lexp and rexp Kid_counts differ"));
     for (INT32 i = 0; i < lexp->Kid_count(); i++) {
       if (! Propagatable_thru_phis(lexp->Opnd(i), rexp->Opnd(i), bb, phi_simp_var, &pref0)) {
 	can_prop = FALSE;

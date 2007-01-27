@@ -1793,6 +1793,7 @@ Merge_Global_Initv(UINT                  initv_idx,
     //
     switch (INITV_kind(original_initv)) {
     case INITVKIND_SYMOFF:
+    case INITVKIND_SYMIPLT:
 	st_idx = INITV_symoff_st(original_initv);
 	if (ST_IDX_level (st_idx) == GLOBAL_SYMTAB) {
 	    new_st_idx = (*New_St_Idx)[st_idx];

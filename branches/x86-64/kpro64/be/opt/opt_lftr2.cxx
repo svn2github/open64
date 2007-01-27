@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -11,10 +7,10 @@
 // ====================================================================
 //
 // Module: opt_lftr2.cxx
-// $Revision: 1.6 $
-// $Date: 04/12/21 14:57:18-08:00 $
-// $Author: bos@eng-25.internal.keyresearch.com $
-// $Source: /home/bos/bk/kpro64-pending/be/opt/SCCS/s.opt_lftr2.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_lftr2.cxx,v $
 //
 // ====================================================================
 //
@@ -1238,7 +1234,7 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
 
     // adjust operator of new comparison
     OPERATOR new_compare_opr = comparison_cr->Opr();
-#ifdef KEY
+#ifdef TARG_X8664
     MTYPE new_compare_type = tempcr->Dtyp();
     // do not change signedness of comparison since that could change semantics
     new_compare_type = Mtype_TransferSign(comparison_cr->Dsctyp(), 

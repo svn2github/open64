@@ -729,48 +729,48 @@ void CG_BROWSER::Summary_Locate(FILE* fp)
   Buffer().Scan_HexInteger(&summary_address);   
   SUMMARY_SYMBOL* symbol_array = IPA_get_symbol_array(Cnode());
   INT32 size = Summary_Size('S');
-  INT i = (SUMMARY_SYMBOL*) summary_address - symbol_array;
+  INT i = (SUMMARY_SYMBOL*)(INTPTR)summary_address - symbol_array;
   if (i >= 0 && i < size) {
     Summary_Symbol(fp, i, FALSE);
     return;
   } 
   IVAR* ivar_array = IPA_get_ivar_file_array(Cnode()->File_Header(), size);
-  i = (IVAR*) summary_address - ivar_array;
+  i = (IVAR*)(INTPTR) summary_address - ivar_array;
   if (i >= 0 && i < size) {
     Summary_Ivar(fp, i);
     return;
   } 
   SUMMARY_FORMAL* formal_array = IPA_get_formal_array(Cnode());
   size = Summary_Size('F');
-  i = (SUMMARY_FORMAL*) summary_address - formal_array;
+  i = (SUMMARY_FORMAL*)(INTPTR) summary_address - formal_array;
   if (i >= 0 && i < size) {
     Summary_Formal(fp, i);
     return;
   } 
   SUMMARY_GLOBAL* global_array = IPA_get_global_array(Cnode());
   size = Summary_Size('G');
-  i = (SUMMARY_GLOBAL*) summary_address - global_array;
+  i = (SUMMARY_GLOBAL*)(INTPTR) summary_address - global_array;
   if (i >= 0 && i < size) {
     Summary_Global(fp, i);
     return;
   } 
   SUMMARY_ACTUAL* actual_array = IPA_get_actual_array(Cnode());
   size = Summary_Size('A');
-  i = (SUMMARY_ACTUAL*) summary_address - actual_array;
+  i = (SUMMARY_ACTUAL*)(INTPTR) summary_address - actual_array;
   if (i >= 0 && i < size) {
     Summary_Actual(fp, i);
     return;
   } 
   SUMMARY_VALUE* value_array = IPA_get_value_array(Cnode());
   size = Summary_Size('V');
-  i = (SUMMARY_VALUE*) summary_address - value_array;
+  i = (SUMMARY_VALUE*)(INTPTR) summary_address - value_array;
   if (i >= 0 && i < size) {
     Summary_Value(fp, i);
     return;
   } 
   SUMMARY_COMMON* common_array = IPA_get_common_array(Cnode());
   size = Summary_Size('C');
-  i = (SUMMARY_COMMON*) summary_address - common_array;
+  i = (SUMMARY_COMMON*)(INTPTR) summary_address - common_array;
   if (i >= 0 && i < size) {
     Summary_Common(fp, i);
     return;
@@ -778,7 +778,7 @@ void CG_BROWSER::Summary_Locate(FILE* fp)
   SUMMARY_COMMON_SHAPE* common_shape_array  
     = IPA_get_common_shape_array(Cnode());
   size = Summary_Size('K');
-  i = (SUMMARY_COMMON_SHAPE*) summary_address - common_shape_array;
+  i = (SUMMARY_COMMON_SHAPE*)(INTPTR) summary_address - common_shape_array;
   if (i >= 0 && i < size) {
     Summary_Common_Shape(fp, i);
     return;
@@ -786,35 +786,35 @@ void CG_BROWSER::Summary_Locate(FILE* fp)
   SUMMARY_CONTROL_DEPENDENCE* control_array
     = IPA_get_ctrl_dep_array(Cnode());
   size = Summary_Size('D');
-  i = (SUMMARY_CONTROL_DEPENDENCE*) summary_address - control_array;
+  i = (SUMMARY_CONTROL_DEPENDENCE*)(INTPTR) summary_address - control_array;
   if (i >= 0 && i < size) {
     Summary_Control_Dependence(fp, i);
     return;
   } 
   SUMMARY_CALLSITE* callsite_array = IPA_get_callsite_array(Cnode());
   size = Summary_Size('L');
-  i = (SUMMARY_CALLSITE*) summary_address - callsite_array;
+  i = (SUMMARY_CALLSITE*)(INTPTR) summary_address - callsite_array;
   if (i >= 0 && i < size) {
     Summary_Callsite(fp, i);
     return;
   } 
   CFG_NODE_INFO* cfg_array = IPA_get_cfg_node_array(Cnode());
   size = Summary_Size('a');
-  i = (CFG_NODE_INFO*) summary_address - cfg_array;
+  i = (CFG_NODE_INFO*)(INTPTR) summary_address - cfg_array;
   if (i >= 0 && i < size) {
     Summary_Cfg_Node(fp, i);
     return;
   } 
   SCALAR_INFO* scalar_array = IPA_get_scalar_array(Cnode());
   size = Summary_Size('s');
-  i = (SCALAR_INFO*) summary_address - scalar_array;
+  i = (SCALAR_INFO*)(INTPTR) summary_address - scalar_array;
   if (i >= 0 && i < size) {
     Summary_Scalar(fp, i);
     return;
   } 
   REGION_ARRAYS* region_array = IPA_get_region_array(Cnode());
   size = Summary_Size('R');
-  i = (REGION_ARRAYS*) summary_address - region_array;
+  i = (REGION_ARRAYS*)(INTPTR) summary_address - region_array;
   if (i >= 0 && i < size) {
     Summary_Region(fp, i);
     return;
@@ -822,7 +822,7 @@ void CG_BROWSER::Summary_Locate(FILE* fp)
   PROJECTED_REGION* proj_region_array
     = IPA_get_proj_region_array(Cnode());
   size = Summary_Size('r');
-  i = (PROJECTED_REGION*) summary_address - proj_region_array;
+  i = (PROJECTED_REGION*)(INTPTR) summary_address - proj_region_array;
   if (i >= 0 && i < size) {
     Summary_Projected_Region(fp, i);
     return;
@@ -830,70 +830,70 @@ void CG_BROWSER::Summary_Locate(FILE* fp)
   PROJECTED_NODE* proj_node_array
     = IPA_get_projected_node_array(Cnode());
   size = Summary_Size('n');
-  i = (PROJECTED_NODE*) summary_address - proj_node_array;
+  i = (PROJECTED_NODE*)(INTPTR) summary_address - proj_node_array;
   if (i >= 0 && i < size) {
     Summary_Projected_Node(fp, i);
     return;
   } 
   TERM* term_array = IPA_get_term_array(Cnode());
   size = Summary_Size('t');
-  i = (TERM*) summary_address - term_array;
+  i = (TERM*)(INTPTR) summary_address - term_array;
   if (i >= 0 && i < size) {
     Summary_Term(fp, i);
     return;
   } 
   LOOPINFO* loopinfo_array = IPA_get_loopinfo_array(Cnode());
   size = Summary_Size('l');
-  i = (LOOPINFO*) summary_address - loopinfo_array;
+  i = (LOOPINFO*)(INTPTR) summary_address - loopinfo_array;
   if (i >= 0 && i < size) {
     Summary_Loop_Info(fp, i);
     return;
   } 
   SUMMARY_PROCEDURE* procedure_array = IPA_get_procedure_array(Cnode());
   size = Summary_Size('P');
-  i = (SUMMARY_PROCEDURE*) summary_address - procedure_array;
+  i = (SUMMARY_PROCEDURE*)(INTPTR) summary_address - procedure_array;
   if (i >= 0 && i < size) {
     Summary_Procedure(fp, i);
     return;
   } 
   SUMMARY_PHI* phi_array = IPA_get_phi_array(Cnode()); 
   size = Summary_Size('p');
-  i = (SUMMARY_PHI*) summary_address - phi_array; 
+  i = (SUMMARY_PHI*)(INTPTR) summary_address - phi_array; 
   if (i >= 0 && i < size) {
     Summary_Phi(fp, i);
     return; 
   } 
   SUMMARY_CHI* chi_array = IPA_get_chi_array(Cnode());
   size = Summary_Size('x');
-  i = (SUMMARY_CHI*) summary_address - chi_array; 
+  i = (SUMMARY_CHI*)(INTPTR) summary_address - chi_array; 
   if (i >= 0 && i < size) {
     Summary_Chi(fp, i);
     return; 
   } 
   SUMMARY_EXPR* expr_array = IPA_get_expr_array(Cnode());
   size = Summary_Size('E');
-  i = (SUMMARY_EXPR*) summary_address - expr_array; 
+  i = (SUMMARY_EXPR*)(INTPTR) summary_address - expr_array; 
   if (i >= 0 && i < size) {
     Summary_Expr(fp, i);
     return; 
   } 
   SUMMARY_STID* stid_array = IPA_get_stid_array(Cnode()); 
   size = Summary_Size('X'); 
-  i = (SUMMARY_STID*) summary_address - stid_array; 
+  i = (SUMMARY_STID*)(INTPTR) summary_address - stid_array; 
   if (i >= 0 && i < size) {
     Summary_Stid(fp, i);
     return;
   } 
   SUMMARY_STMT* stmt_array = IPA_get_stmt_array(Cnode()); 
   size = Summary_Size('Y'); 
-  i = (SUMMARY_STMT*) summary_address - stmt_array; 
+  i = (SUMMARY_STMT*)(INTPTR) summary_address - stmt_array; 
   if (i >= 0 && i < size) {
     Summary_Stmt(fp, i);
     return;
   } 
   SUMMARY_FEEDBACK* feedback_array = IPA_get_feedback_array(Cnode());
   size = Summary_Size('f');
-  i = (SUMMARY_FEEDBACK*) summary_address - feedback_array; 
+  i = (SUMMARY_FEEDBACK*)(INTPTR) summary_address - feedback_array; 
   if (i >= 0 && i < size) {
     Summary_Feedback(fp, i);
     return; 

@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_sym.h
-// $Revision: 1.15 $
-// $Date: 05/06/29 16:05:28-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_sym.h $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_sym.h,v $
 //
 // Revision history:
 //  28-SEP-94 shin - Original Version
@@ -274,6 +270,7 @@ class AUX_STAB_ENTRY
 {
   friend class OPT_STAB;  // allow OPT_STAB to access this fields directly.
   friend class SSU;	  // SSU needs to get at St_group
+  friend class WOVP;	  // WOVP needs to modify Aux_stab_entry
   // Alias information
 
 private:
@@ -966,6 +963,9 @@ private:
   BOOL	   REGION_merge_aux_id_points_to(POINTS_TO_SET **pset, AUX_ID aux_id);
   void	   REGION_add_to_bound(RID *rid, AUX_ID aux_id, BOOL empty);
   BOOL	   REGION_verify_bound(RID *rid, AUX_ID aux_id);
+
+  // Misc 
+  BOOL     Its_ret_val_of_malloc (VER_ID ver);
 
   // ------------------------------------------------------------------
 

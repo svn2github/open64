@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_ivr.cxx
-// $Revision: 1.19 $
-// $Date: 05/02/25 21:07:11-08:00 $
-// $Author: fchow@fluorspar.keyresearch $
-// $Source: be/opt/SCCS/s.opt_ivr.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_ivr.cxx,v $
 //
 // Revision history:
 //  28-JAN-95 shin - Original Version

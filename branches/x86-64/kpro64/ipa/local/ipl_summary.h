@@ -46,7 +46,7 @@
  * ====================================================================
  *
  * Module: ipl_summary.h
- * $Source: ipa/local/SCCS/s.ipl_summary.h $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/local/ipl_summary.h,v $
  *
  * Description:
  *    Describe data structures of the summary information.  We only define
@@ -820,9 +820,18 @@ class SUMMARY_CALLSITE
 #define IPL_CALL_MUST_INLINE	0x08
 #define IPL_CALL_NO_INLINE	0x10
 
+#ifndef PATHSCALE_MERGE_ZHC
 #ifdef KEY
-#define IPL_ICALL_TARGET	0x20
+#define IPL_ICALL_SLOT        0x20  
 #endif
+#endif
+
+#define IPL_IN_CASE_CLAUSE      0x40
+
+#ifdef KEY
+#define IPL_ICALL_TARGET        0x80
+#endif
+
     
 private:
 
@@ -900,13 +909,22 @@ public:
     BOOL Is_func_ptr () const		{ return (_state & IPL_FUNC_PTR); }
 
 #ifdef KEY
-    void Set_icall_target ()		{ _state |= IPL_ICALL_TARGET; }
-    void Reset_icall_target ()		{ _state &= ~IPL_ICALL_TARGET; }
-    BOOL Is_icall_target () const	{ return (_state & IPL_ICALL_TARGET); }
+    void Set_icall_target () { _state |= IPL_ICALL_TARGET; }
+    void Reset_icall_target () { _state &= ~IPL_ICALL_TARGET; }
+    BOOL Is_icall_target () const { return (_state & IPL_ICALL_TARGET); }
+#endif
+
+#ifdef KEY
+    void Set_icall_slot ()		{ _state |= IPL_ICALL_SLOT; }
+    void Reset_icall_slot ()		{ _state &= ~IPL_ICALL_SLOT; }
+    BOOL Is_icall_slot () const		{ return (_state & IPL_ICALL_SLOT); }
+#endif
 
     void Set_probability (float p)	{ _probability = p; }
     float Get_probability () const	{ return _probability; }
-#endif
+
+    BOOL Is_in_case_clause (void) const	{ return (_state & IPL_IN_CASE_CLAUSE); }
+    void Set_in_case_clause (void)	{ _state |= IPL_IN_CASE_CLAUSE; }
 
     void Set_intrinsic()		{ _state |= IPL_INTRINSIC_FUNC; }
     BOOL Is_intrinsic() const		{ return _state & IPL_INTRINSIC_FUNC; };

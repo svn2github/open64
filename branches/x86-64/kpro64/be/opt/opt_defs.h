@@ -3,10 +3,10 @@
 // ====================================================================
 //
 // Module: opt_defs.h
-// $Revision$
-// $Date$
-// $Author$
-// $Source$
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_defs.h,v $
 //
 // Revision history:
 //  30-AUG-94 - Original Version
@@ -190,6 +190,7 @@ Is_fortran(void)
 #define BOOL_SIMP_FLAG          0x4 /* boolean expr simplification */
 #define FB_PRE_FLAG             0x8 /* trace feedback PRE */
 #define CFG_OPT_FLAG           0x10 /* trace CFG optimzation */
+#define WOVP_DUMP_FLAG         0x20 /* dump after write-once variable promotion*/
 
 /* Flags associated with value numbering scheme and the 
  * WOPT_Enable_Value_Numbering option.

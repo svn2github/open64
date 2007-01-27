@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_opt.h
- * $Revision: 1.22 $
- * $Date: 05/12/02 16:59:45-08:00 $
- * $Author: fchow@fluorspar.internal.keyresearch.com $
- * $Source: common/com/SCCS/s.config_opt.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_opt.h,v $
  *
  * Revision history:
  *  05-May-96 - Extracted from be/opt/opt_config.h.
@@ -156,6 +156,7 @@ extern BOOL OPT_shared_memory;	// assume use of shared memory
 extern INT32 Instrumentation_Phase_Num;
 extern INT32 Instrumentation_Type_Num;
 extern BOOL Instrumentation_Enabled;
+extern BOOL Instrumentation_Enabled_Before;
 extern UINT32 Instrumentation_Actions;
 extern BOOL Instrumentation_Unique_Output;
 extern INT32 Feedback_Phase_Num;

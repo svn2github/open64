@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_wn.cxx
-// $Revision: 1.31 $
-// $Date: 05/09/15 15:45:49-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_wn.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_wn.cxx,v $
 //
 // Revision history:
 //  12-SEP-94 shin - Original Version
@@ -538,9 +538,13 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_U8:	return OPC_U8U8LDID;
     case MTYPE_F4:	return OPC_F4F4LDID;
     case MTYPE_F8:	return OPC_F8F8LDID;
+    case MTYPE_F10:	return OPC_F10F10LDID;
     case MTYPE_FQ:	return OPC_FQFQLDID;
     case MTYPE_C4:	return OPC_C4C4LDID;
     case MTYPE_C8:	return OPC_C8C8LDID;
+#ifndef TARG_X8664
+    case MTYPE_C10:	return OPC_C10C10LDID;
+#endif
     case MTYPE_CQ:	return OPC_CQCQLDID;
 #ifdef TARG_X8664
     case MTYPE_V16I1:	return OPC_V16I1V16I1LDID;
@@ -562,7 +566,6 @@ Ldid_from_mtype( MTYPE mtype )
 #endif
 
     case MTYPE_B:
-    case MTYPE_F10:
     case MTYPE_F16:
     case MTYPE_STRING:
     case MTYPE_M:
@@ -650,16 +653,24 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
     switch ( bytes ) {
       case 8:  return MTYPE_C4;
       case 16: return MTYPE_C8;
+#if defined(TARG_IA64)
+      case 32: return MTYPE_C10;
+#else
       case 24:
       case 32: return MTYPE_CQ;
+#endif
     }
   }
   else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
     switch ( bytes ) {
       case 4:  return MTYPE_F4;
       case 8:  return MTYPE_F8;
+#if defined(TARG_IA64)
+      case 16: return MTYPE_F10;
+#else
       case 12:
       case 16: return MTYPE_FQ;
+#endif
     }
   }
 
@@ -741,16 +752,24 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
     switch ( bytes ) {
       case 8:  return OPC_C4C4LDID;
       case 16: return OPC_C8C8LDID;
+#if defined(TARG_IA64)
+      case 32: return OPC_C10C10LDID;
+#else
       case 24:
       case 32: return OPC_CQCQLDID;
+#endif
     }
   }
   else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
     switch ( bytes ) {
       case 4:  return OPC_F4F4LDID;
       case 8:  return OPC_F8F8LDID;
+#if defined(TARG_IA64)
+      case 16: return OPC_F10F10LDID;
+#else
       case 12:
       case 16: return OPC_FQFQLDID;
+#endif
     }
   }
 
@@ -832,16 +851,24 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
     switch ( bytes ) {
       case 8:  return OPC_C4STID;
       case 16: return OPC_C8STID;
+#if defined(TARG_IA64)
+      case 32: return OPC_C10STID;
+#else
       case 24:
       case 32: return OPC_CQSTID;
+#endif
     }
   }
   else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
     switch ( bytes ) {
       case 4:  return OPC_F4STID;
       case 8:  return OPC_F8STID;
+#if defined(TARG_IA64)
+      case 16: return OPC_F10STID;
+#else
       case 12:
       case 16: return OPC_FQSTID;
+#endif
     }
   }
 

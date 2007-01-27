@@ -28,6 +28,6 @@ const char bug_report_url[] = "<URL:http://www.pathscale.com/support>";
 
 const char *const cset_id = HG_CSET_ID;
 const char *const build_root = "unknown";
-const char *const build_host = "xiaoqiang";
-const char *const build_user = "ycwu";
-const char *const build_date = "2007-01-25 19:48:10 +0800";
+const char *const build_host = "osprey2";
+const char *const build_user = "zhc";
+const char *const build_date = "2007-01-27 14:55:57 +0800";

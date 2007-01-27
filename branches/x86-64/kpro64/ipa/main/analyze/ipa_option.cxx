@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: ipa_option.c
- * $Revision: 1.4 $
- * $Date: 04/12/21 14:57:40-08:00 $
- * $Author: bos@eng-25.internal.keyresearch.com $
- * $Source: /home/bos/bk/kpro64-pending/ipa/main/analyze/SCCS/s.ipa_option.cxx $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipa_option.cxx,v $
  *
  * Revision history:
  *  24-Jan-96 - Original Version
@@ -58,7 +58,7 @@
  */
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/ipa/main/analyze/SCCS/s.ipa_option.cxx $ $Revision: 1.4 $";
+static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipa_option.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #define __STDC_LIMIT_MACROS

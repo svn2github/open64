@@ -420,7 +420,7 @@ void get_can_be_reordered_types()
         }
     } //walk through all types
     if (Trace_it) 
-       fprintf(TFile, "invalid-reorder_types' size=%d! \n", invalid_reorder_types.size());
+       fprintf(TFile, "invalid-reorder_types' size=%d! \n", (INT)invalid_reorder_types.size());
     MEM_POOL_Pop (&reorder_local_pool);
     return;
 }
@@ -634,7 +634,7 @@ void print_invalid_and_valid_type()
 {
     TYPE_LIST::iterator iter;
     INDEX i;
-    fprintf(TFile," invalid reorder types: ( size=%d)\n", invalid_reorder_types.size());
+    fprintf(TFile," invalid reorder types: ( size=%d)\n", (INT)invalid_reorder_types.size());
     for(i=1,iter=invalid_reorder_types.begin();
              iter!=invalid_reorder_types.end();i++,iter++)
     {
@@ -644,7 +644,7 @@ void print_invalid_and_valid_type()
     }
     fprintf(TFile,"\n");
     fprintf(TFile," valid reorder types: (size=%d)\n", 
-            can_be_reordered_types.size());
+            (INT)can_be_reordered_types.size());
     for(i=1, iter=can_be_reordered_types.begin();
         iter!=can_be_reordered_types.end();
         i++, iter++)

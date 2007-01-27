@@ -165,12 +165,10 @@ enum ST_FLAGS_EXT
     ST_ONE_PER_PU = 0x01,		// Only 1 instance per pu
     ST_COPY_CONSTRUCTOR_ST =   0x02,	// ST is copy constructor function
     ST_INITV_IN_OTHER_ST   =   0x04,    // ST is being used as an initianliation offset by other symbol
-#ifdef PATHSCALE_MERGE
-    ST_IS_INITIALIZED_IN_F90 = 0x8,
-    ST_IS_METHOD_FUNC   = 0x10,         // ST is c++ method function (make sense only
-                                        // when st-class is CLASS_FUNC
-    ST_IS_THIS_PTR      = 0x20,     // ST is "this"-pointer
-#endif
+    ST_IS_INITIALIZED_IN_F90 = 0x8, 
+    ST_IS_METHOD_FUNC	= 0x10,         // ST is c++ method function (make sense only 
+                                        // when st-class is CLASS_FUNC	
+    ST_IS_THIS_PTR      = 0x20, 	// ST is "this"-pointer
 }; // ST_FLAGS_EXT
 #endif
 
@@ -210,10 +208,9 @@ public:
     void Verify(UINT level) const;
     
     void Print(FILE *f, BOOL verbose = TRUE) const;
-
-#ifdef PATHSCALE_MERGE
-	BOOL operator==(ST &st) const; 
-#endif
+    
+    BOOL operator==(ST &st) const;
+    
 }; // ST
 
 
@@ -654,12 +651,9 @@ public:
                                            // C/C++: inline keyword used. Note
                                            // PU_IS_INLINE_FUNCTION just
                                            // indicates GNU inlining decision.
-#ifdef PATHSCALE_MERGE
 #define PU_IS_OPERATOR        0x0000010000000000LL // PU is overload of operator
+#endif
 #define PU_IS_MALLOC          0x0000020000000000LL // PU is malloc/calloc/... or their wrapper
-
-#endif
-#endif
 
 enum PU_SRC_LANG_FLAGS
 {

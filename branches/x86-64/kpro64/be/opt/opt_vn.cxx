@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_vn.cxx
-// $Revision: 1.8 $
-// $Date: 04/12/23 16:50:47-08:00 $
-// $Author: kannann@iridot.keyresearch $
-// $Source: be/opt/SCCS/s.opt_vn.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_vn.cxx,v $
 //
 // ====================================================================
 //

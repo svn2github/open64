@@ -41,7 +41,7 @@
 /* ====================================================================
  *
  * Module: ipl_summary_print.cxx
- * $Source: /home/bos/bk/kpro64-pending/ipa/local/SCCS/s.ipl_summary_print.cxx $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/local/ipl_summary_print.cxx,v $
  *
  * Description:
  *	all the print functions for summary info.

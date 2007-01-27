@@ -1,8 +1,4 @@
 /*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -44,10 +40,10 @@
  * Module: ip_graph.h
  * Author: Seema Hiranandani
  *
- * $Revision: 1.3 $
- * $Date: 04/12/21 14:57:36-08:00 $
- * $Author: bos@eng-25.internal.keyresearch.com $
- * $Source: /home/bos/bk/kpro64-pending/ipa/common/SCCS/s.ip_graph.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/common/ip_graph.h,v $
  *
  * Revision history:
  *  19-Aug-95 - Original Version

@@ -7,10 +7,10 @@
 // ====================================================================
 //
 // Module: opt_ssu.cxx
-// $Revision: 1.9 $
-// $Date: 05/08/15 23:44:00-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_ssu.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_ssu.cxx,v $
 //
 // Revision history:
 //  10-DEC-96 ptu - Initial Version
@@ -143,7 +143,9 @@ EXP_WORKLST * SSU::SPRE_candidate(CODEREP *cr)
     Is_True(cr->Dtyp() != MTYPE_V && cr->Dtyp() != MTYPE_UNKNOWN,
 	    ("SSU::SPRE_candidate: dtyp is void or unknown"));
 #else
-    if (cr->Dtyp() == MTYPE_V || cr->Dtyp() == MTYPE_UNKNOWN)
+    // fix bug no OSP_52
+    if (cr->Dtyp() == MTYPE_V || cr->Dtyp() == MTYPE_UNKNOWN ||
+	cr->Dsctyp() == MTYPE_V || cr->Dsctyp() == MTYPE_UNKNOWN)
       Fix_var_mtypes(cr, aux);
 #endif
     WN *home_wn = cr->Rvi_home_wn(Opt_stab());

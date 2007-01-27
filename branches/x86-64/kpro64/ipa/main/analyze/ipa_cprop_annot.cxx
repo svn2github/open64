@@ -1,9 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1868,6 +1864,32 @@ Intra_PU_Formal_Cprop (IPA_NODE *node)
     current_gannot = node->Global_Annot ();
     formal_value = Get_cprop_annot (node);
 
+    // if this procedure is cloned, we cannot propagate the value of the
+    // formal parameter down.  But we can still delete dead code if the
+    // condition expressions involve only global variables that are found
+    // to be constant.
+    if ((node->Is_Externally_Callable() && IPA_Enable_Cloning) ||
+        node->Summary_Proc()->Is_alt_entry () || 
+        node->Summary_Proc()->Has_alt_entry ()) {
+      formal_value = 0;
+    }
+
+#ifdef KEY
+    {
+        // Also if there is a recursive in-edge, we cannot propagate the
+        // formal parameter value down. Because the const-ness of the
+        // parameters may not have been determined yet. So, don't consider
+        // the formal parameter values in flow analysis below
+        IPA_PRED_ITER edge_iter (node);
+        for (edge_iter.First (); !edge_iter.Is_Empty(); edge_iter.Next()) {
+            IPA_EDGE *e = edge_iter.Current_Edge();
+            if (e && e->Is_Recursive()) {
+                formal_value = 0;
+                break;
+            }
+        }
+    }
+#endif
     // set up summary info arrays
     Set_summary_info (node);
 

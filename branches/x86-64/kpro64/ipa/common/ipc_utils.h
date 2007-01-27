@@ -1,8 +1,4 @@
 /*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,9 +37,9 @@
  * ====================================================================
  *
  * Module: ipc_utils.h
- * $Revision: 1.3 $
- * $Date: 04/12/21 14:57:37-08:00 $
- * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
  * $Source: /hosts/bonnie.engr/depot/cmplrs.src/mongoose/ipa/common/RCS/ipc_utils.h,
 v $
  *

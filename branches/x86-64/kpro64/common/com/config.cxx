@@ -1,9 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 
@@ -45,10 +41,10 @@
  * ====================================================================
  *
  * Module: config.c
- * $Revision: 1.63 $
- * $Date: 05/12/01 17:58:37-08:00 $
- * $Author: tkong@hyalite.keyresearch $
- * $Source: common/com/SCCS/s.config.cxx $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config.cxx,v $
  *
  * Revision history:
  *  06-Jun-90 -	Original Version (moved	from cdriver.c)
@@ -257,12 +253,12 @@ BOOL LANG_Formal_Deref_Unsafe = FALSE;
  * otherwise not needed */
 BOOL LANG_Copy_Inout = FALSE;
 BOOL LANG_Copy_Inout_Set = FALSE;
-UINT32 LANG_Copy_Inout_Level = 1;
 /* Enable save/restore of FPU state in prolog/epilog, per Fortran 2003 */
 BOOL LANG_IEEE_Save = TRUE;
 BOOL LANG_IEEE_Save_Set = FALSE;
 BOOL LANG_Ignore_Target_Attribute = FALSE;
 BOOL LANG_Ignore_Target_Attribute_Set = FALSE;
+UINT32 LANG_Copy_Inout_Level = 1;
 // LANG_Math_Errno is FALSE if -fno-math-errno
 // -LANG:math_errno=off => do not set errno
 BOOL LANG_Math_Errno = TRUE; // set errno after calling math functions
@@ -310,13 +306,10 @@ BOOL Global_Pragmas_In_Dummy_PU_On = TRUE;
 BOOL Malloc_Free_On     = TRUE;
 BOOL Alloca_Dealloca_On = TRUE;
 BOOL Barrier_Lvalues_On = TRUE;
-#ifdef PATHSCALE_MERGE
+
 BOOL Use_Call_Shared_Link = FALSE;
 BOOL Gp_Save_Restore_Opt = TRUE;
 BOOL Gp_Rel_Aggresive_Opt = TRUE;
-BOOL Omit_UE_DESTROY_FRAME = FALSE;  /* tmp close Epilogue overflow error */
-BOOL Enable_EBO_Post_Proc_Rgn = TRUE ;
-#endif
 
 /***** F90 Heap/stack allocation threshold */
 INT32 Heap_Allocation_Threshold=-1;      /* Allocate objects > this on the heap 
@@ -463,6 +456,9 @@ static OPTION_DESC Options_TENV[] = {
     0, 0, 0,	&PIC_Local_Names, NULL },
   { OVK_BOOL,	OV_SHY,		FALSE, "long_eh_offsets",	"long_eh", 
     0, 0, 0,	&Force_Long_EH_Range_Offsets, NULL },
+  // -foptimize-regions implies this option  
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "omit_ue_destroy_frame",	"omit_ue", 
+    0, 0, 0,	&Omit_UE_DESTROY_FRAME, NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "non_volatile_GOT",	"non_v",
     0, 0, 0,	&Non_Volatile_GOT, NULL,
     "Assume GOT is non-volatile" },
@@ -895,6 +891,12 @@ char *Emit_Global_Data = NULL;	/* only emit global data */
 char *Read_Global_Data = NULL;	/* only read global data */
 
 char *Library_Name = NULL;      /* -TENV:io_library=xxx */
+
+/* -foptimize-regions implies this internal variable,
+ * which is used in cgdwarf_targ.cxx to close emit .restore directive
+ */
+BOOL Omit_UE_DESTROY_FRAME = FALSE;  /* tmp close Epilogue overflow error */
+
 INT  target_io_library;
 
 #ifdef TARG_X8664
@@ -909,6 +911,7 @@ BOOL Isolate_Lines = FALSE;	/* Don't overlap source	lines */
 BOOL Fill_Delay_Slots = FALSE;  /* Attempt to fill branch delay slots */
 BOOL Enable_GDSE = FALSE;       /* Allow global dead store elimination */
 BOOL Enable_CG_Peephole =FALSE;	/* Enable peephole optimization in cgprep */
+BOOL Enable_EBO_Post_Proc_Rgn = TRUE ;
 
 #ifdef BACK_END
 /* back end phases options */
@@ -1069,11 +1072,7 @@ Configure_Ofast ( void )
 #ifndef KEY
     Roundoff_Level = ROUNDOFF_ANY;
 #else
-#ifdef TARG_IA64
     Roundoff_Level = ROUNDOFF_ASSOC;
-#else
-    Roundoff_Level = ROUNDOFF_SIMPLE;
-#endif
 #endif
     Roundoff_Set = TRUE;
   }
@@ -1107,7 +1106,42 @@ Configure_Ofast ( void )
   /* Get platform and its associated options: */
   Configure_Platform ( Ofast );
 }
-
+
+/*==============================================================
+* Configure_Olegacy
+*
+* Set default call-shared and alias=typed if legacy is NULL
+* Set default non-shared and alias=notyped otherwise
+* in_FE indicates that whether this is invoked in FE
+*===============================================================
+*/
+extern BOOL Olegacy;
+
+void
+Configure_Olegacy (BOOL in_FE)
+{
+  if(!in_FE) {
+    /* We assume that the driver has defaulted CALL-SHARED and alias=typed. */
+    /* First set the options that are common to all targets: */
+    if ( ! Olegacy ) {
+      Use_Call_Shared_Link = TRUE;
+      if(Alias_Pointer_Types_Set) {
+        Alias_Pointer_Types = TRUE;
+        Alias_Pointer_Types_Set = TRUE;
+      }
+    }
+    else {
+      Use_Call_Shared_Link = FALSE;
+      if(Alias_Pointer_Types_Set) {
+        Alias_Pointer_Types = FALSE;
+        Alias_Pointer_Types_Set = TRUE;
+      }
+    }
+  } else {
+    if(Olegacy) Use_Call_Shared_Link = FALSE;
+  }
+}
+
 /* ====================================================================
  *
  * Configure
@@ -1147,6 +1181,11 @@ Configure (void)
 #ifdef KEEP_WHIRLSTATS
   atexit(whirlstats);
 #endif
+
+  /* Resume original settings or PRO64 if Olegacy flag is set;
+   * and set default settings otherwise
+   */
+  Configure_Olegacy(FALSE);
 
   /* Configure the alias options first so the list is processed and
    * we can tell for -OPT:Ofast below what overrides have occurred:
@@ -1477,7 +1516,11 @@ Configure_Source ( char	*filename )
 #ifndef KEY
     Roundoff_Level = ROUNDOFF_ASSOC;
 #else
+#ifdef TARG_IA64
+    Roundoff_Level = ROUNDOFF_ASSOC;
+#else
     Roundoff_Level = ROUNDOFF_SIMPLE;
+#endif
 #endif
   }
   if ( Roundoff_Level > ROUNDOFF_NONE ) {

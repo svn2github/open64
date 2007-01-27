@@ -302,7 +302,7 @@ ipa_compile_init ()
 
   static char* smake_base = ALTBINPATH "/make";
   static char* tmp_cc_name_base = "/usr/ia64-sgi-linux/bin/sgicc";
-  static char* cc_name_base = BINPATH "/orcc";
+  static char* cc_name_base = BINPATH "/opencc";
   static char* cord_name_base= BINPATH "/gen_cord";
 
   if (file_exists(tmp_cc_name_base))
@@ -639,7 +639,15 @@ size_t ipacom_process_file (char* input_file,
 
   infiles->push_back(input_base);
   outfiles->push_back(output_base);
+#ifdef KEY
+  {
+    // Don't write the path component into the linkopt file, in order to
+    // shorten the link command's arg list.  Bug 5876.
+    outfiles_fullpath->push_back(ipa_basename(output_file));
+  }
+#else
   outfiles_fullpath->push_back(output_file);
+#endif
 
   // Assemble the command line.
 
@@ -903,18 +911,30 @@ void ipacom_doit (const char* ipaa_filename)
 
     // Print all but link_line[0] into cmdfile.
     ARGV::const_iterator i = link_line->begin();
+
+    // see whether we use ld/collect or gcc/g++ to link objects, if
+    // we use gcc/g++ to link the object, we should ignore the CRTs. 
+    const char* linker = strrchr(*i, '/');  
+    BOOL no_crt = TRUE; 
+    if (linker && (!strcmp (linker, "/ld") || !strcmp (linker, "/collect")) ||
+        !linker && (!strcmp (*i, "ld") || !strcmp (linker, "collect"))) {
+       no_crt = FALSE;
+    }
+
     for (++i; i != link_line->end(); ++i) {
 #ifdef KEY
       // Since we are using GCC to link, don't print out the run-time support
       // files.
       char *p;
-      if (((p = strstr(*i, "/crt1.o")) && p[7] == '\0') ||
-	  ((p = strstr(*i, "/crti.o")) && p[7] == '\0') ||
-	  ((p = strstr(*i, "/crtbegin.o")) && p[11] == '\0') ||
-	  ((p = strstr(*i, "/crtend.o")) && p[9] == '\0') ||
-	  ((p = strstr(*i, "/crtn.o")) && p[7] == '\0')) {
-	continue;
-      }
+      if (no_crt) {
+        if (((p = strstr(*i, "/crt1.o")) && p[7] == '\0') ||
+	    ((p = strstr(*i, "/crti.o")) && p[7] == '\0') ||
+	    ((p = strstr(*i, "/crtbegin.o")) && p[11] == '\0') ||
+	    ((p = strstr(*i, "/crtend.o")) && p[9] == '\0') ||
+	    ((p = strstr(*i, "/crtn.o")) && p[7] == '\0')) {
+	  continue;
+        }
+     }
 #endif
       // Since we're using gcc to link, we must mangle linker
       // directives that we know about so they are acceptable to it,

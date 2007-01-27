@@ -42,9 +42,9 @@
  * ====================================================================
  *
  * Module: inline_summarize.h
- * $Date: 05/06/22 16:43:34-07:00 $
- * $Author: gautam@jacinth.keyresearch $
- * $Source: ipa/inline/SCCS/s.inline_summarize.h $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/inline/inline_summarize.h,v $
  *
  * Description:
  *	aux. data structures used by the inliner version of summary phase.
@@ -68,11 +68,71 @@ static BOOL Do_Par = FALSE;
 static BOOL Do_Common_Const = FALSE;
 // end definitions of dummy variables
 
+#include "bitset.h"
 #include "ipl_summarize_template.h"	
 #include "ipl_analyze_template.h"	
 
 
 extern MEM_POOL* PU_pool;
+
+/* Identify the default-clause label of switch <node> as well as the set 
+ * of case-clause labels. The former is holded in <default_lab_num>. The 
+ * later is stored in <case_labels>. <mem> is mempool for <case_lables>.
+ *
+ * In case the switch statement has no default clause (In the case 
+ * the FE guarantee the value definitely match one of case-clauses), 
+ * <default_lab_num> is set to -1 and <case_labels> is set to empty set. 
+ */
+void
+SUMMARIZE<INLINER>::Identify_switch_clause_labels 
+    (WN* node, INT& default_lab_num, BS* &case_labels, MEM_POOL* mem) {
+
+    // <default_lab_num> is used to identify the end of last case-clause. 
+    default_lab_num = (WN_kid_count (node) > 2) ? WN_label_number(WN_kid2(node)) : -1;
+    BS_ClearD (case_labels);
+
+    if (default_lab_num == -1) { return ;}
+
+    // record the numbers of case-clause labels. 
+    for (WN* wn_tmp = WN_first(WN_kid1(node)); wn_tmp; wn_tmp = WN_next(wn_tmp)) { 
+        Is_True (WN_operator(wn_tmp) == OPR_CASEGOTO,
+	          ("the operator is expected to be OPR_CASEGOTO"));
+        case_labels = BS_Union1D (case_labels, WN_label_number(wn_tmp), mem);
+    }
+}
+
+void
+SUMMARIZE<INLINER>::Collect_calls_in_switch 
+    (WN* first_stmt, INT default_lab_num, BS* case_labels, 
+     BS* &calls_in_switch, MEM_POOL* mp) {
+
+    Is_True (default_lab_num > 0, 
+             ("We need to know the label number of default clause"));
+
+    BS_ClearD (calls_in_switch);
+
+    for (; first_stmt; first_stmt = WN_next(first_stmt)) {
+        if (WN_operator (first_stmt) == OPR_LABEL) { 
+            if (BS_MemberP (case_labels, WN_label_number(first_stmt)) || 
+	        WN_label_number(first_stmt) == default_lab_num) { 
+               // we visited one statement ahead of CURRENT case 
+	       // clause, so stop.
+               return;
+            }
+	    continue;
+        }
+	
+        // traverse the tree rooted at <wn_tmp> 
+	for (WN_TREE_ITER<PRE_ORDER, WN*> iter (first_stmt); 
+	    iter.Wn () != NULL; ++iter) {
+            WN* wn_tmp = iter.Wn (); 
+	    if (WN_operator (wn_tmp) == OPR_CALL) { 
+	       calls_in_switch = 
+	          BS_Union1D (calls_in_switch, WN_map_id(wn_tmp), mp); 
+            } 
+        }
+   } // end of outer for
+}
 
 //-----------------------------------------------------------
 // summary procedure
@@ -219,7 +279,14 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
     
     Set_entry_point(w);
 
-
+    // a set of numbers of the case-clause label.
+    BS* case_labels = BS_Create_Empty (256, &Temp_pool);
+    // a set of WN_map_id(call-WN), where call-WN is a call in case-clause
+    BS* calls_in_switch = BS_Create_Empty (256, &Temp_pool);
+    BS* bs_tmp = BS_Create_Empty (256, &Temp_pool);
+    // the label number of default-clause 
+    INT default_lab_num = -1;
+    
     // walk the tree
     for (WN_TREE_ITER<PRE_ORDER, WN*> iter (w); iter.Wn () != NULL; ++iter) {
 
@@ -236,9 +303,13 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 		(WN_Fake_Call_EH_Region(w2, Parent_Map)))
 	      break;
 
-	    Process_callsite (w2, proc->Get_callsite_count (), 0);
+	    Process_callsite (w2, proc->Get_callsite_count (), get_loopnest(w2));
 	    SUMMARY_CALLSITE *callsite = Get_callsite(Get_callsite_idx());
 	    callsite->Set_wn (w2);
+	    if (BS_MemberP (calls_in_switch, WN_map_id(w2))) {
+	        callsite->Set_in_case_clause();
+	    }
+
 	    proc->Incr_call_count ();
 	    proc->Incr_callsite_count ();
 	    } 
@@ -383,6 +454,35 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	    }
             break;
 
+	case OPR_SWITCH:
+	    //identify case clause label. A callee enclosed by switch with 
+	    // more than, say 6, clauses, is normally not beneficial to be inlined.
+	    if (WN_num_entries(w2) < 6) { break; } 
+
+	    // It indicates we are in nested switch which has already been handled.
+	    if (default_lab_num != -1) { break; }
+
+	    Identify_switch_clause_labels(w2, default_lab_num, 
+	                                  case_labels, &Temp_pool);
+            break;
+
+
+	case OPR_LABEL:
+	    if (default_lab_num == -1) {
+	        break; // it is used to determine the end of last case clause
+	    }
+	    if (!BS_MemberP (case_labels, WN_label_number(w2))) {
+	       if (WN_label_number(w2) == default_lab_num) {
+	          default_lab_num = -1; // ready for next switch 
+	       }
+	       break;
+	    }
+	    
+            Collect_calls_in_switch (WN_next(w2), default_lab_num, case_labels, 
+	                             bs_tmp, &Temp_pool);
+	    
+	    calls_in_switch = BS_UnionD (calls_in_switch, bs_tmp, &Temp_pool);
+	    break;
 
 	default:
 	    break;

@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_etable.cxx
-// $Revision: 1.26 $
-// $Date: 05/08/10 19:20:06-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_etable.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_etable.cxx,v $
 //
 // ====================================================================
 //
@@ -544,7 +540,9 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
     if (vsize <= 32 && dtyp == MTYPE_U8 && (signess & SIGN_0_EXTD)) 
       dtyp = MTYPE_U4;
 #endif
-#else
+#elif !defined(TARG_IA64)
+    // ia64 has similar problem (inconsistent sizes for the same symbol)
+    // -- OSP_185
     if (vsize <= 32 && dtyp == MTYPE_I8 && (signess & SIGN_1_EXTD)) 
       dtyp = MTYPE_I4;
 #endif
@@ -3312,6 +3310,19 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
       // are currently processing the worklist in which the "repl" occurs
       // and, hence, we are done with that worklist.
       //
+
+      // bug fix for OSP_188
+      // As to expression whose operator is OPR_CVT, if the descriptor type
+      // of this expr is MTYPE_B, we should not modify the return type of
+      // it's kid, which is MTYPE_B, to some type else.
+      OPERATOR opr = OPCODE_operator(opc);
+      TYPE_ID desc = OPCODE_desc(opc);
+      if (opr == OPR_CVT && desc == MTYPE_B && x->Kind() == CK_VAR &&
+	  x->Dtyp() == MTYPE_B && x->Dsctyp() == MTYPE_B)
+	{
+	  return x;
+	}
+      
       return repl->apply(Htable(), this, occur, x);
     }
   }

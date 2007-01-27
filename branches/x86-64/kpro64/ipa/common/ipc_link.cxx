@@ -1,9 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -70,15 +66,10 @@ UINT32 comma_list_byte_count = 0;
 
 #if defined(TARG_IA64) || defined(TARG_X8664)
 
-#ifdef KEY
 #ifdef TARG_X8664
 #define LINKER_NAME "gcc"
 #define LINKER_NAME_WITH_SLASH "/gcc"
-#else
-#error /* unknown cross compiler target */
-#endif
-
-#else
+#else  /* TARG_IA64 */
 #define LINKER_NAME "ld"
 #define LINKER_NAME_WITH_SLASH "/ld"
 #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
@@ -116,7 +107,7 @@ static char* get_linker_name(int argc, char** argv)
     if (where_am_i) {
 	char *slash = strrchr (where_am_i, '/');
 	asprintf (&linker_name, "%.*s/../" PSC_TARGET "/bin/" LINKER_NAME,
-		  slash - where_am_i, where_am_i);
+		  (int)(slash - where_am_i), where_am_i);
 	if (file_exists (linker_name)) {
 	    return linker_name;
 	}
@@ -184,7 +175,7 @@ ipa_init_link_line (int argc, char** argv)
     free(buf);
 #endif
     ld_flags_part1->push_back (get_linker_name(arg_count, arg_vector));
-#ifdef TARG_IA64
+#if defined(TARG_IA64) && defined(CROSS_COMPILATION) 
     ld_flags_part1->push_back (DYNAMIC_LINKER);
 #endif
 
@@ -208,6 +199,21 @@ ipa_add_link_flag (const char* str)
 
 
 #ifdef KEY
+// Prepend "../" to name if it is a relative pathname.
+extern "C" char *
+ipa_add_parent_dir_to_relative_pathname (const char *name)
+{
+  if (name[0] != '/') {
+    const char *prefix = "../";
+    char *buf;
+    buf = (char *) malloc(strlen(prefix)+strlen(name)+1);
+    strcpy(buf, prefix);
+    strcat(buf, name);
+    return (buf);
+  }
+  return (char*) name;
+}
+
 extern "C" void
 ipa_erase_link_flag (const char* str)
 {
@@ -323,9 +329,15 @@ ipa_link_line_argv (const ARGV* output_files,
 	    static_cast<char*>(malloc(strlen(dir) + strlen(symtab_base) + 2));
 	if (!symtab)
 	    ErrMsg (EC_No_Mem, "ipa_link_line_argv");
+#ifdef KEY
+	// Don't print the path component of symtab.o since we are linking
+	// while in the ipa temp dir.  Bug 5876.
+	strcpy(symtab, symtab_base);
+#else
 	strcpy(symtab, dir);
 	strcat(symtab, "/");
 	strcat(symtab, symtab_base);
+#endif
 	argv->push_back(symtab);
     }
     

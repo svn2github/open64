@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_cfg_trans.h
-// $Revision: 1.7 $
-// $Date: 04/12/21 14:57:17-08:00 $
-// $Author: bos@eng-25.internal.keyresearch.com $
-// $Source: /home/bos/bk/kpro64-pending/be/opt/SCCS/s.opt_cfg_trans.h $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_cfg_trans.h,v $
 //
 // ====================================================================
 //
@@ -463,7 +463,7 @@ inline void topological_sort(Graph& in, Vertex_id root, Container& out)
 template <class Graph>
 void print_nodes(Graph& g, FILE *fp=stdout)
 {
-  fprintf(fp, "number of nodes %d: ", g.size());
+  fprintf(fp, "number of nodes %d: ", (INT)g.size());
   for (typename Graph::cluster_iterator n = g.cluster_begin(); 
        n != g.cluster_end();
        ++n) {

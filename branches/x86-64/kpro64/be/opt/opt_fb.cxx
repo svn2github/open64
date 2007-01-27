@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_fb.cxx
-// $Revision: 1.11 $
-// $Date: 04/12/21 14:57:18-08:00 $
-// $Author: bos@eng-25.internal.keyresearch.com $
-// $Source: /home/bos/bk/kpro64-pending/be/opt/SCCS/s.opt_fb.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_fb.cxx,v $
 //
 // ====================================================================
 //
@@ -1746,13 +1746,13 @@ OPT_FEEDBACK::Print( FILE *fp ) const
   fprintf( fp, "OPT_FEEDBACK annotation:\n" );
 
   // Display nodes
-  fprintf( fp, "%d nodes:\n", _fb_opt_nodes.size() - 1 );
+  fprintf( fp, "%d nodes:\n", (INT)(_fb_opt_nodes.size() - 1) );
   for ( IDTYPE nx = 1; nx < _fb_opt_nodes.size(); nx++ ) {
     _fb_opt_nodes[nx].Print( nx, fp );
   }
 
   // Display edges
-  fprintf( fp, "%d edges:\n", _fb_opt_edges.size() - 1 );
+  fprintf( fp, "%d edges:\n", (INT)(_fb_opt_edges.size() - 1) );
   for ( IDTYPE ex = 1; ex < _fb_opt_edges.size(); ex++ ) {
     _fb_opt_edges[ex].Print( ex, fp );
   }
@@ -1874,7 +1874,7 @@ OPT_FEEDBACK::Verify( CFG *cfg, const char *const phase )
       valid = false;
       if ( _trace )
 	fprintf( TFile, "  CFG bb%d missing feedback! (_fb_opt_nodes.size()"
-		 " = %d)\n", bb->Id(), _fb_opt_nodes.size() );
+		 " = %d)\n", bb->Id(), (INT)_fb_opt_nodes.size() );
     }
     const OPT_FB_NODE& node = _fb_opt_nodes[bb->Id()];
 
@@ -2018,7 +2018,7 @@ OPT_FEEDBACK::Draw() const
     else if ( freq.Guess() )    nt = &nt_guess;
 
     // Add the node and its outgoing edges to the daVinci graph
-    DV->Node_Begin( NODE_ID(INT(nx)), Node_label(nx), *nt );
+    DV->Node_Begin( NODE_ID(INTPTR(nx)), Node_label(nx), *nt );
     for ( INT t = 0; t < node.outgoing_edges.size(); t++ ) {
       IDTYPE ex = node.outgoing_edges[t];
       const OPT_FB_EDGE& edge = _fb_opt_edges[ex];
@@ -2030,8 +2030,8 @@ OPT_FEEDBACK::Draw() const
       else if ( edge.freq.Initialized() )  et = &et_unknown;
 
       IDTYPE nx_dst = edge.destination;
-      DV->Out_Edge( EDGE_ID(NODE_ID(INT(nx)), NODE_ID(INT(nx_dst))),
-		    *et, NODE_ID(INT(nx_dst)) );
+      DV->Out_Edge( EDGE_ID(NODE_ID(INTPTR(nx)), NODE_ID(INTPTR(nx_dst))),
+		    *et, NODE_ID(INTPTR(nx_dst)) );
     }
     DV->Node_End();
 

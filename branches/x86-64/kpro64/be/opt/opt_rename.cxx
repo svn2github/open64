@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_rename.cxx
-// $Revision: 1.6 $
-// $Date: 04/12/21 14:57:18-08:00 $
-// $Author: bos@eng-25.internal.keyresearch.com $
-// $Source: /home/bos/bk/kpro64-pending/be/opt/SCCS/s.opt_rename.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_rename.cxx,v $
 //
 // ====================================================================
 //
@@ -343,7 +339,9 @@ struct SSA_RENAME : public NULL_TRANSFORM {
       if (cr->Dsctyp() == MTYPE_BS) 
         tmp->Set_offset(cr->Offset());  // cannot use offset out of opt_stab
       return ((tmp != cr) ? 
-	      (is_mu ?  tmp : cr->Convert_type(htable, tmp, FALSE)) :
+	      (is_mu || cr->Dsctyp() == MTYPE_BS ? 
+				tmp : 
+				cr->Convert_type(htable, tmp, FALSE)) :
 	      NULL);
     }
     if (inCODEKIND(cr->Kind(), CK_IVAR|CK_OP)) {

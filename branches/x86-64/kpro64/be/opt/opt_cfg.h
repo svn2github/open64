@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_cfg.h
-// $Revision: 1.7 $
-// $Date: 05/01/13 17:16:54-08:00 $
-// $Author: fchow@fluorspar.keyresearch $
-// $Source: be/opt/SCCS/s.opt_cfg.h $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_cfg.h,v $
 //
 // ====================================================================
 //
@@ -510,10 +510,10 @@ public:
   // comes either from a WN or is generated internally
   BB_NODE     *Get_bb_from_label(INT32 l) const
                                 { return (BB_NODE*)
-				       _label_map->Get_val((POINTER)l);
+				       _label_map->Get_val((POINTER)(INTPTR)l);
 				}
   void         Append_label_map (INT32 labnum, BB_NODE *bb)
-				{ _label_map->Add_map((POINTER)labnum,
+				{ _label_map->Add_map((POINTER)(INTPTR)labnum,
 						      (POINTER)bb); 
 				  bb->Set_labnam(labnum);
 				}

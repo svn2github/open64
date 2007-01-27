@@ -1,17 +1,12 @@
 //-*-c++-*-
-
-/*
- * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
 // ====================================================================
 // ====================================================================
 //
 // Module: opt_ssu.h
-// $Revision: 1.4 $
-// $Date: 05/08/15 23:41:36-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_ssu.h $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_ssu.h,v $
 //
 // Revision history:
 //  11-DEC-96 ptu - Original Version

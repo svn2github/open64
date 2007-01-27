@@ -3,10 +3,10 @@
 // ====================================================================
 //
 // Module: opt_rvilr.cxx
-// $Revision$
-// $Date$
-// $Author$
-// $Source$
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_rvilr.cxx,v $
 //
 // ====================================================================
 //

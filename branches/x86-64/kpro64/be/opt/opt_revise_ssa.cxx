@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_revise_ssa.cxx
-// $Revision: 1.20 $
-// $Date: 05/09/15 15:45:49-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_revise_ssa.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_revise_ssa.cxx,v $
 //
 // ====================================================================
 //
@@ -1199,6 +1199,7 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	  AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(lhs->Scalar_aux_id());
 #ifdef KEY
 	  if (sym->Is_volatile())
+            //OSP 108, originally a typo. v/x
 	    v->Set_var_volatile();
 #endif
 	  v->Set_dsctyp(Mtype_from_mtype_class_and_size(MTYPE_type_class(lhs->Dtyp()), sym->Byte_size()));
@@ -1227,6 +1228,7 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	      v->Dtyp(), v->Dsctyp(), v->Offset(), Void_Type, 0, TRUE));
 	  else
 #endif
+	  // generate a new version of the new scalar variable
 	  stmt->Set_lhs(_htable->Add_def(lhs->Scalar_aux_id(), -1, stmt, 
 	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), Void_Type, 0, TRUE));
 
@@ -1266,7 +1268,7 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 			  OPCODE_make_op(OPR_ILOAD, lhs->Dtyp(), lhs->Dsctyp()),
 			  lhs->Scalar_ivar_occ(), stmt, NULL/*mu*/,
 			  lhs->Dtyp(), lhs->Dsctyp(), lhs->Ilod_ty(), 0, 
-			  lhs->Offset(), (CODEREP *)Make_Pointer_Type(Void_Type), 
+			  lhs->Offset(), (CODEREP *)(INTPTR)Make_Pointer_Type(Void_Type), 
    		      NULL, lhs->Istr_base()));
 	  stmt->Set_opr(OPR_ISTORE);
 	}
@@ -1336,7 +1338,7 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
 #endif
 #if 1 // bug fix aug-26-02
     // indirect load is not volatile, but folded-to scalar is volatile
-    if (x->Is_var_volatile())
+    if (x->Is_var_volatile() || _opt_stab->Is_volatile(cr->Scalar_aux_id())) 
       return NULL;
 #endif
     x->Set_dtyp(cr->Dtyp());

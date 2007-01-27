@@ -542,7 +542,6 @@ Set_ST_initv_in_other_st (ST* s)       { s->flags_ext |= ST_INITV_IN_OTHER_ST; }
 inline void
 Clear_ST_initv_in_other_st (ST* s)     { s->flags_ext &= ~ST_INITV_IN_OTHER_ST; }
 
-#ifdef PATHSCALE_MERGE
 inline BOOL
 ST_is_inintialized_in_f90 (const ST* s)     { return s->flags_ext & ST_IS_INITIALIZED_IN_F90; }
 inline void
@@ -551,7 +550,7 @@ inline void
 Clear_ST_is_inintialized_in_f90 (ST *s)     { s->flags_ext &= ~ST_IS_INITIALIZED_IN_F90; }
 
 inline BOOL
-ST_is_method_func (const ST* s) { return s->flags_ext & ST_IS_METHOD_FUNC; }
+ST_is_method_func (const ST* s)	{ return s->flags_ext & ST_IS_METHOD_FUNC; }
 inline void
 Set_ST_is_method_func (ST* s) { s->flags_ext |= ST_IS_METHOD_FUNC; }
 inline void
@@ -563,8 +562,8 @@ inline void
 Set_ST_is_this_ptr (ST* s)  { s->flags_ext |= ST_IS_THIS_PTR; }
 inline void
 Reset_ST_is_this_ptr (ST* s)  { s->flags_ext &= ~ST_IS_THIS_PTR; }
-#endif
-#endif
+
+#endif /* KEY */
 
 //----------------------------------------------------------------------
 // access functions for PU
@@ -868,13 +867,7 @@ inline void
 Clear_PU_mp_lower_generated (PU& pu)	{ pu.flags &= ~PU_MP_LOWER_GENERATED; }
 
 inline BOOL
-PU_is_marked_inline (const PU& pu)	{ return (pu.flags & PU_IS_MARKED_INLINE) != 0; }
-inline void
-Set_PU_is_marked_inline (PU& pu) 	{ pu.flags |= PU_IS_MARKED_INLINE; }
-inline void
-Clear_PU_is_marked_inline (PU& pu)	{ pu.flags &= ~PU_IS_MARKED_INLINE; }
-
-#ifdef PATHSCALE_MERGE
+PU_is_marked_inline (const PU& pu){ return (pu.flags & PU_IS_MARKED_INLINE) != 0; }
 inline BOOL
 PU_is_operator (const PU& pu)    { return (pu.flags & PU_IS_OPERATOR) != 0; }
 inline void
@@ -883,13 +876,19 @@ inline void
 Clear_PU_is_operator (PU& pu)    { pu.flags &= ~PU_IS_OPERATOR; }
 
 inline BOOL
-PU_is_malloc (const PU& pu)         { return (pu.flags & PU_IS_MALLOC) != 0; }
-inline void
-Set_PU_is_malloc (PU& pu)           { pu.flags |= PU_IS_MALLOC; }
-inline void
-Clear_PU_is_malloc (PU& pu)         { pu.flags &= ~PU_IS_MALLOC; }
+PU_is_malloc (const PU& pu)			{ return (pu.flags & PU_IS_MALLOC) != 0; } 
 
-#endif
+inline void
+Set_PU_is_marked_inline (PU& pu) { pu.flags |= PU_IS_MARKED_INLINE; }
+
+inline void
+Clear_PU_is_marked_inline (PU& pu){ pu.flags &= ~PU_IS_MARKED_INLINE; }
+
+inline void
+Set_PU_is_malloc (PU& pu)			{ pu.flags |= PU_IS_MALLOC; }
+inline void
+Clear_PU_is_malloc (PU& pu)			{ pu.flags &= ~PU_IS_MALLOC; }
+
 #endif
 #ifdef TARG_X8664
 inline BOOL

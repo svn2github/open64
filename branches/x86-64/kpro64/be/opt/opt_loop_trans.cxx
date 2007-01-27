@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_loop_trans.cxx
-// $Revision: 1.6 $
-// $Date: 04/12/21 14:57:18-08:00 $
-// $Author: bos@eng-25.internal.keyresearch.com $
-// $Source: /home/bos/bk/kpro64-pending/be/opt/SCCS/s.opt_loop_trans.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_loop_trans.cxx,v $
 //
 // ====================================================================
 //
@@ -375,7 +375,7 @@ void generate_loop_butterfly_zones(COMP_UNIT *cu,
 	OPT_POOL_Pop(&MEM_local_pool, -1);
 	if (trace)
 	  fprintf(TFile, "new_loop size=%d, butterfly size=%d\n",
-		  new_loop.size(), ends.size());
+		  (INT)new_loop.size(), (INT)ends.size());
 	if (coverage * 100 >= min_coverage && new_loop.size() > ends.size()) {
 	  if (trace) {
 	    print_vertex_set(&new_loop, TFile);

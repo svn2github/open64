@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_etable.h
-// $Revision: 1.7 $
-// $Date: 05/02/09 19:36:42-08:00 $
-// $Author: fchow@fluorspar.keyresearch $
-// $Source: be/opt/SCCS/s.opt_etable.h $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_etable.h,v $
 //
 // ====================================================================
 //

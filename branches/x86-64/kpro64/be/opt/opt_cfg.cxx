@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_cfg.cxx
-// $Revision: 1.30 $
-// $Date: 05/09/27 18:47:04-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_cfg.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_cfg.cxx,v $
 //
 // ====================================================================
 //
@@ -1420,7 +1420,11 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 #ifdef KEY  // do not if-convert if it has either empty then or else part and it
       // is the only statement in the BB since CG's cflow can be quite effective
       ((!empty_else && !empty_then) ||
-       WOPT_Enable_Simple_If_Conv > 1 ||
+#ifndef PATHSCALE_MERGE_ZHC
+       WOPT_Enable_If_Conv_Limit > 6 ||
+#else
+       WOPT_Enable_Simple_If_Conv > 1 || 
+#endif
        WN_next(wn) != NULL || // no next statement in BB
        (_current_bb->Firststmt() != NULL && // no previous statement in BB
         (_current_bb->Firststmt() != _current_bb->Laststmt() || // prev is LABEL

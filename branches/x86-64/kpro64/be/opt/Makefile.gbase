@@ -197,6 +197,7 @@ BE_OPT_CXX_SRCS = \
   opt_loop.cxx		\
   opt_loop_trans.cxx	\
   opt_ltable.cxx	\
+  opt_wovp.cxx		\
   opt_main.cxx		\
   opt_min_essa.cxx      \
   opt_mu_chi.cxx	\

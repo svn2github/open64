@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_htable.cxx
-// $Revision: 1.44 $
-// $Date: 05/11/02 13:47:36-08:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_htable.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_htable.cxx,v $
 //
 // ====================================================================
 //
@@ -775,8 +771,20 @@ CODEREP::Print(INT indent, FILE *fp) const
       fprintf(fp, "%d/cr%d", Ivar_mu_node()->OPND()->Aux_id(), 
 	      Ivar_mu_node()->OPND()->Coderep_id());
     fprintf(fp, ">\n"); 
-  } else
+  } else {
+#ifdef Is_True_On
+    extern COMP_UNIT* g_comp_unit;
+    if (Kind () == CK_VAR) {
+      ST* st = g_comp_unit->Opt_stab()->St (Aux_id());
+      if (st && ST_class(st) != CLASS_PREG) {
+        fprintf (fp, " #%s", ST_name(st));
+      }
+    } else if (Kind() == CK_LDA) {
+      fprintf (fp, " #%s", g_comp_unit->Opt_stab()->St_name(Lda_aux_id()));
+    }
+#endif
     fprintf(fp, "\n");
+  }
 }
 
 void
@@ -1051,6 +1059,8 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_F4;
       else if ( rtype == MTYPE_C8 )
 	return MTYPE_F8;
+      else if ( rtype == MTYPE_C10 )
+	return MTYPE_F10;
       else if ( rtype == MTYPE_CQ )
 	return MTYPE_FQ;
       else {
@@ -1068,6 +1078,8 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_C4;
       else if ( rtype == MTYPE_F8 )
 	return MTYPE_C8;
+      else if ( rtype == MTYPE_F10 )
+	return MTYPE_C10;
       else if ( rtype == MTYPE_FQ )
 	return MTYPE_CQ;
       else {
@@ -1875,7 +1887,7 @@ CODEMAP::Add_bin_node_and_fold(OPCODE op,
       return Hash_Op(cr, do_canonicalization);
     }
     else {
-#ifdef KEY // bug 4518
+#ifdef TARG_X8664 // bug 4518
       if (crtmp->Kind() == CK_CONST && crtmp->Dtyp() == MTYPE_U4 && 
 	  (MTYPE_signed(kid0->Dtyp()) || MTYPE_signed(kid1->Dtyp()))) 
 	return Add_const(MTYPE_I4, crtmp->Const_val());
@@ -2631,9 +2643,11 @@ CODEMAP::Add_tcon(TCON_IDX tc)
 
     case MTYPE_F4:
     case MTYPE_F8:
+    case MTYPE_F10:
     case MTYPE_FQ:
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
     case MTYPE_CQ:
       {
         ST *new_sym = New_Const_Sym(tc, MTYPE_To_TY(mtype));
@@ -3065,7 +3079,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     retv = Add_idef(op, opt_stab->Get_occ(wn), NULL,
 		    opt_stab->Get_mem_mu_node(wn), WN_rtype(wn),
 		    WN_desc(wn), WN_ty(wn), WN_field_id(wn),
-		    base_ccr.Scale(), (CODEREP *) WN_load_addr_ty(wn),
+		    base_ccr.Scale(), (CODEREP *)(INTPTR) WN_load_addr_ty(wn),
 		    lbase, NULL);
     Is_True(retv->Kind()==CK_IVAR || (retv->Kind()==CK_OP
 				      && (retv->Opr()==OPR_CVT ||
@@ -3155,7 +3169,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     retv = Add_idef(op, opt_stab->Get_occ(wn), NULL,
 		    opt_stab->Get_mem_mu_node(wn), WN_rtype(wn),
 		    WN_desc(wn), WN_ty(wn), WN_field_id(wn),
-		    (mINT32)(INTPTR)index, (CODEREP *) WN_load_addr_ty(wn), base, NULL);
+		    (mINT32)(INTPTR)index, (CODEREP *)(INTPTR) WN_load_addr_ty(wn), base, NULL);
     Is_True(retv->Kind()==CK_IVAR||(retv->Kind()==CK_OP
 				    && (retv->Opr()==OPR_CVT ||
 					retv->Opr()==OPR_CVTL)),
@@ -3707,14 +3721,19 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
 	FmtAssert(WN_pragma(prag) == WN_PRAGMA_ASM_CLOBBER,
 		  ("Unknown pragma type for ASM clobber"));
 	CLOBBER_PRAGMA_INFO info;
+	// bug fix for OSP_87 & OSP_90
 	if (WN_opcode(prag) == OPC_XPRAGMA) {
 	  WN *kid = WN_kid0(prag);
 	  FmtAssert(WN_operator(kid) == OPR_IDNAME,
 		    ("Unknown kid operator for PREG ASM clobber"));
 	  info.preg_st_idx = WN_st_idx(kid);
 	  info.preg_number = WN_offset(kid);
+#ifndef PATHSCALE_MERGE_ZHC
+	  info.clobber_string_idx = WN_st_idx(prag);
+#else
 	  info.clobber_string_idx = WN_pragma_arg2(prag);
-	}
+#endif
+        }
 	else {
 	  info.preg_st_idx = 0;
 	  info.preg_number = 0;
@@ -3978,7 +3997,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 				  TY_pointed(ilod_base_ty),
 				  WN_field_id(Wn()),
 				  base_ccr.Scale(),
-				  (CODEREP *) ilod_base_ty, NULL, lbase) );
+				  (CODEREP *)(INTPTR) ilod_base_ty, NULL, lbase) );
       }
       if (Lhs()->Is_ivar_volatile())
 	Set_volatile_stmt();
@@ -4008,7 +4027,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 				TY_pointed(ilod_base_ty),
 				WN_field_id(Wn()),
 				(mINT32)(INTPTR)index,
-				(CODEREP *) ilod_base_ty, NULL, lbase) );
+				(CODEREP *)(INTPTR) ilod_base_ty, NULL, lbase) );
       if (Lhs()->Is_ivar_volatile())
 	Set_volatile_stmt();
     }
@@ -4100,7 +4119,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
   case OPR_CALL:
     Set_call_flags(WN_call_flag(Wn()));
     if (OPCODE_has_aux(WN_opcode(Wn())))
-      Set_st(opt_stab->St((IDTYPE)WN_st(Wn())));
+      Set_st(opt_stab->St((IDTYPE)(INTPTR)WN_st(Wn())));
     else
       Set_st(WN_st(Wn()));
     return;

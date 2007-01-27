@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_dce.cxx
-// $Revision: 1.21 $
-// $Date: 05/08/16 21:38:07-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_dce.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_dce.cxx,v $
 //
 // ====================================================================
 //
@@ -4101,7 +4101,10 @@ DCE::Update_region_information( void ) const
       // if it deletes the condition code or if it is an unconditional
       // branch. (547802)
       // first need to check it is still a region start, it might be deleted
-      if (regbb->Kind() == BB_REGIONSTART && regbb->Succ()->Len() == 1) {
+      if (regbb->Kind() == BB_REGIONSTART) {
+	Is_True(regbb->Succ() != NULL && regbb->Succ()->Len() == 1,
+		("DCE::Update_region_information, multiple successors "
+		 "for region start"));
 	BB_NODE *succ = regbb->Succ()->Node();
 	if (!succ->Reached())
 	  Keep_unreached_bb(succ);

@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_fold.cxx
-// $Revision: 1.9 $
-// $Date: 05/03/11 16:42:55-08:00 $
-// $Author: kannann@iridot.keyresearch $
-// $Source: be/opt/SCCS/s.opt_fold.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_fold.cxx,v $
 //
 // Revision history:
 //  31-MAY-95 dahl - Original Version
@@ -478,6 +474,18 @@ FOLD::CR_Simplify_Expr(CODEREP *cr)
       if ( op == OPC_F8SQRT && SIMPNODE_opcode(k0) == OPC_F8RECIP )
 	return NOHASH;
 #endif
+
+      // bug fix for OSP_130
+      // disabe simplification because SIMPNODE_SimplifyCvtl will not
+      // set the bit_offset and bit_size of EXTRACT_BITS and COMPOSE_BITS,
+      // which is related to lower_level bit_fields operation
+      // TODO: pass the corresponding bit_offset and bit_size
+      //
+      if ((opr == OPR_EXTRACT_BITS || opr == OPR_COMPOSE_BITS) &&
+		      SIMPNODE_operator(k0) == OPR_SELECT) {
+	return NOHASH;
+      }
+
       if ( opr != OPR_CVTL )
 	r = SIMPNODE_SimplifyExp1(op, k0);
       else

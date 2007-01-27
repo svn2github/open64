@@ -183,8 +183,10 @@ struct PIC_OPT
 	      return;
 	}
 	if(f_call_shared) {
-	    if (AUX_ST_flags(Aux_St_Table[ST_st_idx (st)],USED_IN_DSO)){
-		/* common can be preempted by the def. in a so
+	    // bug fix for OSP_219
+	    //
+	    if (AUX_ST_flags(Aux_St_Table[ST_st_idx (st)], (USED_IN_DSO|OBJ_COMMON))){
+		/* common can be preempted by the def. in a DSO or OBJ_COMMON. 
 		 */
 		if (ST_sclass (st) != SCLASS_COMMON) {
 		    Set_ST_export(st, EXPORT_PROTECTED);

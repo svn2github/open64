@@ -8,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_vn_expr.cxx
-// $Revision: 1.9 $
-// $Date: 05/06/24 15:12:00-07:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/opt/SCCS/s.opt_vn_expr.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_vn_expr.cxx,v $
 //
 // ====================================================================
 //
@@ -306,6 +306,7 @@ Create_Scalar_Literal_From_Int(MTYPE mty, INT64 i)
 	 
    case MTYPE_F4:
    case MTYPE_F8:
+   case MTYPE_F10:
    case MTYPE_FQ:
       p = VN_EXPR::Create_Literal(Host_To_Targ_Float(mty, i));
       break;

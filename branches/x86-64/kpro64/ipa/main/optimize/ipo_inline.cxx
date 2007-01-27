@@ -357,6 +357,78 @@ IPA_Do_Linearization (IPA_NODE* callee_node, WN* call, SCOPE* caller_scope)
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
 
+#ifdef KEY
+static BOOL 
+Match_Loop_Indexes (WN* wn, vector<ST*> formals, INT num_formals)
+{
+  OPCODE opc = WN_opcode(wn);
+  if (opc == OPC_DO_LOOP) {
+    WN* index = WN_index(wn);
+
+    for (INT i = 0; i < num_formals; ++i) {
+      ST* formal_st = formals[i];
+      if (ST_sclass (formal_st) != SCLASS_FORMAL_REF)
+	continue;
+      if (formal_st == WN_st(index))
+	return TRUE;
+    }
+  } else if (opc == OPC_BLOCK) {
+    for (WN* stmt = WN_first(wn); stmt; stmt = WN_next(stmt)) {
+      if (WN_opcode(stmt) == OPC_DO_LOOP) {
+	WN* index = WN_index(stmt);
+
+	for (INT i = 0; i < num_formals; ++i) {
+	  ST* formal_st = formals[i];
+	  if (ST_sclass (formal_st) != SCLASS_FORMAL_REF)
+	    continue;
+	  if (formal_st == WN_st(index))
+	    return TRUE;
+	}	
+      }      
+      for (UINT kidno = 0; kidno < WN_kid_count(stmt); kidno++) {
+	if (Match_Loop_Indexes (WN_kid(stmt, kidno), formals, num_formals))
+	  return TRUE;
+      }
+    }
+  } else {
+    for (UINT kidno = 0; kidno < WN_kid_count(wn); kidno++) {
+      if (Match_Loop_Indexes(WN_kid(wn, kidno), formals, num_formals))
+	return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+static BOOL
+Formal_Is_Loop_Index (IPA_NODE* callee, const IPA_EDGE* edge)
+{
+  WN * call = edge->Whirl_Node();
+  WN* callee_wn = callee->Whirl_Tree(FALSE);
+  INT num_formals = WN_num_formals(callee_wn);
+  INT count_formals_to_test = 0;
+
+  // now that we allow inlining even if there is a mismatch..
+  if (edge->Num_Actuals() < num_formals)
+    num_formals = edge->Num_Actuals();
+
+  vector<ST*> formals;
+  formals.reserve (num_formals);
+
+  for (INT j = 0; j < num_formals; ++j) {
+    WN* actual = WN_kid(call, j);
+    if (WN_operator(actual) == OPR_PARM &&
+	WN_operator(WN_kid0(actual)) == OPR_ARRAY) {
+      formals.push_back (WN_st(WN_formal(callee_wn,j)));
+      count_formals_to_test ++;
+    }
+  }
+
+  if (Match_Loop_Indexes(callee_wn, formals, count_formals_to_test))
+    return TRUE;
+
+  return FALSE;
+}
+#endif
 // Final verification for incompatible parameters, etc.
 // Should move to inline analysis phase.
 BOOL
@@ -364,6 +436,18 @@ Can_Inline_Call (IPA_NODE* caller, IPA_NODE* callee, const IPA_EDGE* edge)
 {
   SCOPE_CONTEXT switch_scope(callee->Scope());
 
+#ifdef KEY
+  // Bug 110
+  // If the callee uses the formal parameter as a loop index variable then we 
+  // can not inline the call because we can not transform the IDNAME in a 
+  // meaningful way.
+  if ( Formal_Is_Loop_Index(callee, edge) ) {
+    Report_Reason ( callee, caller,
+                    "formal parameter is a loop index ", edge );
+    callee->Set_Noinline_Attrib();
+    return FALSE;
+  }
+#endif
   // if we end up linearizing certain references in fortran
   // then we should not inline
   if (! (edge->Has_Must_Inline_Attrib () ||
@@ -1844,6 +1928,19 @@ IPO_INLINE::Process_OPR_REGION(WN* wn, IPA_NODE* caller_node)
 	    }
 #endif
 	}
+	//The following code creat a new TY for the ST that is updated
+	//above.In the code above, it changes the INITO which is 
+	//attached a ST,but it don't update the size of the TY.
+	//Because in CG, we will get the size of the ST from its TY,
+	//we should get its right size from the INITO attach with it,
+	//and write it into a new TY
+	UINT inito_size = Get_INITO_Size(init_idx);
+	ST* temp_st = INITO_st (init_idx);
+	TY_IDX tyi;
+	TY& zty = New_TY (tyi);
+	TY_Init (zty, inito_size, KIND_STRUCT, MTYPE_M,temp_st->u1.name_idx);
+        Set_TY_align (tyi, 4);          
+        temp_st->u2.type = tyi;
     }
 
     Set_PU_has_region(caller_pu);

@@ -44,10 +44,10 @@
  * ====================================================================
  *
  * Module: config.h
- * $Revision: 1.24 $
- * $Date: 05/12/01 17:58:37-08:00 $
- * $Author: tkong@hyalite.keyresearch $
- * $Source: common/com/SCCS/s.config.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config.h,v $
  *
  * Revision history:
  *  09-Apr-90 - Original Version
@@ -426,11 +426,10 @@ extern BOOL Malloc_Free_On;
 extern BOOL Alloca_Dealloca_On;
 extern BOOL Barrier_Lvalues_On;
 
-#ifdef PATHSCALE_MERGE
 extern BOOL Use_Call_Shared_Link; /*For redundant save/restore gp opt */
 extern BOOL Gp_Save_Restore_Opt;
 extern BOOL Gp_Rel_Aggresive_Opt;
-#endif
+
 /***** The following is TRUE for C++  unless -no_exceptions is specified *****/
 extern BOOL Allow_Exceptions;
 
@@ -642,12 +641,12 @@ extern char *Emit_Global_Data;	/* only emit global data */
 extern char *Read_Global_Data;	/* only read global data */
 
 extern char *Library_Name;              /* -TENV:io_library=xxx */
-#ifdef PATHSCALE_MERGE
+
 /* -foptimize-regions implies this internal variable,
- *  * which is used in cgdwarf_targ.cxx to close emit .restore directive
- *   */
+ * which is used in cgdwarf_targ.cxx to close emit .restore directive
+ */
 extern BOOL Omit_UE_DESTROY_FRAME;  /* tmp close Epilogue overflow error */
-#endif
+
 extern INT  target_io_library;
 
 #ifdef TARG_X8664
@@ -683,10 +682,8 @@ extern BOOL Fill_Delay_Slots;	/* Attempt to fill branch delay slots */
 extern BOOL Enable_GDSE;	/* Do global dead store elimination */
 extern BOOL Enable_CG_Peephole;	/* Enable peephole optimization in cgprep */
 extern BOOL Optimize_CVTL_Exp;	/* Optimize expansion of CVTL operators */
-#ifdef PATHSCALE_MERGE
 extern BOOL Enable_EBO_Post_Proc_Rgn; /* Enable ebo after global scheduling */
-extern BOOL Optimine_CVTL_Exp;  /* Optimize expansion of CVTL operators */
-#endif
+extern BOOL Optimine_CVTL_Exp;	/* Optimize expansion of CVTL operators */
 extern BOOL Enable_CVT_Opt;	/* Optimize expansion of CVT operators */
 extern BOOL Indexed_Loads_Allowed; /* enable generation of indexed loads/stores */
 extern BOOL Early_MP_Processing; /* Do MP lowering before LNO/PREOPT */
@@ -822,6 +819,9 @@ extern SKIPLIST *Goto_Skip_List;     	     /* Processed list */
 
 /***** Perform configuration functions prior to flag processing *****/
 extern void Preconfigure (void);
+
+/***** Perform configuration specifically in FE if Olegacy is set *****/
+extern void Configure_Olegacy (BOOL in_FE);
 
 /***** Perform configuration functions after flag processing *****/
 extern void Configure (void);

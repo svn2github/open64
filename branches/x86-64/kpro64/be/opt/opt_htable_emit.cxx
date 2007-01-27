@@ -1,7 +1,3 @@
-/*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 //-*-c++-*-
 
 /*
@@ -12,10 +8,10 @@
 // ====================================================================
 //
 // Module: opt_htable_emit.cxx
-// $Revision: 1.5 $
-// $Date: 05/05/06 08:36:10-07:00 $
-// $Author: bos@eng-24.pathscale.com $
-// $Source: be/opt/SCCS/s.opt_htable_emit.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_htable_emit.cxx,v $
 //
 // Revision history:
 //  03-OCT-96 shin - Original Version

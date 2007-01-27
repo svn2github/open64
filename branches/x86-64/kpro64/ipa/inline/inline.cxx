@@ -1,9 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,10 +42,10 @@
 // ====================================================================
 //
 // Module: inline.cxx
-// $Revision: 1.9 $
-// $Date: 04/12/21 14:57:37-08:00 $
-// $Author: bos@eng-25.internal.keyresearch.com $
-// $Source: /home/bos/bk/kpro64-pending/ipa/inline/SCCS/s.inline.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/ipa/inline/inline.cxx,v $
 // Revision history:
 //  20-Apr-95 - Original Version
 //
