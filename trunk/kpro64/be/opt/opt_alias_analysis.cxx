@@ -452,7 +452,7 @@ BOOL OPT_STAB::Its_ret_val_of_malloc (VER_ID ver_id) {
 
   // check to see whether it is malloc-like func
   ST* call_st = WN_st(call);
-  if (!PU_is_malloc(Pu_Table[ST_pu(call_st)])) {
+  if (!PU_has_attr_malloc(Pu_Table[ST_pu(call_st)])) {
     return FALSE;
   }
 

@@ -4492,7 +4492,11 @@ WFE_Expand_Expr (tree exp,
             wfe_invoke_inliner = TRUE;
           }
           if (DECL_IS_MALLOC (func)) {
-            Set_PU_is_malloc (Pu_Table[ST_pu(st)]);
+            Set_PU_has_attr_malloc (Pu_Table[ST_pu(st)]);
+          } else if (DECL_IS_PURE(func)) {
+            Set_PU_has_attr_pure (Pu_Table[ST_pu(st)]);
+          } else if (TREE_READONLY(func)) {
+            Set_PU_is_pure (Pu_Table[ST_pu(st)]);
           }
         }
 

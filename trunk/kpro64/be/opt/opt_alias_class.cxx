@@ -1563,7 +1563,7 @@ ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
     // some real mechanism in the future instead of cheesebag hacks.
     if ((strcmp("alloca", ST_name(st)) == 0) ||
         (strcmp("_F90_ALLOCATE", ST_name(st)) == 0) ||
-	WOPT_Enable_Disambiguate_Heap_Obj && PU_is_malloc (Pu_Table[ST_pu(st)])) {
+	WOPT_Enable_Disambiguate_Heap_Obj && PU_has_attr_malloc (Pu_Table[ST_pu(st)])) {
       return TRUE;
     }
   }

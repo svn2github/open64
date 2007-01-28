@@ -807,6 +807,9 @@ READ_WRITE ALIAS_RULE::Aliased_with_Call(ST *st, INT32 flags, const POINTS_TO *m
   if (Rule_enabled(QUAL_RULE) && pu_idx != 0 && PU_is_pure(pu))
     return NO_READ_NO_WRITE;
 
+  if (Rule_enabled(QUAL_RULE) && pu_idx != 0 && PU_has_attr_pure(pu))
+    return READ;
+
   if (Rule_enabled(F_CALL_RULE)) {
     // Fortran parameter is aliased to the call unless passed by parameter.
     if (mem->F_param())
