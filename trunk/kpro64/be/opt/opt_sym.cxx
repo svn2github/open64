@@ -2911,6 +2911,10 @@ OPT_STAB::Identify_vsym(WN *memop_wn)
           AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
           vsym->Set_stype(VT_UNIQUE_VSYM);
           vsym->Points_to()->Set_alias_class (ac);
+          if (!_alias_classification->Writable_by_call(ac)) {
+            vsym->Points_to()->Set_not_writable_by_callee();
+            BS_Union1D(Inaccessible_to_callees(), vsym_id, mem_pool);
+          }
           _ac_2_vsym_map.Insert(ac, vsym_id);
         }
         return vsym_id;
