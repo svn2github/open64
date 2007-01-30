@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Handle the hair of processing (but not expanding) inline functions.
    Also manage function and variable name overloading.
    Copyright (C) 1987, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
@@ -357,6 +353,8 @@ make_thunk (function, delta, vcall_index)
   return thunk;
 }
 
+#ifdef TARGET_IA64
+#else
 static GTY (()) int thunk_labelno;
 
 /* Create a static alias to function.  */
@@ -403,7 +401,7 @@ make_alias_for_thunk (tree function)
     assemble_alias (alias, DECL_ASSEMBLER_NAME (function));
   return alias;
 }
-
+#endif
 #ifdef KEY
 extern void gxx_emits_decl PARAMS ((tree));
 #endif // KEY
@@ -417,7 +415,7 @@ use_thunk (thunk_fndecl, emit_p)
      int emit_p;
 {
   tree fnaddr;
-  tree function, alias;
+  tree function;
   tree vcall_offset;
   HOST_WIDE_INT delta, vcall_value;
 
@@ -441,12 +439,6 @@ use_thunk (thunk_fndecl, emit_p)
   TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (function)) = 1;
   if (!emit_p)
     return;
-
-#ifdef ASM_OUTPUT_DEF
-  alias = make_alias_for_thunk (function);
-#else
-  alias = function;
-#endif
 
   delta = THUNK_DELTA (thunk_fndecl);
   vcall_offset = THUNK_VCALL_OFFSET (thunk_fndecl);
@@ -478,26 +470,13 @@ use_thunk (thunk_fndecl, emit_p)
 
   push_to_top_level ();
 
-#ifdef ASM_OUTPUT_DEF
-  if (targetm.have_named_sections)
-    {
-      resolve_unique_section (function, 0, flag_function_sections);
-
-      if (DECL_SECTION_NAME (function) != NULL && DECL_ONE_ONLY (function))
-	{
-	  resolve_unique_section (thunk_fndecl, 0, flag_function_sections);
-
-	  /* Output the thunk into the same section as function.  */
-	  DECL_SECTION_NAME (thunk_fndecl) = DECL_SECTION_NAME (function);
-	}
-    }
-#endif
-
-#ifdef KEY
-  /* Save the function address before it is overwritten. */
+  /*
+   * Bookkeeping DECL_INITIAL in INITIAL_2 and emits this decl
+   * so that it will be expanded later.
+   */
+  extern void gxx_emits_decl (tree);
   DECL_INITIAL_2 (thunk_fndecl) = DECL_INITIAL (thunk_fndecl);
-  gxx_emits_decl (thunk_fndecl);  // generate WHIRL for the thunk
-#endif
+  gxx_emits_decl (thunk_fndecl);
 
   /* The back-end expects DECL_INITIAL to contain a BLOCK, so we
      create one.  */
@@ -506,7 +485,7 @@ use_thunk (thunk_fndecl, emit_p)
     = DECL_ARGUMENTS (thunk_fndecl);
 
   if (targetm.asm_out.can_output_mi_thunk (thunk_fndecl, delta,
-					   vcall_value, alias))
+					   vcall_value, function))
     {
       const char *fnname;
       current_function_decl = thunk_fndecl;
@@ -518,7 +497,7 @@ use_thunk (thunk_fndecl, emit_p)
       assemble_start_function (thunk_fndecl, fnname);
 
       targetm.asm_out.output_mi_thunk (asm_out_file, thunk_fndecl, delta,
-				       vcall_value, alias);
+				       vcall_value, function);
 
       assemble_end_function (thunk_fndecl, fnname);
       current_function_decl = 0;
@@ -591,7 +570,7 @@ use_thunk (thunk_fndecl, emit_p)
       for (a = TREE_CHAIN (a); a; a = TREE_CHAIN (a))
 	t = tree_cons (NULL_TREE, a, t);
       t = nreverse (t);
-      t = build_call (alias, t);
+      t = build_call (function, t);
       if (VOID_TYPE_P (TREE_TYPE (t)))
 	finish_expr_stmt (t);
       else
@@ -1162,5 +1141,7 @@ skip_artificial_parms_for (fn, list)
     list = TREE_CHAIN (list);
   return list;
 }
-
+#ifdef TARG_IA64
+#else
 #include "gt-cp-method.h"
+#endif

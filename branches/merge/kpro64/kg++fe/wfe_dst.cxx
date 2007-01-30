@@ -945,7 +945,11 @@ DST_enter_struct_union_members(tree parent_tree,
     // Bug 3533 - Expand all member functions of classes inside ::std namespace
     // here (I don't know how to get the member functions of the classes
     // contained in ::std namespace from gxx_emitted_decl in wfe_decl.cxx).
-    tree context = DECL_CONTEXT(parent_tree);
+    // the CODE of parent_tree is RECORD_TYPE or UNION_TYPE, so we should get the type 
+    // name of it as the context, but not get the decl context(bug also in pathescale2.3)
+    FmtAssert (TREE_CODE(parent_tree) == RECORD_TYPE || TREE_CODE(parent_tree) == UNION_TYPE,
+	      ("Unexpected code for parent_tree %x\n.", TREE_CODE(parent_tree)));
+    tree context = TYPE_NAME(parent_tree);
     if (TREE_CODE(context) != TYPE_DECL ||
 	!DECL_CONTEXT(context) ||
 	TREE_CODE(DECL_CONTEXT(context)) != NAMESPACE_DECL ||
@@ -1261,8 +1265,8 @@ DST_INVALID_INIT
 } ;
 	
 static type_trans ate_types[] = {
- 4, "BAD",       0,		
- 4, "UNK",       0,                     /* bit */
+ 1, "BAD",       0,			/* MTYPE_UNKNOWN */
+ 1, "LOGICAL_1", DW_ATE_boolean,	/* MTYPE_B   */
  1, "INTEGER_1", DW_ATE_signed,		/* MTYPE_I1  */
  2, "INTEGER_2", DW_ATE_signed,		/* MTYPE_I2  */
  4, "INTEGER_4", DW_ATE_signed,		/* MTYPE_I4  */
@@ -1273,7 +1277,7 @@ static type_trans ate_types[] = {
  8, "INTEGER*8", DW_ATE_unsigned,	/* MTYPE_U8  */
  4, "REAL_4",    DW_ATE_float,		/* MTYPE_F4  */
  8, "REAL_8",    DW_ATE_float,		/* MTYPE_F8  */
- 10,"UNK",       DW_ATE_float,		/* MTYPE_F10 */
+ 16,"REAL_10",   DW_ATE_float,		/* MTYPE_F10 */
  16,"REAL_16",   DW_ATE_float,		/* MTYPE_F16 */
  1 ,"CHAR" ,     DW_ATE_signed_char,    /* MTYPE_STR */
  16,"REAL_16",   DW_ATE_float,		/* MTYPE_FQ  */
@@ -1282,11 +1286,10 @@ static type_trans ate_types[] = {
  16,"COMPLEX_8", DW_ATE_complex_float,	/* MTYPE_C8  */
  32,"COMPLEX_16",DW_ATE_complex_float,	/* MTYPE_CQ  */
  1, "VOID",      0,                     /* MTYPE_V   */
- 1, "LOGICAL_1", DW_ATE_boolean,	
- 2, "LOGICAL_2", DW_ATE_boolean,	
- 4, "LOGICAL_4", DW_ATE_boolean,	
- 8, "LOGICAL_8", DW_ATE_boolean,	
-
+ 1, "UNK",	 0,			/* MTYPE_BS  */
+ 4, "ADDRESS_4", DW_ATE_unsigned,	/* MTYPE_A4  */
+ 8, "ADDRESS_8", DW_ATE_unsigned,	/* MTYPE_A8  */
+ 32,"COMPLEX_16",DW_ATE_complex_float,	/* MTYPE_C10 */
 } ;
 
 /*===================================================

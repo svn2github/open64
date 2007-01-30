@@ -694,7 +694,7 @@ MDclose(MDhandle h, char *target)
 	if ( 0 < md.stb.st_size ) {
 		md.base = (char *) mmap	( 0, md.stb.st_size, PROT_READ|PROT_WRITE
 				, MAP_SHARED, md.f, 0);
-		if ((int) md.base < 0) 
+		if ((long) md.base < 0) 
 			ERR(("mmap (%s): %s", md.filename, strerror(errno)));
 		md.size  = md.stb.st_size;
 		md.limit = md.base + md.size;

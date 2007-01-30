@@ -78,13 +78,23 @@ union double_long {
     double d;
 #ifdef SWAP
     struct {
+#ifdef KEY
+      int upper;
+      unsigned int lower;
+#else
       unsigned long lower;
       long upper;
+#endif
     } l;
 #else
     struct {
+#ifdef KEY
+      unsigned int lower;
+      int upper;
+#else
       long upper;
       unsigned long lower;
+#endif
     } l;
 #endif
     long long ll;

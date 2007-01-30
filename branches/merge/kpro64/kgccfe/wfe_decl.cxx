@@ -296,8 +296,20 @@ WFE_Start_Function (tree fndecl)
     WFE_Stmt_Push (vla_block, wfe_stmk_func_body, Get_Srcpos());
 
     ST        *func_st;
-    ST_EXPORT  eclass = TREE_PUBLIC(fndecl) ? EXPORT_PREEMPTIBLE
-                                            : EXPORT_LOCAL;
+#ifdef PATHSCALE_MERGE
+    ST_EXPORT  eclass;
+
+    //This is a work around to avoid redundant save/restore gp
+    if(TREE_PUBLIC(fndecl)) {
+	extern BOOL Gp_Save_Restore_Opt,Use_Call_Shared_Link;
+        if( Gp_Save_Restore_Opt && Use_Call_Shared_Link)
+            eclass = EXPORT_PROTECTED;
+        else
+            eclass = EXPORT_PREEMPTIBLE;
+    } else {
+       eclass = EXPORT_LOCAL;
+    }
+#endif
 
 #ifdef KEY
     bool extern_inline = FALSE;
@@ -695,6 +707,55 @@ WFE_Add_Init_Block(void)
   last_aggregate_initv = inv_blk;
 }
 
+#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
+float
+WFE_Convert_Internal_Real_to_IEEE_Single (REAL_VALUE_TYPE real)
+{
+  INT32 retval;
+
+  Is_True (sizeof(INT32) == sizeof(float),
+    ("The return value from REAL_VALUE_TO_TARGET_SINGLE() should be cast to"
+     " a integer with the same size as float"));
+  REAL_VALUE_TO_TARGET_SINGLE(real, retval);
+  return *(float*)(void*)&retval;
+}
+
+double
+WFE_Convert_Internal_Real_to_IEEE_Double (REAL_VALUE_TYPE real)
+{
+  long buffer[4];
+  int compact_buffer[8];
+
+  REAL_VALUE_TO_TARGET_DOUBLE (real, buffer);
+  WFE_Convert_To_Host_Order(buffer);
+  if (sizeof(long) > 4) {
+    Is_True (sizeof(long) == 8, ("sizeof(long) shold be 64"));
+    Is_True (sizeof(int) == 4, ("sizeof(int) should be 32"));
+    for (INT i = 0; i < sizeof(buffer)/sizeof(buffer[0]); i++)
+      compact_buffer[i] = (int)buffer[i];
+    return *(double*)(void*)&compact_buffer[0];
+  }
+  return *(double*)(void*)&buffer[0];
+}
+
+long double
+WFE_Convert_Internal_Real_to_IEEE_Double_Extended (REAL_VALUE_TYPE real)
+{
+  long buffer[4];
+  int compact_buffer[8];
+
+  REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, buffer);
+  WFE_Convert_To_Host_Order(buffer);
+  if (sizeof(long) > 4) {
+    for (INT i = 0; i < sizeof(buffer)/sizeof(buffer[0]); i++)
+      compact_buffer[i] = buffer[i];
+    return *(long double*)(void*)&compact_buffer[0];
+  }
+  return *(long double*)(void*)&buffer[0];
+}
+#endif
+#endif
 void 
 WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 {
@@ -709,6 +770,18 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 #endif // KEY
   switch (size) {
     case 4:
+#ifdef TARG_IA64 
+      tc = Host_To_Targ_Float_4 (MTYPE_F4,
+	WFE_Convert_Internal_Real_to_IEEE_Single (real));
+    case 8:
+      tc = Host_To_Targ_Float (MTYPE_F8,
+	WFE_Convert_Internal_Real_to_IEEE_Double (real));
+      break;
+    case 16:
+      tc = Host_To_Targ_Float_10 (MTYPE_F10,
+	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (real));
+      break;
+#else
       REAL_VALUE_TO_TARGET_SINGLE (real, t1);
       tc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
       break;
@@ -726,6 +799,7 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
       WFE_Convert_To_Host_Order(buffer);
       tc = Host_To_Targ_Quad (*(long double *) &buffer);
       break;
+#endif
 #endif
     default:
       FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Real unexpected size"));
@@ -751,8 +825,28 @@ WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT 
   long     buffer [4];
 #else
   int     buffer [4];
-#endif // KEY
+#endif // KEY	
   switch (size) {
+#ifdef TARG_IA64
+    case 8:
+      rtc = Host_To_Targ_Float_4 (MTYPE_F4,
+	WFE_Convert_Internal_Real_to_IEEE_Single (rval));
+      itc = Host_To_Targ_Float_4 (MTYPE_F4,
+	WFE_Convert_Internal_Real_to_IEEE_Single (ival));
+      break;
+    case 16:
+      rtc = Host_To_Targ_Float (MTYPE_F8,
+	WFE_Convert_Internal_Real_to_IEEE_Double (rval));
+      itc = Host_To_Targ_Float (MTYPE_F8,
+	WFE_Convert_Internal_Real_to_IEEE_Double (ival));
+      break;
+    case 32:
+      rtc = Host_To_Targ_Quad (
+	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (rval));
+      itc = Host_To_Targ_Quad (
+	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (ival));
+      break;
+#else
     case 8:
       REAL_VALUE_TO_TARGET_SINGLE (rval, t1);
       rtc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
@@ -777,11 +871,11 @@ WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT 
       REAL_VALUE_TO_TARGET_LONG_DOUBLE (rval, buffer);
       WFE_Convert_To_Host_Order(buffer);
       rtc = Host_To_Targ_Quad( *(long double *) &buffer);
-
       REAL_VALUE_TO_TARGET_LONG_DOUBLE (ival, buffer);
       WFE_Convert_To_Host_Order(buffer);
-      itc = Host_To_Targ_Quad( *(long double *) &buffer);    
+      itc = Host_To_Targ_Quad( *(long double *) &buffer);
       break;
+#endif
 #endif
     default:
       FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Complex unexpected size"));
@@ -1048,6 +1142,13 @@ Add_Initv_For_Tree (tree val, UINT size)
 		WFE_Add_Aggregate_Init_Real (
 			TREE_REAL_CST(val), size);
 		break;
+#ifdef PATHSCALE_MERGE
+	// bug fix for OSP_149
+	case COMPLEX_CST:
+		WFE_Add_Aggregate_Init_Complex (TREE_REAL_CST(TREE_REALPART(val)), 
+			     TREE_REAL_CST(TREE_IMAGPART(val)), size);
+		break;
+#endif
 	case STRING_CST:
 		WFE_Add_Aggregate_Init_String (
 			TREE_STRING_POINTER(val), size);
@@ -1686,7 +1787,13 @@ Traverse_Aggregate_Struct (
       INT bytes_out = current_offset - FLD_ofst(fld);
       if (num_of_bytes == bytes_out) {
 	TY_IDX fld_ty = FLD_type(fld);
-	WN *init_wn = WN_Intconst (TY_mtype (fld_ty), 0);
+#ifdef PATHSCALE_MERGE 
+	// bug fix for OSP_94
+	//
+	TYPE_ID mtyp = TY_mtype(fld_ty);
+	mtyp = (mtyp == MTYPE_V) ? MTYPE_I4 : Widen_Mtype(mtyp);
+	WN *init_wn = WN_Intconst (mtyp, 0);
+#endif
 	WN *wn = WN_Stid (MTYPE_BS, ST_ofst(st) + array_elem_offset, st,
 #ifndef KEY
 			  ty, 

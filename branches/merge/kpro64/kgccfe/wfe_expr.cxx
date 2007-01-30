@@ -438,7 +438,7 @@ inline UINT64 Parameter_Size(UINT64 sz)
 #   endif
 }
 
-inline TYPE_ID
+TYPE_ID
 Widen_Mtype (TYPE_ID t)
 {
   if (MTYPE_is_m(t))
@@ -3134,38 +3134,59 @@ WFE_Expand_Expr (tree exp,
 	tcon = Host_To_Targ_Float (TY_mtype (ty_idx), TREE_REAL_CST(exp));
 #else
 	REAL_VALUE_TYPE real = TREE_REAL_CST(exp);
-	int rval;
 
-	long rbuf [4];
-#ifdef KEY
-	INT32 rbuf_w[4]; // this is needed when long is 64-bit
-	INT32 i;
-#endif
-
+#ifdef TARG_IA64
 	switch (TY_mtype (ty_idx)) {
-	  case MTYPE_F4:
-	    REAL_VALUE_TO_TARGET_SINGLE (real, rval);
-	    tcon = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &rval);
-	    break;
-	  case MTYPE_F8:
-	    REAL_VALUE_TO_TARGET_DOUBLE (real, rbuf);
-#ifdef KEY
-	    WFE_Convert_To_Host_Order(rbuf);
-	    for (i = 0; i < 4; i++)
-	      rbuf_w[i] = rbuf[i];
-	    tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf_w);
+      case MTYPE_F4:
+        tcon = Host_To_Targ_Float_4 (MTYPE_F4,
+        WFE_Convert_Internal_Real_to_IEEE_Single(real));
+        break;
+
+      case MTYPE_F8:
+        tcon = Host_To_Targ_Float (MTYPE_F8,
+        WFE_Convert_Internal_Real_to_IEEE_Double(real));
+        break;
+
+      case MTYPE_F10:
+        tcon = Host_To_Targ_Float_10 (MTYPE_F10,
+        WFE_Convert_Internal_Real_to_IEEE_Double_Extended(real));
+        break;
+
+      case MTYPE_FQ:
+        tcon = Host_To_Targ_Quad (WFE_Convert_Internal_Real_to_IEEE_Double_Extended(real));
+        break;
 #else
-	    tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf);
+      int rval;
+      long rbuf [4];
+#ifdef KEY
+      INT32 rbuf_w[4]; // this is needed when long is 64-bit
+      INT32 i;
 #endif
-	    break;
-#if defined(TARG_IA32) || defined(TARG_X8664) 
-	  case MTYPE_FQ:
-	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
-	    for (i = 0; i < 4; i++)
-	      rbuf_w[i] = rbuf[i];
-	    tcon = Host_To_Targ_Quad (*(long double *) &rbuf_w);
-	    break;	    
+      switch (TY_mtype (ty_idx)) {
+        case MTYPE_F4:
+          REAL_VALUE_TO_TARGET_SINGLE (real, rval);
+          tcon = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &rval);
+          break;
+        case MTYPE_F8:
+          REAL_VALUE_TO_TARGET_DOUBLE (real, rbuf);
+#ifdef KEY
+          WFE_Convert_To_Host_Order(rbuf);
+          for (i = 0; i < 4; i++)
+            rbuf_w[i] = rbuf[i];
+          tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf_w);
+#else
+          tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf);
+#endif
+          break;
+#if defined(TARG_IA32) || defined(TARG_X8664)
+        case MTYPE_FQ:
+          REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
+          for (i = 0; i < 4; i++)
+            rbuf_w[i] = rbuf[i];
+          tcon = Host_To_Targ_Quad (*(long double *) &rbuf_w);
+          break;
 #endif /* TARG_IA32 */
+#endif
 	  default:
 	    FmtAssert(FALSE, ("WFE_Expand_Expr unexpected float size"));
 	    break;
@@ -3195,55 +3216,78 @@ WFE_Expand_Expr (tree exp,
 #else
 	REAL_VALUE_TYPE real = TREE_REAL_CST(TREE_REALPART(exp));
 	REAL_VALUE_TYPE imag = TREE_REAL_CST(TREE_IMAGPART(exp));
-        int rval;
-	int ival;
-	long rbuf [4];
-	long ibuf [4];
-#ifdef KEY
-	INT32 rbuf_w [4]; // this is needed when long is 64-bit
-	INT32 ibuf_w [4]; // this is needed when long is 64-bit
-	INT32 i;
-#endif 
-	switch (TY_mtype (ty_idx)) {
-	  case MTYPE_C4:
-	    REAL_VALUE_TO_TARGET_SINGLE (real, rval);
-	    REAL_VALUE_TO_TARGET_SINGLE (imag, ival);
-	    tcon = Host_To_Targ_Complex_4 (MTYPE_C4,
-					   *(float *) &rval,
-					   *(float *) &ival);
-	    break;
-	  case MTYPE_C8:
-	    REAL_VALUE_TO_TARGET_DOUBLE (real, rbuf);
-	    REAL_VALUE_TO_TARGET_DOUBLE (imag, ibuf);
-#ifdef KEY
-	    WFE_Convert_To_Host_Order(rbuf);
-	    WFE_Convert_To_Host_Order(ibuf);
-	    for (i = 0; i < 4; i++) {
-	      rbuf_w[i] = rbuf[i];
-	      ibuf_w[i] = ibuf[i];
-	    }
-	    tcon = Host_To_Targ_Complex (MTYPE_C8,
-					 *(double *) &rbuf_w,
-					 *(double *) &ibuf_w);
+#ifdef TARG_IA64
+    switch (TY_mtype (ty_idx)) {
+      case MTYPE_C4:
+        tcon = Host_To_Targ_Complex_4 (MTYPE_C4,
+        WFE_Convert_Internal_Real_to_IEEE_Single(real),
+        WFE_Convert_Internal_Real_to_IEEE_Single(imag));
+        break;
+
+      case MTYPE_C8:
+        tcon = Host_To_Targ_Complex (MTYPE_C8,
+        WFE_Convert_Internal_Real_to_IEEE_Double(real),
+        WFE_Convert_Internal_Real_to_IEEE_Double(imag));
+        break;
+
+      case MTYPE_C10:
+        tcon = Host_To_Targ_Complex_10 (MTYPE_C10,
+        WFE_Convert_Internal_Real_to_IEEE_Double_Extended(real),
+        WFE_Convert_Internal_Real_to_IEEE_Double_Extended(imag));
+        break;
+	  case MTYPE_CQ:
+            tcon = Host_To_Targ_Complex_Quad (
+                WFE_Convert_Internal_Real_to_IEEE_Double_Extended(real),
+                WFE_Convert_Internal_Real_to_IEEE_Double_Extended(imag));
+        break;
 #else
-	    tcon = Host_To_Targ_Complex (MTYPE_C8,
-					 *(double *) &rbuf,
-					 *(double *) &ibuf);
-#endif
-	    break;
+      int rval;
+      int ival;
+      long rbuf [4];
+      long ibuf [4];
 #ifdef KEY
-	case MTYPE_CQ:
+      INT32 rbuf_w [4]; // this is needed when long is 64-bit
+      INT32 ibuf_w [4]; // this is needed when long is 64-bit
+      INT32 i;
+#endif
+      switch (TY_mtype (ty_idx)) {
+        case MTYPE_C4:
+          REAL_VALUE_TO_TARGET_SINGLE (real, rval);
+          REAL_VALUE_TO_TARGET_SINGLE (imag, ival);
+          tcon = Host_To_Targ_Complex_4 (MTYPE_C4,
+                      *(float *) &rval, *(float *) &ival);
+           break;
+         case MTYPE_C8:
+           REAL_VALUE_TO_TARGET_DOUBLE (real, rbuf);
+           REAL_VALUE_TO_TARGET_DOUBLE (imag, ibuf);
+#ifdef KEY
+           WFE_Convert_To_Host_Order(rbuf);
+           WFE_Convert_To_Host_Order(ibuf);
+           for (i = 0; i < 4; i++) {
+             rbuf_w[i] = rbuf[i];
+             ibuf_w[i] = ibuf[i];
+           }
+           tcon = Host_To_Targ_Complex (MTYPE_C8,
+                            *(double *) &rbuf_w, *(double *) &ibuf_w);
+#else
+	   tcon = Host_To_Targ_Complex (MTYPE_C8,
+                            *(double *) &rbuf, *(double *) &ibuf);
+#endif
+	   break;										       
+#ifdef KEY
+	  case MTYPE_CQ:
 	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
 	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (imag, ibuf);
 	    WFE_Convert_To_Host_Order(rbuf);
 	    WFE_Convert_To_Host_Order(ibuf);
 	    for (i = 0; i < 4; i++) {
-	      rbuf_w[i] = rbuf[i];
+              rbuf_w[i] = rbuf[i];
 	      ibuf_w[i] = ibuf[i];
 	    }
-	    tcon = Host_To_Targ_Complex_Quad( *(long double *) &rbuf_w,
-					      *(long double *) &ibuf_w );
-	  break;
+            tcon = Host_To_Targ_Complex_Quad( *(long double *) &rbuf_w,
+                                 *(long double *) &ibuf_w );
+            break;
+#endif
 #endif
 	  default:
 	    FmtAssert(FALSE, ("WFE_Expand_Expr unexpected float size"));
@@ -3342,12 +3386,13 @@ WFE_Expand_Expr (tree exp,
 	if (MTYPE_is_integral(mtyp) && MTYPE_is_integral(WN_rtype(wn))) {
 	  // For 32-bit to 64-bit conversion, make the result have the same
 	  // sign as the source.  Fix bug 480.
+#ifndef TARG_IA64
 	  if (MTYPE_size_min(mtyp) == 64 &&
 	      MTYPE_size_min(WN_rtype(wn)) == 32 &&
 	      MTYPE_is_signed(mtyp) != MTYPE_is_signed(WN_rtype(wn))) {
 	    mtyp = MTYPE_complement(mtyp);
 	  }
-
+#endif
 	  if (MTYPE_size_min(mtyp) < MTYPE_size_min(WN_rtype(wn))) {
 	    if (MTYPE_size_min(mtyp) != 32)
 	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
@@ -3440,7 +3485,14 @@ WFE_Expand_Expr (tree exp,
 	    WN_set_rtype(wn, rtype);
 	    WN_set_desc(wn, desc);
 	    WN_offset(wn) = WN_offset(wn)+ofst+component_offset;
-	    WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
+#ifdef PATHSCALE_MERGE
+	    // bug fix for OSP_158
+    	    // if (TY_kind(ty_idx) == KIND_SCALAR)
+	    if (TY_kind(ty_idx) != KIND_STRUCT)
+ 	      WN_set_field_id (wn, 0);	
+	    else
+	      WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
+#endif
 	  } 
 	}
 	// bug 6122
@@ -3822,6 +3874,26 @@ WFE_Expand_Expr (tree exp,
         wn = WFE_Expand_Expr (TREE_OPERAND (exp, 0), TRUE, nop_ty_idx, 
 			      component_ty_idx, component_offset,
 			      field_id, FALSE);
+#ifdef PATHSCALE_MERGE
+#ifdef Is_True_On
+	{
+	WN* tmp = wn;
+	while (WN_operator (tmp) == OPR_CVTL || WN_operator (tmp) == OPR_CVT) {
+	  tmp = WN_kid0(tmp);
+	}
+	Is_True (WN_operator(tmp) == OPR_LDID || 
+	         WN_operator(tmp) == OPR_LDBITS ||
+	         WN_operator(tmp) == OPR_ILOAD ||
+                 // begin - bug fix for OSP_178
+                 WN_operator(tmp) == OPR_BAND ||
+                 // end - bug fix for OSP_178
+	         WN_operator(tmp) == OPR_ILDBITS, 
+		 ("Not expected operator"));
+	}
+#endif
+	INT bofst = Get_Integer_Value(TREE_OPERAND(exp, 2));
+	INT bsiz =Get_Integer_Value(TREE_OPERAND(exp, 1));
+#endif
 	ty_idx = Get_TY (TREE_TYPE(exp));
 	TYPE_ID rtype = TY_mtype(ty_idx);
 	UINT siz = TY_size(ty_idx);
@@ -3846,15 +3918,55 @@ WFE_Expand_Expr (tree exp,
 	}
 #endif // KEY
 	WN_set_rtype(wn, rtype);
+#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
+	// bug fix for OSP_157 && OSP_178 && OSP_225 
+	// Besides, solve the unaligned memory access triggered in:
+	// 400.perlbench in spec2k6 and 253.perlbmk in spec2k,
+	// one of the concrete example: "U4U1ILOAD 2 sym" into "U4U4ILOAD 2 sym".
+	// If one symbol is allocated with A bytes alignment, compiler must access
+	// it with load/store B, where B <= A. 
+	// Please NOTE that MTYPE_bit_size(MTYPE_M) == 0.
+	// Moreover, we should NOT modify it if desc equals to MTYPE_V,
+	// like CVTL, it's descriptor type must be set MTYPE_V,
+	//
+	if (!MTYPE_is_void (WN_desc(wn)) &&
+	    (!MTYPE_is_integral (WN_desc(wn)) || MTYPE_bit_size (WN_desc(wn)) >= bsiz)) 
+	{
+	  WN_set_desc (wn, desc);
+	}
+#else
 	if (WN_desc(wn) != MTYPE_V)
 	  WN_set_desc(wn, desc);
-	INT bofst = Get_Integer_Value(TREE_OPERAND(exp, 2));
-	INT bsiz =Get_Integer_Value(TREE_OPERAND(exp, 1));
+#endif
+#endif
 	if ((bsiz & 7) == 0 &&	// field size multiple of bytes
 	    MTYPE_size_min(desc) % bsiz == 0 && // accessed loc multiple of bsiz
 	    bofst % bsiz == 0) {		// bofst multiple of bsiz
 	  // not really a bit-field extraction!
+#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
+	  BOOL change_desc = FALSE;
+	  
+	  
+	  if (MTYPE_is_void (WN_desc(wn))) {
+	     /* it make not sense to change the desc and it is illegal to do that.
+	      *  (e.g. WN is CVTL.) */
+	  } else if (!MTYPE_is_integral (WN_desc(wn))) {
+	     /* change the type to integral mandatorily to ease both 
+	      * analysis and convertion etc.  */
+	     change_desc = TRUE;
+	  } else {
+	     /* We otherwise convert, say, "I4I2LDID 2 sym" into "I4I4LDID 2 sym".
+	      * There will be alignment issue. */
+	     change_desc = (MTYPE_bit_size (WN_desc(wn)) >= bsiz);
+	  }
+
+	  if (change_desc)
+#else
 	  if (WN_desc(wn) != MTYPE_V)
+#endif
+#endif
 	    if (MTYPE_signed(rtype))
 	      WN_set_desc(wn, Mtype_AlignmentClass(bsiz >> 3, MTYPE_CLASS_INTEGER));
 	    else WN_set_desc(wn, Mtype_AlignmentClass(bsiz >> 3, MTYPE_CLASS_UNSIGNED_INTEGER));
@@ -4234,7 +4346,7 @@ WFE_Expand_Expr (tree exp,
 		}
                 break;
 
-#ifdef KEY
+#if 0 /* turn off for the timing being due to bug */
 	    case BUILT_IN_FLOOR:
 	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
@@ -4864,6 +4976,11 @@ WFE_Expand_Expr (tree exp,
           if (DECL_INLINE (func)) {
             wfe_invoke_inliner = TRUE;
           }
+#ifdef TARG_IA64
+          if (DECL_IS_MALLOC (func)) {
+            Set_PU_is_malloc (Pu_Table[ST_pu(st)]);
+          }
+#endif
         }
 
         i = 0;
@@ -5128,7 +5245,11 @@ WFE_Expand_Expr (tree exp,
 	  ap_wn = WFE_Expand_Expr(kid0);
 	  if (WN_rtype(ap_wn) == MTYPE_M) {
 	    if (OPCODE_is_leaf(WN_opcode(ap_wn)))
+#ifdef TARG_IA64
+	      ap_wn = WN_Lda(Pointer_Mtype, 0, WN_st(ap_wn), 0);
+#else
 	      ap_wn = WN_Lda(Pointer_Mtype, WN_offset(ap_wn), WN_st(ap_wn), 0);
+#endif
 	    else {
 	      Is_True(OPCODE_is_load(WN_opcode(ap_wn)),
 		      ("WFE_Expand_Expr: unexpected VA_ARG_EXPR argument"));
@@ -5200,15 +5321,25 @@ WFE_Expand_Expr (tree exp,
 	} // end of TARGET_64BIT
 #endif
         // code swiped from builtins.c (std_expand_builtin_va_arg)
-	INT64 align;
-	INT64 rounded_size;
 	tree type = TREE_TYPE (exp);
 	TY_IDX ty_idx = Get_TY (type);
 	TYPE_ID mtype = TY_mtype (ty_idx);
 
         /* Compute the rounded size of the type.  */
-	align = PARM_BOUNDARY / BITS_PER_UNIT;
-	rounded_size = (((int_size_in_bytes (type) + align - 1) / align) * align);
+#ifdef TARG_IA64
+	INT64 ty_align = TYPE_ALIGN (type) / BITSPERBYTE;
+	INT64 ty_size = int_size_in_bytes (type);
+
+	INT64 align = PARM_BOUNDARY / BITS_PER_UNIT;
+	ty_size = ((ty_size + align - 1) / align) * align;
+	ty_align = ((ty_align + align - 1) / align) * align;
+#else
+	INT64 align;
+        INT64 rounded_size;
+        /* Compute the rounded size of the type.  */
+        align = PARM_BOUNDARY / BITS_PER_UNIT;
+        rounded_size = (((int_size_in_bytes (type) + align - 1) / align) * align);				
+#endif
 
 	/* Get AP.  */
 	WN        *ap_load   = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
@@ -5232,38 +5363,59 @@ WFE_Expand_Expr (tree exp,
         else
           Fail_FmtAssertion ("VA_ARG_EXPR: unknown operator for ap");
 
-#ifndef KEY
-	if (Target_Byte_Sex == BIG_ENDIAN) {
-	  Fail_FmtAssertion ("VA_ARG_EXPR not implemented for BIG_ENDIAN");
-	  INT64 adj;
-	  adj = TREE_INT_CST_LOW (TYPE_SIZE (type)) / BITS_PER_UNIT;
-	  if (rounded_size > align)
-	    adj = rounded_size;
+#ifdef TARG_IA64
+	wn = WN_COPY_Tree(ap_load);
 
-	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
-			  WN_Intconst (Pointer_Mtype, rounded_size - adj));
+	/* Align AP for the next argument. */
+	if (ty_align > align) {
+		wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+		    WN_Intconst (Pointer_Mtype, ty_align - 1));
+		wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn,
+		    WN_Intconst (Pointer_Mtype, -ty_align));
 	}
 
 	/* Compute new value for AP.  */
-	wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-			WN_Intconst (Pointer_Mtype, rounded_size));
-#else
 	if (Target_Byte_Sex == BIG_ENDIAN) {
-	  INT64 adj;
-	  adj = TREE_INT_CST_LOW (TYPE_SIZE (type)) / BITS_PER_UNIT;
-	  if (rounded_size > align)
-	    adj = rounded_size;
-	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
 			  WN_Intconst (Pointer_Mtype, 3));
 	  wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn,
 			  WN_Intconst (Pointer_Mtype, -8));
-	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
-			  WN_Intconst (Pointer_Mtype, rounded_size));
-	} else
-
-	/* Compute new value for AP.  */
-	wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-			WN_Intconst (Pointer_Mtype, rounded_size));
+	}
+	wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+		WN_Intconst (Pointer_Mtype, ty_size));
+ 
+#else
+#ifndef KEY
+	if (Target_Byte_Sex == BIG_ENDIAN) {
+          Fail_FmtAssertion ("VA_ARG_EXPR not implemented for BIG_ENDIAN");
+          INT64 adj;
+	  adj = TREE_INT_CST_LOW (TYPE_SIZE (type)) / BITS_PER_UNIT;
+          if (rounded_size > align)
+            adj = rounded_size;
+          wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+          WN_Intconst (Pointer_Mtype, rounded_size - adj));
+          }
+          /* Compute new value for AP.  */
+          wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+		            WN_Intconst (Pointer_Mtype, rounded_size));
+#else
+          if (Target_Byte_Sex == BIG_ENDIAN) {
+            INT64 adj;
+            adj = TREE_INT_CST_LOW (TYPE_SIZE (type)) / BITS_PER_UNIT;
+            if (rounded_size > align)
+              adj = rounded_size;
+            wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+            WN_Intconst (Pointer_Mtype, 3));
+            wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn,
+	                WN_Intconst (Pointer_Mtype, -8));
+            wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+            WN_Intconst (Pointer_Mtype, rounded_size));
+	    } else
+            /* Compute new value for AP.  */
+              wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+              WN_Intconst (Pointer_Mtype, rounded_size));
+#endif
+		    
 #endif
         if (ap_st)
 	  wn = WN_Stid (Pointer_Mtype, ap_offset, ap_st, ap_ty_idx, wn);
@@ -5272,13 +5424,23 @@ WFE_Expand_Expr (tree exp,
                                 ap_ty_idx, wn, ap_addr, 0);
         }
         WFE_Stmt_Append (wn, Get_Srcpos ());
-        wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size,
-			     ap_ty_idx, Make_Pointer_Type (ap_ty_idx, FALSE),
+#ifdef TARG_IA64
+        wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -ty_size,
+			     ty_idx, Make_Pointer_Type (ty_idx, FALSE),
 			     ap_load);
+#else
+	wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size, 
+			ap_ty_idx, Make_Pointer_Type (ap_ty_idx, FALSE),
+			ap_load);
+#endif
 #ifdef KEY
 	if (Target_Byte_Sex != Host_Byte_Sex)
           wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, 
-			  ((MTYPE_size_min(mtype)==32)?4:0)-rounded_size, 
+#ifdef TARG_IA64
+			  ((MTYPE_size_min(mtype)==32)?4:0)-ty_size, 
+#else
+			  ((MTYPE_size_min(mtype)==32)?4:0)-rounded_size,	  
+#endif
 			  ap_ty_idx, 
 			  Make_Pointer_Type (ap_ty_idx, FALSE),
 			  ap_load);

@@ -5255,11 +5255,16 @@ parse_options_and_default_flags (argc, argv)
       /* Give the language a chance to decode the option for itself.  */
       lang_processed = (*lang_hooks.decode_option) (argc - i, argv + i);
 
-      if (lang_processed >= 0)
+      if (lang_processed >= 0) {
 	/* Now see if the option also has a language independent meaning.
 	   Some options are both language specific and language independent,
 	   eg --help.  */
 	indep_processed = independent_decode_option (argc - i, argv + i);
+        
+	// when disable EH, needn't to optimization the formation of EH regions 
+	if (!key_exceptions)
+          opt_regions = 0;
+      }  
       else
 	{
 	  lang_processed = -lang_processed;

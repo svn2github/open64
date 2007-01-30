@@ -241,7 +241,7 @@ fei_object_ref (INTPTR  sym_idx,
  *===============================================
  */ 
 extern void
-fei_seg_ref (INT32   sym_idx )
+fei_seg_ref (INTPTR   sym_idx )
 {
   STB_pkt *p ;
 
@@ -281,7 +281,7 @@ fei_namelist_ref (INTPTR   sym_idx )
  *===============================================
  */ 
 extern void
-fei_member_ref (INT32   sym_idx )
+fei_member_ref (INTPTR   sym_idx )
 {
 
   cwh_stk_push(cast_to_void(sym_idx),FLD_item) ;
@@ -368,7 +368,7 @@ fei_constant ( TYPE            type,
     break ;
   }
   
-  return(cast_to_int(p));
+  return(cast_to_long(p));
 }
 
 /*===============================================
@@ -647,11 +647,11 @@ fei_non_conform_store( TYPE result_type )
 
     cwh_stk_push_typed(wd,WN_item,td); 
     if (!f2.Is_Null ())
-      cwh_stk_push((void *)f2.Idx (),FLD_item);
+      cwh_stk_push((void *)(INTPTR)f2.Idx (),FLD_item);
 
     cwh_stk_push_typed(wt,WN_item,tt); 
     if (!f1.Is_Null ())
-      cwh_stk_push((void *)f1.Idx(),FLD_item);
+      cwh_stk_push((void *)(INTPTR)f1.Idx(),FLD_item);
 
   }
 
@@ -1211,7 +1211,7 @@ fei_arg_addr(TYPE type)
   case FLD_item:
     det = cwh_addr_offset();
     fld = cwh_types_fld_dummy(det.off,det.type);
-    cwh_stk_push((void *)fld.Idx (),FLD_item);
+    cwh_stk_push((void *)(INTPTR)fld.Idx (),FLD_item);
     wa  = cwh_expr_address(f_T_PASSED);
     cwh_stk_push_typed(wa,ADDR_item, cwh_types_make_pointer_type(det.type, FALSE));
     break;
@@ -1379,7 +1379,7 @@ fei_entry_pt(INTPTR idx)
  *===============================================
  */ 
 extern void 
-fei_goto(INT32 lbl_idx)
+fei_goto(INTPTR lbl_idx)
 {
   LABEL_IDX lb ;
 
@@ -1405,9 +1405,9 @@ fei_goto(INT32 lbl_idx)
  */
 
 extern void
-fei_arith_goto(INT32 eq_lbl,
-               INT32 gt_lbl,
-               INT32 lt_lbl )
+fei_arith_goto(INTPTR eq_lbl,
+               INTPTR gt_lbl,
+               INTPTR lt_lbl )
 {
   WN *expr;
   WN *val1, *val2;
@@ -1416,8 +1416,8 @@ fei_arith_goto(INT32 eq_lbl,
   TY_IDX ty;
   OPCODE opc;
   OPERATOR opr;
-  INT32 true_lbl;
-  INT32 false_lbl;
+  INTPTR true_lbl;
+  INTPTR false_lbl;
 
 
   if (lt_lbl == eq_lbl && gt_lbl == eq_lbl) {
@@ -1499,11 +1499,11 @@ fei_arith_goto(INT32 eq_lbl,
  *===============================================
  */
 extern void
-fei_label_ref(INT32   lbl_idx)
+fei_label_ref(INTPTR   lbl_idx)
 {
   LABEL_IDX lb;
   lb = cast_to_LB(lbl_idx);
-  cwh_stk_push(cast_to_void(lb),LB_item);
+  cwh_stk_push(cast_to_void((INTPTR)lb),LB_item);
 }
 
 /*===============================================
@@ -1524,12 +1524,12 @@ fei_label_ref(INT32   lbl_idx)
  */
 /*ARGSUSED*/
 extern void
-fei_label_addr(INT32 lbl_idx)
+fei_label_addr(INTPTR lbl_idx)
 {
   WN *wn;
   INT32 *assign_id;
 
-  assign_id = cwh_auxst_assign_id(CURRENT_SYMTAB, (LABEL_IDX)lbl_idx);
+  assign_id = cwh_auxst_assign_id(CURRENT_SYMTAB, cast_to_LB(lbl_idx));
 
   if (*assign_id == -1)
      *assign_id = cwh_assign_label_id++;
@@ -1856,7 +1856,7 @@ fei_indirect_goto(INT32 num_labels,
  */
 static void
 cwh_stmt_select_char(INT32 num_cases,
-               INT32 default_label_idx )
+               INTPTR default_label_idx )
 {
   WN *wn1;
   W_node expr[2];
@@ -2022,7 +2022,7 @@ cwh_stmt_select_case_char(INT32 low_value_pres,
     cwh_stk_push(last_node, WN_item);
 
     if (case_follows)
-      cwh_stk_push(cast_to_void(label), LB_item);
+      cwh_stk_push(cast_to_void((INTPTR)label), LB_item);
 
   } else {
 
@@ -2097,7 +2097,7 @@ cwh_stmt_str_falsebr_util(OPERATOR opr,
 
 void
 fei_new_select(INT32 num_cases,
-               INT32 default_label_idx )
+               INTPTR default_label_idx )
 {
   WN *parent_block;
   WN *wn;
@@ -2298,7 +2298,7 @@ fei_new_select_case(INT64 low_value_pres,
        cwh_stk_push(expr, WN_item);
        cwh_stk_push(last_node,  WN_item);
        if (case_follows)
-	 cwh_stk_push(cast_to_void(label), LB_item);
+	 cwh_stk_push(cast_to_void((INTPTR)label), LB_item);
      }
 
    }
@@ -2316,7 +2316,7 @@ fei_new_select_case(INT64 low_value_pres,
  *===============================================
  */ 
 /*ARGSUSED*/
-void fei_label_def_named(INT32         lbl_idx,
+void fei_label_def_named(INTPTR         lbl_idx,
 			 INT64   label_flag_word,
 			 INT32         lineno,
 			 INT32         sup_cnt,
@@ -2341,7 +2341,7 @@ void fei_label_def_named(INT32         lbl_idx,
      wn = WN_CreateLabel(lb,0,NULL);
      
      if (test_flag(label_flag_word, FEI_LABEL_DEF_NAMED_CASE))
-	cwh_stk_push(cast_to_void(lb), LB_item);
+	cwh_stk_push(cast_to_void((INTPTR)lb), LB_item);
     
      cwh_block_append(wn) ;
   }  
@@ -2434,7 +2434,7 @@ void fei_label_def_named(INT32         lbl_idx,
  *===============================================
  */ 
 extern void 
-fei_brtrue(INT32 lbl_idx)
+fei_brtrue(INTPTR lbl_idx)
 {
   WN *wn;
   WN *wc;

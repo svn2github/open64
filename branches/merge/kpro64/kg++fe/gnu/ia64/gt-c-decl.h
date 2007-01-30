@@ -100,10 +100,7 @@ gt_ggc_mx_lang_tree_node (x_p)
               gt_ggc_m_9tree_node ((*x).generic.decl.arguments);
               gt_ggc_m_9tree_node ((*x).generic.decl.result);
               gt_ggc_m_9tree_node ((*x).generic.decl.initial);
-              // bug fix for OSP_162
-	      //
-	      gt_ggc_m_9tree_node ((*x).generic.decl.initial_2);
-	      gt_ggc_m_9tree_node ((*x).generic.decl.abstract_origin);
+              gt_ggc_m_9tree_node ((*x).generic.decl.abstract_origin);
               gt_ggc_m_9tree_node ((*x).generic.decl.assembler_name);
               gt_ggc_m_9tree_node ((*x).generic.decl.section_name);
               gt_ggc_m_9tree_node ((*x).generic.decl.attributes);

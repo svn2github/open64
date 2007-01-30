@@ -308,9 +308,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #endif
 		TYPE_TY_IDX(type_tree) = idx;
 		if(Debug_Level >= 2) {
-		  DST_INFO_IDX dst = Create_DST_type_For_Tree(type_tree,
-			idx,orig_idx);
-		  TYPE_DST_IDX(type_tree) = dst;
+		  defer_DST_type(type_tree, idx, orig_idx);
 	        }
 		TYPE_FIELD_IDS_USED(type_tree) =
 			TYPE_FIELD_IDS_USED(TYPE_MAIN_VARIANT(type_tree));
@@ -366,7 +364,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 2:  mtype = MTYPE_I2;  break;
 		case 4:  mtype = MTYPE_I4;  break;
 		case 8:  mtype = MTYPE_I8;  break;
-#ifndef TARG_X8664 
+#if !defined(TARG_X8664) && !defined(TARG_IA64)
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
 #endif /* _LP64 */
@@ -421,12 +419,11 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
-#ifdef TARG_X8664
-		case 12: mtype = MTYPE_FQ; break;
+#if defined(TARG_IA64)
+		case 16: mtype = MTYPE_F10; break;
+#else
+		case 16: mtype = MTYPE_F16; break;
 #endif
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
-		case 16: mtype = MTYPE_FQ; break;
-#endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
@@ -435,12 +432,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case  8:  mtype = MTYPE_C4; break;
 		case 16:  mtype = MTYPE_C8; break;
-#ifdef TARG_X8664
+#if defined(TARG_IA32) || defined(TARG_X8664)
 		case 24:  mtype = MTYPE_CQ; break;
 #endif
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+#if defined(TARG_IA64)
+		case 32: mtype = MTYPE_C10; break;
+#else
 		case 32: mtype = MTYPE_CQ; break;
-#endif /* TARG_MIPS */
+#endif
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
@@ -746,7 +745,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				continue;
 			}
 			if (TREE_CODE(field) == CONST_DECL) {
-				DevWarn ("got CONST_DECL in field list");
+                // Just for the time being, we need to investigate 
+                // whether this criteria is reasonable. 
+                static BOOL once_is_enough=FALSE;
+                if (!once_is_enough) {
+				  DevWarn ("got CONST_DECL in field list");
+                  once_is_enough=TRUE;
+                }
 				continue;
 			}
 			if (TREE_CODE(field) == VAR_DECL) {
@@ -1157,11 +1162,19 @@ Create_ST_For_Tree (tree decl_node)
 	  p++;
         ST_Init (st, Save_Str(p),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
+
+	p = IDENTIFIER_POINTER (DECL_NAME (decl_node));
+	if (!strncmp(p,"operator",8))
+		Set_PU_is_operator(pu);
 #else
         ST_Init (st,
                  Save_Str ( IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node))),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
 #endif
+	if (TREE_CODE(TREE_TYPE(decl_node)) == METHOD_TYPE) {
+		Set_ST_is_method_func(st);
+	}
+
 	if (DECL_THUNK_P(decl_node) &&
             TREE_CODE(CP_DECL_CONTEXT(decl_node)) != NAMESPACE_DECL)
 	  Set_ST_is_weak_symbol(st);
@@ -1209,7 +1222,18 @@ Create_ST_For_Tree (tree decl_node)
 	      }
 	      else
               	sclass = SCLASS_EXTERN;
-              eclass = EXPORT_PREEMPTIBLE;
+		
+	      // bug fix for OSP_89 && OSP_173 && OSP_169
+	      if (!flag_pic) { 
+	        if (Use_Call_Shared_Link && Gp_Rel_Aggresive_Opt &&
+		    sclass != SCLASS_EXTERN &&  sclass != SCLASS_COMMON) 
+		  eclass = EXPORT_PROTECTED;
+ 	        else
+		  eclass = EXPORT_PREEMPTIBLE;
+	      }
+	      else {
+		eclass = EXPORT_PREEMPTIBLE;
+	      }
             }
             else {
               	sclass = SCLASS_FSTATIC;

@@ -188,7 +188,7 @@ cwh_add_to_module_files_table(char *name)
  *===============================================
  */ 
 void
-fei_add_use_path(INT32 st_idx,INT32 path_idx,INT32 module_idx)
+fei_add_use_path(INTPTR st_idx,INT32 path_idx,INT32 module_idx)
 {
    INT i;
    

@@ -691,14 +691,14 @@ cwh_dst_mk_func(ST * st)
   t  = cwh_dst_mk_subroutine_type(ty);
   
   if (IS_ALTENTRY(st)) 
-    i = DST_mk_entry_point(s,r,t,(void *)ST_st_idx(st));
+    i = DST_mk_entry_point(s,r,t,(void *)(INTPTR)ST_st_idx(st));
 
   else {
     i = DST_mk_subprogram(s,
 			  r,
 			  t,
 			  DST_INVALID_IDX,
-			  (void*)ST_st_idx(st),
+			  (void*)(INTPTR)ST_st_idx(st),
 			  DW_INL_not_inlined,
 			  DW_VIRTUALITY_none,
 			  0,	       
@@ -754,7 +754,7 @@ cwh_dst_mk_MAIN(ST *mn, DST_INFO_IDX en_idx)
 			   ST_name(mn),
 			   t,
 			   en_idx,
-			   (void*) ST_st_idx(mn),
+			   (void*)(INTPTR) ST_st_idx(mn),
 			   DW_INL_not_inlined,
 			   DW_VIRTUALITY_none,
 			   0,	       
@@ -1148,7 +1148,7 @@ cwh_dst_mk_variable(ST * st)
 		      ST_name(st),
 		      t,
 		      0,
-		      (void *) ST_st_idx(st),
+		      (void *) (INTPTR)ST_st_idx(st),
 		      DST_INVALID_IDX,
 		      FALSE,
 		      ST_sclass(st) == SCLASS_AUTO,
@@ -1274,7 +1274,7 @@ cwh_dst_mk_formal(ST * st)
   i = DST_mk_formal_parameter(s,
 			      ST_name(st),
 			      t,
-			      (void *) ba,
+			      (void *)(INTPTR) ba,
 			      DST_INVALID_IDX,
 			      DST_INVALID_IDX,
 			      FALSE, /* FIX optional */
@@ -1402,7 +1402,7 @@ cwh_dst_mk_common(ST * st)
   i = DST_mk_common_block(name,(void*) ST_st_idx(st)); 
 # endif /* KEY Bug 3507 */
 #else
-  i = DST_mk_common_block(ST_name(st),(void*) ST_st_idx(st)); 
+  i = DST_mk_common_block(ST_name(st),(void*) (INTPTR)ST_st_idx(st)); 
 #endif /* KEY */
    
   e = NULL ;
@@ -1446,7 +1446,7 @@ cwh_dst_mk_common(ST * st)
     m = DST_mk_variable_comm(s,
 			     ST_name(el),
 			     t,
-			     (void *) ST_st_idx(st),
+			     (void *)(INTPTR) ST_st_idx(st),
 			     ST_ofst(el)) ;
 #endif /* KEY */
 
@@ -2393,7 +2393,7 @@ cwh_dst_mk_dope_bound(ST *dp, mINT64 offset, DST_INFO_IDX t, DST_INFO_IDX p, BOO
       i = DST_mk_variable_comm(s,
 			       NULL,
 			       t,
-			       (void *) ST_st_idx(ST_base(dp)),
+			       (void *) (INTPTR)ST_st_idx(ST_base(dp)),
 			       offset);
 
     } else {
@@ -2402,7 +2402,7 @@ cwh_dst_mk_dope_bound(ST *dp, mINT64 offset, DST_INFO_IDX t, DST_INFO_IDX p, BOO
 			  n,
 			  t,
 			  offset,
-			  (void *) ST_st_idx(dp),
+			  (void *) (INTPTR)ST_st_idx(dp),
 			  DST_INVALID_IDX,
 			  FALSE,
 			  ST_sclass(dp) == SCLASS_AUTO,
@@ -2516,7 +2516,7 @@ DST_set_assoc_idx(INT32 dummy,
 	 {
 	    DevAssert((FALSE), ("Illegal subprogram DST_ASSOC_INFO")); 
 	 }
-	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;
@@ -2524,7 +2524,7 @@ DST_set_assoc_idx(INT32 dummy,
       case DW_TAG_entry_point:
 	 assoc = &DST_ENTRY_POINT_st(
 			DST_ATTR_IDX_TO_PTR(iattr, DST_ENTRY_POINT));
-	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;
@@ -2532,7 +2532,7 @@ DST_set_assoc_idx(INT32 dummy,
       case DW_TAG_formal_parameter:
 	 assoc = &DST_FORMAL_PARAMETER_st(
 		     DST_ATTR_IDX_TO_PTR(iattr, DST_FORMAL_PARAMETER));
-	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;
@@ -2540,7 +2540,7 @@ DST_set_assoc_idx(INT32 dummy,
       case DW_TAG_common_block:
 	 assoc = &DST_COMMON_BLOCK_st( 
 			DST_ATTR_IDX_TO_PTR(iattr, DST_COMMON_BLOCK ) );
-	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;
@@ -2566,7 +2566,7 @@ DST_set_assoc_idx(INT32 dummy,
 	 }
 
 
-	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
 
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
@@ -2592,12 +2592,12 @@ DST_set_assoc_idx(INT32 dummy,
       case DW_TAG_inlined_subroutine:
 	 assoc = &DST_INLINED_SUBROUTINE_low_pc(
 		     DST_ATTR_IDX_TO_PTR(iattr, DST_INLINED_SUBROUTINE));
-	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 assoc = &DST_INLINED_SUBROUTINE_high_pc(
 		     DST_ATTR_IDX_TO_PTR(iattr, DST_INLINED_SUBROUTINE));
-	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;

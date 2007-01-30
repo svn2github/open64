@@ -155,8 +155,8 @@ static int task_affinity_count; /* number of indexes in AFFINITY */
  *
  *===============================================
  */ 
-extern int
-fei_task_var( INT32	sym_idx,
+extern INTPTR
+fei_task_var( INTPTR	sym_idx,
 	      INT32	context)
 {
   STB_pkt *p;
@@ -560,8 +560,8 @@ cwh_mp_region(       WN_PRAGMA_ID wn_pragma_id,
  *===============================================
  */ 
 extern int
-fei_parallel_region       ( INT32 ifexpr,
-                            INT32 maxcpus,
+fei_parallel_region       ( INTPTR ifexpr,
+                            INTPTR maxcpus,
                             INT32 context_start,
                             INT32 context_end,
                             INT32 lineno,
@@ -625,7 +625,7 @@ fei_endparallel_region    ( INT32 task_x,
 extern int
 fei_doparallel            ( INT32 induc_symx,
                             INT32 work_dist,
-                            INT32 work_dist_opnd,
+                            INTPTR work_dist_opnd,
                             INT32 lineno )
 {
   /* begin a new parallel region for the parallel loop */
@@ -704,13 +704,13 @@ fei_task_endloop          ( INT32 taskloop_x,
  *===============================================
  */ 
 extern void
-fei_doall                 ( INT32 ifexpr,
-                            INT32 maxcpus, 
+fei_doall                 ( INTPTR ifexpr,
+                            INTPTR maxcpus, 
                             INT32 context_start,
                             INT32 context_end,
                             INT32 induc_symx,
                             INT32 work_dist, 
-                            INT32 work_dist_opnd,
+                            INTPTR work_dist_opnd,
                             INT32 flags,
                             INT32 lineno )
 {
@@ -749,7 +749,7 @@ fei_doall                 ( INT32 ifexpr,
  *===============================================
  */ 
 static void
-cwh_doacross(int task_if_idx,
+cwh_doacross(INTPTR task_if_idx,
 	     int schedtype,
 	     int threadcount,
 	     int datacount,
@@ -800,7 +800,7 @@ cwh_doacross(int task_if_idx,
  *===============================================
  */ 
 extern void
-fei_doacross(int task_if_idx,
+fei_doacross(INTPTR task_if_idx,
 	     int schedtype,
 	     int threadcount,
 	     int datacount,
@@ -823,7 +823,7 @@ fei_doacross(int task_if_idx,
  *===============================================
  */ 
 extern void
-fei_paralleldo( int  task_if_idx,
+fei_paralleldo( INTPTR  task_if_idx,
 		int  schedtype,
 		int  threadcount,
 		int  datacount,
@@ -847,7 +847,7 @@ fei_paralleldo( int  task_if_idx,
  *===============================================
  */
 static void
-cwh_parallel (int  task_if_idx,
+cwh_parallel (INTPTR  task_if_idx,
 	      int  defaultt,
 	      int  is_omp)
 {
@@ -884,7 +884,7 @@ cwh_parallel (int  task_if_idx,
  *===============================================
  */ 
 extern void
-fei_parallel (int  task_if_idx)
+fei_parallel (INTPTR  task_if_idx)
 {
   cwh_parallel (task_if_idx, 0, 0);
 } 
@@ -1208,7 +1208,7 @@ fei_dynamic               ( int   list_count )
 }
 
 void
-fei_redistribute          ( int   array,
+fei_redistribute          ( INTPTR   array,
                             int   dim,
                             int   distribution,
                             int   cyclic_exists,
@@ -1611,7 +1611,7 @@ fei_page_place( void )
 } 
 
 void
-fei_prefetch_ref_disable  ( int   array,
+fei_prefetch_ref_disable  ( INTPTR   array,
                             int   size )
 {
   STB_pkt *p;
@@ -1890,8 +1890,8 @@ fei_endguard (INT32 task_x, INT32 guard_num, INT32 lineno )
  *===============================================
 */
 void
-fei_parallelsections_open_mp(int task_if_idx,
-			     int task_num_threads_idx,
+fei_parallelsections_open_mp(INTPTR task_if_idx,
+			     INTPTR task_num_threads_idx,
                              int defaultt)
 {
   WN *body;
@@ -1925,12 +1925,12 @@ fei_parallelsections_open_mp(int task_if_idx,
  *===============================================
 */ 
 void 
-fei_paralleldo_open_mp (int task_if_idx,
-			int task_num_threads_idx,
+fei_paralleldo_open_mp (INTPTR task_if_idx,
+			INTPTR task_num_threads_idx,
 			int defaultt,
 			int ordered,
 			int scheduletype,
-			int schedulechunk,
+			INTPTR schedulechunk,
 			int threadcount,
 			int datacount,
 			int ontocount)
@@ -2033,7 +2033,7 @@ fei_sections_open_mp(void)
 void
 fei_do_open_mp (int ordered,
 		int scheduletype,
-		int schedulechunk,
+		INTPTR schedulechunk,
 		int threadcount,
 		int datacount,
 		int ontocount)
@@ -2125,8 +2125,8 @@ fei_endparallelworkshare_open_mp   ( void )
  *===============================================
 */ 
 void 
-fei_parallelworkshare_open_mp(INT32 task_if_idx,
-		     INT32 task_num_threads_idx,
+fei_parallelworkshare_open_mp(INTPTR task_if_idx,
+		     INTPTR task_num_threads_idx,
 		     INT32 defaultt) 
 {
   WN *body;
@@ -2158,8 +2158,8 @@ fei_parallelworkshare_open_mp(INT32 task_if_idx,
  *===============================================
 */ 
 void 
-fei_parallel_open_mp(int task_if_idx,
-		     int task_num_threads_idx,
+fei_parallel_open_mp(INTPTR task_if_idx,
+		     INTPTR task_num_threads_idx,
 		     int defaultt) 
 {
   WN *body;
@@ -2716,7 +2716,7 @@ cwh_directive_add_pragma_to_loop(WN * wn, BOOL is_omp)
  *================================================================
 */
 static void
-cwh_directive_work_dist(INT32 work_dist, INT32 work_dist_opnd)
+cwh_directive_work_dist(INT32 work_dist, INTPTR work_dist_opnd)
 {
   WN * wn1 ;
   STB_pkt *p;
@@ -2766,7 +2766,7 @@ cwh_directive_work_dist(INT32 work_dist, INT32 work_dist_opnd)
  *================================================================
 */
 static void
-cwh_directive_load_value_pragma(INT32 item, WN_PRAGMA_ID pragma, BOOL is_omp)
+cwh_directive_load_value_pragma(INTPTR item, WN_PRAGMA_ID pragma, BOOL is_omp)
 {
   WN * wn1 ;
   STB_pkt *p;

@@ -255,7 +255,7 @@ cwh_stk_pop_FLD(void)
   DevAssert((stk[top].Class == FLD_item), (" TOS is not FLD"));
 
   stk[top].Class = UNDEF ;  
-  return ((FLD_IDX ) stk[top--].item) ;
+  return ((FLD_IDX ) (INTPTR)stk[top--].item) ;
 }
 
 /*===============================================
@@ -357,7 +357,7 @@ cwh_stk_pop_LB(void)
   DevAssert((stk[top].Class == LB_item), (" TOS is not LB"));
 
   stk[top].Class = UNDEF ;  
-  return ((LABEL_IDX) stk[top--].item) ;
+  return ((LABEL_IDX) (INTPTR)stk[top--].item) ;
 }
 
 /*===============================================
@@ -427,7 +427,7 @@ cwh_stk_get_FLD_TY(void)
   DevAssert((top >= 0), ("Stack underflow"));
   DevAssert((stk[top].Class == FLD_item), (" TOS is not FLD"));
 
-  fld = (FLD_IDX ) stk[top].item;
+  fld = (FLD_IDX ) (INTPTR)stk[top].item;
   return (FLD_type(FLD_HANDLE (fld)));
 }
 
@@ -620,7 +620,7 @@ cwh_stk_dump(void)
       if (stk[i].item == NULL)
 	printf("%s",null_str);
       else {
-	FLD_HANDLE f ((FLD_IDX )stk[i].item);
+	FLD_HANDLE f ((FLD_IDX )(INTPTR)stk[i].item);
 	printf ("%s: offset: %lld \n",FLD_name(f), FLD_ofst(f));
       }
       break;
@@ -629,7 +629,7 @@ cwh_stk_dump(void)
       if (stk[i].item == NULL)
 	printf("%s",null_str);
       else
-	DUMP_LB((LABEL_IDX)stk[i].item);
+	DUMP_LB((LABEL_IDX)(INTPTR)stk[i].item);
       break;
 
     case STR_item: 
@@ -829,7 +829,7 @@ cwh_stk_fld_name(void)
       /* Add the field name at the beginning of the r string */
       
       if (stk[i].item != NULL) {
-	 fname = FLD_name(FLD_HANDLE ((FLD_IDX)stk[i].item));
+	 fname = FLD_name(FLD_HANDLE ((FLD_IDX)(INTPTR)stk[i].item));
 	 s = (char *) malloc(strlen(r) + strlen(fname) + 2) ;
 	 sprintf(s,"%%%s%s",fname,r);
 	 free(r);

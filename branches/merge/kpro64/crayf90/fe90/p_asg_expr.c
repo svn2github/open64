@@ -1265,7 +1265,7 @@ boolean parse_operand (opnd_type *the_opnd)
                      cmplx_lin_type = Complex_4;
 # if defined(_WHIRL_HOST64_TARGET64)
                      {
-                       float *p = &constant;
+                       float *p = (float *)&constant;
                        p[1] = p[2];
                      }
 # endif

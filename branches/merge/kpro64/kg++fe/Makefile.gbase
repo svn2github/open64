@@ -265,11 +265,21 @@ CXXFILES = $(FRONT_END_CXX_SRCS)
 
 VPATH    =  $(SRC_DIRS)
 
+#Temporarily turn off Werror when compile C++ FE
+ifeq ($(BUILD_ARCH), IA64)
+LCOPTS = -fPIC -DTARG_IA64 -DKEY $(STD_C_OPTS)
+else
 LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
+endif
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(INC_DIRS))
 
+#Temporarily turn off Werror when compile C++ FE
+ifeq ($(BUILD_ARCH), IA64)
+LC++OPTS = -fPIC -DTARG_IA64 -DKEY
+else
 LC++OPTS = $(STD_COMPILE_OPTS)
+endif
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(LCINCS)
 
@@ -339,11 +349,13 @@ gfecc : $(OBJECTS) $(LIBGNU_OBJS)
 BUILD_SUBDIRS = gnu
 include $(COMMONRULES)
 
+ifeq  ($(BUILD_TARGET), X8664)
 # CCNAME is now gcc -m32
 ifeq (gcc,$(firstword $(CCNAME)))
  ifneq ($(BUILD_OPTIMIZE), DEBUG)
 # work around gcc bug optimizing this file on ia32
    wfe_stmt.o: OPTIMIZER = -O -fno-inline
  endif
+endif
 endif
 wn_util.o: HOSTDEFS += -DMONGOOSE_BE

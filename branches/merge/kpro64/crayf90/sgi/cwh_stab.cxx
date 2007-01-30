@@ -178,8 +178,8 @@ fei_next_func_idx(INT32 Pu_arg,
   }
 
   i++;
-  p = cwh_stab_packet(cast_to_void(i), is_CONST);
-  return(cast_to_int(p));  
+  p = cwh_stab_packet(cast_to_void((INTPTR)i), is_CONST);
+  return(cast_to_long(p));  
 }
 
 
@@ -446,7 +446,7 @@ fei_proc_def(char         *name_string,
   entry_point_count++ ;
 
   p = cwh_stab_packet(st, is_ST);
-  return(cast_to_int(p));
+  return(cast_to_long(p));
 }
 
 /*===================================================
@@ -532,7 +532,7 @@ fei_proc_imp(INT32 lineno,
     Set_ST_auxst_is_elemental(st,TRUE);
   
   p = cwh_stab_packet(st, is_ST);
-  return(cast_to_int(p));
+  return(cast_to_long(p));
 }
 
 /*===================================================
@@ -634,7 +634,7 @@ fei_arith_con(TYPE type, SLONG *start)
   } else
     DevAssert((0),("Unimplemented constant"));
 
-  return (cast_to_int(r)) ;
+  return (cast_to_long(r)) ;
 
 }
 
@@ -660,7 +660,7 @@ fei_pattern_con(TYPE type,char *start,INT64 bitsize)
   tc = Host_To_Targ_String (MTYPE_STRING,start,TY_size(ty));
   st = Gen_String_Sym (&tc,ty,FALSE);
  
-  return(cast_to_int(st));
+  return(cast_to_long(st));
   
 }
 
@@ -855,7 +855,7 @@ fei_object(char * name_string,
       }
 
       o = cwh_stab_packet(sl,is_ST);
-      return(cast_to_int(o));
+      return(cast_to_long(o));
     }
   }
 
@@ -917,7 +917,7 @@ fei_object(char * name_string,
 
       if (decl_distribute_pragmas) 
         cwh_stab_distrib_pragmas(st) ;
-      return(cast_to_int(o));
+      return(cast_to_long(o));
     }
   }
 
@@ -1408,10 +1408,10 @@ fei_seg (char        * name_string,
   } else {  /* get SCLASS */
 
     rt = cast_to_int(segment_map[seg_type]);
-    p = cwh_stab_packet(cast_to_void(rt),is_SCLASS);
+    p = cwh_stab_packet(cast_to_void((INTPTR)rt),is_SCLASS);
   }
 
-  return (cast_to_int(p));
+  return (cast_to_long(p));
 }
 
 
@@ -1488,7 +1488,7 @@ fei_name (char *name_string,
   default:
     break ;
   }
-  return(cast_to_int(r));
+  return(cast_to_long(r));
 }
 
 
@@ -1530,7 +1530,7 @@ fei_namelist(char  * name_string,
   DevAssert((l->form == is_LIST),("Nm list??"));
   cwh_auxst_add_list(st, (LIST *) l->item, l_NAMELIST);
 
-  return (cast_to_int(p));
+  return (cast_to_long(p));
 }
 
 /*===================================================
@@ -3163,7 +3163,7 @@ cwh_stab_mk_pu(TY_IDX pty, SYMTAB_IDX level)
 INTPTR
 fei_smt_parameter(char * name_string,
    	   	  TYPE   type,
-                  INT32	 con_idx,
+               INTPTR	 con_idx,
 		  INT32	 Class,
 		  INT32	 lineno)
 
@@ -3229,5 +3229,5 @@ fei_smt_parameter(char * name_string,
    }
    cwh_stab_set_linenum(st,lineno);
 
-   return(cast_to_int(st));
+   return(cast_to_long(st));
 }

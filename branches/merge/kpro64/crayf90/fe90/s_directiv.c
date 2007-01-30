@@ -1437,6 +1437,45 @@ void directive_stmt_semantics(void)
             exp_desc.rank = 0;
             ok &= expr_semantics(&opnd, &exp_desc);
             COPY_OPND(IR_OPND_L(ir_idx), opnd);
+
+#ifdef TARG_IA64
+            if (OPND_FLD(opnd) != CN_Tbl_Idx ||
+                exp_desc.rank  != 0          ||
+                exp_desc.type  != Integer)   {
+               find_opnd_line_and_column(&opnd, &line, &column);
+               PRINTMSG(line, 1105, Error, column);
+               IR_IDX_L(ir_idx) = CN_INTEGER_ONE_IDX;
+               IR_FLD_L(ir_idx)	= CN_Tbl_Idx;
+            }
+            else if (fold_relationals(OPND_IDX(opnd),
+                                      CN_INTEGER_ZERO_IDX,
+                                      Eq_Opr)) {
+
+               /* Directive is "UNROLL 0".  Force it to no unrolling,  */
+               /* so send an unroll count of 1 to pdgcs!!              */
+
+               IR_IDX_L(ir_idx)		= CN_INTEGER_ONE_IDX;
+               IR_FLD_L(ir_idx)		= CN_Tbl_Idx;
+            }
+            else if (compare_cn_and_value(OPND_IDX(opnd), 0, Lt_Opr) ||
+                     compare_cn_and_value(OPND_IDX(opnd), 1024, Gt_Opr)) {
+               find_opnd_line_and_column(&opnd, &line, &column);
+               PRINTMSG(line, 1105, Error, column);
+               IR_IDX_L(ir_idx) = CN_INTEGER_ONE_IDX;
+               IR_FLD_L(ir_idx)	= CN_Tbl_Idx;
+            }
+
+            cdir_switches.unroll_count_idx	= IR_IDX_L(ir_idx);
+            cdir_switches.unroll_dir		= TRUE;
+         }
+         else {
+            cdir_switches.unroll_count_idx	= CN_INTEGER_ZERO_IDX;
+            cdir_switches.unroll_dir		= TRUE;
+#ifdef KEY /* Bug 7489 */
+	    IR_IDX_L(ir_idx)		= CN_INTEGER_ZERO_IDX;
+	    IR_FLD_L(ir_idx)		= CN_Tbl_Idx;
+#endif /* KEY Bug 7489 */
+#endif /* TARG_IA64 */
          }
          break;
 

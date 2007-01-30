@@ -463,7 +463,13 @@
 #ifdef KEY /* Bug 8117 */
 /* Runtime symbols for non-inline copyinout of arguments */
 # define COPYIN_ENTRY			"_Copyin"
+#ifdef PATHSCALE_MERGE
+# define COPYIN_NAME_LEN		((sizeof COPYIN_ENTRY) - 1)
+#endif
 # define COPYOUT_ENTRY			"_Copyout"
+#ifdef PATHSCALE_MERGE
+# define COPYOUT_NAME_LEN		((sizeof COPYOUT_ENTRY) - 1)
+#endif
 #endif /* KEY Bug 8117 */
 #ifdef KEY /* Bug 5089 */
 /* Runtime symbols for Fortran 2000 IEEE prolog/epilog save/restore. 
@@ -473,7 +479,7 @@
 # define IEEE_RESTORE_ENTRY		"_Ieee_restore"
 
 #ifdef _LINUX_LINUX
-# if defined(TARG_X8664)
+# if (defined(TARG_X8664) || defined(TARG_IA64))
     /* The size of fenv_t on Linux systems for -m64 is 32 bytes. The size on
      * Fedora Core 1 systems for -m32 is 32 bytes, but on Fedora Core 2 and
      * later -m32 systems it's 28 bytes. For -m32, libpathfortran provides

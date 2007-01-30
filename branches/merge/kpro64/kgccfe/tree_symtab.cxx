@@ -233,7 +233,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 2:  mtype = MTYPE_I2; break;
 		case 4:  mtype = MTYPE_I4; break;
 		case 8:  mtype = MTYPE_I8; break;
-#ifndef TARG_X8664 
+#if !defined(TARG_X8664) && !defined(TARG_IA64) 
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
 #endif /* _LP64 */
@@ -292,6 +292,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 16: mtype = MTYPE_FQ; break;
 #endif /* TARG_MIPS */
 #ifdef TARG_IA64
+#ifdef PATHSCALE_MERGE
+		case 16: mtype = MTYPE_F10; break; 
+#endif
 		case 12: mtype = MTYPE_F10; break;
 #endif /* TARG_IA64 */
 #if defined(TARG_IA32) || defined(TARG_X8664)
@@ -313,6 +316,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 32: mtype = MTYPE_CQ; break;
 #endif /* TARG_MIPS */
 #ifdef TARG_IA64
+#ifdef PATHSCALE_MERGE
+		case 32: mtype = MTYPE_C10; break; 
+#endif
 		case 24: mtype = MTYPE_C10; break;
 #endif /* TARG_IA64 */
 #if defined(TARG_IA32) || defined(TARG_X8664)
@@ -809,8 +815,19 @@ Create_ST_For_Tree (tree decl_node)
   if (TREE_CODE(decl_node) == ERROR_MARK)
     exit (RC_USER_ERROR);
 
-  if (DECL_NAME (decl_node))
+#ifdef PATHSCALE_MERGE
+  //begin - fix for bug OSP 204
+  if (TREE_CODE (decl_node) == VAR_DECL &&
+      (TREE_STATIC(decl_node) || DECL_EXTERNAL(decl_node) || TREE_PUBLIC(decl_node) ) &&
+      DECL_ASSEMBLER_NAME(decl_node) ) {
+    name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME(decl_node));
+    if (*name == '*' ) name++;
+  }
+  else if (DECL_NAME (decl_node)) {
     name = IDENTIFIER_POINTER (DECL_NAME (decl_node));
+  }
+  //end - fix for bug OSP 204
+#endif
   else {
     DevWarn ("no name for DECL_NODE");
     name = "__unknown__";
@@ -892,8 +909,20 @@ Create_ST_For_Tree (tree decl_node)
 	      }
 	      else
               	sclass = SCLASS_EXTERN;
-              eclass = EXPORT_PREEMPTIBLE;
-            }
+#ifdef PATHSCALE_MERGE 
+          // bug fix for OSP_89 && OSP_173 && OSP_169
+	  extern BOOL Use_Call_Shared_Link,Gp_Rel_Aggresive_Opt;
+          if (!flag_pic) {
+            if (Use_Call_Shared_Link && Gp_Rel_Aggresive_Opt &&
+            sclass != SCLASS_EXTERN && sclass != SCLASS_COMMON)
+          eclass = EXPORT_PROTECTED;
+        else
+          eclass = EXPORT_PREEMPTIBLE;
+          }
+          else
+        eclass = EXPORT_PREEMPTIBLE;
+        }
+#endif
             else {
               	sclass = SCLASS_FSTATIC;
 		eclass = EXPORT_LOCAL;
@@ -1019,7 +1048,7 @@ Create_ST_For_Tree (tree decl_node)
 	DST_ATTR_IDX attr_idx = DST_INFO_attributes(info_ptr);
 	DST_VARIABLE *attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_VARIABLE);
 	DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = 
-	  (void *)ST_st_idx(st);
+	  (void *)(INTPTR)ST_st_idx(st);
       } else {
 	struct mongoose_gcc_DST_IDX dst =
 	  Create_DST_decl_For_Tree(decl_node,st);

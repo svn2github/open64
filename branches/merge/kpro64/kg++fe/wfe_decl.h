@@ -175,6 +175,12 @@ extern WN *Current_Entry_WN(void);
 extern tree named_ret_obj_initializer;
 #endif
 
+#ifdef REAL_VALUE_TYPE
+float   WFE_Convert_Internal_Real_to_IEEE_Single(REAL_VALUE_TYPE);
+double  WFE_Convert_Internal_Real_to_IEEE_Double(REAL_VALUE_TYPE);
+long double WFE_Convert_Internal_Real_to_IEEE_Double_Extended(REAL_VALUE_TYPE);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

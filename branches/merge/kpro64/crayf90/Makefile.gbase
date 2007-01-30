@@ -38,12 +38,19 @@
 
 include $(COMMONDEFS)
 
+ifeq ($(BUILD_TARGET),IA64)
+BUILD_SUBDIRS = fe90 libf90sgi sgi
+else
 BUILD_SUBDIRS = fe90 sgi
+endif
 
 default : first
 
 first:
 	$(call submake,fe90)
+ifeq ($(BUILD_TARGET),IA64)
+	$(call submake,libf90sgi)
+endif
 	$(call submake,sgi)
 
 $(BUILD_SUBDIRS):

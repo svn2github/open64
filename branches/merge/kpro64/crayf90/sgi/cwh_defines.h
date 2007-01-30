@@ -68,14 +68,27 @@ static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.c
 typedef INT64 OFFSET_64 ; 
 typedef unsigned long ULONG ;
 typedef long SLONG ;
+#if (defined(TARG_IA64) && defined(_LP64))
+#define cast_to_TY(x) ((TY_IDX)x) 
+#define cast_to_WN(x) ((WN *) (void *)x) 
+#define cast_to_ST(x) ((ST *) (void *)x) 
+#define cast_to_LB(x) ((LABEL_IDX)x) 
+#define cast_to_uint(x) ((unsigned int) x)
+#define cast_to_int(x) ((int)x)
+#define cast_to_long(x) ((long)(void*)x)
+#define cast_to_void(x) ((void *)x)
+#define cast_to_STB(x) ((STB_pkt *) (void *)x)
+#else
 #define cast_to_TY(x) ((TY_IDX) (void *)x) 
 #define cast_to_WN(x) ((WN *) (void *)x) 
 #define cast_to_ST(x) ((ST *) (void *)x) 
 #define cast_to_LB(x) ((LABEL_IDX) (void *)x) 
 #define cast_to_uint(x) ((unsigned long) (void *)x)
 #define cast_to_int(x) ((long ) (void *)x)
+#define cast_to_long(x) ((long)(void*)x)
 #define cast_to_void(x) ((void *)x)
 #define cast_to_STB(x) ((STB_pkt *) (void *)x)
+#endif
 
 
 /* dump macros */

@@ -12168,11 +12168,7 @@ void    lbound_intrinsic(opnd_type     *result_opnd,
    int            expr_IDX[MAX_NUM_DIMS];
    fld_type       expr_FLD[MAX_NUM_DIMS];
    int		  save_arg3;
-# ifdef _WHIRL_HOST64_TARGET64
-   int            const_array[MAX_NUM_DIMS];
-# else
    long_type   	  const_array[MAX_NUM_DIMS];
-# endif /* _WHIRL_HOST64_TARGET64 */
    long64     	  host_array[MAX_NUM_DIMS];
 
 
@@ -13048,11 +13044,7 @@ void    ubound_intrinsic(opnd_type     *result_opnd,
    int            le_idx;
    int            eq_idx;
    int            array_attr;
-# ifdef _WHIRL_HOST64_TARGET64
-   int            const_array[MAX_NUM_DIMS];
-# else
    long_type   	  const_array[MAX_NUM_DIMS];
-# endif /* _WHIRL_HOST64_TARGET64 */
    long64     	  host_array[MAX_NUM_DIMS];
    int            expr_IDX[MAX_NUM_DIMS];
    fld_type       expr_FLD[MAX_NUM_DIMS];
@@ -14229,11 +14221,7 @@ void    shape_intrinsic(opnd_type     *result_opnd,
    int            triplet_idx;
    long64         bit_length;
    int            constant_type_idx;
-# ifdef _WHIRL_HOST64_TARGET64
-   int            const_array[MAX_NUM_DIMS];
-# else
    long_type  	  const_array[MAX_NUM_DIMS];
-# endif /* _WHIRL_HOST64_TARGET64 */
    long64     	  host_array[MAX_NUM_DIMS];
    int            ir_idx;
    int            cn_idx;
