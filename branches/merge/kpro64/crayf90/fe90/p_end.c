@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -418,12 +422,14 @@ void parse_end_stmt (void)
       }
 
 #ifdef KEY /* Bug 5550 */
-      /* If we are ending an interface block which began with "operator(x)" or
-       * "assignment(=)", the "end interface" may have an optional
-       * "operator(x)" or "assignment(=)" too */
+      /* If we are ending an interface block which began with "operator(.x.)"
+       * or "assignment(=)", the "end interface" may have an optional
+       * "operator(.x.)" or "assignment(=)" too. Notice that there's no
+       * confusion between "interface x" and "interface operator(.x.)" here
+       * because the former generates upper case token "X" but the latter
+       * generates lower case token "x". */
       int blk_name = BLK_NAME(blk_stk_idx);
-      if (AT_OBJ_CLASS(blk_name) == Interface &&
-        ATI_DEFINED_OPR(blk_name) != Null_Opr)
+      if (AT_OBJ_CLASS(blk_name) == Interface)
       {
 	found_name = (LA_CH_VALUE != EOS) && parse_generic_spec();
       }
@@ -2224,7 +2230,11 @@ void end_labeled_do()
 
 {
    int		blk_idx;
+#ifdef KEY /* Bug 10177 */
+   boolean	error_flag = FALSE;
+#else /* KEY Bug 10177 */
    boolean	error_flag;
+#endif /* KEY Bug 10177 */
    int		fake_blk_stk_idx;
    int		loop_num = 0;
    boolean	msg_issued;
@@ -2278,7 +2288,13 @@ FOUND_DO_BLK:
 
       case Continue_Stmt:
          if (BLK_LOOP_NUM(blk_idx) > 1) {
-            PRINTMSG(stmt_start_line, 241, Comment, stmt_start_col);
+            PRINTMSG(stmt_start_line, 241,
+#ifdef KEY /* Bug 318, 321 */
+	      Ansi,
+#else /* KEY Bug 318, 321 */
+	      Comment,
+#endif /* KEY Bug 318, 321 */
+	      stmt_start_col);
          }
 
          break;
@@ -2294,7 +2310,13 @@ FOUND_DO_BLK:
             PRINTMSG(stmt_start_line, 243, Error, stmt_start_col);
          }
          else {
-            PRINTMSG(stmt_start_line, 241, Comment, stmt_start_col);
+            PRINTMSG(stmt_start_line, 241,
+#ifdef KEY /* Bug 318, 321 */
+	      Ansi,
+#else /* KEY Bug 318, 321 */
+	      Comment,
+#endif /* KEY Bug 318, 321 */
+	      stmt_start_col);
          }                   
              
          break;
@@ -2448,7 +2470,13 @@ FOUND_DO_BLK:
 
       default:
          if (ATL_EXECUTABLE(stmt_label_idx)) {
-            PRINTMSG(stmt_start_line, 241, Comment, stmt_start_col);
+            PRINTMSG(stmt_start_line, 241,
+#ifdef KEY /* Bug 318, 321 */
+	      Ansi,
+#else /* KEY Bug 318, 321 */
+	      Comment,
+#endif /* KEY Bug 318, 321 */
+	      stmt_start_col);
          }
          else {
             PRINTMSG(stmt_start_line, 544, Error, stmt_start_col);
@@ -2945,7 +2973,11 @@ static void end_if_blk(boolean	err_call)
    int		name_idx;
 
 # ifdef _HIGH_LEVEL_IF_FORM
+# ifdef KEY /* Bug 10177 */
+   int		curr_sh = 0;
+# else /* KEY Bug 10177 */
    int		curr_sh;
+# endif /* KEY Bug 10177 */
    int		ir_idx;
 # endif
 
@@ -3294,20 +3326,34 @@ static void end_type_blk(boolean	err_call)
 # ifdef _DEBUG
       if (!ATT_CHAR_CPNT(CURR_BLK_NAME) &
           !ATT_NUMERIC_CPNT(CURR_BLK_NAME) &
+#ifdef KEY /* Bug 6845 */
+          !ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME) &
+#endif /* KEY Bug 6845 */
           !ATT_POINTER_CPNT(CURR_BLK_NAME)) {
          PRINTMSG(stmt_start_line, 193, Internal, stmt_start_col,
                   FALSE,
+#ifdef KEY /* Bug 6845 */
                   "ATT_CHAR_CPNT, ATT_NUMERIC_CPNT, ATT_POINTER_CPNT",
+#else /* KEY Bug 6845 */
+                  "ATT_CHAR_CPNT, ATT_NUMERIC_CPNT, ATT_POINTER_CPNT,"
+		  " ATT_ALLOCATABLE_CPNT",
+#endif /* KEY Bug 6845 */
                   CURR_BLK_NAME);
       }
 # endif
 
-      ATT_CHAR_SEQ(CURR_BLK_NAME)	 = !ATT_NUMERIC_CPNT(CURR_BLK_NAME) &&
-                                           !ATT_POINTER_CPNT(CURR_BLK_NAME);
+      ATT_CHAR_SEQ(CURR_BLK_NAME) = !ATT_NUMERIC_CPNT(CURR_BLK_NAME) &&
+#ifdef KEY /* Bug 6845 */
+                                    !ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME) &&
+#endif /* KEY Bug 6845 */
+                                    !ATT_POINTER_CPNT(CURR_BLK_NAME);
 
       ATT_DCL_NUMERIC_SEQ(CURR_BLK_NAME) = !ATT_POINTER_CPNT(CURR_BLK_NAME) &&
-                                           !ATT_CHAR_CPNT(CURR_BLK_NAME) &&
-                                            ATT_SEQUENCE_SET(CURR_BLK_NAME);
+#ifdef KEY /* Bug 6845 */
+				    !ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME) &&
+#endif /* KEY Bug 6845 */
+				    !ATT_CHAR_CPNT(CURR_BLK_NAME) &&
+				    ATT_SEQUENCE_SET(CURR_BLK_NAME);
 
 # if defined(_TARGET_DOUBLE_ALIGN)
 
@@ -3334,7 +3380,11 @@ static void end_type_blk(boolean	err_call)
       }
 # endif
 
-      if (ATT_NUMERIC_CPNT(CURR_BLK_NAME) || ATT_POINTER_CPNT(CURR_BLK_NAME)) {
+      if (ATT_NUMERIC_CPNT(CURR_BLK_NAME) || ATT_POINTER_CPNT(CURR_BLK_NAME)
+#ifdef KEY /* Bug 6845 */
+        || ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME)
+#endif /* KEY Bug 6845 */
+      ) {
          bit_len.fld	= ATT_STRUCT_BIT_LEN_FLD(CURR_BLK_NAME);
          bit_len.idx	= ATT_STRUCT_BIT_LEN_IDX(CURR_BLK_NAME);
          aligned	= FALSE;
@@ -3831,7 +3881,11 @@ static void end_internal_err(boolean	err_call)
 
 static char *blk_desc_str(int	 blk_idx)
 {
+#ifdef KEY /* Bug 10177 */
+   char		*blk_stmt_str = 0;
+#else /* KEY Bug 10177 */
    char		*blk_stmt_str;
+#endif /* KEY Bug 10177 */
    int		 idx;
 
    TRACE (Func_Entry, "blk_desc_str", NULL);

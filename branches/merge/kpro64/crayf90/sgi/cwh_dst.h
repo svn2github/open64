@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: cwh_dst.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_dst.h,v $
+ * $Revision: 1.5 $
+ * $Date: 05/08/26 23:50:11-07:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: crayf90/sgi/SCCS/s.cwh_dst.h $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -59,7 +59,7 @@
 #define CWH_DST_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_dst.h,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_dst.h $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 

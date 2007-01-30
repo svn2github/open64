@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -756,8 +760,16 @@ static void	add_tasking_symbols(mtaskreg_t *t,
 		    AT_OBJ_CLASS(IL_IDX(sublist_idx)) == Data_Obj &&
 		    (ATD_IM_A_DOPE(IL_IDX(sublist_idx)) ||
 		    (TYP_TYPE(ATD_TYPE_IDX(IL_IDX(sublist_idx))) == Structure &&
+#ifdef KEY /* Bug 6845 */
+			 (ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(
+				     IL_IDX(sublist_idx)))) ||
 			 ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(
-				     IL_IDX(sublist_idx))))))) {
+				     IL_IDX(sublist_idx)))))
+#else /* KEY Bug 6845 */
+			 ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(
+				     IL_IDX(sublist_idx))))
+#endif /* KEY Bug 6845 */
+				     ))) {
 		    /* must be VALUE not PRIVATE for dope vectors */
 		   s->taskusage = mtaskusage_value;
 		}

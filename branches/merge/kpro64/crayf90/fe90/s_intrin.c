@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -62,7 +66,52 @@ static char USMID[] = "\n@(#)5.0_pl/sources/s_intrin.c	5.31	10/27/99 16:50:34\n"
 
 
 extern boolean has_present_opr;
+#ifdef KEY /* Bug 5089 */
+#ifdef TARG_X8664
+extern boolean Target_SSE2;
+extern boolean Target_SSE3;
+#endif
+#endif /* KEY Bug 5089 */
 
+#ifdef KEY /* Bug 10410 */
+/*
+ * list_idx	IL_Tbl_Idx for an actual argument of the intrinsic call
+ * return TRUE if in this call, an optional dummy argument belonging to the
+ *    caller is being passed as the actual argument of the intrinsic call
+ */
+static boolean
+is_optional_dummy(int list_idx) {
+  return IL_FLD(list_idx) == AT_Tbl_Idx && AT_OPTIONAL(IL_IDX(list_idx));
+  }
+
+/*
+ * When a caller is passing an optional dummy argument as the actual argument
+ * in a call to an intrinsic, replace the dummy argument "d" with a "select"
+ * expression, e.g. "(present(d) ? d : default)".
+ * list_idx	IL_Tbl_Idx for the actual argument whose value is an optional
+ *		dummy argument in the caller
+ * default_idx	CN_Tbl_Idx for a constant to be used if the optional argument
+ *		is not present
+ */
+static void
+pass_dummy_or_default(int list_idx, int default_idx) {
+  int line = IL_LINE_NUM(list_idx);
+  int col = IL_COL_NUM(list_idx);
+  int present_idx = gen_ir(AT_Tbl_Idx, IL_IDX(list_idx), Present_Opr,
+    CG_LOGICAL_DEFAULT_TYPE, line, col,
+    NO_Tbl_Idx, NULL_IDX);
+  int select_arglist_idx = gen_il(3, TRUE, line, col,
+    AT_Tbl_Idx, IL_IDX(list_idx),
+    CN_Tbl_Idx, default_idx,
+    IR_Tbl_Idx, present_idx);
+  int select_idx = gen_ir(IL_Tbl_Idx, select_arglist_idx,
+    Cselect_Opr,
+    CN_TYPE_IDX(default_idx), line, col,
+    NO_Tbl_Idx, NULL_IDX);
+  IL_FLD(list_idx) = IR_Tbl_Idx;
+  IL_IDX(list_idx) = select_idx;
+}
+#endif /* KEY Bug 10410 */
 
 
 /******************************************************************************\
@@ -552,7 +601,11 @@ void   conform_check(int           check_args,
 {
    int            line;
    int            col;
+#ifdef KEY /* Bug 10177 */
+   int            which_arg = 0;
+#else /* KEY Bug 10177 */
    int            which_arg;
+#endif /* KEY Bug 10177 */
    int            max_rank;
    int            attr_idx;
    int		  temp_ir_idx;
@@ -1285,7 +1338,11 @@ void    aimag_intrinsic(opnd_type     *result_opnd,
                         int           *spec_idx)
 {
    int            ir_idx;
+#ifdef KEY /* Bug 10177 */
+   int            type_idx = 0;
+#else /* KEY Bug 10177 */
    int            type_idx;
+#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            list_idx1;
 
@@ -1535,7 +1592,11 @@ void    iand_intrinsic(opnd_type     *result_opnd,
    int            not_idx;
    int            ir_idx;
    boolean        ok = TRUE;
+#ifdef KEY /* Bug 10177 */
+   operator_type  opr = Null_Opr;
+#else /* KEY Bug 10177 */
    operator_type  opr;
+#endif /* KEY Bug 10177 */
    int            type_idx;
 
 
@@ -2715,11 +2776,19 @@ void    shift_intrinsic(opnd_type     *result_opnd,
    long_type      folded_const[MAX_WORDS_FOR_NUMERIC];
    int            list_idx1;
    int            list_idx2;
+#ifdef KEY /* Bug 10177 */
+   long		  num = 0;
+#else /* KEY Bug 10177 */
    long		  num;
+#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            info_idx2;
    int            ir_idx;
+#ifdef KEY /* Bug 10177 */
+   operator_type  opr = Null_Opr;
+#else /* KEY Bug 10177 */
    operator_type  opr;
+#endif /* KEY Bug 10177 */
    int 		  type_idx;
    int 		  cn_idx;
    int 		  line;
@@ -4837,7 +4906,11 @@ void    cmplx_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            list_idx;
    operator_type  opr;
+#ifdef KEY /* Bug 10177 */
+   int            type_idx = 0;
+#else /* KEY Bug 10177 */
    int            type_idx;
+#endif /* KEY Bug 10177 */
    opnd_type	  opnd;
 
 
@@ -5223,6 +5296,59 @@ void    char_intrinsic(opnd_type     *result_opnd,
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
+|*      Function    NEW_LINE(A) intrinsic                                     *|
+|*                                                                            *|
+|* Ignores the kind type of A and always returns CHARACTER_DEFAULT_TYPE.      *|
+|* Ignores the OS and always returns '\n'                                     *|
+|*                                                                            *|
+\******************************************************************************/
+
+void    newline_intrinsic(opnd_type     *result_opnd,
+                       expr_arg_type *res_exp_desc,
+                       int           *spec_idx)
+{
+   int            list_idx1;
+   long_type      cnst[MAX_WORDS_FOR_NUMERIC];
+   int            ir_idx;
+   int 		  type_idx;
+
+
+   TRACE (Func_Entry, "char_intrinsic", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   list_idx1 = IR_IDX_R(ir_idx);
+
+   type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = CHARACTER_DEFAULT_TYPE;
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+   IR_TYPE_IDX(ir_idx) = type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+
+   res_exp_desc->char_len.fld = CN_Tbl_Idx;
+   res_exp_desc->char_len.idx = CN_INTEGER_ONE_IDX;
+   res_exp_desc->type_idx = type_idx;
+   res_exp_desc->linear_type = TYP_LINEAR(type_idx);
+
+   OPND_FLD((*result_opnd)) = CN_Tbl_Idx;
+   * (char *) cnst = '\n';
+   OPND_IDX((*result_opnd)) = ntr_const_tbl(type_idx, FALSE, cnst);
+   OPND_LINE_NUM((*result_opnd)) = IR_LINE_NUM(ir_idx);
+   OPND_COL_NUM((*result_opnd)) = IR_COL_NUM(ir_idx);
+   res_exp_desc->constant = TRUE;
+   res_exp_desc->foldable = TRUE;
+
+   TRACE (Func_Exit, "newline_intrinsic", NULL);
+
+}  /* newline_intrinsic */
+
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
 |*      Function    INDEX(STRING, SUBSTRING, BACK) intrinsic.                 *|
 |*      Function    SCAN(STRING, SET, BACK) intrinsic.                        *|
 |*      Function    VERIFY(STRING, SET, BACK) intrinsic.                      *|
@@ -5312,6 +5438,13 @@ void    index_intrinsic(opnd_type     *result_opnd,
       arg_info_list[arg_info_list_top].line = IR_LINE_NUM(ir_idx);
       arg_info_list[arg_info_list_top].col = IR_COL_NUM(ir_idx);
    }
+#ifdef KEY /* Bug 10410 */
+   else if (is_optional_dummy(list_idx3)) {
+     pass_dummy_or_default(list_idx3,
+       set_up_logical_constant(cnst, CG_LOGICAL_DEFAULT_TYPE, FALSE_VALUE,
+         TRUE));
+   }
+#endif /* KEY Bug 10410 */
 
    info_idx3 = IL_ARG_DESC_IDX(list_idx3);
 
@@ -6245,7 +6378,11 @@ void    cvmgp_intrinsic(opnd_type     *result_opnd,
    int            list_idx2;
    int            list_idx3;
    int            new_idx;
+#ifdef KEY /* Bug 10177 */
+   operator_type  opr1 = Null_Opr;
+#else /* KEY Bug 10177 */
    operator_type  opr1;
+#endif /* KEY Bug 10177 */
    int            type_idx;
 
 
@@ -6978,7 +7115,11 @@ void    digits_intrinsic(opnd_type     *result_opnd,
                          int           *spec_idx)
 {
    int            cn_idx;
+#ifdef KEY /* Bug 10177 */
+   long		  num = 0;
+#else /* KEY Bug 10177 */
    long		  num;
+#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            ir_idx;
 
@@ -7073,7 +7214,11 @@ void    epsilon_intrinsic(opnd_type     *result_opnd,
                           expr_arg_type *res_exp_desc,
                           int           *spec_idx)
 {
+#ifdef KEY /* Bug 10177 */
+   int            cn_idx = 0;
+#else /* KEY Bug 10177 */
    int            cn_idx;
+#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            ir_idx;
 
@@ -7316,7 +7461,11 @@ void    huge_intrinsic(opnd_type     *result_opnd,
                        expr_arg_type *res_exp_desc,
                        int           *spec_idx)
 {
+#ifdef KEY /* Bug 10177 */
+   int            cn_idx = 0;
+#else /* KEY Bug 10177 */
    int            cn_idx;
+#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            ir_idx;
 
@@ -7816,8 +7965,13 @@ void    ibset_intrinsic(opnd_type     *result_opnd,
    int            info_idx2;
    int            list_idx1;
    int            list_idx2;
+#ifdef KEY /* Bug 10177 */
+   long		  num1 = 0;
+   long		  num2 = 0;
+#else /* KEY Bug 10177 */
    long		  num1;
    long		  num2;
+#endif /* KEY Bug 10177 */
    int            shiftl_idx;
    int            shifta_idx;
    int            csmg_idx;
@@ -7829,7 +7983,11 @@ void    ibset_intrinsic(opnd_type     *result_opnd,
    int            band_idx;
    int            bnot_idx;
    int            bnot_idx1;
+#ifdef KEY /* Bug 10177 */
+   int            typeless_idx = 0;
+#else /* KEY Bug 10177 */
    int            typeless_idx;
+#endif /* KEY Bug 10177 */
    opnd_type	  opnd;
    boolean        fold_it 		= FALSE;
    int            line;
@@ -8146,8 +8304,13 @@ void    ishft_intrinsic(opnd_type     *result_opnd,
    boolean        fold_it 		= FALSE;
    int            line;
    int            column;
+#ifdef KEY /* Bug 10177 */
+   long           num1 = 0;
+   long           num2 = 0;
+#else /* KEY Bug 10177 */
    long           num1;
    long           num2;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "ishft_intrinsic", NULL);
@@ -8490,17 +8653,33 @@ void    ishft_intrinsic(opnd_type     *result_opnd,
      NULL_IDX);
    int ge_width_idx = gen_ir(IR_Tbl_Idx, abs_width_idx, Ge_Opr,
      LOGICAL_DEFAULT_TYPE, line, column, CN_Tbl_Idx, cn_idx2);
+
+   int zero_idx = CN_INTEGER_ZERO_IDX;
+   int minusone_idx = CN_INTEGER_NEG_ONE_IDX;
+   fld_type zero_fld = CN_Tbl_Idx;
+   fld_type minusone_fld = CN_Tbl_Idx;
+   if (arg_info_list[info_idx1].ed.type_idx != Integer_4) {
+     zero_idx = gen_ir(CN_Tbl_Idx, zero_idx, Cvrt_Opr,
+       arg_info_list[info_idx1].ed.type_idx, line, column,
+       NO_Tbl_Idx, NULL_IDX);
+     minusone_idx = gen_ir(CN_Tbl_Idx, minusone_idx, Cvrt_Opr,
+       arg_info_list[info_idx1].ed.type_idx, line, column,
+       NO_Tbl_Idx, NULL_IDX);
+     zero_fld = IR_Tbl_Idx;
+     minusone_fld = IR_Tbl_Idx;
+   }
+
    NTR_IR_LIST_TBL(first_idx);
    IL_ARG_DESC_VARIANT(first_idx) = TRUE;
-   IL_FLD(first_idx) = CN_Tbl_Idx;
-   IL_IDX(first_idx) = CN_INTEGER_ZERO_IDX;
+   IL_FLD(first_idx) = zero_fld;
+   IL_IDX(first_idx) = zero_idx;
    IL_LINE_NUM(first_idx) = line;
    IL_COL_NUM(first_idx) =  column;
 
    NTR_IR_LIST_TBL(second_idx);
    IL_ARG_DESC_VARIANT(second_idx) = TRUE;
-   IL_FLD(second_idx) = CN_Tbl_Idx;
-   IL_IDX(second_idx) = CN_INTEGER_NEG_ONE_IDX;
+   IL_FLD(second_idx) = minusone_fld;
+   IL_IDX(second_idx) = minusone_idx;
    IL_LINE_NUM(second_idx) = line;
    IL_COL_NUM(second_idx) =  column;
 
@@ -8594,8 +8773,13 @@ void    ishftc_intrinsic(opnd_type     *result_opnd,
    int            list_idx3;
    int            info_idx1;
    int            info_idx2;
+#ifdef KEY /* Bug 10177 */
+   int            info_idx3 = 0;
+   long		  num = 0;
+#else /* KEY Bug 10177 */
    int            info_idx3;
    long		  num;
+#endif /* KEY Bug 10177 */
    opnd_type      opnd;
    int            typeless_idx;
 
@@ -10095,7 +10279,11 @@ void    ieee_real_intrinsic(opnd_type     *result_opnd,
    int            list_idx1;
    int            list_idx2;
    int            info_idx1;
+#ifdef KEY /* Bug 10177 */
+   int            info_idx2 = 0;
+#else /* KEY Bug 10177 */
    int            info_idx2;
+#endif /* KEY Bug 10177 */
    opnd_type      opnd;
 
 
@@ -10612,7 +10800,11 @@ void    tiny_intrinsic(opnd_type     *result_opnd,
                        expr_arg_type *res_exp_desc,
                        int           *spec_idx)
 {
+#ifdef KEY /* Bug 10177 */
+   int            cn_idx = 0;
+#else /* KEY Bug 10177 */
    int            cn_idx;
+#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            ir_idx;
 
@@ -10688,7 +10880,11 @@ void    spacing_intrinsic(opnd_type     *result_opnd,
    int            info_idx1;
    int            list_idx1;
    int            list_idx2;
+#ifdef KEY /* Bug 10177 */
+   long		  num = 0;
+#else /* KEY Bug 10177 */
    long		  num;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "spacing_intrinsic", NULL);
@@ -11282,7 +11478,11 @@ void    minexponent_intrinsic(opnd_type     *result_opnd,
                               int           *spec_idx)
 {
    int            ir_idx;
+#ifdef KEY /* Bug 10177 */
+   long		  num = 0;
+#else /* KEY Bug 10177 */
    long		  num;
+#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            cn_idx;
 
@@ -11354,7 +11554,11 @@ void    maxexponent_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            info_idx1;
    int            cn_idx;
+#ifdef KEY /* Bug 10177 */
+   long		  num = 0;
+#else /* KEY Bug 10177 */
    long		  num;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "maxexponent_intrinsic", NULL);
@@ -11477,7 +11681,11 @@ void    range_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            cn_idx;
    int            info_idx1;
+#ifdef KEY /* Bug 10177 */
+   long		  num = 0;
+#else /* KEY Bug 10177 */
    long		  num;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "range_intrinsic", NULL);
@@ -11586,7 +11794,11 @@ void    precision_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            cn_idx;
    int            info_idx1;
+#ifdef KEY /* Bug 10177 */
+   long		  num = 0;
+#else /* KEY Bug 10177 */
    long		  num;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "precision_intrinsic", NULL);
@@ -11669,7 +11881,11 @@ void    kind_intrinsic(opnd_type     *result_opnd,
    int            cn_idx;
    int            list_idx1;
    int            info_idx1;
+#ifdef KEY /* Bug 10177 */
+   long		  num = 0;
+#else /* KEY Bug 10177 */
    long		  num;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "kind_intrinsic", NULL);
@@ -11833,7 +12049,11 @@ void    bit_size_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            cn_idx;
    int            info_idx1;
+#ifdef KEY /* Bug 10177 */
+   long           num = 0;
+#else /* KEY Bug 10177 */
    long           num;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "bit_size_intrinsic", NULL);
@@ -11903,7 +12123,11 @@ void    lbound_intrinsic(opnd_type     *result_opnd,
                          expr_arg_type *res_exp_desc,
                          int           *spec_idx)
 {
+#ifdef KEY /* Bug 10177 */
+   int            select = 0;
+#else /* KEY Bug 10177 */
    int            select;
+#endif /* KEY Bug 10177 */
    int		  asg_idx;
    int		  attr_idx	= NULL_IDX;
    int		  subscript_idx;
@@ -11935,12 +12159,20 @@ void    lbound_intrinsic(opnd_type     *result_opnd,
    int            col;
    boolean	  make_const_tmp = FALSE;
    int		  the_cn_idx;
+#ifdef KEY /* Bug 10177 */
+   int		  tmp_idx = 0;
+#else /* KEY Bug 10177 */
    int		  tmp_idx;
+#endif /* KEY Bug 10177 */
    expr_arg_type  loc_exp_desc;
    int            expr_IDX[MAX_NUM_DIMS];
    fld_type       expr_FLD[MAX_NUM_DIMS];
    int		  save_arg3;
+# ifdef _WHIRL_HOST64_TARGET64
+   int            const_array[MAX_NUM_DIMS];
+# else
    long_type   	  const_array[MAX_NUM_DIMS];
+# endif /* _WHIRL_HOST64_TARGET64 */
    long64     	  host_array[MAX_NUM_DIMS];
 
 
@@ -12816,7 +13048,11 @@ void    ubound_intrinsic(opnd_type     *result_opnd,
    int            le_idx;
    int            eq_idx;
    int            array_attr;
+# ifdef _WHIRL_HOST64_TARGET64
+   int            const_array[MAX_NUM_DIMS];
+# else
    long_type   	  const_array[MAX_NUM_DIMS];
+# endif /* _WHIRL_HOST64_TARGET64 */
    long64     	  host_array[MAX_NUM_DIMS];
    int            expr_IDX[MAX_NUM_DIMS];
    fld_type       expr_FLD[MAX_NUM_DIMS];
@@ -13993,7 +14229,11 @@ void    shape_intrinsic(opnd_type     *result_opnd,
    int            triplet_idx;
    long64         bit_length;
    int            constant_type_idx;
+# ifdef _WHIRL_HOST64_TARGET64
+   int            const_array[MAX_NUM_DIMS];
+# else
    long_type  	  const_array[MAX_NUM_DIMS];
+# endif /* _WHIRL_HOST64_TARGET64 */
    long64     	  host_array[MAX_NUM_DIMS];
    int            ir_idx;
    int            cn_idx;
@@ -14588,7 +14828,11 @@ void    nearest_intrinsic(opnd_type     *result_opnd,
    int            list_idx2;
    int            list_idx3;
    int            info_idx1;
+#ifdef KEY /* Bug 10177 */
+   int            num = 0;
+#else /* KEY Bug 10177 */
    int            num;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "nearest_intrinsic", NULL);
@@ -14680,7 +14924,11 @@ void    rrspacing_intrinsic(opnd_type     *result_opnd,
    int            info_idx1;
    int            list_idx1;
    int            list_idx2;
+#ifdef KEY /* Bug 10177 */
+   int		  num = 0;
+#else /* KEY Bug 10177 */
    int		  num;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "rrspacing_intrinsic", NULL);
@@ -15108,7 +15356,11 @@ void    minval_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            attr_idx;
    int            info_idx1;
+#ifdef KEY /* Bug 10177 */
+   int            info_idx2 = 0;
+#else /* KEY Bug 10177 */
    int            info_idx2;
+#endif /* KEY Bug 10177 */
    int            info_idx3;
    int            list_idx1;
    int            list_idx2;
@@ -16706,8 +16958,13 @@ void    selected_real_kind_intrinsic(opnd_type     *result_opnd,
 {
    int            ir_idx;
    int            type_idx;
+#ifdef KEY /* Bug 10177 */
+   int            info_idx1 = 0;
+   int            info_idx2 = 0;
+#else /* KEY Bug 10177 */
    int            info_idx1;
    int            info_idx2;
+#endif /* KEY Bug 10177 */
    int            list_idx1;
    int            list_idx2;
    long_type      folded_const[MAX_WORDS_FOR_NUMERIC];
@@ -17182,7 +17439,11 @@ void    transfer_intrinsic(opnd_type     *result_opnd,
    int		  ch_asg_idx;
    int            info_idx1;
    int            info_idx2;
+#ifdef KEY /* Bug 10177 */
+   int            info_idx3 = 0;
+#else /* KEY Bug 10177 */
    int            info_idx3;
+#endif /* KEY Bug 10177 */
    int            ir_idx;
    opnd_type      length_opnd;
    int            list_idx1;
@@ -17915,8 +18176,13 @@ void    reshape_intrinsic(opnd_type     *result_opnd,
 {
    int            info_idx1;
    int            info_idx2;
+#ifdef KEY /* Bug 10177 */
+   int            info_idx3 = 0;
+   int            info_idx4 = 0;
+#else /* KEY Bug 10177 */
    int            info_idx3;
    int            info_idx4;
+#endif /* KEY Bug 10177 */
    int            ir_idx;
    int            line;
    int            col;
@@ -19298,3 +19564,63 @@ void    pathf90_intrinsic(opnd_type     *result_opnd,
 
 }  /* pathf90_intrinsic */
 #endif /* KEY Bug 1683 */
+#ifdef KEY /* Bug 5089 */
+static void    tf_intrinsic_helper(opnd_type     *result_opnd,
+                      expr_arg_type *res_exp_desc,
+                      int           *spec_idx,
+		      boolean	     generate_true)
+{
+   int            ir_idx;
+
+   TRACE (Func_Entry, "tf_intrinsic_helper", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = LOGICAL_DEFAULT_TYPE;
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+   /* conform_check believes that result has rank of highest-ranking arg. We
+    * want a scalar logical result */
+   res_exp_desc->rank = 0;
+
+   long constant;
+   OPND_IDX((*result_opnd)) = set_up_logical_constant(&constant,
+     LOGICAL_DEFAULT_TYPE, generate_true ? TRUE_VALUE : FALSE_VALUE, TRUE);
+   OPND_FLD((*result_opnd)) = CN_Tbl_Idx;
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+   
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   TRACE (Func_Exit, "tf_intrinsic_helper", NULL);
+
+}  /* tf_intrinsic_helper */
+
+/* Intrinsic which returns scalar .true. regardless of argument */
+void    true_intrinsic(opnd_type     *result_opnd,
+                      expr_arg_type *res_exp_desc,
+                      int           *spec_idx)
+{
+  tf_intrinsic_helper(result_opnd, res_exp_desc, spec_idx, TRUE);
+}  /* true_intrinsic */
+
+/* Intrinsic which returns scalar .true. or .false., according to whether
+ * we can control IEEE gradual underflow.
+ */
+void    support_uflow_intrinsic(opnd_type     *result_opnd,
+                      expr_arg_type *res_exp_desc,
+                      int           *spec_idx)
+{
+#ifdef TARG_X8664
+  boolean generate_true = Target_SSE2 || Target_SSE3;
+#else
+  boolean generate_true = TRUE;
+#endif
+  tf_intrinsic_helper(result_opnd, res_exp_desc, spec_idx, generate_true);
+}  /* support_uflow_intrinsic */
+#endif /* KEY Bug 5089 */

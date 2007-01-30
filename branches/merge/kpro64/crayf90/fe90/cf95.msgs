@@ -1,4 +1,6 @@
 $
+$  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+$
 $  Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 $
 $  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -1522,12 +1524,13 @@ The \*C= \fIinitialization_expr\fR must appear for the data object name if the
 statement contains a \*CPARAMETER\fR attribute.
 .ME
 $
-$ Comment : 0112
+$ Ansi : 0112
 $msg  0112 The arithmetic IF statement is an obsolescent feature.
 $nexp 0112
-Comment : The arithmetic IF statement is an obsolescent feature.
+Ansi : The arithmetic IF statement is an obsolescent feature.
 .PP
-This is an outdated FORTRAN 77 feature.  Use the Fortran \*CIF\fR
+This feature was declared obsolescent in the Fortran 2003 standard.
+Use the Fortran \*CIF\fR
 statement or \*CIF\fR construct in place of the arithmetic \*CIF\fR.
 .ME
 $
@@ -2026,24 +2029,18 @@ outside the \*CCASE\fR construct or from another \*CCASE\fR block within the sam
 from outside the block is not permissible. 
 .ME
 $
-$ Comment : 0149
-$msg  0149 Transfer of control to an END IF statement from outside the IF construct is obsolescent.
+$ Ansi : 0149
+$msg  0149 Transfer of control to an END IF statement from outside the IF construct is obsolescent/deleted.
 $nexp 0149
-Comment : Transfer of control to an END IF statement from outside the IF construct is obsolescent.
+Ansi : Transfer of control to an END IF statement from outside the IF construct is obsolescent/deleted.
 .PP
 Instead of branching to the \*CEND IF\fR statement from outside its \*CIF\fR construct, 
 branch to the statement following the \*CEND IF\fR.  This may require program logic
 changes if the statement following the \*CEND IF\fR is not a valid branch target
 statement. 
 .PP
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for 
-which a better method is available in Fortran 90.  The ANSI Fortran committee
-recommends that programmers use the preferred method in new programs and convert
-existing code to the preferred method.  If the use of an obsolescent feature
-becomes insignificant in Fortran programs, a future Fortran standards 
-committee may consider deleting it from the standard.
-
-The Fortran 95 standard has deleted this feature.
+The Fortran 95 standard has deleted this feature. The compiler supports it as
+an extension.
 .ME
 $
 $ Error : 0150
@@ -2813,6 +2810,10 @@ accepted by the compiler:
 Zw
 Hexadecimal integer
 .TL
+H...
+Hollerith edit descriptors were deleted in the Fortran 95 standard, but the
+compiler accepts them as an extension.
+.TL
 Rw
 right-justified character
 .TL
@@ -3005,16 +3006,16 @@ A \*CDO\fR loop expression of type default real or double precision real is an
 obsolescent feature.  Type integer is the preferred choice.
 .ME
 $
-$ Comment : 0218
-$msg  0218 A DO loop expression of type default real or double precision real is an obsolescent feature.
+$ Ansi : 0218
+$msg  0218 A DO loop expression of type default real or double precision real is an obsolescent/deleted feature.
 $nexp 0218
-Comment : A DO loop expression of type default real or double precision real is an obsolescent feature.
+Ansi : A DO loop expression of type default real or double precision real is an obsolescent/deleted feature.
 .PP
-A real or double precision real \*CDO\fR loop expression is an obsolescent feature.
-An obsolescent feature is a feature of FORTRAN 77 that is
-redundant and for which a better method is available in Fortran 90.  An
-expression of type integer should be used in place of the \*CDO\fR loop expression
-that is of type default real or double precision real.
+This feature was deleted in the Fortran 95 standard. The compiler supports it
+as an extension.
+.PP
+An
+expression of type integer should be used instead.
 .ME
 $
 $ Error : 0219
@@ -3028,15 +3029,15 @@ type default real or double precision real is an obsolescent feature.
 Type integer is the preferred choice.
 .ME
 $
-$ Comment : 0220
-$msg  0220 A DO variable of type default real or double precision real is an obsolescent feature.
+$ Ansi : 0220
+$msg  0220 A DO variable of type default real or double precision real is an obsolescent/deleted feature.
 $nexp 0220
-Comment : A DO variable of type default real or double precision real is an obsolescent feature.
+Ansi : A DO variable of type default real or double precision real is an obsolescent/deleted feature.
 .PP
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for
-which a better method is available in Fortran 90.  A \*CDO\fR variable of type
-integer should be used in place of a \*CDO\fR variable of type default real or double
-precision real.
+This feature was deleted in the Fortran 95 standard. The compiler supports it
+as an extension.
+A \*CDO\fR variable of type
+integer should be used instead.
 .ME
 $
 $ Ansi : 0221
@@ -3264,11 +3265,12 @@ the \fIscalar_logical_expr\fR must be type logical.
 .ME
 $
 $ Error : 0235
-$msg  0235 I/O list items of a derived type which have a pointer component are not allowed.
+$msg  0235 I/O list items of a derived type which have a pointer or allocatable component are not allowed.
 $nexp 0235
-Error : I/O list items of a derived type which have a pointer component are not allowed.
+Error : I/O list items of a derived type which have a pointer or allocatable component are not allowed.
 .PP
-If a derived type ultimately contains a pointer component, an object of this
+If a derived type ultimately contains a pointer or allocatable component,
+an object of this
 type must not appear as an I/O input item nor as the result of the evaluation
 of an I/O output list item.
 .ME
@@ -3355,14 +3357,13 @@ in array dimension bound declarators or character length declarators.
 These functions must not have array-valued or pointer-valued results.
 .ME
 $
-$ Comment : 0241
-$msg  0241 The nonblock DO construct is an obsolescent feature.
+$ Ansi : 0241
+$msg  0241 The nonblock or shared-termination DO construct is an obsolescent feature.
 $nexp 0241
-Comment : The nonblock DO construct is an obsolescent feature.
+Ansi : The nonblock or shared-termination DO construct is an obsolescent feature.
 .PP
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for
-which a better method is available in Fortran 90.  The nonblock \*CDO\fR construct
-is an obsolescent feature.  If a \*CDO\fR statement contains a label and the loop
+This feature was declared obsolescent in the Fortran 2003 standard.
+If a \*CDO\fR statement contains a label and the loop
 termination statement is a statement other than \*CEND DO\fR or \*CCONTINUE\fR, the loop
 is defined to be a nonblock \*CDO\fR construct.  The \*CCONTINUE\fR or \*CEND DO\fR statement 
 should be used to terminate a \*CDO\fR loop.  If multiple \*CDO\fR loops terminate with
@@ -3543,12 +3544,14 @@ It must be greater than zero or less than zero.
 .ME
 $
 $ Error : 0256
-$msg  0256 Dummy argument "%s" has the POINTER attribute.  It requires an actual argument with the POINTER attribute.
+$msg  0256 Dummy argument "%s" has the POINTER or ALLOCATABLE attribute, so the actual argument must have the same attribute.
 $nexp 0256
-Error : Dummy argument "%s" has the POINTER attribute.  It requires an actual argument with the POINTER attribute.
+Error : Dummy argument "%s" has the POINTER or ALLOCATABLE attribute, so the actual argument must have the same attribute.
 .PP
-A dummy argument that has the \*CPOINTER\fR attribute must be matched with 
-an actual argument that has the \*CPOINTER\fR attribute.
+If a dummy argument has the \*CPOINTER\fR attribute, the actual argument must
+also have the \*CPOINTER\fR attribute.
+If a dummy argument has the \*CALLOCATABLE\fR attribute, the actual argument
+must be an entire array having the \*CALLOCATABLE\fR attribute.
 .ME
 $
 $ Internal : 0257
@@ -4722,13 +4725,14 @@ with a statement label value only by an \*CASSIGN\fR statement in the same scopi
 unit as the assigned \*CGO TO\fR statement.
 .ME
 $
-$ Comment : 0341
-$msg  0341 The ASSIGN statement is an obsolescent feature.
+$ Ansi : 0341
+$msg  0341 The ASSIGN statement is an obsolescent/deleted feature.
 $nexp 0341
-Comment : The ASSIGN statement is an obsolescent feature.
+Ansi : The ASSIGN statement is an obsolescent/deleted feature.
 .PP
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for 
-which a better method is available in Fortran 90.  The \*CASSIGN\fR statement allows 
+This feature was deleted in the Fortran 95 standard. The compiler supports
+it as an extension.
+The \*CASSIGN\fR statement allows 
 a label to be dynamically assigned to an integer variable, and the assigned \*CGO
 TO\fR statement allows "indirect branching" through this variable.  This hinders
 the readability of the program flow, especially if the integer variable also is
@@ -4739,13 +4743,14 @@ These statements have commonly been used to simulate internal procedures
 that can now be coded directly.
 .ME
 $
-$ Comment : 0342
-$msg  0342 The assigned GO TO statement is an obsolescent feature.
+$ Ansi : 0342
+$msg  0342 The assigned GO TO statement is an obsolescent/deleted feature.
 $nexp 0342
-Comment : The assigned GO TO statement is an obsolescent feature.
+Ansi : The assigned GO TO statement is an obsolescent/deleted feature.
 .PP
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for
-which a better method is available in Fortran 90.  The \*CASSIGN\fR statement allows
+This feature was deleted in the Fortran 95 standard. The compiler supports
+it as an extension.
+The \*CASSIGN\fR statement allows
 a label to be dynamically assigned to an integer variable, and the assigned \*CGO
 TO\fR statement allows "indirect branching" through this variable.  This hinders
 the readability of the program flow, especially if the integer variable also is
@@ -4880,13 +4885,13 @@ A deferred-shape array must be a dummy argument, a pointer, or have the
 .ME
 $
 $ Error : 0354
-$msg  0354 Equivalence-object "%s" is of a derived type that has an ultimate component that has the POINTER attribute.
+$msg  0354 Equivalence-object "%s" is of a derived type that has an ultimate component that has the POINTER or ALLOCATABLE attribute.
 $nexp 0354
-Error : Equivalence-object "%s" is of a derived type that has an ultimate component that has the POINTER attribute.
+Error : Equivalence-object "%s" is of a derived type that has an ultimate component that has the POINTER or ALLOCATABLE attribute.
 .PP
 An equivalence-object of a derived type has a 
-component that is a pointer.  Derived types
-with pointer components cannot be equivalenced.
+component that has the pointer or allocatable attribute.  Derived types
+with pointer or allocatable components cannot be equivalenced.
 .ME
 $
 $ Error : 0355
@@ -5108,18 +5113,17 @@ If the user codes a \*CRETURN\fR statement in a function subprogram, the keyword
 function subprograms.
 .ME
 $
-$ Comment : 0371
+$ Ansi : 0371
 $msg  0371 Alternate return specifiers are obsolescent.
 $nexp 0371
-Comment : Alternate return specifiers are obsolescent.
+Ansi : Alternate return specifiers are obsolescent.
 .PP
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for
-which a better method is available in Fortran 90.
+This feature was declared obsolescent in Fortran 95.
 .PP
 An alternate return allows a called procedure to direct the execution of
 the calling procedure upon return.  The same effect can be achieved by
 returning an integer value where this integer value is used to control
-a \*CCASE\fR construct or computed \*CGO TO\fR statement upon return
+a \*CCASE\fR construct upon return
 to the calling procedure.
 .ME
 $
@@ -5233,14 +5237,14 @@ Any dummy arguments that have no corresponding actual arguments must be
 declared \*COPTIONAL\fR.
 .ME
 $
-$ Comment : 0381
-$msg  0381 The PAUSE statement is obsolescent.
+$ Ansi : 0381
+$msg  0381 The PAUSE statement is obsolescent/deleted.
 $nexp 0381
-Comment : The PAUSE statement is obsolescent.
+Ansi : The PAUSE statement is obsolescent/deleted.
 .PP
-The \*CPAUSE\fR statement is obsolescent.
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and
-for which a better method is available in Fortran 90.  In most
+This feature was deleted in the Fortran 95 standard. The compiler supports
+it as an extension.
+In most
 cases, the functionality of a \*CPAUSE\fR statement can be achieved
 in a portable manner with the use of a \*CREAD\fR statement that
 awaits some input data.
@@ -6356,12 +6360,13 @@ scalar integer variable of default kind type be specified.
 .ME
 $
 $ Error : 0484
-$msg  0484 "%s" has an ultimate component that has the POINTER attribute, therefore it must not be in a namelist group.
+$msg  0484 "%s" has an ultimate component that has the POINTER or ALLOCATABLE attribute, therefore it must not be in a namelist group.
 $nexp 0484
-Error : "%s" has an ultimate component that has the POINTER attribute, therefore it must not be in a namelist group.
+Error : "%s" has an ultimate component that has the POINTER or ALLOCATABLE attribute, therefore it must not be in a namelist group.
 .PP
-A namelist group object cannot have a derived type with a pointer component or
-an ultimate pointer component.  Items of derived type that have pointer
+A namelist group object cannot have a derived type with a pointer or
+allocatable component.
+Items of derived type that have pointer or allocatable
 components are not allowed in namelist groups.
 .ME
 $
@@ -6996,12 +7001,12 @@ character.
 .ME
 $
 $ Error : 0536
-$msg  0536 "%s" is type "%s" which has a character or pointer component, therefore it must not be in auxiliary storage.
+$msg  0536 "%s" is type "%s" which has a character, pointer, or allocatable component, therefore it must not be in auxiliary storage.
 $nexp 0536
-Error : "%s" is type "%s" which has a character or pointer component, therefore it must not be in auxiliary storage.
+Error : "%s" is type "%s" which has a character, pointer, or allocatable component, therefore it must not be in auxiliary storage.
 .PP
 If an item is in auxiliary storage and is typed as a derived type, no 
-components of that derived type can be character or pointers.
+components of that derived type can be characters, pointers, or allocatable.
 .ME
 $
 $ Error : 0537
@@ -9136,13 +9141,13 @@ common block must also be declared in a \*CCOMMON\fR or a \*CTASK COMMON\fR stat
 .ME
 $
 $ Error : 0691
-$msg  0691 "%s" is of a derived type that has an ultimate component that is a pointer, therefore it must not be a named constant.
+$msg  0691 "%s" is of a derived type that has an ultimate component that is allocatable, therefore it must not be a named constant or a variable in common.
 $nexp 0691
-Error : "%s" is of a derived type that has an ultimate component that is a pointer, therefore it must not be a named constant.
+Error : "%s" is of a derived type that has an ultimate component that is allocatable, therefore it must not be a named constant or a variable in common.
 .PP
-A named constant must not be given the \*CPOINTER\fR attribute and must not
+Neither a named constant nor a variable in a common block may
 be of a derived type that 
-has a pointer as one of its components.
+has an allocatable component.
 .ME
 $
 $ Ansi : 0692
@@ -11155,13 +11160,15 @@ This Fortran compiler extends the standard by allowing a
 \fIdata_i_do_variable\fR or \fIac_do_variable\fR to have the same name as an integer array.
 .ME
 $
-$ Error : 0838
-$msg  0838 Array constructor values of type character must all have the same length.
+$ Ansi : 0838
+$msg  0838 In Fortran 95, array constructor values of type character must all have the same length.
 $nexp 0838
-Error : Array constructor values of type character must all have the same length.
+Ansi : In Fortran 95, array constructor values of type character must all have the same length.
 .PP
 Array constructor values must all possess the same type and
-type parameters.  This includes the character length.
+type parameters.  This includes the character length. Fortran 2003 relaxes the
+restriction if an explicit type-spec appears at the beginning of the list of
+values inside the brackets.
 .ME
 $
 $ Internal : 0839
@@ -11801,20 +11808,16 @@ This message does not indicate a problem with your code, although you may be
 able to change your code so that this error is not encountered.
 .ME
 $
-$ Comment : 0892
-$msg  0892 The H edit descriptor is an obsolescent feature.
+$ Ansi : 0892
+$msg  0892 The H edit descriptor is an obsolescent/deleted feature.
 $nexp 0892
-Comment : The H edit descriptor is an obsolescent feature.
+Ansi : The H edit descriptor is an obsolescent/deleted feature.
+.PP
+This feature was deleted in the Fortran 95 standard. The compiler supports
+it as an extension.
 .PP
 Instead of using the \*CH\fR edit descriptor, the Fortran standard recommends
 using the character constant edit descriptor.
-.PP
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for
-which a better method is available in Fortran 90.  The ANSI Fortran committee
-recommends that programmers use the preferred method in new programs and convert
-existing code to the preferred method.  If the use of an obsolescent feature
-becomes insignificant in Fortran programs, a future Fortran standards
-committee may consider deleting it from the standard.
 .ME
 $
 $ Internal : 0893
@@ -12484,32 +12487,27 @@ examples of how a common block gets defined in a scope:
 Auxiliary storage is an extension to the Fortran standard.
 .ME
 $
-$ Comment : 0943
-$msg  0943 The use of type default real or double precision real expressions for io-implied-do-control is an obsolescent feature.
+$ Ansi : 0943
+$msg  0943 The use of type default real or double precision real expressions for io-implied-do-control is an obsolescent/deleted feature.
 $nexp 0943
-Comment : The use of type default real or double precision real expressions for io-implied-do-control is an obsolescent feature.
+Ansi : The use of type default real or double precision real expressions for io-implied-do-control is an obsolescent/deleted feature.
 .PP
-Each \fIscalar_numeric_expr\fR in an \fIio_implied_do_control\fR must be of type integer,
-default real, or double precision real.  Expressions of type default real
-and double precision real are considered obsolescent by the Fortran 90
-standard.
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for which
-better methods are available in the newer Fortran standard.  Use type integer
-expressions as implied-\*CDO\fR expressions rather than default real or double precision.
+The feature was deleted in the Fortran
+95 standard. This compiler supports the feature as an extension.
+.PP
+Use type integer
+expressions instead.
 .ME
 $
-$ Comment : 0944
-$msg  0944 The use of a type default real or double precision real DO variable is an obsolescent feature.
+$ Ansi : 0944
+$msg  0944 The use of a type default real or double precision real DO variable is an obsolescent/deleted feature.
 $nexp 0944
-Comment : The use of a type default real or double precision real DO variable is an obsolescent feature.
+Ansi : The use of a type default real or double precision real DO variable is an obsolescent/deleted feature.
 .PP
-The \*CDO\fR variable in an \fIio_implied_do\fR must be a scalar of type integer, default
-real or double precision real. Variables of type default real
-and double precision real are considered obsolescent by the Fortran
-standard.
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for which
-better methods are available in the newer Fortran standard.
-Use a \*CDO\fR variable of type integer rather than default real or double precision.
+The feature was deleted in the Fortran
+95 standard. This compiler supports the feature as an extension.
+.PP
+Use a \*CDO\fR variable of type integer instead.
 .ME
 $
 $ Error : 0945
@@ -17023,13 +17021,18 @@ compilation of the program.
 .ME
 $
 $ Error : 1311
-$msg  1311 This array argument to an ELEMENTAL call is not conformant to the other arguments.
+$msg  1311 This argument to an ELEMENTAL call does not conform to the other arguments.
 $nexp 1311
-Error : This array argument to an ELEMENTAL call is not conformant to the other arguments.
+Error : This argument to an ELEMENTAL call does not conform to the other arguments.
 .PP
-The definition of ELEMENTAL in the Fortran standard states that: "For
+The Fortran standard states that: "For
 those elemental functions that have more than one argument, all actual
-arguments shall be conformable."  The same statement is made for subroutines.
+arguments shall be conformable."  For subroutines, it states that: "either all
+actual arguments shall be scalar, or all actual arguments associated with
+INTENT(OUT) and INTENT(INOUT) dummy arguments shall be arrays of the same
+shape and the remaining actual arguments shall be conformable with them."
+Two arrays are conformable if they have the same shape; a scalar is
+conformable with any array.
 .ME
 $
 $ Error : 1312
@@ -20125,21 +20128,15 @@ Error : Illegal pointer assignment.
 This is not a valid pointer assignment statement. 
 .ME
 $
-$ Comment : 1563
-$msg  1563 The "* <char-length> [,]" form of character declaration is an obsolesent form.
+$ Ansi : 1563
+$msg  1563 The "* <char-length> [,]" form of character declaration is obsolesent.
 $nexp 1563
-Comment : The "* <char-length> [,]" form of character declaration is an obsolesent form.
+Ansi : The "* <char-length> [,]" form of character declaration is obsolesent.
+.PP
+This feature was declared obsolescent in the Fortran 95 standard.
 .PP
 Instead of the form  * <char-length> [,] for character declarations use the 
 form:   * (<char-length>) [,]       OR    (LEN=<char-length>) [,]
-Please see the manual for more alternatives.
-.PP
-An obsolescent feature is a feature of FORTRAN 77 or Fortran 90 that is 
-redundant and for which a better method is available in Fortran 95.  The ANSI 
-Fortran committee recommends that programmers use the preferred method in new 
-programs and convert existing code to the preferred method.  If the use of 
-an obsolescent feature becomes insignificant in Fortran programs, a future
-Fortran standards committee may consider deleting it from the standard.
 .ME
 $
 $ Error : 1564
@@ -20154,13 +20151,15 @@ recursive or pure.
 From 12.7.1. an elemental sub-program is a pure sub-program
 .ME
 $
-$ Comment : 1565
+$ Ansi : 1565
 $msg  1565 Assumed length character functions are obsolescent.
 $nexp 1565
-Comment : Assumed length character functions are obsolescent.
+Ansi : Assumed length character functions are obsolescent.
+.PP
+This feature was declared obsolescent in the Fortran 95 standard.
 .PP
 From the Fortran standard:
-
+.PP
 Assumed character length for functions is an irregularity in the language since
 elsewhere in Fortran the philosophy is that the attributes of a function result
 depend only on the actual arguments of the invocation and on any data 
@@ -20170,13 +20169,6 @@ length of the function result is declared in a specification expression.  Other
 uses can be replaced by the use of a subroutine whose arguments correspond to
 the function result and the function arguments.  Note that dummy arguments of
 a function may be assumed character length.
-
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for 
-which a better method is available in Fortran 95.  The ANSI Fortran committee
-recommends that programmers use the preferred method in new programs and convert
-existing code to the preferred method.  If the use of an obsolescent feature
-becomes insignificant in Fortran programs, a future Fortran standards 
-committee may consider deleting it from the standard.
 .ME
 $
 $ Warning : 1566
@@ -20204,12 +20196,8 @@ branch to the statement following the \*CEND IF\fR.  This may require program lo
 changes if the statement following the \*CEND IF\fR is not a valid branch target
 statement. 
 .PP
-This is a deleted feature from the FORTRAN 77 standard.  A deleted feature is 
-a feature of FORTRAN 77 that is redundant and for which a better method is 
-available in Fortran 95.  The ANSI Fortran committee recommends that 
-programmers use the preferred method in new programs and convert existing code
-to the preferred method.  This compiler will continue to support this feature 
-as an extension to the Fortran 95 standard.
+This feature was declared obsolescent in the Fortran 90 standard and
+deleted in Fortran 95. This compiler supports the feature as an extension.
 .ME
 $
 $ Ansi : 1568
@@ -20217,10 +20205,8 @@ $msg  1568 The %s statement is an extension to the Fortran standard.
 $nexp 1568
 Ansi : The %s statement is an extension to the Fortran standard.
 .PP
-The listed statement is now a deleted feature in the Fortran 95 standard.
-A deleted feature is a feature of FORTRAN 77 that is redundant and for which a
-better method is available in Fortran 95.  This compiler will continue to
-support these statements as extensions to the Fortran standard.
+This feature was deleted in Fortran
+95. The compiler supports the feature as an extension.
 .PP
 The \*CASSIGN\fR statement allows a label to be dynamically assigned to an 
 integer variable, and the assigned \*CGO TO\fR statement allows "indirect 
@@ -20242,18 +20228,12 @@ $msg  1569 A DO loop variable or expression of type default real or double preci
 $nexp 1569
 Ansi : A DO loop variable or expression of type default real or double precision real is an extension to the Fortran standard.
 .PP
-A real or double precision real variable or \*CDO\fR loop expression is a 
-deleted feature.  (A deleted feature is a feature of FORTRAN 77 that is
-redundant and for which a better method is available in Fortran 95.)  This
-compiler will continue to support this feature as an extension to the Fortran
-standard.
+A real or double precision real variable or \*CDO\fR loop expression was
+declared deleted in Fortran 95.
+This compiler supports the feature as an extension.
 .PP
-A \*CDO\fR variable  or expression of type integer should be used in place of
-the \*CDO\fR loop expression or variable that is of type default real or 
-double precision real.
-.PP
-The \*CDO\fR variable in an \fIio_implied_do\fR should be a scalar of type 
-integer rather than default real or double precision real.
+Use an integer
+variable  or expression instead.
 .ME
 $
 $ Log_Error : 1570
@@ -20265,26 +20245,20 @@ Log_Error : The -O stream command line option must not be specifed with the %s c
 -Z option.
 .ME
 $
-$ Comment : 1571
+$ Ansi : 1571
 $msg  1571 Positioning the DATA statement amongst executable statements is an obsolescent feature.
 $nexp 1571
-Comment : Positioning the DATA statement amongst executable statements is an obsolescent feature.
+Ansi : Positioning the DATA statement amongst executable statements is an obsolescent feature.
 .PP
-The DATA statement amongst executable statements is an obsolescent feature.
-
-From the ANSI Fortran standard B.2.4:
+This feature was declared obsolescent in Fortran 95.
+.PP
+From the Fortran standard:
+.PP
 The statement ordering rules of FORTRAN 66, and hence FORTRAN 77 and Fortran 90
 for compatibility, allowed DATA statements to appear anywhere in a program
 unit after the specification statements.  The ability to position DATA
 statements amongst executable statements is very rarely used, is unnecessary
 and is a potential source of error.
-
-An obsolescent feature is a feature of FORTRAN 77 that is redundant and for 
-which a better method is available in Fortran 95.  The ANSI Fortran committee
-recommends that programmers use the preferred method in new programs and convert
-existing code to the preferred method.  If the use of an obsolescent feature
-becomes insignificant in Fortran programs, a future Fortran standards committee
-may consider deleting it from the standard.
 .ME
 $
 $ Error : 1572
@@ -20387,20 +20361,13 @@ although the program unit statement is optional.   A program unit ends with
 an END statement.  The END statement is not optional.
 .ME
 $
-$ Comment : 1582
+$ Ansi : 1582
 $msg  1582 Fixed source form is an obsolescent feature in Fortran 95.
 $nexp 1582
-Comment : Fixed source form is an obsolescent feature in Fortran 95.
+Ansi : Fixed source form is an obsolescent feature in Fortran 95.
 .PP
 Fixed source form is an obsolescent feature in the Fortran standard.  Free 
 format is the preferred method.
-
-An obsolescent feature is a feature of FORTRAN 77 or Fortran 90 that is 
-redundant and for which a better method is available in Fortran 95.  The ANSI 
-Fortran committee recommends that programmers use the preferred method in new 
-programs and convert existing code to the preferred method.  If the use of 
-an obsolescent feature becomes insignificant in Fortran programs, a future
-Fortran standards committee may consider deleting it from the standard.
 .ME
 $
 $ Error : 1583
@@ -21563,4 +21530,58 @@ This pointer has the "parameter" attribute and a value of NULL, so it cannot
 appear in a context which refers to the target of the pointer.
 .ME
 $
-$ LAST NUMBER USED : 1677
+$ Error : 1678
+$msg  1678 A scoping unit may not access an intrinsic module and a nonintrinsic module of the same name
+$nexp 1678
+Error :  A scoping unit may not access an intrinsic module and a nonintrinsic module of the same name
+.PP
+In a scoping unit, the "use" statements for a particular module may not have
+both "intrinsic" and "non_intrinsic" keywords. If one "use" statement has one
+of those keywords, and another "use" statement has neither keyword, the
+latter statement (which prefers a non-intrinsic module over an intrinsic
+module of the same name) must access the same module as the former statement.
+.ME
+$
+$ Ansi : 1679
+$msg  1679 Using ALLOCATABLE with dummy arguments, function results, and components of derived types is an extension to Fortran 95
+$nexp 1679
+Ansi :  Using ALLOCATABLE with dummy arguments, function results, and components of derived types is an extension to Fortran 95
+.PP
+A constraint in the Fortran 95 standard requires the compiler to be able to
+issue a warning about the use of ALLOCATABLE with dummy arguments, function
+results, and components of derived types. This extension was first described
+in ISO document TR15581, and is a standard part of Fortran 2003.
+.ME
+$
+$ Error : 1680
+$msg  1680 %s: Cannot initialize a derived type which has an ALLOCATABLE component
+$nexp 1680
+Error :  %s: Cannot initialize a derived type which has an ALLOCATABLE component
+.PP
+If a component of a derived type has the ALLOCATABLE attribute, the Fortran
+standard forbids default initialization of that component. If a variable
+is declared with a derived type having an ALLOCATABLE component or subcomponent,
+the standard forbids initialization of that variable in a declaration or DATA
+statement.
+.ME
+$
+$ Warning : 1681
+$msg  1681 Option -[no-]intrinsic=%s found a single intrinsic, not a family of intrinsics
+$nexp 1681
+Warning : Option -[no-]intrinsic=%s found a single intrinsic, not a family of intrinsics
+.PP
+The option -[no-]intrinsic=x normally applies to a family of intrinsics when
+'x' is in upper case. In this case, there was no family with the name supplied,
+but there was an individual intrinsic with that name, so the option was applied
+to that individual intrinsic.
+.ME
+$
+$ Ansi : 1682
+$msg  1682 Statement functions are an obsolescent feature
+$nexp 1682
+Ansi :  Statement functions are an obsolescent feature
+.PP
+This feature was declared obsolescent in the Fortran 95 standard. An
+alternative is to create an internal procedure using the "contains" keyword.
+.ME
+$ LAST NUMBER USED : 1682

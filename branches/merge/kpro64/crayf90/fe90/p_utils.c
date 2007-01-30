@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -179,7 +183,11 @@ boolean parse_err_flush (search_type	 rule,
 			 char		*str)
 
 {
+#ifdef KEY /* Bug 10177 */
+   boolean	 found_end = FALSE;
+#else /* KEY Bug 10177 */
    boolean	 found_end;
+#endif /* KEY Bug 10177 */
    char		*new_str;
    int		 paren_level;
    boolean	 found;

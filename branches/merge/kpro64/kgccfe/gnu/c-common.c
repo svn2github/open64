@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -4475,7 +4475,6 @@ c_expand_builtin (exp, target, tmode, modifier)
 
   switch (fcode)
     {
-#ifndef SGI_MONGOOSE
     case BUILT_IN_PRINTF:
       target = c_expand_builtin_printf (arglist, target, tmode,
 					modifier, ignore, /*unlocked=*/ 0);
@@ -4503,7 +4502,6 @@ c_expand_builtin (exp, target, tmode, modifier)
       if (target)
 	return target;
       break;
-#endif /* SGI_MONGOOSE */
 
     default:			/* just do library call, if unknown builtin */
       error ("built-in function `%s' not currently supported",
@@ -4550,7 +4548,6 @@ is_valid_printf_arglist (arglist)
   return ! diagnostic_occurred;
 }
 
-#ifndef SGI_MONGOOSE
 /* If the arguments passed to printf are suitable for optimizations,
    we attempt to transform the call.  */
 static rtx
@@ -4737,7 +4734,6 @@ c_expand_builtin_fprintf (arglist, target, tmode, modifier, ignore, unlocked)
 		      (ignore ? const0_rtx : target),
 		      tmode, modifier);
 }
-#endif /* SGI_MONGOOSE */
 
 
 /* Given a boolean expression ARG, return a tree representing an increment

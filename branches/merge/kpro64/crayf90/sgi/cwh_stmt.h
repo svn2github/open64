@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: cwh_stmt.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_stmt.h,v $
+ * $Revision: 1.4 $
+ * $Date: 05/03/10 16:47:56-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_stmt.h $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -59,7 +59,7 @@
 #define CWH_STMT_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_stmt.h,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_stmt.h $ $Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID */
 
 

@@ -1,5 +1,9 @@
 /*
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++
    front-ends to GNU 3.3.1 release.
  */
@@ -386,6 +390,11 @@ DEF_LIB_BUILTIN(BUILT_IN_POW,
                                    ? ATTR_CONST_NOTHROW_LIST
                                    : ATTR_PURE_NOTHROW_LIST))
 
+DEF_LIB_BUILTIN(BUILT_IN_TAN,
+                "__builtin_tan",
+                BT_FN_DOUBLE_DOUBLE,
+                flag_unsafe_math_optimizations ? ATTR_CONST_NOTHROW_LIST
+                                               : ATTR_PURE_NOTHROW_LIST)
 #else
 // This part is ! KEY. Comment out the following since we are not using
 // the following builtins any more. If we ever need the following, change
@@ -1054,12 +1063,10 @@ DEF_BUILTIN (BUILT_IN_FPUTS_UNLOCKED,
 DEF_EXT_FALLBACK_BUILTIN(BUILT_IN_FWRITE_UNLOCKED,
 			 "__builtin_fwrite_unlocked",
 			 BT_FN_SIZE_CONST_PTR_SIZE_SIZE_PTR)
-#ifndef SGI_MONGOOSE
 DEF_EXT_FRONT_END_LIB_BUILTIN(BUILT_IN_FPRINTF_UNLOCKED,
 			      "__builtin_fprintf_unlocked",
 			      BT_FN_INT_PTR_CONST_STRING_VAR,
 			      ATTR_FORMAT_PRINTF_2_3)
-#endif /* SGI_MONGOOSE */
 
   /* ISO C99 floating point unordered comparisons.  */
 DEF_GCC_BUILTIN(BUILT_IN_ISGREATER, 

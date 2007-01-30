@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -761,9 +765,15 @@ void parse_case_stmt (void)
    int		case_ir_idx;
    int		case_lbl_idx;
    int		cont_stmt_sh_idx;
+#ifdef KEY /* Bug 10177 */
+   int		expr_start_col = 0;
+   int		expr_start_line = 0;
+   boolean	fnd_colon = 0;
+#else /* KEY Bug 10177 */
    int		expr_start_col;
    int		expr_start_line;
    boolean	fnd_colon;
+#endif /* KEY Bug 10177 */
    boolean	fnd_default		= FALSE;
    boolean	fnd_name		= FALSE;
    int		ir_idx;
@@ -1430,8 +1440,13 @@ void parse_do_stmt (void)
    int		expr_start_col;
    int		expr_start_line;
    int		idx;
+#ifdef KEY /* Bug 10177 */
+   int 		il_idx = 0;
+   int 		il_idx_2 = 0;
+#else /* KEY Bug 10177 */
    int 		il_idx;
    int 		il_idx_2;
+#endif /* KEY Bug 10177 */
    boolean	label_found	= FALSE;
    int		last_il_idx;
    int		loop_info_idx;
@@ -1439,7 +1454,11 @@ void parse_do_stmt (void)
    opnd_type	loop_expr;
    int		loop_labels_il_idx;
    int		mp_nest_list_idx = NULL_IDX;
+#ifdef KEY /* Bug 10177 */
+   int		mp_prev_idx = 0;
+#else /* KEY Bug 10177 */
    int		mp_prev_idx;
+#endif /* KEY Bug 10177 */
    int		name_idx;
    opnd_type	while_expr;
 
@@ -2359,16 +2378,27 @@ void parse_else_stmt (void)
 # endif
 
    blk_cntxt_type	err_blk;
+#ifdef KEY /* Bug 10177 */
+   int			expr_start_line = 0;
+   int			expr_start_col = 0;
+#else /* KEY Bug 10177 */
    int			expr_start_line;
    int			expr_start_col;
+#endif /* KEY Bug 10177 */
    boolean		found_name		= FALSE;
    int			il_idx_1;
    int			il_idx_2;
    int			ir_idx;
    boolean		matched_blk		= FALSE;
+#ifdef KEY /* Bug 10177 */
+   int			name_idx = 0;
+   boolean		prev_clause_in_err;
+   int			sh_idx = 0;
+#else /* KEY Bug 10177 */
    int			name_idx;
    boolean		prev_clause_in_err;
    int			sh_idx;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "parse_else_stmt", NULL);
@@ -3002,7 +3032,11 @@ void parse_forall (void)
 
 {
    opnd_type    an_opnd;
+#ifdef KEY /* Bug 10177 */
+   int          blk_stk_start = 0;
+#else /* KEY Bug 10177 */
    int          blk_stk_start;
+#endif /* KEY Bug 10177 */
    int          expr_start_line;
    int          expr_start_col;
    int          forall_ir_idx;
@@ -3598,6 +3632,9 @@ void	parse_goto_stmt(void)
       /* issued messages so give up.					      */
 
       if (parse_label_list(ir_idx)) {
+#ifdef KEY /* Bug 318, 321 */
+	 PRINTMSG(stmt_start_line, 1568, Ansi, stmt_start_col, "computed GOTO");
+#endif /* KEY Bug 318, 321 */
 
          /* Recognize and toss the comma following the label-list, if the     */
          /* comma exists.				     		      */
@@ -4368,7 +4405,11 @@ PARSE_LOGICAL_IF:
                      /* Arithmetic IF.					      */
                      /* ----------------------------------------------------- */
 
+#ifdef KEY /* Bug 318, 321 */
+                     PRINTMSG(stmt_start_line, 112, Ansi, stmt_start_col);
+#else /* KEY Bug 318, 321 */
                      PRINTMSG(stmt_start_line, 112, Comment, stmt_start_col);
+#endif /* KEY Bug 318, 321 */
 
                      if (cif_flags & MISC_RECS) {
                         cif_stmt_type_rec(TRUE, 
@@ -4597,7 +4638,13 @@ void parse_return_stmt (void)
 
       /* Alternate return specifiers are obsolescent. */
 
-      PRINTMSG(IR_LINE_NUM(ir_idx), 371, Comment, IR_COL_NUM(ir_idx));
+      PRINTMSG(IR_LINE_NUM(ir_idx), 371,
+#ifdef KEY /* Bug 318, 321 */
+        Ansi,
+#else /* KEY Bug 318, 321 */
+        Comment,
+#endif /* KEY Bug 318, 321 */
+	IR_COL_NUM(ir_idx));
 
       /* Check for alternate return specifier in a FUNCTION subprogram. */
 

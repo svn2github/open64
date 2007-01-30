@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1236,6 +1240,10 @@ void emit_format_msg(int	msg_num,
             case 'r':
             case 'X':
             case 'x':
+#ifdef KEY /* Bug 318, 321 */
+            case 'H':
+            case 'h':
+#endif /* KEY Bug 318, 321 */
                break;
 
             default:
@@ -1788,6 +1796,13 @@ void parse_read_stmt (void)
       parsed_ok = parse_io_control_list(&opnd, Read);
       COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
+#ifdef KEY /* Bug 10573 */
+      /* Stupid extension allows comma here */
+      if (LA_CH_VALUE == COMMA && ! on_off_flags.issue_ansi_messages) {
+        NEXT_LA_CH;
+      }
+#endif /* KEY Bug 10573 */
+
       if (LA_CH_VALUE != EOS) {
 
          parsed_ok = parse_io_list(&opnd) && parsed_ok;
@@ -2112,6 +2127,13 @@ void parse_write_stmt (void)
       parsed_ok = parse_io_control_list(&opnd, Write);
       COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
+#ifdef KEY /* Bug 10573 */
+      /* Stupid extension allows comma here */
+      if (LA_CH_VALUE == COMMA && ! on_off_flags.issue_ansi_messages) {
+        NEXT_LA_CH;
+      }
+#endif /* KEY Bug 10573 */
+
       if (LA_CH_VALUE != EOS) {
 
          parsed_ok = parse_io_list(&opnd) && parsed_ok;
@@ -2291,7 +2313,11 @@ boolean parse_io_list (opnd_type *result_opnd)
 {
    int       buf_idx;
    int       list_idx;
+#ifdef KEY /* Bug 10177 */
+   int       list2_idx = 0;
+#else /* KEY Bug 10177 */
    int       list2_idx;
+#endif /* KEY Bug 10177 */
    char	     next_char;
    opnd_type opnd;
    int       paren_level = 0;
@@ -2503,15 +2529,24 @@ static boolean  parse_io_control_list (opnd_type   *result_opnd,
    char         *ch_ptr1;
    char         *ch_ptr2;
    int          ciitem_idx;
+#ifdef KEY /* Bug 10177 */
+   boolean      found = FALSE;
+#else /* KEY Bug 10177 */
    boolean      found;
+#endif /* KEY Bug 10177 */
    boolean	had_fmt = FALSE;
    boolean      had_keyword = FALSE;
    boolean      had_nml = FALSE;
    long         i;
    int		idx;
    boolean      item_has_keyword;
+#ifdef KEY /* Bug 10177 */
+   int          kwd_col = 0;
+   int          kwd_line = 0;
+#else /* KEY Bug 10177 */
    int          kwd_col;
    int          kwd_line;
+#endif /* KEY Bug 10177 */
    int          list_idx;
    int          list2_idx;
    int          name_idx;
@@ -3245,7 +3280,11 @@ static int create_format_tmp (int      const_idx)
    int			list2_idx;
    int			list3_idx;
    long64		num_bits;
+#ifdef KEY /* Bug 10177 */
+   long64		num_els = 0;
+#else /* KEY Bug 10177 */
    long64		num_els;
+#endif /* KEY Bug 10177 */
    size_offset_type	stride;
 
 

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -654,7 +658,11 @@ static void     equivalence_semantics(void)
                         AT_OBJ_NAME_PTR(EQ_ATTR_IDX(item)));
             }
 
-            if (ATT_POINTER_CPNT(TYP_IDX(type_idx))) {
+            if (ATT_POINTER_CPNT(TYP_IDX(type_idx))
+#ifdef KEY /* Bug 6845 */
+	      || ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx))
+#endif /* KEY Bug 6845 */
+	    ) {
                PRINTMSG(EQ_LINE_NUM(item), 354, Error,
                         EQ_COLUMN_NUM(item),
                         AT_OBJ_NAME_PTR(EQ_ATTR_IDX(item)));
@@ -911,7 +919,11 @@ static void     linearize_list_for_equiv(int	item)
    size_offset_type	result;
    size_offset_type	right;
    int         		start_expr_idx;
+#ifdef KEY /* Bug 10177 */
+   int         		trail_l_idx = 0;
+#else /* KEY Bug 10177 */
    int         		trail_l_idx;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "linearize_list_for_equiv", NULL);
@@ -1125,7 +1137,11 @@ static void     merge_equivalence_groups1(void)
    int           item;
    int           list_idx;
    int           list_item;
+#ifdef KEY /* Bug 10177 */
+   int           prev_group = 0;
+#else /* KEY Bug 10177 */
    int           prev_group;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "merge_equivalence_groups1", NULL);
@@ -1249,7 +1265,11 @@ static void     merge_equivalence_groups2(void)
    size_offset_type	left;
    int          	list_idx;
    int          	list_item;
+#ifdef KEY /* Bug 10177 */
+   int          	prev_group = 0;
+#else /* KEY Bug 10177 */
    int          	prev_group;
+#endif /* KEY Bug 10177 */
    size_offset_type	result;
    size_offset_type	right;
 
@@ -1529,7 +1549,11 @@ void	array_dim_resolution(int 	attr_idx,
    int			stride_entry_idx	= NULL_IDX;
    int			stride_entry_count;
    size_offset_type	stride;
+#ifdef KEY /* Bug 10177 */
+   int			type = 0;
+#else /* KEY Bug 10177 */
    int			type;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "array_dim_resolution", NULL);
@@ -1561,7 +1585,13 @@ void	array_dim_resolution(int 	attr_idx,
 
       ATD_IM_A_DOPE(attr_idx) = TRUE;
 
-      if (ATD_CLASS(attr_idx) == Dummy_Argument && !ATD_POINTER(attr_idx)) {
+#ifdef KEY /* Bug 6845 */
+      if (ATD_CLASS(attr_idx) == Dummy_Argument &&
+        !(ATD_POINTER(attr_idx) || ATD_ALLOCATABLE(attr_idx)))
+#else /* KEY Bug 6845 */
+      if (ATD_CLASS(attr_idx) == Dummy_Argument && !ATD_POINTER(attr_idx))
+#endif /* KEY Bug 6845 */
+      {
 
          /* Don't convert intrinsic dargs to assumed shape */
 
@@ -3593,7 +3623,11 @@ void	char_len_resolution(int		attr_idx,
    int		max_idx;
    int		new_len_idx;
    opnd_type	opnd;
+#ifdef KEY /* Bug 10177 */
+   int		sh_idx = 0;
+#else /* KEY Bug 10177 */
    int		sh_idx;
+#endif /* KEY Bug 10177 */
    int		tmp_attr_idx;
    int		t_idx;
    int		type_idx;
@@ -4073,7 +4107,11 @@ static void compare_entry_to_func_rslt(int	attr_idx,
    int		idx;
    int		line;
    int		loop;
+#ifdef KEY /* Bug 10177 */
+   boolean	not_a_match = FALSE;
+#else /* KEY Bug 10177 */
    boolean	not_a_match;
+#endif /* KEY Bug 10177 */
    int		pgm_type_idx;
    int		rslt_idx;
    int		rslt_type_idx;
@@ -4917,6 +4955,207 @@ void	decl_semantics(void)
 
 }  /* decl_semantics */
 
+#ifdef KEY /* Bug 6845 */
+/* Create symbol for "dealloc" the first time we need it */
+static long
+lazy_create_dealloc(int line, int col) {
+   if (glb_tbl_idx[Dealloc_Attr_Idx] == NULL_IDX) {
+      glb_tbl_idx[Dealloc_Attr_Idx] = create_lib_entry_attr(DEALLOC_LIB_ENTRY,
+	 DEALLOC_NAME_LEN, line, col);
+   }
+   return glb_tbl_idx[Dealloc_Attr_Idx];
+}
+/*
+ * Generate a statement to deallocate a single simple entity. The code in this
+ * function is modeled after deallocate_local_allocatables(), with
+ * _SEPARATE_DEALLOCATES==true and _ALLOCATE_IS_CALL==false. It is generalized
+ * slightly from the original to allow deallocation of a structure component.
+ *
+ * line		source line
+ * col		source column
+ * fld		AT_Tbl_Idx or IR_Tbl_Idx
+ * idx		index of arg or variable to deallocate
+ * has_pe_ref	used only for locals, not dummies
+ * do_gen_sh	call gen_sh to generate statement to perform dealloc
+ * optional	is optional dummy variable
+ * return	sh_idx for newly generated statement
+ */
+static int
+help_dealloc(int line, int col, fld_type fld, int idx,
+   boolean has_pe_ref, boolean do_gen_sh, boolean optional) {
+
+   if (do_gen_sh) {
+      gen_sh(After, Assignment_Stmt, line, col, FALSE, FALSE, TRUE);
+      SH_P2_SKIP_ME(curr_stmt_sh_idx)   = TRUE;
+   }
+
+   int list_idx;
+   NTR_IR_LIST_TBL(list_idx);
+   IL_FLD(list_idx) = IR_Tbl_Idx;
+   IL_IDX(list_idx) = gen_ir(fld, idx, Aloc_Opr, CRI_Ptr_8,
+     line, col, NO_Tbl_Idx, NULL_IDX);
+
+   int asg_idx = SH_IR_IDX(curr_stmt_sh_idx) = gen_ir(IL_Tbl_Idx, list_idx,
+     Deallocate_Opr, TYPELESS_DEFAULT_TYPE, line, col, NO_Tbl_Idx, NULL_IDX);
+
+   int cn_idx;
+   IR_FLD_R(asg_idx) = IL_Tbl_Idx;
+   IR_LIST_CNT_R(asg_idx) = 3;
+   IR_IDX_R(asg_idx) = gen_il(3, FALSE, line, col, AT_Tbl_Idx,
+      lazy_create_dealloc(line, col), CN_Tbl_Idx,
+      gen_alloc_header_const(Integer_8, 1, has_pe_ref, &cn_idx), CN_Tbl_Idx,
+      CN_INTEGER_ZERO_IDX);
+
+   if (optional) {
+     curr_stmt_sh_idx = gen_present_ir(idx, curr_stmt_sh_idx,
+       curr_stmt_sh_idx);
+   }
+
+   return curr_stmt_sh_idx;
+}
+/*
+ * line			source line
+ * col			source column
+ * attr_idx		idx for variable or expr of type structure
+ * attr_fld		which table attr_idx applies to
+ * cpnt_attr_idx	AT_Tbl_Idx for a component of that structure
+ * return		IR_Tbl_Idx for Struct_Opr referring to component
+ */
+int
+do_make_struct_opr(int line, int col, int attr_idx, fld_type attr_fld,
+   int cpnt_attr_idx) {
+   int cpnt_ir_idx;
+   NTR_IR_TBL(cpnt_ir_idx);
+   IR_OPR(cpnt_ir_idx) = Struct_Opr;
+   IR_TYPE_IDX(cpnt_ir_idx) = ATD_TYPE_IDX(cpnt_attr_idx);
+   IR_LINE_NUM(cpnt_ir_idx) = line;
+   IR_COL_NUM(cpnt_ir_idx)  = col;
+   IR_FLD_L(cpnt_ir_idx) = attr_fld;
+   IR_IDX_L(cpnt_ir_idx) = attr_idx;
+   IR_FLD_R(cpnt_ir_idx) = AT_Tbl_Idx;
+   IR_IDX_R(cpnt_ir_idx) = cpnt_attr_idx;
+   IR_LINE_NUM_L(cpnt_ir_idx) = IR_LINE_NUM_R(cpnt_ir_idx) = line;
+   IR_COL_NUM_L(cpnt_ir_idx) = IR_COL_NUM_R(cpnt_ir_idx)  = col;
+   return cpnt_ir_idx;
+}
+
+static void help_dealloc_components(int, int, fld_type, int, boolean,
+  boolean *);
+static void dealloc_allocatables(int, int, int, fld_type, int, boolean, boolean *);
+
+/*
+ * Loop through elements of a nonallocatable array whose element type is a
+ * structure containing allocatable components or subcomponents, and deallocate
+ * them.
+ *
+ * line		Source line
+ * col		Source column
+ * fld		AT_Tbl_Idx or IR_Tbl_Idx
+ * idx		Index for variable or Struct_Opr whose allocatable components
+ *		we want to deallocate
+ * has_pe_ref	Who knows?
+ * first	If null, create statement header for each deallocation.
+ *		Otherwise, caller passes a variable which is used to suppress
+ *		the first statement header (don't ask--it's historical.)
+ */
+static void
+help_dealloc_array_of_struct(int line, int col, fld_type fld, int idx,
+  boolean has_pe_ref, boolean *first) {
+  opnd_type opnd;
+  expr_arg_type exp_desc;
+  int next_sh_idx = NULL_IDX;
+  int placeholder_sh_idx = pre_gen_loops(line, col, &next_sh_idx);
+  OPND_FLD(opnd) = fld;
+  OPND_IDX(opnd) = idx;
+  OPND_LINE_NUM(opnd) = line;
+  OPND_COL_NUM(opnd) = col;
+  gen_whole_subscript(&opnd, &exp_desc);
+  gen_loops(&opnd, 0, TRUE);
+  help_dealloc_components(line, col, OPND_FLD(opnd), OPND_IDX(opnd),
+    has_pe_ref, first);
+  post_gen_loops(placeholder_sh_idx, next_sh_idx);
+}
+/*
+ * Recursively deallocate allocatables associated with a variable or component
+ * whose data type is "structure"
+ * line		Source line
+ * col		Source column
+ * fld		AT_Tbl_Idx or IR_Tbl_Idx
+ * idx		Index for structure variable or Struct_Opr
+ *		whose components we need to deallocate
+ * has_pe_ref	Who knows?
+ * first	If null, create statement header for each deallocation.
+ *		Otherwise, caller passes a variable which is used to suppress
+ *		the first statement header (don't ask--it's historical.)
+ */
+static void
+help_dealloc_components(int line, int col, fld_type fld, int idx,
+   boolean has_pe_ref, boolean *first) {
+   int struct_idx = (fld == IR_Tbl_Idx) ? IR_TYPE_IDX(idx) : ATD_TYPE_IDX(idx);
+   for (int sn_idx = ATT_FIRST_CPNT_IDX(TYP_IDX(struct_idx));
+      sn_idx != NULL_IDX;
+      sn_idx = SN_SIBLING_LINK(sn_idx)) {
+      int cpnt_attr_idx = SN_ATTR_IDX(sn_idx);
+      int type_idx = ATD_TYPE_IDX(cpnt_attr_idx);
+
+      if (ATD_ALLOCATABLE(cpnt_attr_idx) ||
+        (Structure == TYP_TYPE(type_idx) &&
+	  ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx)))) {
+	dealloc_allocatables(line, col, cpnt_attr_idx, IR_Tbl_Idx,
+	  do_make_struct_opr(line, col, idx, fld, cpnt_attr_idx), has_pe_ref,
+	  first);
+      }
+   }
+}
+/*
+ * Recursively deallocate allocatables associated with a variable or component
+ *
+ * line		source line
+ * col		source column
+ * attr_idx	AT_Tbl_Idx of variable or structure component 
+ * fld		AT_Tbl_Idx or IR_Tbl_Idx corresponding to idx
+ * idx		Index of variable or Struct_Opr expression which refers to
+ *		the variable or component attr_idx
+ * has_pe_ref	Who knows?
+ * first	If null, create statement header for each deallocation.
+ *		Otherwise, caller passes a variable which is used to suppress
+ *		the first statement header (don't ask--it's historical.)
+ */
+static void
+dealloc_allocatables(int line, int col, int attr_idx, fld_type fld, int idx,
+  boolean has_pe_ref, boolean *first) {
+  int type_idx = ATD_TYPE_IDX(attr_idx);
+
+  /* Ordinary allocatable array */
+  if (ATD_ALLOCATABLE(attr_idx)) {
+    help_dealloc(line, col, fld, idx, has_pe_ref,
+      first ? (!*first) : TRUE, AT_OPTIONAL(attr_idx));
+    if (first) {
+      *first = FALSE;
+    }
+  }
+
+  else if (Structure == TYP_TYPE(type_idx) &&
+    ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx))) {
+    int line = SH_GLB_LINE(curr_stmt_sh_idx);
+    int col = SH_COL_NUM(curr_stmt_sh_idx);
+
+    /* Non-allocatable array of structure having allocatable components or
+     * subcomponents. */
+    if (ATD_ARRAY_IDX(attr_idx) != NULL_IDX) {
+      help_dealloc_array_of_struct(line, col, fld, idx, has_pe_ref,
+        first);
+    }
+
+    /* Scalar structure having allocatable components or subcomponents:
+     * recursively deallocate. */
+    else {
+      help_dealloc_components(line, col, fld, idx, has_pe_ref, first);
+    }
+  }
+}
+
+#endif /* KEY Bug 6845 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -4964,14 +5203,22 @@ static	void	attr_semantics(int	attr_idx,
    int			pointer_idx;
    int			proc_idx;
    char		       *pure_str;
+#ifdef KEY /* Bug 10177 */
+   int			rslt_idx = 0;
+#else /* KEY Bug 10177 */
    int			rslt_idx;
+#endif /* KEY Bug 10177 */
    int			scp_idx;
    int			sf_attr_idx;
    int			sn_attr_idx;
    int			sn_idx;
    id_str_type		storage_name;
    int			tmp_ir_idx;
+#ifdef KEY /* Bug 10177 */
+   int			type_idx = 0;
+#else /* KEY Bug 10177 */
    int			type_idx;
+#endif /* KEY Bug 10177 */
    boolean		type_resolved;
    size_offset_type     storage_size;
 
@@ -5182,7 +5429,43 @@ static	void	attr_semantics(int	attr_idx,
             }
          }
    
+#ifdef KEY /* Bug 10675 */
+	 /*
+	  * A fundamental flaw in this front end is that when it generates a
+	  * statement during the semantics phase and inserts it in the series
+	  * of statements generated by the parse phase, there's no way to
+	  * "glue together" the original statement and its progeny so they
+	  * act like a single statement. This is a problem when a compiler
+	  * directive like "omp atomic" refers to "the next statement" (because
+	  * post-semantics-phase it needs to refer to a block of statements.)
+	  * And it's a problem here: if bound_resolution() processes a
+	  * declaration which calls a procedure whose arglist requires the
+	  * allocation of a temporary, then it returns with an "alloc"
+	  * statement prepended to the "call" statement and a "dealloc"
+	  * statement appended. But the "call" statement is still marked as
+	  * the current one. If attr_semantics() now decides to allocate a
+	  * temporary here and deallocate it in the epilog, it will
+	  * append the "alloc" to the current statement. But that will
+	  * actually insert the "alloc" inside the trio of statements which
+	  * represents the call, in front of the "dealloc" belonging to the
+	  * call. Since "alloc" and "dealloc" need to be nested properly
+	  * (they work by moving the stack pointer) this is a tragedy. The
+	  * comprehensive fix would be to invent something in the front end
+	  * IR to represent a "block of statements which act like a single
+	  * one"; the quick fix is to move the current statement pointer past
+	  * the end of that block.
+	  */
+	 int save_next_stmt_sh_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
          bound_resolution(attr_idx);
+	 for (;
+	   curr_stmt_sh_idx != NULL_IDX &&
+	     SH_NEXT_IDX(curr_stmt_sh_idx) != save_next_stmt_sh_idx &&
+	     SH_P2_SKIP_ME(curr_stmt_sh_idx);
+	     curr_stmt_sh_idx = SH_NEXT_IDX(curr_stmt_sh_idx))
+	   ;
+#else /* KEY Bug 10675 */
+         bound_resolution(attr_idx);
+#endif /* KEY Bug 10675 */
       }
 
 
@@ -5482,6 +5765,22 @@ static	void	attr_semantics(int	attr_idx,
          }
       }
 
+#ifdef KEY /* Bug 6845 */
+      /* Dummy intent(out) must be deallocated on entry if it's an allocatable
+       * array or a struct with allocatable components */
+      if (Dummy_Argument == ATD_CLASS(attr_idx)) {
+        if ((!is_interface) && Intent_Out == ATD_INTENT(attr_idx)) {
+	  dealloc_allocatables(SH_GLB_LINE(curr_stmt_sh_idx),
+	    SH_COL_NUM(curr_stmt_sh_idx), attr_idx, AT_Tbl_Idx, attr_idx,
+	    FALSE, 0);
+        }
+	/* Fortran 90 required a constraint warning for this */
+	if (ATD_ALLOCATABLE(attr_idx)) {
+	  PRINTMSG(AT_DEF_LINE(attr_idx), 1679, Ansi, AT_DEF_COLUMN(attr_idx));
+	}
+      }
+#endif /* KEY Bug 6845 */
+
 
 # if 0
             /* BHJ DOPE VECTOR TARGET */
@@ -5537,6 +5836,9 @@ static	void	attr_semantics(int	attr_idx,
               ATD_INTENT(attr_idx) == Intent_Out) &&
             ATD_CLASS(attr_idx) != CRI__Pointee &&
            ((ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
+#ifdef KEY /* Bug 6845 */
+           ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx)) ||
+#endif /* KEY Bug 6845 */
              ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx))) &&
             !ATD_DATA_INIT(attr_idx))))
 #   else /* KEY Bug 431, (1046, 1289, 8717) */
@@ -5673,7 +5975,18 @@ static	void	attr_semantics(int	attr_idx,
             curr_stmt_sh_idx = entry_sh_idx;
          }
 
-         if (ATD_ALLOCATABLE(attr_idx)            &&
+         if (
+#ifdef KEY /* Bug 6845 */
+	     /* Allocatable array */
+	     (ATD_ALLOCATABLE(attr_idx) ||
+	       /* Structure with allocatable component(s) or subcomponent(s) */
+	       (Structure == TYP_TYPE(ATD_TYPE_IDX(attr_idx)) &&
+		 ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))))) &&
+             /* Allocatable dummy must not be deallocated on exit */
+	     ATD_CLASS(attr_idx) != Dummy_Argument &&
+#else /* KEY Bug 6845 */
+	 ATD_ALLOCATABLE(attr_idx)            &&
+#endif /* KEY Bug 6845 */
              ATP_PGM_UNIT(pgm_attr_idx) != Module &&
              ! ATP_SAVE_ALL(pgm_attr_idx)         &&
              ! ATD_DATA_INIT(attr_idx)            &&
@@ -5714,6 +6027,9 @@ static	void	attr_semantics(int	attr_idx,
          }
          else if (TYP_TYPE(type_idx) == Structure &&
                   (ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
+#ifdef KEY /* Bug 6845 */
+                  ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx)) ||
+#endif /* KEY Bug 6845 */
                    ATT_CHAR_CPNT(TYP_IDX(type_idx))) ) {
             PRINTMSG(AT_DEF_LINE(attr_idx), 536, Error,
                      AT_DEF_COLUMN(attr_idx),
@@ -5759,6 +6075,15 @@ static	void	attr_semantics(int	attr_idx,
                          AT_OBJ_NAME_PTR(attr_idx),
                          AT_OBJ_NAME_PTR(TYP_IDX(type_idx)));
             }
+#ifdef KEY /* Bug 6845 */
+            if (TYP_TYPE(type_idx) == Structure &&
+                ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx))) {
+                AT_DCL_ERR(attr_idx) = TRUE;
+                PRINTMSG(AT_DEF_LINE(attr_idx), 691, Error,
+                         AT_DEF_COLUMN(attr_idx),
+                         AT_OBJ_NAME_PTR(attr_idx));
+	    }
+#endif /* KEY Bug 6845 */
 
             if (SB_BLK_HAS_NPES(ATD_STOR_BLK_IDX(attr_idx)) &&
                 ATD_DATA_INIT(attr_idx)) {
@@ -6391,7 +6716,12 @@ static	void	attr_semantics(int	attr_idx,
          /* alternate entries are stored in the equivalence block.     */
 
         
-         if (FUNCTION_MUST_BE_SUBROUTINE(rslt_idx)) {
+#ifdef KEY /* Bug 5089 */
+         if (FUNCTION_MUST_BE_SUBROUTINE(attr_idx, rslt_idx))
+#else /* KEY Bug 5089 */
+         if (FUNCTION_MUST_BE_SUBROUTINE(rslt_idx))
+#endif /* KEY Bug 5089 */
+	 {
 
             ATP_EXTRA_DARG(attr_idx)      = TRUE;
 
@@ -6728,7 +7058,18 @@ static	void	attr_semantics(int	attr_idx,
 
          if (!AT_USE_ASSOCIATED(attr_idx) &&
              ATD_CPNT_INIT_IDX(SN_ATTR_IDX(sn_idx)) != NULL_IDX) {
+#ifdef KEY /* Bug 6845 */
+	    int cpnt_idx = SN_ATTR_IDX(sn_idx);
+            if (ATD_ALLOCATABLE(cpnt_idx)) {
+	      PRINTMSG(AT_DEF_LINE(cpnt_idx), 1680, Error,
+	        AT_DEF_COLUMN(cpnt_idx), AT_OBJ_NAME_PTR(cpnt_idx));
+	    }
+	    else {
+	      default_init_semantics(SN_ATTR_IDX(sn_idx));
+	    }
+#else /* KEY Bug 6845 */
             default_init_semantics(SN_ATTR_IDX(sn_idx));
+#endif /* KEY Bug 6845 */
          }
          sn_idx = SN_SIBLING_LINK(sn_idx);
       }
@@ -7250,7 +7591,13 @@ FOUND:
                }
    
                if (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure           &&
-                   ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx)))) {
+#ifdef KEY /* Bug 6845 */
+                   (ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
+                   ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))))
+#else /* KEY Bug 6845 */
+                   ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx)))
+#endif /* KEY Bug 6845 */
+		   ) {
                   PRINTMSG(SN_LINE_NUM(sn_idx), 484, Error, 
                            SN_COLUMN_NUM(sn_idx),
                            AT_OBJ_NAME_PTR(attr_idx));
@@ -7348,7 +7695,11 @@ static int ntr_bnds_sh_tmp_list(opnd_type	*opnd,
 
 {
    int		al_idx;
+#ifdef KEY /* Bug 10177 */
+   int		attr_idx = 0;
+#else /* KEY Bug 10177 */
    int		attr_idx;
+#endif /* KEY Bug 10177 */
    int		column;
    int		ir_idx;
    int		line;
@@ -7486,7 +7837,11 @@ static int merge_entry_lists(int	merged_list,
 {
    int		list_idx		= NULL_IDX;
    int		merged_list_start;
+#ifdef KEY /* Bug 10177 */
+   int		prev_idx = 0;
+#else /* KEY Bug 10177 */
    int		prev_idx;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "merge_entry_lists", NULL);
@@ -7994,15 +8349,16 @@ static	void	gen_tmp_eq_zero_ir(int		attr_idx)
 |*	 NONE								      *|
 |*									      *|
 \******************************************************************************/
-#ifdef KEY /* Bug 4955 */
-void	gen_present_ir(int	attr_idx,
+#ifdef KEY /* Bug 4955, 6845 */
+/* Return SH_IDX for last statement generated */
+int	gen_present_ir(int	attr_idx,
 			       int	start_sh_idx,
                                int	end_sh_idx)
-#else /* KEY Bug 4955 */
+#else /* KEY Bug 4955, 6845 */
 static	void	gen_present_ir(int	attr_idx,
 			       int	start_sh_idx,
                                int	end_sh_idx)
-#endif /* KEY Bug 4955 */
+#endif /* KEY Bug 4955, 6845 */
 {
    int		br_around_opt;
    int		br_idx;
@@ -8085,11 +8441,18 @@ static	void	gen_present_ir(int	attr_idx,
 
    SH_P2_SKIP_ME(curr_stmt_sh_idx)	= TRUE;
    SH_IR_IDX(curr_stmt_sh_idx)		= cont_idx;
+#ifdef KEY /* Bug 6845 */
+   int last_idx = curr_stmt_sh_idx;
+#endif /* KEY Bug 6845 */
    curr_stmt_sh_idx			= save_sh_idx;
 
    TRACE (Func_Exit, "gen_present_ir", NULL);
 
+#ifdef KEY /* Bug 6845 */
+   return last_idx;
+#else /* KEY Bug 6845 */
    return;
+#endif /* KEY Bug 6845 */
 
 }  /* gen_present_ir */
 
@@ -8211,7 +8574,66 @@ static	void	tmp_il_resolution(int	list_idx)
 |*	NOTHING								      *|
 |*									      *|
 \******************************************************************************/
+#ifdef KEY /* Bug 6845 */
+static void deallocate_local_allocatables(void)
 
+{
+   /* The "Bug 6845" version handles local variables which are derived types
+    * containing components which are allocatable; but it assumes that
+    * _SEPARATE_DEALLOCATES==true and _ALLOCATE_IS_CALL==false. */
+
+   TRACE (Func_Entry, "deallocate_local_allocatables", NULL);
+
+   int line = stmt_start_line;
+   int col  = stmt_start_col;
+   int save_curr_stmt_sh_idx = curr_stmt_sh_idx;
+
+   ADD_ATTR_TO_LOCAL_LIST(lazy_create_dealloc(line, col));
+
+   boolean first = TRUE;
+   int start_sh_idx                  = ntr_sh_tbl();
+   curr_stmt_sh_idx                  = start_sh_idx;
+   SH_STMT_TYPE(curr_stmt_sh_idx)    = Assignment_Stmt;
+   SH_GLB_LINE(curr_stmt_sh_idx)     = line;
+   SH_COL_NUM(curr_stmt_sh_idx)      = col;
+   SH_COMPILER_GEN(curr_stmt_sh_idx) = TRUE;
+   SH_P2_SKIP_ME(curr_stmt_sh_idx)   = TRUE;
+
+   for (int sn_idx = allocatable_list_idx;
+      sn_idx;
+      sn_idx = SN_SIBLING_LINK(sn_idx)) {
+      int sn_attr_idx = SN_ATTR_IDX(sn_idx);
+      int has_pe_ref = (ATD_ALLOCATABLE(sn_attr_idx) &&
+        ATD_PE_ARRAY_IDX(sn_attr_idx) != NULL_IDX);
+      dealloc_allocatables(line, col, sn_attr_idx, AT_Tbl_Idx, sn_attr_idx,
+        has_pe_ref, &first);
+   }
+
+   while (SH_PREV_IDX(start_sh_idx)) {
+      start_sh_idx = SH_PREV_IDX(start_sh_idx);
+   }
+
+   if (SH_NEXT_IDX(curr_stmt_sh_idx)) {
+      curr_stmt_sh_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
+   }
+
+   if (SCP_EXIT_IR_SH_IDX(curr_scp_idx) != NULL_IDX) {
+      SH_NEXT_IDX(curr_stmt_sh_idx)	= SCP_EXIT_IR_SH_IDX(curr_scp_idx);
+      SCP_EXIT_IR_SH_IDX(curr_scp_idx)	= start_sh_idx;
+   }
+   else {
+      SCP_EXIT_IR_SH_IDX(curr_scp_idx)	= start_sh_idx;
+   }
+
+   curr_stmt_sh_idx = save_curr_stmt_sh_idx;
+
+   TRACE (Func_Exit, "deallocate_local_allocatables", NULL);
+
+   return;
+
+}  /* deallocate_local_allocatables */
+
+#else /* KEY Bug 6845 */
 static void deallocate_local_allocatables(void)
 
 {
@@ -8233,13 +8655,6 @@ static void deallocate_local_allocatables(void)
    line = stmt_start_line;
    col  = stmt_start_col;
    save_curr_stmt_sh_idx = curr_stmt_sh_idx;
-
-   if (glb_tbl_idx[Dealloc_Attr_Idx] == NULL_IDX) {
-      glb_tbl_idx[Dealloc_Attr_Idx] = create_lib_entry_attr(DEALLOC_LIB_ENTRY,
-                                                            DEALLOC_NAME_LEN,
-                                                            line,
-                                                            col);
-   }
 
    ADD_ATTR_TO_LOCAL_LIST(glb_tbl_idx[Dealloc_Attr_Idx]);
 
@@ -8415,6 +8830,7 @@ static void deallocate_local_allocatables(void)
    return;
 
 }  /* deallocate_local_allocatables */
+#endif /* KEY Bug 6845 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -10843,16 +11259,26 @@ static void verify_interface(int        interface_idx)
    int		loop_cnt;
    int		num_dargs;
    int		optional_sn_idx;
+#ifdef KEY /* Bug 10177 */
+   int		rank_l = 0;
+   int		rank_r = 0;
+#else /* KEY Bug 10177 */
    int		rank_l;
    int		rank_r;
+#endif /* KEY Bug 10177 */
    boolean	same_dargs;
    int		save_curr_darg_sn_idx;
    int		save_curr_num_dargs;
    int		save_darg_sn_idx;
    int		save_num_dargs;
    int		sn_idx;
+#ifdef KEY /* Bug 10177 */
+   int		type_idx_l = 0;
+   int		type_idx_r = 0;
+#else /* KEY Bug 10177 */
    int		type_idx_l;
    int		type_idx_r;
+#endif /* KEY Bug 10177 */
 
 
 
@@ -12406,7 +12832,11 @@ int	gen_tmp_equal_max_zero(opnd_type	*opnd,
    int		line;
    int		list_idx;
    int		max_idx;
+#ifdef KEY /* Bug 10177 */
+   int		sh_idx = 0;
+#else /* KEY Bug 10177 */
    int		sh_idx;
+#endif /* KEY Bug 10177 */
    int		tmp_idx;
    int		zero_idx;
 

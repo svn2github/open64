@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -37,10 +43,10 @@
  * ====================================================================
  *
  * Module: c_int_model.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/gccfe/c_int_model.h,v $
+ * $Revision: 1.5 $
+ * $Date: 04/12/21 14:57:52-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/kgccfe/SCCS/s.c_int_model.h $
  *
  * Revision history:
  *  ??-???-92 - Original Version
@@ -57,7 +63,7 @@
 #define c_int_model_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *c_int_model_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/gccfe/c_int_model.h,v $ $Revision: 1.1.1.1 $";
+static char *c_int_model_rcs_id = "$Source: /home/bos/bk/kpro64-pending/kgccfe/SCCS/s.c_int_model.h $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef defs_INCLUDED

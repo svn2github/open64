@@ -25,7 +25,7 @@ Boston, MA 02111-1307, USA.  */
 */
 
 #ifndef VERSION_INFO2
-#define VERSION_INFO2   "$Revision: 1.1.1.1 $"
+#define VERSION_INFO2   "$Revision$"
 #endif
 
 #ifndef VERSION_STRING

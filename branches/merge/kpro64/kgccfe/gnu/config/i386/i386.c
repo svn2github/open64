@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Subroutines used for code generation on IA-32.
@@ -12894,9 +12894,15 @@ ix86_init_mmx_sse_builtins ()
   tree v4si_ftype_v8hi_v8hi
     = build_function_type_list (V4SI_type_node,
 				V8HI_type_node, V8HI_type_node, NULL_TREE);
+#ifdef KEY // New type
+  tree v4hi_ftype_v8qi_v8qi
+    = build_function_type_list (V4HI_type_node,
+				V8QI_type_node, V8QI_type_node, NULL_TREE);
+#else
   tree di_ftype_v8qi_v8qi
     = build_function_type_list (long_long_unsigned_type_node,
 				V8QI_type_node, V8QI_type_node, NULL_TREE);
+#endif
   tree v2di_ftype_v16qi_v16qi
     = build_function_type_list (V2DI_type_node,
 				V16QI_type_node, V16QI_type_node, NULL_TREE);
@@ -13048,7 +13054,11 @@ ix86_init_mmx_sse_builtins ()
 
   def_builtin (MASK_SSE | MASK_3DNOW_A, "__builtin_ia32_sfence", void_ftype_void, IX86_BUILTIN_SFENCE);
 
+#ifdef KEY // Fix inconsistent return type
+  def_builtin (MASK_SSE | MASK_3DNOW_A, "__builtin_ia32_psadbw", v4hi_ftype_v8qi_v8qi, IX86_BUILTIN_PSADBW);
+#else
   def_builtin (MASK_SSE | MASK_3DNOW_A, "__builtin_ia32_psadbw", di_ftype_v8qi_v8qi, IX86_BUILTIN_PSADBW);
+#endif
 
   def_builtin (MASK_SSE, "__builtin_ia32_rcpps", v4sf_ftype_v4sf, IX86_BUILTIN_RCPPS);
   def_builtin (MASK_SSE, "__builtin_ia32_rcpss", v4sf_ftype_v4sf, IX86_BUILTIN_RCPSS);

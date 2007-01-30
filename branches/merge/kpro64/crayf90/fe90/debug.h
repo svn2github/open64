@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -383,6 +387,10 @@ char		*intrin_str[]		= {
 				"Dcosh_Intrinsic",
 				"Dcot_Intrinsic",
 				"Ddim_Intrinsic",
+#ifdef KEY /* Bug 1329 */
+				"Derf_Intrinsic",
+				"Derfc_Intrinsic",
+#endif /* KEY Bug 1329 */
 				"Dexp_Intrinsic",
 				"Dfloat_Intrinsic",
 				"Dfloati_Intrinsic",
@@ -801,8 +809,14 @@ char		*intrin_str[]		= {
 				"Zsqrt_Intrinsic",
 # endif
 #ifdef KEY /* Bug 1683 */
-				"Pathf90_Intrinsic"
+				"Pathf90_Intrinsic",
 #endif /* KEY Bug 1683 */
+#ifdef KEY /* Bug 5089 */
+				"True_Intrinsic",
+#endif /* KEY Bug 5089 */
+#ifdef KEY /* F2003 */
+				"Newline_Intrinsic"
+#endif /* KEY F2003 */
 		};
 
 char		*msg_lvl_str[]		= {
@@ -1364,6 +1378,9 @@ char		*operator_str[]		= {
 #ifdef KEY /* Bug 2660 */
 		 	"Options_Dir_Opr",
 #endif /* KEY Bug 2660 */
+#ifdef KEY /* Bug 10410 */
+		 	"Cselect_Opr",
+#endif /* KEY Bug 10410 */
                         "The_Last_Opr"
 		};
 
@@ -1478,6 +1495,9 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Module",	/* Tok_Kwd_Module	*/
 			"Tok_Kwd_Namelist",	/* Tok_Kwd_Namelist	*/
 			"Tok_Kwd_None",		/* Tok_Kwd_None		*/
+#ifdef KEY /* Bug 5089 */
+			"Tok_Kwd_Nonintrinsic",	/* Tok_Kwd_Nonintrinsic */
+#endif /* KEY Bug 5089 */
 			"Tok_Kwd_Nullify",	/* Tok_Kwd_Nullify	*/
 			"Tok_Kwd_Only",		/* Tok_Kwd_Only		*/
 			"Tok_Kwd_Open",		/* Tok_Kwd_Open		*/
@@ -2270,6 +2290,9 @@ static char	*dv_whole_def_str[] = {
 			"TYPE_CODE",
 			"ORIG_BASE",
 			"ORIG_SIZE",
+#ifdef KEY /* Bug 6845 */
+			"ALLOC_CPN",
+#else /* KEY Bug 6845 */
 			"DIM %d LB",
 			"DIM %d EX",
 			"DIM %d SM",
@@ -2291,7 +2314,17 @@ static char	*dv_whole_def_str[] = {
                         "DIM %d LB",
                         "DIM %d EX",
                         "DIM %d SM"
+#endif /* KEY Bug 6845 */
 		};
+
+#ifdef KEY /* Bug 6845 */
+static char *dv_whole_def_bound_str[] = {
+			"DIM %d LB",
+			"DIM %d EX",
+			"DIM %d SM"
+		};
+static char *dv_whole_def_alloc_cpnt_str = "ALLOC CPNT %d OFFSET";
+#endif /* KEY Bug 6845 */
 
 static char *open_mp_dir_opr_str[] = {
                          "IF clause",

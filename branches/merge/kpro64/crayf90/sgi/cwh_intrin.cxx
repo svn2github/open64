@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,9 +45,9 @@
  * ====================================================================
  *
  * Module: cwh_intrin
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
+ * $Revision: 1.9 $
+ * $Date: 05/11/08 23:33:31-08:00 $
+ * $Author: scorrell@soapstone.internal.keyresearch.com $
  * $Source: 
  *
  * Revision history:
@@ -60,7 +64,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_intrin.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_intrin.cxx $ $Revision: 1.9 $";
 #endif /* _KEEP_RCS_ID */
 
 /* sgi includes */
@@ -310,7 +314,11 @@ simple_intrinsic(i_enum intrin, TYPE_ID bt, INT numargs, INT numpop)
    OPCODE  opc ;
    INTRINSIC intr;
    WN *k[3];
+#ifdef KEY /* Bug 10177 */
+   WN *wn  = 0;
+#else /* KEY Bug 10177 */
    WN *wn  ;
+#endif /* KEY Bug 10177 */
    INT i;
    TYPE_ID t;
    WN *ae=NULL;
@@ -460,6 +468,9 @@ do_simple(mod,2,0)
 do_simple(modulo,2,0) 
 do_simple(nextafter,2,0)
 do_simple(rrspace,1,1)
+#ifdef KEY /* Bug 9140 */
+do_simple(sign_xfer,2,0)
+#endif /* KEY Bug 9140 */
 do_simple(sin,1,0)
 do_simple(sinh,1,0)
 do_simple(space,1,1)
@@ -498,7 +509,11 @@ void
 fei_complex(TYPE type) 
 {
   TYPE_ID br ;
+#ifdef KEY /* Bug 10177 */
+  TYPE_ID bt  = 0;
+#else /* KEY Bug 10177 */
   TYPE_ID bt ;
+#endif /* KEY Bug 10177 */
   WN *k[2]   ;
   WN * wn    ;
   INT i      ;
@@ -549,7 +564,11 @@ fei_abs(TYPE type)
   WN     *wn ;
   WN *ae=NULL;
 
+#ifdef KEY /* Bug 10177 */
+  INTRINSIC intr = INTRN_I4EXPEXPR;
+#else /* KEY Bug 10177 */
   INTRINSIC intr;
+#endif /* KEY Bug 10177 */
 
   wn = cwh_expr_operand(&ae);
   ty = cwh_types_WN_TY(wn,FALSE);
@@ -599,7 +618,11 @@ fei_exponentiate(TYPE type)
    
    TYPE_ID bt, rt;
    TYPE_ID et;
+#ifdef KEY /* Bug 10177 */
+   INTRINSIC intr = INTRN_I4EXPEXPR;
+#else /* KEY Bug 10177 */
    INTRINSIC intr;
+#endif /* KEY Bug 10177 */
    WN *k[2];
    WN *wn  ;
    WN *base, *exp;
@@ -677,8 +700,13 @@ void
 fei_round(TYPE type) 
 {
    TYPE_ID bt,rt  ;
+#ifdef KEY /* Bug 10177 */
+   OPCODE  opc = (OPCODE) 0;
+   INTRINSIC intr = INTRN_I4EXPEXPR;
+#else /* KEY Bug 10177 */
    OPCODE  opc ;
    INTRINSIC intr;
+#endif /* KEY Bug 10177 */
    WN *k[2];
    WN *wn  ;
    WN *ae=NULL;
@@ -867,6 +895,7 @@ void fei_pos_diff(TYPE type)
 }
 
 
+#ifndef KEY /* Bug 9140 */
 /* 
  * Inline the SIGN intrinsic
  */
@@ -892,8 +921,13 @@ void fei_sign_xfer(TYPE type)
    cwh_stk_push(aneg,WN_item);
    b = cwh_expr_restore_arrayexp(b,ae);
    cwh_stk_push(b,WN_item);
+#ifdef KEY /* Bug 10410 */
+   fei_select(type, 0);
+#else /* KEY Bug 10410 */
    fei_select(type);
+#endif /* KEY Bug 10410 */
 }
+#endif /* KEY Bug 9140 */
 
 /*
  * Inline the IEEE SIGN intrinsic
@@ -1010,11 +1044,19 @@ cwh_do_tranformational(INTRINSIC intrn, INT numargs, TYPE rtype, BOOL is_numeric
 {
    WN * args[MAXARGS];
    WN *wn;
+#ifdef KEY /* Bug 10177 */
+   WN *charlen = 0;
+#else /* KEY Bug 10177 */
    WN *charlen;
+#endif /* KEY Bug 10177 */
    OPCODE op;
    INT i;
    BOOL is_char;
+#ifdef KEY /* Bug 10177 */
+   TY_IDX  str_ty = 0;
+#else /* KEY Bug 10177 */
    TY_IDX  str_ty;
+#endif /* KEY Bug 10177 */
    TY_IDX  p_ty;
    TY_IDX  rty;
    TYPE_ID type_from_first;
@@ -1761,7 +1803,11 @@ cwh_intrin_popcnt_leadz_helper(INTRINSIC i1, INTRINSIC i2, INTRINSIC i4, INTRINS
    WN *wn;
    WN *r;
    TYPE_ID t,ti,rt;
+#ifdef KEY /* Bug 10177 */
+   INTRINSIC intr = INTRN_I4EXPEXPR;
+#else /* KEY Bug 10177 */
    INTRINSIC intr;
+#endif /* KEY Bug 10177 */
    WN *ae=NULL;
    
    t = TY_mtype(t_TY(arg));

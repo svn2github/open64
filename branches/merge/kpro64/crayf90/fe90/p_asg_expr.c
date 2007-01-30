@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -340,7 +344,7 @@ boolean parse_expr (opnd_type	*result)
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_expr", NULL);
 
@@ -438,12 +442,12 @@ boolean parse_level_1(opnd_type *result)
    parsed_ok = parse_operand(&opnd) && parsed_ok;
 
    if (def_idx) {
-      COPY_OPND(IR_OPND_R(def_idx), opnd)
+      COPY_OPND(IR_OPND_R(def_idx), opnd);
       OPND_FLD((*result)) = IR_Tbl_Idx;
       OPND_IDX((*result)) = def_idx;
    }
    else {
-      COPY_OPND((*result), opnd)
+      COPY_OPND((*result), opnd);
    }
    TRACE (Func_Exit, "parse_level_1", NULL);
 
@@ -487,11 +491,11 @@ boolean parse_mult_opnd(opnd_type *result)
          IR_LINE_NUM(ir_idx) = TOKEN_LINE(token);
          IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(token);
 
-         COPY_OPND(IR_OPND_L(ir_idx), opnd)
+         COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
          parsed_ok = parse_mult_opnd(&opnd) && parsed_ok;
 
-         COPY_OPND(IR_OPND_R(ir_idx), opnd)
+         COPY_OPND(IR_OPND_R(ir_idx), opnd);
 
          OPND_FLD((*result)) = IR_Tbl_Idx;
          OPND_IDX((*result)) = ir_idx;
@@ -576,7 +580,7 @@ boolean parse_add_opnd(opnd_type *result)
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_add_opnd", NULL);
 
@@ -654,7 +658,7 @@ boolean parse_level_2(opnd_type *result)
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_level_2", NULL);
 
@@ -705,7 +709,7 @@ boolean parse_level_3(opnd_type *result)
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_level_3", NULL);
 
@@ -785,7 +789,7 @@ boolean parse_level_4(opnd_type *result)
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_level_4", NULL);
 
@@ -901,17 +905,17 @@ boolean parse_or_opnd(opnd_type *result)
       IR_LINE_NUM(ir_idx) = TOKEN_LINE(token);
       IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(token);
 
-      COPY_OPND(IR_OPND_L(ir_idx), opnd)
+      COPY_OPND(IR_OPND_L(ir_idx), opnd);
   
       parsed_ok = parse_and_opnd(&opnd) && parsed_ok;
 
-      COPY_OPND(IR_OPND_R(ir_idx), opnd)
+      COPY_OPND(IR_OPND_R(ir_idx), opnd);
 
       OPND_FLD(opnd) = IR_Tbl_Idx;
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_or_opnd", NULL);
 
@@ -952,17 +956,17 @@ boolean parse_equiv_opnd(opnd_type *result)
       IR_LINE_NUM(ir_idx) = TOKEN_LINE(token);
       IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(token);
 
-      COPY_OPND(IR_OPND_L(ir_idx), opnd)
+      COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
       parsed_ok = parse_or_opnd(&opnd) && parsed_ok;
 
-      COPY_OPND(IR_OPND_R(ir_idx), opnd)
+      COPY_OPND(IR_OPND_R(ir_idx), opnd);
 
       OPND_FLD(opnd) = IR_Tbl_Idx;
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_equiv_opnd", NULL);
 
@@ -1010,23 +1014,51 @@ boolean parse_level_5(opnd_type *result)
       IR_LINE_NUM(ir_idx) = TOKEN_LINE(token);
       IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(token);
 
-      COPY_OPND(IR_OPND_L(ir_idx), opnd)
+      COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
       parsed_ok = parse_equiv_opnd(&opnd) && parsed_ok; 
 
-      COPY_OPND(IR_OPND_R(ir_idx), opnd)
+      COPY_OPND(IR_OPND_R(ir_idx), opnd);
 
       OPND_FLD(opnd) = IR_Tbl_Idx;
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_level_5", NULL);
 
    return(parsed_ok);
 } /* parse_level_5 */
+
 
+#ifdef KEY /* Bug 8004 */
+/*
+ * Do the parsing of an array constructor.
+ * parsed_ok	Indicates whether we have encountered an error so far; we
+ *		update this.
+ * the_opnd	Operand to be created by parsing
+ */
+static void do_array_constructor(boolean *parsed_ok, opnd_type *the_opnd) {
+  int ir_idx = NULL_IDX;
+  opnd_type opnd = INIT_OPND_TYPE;
+
+  NTR_IR_TBL(ir_idx);
+  IR_OPR(ir_idx) = Array_Construct_Opr;
+  IR_LINE_NUM(ir_idx) = TOKEN_LINE(token);
+  IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(token);
+  OPND_FLD((*the_opnd)) = IR_Tbl_Idx;
+  OPND_IDX((*the_opnd)) = ir_idx;
+
+  boolean save_in_constructor = in_constructor;
+  in_constructor = TRUE;
+  *parsed_ok = parse_io_list(&opnd) && *parsed_ok;
+  in_constructor = save_in_constructor;
+
+  COPY_OPND(IR_OPND_R(ir_idx), opnd);
+}
+
+#endif /* KEY Bug 8004 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -1233,7 +1265,7 @@ boolean parse_operand (opnd_type *the_opnd)
                      cmplx_lin_type = Complex_4;
 # if defined(_WHIRL_HOST64_TARGET64)
                      {
-                       float *p = (float *)&constant;
+                       float *p = &constant;
                        p[1] = p[2];
                      }
 # endif
@@ -1385,24 +1417,25 @@ boolean parse_operand (opnd_type *the_opnd)
          parse_err_flush(Find_Expr_End, NULL);
       }
    }
+#ifdef KEY /* Bug 8004 */
+   else if (LA_CH_VALUE == LBRKT) {
+      NEXT_LA_CH;
+
+      do_array_constructor(&parsed_ok, the_opnd);
+
+      if (LA_CH_VALUE == RBRKT) {
+         NEXT_LA_CH;
+      }
+      else {
+         parse_err_flush(Find_EOS, "]");
+         parsed_ok = FALSE;
+      }
+   }
+#endif /* KEY Bug 8004 */
    else if (LA_CH_VALUE == LPAREN && matched_specific_token(Tok_Punct_Lbrkt,
                                                             Tok_Class_Punct)) {
 
-      /* Have array constructor */
-
-      NTR_IR_TBL(ir_idx);
-      IR_OPR(ir_idx) = Array_Construct_Opr;
-      IR_LINE_NUM(ir_idx) = TOKEN_LINE(token);
-      IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(token);
-      OPND_FLD((*the_opnd)) = IR_Tbl_Idx;
-      OPND_IDX((*the_opnd)) = ir_idx;
-
-      save_in_constructor = in_constructor;
-      in_constructor = TRUE;
-      parsed_ok = parse_io_list(&opnd) && parsed_ok;
-      in_constructor = save_in_constructor;
-
-      COPY_OPND(IR_OPND_R(ir_idx), opnd);
+      do_array_constructor(&parsed_ok, the_opnd);
 
       if (LA_CH_VALUE == SLASH && matched_specific_token(Tok_Punct_Rbrkt,
                                                          Tok_Class_Punct)) {

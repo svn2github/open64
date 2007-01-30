@@ -199,6 +199,9 @@ static	kwd_type		kwd[] = {
 
 				"MODULE",	     Tok_Kwd_Module,
 
+#ifdef KEY /* Bug 5089 */
+				"NON_INTRINSIC",     Tok_Kwd_Nonintrinsic,
+#endif /* KEY Bug 5089 */
 				"NAMELIST",	     Tok_Kwd_Namelist,
 				"NULLIFY",	     Tok_Kwd_Nullify,
 				"NONE",		     Tok_Kwd_None,

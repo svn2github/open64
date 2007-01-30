@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -42,9 +46,9 @@
  * ====================================================================
  *
  * Module: cwh_stmt
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
+ * $Revision: 1.21 $
+ * $Date: 05/10/03 14:30:58-07:00 $
+ * $Author: scorrell@soapstone.internal.keyresearch.com $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -237,7 +241,7 @@ fei_object_ref (INTPTR  sym_idx,
  *===============================================
  */ 
 extern void
-fei_seg_ref (INTPTR   sym_idx )
+fei_seg_ref (INT32   sym_idx )
 {
   STB_pkt *p ;
 
@@ -277,7 +281,7 @@ fei_namelist_ref (INTPTR   sym_idx )
  *===============================================
  */ 
 extern void
-fei_member_ref (INTPTR   sym_idx )
+fei_member_ref (INT32   sym_idx )
 {
 
   cwh_stk_push(cast_to_void(sym_idx),FLD_item) ;
@@ -316,7 +320,11 @@ fei_constant ( TYPE            type,
   TY_IDX ty  ;  
   INTPTR cn   ;
   ST *st;
+#ifdef KEY /* Bug 10177 */
+  STB_pkt *p = 0;
+#else /* KEY Bug 10177 */
   STB_pkt *p ;
+#endif /* KEY Bug 10177 */
   
   switch ((CONSTANT_CLASS)Class) {
   case Arith_Const:
@@ -360,7 +368,7 @@ fei_constant ( TYPE            type,
     break ;
   }
   
-  return(cast_to_long(p));
+  return(cast_to_int(p));
 }
 
 /*===============================================
@@ -639,11 +647,11 @@ fei_non_conform_store( TYPE result_type )
 
     cwh_stk_push_typed(wd,WN_item,td); 
     if (!f2.Is_Null ())
-      cwh_stk_push((void *)(INTPTR)f2.Idx (),FLD_item);
+      cwh_stk_push((void *)f2.Idx (),FLD_item);
 
     cwh_stk_push_typed(wt,WN_item,tt); 
     if (!f1.Is_Null ())
-      cwh_stk_push((void *)(INTPTR)f1.Idx(),FLD_item);
+      cwh_stk_push((void *)f1.Idx(),FLD_item);
 
   }
 
@@ -711,6 +719,22 @@ fei_function_ref(INTPTR id)
   cwh_stk_push(cast_to_ST(p->item), ST_item);
 }
 
+#ifdef KEY /* Bug 10282 */
+/*
+ * return struct type if t is array of struct type suitable for returning
+ * by value from a function; else return -1
+ */
+TY_IDX array_of_struct_by_value(TY_IDX t) {
+  if (TY_kind(t) == KIND_ARRAY) {
+    t = cwh_types_scalar_TY(t);
+    if (STRUCT_BY_VALUE(t)) {
+      return t;
+    }
+  }
+  return (TY_IDX) -1;
+}
+#endif /* KEY Bug 10282 */
+
 /*===============================================
  *
  * cwh_stmt_call_helper
@@ -772,6 +796,13 @@ cwh_stmt_call_helper(INT32 num_args, TY_IDX ty, INT32 inline_state, INT64 flags)
   BOOL        forward_barrier = FALSE;
   BOOL        backward_barrier = FALSE;
   WN * barrier_wn;
+#ifdef KEY /* Bug 10282 */
+  /* If an elemental function is returning an array of "small" structures,
+   * we need to remember the temp which receives the function result, and
+   * the base type of the result array. */
+  WN *case4_array_temp = 0;
+  TY_IDX case4_base_type = (TY_IDX) -1;
+#endif /* KEY Bug 10282 */
 
   /* figure # of args, including character lengths, clear return temp ST */
 
@@ -877,6 +908,27 @@ cwh_stmt_call_helper(INT32 num_args, TY_IDX ty, INT32 inline_state, INT64 flags)
 	args[i] = args[i+1];
 
     }
+#ifdef KEY /* Bug 10282 */
+    else if ((ST_auxst_is_elemental(st)) && (TY_mtype(tr) != MTYPE_V)) {
+      case4_base_type = array_of_struct_by_value(tr);
+      if (case4_base_type != (TY_IDX) -1) {
+	DevAssert((WNOPR(args[0]) == OPR_PARM),("Odd result"));
+	case4_array_temp = WN_kid(args[0],0);
+	wt = WN_kid(case4_array_temp,0);
+
+	DevAssert((wt != NULL),("struct w/o temp"));
+	DevAssert((WNOPR(wt) == OPR_LDA),("struct w/o ADDR_item"));
+
+	rt = WN_st(wt);
+	ts = case4_base_type ;
+
+	nargs --;
+
+	for (i=0; i < nargs; i++) 
+	  args[i] = args[i+1];
+      }
+    }
+#endif /* KEY Bug 10282 */
   }
   
 
@@ -978,10 +1030,81 @@ cwh_stmt_call_helper(INT32 num_args, TY_IDX ty, INT32 inline_state, INT64 flags)
      cwh_block_append(wn);
      block = cwh_block_exchange_current(block);
 
+#ifdef KEY /* Bug 9520, 10282 */
+     // Arrange to capture anything cwh_stmt_return_scalar() appends to
+     // current block
+     WN *stmt_return_block = cwh_block_new_and_current();
+     if (case4_base_type != ((TY_IDX) -1)) {
+       wn = cwh_stmt_return_scalar(rt,NULL,case4_base_type,FALSE);
+     } else {
+       wn  = cwh_stmt_return_scalar(rt,NULL,ts,FALSE);
+     }
+     stmt_return_block = cwh_block_exchange_current(stmt_return_block);
+     opc = cwh_make_typed_opcode(OPR_COMMA,rbtype1,MTYPE_V);
+
+     // For the record, the unhappy code in this function handles six cases:
+     // 1. scalar
+     //    Cray FE calls fcn with user's arglist, assigns result
+     //    SGI FE generates straightforward code: calls function, loads
+     //      .preg_return_val, stores into whatever
+     // 2. elemental scalar
+     //    Cray FE calls fcn with user's arglist, assigns result
+     //    SGI FE generates slightly tricky code: calls function, puts the
+     //      call and the load of .preg_return_val into a comma operator,
+     //      stores into whatever
+     // 3. small structure
+     //    Cray FE calls fcn, passing result as 1st argument
+     //    SGI FE removes 1st argument, generates call with remaining
+     //      arguments, loads .preg-return_val, stores into what was 1st
+     //      argument
+     // 4. elemental small ("STRUCT_BY_VALUE") structure
+     //    Cray FE calls fcn, passing result as 1st argument
+     //      SGI FE tries to do a combination of (2) and (3) but (prior to
+     //      this fix) fails miserably
+     // 5. large structure
+     //    Cray FE calls fcn, passing result as 1st argument
+     //    SGI FE generates straightforward code: calls function as received
+     //      from FE, then array-assigns what was the 1st
+     // 6. elemental large structure
+     //    Cray FE calls fcn, passing result as 1st argument
+     //    SGI FE generates straightforward code just like (5)
+     //
+     // Seems like it would have been better to make the Cray FE generate
+     // (3) and (4) correctly, but perhaps there's a reason the original
+     // authors didn't: anyway, that would only fix half the problem.
+     //
+     // In the case 4 of an elemental function returning a small structure,
+     // cwh_stmt_return_scalar() appends a load and store to the block
+     // that was then current. We need to capture the load for use inside
+     // the comma operator, and we need to append first the comma and then
+     // the store to the real block. The fix to do it at this spot is ugly,
+     // but messing with cwh_stmt_return_scalar() is scary since it's used
+     // in so many other places, so for now I prefer to do it here..
+     if (NULL == wn) {
+       WN *store = WN_first(stmt_return_block);
+       WN *load = WN_kid0(store);
+       wn  = WN_CreateComma(opc,block,load);
+       if (case4_array_temp) {
+	 cwh_stk_push_typed(case4_array_temp,WN_item,tr);
+	 cwh_stk_push_typed(wn,WN_item,tr);
+	 TYPE pdg_type_void = fei_descriptor(0, Basic, 0, V_oid, 0, 0);
+	 fei_store(pdg_type_void);
+       }
+       else {
+	 WN_kid0(store) = wn;
+	 cwh_block_append(store);
+       }
+     }
+     else {
+       wn  = WN_CreateComma(opc,block,wn);
+       cwh_stk_push_typed(wn,WN_item,ty);
+     }
+#else /* KEY Bug 9520, 10282 */
      wn  = cwh_stmt_return_scalar(rt,NULL,ts,FALSE);
      opc = cwh_make_typed_opcode(OPR_COMMA,rbtype1,MTYPE_V);
      wn  = WN_CreateComma(opc,block,wn);
      cwh_stk_push_typed(wn,WN_item,ty);
+#endif /* KEY Bug 9520, 10282 */
      
   } else {
     
@@ -1088,7 +1211,7 @@ fei_arg_addr(TYPE type)
   case FLD_item:
     det = cwh_addr_offset();
     fld = cwh_types_fld_dummy(det.off,det.type);
-    cwh_stk_push((void *)(INTPTR)fld.Idx (),FLD_item);
+    cwh_stk_push((void *)fld.Idx (),FLD_item);
     wa  = cwh_expr_address(f_T_PASSED);
     cwh_stk_push_typed(wa,ADDR_item, cwh_types_make_pointer_type(det.type, FALSE));
     break;
@@ -1132,7 +1255,11 @@ fei_arg_addr(TYPE type)
 void
 fei_fcd(TYPE result_type)
 {
+#ifdef KEY /* Bug 10177 */
+  WN *wn = 0;
+#else /* KEY Bug 10177 */
   WN *wn ;
+#endif /* KEY Bug 10177 */
   WN *ad ;
   WN *ln ;
   TY_IDX ts ;
@@ -1252,7 +1379,7 @@ fei_entry_pt(INTPTR idx)
  *===============================================
  */ 
 extern void 
-fei_goto(INTPTR lbl_idx)
+fei_goto(INT32 lbl_idx)
 {
   LABEL_IDX lb ;
 
@@ -1278,9 +1405,9 @@ fei_goto(INTPTR lbl_idx)
  */
 
 extern void
-fei_arith_goto(INTPTR eq_lbl,
-               INTPTR gt_lbl,
-               INTPTR lt_lbl )
+fei_arith_goto(INT32 eq_lbl,
+               INT32 gt_lbl,
+               INT32 lt_lbl )
 {
   WN *expr;
   WN *val1, *val2;
@@ -1289,8 +1416,8 @@ fei_arith_goto(INTPTR eq_lbl,
   TY_IDX ty;
   OPCODE opc;
   OPERATOR opr;
-  INTPTR true_lbl;
-  INTPTR false_lbl;
+  INT32 true_lbl;
+  INT32 false_lbl;
 
 
   if (lt_lbl == eq_lbl && gt_lbl == eq_lbl) {
@@ -1372,11 +1499,11 @@ fei_arith_goto(INTPTR eq_lbl,
  *===============================================
  */
 extern void
-fei_label_ref(INTPTR   lbl_idx)
+fei_label_ref(INT32   lbl_idx)
 {
   LABEL_IDX lb;
   lb = cast_to_LB(lbl_idx);
-  cwh_stk_push(cast_to_void((INTPTR)lb),LB_item);
+  cwh_stk_push(cast_to_void(lb),LB_item);
 }
 
 /*===============================================
@@ -1397,12 +1524,12 @@ fei_label_ref(INTPTR   lbl_idx)
  */
 /*ARGSUSED*/
 extern void
-fei_label_addr(INTPTR lbl_idx)
+fei_label_addr(INT32 lbl_idx)
 {
   WN *wn;
   INT32 *assign_id;
 
-  assign_id = cwh_auxst_assign_id(CURRENT_SYMTAB, cast_to_LB(lbl_idx));
+  assign_id = cwh_auxst_assign_id(CURRENT_SYMTAB, (LABEL_IDX)lbl_idx);
 
   if (*assign_id == -1)
      *assign_id = cwh_assign_label_id++;
@@ -1729,7 +1856,7 @@ fei_indirect_goto(INT32 num_labels,
  */
 static void
 cwh_stmt_select_char(INT32 num_cases,
-               INTPTR default_label_idx )
+               INT32 default_label_idx )
 {
   WN *wn1;
   W_node expr[2];
@@ -1811,6 +1938,9 @@ cwh_stmt_select_case_char(INT32 low_value_pres,
   W_node expr[2];
 
   WN *copy[2];
+#ifdef KEY /* Bug 10177 */
+  copy[0] = copy[1] = 0;
+#endif /* KEY Bug 10177 */
   WN *wn1;
 
   WN *last_node;
@@ -1892,7 +2022,7 @@ cwh_stmt_select_case_char(INT32 low_value_pres,
     cwh_stk_push(last_node, WN_item);
 
     if (case_follows)
-      cwh_stk_push(cast_to_void((INTPTR)label), LB_item);
+      cwh_stk_push(cast_to_void(label), LB_item);
 
   } else {
 
@@ -1967,7 +2097,7 @@ cwh_stmt_str_falsebr_util(OPERATOR opr,
 
 void
 fei_new_select(INT32 num_cases,
-               INTPTR default_label_idx )
+               INT32 default_label_idx )
 {
   WN *parent_block;
   WN *wn;
@@ -2072,7 +2202,11 @@ fei_new_select_case(INT64 low_value_pres,
                     INT32 case_follows)
 {
   WN *o_val;
+#ifdef KEY /* Bug 10177 */
+  WN *high_val = 0;
+#else /* KEY Bug 10177 */
   WN *high_val;
+#endif /* KEY Bug 10177 */
   WN *casegoto_block;
   WN *wn;
   WN *wn1;
@@ -2164,7 +2298,7 @@ fei_new_select_case(INT64 low_value_pres,
        cwh_stk_push(expr, WN_item);
        cwh_stk_push(last_node,  WN_item);
        if (case_follows)
-	 cwh_stk_push(cast_to_void((INTPTR)label), LB_item);
+	 cwh_stk_push(cast_to_void(label), LB_item);
      }
 
    }
@@ -2182,7 +2316,7 @@ fei_new_select_case(INT64 low_value_pres,
  *===============================================
  */ 
 /*ARGSUSED*/
-void fei_label_def_named(INTPTR         lbl_idx,
+void fei_label_def_named(INT32         lbl_idx,
 			 INT64   label_flag_word,
 			 INT32         lineno,
 			 INT32         sup_cnt,
@@ -2207,7 +2341,7 @@ void fei_label_def_named(INTPTR         lbl_idx,
      wn = WN_CreateLabel(lb,0,NULL);
      
      if (test_flag(label_flag_word, FEI_LABEL_DEF_NAMED_CASE))
-	cwh_stk_push(cast_to_void((INTPTR)lb), LB_item);
+	cwh_stk_push(cast_to_void(lb), LB_item);
     
      cwh_block_append(wn) ;
   }  
@@ -2300,7 +2434,7 @@ void fei_label_def_named(INTPTR         lbl_idx,
  *===============================================
  */ 
 extern void 
-fei_brtrue(INTPTR lbl_idx)
+fei_brtrue(INT32 lbl_idx)
 {
   WN *wn;
   WN *wc;
@@ -2339,6 +2473,9 @@ fei_where(INT32 defined_asg,
   WN *wn  ;
   WN *wl  ;
   TYPE dummy_type;
+#ifdef KEY /* Bug 10177 */
+  memset(&dummy_type, 0, sizeof(dummy_type));
+#endif /* KEY Bug 10177 */
   INT64 flags = 0;
 
   msk = cwh_expr_operand(NULL);
@@ -2389,8 +2526,13 @@ fei_stop( void )
   WN	*wa;
   WN	*wc;
   WN	*wn;
+#ifdef KEY /* Bug 10177 */
+  WN	*stop_code = 0;
+  WN	*stop_code_len = 0;
+#else /* KEY Bug 10177 */
   WN	*stop_code;
   WN	*stop_code_len;
+#endif /* KEY Bug 10177 */
 
   if (cwh_stk_get_class() == STR_item) {
     cwh_stk_pop_STR();
@@ -2615,7 +2757,11 @@ cwh_stmt_return_scalar(ST *st, WN * rv, TY_IDX  rty, BOOL callee_return)
   PREG_NUM  rreg2;
 
 
+#ifdef KEY /* Bug 10177 */
+  WN  * wn = 0;
+#else /* KEY Bug 10177 */
   WN  * wn  ;
+#endif /* KEY Bug 10177 */
   WN  * wn2  ;
   ST  * pr1 ;
   ST  * pr2 ;
@@ -2950,7 +3096,12 @@ cwh_stmt_character_icall(INTRINSIC intrinsic)
   va[2] = TRUE;
   va[0] = FALSE;
 
+#ifdef KEY /* Bug 10670 */
+  WN *wn = cwh_intrin_call(intrinsic,4,ar,sz,va,MTYPE_V);
+  WN_Set_Linenum(wn, USRCPOS_srcpos(current_srcpos));
+#else /* KEY Bug 10670 */
   cwh_intrin_call(intrinsic,4,ar,sz,va,MTYPE_V);
+#endif /* KEY Bug 10670 */
 }
 
 /*===============================================
@@ -3127,14 +3278,22 @@ fei_doloop(INT32	line)
    WN *lb;
    WN *ub,*ubcomp;
    WN *stride,*stride_in_loop;
+#ifdef KEY /* Bug 10177 */
+   ST *lcv = 0;
+#else /* KEY Bug 10177 */
    ST *lcv;
+#endif /* KEY Bug 10177 */
    WN *index_id;
    WN *stmts;
    WN *start;
    WN *end;
    WN *step;
    WN *wlcv = NULL;
+#ifdef KEY /* Bug 10177 */
+   TY_IDX ty = 0;
+#else /* KEY Bug 10177 */
    TY_IDX ty;
+#endif /* KEY Bug 10177 */
 
    USRCPOS pos;
    INT32    local_line_num;
@@ -3556,7 +3715,11 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
 	 /* This must be an assumed-length character dummy */
 	 /* Pick up the size from the element_size field   */
 	 cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
+#ifdef KEY /* Bug6845 */
+	 fei_get_dv_hdr_fld(DV_EL_LEN_IDX);
+#else /* KEY Bug6845 */
 	 fei_get_dv_hdr_fld(2);
+#endif /* KEY Bug6845 */
 	 size = cwh_expr_operand(NULL);
       }
       
@@ -3579,7 +3742,11 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
       if (is_f90_pointer) {
 	 cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
 	 cwh_stk_push(WN_Intconst(MTYPE_I4,1),WN_item);
+#ifdef KEY /* Bug6845 */
+	 fei_set_dv_hdr_fld(DV_PTR_ALLOC_IDX);
+#else /* KEY Bug6845 */
 	 fei_set_dv_hdr_fld(4);
+#endif /* KEY Bug6845 */
 	 flag_val |= 1;
       } 
       flags = WN_Intconst(MTYPE_I4,flag_val);
@@ -3587,7 +3754,11 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
 
       /* get the value of assoc from the dope vector */
       cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
+#ifdef KEY /* Bug6845 */
+      fei_get_dv_hdr_fld(DV_ASSOC_IDX);
+#else /* KEY Bug6845 */
       fei_get_dv_hdr_fld(3);
+#endif /* KEY Bug6845 */
       assoc = cwh_intrin_wrap_value_parm(cwh_expr_operand(NULL));
       
       /* Build up the call to the _ALLOCATE_SGI intrinsic */
@@ -3603,7 +3774,11 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
       
       /* fifth argument is the old value of the dope vector */
       cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
+#ifdef KEY /* Bug6845 */
+      fei_get_dv_hdr_fld(DV_BASE_IDX);
+#else /* KEY Bug6845 */
       fei_get_dv_hdr_fld(1);
+#endif /* KEY Bug6845 */
       args[4] = cwh_intrin_wrap_value_parm(cwh_expr_operand(NULL));
 
       iop = WN_Create(opc_call,5);
@@ -3627,19 +3802,31 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
       /* base_address */
       cwh_stk_push_typed(WN_COPY_Tree(dope_addr),WN_item, types[idope]);
       cwh_stk_push(WN_LdidPreg(Pointer_Mtype,addr_preg),WN_item);
+#ifdef KEY /* Bug6845 */
+      fei_set_dv_hdr_fld(DV_BASE_IDX);
+#else /* KEY Bug6845 */
       fei_set_dv_hdr_fld(1);
+#endif /* KEY Bug6845 */
       
       /* orig_base */
       cwh_stk_push_typed(WN_COPY_Tree(dope_addr),WN_item, types[idope]);
       cwh_stk_push(WN_LdidPreg(Pointer_Mtype,addr_preg),WN_item);
+#ifdef KEY /* Bug6845 */
+      fei_set_dv_hdr_fld(DV_ORIG_BASE_IDX);
+#else /* KEY Bug6845 */
       fei_set_dv_hdr_fld(9);
+#endif /* KEY Bug6845 */
 
       /* orig size */
       cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
       size = cwh_expr_bincalc(OPR_SHL,WN_LdidPreg(cwh_bound_int_typeid,size_preg),
 			      WN_Intconst(MTYPE_I4,3));
       cwh_stk_push(size,WN_item);
+#ifdef KEY /* Bug6845 */
+      fei_set_dv_hdr_fld(DV_ORIG_SIZE_IDX);
+#else /* KEY Bug6845 */
       fei_set_dv_hdr_fld(10);
+#endif /* KEY Bug6845 */
       
       /* Finally, set the assoc bit if allocation was successful */
       cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
@@ -3648,7 +3835,11 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
 			    assoc,
 			    WN_Zerocon(Pointer_Mtype));
       cwh_stk_push(assoc,WN_item);
+#ifdef KEY /* Bug6845 */
+      fei_set_dv_hdr_fld(DV_ASSOC_IDX);
+#else /* KEY Bug6845 */
       fei_set_dv_hdr_fld(3);
+#endif /* KEY Bug6845 */
    }
 }
 
@@ -3843,6 +4034,26 @@ cwh_stmt_add_parallel_pragmas(void)
    }
 }
 
+#ifdef KEY /* Bug 4260 */
+/*
+ * symname	Name of global data symbol to export as I*4 variable
+ * value	Initial value for symbol
+ */
+static void
+export_i4_sym(char *symname, int value) {
+  TY_IDX int_ty_idx = MTYPE_To_TY(MTYPE_I4);
+  ST *st = New_ST(GLOBAL_SYMTAB);
+  cwh_auxst_clear(st);
+  ST_Init(st, Save_Str(symname), CLASS_VAR, SCLASS_DGLOBAL, EXPORT_PREEMPTIBLE,
+    int_ty_idx);
+  Set_ST_is_initialized(st);
+  INITO_IDX inito = New_INITO(st);
+  INITV_IDX inv = New_INITV();
+  INITV_Init_Integer(inv, MTYPE_I4, value, 1);
+  Set_INITO_val(inito, inv);
+}
+#endif /* KEY Bug 4260 */
+
 /*===============================================
  *
  * cwh_stmt_init_pu
@@ -3922,18 +4133,21 @@ cwh_stmt_init_pu(ST * st, INT32 lineno)
      * switch.
      */
     if (IO_DEFAULT != io_byteswap) {
-      TY_IDX int_ty_idx = MTYPE_To_TY(MTYPE_I4);
-      ST *io_byteswap_st = New_ST(GLOBAL_SYMTAB);
-      cwh_auxst_clear(io_byteswap_st);
-      ST_Init(io_byteswap_st, Save_Str("__io_byteswap_value"), CLASS_VAR,
-	SCLASS_DGLOBAL, EXPORT_PREEMPTIBLE, int_ty_idx);
-      Set_ST_is_initialized(io_byteswap_st);
-      INITO_IDX inito = New_INITO(io_byteswap_st);
-      INITV_IDX inv = New_INITV();
-      INITV_Init_Integer(inv, MTYPE_I4, io_byteswap, 1);
-      Set_INITO_val(inito, inv);
+      export_i4_sym("__io_byteswap_value", io_byteswap);
     }
 #endif /* KEY Bug 4260 */
+#ifdef KEY /* Bug 5089 */
+# ifdef TARG_X8664
+  /* If -TARG:sse2=off, export a global data variable of type I*4
+   * to the runtime system telling it not to attempt to use the MXCSR register
+   * in ieee_module_support.c. There exist processors with SSE but not SSE2
+   * which do have the MXCSR register, but we're interested in only two
+   * cases: SSE2 support or not. */
+  if (!(Target_SSE2 || Target_SSE3)) {
+    export_i4_sym("__SSE2_off", 1);
+    }
+# endif /* TARG_X8664 */
+#endif /* KEY Bug 5089 */
   }
 #endif
 }
@@ -4066,7 +4280,12 @@ cwh_stmt_insert_conformance_check(WN **s1, WN **s2, INT ndims1, INT ndims2, INT 
   WN *call;
   WN *if_stmt,*ifthenblock;
   char * proc_name;
+#ifdef KEY /* Bug 10177 */
+  PREG_NUM r1,r2;
+  PREG_NUM rgt0 = 0;
+#else /* KEY Bug 10177 */
   PREG_NUM r1,r2,rgt0;
+#endif /* KEY Bug 10177 */
   INT64 lineno;
 
   // quick exit if one or the other ndims is scalar

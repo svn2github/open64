@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: cwh_defines.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_defines.h,v $
+ * $Revision: 1.5 $
+ * $Date: 04/12/21 14:57:32-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_defines.h $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -59,7 +59,7 @@
 #define CWH_DEFINES_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_defines.h,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_defines.h $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 
@@ -68,28 +68,14 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cw
 typedef INT64 OFFSET_64 ; 
 typedef unsigned long ULONG ;
 typedef long SLONG ;
-//OSP_179
-#if (defined(TARG_IA64) && defined(_LP64))
-#define cast_to_TY(x) ((TY_IDX)x) 
-#define cast_to_WN(x) ((WN *) (void *)x) 
-#define cast_to_ST(x) ((ST *) (void *)x) 
-#define cast_to_LB(x) ((LABEL_IDX)x) 
-#define cast_to_uint(x) ((unsigned int) x)
-#define cast_to_int(x) ((int)x)
-#define cast_to_long(x) ((long)(void*)x)
-#define cast_to_void(x) ((void *)x)
-#define cast_to_STB(x) ((STB_pkt *) (void *)x)
-#else
 #define cast_to_TY(x) ((TY_IDX) (void *)x) 
 #define cast_to_WN(x) ((WN *) (void *)x) 
 #define cast_to_ST(x) ((ST *) (void *)x) 
 #define cast_to_LB(x) ((LABEL_IDX) (void *)x) 
 #define cast_to_uint(x) ((unsigned long) (void *)x)
 #define cast_to_int(x) ((long ) (void *)x)
-#define cast_to_long(x) ((long)(void*)x)
 #define cast_to_void(x) ((void *)x)
 #define cast_to_STB(x) ((STB_pkt *) (void *)x)
-#endif
 
 
 /* dump macros */

@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -43,10 +43,10 @@
  * ====================================================================
  *
  * Module: wfe_dst.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/g++fe/wfe_dst.h,v $
+ * $Revision: 1.9 $
+ * $Date: 04/12/21 15:18:06-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: kg++fe/SCCS/s.wfe_dst.h $
  *
  * Revision history:
  *  11-May-93 - Original Version
@@ -100,7 +100,7 @@
 #define wfe_dst_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *wfe_dst_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/g++fe/wfe_dst.h,v $ $Revision: 1.1.1.1 $";
+static char *wfe_dst_rcs_id = "$Source: kg++fe/SCCS/s.wfe_dst.h $ $Revision: 1.9 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifdef __cplusplus

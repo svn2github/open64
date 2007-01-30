@@ -161,6 +161,9 @@ enum	token_values {
 					/*	     MODULEPROCEDURE	      */
 		Tok_Kwd_Namelist,	/* NAMELIST			      */
 		Tok_Kwd_None,		/* NONE				      */
+#ifdef KEY /* Bug 5089 */
+		Tok_Kwd_Nonintrinsic,	/* NON_INTRINSIC                      */
+#endif /* KEY Bug 5089 */
 		Tok_Kwd_Nullify,	/* NULLIFY			      */
 		Tok_Kwd_Only,		/* ONLY				      */
 		Tok_Kwd_Open,		/* OPEN				      */

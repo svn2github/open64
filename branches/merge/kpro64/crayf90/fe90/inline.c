@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -723,7 +727,11 @@ int copy_sbtree(int	  idx,
    int		new_root 		= NULL_IDX;
    int		new_idx;
    int		function_attr;
+#ifdef KEY /* Bug 10177 */
+   int          flipped_bd_idx = 0;
+#else /* KEY Bug 10177 */
    int          flipped_bd_idx;
+#endif /* KEY Bug 10177 */
    int          dummy_bd_idx;
    int		new_blk;
    int          flipped_array 		= 0;

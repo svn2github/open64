@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -510,7 +514,11 @@ extern	boolean	create_mod_info_file(void)
 extern	void	create_mod_info_file(void)
 #endif /* KEY Bug 3477 */
 {
+#ifdef KEY /* Bug 10177 */
+   		int		 ga_idx = 0;
+#else /* KEY Bug 10177 */
    		int		 ga_idx;
+#endif /* KEY Bug 10177 */
 		FILE		*fp_file_ptr;
    		int		 fp_idx			= NULL_IDX;
    		int		 idx;
@@ -3857,6 +3865,20 @@ EXIT:
 
 }  /* output_mod_info_file */
 
+#ifdef KEY /* Bug 5089 */
+/*
+ * module_attr_idx	AT_Tbl_Idx for a module
+ * return		TRUE if that module is intrinsic ieee_features,
+ *			ieee_exceptions, or ieee_arithmetic
+ */
+static boolean
+is_ieee(int module_attr_idx) {
+  extern boolean LANG_IEEE_Save;
+  return AT_IS_INTRIN(module_attr_idx) &&
+    LANG_IEEE_Save &&
+    0 == strncmp(AT_OBJ_NAME_PTR(module_attr_idx), "IEEE", 4);
+}
+#endif /* KEY Bug 5089 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -4000,6 +4022,16 @@ void	use_stmt_semantics(void)
          goto EXIT;
       }
 
+#ifdef KEY /* Bug 5089 */
+      int intrinsic_module = AT_IS_INTRIN(module_attr_idx);
+      /* F2003: Scope which accesses ieee_* intrinsic modules must save FPU
+       * state on entry and restore it (ORing flags) on exit.
+       * decl_semantics_driver() takes care of access by host association. */
+      if (is_ieee(module_attr_idx)) {
+	SCP_USES_IEEE(curr_scp_idx) = TRUE;
+      }
+#endif /* KEY Bug 5089 */
+
       start_ln_idx	= loc_name_tbl_idx - MD_NUM_ENTRIES(Loc_Name_Tbl) + 1;
       attr_idx		= attr_tbl_idx - MD_NUM_ENTRIES(Attr_Tbl) + 1;
 
@@ -4065,6 +4097,15 @@ void	use_stmt_semantics(void)
          }
 
          attr_idx	= LN_ATTR_IDX(new_name_idx);
+
+#ifdef KEY /* Bug 5089 */
+         /* Look up the original name of this entity in the
+	  * intrinsic_module_table. If we find it, change the attr_tbl_entry
+	  * so that a call to it will be replaced by intrinsic code. */
+         if (intrinsic_module && NULL_IDX != AT_ORIG_NAME_IDX(attr_idx)) {
+	   intrinsic_module_lookup(attr_idx);
+	 }
+#endif /* KEY Bug 5089 */
 
          /* Find the new entries position in the old local name table. */
 
@@ -4279,6 +4320,11 @@ EXIT:
 
       if (ATP_INDIRECT_MODULE(AL_ATTR_IDX(al_idx))) {
          ADD_ATTR_TO_LOCAL_LIST(AL_ATTR_IDX(al_idx));
+#ifdef KEY /* Bug 5089 */
+	 if (is_ieee(AL_ATTR_IDX(al_idx))) {
+	   SCP_USES_IEEE(curr_scp_idx) = TRUE;
+	 }
+#endif /* KEY Bug 5089 */
       }
       al_idx	= AL_NEXT_IDX(al_idx);
    }
@@ -4322,7 +4368,11 @@ static	boolean	rename_only_semantics(int	module_attr_idx,
 {
    int		 attr_idx;
    int		 begin_idx;
+#ifdef KEY /* Bug 10177 */
+   int		 cif_symbol_id = 0;
+#else /* KEY Bug 10177 */
    int		 cif_symbol_id;
+#endif /* KEY Bug 10177 */
    int		 end_idx;
    int		 func_idx;
    boolean	 has_renames		= FALSE;
@@ -4331,7 +4381,11 @@ static	boolean	rename_only_semantics(int	module_attr_idx,
    int		 length;
    int		 ln_idx;
    int		 match;
+#ifdef KEY /* Bug 10177 */
+   int		 name_idx = 0;
+#else /* KEY Bug 10177 */
    int		 name_idx;
+#endif /* KEY Bug 10177 */
    int		 new_attr_idx;
    int		 new_name_idx;
    int		 np_idx;
@@ -4794,6 +4848,287 @@ static	boolean	rename_only_semantics(int	module_attr_idx,
 
 }   /* rename_only_semantics */
 
+/*
+ * On behalf of find_prog_unit_tbl, search for a module in either
+ * inline_path_idx, module_path_idx (for ordinary modules) or
+ * intrinsic_module_path_idx (for F2003 intrinsic modules.)
+ *
+ * module_attr_idx	module to look for
+ * fp_file_idx		head of list in which to search (inline_path_idx,
+ *			module_path_idx, or intrinsic_module_path_idx)
+ * mod_file_ptr_ptr	caller passes mod_file_ptr to us by reference
+ * output_fp_file_idx	value of fp_file_idx changes during this function;
+ *			we return its final value to the caller via this arg
+ * returns		true if module found
+ */
+#ifdef KEY /* Bug 5089 */
+static boolean look_for_module(int module_attr_idx, int fp_file_idx,
+   FILE **mod_file_ptr_ptr, int *output_fp_file_idx) {
+   char		file_name[MAX_FILE_NAME_SIZE];
+   char	       *file_name_ptr;
+   int		fn_length;
+   boolean	archive;
+   FILE *mod_file_ptr = *mod_file_ptr_ptr;
+#endif /* KEY Bug 5089 */
+   if (on_off_flags.module_to_mod && !inline_search) {
+      strcpy(file_name, AT_OBJ_NAME_PTR(module_attr_idx));
+      fn_length			= AT_NAME_LEN(module_attr_idx);
+      file_name[fn_length++]	= '.';
+      file_name[fn_length++]	= 'm';
+      file_name[fn_length++]	= 'o';
+      file_name[fn_length++]	= 'd';
+   }
+   else {
+      fn_length			= 0;
+   }
+   file_name[fn_length]	= '\0';
+
+   while (fp_file_idx != NULL_IDX) {
+#ifdef KEY /* Bug 5089 */
+      int
+#endif /* KEY Bug 5089 */
+      fp_module_idx		= NULL_IDX;
+#ifdef KEY /* Bug 5089 */
+      int
+#endif /* KEY Bug 5089 */
+      next_fp_module_idx	= FP_MODULE_IDX(fp_file_idx); /* 1st module */
+
+      while (next_fp_module_idx != NULL_IDX) {
+         fp_module_idx		= next_fp_module_idx;
+         next_fp_module_idx	= FP_MODULE_IDX(fp_module_idx);
+
+         if (compare_names(AT_OBJ_NAME_LONG(module_attr_idx),
+                           AT_NAME_LEN(module_attr_idx),
+                           FP_NAME_LONG(fp_module_idx),
+                           FP_NAME_LEN(fp_module_idx)) == 0) {
+
+            /* Found the matching module.  Open the file and read header. */
+
+            mod_file_ptr = open_module_file(module_attr_idx,
+                                            fp_file_idx);
+            
+
+#ifdef KEY /* Bug 5089 */
+            boolean
+#endif /* KEY Bug 5089 */
+            found = (mod_file_ptr == NULL) ?
+                     FALSE : read_module_tbl_header(module_attr_idx,
+                                                    fp_module_idx,
+                                                    mod_file_ptr);
+#ifdef KEY /* Bug 5089 */
+	    *mod_file_ptr_ptr = mod_file_ptr;
+	    *output_fp_file_idx = fp_file_idx;
+            return found;
+#else /* KEY Bug 5089 */
+            goto FOUND;
+#endif /* KEY Bug 5089 */
+         }
+      }  /* End while - looking through module names in same file. */
+
+      if (FP_SRCH_THE_FILE(fp_file_idx)) {
+
+         /* All files specified on the commandline will come through as  */
+         /* Unknown_Fp.  Here is where we determine what they are.       */
+
+         if (FP_CLASS(fp_file_idx) == Unknown_Fp) {
+
+            /* Determine if this is a directory or a file.  */
+            /* If directory, convert to list of files.   If */
+            /* file, they will be marked as Elf files if on */
+            /* solaris and as regular files if not solaris. */
+
+            find_files_in_directory(fp_file_idx);
+
+            if (FP_CLASS(fp_file_idx) == Directory_Fp) {
+
+               /* Skip the directory and go the next file or dir in the    */
+               /* file path table.  This is most likely a file specified   */
+               /* in the directory, but if the directory is empty, then    */
+               /* this is the file or dir following the directory.         */
+
+               fp_file_idx	= FP_NEXT_FILE_IDX(fp_file_idx);
+               continue;
+            }
+         }
+
+# if defined(_TARGET_OS_SOLARIS) && defined(_MODULE_TO_DOT_o)
+
+         if (FP_CLASS(fp_file_idx) == Elf_File_Fp ||
+             FP_CLASS(fp_file_idx) == Unknown_Fp) {
+
+            if (srch_elf_file_for_module_tbl(module_attr_idx, fp_file_idx)) {
+#ifdef KEY /* Bug 5089 */
+	       *mod_file_ptr_ptr = mod_file_ptr;
+	       *output_fp_file_idx = fp_file_idx;
+	       return TRUE;
+#else /* KEY Bug 5089 */
+               found	= TRUE;
+	       goto FOUND;
+#endif /* KEY Bug 5089 */
+            }
+
+            /* Either this is not an elf file, or we really didn't find it. */
+            /* If this is an Elf file, it will be marked as such by routine */
+            /* srch_elf_file_for_module_tbl.                                */
+
+         }
+# endif
+
+         switch (FP_CLASS(fp_file_idx)) {
+         case Mod_File_Fp:
+
+            if (on_off_flags.module_to_mod && !inline_search) {
+               file_name_ptr = NULL;
+               file_name_ptr = strrchr(FP_NAME_PTR(fp_file_idx), SLASH);
+
+               if (file_name_ptr == NULL) {  /* No path before name */
+                  file_name_ptr = FP_NAME_PTR(fp_file_idx);
+               }
+               else {
+                  ++file_name_ptr;  /* Skip slash */
+               }
+
+               if (strncmp(file_name, file_name_ptr, fn_length) == 0) {
+
+                  /* Found file_name.mod */
+
+                  mod_file_ptr = open_module_file(module_attr_idx, fp_file_idx);
+
+                  if (mod_file_ptr == NULL) {       /* Not able to open file. */
+                     continue;                      /* Try the next file.     */
+                  }
+
+                  if (srch_for_module_tbl(module_attr_idx,
+                                          &fp_module_idx,
+                                          fp_file_idx,
+                                          0,
+                                          mod_file_ptr)) {
+#ifdef KEY /* Bug 5089 */
+		     *mod_file_ptr_ptr = mod_file_ptr;
+		     *output_fp_file_idx = fp_file_idx;
+		     return TRUE;
+#else /* KEY Bug 5089 */
+                     found	= TRUE;
+		     goto FOUND;
+#endif /* KEY Bug 5089 */
+                  }
+               }
+            }
+            break;
+
+         case File_Fp:
+         case Archive_File_Fp:
+         case Unknown_Fp:         /* Look for modules in the Non-Elf files. */
+
+            mod_file_ptr = open_module_file(module_attr_idx, fp_file_idx);
+
+            if (mod_file_ptr == NULL) {       /* Not able to open file. */
+               continue;                      /* Try the next file.     */
+            }
+
+            if (FP_OFFSET(fp_file_idx) > 0) {
+
+               /* Assume this must be set to File_Fp or Archive_Fp.   */
+
+               archive = (FP_CLASS(fp_file_idx) == Archive_File_Fp);
+            }
+            else {  /* we don't know what kind of file this is yet. */
+#ifdef KEY /* Bug 5089 */
+	       char ar_string[SARMAG];
+	       int num_recs_read;
+#endif /* KEY Bug 5089 */
+
+               for (num_recs_read = 0; num_recs_read < SARMAG; num_recs_read++){
+                  ar_string[num_recs_read] = '\n';
+               }
+
+               num_recs_read = fread((char *) ar_string, 
+                                     sizeof(char),
+                                     (size_t) SARMAG, 
+                                     mod_file_ptr);
+            
+               if (num_recs_read == (size_t) SARMAG){
+                   archive = (strncmp(ar_string, ARMAG, (size_t) SARMAG) == 0);
+               }
+               else {
+                  archive = FALSE;
+               }
+
+               if (archive) {
+                  FP_CLASS(fp_file_idx)	= Archive_File_Fp;
+               }
+               else {
+                  FP_CLASS(fp_file_idx)	= File_Fp;
+
+                  if (!FSEEK(mod_file_ptr, 0, SEEK_SET)) {
+
+                     /* Reset to file start failed.  Skip to next file. */
+
+                     fclose(mod_file_ptr);
+                     fp_file_idx	= FP_NEXT_FILE_IDX(fp_file_idx);
+                     continue;
+                  }
+               }
+            }
+
+            if (!archive) {
+
+               if (FP_OFFSET(fp_file_idx) > 0 &&
+                   !FSEEK(mod_file_ptr, FP_OFFSET(fp_file_idx), SEEK_CUR)) {
+
+                  /* Seek failed.  Try the next file. */
+
+                  fclose(mod_file_ptr);
+                  fp_file_idx	= FP_NEXT_FILE_IDX(fp_file_idx);
+                  continue; 
+               }
+
+               if (srch_for_module_tbl(module_attr_idx,
+                                       &fp_module_idx,
+                                       fp_file_idx,
+                                       0,
+                                       mod_file_ptr)) {
+#ifdef KEY /* Bug 5089 */
+		  *mod_file_ptr_ptr = mod_file_ptr;
+		  *output_fp_file_idx = fp_file_idx;
+		  return TRUE;
+#else /* KEY Bug 5089 */
+                  found	= TRUE;
+		  goto FOUND;
+#endif /* KEY Bug 5089 */
+               }
+            }
+            else if (srch_ar_file_for_module_tbl(module_attr_idx,
+                                                 &fp_module_idx,
+                                                 fp_file_idx,
+                                                 mod_file_ptr)) {
+#ifdef KEY /* Bug 5089 */
+	       *mod_file_ptr_ptr = mod_file_ptr;
+	       *output_fp_file_idx = fp_file_idx;
+	       return TRUE;
+#else /* KEY Bug 5089 */
+               found	= TRUE;
+	       goto FOUND;
+#endif /* KEY Bug 5089 */
+            }
+
+            fclose(mod_file_ptr);
+            break;
+
+         default:
+            break;
+
+         }  /* end switch */
+      }
+      fp_file_idx	= FP_NEXT_FILE_IDX(fp_file_idx);
+   }
+#ifdef KEY /* Bug 5089 */
+   *mod_file_ptr_ptr = mod_file_ptr;
+   *output_fp_file_idx = fp_file_idx;
+   return FALSE;
+}
+#endif /* KEY Bug 5089 */
+
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -4812,19 +5147,25 @@ static	boolean	rename_only_semantics(int	module_attr_idx,
 boolean	find_prog_unit_tbl(int	module_attr_idx)
 
 {
+#ifndef KEY /* Bug 5089 */
    boolean	archive;
    char		ar_string[SARMAG];
+#endif /* KEY Bug 5089 */
    boolean	found		= FALSE;
+#ifndef KEY /* Bug 5089 */
    char		file_name[40];
    char	       *file_name_ptr;
    int		fn_length;
+#endif /* KEY Bug 5089 */
    int		fp_file_idx;
    int		fp_module_idx;
    int		ga_idx;
    FILE	       *mod_file_ptr;
    int		name_idx;
+#ifndef KEY /* Bug 5089 */
    int		next_fp_module_idx;
    int		num_recs_read;
+#endif /* KEY Bug 5089 */
    boolean	save_keep_module_procs;
 
 
@@ -4855,7 +5196,16 @@ boolean	find_prog_unit_tbl(int	module_attr_idx)
    /* global name table to find the module and then see if we have    */
    /* file information about it.                                      */
 
-   if (srch_global_name_tbl(AT_OBJ_NAME_PTR(module_attr_idx),
+   if (
+#ifdef KEY /* Bug 5089 */
+      /*
+       * If we're looking for an intrinsic module, don't search the global
+       * name table unless -intrinsic_module_gen was set, because ordinarily
+       * a module defined in the current compilation cannot be intrinsic.
+       */
+      (on_off_flags.intrinsic_module_gen || !AT_IS_INTRIN(module_attr_idx)) &&
+#endif /* KEY Bug 5089 */
+      srch_global_name_tbl(AT_OBJ_NAME_PTR(module_attr_idx),
                             AT_NAME_LEN(module_attr_idx),
                             &name_idx)) {
       ga_idx	= GN_ATTR_IDX(name_idx);
@@ -4912,217 +5262,94 @@ boolean	find_prog_unit_tbl(int	module_attr_idx)
       }
    }
 
-   fp_file_idx = (inline_search) ? inline_path_idx : module_path_idx;
-
-   if (on_off_flags.module_to_mod && !inline_search) {
-      strcpy(file_name, AT_OBJ_NAME_PTR(module_attr_idx));
-      fn_length			= AT_NAME_LEN(module_attr_idx);
-      file_name[fn_length++]	= '.';
-      file_name[fn_length++]	= 'm';
-      file_name[fn_length++]	= 'o';
-      file_name[fn_length++]	= 'd';
+#ifdef KEY /* Bug 5089 */
+   if (inline_search) {
+     (void) look_for_module(module_attr_idx, inline_path_idx, &mod_file_ptr,
+       &fp_file_idx);
    }
    else {
-      fn_length			= 0;
+     /* Normally look first in nonintrinsic directories, then in intrinsic
+      * directories. But if qualified with "intrinsic" or "non_intrinsic"
+      * in the "use" statement, look in only the appropriate place.
+      *
+      * F2003 C1110 (R1109) says "A scoping unit shall not access an intrinsic
+      * module and a nonintrinsic module of the same name." This case is
+      * obviously a violation:
+      *
+      *   use, intrinsic :: xyz !sets AT_IS_INTRIN
+      *   use, non_intrinsic :: xyz !sets ATT_NON_INTRIN
+      *
+      * But this case is a violation only if the "use" without either
+      * "intrinsic" or "non_intrinsic" finds a non-intrinsic module:
+      *
+      *   use :: xyz !sets ATT_NO_MODULE_NATURE
+      *   use, intrinsic :: xyz !sets AT_IS_INTRIN
+      *
+      * And this case is a violation only if the "use" without either
+      * "intrinsic" or "non_intrinsic" finds an intrinsic module:
+      *
+      *   use :: xyz !sets ATT_NO_MODULE_NATURE
+      *   use, non_intrinsic :: xyz !sets AT_IS_INTRIN
+      */
+     boolean violation = FALSE;
+     boolean found_intrinsic = FALSE;
+     if (AT_IS_INTRIN(module_attr_idx) && ATT_NON_INTRIN(module_attr_idx)) {
+       violation = TRUE;
+     }
+     else if (ATT_NO_MODULE_NATURE(module_attr_idx)) {
+       found = look_for_module(module_attr_idx, module_path_idx, &mod_file_ptr,
+         &fp_file_idx);
+       if (found) {
+         if (AT_IS_INTRIN(module_attr_idx)) {
+	   violation = TRUE;
+	 }
+       }
+       else {
+	 found_intrinsic = found = look_for_module(module_attr_idx,
+	   intrinsic_module_path_idx, &mod_file_ptr, &fp_file_idx);
+	 if (found_intrinsic && ATT_NON_INTRIN(module_attr_idx)) {
+	   violation = TRUE;
+	 }
+       }
+     }
+     else if (ATT_NON_INTRIN(module_attr_idx)) { // non_intrinsic alone
+       found = look_for_module(module_attr_idx, module_path_idx, &mod_file_ptr,
+         &fp_file_idx);
+     }
+     else if (AT_IS_INTRIN(module_attr_idx)) { // intrinsic alone
+       found_intrinsic = found = look_for_module(module_attr_idx,
+         intrinsic_module_path_idx, &mod_file_ptr, &fp_file_idx);
+     }
+     else {
+       PRINTMSG(AT_DEF_LINE(module_attr_idx), 1044, Internal,
+		AT_DEF_COLUMN(module_attr_idx),
+		"ATT_NO_MODULE_NATURE should be set");
+     }
+
+     /* We no longer need to remember which module-nature keywords appeared in
+      * various "use" statements for this module in this scope; henceforth, we
+      * need to remember what kind of module we found. If it was intrinsic,
+      * we must mark it as such, and must use special external (linker) name */
+     AT_IS_INTRIN(module_attr_idx) = found_intrinsic;
+     ATT_NON_INTRIN(module_attr_idx) = FALSE;
+     ATT_NO_MODULE_NATURE(module_attr_idx) = FALSE;
+     if (found_intrinsic) {
+       MAKE_EXTERNAL_NAME(module_attr_idx, AT_NAME_IDX(module_attr_idx), 
+	 AT_NAME_LEN(module_attr_idx));
+     }
+
+     if (violation) {
+       PRINTMSG(AT_DEF_LINE(module_attr_idx), 1678, Error,
+	 AT_DEF_COLUMN(module_attr_idx), AT_OBJ_NAME_PTR(module_attr_idx));
+     }
    }
-   file_name[fn_length]	= '\0';
 
-   while (fp_file_idx != NULL_IDX) {
-      fp_module_idx		= NULL_IDX;
-      next_fp_module_idx	= FP_MODULE_IDX(fp_file_idx); /* 1st module */
-
-      while (next_fp_module_idx != NULL_IDX) {
-         fp_module_idx		= next_fp_module_idx;
-         next_fp_module_idx	= FP_MODULE_IDX(fp_module_idx);
-
-         if (compare_names(AT_OBJ_NAME_LONG(module_attr_idx),
-                           AT_NAME_LEN(module_attr_idx),
-                           FP_NAME_LONG(fp_module_idx),
-                           FP_NAME_LEN(fp_module_idx)) == 0) {
-
-            /* Found the matching module.  Open the file and read header. */
-
-            mod_file_ptr = open_module_file(module_attr_idx,
-                                            fp_file_idx);
-            
-
-            found = (mod_file_ptr == NULL) ?
-                     FALSE : read_module_tbl_header(module_attr_idx,
-                                                    fp_module_idx,
-                                                    mod_file_ptr);
-            goto FOUND;
-         }
-      }  /* End while - looking through module names in same file. */
-
-      if (FP_SRCH_THE_FILE(fp_file_idx)) {
-
-         /* All files specified on the commandline will come through as  */
-         /* Unknown_Fp.  Here is where we determine what they are.       */
-
-         if (FP_CLASS(fp_file_idx) == Unknown_Fp) {
-
-            /* Determine if this is a directory or a file.  */
-            /* If directory, convert to list of files.   If */
-            /* file, they will be marked as Elf files if on */
-            /* solaris and as regular files if not solaris. */
-
-            find_files_in_directory(fp_file_idx);
-
-            if (FP_CLASS(fp_file_idx) == Directory_Fp) {
-
-               /* Skip the directory and go the next file or dir in the    */
-               /* file path table.  This is most likely a file specified   */
-               /* in the directory, but if the directory is empty, then    */
-               /* this is the file or dir following the directory.         */
-
-               fp_file_idx	= FP_NEXT_FILE_IDX(fp_file_idx);
-               continue;
-            }
-         }
-
-# if defined(_TARGET_OS_SOLARIS) && defined(_MODULE_TO_DOT_o)
-
-         if (FP_CLASS(fp_file_idx) == Elf_File_Fp ||
-             FP_CLASS(fp_file_idx) == Unknown_Fp) {
-
-            if (srch_elf_file_for_module_tbl(module_attr_idx, fp_file_idx)) {
-               found	= TRUE;
-               goto FOUND;
-            }
-
-            /* Either this is not an elf file, or we really didn't find it. */
-            /* If this is an Elf file, it will be marked as such by routine */
-            /* srch_elf_file_for_module_tbl.                                */
-
-         }
-# endif
-
-         switch (FP_CLASS(fp_file_idx)) {
-         case Mod_File_Fp:
-
-            if (on_off_flags.module_to_mod && !inline_search) {
-               file_name_ptr = NULL;
-               file_name_ptr = strrchr(FP_NAME_PTR(fp_file_idx), SLASH);
-
-               if (file_name_ptr == NULL) {  /* No path before name */
-                  file_name_ptr = FP_NAME_PTR(fp_file_idx);
-               }
-               else {
-                  ++file_name_ptr;  /* Skip slash */
-               }
-
-               if (strncmp(file_name, file_name_ptr, fn_length) == 0) {
-
-                  /* Found file_name.mod */
-
-                  mod_file_ptr = open_module_file(module_attr_idx, fp_file_idx);
-
-                  if (mod_file_ptr == NULL) {       /* Not able to open file. */
-                     continue;                      /* Try the next file.     */
-                  }
-
-                  if (srch_for_module_tbl(module_attr_idx,
-                                          &fp_module_idx,
-                                          fp_file_idx,
-                                          0,
-                                          mod_file_ptr)) {
-                     found	= TRUE;
-                     goto FOUND;
-                  }
-               }
-            }
-            break;
-
-         case File_Fp:
-         case Archive_File_Fp:
-         case Unknown_Fp:         /* Look for modules in the Non-Elf files. */
-
-            mod_file_ptr = open_module_file(module_attr_idx, fp_file_idx);
-
-            if (mod_file_ptr == NULL) {       /* Not able to open file. */
-               continue;                      /* Try the next file.     */
-            }
-
-            if (FP_OFFSET(fp_file_idx) > 0) {
-
-               /* Assume this must be set to File_Fp or Archive_Fp.   */
-
-               archive = (FP_CLASS(fp_file_idx) == Archive_File_Fp);
-            }
-            else {  /* we don't know what kind of file this is yet. */
-
-               for (num_recs_read = 0; num_recs_read < SARMAG; num_recs_read++){
-                  ar_string[num_recs_read] = '\n';
-               }
-
-               num_recs_read = fread((char *) ar_string, 
-                                     sizeof(char),
-                                     (size_t) SARMAG, 
-                                     mod_file_ptr);
-            
-               if (num_recs_read == (size_t) SARMAG){
-                   archive = (strncmp(ar_string, ARMAG, (size_t) SARMAG) == 0);
-               }
-               else {
-                  archive = FALSE;
-               }
-
-               if (archive) {
-                  FP_CLASS(fp_file_idx)	= Archive_File_Fp;
-               }
-               else {
-                  FP_CLASS(fp_file_idx)	= File_Fp;
-
-                  if (!FSEEK(mod_file_ptr, 0, SEEK_SET)) {
-
-                     /* Reset to file start failed.  Skip to next file. */
-
-                     fclose(mod_file_ptr);
-                     fp_file_idx	= FP_NEXT_FILE_IDX(fp_file_idx);
-                     continue;
-                  }
-               }
-            }
-
-            if (!archive) {
-
-               if (FP_OFFSET(fp_file_idx) > 0 &&
-                   !FSEEK(mod_file_ptr, FP_OFFSET(fp_file_idx), SEEK_CUR)) {
-
-                  /* Seek failed.  Try the next file. */
-
-                  fclose(mod_file_ptr);
-                  fp_file_idx	= FP_NEXT_FILE_IDX(fp_file_idx);
-                  continue; 
-               }
-
-               if (srch_for_module_tbl(module_attr_idx,
-                                       &fp_module_idx,
-                                       fp_file_idx,
-                                       0,
-                                       mod_file_ptr)) {
-                  found	= TRUE;
-                  goto FOUND;
-               }
-            }
-            else if (srch_ar_file_for_module_tbl(module_attr_idx,
-                                                 &fp_module_idx,
-                                                 fp_file_idx,
-                                                 mod_file_ptr)) {
-               found	= TRUE;
-               goto FOUND;
-            }
-
-            fclose(mod_file_ptr);
-            break;
-
-         default:
-            break;
-
-         }  /* end switch */
-      }
-      fp_file_idx	= FP_NEXT_FILE_IDX(fp_file_idx);
+   if (found) {
+     goto FOUND;
    }
+#else /* KEY Bug 5089 */
+   fp_file_idx = (inline_search) ? inline_path_idx : module_path_idx;
+#endif /* KEY Bug 5089 */
 
 ERROR:
 
@@ -5458,7 +5685,11 @@ static	boolean	srch_ar_file_for_module_tbl(int		 module_attr_idx,
    		int		idx;
    		boolean		in_middle_of_file;
    		long_type	member_start_offset;
+#ifdef KEY /* Bug 10177 */
+   		int		name_length = 0;
+#else /* KEY Bug 10177 */
    		int		name_length;
+#endif /* KEY Bug 10177 */
    		long_type	name_tbl_offset;
    		int		num_recs_read;
    		long_type	offset;
@@ -6639,10 +6870,19 @@ static	boolean	read_sytb_from_module_file(int			module_attr_idx,
    boolean		 ok		= TRUE;
    old_const_tbl_type	*old_cn_tbl 	= NULL;
    old_ir_tbl_type	*old_ir_tbl 	= NULL;
+#ifdef KEY /* Bug 10177 */
+   int			 save_const_tbl_idx = 0;
+   int			 save_ir_tbl_idx = 0;
+#else /* KEY Bug 10177 */
    int			 save_const_tbl_idx;
    int			 save_ir_tbl_idx;
+#endif /* KEY Bug 10177 */
    int			 size;
+#ifdef KEY /* Bug 10177 */
+   void			*tbl = 0;
+#else /* KEY Bug 10177 */
    void			*tbl;
+#endif /* KEY Bug 10177 */
    tbl_type_type	 tbl_type;
    long			*to_idx;
 
@@ -8307,11 +8547,20 @@ static void  assign_new_idxs_after_input(int	module_attr_idx)
 
       if (AT_IS_INTRIN(attr_idx) && AT_OBJ_CLASS(attr_idx) == Interface) {
 
+#ifdef KEY /* Bug 5089 */
+       /* If we're working on an "intrinsic module", then we don't expect
+        * to find this interface in the table of intrinsic procedures. */
+       if (!AT_IS_INTRIN(AT_MODULE_IDX(attr_idx))) {
+#endif /* KEY Bug 5089 */
+
          /* Find this intrinsic in the current table.  Bring it in */
          /* and merge this interface with the intrinsic interface  */
          /* so old types, enums and indexes get set correctly.     */
 
          update_intrinsic(attr_idx);
+#ifdef KEY /* Bug 5089 */
+       }
+#endif /* KEY Bug 5089 */
       }
    }
 
@@ -8772,7 +9021,11 @@ static	void	merge_interfaces(int		new_interface_idx,
 				 int		old_interface_idx)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int		end_sn_idx = 0;
+#else /* KEY Bug 10177 */
    int		end_sn_idx;
+#endif /* KEY Bug 10177 */
    boolean	found_intrin	= FALSE;
    int		last_old_sn_idx;
    boolean	move_intrin	= FALSE;

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -795,6 +799,11 @@ void	parse_length_selector(int	attr_idx,
       }
    }
    else {
+#ifdef KEY /* Bug 318, 321 */
+      line		= TOKEN_LINE(token);
+      column		= TOKEN_COLUMN(token);
+      PRINTMSG(line, 1563, Ansi, Comment, column); /* Obsolescent */
+#endif /* KEY Bug 318, 321 */
       NEXT_LA_CH;                    /* Skip Star */
 
       if (LA_CH_VALUE == LPAREN) {   /*    *(*)  or *(length)   */
@@ -831,9 +840,11 @@ void	parse_length_selector(int	attr_idx,
          line		= TOKEN_LINE(token);
          column		= TOKEN_COLUMN(token);
 
+#ifndef KEY /* Bug 318, 321 */
          if (parsing_length_selector) {
             PRINTMSG(line, 1563, Comment, column); /* Obsolescent */
          }
+#endif /* KEY Bug 318, 321 */
       }
       else {
          line		= LA_CH_LINE;
@@ -1769,12 +1780,57 @@ boolean merge_allocatable(boolean chk_semantics,
 
    TRACE (Func_Entry, "merge_allocatable", NULL);
 
+#ifdef KEY /* Bug 6845 */
+   /* Changes for bug 6845 imitate function merge_pointer(); we need to
+    * deal with the situation where the "allocatable" statement is the first
+    * clue that the current procedure is a function, etc. */
+   if (AT_OBJ_CLASS(attr_idx) == Interface && 
+       ATI_PROC_IDX(attr_idx) != NULL_IDX) {
+       attr_idx = ATI_PROC_IDX(attr_idx);
+   }
+#endif /* KEY Bug 6845 */
+
    if (chk_semantics) {
-      fnd_err = fnd_semantic_err(Obj_Allocatable,
-                                 line,
-                                 column,
-                                 attr_idx,
-                                 TRUE);
+#ifdef KEY /* Bug 6845 */
+      if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit && ATP_RSLT_NAME(attr_idx)) {
+         PRINTMSG(line, 36, Error, column, AT_OBJ_NAME_PTR(attr_idx),
+                  AT_OBJ_NAME_PTR(ATP_RSLT_IDX(attr_idx)));
+         fnd_err                = TRUE;
+         AT_DCL_ERR(attr_idx)   = TRUE;
+      }
+      else {
+	fnd_err = fnd_semantic_err(Obj_Allocatable, line, column, attr_idx,
+				   TRUE);
+      }
+
+      if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit ||
+	ATD_CLASS(attr_idx) == Function_Result) {
+	PRINTMSG(line, 1679, Ansi, column);
+      }
+
+      if (!fnd_err && AT_OBJ_CLASS(attr_idx) == Pgm_Unit) {
+
+         if (ATP_RSLT_IDX(attr_idx) == NULL_IDX) {
+	    int rslt_idx = NULL_IDX;
+            CREATE_FUNC_RSLT(attr_idx, rslt_idx);
+            ATP_PGM_UNIT(attr_idx)      = Function;
+            SET_IMPL_TYPE(rslt_idx);
+            attr_idx                    = rslt_idx;
+         }
+         else {
+            attr_idx = ATP_RSLT_IDX(attr_idx);
+            fnd_err  = fnd_semantic_err(Obj_Pointer, line, column, attr_idx,
+                                        TRUE);
+         }
+      }
+#else /* KEY Bug 6845 */
+	fnd_err = fnd_semantic_err(Obj_Allocatable,
+				   line,
+				   column,
+				   attr_idx,
+				   TRUE);
+#endif /* KEY Bug 6845 */
+
       if (!fnd_err) {
 
          if (ATD_ALLOCATABLE(attr_idx)) {
@@ -1927,8 +1983,13 @@ boolean merge_dimension(int	attr_idx,
                         int	array_idx)
 
 {
+#ifdef KEY /* Bug 10177 */
+   obj_type		dcl_type = Obj_Done;
+   boolean		err_fnd = FALSE;
+#else /* KEY Bug 10177 */
    obj_type		dcl_type;
    boolean		err_fnd;
+#endif /* KEY Bug 10177 */
    int			i;
    int			old_bd_idx;
    int			rslt_idx;

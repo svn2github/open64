@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -39,7 +43,7 @@
 
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sgi_cmd_line.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.sgi_cmd_line.cxx $ $Revision: 1.22 $";
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
@@ -318,7 +322,11 @@ void Process_Command_Line (INT argc, char ** argv)
    char *temp;
    char ch,c;
    BOOL pass_option;
+#ifdef KEY /* Bug 10177 */
+   BOOL opt_set = FALSE;
+#else /* KEY Bug 10177 */
    BOOL opt_set;
+#endif /* KEY Bug 10177 */
    INT j;
    FILE *f;
    INT  command_line_length;
@@ -839,7 +847,7 @@ void Process_Command_Line (INT argc, char ** argv)
 		  /* -version, edg's -v */
 		  /* Print out compiler version. */
 		  fprintf(stderr, "mfef90 version %s\n", INCLUDE_STAMP);
-		  fprintf(stderr, "ChangeSet: %s (%s)\n", cset_rev, cset_key);
+		  fprintf(stderr, "Changeset: %s\n", cset_id);
 		  fprintf(stderr, "Built by: %s@%s in %s\n", build_user, build_host, build_root);
 		  fprintf(stderr, "Built on: %s\n", mfef90_compiler_build_date);
 		  pass_option = FALSE;

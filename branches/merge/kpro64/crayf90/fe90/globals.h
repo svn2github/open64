@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -161,6 +165,13 @@ enum	glb_tbl_idx_values	{Allocate_Attr_Idx,
 				 Copyin_Attr_Idx,
 				 Copyout_Attr_Idx,
 #endif /* KEY Bug 8117 */
+#ifdef KEY /* Bug 5089 */
+				 Ieee_Save_Attr_Idx,
+				 Ieee_Restore_Attr_Idx,
+#endif  /* KEY Bug 5089 */
+#ifdef KEY /* Bug 6845 */
+                                 Assign_Allocatable_Idx,
+#endif /* KEY Bug 6845 */
 				 Num_Glb_Tbl_Idxs
 				};
 
@@ -726,8 +737,15 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Zsqrt_Intrinsic,
 # endif
 #ifdef KEY /* Bug 1683 */
-			 	Pathf90_Intrinsic
+			 	Pathf90_Intrinsic,
 #endif /* KEY Bug 1683 */
+#ifdef KEY /* Bug 5089 */
+				True_Intrinsic,
+				Support_Uflow_Intrinsic,
+#endif /* KEY Bug 5089 */
+#ifdef KEY /* F2003 */
+				Newline_Intrinsic
+#endif /* KEY F2003 */
 				};
 
 
@@ -1511,6 +1529,9 @@ enum    operator_values      {  Null_Opr,
 #ifdef KEY /* Bug 2660 */
 				Options_Dir_Opr,
 #endif /* KEY Bug 2660 */
+#ifdef KEY /* Bug 10410 */
+				Cselect_Opr,
+#endif /* KEY Bug 10410 */
 
                                 /* PLACE NEW OPERATORS ABOVE THIS LINE. */
                                 /* DO NOT PUT ANY OPRS AFTER THIS ONE */
@@ -2076,6 +2097,12 @@ struct	on_off_flags_entry {
 	boolean		save_dot_i		: 1;		/* -ek	      */
 	boolean		zero_init		: 1;		/* -e0	      */
 	boolean		d_lines			: 1;
+#ifdef KEY /* Bug 5089 */
+	/* For use only when building the library: mark a generated module as
+	 * "intrinsic" in the F2003 sense, so that its linker name doesn't
+	 * collide with that of any user-created module. */
+	boolean		intrinsic_module_gen	: 1;		/* -intrinsic_module_gen */
+#endif/* KEY Bug 5089 */
 	};
 
 /*************\
@@ -2207,6 +2234,9 @@ struct	cdir_switch_entry	{
 				 boolean	recurrence		  : 1;
 				 boolean	shortloop		  : 1;
 				 boolean	shortloop128		  : 1;
+#ifdef KEY /* Bug 10441 */
+				 boolean        single     	          : 1;
+#endif /* KEY Bug 10441 */
 				 boolean	split			  : 1;
 				 boolean	stream			  : 1;
 				 boolean	task			  : 1;
@@ -2592,6 +2622,13 @@ extern  void  unknown_intrinsic (opnd_type *, expr_arg_type *, int *);
 #ifdef KEY /* Bug 1683 */
 extern  void  pathf90_intrinsic (opnd_type *, expr_arg_type *, int *);
 #endif /* KEY Bug 1683 */
+#ifdef KEY /* Bug 5089 */
+extern  void  true_intrinsic (opnd_type *, expr_arg_type *, int *);
+extern  void  support_uflow_intrinsic (opnd_type *, expr_arg_type *, int *);
+#endif /* KEY Bug 5089 */
+#ifdef KEY /* F2003 */
+extern  void  newline_intrinsic (opnd_type *, expr_arg_type *, int *);
+#endif /* KEY F2003 */
 extern  void  abs_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  sin_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  erf_intrinsic     (opnd_type *, expr_arg_type *, int *);
@@ -2863,12 +2900,21 @@ extern	void		gen_runtime_ptr_chk(opnd_type *);
 extern	void		gen_sh(sh_position_type, stmt_type_type, int,
                                int, boolean, boolean, boolean);
 #ifdef KEY /* Bug 4955 */
-extern	void	        gen_present_ir(int, int, int);
+extern	int	        gen_present_ir(int, int, int);
 #endif /* KEY Bug 4955 */
 #ifdef KEY /* Bug 4811 */
 extern  int		gen_sh_at(sh_position_type, stmt_type_type, int,
                                int, boolean, boolean, boolean, int);
 #endif /* KEY Bug 4811 */
+#ifdef KEY /* Bug 6845 */
+int do_count_allocatable_cpnt(int, int);
+int do_make_struct_opr(int, int, int, fld_type, int);
+int build_call(glb_tbl_idx_type, char *, int, int, int);
+int pass_by_ref(fld_type, int, int, int);
+int pre_gen_loops(int, int, int *);
+void post_gen_loops(int, int);
+void gen_loops(opnd_type *, opnd_type *, boolean);
+#endif /* KEY Bug 6845 */
 extern	void		gen_gl_sh(sh_position_type, stmt_type_type, int,
                                int, boolean, boolean, boolean);
 extern	void		gen_internal_call_stmt(char *, opnd_type *, 
@@ -3080,6 +3126,10 @@ extern  long			max_call_list_size;
 extern  long_type		max_character_length;
 extern	char			mod_out_path[];
 extern	int			module_path_idx;
+#ifdef KEY /* Bug 5089 */
+/* Search path for .mod files for F2003 intrinsic modules */
+extern	int			intrinsic_module_path_idx;
+#endif /* KEY Bug 5089 */
 extern	boolean			need_new_sh;
 extern	boolean			need_to_issue_719;
 extern	boolean			no_func_expansion;
@@ -3461,10 +3511,17 @@ struct  int_dope_entry  {
 typedef struct int_dope_entry           int_dope_type;
 
 
+# ifdef _HOST64
+struct exp_tbl_entry            {
+                                boolean			ext  :  1;
+                                linear_type_type	type : 63;
+                                };
+# elif _HOST32
 struct exp_tbl_entry            {
                                 boolean			ext  :  1;
                                 linear_type_type	type : 31;
                                 };
+# endif
 
 typedef struct exp_tbl_entry    exp_tbl_type;
 
@@ -3545,6 +3602,11 @@ extern void kludge_input_conversion (char *, int);
 #endif /* KEY Bug 5554 */
 extern void kludge_output_conversion (long_type *, int, char *);
 # endif
+#ifdef KEY /* Bug 5089 */
+extern  boolean		special_case_fcn_to_sub(int spec_idx);
+extern char *init_msg_processing (char *[]);
+extern void process_cmd_line (int, char *[], char *);
+#endif /* KEY Bug 5089 */
 
 #ifdef KEY /* Bug 3018 */
 /* Suffix used in intrin_tbl to indicate G77 subroutine versions of intrinsics

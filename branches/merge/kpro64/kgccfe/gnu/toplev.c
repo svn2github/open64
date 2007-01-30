@@ -1,5 +1,9 @@
+/*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -955,6 +959,12 @@ int flag_renumber_insns = 1;
 /* If nonzero, use the graph coloring register allocator.  */
 int flag_new_regalloc = 0;
 
+#ifdef KEY
+/* Bug 8041: 
+   If non-zero, retain a shift operation the way the user wrote it. */
+int flag_honor_shift = 1;
+#endif
+
 /* Nonzero if we perform superblock formation.  */
 
 int flag_tracer = 0;
@@ -1267,6 +1277,11 @@ static const lang_independent_options f_options[] =
    N_("Trap for signed overflow in addition / subtraction / multiplication") },
   { "new-ra", &flag_new_regalloc, 1,
    N_("Use graph coloring register allocation.") },
+#ifdef KEY
+  /* Bug 8041 */
+  { "honor-shift", &flag_honor_shift, 1,
+   N_("Retain shift operation as specified by the user.") },
+#endif
 };
 
 /* Table of language-specific options.  */
@@ -2645,6 +2660,9 @@ rest_of_compilation (decl)
 
       if (DECL_DEFER_OUTPUT (decl))
 	{
+#ifndef KEY /* bug 11201: Disable return-type warnings to prevent failure
+               in mark_jump_label called through rebuild_jump_labels.
+             */
 	  /* If -Wreturn-type, we have to do a bit of compilation.  We just
 	     want to call cleanup the cfg to figure out whether or not we can
 	     fall off the end of the function; we do the minimum amount of
@@ -2663,6 +2681,7 @@ rest_of_compilation (decl)
 	      /* CFG is no longer maintained up-to-date.  */
 	      free_bb_for_insn ();
 	    }
+#endif
 
 	  set_nothrow_function_flags ();
 	  if (current_function_nothrow)
@@ -4772,12 +4791,12 @@ print_version (file, indent)
 	   lang_hooks.name, version_string, TARGET_NAME,
 	   indent, __VERSION__);
 #ifdef KEY
-  fnotice (file, "ChangeSet %s (%s)\n", cset_rev, cset_key);
+  fnotice (file, "Changeset %s\n", cset_id);
   fnotice (file, "Built by %s@%s in %s\n", build_user, build_host, build_root);
   fnotice (file, "Built on %s\n", build_date);
 #else
-  extern const char bk_cset_key[], bk_cset_rev[];
-  fnotice (file, "Revision %s (%s)\n", bk_cset_rev, bk_cset_key);
+  extern const char *hg_cset_id;
+  fnotice (file, "Changeset %s\n", hg_cset_id);
   fnotice (file, "%s%sGGC heuristics: --param ggc-min-expand=%d --param ggc-min-heapsize=%d\n",
 	   indent, *indent != 0 ? " " : "",
 	   PARAM_VALUE (GGC_MIN_EXPAND), PARAM_VALUE (GGC_MIN_HEAPSIZE));

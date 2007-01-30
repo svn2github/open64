@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -289,6 +293,103 @@ static void unbury_lhs_for_omp() {
 }
 
 #endif /* KEY Bug 4810 */
+#ifdef KEY /* Bug 6845 */
+static void help_assign_cpnts(int, int, Uint, int, fld_type, int, fld_type);
+
+static void
+help_assign_array_of_structure(int line, int col, int idx_l, fld_type fld_l,
+  int idx_r, fld_type fld_r) {
+  opnd_type opnd_l, opnd_r;
+  expr_arg_type exp_desc_l, exp_desc_r;
+  int next_sh_idx = NULL_IDX;
+  int placeholder_sh_idx = pre_gen_loops(line, col, &next_sh_idx);
+  OPND_FLD(opnd_l) = fld_l;
+  OPND_IDX(opnd_l) = idx_l;
+  OPND_FLD(opnd_r) = fld_r;
+  OPND_IDX(opnd_r) = idx_r;
+  OPND_LINE_NUM(opnd_l) = OPND_LINE_NUM(opnd_r) = line;
+  OPND_COL_NUM(opnd_l) = OPND_COL_NUM(opnd_r) = col;
+  gen_loops(&opnd_l, &opnd_r, TRUE);
+  help_assign_cpnts(line, col, IR_TYPE_IDX(OPND_IDX(opnd_l)), OPND_IDX(opnd_l),
+    OPND_FLD(opnd_l), OPND_IDX(opnd_r), OPND_FLD(opnd_r));
+  post_gen_loops(placeholder_sh_idx, next_sh_idx);
+}
+
+/*
+ * Given an assignment of a structure type known to have one or more
+ * allocatable components, replace the assignment with a series of assignments
+ * of the individual components, using a runtime system call to handle the
+ * allocatable components, since they require automatic reallocation in
+ * addition to the copying of data.
+ *
+ * line		Source line
+ * col		Source column
+ * type_idx	Type of lvalue (or rvalue) of assignment
+ * lvalue_idx	Index of lvalue
+ * lvalue_fld	IR_Tbl_Idx or AT_Tbl_Idx of lvalue
+ * rvalue_idx	Index of rvalue
+ * lvalue_fld	IR_Tbl_Idx or AT_Tbl_Idx of rvalue
+ */
+static void
+help_assign_cpnts(int line, int col, Uint type_idx,
+  int lvalue_idx, fld_type lvalue_fld, int rvalue_idx, fld_type rvalue_fld) {
+
+  for (int sn_idx = ATT_FIRST_CPNT_IDX(TYP_IDX(type_idx));
+    sn_idx != NULL_IDX;
+    sn_idx = SN_SIBLING_LINK(sn_idx)) {
+    int cpnt_attr_idx = SN_ATTR_IDX(sn_idx);
+    int l_idx = do_make_struct_opr(line, col, lvalue_idx, lvalue_fld,
+      cpnt_attr_idx);
+
+    int r_idx = do_make_struct_opr(line, col, rvalue_idx, rvalue_fld,
+      cpnt_attr_idx);
+    int new_ir_idx = NULL_IDX;
+
+    /* Allocatable array: generate runtime system call */
+    if (ATD_ALLOCATABLE(cpnt_attr_idx)) {
+      new_ir_idx = build_call(Assign_Allocatable_Idx, ASSIGN_ALLOCATABLE_ENTRY,
+	gen_il(4, TRUE, line, col,
+	  IR_Tbl_Idx, pass_by_ref(IR_Tbl_Idx, l_idx, line, col),
+	  IR_Tbl_Idx, pass_by_ref(IR_Tbl_Idx, r_idx, line, col),
+	  CN_Tbl_Idx, CN_INTEGER_ONE_IDX,
+	  CN_Tbl_Idx, CN_INTEGER_ZERO_IDX),
+	line, col);
+    }
+
+    else if (Structure == TYP_TYPE(ATD_TYPE_IDX(cpnt_attr_idx)) &&
+      ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(cpnt_attr_idx)))) {
+
+      /* Non-allocatable array whose element type is a structure having
+       * allocatable components or subcomponents: no dope vector, so we can't
+       * use ASSIGN_ALLOCATABLE_ARRAY: instead loop, assigning elements */
+      if (ATD_ARRAY_IDX(cpnt_attr_idx) != NULL_IDX) {
+        help_assign_array_of_structure(line, col, l_idx, IR_Tbl_Idx, r_idx,
+	  IR_Tbl_Idx);
+      }
+
+      /* Scalar structure having allocatable components or subcomponents:
+       * recursively assign them. */
+      else {
+	help_assign_cpnts(line, col,
+	  ATD_TYPE_IDX(cpnt_attr_idx), l_idx, IR_Tbl_Idx, r_idx, IR_Tbl_Idx);
+      }
+    }
+
+    /* Generate ordinary component assignment */
+    else {
+      new_ir_idx = gen_ir(IR_Tbl_Idx, l_idx, Asg_Opr,
+        ATD_TYPE_IDX(cpnt_attr_idx), line, col, IR_Tbl_Idx, r_idx);
+    }
+
+    if (new_ir_idx != NULL_IDX) {
+      gen_sh(After, Assignment_Stmt, line, col, FALSE, FALSE, TRUE);
+      SH_IR_IDX(curr_stmt_sh_idx) = new_ir_idx;
+      SH_P2_SKIP_ME(curr_stmt_sh_idx) = TRUE;
+    }
+  }
+}
+
+#endif /* KEY Bug 6845 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -689,6 +790,44 @@ CK_WHERE:
             SH_IR_IDX(curr_stmt_sh_idx) = OPND_IDX(opnd);
          }
       }
+
+#ifdef KEY /* Bug 6845 */
+      /* TR15581 requires automatic deallocation and allocation during
+       * assignment of scalar structure having allocatable components, but
+       * does not require this during assignment of an allocatable array;
+       * that's a F2003 feature (which requires more work, and study to figure
+       * out how it interacts with 'where' and 'forall'.)
+       *
+       * Possible optimization would deallocate the allocatable components
+       * in the target, bytewise copy the structure, and then allocate and
+       * copy the allocatable components. For now, we do it one component
+       * at a time.
+       */
+      int type_idx_l = exp_desc_l.type_idx;
+      if (Structure == exp_desc_l.type &&
+	ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx_l)) &&
+	SH_STMT_TYPE(curr_stmt_sh_idx) == Assignment_Stmt &&
+	IR_OPR(SH_IR_IDX(curr_stmt_sh_idx)) == Asg_Opr) {
+
+	/* Change original assignment to "continue" (it might be labelled) */
+	SH_STMT_TYPE(curr_stmt_sh_idx) = Continue_Stmt;
+	int asg_ir_idx = SH_IR_IDX(curr_stmt_sh_idx);
+	SH_IR_IDX(curr_stmt_sh_idx) = NULL_IDX;
+
+	/* Non-allocatable array whose element type is a structure containing
+	 * allocatable components */
+	if (exp_desc_l.rank) {
+	  help_assign_array_of_structure(line, col, IR_IDX_L(asg_ir_idx),
+	    IR_FLD_L(asg_ir_idx), IR_IDX_R(asg_ir_idx), IR_FLD_R(asg_ir_idx));
+	}
+
+	else {
+	  help_assign_cpnts(line, col, exp_desc_l.type_idx,
+	    IR_IDX_L(asg_ir_idx), IR_FLD_L(asg_ir_idx), IR_IDX_R(asg_ir_idx),
+	    IR_FLD_R(asg_ir_idx));
+	}
+      }
+#endif /* KEY Bug 6845 */
 
       /*
       Generate this label immediately prior to the assignment
@@ -1381,7 +1520,11 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
    int                 ir_idx		= NULL_IDX;
    int		       line;
    int		       list_idx;
+#ifdef KEY /* Bug 10177 */
+   int                 msg_num = 0;
+#else /* KEY Bug 10177 */
    int                 msg_num;
+#endif /* KEY Bug 10177 */
    opnd_type	       opnd;
    int		       rank_in;
    boolean             junk;
@@ -1618,7 +1761,8 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
             if (ATD_PURE(attr_idx) && 
 #ifdef KEY /* Bug 934 */
 		/* This constraint only applies when assigning an entire
-		 * derived type */
+		 * derived type. Note that it's one of the areas where
+		 * "allocatable" and "pointer" behave differently. */
                 exp_desc->derived_assign &&
 #endif /* KEY Bug 934 */
                 stmt_type == Assignment_Stmt &&
@@ -4099,15 +4243,25 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
 {
    int			column;
    boolean		constant_trip = TRUE;
+#ifdef KEY /* Bug 10177 */
+   int			do_var_idx = 0;
+#else /* KEY Bug 10177 */
    int			do_var_idx;
+#endif /* KEY Bug 10177 */
    boolean              do_var_ok;
    boolean              first_item = TRUE;
    int			line;
    expr_arg_type        loc_exp_desc;
    opnd_type		initial_opnd;
+#ifdef KEY /* Bug 10177 */
+   int                  list_idx = 0;
+   int                  list2_idx;
+   int			new_do_var_idx = 0;
+#else /* KEY Bug 10177 */
    int                  list_idx;
    int                  list2_idx;
    int			new_do_var_idx;
+#endif /* KEY Bug 10177 */
    opnd_type            opnd;
    boolean              ok		= TRUE;
    expr_mode_type	save_expr_mode;
@@ -4130,6 +4284,9 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
       PRINTMSG(line, 978, Internal, column);
    }
 
+#ifdef KEY /* Bug 8004 */
+   boolean needs_char_padding = FALSE;
+#endif /* KEY Bug 8004 */
    while (list_idx != NULL_IDX) {
 
       IL_HAS_FUNCTIONS(list_idx) = FALSE;
@@ -4645,15 +4802,35 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
 
                if (exp_desc->char_len.fld == CN_Tbl_Idx) {
 
-                  if (fold_relationals(loc_exp_desc.char_len.idx,
+               if (
+#ifdef KEY /* Bug 8004 */
+		/*
+		 * F95 requires that all char lengths inside an array ctor
+		 * be the same, but doesn't state that as a numbered
+		 * constraint, so this Ansi message isn't strictly needed.
+		 * F2003 requires they be the same unless there's an explicit
+		 * type-spec inside the constructor brackets, but still
+		 * doesn't state that as a numbered constraint. Due to
+		 * this change, our behavior is more generous than even
+		 * F2003: we use the max of the lengths if there is
+		 * no explicit type-spec. When we add parsing for the
+		 * explicit type-spec, that will impact the following code.
+		 */
+                on_off_flags.issue_ansi_messages &&
+#endif /* KEY Bug 8004 */
+                  fold_relationals(loc_exp_desc.char_len.idx,
                                        exp_desc->char_len.idx,
                                        Ne_Opr)) {
                      find_opnd_line_and_column((opnd_type *) &IL_OPND(list_idx),
                                                &line, &column);
+#ifdef KEY /* Bug 8004 */
+                     PRINTMSG(line, 838, Ansi, column);
+#else /* KEY Bug 8004 */
                      PRINTMSG(line, 838, Error, column);
                      ok = FALSE;
+#endif /* KEY Bug 8004 */
                   }
-# if 0
+/* KEY Bug 8004 # if 0 */
                   /* if we ever extend the above constraint, */
                   /* then include this code.                 */
 
@@ -4662,8 +4839,13 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
                                        Gt_Opr)) {
 
                      COPY_OPND((exp_desc->char_len), (loc_exp_desc.char_len));
+#ifdef KEY /* Bug 8004 */
+                     exp_desc->type_idx = loc_exp_desc.type_idx;
+		     needs_char_padding =
+		       (loc_exp_desc.char_len.fld == CN_Tbl_Idx);
+#endif /* KEY Bug 8004 */
                   }
-# endif
+/* KEY Bug 8004 # endif */
                }
                else {
                   /* replace the char_len with the simpler length */
@@ -4688,6 +4870,35 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
              
       list_idx = IL_NEXT_LIST_IDX(list_idx);
    }
+
+#ifdef KEY /* Bug 8004 */
+   /* We now allow a character constructor to have elements of differing
+    * lengths. For variables and for constructors used to initialize
+    * fixed-length character types, enabling the change above (which existed
+    * in the original Open64 distribution but was disabled) suffices. For
+    * a constructor used to initialize a "character*(*), parameter"
+    * however, we need to make each element be the correct size (the
+    * alternative was more extensive surgery on interpret_constructor and
+    * interpret_array_construct_opr in s_cnstrct.c.)
+    */
+   if (needs_char_padding && exp_desc->constant &&
+      exp_desc->char_len.fld == CN_Tbl_Idx) {
+      long desired_length = CN_CONST(exp_desc->char_len.idx);
+      for (list_idx = OPND_IDX((*top_opnd)); list_idx != NULL_IDX; 
+	 list_idx = IL_NEXT_LIST_IDX(list_idx)) {
+	 opnd_type opnd = IL_OPND(list_idx);
+	 long actual_length = 0;
+	 if (opnd.fld == CN_Tbl_Idx && desired_length !=
+	   (actual_length = CN_CONST(TYP_IDX(CN_TYPE_IDX(opnd.idx))))) {
+	   int char_idx = ntr_const_tbl(exp_desc->type_idx, TRUE, NULL);
+	   char *char_ptr = (char *) &CN_CONST(char_idx);
+	   memset(char_ptr, ' ', desired_length);
+	   memcpy(char_ptr, (char *) &CN_CONST(opnd.idx), actual_length);
+	   IL_OPND(list_idx).idx = char_idx;
+	 }
+      }
+   }
+#endif /* KEY Bug 8004 */
 
 
 EXIT:
@@ -7867,11 +8078,20 @@ static boolean and_opr_handler(opnd_type		*result_opnd,
    int			opnd_col;
    int			opnd_line;
 # if defined(_HIGH_LEVEL_IF_FORM)
+# ifdef KEY /* Bug 10177 */
+   boolean		save_has_present_opr = FALSE;
+# else /* KEY Bug 10177 */
    boolean		save_has_present_opr;
+# endif /* KEY Bug 10177 */
 # endif
    boolean		save_in_call_list;
+#ifdef KEY /* Bug 10177 */
+   int                  save_number_of_functions = 0;
+   int                  save_number_of_functions_l = 0;
+#else /* KEY Bug 10177 */
    int                  save_number_of_functions;
    int                  save_number_of_functions_l;
+#endif /* KEY Bug 10177 */
    int			type_idx;
 
 
@@ -8369,7 +8589,11 @@ static boolean max_opr_handler(opnd_type		*result_opnd,
 			       expr_arg_type		*exp_desc)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int			comp_idx = 0;
+#else /* KEY Bug 10177 */
    int			comp_idx;
+#endif /* KEY Bug 10177 */
    expr_arg_type	exp_desc_l;
    int			ir_idx;
    int			list_idx;
@@ -8652,6 +8876,9 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
    exp_desc->array_elt        = exp_desc_l.array_elt;
    exp_desc->assumed_shape    = exp_desc_l.assumed_shape;
    exp_desc->assumed_size     = exp_desc_l.assumed_size;
+#ifdef KEY /* Bug 6845 */
+   exp_desc->allocatable      = exp_desc_r.allocatable;
+#endif /* KEY Bug 6845 */
    exp_desc->contig_array     = exp_desc_r.contig_array;
    exp_desc->dist_reshape_ref = exp_desc_l.dist_reshape_ref |
                                 exp_desc_r.dist_reshape_ref;
@@ -8725,6 +8952,144 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
    return(ok);
 
 }  /* struct_opr_handler */
+#ifdef KEY /* Bug 6845 */
+/*
+ * Generate code to prepare for setting an allocatable component of a structure
+ * constructor. On entry rvalue_opnd is the array expression to be assigned to
+ * that component, on exit rvalue_opnd is the dope vector to be assigned in
+ * place of the array expression. May create one compiler temp to hold value of
+ * array expression; will create another compiler temp to hold dope vector
+ * generated to describe that array expression.
+ *
+ * Assumes that the caller will check that the LHS and RHS are type compatible.
+ *
+ * This function works whether the assignment is performed as a pointer
+ * assignment (which just copies the dope vector into the temp that represents
+ * the constructor) or by calling _ASSIGN_ALLOCATABLE. The latter is more
+ * expensive, and requires deallocating the temp in the epilog. So far, we see
+ * no reason not to copy the dope vector alone--it's a little strange that the
+ * temp has a dope vector which isn't marked "allocatable", but nothing bad
+ * seems to happen.
+ *
+ * line		Source line
+ * col		Source column
+ * exp_desc_l	Description of LHS
+ * rvalue_opnd	Source operand to be assigned to allocatable component of
+ *		constructor
+ * exp_desc_r	Description of rvalue_opnd
+ */
+static void
+help_ctor_array_to_allocatable(int line, int col, expr_arg_type *exp_desc_l,
+  opnd_type *rvalue_opnd, expr_arg_type *exp_desc_r) {
+  opnd_type tmp_opnd;
+  boolean ok = TRUE;
+
+  /* array_construct_opr_handler() doesn't set bounds of exp_desc_r when
+   * the Array_Construct_Opr is nested (test for top_constructor bypasses
+   * the calculation.) But we need to know it, so we do it ourself here. */
+  operator_type ir_opr = IR_OPR(OPND_IDX(*rvalue_opnd));
+  if (ir_opr == Array_Construct_Opr || ir_opr == Constant_Array_Construct_Opr) {
+    size_level_type constructor_size_level = Simple_Expr_Size;
+    opnd_type size_opnd;
+    analyse_loops(rvalue_opnd, &size_opnd, &constructor_size_level);
+    expr_arg_type loc_exp_desc;
+    if (!expr_semantics(&size_opnd, &loc_exp_desc)) {
+      PRINTMSG(line, 1044, Internal, col, "help_ctor_array_to_allocatable");
+    }
+    COPY_OPND((exp_desc_r->shape[0]), size_opnd);
+  }
+
+  boolean save_dfe = defer_stmt_expansion;
+  defer_stmt_expansion = FALSE;
+
+
+  /* Need a temp because RHS isn't something that a dope vector can describe? */
+  boolean need_tmp_for_rvalue = TRUE;
+  switch (get_act_arg_type(exp_desc_r)) {
+    case Array_Ptr:
+    case Array_Tmp_Ptr:
+    case Whole_Allocatable:
+    case Whole_Tmp_Allocatable:
+    case Whole_Sequence:
+    case Whole_Tmp_Sequence:
+    case Whole_Ass_Shape:
+    case Whole_Array_Constant:
+    case Sequence_Array_Section:
+    case Constant_Array_Section:
+    case Dv_Array_Section:
+    case Contig_Section:
+    case Dv_Contig_Section:
+      need_tmp_for_rvalue = FALSE;
+  }
+
+  boolean need_conversion = FALSE;
+  if (exp_desc_l->linear_type != exp_desc_r->linear_type) {
+    need_conversion = TRUE;
+    need_tmp_for_rvalue = TRUE;
+  }
+
+  int tmp_idx = NULL_IDX;
+  /* Create temp to hold value of array expression */
+  if (need_tmp_for_rvalue) {
+    tmp_idx = create_tmp_asg(rvalue_opnd, exp_desc_r, &tmp_opnd, Intent_In,
+      TRUE, FALSE);
+    /* Caller will check that LHS type and RHS type are compatible */
+    if (need_conversion) {
+      ATD_TYPE_IDX(tmp_idx) = exp_desc_l->type_idx;
+    }
+  }
+
+  /* Create temp to hold dope vector */
+  int tmp_dv_idx = gen_compiler_tmp(line, col, Priv, TRUE);
+  ATD_NOT_PT_UNIQUE_MEM(tmp_dv_idx) = TRUE;
+  if (need_tmp_for_rvalue) {
+    ATD_NOT_PT_UNIQUE_MEM(tmp_idx) = TRUE;
+  }
+  else {
+    ATD_NOT_PT_UNIQUE_MEM((find_left_attr(rvalue_opnd))) = TRUE;
+  }
+
+  ATD_TYPE_IDX(tmp_dv_idx) = exp_desc_r->type_idx;
+  ATD_STOR_BLK_IDX(tmp_dv_idx) = SCP_SB_STACK_IDX(curr_scp_idx);
+  AT_SEMANTICS_DONE(tmp_dv_idx) = TRUE;
+
+  if (exp_desc_r->rank) {
+    /* Positions 1-7 are deferred shape entries in the bd table. */
+    ATD_ARRAY_IDX(tmp_dv_idx) = exp_desc_r->rank;
+  }
+  ATD_IM_A_DOPE(tmp_dv_idx)    = TRUE;
+
+  if (need_tmp_for_rvalue) {
+    opnd_type r_opnd;
+    OPND_FLD(r_opnd) = AT_Tbl_Idx;
+    OPND_IDX(r_opnd) = tmp_idx;
+    OPND_LINE_NUM(r_opnd) = line;
+    OPND_COL_NUM(r_opnd)  = col;
+   
+    if (TYP_TYPE(ATD_TYPE_IDX(tmp_idx)) == Character) {
+       ok = gen_whole_substring(&r_opnd, exp_desc_r->rank) && ok;
+    }
+
+    OPND_FLD(tmp_opnd) = AT_Tbl_Idx;
+    OPND_IDX(tmp_opnd) = tmp_dv_idx;
+    OPND_LINE_NUM(tmp_opnd) = line;
+    OPND_COL_NUM(tmp_opnd)  = col;
+
+    gen_dv_whole_def(&tmp_opnd, &r_opnd, exp_desc_r);
+  }
+  else {
+    OPND_FLD(tmp_opnd) = AT_Tbl_Idx;
+    OPND_IDX(tmp_opnd) = tmp_dv_idx;
+    OPND_LINE_NUM(tmp_opnd) = line;
+    OPND_COL_NUM(tmp_opnd)  = col;
+    gen_dv_whole_def(&tmp_opnd, rvalue_opnd, exp_desc_r);
+  }
+
+  COPY_OPND(*rvalue_opnd, tmp_opnd);
+
+  defer_stmt_expansion = save_dfe;
+}
+#endif /* KEY Bug 6845 */
 
 /******************************************************************************\
 |*									      *|
@@ -8866,8 +9231,22 @@ static boolean struct_construct_opr_handler(opnd_type		*result_opnd,
       for (i = 0; i < IR_LIST_CNT_R(ir_idx); i++) {
          exp_desc_r.rank = 0;
 
+#ifdef KEY /* Bug 6845 */
+	 opnd_type save_list_opnd = IL_OPND(list_idx);
+#endif /* KEY Bug 6845 */
          COPY_OPND(opnd, IL_OPND(list_idx));
+#ifdef KEY /* Bug 6845 */
+         comp_idx               = SN_ATTR_IDX(sn_idx);
+	 /* For allocatable LHS, we need folding */
+	 if (ATD_ALLOCATABLE(comp_idx)) {
+	   ok &= expr_semantics(&opnd, &exp_desc_r);
+	 }
+	 else {
+	   ok &= expr_sem(&opnd, &exp_desc_r);
+	 }
+#else /* KEY Bug 6845 */
          ok &= expr_sem(&opnd, &exp_desc_r);
+#endif /* KEY Bug 6845 */
          COPY_OPND(IL_OPND(list_idx), opnd);
 
          IL_ARG_DESC_VARIANT(list_idx) = TRUE;
@@ -9142,6 +9521,126 @@ static boolean struct_construct_opr_handler(opnd_type		*result_opnd,
                PRINTMSG(opnd_line, 853, Error, opnd_col);
             }
          }
+#ifdef KEY /* Bug 6845 */
+         else if (ATD_ALLOCATABLE(comp_idx) && ok) {
+            if (OPND_FLD(opnd) == AT_Tbl_Idx) {
+               if (AT_OBJ_CLASS(OPND_IDX(opnd)) != Data_Obj) {
+                  ok = FALSE;
+                  find_opnd_line_and_column(&opnd, &opnd_line, &opnd_col);
+                  PRINTMSG(opnd_line, 358, Error, opnd_col, i + 1);
+               }
+            }
+            else if (OPND_FLD(opnd) == IR_Tbl_Idx) {
+
+	       operator_type ir_opr = IR_OPR(OPND_IDX(opnd));
+
+	       /* null() allowed: code cribbed from pointer case */
+               if (ir_opr == Null_Intrinsic_Opr) {
+                  tmp_dv_idx = gen_compiler_tmp(line, col, Priv, TRUE);
+
+      		  ATD_TYPE_IDX(tmp_dv_idx) = ATD_TYPE_IDX(comp_idx);
+                  ATD_STOR_BLK_IDX(tmp_dv_idx) = 
+                           SCP_SB_STATIC_INIT_IDX(curr_scp_idx);
+      	          AT_SEMANTICS_DONE(tmp_dv_idx) = TRUE;
+      		  ATD_ARRAY_IDX(tmp_dv_idx) = ATD_ARRAY_IDX(comp_idx);
+      	  	  ATD_ALLOCATABLE(tmp_dv_idx) = TRUE;
+      		  ATD_IM_A_DOPE(tmp_dv_idx) = TRUE;
+
+                  gen_opnd(&dv_opnd, tmp_dv_idx, AT_Tbl_Idx, line, col);
+
+                  defer_stmt_expansion_save = defer_stmt_expansion;
+                  defer_stmt_expansion = FALSE;
+      		  gen_static_dv_whole_def(&dv_opnd, tmp_dv_idx, Before);
+ 
+                  defer_stmt_expansion = defer_stmt_expansion_save;
+
+      		  exp_desc_r.type_idx = ATD_TYPE_IDX(comp_idx);
+      		  exp_desc_r.type = TYP_TYPE(ATD_TYPE_IDX(comp_idx));
+      		  exp_desc_r.linear_type = TYP_LINEAR(ATD_TYPE_IDX(comp_idx));
+      	 	  exp_desc_r.pointer = FALSE;
+      	 	  exp_desc_r.allocatable = TRUE;
+      		  exp_desc_r.tmp_reference = TRUE;
+                  exp_desc_r.foldable = TRUE;
+                  exp_desc_r.will_fold_later = TRUE;
+
+            	  if (ATD_ARRAY_IDX(comp_idx) == NULL_IDX) {
+               	     exp_desc_r.rank = 0;
+            	  }
+            	  else {
+               	     exp_desc_r.rank = BD_RANK(ATD_ARRAY_IDX(comp_idx));
+            	  }
+
+
+      		  gen_opnd(&dv_opnd,
+               		   gen_ir(AT_Tbl_Idx,
+                                  tmp_dv_idx,
+                                  Dv_Deref_Opr,
+                                  exp_desc_r.type_idx,
+                                  line,
+                                  col,
+                                  NO_Tbl_Idx,
+                                  NULL_IDX),
+                           IR_Tbl_Idx,
+               		   line,
+               		   col);
+
+      		  if (exp_desc_r.rank > 0) {
+         	     ok = gen_whole_subscript(&dv_opnd, &exp_desc_r);
+     		  }
+
+                  COPY_OPND(opnd, dv_opnd);
+                  COPY_OPND(IL_OPND(list_idx), opnd);
+               }
+	       /* If RHS is an allocatable or a dope vector, we can just use
+	        * its dope vector because the constructor is supposed to be
+		* readonly, so it can't be deallocated or subject to any
+		* operations that work only on an allocatable.
+		*
+		* For some reason, a section of a dope operand has
+		* exp_desc_r.dope_vector set even though there isn't a dope
+		* vector describing the section. This test is probably
+		* compensating for a longstanding bug in expr_semantics(), but
+		* who knows? */
+	       else if ((exp_desc_r.allocatable || exp_desc_r.dope_vector) &&
+		  !exp_desc_r.section) {
+		  COPY_OPND(IL_OPND(list_idx), save_list_opnd);
+	       }
+	       /* Arbitrary array expression: copy to a compiler temp, then
+	        * generate a dope vector describing the compiler temp. */
+	       else {
+	         help_ctor_array_to_allocatable(line, col, &exp_desc_l, &opnd,
+		   &exp_desc_r);
+		 /* We just added a compiler temp containing a dope vector */
+		 exp_desc->foldable = exp_desc->will_fold_later = FALSE;
+		 COPY_OPND(IL_OPND(list_idx), opnd);
+	       }
+            }
+            else {
+               /* error ..  assuming only constants here */
+               ok = FALSE;
+               find_opnd_line_and_column(&opnd, &opnd_line, &opnd_col);
+               PRINTMSG(opnd_line, 358, Error, opnd_col, i + 1);
+            }
+
+	    int rank_l = ATD_ARRAY_IDX(comp_idx) ?
+	      BD_RANK(ATD_ARRAY_IDX(comp_idx)) : 0;
+            if (ok && rank_l != exp_desc_r.rank) {
+               ok = FALSE;
+               find_opnd_line_and_column(&opnd, &opnd_line, &opnd_col);
+               PRINTMSG(opnd_line, 324, Error, opnd_col, exp_desc_r.rank,
+	         rank_l);
+            }
+
+            type_idx = ATD_TYPE_IDX(comp_idx);
+
+            if (ok && Err_Res ==
+	       ASG_TYPE(TYP_LINEAR(type_idx), exp_desc_r.linear_type)) {
+               find_opnd_line_and_column(&opnd, &opnd_line, &opnd_col);
+               PRINTMSG(opnd_line, 358, Error, opnd_col, i + 1);
+               ok = FALSE;
+            }
+	 }
+#endif /* KEY Bug 6845 */
 
          exp_desc->foldable = exp_desc->foldable && exp_desc_r.foldable;
 
@@ -10768,7 +11267,11 @@ static boolean substring_opr_handler(opnd_type		*result_opnd,
 				     int		 rank_in)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int			attr_idx = 0;
+#else /* KEY Bug 10177 */
    int			attr_idx;
+#endif /* KEY Bug 10177 */
    char		       *char_ptr1;
    char		       *char_ptr2;
    int			clen_idx;
@@ -14609,6 +15112,9 @@ static int set_up_pe_offset_attr(void)
       ATT_NUMERIC_CPNT(dt_idx)     = TRUE;
       ATT_DCL_NUMERIC_SEQ(dt_idx)  = TRUE;
       ATT_SEQUENCE_SET(dt_idx)     = TRUE;
+#ifdef KEY /* Bug 10140 */
+      ATT_ALIGNMENT(dt_idx) = Align_64;
+#endif /* KEY Bug 10140 */
    }
    else {
       /* error */
@@ -14866,8 +15372,13 @@ static int set_up_pe_offset_attr(void)
 
 
    ATT_STRUCT_BIT_LEN_FLD(dt_idx) = CN_Tbl_Idx;
+#ifdef KEY /* Bug 10140 */
+   ATT_STRUCT_BIT_LEN_IDX(dt_idx) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE,
+                                                  offset);
+#else /* KEY Bug 10140 */
    ATT_STRUCT_BIT_LEN_IDX(attr_idx) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE,
                                                   offset);
+#endif /* KEY Bug 10140 */
 
    /*****************************************\
    |* Gen the data obj of this derived type *|

@@ -971,12 +971,7 @@ release_pages ()
 /* This table provides a fast way to determine ceil(log_2(size)) for
    allocation requests.  The minimum allocation size is eight bytes.  */
 
-/* The size of size_lookup is coupled with sizeof(struct tree_decl) 
- * tightly. Pathscale add some fields to tree_decl and increase tree_decl's 
- * size.
- * The result is array overflow in init_ggc() and unexpected overwrite. 
- * The workaround is to increase the size to 288. */
-static unsigned char size_lookup[289] =
+static unsigned char size_lookup[257] =
 {
   3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4,
   4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
@@ -994,9 +989,7 @@ static unsigned char size_lookup[289] =
   8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
   8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
   8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-  8,
-  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
+  8
 };
 
 /* Allocate a chunk of memory of SIZE bytes.  If ZERO is nonzero, the

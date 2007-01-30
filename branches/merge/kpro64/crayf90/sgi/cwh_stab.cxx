@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -40,10 +44,10 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_stab.cxx,v $
+ * $Revision: 1.10 $
+ * $Date: 05/05/04 09:52:06-07:00 $
+ * $Author: gautam@eng-27.pathscale.com $
+ * $Source: ../../../crayf90/sgi/SCCS/s.cwh_stab.cxx $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -74,7 +78,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_stab.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: ../../../crayf90/sgi/SCCS/s.cwh_stab.cxx $ $Revision: 1.10 $";
 #endif /* _KEEP_RCS_ID */
 
 
@@ -174,8 +178,8 @@ fei_next_func_idx(INT32 Pu_arg,
   }
 
   i++;
-  p = cwh_stab_packet(cast_to_void((INTPTR)i), is_CONST);
-  return(cast_to_long(p));  
+  p = cwh_stab_packet(cast_to_void(i), is_CONST);
+  return(cast_to_int(p));  
 }
 
 
@@ -202,7 +206,11 @@ fei_proc(char         *name_string,
 	 INT32         proc_idx,
          INT64         flags )
 {
+#ifdef KEY /* Bug 10177 */
+  INTPTR p = 0;
+#else /* KEY Bug 10177 */
   INTPTR p;
+#endif /* KEY Bug 10177 */
 
   if (test_flag(flags, FEI_PROC_DEFINITION)) {
      p = fei_proc_def(name_string,
@@ -438,7 +446,7 @@ fei_proc_def(char         *name_string,
   entry_point_count++ ;
 
   p = cwh_stab_packet(st, is_ST);
-  return(cast_to_long(p));
+  return(cast_to_int(p));
 }
 
 /*===================================================
@@ -524,7 +532,7 @@ fei_proc_imp(INT32 lineno,
     Set_ST_auxst_is_elemental(st,TRUE);
   
   p = cwh_stab_packet(st, is_ST);
-  return(cast_to_long(p));
+  return(cast_to_int(p));
 }
 
 /*===================================================
@@ -547,7 +555,11 @@ fei_arith_con(TYPE type, SLONG *start)
   QUAD_TYPE q,q1 ;
   float   * f ; 
   double  * d ;
+#ifdef KEY /* Bug 10177 */
+  STB_pkt * r = 0;
+#else /* KEY Bug 10177 */
   STB_pkt * r ;
+#endif /* KEY Bug 10177 */
   INT64 iconst;
 
   ty = cast_to_TY(t_TY(type));
@@ -622,7 +634,7 @@ fei_arith_con(TYPE type, SLONG *start)
   } else
     DevAssert((0),("Unimplemented constant"));
 
-  return (cast_to_long(r)) ;
+  return (cast_to_int(r)) ;
 
 }
 
@@ -648,7 +660,7 @@ fei_pattern_con(TYPE type,char *start,INT64 bitsize)
   tc = Host_To_Targ_String (MTYPE_STRING,start,TY_size(ty));
   st = Gen_String_Sym (&tc,ty,FALSE);
  
-  return(cast_to_long(st));
+  return(cast_to_int(st));
   
 }
 
@@ -843,7 +855,7 @@ fei_object(char * name_string,
       }
 
       o = cwh_stab_packet(sl,is_ST);
-      return(cast_to_long(o));
+      return(cast_to_int(o));
     }
   }
 
@@ -905,7 +917,7 @@ fei_object(char * name_string,
 
       if (decl_distribute_pragmas) 
         cwh_stab_distrib_pragmas(st) ;
-      return(cast_to_long(o));
+      return(cast_to_int(o));
     }
   }
 
@@ -986,6 +998,9 @@ fei_object(char * name_string,
   /* are addresses. Struct temp addresses should be values if 16B */
   /* or less and are converted here rather than FE                */
 
+#ifdef KEY /* Bug 11574 */
+  ST *original_st = 0;
+#endif /* KEY Bug 11574 */
   if (ST_sclass(st) == SCLASS_FORMAL) {
     BOOL formal = TRUE;
 
@@ -1027,8 +1042,12 @@ fei_object(char * name_string,
 	/* points so applies only to host (level) procedure result varbls  */  
 
 	if (ST_level(st) == HOST_LEVEL) {
-	  if (Alttemp_ST != NULL) 
+	  if (Alttemp_ST != NULL) {
+#ifdef KEY /* Bug 11574 */
+	    original_st = st;
+#endif /* KEY Bug 11574 */
 	    st = Alttemp_ST ;
+	  }
 
 	  Alttemp_ST = st ;
 	}
@@ -1244,7 +1263,19 @@ fei_object(char * name_string,
      DevAssert((ST_ofst(st) == 0),("Offset?"));
 
   o = cwh_stab_packet(st,is_ST);
-  return(cast_to_long(o));
+#ifdef KEY /* Bug 11574 */
+    /* It isn't clear why the original authors thought it was safe to abandon
+     * the ST for an "entry" and work on the "Alttemp" instead. But for
+     * debugging, we certainly need to correct the "entry" in this case. */
+    if (original_st && ST_sclass(st) == SCLASS_FORMAL_REF) {
+      STR_IDX save_name_idx = original_st->u1.name_idx;
+      ST_IDX save_st_idx = original_st->st_idx;
+      *original_st = *st;
+      original_st->u1.name_idx = save_name_idx;
+      original_st->st_idx = save_st_idx;
+    }
+#endif /* KEY Bug 11574 */
+  return(cast_to_int(o));
 }
 
 
@@ -1377,10 +1408,10 @@ fei_seg (char        * name_string,
   } else {  /* get SCLASS */
 
     rt = cast_to_int(segment_map[seg_type]);
-    p = cwh_stab_packet(cast_to_void((INTPTR)rt),is_SCLASS);
+    p = cwh_stab_packet(cast_to_void(rt),is_SCLASS);
   }
 
-  return (cast_to_long(p));
+  return (cast_to_int(p));
 }
 
 
@@ -1457,7 +1488,7 @@ fei_name (char *name_string,
   default:
     break ;
   }
-  return(cast_to_long(r));
+  return(cast_to_int(r));
 }
 
 
@@ -1499,7 +1530,7 @@ fei_namelist(char  * name_string,
   DevAssert((l->form == is_LIST),("Nm list??"));
   cwh_auxst_add_list(st, (LIST *) l->item, l_NAMELIST);
 
-  return (cast_to_long(p));
+  return (cast_to_int(p));
 }
 
 /*===================================================
@@ -1582,7 +1613,11 @@ extern ST *
 cwh_stab_const_ST(WN *wn)
 {
   TCON    tcon;
+#ifdef KEY /* Bug 10177 */
+  ST     *st = 0 ; 
+#else /* KEY Bug 10177 */
   ST     *st  ; 
+#endif /* KEY Bug 10177 */
 
   if (WNOPR(wn) == OPR_CONST) 
     st = WN_st(wn);
@@ -3128,7 +3163,7 @@ cwh_stab_mk_pu(TY_IDX pty, SYMTAB_IDX level)
 INTPTR
 fei_smt_parameter(char * name_string,
    	   	  TYPE   type,
-               INTPTR	 con_idx,
+                  INT32	 con_idx,
 		  INT32	 Class,
 		  INT32	 lineno)
 
@@ -3137,7 +3172,11 @@ fei_smt_parameter(char * name_string,
    char * name;
    char * name1;
    STB_pkt *p;
+#ifdef KEY /* Bug 10177 */
+   ST *  st = 0;
+#else /* KEY Bug 10177 */
    ST *  st;
+#endif /* KEY Bug 10177 */
    TY_IDX ty;
    WN *  wn;
 
@@ -3190,5 +3229,5 @@ fei_smt_parameter(char * name_string,
    }
    cwh_stab_set_linenum(st,lineno);
 
-   return(cast_to_long(st));
+   return(cast_to_int(st));
 }

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -672,10 +676,18 @@ EXIT:
 
 void data_stmt_semantics(void)
 {
+#ifdef KEY /* Bug 10177 */
+   int			array_ir_idx = 0;
+#else /* KEY Bug 10177 */
    int			array_ir_idx;
+#endif /* KEY Bug 10177 */
    int			attr_idx;
    int			column;
+#ifdef KEY /* Bug 10177 */
+   boolean		compiler_gen_imp_do = FALSE;
+#else /* KEY Bug 10177 */
    boolean		compiler_gen_imp_do;
+#endif /* KEY Bug 10177 */
    int			const_il_idx;
    int			dim_item_idx;
    int    		dup_cnt_il_idx;
@@ -695,16 +707,27 @@ void data_stmt_semantics(void)
    opnd_type		obj_opnd;
    boolean		optimized;
    opnd_type		rep_factor_opnd;
+#ifdef KEY /* Bug 10177 */
+   int			root_ir_idx = 0;
+#else /* KEY Bug 10177 */
    int			root_ir_idx;
+#endif /* KEY Bug 10177 */
    long64		section_inc_value;
    long64		section_start_value	= 0;
    int			stride_il_idx;
    size_offset_type	stride_in_bits;
    opnd_type 		stride_opnd;
+#ifdef KEY /* Bug 10177 */
+   int			struct_ir_idx = 0;
+   /* int		substring_ir_idx; */
+   int 			target_attr_idx = 0;
+   boolean		vv_sub_present = FALSE;
+#else /* KEY Bug 10177 */
    int			struct_ir_idx;
    /* int		substring_ir_idx; */
    int 			target_attr_idx;
    boolean		vv_sub_present;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "data_stmt_semantics", NULL);
@@ -1408,7 +1431,11 @@ static void set_global_value_variables(opnd_type           *rep_factor_opnd,
                                        int                 target_attr_idx)
 {
    expr_arg_type        expr_desc;
+#ifdef KEY /* Bug 10177 */
+   int                  rep_count_ir_idx = 0;
+#else /* KEY Bug 10177 */
    int                  rep_count_ir_idx;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "set_global_value_variables", NULL);
@@ -2068,7 +2095,11 @@ static void	vv_subscript_semantics(int	 	 init_ir_idx,
    int			start_il_idx;
    int			subscript_il_idx;
    int			tmp_idx;
+#ifdef KEY /* Bug 10177 */
+   int			triplet_ir_idx = 0;
+#else /* KEY Bug 10177 */
    int			triplet_ir_idx;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "vv_subscript_semantics", NULL);
@@ -2674,10 +2705,17 @@ static void build_loop_tbl(int 	 	imp_do_idx,
    int			lcv_line;
    int			line;
    opnd_type		opnd;
+#ifdef KEY /* Bug 10177 */
+   boolean		save_in_implied_do = FALSE;
+   boolean		save_imp_do_lcv = FALSE;
+   int			search_idx;
+   boolean		semantics_ok = FALSE;
+#else /* KEY Bug 10177 */
    boolean		save_in_implied_do;
    boolean		save_imp_do_lcv;
    int			search_idx;
    boolean		semantics_ok;
+#endif /* KEY Bug 10177 */
    int			target_idx;
    int			temp_ir_idx;
 
@@ -3900,7 +3938,11 @@ static void interpret_data_imp_do(int	 init_ir_idx)
    int			i;
    long_type            loc_value[MAX_WORDS_FOR_NUMERIC];
    long64          	num_iterations;
+#ifdef KEY /* Bug 10177 */
+   int			sister_idx = 0;
+#else /* KEY Bug 10177 */
    int			sister_idx;
+#endif /* KEY Bug 10177 */
    int			target_il_idx;
 
 
@@ -4733,7 +4775,11 @@ static void adjust_char_value_len(int	 	init_ir_idx,
    int		start_il_idx;
    int		substring_ir_idx;
    long64	target_length;
+#ifdef KEY /* Bug 10177 */
+   int		temp_idx = 0;
+#else /* KEY Bug 10177 */
    int		temp_idx;
+#endif /* KEY Bug 10177 */
    int		type_idx;
    int		value_idx;
    long64	value_length;
@@ -5507,7 +5553,11 @@ void	constant_value_semantics(opnd_type	*opnd,
 				 int		 uopr_ir_idx)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int                  boz_const_col_num = 0;
+#else /* KEY Bug 10177 */
    int                  boz_const_col_num;
+#endif /* KEY Bug 10177 */
    int                  boz_const_line_num      = 0;
    int			column;
    expr_arg_type	expr_desc;

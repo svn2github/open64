@@ -42,6 +42,9 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
    We use the GCC defaults instead.  */
 #undef WCHAR_TYPE
 
+#undef  WCHAR_UNSIGNED
+#define WCHAR_UNSIGNED 0
+
 #undef  WCHAR_TYPE_SIZE
 #define WCHAR_TYPE_SIZE 32
 

@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -50,6 +50,7 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "timevar.h"
 #include "predict.h"
 #ifdef KEY
+#include "wfe_dst.h"
 #include "omp_types.h"
 #include "omp_directive.h"
 #endif // KEY
@@ -935,6 +936,9 @@ expand_stmt (t)
 	{
 	case FILE_STMT:
 	  input_filename = FILE_STMT_FILENAME (t);
+#ifdef KEY // Bug 10632, 8895: File changed. Don't worry linenum --not used !! 
+          WFE_Set_Line_And_File (lineno, input_filename);
+#endif
 	  break;
 
 	case RETURN_STMT:

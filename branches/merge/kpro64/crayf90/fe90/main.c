@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 
@@ -626,10 +630,14 @@ static void init_compiler (int	 argc,
 			   char *argv[])
 {
    extern void	init_lex (void);
+#ifndef KEY /* Bug 5089 */
    extern void	init_msg_processing (char *[]);
+#endif /* KEY Bug 5089 */
    extern void	init_src_input (void);
    extern void	init_type (void);
+#ifndef KEY /* Bug 5089 */
    extern void	process_cmd_line (int, char *[]);
+#endif /* KEY Bug 5089 */
    extern void	init_cond_comp(void);
    extern void	enter_predefined_macros(void);
    extern void	init_parse_prog_unit(void);
@@ -645,8 +653,13 @@ static void init_compiler (int	 argc,
    TRACE (Func_Entry, "init_compiler", NULL);
 
    init_date_time_info ();		/* set compilation data and time      */
+#ifdef KEY /* Bug 5089 */
+   /* Initialize for message-printing; must precede process_cmd_line */
+   char *nlspath = init_msg_processing (argv);
+#else /* KEY Bug 5089 */
    init_msg_processing (argv);		/* initialize for messages.  Must     */
 					/* preceed process_cmd_line.	      */
+#endif /* KEY Bug 5089 */
 
 # ifdef _DEBUG
    check_defines_compatibility();	/* Is the compiler built correctly?   */
@@ -664,6 +677,9 @@ static void init_compiler (int	 argc,
    TBL_ALLOC (global_name_tbl);
    TBL_ALLOC (global_attr_tbl);
    TBL_ALLOC (global_type_tbl);
+#ifdef KEY /* Bug 10177 */
+   CLEAR_TBL_NTRY(global_type_tbl, 0);
+#endif /* KEY Bug 10177 */
    TBL_ALLOC (global_bounds_tbl);
    TBL_ALLOC (global_ir_tbl);
    TBL_ALLOC (global_ir_list_tbl);
@@ -728,7 +744,11 @@ static void init_compiler (int	 argc,
 # endif
 
 
+#ifdef KEY /* Bug 5089 */
+   process_cmd_line (argc, argv, nlspath);
+#else /* KEY Bug 5089 */
    process_cmd_line (argc, argv);	/* pass input args		      */
+#endif /* KEY Bug 5089 */
 
 
 # if defined(_INTEGER_1_AND_2)

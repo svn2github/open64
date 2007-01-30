@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -88,7 +92,6 @@ typedef struct {
   int idx;	/* Index into intrin_tbl */
   } intrin_root_t;
 #endif /* KEY Bug 4656 */
-
 
 
 /******************************************************************************\
@@ -492,6 +495,387 @@ void complete_intrinsic_definition(int		generic_attr)
 
 }  /* complete_intrinsic_definition */
 
+#ifdef KEY /* Bug 5089 */
+/*
+ * Machinery for implementing intrinsic modules (such as TR15580, IEEE floating
+ * point support.) When a module has the "intrinsic" attribute and we find it
+ * in the compiler-provided intrinsic module directory, then we set
+ * AT_IS_INTRIN on the module. For each generic interface and specific
+ * procedure we read from the module that is not excluded due to the "only"
+ * clause, we look up the original name (not the "rename" name, if any) in the
+ * intrin_module_table and, if we find it, we tweak various members of the
+ * attr_table_entry for that interface or procedure to achieve the desired
+ * behavior.
+ *
+ * The two kinds of entries within the table are:
+ *
+ *  imt_inline		Call a procedure in s_intrin.c to generate IR to
+ *			implement this procedure
+ *  imt_external	Generate a call to an external procedure rather than
+ *			the one provided by the module (if any.)
+ *
+ * If the procedure is not found in imt_entry_intrinsic_module_table, we
+ * leave the attr_table_entry alone so that it will be treated as a normal
+ * import from the module. When writing the module itself, note that the
+ * front end requires procedures that are intrinsic to precede procedures
+ * that are nonintrinsic within the list of specific procedures for a
+ * particular generic interface.
+ * 
+ * The name of each procedure in the intrinsic modules of TR15580 is unique
+ * across all of its modules. If we someday add an intrinsic module containing
+ * a procedure whose name duplicates that of a procedure in another intrinsic
+ * module, then intrinsic_module_lookup and intrinsic_module_table will need
+ * to change to use AT_MODULE_IDX or AT_ORIG_MODULE_IDX (not sure which) to
+ * distinguish them.
+ *
+ * When constructing the intrinsic module itself, one should, where possible,
+ * use an interface to an external procedure when one doesn't want to implement
+ * the procedure in Fortran within the module itself: the external name will
+ * be changed from "function_" to "_Function" to keep it out of the usual
+ * Fortran name space and the non-library portion of the C namespace.
+ *
+ * If that isn't possible (e.g. an argument to the procedure needs to be
+ * declared with a non-sequence derived type) the name will be changed from
+ * "FUNCTION.in.MODULE" to "_Function".
+ *
+ * This naming scheme for external procedures assumes that you compile the
+ * module with -fsecond-underscore (the default) or -funderscore because it
+ * sometimes consumes the trailing underscore.
+ */
+
+typedef enum {
+  imt_inline,	/* Call xxx_intrinsic procedure to emit code inline */
+  imt_extern	/* Generate call to external procedure */
+  } imt_kind;
+
+typedef struct {
+  char *name;
+  imt_kind kind;
+  intrinsic_type index; /* Ignored unless kind == imt_inline */
+  } imt_entry;
+
+/* Must be alphabetical by "name" member */
+static imt_entry intrinsic_module_table[] = {
+  { "IEEE_CLASS_4",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_CLASS_8",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_COPY_SIGN_4",			imt_inline, Ieee_Copy_Sign_Intrinsic},
+  { "IEEE_COPY_SIGN_4_8",		imt_inline, Ieee_Copy_Sign_Intrinsic},
+  { "IEEE_COPY_SIGN_8",			imt_inline, Ieee_Copy_Sign_Intrinsic},
+  { "IEEE_COPY_SIGN_8_4",		imt_inline, Ieee_Copy_Sign_Intrinsic},
+  { "IEEE_GET_FLAG",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_GET_HALTING_MODE",		imt_extern, Unknown_Intrinsic},
+  { "IEEE_GET_ROUNDING_MODE",		imt_extern, Unknown_Intrinsic},
+  { "IEEE_GET_STATUS",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_GET_UNDERFLOW_MODE",		imt_extern, Unknown_Intrinsic},
+  { "IEEE_IS_FINITE_4",			imt_inline, Ieee_Finite_Intrinsic},
+  { "IEEE_IS_FINITE_8",			imt_inline, Ieee_Finite_Intrinsic},
+  { "IEEE_IS_NAN_4",			imt_inline, Ieee_Is_Nan_Intrinsic},
+  { "IEEE_IS_NAN_8",			imt_inline, Ieee_Is_Nan_Intrinsic},
+  { "IEEE_IS_NEGATIVE_4",		imt_extern, Unknown_Intrinsic},
+  { "IEEE_IS_NEGATIVE_8",		imt_extern, Unknown_Intrinsic},
+  { "IEEE_IS_NORMAL_4",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_IS_NORMAL_8",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_LOGB_4",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_LOGB_8",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_NEXT_AFTER_4",		imt_inline, Ieee_Next_After_Intrinsic},
+  { "IEEE_NEXT_AFTER_4_8",		imt_inline, Ieee_Next_After_Intrinsic},
+  { "IEEE_NEXT_AFTER_8",		imt_inline, Ieee_Next_After_Intrinsic},
+  { "IEEE_NEXT_AFTER_8_4",		imt_inline, Ieee_Next_After_Intrinsic},
+  { "IEEE_REM_4",			imt_inline, Ieee_Remainder_Intrinsic},
+  { "IEEE_REM_4_8",			imt_inline, Ieee_Remainder_Intrinsic},
+  { "IEEE_REM_8",			imt_inline, Ieee_Remainder_Intrinsic},
+  { "IEEE_REM_8_4",			imt_inline, Ieee_Remainder_Intrinsic},
+  { "IEEE_RINT_4",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_RINT_8",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_SCALB_4",			imt_inline, Ieee_Binary_Scale_Intrinsic},
+  { "IEEE_SCALB_4_8",			imt_inline, Ieee_Binary_Scale_Intrinsic},
+  { "IEEE_SCALB_8",			imt_inline, Ieee_Binary_Scale_Intrinsic},
+  { "IEEE_SCALB_8_4",			imt_inline, Ieee_Binary_Scale_Intrinsic},
+  { "IEEE_SELECTED_REAL_KIND",		imt_inline, SRK_Intrinsic},
+  { "IEEE_SET_FLAG",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_SET_HALTING_MODE",		imt_extern, Unknown_Intrinsic},
+  { "IEEE_SET_ROUNDING_MODE",		imt_extern, Unknown_Intrinsic},
+  { "IEEE_SET_STATUS",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_SET_UNDERFLOW_MODE",		imt_extern, Unknown_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DATATYPE_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DENORMAL_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_DIVIDE_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_FLAG_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_HALTING",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF",			imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_INF_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO",			imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_IO_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN",			imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_NAN_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_ROUNDING_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_SQRT_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_4",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_4A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_4B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_4C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_4D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_4E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_4F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_4G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_8",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_8A",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_8B",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_8C",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_8D",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_8E",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_8F",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_STANDARD_8G",		imt_inline, True_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL",	imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_4",	imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_4A",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_4B",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_4C",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_4D",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_4E",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_4F",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_4G",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_8",	imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_8A",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_8B",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_8C",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_8D",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_8E",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_8F",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_SUPPORT_UNDERFLOW_CONTROL_8G",imt_inline, Support_Uflow_Intrinsic},
+  { "IEEE_UNORDERED_4",			imt_inline, Ieee_Unordered_Intrinsic},
+  { "IEEE_UNORDERED_4_8",		imt_inline, Ieee_Unordered_Intrinsic},
+  { "IEEE_UNORDERED_8",			imt_inline, Ieee_Unordered_Intrinsic},
+  { "IEEE_UNORDERED_8_4",		imt_inline, Ieee_Unordered_Intrinsic},
+  { "IEEE_VALUE_4",			imt_extern, Unknown_Intrinsic},
+  { "IEEE_VALUE_8",			imt_extern, Unknown_Intrinsic}
+};
+
+static int intrinsic_module_cmp(const void *va, const void *vb)
+{
+  imt_entry *a = (imt_entry *) va;
+  imt_entry *b = (imt_entry *) vb;
+  return strcmp(a->name, b->name);
+}
+
+/*
+ * Given a symbol from an intrinsic module, if it is a generic interface,
+ * mark it as "intrinsic" and also mark its specific procedures as "intrinsic".
+ *
+ * attr_idx	Attribute of the interface
+ * returns	true if its procedures are intrinsic
+ */
+int intrinsic_module_lookup(int attr_idx)
+{
+  /* Only interface or program unit can be intrinsic */
+  obj_class_type obj_class = AT_OBJ_CLASS(attr_idx);
+  if (Interface != obj_class) {
+    return 0;
+  }
+
+  /* Iterate through specific procedures, marking them intrinsic if
+   * they appear in the intrinsic_module_table */
+  int spec_sn_idx = ATI_FIRST_SPECIFIC_IDX(attr_idx);
+  int found = 0;
+  int elemental = 0;
+  for (int s = ATI_NUM_SPECIFICS(attr_idx); s > 0; s -= 1) {
+    int spec_idx = SN_ATTR_IDX(spec_sn_idx);
+    imt_entry key;
+    key.name = AT_ORIG_NAME_PTR(spec_idx);
+    imt_entry *keyp = bsearch(&key,
+      intrinsic_module_table,
+      ((sizeof intrinsic_module_table) / (sizeof *intrinsic_module_table)),
+      sizeof *intrinsic_module_table,
+      intrinsic_module_cmp);
+    if (keyp) {
+      found = keyp->index;
+      if (imt_inline == keyp->kind) {
+	elemental = AT_ELEMENTAL_INTRIN(spec_idx) = ATP_ELEMENTAL(spec_idx);
+	ATP_PROC(spec_idx) = Intrin_Proc;
+	AT_IS_INTRIN(spec_idx) = TRUE;
+	ATP_EXTERNAL_INTRIN(spec_idx) = FALSE;
+	ATP_NON_ANSI_INTRIN(spec_idx) = FALSE;
+	ATP_INTRIN_ENUM(spec_idx) = keyp->index;
+      }
+      else if (imt_extern == keyp->kind) {
+        /* Change name from FUNCTION.in.MODULE to _Function or from
+	 * function_ to _Function. We're doing this in place because if
+	 * we use NTR_NAME_POOL to allocate space for a new name, the
+	 * heap gets corrupted (probably there's funny-business going on
+	 * in the code that reads module info from a file.) */
+	char *user_name = ATP_EXT_NAME_PTR(spec_idx);
+	char *dot = strchr(user_name, '.');
+	if (0 == dot) {
+	  dot = user_name + strlen(user_name) - 1;
+	}
+	else {
+	  *(dot + 1) = '\0';
+	}
+	for (dot -= 1; dot > user_name; dot -= 1) {
+	  *(dot + 1) = tolower(*dot);
+	}
+	*(dot + 1) = toupper(*dot);
+	*user_name = '_';
+      }
+    }
+    spec_sn_idx = SN_SIBLING_LINK(spec_sn_idx);
+  }
+
+  /* If any specific procedure was intrinsic, interface is intrinsic */
+  if (found) {
+    AT_IS_INTRIN(attr_idx) = TRUE;
+    ATI_INTRIN_TBL_IDX(attr_idx) = found;
+    ATI_INTRIN_PASSABLE(attr_idx) = FALSE;
+    ATI_GENERIC_INTRINSIC(attr_idx) = FALSE; /* Dope? */
+    AT_ELEMENTAL_INTRIN(attr_idx) = elemental;
+  }
+
+  return found;
+}
+
+#endif /* KEY Bug 5089 */
 #ifdef KEY /* Bug 4656 */
 /* Compare two args of type intrin_root_t **, for use in qsort or bsearch */
 static int root_cmp(const void *o1, const void *o2) {
@@ -575,6 +959,7 @@ static void enter_intrinsic_info (void)
    int olen = path_intrinsic_list_length();
    intrin_option_t **options = path_intrinsic_list_list();
    for (int o = 0; o < olen; o += 1) {
+     boolean found = FALSE;
      intrin_option_t *option = options[o];
 
      /* Enable or disable family of intrinsics */
@@ -591,14 +976,13 @@ static void enter_intrinsic_info (void)
 	     entry->enabled = option->added_;
 	   }
 	 }
-	 continue;	/* Skip the error message at bottom of loop */
+	 found = TRUE;
        }
      }
 
      /* Enable or disable individual intrinsic */
-     else {
+     if (!found) {
        char subr_name[sizeof intrin_tbl[0].id_str.string];
-       int found = 0;
        intrin_root_t key;
        intrin_root_t *keyp = &key;
        key.name = option->name_;
@@ -607,20 +991,23 @@ static void enter_intrinsic_info (void)
 	   intrin_roots_len, sizeof *intrin_roots, root_cmp);
 	 if (keypp) {
 	   intrin_tbl[(*keypp)->idx].enabled = option->added_;
-	   found = 1;
+	   /* Issue warning only once if there's an extra subroutine version */
+	   if (option->isfamily_ && !found) {
+	     PRINTMSG(0, 1681, Log_Warning, 0, option->name_);
+	   }
+	   found = TRUE;
 	 }
 	 /* Now see if there's an extra G77 subroutine version of the
 	  * name provided by the user; must enable or disable it as well */
 	 key.name = strcat(strcpy(subr_name, option->name_),
 	   INTRIN_SUBR_SUFFIX);
        }
-       if (found) {
-         continue;	/* Skip the error message at bottom of loop */
-       }
      }
 
      /* Didn't find the name provided by the user */
-     PRINTMSG(0, 701, Log_Error, 0, option->name_);
+     if (!found) {
+       PRINTMSG(0, 701, Log_Error, 0, option->name_);
+     }
    }
 #endif /* KEY Bug 4656 */
 

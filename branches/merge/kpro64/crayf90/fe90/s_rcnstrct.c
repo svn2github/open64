@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -3060,7 +3064,12 @@ static void create_struct_constructor_asg(opnd_type	*top_opnd,
       OPND_FLD(l_opnd) = IR_Tbl_Idx;
       OPND_IDX(l_opnd) = struct_idx;
 
-      if (! ATD_POINTER(attr_idx)) {
+#ifdef KEY /* Bug 6845 */
+      if (! (ATD_POINTER(attr_idx) || ATD_ALLOCATABLE(attr_idx)))
+#else /* KEY Bug 6845 */
+      if (! ATD_POINTER(attr_idx))
+#endif /* KEY Bug 6845 */
+      {
 
          if (ATD_ARRAY_IDX(attr_idx)) {
             gen_whole_subscript(&l_opnd, &l_exp_desc);
@@ -3109,9 +3118,25 @@ static void create_struct_constructor_asg(opnd_type	*top_opnd,
                                    TRUE);
          }
       }
+#ifdef KEY /* Bug 6845 */
+      else if (ATD_ALLOCATABLE(attr_idx)) {
+	/* LHS and RHS both are dope vectors: just copy dope, since temp on
+	 * LHS will never be deallocated */
+	asg_idx = gen_ir(OPND_FLD(l_opnd), OPND_IDX(l_opnd),
+	  Dv_Whole_Copy_Opr, TYPELESS_DEFAULT_TYPE, line, col,
+	  OPND_FLD(opnd), OPND_IDX(opnd));
+      }
+
+      gen_sh(Before,
+        (ATD_ALLOCATABLE(attr_idx) && ! l_exp_desc.allocatable) ?
+	  Call_Stmt :
+	  Assignment_Stmt,
+	line, col, FALSE, FALSE, TRUE);
+#else /* KEY Bug 6845 */
 
       gen_sh(Before, Assignment_Stmt, line, col,
              FALSE, FALSE, TRUE);
+#endif /* KEY Bug 6845 */
 
       SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx)) = asg_idx;
       SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;

@@ -653,7 +653,8 @@ public:
                                            // indicates GNU inlining decision.
 #define PU_IS_OPERATOR        0x0000010000000000LL // PU is overload of operator
 #endif
-#define PU_IS_MALLOC          0x0000020000000000LL // PU is malloc/calloc/... or their wrapper
+#define PU_HAS_ATTR_MALLOC  0x0000020000000000LL // __attribute__((malloc)) semantic 
+#define PU_HAS_ATTR_PURE    0x0000040000000000LL // __attribute__((pure)) semantic 
 
 enum PU_SRC_LANG_FLAGS
 {

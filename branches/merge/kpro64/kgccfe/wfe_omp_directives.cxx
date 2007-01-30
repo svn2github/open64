@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -1051,8 +1051,8 @@ void WFE_check_single ()
     if( WFE_bind_to_same(wfe_omp_single,wfe_omp_for,wfe_omp_parallel) ||
         WFE_bind_to_same(wfe_omp_single,wfe_omp_sections,wfe_omp_parallel) )
     {
-    	msg = "for, sections, and single directives that bind to the same parallel  \
-    	   are not  allowed to be nested inside each other."; 
+    	msg="for, sections, and single directives that bind to the same\n"
+            "\tparallel are not allowed to be nested inside each other."; 
     	chkflag=true;
     }
     //solve directive nesting problem:for, sections, and single directives are not 
@@ -1063,17 +1063,19 @@ void WFE_check_single ()
         WFE_bind_to_same(wfe_omp_single,wfe_omp_master,wfe_omp_parallel))
         
     {
-    	msg = "for, sections, and single directives are not permitted in  \
-    	the dynamic extent of critical, ordered, and master regions if the directives \
-    	bind to the same parallel as the regions.";  
+    	msg="for, sections, and single directives are not permitted in\n"
+    	    "\tthe dynamic extent of critical, ordered, and master regions\n"
+            "\tif the directives bind to the same parallel as the regions.";  
     	chkflag=true;
     }    
     //deal with copyprivate 
     fg1=fg2=fg3=fg4=false;
+
     cs1=WFE_CS_top();
     fg1=WFE_Check_Cflag(cs1, clause_copyprivate);
-    if(fg1&&(WFE_CS_Find(wfe_omp_parallel)>=0))
-	{
+
+    if(fg1 && (WFE_CS_Find(wfe_omp_parallel) >= 0))
+    {
       cs2=WFE_CS_enclose();
       cs3=WFE_CS_Find_Rtn(wfe_omp_parallel);
       wn1=cs1->wn_prag;
@@ -1085,73 +1087,77 @@ void WFE_check_single ()
 
       if((cs2!=NULL)&&(cs2->kind>=wfe_omp_parallel&&cs2->kind<=wfe_omp_parallel_for))
       {
-          while(wn3!=NULL)
-           {
-           
-             if(WN_pragma(wn3)!=WN_PRAGMA_COPYPRIVATE)
-             	{ 
-             	  wn3=WN_next(wn3);
-             	  continue;
-             	}
-             while(wn4!=NULL)
-             {  
-                if(WN_pragma(wn4)==WN_PRAGMA_LOCAL&&WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                  fg2=true;
-                  break;
-                } 
-                wn4=WN_next(wn4);
-             }
-            
-             if(fg2==false)
-             {
-               msg = "A single directive with copyprivate clause encountered in the \
-               	dynamic extent of parrellel region, but the variables speicified copyprivate are not \
-               	private in the enclosing context.";
-               chkflag=true;
-             }  
+        while(wn3!=NULL)
+        {
+          // Shouldn't wn4 be initialized in each iteration of this loop? 
+          if(WN_pragma(wn3)!=WN_PRAGMA_COPYPRIVATE)
+          { 
+            wn3=WN_next(wn3);
+            continue;
+          }
+          if (ST_is_thread_private (WN_st (wn3)))
+            fg2 = true;
+          if (!fg2)
+            while(wn4!=NULL)
+            {
+              if(WN_pragma(wn4) == WN_PRAGMA_LOCAL &&
+                 WN_st_idx(wn3) == WN_st_idx(wn4))
+              {
+                fg2=true;
+                break;
+              }
+              wn4=WN_next(wn4);
+            }
 
-             wn3=WN_next(wn3);    
-          	}
+          if(fg2==false)
+          {
+            msg="A single directive with copyprivate clause encountered in\n"
+               	"\tthe dynamic extent of parallel region, but the variables\n"
+                "\tspecified copyprivate are not threadprivate, or private\n"
+                "\tin the enclosing context.";
+            chkflag=true;
+          }  
+
+          wn3=WN_next(wn3);    
+        }
       }
-	}
+    }
 	
     fg1=WFE_Check_Cflag(cs1, clause_copyprivate);
     fg2=WFE_Check_Cflag(cs1, clause_private);
     fg3=WFE_Check_Cflag(cs1, clause_firstprivate);
-    if(fg1&&(fg2||fg3))
+
+    if(fg1 && (fg2 || fg3))
     {
        wn1=cs1->wn_prag;
        wn2=wn3=WN_first(wn1);
        while(wn2)
        {
-		 if(WN_pragma(wn2)==WN_PRAGMA_COPYPRIVATE)
-		 	break;
+         if(WN_pragma(wn2)==WN_PRAGMA_COPYPRIVATE)
+           break;
          wn2=WN_next(wn2);
        }
        if(wn2!=NULL)
        {
          while(wn3)
          {
-       	    if((WN_pragma(wn3)==WN_PRAGMA_LOCAL||WN_pragma(wn3)==WN_PRAGMA_FIRSTPRIVATE)
+       	   if((WN_pragma(wn3)==WN_PRAGMA_LOCAL||WN_pragma(wn3)==WN_PRAGMA_FIRSTPRIVATE)
        	 	&&WN_st(wn2)==WN_st(wn3))
-       	    {
-       	      msg = "A variable that is specified copyprivate cannot appear in  \
-       	      	private or firstprivate clause in the same single directive.";
-       	      	chkflag=true;
-       	    }	
-       	    wn3=WN_next(wn3);
+       	   {
+       	      msg="A variable that is specified copyprivate cannot appear in\n"
+       	      	  "\tprivate or firstprivate clause in the same single directive.";
+       	      chkflag=true;
+       	   }	
+       	   wn3=WN_next(wn3);
          }
-
-       }     
-    	
+       }
     }
 
     //deal with parallel reduction and private clause:
     cs1=WFE_CS_Find_Rtn(wfe_omp_parallel);
     cs2=WFE_CS_top();
     
-    fg1=fg2=fg3=fg4=false;
+    fg1 = fg2 = fg3 = fg4 = false;
     if(cs1)
     {
        fg1=WFE_Check_Cflag(cs1, clause_reduction);
@@ -1159,46 +1165,46 @@ void WFE_check_single ()
        fg3=WFE_Check_Cflag(cs2, clause_private);
        fg4=WFE_Check_Cflag(cs2,clause_firstprivate);
  
-       //printf("a=%d,b=%d\n",a,b );
-       if(fg1&&(fg3||fg4)||fg2&&fg4)
+       if(fg1 && (fg3 || fg4) || fg2 && fg4)
        {
-           wn1=cs1->wn_prag;
-           wn2=cs2->wn_prag;
-           wn3=WN_first(wn1);
-           wn4=WN_first(wn2);
-           while(wn3!=NULL)
+         wn1=cs1->wn_prag;
+         wn2=cs2->wn_prag;
+         wn3=WN_first(wn1);
+         wn4=WN_first(wn2);
+         while(wn3!=NULL)
+         {
+           if(WN_pragma(wn3) != WN_PRAGMA_REDUCTION &&
+              WN_pragma(wn3) != WN_PRAGMA_LOCAL)
            {
-             if(WN_pragma(wn3)!=WN_PRAGMA_REDUCTION&&
-             	WN_pragma(wn3)!=WN_PRAGMA_LOCAL)
-             	{ 
-             	  wn3=WN_next(wn3);
-             	  continue;
-             	}
-             while(wn4!=NULL)
-             {
-                
-                if(  WN_pragma(wn4)==WN_PRAGMA_LOCAL&&WN_pragma(wn3)==WN_PRAGMA_REDUCTION
-                	&&WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                  msg = "Variables that appear in the reduction clause of a parallel  \
-                  	    directive cannot  be specified in a private clause on a work-sharing  \
-                  	    directive that binds to the  parallel construct.";
-                 chkflag=true;
-                }
-                if(  WN_pragma(wn4)==WN_PRAGMA_FIRSTPRIVATE&&
-                	WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                  msg = "Variables that are private within a parallel region or that appear  \
-                  	   in the  reduction clause of a parallel directive cannot be specified in a  \
-                  	   firstprivateclause on for directive that binds to the parallel  construct.";
-                  chkflag=true;
-                }
-            
-                wn4=WN_next(wn4);
-             }
              wn3=WN_next(wn3);
-           } 
-           
+             continue;
+           }
+           while(wn4!=NULL)
+           {
+             if(WN_pragma(wn4) == WN_PRAGMA_LOCAL &&
+                WN_pragma(wn3) == WN_PRAGMA_REDUCTION &&
+                WN_st_idx(wn3) == WN_st_idx(wn4))
+             {
+               msg="Variables that appear in the reduction clause of a\n"
+                   "\tparallel directive cannot be specified in a private\n"
+                   "\tclause on a work-sharing directive that binds to\n"
+                   "\tthe parallel construct.";
+               chkflag=true;
+             }
+             if(WN_pragma(wn4) == WN_PRAGMA_FIRSTPRIVATE &&
+                WN_st_idx(wn3) == WN_st_idx(wn4))
+             {
+               msg="Variables that are private within a parallel region or\n"
+                   "\tthat appear in the reduction clause of a parallel\n"
+                   "\tdirective cannot be specified in a firstprivate\n"
+                   "\tclause on for directive that binds to the parallel\n"
+                   "\t construct.";
+               chkflag=true;
+             }
+             wn4=WN_next(wn4);
+           }
+           wn3=WN_next(wn3);
+         } 
        }
     }
     //check for thread private variables:
@@ -1215,32 +1221,35 @@ void WFE_check_single ()
       }
       if(ST_is_thread_private(* WN_st(wn2)) )
       {
-      	if(WN_pragma(wn2)!=WN_PRAGMA_COPYIN&&WN_pragma(wn2)!=WN_PRAGMA_COPYPRIVATE
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_MPSCHEDTYPE&&WN_pragma(wn2)!=WN_PRAGMA_IF
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_NUMTHREADS)
+      	if(WN_pragma(wn2) != WN_PRAGMA_COPYIN &&
+           WN_pragma(wn2) != WN_PRAGMA_COPYPRIVATE &&
+           WN_pragma(wn2) != WN_PRAGMA_MPSCHEDTYPE &&
+           WN_pragma(wn2) != WN_PRAGMA_IF &&
+           WN_pragma(wn2) != WN_PRAGMA_NUMTHREADS)
       	{
-          msg = "A threadprivate variable must not appear in any clause except the copyin, \
-				copyprivate, schedule, num_threads,or the if clause.";
-	      chkflag=true;
+          msg="A threadprivate variable must not appear in any clause\n"
+              "\texcept the copyin, copyprivate, schedule, num_threads,\n"
+              "\tor the if clause.";
+	  chkflag=true;
       	}
       }
-       //for private clause
       //for private clause
       if(WN_pragma(wn2)==WN_PRAGMA_LOCAL)
-      WFE_check_private(wn2,chkflag);
+        WFE_check_private(wn2,chkflag);
+
       //for firstprivate clause
       if(WN_pragma(wn2)==WN_PRAGMA_FIRSTPRIVATE)
-      WFE_check_firstprivate(wn2,chkflag);
+        WFE_check_firstprivate(wn2,chkflag);
+
       //for reduction clause
       if(WN_pragma(wn2)==WN_PRAGMA_REDUCTION)
-      	WFE_check_reduction(wn2,chkflag);
+        WFE_check_reduction(wn2,chkflag);
+
       //for default clause
       if(WN_pragma(wn2)==WN_PRAGMA_DEFAULT)
-      	WFE_check_default(wn2,chkflag);
-      
+        WFE_check_default(wn2,chkflag);
       
       wn2=WN_next(wn2);
-  
     }
     
     WFE_omp_error(WFE_CS_top(), chkflag, msg);

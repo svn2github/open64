@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -215,6 +219,16 @@ void type_init_semantics (void)
              IR_OPR(OPND_IDX(init_opnd)) == Null_Intrinsic_Opr) {
              goto EXIT;
          }
+#ifdef KEY /* Bug 6845 */
+	else if ((AT_OBJ_CLASS(TYP_IDX(ATD_TYPE_IDX(attr_idx)))
+	     == Derived_Type) &&
+	     ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx)))) {
+	     find_opnd_line_and_column(&init_opnd, &opnd_line, &opnd_column);
+	     PRINTMSG(opnd_line, 1680, Error, opnd_column,
+	       AT_OBJ_NAME_PTR(attr_idx));
+	     goto EXIT;
+	}
+#endif /* KEY Bug 6845 */
          else {
             find_opnd_line_and_column(&init_opnd, &opnd_line, &opnd_column);
             PRINTMSG(opnd_line, 842, Error, opnd_column);
@@ -404,6 +418,16 @@ void default_init_semantics(int	attr_idx)
             null_init	= TRUE;
             goto EXIT;
          }
+#ifdef KEY /* Bug 6845 */
+	 else if (AT_OBJ_CLASS(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ==
+	    Derived_Type &&
+	    ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx)))) {
+	    find_opnd_line_and_column(&init_opnd, &line, &column);
+	    PRINTMSG(line, 1680, Error, column, AT_OBJ_NAME_PTR(attr_idx));
+	    AT_DCL_ERR(attr_idx)	= TRUE;
+	    goto EXIT;
+	 }
+#endif /* KEY Bug 6845 */
 
          find_opnd_line_and_column(&init_opnd, &line, &column);
          PRINTMSG(line, 842, Error, column);

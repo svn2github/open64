@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,10 +45,10 @@
  * ====================================================================
  *
  * Module: cwh_types.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_types.cxx,v $
+ * $Revision: 1.7 $
+ * $Date: 05/04/18 13:43:18-07:00 $
+ * $Author: scorrell@limestone.keyresearch $
+ * $Source: crayf90/sgi/SCCS/s.cwh_types.cxx $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -71,7 +75,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_types.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_types.cxx $ $Revision: 1.7 $";
 #endif /* _KEEP_RCS_ID */
 
 /* sgi includes */
@@ -137,7 +141,11 @@ fei_descriptor (INT32        flag_matrix,
   TYPE t     ;
   mUINT16 al ;
   BOOL  hosted ;
+#ifdef KEY /* Bug 10177 */
+  TY_IDX ty_idx = 0;
+#else /* KEY Bug 10177 */
   TY_IDX ty_idx;
+#endif /* KEY Bug 10177 */
 
   hosted = test_flag(flag_matrix,FEI_DESCRIPTOR_HOSTED_TYPE) || in_hosted_dtype ;
 
@@ -469,12 +477,15 @@ fei_user_type(char         *name_string,
 	      INT32         first_idx,
 	      INT64         size,
 	      INT32         sequence_arg,
-	      INTPTR         cr_ty_idx,
+	      INT32         cr_ty_idx,
 	      INT32         align)
     
 {
   TY_IDX ty_idx    ;
   dtype_t  d ;
+#ifdef KEY /* Bug 10177 */
+  memset(&d, 0, sizeof d);
+#endif /* KEY Bug 10177 */
   FORT_SEQUENCE sequence;
   INT32 i;
 
@@ -591,7 +602,11 @@ fei_member(char          *name_string,
  ====================================================
  */
 extern TYPE 
-fei_dope_vector(INT32  num_dims,TYPE base_type, INT32 flag)
+fei_dope_vector(INT32  num_dims,TYPE base_type, INT32 flag,
+#ifdef KEY /* Bug 6845 */
+  INT32 n_allocatable_cpnt
+#endif /* KEY Bug 6845 */
+)
 {                                     
   TY_IDX ty_idx   ;
   TY_IDX ts_idx   ;
@@ -600,7 +615,11 @@ fei_dope_vector(INT32  num_dims,TYPE base_type, INT32 flag)
   
   ts_idx = cast_to_TY(t_TY(base_type));
   b  = test_flag(flag,FEI_DOPE_VECTOR_HOSTED_TYPE) || in_hosted_dtype;
-  ty_idx = cwh_types_dope_TY(num_dims,ts_idx,b,test_flag(flag,FEI_DOPE_VECTOR_POINTER)) ;
+  ty_idx = cwh_types_dope_TY(num_dims,ts_idx,b,test_flag(flag,FEI_DOPE_VECTOR_POINTER),
+#ifdef KEY /* Bug 6845 */
+    n_allocatable_cpnt
+#endif /* KEY Bug 6845 */
+  ) ;
 
   t.table_type = Basic ;
   t.basic_type = S_tructure ;
@@ -1144,7 +1163,11 @@ cwh_types_mk_character_TY(WN *sz_wn, ST *sz_st, BOOL sz_is_wn)
 extern TY_IDX
 cwh_types_scalar_TY(TY_IDX ty_idx)
 {
+#ifdef KEY /* Bug 10177 */
+  TY_IDX rty_idx = 0;
+#else /* KEY Bug 10177 */
   TY_IDX rty_idx ;
+#endif /* KEY Bug 10177 */
  
   TY& ty = Ty_Table[ty_idx];
 
@@ -1184,7 +1207,11 @@ cwh_types_scalar_TY(TY_IDX ty_idx)
 extern TY_IDX
 cwh_types_array_TY(TY_IDX ty_idx)
 {
+#ifdef KEY /* Bug 10177 */
+  TY_IDX rty_idx = 0;
+#else /* KEY Bug 10177 */
   TY_IDX rty_idx ;
+#endif /* KEY Bug 10177 */
 
   TY& ty = Ty_Table[ty_idx];
 
@@ -1641,7 +1668,11 @@ cwh_types_dim_TY(INT32 num_dims)
  ====================================================
 */
 extern TY_IDX
-cwh_types_dope_TY(INT32 num_dims,TY_IDX base_idx, BOOL host, BOOL ptr)
+cwh_types_dope_TY(INT32 num_dims,TY_IDX base_idx, BOOL host, BOOL ptr,
+#ifdef KEY /* Bug 6845 */
+  INT32 n_allocatable_cpnt
+#endif /* KEY Bug 6845 */
+  )
 {
   TY_IDX ty_idx   ;
   TY_IDX ta_idx   ;
@@ -1712,7 +1743,11 @@ cwh_types_dope_TY(INT32 num_dims,TY_IDX base_idx, BOOL host, BOOL ptr)
   
   /* make dope vector TY */
   
-  ty_idx = cwh_types_shared_dope(base_fld,num_dims,ptr);
+  ty_idx = cwh_types_shared_dope(base_fld,num_dims,ptr,
+#ifdef KEY /* Bug 6845 */
+    n_allocatable_cpnt
+#endif /* KEY Bug 6845 */
+    );
   
   return(ty_idx);
 }
@@ -1781,7 +1816,11 @@ cwh_types_mk_dope_invariant_TY(void)
  ====================================================
 */
 static TY_IDX
-cwh_types_shared_dope(FLD_HANDLE fld, int ndims, BOOL is_ptr)
+cwh_types_shared_dope(FLD_HANDLE fld, int ndims, BOOL is_ptr,
+#ifdef KEY /* Bug 6845 */
+  int n_allocatable_cpnt
+#endif /* KEY Bug 6845 */
+  )
 {
   static TY_IDX intrn_dope[MAX_ARY_DIMS+1][NUM_DOPE_TYPES] ;
   static TY_IDX intrn_ptrs_dope[MAX_ARY_DIMS+1][NUM_DOPE_TYPES] ;
@@ -1837,6 +1876,20 @@ cwh_types_shared_dope(FLD_HANDLE fld, int ndims, BOOL is_ptr)
   } else { /* either dtype component, or dtype */
 
     sz  = DOPE_sz + ndims * DIM_SZ ;
+#ifdef KEY /* Bug 6845 */
+    /*
+     * If the type is a derived type, then the code takes this branch and does
+     * not use the quick-and-dirty cache of types. If this dope vector
+     * represents an allocatable arary of a derived type, and the derived type
+     * has allocatable components, we need enough extra room to hold a count
+     * of the allocatable components plus an offset for each one.
+     */
+    if (n_allocatable_cpnt) {
+      n_allocatable_cpnt += 1; /* Space for count of allocatable components */
+      sz += n_allocatable_cpnt * DOPE_bound_sz;
+    }
+#endif /* KEY Bug 6845 */
+
     al  = Pointer_Size;
     dv_idx  = cwh_types_mk_struct(sz,al,fld,(char *)dope_str); 
 
@@ -2238,7 +2291,11 @@ cwh_types_size_WN(TY_IDX ty, WN *e_sz)
 extern WN *
 cwh_types_bound_WN(TY_IDX ty, INT16 i, enum ty_bound_enum  b)
 {
+#ifdef KEY /* Bug 10177 */
+  WN * wn = 0;
+#else /* KEY Bug 10177 */
   WN * wn ;
+#endif /* KEY Bug 10177 */
 
   ARB_HANDLE  arb = TY_arb(ty);
   INT16     nd = ARB_dimension(arb);
@@ -2276,6 +2333,9 @@ cwh_types_bound_WN(TY_IDX ty, INT16 i, enum ty_bound_enum  b)
  *
  * Get information about where in a dope vector things are
  * crayfield - field from the Cray dopevector defintion
+#ifdef KEY
+ *		Use typedef enum dv_idx_type instead of these integers:
+#endif
  *              1.base_addr 
  *              2.el_len 
  *              3.assoc 
@@ -2295,7 +2355,13 @@ cwh_types_bound_WN(TY_IDX ty, INT16 i, enum ty_bound_enum  b)
  ====================================================
 */
 extern void  
-cwh_types_get_dope_info(INT32 crayfield, INT32 *offset, INT32 *rshift, 
+cwh_types_get_dope_info(
+#ifdef KEY /* Bug6845 */
+  dv_idx_type crayfield,
+#else /* KEY Bug6845 */
+  INT32 crayfield,
+#endif /* KEY Bug6845 */
+  INT32 *offset, INT32 *rshift, 
 				     INT64 *mask, TYPE_ID *ty)
 {
    INT real_field;
@@ -2303,6 +2369,9 @@ cwh_types_get_dope_info(INT32 crayfield, INT32 *offset, INT32 *rshift,
    INT size;
    INT ty_size;
    
+#ifdef KEY /* Bug 6845 */
+   real_field = (INT) crayfield;
+#else /* KEY Bug6845 */
    /* Skip unused fields */
    if (crayfield >= 8) {
 //      real_field = crayfield + 1;
@@ -2312,6 +2381,7 @@ cwh_types_get_dope_info(INT32 crayfield, INT32 *offset, INT32 *rshift,
    } else {
       real_field = crayfield - 1;
    }
+#endif /* KEY Bug 6845 */
 
    *offset = dope_offset[real_field];
    *ty = dope_btype[real_field];
@@ -2787,7 +2857,11 @@ cwh_types_in_dtype(void)
 extern INT64
 cwh_cray_type_from_TY(TY_IDX ty_idx)
 {
+#ifdef KEY /* Bug 10177 */
+   TY_IDX base_ty_idx = 0;
+#else /* KEY Bug 10177 */
    TY_IDX base_ty_idx;
+#endif /* KEY Bug 10177 */
    INT64 rtype;
    f90_type_t  *f90_type_ptr;
 

@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: aux_stab.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/aux_stab.h,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  13-May-92 - Original Version (of header, anyway)
@@ -57,7 +57,7 @@
 #define aux_stab_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *aux_stab_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/aux_stab.h,v $ $Revision: 1.1.1.1 $";
+static char *aux_stab_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 

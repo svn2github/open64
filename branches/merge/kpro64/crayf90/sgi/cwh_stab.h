@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: cwh_stab.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_stab.h,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -56,7 +56,7 @@
 #define CWH_STAB_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_stab.h,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 
@@ -84,7 +84,7 @@ typedef struct al {
   struct al * next ;
 }  STB_pkt;
 
-#define cast_to_SCLASS(x) ((ST_SCLASS) (INTPS)(x)) 
+#define cast_to_SCLASS(x) ((ST_SCLASS) (INT)(x)) 
 #define cast_to_LIST(x) ((LIST *) (void *)(x)) 
 
 extern STB_pkt * cwh_stab_packet(void * thing, enum is_form fm) ;

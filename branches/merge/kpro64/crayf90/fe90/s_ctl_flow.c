@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -129,10 +133,18 @@ extern int double_stride;
 void allocate_stmt_semantics (void)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int			alloc_obj_idx = 0;
+#else /* KEY Bug 10177 */
    int			alloc_obj_idx;
+#endif /* KEY Bug 10177 */
    int			attr_idx;
    int		  	bd_idx;
+#ifdef KEY /* Bug 10177 */
+   int		  	bd_list_idx = 0;
+#else /* KEY Bug 10177 */
    int		  	bd_list_idx;
+#endif /* KEY Bug 10177 */
    int			cn_idx;
    int		  	col;
    opnd_type      	dope_opnd;
@@ -582,6 +594,9 @@ void allocate_stmt_semantics (void)
 
       if (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure           &&
           (ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
+#ifdef KEY /* Bug 6845 */
+          ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
+#endif /* KEY Bug 6845 */
            ATT_DEFAULT_INITIALIZED(TYP_IDX(ATD_TYPE_IDX(attr_idx))))) {
 
          COPY_OPND(opnd, IR_OPND_L(alloc_obj_idx));
@@ -1846,7 +1861,11 @@ void do_stmt_semantics (void)
    int			do_var_line;
    boolean		do_var_must_be_int = FALSE;
    opnd_type		do_var_opnd;
+#ifdef KEY /* Bug 10177 */
+   int			end_idx = 0;
+#else /* KEY Bug 10177 */
    int			end_idx;
+#endif /* KEY Bug 10177 */
    int			end_il_idx;
    expr_arg_type	exp_desc;
    int			il_idx;
@@ -1862,7 +1881,11 @@ void do_stmt_semantics (void)
    int			loop_labels_il_idx;
    boolean		semantics_ok;
    int			start_expr_sh_idx;
+#ifdef KEY /* Bug 10177 */
+   int			start_idx = 0;
+#else /* KEY Bug 10177 */
    int			start_idx;
+#endif /* KEY Bug 10177 */
    int			start_il_idx;
    opnd_type		temp_opnd;
    int			tmp_idx;
@@ -4288,7 +4311,11 @@ void goto_stmt_semantics (void)
    int	 		attr_idx;
    int			column;
    expr_arg_type	expr_desc;
+#ifdef KEY /* Bug 10177 */
+   boolean		in_assign_stmt = TRUE;
+#else /* KEY Bug 10177 */
    boolean		in_assign_stmt;
+#endif /* KEY Bug 10177 */
    int 	        	ir_idx;
    int			lbl_idx;
    int			tmp_idx;
@@ -9488,7 +9515,11 @@ static boolean gen_forall_max_expr(int		start_list_idx,
    boolean		ok = TRUE;
    int			plus_idx;
    int			stride_list_idx;
+#ifdef KEY /* Bug 10177 */
+   int			type_idx = 0;
+#else /* KEY Bug 10177 */
    int			type_idx;
+#endif /* KEY Bug 10177 */
 
    TRACE (Func_Entry, "gen_forall_max_expr", NULL);
 

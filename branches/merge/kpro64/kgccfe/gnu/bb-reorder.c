@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */

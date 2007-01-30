@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -38,10 +44,10 @@
  *
  *
  * Module: erfe.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/gccfe/erfe.h,v $
+ * $Revision: 1.6 $
+ * $Date: 05/06/21 17:21:29-07:00 $
+ * $Author: gautam@jacinth.keyresearch $
+ * $Source: kgccfe/SCCS/s.erfe.h $
  *
  * Revision history:
  *  12-Sep-89 - Original Version
@@ -62,7 +68,7 @@
 #define erfe_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *erfe_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/gccfe/erfe.h,v $ $Revision: 1.1.1.1 $";
+static char *erfe_rcs_id = "$Source: kgccfe/SCCS/s.erfe.h $ $Revision: 1.6 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "errors.h"	/* Always needed */
@@ -98,5 +104,9 @@ static char *erfe_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/gccfe/erf
     defined(FRONT_END_FORTRAN)
 #define EC_Null_Backptr	EC_BASE_FE+100		/* tree,str */
 #endif /* FRONT_END_C || FRONT_END_CPLUSPLUS || FRONT_END_FORTRAN */
+
+#ifdef KEY
+#define EC_Unsupported_Type EC_BASE_FE+105	/* str */
+#endif
 
 #endif /* erfe_INCLUDED */

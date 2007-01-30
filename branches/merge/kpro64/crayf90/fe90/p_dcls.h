@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -76,9 +80,15 @@ static	long	 err_attrs[Volatile_Attr+1] =       {
 		 /* Allocatable_Attr */		((1 << Allocatable_Attr) |
 						 (1 << Automatic_Attr) |
 						 (1 << External_Attr) |
+#ifndef KEY /* Bug 6845 */
+		 /* Allocatable now allowed on dummy args */
 						 (1 << Intent_Attr) |
+#endif /* KEY Bug 6845 */
 						 (1 << Intrinsic_Attr) |
+#ifndef KEY /* Bug 6845 */
+		 /* Allocatable now allowed on dummy args */
 						 (1 << Optional_Attr) |
+#endif /* KEY Bug 6845 */
 						 (1 << Parameter_Attr) |
 						 (1 << Pointer_Attr)),
 
@@ -114,7 +124,11 @@ static	long	 err_attrs[Volatile_Attr+1] =       {
 						 (1 << Target_Attr) |
 						 (1 << Volatile_Attr)),
 
-		 /* Intent_Attr */		((1 << Allocatable_Attr) |
+		 /* Intent_Attr */		(
+#ifndef KEY /* Bug 6845 */
+		 /* Allocatable now allowed on dummy args */
+		                                 (1 << Allocatable_Attr) |
+#endif /* KEY Bug 6845 */
 						 (1 << Automatic_Attr) |
 						 (1 << External_Attr) |
 						 (1 << Intent_Attr) |
@@ -136,7 +150,11 @@ static	long	 err_attrs[Volatile_Attr+1] =       {
 						 (1 << Target_Attr) |
 						 (1 << Volatile_Attr)),
 
-		 /* Optional_Attr */		((1 << Allocatable_Attr) |
+		 /* Optional_Attr */		(
+#ifndef KEY /* Bug 6845 */
+		 /* Allocatable now allowed on dummy args */
+		                                 (1 << Allocatable_Attr) |
+#endif /* KEY Bug 6845 */
 						 (1 << Automatic_Attr) |
 						 (1 << Intrinsic_Attr) |
 						 (1 << Optional_Attr) |

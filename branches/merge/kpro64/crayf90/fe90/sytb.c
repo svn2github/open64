@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -724,7 +728,11 @@ int srch_kwd_name(char		*name,
    register int          i;
    register int          id_char_len;   /* character length of identifier */
    register int          id_wd_len;     /* word length of identifier */
+#ifdef KEY /* Bug 10177 */
+   register int          num_dargs = 0;
+#else /* KEY Bug 10177 */
    register int          num_dargs;
+#endif /* KEY Bug 10177 */
    register int          np_idx;
    register long        *id;
    register long         tst_val;
@@ -1608,9 +1616,15 @@ int ntr_const_tbl (int		 type_idx,
 
 {
    register	int			const_idx;
+#ifdef KEY /* Bug 10177 */
+   		long64			const_word_len = 0;
+   register	int			i;
+   		long64			input_word_len = 0;
+#else /* KEY Bug 10177 */
    		long64			const_word_len;
    register	int			i;
    		long64			input_word_len;
+#endif /* KEY Bug 10177 */
    		size_offset_type	length;
    register	int			pool_idx;
    		int			num_long_types;
@@ -2391,7 +2405,11 @@ static int insert_unordered_constant(int	type_idx,
 				     int	const_word_len)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int		cn_idx = 0;
+#else /* KEY Bug 10177 */
    int		cn_idx;
+#endif /* KEY Bug 10177 */
    int		i;
    int		idx;
    int		pool_idx;
@@ -2730,9 +2748,15 @@ int ntr_unshared_const_tbl (int           type_idx,
 
 {
    register     int                     const_idx;
+#ifdef KEY /* Bug 10177 */
+                long64                  const_word_len = 0;
+   register     int                     i;
+                long64                  input_word_len = 0;
+#else /* KEY Bug 10177 */
                 long64                  const_word_len;
    register     int                     i;
                 long64                  input_word_len;
+#endif /* KEY Bug 10177 */
                 size_offset_type        length;
    register     int                     pool_idx;
 
@@ -2905,7 +2929,11 @@ static int ntr_abnormal_ieee_const(int           type_idx,
 
 {
    int  const_idx;
+#ifdef KEY /* Bug 10177 */
+   int  idx = 0;
+#else /* KEY Bug 10177 */
    int  idx;
+#endif /* KEY Bug 10177 */
 
    enum   abnormal_value    { Real_4_Nan,
 			      Real_8_Nan,
@@ -3116,10 +3144,18 @@ boolean	compare_derived_types(int	dt_idx1,
    int		 at_idx1;
    int		 at_idx2;
    int		 bit_idx1;
+#ifdef KEY /* Bug 10177 */
+   int		 bit_idx2 = 0;
+#else /* KEY Bug 10177 */
    int		 bit_idx2;
+#endif /* KEY Bug 10177 */
    boolean	 check;
    int		 entry_idx1;
+#ifdef KEY /* Bug 10177 */
+   int		 entry_idx2 = 0;
+#else /* KEY Bug 10177 */
    int		 entry_idx2;
+#endif /* KEY Bug 10177 */
    int		 id1;
    int		 id2;
    int		 idx;
@@ -3912,11 +3948,26 @@ size_offset_type	stor_bit_size_of(int		 attr_idx,
    if (AT_OBJ_CLASS(attr_idx) == Data_Obj) {
 
       if (ATD_IM_A_DOPE(attr_idx)) {
+#ifdef KEY /* Bug 6845 */
+	 boolean is_array = (ATD_ARRAY_IDX(attr_idx) != NULL_IDX);
+	 num = DV_HD_WORD_SIZE;
+         if (is_array) {
+	   int n_allocatable_cpnt = do_count_allocatable_cpnt(attr_idx,
+	     is_array);
+	   num +=
+	     (DV_DIM_WORD_SIZE * (long) BD_RANK(ATD_ARRAY_IDX(attr_idx))) +
+	     (n_allocatable_cpnt ?
+	       ((n_allocatable_cpnt + 1) * DV_ALLOC_CPNT_OFFSET_WORD_SIZE) :
+	       0);
+	 }
+	 num *= TARGET_BITS_PER_WORD;
+#else /* KEY Bug 6845 */
          num =  (ATD_ARRAY_IDX(attr_idx) != NULL_IDX) ?
                 (TARGET_BITS_PER_WORD * (DV_HD_WORD_SIZE +
                     (DV_DIM_WORD_SIZE * 
                           (long) BD_RANK(ATD_ARRAY_IDX(attr_idx))))) :
                 (DV_HD_WORD_SIZE * TARGET_BITS_PER_WORD);
+#endif /* KEY Bug 6845 */
          C_TO_F_INT(constant.constant, num, CG_INTEGER_DEFAULT_TYPE);
       }
       else {
@@ -4241,7 +4292,11 @@ void chg_data_obj_to_pgm_unit(int 		attr_idx,
 			      atp_proc_type	proc_type)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int		new_at_idx = 0;
+#else /* KEY Bug 10177 */
    int		new_at_idx;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "chg_data_obj_to_pgm_unit", NULL);
@@ -4712,10 +4767,40 @@ int	make_in_parent_string(int	 name_str_idx,
 
    while (scp_idx != NULL_IDX) {
       strcat(&name_pool[new_name_idx].name_char, UNIQUE_PROC_CONNECTOR);
+#ifdef KEY /* Bug 5089 */
+      int attr_idx = SCP_ATTR_IDX(scp_idx);
+      char *appendage;
+      int appendage_len;
+      /* Because two modules might contain identically-named procedures,
+       * we append the module name to the procedure name to avoid conflict.
+       * Until F2003, this was sufficient.
+       *
+       * But an F2003 intrinsic module may have the same name as a nonintrinsic
+       * (user-coded) module. To avoid collisions on the module names
+       * themselves, we elsewhere generate different external (linker) names
+       * for the modules. Both modules may still contain identically named
+       * procedures, so we must avoid collisions of these as well. We could
+       * just append the external name of the module in both cases, but for
+       * backward compatibility with .o files generated prior to the addition
+       * of intrinsic modules, we continue to append the non-external name in
+       * the case of a nonintrinsic module. */
+      if (AT_IS_INTRIN(attr_idx) &&
+	Pgm_Unit == AT_OBJ_CLASS(attr_idx) &&
+	Module == ATP_PGM_UNIT(attr_idx)) {
+        appendage = ATP_EXT_NAME_PTR(attr_idx);
+	appendage_len = ATP_EXT_NAME_LEN(attr_idx);
+      } else {
+        appendage = AT_OBJ_NAME_PTR(attr_idx);
+	appendage_len = AT_NAME_LEN(attr_idx);
+      }
+      strcat(&name_pool[new_name_idx].name_char, appendage);
+      length += appendage_len + UNIQUE_PROC_LEN;
+#else /* KEY Bug 5089 */
       strcat(&name_pool[new_name_idx].name_char,
              AT_OBJ_NAME_PTR(SCP_ATTR_IDX(scp_idx)));
 
       length	= length + AT_NAME_LEN(SCP_ATTR_IDX(scp_idx)) + UNIQUE_PROC_LEN;
+#endif /* KEY Bug 5089 */
       scp_idx	= SCP_PARENT_IDX(scp_idx);
    }
 
@@ -7737,9 +7822,18 @@ void assign_storage_blk(int         attr_idx)
    TRACE (Func_Entry, "assign_storage_blk", NULL);
 
    pgm_attr_idx		= SCP_ATTR_IDX(curr_scp_idx);
+#ifdef KEY /* Bug 6845 */
+   int typ_idx = TYP_IDX(ATD_TYPE_IDX(attr_idx));
+#endif /* KEY Bug 6845 */
    pointer		= ATD_IM_A_DOPE(attr_idx) ||
                          (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure &&
-                          ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))));
+#ifdef KEY /* Bug 6845 */
+			  (ATT_ALLOCATABLE_CPNT(typ_idx) ||
+			  ATT_POINTER_CPNT(typ_idx))
+#else /* KEY Bug 6845 */
+                          ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx)))
+#endif /* KEY Bug 6845 */
+			  );
 
    if (ATD_AUTOMATIC(attr_idx)) {
       ATD_STOR_BLK_IDX(attr_idx) = SCP_SB_BASED_IDX(curr_scp_idx);
@@ -7899,7 +7993,11 @@ void	align_bit_length(size_offset_type	*bit_len,
    long_type	*constant;
    int		 line;
    opnd_type	 opnd;
+#ifdef KEY /* Bug 10177 */
+   long		 plus_val = 0;
+#else /* KEY Bug 10177 */
    long		 plus_val;
+#endif /* KEY Bug 10177 */
    int		 plus_ir_idx;
    int		 result_type;
 # if defined(KEY)
@@ -7907,7 +8005,11 @@ void	align_bit_length(size_offset_type	*bit_len,
 # endif
    int		 shiftr_ir_idx;
    int		 shiftl_ir_idx;
+#ifdef KEY /* Bug 10177 */
+   long		 shift_val = 0;
+#else /* KEY Bug 10177 */
    long		 shift_val;
+#endif /* KEY Bug 10177 */
    operator_type shiftl_opr;
    operator_type shiftr_opr;
    boolean	 symbolic_constant;
@@ -8243,9 +8345,15 @@ void	bits_and_bytes_to_words(size_offset_type *bit_len,
 
 {
    boolean	 arith_ok;
+#ifdef KEY /* Bug 10177 */
+   int		 column = 0;
+   long_type	*constant;
+   int		 line = 0;
+#else /* KEY Bug 10177 */
    int		 column;
    long_type	*constant;
    int		 line;
+#endif /* KEY Bug 10177 */
    opnd_type	 opnd;
    int		 plus_ir_idx;
    int		 result_type;
@@ -8599,6 +8707,26 @@ void	make_external_name(int	attr_idx,
          NTR_NAME_POOL(TOKEN_ID(ext_token).words, name_len, name_idx);
       }
    }
+#ifdef KEY /* Bug 5089 */
+   /* F2003 allows an intrinsic module and a non-intrinsic module to have
+    * the same user-visible ID, and to be used in the same compilation (though
+    * not to be used in the same program unit.) Thus an intrinsic module must
+    * have a different linker-visible ID to avoid collision. We choose to
+    * prepend an underscore and uppercase the first letter, thus staying out
+    * of the normal Fortran-generated namespace and the user-level C
+    * namespace as well. */
+   else if (Pgm_Unit == AT_OBJ_CLASS(attr_idx) &&
+     Module == ATP_PGM_UNIT(attr_idx)) {
+     name_ptr = &name_pool[name_idx].name_char;
+     TOKEN_STR(ext_token)[0] = '_';
+     TOKEN_STR(ext_token)[1] = toupper(name_ptr[0]);
+     for (i = 1; i < name_len; i += 1) {
+       TOKEN_STR(ext_token)[i + 1] = tolower(name_ptr[i]);
+     }
+     TOKEN_STR(ext_token)[name_len += 1] = '\0';
+     NTR_NAME_POOL(TOKEN_ID(ext_token).words, name_len, name_idx);
+   }
+#endif /* KEY Bug 5089 */
 
    ATP_EXT_NAME_IDX(attr_idx) = name_idx;
    ATP_EXT_NAME_LEN(attr_idx) = name_len;
@@ -8760,7 +8888,11 @@ static boolean is_normal(int		 type_idx,
              	         long_type	*constant)
 {
    int		const_bit_len;
+#ifdef KEY /* Bug 10177 */
+   boolean	result = FALSE;
+#else /* KEY Bug 10177 */
    boolean	result; 
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "is_normal", NULL);
@@ -8921,7 +9053,11 @@ static int sign_bit(int          type_idx,
                     long_type   *constant)
 {
    int          const_bit_len;
+#ifdef KEY /* Bug 10177 */
+   int		result = FALSE;
+#else /* KEY Bug 10177 */
    int		result;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "sign_bit", NULL);
@@ -9062,7 +9198,11 @@ static int sign_bit_128(long_type	*constant)
 static int fp_classify(int	 	 type_idx,
  		      long_type 	*constant)
 {
+#ifdef KEY /* Bug 10177 */
+   int  class = 0;
+#else /* KEY Bug 10177 */
    int  class;
+#endif /* KEY Bug 10177 */
    int  const_bit_len;
 
 

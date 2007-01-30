@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1093,7 +1093,6 @@ verify_op<T>::operator () (UINT, T *entry) const {
 
 // specialization for verifying TCONs
 
-template<>
 inline void
 verify_op <TCON>::operator () (UINT, TCON *tc) const 
 {

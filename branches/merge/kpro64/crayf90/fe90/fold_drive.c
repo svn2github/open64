@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -316,15 +320,26 @@ boolean folder_driver(char		*l_value_ptr,
    linear_type_type		l_linear_type;
    linear_type_type		r_linear_type;
    linear_type_type		a3_linear_type;
+#ifdef KEY /* Bug 10177 */
+   linear_type_type		a4_linear_type = Err_Res;
+#else /* KEY Bug 10177 */
    linear_type_type		a4_linear_type;
+#endif /* KEY Bug 10177 */
    linear_type_type		res_linear_type;
    linear_type_type		str1_linear_type;
    linear_type_type		str2_linear_type;
    long_type			mask;
+#ifdef KEY /* Bug 10177 */
+   char			       *a3_value_ptr = 0;
+   int				a3_type_idx = 0;
+   char			       *a4_value_ptr = 0;
+   int				a4_type_idx = 0;
+#else /* KEY Bug 10177 */
    char			       *a3_value_ptr;
    int				a3_type_idx;
    char			       *a4_value_ptr;
    int				a4_type_idx;
+#endif /* KEY Bug 10177 */
    va_list                      arg_ptr;
    char                         char_buf[8000];
    int				type_idx;
@@ -3298,7 +3313,11 @@ boolean size_offset_min_max_calc(size_offset_type	*op1,
    boolean		 ok;
    opnd_type		 opnd1;
    opnd_type		 opnd2;
+#ifdef KEY /* Bug 10177 */
+   boolean		 symbolic_constant = FALSE;
+#else /* KEY Bug 10177 */
    boolean		 symbolic_constant;
+#endif /* KEY Bug 10177 */
    int			 type_idx;
    int			 type1_idx;
    int			 type2_idx;

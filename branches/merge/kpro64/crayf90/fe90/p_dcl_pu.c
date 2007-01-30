@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -2892,6 +2896,15 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
    ATP_PGM_UNIT(attr_idx)	= pgm_type;			      
    ATP_HAS_TASK_DIRS(attr_idx)  = has_task_dirs;
 
+#ifdef KEY /* Bug 5089 */
+   /* F2003 intrinsic module needs to avoid collision with like-named
+    * nonintrinsic (user-created) module when generating linker symbols */
+   if (on_off_flags.intrinsic_module_gen &&
+     Pgm_Unit == AT_OBJ_CLASS(attr_idx) && Module == ATP_PGM_UNIT(attr_idx)) {
+     AT_IS_INTRIN(attr_idx) = TRUE;
+   }
+#endif /* KEY Bug 5089 */
+
    MAKE_EXTERNAL_NAME(attr_idx, AT_NAME_IDX(attr_idx), AT_NAME_LEN(attr_idx));
 
    ATP_SCP_ALIVE(attr_idx)	= TRUE;
@@ -3318,7 +3331,12 @@ void parse_typed_function_stmt()
    }
 
    if (assumed_size_ch) {  /* Obsolescent */
-      PRINTMSG(AT_DEF_LINE(attr_idx), 1565, Comment,
+      PRINTMSG(AT_DEF_LINE(attr_idx), 1565,
+#ifdef KEY /* Bug 318, 321 */
+	       Ansi,
+#else /* KEY Bug 318, 321 */
+	       Comment,
+#endif /* KEY Bug 318, 321 */
                AT_DEF_COLUMN(attr_idx));
 
       if (ATP_PROC(attr_idx) == Intern_Proc ||

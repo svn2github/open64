@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -3165,9 +3169,15 @@ BACK:
 static void cc_get_stmt(void)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int		char_start_idx = 0;
+   int		comment_start_idx;
+   char		delim = 0;
+#else /* KEY Bug 10177 */
    int		char_start_idx;
    int		comment_start_idx;
    char		delim;
+#endif /* KEY Bug 10177 */
    int		idx;
    boolean	in_char_context = FALSE;
    boolean	is_define_dir = FALSE;
@@ -3391,7 +3401,7 @@ static boolean parse_cc_expr (opnd_type   *result)
 
    parsed_ok = parse_cc_level_8(&opnd);
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
 # if 0
    print_ir(OPND_IDX(opnd));
@@ -3562,7 +3572,7 @@ static boolean parse_cc_add_opnd(opnd_type *result)
       }
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_add_opnd", NULL);
 
@@ -3626,7 +3636,7 @@ static boolean parse_cc_level_2(opnd_type *result)
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_level_2", NULL);
 
@@ -3684,7 +3694,7 @@ static boolean parse_cc_level_3(opnd_type *result)
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_level_3", NULL);
 
@@ -3751,7 +3761,7 @@ static boolean parse_cc_level_4(opnd_type *result)
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_level_4", NULL);
 
@@ -3810,7 +3820,7 @@ static boolean parse_cc_level_5(opnd_type *result)
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_level_5", NULL);
 
@@ -3851,17 +3861,17 @@ static boolean parse_cc_or_opnd(opnd_type *result)
       IR_LINE_NUM(ir_idx) = TOKEN_LINE(cc_token);
       IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(cc_token);
 
-      COPY_OPND(IR_OPND_L(ir_idx), opnd)
+      COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
       parsed_ok = parse_cc_level_5(&opnd) && parsed_ok;
 
-      COPY_OPND(IR_OPND_R(ir_idx), opnd)
+      COPY_OPND(IR_OPND_R(ir_idx), opnd);
 
       OPND_FLD(opnd) = IR_Tbl_Idx;
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_or_opnd", NULL);
 
@@ -3902,17 +3912,17 @@ static boolean parse_cc_level_6(opnd_type *result)
       IR_LINE_NUM(ir_idx) = TOKEN_LINE(cc_token);
       IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(cc_token);
 
-      COPY_OPND(IR_OPND_L(ir_idx), opnd)
+      COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
       parsed_ok = parse_cc_equiv_opnd(&opnd) && parsed_ok;
 
-      COPY_OPND(IR_OPND_R(ir_idx), opnd)
+      COPY_OPND(IR_OPND_R(ir_idx), opnd);
 
       OPND_FLD(opnd) = IR_Tbl_Idx;
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_level_6", NULL);
 
@@ -3953,17 +3963,17 @@ static boolean parse_cc_equiv_opnd(opnd_type *result)
       IR_LINE_NUM(ir_idx) = TOKEN_LINE(cc_token);
       IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(cc_token);
 
-      COPY_OPND(IR_OPND_L(ir_idx), opnd)
+      COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
       parsed_ok = parse_cc_level_6(&opnd) && parsed_ok;
 
-      COPY_OPND(IR_OPND_R(ir_idx), opnd)
+      COPY_OPND(IR_OPND_R(ir_idx), opnd);
 
       OPND_FLD(opnd) = IR_Tbl_Idx;
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_equiv_opnd", NULL);
 
@@ -4004,17 +4014,17 @@ static boolean parse_cc_level_7(opnd_type *result)
       IR_LINE_NUM(ir_idx) = TOKEN_LINE(cc_token);
       IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(cc_token);
 
-      COPY_OPND(IR_OPND_L(ir_idx), opnd)
+      COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
       parsed_ok = parse_cc_equiv_opnd(&opnd) && parsed_ok;
 
-      COPY_OPND(IR_OPND_R(ir_idx), opnd)
+      COPY_OPND(IR_OPND_R(ir_idx), opnd);
 
       OPND_FLD(opnd) = IR_Tbl_Idx;
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_level_7", NULL);
 
@@ -4055,17 +4065,17 @@ static boolean parse_cc_level_8(opnd_type *result)
       IR_LINE_NUM(ir_idx) = TOKEN_LINE(cc_token);
       IR_COL_NUM(ir_idx)  = TOKEN_COLUMN(cc_token);
 
-      COPY_OPND(IR_OPND_L(ir_idx), opnd)
+      COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
       parsed_ok = parse_cc_level_7(&opnd) && parsed_ok;
 
-      COPY_OPND(IR_OPND_R(ir_idx), opnd)
+      COPY_OPND(IR_OPND_R(ir_idx), opnd);
 
       OPND_FLD(opnd) = IR_Tbl_Idx;
       OPND_IDX(opnd) = ir_idx;
    }
 
-   COPY_OPND((*result), opnd)
+   COPY_OPND((*result), opnd);
 
    TRACE (Func_Exit, "parse_cc_level_8", NULL);
 
@@ -4543,8 +4553,13 @@ static int fold_cc_expr(opnd_type	*opnd)
    int		l_value;
    int		ir_idx;
    opnd_type	loc_opnd;
+#ifdef KEY /* Bug 10177 */
+   int		r_value = 0;
+   long		result = 0;
+#else /* KEY Bug 10177 */
    int		r_value;
    long		result;
+#endif /* KEY Bug 10177 */
 
    TRACE (Func_Entry, "fold_cc_expr", NULL);
 

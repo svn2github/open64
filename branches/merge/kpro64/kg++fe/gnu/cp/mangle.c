@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Name mangling for the 3.0 C++ ABI.
    Copyright (C) 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
    Written by Alex Samuel <sameul@codesourcery.com>

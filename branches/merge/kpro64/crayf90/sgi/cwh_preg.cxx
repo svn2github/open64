@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: cwh_preg.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_preg.cxx,v $
+ * $Revision: 1.5 $
+ * $Date: 04/12/21 14:57:32-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_preg.cxx $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -60,7 +60,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_preg.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_preg.cxx $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 /* sgi includes */

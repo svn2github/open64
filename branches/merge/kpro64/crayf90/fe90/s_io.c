@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -3834,7 +3838,11 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
    boolean		have_seen_constructor = FALSE;
    int			imp_idx;
    int			line;
+#ifdef KEY /* Bug 10177 */
+   int                  list_idx = 0;
+#else /* KEY Bug 10177 */
    int                  list_idx;
+#endif /* KEY Bug 10177 */
    int                  list2_idx;
    boolean              needs_expansion = FALSE;
    int			new_do_var_idx;
@@ -3934,7 +3942,13 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
             semantically_correct = FALSE;
          }
          else if (start_exp_desc.type == Real) {
-            PRINTMSG(line, 943, Comment, col);
+            PRINTMSG(line, 943,
+#ifdef KEY /* Bug 318, 321 */
+	      Ansi,
+#else /* KEY Bug 318, 321 */
+	      Comment,
+#endif /* KEY Bug 318, 321 */
+	      col);
          }
 
 #ifdef KEY /* Bug 4709 */
@@ -4001,7 +4015,13 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
             semantically_correct = FALSE;
          }
          else if (end_exp_desc.type == Real) {
-            PRINTMSG(line, 943, Comment, col);
+            PRINTMSG(line, 943,
+#ifdef KEY /* Bug 318, 321 */
+	      Ansi,
+#else /* KEY Bug 318, 321 */
+	      Comment,
+#endif /* KEY Bug 318, 321 */
+	      col);
          }
 
 #ifdef KEY /* Bug 4709 */
@@ -4069,7 +4089,13 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
                semantically_correct = FALSE;
             }
             else if (inc_exp_desc.type == Real) {
-               PRINTMSG(line, 943, Comment, col);
+               PRINTMSG(line, 943,
+#ifdef KEY /* Bug 318, 321 */
+	         Ansi,
+#else /* KEY Bug 318, 321 */
+	         Comment,
+#endif /* KEY Bug 318, 321 */
+		 col);
             }
 
             if (semantically_correct &&
@@ -4510,7 +4536,13 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
 
          if (exp_desc.type == Structure) {
 
-            if (ATT_POINTER_CPNT(TYP_IDX(exp_desc.type_idx))) {
+#ifdef KEY /* Bug 6845 */
+            if (ATT_POINTER_CPNT(TYP_IDX(exp_desc.type_idx)) ||
+	      ATT_ALLOCATABLE_CPNT(TYP_IDX(exp_desc.type_idx)))
+#else /* KEY Bug 6845 */
+            if (ATT_POINTER_CPNT(TYP_IDX(exp_desc.type_idx)))
+#endif /* KEY Bug 6845 */
+	    {
                find_opnd_line_and_column(&opnd, &line, &col);
                PRINTMSG(line, 235, Error, col);
                semantically_correct = FALSE;
@@ -4789,7 +4821,11 @@ void create_namelist_descriptor(int	namelist_attr)
    int			size;
    int			sn_idx;
    int			sub_idx;
+#ifdef KEY /* Bug 10177 */
+   int			stack_grp_tbl_idx = 0;
+#else /* KEY Bug 10177 */
    int			stack_grp_tbl_idx;
+#endif /* KEY Bug 10177 */
    int			static_grp_tbl_idx;
    int			tail_idx;
    long_type		the_constant[2];
@@ -5950,7 +5986,11 @@ static int create_strct_tbl(opnd_type	*base_opnd,
    int			sub_idx;
    int			struct_idx;
    long_type		the_constant[2];
+#ifdef KEY /* Bug 10177 */
+   int			tmp_idx = 0;
+#else /* KEY Bug 10177 */
    int			tmp_idx;
+#endif /* KEY Bug 10177 */
    int			type_idx;
    int			type_idx2;
    int			val_type;
@@ -6957,7 +6997,11 @@ static int change_section_to_do(int	*list_idx)
    opnd_type	opnd;
    int          rank = 1;
    int		return_imp_idx;
+#ifdef KEY /* Bug 10177 */
+   int          return_list_idx = 0;
+#else /* KEY Bug 10177 */
    int          return_list_idx;
+#endif /* KEY Bug 10177 */
    int          sub_list_idx;
    int		tmp_idx;
    int          tmp_list_idx;
@@ -7308,7 +7352,9 @@ static void expand_io_list(void)
 {
    int			cnt = 0;
    expr_arg_type	exp_desc;
+#ifndef KEY /* Bug 10008 */
    int			i;
+#endif /* KEY Bug 10008 */
    int			imp_idx;
    int			io_idx;
    int			ir_idx;
@@ -7646,16 +7692,28 @@ static void expand_io_list(void)
                struct_list_idx = list_idx;
                imp_idx = change_section_to_do(&struct_list_idx);
                COPY_OPND(opnd, IL_OPND(struct_list_idx));
+#ifdef KEY /* Bug 10008 */
+               int i = discombobulate_structure_ref(&opnd,
+		  TYP_IDX(exp_desc.type_idx), &struct_list_idx);
+               cnt += i;
+#else /* KEY Bug 10008 */
                i = discombobulate_structure_ref(&opnd,
                                                 TYP_IDX(exp_desc.type_idx),
                                                 &struct_list_idx);
+#endif /* KEY Bug 10008 */
                IR_LIST_CNT_L(imp_idx) += i;
             }
             else {
                COPY_OPND(opnd, IL_OPND(list_idx));
+#ifdef KEY /* Bug 10008 */
+               int i = discombobulate_structure_ref(&opnd,
+		  TYP_IDX(exp_desc.type_idx), &list_idx);
+               cnt += i;
+#else /* KEY Bug 10008 */
                i = discombobulate_structure_ref(&opnd,
                                                 TYP_IDX(exp_desc.type_idx),
                                                 &list_idx);
+#endif /* KEY Bug 10008 */
                IR_LIST_CNT_R(ir_idx) += i;
             }
          }
@@ -7812,16 +7870,28 @@ static void expand_io_list(void)
             struct_list_idx = list_idx;
             imp_idx = change_section_to_do(&struct_list_idx);
             COPY_OPND(opnd, IL_OPND(struct_list_idx));
+#ifdef KEY /* Bug 10008 */
+	    int i = discombobulate_structure_ref(&opnd,
+	       TYP_IDX(exp_desc.type_idx), &struct_list_idx);
+            cnt += i;
+#else /* KEY Bug 10008 */
             i = discombobulate_structure_ref(&opnd,
                                              TYP_IDX(exp_desc.type_idx),
                                              &struct_list_idx);
+#endif /* KEY Bug 10008 */
             IR_LIST_CNT_L(imp_idx) += i;
          }
          else {
             COPY_OPND(opnd, IL_OPND(list_idx));
+#ifdef KEY /* Bug 10008 */
+            int i = discombobulate_structure_ref(&opnd,
+	       TYP_IDX(exp_desc.type_idx), &list_idx);
+            cnt += i;
+#else /* KEY Bug 10008 */
             i = discombobulate_structure_ref(&opnd,
                                              TYP_IDX(exp_desc.type_idx),
                                              &list_idx);
+#endif /* KEY Bug 10008 */
             IR_LIST_CNT_R(ir_idx) += i;
          }
       }
@@ -8666,7 +8736,11 @@ static void gen_array_element_init(int		attr_idx,
                                    int		offset)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int		asg_idx = 0;
+#else /* KEY Bug 10177 */
    int		asg_idx;
+#endif /* KEY Bug 10177 */
    opnd_type	opnd[2];
    int		col;
    int		i;

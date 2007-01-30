@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,9 +45,9 @@
  * ====================================================================
  *
  * Module: cwh_block
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
+ * $Revision: 1.7 $
+ * $Date: 05/09/22 10:54:46-07:00 $
+ * $Author: gautam@jacinth.keyresearch $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -517,7 +521,11 @@ cwh_block_append_given(enum block_id id)
 static WN **
 cwh_block_find_address(enum block_id id)
 {
+#ifdef KEY /* Bug 10177 */
+  WN ** block = 0;
+#else /* KEY Bug 10177 */
   WN ** block ;
+#endif /* KEY Bug 10177 */
 
   switch (id) {
   case Defer_Block:

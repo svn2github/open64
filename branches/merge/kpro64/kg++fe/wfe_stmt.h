@@ -1,5 +1,5 @@
 /* 
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -38,7 +38,6 @@ extern void Mark_Scopes_And_Labels (tree);
 extern void Push_Temp_Cleanup (tree, bool);
 #endif
 extern void Do_Temp_Cleanups (tree);
-extern bool Is_Cleanup_Only (void);
 extern void Do_Handlers (void);
 extern void Do_EH_Cleanups (void);
 extern void Call_Throw();

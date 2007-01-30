@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -194,6 +198,9 @@ void	init_directive(int	pass)
    cdir_switches.guard_in_par_reg	= FALSE;
    cdir_switches.do_parallel		= FALSE;
    cdir_switches.autoscope		= FALSE;
+#ifdef KEY /* Bug 10441 */
+   cdir_switches.single                 = FALSE;
+#endif /* KEY Bug 10441 */
    cdir_switches.safevl_idx		= const_safevl_idx;
    cdir_switches.concurrent_idx		= NULL_IDX;
    cdir_switches.blockable_sh_idx	= NULL_IDX;
@@ -5985,7 +5992,11 @@ static void parse_dollar_directives(void)
    int		ir_idx;
    int		list_idx;
    opnd_type	opnd;
+#ifdef KEY /* Bug 10177 */
+   long		the_constant = 0;
+#else /* KEY Bug 10177 */
    long		the_constant;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "parse_dollar_directives", NULL);
@@ -6270,7 +6281,11 @@ static void parse_star_directives(void)
    boolean		loop_dir	= FALSE;
    int			name_idx;
    opnd_type		opnd;
+#ifdef KEY /* Bug 10177 */
+   operator_type	opr = Null_Opr;
+#else /* KEY Bug 10177 */
    operator_type	opr;
+#endif /* KEY Bug 10177 */
    int			save_column_num;
    int			save_line_num;
 
@@ -7218,7 +7233,11 @@ static void parse_mp_directive(mp_directive_type directive)
    int		list2_idx;
    opnd_type    opnd;
    boolean	seen_nest = FALSE;
+#ifdef KEY /* Bug 10177 */
+   long		the_constant = 0;
+#else /* KEY Bug 10177 */
    long		the_constant;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "parse_mp_directive", NULL);
@@ -8729,13 +8748,23 @@ static void parse_sgi_dir_inline(boolean	turn_on)
    typedef	enum	scope_entry	scope_type;
 
    boolean   		amb_ref		= FALSE;
+#ifdef KEY /* Bug 10177 */
+   int       		attr_idx = 0;
+   int       		column = 0;
+#else /* KEY Bug 10177 */
    int       		attr_idx;
    int       		column;
+#endif /* KEY Bug 10177 */
    int       		host_attr_idx;
    int       		host_name_idx;
    boolean		inline_dir	= FALSE;
+#ifdef KEY /* Bug 10177 */
+   int			ir_idx = 0;
+   int       		line = 0;
+#else /* KEY Bug 10177 */
    int			ir_idx;
    int       		line;
+#endif /* KEY Bug 10177 */
    int			list_idx;
    int       		name_idx;
    scope_type		scope		= Here;
@@ -9061,7 +9090,11 @@ static void parse_distribution_dir(boolean	reshape)
 
 {
    int		attr_idx;
+#ifdef KEY /* Bug 10177 */
+   int		bd_idx = 0;
+#else /* KEY Bug 10177 */
    int		bd_idx;
+#endif /* KEY Bug 10177 */
    int		name_idx;
    int		onto_col;
    int		onto_line;
@@ -9307,8 +9340,13 @@ static void parse_redistribute_dir(void)
    int		attr_idx;
    int		ir_idx;
    int		list_idx;
+#ifdef KEY /* Bug 10177 */
+   int		list_idx2 = 0;
+   int		list_idx3 = 0;
+#else /* KEY Bug 10177 */
    int		list_idx2;
    int		list_idx3;
+#endif /* KEY Bug 10177 */
    int		name_idx;
    int		onto_col;
    int		onto_line;

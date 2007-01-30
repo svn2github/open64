@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -1458,21 +1458,24 @@ void WFE_check_single ()
       {
           while(wn3!=NULL)
            {
-           
+             // Shouldn't wn4 be initialized in each iteration of this loop?
              if(WN_pragma(wn3)!=WN_PRAGMA_COPYPRIVATE)
              	{ 
              	  wn3=WN_next(wn3);
              	  continue;
              	}
-             while(wn4!=NULL)
-             {  
-                if(WN_pragma(wn4)==WN_PRAGMA_LOCAL&&WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                  fg2=true;
-                  break;
-                } 
-                wn4=WN_next(wn4);
-             }
+             if (ST_is_thread_private (WN_st (wn3)))
+               fg2 = true;
+             if (!fg2)
+               while(wn4!=NULL)
+               {
+                  if(WN_pragma(wn4)==WN_PRAGMA_LOCAL&&WN_st_idx(wn3)==WN_st_idx(wn4))
+                  {
+                    fg2=true;
+                    break;
+                  }
+                  wn4=WN_next(wn4);
+               }
             
              if(fg2==false)
              {

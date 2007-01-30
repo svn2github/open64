@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -152,6 +156,9 @@
 
 # if defined(_DOPE_VECTOR_32_OR_64)
 
+#ifdef KEY /* Bug 6845 */
+# define DV_ALLOC_CPNT_OFFSET_WORD_SIZE		((SET_POINTER_SIZE)? 2 : 1)
+#endif /* KEY Bug 6845 */
 # define DV_DIM_WORD_SIZE		((SET_POINTER_SIZE)? 6 : 3)
 # define DV_HD_WORD_SIZE		((SET_POINTER_SIZE)? 12 : 8)
 
@@ -239,6 +246,9 @@
 
 # else   /* _DOPE_VECTOR_32 and DOPE_VECTOR_64 */
 
+#ifdef KEY /* Bug 6845 */
+# define DV_ALLOC_CPNT_OFFSET_WORD_SIZE		1
+#endif /* KEY Bug 6845 */
 # define DV_DIM_WORD_SIZE		3       /* Size of dope vector dimen  */
 # define DV_HD_WORD_SIZE		6       /* Size of dope vector header */
 
@@ -357,6 +367,12 @@
 # define AT_HOST_ASSOCIATED(IDX)	attr_tbl[IDX].fld.host_associated
 # define AT_IGNORE_ATTR_LINK(IDX)	attr_tbl[IDX].fld.ignore_attr_link
 # define AT_IS_DARG(IDX)		attr_tbl[IDX].fld.is_darg
+#ifdef KEY /* Bug 5089 */
+/* F2003: For a module, this has special meanings: prior to semantics, it
+ * means that at least one "use" for this module in the current scope has the
+ * "intrinsic" module-nature keyword; after semantics, it means that we did
+ * use-associate an intrinsic module. */
+#endif /* KEY Bug 5089 */
 # define AT_IS_INTRIN(IDX)		attr_tbl[IDX].fld.is_intrin
 # define AT_LOCKED_IN(IDX)		attr_aux_tbl[IDX].fld.locked_in
 # define AT_MODULE_IDX(IDX)		attr_tbl[IDX].fld.module_idx
@@ -2872,6 +2888,17 @@
 # define ATT_POINTER_CPNT(IDX)		attr_tbl[IDX].fld.flag19
 # endif
 
+#ifdef KEY /* Bug 6845 */
+# ifdef _DEBUG
+# define ATT_ALLOCATABLE_CPNT(IDX)					       \
+	((AT_OBJ_CLASS(IDX) == Derived_Type) ?				       \
+		attr_tbl : sytb_var_error("ATT_ALLOCATABLE_CPNT", IDX))	       \
+		[IDX].fld.flag30
+# else
+# define ATT_ALLOCATABLE_CPNT(IDX)		attr_tbl[IDX].fld.flag30
+# endif
+#endif /* KEY Bug 6845 */
+
 # ifdef _DEBUG
 # define ATT_PRIVATE_CPNT(IDX)						       \
 	((AT_OBJ_CLASS(IDX) == Derived_Type) ?				       \
@@ -2916,6 +2943,30 @@
 # else
 # define ATT_STRUCT_BIT_LEN_IDX(IDX)		attr_tbl[IDX].fld.field13
 # endif
+
+#ifdef KEY /* Bug 5089 */
+/* F2003: at least one "use" for this module in the current scope has the
+ * "non_intrinsic" module-nature keyword */
+# ifdef _DEBUG
+# define ATT_NON_INTRIN(IDX)					               \
+	((AT_OBJ_CLASS(IDX) == Pgm_Unit && ATP_PGM_UNIT(IDX) == Module) ?      \
+		attr_tbl : sytb_var_error("ATT_NON_INTRIN", IDX))              \
+		[IDX].fld.flag17
+# else
+# define ATT_NON_INTRIN(IDX)		attr_tbl[IDX].fld.flag17
+# endif
+
+/* F2003: at least one "use" for this module in the current scope has neither
+ * the "intrinsic" nor the "non_intrinsic" module-nature keyword */
+# ifdef _DEBUG
+# define ATT_NO_MODULE_NATURE(IDX)					       \
+	((AT_OBJ_CLASS(IDX) == Pgm_Unit && ATP_PGM_UNIT(IDX) == Module) ?      \
+		attr_tbl : sytb_var_error("ATT_NO_MODULE_NATURE", IDX))        \
+		[IDX].fld.flag18
+# else
+# define ATT_NO_MODULE_NATURE(IDX)	attr_tbl[IDX].fld.flag18
+# endif
+#endif /* KEY Bug 5089 */
 
 # ifdef _DEBUG
 # define ATT_UNIQUE_ID(IDX)						       \
@@ -3680,6 +3731,11 @@
 # define SCP_IGNORE_TKR(IDX)		scp_tbl[IDX].wd[2].fld1.flag1
 # define SCP_HAS_CALLS(IDX)		scp_tbl[IDX].wd[2].fld1.flag2
 # define SCP_DOES_IO(IDX)		scp_tbl[IDX].wd[2].fld1.flag3
+#ifdef KEY /* Bug 5089 */
+/* Uses intrinsic module ieee_features, ieee_arithmetic, or ieee_exceptions
+ * and therefore needs to save/restore FPU state on entry/exit */
+# define SCP_USES_IEEE(IDX)		scp_tbl[IDX].wd[3].fld1.flag1
+#endif /* KEY Bug 5089 */
 # define SCP_INLINE_SGI(IDX)		scp_tbl[IDX].wd[3].fld1.flag2
 # define SCP_NOINLINE_SGI(IDX)		scp_tbl[IDX].wd[3].fld1.flag3
 # define SCP_DBG_PRINT_SYTB(IDX)	scp_tbl[IDX].wd[25].fld1.flag1
@@ -3732,6 +3788,12 @@
 
 # define IR_RANK(IDX)                   ir_tbl[IDX].opr.rank
 # define IR_DV_DIM(IDX)			ir_tbl[IDX].opr.dim
+#ifdef KEY /* Bug6845 */
+/* When dope vector represents allocatable array whose element type is a
+ * derived type having component(s) which are themselves allocatable, this
+ * counts the allocatable compnents */
+# define IR_DV_N_ALLOC_CPNT(IDX)	ir_tbl[IDX].opr.n_alloc_cpnt
+#endif /* KEY Bug6845 */
 # define IR_CONTIG_ARRAY(IDX)		ir_tbl[IDX].opr.dim
 # define IR_WHOLE_ARRAY(IDX)		ir_tbl[IDX].opr.dim
 # define IR_INLINE_STATE(IDX)		ir_tbl[IDX].opr.dim

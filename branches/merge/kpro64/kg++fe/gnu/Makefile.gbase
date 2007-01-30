@@ -1,6 +1,8 @@
 # -*- Makefile -*-
 #
-#  Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+#  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+#
+#  Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 #  File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
 #  front-ends to GNU 3.3.1 release.
 #
@@ -208,7 +210,6 @@ GNU_SRCS =		\
   cfgloop.c		\
   cfgrtl.c		\
   c-format.c		\
-  c-objc-common.c	\
   combine.c		\
   conflict.c		\
   convert.c		\
@@ -222,7 +223,6 @@ GNU_SRCS =		\
   cpplib.c		\
   cppmacro.c		\
   cppmain.c		\
-  cppspec.c		\
   cpptrad.c		\
   c-dump.c		\
   c-lex.c		\
@@ -237,7 +237,6 @@ GNU_SRCS =		\
   diagnostic.c		\
   doloop.c		\
   dominance.c		\
-  doschk.c		\
   dwarf2asm.c		\
   dwarf2out.c		\
   dwarfout.c		\
@@ -251,22 +250,7 @@ GNU_SRCS =		\
   flow.c		\
   fold-const.c		\
   function.c		\
-  gccspec.c		\
-  gcov.c		\
   gcse.c		\
-  genattr.c		\
-  gencheck.c		\
-  gencodes.c		\
-  genconfig.c		\
-  genconstants.c	\
-  genextract.c		\
-  genflags.c		\
-  gengenrtl.c		\
-  genopinit.c		\
-  genoutput.c		\
-  genpeep.c		\
-  genpreds.c		\
-  genrecog.c		\
   genrtl.c		\
   ggc-common.c		\
   ggc-page.c		\
@@ -293,7 +277,6 @@ GNU_SRCS =		\
   lists.c		\
   local-alloc.c		\
   loop.c		\
-  main.c		\
   mbchar.c		\
   mkdeps.c		\
   optabs.c		\
@@ -344,7 +327,7 @@ GNU_SRCS =		\
   unroll.c		\
   varasm.c		\
   varray.c		\
-  version-bk.c		\
+  version-hg.c		\
   vmsdbgout.c		\
   xcoffout.c
 
@@ -374,7 +357,6 @@ GNU_CP_UNIQ_SRCS =	\
   error.c		\
   except.c		\
   friend.c		\
-  g++spec.c		\
   init.c		\
   mangle.c		\
   method.c		\

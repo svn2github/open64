@@ -1,5 +1,9 @@
 /*
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++
    front-ends to GNU 3.3.1 release.
  */
@@ -961,6 +965,12 @@ int flag_renumber_insns = 1;
 /* If nonzero, use the graph coloring register allocator.  */
 int flag_new_regalloc = 0;
 
+#ifdef KEY
+/* Bug 8041:
+   If non-zero, retain a shift operation the way the user wrote it. */
+int flag_honor_shift = 1;
+#endif
+
 /* Nonzero if we perform superblock formation.  */
 
 int flag_tracer = 0;
@@ -1280,6 +1290,11 @@ static const lang_independent_options f_options[] =
    N_("Trap for signed overflow in addition / subtraction / multiplication") },
   { "new-ra", &flag_new_regalloc, 1,
    N_("Use graph coloring register allocation.") },
+#ifdef KEY
+  /* Bug 8041 */
+  { "honor-shift", &flag_honor_shift, 1,
+   N_("Retain shift operation as specified by the user.") },
+#endif
 };
 
 /* Table of language-specific options.  */
@@ -4822,8 +4837,6 @@ print_version (file, indent)
 	   , indent, *indent != 0 ? " " : "",
 	   lang_hooks.name, version_string, TARGET_NAME,
 	   indent, __VERSION__);
-  //extern const char bk_cset_key[], bk_cset_rev[];
-  //fnotice (file, "Revision %s (%s)\n", bk_cset_rev, bk_cset_key);
   fnotice (file, "%s%sGGC heuristics: --param ggc-min-expand=%d --param ggc-min-heapsize=%d\n",
 	   indent, *indent != 0 ? " " : "",
 	   PARAM_VALUE (GGC_MIN_EXPAND), PARAM_VALUE (GGC_MIN_HEAPSIZE));
@@ -5242,16 +5255,11 @@ parse_options_and_default_flags (argc, argv)
       /* Give the language a chance to decode the option for itself.  */
       lang_processed = (*lang_hooks.decode_option) (argc - i, argv + i);
 
-      if (lang_processed >= 0) {
+      if (lang_processed >= 0)
 	/* Now see if the option also has a language independent meaning.
 	   Some options are both language specific and language independent,
 	   eg --help.  */
 	indep_processed = independent_decode_option (argc - i, argv + i);
-        
-	// when disable EH, needn't to optimization the formation of EH regions 
-	if (!key_exceptions)
-          opt_regions = 0;
-      }  
       else
 	{
 	  lang_processed = -lang_processed;

@@ -1,5 +1,9 @@
+/*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -84,6 +88,9 @@ extern "C" {
 #include "wfe_dst.h"
 #include "ir_reader.h"
 #include <cmplrs/rcodes.h>
+#ifdef KEY
+#include "erfe.h"
+#endif
 
 extern FILE *tree_dump_file; // For debugging only
 
@@ -140,6 +147,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		TREE_CODE_CLASS(TREE_CODE(type_tree)));
 	    return idx;
 	}
+#ifdef KEY
+	UINT align = TYPE_ALIGN(type_tree) / BITSPERBYTE;
+#endif
 	// for typedefs get the information from the base type
 	if (TYPE_NAME(type_tree) &&
 	    idx == 0 &&
@@ -155,6 +165,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #ifdef KEY
 		if (TYPE_RESTRICT(type_tree))
 			Set_TY_is_restrict (idx);
+		Set_TY_align (idx, align); // bug 10533
 #endif
 		TYPE_TY_IDX(type_tree) = idx;
 		if(Debug_Level >= 2) {
@@ -170,7 +181,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	BOOL variable_size = FALSE;
 	tree type_size = TYPE_SIZE(type_tree);
 
+#ifndef KEY
 	UINT align = TYPE_ALIGN(type_tree) / BITSPERBYTE;
+#endif
 	if (TREE_CODE(type_tree) == VOID_TYPE)
 		tsize = 0;
 	else
@@ -220,22 +233,33 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 2:  mtype = MTYPE_I2; break;
 		case 4:  mtype = MTYPE_I4; break;
 		case 8:  mtype = MTYPE_I8; break;
-#if !defined(TARG_X8664) && !defined(TARG_IA64)
+#ifndef TARG_X8664 
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
-#endif
-#else
-		// needed for compiling variable length array
+#endif /* _LP64 */
+#else 
+	        // needed for compiling variable length array
 		// as in gcc.c-torture/execute/920929-1.c
 		// we need to fix the rest of the compiler 
-		// with _LP64 but seems to work fine without.
+		// with _LP64 but seems to work fine without.	
 		case 16:  mtype = MTYPE_I8; break;
-#endif
+#endif /* KEY */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		if (TREE_UNSIGNED(type_tree)) {
 			mtype = MTYPE_complement(mtype);
 		}
+#ifdef KEY
+		if (lookup_attribute ("may_alias", TYPE_ATTRIBUTES (type_tree)))
+		{
+		  // bug 9975: Handle may_alias attribute, we need to create
+		  // a new type to which we can attach the flag.
+		  TY &ty = New_TY (idx);
+		  TY_Init (ty, tsize, KIND_SCALAR, mtype, 
+		           Save_Str(Get_Name(TYPE_NAME(type_tree))) );
+		  Set_TY_no_ansi_alias (ty);
+ 		} else
+#endif
 		idx = MTYPE_To_TY (mtype);	// use predefined type
 #ifdef TARG_X8664
 		/* At least for -m32, the alignment is not the same as the data
@@ -264,27 +288,36 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
-#if defined(TARG_IA64)
-		case 16: mtype = MTYPE_F10; break;
-#else
+#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
 		case 16: mtype = MTYPE_FQ; break;
-#endif
+#endif /* TARG_MIPS */
+#ifdef TARG_IA64
+		case 12: mtype = MTYPE_F10; break;
+#endif /* TARG_IA64 */
+#if defined(TARG_IA32) || defined(TARG_X8664)
+		case 12: mtype = MTYPE_FQ; break;
+#endif /* TARG_IA32 */
 		default: FmtAssert(FALSE, ("Get_TY unexpected REAL_TYPE size %d", tsize));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
 		break;
 	case COMPLEX_TYPE:
 		switch (tsize) {
+#ifdef KEY
+		case 2: 
+		case 4: ErrMsg (EC_Unsupported_Type, "Complex integer");
+#endif
 		case  8: mtype = MTYPE_C4; break;
 		case 16: mtype = MTYPE_C8; break;
+#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+		case 32: mtype = MTYPE_CQ; break;
+#endif /* TARG_MIPS */
+#ifdef TARG_IA64
+		case 24: mtype = MTYPE_C10; break;
+#endif /* TARG_IA64 */
 #if defined(TARG_IA32) || defined(TARG_X8664)
 		case 24: mtype = MTYPE_CQ; break;
-#endif
-#ifdef TARG_IA64
-		case 32: mtype = MTYPE_C10; break;
-#else
-		case 32: mtype = MTYPE_CQ; break;
-#endif
+#endif /* TARG_IA32 */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
@@ -688,16 +721,16 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		      switch (GET_MODE_UNIT_SIZE (TYPE_MODE (type_tree)))
 		      {
 		        case 1:
-		          idx = MTYPE_To_TY (MTYPE_V8I1);
+		          idx = MTYPE_To_TY (MTYPE_M8I1);
 		          break;
 			case 2:
-		          idx = MTYPE_To_TY (MTYPE_V8I2);
+		          idx = MTYPE_To_TY (MTYPE_M8I2);
 		          break;
 			case 4:
 			  if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
-			    idx = MTYPE_To_TY (MTYPE_V8I4);
+			    idx = MTYPE_To_TY (MTYPE_M8I4);
 			  else
-			    idx = MTYPE_To_TY (MTYPE_V8F4);
+			    idx = MTYPE_To_TY (MTYPE_M8F4);
 			  break;
 			default: Fail_FmtAssertion ("Get_TY: NYI");
 		      }
@@ -776,17 +809,8 @@ Create_ST_For_Tree (tree decl_node)
   if (TREE_CODE(decl_node) == ERROR_MARK)
     exit (RC_USER_ERROR);
 
-  //begin - fix for bug OSP 204
-  if (TREE_CODE (decl_node) == VAR_DECL && 
-      (TREE_STATIC(decl_node) || DECL_EXTERNAL(decl_node) || TREE_PUBLIC(decl_node) ) && 
-      DECL_ASSEMBLER_NAME(decl_node) ) {
-    name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME(decl_node));
-    if (*name == '*' ) name++;
-  }
-  else if (DECL_NAME (decl_node)) {
+  if (DECL_NAME (decl_node))
     name = IDENTIFIER_POINTER (DECL_NAME (decl_node));
-  }
-  //end - fix for bug OSP 204
   else {
     DevWarn ("no name for DECL_NODE");
     name = "__unknown__";
@@ -868,18 +892,8 @@ Create_ST_For_Tree (tree decl_node)
 	      }
 	      else
               	sclass = SCLASS_EXTERN;
-               
-	      // bug fix for OSP_89 && OSP_173 && OSP_169
-	      if (!flag_pic) {
-	        if (Use_Call_Shared_Link && Gp_Rel_Aggresive_Opt && 
-		    sclass != SCLASS_EXTERN && sclass != SCLASS_COMMON)
-		  eclass = EXPORT_PROTECTED;
-		else
-		  eclass = EXPORT_PREEMPTIBLE;
-	      }
-	      else 
-		eclass = EXPORT_PREEMPTIBLE;
-	    }
+              eclass = EXPORT_PREEMPTIBLE;
+            }
             else {
               	sclass = SCLASS_FSTATIC;
 		eclass = EXPORT_LOCAL;
@@ -1005,7 +1019,7 @@ Create_ST_For_Tree (tree decl_node)
 	DST_ATTR_IDX attr_idx = DST_INFO_attributes(info_ptr);
 	DST_VARIABLE *attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_VARIABLE);
 	DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = 
-	  (void *)(INTPTR)ST_st_idx(st);
+	  (void *)ST_st_idx(st);
       } else {
 	struct mongoose_gcc_DST_IDX dst =
 	  Create_DST_decl_For_Tree(decl_node,st);

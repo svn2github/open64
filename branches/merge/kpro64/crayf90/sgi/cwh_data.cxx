@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -40,10 +44,10 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_data.cxx,v $
+ * $Revision: 1.7 $
+ * $Date: 04/12/21 14:57:31-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_data.cxx $
  *
  * Description: This static data initialization
  *
@@ -54,7 +58,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_data.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_data.cxx $ $Revision: 1.7 $";
 #endif /* _KEEP_RCS_ID */
 
 /* sgi includes */
@@ -239,11 +243,11 @@ fei_static_substr( INT32 start)
  *================================================================
  */
 extern 
-void fei_static_member (INTPTR st_idx )
+void fei_static_member (INT32 st_idx )
 {
    FLD_IDX  fld ;
 
-   fld = (FLD_IDX ) (INTPTR)cast_to_void(st_idx);
+   fld = (FLD_IDX ) cast_to_void(st_idx);
 
    FLD_HANDLE f (fld);
    DevAssert((FLD_bofst(f) == 0),("Can't handle non 0 bofst"));
@@ -282,7 +286,11 @@ static INT32 get_TCON_size(TCON_IDX tc)
 /* Get a TCON from a WHIRL node */
 static TCON_IDX TCON_from_stack(void)
 {
+#ifdef KEY /* Bug 10177 */
+   TCON_IDX tcp = 0;
+#else /* KEY Bug 10177 */
    TCON_IDX tcp;
+#endif /* KEY Bug 10177 */
    ST *cst;
    WN *slen;
    WN *w;

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1246,7 +1250,12 @@ static boolean free_get_keyword (void)
 
    while (VALID_LA_CH) {
       if (LA_CH_CLASS != Ch_Class_Letter) {		/* non letter in kwd  */
+#ifdef KEY /* Bug 5089 */
+         /* F2003 allows "_" in keyword "NON_INTRINSIC" */
+         all_letters = all_letters && ('_' == LA_CH_VALUE);
+#else /* KEY Bug 5089 */
          all_letters = FALSE;
+#endif /* KEY Bug 5089 */
       }
 
       if (tok_len < MAX_KWD_LEN) {

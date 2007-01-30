@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -39,7 +43,9 @@
 
 
 static char USMID[] = "\n@(#)5.0_pl/sources/cmd_line.c	5.16	10/20/99 17:17:46\n";
-
+#ifdef KEY /* Bug 5089 */
+#include <libgen.h>
+#endif /* KEY Bug 5089 */
 # include "defines.h"		/* Machine dependent ifdefs */
 
 # include "host.m"		/* Host machine dependent macros.*/
@@ -118,6 +124,7 @@ static  void dump_options(void);
 |* Input parameters:							      *|
 |*	argc			number of command line arguments	      *|
 |*	argv			argument strings			      *|
+|*	nlspath			value of getenv(NLSPATH)		      *|
 |*									      *|
 |* Output parameters:							      *|
 |*	NONE								      *|
@@ -127,8 +134,11 @@ static  void dump_options(void);
 |*									      *|
 \******************************************************************************/
   
-void	process_cmd_line(int   argc,
-			 char *argv[])
+#ifdef KEY /* Bug 5089 */
+void	process_cmd_line(int   argc, char *argv[], char *nlspath)
+#else /* KEY Bug 5089 */
+void	process_cmd_line(int   argc, char *argv[])
+#endif /* KEY Bug 5089 */
 {
    char		err_char;
    int		err_ind;
@@ -378,6 +388,23 @@ void	process_cmd_line(int   argc,
     * like cpp */
    add_to_fp_table("/usr/include", &include_path_idx, 'I');
 #  endif /* KEY Bug 5545 */
+#ifdef KEY /* Bug 5089 */
+   /* If -intrinsic_module_path was not set but the NLSPATH environment
+    * variable is set, use the last directory in NLSPATH (the driver
+    * appends to any user-set NLSPATH the directory containing the file
+    * cf95.cat, which also contains IEEE*.mod.) We ignore any user-specified
+    * directory, which might have nothing to do with pathf90; a user who
+    * wants to override the driver's choice should use -intrinsic_module_path.
+    */
+   if (NULL_IDX == intrinsic_module_path_idx && nlspath && *nlspath) {
+     char *path = strrchr(nlspath, ':');
+     path = path ? (path + 1) : nlspath;
+     char *copy = malloc(strlen(path) + 1);
+     add_to_fp_table(dirname(strcpy(copy, path)), &intrinsic_module_path_idx,
+       'p');
+     free(copy);
+   }
+#endif /* KEY Bug 5089 */
 
 # ifdef _DEBUG
    if (dump_flags.help_dbg) {
@@ -5580,6 +5607,20 @@ static	void	process_i_option(char	*optargs)
 
    set_i_option = TRUE;
 
+#ifdef KEY /* Bug 5089 */
+   /* Search-path for .mod files for F2003 intrinsic modules */
+#define IMPATH "ntrinsic_module_path="
+   if (EQUAL_STRS(optargs, "ntrinsic_module_gen")) {
+      on_off_flags.intrinsic_module_gen = TRUE;
+   }
+   else if (optargs == strstr(optargs, IMPATH)) {
+      /* We want the same behavior inside add_to_fp_table() which it exhibits
+       * for the 'p' option for nonintrinsic module paths */
+      add_to_fp_table (optargs + (sizeof IMPATH) - 1,
+        &intrinsic_module_path_idx, 'p');
+   }
+   else
+#endif /* KEY Bug 5089 */
    if (!EQUAL_STRS(optargs, "32")) {
       ntr_msg_queue(0, 78, Log_Error, 0, optargs, 'i', ARG_STR_ARG);
    }

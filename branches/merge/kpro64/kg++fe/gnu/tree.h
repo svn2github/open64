@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Front-end tree definitions for GNU compiler.
@@ -1972,7 +1972,6 @@ struct tree_decl GTY(())
   unsigned inlined_function_flag : 1;
 #ifdef KEY
   unsigned threadprivate_flag : 1;
-  unsigned this_ptr : 1; 
 #endif /* KEY */
 
   unsigned lang_flag_0 : 1;

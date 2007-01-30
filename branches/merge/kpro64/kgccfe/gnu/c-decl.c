@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -3016,10 +3016,7 @@ start_decl (declarator, declspecs, initialized, attributes)
 
   /* Add this decl to the current binding level.
      TEM may equal DECL or it may be a previous decl of the same name.  */
-  // bug fix for OSP_146
-  /* Opencc does not support nested function.
-   * So put all function declarations at the top level */
-  tem = (TREE_CODE(decl)==FUNCTION_DECL)?pushdecl_top_level(decl):pushdecl(decl);
+  tem = pushdecl (decl);
 
   /* For a local variable, define the RTL now.  */
   if (current_binding_level != global_binding_level

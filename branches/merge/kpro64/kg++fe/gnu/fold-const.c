@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Fold a constant sub-tree into a single node for C-compiler
@@ -6467,7 +6467,14 @@ fold (expr)
 	 two operations, but the latter can be done in one less insn
 	 on machines that have only two-operand insns or on which a
 	 constant cannot be the first operand.  */
-      if (integer_zerop (arg1) && (code == EQ_EXPR || code == NE_EXPR)
+      if (
+#ifdef KEY
+      /* Bug 8041:
+         Do this transformation iff the user has explicitly asked us to
+         not honor their shift operation.  */
+          flag_honor_shift == 0 &&
+#endif
+          integer_zerop (arg1) && (code == EQ_EXPR || code == NE_EXPR)
 	  && TREE_CODE (arg0) == BIT_AND_EXPR)
 	{
 	  if (TREE_CODE (TREE_OPERAND (arg0, 0)) == LSHIFT_EXPR

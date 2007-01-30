@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -3090,7 +3094,13 @@ START:
    if (!issue_obsolete_src_form_msg && !PP_CHANGE_SOURCE_FORM &&
        issue_classify_msg) {
       issue_obsolete_src_form_msg = TRUE;
-      ntr_next_msg_queue(PP_LINE_NUM, 1582, Comment, 0,
+      ntr_next_msg_queue(PP_LINE_NUM, 1582,
+#ifdef KEY /* Bug 318, 321 */
+      			 Ansi,
+#else /* KEY Bug 318, 321 */
+      			 Comment,
+#endif /* KEY Bug 318, 321 */
+			 0,
                          (char *)NULL,
                          0,
                          NO_ARG);
@@ -3754,7 +3764,13 @@ START:
                   PP_CHANGE_SOURCE_FORM = TRUE;
 
                   if (!issue_obsolete_src_form_msg && issue_classify_msg) {
-                     ntr_next_msg_queue(PP_LINE_NUM, 1582, Comment, 0,
+                     ntr_next_msg_queue(PP_LINE_NUM, 1582,
+#ifdef KEY /* Bug 318, 321 */
+		                        Ansi,
+#else /* KEY Bug 318, 321 */
+		                        Comment,
+#endif /* KEY Bug 318, 321 */
+					0,
                                         (char *)NULL,
                                         0,
                                         NO_ARG);
@@ -5119,6 +5135,12 @@ static boolean open_include_file (boolean pound_include_line)
    }
    else {               /* Check for recursive use of INCLUDE file name.      */
 
+#ifdef KEY /* Bug 10151 */
+    /* -ftpp preprocessor can't handle recursive #include, but -cpp
+     * preprocessor can (and even issues a nice message in the case of
+     * infinite recursion) */
+    if (on_off_flags.preprocess) {
+#endif /* KEY Bug 10151 */
       for (src_stk_i = src_stk_idx; src_stk_i > NULL_IDX; src_stk_i--) {
 
 	 if (EQUAL_STRS(include_path, SRC_STK_PATH_NAME(src_stk_i))) {
@@ -5126,6 +5148,9 @@ static boolean open_include_file (boolean pound_include_line)
 	    break;
 	 }
       }
+#ifdef KEY /* Bug 10151 */
+    }
+#endif /* KEY Bug 10151 */
 
       if (recursive_use) { /* Recursive use of include file */
 	 ntr_msg_queue(curr_glb_line, 64, Error,
@@ -7514,7 +7539,11 @@ void     ntr_next_msg_queue(int                        line,
 static void move_up_next_msg_queue(void)
 
 {
+#ifdef KEY /* Bug 10177 */
+   char 	*chptr = 0;
+#else /* KEY Bug 10177 */
    char 	*chptr;
+#endif /* KEY Bug 10177 */
    int		i;
    int		k;
    boolean	duplicate;

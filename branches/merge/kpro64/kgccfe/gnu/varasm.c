@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -1007,7 +1007,7 @@ assemble_asm (string)
   if (TREE_CODE (string) == ADDR_EXPR)
     string = TREE_OPERAND (string, 0);
 #ifdef SGI_MONGOOSE
-  WFE_Assemble_Asm(TREE_STRING_POINTER (string));
+  WFE_Assemble_Asm((char *)TREE_STRING_POINTER (string));
 #else
   fprintf (asm_out_file, "\t%s\n", TREE_STRING_POINTER (string));
 #endif /* SGI_MONGOOSE */

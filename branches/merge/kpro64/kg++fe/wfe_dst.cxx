@@ -1,5 +1,9 @@
+/*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -43,13 +47,13 @@
  * ====================================================================
  *
  * Module: dst.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/g++fe/wfe_dst.cxx,v $
+ * $Revision: 1.71 $
+ * $Date: 05/06/21 18:29:13-07:00 $
+ * $Author: tkong@hyalite.keyresearch $
+ * $Revision: 1.71 $
+ * $Date: 05/06/21 18:29:13-07:00 $
+ * $Author: tkong@hyalite.keyresearch $
+ * $Source: kg++fe/SCCS/s.wfe_dst.cxx $
  *
  * Revision history:
  *  01-May-93 - Original Version
@@ -70,7 +74,7 @@
 
 static char *source_file = __FILE__;
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/g++fe/wfe_dst.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: kg++fe/SCCS/s.wfe_dst.cxx $ $Revision: 1.71 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <values.h>
@@ -703,7 +707,7 @@ static void
 DST_enter_normal_field(tree  parent_tree,
 		DST_INFO_IDX parent_idx,
 		TY_IDX parent_ty_idx,
-		tree field, int &currentoffset, int &currentcontainer)
+		tree field)
 {
     char isbit = 0; 
     if ( ! DECL_BIT_FIELD(field)
@@ -788,7 +792,7 @@ UINT align = TYPE_ALIGN(ftype)/BITSPERBYTE;
     }
 
     if(isbit == 0) {
-          currentcontainer = -1 ;                    // invalidate bitfield calculation
+         // currentcontainer = -1 ;                    // invalidate bitfield calculation
 #ifndef KEY
 	  field_idx = DST_mk_member(
 		src,
@@ -833,19 +837,23 @@ UINT align = TYPE_ALIGN(ftype)/BITSPERBYTE;
 	   return;
 	  }
 	  UINT container_off = fld_offset_bytes - (fld_offset_bytes%align);
-	  UINT into_cont_off = bitoff - (container_off*BITSPERBYTE);
+//***********************************************************
+//Bug 8890 : modify the calculation for DW_AT_bit_offset
+//        (1) claculate offset into the container
+//        (2) adjust for little endian,
+//***********************************************************
+#ifndef KEY
+          UINT into_cont_off = bitoff - (container_off*BITSPERBYTE);
+#else
+          UINT into_cont_off = bitoff - ((container_off%16)*BITSPERBYTE);
+          // (1) yes, we mod 16 here because bitoff will wrap around at 16 bytes
+          //     this is essential set the new base for bitoff
 
-#ifdef KEY
+          // (2) adjust for little endian
           if (!BYTES_BIG_ENDIAN) {
-// XXX: 32?  Is there a macro for it?
-              if (container_off != currentcontainer) {           // changed container from last time?
-                  currentcontainer = container_off ;               // save current container
-                  currentoffset = 32 - into_cont_off ;                      // reset current offset
-              }
-              int fullfieldsize = Get_Integer_Value (DECL_SIZE(field)) ;    // field size in bits
-              into_cont_off = currentoffset - fullfieldsize ;       // start at MSB
-              currentoffset -= fullfieldsize ;                      // move to before the field
-          }
+             into_cont_off =  tsize*BITSPERBYTE - into_cont_off;   // reset current offset
+             into_cont_off -= Get_Integer_Value(DECL_SIZE(field)); // start at MSB
+            }
 #endif
 
 #ifndef KEY
@@ -911,14 +919,14 @@ DST_enter_struct_union_members(tree parent_tree,
 
     tree field = TREE_PURPOSE(parent_tree);
 
-    int currentoffset = 0 ;
-    int currentcontainer = -1 ;
+//    int currentoffset = 0 ;
+//    int currentcontainer = -1 ;
                                                                                                                       
     for( ; field ; field = TREE_CHAIN(field) )
     { 
 	if(TREE_CODE(field) == FIELD_DECL) {
 	   DST_enter_normal_field( parent_tree,parent_idx,
-		parent_ty_idx,field, currentoffset, currentcontainer);
+		parent_ty_idx,field);
 	} else if(TREE_CODE(field) == VAR_DECL) {
 		// Here create static class data mem decls
 		// These cannot be definitions.
@@ -937,11 +945,7 @@ DST_enter_struct_union_members(tree parent_tree,
     // Bug 3533 - Expand all member functions of classes inside ::std namespace
     // here (I don't know how to get the member functions of the classes
     // contained in ::std namespace from gxx_emitted_decl in wfe_decl.cxx).
-    // the CODE of parent_tree is RECORD_TYPE or UNION_TYPE, so we should get the type 
-    // name of it as the context, but not get the decl context(bug also in pathescale2.3)
-    FmtAssert (TREE_CODE(parent_tree) == RECORD_TYPE || TREE_CODE(parent_tree) == UNION_TYPE,
-	      ("Unexpected code for parent_tree %x\n.", TREE_CODE(parent_tree)));
-    tree context = TYPE_NAME(parent_tree);
+    tree context = DECL_CONTEXT(parent_tree);
     if (TREE_CODE(context) != TYPE_DECL ||
 	!DECL_CONTEXT(context) ||
 	TREE_CODE(DECL_CONTEXT(context)) != NAMESPACE_DECL ||
@@ -989,6 +993,7 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
     DST_INFO_IDX dst_idx  = TYPE_DST_IDX(type_tree);
 
     DST_INFO_IDX current_scope_idx;
+
 #ifdef KEY
     // Want the immediately enclosing scope.  Bug 4168.  (Do this for other
     // types besides records and unions too?  For now, limit to nested
@@ -998,14 +1003,17 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 	 TREE_CODE(type_tree) == UNION_TYPE) &&
 	(TREE_CODE(TYPE_CONTEXT(type_tree)) == RECORD_TYPE ||
 	 TREE_CODE(TYPE_CONTEXT(type_tree)) == UNION_TYPE)) {
-      current_scope_idx = TYPE_DST_IDX(TYPE_CONTEXT(type_tree));
-#if 0	// Temporary workaround for DST_IS_NULL(current_scope_idx).  Bug 7551.
+      tree type_context = TYPE_CONTEXT(type_tree);
+      current_scope_idx = TYPE_DST_IDX(type_context);
+      if (DST_IS_NULL(current_scope_idx)) {
+	// TODO: Using TY_IDX_ZERO as the 3rd arg is valid only if type is not
+	// being forward declared.  Verify if that's correct.
+	Create_DST_type_For_Tree(type_context, TYPE_TY_IDX(type_context),
+				 TY_IDX_ZERO);
+	current_scope_idx = TYPE_DST_IDX(type_context);
+      }
       Is_True(!DST_IS_NULL(current_scope_idx),
-	      ("Create_DST_type_For_Tree: invalid current scope index"));
-#else
-      if (DST_IS_NULL(current_scope_idx))
-        current_scope_idx = DST_get_context(TYPE_CONTEXT(type_tree));
-#endif
+	      ("DST_enter_struct_union: invalid current scope index\n"));
     } else
 #endif
     current_scope_idx =
@@ -1251,10 +1259,10 @@ DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,
 DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,
 DST_INVALID_INIT
 } ;
-
+	
 static type_trans ate_types[] = {
- 1, "BAD",       0,			/* MTYPE_UNKNOWN */
- 1, "LOGICAL_1", DW_ATE_boolean,	/* MTYPE_B   */
+ 4, "BAD",       0,		
+ 4, "UNK",       0,                     /* bit */
  1, "INTEGER_1", DW_ATE_signed,		/* MTYPE_I1  */
  2, "INTEGER_2", DW_ATE_signed,		/* MTYPE_I2  */
  4, "INTEGER_4", DW_ATE_signed,		/* MTYPE_I4  */
@@ -1265,7 +1273,7 @@ static type_trans ate_types[] = {
  8, "INTEGER*8", DW_ATE_unsigned,	/* MTYPE_U8  */
  4, "REAL_4",    DW_ATE_float,		/* MTYPE_F4  */
  8, "REAL_8",    DW_ATE_float,		/* MTYPE_F8  */
- 16,"REAL_10",   DW_ATE_float,		/* MTYPE_F10 */
+ 10,"UNK",       DW_ATE_float,		/* MTYPE_F10 */
  16,"REAL_16",   DW_ATE_float,		/* MTYPE_F16 */
  1 ,"CHAR" ,     DW_ATE_signed_char,    /* MTYPE_STR */
  16,"REAL_16",   DW_ATE_float,		/* MTYPE_FQ  */
@@ -1274,10 +1282,11 @@ static type_trans ate_types[] = {
  16,"COMPLEX_8", DW_ATE_complex_float,	/* MTYPE_C8  */
  32,"COMPLEX_16",DW_ATE_complex_float,	/* MTYPE_CQ  */
  1, "VOID",      0,                     /* MTYPE_V   */
- 1, "UNK",	 0,			/* MTYPE_BS  */
- 4, "ADDRESS_4", DW_ATE_unsigned,	/* MTYPE_A4  */
- 8, "ADDRESS_8", DW_ATE_unsigned,	/* MTYPE_A8  */
- 32,"COMPLEX_16",DW_ATE_complex_float,	/* MTYPE_C10 */
+ 1, "LOGICAL_1", DW_ATE_boolean,	
+ 2, "LOGICAL_2", DW_ATE_boolean,	
+ 4, "LOGICAL_4", DW_ATE_boolean,	
+ 8, "LOGICAL_8", DW_ATE_boolean,	
+
 } ;
 
 /*===================================================
@@ -1734,6 +1743,12 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		}
      case ENUMERAL_TYPE:
 		{
+#ifdef KEY
+                // Handle typedefs for struct/union
+                if (is_typedef (type_tree))
+                  dst_idx = DST_Create_type ((ST*)NULL, TYPE_NAME (type_tree));
+                else
+#endif
 		dst_idx = DST_enter_enum(type_tree,ttidx,idx,
                         tsize);
 
@@ -1932,9 +1947,22 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 #endif
 		} // end FUNCTION_TYPE scope
 		break;
+#ifdef TARG_X8664
+    case VECTOR_TYPE:
+		{
+		  // GNU's debug representation for vectors.
+		  // See gen_array_type_die() for details.
+		  type_tree = TREE_TYPE (TYPE_FIELDS
+		               (TYPE_DEBUG_REPRESENTATION_TYPE (type_tree)));
+		  ttidx = Get_TY (type_tree);
+		  dst_idx = DST_enter_array_type(type_tree, ttidx, idx, tsize);
+		  DST_SET_GNU_vector(DST_INFO_flag(DST_INFO_IDX_TO_PTR(dst_idx)));
+		}
+		break;
+#endif // TARG_X8664
     default:
 
-		FmtAssert(FALSE, ("Get_TY unexpected tree_type"));
+		FmtAssert(FALSE, ("Create_DST_type_For_Tree: unexpected tree_type"));
     }
     //if (TYPE_READONLY(type_tree))
 //		Set_TY_is_const (idx);

@@ -1,11 +1,11 @@
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
 
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -1572,6 +1572,7 @@ expand_builtin_mathfn (exp, target, subtarget)
     case BUILT_IN_FLOORF:
     case BUILT_IN_FLOORL:
     case BUILT_IN_POW:
+    case BUILT_IN_TAN:
 #endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:
@@ -4248,6 +4249,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       case BUILT_IN_FLOORF:
       case BUILT_IN_FLOORL:
       case BUILT_IN_POW:
+      case BUILT_IN_TAN:
 #endif
       case BUILT_IN_SQRT:
       case BUILT_IN_SQRTF:
@@ -4389,6 +4391,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
     case BUILT_IN_FLOORF:
     case BUILT_IN_FLOORL:
     case BUILT_IN_POW:
+    case BUILT_IN_TAN:
 #endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:

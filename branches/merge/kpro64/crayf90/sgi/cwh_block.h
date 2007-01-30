@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: cwh_block.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_block.h,v $
+ * $Revision: 1.4 $
+ * $Date: 05/09/22 10:54:46-07:00 $
+ * $Author: gautam@jacinth.keyresearch $
+ * $Source: crayf90/sgi/SCCS/s.cwh_block.h $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -59,7 +59,7 @@
 #define CWH_BLOCK_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_block.h,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_block.h $ $Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID */
 
 /* block stack routines */

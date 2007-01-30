@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -40,10 +44,10 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_auxst.cxx,v $
+ * $Revision: 1.8 $
+ * $Date: 05/01/13 22:11:47-08:00 $
+ * $Author: scorrell@soapstone.internal.keyresearch.com $
+ * $Source: crayf90/sgi/SCCS/s.cwh_auxst.cxx $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -70,7 +74,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_auxst.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_auxst.cxx $ $Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
 /* general compiler includes */
@@ -344,7 +348,11 @@ cwh_auxst_get_list(ST * st,enum list_name list)
 static LIST *
 cwh_auxst_find_list(AUXST * o, enum list_name list)
 {
+#ifdef KEY /* Bug 10177 */
+  LIST *l = 0;
+#else /* KEY Bug 10177 */
   LIST *l ;
+#endif /* KEY Bug 10177 */
 
   switch (list) {
   case l_COMLIST:

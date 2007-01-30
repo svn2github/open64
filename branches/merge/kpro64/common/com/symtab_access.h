@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -867,47 +867,25 @@ inline void
 Clear_PU_mp_lower_generated (PU& pu)	{ pu.flags &= ~PU_MP_LOWER_GENERATED; }
 
 inline BOOL
-PU_is_marked_inline (const PU& pu){ return (pu.flags & PU_IS_MARKED_INLINE) != 0; }
-inline BOOL
 PU_is_operator (const PU& pu)    { return (pu.flags & PU_IS_OPERATOR) != 0; }
 inline void
 Set_PU_is_operator (PU& pu)      { pu.flags |= PU_IS_OPERATOR; }
-
 inline void
 Clear_PU_is_operator (PU& pu)    { pu.flags &= ~PU_IS_OPERATOR; }
 
 inline BOOL
-PU_is_malloc (const PU& pu)			{ return (pu.flags & PU_IS_MALLOC) != 0; } 
-
-inline BOOL
-PU_has_attr_malloc (const PU& pu) { return (pu.flags & PU_HAS_ATTR_MALLOC) != 0; }
-
+PU_has_attr_malloc (const PU& pu)      { return (pu.flags & PU_HAS_ATTR_MALLOC) != 0; } 
 inline void
-Set_PU_is_marked_inline (PU& pu) { pu.flags |= PU_IS_MARKED_INLINE; }
-
+Set_PU_has_attr_malloc (PU& pu)        { pu.flags |= PU_HAS_ATTR_MALLOC; }
 inline void
-Set_PU_has_attr_malloc (PU& pu) { pu.flags |= PU_HAS_ATTR_MALLOC; }
-
-inline void
-Clear_PU_is_marked_inline (PU& pu){ pu.flags &= ~PU_IS_MARKED_INLINE; }
-
-inline void
-Clear_PU_has_attr_malloc (PU& pu) { pu.flags &= ~PU_HAS_ATTR_MALLOC; }
+Clear_PU_has_attr_malloc (PU& pu)      { pu.flags &= ~PU_HAS_ATTR_MALLOC; }
 
 inline BOOL
 PU_has_attr_pure (const PU& pu)      { return (pu.flags & PU_HAS_ATTR_PURE) != 0; } 
-
 inline void
-Set_PU_is_malloc (PU& pu)			{ pu.flags |= PU_IS_MALLOC; }
-
+Set_PU_has_attr_pure (PU& pu)        { pu.flags |= PU_HAS_ATTR_PURE; }
 inline void
-Set_PU_has_attr_pure (PU& pu) { pu.flags |= PU_HAS_ATTR_PURE; }
-
-inline void
-Clear_PU_is_malloc (PU& pu)			{ pu.flags &= ~PU_IS_MALLOC; }
-
-inline void 
-Clear_PU_has_attr_pure (PU& pu) { pu.flags &= ~PU_HAS_ATTR_PURE; }
+Clear_PU_has_attr_pure (PU& pu)      { pu.flags &= ~PU_HAS_ATTR_PURE; }
 
 #endif
 #ifdef TARG_X8664
@@ -1235,18 +1213,6 @@ inline void
 Set_TY_return_in_mem (TY_IDX tyi)      { Set_TY_return_in_mem(Ty_Table[tyi]); }
 inline void
 Clear_TY_return_in_mem (TY_IDX tyi)    { Clear_TY_return_in_mem(Ty_Table[tyi]); }
-inline BOOL
-TY_content_seen (const TY& ty)		{ return ty.flags & TY_CONTENT_SEEN; }
-inline void
-Set_TY_content_seen (TY& ty)		{ ty.flags |= TY_CONTENT_SEEN; }
-inline void
-Clear_TY_content_seen (TY& ty)	{ ty.flags &= ~TY_CONTENT_SEEN; }
-inline BOOL
-TY_content_seen (const TY_IDX tyi)    { return TY_content_seen(Ty_Table[tyi]); }
-inline void
-Set_TY_content_seen (TY_IDX tyi)      { Set_TY_content_seen(Ty_Table[tyi]); }
-inline void
-Clear_TY_content_seen (TY_IDX tyi)    { Clear_TY_content_seen(Ty_Table[tyi]); }
 #endif
 
 // TY pu_flags

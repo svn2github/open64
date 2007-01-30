@@ -1,5 +1,5 @@
 /*
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified February 23, 2005 by PathScale, Inc. to add OpenMP support.
  */
 
@@ -4662,6 +4662,8 @@ variable_list:
         }
         |variable_list ',' IDENTIFIER
     {
+      if (lookup_name ($3, 0) == 0)
+        error ("Undefined variable %s", IDENTIFIER_POINTER($3));
       $$ = chainon ($1, build_tree_list (NULL_TREE, lookup_name ($3, 0)));
     }
     ;

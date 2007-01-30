@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Language-independent diagnostic subroutines for the GNU Compiler Collection
@@ -44,6 +48,9 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "diagnostic.h"
 #include "langhooks.h"
 #include "langhooks-def.h"
+#ifdef KEY
+#include <cmplrs/rcodes.h>
+#endif
 
 #define output_text_length(BUFFER) (BUFFER)->line_length
 #define is_starting_newline(BUFFER) (output_text_length (BUFFER) == 0)
@@ -1162,6 +1169,10 @@ error VPARAMS ((const char *msgid, ...))
                        DK_ERROR);
   report_diagnostic (&diagnostic);
   VA_CLOSE (ap);
+#ifdef KEY
+  // Bug 9637 - graceful exit
+  exit(2);
+#endif
 }
 
 /* Likewise, except that the compilation is terminated after printing the
@@ -1179,6 +1190,11 @@ fatal_error VPARAMS ((const char *msgid, ...))
                        DK_FATAL);
   report_diagnostic (&diagnostic);
   VA_CLOSE (ap);
+
+#ifdef KEY
+  fnotice (stderr, "GNU front-end compilation terminated.\n");
+  exit (RC_GCC_INTERNAL_ERROR);
+#endif
 
   fnotice (stderr, "compilation terminated.\n");
   exit (FATAL_EXIT_CODE);
@@ -1198,6 +1214,12 @@ internal_error VPARAMS ((const char *msgid, ...))
 #ifndef ENABLE_CHECKING
   if (errorcount > 0 || sorrycount > 0)
     {
+#ifdef KEY
+      fnotice (stderr, "%s:%d: confused by earlier errors, GNU front-end bailing out\n",
+	       input_filename, lineno);
+      exit (RC_GCC_INTERNAL_ERROR);
+#endif
+
       fnotice (stderr, "%s:%d: confused by earlier errors, bailing out\n",
 	       input_filename, lineno);
       exit (FATAL_EXIT_CODE);
@@ -1211,6 +1233,11 @@ internal_error VPARAMS ((const char *msgid, ...))
                        DK_ICE);
   report_diagnostic (&diagnostic);
   VA_CLOSE (ap);
+
+#ifdef KEY
+  fnotice (stderr, "GNU front-end error.\n");
+  exit (RC_GCC_INTERNAL_ERROR);
+#endif
 
   fnotice (stderr,
 "Please submit a full bug report,\n\
@@ -1317,6 +1344,11 @@ error_recursion (context)
 {
   if (context->lock < 3)
     output_flush (&context->buffer);
+
+#ifdef KEY
+  fnotice (stderr, "GNU front-end error.\n");
+  exit (RC_GCC_INTERNAL_ERROR);
+#endif
 
   fnotice (stderr,
 	   "Internal compiler error: Error reporting routines re-entered.\n");

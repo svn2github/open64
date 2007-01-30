@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,9 +45,9 @@
  * ====================================================================
  *
  * Module: cwh_addr
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
+ * $Revision: 1.5 $
+ * $Date: 05/07/01 14:43:32-07:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -416,9 +420,17 @@ fei_nseq_subscr( TYPE result_type )
    WN *ad  ;
    WN *wt  ;
    ST *st  ;
+#ifdef KEY /* Bug 10177 */
+   TY_IDX ty  = 0;
+#else /* KEY Bug 10177 */
    TY_IDX ty  ;
+#endif /* KEY Bug 10177 */
    TY_IDX dope_ty  ;
+#ifdef KEY /* Bug 10177 */
+   WN_ESIZE  esize = 0;
+#else /* KEY Bug 10177 */
    WN_ESIZE  esize;
+#endif /* KEY Bug 10177 */
    
    TY_IDX  ta ;
    BOOL    array_val ;
@@ -661,7 +673,11 @@ fei_substr(INT32 bounds_check)
   WN * ar ;
   TY_IDX ts ;
   
+#ifdef KEY /* Bug 10177 */
+  W_node  ad  = { 0, 0};
+#else /* KEY Bug 10177 */
   W_node  ad  ;
+#endif /* KEY Bug 10177 */
   FLD_det det ;
   
   sz = cwh_expr_operand(NULL);
@@ -1321,7 +1337,7 @@ cwh_addr_load_WN(WN * awn, OFFSET_64 off, TY_IDX dty)
 {
   TY_IDX ty ;
   TY_IDX ts ;
-  WN * wn;
+  WN * wn = NULL;
 
   if (dty == 0)
     ty = cwh_types_WN_TY(awn,FALSE);
@@ -1371,7 +1387,7 @@ extern WN *
 cwh_addr_load_ST(ST * st, OFFSET_64 off, TY_IDX dty)
 {
 
-  WN * wn;
+  WN * wn = NULL;
   WN * wa;
   TY_IDX ts;
   TY_IDX ty;
@@ -1767,7 +1783,11 @@ cwh_addr_store_ST(ST * st, OFFSET_64 off, TY_IDX dty,  WN * rhs)
 extern void
 cwh_addr_store_WN(WN * lhs, OFFSET_64 off, TY_IDX dty, WN * rhs) 
 {
+#ifdef KEY /* Bug 10177 */
+  WN * wn = 0;
+#else /* KEY Bug 10177 */
   WN * wn ;
+#endif /* KEY Bug 10177 */
   TY_IDX ts ;
   TY_IDX ty ;
 
@@ -2281,7 +2301,11 @@ cwh_addr_temp_section(WN * ad, TY_IDX ty)
   WN * ub;
   WN * sz;
   WN * szmult;
+#ifdef KEY /* Bug 10177 */
+  TY_IDX aty = 0;
+#else /* KEY Bug 10177 */
   TY_IDX aty;
+#endif /* KEY Bug 10177 */
   BOOL noncontig;
   INT32 ndims;
   

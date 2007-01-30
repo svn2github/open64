@@ -246,6 +246,9 @@ static stmt_type_type		token_to_stmt_type [] = {
 				Module_Stmt,	      /* Tok_Kwd_Module	      */
 				Namelist_Stmt,	      /* Tok_Kwd_Namelist     */
 				Assignment_Stmt,      /* Tok_Kwd_None	      */
+#ifdef KEY /* Bug 5089 */
+				Assignment_Stmt,      /* Tok_Kwd_Nonintrinsic */
+#endif /* KEY Bug 5089 */
 				Nullify_Stmt,	      /* Tok_Kwd_Nullify      */
 				Assignment_Stmt,      /* Tok_Kwd_Only	      */
 				Open_Stmt,	      /* Tok_Kwd_Open	      */

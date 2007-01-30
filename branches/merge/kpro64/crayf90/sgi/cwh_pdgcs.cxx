@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,9 +45,9 @@
  * ====================================================================
  *
  * Module: cwh_pdgcs
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
+ * $Revision: 1.9 $
+ * $Date: 05/08/26 23:50:11-07:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
  * $Source: 
  *
  * Revision history:
@@ -63,7 +67,7 @@ static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/crayf90/sgi/SCCS/s.cwh_pdgcs.cxx $ $Revision: 1.10 $";
+static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_pdgcs.cxx $ $Revision: 1.9 $";
 #endif /* _KEEP_RCS_ID */
 
 
@@ -213,6 +217,7 @@ PDGCS_initialize(LANG   language_code,
    if (Get_Trace(TP_IRB, 0x2000)) /* -tt11:0x2000 */
      DSTdump_File_Name = New_Extension(code_file_name, DSTDUMP_FILE_EXTENSION);
    
+#ifndef KEY /* bug 11521: Disable common block splitting */
    /* We want to split COMMON with large into component blocks if
     * (a) -OPT:pad_common is set (unconditional), or
     * (b) -OPT:reorg_common is set and -FE:full_split is not OFF.
@@ -226,6 +231,7 @@ PDGCS_initialize(LANG   language_code,
    if ( ! FE_Full_Split_Set ) 
      FE_Full_Split = OPT_Reorg_Common || OPT_Pad_Common;
 #endif
+#endif /* bug 11421 */
    
    /* update/delete the .rii file */
 
@@ -423,7 +429,9 @@ PDGCS_do_proc(void)
 
   WN      *wn; 
   PU_Info *pu;
+#ifndef KEY /* Bug 10177 */
   TYPE     tt;
+#endif /* KEY Bug 10177 */
   ST *st;
 
   DST_IDX d  ;
@@ -432,8 +440,13 @@ PDGCS_do_proc(void)
 
   st = &St_Table[PU_Info_proc_sym(pu)];
   PU& p = Pu_Table[ST_pu(st)];
-  if (PU_is_mainpu (p))
+  if (PU_is_mainpu (p)) {
+#ifdef KEY /* Bug 10177 */
+     TYPE     tt;
+     memset(&tt, 0, sizeof(tt));
+#endif /* KEY Bug 10177 */
      fei_return(2,tt);  /* It's OK for this to be uninitialized */
+  }
 
   if (cwh_stab_pu_has_globals) {
      Set_PU_Info_flags(pu,PU_HAS_GLOBALS);

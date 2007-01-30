@@ -41,9 +41,9 @@
  * ====================================================================
  *
  * Module: cwh_pdgcs
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
+ * $Revision: 1.5 $
+ * $Date: 04/12/21 14:57:32-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
  * $Source: 
  *
  * Revision history:
@@ -63,7 +63,7 @@ static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_mkdepend.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_mkdepend.cxx $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <ctype.h>
@@ -188,7 +188,7 @@ cwh_add_to_module_files_table(char *name)
  *===============================================
  */ 
 void
-fei_add_use_path(INTPTR st_idx,INT32 path_idx,INT32 module_idx)
+fei_add_use_path(INT32 st_idx,INT32 path_idx,INT32 module_idx)
 {
    INT i;
    

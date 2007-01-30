@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,10 +45,10 @@
  * ====================================================================
  *
  * Module: cwh_dst.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_dst.cxx,v $
+ * $Revision: 1.40 $
+ * $Date: 05/09/14 18:24:44-07:00 $
+ * $Author: scorrell@limestone.keyresearch $
+ * $Source: crayf90/sgi/SCCS/s.cwh_dst.cxx $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -68,7 +72,7 @@
 
 static char *source_file = __FILE__;
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_dst.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_dst.cxx $ $Revision: 1.40 $";
 #endif /* _KEEP_RCS_ID */
 
 /* sgi includes */
@@ -287,6 +291,9 @@ static void
 cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
 {
    DST_CONST_VALUE	cval;
+#ifdef KEY /* Bug 10177 */
+   memset(&cval, 0, sizeof(cval));
+#endif /* KEY Bug 10177 */
    USRCPOS		s;
    int			exit	= 0;
    DST_INFO_IDX		i,t ;
@@ -395,7 +402,7 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
    ptr = strtok(name, " ");
 
    while (ptr != NULL) {
-#ifndef TARG_X8664
+#ifndef KEY
       i = DST_mk_constant_def(s,
                               ptr,
                               t,
@@ -684,14 +691,14 @@ cwh_dst_mk_func(ST * st)
   t  = cwh_dst_mk_subroutine_type(ty);
   
   if (IS_ALTENTRY(st)) 
-    i = DST_mk_entry_point(s,r,t,(void *)(INTPTR)ST_st_idx(st));
+    i = DST_mk_entry_point(s,r,t,(void *)ST_st_idx(st));
 
   else {
     i = DST_mk_subprogram(s,
 			  r,
 			  t,
 			  DST_INVALID_IDX,
-			  (void*)(INTPTR)ST_st_idx(st),
+			  (void*)ST_st_idx(st),
 			  DW_INL_not_inlined,
 			  DW_VIRTUALITY_none,
 			  0,	       
@@ -747,7 +754,7 @@ cwh_dst_mk_MAIN(ST *mn, DST_INFO_IDX en_idx)
 			   ST_name(mn),
 			   t,
 			   en_idx,
-			   (void*)(INTPTR) ST_st_idx(mn),
+			   (void*) ST_st_idx(mn),
 			   DW_INL_not_inlined,
 			   DW_VIRTUALITY_none,
 			   0,	       
@@ -1117,7 +1124,7 @@ cwh_dst_mk_variable(ST * st)
   } else 
     t = cwh_dst_mk_type(d);
 
-#ifdef TARG_X8664
+#ifdef KEY
   INT len = ST_name(st)?strlen(ST_name(st))+1:0;
   INT j;
   char name[len];
@@ -1141,13 +1148,13 @@ cwh_dst_mk_variable(ST * st)
 		      ST_name(st),
 		      t,
 		      0,
-		      (void *) (INTPTR)ST_st_idx(st),
+		      (void *) ST_st_idx(st),
 		      DST_INVALID_IDX,
 		      FALSE,
 		      ST_sclass(st) == SCLASS_AUTO,
 		      FALSE, 
 		      ST_auxst_is_tmp(st));
-#endif /* TARG_X8664 */
+#endif /* KEY */
   if (ST_auxst_is_assumed_size(st)) {
      DST_SET_assumed_size(DST_INFO_flag(DST_INFO_IDX_TO_PTR(i)));
   }
@@ -1244,7 +1251,7 @@ cwh_dst_mk_formal(ST * st)
   } else 
     t = cwh_dst_mk_type(ta);
 
-#ifdef TARG_X8664
+#ifdef KEY
   INT j;
   INT len = ST_name(st) ? strlen(ST_name(st))+1:0;
   char name[len];
@@ -1267,14 +1274,14 @@ cwh_dst_mk_formal(ST * st)
   i = DST_mk_formal_parameter(s,
 			      ST_name(st),
 			      t,
-			      (void *)(INTPTR) ba,
+			      (void *) ba,
 			      DST_INVALID_IDX,
 			      DST_INVALID_IDX,
 			      FALSE, /* FIX optional */
 			      FALSE,
 			      generated,
 			      FALSE);          /* is_declaration_only */
-#endif /* TARG_X8664 */
+#endif /* KEY */
 
 #ifndef TARG_X8664
   if (IS_DOPE_TY(ta)) {
@@ -1371,7 +1378,7 @@ cwh_dst_mk_common(ST * st)
 
   DevAssert((TY_kind(ty) == KIND_STRUCT),("DST complains about common"));
 
-#ifdef TARG_X8664
+#ifdef KEY
   INT j;
   INT len = ST_name(st) ? strlen(ST_name(st))+1:0;
   char name[len];
@@ -1395,8 +1402,8 @@ cwh_dst_mk_common(ST * st)
   i = DST_mk_common_block(name,(void*) ST_st_idx(st)); 
 # endif /* KEY Bug 3507 */
 #else
-  i = DST_mk_common_block(ST_name(st),(void*) (INTPTR)ST_st_idx(st)); 
-#endif /* TARG_X8664 */
+  i = DST_mk_common_block(ST_name(st),(void*) ST_st_idx(st)); 
+#endif /* KEY */
    
   e = NULL ;
 
@@ -1421,7 +1428,7 @@ cwh_dst_mk_common(ST * st)
     } else
       t = cwh_dst_mk_type(te);
 
-#ifdef TARG_X8664
+#ifdef KEY
     INT j;
     INT len = ST_name(el) ? strlen(ST_name(el))+1:0;
     char name[len];
@@ -1439,9 +1446,9 @@ cwh_dst_mk_common(ST * st)
     m = DST_mk_variable_comm(s,
 			     ST_name(el),
 			     t,
-			     (void *)(INTPTR) ST_st_idx(st),
+			     (void *) ST_st_idx(st),
 			     ST_ofst(el)) ;
-#endif /* TARG_X8664 */
+#endif /* KEY */
 
     if (dr) {
        def_info     = DST_INFO_IDX_TO_PTR(m);
@@ -1686,7 +1693,7 @@ cwh_dst_struct_type(TY_IDX ty)
   
   if (DST_IS_NULL(i) || Top_ST_has_dope) {
 
-#ifdef TARG_X8664
+#ifdef KEY
     INT len = TY_name(ty)?strlen(TY_name(ty))+1:0;
     INT j;
     char name[len];
@@ -2054,7 +2061,7 @@ cwh_dst_member(FLD_HANDLE fld, DST_INFO_IDX parent)
    else
     t = cwh_dst_mk_type(ty);
 
-#ifdef TARG_X8664
+#ifdef KEY
   INT len = FLD_name(fld)?strlen(FLD_name(fld))+1:0;
   INT j;
   char name[len];
@@ -2386,7 +2393,7 @@ cwh_dst_mk_dope_bound(ST *dp, mINT64 offset, DST_INFO_IDX t, DST_INFO_IDX p, BOO
       i = DST_mk_variable_comm(s,
 			       NULL,
 			       t,
-			       (void *) (INTPTR)ST_st_idx(ST_base(dp)),
+			       (void *) ST_st_idx(ST_base(dp)),
 			       offset);
 
     } else {
@@ -2395,7 +2402,7 @@ cwh_dst_mk_dope_bound(ST *dp, mINT64 offset, DST_INFO_IDX t, DST_INFO_IDX p, BOO
 			  n,
 			  t,
 			  offset,
-			  (void *) (INTPTR)ST_st_idx(dp),
+			  (void *) ST_st_idx(dp),
 			  DST_INVALID_IDX,
 			  FALSE,
 			  ST_sclass(dp) == SCLASS_AUTO,
@@ -2477,7 +2484,11 @@ DST_set_assoc_idx(INT32 dummy,
 		  DST_INFO_IDX inode)
 {
    DST_INFO       *node;
+#ifdef KEY /* Bug 10177 */
+   DST_ASSOC_INFO *assoc = 0;
+#else /* KEY Bug 10177 */
    DST_ASSOC_INFO *assoc;
+#endif /* KEY Bug 10177 */
    mINT32	  level, index;
    ST_IDX         st;
    
@@ -2505,7 +2516,7 @@ DST_set_assoc_idx(INT32 dummy,
 	 {
 	    DevAssert((FALSE), ("Illegal subprogram DST_ASSOC_INFO")); 
 	 }
-	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;
@@ -2513,7 +2524,7 @@ DST_set_assoc_idx(INT32 dummy,
       case DW_TAG_entry_point:
 	 assoc = &DST_ENTRY_POINT_st(
 			DST_ATTR_IDX_TO_PTR(iattr, DST_ENTRY_POINT));
-	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;
@@ -2521,7 +2532,7 @@ DST_set_assoc_idx(INT32 dummy,
       case DW_TAG_formal_parameter:
 	 assoc = &DST_FORMAL_PARAMETER_st(
 		     DST_ATTR_IDX_TO_PTR(iattr, DST_FORMAL_PARAMETER));
-	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;
@@ -2529,7 +2540,7 @@ DST_set_assoc_idx(INT32 dummy,
       case DW_TAG_common_block:
 	 assoc = &DST_COMMON_BLOCK_st( 
 			DST_ATTR_IDX_TO_PTR(iattr, DST_COMMON_BLOCK ) );
-	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;
@@ -2555,7 +2566,7 @@ DST_set_assoc_idx(INT32 dummy,
 	 }
 
 
-	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
 
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
@@ -2581,12 +2592,12 @@ DST_set_assoc_idx(INT32 dummy,
       case DW_TAG_inlined_subroutine:
 	 assoc = &DST_INLINED_SUBROUTINE_low_pc(
 		     DST_ATTR_IDX_TO_PTR(iattr, DST_INLINED_SUBROUTINE));
-	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 assoc = &DST_INLINED_SUBROUTINE_high_pc(
 		     DST_ATTR_IDX_TO_PTR(iattr, DST_INLINED_SUBROUTINE));
-	 st = (ST_IDX)(INTPTR) pDST_ASSOC_INFO_fe_ptr(assoc);
+	 st = (ST_IDX) pDST_ASSOC_INFO_fe_ptr(assoc);
 	 Get_ST_Id( st,  &level, &index );
 	 pDST_ASSOC_INFO_st_idx(assoc) = st;
 	 break;

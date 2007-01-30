@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -63,6 +67,12 @@ static char USMID[] = "\n@(#)5.0_pl/sources/s_utils.c	5.12	10/19/99 17:14:30\n";
 # if defined(_HOST_OS_UNICOS) && defined(_TARGET_OS_UNICOS)
 # include <fortran.h>
 # endif
+#ifdef KEY /* Bug 6845 */
+/* Incredibly, there seems to be no single central definition for the limit
+ * on subscripts in this front end. Often it's a hard-coded "7". This gives
+ * us STATIC_SUBSCRIPT_SIZE, which is used in only one other place. Sigh. */
+#include "i_cvrt.h"
+#endif /* KEY Bug 6845 */
 
 
 /*****************************************************************\
@@ -1483,7 +1493,11 @@ void dope_vector_setup(opnd_type	*r_opnd,
    int          rank_idx = NULL_IDX;
    int		stride_idx;
    opnd_type	stride_opnd;
+#ifdef KEY /* Bug 10177 */
+   int		subscript_idx = 0;
+#else /* KEY Bug 10177 */
    int		subscript_idx;
+#endif /* KEY Bug 10177 */
    boolean      whole_array;
 
 
@@ -2003,7 +2017,11 @@ void make_io_type_code(int	     type_idx,   /* BRIANJ */
 {
    long_type	dec_len = 0;
    int          dp_flag = 0;
+#ifdef KEY /* Bug 10177 */
+   int		dv_type = 0;
+#else /* KEY Bug 10177 */
    int		dv_type;
+#endif /* KEY Bug 10177 */
    long_type	int_len = 0;
    int		kind_star = 0;
 
@@ -2911,6 +2929,9 @@ void gen_entry_dope_code(int	 attr_idx)
 # endif
    }
    else if (ATD_SAVED(attr_idx) ||
+#ifdef KEY /* Bug 10467 */
+            ATD_DATA_INIT(attr_idx) ||
+#endif /* KEY Bug 10467 */
             ATP_SAVE_ALL(SCP_ATTR_IDX(curr_scp_idx))) {
       func = gen_static_dv_whole_def;
       opr = Init_Opr;
@@ -2943,6 +2964,9 @@ void gen_entry_dope_code(int	 attr_idx)
    }
    else if (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure           &&
             (ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
+#ifdef KEY /* Bug 6845 */
+            ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
+#endif /* KEY Bug 6845 */
              ATT_DEFAULT_INITIALIZED(TYP_IDX(ATD_TYPE_IDX(attr_idx))))  &&
             ! AT_DCL_ERR(TYP_IDX(ATD_TYPE_IDX(attr_idx)))) {
 
@@ -3006,7 +3030,11 @@ void process_cpnt_inits(opnd_type  	*left_opnd,
    int		 attr_idx;
    opnd_type	 cn_opnd;
    int		 col;
+#ifdef KEY /* Bug 10177 */
+   int		 const_idx = 0;
+#else /* KEY Bug 10177 */
    int		 const_idx;
+#endif /* KEY Bug 10177 */
    expr_arg_type exp_desc;
    int		 i;
    int		 init_idx;
@@ -3079,7 +3107,12 @@ void process_cpnt_inits(opnd_type  	*left_opnd,
    while (sn_idx != NULL_IDX) {
       attr_idx = SN_ATTR_IDX(sn_idx);
 
-      if (ATD_POINTER(attr_idx)) {
+#ifdef KEY /* Bug 6845 */
+      if (ATD_POINTER(attr_idx) || ATD_ALLOCATABLE(attr_idx))
+#else /* KEY Bug 6845 */
+      if (ATD_POINTER(attr_idx))
+#endif /* KEY Bug 6845 */
+      {
          NTR_IR_TBL(ir_idx);
          IR_OPR(ir_idx) = Struct_Opr;
          IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(attr_idx);
@@ -3248,6 +3281,9 @@ void process_cpnt_inits(opnd_type  	*left_opnd,
       }
       else if (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure           &&
                (ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
+#ifdef KEY /* Bug 6845 */
+               ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
+#endif /* KEY Bug 6845 */
                 ATT_DEFAULT_INITIALIZED(TYP_IDX(ATD_TYPE_IDX(attr_idx))))) {
 
          NTR_IR_TBL(ir_idx);
@@ -3548,6 +3584,133 @@ static void gen_init_stmt(opnd_type		*left_opnd,
    return;
 
 }  /* gen_init_stmt */
+#ifdef KEY /* Bug 6845 */
+
+/*
+ * attr_idx	Attribute table index of entity which dope vector represents
+ * is_array	True if dope vector represents an array
+ * return	If entity is an allocatable array whose element type is a
+ *		derived type, and component(s) of the derived type are
+ *		themselves allocatable, return the number of allocatable
+ *		components; otherwise, return 0. If a component is itself
+ *		a structure containing allocatable array subcomponents, we
+ *		count them as well.
+ */
+int
+do_count_allocatable_cpnt(int attr_idx, int is_array) {
+  if (!is_array) { /* Not an array */
+    return 0;
+    }
+  int element_type_idx = ATD_TYPE_IDX(attr_idx);
+  if (TYP_TYPE(element_type_idx) != Structure ||
+    !ATT_ALLOCATABLE_CPNT(TYP_IDX(element_type_idx))) {
+    return 0;
+    }
+  int count = 0;
+  for (int sn_idx = ATT_FIRST_CPNT_IDX(TYP_IDX(element_type_idx));
+    sn_idx != NULL_IDX;
+    sn_idx = SN_SIBLING_LINK(sn_idx)) {
+    int cpnt_attr_idx = SN_ATTR_IDX(sn_idx);
+    if (ATD_ALLOCATABLE(cpnt_attr_idx)) {
+      count += 1;
+    }
+    /* Child structure contains components which are allocatable arrays */
+    else if (TYP_TYPE(ATD_TYPE_IDX(cpnt_attr_idx)) == Structure) {
+      count += do_count_allocatable_cpnt(cpnt_attr_idx, 1);
+    }
+  }
+  return count;
+}
+
+/*
+ * Used by do_alloc_cpnt_offset to append one operand to list
+ *
+ * line		source line
+ * col		source column
+ * list_idx	index of current operand list item
+ * fld		which table the index belongs to
+ * idx		index of value of operand
+ * returns	index of newly created operand list item
+ */
+static int
+do_one_operand(int line, int col, int list_idx, fld_type fld, int idx) {
+   NTR_IR_LIST_TBL(IL_NEXT_LIST_IDX(list_idx));
+   IL_PREV_LIST_IDX(IL_NEXT_LIST_IDX(list_idx)) = list_idx;
+   list_idx = IL_NEXT_LIST_IDX(list_idx);
+
+   IL_FLD(list_idx) = fld;
+   IL_IDX(list_idx) = idx;
+   IL_LINE_NUM(list_idx) = line;
+   IL_COL_NUM(list_idx)  = col;
+   return list_idx;
+}
+
+/*
+ * Append to list of operands of dv_whole_def_opr a boolean indicating
+ * whether the dope vector has a list of allocatable component offsets
+ *
+ * line		source line
+ * col		source column
+ * list_idx	index of current list item
+ * n_allocatable_cpnt	number of allocatable components
+ * return	index of newly created list item
+ */
+static int
+do_alloc_cpnt(int line, int col, int list_idx, int n_allocatable_cpnt) {
+
+   /**************\
+   |* ALLOC_CPNT *|
+   \**************/
+
+   return do_one_operand(line, col, list_idx, CN_Tbl_Idx,
+     (n_allocatable_cpnt ? CN_INTEGER_ONE_IDX : CN_INTEGER_ZERO_IDX));
+      
+}
+
+/*
+ * If the dope vector represents an an allocatable array whose element type
+ * is a derived type having allocatable components, append to the list of
+ * operands of dv_whole_def_opr a series of byte offsets to the allocatable
+ * components
+ *
+ * line		source line
+ * col		source column
+ * list_idx	index of current list item (stride of highest dimension of
+ *		array)
+ * attr_idx	Attribute table index of entity which dope vector represents
+ * n_allocatable_cpnt	number of allocatable components
+ * return	index of last newly created list item (last offset)
+ */
+static int
+do_alloc_cpnt_offset(int line, int col, int list_idx, int attr_idx,
+   int n_allocatable_cpnt) {
+
+   if (0 == n_allocatable_cpnt) {
+     return list_idx;
+   }
+
+   /*********************\
+   |* ALLOC CPNT OFFSET *|
+   \*********************/
+
+  int element_type_idx = ATD_TYPE_IDX(attr_idx);
+  for (int sn_idx = ATT_FIRST_CPNT_IDX(TYP_IDX(element_type_idx));
+    sn_idx != NULL_IDX;
+    sn_idx = SN_SIBLING_LINK(sn_idx)) {
+    int cpnt_attr_idx = SN_ATTR_IDX(sn_idx);
+    if (ATD_ALLOCATABLE(cpnt_attr_idx)) {
+      list_idx = do_one_operand(line, col, list_idx,
+	ATD_OFFSET_FLD(cpnt_attr_idx), ATD_CPNT_OFFSET_IDX(cpnt_attr_idx));
+    }
+    /* Child structure contains components which are allocatable arrays */
+    else if (TYP_TYPE(ATD_TYPE_IDX(cpnt_attr_idx)) == Structure) {
+      list_idx = do_alloc_cpnt_offset(line, col, list_idx, cpnt_attr_idx,
+        n_allocatable_cpnt);
+    }
+  }
+  return list_idx;
+}
+#endif /* KEY Bug 6845 */
 
 /******************************************************************************\
 |*									      *|
@@ -3572,7 +3735,11 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
 {
    act_arg_type a_type;
    int		asg_idx;
+#ifdef KEY /* Bug 10177 */
+   int		attr_idx = 0;
+#else /* KEY Bug 10177 */
    int		attr_idx;
+#endif /* KEY Bug 10177 */
    opnd_type	base_opnd;
    int		col;
    int		dim = 1;
@@ -3594,7 +3761,11 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
    opnd_type    r_dv_opnd;
    int          stride_idx;
    opnd_type	stride_opnd;
+#ifdef KEY /* Bug 10177 */
+   int          subscript_idx = 0;
+#else /* KEY Bug 10177 */
    int          subscript_idx;
+#endif /* KEY Bug 10177 */
    int          type_idx;
    boolean      whole_array;
 
@@ -3625,7 +3796,13 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
 
    rank = (ATD_ARRAY_IDX(dv_attr_idx) ? 
                          (long) BD_RANK(ATD_ARRAY_IDX(dv_attr_idx)) : 0);
+#ifdef KEY /* Bug 6845 */
+   int n_allocatable_cpnt = IR_DV_N_ALLOC_CPNT(ir_idx) =
+     do_count_allocatable_cpnt(dv_attr_idx, rank);
+   IR_LIST_CNT_L(ir_idx) = 11 + (3 * rank) + n_allocatable_cpnt;
+#else /* KEY Bug 6845 */
    IR_LIST_CNT_L(ir_idx) = 10 + (3 * rank);
+#endif /* KEY Bug 6845 */
    IR_DV_DIM(ir_idx) = rank;
 
    /*************\
@@ -3925,6 +4102,9 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
       IL_COL_NUM(list_idx)  = col;
    }
 
+#ifdef KEY /* Bug 6845 */
+   list_idx = do_alloc_cpnt(line, col, list_idx, n_allocatable_cpnt);
+#endif /* KEY Bug 6845 */
 
    for (i = 1; i <= rank; i++) {
 
@@ -4056,6 +4236,11 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
       }
    }
 
+#ifdef KEY /* Bug 6845 */
+   list_idx = do_alloc_cpnt_offset(line, col, list_idx, dv_attr_idx,
+     n_allocatable_cpnt);
+#endif /* KEY Bug 6845 */
+
    gen_sh(Before, Assignment_Stmt, line, col, FALSE, FALSE, TRUE);
 
    SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx)) = asg_idx;
@@ -4149,16 +4334,7 @@ static void gen_dv_stride_mult(opnd_type	*stride_opnd,
 
       OPND_FLD((*stride_opnd)) = IR_Tbl_Idx;
       OPND_IDX((*stride_opnd)) = dv_idx;
-#ifdef _WHIRL_HOST64_TARGET64
-	  /*
-	   if we are generating a new dope vector from an existing dope vector
-	   we do not need to generate the mulitplier
-	   About the stride muliplier:
-	   Normal vectors have a multiplier of 1
-	   Dope vector(allocatable array) has a multiplier of size(type)/size(int)
-	  */
-	  res_sm_unit_in_bits=src_sm_unit_in_bits;
-#endif
+
    }
    else {
       OPND_FLD((*stride_opnd)) = BD_SM_FLD(ATD_ARRAY_IDX(attr_idx), dim);
@@ -4235,62 +4411,131 @@ static void gen_dv_stride_mult(opnd_type	*stride_opnd,
 
 }  /* gen_dv_stride_mult */
 
-/******************************************************************************\
-|*									      *|
-|* Description:								      *|
-|*	<description>							      *|
-|*									      *|
-|* Input parameters:							      *|
-|*	NONE								      *|
-|*									      *|
-|* Output parameters:							      *|
-|*	NONE								      *|
-|*									      *|
-|* Returns:								      *|
-|*	NOTHING								      *|
-|*									      *|
-\******************************************************************************/
+#ifdef KEY /* Bug 6845 */
+/*
+ * Insert Dv_Deref_Opr between Subscript_Opr and array
+ *
+ * line		Source line
+ * col		Source column
+ * parent_idx	IR_Tbl_Idx index of parent (Subscript_Opr) node
+ * child_idx	AT_Tbl_Idx index of child (array) node
+ */
+static void
+insert_dv_deref(int line, int col, int parent_idx, int child_idx) {
+  int dv_deref_idx;
+  NTR_IR_TBL(dv_deref_idx);
+  IR_OPR(dv_deref_idx) = Dv_Deref_Opr;
+  IR_TYPE_IDX(dv_deref_idx) = ATD_TYPE_IDX(child_idx);
+  IR_LINE_NUM_L(dv_deref_idx) = IR_LINE_NUM(dv_deref_idx) = line;
+  IR_COL_NUM_L(dv_deref_idx) = IR_COL_NUM(dv_deref_idx)  = col;
+  IR_FLD_L(dv_deref_idx) = AT_Tbl_Idx;
+  IR_IDX_L(dv_deref_idx) = child_idx;
+  IR_FLD_R(dv_deref_idx) = NO_Tbl_Idx;
+  IR_IDX_R(dv_deref_idx) = NULL_IDX;
+  IR_FLD_L(parent_idx) = IR_Tbl_Idx;
+  IR_IDX_L(parent_idx) = dv_deref_idx;
+}
 
-static void gen_dv_def_loops(opnd_type	*dv_opnd)
+/*
+ * Call this before gen_loops()
+ *
+ * line		Source line
+ * col		Source column
+ * return	idx of placeholder for use in post_gen_loops()
+ * next_sh_idx	idx of statement that will follow the end of the last loop
+ *		once we finish generating loops
+ */
+int
+pre_gen_loops(int line, int col, int *next_sh_idx) {
+  gen_sh(After, Assignment_Stmt, line, col, FALSE, FALSE, TRUE);
+  *next_sh_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
+  return curr_stmt_sh_idx;
+}
 
+/*
+ * After calling gen_loops() and creating the body of the loops, call this.
+ *
+ * placeholder_sh_idx	idx from pre_gen_loops()
+ * next_sh_idx		idx of the statement that follows the end of the last
+ *			loop
+ */
+void
+post_gen_loops(int placeholder_sh_idx, int next_sh_idx) {
+  remove_sh(placeholder_sh_idx);
+  FREE_SH_NODE(placeholder_sh_idx);
+  if (next_sh_idx != NULL_IDX) {
+    curr_stmt_sh_idx = SH_PREV_IDX(next_sh_idx);
+  }
+  else {
+    while (SH_NEXT_IDX(curr_stmt_sh_idx) != NULL_IDX) {
+      curr_stmt_sh_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
+    }
+  }
+}
+
+/*
+ * Generate loops to traverse all elements of an array represented by
+ * Whole_Subscript_Opr or Section_Subscript_Opr opnd_l. Transform opnd_l to
+ * use the loop index variables as its subscripts. If optional argument
+ * opnd_r is present, transform it likewise.
+ *
+ * The illogic of the statement structure (inherited from gen_dv_def_loops,
+ * which we generalized to make gen_loops) is that the loops will surround
+ * the statement associated with curr_stmt_sh_idx, leaving curr_stmt_sh_idx
+ * set to that statement rather than to the end of the last loop. The usual
+ * technique is to create a placeholder, save its index, create the loops,
+ * add statements after the placeholder, delete the placeholder, move
+ * curr_stmt_sh_idx to the end of the last loop. Yuck. See pre_gen_loops()
+ * and post_gen_loops().
+ *
+ * opnd_l	Whole_Subscript_Opr or Section_Subscript_Opr for destination
+ *		array
+ * opnd_r	Whole_Subscript_Opr or Section_Subscript_Opr for source
+ *		array which must be conformable with opnd_l (or else null)
+ * deref	If true, generate dv_deref_idx between the Subscript_Opr and
+ *		the array variable if that variable is a dope vector
+ */
+void
+gen_loops(opnd_type *opnd_l, opnd_type *opnd_r, boolean deref)
 {
    int		col;
    int		line;
-   int		list_idx;
-   int		list_idx2;
-   opnd_type	opnd;
-   opnd_type	start_opnd;
-   opnd_type	end_opnd;
-   opnd_type	stride_opnd;
-   int		tmp_idx;
+   opnd_type	temp_l;
 
-   TRACE (Func_Entry, "gen_dv_def_loops", NULL);
+   TRACE (Func_Entry, "gen_loops", NULL);
 
-   find_opnd_line_and_column(dv_opnd, &line, &col);
+   find_opnd_line_and_column(opnd_l, &line, &col);
 
-   COPY_OPND(opnd, (*dv_opnd));
+   opnd_type next;
+   int subscripts[STATIC_SUBSCRIPT_SIZE];
+   int subscript_cnt = 0;
+   for (COPY_OPND(temp_l, *opnd_l);
+      (OPND_FLD(temp_l) == IR_Tbl_Idx);
+      COPY_OPND(temp_l, next)) {
 
-   while (OPND_FLD(opnd) == IR_Tbl_Idx) {
+      operator_type ir_opr = IR_OPR(OPND_IDX(temp_l));
+      if (ir_opr == Whole_Subscript_Opr || ir_opr == Section_Subscript_Opr) {
 
-      if (IR_OPR(OPND_IDX(opnd)) == Whole_Subscript_Opr ||
-          IR_OPR(OPND_IDX(opnd)) == Section_Subscript_Opr) {
+         IR_OPR(OPND_IDX(temp_l)) = Subscript_Opr;
 
-         IR_OPR(OPND_IDX(opnd)) = Subscript_Opr;
-
-         list_idx = IR_IDX_R(OPND_IDX(opnd));
-
-         while (list_idx != NULL_IDX) {
+         for (int list_idx = IR_IDX_R(OPND_IDX(temp_l));
+	    list_idx != NULL_IDX;
+	    list_idx = IL_NEXT_LIST_IDX(list_idx)) {
 
             if (IL_FLD(list_idx) == IR_Tbl_Idx &&
                 IR_OPR(IL_IDX(list_idx)) == Triplet_Opr) {
 
-               tmp_idx = gen_compiler_tmp(line, col, Priv, TRUE);
+               int tmp_idx = subscripts[subscript_cnt++] =
+	         gen_compiler_tmp(line, col, Priv, TRUE);
             
                ATD_TYPE_IDX(tmp_idx) = CG_INTEGER_DEFAULT_TYPE;
                ATD_STOR_BLK_IDX(tmp_idx)  = SCP_SB_STACK_IDX(curr_scp_idx);
                AT_SEMANTICS_DONE(tmp_idx) = TRUE;
 
-               list_idx2 = IR_IDX_L(IL_IDX(list_idx));
+               int list_idx2 = IR_IDX_L(IL_IDX(list_idx));
+	       opnd_type start_opnd;
+	       opnd_type stride_opnd;
+	       opnd_type end_opnd;
 
                COPY_OPND(start_opnd, IL_OPND(list_idx2));
 
@@ -4309,20 +4554,77 @@ static void gen_dv_def_loops(opnd_type	*dv_opnd)
                IL_LINE_NUM(list_idx) = line;
                IL_COL_NUM(list_idx) = col;
             }
-
-            list_idx = IL_NEXT_LIST_IDX(list_idx);
          }
       }
 
-      COPY_OPND(opnd, IR_OPND_L(OPND_IDX(opnd)));
+      next = IR_OPND_L(OPND_IDX(temp_l));
+      if (deref && ir_opr != Dv_Deref_Opr && OPND_FLD(next) == AT_Tbl_Idx &&
+        ATD_IM_A_DOPE(OPND_IDX(next))) {
+	insert_dv_deref(line, col, OPND_IDX(temp_l), OPND_IDX(next));
+      }
    }
 
-   TRACE (Func_Exit, "gen_dv_def_loops", NULL);
+   if (opnd_r) {
+      subscript_cnt = 0;
+      opnd_type temp_r;
+      for (COPY_OPND(temp_r, (*opnd_r));
+	OPND_FLD(temp_r) == IR_Tbl_Idx;
+	COPY_OPND(temp_r, next)) {
 
-   return;
+	operator_type ir_opr = IR_OPR(OPND_IDX(temp_r));
+	if (ir_opr == Whole_Subscript_Opr || ir_opr == Section_Subscript_Opr) {
 
-}  /* gen_dv_def_loops */
+	   IR_OPR(OPND_IDX(temp_r)) = Subscript_Opr;
+
+	   for (int list_idx = IR_IDX_R(OPND_IDX(temp_r));
+	      list_idx != NULL_IDX;
+	      list_idx = IL_NEXT_LIST_IDX(list_idx)) {
+
+	      if (IL_FLD(list_idx) == IR_Tbl_Idx &&
+		 IR_OPR(IL_IDX(list_idx)) == Triplet_Opr) {
+
+		 IL_FLD(list_idx) = AT_Tbl_Idx;
+		 IL_IDX(list_idx) = subscripts[subscript_cnt++];
+		 IL_LINE_NUM(list_idx) = line;
+		 IL_COL_NUM(list_idx) = col;
+	      }
+	   }
+	}
+
+	next = IR_OPND_L(OPND_IDX(temp_r));
+	if (deref && ir_opr != Dv_Deref_Opr && OPND_FLD(next) == AT_Tbl_Idx &&
+	  ATD_IM_A_DOPE(OPND_IDX(next))) {
+	  insert_dv_deref(line, col, OPND_IDX(temp_r), OPND_IDX(next));
+	}
+     }
+   }
+
+   TRACE (Func_Exit, "gen_loops", NULL);
+}  /* gen_loops */
 
+/******************************************************************************\
+|*									      *|
+|* Description:								      *|
+|*	<description>							      *|
+|*									      *|
+|* Input parameters:							      *|
+|*	NONE								      *|
+|*									      *|
+|* Output parameters:							      *|
+|*	NONE								      *|
+|*									      *|
+|* Returns:								      *|
+|*	NOTHING								      *|
+|*									      *|
+\******************************************************************************/
+
+static void
+gen_dv_def_loops(opnd_type	*dv_opnd)
+
+{
+   gen_loops(dv_opnd, 0, FALSE);
+}
+#endif /* KEY Bug 6845 */
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
@@ -4383,7 +4685,13 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
 
    rank = ATD_ARRAY_IDX(dv_attr_idx) ?
                         (long) BD_RANK(ATD_ARRAY_IDX(dv_attr_idx)) : 0;
+#ifdef KEY /* Bug 6845 */
+   int n_allocatable_cpnt = IR_DV_N_ALLOC_CPNT(ir_idx) =
+     do_count_allocatable_cpnt(dv_attr_idx, rank);
+   IR_LIST_CNT_L(ir_idx) = 11 + (3 * rank) + n_allocatable_cpnt;
+#else /* KEY Bug 6845 */
    IR_LIST_CNT_L(ir_idx) = 10 + (3 * rank);
+#endif /* KEY Bug 6845 */
    IR_DV_DIM(ir_idx) = rank;
 
    /*************\
@@ -4624,6 +4932,9 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
    IL_LINE_NUM(list_idx) = line;
    IL_COL_NUM(list_idx)  = col;
 
+#ifdef KEY /* Bug 6845 */
+   list_idx = do_alloc_cpnt(line, col, list_idx, n_allocatable_cpnt);
+#endif /* KEY Bug 6845 */
 
    for (i = 1; i <= rank; i++) {
 
@@ -4672,6 +4983,11 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
          IL_COL_NUM(list_idx) = col;
       }
    }
+
+#ifdef KEY /* Bug 6845 */
+   list_idx = do_alloc_cpnt_offset(line, col, list_idx, dv_attr_idx,
+     n_allocatable_cpnt);
+#endif /* KEY Bug 6845 */
 
    gen_sh(position, Assignment_Stmt, line, col, FALSE, FALSE, TRUE);
 
@@ -6528,8 +6844,13 @@ boolean	gen_internal_dope_vector(int_dope_type		*dope_vec,
 				 expr_arg_type		*exp_desc)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int			bd_idx = 0;
+   int			cn_idx = 0;
+#else /* KEY Bug 10177 */
    int			bd_idx;
    int			cn_idx;
+#endif /* KEY Bug 10177 */
    int			column;
    long_type         	constant[2];
    int          	i;
@@ -6811,6 +7132,11 @@ boolean	gen_internal_dope_vector(int_dope_type		*dope_vec,
    /*************\
    |* ORIG_SIZE *|
    \*************/
+
+#ifdef KEY /* Bug 6845 */
+   /* If this dope vector could have allocatable components, we need to do
+    * something here */
+#endif /* KEY Bug 6845 */
 
    dope_vec->orig_size = 0;
 
@@ -7642,6 +7968,11 @@ int gen_sf_dv_whole_def(opnd_type         *r_opnd,
    IL_LINE_NUM(list_idx) = line;
    IL_COL_NUM(list_idx)  = col;
 
+#ifdef KEY /* Bug 6845 */
+   /* If this dope vector could have allocatable components, the following
+    * code needs to change */
+   list_idx = do_alloc_cpnt(line, col, list_idx, 0);
+#endif /* KEY Bug 6845 */
 
    for (i = 1; i <= rank; i++) {
 
@@ -10897,7 +11228,11 @@ void gen_if_stmt(opnd_type	*cond_opnd,
    int		endif_idx;
    int		if_idx;
    int		save_curr_stmt_sh_idx;
+#ifdef KEY /* Bug 10177 */
+   int		type_idx = 0;
+#else /* KEY Bug 10177 */
    int		type_idx;
+#endif /* KEY Bug 10177 */
 
 # if defined(_HIGH_LEVEL_IF_FORM)
    int		if_sh_idx;

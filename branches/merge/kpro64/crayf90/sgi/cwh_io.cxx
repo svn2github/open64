@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,10 +45,10 @@
  * ====================================================================
  *
  * Module: cwh_io.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_io.cxx,v $
+ * $Revision: 1.6 $
+ * $Date: 05/11/10 13:51:51-08:00 $
+ * $Author: scorrell@soapstone.internal.keyresearch.com $
+ * $Source: crayf90/sgi/SCCS/s.cwh_io.cxx $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -61,7 +65,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-  static char *rcs_id = " $Id: cwh_io.cxx,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ ";
+  static char *rcs_id = " $Id: cwh_io.cxx 1.6 05/11/10 13:51:51-08:00 scorrell@soapstone.internal.keyresearch.com $ ";
 #endif /* _KEEP_RCS_ID */
 
 /* sgi includes */
@@ -1228,7 +1232,11 @@ fei_open(void)
 {
   INT item;
   WN **open_list;
+#ifdef KEY /* Bug 10177 */
+  WN *wn = 0;
+#else /* KEY Bug 10177 */
   WN *wn;
+#endif /* KEY Bug 10177 */
   WN *length;
   WN *addr;
   WN *unit= NULL;
@@ -1375,7 +1383,11 @@ fei_inquire(void)
 {
   INT item;
   WN **inq_list;
+#ifdef KEY /* Bug 10177 */
+  WN *wn = 0;
+#else /* KEY Bug 10177 */
   WN *wn;
+#endif /* KEY Bug 10177 */
   WN *length;
   WN *addr;
   WN *unit= NULL;
@@ -1560,7 +1572,11 @@ fei_close(void)
 {
   INT item;
   WN **close_list;
+#ifdef KEY /* Bug 10177 */
+  WN *wn = 0;
+#else /* KEY Bug 10177 */
   WN *wn;
+#endif /* KEY Bug 10177 */
   WN *length;
   WN *addr;
   WN *unit= NULL;
@@ -1682,7 +1698,11 @@ cwh_io_no_desc(IOSTATEMENT statement)
 {
   INT item;
   WN **nodesc_list;
+#ifdef KEY /* Bug 10177 */
+  WN *wn = 0;
+#else /* KEY Bug 10177 */
   WN *wn;
+#endif /* KEY Bug 10177 */
   WN *addr;
   WN *unit= NULL;
   INT32 num_items = 0;
@@ -2952,7 +2972,11 @@ static WN *
 Substitute_1_For_Impdo_Index_Val(WN *tree, IMPDO_INFO *impdo)
 {
   INT32 i;
+#ifdef KEY /* Bug 10177 */
+  OPCODE opc_intconst = OPC_I4INTCONST;
+#else /* KEY Bug 10177 */
   OPCODE opc_intconst;
+#endif /* KEY Bug 10177 */
   INT32 rtype;
 
   if (WN_operator_is(tree,OPR_LDID) && 

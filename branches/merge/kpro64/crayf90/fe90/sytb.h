@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -987,7 +991,11 @@ struct	ir_opr_entry		{operator_type	the_operator	: 16;
                                  Uint		rank		:  8;
                                  Uint		dim		:  8;
 				 Uint		UNUSED1		: 16;
+#ifdef KEY /* Bug 6845 */
+				 Uint		n_alloc_cpnt	: 32;
+#else /* KEY Bug 6845 */
 				 Uint		UNUSED2		: 32;
+#endif /* KEY Bug 6845 */
 				};
 
 

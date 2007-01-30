@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -295,9 +295,30 @@ defer_fn (fn)
 static void
 expand_deferred_fns ()
 {
-  unsigned int i;
+#ifndef KEY
+  unsigned
+#endif
+  int i;
 
-  for (i = 0; i < VARRAY_ACTIVE_SIZE (deferred_fns); i++)
+#ifdef KEY
+
+  // Bug 8189: Reverse the order in which we expand the deferred functions.
+  // Why? Cause, we have changed the code in c_expand_deferred_function().
+  // Consider the case in which foo() appears prior to bar() in the array
+  // of deferred functions. After we are done with foo(), we've ended up
+  // blowing out some of the information in foo(). Now when foo() is required
+  // to be inlined into bar() - in the GNU parts (not the pathcc front-end),
+  // we have malformed resultant code.
+  // Hence, by reversing the order in which deferred functions are expanded,
+  // we ensure that information that is required to be around, is indeed
+  // around when we need it. This is uniform with how foo() would get inlined
+  // into bar() were bar a non-deferred function.
+
+  for (i = (VARRAY_ACTIVE_SIZE (deferred_fns) - 1); i >= 0; i--)
+
+#else
+  for (i = 0; i < VARRAY_ACTIVE_SIZE (deferred_fns); i--)
+#endif
     {
       tree decl = VARRAY_TREE (deferred_fns, i);
 

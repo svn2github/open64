@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -173,7 +177,7 @@ int SIZEOF_INTRIN_FAMILIES = (sizeof intrin_families)/(sizeof *intrin_families);
  *    passable:
  *    external: 0 if ever implemented inline, 1 if always uses library function
  *    optional:
- *    dope:
+ *    dope: 1 if result is an array
  *    generic: 0
  *    enabled: ignored
  *    n_specifics:
@@ -9641,6 +9645,9 @@ intrin_tbl_type         intrin_tbl[] =
    {"NEQV",4,1,1,0,0,0,0,0,1,0,Neqv_Intrinsic,0,0},
       {"I",1,0,0,0,0,0,0,0,0,0,0,IRP_MASK,0},
       {"J",1,0,0,0,0,0,0,0,0,0,0,IRP_MASK,0},
+{"NEW_LINE",8,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
+   {"NEW_LINE",8,1,1,0,0,0,0,0,0,0,Newline_Intrinsic,Character_1,0},
+      {"A",1,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
 {"NINT",4,1,1,1,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
    {"NINT",4,1,1,0,0,0,0,0,0,0,Nint_Intrinsic,Integer_4,0},
       {"A",1,0,0,0,0,0,0,0,0,0,0,REAL_MASK,0},
@@ -11491,6 +11498,13 @@ intrin_tbl_type         intrin_tbl[] =
    {"_SELECTED_REAL_KIND_8",21,0,1,0,1,0,0,0,0,0,SRK_Intrinsic,0,0},
       {"P",1,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
       {"R",1,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
+{"SETBUF",6,0,1,0,0,0,0,1,0,1,0,0,0},
+   {"_Setbuf",7,0,1,0,1,0,0,0,0,0,Pathf90_Intrinsic,Integer_4,0},
+      {"UNIT",4,0,0,0,0,0,0,0,0,0,0,I4_MASK,0},
+      {"BUF",3,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
+{"SETLINEBUF",10,0,1,0,0,0,0,1,0,1,0,0,0},
+   {"_Setlinebuf",11,0,1,0,1,0,0,0,0,0,Pathf90_Intrinsic,Integer_4,0},
+      {"UNIT",4,0,0,0,0,0,0,0,0,0,0,I4_MASK,0},
 {"SET_EXPONENT",12,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY},
    {"SET_EXPONENT",12,1,1,0,0,0,0,0,0,0,Set_Exponent_Intrinsic,0,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,REAL_MASK,0},
@@ -14458,8 +14472,15 @@ void	(*intrinsic_semantics[]) ()	= {
 	sin_intrinsic,        		/*  Zsqrt_Intrinsic         	     */
 #endif
 #ifdef KEY /* Bug 1683 */
-	pathf90_intrinsic		/*  Pathf90_Intrinsic		     */
+	pathf90_intrinsic,		/*  Pathf90_Intrinsic		     */
 #endif /* KEY Bug 1683 */
+#ifdef KEY /* Bug 5089 */
+	true_intrinsic,			/*  True_Intrinsic		     */
+	support_uflow_intrinsic,	/*  Support_Uflow_Intrinsic	     */
+#endif /* KEY Bug 5089 */
+#ifdef KEY /* F2003 */
+	newline_intrinsic		/*  Newline_Intrinsic		     */
+#endif /* F2003 */
 	};
 
 

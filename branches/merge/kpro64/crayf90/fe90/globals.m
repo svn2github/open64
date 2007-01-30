@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -457,17 +461,52 @@
 /* OPND ACCESS */
 
 #ifdef KEY /* Bug 8117 */
+/* Runtime symbols for non-inline copyinout of arguments */
 # define COPYIN_ENTRY			"_Copyin"
-# define COPYIN_NAME_LEN		((sizeof COPYIN_ENTRY) - 1)
 # define COPYOUT_ENTRY			"_Copyout"
-# define COPYOUT_NAME_LEN		((sizeof COPYOUT_ENTRY) - 1)
 #endif /* KEY Bug 8117 */
+#ifdef KEY /* Bug 5089 */
+/* Runtime symbols for Fortran 2000 IEEE prolog/epilog save/restore. 
+ * IEEE_SAVE_SIZE is sizeof(fenv_t); it needs to be matched to the target OS
+ * and architecture. */
+# define IEEE_SAVE_ENTRY		"_Ieee_save"
+# define IEEE_RESTORE_ENTRY		"_Ieee_restore"
+
+#ifdef _LINUX_LINUX
+# if defined(TARG_X8664)
+    /* The size of fenv_t on Linux systems for -m64 is 32 bytes. The size on
+     * Fedora Core 1 systems for -m32 is 32 bytes, but on Fedora Core 2 and
+     * later -m32 systems it's 28 bytes. For -m32, libpathfortran provides
+     * its own definition which is always 32 bytes, both for consistency and
+     * because SSE2 needs the member which was eliminated after FC1. */
+#   define IEEE_SAVE_SIZE			32
+# elif defined(TARG_MIPS)
+#   define IEEE_SAVE_SIZE			4
+# endif /* defined(TARG_whatever) */
+#endif /* _LINUX_LINUX */
+
+#if !defined(IEEE_SAVE_SIZE)
+# error "Need IEEE_SAVE_SIZE"
+#endif /* !defined(IEEE_SAVE_SIZE) */
+
+#endif /* KEY Bug 5089 */
+#ifdef KEY /* Bug 6845 */
+# define ASSIGN_ALLOCATABLE_ENTRY	"_ASSIGN_ALLOCATABLE"
+
+/* Welcome to elementary C programming */
+# define OPND_LINE_NUM(OPND)		((OPND).line_num)
+# define OPND_COL_NUM(OPND)		((OPND).col_num)
+# define OPND_FLD(OPND)			((OPND).fld)
+# define OPND_IDX(OPND)			((OPND).idx)
+# define OPND_LIST_CNT(OPND)		((OPND).line_num)
+#else /* KEY Bug 6845 */
 
 # define OPND_LINE_NUM(OPND)		OPND.line_num
 # define OPND_COL_NUM(OPND)		OPND.col_num
 # define OPND_FLD(OPND)			OPND.fld
 # define OPND_IDX(OPND)			OPND.idx
 # define OPND_LIST_CNT(OPND)            OPND.line_num
+#endif /* KEY Bug 6845 */
 
 
 /*********************************\
@@ -729,8 +768,14 @@
 	IDX--;								       \
 	ACT_LINE = LINE - GL_GLOBAL_LINE(IDX) + GL_FILE_LINE(IDX);
 
+#ifdef KEY /* Bug 6845 */
+/* Welcome to elementary C programming */
+# define COPY_OPND(OPND_T, OPND_S)                                             \
+         ((OPND_T) = (OPND_S))
+#else /* KEY Bug 6845 */
 # define COPY_OPND(OPND_T, OPND_S)                                             \
          OPND_T = OPND_S;
+#endif /* KEY Bug 6845 */
 
 # define SET_MESSAGE_TBL(TBL, MSG_NUM)					       \
 	{int	_shift, _idx;                                                  \
@@ -922,11 +967,20 @@
         }
 
 
+#ifdef KEY /* Bug 5089 */
+# define FUNCTION_MUST_BE_SUBROUTINE(FCN_IDX,RSLT_IDX)                         \
+   (TYP_TYPE(ATD_TYPE_IDX(RSLT_IDX)) == Character     ||                       \
+    TYP_TYPE(ATD_TYPE_IDX(RSLT_IDX)) == Structure     ||                       \
+    ATD_ARRAY_IDX(RSLT_IDX) != NULL_IDX ||                                     \
+    ATD_IM_A_DOPE(RSLT_IDX) ||						       \
+    special_case_fcn_to_sub(FCN_IDX))
+#else /* KEY Bug 5089 */
 # define FUNCTION_MUST_BE_SUBROUTINE(ATTR_IDX)                                 \
    (TYP_TYPE(ATD_TYPE_IDX(ATTR_IDX)) == Character     ||                       \
     TYP_TYPE(ATD_TYPE_IDX(ATTR_IDX)) == Structure     ||                       \
     ATD_ARRAY_IDX(ATTR_IDX) != NULL_IDX ||                                     \
     ATD_IM_A_DOPE(ATTR_IDX))
+#endif /* KEY Bug 5089 */
 
 
 /***********************************************\

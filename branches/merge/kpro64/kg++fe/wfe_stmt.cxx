@@ -1,5 +1,5 @@
 /* 
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -804,12 +804,6 @@ cleanup_matches (tree candidate, tree target)
 }
 
 
-bool
-Is_Cleanup_Only (void)
-{
-  return temp_cleanup_stack[temp_cleanup_i].cleanup_eh_only;
-}
-
 void
 Do_Temp_Cleanups (tree t)
 {
@@ -1100,6 +1094,26 @@ constraint_by_address (const char *s)
   }
 }
 
+#ifdef KEY
+// Use the OPND_NUM_MAP to update the operand numbers in the CONSTRAINT_STRING.
+static void
+update_opnd_num(int *opnd_num_map, char *constraint_string)
+{
+  char *p;
+
+  for (p = constraint_string; *p != '\0'; p++) {
+    if (*p >= '0' &&
+	*p <= '9') {
+      unsigned int old_opnd_num = *p - '0';
+      unsigned int new_opnd_num = opnd_num_map[old_opnd_num];
+      Is_True(new_opnd_num >= 0 && new_opnd_num <= old_opnd_num,
+	      ("update_opnd_num: bad opnd numbers map"));
+      *p = new_opnd_num + '0';
+    }
+  }
+}
+#endif
+
 static WN *
 add_offset(WN_OFFSET  ofst,
 	   WN        *address)	// not const; some simplification may occur.
@@ -1167,12 +1181,27 @@ Wfe_Expand_Asm_Operands (tree  string,
   tree tail;
   char *constraint_string;
 
+#ifdef KEY
+  // Map operand numbers in the original asm to operand numbers in the WHIRL
+  // asm.  The mapping changes because for 'm' output constraints, the WHIRL
+  // asm represents it as an input rather than an output.  This changes the
+  // operand positions of all the subsequent output operands.  For example:
+  //   asm ("foo %0,%1" : "=rm" (a), "=r" (b) : "1" (b))
+  // effectively becomes:
+  //   asm ("foo %0,%1" : "=r" (b) : "r" (a), "1" (b))
+  // Now we need to rename "1"(b) to "0"(b).
+  int opnd_num_map[MAX_RECOG_OPERANDS];
+#endif
+
   // Keep list of output operand constraints so that we know
   // what a numeric constraint refers to.
   int i = 0;
   // Store the constraint strings
   for (tail = outputs; tail; tail = TREE_CHAIN (tail)) {
 #ifdef KEY
+    // Initialize operand numbers map.
+    opnd_num_map[i] = i;
+
     // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
     // first operand gives the string constant.
     constraint_string = 
@@ -1183,6 +1212,10 @@ Wfe_Expand_Asm_Operands (tree  string,
     operand_constraint_array[i] = constraint_string;
     ++i;
   }
+#ifdef KEY
+  opnd_num_map[i] = -1;
+#endif
+
   FmtAssert(i < MAX_RECOG_OPERANDS, ("Too many asm operands"));
   for ( ; i < MAX_RECOG_OPERANDS; ++i) {
     operand_constraint_array[i] = NULL;
@@ -1331,6 +1364,13 @@ Wfe_Expand_Asm_Operands (tree  string,
 	WN_kid (asm_wn, i) =
 	  WN_CreateAsm_Input (constraint_string, opnd_num, addr_of_lvalue);
 	++i;
+#ifdef KEY
+	// There is effectively one less output.  Decrement all subsequent
+	// output operand positions by one.
+	for (int j = opnd_num + 1; opnd_num_map[j] != -1; j++) {
+	  opnd_num_map[j]--;
+	}
+#endif
       }
       ++opnd_num;
     }
@@ -1394,6 +1434,11 @@ Wfe_Expand_Asm_Operands (tree  string,
 				 (UINT) 0);
 	}
       }
+
+#ifdef KEY
+      // Get the new operand numbers from map.
+      update_opnd_num(opnd_num_map, constraint_string);
+#endif
 
       WN_kid (asm_wn, i) =
 	WN_CreateAsm_Input (constraint_string, opnd_num, input_rvalue);
@@ -3177,49 +3222,38 @@ WFE_Expand_Try (tree stmt)
   /* Set start labels for each handler. */
   Set_Handler_Labels(stmt);
 
-  // bug fix for OSP_159 & OSP_160 
-  if (!opt_regions)
-    Push_Scope_Cleanup (stmt);
+  Push_Scope_Cleanup (stmt);
 
 #ifdef KEY
+  vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();
 // FIXME: handle temp cleanups for return from handler.
 #if 0 
   vector<TEMP_CLEANUP_INFO> *temp_cleanup = Get_Temp_Cleanup_Info ();
 #else
   vector<TEMP_CLEANUP_INFO> *temp_cleanup = 0;
 #endif
+  vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
   int handler_count=0;
   WN * region_body;
   if (key_exceptions)
   {
     region_body = WN_CreateBlock();
     WFE_Stmt_Push (region_body, wfe_stmk_region_body, Get_Srcpos());
-    
-    // bug fix for OSP_159 & OSP_160
-    if (opt_regions)
-      Push_Scope_Cleanup (stmt);
     handler_count = cleanup_list_for_eh.size();
   }
-  vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();
-  vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
 #endif // KEY
 
   /* Generate code for the try-block. */
 
   for (tree s = TRY_STMTS(stmt); s; s = TREE_CHAIN(s))
     WFE_Expand_Stmt(s);
-  // bug fix for OSP_159 & OSP_160
-  if (!opt_regions)
-    --scope_cleanup_i;
+  --scope_cleanup_i;
 
 #ifdef KEY
   LABEL_IDX start = 0;
   if (key_exceptions)
   {
     WFE_Stmt_Pop (wfe_stmk_region_body);
-    // bug fix for OSP_159 & OSP_160
-    if (opt_regions)
-      --scope_cleanup_i;
     WN * region_pragmas = WN_CreateBlock();
     FmtAssert (cleanup_list_for_eh.size() >= handler_count, ("Cleanups cannot be removed here"));
     LABEL_IDX cmp_idx = scope_cleanup_stack[scope_cleanup_i+1].cmp_idx;
@@ -3260,21 +3294,6 @@ WFE_Expand_Try (tree stmt)
     	region_pragmas, WN_CreateBlock(), New_Region_Id(), ereg_supp), 
 	Get_Srcpos());
     Set_PU_has_region (Get_Current_PU());
-    
-    //The following code creat a new TY for the ST that is created
-    //above. Because in CG, we will get the size of the ST from its
-    //TY, we should get its right size from the INITO attach with 
-    //it, and write it into a new TY
-    UINT inito_size;
-    TY_IDX tyi;     
-    TY& zty = New_TY(tyi);
-    inito_size = Get_INITO_Size (ereg_supp);
-    TY_Init (zty, inito_size, KIND_STRUCT, MTYPE_M,
-	     ereg -> u1.name_idx);
-    Set_TY_align (tyi, 4);
-    ST_Init (ereg, TY_name_idx(zty),CLASS_VAR, SCLASS_EH_REGION_SUPP, EXPORT_LOCAL, tyi);
-    Set_ST_is_initialized (ereg);
-    Set_ST_is_not_used (ereg);
   }
   vector<tree> *cleanups = new vector<tree>();
   LABEL_IDX cmp_idxs[2];
@@ -3366,7 +3385,22 @@ WFE_Expand_EH_Spec (tree stmt)
         eh_spec_func_end.push_back (0);
       }
 #endif
+#ifdef KEY
+      // Bug 8523: This is a #list# of statements, and needs to be iterated through.
+      //
+      //           (Else, the expansion will happen only for the first statement,
+      //           and WFE_Expand_Stmt() will return right after! The rest of the
+      //           statements in the EH_SPEC_STMTS list will be  d r o p p e d  !
+      //           (If the first statement were a compound statement, it will not 
+      //           immediately be obvious that statements after the first statement
+      //           in the EH_SPEC_STMTS are being skipped)).
+      //
+      tree eh_spec_stmt;
+      for (eh_spec_stmt = EH_SPEC_STMTS (stmt); eh_spec_stmt != NULL; eh_spec_stmt = TREE_CHAIN(eh_spec_stmt))
+        WFE_Expand_Stmt (eh_spec_stmt);
+#else
       WFE_Expand_Stmt (EH_SPEC_STMTS (stmt));
+#endif
 #ifdef KEY
       if (key_exceptions)
       { // now clear eh_spec_vector, eh_spec_func_end stays.
@@ -3949,11 +3983,6 @@ WFE_Expand_Stmt(tree stmt, WN* target_wn)
       break;
 
     case TRY_BLOCK:
-#ifdef KEY
-      // bug fix for OSP_159 & OSP_160 
-      if (opt_regions && Check_For_Call_Region ())
-        Did_Not_Terminate_Region = FALSE;
-#endif
       WFE_Expand_Try (stmt);
       break;
 
@@ -3971,6 +4000,9 @@ WFE_Expand_Stmt(tree stmt, WN* target_wn)
     case FILE_STMT:
       /* Simple enough to handle.  */
       input_filename = FILE_STMT_FILENAME (stmt);
+#ifdef KEY //bug 10632,8895: File changed. Don't worry lineno
+      WFE_Set_Line_And_File (lineno, input_filename);
+#endif
       break;
 
     case EH_SPEC_BLOCK:

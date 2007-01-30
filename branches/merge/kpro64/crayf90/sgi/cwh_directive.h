@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: cwh_directive.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_directive.h,v $
+ * $Revision: 1.7 $
+ * $Date: 05/09/22 10:54:47-07:00 $
+ * $Author: gautam@jacinth.keyresearch $
+ * $Source: crayf90/sgi/SCCS/s.cwh_directive.h $
  *
  * Description: Entry points into cwh_directive.c
  *
@@ -56,7 +56,7 @@
 #define CWH_DIRECTIVE_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_directive.h,v $";
+static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_directive.h $";
 #endif /* _KEEP_RCS_ID */
 
 extern int parallel_do_count;

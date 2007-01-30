@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -91,7 +95,11 @@ static char *print_at_name	(int);
 static void print_attr_name     (FILE *, int, int);
 static void print_const_entry   (FILE *, int, int);
 static void print_list          (FILE *, int, int, int, boolean);
+#ifdef KEY /* Bug 6845 */
+static void print_Dv_Whole_Def_Opr          (FILE *, int, int, int, int);
+#else /* KEY Bug 6845 */
 static void print_Dv_Whole_Def_Opr          (FILE *, int, int, int);
+#endif /* KEY Bug 6845 */
 static void print_mp_dir_opr          (FILE *, int, int, int);
 static void print_open_mp_dir_opr(FILE *, int, int, int);
 static void print_expanded_stmt_for_scp(void);
@@ -316,6 +324,17 @@ void print_fp_tbl (void)
       dump_fp_ntry(debug_file, fp_idx, TRUE);
       fp_idx = FP_NEXT_FILE_IDX(fp_idx);
    }
+
+#ifdef KEY /* Bug 5089 */
+   fprintf(debug_file, "%s\n\n", "Intrinsic module paths:");
+
+   fp_idx = intrinsic_module_path_idx;
+
+   while (fp_idx != NULL_IDX) {
+      dump_fp_ntry(debug_file, fp_idx, TRUE);
+      fp_idx = FP_NEXT_FILE_IDX(fp_idx);
+   }
+#endif /* KEY Bug 5089 */
 
    fprintf(debug_file, "%s\n\n", "Implicit Use Module Paths:");
 
@@ -3672,7 +3691,11 @@ PROCESS_SIBLING:
 static void  print_Dv_Whole_Def_Opr(FILE    *out_file,
                                     int      idx,
                                     int      indent,
-                                    int      cnt)
+                                    int      cnt,
+#ifdef KEY /* Bug 6845 */
+                                    int      n_dim
+#endif /* KEY Bug 6845 */
+				    )
 
 {
    int	dim;
@@ -3700,6 +3723,23 @@ static void  print_Dv_Whole_Def_Opr(FILE    *out_file,
          break;
       }
 
+#ifdef KEY /* Bug 6845 */
+      /* Print dope vector "header", then array bounds info if any, then
+       * count and offsets for allocatable components if any */
+      int first_bound =
+        ((sizeof(dv_whole_def_str))/(sizeof(*dv_whole_def_str)));
+      int first_alloc_cpnt = first_bound + 3 * n_dim;
+      if (i < first_bound) {
+         strcpy(str, dv_whole_def_str[i]);
+      }
+      else if (i < first_alloc_cpnt) {
+         sprintf(str, dv_whole_def_bound_str[(i - first_bound) % 3],
+	   (i - first_bound) / 3);
+      }
+      else {
+         sprintf(str, dv_whole_def_alloc_cpnt_str, i - first_alloc_cpnt);
+      }
+#else /* KEY Bug 6845 */
       if (i < 10) {
          strcpy(str, dv_whole_def_str[i]);
       }
@@ -3709,6 +3749,7 @@ static void  print_Dv_Whole_Def_Opr(FILE    *out_file,
          }
          sprintf(str, dv_whole_def_str[i], dim);
       }
+#endif /* KEY Bug 6845 */
 
       fprintf(out_file,"%s%-15s, idx = %d, %s",shift, str, idx,
                                          field_str[IL_FLD(idx)]);
@@ -4621,6 +4662,9 @@ static	void	print_expanded_ir(int	ir_idx)
       case Erf_Opr:
       case Erfc_Opr:
 #endif /* KEY Bug 1324 */
+#ifdef KEY /* Bug 10410 */
+      case Cselect_Opr:
+#endif /* KEY Bug 10410 */
 # ifdef _TARGET_OS_MAX
       case My_Pe_Opr:
 # endif
@@ -5576,9 +5620,18 @@ static void dump_at_ntry (FILE		*out_file,
                     "ATP_USE_LIST", ATP_USE_LIST(at_idx),
                     use_type_str[ATP_USE_TYPE(at_idx)]);
 
+#ifdef KEY /* Bug 5089 */
+            fprintf(out_file, "  %-16s= %-7s %-16s= %-7s %-16s= %-7s\n",
+                    "ATP_USES_EREGS",boolean_str[ATP_USES_EREGS(at_idx)],
+                    "ATP_VFUNCTION",boolean_str[ATP_VFUNCTION(at_idx)],
+                    "ATT_NON_INTRIN",boolean_str[ATT_NON_INTRIN(at_idx)]);
+            fprintf(out_file, "  %-16s= %-7s\n", "ATT_NO_MODULE_NA",
+		    boolean_str[ATT_NO_MODULE_NATURE(at_idx)]);
+#else /* KEY Bug 5089 */
             fprintf(out_file, "  %-16s= %-7s %-16s= %-7s\n",
                     "ATP_USES_EREGS",boolean_str[ATP_USES_EREGS(at_idx)],
                     "ATP_VFUNCTION",boolean_str[ATP_VFUNCTION(at_idx)]);
+#endif /* KEY Bug 5089 */
 
             if (ATP_USE_LIST(at_idx) != NULL_IDX) {
                ro_idx = ATP_USE_LIST(at_idx);
@@ -5805,6 +5858,11 @@ static void dump_at_ntry (FILE		*out_file,
                  "ATT_NUMERIC_CPNT", boolean_str[ATT_NUMERIC_CPNT(at_idx)],
                  "ATT_POINTER_CPNT", boolean_str[ATT_POINTER_CPNT(at_idx)],
                  "ATT_PRIVATE_CPNT", boolean_str[ATT_PRIVATE_CPNT(at_idx)]);
+
+#ifdef KEY /* Bug 6845 */
+         fprintf(out_file, "  %-16s= %-7s\n",
+                 "ATT_ALLOCAT_CPNT", boolean_str[ATT_ALLOCATABLE_CPNT(at_idx)]);
+#endif /* KEY Bug 6845 */
 
          fprintf(out_file, "  %-16s= %-7d %-16s= %-7s %-16s= %-8d\n",
                  "ATT_SCP_IDX", ATT_SCP_IDX(at_idx),
@@ -7217,8 +7275,13 @@ static void dump_ir_ntry(FILE 	*out_file,
                  break;
       }
 
+#ifdef KEY /* Bug 6845 */
+      print_Dv_Whole_Def_Opr(out_file, IR_IDX_L(idx),
+                            indent + 1, IR_LIST_CNT_L(idx), IR_DV_DIM(idx));
+#else /* KEY Bug 6845 */
       print_Dv_Whole_Def_Opr(out_file, IR_IDX_L(idx),
                             indent + 1, IR_LIST_CNT_L(idx));
+#endif /* KEY Bug 6845 */
    }
    else if (IR_OPR(idx) == Doacross_Dollar_Opr ||
             IR_OPR(idx) == Psection_Par_Opr ||
@@ -7901,6 +7964,10 @@ PROCESS_SIBLING:
    fprintf(out_file,"%18s%-20s= %-7d  %-20s= %-9d\n", " ",
            "SCP_TMP_LIST", SCP_TMP_LIST(scp_idx),
            "SCP_USED_MODULE_LIST", SCP_USED_MODULE_LIST(scp_idx));
+#ifdef KEY /* Bug 5089 */
+   fprintf(out_file,"%18s%-20s= %-7s\n", " ",
+           "SCP_USES_IEEE", boolean_str[SCP_USES_IEEE(scp_idx)]);
+#endif /* KEY Bug 5089 */
 
 
    if (print_impl_tbl) {

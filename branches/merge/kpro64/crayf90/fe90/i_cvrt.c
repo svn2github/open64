@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -60,6 +64,10 @@
 # include "p_globals.h"
 # include "s_globals.h"
 # include "i_cvrt.h"
+#ifdef KEY /* Bug 6845 */
+#define FOR_I_CVRT
+#include "../sgi/cwh_types.h"
+#endif /* KEY Bug 6845 */
 
 /*****************************************************************\
 |* Function prototypes of static functions declared in this file *|
@@ -935,17 +943,31 @@ void push_data_value (int      t_idx)
    char         *old_str_ptr;
    boolean       ignore_types;
    long_type     target_length;
+#ifdef KEY /* Bug 10177 */
+   int           idx = 0;
+   int           l_idx = 0;
+   fld_type      fld = NO_Tbl_Idx;
+   int           cn_idx = 0;
+#else /* KEY Bug 10177 */
    int           idx;
    int           l_idx;
    fld_type      fld;
    int           cn_idx;
+#endif /* KEY Bug 10177 */
    int           type_idx;
    int           new_str_idx;
    long64	 len;
+#ifdef KEY /* Bug 10177 */
+   long64   	 rep_count = 0;
+   long64   	 stride = 0;
+   long64   	 padd = 0;
+   long64        num_chars = 0;
+#else /* KEY Bug 10177 */
    long64   	 rep_count;
    long64   	 stride;
    long64   	 padd = 0;
    long64        num_chars;
+#endif /* KEY Bug 10177 */
    int           i;
 
 
@@ -1238,6 +1260,65 @@ static void	cvrt_sytb_to_pdg(void)
 }  /* cvrt_sytb_to_pdg */
 
 
+#ifdef KEY /* Bug 6845 */
+/*
+ * ir_idx	IR_Tbl_Idx index for a dope vector operator
+ * return	corresponding dv_idx_type for use with fei_{g,s}et_hdr_fld
+ *		in SGI part of front end
+ */
+static dv_idx_type
+opr_to_dv_hdr_fld(int ir_idx)
+{
+  switch (IR_OPR(ir_idx)) {
+    case Dv_Set_Base_Addr :
+    case Dv_Access_Base_Addr :
+	 return DV_BASE_IDX;
+	 break;
+    case Dv_Set_El_Len :
+    case Dv_Access_El_Len :
+	 return DV_EL_LEN_IDX;
+	 break;
+    case Dv_Set_Assoc :
+    case Dv_Access_Assoc :
+	 return DV_ASSOC_IDX;
+	 break;
+    case Dv_Set_Ptr_Alloc :
+    case Dv_Access_Ptr_Alloc :
+	 return DV_PTR_ALLOC_IDX;
+	 break;
+    case Dv_Set_P_Or_A :
+    case Dv_Access_P_Or_A :
+	 return DV_P_OR_A_IDX;
+	 break;
+    case Dv_Set_A_Contig :
+    case Dv_Access_A_Contig :
+	 return DV_A_CONTIG_IDX;
+	 break;
+    case Dv_Set_N_Dim :
+    case Dv_Access_N_Dim :
+	 return DV_NUM_DIMS_IDX;
+	 break;
+    case Dv_Set_Typ_Code :
+    case Dv_Access_Typ_Code :
+	 return DV_TYPE_CODE_IDX;
+	 break;
+    case Dv_Set_Orig_Base :
+    case Dv_Access_Orig_Base :
+	 return DV_ORIG_BASE_IDX;
+	 break;
+    case Dv_Set_Orig_Size :
+    case Dv_Access_Orig_Size :
+	 return DV_ORIG_SIZE_IDX;
+	 break;
+    default:
+         PRINTMSG(IR_LINE_NUM(ir_idx), 1044, Internal, IR_COL_NUM(ir_idx),
+	   "opr_to_dv_hdr_fld");
+	 return 0;
+         break;
+  }
+}
+#endif /* KEY Bug 6845 */
+
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -1284,8 +1365,8 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		boolean			ignore_types;
    		long64			inc;
    		opnd_type		l_opnd;
-   		long			first_task_idx		= NULL_IDX; /* by jhs, 02.9.25 */
-   		long			last_task_idx		= NULL_IDX;
+   		int			first_task_idx		= NULL_IDX; /* by jhs, 02.9.25 */
+   		int			last_task_idx		= NULL_IDX;
 		int			line;
    		int			list_array[OPEN_MP_LIST_CNT];
    		int			list_cnt;
@@ -1309,18 +1390,18 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		long64			stride;
    		int			t_idx;
    		int			task_tbl_idx;
-   		long			task_maxcpus_idx;
-   		long			task_wdist_idx;
+   		int			task_maxcpus_idx;
+   		int			task_wdist_idx;
    		long			which;
    		long			assertion;
-   		long			task_if_idx		= 0; /* by jhs, 02.9.5 */
-   		long			task_num_threads_idx = 0; /* by jhs, 02.7.20 */
+   		int			task_if_idx		= 0; /* by jhs, 02.9.5 */
+   		int			task_num_threads_idx = 0; /* by jhs, 02.7.20 */
    		char			*criticalname  		= 0;
    		long			level    		= 0;
    		long			span    		= 1;
    		long			point    		= 0;
    		long			scheduletype		= 0;
-   		long			schedulechunk		= 0; /* by jhs, 02.9.25 */
+   		int			schedulechunk		= 0; /* by jhs, 02.9.25 */
    		long			schedtype		= 0;
    		long			chunkcount		= 0;
    		long			threadcount		= 0;
@@ -1334,7 +1415,7 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		long			C_value  		= 0;
    		long			prefetch_manual 	= 0;
    		long			prefetch_array  	= 0;
-   		long			redistribute_array  	= 0;
+   		int			redistribute_array  	= 0;
    		long			context  		= -1;
    		long			prefetch_size   	= -1;
    		long			prefetch_kind   	= -1;
@@ -2934,6 +3015,9 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
 
 
 
+#ifdef KEY /* Bug 10410 */
+   case Cselect_Opr :
+#endif /* KEY Bug 10410 */
    case Cvmgt_Opr :
         cvrt_exp_to_pdg(IR_IDX_L(ir_idx), 
                         IR_FLD_L(ir_idx));
@@ -2945,7 +3029,11 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
         PDG_DBG_PRINT_END    
 
 # ifdef _ENABLE_FEI
+#ifdef KEY /* Bug 10410 */
+        fei_select(basic, Cselect_Opr == IR_OPR(ir_idx));
+#else /* KEY Bug 10410 */
         fei_select(basic);
+#endif /* KEY Bug 10410 */
 # endif
         
         break;
@@ -6464,7 +6552,11 @@ CONTINUE:
         PDG_DBG_PRINT_END
 
 # ifdef _ENABLE_FEI
+#ifdef KEY /* Bug 6845 */
+        fei_dv_def(IR_DV_DIM(ir_idx), IR_DV_N_ALLOC_CPNT(ir_idx));
+#else /* KEY Bug 6845 */
         fei_dv_def(IR_DV_DIM(ir_idx));
+#endif /* KEY Bug 6845 */
 # endif
         processing_call = processing_call - 1;
         break;
@@ -6591,6 +6683,7 @@ CONTINUE:
                            IR_FLD_R(ir_idx));
         }
 
+#ifndef KEY /* Bug 6845 */
         switch (IR_OPR(ir_idx)) {
         case Dv_Set_Base_Addr :
              fld = 1;
@@ -6623,13 +6716,18 @@ CONTINUE:
              fld = 10;
              break;
         }
+#endif /* KEY Bug 6845 */
 
         PDG_DBG_PRINT_START
         PDG_DBG_PRINT_C("fei_set_dv_hdr_fld");
         PDG_DBG_PRINT_D("(1) field num", fld);
         PDG_DBG_PRINT_END
 # ifdef _ENABLE_FEI
+#   ifdef KEY /* Bug 6845 */
+        fei_set_dv_hdr_fld(opr_to_dv_hdr_fld(ir_idx));
+#   else /* KEY Bug 6845 */
         fei_set_dv_hdr_fld(fld);
+#   endif /* KEY Bug 6845 */
 # endif
         break;
 
@@ -6655,6 +6753,7 @@ CONTINUE:
                            IR_FLD_R(ir_idx));
         }
 
+#ifndef KEY /* Bug 6845 */
         switch (IR_OPR(ir_idx)) {
         case Dv_Access_Base_Addr :
              fld = 1;
@@ -6687,13 +6786,18 @@ CONTINUE:
              fld = 10;
              break;
         }
+#endif /* KEY Bug 6845 */
 
         PDG_DBG_PRINT_START
         PDG_DBG_PRINT_C("fei_get_dv_hdr_fld");
         PDG_DBG_PRINT_D("(1) field num", fld);
         PDG_DBG_PRINT_END
 # ifdef _ENABLE_FEI
+#   ifdef KEY /* Bug 6845 */
+        fei_get_dv_hdr_fld(opr_to_dv_hdr_fld(ir_idx));
+#   else /* KEY Bug 6845 */
         fei_get_dv_hdr_fld(fld);
+#   endif /* KEY Bug 6845 */
 # endif
         break;
 
@@ -6771,6 +6875,9 @@ CONTINUE:
         }
 
         if (ATP_PGM_UNIT(IR_IDX_L(ir_idx)) == Subroutine ||
+#ifdef KEY /* Bug 5089 */
+            special_case_fcn_to_sub(IR_IDX_L(ir_idx)) ||
+#endif /* KEY Bug 5089 */
             ATP_EXTRA_DARG(IR_IDX_L(ir_idx))) {
            type_desc = pdg_type_void;
 
@@ -10780,7 +10887,11 @@ static TYPE get_type_desc(int	input_idx)
    int			dist_idx;
    int			distribution	= 0;
    int			kind_type	= 0;
+#ifdef KEY /* Bug 10177 */
+   int			attr_idx = 0;
+#else /* KEY Bug 10177 */
    int			attr_idx;
+#endif /* KEY Bug 10177 */
    int			temp_attr_idx;
    int          	basic_type;
    long64		extent;
@@ -10884,7 +10995,12 @@ static TYPE get_type_desc(int	input_idx)
       PDG_DBG_PRINT_END
 
 # ifdef _ENABLE_FEI
-      type_idx = fei_dope_vector(rank, type_idx, type_flag);
+      type_idx = fei_dope_vector(rank, type_idx, type_flag,
+#ifdef KEY /* Bug 6845 */
+      /* Sigh. We have to count them yet again. The joys of retrofitting. */
+        do_count_allocatable_cpnt(attr_idx, rank)
+#endif /* KEY Bug 6845 */
+        );
 # endif
    }
    else if (ATD_ARRAY_IDX(attr_idx) != NULL_IDX) {
@@ -11659,9 +11775,13 @@ static void  send_procedure(int			attr_idx,
    int			parent_idx;
    int			pdg_alt_entry_idx	= NULL_IDX;
    int			pgm_unit;
-   long			prev_idx;
+   int			prev_idx;
    int			proc;
+#ifdef KEY /* Bug 10177 */
+   TYPE			type_desc = pdg_type_void;
+#else /* KEY Bug 10177 */
    TYPE			type_desc;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "send_procedure", NULL);
@@ -12063,7 +12183,7 @@ static TYPE	send_derived_type(int	type_idx)
    int		dt_attr_idx;
    long		flag			= 0;
    int		dt_idx;
-   long		prev_idx;
+   int		prev_idx;
    int		sequence;
    int		sn_idx;
    long64  	size;
@@ -12547,7 +12667,7 @@ static void  send_namelist_group(int	ng_attr_idx)
    int		attr_idx;
    int		count;
    int		name_idx;
-   long     	prev_idx;
+   INTPTR	prev_idx;
    int		sn_idx;
 
 
@@ -13687,7 +13807,7 @@ static void  send_darg_list(int		pgm_attr_idx,
    int		attr_idx;
    int		darg_idx;
    int		end_idx;
-   long		prev_idx;
+   int		prev_idx;
    int		sn_idx;
 
 
@@ -13771,9 +13891,15 @@ static void  send_darg_list(int		pgm_attr_idx,
 static	TYPE	send_non_standard_aligned_type(int		align,
 					       int		type_idx)
 {
+#ifdef KEY /* Bug 10177 */
+   int		aux_info = 0;
+   int		basic_type = 0;
+   int      	bit_size = 0;
+#else /* KEY Bug 10177 */
    int		aux_info;
    int		basic_type;
    int      	bit_size;
+#endif /* KEY Bug 10177 */
    int      	flags 		= 0;
    TYPE		pdg_type_idx;
 

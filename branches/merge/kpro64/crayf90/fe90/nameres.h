@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -314,8 +318,13 @@ long	obj_to_attr[Obj_Done]	=	{
 	 (1 << Attr_Explicit_Shp_Arr) |	(0 << Attr_Dimension) |
 	 (1 << Attr_Assumed_Size_Arr) |	(0 << Attr_Deferred_Shp_Arr) |
 	 (1 << Attr_Assumed_Shp_Arr) |	(0 << Attr_Allocatable) |
-	 (1 << Attr_Intent) |
-	 (1 << Attr_Optional) |		(0 << Attr_Public) |
+#ifdef KEY /* Bug 6845 */
+	 /* Allocatable now allowed on dummy args */
+	 (0 << Attr_Intent) |           (0 << Attr_Optional) |
+#else /* Bug 6845 */
+	 (1 << Attr_Intent) |           (1 << Attr_Optional) |
+#endif /* Bug 6845 */
+	 (0 << Attr_Public) |
 	 (0 << Attr_Private) |		(0 << Attr_Target) |
 	 (1 << Attr_Data_Init) |	(1 << Attr_Equivalence) |
 	 (0 << Attr_Save) |		(1 << Attr_Pointer) |
@@ -347,7 +356,12 @@ long	obj_to_attr[Obj_Done]	=	{
 	((0 << Attr_Assumed_Type_Ch) |	(1 << Attr_Parameter) |
 	 (0 << Attr_Explicit_Shp_Arr) |	(0 << Attr_Dimension) |
 	 (0 << Attr_Assumed_Size_Arr) |	(0 << Attr_Deferred_Shp_Arr) |
+#ifdef KEY /* Bug 6845 */
+	 /* Allocatable now allowed on dummy args */
+	 (0 << Attr_Assumed_Shp_Arr) |	(0 << Attr_Allocatable) |
+#else /* KEY Bug 6845 */
 	 (0 << Attr_Assumed_Shp_Arr) |	(1 << Attr_Allocatable) |
+#endif /* KEY Bug 6845 */
 	 (0 << Attr_Intent) |
 	 (0 << Attr_Optional) |		(0 << Attr_Public) |
 	 (0 << Attr_Private) |		(0 << Attr_Target) |
@@ -363,7 +377,13 @@ long	obj_to_attr[Obj_Done]	=	{
 	((0 << Attr_Assumed_Type_Ch) |	(1 << Attr_Parameter) |
 	 (0 << Attr_Explicit_Shp_Arr) |	(0 << Attr_Dimension) |
 	 (0 << Attr_Deferred_Shp_Arr) |	(0 << Attr_Assumed_Size_Arr) |
-	 (0 << Attr_Assumed_Shp_Arr) |	(1 << Attr_Allocatable) |
+	 (0 << Attr_Assumed_Shp_Arr) |
+#ifdef KEY /* Bug 6845 */
+	 /* Allocatable now allowed on dummy args */
+	 (0 << Attr_Allocatable) |
+#else /* KEY Bug 6845 */
+	 (1 << Attr_Allocatable) |
+#endif /* KEY Bug 6845 */
 	 (0 << Attr_Intent) |
 	 (0 << Attr_Optional) |		(0 << Attr_Public) |
 	 (0 << Attr_Private) |		(0 << Attr_Target) |
@@ -2156,16 +2176,27 @@ long	obj_to_name[Obj_Done]	=	{
 	/*	Obj_Allocatable		ie: ALLOCATABLE A(:)	*/
 
 	((0 << Name_Variable) |		(1 << Name_Common_Obj) |
+#ifdef KEY /* Bug 6845 */
+	 /* Allocatable now allowed on dummy args, function result */
+	 (1 << Name_Cri_Pointer) |	(0 << Name_Dummy_Arg) |
+	 (1 << Name_Cri_Pointee) |	(1 << Name_Cri_Ch_Pointee) |
+	 (0 << Name_Func_Result) |	(1 << Name_Intrinsic_Func) |
+#else /* KEY Bug 6845 */
 	 (1 << Name_Cri_Pointer) |	(1 << Name_Dummy_Arg) |
 	 (1 << Name_Cri_Pointee) |	(1 << Name_Cri_Ch_Pointee) |
 	 (1 << Name_Func_Result) |	(1 << Name_Intrinsic_Func) |
+#endif /* KEY Bug 6845 */
 	 (1 << Name_Intrinsic_Subr) |	(1 << Name_Module_Proc) |
 	 (1 << Name_Derived_Type) |	(1 << Name_Generic_Interface) |
 	 (1 << Name_Namelist_Group) |	(1 << Name_Namelist_Group_Obj)|
 	 (1 << Name_Statement_Func) |	(1 << Name_Construct) |
 	 (1 << Name_Module) |		(1 << Name_Blockdata) |
 	 (1 << Name_Program) |		(1 << Name_Function) |
+#ifdef KEY /* Bug 6845 */
+	 (0 << Name_Curr_Func) |	(1 << Name_Curr_Subr) |
+#else /* KEY Bug 6845 */
 	 (1 << Name_Curr_Func) |	(1 << Name_Curr_Subr) |
+#endif /* KEY Bug 6845 */
 	 (1 << Name_Internal_Func) |	(1 << Name_Internal_Subr)),
 
 	/*	Obj_Constant		ie: PARAMETER (A=1.0)	*/
@@ -4533,8 +4564,13 @@ long	attr_msg_num[Obj_Done] [Attr_Done]	= {
 	  550,	/* Obj_Allocatable		Attr_Parameter		*/
 		/* Illegal (5.1)					*/
 
+#ifdef KEY /* Bug 6845 */
+	    0,	/* Obj_Allocatable		Attr_Intent		*/
+	    0,	/* Obj_Allocatable		Attr_Optional		*/
+#else /* KEY Bug 6845 */
 	  550,	/* Obj_Allocatable		Attr_Intent		*/
 	  550,	/* Obj_Allocatable		Attr_Optional		*/
+#endif /* KEY Bug 6845 */
 		/* Illegal (5.2.6)					*/
 
 	    0,	/* Obj_Allocatable		Attr_Private		*/
@@ -4644,8 +4680,12 @@ long	attr_msg_num[Obj_Done] [Attr_Done]	= {
 	    0,	/* Obj_Intent			Attr_Deferred_Shp_Arr	*/
 	    0,	/* Obj_Intent			Attr_Assumed_Shp_Arr	*/
 
+#ifdef KEY /* Bug 6845 */
+	    0,	/* Obj_Intent			Attr_Allocatable	*/
+#else /* KEY Bug 6845 */
 	  550,	/* Obj_Intent			Attr_Allocatable	*/
 		/* Can't be a dummy arg (5.2.6)				*/
+#endif /* KEY Bug 6845 */
 
 	  550,	/* Obj_Intent			Attr_Parameter		*/
 		/* Constants can't be dargs. (5.1.2.4.4, 14.1.2)	*/
@@ -4703,8 +4743,12 @@ long	attr_msg_num[Obj_Done] [Attr_Done]	= {
 	    0,	/* Obj_Optional			Attr_Deferred_Shp_Arr	*/
 	    0,	/* Obj_Optional			Attr_Assumed_Shp_Arr	*/
 
+#ifdef KEY /* Bug 6845 */
+	    0,	/* Obj_Optional			Attr_Allocatable	*/
+#else /* KEY Bug 6845 */
 	  550,	/* Obj_Optional			Attr_Allocatable	*/
 		/* Can't be a dummy arg (5.2.6)				*/
+#endif /* KEY Bug 6845 */
 
 	  550,	/* Obj_Optional			Attr_Parameter		*/
 		/* Constants can't be dargs. (5.1.2.4.4, 14.1.2)	*/
@@ -8642,9 +8686,14 @@ long	name_msg_num[Obj_Done] [Name_Done]	= {
 	  551,	/* Obj_Allocatable		Name_Cri_Ch_Pointee	*/
 		/* Cri character pointee must be a scalar.		*/
 
+#ifdef KEY /* Bug 6845 */
+	    0,	/* Obj_Allocatable		Name_Func_Result	*/
+	    0,	/* Obj_Allocatable		Name_Dummy_Arg		*/
+#else /* KEY Bug 6845 */
 	  551,	/* Obj_Allocatable		Name_Func_Result	*/
 	  551,	/* Obj_Allocatable		Name_Dummy_Arg		*/
 		/* (5.2.6) - illegal					*/
+#endif /* KEY Bug 6845 */
 
 	  551,	/* Obj_Allocatable		Name_Module_Proc	*/
 		/* Can't be a function result (5.2.6)		 	*/
@@ -8663,7 +8712,11 @@ long	name_msg_num[Obj_Done] [Name_Done]	= {
 	  551,	/* Obj_Allocatable		Name_Blockdata		*/
 	  551,	/* Obj_Allocatable		Name_Program		*/
 	  551,	/* Obj_Allocatable		Name_Function		*/
+#ifdef KEY /* Bug 6845 */
+	    0,	/* Obj_Allocatable		Name_Curr_Func		*/
+#else /* KEY Bug 6845 */
 	  551,	/* Obj_Allocatable		Name_Curr_Func		*/
+#endif /* KEY Bug 6845 */
 	  551, 	/* Obj_Allocatable		Name_Curr_Subr		*/
 	  551,	/* Obj_Allocatable		Name_Internal_Func	*/
 	  551	/* Obj_Allocatable		Name_Internal_Subr	*/

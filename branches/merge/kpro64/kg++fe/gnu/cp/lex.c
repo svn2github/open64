@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Separate lexical analyzer for GNU C++.
@@ -122,6 +122,10 @@ struct impl_files
 
 static struct impl_files *impl_file_chain;
 
+#ifdef KEY
+bool pragma_implementation_seen = false, pragma_interface_seen = false;
+#endif
+
 
 /* Return something to represent absolute declarators containing a *.
    TARGET is the absolute declarator that the * contains.
@@ -212,7 +216,6 @@ cxx_init_options ()
   flag_exceptions = 1;
 #ifdef KEY
   key_exceptions = 1;
-// optimize EH region formation
   opt_regions = 0;
 #endif
   /* By default wrap lines at 80 characters.  Is getenv ("COLUMNS")
@@ -1014,6 +1017,10 @@ handle_pragma_interface (dfile)
 
   finfo->interface_only = interface_only;
   finfo->interface_unknown = interface_unknown;
+
+#ifdef KEY
+  pragma_interface_seen = true;
+#endif
 }
 
 /* Note that we have seen a #pragma implementation for the key MAIN_FILENAME.
@@ -1063,6 +1070,10 @@ handle_pragma_implementation (dfile)
       ifiles->next = impl_file_chain;
       impl_file_chain = ifiles;
     }
+
+#ifdef KEY
+  pragma_implementation_seen = true;
+#endif
 }
 
 /* Indicate that this file uses Java-personality exception handling.  */

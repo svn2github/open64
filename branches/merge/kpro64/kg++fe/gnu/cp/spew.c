@@ -1,5 +1,5 @@
 /*
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified February 23, 2005 by PathScale, Inc. to add OpenMP support.
  */
 

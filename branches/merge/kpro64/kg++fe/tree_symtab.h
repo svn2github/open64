@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -132,17 +132,18 @@ inline TY_IDX
 Get_TY (tree type_tree)
 {
 #ifdef KEY
-// If the type is a nested record and we are generating DSTs, then
-// create the type for the enclosing record first, so that the current
-// record can be specified as a child of the parent in the DST.
-  	if (TYPE_CONTEXT(type_tree) &&
-	   (TREE_CODE(type_tree) == RECORD_TYPE ||
-	    TREE_CODE(type_tree) == UNION_TYPE) &&
-	   (TREE_CODE(TYPE_CONTEXT(type_tree)) == RECORD_TYPE ||
-	    TREE_CODE(TYPE_CONTEXT(type_tree)) == UNION_TYPE) &&
+	// If the type is a nested record and we are generating DSTs, then
+	// create the type for the enclosing record first, so that the current
+	// record can be specified as a child of the parent in the DST.
+	// Bug 4168.
+	if (TYPE_CONTEXT(type_tree) &&
+	    (TREE_CODE(type_tree) == RECORD_TYPE ||
+	     TREE_CODE(type_tree) == UNION_TYPE) &&
+	    (TREE_CODE(TYPE_CONTEXT(type_tree)) == RECORD_TYPE ||
+	     TREE_CODE(TYPE_CONTEXT(type_tree)) == UNION_TYPE) &&
 	    !TYPE_TY_IDX(TYPE_CONTEXT(type_tree))) {
-	  	Get_TY(TYPE_CONTEXT(type_tree));      // get type for parent record
-  }
+	  Get_TY(TYPE_CONTEXT(type_tree));	// get type for parent record
+	}
 #endif
 	TY_IDX idx = TYPE_TY_IDX(type_tree);
         if (idx > 1) {

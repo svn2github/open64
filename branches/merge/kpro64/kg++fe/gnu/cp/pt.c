@@ -1,5 +1,5 @@
 /*
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified February 23, 2005 by PathScale, Inc. to add OpenMP support.
  */
 
@@ -2927,14 +2927,6 @@ push_template_decl_real (decl, is_friend)
 	}
     }
 
-  /* OSP_230, GCC_13635 */
-  /* The DECL_TI_ARGS of DECL contains full set of arguments refering
-     back to its most general template.  If TMPL is a specialization,
-     ARGS may only have the innermost set of arguments.  Add the missing
-     argument levels if necessary.  */
-  if (DECL_TEMPLATE_INFO (tmpl))
-    args = add_outermost_template_args (DECL_TI_ARGS (tmpl), args);
-  
   info = tree_cons (tmpl, args, NULL_TREE);
 
   if (DECL_IMPLICIT_TYPEDEF_P (decl))

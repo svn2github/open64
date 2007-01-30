@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1898,6 +1902,9 @@ static boolean interpret_constructor(opnd_type		*top_opnd,
                ok = interpret_csmg_opr(ir_idx, exp_desc, count, element);
                break;
 
+#ifdef KEY /* Bug 10410 */
+            case Cselect_Opr :
+#endif /* KEY Bug 10410 */
             case Cvmgt_Opr :
                ok = interpret_cvmgt_opr(ir_idx, exp_desc, count, element);
                break;
@@ -2053,7 +2060,11 @@ static void increment_count(expr_arg_type	*exp_desc)
 static void write_constant(int			type_idx)
 
 {
+#ifdef KEY /* Bug 10177 */
+   long64		 bits = 0;
+#else /* KEY Bug 10177 */
    long64		 bits;
+#endif /* KEY Bug 10177 */
    char			*char_ptr;
    long64		 cn_word_offset;
    long64		 i;
@@ -2291,7 +2302,11 @@ static boolean interpret_implied_do(int		   ir_idx,
    boolean 		ok = TRUE;
    opnd_type		opnd;
    int			position_idx;
+#ifdef KEY /* Bug 10177 */
+   opnd_type		save_atd_tmp_opnd = INIT_OPND_TYPE;
+#else /* KEY Bug 10177 */
    opnd_type		save_atd_tmp_opnd;
+#endif /* KEY Bug 10177 */
    long_type		start_value[MAX_WORDS_FOR_NUMERIC];
    long_type		stride_value[MAX_WORDS_FOR_NUMERIC];
    long64		sub_elements;
@@ -3417,12 +3432,20 @@ static boolean interpret_ref(opnd_type		*top_opnd,
 {
 
    int			base_attr_idx;
+#ifdef KEY /* Bug 10177 */
+   int			base_cn_idx = 0;
+#else /* KEY Bug 10177 */
    int			base_cn_idx;
+#endif /* KEY Bug 10177 */
    int			bd_idx;
    long64		bit_offset = 0;
    char			*char_ptr;
    char			*char_ptr2;
+#ifdef KEY /* Bug 10177 */
+   long64		char_len = 0;
+#else /* KEY Bug 10177 */
    long64		char_len;
+#endif /* KEY Bug 10177 */
    long64		cn_bit_offset;
    int			col;
    long64		end_array[8];
@@ -3443,14 +3466,22 @@ static boolean interpret_ref(opnd_type		*top_opnd,
    expr_arg_type        loc_exp_desc;
    long_type		loc_value[MAX_WORDS_FOR_NUMERIC];
    boolean		neg_stride[8];
+#ifdef KEY /* Bug 10177 */
+   long64		num_bits = 0;
+#else /* KEY Bug 10177 */
    long64		num_bits;
+#endif /* KEY Bug 10177 */
    long64		num_words;
    boolean		ok = TRUE;
    opnd_type		opnd;
    opnd_type		opnd2;
    int			rank;
    boolean		rank_array[8];
+#ifdef KEY /* Bug 10177 */
+   int			rank_idx = 0;
+#else /* KEY Bug 10177 */
    int			rank_idx;
+#endif /* KEY Bug 10177 */
    boolean		single_value_const = FALSE;
    long64		sm_in_bits;
    long64		start_array[8];
@@ -5271,7 +5302,11 @@ static boolean interpret_array_construct_opr(int		ir_idx,
    long64               char_result_offset_l;
    int			col;
    expr_arg_type        exp_desc_l;
+#ifdef KEY /* Bug 10177 */
+   long64            	extent = 0;
+#else /* KEY Bug 10177 */
    long64            	extent;
+#endif /* KEY Bug 10177 */
    int			i;
    int			line;
    int			list_idx;
@@ -6418,7 +6453,11 @@ static boolean interpret_transfer_intrinsic(int                  ir_idx,
    int			type_idx;
    int			type_idx1;
    int			type_idx2;
+#ifdef KEY /* Bug 10177 */
+   int			type_idx3 = 0;
+#else /* KEY Bug 10177 */
    int			type_idx3;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "interpret_transfer_intrinsic", NULL);
@@ -6716,8 +6755,13 @@ static boolean interpret_reshape_intrinsic(int                  ir_idx,
    int			type_idx;
    int			type_idx1;
    int			type_idx2;
+#ifdef KEY /* Bug 10177 */
+   int			type_idx3 = 0;
+   int			type_idx4 = 0;
+#else /* KEY Bug 10177 */
    int			type_idx3;
    int			type_idx4;
+#endif /* KEY Bug 10177 */
 
 
 
@@ -7042,7 +7086,7 @@ static boolean interpret_size_intrinsic(int                  ir_idx,
 
       for (i = 0; i < exp_desc_l.rank; i++) {
          COPY_OPND(opnd,
-                   exp_desc_l.shape[i])
+                   exp_desc_l.shape[i]);
          loc_element = 0;
          ok = interpret_constructor(&opnd, &exp_desc_r,
                                     FALSE,

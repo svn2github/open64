@@ -1,5 +1,5 @@
 /* Subroutines for long double support.
-   Copyright (C) 2000, 2001, 2002 Free Software Foundation, Inc.
+   Copyright (C) 2000, 2001 Free Software Foundation, Inc.
 
 This file is part of GNU CC.
 
@@ -27,15 +27,8 @@ along with GNU CC; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-extern int _U_Qfcmp (long double a, long double b, int);
-
-int _U_Qfeq (long double, long double);
-int _U_Qfne (long double, long double);
-int _U_Qfgt (long double, long double);
-int _U_Qfge (long double, long double);
-int _U_Qflt (long double, long double);
-int _U_Qfle (long double, long double);
-int _U_Qfcomp (long double, long double);
+int _U_Qfcmp (long double a, long double b, int);
+long _U_Qfcnvfxt_quad_to_sgl (long double);
 
 int
 _U_Qfeq (long double a, long double b)
@@ -80,4 +73,10 @@ _U_Qfcomp (long double a, long double b)
     return 0;
 
   return (_U_Qfcmp (a, b, 22) != 0 ? 1 : -1);
+}
+
+long double
+_U_Qfneg (long double a)
+{
+  return (0.0L - a);
 }

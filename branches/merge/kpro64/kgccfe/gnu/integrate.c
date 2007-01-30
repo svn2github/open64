@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Procedure integration for GCC.
    Copyright (C) 1988, 1991, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -342,6 +346,10 @@ copy_decl_for_inlining (decl, from_fn, to_fn)
      tree to_fn;
 {
   tree copy;
+#ifdef KEY
+  static unsigned int ret_var_uniquifier = 0;
+  static char ret_var_uniqified[256];
+#endif
 
   /* Copy the declaration.  */
   if (TREE_CODE (decl) == PARM_DECL || TREE_CODE (decl) == RESULT_DECL)
@@ -363,7 +371,20 @@ copy_decl_for_inlining (decl, from_fn, to_fn)
 
       /* For a parameter, we must make an equivalent VAR_DECL, not a
 	 new PARM_DECL.  */
+#ifdef KEY
+      if (TREE_CODE (decl) == RESULT_DECL) {
+          // Bug 8189: Why, you might ask? 
+          // Well, the DECL_NAME(decl) is NULL resulting in: 
+          // 'DevWarn during Writing WHIRL file: no name for DECL_NODE'
+          // Hence.
+          sprintf (ret_var_uniqified, "__KEY__RV__%d", ret_var_uniquifier++);
+          copy = build_decl (VAR_DECL, get_identifier(ret_var_uniqified), type);
+      }
+      else copy = build_decl (VAR_DECL, DECL_NAME (decl), type);
+#else
       copy = build_decl (VAR_DECL, DECL_NAME (decl), type);
+#endif
+
       if (!invisiref)
 	{
 	  TREE_ADDRESSABLE (copy) = TREE_ADDRESSABLE (decl);

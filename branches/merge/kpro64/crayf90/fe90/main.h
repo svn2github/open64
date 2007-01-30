@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -311,6 +315,9 @@ enum    language        {Pdgcs_Ansi_C = 1,      Pdgcs_Fortran_77,
 	char			mod_out_path[MAX_FILE_NAME_SIZE];
 
 	int			module_path_idx		= NULL_IDX;
+#ifdef KEY /* Bug 5089 */
+	int			intrinsic_module_path_idx = NULL_IDX;
+#endif /* KEY Bug 5089 */
 
 	boolean			need_new_sh;
 	boolean			need_to_issue_719	= FALSE;

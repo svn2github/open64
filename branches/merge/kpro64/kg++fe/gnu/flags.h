@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Compilation switch flag definitions for GCC.
@@ -620,6 +620,12 @@ extern int frame_pointer_needed;
 /* Nonzero if the generated code should trap on signed overflow
    for PLUS / SUB / MULT.  */
 extern int flag_trapv;
+
+#ifdef KEY
+/* Bug 8041:
+   Non-zero iff a shift written by the user is to be retained as it is. */
+extern int flag_honor_shift;
+#endif
 
 /* Value of the -G xx switch, and whether it was passed or not.  */
 extern int g_switch_value;

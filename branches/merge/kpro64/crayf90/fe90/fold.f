@@ -1,3 +1,6 @@
+C
+C  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+C
 
 C
 C
@@ -245,6 +248,9 @@ C
      &             logical_8_result,
      &             integer_default_result,
      &             result_opnd)
+
+! KEY Bug 10177
+      logical_default_result = .false.
 
       result_opnd(1) = 0
       result_opnd(2) = 0

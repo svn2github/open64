@@ -1,5 +1,9 @@
+/*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -282,6 +286,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	}
 
 
+#ifdef KEY
+	UINT align = TYPE_ALIGN(type_tree) / BITSPERBYTE;
+#endif
 	// for typedefs get the information from the base type
 	if (TYPE_NAME(type_tree) &&
 	    idx == 0 &&
@@ -297,10 +304,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #ifdef KEY
 		if (TYPE_RESTRICT(type_tree))
 			Set_TY_is_restrict (idx);
+		Set_TY_align (idx, align); // bug 10533
 #endif
 		TYPE_TY_IDX(type_tree) = idx;
 		if(Debug_Level >= 2) {
-		  defer_DST_type(type_tree, idx, orig_idx);
+		  DST_INFO_IDX dst = Create_DST_type_For_Tree(type_tree,
+			idx,orig_idx);
+		  TYPE_DST_IDX(type_tree) = dst;
 	        }
 		TYPE_FIELD_IDS_USED(type_tree) =
 			TYPE_FIELD_IDS_USED(TYPE_MAIN_VARIANT(type_tree));
@@ -311,7 +321,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	INT64 tsize;
 	BOOL variable_size = FALSE;
 	tree type_size = TYPE_SIZE(type_tree);
+#ifndef KEY
 	UINT align = TYPE_ALIGN(type_tree) / BITSPERBYTE;
+#endif
 	if (type_size == NULL) {
 		// incomplete structs have 0 size.  Similarly, 'void' is
                 // an incomplete type that can never be completed.
@@ -354,23 +366,34 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 2:  mtype = MTYPE_I2;  break;
 		case 4:  mtype = MTYPE_I4;  break;
 		case 8:  mtype = MTYPE_I8;  break;
-#if !defined(TARG_X8664) && !defined(TARG_IA64)
+#ifndef TARG_X8664 
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
-#endif
+#endif /* _LP64 */
 #else 
 	        // needed for compiling variable length array
 		// as in gcc.c-torture/execute/920929-1.c
 		// we need to fix the rest of the compiler 
 		// with _LP64 but seems to work fine without.	
 		case 16:  mtype = MTYPE_I8; break;
-#endif
+#endif /* KEY */
 		default:  FmtAssert(FALSE,
                                     ("Get_TY unexpected size %d", tsize));
 		}
 		if (TREE_UNSIGNED(type_tree)) {
 			mtype = MTYPE_complement(mtype);
 		}
+#ifdef KEY
+		if (lookup_attribute ("may_alias", TYPE_ATTRIBUTES (type_tree)))
+		{
+		  // bug 9975: Handle may_alias attribute, we need to create
+		  // a new type to which we can attach the flag.
+		  TY &ty = New_TY (idx);
+		  TY_Init (ty, tsize, KIND_SCALAR, mtype,
+		           Save_Str(Get_Name(TYPE_NAME(type_tree))) );
+		  Set_TY_no_ansi_alias (ty);
+		} else
+#endif
 		idx = MTYPE_To_TY (mtype);	// use predefined type
 #ifdef TARG_X8664
 		/* At least for -m32, the alignment is not the same as the data
@@ -398,11 +421,12 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
-#if defined(TARG_IA64)
-		case 16: mtype = MTYPE_F10; break;
-#else
-		case 16: mtype = MTYPE_F16; break;
+#ifdef TARG_X8664
+		case 12: mtype = MTYPE_FQ; break;
 #endif
+#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+		case 16: mtype = MTYPE_FQ; break;
+#endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
@@ -411,14 +435,12 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case  8:  mtype = MTYPE_C4; break;
 		case 16:  mtype = MTYPE_C8; break;
-#if defined(TARG_IA32) || defined(TARG_X8664)
+#ifdef TARG_X8664
 		case 24:  mtype = MTYPE_CQ; break;
 #endif
-#if defined(TARG_IA64)
-		case 32: mtype = MTYPE_C10; break;
-#else
+#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
 		case 32: mtype = MTYPE_CQ; break;
-#endif
+#endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
@@ -724,13 +746,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				continue;
 			}
 			if (TREE_CODE(field) == CONST_DECL) {
-                // Just for the time being, we need to investigate 
-                // whether this criteria is reasonable. 
-                static BOOL once_is_enough=FALSE;
-                if (!once_is_enough) {
-				  DevWarn ("got CONST_DECL in field list");
-                  once_is_enough=TRUE;
-                }
+				DevWarn ("got CONST_DECL in field list");
 				continue;
 			}
 			if (TREE_CODE(field) == VAR_DECL) {
@@ -959,15 +975,15 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                       switch (GET_MODE_UNIT_SIZE (TYPE_MODE (type_tree)))
                       {
                         case 1:
-                          idx = MTYPE_To_TY (MTYPE_V8I1);
+                          idx = MTYPE_To_TY (MTYPE_M8I1);
                           break;
                         case 2:
-                          idx = MTYPE_To_TY (MTYPE_V8I2);
+                          idx = MTYPE_To_TY (MTYPE_M8I2);
                           break;
                         case 4:
-                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V8I4);
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_M8I4);
                           else
-                            idx = MTYPE_To_TY (MTYPE_V8F4);
+                            idx = MTYPE_To_TY (MTYPE_M8F4);
                           break;
                         default: Fail_FmtAssertion ("Get_TY: NYI");
                       }
@@ -1141,19 +1157,11 @@ Create_ST_For_Tree (tree decl_node)
 	  p++;
         ST_Init (st, Save_Str(p),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
-
-	p = IDENTIFIER_POINTER (DECL_NAME (decl_node));
-	if (!strncmp(p,"operator",8))
-		Set_PU_is_operator(pu);
 #else
         ST_Init (st,
                  Save_Str ( IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node))),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
 #endif
-	if (TREE_CODE(TREE_TYPE(decl_node)) == METHOD_TYPE) {
-		Set_ST_is_method_func(st);
-	}
-
 	if (DECL_THUNK_P(decl_node) &&
             TREE_CODE(CP_DECL_CONTEXT(decl_node)) != NAMESPACE_DECL)
 	  Set_ST_is_weak_symbol(st);
@@ -1201,18 +1209,7 @@ Create_ST_For_Tree (tree decl_node)
 	      }
 	      else
               	sclass = SCLASS_EXTERN;
-		
-	      // bug fix for OSP_89 && OSP_173 && OSP_169
-	      if (!flag_pic) { 
-	        if (Use_Call_Shared_Link && Gp_Rel_Aggresive_Opt &&
-		    sclass != SCLASS_EXTERN &&  sclass != SCLASS_COMMON) 
-		  eclass = EXPORT_PROTECTED;
- 	        else
-		  eclass = EXPORT_PREEMPTIBLE;
-	      }
-	      else {
-		eclass = EXPORT_PREEMPTIBLE;
-	      }
+              eclass = EXPORT_PREEMPTIBLE;
             }
             else {
               	sclass = SCLASS_FSTATIC;
@@ -1226,6 +1223,15 @@ Create_ST_For_Tree (tree decl_node)
 	      level  = GLOBAL_SYMTAB;
               eclass = EXPORT_PREEMPTIBLE;
             }
+#ifdef KEY
+	    // Bug 8652: If GNU marks it as COMMON, we should the same.
+	    else if (!flag_no_common && TREE_STATIC (decl_node) &&
+	             DECL_COMMON (decl_node)) {
+	      sclass = SCLASS_COMMON;
+	      level = GLOBAL_SYMTAB;
+	      eclass = EXPORT_PREEMPTIBLE;
+	    }
+#endif
             else {
 	      if (TREE_STATIC (decl_node)) {
 		sclass = SCLASS_PSTATIC;
@@ -1437,7 +1443,10 @@ Create_ST_For_Tree (tree decl_node)
 	eclass != EXPORT_LOCAL_INTERNAL &&
 	// Don't make symbol weak if it is defined in current file.  Workaround
 	// for SLES 8 linker.  Bug 3758.
-	WEAK_WORKAROUND(st) != WEAK_WORKAROUND_dont_make_weak) {
+	WEAK_WORKAROUND(st) != WEAK_WORKAROUND_dont_make_weak &&
+	// Don't make builtin functions weak.  Bug 9534.
+	!(TREE_CODE(decl_node) == FUNCTION_DECL &&
+	  DECL_BUILT_IN(decl_node))) {
       Set_ST_is_weak_symbol (st);
       WEAK_WORKAROUND(st) = WEAK_WORKAROUND_made_weak;
     }

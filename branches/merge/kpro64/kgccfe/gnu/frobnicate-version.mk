@@ -1,4 +1,6 @@
-# Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+# Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+#
+# Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of version 2 of the GNU General Public License as
@@ -19,20 +21,19 @@
 # with this program; if not, write the Free Software Foundation, Inc., 59
 # Temple Place - Suite 330, Boston MA 02111-1307, USA.
 
-bk_root := $(shell bk root 2>/dev/null || echo unknown)
+hg_root := $(shell hg root 2>/dev/null || echo unknown)
 
-version-bk.c: version.c
+version-hg.c: version.c
 	@echo 'GEN    $@'
-	@echo '#define BK_CSET_REV "$(shell bk -R prs -hr+ -d:I: ChangeSet)"' > $@
-	@sed	-e 's/^\(.*version_string.*= "[0-9. ]*\).*/\1 (PathScale " BK_CSET_REV ")";/' \
+	@echo '#define HG_CSET_ID "$(shell hg parents --template "{node}")"' > $@
+	@sed	-e 's/^\(.*version_string.*= "[0-9. ]*\).*/\1 (PathScale " HG_CSET_ID ")";/' \
 		-e 's!http://bugzilla.redhat.com/bugzilla!http://www.pathscale.com/support!' $< >> $@
 	@echo >> $@
-	@echo 'const char *const cset_rev = "$(shell bk -R prs -hr+ -d:I: ChangeSet || echo unknown)";' >> $@
-	@echo 'const char *const cset_key = BK_CSET_REV;' >> $@
-	@echo 'const char *const build_root = "$(bk_root)";' >> $@
+	@echo 'const char *const cset_id = HG_CSET_ID;' >> $@
+	@echo 'const char *const build_root = "$(hg_root)";' >> $@
 	@echo 'const char *const build_host = "$(shell hostname -f)";' >> $@
 	@echo 'const char *const build_user = "$(shell id -un)";' >> $@
 	@echo 'const char *const build_date = "$(shell date +'%Y-%m-%d %H:%M:%S %z')";' >> $@
 
-.PHONY: version-bk.c
+.PHONY: version-hg.c
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Expand builtin functions.
@@ -1564,6 +1564,7 @@ expand_builtin_mathfn (exp, target, subtarget)
     case BUILT_IN_FLOORF:
     case BUILT_IN_FLOORL:
     case BUILT_IN_POW:
+    case BUILT_IN_TAN:
 #endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:
@@ -4239,6 +4240,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       case BUILT_IN_FLOORF:
       case BUILT_IN_FLOORL:
       case BUILT_IN_POW:
+      case BUILT_IN_TAN:
 #endif
       case BUILT_IN_SQRT:
       case BUILT_IN_SQRTF:
@@ -4380,6 +4382,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
     case BUILT_IN_FLOORF:
     case BUILT_IN_FLOORL:
     case BUILT_IN_POW:
+    case BUILT_IN_TAN:
 #endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:

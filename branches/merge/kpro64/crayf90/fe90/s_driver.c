@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -70,7 +74,11 @@ static boolean	compare_global_args(int, int, int, int, int);
 static boolean	compare_global_array(int, int, int);
 static boolean	compare_global_derived_type(int, int, int);
 static boolean	compare_global_type_rank(int, int, int, int, boolean);
+#ifdef KEY /* Bug 5089 */
+static void     decl_semantics_driver(boolean ieee_save);
+#else /* KEY Bug 5089 */
 static void     decl_semantics_driver(void);
+#endif /* KEY Bug 5089 */
 static void     free_stmt_tmp_tbl(void);
 static void	final_attr_semantics(int);
 static void	final_decl_semantics(void);
@@ -141,7 +149,11 @@ void semantics_pass_driver (void)
    save_curr_scp_idx	= curr_scp_idx;
    pgm_unit_start_line	= SH_GLB_LINE(SCP_FIRST_SH_IDX(curr_scp_idx));
 
+#ifdef KEY /* Bug 5089 */
+   decl_semantics_driver(FALSE);
+#else /* KEY Bug 5089 */
    decl_semantics_driver();
+#endif /* KEY Bug 5089 */
 
    curr_scp_idx = save_curr_scp_idx;
 
@@ -220,9 +232,15 @@ void semantics_pass_driver (void)
 static void pgm_unit_semantics (void)
 
 {
+#ifdef KEY /* Bug 10177 */
+   boolean      actual_arg = FALSE;
+   boolean      func_defined = FALSE;
+   boolean      func_ptr_defined = FALSE;
+#else /* KEY Bug 10177 */
    boolean      actual_arg;
    boolean      func_defined;
    boolean      func_ptr_defined;
+#endif /* KEY Bug 10177 */
    int		idx;
    boolean	inline_it;
    boolean      is_function;
@@ -428,8 +446,30 @@ PROCESS_SIBLING:
    return;
 
 }  /*  pgm_unit_semantics  */
-
 
+#ifdef KEY /* Bug 5089 */
+/*
+ * scp_idx	index into scp_tbl for a particular scope
+ * returns	TRUE if that scope, or one of its parents, uses an intrinsic
+ *		IEEE module; and if the scope indicated by scp_idx is a
+ *		function or subroutine, and therefore needs to save and
+ *		restore FP state
+ */
+static boolean
+scp_or_parent_uses_ieee(int scp_idx) {
+  for (int s = scp_idx; s; s = SCP_PARENT_IDX(s)) {
+    if (SCP_USES_IEEE(s)) {
+      int attr_idx = SCP_ATTR_IDX(scp_idx);
+      if (Pgm_Unit == AT_OBJ_CLASS(attr_idx) &&
+	(Function == ATP_PGM_UNIT(attr_idx) ||
+	Subroutine == ATP_PGM_UNIT(attr_idx))) {
+	return TRUE;
+      }
+    }
+  }
+  return FALSE;
+}
+#endif /* KEY Bug 5089 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -439,7 +479,8 @@ PROCESS_SIBLING:
 |*	       all require this.                                              *|
 |*									      *|
 |* Input parameters:							      *|
-|*	NONE								      *|
+|*	ieee_save	scope accesses ieee_* intrinsic modules via host      *|
+|*			association, thus needs to save and restore FPU state *|
 |*									      *|
 |* Output parameters:							      *|
 |*	NONE								      *|
@@ -449,7 +490,11 @@ PROCESS_SIBLING:
 |*									      *|
 \******************************************************************************/
 
+#ifdef KEY /* Bug 5089 */
+static void decl_semantics_driver(boolean ieee_save)
+#else /* KEY Bug 5089 */
 static void decl_semantics_driver(void)
+#endif /* KEY Bug 5089 */
 
 {
    int          idx;
@@ -480,6 +525,13 @@ PROCESS_SIBLING:
       need_new_sh       = TRUE;
 
       decl_semantics();
+#ifdef KEY /* Bug 5089 */
+      if (ieee_save || scp_or_parent_uses_ieee(curr_scp_idx)) {
+	ieee_save = TRUE;
+        gen_ieee_save_and_restore(curr_scp_idx, stmt_start_line,
+	  stmt_start_col);
+      }
+#endif /* KEY Bug 5089 */
 
       if (cif_flags & BASIC_RECS) {
          cif_scope_info_rec();
@@ -504,7 +556,11 @@ PROCESS_SIBLING:
    if (SCP_FIRST_CHILD_IDX(curr_scp_idx) != NULL_IDX) {
       save_curr_scp_idx         = curr_scp_idx;
       curr_scp_idx              = SCP_FIRST_CHILD_IDX(curr_scp_idx);
+#ifdef KEY /* Bug 5089 */
+      decl_semantics_driver(ieee_save);
+#else /* KEY Bug 5089 */
       decl_semantics_driver();
+#endif /* KEY Bug 5089 */
       curr_scp_idx              = save_curr_scp_idx;
    }
 
@@ -2239,6 +2295,9 @@ static void	final_attr_semantics(int	attr_idx)
                      }
                      else if (TYP_TYPE(type_idx) == Structure &&
                               (ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
+#ifdef KEY /* Bug 6845 */
+                              ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx)) ||
+#endif /* KEY Bug 6845 */
                                ATT_CHAR_CPNT(TYP_IDX(type_idx)))) {
                         PRINTMSG(AT_DEF_LINE(attr_idx), 536, Error,
                                  AT_DEF_COLUMN(attr_idx),
@@ -5435,33 +5494,62 @@ void	global_name_semantics(int	def_ga_idx,
 
 {
    uint			act_file_line;
+#ifdef KEY /* Bug 10177 */
+   int			arg_attr_idx = 0;
+#else /* KEY Bug 10177 */
    int			arg_attr_idx;
+#endif /* KEY Bug 10177 */
    int			def_arg_idx;
    boolean		def_defined;
    int			gl_idx;
    int			i;
+#ifdef KEY /* Bug 10177 */
+   int			il_idx = 0;
+   int			info_idx = 0;
+#else /* KEY Bug 10177 */
    int			il_idx;
    int			info_idx;
+#endif /* KEY Bug 10177 */
    char			line_name[256];
    msg_severities_type	msg_level;
    int			msg_num;
    boolean		need_expl_itrfc;
+#ifdef KEY /* Bug 10177 */
+   int			next_il_idx = 0;
+#else /* KEY Bug 10177 */
    int			next_il_idx;
+#endif /* KEY Bug 10177 */
    int			ref_arg_class;
    boolean		ref_arg_class_known;
    int			ref_arg_column;
+#ifdef KEY /* Bug 10177 */
+   int			ref_arg_idx = 0;
+#else /* KEY Bug 10177 */
    int			ref_arg_idx;
+#endif /* KEY Bug 10177 */
    int			ref_arg_line;
    char		       *ref_arg_name_ptr;
+#ifdef KEY /* Bug 10177 */
+   int			ref_array_elt = 0;
+#else /* KEY Bug 10177 */
    int			ref_array_elt;
+#endif /* KEY Bug 10177 */
    int			ref_column;
    boolean		ref_defined;
    boolean		ref_elemental;
    boolean		ref_global_dir;
+#ifdef KEY /* Bug 10177 */
+   int			ref_hollerith = 0;
+#else /* KEY Bug 10177 */
    int			ref_hollerith;
+#endif /* KEY Bug 10177 */
    boolean		ref_in_interface;
    int			ref_line;
+#ifdef KEY /* Bug 10177 */
+   int			ref_linear_type = 0;
+#else /* KEY Bug 10177 */
    int			ref_linear_type;
+#endif /* KEY Bug 10177 */
    char		       *ref_name_ptr;
    boolean		ref_nosideeffects;
    int			ref_num_dargs;
@@ -5470,7 +5558,11 @@ void	global_name_semantics(int	def_ga_idx,
    int			ref_rank;
    boolean		ref_recursive;
    int			ref_rslt_idx;
+#ifdef KEY /* Bug 10177 */
+   int			ref_type = 0;
+#else /* KEY Bug 10177 */
    int			ref_type;
+#endif /* KEY Bug 10177 */
    boolean		ref_vfunction;
    boolean		same;
    int			type_idx;
@@ -5615,7 +5707,12 @@ void	global_name_semantics(int	def_ga_idx,
          /* Skip past the extra argument if necessary. */
 
          if (next_il_idx != NULL_IDX &&
-             FUNCTION_MUST_BE_SUBROUTINE(ref_rslt_idx)) {
+#ifdef KEY /* Bug 5089 */
+             FUNCTION_MUST_BE_SUBROUTINE(spec_idx, ref_rslt_idx)
+#else /* KEY Bug 5089 */
+             FUNCTION_MUST_BE_SUBROUTINE(ref_rslt_idx)
+#endif /* KEY Bug 5089 */
+	     ) {
             next_il_idx	= IL_NEXT_LIST_IDX(next_il_idx);
          }
       }
@@ -6470,7 +6567,11 @@ static	boolean	compare_global_derived_type(int	ga_idx,
 					    int	attr_idx)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int		 cpnt_idx = 0;
+#else /* KEY Bug 10177 */
    int		 cpnt_idx;
+#endif /* KEY Bug 10177 */
    int		 ga_cpnt_idx;
    int		 ga_type_idx;
    int		 ga_struct_idx;
@@ -6483,7 +6584,11 @@ static	boolean	compare_global_derived_type(int	ga_idx,
    int		 num_cpnts;
    boolean	 same;
    boolean	 self_ptr;
+#ifdef KEY /* Bug 10177 */
+   int		 sn_idx = 0;
+#else /* KEY Bug 10177 */
    int		 sn_idx;
+#endif /* KEY Bug 10177 */
    int		 struct_idx;
    long_type	*the_constant;
    int		 the_type_idx;

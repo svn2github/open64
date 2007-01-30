@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -102,10 +102,6 @@ extern UINT64 Get_Integer_Value (tree exp);
 
 /* traverse the tree and addr_saved if address of a variable is taken */
 extern void WFE_Set_ST_Addr_Saved (WN *);
-
-// bug fix for OSP_94
-//
-extern TYPE_ID Widen_Mtype (TYPE_ID );
 
 #ifdef KEY
 // Convert inplace target order words in 'buf' to host order. 'buf' is a two

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -137,6 +141,9 @@ extern	void		doall_end_semantics(void);
 extern  void            enlarge_call_list_tables(void);
 extern  void            enlarge_info_list_table(void);
 extern  boolean         final_arg_work(opnd_type *, int, int, expr_arg_type *);
+#ifdef KEY /* Bug 5089 */
+extern int gen_ieee_save_and_restore(int curr_scp_idx, int line, int column);
+#endif /* KEY Bug 5089 */
 extern  int		find_base_attr(opnd_type *, int *, int *);
 extern  int             find_left_attr(opnd_type *);
 extern  void            flatten_function_call(opnd_type *);

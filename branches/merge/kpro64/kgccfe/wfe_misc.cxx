@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -155,8 +155,8 @@ mUINT32 Cif_Level = 0;       	/* CIF level */
 /* Static data:	command	line information: */
 static INT32 Argc;		/* Copy of argc */
 static char **Argv;		/* Copy of argv */
-static INT32 Source_Arg;	/* Number of current source arg */
-static INT32 Src_Count;		/* Number of source files seen */
+static INT32 Source_Arg = 0;	/* Number of current source arg */
+static INT32 Src_Count = 0;	/* Number of source files seen */
 static char Dash [] = "-";
 
 /* Internal flags: */

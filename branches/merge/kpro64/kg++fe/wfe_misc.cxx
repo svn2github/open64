@@ -1,5 +1,5 @@
 /* 
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -149,8 +149,8 @@ mUINT32 Cif_Level = 0;       	/* CIF level */
 /* Static data:	command	line information: */
 static INT32 Argc;		/* Copy of argc */
 static char **Argv;		/* Copy of argv */
-static INT32 Source_Arg;	/* Number of current source arg */
-static INT32 Src_Count;		/* Number of source files seen */
+static INT32 Source_Arg = 0;	/* Number of current source arg */
+static INT32 Src_Count = 0;	/* Number of source files seen */
 static char Dash [] = "-";
 
 /* Internal flags: */
@@ -665,7 +665,7 @@ WFE_Stmt_Pop (WFE_STMT_KIND kind)
   WN * to_be_pushed = 0;
   if (key_exceptions && wn_stmt_sp->kind != kind)
   {
-    if (!opt_regions || !Did_Not_Terminate_Region) 
+    if (!opt_regions || !Did_Not_Terminate_Region)
     {
   	FmtAssert (wn_stmt_sp->kind == wfe_stmk_call_region_body,
              ("mismatch in statements: expected %s, got %s\n",
@@ -675,11 +675,10 @@ WFE_Stmt_Pop (WFE_STMT_KIND kind)
 	to_be_pushed = WFE_Stmt_Pop (wfe_stmk_call_region_body);
     }
     else
-    { 
-        // If we got an opportunity but did not close the region earlier in
-        // WFE_Stmt_Append, then close it now.
-        Check_For_Call_Region ();
-        Did_Not_Terminate_Region = FALSE;
+    { // If we got an opportunity but did not close the region earlier in
+      // WFE_Stmt_Append, then close it now.
+    	Check_For_Call_Region ();
+	Did_Not_Terminate_Region = FALSE;
     }
   }
 #endif // KEY

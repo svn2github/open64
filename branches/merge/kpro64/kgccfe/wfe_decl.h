@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -49,6 +49,10 @@
 typedef int INT;
 typedef long long INT64;
 typedef int TY_IDX;
+#ifdef KEY
+typedef int BOOL;
+typedef unsigned int UINT;
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -76,6 +80,9 @@ extern void WFE_Initialize_Nested_Decl (tree decl);
 extern INT WFE_Get_Current_Scope ();
 
 extern bool defer_function;
+
+// Initialize a vector.
+extern void Traverse_Aggregate_Vector_Const (ST *, tree, BOOL, UINT);
 #endif /* KEY */
 
 /* called for each aggregate initialization */
@@ -141,12 +148,6 @@ extern void WFE_Weak_Finish();
 
 /* variable to keep track track of ST to be used for varargs */
 extern ST *WFE_Vararg_Start_ST;
-
-#ifdef REAL_VALUE_TYPE
-float	WFE_Convert_Internal_Real_to_IEEE_Single(REAL_VALUE_TYPE);
-double	WFE_Convert_Internal_Real_to_IEEE_Double(REAL_VALUE_TYPE);
-long double WFE_Convert_Internal_Real_to_IEEE_Double_Extended(REAL_VALUE_TYPE);
-#endif
 
 #ifdef __cplusplus
 }

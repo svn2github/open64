@@ -9,15 +9,10 @@
 #undef CC1_SPEC
 #define CC1_SPEC "%{profile:-p} %{G*}"
 
-/* Target OS builtins.  */
-#define TARGET_OS_CPP_BUILTINS()		\
-do {						\
-	builtin_assert("system=linux");		\
-	builtin_define_std("linux");		\
-	builtin_define_std("unix");		\
-	builtin_define("__gnu_linux__");	\
-	builtin_define("_LONGLONG");		\
-} while (0)
+/* ??? Maybe this should be in sysv4.h?  */
+#define CPP_PREDEFINES "\
+  -D__gnu_linux__ -D__linux -D__linux__ -D_LONGLONG \
+  -Dlinux -Dunix -Asystem=linux"
 
 /* Need to override linux.h STARTFILE_SPEC, since it has crtbeginT.o in.  */
 #undef STARTFILE_SPEC

@@ -307,6 +307,9 @@ extern	char	ch_after_paren_grp (void);
 extern	void	check_for_vestigial_task_blks(void);
 extern  int	check_label_ref (void);
 extern	void	complete_intrinsic_definition(int);
+#ifdef KEY /* Bug 5089 */
+extern  int	intrinsic_module_lookup(int);
+#endif /* KEY Bug 5089 */
 extern  void	determine_stmt_type (void);
 extern  boolean digit_is_format_label(void);
 extern  void    do_cmic_blk_checks(void);

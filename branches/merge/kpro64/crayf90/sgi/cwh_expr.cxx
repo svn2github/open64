@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,9 +45,9 @@
  * ====================================================================
  *
  * Module: cwh_expr
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
+ * $Revision: 1.5 $
+ * $Date: 04/12/21 14:57:32-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
  * $Source: 
  *
  * Revision history:
@@ -70,7 +74,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_expr.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_expr.cxx $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 
@@ -601,7 +605,11 @@ cwh_expr_compare_char(OPERATOR op, TY_IDX  ty)
   WN * sz[4];
   BOOL va[4];
   WN * wn   ;
+#ifdef KEY /* Bug 10177 */
+  INTRINSIC intr = INTRN_CLTEXPR;
+#else /* KEY Bug 10177 */
   INTRINSIC intr;
+#endif /* KEY Bug 10177 */
 
   cwh_stk_pop_STR();
   ar[3] = cwh_expr_operand(NULL);
@@ -1270,7 +1278,11 @@ fei_min(INT count, TYPE type)
  *===============================================
  */ 
 extern void 
+#ifdef KEY /* Bug 10410 */
+fei_select(TYPE type, int cselect)
+#else /* KEY Bug 10410 */
 fei_select(TYPE type)
+#endif /* KEY Bug 10410 */
 {
    WN *t_case,*f_case,*condition;
    WN * wn;
@@ -1334,7 +1346,13 @@ fei_select(TYPE type)
 	 }
       }
       
+#ifdef KEY /* Bug 10410 */
+      wn = WN_CreateExp3(
+        cwh_make_typed_opcode((cselect ? OPR_CSELECT : OPR_SELECT),rt,MTYPE_V),
+	  condition,t_case,f_case);
+#else /* KEY Bug 10410 */
       wn = WN_CreateExp3(cwh_make_typed_opcode(OPR_SELECT,rt,MTYPE_V),condition,t_case,f_case);
+#endif /* KEY Bug 10410 */
       wn = cwh_wrap_cvtl(wn,rt);
       wn = cwh_expr_restore_arrayexp(wn,ae);
       cwh_stk_push_typed(wn,WN_item,Be_Type_Tbl(rt));
@@ -1533,7 +1551,12 @@ WN * cwh_generate_bitmask(WN *len, TYPE_ID ty)
 extern void
 fei_mask (TYPE type)
 {
+#ifdef KEY /* Bug 10177 */
+   WN *wn = 0;
+   WN *arg,*t1,*t2;
+#else /* KEY Bug 10177 */
    WN *wn,*arg,*t1,*t2;
+#endif /* KEY Bug 10177 */
    TYPE_ID t;
    WN *ae=NULL;
 

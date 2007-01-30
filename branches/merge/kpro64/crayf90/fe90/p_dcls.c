@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -110,7 +114,11 @@ void parse_common_stmt (void)
    int		line;
    int		name_idx;
    int		new_sb_idx;
+#ifdef KEY /* Bug 10177 */
+   int		last_attr_idx = 0;
+#else /* KEY Bug 10177 */
    int		last_attr_idx;
+#endif /* KEY Bug 10177 */
    boolean	parse_err	= FALSE;
    token_type	save_token;
    int		sb_idx		= NULL_IDX;
@@ -554,8 +562,13 @@ static void parse_cpnt_dcl_stmt()
 
 {
    int		alignment;
+#ifdef KEY /* Bug 10177 */
+   int		array_column = 0;
+   int		array_line = 0;
+#else /* KEY Bug 10177 */
    int		array_column;
    int		array_line;
+#endif /* KEY Bug 10177 */
    int		attr_idx;
    int		bd_idx;
    int		dt_idx;
@@ -568,8 +581,13 @@ static void parse_cpnt_dcl_stmt()
    boolean	junk;
    int		np_idx;
    int		old_bd_idx;
+#ifdef KEY /* Bug 10177 */
+   int		save_column = 0;
+   int		save_line = 0;
+#else /* KEY Bug 10177 */
    int		save_column;
    int		save_line;
+#endif /* KEY Bug 10177 */
    int		sn_idx;
    int		stmt_number;
    boolean	type_err;
@@ -629,6 +647,24 @@ static void parse_cpnt_dcl_stmt()
       if (MATCHED_TOKEN_CLASS(Tok_Class_Keyword)) {
 
          switch (TOKEN_VALUE(token)) {
+
+#ifdef KEY /* Bug 6845 */
+	    case Tok_Kwd_Allocatable:
+
+               if (ATD_ALLOCATABLE(AT_WORK_IDX)) { /* duplicate error msg */
+                  PRINTMSG (TOKEN_LINE(token), 273, Error, TOKEN_COLUMN(token),
+		    "ALLOCATABLE");
+               }
+
+               have_attr_list			= TRUE;
+	       ATD_ALLOCATABLE(AT_WORK_IDX)	= TRUE;
+	       ATD_IM_A_DOPE(AT_WORK_IDX)       = TRUE;
+	       save_line = array_line = TOKEN_LINE(token);
+	       save_column = array_column = TOKEN_COLUMN(token);
+	       ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME) = TRUE;
+	       ATT_NUMERIC_CPNT(CURR_BLK_NAME)	= TRUE;
+	       break;
+#endif /* KEY Bug 6845 */
 
             case Tok_Kwd_Pointer:
 
@@ -694,6 +730,14 @@ static void parse_cpnt_dcl_stmt()
       }
    }  /* end while */
 
+#ifdef KEY /* Bug 6845 */
+   if (ATD_ALLOCATABLE(AT_WORK_IDX)) {
+     if (ATD_POINTER(AT_WORK_IDX)) {
+	PRINTMSG(save_line, 425, Error, save_column, "POINTER", "ALLOCATABLE");
+     }
+   }
+#endif /* KEY Bug 6845 */
+
    found_colon = matched_specific_token(Tok_Punct_Colon_Colon, Tok_Class_Punct);
 
    if (!found_colon && have_attr_list) {
@@ -732,6 +776,9 @@ static void parse_cpnt_dcl_stmt()
             ATT_CHAR_CPNT(CURR_BLK_NAME)        |= ATT_CHAR_CPNT(dt_idx);
             ATT_NUMERIC_CPNT(CURR_BLK_NAME)     |= ATT_NUMERIC_CPNT(dt_idx);
             ATT_POINTER_CPNT(CURR_BLK_NAME)     |= ATT_POINTER_CPNT(dt_idx);
+#ifdef KEY /* Bug6845 */
+	    ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME) |= ATT_ALLOCATABLE_CPNT(dt_idx);
+#endif /* KEY Bug6845 */
             ATT_NON_DEFAULT_CPNT(CURR_BLK_NAME) |= ATT_NON_DEFAULT_CPNT(dt_idx);
             ATT_DEFAULT_INITIALIZED(CURR_BLK_NAME) |= 
                                                 ATT_DEFAULT_INITIALIZED(dt_idx);
@@ -849,6 +896,9 @@ static void parse_cpnt_dcl_stmt()
       ATD_ARRAY_IDX(attr_idx)		= ATD_ARRAY_IDX(AT_WORK_IDX);
       ATD_PE_ARRAY_IDX(attr_idx)	= ATD_PE_ARRAY_IDX(AT_WORK_IDX);
       ATD_POINTER(attr_idx)		= ATD_POINTER(AT_WORK_IDX);
+#ifdef KEY /* Bug 6845 */
+      ATD_ALLOCATABLE(attr_idx)	= ATD_ALLOCATABLE(AT_WORK_IDX);
+#endif /* KEY Bug 6845 */
       ATD_IM_A_DOPE(attr_idx)		= ATD_IM_A_DOPE(AT_WORK_IDX);
       save_line				= array_line;
       save_column			= array_column;
@@ -885,6 +935,16 @@ static void parse_cpnt_dcl_stmt()
 
       bd_idx = ATD_ARRAY_IDX(attr_idx);
 
+#ifdef KEY /* Bug 6845 */
+      if (ATD_ALLOCATABLE(attr_idx)) {
+	if (bd_idx == NULL_IDX || BD_ARRAY_CLASS(bd_idx) != Deferred_Shape) {
+	   PRINTMSG(save_line, 570, Error, save_column,
+	      AT_OBJ_NAME_PTR(attr_idx));
+	   AT_DCL_ERR(attr_idx)	= TRUE;
+	}
+      }
+      else
+#endif /* KEY Bug 6845 */
       if (bd_idx != NULL_IDX) {  /* Array declared */
          AT_DCL_ERR(attr_idx) = BD_DCL_ERR(bd_idx) | AT_DCL_ERR(attr_idx);
 
@@ -896,12 +956,12 @@ static void parse_cpnt_dcl_stmt()
                AT_DCL_ERR(attr_idx)	 = TRUE;
             }
          }
-         else if (BD_ARRAY_CLASS(bd_idx) != Explicit_Shape ||
-                  BD_ARRAY_SIZE(bd_idx) != Constant_Size) {
-            PRINTMSG(save_line, 190, Error, save_column,
-                     AT_OBJ_NAME_PTR(attr_idx));
-            AT_DCL_ERR(attr_idx)	= TRUE;
-         }
+	 else if (BD_ARRAY_CLASS(bd_idx) != Explicit_Shape ||
+		  BD_ARRAY_SIZE(bd_idx) != Constant_Size) {
+	    PRINTMSG(save_line, 190, Error, save_column,
+		     AT_OBJ_NAME_PTR(attr_idx));
+	    AT_DCL_ERR(attr_idx)	= TRUE;
+	 }
       }
 
       if (LA_CH_VALUE == STAR) {
@@ -1165,7 +1225,12 @@ void parse_data_stmt (void)
       curr_stmt_category = Declaration_Stmt_Cat;
    }
    else if (curr_stmt_category > Declaration_Stmt_Cat) {
-      PRINTMSG(TOKEN_LINE(token), 1571, Comment,            /* Obsolescent */
+      PRINTMSG(TOKEN_LINE(token), 1571,
+#ifdef KEY /* Bug 318, 321 */
+               Ansi,            /* Obsolescent */
+#else /* KEY Bug 318, 321 */
+               Comment,            /* Obsolescent */
+#endif /* KEY Bug 318, 321 */
                TOKEN_COLUMN(token));
    }
 
@@ -1205,6 +1270,17 @@ DATA_STMT_SET:
 
          if (AT_OBJ_CLASS(attr_idx) == Data_Obj) {
             ATD_SEEN_OUTSIDE_IMP_DO(attr_idx) = TRUE;
+#ifdef KEY /* Bug 6845 */
+	    /* Would wait till semantics to detect this error, but we're about
+	     * to blunder into calling constant_value_semantics(), which will
+	     * print a nonsensical error, so we want to emit this one first. */
+	    int typ_idx = TYP_IDX(ATD_TYPE_IDX(attr_idx));
+	    if (AT_OBJ_CLASS(typ_idx) == Derived_Type &&
+	      ATT_ALLOCATABLE_CPNT(typ_idx)) {
+	      PRINTMSG(TOKEN_LINE(token), 1680, Error, TOKEN_COLUMN(token),
+	        AT_OBJ_NAME_PTR(attr_idx));
+	    }
+#endif /* KEY Bug 6845 */
          }
 
 
@@ -1976,7 +2052,11 @@ void parse_implicit_stmt (void)
    int			stmt_number;
    int			storage;
    boolean		type_err;
+#ifdef KEY /* Bug 10177 */
+   int			type_idx = 0;
+#else /* KEY Bug 10177 */
    int			type_idx;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "parse_implicit_stmt", NULL);
@@ -3197,6 +3277,9 @@ DONE:
    }
 
 EXIT:
+#ifdef KEY /* Bug 318 */
+   PRINTMSG(stmt_start_line, 1682, Ansi, stmt_start_col);
+#endif /* KEY Bug 318 */
 
    TRACE (Func_Exit, "parse_stmt_func_stmt", NULL);
 
@@ -4080,7 +4163,11 @@ EXIT:
 void parse_use_stmt (void)
 
 {
+#ifdef KEY /* Bug 10177 */
+   int			attr_idx = 0;
+#else /* KEY Bug 10177 */
    int			attr_idx;
+#endif /* KEY Bug 10177 */
    boolean		found_end		= TRUE;
    int			list_idx;
    int			name_idx;
@@ -4088,6 +4175,10 @@ void parse_use_stmt (void)
    use_type_type	prev_use		= Use_Not;
    int			ro_idx;
    int			use_ir_idx;
+#ifdef KEY /* Bug 5089 */
+   boolean		intrinsic		= FALSE;
+   boolean		non_intrinsic		= FALSE;
+#endif /* KEY Bug 5089 */
 
 
    TRACE (Func_Entry, "parse_use_stmt", NULL);
@@ -4099,6 +4190,34 @@ void parse_use_stmt (void)
    else {
       curr_stmt_category = Use_Stmt_Cat;
    }
+
+#ifdef KEY /* Bug 5089 */
+   /* Optional ", module-nature ::" */
+   if (LA_CH_VALUE == COMMA) {
+      NEXT_LA_CH;  /* Consume comma */
+      token_values_type module_nature;
+      if ((!MATCHED_TOKEN_CLASS(Tok_Class_Keyword))
+        || ((Tok_Kwd_Intrinsic != (module_nature = TOKEN_VALUE(token))) &&
+        (Tok_Kwd_Nonintrinsic != module_nature))) { 
+         parse_err_flush(Find_EOS, "INTRINSIC/NON_INTRINSIC");
+      }
+      /* Required :: */
+      else if (!matched_specific_token(Tok_Punct_Colon_Colon,
+        Tok_Class_Punct)) {
+	  parse_err_flush(Find_EOS, "::");
+      }
+      else if (Tok_Kwd_Intrinsic == module_nature) {
+        intrinsic = TRUE;
+      }
+      else if (Tok_Kwd_Nonintrinsic == module_nature) {
+        non_intrinsic = TRUE;
+      }
+   }
+   /* Consume optional :: */
+   else {
+     (void) matched_specific_token(Tok_Punct_Colon_Colon, Tok_Class_Punct);
+   }
+#endif /* KEY Bug 5089 */
 
    if (!MATCHED_TOKEN_CLASS(Tok_Class_Id)) { 
       parse_err_flush(Find_EOS, "module-name");
@@ -4117,6 +4236,24 @@ void parse_use_stmt (void)
 
          prev_use = (use_type_type) ATP_USE_TYPE(attr_idx);
          list_idx = SCP_USED_MODULE_LIST(curr_scp_idx);
+
+#ifdef KEY /* Bug 5089 */
+	 /*
+	  * Each "use" statement for a particular module in the current scope
+	  * adds to the markings which indicate the module-nature, without
+	  * removing earlier markings. During semantics, we need to know
+	  * whether there were conflicting markings (e.g. a "use, intrinsic"
+	  * along with a "use, non_intrinsic"; or even a "use, intrinsic"
+	  * along with an unadorned "use" which finds a nonintrinsic.)
+	  */
+	 if (intrinsic) {
+	   AT_IS_INTRIN(attr_idx) = TRUE;
+	 } else if (non_intrinsic) {
+	   ATT_NON_INTRIN(attr_idx) = TRUE;
+	 } else {
+	   ATT_NO_MODULE_NATURE(attr_idx) = TRUE;
+	 }
+#endif /* KEY Bug 5089 */
 
          while (list_idx != NULL_IDX) {
 
@@ -4180,6 +4317,11 @@ void parse_use_stmt (void)
       AT_USE_ASSOCIATED(attr_idx)	= TRUE;
       AT_MODULE_IDX(attr_idx)		= attr_idx;
       LN_DEF_LOC(name_idx)		= TRUE;
+#ifdef KEY /* Bug 5089 */
+      AT_IS_INTRIN(attr_idx)		= intrinsic;
+      ATT_NON_INTRIN(attr_idx)		= non_intrinsic;
+      ATT_NO_MODULE_NATURE(attr_idx)	= !(intrinsic || non_intrinsic);
+#endif /* KEY Bug 5089 */
    }
 
    if (AT_ORIG_NAME_IDX(attr_idx) == NULL_IDX) {
@@ -5066,7 +5208,13 @@ static void	merge_type(int		attr_idx,
                ATD_CLASS(attr_idx) == Function_Result) {
          func_idx = ATD_FUNC_IDX(attr_idx);
 
-         PRINTMSG(id_line, 1565, Comment, id_column); /* Obsolescent */
+         PRINTMSG(id_line, 1565,
+#ifdef KEY /* Bug 318, 321 */
+	   Ansi,
+#else /* KEY Bug 318, 321 */
+	   Comment,
+#endif /* KEY Bug 318, 321 */
+	   id_column); /* Obsolescent */
 
          /* fnd_semantic_err catches everything but the current function */
 
@@ -5155,7 +5303,13 @@ static void	merge_type(int		attr_idx,
 
             /* fnd_semantic_err catches everything but current function */
 
-            PRINTMSG(id_line, 1565, Comment, id_column); /* Obsolescent */
+            PRINTMSG(id_line, 1565,
+#ifdef KEY /* Bug 318, 321 */
+	      Ansi,
+#else /* KEY Bug 318, 321 */
+	      Comment,
+#endif /* KEY Bug 318, 321 */
+	      id_column); /* Obsolescent */
 
             if (ATP_PROC(attr_idx) == Intern_Proc ||
                 ATP_PROC(attr_idx) == Module_Proc) {
@@ -5333,7 +5487,11 @@ static	void	issue_attr_blk_err(char		*attr_str)
 
 {
    boolean	 issue_msg	= TRUE;
+#ifdef KEY /* Bug 10177 */
+   char		*msg_str = 0;
+#else /* KEY Bug 10177 */
    char		*msg_str;
+#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "issue_attr_blk_err", NULL);
@@ -6036,18 +6194,23 @@ static	void	merge_parameter(boolean		 chk_semantics,
 
    a_type_idx	= ATD_TYPE_IDX(attr_idx);
 
-#ifdef KEY /* Bug 572 */
-   /* This restriction was removed from the end of section 4.4.4, "Construction
-    * of derived-type values", between Fortan 90 and Fortran 95. */
-#else /* KEY Bug 572 */
    if (TYP_TYPE(a_type_idx) == Structure && 
-       ATT_POINTER_CPNT(TYP_IDX(a_type_idx))) {
+#ifdef KEY /* Bug 572, 6845 */
+       /* The prohibition against constant structures having pointer components
+	* was removed from the end of section 4.4.4, "Construction of
+	* derived-type values", between Fortan 90 and Fortran 95. On the other
+	* hand, starting with TR15581, we need to prohibit constant structures
+	* having allocatable components. */
+       ATT_ALLOCATABLE_CPNT(TYP_IDX(a_type_idx))
+#else /* KEY Bug 572, 6845 */
+       ATT_POINTER_CPNT(TYP_IDX(a_type_idx))
+#endif /* KEY Bug 572, 6845 */
+      ) {
       PRINTMSG(line, 691, Error, column,
                AT_OBJ_NAME_PTR(attr_idx));
       AT_DCL_ERR(attr_idx)	= TRUE;
       goto EXIT;
    }
-#endif /* KEY Bug 572 */
 
    /* AT_DEFINED is set, so that parameter constants can be differentiated */
    /* from compiler tmp constants.  Compiler tmp constants are created by  */
@@ -6397,7 +6560,11 @@ static	boolean	parse_initializer(int	init_ir_idx)
    int		il_idx;
    int		ir_idx;
    int		line;
+#ifdef KEY /* Bug 10177 */
+   boolean	ok = FALSE;
+#else /* KEY Bug 10177 */
    boolean	ok;
+#endif /* KEY Bug 10177 */
    opnd_type	opnd;
    int		uopr_ir_idx		= NULL_IDX;
    int		value_chain_end;

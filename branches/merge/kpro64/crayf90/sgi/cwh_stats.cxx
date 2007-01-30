@@ -38,8 +38,8 @@
  *
  * Module: cwh_stats.c
  * $Revision: 
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
+ * $Date$
+ * $Author$
  * $Source: 
  *
  * Revision history:
@@ -62,7 +62,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_stats.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 
