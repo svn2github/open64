@@ -872,22 +872,42 @@ inline BOOL
 PU_is_operator (const PU& pu)    { return (pu.flags & PU_IS_OPERATOR) != 0; }
 inline void
 Set_PU_is_operator (PU& pu)      { pu.flags |= PU_IS_OPERATOR; }
+
 inline void
 Clear_PU_is_operator (PU& pu)    { pu.flags &= ~PU_IS_OPERATOR; }
 
 inline BOOL
 PU_is_malloc (const PU& pu)			{ return (pu.flags & PU_IS_MALLOC) != 0; } 
 
+inline BOOL
+PU_has_attr_malloc (const PU& pu) { return (pu.flags & PU_HAS_ATTR_MALLOC) != 0; }
+
 inline void
 Set_PU_is_marked_inline (PU& pu) { pu.flags |= PU_IS_MARKED_INLINE; }
+
+inline void
+Set_PU_has_attr_malloc (PU& pu) { pu.flags |= PU_HAS_ATTR_MALLOC; }
 
 inline void
 Clear_PU_is_marked_inline (PU& pu){ pu.flags &= ~PU_IS_MARKED_INLINE; }
 
 inline void
+Clear_PU_has_attr_malloc (PU& pu) { pu.flags &= ~PU_HAS_ATTR_MALLOC; }
+
+inline BOOL
+PU_has_attr_pure (const PU& pu)      { return (pu.flags & PU_HAS_ATTR_PURE) != 0; } 
+
+inline void
 Set_PU_is_malloc (PU& pu)			{ pu.flags |= PU_IS_MALLOC; }
+
+inline void
+Set_PU_has_attr_pure (PU& pu) { pu.flags |= PU_HAS_ATTR_PURE; }
+
 inline void
 Clear_PU_is_malloc (PU& pu)			{ pu.flags &= ~PU_IS_MALLOC; }
+
+inline void 
+Clear_PU_has_attr_pure (PU& pu) { pu.flags &= ~PU_HAS_ATTR_PURE; }
 
 #endif
 #ifdef TARG_X8664
