@@ -33,7 +33,7 @@
 */
 
 
-/* $Header: /proj/osprey/CVS/open64/osprey1.0/include/rld_interface.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* $Header$ */
 
 /*
  Everything in this header is intended solely for use by

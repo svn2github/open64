@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,7 +46,7 @@ extern "C" {
 /*
     libXlate.h
 
-    $Revision: 1.1.1.1 $
+    $Revision: 1.4 $
 
     All external symbols  and macros begin with one of the following
 	XLATE_

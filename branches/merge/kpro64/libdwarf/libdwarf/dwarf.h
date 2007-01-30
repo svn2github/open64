@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -45,7 +45,7 @@ extern "C" {
 
 /*
 	dwarf.h   DWARF  debugging information values
-	$Revision: 1.1.1.1 $    $Date: 2005/10/21 19:00:00 $    
+	$Revision: 1.5 $    $Date: 05/05/25 10:54:11-07:00 $    
 
 	The comment "DWARF3" appears where there are
 	new entries from DWARF3, and other comments apply

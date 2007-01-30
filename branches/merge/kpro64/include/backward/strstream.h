@@ -1,7 +1,7 @@
 // -*- C++ -*- forwarding header.
 
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // Copyright (C) 2000 Free Software Foundation

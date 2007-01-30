@@ -34,7 +34,7 @@
 
 
 
-/* $Header: /proj/osprey/CVS/open64/osprey1.0/include/svr4_math.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* $Header$ */
 
 #ifndef __SVR4_MATH_H__
 #define __SVR4_MATH_H__

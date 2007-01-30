@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,7 +49,7 @@ extern "C" {
 #endif
 /*
 	libdwarf.h  
-	$Revision: 1.2 $ $Date: 05/12/05 08:59:58-08:00 $
+	$Revision: 1.8 $ $Date: 05/08/26 23:50:11-07:00 $
 
 	For libdwarf producers and consumers
 
@@ -168,7 +172,10 @@ enum Dwarf_Rel_Type {
 #ifdef KEY /* Bug 3507 */
 		dwarf_drt_module,               /* module name */
 		dwarf_drt_imported_declaration, /* imported declaration */
-#endif /* KEY Bug 3507 */
+	   /* Bug 9534 */
+		dwarf_drt_cie_begin,            /* EH cie begin marker */
+		dwarf_drt_fde_begin,            /* EH fde begin marker */
+#endif
 		dwarf_drt_cie_label, /* simple string */
 		dwarf_drt_data_reloc_by_str_id, /* drd_symbol_index==str_idx */
 		dwarf_drt_first_of_length_pair_create_second,

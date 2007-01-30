@@ -1519,6 +1519,18 @@ Traverse_Aggregate_Array (
       // recursively process nested ARRAYs and STRUCTs
       // update array_elem_offset to current_offset to
       // keep track of where each array element starts
+
+      // OSP_238, see comments about 'Bug 591' below
+      INT index = Get_Integer_Value(TREE_PURPOSE(init));
+      if ( current_offset/esize < index ) {
+    // pad (index - current_offset/esize)*esize bytes
+    Traverse_Aggregate_Pad (st, gen_initv,
+                (index - current_offset/esize)*esize,
+                current_offset);
+    emitted_bytes += (index - current_offset/esize)*esize;
+    current_offset = emitted_bytes;
+      } // End of OSP_238
+
       Traverse_Aggregate_Constructor (st, TREE_VALUE(init), 
 #ifdef KEY
 				      TREE_TYPE(type),

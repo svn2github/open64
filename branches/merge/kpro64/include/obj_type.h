@@ -33,7 +33,7 @@
 */
 
 
-/* $Header: /proj/osprey/CVS/open64/osprey1.0/include/obj_type.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* $Header$ */
 
 #ifndef __OBJ_TYPE_H__
 #define __OBJ_TYPE_H__

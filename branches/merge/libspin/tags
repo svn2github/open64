@@ -1,0 +1,1680 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.5.4	//
+CONS	gspin-tree.h	/^ CONS,$/;"	e	enum:gs_code
+DOT	gspin-tree.h	/^ DOT,$/;"	e	enum:gs_code
+EMPTY	gspin-tree.h	/^ EMPTY,$/;"	e	enum:gs_code
+GSBI	gspin-tree.h	/^ GSBI,$/;"	e	enum:gs_code
+GSBI_BUILT_IN_ABORT	gspin-tree.h	/^  GSBI_BUILT_IN_ABORT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ABS	gspin-tree.h	/^  GSBI_BUILT_IN_ABS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ACOS	gspin-tree.h	/^  GSBI_BUILT_IN_ACOS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ACOSF	gspin-tree.h	/^  GSBI_BUILT_IN_ACOSF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ACOSH	gspin-tree.h	/^  GSBI_BUILT_IN_ACOSH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ACOSHF	gspin-tree.h	/^  GSBI_BUILT_IN_ACOSHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ACOSHL	gspin-tree.h	/^  GSBI_BUILT_IN_ACOSHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ACOSL	gspin-tree.h	/^  GSBI_BUILT_IN_ACOSL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ADJUST_TRAMPOLINE	gspin-tree.h	/^  GSBI_BUILT_IN_ADJUST_TRAMPOLINE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_AGGREGATE_INCOMING_ADDRESS	gspin-tree.h	/^  GSBI_BUILT_IN_AGGREGATE_INCOMING_ADDRESS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ALLOCA	gspin-tree.h	/^  GSBI_BUILT_IN_ALLOCA,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_APPLY	gspin-tree.h	/^  GSBI_BUILT_IN_APPLY,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_APPLY_ARGS	gspin-tree.h	/^  GSBI_BUILT_IN_APPLY_ARGS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ARGS_INFO	gspin-tree.h	/^  GSBI_BUILT_IN_ARGS_INFO,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ASIN	gspin-tree.h	/^  GSBI_BUILT_IN_ASIN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ASINF	gspin-tree.h	/^  GSBI_BUILT_IN_ASINF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ASINH	gspin-tree.h	/^  GSBI_BUILT_IN_ASINH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ASINHF	gspin-tree.h	/^  GSBI_BUILT_IN_ASINHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ASINHL	gspin-tree.h	/^  GSBI_BUILT_IN_ASINHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ASINL	gspin-tree.h	/^  GSBI_BUILT_IN_ASINL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ATAN	gspin-tree.h	/^  GSBI_BUILT_IN_ATAN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ATAN2	gspin-tree.h	/^  GSBI_BUILT_IN_ATAN2,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ATAN2F	gspin-tree.h	/^  GSBI_BUILT_IN_ATAN2F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ATAN2L	gspin-tree.h	/^  GSBI_BUILT_IN_ATAN2L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ATANF	gspin-tree.h	/^  GSBI_BUILT_IN_ATANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ATANH	gspin-tree.h	/^  GSBI_BUILT_IN_ATANH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ATANHF	gspin-tree.h	/^  GSBI_BUILT_IN_ATANHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ATANHL	gspin-tree.h	/^  GSBI_BUILT_IN_ATANHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ATANL	gspin-tree.h	/^  GSBI_BUILT_IN_ATANL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_BCMP	gspin-tree.h	/^  GSBI_BUILT_IN_BCMP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_BCOPY	gspin-tree.h	/^  GSBI_BUILT_IN_BCOPY,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_BZERO	gspin-tree.h	/^  GSBI_BUILT_IN_BZERO,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CABS	gspin-tree.h	/^  GSBI_BUILT_IN_CABS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CABSF	gspin-tree.h	/^  GSBI_BUILT_IN_CABSF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CABSL	gspin-tree.h	/^  GSBI_BUILT_IN_CABSL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CACOS	gspin-tree.h	/^  GSBI_BUILT_IN_CACOS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CACOSF	gspin-tree.h	/^  GSBI_BUILT_IN_CACOSF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CACOSH	gspin-tree.h	/^  GSBI_BUILT_IN_CACOSH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CACOSHF	gspin-tree.h	/^  GSBI_BUILT_IN_CACOSHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CACOSHL	gspin-tree.h	/^  GSBI_BUILT_IN_CACOSHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CACOSL	gspin-tree.h	/^  GSBI_BUILT_IN_CACOSL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CALLOC	gspin-tree.h	/^  GSBI_BUILT_IN_CALLOC,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CARG	gspin-tree.h	/^  GSBI_BUILT_IN_CARG,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CARGF	gspin-tree.h	/^  GSBI_BUILT_IN_CARGF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CARGL	gspin-tree.h	/^  GSBI_BUILT_IN_CARGL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CASIN	gspin-tree.h	/^  GSBI_BUILT_IN_CASIN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CASINF	gspin-tree.h	/^  GSBI_BUILT_IN_CASINF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CASINH	gspin-tree.h	/^  GSBI_BUILT_IN_CASINH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CASINHF	gspin-tree.h	/^  GSBI_BUILT_IN_CASINHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CASINHL	gspin-tree.h	/^  GSBI_BUILT_IN_CASINHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CASINL	gspin-tree.h	/^  GSBI_BUILT_IN_CASINL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CATAN	gspin-tree.h	/^  GSBI_BUILT_IN_CATAN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CATANF	gspin-tree.h	/^  GSBI_BUILT_IN_CATANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CATANH	gspin-tree.h	/^  GSBI_BUILT_IN_CATANH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CATANHF	gspin-tree.h	/^  GSBI_BUILT_IN_CATANHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CATANHL	gspin-tree.h	/^  GSBI_BUILT_IN_CATANHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CATANL	gspin-tree.h	/^  GSBI_BUILT_IN_CATANL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CBRT	gspin-tree.h	/^  GSBI_BUILT_IN_CBRT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CBRTF	gspin-tree.h	/^  GSBI_BUILT_IN_CBRTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CBRTL	gspin-tree.h	/^  GSBI_BUILT_IN_CBRTL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CCOS	gspin-tree.h	/^  GSBI_BUILT_IN_CCOS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CCOSF	gspin-tree.h	/^  GSBI_BUILT_IN_CCOSF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CCOSH	gspin-tree.h	/^  GSBI_BUILT_IN_CCOSH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CCOSHF	gspin-tree.h	/^  GSBI_BUILT_IN_CCOSHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CCOSHL	gspin-tree.h	/^  GSBI_BUILT_IN_CCOSHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CCOSL	gspin-tree.h	/^  GSBI_BUILT_IN_CCOSL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CEIL	gspin-tree.h	/^  GSBI_BUILT_IN_CEIL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CEILF	gspin-tree.h	/^  GSBI_BUILT_IN_CEILF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CEILL	gspin-tree.h	/^  GSBI_BUILT_IN_CEILL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CEXP	gspin-tree.h	/^  GSBI_BUILT_IN_CEXP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CEXPF	gspin-tree.h	/^  GSBI_BUILT_IN_CEXPF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CEXPL	gspin-tree.h	/^  GSBI_BUILT_IN_CEXPL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CIMAG	gspin-tree.h	/^  GSBI_BUILT_IN_CIMAG,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CIMAGF	gspin-tree.h	/^  GSBI_BUILT_IN_CIMAGF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CIMAGL	gspin-tree.h	/^  GSBI_BUILT_IN_CIMAGL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CLASSIFY_TYPE	gspin-tree.h	/^  GSBI_BUILT_IN_CLASSIFY_TYPE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CLOG	gspin-tree.h	/^  GSBI_BUILT_IN_CLOG,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CLOGF	gspin-tree.h	/^  GSBI_BUILT_IN_CLOGF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CLOGL	gspin-tree.h	/^  GSBI_BUILT_IN_CLOGL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CLZ	gspin-tree.h	/^  GSBI_BUILT_IN_CLZ,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CLZIMAX	gspin-tree.h	/^  GSBI_BUILT_IN_CLZIMAX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CLZL	gspin-tree.h	/^  GSBI_BUILT_IN_CLZL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CLZLL	gspin-tree.h	/^  GSBI_BUILT_IN_CLZLL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COMPLEX_DIV_MAX	gspin-tree.h	/^  GSBI_BUILT_IN_COMPLEX_DIV_MAX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COMPLEX_DIV_MIN	gspin-tree.h	/^  GSBI_BUILT_IN_COMPLEX_DIV_MIN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COMPLEX_MUL_MAX	gspin-tree.h	/^  GSBI_BUILT_IN_COMPLEX_MUL_MAX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COMPLEX_MUL_MIN	gspin-tree.h	/^  GSBI_BUILT_IN_COMPLEX_MUL_MIN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CONJ	gspin-tree.h	/^  GSBI_BUILT_IN_CONJ,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CONJF	gspin-tree.h	/^  GSBI_BUILT_IN_CONJF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CONJL	gspin-tree.h	/^  GSBI_BUILT_IN_CONJL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CONSTANT_P	gspin-tree.h	/^  GSBI_BUILT_IN_CONSTANT_P,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COPYSIGN	gspin-tree.h	/^  GSBI_BUILT_IN_COPYSIGN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COPYSIGNF	gspin-tree.h	/^  GSBI_BUILT_IN_COPYSIGNF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COPYSIGNL	gspin-tree.h	/^  GSBI_BUILT_IN_COPYSIGNL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COS	gspin-tree.h	/^  GSBI_BUILT_IN_COS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COSF	gspin-tree.h	/^  GSBI_BUILT_IN_COSF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COSH	gspin-tree.h	/^  GSBI_BUILT_IN_COSH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COSHF	gspin-tree.h	/^  GSBI_BUILT_IN_COSHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COSHL	gspin-tree.h	/^  GSBI_BUILT_IN_COSHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_COSL	gspin-tree.h	/^  GSBI_BUILT_IN_COSL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CPOW	gspin-tree.h	/^  GSBI_BUILT_IN_CPOW,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CPOWF	gspin-tree.h	/^  GSBI_BUILT_IN_CPOWF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CPOWL	gspin-tree.h	/^  GSBI_BUILT_IN_CPOWL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CPROJ	gspin-tree.h	/^  GSBI_BUILT_IN_CPROJ,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CPROJF	gspin-tree.h	/^  GSBI_BUILT_IN_CPROJF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CPROJL	gspin-tree.h	/^  GSBI_BUILT_IN_CPROJL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CREAL	gspin-tree.h	/^  GSBI_BUILT_IN_CREAL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CREALF	gspin-tree.h	/^  GSBI_BUILT_IN_CREALF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CREALL	gspin-tree.h	/^  GSBI_BUILT_IN_CREALL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CSIN	gspin-tree.h	/^  GSBI_BUILT_IN_CSIN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CSINF	gspin-tree.h	/^  GSBI_BUILT_IN_CSINF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CSINH	gspin-tree.h	/^  GSBI_BUILT_IN_CSINH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CSINHF	gspin-tree.h	/^  GSBI_BUILT_IN_CSINHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CSINHL	gspin-tree.h	/^  GSBI_BUILT_IN_CSINHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CSINL	gspin-tree.h	/^  GSBI_BUILT_IN_CSINL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CSQRT	gspin-tree.h	/^  GSBI_BUILT_IN_CSQRT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CSQRTF	gspin-tree.h	/^  GSBI_BUILT_IN_CSQRTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CSQRTL	gspin-tree.h	/^  GSBI_BUILT_IN_CSQRTL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTAN	gspin-tree.h	/^  GSBI_BUILT_IN_CTAN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTANF	gspin-tree.h	/^  GSBI_BUILT_IN_CTANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTANH	gspin-tree.h	/^  GSBI_BUILT_IN_CTANH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTANHF	gspin-tree.h	/^  GSBI_BUILT_IN_CTANHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTANHL	gspin-tree.h	/^  GSBI_BUILT_IN_CTANHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTANL	gspin-tree.h	/^  GSBI_BUILT_IN_CTANL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTZ	gspin-tree.h	/^  GSBI_BUILT_IN_CTZ,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTZIMAX	gspin-tree.h	/^  GSBI_BUILT_IN_CTZIMAX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTZL	gspin-tree.h	/^  GSBI_BUILT_IN_CTZL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_CTZLL	gspin-tree.h	/^  GSBI_BUILT_IN_CTZLL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_DCGETTEXT	gspin-tree.h	/^  GSBI_BUILT_IN_DCGETTEXT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_DGETTEXT	gspin-tree.h	/^  GSBI_BUILT_IN_DGETTEXT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_DREM	gspin-tree.h	/^  GSBI_BUILT_IN_DREM,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_DREMF	gspin-tree.h	/^  GSBI_BUILT_IN_DREMF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_DREML	gspin-tree.h	/^  GSBI_BUILT_IN_DREML,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_DWARF_CFA	gspin-tree.h	/^  GSBI_BUILT_IN_DWARF_CFA,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_DWARF_SP_COLUMN	gspin-tree.h	/^  GSBI_BUILT_IN_DWARF_SP_COLUMN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EH_RETURN	gspin-tree.h	/^  GSBI_BUILT_IN_EH_RETURN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EH_RETURN_DATA_REGNO	gspin-tree.h	/^  GSBI_BUILT_IN_EH_RETURN_DATA_REGNO,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ERF	gspin-tree.h	/^  GSBI_BUILT_IN_ERF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ERFC	gspin-tree.h	/^  GSBI_BUILT_IN_ERFC,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ERFCF	gspin-tree.h	/^  GSBI_BUILT_IN_ERFCF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ERFCL	gspin-tree.h	/^  GSBI_BUILT_IN_ERFCL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ERFF	gspin-tree.h	/^  GSBI_BUILT_IN_ERFF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ERFL	gspin-tree.h	/^  GSBI_BUILT_IN_ERFL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXECL	gspin-tree.h	/^  GSBI_BUILT_IN_EXECL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXECLE	gspin-tree.h	/^  GSBI_BUILT_IN_EXECLE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXECLP	gspin-tree.h	/^  GSBI_BUILT_IN_EXECLP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXECV	gspin-tree.h	/^  GSBI_BUILT_IN_EXECV,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXECVE	gspin-tree.h	/^  GSBI_BUILT_IN_EXECVE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXECVP	gspin-tree.h	/^  GSBI_BUILT_IN_EXECVP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXIT	gspin-tree.h	/^  GSBI_BUILT_IN_EXIT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXP	gspin-tree.h	/^  GSBI_BUILT_IN_EXP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXP10	gspin-tree.h	/^  GSBI_BUILT_IN_EXP10,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXP10F	gspin-tree.h	/^  GSBI_BUILT_IN_EXP10F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXP10L	gspin-tree.h	/^  GSBI_BUILT_IN_EXP10L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXP2	gspin-tree.h	/^  GSBI_BUILT_IN_EXP2,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXP2F	gspin-tree.h	/^  GSBI_BUILT_IN_EXP2F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXP2L	gspin-tree.h	/^  GSBI_BUILT_IN_EXP2L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXPECT	gspin-tree.h	/^  GSBI_BUILT_IN_EXPECT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXPF	gspin-tree.h	/^  GSBI_BUILT_IN_EXPF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXPL	gspin-tree.h	/^  GSBI_BUILT_IN_EXPL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXPM1	gspin-tree.h	/^  GSBI_BUILT_IN_EXPM1,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXPM1F	gspin-tree.h	/^  GSBI_BUILT_IN_EXPM1F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXPM1L	gspin-tree.h	/^  GSBI_BUILT_IN_EXPM1L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXTEND_POINTER	gspin-tree.h	/^  GSBI_BUILT_IN_EXTEND_POINTER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_EXTRACT_RETURN_ADDR	gspin-tree.h	/^  GSBI_BUILT_IN_EXTRACT_RETURN_ADDR,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FABS	gspin-tree.h	/^  GSBI_BUILT_IN_FABS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FABSF	gspin-tree.h	/^  GSBI_BUILT_IN_FABSF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FABSL	gspin-tree.h	/^  GSBI_BUILT_IN_FABSL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FDIM	gspin-tree.h	/^  GSBI_BUILT_IN_FDIM,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FDIMF	gspin-tree.h	/^  GSBI_BUILT_IN_FDIMF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FDIML	gspin-tree.h	/^  GSBI_BUILT_IN_FDIML,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FFS	gspin-tree.h	/^  GSBI_BUILT_IN_FFS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FFSIMAX	gspin-tree.h	/^  GSBI_BUILT_IN_FFSIMAX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FFSL	gspin-tree.h	/^  GSBI_BUILT_IN_FFSL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FFSLL	gspin-tree.h	/^  GSBI_BUILT_IN_FFSLL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FINITE	gspin-tree.h	/^  GSBI_BUILT_IN_FINITE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FINITEF	gspin-tree.h	/^  GSBI_BUILT_IN_FINITEF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FINITEL	gspin-tree.h	/^  GSBI_BUILT_IN_FINITEL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FLOOR	gspin-tree.h	/^  GSBI_BUILT_IN_FLOOR,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FLOORF	gspin-tree.h	/^  GSBI_BUILT_IN_FLOORF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FLOORL	gspin-tree.h	/^  GSBI_BUILT_IN_FLOORL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMA	gspin-tree.h	/^  GSBI_BUILT_IN_FMA,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMAF	gspin-tree.h	/^  GSBI_BUILT_IN_FMAF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMAL	gspin-tree.h	/^  GSBI_BUILT_IN_FMAL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMAX	gspin-tree.h	/^  GSBI_BUILT_IN_FMAX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMAXF	gspin-tree.h	/^  GSBI_BUILT_IN_FMAXF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMAXL	gspin-tree.h	/^  GSBI_BUILT_IN_FMAXL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMIN	gspin-tree.h	/^  GSBI_BUILT_IN_FMIN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMINF	gspin-tree.h	/^  GSBI_BUILT_IN_FMINF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMINL	gspin-tree.h	/^  GSBI_BUILT_IN_FMINL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMOD	gspin-tree.h	/^  GSBI_BUILT_IN_FMOD,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMODF	gspin-tree.h	/^  GSBI_BUILT_IN_FMODF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FMODL	gspin-tree.h	/^  GSBI_BUILT_IN_FMODL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FORK	gspin-tree.h	/^  GSBI_BUILT_IN_FORK,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FPRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_FPRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FPRINTF_UNLOCKED	gspin-tree.h	/^  GSBI_BUILT_IN_FPRINTF_UNLOCKED,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FPUTC	gspin-tree.h	/^  GSBI_BUILT_IN_FPUTC,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FPUTC_UNLOCKED	gspin-tree.h	/^  GSBI_BUILT_IN_FPUTC_UNLOCKED,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FPUTS	gspin-tree.h	/^  GSBI_BUILT_IN_FPUTS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FPUTS_UNLOCKED	gspin-tree.h	/^  GSBI_BUILT_IN_FPUTS_UNLOCKED,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FRAME_ADDRESS	gspin-tree.h	/^  GSBI_BUILT_IN_FRAME_ADDRESS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FREXP	gspin-tree.h	/^  GSBI_BUILT_IN_FREXP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FREXPF	gspin-tree.h	/^  GSBI_BUILT_IN_FREXPF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FREXPL	gspin-tree.h	/^  GSBI_BUILT_IN_FREXPL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FROB_RETURN_ADDR	gspin-tree.h	/^  GSBI_BUILT_IN_FROB_RETURN_ADDR,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FSCANF	gspin-tree.h	/^  GSBI_BUILT_IN_FSCANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FWRITE	gspin-tree.h	/^  GSBI_BUILT_IN_FWRITE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_FWRITE_UNLOCKED	gspin-tree.h	/^  GSBI_BUILT_IN_FWRITE_UNLOCKED,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_GAMMA	gspin-tree.h	/^  GSBI_BUILT_IN_GAMMA,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_GAMMAF	gspin-tree.h	/^  GSBI_BUILT_IN_GAMMAF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_GAMMAL	gspin-tree.h	/^  GSBI_BUILT_IN_GAMMAL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_GETTEXT	gspin-tree.h	/^  GSBI_BUILT_IN_GETTEXT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_HUGE_VAL	gspin-tree.h	/^  GSBI_BUILT_IN_HUGE_VAL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_HUGE_VALF	gspin-tree.h	/^  GSBI_BUILT_IN_HUGE_VALF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_HUGE_VALL	gspin-tree.h	/^  GSBI_BUILT_IN_HUGE_VALL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_HYPOT	gspin-tree.h	/^  GSBI_BUILT_IN_HYPOT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_HYPOTF	gspin-tree.h	/^  GSBI_BUILT_IN_HYPOTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_HYPOTL	gspin-tree.h	/^  GSBI_BUILT_IN_HYPOTL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ILOGB	gspin-tree.h	/^  GSBI_BUILT_IN_ILOGB,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ILOGBF	gspin-tree.h	/^  GSBI_BUILT_IN_ILOGBF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ILOGBL	gspin-tree.h	/^  GSBI_BUILT_IN_ILOGBL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_IMAXABS	gspin-tree.h	/^  GSBI_BUILT_IN_IMAXABS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_INDEX	gspin-tree.h	/^  GSBI_BUILT_IN_INDEX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_INF	gspin-tree.h	/^  GSBI_BUILT_IN_INF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_INFF	gspin-tree.h	/^  GSBI_BUILT_IN_INFF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_INFL	gspin-tree.h	/^  GSBI_BUILT_IN_INFL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_INIT_DWARF_REG_SIZES	gspin-tree.h	/^  GSBI_BUILT_IN_INIT_DWARF_REG_SIZES,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_INIT_TRAMPOLINE	gspin-tree.h	/^  GSBI_BUILT_IN_INIT_TRAMPOLINE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISALNUM	gspin-tree.h	/^  GSBI_BUILT_IN_ISALNUM,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISALPHA	gspin-tree.h	/^  GSBI_BUILT_IN_ISALPHA,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISASCII	gspin-tree.h	/^  GSBI_BUILT_IN_ISASCII,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISBLANK	gspin-tree.h	/^  GSBI_BUILT_IN_ISBLANK,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISCNTRL	gspin-tree.h	/^  GSBI_BUILT_IN_ISCNTRL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISDIGIT	gspin-tree.h	/^  GSBI_BUILT_IN_ISDIGIT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISGRAPH	gspin-tree.h	/^  GSBI_BUILT_IN_ISGRAPH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISGREATER	gspin-tree.h	/^  GSBI_BUILT_IN_ISGREATER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISGREATEREQUAL	gspin-tree.h	/^  GSBI_BUILT_IN_ISGREATEREQUAL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISINF	gspin-tree.h	/^  GSBI_BUILT_IN_ISINF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISINFF	gspin-tree.h	/^  GSBI_BUILT_IN_ISINFF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISINFL	gspin-tree.h	/^  GSBI_BUILT_IN_ISINFL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISLESS	gspin-tree.h	/^  GSBI_BUILT_IN_ISLESS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISLESSEQUAL	gspin-tree.h	/^  GSBI_BUILT_IN_ISLESSEQUAL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISLESSGREATER	gspin-tree.h	/^  GSBI_BUILT_IN_ISLESSGREATER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISLOWER	gspin-tree.h	/^  GSBI_BUILT_IN_ISLOWER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISNAN	gspin-tree.h	/^  GSBI_BUILT_IN_ISNAN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISNANF	gspin-tree.h	/^  GSBI_BUILT_IN_ISNANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISNANL	gspin-tree.h	/^  GSBI_BUILT_IN_ISNANL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISPRINT	gspin-tree.h	/^  GSBI_BUILT_IN_ISPRINT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISPUNCT	gspin-tree.h	/^  GSBI_BUILT_IN_ISPUNCT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISSPACE	gspin-tree.h	/^  GSBI_BUILT_IN_ISSPACE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISUNORDERED	gspin-tree.h	/^  GSBI_BUILT_IN_ISUNORDERED,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISUPPER	gspin-tree.h	/^  GSBI_BUILT_IN_ISUPPER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWALNUM	gspin-tree.h	/^  GSBI_BUILT_IN_ISWALNUM,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWALPHA	gspin-tree.h	/^  GSBI_BUILT_IN_ISWALPHA,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWBLANK	gspin-tree.h	/^  GSBI_BUILT_IN_ISWBLANK,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWCNTRL	gspin-tree.h	/^  GSBI_BUILT_IN_ISWCNTRL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWDIGIT	gspin-tree.h	/^  GSBI_BUILT_IN_ISWDIGIT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWGRAPH	gspin-tree.h	/^  GSBI_BUILT_IN_ISWGRAPH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWLOWER	gspin-tree.h	/^  GSBI_BUILT_IN_ISWLOWER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWPRINT	gspin-tree.h	/^  GSBI_BUILT_IN_ISWPRINT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWPUNCT	gspin-tree.h	/^  GSBI_BUILT_IN_ISWPUNCT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWSPACE	gspin-tree.h	/^  GSBI_BUILT_IN_ISWSPACE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWUPPER	gspin-tree.h	/^  GSBI_BUILT_IN_ISWUPPER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISWXDIGIT	gspin-tree.h	/^  GSBI_BUILT_IN_ISWXDIGIT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ISXDIGIT	gspin-tree.h	/^  GSBI_BUILT_IN_ISXDIGIT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_J0	gspin-tree.h	/^  GSBI_BUILT_IN_J0,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_J0F	gspin-tree.h	/^  GSBI_BUILT_IN_J0F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_J0L	gspin-tree.h	/^  GSBI_BUILT_IN_J0L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_J1	gspin-tree.h	/^  GSBI_BUILT_IN_J1,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_J1F	gspin-tree.h	/^  GSBI_BUILT_IN_J1F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_J1L	gspin-tree.h	/^  GSBI_BUILT_IN_J1L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_JN	gspin-tree.h	/^  GSBI_BUILT_IN_JN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_JNF	gspin-tree.h	/^  GSBI_BUILT_IN_JNF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_JNL	gspin-tree.h	/^  GSBI_BUILT_IN_JNL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LABS	gspin-tree.h	/^  GSBI_BUILT_IN_LABS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LDEXP	gspin-tree.h	/^  GSBI_BUILT_IN_LDEXP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LDEXPF	gspin-tree.h	/^  GSBI_BUILT_IN_LDEXPF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LDEXPL	gspin-tree.h	/^  GSBI_BUILT_IN_LDEXPL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LGAMMA	gspin-tree.h	/^  GSBI_BUILT_IN_LGAMMA,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LGAMMAF	gspin-tree.h	/^  GSBI_BUILT_IN_LGAMMAF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LGAMMAL	gspin-tree.h	/^  GSBI_BUILT_IN_LGAMMAL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LLABS	gspin-tree.h	/^  GSBI_BUILT_IN_LLABS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LLRINT	gspin-tree.h	/^  GSBI_BUILT_IN_LLRINT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LLRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_LLRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LLRINTL	gspin-tree.h	/^  GSBI_BUILT_IN_LLRINTL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LLROUND	gspin-tree.h	/^  GSBI_BUILT_IN_LLROUND,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LLROUNDF	gspin-tree.h	/^  GSBI_BUILT_IN_LLROUNDF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LLROUNDL	gspin-tree.h	/^  GSBI_BUILT_IN_LLROUNDL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG	gspin-tree.h	/^  GSBI_BUILT_IN_LOG,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG10	gspin-tree.h	/^  GSBI_BUILT_IN_LOG10,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG10F	gspin-tree.h	/^  GSBI_BUILT_IN_LOG10F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG10L	gspin-tree.h	/^  GSBI_BUILT_IN_LOG10L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG1P	gspin-tree.h	/^  GSBI_BUILT_IN_LOG1P,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG1PF	gspin-tree.h	/^  GSBI_BUILT_IN_LOG1PF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG1PL	gspin-tree.h	/^  GSBI_BUILT_IN_LOG1PL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG2	gspin-tree.h	/^  GSBI_BUILT_IN_LOG2,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG2F	gspin-tree.h	/^  GSBI_BUILT_IN_LOG2F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOG2L	gspin-tree.h	/^  GSBI_BUILT_IN_LOG2L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOGB	gspin-tree.h	/^  GSBI_BUILT_IN_LOGB,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOGBF	gspin-tree.h	/^  GSBI_BUILT_IN_LOGBF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOGBL	gspin-tree.h	/^  GSBI_BUILT_IN_LOGBL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOGF	gspin-tree.h	/^  GSBI_BUILT_IN_LOGF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LOGL	gspin-tree.h	/^  GSBI_BUILT_IN_LOGL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LONGJMP	gspin-tree.h	/^  GSBI_BUILT_IN_LONGJMP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LRINT	gspin-tree.h	/^  GSBI_BUILT_IN_LRINT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_LRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LRINTL	gspin-tree.h	/^  GSBI_BUILT_IN_LRINTL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LROUND	gspin-tree.h	/^  GSBI_BUILT_IN_LROUND,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LROUNDF	gspin-tree.h	/^  GSBI_BUILT_IN_LROUNDF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_LROUNDL	gspin-tree.h	/^  GSBI_BUILT_IN_LROUNDL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_MALLOC	gspin-tree.h	/^  GSBI_BUILT_IN_MALLOC,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_MEMCMP	gspin-tree.h	/^  GSBI_BUILT_IN_MEMCMP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_MEMCPY	gspin-tree.h	/^  GSBI_BUILT_IN_MEMCPY,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_MEMMOVE	gspin-tree.h	/^  GSBI_BUILT_IN_MEMMOVE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_MEMPCPY	gspin-tree.h	/^  GSBI_BUILT_IN_MEMPCPY,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_MEMSET	gspin-tree.h	/^  GSBI_BUILT_IN_MEMSET,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_MODF	gspin-tree.h	/^  GSBI_BUILT_IN_MODF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_MODFF	gspin-tree.h	/^  GSBI_BUILT_IN_MODFF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_MODFL	gspin-tree.h	/^  GSBI_BUILT_IN_MODFL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NAN	gspin-tree.h	/^  GSBI_BUILT_IN_NAN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NANF	gspin-tree.h	/^  GSBI_BUILT_IN_NANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NANL	gspin-tree.h	/^  GSBI_BUILT_IN_NANL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NANS	gspin-tree.h	/^  GSBI_BUILT_IN_NANS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NANSF	gspin-tree.h	/^  GSBI_BUILT_IN_NANSF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NANSL	gspin-tree.h	/^  GSBI_BUILT_IN_NANSL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEARBYINT	gspin-tree.h	/^  GSBI_BUILT_IN_NEARBYINT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEARBYINTF	gspin-tree.h	/^  GSBI_BUILT_IN_NEARBYINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEARBYINTL	gspin-tree.h	/^  GSBI_BUILT_IN_NEARBYINTL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEXTAFTER	gspin-tree.h	/^  GSBI_BUILT_IN_NEXTAFTER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEXTAFTERF	gspin-tree.h	/^  GSBI_BUILT_IN_NEXTAFTERF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEXTAFTERL	gspin-tree.h	/^  GSBI_BUILT_IN_NEXTAFTERL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEXTTOWARD	gspin-tree.h	/^  GSBI_BUILT_IN_NEXTTOWARD,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEXTTOWARDF	gspin-tree.h	/^  GSBI_BUILT_IN_NEXTTOWARDF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEXTTOWARDL	gspin-tree.h	/^  GSBI_BUILT_IN_NEXTTOWARDL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NEXT_ARG	gspin-tree.h	/^  GSBI_BUILT_IN_NEXT_ARG,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_NONLOCAL_GOTO	gspin-tree.h	/^  GSBI_BUILT_IN_NONLOCAL_GOTO,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PARITY	gspin-tree.h	/^  GSBI_BUILT_IN_PARITY,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PARITYIMAX	gspin-tree.h	/^  GSBI_BUILT_IN_PARITYIMAX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PARITYL	gspin-tree.h	/^  GSBI_BUILT_IN_PARITYL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PARITYLL	gspin-tree.h	/^  GSBI_BUILT_IN_PARITYLL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POPCOUNT	gspin-tree.h	/^  GSBI_BUILT_IN_POPCOUNT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POPCOUNTIMAX	gspin-tree.h	/^  GSBI_BUILT_IN_POPCOUNTIMAX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POPCOUNTL	gspin-tree.h	/^  GSBI_BUILT_IN_POPCOUNTL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POPCOUNTLL	gspin-tree.h	/^  GSBI_BUILT_IN_POPCOUNTLL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POW	gspin-tree.h	/^  GSBI_BUILT_IN_POW,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POW10	gspin-tree.h	/^  GSBI_BUILT_IN_POW10,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POW10F	gspin-tree.h	/^  GSBI_BUILT_IN_POW10F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POW10L	gspin-tree.h	/^  GSBI_BUILT_IN_POW10L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POWF	gspin-tree.h	/^  GSBI_BUILT_IN_POWF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POWI	gspin-tree.h	/^  GSBI_BUILT_IN_POWI,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POWIF	gspin-tree.h	/^  GSBI_BUILT_IN_POWIF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POWIL	gspin-tree.h	/^  GSBI_BUILT_IN_POWIL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_POWL	gspin-tree.h	/^  GSBI_BUILT_IN_POWL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PREFETCH	gspin-tree.h	/^  GSBI_BUILT_IN_PREFETCH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_PRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PRINTF_UNLOCKED	gspin-tree.h	/^  GSBI_BUILT_IN_PRINTF_UNLOCKED,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PROFILE_FUNC_ENTER	gspin-tree.h	/^  GSBI_BUILT_IN_PROFILE_FUNC_ENTER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PROFILE_FUNC_EXIT	gspin-tree.h	/^  GSBI_BUILT_IN_PROFILE_FUNC_EXIT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PUTCHAR	gspin-tree.h	/^  GSBI_BUILT_IN_PUTCHAR,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PUTCHAR_UNLOCKED	gspin-tree.h	/^  GSBI_BUILT_IN_PUTCHAR_UNLOCKED,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PUTS	gspin-tree.h	/^  GSBI_BUILT_IN_PUTS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_PUTS_UNLOCKED	gspin-tree.h	/^  GSBI_BUILT_IN_PUTS_UNLOCKED,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_REMAINDER	gspin-tree.h	/^  GSBI_BUILT_IN_REMAINDER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_REMAINDERF	gspin-tree.h	/^  GSBI_BUILT_IN_REMAINDERF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_REMAINDERL	gspin-tree.h	/^  GSBI_BUILT_IN_REMAINDERL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_REMQUO	gspin-tree.h	/^  GSBI_BUILT_IN_REMQUO,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_REMQUOF	gspin-tree.h	/^  GSBI_BUILT_IN_REMQUOF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_REMQUOL	gspin-tree.h	/^  GSBI_BUILT_IN_REMQUOL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_RETURN	gspin-tree.h	/^  GSBI_BUILT_IN_RETURN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_RETURN_ADDRESS	gspin-tree.h	/^  GSBI_BUILT_IN_RETURN_ADDRESS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_RINDEX	gspin-tree.h	/^  GSBI_BUILT_IN_RINDEX,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_RINT	gspin-tree.h	/^  GSBI_BUILT_IN_RINT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_RINTF	gspin-tree.h	/^  GSBI_BUILT_IN_RINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_RINTL	gspin-tree.h	/^  GSBI_BUILT_IN_RINTL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ROUND	gspin-tree.h	/^  GSBI_BUILT_IN_ROUND,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ROUNDF	gspin-tree.h	/^  GSBI_BUILT_IN_ROUNDF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_ROUNDL	gspin-tree.h	/^  GSBI_BUILT_IN_ROUNDL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SAVEREGS	gspin-tree.h	/^  GSBI_BUILT_IN_SAVEREGS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCALB	gspin-tree.h	/^  GSBI_BUILT_IN_SCALB,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCALBF	gspin-tree.h	/^  GSBI_BUILT_IN_SCALBF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCALBL	gspin-tree.h	/^  GSBI_BUILT_IN_SCALBL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCALBLN	gspin-tree.h	/^  GSBI_BUILT_IN_SCALBLN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCALBLNF	gspin-tree.h	/^  GSBI_BUILT_IN_SCALBLNF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCALBLNL	gspin-tree.h	/^  GSBI_BUILT_IN_SCALBLNL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCALBN	gspin-tree.h	/^  GSBI_BUILT_IN_SCALBN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCALBNF	gspin-tree.h	/^  GSBI_BUILT_IN_SCALBNF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCALBNL	gspin-tree.h	/^  GSBI_BUILT_IN_SCALBNL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SCANF	gspin-tree.h	/^  GSBI_BUILT_IN_SCANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SETJMP	gspin-tree.h	/^  GSBI_BUILT_IN_SETJMP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SIGNBIT	gspin-tree.h	/^  GSBI_BUILT_IN_SIGNBIT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SIGNBITF	gspin-tree.h	/^  GSBI_BUILT_IN_SIGNBITF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SIGNBITL	gspin-tree.h	/^  GSBI_BUILT_IN_SIGNBITL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SIGNIFICAND	gspin-tree.h	/^  GSBI_BUILT_IN_SIGNIFICAND,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SIGNIFICANDF	gspin-tree.h	/^  GSBI_BUILT_IN_SIGNIFICANDF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SIGNIFICANDL	gspin-tree.h	/^  GSBI_BUILT_IN_SIGNIFICANDL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SIN	gspin-tree.h	/^  GSBI_BUILT_IN_SIN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SINCOS	gspin-tree.h	/^  GSBI_BUILT_IN_SINCOS,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SINCOSF	gspin-tree.h	/^  GSBI_BUILT_IN_SINCOSF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SINCOSL	gspin-tree.h	/^  GSBI_BUILT_IN_SINCOSL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SINF	gspin-tree.h	/^  GSBI_BUILT_IN_SINF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SINH	gspin-tree.h	/^  GSBI_BUILT_IN_SINH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SINHF	gspin-tree.h	/^  GSBI_BUILT_IN_SINHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SINHL	gspin-tree.h	/^  GSBI_BUILT_IN_SINHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SINL	gspin-tree.h	/^  GSBI_BUILT_IN_SINL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SNPRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_SNPRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SPRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_SPRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SQRT	gspin-tree.h	/^  GSBI_BUILT_IN_SQRT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SQRTF	gspin-tree.h	/^  GSBI_BUILT_IN_SQRTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SQRTL	gspin-tree.h	/^  GSBI_BUILT_IN_SQRTL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_SSCANF	gspin-tree.h	/^  GSBI_BUILT_IN_SSCANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STACK_RESTORE	gspin-tree.h	/^  GSBI_BUILT_IN_STACK_RESTORE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STACK_SAVE	gspin-tree.h	/^  GSBI_BUILT_IN_STACK_SAVE,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STDARG_START	gspin-tree.h	/^  GSBI_BUILT_IN_STDARG_START,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STPCPY	gspin-tree.h	/^  GSBI_BUILT_IN_STPCPY,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRCAT	gspin-tree.h	/^  GSBI_BUILT_IN_STRCAT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRCHR	gspin-tree.h	/^  GSBI_BUILT_IN_STRCHR,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRCMP	gspin-tree.h	/^  GSBI_BUILT_IN_STRCMP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRCPY	gspin-tree.h	/^  GSBI_BUILT_IN_STRCPY,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRCSPN	gspin-tree.h	/^  GSBI_BUILT_IN_STRCSPN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRDUP	gspin-tree.h	/^  GSBI_BUILT_IN_STRDUP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRFMON	gspin-tree.h	/^  GSBI_BUILT_IN_STRFMON,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRFTIME	gspin-tree.h	/^  GSBI_BUILT_IN_STRFTIME,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRLEN	gspin-tree.h	/^  GSBI_BUILT_IN_STRLEN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRNCAT	gspin-tree.h	/^  GSBI_BUILT_IN_STRNCAT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRNCMP	gspin-tree.h	/^  GSBI_BUILT_IN_STRNCMP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRNCPY	gspin-tree.h	/^  GSBI_BUILT_IN_STRNCPY,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRPBRK	gspin-tree.h	/^  GSBI_BUILT_IN_STRPBRK,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRRCHR	gspin-tree.h	/^  GSBI_BUILT_IN_STRRCHR,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRSPN	gspin-tree.h	/^  GSBI_BUILT_IN_STRSPN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_STRSTR	gspin-tree.h	/^  GSBI_BUILT_IN_STRSTR,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TAN	gspin-tree.h	/^  GSBI_BUILT_IN_TAN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TANF	gspin-tree.h	/^  GSBI_BUILT_IN_TANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TANH	gspin-tree.h	/^  GSBI_BUILT_IN_TANH,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TANHF	gspin-tree.h	/^  GSBI_BUILT_IN_TANHF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TANHL	gspin-tree.h	/^  GSBI_BUILT_IN_TANHL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TANL	gspin-tree.h	/^  GSBI_BUILT_IN_TANL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TGAMMA	gspin-tree.h	/^  GSBI_BUILT_IN_TGAMMA,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TGAMMAF	gspin-tree.h	/^  GSBI_BUILT_IN_TGAMMAF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TGAMMAL	gspin-tree.h	/^  GSBI_BUILT_IN_TGAMMAL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TOASCII	gspin-tree.h	/^  GSBI_BUILT_IN_TOASCII,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TOLOWER	gspin-tree.h	/^  GSBI_BUILT_IN_TOLOWER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TOUPPER	gspin-tree.h	/^  GSBI_BUILT_IN_TOUPPER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TOWLOWER	gspin-tree.h	/^  GSBI_BUILT_IN_TOWLOWER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TOWUPPER	gspin-tree.h	/^  GSBI_BUILT_IN_TOWUPPER,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TRAP	gspin-tree.h	/^  GSBI_BUILT_IN_TRAP,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TRUNC	gspin-tree.h	/^  GSBI_BUILT_IN_TRUNC,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TRUNCF	gspin-tree.h	/^  GSBI_BUILT_IN_TRUNCF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_TRUNCL	gspin-tree.h	/^  GSBI_BUILT_IN_TRUNCL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_UNWIND_INIT	gspin-tree.h	/^  GSBI_BUILT_IN_UNWIND_INIT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_UPDATE_SETJMP_BUF	gspin-tree.h	/^  GSBI_BUILT_IN_UPDATE_SETJMP_BUF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VA_COPY	gspin-tree.h	/^  GSBI_BUILT_IN_VA_COPY,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VA_END	gspin-tree.h	/^  GSBI_BUILT_IN_VA_END,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VA_START	gspin-tree.h	/^  GSBI_BUILT_IN_VA_START,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VFPRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_VFPRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VFSCANF	gspin-tree.h	/^  GSBI_BUILT_IN_VFSCANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VPRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_VPRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VSCANF	gspin-tree.h	/^  GSBI_BUILT_IN_VSCANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VSNPRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_VSNPRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VSPRINTF	gspin-tree.h	/^  GSBI_BUILT_IN_VSPRINTF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_VSSCANF	gspin-tree.h	/^  GSBI_BUILT_IN_VSSCANF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_Y0	gspin-tree.h	/^  GSBI_BUILT_IN_Y0,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_Y0F	gspin-tree.h	/^  GSBI_BUILT_IN_Y0F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_Y0L	gspin-tree.h	/^  GSBI_BUILT_IN_Y0L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_Y1	gspin-tree.h	/^  GSBI_BUILT_IN_Y1,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_Y1F	gspin-tree.h	/^  GSBI_BUILT_IN_Y1F,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_Y1L	gspin-tree.h	/^  GSBI_BUILT_IN_Y1L,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_YN	gspin-tree.h	/^  GSBI_BUILT_IN_YN,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_YNF	gspin-tree.h	/^  GSBI_BUILT_IN_YNF,$/;"	e	enum:gsbi
+GSBI_BUILT_IN_YNL	gspin-tree.h	/^  GSBI_BUILT_IN_YNL,$/;"	e	enum:gsbi
+GSBI_BUILT_IN__EXIT	gspin-tree.h	/^  GSBI_BUILT_IN__EXIT,$/;"	e	enum:gsbi
+GSBI_BUILT_IN__EXIT2	gspin-tree.h	/^  GSBI_BUILT_IN__EXIT2,$/;"	e	enum:gsbi
+GSBI_CLASS	gspin-tree.h	/^ GSBI_CLASS,$/;"	e	enum:gs_code
+GSBI_CLASS_BUILT_IN_FRONTEND	gspin-tree.h	/^ GSBI_CLASS_BUILT_IN_FRONTEND,$/;"	e	enum:gsbi_class
+GSBI_CLASS_BUILT_IN_MD	gspin-tree.h	/^ GSBI_CLASS_BUILT_IN_MD,$/;"	e	enum:gsbi_class
+GSBI_CLASS_BUILT_IN_NORMAL	gspin-tree.h	/^ GSBI_CLASS_BUILT_IN_NORMAL,$/;"	e	enum:gsbi_class
+GSBI_CLASS_NOT_BUILT_IN	gspin-tree.h	/^ GSBI_CLASS_NOT_BUILT_IN,$/;"	e	enum:gsbi_class
+GSBI_END_BUILTINS	gspin-tree.h	/^  GSBI_END_BUILTINS,$/;"	e	enum:gsbi
+GSBI_IX86_BUILTIN_ADDPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ADDPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ADDPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ADDPS = GSBI_END_BUILTINS + 1000,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ADDSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ADDSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ADDSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ADDSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ADDSUBPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ADDSUBPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ADDSUBPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ADDSUBPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ANDNPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ANDNPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ANDNPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ANDNPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ANDPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ANDPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ANDPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ANDPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CLFLUSH	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CLFLUSH,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPEQPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPEQPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPEQPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPEQPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPEQSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPEQSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPEQSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPEQSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPGEPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPGEPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPGEPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPGEPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPGTPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPGTPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPGTPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPGTPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPLEPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPLEPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPLEPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPLEPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPLESD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPLESD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPLESS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPLESS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPLTPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPLTPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPLTPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPLTPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPLTSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPLTSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPLTSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPLTSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNEPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNEPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNEPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNEPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNEQPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNEQPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNEQPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNEQPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNEQSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNEQSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNEQSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNEQSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNESD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNESD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNESS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNESS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNGEPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNGEPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNGEPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNGEPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNGESS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNGESS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNGTPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNGTPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNGTPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNGTPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNGTSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNGTSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNLEPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNLEPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNLEPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNLEPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNLESD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNLESD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNLESS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNLESS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNLTPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNLTPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNLTPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNLTPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNLTSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNLTSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPNLTSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPNLTSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPORDPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPORDPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPORDPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPORDPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPORDSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPORDSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPORDSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPORDSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPUNORDPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPUNORDPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPUNORDPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPUNORDPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPUNORDSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPUNORDSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CMPUNORDSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CMPUNORDSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMIEQSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMIEQSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMIEQSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMIEQSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMIGESD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMIGESD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMIGESS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMIGESS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMIGTSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMIGTSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMIGTSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMIGTSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMILESD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMILESD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMILESS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMILESS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMILTSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMILTSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMILTSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMILTSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMINEQSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMINEQSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_COMINEQSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_COMINEQSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTDQ2PD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTDQ2PD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTDQ2PS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTDQ2PS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTPD2DQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTPD2DQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTPD2PI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTPD2PI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTPD2PS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTPD2PS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTPI2PD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTPI2PD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTPI2PS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTPI2PS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTPS2DQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTPS2DQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTPS2PD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTPS2PD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTPS2PI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTPS2PI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSD2SI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSD2SI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSD2SI64	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSD2SI64,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSD2SS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSD2SS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSI2SD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSI2SD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSI2SS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSI2SS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSI642SD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSI642SD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSI642SS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSI642SS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSS2SD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSS2SD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSS2SI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSS2SI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTSS2SI64	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTSS2SI64,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTTPD2DQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTTPD2DQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTTPD2PI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTTPD2PI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTTPS2DQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTTPS2DQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTTPS2PI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTTPS2PI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTTSD2SI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTTSD2SI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTTSD2SI64	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTTSD2SI64,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTTSS2SI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTTSS2SI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_CVTTSS2SI64	gspin-tree.h	/^  GSBI_IX86_BUILTIN_CVTTSS2SI64,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_DIVPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_DIVPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_DIVPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_DIVPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_DIVSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_DIVSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_DIVSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_DIVSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_EMMS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_EMMS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_FEMMS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_FEMMS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_HADDPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_HADDPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_HADDPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_HADDPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_HSUBPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_HSUBPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_HSUBPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_HSUBPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LDDQU	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LDDQU,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LDMXCSR	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LDMXCSR,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LFENCE	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LFENCE,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LOADDQU	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LOADDQU,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LOADHPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LOADHPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LOADHPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LOADHPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LOADLPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LOADLPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LOADLPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LOADLPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LOADUPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LOADUPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_LOADUPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_LOADUPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MASKMOVDQU	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MASKMOVDQU,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MASKMOVQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MASKMOVQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MAX	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MAX$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MAXPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MAXPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MAXPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MAXPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MAXSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MAXSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MAXSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MAXSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MFENCE	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MFENCE,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MINPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MINPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MINPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MINPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MINSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MINSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MINSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MINSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MONITOR	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MONITOR,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVHLPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVHLPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVLHPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVLHPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVMSKPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVMSKPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVMSKPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVMSKPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVNTDQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVNTDQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVNTI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVNTI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVNTPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVNTPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVNTPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVNTPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVNTQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVNTQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVSHDUP	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVSHDUP,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVSLDUP	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVSLDUP,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MOVSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MOVSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MULPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MULPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MULPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MULPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MULSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MULSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MULSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MULSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_MWAIT	gspin-tree.h	/^  GSBI_IX86_BUILTIN_MWAIT,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ORPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ORPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_ORPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_ORPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PACKSSDW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PACKSSDW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PACKSSDW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PACKSSDW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PACKSSWB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PACKSSWB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PACKSSWB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PACKSSWB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PACKUSWB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PACKUSWB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PACKUSWB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PACKUSWB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDQ128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDQ128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDSB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDSB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDSB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDSB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDSW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDSW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDSW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDSW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDUSB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDUSB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDUSB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDUSB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDUSW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDUSW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDUSW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDUSW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PADDW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PADDW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PAND	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PAND,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PAND128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PAND128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PANDN	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PANDN,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PANDN128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PANDN128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PAVGB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PAVGB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PAVGB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PAVGB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PAVGUSB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PAVGUSB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PAVGW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PAVGW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PAVGW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PAVGW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPEQB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPEQB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPEQB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPEQB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPEQD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPEQD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPEQD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPEQD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPEQW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPEQW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPEQW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPEQW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPGTB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPGTB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPGTB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPGTB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPGTD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPGTD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPGTD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPGTD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPGTW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPGTW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PCMPGTW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PCMPGTW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PF2ID	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PF2ID,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PF2IW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PF2IW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFACC	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFACC,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFADD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFADD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFCMPEQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFCMPEQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFCMPGE	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFCMPGE,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFCMPGT	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFCMPGT,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFMAX	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFMAX,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFMIN	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFMIN,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFMUL	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFMUL,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFNACC	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFNACC,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFPNACC	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFPNACC,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFRCP	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFRCP,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFRCPIT1	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFRCPIT1,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFRCPIT2	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFRCPIT2,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFRSQIT1	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFRSQIT1,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFRSQRT	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFRSQRT,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFSUB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFSUB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PFSUBR	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PFSUBR,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PI2FD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PI2FD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PI2FW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PI2FW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMADDWD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMADDWD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMADDWD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMADDWD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMAXSW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMAXSW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMAXSW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMAXSW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMAXUB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMAXUB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMAXUB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMAXUB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMINSW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMINSW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMINSW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMINSW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMINUB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMINUB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMINUB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMINUB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMOVMSKB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMOVMSKB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMOVMSKB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMOVMSKB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMULHRW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMULHRW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMULHUW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMULHUW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMULHUW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMULHUW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMULHW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMULHW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMULHW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMULHW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMULLW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMULLW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMULLW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMULLW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMULUDQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMULUDQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PMULUDQ128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PMULUDQ128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_POR	gspin-tree.h	/^  GSBI_IX86_BUILTIN_POR,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_POR128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_POR128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSADBW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSADBW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSADBW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSADBW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSHUFD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSHUFD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSHUFHW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSHUFHW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSHUFLW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSHUFLW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSHUFW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSHUFW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLDI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLDI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLDI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLDI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLDQI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLDQI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLQ128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLQ128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLQI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLQI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLQI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLQI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLWI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLWI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSLLWI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSLLWI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRAD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRAD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRAD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRAD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRADI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRADI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRADI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRADI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRAW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRAW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRAW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRAW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRAWI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRAWI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRAWI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRAWI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLDI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLDI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLDI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLDI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLDQI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLDQI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLQ128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLQ128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLQI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLQI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLQI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLQI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLWI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLWI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSRLWI128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSRLWI128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBQ128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBQ128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBSB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBSB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBSB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBSB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBSW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBSW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBSW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBSW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBUSB	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBUSB,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBUSB128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBUSB128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBUSW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBUSW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBUSW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBUSW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSUBW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSUBW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSWAPDSF	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSWAPDSF,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PSWAPDSI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PSWAPDSI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKHBW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKHBW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKHBW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKHBW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKHDQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKHDQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKHDQ128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKHDQ128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKHQDQ128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKHQDQ128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKHWD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKHWD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKHWD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKHWD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKLBW	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKLBW,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKLBW128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKLBW128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKLDQ	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKLDQ,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKLDQ128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKLDQ128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKLQDQ128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKLQDQ128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKLWD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKLWD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PUNPCKLWD128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PUNPCKLWD128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PXOR	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PXOR,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_PXOR128	gspin-tree.h	/^  GSBI_IX86_BUILTIN_PXOR128,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_RCPPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_RCPPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_RCPSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_RCPSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_RSQRTPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_RSQRTPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_RSQRTSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_RSQRTSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SFENCE	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SFENCE,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SHUFPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SHUFPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SHUFPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SHUFPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SQRTPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SQRTPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SQRTPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SQRTPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SQRTSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SQRTSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SQRTSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SQRTSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_STMXCSR	gspin-tree.h	/^  GSBI_IX86_BUILTIN_STMXCSR,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_STOREDQU	gspin-tree.h	/^  GSBI_IX86_BUILTIN_STOREDQU,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_STOREHPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_STOREHPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_STORELPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_STORELPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_STOREUPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_STOREUPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_STOREUPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_STOREUPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SUBPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SUBPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SUBPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SUBPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SUBSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SUBSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_SUBSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_SUBSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMIEQSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMIEQSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMIEQSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMIEQSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMIGESD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMIGESD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMIGESS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMIGESS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMIGTSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMIGTSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMIGTSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMIGTSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMILESD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMILESD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMILESS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMILESS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMILTSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMILTSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMILTSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMILTSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMINEQSD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMINEQSD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UCOMINEQSS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UCOMINEQSS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UNPCKHPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UNPCKHPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UNPCKHPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UNPCKHPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UNPCKLPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UNPCKLPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_UNPCKLPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_UNPCKLPS,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_EXT_V2DF	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_EXT_V2DF,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_EXT_V2DI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_EXT_V2DI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_EXT_V2SI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_EXT_V2SI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_EXT_V4HI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_EXT_V4HI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_EXT_V4SF	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_EXT_V4SF,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_EXT_V4SI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_EXT_V4SI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_EXT_V8HI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_EXT_V8HI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_INIT_V2SI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_INIT_V2SI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_INIT_V4HI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_INIT_V4HI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_INIT_V8QI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_INIT_V8QI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_SET_V4HI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_SET_V4HI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_VEC_SET_V8HI	gspin-tree.h	/^  GSBI_IX86_BUILTIN_VEC_SET_V8HI,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_XORPD	gspin-tree.h	/^  GSBI_IX86_BUILTIN_XORPD,$/;"	e	enum:gsbi_ts
+GSBI_IX86_BUILTIN_XORPS	gspin-tree.h	/^  GSBI_IX86_BUILTIN_XORPS,$/;"	e	enum:gsbi_ts
+GS_ABS_EXPR	gspin-tree.h	/^ GS_ABS_EXPR,$/;"	e	enum:gs_code
+GS_ADDR_EXPR	gspin-tree.h	/^ GS_ADDR_EXPR,$/;"	e	enum:gs_code
+GS_AGGREGATE_VALUE_P	gspin-tel.h	166;"	d
+GS_AGGR_INIT_EXPR	gspin-tree.h	/^ GS_AGGR_INIT_EXPR,$/;"	e	enum:gs_code
+GS_AGGR_INIT_VIA_CTOR_P	gspin-tel.h	383;"	d
+GS_ALIGNOF_EXPR	gspin-tree.h	/^ GS_ALIGNOF_EXPR,$/;"	e	enum:gs_code
+GS_ALIGN_INDIRECT_REF	gspin-tree.h	/^ GS_ALIGN_INDIRECT_REF,$/;"	e	enum:gs_code
+GS_ANON_UNION_TYPE_P	gspin-tel.h	290;"	d
+GS_ARENA	gspin-mempool.h	27;"	d
+GS_ARENA_COUNT	gspin-mempool.h	29;"	d
+GS_ARITY	gspin-tel.h	313;"	d
+GS_ARRAY_RANGE_REF	gspin-tree.h	/^ GS_ARRAY_RANGE_REF,$/;"	e	enum:gs_code
+GS_ARRAY_REF	gspin-tree.h	/^ GS_ARRAY_REF,$/;"	e	enum:gs_code
+GS_ARRAY_TYPE	gspin-tree.h	/^ GS_ARRAY_TYPE,$/;"	e	enum:gs_code
+GS_ARROW_EXPR	gspin-tree.h	/^ GS_ARROW_EXPR,$/;"	e	enum:gs_code
+GS_ASM_CLOBBERS	gspin-tel.h	323;"	d
+GS_ASM_EXPR	gspin-tree.h	/^ GS_ASM_EXPR,$/;"	e	enum:gs_code
+GS_ASM_INPUTS	gspin-tel.h	322;"	d
+GS_ASM_OUTPUTS	gspin-tel.h	321;"	d
+GS_ASM_STRING	gspin-tel.h	320;"	d
+GS_ASM_VOLATILE_P	gspin-tel.h	85;"	d
+GS_ASSERT	gspin-assert.h	39;"	d
+GS_ASSERT	gspin-assert.h	42;"	d
+GS_ASSIGN_STMT	gspin-tree.h	/^ GS_ASSIGN_STMT,$/;"	e	enum:gs_code
+GS_BASELINK	gspin-tree.h	/^ GS_BASELINK,$/;"	e	enum:gs_code
+GS_BASELINK_ACCESS_BINFO	gspin-tel.h	463;"	d
+GS_BASELINK_BINFO	gspin-tel.h	461;"	d
+GS_BASELINK_FUNCTIONS	gspin-tel.h	462;"	d
+GS_BASELINK_OPTYPE	gspin-tel.h	464;"	d
+GS_BIND_EXPR	gspin-tree.h	/^ GS_BIND_EXPR,$/;"	e	enum:gs_code
+GS_BIND_EXPR_BLOCK	gspin-tel.h	327;"	d
+GS_BIND_EXPR_BODY	gspin-tel.h	326;"	d
+GS_BIND_EXPR_VARS	gspin-tel.h	325;"	d
+GS_BINFO_BASE_BINFOS	gspin-tel.h	443;"	d
+GS_BINFO_TYPE	gspin-tel.h	442;"	d
+GS_BINFO_VIRTUAL_P	gspin-tel.h	180;"	d
+GS_BINFO_VPTR_FIELD	gspin-tel.h	444;"	d
+GS_BIT_AND_EXPR	gspin-tree.h	/^ GS_BIT_AND_EXPR,$/;"	e	enum:gs_code
+GS_BIT_FIELD_REF	gspin-tree.h	/^ GS_BIT_FIELD_REF,$/;"	e	enum:gs_code
+GS_BIT_FIELD_REF_UNSIGNED	gspin-tel.h	170;"	d
+GS_BIT_IOR_EXPR	gspin-tree.h	/^ GS_BIT_IOR_EXPR,$/;"	e	enum:gs_code
+GS_BIT_NOT_EXPR	gspin-tree.h	/^ GS_BIT_NOT_EXPR,$/;"	e	enum:gs_code
+GS_BIT_XOR_EXPR	gspin-tree.h	/^ GS_BIT_XOR_EXPR,$/;"	e	enum:gs_code
+GS_BLOCK	gspin-tree.h	/^ GS_BLOCK,$/;"	e	enum:gs_code
+GS_BLOCK_ABSTRACT_ORIGIN	gspin-tel.h	451;"	d
+GS_BLOCK_CHAIN	gspin-tel.h	450;"	d
+GS_BLOCK_IDX_SHIFT_AMT	gspin-mempool.c	34;"	d	file:
+GS_BLOCK_IDX_SHIFT_AMT	gspin-mempool.c	40;"	d	file:
+GS_BLOCK_SUBBLOCKS	gspin-tel.h	449;"	d
+GS_BLOCK_SUPERCONTEXT	gspin-tel.h	448;"	d
+GS_BLOCK_VARS	gspin-tel.h	447;"	d
+GS_BOOLEAN_TYPE	gspin-tree.h	/^ GS_BOOLEAN_TYPE,$/;"	e	enum:gs_code
+GS_BOUND_TEMPLATE_TEMPLATE_PARM	gspin-tree.h	/^ GS_BOUND_TEMPLATE_TEMPLATE_PARM,$/;"	e	enum:gs_code
+GS_BREAK_STMT	gspin-tree.h	/^ GS_BREAK_STMT,$/;"	e	enum:gs_code
+GS_CALL_EXPR	gspin-tree.h	/^ GS_CALL_EXPR,$/;"	e	enum:gs_code
+GS_CASE_HIGH	gspin-tel.h	330;"	d
+GS_CASE_LABEL	gspin-tel.h	331;"	d
+GS_CASE_LABEL_EXPR	gspin-tree.h	/^ GS_CASE_LABEL_EXPR,$/;"	e	enum:gs_code
+GS_CASE_LOW	gspin-tel.h	329;"	d
+GS_CAST_EXPR	gspin-tree.h	/^ GS_CAST_EXPR,$/;"	e	enum:gs_code
+GS_CATCH_BODY	gspin-tel.h	357;"	d
+GS_CATCH_EXPR	gspin-tree.h	/^ GS_CATCH_EXPR,$/;"	e	enum:gs_code
+GS_CATCH_TYPES	gspin-tel.h	356;"	d
+GS_CC1_COMMAND_LINE_ARGS	gspin-tel.h	45;"	d
+GS_CEIL_DIV_EXPR	gspin-tree.h	/^ GS_CEIL_DIV_EXPR,$/;"	e	enum:gs_code
+GS_CEIL_MOD_EXPR	gspin-tree.h	/^ GS_CEIL_MOD_EXPR,$/;"	e	enum:gs_code
+GS_CHAR_TYPE	gspin-tree.h	/^ GS_CHAR_TYPE,$/;"	e	enum:gs_code
+GS_CLASSTYPE_AS_BASE	gspin-tel.h	296;"	d
+GS_CLASSTYPE_COPY_CONSTRUCTOR	gspin-tel.h	299;"	d
+GS_CLASSTYPE_INTERFACE_ONLY	gspin-tel.h	287;"	d
+GS_CLASSTYPE_TEMPLATE_SPECIALIZATION	gspin-tel.h	291;"	d
+GS_CLASSTYPE_TYPEINFO_VAR	gspin-tel.h	297;"	d
+GS_CLASS_TYPE_P	gspin-tel.h	289;"	d
+GS_CLEANUP	gspin-tree.h	/^ GS_CLEANUP, \/\/ TODO: Same as GS_CLEANUP_POINT_EXPR?$/;"	e	enum:gs_code
+GS_CLEANUP_BODY	gspin-tel.h	353;"	d
+GS_CLEANUP_EH_ONLY	gspin-tel.h	384;"	d
+GS_CLEANUP_EXPR	gspin-tel.h	354;"	d
+GS_CLEANUP_POINT_EXPR	gspin-tree.h	/^ GS_CLEANUP_POINT_EXPR,$/;"	e	enum:gs_code
+GS_CLEANUP_STMT	gspin-tree.h	/^ GS_CLEANUP_STMT,$/;"	e	enum:gs_code
+GS_COMPLEX_CST	gspin-tree.h	/^ GS_COMPLEX_CST,$/;"	e	enum:gs_code
+GS_COMPLEX_EXPR	gspin-tree.h	/^ GS_COMPLEX_EXPR,$/;"	e	enum:gs_code
+GS_COMPLEX_TYPE	gspin-tree.h	/^ GS_COMPLEX_TYPE,$/;"	e	enum:gs_code
+GS_COMPONENT_REF	gspin-tree.h	/^ GS_COMPONENT_REF,$/;"	e	enum:gs_code
+GS_COMPOUND_EXPR	gspin-tree.h	/^ GS_COMPOUND_EXPR,$/;"	e	enum:gs_code
+GS_COMPOUND_LITERAL_EXPR	gspin-tree.h	/^ GS_COMPOUND_LITERAL_EXPR,$/;"	e	enum:gs_code
+GS_COND_EXPR	gspin-tree.h	/^ GS_COND_EXPR,$/;"	e	enum:gs_code
+GS_CONJ_EXPR	gspin-tree.h	/^ GS_CONJ_EXPR,$/;"	e	enum:gs_code
+GS_CONSTRUCTOR	gspin-tree.h	/^ GS_CONSTRUCTOR,$/;"	e	enum:gs_code
+GS_CONSTRUCTOR_ELTS	gspin-tel.h	333;"	d
+GS_CONST_CAST_EXPR	gspin-tree.h	/^ GS_CONST_CAST_EXPR,$/;"	e	enum:gs_code
+GS_CONST_DECL	gspin-tree.h	/^ GS_CONST_DECL,$/;"	e	enum:gs_code
+GS_CONTINUE_STMT	gspin-tree.h	/^ GS_CONTINUE_STMT,$/;"	e	enum:gs_code
+GS_CONVERT_EXPR	gspin-tree.h	/^ GS_CONVERT_EXPR,$/;"	e	enum:gs_code
+GS_CP_DECL_CONTEXT	gspin-tel.h	242;"	d
+GS_CP_DECL_FLAGS	gspin-tel.h	216;"	d
+GS_CP_EXPR_FLAGS	gspin-tel.h	380;"	d
+GS_CP_NAMESPACE_DECLS	gspin-tel.h	241;"	d
+GS_CP_TYPE_FLAGS	gspin-tel.h	283;"	d
+GS_CTOR_INITIALIZER	gspin-tree.h	/^ GS_CTOR_INITIALIZER,$/;"	e	enum:gs_code
+GS_DECL_ABSTRACT	gspin-tel.h	104;"	d
+GS_DECL_ABSTRACT_ORIGIN	gspin-tel.h	199;"	d
+GS_DECL_ALIAS_TARGET	gspin-tel.h	213;"	d
+GS_DECL_ALIGN_UNIT	gspin-tel.h	211;"	d
+GS_DECL_ANON_UNION_ELEMS	gspin-tel.h	201;"	d
+GS_DECL_ARGUMENTS	gspin-tel.h	200;"	d
+GS_DECL_ARG_TYPE	gspin-tel.h	203;"	d
+GS_DECL_ARG_TYPE_AS_WRITTEN	gspin-tel.h	204;"	d
+GS_DECL_ARTIFICIAL	gspin-tel.h	141;"	d
+GS_DECL_ASMREG	gspin-tel.h	214;"	d
+GS_DECL_ASSEMBLER_NAME	gspin-tel.h	212;"	d
+GS_DECL_ASSEMBLER_NAME_SET_P	gspin-tel.h	140;"	d
+GS_DECL_ATTRIBUTES	gspin-tel.h	198;"	d
+GS_DECL_BIT_FIELD	gspin-tel.h	119;"	d
+GS_DECL_BUILT_IN	gspin-tel.h	115;"	d
+GS_DECL_BUILT_IN_CLASS	gspin-tel.h	193;"	d
+GS_DECL_COMDAT	gspin-tel.h	218;"	d
+GS_DECL_COMMON	gspin-tel.h	106;"	d
+GS_DECL_COMPLETE_CONSTRUCTOR_P	gspin-tel.h	230;"	d
+GS_DECL_CONTEXT	gspin-tel.h	197;"	d
+GS_DECL_COPY_CONSTRUCTOR_P	gspin-tel.h	226;"	d
+GS_DECL_DECLARED_INLINE_P	gspin-tel.h	114;"	d
+GS_DECL_DEFER_OUTPUT	gspin-tel.h	126;"	d
+GS_DECL_EMITTED_BY_GXX	gspin-tel.h	121;"	d
+GS_DECL_EXPR	gspin-tree.h	/^ GS_DECL_EXPR,$/;"	e	enum:gs_code
+GS_DECL_EXPR_DECL	gspin-tel.h	335;"	d
+GS_DECL_EXTERNAL	gspin-tel.h	107;"	d
+GS_DECL_EXTERN_C_P	gspin-tel.h	237;"	d
+GS_DECL_FIELD_BIT_OFFSET	gspin-tel.h	196;"	d
+GS_DECL_FIELD_OFFSET	gspin-tel.h	195;"	d
+GS_DECL_FUNCTION_CODE	gspin-tel.h	194;"	d
+GS_DECL_FUNCTION_MEMBER_P	gspin-tel.h	224;"	d
+GS_DECL_GLOBAL_CTOR_P	gspin-tel.h	219;"	d
+GS_DECL_GLOBAL_DTOR_P	gspin-tel.h	220;"	d
+GS_DECL_IGNORED_P	gspin-tel.h	103;"	d
+GS_DECL_IMPLICIT_INSTANTIATION	gspin-tel.h	227;"	d
+GS_DECL_INITIAL	gspin-tel.h	202;"	d
+GS_DECL_INLINE	gspin-tel.h	113;"	d
+GS_DECL_IN_SYSTEM_HEADER	gspin-tel.h	105;"	d
+GS_DECL_IN_TEXT_SECTION	gspin-tel.h	122;"	d
+GS_DECL_LANG_FLAG_0	gspin-tel.h	128;"	d
+GS_DECL_LANG_FLAG_1	gspin-tel.h	129;"	d
+GS_DECL_LANG_FLAG_2	gspin-tel.h	130;"	d
+GS_DECL_LANG_FLAG_3	gspin-tel.h	131;"	d
+GS_DECL_LANG_FLAG_4	gspin-tel.h	132;"	d
+GS_DECL_LANG_FLAG_5	gspin-tel.h	133;"	d
+GS_DECL_LANG_FLAG_6	gspin-tel.h	134;"	d
+GS_DECL_LANG_FLAG_7	gspin-tel.h	135;"	d
+GS_DECL_LANG_SPECIFIC	gspin-tel.h	142;"	d
+GS_DECL_MAYBE_IN_CHARGE_CONSTRUCTOR_P	gspin-tel.h	222;"	d
+GS_DECL_MAYBE_IN_CHARGE_DESTRUCTOR_P	gspin-tel.h	223;"	d
+GS_DECL_MODE	gspin-tel.h	188;"	d
+GS_DECL_NAME	gspin-tel.h	187;"	d
+GS_DECL_NAMED_RETURN_OBJECT	gspin-tel.h	250;"	d
+GS_DECL_NAMESPACE_ALIAS	gspin-tel.h	245;"	d
+GS_DECL_NAMESPACE_SCOPE_P	gspin-tel.h	228;"	d
+GS_DECL_NEEDED	gspin-tel.h	112;"	d
+GS_DECL_NONADDRESSABLE_P	gspin-tel.h	120;"	d
+GS_DECL_NONLOCAL	gspin-tel.h	110;"	d
+GS_DECL_NO_STATIC_CHAIN	gspin-tel.h	116;"	d
+GS_DECL_OFFSET_ALIGN	gspin-tel.h	137;"	d
+GS_DECL_ONE_ONLY	gspin-tel.h	221;"	d
+GS_DECL_ORIGINAL_TYPE	gspin-tel.h	208;"	d
+GS_DECL_PACKED	gspin-tel.h	117;"	d
+GS_DECL_POINTER_ALIAS_SET	gspin-tel.h	138;"	d
+GS_DECL_PRESERVE_P	gspin-tel.h	127;"	d
+GS_DECL_PURE_VIRTUAL_P	gspin-tel.h	235;"	d
+GS_DECL_REACHABLE	gspin-tel.h	118;"	d
+GS_DECL_REALLY_EXTERN	gspin-tel.h	231;"	d
+GS_DECL_REGISTER	gspin-tel.h	109;"	d
+GS_DECL_RESULT	gspin-tel.h	207;"	d
+GS_DECL_SAVED_TREE	gspin-tel.h	205;"	d
+GS_DECL_SECTION_NAME	gspin-tel.h	240;"	d
+GS_DECL_SIZE	gspin-tel.h	191;"	d
+GS_DECL_SIZE_UNIT	gspin-tel.h	192;"	d
+GS_DECL_SOURCE_FILE	gspin-tel.h	189;"	d
+GS_DECL_SOURCE_LINE	gspin-tel.h	190;"	d
+GS_DECL_TEMPLATE_INFO	gspin-tel.h	239;"	d
+GS_DECL_TEMPLATE_INSTANTIATED	gspin-tel.h	233;"	d
+GS_DECL_TEMPLATE_SPECIALIZATION	gspin-tel.h	234;"	d
+GS_DECL_THIS_THUNK_P	gspin-tel.h	236;"	d
+GS_DECL_THREADPRIVATE	gspin-tel.h	143;"	d
+GS_DECL_THREAD_LOCAL	gspin-tel.h	123;"	d
+GS_DECL_THUNK_P	gspin-tel.h	139;"	d
+GS_DECL_TI_TEMPLATE	gspin-tel.h	247;"	d
+GS_DECL_TRANSPARENT_UNION	gspin-tel.h	124;"	d
+GS_DECL_UID	gspin-tel.h	210;"	d
+GS_DECL_UNSIGNED	gspin-tel.h	102;"	d
+GS_DECL_USER_ALIGN	gspin-tel.h	136;"	d
+GS_DECL_USES_TEMPLATE_PARMS	gspin-tel.h	225;"	d
+GS_DECL_USE_TEMPLATE	gspin-tel.h	232;"	d
+GS_DECL_VALUE_EXPR	gspin-tel.h	206;"	d
+GS_DECL_VINDEX	gspin-tel.h	243;"	d
+GS_DECL_VIRTUAL_P	gspin-tel.h	125;"	d
+GS_DECL_WEAK	gspin-tel.h	108;"	d
+GS_DEFAULT_ARG	gspin-tree.h	/^ GS_DEFAULT_ARG,$/;"	e	enum:gs_code
+GS_DELETE_EXPR	gspin-tree.h	/^ GS_DELETE_EXPR,$/;"	e	enum:gs_code
+GS_DOTSTAR_EXPR	gspin-tree.h	/^ GS_DOTSTAR_EXPR,$/;"	e	enum:gs_code
+GS_DO_BODY	gspin-tel.h	338;"	d
+GS_DO_COND	gspin-tel.h	337;"	d
+GS_DO_STMT	gspin-tree.h	/^ GS_DO_STMT,$/;"	e	enum:gs_code
+GS_DWARF_ACCESS_FLAG_0	gspin-tel.h	89;"	d
+GS_DWARF_ACCESS_FLAG_1	gspin-tel.h	90;"	d
+GS_DYNAMIC_CAST_EXPR	gspin-tree.h	/^ GS_DYNAMIC_CAST_EXPR,$/;"	e	enum:gs_code
+GS_EH_FILTER_EXPR	gspin-tree.h	/^ GS_EH_FILTER_EXPR,$/;"	e	enum:gs_code
+GS_EH_SPEC_BLOCK	gspin-tree.h	/^ GS_EH_SPEC_BLOCK,$/;"	e	enum:gs_code
+GS_EH_SPEC_RAISES	gspin-tel.h	341;"	d
+GS_EH_SPEC_STMTS	gspin-tel.h	340;"	d
+GS_ELSE_CLAUSE	gspin-tel.h	361;"	d
+GS_EMIT_TARGET_EXPR_CLEANUP	gspin-tel.h	173;"	d
+GS_EMPTY_CLASS_EXPR	gspin-tree.h	/^ GS_EMPTY_CLASS_EXPR,$/;"	e	enum:gs_code
+GS_ENUMERAL_TYPE	gspin-tree.h	/^ GS_ENUMERAL_TYPE,$/;"	e	enum:gs_code
+GS_EQ_EXPR	gspin-tree.h	/^ GS_EQ_EXPR,$/;"	e	enum:gs_code
+GS_ERROR_MARK	gspin-tree.h	/^ GS_ERROR_MARK,$/;"	e	enum:gs_code
+GS_EXACT_DIV_EXPR	gspin-tree.h	/^ GS_EXACT_DIV_EXPR,$/;"	e	enum:gs_code
+GS_EXC_PTR_EXPR	gspin-tree.h	/^ GS_EXC_PTR_EXPR,$/;"	e	enum:gs_code
+GS_EXIT_EXPR	gspin-tree.h	/^ GS_EXIT_EXPR,$/;"	e	enum:gs_code
+GS_EXPANDED_PTRMEM_CST	gspin-tel.h	416;"	d
+GS_EXPR_FILENAME	gspin-tel.h	314;"	d
+GS_EXPR_HAS_LOCATION	gspin-tel.h	171;"	d
+GS_EXPR_LINENO	gspin-tel.h	315;"	d
+GS_EXPR_STMT	gspin-tree.h	/^ GS_EXPR_STMT,$/;"	e	enum:gs_code
+GS_EXPR_STMT_EXPR	gspin-tel.h	348;"	d
+GS_FDESC_EXPR	gspin-tree.h	/^ GS_FDESC_EXPR,$/;"	e	enum:gs_code
+GS_FIELD_DECL	gspin-tree.h	/^ GS_FIELD_DECL,$/;"	e	enum:gs_code
+GS_FILE_TYPE	gspin-tree.h	/^ GS_FILE_TYPE,$/;"	e	enum:gs_code
+GS_FILTER_EXPR	gspin-tree.h	/^ GS_FILTER_EXPR,$/;"	e	enum:gs_code
+GS_FIX_CEIL_EXPR	gspin-tree.h	/^ GS_FIX_CEIL_EXPR,$/;"	e	enum:gs_code
+GS_FIX_FLOOR_EXPR	gspin-tree.h	/^ GS_FIX_FLOOR_EXPR,$/;"	e	enum:gs_code
+GS_FIX_ROUND_EXPR	gspin-tree.h	/^ GS_FIX_ROUND_EXPR,$/;"	e	enum:gs_code
+GS_FIX_TRUNC_EXPR	gspin-tree.h	/^ GS_FIX_TRUNC_EXPR,$/;"	e	enum:gs_code
+GS_FLAGS	gspin-tel.h	70;"	d
+GS_FLAG_ERRNO_MATH	gspin-tel.h	53;"	d
+GS_FLOAT_EXPR	gspin-tree.h	/^ GS_FLOAT_EXPR,$/;"	e	enum:gs_code
+GS_FLOOR_DIV_EXPR	gspin-tree.h	/^ GS_FLOOR_DIV_EXPR,$/;"	e	enum:gs_code
+GS_FLOOR_MOD_EXPR	gspin-tree.h	/^ GS_FLOOR_MOD_EXPR,$/;"	e	enum:gs_code
+GS_FOR_BODY	gspin-tel.h	346;"	d
+GS_FOR_COND	gspin-tel.h	344;"	d
+GS_FOR_EXPR	gspin-tel.h	345;"	d
+GS_FOR_INIT_STMT	gspin-tel.h	343;"	d
+GS_FOR_STMT	gspin-tree.h	/^ GS_FOR_STMT,$/;"	e	enum:gs_code
+GS_FUNCTION_DECL	gspin-tree.h	/^ GS_FUNCTION_DECL,$/;"	e	enum:gs_code
+GS_FUNCTION_TYPE	gspin-tree.h	/^ GS_FUNCTION_TYPE,$/;"	e	enum:gs_code
+GS_GE_EXPR	gspin-tree.h	/^ GS_GE_EXPR,$/;"	e	enum:gs_code
+GS_GLOBAL_TREES_LIST	gspin-tel.h	46;"	d
+GS_GOTO_EXPR	gspin-tree.h	/^ GS_GOTO_EXPR,$/;"	e	enum:gs_code
+GS_GT_EXPR	gspin-tree.h	/^ GS_GT_EXPR,$/;"	e	enum:gs_code
+GS_GXX_EMITTED_ASMS	gspin-tel.h	50;"	d
+GS_GXX_EMITTED_DECLS	gspin-tel.h	49;"	d
+GS_HANDLER	gspin-tree.h	/^ GS_HANDLER,$/;"	e	enum:gs_code
+GS_HANDLER_BODY	gspin-tel.h	351;"	d
+GS_HANDLER_PARMS	gspin-tel.h	350;"	d
+GS_IDENTIFIER_NODE	gspin-tree.h	/^ GS_IDENTIFIER_NODE,$/;"	e	enum:gs_code
+GS_IDENTIFIER_POINTER	gspin-tel.h	428;"	d
+GS_IF_COND	gspin-tel.h	359;"	d
+GS_IF_STMT	gspin-tree.h	/^ GS_IF_STMT,$/;"	e	enum:gs_code
+GS_IMAGPART_EXPR	gspin-tree.h	/^ GS_IMAGPART_EXPR,$/;"	e	enum:gs_code
+GS_INDIRECT_REF	gspin-tree.h	/^ GS_INDIRECT_REF,$/;"	e	enum:gs_code
+GS_INIT_EXPR	gspin-tree.h	/^ GS_INIT_EXPR,$/;"	e	enum:gs_code
+GS_INTEGER_CST	gspin-tree.h	/^ GS_INTEGER_CST,$/;"	e	enum:gs_code
+GS_INTEGER_TYPE	gspin-tree.h	/^ GS_INTEGER_TYPE,$/;"	e	enum:gs_code
+GS_INTEGER_TYPES_LIST	gspin-tel.h	47;"	d
+GS_IS_EMPTY_CLASS	gspin-tel.h	288;"	d
+GS_ITK_CHAR	gspin-tree.h	/^  GS_ITK_CHAR,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_INT	gspin-tree.h	/^  GS_ITK_INT,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_LONG	gspin-tree.h	/^  GS_ITK_LONG,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_LONG_LONG	gspin-tree.h	/^  GS_ITK_LONG_LONG,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_NONE	gspin-tree.h	/^  GS_ITK_NONE$/;"	e	enum:gs_integer_type_kind
+GS_ITK_SHORT	gspin-tree.h	/^  GS_ITK_SHORT,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_SIGNED_CHAR	gspin-tree.h	/^  GS_ITK_SIGNED_CHAR,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_UNSIGNED_CHAR	gspin-tree.h	/^  GS_ITK_UNSIGNED_CHAR,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_UNSIGNED_INT	gspin-tree.h	/^  GS_ITK_UNSIGNED_INT,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_UNSIGNED_LONG	gspin-tree.h	/^  GS_ITK_UNSIGNED_LONG,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_UNSIGNED_LONG_LONG	gspin-tree.h	/^  GS_ITK_UNSIGNED_LONG_LONG,$/;"	e	enum:gs_integer_type_kind
+GS_ITK_UNSIGNED_SHORT	gspin-tree.h	/^  GS_ITK_UNSIGNED_SHORT,$/;"	e	enum:gs_integer_type_kind
+GS_LABEL_DECL	gspin-tree.h	/^ GS_LABEL_DECL,$/;"	e	enum:gs_code
+GS_LABEL_DECL_UID	gspin-tel.h	209;"	d
+GS_LABEL_EXPR	gspin-tree.h	/^ GS_LABEL_EXPR,$/;"	e	enum:gs_code
+GS_LABEL_EXPR_LABEL	gspin-tel.h	363;"	d
+GS_LANG_TYPE	gspin-tree.h	/^ GS_LANG_TYPE,$/;"	e	enum:gs_code
+GS_LE_EXPR	gspin-tree.h	/^ GS_LE_EXPR,$/;"	e	enum:gs_code
+GS_LOOKUP	gspin-tel.h	476;"	d
+GS_LOOKUP_FLAG	gspin-tel.h	483;"	d
+GS_LOOP_EXPR	gspin-tree.h	/^ GS_LOOP_EXPR,$/;"	e	enum:gs_code
+GS_LOOP_EXPR_BODY	gspin-tel.h	365;"	d
+GS_LROTATE_EXPR	gspin-tree.h	/^ GS_LROTATE_EXPR,$/;"	e	enum:gs_code
+GS_LSHIFT_EXPR	gspin-tree.h	/^ GS_LSHIFT_EXPR,$/;"	e	enum:gs_code
+GS_LTGT_EXPR	gspin-tree.h	/^ GS_LTGT_EXPR,$/;"	e	enum:gs_code
+GS_LT_EXPR	gspin-tree.h	/^ GS_LT_EXPR,$/;"	e	enum:gs_code
+GS_MAX_EXPR	gspin-tree.h	/^ GS_MAX_EXPR,$/;"	e	enum:gs_code
+GS_MEMBER_REF	gspin-tree.h	/^ GS_MEMBER_REF,$/;"	e	enum:gs_code
+GS_MEMBLOCK_SIZE	gspin-mempool.c	31;"	d	file:
+GS_MEMBLOCK_SIZE	gspin-mempool.c	37;"	d	file:
+GS_METHOD_TYPE	gspin-tree.h	/^ GS_METHOD_TYPE,$/;"	e	enum:gs_code
+GS_MINUS_EXPR	gspin-tree.h	/^ GS_MINUS_EXPR,$/;"	e	enum:gs_code
+GS_MIN_EXPR	gspin-tree.h	/^ GS_MIN_EXPR,$/;"	e	enum:gs_code
+GS_MISALIGNED_INDIRECT_REF	gspin-tree.h	/^ GS_MISALIGNED_INDIRECT_REF,$/;"	e	enum:gs_code
+GS_MODIFY_EXPR	gspin-tree.h	/^ GS_MODIFY_EXPR,$/;"	e	enum:gs_code
+GS_MODOP_EXPR	gspin-tree.h	/^ GS_MODOP_EXPR,$/;"	e	enum:gs_code
+GS_MOST_GENERAL_TEMPLATE	gspin-tel.h	244;"	d
+GS_MULT_EXPR	gspin-tree.h	/^ GS_MULT_EXPR,$/;"	e	enum:gs_code
+GS_MUST_NOT_THROW_EXPR	gspin-tree.h	/^ GS_MUST_NOT_THROW_EXPR,$/;"	e	enum:gs_code
+GS_NAMESPACE_DECL	gspin-tree.h	/^ GS_NAMESPACE_DECL,$/;"	e	enum:gs_code
+GS_NEGATE_EXPR	gspin-tree.h	/^ GS_NEGATE_EXPR,$/;"	e	enum:gs_code
+GS_NEW_EXPR	gspin-tree.h	/^ GS_NEW_EXPR,$/;"	e	enum:gs_code
+GS_NE_EXPR	gspin-tree.h	/^ GS_NE_EXPR,$/;"	e	enum:gs_code
+GS_NON_DEPENDENT_EXPR	gspin-tree.h	/^ GS_NON_DEPENDENT_EXPR,$/;"	e	enum:gs_code
+GS_NON_LVALUE_EXPR	gspin-tree.h	/^ GS_NON_LVALUE_EXPR,$/;"	e	enum:gs_code
+GS_NOP_EXPR	gspin-tree.h	/^ GS_NOP_EXPR,$/;"	e	enum:gs_code
+GS_OBJ_TYPE_REF	gspin-tree.h	/^ GS_OBJ_TYPE_REF,$/;"	e	enum:gs_code
+GS_OBJ_TYPE_REF_EXPR	gspin-tel.h	375;"	d
+GS_OBJ_TYPE_REF_OBJECT	gspin-tel.h	376;"	d
+GS_OBJ_TYPE_REF_TOKEN	gspin-tel.h	377;"	d
+GS_OFFSETOF_EXPR	gspin-tree.h	/^ GS_OFFSETOF_EXPR,$/;"	e	enum:gs_code
+GS_OFFSET_REF	gspin-tree.h	/^ GS_OFFSET_REF,$/;"	e	enum:gs_code
+GS_OFFSET_TYPE	gspin-tree.h	/^ GS_OFFSET_TYPE,$/;"	e	enum:gs_code
+GS_OFST_IN_BLK_MASK	gspin-mempool.c	35;"	d	file:
+GS_OFST_IN_BLK_MASK	gspin-mempool.c	41;"	d	file:
+GS_ORDERED_EXPR	gspin-tree.h	/^ GS_ORDERED_EXPR,$/;"	e	enum:gs_code
+GS_OVERLOAD	gspin-tree.h	/^ GS_OVERLOAD,$/;"	e	enum:gs_code
+GS_OVL_CHAIN	gspin-tel.h	468;"	d
+GS_OVL_CURRENT	gspin-tel.h	469;"	d
+GS_OVL_FUNCTION	gspin-tel.h	467;"	d
+GS_OVL_NEXT	gspin-tel.h	470;"	d
+GS_PARM_DECL	gspin-tree.h	/^ GS_PARM_DECL,$/;"	e	enum:gs_code
+GS_PHI_NODE	gspin-tree.h	/^ GS_PHI_NODE,$/;"	e	enum:gs_code
+GS_PLACEHOLDER_EXPR	gspin-tree.h	/^ GS_PLACEHOLDER_EXPR,$/;"	e	enum:gs_code
+GS_PLUS_EXPR	gspin-tree.h	/^ GS_PLUS_EXPR,$/;"	e	enum:gs_code
+GS_POINTER_TYPE	gspin-tree.h	/^ GS_POINTER_TYPE,$/;"	e	enum:gs_code
+GS_POINTER_TYPE_P	gspin-tel.h	165;"	d
+GS_POLYNOMIAL_CHREC	gspin-tree.h	/^ GS_POLYNOMIAL_CHREC,$/;"	e	enum:gs_code
+GS_POSTDECREMENT_EXPR	gspin-tree.h	/^ GS_POSTDECREMENT_EXPR,$/;"	e	enum:gs_code
+GS_POSTINCREMENT_EXPR	gspin-tree.h	/^ GS_POSTINCREMENT_EXPR,$/;"	e	enum:gs_code
+GS_PRAGMA_IMPLEMENTATION	gspin-tel.h	54;"	d
+GS_PRAGMA_INTERFACE	gspin-tel.h	55;"	d
+GS_PREDECREMENT_EXPR	gspin-tree.h	/^ GS_PREDECREMENT_EXPR,$/;"	e	enum:gs_code
+GS_PREINCREMENT_EXPR	gspin-tree.h	/^ GS_PREINCREMENT_EXPR,$/;"	e	enum:gs_code
+GS_PROGRAM	gspin-tree.h	/^ GS_PROGRAM, \/\/ Not in GCC.$/;"	e	enum:gs_code
+GS_PROGRAM_DECLARATIONS	gspin-tel.h	48;"	d
+GS_PROGRAM_FLAGS	gspin-tel.h	51;"	d
+GS_PROGRAM_LAST	gspin-tel.h	58;"	d
+GS_PSEUDO_DTOR_EXPR	gspin-tree.h	/^ GS_PSEUDO_DTOR_EXPR,$/;"	e	enum:gs_code
+GS_PTRMEM_CST	gspin-tree.h	/^ GS_PTRMEM_CST,$/;"	e	enum:gs_code
+GS_QUAL_UNION_TYPE	gspin-tree.h	/^ GS_QUAL_UNION_TYPE,$/;"	e	enum:gs_code
+GS_RANGE_EXPR	gspin-tree.h	/^ GS_RANGE_EXPR,$/;"	e	enum:gs_code
+GS_RDIV_EXPR	gspin-tree.h	/^ GS_RDIV_EXPR,$/;"	e	enum:gs_code
+GS_REALIGN_LOAD_EXPR	gspin-tree.h	/^ GS_REALIGN_LOAD_EXPR,$/;"	e	enum:gs_code
+GS_REALPART_EXPR	gspin-tree.h	/^ GS_REALPART_EXPR,$/;"	e	enum:gs_code
+GS_REAL_CST	gspin-tree.h	/^ GS_REAL_CST,$/;"	e	enum:gs_code
+GS_REAL_TYPE	gspin-tree.h	/^ GS_REAL_TYPE,$/;"	e	enum:gs_code
+GS_REAL_VALUE_ISINF	gspin-tel.h	178;"	d
+GS_REAL_VALUE_ISNAN	gspin-tel.h	179;"	d
+GS_RECORD_TYPE	gspin-tree.h	/^ GS_RECORD_TYPE,$/;"	e	enum:gs_code
+GS_REFERENCE_TYPE	gspin-tree.h	/^ GS_REFERENCE_TYPE,$/;"	e	enum:gs_code
+GS_REINTERPRET_CAST_EXPR	gspin-tree.h	/^ GS_REINTERPRET_CAST_EXPR,$/;"	e	enum:gs_code
+GS_RESULT_DECL	gspin-tree.h	/^ GS_RESULT_DECL,$/;"	e	enum:gs_code
+GS_RESX_EXPR	gspin-tree.h	/^ GS_RESX_EXPR,$/;"	e	enum:gs_code
+GS_RETURN_EXPR	gspin-tree.h	/^ GS_RETURN_EXPR,$/;"	e	enum:gs_code
+GS_ROUND_DIV_EXPR	gspin-tree.h	/^ GS_ROUND_DIV_EXPR,$/;"	e	enum:gs_code
+GS_ROUND_MOD_EXPR	gspin-tree.h	/^ GS_ROUND_MOD_EXPR,$/;"	e	enum:gs_code
+GS_RROTATE_EXPR	gspin-tree.h	/^ GS_RROTATE_EXPR,$/;"	e	enum:gs_code
+GS_RSHIFT_EXPR	gspin-tree.h	/^ GS_RSHIFT_EXPR,$/;"	e	enum:gs_code
+GS_SAVE_EXPR	gspin-tree.h	/^ GS_SAVE_EXPR,$/;"	e	enum:gs_code
+GS_SCEV_KNOWN	gspin-tree.h	/^ GS_SCEV_KNOWN,$/;"	e	enum:gs_code
+GS_SCEV_NOT_KNOWN	gspin-tree.h	/^ GS_SCEV_NOT_KNOWN,$/;"	e	enum:gs_code
+GS_SCOPE	gspin-tree.h	/^ GS_SCOPE,$/;"	e	enum:gs_code
+GS_SCOPE_REF	gspin-tree.h	/^ GS_SCOPE_REF,$/;"	e	enum:gs_code
+GS_SCOPE_STMT	gspin-tree.h	/^ GS_SCOPE_STMT,		\/\/ Can delete because GCC 4 does not have SCOPE_STMT.  $/;"	e	enum:gs_code
+GS_SIZEOF_EXPR	gspin-tree.h	/^ GS_SIZEOF_EXPR,$/;"	e	enum:gs_code
+GS_SSA_NAME	gspin-tree.h	/^ GS_SSA_NAME,$/;"	e	enum:gs_code
+GS_STATEMENT_LIST	gspin-tree.h	/^ GS_STATEMENT_LIST,$/;"	e	enum:gs_code
+GS_STATEMENT_LIST_ELTS	gspin-tel.h	439;"	d
+GS_STATIC_CAST_EXPR	gspin-tree.h	/^ GS_STATIC_CAST_EXPR,$/;"	e	enum:gs_code
+GS_STMT_EXPR	gspin-tree.h	/^ GS_STMT_EXPR,$/;"	e	enum:gs_code
+GS_STMT_EXPR_STMT	gspin-tel.h	370;"	d
+GS_STMT_IS_FULL_EXPR_P	gspin-tel.h	382;"	d
+GS_STRING_CST	gspin-tree.h	/^ GS_STRING_CST,$/;"	e	enum:gs_code
+GS_SWITCH_EXPR	gspin-tree.h	/^ GS_SWITCH_EXPR,$/;"	e	enum:gs_code
+GS_SWITCH_STMT	gspin-tree.h	/^ GS_SWITCH_STMT,$/;"	e	enum:gs_code
+GS_TAG_DEFN	gspin-tree.h	/^ GS_TAG_DEFN,$/;"	e	enum:gs_code
+GS_TARGET_EXPR	gspin-tree.h	/^ GS_TARGET_EXPR,$/;"	e	enum:gs_code
+GS_TCC	gspin-tree.h	/^ GS_TCC,$/;"	e	enum:gs_code
+GS_TCC_BINARY	gspin-tree.h	/^ GS_TCC_BINARY,$/;"	e	enum:gs_tree_code_class
+GS_TCC_COMPARISON	gspin-tree.h	/^ GS_TCC_COMPARISON,$/;"	e	enum:gs_tree_code_class
+GS_TCC_CONSTANT	gspin-tree.h	/^ GS_TCC_CONSTANT,$/;"	e	enum:gs_tree_code_class
+GS_TCC_DECLARATION	gspin-tree.h	/^ GS_TCC_DECLARATION,$/;"	e	enum:gs_tree_code_class
+GS_TCC_EXCEPTIONAL	gspin-tree.h	/^ GS_TCC_EXCEPTIONAL,$/;"	e	enum:gs_tree_code_class
+GS_TCC_EXPRESSION	gspin-tree.h	/^ GS_TCC_EXPRESSION,$/;"	e	enum:gs_tree_code_class
+GS_TCC_REFERENCE	gspin-tree.h	/^ GS_TCC_REFERENCE,$/;"	e	enum:gs_tree_code_class
+GS_TCC_STATEMENT	gspin-tree.h	/^ GS_TCC_STATEMENT,$/;"	e	enum:gs_tree_code_class
+GS_TCC_TYPE	gspin-tree.h	/^ GS_TCC_TYPE,$/;"	e	enum:gs_tree_code_class
+GS_TCC_UNARY	gspin-tree.h	/^ GS_TCC_UNARY,$/;"	e	enum:gs_tree_code_class
+GS_TEMPLATE_DECL	gspin-tree.h	/^ GS_TEMPLATE_DECL,$/;"	e	enum:gs_code
+GS_TEMPLATE_ID_EXPR	gspin-tree.h	/^ GS_TEMPLATE_ID_EXPR,$/;"	e	enum:gs_code
+GS_TEMPLATE_PARM_DECL	gspin-tel.h	458;"	d
+GS_TEMPLATE_PARM_DESCENDANTS	gspin-tel.h	456;"	d
+GS_TEMPLATE_PARM_IDX	gspin-tel.h	454;"	d
+GS_TEMPLATE_PARM_INDEX	gspin-tree.h	/^ GS_TEMPLATE_PARM_INDEX,$/;"	e	enum:gs_code
+GS_TEMPLATE_PARM_LEVEL	gspin-tel.h	455;"	d
+GS_TEMPLATE_PARM_ORIG_LEVEL	gspin-tel.h	457;"	d
+GS_TEMPLATE_TEMPLATE_PARM	gspin-tree.h	/^ GS_TEMPLATE_TEMPLATE_PARM, \/\/ this is 233; should not be higher than 255$/;"	e	enum:gs_code
+GS_TEMPLATE_TYPE_PARM	gspin-tree.h	/^ GS_TEMPLATE_TYPE_PARM,$/;"	e	enum:gs_code
+GS_THEN_CLAUSE	gspin-tel.h	360;"	d
+GS_THROW_EXPR	gspin-tree.h	/^ GS_THROW_EXPR,$/;"	e	enum:gs_code
+GS_THUNK_FIXED_OFFSET	gspin-tel.h	248;"	d
+GS_THUNK_TARGET	gspin-tel.h	246;"	d
+GS_THUNK_VIRTUAL_OFFSET	gspin-tel.h	249;"	d
+GS_TINST_LEVEL	gspin-tree.h	/^ GS_TINST_LEVEL,$/;"	e	enum:gs_code
+GS_TI_BITSIZE_ONE	gspin-tree.h	/^  GS_TI_BITSIZE_ONE,$/;"	e	enum:gs_tree_index
+GS_TI_BITSIZE_UNIT	gspin-tree.h	/^  GS_TI_BITSIZE_UNIT,$/;"	e	enum:gs_tree_index
+GS_TI_BITSIZE_ZERO	gspin-tree.h	/^  GS_TI_BITSIZE_ZERO,$/;"	e	enum:gs_tree_index
+GS_TI_BOOLEAN_FALSE	gspin-tree.h	/^  GS_TI_BOOLEAN_FALSE,$/;"	e	enum:gs_tree_index
+GS_TI_BOOLEAN_TRUE	gspin-tree.h	/^  GS_TI_BOOLEAN_TRUE,$/;"	e	enum:gs_tree_index
+GS_TI_BOOLEAN_TYPE	gspin-tree.h	/^  GS_TI_BOOLEAN_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_COMPLEX_DOUBLE_TYPE	gspin-tree.h	/^  GS_TI_COMPLEX_DOUBLE_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_COMPLEX_FLOAT_TYPE	gspin-tree.h	/^  GS_TI_COMPLEX_FLOAT_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_COMPLEX_INTEGER_TYPE	gspin-tree.h	/^  GS_TI_COMPLEX_INTEGER_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_COMPLEX_LONG_DOUBLE_TYPE	gspin-tree.h	/^  GS_TI_COMPLEX_LONG_DOUBLE_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_CONST_PTR_TYPE	gspin-tree.h	/^  GS_TI_CONST_PTR_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_DOUBLE_PTR_TYPE	gspin-tree.h	/^  GS_TI_DOUBLE_PTR_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_DOUBLE_TYPE	gspin-tree.h	/^  GS_TI_DOUBLE_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_ERROR_MARK	gspin-tree.h	/^  GS_TI_ERROR_MARK,$/;"	e	enum:gs_tree_index
+GS_TI_FILEPTR_TYPE	gspin-tree.h	/^  GS_TI_FILEPTR_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_FLOAT_PTR_TYPE	gspin-tree.h	/^  GS_TI_FLOAT_PTR_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_FLOAT_TYPE	gspin-tree.h	/^  GS_TI_FLOAT_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_INTDI_TYPE	gspin-tree.h	/^  GS_TI_INTDI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_INTEGER_MINUS_ONE	gspin-tree.h	/^  GS_TI_INTEGER_MINUS_ONE,$/;"	e	enum:gs_tree_index
+GS_TI_INTEGER_ONE	gspin-tree.h	/^  GS_TI_INTEGER_ONE,$/;"	e	enum:gs_tree_index
+GS_TI_INTEGER_PTR_TYPE	gspin-tree.h	/^  GS_TI_INTEGER_PTR_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_INTEGER_ZERO	gspin-tree.h	/^  GS_TI_INTEGER_ZERO,$/;"	e	enum:gs_tree_index
+GS_TI_INTHI_TYPE	gspin-tree.h	/^  GS_TI_INTHI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_INTQI_TYPE	gspin-tree.h	/^  GS_TI_INTQI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_INTSI_TYPE	gspin-tree.h	/^  GS_TI_INTSI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_INTTI_TYPE	gspin-tree.h	/^  GS_TI_INTTI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_LONG_DOUBLE_PTR_TYPE	gspin-tree.h	/^  GS_TI_LONG_DOUBLE_PTR_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_LONG_DOUBLE_TYPE	gspin-tree.h	/^  GS_TI_LONG_DOUBLE_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_MAIN_IDENTIFIER	gspin-tree.h	/^  GS_TI_MAIN_IDENTIFIER,$/;"	e	enum:gs_tree_index
+GS_TI_MAX	gspin-tree.h	/^  GS_TI_MAX$/;"	e	enum:gs_tree_index
+GS_TI_NULL_POINTER	gspin-tree.h	/^  GS_TI_NULL_POINTER,$/;"	e	enum:gs_tree_index
+GS_TI_PID_TYPE	gspin-tree.h	/^  GS_TI_PID_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_PRIVATE	gspin-tree.h	/^  GS_TI_PRIVATE,$/;"	e	enum:gs_tree_index
+GS_TI_PROTECTED	gspin-tree.h	/^  GS_TI_PROTECTED,$/;"	e	enum:gs_tree_index
+GS_TI_PTRDIFF_TYPE	gspin-tree.h	/^  GS_TI_PTRDIFF_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_PTR_TYPE	gspin-tree.h	/^  GS_TI_PTR_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_PUBLIC	gspin-tree.h	/^  GS_TI_PUBLIC,$/;"	e	enum:gs_tree_index
+GS_TI_SIZE_ONE	gspin-tree.h	/^  GS_TI_SIZE_ONE,$/;"	e	enum:gs_tree_index
+GS_TI_SIZE_TYPE	gspin-tree.h	/^  GS_TI_SIZE_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_SIZE_ZERO	gspin-tree.h	/^  GS_TI_SIZE_ZERO,$/;"	e	enum:gs_tree_index
+GS_TI_UINTDI_TYPE	gspin-tree.h	/^  GS_TI_UINTDI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_UINTHI_TYPE	gspin-tree.h	/^  GS_TI_UINTHI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_UINTQI_TYPE	gspin-tree.h	/^  GS_TI_UINTQI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_UINTSI_TYPE	gspin-tree.h	/^  GS_TI_UINTSI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_UINTTI_TYPE	gspin-tree.h	/^  GS_TI_UINTTI_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_VA_LIST_TYPE	gspin-tree.h	/^  GS_TI_VA_LIST_TYPE,$/;"	e	enum:gs_tree_index
+GS_TI_VOID_LIST_NODE	gspin-tree.h	/^  GS_TI_VOID_LIST_NODE,$/;"	e	enum:gs_tree_index
+GS_TI_VOID_TYPE	gspin-tree.h	/^  GS_TI_VOID_TYPE,$/;"	e	enum:gs_tree_index
+GS_TRANSLATION_UNIT_DECL	gspin-tree.h	/^ GS_TRANSLATION_UNIT_DECL,$/;"	e	enum:gs_code
+GS_TREE_ADDRESSABLE	gspin-tel.h	79;"	d
+GS_TREE_ASM_WRITTEN	gspin-tel.h	81;"	d
+GS_TREE_BINFO	gspin-tree.h	/^ GS_TREE_BINFO,$/;"	e	enum:gs_code
+GS_TREE_CHAIN	gspin-tel.h	69;"	d
+GS_TREE_CODE_CLASS	gspin-tel.h	67;"	d
+GS_TREE_CONSTANT	gspin-tel.h	76;"	d
+GS_TREE_CONSTANT_OVERFLOW	gspin-tel.h	176;"	d
+GS_TREE_IMAGPART	gspin-tel.h	413;"	d
+GS_TREE_INT_CST_HIGH	gspin-tel.h	401;"	d
+GS_TREE_INT_CST_LOW	gspin-tel.h	400;"	d
+GS_TREE_INVARIANT	gspin-tel.h	78;"	d
+GS_TREE_LANG_FLAG_0	gspin-tel.h	91;"	d
+GS_TREE_LANG_FLAG_1	gspin-tel.h	92;"	d
+GS_TREE_LANG_FLAG_2	gspin-tel.h	93;"	d
+GS_TREE_LANG_FLAG_3	gspin-tel.h	94;"	d
+GS_TREE_LANG_FLAG_4	gspin-tel.h	95;"	d
+GS_TREE_LANG_FLAG_5	gspin-tel.h	96;"	d
+GS_TREE_LANG_FLAG_6	gspin-tel.h	97;"	d
+GS_TREE_LIST	gspin-tree.h	/^ GS_TREE_LIST,$/;"	e	enum:gs_code
+GS_TREE_NOTHROW	gspin-tel.h	83;"	d
+GS_TREE_NOT_EMITTED_BY_GXX	gspin-tel.h	98;"	d
+GS_TREE_OPERAND_ZERO	gspin-tel.h	318;"	d
+GS_TREE_OVERFLOW	gspin-tel.h	177;"	d
+GS_TREE_PRIVATE	gspin-tel.h	86;"	d
+GS_TREE_PROTECTED	gspin-tel.h	87;"	d
+GS_TREE_PUBLIC	gspin-tel.h	84;"	d
+GS_TREE_PURPOSE	gspin-tel.h	431;"	d
+GS_TREE_READONLY	gspin-tel.h	75;"	d
+GS_TREE_REALPART	gspin-tel.h	412;"	d
+GS_TREE_REAL_CST_D	gspin-tel.h	405;"	d
+GS_TREE_REAL_CST_F	gspin-tel.h	404;"	d
+GS_TREE_REAL_CST_LD	gspin-tel.h	406;"	d
+GS_TREE_SIDE_EFFECTS	gspin-tel.h	73;"	d
+GS_TREE_STATIC	gspin-tel.h	88;"	d
+GS_TREE_STRING_LENGTH	gspin-tel.h	420;"	d
+GS_TREE_STRING_POINTER	gspin-tel.h	419;"	d
+GS_TREE_SYMBOL_REFERENCED	gspin-tel.h	181;"	d
+GS_TREE_THIS_VOLATILE	gspin-tel.h	80;"	d
+GS_TREE_TYPE	gspin-tel.h	68;"	d
+GS_TREE_USED	gspin-tel.h	82;"	d
+GS_TREE_VALUE	gspin-tel.h	432;"	d
+GS_TREE_VEC	gspin-tree.h	/^ GS_TREE_VEC,$/;"	e	enum:gs_code
+GS_TREE_VECTOR_CST_ELTS	gspin-tel.h	409;"	d
+GS_TREE_VEC_ELT	gspin-tel.h	436;"	d
+GS_TREE_VEC_LENGTH	gspin-tel.h	435;"	d
+GS_TRUNC_DIV_EXPR	gspin-tree.h	/^ GS_TRUNC_DIV_EXPR,$/;"	e	enum:gs_code
+GS_TRUNC_MOD_EXPR	gspin-tree.h	/^ GS_TRUNC_MOD_EXPR,$/;"	e	enum:gs_code
+GS_TRUTH_ANDIF_EXPR	gspin-tree.h	/^ GS_TRUTH_ANDIF_EXPR,$/;"	e	enum:gs_code
+GS_TRUTH_AND_EXPR	gspin-tree.h	/^ GS_TRUTH_AND_EXPR,$/;"	e	enum:gs_code
+GS_TRUTH_NOT_EXPR	gspin-tree.h	/^ GS_TRUTH_NOT_EXPR,$/;"	e	enum:gs_code
+GS_TRUTH_ORIF_EXPR	gspin-tree.h	/^ GS_TRUTH_ORIF_EXPR,$/;"	e	enum:gs_code
+GS_TRUTH_OR_EXPR	gspin-tree.h	/^ GS_TRUTH_OR_EXPR,$/;"	e	enum:gs_code
+GS_TRUTH_XOR_EXPR	gspin-tree.h	/^ GS_TRUTH_XOR_EXPR,$/;"	e	enum:gs_code
+GS_TRY_BLOCK	gspin-tree.h	/^ GS_TRY_BLOCK,$/;"	e	enum:gs_code
+GS_TRY_CATCH_EXPR	gspin-tree.h	/^ GS_TRY_CATCH_EXPR,$/;"	e	enum:gs_code
+GS_TRY_FINALLY_EXPR	gspin-tree.h	/^ GS_TRY_FINALLY_EXPR,$/;"	e	enum:gs_code
+GS_TRY_HANDLERS	gspin-tel.h	368;"	d
+GS_TRY_STMTS	gspin-tel.h	367;"	d
+GS_TYPEID_EXPR	gspin-tree.h	/^ GS_TYPEID_EXPR,$/;"	e	enum:gs_code
+GS_TYPEINFO_DECL	gspin-tel.h	298;"	d
+GS_TYPENAME_TYPE	gspin-tree.h	/^ GS_TYPENAME_TYPE,$/;"	e	enum:gs_code
+GS_TYPEOF_TYPE	gspin-tree.h	/^ GS_TYPEOF_TYPE,$/;"	e	enum:gs_code
+GS_TYPE_ALIAS_SET	gspin-tel.h	263;"	d
+GS_TYPE_ALIGN	gspin-tel.h	262;"	d
+GS_TYPE_ARG_TYPES	gspin-tel.h	275;"	d
+GS_TYPE_ATTRIBUTES	gspin-tel.h	264;"	d
+GS_TYPE_BINFO	gspin-tel.h	281;"	d
+GS_TYPE_CONTEXT	gspin-tel.h	276;"	d
+GS_TYPE_DEBUG_REPRESENTATION_TYPE	gspin-tel.h	272;"	d
+GS_TYPE_DECL	gspin-tree.h	/^ GS_TYPE_DECL,$/;"	e	enum:gs_code
+GS_TYPE_DECL_SUPPRESS_DEBUG	gspin-tel.h	111;"	d
+GS_TYPE_DOMAIN	gspin-tel.h	270;"	d
+GS_TYPE_EXPR	gspin-tree.h	/^ GS_TYPE_EXPR,$/;"	e	enum:gs_code
+GS_TYPE_FIELDS	gspin-tel.h	271;"	d
+GS_TYPE_IS_SIZETYPE	gspin-tel.h	148;"	d
+GS_TYPE_LANG_FLAG_0	gspin-tel.h	156;"	d
+GS_TYPE_LANG_FLAG_1	gspin-tel.h	157;"	d
+GS_TYPE_LANG_FLAG_2	gspin-tel.h	158;"	d
+GS_TYPE_LANG_FLAG_3	gspin-tel.h	159;"	d
+GS_TYPE_LANG_FLAG_4	gspin-tel.h	160;"	d
+GS_TYPE_LANG_FLAG_5	gspin-tel.h	161;"	d
+GS_TYPE_LANG_FLAG_6	gspin-tel.h	162;"	d
+GS_TYPE_LANG_SPECIFIC	gspin-tel.h	164;"	d
+GS_TYPE_MAIN_VARIANT	gspin-tel.h	282;"	d
+GS_TYPE_MAX_VALUE	gspin-tel.h	268;"	d
+GS_TYPE_METHODS	gspin-tel.h	295;"	d
+GS_TYPE_METHOD_BASETYPE	gspin-tel.h	273;"	d
+GS_TYPE_MIN_VALUE	gspin-tel.h	267;"	d
+GS_TYPE_MODE	gspin-tel.h	258;"	d
+GS_TYPE_NAME	gspin-tel.h	257;"	d
+GS_TYPE_NEEDS_CONSTRUCTING	gspin-tel.h	151;"	d
+GS_TYPE_NEXT_PTR_TO	gspin-tel.h	279;"	d
+GS_TYPE_NONALIASED_COMPONENT	gspin-tel.h	153;"	d
+GS_TYPE_NO_FORCE_BLK	gspin-tel.h	147;"	d
+GS_TYPE_OFFSET_BASETYPE	gspin-tel.h	274;"	d
+GS_TYPE_PACKED	gspin-tel.h	154;"	d
+GS_TYPE_POINTER_TO	gspin-tel.h	277;"	d
+GS_TYPE_PRECISION	gspin-tel.h	265;"	d
+GS_TYPE_PTRMEMFUNC_P	gspin-tel.h	285;"	d
+GS_TYPE_PTRMEM_P	gspin-tel.h	286;"	d
+GS_TYPE_READONLY	gspin-tel.h	74;"	d
+GS_TYPE_REFERENCE_TO	gspin-tel.h	278;"	d
+GS_TYPE_RESTRICT	gspin-tel.h	155;"	d
+GS_TYPE_RETURNS_STACK_DEPRESSED	gspin-tel.h	149;"	d
+GS_TYPE_SIZE	gspin-tel.h	259;"	d
+GS_TYPE_SIZES_GIMPLIFIED	gspin-tel.h	77;"	d
+GS_TYPE_SIZE_UNIT	gspin-tel.h	260;"	d
+GS_TYPE_STRING_FLAG	gspin-tel.h	150;"	d
+GS_TYPE_TRANSPARENT_UNION	gspin-tel.h	152;"	d
+GS_TYPE_UNSIGNED	gspin-tel.h	146;"	d
+GS_TYPE_USER_ALIGN	gspin-tel.h	261;"	d
+GS_TYPE_USES_TEMPLATE_PARMS	gspin-tel.h	292;"	d
+GS_TYPE_VALUES	gspin-tel.h	269;"	d
+GS_TYPE_VECTOR_SUBPARTS	gspin-tel.h	266;"	d
+GS_TYPE_VFIELD	gspin-tel.h	294;"	d
+GS_TYPE_VOLATILE	gspin-tel.h	163;"	d
+GS_UNBOUND_CLASS_TEMPLATE	gspin-tree.h	/^ GS_UNBOUND_CLASS_TEMPLATE,$/;"	e	enum:gs_code
+GS_UNEQ_EXPR	gspin-tree.h	/^ GS_UNEQ_EXPR,$/;"	e	enum:gs_code
+GS_UNGE_EXPR	gspin-tree.h	/^ GS_UNGE_EXPR,$/;"	e	enum:gs_code
+GS_UNGT_EXPR	gspin-tree.h	/^ GS_UNGT_EXPR,$/;"	e	enum:gs_code
+GS_UNION_TYPE	gspin-tree.h	/^ GS_UNION_TYPE,$/;"	e	enum:gs_code
+GS_UNLE_EXPR	gspin-tree.h	/^ GS_UNLE_EXPR,$/;"	e	enum:gs_code
+GS_UNLT_EXPR	gspin-tree.h	/^ GS_UNLT_EXPR,$/;"	e	enum:gs_code
+GS_UNORDERED_EXPR	gspin-tree.h	/^ GS_UNORDERED_EXPR,$/;"	e	enum:gs_code
+GS_UPDATE_FLAG	gspin-tel.h	489;"	d
+GS_USING_DECL	gspin-tree.h	/^ GS_USING_DECL,$/;"	e	enum:gs_code
+GS_USING_STMT	gspin-tree.h	/^ GS_USING_STMT,$/;"	e	enum:gs_code
+GS_VALUE_HANDLE	gspin-tree.h	/^ GS_VALUE_HANDLE,$/;"	e	enum:gs_code
+GS_VAR_DECL	gspin-tree.h	/^ GS_VAR_DECL,$/;"	e	enum:gs_code
+GS_VA_ARG_EXPR	gspin-tree.h	/^ GS_VA_ARG_EXPR,$/;"	e	enum:gs_code
+GS_VECTOR_CST	gspin-tree.h	/^ GS_VECTOR_CST,$/;"	e	enum:gs_code
+GS_VECTOR_TYPE	gspin-tree.h	/^ GS_VECTOR_TYPE,$/;"	e	enum:gs_code
+GS_VEC_COND_EXPR	gspin-tree.h	/^ GS_VEC_COND_EXPR,$/;"	e	enum:gs_code
+GS_VEC_DELETE_EXPR	gspin-tree.h	/^ GS_VEC_DELETE_EXPR,$/;"	e	enum:gs_code
+GS_VEC_NEW_EXPR	gspin-tree.h	/^ GS_VEC_NEW_EXPR,$/;"	e	enum:gs_code
+GS_VIEW_CONVERT_EXPR	gspin-tree.h	/^ GS_VIEW_CONVERT_EXPR,$/;"	e	enum:gs_code
+GS_VOID_TYPE	gspin-tree.h	/^ GS_VOID_TYPE,$/;"	e	enum:gs_code
+GS_WEAK_DECLS	gspin-tel.h	57;"	d
+GS_WHILE_BODY	gspin-tel.h	373;"	d
+GS_WHILE_COND	gspin-tel.h	372;"	d
+GS_WHILE_STMT	gspin-tree.h	/^ GS_WHILE_STMT,$/;"	e	enum:gs_code
+GS_WITH_CLEANUP_EXPR	gspin-tree.h	/^ GS_WITH_CLEANUP_EXPR,$/;"	e	enum:gs_code
+GS_WITH_SIZE_EXPR	gspin-tree.h	/^ GS_WITH_SIZE_EXPR,$/;"	e	enum:gs_code
+IB_BIT_VECTOR	gspin-tree.h	/^ IB_BIT_VECTOR,$/;"	e	enum:gs_code
+IB_BOOL	gspin-tree.h	/^ IB_BOOL,$/;"	e	enum:gs_code
+IB_CHAR	gspin-tree.h	/^ IB_CHAR,$/;"	e	enum:gs_code
+IB_DOUBLE	gspin-tree.h	/^ IB_DOUBLE,$/;"	e	enum:gs_code
+IB_FLOAT	gspin-tree.h	/^ IB_FLOAT,$/;"	e	enum:gs_code
+IB_INT	gspin-tree.h	/^ IB_INT,$/;"	e	enum:gs_code
+IB_LONG	gspin-tree.h	/^ IB_LONG,$/;"	e	enum:gs_code
+IB_LONG_DOUBLE	gspin-tree.h	/^ IB_LONG_DOUBLE,$/;"	e	enum:gs_code
+IB_LONG_LONG	gspin-tree.h	/^ IB_LONG_LONG,$/;"	e	enum:gs_code
+IB_STRING	gspin-tree.h	/^ IB_STRING,$/;"	e	enum:gs_code
+IB_STRING_ARENA	gspin-mempool.h	28;"	d
+IB_UNSIGNED	gspin-tree.h	/^ IB_UNSIGNED,$/;"	e	enum:gs_code
+IB_UNSIGNED_LONG	gspin-tree.h	/^ IB_UNSIGNED_LONG,$/;"	e	enum:gs_code
+IB_UNSIGNED_LONG_LONG	gspin-tree.h	/^ IB_UNSIGNED_LONG_LONG,$/;"	e	enum:gs_code
+OMIT	gspin-tel.c	33;"	d	file:
+__GPIN_BASE_TYPES_H__	gspin-base-types.h	30;"	d
+__GSPIN_ALLOC_H__	gspin-alloc.h	28;"	d
+__GSPIN_ASSERT_H__	gspin-assert.h	30;"	d
+__GSPIN_GS_MEMPOOL_H__	gspin-mempool.h	25;"	d
+__GSPIN_IO_H__	gspin-io.h	25;"	d
+__GSPIN_LIST_H__	gspin-list.h	25;"	d
+__GSPIN_TEL_H__	gspin-tel.h	25;"	d
+__GSPIN_TREE_H__	gspin-tree.h	31;"	d
+__gs	gspin-tree.c	/^__gs (gs_code_t code)$/;"	f
+__gs_mempool_alloc	gspin-mempool.c	/^void *__gs_mempool_alloc(unsigned int arena_id, unsigned int count)$/;"	f
+_gs_b	gspin-tree.h	/^static inline gs_void_t _gs_b (gs_t node, unsigned char b)$/;"	f
+_gs_bv	gspin-tree.h	/^static inline gs_void_t _gs_bv (gs_t node, gs_count_t position, bool bit)$/;"	f
+_gs_bv_reset	gspin-tree.h	/^static inline gs_void_t _gs_bv_reset (gs_t node, unsigned int position)$/;"	f
+_gs_c	gspin-tree.h	/^static inline gs_void_t _gs_c (gs_t node, gs_char_t c)$/;"	f
+_gs_code	gspin-tree.h	/^static inline gs_void_t _gs_code (gs_t node, gs_code_t c)$/;"	f
+_gs_d	gspin-tree.h	/^static inline gs_void_t _gs_d (gs_t node, gs_double_t d)$/;"	f
+_gs_em	gspin-tree.h	/^static inline gs_void_t _gs_em (gs_t node, bool em)$/;"	f
+_gs_f	gspin-tree.h	/^static inline gs_void_t _gs_f (gs_t node, gs_float_t f)$/;"	f
+_gs_hword	gspin-tree.h	/^static inline void _gs_hword(gs_t node, unsigned int h)$/;"	f
+_gs_ld	gspin-tree.h	/^static inline gs_void_t _gs_ld (gs_t node, gs_long_double_t ld)$/;"	f
+_gs_ll	gspin-tree.h	/^static inline gs_void_t _gs_ll (gs_t node, gs_long_long_t ll)$/;"	f
+_gs_n	gspin-tree.h	/^static inline gs_void_t _gs_n (gs_t node, int n)$/;"	f
+_gs_s	gspin-tree.c	/^_gs_s (gs_t node, const gs_string_t s, gs_unsigned_long_t length)$/;"	f
+_gs_s_no_alloc	gspin-tree.h	/^static inline gs_void_t _gs_s_no_alloc (gs_t node, const gs_string_t s)$/;"	f
+_gs_slen	gspin-tree.h	/^static inline gs_void_t _gs_slen(gs_t op, unsigned int aux_num)$/;"	f
+_gs_u	gspin-tree.h	/^static inline gs_void_t _gs_u (gs_t node, gs_unsigned_t u)$/;"	f
+_gs_ull	gspin-tree.h	/^static inline gs_void_t _gs_ull (gs_t node, gs_unsigned_long_long_t ull)$/;"	f
+arg	gspin-tree.h	/^    gs_t		arg[1];	\/\/ for pointing to kids of non-leaf nodes$/;"	m	union:gspin::<anonymous>
+arity	gspin-tel.c	/^  signed char arity;	\/\/ -1 means not yet known; assert when this value$/;"	m	struct:tree_code_property	file:
+arity	gspin-tree.c	/^  signed char arity;$/;"	m	struct:tree_code_property	file:
+arity_dist	gspin-tree.c	/^int arity_dist[45] = {$/;"	v
+block_id	gspin-mempool.h	/^  int block_id;			\/\/ index into each block in current arena$/;"	m	struct:gs_memblock
+byte	gspin-tree.h	/^	unsigned char	byte;	\/\/ IB_BOOL, IB_CHAR, GS_TCC, GSBI_CLASS$/;"	m	union:gspin::<anonymous>::<anonymous>::<anonymous>
+code	gspin-tree.h	/^      gs_code_t	code:8;$/;"	m	struct:gspin::<anonymous>::<anonymous>
+current_index	gspin-mempool.h	/^  gs_count_t current_index;  \/\/ not in bytes; the next available unit$/;"	m	struct:gs_arena
+d	gspin-tree.h	/^    double		d;	\/\/ IB_DOUBLE$/;"	m	union:gspin::<anonymous>
+dump_arity_dist	gspin-tree.c	/^void dump_arity_dist(void) {$/;"	f
+emitted	gspin-tree.h	/^      unsigned int	emitted:1;$/;"	m	struct:gspin::<anonymous>::<anonymous>
+f	gspin-tree.h	/^    float		f;	\/\/ IB_FLOAT$/;"	m	union:gspin::<anonymous>
+firstblock	gspin-mempool.h	/^  gs_memblock_t *firstblock; \/\/ the first of the list of allocated blocks$/;"	m	struct:gs_arena
+flag_reachable_nodes	gspin-io.c	/^void flag_reachable_nodes(gs_t t) {$/;"	f
+gs_alloc	gspin-alloc.c	/^void *gs_alloc (size_t nmemb, size_t size)$/;"	f
+gs_arena	gspin-mempool.h	/^typedef struct gs_arena {$/;"	s
+gs_arena_t	gspin-mempool.h	/^} gs_arena_t;$/;"	t
+gs_assert	gspin-assert.c	/^void gs_assert(bool condition, $/;"	f
+gs_assert_failure	gspin-assert.c	/^gs_assert_failure (gs_string_t file, gs_string_t function, gs_count_t line,$/;"	f	file:
+gs_attribute_name	gspin-tel.c	/^gs_attribute_name (gs_int_t attribute, gs_tree_code_class_t tree_code_class,$/;"	f
+gs_b	gspin-tree.h	/^static inline unsigned char gs_b (gs_t node)$/;"	f
+gs_bool_t	gspin-base-types.h	/^typedef bool gs_bool_t;$/;"	t
+gs_boolean_type_node	gspin-tel.h	/^static inline gs_t gs_boolean_type_node(void) {$/;"	f
+gs_build_0	gspin-tel.c	/^gs_build_0(gs_tree_code_class_t code_class, gs_code_t code)$/;"	f	file:
+gs_build_2	gspin-tel.c	/^gs_build_2(gs_tree_code_class_t code_class, gs_code_t code, gs_t k0, gs_t k1)$/;"	f	file:
+gs_build_comparison	gspin-tel.c	/^gs_build_comparison(gs_code_t code, gs_t k0, gs_t k1)$/;"	f	file:
+gs_build_decl	gspin-tel.c	/^gs_build_decl(gs_code_t code, gs_t node2)$/;"	f
+gs_build_if_stmt	gspin-tel.c	/^gs_build_if_stmt(gs_t k0, gs_t k1, gs_t k2)$/;"	f
+gs_build_int_cst	gspin-tel.c	/^gs_build_int_cst(gs_long_long_t n)$/;"	f
+gs_build_pointer_type	gspin-tel.c	/^gs_t gs_build_pointer_type(gs_t to_type)$/;"	f
+gs_build_target_expr	gspin-tel.c	/^gs_build_target_expr(gs_t k0, gs_t k1, gs_t k2, gs_t k3)$/;"	f
+gs_build_type	gspin-tel.c	/^gs_build_type(gs_code_t code)$/;"	f
+gs_bv	gspin-tree.h	/^static inline bool gs_bv (gs_t node, unsigned int position)$/;"	f
+gs_c	gspin-tree.h	/^static inline gs_char_t gs_c (gs_t node)$/;"	f
+gs_c_common_truthvalue_conversion	gspin-tel.c	/^gs_c_common_truthvalue_conversion(gs_t node)$/;"	f
+gs_char_t	gspin-base-types.h	/^typedef char gs_char_t;$/;"	t
+gs_classtype_size	gspin-tel.h	/^static inline gs_t gs_classtype_size(gs_t t)$/;"	f
+gs_code	gspin-tree.h	/^static inline gs_code_t gs_code (gs_t node)$/;"	f
+gs_code	gspin-tree.h	/^typedef enum gs_code {$/;"	g
+gs_code_arity	gspin-tree.c	/^int gs_code_arity(gs_code_t code)$/;"	f
+gs_code_name	gspin-tree.c	/^char *gs_code_name (gs_code_t code)$/;"	f
+gs_code_t	gspin-tree.h	/^} gs_code_t;$/;"	t
+gs_cons	gspin-list.h	/^static inline gs_t gs_cons (gs_t e, gs_t es)$/;"	f
+gs_count_t	gspin-base-types.h	/^typedef unsigned int gs_count_t;$/;"	t
+gs_d	gspin-tree.h	/^static inline gs_double_t gs_d (gs_t node)$/;"	f
+gs_decl_align_unit	gspin-tel.h	/^static inline gs_int_t gs_decl_align_unit (gs_t t) {$/;"	f
+gs_decl_asmreg	gspin-tel.h	/^static inline gs_int_t gs_decl_asmreg (gs_t t) {$/;"	f
+gs_decl_built_in_class	gspin-tel.h	/^static inline unsigned int gs_decl_built_in_class (gs_t t) {$/;"	f
+gs_decl_friend_pseudo_template_instantiation	gspin-tel.h	/^static inline int gs_decl_friend_pseudo_template_instantiation(gs_t node)$/;"	f
+gs_decl_function_code	gspin-tel.h	/^static inline unsigned int gs_decl_function_code (gs_t t) {$/;"	f
+gs_decl_mode	gspin-tel.h	/^static inline gs_string_t gs_decl_mode (gs_t t) {$/;"	f
+gs_decl_source_file	gspin-tel.h	/^static inline gs_string_t gs_decl_source_file (gs_t t) {$/;"	f
+gs_decl_source_line	gspin-tel.h	/^static inline gs_int_t gs_decl_source_line (gs_t t) {$/;"	f
+gs_decl_uid	gspin-tel.h	/^static inline gs_int_t gs_decl_uid (gs_t t) {$/;"	f
+gs_double_t	gspin-base-types.h	/^typedef double gs_double_t;$/;"	t
+gs_dump	gspin-tree.c	/^gs_dump (gs_t t) $/;"	f
+gs_dump_core	gspin-tree.c	/^gs_dump_core(gs_t t, gs_count_t *indentation, FILE *f, bool concise,$/;"	f	file:
+gs_dump_file	gspin-tree.c	/^gs_dump_file (gs_t t, FILE *f) $/;"	f
+gs_dump_leaf	gspin-tree.c	/^gs_dump_leaf(gs_t t, FILE *f,$/;"	f	file:
+gs_em	gspin-tree.h	/^static inline bool gs_em (gs_t node)$/;"	f
+gs_error_mark_node	gspin-tel.h	/^static inline gs_t gs_error_mark_node(void) {$/;"	f
+gs_expr_filename	gspin-tel.h	/^static inline gs_string_t gs_expr_filename (gs_t t) {$/;"	f
+gs_expr_lineno	gspin-tel.h	/^static inline gs_int_t gs_expr_lineno (gs_t t) {$/;"	f
+gs_f	gspin-tree.h	/^static inline gs_float_t gs_f (gs_t node)$/;"	f
+gs_false	gspin-base-types.h	52;"	d
+gs_flag_name	gspin-tel.c	/^gs_flag_name (gs_code_t constructor, gs_int_t attribute, gs_count_t flag,$/;"	f
+gs_float_t	gspin-base-types.h	/^typedef float gs_float_t;$/;"	t
+gs_get_integer_value	gspin-tel.h	/^static inline gs_long_long_t gs_get_integer_value (gs_t t)$/;"	f
+gs_hword	gspin-tree.h	/^static inline unsigned int gs_hword(gs_t node)$/;"	f
+gs_id	gspin-tree.c	/^int gs_id (gs_t node)$/;"	f
+gs_identifier_pointer	gspin-tel.h	/^static inline gs_string_t gs_identifier_pointer (gs_t t) {$/;"	f
+gs_index	gspin-list.c	/^gs_t gs_index (gs_t list, gs_count_t index)$/;"	f
+gs_int_t	gspin-base-types.h	/^typedef int gs_int_t;$/;"	t
+gs_integer_type_kind	gspin-tree.h	/^typedef enum gs_integer_type_kind {$/;"	g
+gs_integer_type_kind_t	gspin-tree.h	/^} gs_integer_type_kind_t;$/;"	t
+gs_integer_type_node	gspin-tel.h	/^static inline gs_t gs_integer_type_node(void) {$/;"	f
+gs_label_decl_uid	gspin-tel.h	/^static inline gs_int_t gs_label_decl_uid (gs_t t) {$/;"	f
+gs_ld	gspin-tree.h	/^static inline gs_long_double_t gs_ld (gs_t node)$/;"	f
+gs_length	gspin-list.c	/^gs_count_t gs_length (gs_t list) $/;"	f
+gs_list_length	gspin-tel.h	/^static inline gs_int_t gs_list_length (gs_t t) $/;"	f
+gs_ll	gspin-tree.h	/^static inline gs_long_long_t gs_ll (gs_t node)$/;"	f
+gs_long_double_t	gspin-base-types.h	/^typedef long double gs_long_double_t;$/;"	t
+gs_long_long_t	gspin-base-types.h	/^typedef long long gs_long_long_t;$/;"	t
+gs_long_t	gspin-base-types.h	/^typedef long gs_long_t;$/;"	t
+gs_memblock	gspin-mempool.h	/^struct gs_memblock {$/;"	s
+gs_memblock_t	gspin-mempool.h	/^typedef struct gs_memblock gs_memblock_t;$/;"	t
+gs_mempool	gspin-mempool.c	/^gs_arena_t gs_mempool[GS_ARENA_COUNT] = {$/;"	v
+gs_mempool_address2byteofst	gspin-mempool.c	/^int gs_mempool_address2byteofst(int arena_id, char *p) {$/;"	f
+gs_mempool_idx2address	gspin-mempool.c	/^gs_void_t *gs_mempool_idx2address(int arena_id, int cell_index)$/;"	f
+gs_n	gspin-tree.h	/^static inline int gs_n (gs_t node)$/;"	f
+gs_new_memblock	gspin-mempool.c	/^gs_memblock_t *gs_new_memblock(int id)$/;"	f
+gs_operand	gspin-tree.h	/^static inline gs_t gs_operand(gs_t node, int i)$/;"	f
+gs_program	gspin-tel.c	/^gs_t gs_program = NULL;	\/\/ The root program node when translating from gspin.$/;"	v
+gs_ptr_type_node	gspin-tel.h	/^static inline gs_t gs_ptr_type_node(void) {$/;"	f
+gs_ptrdiff_type_node	gspin-tel.h	/^static inline gs_t gs_ptrdiff_type_node(void) {$/;"	f
+gs_read	gspin-io.c	/^gs_unsigned_char_t *gs_read (const gs_string_t filename)$/;"	f
+gs_read_file	gspin-io.c	/^gs_t gs_read_file (const gs_string_t filename) $/;"	f
+gs_really_constant_p	gspin-tel.h	/^static inline int gs_really_constant_p(gs_t exp)$/;"	f
+gs_s	gspin-tree.h	/^static inline gs_string_t gs_s (gs_t node)$/;"	f
+gs_set_decl_alias_target	gspin-tel.h	/^static inline void gs_set_decl_alias_target(gs_t t, gs_t val) {$/;"	f
+gs_set_decl_arg_type	gspin-tel.h	/^static inline void gs_set_decl_arg_type(gs_t t, gs_t val) {$/;"	f
+gs_set_decl_initial	gspin-tel.h	/^static inline void gs_set_decl_initial(gs_t t, gs_t val) {$/;"	f
+gs_set_decl_template_specializations	gspin-tel.h	/^static inline void gs_set_decl_template_specializations(gs_t t, gs_t val) {$/;"	f
+gs_set_operand	gspin-tree.h	/^static inline void gs_set_operand(gs_t node, int i, gs_t arg)$/;"	f
+gs_set_tree_operand	gspin-tel.h	/^static inline void gs_set_tree_operand (gs_t node, int i, gs_t opnd)$/;"	f
+gs_set_tree_value	gspin-tel.h	/^static inline void gs_set_tree_value(gs_t t, gs_t val) {$/;"	f
+gs_set_type_next_ptr_to	gspin-tel.h	/^static inline void gs_set_type_next_ptr_to(gs_t t, gs_t val) {$/;"	f
+gs_slen	gspin-tree.h	/^static inline unsigned int gs_slen(gs_t op)$/;"	f
+gs_string_t	gspin-base-types.h	/^typedef gs_char_t *gs_string_t;$/;"	t
+gs_strip_nops	gspin-tel.c	/^gs_strip_nops(gs_t node)$/;"	f
+gs_t	gspin-tree.h	/^typedef struct gspin *gs_t;$/;"	t
+gs_thunk_fixed_offset	gspin-tel.h	/^static inline gs_long_t gs_thunk_fixed_offset (gs_t t) {$/;"	f
+gs_tree_code	gspin-tree.h	/^static inline gs_code_t gs_tree_code(gs_t node) { return gs_code(node); }$/;"	f
+gs_tree_code_class	gspin-tel.c	/^gs_tree_code_class_t gs_tree_code_class(gs_t t) {$/;"	f
+gs_tree_code_class	gspin-tree.h	/^typedef enum gs_tree_code_class {$/;"	g
+gs_tree_code_class_name	gspin-tree.c	/^gs_string_t gs_tree_code_class_name (gs_tree_code_class_t code)$/;"	f
+gs_tree_code_class_t	gspin-tree.h	/^} gs_tree_code_class_t;$/;"	t
+gs_tree_code_length	gspin-tel.h	/^static inline gs_int_t gs_tree_code_length (gs_t t) {$/;"	f
+gs_tree_index	gspin-tree.h	/^typedef enum gs_tree_index$/;"	g
+gs_tree_index_t	gspin-tree.h	/^} gs_tree_index_t;$/;"	t
+gs_tree_last	gspin-tel.h	/^static inline gs_t gs_tree_last(gs_t node)$/;"	f
+gs_tree_operand	gspin-tel.h	/^static inline gs_t gs_tree_operand (gs_t t, gs_count_t index) {$/;"	f
+gs_tree_real_cst_d	gspin-tel.h	/^static inline gs_double_t gs_tree_real_cst_d (gs_t t) {$/;"	f
+gs_tree_real_cst_f	gspin-tel.h	/^static inline gs_float_t gs_tree_real_cst_f (gs_t t) {$/;"	f
+gs_tree_real_cst_ld	gspin-tel.h	/^static inline gs_long_double_t gs_tree_real_cst_ld (gs_t t) {$/;"	f
+gs_tree_string_length	gspin-tel.h	/^static inline gs_int_t gs_tree_string_length (gs_t t) {$/;"	f
+gs_tree_string_pointer	gspin-tel.h	/^static inline gs_string_t gs_tree_string_pointer (gs_t t) {$/;"	f
+gs_tree_vec_elt	gspin-tel.h	/^static inline gs_t gs_tree_vec_elt (gs_t t, gs_count_t index) {$/;"	f
+gs_tree_vec_length	gspin-tel.h	/^static inline gs_int_t gs_tree_vec_length (gs_t t) {$/;"	f
+gs_true	gspin-base-types.h	51;"	d
+gs_type_align	gspin-tel.h	/^static inline gs_int_t gs_type_align (gs_t t) {$/;"	f
+gs_type_mode	gspin-tel.h	/^static inline gs_string_t gs_type_mode (gs_t t) {$/;"	f
+gs_type_type_precision	gspin-tel.h	/^static inline gs_int_t gs_type_type_precision (gs_t t) {$/;"	f
+gs_type_vector_subparts	gspin-tel.h	/^static inline gs_int_t gs_type_vector_subparts (gs_t t) {$/;"	f
+gs_u	gspin-tree.h	/^static inline gs_unsigned_t gs_u (gs_t node)$/;"	f
+gs_ull	gspin-tree.h	/^static inline gs_unsigned_long_long_t gs_ull (gs_t node)$/;"	f
+gs_unsigned_char_t	gspin-base-types.h	/^typedef unsigned char gs_unsigned_char_t;$/;"	t
+gs_unsigned_long_long_t	gspin-base-types.h	/^typedef unsigned long long gs_unsigned_long_long_t;$/;"	t
+gs_unsigned_long_t	gspin-base-types.h	/^typedef unsigned long gs_unsigned_long_t;$/;"	t
+gs_unsigned_t	gspin-base-types.h	/^typedef unsigned int gs_unsigned_t;$/;"	t
+gs_uses_template_parms	gspin-tel.h	/^static inline gs_bool_t gs_uses_template_parms (gs_t t) {          $/;"	f
+gs_vec_t	gspin-tree.h	/^typedef gs_t *gs_vec_t;$/;"	t
+gs_void_t	gspin-base-types.h	/^typedef void gs_void_t;$/;"	t
+gs_void_type_node	gspin-tel.h	/^static inline gs_t gs_void_type_node(void) {$/;"	f
+gs_write	gspin-io.c	/^gs_void_t gs_write (const gs_string_t filename)$/;"	f
+gsbi	gspin-tree.h	/^typedef enum gsbi {$/;"	g
+gsbi_class	gspin-tree.h	/^typedef enum gsbi_class {$/;"	g
+gsbi_class_name	gspin-tree.c	/^gsbi_class_name (gsbi_class_t class_code)$/;"	f
+gsbi_class_t	gspin-tree.h	/^} gsbi_class_t;$/;"	t
+gsbi_name	gspin-tree.c	/^gs_string_t gsbi_name (gsbi_t code) $/;"	f
+gsbi_t	gspin-tree.h	/^} gsbi_t;$/;"	t
+gsbi_ts	gspin-tree.h	/^typedef enum gsbi_ts {$/;"	g
+gsbi_ts_name	gspin-tree.c	/^gsbi_ts_name (gsbi_ts_t code)$/;"	f
+gsbi_ts_t	gspin-tree.h	/^} gsbi_ts_t;$/;"	t
+gspin	gspin-tree.h	/^typedef struct gspin $/;"	s
+gspin_node_size	gspin-tree.c	/^int gspin_node_size(gs_code_t code)$/;"	f
+gspin_t	gspin-tree.h	/^} gspin_t __attribute__((aligned(4)));$/;"	t
+hword	gspin-tree.h	/^	unsigned short	hword;	\/\/ GSBI$/;"	m	union:gspin::<anonymous>::<anonymous>::<anonymous>
+lastblock	gspin-mempool.h	/^  gs_memblock_t *lastblock;  \/\/ the last of the list of allocated blocks where$/;"	m	struct:gs_arena
+ld	gspin-tree.h	/^    long double		ld;	\/\/ IB_LONG_DOUBLE$/;"	m	union:gspin::<anonymous>
+ll	gspin-tree.h	/^    long long		ll;	\/\/ IB_LONG_LONG$/;"	m	union:gspin::<anonymous>
+main	gspin-test-driver.c	/^main (int argc, char *argv[])$/;"	f
+mem	gspin-mempool.h	/^  char *mem; 			\/\/ point to base of allocated block$/;"	m	struct:gs_memblock
+mem_seg	gspin-io.c	/^char *mem_seg = NULL;	\/\/ base of the memory map$/;"	v
+memblk_cache	gspin-mempool.c	/^static gs_memblock_t *memblk_cache[GS_ARENA_COUNT] = {NULL, NULL}; \/\/ as cache$/;"	v	file:
+n	gspin-tree.h	/^    int			n;	\/\/ IB_INT, IB_LONG$/;"	m	union:gspin::<anonymous>
+name	gspin-tel.c	/^  char *name;$/;"	m	struct:tree_code_property	file:
+name	gspin-tree.c	/^  char *name;$/;"	m	struct:tree_code_property	file:
+next	gspin-mempool.h	/^  gs_memblock_t *next;		\/\/ the next block in linked list$/;"	m	struct:gs_memblock
+num_gspin_nodes	gspin-tree.c	/^int num_gspin_nodes = 0;$/;"	v
+operand_number	gspin-tel.c	/^gs_char_t operand_number[256];$/;"	v
+s	gspin-tree.h	/^    char *		s;	\/\/ pointer part of IB_STRING$/;"	m	union:gspin::<anonymous>
+slen	gspin-tree.h	/^      unsigned int	slen:23;	\/\/ length part of IB_STRING$/;"	m	struct:gspin::<anonymous>::<anonymous>
+tcc	gspin-tel.c	/^  gs_tree_code_class_t tcc;$/;"	m	struct:tree_code_property	file:
+tcc	gspin-tree.c	/^  gs_tree_code_class_t tcc;$/;"	m	struct:tree_code_property	file:
+tree_code	gspin-tel.c	/^  gs_code_t tree_code;$/;"	m	struct:tree_code_property	file:
+tree_code	gspin-tree.c	/^  gs_code_t tree_code;$/;"	m	struct:tree_code_property	file:
+tree_code_property	gspin-tel.c	/^extern struct tree_code_property {$/;"	s	file:
+tree_code_property	gspin-tree.c	/^struct tree_code_property {$/;"	s	file:
+tree_code_table	gspin-tree.c	/^} tree_code_table[] = {$/;"	v
+u	gspin-tree.h	/^    unsigned int	u;	\/\/ IB_UNSIGNED, IB_UNSIGNED_LONG$/;"	m	union:gspin::<anonymous>
+u0	gspin-tree.h	/^  } u0;$/;"	m	struct:gspin
+u0s0	gspin-tree.h	/^    } u0s0;$/;"	m	union:gspin::<anonymous>
+u0s1	gspin-tree.h	/^    } u0s1;$/;"	m	union:gspin::<anonymous>
+u0s1u	gspin-tree.h	/^      } u0s1u;$/;"	m	struct:gspin::<anonymous>::<anonymous>
+u1	gspin-tree.h	/^  } u1;$/;"	m	struct:gspin
+u2	gspin-tree.h	/^  } u2;$/;"	m	struct:gspin
+ull	gspin-tree.h	/^    unsigned long long	ull;	\/\/ IB_UNSIGNED_LONG_LONG, IB_BIT_VECTOR$/;"	m	union:gspin::<anonymous>
+unused1	gspin-tree.h	/^      char		unused1;	\/\/ space for code$/;"	m	struct:gspin::<anonymous>::<anonymous>
+unused2	gspin-tree.h	/^      char		unused2;	\/\/ space for emitted flag$/;"	m	struct:gspin::<anonymous>::<anonymous>

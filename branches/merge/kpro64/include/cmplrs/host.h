@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -37,7 +37,7 @@
 */
 
 
-/* $Header: /proj/osprey/CVS/open64/osprey1.0/include/cmplrs/host.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* $Header: /home/bos/bk/kpro64-pending/include/cmplrs/host.h 1.6 04/12/21 14:57:36-08:00 bos@eng-25.internal.keyresearch.com $ */
 
 #ifndef _HOST_H
 #define _HOST_H

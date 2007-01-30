@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* g2c.h  --  g77 version of f2c (Standard Fortran to C header file) */
@@ -19,6 +19,13 @@
 
 #ifndef F2C_INCLUDE
 #define F2C_INCLUDE
+
+#if (__GNUC__ > 3)
+typedef int __g77_integer;
+typedef unsigned int __g77_uinteger;
+typedef long int __g77_longint;
+typedef unsigned long int __g77_ulongint;
+#endif
 
 /* F2C_INTEGER will normally be `int' but would be `long' on 16-bit systems */
 /* we assume short, float are OK */
