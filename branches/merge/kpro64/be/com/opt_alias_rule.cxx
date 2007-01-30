@@ -46,10 +46,10 @@
 * ====================================================================
 *
 * Module: opt_alias_rule.cxx
-* $Revision: 1.8 $
-* $Date: 05/07/01 19:38:48-07:00 $
-* $Author: fchow@fluorspar.internal.keyresearch.com $
-* $Source: be/com/SCCS/s.opt_alias_rule.cxx $
+* $Revision: 1.1.1.1 $
+* $Date: 2005/10/21 19:00:00 $
+* $Author: marcel $
+* $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/opt_alias_rule.cxx,v $
 *
 * Revision history:
 *  04-APR-95 lo - Split from opt_alias_rule.cxx
@@ -147,6 +147,35 @@ ALIAS_RULE::Aliased_Ip_Classification_Rule(const POINTS_TO *const mem1,
   return aliased;
 }
 
+// return TRUE iff
+//   o. ty1 == ty2, or 
+//   o. ty1 is of aggregate and there exist a filed <f> of ty2 
+//      where Ty1_Include_Ty2(ty1, type-of-<f>) is satisfied. 
+//
+// this is helper function of Aliased_This_Ptr_Rule ().
+BOOL
+ALIAS_RULE::Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const
+{
+  if (ty1 == ty2) {
+    return TRUE;
+  }
+
+  if (TY_kind(ty2) != KIND_STRUCT) {
+    return FALSE;
+  }
+
+  FLD_ITER iter = Make_fld_iter (FLD_HANDLE (Ty_Table[ty2].Fld ()));
+  do {
+    TY_IDX field_ty = (*iter).type;
+    if (field_ty == ty1 || (TY_kind(field_ty) == KIND_STRUCT) &&
+        Ty1_Include_Ty2 (ty1, field_ty)) {
+        return TRUE;
+    }
+  } while (! FLD_last_field (iter++));
+
+  return FALSE;
+}
+
 // Fortran-90 pointers can point only to items lacking the not_f90_target
 // attribute.
 BOOL
@@ -212,6 +241,55 @@ BOOL ALIAS_RULE::Aliased_Indirect_Rule(const POINTS_TO *mem1, const POINTS_TO *m
   if ((mem2->Unnamed() && !mem2->Unique_pt())
       && mem1->Not_addr_saved())
     return FALSE;
+
+  if ((mem1->Malloc_id() || mem2->Malloc_id()) &&
+      WOPT_Enable_Disambiguate_Heap_Obj) {
+    if (mem1->Named()) {
+      Is_True (mem1->Malloc_id() == 0, ("A heap object should not have name"));
+      return FALSE;
+    } else if (mem2->Named()) {
+      Is_True (mem2->Malloc_id() == 0, ("A heap object should not have name"));
+      return FALSE;
+    } else if (mem1->Malloc_id() && mem2->Malloc_id() && 
+               mem1->Malloc_id () != mem2->Malloc_id()) {
+      return FALSE;
+    }
+  }
+
+  if (mem1->Pointer () && mem2->Pointer () &&
+      WOPT_Enable_Pt_Keep_Track_Ptr) {
+    ST* st1 = mem1->Pointer ();
+    ST* st2 = mem2->Pointer ();
+    
+    if (st1 != st2 || 
+        mem1->Iofst_kind () != OFST_IS_FIXED ||
+        mem2->Iofst_kind () != OFST_IS_FIXED) {
+      return TRUE;
+    }
+
+    // it is impossible to disambiguate if the verions of the pointers
+    // are different.
+    if (!mem1->Pointer_is_aux_id() && 
+        !ST_is_constant (st1) && 
+        (mem1->Pointer_ver () == 0 ||
+         mem1->Pointer_ver () != mem2->Pointer_ver ())) {
+      return TRUE;
+    }
+
+    // check to see whether they overlap
+    if (mem1->Byte_Size () != 0 && mem2->Byte_Size () != 0) {
+      const POINTS_TO* high, *low;
+      if (mem1->Byte_Ofst() > mem2->Byte_Ofst()) {
+        high = mem1, low = mem2;
+      } else {
+        high = mem2, low = mem1;
+      }
+      if ((low->Byte_Ofst () + low->Byte_Size ()) <= high->Byte_Ofst()) {
+        return FALSE;
+      }
+    }
+  }
+
   return TRUE;
 }
 
@@ -773,6 +851,9 @@ READ_WRITE ALIAS_RULE::Aliased_with_Call(ST *st, INT32 flags, const POINTS_TO *m
   if (Rule_enabled(QUAL_RULE) && pu_idx != 0 && PU_is_pure(pu))
     return NO_READ_NO_WRITE;
 
+  if (Rule_enabled(QUAL_RULE) && pu_idx != 0 && PU_has_attr_pure(pu))
+    return READ;
+
   if (Rule_enabled(F_CALL_RULE)) {
     // Fortran parameter is aliased to the call unless passed by parameter.
     if (mem->F_param())
@@ -800,6 +881,11 @@ READ_WRITE ALIAS_RULE::Aliased_with_Call(ST *st, INT32 flags, const POINTS_TO *m
     if ((flags & WN_CALL_NON_PARM_REF) == 0)
       ref = FALSE;
   }
+
+  if (mem->Not_readable_by_callee ())
+    ref = FALSE;
+  if (mem->Not_writable_by_callee ())
+    mod = FALSE;
 
   if (mod && ref)
     return READ_AND_WRITE;

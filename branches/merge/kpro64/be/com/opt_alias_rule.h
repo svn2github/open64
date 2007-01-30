@@ -38,10 +38,10 @@
 * ====================================================================
 *
 * Module: opt_alias_rule.h
-* $Revision$
-* $Date$
-* $Author$
-* $Source$
+* $Revision: 1.1.1.1 $
+* $Date: 2005/10/21 19:00:00 $
+* $Author: marcel $
+* $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/opt_alias_rule.h,v $
 *
 * Revision history:
 *  04-APR-95 lo - Split from opt_alias.h
@@ -390,6 +390,14 @@ private:
   
   //  Obtain the basic type from TY
   INT32 Get_stripped_mtype(TY_IDX ty) const;
+
+  // return TRUE iff
+  //   o. ty1 == ty2, or 
+  //   o. ty1 is of aggregate and there exist a filed <f> of ty2 
+  //      where Ty1_Include_Ty2(ty1, type-of-<f>) is satisfied. 
+  //
+  // this is helper function of Aliased_This_Ptr_Rule ().
+  BOOL Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const;
 
   //  This routine are used by alias analysis internally.
   //  Each function implements one of the alias rules.

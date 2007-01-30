@@ -248,6 +248,11 @@ void POINTS_TO::Meet(const POINTS_TO *pt, ST *definition)
     }
   }
     
+  // TODO: if the Pointer() and Pointer_ver() are the same, the 
+  //   offset use smaller one and the access_byte combines both
+  //   POINTS_TOs.
+  Invalidate_ptr_info ();
+  
   // If expression is different, give up!!!
   if ((pt->Expr_kind() != Expr_kind()) &&
       (!Unique_pt() && !Restricted())) {
@@ -255,6 +260,7 @@ void POINTS_TO::Meet(const POINTS_TO *pt, ST *definition)
     Set_base_kind(BASE_IS_UNKNOWN);
     Set_ofst_kind(OFST_IS_UNKNOWN);
     Set_alias_class(PESSIMISTIC_AC_ID);
+    Invalidate_ptr_info ();
     Set_ip_alias_class(PESSIMISTIC_AC_ID);
     Reset_attr();
     return;
@@ -330,6 +336,12 @@ void POINTS_TO::Meet(const POINTS_TO *pt, ST *definition)
     DevWarn("Alias analysis: f90 pointer meets non-f90 pointer");
     Reset_known_f90_pointer();
   }
+
+  if (Not_readable_by_callee () && !pt->Not_readable_by_callee ()) 
+    Reset_not_readable_by_callee ();
+
+  if (Not_writable_by_callee () && !pt->Not_writable_by_callee ())
+    Reset_not_writable_by_callee ();
 
   CHECK_POINTS_TO(this);
 }
@@ -630,8 +642,8 @@ POINTS_TO::Analyze_ST(ST *st, INT64 byte_ofst, INT64 byte_size,
 
 
 //  Generate the POINTS_TO for an indirect reference based on ST
-//  This makes sense only if it is restricted, unique or it is a
-//  Fortran parameter.
+//  This makes sense only if it is restricted, unique, this-pointer
+//  reference or it is a Fortran parameter. 
 //
 void POINTS_TO::Analyze_ST_as_base(ST *st, INT64 ofst, TY_IDX ty)
 {
@@ -666,7 +678,7 @@ void POINTS_TO::Analyze_ST_as_base(ST *st, INT64 ofst, TY_IDX ty)
       Set_expr_kind(EXPR_IS_ADDR);
       Set_base_kind(BASE_IS_UNKNOWN);
       Set_ofst_kind(OFST_IS_UNKNOWN);
-    }
+    } 
     if (Alias_Pointer_Parms && Is_FORTRAN() &&
 	ST_sclass(st) == SCLASS_FORMAL && !ST_is_value_parm(st)) {
       Set_F_param();
@@ -676,10 +688,16 @@ void POINTS_TO::Analyze_ST_as_base(ST *st, INT64 ofst, TY_IDX ty)
       Set_global();
       Set_named();   // For the Ragnarok option
     }
+
     Set_ofst_kind(OFST_IS_FIXED);
     Set_byte_ofst(0);
     Set_byte_size(0); 
 
+    if (Based_sym () == NULL && WOPT_Enable_Pt_Keep_Track_Ptr) {
+      Set_pointer (st, FALSE);
+      Set_pointer_ver ((VER_ID)0);
+      Set_iofst_kind (OFST_IS_FIXED);
+    }
   } else {
 
     // ofst != 0.  Special case for LNO.
@@ -697,6 +715,10 @@ void POINTS_TO::Analyze_ST_as_base(ST *st, INT64 ofst, TY_IDX ty)
     Set_ofst_kind(OFST_IS_FIXED);
     Set_byte_ofst(0);
     Set_byte_size(0); 
+
+    Set_pointer ((ST*)NULL, FALSE);
+    Set_pointer_ver ((VER_ID)0);
+    Set_iofst_kind (OFST_IS_INVALID);
   }
 }
 
@@ -796,8 +818,13 @@ void POINTS_TO::Lower_to_base(WN *wn)
     Reset_safe_to_speculate();
     if (Ofst_kind() == OFST_IS_FIXED && Is_pointer() && wn != NULL) {
       Set_byte_size(Byte_Size() + WN_object_size(wn));
-    } else
+    } else {
+      if ((Pointer () != NULL) && (Iofst_kind () == OFST_IS_FIXED) && 
+        wn && (WN_desc(wn) != MTYPE_BS)) {
+        Set_byte_size(Byte_Size() + WN_object_size(wn));
+      }
       Set_ofst_kind(OFST_IS_UNKNOWN);
+    }
   }
 
   // already converted a pointer range into memory range
@@ -840,6 +867,7 @@ void POINTS_TO::Analyze_Lda_Base(WN *wn_lda, const OPT_STAB &opt_stab)
   Set_byte_size( 0 );
 #endif // KEY
   Set_is_pointer();
+  Invalidate_ptr_info ();  // it is not indirect access
 }
 
 
@@ -851,6 +879,7 @@ void POINTS_TO::Analyze_Lda_Base(WN *wn_lda, const STAB_ADAPTER &stab)
   Set_is_pointer();
   Set_byte_size(0);
   Set_bit_ofst_size(0,0);
+  Invalidate_ptr_info ();  // it is not indirect access
 }
 
 
@@ -1048,7 +1077,26 @@ void POINTS_TO::Print(FILE *fp) const
     fprintf(fp, ", based_sym=%s(%d)\n", (Based_sym() == UNDEFINED_PTR) ?
 	    "*UNDEFINED*" : ST_name(Based_sym()), Based_sym_depth());
   else
-    fprintf(fp, ", based_sym=null\n");
+    fprintf(fp, ", based_sym=null");
+
+  if (Pointer () != NULL) {
+    if (!Pointer_is_aux_id ()) {
+       fprintf (fp, ", ptr=%s ver=%d ", ST_name(Pointer()), (INT)Pointer_ver());
+    } else {
+       fprintf (fp, ", ptr=auxid-%d ver=%d ", 
+                       (INT)(INTPTR)Pointer(), (INT)Pointer_ver());
+    }
+    if (Iofst_kind () == OFST_IS_FIXED) {
+      fprintf(fp, "byte ofst %lld, ", Byte_Ofst());
+      if (Bit_Size() != 0)
+	fprintf(fp, "bit ofst %d, ", Bit_Ofst());
+      fprintf(fp, "byte size is %lld, ", Byte_Size());
+      if (Bit_Size() != 0)
+        fprintf(fp, "bit size is %d, ", Bit_Size());
+    }
+  }
+
+  fprintf (fp, "\n");
 }
 
 

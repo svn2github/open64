@@ -1,5 +1,9 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -599,8 +603,13 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_VN_Full, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "simp_iload",		"",
     0, 0, 0,	&WOPT_Enable_Simp_Iload, NULL },
-  { OVK_INT32,	OV_VISIBLE,	TRUE, "if_conv",		"",
-    2, 0, 2,	&WOPT_Enable_Simple_If_Conv, NULL },
+#ifdef TARG_IA64
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "if_conv",		"",
+    0, 0, 0,	&WOPT_Enable_Simple_If_Conv, NULL },
+#else
+  { OVK_INT32,  OV_VISIBLE,     TRUE, "if_conv",                "",
+    2, 0, 2,    &WOPT_Enable_Simple_If_Conv, NULL },
+#endif
   { OVK_INT32,	OV_VISIBLE,	TRUE, "ifconv_limit",		"",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_If_Conv_Limit, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "ifconv_for_istore",		"",
@@ -685,6 +694,9 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "warn_uninit",		"",
     0, 0, 0,	&WOPT_Enable_Warn_Uninit, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll",	"unroll",
+#ifdef TARG_IA64
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_WN_Unroll, NULL },
+#else
     2, 0, 2,	&WOPT_Enable_WN_Unroll, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "ip_mod_ref", "ip_mod_ref",
     0, 0, 0,	&WOPT_Enable_IP_Mod_Ref, NULL },
@@ -694,6 +706,7 @@ static OPTION_DESC Options_WOPT[] = {
     FALSE, 0, 0, &WOPT_Enable_Subword_Opt, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "new_vsym", "new_vsym",
     FALSE, 0, 0, &WOPT_Enable_New_Vsym_Allocation, NULL },
+#endif // TARG_IA64
 #endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "wovp",	"wovp",
     0, 0, 0,	&WOPT_Enable_WOVP, NULL },

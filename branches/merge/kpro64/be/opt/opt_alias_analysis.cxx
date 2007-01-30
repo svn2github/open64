@@ -12,10 +12,10 @@
 // ====================================================================
 //
 // Module: opt_alias_analysis.cxx
-// $Revision: 1.26 $
-// $Date: 05/11/23 14:14:06-08:00 $
-// $Author: gautam@jacinth.keyresearch $
-// $Source: be/opt/SCCS/s.opt_alias_analysis.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_alias_analysis.cxx,v $
 //
 // ====================================================================
 //
@@ -232,6 +232,7 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
   case OPR_INTCONST:
     ai->Set_expr_kind(EXPR_IS_INT);
     ai->Set_const_val(WN_const_val(wn_expr));
+    ai->Invalidate_ptr_info ();
     CHECK_POINTS_TO(ai);
     break;
 
@@ -245,6 +246,7 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
 	Simplify_Pointer(wn_expr, ai);
       } else {
 	ai->Set_expr_kind(EXPR_IS_INT);
+        ai->Invalidate_ptr_info ();
       }
     }
     CHECK_POINTS_TO(ai);
@@ -272,6 +274,7 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
 	ai->Set_base_kind(BASE_IS_UNKNOWN);
 	ai->Set_ofst_kind(OFST_IS_UNKNOWN);
       }
+      ai->Invalidate_ptr_info ();
       break;
     }
 
@@ -291,16 +294,20 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
       ai->Set_expr_kind(EXPR_IS_UNKNOWN);
       if (alias0.Expr_kind() == EXPR_IS_BEING_PROCESSED) {
 	ai->Copy_fully(alias0);
+	ai->Invalidate_ptr_info ();
       } else if (alias0.Expr_kind() == EXPR_IS_ADDR) {
 	if (alias1.Expr_kind() == EXPR_IS_INT) {
 	  ai->Copy_fully(alias0);
-	  if (alias0.Ofst_kind() == OFST_IS_FIXED && alias1.Int_is_constant())
+	  if ((alias0.Ofst_kind() == OFST_IS_FIXED || 
+	       alias0.Iofst_kind() == OFST_IS_FIXED) && alias1.Int_is_constant()) 
 	    ai->Shift_ofst( alias1.Int_const_val());
 	  else
 #ifdef KEY
-	  if (!ai->Is_field())
+	  if (!ai->Is_field()) {
 #endif
 	    ai->Set_ofst_kind(OFST_IS_UNKNOWN);
+	    ai->Set_iofst_kind(OFST_IS_UNKNOWN);
+	  }
 	} else if (alias1.Expr_kind() == EXPR_IS_ADDR) {
 	  ai->Copy_fully(alias0);
 	  ai->Meet(&alias1, (ST *) wn_expr);
@@ -308,20 +315,25 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
       } else if (alias0.Expr_kind() == EXPR_IS_INT) {
 	if (alias1.Expr_kind() == EXPR_IS_ADDR) {
 	  ai->Copy_fully(alias1);
-	  if (alias1.Ofst_kind() == OFST_IS_FIXED && alias0.Int_is_constant())
+	  if ((alias1.Ofst_kind() == OFST_IS_FIXED ||
+	       alias1.Iofst_kind() == OFST_IS_FIXED) && alias0.Int_is_constant()) 
 	    ai->Shift_ofst( alias0.Int_const_val());
 	  else
 #ifdef KEY
-	  if (!ai->Is_field())
+	  if (!ai->Is_field()) {
 #endif
 	    ai->Set_ofst_kind(OFST_IS_UNKNOWN);
+	    ai->Set_iofst_kind(OFST_IS_UNKNOWN);
+	  }
 	} else if (alias1.Expr_kind() == EXPR_IS_INT) {
 	  ai->Set_expr_kind(EXPR_IS_INT);
+	  ai->Invalidate_ptr_info ();
 	}
       }
       if (ai->Expr_kind() == EXPR_IS_UNKNOWN) {
 	ai->Set_base_kind(BASE_IS_UNKNOWN);
 	ai->Set_ofst_kind(OFST_IS_UNKNOWN);
+	ai->Invalidate_ptr_info ();
       }
       CHECK_POINTS_TO(ai);
     }
@@ -343,13 +355,17 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
       ai->Set_expr_kind(EXPR_IS_UNKNOWN);
       if (alias0.Expr_kind() == EXPR_IS_BEING_PROCESSED) {
 	ai->Copy_fully(alias0);
+	ai->Invalidate_ptr_info ();
       } else if (alias0.Expr_kind() == EXPR_IS_ADDR) {
 	if (alias1.Expr_kind() == EXPR_IS_INT) {
 	  ai->Copy_fully(alias0);
-	  if (alias0.Ofst_kind() == OFST_IS_FIXED && alias1.Int_is_constant())
+	  if ((alias0.Ofst_kind() == OFST_IS_FIXED ||
+	       alias0.Iofst_kind() == OFST_IS_FIXED) && alias1.Int_is_constant()) {
 	    ai->Shift_ofst( - alias1.Int_const_val());
-	  else
+	  } else {
 	    ai->Set_ofst_kind(OFST_IS_UNKNOWN);
+	    ai->Set_iofst_kind(OFST_IS_UNKNOWN);
+	  }
 	} else if (alias1.Expr_kind() == EXPR_IS_ADDR) {
 	  ai->Copy_fully(alias0);
 	  ai->Meet(&alias1, (ST *) wn_expr);
@@ -358,10 +374,12 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
 	if (alias1.Expr_kind() == EXPR_IS_INT) {
 	  ai->Set_expr_kind(EXPR_IS_INT);
 	}
+	ai->Invalidate_ptr_info ();
       }
       if (ai->Expr_kind() == EXPR_IS_UNKNOWN) {
 	ai->Set_base_kind(BASE_IS_UNKNOWN);
 	ai->Set_ofst_kind(OFST_IS_UNKNOWN);
+	ai->Invalidate_ptr_info ();
       }
       CHECK_POINTS_TO(ai);
     }
@@ -410,6 +428,7 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
     ai->Set_expr_kind(EXPR_IS_INT);
     ai->Set_base_kind(BASE_IS_UNKNOWN);
     ai->Set_ofst_kind(OFST_IS_UNKNOWN);
+    ai->Invalidate_ptr_info ();
     CHECK_POINTS_TO(ai);
     break;
 
@@ -418,11 +437,54 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
     ai->Set_expr_kind(EXPR_IS_UNKNOWN);
     ai->Set_base_kind(BASE_IS_UNKNOWN);
     ai->Set_ofst_kind(OFST_IS_UNKNOWN);
+    ai->Invalidate_ptr_info ();
     CHECK_POINTS_TO(ai);
     break;
   }
 }
 
+// Return true iff the PREG if given version is the return
+// value of malloc-like function. This is helper function 
+// of OPT_STAB::Simplify_Pointer_Ver().
+//
+BOOL OPT_STAB::Its_ret_val_of_malloc (VER_ID ver_id) {
+
+  VER_STAB_ENTRY* ver = Ver_stab_entry (ver_id);
+  if (ver->Type () != CHI_STMT) { return FALSE; }
+
+  // check to see whether the corresponing variable is dedicated PREG.
+  AUX_STAB_ENTRY* aux = Aux_stab_entry(ver->Aux_id());
+  if (!aux->Is_dedicated_preg ()) { return FALSE; }
+  
+  // check to see whehter the definition is a call
+  WN* call = ver->Chi_wn();
+  if (WN_operator (call) != OPR_CALL) { return FALSE; }
+
+  // check to see whether it is malloc-like func
+  ST* call_st = WN_st(call);
+  if (!PU_has_attr_malloc(Pu_Table[ST_pu(call_st)])) {
+    return FALSE;
+  }
+
+  // setup return preg. Later we will need to enter this into chi list
+  if (WHIRL_Return_Info_On) {
+    RETURN_INFO return_info = 
+      Get_Return_Info (MTYPE_To_TY(WN_rtype(call)), 
+                       Allow_sim_type() ? Use_Simulated : 
+                       Complex_Not_Simulated
+                       #ifdef TARG_X8664
+                       ,call_st ? PU_ff2c_abi(Pu_Table[ST_pu(call_st)]) : FALSE 
+                       #endif
+                       );      
+
+      if (RETURN_INFO_count(return_info) == 1 &&
+          RETURN_INFO_preg (return_info, 0) == aux->St_ofst()) {
+         return TRUE; 
+      }
+    }
+    
+    return FALSE;
+}
 
 
 //  Follow the DU Chain to expand the pointer expresssion.
@@ -431,7 +493,9 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 {
   INT32 vtype = Ver_stab_entry(ver)->Type();
   POINTS_TO  *pt = Ver_stab_entry(ver)->Points_to();
-  
+  AUX_ID  aux_id = Ver_stab_entry(ver)->Aux_id();
+  ST* st = Aux_stab_entry (aux_id)->St ();
+
   //  There is already some information associated with this version.
   //  Simply return it.
   if (pt) {
@@ -445,6 +509,7 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
   switch (vtype) {
   case ENTRY_STMT:
     {
+      ai->Invalidate_ptr_info ();
       if ( Is_volatile(Ver_stab_entry(ver)->Aux_id()) ) {
 	// the pointer is itself volatile, so we don't know what
 	// it points to.
@@ -455,6 +520,7 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 	ai->Set_byte_size(0);
 	ai->Set_bit_ofst_size(0, 0);
 	ai->Set_base((ST*)(INTPTR)ver);
+	ai->Invalidate_ptr_info ();
       }
       else {
 	ai->Set_expr_kind(EXPR_IS_ADDR);
@@ -465,6 +531,15 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 	ai->Set_bit_ofst_size(0, 0);
 	ai->Set_global();
 	ai->Set_base((ST*)(INTPTR)ver);
+	if (st) {
+ 	  if (ST_class(st) != CLASS_PREG){
+	    ai->Set_pointer (st, FALSE);
+	  } else {
+	    ai->Set_pointer ((ST*)(INTPTR)aux_id, TRUE);
+	  }
+	  ai->Set_pointer_ver (ver);
+	  ai->Set_iofst_kind (OFST_IS_FIXED);
+	}
       }
     }
     break;
@@ -554,6 +629,41 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 	summary_pt.Set_ofst_kind(OFST_IS_UNKNOWN);
 	summary_pt.Reset_attr();
       }
+
+      if (summary_pt.Expr_kind () == EXPR_IS_ADDR && 
+          (summary_pt.Base_kind () == BASE_IS_UNKNOWN ||
+           summary_pt.Ofst_kind () != OFST_IS_FIXED) &&
+           WOPT_Enable_Pt_Keep_Track_Ptr) {
+        if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG)) {
+          fprintf (TFile, "phi result ver %d BB %d aux %d: ", ver, bb->Id(), 
+                   Ver_stab_entry(ver)->Aux_id());
+          summary_pt.Print(TFile);
+          fprintf(TFile, "this result is not very useful, and is changed into: ");
+        }
+         // The result is virtuall useless. Following setting may provide more info.
+        summary_pt.Init ();
+        summary_pt.Set_expr_kind(EXPR_IS_ADDR);
+        summary_pt.Set_base_kind(BASE_IS_DYNAMIC);
+        summary_pt.Set_ofst_kind(OFST_IS_FIXED);
+        summary_pt.Set_byte_ofst(0);
+        summary_pt.Set_byte_size(0);
+        summary_pt.Set_bit_ofst_size(0, 0);
+        summary_pt.Set_base((ST *)phi);
+        if (st) {
+          if (ST_class(st) != CLASS_PREG){
+	          summary_pt.Set_pointer (st, FALSE);
+          } else {
+            summary_pt.Set_pointer ((ST*)(INTPTR)aux_id, TRUE);
+          }
+        }
+        summary_pt.Set_pointer_ver (ver);
+        summary_pt.Set_iofst_kind (OFST_IS_FIXED);
+
+        if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG)) {
+          summary_pt.Print (TFile);
+        }
+      }
+         
       // Copy the result into the return value.
       pt->Copy_fully(summary_pt);
       ai->Copy_fully(summary_pt);
@@ -590,6 +700,19 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
       ai->Set_byte_size(0);
       ai->Set_bit_ofst_size(0, 0);
       ai->Set_base( (ST *) chi );
+      if (st) {
+        if (ST_class(st) != CLASS_PREG){
+          ai->Set_pointer (st, FALSE);
+        } else {
+          ai->Set_pointer ((ST*)(INTPTR)aux_id, TRUE);
+          if (Its_ret_val_of_malloc (ver)) {
+           VER_STAB_ENTRY* verent = Ver_stab_entry(ver);
+           ai->Set_malloc_id (WN_linenum(verent->Chi_wn()));
+          }
+        }
+        ai->Set_pointer_ver (ver);
+        ai->Set_iofst_kind (OFST_IS_FIXED);
+      }
     }
     break;
   default:
@@ -614,6 +737,7 @@ void OPT_STAB::Simplify_Pointer(WN *wn_addr, POINTS_TO *ai)
   case OPR_ARRAY:
     Simplify_Pointer(WN_kid0(wn_addr), ai);
     Analyze_Range(wn_addr, ai);
+    ai->Invalidate_ptr_info (); 
     break;
   case OPR_LDA:
     ai->Analyze_Lda_Base( wn_addr, *this);
@@ -631,8 +755,9 @@ void OPT_STAB::Simplify_Pointer(WN *wn_addr, POINTS_TO *ai)
       if (TY_is_restrict(ty)) {
 	ai->Analyze_ST_as_base(st, WN_offset(wn_addr), WN_ty(wn_addr));
 	ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-      } else
+      } else {
 	Simplify_Pointer_Ver(ver, ai);    // Follow the DU chain
+      }
     } else if (FFA()) {
       ai->Analyze_Ldid_Base(wn_addr, *this);
     }
@@ -773,10 +898,15 @@ void OPT_STAB::Analyze_Base_Flow_Sensitive(POINTS_TO *pt, WN *wn)
 	pt->Set_attr(ai.Attr());
 	pt->Shift_ofst(WN_offset(wn));
 	pt->Lower_to_base(wn);
+	pt->Set_pointer (ai.Pointer (), ai.Pointer_is_aux_id());
+	pt->Set_pointer_ver (ai.Pointer_ver ());
       } else if (ai.Restricted()) {
 	pt->Set_expr_kind(EXPR_IS_ADDR);
 	pt->Set_restricted();
 	pt->Set_based_sym(ai.Based_sym());
+      } 
+      if (ai.Malloc_id()) {
+        pt->Set_malloc_id (ai.Malloc_id());
       }
     }
     break;
@@ -796,10 +926,15 @@ void OPT_STAB::Analyze_Base_Flow_Sensitive(POINTS_TO *pt, WN *wn)
 	pt->Set_attr(ai.Attr());
 	pt->Shift_ofst(WN_offset(wn));
 	pt->Lower_to_base(wn);
+	pt->Set_pointer (ai.Pointer(), ai.Pointer_is_aux_id());
+	pt->Set_pointer_ver (ai.Pointer_ver ());
       } else  if (ai.Restricted()) {
 	pt->Set_expr_kind(EXPR_IS_ADDR);
 	pt->Set_restricted();
 	pt->Set_based_sym(ai.Based_sym());
+      } 
+      if (ai.Malloc_id()) {
+        pt->Set_malloc_id (ai.Malloc_id());
       }
     }
     break;
@@ -1998,7 +2133,7 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   Is_True(opc != OPC_BLOCK, ("Wn is a OPR_BLOCK."));
 
   AUX_ID vp_idx;
-  OCC_TAB_ENTRY *occ;
+  OCC_TAB_ENTRY *occ = NULL;
 
   switch ( opr ) {
   case OPR_LDBITS:
@@ -2024,57 +2159,38 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_ILOAD:
   case OPR_ILDBITS:
   case OPR_MLOAD:
-#ifdef KEY
-    if (WOPT_Enable_New_Vsym_Allocation) {
-      POINTS_TO pt;
-      pt.Init();
-      pt.Set_base_kind(BASE_IS_UNKNOWN);
-      pt.Set_ofst_kind(OFST_IS_INVALID);
-      Analyze_Base_Flow_Free(&pt, wn);
-      // Transfer alias class information
-      IDTYPE alias_class = Alias_classification()->Alias_class(wn);
-      pt.Set_alias_class(alias_class);
-
-      IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
-      pt.Set_ip_alias_class(ip_alias_class);
-      vp_idx = Allocate_vsym(wn, &pt);
-      occ = Enter_occ_tab(wn , vp_idx, &pt);
-    } else
-#endif
-    {
-      vp_idx = Identify_vsym(wn);
-      occ = Enter_occ_tab(wn, vp_idx);
-      Analyze_Base_Flow_Free(occ->Points_to(), wn);
-      vp_idx = Adjust_vsym(vp_idx, occ);
+    vp_idx = Identify_vsym(wn);
+    occ = Enter_occ_tab(wn, vp_idx);
+    Analyze_Base_Flow_Free(occ->Points_to(), wn);
+    vp_idx = Adjust_vsym(vp_idx, occ);
+    if (occ->Points_to()->Pointer () != NULL) {
+      // TODO: We need adjust the offset and access size for MTYPE_BS. 
+      //   give up for the time being.
+      if (WN_desc (wn) != MTYPE_BS) {
+        occ->Points_to()->Set_byte_size (WN_object_size(wn));
+      } else {
+        occ->Points_to()->Invalidate_ptr_info ();
+      }
     }
     break;
     
   case OPR_ISTORE:
   case OPR_ISTBITS:
   case OPR_MSTORE:
-#ifdef KEY
-    if (WOPT_Enable_New_Vsym_Allocation) {
-      POINTS_TO pt;
-      pt.Init();
-      pt.Set_base_kind(BASE_IS_UNKNOWN);
-      pt.Set_ofst_kind(OFST_IS_INVALID);
-      Analyze_Base_Flow_Free(&pt, wn);
-      // Transfer alias class information
-      IDTYPE alias_class = Alias_classification()->Alias_class(wn);
-      pt.Set_alias_class(alias_class);
-
-      IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
-      pt.Set_ip_alias_class(ip_alias_class);
-      vp_idx = Allocate_vsym(wn, &pt);
-      occ = Enter_occ_tab(wn , vp_idx, &pt);
-    } else
-#endif
-    {
-      vp_idx = Identify_vsym(wn);
-      occ = Enter_occ_tab(wn, vp_idx);
-      Analyze_Base_Flow_Free(occ->Points_to(), wn);
-      vp_idx = Adjust_vsym(vp_idx, occ);
+    vp_idx = Identify_vsym(wn);
+    occ = Enter_occ_tab(wn, vp_idx);
+    Analyze_Base_Flow_Free(occ->Points_to(), wn);
+    vp_idx = Adjust_vsym(vp_idx, occ);
+    if (occ->Points_to()->Pointer () != NULL) {
+      // TODO: We need adjust the offset and access size for MTYPE_BS. 
+      //   give up for the time being.
+      if (WN_desc (wn) != MTYPE_BS) {
+        occ->Points_to()->Set_byte_size (WN_object_size(wn));
+      } else {
+        occ->Points_to()->Invalidate_ptr_info ();
+      }
     }
+
     break;
     
   case OPR_ICALL:
@@ -2092,52 +2208,23 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
 
   case OPR_PARM:
     if ( WN_Parm_By_Reference(wn) ) {
-#ifdef KEY
-      if (WOPT_Enable_New_Vsym_Allocation) {
-        POINTS_TO pt;
-        pt.Init();
-        pt.Set_base_kind(BASE_IS_UNKNOWN);
-        pt.Set_ofst_kind(OFST_IS_INVALID);
-
-#if 0   // This is "HACK" from Enter_occ_tab, so we disable it until
-	// we know why it is required.
-        if (WN_operator(wn) == OPR_PARM && aux_id == _default_vsym)
-	        occ->Points_to()->Set_expr_kind(EXPR_IS_ANY);
-#endif
-        pt.Analyze_Parameter_Base(WN_kid0(wn), *this);
-        Update_From_Restricted_Map(wn, &pt);
-        Is_True(pt.Alias_class() == OPTIMISTIC_AC_ID ||
-	        pt.Alias_class() == Alias_classification()->Alias_class(wn) ||
-	        (pt.Alias_class() == PESSIMISTIC_AC_ID &&
-	         WOPT_Alias_Class_Limit != UINT32_MAX),
-	          ("Allocate_mu_chi_and_virtual_var: Alias class %ld for PARM "
-	         "not consistent (%ld).",
-	         pt.Alias_class(),
-	         Alias_classification()->Alias_class(wn)));
-        pt.Set_alias_class(Alias_classification()->Alias_class(wn));
-        vp_idx = Allocate_vsym(wn, &pt);
-        occ = Enter_occ_tab(wn , vp_idx, &pt);
-      } else
-#endif
-      {
-        vp_idx = Identify_vsym(wn);
-        occ = Enter_occ_tab(wn, vp_idx); // treat OPR_PARM as ILOAD
-        Is_True(WN_kid0(wn) != NULL, ("bad OPR_PARM node."));
-        occ->Points_to()->Analyze_Parameter_Base(WN_kid0(wn), *this);
-        Update_From_Restricted_Map(wn, occ->Points_to());
-        // Hack to get around the fact that Analyze_Parameter_Base
-        // (usually) reinitializes the POINTS_TO...
-        Is_True(occ->Points_to()->Alias_class() == OPTIMISTIC_AC_ID ||
-	        occ->Points_to()->Alias_class() == Alias_classification()->Alias_class(wn) ||
-	        (occ->Points_to()->Alias_class() == PESSIMISTIC_AC_ID &&
-	         WOPT_Alias_Class_Limit != UINT32_MAX),
-	        ("Allocate_mu_chi_and_virtual_var: Alias class %ld for PARM "
-	         "not consistent (%ld).",
-	         occ->Points_to()->Alias_class(),
-	         Alias_classification()->Alias_class(wn)));
-        occ->Points_to()->Set_alias_class(Alias_classification()->Alias_class(wn));
-        vp_idx = Adjust_vsym(vp_idx, occ);
-      }
+      vp_idx = Identify_vsym(wn);
+      occ = Enter_occ_tab(wn, vp_idx); // treat OPR_PARM as ILOAD
+      Is_True(WN_kid0(wn) != NULL, ("bad OPR_PARM node."));
+      occ->Points_to()->Analyze_Parameter_Base(WN_kid0(wn), *this);
+      Update_From_Restricted_Map(wn, occ->Points_to());
+      // Hack to get around the fact that Analyze_Parameter_Base
+      // (usually) reinitializes the POINTS_TO...
+      Is_True(occ->Points_to()->Alias_class() == OPTIMISTIC_AC_ID ||
+	      occ->Points_to()->Alias_class() == Alias_classification()->Alias_class(wn) ||
+	      (occ->Points_to()->Alias_class() == PESSIMISTIC_AC_ID &&
+	       WOPT_Alias_Class_Limit != UINT32_MAX),
+	      ("Allocate_mu_chi_and_virtual_var: Alias class %ld for PARM "
+	       "not consistent (%ld).",
+	       occ->Points_to()->Alias_class(),
+	       Alias_classification()->Alias_class(wn)));
+      occ->Points_to()->Set_alias_class(Alias_classification()->Alias_class(wn));
+      vp_idx = Adjust_vsym(vp_idx, occ);
     } else {
       Is_True( WN_Parm_By_Value(wn),
 	("OPT_STAB::Allocate_mu_chi_and_virtual_var: not by value") );
@@ -2173,6 +2260,12 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
     
   default:
     break;
+  }
+
+  if ((OPCODE_is_load(opc) || OPCODE_is_store(opc)) && occ) {
+    ALIAS_CLASSIFICATION* ac = Alias_classification();
+    if (!ac->Writable_by_call (ac->Alias_class(wn))) 
+      occ->Points_to()->Set_not_writable_by_callee (); 
   }
 
   // Traverse the children of wn
@@ -3559,6 +3652,9 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 
       BOOL is_unique_pt = occ->Points_to()->Unique_pt();
       BOOL is_restricted = occ->Points_to()->Restricted();
+      BOOL not_writable_by_callee = occ->Points_to()->Not_writable_by_callee ();
+      BOOL not_readable_by_callee = occ->Points_to()->Not_readable_by_callee ();
+
       ST *based_sym = occ->Points_to()->Based_sym();
 
       Analyze_Base_Flow_Sensitive(occ->Points_to(), wn);
@@ -3575,6 +3671,12 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 	occ->Points_to()->Set_restricted();
 	occ->Points_to()->Set_based_sym(based_sym);
       }
+
+      if (not_writable_by_callee)
+        occ->Points_to()->Set_not_writable_by_callee ();
+
+      if (not_readable_by_callee)
+        occ->Points_to()->Set_not_readable_by_callee ();
 
       if (WOPT_Enable_Update_Vsym)
 	Update_iload_vsym(occ);

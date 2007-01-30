@@ -42,6 +42,7 @@
 
 #include "defs.h"
 #include "config.h"
+#include "opt_defs.h"
 #include "cxx_base.h"
 #include "cxx_memory.h"		// for CXX_NEW
 #include "opcode.h"
@@ -225,8 +226,12 @@ enum PT_ATTR {
 				      // be pointed to by f90 pointer
   PT_ATTR_NOT_ALLOCA_MEM  = 0x200000, // this access can safely be
                                       // moved past stack pointer updates
-  PT_ATTR_EXTENDED        = 0x400000  // used by alias manager to represent
+  PT_ATTR_EXTENDED        = 0x400000, // used by alias manager to represent
                                       // a consecutive array of POINTS_TO
+  PT_ATTR_THIS_PTR        = 0x800000, // indirect access of "this" pointer
+  PT_ATTR_NOT_READABLE_BY_CALLEE = 0x1000000,// not readable by callee
+  PT_ATTR_NOT_WRITABLE_BY_CALLEE = 0x2000000 // not writable by callee
+  // 26 of 32 bits used
 #ifdef KEY
   ,PT_ATTR_FIELD          = 0x800000  // is a field in a struct
 #endif
@@ -236,6 +241,17 @@ enum PT_ATTR {
 
 //  ALIAS_INFO is the subset of POINTS_TO that will be passed in .B file.
 //
+// _ptr, _ptr_ver and _iofst_kind are devoted to indrect access. 
+// Their meaning are self-descriptive. These three fileds, together 
+// with _{bit|byte}_{ofst|size},  are used to descibe a indirect access.
+// e.g. assume <p> is pointer to integer array. the ALIAS_INFO for 
+// access "p[13]" has: 
+//     o. _base = NULL, however, _ptr="p" and _ptr_ver=current_version_of_p
+//     o. _ofst_kind=OFST_UNKNONW however _iofst_kind=OFST_FIXED
+//     o. _bit_{ofst|size} = 0
+//     o. _byte_ofst = sizeof(int)*13
+//     o. _byte_size = sizeof(int)
+// 
 class ALIAS_INFO {
 
 friend class POINTS_TO;
@@ -253,19 +269,44 @@ friend class POINTS_TO;
 				   // of the bit field, and _bit_ofst/_bit_size
 				   // gives the bit ofst/size within the
 				   // container 
+  mUINT32	_iofst_kind :2;    // one of OFST_KIND. the kind of "offset" from _ptr. 
+  mUINT32       _ptr_is_aux_id :1; // the _ptr field is actually a aux_id, not ST*
   PT_ATTR       _attr;		   // PT_ATTR attributes
-  INT64         _byte_ofst;        // offset from base    -- controlled by _ofst_kind
-  UINT64        _byte_size;        // size of access      -- controlled by _ofst_kind
+  INT64         _byte_ofst;        // offset from base    -- controlled by _{i}ofst_kind  
+  UINT64        _byte_size;        // size of access      -- controlled by _{i}ofst_kind
   ST           *_base;             // base symbol         -- controlled by _base_kind
   ST           *_based_sym;        // for restricted pointer, Fortran ref-param ...
+  ST           *_ptr;              // pointer for indirect access 
+  VER_ID        _ptr_ver;          // the version of _ptr
   IDTYPE        _alias_class;      // which equivalence class this
 				   // memop is in, according to per-PU
 				   // analysis
   IDTYPE        _ip_alias_class;   // which equivalence class this
 				   // memop is in, according to
 				   // whole-program analysis
+
+  // This union is used to interpret the value hold by <misc> union. Only one of the 
+  // flags is allowed to be set. <_switch> is provided to reset all flags. 
+  union {
+    mINT32 _switch;                
+    mINT32 _has_malloc_id:1;    
+  };
+
+  union {
+    mUINT64 _malloc_id;  
+  } /*misc*/; // the name for union is not necessary 
+
+  void Init_misc_alias_info (void) { _switch = 0; _malloc_id = 0; }
+
+  void Set_malloc_id (mINT64 id) { _switch = 0; _malloc_id = id; _has_malloc_id = id ? 1 : 0; };
+  mINT64 Malloc_id (void) const { return _has_malloc_id ? _malloc_id : 0; }
 };
 
+
+// alias information that are not common to all accesss can be stored in ALIAS_INFO_EXT. 
+class ALIAS_INFO_EXT {
+  INT32 _malloc_id; //  
+};
 
 // for alias classification
 const IDTYPE OPTIMISTIC_AC_ID  = 0;
@@ -295,13 +336,19 @@ private:
 
   POINTS_TO(const POINTS_TO &);
 
+  void Set_ptr_is_aux_id (void) { ai._ptr_is_aux_id = 1; }
+  void Reset_ptr_is_aux_id (void) { ai._ptr_is_aux_id = 0; }
+
 public:
   //  Member access functions
   //
   EXPR_KIND   Expr_kind(void)        const { return (EXPR_KIND) ai._expr_kind; }
   BASE_KIND   Base_kind(void)        const { return (BASE_KIND) ai._base_kind; }
   OFST_KIND   Ofst_kind(void)        const { return (OFST_KIND) ai._ofst_kind; }
+  OFST_KIND   Iofst_kind(void)       const { return (OFST_KIND) ai._iofst_kind; }
   ST          *Base(void)            const { return ai._base; }
+  ST          *Pointer(void)         const { return ai._ptr; }
+  VER_ID      Pointer_ver (void)     const { return ai._ptr_ver; }
 #if _NO_BIT_FIELDS
   mINT64      Ofst(void)             const { return ai._ofst; }
   mINT64      Size(void)             const { return ai._size; }
@@ -324,6 +371,11 @@ public:
   BOOL        Unnamed(void)          const { return !Named(); }
   BOOL        Const(void)            const { return ai._attr & PT_ATTR_CONST; }
   BOOL        Restricted(void)       const { return ai._attr & PT_ATTR_RESTRICTED; }
+  BOOL        Not_readable_by_callee(void) const
+    { return ai._attr & PT_ATTR_NOT_READABLE_BY_CALLEE;}
+  BOOL        Not_writable_by_callee(void) const
+    { return ai._attr & PT_ATTR_NOT_WRITABLE_BY_CALLEE;}
+  BOOL        This_ptr(void)         const { return ai._attr & PT_ATTR_THIS_PTR; }
   BOOL        Unique_pt(void)        const { return ai._attr & PT_ATTR_UNIQUE_PT; }
   BOOL        F_param(void)          const { return ai._attr & PT_ATTR_F_PARAM; }
   BOOL        Dedicated(void)        const { return ai._attr & PT_ATTR_DEDICATED; }
@@ -342,6 +394,7 @@ public:
   BOOL        Not_f90_target(void)   const { return ai._attr & PT_ATTR_NOT_F90_TARGET; }
   BOOL        Not_alloca_mem(void)   const { return ai._attr & PT_ATTR_NOT_ALLOCA_MEM; }
   BOOL        Extended(void)         const { return ai._attr & PT_ATTR_EXTENDED; }
+  mINT64      Malloc_id (void)       const { return ai.Malloc_id (); }
 #ifdef KEY
   BOOL        Is_field(void)         const { return ai._attr & PT_ATTR_FIELD; }
 #endif
@@ -351,6 +404,7 @@ public:
   void Set_expr_kind(EXPR_KIND expr_kind) { ai._expr_kind = expr_kind; }
   void Set_base_kind(BASE_KIND base_kind) { ai._base_kind = base_kind; }
   void Set_ofst_kind(OFST_KIND ofst_kind) { ai._ofst_kind = ofst_kind; }
+  void Set_iofst_kind(OFST_KIND iofst_kind) { ai._iofst_kind = iofst_kind; }
   void Set_unused()			  { ai._unused = 0; }
   void Set_base(ST *base)                 { ai._base = base; }
   void Set_byte_ofst(mINT64 ofst)         { ai._byte_ofst = ofst; }
@@ -359,8 +413,13 @@ public:
       ai._bit_ofst = ofst;
       ai._bit_size = size;
   }
+  void Set_pointer (ST* ptr, BOOL is_aux_id)  { ai._ptr = ptr; 
+          is_aux_id ? Set_ptr_is_aux_id() : Reset_ptr_is_aux_id(); } 
+  BOOL Pointer_is_aux_id (void) const     { return ai._ptr_is_aux_id != 0; }
+  void Set_pointer_ver (VER_ID ver)       { ai._ptr_ver = ver; }
   void Set_based_sym(ST *sym)             { ai._based_sym = sym; }
   void Set_based_sym_depth(UINT32 d)      { ai._based_sym_depth = (d > 7) ? 7 : d; }
+  void Set_malloc_id (mINT64 id)          { ai.Set_malloc_id (id); }
   void Set_alias_class(const IDTYPE alias_class)
     {
       if (alias_class <= WOPT_Alias_Class_Limit) {
@@ -382,6 +441,8 @@ public:
   void Set_ty(TY_IDX ty)                  { _ty = ty; }
   void Set_id(INT32 id)                   { _id = id; }
   void Set_attr(PT_ATTR attr)             { ai._attr = attr; }
+  void Set_not_readable_by_callee (void) { ai._attr = (PT_ATTR)(ai._attr | PT_ATTR_NOT_READABLE_BY_CALLEE); }
+  void Set_not_writable_by_callee (void) { ai._attr = (PT_ATTR)(ai._attr | PT_ATTR_NOT_WRITABLE_BY_CALLEE); }
   void Set_not_addr_saved(void)           { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_NOT_ADDR_SAVED); }
   void Set_not_addr_passed(void)          { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_NOT_ADDR_PASSED); }
   void Set_local(void)                    { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_LOCAL); }
@@ -420,6 +481,8 @@ public:
 #endif
 
   void Reset_attr(void)                   { ai._attr = PT_ATTR_NONE; }
+  void Reset_not_readable_by_callee (void) { ai._attr = (PT_ATTR)(ai._attr & ~PT_ATTR_NOT_READABLE_BY_CALLEE); }
+  void Reset_not_writable_by_callee (void) { ai._attr = (PT_ATTR)(ai._attr & ~PT_ATTR_NOT_WRITABLE_BY_CALLEE); }
   void Reset_not_addr_saved(void)         { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NOT_ADDR_SAVED); }
   void Reset_not_addr_passed(void)        { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NOT_ADDR_PASSED); }
   void Reset_local(void)                  { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_LOCAL); }
@@ -443,18 +506,22 @@ public:
   void Reset_not_f90_target(void)         { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NOT_F90_TARGET); }
   void Reset_not_alloca_mem(void)         { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NOT_ALLOCA_MEM); }
   void Reset_extended(void)               { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_EXTENDED); }
-#ifdef KEY
-  void Reset_is_field(void)               { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_FIELD); }
-#endif
 
+  void Invalidate_ptr_info (void) { ai._ptr = NULL; ai._iofst_kind = OFST_IS_INVALID; ai._ptr_ver = (VER_ID)0; }
+#ifdef KEY
+  void Reset_is_field(void) { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_FIELD); }
+#endif
   void Init(void) {
     //  Set fields in POINTS_TO to invalid for error detection.
     Set_expr_kind(EXPR_IS_INVALID);
     Set_base_kind(BASE_IS_INVALID);
     Set_ofst_kind(OFST_IS_INVALID);
+    Set_iofst_kind(OFST_IS_INVALID);
     Set_unused();
     Set_based_sym_depth(0);
     Set_base((ST*)NULL);
+    Set_pointer ((ST*)NULL, FALSE);
+    Set_pointer_ver ((VER_ID)0);
     Set_byte_ofst(0);
     Set_byte_size(0);
     Set_bit_ofst_size(0,0);
@@ -463,6 +530,9 @@ public:
     Set_id(0);
     Set_alias_class(OPTIMISTIC_AC_ID);
     Set_ip_alias_class(OPTIMISTIC_AC_ID);
+    Set_malloc_id (0);
+
+    ai.Init_misc_alias_info ();
 
     // The default attributes: 
     Set_attr(PT_ATTR_NONE);
@@ -546,6 +616,15 @@ public:
 	Set_restricted();
 	Set_based_sym(based_sym);
       }
+    }
+
+  void Copy_indirect_access_info (const POINTS_TO* p) 
+    {
+      Set_pointer (p->Pointer (), p->Pointer_is_aux_id());
+      Set_pointer_ver (p->Pointer_ver());
+      Set_iofst_kind (p->Iofst_kind ());
+      Set_byte_size (p->Byte_Size ());
+      Set_bit_ofst_size (p->Bit_Ofst (), p->Bit_Size ());
     }
 
   // Copy a POINTS_TO structure except for its sticky parts (i.e., the
