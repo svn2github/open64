@@ -56,7 +56,7 @@
 #ifndef opt_region_emit_INCLUDED
 #define opt_region_emit_INCLUDED	"opt_region_emit.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_region_emitrcs_id = 	opt_region_emit_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_region_emitrcs_id = 	opt_region_emit_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 class ALIAS_MANAGER;

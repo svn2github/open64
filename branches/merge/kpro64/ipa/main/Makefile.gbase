@@ -215,6 +215,7 @@ IPA_OPTIMIZE_CXX_SRCS =	\
         ipo_split.cxx           \
 	ipo_pad.cxx		\
 	ipo_alias_class.cxx	\
+	ipo_icall.cxx		\
 
 BE_COM_CXX_SRCS = \
 	ipa_section_main.cxx	\

@@ -206,7 +206,7 @@
 #ifndef opt_du_INCLUDED
 #define opt_du_INCLUDED	"opt_du.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_durcs_id = 	opt_du_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_durcs_id = 	opt_du_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef defs_INCLUDED

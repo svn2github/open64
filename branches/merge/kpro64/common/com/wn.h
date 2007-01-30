@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -705,6 +705,10 @@ extern void WN_Register_Delete_Cleanup_Function(void (*cleanup_fn)(WN *wn));
 
 extern void WN_Remove_Delete_Cleanup_Function(void (*cleanup_fn)(WN *wn));
 
+#ifdef KEY // bug 9651
+extern void WN_Reset_Num_Delete_Cleanup_Fns(void);
+#endif
+
 extern  BOOL WN_Equiv(WN *wn1, WN *wn2);
 
 extern WN *WN_CreateBlock(void);
@@ -1066,7 +1070,8 @@ extern WN *WN_RIload(TYPE_ID rtype,
 		     TYPE_ID desc,
 		     WN_OFFSET offset,
 		     TY_IDX align,
-		     WN *addr);
+		     WN *addri,
+		     UINT field_id = 0);
 
 extern WN *WN_IloadLdid(TYPE_ID desc,
 			WN_OFFSET offset,

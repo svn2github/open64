@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -114,6 +114,8 @@ using idmap::ID_MAP;
 #endif
 
 class IP_ALIAS_CLASS_REP;
+class IP_ALIAS_CLASSIFICATION;
+extern IP_ALIAS_CLASSIFICATION *Ip_alias_class;
 
 class IP_ALIAS_CLASS_MEMBER : public U_F_ELEMENT<IP_ALIAS_CLASS_MEMBER> {
   // All data members of this class (aside from the base class) are
@@ -195,8 +197,6 @@ public:
   IP_ALIAS_CLASS_REP *Alias_class(void)
     { return (IP_ALIAS_CLASS_REP *) Find(); }
 };
-
-class IP_ALIAS_CLASSIFICATION;
 
 struct IP_AC_VALUE_TYPE_REP {
   IP_ALIAS_CLASS_MEMBER *_data_member, *_code_member;
@@ -303,6 +303,16 @@ public:
 	       "returns class for memory allocator"));
       return returns;
     }
+
+#ifdef KEY
+  IP_ALIAS_CLASS_MEMBER *Return_class_member(void) const
+    {
+      if (returns_new_memory)
+        return Memory_allocator_return_class_member (Ip_alias_class);
+      else
+        return returns;
+    }
+#endif
 
   IP_ALIAS_CLASS_MEMBER
   *Memory_allocator_return_class_member(IP_ALIAS_CLASSIFICATION *ac) const;
@@ -752,6 +762,5 @@ IP_AC_LAMBDA_TYPE_REP::Memory_allocator_return_class_member(IP_ALIAS_CLASSIFICAT
   return return_value_class->Representative();
 }
 
-extern IP_ALIAS_CLASSIFICATION *Ip_alias_class;
 extern vector<char *> Ip_alias_class_files;
 #endif

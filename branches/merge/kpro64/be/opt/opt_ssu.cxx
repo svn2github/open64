@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -77,13 +77,13 @@
 #include "erglob.h"
 #include "glob.h"	// for Cur_PU_Name
 #include "bb_node_set.h"
+#include "idx_32_set.h"
 #include "tracing.h"
 
 #include "opt_defs.h"
 #include "opt_config.h"
 #include "opt_htable.h"
 #include "opt_util.h"
-#include "opt_ssu.h"
 #include "opt_ssa.h"
 #include "opt_mu_chi.h"
 #include "opt_wn.h"
@@ -91,6 +91,7 @@
 #include "wn.h"
 #include "opt_alias_rule.h"
 #include "opt_etable.h"
+#include "opt_ssu.h"
 
 #ifdef KEY
 static void
@@ -301,42 +302,54 @@ void SSU::Make_diff_ssu_version_at_phi(EXP_WORKLST *wk,
 }
 
 // =====================================================================
-// iphibb is in the dominance frontier of usebb; set the appropriate operand
-// of the iphi of wk to NULL; if the iphi is not there, insert it.
+// Make sure wk has an iphi in the BB given by iphibb
 // =====================================================================
-void SSU::Make_null_ssu_version_in_iphi(EXP_WORKLST *wk, 
-				        BB_NODE *iphibb,
-				        BB_NODE *usebb)
+void SSU::Check_iphi_presence(EXP_WORKLST *wk, BB_NODE *iphibb)
 {
-  EXP_PHI *iphi;
-  EXP_PHI_LIST_ITER  iphi_iter;
   if (! wk->Iphi_bbs()->MemberP(iphibb)) {
     // if iphi not yet inserted, insert it
     wk->Iphi_bbs()->Union1D(iphibb);
     EXP_OCCURS *iphiocc = Etable()->New_phi_occurrence(wk, Mem_pool(), iphibb);
-    iphi = iphiocc->Exp_phi();
+    EXP_PHI *iphi = iphiocc->Exp_phi();
     iphi->Set_reverse_phi();
     iphibb->Iphi_list()->Append(iphi);
     // this new iphi causes more iphis to be inserted
     Insert_iphis_recursive(wk, iphibb);
   }
-  else { // set iphi to the right iphi node 
-    FOR_ALL_NODE(iphi, iphi_iter, Init(iphibb->Iphi_list())) {
-      if (iphi->Result()->Spre_wk() == wk) 
-	break;
-    }
-  }
-  Is_True(iphi->Result()->Spre_wk() == wk,
-	  ("SSU::Make_null_ssu_version_in_iphi: cannot find iphi"));
+}
 
-  // find the succ bb post-dominated by usebb (may be more than 1)
+// =====================================================================
+// iphibb is in the dominance frontier of usebb; set the appropriate operand
+// of the iphi of the set of worklist given by e_num_set to NULL; if the iphi 
+// is not there, insert it.
+// =====================================================================
+void SSU::Make_null_ssu_version_in_iphi_for_e_num_set(BB_NODE *iphibb,
+						      BB_NODE *usebb)
+{
+  EXP_PHI *iphi;
+  EXP_PHI_LIST_ITER  iphi_iter;
+  EXP_WORKLST *wk;
+
   BB_NODE *bbsucc;
   BB_LIST_ITER bb_list_iter;
   INT32 pos = 0;
+  // find the succ bb post-dominated by usebb (may be more than 1)
   FOR_ALL_ELEM(bbsucc, bb_list_iter, Init(iphibb->Succ())) {
     if (usebb->Postdominates(bbsucc)) {
-      // set the null_ssu_version flag in the corresponding iphi result
-      iphi->Set_null_ssu_version(pos);
+      // set the null_ssu_version flag in the corresponding iphi result for
+      // the members of _e_num_set
+      FOR_ALL_NODE(iphi, iphi_iter, Init(iphibb->Iphi_list())) {
+	wk = iphi->Result()->Spre_wk();
+	if (_e_num_set->MemberP(wk->E_num())) {
+	  iphi->Set_null_ssu_version(pos);
+#ifdef Is_True_On
+	  if (Get_Trace(TP_GLOBOPT, SPRE_DUMP_FLAG))
+	    fprintf(TFile,
+		    "SSU: E_num %d iphi at BB%d pos %d made null ssu version\n",
+		    wk->E_num(), iphibb->Id(), pos);
+#endif
+	}
+      }
     }
     pos++;
   }
@@ -460,48 +473,67 @@ void SSU::Make_diff_ssu_version(EXP_WORKLST *wk,
     }
   }
   else { // there must be intervening iphi(s)
+    if  (_make_diff_ssu_version_called_in_bb[usebb->Id()]->MemberP(v->Aux_id()))
+      return; // already processed previously
+
+    _e_num_set->ClearD();
+    // _e_num_set will give the worklist candidates whose iphi operands
+    // postdominated by usebb will be marked null_ssu_version
     BB_NODE *iphibb;
     BB_NODE_SET_ITER bns_iter;
     if (wk != NULL) {
+      _e_num_set->Union1D(wk->E_num());
       // go through the post dominance frontiers of usebb
-      FOR_ALL_ELEM(iphibb, bns_iter, Init(usebb->Rcfg_dom_frontier())) 
-        Make_null_ssu_version_in_iphi(wk, iphibb, usebb);
+      FOR_ALL_ELEM(iphibb, bns_iter, Init(usebb->Rcfg_dom_frontier()))
+	Check_iphi_presence(wk, iphibb);
     }
 
     if (only_itself || wk == NULL || v->Points_to(Opt_stab())->No_alias())
-      return;
+      ;
+    else {
+      AUX_ID st_idx = v->Aux_id();
+      AUX_STAB_ENTRY *aux= Opt_stab()->Aux_stab_entry(st_idx);
 
-    AUX_ID st_idx = v->Aux_id();
-    AUX_STAB_ENTRY *aux= Opt_stab()->Aux_stab_entry(st_idx);
-
-    if (aux->Is_real_var()) {
-      AUX_ID cur_idx = aux->St_group();
-      // loop through the variables aliased with it
-      while (cur_idx && cur_idx != st_idx) {
-	aux = Opt_stab()->Aux_stab_entry(cur_idx);
-        wk2 = aux->Spre_node();
-	if (wk2 != NULL) {
-	  FOR_ALL_ELEM(iphibb, bns_iter, Init(usebb->Rcfg_dom_frontier())) 
-	    Make_null_ssu_version_in_iphi(wk2, iphibb, usebb);
+      if (aux->Is_real_var()) {
+	AUX_ID cur_idx = aux->St_group();
+	// loop through the variables aliased with it
+	while (cur_idx && cur_idx != st_idx) {
+	  aux = Opt_stab()->Aux_stab_entry(cur_idx);
+	  wk2 = aux->Spre_node();
+	  if (wk2 != NULL) {
+            _e_num_set->Union1D(wk2->E_num());
+	    _make_diff_ssu_version_called_in_bb[usebb->Id()]->Union1D(cur_idx);
+	    FOR_ALL_ELEM(iphibb, bns_iter, Init(usebb->Rcfg_dom_frontier()))
+	      Check_iphi_presence(wk2, iphibb);
+	  }
+	  cur_idx = aux->St_group();
 	}
-	cur_idx = aux->St_group();
       }
-    }
 
-    if (aux->Is_virtual() && aux->Aux_id_list() != NULL) {
-      AUX_ID_LIST_ITER id_list_iter;
-      AUX_ID_NODE *id_node;
-      FOR_ALL_ELEM(id_node, id_list_iter, Init(aux->Aux_id_list())) {
-	if ( (IDX_32)(id_node->Aux_id()) != ILLEGAL_BP ) {
-	  aux = Opt_stab()->Aux_stab_entry(id_node->Aux_id());
-          wk2 = aux->Spre_node();
-          if (wk2 != NULL) {
-	    FOR_ALL_ELEM(iphibb, bns_iter, Init(usebb->Rcfg_dom_frontier())) 
-	      Make_null_ssu_version_in_iphi(wk2, iphibb, usebb);
+      if (aux->Is_virtual() && aux->Aux_id_list() != NULL) {
+	AUX_ID_LIST_ITER id_list_iter;
+	AUX_ID_NODE *id_node;
+	FOR_ALL_ELEM(id_node, id_list_iter, Init(aux->Aux_id_list())) {
+	  if ( (IDX_32)(id_node->Aux_id()) != ILLEGAL_BP ) {
+	    aux = Opt_stab()->Aux_stab_entry(id_node->Aux_id());
+	    wk2 = aux->Spre_node();
+	    if (wk2 != NULL) {
+              _e_num_set->Union1D(wk2->E_num());
+	      _make_diff_ssu_version_called_in_bb[usebb->Id()]->Union1D(id_node->Aux_id());
+	      FOR_ALL_ELEM(iphibb, bns_iter, Init(usebb->Rcfg_dom_frontier()))
+		Check_iphi_presence(wk2, iphibb);
+	    }
 	  }
 	}
       }
+      _make_diff_ssu_version_called_in_bb[usebb->Id()]->Union1D(st_idx);
     }
+
+    // go through the post dominance frontiers of usebb and for each member
+    // of _e_num_set, mark the iphi operands postdominated by usebb 
+    // null_ssu_version
+    FOR_ALL_ELEM(iphibb, bns_iter, Init(usebb->Rcfg_dom_frontier())) 
+      Make_null_ssu_version_in_iphi_for_e_num_set(iphibb, usebb);
   }
 }
 
@@ -599,7 +631,7 @@ void SSU::Traverse_cr_rw(CODEREP *cr,
 // Traverse the program in pre-order dominator tree order. In this order,
 // defs must be seen before uses, so that it is necessary to do processing
 // if defs have not been seen, because there is nothing to move down.
-// It inserts iphis at dominance frontiers of 
+// It inserts iphis at post-dominance frontiers of 
 // defs (excluding CHIs and PHIs) and uses (including MUs).  For each use
 // (including MUs), also set the diff_ssu_version flag for the store 
 // or closest iphi-succ that it post-dominates.  If it is defined by a phi

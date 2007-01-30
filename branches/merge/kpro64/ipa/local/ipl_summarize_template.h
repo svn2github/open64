@@ -1,6 +1,10 @@
+/*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 /* -*- c++ -*-
  *
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -476,6 +480,11 @@ SUMMARIZE<program>::Summarize (WN *w)
     _alt_entry.Resetidx();
   }
 
+#ifdef KEY
+  if (Get_Trace (TP_IPL, TT_IPL_SUMMARY))
+    Trace (TFile);
+#endif
+
   // clean up the maps
   if (!Has_alt_entry()) {
     WN_MAP_Delete(Parent_Map);
@@ -915,6 +924,8 @@ Last_Node (WN_TREE_ITER<PRE_ORDER, WN*> i)
 }
 
 #ifdef KEY
+// TODO: We don't need to replace the stidx with the summary table index.
+//       We can just use the old-stidx -> new-stidx map in IPA.
 template <PROGRAM program>
 void
 SUMMARIZE<program>::Process_eh_globals (void)
@@ -1114,6 +1125,80 @@ is_variable_dim_array(TY_IDX ty)
     return FALSE;
 }
 
+#ifdef KEY
+// This function is similar to the versions available in ipc_bread.cxx
+// and xstats.cxx. This function however is called by IPA summary phase
+// and can potentially be smarter by analyzing the context of the WN node.
+static void
+Count_WN (WN * wn, INT32& bbs, INT32& stmts, INT32& calls)
+{
+    OPERATOR opr = WN_operator (wn);
+    TYPE_ID rtype = WN_rtype (wn);
+                                                                                
+    /* count nscf stmts as bbs, not stmts */
+    if (OPERATOR_is_non_scf(opr)) {
+	if (opr != OPR_RETURN && opr != OPR_RETURN_VAL)
+          ++bbs;
+    } else if (OPERATOR_is_stmt(opr)) {
+        if (OPERATOR_is_call(opr)) {
+            ++bbs;
+            ++calls;
+        } else if (opr == OPR_IO) {
+            /* TODO:  ideally would look at values of IO_ITEMs,
+             * but then have to pass more than opcode. */
+            ++bbs;
+            ++calls;
+        } else if (! OPERATOR_is_not_executable(opr)) {
+            ++stmts;
+            if (MTYPE_is_complex(rtype) && OPERATOR_is_store(opr)) {
+                ++stmts;
+            }
+        }
+    } else if (OPERATOR_is_scf(opr)) {
+        if (opr != OPR_BLOCK && opr != OPR_FUNC_ENTRY) {
+            /* blocks are counted by parent node */
+            ++bbs;
+        }
+        /* if may create two blocks if else present,
+         * but can't tell just from opcode */
+    } else if ((rtype == MTYPE_FQ || rtype == MTYPE_CQ) &&
+               OPERATOR_is_expression(opr) &&
+               !OPERATOR_is_load(opr) &&
+               !OPERATOR_is_leaf(opr) ) {
+        /* quad operators get turned into calls */
+        ++bbs;
+        ++calls;
+    } else if (opr == OPR_CAND || opr == OPR_CIOR) {
+        /* these may get expanded to if-then-else sequences,
+         * or they may be optimized to logical expressions.
+         * use the halfway average of 1 bb */
+        ++bbs;
+    }
+}
+
+// Keep track of whether use of label in WN has been seen.
+class label_wn
+{
+  public:
+    WN * wn;
+    BOOL seen;
+    label_wn () : wn (NULL), seen (FALSE) {}
+};
+#include <ext/hash_map>
+
+// label equality
+struct eq_oper
+{
+  bool operator() (INT i, INT j) const
+  {
+    return i == j;
+  }
+};
+
+// Map from label number to label usage information
+typedef hash_map<INT, label_wn, __gnu_cxx::hash<INT>, eq_oper> LABEL_WN_MAP;
+#endif
+
 //-----------------------------------------------------------
 // summary procedure node
 // create call site entries
@@ -1140,6 +1225,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     BOOL Has_local_pragma = FALSE;
 #ifdef KEY
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback;
+    LABEL_WN_MAP label_use_map;     
     INT icall_site[100];
     INT icall_cnt = 0;
 #else
@@ -1153,6 +1239,10 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     WN* wn_tmp;
     UINT num_struct_access;//just for debug, ,Finish_PU_process_struct_access()
 
+#ifdef KEY
+    // Now that preopt has run, recompute PU size estimates
+    Initialize_PU_Stats();
+#endif
 
     Trace_Modref = Get_Trace ( TP_IPL, TT_IPL_MODREF );
     
@@ -1192,10 +1282,17 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     if (Cur_PU_Feedback) { // was FB_PU_Has_Feedback
 	FB_FREQ freq = (Cur_PU_Feedback->Query_invoke(w)).freq_invoke;
 
+#ifdef KEY
+	SUMMARY_FEEDBACK *fb = New_feedback ();
+	proc->Set_feedback_index (Get_feedback_idx ());
+#endif
+
 	if (freq.Known()) {
 	    proc->Set_has_PU_freq ();
+#ifndef KEY
 	    SUMMARY_FEEDBACK *fb = New_feedback ();
 	    proc->Set_feedback_index (Get_feedback_idx ());
+#endif
 	    fb->Set_frequency_count (freq);
 //		printf("&&&&&&&&&&&&& %s -> %f\n",ST_name(WN_st(w)), fb->Get_frequency_count()._value);
 	}
@@ -1203,6 +1300,10 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	  // FB_PU_Has_Feedback = FALSE;
 	    DevWarn ("Unknown invoke frequency found in %s so no feedback info in this procedure will be considered", ST_name(WN_st(w)));
 	}
+#ifdef KEY
+	// Runtime address of the current procedure based on feedback data.
+	fb->Set_func_runtime_addr (Cur_PU_Feedback->Get_Runtime_Func_Addr());
+#endif
     }
 	else //INLINING_TUNING^
 	{
@@ -1302,8 +1403,38 @@ SUMMARIZE<program>::Process_procedure (WN* w)
    	if (st && (is_variable_dim_array(ST_type(st)))) 
 	    proc->Set_has_var_dim_array();
 
+#ifdef KEY
+	// Recompute bb and statement count
+        Count_WN (w2, PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, PU_WN_Call_Cnt);
+#endif // KEY
+
 	switch ( WN_operator(w2) ) {
 	case OPR_DO_LOOP:
+#ifdef KEY
+	    {
+	      // Check if a reference parameter is used as the do-loop index.
+	      WN * index = WN_index(w2);
+	      Is_True (WN_operator(index) == OPR_IDNAME,
+	               ("Process_procedure: Invalid do-loop index"));
+	      // do-loop index
+	      ST * id = WN_st (index);
+	      INT formal_id;
+	      // If do-loop index is a reference parameter, set appropriate
+	      // flag in formal.
+	      if (ST_sclass (id) == SCLASS_FORMAL_REF)
+	        for (INT i = 0, formal_id = proc->Get_formal_index();
+	             i < proc->Get_formal_count();
+	             i++, formal_id++)
+		{
+		  SUMMARY_FORMAL * formal = Get_formal(formal_id);
+		  if (Get_symbol_index(id) == formal->Get_symbol_index())
+		  {
+		    formal->Set_is_loop_index();
+		    break;
+	    	  }
+	        }
+	    } // fall-through
+#endif
 	case OPR_WHILE_DO:
 	case OPR_DO_WHILE:
 #ifndef KEY // disable buggy loopnest computation
@@ -1391,9 +1522,21 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		    probability = if_map[parent].not_taken;
 	      }
 	    }
-            Process_callsite (w2, proc->Get_callsite_count (), get_loopnest (w2), probability);
+            INT loopnest = get_loopnest (w2);
+
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+            // This ifdef is redundant, but just for clarity.
+            if (Cur_PU_Feedback && WN_operator(w2) == OPR_ICALL)
+              Process_icall (proc, w2, loopnest, probability);
+#endif
+#endif // KEY
+
+            proc->Incr_call_count ();
+#ifdef KEY
+            Process_callsite (w2, proc->Get_callsite_count (), loopnest, probability);
 #else
             Process_callsite (w2, proc->Get_callsite_count (), loopnest);
+            Direct_Mod_Ref = TRUE;
 #endif
             proc->Incr_callsite_count ();
             Direct_Mod_Ref = TRUE;
@@ -1421,9 +1564,14 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    Process_callsite (w2, proc->Get_callsite_count (), get_loopnest (w2));
 #else
 	    Process_callsite (w2, proc->Get_callsite_count (), loopnest);
+#ifdef PATHSCALE_MERGE_ZHC
+	    Direct_Mod_Ref = TRUE;
+#endif
 #endif
 	    proc->Incr_callsite_count ();
+#ifndef PATHSCALE_MERGE_ZHC
 	    Direct_Mod_Ref = TRUE;
+#endif
 	    break;
 	    
 	case OPR_ARRAY: {
@@ -1455,7 +1603,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_LDA:
 	case OPR_LDID:
 	case OPR_ILOAD:
+#ifndef KEY
 	    Direct_Mod_Ref = TRUE;
+#endif
 	    Record_ref (w2);
 	    if(Do_reorder && !loop_count_stack->Is_Empty() ){
 		loop_count=loop_count_stack->Top();
@@ -1598,6 +1748,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
             if (WN_pragma(w2) == WN_PRAGMA_THREADPRIVATE)
             {
               ST * thdprv_st = ST_ptr (WN_pragma_arg2(w2));
+              Get_symbol_index (thdprv_st);  
               WN_pragma_arg2(w2) = Get_symbol_index (thdprv_st);
               Record_global_ref (w2, thdprv_st, OPR_PRAGMA, TRUE);
 
@@ -1667,6 +1818,35 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		    proc->Set_has_early_returns ();
 	    }
 	    break;
+
+#ifdef KEY
+	// label definition
+	case OPR_LABEL:
+	    {
+	      Is_True (Do_Altentry || !WN_Label_Is_Not_Used (w2),
+	               ("Label should not be marked yet"));
+	      label_wn &label = label_use_map [WN_label_number (w2)];
+	      Is_True (label.wn == NULL, ("Process_procedure: Duplicate labels?"));
+	      label.wn = w2;
+	      break;
+	    }
+
+	// label use
+	case OPR_GOTO_OUTER_BLOCK:
+	    Is_True (FALSE, ("Did not expect GOTO_OUTER_BLOCK"));
+        case OPR_TRUEBR:
+        case OPR_FALSEBR:
+        case OPR_REGION_EXIT:
+	case OPR_GOTO:
+	case OPR_CASEGOTO:
+	    label_use_map [WN_label_number (w2)].seen = TRUE;
+	    break;
+
+	// bug 8479
+	case OPR_ASM_STMT:
+	    Direct_Mod_Ref = TRUE;
+	    break;
+#endif
 	}
 
 	if (WN_next(w2) == NULL) {
@@ -1707,6 +1887,43 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     }
 
 #ifdef KEY
+    {
+      // Update bb and stmt count
+      proc->Set_bb_count (PU_WN_BB_Cnt);
+      proc->Set_stmt_count (PU_WN_Stmt_Cnt);
+
+      // label map processing
+      //
+      LABEL_WN_MAP::iterator i;
+      INT unused_labels = 0;
+      // Mark unused labels so that IPA gets a more accurate estimate
+      // of the PU size.
+      for (i = label_use_map.begin(); i != label_use_map.end(); i++)
+      {
+        Is_True ((*i).second.wn, ("Process_procedure: Undefined label?"));
+        if (!(*i).second.seen)
+        {
+          unused_labels++;
+          WN_Set_Label_Is_Not_Used ((*i).second.wn);
+        }
+      }
+      // For this PU, IPL has already calculated the BB count, update it
+      // if required.
+      if (unused_labels)
+      {
+        UINT16 bbs = proc->Get_bb_count();
+        Is_True (bbs >= unused_labels,
+                 ("Expected all labels to be included in bb count"));
+        proc->Set_bb_count (bbs - unused_labels);
+      }
+
+      if_map.clear ();
+    }
+#endif // KEY
+
+#ifndef PATHSCALE_MERGE_ZHC
+{
+#ifdef KEY
     if_map.clear ();
     /* Append a list of free slots to the currnet callsite_array for
        the future use by IPA_Convert_Icalls.
@@ -1732,7 +1949,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
       proc->Incr_callsite_count();
     }
-#endif // KEY    
+#endif // KEY 
+}
+#endif
 
     /*loop_count_stack may not be empty! and loopnest may not be empty!!*/
     if (proc->Get_callsite_count () > 0)
@@ -1860,6 +2079,100 @@ SUMMARIZE<program>::Update_call_pragmas (SUMMARY_CALLSITE *callsite)
     }
 } // SUMMARIZE::Update_call_pragmas
 
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+// If found suitable, generate a new callsite summary for the direct call
+// that IPA may add for this icall. Fix other summary data as if proc now
+// has another callsite.
+template <PROGRAM program>
+void
+SUMMARIZE<program>::Process_icall (SUMMARY_PROCEDURE * proc, WN * wn,
+                                   INT loopnest, float probability)
+{
+  Is_True (WN_operator (wn) == OPR_ICALL, ("Process_icall: ICALL expected"));
+
+  // Tune this parameter
+  const int freq_threshold = IPA_Icall_Min_Freq;
+
+  const FB_Info_Call& info_call = Cur_PU_Feedback->Query_call(wn);
+  if (!info_call.freq_entry.Known())
+    return;
+  if (info_call.freq_entry.Value() < freq_threshold)
+    return;
+
+  FB_Info_Icall info_icall = Cur_PU_Feedback->Query_icall(wn);
+  if (info_icall.Is_uninit())
+    return;
+
+  if (info_icall.tnv._exec_counter < info_call.freq_entry.Value())
+  {
+    const UINT64 gap = (UINT64)info_call.freq_entry.Value() -
+                               info_icall.tnv._exec_counter;
+    info_icall.tnv._exec_counter += gap;
+    info_icall.tnv._counters[0] += gap;
+    Cur_PU_Feedback->Annot_icall (wn, info_icall);
+  }
+
+  const UINT64 exec_counter   = info_icall.tnv._exec_counter;
+  const UINT64 callee_counter = info_icall.tnv._counters[0];
+  const UINT64 callee_addr    = info_icall.tnv._values[0];
+
+  if (exec_counter == 0 || callee_counter == 0)
+    return;
+
+  // For now, we have decided to proceed with ICALL transformation for
+  // this icall, IPA will finally decide whether to actually transform it.
+  //
+  // Create a dummy callsite for a CALL. Pretend as if we are adding a call
+  // to the current pu. The dummy callee is of the form "void dummy (void)".
+  // NOTE: this prototype is likely to be different than the actual icall
+  // prototype. Since this ST is just for temporary use in summary data, we
+  // do not try to be accurate here.
+
+  SUMMARY_CALLSITE * cs = New_callsite();
+  cs->Set_callsite_id (proc->Get_callsite_count());
+  cs->Set_loopnest (loopnest);
+  cs->Set_probability (probability);
+  cs->Set_param_count (WN_num_actuals (wn));
+  cs->Set_return_type (WN_rtype (wn));
+
+  // Get a new symbol for the dummy icall target
+  static ST * st = NULL;
+
+  if (! st)
+  {
+    PU_IDX pu_idx;
+    PU& pu = New_PU (pu_idx);
+
+    // a dummy placeholder for prototype
+    PU_Init (pu, MTYPE_TO_TY_array[MTYPE_V], GLOBAL_SYMTAB+1);
+
+    st = New_ST (GLOBAL_SYMTAB);
+    ST_Init (st, Save_Str ("__dummy_icall_target"),
+                 CLASS_FUNC, SCLASS_EXTERN, EXPORT_PREEMPTIBLE,
+                 TY_IDX (pu_idx));
+    vector<IPL_ST_INFO>& aux_st = Aux_Symbol_Info[GLOBAL_SYMTAB];
+    aux_st.insert (aux_st.end(), 1, IPL_ST_INFO ());
+  }
+  cs->Set_symbol_index (Get_symbol_index (st));
+ 
+  FB_FREQ freq ((float) callee_counter, FB_FREQ_TYPE_EXACT);
+  cs->Set_callsite_freq ();
+  cs->Set_frequency_count (freq);
+  cs->Set_icall_target ();
+  cs->Set_targ_runtime_addr (callee_addr);
+
+  // If there are parameters in this routine then process them one at a time
+
+  for (INT i = 0; i < cs->Get_param_count (); i++)
+    Process_actual (WN_actual (wn, i));
+
+  if (cs->Get_param_count () > 0)
+    cs->Set_actual_index (Get_actual_idx () - cs->Get_param_count () + 1);
+
+  proc->Incr_callsite_count ();
+  proc->Incr_call_count ();
+} // SUMMARIZE::Process_icall
+#endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
 
 //-----------------------------------------------------------
 // store the callsite information, set the actual parameter information
@@ -2123,12 +2436,42 @@ Parm_Type_Equal_To_Etype(TY_IDX parm_ty, WN* array_wn)
   return FALSE;
 }
 
+#ifdef KEY
+// This function traverses down an expression node and returns any LDA.
+// Input: actual parameter
+// Modifies: nothing
+// Returns: LDA or NULL
+//
+// To generate accurate summary for actual paramter as in:
+//   int a[100];
+//   foo (a + global); // call foo passing the address of 'a'
+//
+static WN * traverse_actual (WN * w)
+{
+  // Lightweight inliner may have comma nodes that have not been lowered
+  if (!OPERATOR_is_expression (WN_operator (w)))
+    return NULL;
+
+  if (WN_operator (w) == OPR_LDA) return w;
+
+  for (INT i = 0; i < WN_kid_count (w); i++)
+  {
+    WN * lda = traverse_actual (WN_kid (w, i));
+    if (lda) return lda;
+  }
+  return NULL;
+}
+#endif
 
 template <PROGRAM program>
 void 
 SUMMARIZE<program>::Process_actual (WN* w)
 {
   SUMMARY_ACTUAL* actual = New_actual ();
+#ifdef KEY
+  // Save the pointer before overwriting it.
+  const WN * param = w;
+#endif
 
   OPERATOR opr = WN_operator(w);
   if (opr == OPR_PARM) {
@@ -2182,6 +2525,16 @@ SUMMARIZE<program>::Process_actual (WN* w)
       if (OPERATOR_has_sym(opr)) {
         actual->Set_symbol_index(Get_symbol_index(WN_st(w)));
       }
+#ifdef KEY
+      else {
+        // Traverse down actual parm looking for an LDA
+        WN * lda = traverse_actual (w);
+        if (lda) {
+          actual->Set_symbol_index(Get_symbol_index (WN_st (lda)));
+          opr = WN_operator (lda);
+        }
+      }
+#endif
     }
   }
 
@@ -2235,6 +2588,13 @@ SUMMARIZE<program>::Process_actual (WN* w)
     case OPR_LDA:
       actual->Set_pass_type(PASS_LDA);
       break;
+
+#ifdef KEY
+    case OPR_ARRAY:
+      if (WN_Parm_By_Reference(param))
+        actual->Set_pass_type(PASS_ARRAY);
+      break;
+#endif
 
     default:
       actual->Set_pass_type(PASS_UNKNOWN);

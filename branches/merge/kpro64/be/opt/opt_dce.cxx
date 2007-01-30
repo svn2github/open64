@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -615,10 +615,15 @@ DCE::Check_constant_cond_br( BB_NODE *bb ) const
     case BB_SUMMARY:   // summary BB
       return ( FALSE );
 
+    case BB_WHILEEND:  // ending condition for while statement
+#ifdef KEY // bug 7905: to enable while (1) to be preserved by ipl's preopt
+      if (_opt_phase == PREOPT_IPA0_PHASE)
+	return ( FALSE ); 
+      // fall thru
+#endif
     case BB_LOGIF:     // logical if
     case BB_VARGOTO:   // variable goto
     case BB_DOEND:     // ending condition
-    case BB_WHILEEND:  // ending condition for while statement
     case BB_REPEATEND: // ending condition for repeat statement
       cond_br_stmt = bb->Branch_stmtrep();
       break;
@@ -4806,6 +4811,25 @@ DCE::Insert_required_gotos( void ) const
     if (bb->Last_stmtrep() && bb->Last_stmtrep()->Opr() == OPR_REGION )
       continue;
 
+#ifdef KEY // needed due to fix for bug 8690
+    if (bb->MP_region() && _opt_phase != MAINOPT_PHASE &&
+        bb->Kind() == BB_REGIONSTART) {
+      // see if the assumed goto is due to a SINGLE pragma
+      BOOL single_pragma_found = FALSE;
+      STMTREP_ITER stmt_iter(bb->Stmtlist());
+      STMTREP *stmt;
+      FOR_ALL_NODE( stmt, stmt_iter, Init() ) {
+	if (stmt->Opr() == OPR_PRAGMA &&
+	    WN_pragma(stmt->Orig_wn()) == WN_PRAGMA_SINGLE_PROCESS_BEGIN) {
+	  single_pragma_found = TRUE;
+	  break;
+	}
+      }
+      if (single_pragma_found)
+	continue;
+    }
+#endif
+
     // at this point, we know we don't have a branch, assumed or
     // otherwise.  Check if our only successor is a fall-through
     // block or not.
@@ -4928,6 +4952,9 @@ COMP_UNIT::Do_dead_code_elim(BOOL do_unreachable,
 }
 
 #ifdef KEY
+#include "../../include/gnu/demangle.h"
+extern "C" char *cplus_demangle (const char *, int);
+
 void
 COMP_UNIT::Find_uninit_locals_for_entry(BB_NODE *bb) 
 {
@@ -4965,8 +4992,31 @@ COMP_UNIT::Find_uninit_locals_for_entry(BB_NODE *bb)
       continue;
     if (sym->Points_to()->F_param())
       continue;
+
+    char *output_pu_name = Cur_PU_Name;
+    char *output_var_name = &Str_Table[sym->St()->u1.name_idx];
+    char *p = NULL;
+    char *v = NULL;
+    if ((PU_src_lang(Get_Current_PU()) & PU_CXX_LANG)) {
+      // C++ mangled names begin with "_Z".
+      if (output_pu_name[0] == '_' && output_pu_name[1] == 'Z') {
+	p = cplus_demangle(output_pu_name, DMGL_PARAMS|DMGL_ANSI|DMGL_TYPES);
+	if (p)
+	  output_pu_name = p;
+      }
+      if (output_var_name[0] == '_' && output_var_name[1] == 'Z') {
+	v = cplus_demangle(output_var_name, DMGL_PARAMS|DMGL_ANSI|DMGL_TYPES);
+	if (v)
+	  output_var_name = v;
+      }
+    }
+
     fprintf(stderr, "Warning: variable %s in %s might be used uninitialized\n",
-	    &Str_Table[sym->St()->u1.name_idx], Cur_PU_Name);
+	    output_var_name, output_pu_name);
+    if (p != NULL && p != Cur_PU_Name)
+      free(p);
+    if (v != NULL && v != &Str_Table[sym->St()->u1.name_idx])
+      free(v);
   }
 }
 

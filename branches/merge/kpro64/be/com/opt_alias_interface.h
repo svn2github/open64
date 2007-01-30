@@ -37,10 +37,10 @@
 * ====================================================================
 *
 * Module: opt_alias_interface.h
-* $Revision: 1.1.1.1 $
-* $Date: 2005/10/21 19:00:00 $
-* $Author: marcel $
-* $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/opt_alias_interface.h,v $
+* $Revision$
+* $Date$
+* $Author$
+* $Source$
 *
 * Revision history:
 *  07-APR-95 lo - spilt from opt_alias.h
@@ -54,7 +54,7 @@
 #ifndef opt_alias_interface_INCLUDED
 #define opt_alias_interface_INCLUDED	"opt_alias_interface.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_alias_interfacercs_id = 	opt_alias_interface_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_alias_interfacercs_id = 	opt_alias_interface_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 

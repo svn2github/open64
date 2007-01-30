@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -93,7 +93,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_tail_CXX	"opt_tail.cxx"
-static char *rcs_id = 	opt_tail_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_tail_CXX"$Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "opt_tail.h"

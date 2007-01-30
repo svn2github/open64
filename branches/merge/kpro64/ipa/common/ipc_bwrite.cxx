@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -70,6 +70,8 @@
 
 #ifdef KEY
 #include "ipa_builtins.h"
+#include "ir_bcom.h"
+#include "be_ipa_util.h"
 #endif
 
 
@@ -155,6 +157,10 @@ extern "C" void IP_write_global_symtab(void)
 
   WN_write_globals(symtab_file);
   WN_write_strtab(Index_To_Str(0), STR_Table_Size(), symtab_file);
+#ifdef KEY
+  if (Mod_Ref_Info_Table_Size() != 0)
+    IPA_write_summary (IPA_irb_write_mod_ref_info, symtab_file);
+#endif
   WN_write_revision(symtab_file);  
 
   add_to_tmp_file_list(symtab_file_name);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -44,7 +44,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/ff_utils.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: be/lno/SCCS/s.ff_utils.cxx $ $Revision: 1.17 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>
@@ -77,6 +77,7 @@ static UINT64 ref_counter=0;
 static void Update_Loop_Info (WN* wn,
                               SYMBOL* ref_symbol,
                               SYMBOL* new_symbol);
+
 
 ARRAY_DIRECTED_GRAPH16* Statement_Dependence_Graph; 
 
@@ -874,8 +875,8 @@ extern BOOL Scalar_Variable_Renaming(WN* root) {
           i=wns.Newidx();
           wns[i]=ref;
           STACK<WN*>* equivalence_class=
-            Scalar_Equivalence_Class(ref,Du_Mgr,&FF_default_pool);
-        
+            Scalar_Equivalence_Class(ref,Du_Mgr,&FF_default_pool);          
+          
           if (equivalence_class!=NULL)
           for (INT i=0; i<equivalence_class->Elements(); i++) {
             WN* scalar_ref=equivalence_class->Top_nth(i);

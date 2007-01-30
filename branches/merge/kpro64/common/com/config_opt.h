@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -174,6 +174,11 @@ extern BOOL OPT_Enable_Simp_Fold;
 extern BOOL OPT_Fast_Math;
 extern BOOL OPT_Fast_Stdlib;
 extern BOOL OPT_MP_Barrier_Opt;
+extern BOOL OPT_Icall_Instr;
+extern BOOL OPT_Int_Value_Instr;
+extern BOOL OPT_FP_Value_Instr;
+extern BOOL OPT_Ffast_Math;
+extern BOOL OPT_Funsafe_Math_Optimizations;
 #endif
 #ifdef __cplusplus
 }

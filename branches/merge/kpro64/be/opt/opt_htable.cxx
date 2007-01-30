@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -271,6 +271,7 @@ CODEREP::Copy(const CODEREP &cr)
     Set_lda_base_st( cr.Lda_base_st() );
     Set_lda_ty( cr.Lda_ty() );
     Set_offset(cr.Offset());
+    Set_afield_id(cr.Afield_id());
   }
   else if (kind == CK_OP) {
     Set_opr(cr.Opr());
@@ -456,7 +457,8 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
 
   case CK_LDA:
     if (Lda_base_st() == cr->Lda_base_st() && Offset() == cr->Offset() &&
-	Is_flag_set(CF_LDA_LABEL) == cr->Is_flag_set(CF_LDA_LABEL)) 
+	Is_flag_set(CF_LDA_LABEL) == cr->Is_flag_set(CF_LDA_LABEL) &&
+	Afield_id() == cr->Afield_id()) 
       return TRUE;
     else
       return FALSE;
@@ -1948,10 +1950,11 @@ CODEMAP::Add_expr(WN       *wn,
 		  OPT_STAB *opt_stab,
 		  STMTREP  *stmt,
 		  BOOL     *proped,
-		  COPYPROP *copyprop)
+		  COPYPROP *copyprop,
+		  BOOL no_complex_preg)
 {
   CANON_CR ccr;
-  *proped |= Add_expr(wn, opt_stab, stmt, &ccr, copyprop);
+  *proped |= Add_expr(wn, opt_stab, stmt, &ccr, copyprop, no_complex_preg);
   CODEREP *cr = ccr.Convert2cr(wn, this, *proped);
   return cr;
 }
@@ -1976,7 +1979,8 @@ CODEMAP::Canon_add_sub(WN       *wn,
     ccr->Set_scale(ccr->Scale() + kid1.Scale());
   else ccr->Set_scale(ccr->Scale() - kid1.Scale());
 #ifdef KEY // bug 5557
-  if (MTYPE_byte_size(WN_rtype(wn)) == 4)
+  if (MTYPE_byte_size(WN_rtype(wn)) == 4 &&
+      (INT32)ccr->Scale() < 0x80000 /* bug8517 */)
     ccr->Set_scale(ccr->Scale() << 32 >> 32);
 #endif
   if (kid1.Tree() == NULL) 
@@ -2146,9 +2150,16 @@ CODEMAP::Canon_cvt(WN       *wn,
   CODEREP *expr;
 #ifdef TARG_X8664
   if (!Is_Target_32bit() && ccr->Tree() != NULL && Allow_wrap_around_opt) {
-    cr->Set_opnd(0, ccr->Tree());
-    retv = Hash_Op(cr);
-    ccr->Set_tree(retv); // move the CVT to the operand
+    if (ccr->Tree()->Kind() == CK_OP && ccr->Tree()->Op() == OPC_I8I4CVT && 
+        op == OPC_I4I8CVT) { // bug 10707
+      retv = ccr->Tree()->Opnd(0);
+      ccr->Set_tree(retv);
+    }
+    else {
+      cr->Set_opnd(0, ccr->Tree());
+      retv = Hash_Op(cr);
+      ccr->Set_tree(retv); // move the CVT to the operand
+    }
   }
   else {
 #endif
@@ -2560,6 +2571,13 @@ CODEMAP::Cur_def(WN *wn, OPT_STAB *opt_stab)
              ! opt_stab->Du_is_volatile( du ),
       ("CODEMAP::Cur_def: Cached volatile reference [%3d]", retv->Aux_id()) );
 
+#ifdef KEY // bug 9656 Comment 2
+    if (retv->Field_id() == 0 && WN_field_id(wn) != 0) {
+      retv->Set_field_id(WN_field_id(wn));
+      retv->Set_lod_ty(WN_ty(wn));
+    }
+#endif
+
     /* CVTL-RELATED start (correctness) */
     // change {I,U}4{I,U}8LDID to {I,U}4{I,U}8CVT({I,U}8{I,U}8LDID)
     // (truncation)
@@ -2860,10 +2878,12 @@ CODEMAP::Update_pref(CODEREP *ivar) const
 // kept in the CANON_CR object.  The return value tells if something 
 // within the tree has been replaced due to copy propagation, so that
 // the parent would call the simplifier for the entire tree.
+// 
+// For no_complex_preg, see opt_prop.cxx's bug 10577 fixes.
 // ====================================================================
 BOOL
 CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
-		  COPYPROP *copyprop)
+		  COPYPROP *copyprop, BOOL no_complex_preg)
 {
   // given a WN node, add it to the coderep hash and return the
   // coderep for it.
@@ -2893,7 +2913,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 
       retv->IncUsecnt();
       if (WOPT_Enable_Input_Prop && !copyprop->Disabled()) {
-        CODEREP *newtree = copyprop->Prop_var(retv_var, stmt->Bb(), TRUE, TRUE,TRUE/*in_array*/);
+        CODEREP *newtree = copyprop->Prop_var(retv_var, stmt->Bb(), TRUE, TRUE,TRUE/*in_array*/, no_complex_preg);
         if (newtree) {
 	  if (retv->Kind() == CK_VAR) 
 	    retv = newtree;
@@ -2970,7 +2990,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 	
       Is_True(opt_stab->Base(WN_aux(wn)) != NULL, ("base st is null."));
       cr->Init_lda(OPCODE_rtype(op), WN_aux(wn), 
-		   (INT32)ofst, (TY_IDX) WN_ty(wn), lda_st);
+		   (INT32)ofst, (TY_IDX) WN_ty(wn), lda_st, WN_field_id(wn));
       retv = Hash_Lda(cr);
       ccr->Set_tree(retv);
       return FALSE;
@@ -3070,7 +3090,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
       stmt->Set_volatile_stmt();
     Update_pref(retv_ivar);
     if (WOPT_Enable_Input_Prop) {
-      CODEREP *newtree = copyprop->Prop_ivar(retv_ivar, stmt->Bb(), TRUE, TRUE,TRUE/*in_array*/);
+      CODEREP *newtree = copyprop->Prop_ivar(retv_ivar, stmt->Bb(), TRUE, TRUE,TRUE/*in_array*/, no_complex_preg);
       if (newtree) {
 	if (retv->Kind()==CK_IVAR)
 	  retv = newtree;
@@ -3213,7 +3233,11 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     return FALSE;
   }
   else if ( oper == OPR_PARM ) {
-    CODEREP *kid = Add_expr(WN_kid0(wn), opt_stab, stmt, &propagated, copyprop);
+    CODEREP *kid = Add_expr(WN_kid0(wn), opt_stab, stmt, &propagated, copyprop
+#ifdef KEY // bug 10577
+    			    , TRUE
+#endif
+			    );
     /* CVTL-RELATED start (correctness) */
 #if 1
     // Attempt of fix 370390.  However, this breaks testn32/test_overall/longs.c
@@ -3401,7 +3425,12 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 	  return Canon_mpy(wn, opt_stab, stmt, ccr, cr, copyprop);
 	break;
       case OPR_CVT:
-	if ((MTYPE_type_class(OPCODE_rtype(op)) & MTYPE_CLASS_INTEGER) != 0)
+	if ((MTYPE_type_class(OPCODE_rtype(op)) & MTYPE_CLASS_INTEGER) != 0
+#ifdef TARG_X8664 // bug 7733
+	    && ! MTYPE_is_vector(OPCODE_rtype(op)) 
+	    && ! MTYPE_is_vector(OPCODE_desc(op)) 
+#endif
+	   )
 	  return Canon_cvt(wn, opt_stab, stmt, ccr, cr, copyprop);
 	break;
       default:
@@ -3699,7 +3728,11 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
 		    ("Unknown kid operator for PREG ASM clobber"));
 	  info.preg_st_idx = WN_st_idx(kid);
 	  info.preg_number = WN_offset(kid);
+#ifndef PATHSCALE_MERGE_ZHC
 	  info.clobber_string_idx = WN_st_idx(prag);
+#else
+	  info.clobber_string_idx = WN_pragma_arg2(prag);
+#endif
         }
 	else {
 	  info.preg_st_idx = 0;

@@ -521,7 +521,7 @@
 #if !defined(opt_bb_INCLUDED) || defined(opt_bb_CXX)
 #ifndef opt_bb_INCLUDED
 #ifdef _KEEP_RCS_ID
-static char *opt_bbrcs_id =  opt_bb_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_bbrcs_id =  opt_bb_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef opt_base_INCLUDED

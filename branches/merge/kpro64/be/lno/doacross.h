@@ -42,10 +42,10 @@
  * ====================================================================
  *
  * Module: doacross.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/doacross.h,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  dd-mmm-95 - Original Version

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -42,10 +42,10 @@
 * ====================================================================
 *
 * Module: opt_alias_mgr.cxx
-* $Revision: 1.1.1.1 $
-* $Date: 2005/10/21 19:00:00 $
-* $Author: marcel $
-* $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/opt_alias_mgr.cxx,v $
+* $Revision: 1.7 $
+* $Date: 04/12/21 14:57:10-08:00 $
+* $Author: bos@eng-25.internal.keyresearch.com $
+* $Source: /home/bos/bk/kpro64-pending/be/com/SCCS/s.opt_alias_mgr.cxx $
 *
 * Revision history:
 *  04-APR-95 lo - Split from opt_alias.cxx
@@ -62,7 +62,7 @@
 #pragma hdrstop
 #ifdef _KEEP_RCS_ID
 #define opt_alias_mgr_CXX	"opt_alias_mgr.cxx"
-static char *rcs_id = 	opt_alias_mgr_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_alias_mgr_CXX"$Revision: 1.7 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "string.h"
@@ -431,7 +431,6 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
       ac |= RAG_RESTRICTED_RULE;
     if (Alias_Pointer_Disjoint)
       ac |= IBM_DISJOINT_RULE;
-
     break;
   default:
     Is_True(FALSE, ("Language is unknown; mixed-language inlining illegal."));
@@ -769,7 +768,6 @@ void Create_alias(ALIAS_MANAGER *am, WN *wn)
   } else {
     POINTS_TO *pt = am->New_points_to(wn);
     pt->Analyze_WN_expr(wn);
-    pt->Set_ty (WN_object_ty(wn)); // OSP_172
   }
 }
 
@@ -971,7 +969,7 @@ ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 
   if (OPERATOR_is_store(WN_operator(wn1)) && OPERATOR_is_load(WN_operator(wn2)) ||
       OPERATOR_is_store(WN_operator(wn2)) && OPERATOR_is_load(WN_operator(wn1))) {
-    if (am->Rule()->Aliased_Memop(pt1, pt2, pt1->Ty(), pt2->Ty())) // OSP-172
+    if (am->Rule()->Aliased_Memop(pt1, pt2, WN_object_ty(wn1), WN_object_ty(wn2))) 
       return POSSIBLY_ALIASED;
   } else {
     // cannot apply ANSI type rule to STORE <--> STORE.

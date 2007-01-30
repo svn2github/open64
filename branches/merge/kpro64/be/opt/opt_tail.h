@@ -56,7 +56,7 @@
 
 
 #ifdef _KEEP_RCS_ID
-static char *opt_tail_rcs_id = opt_tail_INCLUDED" $Revision: 1.1.1.1 $";
+static char *opt_tail_rcs_id = opt_tail_INCLUDED" $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 

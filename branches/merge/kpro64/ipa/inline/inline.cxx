@@ -103,6 +103,7 @@
 #include "inline_split_common.h"
 #ifdef KEY
 #include "ipo_inline_util.h"	// for Get_enclosing_region
+#include "ipa_trace.h"
 #endif
 
 #include "mempool.h"         // MEM_Trace
@@ -1114,11 +1115,24 @@ Inliner(char* input_name, char* output_name)
       WN_Simplifier_Enable(FALSE);
 #endif
 
-    Set_tlog_phase(PHASE_INLINER);
+    Set_ipa_tlog_phase(PHASE_INLINER);
 	
     set_timer();
 
     Build_Call_Graph();
+
+    if (Get_Trace (TP_INLINE, IPA_TRACE_TUNING))
+    {
+      FILE *tmp_call_graph = fopen("cg_dump.log", "w");
+
+      if(tmp_call_graph != NULL)
+      {
+        fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
+        IPA_Call_Graph->Print(tmp_call_graph);
+        fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
+      }
+      fclose(tmp_call_graph);
+    }
 
     get_timer(PHASE_CALL_GRAPH);
 

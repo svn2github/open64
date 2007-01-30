@@ -1,5 +1,9 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -42,10 +46,10 @@
 * ====================================================================
 *
 * Module: opt_alias_rule.cxx
-* $Revision: 1.1.1.1 $
-* $Date: 2005/10/21 19:00:00 $
-* $Author: marcel $
-* $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/opt_alias_rule.cxx,v $
+* $Revision: 1.8 $
+* $Date: 05/07/01 19:38:48-07:00 $
+* $Author: fchow@fluorspar.internal.keyresearch.com $
+* $Source: be/com/SCCS/s.opt_alias_rule.cxx $
 *
 * Revision history:
 *  04-APR-95 lo - Split from opt_alias_rule.cxx
@@ -62,7 +66,7 @@
 #pragma hdrstop
 #ifdef _KEEP_RCS_ID
 #define opt_alias_rule_CXX	"opt_alias_rule.cxx"
-static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
@@ -143,35 +147,6 @@ ALIAS_RULE::Aliased_Ip_Classification_Rule(const POINTS_TO *const mem1,
   return aliased;
 }
 
-// return TRUE iff
-//   o. ty1 == ty2, or 
-//   o. ty1 is of aggregate and there exist a filed <f> of ty2 
-//      where Ty1_Include_Ty2(ty1, type-of-<f>) is satisfied. 
-//
-// this is helper function of Aliased_This_Ptr_Rule ().
-BOOL
-ALIAS_RULE::Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const
-{
-  if (ty1 == ty2) {
-    return TRUE;
-  }
-
-  if (TY_kind(ty2) != KIND_STRUCT) {
-    return FALSE;
-  }
-
-  FLD_ITER iter = Make_fld_iter (FLD_HANDLE (Ty_Table[ty2].Fld ()));
-  do {
-    TY_IDX field_ty = (*iter).type;
-    if (field_ty == ty1 || (TY_kind(field_ty) == KIND_STRUCT) &&
-        Ty1_Include_Ty2 (ty1, field_ty)) {
-        return TRUE;
-    }
-  } while (! FLD_last_field (iter++));
-
-  return FALSE;
-}
-
 // Fortran-90 pointers can point only to items lacking the not_f90_target
 // attribute.
 BOOL
@@ -237,55 +212,6 @@ BOOL ALIAS_RULE::Aliased_Indirect_Rule(const POINTS_TO *mem1, const POINTS_TO *m
   if ((mem2->Unnamed() && !mem2->Unique_pt())
       && mem1->Not_addr_saved())
     return FALSE;
-
-  if ((mem1->Malloc_id() || mem2->Malloc_id()) &&
-      WOPT_Enable_Disambiguate_Heap_Obj) {
-    if (mem1->Named()) {
-      Is_True (mem1->Malloc_id() == 0, ("A heap object should not have name"));
-      return FALSE;
-    } else if (mem2->Named()) {
-      Is_True (mem2->Malloc_id() == 0, ("A heap object should not have name"));
-      return FALSE;
-    } else if (mem1->Malloc_id() && mem2->Malloc_id() && 
-               mem1->Malloc_id () != mem2->Malloc_id()) {
-      return FALSE;
-    }
-  }
-
-  if (mem1->Pointer () && mem2->Pointer () &&
-      WOPT_Enable_Pt_Keep_Track_Ptr) {
-    ST* st1 = mem1->Pointer ();
-    ST* st2 = mem2->Pointer ();
-    
-    if (st1 != st2 || 
-        mem1->Iofst_kind () != OFST_IS_FIXED ||
-        mem2->Iofst_kind () != OFST_IS_FIXED) {
-      return TRUE;
-    }
-
-    // it is impossible to disambiguate if the verions of the pointers
-    // are different.
-    if (!mem1->Pointer_is_aux_id() && 
-        !ST_is_constant (st1) && 
-        (mem1->Pointer_ver () == 0 ||
-         mem1->Pointer_ver () != mem2->Pointer_ver ())) {
-      return TRUE;
-    }
-
-    // check to see whether they overlap
-    if (mem1->Byte_Size () != 0 && mem2->Byte_Size () != 0) {
-      const POINTS_TO* high, *low;
-      if (mem1->Byte_Ofst() > mem2->Byte_Ofst()) {
-        high = mem1, low = mem2;
-      } else {
-        high = mem2, low = mem1;
-      }
-      if ((low->Byte_Ofst () + low->Byte_Size ()) <= high->Byte_Ofst()) {
-        return FALSE;
-      }
-    }
-  }
-
   return TRUE;
 }
 
@@ -395,6 +321,31 @@ struct TY_IDX_EQ
 
 static hash_map<const TY_IDX, INT, __gnu_cxx::hash<TY_IDX>, TY_IDX_EQ> Stripped_mtype;
 #endif
+
+#ifdef TARG_X8664
+#define I1_VECTOR_TYPES    case MTYPE_V16I1: \
+                           case MTYPE_V8I1:  \
+                           case MTYPE_M8I1:
+#define I2_VECTOR_TYPES    case MTYPE_V16I2: \
+                           case MTYPE_V8I2:  \
+                           case MTYPE_M8I2:
+#define I4_VECTOR_TYPES    case MTYPE_V16I4: \
+                           case MTYPE_V8I4:  \
+                           case MTYPE_M8I4:
+#define I8_VECTOR_TYPES    case MTYPE_V16I8:
+#define F4_VECTOR_TYPES    case MTYPE_V16F4: \
+                           case MTYPE_V8F4:  \
+                           case MTYPE_M8F4:
+#define F8_VECTOR_TYPES    case MTYPE_V16F8:
+#else
+#define I1_VECTOR_TYPES
+#define I2_VECTOR_TYPES
+#define I4_VECTOR_TYPES
+#define I8_VECTOR_TYPES
+#define F4_VECTOR_TYPES
+#define F8_VECTOR_TYPES
+#endif  // TARG_X8664
+
 // Implement C.1.  See opt_ailas_rule.h
 //
 //  Strip off qualifiers, signed-ness.
@@ -420,16 +371,22 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
       TYPE_ID mtype = TY_mtype(ty);
 #ifdef KEY
       switch (mtype) {
+      I1_VECTOR_TYPES
       case MTYPE_I1:
 	ret_type = (1 << MTYPE_U1); break;
+      I2_VECTOR_TYPES
       case MTYPE_I2:
 	ret_type = (1 << MTYPE_U2); break;
+      I4_VECTOR_TYPES
       case MTYPE_I4:
 	ret_type = (1 << MTYPE_U4); break;
+      I8_VECTOR_TYPES
       case MTYPE_I8:
 	ret_type = (1 << MTYPE_U8); break;
+      F4_VECTOR_TYPES
       case MTYPE_C4:
 	ret_type = (1 << MTYPE_F4); break;
+      F8_VECTOR_TYPES
       case MTYPE_C8:
 	ret_type = (1 << MTYPE_F8); break;
       case MTYPE_CQ:
@@ -469,7 +426,7 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
     break;
   case KIND_STRUCT:  // Collect the basic types of a structure recursively.
     if (!TY_fld (ty).Is_Null ()) {
-#ifdef KEY
+#ifdef KEY // bug 3974: return cached type
       if (INT32 stripped_type = /* assign */ Stripped_mtype[ty_idx])
 	return stripped_type;
 #endif
@@ -478,6 +435,9 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
 	ret_type |= Get_stripped_mtype (FLD_type (fld_iter));
       } while (!FLD_last_field (fld_iter++));
     }
+#ifdef KEY // bug 9580: empty structs should alias between themselves.
+    else ret_type = (1 << MTYPE_M);
+#endif
     break;
   case KIND_FUNCTION:  
     // KIND_FUNCTION are allowed because LDA func_st might be
@@ -508,7 +468,7 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
       TY_no_ansi_alias(ty))		// varargs TY:  See PV 329475.
     ret_type = ALL_TYPE;
 
-#ifdef KEY
+#ifdef KEY // bug 3974: insert type in cache
   if (TY_kind(ty) == KIND_STRUCT && ret_type)
     Stripped_mtype[ty_idx] = ret_type;
 #endif
@@ -582,12 +542,18 @@ BOOL ALIAS_RULE::Aliased_C_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO
   //
   if (mem1->Based_sym() != NULL &&
       mem1->Restricted() && 
+#ifdef KEY // bug 9001: do not use this rule when Based_kind() == BASE_IS_FIXED
+      mem2->Based_sym() != NULL &&
+#endif
       mem1->Based_sym() != mem2->Based_sym() &&
       !mem2->Default_vsym())
     return FALSE;
 
   if (mem2->Based_sym() != NULL &&
       mem2->Restricted() && 
+#ifdef KEY // bug 9001: do not use this rule when Based_kind() == BASE_IS_FIXED
+      mem1->Based_sym() != NULL &&
+#endif
       mem2->Based_sym() != mem1->Based_sym() &&
       !mem1->Default_vsym())
     return FALSE;
@@ -807,9 +773,6 @@ READ_WRITE ALIAS_RULE::Aliased_with_Call(ST *st, INT32 flags, const POINTS_TO *m
   if (Rule_enabled(QUAL_RULE) && pu_idx != 0 && PU_is_pure(pu))
     return NO_READ_NO_WRITE;
 
-  if (Rule_enabled(QUAL_RULE) && pu_idx != 0 && PU_has_attr_pure(pu))
-    return READ;
-
   if (Rule_enabled(F_CALL_RULE)) {
     // Fortran parameter is aliased to the call unless passed by parameter.
     if (mem->F_param())
@@ -837,11 +800,6 @@ READ_WRITE ALIAS_RULE::Aliased_with_Call(ST *st, INT32 flags, const POINTS_TO *m
     if ((flags & WN_CALL_NON_PARM_REF) == 0)
       ref = FALSE;
   }
-
-  if (mem->Not_readable_by_callee ())
-    ref = FALSE;
-  if (mem->Not_writable_by_callee ())
-    mod = FALSE;
 
   if (mod && ref)
     return READ_AND_WRITE;

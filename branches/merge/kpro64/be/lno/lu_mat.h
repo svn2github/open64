@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -204,16 +204,16 @@
 //  and U = L_0 * H_s 
 // 						-- Comments by RJC   
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lu_mat.h,v $
+/** $Revision: 1.5 $
+*** $Date: 04/12/21 14:57:14-08:00 $
+*** $Author: bos@eng-25.internal.keyresearch.com $
+*** $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.lu_mat.h $
 **/
 
 #ifndef lu_mat_INCLUDED
 #define lu_mat_INCLUDED "lu_mat.h"
 
-static char *lu_mat_rcs_id = lu_mat_INCLUDED "$Revision: 1.1.1.1 $";
+static char *lu_mat_rcs_id = lu_mat_INCLUDED "$Revision: 1.5 $";
 
 // system  headers
 

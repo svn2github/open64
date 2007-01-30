@@ -52,7 +52,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_mu_chi_CXX	"opt_mu_chi.cxx"
-static char *rcs_id = 	opt_mu_chi_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_mu_chi_CXX"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
@@ -68,7 +68,11 @@ static char *rcs_id = 	opt_mu_chi_CXX"$Revision: 1.1.1.1 $";
 
 
 OCC_TAB_ENTRY *
+#ifdef KEY
+OPT_STAB::Enter_occ_tab(WN *wn, AUX_ID aux_id, POINTS_TO *pt)
+#else
 OPT_STAB::Enter_occ_tab(WN *wn, AUX_ID aux_id)
+#endif
 {
   OCC_TAB_ENTRY *occ = CXX_NEW(OCC_TAB_ENTRY, Occ_pool());
   occ->Set_aux_id(aux_id);
@@ -86,12 +90,19 @@ OPT_STAB::Enter_occ_tab(WN *wn, AUX_ID aux_id)
     occ->Set_pf_list(NULL);
     occ->Set_pt_list(NULL);
   } else {
-    occ->Points_to()->Init();
-    // HACK: subject to review
-    if (WN_operator(wn) == OPR_PARM && aux_id == _default_vsym)
-      occ->Points_to()->Set_expr_kind(EXPR_IS_ANY);
-    occ->Points_to()->Set_base_kind(BASE_IS_UNKNOWN);
-    occ->Points_to()->Set_ofst_kind(OFST_IS_INVALID);
+#ifdef KEY
+    if (WOPT_Enable_New_Vsym_Allocation && pt /* probably temporary */) {
+      occ->Points_to()->Copy_fully (pt);
+    } else
+#endif
+    {
+      occ->Points_to()->Init();
+      // HACK: subject to review
+      if (WN_operator(wn) == OPR_PARM && aux_id == _default_vsym)
+        occ->Points_to()->Set_expr_kind(EXPR_IS_ANY);
+      occ->Points_to()->Set_base_kind(BASE_IS_UNKNOWN);
+      occ->Points_to()->Set_ofst_kind(OFST_IS_INVALID);
+    }
     // preserve LNO dependence info
     if (occ->Is_load()) {
       occ->Set_mem_mu_node(NULL);

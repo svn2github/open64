@@ -1,5 +1,9 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -42,10 +46,10 @@
  * ====================================================================
  *
  * Module: pad.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/pad.cxx,v $
+ * $Revision: 1.4 $
+ * $Date: 04/12/21 14:58:29-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.pad.cxx $
  *
  *
  * Description:
@@ -852,8 +856,11 @@ extern void Pad_Degenerates()
       size += pad_size;
 #ifdef TARG_X8664
       /* Bug 4902 - Avoid the Store and Load Forward [31:12] penalty. */
-      if (!Is_Target_Anyx86() && !Is_Target_EM64T() && 
-	  !Is_Target_Pentium4() && size >= 4096) {
+      if (!Is_Target_Anyx86() &&
+	  !Is_Target_EM64T() && 
+	  !Is_Target_Core() &&
+	  !Is_Target_Pentium4() &&
+	  size >= 4096) {
 	UINT tmp = size;
 	tmp = ~tmp;
 	tmp += 1;

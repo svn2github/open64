@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -40,7 +40,7 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_ipa.cxx,v $
+ * $Source: common/com/SCCS/s.config_ipa.cxx $
  *
  * Revision history:
  *  11-Apr-96 - Original Version, extracted from ipa_option.c.
@@ -99,6 +99,10 @@ const float DEFAULT_MIN_PROBABILITY = 0.20;
 #define DEFAULT_OUTPUT_FILE_SIZE	10000
 
 #define DEFAULT_MAX_DENSITY		11 // INLINING_TUNINING
+
+#ifdef KEY
+#define DEFAULT_ICALL_MIN_FREQ		200
+#endif
 
 
 /* #define DEFAULT_GSPACE	65535	-- from config.c */
@@ -256,6 +260,10 @@ BOOL IPA_Enable_Cord = FALSE;		/* will bring up for x86-64 */
 PU_REORDER_SCHEME IPA_Enable_PU_Reorder = REORDER_DISABLE; /* Procedure reordering: PathScale version */
 BOOL IPA_Enable_PU_Reorder_Set = FALSE;
 BOOL IPA_Enable_Ctype = FALSE;		/* Insert array for use by ctype.h. */
+BOOL IPA_Consult_Inliner_For_Icall_Opt = TRUE; // Check inlining heuristics
+                                               // during icall-opt?
+UINT32 IPA_Icall_Min_Freq = DEFAULT_ICALL_MIN_FREQ; // Min freq for icall opt
+                                                    // used in IPL.
 #else
 BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
 #endif
@@ -557,6 +565,12 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,	FALSE, "ctype",	"",
 	  0, 0, 0,		&IPA_Enable_Ctype,	NULL,
 	  "Enable insertion of ctype.h array"},
+    { OVK_BOOL, OV_INTERNAL,	FALSE, "icallopt_needs_inline",  "",
+	  0, 0, 0,		&IPA_Consult_Inliner_For_Icall_Opt, NULL,
+	  "Check inlining heuristics during icall opt"},
+    { OVK_UINT32, OV_INTERNAL,	FALSE, "icall_min_freq",	"",
+	  DEFAULT_ICALL_MIN_FREQ, 1, UINT32_MAX, &IPA_Icall_Min_Freq, NULL,
+	  "Min freq of icall for icall optimization"},
 #endif // KEY
     { OVK_COUNT }	    /* List terminator -- must be last */
 };
@@ -594,6 +608,8 @@ BOOL	INLINE_Type_Mismatch = FALSE;   // Inline even if actuals' type != formals'
 // check parameter compatibility during inlining
 CHECK_PARAM_COMPATIBILITY INLINE_Check_Compatibility = RELAXED_CHECK;
 BOOL    INLINE_Ignore_Bloat = TRUE;    // Ignore code bloat (-IPA:space)
+UINT32   INLINE_Callee_Limit = 0;      // Callee size limit for functions
+                                       // marked inline by user
 #endif
 
 OPTION_LIST *INLINE_List_Names = NULL;	/* Must/never/file options */
@@ -699,6 +715,9 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL, OV_INTERNAL,	FALSE,	"ignore_bloat",	"",
 	  0, 0, 0,		&INLINE_Ignore_Bloat, NULL,
 	  "Ignore code bloat controlled by -IPA:space" },
+    { OVK_UINT32, OV_INTERNAL,	FALSE, "callee_size",	"",
+	  0, 0, UINT32_MAX, &INLINE_Callee_Limit, NULL,
+	  "Callee size limit for functions marked inline by user"},
 #endif
     { OVK_LIST,	OV_VISIBLE,	FALSE, "skip",	"s",
 	  0, 0, 0,	&INLINE_List_Names,	NULL,

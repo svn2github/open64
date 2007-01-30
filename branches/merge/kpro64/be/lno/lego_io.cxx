@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -68,10 +68,10 @@
  * ====================================================================
  *
  * Module: lego_io.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lego_io.cxx,v $
+ * $Revision: 1.5 $
+ * $Date: 04/12/21 14:57:13-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.lego_io.cxx $
  *
  * Revision history:
  *  09-07-96 - Original Version
@@ -88,7 +88,7 @@
 #pragma hdrstop
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lego_io.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.lego_io.cxx $ $Revision: 1.5 $";
 
 #include <sys/types.h>
 #include <alloca.h>
@@ -629,11 +629,13 @@ static ST* Create_Tmp_Array(ST *array_st, WN *IO_node, WN **tmp_array_def,
     case MTYPE_I2: case MTYPE_U2: element_size=2; break;
     case MTYPE_I4: case MTYPE_U4: case MTYPE_F4: element_size=4; break;
     case MTYPE_I8: case MTYPE_U8: case MTYPE_F8: case MTYPE_C4: element_size=8; break;
+#ifdef PATHSCALE_MERGE
 #if defined(TARG_IA64)
     case MTYPE_F10: element_size=16; break;
+#endif    
 #endif
     case MTYPE_C8: case MTYPE_FQ: element_size=16; break;
-    case MTYPE_C10: case MTYPE_CQ: element_size=32; break;
+    case MTYPE_CQ: element_size=32; break;
   }
 
   WN *bsz = LWN_CreateExp2(OPCODE_make_op(OPR_MPY,Pointer_type,MTYPE_V),

@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -60,7 +64,7 @@
 // ====================================================================
 #ifdef _KEEP_RCS_ID
 #define ipo_tlog_utils_CXX	"ipo_tlog_utils.cxx"
-static char *rcs_id = 	ipo_tlog_utils_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	ipo_tlog_utils_CXX"$Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID *///-*-c++-
 #include <stdarg.h>
 #include <stdio.h>
@@ -129,7 +133,7 @@ static  void Ipa_Inline_tlog2(char *keyword, INT64 srcpos, char *msg )
 // ====================================================================
 
 extern "C" void
-Set_tlog_phase(const INT32 i) 
+Set_ipa_tlog_phase(const INT32 i) 
 {
   if (i==PHASE_IPA)
     tlog_phase = "IPA";
@@ -139,7 +143,7 @@ Set_tlog_phase(const INT32 i)
 
 #ifdef KEY
 extern "C" PHASE_NAME
-Get_tlog_phase(void)
+Get_ipa_tlog_phase(void)
 {
   if (!tlog_phase)
   	return INVALID;	// invalid

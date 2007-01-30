@@ -134,10 +134,10 @@ simplifier with other modules:
 
   **************************************************************************/
 
-/** $Revision: 1.1.1.1 $
- $Date: 2005/10/21 19:00:00 $
- $Author: marcel $
- $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/wn_simp.h,v $
+/** $Revision$
+ $Date$
+ $Author$
+ $Source$
 **/
 
 
@@ -182,6 +182,9 @@ extern BOOL WN_Simp_Fold_ILOAD;
 
 extern BOOL WN_Simp_Fold_LDA;
 
+#ifdef KEY
+extern BOOL WN_Simp_Rsqrt_Newton_Raphson;
+#endif
 
 #ifdef __cplusplus
 }

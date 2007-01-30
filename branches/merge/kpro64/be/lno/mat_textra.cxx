@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -44,14 +44,14 @@
 *** not adequate.  Thus 'textra' => 'template extra'.
 **/
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/mat_textra.cxx,v $
+/** $Revision: 1.6 $
+*** $Date: 04/12/21 14:57:14-08:00 $
+*** $Author: bos@eng-25.internal.keyresearch.com $
+*** $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.mat_textra.cxx $
 **/
 
 #define mat_textra_CXX      "mat_textra.cxx"
-static char *rcs_id =   mat_textra_CXX "$Revision: 1.1.1.1 $";
+static char *rcs_id =   mat_textra_CXX "$Revision: 1.6 $";
 
 
 #define __STDC_LIMIT_MACROS
@@ -90,6 +90,7 @@ IMAT MAT<mINT32>::Inv() const
 
 #else
 
+template<>
 IMAT MAT<mINT32>::Inv() const
 {
   FmtAssert(_r == _c, ("Matrix not square"));
@@ -105,6 +106,7 @@ IMAT MAT<mINT32>::Inv() const
 
 // Factor and use the factoring inversion routines
 
+template<>
 FMAT MAT<FRAC>::Inv() const		// XXX compiler bug: confused by FMAT
 {
   FmtAssert(_r == _c, ("FMAT::Inv(): Matrix not square"));
@@ -114,6 +116,7 @@ FMAT MAT<FRAC>::Inv() const		// XXX compiler bug: confused by FMAT
 
 // Factor and use the factoring inversion routines
 
+template<>
 DMAT MAT<double>::Inv() const		// XXX compiler bug: confused by DMAT
 {
   FmtAssert(_r == _c, ("Matrix not square"));
@@ -121,16 +124,19 @@ DMAT MAT<double>::Inv() const		// XXX compiler bug: confused by DMAT
   return lu.Inv();
 }
 
+template<>
 void DMAT::Print_Element(FILE* f, double e)
 {
   fprintf(f, "%g", e);
 }
 
+template<>
 void IMAT::Print_Element(FILE* f, mINT32 e)
 {
   fprintf(f, "%d", e);
 }
 
+template<>
 void FMAT::Print_Element(FILE* f, FRAC e)
 {
   e.Print(f);

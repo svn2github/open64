@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -57,7 +57,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_cfg_CXX	"opt_cfg.cxx"
-static char *rcs_id = 	opt_cfg_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_cfg_CXX"$Revision: 1.30 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
@@ -1420,7 +1420,11 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 #ifdef KEY  // do not if-convert if it has either empty then or else part and it
       // is the only statement in the BB since CG's cflow can be quite effective
       ((!empty_else && !empty_then) ||
+#ifndef PATHSCALE_MERGE_ZHC
        WOPT_Enable_If_Conv_Limit > 6 ||
+#else
+       WOPT_Enable_Simple_If_Conv > 1 || 
+#endif
        WN_next(wn) != NULL || // no next statement in BB
        (_current_bb->Firststmt() != NULL && // no previous statement in BB
         (_current_bb->Firststmt() != _current_bb->Laststmt() || // prev is LABEL
@@ -1494,10 +1498,18 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 	}
       }
       else if (empty_then || empty_else) {
+	WN *addr_expr = WN_kid1(stmt);
+	// because need to generate an extra ILOAD, if the if_test involves
+	// the addr_expr, it is probably means speculation is unsafe, so give up
+        // bug 7845
+	if (OPERATOR_is_compare(WN_operator(if_test)) &&
+	    (Same_addr_expr(WN_kid0(if_test), addr_expr) ||
+	     Same_addr_expr(WN_kid1(if_test), addr_expr)))
+	  goto skip_if_conversion;
+
 	// because need to generate an extra ILOAD, see that a similar ILOAD has
 	// occurred unconditionally; check currently limited to conditional expr
 	// plus previous 2 statements
-	WN *addr_expr = WN_kid1(stmt);
 	if (! Has_iload_with_same_addr_expr(addr_expr, if_test)) {
 	  // check previous statement
 	  if (_current_bb->Laststmt() == NULL) 
@@ -2247,6 +2259,14 @@ CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
 
   // remember the last block in the region
   BB_NODE *last_region_bb = _current_bb;
+
+#ifdef KEY // bug 8690
+  if (REGION_is_mp(wn) && _rgn_level != RL_MAINOPT &&
+      Is_region_with_pragma(wn,WN_PRAGMA_SINGLE_PROCESS_BEGIN)) {
+    // add extra edge in the cfg to reflect jump around the single region
+    Connect_predsucc( first_region_bb, last_region_bb );
+  }
+#endif
 
   // last pieces of missing information
   bb_region->Set_region_end(last_region_bb);
@@ -5168,6 +5188,9 @@ CFG::Fall_through(BB_NODE *bb1, BB_NODE *bb2)
   STMTREP *bb_branch = bb1->Branch_stmtrep();
   if (bb_branch == NULL) return TRUE;
   if (OPC_GOTO != bb_branch->Op()) return FALSE;
+#ifdef KEY // bug 11304
+  if (bb1->Succ() == NULL) return FALSE;
+#endif
   if (bb1->Succ()->Node() == bb2) return TRUE;
   return FALSE;
 }

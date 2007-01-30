@@ -1,7 +1,11 @@
+/*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -239,6 +243,9 @@ enum AUXF_FLAGS {
   AUXF_SPRE_TEMP     = 0x2000,     // PREG introduced by SPRE
   AUXF_SIGN_EXTD     = 0x4000,     // Is sign extended set by LPRE
   AUXF_DISABLE_LOCAL_RVI  = 0x8000, // Is live out of current REGION
+#ifdef KEY
+  AUXF_INDIRECT_ACCESS = 0x10000,  // indirect access of variable?
+#endif
 };
 
 
@@ -275,7 +282,7 @@ private:
   UINT8  _more_flags;	      // overflow field for flags field (AUXF2_FLAGS)
   UINT8  _mclass;                  // mtype class, e.g. INT, FLOAT, COMPLEX
   mTYPE_ID _mtype;                    // mtype 
-  mINT16  _flags;                     // flags field (AUXF_FLAGS)
+  mINT32  _flags;                     // flags field (AUXF_FLAGS)
   ST      *st;                        // ST *
   mINT64  _st_ofst;                   // Offset from ST.
 
@@ -482,6 +489,10 @@ public:
   void     Set_LPRE_sign_extd(void)   { _flags |= AUXF_SIGN_EXTD; }
   BOOL     Disable_local_rvi(void) const{ return _flags & AUXF_DISABLE_LOCAL_RVI;}
   void     Set_disable_local_rvi(void)  { _flags |= AUXF_DISABLE_LOCAL_RVI; }
+#ifdef KEY
+  BOOL     Indirect_access(void) const{ return _flags & AUXF_INDIRECT_ACCESS;}
+  void     Set_indirect_access(void)  { _flags |= AUXF_INDIRECT_ACCESS; }
+#endif
   BOOL     Has_store_in_PU(void) const{ return _more_flags & AUXF2_HAS_STORE_IN_PU; }
   void     Set_has_store_in_PU(void)  { _more_flags |= AUXF2_HAS_STORE_IN_PU; }
   BOOL     Is_sign_extd(void) const   { return _more_flags & AUXF2_IS_SIGN_EXTD; }
@@ -774,6 +785,9 @@ private:
   CODEMAP                   *htable;
   const ALIAS_RULE          *_rule;
   WN                        *pu_wn;
+#ifdef KEY
+  ALIAS_MANAGER             *_alias_mgr;
+#endif
   BOOL			    _rgn_trace;
 
   // ------------------------------------------------------------------
@@ -973,7 +987,11 @@ public:
   AUX_ID   Create_vsym(EXPR_KIND k);
   AUX_ID   Create_preg(MTYPE preg_ty, char *name = NULL, WN *home_wn = NULL);
   AUX_ID   Find_vsym_with_base(ST *);
+#ifdef KEY
+  AUX_ID   Find_vsym_with_st(ST *, BOOL, POINTS_TO * = NULL);
+#else
   AUX_ID   Find_vsym_with_st(ST *);
+#endif
   AUX_ID   Find_vsym_with_base_ofst_and_size(ST *, INT64, INT64, UINT8, UINT8);
   AUX_ID   Find_sym_with_st_and_ofst(ST *, INT64);
   void     Clear_coderep(void);
@@ -982,6 +1000,9 @@ public:
   void     New_stack(MEM_POOL *pool);
   void     Check_stack(void);
   WN       *Pu(void) const               { return pu_wn; }
+#ifdef KEY
+  ALIAS_MANAGER *Alias_Mgr(void) const   { return _alias_mgr; }
+#endif
   MEM_POOL *Occ_pool(void)               { return &_occ_pool; }
   CFG      *Cfg(void) const              { return _cfg; }
   const ALIAS_RULE *Rule(void) const     { return _rule; }
@@ -1081,6 +1102,9 @@ public:
 			BOOL is_volatile, WN* wn = NULL);
   AUX_ID   Enter_ded_preg(ST *, INT64, TY_IDX, INT32);
   AUX_ID   Identify_vsym(WN *);
+#ifdef KEY
+  AUX_ID   Allocate_vsym(WN *, POINTS_TO *);
+#endif
 
   //  Enter into VER_STAB
   void     Enter_du(AUX_ID du, WN *wn, BB_NODE *bb)
@@ -1309,7 +1333,11 @@ public:
   // manage the OCC_TAB
   // ------------------------------------------------------------------
 
+#ifdef KEY
+  OCC_TAB_ENTRY *Enter_occ_tab(WN *, AUX_ID, POINTS_TO * = NULL);
+#else
   OCC_TAB_ENTRY *Enter_occ_tab(WN *, AUX_ID);
+#endif
   OCC_TAB_ENTRY *Get_occ(const WN *) const;
   CHI_LIST *Get_mem_chi_list(const WN *) const;
   MU_NODE  *Get_mem_mu_node(const WN *) const;

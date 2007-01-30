@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -2431,7 +2431,7 @@ BOOL unrolled, BOOL preserve_loop_index)
       if (WN_operator(STEP)==OPR_INTCONST &&
           WN_const_val(STEP)==1) {
 
-        wn=LWN_Make_Icon(index_type, 0);
+        wn=LWN_Make_Icon(Promote_Type(index_type), 0);
 
       } else {
 
@@ -2476,7 +2476,7 @@ BOOL unrolled, BOOL preserve_loop_index)
         LNO_Erase_Dg_From_Here_In(UB, Array_Dependence_Graph);
       LWN_Copy_Def_Use(UB, kid0, Du_Mgr);
       wn = LWN_CreateExp2(
-        OPCODE_make_op(inverse_step_operator, index_type, MTYPE_V),
+        OPCODE_make_op(inverse_step_operator, Promote_Type(index_type),MTYPE_V),
         kid0, wn);
 
     } else {
@@ -2589,7 +2589,7 @@ BOOL unrolled, BOOL preserve_loop_index)
       LWN_Copy_Def_Use(WN_kid1(WN_kid0(WN_step(in_loop))), kid1, Du_Mgr);
 
       index_expr = LWN_CreateExp2(
-        OPCODE_make_op(inverse_step_operator, index_type, MTYPE_V),
+        OPCODE_make_op(inverse_step_operator, Promote_Type(index_type),MTYPE_V),
         index_expr,
         kid1);
 

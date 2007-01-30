@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -571,6 +571,10 @@ private:
    // bug fix for OSP_101 & & OSP_103 & OSP_117 & OSP_189
    //
    BOOL _check_cr_compatible (VN_VALNUM valnum);
+   
+#ifdef KEY // bug 9114              
+  BOOL _ivc_loop_variant(BB_NODE *, VN_VALNUM);
+#endif                          
 
 public:
 
@@ -667,7 +671,8 @@ public:
       // Map a new coderep, outside of our range of ids, to the given value
       // number.  Note that _vn_to_exprid should not be "live" at this point.
       //
-      Is_True(_vn_to_exprid == NULL && cr->Coderep_id() > last_exprid(),
+      Is_True( /* _vn_to_exprid == NULL && */  // for bug 9114
+	      cr->Coderep_id() > last_exprid(),
 	      ("Illegal call to VALNUM_FRE::new_cr()"));
       _vn->new_cr(cr, valnum);
    }
@@ -792,6 +797,10 @@ VALNUM_FRE::apply(void)
 				    VN_VALNUM::Bottom(),
 				    VN::VALNUM_VECTOR::allocator_type(_lpool));
       valnum_list.reserve(_vn->last_valnum().ordinal()+1);
+#ifdef KEY // bug 9114 : this code moved from inside _select_and_sort_valnums
+      VALNUM_TO_EXPR_LIST vn_to_exprid(*_vn, _lpool);
+      _vn_to_exprid = &vn_to_exprid; // Set temporary state for algorithm
+#endif
       _select_and_sort_valnums(valnum_list);
 
       // Step 3: Set up the table of worklists of real occurrences for each
@@ -822,6 +831,9 @@ VALNUM_FRE::apply(void)
       //
       SET_OPT_REPEAT_PHASE(_vnfre_ivc_phase, "VNFRE: ivc");
       _ivc();
+#ifdef KEY // bug 9114 : this code moved from inside _select_and_sort_valnums
+      _vn_to_exprid = NULL; // Reset temporary state after algorithm
+#endif
       SET_OPT_REPEAT_PHASE(_vnfre_misc_phase, "VNFRE: miscellaneous");
 
       // Remaining steps: For each value number, one at a time, apply
@@ -925,7 +937,8 @@ VALNUM_FRE::reset_valnum(const CODEREP *cr, VN_VALNUM to_valnum)
    const VN_VALNUM from_valnum = get_valnum(cr->Coderep_id());
    EXP_WORKLST    *from_worklist = _worklst(from_valnum);
 
-   Is_True(_vn_to_exprid == NULL && from_valnum != to_valnum,
+   Is_True( /* _vn_to_exprid == NULL && */ // for bug 9114
+	   from_valnum != to_valnum,
 	   ("Illegal call to VALNUM_FRE::reset_valnum()"));
 
    // Change the cr->vn mapping, remove the cr from the old_valnum->cr
@@ -1292,9 +1305,11 @@ VALNUM_FRE::_grow_exprid_maps(VN::EXPRID id)
 void
 VALNUM_FRE::_grow_valnum_maps(VN_VALNUM v)
 {
+#ifndef KEY // bug 9114
    Is_True(_vn_to_exprid == NULL, 
 	   ("Unexpected map in VALNUM_FRE::_grow_valnum_maps()"));
-   
+#endif
+
    VALNUM_FRE_grow_vector(_vn_to_worklst,
 			  (EXP_WORKLST*)NULL, (UINT32)v.ordinal()+1);
    VALNUM_FRE_grow_vector(_vn_removed,
@@ -1486,12 +1501,16 @@ VALNUM_FRE::_select_and_sort_valnums(VN::VALNUM_VECTOR &valnum_list)
    OPT_POOL_Push(_lpool, -1);
    {
       const VN_VALNUM     last_valnum = _vn->last_valnum();
+#ifndef KEY // bug 9114 : this code moved to caller
       VALNUM_TO_EXPR_LIST vn_to_exprid(*_vn, _lpool);
+#endif
       VN::BIT_VECTOR      visited(last_valnum.ordinal()+1,
 				  bool(FALSE), 
 				  VN::BVECTOR_ALLOCATOR(_lpool));
 
+#ifndef KEY // bug 9114 : this code moved to caller
       _vn_to_exprid = &vn_to_exprid; // Set temporary state for algorithm
+#endif
 
       for (VN_VALNUM v = VN_VALNUM::First(); 
 	   v <= last_valnum;
@@ -1500,7 +1519,9 @@ VALNUM_FRE::_select_and_sort_valnums(VN::VALNUM_VECTOR &valnum_list)
 	 _select_for_valnum_list(v, visited, valnum_list);
       }
 
+#ifndef KEY // bug 9114 : this code moved to caller
       _vn_to_exprid = NULL; // Reset temporary state after algorithm
+#endif
    }
    OPT_POOL_Pop(_lpool, -1); // Reclaim bit vector
 } // VALNUM_FRE::_select_and_sort_valnums
@@ -1808,6 +1829,26 @@ VALNUM_FRE::_ivc_substitute(BB_NODE        *loop_header,
    } // if (not marked as deleted)
 } // VALNUM_FRE::_ivc_substitute
 
+#ifdef KEY // bug 9114
+BOOL 
+VALNUM_FRE::_ivc_loop_variant(BB_NODE *loop_header, VN_VALNUM valnum)
+{
+   // Go thru all the variable codereps belonging to valnum.  If any of them
+   // is not defined in loop_header, then the valnum is loop invariant w.r.t.
+   // the loop corresponding to loop_header. Wrong to do IV coalescing in such
+   // case.
+   VALNUM_TO_EXPR_LIST::EXPR_ITERATOR itr = _vn_to_exprid->begin(valnum);
+   VALNUM_TO_EXPR_LIST::EXPR_ITERATOR end = _vn_to_exprid->end(valnum);
+   CODEREP *cr;
+   while (itr != end) {
+     cr = _vn->expr_cr(*itr);
+     if (cr->Kind() == CK_VAR && cr->Defbb() != loop_header)
+       return FALSE;
+     itr++;
+   }
+   return TRUE;
+}
+#endif
 
 void
 VALNUM_FRE::_ivc_classify(BB_NODE *loop_header, VN_IVC &vn_ivc)
@@ -1839,7 +1880,7 @@ VALNUM_FRE::_ivc_classify(BB_NODE *loop_header, VN_IVC &vn_ivc)
 	    VN_VALNUM    result_valnum = 
 	       _vn->expr_valnum(phi_result->Coderep_id());
 	    VN_EXPR::PTR result_vn_expr = _vn->valnum_expr(result_valnum);
-	    
+
 	    if (_user_enabled(result_valnum)   && // Not explicitly disabled
 		_do_vnfre(result_valnum)       && // Has real occurrence
 		!result_valnum.is_bottom()     && // Valid valnum
@@ -1847,6 +1888,11 @@ VALNUM_FRE::_ivc_classify(BB_NODE *loop_header, VN_IVC &vn_ivc)
 		result_vn_expr->get_kind() == VN_EXPR::PHI &&
 		result_vn_expr->get_num_opnds() == 2)
 	    {
+#ifdef KEY // bug 9114 : without this, could falsely identify class for the
+	   // 	 enclosing loop, and inserting in loop_header is then wrong
+	       if (! _ivc_loop_variant(loop_header, result_valnum))
+		 continue;
+#endif
 	       if (index != NULL                                 &&
 		   WN_st(index) == 
 		   _etable->Opt_stab()->St(phi_result->Aux_id()) &&

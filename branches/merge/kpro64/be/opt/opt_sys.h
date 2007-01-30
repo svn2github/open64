@@ -56,7 +56,7 @@
 #ifndef opt_sys_INCLUDED
 #define opt_sys_INCLUDED "opt_sys.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_sysrcs_id = opt_sys_INCLUDED"$ $Revision: 1.1.1.1 $";
+static char *opt_sysrcs_id = opt_sys_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #define BZERO bzero

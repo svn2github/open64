@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -947,7 +947,8 @@ This_preopt_renumbers_pregs(INT32 phase)
 {
   return ((((phase == PREOPT_IPA0_PHASE) && // ipl
 	    IPA_Enable_Alias_Class) ||
-	   (phase == PREOPT_LNO_PHASE)) &&
+	   (phase == PREOPT_LNO_PHASE) ||
+	   (phase == PREOPT_PHASE)) &&
 	  !Is_Set_PU_Info_flags(Current_PU_Info,
 				PU_PREGS_RENUMBERED));
 }

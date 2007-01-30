@@ -53,7 +53,7 @@
 #ifndef opt_rvitab_INCLUDED
 #define opt_rvitab_INCLUDED "opt_rvitab.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_rvitabrcs_id = opt_rvitab_INCLUDED"$ $Revision: 1.1.1.1 $";
+static char *opt_rvitabrcs_id = opt_rvitab_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef wn_INCLUDED

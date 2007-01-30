@@ -1,5 +1,9 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -258,7 +262,29 @@ static char *operator_table[OPERATOR_LAST + 1] =
   "AFFIRM",
   "ALLOCA",
   "DEALLOCA",
-  "LDMA"
+  "LDMA",
+#ifdef KEY
+  "ASM_STMT",
+  "ASM_EXPR",
+  "ASM_INPUT",
+  "RROTATE",
+  "LDA_LABEL",
+  "GOTO_OUTER_BLOCK",
+  "EXTRACT_BITS",
+  "COMPOSE_BITS",
+#endif
+#ifdef TARG_X8664
+  "REPLICATE",
+  "REDUCE_ADD",
+  "REDUCE_MPY",
+  "REDUCE_MAX",
+  "REDUCE_MIN",
+  "PURE_CALL_OP",
+  "SHUFFLE",
+  "ATOMIC_RSQRT",
+#elif defined(TARG_MIPS)
+  "PURE_CALL_OP",
+#endif
 }; 
 
 //-----------------------------------------------------------------------
@@ -2301,7 +2327,8 @@ static void WB_DAV_draw_deps_ref(ARRAY_DIRECTED_GRAPH16* dg,
   EINDEX16 e;
   for (e = dg->Get_Out_Edge(v); e; e = dg->Get_Next_Out_Edge(e)) {
     VINDEX16 v2 = dg->Get_Sink(e);
-    DV_deps->Out_Edge(EDGE_ID(NODE_ID(INTPTR(v)), NODE_ID(INTPTR(v2))),
+    DV_deps->Out_Edge(EDGE_ID(NODE_ID(INTPTR(v)), NODE_ID(
+INTPTR(v2))),
       et, NODE_ID(INTPTR(v2)));
   } 
   DV_deps->Node_End();

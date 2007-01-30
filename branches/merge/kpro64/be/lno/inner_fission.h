@@ -36,7 +36,7 @@
 #ifndef INNER_FISSION_RCS_ID
 #define INNER_FISSION_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *inner_fission_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/inner_fission.h,v $ $Revision: 1.1.1.1 $";
+static char *inner_fission_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 #endif
 

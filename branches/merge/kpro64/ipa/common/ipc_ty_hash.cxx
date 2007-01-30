@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -245,6 +245,9 @@ namespace
 		for (UINT i = 0; i < dim; ++i) {
 		    value += (arb->Lbnd_val () + arb->Ubnd_val () +
 			      arb->Stride_val ()) << i;
+#ifdef KEY // bug 9181
+		    ++arb;
+#endif
 		} 
 	    } else {
 		ARB_ITER arb_iter = Make_arb_iter (ARB_HANDLE (key));

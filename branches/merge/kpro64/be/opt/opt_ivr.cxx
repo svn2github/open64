@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -92,7 +92,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_ivr_CXX	"opt_ivr.cxx"
-static char *rcs_id = 	opt_ivr_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_ivr_CXX"$Revision: 1.19 $";
 #endif /* _KEEP_RCS_ID */
 
 #define USE_STANDARD_TYPES
@@ -875,6 +875,10 @@ CODEMAP::Convert_to_loop_invar(CODEREP *cr, BB_LOOP *loop)
     temp_type = TY_mtype(ST_type(MTYPE_To_PREG(cr->Dsctyp())));
 #ifdef KEY
     temp_rtype = TY_mtype(ST_type(MTYPE_To_PREG(cr->Dtyp())));
+#endif
+#ifdef KEY // bug 11467
+    if (temp_type == MTYPE_BS)
+      temp_type = temp_rtype;
 #endif
   }
   else {
@@ -1676,6 +1680,12 @@ IVR::Compute_trip_count(const OPCODE cmp_opc,
       apply_cxx_pointer_rule = TRUE;
       break;
     case OPR_EQ:
+#ifdef KEY // bug 10986: special case where trip count is 1
+      if (init == bound &&
+	  step->Kind() == CK_CONST && step->Const_val() != 0)
+        return Htable()->Add_const(MTYPE_I4, 1);
+      // fall thru
+#endif
     default:
       return NO_TRIP_COUNT;
     }
@@ -1994,7 +2004,7 @@ IVR::Compute_trip_count(const OPCODE cmp_opc,
   //   i=a
   //   do {
   //     i++;
-  //   while (i != b)
+  //   } while (i != b)
   //
   //  by deriving it from
   //

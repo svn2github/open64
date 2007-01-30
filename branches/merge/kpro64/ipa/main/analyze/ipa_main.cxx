@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -325,7 +325,8 @@ Perform_Interprocedural_Analysis ()
 	  if(tmp_call_graph != NULL)
 	  {	  
 	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
-  	    IPA_Call_Graph->Print(tmp_call_graph);
+	    // KEY
+  	    IPA_Call_Graph->Print_vobose(tmp_call_graph);
 	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
 	  }
 	  fclose(tmp_call_graph);

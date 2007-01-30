@@ -251,7 +251,7 @@ void WOVP::Promote(void)
     if(wo_loc->Get_promote()){
       laux =  _opt_stab->Aux_stab_entry(wo_loc->Get_lid());
       raux =  _opt_stab->Aux_stab_entry(wo_loc->Get_rid());
-      *(laux->st) = *(raux->st);
+      *(laux->St()) = *(raux->St());
     }
   }
 }

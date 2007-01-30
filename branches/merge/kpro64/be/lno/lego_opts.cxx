@@ -57,7 +57,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lego_opts.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source$ $Revision$";
 static char **rcs_dummy[] = { &rcs_id, (char **)&rcs_dummy,
 			      (char **)&source_file };
 #endif /* _KEEP_RCS_ID */

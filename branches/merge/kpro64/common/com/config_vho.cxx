@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_vho.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_vho.cxx,v $
+ * $Revision: 1.16 $
+ * $Date: 05/08/31 16:24:20-07:00 $
+ * $Author: gautam@jacinth.keyresearch $
+ * $Source: common/com/SCCS/s.config_vho.cxx $
  *
  * Revision history:
  *
@@ -104,18 +104,17 @@ BOOL    VHO_Check_Tree                  = FALSE;
 BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
 #ifdef KEY
-#ifdef TARG_IA64
-BOOL    VHO_Enable_Simple_If_Conv = FALSE;   
-#else
+/* simple if-conversion at VHO lower time */
 BOOL    VHO_Enable_Simple_If_Conv = TRUE;   
-#endif
-
 /* maximum overhead allowed after If-Conversion */
 INT32   VHO_Enable_If_Conv_Limit = 6;   
 /* enable misc. loop distribution and interchange at VHO lower time */
 BOOL    VHO_Enable_Misc_Loop_Transformation = TRUE;
 /* enable misc. loop fusion at VHO lower time */
 BOOL    VHO_Enable_Misc_Loop_Fusion = TRUE;
+/* enable combining identical THEN or ELSE  parts in cascaded IFs */
+BOOL    VHO_Merge_Thens = TRUE;
+BOOL    VHO_Merge_Elses = FALSE;
 
 /* Delete REGION_KIND_MP if region falls within these control bounds */
 INT32 	VHO_Disable_MP_PU_Before = 0;
@@ -124,6 +123,11 @@ INT32 	VHO_Disable_MP_PU_Equal = 10000;
 INT32 	VHO_Disable_MP_Local_Before = 0;
 INT32 	VHO_Disable_MP_Local_After = 10000;
 INT32 	VHO_Disable_MP_Local_Equal = 10000;
+#endif
+
+#ifdef TARG_X8664
+BOOL	VHO_Generate_Rrotate = FALSE;
+BOOL	VHO_Generate_Rrotate_Set = FALSE;
 #endif
 
 /* List of global variables to turn on and off various optimizations */
@@ -180,6 +184,10 @@ static OPTION_DESC Options_VHO[] = {
     0, 0, 0,    &VHO_Enable_Misc_Loop_Transformation, NULL },
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "misc_loop_fusion", "",
     0, 0, 0,    &VHO_Enable_Misc_Loop_Fusion, NULL },
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "merge_thens", "",
+    0, 0, 0,    &VHO_Merge_Thens, NULL },
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "merge_elses", "",
+    0, 0, 0,    &VHO_Merge_Elses, NULL },
 
   { OVK_INT32,  OV_INTERNAL,    TRUE, "disable_mp_pu_before", "",
     INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_PU_Before, NULL },
@@ -193,6 +201,10 @@ static OPTION_DESC Options_VHO[] = {
     INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_Local_After, NULL },
   { OVK_INT32,  OV_INTERNAL,    TRUE, "disable_mp_local_equal", "",
     INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_Local_Equal, NULL },
+#endif
+#ifdef TARG_X8664
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "rotate", "",
+    0, 0, 0,    &VHO_Generate_Rrotate, &VHO_Generate_Rrotate_Set },
 #endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };

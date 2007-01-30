@@ -93,6 +93,10 @@ private:
   OPT_STAB *_opt_stab;
   ETABLE   *_etable;
   BOOL      _tracing;
+  IDX_32_SET *_e_num_set;
+  IDX_32_SET **_make_diff_ssu_version_called_in_bb; // array indexed
+  		// by BB id of set of aux_id's processed already by 
+		// Make_diff_ssu_version
 
             SSU(const SSU&);
             SSU& operator = (const SSU&);
@@ -111,7 +115,9 @@ private:
   void	    Make_diff_ssu_version_at_phi(EXP_WORKLST *wk,
 					 BB_NODE *defbb,
 					 PHI_NODE *phi);
-  void	    Make_null_ssu_version_in_iphi(EXP_WORKLST *wk,
+  void	    Check_iphi_presence(EXP_WORKLST *wk,
+  				BB_NODE *iphibb);
+  void	    Make_null_ssu_version_in_iphi_for_e_num_set(
 					  BB_NODE *iphibb,
 					  BB_NODE *usebb);
   void	    Make_diff_ssu_version(EXP_WORKLST *wk, 
@@ -133,7 +139,7 @@ public:
 		ETABLE   *etable,
 		MEM_POOL *gpool,
 		MEM_POOL *lpool,
-                BOOL      tracing)
+                BOOL      tracing) 
 	                         { _htable   = htable;
 				   _cfg      = cfg;
 				   _opt_stab = opt_stab;
@@ -141,8 +147,22 @@ public:
 				   _mem_pool = gpool; 
 				   _loc_pool = lpool;
                                    _tracing  = tracing;
+				   _e_num_set = CXX_NEW(IDX_32_SET(etable->Exp_worklst()->Len(), 
+				   				   lpool, 
+								   OPTS_DONT_CARE), 
+						       lpool);
+				  _make_diff_ssu_version_called_in_bb =
+				    (IDX_32_SET **) CXX_NEW_ARRAY(IDX_32_SET *,
+						cfg->Total_bb_count(), lpool);
+				  for (INT32 i = 0; i < cfg->Total_bb_count();
+				       i++)
+				    _make_diff_ssu_version_called_in_bb[i] = 
+				   	CXX_NEW(IDX_32_SET(opt_stab->Lastidx(), 
+							   lpool, 
+							   OPTS_FALSE),
+						lpool); 
                                  }
-           ~SSU(void) 	  {};
+           ~SSU(void) 	  { /*CXX_DELETE_ARRAY(_make_diff_ssu_version_called_in_bb, lpool);*/ }
 
   void      Construct(void);
   MEM_POOL *Mem_pool(void) const { return _mem_pool; }

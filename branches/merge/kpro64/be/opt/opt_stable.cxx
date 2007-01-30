@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -64,6 +64,7 @@
 #include "opt_bb.h"
 #include "opt_main.h"
 #include "opt_etable.h"
+#include "idx_32_set.h"
 #include "opt_ssu.h"
 #include "opt_ssa.h"
 #include "opt_mu_chi.h"

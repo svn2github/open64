@@ -53,7 +53,7 @@
 #ifndef opt_rviwn_INCLUDED
 #define opt_rviwn_INCLUDED "opt_rviwn.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_rviwnrcs_id = opt_rviwn_INCLUDED"$ $Revision: 1.1.1.1 $";
+static char *opt_rviwnrcs_id = opt_rviwn_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef stab_INCLUDED

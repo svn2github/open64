@@ -1659,6 +1659,7 @@ ST::Print (FILE *f, BOOL verbose) const
 #ifdef KEY
 	    if (flags & PU_NEEDS_MANUAL_UNWINDING) fprintf (f, " needs_manual_unwinding");
 	    if (flags & PU_IS_EXTERN_INLINE) fprintf (f, " extern_inline");
+	    if (flags & PU_IS_MARKED_INLINE) fprintf (f, " inline_keyword");
 #endif
 #ifdef TARG_X8664
 	    if (flags & PU_FF2C_ABI) fprintf (f, " ff2c_abi");
@@ -1840,6 +1841,7 @@ TY::Print (FILE *f) const
 	if (flags & TY_IS_NON_POD)	fprintf (f, " non_pod");
 #ifdef KEY
 	if (flags & TY_RETURN_IN_MEM)	fprintf (f, " return_in_mem");
+	if (flags & TY_CONTENT_SEEN)	fprintf (f, " content_seen");
 #endif
     }
     fprintf (f, ")");
@@ -2047,6 +2049,7 @@ print_op<T>::operator () (UINT idx, T *entry) const {
 
 
 // specialization for printing TCONs
+template<>
 inline void
 print_op<TCON>::operator () (UINT idx, TCON *c) const
 {

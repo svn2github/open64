@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -57,7 +57,7 @@
 
 #define opt_estr_CXX	"opt_estr.cxx"
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = opt_estr_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = opt_estr_CXX"$Revision: 1.12 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

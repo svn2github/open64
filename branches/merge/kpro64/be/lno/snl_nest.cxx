@@ -45,10 +45,10 @@
 *** The conditionals use the same variables as are used in Bi.
 ***/
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/snl_nest.cxx,v $
+/** $Revision$
+*** $Date$
+*** $Author$
+*** $Source$
 **/
 
 #ifdef USE_PCH
@@ -57,7 +57,7 @@
 #pragma hdrstop
 
 #define snl_nest_CXX      "snl_nest.cxx"
-static char *rcs_id =   snl_nest_CXX "$Revision: 1.1.1.1 $";
+static char *rcs_id =   snl_nest_CXX "$Revision$";
 
 #include <sys/types.h>
 #include "fiz_fuse.h"

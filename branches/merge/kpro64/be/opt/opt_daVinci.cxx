@@ -129,7 +129,7 @@ DAVINCI::DAVINCI(void)
     // that DAVINCI does not die when
     // ipa exits.
     
-    execlp ("daVinci", "daVinci", "-pipe", 0);
+    execlp ("daVinci", "daVinci", "-pipe", NULL);
     fprintf(stderr,"cannot found daVinci.\n");
     exit (1);		    // exec fail, just exit
     

@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -56,7 +61,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_exc_CXX	"opt_exc.cxx"
-static char *rcs_id = 	opt_exc_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_exc_CXX"$Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

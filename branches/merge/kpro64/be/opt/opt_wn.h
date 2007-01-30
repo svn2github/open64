@@ -54,7 +54,7 @@
 #ifndef opt_wn_INCLUDED
 #define opt_wn_INCLUDED	"opt_wn.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_wnrcs_id = 	opt_wn_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_wnrcs_id = 	opt_wn_INCLUDED"$Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef optimizer_INCLUDED

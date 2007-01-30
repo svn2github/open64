@@ -54,7 +54,8 @@
 #ifndef opt_array_INCLUDED
 #define opt_array_INCLUDED "opt_array.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_arrayrcs_id = opt_array_INCLUDED"$ $Revision: 1.1.1.1 $";
+
+static char *opt_arrayrcs_id = opt_array_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 

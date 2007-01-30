@@ -70,7 +70,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_dom_CXX	"opt_dom.cxx"
-static char *rcs_id = 	opt_dom_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_dom_CXX"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

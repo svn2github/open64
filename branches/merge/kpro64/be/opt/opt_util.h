@@ -54,7 +54,7 @@
 #ifndef opt_util_INCLUDED
 #define opt_util_INCLUDED	"opt_util.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_utilrcs_id = 	opt_util_INCLUDED"$Revision: 1.1.1.1 $";
+sstatic char *opt_utilrcs_id = 	opt_util_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef srcpos_INCLUDED

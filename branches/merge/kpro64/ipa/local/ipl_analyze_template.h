@@ -1,6 +1,6 @@
 /* -*- c++ -*-
  *
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -827,11 +827,18 @@ SUMMARIZE<program>::Classify_indirect (SUMMARY_DESC &result, WN *w)
 
     switch (TY_kind(ST_type(st))) {
     case KIND_SCALAR:
+#ifdef KEY // bug 6229
+    case KIND_ARRAY:
+#endif
 	if (ST_class(st) == CLASS_CONST) {
 	    // symbolic constant (e.g. floating point constant)
 	    result.Set_type (VALUE_CONST);
 	    return;
 	}
+
+#ifdef KEY // bug 7718
+	if (TY_kind(ST_type(st)) == KIND_ARRAY) return;
+#endif
 	break;
     case KIND_POINTER:
 	if (is_ptr_variable)
@@ -1139,6 +1146,9 @@ SUMMARIZE<program>::Classify_const_value (SUMMARY_DESC &result, WN *w)
     st = WN_st (w);
     switch (TY_kind(ST_type(st))) {
     case KIND_SCALAR:
+#ifdef KEY // bug 6229
+    case KIND_ARRAY:
+#endif
     case KIND_POINTER:
 	break;
     default:
@@ -1150,6 +1160,10 @@ SUMMARIZE<program>::Classify_const_value (SUMMARY_DESC &result, WN *w)
 	result.Set_type (VALUE_CONST);
 	return;
     }
+
+#ifdef KEY // bug 7718
+    if (TY_kind(ST_type(st)) == KIND_ARRAY) return;
+#endif
 
     // by now, it can only be a variable
 
@@ -1262,7 +1276,12 @@ SUMMARIZE<program>::Process_jump_function (SUMMARY_DESC *desc)
           INT32 idx = Get_symbol_index (st);
           value->Set_global_index (idx);
           if (idx == -1)
+	  {
             value->Set_global_st_idx (ST_st_idx (st));
+#ifdef KEY
+            value->Set_is_global_st_idx ();
+#endif
+	  }
         }
 	break;
 
@@ -1397,7 +1416,12 @@ SUMMARIZE<program>::Process_jump_function (WN *w, INT value_idx)
 	    INT idx = Get_symbol_index (st);
 	    value->Set_global_index (idx);
 	    if (idx == -1)
+	    {
 		value->Set_global_st_idx (ST_st_idx (st));
+#ifdef KEY
+		value->Set_is_global_st_idx ();
+#endif
+	    }
 	}
 	break;
 
@@ -2416,6 +2440,13 @@ SUMMARIZE<program>::Process_cd_for_phi_node (IDTYPE cd_bb_idx)
 
     WN *cond_stmt = du->Get_last_stmt (cd_bb_idx);
 
+#ifdef KEY
+    // Bug 9110: WOPT may have inserted a dummy edge to represent the
+    // control-dependence for OpenMP single pragma, which does not have
+    // corresponding WN.
+    if (!cond_stmt)
+      return -1;
+#endif
     switch (WN_opcode (cond_stmt)) {
     case OPC_TRUEBR:
     case OPC_FALSEBR:
@@ -2483,6 +2514,13 @@ SUMMARIZE<program>::Process_control_dependence (WN *w, INT node_index)
       if (cd_bb_idx == 0) 
 	return FALSE;
       cond_stmt = du->Get_last_stmt(cd_bb_idx);
+#ifdef KEY
+      // Bug 9088: WOPT may have inserted a dummy edge to represent the
+      // control-dependence for OpenMP single pragma, which does not have
+      // corresponding WN.
+      if (!cond_stmt)
+        return FALSE;
+#endif
       switch (WN_opcode(cond_stmt)) {
       case OPC_TRUEBR:
       case OPC_FALSEBR:

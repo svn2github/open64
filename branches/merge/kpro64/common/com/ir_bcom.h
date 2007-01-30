@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -57,7 +57,7 @@ inline off_t
 ir_b_align (off_t offset, UINT32 addralign, UINT32 padding)
 {
      if (addralign-- > 1)
-	return ((offset + padding + addralign) & ~((off_t)addralign)) - padding;
+	return ((offset + padding + addralign) & ~addralign) - padding;
     else
 	return offset;
 }
@@ -96,6 +96,9 @@ ir_b_write_local_symtab (const SCOPE& pu, off_t base_offset, Output_File *fl);
 
 extern void
 IPA_irb_write_summary(Output_File *fl);
+
+extern void
+IPA_irb_write_mod_ref_info(Output_File *);
 
 #ifdef __cplusplus
 }

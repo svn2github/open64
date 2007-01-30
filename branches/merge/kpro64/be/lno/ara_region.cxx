@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,7 +48,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/ara_region.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.ara_region.cxx $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>

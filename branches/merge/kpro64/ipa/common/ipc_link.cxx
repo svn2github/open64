@@ -64,15 +64,16 @@ ARGV *current_ld_flags;
 ARGV *comma_list;
 UINT32 comma_list_byte_count = 0;
 
-#ifdef KEY
-#if defined(TARG_X8664) || defined(TARG_IA64) && !defined(CROSS_COMPILATION) 
-  #define LINKER_NAME "gcc"
-  #define LINKER_NAME_WITH_SLASH "/gcc"
-#else
-  #define LINKER_NAME "ld"
-  #define LINKER_NAME_WITH_SLASH "/ld"
-  #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
-#endif
+#if defined(TARG_IA64) || defined(TARG_X8664)
+
+#ifdef TARG_X8664
+#define LINKER_NAME "gcc"
+#define LINKER_NAME_WITH_SLASH "/gcc"
+#else  /* TARG_IA64 */
+#define LINKER_NAME "ld"
+#define LINKER_NAME_WITH_SLASH "/ld"
+#define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
+#endif /* KEY */
 
 static char* concat_names(char* a , char* b)
 {
@@ -216,23 +217,34 @@ ipa_add_parent_dir_to_relative_pathname (const char *name)
 extern "C" void
 ipa_erase_link_flag (const char* str)
 {
-    ARGV::iterator p;
+  ARGV::iterator p;
+  bool changed; /* bug 9772 */
 
+  do {
+    changed = FALSE;
     for (p = ld_flags_part1->begin();
 	 p != ld_flags_part1->end();
 	 p++) {
       if (!strcmp(str, *p)) {
 	ld_flags_part1->erase(p);
+	changed = TRUE;
+	break;
       }
     }
+  } while (changed);
 
+  do {
+    changed = FALSE;
     for (p = ld_flags_part2->begin();
 	 p != ld_flags_part2->end();
 	 p++) {
       if (!strcmp(str, *p)) {
 	ld_flags_part2->erase(p);
+	changed = TRUE;
+	break;
       }
     }
+  } while (changed);
 } // ipa_erase_link_flag
 #endif
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -133,10 +133,10 @@
 ***	  Update feedback to reflect the fact that if_wn guards do_wn.
 **/
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/cond.h,v $
+/** $Revision: 1.6 $
+*** $Date: 05/05/04 09:52:28-07:00 $
+*** $Author: gautam@eng-27.pathscale.com $
+*** $Source: ../../be/lno/SCCS/s.cond.h $
 **/
 
 #ifndef _defs_INCLUDED
@@ -162,7 +162,7 @@ class WN;
 typedef struct mem_pool MEM_POOL;
 
 #ifdef _KEEP_RCS_ID
-static char *cond_rcs_id = cond_INCLUDED "$Revision: 1.1.1.1 $";
+static char *cond_rcs_id = cond_INCLUDED "$Revision: 1.6 $";
 #endif /* _KEEP_RCS_ID */
 
 enum COND_IF_INFO {COND_IF_THEN_ONLY, COND_IF_ELSE_ONLY, COND_IF_NOT_SURE};

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1650,9 +1650,12 @@ static void Unrolled_DU_Update_V(WN **bodies, UINT u,
       if (!iter.Is_Empty()) {
         store_stack->Push(bodies[0]);
       } else {
-        if(opr == OPR_STID && !use_list->Incomplete()) {
-          DevWarn("STID without uses in Unrolled_DU_Update_V");
-        }
+        if (opr == OPR_STID)
+	  if (!use_list->Incomplete()) 
+	    DevWarn("STID without uses in Unrolled_DU_Update_V");
+#ifdef KEY // bug 8155
+	  else store_stack->Push(bodies[0]);
+#endif
       }
     } else {
       if(opr == OPR_STID) {
@@ -1709,6 +1712,10 @@ static void Unrolled_DU_Update_E(UINT u, INT loopno,
 {
   // visit the stores, we only care about external edges, internal edges
   // are handled when we visit the loads
+#ifdef KEY // bug 8155
+  // stores with incomplete uses also need to be taken into account; in such
+  // cases they could be internal or external
+#endif
   for (INT s=0; s<store_stack->Elements(); s++) {
     WN *stid = store_stack->Bottom_nth(s);
     USE_LIST *use_list = Du_Mgr->Du_Get_Use(stid);

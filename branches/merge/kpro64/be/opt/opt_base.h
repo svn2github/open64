@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -73,7 +73,7 @@
 #ifndef opt_base_INCLUDED
 #define opt_base_INCLUDED	"opt_base.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_basercs_id = 	opt_base_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_basercs_id = 	opt_base_INCLUDED"$Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "cxx_base.h"

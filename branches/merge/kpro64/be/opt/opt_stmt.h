@@ -58,7 +58,7 @@
 #ifndef opt_stmt_INCLUDED
 #define opt_stmt_INCLUDED "opt_stmt.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_stmtrcs_id = opt_stmt_INCLUDED"$ $Revision: 1.1.1.1 $";
+static char *opt_stmtrcs_id = opt_stmt_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 

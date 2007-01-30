@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -147,10 +147,10 @@
 ***                     cycles_per_iter - do_overhead is memory cost.
 **/
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/cache_model.h,v $
+/** $Revision: 1.5 $
+*** $Date: 04/12/21 14:57:12-08:00 $
+*** $Author: bos@eng-25.internal.keyresearch.com $
+*** $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.cache_model.h $
 **/
 
 #ifndef cache_model_INCLUDED
@@ -158,7 +158,7 @@
 
 
 #ifdef _KEEP_RCS_ID
-static char *cache_model_rcs_id = cache_model_INCLUDED "$Revision: 1.1.1.1 $";
+static char *cache_model_rcs_id = cache_model_INCLUDED "$Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef defs_INCLUDED

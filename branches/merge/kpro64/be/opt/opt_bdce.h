@@ -48,7 +48,7 @@
 #define opt_bdce_INCLUDED	"opt_bdce.h"
 
 #ifdef _KEEP_RCS_ID
-static char *opt_bdcercs_id = 	opt_bdce_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_bdcercs_id = 	opt_bdce_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 

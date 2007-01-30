@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -96,6 +100,7 @@
 #define TT_IPL_SECTION  0x08 
 #define TT_IPL_EXCOST	0x10 
 #define TT_IPL_SIMPLIFY 0x20
+#define TT_IPL_SUMMARY  0x40
 
 struct IPC_GLOBAL_IDX_MAP;              // forward declaration
 
@@ -424,13 +429,23 @@ private:
 
     mUINT32 _state;
 
+#ifdef KEY // bug 10289
+    mUINT32 _bb_count;
+    mUINT32 _stmt_count;
+    mUINT32 _call_count;
+#else
     mUINT16 _bb_count;
     mUINT16 _stmt_count;
     mUINT16 _call_count;
+#endif
     // number of alternate entry points in the procedure
     mUINT16 _alt_entry_count; 
 
+#ifdef KEY // bug 10289
+    mUINT32 _callsite_count;
+#else
     mUINT16 _callsite_count;
+#endif
     mUINT16 _ctrl_dep_count;
     mUINT16 _formal_count;
     mUINT16 _global_count;
@@ -510,6 +525,10 @@ public:
     INT32 Get_symbol_index () const		{ return _symbol_index; }
 
 #ifdef KEY
+    void Set_bb_count (UINT16 bbs)		{ _bb_count = bbs; }
+    void Set_stmt_count (UINT16 stmts)		{ _stmt_count = stmts; }
+    void Set_call_count (UINT16 calls)		{ _call_count = calls; }
+
 // Use proper types of mINT32, otherwise the value gets truncated while
 // assigning.
     void Set_callsite_index (mINT32 c)		{ _callsite_index = c;}
@@ -702,6 +721,9 @@ public:
     void Incr_call_count ()		{ _call_count++; }
     void Incr_callsite_count ()		{ _callsite_count++; }
 
+    void Decr_call_count ()		{ _call_count--; }
+    void Decr_callsite_count ()		{ _callsite_count--; }
+
     // Tracing:
     void Print ( FILE *fp, INT32 i ) const;
     void Trace ( INT32 i ) const;
@@ -724,6 +746,10 @@ private:
     mUINT16 _effective_stmt_count;	// # of stmt with non-zero freq.
 	UINT16	_wn_count;	//INLINING_TUNING
 	FB_FREQ	_cycle_count_2;	//INLINING_TUNING
+#ifdef KEY
+    UINT64  _func_runtime_addr;         // Function runtime addr used
+                                        // by -IPA:icall_opt.
+#endif
     
 public:
 
@@ -760,6 +786,15 @@ public:
 	_effective_stmt_count += count;
     }
 
+#ifdef KEY
+    void Set_func_runtime_addr (UINT64 addr) {
+	_func_runtime_addr = addr;
+    }
+    UINT64 Get_func_runtime_addr () const {
+	return _func_runtime_addr;
+    }
+#endif
+
     /* operations */
 
     void Init () { bzero (this, sizeof(SUMMARY_FEEDBACK)); }
@@ -785,11 +820,18 @@ class SUMMARY_CALLSITE
 #define IPL_CALL_MUST_INLINE	0x08
 #define IPL_CALL_NO_INLINE	0x10
 
+#ifndef PATHSCALE_MERGE_ZHC
 #ifdef KEY
-#define IPL_ICALL_SLOT	        0x20
+#define IPL_ICALL_SLOT        0x20  
+#endif
 #endif
 
 #define IPL_IN_CASE_CLAUSE      0x40
+
+#ifdef KEY
+#define IPL_ICALL_TARGET        0x80
+#endif
+
     
 private:
 
@@ -798,6 +840,8 @@ private:
 					// the wn
 	mINT32 _map_id;			// map id corresponding to the whirl
 					// node
+	mUINT64 _targ_runtime_addr;	// used by icall-optimization
+					// IPL_ICALL_TARGET must be set.
     } u1;
 
     union {
@@ -827,6 +871,11 @@ public:
 
     void Set_map_id (mINT32 map_id)	{ u1._map_id = map_id;}
     INT32 Get_map_id () const		{ return u1._map_id;}
+
+#ifdef KEY
+    void Set_targ_runtime_addr (mUINT64 addr)	{ u1._targ_runtime_addr = addr;}
+    mUINT64 Get_targ_runtime_addr () const	{ return u1._targ_runtime_addr;}
+#endif
 
     void Set_symbol_index (mINT32 s) {
 	Is_True (!Is_func_ptr (),
@@ -860,13 +909,19 @@ public:
     BOOL Is_func_ptr () const		{ return (_state & IPL_FUNC_PTR); }
 
 #ifdef KEY
+    void Set_icall_target () { _state |= IPL_ICALL_TARGET; }
+    void Reset_icall_target () { _state &= ~IPL_ICALL_TARGET; }
+    BOOL Is_icall_target () const { return (_state & IPL_ICALL_TARGET); }
+#endif
+
+#ifdef KEY
     void Set_icall_slot ()		{ _state |= IPL_ICALL_SLOT; }
     void Reset_icall_slot ()		{ _state &= ~IPL_ICALL_SLOT; }
     BOOL Is_icall_slot () const		{ return (_state & IPL_ICALL_SLOT); }
+#endif
 
     void Set_probability (float p)	{ _probability = p; }
     float Get_probability () const	{ return _probability; }
-#endif
 
     BOOL Is_in_case_clause (void) const	{ return (_state & IPL_IN_CASE_CLAUSE); }
     void Set_in_case_clause (void)	{ _state |= IPL_IN_CASE_CLAUSE; }
@@ -925,6 +980,10 @@ private:
     // Attribute flags for a formal:
 #define IPL_FORMAL_REF_PARM		0x01 // if this is a reference argument
 #define IPL_FORMAL_VAR_DIM_ARRAY	0x02 // if this is a variable-dim array
+#ifdef KEY
+#define IPL_FORMAL_LOOP_INDEX		0x04 // ref_parm used as a loop index,
+                            		     // REF_PARM must be also set.
+#endif
 
     mINT16 _flags;    	
 
@@ -950,6 +1009,11 @@ public:
 
     void Set_is_var_dim_array ()	{ _flags |= IPL_FORMAL_VAR_DIM_ARRAY; }
     BOOL Is_var_dim_array () const	{ return (_flags & IPL_FORMAL_VAR_DIM_ARRAY); }
+
+#ifdef KEY
+    void Set_is_loop_index ()		{ _flags |= IPL_FORMAL_LOOP_INDEX; }
+    BOOL Is_loop_index () const		{ return (_flags & IPL_FORMAL_LOOP_INDEX); }
+#endif
 
     void Set_position (mINT32 position) { _position = position;}
     mINT32 Get_position () const	{ return _position;};
@@ -1042,6 +1106,9 @@ typedef enum ipa_pass_type
     PASS_MLOAD = 3,			// passed as *p for structures
     PASS_LDA = 4,			// passed as &p 
     PASS_ARRAY_SECTION = 5,             // passed array section
+#ifdef KEY
+    PASS_ARRAY = 6,                     // passed as OPR_ARRAY
+#endif
 } IPA_PASS_TYPE;
 
 

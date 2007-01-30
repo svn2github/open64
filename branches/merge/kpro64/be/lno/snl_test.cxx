@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,10 +39,10 @@
 
 // -*-C++-*-
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/snl_test.cxx,v $
+/** $Revision: 1.9 $
+*** $Date: 05/06/29 17:55:11-07:00 $
+*** $Author: fchow@fluorspar.internal.keyresearch.com $
+*** $Source: be/lno/SCCS/s.snl_test.cxx $
 **/
 
 #define __STDC_LIMIT_MACROS
@@ -53,7 +53,7 @@
 #pragma hdrstop
 
 #define snl_test_CXX      "snl_test.cxx"
-static char *rcs_id =   snl_test_CXX "$Revision: 1.1.1.1 $";
+static char *rcs_id =   snl_test_CXX "$Revision: 1.9 $";
 
 #include <sys/types.h>
 #include <alloca.h>
@@ -80,6 +80,11 @@ static char *rcs_id =   snl_test_CXX "$Revision: 1.1.1.1 $";
 #include "config.h"
 #include "split_tiles.h"
 
+// Bug 6010: an upper bound for the number of nests in a procedure
+//           to unroll outmost loop, to reduce memory requirement 
+#ifdef KEY
+#define MAX_NESTS_IN_FU 450
+#endif
 static void SNL_Optimize_Bounds_With_Access_Vectors(WN* wn_loop, 
 					    	    DU_MANAGER* du);
 
@@ -1651,6 +1656,16 @@ extern void SNL_Phase(WN* func_nd)
   FIZ_FUSE_INFO* ffi=
     CXX_NEW(FIZ_FUSE_INFO(&LNO_local_pool), &LNO_local_pool);
   ffi->Build(func_nd);
+
+// Bug 6010: if the number of nests in a procedure exceeds
+// the limits, unrolling may require a large compilation time
+// memory. Setting to 1 will not directly affect any major LNO
+// optimizations 
+#ifdef KEY
+  if(ffi->Num_Snl() > MAX_NESTS_IN_FU)
+    LNO_Outer_Unroll = 1;
+#endif
+
   if (LNO_Test_Dump)
     for (INT i = 0; i < ffi->Num_Snl(); i++)
       ffi->Print(i, TFile);

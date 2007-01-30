@@ -1,5 +1,9 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -195,7 +199,34 @@ void MHD_LEVEL::Merge_Options(const MHD_LEVEL& o)
 
   if (Valid() && recompute_ecs)
     Compute_Effective_Size();
+#ifdef KEY
+  if(Valid())
+   Reset_CS_String();
+#endif
 }
+
+#ifdef KEY /* Bug 10252: set cache size */
+void MHD_LEVEL::Reset_CS_String()
+{
+   if(Size < 0) return; /*nothing to do */
+   if(CS_string != NULL)
+      free(CS_string); /* safe to free, because it is malloced */
+   char *addition = "K"; /* appending character */
+   INT64 remains = Size/1024;
+   if(remains >= 1024)
+   {
+       addition = "M";
+       remains = remains/1024;
+       if(remains >= 1024){
+       remains = remains/1024;
+       addition = "G";
+       }
+   }
+   CS_string = (char *)malloc(32);
+   sprintf(CS_string, "%lld", remains);
+   strcat(CS_string, addition);
+}
+#endif
 
 void MHD_LEVEL::Compute_Effective_Size()
 {

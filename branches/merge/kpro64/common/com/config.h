@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -256,7 +256,7 @@
 
 
 #ifdef _KEEP_RCS_ID
-static char *config_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config.h,v $ $Revision: 1.1.1.1 $";
+static char *config_rcs_id = "$Source: common/com/SCCS/s.config.h $ $Revision: 1.24 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "config_host.h"	/* in TARGET/com */
@@ -510,7 +510,11 @@ extern BOOL Regions_Around_Inner_Loops; /* Put REGIONs around inner loops */
 extern BOOL Region_Boundary_Info;	/* calc boundary info for regions */
 extern BOOL Cray_Ivdep;   		/* Use Cray meaning for ivdep */
 extern BOOL Liberal_Ivdep;   		/* Use liberal meaning for ivdep */
+#ifdef TARG_X8664
+extern UINT32 Rsqrt_Allowed;		/* Generate RSQRT instruction? */
+#else
 extern BOOL Rsqrt_Allowed;		/* Generate RSQRT instruction? */
+#endif
 extern BOOL Recip_Allowed;		/* Generate RECIP instruction? */
 extern BOOL Enable_Cfold_Aggressive;	/* Complex constant folding? */
 extern BOOL Ptr_Opt_Allowed;	        /* Treat pointers as arrays */
@@ -755,6 +759,9 @@ extern INT32 Ipa_Ident_Number;
 /* Tell ipa_link about the LD_LIBRARY_PATH that was in effect before the
    compiler was run. */
 extern char *IPA_old_ld_library_path;
+
+/* Tell ipa_link about the source language. */
+extern char *IPA_lang;
 #endif
 
 extern BOOL Scalar_Formal_Ref;		/* for fortran formal scalar refs */

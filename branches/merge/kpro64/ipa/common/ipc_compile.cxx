@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -326,7 +326,7 @@ ipa_compile_init ()
     tmp_cc_name_base = where_am_i;
     cc_name_base = where_am_i;
   }
-  
+
   if (my_cc[0] == '\0' &&
       (retval = readlink ("/proc/self/exe", my_cc, sizeof(my_cc))) >= 0) {
 
@@ -340,10 +340,29 @@ ipa_compile_init ()
       } else if (looks_like (my_cc, "ipa_link")) {
 	  char *s = strrchr(my_cc, '/');
 	  if (s) {
-	      *s = '\0';
+	      *s = '\0';		// remove "/ipa_link"
 	      s = strrchr(my_cc, '/');
+	      *s = '\0';		// remove version number, e.g. "/2.3.99"
+	      s = strrchr(my_cc, '/');
+
 	      if (s) {
-		  strcpy(++s, "bin/" PSC_NAME_PREFIX "cc");
+		  // Invoke the C/C++/Fortran compiler depending on the source
+		  // language.  Bug 8620.
+		  char *compiler_name_suffix;
+		  if (!strcmp(IPA_lang, "F77") ||
+		      !strcmp(IPA_lang, "F90")) {
+		    compiler_name_suffix = "f95";
+		  } else if (!strcmp(IPA_lang, "C")) {
+		    compiler_name_suffix = "cc";
+		  } else if (!strcmp(IPA_lang, "CC")) {
+		    compiler_name_suffix = "CC";
+		  } else {
+		    Fail_FmtAssertion ("ipa: unknown language");
+		  }
+		  strcpy(++s, "bin/" PSC_NAME_PREFIX);
+		  s += strlen("bin/" PSC_NAME_PREFIX);
+		  strcpy(s, compiler_name_suffix);
+
 		  if (file_exists (my_cc)) {
 		      tmp_cc_name_base = my_cc;
 		      cc_name_base = my_cc;
@@ -950,14 +969,40 @@ void ipacom_doit (const char* ipaa_filename)
     // Print the final link command into the makefile.
 #if defined(TARG_IA64) || defined(TARG_X8664)
 #ifdef KEY
-    // cd into the ipa tmp dir first, since we removed the objs' full path
-    // from the linkopt file.  Bug 5876.
-    fprintf(makefile, "\tcd %s ; %s `cat %s ` ; mv %s ..\n",
-            tmpdir, link_line->front(), cmdfile_buf,
-	    ipa_basename((char*) executable));
+    // Create a dir in /tmp and create symbolic links inside it to point to the
+    // IPA .o files in the IPA tmpdir.  In the link command file, refer to
+    // these symbolic links instead of the IPA tmpdir .o files, in order to
+    // shorten the args in the link command file.  For example,
+    // /home/blah/very/long/path/1.o becomes /tmp/symlinksdir/1.o.  Fixes bugs
+    // 5876 (very long path), and 7801/7866 (must link in current dir).
+
+    // Create symbolic links dir in /tmp.
+    const char *outfile_basename = ipa_basename(outfilename);
+    char *symlinksdir = (char *) alloca(20 + strlen(outfile_basename));
+    sprintf(symlinksdir, "/tmp/%s.ipaXXXXXX", outfile_basename);
+    symlinksdir = mktemp(symlinksdir);
+
+    // In the makefile, set up the symbolic links and modify the link command
+    // to reference these links:
+    //   mkdir symlinksdir
+    //   for i in `grep ^tmpdir/.\*.o link_cmdfile`; do
+    //     ln -s $i symlinksdir
+    //   done
+    //   gcc `sed 's:tmpdir:symlinksdir:' link_cmdfile`
+    //   rm -r symlinksdir
+
+    fprintf(makefile, "\tmkdir %s\n", symlinksdir);
+    fprintf(makefile, "\td=`pwd` ; \\\n");
+    fprintf(makefile, "\tfor i in `grep ^%s/.\\*.o %s`; do ln -s %s$$i %s; done\n",
+	    tmpdir, link_cmdfile_name,
+	    tmpdir[0] == '/' ? "" : "$$d/",
+	    symlinksdir);
+    fprintf(makefile, "\t%s `sed 's:%s:%s:' %s`\n",
+	    strcmp(IPA_lang, "CC") ? "gcc" : "g++", // g++ to link C++, bug 9191
+	    tmpdir, symlinksdir, link_cmdfile_name);
+    fprintf(makefile, "\trm -r %s\n", symlinksdir);
 #else
-    fprintf(makefile,
-	    "\t%s `cat %s `\n",
+    fprintf(makefile, "\t%s `cat %s `\n",
             link_line->front(),
             link_cmdfile_name);
 #endif
@@ -1321,7 +1366,11 @@ static const char* get_extra_args(const char* ipaa_filename)
   
   switch (ld_ipa_opt[LD_IPA_SHARABLE].flag) {
   case F_MAKE_SHARABLE:
+#ifdef KEY
+    args.push_back("-TENV:PIC");
+#else
     args.push_back("-pic2");
+#endif
     break;
   case F_CALL_SHARED:
   case F_CALL_SHARED_RELOC:

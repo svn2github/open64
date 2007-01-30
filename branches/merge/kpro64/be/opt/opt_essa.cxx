@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -269,18 +269,12 @@ ESSA::Ilod_modified_phi_result(const BB_NODE *phi_bb, const CODEREP *cr) const
       return TRUE;
 
     STMTREP *sr = vsym->Defstmt();
-    if (sr == NULL) return TRUE;
-    if (OPCODE_operator (sr->Op()) == OPR_CALL) {
-      READ_WRITE how = Rule()->Aliased_with_Call 
-          (sr->St (), sr->Call_flags(), cr->Points_to(Opt_stab()));
-      if (how == WRITE || how == READ_AND_WRITE) 
-        return TRUE;
- 
-      cr->Ivar_mu_node()->Set_OPND(vsym->Defchi()->OPND());
-      continue;
-    }
+    if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
-    if (!OPCODE_is_store(sr->Op())) return TRUE;
+#ifdef KEY // bug 7814
+    if (vsym->Aux_id() == Opt_stab()->Default_vsym())
+      return TRUE;
+#endif
 
     // Seems like the following can lead to use-before-def if the
     // defstmt's result is not aliased with the use (i.e., with
@@ -356,6 +350,11 @@ ESSA::Ilod_modified_real_occ_phi_opnd(const BB_NODE *def_bb, const CODEREP *cr,
     STMTREP *sr = vsym->Defstmt();
     if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
+#ifdef KEY // bug 7814
+    if (vsym->Aux_id() == Opt_stab()->Default_vsym())
+      return TRUE;
+#endif
+
     if (Rule()->Aliased_Memop(sr->Lhs()->Points_to(Opt_stab()),
 			      cr->Points_to(Opt_stab()),
 			      sr->Lhs()->Kind() == CK_VAR ? sr->Lhs()->Lod_ty() : sr->Lhs()->Ilod_ty(),
@@ -400,19 +399,12 @@ ESSA::Ilod_modified_real_occ_real_occ(const BB_NODE *def_bb,
       return TRUE;
 
     STMTREP *sr = vsym->Defstmt();
-    if (sr == NULL) return TRUE;
-    if (OPCODE_operator (sr->Op()) == OPR_CALL) {
-      READ_WRITE how = Rule()->Aliased_with_Call 
-          (sr->St (), sr->Call_flags(), use_cr->Points_to(Opt_stab()));
-      if (how == WRITE || how == READ_AND_WRITE) 
-        return TRUE;
- 
-      use_cr->Ivar_mu_node()->Set_OPND(vsym->Defchi()->OPND());
-      continue;
-    }
-    
-    if (!OPCODE_is_store(sr->Op())) 
+    if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
+
+#ifdef KEY // bug 7814
+    if (vsym->Aux_id() == Opt_stab()->Default_vsym())
       return TRUE;
+#endif
 
     if (Rule()->Aliased_Memop(sr->Lhs()->Points_to(Opt_stab()),
 			      use_cr->Points_to(Opt_stab()), 

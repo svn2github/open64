@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -64,7 +64,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_wn_CXX	"opt_wn.cxx"
-static char *rcs_id = 	opt_wn_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_wn_CXX"$Revision: 1.31 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>
@@ -557,9 +557,14 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_V8I2:	return OPC_V8I2V8I2LDID;
     case MTYPE_V8I4:	return OPC_V8I4V8I4LDID;
     case MTYPE_V8F4:	return OPC_V8F4V8F4LDID;
+    case MTYPE_M8I1:	return OPC_M8I1M8I1LDID;
+    case MTYPE_M8I2:	return OPC_M8I2M8I2LDID;
+    case MTYPE_M8I4:	return OPC_M8I4M8I4LDID;
+    case MTYPE_M8F4:	return OPC_M8F4M8F4LDID;
 #endif
 
     case MTYPE_B:
+    case MTYPE_F16:
     case MTYPE_STRING:
     case MTYPE_M:
     case MTYPE_V:
@@ -583,7 +588,7 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
 #ifdef TARG_X8664
   if ( mtype_class & MTYPE_CLASS_VECTOR ) {
-    if ( mtype_class == MTYPE_CLASS_SVECTOR ) {
+    if ( ( mtype_class & MTYPE_CLASS_SVECTOR ) == MTYPE_CLASS_SVECTOR ) {
       if ( mtype_class & MTYPE_CLASS_INTEGER ) {
         switch ( bytes ) {
         case 1: return MTYPE_V8I1; 
@@ -593,6 +598,17 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
       } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
         if ( bytes == 4 )
           return MTYPE_V8F4; 
+      }
+    } else if ( ( mtype_class & MTYPE_CLASS_MVECTOR ) == MTYPE_CLASS_MVECTOR ) {
+      if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+        switch ( bytes ) {
+        case 1: return MTYPE_M8I1; 
+        case 2: return MTYPE_M8I2; 
+        case 4: return MTYPE_M8I4; 
+        }
+      } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+        if ( bytes == 4 )
+          return MTYPE_M8F4; 
       }
     } else // 128-bit vectors
     if ( mtype_class & MTYPE_CLASS_INTEGER ) {
@@ -671,7 +687,7 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
 #ifdef TARG_X8664
   if ( mtype_class & MTYPE_CLASS_VECTOR ) {
-    if (mtype_class == MTYPE_CLASS_SVECTOR ) {
+    if ( ( mtype_class & MTYPE_CLASS_SVECTOR ) == MTYPE_CLASS_SVECTOR ) {
       if ( mtype_class & MTYPE_CLASS_INTEGER ) {
         switch ( bytes ) {
         case 1: return OPC_V8I1V8I1LDID; 
@@ -681,6 +697,17 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
         if ( bytes == 4 )
           return OPC_V8F4V8F4LDID; 
+      }
+    } else if ( ( mtype_class & MTYPE_CLASS_MVECTOR ) == MTYPE_CLASS_MVECTOR ) {
+      if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+        switch ( bytes ) {
+        case 1: return OPC_M8I1M8I1LDID; 
+        case 2: return OPC_M8I2M8I2LDID; 
+        case 4: return OPC_M8I4M8I4LDID; 
+        }
+      } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+        if ( bytes == 4 )
+          return OPC_M8F4M8F4LDID; 
       }
     } else // 128-bit vectors
     if ( mtype_class & MTYPE_CLASS_INTEGER ) {
@@ -759,7 +786,7 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
 #ifdef TARG_X8664
   if ( mtype_class & MTYPE_CLASS_VECTOR ) {
-    if ( mtype_class == MTYPE_CLASS_SVECTOR ) {
+    if ( ( mtype_class & MTYPE_CLASS_SVECTOR ) == MTYPE_CLASS_SVECTOR ) {
       if ( mtype_class & MTYPE_CLASS_INTEGER ) {
         switch ( bytes ) {
         case 1: return OPC_V8I1STID; 
@@ -769,6 +796,17 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
         if ( bytes == 4 )
           return OPC_V8F4STID; 
+      }
+    } else if ( ( mtype_class & MTYPE_CLASS_MVECTOR ) == MTYPE_CLASS_MVECTOR ) {
+      if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+        switch ( bytes ) {
+        case 1: return OPC_M8I1STID; 
+        case 2: return OPC_M8I2STID; 
+        case 4: return OPC_M8I4STID; 
+        }
+      } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+        if ( bytes == 4 )
+          return OPC_M8F4STID; 
       }
     } else // 128-bit vectors
     if ( mtype_class & MTYPE_CLASS_INTEGER ) {
@@ -1302,9 +1340,14 @@ Identity_assignment_type( AUX_STAB_ENTRY *sym, OPT_PHASE phase )
    
     if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
     	mtype = sym->Mtype();
-    else
+    else {
         mtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
 						  sym->Byte_size());
+#ifdef KEY // bug 8186
+	if (MTYPE_is_unsigned(sym->Mtype()))
+	  mtype = Mtype_TransferSign(MTYPE_U4, mtype);
+#endif
+    }
 
     if ( mtype == MTYPE_UNKNOWN )
       return TY_IDX_ZERO;
@@ -1339,10 +1382,14 @@ Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
     TYPE_ID type = sym->Mtype();
     INT bytes = sym->Byte_size();
     switch (type) {
+    case MTYPE_M8I1:
     case MTYPE_V8I1:
     case MTYPE_V16I1: bytes = 1; break;
+    case MTYPE_M8I2:
     case MTYPE_V8I2:
     case MTYPE_V16I2: bytes = 2; break;
+    case MTYPE_M8I4:
+    case MTYPE_M8F4:
     case MTYPE_V8I4:
     case MTYPE_V8F4:
     case MTYPE_V16I4:

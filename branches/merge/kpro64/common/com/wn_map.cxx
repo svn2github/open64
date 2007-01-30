@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,8 +41,8 @@
  * ====================================================================
  *
  * Module: wn_map.c
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/wn_map.cxx,v $
+ * $Author: gautam@jacinth.keyresearch $
+ * $Source: common/com/SCCS/s.wn_map.cxx $
  *
  * Revision history:
  *  09-Dec-94 - Original Version (derived from old wn_map.cxx file)

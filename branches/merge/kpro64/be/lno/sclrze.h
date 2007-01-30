@@ -70,13 +70,13 @@
 
 
 /**
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/sclrze.h,v $
+*** $Source$
 **/
 
 #ifndef SCLRZE_RCS_ID
 #define SCLRZE_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *sclrze = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/sclrze.h,v $ $Revision: 1.1.1.1 $";
+static char *sclrze = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 #endif
 

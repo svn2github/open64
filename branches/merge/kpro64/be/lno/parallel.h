@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -411,5 +415,9 @@ extern BOOL Outermore_Parallel_Construct_Or_Lego_Loop(WN* wn_loop);
 extern BOOL Innermore_Parallel_Or_Lego_Loop(WN* wn_loop);
 extern void IPA_LNO_Evaluate_Call_Infos(WN* func_nd);
 extern void IPA_LNO_Unevaluate_Call_Infos(WN* func_nd);
+
+#ifdef KEY
+extern INT Last_Apo_Loop_Id;
+#endif
 
 #endif /* parallel_INCLUDED */ 

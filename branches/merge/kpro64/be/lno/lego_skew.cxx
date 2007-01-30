@@ -40,7 +40,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lego_skew.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>

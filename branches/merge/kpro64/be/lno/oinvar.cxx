@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,10 +61,10 @@
  * ====================================================================
  *
  * Module: oinvar.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/oinvar.cxx,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  30-12-96 - Original Version
@@ -76,7 +80,7 @@
 #pragma hdrstop
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/oinvar.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source$ $Revision$";
 
 #include <sys/types.h>
 #include "lnopt_main.h"
@@ -255,7 +259,11 @@ Is_Very_Expensive_Expression(const WN* wn)
           opr == OPR_DIVREM ||
           opr == OPR_RECIP ||
           opr == OPR_SQRT ||
-          opr == OPR_RSQRT);
+          opr == OPR_RSQRT
+#ifdef TARG_X8664
+          || opr == OPR_ATOMIC_RSQRT
+#endif
+	  );
 }
 
 

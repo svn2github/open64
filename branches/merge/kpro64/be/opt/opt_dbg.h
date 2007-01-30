@@ -56,7 +56,7 @@
 #ifndef opt_dbg_INCLUDED
 #define opt_dbg_INCLUDED     "opt_dbg.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_dbgrcs_id = opt_dbg_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_dbgrcs_id = opt_dbg_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifdef Is_True_On

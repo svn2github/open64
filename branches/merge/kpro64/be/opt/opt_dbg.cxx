@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -67,7 +67,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_dbg_CXX	"opt_dbg.cxx"
-static char *rcs_id = 	opt_dbg_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_dbg_CXX"$Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

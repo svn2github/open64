@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1025,7 +1025,11 @@ Compute_Split_Regions(SPLIT_COMMON_DYN_ARRAY *split_common_shape)
 
       // conditions 1 and 2
       if ((size_bytes >= Primary_Cache) && 
-	  (offset >= Primary_Cache - Primary_Delta))
+	  (offset >= Primary_Cache - Primary_Delta)
+#ifdef KEY
+	  && (i != 0)	// Don't split first field.  Bug 8784.
+#endif
+	  )
 	{
 	  offset = offset - current_split;
 

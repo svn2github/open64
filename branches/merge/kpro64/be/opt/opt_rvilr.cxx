@@ -58,7 +58,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_rvilr_CXX	"opt_rvilr.cxx"
-static char *rcs_id = 	opt_rvilr_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_rvilr_CXX"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

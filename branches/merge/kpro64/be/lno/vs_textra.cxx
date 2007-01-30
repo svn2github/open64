@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -44,10 +44,10 @@
 *** not adequate.  Thus 'textra' => 'template extra'.
 **/
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/vs_textra.cxx,v $
+/** $Revision: 1.6 $
+*** $Date: 04/12/21 14:57:16-08:00 $
+*** $Author: bos@eng-25.internal.keyresearch.com $
+*** $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.vs_textra.cxx $
 **/
 
 #define __STDC_LIMIT_MACROS
@@ -58,7 +58,7 @@
 #pragma hdrstop
 
 #define vs_textra_CXX      "vs_textra.cxx"
-static char *rcs_id =   vs_textra_CXX "$Revision: 1.1.1.1 $";
+static char *rcs_id =   vs_textra_CXX "$Revision: 1.6 $";
 
 
 #include <sys/types.h>
@@ -78,21 +78,25 @@ const char* _Skip_Whitespace(const char* cp)
   return cp;
 }
 
+template<>
 void VECTOR_SPACE<double>::Print_Element(FILE* f, double e)
 {
   fprintf(f, "%g", e);
 }
 
+template<>
 void VECTOR_SPACE<FRAC>::Print_Element(FILE* f, FRAC e)
 {
   e.Print(f);
 }
 
+template<>
 void VECTOR_SPACE<double>::Reduce_Row(double*, INT)
 {
   return;
 }
 
+template<>
 void VECTOR_SPACE<FRAC>::Reduce_Row(FRAC* row, INT elts)
 {
   INT j;

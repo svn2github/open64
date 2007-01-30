@@ -62,7 +62,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_region_emit_CXX	"opt_region_emit.cxx"
-static char *rcs_id = 	opt_region_emit_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_region_emit_CXX"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

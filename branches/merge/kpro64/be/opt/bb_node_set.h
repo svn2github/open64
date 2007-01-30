@@ -432,7 +432,7 @@
 #ifndef bb_node_set_INCLUDED
 #define bb_node_set_INCLUDED         "bb_node_set.h"
 #ifdef _KEEP_RCS_ID
-static char *bb_node_set_rcs_id =    bb_node_set_INCLUDED"$Revision: 1.1.1.1 $";
+static char *bb_node_set_rcs_id =    bb_node_set_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "mempool.h"	// our clients should probably include this

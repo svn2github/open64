@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,10 +39,10 @@
 
 // -*-C++-*-
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/mat.cxx,v $
+/** $Revision: 1.6 $
+*** $Date: 04/12/21 14:57:14-08:00 $
+*** $Author: bos@eng-25.internal.keyresearch.com $
+*** $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.mat.cxx $
 **/
 
 #ifndef mat_CXX

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,10 +46,10 @@
  * ====================================================================
  *
  * Module: inner_fission.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/inner_fission.cxx,v $
+ * $Revision: 1.6 $
+ * $Date: 04/12/21 14:57:13-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.inner_fission.cxx $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -69,7 +69,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/inner_fission.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.inner_fission.cxx $ $Revision: 1.6 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>

@@ -43,10 +43,10 @@
 *** What all that is, exactly, you don't need to know.
 **/
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/snl_xbounds.h,v $
+/** $Revision$
+*** $Date$
+*** $Author$
+*** $Source$
 **/
 
 #ifndef snl_xbounds_INCLUDED
@@ -57,7 +57,7 @@
 #endif
 
 #ifdef _KEEP_RCS_ID
-static char *snl_xbounds_rcs_id = snl_xbounds_INCLUDED "$Revision: 1.1.1.1 $";
+static char *snl_xbounds_rcs_id = snl_xbounds_INCLUDED "$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 // Portions of these classes are public, but see the interface file for

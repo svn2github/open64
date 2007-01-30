@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -56,7 +60,7 @@
 #ifndef ipo_tlog_util_INCLUDED
 #define ipo_tlog_util_INCLUDED	"ipo_tlog_util.h"
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = 	ipo_tlog_util_INCLUDE"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	ipo_tlog_util_INCLUDE"$Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef srcpos_INCLUDED
@@ -66,9 +70,9 @@ static char *rcs_id = 	ipo_tlog_util_INCLUDE"$Revision: 1.1.1.1 $";
 enum PHASE_NAME {PHASE_INLINER, PHASE_IPA};
 #else
 enum PHASE_NAME {PHASE_INLINER, PHASE_IPA, INVALID};
-extern "C" PHASE_NAME Get_tlog_phase(void);
+extern "C" PHASE_NAME Get_ipa_tlog_phase(void);
 #endif // !KEY
-extern "C" void Set_tlog_phase(const INT32 phase); 
+extern "C" void Set_ipa_tlog_phase(const INT32 phase); 
 
 // TLOG interface for reporting optimizations
 extern "C" void Ipa_tlog( char *keyword, SRCPOS srcpos, const char *fmt, ... );

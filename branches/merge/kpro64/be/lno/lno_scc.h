@@ -37,10 +37,10 @@
 //
 /**
 *** Module: lno_scc.h
-*** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lno_scc.h,v $
+*** $Revision$
+*** $Date$
+*** $Author$
+*** $Source$
 *** 
 *** Revision history:
 ***
@@ -123,7 +123,7 @@
 #ifndef lno_scc_RCS_ID
 #define lno_scc_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *lno_scc_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lno_scc.h,v $ $Revision: 1.1.1.1 $";
+static char *lno_scc_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 #endif
 

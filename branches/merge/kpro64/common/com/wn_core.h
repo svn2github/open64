@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1370,6 +1370,16 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 					    WN_LABEL_HANDLER_BEGIN)
 #define WN_Reset_Label_Is_Handler_Begin(x) (WN_label_flag(x) &= \
 					  ~(WN_LABEL_HANDLER_BEGIN))
+
+#ifdef KEY
+#define WN_LABEL_NOT_USED 0x4
+#define WN_Label_Is_Not_Used(x)       (WN_label_flag(x) & \
+					    WN_LABEL_NOT_USED)
+#define WN_Set_Label_Is_Not_Used(x)   (WN_label_flag(x) |= \
+					    WN_LABEL_NOT_USED)
+#define WN_Reset_Label_Is_Not_Used(x) (WN_label_flag(x) &= \
+					  ~(WN_LABEL_NOT_USED))
+#endif
 
 #define WN_Set_IO_Library(x,y)  (WN_io_flag(x) = (y))
 #define WN_IO_Library(x)        ((IOLIB) WN_io_flag(x))

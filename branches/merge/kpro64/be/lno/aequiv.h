@@ -58,13 +58,13 @@
 
 
 /**
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/aequiv.h,v $
+*** $Source$
 **/
 
 #ifndef AEQUIV_RCS_ID
 #define AEQUIV_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *aequiv = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/aequiv.h,v $ $Revision: 1.1.1.1 $";
+static char *aequiv = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 #endif
 

@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -72,6 +72,17 @@
 #include <stdio.h>
 
 typedef int vertex_id;
+
+template <class Cluster_iterator>
+bool adjacent(Cluster_iterator c1, const Cluster_iterator c2) {
+  // assert(c1 < c2)
+  ++c1;
+  while (c1 < c2) {
+    if (c1->begin() != c1->end()) return false;
+    ++c1;
+  }
+  return true;
+}
 
 // composite_iterator -- 
 //    an generic iterator build from the cluster_iterator and

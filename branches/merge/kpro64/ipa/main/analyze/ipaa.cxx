@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1653,7 +1653,13 @@ IPAA_DF_SOLVER::Map_formal_attributes (const IPA_NODE &caller,
 	// Get information from the corresponding formal in the callee:
 	ref = callee_info.Is_formal_iref_elmt ( formal_num )
 	    | callee_info.Is_formal_dref_elmt ( formal_num );
+#ifdef KEY // bug 8316
+	// Don't miss the DMOD of the callee while propagating it to caller
+	mod = callee_info.Is_formal_imod_elmt ( formal_num )
+	    | callee_info.Is_formal_dmod_elmt ( formal_num );
+#else
 	mod = callee_info.Is_formal_imod_elmt ( formal_num );
+#endif
 
 	// ... and attach it:
 	switch (akind) {

@@ -336,17 +336,17 @@
 //
 
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/dep.h,v $
+/** $Revision$
+*** $Date$
+*** $Author$
+*** $Source$
 **/
 
 #ifndef dep_INCLUDED
 #define dep_INCLUDED "dep.h"
 
 #ifdef _KEEP_RCS_ID
-static char *dep_rcs_id = dep_INCLUDED "$Revision: 1.1.1.1 $";
+static char *dep_rcs_id = dep_INCLUDED "$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef dvector_INCLUDED

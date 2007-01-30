@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,10 +48,10 @@
 *** The conditionals use the same variables as are used in Bi.
 ***/
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/snl_xbounds.cxx,v $
+/** $Revision: 1.5 $
+*** $Date: 04/12/21 14:57:16-08:00 $
+*** $Author: bos@eng-25.internal.keyresearch.com $
+*** $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.snl_xbounds.cxx $
 **/
 
 #define __STDC_LIMIT_MACROS
@@ -62,7 +62,7 @@
 #pragma hdrstop
 
 #define snl_nest_CXX      "snl_nest.cxx"
-static char *rcs_id =   snl_nest_CXX "$Revision: 1.1.1.1 $";
+static char *rcs_id =   snl_nest_CXX "$Revision: 1.5 $";
 
 #include <sys/types.h>
 #include "snl.h"

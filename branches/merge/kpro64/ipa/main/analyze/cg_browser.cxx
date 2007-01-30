@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -631,7 +631,7 @@ void CG_BROWSER::Set_Node(FILE* fp)
   INT node;
   Buffer().Scan_HexInteger(&node);
   IPA_GRAPH* ipa_graph = Ipa_Cg()->Graph(); 
-  NODE_INDEX v = Find_Vertex((IPA_NODE*)(INTPTR) node);
+  NODE_INDEX v = Find_Vertex((IPA_NODE*)(INTPTR)node);
   if (v == INVALID_NODE_INDEX) { 
     Error_Cleanup();
     return; 

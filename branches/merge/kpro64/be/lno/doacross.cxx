@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,10 +46,10 @@
  * ====================================================================
  *
  * Module: doacross.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/doacross.cxx,v $
+ * $Revision: 1.7 $
+ * $Date: 05/06/20 21:34:04-07:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: be/lno/SCCS/s.doacross.cxx $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -69,7 +69,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/doacross.cxx,v $";
+static char *rcs_id = "$Source: be/lno/SCCS/s.doacross.cxx $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>

@@ -1,7 +1,11 @@
+/*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 //-*-c++-*- 
 
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -113,6 +117,9 @@
 #include "opt_main.h"
 #include "opt_fold.h"
 #include "opt_alias_class.h"
+#ifdef KEY
+#include "opt_alias_rule.h"
+#endif
 #include "opt_points_to.h"
 #include "opt_cvtl_rule.h"
 
@@ -589,7 +596,65 @@ static UINT64 Desc_type_byte_size(const WN* wn) {
   return TY_size(ty_idx);
 }
 
+#ifdef KEY
+// Input wn is an LDA, if it has correct field_id information, then
+// return the size of the field, else return 0. Set second argument
+// appropriately.
+static UINT64 Field_type_byte_size(const WN* wn, BOOL& fld_correct)
+{
+  fld_correct = TRUE;
+  Is_True (WN_operator(wn) == OPR_LDA,
+           ("Field_type_byte_size: operator not LDA"));
+  TY_IDX ty_idx = WN_ty(wn);
+  Is_True (TY_kind(ty_idx) == KIND_POINTER,
+           ("Field_type_byte_size: expected pointer type"));
+  UINT field_id = WN_field_id(wn);
+  Is_True (field_id, ("Field_type_byte_size: Expected non-zero field-id"));
+  TY_IDX pointee = TY_pointed(ty_idx);
+  while (TY_kind(pointee) == KIND_ARRAY)
+    pointee = TY_etype(pointee);
+  Is_True (TY_kind(pointee) == KIND_STRUCT,
+           ("Field_type_byte_size: Field-id can only be in a struct"));
+  UINT cur_field_id = 0;
+  FLD_HANDLE fld = FLD_get_to_field(pointee, field_id, cur_field_id);
+  // If there is invalid field_id information, we cannot do anything here.
+  if (fld.Is_Null() || (FLD_ofst(fld) != WN_offset(wn)))
+  {
+    fld_correct = FALSE;
+    return 0;
+  }
+  TY_IDX fld_ty_idx = FLD_type(fld);
+  return TY_size(fld_ty_idx);
+}
 
+// Return the access size. If wn accesses a field in a struct, return
+// the correct field_id in 'field_id'.
+static INT32 Get_byte_size (ST * st, WN * wn, UINT& field_id)
+{
+  INT32 byte_size = 0;
+
+  if (ST_class(st) == CLASS_VAR)
+  {
+    if (wn && WN_field_id(wn))
+    {
+      BOOL fld_correct;
+      INT32 size = Field_type_byte_size (wn, fld_correct);
+      if (fld_correct)
+      {
+        byte_size = size;
+        field_id = WN_field_id(wn);
+      }
+      else byte_size = TY_size(ST_type(st));
+    }
+    else byte_size = TY_size(ST_type(st));
+  }
+  return byte_size;
+}
+#endif
+
+// KEY: Bugs 9989, 10139: Added field-id information for LDID and STID
+// even for non-bit-fields. But for non-bit-fields, we do not need to
+// match field-id while searching for existing symbol idx.
 AUX_ID
 OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
 		       TY_IDX wn_object_ty, BOOL is_volatile, WN* wn)
@@ -606,11 +671,18 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   BOOL no_register = FALSE;
   BOOL dmod = FALSE;
   UINT field_id = 0;
+#ifdef KEY
+  BOOL is_bit_field = FALSE;
+#endif
 
   switch (opr) {
   case OPR_LDA:
     is_virtual = TRUE;
+#ifdef KEY
+    byte_size = Get_byte_size (st, wn, field_id);
+#else
     byte_size = (ST_class(st) == CLASS_VAR) ? TY_size(ST_type(st)) : 0;
+#endif
     stype = VT_LDA_SCALAR;
     break;
   case OPR_LDBITS:
@@ -628,7 +700,11 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
       bit_ofst = FLD_bofst(fld);
       wn_object_ty = FLD_type(fld);
       byte_size = TY_size(wn_object_ty);
+#ifdef KEY
+      is_bit_field = TRUE;
+#else
       field_id = WN_field_id(wn);
+#endif
     }
     else if (WN_desc(wn) == MTYPE_M) {
       byte_size = Desc_type_byte_size(wn);
@@ -644,6 +720,10 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
     mclass = Get_mtype_class(mtype);
     is_scalar = TRUE;
     stype = VT_NO_LDA_SCALAR;
+#ifdef KEY
+    if (opr == OPR_LDID)
+      field_id = WN_field_id(wn);
+#endif
     break;
   case OPR_STBITS:
     bit_size = WN_bit_size(wn);
@@ -660,7 +740,11 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
       bit_ofst = FLD_bofst(fld);
       wn_object_ty = FLD_type(fld);
       byte_size = TY_size(wn_object_ty);
+#ifdef KEY
+      is_bit_field = TRUE;
+#else
       field_id = WN_field_id(wn);
+#endif
     }
     else {
       if (WN_desc(wn) == MTYPE_M) {
@@ -678,6 +762,10 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
     dmod = TRUE;
     is_scalar = TRUE;
     stype = VT_NO_LDA_SCALAR;
+#ifdef KEY
+    if (opr == OPR_STID)
+      field_id = WN_field_id(wn);
+#endif
     break;
   default:
     stype = VT_OTHER;
@@ -728,7 +816,12 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
 	aux_stab[idx].St_ofst() == ofst &&
 	aux_stab[idx].Bit_size() == bit_size &&
 	aux_stab[idx].Bit_ofst() == bit_ofst &&
-	aux_stab[idx].Field_id() == field_id) {
+#ifdef KEY
+	(!is_bit_field || (aux_stab[idx].Field_id() == field_id))
+#else
+	aux_stab[idx].Field_id() == field_id
+#endif
+       ) {
       
       if ( is_volatile && ! aux_stab[idx].Is_volatile() ) {
 	aux_stab[idx].Set_volatile();
@@ -2343,9 +2436,19 @@ OPT_STAB::Collect_ST_attr(void)
     POINTS_TO *pt = psym->Points_to();
     
     if (st != NULL) {
+#ifdef KEY
+      // If "psym" has a field-id, we probably have very accurate type
+      // information, so don't destroy it. (bug 9989)
+      TY_IDX ty = (psym->Field_id() != 0 && psym->Ty() != 0) ? psym->Ty() :
+                   (ST_class(st) == CLASS_VAR ? ST_type(st) : (TY_IDX)0);
+#endif 
       pt->Analyze_ST(st, psym->St_ofst(), psym->Byte_size(),
 		     psym->Bit_ofst(), psym->Bit_size(),
+#ifdef KEY
+		     ty,
+#else 
 		     ST_class(st) == CLASS_VAR ? ST_type(st) : (TY_IDX)0,
+#endif
 		     psym->St_group() != 0 /* has equiv? */);
       // Fix 541255: 
       //  if a symbol has size 0, its offset is considered unknown.
@@ -2473,6 +2576,9 @@ OPT_STAB::Create(COMP_UNIT *cu, REGION_LEVEL rgn_level)
   _allow_sim_type = (cu->Phase() != MAINOPT_PHASE);
   _phase = cu->Phase();
   _rgn_level = rgn_level;
+#ifdef KEY
+  _alias_mgr = cu->Alias_mgr();
+#endif
 
   OPERATOR opr = WN_operator(pu_wn);
   Is_True(opr == OPR_FUNC_ENTRY || opr == OPR_REGION,
@@ -2718,13 +2824,24 @@ OPT_STAB::Find_vsym_with_base_ofst_and_size(ST *base,
 
 
 AUX_ID
+#ifdef KEY
+OPT_STAB::Find_vsym_with_st(ST *st, BOOL indirect, POINTS_TO * pt)
+#else
 OPT_STAB::Find_vsym_with_st(ST *st)
+#endif
 {
   AUX_ID i;
   AUX_STAB_ITER aux_stab_iter(this);
   FOR_ALL_NODE(i, aux_stab_iter, Init()) {
     AUX_STAB_ENTRY *vsym = Aux_stab_entry(i);
+#ifdef KEY
+    if (vsym->Is_virtual() && vsym->St() == st &&
+        (vsym->Indirect_access()!=0) == indirect &&
+        (!WOPT_Enable_New_Vsym_Allocation || !pt /* probably temporary */ ||
+         Rule()->Aliased_Memop(vsym->Points_to(), pt)))
+#else
     if (vsym->Is_virtual() && vsym->St() == st)
+#endif
       return i;
   }
   return (AUX_ID) 0;
@@ -2896,9 +3013,65 @@ OPT_STAB::Identify_vsym(WN *memop_wn)
 	    }
 	  }
 	  return vsym_id;
-	} 
-      } /* end of case-OPR_LDID */
-    }/* end of switch */
+	}
+#ifdef KEY
+	// bug 9582: Don't give unique vsyms to dope vectors.
+	if (WOPT_Enable_Vsym_Unique && !ST_Has_Dope_Vector(st)) {
+	  vsym_id = Find_vsym_with_st(st, !direct_use);
+	  if (vsym_id == 0) {
+	    vsym_id = Create_vsym(EXPR_IS_ANY);
+	    AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+	    vsym->Points_to()->Set_based_sym(NULL);
+	    vsym->Set_st(st);
+	    if (direct_use) {
+	      vsym->Set_stype(VT_UNIQUE_VSYM);
+	    }
+	    else {
+	      Is_True (vsym->Special_vsym(),
+	               ("Identify_vsym: Expected VT_SPECIAL_VSYM"));
+	      vsym->Set_indirect_access();
+	    }
+	  }
+	  else {
+//#ifdef Is_True_On
+	    AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+	    // TODO: Change to is_true later.
+	    FmtAssert (direct_use == !vsym->Indirect_access(),
+	             ("Identify_vsym: incompatible access flag in vsym"));
+	    if (!direct_use)
+	      // Change to is_true later.
+	      FmtAssert (vsym->Special_vsym(),
+	                 ("Identify_vsym: Expected VT_SPECIAL_VSYM"));
+
+//#endif
+	  }
+	  return vsym_id;
+	}
+#else
+	if (WOPT_Enable_Vsym_Unique) {
+	  vsym_id = Find_vsym_with_st(st);
+	  if (vsym_id == 0) {
+	    vsym_id = Create_vsym(EXPR_IS_ANY);
+	    AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+	    vsym->Points_to()->Set_based_sym(NULL);
+	    vsym->Set_st(st);
+	    if (direct_use) {
+	      vsym->Set_stype(VT_UNIQUE_VSYM);
+	    }
+	  }
+	  else {
+	    if (! direct_use) {
+	      AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+	      vsym->Set_stype(VT_SPECIAL_VSYM);
+	    }
+	  }
+	  return vsym_id;
+	}
+#endif
+      }
+    default:
+      addr_wn = NULL;
+    }
   }
   
   if ((OPERATOR_is_load (opr) || OPERATOR_is_store (opr)) &&
@@ -2911,10 +3084,6 @@ OPT_STAB::Identify_vsym(WN *memop_wn)
           AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
           vsym->Set_stype(VT_UNIQUE_VSYM);
           vsym->Points_to()->Set_alias_class (ac);
-          if (!_alias_classification->Writable_by_call(ac)) {
-            vsym->Points_to()->Set_not_writable_by_callee();
-            BS_Union1D(Inaccessible_to_callees(), vsym_id, mem_pool);
-          }
           _ac_2_vsym_map.Insert(ac, vsym_id);
         }
         return vsym_id;
@@ -3897,6 +4066,8 @@ BOOL OPT_STAB::Safe_to_speculate(AUX_ID id)
 // 4- or 8-byte-sized symbol; if so, return that aux_id; otherwise, return 0
 AUX_ID OPT_STAB::Part_of_reg_size_symbol(AUX_ID x)
 {
+  if (! WOPT_Enable_Subword_Opt)
+    return 0;
   AUX_ID cur;
   if (aux_stab[x].St_group()) {
     for (cur = aux_stab[x].St_group(); 

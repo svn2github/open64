@@ -65,7 +65,7 @@
 #ifndef opt_defs_INCLUDED
 #define opt_defs_INCLUDED       "opt_defs.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_defsrcs_id =	opt_defs_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_defsrcs_id =	opt_defs_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef defs_INCLUDED

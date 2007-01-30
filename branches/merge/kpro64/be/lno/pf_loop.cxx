@@ -1,5 +1,9 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -527,8 +531,8 @@ void PF_LOOPNODE::Process_Loop () {
 #ifdef KEY
   DO_LOOP_INFO *dli = (DO_LOOP_INFO *) WN_MAP_Get(LNO_Info_Map, _code);
   BOOL single_small_trip_loop = FALSE; 
-  BOOL simple_copy_loop = FALSE;
- 
+ // BOOL simple_copy_loop = FALSE; //bug 8560 disable this
+
   if (LNO_Run_Prefetch != AGGRESSIVE_PREFETCH && dli->Is_Inner) {
     // Check if loop is not inside a nested loop (outermost loop) and if the
     // trip count is small then avoid inserting prefetches - bug 2958
@@ -539,8 +543,9 @@ void PF_LOOPNODE::Process_Loop () {
 	((!dli->Num_Iterations_Symbolic && 
 	  dli->Est_Num_Iterations < 100) ||
 	 (dli->Num_Iterations_Symbolic &&
-	  LNO_Assume_Unknown_Trip_Count < 100)))
-      single_small_trip_loop = TRUE; 
+	  LNO_Num_Iters < 100)))
+      single_small_trip_loop = TRUE;
+#if 0 // bug 8560 : performance loss due to avoiding prefetch single - copy -loop
 #ifdef TARG_X8664
     // For simple copy loop, the data may not be prefetched early enough for 
     // next iteration - bug 4522.
@@ -569,10 +574,11 @@ void PF_LOOPNODE::Process_Loop () {
       }
     }
 #endif
+#endif
   }
   if ((LNO_Run_Prefetch > SOME_PREFETCH || 
        (LNO_Run_Prefetch == SOME_PREFETCH && !Is_Multi_BB (w))) &&
-      !simple_copy_loop &&
+//      !simple_copy_loop && // bug 8560 disable this
       !single_small_trip_loop)
 #endif
     Process_Refs (w);
@@ -774,6 +780,7 @@ PF_VOLUME PF_LOOPNODE::Volume () {
   return _total_iter;
 }
 
+
 /***********************************************************************
  *
  * Called with a split_vec, which may be NULL since that is stored
@@ -848,6 +855,7 @@ void PF_LOOPNODE::Gen_Prefetch (PF_SPLIT_VECTOR* split_vec) {
     ls_print_indent; fprintf (LNO_Analysis, "  (PREFETCHES\n");
     ls_num_indent += 4;
   }
+
   for (i=0; i<_bases.Elements(); i++) {
     if (versions) _bases.Bottom_nth(i)->Gen_Prefetch (split_vec);
     else          _bases.Bottom_nth(i)->Gen_Prefetch (NULL);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,10 +39,10 @@
 
 // -*-C++-*-
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/scalar_expand.cxx,v $
+/** $Revision: 1.8 $
+*** $Date: 05/10/01 01:43:14-07:00 $
+*** $Author: fchow@fluorspar.internal.keyresearch.com $
+*** $Source: be/lno/SCCS/s.scalar_expand.cxx $
 **/
 
 #define __STDC_LIMIT_MACROS
@@ -54,7 +54,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/scalar_expand.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: be/lno/SCCS/s.scalar_expand.cxx $ $Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>
@@ -255,14 +255,17 @@ static void SE_Indxs_and_Bounds(WN* loops[],
   TYPE_ID wtype = symbol.Type;
   INT sz = (wtype == MTYPE_I1 || wtype == MTYPE_U1) ? 1 :
 	   (wtype == MTYPE_I2 || wtype == MTYPE_U2) ? 2 :  
-	   (wtype == MTYPE_I4 || wtype == MTYPE_U4 || wtype == MTYPE_F4) ? 4 :
-	   (wtype == MTYPE_I8 || wtype == MTYPE_U8 || wtype == MTYPE_F8 ||
-	    wtype == MTYPE_C4) ? 8 :
+	   (wtype == MTYPE_I8 || wtype == MTYPE_U8 ||
+	    wtype == MTYPE_F8 || wtype == MTYPE_C4) ? 8 :
 #if defined(TARG_IA64)
-           (wtype == MTYPE_F10) ? 16 :
+	   (wtype == MTYPE_F10) ? 16 :
 #endif
-           (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
-	   (wtype == MTYPE_C10 || wtype == MTYPE_CQ) ? 32 : 0;
+	   (wtype == MTYPE_I4 || wtype == MTYPE_U4 ||
+	    wtype == MTYPE_F4) ? 4 :
+	   (wtype == MTYPE_F8) ? 8 :
+           (wtype == MTYPE_F16) ? 16 :
+	   (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
+	   (wtype == MTYPE_CQ) ? 32 : 0;
   FmtAssert(sz > 0, ("Bad type in scalar expansion"));
 
   TYPE_ID bsztype;
@@ -476,7 +479,11 @@ static void SE_Iload(WN* wn,
   DU_MANAGER* du = Du_Mgr;
   SYMBOL symbol(wn); 
   TYPE_ID wtype = symbol.Type;
+#ifdef KEY // bug 7846
+  OPCODE loadop = OPCODE_make_op(OPR_ILOAD, WN_rtype(wn), wtype);
+#else
   OPCODE loadop = OPCODE_make_op(OPR_ILOAD, Promote_Type(wtype), wtype);
+#endif
   TY_IDX wty = Be_Type_Tbl(wtype);
   TY_IDX pty = Make_Pointer_Type(Be_Type_Tbl(wtype));
   WN* load = LWN_CreateIload(loadop, 0, wty, pty, wn_array);

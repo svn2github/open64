@@ -65,7 +65,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: common/com/SCCS/s.config.cxx $ $Revision: 1.63 $";
 #endif /* _KEEP_RCS_ID */
 
 #define __STDC_LIMIT_MACROS
@@ -249,8 +249,13 @@ BOOL LANG_Ignore_Carriage_Return_Set = FALSE;
 # ifdef KEY
 BOOL LANG_Read_Write_Const = FALSE;
 BOOL LANG_Formal_Deref_Unsafe = FALSE;
+/* Use copyinout to improve locality in Fortran in situations where it is
+ * otherwise not needed */
 BOOL LANG_Copy_Inout = FALSE;
 BOOL LANG_Copy_Inout_Set = FALSE;
+/* Enable save/restore of FPU state in prolog/epilog, per Fortran 2003 */
+BOOL LANG_IEEE_Save = TRUE;
+BOOL LANG_IEEE_Save_Set = FALSE;
 BOOL LANG_Ignore_Target_Attribute = FALSE;
 BOOL LANG_Ignore_Target_Attribute_Set = FALSE;
 UINT32 LANG_Copy_Inout_Level = 1;
@@ -375,6 +380,9 @@ INT32 Ipa_Ident_Number = 0;
 #ifdef KEY
 // Tell ipa_link to set LD_LIBRARY_PATH to this before running the shell cmds.
 char *IPA_old_ld_library_path = NULL;
+
+// Tell ipa_link about the source language.
+char *IPA_lang = NULL;
 #endif
 
 BOOL Indexed_Loads_Allowed = FALSE;
@@ -696,6 +704,9 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_UINT32, OV_VISIBLE,	FALSE, "copyiolevel",		"",
       0, 0, INT32_MAX,	&LANG_Copy_Inout_Level,	NULL,
       "FORTRAN: Relax constraints on 'copyinout'" },
+    { OVK_BOOL, OV_VISIBLE,	TRUE, "IEEE_save",		"",
+      0, 0, 0,	&LANG_IEEE_Save,	&LANG_IEEE_Save_Set,
+      "FORTRAN: Save/restore FPU state in procedure prolog/epilog as F2003 requires" },
 # endif
 # ifdef KEY
     /* Bug 3405 */
@@ -756,6 +767,8 @@ static OPTION_DESC Options_INTERNAL[] = {
 #ifdef KEY
     { OVK_NAME, OV_INTERNAL,	FALSE, "old_ld_lib_path",	"",
       0, 0, 0,	&IPA_old_ld_library_path,	NULL },
+    { OVK_NAME, OV_INTERNAL,	FALSE, "lang",			"",
+      0, 0, 0,	&IPA_lang,	NULL },
 #endif
 
     { OVK_COUNT }		    /* List terminator -- must be last */
@@ -1460,6 +1473,25 @@ Configure_Source ( char	*filename )
      IEEE_Arithmetic = IEEE_INEXACT;
   }
 
+#ifdef KEY
+  if (!IEEE_Arith_Set && OPT_Ffast_Math_Set) {
+    // -OPT:ffast_math=ON  => IEEE_a == 2
+    //                =OFF => IEEE_a == 1
+    IEEE_LEVEL accuracy = OPT_Ffast_Math ? IEEE_INEXACT : IEEE_ACCURATE;
+    if (accuracy > IEEE_Arithmetic)
+      IEEE_Arithmetic = accuracy;
+  }
+
+  if (!IEEE_Arith_Set && OPT_Funsafe_Math_Optimizations_Set) {
+    // -OPT:funsafe_math_optimizations=ON  => IEEE_a == 3
+    //                                =OFF => IEEE_a == 1
+    IEEE_LEVEL accuracy = OPT_Funsafe_Math_Optimizations ?
+                          IEEE_ANY : IEEE_ACCURATE;
+    if (accuracy > IEEE_Arithmetic)
+      IEEE_Arithmetic = accuracy;
+  }
+#endif
+
 #ifndef KEY // this is nullifying the effect of -OPT:recip=
   Recip_Allowed = ARCH_recip_is_exact;
 #endif
@@ -1512,6 +1544,11 @@ Configure_Source ( char	*filename )
 #ifdef TARG_X8664
     if( !Fast_ANINT_Set ){
       Fast_ANINT_Allowed = Roundoff_Level >= ROUNDOFF_ANY;	// bug 7835
+    }
+    if ( !OPT_Fast_Math_Set) 
+      OPT_Fast_Math = Roundoff_Level >= ROUNDOFF_ASSOC;
+    if (!Rsqrt_Set) {
+      Rsqrt_Allowed = (Roundoff_Level >= ROUNDOFF_ASSOC) ? 1 : 0; // Bug 6123.
     }
 #endif
     if (!Fast_Complex_Set)

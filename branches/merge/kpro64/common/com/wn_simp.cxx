@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -86,6 +86,10 @@ BOOL WN_Simp_Fold_ILOAD = FALSE;
 
 BOOL WN_Simp_Fold_LDA = FALSE;
 
+#ifdef KEY
+BOOL WN_Simp_Rsqrt_Newton_Raphson = TRUE;
+#endif
+
 /* Parent maps from LNO and anyone else who wants it */
 WN_MAP WN_SimpParentMap = WN_MAP_UNDEFINED;
 
@@ -146,6 +150,9 @@ typedef WN * simpnode;
 #define SIMPNODE_CopyNode WN_CopyNode
 #define SIMPNODE_CreateIntconst WN_CreateIntconst
 #define SIMPNODE_CreateFloatconstFromTcon Make_Const
+#ifdef TARG_X8664
+#define SIMPNODE_CreateSIMDconstFromTcon Make_Const
+#endif
 #define SIMPNODE_Simplify_Initialize WN_Simplify_Initialize
 #define SIMPNODE_Compare_Symbols WN_Compare_Symbols
 

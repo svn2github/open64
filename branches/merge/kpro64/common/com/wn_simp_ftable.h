@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -170,4 +174,26 @@ NULL,	/* OPR_AFFIRM */
 NULL,	/* OPR_ALLOCA*/
 NULL,	/* OPR_DEALLOCA */
 NULL,	/* OPR_LDMA */
+#ifdef KEY
+NULL,   /* OPR_ASM_STMT */
+NULL,   /* OPR_ASM_EXPR */
+NULL,   /* OPR_ASM_INPUT */
+NULL,   /* OPR_RROTATE */
+NULL,   /* OPR_LDA_LABEL */
+NULL,   /* OPR_GOTO_OUTER_BLOCK */
+NULL,   /* OPR_EXTRACT_BITS */
+NULL,   /* OPR_COMPOSE_BITS */
+#endif
+#ifdef TARG_X8664
+NULL,   /* OPR_REPLICATE */
+NULL,   /* OPR_REDUCE_ADD */
+NULL,   /* OPR_REDUCE_MPY */
+NULL,   /* OPR_REDUCE_MAX */
+NULL,   /* OPR_REDUCE_MIN */
+NULL,   /* OPR_PURE_CALL_OP */
+NULL,   /* OPR_SHUFFLE */
+NULL,   /* OPR_ATOMIC_RSQRT */
+#elif defined(TARG_MIPS)
+NULL,   /* OPR_PURE_CALL_OP */
+#endif
 };

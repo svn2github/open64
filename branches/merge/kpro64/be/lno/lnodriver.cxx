@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: lnodriver.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lnodriver.cxx,v $
+ * $Revision: 1.5 $
+ * $Date: 04/12/21 14:57:13-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.lnodriver.cxx $
  *
  * Revision history:
  *  08-Sep-94 - Original Version
@@ -96,6 +96,9 @@
 #include "file_util.h"
 #include "tracing.h"
 #include "ir_reader.h"             // for fdump_tree
+#ifdef KEY
+#include "wn_simp.h"               // for WN_Simp_Rsqrt_Newton_Raphson
+#endif
 
 
 /* ====================================================================
@@ -251,6 +254,13 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
     Start_Timer ( T_Preopt_CU );
     Set_Error_Phase ( "Global Optimizer" );
 
+#ifdef KEY
+    // Prevent the WN simplifier from adding new WHIRL nodes.  The new nodes
+    // will make the WN map out of sync, breaking DU analysis which relies on
+    // the WN map.  Bug 9521.
+    WN_Simp_Rsqrt_Newton_Raphson = FALSE;
+#endif
+
     du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
     alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
 
@@ -312,6 +322,11 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
             ("duplicate labels introduced by Perform_Loop_Nest_Optimization"));
 
     Cur_PU_Name = NULL; /* the pool containing it is about to disappear */
+
+#ifdef KEY
+    // Safe for the simplifier to add new WHIRL nodes again.
+    WN_Simp_Rsqrt_Newton_Raphson = TRUE;
+#endif
 
     return opt_pu;
 } /* Perform_Loop_Nest_Optimization */

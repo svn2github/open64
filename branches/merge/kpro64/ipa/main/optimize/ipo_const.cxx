@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -470,7 +474,15 @@ IPA_constant_in_array_bounds (const SUMMARY_VALUE& value,
     }
     // replace all LDIDs of the formal by the constant
     else if (opr == OPR_LDID && WN_st(wn) == formal_st) {
+#ifdef KEY
+      TYPE_ID rtype = WN_rtype(wn);
+#endif
       iter.Replace(WN_COPY_Tree(const_wn));
+#ifdef KEY
+      // bug 8666: The usage type of the constant may be different than
+      // the inherent type, e.g. I4 constant used as I8. Use the proper type.
+      WN_set_rtype (iter.Wn(), rtype);
+#endif
       found_formal_ldid = TRUE;
     }
     ++iter;
@@ -549,7 +561,11 @@ Gen_WN_Const (const SUMMARY_VALUE& value)
 // create a global ST from the given SUMMARY_VALUE, return NULL if symbol
 // is not global
 static ST*
+#ifdef KEY
+Create_Global_ST (const SUMMARY_VALUE& value, BOOL * incompatible = NULL)
+#else
 Create_Global_ST (const SUMMARY_VALUE& value)
+#endif
 {
     Is_True (value.Is_addr_of (), ("Expecting a memory address"));
 
@@ -564,6 +580,12 @@ Create_Global_ST (const SUMMARY_VALUE& value)
 	else {
 	    TYPE_ID mtype = value.Is_addr_of () ? value.Target_mtype () :
 		value.Get_mtype (); 
+#ifdef KEY
+	    if (!MTYPE_is_integral (mtype) && incompatible) {
+	      *incompatible = TRUE;
+	      return NULL;
+	    }
+#endif
 	    return New_Const_Sym (Enter_tcon (Host_To_Targ (mtype,
 							    value.Get_int_const_value ())),
 				  MTYPE_To_TY (mtype));
@@ -1038,7 +1060,16 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
 		    ! mod_ref_info->Is_formal_dmod_elmt (i) &&
 		    ! mod_ref_info->Is_formal_imod_elmt (i))
 		    annot_node.Set_convertible_to_global ();
+#ifdef KEY
+		// bug 9205: We may be passing integer constant for an
+		// addr_of node, where it is an address of a non-integer.
+		// Don't propagate the constant in this case.
+		BOOL incompatible = FALSE;
+		const_st = Create_Global_ST (annot_node, &incompatible);
+		if (incompatible) continue;
+#else
 		const_st = Create_Global_ST (annot_node);
+#endif
 		if (const_st) {
                   if (annot_node.Is_global()) {
                     Check_If_Global_Has_Const_Value(node, block, const_st);

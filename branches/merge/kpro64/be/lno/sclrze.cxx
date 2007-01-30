@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -66,10 +66,10 @@
  * ====================================================================
  *
  * Module: sclrze.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/sclrze.cxx,v $
+ * $Revision: 1.7 $
+ * $Date: 05/04/07 19:50:39-07:00 $
+ * $Author: kannann@iridot.keyresearch $
+ * $Source: be/lno/SCCS/s.sclrze.cxx $
  *
  * Revision history:
  *  dd-mmm-94 - Original Version
@@ -86,7 +86,7 @@
 #pragma hdrstop
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/sclrze.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: be/lno/SCCS/s.sclrze.cxx $ $Revision: 1.7 $";
 
 #include <sys/types.h>
 #include "lnopt_main.h"
@@ -203,7 +203,13 @@ static void Process_Store(WN *store_wn, VINDEX16 v,
         if (WN_operator(WN_kid0(load_wn)) == OPR_ARRAY && 
 	    Equivalent_Access_Arrays(store,load,store_wn,load_wn) &&
             (DEPV_COMPUTE::Base_Test(store_wn,NULL,load_wn,NULL) ==
-                       DEP_CONTINUE)) {
+                       DEP_CONTINUE) 
+#ifdef KEY
+              &&
+            //Bug 9134: scalarizing only if store to and load from the same field
+             WN_field_id(store_wn)==WN_field_id(load_wn)
+#endif
+                      ) {
 	  if (Dominates(store_wn,load_wn)) {
            if (!red_manager || 
 	     (red_manager->Which_Reduction(store_wn) == RED_NONE)) {

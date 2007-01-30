@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -661,10 +661,10 @@
  * ====================================================================
  *
  * Module: lnopt_main.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lnopt_main.h,v $
+ * $Revision: 1.13 $
+ * $Date: 05/06/20 21:34:05-07:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: be/lno/SCCS/s.lnopt_main.h $
  *
  * Revision history:
  *  27-NOV-94 - Original Version
@@ -835,7 +835,9 @@ public:
   mBOOL Has_Unsummarized_Call_Cost; 
   mBOOL Has_Threadprivate; 
   mBOOL Has_Gotos;
+#ifdef PATHSCALE_MERGE
   mBOOL Has_Conditional;
+#endif
   mBOOL Has_Gotos_This_Level;
   mBOOL Has_Exits;
   mBOOL Is_Inner;
@@ -971,11 +973,13 @@ inline BOOL Do_Loop_Has_Gotos (WN *wn)
   return(dli && dli->Has_Gotos);
 }
 
+#ifdef PATHSCALE_MERGE
 inline BOOL Do_Loop_Has_Conditional( WN *wn)
 {
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
   return(dli && dli->Has_Conditional);
 }
+#endif
 
 inline BOOL Do_Loop_Has_Gotos_This_Level (WN *wn)
 {

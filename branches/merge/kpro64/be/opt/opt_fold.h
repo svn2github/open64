@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -61,7 +61,7 @@
 #ifndef opt_fold_INCLUDED
 #define opt_fold_INCLUDED	"opt_fold.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_foldrcs_id = opt_fold_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_foldrcs_id = opt_fold_INCLUDED"$Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef opt_htable_INCLUDED

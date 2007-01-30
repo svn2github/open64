@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -65,7 +65,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_combine_CXX	"opt_combine.cxx"
-static char *rcs_id = 	opt_combine_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_combine_CXX"$Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>
@@ -98,8 +98,9 @@ Combine_div_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
   const MTYPE desc  = OPCODE_desc(old_wn_opc);
 
 #ifdef TARG_X8664 // Bug 1960
-  if (old_wn_opc == OPC_V16F8DIV)
+  if (old_wn_opc == OPC_V16F8DIV || old_wn_opc == OPC_V16C4DIV)
     return FALSE; // because there is no such thing as OPC_V16F8RECIP
+                  // Bug 10543 - for SSE3 we have V16C4DIV, but no V16C4RECIP
 #endif
   if ( MTYPE_is_float(rtype) || MTYPE_is_complex(rtype) ) {
     // Transform:  DIV        MPY

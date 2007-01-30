@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -285,6 +285,10 @@ COPYPROP::Is_function_of_cur(CODEREP *var, CODEREP *cur_var)
     return FALSE;
   STMTREP *dstmt = cur_var->Defstmt();
   if (dstmt == NULL) return FALSE;
+#ifdef KEY // bug 11440: don't reverse the effect of i=i propagation
+  if (dstmt->Is_identity_assignment_removable() && WOPT_Enable_DCE)
+    return FALSE;
+#endif
   return Invertible_occurrences(var, dstmt->Rhs()) == 1;
 }
 
@@ -305,6 +309,13 @@ COPYPROP::Is_function_of_cur(CODEREP *var, CODEREP *cur_var)
 //  If in_array is TRUE, it means that "x" is a subexpression of one
 //  of the index expressions.  We may keep some expressions from being
 //  propagatable into these indexes.
+// 
+//  If no_complex_preg is TRUE, x must be directly underneath a PARM.  In this
+//  case, x should not be propagated to a complex preg, since a complex variable
+//  directly under a PARM is not lowered before mainopt, and this can cause 
+//  lowered STIDs to the pregs for the real and imag parts to be wrongly 
+//  deleted by DCE (bug 10577).
+//  
 // ====================================================================
 PROPAGATABILITY
 COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
@@ -525,7 +536,8 @@ CODEREP::Convert_type(CODEMAP *htable, CODEREP *expr, BOOL icopy_phase)
   MTYPE    dsc_type = Dsctyp();
 
 #ifdef KEY // bug 2668: screen out obvious case where no conversion is needed
-  if (expr->Kind() == CK_VAR && Kind() == CK_VAR && expr->Aux_id() == Aux_id())
+  if (expr->Kind() == CK_VAR && Kind() == CK_VAR && expr->Aux_id() == Aux_id()
+      && /* bug 10220 */ ! Is_flag_set(CF_IS_ZERO_VERSION))
     return expr;
 #endif
   if ( MTYPE_is_integral(rhs_type) && MTYPE_is_integral(dsc_type) ) {
@@ -942,7 +954,7 @@ COPYPROP::Prop_const_init_scalar(CODEREP *x, AUX_ID var_aux_id)
 	  // init_tcon = Targ_Conv( x->Dsctyp(), init_tcon );
 	  // Do not use Targ_Conv.  Consider when the INITO is a
 	  // structure type and x is a member of the structure.
-	  Warn_todo("Prop_var: should copy the bits instead of targ_conv.");
+	  Warn_todo("Prop_const_init_scalar: should copy the bits instead of targ_conv.");
 	  return NULL;
 	}
 	// then convert it to the type of the result
@@ -965,7 +977,7 @@ COPYPROP::Prop_const_init_scalar(CODEREP *x, AUX_ID var_aux_id)
 	  AUX_ID aux_id =
 	    Opt_stab()->Find_sym_with_st_and_ofst(&St_Table[INITV_st(Initv_Table[initv])],
 						  INITV_ofst(Initv_Table[initv]));
-	  Is_True(aux_id != 0, ("COPY_PROP::Prop_var: can't find opt_stab entry."));
+	  Is_True(aux_id != 0, ("COPY_PROP::const_init_scalar: can't find opt_stab entry."));
 	  if (Get_Trace(TP_GLOBOPT, PROP_DUMP_FLAG)) {
 	    fprintf(TFile, "Prop_const_init_scalar:  replacing LDID/ILOAD-LDA aux %d with LDA %d\n", 
 		    var_aux_id,  aux_id);
@@ -991,7 +1003,8 @@ COPYPROP::Prop_const_init_scalar(CODEREP *x, AUX_ID var_aux_id)
 // ====================================================================
 CODEREP *
 COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase, 
-		   BOOL inside_cse, BOOL in_array)
+		   BOOL inside_cse, BOOL in_array,
+		   BOOL no_complex_preg)
 {
   STMTREP *stmt;
   CODEREP *expr;
@@ -1111,6 +1124,13 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
       x == curversion)
     return NULL;
 
+#ifdef KEY // bug 10577
+  if (no_complex_preg && expr->Kind() == CK_VAR && 
+      MTYPE_is_complex(expr->Dtyp()) &&
+      ST_class(Opt_stab()->Aux_stab_entry(expr->Aux_id())->St()) == CLASS_PREG)
+    return NULL;
+#endif
+
   BOOL prop;
   INT32 height;
   if (x != curversion) {
@@ -1167,7 +1187,8 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
 // ====================================================================
 CODEREP *
 COPYPROP::Prop_ivar(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase, 
-		    BOOL inside_cse, BOOL in_array)
+		    BOOL inside_cse, BOOL in_array,
+		    BOOL no_complex_preg)
 {
 
   if (! WOPT_Enable_Prop_Ivar) return NULL;
@@ -1193,6 +1214,13 @@ COPYPROP::Prop_ivar(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
   if (expr->Non_leaf() && Htable()->Phase() != MAINOPT_PHASE &&
       Propagated_to_loop_branch(stmt->Bb(), curbb)) 
     return NULL;
+
+#ifdef KEY // bug 10577
+  if (no_complex_preg && expr->Kind() == CK_VAR && 
+      MTYPE_is_complex(expr->Dtyp()) &&
+      ST_class(Opt_stab()->Aux_stab_entry(expr->Aux_id())->St()) == CLASS_PREG)
+    return NULL;
+#endif
 
   PROPAGATABILITY prop;
   INT32 height;
@@ -1254,7 +1282,8 @@ COPYPROP::Get_node_rehashed_to(CODEREP *x)
 // ====================================================================
 CODEREP *
 COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb, 
-			    BOOL inside_cse, BOOL in_array)
+			    BOOL inside_cse, BOOL in_array,
+			    BOOL no_complex_preg)
 {
   CODEREP *expr;
   CODEREP *cr = Alloc_stack_cr(x->Extra_ptrs_used());
@@ -1295,7 +1324,7 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
 #endif
       return id_cr;
      }
-     return Prop_var(x, curbb, FALSE, inside_cse, in_array);
+     return Prop_var(x, curbb, FALSE, inside_cse, in_array, no_complex_preg);
     }
   case CK_IVAR: {
     MU_NODE *mnode = x->Ivar_mu_node();
@@ -1306,13 +1335,17 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
     }
 
     CODEREP *expr2;
-    expr = Prop_ivar(x, curbb, FALSE, inside_cse, in_array);
+    expr = Prop_ivar(x, curbb, FALSE, inside_cse, in_array, no_complex_preg);
     if (expr) {
       x->DecUsecnt_rec();
       return expr;
     }
     inside_cse = inside_cse || x->Usecnt() > 1;
-    expr = Copy_propagate_cr(x->Ilod_base(), curbb, inside_cse, in_array);
+    expr = Copy_propagate_cr(x->Ilod_base(), curbb, inside_cse, in_array
+#ifdef KEY // bug 10577
+    			     , TRUE
+#endif
+    			    );
     {
       CODEREP *ilod_base = (expr != NULL) ? expr : x->Ilod_base();
       if (ilod_base->Kind() == CK_LDA && x->Offset() == 0) {
@@ -1755,6 +1788,8 @@ COPYPROP::Propagatable_thru_phis(CODEREP *lexp, CODEREP *rexp,
     if (lexp->Opr() == OPR_PURE_CALL_OP && rexp->Opr() == OPR_PURE_CALL_OP
         && lexp->Call_op_aux_id() != rexp->Call_op_aux_id())
       return FALSE;
+    if (lexp->Kid_count() != rexp->Kid_count())
+      return FALSE;
 #endif
     PROP_THRU_PHI_PREFERENCE pref0;
     BOOL can_prop = TRUE;
@@ -1908,6 +1943,11 @@ COPYPROP::Identical_phi_opnd(PHI_NODE *phi, BB_NODE *bb)
   STMTREP *rdefstmt = ropnd->Get_defstmt();
   if (ldefstmt == NULL || rdefstmt == NULL)
     return NULL;
+#ifdef KEY 
+  // bug 7228: if there is chi, DCE wont be able to delete the dead stores
+  if (ldefstmt->Chi_list() || rdefstmt->Chi_list())
+    return NULL;
+#endif
   if (! OPERATOR_is_scalar_store (ldefstmt->Opr()) ||
       ! OPERATOR_is_scalar_store (rdefstmt->Opr()))
     return NULL;
@@ -2014,6 +2054,9 @@ COPYPROP::Copy_propagate(BB_NODE *bb)
 	    cr->Set_dsctyp(phi->OPND(0)->Dsctyp());
 	    cr->Set_lod_ty(phi->OPND(0)->Lod_ty());
 	    cr->Set_field_id(phi->OPND(0)->Field_id());
+#ifdef KEY // bug 7228
+	    cr->Set_offset(phi->OPND(0)->Offset());
+#endif
 	    if (phi->OPND(0)->Bit_field_valid())
 	      cr->Set_bit_field_valid();
 	    cr->Set_sign_extension_flag();

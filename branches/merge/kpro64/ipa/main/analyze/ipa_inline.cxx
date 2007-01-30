@@ -113,19 +113,47 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   OPC_U8STID,     /* MTYPE_U8 */
   OPC_F4STID,     /* MTYPE_F4 */
   OPC_F8STID,     /* MTYPE_F8 */
+#ifdef TARG_IA64
   OPC_F10STID,    /* MTYPE_F10 */
   OPC_F16STID,    /* MTYPE_F16 */
+#elif TARG_X8664
+  OPC_UNKNOWN,    /* MTYPE_F10 */ 
+  OPC_UNKNOWN,    /* MTYPE_F16 */ 
+#endif
   OPC_UNKNOWN,    /* MTYPE_STR */
   OPC_FQSTID,     /* MTYPE_FQ */
   OPC_UNKNOWN,    /* MTYPE_M */
   OPC_C4STID,     /* MTYPE_C4 */
   OPC_C8STID,     /* MTYPE_C8 */
   OPC_CQSTID,     /* MTYPE_CQ */
-  OPC_UNKNOWN,	  /* MTYPE_V */
-  OPC_UNKNOWN,	  /* MTYPE_BS */
-  OPC_UNKNOWN,	  /* MTYPE_A4 */
-  OPC_UNKNOWN,	  /* MTYPE_A8 */
-  OPC_C10STID,	  /* MTYPE_C10 */
+  OPC_UNKNOWN     /* MTYPE_V */
+#ifdef KEY
+  ,OPC_BSSTID,    /* MTYPE_BS */
+  OPC_A4STID,     /* MTYPE_A4 */
+  OPC_A8STID,     /* MTYPE_A8 */
+  OPC_UNKNOWN,    /* MTYPE_C10 */
+  OPC_UNKNOWN,    /* MTYPE_C16 */
+  OPC_UNKNOWN,    /* MTYPE_I16 */
+  OPC_UNKNOWN     /* MTYPE_U16 */
+#ifdef TARG_X8664
+  ,OPC_V16C4STID, /* MTYPE_V16C4 */
+  OPC_V16C8STID,  /* MTYPE_V16C8 */
+  OPC_V16I1STID,  /* MTYPE_V16I1 */
+  OPC_V16I2STID,  /* MTYPE_V16I2 */
+  OPC_V16I4STID,  /* MTYPE_V16I4 */
+  OPC_V16I8STID,  /* MTYPE_V16I8 */
+  OPC_V16F4STID,  /* MTYPE_V16F4 */
+  OPC_V16F8STID,  /* MTYPE_V16F8 */
+  OPC_V8I1STID,   /* MTYPE_V8I1 */
+  OPC_V8I2STID,   /* MTYPE_V8I2 */
+  OPC_V8I4STID,   /* MTYPE_V8I4 */
+  OPC_V8F4STID,   /* MTYPE_V8F4 */
+  OPC_M8I1STID,   /* MTYPE_M8I1 */
+  OPC_M8I2STID,   /* MTYPE_M8I2 */
+  OPC_M8I4STID,   /* MTYPE_M8I4 */
+  OPC_M8F4STID    /* MTYPE_M8F4 */
+#endif // TARG_X8664
+#endif // KEY
 };
 
 #ifdef TODO
@@ -277,7 +305,11 @@ Get_combined_weight (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
     s1 += s2;
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
+#ifdef KEY
+    s1.Inc_PU_Size (-1, 0, -1);
+#else
     s1.Inc_PU_Size (-1, callee->Num_Formals(), -1);
+#endif
     return s1.Weight ();
 }
 
@@ -287,7 +319,11 @@ Get_combined_olimit (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
     s1 += s2;
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
+#ifdef KEY
+    s1.Inc_PU_Size (-1, 0, -1);
+#else
     s1.Inc_PU_Size (-1, callee->Num_Formals(), -1);
+#endif
     return s1.Olimit ();
 }
 
@@ -473,6 +509,21 @@ void inline_do_it (IPA_EDGE * ed, IPA_NODE * caller, IPA_NODE * callee,
 	caller->Summary_Proc()->Set_has_var_dim_array();
     }
 }
+
+// Return true if a callee (actually any callee) can be inlined into
+// "node" without checking for additional constraints.
+static BOOL
+trivially_ok_to_inline (const IPA_NODE * node, const IPA_CALL_GRAPH * cg)
+{
+  Is_True (node->Summary_Proc()->Get_bb_count() > 0,
+           ("How can there be a call without any BB?"));
+
+  // An approximate estimate to decide if the only thing "node" does is
+  // call another function -- a popular category of functions in C++.
+  return node->Summary_Proc()->Get_callsite_count() == 1 &&
+         cg->Num_Out_Edges (node) == 1 &&
+         node->Summary_Proc()->Get_bb_count() == 1;
+}
 #endif // KEY
 
 static BOOL
@@ -511,9 +562,17 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	}
 	fprintf(e_weight, "%-8d%-8d%-8d%-8d%-8d%-8d%-8d%s \n", e_bb_cnt, e_stmt_cnt, callee->PU_Size().Call_Count (),callee_weight, callee->PU_Size().Bb_count(), callee->PU_Size().Stmt_count(),callee->Weight() , callee->Name() );
     }
+
      if ( caller->Summary_Proc()->Is_Never_Invoked() == FALSE && 
-         callee->Summary_Proc()->Is_Never_Invoked() == FALSE) { 
-        if (callee_weight <= TINY_SIZE) {
+         callee->Summary_Proc()->Is_Never_Invoked() == FALSE) {
+
+        if (callee_weight <= TINY_SIZE
+#ifdef KEY
+	    || (callee_weight < INLINE_Callee_Limit && PU_is_marked_inline(callee->Get_PU()))
+	    || trivially_ok_to_inline (caller, cg) // ok to inline into caller?
+#endif
+	   )
+	{
 #ifdef KEY
 	    // don't use goto
 	    inline_do_it(ed, caller, callee, cg);
@@ -686,7 +745,11 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		return FALSE;
 #endif // _STANDALONE_INLINER
 	    }else{ // 1.
+#ifndef PATHSCALE_MERGE_ZHC
                 if (callee_weight > IPA_Small_Callee_Limit && cg->Num_In_Edges(callee) > 2) {
+#else
+		if (callee_weight > IPA_Small_Callee_Limit && cg->Num_In_Edges(callee) > 1) {
+#endif
                     /* We try to screen out callees that are too large, but
                      * accept those that have only one caller:
                      */
@@ -698,8 +761,12 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
                     }
                 }
 
+#ifndef PATHSCALE_MERGE_ZHC
                 if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 1 && 
                     callee_weight > non_aggr_callee_limit) {
+#else
+		if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 0 && callee_weight > non_aggr_callee_limit) {
+#endif
                     /* Less aggressive inlining: don't inline unless it is
                      * either small, leaf, or called from a loop. 
                      */
@@ -1138,7 +1205,12 @@ void
 IPA_NODE::UpdateSize (IPA_NODE *callee, IPA_EDGE *ed)
 {
     _pu_size += callee->PU_Size();
+#ifdef KEY
+    _pu_size.Inc_PU_Size (-1, 0, -1);
+#else
     _pu_size.Inc_PU_Size (-1, callee->Num_Formals(), -1);
+#endif
+
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
     if (IPA_Use_Effective_Size && Has_frequency() &&
 	callee->Has_frequency () && ed->Summary_Callsite()->Get_frequency_count().Known()) {
@@ -1170,6 +1242,10 @@ Update_Call_Graph (IPA_NODE *n)
 
     size.Set_PU_Size (1, 0, 1);
     Total_Prog_Size -= size.Weight ();
+
+    n->Summary_Proc()->Decr_call_count ();
+    n->Summary_Proc()->Decr_callsite_count ();
+    // Don't update Total_Succ as the edge is still present.
 
 } // Update_Call_Graph 
 
@@ -1282,6 +1358,41 @@ static bool check_node (IPA_NODE * node)
          return TRUE;
     }
 
+    return FALSE;
+}
+
+// Return true if a fortran reference parameter is used as a do-loop index
+// and the corresponding actual is an array element. We should be able to
+// inline in such scenarios. One option is to use something like COPY_IN
+// and COPY_OUT immediately when the temporary is written to.
+// Bugs 110, 9925
+static BOOL
+formal_is_loop_index (IPA_NODE * caller_node, IPA_NODE * callee_node, IPA_EDGE * ed)
+{
+    // num_formals is actually the lesser of the # of actual parameters and
+    // # of formal parameters.
+    INT num_formals = ed->Num_Actuals() < callee_node->Num_Formals() ? 
+    			ed->Num_Actuals() : callee_node->Num_Formals();
+
+    if (!num_formals) // Nothing to check
+	return FALSE;
+
+    BOOL lang = ((callee_node->Summary_Proc()->Get_lang() == LANG_F77) || 
+    		(callee_node->Summary_Proc()->Get_lang() == LANG_F90));
+
+    if (!lang)
+	return FALSE;
+
+    SUMMARY_FORMAL* callee_formal = IPA_get_formal_array(callee_node);
+    SUMMARY_ACTUAL* call_actual = IPA_get_actual_array(caller_node);
+
+    SUMMARY_ACTUAL *actuals = &call_actual[ed->Summary_Callsite()->Get_actual_index()];
+    SUMMARY_FORMAL *formals = &callee_formal[callee_node->Summary_Proc()->Get_formal_index()];
+
+    for (INT i=0; i<num_formals; ++i) {
+      if (formals[i].Is_loop_index() && actuals[i].Get_pass_type() == PASS_ARRAY)
+        return TRUE;
+    }
     return FALSE;
 }
 #endif // ! _STANDALONE_INLINER && ! _LIGHTWEIGHT_INLINER
@@ -1550,8 +1661,13 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
             reason = "not inlining C++ with exceptions into non-C++";
             ed->Set_reason_id (36);
     }
-    // The following else-if must be last
+    else if (formal_is_loop_index(caller, callee, ed)) {
+            result = FALSE;
+            reason = "formal parameter is a loop index";
+            ed->Set_reason_id (37);
+    }
 #endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+    // The following else-if must be last
     else if (!IPA_Enable_Lang) {
 	if ((callee->Summary_Proc()->Get_lang() == LANG_F77) || 
 	    (caller->Summary_Proc()->Get_lang() == LANG_F77)) {
@@ -1696,12 +1812,22 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
 	if (!callee->Summary_Proc()->Has_pragma_side_effect() && // KEY
 	    ((edge->Is_Deletable () || // set by const. propagation
 
-	      (cg->Node_Depth (callee) == 0 &&
+	      (
+#ifdef KEY
+	       callee->Summary_Proc()->Get_callsite_count() == 0 &&
+#else
+	       cg->Node_Depth (callee) == 0 &&
+#endif
 	       !callee->Has_Direct_Mod_Ref() &&
 	       !callee->Summary_Proc()->Is_alt_entry () &&
 	       !callee->Summary_Proc()->Has_alt_entry () &&
 	       !caller->Summary_Proc()->Is_alt_entry () &&
 	       return_types_are_compatible (callee, edge))))) {
+
+	    // KEY
+	    Is_True (callee->Summary_Proc()->Get_callsite_count() ||
+	             !callee->Summary_Proc()->Get_call_count(),
+		     ("Callsite and call counts don't match"));
 
 	    edge->Set_Deletable();
 	    if (Trace_IPA || Trace_Perf) {

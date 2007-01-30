@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -137,7 +137,7 @@ SUMMARIZE<INLINER>::Collect_calls_in_switch
 //-----------------------------------------------------------
 // summary procedure
 //-----------------------------------------------------------
-void 
+template<> void 
 SUMMARIZE<INLINER>::Process_procedure (WN *w)
 {
     SUMMARY_PROCEDURE *proc = New_procedure ();
@@ -153,13 +153,13 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
     if (!WHIRL_Return_Val_On)
 	proc->Set_use_lowered_return_preg ();
 
-    if (!Temp_pool_initialized) {
-        Temp_pool_initialized = TRUE;
-        MEM_POOL_Initialize(&Temp_pool, "temp_pool", 0);
-    }
-    MEM_POOL_Push(&Temp_pool);
-
     if (INLINE_Enable_Copy_Prop) {
+	if (!Temp_pool_initialized) {
+	    Temp_pool_initialized = TRUE;
+	    MEM_POOL_Initialize(&Temp_pool, "temp_pool", 0);
+	}
+	MEM_POOL_Push(&Temp_pool);
+
 	// init the global hash table;
 	Global_hash_table = CXX_NEW (GLOBAL_HASH_TABLE (113, &Temp_pool),
 				     &Temp_pool);
@@ -234,7 +234,11 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	    ((PU_src_lang(pu) == PU_CXX_LANG))) {
 	    if (PU_is_inline_function (pu)) {
 		// for 7.2 don't inline functions marked weak inline
-		if (ST_is_weak_symbol(st) && ST_export(st) != EXPORT_PROTECTED) {
+		if (ST_is_weak_symbol(st) && ST_export(st) != EXPORT_PROTECTED
+#ifdef KEY
+		    && ST_export(st) != EXPORT_INTERNAL // bug 7550
+#endif
+		   ) {
 		    DevWarn("Inliner encountered a function marked weak inline; NOT inlining it");
 		    proc->Set_no_inline();
 		} else
@@ -513,6 +517,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 
     if (INLINE_Enable_Copy_Prop)  {
 	Set_local_addr_taken_attrib();
+	MEM_POOL_Pop ( &Temp_pool );
     }
 
     else if (INLINE_Enable_Split_Common) 
@@ -527,7 +532,6 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
         proc->Set_has_pdo_pragma();
 #endif // _LIGHTWEIGHT_INLINER
 
-    MEM_POOL_Pop ( &Temp_pool );
 } // SUMMARIZE::Process_procedure 
 
 #endif /* inline_summarize_INCLUDED */

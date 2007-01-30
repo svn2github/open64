@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,10 +39,10 @@
 
 // -*-C++-*-
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lu_mat_textra.cxx,v $
+/** $Revision: 1.6 $
+*** $Date: 04/12/21 14:57:14-08:00 $
+*** $Author: bos@eng-25.internal.keyresearch.com $
+*** $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.lu_mat_textra.cxx $
 **/
 
 #define __STDC_LIMIT_MACROS
@@ -53,28 +53,32 @@
 #pragma hdrstop
 
 #define lu_mat_textra_CXX      "lu_mat_textra.cxx"
-static char *rcs_id =   lu_mat_textra_CXX "$Revision: 1.1.1.1 $";
+static char *rcs_id =   lu_mat_textra_CXX "$Revision: 1.6 $";
 
 
 #include "lnopt_main.h"
 #include "mat.h"
 #include "lu_mat.h"
 
+template<>
 void LU_DMAT::Print_Element(FILE* f, double e)
 {
   fprintf(f, "%g", e);
 }
 
+template<>
 void LU_FMAT::Print_Element(FILE* f, FRAC e)
 {
   e.Print(f);
 }
 
+template<>
 BOOL LU_FMAT::Exact_Arithmetic()
 {
   return TRUE;
 }
 
+template<>
 BOOL LU_DMAT::Exact_Arithmetic()
 {
   return FALSE;

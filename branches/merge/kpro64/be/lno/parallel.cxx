@@ -1,5 +1,9 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -108,6 +112,10 @@ static double Parallel_Cost(WN* wn_outer, INT permutation[], INT nloops,
 static INT Parallelizable(WN* wn_outer, INT permutation[], INT nloops,
   INT parallel_depth, SNL_DEP_MATRIX** sdm_inv, BOOL sdm_scl[], 
   SX_INFO* sx_info, SD_INFO* sd_info, INT sd_split_depth);
+
+#ifdef KEY
+  INT Last_Apo_Loop_Id = 0;
+#endif
 
 //-----------------------------------------------------------------------
 // NAME: Cannot_Concurrentize 
@@ -2289,13 +2297,15 @@ extern void IPA_LNO_Unevaluate_Call_Infos(WN* func_nd)
 extern void Auto_Parallelization(PU_Info* current_pu, 
 				 WN* func_nd)
 {
-#ifdef KEY // bug 7259
+#ifdef KEY
   static INT pu_num = -1;
   pu_num ++;
-  if (pu_num > LNO_Dummy_Skip_After ||
-      pu_num < LNO_Dummy_Skip_Before ||
-      pu_num == LNO_Dummy_Skip_Equal)
+  if (pu_num > LNO_Apo_Skip_After ||
+      pu_num < LNO_Apo_Skip_Before ||
+      pu_num == LNO_Apo_Skip_Equal)
     return;
+
+  Last_Apo_Loop_Id = 0; // initialize per PU
 #endif
 
   extern BOOL running_cross_loop_analysis;
@@ -2314,6 +2324,12 @@ extern void Auto_Parallelization(PU_Info* current_pu,
       Print_Prompl_Msgs(current_pu, func_nd);
     return;
   } 
+
+
+#ifdef KEY //Bug 9731: update array access information before apo
+           //Bug 9770: move this rebuild to here to skip non-autopar
+  LNO_Build_Access(func_nd, &LNO_default_pool);
+#endif
 
   MEM_POOL_Push(&LNO_local_pool); 
   INT parallel_debug_level = Get_Trace(TP_LNOPT2, TT_LNO_PARALLEL_DEBUG)

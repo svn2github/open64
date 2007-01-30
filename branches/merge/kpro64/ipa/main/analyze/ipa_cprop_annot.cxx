@@ -1653,6 +1653,45 @@ Get_enclosing_mp_region (IPA_NODE * c, IPA_EDGE * e)
 }
 #endif // KEY
 
+// KEY: The following function has been extracted out of 
+// Intra_PU_Formal_Cprop.
+// Called by:
+//    Intra_PU_Formal_Cprop
+//    Evaluate_actuals
+// Determine if it is OK to propagate down the formal parameters
+// of this node. Return NULL if not OK.
+static VALUE_DYN_ARRAY *
+Get_cprop_annot (IPA_NODE *node)
+{
+    // if this procedure is cloned, we cannot propagate the value of the
+    // formal parameter down.  But we can still delete dead code if the
+    // condition expressions involve only global variables that are found
+    // to be constant.
+    if ((node->Is_Externally_Callable() && IPA_Enable_Cloning) ||
+        node->Summary_Proc()->Is_alt_entry () || 
+        node->Summary_Proc()->Has_alt_entry ()) {
+      return NULL;
+    }
+
+#ifdef KEY
+    {
+        // Also if there is a recursive in-edge, we cannot propagate the
+        // formal parameter value down. Because the const-ness of the
+        // parameters may not have been determined yet. So, don't consider
+        // the formal parameter values in flow analysis below.
+        IPA_PRED_ITER edge_iter (node);
+        for (edge_iter.First (); !edge_iter.Is_Empty(); edge_iter.Next()) {
+            IPA_EDGE *e = edge_iter.Current_Edge();
+            if (e && e->Is_Recursive()) {
+                return NULL;
+            }
+        }
+    }
+#endif
+
+    return node->Cprop_Annot();
+}
+
 // evaluate all actual parameters of the given callsite
 static void
 Evaluate_actuals (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge)
@@ -1701,6 +1740,31 @@ Evaluate_actuals (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge)
           if (symbol_idx != -1 && ipa_symbol[symbol_idx].Is_formal()) {
             INT position = 
               ipa_formal[ipa_symbol[symbol_idx].Get_findex()].Get_position();
+#ifdef KEY
+            // See if the formal belongs to the caller or to a parent PU
+            INT func_st_idx = ipa_symbol[symbol_idx].Get_st_idx_func();
+            if (func_st_idx != ST_st_idx (caller->Func_ST())) {
+
+              // formal does not belong to caller, find its PU
+              NODE_INDEX node_id =
+                  AUX_PU_node (Aux_Pu_Table[ST_pu (St_Table[func_st_idx])]);
+              IPA_NODE * parent = IPA_Call_Graph->Graph()->Node_User (node_id);
+
+              Is_True (PU_ftn_lang (parent->Get_PU()),
+                       ("Nested PUs supported only in Fortran"));
+
+              VALUE_DYN_ARRAY * parents_formal_value = Get_cprop_annot (parent);
+              if (parents_formal_value &&
+                  !parent->Mod_Ref_Info()->Is_formal_dmod_elmt(position) &&
+                  !parent->Mod_Ref_Info()->Is_formal_imod_elmt(position)) {
+                actual = &(*parents_formal_value)[position];
+              }
+              else {
+                (*annot)[i].Set_not_const ();
+                continue;
+              }
+            } else
+#endif
             if (formal_value &&
                 !caller_info->Is_formal_dmod_elmt(position) &&
                 !caller_info->Is_formal_imod_elmt(position)) {
@@ -1797,8 +1861,8 @@ Intra_PU_Formal_Cprop (IPA_NODE *node)
     if (IPA_Enable_DFE && PU_is_dead (node, &updated))
 	return updated;
 
-    formal_value = node->Cprop_Annot ();
     current_gannot = node->Global_Annot ();
+    formal_value = Get_cprop_annot (node);
 
     // if this procedure is cloned, we cannot propagate the value of the
     // formal parameter down.  But we can still delete dead code if the

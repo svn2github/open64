@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -233,13 +233,13 @@ public:
 template <> BOOL DEFEAT_INSERT_SEARCH<FORWARD_PRE>::_tracing = FALSE;
 template <> BOOL DEFEAT_INSERT_SEARCH<BACKWARD_PRE>::_tracing = FALSE;
 
-char *
+template <> char *
 DEFEAT_INSERT_SEARCH<FORWARD_PRE>::Search_name(void) const
 {
   return "DEFEAT_INSERT_SEARCH<FORWARD_PRE>";
 }
 
-char *
+template <> char *
 DEFEAT_INSERT_SEARCH<BACKWARD_PRE>::Search_name(void) const
 {
   return "DEFEAT_INSERT_SEARCH<BACKWARD_PRE>";
@@ -386,11 +386,11 @@ template <> BOOL CANT_BE_AVAIL_SEARCH<FORWARD_PRE>::_tracing = FALSE;
 template <> EXP_WORKLST *CANT_BE_AVAIL_SEARCH<FORWARD_PRE>::_worklst = NULL;
 
 // For EPRE/LPRE:
-char *
+template <> char *
 CANT_BE_AVAIL_SEARCH<FORWARD_PRE>::Search_name(void) const
 { return "CANT_BE_AVAIL_SEARCH<FORWARD_PRE>"; }
 
-BOOL
+template <> BOOL
 CANT_BE_AVAIL_SEARCH<FORWARD_PRE>::
 Continue_from_to(const node_type     *const def_phi,
 		 const INT                  opnd_idx,
@@ -435,11 +435,11 @@ template <> BOOL CANT_BE_AVAIL_SEARCH<BACKWARD_PRE>::_tracing = FALSE;
 template <> EXP_WORKLST *CANT_BE_AVAIL_SEARCH<BACKWARD_PRE>::_worklst = NULL;
 
 // For SPRE:
-char *
+template <> char *
 CANT_BE_AVAIL_SEARCH<BACKWARD_PRE>::Search_name(void) const
 { return "CANT_BE_AVAIL_SEARCH<BACKWARD_PRE>"; }
 
-BOOL
+template <> BOOL
 CANT_BE_AVAIL_SEARCH<BACKWARD_PRE>::
 Continue_from_to(const node_type     *const def_phi,
 		 const INT                  opnd_idx,

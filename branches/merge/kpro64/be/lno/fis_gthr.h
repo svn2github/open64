@@ -37,7 +37,7 @@
 #ifndef PHASE25_RCS_ID
 #define PHASE25_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *phase1_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/fis_gthr.h,v $ $Revision: 1.1.1.1 $";
+static char *phase1_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 #endif
 

@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -64,7 +64,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_htable_emit_CXX	"opt_htable_emit.cxx"
-static char *rcs_id = 	opt_htable_emit_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_htable_emit_CXX"$Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "limits.h"
@@ -340,7 +340,8 @@ ML_WHIRL_EMITTER::Build_loop_info( BB_NODE *label_bb )
       induction = WN_CreateLdid(Ldid_from_mtype(ivtype),
 				iv->Offset(),
 				Opt_stab()->St(iv->Aux_id()),
-				iv->Lod_ty());
+				iv->Lod_ty(),
+				iv->Field_id());
       if (Do_rvi() && ST_class(WN_st(induction)) != CLASS_PREG) {
 	Warn_todo("ML_WHIRL_EMITTER::Build_loop_info: do not adjust bitpos by 1" );
 	Rvi()->Map_bitpos(induction, iv->Bitpos() + 1);

@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -47,7 +51,7 @@
 #pragma hdrstop
 
 #define snl_utils_CXX      "snl_utils.cxx"
-static char *rcs_id =   snl_utils_CXX "$Revision: 1.1.1.1 $";
+static char *rcs_id =   snl_utils_CXX "$Revision: 1.6 $";
 
 #include <sys/types.h>
 #include "snl.h"
@@ -215,6 +219,9 @@ SNL_MONO Mono(WN* wn, SYMBOL symbol, BOOL neg)
    case OPR_SQRT:
    case OPR_RECIP:
    case OPR_RSQRT:
+#ifdef TARG_X8664
+   case OPR_ATOMIC_RSQRT:
+#endif
    case OPR_REALPART:
    case OPR_IMAGPART:
    case OPR_RND:
@@ -1401,6 +1408,7 @@ extern WN* SNL_Get_Inner_Snl_Loop(WN* outer, INT nloops)
   WN* wn = outer;
   for (INT curnloops = nloops; curnloops > 1; curnloops--) {
     for (wn = WN_first(WN_do_body(wn)); wn; wn = WN_next(wn))
+#ifndef KEY      
       if (WN_opcode(wn) == OPC_DO_LOOP || WN_opcode(wn) == OPC_REGION)
         break;
     FmtAssert(wn != NULL, ("Sequencing error"));
@@ -1409,6 +1417,19 @@ extern WN* SNL_Get_Inner_Snl_Loop(WN* outer, INT nloops)
          if (WN_opcode(wn) == OPC_DO_LOOP)
            break;
     }
+#else //KEY Bug 10700
+    {
+     if (WN_opcode(wn) == OPC_REGION) {
+       for (WN *tmp = WN_first(WN_region_body(wn)); tmp; tmp = WN_next(tmp))
+         if (WN_opcode(tmp) == OPC_DO_LOOP){
+           wn = tmp;
+           break;
+         }
+      } // end if region
+       if (WN_opcode(wn) == OPC_DO_LOOP)
+        break;
+     }
+#endif
     FmtAssert(wn, ("SNL_Get_Inner_Snl_Loop() called with bad parameters"));
   }
   return wn;

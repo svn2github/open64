@@ -1,5 +1,9 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -43,10 +47,10 @@
 ***
 ***-------------------------------------------------------------------*/
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/wn_util.cxx,v $
+/** $Revision: 1.10 $
+*** $Date: 05/02/04 17:05:08-08:00 $
+*** $Author: gautam@jacinth.keyresearch $
+*** $Source: common/com/SCCS/s.wn_util.cxx $
 **/
 #ifdef USE_PCH
 #include "common_com_pch.h"
@@ -1446,13 +1450,72 @@ extern WN *WN_LOOP_TripCount(const WN *loop)
   return trip_cnt;
 }
 
+#ifdef KEY
+// Bug 10011
+static BOOL
+type_ok (const TY_IDX ty)
+{
+  INT fld_count = 0;
+  Is_True (TY_kind(ty) == KIND_STRUCT, ("type_ok: struct type expected"));
+
+  if (TY_size (ty) != 60) return TRUE;
+
+  FLD_ITER fld_iter = Make_fld_iter (TY_fld (ty));
+
+  {
+    FLD_HANDLE fld(fld_iter);
+    TY_IDX field = FLD_type (fld);
+    if (TY_kind (field) != KIND_POINTER ||
+        TY_mtype (TY_pointed (field)) != MTYPE_F8)
+      return TRUE;
+  }
+
+  fld_count++;
+
+  while (!FLD_last_field(fld_iter++))
+  {
+    FLD_HANDLE fld(fld_iter);
+    TY_IDX field = FLD_type (fld);
+
+    if (TY_kind (field) != KIND_SCALAR || TY_mtype (field) != MTYPE_F8)
+      return TRUE;
+
+    fld_count++;
+  }
+
+  if (fld_count != 8) return TRUE;
+
+  return FALSE;
+}
+#endif
+
 static TY_IDX
-field_type (const TY_IDX ty_idx, UINT field_id)
+field_type (const WN* wn)
 {
   UINT cur_field_id = 0;
-  FLD_HANDLE fld = FLD_get_to_field (ty_idx, field_id, cur_field_id);
+#ifdef KEY
+  TY_IDX ty;
+
+  // Handle field_id for istore.
+  if (WN_operator(wn) == OPR_ISTORE)
+  {
+    TY_IDX ptr = WN_ty(wn);
+    Is_True (TY_kind(ptr) == KIND_POINTER,
+             ("field_type: Addr TY of ISTORE is not KIND_POINTER."));
+    ty = TY_pointed(ptr);
+  }
+  else
+    ty = WN_ty(wn);
+
+  Is_True (TY_kind(ty) == KIND_STRUCT,
+           ("field_type: cannot get to field of a non-struct type"));
+  FLD_HANDLE fld = FLD_get_to_field (ty, WN_field_id(wn), cur_field_id);
+#else
+  FLD_HANDLE fld = FLD_get_to_field (WN_ty(wn), WN_field_id(wn),
+				     cur_field_id);
+#endif
   Is_True (! fld.Is_Null(), ("Invalid field id %d for type 0x%x",
-			     field_id, ty_idx));
+			     WN_field_id(wn), WN_ty(wn)));
   return FLD_type (fld);
 }
 
@@ -1464,43 +1527,56 @@ field_type (const TY_IDX ty_idx, UINT field_id)
  *   in WN_ty().
  *   See the WHIRL document.
  */
+/* KEY: MODIFICATION to above comment: For ILOAD, it is the type pointed
+ * to by the addr ty.
+ */
 TY_IDX
 WN_object_ty (const WN *wn)
 {
- if (OPCODE_is_load(WN_opcode(wn))) {
-
-    if (WN_operator(wn) == OPR_MLOAD) {
-         TY_IDX ptr_ty = WN_ty(wn);
-         Is_True (TY_kind(ptr_ty) == KIND_POINTER, ("TY of ISTORE is not KIND_POINTER."));
-         return TY_pointer(ptr_ty);
-     }
-
-    if ((WN_operator(wn) == OPR_LDID ||
-         WN_operator(wn) == OPR_ILOAD 
-#ifndef KEY
-         || WN_operator(wn) == OPR_LDBITS
+  if (OPCODE_is_load(WN_opcode(wn))) {
+    if ((WN_operator(wn) == OPR_LDID 
+#ifdef KEY
+	 || WN_operator(wn) == OPR_ILOAD
+#else
+	 || WN_operator(wn) == OPR_LDBITS
 #endif
-        ) && WN_field_id(wn) != 0 &&
-             TY_kind(WN_ty(wn)) == KIND_STRUCT)
-      return field_type (WN_ty(wn), WN_field_id(wn));
-    if ((WN_operator(wn) == OPR_ILOAD || WN_operator(wn) == OPR_ILDBITS)) {
-      Is_True (TY_kind(WN_load_addr_ty(wn)) == KIND_POINTER,
-        ("TY of ILOAD is not KIND_POINTER."));
-      TY_IDX ty_idx = TY_pointed(WN_load_addr_ty(wn));
-      return ty_idx;
+	 ) && 
+	WN_field_id(wn) != 0 &&
+	TY_kind(WN_ty(wn)) == KIND_STRUCT)
+      return field_type (wn);
+#ifdef KEY
+    if (WN_operator(wn) == OPR_ILOAD) {
+      const TY& ty = Ty_Table[WN_load_addr_ty (wn)];
+      Is_True (TY_kind(ty) == KIND_POINTER,
+               ("Addr TY of ILOAD is not KIND_POINTER."));
+      return TY_pointed(ty);
     }
+#endif
     return WN_ty(wn);
   } else if (OPCODE_is_store(WN_opcode(wn))) {
-    TY_IDX ty_idx = WN_ty(wn);
-    if (!(WN_operator(wn) == OPR_STID || WN_operator(wn) == OPR_STBITS)) {
-      Is_True(TY_kind(WN_ty(wn)) == KIND_POINTER,
-              ("TY of ISTORE is not KIND_POINTER."));
-      ty_idx = TY_pointed(WN_ty(wn));
+    if (WN_operator(wn) == OPR_STID || WN_operator(wn) == OPR_STBITS) {
+      if (WN_field_id(wn) != 0 && TY_kind(WN_ty(wn)) == KIND_STRUCT
+#ifdef KEY
+	  && WN_operator(wn) == OPR_STID
+#endif
+	 )
+	return field_type (wn);
+      return WN_ty(wn);
+    } else {
+      const TY& ty = Ty_Table[WN_ty (wn)];
+      Is_True(TY_kind(ty) == KIND_POINTER,
+	      ("TY of ISTORE is not KIND_POINTER."));
+      TY_IDX pointed = TY_pointed (ty);
+#ifdef KEY
+      if (WN_operator(wn) == OPR_ISTORE &&
+          WN_field_id(wn) != 0 &&
+          TY_kind(pointed) == KIND_STRUCT &&
+          !TY_is_union(pointed) &&
+          type_ok (pointed))
+        return field_type (wn);
+#endif
+      return pointed;
     }
-    if (WN_field_id(wn) != 0 && TY_kind(ty_idx) == KIND_STRUCT) {
-      return field_type (ty_idx, WN_field_id(wn));
-    }
-    return ty_idx;
   } else {
     return (TY_IDX) 0;
   }

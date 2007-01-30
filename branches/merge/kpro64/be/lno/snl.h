@@ -258,17 +258,17 @@
 ***	See the files for descriptions. 
 **/
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/snl.h,v $
+/** $Revision$
+*** $Date$
+*** $Author$
+*** $Source$
 **/
 
 #ifndef snl_INCLUDED
 #define snl_INCLUDED "snl.h"
 
 #ifdef _KEEP_RCS_ID
-static char *snl_rcs_id = snl_INCLUDED "$Revision: 1.1.1.1 $";
+static char *snl_rcs_id = snl_INCLUDED "$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef defs_INCLUDED

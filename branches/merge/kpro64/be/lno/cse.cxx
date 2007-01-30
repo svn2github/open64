@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -94,10 +98,10 @@
  * ====================================================================
  *
  * Module: cse.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/cse.cxx,v $
+ * $Revision: 1.13 $
+ * $Date: 05/11/28 15:53:02-08:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: be/lno/SCCS/s.cse.cxx $
  *
  * Revision history:
  *  dd-mmm-94 - Original Version
@@ -115,7 +119,7 @@
 #pragma hdrstop
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/cse.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: be/lno/SCCS/s.cse.cxx $ $Revision: 1.13 $";
 
 #include <sys/types.h>
 #include "lnopt_main.h"
@@ -274,7 +278,11 @@ static void Inter_Iteration_Cses_Loop(WN *loop)
 	    if (eq2 && (parent_opc == WN_opcode(parent2)) &&
 		((oper != OPR_DIV) || Same_Side(child,parent,child2,parent2))) {
 	      if ((oper == OPR_RECIP) || (oper == OPR_SQRT) ||
-			      (oper == OPR_RSQRT)) {
+			      (oper == OPR_RSQRT)
+#ifdef TARG_X8664
+			      || (oper == OPR_ATOMIC_RSQRT)
+#endif
+	         ) {
 	        Process_Pair(load,NULL,load2,NULL,loop);
 	        eq1 = 0;
 	      } else {
@@ -484,7 +492,11 @@ static EQUIVALENCE_TYPE Set_Up_Equivalence_Classes(WN *wn, WN *loop)
 
       return return_result;
     } else if ((oper == OPR_RECIP) || (oper == OPR_SQRT) || 
-		(oper == OPR_RSQRT)) {
+		(oper == OPR_RSQRT)
+#ifdef TARG_X8664
+		|| (oper == OPR_ATOMIC_RSQRT)
+#endif
+	      ) {
       EQUIVALENCE_TYPE result = Set_Up_Equivalence_Classes(WN_kid0(wn),loop);
       if ((result == EQ_LOAD) && 
 	  (WN_rtype(WN_kid0(wn)) == type)) {
@@ -1098,7 +1110,14 @@ static void Transform_Code(STACK<WN_PAIR_EC> *cse_stack, WN *loop, BOOL all_inva
   WN* new_insertion_point;
   if (all_invariant) {
     LWN_Insert_Block_Before(LWN_Get_Parent(loop),loop,stid);
+#ifdef KEY // bug 8624
+   // inserton_point = NULL means inserting at the very begining
+   // of the loop and thus bug 8624 causes wrong ordering of 
+   // instructions in loop and dependencies are broken.
+    new_insertion_point = insertion_point;
+#else
     new_insertion_point = NULL;
+#endif
   } else {
     LWN_Insert_Block_After(WN_do_body(loop),insertion_point,stid);
     new_insertion_point = stid;

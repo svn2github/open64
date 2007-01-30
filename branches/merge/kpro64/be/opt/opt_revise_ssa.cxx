@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -341,6 +341,24 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld(void)
       if (OPERATOR_is_store(opr)) {
 	CODEREP *lhs = stmt->Lhs();
         switch (opr) {
+#ifdef KEY // bug 9179
+	case OPR_STID: {
+
+	  AUX_ID idx;
+	  if (lhs->Dsctyp() != MTYPE_M && MTYPE_byte_size(lhs->Dsctyp()) < 4 &&
+	      (idx = _opt_stab->Part_of_reg_size_symbol(lhs->Aux_id())) != 0) {
+	    _symbols_to_revise->Union1D(lhs->Aux_id()); 
+
+      	    lhs->Set_promote_to_reg_size(); // flag cr for processing in step 2
+      	    _symbols_to_revise->Union1D(idx);
+      	    lhs->Set_scalar_aux_id(idx);
+      	    _has_bitfield = TRUE;
+	    if (_tracing) 
+	      fprintf(TFile, "replace %d by compose of %d\n", lhs->Aux_id(), idx); 
+	  }
+	  break;
+	}
+#endif
 	case OPR_STBITS: {
 	  _symbols_to_revise->Union1D(lhs->Aux_id()); // pv 805267
 
@@ -615,9 +633,14 @@ OPT_REVISE_SSA::Update_phis(BB_NODE *bb)
       if (st != NULL) ty = ST_type(st);
       if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
          rtype = sym->Mtype();
-      else
+      else {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size());
+#ifdef KEY // bug 8186
+	if (MTYPE_is_unsigned(sym->Mtype()))
+	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
+#endif
+      }
       MTYPE desc = rtype;
 #ifdef KEY // promote to register type size
       if (i != _opt_stab->Default_vsym() && 
@@ -663,15 +686,20 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	BOOL originally_dead = ! cnode->Live();
 	cnode->Set_live(TRUE);
 	cnode->Set_dse_dead(FALSE);
-    sym = _opt_stab->Aux_stab_entry(i); 
-    TY_IDX ty = TY_IDX_ZERO;
-    ST *st = _opt_stab->St(i);
-    if (st != NULL) ty = ST_type(st);
-    if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
-        rtype = sym->Mtype();
-    else
-        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
-						    sym->Byte_size()); 
+	sym = _opt_stab->Aux_stab_entry(i); 
+	TY_IDX ty = TY_IDX_ZERO;
+	ST *st = _opt_stab->St(i);
+	if (st != NULL) ty = ST_type(st);
+	if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
+	    rtype = sym->Mtype();
+	else {
+	    rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+							sym->Byte_size()); 
+#ifdef KEY // bug 8186
+	    if (MTYPE_is_unsigned(sym->Mtype()))
+	      rtype = Mtype_TransferSign(MTYPE_U4, rtype);
+#endif
+        }
 	MTYPE desc = rtype;
 #ifdef KEY // promote to register type size
 	if (i != _opt_stab->Default_vsym() && 
@@ -703,9 +731,14 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
     sym = _opt_stab->Aux_stab_entry(i);
     if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
         rtype = sym->Mtype();
-    else
+    else {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size()); 
+#ifdef KEY // bug 8186
+	if (MTYPE_is_unsigned(sym->Mtype()))
+	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
+#endif
+    }
     if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
       ty = MTYPE_To_TY(rtype);
     }
@@ -811,9 +844,14 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
     MTYPE rtype;
     if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
         rtype = sym->Mtype();
-    else
+    else {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size());  
+#ifdef KEY // bug 8186
+	if (MTYPE_is_unsigned(sym->Mtype()))
+	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
+#endif
+    }
     MTYPE desc = rtype;
 #ifdef KEY // promote to register type size
     if (i != _opt_stab->Default_vsym() && 
@@ -1135,7 +1173,11 @@ OPT_REVISE_SSA::Form_extract_compose(void)
         }
 	
 	// lower STBITS and ISTBITS
-	if (opr == OPR_STBITS) {
+	if (opr == OPR_STBITS
+#ifdef KEY // bug 9179
+	    || (opr == OPR_STID && lhs->Promote_to_reg_size()) 
+#endif
+	   ) {
 
 	  // Add a new chi node for the old STBITS lhs symbol (pv 805267)
 	  if (stmt->Chi_list() == NULL)
@@ -1165,17 +1207,31 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 #ifdef KEY
 	  v->Set_sign_extension_flag();
 #endif
-#ifndef KEY
-	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->Bit_offset(), lhs->Bit_size(), v, rhs));
-#else
 	  INT32 adjust = 0;
 	  if (Target_Byte_Sex == BIG_ENDIAN)
 	    adjust = MTYPE_bit_size(v->Dtyp()) - MTYPE_bit_size(v->Dsctyp());
+#ifdef KEY // bug 9179
+	  if (opr == OPR_STID) {
+	    AUX_STAB_ENTRY *osym = _opt_stab->Aux_stab_entry(lhs->Aux_id());
+	    INT32 bofst = (osym->Base_byte_ofst() - sym->Base_byte_ofst()) * 8;
+	    Is_True(bofst >= 0 && (bofst<32 || sym->Byte_size() == 8 && bofst<64),
+		    ("Form_extract_compose:: illegal bit offset in compose"));
+	    stmt->Set_rhs(Create_COMPOSE_BITS(bofst+adjust, MTYPE_bit_size(lhs->Dsctyp()), v, rhs));
+	  }
+	  else 
+#endif
 	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->Bit_offset()+adjust, lhs->Bit_size(), v, rhs));
+	  // generate a new version of the new scalar variable
+#ifdef KEY // bug 9179
+	  if (opr == OPR_STID)
+	    stmt->Set_lhs(_htable->Add_def(v->Aux_id(), -1, stmt, 
+	      v->Dtyp(), v->Dsctyp(), v->Offset(), Void_Type, 0, TRUE));
+	  else
 #endif
 	  // generate a new version of the new scalar variable
 	  stmt->Set_lhs(_htable->Add_def(lhs->Scalar_aux_id(), -1, stmt, 
 	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), Void_Type, 0, TRUE));
+
 	  stmt->Set_opr(OPR_STID);
 	  if (v->Aux_id() < _first_new_aux_id)
 	    Delete_chi(v->Aux_id(), stmt);
@@ -1276,6 +1332,10 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     // this indirect load can be folded
     // generate a load of the zero version of the new scalar variable
     x = _htable->Ssa()->Get_zero_version_CR(cr->Scalar_aux_id(), _opt_stab, 0);
+#ifdef KEY // bug 8933
+    if (_opt_stab->Is_volatile(cr->Scalar_aux_id())) 
+      x->Set_var_volatile();
+#endif
 #if 1 // bug fix aug-26-02
     // indirect load is not volatile, but folded-to scalar is volatile
     if (x->Is_var_volatile() || _opt_stab->Is_volatile(cr->Scalar_aux_id())) 

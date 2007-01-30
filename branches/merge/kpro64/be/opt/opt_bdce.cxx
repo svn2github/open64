@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -329,7 +329,7 @@ BITWISE_DCE::Mark_var_bits_live(CODEREP *cr, UINT64 live_bits,
   }
   else { // def is real stid
     if (cr->Defstmt()) {       	    // defstmt is NULL if volatile
-#ifdef KEY // bug 2580
+#ifdef KEY // bug 2666
       Mark_tree_bits_live(cr->Defstmt()->Rhs(), live_bits, stmt_visit);
 #else
       Mark_tree_bits_live(cr->Defstmt()->Rhs(), live_bits, FALSE);
@@ -526,6 +526,7 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
     case OPR_REDUCE_MAX:
     case OPR_REDUCE_MIN:
     case OPR_SHUFFLE:
+    case OPR_ATOMIC_RSQRT:
 #endif
       if (visit_all)
 	Mark_tree_bits_live(cr->Opnd(0), Bits_in_type(dsctyp), stmt_visit);
@@ -1207,9 +1208,17 @@ BITWISE_DCE::Copy_propagate(CODEREP *cr, STMTREP *use_stmt) {
         use_stmt->Bb()->Id() > WOPT_Enable_Bdceprop_Limit)
       return NULL;
     else if (! (Opt_stab()->Aux_stab_entry(cr->Aux_id())->EPRE_temp() &&
-           use_stmt->Bb() == cr->Defstmt()->Bb()) )
+           	use_stmt->Bb() == cr->Defstmt()->Bb() &&
+		!use_stmt->Iv_update() /* bug 10449 */) )
       return NULL;
   }
+#endif
+
+#ifdef KEY // bug 8335: this may prevent CG from knowing what register name
+	   // 		to use when handling the asm statemet
+  if (use_stmt->Opr() == OPR_ASM_STMT &&
+      ST_class(Opt_stab()->St(cr->Aux_id())) == CLASS_PREG)
+    return NULL;
 #endif
 
   CODEREP *new_expr = cr->Defstmt()->Rhs();
@@ -1486,6 +1495,7 @@ BITWISE_DCE::Bitwise_dce(void)
       else Mark_willnotexit_stmts_live(pdom_bb);
   }
 
+#ifndef KEY // bug 8499
   // revisit STID stmts that were visited but not marked live
   if ( _copy_propagate ) {
     FOR_ALL_NODE( bb, cfg_iter, Init() ) {
@@ -1499,6 +1509,7 @@ BITWISE_DCE::Bitwise_dce(void)
       }
     }
   }
+#endif
 
   if (Tracing()) {
     Print_nodes_with_dead_bits(TFile);

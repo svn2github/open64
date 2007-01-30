@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -307,7 +311,7 @@ IPA_mark_commons_used_in_io (const IP_FILE_HDR& hdr)
 }
 
 #ifdef KEY
-static void
+void
 IPA_update_ehinfo_in_pu (IPA_NODE *node)
 {
 	if (!(PU_src_lang (node->Get_PU()) & PU_CXX_LANG) ||
@@ -340,7 +344,9 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
                 ST_IDX new_idx = sym_array[st_idx].St_idx();
 		// This st would be used at least in the exception table, mark
 		// it so that ipa does not remove it in DVE
+		// TODO: Record this ref in IPL to prevent this situation.
       		Set_AUX_ST_flags (Aux_St_Table[new_idx], USED_IN_OBJ);
+                Clear_ST_is_not_used (St_Table[new_idx]);
                 INITV_IDX filter = INITV_next (st_entry); // for backup
                 INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
                        Host_To_Targ (MTYPE_U4, new_idx)), 1);
@@ -363,7 +369,9 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
 		int st_idx = TCON_uval (INITV_tc_val (idx));
 		FmtAssert (st_idx > 0, ("Invalid st entry in eh-spec table"));
 		ST_IDX new_idx = sym_array[st_idx].St_idx();
+		// TODO: Record this ref in IPL to prevent this situation.
 		Set_AUX_ST_flags (Aux_St_Table[new_idx], USED_IN_OBJ);
+		Clear_ST_is_not_used (St_Table[new_idx]);
 		INITV_IDX bkup = INITV_next (idx);
 		INITV_Set_VAL (Initv_Table[idx], Enter_tcon (
 			Host_To_Targ (MTYPE_U4, new_idx)), 1);
@@ -582,6 +590,11 @@ Mark_inline_edge_overrides(IPA_EDGE* ipa_edge)
     }
 }
 
+#include <map>
+
+typedef std::map<UINT64, IPA_NODE*> ADDR_NODE_MAP;
+static ADDR_NODE_MAP addr_node_map;
+
 IPA_NODE* 
 Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_index)
 {
@@ -773,6 +786,9 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
                ("Attempt to change default of -IPA:pu_reorder"));
       IPA_Enable_PU_Reorder = REORDER_BY_NODE_FREQ;
     }
+
+    const UINT64 runtime_addr = ipa_node->Get_func_runtime_addr ();
+    if (runtime_addr) addr_node_map[runtime_addr] = ipa_node;
 #endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
     return ipa_node;
 	
@@ -828,11 +844,16 @@ find_if_equal (vector<Nodes_To_Edge*>::iterator b, vector<Nodes_To_Edge*>::itera
 
 // Update frequency of the edge with the frequency in the callsite
 static void Update_freq (SUMMARY_CALLSITE *, IPA_EDGE *);
+static bool Check_Heuristic(IPA_NODE *, IPA_NODE *, INT64, IPA_CALL_GRAPH *);
 #endif
 
 void
 Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMARY_SYMBOL* symbol_array)
 {
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    BOOL has_icalls = FALSE;
+#endif
+
     if (proc_array == NULL) {
         INT32 size;
         proc_array = IPA_get_procedure_file_array(s, size);
@@ -884,6 +905,49 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
                            &callsite_array[callsite_index]);
 	} // KEY
       } 
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+      else if (callsite_array[callsite_index].Is_icall_target()) {
+
+        has_icalls = TRUE;
+        if (!IPA_Enable_Icall_Opt)
+          continue; // don't do anything with this callsite
+
+        sindex = callsite_array[callsite_index].Get_symbol_index();
+        temp_st_idx = symbol_array[sindex].St_idx ();
+        ST* callee_st = &St_Table[temp_st_idx];
+
+        Is_True (!strcmp (ST_name (callee_st), "__dummy_icall_target"),
+             ("Process_procedure: Expected ICALL target function as callee"));
+
+        mUINT64 target_addr = callsite_array[callsite_index].Get_targ_runtime_addr();
+        IPA_NODE * callee = addr_node_map [target_addr];
+
+        if (!callee) continue;
+
+        if (IPA_Consult_Inliner_For_Icall_Opt)
+        {
+          mUINT64 callee_counter = (mUINT64)
+                callsite_array[callsite_index].Get_frequency_count().Value();
+
+          if (!Check_Heuristic (caller,
+                                callee,
+                                callee_counter,
+                                IPA_Call_Graph))
+            continue;
+        }
+        IPA_EDGE* ipa_edge = 
+            IPA_Call_Graph->Add_New_Edge (&callsite_array[callsite_index],
+                                          caller_idx, 
+                                          callee->Node_Index());
+        if (ipa_edge->Has_frequency ())
+            Total_call_freq += ipa_edge->Get_frequency ();
+        Mark_inline_edge_overrides(ipa_edge);
+
+        caller->Set_Pending_Icalls();
+        // No longer an icall target, treat like a normal call.
+        callsite_array[callsite_index].Reset_icall_target();
+      }
+#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
       // for direct calls
       else if (!callsite_array[callsite_index].Is_intrinsic()) {
 
@@ -914,6 +978,64 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 
         NODE_INDEX callee_idx = AUX_PU_node (Aux_Pu_Table[ST_pu (callee_st)]);
 
+#ifdef KEY
+        if (callee_idx == INVALID_NODE_INDEX &&
+            ST_export (callee_st) == EXPORT_LOCAL) {
+          // Bugs 3224, 7842
+          // The callee is marked static, so the definition must be in this
+          // file (or executable for IPA). This can happen for non-ANSI C
+          // when a static function decl is in function scope.
+          // NOTE: The fix-up is done only in the IPA call-graph, the
+          // callsite ST and the callee ST would still remain different.
+          // For IPA, we must also fix-up the func name at the callsite.
+
+          IPA_CALL_GRAPH * cg =
+             (IPA_Enable_PU_Reorder == REORDER_BY_EDGE_FREQ &&
+              IPA_Call_Graph_Tmp) ? IPA_Call_Graph_Tmp : IPA_Call_Graph;
+
+          for (INT count=0; count<Aux_Pu_Table.Size(); count++) {
+
+            NODE_INDEX node_idx = AUX_PU_node (Aux_Pu_Table[count]); 
+
+            if (node_idx != INVALID_NODE_INDEX) {
+              IPA_NODE * node = cg->Graph()->Node_User (node_idx);
+              // There must be a single match, verify it in debug mode
+#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+              if (!strcmp (node->Name(), ST_name (callee_st)))
+#else // ipa
+              const char * cur_node_name = node->Name();
+              // We are looking for:
+              // cur_node_name == orig_fn_name<..EXT>
+              // callee_st == orig_fn_name
+              const int callsite_name_len = strlen (ST_name (callee_st));
+              if (strlen (cur_node_name) > callsite_name_len + 2 &&
+                  !strncmp (cur_node_name, ST_name (callee_st),
+                            callsite_name_len) &&
+                  cur_node_name[callsite_name_len] == '.' &&
+                  cur_node_name[callsite_name_len+1] == '.' &&
+                  // make sure they are from the same file
+                  caller->File_Index() == node->File_Index())
+#endif
+              {
+                Is_True (callee_idx == INVALID_NODE_INDEX,
+                         ("Duplicate static fn defn ?"));
+                callee_idx = node_idx;
+#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+                Is_True (ST_export (node->Func_ST()) == EXPORT_LOCAL,
+                         ("Unexpected export scope for func %s", node->Name()));
+#else
+                Is_True (ST_export (node->Func_ST()) == EXPORT_INTERNAL,
+                         ("Unexpected export scope for func %s", node->Name()));
+                Set_ST_name_idx (callee_st, ST_name_idx (node->Func_ST()));
+#endif
+#ifndef Is_True_On
+                break;
+#endif // !Is_True_On
+              }
+            }
+          }
+        }
+#endif
         // If the callee is not in a WHIRL IR file, its index will 
         // be invalid. In that case we do not add the edge, but we
         // add the callsite to a special list of opaque calls.
@@ -979,6 +1101,23 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
         }
       }
     }
+
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    if (has_icalls) {
+      // Need to fix up the callsite ids.
+      // If icall opt is disabled, we need to fix up callsite id of all
+      // callsites. If enabled, we still need to loop through the callsites
+      // to remove any callsites not being transformed.
+      //
+      INT cs_index = proc_array[i].Get_callsite_index();
+      INT count = 0;
+      for (INT j = 0; j < callsite_count; ++j, ++cs_index) {
+        if (!callsite_array[cs_index].Is_icall_target())
+          callsite_array[cs_index].Set_callsite_id (count++);
+      }
+    }
+#endif
+
     return;
 }
 
@@ -1421,9 +1560,6 @@ Build_Call_Graph ()
 #include "wn_util.h"
 #include "ir_reader.h"
 #include <map>
-
-typedef std::map<UINT64, IPA_NODE*> ADDR_NODE_MAP;
-static ADDR_NODE_MAP addr_node_map;
 
 static void IPA_Collect_Runtime_Addr( IPA_CALL_GRAPH* cg )
 {
@@ -2286,6 +2422,66 @@ IPA_NODE::Set_Whirl_Tree (WN *wn)
     Set_PU_Info_state(pu, WT_TREE, Subsect_InMem);
 }
 
+#if defined(KEY) && !defined(_LIGHTWEIGHT_INLINER)
+#include "be_ipa_util.h"
+
+static void
+Add_Mod_Ref_Info (IPA_NODE * node)
+{
+  UINT32 index;
+
+  // NOTE: Lots of optimizations can be done in the implementation
+  // below.
+  //
+  const INT bits_per_byte = 8;
+  const int bitsize = sizeof (mUINT8) * bits_per_byte;
+  const IPAA_NODE_INFO * info = node->Mod_Ref_Info();
+
+  Is_True (info, ("Add_Mod_Ref_Info: Node should have mod-ref info"));
+  New_Mod_Ref_Info (index);
+
+  // PU id
+  Mod_Ref_Info_Table[index].pu_idx = ST_pu (node->Func_ST());
+
+  // How many bytes do we need?
+  INT bv_size = ST_Table_Size (GLOBAL_SYMTAB);
+  if (bv_size % bits_per_byte > 0)
+    bv_size = bv_size / bits_per_byte + 1;
+  else
+    bv_size /= bits_per_byte;
+
+  // MOD
+  mUINT8 * MOD = CXX_NEW_ARRAY (mUINT8, bv_size, Malloc_Mem_Pool);
+  bzero (MOD, bv_size);
+
+  // REF
+  mUINT8 * REF = CXX_NEW_ARRAY (mUINT8, bv_size, Malloc_Mem_Pool);
+  bzero (REF, bv_size);
+
+  for (INT i=1; i<ST_Table_Size (GLOBAL_SYMTAB); i++)
+  {
+    ST * st = &St_Table(GLOBAL_SYMTAB, i);
+    if (ST_class (st) != CLASS_VAR) continue;
+
+    BOOL mod_info = info->Is_def_elmt (i);
+    BOOL ref_info = info->Is_eref_elmt (i);
+
+    mUINT8 bit_to_set = 1 << (bitsize - 1 - (i % bitsize));
+
+    if (mod_info)
+      *(MOD + i / bitsize) |= bit_to_set;
+
+    if (ref_info)
+      *(REF + i / bitsize) |= bit_to_set;
+  }
+
+  Mod_Ref_Info_Table[index].mod = MOD;
+  Mod_Ref_Info_Table[index].ref = REF;
+  // This can be optimized later, and be different for different PUs
+  Mod_Ref_Info_Table[index].size = bv_size;
+}
+#endif // KEY && !_LIGHTWEIGHT_INLINER
+
 // --------------------
 // Write PU out to file
 // --------------------
@@ -2308,11 +2504,16 @@ IPA_NODE::Write_PU ()
 #endif
     if ((IP_PROC_INFO_state (proc_info) != IPA_WRITTEN) || !Has_Recursive_In_Edge())
     {
+#if defined(KEY) && !defined(_LIGHTWEIGHT_INLINER)
+        // Use IPA mod/ref before IP_WRITE_pu frees resources
+        if (Mod_Ref_Info())
+          Add_Mod_Ref_Info (this);
+#endif
         IP_WRITE_pu(&file_hdr, Proc_Info_Index()); 
 #ifdef KEY
 // Mark this node as written, which actually implies all its EH information
 // have been processed and must not be processed if this PU is written again.
-	Set_PU_Write_Complete ();
+        Set_PU_Write_Complete ();
 #endif
     }
   }
@@ -3158,6 +3359,7 @@ fprintf(fp, "Reason33: Density is too high (infrequent called but contains hot l
 fprintf(fp, "Reason34: optimization options are different for caller and callee\n");
 fprintf(fp, "Reason35: Trying to do pure-call-optimization for this callsite\n");
 fprintf(fp, "Reason36: not inlining C++ with exceptions into non-C++\n");
+fprintf(fp, "Reason37: formal parameter is a loop index\n");
 #endif
 fprintf(fp, SBar);
   

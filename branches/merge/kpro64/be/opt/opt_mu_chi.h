@@ -47,7 +47,7 @@
 #ifndef opt_mu_chi_INCLUDED
 #define opt_mu_chi_INCLUDED "opt_mu_chi.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_mu_chircs_id = opt_mu_chi_INCLUDED"$ $Revision: 1.1.1.1 $";
+static char *opt_mu_chircs_id = opt_mu_chi_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "opcode.h"

@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -144,6 +144,11 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
       Append_real_occurrence(cr, stmt, stmt_kid_num, depth, FALSE);
     break;
   case CK_RCONST: 
+#ifdef TARG_X8664 // bug 11268: need to keep the real and imag halves together 
+    if (cr->Dtyp() == MTYPE_C4 && parent && parent->Kind() == CK_IVAR && 
+	parent->Opr() == OPR_PARM)
+      break;
+#endif
     if ( LPRE_do_consts() )
       Append_real_occurrence(cr, stmt, stmt_kid_num, depth, FALSE);
     break;
@@ -155,6 +160,11 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 
   case CK_VAR:	    // variable terminal rvi candidates
 
+#ifdef TARG_X8664 // bug 11268: need to keep the real and imag halves together 
+    if (cr->Dtyp() == MTYPE_C4 && parent && parent->Kind() == CK_IVAR && 
+	parent->Opr() == OPR_PARM)
+      break;
+#endif
     if ( LPRE_do_loads() && 
 	 !cr->Is_var_volatile() && 
          // screen out MLDID

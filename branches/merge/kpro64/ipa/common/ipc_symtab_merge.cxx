@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1540,8 +1540,8 @@ Verify_Predefined_Symbols (const ST& st)
     ST mapped_st = st;
     Set_ST_name_idx (mapped_st, (*New_Symstr_Idx)[ST_name_idx (st)]);
     
-    FmtAssert (mapped_st == St_Table[ST_st_idx (st)],
-		("Incompatible predefined pregs in global symbol table"));
+    FmtAssert (bcmp (&mapped_st, &St_Table[ST_st_idx (st)], sizeof(ST)) == 0,
+	       ("Incompatible predefined pregs in global symbol table"));
     (*New_St_Idx).set_map (ST_st_idx (st), ST_st_idx (st));
 }
 
@@ -1685,7 +1685,13 @@ Merge_Global_St(UINT                   idx,
     if (ST_export(original_st) == EXPORT_LOCAL ||
 	ST_export(original_st) == EXPORT_LOCAL_INTERNAL) {
 
+#ifdef KEY
+	// Bug 8443: A function cannot be a common block element.
+	if (ST_raw_base_idx (original_st) == ST_st_idx (original_st) ||
+	    ST_sym_class (original_st) == CLASS_FUNC)
+#else
 	if (ST_raw_base_idx (original_st) == ST_st_idx (original_st))
+#endif
 	    return Enter_Original_St (original_tabs, original_st);
 	else
 	    // this might be a common block element

@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -43,10 +47,10 @@
  * ====================================================================
  *
  * Module: lnopt_main.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lnopt_main.cxx,v $
+ * $Revision: 1.32 $
+ * $Date: 05/05/26 10:27:49-07:00 $
+ * $Author: kannann@iridot.keyresearch $
+ * $Source: be/lno/SCCS/s.lnopt_main.cxx $
  *
  * Revision history:
  *  14-Sep-94 - Original Version 
@@ -429,8 +433,13 @@ Fully_Unroll_Short_Loops(WN* wn)
   }
   else if (oper == OPR_DO_LOOP    &&
            !Do_Loop_Has_Calls(wn) &&
+#ifdef PATHSCALE_MERGE
            (!Do_Loop_Has_Exits(wn) || Do_Loop_Is_Regular(wn)) &&
 	   !Do_Loop_Has_Conditional(wn) &&
+#else
+           !Do_Loop_Has_Exits(wn) &&
+           !Do_Loop_Has_Gotos(wn) &&
+#endif
            !Do_Loop_Is_Mp(wn)     &&
            !Is_Nested_Doacross(wn) &&
            Num_Inner_Loops(wn) < MAX_INNER_LOOPS) {
@@ -610,6 +619,16 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       Print_Prompl_Msgs(current_pu, func_nd); 
     } 
     Prompf_Finish(); 
+
+#ifdef KEY //just cheat the list_option, don't worry
+           // about the compilation time if the uer
+           // want to list options
+    if(List_Enabled){
+      Init_Prefetch_Options(func_nd);
+      Mhd.Initialize();
+      Mhd.Merge_Options(Mhd_Options);
+    }
+#endif
 
     MEM_POOL_Pop(&ARA_memory_pool);
     MEM_POOL_Delete(&ARA_memory_pool);
@@ -820,7 +839,8 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
     if (Liberal_Ivdep && Cray_Ivdep) {
       DevWarn("Both Liberal_Ivdep and Cray_Ivdep set, Liberal_Ivdep ignored");
     }
-  
+    
+#ifdef PATHSCALE_MERGE
     BOOL LNO_skip=FALSE;
   
     // skip_it, skip_before, skip_after function count specified
@@ -831,9 +851,13 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       }
       LNO_skip=TRUE;
     }
-  
-  
+#endif  
+
+#ifdef PATHSCALE_MERGE
     if ((LNO_Opt == 0 || LNO_skip) && !(Run_autopar && LNO_Run_AP > 0)) {
+#else
+    if ((LNO_Opt == 0 || !LNO_enabled) && !(Run_autopar && LNO_Run_AP > 0)) {
+#endif
       GRAPH16_CAPACITY = save_graph_capacity; 
       Build_CG_Dependence_Graph (func_nd);
       Stop_Timer ( T_LNOBuildDep_CU );
@@ -945,14 +969,29 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 #ifdef TARG_X8664
 	// Bug 4203 - this is probably exposing some register allocation bug 
 	// for m32. Hide it for now.
-	if (!Skip_SVR && (LNO_SVR_Phase1 || Is_Target_32bit()))
+	if (!Skip_SVR && LNO_SVR && (LNO_SVR_Phase1 || Is_Target_32bit()))
 #else
-	if (!Skip_SVR && LNO_SVR_Phase1)
+	if (!Skip_SVR && LNO_SVR && LNO_SVR_Phase1)
 #endif
+#endif  
+       {
+#ifdef KEY
+       // Bug 8628 -- turn off the red_manager to let the reduction variable
+       // be renamed for SVR_PHASE1
+	if(red_manager)
+	  red_manager->Erase(func_nd);
 #endif
         if (Scalar_Variable_Renaming(func_nd))
           LNO_Build_Access(func_nd,&LNO_default_pool);
-  
+#ifdef KEY
+        // Bug 8628 -- rebuild the red_manager if necessary
+	if(red_manager){
+	  red_manager->Build(func_nd, TRUE, FALSE);//scalar
+          if (Roundoff_Level >= ROUNDOFF_ASSOC)//array only if roundoff>=2
+            red_manager->Build(func_nd,FALSE,TRUE,Array_Dependence_Graph);
+        }
+#endif
+       }          
       early_exit = Phase_123(current_pu, func_nd, do_fiz_fuse, do_p25, 
         do_inner_fission);
   
@@ -1497,7 +1536,7 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
     if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
       // rename after phase 2
 #ifdef KEY
-      if (!Skip_SVR)
+      if (!Skip_SVR && LNO_SVR)
 #endif
       if (Scalar_Variable_Renaming(func_nd))
         LNO_Build_Access(func_nd,&LNO_default_pool);
@@ -1528,7 +1567,7 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
     if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
       // rename after phase 2
 #ifdef KEY
-      if (!Skip_SVR)
+      if (!Skip_SVR && LNO_SVR)
 #endif
       if (Scalar_Variable_Renaming(func_nd))
         LNO_Build_Access(func_nd,&LNO_default_pool);
@@ -1587,7 +1626,9 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
     Has_Unsummarized_Call_Cost = has_unsummarized_call_cost;
     Has_Threadprivate = FALSE; 
     Has_Gotos = has_gotos;
+#ifdef PATHSCALE_MERGE
     Has_Conditional = FALSE;
+#endif
     Has_Gotos_This_Level = has_gotos_this_level;
     Has_Exits = has_exits;
     Is_Inner = is_inner;

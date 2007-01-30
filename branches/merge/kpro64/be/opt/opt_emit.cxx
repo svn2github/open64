@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -65,7 +65,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_emit_CXX	"opt_emit.cxx"
-static char *rcs_id = 	opt_emit_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_emit_CXX"$Revision: 1.13 $";
 #endif /* _KEEP_RCS_ID */
 
 // The following for pu_info.h, which includes elftypes.h, which uses
@@ -1625,6 +1625,13 @@ EMITTER::Can_raise_to_scf(BB_NODE *bb)
     bb_end = bb_start->Loopend();
     bb_step = bb_start->Loopstep();
     bb_merge = bb_start->Loopmerge();
+#ifdef KEY // bug 8327: the incr stmt has been optimized to something else
+    if (bb_step->Stmtlist()->Tail() == NULL ||
+        bb_step->Stmtlist()->Tail()->Opr() != OPR_STID ||
+        bb_step->Stmtlist()->Tail()->Rhs()->Kind() != CK_OP)
+      ;
+    else
+#endif
     if (bb_step->Succ()->Contains(bb_end) &&
 	bb_end->Succ()->Contains(bb_merge))
       return TRUE;

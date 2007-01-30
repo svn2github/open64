@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -116,11 +120,7 @@ static struct winfo {
   UINT_TYPE,     INT_TYPE,      8,  /* MTYPE_U8 */
   FLOAT_TYPE,    FLOAT_TYPE,    4,  /* MTYPE_F4 */
   FLOAT_TYPE,    FLOAT_TYPE,    8,  /* MTYPE_F8 */
-#ifdef TARG_IA64
-  FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_F10*/
-#else
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_F10*/
-#endif
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_F16*/
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_STR*/
   FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_FQ  */
@@ -131,8 +131,7 @@ static struct winfo {
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_V  */
   INT_TYPE,  	 UINT_TYPE,  	0,  /* MTYPE_BS */
   UINT_TYPE,     INT_TYPE,      4,  /* MTYPE_A4 */
-  UINT_TYPE,     INT_TYPE,      8,  /* MTYPE_A8 */
-  COMPLEX_TYPE,  COMPLEX_TYPE, 32,  /* MTYPE_C10 */
+  UINT_TYPE,     INT_TYPE,      8   /* MTYPE_A8 */
 };
 
 #define WTYPE_base_type(w) WINFO[w].base_type
@@ -505,6 +504,12 @@ void WN_Remove_Delete_Cleanup_Function(void (*cleanup_fn)(WN *wn))
     delete_cleanup_fns[i] = delete_cleanup_fns[i+1];
 }
 
+#ifdef KEY // bug 9651
+void WN_Reset_Num_Delete_Cleanup_Fns(void)
+{
+  num_delete_cleanup_fns = 0;
+}
+#endif
 
 /* ---------------------------------------------------------------------
  * WN_MAP_ID New_Map_Id( void )
@@ -1293,7 +1298,7 @@ WN_CreateStid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 #endif /* FRONT_END */
 
 #ifdef FRONT_END
-   if (desc == MTYPE_M) {
+   if (desc == MTYPE_M && CURRENT_SYMTAB > GLOBAL_SYMTAB) {
    	 Set_PU_has_very_high_whirl (Get_Current_PU ());
    }
 #endif /* FRONT_END */
@@ -1968,7 +1973,10 @@ WN *WN_CopyNode (const WN* src_wn)
     if (OPCODE_has_next_prev(opcode)) {
 	WN_linenum(wn) = WN_linenum(src_wn);
     }
-
+#ifdef KEY // bug 10105
+    if (WN_kid_count(src_wn) == 3)
+      WN_kid(wn, 2) = WN_kid(src_wn, 2);
+#endif
     return(wn);
 }
 
@@ -2294,12 +2302,13 @@ WN *WN_Iload(TYPE_ID desc, WN_OFFSET offset, TY_IDX align, WN *addr,
 
 WN *
 WN_RIload (TYPE_ID rtype, TYPE_ID desc, WN_OFFSET offset, TY_IDX align,
-	   WN *addr)
+	   WN *addr, UINT field_id)
 {
   TY_IDX palign;
   palign = Make_Pointer_Type(align);
 
-  return WN_CreateIload (OPR_ILOAD, rtype, desc, offset, align, palign, addr);
+  return WN_CreateIload (OPR_ILOAD, rtype, desc, offset, align, palign, addr,
+  			 field_id);
 }
 
 WN *
@@ -2371,12 +2380,10 @@ WN *WN_ConstPowerOf2( TYPE_ID type, INT32 n)
   {
   case MTYPE_F4:
   case MTYPE_F8:
-  case MTYPE_F10:
   case MTYPE_F16:
   case MTYPE_FQ:
   case MTYPE_C4:
   case MTYPE_C8:
-  case MTYPE_C10:
   case MTYPE_CQ:
     {
       double val = pow( 2.0, n);
@@ -2401,12 +2408,10 @@ WN *WN_Floatconst( TYPE_ID type, double value)
   {
   case MTYPE_F4:
   case MTYPE_F8:
-  case MTYPE_F10:
   case MTYPE_FQ:
   case MTYPE_F16:
   case MTYPE_C4:
   case MTYPE_C8:
-  case MTYPE_C10:
   case MTYPE_CQ:
     return Make_Const (Host_To_Targ_Float (type, value));
 #ifdef TARG_X8664
@@ -2450,12 +2455,10 @@ WN *WN_UVConst( TYPE_ID type)
 #endif
   case MTYPE_F4:
   case MTYPE_F8:
-  case MTYPE_F10:
   case MTYPE_FQ:
   case MTYPE_F16:
   case MTYPE_C4:
   case MTYPE_C8:
-  case MTYPE_C10:
   case MTYPE_CQ:
     return Make_Const (Host_To_Targ_UV(type));
   case MTYPE_STR:
@@ -2772,11 +2775,13 @@ WN_Float_Type_Conversion( WN *wn, TYPE_ID to_type )
   /* infer the "from" type from the given whirl */
   TYPE_ID from_type = WN_rtype(wn);
 
-  Is_True( from_type == MTYPE_F4 || from_type == MTYPE_F8 ||
-	   from_type == MTYPE_F10 || from_type == MTYPE_FQ,
+  Is_True( from_type == MTYPE_F4 ||
+	   from_type == MTYPE_F8 ||
+	   from_type == MTYPE_FQ,
     ("WN_Float_Type_Conversion: unexpected from_type: %d\n",from_type));
-  Is_True( to_type == MTYPE_F4 || to_type == MTYPE_F8 ||
-	   to_type == MTYPE_F10 || to_type == MTYPE_FQ,
+  Is_True( to_type == MTYPE_F4 ||
+	   to_type == MTYPE_F8 ||
+	   to_type == MTYPE_FQ,
     ("WN_Float_Type_Conversion: unexpected to_type: %d\n", to_type) );
 
   /* quickie check */
@@ -2818,7 +2823,6 @@ WN_Type_Conversion( WN *wn, TYPE_ID to_type )
 	   from_type == MTYPE_U8 ||
 	   from_type == MTYPE_F4 ||
 	   from_type == MTYPE_F8 ||
-	   from_type == MTYPE_F10 ||
 	   from_type == MTYPE_FQ,
     ("WN_Type_Conversion: unexpected from_type: %d\n", from_type) );
   Is_True( to_type == MTYPE_I1 ||
@@ -2831,7 +2835,6 @@ WN_Type_Conversion( WN *wn, TYPE_ID to_type )
 	   to_type == MTYPE_U8 ||
 	   to_type == MTYPE_F4 ||
 	   to_type == MTYPE_F8 ||
-	   to_type == MTYPE_F10 ||
 	   to_type == MTYPE_FQ,
     ("WN_Type_Conversion: unexpected to_type: %d\n", to_type) );
 
@@ -3012,6 +3015,9 @@ WN_set_st_addr_saved (WN* wn)
     case OPR_RSQRT:
     case OPR_PARM:
     case OPR_OPTPARM:
+#ifdef TARG_X8664
+    case OPR_ATOMIC_RSQRT:
+#endif
 
       WN_set_st_addr_saved (WN_kid0(wn));
       break;
@@ -3131,6 +3137,7 @@ WN_has_side_effects (const WN* wn)
     case OPR_REDUCE_MPY:
     case OPR_SHUFFLE:
     case OPR_REPLICATE:
+    case OPR_ATOMIC_RSQRT:
 #endif // TARG_X8664
 #ifdef KEY
     case OPR_ILDA:

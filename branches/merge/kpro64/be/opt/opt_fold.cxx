@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -68,7 +68,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_fold_CXX "opt_fold.cxx"
-static char *rcs_id = opt_fold_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = opt_fold_CXX"$Revision: 1.9 $";
 #endif /* _KEEP_RCS_ID */
 
 #define __STDC_LIMIT_MACROS
@@ -106,6 +106,8 @@ static void     CR_set_kid0(CODEREP *, CODEREP *);
 static CODEREP *CR_kid0(CODEREP *);
 static CODEREP *CR_kid(CODEREP *, INT);
 static INT32	CR_kid_count(CODEREP *);
+static CODEREP *Combine_bits_any_nzero_test(CODEREP *);
+static CODEREP *Combine_bits_all_zero_test(CODEREP *);
 
 //============================================================================
 // usage:
@@ -519,7 +521,13 @@ FOLD::CR_Simplify_Expr(CODEREP *cr)
 	  tmp->Set_opnd(1,k1);
 	  result = fold_htable->Rehash(tmp);
 	} else
+#ifndef KEY
 	  result = NOHASH;
+#else // bug 8581
+	  result = Combine_bits_any_nzero_test(cr);
+	  if (result == NOHASH)
+	    result = Combine_bits_all_zero_test(cr);
+#endif
       }
 
    } else if (numkids == 3) {	// trinary operators
@@ -574,6 +582,170 @@ FOLD::CR_Simplify_Iload(CODEREP *cr)
     			     *p);
   }
   return NOHASH;
+}
+
+// combine non-zero bit tests as follows:
+//	x & c1 || x & c2  -->  (x & (c1 | c2)) != 0
+static
+CODEREP *Combine_bits_any_nzero_test(CODEREP *cr)
+{
+  if (cr->Kind() != CK_OP)
+    return NOHASH;
+  if (cr->Opr() != OPR_CIOR && cr->Opr() != OPR_LIOR)
+    return NOHASH;
+  CODEREP *l = cr->Opnd(0);
+  if (l->Kind() == CK_OP && l->Opr() == OPR_NE) {
+    if (l->Opnd(1)->Kind() == CK_CONST && l->Opnd(1)->Const_val() == 0)
+      l = l->Opnd(0);
+    else if (l->Opnd(0)->Kind() == CK_CONST && l->Opnd(0)->Const_val() == 0)
+      l = l->Opnd(1);
+    else return NOHASH;
+  }
+  CODEREP *r = cr->Opnd(1);
+  if (r->Kind() == CK_OP && r->Opr() == OPR_NE) {
+    if (r->Opnd(1)->Kind() == CK_CONST && r->Opnd(1)->Const_val() == 0)
+      r = r->Opnd(0);
+    else if (r->Opnd(0)->Kind() == CK_CONST && r->Opnd(0)->Const_val() == 0)
+      r = r->Opnd(1);
+    else return NOHASH;
+  }
+  CODEREP *lvar, *rvar;
+  INT64 lbitmask, rbitmask;
+  if (l->Kind() == CK_OP && l->Opr() == OPR_BAND) {
+    if (l->Opnd(1)->Kind() == CK_CONST) {
+      lbitmask = l->Opnd(1)->Const_val();
+      lvar = l->Opnd(0);
+    }
+    else if (l->Opnd(0)->Kind() == CK_CONST) {
+      lbitmask = l->Opnd(0)->Const_val();
+      lvar = l->Opnd(1);
+    }
+    else return NOHASH;
+  }
+  else {
+    lvar = l;
+    lbitmask = -1;
+  }
+  if (r->Kind() == CK_OP && r->Opr() == OPR_BAND) {
+    if (r->Opnd(1)->Kind() == CK_CONST) {
+      rbitmask = r->Opnd(1)->Const_val();
+      rvar = r->Opnd(0);
+    }
+    else if (r->Opnd(0)->Kind() == CK_CONST) {
+      rbitmask = r->Opnd(0)->Const_val();
+      rvar = r->Opnd(1);
+    }
+    else return NOHASH;
+  }
+  else {
+    rvar = r;
+    rbitmask = -1;
+  }
+  if (lvar != rvar)
+    return NOHASH;
+  // succeeded in matching pattern
+  CODEREP *newcr;
+  INT nbits = MTYPE_bit_size(lvar->Dsctyp()); 
+  INT64 maxbitmask;
+  if (nbits >= 64)
+    maxbitmask = UINT64_MAX;
+  else maxbitmask = ((UINT64)1 << nbits) - 1;
+  INT64 newbitmask = (lbitmask | rbitmask) & maxbitmask;
+  if (newbitmask == maxbitmask)
+    newcr = lvar;
+  else newcr = CR_Create(OPCODE_make_op(OPR_BAND, lvar->Dtyp(), MTYPE_V), 2, 
+    			 lvar,
+			 CR_CreateIntconst(
+			    OPCODE_make_op(OPR_INTCONST, lvar->Dtyp(), MTYPE_V),
+			    newbitmask));
+  SIMPNODE_DELETE(cr);
+  return CR_Create(OPCODE_make_op(OPR_NE, MTYPE_I4, lvar->Dtyp()), 2, newcr,
+  				  CR_CreateIntconst(
+				    OPCODE_make_op(OPR_INTCONST, lvar->Dtyp(), MTYPE_V),
+				    0));
+}
+
+// combine zero bit tests as follows:
+//	(x & c1) == 0 && (x & c2) == 0  -->  x & (c1 | c2) == 0
+static
+CODEREP *Combine_bits_all_zero_test(CODEREP *cr)
+{
+  if (cr->Kind() != CK_OP)
+    return NOHASH;
+  if (cr->Opr() != OPR_CAND && cr->Opr() != OPR_LAND)
+    return NOHASH;
+  CODEREP *l = cr->Opnd(0);
+  if (l->Kind() == CK_OP && l->Opr() == OPR_EQ) {
+    if (l->Opnd(1)->Kind() == CK_CONST && l->Opnd(1)->Const_val() == 0)
+      l = l->Opnd(0);
+    else if (l->Opnd(0)->Kind() == CK_CONST && l->Opnd(0)->Const_val() == 0)
+      l = l->Opnd(1);
+    else return NOHASH;
+  }
+  else return NOHASH;
+  CODEREP *r = cr->Opnd(1);
+  if (r->Kind() == CK_OP && r->Opr() == OPR_EQ) {
+    if (r->Opnd(1)->Kind() == CK_CONST && r->Opnd(1)->Const_val() == 0)
+      r = r->Opnd(0);
+    else if (r->Opnd(0)->Kind() == CK_CONST && r->Opnd(0)->Const_val() == 0)
+      r = r->Opnd(1);
+    else return NOHASH;
+  }
+  else return NOHASH;
+  CODEREP *lvar, *rvar;
+  INT64 lbitmask, rbitmask;
+  if (l->Kind() == CK_OP && l->Opr() == OPR_BAND) {
+    if (l->Opnd(1)->Kind() == CK_CONST) {
+      lbitmask = l->Opnd(1)->Const_val();
+      lvar = l->Opnd(0);
+    }
+    else if (l->Opnd(0)->Kind() == CK_CONST) {
+      lbitmask = l->Opnd(0)->Const_val();
+      lvar = l->Opnd(1);
+    }
+    else return NOHASH;
+  }
+  else {
+    lvar = l;
+    lbitmask = -1;
+  }
+  if (r->Kind() == CK_OP && r->Opr() == OPR_BAND) {
+    if (r->Opnd(1)->Kind() == CK_CONST) {
+      rbitmask = r->Opnd(1)->Const_val();
+      rvar = r->Opnd(0);
+    }
+    else if (r->Opnd(0)->Kind() == CK_CONST) {
+      rbitmask = r->Opnd(0)->Const_val();
+      rvar = r->Opnd(1);
+    }
+    else return NOHASH;
+  }
+  else {
+    rvar = r;
+    rbitmask = -1;
+  }
+  if (lvar != rvar)
+    return NOHASH;
+  // succeeded in matching pattern
+  CODEREP *newcr;
+  INT nbits = MTYPE_bit_size(lvar->Dsctyp()); 
+  INT64 maxbitmask;
+  if (nbits >= 64)
+    maxbitmask = UINT64_MAX;
+  else maxbitmask = ((UINT64)1 << nbits) - 1;
+  INT64 newbitmask = (lbitmask | rbitmask) & maxbitmask;
+  if (newbitmask == maxbitmask)
+    newcr = lvar;
+  else newcr = CR_Create(OPCODE_make_op(OPR_BAND, lvar->Dtyp(), MTYPE_V), 2, 
+    			 lvar,
+			 CR_CreateIntconst(
+			    OPCODE_make_op(OPR_INTCONST, lvar->Dtyp(), MTYPE_V),
+			    newbitmask));
+  SIMPNODE_DELETE(cr);
+  return CR_Create(OPCODE_make_op(OPR_EQ, MTYPE_I4, lvar->Dtyp()), 2, newcr,
+  				  CR_CreateIntconst(
+				    OPCODE_make_op(OPR_INTCONST, lvar->Dtyp(), MTYPE_V),
+				    0));
 }
 #endif
 
@@ -702,6 +874,17 @@ CR_CreateFPconst(TCON tc)
    cr->Init_rconst(TCON_ty(tc),st);
    return fold_htable->Hash_Rconst(cr);
 }
+
+#ifdef TARG_X8664
+static CODEREP *
+CR_CreateSIMDconst(TCON tc)
+{
+   CODEREP *cr = Alloc_stack_cr(0);
+   ST *st = New_Const_Sym(Enter_tcon(tc),Be_Type_Tbl(TCON_ty(tc)));
+   cr->Init_rconst(TCON_ty(tc),st);
+   return fold_htable->Hash_Rconst(cr);
+}
+#endif
 
 // given a CR, regenerate the opcode
 static OPCODE

@@ -48,7 +48,7 @@
 #define opt_prop_INCLUDED	"opt_prop.h"
 
 #ifdef _KEEP_RCS_ID
-static char *opt_proprcs_id = 	opt_prop_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_proprcs_id = 	opt_prop_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 // forward declaration
@@ -102,7 +102,7 @@ private:
 			       BOOL inside_cse, INT32 *height,
 			       BOOL in_array );
   CODEREP *Copy_propagate_cr(CODEREP *x, BB_NODE *curbb, 
-			     BOOL inside_cse, BOOL in_array);
+			     BOOL inside_cse, BOOL in_array, BOOL no_complex_preg = FALSE);
   void     Copy_propagate_stmt(STMTREP *stmt, BB_NODE *bb); 
   BOOL	   Var_has_as_value_on_the_other_path(CODEREP *var, CODEREP *value,
 					      BOOL var_on_left, BB_NODE *bb);
@@ -134,9 +134,9 @@ public:
 
   void      Unvisit_nodes(void);
   CODEREP *Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase, 
-		    BOOL inside_cse, BOOL in_array );
+		    BOOL inside_cse, BOOL in_array, BOOL no_complex_preg = FALSE);
   CODEREP *Prop_ivar(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase, 
-		     BOOL inside_cse, BOOL in_array );
+		     BOOL inside_cse, BOOL in_array, BOOL no_complex_preg = FALSE);
   void Copy_propagate(BB_NODE *bb);
 
   BOOL Disabled(void) const { return _disabled; }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_vho.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_vho.h,v $
+ * $Revision: 1.11 $
+ * $Date: 05/08/31 16:24:20-07:00 $
+ * $Author: gautam@jacinth.keyresearch $
+ * $Source: common/com/SCCS/s.config_vho.h $
  *
  * Revision history:
  *  05-May-96 - Extracted from be/opt/opt_config.h.
@@ -87,6 +87,10 @@ extern BOOL  VHO_Enable_Simple_If_Conv; // Enable simple if-conv at VHO lowering
 extern INT32 VHO_Enable_If_Conv_Limit;  // Maximum overhead allowed after ifconv
 extern BOOL  VHO_Enable_Misc_Loop_Transformation; // Enable loop transformation
 extern BOOL  VHO_Enable_Misc_Loop_Fusion; // Enable loop fusion
+extern BOOL  VHO_Merge_Thens; 	   // enable combining identical THEN parts
+				   // in cascaded IFs
+extern BOOL  VHO_Merge_Elses; 	   // enable combining identical ELSE parts
+				   // in cascaded IFs
 
 extern INT32 VHO_Disable_MP_PU_Before;
 extern INT32 VHO_Disable_MP_PU_After;
@@ -94,6 +98,10 @@ extern INT32 VHO_Disable_MP_PU_Equal;
 extern INT32 VHO_Disable_MP_Local_Before;
 extern INT32 VHO_Disable_MP_Local_After;
 extern INT32 VHO_Disable_MP_Local_Equal;
+#endif
+#ifdef TARG_X8664
+extern BOOL  VHO_Generate_Rrotate;
+extern BOOL  VHO_Generate_Rrotate_Set;
 #endif
 #endif /* config_vho_INCLUDED */
 

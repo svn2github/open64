@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -70,7 +70,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_ssa_CXX    "opt_ssa.cxx"
-static char *rcs_id = 	opt_ssa_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_ssa_CXX"$Revision: 1.24 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
@@ -1006,18 +1006,32 @@ SSA::Get_zero_version_CR(AUX_ID aux_id, OPT_STAB *opt_stab, VER_ID du)
     MTYPE dtype, rtype;
     AUX_STAB_ENTRY *sym = opt_stab->Aux_stab_entry(aux_id);
    
-    if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
+    if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype())
+#ifdef KEY // bug 7733: if dedicated-preg, Mtype() is MTYPE_UNKNOWN
+        || (sym->Mclass() & MTYPE_CLASS_VECTOR)
+#endif
+       )
         rtype = sym->Mtype();
-    else
+    else {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size());
+#ifdef KEY // bug 8186
+	if (MTYPE_is_unsigned(sym->Mtype()))
+	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
+#endif
+	}
 
     dtype = rtype;
     if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
       if (MTYPE_is_integral(rtype) &&
-          sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8))
+          sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8)) {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
                                                 MTYPE_size_min(MTYPE_I4)/8);
+#ifdef KEY // bug 8186
+	if (MTYPE_is_unsigned(sym->Mtype()))
+	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
+#endif
+      }
       ty = MTYPE_To_TY(rtype);
     }
     CODEREP *cr = _htable->Add_def(aux_id, 0, NULL, rtype, dtype,
@@ -1094,17 +1108,27 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
       
       if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
         rtype = sym->Mtype();
-      else
+      else {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size()); 
+#ifdef KEY // bug 8186
+	if (MTYPE_is_unsigned(sym->Mtype()))
+	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
+#endif
+	}
 
       dtype = rtype;
 
       if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
         if (MTYPE_is_integral(rtype) &&
-            sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8))
+            sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8)) {
           rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
                                                   MTYPE_size_min(MTYPE_I4)/8);
+#ifdef KEY // bug 8186
+	  if (MTYPE_is_unsigned(sym->Mtype()))
+	    rtype = Mtype_TransferSign(MTYPE_U4, rtype);
+#endif
+	}
         ty = MTYPE_To_TY(rtype);
       }
 

@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -40,10 +44,10 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_lno.cxx,v $
+ * $Revision: 1.65 $
+ * $Date: 05/10/19 20:03:33-07:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: common/com/SCCS/s.config_lno.cxx $
  *
  * Revision history:
  *  11-Nov-96 - Original Version.
@@ -62,7 +66,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *config_lno_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_lno.cxx,v $ $Revision: 1.1.1.1 $";
+static char *config_lno_rcs_id = "$Source: common/com/SCCS/s.config_lno.cxx $ $Revision: 1.65 $";
 #endif /* _KEEP_RCS_ID */
 
 /* This file is included in config.c, so it doesn't need its own set of
@@ -134,6 +138,7 @@ static LNO_FLAGS Default_LNO = {
   10000,        /* SVR_Skip_After */
   10000,        /* SVR_Skip_Equal */
   TRUE,		/* SVR_Phase1 */
+  TRUE,         /* SVR */
   0,            /* Unswitch_Skip_Before */
   1000,         /* Unswitch_Skip_After */
   1000,         /* Unswitch_Skip_Equal */
@@ -146,6 +151,12 @@ static LNO_FLAGS Default_LNO = {
   0,            /* Skip_Before */
   10000,        /* Skip_After */
   10000,        /* Skip_Equal */
+  0,            /* Apo_Skip_Before */
+  10000,        /* Apo_Skip_After */
+  10000,        /* Apo_Skip_Equal */
+  0,            /* Apo_Loop_Skip_Before */
+  10000,        /* Apo_Loop_Skip_After */
+  10000,        /* Apo_Loop_Skip_Equal */
   0,            /* Dummy_Skip_Before */
   10000,        /* Dummy_Skip_After */
   10000,        /* Dummy_Skip_Equal */
@@ -225,16 +236,22 @@ static LNO_FLAGS Default_LNO = {
   TRUE,         /* Simd_Avoid_Fusion */
   TRUE,         /* Run_hoistif */
   TRUE,		/* Ignore_Feedback */
-  TRUE,        /* Run_unswitch */
+  TRUE,         /* Run_unswitch */
+  TRUE,         /* Run_unswitch_phase1 */
+  TRUE,         /* Run_unswitch_phase2 */
   FALSE,	/* Unswitch_Verbose */
   FALSE,	/* Prefetch_Verbose */
   FALSE,        /* Build_Scalar_Reductions */
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
+#ifndef KEY
   1,		/* Run_doacross */
+#else
+  0,		/* Run_doacross */
+#endif
   0,		/* Preferred_doacross_tile_size */
 #ifdef KEY
-  2048,		/* Parallel_overhead */ 
+  4096,		/* Parallel_overhead */ 
 #else
   2600,		/* Parallel_overhead */ 
 #endif
@@ -244,22 +261,24 @@ static LNO_FLAGS Default_LNO = {
   TRUE, 	/* Shackle */ 
   FALSE, 	/* Cross_loop */ 
   FALSE,        /* IPA_Enabled */
-  100,          /* Num_Iters */
+  1000,          /* Num_Iters */
   1,		/* Pure_Level */ 
   5,            /* Small_trip_count */
-#ifdef KEY
-  1000, 	/* Assume_Unknown_Trip_Count */
-#endif
+//#ifdef KEY
+//  1000, 	/* Trip_Count_Assumed_When_Unknown */
+//#endif
   (UINT32)-1,	/* Local_pad_size */
 #ifdef TARG_X8664
   5,            /* Full_unrolling */
 #else
-  8,            /* Full_unrolling */
+  0,            /* Full_unrolling */
 #endif
 #ifdef KEY
   2000,         /* Full_unrolling_loop_size_limit */
-  TRUE,		/* Full_Unroll_Outer */
+  FALSE,	/* Full_Unroll_Outer */
   0,		/* Processors */
+  128,		/* Parallel_per_proc_overhead */ 
+  FALSE,	/* Apo_use_feedback */
 #endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
@@ -300,6 +319,7 @@ LNO_FLAGS Initial_LNO = {
   10000,        /* SVR_Skip_After */
   10000,        /* SVR_Skip_Equal */
   TRUE,		/* SVR_Phase1 */
+  TRUE,         /* SVR */
   0,            /* Unswitch_Skip_Before */
   1000,         /* Unswitch_Skip_After */
   1000,         /* Unswitch_Skip_Equal */
@@ -312,6 +332,12 @@ LNO_FLAGS Initial_LNO = {
   0,            /* Skip_Before */
   10000,        /* Skip_After */
   10000,        /* Skip_Equal */
+  0,            /* Apo_Skip_Before */
+  10000,        /* Apo_Skip_After */
+  10000,        /* Apo_Skip_Equal */
+  0,            /* Apo_Loop_Skip_Before */
+  10000,        /* Apo_Loop_Skip_After */
+  10000,        /* Apo_Loop_Skip_Equal */
   0,            /* Dummy_Skip_Before */
   10000,        /* Dummy_Skip_After */
   10000,        /* Dummy_Skip_Equal */
@@ -391,16 +417,22 @@ LNO_FLAGS Initial_LNO = {
   TRUE,         /* Simd_Avoid_Fusion */
   TRUE,         /* Run_hoistif */
   TRUE,	 	/* Ignore_Feedback */
-  TRUE,        /* Run_unswitch */
+  TRUE,         /* Run_unswitch */
+  TRUE,         /* Run_unswitch_phase1 */
+  TRUE,         /* Run_unswitch_phase2 */
   FALSE,	/* Unswitch_Verbose */
   FALSE,	/* Prefetch_Verbose */
   FALSE,        /* Build_Scalar_Reductions */
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
+#ifndef KEY
   1,		/* Run_doacross */
+#else
+  0,		/* Run_doacross */
+#endif
   0,		/* Preferred_doacross_tile_size */
 #ifdef KEY
-  2048,		/* Parallel_overhead */ 
+  4096,		/* Parallel_overhead */ 
 #else
   2600,         /* Parallel_overhead */ 
 #endif
@@ -410,22 +442,24 @@ LNO_FLAGS Initial_LNO = {
   TRUE, 	/* Shackle */ 
   FALSE, 	/* Cross_loop */ 
   FALSE,        /* IPA array section information available */
-  100,          /* Num_Iters */
+  1000,          /* Num_Iters */
   1,		/* Pure_Level */ 
   5,            /* Small_trip_count */
-#ifdef KEY
-  1000, 	/* Assume_Unknown_Trip_Count */
-#endif
+//#ifdef KEY
+//  1000, 	/* Trip_Count_Assumed_When_Unknown */
+//#endif
   (UINT32)-1,	/* Local_pad_size */
 #ifdef TARG_X8664
   5,            /* Full_unrolling */
 #else
-  8,            /* Full_unrolling */
+  0,            /* Full_unrolling */
 #endif
 #ifdef KEY
   2000,         /* Full_unrolling_loop_size_limit */
-  TRUE,		/* Full_Unroll_Outer */
+  FALSE,	/* Full_Unroll_Outer */
   0,		/* Processors */
+  128,		/* Parallel_per_proc_overhead */ 
+  FALSE,	/* Apo_use_feedback */
 #endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
@@ -545,6 +579,7 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "svr_skip_equal",	"svr_skip_equal",	32,0,1000, 
 	       SVR_Skip_Equal ),
   LNOPT_BOOL ( "svr_phase1",			NULL,	SVR_Phase1 ),
+  LNOPT_BOOL ( "svr",                           NULL,   SVR ),
   LNOPT_U32  ( "unswitch_skip_before",	"unswitch_skip_before",	32,0,1000, 
 	       Unswitch_Skip_Before ),
   LNOPT_U32  ( "unswitch_skip_after",	"unswitch_skip_after",	32,0,1000, 
@@ -563,12 +598,24 @@ static OPTION_DESC Options_LNO[] = {
   	       32,0,1000, Full_Unroll_Skip_After ),
   LNOPT_U32  ( "full_unroll_skip_equal", "full_unroll_skip_equal",
   	       32,0,1000, Full_Unroll_Skip_Equal ),
-  LNOPT_U32  ( "skip_before",	"skip_before",	32,0,10000, 
+  LNOPT_U32  ( "skip_before",	"skip_b",	32,0,10000, 
 	       Skip_Before ),
-  LNOPT_U32  ( "skip_after",	"skip_after",	32,0,10000, 
+  LNOPT_U32  ( "skip_after",	"skip_a",	32,0,10000, 
 	       Skip_After ),
-  LNOPT_U32  ( "skip_equal",	"skip_equal",	32,0,10000, 
+  LNOPT_U32  ( "skip_equal",	"skip_e",	32,0,10000, 
 	       Skip_Equal ),
+  LNOPT_U32  ( "apo_skip_before",	"apo_skip_before",	32,0,10000, 
+	       Apo_Skip_Before ),
+  LNOPT_U32  ( "apo_skip_after",	"apo_skip_after",	32,0,10000, 
+	       Apo_Skip_After ),
+  LNOPT_U32  ( "apo_skip_equal",	"apo_skip_equal",	32,0,10000, 
+	       Apo_Skip_Equal ),
+  LNOPT_U32  ( "apo_loop_skip_before",	"apo_loop_skip_before",	32,0,10000, 
+	       Apo_Loop_Skip_Before ),
+  LNOPT_U32  ( "apo_loop_skip_after",	"apo_loop_skip_after",	32,0,10000, 
+	       Apo_Loop_Skip_After ),
+  LNOPT_U32  ( "apo_loop_skip_equal",	"apo_loop_skip_equal",	32,0,10000, 
+	       Apo_Loop_Skip_Equal ),
   LNOPT_U32  ( "dummy_skip_before",	"dummy_skip_before",	32,0,10000, 
 	       Dummy_Skip_Before ),
   LNOPT_U32  ( "dummy_skip_after",	"dummy_skip_after",	32,0,10000, 
@@ -615,7 +662,7 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "max_depth",		NULL,	10,0,16,
 					Max_do_loop_depth_strict ),
   LNOPT_BOOL ( "mem_sim",		NULL,	Mem_sim ),
-  LNOPT_BOOL ( "minvariant",		"",	Minvar ),
+  LNOPT_BOOL ( "minvariant",		"minvar",	Minvar ),
   MHOPT_I32_SET_DUP ( "miss_penalty",	0,0,1000000000,
 					Miss_Penalty, Miss_Penalty_Set ),
   MHOPT_I32_SET_DUP (   "mp",		0,0,1000000000,
@@ -722,8 +769,10 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "hoistif",		NULL,	Run_hoistif ),
   LNOPT_BOOL ( "ignore_feedback",	NULL,	Ignore_Feedback ),
   LNOPT_BOOL ( "unswitch",		NULL,	Run_unswitch ),
-  LNOPT_BOOL ( "unswitch_verbose",		NULL,	Unswitch_Verbose ),
-  LNOPT_BOOL ( "prefetch_verbose",		NULL,	Prefetch_Verbose ),
+  LNOPT_BOOL ( "unswitch_phase1",	NULL,	Run_unswitch_phase1 ),
+  LNOPT_BOOL ( "unswitch_phase2",	NULL,	Run_unswitch_phase2 ),
+  LNOPT_BOOL ( "unswitch_verbose",	NULL,	Unswitch_Verbose ),
+  LNOPT_BOOL ( "prefetch_verbose",	NULL,	Prefetch_Verbose ),
   LNOPT_BOOL ( "build_scalar_reductions",NULL,	Build_Scalar_Reductions ),
 #endif /* KEY */  
   LNOPT_BOOL ( "oinvar",		NULL,	Run_oinvar ),
@@ -732,7 +781,7 @@ static OPTION_DESC Options_LNO[] = {
 					NULL,	0,0,999999,
 					Preferred_doacross_tile_size ),
 #ifdef KEY
-  LNOPT_U32  ( "parallel_overhead",     NULL,   2048,0,0x7fffffff, 
+  LNOPT_U32  ( "parallel_overhead",     NULL,   4096,0,0x7fffffff, 
 					Parallel_overhead), 
 #else
   LNOPT_U32  ( "parallel_overhead",     NULL,   2600,0,0x7fffffff, 
@@ -745,13 +794,13 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "shackle", 		NULL,   Shackle),
   LNOPT_BOOL ( "cross_loop", 		NULL,   Cross_loop),
   LNOPT_BOOL ( "ipa",                   NULL,   IPA_Enabled),
-  LNOPT_U32  ( "num_iters",             NULL,   100,0,UINT32_MAX,Num_Iters),
+  LNOPT_U32  ( "trip_count_assumed_when_unknown",      "trip_count",   1000,0,UINT32_MAX,Num_Iters),
   LNOPT_U32  ( "pure", 			NULL,   1,0,2,Pure_Level),
   LNOPT_U32  ( "small_trip_count", 	NULL,   5,0,10,Small_trip_count),
-#ifdef KEY
-  LNOPT_U32  ( "assume_unknown_trip_count", NULL,   
-  	       1000,0,1000,Assume_Unknown_Trip_Count),
-#endif
+//#ifdef KEY
+//  LNOPT_U32  ( "trip_count_assumed_when_unknown", "trip_count",   
+//  	       1000,0,1000,Trip_Count_Assumed_When_Unknown),
+//#endif
   LNOPT_U32  ( "local_pad_size", 	NULL,   0,0,1000,Local_pad_size),
   LNOPT_U32  ( "full_unroll", 	        "fu",   0,0,100,Full_unrolling),
 #ifdef KEY
@@ -760,6 +809,9 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "full_unroll_outer",	NULL,	Full_Unroll_Outer ),
   LNOPT_U32  ( "processors", 	NULL,   
 	       0,0,10000,Num_Processors),
+  LNOPT_U32  ( "parallel_pp_overhead", 	NULL,   
+	       128,0,0x7fffffff, Parallel_per_proc_overhead),
+  LNOPT_BOOL ( "apo_use_feedback",	NULL,	Apo_use_feedback ),
 #endif
 
   { OVK_COUNT }		    /* List terminator -- must be last */

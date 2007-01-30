@@ -212,7 +212,6 @@ static void HMB_Copy_Array_Deps_Exp(WN* wn_orig,
 //   that LDID outside the 'wn_hoist_loop' with an STID. The LDID and STID
 //   are both given the name 'name'.  
 //-----------------------------------------------------------------------
-
 static void HMB_Replace_Messy_Bounds(WN* wn_exp, 
 			             WN* wn_hoist_loop,
 				     HMB_BOUND bnd_type, 
@@ -230,6 +229,14 @@ static void HMB_Replace_Messy_Bounds(WN* wn_exp,
   DU_MANAGER* du = Du_Mgr;
   ARRAY_DIRECTED_GRAPH16* dg = Array_Dependence_Graph;
   TYPE_ID type = WN_rtype(wn_exp);
+#ifdef KEY //Bug 11381: retain the original type for messy loop bounds
+           //TODO: should unfold CVT
+  if(WN_opcode(wn_exp)==OPC_U4U8CVT || WN_opcode(wn_exp)==OPC_U4I8CVT){
+      TYPE_ID dtype = WN_desc(WN_kid0(wn_exp));
+    if(WN_operator(WN_kid0(wn_exp)) == OPR_ILOAD && dtype == MTYPE_I4)
+      type = MTYPE_I4;
+  }
+#endif
   OPCODE preg_s_opcode = OPCODE_make_op(OPR_STID, MTYPE_V, type);
   OPCODE preg_l_opcode = OPCODE_make_op(OPR_LDID, 
     Promote_Type(OPCODE_desc(preg_s_opcode)), OPCODE_desc(preg_s_opcode));

@@ -56,7 +56,7 @@
 #ifndef optimizer_INCLUDED
 #define optimizer_INCLUDED      "optimizer.h"
 #ifdef _KEEP_RCS_ID
-static char *optimizerrcs_id =	optimizer_INCLUDED"$Revision: 1.1.1.1 $";
+static char *optimizerrcs_id =	optimizer_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "opt_alias_interface.h"

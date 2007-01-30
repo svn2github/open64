@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,10 +50,10 @@
  * ====================================================================
  *
  * Module: vintr_fis.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/vintr_fis.cxx,v $
+ * $Revision: 1.18 $
+ * $Date: 05/05/23 12:17:22-07:00 $
+ * $Author: kannann@iridot.keyresearch $
+ * $Source: be/lno/SCCS/s.vintr_fis.cxx $
  *
  * Revision history:
  *  dd-mmm-95 - Original Version
@@ -68,7 +72,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/vintr_fis.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: be/lno/SCCS/s.vintr_fis.cxx $ $Revision: 1.18 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>
@@ -196,7 +200,9 @@ static INT64 MTYPE_size(TYPE_ID mtype)
 	case MTYPE_M:		sz=0; break;
 	case MTYPE_C4:		sz=8; break;
 	case MTYPE_C8:		sz=16; break;
+#if defined(TARG_IA64)
 	case MTYPE_C10:		sz=32; break;
+#endif
 	case MTYPE_CQ:		sz=32; break;
 	case MTYPE_V:		sz=0; break;
 	default:		sz=0; break;
@@ -317,7 +323,11 @@ static INTRINSIC get_vec_intrinsic(INTRINSIC intr_id) {
   
 }
 
-static WN* find_loop_var_in_simple_ub(WN* loop) {
+#ifdef KEY
+       WN* find_loop_var_in_simple_ub(WN* loop) {
+#else  
+static WN* find_loop_var_in_simple_ub(WN* loop) { 
+#endif
   WN* start=WN_start(loop);
   WN* end=WN_end(loop);
   WN* step;
@@ -817,7 +827,32 @@ INTRN_TYPE Intrinsic_Type (INTRINSIC intr_id) {
     return OTHER;
   }
 }
+
+//Bug 10421: to determine whether ub is defined in the loop 
+static BOOL UB_Defined_In_Loop(WN * wn, WN* loop,
+                               SYMBOL loop_var, 
+                               DU_MANAGER* du)
+{
+  if (WN_operator(wn) == OPR_LDID && loop_var != SYMBOL(wn)){ 
+     DEF_LIST *def_list = du->Ud_Get_Def(wn);
+     DEF_LIST_ITER iter(def_list);
+     const DU_NODE* node = NULL;
+     for (node = iter.First(); !iter.Is_Empty(); node = iter.Next()) {
+       WN* def = node->Wn();
+       if (Wn_Is_Inside(def, loop))
+       return TRUE;
+     }//end for
+   }//end if
+   for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
+    if (UB_Defined_In_Loop(WN_kid(wn, kid), loop,loop_var, du))
+      return TRUE;
+   
+   return FALSE;
+}
 #endif
+
+
+
 // Fission a inner loop 'innerloop' such that the intrinsic ops inside
 // can be separated and be vectorized
 static INT Vintrinsic_Fission(WN* innerloop)
@@ -862,6 +897,14 @@ static INT Vintrinsic_Fission(WN* innerloop)
   // if the loop upper bound is too complicated, we will not vectorize
   if (find_loop_var_in_simple_ub(innerloop)==NULL)
     return 0;
+
+#ifdef KEY
+  // Bug 10421: if ub has a definition in the loop, we will not vectorize
+  if(UB_Defined_In_Loop(WN_end(innerloop), innerloop,
+                        SYMBOL(WN_index(innerloop)),
+                        Du_Mgr))
+   return 0;
+#endif 
 
   MEM_POOL_Push(&VINTR_FIS_default_pool);
   {
@@ -1747,7 +1790,7 @@ static INT Vintrinsic_Fission(WN* innerloop)
 	printf("(%s:%d) ",
 	       Src_File_Name,
 	       Srcpos_To_Line(WN_Get_Linenum(new_loop)));
-	printf("LOOP WAS VECTORIZED.\n");
+	printf("LOOP WAS VECTORIZED FOR VECTOR INTRINSIC ROUTINE(S).\n");
       }
 #endif
       LWN_Update_Def_Use_Delete_Tree(new_loop,Du_Mgr);

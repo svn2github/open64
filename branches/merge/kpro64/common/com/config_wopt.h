@@ -224,7 +224,7 @@ extern BOOL WOPT_Enable_Rvivsym;	/* ignore vsym in chi lists */
 extern BOOL WOPT_Enable_Second_Alias_Class; /* repeat alias class for LNO */
 extern BOOL WOPT_Enable_Second_Order;
 extern BOOL WOPT_Enable_Simp_Iload;	/* simplifier folding iload */
-extern BOOL WOPT_Enable_Simple_If_Conv; /* enable simple if-conversion at CFG build time */
+extern INT32 WOPT_Enable_Simple_If_Conv; /* enable simple if-conversion at CFG build time */
 extern INT32 WOPT_Enable_If_Conv_Limit; /* max number of leaf nodes allowed in a
 					   simple expr in simple if conv */
 extern BOOL WOPT_Enable_If_Conv_For_Istore; /* if-conversion is applied if lhs is istore */
@@ -295,6 +295,12 @@ extern BOOL WOPT_Enable_Warn_Uninit;   // enable warning for detected uninitiali
 extern INT32 WOPT_Enable_WN_Unroll;	// 0: disable; 
 					// 1: unroll only loop bodies with IFs
 					// 2: unroll all loop bodies
+extern BOOL WOPT_Enable_IP_Mod_Ref;     // Use mod/ref information from IPA?
+extern BOOL WOPT_Enable_Invariant_Loop_Bounds; // enable assumption that all
+				   // induction loops' bounds are loop-invariant
+extern BOOL WOPT_Enable_Subword_Opt; // whether to replace 1- or 2-byte-sized
+			              // load/store with EXTRACT/COMPOSE
+extern BOOL WOPT_Enable_New_Vsym_Allocation;
 #endif
 extern BOOL  WOPT_Enable_WOVP; // For running write-once variable promotion
 #endif /* config_wopt_INCLUDED */

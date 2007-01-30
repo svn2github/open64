@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -292,17 +292,17 @@ Target_ISA_Has_Prefetch()
 static inline UINT32
 Target_Proc_Run_Prefetch()
 {
-  if (Is_Target_R10K())   return SOME_PREFETCH;
+  if (Is_Target_R10K())   return 1;
 #ifdef TARG_MIPS
-  if (Is_Target_Sb1())   return SOME_PREFETCH;
+  if (Is_Target_Sb1())   return 1;
 #endif
 #ifdef TARG_IA64
-  if (Is_Target_Itanium()) return CONSERVATIVE_PREFETCH; // more aggressive
+  if (Is_Target_Itanium()) return 2; // more aggressive
 #endif
 #ifdef TARG_X8664
   if (Is_Target_x86_64()) return CONSERVATIVE_PREFETCH; // more aggressive
 #endif
-  return NO_PREFETCH;
+  return 0;
 }
 
 /***********************************************************************

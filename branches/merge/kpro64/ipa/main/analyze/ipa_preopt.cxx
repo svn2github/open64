@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -529,6 +529,10 @@ IPA_update_procedure (IPA_NODE* node,
   INT32 old_sym_idx = IPA_map_symbol_index(node, new_symbols[new_sym_idx]);
   new_proc->Set_symbol_index (old_sym_idx);
 
+#ifdef KEY
+  new_proc->Set_size (PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, new_proc->Get_call_count());
+#endif
+
   // copy everything from the new SUMMARY_PROCEDURE to the old one
   *(node->Summary_Proc()) = *new_proc;
 }
@@ -577,6 +581,77 @@ IPA_Preopt_Finalize ()
   }
 }
 
+#ifdef KEY
+// Computes PU size after calling preopt
+// Modifies: PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, PU_WN_Call_Cnt
+// Modeled after Count_tree_size()
+static void
+Compute_PU_Size (WN * wn)
+{
+  if (!wn) return;
+
+  WN * wn2;
+
+  switch (WN_operator(wn)) {
+
+    case OPR_BLOCK:
+      wn2 = WN_first(wn);
+      while (wn2) {
+        Compute_PU_Size(wn2);
+        wn2 = WN_next(wn2);
+      }
+      break;
+
+    case OPR_REGION:
+      Compute_PU_Size(WN_region_body(wn));
+      break;
+
+    case OPR_IF:
+      Compute_PU_Size(WN_if_test(wn));
+      if (WN_then(wn))
+        Compute_PU_Size(WN_then(wn));
+      if (WN_else(wn))
+        Compute_PU_Size(WN_else(wn));
+      break;
+
+    case OPR_DO_LOOP:
+      Compute_PU_Size(WN_start(wn));
+      Compute_PU_Size(WN_step(wn));
+      Compute_PU_Size(WN_end(wn));
+      Compute_PU_Size(WN_do_body(wn));
+      break;
+
+    case OPR_WHILE_DO:
+    case OPR_DO_WHILE:
+      Compute_PU_Size(WN_while_test(wn));
+      Compute_PU_Size(WN_while_body(wn));
+      break;
+
+    case OPR_SWITCH:
+    case OPR_COMPGOTO:
+    case OPR_XGOTO:
+      {
+      WN *targ_blk = WN_kid1(wn);
+      wn2 = WN_first(targ_blk);
+      INT t = WN_num_entries(wn) - 1;
+      for ( ; t >= 0; --t, wn2 = WN_next(wn2) )
+          Compute_PU_Size(wn2);
+      break;
+      }
+
+    default:
+      {
+      INT i;
+      for (i = 0; i < WN_kid_count(wn); i++) {
+          wn2 = WN_kid(wn,i);
+          if (wn2)
+              Compute_PU_Size(wn2);
+        }
+      }
+    }
+    Count_WN_Operator (WN_operator (wn), WN_rtype (wn) , PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, PU_WN_Call_Cnt);
+}
+#endif // KEY
 
 // -------------------------------------------------------------
 // When constants are discovered in IPA, propagate them into PU,
@@ -607,7 +682,6 @@ IPA_Preoptimize (IPA_NODE* node)
 
   WN* wn = node->Whirl_Tree();
 
-  
   if (Get_Trace(TP_IPA, IPA_TRACE_PREOPT_IPL)) {
     fprintf (TFile, "\n%s before preopt\n", node->Name());
     fdump_tree (TFile, wn);
@@ -629,7 +703,9 @@ IPA_Preoptimize (IPA_NODE* node)
   // run preopt and from within it call ipl summary phase
   Run_preopt = TRUE;
   Run_ipl = TRUE;
+#ifndef KEY
   Do_Par = TRUE;
+#endif
 
   BE_symtab_alloc_scope_level(CURRENT_SYMTAB);
   Scope_tab[CURRENT_SYMTAB].st_tab->
@@ -654,6 +730,12 @@ IPA_Preoptimize (IPA_NODE* node)
   Be_scope_tab[CURRENT_SYMTAB].be_st_tab->Clear();
 
   REGION_Finalize();
+
+#ifdef KEY
+  // Don't reset all PU stats
+  PU_WN_BB_Cnt = PU_WN_Stmt_Cnt = PU_WN_Call_Cnt = 0;
+  Compute_PU_Size (opt_wn);
+#endif
 
   if (Get_Trace(TP_IPA, IPA_TRACE_PREOPT_IPL)) {
     fprintf (TFile, "\n%s after preopt\n", node->Name());

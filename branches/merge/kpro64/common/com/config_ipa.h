@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -133,6 +133,8 @@ extern BOOL IPA_Check_Options;		// check for inconsistent options
 extern BOOL IPA_Clone_List_Actions;	// report cloner actions
 extern BOOL IPA_Enable_Pure_Call_Opt;	// optimizes callsites w/o side-effects
 extern INT32 IPA_Pure_Call_skip_before;
+extern BOOL IPA_Consult_Inliner_For_Icall_Opt; // Consult inliner for icallopt?
+extern UINT32 IPA_Icall_Min_Freq;	// Min icall freq for icall opt
 #endif
 
 /* ===== Inlining heuristics: ===== */
@@ -311,7 +313,8 @@ extern BOOL	INLINE_Enable_Restrict_Pointers; /* allow restrict pointers */
 extern BOOL	INLINE_Recursive;	//  do recursive inlining
 extern BOOL	INLINE_Param_Mismatch;	// inline even if # of params doesn't match between call and callee
 extern BOOL	INLINE_Type_Mismatch; // inline even if actuals' types!=formals'
-extern BOOL     INLINE_Ignore_Bloat; // ignore code bloat
+extern BOOL	INLINE_Ignore_Bloat; // ignore code bloat
+extern UINT32	INLINE_Callee_Limit; // for functions marked inline by user
 #endif
 
 extern struct option_list *INLINE_List_Names;	/* Must/never/file/library 

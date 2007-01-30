@@ -58,10 +58,10 @@
  * ====================================================================
  *
  * Module: zmult.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/zmult.cxx,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  dd-mmm-94 - Original Version
@@ -78,7 +78,7 @@
 #pragma hdrstop
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/zmult.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source$ $Revision$";
 
 #include <sys/types.h>
 #include "lnopt_main.h"

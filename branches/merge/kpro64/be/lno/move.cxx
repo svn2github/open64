@@ -1,5 +1,9 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,7 +50,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/move.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: be/lno/SCCS/s.move.cxx $ $Revision: 1.9 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <alloca.h>
@@ -1387,7 +1391,6 @@ static void Delete_Deps(WN* wn,
 //   'ls_loop' is derived for a loop enclosing 'wn' if there is one, 
 //   otherwise it is NULL.  
 //-----------------------------------------------------------------------
-
 static void Recompute_Deps(WN* wn,
 			   LS_IN_LOOP* ls_loop, 
                            ARRAY_DIRECTED_GRAPH16* dg) 
@@ -1395,12 +1398,21 @@ static void Recompute_Deps(WN* wn,
   FmtAssert(dg != NULL, ("Could not find dependence graph"));
   DOLOOP_STACK wn_stack(&LNO_local_pool);
   Build_Doloop_Stack(wn, &wn_stack);
+#ifdef KEY //bug 11113
+  typedef STACK<WN *> WN_STACK;
+  WN_STACK *tmp_stack =
+        CXX_NEW(WN_STACK(&LNO_local_pool),&LNO_local_pool);
+#endif
   EINDEX16 e = 0;
   DOLOOP_STACK source_stack(&LNO_local_pool);
   VINDEX16 v = dg->Get_Vertex(wn);
   for (e = dg->Get_In_Edge(v); e != 0; e = dg->Get_Next_In_Edge(e)) {
     WN* wn_source = dg->Get_Wn(dg->Get_Source(e));
+#ifdef KEY
+    tmp_stack->Push(wn_source); //bug 11113: collect sources
+#else
     Build_Doloop_Stack(wn_source, &source_stack);
+#endif
     dg->Delete_Array_Edge(e);
     EINDEX16 ec = 0;
     for (ec = dg->Get_Out_Edge(v); ec != 0; ec = dg->Get_Next_Out_Edge(ec)) {
@@ -1410,15 +1422,32 @@ static void Recompute_Deps(WN* wn,
     }
     if (ec != 0)
       dg->Delete_Array_Edge(ec);
+#ifndef KEY //bug 11113
     if (!dg->Add_Edge(wn_source, &source_stack, wn,
-      &wn_stack, ls_loop->In(wn_source) < ls_loop->In(wn)))
+         &wn_stack, ls_loop->In(wn_source) < ls_loop->In(wn)))
       LNO_Erase_Dg_From_Here_In(wn, dg);
     source_stack.Clear();
+#endif
   }
+
+#ifdef KEY //bug 11113: build incoming edges only after all incoming edges removed 
+ while(tmp_stack->Elements() != 0){
+   WN *wn_source = tmp_stack->Pop();
+   Build_Doloop_Stack(wn_source, &source_stack);
+  if (!dg->Add_Edge(wn_source, &source_stack, wn,
+      &wn_stack, ls_loop->In(wn_source) < ls_loop->In(wn)))
+        LNO_Erase_Dg_From_Here_In(wn, dg);
+    source_stack.Clear();
+ }
+#endif   
   DOLOOP_STACK sink_stack(&LNO_local_pool);
   for (e = dg->Get_Out_Edge(v); e != 0; e = dg->Get_Next_Out_Edge(e)) {
     WN* wn_sink = dg->Get_Wn(dg->Get_Sink(e));
+#ifdef KEY
+    tmp_stack->Push(wn_sink); //bug 11113: collect sinks
+#else
     Build_Doloop_Stack(wn_sink, &sink_stack);
+#endif
     dg->Delete_Array_Edge(e);
     EINDEX16 ec = 0;
     for (ec = dg->Get_In_Edge(v); ec != 0; ec = dg->Get_Next_In_Edge(ec)) {
@@ -1428,11 +1457,23 @@ static void Recompute_Deps(WN* wn,
     }
     if (ec != 0)
       dg->Delete_Array_Edge(ec);
+#ifndef KEY //bug 11113
     if (!dg->Add_Edge(wn, &wn_stack, wn_sink,
       &sink_stack, ls_loop->In(wn) < ls_loop->In(wn_sink)))
       LNO_Erase_Dg_From_Here_In(wn, dg);
-    sink_stack.Clear();
+      sink_stack.Clear();
+#endif
   }
+#ifdef KEY //bug 11113: build outgoing edges only after all outgoing edges deleted
+ while(tmp_stack->Elements() != 0){
+   WN *wn_sink = tmp_stack->Pop();
+   Build_Doloop_Stack(wn_sink, &sink_stack);
+   if (!dg->Add_Edge(wn, &wn_stack, wn_sink,
+      &sink_stack, ls_loop->In(wn) < ls_loop->In(wn_sink)))
+      LNO_Erase_Dg_From_Here_In(wn, dg);
+      sink_stack.Clear();
+ }
+#endif
 }
 
 //-----------------------------------------------------------------------

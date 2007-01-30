@@ -1,17 +1,21 @@
+/*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
 // ====================================================================
 //
 // Module: opt_alias_analysis.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_alias_analysis.cxx,v $
+// $Revision: 1.26 $
+// $Date: 05/11/23 14:14:06-08:00 $
+// $Author: gautam@jacinth.keyresearch $
+// $Source: be/opt/SCCS/s.opt_alias_analysis.cxx $
 //
 // ====================================================================
 //
@@ -228,7 +232,6 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
   case OPR_INTCONST:
     ai->Set_expr_kind(EXPR_IS_INT);
     ai->Set_const_val(WN_const_val(wn_expr));
-    ai->Invalidate_ptr_info ();
     CHECK_POINTS_TO(ai);
     break;
 
@@ -242,7 +245,6 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
 	Simplify_Pointer(wn_expr, ai);
       } else {
 	ai->Set_expr_kind(EXPR_IS_INT);
-        ai->Invalidate_ptr_info ();
       }
     }
     CHECK_POINTS_TO(ai);
@@ -270,7 +272,6 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
 	ai->Set_base_kind(BASE_IS_UNKNOWN);
 	ai->Set_ofst_kind(OFST_IS_UNKNOWN);
       }
-      ai->Invalidate_ptr_info ();
       break;
     }
 
@@ -290,17 +291,16 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
       ai->Set_expr_kind(EXPR_IS_UNKNOWN);
       if (alias0.Expr_kind() == EXPR_IS_BEING_PROCESSED) {
 	ai->Copy_fully(alias0);
-	ai->Invalidate_ptr_info ();
       } else if (alias0.Expr_kind() == EXPR_IS_ADDR) {
 	if (alias1.Expr_kind() == EXPR_IS_INT) {
 	  ai->Copy_fully(alias0);
-	  if ((alias0.Ofst_kind() == OFST_IS_FIXED || 
-	       alias0.Iofst_kind() == OFST_IS_FIXED) && alias1.Int_is_constant()) {
+	  if (alias0.Ofst_kind() == OFST_IS_FIXED && alias1.Int_is_constant())
 	    ai->Shift_ofst( alias1.Int_const_val());
-	  } else {
+	  else
+#ifdef KEY
+	  if (!ai->Is_field())
+#endif
 	    ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-	    ai->Set_iofst_kind(OFST_IS_UNKNOWN);
-	  }
 	} else if (alias1.Expr_kind() == EXPR_IS_ADDR) {
 	  ai->Copy_fully(alias0);
 	  ai->Meet(&alias1, (ST *) wn_expr);
@@ -308,22 +308,20 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
       } else if (alias0.Expr_kind() == EXPR_IS_INT) {
 	if (alias1.Expr_kind() == EXPR_IS_ADDR) {
 	  ai->Copy_fully(alias1);
-	  if ((alias1.Ofst_kind() == OFST_IS_FIXED ||
-	       alias1.Iofst_kind() == OFST_IS_FIXED) && alias0.Int_is_constant()) {
+	  if (alias1.Ofst_kind() == OFST_IS_FIXED && alias0.Int_is_constant())
 	    ai->Shift_ofst( alias0.Int_const_val());
-	  } else {
+	  else
+#ifdef KEY
+	  if (!ai->Is_field())
+#endif
 	    ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-	    ai->Set_iofst_kind(OFST_IS_UNKNOWN);
-	  }
 	} else if (alias1.Expr_kind() == EXPR_IS_INT) {
 	  ai->Set_expr_kind(EXPR_IS_INT);
-	  ai->Invalidate_ptr_info ();
 	}
       }
       if (ai->Expr_kind() == EXPR_IS_UNKNOWN) {
 	ai->Set_base_kind(BASE_IS_UNKNOWN);
 	ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-	ai->Invalidate_ptr_info ();
       }
       CHECK_POINTS_TO(ai);
     }
@@ -345,17 +343,13 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
       ai->Set_expr_kind(EXPR_IS_UNKNOWN);
       if (alias0.Expr_kind() == EXPR_IS_BEING_PROCESSED) {
 	ai->Copy_fully(alias0);
-	ai->Invalidate_ptr_info ();
       } else if (alias0.Expr_kind() == EXPR_IS_ADDR) {
 	if (alias1.Expr_kind() == EXPR_IS_INT) {
 	  ai->Copy_fully(alias0);
-	  if ((alias0.Ofst_kind() == OFST_IS_FIXED ||
-	       alias0.Iofst_kind() == OFST_IS_FIXED) && alias1.Int_is_constant()) {
+	  if (alias0.Ofst_kind() == OFST_IS_FIXED && alias1.Int_is_constant())
 	    ai->Shift_ofst( - alias1.Int_const_val());
-	  } else {
+	  else
 	    ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-	    ai->Set_iofst_kind(OFST_IS_UNKNOWN);
-	  }
 	} else if (alias1.Expr_kind() == EXPR_IS_ADDR) {
 	  ai->Copy_fully(alias0);
 	  ai->Meet(&alias1, (ST *) wn_expr);
@@ -364,12 +358,10 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
 	if (alias1.Expr_kind() == EXPR_IS_INT) {
 	  ai->Set_expr_kind(EXPR_IS_INT);
 	}
-	ai->Invalidate_ptr_info ();
       }
       if (ai->Expr_kind() == EXPR_IS_UNKNOWN) {
 	ai->Set_base_kind(BASE_IS_UNKNOWN);
 	ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-	ai->Invalidate_ptr_info ();
       }
       CHECK_POINTS_TO(ai);
     }
@@ -418,7 +410,6 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
     ai->Set_expr_kind(EXPR_IS_INT);
     ai->Set_base_kind(BASE_IS_UNKNOWN);
     ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-    ai->Invalidate_ptr_info ();
     CHECK_POINTS_TO(ai);
     break;
 
@@ -427,54 +418,11 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
     ai->Set_expr_kind(EXPR_IS_UNKNOWN);
     ai->Set_base_kind(BASE_IS_UNKNOWN);
     ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-    ai->Invalidate_ptr_info ();
     CHECK_POINTS_TO(ai);
     break;
   }
 }
 
-// Return true iff the PREG if given version is the return
-// value of malloc-like function. This is helper function 
-// of OPT_STAB::Simplify_Pointer_Ver().
-//
-BOOL OPT_STAB::Its_ret_val_of_malloc (VER_ID ver_id) {
-
-  VER_STAB_ENTRY* ver = Ver_stab_entry (ver_id);
-  if (ver->Type () != CHI_STMT) { return FALSE; }
-
-  // check to see whether the corresponing variable is dedicated PREG.
-  AUX_STAB_ENTRY* aux = Aux_stab_entry(ver->Aux_id());
-  if (!aux->Is_dedicated_preg ()) { return FALSE; }
-  
-  // check to see whehter the definition is a call
-  WN* call = ver->Chi_wn();
-  if (WN_operator (call) != OPR_CALL) { return FALSE; }
-
-  // check to see whether it is malloc-like func
-  ST* call_st = WN_st(call);
-  if (!PU_has_attr_malloc(Pu_Table[ST_pu(call_st)])) {
-    return FALSE;
-  }
-
-  // setup return preg. Later we will need to enter this into chi list
-  if (WHIRL_Return_Info_On) {
-    RETURN_INFO return_info = 
-      Get_Return_Info (MTYPE_To_TY(WN_rtype(call)), 
-                       Allow_sim_type() ? Use_Simulated : 
-                       Complex_Not_Simulated
-                       #ifdef TARG_X8664
-                       ,call_st ? PU_ff2c_abi(Pu_Table[ST_pu(call_st)]) : FALSE 
-                       #endif
-                       );      
-
-      if (RETURN_INFO_count(return_info) == 1 &&
-          RETURN_INFO_preg (return_info, 0) == aux->St_ofst()) {
-         return TRUE; 
-      }
-    }
-    
-    return FALSE;
-}
 
 
 //  Follow the DU Chain to expand the pointer expresssion.
@@ -483,9 +431,7 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 {
   INT32 vtype = Ver_stab_entry(ver)->Type();
   POINTS_TO  *pt = Ver_stab_entry(ver)->Points_to();
-  AUX_ID  aux_id = Ver_stab_entry(ver)->Aux_id();
-  ST* st = Aux_stab_entry (aux_id)->St ();
-
+  
   //  There is already some information associated with this version.
   //  Simply return it.
   if (pt) {
@@ -499,7 +445,6 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
   switch (vtype) {
   case ENTRY_STMT:
     {
-      ai->Invalidate_ptr_info ();
       if ( Is_volatile(Ver_stab_entry(ver)->Aux_id()) ) {
 	// the pointer is itself volatile, so we don't know what
 	// it points to.
@@ -510,7 +455,6 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 	ai->Set_byte_size(0);
 	ai->Set_bit_ofst_size(0, 0);
 	ai->Set_base((ST*)(INTPTR)ver);
-	ai->Invalidate_ptr_info ();
       }
       else {
 	ai->Set_expr_kind(EXPR_IS_ADDR);
@@ -521,15 +465,6 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 	ai->Set_bit_ofst_size(0, 0);
 	ai->Set_global();
 	ai->Set_base((ST*)(INTPTR)ver);
-	if (st) {
- 	  if (ST_class(st) != CLASS_PREG){
-	    ai->Set_pointer (st, FALSE);
-	  } else {
-	    ai->Set_pointer ((ST*)(INTPTR)aux_id, TRUE);
-	  }
-	  ai->Set_pointer_ver (ver);
-	  ai->Set_iofst_kind (OFST_IS_FIXED);
-	}
       }
     }
     break;
@@ -619,41 +554,6 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 	summary_pt.Set_ofst_kind(OFST_IS_UNKNOWN);
 	summary_pt.Reset_attr();
       }
-
-      if (summary_pt.Expr_kind () == EXPR_IS_ADDR && 
-          (summary_pt.Base_kind () == BASE_IS_UNKNOWN ||
-           summary_pt.Ofst_kind () != OFST_IS_FIXED) &&
-           WOPT_Enable_Pt_Keep_Track_Ptr) {
-        if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG)) {
-          fprintf (TFile, "phi result ver %d BB %d aux %d: ", ver, bb->Id(), 
-                   Ver_stab_entry(ver)->Aux_id());
-          summary_pt.Print(TFile);
-          fprintf(TFile, "this result is not very useful, and is changed into: ");
-        }
-         // The result is virtuall useless. Following setting may provide more info.
-        summary_pt.Init ();
-        summary_pt.Set_expr_kind(EXPR_IS_ADDR);
-        summary_pt.Set_base_kind(BASE_IS_DYNAMIC);
-        summary_pt.Set_ofst_kind(OFST_IS_FIXED);
-        summary_pt.Set_byte_ofst(0);
-        summary_pt.Set_byte_size(0);
-        summary_pt.Set_bit_ofst_size(0, 0);
-        summary_pt.Set_base((ST *)phi);
-        if (st) {
-          if (ST_class(st) != CLASS_PREG){
-	          summary_pt.Set_pointer (st, FALSE);
-          } else {
-            summary_pt.Set_pointer ((ST*)(INTPTR)aux_id, TRUE);
-          }
-        }
-        summary_pt.Set_pointer_ver (ver);
-        summary_pt.Set_iofst_kind (OFST_IS_FIXED);
-
-        if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG)) {
-          summary_pt.Print (TFile);
-        }
-      }
-         
       // Copy the result into the return value.
       pt->Copy_fully(summary_pt);
       ai->Copy_fully(summary_pt);
@@ -690,19 +590,6 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
       ai->Set_byte_size(0);
       ai->Set_bit_ofst_size(0, 0);
       ai->Set_base( (ST *) chi );
-      if (st) {
-        if (ST_class(st) != CLASS_PREG){
-          ai->Set_pointer (st, FALSE);
-        } else {
-          ai->Set_pointer ((ST*)(INTPTR)aux_id, TRUE);
-          if (Its_ret_val_of_malloc (ver)) {
-           VER_STAB_ENTRY* verent = Ver_stab_entry(ver);
-           ai->Set_malloc_id (WN_linenum(verent->Chi_wn()));
-          }
-        }
-        ai->Set_pointer_ver (ver);
-        ai->Set_iofst_kind (OFST_IS_FIXED);
-      }
     }
     break;
   default:
@@ -727,7 +614,6 @@ void OPT_STAB::Simplify_Pointer(WN *wn_addr, POINTS_TO *ai)
   case OPR_ARRAY:
     Simplify_Pointer(WN_kid0(wn_addr), ai);
     Analyze_Range(wn_addr, ai);
-    ai->Invalidate_ptr_info (); 
     break;
   case OPR_LDA:
     ai->Analyze_Lda_Base( wn_addr, *this);
@@ -745,9 +631,8 @@ void OPT_STAB::Simplify_Pointer(WN *wn_addr, POINTS_TO *ai)
       if (TY_is_restrict(ty)) {
 	ai->Analyze_ST_as_base(st, WN_offset(wn_addr), WN_ty(wn_addr));
 	ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-      } else {
+      } else
 	Simplify_Pointer_Ver(ver, ai);    // Follow the DU chain
-      }
     } else if (FFA()) {
       ai->Analyze_Ldid_Base(wn_addr, *this);
     }
@@ -888,15 +773,10 @@ void OPT_STAB::Analyze_Base_Flow_Sensitive(POINTS_TO *pt, WN *wn)
 	pt->Set_attr(ai.Attr());
 	pt->Shift_ofst(WN_offset(wn));
 	pt->Lower_to_base(wn);
-	pt->Set_pointer (ai.Pointer (), ai.Pointer_is_aux_id());
-	pt->Set_pointer_ver (ai.Pointer_ver ());
       } else if (ai.Restricted()) {
 	pt->Set_expr_kind(EXPR_IS_ADDR);
 	pt->Set_restricted();
 	pt->Set_based_sym(ai.Based_sym());
-      } 
-      if (ai.Malloc_id()) {
-        pt->Set_malloc_id (ai.Malloc_id());
       }
     }
     break;
@@ -916,15 +796,10 @@ void OPT_STAB::Analyze_Base_Flow_Sensitive(POINTS_TO *pt, WN *wn)
 	pt->Set_attr(ai.Attr());
 	pt->Shift_ofst(WN_offset(wn));
 	pt->Lower_to_base(wn);
-	pt->Set_pointer (ai.Pointer(), ai.Pointer_is_aux_id());
-	pt->Set_pointer_ver (ai.Pointer_ver ());
       } else  if (ai.Restricted()) {
 	pt->Set_expr_kind(EXPR_IS_ADDR);
 	pt->Set_restricted();
 	pt->Set_based_sym(ai.Based_sym());
-      } 
-      if (ai.Malloc_id()) {
-        pt->Set_malloc_id (ai.Malloc_id());
       }
     }
     break;
@@ -1726,6 +1601,275 @@ OPT_STAB::Update_aux_id_list(AUX_ID vp_idx)
        }
 }
 
+#ifdef KEY
+extern BOOL ST_Has_Dope_Vector(ST *);
+
+// ======================================================================
+// This function is a result of merging of the functionalities of
+// Identify_vsym and Adjust_vsym.
+//
+// Right now, it has the form of one function appended after the other,
+// but the implementation here may evolve independently of the original
+// functions.
+//
+// Two memory operations are assigned the same vsym only if they alias.
+// ======================================================================
+AUX_ID
+OPT_STAB::Allocate_vsym(WN * memop_wn, POINTS_TO *memop_pt)
+{
+  AUX_ID vp_idx = 0;
+  POINTS_TO scratch_pt;
+  scratch_pt.Init();
+  if (Update_From_Restricted_Map(memop_wn, &scratch_pt)) {
+    // the memop has a restricted map entry, and its based_sym and
+    // attributes appear in scratch_pt now.
+    Is_True(scratch_pt.Based_sym() != NULL,
+            ("Based symbol must be set for restricted map entry"));
+    // Only Unique_pt and Restricted items get this special
+    // non-analysis.
+    if (scratch_pt.Unique_pt() ||
+        scratch_pt.Restricted()) {
+      AUX_ID var = Find_vsym_with_base(scratch_pt.Based_sym());
+      if (var == 0) {
+        var = Create_vsym(EXPR_IS_ANY);
+        AUX_STAB_ENTRY *vsym = Aux_stab_entry(var);
+        vsym->Points_to()->Copy_fully(scratch_pt);
+        vsym->Set_stype(VT_UNIQUE_VSYM);
+      }
+      else {
+        Is_True(Aux_stab_entry(var)->Stype() == VT_UNIQUE_VSYM ||
+                Aux_stab_entry(var)->Stype() == VT_SPECIAL_VSYM,
+                ("vsym based on unique/restrict pointer must be unique "
+                 "or special"));
+      }
+      if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG)) {
+        fprintf(TFile, "Allocate_vsym: Returning aux_id %u as unique "
+                "based on\n", var);
+        Print_ST(TFile, Aux_stab_entry(var)->Points_to()->Based_sym(), TRUE);
+      }
+      vp_idx = var;
+    }
+  }
+  
+  if (vp_idx == 0)
+  {
+    OPERATOR opr = WN_operator(memop_wn);
+    WN *addr_wn = ((OPERATOR_is_scalar_istore (opr) ||
+                    opr == OPR_MSTORE) ? WN_kid1(memop_wn) : WN_kid0(memop_wn));
+    INT64 offset = (opr == OPR_PARM || opr == OPR_ASM_INPUT ? (INT64) 0
+                                                        : WN_offset(memop_wn));
+                                                                                
+    // Raymond says to delete the (offset == 0) clause. -- RK 981106
+    BOOL direct_use = ((addr_wn != NULL) &&
+                       (WN_operator(addr_wn) == OPR_LDID) &&
+                       (offset == 0));
+                                                                                
+    addr_wn = Find_addr_recur(addr_wn, *this);
+    //  identify the LDA from the addr expression
+    if (addr_wn != NULL) {
+      switch (WN_operator(addr_wn)) {
+      case OPR_LDA:
+        AUX_ID var;
+        var = WN_aux(addr_wn);
+        Is_True(var != 0, ("lda not entered into aux_stab."));
+        vp_idx = var;
+        break;
+      case OPR_LDID:
+      {
+        ST *st = aux_stab[WN_aux(addr_wn)].St();
+        AUX_ID vsym_id;
+        // if it is the Fortran parameter, return the vsym
+        if (ST_sclass(st) == SCLASS_FORMAL&&
+            IS_FORTRAN &&
+            Alias_Pointer_Parms &&
+            ! ST_is_value_parm(st)) {
+          vsym_id = Find_vsym_with_base(st);
+          if (vsym_id == 0) {
+            vsym_id = Create_vsym(EXPR_IS_ANY);
+            AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+            vsym->Points_to()->Set_based_sym(st);
+            if (direct_use) {
+              vsym->Set_stype(VT_UNIQUE_VSYM);
+            }
+          }
+          else {
+            if (! direct_use) {
+              AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+              vsym->Set_stype(VT_SPECIAL_VSYM);
+            }
+          }
+          vp_idx = vsym_id;
+          break;
+        }
+        if (WOPT_Enable_Unique_Pt_Vsym &&
+            ST_class(st) == CLASS_VAR &&
+            (ST_pt_to_unique_mem(st) ||
+             TY_is_restrict(ST_type(st)))) {
+          vsym_id = Find_vsym_with_base(st);
+          if (vsym_id == 0) {
+            vsym_id = Create_vsym(EXPR_IS_ANY);
+            AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+            if (ST_pt_to_unique_mem(st)) {
+              vsym->Points_to()->Set_unique_pt();
+            }
+            if (TY_is_restrict(ST_type(st))) {
+              vsym->Points_to()->Set_restricted();
+            }
+            vsym->Points_to()->Set_based_sym(st);
+            if (direct_use) {
+              vsym->Set_stype(VT_UNIQUE_VSYM);
+            }
+          }
+          else {
+            if (! direct_use) {
+              AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+              vsym->Set_stype(VT_SPECIAL_VSYM);
+            }
+          }
+          vp_idx = vsym_id;
+          break;
+        }
+        // bug 9582: Don't give unique vsyms to dope vectors.
+        if (WOPT_Enable_Vsym_Unique && !ST_Has_Dope_Vector(st)) {
+          vsym_id = Find_vsym_with_st(st, !direct_use, memop_pt);
+          if (vsym_id == 0) {
+            vsym_id = Create_vsym(EXPR_IS_ANY);
+            AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+            vsym->Points_to()->Set_based_sym(NULL);
+            vsym->Set_st(st);
+            if (direct_use) {
+              vsym->Set_stype(VT_UNIQUE_VSYM);
+            }
+            else {
+              Is_True (vsym->Special_vsym(),
+                       ("Allocate_vsym: Expected VT_SPECIAL_VSYM"));
+              vsym->Set_indirect_access();
+            }
+          }
+          else {
+//#ifdef Is_True_On
+            AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+            // TODO: Change to is_true later.
+            FmtAssert (direct_use == !vsym->Indirect_access(),
+                     ("Allocate_vsym: incompatible access flag in vsym"));
+            if (!direct_use)
+              // Change to is_true later.
+              FmtAssert (vsym->Special_vsym(),
+                         ("Allocate_vsym: Expected VT_SPECIAL_VSYM"));
+                                                                                
+//#endif
+          }
+          vp_idx = vsym_id;
+          break;
+        }
+      }
+      default:
+        addr_wn = NULL;
+      }
+    }
+                                                                                
+    if (vp_idx == 0) {
+    // return default vsym
+    if (Default_vsym() == 0) {
+      // Setup default vsym
+      Set_default_vsym(Create_vsym(EXPR_IS_ANY));
+      // Update the POINTS_TO with default vsym info
+      Aux_stab_entry(Default_vsym())->Points_to()->Set_default_vsym();
+    }
+    //return Default_vsym();
+    vp_idx = Default_vsym();
+    }
+  }
+
+  Is_True (vp_idx, ("OPT_STAB::Allocate_vsym: Unallocated vsym"));
+  POINTS_TO *pt = aux_stab[vp_idx].Points_to();
+  BOOL use_default_vsym = FALSE;
+
+  // Special handling for Unique_pt() and Restricted() here. Return
+  // a vsym based on the Based_sym() of memop_pt, and don't
+  // call POINTS_TO::Meet in this sticky case. Do we need to do
+  // anything here for F_param()?
+  if ((WOPT_Enable_Unique_Pt_Vsym &&
+       memop_pt->Unique_pt()) ||
+       memop_pt->Restricted()) {
+    Is_True(vp_idx != Default_vsym(),
+	    ("Adjust_vsym: Default vsym must not be vsym for "
+	     "Unique_pt() or Restricted()"));
+    Is_True(pt->Based_sym() == memop_pt->Based_sym(),
+	    ("Adjust_vsym: unique vsym should have been set up by "
+	     "Indentify_vsym"));
+    if (pt->Based_sym() == memop_pt->Based_sym()) {
+      return vp_idx;
+    }
+    else {
+#if 0
+      vp_idx = Find_vsym_with_base(occ->Based_sym());
+      if (vp_idx == NULL) {
+	vp_idx = Create_vsym(EXPR_IS_ANY);
+	AUX_STAB_ENTRY *vsym = Aux_stab_entry(vp_idx);
+	vsym->Points_to()->Set_based_sym(occ->Based_sym());
+	// What about vsym->Set_stype(something) here?
+      }
+#else
+      // Replace the Based_sym() in the AUX_STAB_ENTRY with the
+      // Based_sym() of the OCC_TAB_ENTRY. This should happen only
+      // once, and we should never switch it back!
+      pt->Set_based_sym(memop_pt->Based_sym());
+#endif
+      return vp_idx;
+    }
+  }
+
+  if (vp_idx != Default_vsym()) {
+    if (pt->Expr_kind() != EXPR_IS_ANY &&
+	pt->Base_kind() != memop_pt->Base_kind() &&
+	(pt->Based_sym() == NULL ||
+	 pt->Based_sym() != memop_pt->Based_sym())) 
+      use_default_vsym = TRUE;
+    else if (aux_stab[vp_idx].Is_real_var()) {
+      // check for out-of-bound array access of a scalar.  PV 378384.
+      POINTS_TO tmp_pt;
+      tmp_pt.Init();
+      tmp_pt.Copy_fully(pt);
+      tmp_pt.Meet(memop_pt, NULL);
+      if (tmp_pt.Expr_kind() != EXPR_IS_ADDR    ||
+	  tmp_pt.Base_kind() != BASE_IS_FIXED   ||
+	  tmp_pt.Ofst_kind() != OFST_IS_FIXED   ||
+	  tmp_pt.Base()      != pt->Base()      ||
+	  tmp_pt.Byte_Ofst() != pt->Byte_Ofst() ||
+	  tmp_pt.Byte_Size() != pt->Byte_Size() ||
+	  tmp_pt.Bit_Ofst()  != pt->Bit_Ofst()  ||
+	  tmp_pt.Bit_Size()  != pt->Bit_Size())
+	use_default_vsym = TRUE;
+    }
+    if (use_default_vsym) {
+      if (Default_vsym() == 0) {
+	Set_default_vsym(Create_vsym(EXPR_IS_ANY));
+	// Update the POINTS_TO with default vsym info
+	Aux_stab_entry(Default_vsym())->Points_to()->Set_default_vsym();
+      }
+      vp_idx = Default_vsym();
+      // will be set when we create the OCC_TAB_ENTRY next.
+      //occ->Set_aux_id(vp_idx);
+      pt = aux_stab[vp_idx].Points_to();
+    }
+  }
+
+  // update alias info for the virtual variable
+  pt->Meet(memop_pt, NULL);
+
+  // always preserve the default_vsym attribute
+  if (vp_idx == Default_vsym())
+    pt->Set_default_vsym();
+
+  Is_True(WOPT_Enable_Vsym_Unique || vp_idx == Default_vsym() ||
+          pt->Base_is_fixed() || pt->Based_sym() ||
+          aux_stab[vp_idx].Unique_vsym(),
+          ("OPT_STAB::Adjust_vsym: base is disrupted."));
+
+  return vp_idx;
+}
+#endif
 
 // ======================================================================
 //
@@ -1824,9 +1968,16 @@ OPT_STAB::Adjust_vsym(AUX_ID vp_idx, OCC_TAB_ENTRY *occ)
   if (vp_idx == Default_vsym())
     pt->Set_default_vsym();
 
+#ifdef KEY
+  Is_True(WOPT_Enable_Vsym_Unique || vp_idx == Default_vsym() ||
+          pt->Base_is_fixed() || pt->Based_sym() ||
+          aux_stab[vp_idx].Unique_vsym(),
+          ("OPT_STAB::Adjust_vsym: base is disrupted."));
+#else
   Is_True(vp_idx == Default_vsym() || pt->Base_is_fixed() ||
 	  pt->Based_sym() || aux_stab[vp_idx].Unique_vsym(),
 	  ("OPT_STAB::Adjust_vsym: base is disrupted."));
+#endif
 
   return vp_idx;
 }
@@ -1847,7 +1998,7 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   Is_True(opc != OPC_BLOCK, ("Wn is a OPR_BLOCK."));
 
   AUX_ID vp_idx;
-  OCC_TAB_ENTRY *occ = NULL;
+  OCC_TAB_ENTRY *occ;
 
   switch ( opr ) {
   case OPR_LDBITS:
@@ -1873,38 +2024,57 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_ILOAD:
   case OPR_ILDBITS:
   case OPR_MLOAD:
-    vp_idx = Identify_vsym(wn);
-    occ = Enter_occ_tab(wn, vp_idx);
-    Analyze_Base_Flow_Free(occ->Points_to(), wn);
-    vp_idx = Adjust_vsym(vp_idx, occ);
-    if (occ->Points_to()->Pointer () != NULL) {
-      // TODO: We need adjust the offset and access size for MTYPE_BS. 
-      //   give up for the time being.
-      if (WN_desc (wn) != MTYPE_BS) {
-        occ->Points_to()->Set_byte_size (WN_object_size(wn));
-      } else {
-        occ->Points_to()->Invalidate_ptr_info ();
-      }
+#ifdef KEY
+    if (WOPT_Enable_New_Vsym_Allocation) {
+      POINTS_TO pt;
+      pt.Init();
+      pt.Set_base_kind(BASE_IS_UNKNOWN);
+      pt.Set_ofst_kind(OFST_IS_INVALID);
+      Analyze_Base_Flow_Free(&pt, wn);
+      // Transfer alias class information
+      IDTYPE alias_class = Alias_classification()->Alias_class(wn);
+      pt.Set_alias_class(alias_class);
+
+      IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
+      pt.Set_ip_alias_class(ip_alias_class);
+      vp_idx = Allocate_vsym(wn, &pt);
+      occ = Enter_occ_tab(wn , vp_idx, &pt);
+    } else
+#endif
+    {
+      vp_idx = Identify_vsym(wn);
+      occ = Enter_occ_tab(wn, vp_idx);
+      Analyze_Base_Flow_Free(occ->Points_to(), wn);
+      vp_idx = Adjust_vsym(vp_idx, occ);
     }
     break;
     
   case OPR_ISTORE:
   case OPR_ISTBITS:
   case OPR_MSTORE:
-    vp_idx = Identify_vsym(wn);
-    occ = Enter_occ_tab(wn, vp_idx);
-    Analyze_Base_Flow_Free(occ->Points_to(), wn);
-    vp_idx = Adjust_vsym(vp_idx, occ);
-    if (occ->Points_to()->Pointer () != NULL) {
-      // TODO: We need adjust the offset and access size for MTYPE_BS. 
-      //   give up for the time being.
-      if (WN_desc (wn) != MTYPE_BS) {
-        occ->Points_to()->Set_byte_size (WN_object_size(wn));
-      } else {
-        occ->Points_to()->Invalidate_ptr_info ();
-      }
-    }
+#ifdef KEY
+    if (WOPT_Enable_New_Vsym_Allocation) {
+      POINTS_TO pt;
+      pt.Init();
+      pt.Set_base_kind(BASE_IS_UNKNOWN);
+      pt.Set_ofst_kind(OFST_IS_INVALID);
+      Analyze_Base_Flow_Free(&pt, wn);
+      // Transfer alias class information
+      IDTYPE alias_class = Alias_classification()->Alias_class(wn);
+      pt.Set_alias_class(alias_class);
 
+      IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
+      pt.Set_ip_alias_class(ip_alias_class);
+      vp_idx = Allocate_vsym(wn, &pt);
+      occ = Enter_occ_tab(wn , vp_idx, &pt);
+    } else
+#endif
+    {
+      vp_idx = Identify_vsym(wn);
+      occ = Enter_occ_tab(wn, vp_idx);
+      Analyze_Base_Flow_Free(occ->Points_to(), wn);
+      vp_idx = Adjust_vsym(vp_idx, occ);
+    }
     break;
     
   case OPR_ICALL:
@@ -1922,23 +2092,52 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
 
   case OPR_PARM:
     if ( WN_Parm_By_Reference(wn) ) {
-      vp_idx = Identify_vsym(wn);
-      occ = Enter_occ_tab(wn, vp_idx); // treat OPR_PARM as ILOAD
-      Is_True(WN_kid0(wn) != NULL, ("bad OPR_PARM node."));
-      occ->Points_to()->Analyze_Parameter_Base(WN_kid0(wn), *this);
-      Update_From_Restricted_Map(wn, occ->Points_to());
-      // Hack to get around the fact that Analyze_Parameter_Base
-      // (usually) reinitializes the POINTS_TO...
-      Is_True(occ->Points_to()->Alias_class() == OPTIMISTIC_AC_ID ||
-	      occ->Points_to()->Alias_class() == Alias_classification()->Alias_class(wn) ||
-	      (occ->Points_to()->Alias_class() == PESSIMISTIC_AC_ID &&
-	       WOPT_Alias_Class_Limit != UINT32_MAX),
-	      ("Allocate_mu_chi_and_virtual_var: Alias class %ld for PARM "
-	       "not consistent (%ld).",
-	       occ->Points_to()->Alias_class(),
-	       Alias_classification()->Alias_class(wn)));
-      occ->Points_to()->Set_alias_class(Alias_classification()->Alias_class(wn));
-      vp_idx = Adjust_vsym(vp_idx, occ);
+#ifdef KEY
+      if (WOPT_Enable_New_Vsym_Allocation) {
+        POINTS_TO pt;
+        pt.Init();
+        pt.Set_base_kind(BASE_IS_UNKNOWN);
+        pt.Set_ofst_kind(OFST_IS_INVALID);
+
+#if 0   // This is "HACK" from Enter_occ_tab, so we disable it until
+	// we know why it is required.
+        if (WN_operator(wn) == OPR_PARM && aux_id == _default_vsym)
+	        occ->Points_to()->Set_expr_kind(EXPR_IS_ANY);
+#endif
+        pt.Analyze_Parameter_Base(WN_kid0(wn), *this);
+        Update_From_Restricted_Map(wn, &pt);
+        Is_True(pt.Alias_class() == OPTIMISTIC_AC_ID ||
+	        pt.Alias_class() == Alias_classification()->Alias_class(wn) ||
+	        (pt.Alias_class() == PESSIMISTIC_AC_ID &&
+	         WOPT_Alias_Class_Limit != UINT32_MAX),
+	          ("Allocate_mu_chi_and_virtual_var: Alias class %ld for PARM "
+	         "not consistent (%ld).",
+	         pt.Alias_class(),
+	         Alias_classification()->Alias_class(wn)));
+        pt.Set_alias_class(Alias_classification()->Alias_class(wn));
+        vp_idx = Allocate_vsym(wn, &pt);
+        occ = Enter_occ_tab(wn , vp_idx, &pt);
+      } else
+#endif
+      {
+        vp_idx = Identify_vsym(wn);
+        occ = Enter_occ_tab(wn, vp_idx); // treat OPR_PARM as ILOAD
+        Is_True(WN_kid0(wn) != NULL, ("bad OPR_PARM node."));
+        occ->Points_to()->Analyze_Parameter_Base(WN_kid0(wn), *this);
+        Update_From_Restricted_Map(wn, occ->Points_to());
+        // Hack to get around the fact that Analyze_Parameter_Base
+        // (usually) reinitializes the POINTS_TO...
+        Is_True(occ->Points_to()->Alias_class() == OPTIMISTIC_AC_ID ||
+	        occ->Points_to()->Alias_class() == Alias_classification()->Alias_class(wn) ||
+	        (occ->Points_to()->Alias_class() == PESSIMISTIC_AC_ID &&
+	         WOPT_Alias_Class_Limit != UINT32_MAX),
+	        ("Allocate_mu_chi_and_virtual_var: Alias class %ld for PARM "
+	         "not consistent (%ld).",
+	         occ->Points_to()->Alias_class(),
+	         Alias_classification()->Alias_class(wn)));
+        occ->Points_to()->Set_alias_class(Alias_classification()->Alias_class(wn));
+        vp_idx = Adjust_vsym(vp_idx, occ);
+      }
     } else {
       Is_True( WN_Parm_By_Value(wn),
 	("OPT_STAB::Allocate_mu_chi_and_virtual_var: not by value") );
@@ -1974,12 +2173,6 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
     
   default:
     break;
-  }
-
-  if ((OPCODE_is_load(opc) || OPCODE_is_store(opc)) && occ) {
-    ALIAS_CLASSIFICATION* ac = Alias_classification();
-    if (!ac->Writable_by_call (ac->Alias_class(wn))) 
-      occ->Points_to()->Set_not_writable_by_callee (); 
   }
 
   // Traverse the children of wn
@@ -2081,6 +2274,25 @@ OPT_STAB::Generate_call_mu_chi_by_ref(WN *wn, ST *call_st,
 	  }
 	}
       }
+#ifdef KEY // bug 8607
+    if (WN_operator(wn) == OPR_CALL)
+      if (WN_st(wn) && strcmp(ST_name(WN_st(wn)), "_Copyin" ) == 0)  {
+	/* if (Aux_stab_entry(idx)->Is_real_var())*/ {
+	  if (how == READ_AND_WRITE) 
+	    how = READ;
+	  else if (how == WRITE) 
+	    how = NO_READ_NO_WRITE;
+	}
+      }
+      else if (WN_st(wn) && strcmp(ST_name(WN_st(wn)), "_Copyout" ) == 0)  {
+	/* if (Aux_stab_entry(idx)->Is_real_var())*/ {
+	  if (how == READ_AND_WRITE) 
+	    how = WRITE;
+	  else if (how == READ) 
+	    how = NO_READ_NO_WRITE;
+	}
+      }
+#endif
 #ifdef KEY
 //Bug 1976
     if ( Aux_stab_entry(idx)->St() && IS_FORTRAN && (idx != Return_vsym() || idx != Default_vsym())){
@@ -2169,6 +2381,39 @@ OPT_STAB::Has_read_only_parm(AUX_ID idx, WN *wn, INT32 num_parms)
   return FALSE;
 }
 
+#ifdef KEY
+#include "be_ipa_util.h"
+// Brute force method for now
+// TODO: Keep a map internal to wopt so that we need to search once for a pu
+static void
+check_ipa_mod_ref_info (const ST * call_st, const ST * st, INT * mod, INT * ref)
+{
+  PU_IDX idx = ST_pu (call_st);
+
+  *mod = *ref = 1;
+
+  for (INT i=0; i<Mod_Ref_Info_Table_Size(); i++)
+  {
+    if (Mod_Ref_Info_Table[i].pu_idx != idx) continue;
+    else
+    {
+      mUINT8 * mod_info = Mod_Ref_Info_Table[i].mod;
+      mUINT8 * ref_info = Mod_Ref_Info_Table[i].ref;
+      *mod = *ref = 0;
+
+      INT index = ST_IDX_index (ST_st_idx (st));
+
+      // 8 is byte-size
+      if (index >= Mod_Ref_Info_Table[i].size * 8) return;
+
+      *mod = (*(mod_info + index/8) >> (8 - 1 - (index % 8))) & 0x1;
+      *ref = (*(ref_info + index/8) >> (8 - 1 - (index % 8))) & 0x1;
+      return;
+    }
+  }
+}
+#endif
+
 
 //  Call by value
 void
@@ -2205,6 +2450,44 @@ OPT_STAB::Generate_call_mu_chi_by_value(WN *wn, ST *call_st,
 	}
       }
     }
+
+#ifdef KEY
+    // TODO: Check if the code above can add redundant READ, when
+    //       how == WRITE.
+    // For vintrinsic_call to memcpy for example, call_st is null. Why
+    // don't we handle intrinsic calls specially?
+    ST * st = aux_stab[idx].St();
+
+    if (WOPT_Enable_IP_Mod_Ref && how != NO_READ_NO_WRITE && call_st && st
+        && ST_class (st) == CLASS_VAR && Is_Global_Symbol (st))
+    {
+      INT mod, ref;
+      // Incorporate IPA mod/ref information
+      check_ipa_mod_ref_info (call_st, st, &mod, &ref);
+
+      if ((mod == 0) && (how & WRITE))
+      { // remove chi
+        if (how == WRITE)
+	  how = NO_READ_NO_WRITE;
+	else
+	  how = READ;
+	if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG))
+	  fprintf(TFile, "<alias> Remove the chi node with aux id %d"
+		  " due to IPA MOD information.\n", idx);
+      }
+
+      if ((ref == 0) && (how & READ))
+      { // remove mu
+	if (how == READ)
+	  how = NO_READ_NO_WRITE;
+	else
+	  how = WRITE;
+	if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG))
+	  fprintf(TFile, "<alias> Remove the mu node with aux id %d"
+		  " due to IPA REF information.\n", idx);
+      }
+    }
+#endif
 
     if (how & READ)
       mu->New_mu_node(idx, Occ_pool());
@@ -2303,8 +2586,11 @@ OPT_STAB::Generate_asm_mu_chi(WN *wn, MU_LIST *mu, CHI_LIST *chi)
     }
 
     if (Asm_Memory || asm_clobbers_mem)
+#if 0 // bug 10016
       if (Addr_saved(idx) || Addr_passed(idx) || Addr_used_locally(idx) ||
-	  idx == Default_vsym()) {
+	  idx == Default_vsym()) 
+#endif
+      {
 	how = READ_AND_WRITE;
 	goto label_how;
       }
@@ -2867,9 +3153,23 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
       if (occ != NULL) {
 	POINTS_TO *occ_pt = occ->Points_to();
 	IDTYPE alias_class = Alias_classification()->Alias_class(wn);
+#ifdef KEY
+	Is_True (!WOPT_Enable_New_Vsym_Allocation ||
+	         occ_pt->Alias_class() == alias_class ||
+	         (opr != OPR_ILOAD && opr != OPR_ISTORE),
+	         ("Transfer_alias_class_to_occ_and_aux: Alias class "
+	          "mismatch at -WOPT:new_vsym=on"));
+#endif
 	occ_pt->Set_alias_class(alias_class);
 
 	IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
+#ifdef KEY
+	Is_True (!WOPT_Enable_New_Vsym_Allocation ||
+	         occ_pt->Ip_alias_class() == ip_alias_class ||
+	         (opr != OPR_ILOAD && opr != OPR_ISTORE),
+	         ("Transfer_alias_class_to_occ_and_aux: IP alias class "
+	          "mismatch at -WOPT:new_vsym=on"));
+#endif
 	occ_pt->Set_ip_alias_class(ip_alias_class);
 	if (ip_alias_class != OPTIMISTIC_AC_ID) {
 	  found_ip_alias_class_info = TRUE;
@@ -3259,9 +3559,6 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 
       BOOL is_unique_pt = occ->Points_to()->Unique_pt();
       BOOL is_restricted = occ->Points_to()->Restricted();
-      BOOL not_writable_by_callee = occ->Points_to()->Not_writable_by_callee ();
-      BOOL not_readable_by_callee = occ->Points_to()->Not_readable_by_callee ();
-
       ST *based_sym = occ->Points_to()->Based_sym();
 
       Analyze_Base_Flow_Sensitive(occ->Points_to(), wn);
@@ -3278,12 +3575,6 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 	occ->Points_to()->Set_restricted();
 	occ->Points_to()->Set_based_sym(based_sym);
       }
-
-      if (not_writable_by_callee)
-        occ->Points_to()->Set_not_writable_by_callee ();
-
-      if (not_readable_by_callee)
-        occ->Points_to()->Set_not_readable_by_callee ();
 
       if (WOPT_Enable_Update_Vsym)
 	Update_iload_vsym(occ);

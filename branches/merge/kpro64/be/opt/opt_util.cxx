@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -58,15 +58,17 @@
 
 #define opt_util_CXX	"opt_util.cxx"
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = 	opt_util_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_util_CXX"$Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
+#define __STDC_LIMIT_MACROS
 #include <stdarg.h>
 #include <stdio.h>
 #include <strings.h>
 #include <time.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //
@@ -338,6 +340,10 @@ NUMBER::Eval2(OPERATOR opr, NUMBER *n1, NUMBER *n2)
       if (Sign(v1) * Sign(v2) != Sign(value) ||
 	  value / v2 != v1)
 	Set_desc(NUMBER_OVERFLOW);
+#ifdef TARG_X8664 // bug 8229: such situations are dangerous
+      else if (value > UINT32_MAX && v1 <= UINT32_MAX && v2 <= UINT32_MAX)
+	Set_desc(NUMBER_OVERFLOW);
+#endif
       else
 	Set_value(value);
     } else if (opr == OPR_ADD) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -198,6 +198,7 @@ private:
   static const mUINT32 _merged =	    0x800000;	// Merged node
   static const mUINT32 _can_throw = 	   0x1000000;   // PU can throw exc.
   static const mUINT32 _ehinfo_updated =   0x2000000;   // summary updated
+  static const mUINT32 _pending_icalls =   0x4000000;   // need icall conversion
 #endif
 
   // map to the file I/O info
@@ -523,6 +524,9 @@ public:
   void Set_File_Id (mINT32 f) { _file_id = f; }
   mINT32 File_Id () const	{ return _file_id; }
 
+  void Set_Pending_Icalls () { _flags |= _pending_icalls; }
+  BOOL Has_Pending_Icalls () const { return _flags & _pending_icalls; }
+
   static mINT32 next_file_id; // public field
 #endif
 
@@ -751,6 +755,13 @@ public:
     SUMMARY_FEEDBACK* fb = Get_feedback();
     return (fb? fb->Get_cycle_count (): FB_FREQ_UNKNOWN);
   };
+
+#ifdef KEY
+  UINT64 Get_func_runtime_addr () {
+    SUMMARY_FEEDBACK * fb = Get_feedback();
+    return (fb ? fb->Get_func_runtime_addr () : 0);
+  }
+#endif
 
 #ifdef _LIGHTWEIGHT_INLINER
   void Add_to_inlined_list (char *body) {

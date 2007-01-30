@@ -47,10 +47,10 @@
  * ====================================================================
  *
  * Module: mem_sim.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/mem_sim.cxx,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  02-07-96 - Original Version
@@ -67,7 +67,7 @@
 #pragma hdrstop
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/mem_sim.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source$ $Revision$";
 
 #ifndef _NEW_SYMTAB
 
@@ -169,8 +169,11 @@ static INT Size(OPCODE opcode)
     case MTYPE_I2: case MTYPE_U2: return 2;
     case MTYPE_I4: case MTYPE_U4: case MTYPE_F4: return 4;
     case MTYPE_I8: case MTYPE_U8: case MTYPE_F8: case MTYPE_C4: return 8;
-    case MTYPE_C8: case MTYPE_F10: case MTYPE_FQ: return 16;
-    case MTYPE_C10: case MTYPE_CQ: return 32;
+#ifdef PATHSCALE_MERGE
+    case MTYPE_F10:
+#endif								
+    case MTYPE_C8: case MTYPE_FQ: return 16;
+    case MTYPE_CQ: return 32;
   }
   return 0;
 }

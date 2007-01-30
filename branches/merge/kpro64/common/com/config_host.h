@@ -43,10 +43,10 @@ extern "C" {
  * ====================================================================
  *
  * Module: config_host.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_host.h,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  15-Jun-91 - Original Version
@@ -71,7 +71,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *config_host_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_host.h,v $ $Revision: 1.1.1.1 $";
+static char *config_host_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 /* What is the byte sex of the host?  Note that the variable

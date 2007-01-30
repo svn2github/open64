@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -127,6 +127,18 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	      kid->Set_dtyp(mtype_d);
 	      kid->Set_dsctyp(mtype_dsc);
 	      connect_cr_to_wn = FALSE;
+#ifdef TARG_X8664 // bug 9680: avoid add/sub in V16F4
+	    } else if (Roundoff_Level >= ROUNDOFF_ASSOC &&
+		       exp->Dsctyp() == MTYPE_V8F4 &&
+		       exp->Dtyp() == MTYPE_V16F8 &&
+		       kid->Kind() == CK_OP &&
+		       (kid->Opr() == OPR_ADD || kid->Opr() == OPR_SUB)) {
+	      wn = Gen_exp_wn(kid, emitter);
+	      WN_kid0(wn) = WN_CreateExp1(exp->Op(), WN_kid0(wn));
+	      WN_kid1(wn) = WN_CreateExp1(exp->Op(), WN_kid1(wn));
+	      WN_set_rtype(wn, MTYPE_V16F8);
+	      connect_cr_to_wn = FALSE;
+#endif
 	    } else {
 	      WN* wn_kid = Gen_exp_wn(kid, emitter);
 	      BOOL enabled = WN_Simplifier_Enable(TRUE);
@@ -456,16 +468,31 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	      WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd1)));
 	    }
 	  }
-	else if (exp->Opr() == OPR_MPY && MTYPE_byte_size(exp->Dtyp()) == 8 &&
+	else if ((exp->Opr() == OPR_MPY || 
+		  MTYPE_signed(exp->Dtyp()) &&
+	  	  (exp->Opr() == OPR_SUB || exp->Opr() == OPR_ADD)) && 
+	         MTYPE_byte_size(exp->Dtyp()) == 8 &&
 	         (MTYPE_byte_size(exp->Dtyp()) != MTYPE_byte_size(WN_rtype(opnd0)) ||
 	          MTYPE_byte_size(exp->Dtyp()) != MTYPE_byte_size(WN_rtype(opnd1))))
 	    {
 	      if (WN_operator(opnd0) != OPR_INTCONST)
-		if (MTYPE_byte_size(WN_rtype(opnd0)) != 8)
+		if (MTYPE_byte_size(WN_rtype(opnd0)) != 8) {
+#ifdef TARG_X8664 // bug 11599
+		  if (WN_operator(opnd0) == OPR_SUB)
+		    opnd0 = WN_Cvt(MTYPE_I4, exp->Dtyp(), opnd0);
+		  else
+#endif
 	    	  opnd0 = WN_Cvt(WN_rtype(opnd0), exp->Dtyp(), opnd0);
+		}
 	      if (WN_operator(opnd1) != OPR_INTCONST)
-		if (MTYPE_byte_size(WN_rtype(opnd1)) != 8)
+		if (MTYPE_byte_size(WN_rtype(opnd1)) != 8) {
+#ifdef TARG_X8664 // bug 11599
+		  if (WN_operator(opnd1) == OPR_SUB)
+		    opnd1 = WN_Cvt(MTYPE_I4, exp->Dtyp(), opnd1);
+		  else
+#endif
 	    	  opnd1 = WN_Cvt(WN_rtype(opnd1), exp->Dtyp(), opnd1);
+		}
 	    }
 #endif
 	  wn = WN_CreateExp2(exp->Op(), opnd0, opnd1);
@@ -547,7 +574,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       wn = WN_LdaLabel(exp->Dtyp(), exp->Offset());
     }
     else {
-      wn = WN_CreateLda(OPR_LDA, exp->Dtyp(), MTYPE_V, exp->Offset(), exp->Lda_ty(), exp->Lda_base_st());
+      wn = WN_CreateLda(OPR_LDA, exp->Dtyp(), MTYPE_V, exp->Offset(), exp->Lda_ty(), exp->Lda_base_st(), exp->Afield_id());
       // Generate a small amount of alias information for LDA nodes as
       // well, since LNO may use the LDA's as handles on symbols that it
       // wants to equivalence. In that situation, it may need to
@@ -771,7 +798,9 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 				  1);
 	  WN_kid0(prag) = WN_CreateIdname(p->preg_number,
 					  p->preg_st_idx);
+#ifndef PATHSCALE_MERGE_ZHC
 	  if(WN_kid0(prag) == 0)
+#endif
 	    WN_pragma_arg2(prag) = p->clobber_string_idx;
 	}
 	WN_INSERT_BlockAfter(clobber_block,
@@ -812,6 +841,24 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       OPCODE opc = srep->Op();
       OPERATOR opr = OPCODE_operator(opc);
       rwn = Gen_exp_wn( srep->Rhs(), emitter );
+#ifdef KEY
+      // bug 8941: If possible replace ICALL with a CALL.
+      if (WN_operator (rwn) == OPR_ICALL)
+      {
+	mINT16 kidcount = WN_kid_count (rwn);
+	WN * kid = WN_kid (rwn, kidcount - 1 );
+	if (WN_operator (kid) == OPR_LDA &&
+	    ST_class (WN_st (kid)) == CLASS_FUNC)
+	{
+	  WN_set_operator (rwn, OPR_CALL);
+	  WN_st_idx (rwn) = ST_st_idx (WN_st (kid));
+	  WN_call_flag (rwn) = srep->Call_flags();
+	  WN_set_kid_count (rwn, kidcount - 1);
+	  WN_Delete (kid);
+	  break;
+	}
+      }
+#endif
       if (opr == OPR_ICALL)
 	WN_set_ty(rwn, srep->Ty());
       if (OPCODE_is_call(opc))
@@ -880,6 +927,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	    emitter->Preg_renumbering_map().Lookup(lhs->Coderep_id());
 	  if (lhs_offset == 0) {
 	    if (!aux_entry->Some_version_renumbered()) {
+	      aux_entry->Set_some_version_renumbered();
 	      lhs_offset = lhs->Offset();
 	    }
 	    else {
@@ -912,12 +960,21 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	        ("Gen_stmt_wn: non-boolean value stored to boolean variable"));
 	  WN_set_rtype(rhs_wn, MTYPE_B);
 	}
-#ifdef KEY // bug 5224
-	if (OPERATOR_is_load(WN_operator(rhs_wn)) &&
-	    MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(lhs->Dsctyp())){
-	  Is_True(MTYPE_is_integral(WN_rtype(rhs_wn)),
-		  ("Gen_stmt_wn: inconsistent sizes in float type assignment"));
-	  WN_set_rtype(rhs_wn, Mtype_TransferSize(lhs->Dsctyp(), WN_rtype(rhs_wn)));
+#ifdef KEY
+	if (OPERATOR_is_load(WN_operator(rhs_wn))) {
+	  if (MTYPE_byte_size(WN_rtype(rhs_wn)) < 
+	    			MTYPE_byte_size(lhs->Dsctyp())) { // bug 5224
+	    Is_True(MTYPE_is_integral(WN_rtype(rhs_wn)),
+		    ("Gen_stmt_wn: inconsistent sizes in float type assignment"));
+	    WN_set_rtype(rhs_wn, Mtype_TransferSize(lhs->Dsctyp(), WN_rtype(rhs_wn)));
+	  }
+	  else if (MTYPE_byte_size(WN_rtype(rhs_wn)) > 
+	    			MTYPE_byte_size(lhs->Dsctyp()) &&
+		   MTYPE_byte_size(WN_rtype(rhs_wn)) >
+		   		MTYPE_byte_size(WN_desc(rhs_wn))) { // bug 7603
+	    // prevent unnecessary expansion by the load to 64-bit
+	    WN_set_rtype(rhs_wn, Mtype_TransferSize(MTYPE_I4, WN_rtype(rhs_wn)));
+	  }
 	}
 #endif
 	rwn = WN_CreateStid(opcode, lhs_offset, st, ty_idx, rhs_wn, field_id);
@@ -956,11 +1013,18 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       CODEREP *rhs_cr = srep->Rhs();
       CODEREP *lhs = srep->Lhs();
       /* CVTL-RELATED start (performance) */
-      if ( !emitter->For_preopt() &&
+      if (
+#ifndef KEY // bug 5695
+	  !emitter->For_preopt() &&
+#endif
 	  WOPT_Enable_Cvt_Folding &&
 	  rhs_cr->Kind() == CK_OP && 
 	  ( rhs_cr->Opr() == OPR_CVT &&
 	   MTYPE_is_integral( rhs_cr->Dsctyp() ) 
+#ifdef KEY // bug 10346
+	   && !MTYPE_is_vector( rhs_cr->Dsctyp() )
+	   && !MTYPE_is_vector( rhs_cr->Dtyp() )
+#endif
 	   || rhs_cr->Opr() == OPR_CVTL ) &&
 	  MTYPE_is_integral( rhs_cr->Dtyp() ) && 
 	  MTYPE_is_integral( lhs->Dsctyp() )

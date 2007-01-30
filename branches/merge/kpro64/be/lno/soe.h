@@ -1,7 +1,7 @@
 /* -*- c++ -*- */
 
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -301,7 +301,7 @@
 #define soe_INCLUDED "soe.h"
 
 #ifdef _KEEP_RCS_ID
-static char *soe_rcs_id = soe_INCLUDED "$Revision: 1.1.1.1 $";
+static char *soe_rcs_id = soe_INCLUDED "$Revision: 1.6 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef _defs_INCLUDED

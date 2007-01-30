@@ -45,7 +45,7 @@
 
 
 /**
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/autod.h,v $
+*** $Source$
 **/
 
 

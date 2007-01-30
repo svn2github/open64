@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1395,7 +1395,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = cache_model_CXX "$Revision: 1.1.1.1 $";
+static char *rcs_id = cache_model_CXX "$Revision: 1.6 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>
@@ -3504,6 +3504,8 @@ extern COMPUTE_FOOTPRINT_RVAL Compute_Footprint(
       // use the appropriate element size. 
       if (esz == 0)
 	esz = WN_element_size(n->Wn);
+      // Bug 10708: element size should be positive
+      if (esz < 0) esz = -esz;
 #endif
       if (Debug_Cache_Model >= 4)
         fprintf(TFile, "-> arl entry from base %d, insertion info\n", ix);

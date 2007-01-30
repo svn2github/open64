@@ -1,5 +1,9 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -736,11 +740,21 @@ static BOOL Eliminate_Dead_SCF_rec(WN *wn,
     result |= Eliminate_Dead_Do(wn, Remove_Region, info, label_list);
   } else if (opcode == OPC_IF) {
     result |= Eliminate_Dead_If(wn, Remove_Region, info, label_list);
-  } else if (OPCODE_operator(opcode) == OPR_STID) {  // eliminate dead stores
-    USE_LIST *uses = Du_Mgr->Du_Get_Use(wn);
-    if (uses && !uses->Incomplete() && uses->Is_Empty()) { //dead
-      label_list->Remove_Tree(wn);
-      Remove_Region(wn);
+  } else if (OPCODE_operator(opcode) == OPR_STID) { //eliminate dead stores
+    // add conditions here to fix bug 8643, because later on we need to 
+    // change certain intrinsic back to alloca or dealloca which requires
+    // this store to get the return register
+    WN *intr_prev = WN_prev(wn);
+    if(!intr_prev || WN_operator(intr_prev) != OPR_INTRINSIC_CALL           ||
+                    ((WN_intrinsic(intr_prev) != INTRN_U8READSTACKPOINTER)&&
+                    (WN_intrinsic(intr_prev) != INTRN_U4READSTACKPOINTER) &&
+                    (WN_intrinsic(intr_prev) != INTRN_U8I8ALLOCA)         &&
+                    (WN_intrinsic(intr_prev) != INTRN_U4I4ALLOCA))){    
+      USE_LIST *uses = Du_Mgr->Du_Get_Use(wn);
+      if (uses && !uses->Incomplete() && uses->Is_Empty()) { //dead
+        label_list->Remove_Tree(wn);
+        Remove_Region(wn);
+      }
     }
   } else if (opcode == OPC_GOTO) {
     // no-op gotos
@@ -1597,8 +1611,17 @@ static void STD_Canonicalize_Upper_Bound(WN* wn_loop)
     //       U8U8LDID 1
     //      U8SUB
     //     I4I8LE
-    if (MTYPE_is_unsigned(desc)) 
-      desc = MTYPE_complement(desc);
+
+    // Bug 5670 -- the above transformation to signed comparison is still
+    // not legal if both operands are unsigned. 
+    TYPE_ID rtype0 = WN_rtype(WN_kid0(WN_end(wn_loop)));
+    TYPE_ID rtype1 = WN_rtype(WN_kid1(WN_end(wn_loop)));
+
+    if (MTYPE_is_unsigned(desc) && 
+       // at least one of the operands is signed
+        (MTYPE_is_signed(rtype0) || MTYPE_is_signed(rtype1)))
+      desc = MTYPE_complement(desc); //transform to signed comparison
+
     WN_set_opcode(WN_end(wn_loop), 
       OPCODE_make_op(OPR_LE, OPCODE_rtype(opc), desc));
 #endif
@@ -1825,6 +1848,20 @@ static BOOL Loop_Unswitch_InnerDo (WN *wn)
     }
     return FALSE;
   }
+
+  // Bug 10445 : lb and ub must be known constants
+   WN *lbd = WN_kid0(WN_start(wn));
+   WN *ubd = WN_kid1(WN_end(wn));
+   if(WN_operator(lbd) != OPR_INTCONST ||
+      WN_operator(ubd) != OPR_INTCONST ){
+     if (debug_loop_unswitch || LNO_Unswitch_Verbose) {
+        printf("(%s:%d) ",
+               Src_File_Name,
+               Srcpos_To_Line(WN_Get_Linenum(wn)));
+        printf("Non-constant loop bound exists. Loop was not unswitched.\n");
+      }
+      return FALSE;
+    }
 
   // Copy the bounds info first so we can restore when needed.
   INT le = info->Bounds().Num_Le_Constraints();
@@ -2086,6 +2123,205 @@ static BOOL Loop_Unswitch_InnerDo (WN *wn)
   return TRUE;
 }
 
+// Called by LNO unswitching 2nd phase.
+// Expects an expression node, typically the CONDITION expression in the IF
+// statement being switched.
+// Deletes any array dependence vertices (and incident edges) in WN, note,
+// there should not be any incident edge.
+static void
+LNO_Remove_Array_Dep (WN * wn)
+{
+  Is_True (OPERATOR_is_expression (WN_operator (wn)),
+           ("LNO_Remove_Array_Dep: Expression node expected"));
+
+  for (int i=0; i<WN_kid_count (wn); i++)
+    LNO_Remove_Array_Dep (WN_kid (wn,i));
+
+  if (!OPERATOR_is_load (WN_operator (wn))) return;
+
+  VINDEX16 v = Array_Dependence_Graph->Get_Vertex (wn);
+
+  if (v)
+    Array_Dependence_Graph->Delete_Vertex (v);
+}
+
+// Do loop unswitching. Convert
+//
+//  for (init; end; incr)
+//    if (loop-invariant-cond)
+//      then-body
+//    else
+//      else-body
+//    end if
+//  end for
+//
+// to
+//
+//  if (loop-invariant-cond)
+//    for (init; end; incr)
+//      then-body
+//    end for
+//  else
+//    for (init; end; incr)
+//      else-body
+//    end for
+//  end if
+//
+// Return TRUE if the loop is unswitched.
+// Deletes "wn" if successful.
+//
+// One difference with unswitcher-phase1 is a loop can be unswitched even
+// if the if-statement has an else-part.
+static BOOL Loop_Simple_Unswitch_InnerDo (WN * wn)
+{
+  Is_True (WN_operator (wn) == OPR_DO_LOOP,
+           ("Loop_Simple_Unswitch_InnerDo: Expected DO LOOP"));
+
+  //Bug 11495: renaming indexes will cause trouble if the index
+  //           variable is alive after the loop
+  if(Index_Variable_Live_At_Exit(wn))
+   return FALSE;
+
+  if (Do_Loop_Is_Mp(wn))
+    return FALSE; // avoid MP loops for now
+
+  DO_LOOP_INFO * dli = Get_Do_Loop_Info (wn);
+
+  // Unrolled_DU_Update skips OPC_IO nodes (why?). So DU-info from uses
+  // under OPR_IO nodes won't get copied, preventing us from handling such
+  // loops here. The following check appears to be the most specific 
+  // for IO (and barrier nodes). The other loop-unswitcher written above
+  // skips a lot of loops including these. We may need to generalize the
+  // following check in future to skip more loops.
+  //
+  if (dli && dli->Has_Barriers)
+    return FALSE;
+
+  WN * body = WN_do_body (wn);
+
+  const WN * stmt = WN_first (body);
+
+  if (!stmt) // empty loop body
+    return FALSE;
+
+  if (WN_first (body) != WN_last (body))
+    return FALSE; // Not single-statement body
+
+  if (WN_operator (stmt) != OPR_IF)
+    return FALSE; // No if-statement to switch
+
+  if (! Is_Loop_Invariant_Exp (WN_if_test (stmt), wn))
+    return FALSE; // if-test not loop invariant
+
+  // Make 2 copies of the original loop and update DU information
+  WN * then_loop_copy = LWN_Copy_Tree (wn, TRUE, LNO_Info_Map);
+  WN * else_loop_copy = LWN_Copy_Tree (wn, TRUE, LNO_Info_Map);
+
+  WN * loop_body[3];
+
+  loop_body[0] = WN_do_body (wn);
+  loop_body[1] = WN_do_body (then_loop_copy);
+  loop_body[2] = WN_do_body (else_loop_copy);
+
+  // Update DU
+  Unrolled_DU_Update (loop_body, 3, Do_Loop_Depth (wn), TRUE, FALSE);
+
+  // Do any dependence graph updates before copying it over
+  if (Do_Loop_Depth (wn) == 0)
+  { // No outer loop
+    // Delete any graph vertex present in the IF condition test.
+    LNO_Remove_Array_Dep (WN_if_test (stmt));
+  }
+
+  // Update array dependences
+  Array_Dependence_Graph->Add_Deps_To_Copy_Block(wn, then_loop_copy, TRUE);
+  Array_Dependence_Graph->Add_Deps_To_Copy_Block(wn, else_loop_copy, TRUE);
+
+  // Generate do-loop for the then-part
+  {
+    WN * if_stmt = WN_first (WN_do_body (then_loop_copy));
+    LWN_Insert_Block_Before (WN_do_body (then_loop_copy), if_stmt, WN_then (if_stmt));
+    // preserve the if-stmt for later use
+    WN_then (if_stmt) = WN_CreateBlock();
+
+    DO_LOOP_INFO * loop_info_then =
+      CXX_NEW (DO_LOOP_INFO (dli, dli->Pool()), dli->Pool());
+    Set_Do_Loop_Info (then_loop_copy, loop_info_then);
+  }
+
+  // Generate do-loop for the else-part
+  {
+    WN * if_stmt = WN_first (WN_do_body (else_loop_copy));
+    LWN_Insert_Block_Before (WN_do_body (else_loop_copy), if_stmt, WN_else (if_stmt));
+    WN_else (if_stmt) = WN_CreateBlock();
+    // Delete remnants of if-stmt
+    if_stmt = LWN_Extract_From_Block (WN_do_body (else_loop_copy), if_stmt);
+    LWN_Delete_Tree (if_stmt);
+
+    DO_LOOP_INFO * loop_info_else =
+      CXX_NEW (DO_LOOP_INFO (dli, dli->Pool()), dli->Pool());
+    Set_Do_Loop_Info (else_loop_copy, loop_info_else);
+  }
+ 
+  // Recycle the if-stmt present in the THEN-loop.
+  // We don't want to create a new one to preserve the DU information
+  // obtained above for the if-test.
+  WN * if_stmt = WN_last (WN_do_body (then_loop_copy));
+  Is_True (WN_operator (if_stmt) == OPR_IF, 
+           ("Loop_Simple_Unswitch_InnerDo: Expected IF statement"));
+  LWN_Delete_Tree (WN_else (if_stmt));
+  WN_else (if_stmt) = WN_CreateBlock();
+
+  // Extract 'if' from the 'do' body
+  if_stmt = LWN_Extract_From_Block (WN_do_body (then_loop_copy), if_stmt);
+
+  // New unswitched if-stmt
+  LWN_Insert_Block_Before (WN_then (if_stmt), NULL, then_loop_copy);
+  LWN_Insert_Block_Before (WN_else (if_stmt), NULL, else_loop_copy);
+
+  // Now replace original do-loop with if-stmt
+  WN * parent = LWN_Get_Parent (wn);
+  Is_True (WN_operator (parent) == OPR_BLOCK,
+           ("Loop_Simple_Unswitch_InnerDo: BLOCK node expected as parent"));
+  LWN_Insert_Block_Before (parent, wn /* do loop */, if_stmt /* if stmt */);
+  // Delete remnants of original loop
+  wn = LWN_Extract_From_Block (parent, wn);
+  LWN_Parentize (parent);
+
+  WN * wn_starts[3], * wn_ends[3], * wn_steps[3], * new_loops[3];
+  wn_starts[0] = WN_kid0 (WN_start (wn));
+  wn_starts[1] = WN_kid0 (WN_start (then_loop_copy));
+  wn_starts[2] = WN_kid0 (WN_start (else_loop_copy));
+
+  wn_ends[0] = WN_end (wn);
+  wn_ends[1] = WN_end (then_loop_copy);
+  wn_ends[2] = WN_end (else_loop_copy);
+
+  wn_steps[0] = WN_kid0 (WN_step (wn));
+  wn_steps[1] = WN_kid0 (WN_step (then_loop_copy));
+  wn_steps[2] = WN_kid0 (WN_step (else_loop_copy));
+
+  new_loops[0] = wn;
+  new_loops[1] = then_loop_copy;
+  new_loops[2] = else_loop_copy;
+
+  Fission_DU_Update (Du_Mgr, red_manager, wn_starts, wn_ends, wn_steps, 3, new_loops);
+  // Taken from Loop_Unswitch_InnerDo. I doubt we need it for the 0th entry,
+  // and I also don't know why we don't do it for the last entry.
+  scalar_rename(LWN_Get_Parent(wn_starts[0]));
+  scalar_rename(LWN_Get_Parent(wn_starts[1]));
+
+  if (debug_loop_unswitch || LNO_Unswitch_Verbose) {
+    printf("(%s:%d) ", 
+	   Src_File_Name, 
+	   Srcpos_To_Line(WN_Get_Linenum(wn)));
+    printf("LNO Unswitch Second Try: Loop was unswitched.\n");    
+  }
+
+  LWN_Delete_Tree (wn);
+  return TRUE;
+}
+
 // Return TRUE if unswitched any loop.
 static BOOL Loop_Unswitch_SCF_rec(WN *wn)
 {
@@ -2104,7 +2340,12 @@ static BOOL Loop_Unswitch_SCF_rec(WN *wn)
   else if (opcode == OPC_DO_LOOP) {
     DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn);
     if (dli->Is_Inner)
-      result |= Loop_Unswitch_InnerDo(wn);
+    {
+      if (LNO_Run_Unswitch_Phase1)
+        result |= Loop_Unswitch_InnerDo(wn);
+      if (LNO_Run_Unswitch_Phase2)
+        result |= Loop_Simple_Unswitch_InnerDo(wn);
+    }
     else
       result |= Loop_Unswitch_SCF_rec(WN_do_body(wn));
   }

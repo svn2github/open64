@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -345,6 +345,68 @@ inline T* convert_offset(T* p, char* base) {
   return reinterpret_cast<T*>(base + reinterpret_cast<INTPTR>(p));
 }
 
+#ifdef KEY
+// This function is similar to the versions at ipl_summarize_template.h
+// and xstats.cxx. This function is called when IPA reads in PUs. It
+// must only access wn, and hence cannot have any context info.
+// Called to set the global variables keeping track of pusize stats.
+// IPA/inlining heuristics does not use these variables, but gets
+// stats from summary info.
+static void
+Count_WN (WN * wn, INT32& bbs, INT32& stmts, INT32& calls)
+{
+    OPERATOR opr = WN_operator (wn);
+    TYPE_ID rtype = WN_rtype (wn);
+
+    /* count nscf stmts as bbs, not stmts */
+    if (OPERATOR_is_non_scf(opr)) {
+        switch (opr) {
+          case OPR_LABEL:
+            if (WN_Label_Is_Not_Used (wn))
+              return;
+            else break;
+          case OPR_RETURN:
+          case OPR_RETURN_VAL:
+            return;
+        }
+        ++bbs;
+    } else if (OPERATOR_is_stmt(opr)) {
+        if (OPERATOR_is_call(opr)) {
+            ++bbs;
+            ++calls;
+        } else if (opr == OPR_IO) {
+            /* TODO:  ideally would look at values of IO_ITEMs,
+             * but then have to pass more than opcode. */
+            ++bbs;
+            ++calls;
+        } else if (! OPERATOR_is_not_executable(opr)) {
+            ++stmts;
+            if (MTYPE_is_complex(rtype) && OPERATOR_is_store(opr)) {
+                ++stmts;
+            }
+        }
+    } else if (OPERATOR_is_scf(opr)) {
+        if (opr != OPR_BLOCK && opr != OPR_FUNC_ENTRY) {
+            /* blocks are counted by parent node */
+            ++bbs;
+        }
+        /* if may create two blocks if else present,
+         * but can't tell just from opcode */
+    } else if ((rtype == MTYPE_FQ || rtype == MTYPE_CQ) &&
+               OPERATOR_is_expression(opr) &&
+               !OPERATOR_is_load(opr) &&
+               !OPERATOR_is_leaf(opr) ) {
+        /* quad operators get turned into calls */
+        ++bbs;
+        ++calls;
+    } else if (opr == OPR_CAND || opr == OPR_CIOR) {
+        /* these may get expanded to if-then-else sequences,
+         * or they may be optimized to logical expressions.
+         * use the halfway average of 1 bb */
+        ++bbs;
+    }
+}
+#endif // KEY
 
 // The following two functions are almost identical to the corresponding
 // functions in common/com/ir_bread.cxx.  They are duplicated because, in
@@ -362,6 +424,16 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
       if (ST_IDX_level(idx) == GLOBAL_SYMTAB) // Global symbol
         WN_st_idx(node) = idx_map->st[idx];
     }
+#ifdef KEY
+    if (OPCODE_operator(opcode) == OPR_PRAGMA &&
+        WN_pragma(node) == WN_PRAGMA_THREADPRIVATE) {
+      const ST_IDX idx = WN_pragma_arg2(node);
+      if (ST_IDX_level(idx) == GLOBAL_SYMTAB) {
+        #pragma frequency_hint frequent
+        WN_pragma_arg2(node) = idx_map->st[idx];
+      }
+    }
+#endif
     if (OPCODE_has_1ty(opcode)) {
       WN_set_ty(node, idx_map->ty[WN_ty(node)]);
     }
@@ -386,7 +458,11 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
         Set_PU_has_altentry (Get_Current_PU ());
     
     /* Count whirl nodes that are useful for Olimit and other stats */
+#ifdef KEY
+    Count_WN (node, PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, PU_WN_Call_Cnt);
+#else
     Count_WN_Opcode (opcode, &PU_WN_BB_Cnt, &PU_WN_Stmt_Cnt);
+#endif // KEY
 #endif
 
     if (opcode == OPC_BLOCK) {

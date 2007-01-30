@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -202,10 +206,10 @@
 **/
 
 /* ====================================================================
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/minvariant.cxx,v $
+ * $Revision: 1.17 $
+ * $Date: 05/08/31 17:40:36-07:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: be/lno/SCCS/s.minvariant.cxx $
  * ====================================================================
  */
 
@@ -215,7 +219,7 @@
 #pragma hdrstop
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/minvariant.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: be/lno/SCCS/s.minvariant.cxx $ $Revision: 1.17 $";
 #endif
 
 #include <sys/types.h>
@@ -781,10 +785,11 @@ static void MIR_Replace(WN*                      loop,
   TYPE_ID       type = WN_desc(LWN_Get_Parent(p->Wnlist[0]));
   TY_IDX        ty = Be_Type_Tbl(type);
   TY_IDX        pty = Make_Pointer_Type(ty);
-#ifdef TARG_X8664
-  if (Minvariant_Removal_For_Simd) pty = ty;
+
+#ifdef TARG_X8664 //bug 11472: memory chunk should be assigned to a temporary instead of a preg
+  if (Minvariant_Removal_For_Simd || type == MTYPE_M) pty = ty;
 #endif
-#ifdef KEY
+#ifdef KEY  
   // Bug 3072 - If parent type is MTYPE_BS then, we can not create OPC_BSBSLDID 
   // - triggered by fix to this bug in model.cxx (adjust esz to 1-byte in 
   // Build_Aarray).
@@ -799,7 +804,7 @@ static void MIR_Replace(WN*                      loop,
   sprintf(newname, "$mi%d", unique_mi_num++);
 #ifdef TARG_X8664
   SYMBOL newsym;
-  if (Minvariant_Removal_For_Simd) {
+  if (Minvariant_Removal_For_Simd || type == MTYPE_M) {
     ST * st = Gen_Temp_Symbol (MTYPE_TO_TY_array[type], "_misym");
     newsym = SYMBOL(st, 0, type);
     // bug 7446
@@ -834,7 +839,7 @@ static void MIR_Replace(WN*                      loop,
     read_tree = LWN_CreateStid(op, newsym.WN_Offset(), 
 				newsym.St(), pty, new_load);
 #ifdef TARG_X8664
-    if (Minvariant_Removal_For_Simd)
+    if (Minvariant_Removal_For_Simd || type == MTYPE_M)
       Create_alias(Alias_Mgr,read_tree);
 #endif
     LWN_Copy_Linenumber(LWN_Get_Statement(the_load),read_tree);
@@ -870,7 +875,7 @@ static void MIR_Replace(WN*                      loop,
     WN*         ldid = WN_CreateLdid(op, newsym.WN_Offset(), 
 				newsym.St(), ty);
 #ifdef TARG_X8664
-    if (Minvariant_Removal_For_Simd)
+    if (Minvariant_Removal_For_Simd || type == MTYPE_M)
       Create_alias(Alias_Mgr,ldid);
 #endif
     OPCODE      storeop = WN_opcode(LWN_Get_Parent(p->Wnlist[j]));
@@ -1013,7 +1018,7 @@ static void MIR_Replace(WN*                      loop,
       WN* newstid = LWN_CreateStid(op, newsym.WN_Offset(), 
 				   newsym.St(), pty, WN_kid0(oldistore));
 #ifdef TARG_X8664
-      if (Minvariant_Removal_For_Simd)
+      if (Minvariant_Removal_For_Simd || type == MTYPE_M)
 	Create_alias(Alias_Mgr, newstid);
 #endif
       LWN_Copy_Linenumber(oldistore,newstid);
@@ -1038,7 +1043,7 @@ static void MIR_Replace(WN*                      loop,
       WN*     newldid = WN_CreateLdid(op, newsym.WN_Offset(), 
 			   newsym.St(), ty);
 #ifdef TARG_X8664
-      if (Minvariant_Removal_For_Simd)
+      if (Minvariant_Removal_For_Simd || type == MTYPE_M)
 	Create_alias(Alias_Mgr, newldid);
 #endif
       WN*     p_oldiload = LWN_Get_Parent(oldiload);
@@ -1087,7 +1092,7 @@ static void MIR_Replace(WN*                      loop,
     }
   }
 #ifdef TARG_X8664
-  if (Minvariant_Removal_For_Simd) {
+  if (Minvariant_Removal_For_Simd || type == MTYPE_M) {
     for (INT jj = 0; jj < new_uses.Elements(); jj++)
       if (Wn_Is_Inside(new_uses[jj], loop))
         Du_Mgr->Ud_Get_Def(new_uses[jj])->Set_loop_stmt(loop);
@@ -1481,6 +1486,10 @@ static BOOL MIR_Try_Hoist(WN* loop,
                           MEM_POOL* pool,
 			  BOOL messy_only)
 {
+#ifdef KEY // bug 8076: do not hoist if index variable is marked addr_saved
+  if (ST_addr_saved(WN_st(WN_kid0(loop))))
+    return FALSE;
+#endif
   BOOL did_hoisting = FALSE;
   INT  i = 0;
 

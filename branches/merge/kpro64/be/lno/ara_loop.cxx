@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -898,6 +898,16 @@ float ARA_LOOP_INFO::Const_Work_Estimate(WN* wn_loop,
       } else { 
 	WN* wn_trip_count = Trip_Count(wn);
         if (WN_operator(wn_trip_count) != OPR_INTCONST) {
+#ifdef KEY
+	  if (Cur_PU_Feedback && LNO_Apo_use_feedback &&
+	      Cur_PU_Feedback->Get_index_loop(wn) != 0) {
+	    FB_Info_Loop loop_freq = Cur_PU_Feedback->Query_loop(wn);
+	    const_work_estimate *= loop_freq.freq_iterate.Value();
+	    if (loop_freq.freq_positive.Value() > 0.0)
+	      const_work_estimate /= loop_freq.freq_positive.Value();
+	  }
+	  else
+#endif
 	  min_only = TRUE; 
 	} else {  
           const_work_estimate *= WN_const_val(wn_trip_count);     
@@ -1667,6 +1677,19 @@ BOOL ARA_LOOP_INFO::Is_Privatizable(WN* wn, BOOL definitely)
   
   if ((WN_operator(wn) == OPR_ILOAD) &&
       (WN_operator(WN_kid0(wn)) == OPR_ARRAY)) {
+#ifdef KEY // bug 10707: screen out cases where the variable is of complex type
+    	   //		 but the code is operating on float types
+    if (WN_operator(WN_kid0(WN_kid0(wn))) == OPR_LDID) {
+      TY_IDX ty = ST_type(WN_st(WN_kid0(WN_kid0(wn))));
+      if (TY_kind(ty) == KIND_POINTER)
+	ty = TY_pointed(ty);
+      if (TY_kind(ty) == KIND_ARRAY) {
+	ty = TY_etype(ty);
+	if (! MTYPE_is_complex(WN_rtype(wn)) && MTYPE_is_complex(TY_mtype(ty)))
+	  return FALSE;
+      }
+    }
+#endif
 
     // First test if it is loop invariant
     ACCESS_ARRAY * s_array = (ACCESS_ARRAY *) WN_MAP_Get(LNO_Info_Map, WN_kid0(wn));
@@ -1682,6 +1705,19 @@ BOOL ARA_LOOP_INFO::Is_Privatizable(WN* wn, BOOL definitely)
       
   } else if ((WN_operator(wn) == OPR_ISTORE) &&
 	     (WN_operator(WN_kid1(wn)) == OPR_ARRAY)) {
+#ifdef KEY // bug 10707: screen out cases where the variable is of complex type
+    	   //		 but the code is operating on float types
+    if (WN_operator(WN_kid0(WN_kid1(wn))) == OPR_LDID) {
+      TY_IDX ty = ST_type(WN_st(WN_kid0(WN_kid1(wn))));
+      if (TY_kind(ty) == KIND_POINTER)
+	ty = TY_pointed(ty);
+      if (TY_kind(ty) == KIND_ARRAY) {
+	ty = TY_etype(ty);
+	if (! MTYPE_is_complex(WN_desc(wn)) && MTYPE_is_complex(TY_mtype(ty)))
+	  return FALSE;
+      }
+    }
+#endif
 
     // First test if it is loop invariant
     ACCESS_ARRAY * s_array = (ACCESS_ARRAY *) WN_MAP_Get(LNO_Info_Map, WN_kid1(wn));
@@ -2072,6 +2108,11 @@ ARA_LOOP_INFO::Walk_Block(WN *block_stmt)
       if (!Info()->Has_Gotos||
 	     ((!Info()->Has_Gotos_This_Level || !seen_non_scf) 
 		&& !Info()->Has_Exits)) {
+#ifdef KEY // bug 10316: cannot privatize a field in a struct because rest of
+	   //	struct may be shared
+	if (TY_kind(ST_type(WN_st(stmt))) != KIND_STRUCT ||
+	    strncmp(TY_name(ST_type(WN_st(stmt))), ".dope.", 6) != 0)
+#endif
         _scalar_def.Add_Scalar(stmt,0);
       }
       _scalar_may_def.Add_Scalar(stmt,0);
@@ -2435,6 +2476,13 @@ ARA_LOOP_INFO::Walk_Loop()
       SYMBOL* sym_def = &sn_def->_scalar;
       for (INT j = 0; j < sn_def->Elements(); ++j) {
 	WN* wn_def = sn_def->Bottom_nth(j)->Wn;
+#ifdef KEY // bug 10316: cannot privatize a field in a struct because rest of
+	   //	struct may be shared
+	if (WN_operator(wn_def) == OPR_STID &&
+	    TY_kind(ST_type(WN_st(wn_def))) == KIND_STRUCT &&
+	    strncmp(TY_name(ST_type(WN_st(wn_def))), ".dope.", 6) == 0)
+	  break;
+#endif
 	if (OPCODE_is_call(WN_opcode(wn_def))
 	    || WN_operator(wn_def) == OPR_LDA) { 
 	  _scalar_pri.Add_Scalar(wn_def, sym_def, 0);
@@ -2577,6 +2625,21 @@ void Parallelization_Process_Deps(WN *wn)
           else {
             is_invariant = s_array&&Loop_Invariant_Inside(s_array,common_loop);
           }
+#ifdef KEY // bug 10707: screen out cases where the variable is of complex type
+    	   //		 but the code is operating on float types
+          if (WN_operator(wn) == OPR_ISTORE &&
+	      WN_operator(WN_kid1(wn)) == OPR_ARRAY &&
+    	      WN_operator(WN_kid0(WN_kid1(wn))) == OPR_LDID) {
+	    TY_IDX ty = ST_type(WN_st(WN_kid0(WN_kid1(wn))));
+	    if (TY_kind(ty) == KIND_POINTER)
+	      ty = TY_pointed(ty);
+	    if (TY_kind(ty) == KIND_ARRAY) {
+	      ty = TY_etype(ty);
+	    if (! MTYPE_is_complex(WN_desc(wn)) && MTYPE_is_complex(TY_mtype(ty)))
+	      is_invariant = FALSE;
+	    }
+	  }
+#endif
 	  BOOL privatizable = FALSE;
 	  // OK, one final check to see if the array caused the dependence
 	  // is privatizable.
@@ -2592,7 +2655,12 @@ void Parallelization_Process_Deps(WN *wn)
 
 	  if (privatizable && !ali->Need_Copyin()) continue;
 
-	  if (!privatizable && is_invariant) 
+	  if (!privatizable && is_invariant
+#ifdef KEY // bug 9112 : MP lower cannot handle extra offset field in reduction
+	   //		 based on an invariant array element
+	      && (s_array == NULL || WN_offset(wn) == 0)
+#endif
+	     ) 
 	    ali->Add_Reduction(wn);
 	  else	if (DEP_IsDistance(DEPV_Dep(depv,j))) {
 	    ali->Add_Dependence(DEP_Distance(DEPV_Dep(depv,j)));
@@ -3080,7 +3148,7 @@ float ARA_LOOP_INFO::Tc_Parallel_Cost()
 float ARA_LOOP_INFO::Tp_Parallel_Cost()
 { 
 #ifdef KEY // bug 7772
-  return 128.0;
+  return LNO_Parallel_per_proc_overhead;
 #else
   return 123.0;
 #endif
@@ -3453,6 +3521,14 @@ static void Replace_Preg_With_Symbol (WN* node, WN* replace, WN* def,
 void
 ARA_LOOP_INFO::Generate_Parallel_Pragma()
 {
+#ifdef KEY
+  Last_Apo_Loop_Id++;
+  if (Last_Apo_Loop_Id > LNO_Apo_Loop_Skip_After ||
+      Last_Apo_Loop_Id < LNO_Apo_Loop_Skip_Before ||
+      Last_Apo_Loop_Id == LNO_Apo_Loop_Skip_Equal)
+    return;
+#endif
+
   // Set parallel debug level
   INT parallel_debug_level = Get_Trace(TP_LNOPT2, TT_LNO_PARALLEL_DEBUG)
     ? Parallel_Debug_Level : 0;
@@ -3708,7 +3784,16 @@ ARA_LOOP_INFO::Generate_Parallel_Pragma()
 	WN_kid0(prag) = LWN_Copy_Tree(wn_array);
 	LWN_Copy_Def_Use(wn_array, WN_kid0(prag), Du_Mgr);
         WN_set_pragma_compiler_generated(prag);
+#ifndef KEY // bug 9112 : WN_prefetch_flag overlaps with WN_st_idx, so is bad
         WN_prefetch_flag(prag) = WN_offset(cur_wn);
+#else
+	if (WN_offset(cur_wn)) {
+	  TYPE_ID rtype = WN_rtype(WN_kid0(prag));
+	  WN* wn_ofst = LWN_Make_Icon(rtype, WN_offset(cur_wn));
+	  OPCODE addop = OPCODE_make_op(OPR_ADD, rtype, MTYPE_V);
+	  WN_kid0(prag) = LWN_CreateExp2(addop, WN_kid0(prag), wn_ofst);
+	}
+#endif
         Set_Reduction_Array_Base_is_shared_auto(wn_array);
       } else {  
 	prag = WN_CreatePragma(WN_PRAGMA_REDUCTION, WN_st(cur_wn), 
@@ -4122,7 +4207,16 @@ ARA_LOOP_INFO::Generate_Copyout_Loop()
       prag = WN_CreateXpragma(WN_PRAGMA_REDUCTION,  ST_IDX_ZERO, 1);
       WN_kid0(prag) = LWN_Copy_Tree(wn_array);
       LWN_Copy_Def_Use(wn_array, WN_kid0(prag), Du_Mgr);
+#ifndef KEY // bug 9112 : WN_prefetch_flag overlaps with WN_st_idx, so is bad
       WN_prefetch_flag(prag) = WN_offset(cur_wn);
+#else
+      if (WN_offset(cur_wn)) {
+	TYPE_ID rtype = WN_rtype(WN_kid0(prag));
+	WN* wn_ofst = LWN_Make_Icon(rtype, WN_offset(cur_wn));
+	OPCODE addop = OPCODE_make_op(OPR_ADD, rtype, MTYPE_V);
+	WN_kid0(prag) = LWN_CreateExp2(addop, WN_kid0(prag), wn_ofst);
+      }
+#endif
       Set_Reduction_Array_Base_is_shared_auto(wn_array);
     } else {  
       prag = WN_CreatePragma(WN_PRAGMA_REDUCTION, WN_st(cur_wn), 

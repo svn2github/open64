@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -425,16 +425,16 @@
 //
 
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/model.h,v $
+/** $Revision: 1.8 $
+*** $Date: 05/05/04 09:52:28-07:00 $
+*** $Author: gautam@eng-27.pathscale.com $
+*** $Source: ../../be/lno/SCCS/s.model.h $
 **/
 
 #ifndef MD_RCS_ID
 #define MD_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *model_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/model.h,v $ $Revision: 1.1.1.1 $";
+static char *model_rcs_id = "$Source: ../../be/lno/SCCS/s.model.h $ $Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 #endif
 
@@ -501,6 +501,9 @@ extern BOOL Is_Bad_Array(WN* wn_ref, INT nloops);
 #ifdef TARG_X8664
 extern BOOL Is_Vectorizable_Loop(WN* loop);
 extern BOOL Is_Vectorization_Beneficial(WN* loop);
+#ifdef KEY // bug 5880
+extern BOOL Is_Aggressive_Vintr_Loop(WN *loop);
+#endif
 #endif
 
 class LOOP_MODEL {

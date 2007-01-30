@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -78,7 +78,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_loop_CXX	"opt_loop.cxx"
-static char *rcs_id = 	opt_loop_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_loop_CXX"$Revision: 1.7 $";
 #endif /* _KEEP_RCS_ID */
 
 #define USE_STANDARD_TYPES
@@ -936,6 +936,9 @@ CODEMAP::Convert_iload_to_loop_invariant(BB_LOOP *loop, CODEREP *cr)
 
       BB_NODE *startbb = loop->Header();
 	
+#ifdef KEY
+      if (! WOPT_Enable_Invariant_Loop_Bounds)
+#endif
       // Use alias analysis to see if the vsym is an invariant
       // If vsym aliases with any STID/ISTORE/MSTORE is the loop, then
       // don't replace it.

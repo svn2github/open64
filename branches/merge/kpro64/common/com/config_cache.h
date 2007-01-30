@@ -1,5 +1,9 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -43,10 +47,10 @@
  * ====================================================================
  *
  * Module: config_cache.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_cache.h,v $
+ * $Revision: 1.5 $
+ * $Date: 04/12/21 14:57:21-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/common/com/SCCS/s.config_cache.h $
  *
  * Revision history:
  *  14-Nov-96 - Original Version, duplicated from cache_parameters.h.
@@ -71,7 +75,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *config_cache_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_cache.h,v $ $Revision: 1.1.1.1 $";
+static char *config_cache_rcs_id = "$Source: /home/bos/bk/kpro64-pending/common/com/SCCS/s.config_cache.h $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 /*
@@ -393,6 +397,9 @@ typedef struct MHD_LEVEL {
  private:
 
   void      Compute_Effective_Size();
+#ifdef KEY
+  void      Reset_CS_String();
+#endif
 #endif
 } MHD_LEVEL;
 

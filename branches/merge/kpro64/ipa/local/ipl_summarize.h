@@ -1,6 +1,6 @@
 /* -*- c++ -*-
  *
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -481,6 +481,9 @@ private:
 
     void Process_alt_procedure (WN *w, INT formal_index, INT formal_count);
     void Process_callsite (WN *w, INT id, INT loopnest, float =-1);
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    void Process_icall (SUMMARY_PROCEDURE *, WN *, INT, float);
+#endif
     void Process_formal (WN *w, INT num_formals, SUMMARY_PROCEDURE *proc);
     void Process_formal_alt (WN *w, INT kid_count);
     void Process_actual (WN *actual);

@@ -39,7 +39,7 @@ extern MEM_POOL LNO_local_pool;
 
 #ifndef vs_CXX
 #define vs_CXX      "vs.cxx"
-static char *vs_template_rcs_id = vs_CXX "$Revision: 1.1.1.1 $";
+static char *vs_template_rcs_id = vs_CXX "$Revision$";
 #endif
 
 #ifndef __GNUC__

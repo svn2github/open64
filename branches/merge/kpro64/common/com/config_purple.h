@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: config_purple.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_purple.h,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  25-Mar-97 - Original Version
@@ -106,7 +106,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *config_purple_h_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_purple.h,v $ $Revision: 1.1.1.1 $";
+static char *config_purple_h_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifdef __cplusplus

@@ -1,7 +1,11 @@
+/*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -84,6 +88,10 @@
 #include "opt_fold.h"
 
 #include "data_layout.h"	// for ST_has_formal_preg_num
+
+#ifdef KEY
+#include "opt_alias_mgr.h"	// for ALIAS_MANAGER
+#endif
 
 
 const char *pre_kind_name(PRE_KIND kind)
@@ -608,6 +616,11 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 	  if (signess & SIGN_1_EXTD) aux_preg->Set_sign_extd();
 	  if (signess & SIGN_0_EXTD) aux_preg->Set_zero_extd();
 	} else {
+#ifdef KEY // Bug 9821: Set the alias map id.
+	  if (home_wn)
+	    htable->Sym()->Alias_Mgr()->Gen_alias_id (home_wn,
+	                                       exp->Points_to(htable->Sym()));
+#endif
 	  // Set the home location for the preg
 	  AUX_ID aux_id = exp->Aux_id();
 	  char  *aux_name = htable->Sym()->Aux_stab_entry(aux_id)->St_name();
@@ -645,7 +658,11 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
   // At this point, we require a new Temp_cr().
   Set_temp_cr(htable->Add_def(wk->Preg(), wk->Cur_e_version(), NULL, 
 			      dtyp, dtyp, htable->Sym()->St_ofst(wk->Preg()), 
-			      ST_type(MTYPE_To_PREG(dtyp)), 0, TRUE));
+#ifdef KEY
+		      Occurrence()->Kind() == CK_VAR ? Occurrence()->Lod_ty() :
+#endif
+			      ST_type(MTYPE_To_PREG(dtyp)), 
+			      0, TRUE));
   wk->New_e_version();
 
   if (wk->Pre_kind() == PK_VNFRE)
@@ -2068,6 +2085,23 @@ ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL 
 		 "node bb:%d Aux:%d.", bb->Id(), newcr->Aux_id()));
 	if (fix_zero_ver && var_phi->OPND(opnd_num)->Is_flag_set(CF_IS_ZERO_VERSION))
 	  Htable()->Fix_zero_version(var_phi, opnd_num);
+#ifdef KEY // bug 7916
+	if (var_phi->OPND(opnd_num)->Dsctyp() == MTYPE_UNKNOWN ||
+	    var_phi->OPND(opnd_num)->Is_flag_set(CF_MADEUP_TYPE)) {
+	  Is_True(newcr->Dsctyp() != MTYPE_UNKNOWN,
+		  ("ETABLE::Generate_cur_expr: cannot fix types for phi opnd "
+		   "%d at node bb:%d Aux:%d.", opnd_num, bb->Id(), 
+		   newcr->Aux_id()));
+	  var_phi->OPND(opnd_num)->Set_dtyp(newcr->Dtyp());
+	  var_phi->OPND(opnd_num)->Set_dsctyp(newcr->Dsctyp());
+	  var_phi->OPND(opnd_num)->Set_lod_ty(newcr->Lod_ty());
+	  var_phi->OPND(opnd_num)->Set_field_id(newcr->Field_id());
+	  if (newcr->Bit_field_valid())
+	    var_phi->OPND(opnd_num)->Set_bit_field_valid();
+	  var_phi->OPND(opnd_num)->Set_sign_extension_flag();
+	  var_phi->OPND(opnd_num)->Reset_flag(CF_MADEUP_TYPE);
+	}
+#endif
 	newcr = var_phi->OPND(opnd_num);
       }
     }

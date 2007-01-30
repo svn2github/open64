@@ -53,7 +53,7 @@
 #ifndef opt_rvilr_INCLUDED
 #define opt_rvilr_INCLUDED "opt_rvilr.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_rvilrrcs_id = opt_rvilr_INCLUDED"$ $Revision: 1.1.1.1 $";
+static char *opt_rvilrrcs_id = opt_rvilr_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 // forward declarations

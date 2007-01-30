@@ -219,7 +219,7 @@ OPTION_LIST *WOPT_Skip = NULL;		/* Skip option list */
 SKIPLIST *WOPT_Skip_List = NULL;	/* Processed skiplist */
 BOOL  WOPT_Enable_SLT = TRUE;
 BOOL  WOPT_Enable_Small_Br_Target = FALSE; /* propagation into branch BBs */
-BOOL  WOPT_Enable_Simple_If_Conv = TRUE;   /* simple if-conversion at CFG build time */
+INT32  WOPT_Enable_Simple_If_Conv = 1;   /* simple if-conversion at CFG build time: 0 - off, 1 - conservative, 2 - aggressive */
 INT32 WOPT_Enable_If_Conv_Limit = 6;    /* max number of leaf nodes allowed in a
 					   simple expr in simple if conv */
 BOOL  WOPT_Enable_If_Conv_For_Istore = TRUE;   /* if-conversion is applied if lhs is istore */
@@ -295,6 +295,12 @@ BOOL WOPT_Enable_Warn_Uninit = FALSE;   // enable warning for detected uninitial
 INT32 WOPT_Enable_WN_Unroll = 1;	// 0: disable; 
 					// 1: unroll only loop bodies with IFs
 					// 2: unroll all loop bodies
+BOOL WOPT_Enable_IP_Mod_Ref = FALSE; // use mod/ref information from IPA?
+BOOL WOPT_Enable_Invariant_Loop_Bounds = FALSE; // enable assumption that all
+				   // induction loops' bounds are loop-invariant
+BOOL WOPT_Enable_Subword_Opt = TRUE; // whether to replace 1- or 2-byte-sized
+			              // load/store with EXTRACT/COMPOSE
+BOOL WOPT_Enable_New_Vsym_Allocation = FALSE;
 #endif
 BOOL  WOPT_Enable_WOVP = TRUE; // For running write-once variable promotion
 
@@ -593,8 +599,8 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_VN_Full, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "simp_iload",		"",
     0, 0, 0,	&WOPT_Enable_Simp_Iload, NULL },
-  { OVK_BOOL,	OV_VISIBLE,	TRUE, "if_conv",		"",
-    0, 0, 0,	&WOPT_Enable_Simple_If_Conv, NULL },
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "if_conv",		"",
+    2, 0, 2,	&WOPT_Enable_Simple_If_Conv, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "ifconv_limit",		"",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_If_Conv_Limit, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "ifconv_for_istore",		"",
@@ -679,7 +685,15 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "warn_uninit",		"",
     0, 0, 0,	&WOPT_Enable_Warn_Uninit, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll",	"unroll",
-    INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_WN_Unroll, NULL },
+    2, 0, 2,	&WOPT_Enable_WN_Unroll, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "ip_mod_ref", "ip_mod_ref",
+    0, 0, 0,	&WOPT_Enable_IP_Mod_Ref, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "invar_loop_bounds", "invar_loop_bounds",
+    FALSE, 0, 0, &WOPT_Enable_Invariant_Loop_Bounds, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "subword_opt", "subword_opt",
+    FALSE, 0, 0, &WOPT_Enable_Subword_Opt, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "new_vsym", "new_vsym",
+    FALSE, 0, 0, &WOPT_Enable_New_Vsym_Allocation, NULL },
 #endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "wovp",	"wovp",
     0, 0, 0,	&WOPT_Enable_WOVP, NULL },

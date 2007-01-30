@@ -141,7 +141,7 @@
 #ifndef vs_INCLUDED
 #define vs_INCLUDED "vs.h"
 
-static char *vs_rcs_id = vs_INCLUDED "$Revision: 1.1.1.1 $";
+static char *vs_rcs_id = vs_INCLUDED "$Revision$";
 
 // system  headers
 

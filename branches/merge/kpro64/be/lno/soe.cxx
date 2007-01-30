@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -67,9 +67,9 @@
  * ====================================================================
  *
  * Module: soe.c  
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
+ * $Revision: 1.7 $
+ * $Date: 04/12/21 14:57:16-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
  * Revision history:
  *  dd-mmm-94 - Original Version
  *

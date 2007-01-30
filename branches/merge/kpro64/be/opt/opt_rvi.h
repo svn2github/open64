@@ -56,7 +56,7 @@
 #ifndef opt_rvi_INCLUDED
 #define opt_rvi_INCLUDED "opt_rvi.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_rvircs_id = opt_rvi_INCLUDED"$ $Revision: 1.1.1.1 $";
+static char *opt_rvircs_id = opt_rvi_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef wn_INCLUDED

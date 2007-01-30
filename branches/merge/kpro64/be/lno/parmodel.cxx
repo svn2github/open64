@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -905,6 +905,10 @@ BOOL PAR_STAT::Invariant_Reduction(WN* wn_istore)
     ACCESS_VECTOR* av = aa->Dim(i);
     if (av->Too_Messy)
       return FALSE; 
+#ifdef KEY //bug 8434
+    if (av->Non_Const_Loops() >= _depth)
+      return FALSE; 
+#endif
     PAR_STAT* ps = NULL; 
     for (ps = this; ps != NULL; ps = ps->_parent) {
       if (WN_opcode(ps->_wn) == OPC_DO_LOOP 
@@ -1167,7 +1171,7 @@ static INT Loop_Index_Count(WN* wn_tree,
 
 static void SNL_Bad_Array_Footprints(WN* wn_loop, 
 				     INT nloops, 
-			             INT trip_product, 
+			             INT64 trip_product, 
 			             double* bad_read_bytes, 
 			             double* bad_write_bytes)
 {
@@ -1262,7 +1266,7 @@ static double SNL_Inner_Cache_Cost(WN* wn_outer,
   double dirty_cost = 0.0;
   double bad_read_bytes = 0; 
   double bad_write_bytes = 0; 
-  INT trip_product = 1; 
+  INT64 trip_product = 1; 
   for (i = parallel_depth - outer_depth; i < nloops; i++)
     trip_product *= iters[i]; 
   if (arl->Num_Bad() > 0) 
@@ -1491,8 +1495,13 @@ double PAR_STAT::Parallel_Overhead_Cost()
   double parallel_cycles = 0;
   if (WN_opcode(_wn) == OPC_DO_LOOP && _is_parallel) { 
       // need to encapsulate this in a class--DRK
+#ifdef KEY
+    double multiplier = (double) (LNO_Parallel_Overhead +
+				NOMINAL_PROCS * LNO_Parallel_per_proc_overhead);
+#else
     double multiplier = (double) (LNO_Parallel_Overhead +
                                   NOMINAL_PROCS * 123);
+#endif
       // same test as in PAR_STAT::Reduction_Cost(), has same bug--DRK
     if (Is_Inner_Loop() && Is_Parallel_Enclosed_Loop()) {
         // add estimate of cost of combining partial results

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -872,10 +872,17 @@ IP_AC_LAMBDA_TYPE_REP::Union_func_args(      IP_AC_LAMBDA_TYPE_REP &that,
     Join(*(that.remaining_args->Alias_class()->Func_class_pointed_to()),
 	 pool, trace);
 
+#ifdef KEY // bug 8109
+  Return_class_member()->Alias_class()->Data_class_pointed_to()->
+    Join(*(that.Return_class_member()->Alias_class()->Data_class_pointed_to()), pool, trace);
+  Return_class_member()->Alias_class()->Func_class_pointed_to()->
+    Join(*(that.Return_class_member()->Alias_class()->Func_class_pointed_to()), pool, trace);
+#else
   Returns()->Alias_class()->Data_class_pointed_to()->
     Join(*(that.Returns()->Alias_class()->Data_class_pointed_to()), pool, trace);
   Returns()->Alias_class()->Func_class_pointed_to()->
     Join(*(that.Returns()->Alias_class()->Func_class_pointed_to()), pool, trace);
+#endif
 }
 
 void
@@ -1719,8 +1726,10 @@ IP_ALIAS_CLASSIFICATION::Handle_call(WN *const call_wn)
       // Direct call. We get the callee descriptor from the (base of
       // the) ST specified in the call WN.
       ST_IDX callee_st_idx = WN_st_idx(call_wn);
+#ifndef KEY // Bug 8433
       Is_True(ST_base_idx(St_Table[callee_st_idx]) == callee_st_idx,
 	      ("AC:Handle_call: Called routine must not have based address"));
+#endif
       callee_member = Class_of_base_id(WN_base_id(call_wn))->Representative();
     }
     else {

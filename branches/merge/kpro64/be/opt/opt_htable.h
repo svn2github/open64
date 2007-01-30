@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -358,6 +358,7 @@ private:
       IDTYPE    aux_id;              // the entry number in aux symbol table 
       ST       *base_st;	     // the base
       TY_IDX    ty;                  // type pointer for LDA
+      mUINT16   afieldid;	     // field id of the LDA
     } islda;
     union {                          // ISCONST ISRCONST
       ST        *const_id;            // symbolic constant or constant, ISRCONST
@@ -457,10 +458,11 @@ public:
   size_t Extra_space_used(void) const
     { return sizeof(CODEREP *) * Extra_ptrs_used(); }
 
-  void Init_lda(MTYPE wt, IDTYPE st, mINT32 ofst, TY_IDX tt, ST *bas)
+  void Init_lda(MTYPE wt, IDTYPE st, mINT32 ofst, TY_IDX tt, ST *bas,
+  		UINT16 field_id = 0)
     {
       Init(CK_LDA); Set_dtyp(wt);  Set_lda_ty(tt); Set_offset(ofst);
-      Set_lda_aux_id(st); Set_lda_base_st(bas);
+      Set_lda_aux_id(st); Set_lda_base_st(bas); Set_afield_id(field_id);
     }
 
   void Init_const(MTYPE wt, INT64 v)
@@ -852,6 +854,12 @@ public:
   void      Set_lda_ty(TY_IDX t)      { Is_True(Kind() == CK_LDA,
 					("CODEREP::Set_lda_ty, illegal kind"));
 					u2.islda.ty = t; }
+  void Set_afield_id(UINT field_id)   { Is_True(Kind() == CK_LDA,
+					("CODEREP::Set_afield_id, illegal kind"));
+    					u2.islda.afieldid = field_id; }
+  UINT Afield_id(void) const	      { Is_True(Kind() == CK_LDA,
+					("CODEREP::Afield_id, illegal kind"));
+    					return u2.islda.afieldid; }
   void      Set_const_val(INT64 v)    { Is_True(Kind() == CK_CONST,
 				     ("CODEREP::Set_const_val, illegal kind"));
 					u2.isconst.const_val = v; }
@@ -1490,7 +1498,8 @@ public:
                        OPT_STAB *,    // hash and return the coderep for it.
                        STMTREP *,
                        BOOL *,
-		       COPYPROP *);
+		       COPYPROP *,
+		       BOOL no_complex_preg = FALSE);
 
   BOOL        Add_expr(WN *wn,        // given a WN node, add it to
                        OPT_STAB *,    // the coderep hash and return
@@ -1499,7 +1508,8 @@ public:
                                       // This function traverse wn
                                       // recursively down and build up
                                       // the coderep.
-		       COPYPROP *);
+		       COPYPROP *,
+		       BOOL no_complex_preg = FALSE);
 
   CODEREP    *Add_def(IDTYPE,         // given a ST id, add it to the
                       mINT16,         // coderep

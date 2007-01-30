@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -282,7 +282,12 @@ ETABLE::Save_replace_rhs_by_preg(STMTREP *stmt,
 
     if (WOPT_Enable_Min_Type && 
 	MTYPE_is_integral(rhs->Dtyp()) && 
-	(rhs->Kind() == CK_VAR ||
+	(rhs->Kind() == CK_VAR 
+#ifdef TARG_X8664 // bug 8056: I4I2LDID of PREG is valid when ASM uses 
+		  // 16- or 8-bit registers and the CVTL cannot be omitted
+	 && !Opt_stab()->Aux_stab_entry(rhs->Aux_id())->Is_preg() 
+#endif
+	 ||
 	 (rhs->Kind() == CK_IVAR && rhs->Ivar_has_e_num())) &&
 	MTYPE_size_min(wk->Exp()->Dsctyp()) == MTYPE_size_min(rhs->Dsctyp()) &&
 	wk->Sign_extd() == rhs->Is_sign_extd())
@@ -731,8 +736,13 @@ CSE::Generate_injury_repair( STMTREP *injury, CODEREP *new_temp,
       // Iv  : i=i+incr_amt
       // do we need to keep the conversion?
       OPCODE cvt_opc;
+#ifndef KEY
       INT type_conversion = Need_type_conversion(incr_amt->Dtyp(), 
 					old_temp->Dtyp(), &cvt_opc);
+#else // bug 7858: it is safer to keep the increment amount as signed
+      INT type_conversion = Need_type_conversion(incr_amt->Dtyp(), 
+		      Mtype_TransferSign(MTYPE_I8, old_temp->Dtyp()), &cvt_opc);
+#endif
       if ( type_conversion == NEED_CVT ) {
 	temp_incr = Htable()->Add_unary_node_and_fold(cvt_opc,incr_amt);
       }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -44,7 +44,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/reverse.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.reverse.cxx $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>
@@ -724,6 +724,7 @@ static BOOL RV_Tree_Has_All_Backward_Indices(WN* wn_tree,
   return TRUE; 
 } 
 
+#ifdef PATHSCALE_MERGE
 //-----------------------------------------------------------------------
 // NAME: RV_Find_Written_Indices
 // FUNCTION: Returns TRUE if all of the indices of 'wn_loop' in 'wn_tree'
@@ -748,7 +749,7 @@ static BOOL RV_Tree_Has_All_Written_Indices(WN* wn_tree,
   }
   return FALSE;
 }
-
+#endif
 
 //-----------------------------------------------------------------------
 // NAME: Do_Loop_Is_Backward
@@ -766,6 +767,7 @@ extern BOOL Do_Loop_Is_Backward(WN* wn_loop)
     &found_backward) && found_backward; 
 }
 
+#ifdef PATHSCALE_MERGE
 //-----------------------------------------------------------------------
 // NAME: Do_Loop_Is_Regular
 // FUNCTION: Returns TRUE if all of the do loop indices in the body of
@@ -778,4 +780,4 @@ extern BOOL Do_Loop_Is_Regular(WN* wn_loop)
 {
   return !RV_Tree_Has_All_Written_Indices(WN_do_body(wn_loop), wn_loop);				
 }
-      
+#endif

@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -55,7 +55,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_lftr2_CXX   "opt_lftr2.cxx"
-static char *rcs_id =   opt_lftr2_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id =   opt_lftr2_CXX"$Revision: 1.6 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "opt_lftr2.h"		// LFTR class

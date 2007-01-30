@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -385,10 +385,10 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
     gtabs.symstr_tab = (char*) ld_get_section_base (p_obj, strtab_idx);
     get_global_symtab (gtabs, IP_FILE_HDR_file_info (file_header), p_obj,
 		       gsymtab); 
-    pair<Sym *, UINT> ext_symtab = walk_st_list (gtabs, elf_symtab);
-
 #if !defined(TARG_IA64) && !defined(TARG_X8664)    // Merge the new ELF symbol table entries with the existing ones.
     //
+    pair<Sym *, UINT> ext_symtab = walk_st_list (gtabs, elf_symtab);
+
     if (ext_symtab.second  > 0) {
 #if 1
     	an_elf_sym_record *p_sym = (an_elf_sym_record *)ext_symtab.first;
@@ -399,9 +399,9 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
 		   ld_get_section_base (p_obj, strtab_idx),
 		   ext_symtab.second, p_obj);
     }
-#endif
 
     MEM_POOL_FREE (Malloc_Mem_Pool, ext_symtab.first);
+#endif
 
     // Merge the new global WHIRL symbol table in with current global
     // WHIRL symbol table.  Note that we create a temporary version of

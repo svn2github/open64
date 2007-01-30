@@ -47,7 +47,7 @@
 #ifndef opt_config_INCLUDED
 #define opt_config_INCLUDED             "opt_config.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_configrcs_id = 	opt_config_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_configrcs_id = 	opt_config_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 /* The -WOPT: group option flag variables are now in common/com: */

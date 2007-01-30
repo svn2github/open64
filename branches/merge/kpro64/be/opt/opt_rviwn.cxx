@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -63,7 +63,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_rviwn_CXX	"opt_rviwn.cxx"
-static char *rcs_id = 	opt_rviwn_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = 	opt_rviwn_CXX"$Revision: 1.11 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

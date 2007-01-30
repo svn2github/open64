@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -43,9 +43,9 @@
 // ====================================================================
 //
 // Module: access_vector.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
+// $Revision: 1.8 $
+// $Date: 04/12/29 20:05:39-08:00 $
+// $Author: kannann@iridot.keyresearch $
 //
 // Revision history:
 //  dd-mmm-94 - Original Version
@@ -2080,8 +2080,11 @@ void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
     }
   } else if (WN_operator(wn) == OPR_PAREN) {
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
-  } else if (WN_opcode(wn) == OPC_I8I4CVT ||
-             WN_opcode(wn) == OPC_U8I4CVT) {
+  } else if (WN_opcode(wn) == OPC_I8I4CVT
+#ifdef PATHSCALE_MERGE
+					|| WN_opcode(wn) == OPC_U8I4CVT
+#endif
+  	) {
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
 #ifdef KEY 
   // Bug 4525 - tolerate CVTs in the access vector for -m64 compilation

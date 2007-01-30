@@ -62,7 +62,7 @@
 #ifndef opt_emit_INCLUDED
 #define opt_emit_INCLUDED	"opt_emit.h"
 #ifdef _KEEP_RCS_ID
-static char *opt_emitrcs_id = 	opt_emit_INCLUDED"$Revision: 1.1.1.1 $";
+static char *opt_emitrcs_id = 	opt_emit_INCLUDED"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef cxx_base_INCLUDED

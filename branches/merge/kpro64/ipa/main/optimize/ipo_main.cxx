@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -557,6 +561,10 @@ if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
 
 } // Inline_Call
 
+#ifdef KEY
+extern void IPO_Process_Icalls (IPA_NODE *);
+extern void IPA_update_ehinfo_in_pu (IPA_NODE *);
+#endif
 
 static IPA_NODE *
 IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
@@ -574,6 +582,15 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
   IP_READ_pu_infos (node->File_Header());
 
   IPA_NODE_CONTEXT context (node);	// switch to this node's context
+
+#ifdef KEY
+  if (PU_src_lang (node->Get_PU()) & PU_CXX_LANG)
+    IPA_update_ehinfo_in_pu (node);
+
+  if (IPA_Enable_Icall_Opt && node->Has_Pending_Icalls()) {
+    IPO_Process_Icalls (node);
+  }
+#endif
 
   if (IPA_Enable_Padding) {
     IPO_Pad_Whirl (node);
@@ -1983,7 +2000,7 @@ Perform_Interprocedural_Optimization (void)
     }
   }
 
-  Set_tlog_phase(PHASE_IPA);
+  Set_ipa_tlog_phase(PHASE_IPA);
 
   if (IPA_Enable_ipacom) {
     ipa_compile_init ();
