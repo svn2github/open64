@@ -952,6 +952,8 @@ Print_BB_Header ( BB *bp, BOOL flow_info_only, BOOL print_tn_info )
   } else if (BB_call(bp)) fprintf ( TFile, "  Call block\n" );
   if (BB_chk_split(bp)) 	fprintf ( TFile, "  Check split block\n" );
   if (BB_chk_split_head(bp)) 	fprintf ( TFile, "  Check split head block\n" );
+  //bug fix for OSP_212
+  if (BB_chk_split_tail(bp)) 	fprintf ( TFile, "  Check split tail block\n" );
   if (BB_recovery(bp)) 	fprintf ( TFile, "  Recovery block\n" );
   if (BB_scheduled(bp)) 	fprintf ( TFile, "  Scheduled BB\n" );
 

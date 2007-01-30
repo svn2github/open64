@@ -99,7 +99,10 @@ static BOOL gbb_needs_rename;   // Some local renaming required for a GBB
                                 // due to a cgprep failure.  DevWarn and
                                // rename for robustness.
 BOOL fat_self_recursive = FALSE;
-//BOOL gra_self_recursive = FALSE; 
+//BOOL gra_self_recursive = FALSE;
+//bug fix for OSP_212
+GTN_SET** bb_gtn_needs_complement;// use to present tns in bb
+//to be complement, use as GTN* BB_GTN_needs_complement[bb->id]
 extern BOOL gra_self_recursive;
 extern char *Cur_PU_Name;
 BOOL OP_maybe_unc_cmp(OP* op)
@@ -1277,6 +1280,30 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   Initialize_Wired_LRANGEs();
   OP_OF_ONLY_DEF Op_Of_Only_Def(&MEM_local_nz_pool);
   Op_Of_Only_Def.Set_OPS_OF_ONLY_DEF(gbb);
+  //begin bug fix for OSP_212
+  GTN_SET* needs_comp = bb_gtn_needs_complement[gbb->Bb()->id];
+  //scan the complement bbs to add a local lrange to wired tn using ret-val's reg 
+  for (TN *tn = GTN_SET_Choose(needs_comp);
+     		tn != GTN_SET_CHOOSE_FAILURE && tn != NULL;
+      		tn = GTN_SET_Choose_Next(needs_comp, tn))
+  {
+      if (TN_is_global_reg(tn) && TN_is_dedicated(tn)) {
+          /* dedicated tn's reg may be corrupt, here we can't use the reg in this bb.
+           * so to create a local lrange to that dedicated tn.
+           */
+          DevWarn("local lrange of GTN%d(%s) in BB:%d", TN_number(tn),
+		    REGISTER_name(TN_register_class(tn), TN_register(tn)), gbb->Bb()->id);
+          GRA_PREF_LIVE* gpl = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn);
+          if (!gpl) {
+		    gpl = gra_pref_mgr.LIVE_Create(&MEM_local_nz_pool);
+		    hTN_MAP_Set(live_data, tn, gpl);
+          }
+          Wired_TN_Reference(gbb, TN_register_class(tn), 
+		         TN_register(tn), wired_locals);
+      }
+  }
+  //end bug fix for OSP_212
+
   for (iter.Init(gbb), op_count=1; ! iter.Done(); iter.Step(), op_count++ ) {
     OP*  xop = iter.Current();
     for ( i = OP_opnds(xop) - 1; i >= 0; --i ) {
@@ -1425,6 +1452,80 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   MEM_POOL_Pop(&MEM_local_nz_pool);
 }
 
+//begin bug fix for OSP_212
+/////////////////////////////////////
+static void
+Try_To_Add_Gtn_to_Complement_BB(BB* bb, TN* tn)
+////////////////////////////////////
+//
+// try to add gtns to complement bbs.
+// iteratively from this BB to chk_split_head
+//
+/////////////////////////////////////
+{
+  if (!bb || BB_call(bb))
+    return;// maybe this case never occurs, use to catch uncertain case
+  FmtAssert((BB_chk_split(bb) || BB_recovery(bb) || BB_scheduled(bb)), 
+    ("I don't know how to deal with BB:%d, actually I thought it couldn't happen.", bb->id));
+  //add tn to bb's complement gtn_set
+  bb_gtn_needs_complement[bb->id] = GTN_SET_Union1D(
+    bb_gtn_needs_complement[bb->id], tn, GRA_pool);
+  if (BB_chk_split_head(bb) || BB_recovery(bb))
+    return;//no need to proceed
+  else{
+    BBLIST* preds;
+    FOR_ALL_BB_PREDS(bb, preds) {
+      BB *pred = BBLIST_item(preds);
+      Try_To_Add_Gtn_to_Complement_BB(pred, tn);
+    }
+  }
+}
+
+/////////////////////////////////////
+static void
+Try_To_Add_Complement_BB(GRA_BB* gbb)
+////////////////////////////////////
+//
+// try to add gbb and its preds to complement bbs.
+// iteratively scans from chk_split_tail to chk_split_head,
+//
+/////////////////////////////////////
+{
+  if (!gbb)
+    return;// maybe this case never occurs, use to catch uncertain case
+  BB* bb = gbb->Bb();
+  FmtAssert((BB_chk_split(bb) || BB_recovery(bb) || BB_scheduled(bb)), 
+    ("I don't know how to deal with BB:%d, actually I thought it couldn't happen.", bb->id));
+  if (BB_chk_split_head(bb) || BB_recovery(bb))
+    return;//no need to proceed
+   //we should complement this bb iteratively
+  GRA_BB_OP_FORWARD_ITER op_iter;
+  //scan all the op referencing dedicated tns to complement
+  for (op_iter.Init(gbb); ! op_iter.Done(); op_iter.Step() ) {
+    OP*  xop = op_iter.Current();
+      for (int i = OP_opnds(xop) - 1; i >= 0; --i ) {
+        TN *op_tn = OP_opnd(xop, i);
+        if (! TN_is_register(op_tn))
+          continue;
+        if (TN_is_global_reg(op_tn) && TN_is_dedicated(op_tn) &&
+           REGISTER_allocatable(TN_register_class(op_tn), TN_register(op_tn))) {
+          BBLIST* preds;
+          FOR_ALL_BB_PREDS(bb, preds) {
+            BB *pred = BBLIST_item(preds);
+            Try_To_Add_Gtn_to_Complement_BB(bb, op_tn);//only apply to allocatable reg's tn
+        }
+      }
+    }
+  }
+  //iteratively scan its preds  
+  BBLIST* preds;
+  FOR_ALL_BB_PREDS(bb, preds) {
+    BB *pred = BBLIST_item(preds);
+    Try_To_Add_Complement_BB(gbb_mgr.Get(pred));
+  }
+}
+//end bug fix for OSP_212
+
 /////////////////////////////////////
 static void
 Create_LUNITs(void)
@@ -1435,17 +1536,39 @@ Create_LUNITs(void)
 /////////////////////////////////////
 {
   GRA_REGION_GBB_ITER gbb_iter;
-
+  int i;
   GRA_Init_Trace_Memory();
 
   MEM_POOL_Push(&MEM_local_nz_pool);
   Initialize_Wired_LRANGEs();
+  //begin bug fix for OSP_212
+  //create arrays to hold bb's gtns to complement
+  extern BB_NUM PU_BB_Count;
+  GTN_SET* tmp_gtn_array[PU_BB_Count + 1];
+  for (i = 1; i <=PU_BB_Count; i ++)
+    tmp_gtn_array[i] = GTN_SET_Create_Empty(GTN_UNIVERSE_size, GRA_pool);
+  bb_gtn_needs_complement = tmp_gtn_array;
 
+  /* chk_split in recovery phase can cause some dedicated TN's live range
+   * becoming shorter than its original one. So we should complement those
+   * dedicated TNs in its preds.
+   */
+  for (gbb_iter.Init(gra_region_mgr.Complement_Region()); ! gbb_iter.Done();
+       gbb_iter.Step() ) {
+    GRA_BB* gbb = gbb_iter.Current();
+    if (BB_chk_split_tail(gbb->Bb()) && !BB_chk_split_head(gbb->Bb())){
+	// maybe have cut a bb who has dedicated tns
+    	Try_To_Add_Complement_BB(gbb);
+    }
+  }
+  //end bug fix for OSP_212
+  
   for (gbb_iter.Init(gra_region_mgr.Complement_Region()); ! gbb_iter.Done();
        gbb_iter.Step() ) {
     GRA_BB* gbb = gbb_iter.Current();
     Scan_Complement_BB_For_Referenced_TNs(gbb);
   }
+
   MEM_POOL_Pop(&MEM_local_nz_pool);
   GRA_Trace_Memory("After Create_LUNITs()");
 }
