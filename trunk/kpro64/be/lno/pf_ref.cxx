@@ -2230,72 +2230,19 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
           increment =  LNO_Prefetch_Ahead *Cache.LineSize(1);
         else increment =  LNO_Prefetch_Ahead *Cache.LineSize(2);
 
-        if(Stride_Forward())
-          increment = Stride_Forward()*increment;
-        else
-          increment = (Get_Stride_In_Enclosing_Loop()>0) ? increment : (-increment) ;
+        increment = Stride_Forward()*increment;
 
         // what is the size in bytes that the reference is jumping?
-        INT stride_size = ABS(Get_Stride_In_Enclosing_Loop());
-
+        INT stride_size = Get_Stride_In_Enclosing_Loop();
         if ((((level == level_1) || (level == level_1and2)) &&
              (stride_size >= Cache.LineSize(1))) ||
             ((level == level_2) && stride_size >= Cache.LineSize(2))) {
-          if(Stride_Forward()) {
+
             // we're exceeding a cache line in each iteration,
             // so prefetch some ITERATIONS ahead instead.
-            increment = Get_Stride_In_Enclosing_Loop() * LNO_Prefetch_Iters_Ahead;
-          }
-          else {
-            //Stride_Forward() == 0 means the innermost dim of the 
-            //array does not contain induction variables, e.g. (from mgrid in CPU2000)
-            //       DO 100 I3=2,N-1
-            //         DO 100 I2=2,N-1
-            //           U(1,I2,I3) = U(N-1,I2,I3)
-            //           U(N,I2,I3) = U( 2, I2,I3)
-            // 100  CONTINUE
-            //
-            //U(1,I2,I3) is such a kind of reference. 
-            //For this situation, we can not figure out to prefetch how  
-            //many cache line ahead. Instead, we should generate prefetch
-            //for U(1,I2+LNO_Prefetch_Iters_Ahead,I3).
 
-            //We don't use offset to prefetch some element ahead
-            increment = 0;
-
-            ACCESS_ARRAY *aa = (ACCESS_ARRAY*) WN_MAP_Get (LNO_Info_Map, ref);
-            ACCESS_VECTOR *av;
-
-            // find the first array dimension (going from stride-one outwards)
-            // that uses the index of the loop immediately enclosing the reference. 
-            // (Ignore coupled subscripts)
-            INT i, curr_depth=Get_Depth();
-            for (i=aa->Num_Vec()-1; i>=0; i--) {
-              av = aa->Dim(i);
-              if (av->Loop_Coeff(curr_depth)) break;
-            }
-            Is_True(i>=0, ("Invalid dimension."));
-
-            DO_LOOP_INFO* dli = Get_Loop()->Get_LoopInfo();
-            INT step;
-            if (dli->Step->Is_Const()) {
-              step = LNO_Prefetch_Iters_Ahead * av->Loop_Coeff(curr_depth) * dli->Step->Const_Offset;
-            }
-            else {
-              // assume step is 1
-              step = LNO_Prefetch_Iters_Ahead * av->Loop_Coeff(curr_depth);
-            }
-
-            //Update array index
-            WN* wn_index = WN_array_index(arraynode, i);
-            Is_True(wn_index, ("The index of array doen't exist."));
-            TYPE_ID desc = Promote_Type(WN_rtype(wn_index));
-            OPCODE addop = OPCODE_make_op(OPR_ADD, desc, MTYPE_V);
-            WN* wn_ahead = LWN_Make_Icon(desc, step);
-            WN_array_index(arraynode, i) = LWN_CreateExp2(addop, wn_index, wn_ahead); 
-            LWN_Set_Parent(WN_array_index(arraynode, i), arraynode);
-          }
-
+            stride_size = stride_size * LNO_Prefetch_Iters_Ahead;
+            increment = stride_size;
         }
 
         offset += increment;
