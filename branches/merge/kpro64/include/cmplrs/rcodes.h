@@ -63,6 +63,9 @@ static char *rcodes_h_id="$Header: /proj/osprey/CVS/open64/osprey1.0/include/cmp
 #define RC_NEED_INLINER		16	/* flag that we need the inliner */
 #define RC_SYSTEM_ERROR		32	/* a O/S or environment error */
 #define RC_GCC_ERROR		33	/* gcc's error number */
+#ifdef KEY
+#define RC_GCC_INTERNAL_ERROR	34	/* gcc internal error */
+#endif
 #define RC_OVERFLOW_ERROR	64	/* an overflow error; try recompiling */
 
 #endif
