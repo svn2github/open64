@@ -773,6 +773,7 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 #ifdef TARG_IA64 
       tc = Host_To_Targ_Float_4 (MTYPE_F4,
 	WFE_Convert_Internal_Real_to_IEEE_Single (real));
+      break;
     case 8:
       tc = Host_To_Targ_Float (MTYPE_F8,
 	WFE_Convert_Internal_Real_to_IEEE_Double (real));
