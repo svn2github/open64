@@ -1847,7 +1847,7 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   Is_True(opc != OPC_BLOCK, ("Wn is a OPR_BLOCK."));
 
   AUX_ID vp_idx;
-  OCC_TAB_ENTRY *occ = NULL;
+  OCC_TAB_ENTRY *occ;
 
   switch ( opr ) {
   case OPR_LDBITS:
@@ -1974,12 +1974,6 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
     
   default:
     break;
-  }
-
-  if ((OPCODE_is_load(opc) || OPCODE_is_store(opc)) && occ) {
-    ALIAS_CLASSIFICATION* ac = Alias_classification();
-    if (!ac->Writable_by_call (ac->Alias_class(wn))) 
-      occ->Points_to()->Set_not_writable_by_callee (); 
   }
 
   // Traverse the children of wn
@@ -3259,9 +3253,6 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 
       BOOL is_unique_pt = occ->Points_to()->Unique_pt();
       BOOL is_restricted = occ->Points_to()->Restricted();
-      BOOL not_writable_by_callee = occ->Points_to()->Not_writable_by_callee ();
-      BOOL not_readable_by_callee = occ->Points_to()->Not_readable_by_callee ();
-
       ST *based_sym = occ->Points_to()->Based_sym();
 
       Analyze_Base_Flow_Sensitive(occ->Points_to(), wn);
@@ -3278,12 +3269,6 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 	occ->Points_to()->Set_restricted();
 	occ->Points_to()->Set_based_sym(based_sym);
       }
-
-      if (not_writable_by_callee)
-        occ->Points_to()->Set_not_writable_by_callee ();
-
-      if (not_readable_by_callee)
-        occ->Points_to()->Set_not_readable_by_callee ();
 
       if (WOPT_Enable_Update_Vsym)
 	Update_iload_vsym(occ);

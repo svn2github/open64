@@ -269,18 +269,7 @@ ESSA::Ilod_modified_phi_result(const BB_NODE *phi_bb, const CODEREP *cr) const
       return TRUE;
 
     STMTREP *sr = vsym->Defstmt();
-    if (sr == NULL) return TRUE;
-    if (OPCODE_operator (sr->Op()) == OPR_CALL) {
-      READ_WRITE how = Rule()->Aliased_with_Call 
-          (sr->St (), sr->Call_flags(), cr->Points_to(Opt_stab()));
-      if (how == WRITE || how == READ_AND_WRITE) 
-        return TRUE;
- 
-      cr->Ivar_mu_node()->Set_OPND(vsym->Defchi()->OPND());
-      continue;
-    }
-
-    if (!OPCODE_is_store(sr->Op())) return TRUE;
+    if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
     // Seems like the following can lead to use-before-def if the
     // defstmt's result is not aliased with the use (i.e., with
@@ -400,19 +389,7 @@ ESSA::Ilod_modified_real_occ_real_occ(const BB_NODE *def_bb,
       return TRUE;
 
     STMTREP *sr = vsym->Defstmt();
-    if (sr == NULL) return TRUE;
-    if (OPCODE_operator (sr->Op()) == OPR_CALL) {
-      READ_WRITE how = Rule()->Aliased_with_Call 
-          (sr->St (), sr->Call_flags(), use_cr->Points_to(Opt_stab()));
-      if (how == WRITE || how == READ_AND_WRITE) 
-        return TRUE;
- 
-      use_cr->Ivar_mu_node()->Set_OPND(vsym->Defchi()->OPND());
-      continue;
-    }
-    
-    if (!OPCODE_is_store(sr->Op())) 
-      return TRUE;
+    if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
     if (Rule()->Aliased_Memop(sr->Lhs()->Points_to(Opt_stab()),
 			      use_cr->Points_to(Opt_stab()), 

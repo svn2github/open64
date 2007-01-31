@@ -838,11 +838,6 @@ READ_WRITE ALIAS_RULE::Aliased_with_Call(ST *st, INT32 flags, const POINTS_TO *m
       ref = FALSE;
   }
 
-  if (mem->Not_readable_by_callee ())
-    ref = FALSE;
-  if (mem->Not_writable_by_callee ())
-    mod = FALSE;
-
   if (mod && ref)
     return READ_AND_WRITE;
   else if (mod)

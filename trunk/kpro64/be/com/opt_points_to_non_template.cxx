@@ -329,12 +329,6 @@ void POINTS_TO::Meet(const POINTS_TO *pt, ST *definition)
     Reset_known_f90_pointer();
   }
 
-  if (Not_readable_by_callee () && !pt->Not_readable_by_callee ()) 
-    Reset_not_readable_by_callee ();
-
-  if (Not_writable_by_callee () && !pt->Not_writable_by_callee ())
-    Reset_not_writable_by_callee ();
-
   CHECK_POINTS_TO(this);
 }
 
