@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1402,6 +1406,24 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
     int elfsectno_of_debug_info;
     int abbrevsectno;
     unsigned char *data;
+#ifdef KEY /* Bug 3507 */
+    int upointer_size = dbg->de_pointer_size;
+    char *module_name;
+    /*
+     * To generate the DW_AT_import attribute in a DW_TAG_imported_declaration,
+     * Kannan doesn't put the value into the "vsp" buffer. Instead, when it
+     * comes time to generate the DW_AT_import in cgdwarf.cxx, he fetches the
+     * value of DW_AT_name from the "vsp" buffer and emits a ".quad" with a
+     * symbol derived from the name. This means that the 4-byte or 8-byte
+     * pointer value of DW_AT_import is missing from "vsp", and after each
+     * DW_AT_import, the value of "die_off" is an additional 8 bytes too big
+     * relative to the actual offset into "vsp". To fix this, whenever
+     * "die_off" was used to index into "vsp", I use ADJUSTED_DIE_OFF instead;
+     * hopefully I have found and changed all the places.--sjc
+     */
+    unsigned count_imported_decls = 0;
+#   define ADJUSTED_DIE_OFF (die_off - count_imported_decls * upointer_size)
+#endif /* KEY Bug 3507 */
     int cu_header_size;
     Dwarf_P_Abbrev curabbrev, abbrev_head, abbrev_tail;
     Dwarf_P_Die curdie;
@@ -1533,6 +1555,20 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 		abbrev_tail = curabbrev;
 	    }
 	}
+#ifdef KEY /* Bug 3507 */
+	    if (curabbrev->abb_tag == DW_TAG_module) {
+	      res = dbg->de_reloc_pair(dbg,
+				       DEBUG_INFO,
+				       ADJUSTED_DIE_OFF, /* r_offset */
+				       dbg->de_sect_name_idx[DEBUG_INFO], 
+				       0, 
+				       dwarf_drt_module,
+				       uword_size);	      
+	      if (res != DW_DLV_OK) {
+		DWARF_P_DBG_ERROR(dbg,DW_DLE_REL_ALLOC, -1);
+	      }
+	    }
+#endif /* KEY Bug 3507 */
 	res = _dwarf_pro_encode_leb128_nm(curabbrev->abb_idx,
 					  &nbytes,
 					  buff1, sizeof(buff1));
@@ -1548,6 +1584,11 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	curdie->di_abbrev_nbytes = nbytes;
 	die_off += nbytes;
 	curattr = curdie->di_attrs;
+#ifdef KEY /* Bug 3507 */
+	    // get the module name
+	    if (curabbrev->abb_tag == DW_TAG_imported_declaration)
+	      module_name = curattr->ar_data;
+#endif /* KEY Bug 3507 */
 	while (curattr) {
 	    if (curattr->ar_rel_type != R_MIPS_NONE) {
 		switch (curattr->ar_attribute) {
@@ -1566,8 +1607,12 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 		default:
 		    break;
 		}
-		res = dbg->de_reloc_name(dbg, DEBUG_INFO, die_off + curattr->ar_rel_offset,	/* r_offset 
-												 */
+		res = dbg->de_reloc_name(dbg, DEBUG_INFO,
+#ifdef KEY /* Bug 3507 */
+		  ADJUSTED_DIE_OFF + curattr->ar_rel_offset,	/* r_offset */
+#else /* KEY Bug 3507 */
+		  die_off + curattr->ar_rel_offset,	/* r_offset */
+#endif /* KEY Bug 3507 */
 					 curattr->ar_rel_symidx,
 					 dwarf_drt_data_reloc,
 					 curattr->ar_reloc_len);
@@ -1580,6 +1625,31 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	    die_off += curattr->ar_nbytes;
 	    curattr = curattr->ar_next;
 	}
+#ifdef KEY /* Bug 3507 */
+	    if (curabbrev->abb_tag == DW_TAG_imported_declaration) {
+	      // Note that we have overloaded the meaning of the size 
+	      // of the relocation to be able to look back for the module
+	      // name in the vsp in the back-end. The reason this works is 
+	      // because pointers could be 32-bit or 64-bit and cgdwarf and 
+	      // the library are in synch as far as that info is concerned.
+	      // However, we adjust the die offset by pointer size.
+	      res = dbg->de_reloc_pair(dbg,
+				       DEBUG_INFO,
+				       ADJUSTED_DIE_OFF, /* r_offset */
+				       dbg->de_sect_name_idx[DEBUG_INFO], 
+				       0, 
+				       dwarf_drt_imported_declaration,
+				       strlen(module_name));	      
+	      if (res != DW_DLV_OK) {
+		DWARF_P_DBG_ERROR(dbg,DW_DLE_REL_ALLOC, -1);
+	      }
+	      /* This 4-byte or 8-byte pointer doesn't appear in the "vsp"
+	       * array, but is emitted specially in cgdwarf.cxx function
+	       * Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs. */
+	      die_off += upointer_size;
+	      count_imported_decls += 1;
+	    }
+#endif /* KEY Bug 3507 */
 	/* depth first search */
 	if (curdie->di_child)
 	    curdie = curdie->di_child;

@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -365,6 +369,14 @@ dwarf_add_fde_inst(Dwarf_P_Fde fde,
     switch (op) {
 
 #ifdef TARG_X8664
+	// This does not seem specific to x8664, but I will leave it for now.
+	// The previous code here apparently assumed the labels for this "op"
+	// need to be encoded in 4 bytes --- that is not the case. This "op"
+	// limits to 4 bytes whatever follows it. And whatever follows it is
+	// the subtraction between the 2 labels, i.e., each label may need
+	// more number of bytes.
+	// Use Dwarf_Unsigned for each label (bugs 4071, 4490, 9729), also
+	// affects code in pro_section.c and dwf_section.c.
 	case DW_CFA_advance_loc4:
 	    // We will use 2 half-words to copy the labels; cg will later
 	    // fix the relocatable symbols.

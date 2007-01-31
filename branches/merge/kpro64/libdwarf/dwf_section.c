@@ -1,6 +1,10 @@
 /*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
 
-  Copyright 2005 PathScale, Inc.  All Rights Reserved.
+/*
+
+  Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
 
   Copyright (C) 2000,2004 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -300,6 +304,15 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	data += sizeof(Dwarf_Ubyte);
 	// personality routine offset
 	if (personality) {
+	    // bug 9177: Emit personality format only if there is
+	    // personality information.
+	    //
+	    // personality format
+	    db = Personality_Format;
+	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&db,
+			    sizeof(db), sizeof(Dwarf_Ubyte));
+	    data += sizeof(Dwarf_Ubyte);
+	    // personality routine offset
 	    Dwarf_Unsigned p = 0;
 	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&p,
 			    sizeof(p), upointer_size);
@@ -584,6 +597,7 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	    data += curinst->dfp_nbytes;
 	    curinst = curinst->dfp_next;
 	}
+
 	/* padding */
 	for (i = 0 ; i < pad ; i++) {
 	    *data = DW_CFA_nop;
