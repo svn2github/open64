@@ -796,6 +796,9 @@ public:
   mINT16        Get_Stride_One_Loop ();
   mINT16        Get_Stride_One_Size ();
   mINT16        Get_Stride_In_Enclosing_Loop ();
+#ifdef OSP_OPT
+  BOOL           Get_Stride_Accurate();
+#endif
   mINT16        Stride_Forward ();
   void          Gen_Prefetch (PF_DESC* pfdesc,
                              PF_SPLIT_VECTOR* split_vec,
@@ -830,6 +833,12 @@ class PF_UGS {
   mINT16            _stride_one_size;
   // size in bytes travelled per iteration of immediately enclosing loop
   mINT16            _stride_in_enclosing_loop;
+
+#ifdef OSP_OPT
+  // this variable is used to indicate whether the computation of _stride_in_enclosing_loop
+  // is accurate or is just a kind of estimation. 
+  BOOL               _stride_accurate;
+#endif
   
   WN_DA             _refs;      // list of references in this UGS
   PF_LG_DA          **_lg;      // list of lgs, one for each loop
@@ -862,6 +871,9 @@ public:
   mINT16                Get_Stride_One_Loop () const { return _stride_one_loop; }
   mINT16                Get_Stride_One_Size () const { return _stride_one_size; }
   mINT16                Get_Stride_In_Enclosing_Loop () const { return _stride_in_enclosing_loop; }
+#ifdef OSP_OPT
+  BOOL                   Get_Stride_Accurate ()    const { return _stride_accurate; }
+#endif
   mINT16                Stride_Forward ()    const { return _stride_forward; }
   WN                    *Get_Ref (INT num)  const { return _refs.Bottom_nth(num); }
   mINT16                Get_Depth ();

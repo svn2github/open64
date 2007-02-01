@@ -203,6 +203,12 @@ inline mINT16  PF_LG::Get_Stride_In_Enclosing_Loop () {
   return _myugs->Get_Stride_In_Enclosing_Loop ();
 }
 
+#ifdef OSP_OPT
+inline BOOL  PF_LG::Get_Stride_Accurate() {
+  return _myugs->Get_Stride_Accurate();
+}
+#endif
+
 inline PF_LOOPNODE* PF_UGS::Get_Loop ()  {
   return _myba->Get_Loop ();
 }
@@ -2159,24 +2165,22 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         if ((((level == level_1) || (level == level_1and2)) &&
              (stride_size >= Cache.LineSize(1))) ||
             ((level == level_2) && stride_size >= Cache.LineSize(2))) {
-          if(Stride_Forward()) {
+          if( Stride_Forward() && Get_Stride_Accurate() ) {
             // we're exceeding a cache line in each iteration,
             // so prefetch some ITERATIONS ahead instead.
             increment = Get_Stride_In_Enclosing_Loop() * LNO_Prefetch_Iters_Ahead;
           }
           else {
-            //Stride_Forward() == 0 means the innermost dim of the 
-            //array does not contain induction variables, e.g. (from mgrid in CPU2000)
-            //       DO 100 I3=2,N-1
-            //         DO 100 I2=2,N-1
-            //           U(1,I2,I3) = U(N-1,I2,I3)
-            //           U(N,I2,I3) = U( 2, I2,I3)
-            // 100  CONTINUE
+            //OSP_233 & OSP_240
+            //  DO I = 1, N
+            //    DO J = 1, N
+            //      SUM = SUM + A(J, I)*B(I, J)
+            //    END DO
+            //  END DO
             //
-            //U(1,I2,I3) is such a kind of reference. 
             //For this situation, we can not figure out to prefetch how  
-            //many cache line ahead. Instead, we should generate prefetch
-            //for U(1,I2+LNO_Prefetch_Iters_Ahead,I3).
+            //many cache lines ahead for B(I,J). Instead, we should generate 
+            //prefetch for B(I, J + LNO_Prefetch_Iters_Ahead).
 
             //We don't use offset to prefetch some element ahead
             increment = 0;
@@ -2192,7 +2196,14 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
               av = aa->Dim(i);
               if (av->Loop_Coeff(curr_depth)) break;
             }
-            Is_True(i>=0, ("Invalid dimension."));
+
+            //In some cases, i could be larger than the maxmium array dimension
+            //e.g. U(2*I+J), the array is one-dimension, but Num_Vec()==2.
+            //So we just use the innermost dim to perform address computation.
+            if(i >= WN_num_dim(arraynode))
+              i = WN_num_dim(arraynode) - 1;
+
+            Is_True(i>=0  && i<WN_num_dim(arraynode), ("Invalid dimension."));
 
             DO_LOOP_INFO* dli = Get_Loop()->Get_LoopInfo();
             INT step;
@@ -2206,7 +2217,6 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
 
             //Update array index
             WN* wn_index = WN_array_index(arraynode, i);
-            Is_True(wn_index, ("The index of array doen't exist."));
             TYPE_ID desc = Promote_Type(WN_rtype(wn_index));
             OPCODE addop = OPCODE_make_op(OPR_ADD, desc, MTYPE_V);
             WN* wn_ahead = LWN_Make_Icon(desc, step);
@@ -2878,6 +2888,10 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
   // get stride in enclosing loop
   {
     _stride_in_enclosing_loop = 0;
+#ifdef OSP_OPT
+    _stride_accurate = TRUE;
+#endif
+
     ACCESS_ARRAY *aa = (ACCESS_ARRAY*) WN_MAP_Get (LNO_Info_Map, wn_array);
 
     // find the first array dimension (going from stride-one outwards)
@@ -2899,6 +2913,21 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
           _stride_in_enclosing_loop *= WN_const_val(dim_wn);
         }
         else {
+#ifdef OSP_OPT
+          //OSP_233 & OSP_240 
+          //
+          //  DO I = 1, N
+          //    DO J = 1, N
+          //      SUM = SUM + A(J, I)*B(I, J)
+          //    END DO
+          //  END DO
+          //
+          // Fortran's evil. If bound of a dimension, e.g. N, is not a constant,  
+          // we can not compute how many bytes B(I,J) will go through in a J iteration. 
+          // Assuming 100 as array dimension size will lead to inaccurate prefetch.
+          // 
+          _stride_accurate = FALSE;
+#endif
           // randomly assume arraydimension size is 100
           _stride_in_enclosing_loop *= 100;
         }
