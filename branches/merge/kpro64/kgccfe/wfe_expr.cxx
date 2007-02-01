@@ -3485,6 +3485,7 @@ WFE_Expand_Expr (tree exp,
 	    WN_set_rtype(wn, rtype);
 	    WN_set_desc(wn, desc);
 	    WN_offset(wn) = WN_offset(wn)+ofst+component_offset;
+	    WN_set_ty(wn, ty_idx);
 #ifdef PATHSCALE_MERGE
 	    // bug fix for OSP_158
     	    // if (TY_kind(ty_idx) == KIND_SCALAR)
@@ -4361,7 +4362,11 @@ WFE_Expand_Expr (tree exp,
 
 	    case BUILT_IN_FLOORL:
 	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+#ifdef TARG_IA64
+	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
+#else
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
+#endif
 	      whirl_generated = TRUE;
 	      break;
 #endif
