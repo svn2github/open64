@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,6 +50,12 @@ extern string_list_t *error_list;
 
 extern string_list_t *count_files;
 
+#ifdef KEY /* Bug 11265 */	
+/* Accumulate -isystem directories for insertion in command line to Fortran
+ * front end */
+extern string_list_t *isystem_dirs;
+#endif /* KEY Bug 11265 */
+
 /* return object file that corresponds to source name */
 extern char *get_object_file (char *src);
 
@@ -81,3 +91,8 @@ extern void mark_for_cleanup (char *file);
 
 /* delete temp object files */
 extern void cleanup_temp_objects ();
+
+#ifdef KEY
+/* return the report file name */
+extern char *get_report_file_name();
+#endif

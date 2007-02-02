@@ -98,6 +98,9 @@ static phase_info_t phase_info[] = {
    {'p',  0x0000000000000100LL, "cpp",   PHASEPATH,     FALSE}, /* cplus_cpp */
    {'p',  0x0000000000000200LL,	"mfef77",PHASEPATH,	FALSE},	/* f_cpp */
    {'p',  0x0000000000000400LL,	"ftpp"   ,PHASEPATH,	FALSE},	/* f90_cpp */
+#ifdef KEY	// bug 9058
+   {'p',  0x0000000000000800LL,	"coco"   ,PHASEPATH,	FALSE},	/* coco */
+#endif
    /* place-holder for generic cpp, whose mask unites all cpp's; */
    {'p',  0x0000000000000ff0LL,	"",	"",		FALSE},	/* any_cpp */
 
@@ -125,6 +128,11 @@ static phase_info_t phase_info[] = {
    {'f',  0x0000000000080000LL,	"mfef95",PHASEPATH,	FALSE},	/* cppf90_fe */
    {'f',  0x0000000000100000LL,	"gfec",PHASEPATH,	TRUE }, /* c_gfe */
    {'f',  0x0000000000200000LL,	"gfecc",PHASEPATH,	TRUE }, /* cplus_gfe */
+#ifdef KEY
+   {'f',  0x0000000000400000LL, "cc1"   ,PHASEPATH, TRUE }, /* spin_cc1  */
+   {'f',  0x0000000000800000LL, "cc1plus",PHASEPATH,    TRUE }, /* spin_cc1plus */
+   {'f',  0x0000000001000000LL, "wgen",PHASEPATH,   TRUE }, /* wgen      */
+#endif
    /* place-holder for generic fe, whose mask unites all fe's; */
    /* this is so -Wf will apply to whatever fe is being invoked. */
    {'f',  0x0000000000ff0000LL,	"",	"",		FALSE},	/* any_fe */
@@ -181,7 +189,11 @@ typedef struct source_struct {
 } source_info_t;
 /* source_kind_t is index into source_info array */
 static source_info_t source_info[] = {
-	{""},				/* NONE */
+#ifdef KEY  // If no suffix, treat as linker object.  Bug 9430.
+    {},             /* NONE */
+#else
+    {""},               /* NONE */
+#endif
 	{"c"},				/* c */
 	{"C","CC","CPP","CXX","cc","cpp","cxx","c++"},	/* C */
 	{"f","for"},			/* f */

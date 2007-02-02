@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -64,6 +68,9 @@ boolean keep_flag = FALSE;
 
 string_list_t *count_files = NULL;
 static string_list_t *temp_files = NULL;
+#ifdef KEY /* Bug 11265 */
+string_list_t *isystem_dirs = NULL;
+#endif /* KEY Bug 11265 */
 static char *tmpdir;
 static char *saved_object = NULL;
 
@@ -79,7 +86,7 @@ get_object_file (char *src)
 	// bug 2025
 	// Create .o files in /tmp in case the src dir is not writable.
 	if (!(keep_flag || (ipa == TRUE) || remember_last_phase == P_any_as)) {
-	  char *obj_name = change_suffix(drop_path(src), "o");
+	  char *obj_name = change_suffix(src, "o");
 	  string_pair_item_t *p;
 	  FOREACH_STRING_PAIR (p, temp_obj_files) {
 	    if (strcmp (STRING_PAIR_KEY(p), obj_name) == 0)
@@ -92,6 +99,21 @@ get_object_file (char *src)
 	  add_string_pair (temp_obj_files, obj_name, mapped_name);
 	  return mapped_name;
 	}
+
+	// Handle IPA .o files corresponding to sources with the same basename,
+	// e.g., a.c and foo/a.c.  Create unique .o files by substituting '/'
+	// in the source name with '%'.  Bugs 9097, 9130.
+	if (ipa == TRUE &&
+	    !option_was_seen(O_c) &&
+	    keep_flag != TRUE) {
+	  char *p;
+	  src = strdupa(src);
+	  for (p = src; *p != '\0'; p++) {
+	    if (*p == '/')
+	      *p = '%';
+	  }
+	}
+
 	return change_suffix(drop_path(src), "o");
 }
 
@@ -114,6 +136,15 @@ create_temp_file_name (char *suffix)
 	string_item_t *p;
 	/* use same prefix as gcc compilers;
 	 * tempnam limits us to 5 chars, and may have 2-letter suffix. */
+#ifdef KEY
+	int len = strlen(suffix);
+	if (len > 4) {
+	  internal_error("create_temp_file_name: suffix too long: %s", suffix);
+	  suffix = "xx";	// Let driver continue until error exit.
+	} else if (len > 2) {
+	  sprintf(buf, "%s.", suffix);
+	} else
+#endif
 	sprintf(buf, "cc%s.", suffix);
 	sprintf(pathbuf, "%s/%s", tmpdir, buf); /* full path of tmp files */
 	pathbuf_len = strlen(pathbuf);
@@ -301,7 +332,7 @@ save_cpp_output (char *path)
 	now = time(NULL);
 	fprintf(ofp, "/*\n\nOpen64 compiler problem report - %s",
 		ctime(&now));
-	fprintf(ofp, "Please report this problem to http://bugs.open64.net/ \n");
+	fprintf(ofp, "Please report this problem to http://bugs.open64.net/\n");
 	fprintf(ofp, "If possible, please attach a copy of this file with your "
 		"report.\n");
 	fprintf(ofp, "\nPLEASE NOTE: This file contains a preprocessed copy of the "
@@ -326,7 +357,7 @@ save_cpp_output (char *path)
 
 	fprintf(ofp, "Version %s build information:\n",
 		compiler_version);
-	fprintf(ofp, "  ChangeSet %s\n", cset_key);
+	fprintf(ofp, "  Changeset %s\n", cset_id);
 	fprintf(ofp, "  Built by %s@%s in %s\n", build_user,
 		build_host, build_root);
 	fprintf(ofp, "  Build date %s\n", build_date);
@@ -461,3 +492,10 @@ cleanup_temp_objects ()
     unlink(report_file);
   }
 }
+
+#ifdef KEY
+char *
+get_report_file_name() {
+  return report_file;
+}
+#endif

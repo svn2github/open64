@@ -52,6 +52,9 @@ extern char *fb_xdir;		/* dir where pixie emits dso's */
 extern char *fb_cdir;		/* dir where pixie emits count files */
 extern char *fb_phase;         /* phase for -fb_phase */
 extern char *fb_type;          /* type for -fb_type */
+#ifdef KEY
+extern char *coco_setfile;  /* setfile for -fcoco */
+#endif
 
 extern char *ldpath_for_pixie;  /* Tell pixie where to find ld */
 extern int saved_argc;		/* original argc */
@@ -116,6 +119,11 @@ int quote_shell_arg (char *p, char *buf);
 
 // Change the phase names based on run-time info.
 extern void init_phase_names (void);
+
+#ifdef KEY
+// Get the system GCC's major version number.
+extern int get_gcc_major_version(void);
+#endif
 
 #define PASS1 0
 #define PASS2 1

@@ -1,5 +1,9 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -55,10 +59,9 @@
 #include "file_names.h"
 #include "get_options.h"
 #include "phases.h"
+#include "run.h"
 
 int endian = UNDEFINED;
-
-static char compiler_version[] = INCLUDE_STAMP;
 
 void
 set_defaults (void)
@@ -118,17 +121,17 @@ set_defaults (void)
 	prepend_option_seen(O_cpp_assembly);
 	prepend_option_seen(O_prelink);
 	prepend_option_seen(O_demangle);
-	if (shared == UNDEFINED) {
-		if (abi == ABI_IA32) {
-			toggle(&shared,NON_SHARED);
-	   	} else { 
-			toggle (&shared, CALL_SHARED);
-			prepend_option_seen(O_call_shared);
-		}
-	} else if (shared != CALL_SHARED) {
-		flag = add_string_option(O_OPT_, "Olegacy=TRUE");
-		add_option_seen (flag);
-	}
+    if (shared == UNDEFINED) {
+        if (abi == ABI_IA32) {
+            toggle(&shared,NON_SHARED);
+        } else {
+            toggle (&shared, CALL_SHARED);
+            prepend_option_seen(O_call_shared);
+        }
+    } else if (shared != CALL_SHARED) {
+        flag = add_string_option(O_OPT_, "Olegacy=TRUE");
+        add_option_seen (flag);
+    }
 	if (!is_toggled(isstatic)) {
 		toggle(&isstatic,1);
 		prepend_option_seen(O_automatic);
@@ -138,6 +141,12 @@ set_defaults (void)
 	// Make -cpp the default for Fortran.  Bug 4243.
 	if (!is_toggled(use_ftpp)) {
 		toggle(&use_ftpp, 0);
+	}
+
+	// Use the system's GCC version to select -gnu3/-gnu4 as the default.
+	// Bug 11426.
+	if (!is_toggled(gnu_version)) {
+	  toggle(&gnu_version, get_gcc_major_version());
 	}
 #endif
 }
@@ -234,6 +243,10 @@ add_special_options (void)
 		/* pass -traditional to both gfe and cpp */
 		add_phase_for_option(O_traditional, P_c_gfe);
 		add_phase_for_option(O_traditional, P_cplus_gfe);
+#ifdef KEY
+		add_phase_for_option(O_traditional, P_spin_cc1);
+		add_phase_for_option(O_traditional, P_spin_cc1plus);
+#endif
 	}
 
 #if defined(TARG_IA32)
@@ -258,7 +271,11 @@ add_special_options (void)
         }
 #endif
 
-	if ((mpkind == NORMAL_MP || auto_parallelize) && !Disable_open_mp) {
+	if ((mpkind == NORMAL_MP 
+#ifndef KEY // bug 8107
+	     || auto_parallelize
+#endif
+	    ) && !Disable_open_mp) {
 		flag = add_string_option(O_D, "_OPENMP=199810");
 		prepend_option_seen (flag);
 	}
@@ -304,7 +321,7 @@ add_special_options (void)
 	 * We leave ipa alone because mixing -ipa with -g is illegal
 	 * and generates a separate error later on.
 	 */
-	if (undefined_olevel_flag == TRUE && glevel >= 0 && ipa != TRUE) {
+	if (undefined_olevel_flag == TRUE && glevel > 1 && ipa != TRUE) {
 		turn_down_opt_level(0, "-g changes optimization to -O0 since no optimization level is specified");
 	}
 
@@ -361,10 +378,16 @@ add_special_options (void)
 		turn_off_ipa ("-IPA -fbgen combination not allowed, replaced with -fbgen");
 	}
 	/* Fix for BUG 451 */
-	if (glevel >= 1 && ipa == TRUE) {
+	if (glevel > 1 && ipa == TRUE) {
 		turn_off_ipa ("-IPA -g combination not allowed, replaced with -g");
 	}
 	if (ipa == TRUE) {
+#ifdef KEY // bug 8130
+            if (option_was_seen (O_fprofile_arcs))
+	      error ("IPA not supported with -fprofile-arcs");
+	    if (option_was_seen (O_ftest_coverage))
+	      error ("IPA not supported with -ftest-coverage");
+#endif
 	    if (olevel <= 1)
 		flag = add_string_option (O_PHASE_, "i");
 	    else

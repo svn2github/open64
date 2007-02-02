@@ -1,6 +1,8 @@
 % -*- fundamental -*-
 %
-%  Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+%  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+%
+%  Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 %
 %  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 %
@@ -171,7 +173,7 @@
 % gcc has -v show version as well as phases, so take that meaning
 -v	{show_flag = TRUE; show_version++;} ALL	cpp,as,ld	self "-show"
 	"show phases and version as they are being invoked"
--fullwarn toggle(&msglevel,2);		FTN  cpp	self "-m2"
+-fullwarn toggle(&msglevel,2);		FTN  cpp	"-m2"
 	"give more warnings, especially about missing prototypes"
 -w	toggle(&msglevel,0);		ALL	cpp,cfe,as,PFA	self "-m0"
 	""
@@ -348,7 +350,7 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	""
 -WOPT:%s	;		ALL	be,ipl	"-WOPT:%s"
 	"option group internal-use WOPT options"
--LNO:%s		;		ALL	be,ld	"-LNO:%s"
+-LNO:%s		;		ALL	be	"-LNO:%s"
 	"option group to control loop nest optimization"
 #ifndef KEY
 -MP:%s		Process_Mp_Group(optargs);		ALL	NONE	""
@@ -436,6 +438,8 @@ I-fini%s		;		CC	ld	"-fini %s"
 	""
 -pg	;		ALL	ld	self "-lm" "-TENV:call_mcount"
 	""
+-profile	;	ALL	ld	self "-lm" "-TENV:call_mcount"
+	""
 -m32	toggle(&abi,ABI_N32);	ALL	be	"-TARG:abi=n32" 
         "Compile for 32-bit ABI"
 -m64	toggle(&abi,ABI_64);	ALL	be	"-TARG:abi=n64"
@@ -460,7 +464,10 @@ I-cpp_nonansi		;		ALL	NONE	"-D_LONGLONG"
 	""
 I-cpp_extensions	;		ALL	NONE	"-D__EXTENSIONS__ -D__MATH_HAS_NO_SIDE_EFFECTS"
 	""
--ansi	toggle(&ansi,STRICT_ANSI);		cc,FTN	cpp,FE	self ANSI
+% KEY: Don't list FTN here because while FTN fe and FTN cpp take -ansi, gcc for
+%      FTN preprocessing does not.  Handle FTN -ansi when calling individual
+%      phases.
+-ansi	toggle(&ansi,STRICT_ANSI);		cc	cpp,FE	self ANSI
 	"strict ansi and standard intrinsics only"
 -std=c89		;		Cc,cpp	cpp,FE	self
 	"Support ISO C from 1990"
@@ -536,6 +543,8 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
 	"-WB,<arg> passes <arg> to the back-end via ipacom"
 %the next 2 entries are allegedly handled by the W* entry -- gbl
 %Bug#551
+-Wa,%s			;		LINK	as	"-Wa,%s"
+	"pass comma-separated opts to assembler as individual opts"
 -Wl,%s			;		LINK	ld	"-Wl,%s"
 	"pass comma-separated opts to linker as individual opts"
 -Wp,%s			;		ALL	cpp	"-Wp,%s"
@@ -556,6 +565,8 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
 	"global optimization"
 -O*3	O3_flag=TRUE;toggle(&olevel,3);	ALL	CMP,cpp	"-O3 -D__OPTIMIZE__"
 	"full optimization"
+-O*%d	;	ALL	CMP,cpp	"-O3"
+	"full optimization"
 -Os	toggle(&ospace,TRUE);	ALL	CMP	"-OPT:space"
 	"Optimize for space"
 -mspace toggle(&ospace,TRUE);	ALL	CMP	"-OPT:space"
@@ -564,7 +575,7 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
 	"full debug info"
 -g0	toggle(&glevel,0);		ALL	CMP	self
 	"no debug info"
--g1	toggle(&glevel,1);		ALL	CMP	self
+-g1	toggle(&glevel,1);		ALL	CMP	self "-Wl,--export-dynamic"
 	""
 -g2	toggle(&glevel,2);		ALL	CMP	self
 	""
@@ -590,6 +601,12 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
 	"Produce debugging information for use by GDB"
 -ggdb3	toggle(&glevel,3);		ALL	CMP	"-g3"
 	"Produce debugging information for use by GDB"
+#ifdef KEY
+-gnu3	toggle(&gnu_version,3);		Cc	NONE	""
+	"Use GCC 3 C/C++ front-end."
+-gnu4	toggle(&gnu_version,4);		Cc	NONE	""
+	"Use GCC 4 C/C++ front-end."
+#endif
 -gstabs		warn_ignored(option_name);	ALL	NONE	""
 	""
 -gstabs+	warn_ignored(option_name);	ALL	NONE	""
@@ -602,6 +619,7 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
 	""
 -gstabs3	warn_ignored(option_name);	ALL	NONE	""
 	""
+
 #define ABII32_DEFS     "-D_ILP32 -Amodel(ilp32)"
 #define ABII64_DEFS     "-D_LP64"
 #define ABIIA32_DEFS    "-D_ILP32 -Amodel(ilp32)"
@@ -613,6 +631,7 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
         ""
 -itanium toggle(&isa,ISA_IA641);        ALL     NONE    "-i64"
         ""
+
 
 %%% COMBINATIONS
 % !-non_shared means "-non_shared not specified"
@@ -660,6 +679,12 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 -auto-use%s	;			F90	ffe	"-auto_use=%s"
 	"Act as if a USE statement is specified in every PU"
 
+#ifdef KEY	/* bug 9058 */
+-fcoco		toggle(&use_coco,TRUE);	FTN	NONE	""
+	"use coco Fortran preprocessor"
+-fcoco=%s	toggle(&use_coco,TRUE);save_name(&coco_setfile,optargs); 	FTN	NONE	""
+	"use coco Fortran preprocessor"
+#endif
 -ftpp		toggle(&use_ftpp,1); 	F90	NONE	""
 	""
 -macro_expand	expand_ftpp_macros=TRUE; 	F90	N	""	
@@ -704,6 +729,12 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 	"Use idiomatic UNIX FORTRAN 77"
 -ff90	;		FTN	NONE	""
 	"Allow Fortran 90 constructs"
+-fdirectives	;		FTN	ffe	""
+	"Recognize Fortran compiler directives inside comments"
+-fno-directives	;		FTN	ffe	"-xall"
+	"Ignore Fortran compiler directives inside comments"
+I-xall	;		FTN	ffe	self
+	""
 -fsecond-underscore	;		FTN	ffe	self
 	"Append a second underscore to symbols that already contain an underscore"
 -fno-second-underscore	;		FTN	ffe	self
@@ -716,6 +747,10 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 	"Check result of operator new for NULL"
 -fno-check-new	;	CC	cfe	self
 	"Do not check result of operator new for NULL"
+-ffor-scope	;	CC	cfe	self
+	"Variables declared in a for-init loop are constrained to that scope"
+-fno-for-scope	;	CC	cfe	self
+	"Variables declared in a for-init loop extend to the enclosing scope"
 -fuse-cxa-atexit	;	CC	cfe	self
 	"Register static destructors with __cxa_atexit instead of atexit"
 -fno-use-cxa-atexit	;	CC	cfe	self
@@ -1042,8 +1077,14 @@ I-u%s		;		Cc	ld	"-u %s"
 
 -R*		;		ALL	NONE	""
 	"pass flags to RATFOR"
--m	run_m4=TRUE;		f77	NONE	""
-	"run m4 on each RATFOR source"
+% KEY	Pass "-m elf_i386" and "-m elf_x86_64" to linker.  They are the only
+%	two valid linker emulation modes.  Bug 8441.
+-m*elf_i386	;		LINK	ld	""
+	"Pass -m args to linker"
+-m*elf_x86_64	;		LINK	ld	""
+	"Pass -m args to linker"
+%-m	run_m4=TRUE;		f77	NONE	""
+%	"run m4 on each RATFOR source"
 -framepointer	warn_no_longer_supported2(option_name,"-TENV:large_stack");  ALL	NONE ""
 	""
 -trapuv 		;		Cc,FTN	be	"-DEBUG:trap_uninitialized"
@@ -1110,9 +1151,9 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fno-builtin	toggle(&fbuiltin,0);		Cc	NONE	self
 	"Do not recognise any built in functions"
--fmath-errno	toggle(&fmath_errno,1);		Cc	NONE	self
+-fmath-errno	toggle(&fmath_errno,1);		Cc,FTN	NONE	self
 	""
--fno-math-errno	toggle(&fmath_errno,0);		Cc	NONE	self -LANG:math_errno=off
+-fno-math-errno	toggle(&fmath_errno,0);		Cc,FTN	NONE	self -LANG:math_errno=off
 	"Do not set ERRNO after calling math functions that are executed with a single instruction"
 -fmessage-length=%d	;	C	f	"-fmessage-length=%d"
 	"Try to format error messages so that they fit on lines of about n characters."
@@ -1493,15 +1534,15 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fexpensive-optimizations	;		Cc	f	self
 	""
--ffast-math	;		Cc,FTN	f,be	"-OPT:IEEE_arithmetic=2 -fno-math-errno -OPT:fast_math=on"
+-ffast-math	toggle(&ffast_math,1);		Cc,FTN	f,be	"-OPT:ffast_math=ON -fno-math-errno"
 	"Improve FP speed by violating ANSI & IEEE rules"
--fno-fast-math	;		Cc,FTN	f	"-OPT:IEEE_arithmetic=1 -fmath-errno -OPT:fast_math=off"
+-fno-fast-math	toggle(&ffast_math,0);		Cc,FTN	f	"-OPT:ffast_math=OFF -fmath-errno"
 	"Conform to ANSI & IEEE math rules at the expense of speed"
--funsafe-math-optimizations	;	Cc	f	"-OPT:IEEE_arithmetic=3 -fno-math-errno"
+-funsafe-math-optimizations	;	Cc	f	"-OPT:funsafe_math_optimizations=ON -fno-math-errno"
 	"Improve FP speed by violating ANSI & IEEE rules"
--fno-unsafe-math-optimizations	;	Cc	f	"-OPT:IEEE_arithmetic=1 -fmath-errno"
+-fno-unsafe-math-optimizations	;	Cc	f	"-OPT:funsafe_math_optimizations=OFF -fmath-errno"
 	"Conform to ANSI & IEEE math rules at the expense of speed"
--ffloat-store	;	Cc,FTN	be	"-CG:localize=1:min_spill_loc_size=1"
+-ffloat-store	;	Cc,FTN	be	"-CG:x87_store=1:min_spill_loc_size=1"
 	"Do not store floats in registers"
 -fforce-addr	;		Cc	f	self
 	""
@@ -1668,7 +1709,7 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -iwithprefixbefore%D	;		Cc,as,cpp	cpp	"-iwithprefixbefore %D"
 	""
--isystem%D	;		Cc,as,cpp	cpp	"-isystem %D"
+-isystem%D	accumulate_isystem(optargs);	Cc,FTN,as,cpp	cpp	"-isystem %D"
 	""
 -MD	;		Cc,as,cpp	cpp	self
 	"Write dependencies to .d output file"
@@ -1692,6 +1733,8 @@ I-u%s		;		Cc	ld	"-u %s"
         ""
 -ff2c-abi%s	;	ALL	ffe	"-ff2c-abi %s"
 	"Tell Fortran compiler to use the f2c ABI for symbols in file"
+-fdecorate%s	;	ALL	ffe	"-fdecorate %s"
+	"File tells Fortran compiler how to transform ids into linker symbols"
 -undef	;		Cc,as,cpp	cpp	self
 	""
 %%% Code Generation Options
@@ -1701,23 +1744,23 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 % KEY: Because of limitation on derived flags, we repeat the -fexceptions
 % in the implied list.  This is to find the parent flag so action is done.
--fexceptions	;	Cc	cfe	"-fexceptions -TENV:frame_pointer=on"
+-fexceptions	;	ALL	cfe	"-fexceptions -TENV:frame_pointer=on"
 	"Enable exception handling"
--foptimize-regions	;	Cc	cfe	"-foptimize-regions -TENV:omit_ue_destroy_frame=on"
-	"Enable optimization of EH regions formation"
+-foptimize-regions  ;   Cc  cfe "-foptimize-regions -TENV:omit_ue_destroy_frame=on"
+    "Enable optimization of EH regions formation"
 -fhandle-exceptions	;	Cc	cfe	self
 	"Enable exception handling"
 -fno-exceptions	;	Cc	cfe	self
 	"Disable exception handling"
--fno-optimize-regions	;	Cc	cfe	self	
-	"Enable optimization of EH regions formation"
+-fno-optimize-regions   ;   Cc  cfe self
+    "Enable optimization of EH regions formation"
 -fno-handle-exceptions	;	Cc	cfe	self
 	"Disable exception handling"
 -ffixed-%s	;		Cc	NONE	"-TENV:registers_not_allocatable=%s"
 	""
 -mfixed-range=%s	;	Cc	NONE	"-TENV:registers_not_allocatable=%s"
 	""
--funwind-tables	;		Cc	NONE	"-CG:emit_unwind_info=on -TENV:frame_pointer=on"
+-funwind-tables	;		ALL	NONE	"-CG:emit_unwind_info=on -TENV:frame_pointer=on"
 	""
 -fno-unwind-tables	;	Cc	NONE	"-CG:emit_unwind_info=off"
 	""
@@ -1739,13 +1782,13 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fpcc-struct-return	;		Cc	NONE	""
 	""
--fpic	;		A	FE	self "-TENV:PIC"
+-fpic	toggle(&pic,TRUE);		A	FE	self "-TENV:PIC"
 	"Generate position independent code, if possible"
--fPIC	;		A	FE	self "-TENV:PIC"
+-fPIC	toggle(&pic,TRUE);		A	FE	self "-TENV:PIC"
  	"Generate position independent code, if possible"
--fno-PIC	;		A	FE	self
+-fno-PIC	toggle(&pic,FALSE);		A	FE	self
  	"Do not generate position independent code"
--fno-pic	;		A	FE	self
+-fno-pic	toggle(&pic,FALSE);		A	FE	self
  	"Do not generate position independent code"
 -fpie	;		A	FE	self "-TENV:PIC"
 	"Generate position independent code, if possible"
@@ -1765,6 +1808,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Use the smallest fitting integer to hold enums"
 -fshort-double	;		Cc	NONE	""
 	"Use the same size for double as for float"
+-fshort-wchar	;		Cc	FE	self
+	"Use short unsigned int for wchar_t instead of the default underlying type for the target."
 -fvolatile	;		Cc	NONE	""
 	"Consider all mem refs through pointers as volatile"
 -fvolatile-global	;		Cc	NONE	""
@@ -1826,12 +1871,12 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Disable MMX extensions"
 -msse	;		ALL	NONE	self
 	"Enable SSE extensions"
--mno-sse	warn_ignored(option_name);	ALL	NONE	self
-	"Disable SSE extensions"
+-mno-sse	toggle(&sse2,FALSE);toggle(&sse3,FALSE);	ALL	be	""
+	"Disable SSE2/SSE3 extensions"
 -msse2	toggle(&sse2,TRUE);		ALL	be	""
 	"Enable SSE2 extensions"
 -mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);	ALL	be	""
-	"Disable SSE2 extensions"
+	"Disable SSE2/SSE3 extensions"
 -msse3	toggle(&sse2,TRUE);toggle(&sse3,TRUE);	ALL	be	""
 	"Enable SSE3 extensions"
 -mno-sse3	toggle(&sse3,FALSE);	ALL	be	""
@@ -1858,6 +1903,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -print-libgcc-file-name	;	ALL	NONE	"-print-file-name=libgcc.a"
 	""
+-print-multi-lib	{execute_flag=FALSE; print_multi_lib();}	ALL	NONE	""
+	"Print the mapping from multilib directory names to compiler switches that enable them."
 -print-prog-name=%s	{execute_flag=FALSE; print_file_path(optargs, 1);}	ALL	NONE	""
 	""
 -print-search-dirs	{show_search_path=TRUE; execute_flag=FALSE;}	ALL	NONE	""
@@ -1939,6 +1986,8 @@ I-u%s		;		Cc	ld	"-u %s"
 --print-search-dirs	;	ALL	NONE	"-print-search-dirs"
 	""
 --print-missing-file-dependencies	;	ALL	NONE	"-MG"
+	""
+--print-multi-lib	;	ALL	NONE	"-print-multi-lib"
 	""
 --print-prog-name%s	;	ALL	NONE	"-print-prog-name=%s"
 	""

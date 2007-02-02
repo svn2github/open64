@@ -64,8 +64,22 @@ LCDEFS += -DPSC_BUILD_DATE='$(psc_build_date)'
 # Remove the following line to disable the PathScale subscription checking software
 LCDEFS += -DPSCSUB
 
-ifneq ($(BUILD_HOST), MIPS)
-LCDEFS += -DLITTLE_ENDIAN_HOST
+ifeq ($(BUILD_HOST), IA32)
+ ifeq ($(BUILD_VARIANT), NUE)
+ # NUE is special environment built on ia32 but looks like ia64
+ LCDEFS += -DLITTLE_ENDIAN_HOST -DHOST_IA64
+ else
+ LCDEFS += -DLITTLE_ENDIAN_HOST -DHOST_IA32
+ endif
+endif
+ifeq ($(BUILD_HOST), IA64)
+LCDEFS += -DLITTLE_ENDIAN_HOST -DHOST_IA64
+endif
+ifeq ($(BUILD_HOST), X8664)
+LCDEFS += -DLITTLE_ENDIAN_HOST -DHOST_IA32
+endif
+ifeq ($(BUILD_HOST), MIPS)
+LCDEFS += -DHOST_MIPS
 endif
 
 RUN =
@@ -75,8 +89,18 @@ ifeq ($(BUILD_ARCH), IA64)
   endif
 endif
 
+ifeq ($(BUILD_VARIANT), NOOPT)
+# special driver for no optimization
+LCDEFS += -DNOOPT
+endif
+ifeq ($(BUILD_VARIANT), NUE)
+# special driver for NUE cross environment
+LCDEFS += -DNUE
+endif
+
 # don't want to use common/com/defs.h
 LCINCS	= -I. -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com
+
 
 TARGETS	= driver
 
@@ -131,7 +155,7 @@ SRC_CFILES = \
 	phases.c \
 	run.c \
 	special_options.c \
-	version_bk.c \
+	version_hg.c \
 	license.c
 
 CFILES=	\
@@ -147,7 +171,7 @@ OPTIONS_SRC = \
 SRC_OBJECTS = $(SRC_CFILES:.c=.o)
 SHARED_OBJECTS = $(SHARED_CFILES:.c=.o)
 
-LDIRT = OPTIONS.P table generated $(GEN_HFILES) $(GEN_CFILES) driver version_bk.c
+LDIRT = OPTIONS.P table generated $(GEN_HFILES) $(GEN_CFILES) driver version_hg.c
 
 LANGS = as cc c89 CC f77 fort77 f90
 
@@ -207,19 +231,18 @@ OPTIONS.P : $(OPTIONS_SRC)
 driver: $(OBJECTS)
 	$(link.ccf) -o $@ $(OBJECTS) $(LDFLAGS)
 
-bk_root := $(shell bk root 2>/dev/null || echo unknown)
+hg_root := $(shell hg root 2>/dev/null || echo unknown)
 
-version_bk.c:
+version_hg.c:
 	@echo 'GEN    $@'
 	@echo '#include "version.h"' > $@
-	@echo 'const char *const cset_rev = "$(shell bk -R prs -hr+ -d:I: ChangeSet || echo unknown)";' >> $@
-	@echo 'const char *const cset_key = "$(shell bk -R prs -hr+ -d:CSETKEY: ChangeSet || echo unknown)";' >> $@
-	@echo 'const char *const build_root = "$(bk_root)";' >> $@
+	@echo 'const char *const cset_id = "$(shell hg parents --template "{node}" || echo unknown)";' >> $@
+	@echo 'const char *const build_root = "$(hg_root)";' >> $@
 	@echo 'const char *const build_host = "$(shell hostname -f)";' >> $@
 	@echo 'const char *const build_user = "$(shell id -un)";' >> $@
 	@echo 'const char *const build_date = "$(shell date +'%Y-%m-%d %H:%M:%S %z')";' >> $@
 
-.PHONY: version_bk.c
+.PHONY: version_hg.c
 
 # need to make generated headers before compiling src files
 $(SRC_OBJECTS) : $(GEN_HFILES)

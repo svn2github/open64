@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -95,6 +95,12 @@ extern boolean nostdinc;	/* no standard include directory */
 extern char *help_pattern;	/* pattern string for help file */
 
 extern int inline_t;            /* toggle for inline options */
+
+#ifdef KEY
+/* Before front-end: UNDEFINED.  After front-end: TRUE if inliner will be run.
+   Bug 11325. */
+extern int run_inline;
+#endif
 
 extern boolean dashdash_flag;   /* when you see -- set this flag to
 				   indicate the end of the options */

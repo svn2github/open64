@@ -300,7 +300,7 @@ int prof_lib_exists(const char *lib)
 
 void add_library(string_list_t *list, const char *lib)
 {
-    if (option_was_seen(O_pg)) {
+    if (option_was_seen(O_profile)) {
 	for (struct prof_lib *l = prof_libs; l->name; l++) {
 	    if (strcmp(l->name, lib) != 0)
 		continue;
