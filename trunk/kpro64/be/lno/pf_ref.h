@@ -795,7 +795,7 @@ public:
   mINT16        Get_LeadingRef () const { return _leading_ref; }
   mINT16        Get_Stride_One_Loop ();
   mINT16        Get_Stride_One_Size ();
-  mINT16        Get_Stride_In_Enclosing_Loop ();
+  mINT32        Get_Stride_In_Enclosing_Loop ();
 #ifdef OSP_OPT
   BOOL           Get_Stride_Accurate();
 #endif
@@ -832,7 +832,7 @@ class PF_UGS {
   // do i=..,..,2 a[i]  --> (2*elem_size)
   mINT16            _stride_one_size;
   // size in bytes travelled per iteration of immediately enclosing loop
-  mINT16            _stride_in_enclosing_loop;
+  mINT32            _stride_in_enclosing_loop;
 
 #ifdef OSP_OPT
   // this variable is used to indicate whether the computation of _stride_in_enclosing_loop
@@ -870,7 +870,7 @@ public:
   ACCESS_ARRAY          *Get_AA ()   const { return _aa;   }
   mINT16                Get_Stride_One_Loop () const { return _stride_one_loop; }
   mINT16                Get_Stride_One_Size () const { return _stride_one_size; }
-  mINT16                Get_Stride_In_Enclosing_Loop () const { return _stride_in_enclosing_loop; }
+  mINT32                Get_Stride_In_Enclosing_Loop () const { return _stride_in_enclosing_loop; }
 #ifdef OSP_OPT
   BOOL                   Get_Stride_Accurate ()    const { return _stride_accurate; }
 #endif

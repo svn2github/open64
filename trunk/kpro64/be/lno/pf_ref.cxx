@@ -199,7 +199,7 @@ inline mINT16  PF_LG::Get_Stride_One_Size () {
   return _myugs->Get_Stride_One_Size ();
 }
 
-inline mINT16  PF_LG::Get_Stride_In_Enclosing_Loop () {
+inline mINT32  PF_LG::Get_Stride_In_Enclosing_Loop () {
   return _myugs->Get_Stride_In_Enclosing_Loop ();
 }
 
@@ -2904,7 +2904,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
 
     if (i >= 0) {
       // add up the stride in the dimensions inner to "i"
-      _stride_in_enclosing_loop = (mINT16) ABS(WN_element_size(wn_array)); // default
+      _stride_in_enclosing_loop = ABS(WN_element_size(wn_array)); // default
       for (INT j=aa->Num_Vec()-1; j>i; j--) {
         WN* dim_wn = NULL;
         if (j < WN_num_dim(wn_array)) dim_wn = WN_array_dim(wn_array, j);
