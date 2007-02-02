@@ -44,6 +44,7 @@
 #ifdef KEY /* Bug 1683 */
 
 #include <signal.h>
+#include <string.h>
 
 /*
  * g77 documents only a two-argument "signal" intrinsic function.

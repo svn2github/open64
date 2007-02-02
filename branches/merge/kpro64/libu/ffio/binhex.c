@@ -36,6 +36,7 @@
 
 #pragma ident "@(#) libu/ffio/binhex.c	92.1	06/29/99 13:16:47"
 
+#include <stdlib.h>
 #include <cray/portdefs.h>
 #include "spec_parse.h"
 

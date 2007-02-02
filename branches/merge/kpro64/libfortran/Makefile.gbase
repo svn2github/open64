@@ -64,6 +64,7 @@ LCDEFS += -D_LIB_INTERNAL
 LCDEFS += -D_GNU_SOURCE
 LCDEFS += -U__mips
 endif
+LCDEFS += -DTARG_$(BUILD_TARGET)
 ifeq ($(BUILD_HOST), IA64)
 LCDEFS += -D_WORD32
 LCDEFS += -D_LIB_INTERNAL
@@ -193,6 +194,9 @@ SOURCES += $(F90FILES)
 
 VPATH    = $(SRC_DIRS)
 LCINCS += $(addprefix -I, $(SRC_DIRS))
+
+# When using cpp or "use"ing modules, Fortran needs same -I options as C would
+LF77INCS += $(LCINCS)
 
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^

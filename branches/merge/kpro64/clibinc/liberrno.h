@@ -169,10 +169,18 @@ __END_DECLS
  */
  
 #define FERDPEOF -(BASE+1)	/* Tried to read past end of file	*/
+#ifdef KEY /* F2003 */
+/* ISO/IEC 1539-1:2004 13.8.2.5 requires a single value for any EOF */
+#define FERDEMPT (FERDPEOF)	/* Tried to read an empty file		*/
+#define FERDENDR (FERDPEOF)	/* Tried to read past endfile record	*/
+#define FERDNLEF (FERDPEOF)	/* Tried to read past EOF on namelist	*/
+#define FERDIEOF (FERDPEOF)	/* Tried to read past internal file EOF */
+#else /* KEY F2003 */
 #define FERDEMPT -(BASE+2)	/* Tried to read an empty file		*/
 #define FERDENDR -(BASE+3)	/* Tried to read past endfile record	*/
 #define FERDNLEF -(BASE+4)	/* Tried to read past EOF on namelist	*/
 #define FERDIEOF -(BASE+5)	/* Tried to read past internal file EOF */
+#endif /* KEY F2003 */
 
 #define FEEORCND -(BASE+6)	/* Read past EOR with ADVANCE='NO'	*/
 
@@ -296,7 +304,12 @@ __END_DECLS
 #define FENICVEO (BASE+193)	/* Exponent overflow on numeric input	*/
 #define FENICVBK (BASE+194)	/* Blank numeric input field		*/
 
+#ifdef KEY /* F2003 */
+/* ISO/IEC 1539-1:2004 13.8.2.5 requires a single value for any EOR */
+#define FERDPEOR (FEEORCND)	/* Tried to read past end of record	*/
+#else /* KEY F2003 */
 #define FERDPEOR (BASE+201)	/* Tried to read past end of record	*/
+#endif /* KEY F2003 */
 #define FERDWRER (BASE+202)	/* Read/wrote too little data 		*/
 #define FERDMEMY (BASE+203)	/* Unable to get memory for fmt'd read	*/
 

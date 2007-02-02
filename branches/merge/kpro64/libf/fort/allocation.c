@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -43,6 +47,7 @@
 
 #include <fortran.h>
 #include <stddef.h>
+#include <string.h>
 #include <liberrno.h>
 #include <cray/dopevec.h>
 #include <cray/portdefs.h>
@@ -51,6 +56,11 @@
 #include <stdlib.h>
 #endif
 #include "defalias.h"
+#ifdef KEY /* Bug 6845 */
+# ifdef _DEBUG
+#  include <stdio.h>
+# endif /* _DEBUG */
+#endif /* KEY Bug 6845 */
 
 extern long     _zero_entity;   /* nonzero addr for PRESENT func */
 
@@ -277,6 +287,14 @@ _ALLOCATE(AllocHeadType *aloclist,
 				}
 			}
 		}
+#ifdef KEY /* Bug 6845 */
+# ifdef _DEBUG
+                if (ps_debug_alloc > 0) {
+		  fprintf(stderr, "allocation.c malloc: %p\n",
+		    (void *) base);
+		}
+# endif /* _DEBUG */
+#endif /* KEY Bug 6845 */
 
 		/* Set base address for allocated area.  If character, set */
 		/* pointer as fcd.  Clear address if zero allocation. */
@@ -303,6 +321,197 @@ _ALLOCATE(AllocHeadType *aloclist,
 	if(lstat)
 		*statvar	= errflag;
 }
+
+#ifdef KEY /* Bug 6845 */
+extern void _DEALLOC(AllocHeadType *);
+
+/*
+ * dva		Dope vector describing an allocatable array whose element
+ *		type is a derived type containing allocatable components
+ * return	Pointer to DopeAllocType, which follows the last actual
+ *		dimension (which may be less than MAXDIM) inside the dope
+ *		vector
+ */
+#define DOPE_ALLOC_INFO(dva) ((DopeAllocType *) (dva->dimension + dva->n_dim))
+
+/*
+ * dva		Dope vector describing an allocatable array
+ * return	Size in bytes of the dope vector
+ */
+#define DOPE_VECTOR_SIZE(dva) \
+    ((sizeof *dva) - (sizeof dva->dimension) + \
+    (dva->n_dim * sizeof(struct DvDimen)) + \
+    (dva->alloc_cpnt ? \
+      (sizeof(DopeAllocType) + \
+        alloc_info->n_alloc_cpnt * sizeof(unsigned long)) : \
+	0))
+
+/*
+ * dva		dope vector describing an array
+ * return	number of elements in array
+ */
+static unsigned long
+count_elements(DopeVectorType *dva) {
+  unsigned long n_elements = 1;
+  int d = 0;
+  for (; d < dva->n_dim; d += 1) {
+    n_elements *= (unsigned long)
+      (dva->dimension[d].extent - dva->dimension[d].low_bound + 1);
+    }
+  return n_elements;
+}
+
+/* Assuming that element type of allocatable array contains components which
+ * are themselves allocatable, recursively delete them. We iterate over the
+ * elements but recurse through the subobjects, so the stack depth is a
+ * function of the depth of the tree of types, not the size of the arrays.
+ *
+ * I can't find explicit permission in the standard, but both Intel and PGI
+ * compilers take the attitude that it's not an error if a component is not
+ * allocated, so we do likewise.
+ *
+ * dva		Dope vector for allocatable array (dva->alloc_cpnt must be 1)
+ * version	Version from AllocHeadType
+ * imalloc	imalloc flag from AllocHeadType
+ */
+static void
+recursive_dealloc(DopeVectorType *dva, int version, int imalloc) {
+  /* Existing code doesn't define this symbolically, sigh */
+# define BITSTOBYTES(x) ((x) >> 3)
+  DopeAllocType *alloc_info = DOPE_ALLOC_INFO(dva);
+  unsigned long n_allocatable_cpnt = alloc_info->n_alloc_cpnt;
+
+  AllocHeadType *alist = alloca((sizeof *alist) +
+    (sizeof alist->dv) * (n_allocatable_cpnt - 1));
+  memset(alist, 0, sizeof *alist); /* For sanity */
+  alist->version = version;
+  alist->imalloc = imalloc;
+
+  int n_elements = count_elements(dva);
+  char *element = (char *) dva->base_addr.a.ptr;
+  int bytes_per_element = BITSTOBYTES(dva->base_addr.a.el_len);
+  int e = 0;
+  for (; e < n_elements; e += 1) {
+    int i = 0;
+    alist->icount = 0;
+    for (; i < n_allocatable_cpnt; i += 1) {
+      DopeVectorType *d = (DopeVectorType *)
+	(element + (BITSTOBYTES(alloc_info->alloc_cpnt_offset[i])));
+      if (d->assoc) {
+	alist->dv[alist->icount++] = d;
+      }
+    }
+    _DEALLOC(alist);
+    element += bytes_per_element;
+  }
+}
+
+/*
+ * Assign one allocatable array to another. Assumes the type and rank of src
+ * matches the type and rank of dest.
+ *
+ * src		Dope vector representing an allocatable array
+ * dest		Dope vector representing an allocatable array
+ */
+void
+_ASSIGN_ALLOCATABLE(DopeVectorType *dest, DopeVectorType *src, int version,
+  int imalloc) {
+
+#ifdef _DEBUG
+  /* Current function refers to ps_debug_alloc only inside _DEBUG */
+  if (ps_debug_alloc == -1) {
+    ps_debug_alloc = get_debug_alloc_state();
+  }
+#endif /* _DEBUG */
+
+  /* Someday should recognize special case where dest and src shapes match
+   * so we don't need to call free and malloc */
+  unsigned int src_nelements = count_elements(src);
+
+  /* Deallocate array and any subcomponents */
+  AllocHeadType list;
+  list.version = version;
+  list.imalloc = imalloc;
+  list.icount = 1;
+  list.dv[0] = dest;
+  _DEALLOC(&list);
+
+  /* Make dest dope vector match src; both now temporarily point to same
+   * dynamic storage */
+  DopeAllocType *alloc_info = DOPE_ALLOC_INFO(src);
+  int save_alloc_cpnt = dest->alloc_cpnt;
+  memcpy(dest, src, DOPE_VECTOR_SIZE(src));
+  /* If source wasn't allocatable, correct the fields that just got clobbered */
+  if (src->p_or_a != ALLOC_ARRY) {
+    dest->assoc = 1;
+    dest->ptr_alloc = 0;
+    dest->p_or_a = ALLOC_ARRY;
+    dest->a_contig = 1;
+    dest->alloc_cpnt = save_alloc_cpnt;
+  }
+
+  int el_len_bytes = (src->type_lens.type == DVTYPE_ASCII) ?
+    src->base_addr.a.el_len :
+    (src->base_addr.a.el_len / 8);
+  size_t nbytes = el_len_bytes * src_nelements;
+
+  /* Allocate separate storage for dest */
+  if (src->assoc) {
+    /* Doesn't seem to be a named constant available for bits-per-byte, sigh */
+    dest->base_addr.a.ptr = malloc(nbytes);
+    if (dest->base_addr.a.ptr == NULL) {
+      _lerror (_LELVL_ABORT, FENOMEMY);
+    }
+#ifdef KEY /* Bug 6845 */
+# ifdef _DEBUG
+    if (ps_debug_alloc > 0) {
+      fprintf(stderr, "allocation.c malloc: %p\n",
+        (void *) dest->base_addr.a.ptr);
+    }
+# endif /* _DEBUG */
+#endif /* KEY Bug 6845 */
+
+    /* Copy all elements */
+    if (src->a_contig) {
+      memcpy(dest->base_addr.a.ptr, src->base_addr.a.ptr, nbytes);
+    }
+    else {
+      _Copyin(dest->base_addr.a.ptr, src);
+    }
+
+    /* If element type is a derived type with allocatable components, then
+     * recursively allocate and copy */
+    if (src->alloc_cpnt) {
+      unsigned int n_alloc_cpnt = alloc_info->n_alloc_cpnt;
+      char *src_element = src->base_addr.a.ptr;
+      char *dest_element = dest->base_addr.a.ptr;
+      int e = 0;
+      for (; e < src_nelements; e += 1) {
+	int i = 0;
+	for (; i < n_alloc_cpnt; i += 1) {
+	  unsigned int alloc_cpnt_offset =
+	    BITSTOBYTES(alloc_info->alloc_cpnt_offset[i]);
+	  DopeVectorType *src_cpnt =
+	    (DopeVectorType *) (src_element + alloc_cpnt_offset);
+	  DopeVectorType *dest_cpnt =
+	    (DopeVectorType *) (dest_element + alloc_cpnt_offset);
+	  /* Dest must not point to same dynamically allocated memory as src */
+	  dest_cpnt->base_addr.a.ptr = 0;
+	  dest_cpnt->assoc = 0;
+	  _ASSIGN_ALLOCATABLE(dest_cpnt, src_cpnt, version, imalloc);
+	}
+      src_element += el_len_bytes;
+      dest_element += el_len_bytes;
+      }
+    }
+  }
+
+  else {
+    dest->base_addr.a.ptr = 0;
+  }
+
+}
+#endif /* KEY Bug 6845 */
 
 /*  _DEALLOCATE - called by compiled Fortran programs to deallocate space
  *                for objects in the allocation list.  The status is
@@ -420,6 +629,18 @@ _DEALLOCATE(AllocHeadType *aloclist,
 #else
 		}
 #endif /* KEY Bug 4933 */
+
+#ifdef KEY /* Bug 6845 */
+                if (dva->alloc_cpnt) {
+		  recursive_dealloc(dva, aloclist->version, aloclist->imalloc);
+		}
+# ifdef _DEBUG
+                if (ps_debug_alloc > 0) {
+		  fprintf(stderr, "allocation.c free: %p\n", (void *) base);
+		}
+# endif /* _DEBUG */
+#endif /* KEY Bug 6845 */
+
 		/* free space when size not zero */
 		if (nsize != 0)
 #if	defined(_CRAYT3E)
@@ -504,6 +725,17 @@ _DEALLOC(AllocHeadType *aloclist)
 			fcdleng	= _fcdlen(dva->base_addr.charptr);
 		} else
 			base	= (void*) dva->base_addr.a.ptr;
+
+#ifdef KEY /* Bug 6845 */
+                if (dva->alloc_cpnt) {
+		  recursive_dealloc(dva, aloclist->version, aloclist->imalloc);
+		}
+# ifdef _DEBUG
+                if (ps_debug_alloc > 0) {
+		  fprintf(stderr, "allocation.c free: %p\n", (void *) base);
+		}
+# endif /* _DEBUG */
+#endif /* KEY Bug 6845 */
 
 		/* free space when size not zero */
 		if (dva->orig_size != 0) {
@@ -778,6 +1010,14 @@ _F90_ALLOCATE_B(long size,
 		}
 	}
 
+#ifdef KEY /* Bug 6845 */
+# ifdef _DEBUG
+	if (ps_debug_alloc > 0) {
+	  fprintf(stderr, "allocation.c malloc: %p\n", (void *) base);
+	}
+# endif /* _DEBUG */
+#endif /* KEY Bug 6845 */
+
 	if (FLAG_TRAPUV(flags)) {
 
 		/* Initialize the memory with bad fp values.
@@ -800,8 +1040,6 @@ defalias(_F90_ALLOCATE_B, _F90_ALLOCATE);
 #endif	/* __mips */
 #ifdef _DEBUG
 
-#include <stdio.h>
-
 /*
  * This is designed to be called from the debugger to display dope vector
  * information.
@@ -822,8 +1060,13 @@ print_dope_vector(DopeVectorType *dv, FILE *f)
   fprintf(f, "+%u: el_len=%lu\n",
     (unsigned int) (((char *) &dv->base_addr.a.el_len) - (char *) dv),
     dv->base_addr.a.el_len);
+#ifdef KEY /* Bug 6845 */
+  fprintf(f, "assoc, ptr_alloc, p_or_a, a_contig, alloc_cpnt=%d %d %s %d %d\n",
+    dv->assoc, dv->ptr_alloc, P_OR_A[dv->p_or_a], dv->a_contig, dv->alloc_cpnt);
+#else /* KEY Bug 6845 */
   fprintf(f, "assoc, ptr_alloc, p_or_a, a_contig=%d %d %s %d\n",
     dv->assoc, dv->ptr_alloc, P_OR_A[dv->p_or_a], dv->a_contig);
+#endif /* KEY Bug 6845 */
   fprintf(f, "n_dim=%u\n", dv->n_dim);
   fprintf(f, "+%u: type_lens.type/dpflag/kind/int_len/dec_len=%d/%d/%d/%d/%d\n",
     (unsigned int) (((char *)&dv->type_lens) - (char *) dv),
@@ -846,5 +1089,20 @@ print_dope_vector(DopeVectorType *dv, FILE *f)
       (unsigned int) (((char*)dimen) - (char *)dv),
       dimen->low_bound, dimen->extent, dimen->stride_mult);
   }
+#ifdef KEY /* Bug 6845 */
+  if (dv->alloc_cpnt) {
+    DopeAllocType *alloc_info = DOPE_ALLOC_INFO(dv);
+    unsigned long n_alloc_cpnt = alloc_info->n_alloc_cpnt;
+    printf("+%u: n_alloc_cpnt=%lu\n",
+      (unsigned int) (((char*)alloc_info) - (char *)dv), n_alloc_cpnt);
+    for (i = 0; i < n_alloc_cpnt; i += 1)
+    {
+      printf("+%u: alloc_cpnt_offset=%lu\n",
+        (unsigned int) (((char*)&(alloc_info->alloc_cpnt_offset[i])) -
+	  (char *)dv),
+	alloc_info->alloc_cpnt_offset[i]);
+    }
+  }
+#endif /* KEY Bug 6845 */
 }
 #endif /* _DEBUG */

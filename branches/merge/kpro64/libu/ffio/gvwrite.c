@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -42,6 +42,7 @@
 
 #include <errno.h>
 #include <ffio.h>
+#include <string.h>
 #include "gvio.h"
 
 #ifdef KEY

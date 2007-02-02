@@ -37,6 +37,7 @@
 
 #include <fortran.h>
 #include <stddef.h>
+#include <stdlib.h>
   
 /*
  *	EXIT	Provide user-callable exit from a program.

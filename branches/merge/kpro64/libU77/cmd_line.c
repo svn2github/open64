@@ -141,18 +141,12 @@ _Get_environment_variable(char *name, char *value, pathf90_i4 *length,
 /* Implement F2003 intrinsic "is_iostat_end" */
 pathf90_i4
 _Is_iostat_end(pathf90_i4 *iostat) {
-  return
-    *iostat == FERDPEOF ||
-    *iostat == FERDEMPT ||
-    *iostat == FERDENDR ||
-    *iostat == FERDNLEF ||
-    *iostat == FERDIEOF;
+  return *iostat == FERDPEOF;
   }
 
 /* Implement F2003 intrinsic "is_iostat_eor" */
 pathf90_i4
 _Is_iostat_eor(pathf90_i4 *iostat) {
-  return
-    *iostat == FEEORCND ||
-    *iostat == FERDPEOR;
+  return *iostat == FEEORCND;
   }
+

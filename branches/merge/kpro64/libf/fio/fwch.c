@@ -363,7 +363,7 @@ _fwch(
 				if (ncnt > (chars - nchr))
 					ncnt	= chars - nchr;
 
-				if (_fdc_packc(tbuf, &uda[nchr], ncnt,
+				if (_fdc_packc((char *)tbuf, &uda[nchr], ncnt,
 					cup->ucharset) < 0) {
 					return(IOERR);
 				}

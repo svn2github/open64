@@ -39,6 +39,7 @@
 #include <sys/param.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <memory.h>
 #include <malloc.h>
 #include "spec_parse.h"

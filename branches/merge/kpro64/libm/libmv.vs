@@ -17,12 +17,14 @@ LIBMV_1.0 {
     __vlog;
     __vlogf;
     __vrd2_cos;
+    __vrd2_cosh;
     __vrd2_exp;
     __vrd2_log;
     __vrd2_log10;
     __vrd2_pow;
     __vrd2_sin;
     __vrd2_sincos;
+    __vrd2_sinh;
     __vrd4_cos;
     __vrd4_exp;
     __vrd4_log;

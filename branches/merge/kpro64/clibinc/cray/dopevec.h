@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -104,6 +108,20 @@ typedef struct f90_type {
 					 * or KIND value. Ignored if
 					 * kind_or_star==DVD_DEFAULT */
 } f90_type_t;
+
+#  ifdef KEY /* Bug 6845 */
+/*
+ * If DopeVectorType.alloc_cpnt is true, then following the last actual
+ * dimension or codimension (not necessarily MAXDIM) there is a count of the
+ * number of allocatable components, followed by an array of byte offsets
+ * from the beginning of the structure to each allocatable component. If
+ * DopeVectorType.alloc_cpnt is false, neither of these appears.
+ */
+typedef struct {
+  unsigned long n_alloc_cpnt;
+  unsigned long alloc_cpnt_offset[0];
+  } DopeAllocType;
+#  endif /* KEY Bug 6845 */
 
 /* Header
  *
@@ -228,7 +246,15 @@ typedef struct DopeVector {
  *  unsigned long	n_dim	  :8;
  */
 #if defined(__mips) || defined(_LITTLE_ENDIAN)
+#  ifdef KEY /* Bug 6845 */
+    unsigned int alloc_cpnt       :1;   /* this is an allocatable array whose
+                                         * element type is a derived type
+					 * having component(s) which are
+					 * themselves allocatable       */
+    unsigned int	          :26;	/* pad for first 32 bits	*/
+#  else /* KEY Bug 6845 */
     unsigned int	          :27;	/* pad for first 32 bits	*/
+#  endif /* KEY Bug 6845 */
     unsigned int	          :29;	/* pad for second 32-bits	*/
 #elif defined( _WORD32)
     unsigned long	unused1   :24;  /* unused */
@@ -301,6 +327,10 @@ typedef struct DopeVector {
          */
         signed long 	stride_mult;    /* stride multiplier */
     }dimension[MAXDIM];
+#  ifdef KEY /* Bug 6845 */
+   /* DopeAllocType alloc_info; appears following the last actual dimension
+    * (which may be less than MAXDIM) */
+#  endif /* KEY Bug 6845 */
 } DopeVectorType;
 
 

@@ -107,6 +107,7 @@ CFILES += \
     s2uo.c \
     s2uz.c \
     scatgath.c \
+    setbuf.c \
     setstride.c \
     stats.c \
     tables.c \

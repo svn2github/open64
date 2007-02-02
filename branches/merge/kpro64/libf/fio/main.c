@@ -60,7 +60,7 @@ int __f90_main(int argc, char **argv, char **arge)
         return (0);
 }
 
-#ifdef __ia64
+#ifdef PATHSCALE_MERGE
 typeof(__f90_main) main __attribute__((weak, alias("__f90_main")));
 #endif
 

@@ -39,6 +39,7 @@
 #include <liberrno.h>
 #include <nl_types.h>
 #include <string.h>
+#include <stdio.h>
 #if	defined(_LITTLE_ENDIAN)
 #include <cray/nlcatmsg.h>
 #endif

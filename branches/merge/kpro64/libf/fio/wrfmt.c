@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fortran.h>
+#include <math.h>
 #include <cray/fmtconv.h>
 #include <cray/format.h>
 #include <cray/nassert.h>
@@ -153,9 +154,9 @@ _wrfmt(
 	stride	= tip->stride * length;
 	cinc[1]	= stride;
 	supflg	= _o_sup_flg_tab[type] && (length == sizeof(long));
-#ifdef KEY
+#ifdef KEY /* Bug 573 */
         register short width_zero_flag = FALSE;
-#endif
+#endif /* KEY Bug 573 */
 
 	/* If COMPLEX data type, adjust data length and increments */
 
@@ -306,9 +307,9 @@ _wrfmt(
 					case I_ED:
 					case O_ED:
 					case Z_ED:
-#ifdef KEY
+#ifdef KEY /* Bug 573 */
                                                 width_zero_flag = TRUE;
-#endif
+#endif /* KEY Bug 573 */
 						width	= _rw_mxdgt[fmtop-1][length-1];
 						/* Fix limitation in table */
 
@@ -365,15 +366,15 @@ _wrfmt(
 #endif
 
 							} /* switch */
-#ifdef KEY
+#ifdef KEY /* Bug 573 */
 							if (datum == 0) {
 								width	= 1;
 								width_zero_flag = FALSE;
 							}
-#else
+#else /* KEY Bug 573 */
 							if (datum == 0)
 								width	= 1;
-#endif /* KEY */
+#endif /* KEY Bug 573 */
 						}
 						break;
 
@@ -396,9 +397,9 @@ _wrfmt(
 					case F_ED:
 #endif /* KEY Bug 8309 */
 					case G_ED:
-#ifdef KEY
+#ifdef KEY /* Bug 573 */
                                                 width_zero_flag = TRUE;
-#endif
+#endif /* KEY Bug 573 */
 						if (pfmt.default_digits)
 							digits	= _rw_mxdgt[fmtop-1][length-1];
 
@@ -518,7 +519,13 @@ _wrfmt(
 			 * see if there's room for one more.
 			 */
 
-			if ((cup->ulinecnt + field) > cup->urecsize) {
+#ifdef KEY /* Bug 10965 */
+			if ((!width_zero_flag) &&
+			  (cup->ulinecnt + field) > cup->urecsize)
+#else /* KEY Bug 10965 */
+			if ((cup->ulinecnt + field) > cup->urecsize)
+#endif /* KEY Bug 10965 */
+			{
 
 				if ((cup->ulinecnt + width) > cup->urecsize) {
 					stat	= FEWRLONG;	/* Record too long */
@@ -572,51 +579,44 @@ _wrfmt(
 					for (j = 0; j < width; j++)
 						cup->ulineptr[j]	= BLANK;
 				}
-				else{
+				else {
+#ifdef KEY /* Bug 573, 3992, 7990, 10965 */
+				    if (width_zero_flag) {
+					long linebuf[width];
+					(void) ngcf(cptr, linebuf, &mode,
+						&width, &digits, &exp,
+						&css->u.fmt.u.fe.scale);
+					int k = 0;
+					for (; k < width; k += 1) {
+					  if (linebuf[k] != BLANK) {
+					    field += 1;
+					    /* Record too long? */
+					    if ((cup->ulinecnt + field) >
+					      cup->urecsize) {
+					      stat = FEWRLONG;
+					      goto done;
+					    }
+					    *cup->ulineptr++ = linebuf[k];
+					  }
+					}
+				    }
+				    else
+				    {
+#endif /* KEY Bug 573, 3992, 7990, 10965 */
 					(void) ngcf(cptr, cup->ulineptr, &mode,
 						&width, &digits, &exp,
 						&css->u.fmt.u.fe.scale);
-#ifdef KEY
-// Fix bug 573 (zero width problem)
-                                        if (width_zero_flag){
-                                          long *p = cup->ulineptr;
-                                          register short counter = 0;
-                                          register short k;
-                                          long linebuf[width + 1];
-                                          for ( k = 0; k < width; k++, p++) {
-                                            if (*p == BLANK)
-                                              continue;
-                                            linebuf[counter++] = *p;
-                                          }
-                                          if (width > counter)
-                                            width = counter;
-                                          p = cup->ulineptr;
-                                          for (k = 0; counter; counter--,p++,k++)
-                                            *p = linebuf[k];
-#ifdef KEY /* Bug 7990 */
-					  /* cup->ulineptr doesn't seem to be
-					   * null terminated, so this loop may
-					   * wander off the end. But it appears
-					   * to be unneeded, because in the
-					   * nonzero-width case, ngcf() doesn't
-					   * fill in any zeros, so why do so in
-					   * the zero-width case? Perhaps this
-					   * was a failed attempt to accomplish
-					   * what the fix to bug 3992 did? */
-#else /* KEY Bug 7990 */
-                                           for (; *p ; p++)
-                                            *p = 0;
-#endif /* KEY Bug 7990 */
-#ifdef KEY /* Bug 3992 */
-					  field += width;
-#endif /* KEY Bug 3992 */
-                                        }
-#endif
+#ifdef KEY /* Bug 573, 3992, 7990, 10965 */
+					cup->ulineptr = cup->ulineptr + width;
+				    }
+#endif /* KEY Bug 573, 3992, 7990, 10965 */
                                  }
 
 				/* Advance data addresses */
 
+#ifndef KEY /* Bug 573, 3992, 7990, 10965 */
 				cup->ulineptr	= cup->ulineptr + width;
+#endif /* KEY Bug 573, 3992, 7990, 10965 */
 				count		= count - part;
 				cptr		= cptr + cinc[part];
 				part		= part ^ cswitch;

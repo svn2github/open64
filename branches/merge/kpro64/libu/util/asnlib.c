@@ -40,6 +40,8 @@
 
 #pragma ident "@(#) libu/util/asnlib.c	92.1	07/07/99 13:18:33"
 
+#define _ISOC99_SOURCE 1
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <ctype.h>

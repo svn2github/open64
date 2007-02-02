@@ -265,10 +265,10 @@ fill:
 					   return IOERR;
 					}
 					ncnt = (-1 == oldpos && -1 == newpos) ?
-					  strlen(tp) :
+					  strlen((char *)tp) :
 					  (newpos - oldpos);
 					nchr += ncnt;
-					_unpack(tp, uda, ncnt, -1);
+					_unpack((char *)tp, uda, ncnt, -1);
 					return nchr;
 				}
 				/* If not EOF, the line will either contain
@@ -282,11 +282,11 @@ fill:
 					*status	= EOR;
 					ncnt	= tmpptr - tp;
 					nchr	+= ncnt;
-					_unpack(tp, uda, ncnt, -1);
+					_unpack((char *)tp, uda, ncnt, -1);
 					/* Return number of chars read */
 					return(nchr);
 				}
-				_unpack(tp, uda, ncnt, -1);
+				_unpack((char *)tp, uda, ncnt, -1);
 				nchr		+= ncnt;
 				uda		+= ncnt;
 

@@ -40,6 +40,26 @@
 #include <fortran.h>
 #include <fp.h>
 #include "inline.h"
+#ifdef KEY /* Bug 10771, 10259 */
+# include <math.h>
+# include <fenv.h>
+
+# if _MIPS_SZPTR == 32
+   /* Workaround for bug in libm nextafterf for -m32 */
+#  define NEXTAFTER_SET_FLAGS(result) \
+	{ \
+	  int classification = fpclassify(result); \
+	  if (classification == FP_INFINITE) { \
+	    feraiseexcept(FE_OVERFLOW | FE_INEXACT); \
+	  } \
+	  else if (classification == FP_SUBNORMAL) { \
+	    feraiseexcept(FE_UNDERFLOW | FE_INEXACT); \
+	  } \
+	}
+# else /* _MIPS_SZPTR == 32 */
+#  define NEXTAFTER_SET_FLAGS(result) /* No workaround needed for -m64 */
+# endif /* _MIPS_SZPTR == 32 */
+#endif /* KEY Bug 10771, 10259 */
 
 extern _f_real4 _IEEE_NEXT_AFTER_H(_f_real4 x, _f_real4 s);
 extern _f_real4 _IEEE_NEXT_AFTER_H_R(_f_real4 x, _f_real8 s);
@@ -74,6 +94,11 @@ static _f_real8 _raisunfl8(_f_real8 x, _f_real8 y)
 _f_real4
 _IEEE_NEXT_AFTER_H(_f_real4 x, _f_real4 s)
 {
+#ifdef KEY /* Bug 10771 */
+        _f_real4 result = nextafterf(x, s);
+	NEXTAFTER_SET_FLAGS(result);
+	return result;
+#else /* KEY Bug 10771 */
 	REGISTER_4 s1, s2;
 	if (isnan32(x)) {
 		return x;
@@ -124,6 +149,7 @@ _IEEE_NEXT_AFTER_H(_f_real4 x, _f_real4 s)
 		result =	_raisinexct8(arg1, arg2);
 		return (s1.f);
 	}
+#endif /* KEY Bug 10771 */
 }
 
 _f_real4
@@ -136,6 +162,19 @@ _IEEE_NEXT_AFTER_H_R(_f_real4 x, _f_real8 s)
 		/* create NaN using previous NaN information. */
 		return _HALF_NaN;
 	}
+#ifdef KEY /* Bug 10771 */
+	if (((_f_real8) x) == s)
+	  return x;
+	_f_int4 infinity =
+	  signbit(s) ? (0x80000000 | IEEE_32_INFINITY) : IEEE_32_INFINITY;
+	_f_real4 result = nextafterf(x,
+	  (((_f_real8) x) < s) ?
+	  (* (_f_real4 *) &infinity) :
+	  (- * (_f_real4 *) &infinity)
+	  );
+	NEXTAFTER_SET_FLAGS(result);
+	return result;
+#else /* KEY Bug 10771 */
 	s1.f = x;
 	if (((s1.ui &= ~IEEE_32_SIGN_BIT) == IEEE_32_INFINITY) ||
 	   ((_f_real8) x == s)) {
@@ -183,11 +222,17 @@ _IEEE_NEXT_AFTER_H_R(_f_real4 x, _f_real8 s)
 		result =	_raisinexct8(arg1, arg2);
 		return (s1.f);
 	}
+#endif /* KEY Bug 10771 */
 }
 
 _f_real8
 _IEEE_NEXT_AFTER(_f_real8 x, _f_real8 s)
 {
+#ifdef KEY /* Bug 10771 */
+        _f_real8 result = nextafter(x, s);
+	NEXTAFTER_SET_FLAGS(result);
+	return result;
+#else /* KEY Bug 10771 */
 	REGISTER_8 s1, s2;
 	if (isnan64(x)) {
 		return x;
@@ -240,11 +285,17 @@ _IEEE_NEXT_AFTER(_f_real8 x, _f_real8 s)
 		result =	_raisinexct8(arg1, arg2);
 		return (s1.f);
 	}
+#endif /* KEY Bug 10771 */
 }
 
 _f_real8
 _IEEE_NEXT_AFTER_R_H(_f_real8 x, _f_real4 s)
 {
+#ifdef KEY /* Bug 10771 */
+        _f_real8 result = nextafter(x, (double) s);
+	NEXTAFTER_SET_FLAGS(result);
+	return result;
+#else /* KEY Bug 10771 */
 	REGISTER_8 s1, s2;
 	if (isnan64(x)) {
 		return x;
@@ -301,6 +352,7 @@ _IEEE_NEXT_AFTER_R_H(_f_real8 x, _f_real4 s)
 		result =	_raisinexct8(arg1, arg2);
 		return (s1.f);
 	}
+#endif /* KEY Bug 10771 */
 }
 #if _F_REAL16 == 1
 

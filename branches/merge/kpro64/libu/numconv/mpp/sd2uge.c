@@ -39,6 +39,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #if defined(_UNICOS)
 #include <fp.h>
 #endif

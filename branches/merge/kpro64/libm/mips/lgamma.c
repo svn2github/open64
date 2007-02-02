@@ -565,7 +565,11 @@ extern	int  signgaml  __attribute__ ((weak, alias ("__signgaml")));
 
 #endif
 
+#if (__GNUC__ > 3)
+int	__signgaml = 0;
+#else
 int	signgaml = 0;
+#endif
 
 long double
 __gammal(long double arg)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,6 +41,7 @@
 #pragma ident "@(#) libu/ffio/gvread.c	92.2	06/29/99 13:16:47"
 
 #include <ffio.h>
+#include <string.h>
 #include "gvio.h"
 
 static int scc_vms_convert[4] = {SCCMIDL, SCCFRST, SCCLAST, SCCFULL};

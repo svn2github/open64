@@ -73,7 +73,7 @@ extern	void	sincosf(float, float *, float *);
 
 #ifdef __GNUC__
 extern  void  __sincosf(float, float *, float *);
-void    sincosf() __attribute__ ((weak, alias ("__sincosf")));
+void    sincosf(float, float *, float *) __attribute__ ((weak, alias ("__sincosf")));
 #endif
 
 /* coefficients for polynomial approximation of sin on +/- pi/4 */

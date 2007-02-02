@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -132,6 +132,12 @@ _f_int4
 _IEEE_INT_D_I4(_f_real16 argx)
 #ifndef	__mips
 {
+#ifdef KEY /* Bug 6236 */
+	/* The non-MIPS code seems very broken on the X86, where the back
+	 * end gives us a "long double" argx which is currently in 80 bit
+	 * little endian format */
+	return (_f_int4) rintl(argx);
+#else /* KEY Bug 6236 */
 	/* Union defined to work with IEEE 128-bit floating point. */
 	union _ieee_ldouble {
 		struct {
@@ -214,6 +220,7 @@ _IEEE_INT_D_I4(_f_real16 argx)
 		result = (_f_int4) tmp.ldword;
 	}
 	return(result);
+#endif /* KEY Bug 6236 */
 }
 #else
 {

@@ -38,6 +38,7 @@
 
 #include <ffio.h>
 #include <errno.h>
+#include <stdlib.h>
 #include "fxlist.h"
 
 DECLARE(ERR_XLIST);

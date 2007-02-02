@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -319,7 +323,11 @@ int		*status)	/* Status return is either CNT or EOR */
 		uoff	= 0;
 
 		while (bits < totbits) {
+#ifdef KEY /* Bug 10310 */
+			register long	slice;
+#else /* KEY Bug 10310 */
 			register int	slice;
+#endif /* KEY Bug 10310 */
 			register _f_int	numerr;
 			int		locubc;
 			int		locmode;

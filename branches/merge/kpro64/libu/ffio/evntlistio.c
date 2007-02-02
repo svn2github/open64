@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -43,6 +43,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #if	!defined(__mips) && !defined(_LITTLE_ENDIAN)
 #include <sys/iosw.h>

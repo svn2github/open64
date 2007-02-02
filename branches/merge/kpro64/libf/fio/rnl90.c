@@ -1311,13 +1311,14 @@ static int
 _nlread(FIOSPTR css, ftype_t type, unit *cup, void *ptr, long elsize,
 	int cntp, int incrm, char *lastc)
 {
+	/* bug 10772: Enforce strictest alignment on lval */
+ 	long double	lval[5];	/* convert space */
 	long		ss, ncntp;
 	long		stat;
 	char		c;
 	void		*vaddr;
 	long		errn = 0;
 	int		lcount;		/* repeat count for values */
-	long		lval[9];	/* convert space */
 	bcont		*sval;
 	int		nullvlu;
 	c	= *lastc;
@@ -1327,7 +1328,7 @@ _nlread(FIOSPTR css, ftype_t type, unit *cup, void *ptr, long elsize,
 
 	while (ncntp > 0) {
 		errn	= _nexdata(css, type, vaddr, ncntp, 1, c, cup,
-				lval, &lcount, elsize, &nullvlu);
+				(long *) lval, &lcount, elsize, &nullvlu);
 		if (errn != 0)
 			return(errn);
 		else {

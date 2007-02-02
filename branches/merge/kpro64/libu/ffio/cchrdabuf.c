@@ -37,6 +37,7 @@
 #pragma ident "@(#) libu/ffio/cchrdabuf.c	92.2	10/07/99 22:13:28"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <ffio.h>
 #include "cchio.h"
 #include <sys/types.h>

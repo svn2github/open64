@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -43,7 +43,7 @@
 #include <fortran.h>
 #include <liberrno.h>
 #include <fmath.h>
-#ifdef  __mips
+#if defined(__mips) || defined(KEY) /* Bug 10771 */
 #include <math.h>
 #endif
 #include "inline.h"
@@ -56,7 +56,19 @@
 _f_real4
 _NEAREST_4(_f_real4 x, _f_real4 s)
 {
-#ifdef KEY /* Bug 3399 */
+#ifdef KEY /* Bug 10771 */
+  /* Previous approach (in "elif") didn't treat infinity correctly and didn't
+   * signal exceptions correctly. Let's try using the C library functions in
+   * hopes that they know what they're doing.
+   */
+   if (s == (_f_real4) 0.0) {
+	   _lerror (_LELVL_ABORT, FENEARZS);
+   }
+  _f_int4 infinity =
+    signbit(s) ? (0x80000000 | IEEE_32_INFINITY) : IEEE_32_INFINITY;
+  _f_real4 result = nextafterf(x, * (_f_real4 *) &infinity);
+  return result;
+#elif 0 /* KEY Bug 3399 */
 	/*
 	 * We want "nearest(nearest(x, s), -s) == x" to be true so long as
 	 * IEEE infinity and NaN aren't involved. We do allow largest/smallest
@@ -150,7 +162,15 @@ _NEAREST_4(_f_real4 x, _f_real4 s)
 _f_real4
 _NEAREST_4_8(_f_real4 x, _f_real8 s)
 {
-#ifdef KEY /* Bug 3399 */
+#ifdef KEY /* Bug 10771 */
+   if (s == (_f_real8) 0.0) {
+	   _lerror (_LELVL_ABORT, FENEARZS);
+   }
+  _f_int4 infinity =
+    signbit(s) ? (0x80000000 | IEEE_32_INFINITY) : IEEE_32_INFINITY;
+  _f_real4 result = nextafterf(x, * (_f_real4 *) &infinity);
+  return result;
+#elif 0 /* KEY Bug 3399 */
 	/* See comment in _NEAREST_4 */
 	REGISTER_4 x_reg;
 	int positive_s = (s > (_f_real8) 0.0);
@@ -210,7 +230,15 @@ _NEAREST_4_8(_f_real4 x, _f_real8 s)
 _f_real8
 _NEAREST_8_4(_f_real8 x, _f_real4 s)
 {
-#ifdef KEY /* Bug 3399 */
+#ifdef KEY /* Bug 10771 */
+   if (s == (_f_real4) 0.0) {
+	   _lerror (_LELVL_ABORT, FENEARZS);
+   }
+  _f_int8 infinity =
+    signbit(s) ? (0x8000000000000000ull | IEEE_64_INFINITY) : IEEE_64_INFINITY;
+  _f_real8 result = nextafter(x, * (_f_real8 *) &infinity);
+  return result;
+#elif 0 /* KEY Bug 3399 */
 	/* See comment in _NEAREST_4 */
 	REGISTER_8 x_reg;
 	int positive_s = (s > (_f_real4) 0.0);
@@ -258,7 +286,15 @@ _NEAREST_8_4(_f_real8 x, _f_real4 s)
 _f_real8
 _NEAREST(_f_real8 x, _f_real8 s)
 {
-#ifdef KEY /* Bug 3399 */
+#ifdef KEY /* Bug 10771 */
+   if (s == (_f_real8) 0.0) {
+	   _lerror (_LELVL_ABORT, FENEARZS);
+   }
+  _f_int8 infinity =
+    signbit(s) ? (0x8000000000000000ull | IEEE_64_INFINITY) : IEEE_64_INFINITY;
+  _f_real8 result = nextafter(x, * (_f_real8 *) &infinity);
+  return result;
+#elif 0 /* KEY Bug 3399 */
 	/* See comment in _NEAREST_4 */
 	REGISTER_8 x_reg;
 	int positive_s = (s > (_f_real8) 0.0);

@@ -37,6 +37,7 @@
 #pragma ident "@(#) libu/numconv/mpp/qqroutines.c	92.2	08/02/99 16:30:41"
 
 #include <stdio.h>
+#include <stdlib.h>
 #ifndef _LD64
 #if defined(_UNICOS)
 #include <fp.h>

@@ -176,8 +176,18 @@ DopeVectorType	*vector)
     }
   }
 
+#ifdef KEY /* Bug 10771 */
+  if (zero_szd_source) {
+    /* Create an empty array as the result */
+    result->n_dim = 1;
+    SET_LBOUND_IN_DESC(result,0,1);
+    SET_EXTENT_IN_DESC(result,0,0);
+    return ;
+  }
+#else /* KEY Bug 10771 */
   if (zero_szd_source)
     return ;
+#endif /* KEY Bug 10771 */
 
   a_size   = src_extent[0] ;
   a_stride = src_stride[0] ;
