@@ -81,7 +81,13 @@ CFILES += \
     ieee_exponent_i2.c \
     ieee_exponent_n.c \
     ieee_exponent_r.c \
-    ieee_int.c \
+    ieee_int.c 
+ifeq ($(BUILD_TARGET), X8664)
+CFILES += \
+    ieee_module_support.c \
+    ieee_next_after.c 
+endif
+CFILES += \
     ilen.c \
     itoi.c \
     nabs.c \
@@ -99,5 +105,38 @@ CFILES += \
     spacing.c \
     $(IEMIPS)
 
+ifeq ($(BUILD_TARGET), X8664)
+F90FILES += \
+    ieee_features.F90 \
+    ieee_arithmetic.F90 \
+    ieee_exceptions.F90 \
+    iso_fortran_env.F90
+endif
+
 SRC_DIRS += \
    $(BUILD_TOT)/libfi/mathlb
+
+ifeq ($(BUILD_TARGET), X8664)
+# We're assuming that any .F90 module in this directory is supposed to be
+# an "intrinsic module" (in the F2003 sense of the term.) If not, this option
+# should be used only for such modules (e.g. ieee_arithmetic, ieee_exceptions,
+# ieee_features, iso_fortran_env.)
+F90FLAGS += \
+   -Wf,-intrinsic_module_gen
+
+# Program gen_ieee_cpp_macros generates file ieee_cpp_macros.h, which is
+# needed by the TR15580/F2003 IEEE intrinsic modules
+gen_ieee_cpp_macros: gen_ieee_cpp_macros.o
+
+gen_ieee_cpp_macros.o: gen_ieee_cpp_macros.c
+
+ieee_cpp_macros.h: gen_ieee_cpp_macros
+	./gen_ieee_cpp_macros > ieee_cpp_macros.h
+	rm -f ./gen_ieee_cpp_macros
+
+ieee_exceptions.o ieee_arithmetic.o iso_fortran_env.o: ieee_cpp_macros.h
+
+LF77INCS += -I$(BUILD_AREA)/libfortran
+
+LDIRT = ieee_cpp_macros.h $(XMATHLBDIRT)
+endif

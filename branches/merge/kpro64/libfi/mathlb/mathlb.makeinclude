@@ -78,7 +78,13 @@ CFILES += \
     ieee_exponent_i2.c \
     ieee_exponent_n.c \
     ieee_exponent_r.c \
-    ieee_int.c \
+    ieee_int.c 
+ifeq ($(BUILD_TARGET), X8664)
+CFILES += \
+    ieee_module_support.c \
+    ieee_next_after.c 
+endif
+CFILES += \
     ilen.c \
     itoi.c \
     nabs.c \
@@ -96,5 +102,11 @@ CFILES += \
     spacing.c \
     $(IEMIPS)
 
+ifeq ($(BUILD_TARGET), X8664)
+F90FILES += \
+    ieee_features.F90 \
+    ieee_arithmetic.F90 \
+    ieee_exceptions.F90
+endif
 SRC_DIRS += \
    $(BUILD_TOT)/libfi/mathlb
