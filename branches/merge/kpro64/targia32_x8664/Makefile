@@ -1,5 +1,7 @@
 #
 #
+#  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -55,20 +57,19 @@ LIBRARY_SUBDIRS := \
 	libelf \
 	libdwarf \
 	libelfutil \
-	libunwindP \
-	libu 
+	libiberty \
+	libfortran \
+	libu \
+	libmv \
+	libmsgi \
 
 
 #
 #  Finally, the compiler tools (components) are built.
 #
-#  Note that be_driver must come last since it depends on other components
-#  being built first.
-#
 TOOL_SUBDIRS := \
 	be \
 	cg \
-	crayf90 \
 	driver \
 	g++fe \
 	gccfe \
@@ -80,7 +81,9 @@ TOOL_SUBDIRS := \
 	whirl2c \
 	whirl2f \
 	wopt \
-	be_driver
+	wgen \
+	crayf90 \
+	#f95_coco 
 
 
 SUBDIRS := $(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
