@@ -1,6 +1,10 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -98,8 +102,13 @@ INT GRA_non_preference_tn_id = -1;
 static BOOL gbb_needs_rename;   // Some local renaming required for a GBB
                                 // due to a cgprep failure.  DevWarn and
                                // rename for robustness.
+
+#ifdef TARG_IA64
 BOOL fat_self_recursive = FALSE;
-//BOOL gra_self_recursive = FALSE; 
+//BOOL gra_self_recursive = FALSE;
+//bug fix for OSP_212
+GTN_SET** bb_gtn_needs_complement;// use to present tns in bb
+//to be complement, use as GTN* BB_GTN_needs_complement[bb->id]
 extern BOOL gra_self_recursive;
 extern char *Cur_PU_Name;
 BOOL OP_maybe_unc_cmp(OP* op)
@@ -259,6 +268,7 @@ class OP_OF_ONLY_DEF
          }
 
 };
+#endif // TARG_IA64
 
 static void
 Identify_Region_Boundries(void)
@@ -567,11 +577,13 @@ Scan_Region_BB_For_Referenced_TNs( GRA_BB* gbb )
       ded_tns[TN_register_class(tn)][TN_register(tn)] = tn;
       Region_TN_Reference(tn,region);
     }
+#ifdef TARG_IA64
     for (i = 0; i < ROTATING_KERNEL_INFO_localdef(info).size(); i++) {
       TN *tn = ROTATING_KERNEL_INFO_localdef(info)[i];
       ded_tns[TN_register_class(tn)][TN_register(tn)] = tn;
       Region_TN_Reference(tn,region);
     }
+#endif
     
     OP *op;
     FOR_ALL_BB_OPs(bb, op) {
@@ -748,8 +760,30 @@ Create_Live_BB_Sets(void)
 
   GRA_Init_Trace_Memory();
 
+#ifndef TARG_IA64
+  GTN_SET *incoming_GTNs;
+  GTN_SET *outgoing_GTNs;
+  if (GRA_optimize_boundary) {
+    // Those GTNs that are live_in and defreach_in.
+    incoming_GTNs = GTN_SET_Create(GTN_UNIVERSE_size, &MEM_local_pool);
+    // Those GTNs that are live_out and defreach_out.
+    outgoing_GTNs = GTN_SET_Create(GTN_UNIVERSE_size, &MEM_local_pool);
+  }
+#endif
+
   for ( bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ) {
     GRA_BB* gbb = gbb_mgr.Get(bb);
+
+#ifndef TARG_IA64
+    if (GRA_optimize_boundary) {
+      /*	TODO:  Define GTN_SET_IntersectionR in gtn_set.h.
+      GTN_SET_IntersectionR(incoming_GTNs, BB_live_in(bb), BB_defreach_in(bb));
+      GTN_SET_IntersectionR(outgoing_GTNs, BB_live_out(bb), BB_defreach_out(bb));
+      */
+      BS_IntersectionR(incoming_GTNs, BB_live_in(bb), BB_defreach_in(bb));
+      BS_IntersectionR(outgoing_GTNs, BB_live_out(bb), BB_defreach_out(bb));
+    }
+#endif
 
     for ( tn = GTN_SET_Intersection_Choose(BB_live_in(bb),
                                            BB_defreach_in(bb));
@@ -758,8 +792,21 @@ Create_Live_BB_Sets(void)
                                                 BB_defreach_in(bb),
                                                 tn)
     ) {
-      if ( TN_Is_Allocatable(tn) )
+      if ( TN_Is_Allocatable(tn) ) {
 	lrange_mgr.Get(tn)->Add_Live_BB(gbb);
+#ifndef TARG_IA64
+	if (GRA_optimize_boundary) {
+	  // The lrange enters the BB.  If the lrange also exits the BB, then
+	  // the BB is an internal BB, else the BB is a boundary BB.  (Ignore
+	  // gaps inside the BB for now.)
+	  // TODO:  Implement gaps.
+	  if (GTN_SET_MemberP(outgoing_GTNs, tn))
+	    lrange_mgr.Get(tn)->Add_Internal_BB(gbb);
+	  else
+	    lrange_mgr.Get(tn)->Add_Boundary_BB(gbb);
+	}
+#endif
+      }
     }
 
     for ( tn = GTN_SET_Intersection_Choose(BB_live_out(bb),
@@ -773,6 +820,18 @@ Create_Live_BB_Sets(void)
         LRANGE* lrange = lrange_mgr.Get(tn);
 
         lrange->Add_Live_BB(gbb);
+
+#ifndef TARG_IA64
+	if (GRA_optimize_boundary) {
+	  // The lrange exits the BB.  If the lrange also enters the BB, then
+	  // the BB is an internal BB, else the BB is a boundary BB.  (Ignore
+	  // gaps inside the BB for now.)
+	  if (GTN_SET_MemberP(incoming_GTNs, tn))
+	    lrange->Add_Internal_BB(gbb);
+	  else
+	    lrange->Add_Boundary_BB(gbb);
+	}
+#endif
 
         if ( BB_call(gbb->Bb()) ) {
           if (    lrange->Type() == LRANGE_TYPE_COMPLEMENT
@@ -795,6 +854,11 @@ Create_Live_BB_Sets(void)
 	else if (BB_mod_pred_rotating_registers(gbb->Bb()) &&
 		 Is_Predicate_REGISTER_CLASS(lrange->Rc()))
 	  lrange->Spans_Rot_Reg_Clob_Set();
+
+#ifdef TARG_X8664
+	if (gbb->Savexmms() && lrange->Rc() == ISA_REGISTER_CLASS_float)
+	  lrange->Spans_Savexmms_Set();
+#endif
       }
     }
   }
@@ -1033,6 +1097,10 @@ Avoid_RA_In_Call_Argument( OP* op )
 {
   INT i;
 
+#ifndef TARG_IA64
+  if( RA_TN == NULL )
+    return;
+#endif
   for ( i = OP_opnds(op) - 1; i >= 0; --i ) {
     LRANGE *lrange = lrange_mgr.Get(OP_opnd(op,i));
 
@@ -1248,8 +1316,10 @@ Load_From_Home(OP* op, TN* op_tn)
   return FALSE;
 }
 
+#ifdef TARG_IA64
 extern INIT_USE_ONLY_GTN *GTN_USE_ONLY;
 extern void Build_GTN_In_List (TN *tn,BB *bb);
+#endif
 
 /////////////////////////////////////
 static void
@@ -1275,8 +1345,34 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 
   lrange_mgr.Clear_One_Set();
   Initialize_Wired_LRANGEs();
+#ifdef TARG_IA64
   OP_OF_ONLY_DEF Op_Of_Only_Def(&MEM_local_nz_pool);
   Op_Of_Only_Def.Set_OPS_OF_ONLY_DEF(gbb);
+  //begin bug fix for OSP_212
+  GTN_SET* needs_comp = bb_gtn_needs_complement[gbb->Bb()->id];
+  //scan the complement bbs to add a local lrange to wired tn using ret-val's reg 
+  for (TN *tn = GTN_SET_Choose(needs_comp);
+     		tn != GTN_SET_CHOOSE_FAILURE && tn != NULL;
+      		tn = GTN_SET_Choose_Next(needs_comp, tn))
+  {
+      if (TN_is_global_reg(tn) && TN_is_dedicated(tn)) {
+          /* dedicated tn's reg may be corrupt, here we can't use the reg in this bb.
+           * so to create a local lrange to that dedicated tn.
+           */
+          DevWarn("local lrange of GTN%d(%s) in BB:%d", TN_number(tn),
+		    REGISTER_name(TN_register_class(tn), TN_register(tn)), gbb->Bb()->id);
+          GRA_PREF_LIVE* gpl = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn);
+          if (!gpl) {
+		    gpl = gra_pref_mgr.LIVE_Create(&MEM_local_nz_pool);
+		    hTN_MAP_Set(live_data, tn, gpl);
+          }
+          Wired_TN_Reference(gbb, TN_register_class(tn), 
+		         TN_register(tn), wired_locals);
+      }
+  }
+  //end bug fix for OSP_212
+#endif
+
   for (iter.Init(gbb), op_count=1; ! iter.Done(); iter.Step(), op_count++ ) {
     OP*  xop = iter.Current();
     for ( i = OP_opnds(xop) - 1; i >= 0; --i ) {
@@ -1289,7 +1385,9 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 	hTN_MAP_Set(live_data, op_tn, gpl);
       }
       if (Complement_TN_Reference(xop, op_tn, gbb, &lunit, wired_locals)) {
+#ifdef TARG_IA64
         lunit->Has_Use_Set();
+#endif
         if (!lunit->Has_Def()) {
 	  lunit->Has_Exposed_Use_Set();
 	  gpl->Exposed_Use_Set(TRUE);
@@ -1300,7 +1398,9 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
       } else if (!gpl->Num_Defs()) {
 	gpl->Exposed_Use_Set(TRUE);
       }
+#ifdef TARG_IA64
       Build_GTN_In_List(op_tn,gbb->Bb());
+#endif
 
     }
 
@@ -1315,18 +1415,31 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
       }
 
       if (OP_cond_def(xop)) { // there is a hidden use
-         if (!Op_Of_Only_Def.FIND_OP(xop)) {  
-           if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
-               lunit->Has_Use_Set();
-               if (!lunit->Has_Def()) {
-                  lunit->Has_Exposed_Use_Set();
-	          gpl->Exposed_Use_Set(TRUE);
-	       }
-           } else if (!gpl->Num_Defs()) {
+#ifdef TARG_IA64
+	if (!Op_Of_Only_Def.FIND_OP(xop)) {
+	  if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
+	    lunit->Has_Use_Set();
+	    if (!lunit->Has_Def()) {
+	      lunit->Has_Exposed_Use_Set();
+	      gpl->Exposed_Use_Set(TRUE);
+	    }
+	  } else if (!gpl->Num_Defs()) {
+	      gpl->Exposed_Use_Set(TRUE);
+	  }
+	}
+      } 
+#else
+        if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
+          if (!lunit->Has_Def()) {
+	    lunit->Has_Exposed_Use_Set();
+	    gpl->Exposed_Use_Set(TRUE);
+	  }
+        } else if (!gpl->Num_Defs()) {
+
 	  gpl->Exposed_Use_Set(TRUE);
-          }
-       } 
+        }
       }
+#endif // TARG_IA64
 
       gpl->Num_Defs_Set(gpl->Num_Defs() + 1);
       gpl->Last_Def_Set(op_count);
@@ -1347,6 +1460,34 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 	}
       }
     }
+
+#ifndef TARG_IA64
+    // Treat clobbered registers as though they are result registers.
+    // Bug 4579.
+    if (OP_code(xop) == TOP_asm) {
+      ASM_OP_ANNOT *asm_info = (ASM_OP_ANNOT *) OP_MAP_Get(OP_Asm_Map, xop);
+      if (asm_info) {
+	ISA_REGISTER_CLASS cl;
+	FOR_ALL_ISA_REGISTER_CLASS(cl) {
+	  REGISTER_SET clobbered_regs = ASM_OP_clobber_set(asm_info)[cl];
+	  for (REGISTER reg = REGISTER_SET_Choose(clobbered_regs);
+	       reg != REGISTER_UNDEFINED;
+	       reg = REGISTER_SET_Choose_Next(clobbered_regs, reg)) {
+	    Wired_TN_Reference(gbb, cl, reg, wired_locals);
+
+	    TN *tn = Build_Dedicated_TN(cl, reg, 0);
+	    GRA_PREF_LIVE* gpl = (GRA_PREF_LIVE*)hTN_MAP_Get(live_data, tn);
+	    if (!gpl) {
+	      gpl = gra_pref_mgr.LIVE_Create(&MEM_local_nz_pool);
+	      hTN_MAP_Set(live_data, tn, gpl);
+	    }
+	    gpl->Num_Defs_Set(gpl->Num_Defs() + 1);
+	    gpl->Last_Def_Set(op_count);
+	  }
+	} 
+      }
+    }
+#endif
 
     if ( CGTARG_Is_Preference_Copy(xop) )
       Complement_Copy(xop, gbb, pref_list);
@@ -1391,6 +1532,36 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     GRA_PREF_LIVE* gpl_dest = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_dest);
     GRA_PREF_LIVE* gpl_src = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_src);
 
+#ifndef TARG_IA64
+    // Do the same tests as below to see if a preferencing copy is allowed, but
+    // do it for dedicated registers.  Bug 4579.
+    BOOL allow_copy = TRUE;
+
+    // Disallow copy if src is a dedicated register that is redefined later.
+    if (TN_register(tn_src) != REGISTER_UNDEFINED) {
+      TN *tn_dedicated_src = Build_Dedicated_TN(TN_register_class(tn_src),
+						TN_register(tn_src), 0);
+      GRA_PREF_LIVE* gpl_dedicated_src =
+	(GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_dedicated_src);
+      if (gpl_dedicated_src &&
+	  gpl_dedicated_src->Last_Def() > gpl_dest->Last_Def())
+	allow_copy = FALSE;
+    }
+
+    // Disallow copy if dest is a dedicated register with an exposed use or has
+    // more than one definition in the block.
+    if (TN_register(tn_dest) != REGISTER_UNDEFINED) {
+      TN *tn_dedicated_dest = Build_Dedicated_TN(TN_register_class(tn_dest),
+						 TN_register(tn_dest), 0);
+      GRA_PREF_LIVE* gpl_dedicated_dest =
+	(GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_dedicated_dest);
+      if (gpl_dedicated_dest &&
+	  (gpl_dedicated_dest->Exposed_Use() ||
+	   gpl_dedicated_dest->Num_Defs() > 1))
+	allow_copy = FALSE;
+    }
+#endif
+
     //
     // If the source of the preferencing copy is redefined after
     // later in the block, or the destination has an exposed use or
@@ -1398,7 +1569,15 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     // we are conservatively assuming that there is a conflict.
     //
     if (gpl_src->Last_Def() < gpl_dest->Last_Def() &&
+#ifdef TARG_IA64
 	!gpl_dest->Exposed_Use() && gpl_dest->Num_Defs() == 1) {
+#else
+      !gpl_dest->Exposed_Use() && gpl_dest->Num_Defs() == 1
+#ifdef KEY
+        && allow_copy
+#endif
+        ) {
+#endif
 
       //
       // Complement to complement preference.
@@ -1425,6 +1604,82 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   MEM_POOL_Pop(&MEM_local_nz_pool);
 }
 
+#ifdef TARG_IA64
+//begin bug fix for OSP_212
+/////////////////////////////////////
+static void
+Try_To_Add_Gtn_to_Complement_BB(BB* bb, TN* tn)
+////////////////////////////////////
+//
+// try to add gtns to complement bbs.
+// iteratively from this BB to chk_split_head
+//
+/////////////////////////////////////
+{
+  if (!bb || BB_call(bb))
+    return;// maybe this case never occurs, use to catch uncertain case
+  FmtAssert((BB_chk_split(bb) || BB_recovery(bb) || BB_scheduled(bb)), 
+    ("I don't know how to deal with BB:%d, actually I thought it couldn't happen.", bb->id));
+  //add tn to bb's complement gtn_set
+  bb_gtn_needs_complement[bb->id] = GTN_SET_Union1D(
+    bb_gtn_needs_complement[bb->id], tn, GRA_pool);
+  if (BB_chk_split_head(bb) || BB_recovery(bb))
+    return;//no need to proceed
+  else{
+    BBLIST* preds;
+    FOR_ALL_BB_PREDS(bb, preds) {
+      BB *pred = BBLIST_item(preds);
+      Try_To_Add_Gtn_to_Complement_BB(pred, tn);
+    }
+  }
+}
+
+/////////////////////////////////////
+static void
+Try_To_Add_Complement_BB(GRA_BB* gbb)
+////////////////////////////////////
+//
+// try to add gbb and its preds to complement bbs.
+// iteratively scans from chk_split_tail to chk_split_head,
+//
+/////////////////////////////////////
+{
+  if (!gbb)
+    return;// maybe this case never occurs, use to catch uncertain case
+  BB* bb = gbb->Bb();
+  FmtAssert((BB_chk_split(bb) || BB_recovery(bb) || BB_scheduled(bb)), 
+    ("I don't know how to deal with BB:%d, actually I thought it couldn't happen.", bb->id));
+  if (BB_chk_split_head(bb) || BB_recovery(bb))
+    return;//no need to proceed
+   //we should complement this bb iteratively
+  GRA_BB_OP_FORWARD_ITER op_iter;
+  //scan all the op referencing dedicated tns to complement
+  for (op_iter.Init(gbb); ! op_iter.Done(); op_iter.Step() ) {
+    OP*  xop = op_iter.Current();
+      for (int i = OP_opnds(xop) - 1; i >= 0; --i ) {
+        TN *op_tn = OP_opnd(xop, i);
+        if (! TN_is_register(op_tn))
+          continue;
+        if (TN_is_global_reg(op_tn) && TN_is_dedicated(op_tn) &&
+           REGISTER_allocatable(TN_register_class(op_tn), TN_register(op_tn))) {
+          BBLIST* preds;
+          FOR_ALL_BB_PREDS(bb, preds) {
+            BB *pred = BBLIST_item(preds);
+            Try_To_Add_Gtn_to_Complement_BB(bb, op_tn);//only apply to allocatable reg's tn
+        }
+      }
+    }
+  }
+  //iteratively scan its preds  
+  BBLIST* preds;
+  FOR_ALL_BB_PREDS(bb, preds) {
+    BB *pred = BBLIST_item(preds);
+    Try_To_Add_Complement_BB(gbb_mgr.Get(pred));
+  }
+}
+//end bug fix for OSP_212
+#endif
+
 /////////////////////////////////////
 static void
 Create_LUNITs(void)
@@ -1435,17 +1690,42 @@ Create_LUNITs(void)
 /////////////////////////////////////
 {
   GRA_REGION_GBB_ITER gbb_iter;
-
+  int i;
   GRA_Init_Trace_Memory();
 
   MEM_POOL_Push(&MEM_local_nz_pool);
   Initialize_Wired_LRANGEs();
+#ifdef TARG_IA64
+  //begin bug fix for OSP_212
+  //create arrays to hold bb's gtns to complement
+  extern BB_NUM PU_BB_Count;
+  GTN_SET* tmp_gtn_array[PU_BB_Count + 1];
+  for (i = 1; i <=PU_BB_Count; i ++)
+    tmp_gtn_array[i] = GTN_SET_Create_Empty(GTN_UNIVERSE_size, GRA_pool);
+  bb_gtn_needs_complement = tmp_gtn_array;
 
+  /* chk_split in recovery phase can cause some dedicated TN's live range
+   * becoming shorter than its original one. So we should complement those
+   * dedicated TNs in its preds.
+   */
+  for (gbb_iter.Init(gra_region_mgr.Complement_Region()); ! gbb_iter.Done();
+       gbb_iter.Step() ) {
+    GRA_BB* gbb = gbb_iter.Current();
+    if (BB_chk_split_tail(gbb->Bb()) && !BB_chk_split_head(gbb->Bb())){
+      // maybe have cut a bb who has dedicated tns
+      Try_To_Add_Complement_BB(gbb);
+    }
+  }
+  //end bug fix for OSP_212
+#endif // TARG_IA64
+  
+  
   for (gbb_iter.Init(gra_region_mgr.Complement_Region()); ! gbb_iter.Done();
        gbb_iter.Step() ) {
     GRA_BB* gbb = gbb_iter.Current();
     Scan_Complement_BB_For_Referenced_TNs(gbb);
   }
+
   MEM_POOL_Pop(&MEM_local_nz_pool);
   GRA_Trace_Memory("After Create_LUNITs()");
 }
@@ -1672,9 +1952,11 @@ Add_To_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
+#ifdef TARG_IA64
 if ( lrange==NULL ){
   return;
 }
+#endif
   LRANGE* lrange1;
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
@@ -1705,9 +1987,11 @@ Remove_From_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
+#ifdef TARG_IA64
   if ( lrange==NULL ){
     return;
   }
+#endif
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
   LRANGE_SET*         set = live_lrange_sets[rc];
@@ -1956,6 +2240,7 @@ Create_Interference_Graph(void)
   GRA_Trace_Memory("After Build_Region_Interference_Graph()");
 }
 
+#ifdef TARG_IA64
 //=============================================================
 //
 // Compute the fatest point value of every function,for those
@@ -2010,7 +2295,7 @@ Compute_GRA_Fat_Point(void) {
    MEM_POOL_Pop(&MEM_local_nz_pool);
  
 }
-
+#endif // TARG_IA64
 /////////////////////////////////////
 void
 GRA_Create(void)
@@ -2023,7 +2308,9 @@ GRA_Create(void)
   Create_Live_BB_Sets();
   Create_LUNITs();
   Create_Interference_Graph();
+#ifdef TARG_IA64
   Compute_GRA_Fat_Point();
+#endif
 }
 
 

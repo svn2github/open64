@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -49,10 +49,10 @@
 // of increasing numbers of operands.
 /////////////////////////////////////
 //
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/isa/x8664/isa_operands.cxx,v $
+//  $Revision: 1.177 $
+//  $Date: 05/11/11 10:44:29-08:00 $
+//  $Author: tkong@hyalite.keyresearch $
+//  $Source: common/targ_info/isa/x8664/SCCS/s.isa_operands.cxx $
 
 #include "topcode.h"
 #include "isa_operands_gen.h"
@@ -901,12 +901,6 @@ main()
   Operand(2, uimm8, scale);
   Operand(3, simm32, offset);
 
-  Instruction_Group("int32_64 mov",
-		    TOP_movslq,
-		    TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, int32, opnd1);
-
   Instruction_Group("int8_32 mov",
 		    TOP_movsbl,
 		    TOP_movzbl,
@@ -934,6 +928,20 @@ main()
 		    TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int16, opnd1);
+
+  Instruction_Group("int32_64 sign-ext mov",
+		    TOP_movslq,
+		    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int32, opnd1);
+
+  // Print the result as a 32-bit register even though the result is 64-bit,
+  // since CG emits mov32 for movzlq.  mov32 expects a 32-bit result.
+  Instruction_Group("int32_64 zero-ext mov",
+		    TOP_movzlq,
+		    TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
 
   Instruction_Group("int32 mov",
 		    TOP_mov32,
@@ -1190,6 +1198,9 @@ main()
 		    TOP_rori8,
 		    TOP_rori16,
 		    TOP_rori32,
+		    TOP_roli8,
+		    TOP_roli16,
+		    TOP_roli32,
 		    TOP_UNDEFINED);
   Result(0, int32);
   Operand(0, int32, opnd1);
@@ -1200,6 +1211,7 @@ main()
 		    TOP_shli64,
 		    TOP_shri64,
 		    TOP_rori64,
+		    TOP_roli64,
 		    TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64, opnd1);
@@ -1212,6 +1224,9 @@ main()
 		    TOP_ror8,
 		    TOP_ror16,
 		    TOP_ror32,
+		    TOP_rol8,
+		    TOP_rol16,
+		    TOP_rol32,
 		    TOP_UNDEFINED);
   Result(0, int32);
   Operand(0, int32, opnd1);
@@ -1240,6 +1255,7 @@ main()
 		    TOP_shl64,
 		    TOP_shr64,
 		    TOP_ror64,
+		    TOP_rol64,
 		    TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64, opnd1);
@@ -1390,6 +1406,8 @@ main()
 		    TOP_staps,
 		    TOP_stntpd,
 		    TOP_stntps,
+		    TOP_storenti128,
+		    TOP_storelpd,
 		    TOP_UNDEFINED);
   Operand(0, fp128, storeval);
   Operand(1, int64, base);
@@ -1474,13 +1492,28 @@ main()
   Result(0, fp128);
   Operand(0, fp128, opnd1);
 
-  Instruction_Group("packed shifts",
+  Instruction_Group("packed shifts w/ immediate",
 		    TOP_psrldq,
-		    TOP_psrlq,
+		    TOP_psrlq128v64, // psrlq with immediate
+		    TOP_pslldq,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
   Operand(1, simm8, opnd2);
+
+  Instruction_Group("packed shifts",
+		    TOP_psllw,
+		    TOP_pslld,
+		    TOP_psllq,
+		    TOP_psrlw,
+		    TOP_psrld,
+		    TOP_psrlq,
+		    TOP_psraw,
+		    TOP_psrad,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
 
   Instruction_Group("float load indexed",
 		    TOP_UNDEFINED);
@@ -1625,6 +1658,8 @@ main()
 		    TOP_fsqrt,
 		    TOP_fchs,
 		    TOP_frndint,
+		    TOP_fcos,
+		    TOP_fsin,
 		    TOP_UNDEFINED);
   Result(0, x87);
   Operand(0, x87, opnd1);
@@ -2455,14 +2490,16 @@ main()
 
   Instruction_Group( "bsf32",
                      TOP_bsf32,
+                     TOP_bsr32,
                      TOP_UNDEFINED);
   Result(0, int32);
   Operand(0, int32, opnd1);
 
   Instruction_Group( "bsf64",
                      TOP_bsf64,
+                     TOP_bsr64,
                      TOP_UNDEFINED);
-  Result(0, int32);
+  Result(0, int64);
   Operand(0, int64, opnd1);
 
   Instruction_Group("int64 load to mmx",
@@ -2472,12 +2509,24 @@ main()
   Operand(0, int64, base);
   Operand(1, simm32, offset);
 
+  Instruction_Group("int64 load to mmx w/o base or index",
+		    TOP_ld64_2m_n32,
+		    TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, simm32, offset);
+
   Instruction_Group("int64 store from mmx",
 		    TOP_store64_fm,
 		    TOP_UNDEFINED);
   Operand(0, mmx, storeval);
   Operand(1, int64, base);
   Operand(2, simm32, offset);
+
+  Instruction_Group("int64 store from mmx w/o base or index",
+		    TOP_store64_fm_n32,
+		    TOP_UNDEFINED);
+  Operand(0, mmx, storeval);
+  Operand(1, simm32, offset);
 
   Instruction_Group("int64 mov between mmx",
 		    TOP_mov64_m,
@@ -2549,6 +2598,38 @@ main()
   Result(0, mmx);
   Operand(0, mmx, opnd1);
   Operand(1, mmx, opnd2);
+
+  Instruction_Group("MMX shuffle-int",
+		    TOP_pshufw64v16,
+		    TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, mmx, opnd1);
+  Operand(1, uimm8, opnd3);
+
+
+  Instruction_Group( "mov int32 2 mmx",
+                     TOP_movi32_2m,
+                     TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, int32, opnd1);
+
+  Instruction_Group( "mov int64 2 mmx",
+                     TOP_movi64_2m,
+                     TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, int64, opnd1);
+
+  Instruction_Group( "mov mmx 2 int32",
+                     TOP_movm_2i32,
+                     TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, mmx, opnd1);
+
+  Instruction_Group( "mov mmx 2 int64",
+                     TOP_movm_2i64,
+                     TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, mmx, opnd1);
   
   ISA_Operands_End();
   return 0;

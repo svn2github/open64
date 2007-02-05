@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -330,8 +334,12 @@ HB_Init(void)
   HB_minimum_priority = atof(HB_min_priority);
   HB_bb_map = BB_MAP_Create();
   HB_Trace_Init();
+#ifndef TARG_IA64
   // Turn off hyperblock formation if we can't predicate
   if (!CGTARG_Can_Predicate()) {
+#else
+  if (0) {
+#endif
     HB_formation = 0;
   }
 }
@@ -498,6 +506,9 @@ Convert_Candidate_Leaves(std::list<HB_CAND_TREE*>& candidate_regions,
   }
 }
 
+#ifdef KEY
+BOOL hammock_region;
+#endif
 /////////////////////////////////////
 void
 Form_Hyperblocks(HB_CAND_TREE*        cand, 
@@ -541,6 +552,9 @@ Form_Hyperblocks(HB_CAND_TREE*        cand,
     }
 
     orig_blocks = BB_SET_CopyD(orig_blocks,HB_Blocks(hb), &MEM_local_pool);
+#ifdef KEY
+    hammock_region = FALSE;
+#endif
     if (HB_Block_Select(hb, FALSE)) {
       HB_bb_list duplicate_bbs;
       if (HB_Tail_Duplicate(hb, duplicate, duplicate_bbs,

@@ -1,6 +1,10 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -259,9 +263,12 @@ Is_Delay_Slot_Op (OP *op, BB *bb)
 {
   if (op != BB_last_op(bb)) return FALSE;
   OP *xfer_op = OP_prev(op);
+#ifdef TARG_IA64
   // if (xfer_op == NULL || !OP_xfer(xfer_op)) return FALSE;
   if (xfer_op == NULL || !TOP_is_xfer(OP_code(xfer_op))) return FALSE;
-
+#else
+  if (xfer_op == NULL || !OP_xfer(xfer_op)) return FALSE;
+#endif
   return TRUE;
 }
 
@@ -383,8 +390,12 @@ Handle_Post_Hazard (OP *op, INT opnd, INT ops_to_check)
       break;
     }
     ops_to_check -= OP_Real_Ops (scan_op);
+#ifdef TARG_IA64
     //if (OP_xfer(scan_op)) ops_to_check -= 1;  // account for the delay slot
     if (TOP_is_xfer(OP_code(scan_op))) ops_to_check -= 1;  // account for the delay slot
+#else
+    if (OP_xfer(scan_op)) ops_to_check -= 1;  // account for the delay slot
+#endif
   }
   if (add_noops) {
     // add ops_to_check number of noops.
@@ -483,8 +494,12 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
       // which sets the predicate and the branch operation which uses
       // the same predicate.
 
+#ifdef TARG_IA64
       //if (OP_icmp(prev_op) && OP_xfer(op)) {
       if (OP_icmp(prev_op) && TOP_is_xfer(OP_code(op))) {
+#else
+      if (OP_icmp(prev_op) && OP_xfer(op)) {
+#endif
 
 	TN *tn1, *tn2;
 	OP *cmp_op;
@@ -492,6 +507,7 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
 	CGTARG_Analyze_Compare(op, &tn1, &tn2, &cmp_op);
 	if (prev_op == cmp_op) continue;
 
+#ifdef TARG_IA64
         // add one special case; 
         // if we caring for predicate compare. 
         // CGTARG_Analyze_Compare return cmp_op as null;
@@ -504,6 +520,7 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
         if (read_dependence && OP_cond_def(prev_op) && !cmp_op) continue;
 	
 	if (read_dependence) continue; //cmp-branch always can be same bundle
+#endif
       }
 
       // (2) Ignore all dependences originating from p0 predicate.
@@ -518,10 +535,16 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
 
       // (5) A check load and a subsequent instruction that reads the
       // target of the check load may exist in the same instruction group.
+#ifdef TARG_IA64
       if (read_dependence && CGTARG_Is_OP_Check_Load(prev_op)) continue;
+#else
+      if (read_dependence && CGTARG_Is_OP_Speculative(prev_op)) continue;
+#endif
 
+#ifdef TARG_IA64
       // (6) mov TOBR, br B0
       if (read_dependence && OP_code(prev_op)==TOP_mov_t_br && OP_xfer(op)) continue;
+#endif
       return TRUE;
     }
   }
@@ -558,9 +581,12 @@ Delay_Scheduling_OP(OP *op, INT slot_pos, TI_BUNDLE *bundle)
   // inserted before (instead of after). As a result, any <xfer_op>
   // will be the last_op in a legal bundle.
 
+#ifdef TARG_IA64
   //if (BB_last_op(OP_bb(op)) == op && OP_xfer(op) && 
   if (BB_last_op(OP_bb(op)) == op && TOP_is_xfer(OP_code(op)) && 
-
+#else
+  if (BB_last_op(OP_bb(op)) == op && OP_xfer(op) &&
+#endif
       (slot_pos != (ISA_MAX_SLOTS - 1))) 
     return TRUE;
 
@@ -806,9 +832,12 @@ Check_For_Other_Hazards(OP *op)
 
   if (PROC_has_branch_delay_slot()) {
     // Check for delay slot hazards.
+#ifdef TARG_IA64
     //if (OP_xfer(op)) {
     if (TOP_is_xfer(OP_code(op))) {
- 
+#else
+      if (OP_xfer(op)) {
+#endif
       Handle_Post_Hazard (op, OPND_NONE, 1);
       Add_Post_Hazard_To_Q (op, OPND_NONE, 1);
     }
@@ -876,6 +905,11 @@ Handle_All_Hazards (BB *bb)
 
     // Check for bundle hazards.
     if (PROC_has_bundles() && LOCS_Enable_Bundle_Formation) {
+#ifdef TARG_MIPS
+      // We do not have bundle; and, we use the bundle flag as a temporary in
+      // GCM module (look for visited/moved flags).
+      FmtAssert(FALSE, ("No support for bundle at KEY\n"));
+#endif	    
 
       // Avoid processing dummy and already bundled OPs.
       if (!OP_dummy(op) && !OP_bundled(op)) 

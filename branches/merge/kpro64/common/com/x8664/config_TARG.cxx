@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -40,7 +40,7 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/config_TARG.cxx,v $
+ * $Source: common/com/x8664/SCCS/s.config_TARG.cxx $
  *
  * Revision history:
  *  26-Feb-97 - Original Version, extracted from config.c.

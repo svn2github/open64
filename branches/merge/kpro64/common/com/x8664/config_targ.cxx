@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +45,10 @@
  * ====================================================================
  *
  * Module: config_targ.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/config_targ.cxx,v $
+ * $Revision: 1.50 $
+ * $Date: 05/12/01 11:41:37-08:00 $
+ * $Author: tkong@hyalite.keyresearch $
+ * $Source: common/com/x8664/SCCS/s.config_targ.cxx $
  *
  *
  * Description:
@@ -329,6 +333,7 @@ Targ_Name ( TARGET_PROCESSOR b)
     case TARGET_athlon64: return "Athlon64";
     case TARGET_athlon: return "Athlon";
     case TARGET_em64t: return "EM64T"; 
+    case TARGET_core: return "Core"; 
     case TARGET_pentium4: return "Pentium4";
     case TARGET_xeon: return "Xeon";
     case TARGET_anyx86: return "Anyx86";
@@ -409,7 +414,7 @@ Prepare_Target ( void )
 	Target_SSE2 = TRUE;
 
       FmtAssert( Target_SSE2,
-		 ("Option -mno_sse2 is not yet implemented for x64-64.") );
+		 ("Option -mno_sse2 is not yet implemented for x86-64.") );
 
     } else if( strcmp( ABI_Name, "n32" ) == 0 ){
       Target_ABI = ABI_n32;
@@ -481,6 +486,11 @@ Prepare_Target ( void )
     }
     else if ( strcasecmp ( Processor_Name, "em64t" ) == 0 ) {
       targ = TARGET_em64t;
+      if (!Target_SSE2_Set && !Target_SSE3_Set)
+        Target_SSE3 = TRUE;
+    }
+    else if ( strcasecmp ( Processor_Name, "core" ) == 0 ) {
+      targ = TARGET_core;
       if (!Target_SSE2_Set && !Target_SSE3_Set)
         Target_SSE3 = TRUE;
     }
@@ -697,6 +707,14 @@ IPA_Configure_Target (void)
     Integer_type = MTYPE_I4;
     Boolean_type  = MTYPE_I4;
     Boolean_type2 = MTYPE_I4;
+
+#ifdef KEY // Tell IPA the target byte-order
+#if defined(linux)
+  Target_Byte_Sex = LITTLE_ENDIAN;
+#else  
+  Target_Byte_Sex = BIG_ENDIAN;
+#endif
+#endif
 
 } /* IPA_Configure_Target */
 

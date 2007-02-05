@@ -1,6 +1,10 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -234,10 +238,12 @@ CG_THR::OP_Has_Restrictions(OP *pred_op, OP *succ_op, BOOL before_regalloc)
       if (TNs_Are_Equivalent(succ_result_tn, succ_base_tn)) return TRUE;
     }
 
+#if !defined(TARG_MIPS) && !defined(TARG_X8664)
     //TODO: Need to add support for post-increment loads as well.
     if (OP_load(succ_op) && 
 	TOP_Find_Operand_Use(OP_code(succ_op), OU_postincr) >= 0)
       return TRUE;
+#endif
   }
 
   return FALSE;
@@ -292,9 +298,13 @@ CG_THR::Perform_THR()
 			   INCLUDE_ASSIGNED_REG_DEPS,
 			   NON_CYCLIC,
 			   NO_MEMREAD_ARCS,
+#ifndef TARG_MIPS
 			   (Is_Target_Itanium()) ? NO_MEMIN_ARCS :
+#endif
 			                           INCLUDE_MEMIN_ARCS,
+#ifndef TARG_MIPS
 			   (Is_Target_Itanium()) ? INCLUDE_CONTROL_ARCS :
+#endif
 			                           NO_CONTROL_ARCS,
 			   NULL);
 

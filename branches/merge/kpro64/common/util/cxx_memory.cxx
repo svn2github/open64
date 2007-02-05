@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -145,7 +145,7 @@ void* operator new (size_t sz)
 {
   void* ptr;
   if (_dummy_new_mempool == (MEM_POOL*) -1) {
-#if (__GNUC__ != 3) // to many of this after building with gcc 3.2
+#if (__GNUC__ < 3) // to many of this after building with gcc 3.2
     DevWarn("new: _dummy_new_mempool is not yet set; Using Malloc_Mem_Pool");
 #endif
     _dummy_new_mempool = Malloc_Mem_Pool;
@@ -172,7 +172,7 @@ void operator delete (void* ptr)
 #endif /* __GNUC__ */
 {
   if (_dummy_delete_mempool == (MEM_POOL*) -1) {
-#if (__GNUC__ != 3) // to many of this after building with gcc 3.2
+#if (__GNUC__ < 3) // to many of this after building with gcc 3.2
     DevWarn("new: _dummy_delete_mempool is not yet set; Using Malloc_Mem_Pool");
 #endif
     _dummy_delete_mempool = Malloc_Mem_Pool;
@@ -185,7 +185,7 @@ void operator delete (void* ptr)
 #ifdef __GNUC__
 void operator delete[] (void* ptr) throw() {
   if (_dummy_delete_mempool == (MEM_POOL*) -1) {
-#if (__GNUC__ != 3) // to many of this after building with gcc 3.2
+#if (__GNUC__ < 3) // to many of this after building with gcc 3.2
     DevWarn("new: _dummy_delete_mempool is not yet set; Using Malloc_Mem_Pool");
 #endif
     _dummy_delete_mempool = Malloc_Mem_Pool;

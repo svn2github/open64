@@ -1,6 +1,14 @@
 /*
+ * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -56,11 +64,13 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #endif
 
 #if defined(__GNUC__)
-#include <math.h>	// FLT_MAX
+#ifdef TARG_IA64 // workaround at PathScale for build problem
+#include <math.h>       // FLT_MAX
+#endif
+#include <float.h>	// FLT_MAX
 #else
 #include <limits.h>
 #endif
-#include <float.h>
 #include "defs.h"
 #include "errors.h"
 #include "cgir.h"
@@ -68,6 +78,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gtn_universe.h"
 #include "gtn_set.h"
 #include "cg_spill.h"
+#include "cg_flags.h"
 
 #include "gra_bb.h"
 #include "gra_trace.h"
@@ -77,6 +88,15 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_lrange_subuniverse.h"
 #include "gra_grant.h"
 #include "gra_interfere.h"
+
+#ifndef TARG_IA64
+// If TRUE, allow reuse of registers at live range boundary basic blocks.
+BOOL GRA_optimize_boundary = FALSE;
+
+// If TRUE, prioritize live ranges by reference density.  If FALSE, prioritize
+// by the number of references in the live range.
+BOOL GRA_prioritize_by_density = FALSE;
+#endif
 
 LRANGE_MGR lrange_mgr;
 
@@ -148,6 +168,10 @@ LRANGE_MGR::Create_Complement( TN* tn )
   result->u.c.first_lunit = NULL;
   // Why +2?  I think because 0 is reserved.
   result->u.c.live_bb_set = BB_SET_Create_Empty(PU_BB_Count+2,GRA_pool);
+#ifndef TARG_IA64
+  result->u.c.internal_bb_set = BB_SET_Create_Empty(PU_BB_Count+2,GRA_pool);
+  result->u.c.boundary_bbs = NULL;
+#endif
   result->u.c.global_pref_set = NULL;
   gra_region_mgr.Complement_Region()->Add_LRANGE(result);
   TN_MAP_Set(tn_map,tn,result);
@@ -251,6 +275,30 @@ LRANGE::Contains_BB(GRA_BB *gbb) {
 	    ("LRANGE_Contains_BB: LRANGE not a complement LRANGE"));
   return BB_SET_MemberP(u.c.live_bb_set, gbb->Bb());   
 }
+
+#ifndef TARG_IA64
+/////////////////////////////////////
+void 
+LRANGE::Add_Internal_BB(GRA_BB *gbb) { 
+  if (Type() == LRANGE_TYPE_COMPLEMENT)
+    u.c.internal_bb_set = BB_SET_Union1D(u.c.internal_bb_set, gbb->Bb(), GRA_pool);
+}
+
+/////////////////////////////////////
+void 
+LRANGE::Remove_Internal_BB(GRA_BB *gbb) { 
+  if (Type() == LRANGE_TYPE_COMPLEMENT)
+    u.c.internal_bb_set = BB_SET_Difference1D(u.c.internal_bb_set, gbb->Bb());
+}
+
+/////////////////////////////////////
+BOOL 
+LRANGE::Contains_Internal_BB(GRA_BB *gbb) { 
+  FmtAssert(Type() == LRANGE_TYPE_COMPLEMENT,
+	    ("LRANGE_Contains_BB: LRANGE not a complement LRANGE"));
+  return BB_SET_MemberP(u.c.internal_bb_set, gbb->Bb());   
+}
+#endif
 
 /////////////////////////////////////
 void 
@@ -414,6 +462,42 @@ LRANGE::Interferes( LRANGE* lr1 )
 
   if ( Type() == LRANGE_TYPE_COMPLEMENT ) {
     if ( lr1->Type() == LRANGE_TYPE_COMPLEMENT ) {
+#ifndef TARG_IA64
+      if (GRA_optimize_boundary) {
+	// If none of the live BBs interfere, then the LRANGEs don't interfere.
+	if (!BB_SET_IntersectsP(u.c.live_bb_set, lr1->u.c.live_bb_set))
+	  return FALSE;
+
+	// If some internal BBs interfere, then the LRANGEs interfere.
+	if (BB_SET_IntersectsP(u.c.internal_bb_set, lr1->u.c.internal_bb_set))
+	  return TRUE;
+
+	// No internal BBs interefere.  Check if the boundary BBs interfere.
+
+	// TODO:  Clean up code and make more efficient.
+
+	// Find the two LRANGEs' boundary BBs.
+	BB_SET* this_boundary_bbs = BB_SET_Difference(u.c.live_bb_set,
+				      u.c.internal_bb_set, &MEM_local_nz_pool);
+	BB_SET* lr1_boundary_bbs = BB_SET_Difference(lr1->u.c.live_bb_set,
+				  lr1->u.c.internal_bb_set, &MEM_local_nz_pool);
+	// Analyze the intersection of the boundary BBs.
+	BB *current =
+	      BB_SET_Intersection_Choose(this_boundary_bbs, lr1_boundary_bbs);
+	while (current != BB_SET_CHOOSE_FAILURE) {
+	  LRANGE_BOUNDARY_BB *boundary_bb0 = Get_Boundary_Bb(current);
+	  LRANGE_BOUNDARY_BB *boundary_bb1 = lr1->Get_Boundary_Bb(current);
+	  Is_True(boundary_bb0 != NULL && boundary_bb1 != NULL,
+		  ("Boundary BB not found"));
+	  if (boundary_bb0->Interfere(boundary_bb1))
+	    return TRUE;
+          current = BB_SET_Intersection_Choose_Next(this_boundary_bbs,
+						    lr1_boundary_bbs, current);
+	}
+	// The boundary BBs don't interfere, so no interference.
+	return FALSE;
+      } else
+#endif
       return BB_SET_IntersectsP(u.c.live_bb_set, lr1->u.c.live_bb_set);
     }
     else {
@@ -488,11 +572,26 @@ LRANGE::Calculate_Priority(void)
       }
     }
     priority = value;
+#ifndef TARG_IA64
+    if ((GRA_exclude_callee_saved_regs ||
+	 GRA_eh_exclude_callee_saved_regs && PU_Has_Exc_Handler)
+	&& Tn_Is_Save_Reg())
+      priority += 100.0F;
+
+    // Prioritize live ranges by reference density as in classic Chow.
+    if (GRA_prioritize_by_density) {
+      UINT32 num_bbs = BB_SET_Size(this->Live_BB_Set());
+      priority = priority / num_bbs;
+    }
+#endif
   }
 }
 
 /////////////////////////////////////
-static REGISTER_SET
+#ifndef KEY
+static
+#endif
+REGISTER_SET
 Global_Preferenced_Regs(LRANGE* lrange, GRA_BB* gbb)
 /////////////////////////////////////
 //
@@ -507,6 +606,46 @@ Global_Preferenced_Regs(LRANGE* lrange, GRA_BB* gbb)
 	 tn != GTN_SET_CHOOSE_FAILURE;
 	 tn = GTN_SET_Choose_Next(lrange->Global_Pref_Set(), tn)) {
       LRANGE *plrange = lrange_mgr.Get(tn);
+#ifndef TARG_IA64
+      if (GRA_optimize_boundary) {
+	// Before making the preferenced TN's register available, check to see
+	// if that register is also used by a non-preferenced TN in the BB.  If
+	// so, the register cannot be used.
+	if (plrange->Contains_BB(gbb) && plrange->Allocated()) {
+	  TN *lrange_tn = lrange->Tn();
+	  REGISTER reg = plrange->Reg();
+	  BOOL used_by_nonpreferenced_tn = FALSE;
+	  for (OP *op = BB_first_op(gbb->Bb());
+	       op != NULL && !used_by_nonpreferenced_tn;
+	       op = OP_next(op)) {
+	    // Check source operands.
+	    for (int i = OP_opnds(op) - 1; i >= 0; i--) {
+	      TN *opnd_tn = OP_opnd(op, i);
+	      if (opnd_tn != tn && opnd_tn != lrange_tn) {
+		LRANGE *lr = lrange_mgr.Get(opnd_tn);
+		if (lr != NULL && lr->Allocated() && lr->Reg() == reg) {
+		  used_by_nonpreferenced_tn = TRUE;
+		  break;
+		}
+	      }
+	    }
+	    // Check result operands.
+	    for (int i = OP_results(op) - 1; i >= 0; i--) {
+	      TN *result_tn = OP_result(op, i);
+	      if (result_tn != tn && result_tn != lrange_tn) {
+		LRANGE *lr = lrange_mgr.Get(result_tn);
+		if (lr != NULL && lr->Allocated() && lr->Reg() == reg) {
+		  used_by_nonpreferenced_tn = TRUE;
+		  break;
+		}
+	      }
+	    }
+	  }
+	  if (! used_by_nonpreferenced_tn)
+	    global_prefs = REGISTER_SET_Union1(global_prefs, reg);
+	}
+      } else
+#endif
       if (plrange->Contains_BB(gbb) && plrange->Allocated()) {
 	global_prefs = REGISTER_SET_Union1(global_prefs, plrange->Reg());
       }
@@ -565,8 +704,18 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
     allowed = REGISTER_SET_Difference(allowed,
 				      REGISTER_CLASS_callee_saves(rc));
 
+#ifdef TARG_X8664
+  // if the live range spans savexmms pseudo-op, disallow FP parm registers
+  if (Spans_Savexmms() && rc == ISA_REGISTER_CLASS_float) {
+    INT num_xmms = TN_value(OP_opnd(gra_savexmms_op, 1));
+    for (INT i = 1; i <= num_xmms; i++)
+      allowed = REGISTER_SET_Difference1(allowed, REGISTER_MIN+(8-i));
+  }
+#endif
+
   if (   Type() != LRANGE_TYPE_LOCAL && TN_is_save_reg(Tn())
   ) {
+#ifdef TARG_IA64
     // we copied the reg. class (creg) of this copy TN in
     // Init_Callee_Saved_Regs_for_REGION, this confuses TN_save_reg to
     // return a dedicated TN (of lc), then in turn tries to allocate that
@@ -580,7 +729,11 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
         REGISTER_SET singleton = REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET,sv_reg);
         allowed = REGISTER_SET_Intersection(allowed,singleton);
     }
-
+#else
+    REGISTER sv_reg = TN_save_reg(Tn());
+    REGISTER_SET singleton = REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET,sv_reg);
+    allowed = REGISTER_SET_Intersection(allowed,singleton);
+#endif
   }
 
   switch (Type()) {
@@ -607,6 +760,23 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
       LUNIT* lunit = lunit_iter.Current();
       GRA_BB* gbb = lunit->Gbb();
       REGISTER_SET used = gbb->Registers_Used(rc);
+#ifndef TARG_IA64
+      if (GRA_optimize_boundary) {
+	// If <gbb> is a boundary BB, remove from <used> those registers that
+	// are unused in the parts of the BB where the lrange is live.
+	if (! Contains_Internal_BB(gbb)) {
+	  REGISTER reg;
+	  LRANGE_BOUNDARY_BB* boundary_bb = Get_Boundary_Bb(gbb->Bb());
+	  for (reg = REGISTER_SET_Choose(used);
+	       reg != REGISTER_UNDEFINED;
+	       reg = REGISTER_SET_Choose_Next(used, reg)) {
+	    if (! boundary_bb->Interfere(gbb, rc, reg)) {
+	      used = REGISTER_SET_Difference1(used, reg);
+	    }
+	  }
+	}
+      }
+#endif
       REGISTER_SET allowd_prefs = lunit->Allowed_Preferences();
       
       allowd_prefs = REGISTER_SET_Union(allowd_prefs,
@@ -664,12 +834,99 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
   }
 }
 
+
+#ifndef TARG_IA64
+/////////////////////////////////////
+// Return the set of registers that are reclaimable for <lrange>.  This means
+// finding the set of registers that are already allocated to some other lrange
+// but are not referenced in the BBs spanned by <lrange>.  <lrange> must belong
+// to <region>.
+REGISTER_SET
+LRANGE::Reclaimable_Registers( GRA_REGION* region )
+{
+  LRANGE_LIVE_GBB_ITER gbb_iter;
+  LRANGE_LUNIT_ITER    lunit_iter;
+  INTERFERE_ITER       int_iter;
+  ISA_REGISTER_CLASS   rc      = Rc();
+  REGISTER_SET         reclaimable = REGISTER_CLASS_allocatable(rc);
+
+#ifdef HAS_STACKED_REGISTERS
+  FmtAssert(FALSE,("Reclaimable_Registers: stacked register not implemented"));
+#endif
+
+  // if the live range spans an instruction that clobbers rotating registers,
+  // disallow rotating registers
+  if (Spans_Rot_Reg_Clob()) 
+    reclaimable = REGISTER_SET_Difference(reclaimable,
+					  REGISTER_CLASS_rotating(rc));
+
+  // if the live range spans a setjmp, disallow callee-saved registers
+  if (Spans_A_Setjmp() && ! TN_is_save_reg(Tn()))
+    reclaimable = REGISTER_SET_Difference(reclaimable,
+					  REGISTER_CLASS_callee_saves(rc));
+
+#ifdef TARG_X8664
+  // if the live range spans savexmms pseudo-op, disallow FP parm registers
+  if (Spans_Savexmms() && rc == ISA_REGISTER_CLASS_float) {
+    INT num_xmms = TN_value(OP_opnd(gra_savexmms_op, 1));
+    for (INT i = 1; i <= num_xmms; i++)
+      reclaimable = REGISTER_SET_Difference1(reclaimable, REGISTER_MIN+(8-i));
+  }
+#endif
+
+  if (   Type() != LRANGE_TYPE_LOCAL && TN_is_save_reg(Tn())
+  ) {
+    REGISTER sv_reg = TN_save_reg(Tn());
+    REGISTER_SET singleton = REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET,sv_reg);
+    reclaimable = REGISTER_SET_Intersection(reclaimable, singleton);
+  }
+
+  switch (Type()) {
+
+  case LRANGE_TYPE_LOCAL:
+    FmtAssert(FALSE, ("Reclaimable_Registers: unexpected LRANGE_TYPE_LOCAL"));
+    return REGISTER_SET_EMPTY_SET;
+
+  case LRANGE_TYPE_COMPLEMENT:
+    for (gbb_iter.Init(this); ! gbb_iter.Done(); gbb_iter.Step()) {
+      GRA_BB* gbb = gbb_iter.Current();
+      REGISTER_SET used = gbb->Registers_Used(rc);
+      REGISTER_SET referenced = gbb->Registers_Referenced(rc);
+      // Consider a register reclaimable if it is used and not referenced.
+      // Experiment with other criteria in the future.
+      reclaimable = REGISTER_SET_Intersection(reclaimable, used);
+      reclaimable = REGISTER_SET_Difference(reclaimable, referenced);
+    }
+    if (Avoid_RA())
+      reclaimable = REGISTER_SET_Difference1(reclaimable, TN_register(RA_TN));
+
+    if (Spans_A_Call()) 
+      reclaimable = REGISTER_SET_Difference(reclaimable,
+					    REGISTER_CLASS_caller_saves(rc));
+    return reclaimable;
+
+  case LRANGE_TYPE_REGION:
+    FmtAssert(FALSE,
+	      ("Reclaimable_Registers: LRANGE_TYPE_REGION not implemented"));
+    return REGISTER_SET_EMPTY_SET;
+
+  default:
+    FmtAssert(FALSE,("Unknown type of LRANGE %d",Type()));
+    return REGISTER_SET_EMPTY_SET;
+  }
+}
+#endif
+
 /////////////////////////////////////
 // We've picked <reg> as the register for <lrange>.  Update
 // <lrange> and other data structures as appropriate
 // (particularly GRA_BBs and GRA_REGIONS.)
 void
+#ifdef TARG_IA64
 LRANGE::Allocate_Register( REGISTER r )
+#else
+LRANGE::Allocate_Register( REGISTER r, BOOL reclaim )
+#endif
 {
   LRANGE_LIVE_GBB_ITER live_gbb_iter;
   LRANGE_GLUE_REF_GBB_ITER glue_gbb_iter;
@@ -684,9 +941,25 @@ LRANGE::Allocate_Register( REGISTER r )
   switch ( Type() ) {
   case LRANGE_TYPE_LOCAL:
     GRA_GRANT_Local_Register(Gbb(),Rc(),r);
+#ifdef TARG_IA64
     Gbb()->Make_Register_Used((ISA_REGISTER_CLASS) Rc(),r);
+#else
+    Gbb()->Make_Register_Used((ISA_REGISTER_CLASS) Rc(), r, NULL, reclaim);
+#ifdef KEY
+    // Update the referenced registers.
+    if (GRA_reclaim_register) {
+      Gbb()->Make_Register_Referenced(Rc(), r, this);
+    }
+#endif
+#endif // TARG_IA64
     break;
   case LRANGE_TYPE_REGION:
+#ifndef TARG_IA64
+    // Need to call Make_Register_Referenced.
+    FmtAssert(!GRA_reclaim_register,
+	      ("Allocate_Register: register reclaiming not yet supported "
+	       "for LRANGE_TYPE_REGION"));
+#endif
     TN_Allocate_Register(Tn(),r);
     Region()->Make_Register_Used(Rc(), r);
     for (glue_gbb_iter.Init(this); ! glue_gbb_iter.Done(); glue_gbb_iter.Step())
@@ -700,8 +973,23 @@ LRANGE::Allocate_Register( REGISTER r )
     for (live_gbb_iter.Init(this); ! live_gbb_iter.Done(); live_gbb_iter.Step())
     {
       GRA_BB* gbb = live_gbb_iter.Current();
+#ifdef TARG_IA64
       gbb->Make_Register_Used(Rc(), r);
+#else
+      gbb->Make_Register_Used(Rc(), r, this, reclaim);
+#endif
     }
+#ifndef TARG_IA64
+    // Update the referenced registers.
+    if (GRA_reclaim_register) {
+      LRANGE_LUNIT_ITER lunit_iter;
+      for (lunit_iter.Init(this); !lunit_iter.Done(); lunit_iter.Step()) {
+	LUNIT *lunit = lunit_iter.Current();
+	if (Contains_BB(lunit->Gbb()))
+	  lunit->Gbb()->Make_Register_Referenced(Rc(), r, this);
+      }
+    }
+#endif
   }
 
   GRA_Trace_LRANGE_Allocate(this);
@@ -1125,6 +1413,21 @@ LRANGE_CLIST_ITER::Splice( LRANGE* lrange )
     clist->last = lrange;
 }
 
+#ifndef TARG_IA64
+// Insert <lrange> before the current element.  If current element is NULL, add
+// to end of list.
+void
+LRANGE_CLIST_ITER::Push( LRANGE* lrange )
+{
+  if (Done())
+    clist->last = lrange;
+  if (clist->first == Current() )
+    clist->first = lrange;
+  lrange->clist_next = Current();
+  prev->clist_next = lrange;
+}
+#endif
+
 /////////////////////////////////////
 // Note that a copy between <lrange0> and <lrange1> in <gbb>
 // which we can remove if the two LRANGEs are allocated to the
@@ -1233,3 +1536,389 @@ LRANGE::Format( char* buff )
   return buff;
 }
 
+#ifndef TARG_IA64
+/////////////////////////////////////
+// Add an already-built boundary BB to the boundary BBs list.
+void
+LRANGE::Boundary_BBs_Push( LRANGE_BOUNDARY_BB *boundary_bb)
+{
+  boundary_bb->Next_Set(Boundary_BBs());
+  Set_Boundary_BBs(boundary_bb);
+  // The boundary BB now belongs to this LRANGE.
+  boundary_bb->Lrange_Set(this);
+}
+
+/////////////////////////////////////
+// Build a new boundary BB and add it to the boundary BBs list.
+void
+LRANGE::Add_Boundary_BB( GRA_BB* gbb)
+{
+  LRANGE_BOUNDARY_BB *new_boundary_bb =
+    (LRANGE_BOUNDARY_BB*) MEM_POOL_Alloc(GRA_pool, sizeof(LRANGE_BOUNDARY_BB));
+
+  new_boundary_bb->Init(gbb, this);
+  new_boundary_bb->Next_Set(Boundary_BBs());
+  Set_Boundary_BBs(new_boundary_bb);
+}
+
+/////////////////////////////////////
+// Update the boundary BBs to reflect now live-in and live-out info.
+void
+LRANGE::Update_Boundary_BBs(void)
+{
+  LRANGE_BOUNDARY_BB* p;
+
+  for (p = Boundary_BBs(); p != NULL; p = p->Next()) {
+    BOOL need_update = FALSE;
+    BOOL new_live_in = p->Is_Live_In();
+    BOOL new_live_out = p->Is_Live_Out();
+
+    // See if the live-in and live-out info have changed since the boundary BB
+    // was created.  If so, update the boundary BB.
+    if (new_live_in && !new_live_out) {
+      // live-in
+      if (!(p->Start_Index() == 0 && p->End_Index() > 0))
+        need_update = TRUE;
+    } else if (!new_live_in && new_live_out) {
+      // live-out
+      if (!(p->Start_Index() > 0 && p->End_Index() == 0))
+        need_update = TRUE;
+    } else if (!new_live_in && !new_live_out) {
+      if (p->Start_Index() > 0 || p->End_Index() > 0) {
+        // contained
+	if (p->Start_Index() == 0 || p->End_Index() == 0)
+	  need_update = TRUE;
+      } else {
+        // empty
+      }
+    } else {
+      // live-in and live-out
+      if (p->Start_Index() > 0 || p->End_Index() > 0) {
+        // disjoint
+	if (p->Start_Index() == 0 || p->End_Index() == 0)
+	  need_update = TRUE;
+      } else {
+        // pass-thru
+      }
+    }
+
+    // Update boundary BB if needed.
+    if (need_update) {
+      p->Init(p->Gbb(), this);
+    }
+  }
+}
+
+/////////////////////////////////////
+// Find the boundary BB corresponding to <target_bb>.
+LRANGE_BOUNDARY_BB*
+LRANGE::Get_Boundary_Bb( BB *target_bb )
+{
+  LRANGE_BOUNDARY_BB* p;
+  for (p = Boundary_BBs(); p != NULL; p = p->Next()) {
+    if (p->Gbb()->Bb() == target_bb) {
+      Is_True(p->Lrange() == this, ("Boundary BB has wrong LRANGE"));
+      return p;
+    }
+  }
+  return NULL;
+}
+
+/////////////////////////////////////
+// Remove the boundary BB corresponding to <target_bb>.
+LRANGE_BOUNDARY_BB*
+LRANGE::Remove_Boundary_Bb( BB *target_bb )
+{
+  LRANGE_BOUNDARY_BB *p, *prev;
+
+  p = Boundary_BBs();
+  if (p == NULL)
+    return NULL;
+
+  // See if the target is the first in the list.
+  if (p->Gbb()->Bb() == target_bb) {
+    Set_Boundary_BBs(p->Next());
+    return p;
+  }
+
+  // The target is not the first on the list.
+  prev = p;
+  p = p->Next();
+  for ( ; p != NULL; prev = p, p = p->Next()) {
+    if (p->Gbb()->Bb() == target_bb) {
+      prev->Next_Set(p->Next());
+      return p;
+    }
+  }
+  return NULL;
+}
+
+/////////////////////////////////////
+// Return TRUE if the lrange is live-in in this boundary BB.
+BOOL
+LRANGE_BOUNDARY_BB::Is_Live_In(void)
+{
+  return gbb->Is_Live_In_LRANGE(lrange);
+}
+
+/////////////////////////////////////
+// Return TRUE if the lrange is live-out in this boundary BB.
+BOOL
+LRANGE_BOUNDARY_BB::Is_Live_Out(void)
+{
+  return gbb->Is_Live_Out_LRANGE(lrange);
+}
+
+/////////////////////////////////////
+// Determine if the LRANGE intefere with another LRANGE inside a BB.  That
+// other LRANGE starts at OP index <other_start> and ends at OP index
+// <other_end>, and whose live-in and live-out are given by <other_live_in> and
+// <other_live_out>.
+BOOL
+LRANGE_BOUNDARY_BB::Interfere (BOOL other_live_in, BOOL other_live_out,
+			       mUINT16 other_start, mUINT16 other_end)
+{
+// Return TRUE if a <= x <= b.
+#define IN_BETWEEN(x, a, b)	(((a) <= (x)) && ((x) <= (b)))
+
+  const mUINT16 max_index = 0xffff;
+  mUINT16 this_start, this_end, other_start1, other_end1;
+  BOOL other_is_disjoint = FALSE;
+
+  // No interference if other live range is empty.
+  if (!other_live_in && !other_live_out && other_start == 0) {
+    Is_True(other_end == 0, ("Bad OP end index in empty live range"));
+    return FALSE;
+  }
+
+  BOOL this_live_in = Is_Live_In();
+  BOOL this_live_out = Is_Live_Out();
+
+  // TODO:  Skip disjoint live ranges for now.  If a boundary lrange is live-in
+  // and live-out, consider it pass-thru and thus interfere.
+  if (this_live_in && this_live_out) {
+    return TRUE;
+  }
+
+  // TODO:  We do encounter boundary BBs where the lrange does not appear in
+  // the BB.  Originally this function returns FALSE (no interference) for such
+  // lrange, but this caused GRA_BB::Make_Register_Used to abort when it
+  // detects that the chosen register is already used in the BB.  Decide what
+  // to do with such lrange; for now return TRUE.
+  // (We do see empty live ranges that are live-in/live-out.)
+  if ((start_index == 0 && end_index == 0) &&
+      ((!this_live_in && !this_live_out) ||
+       (this_live_in && !this_live_out) ||
+       (!this_live_in && this_live_out))) {
+    // This live range is empty.
+    return TRUE;
+  }
+
+  // Check for other being pass-thru or disjoint.
+  if (other_live_in && other_live_out) {
+    if (other_start == 0) {
+      // Other is pass-thru.
+      Is_True(other_end == 0, ("pass-thru live range cannot have last-use"));
+      return TRUE;
+    } else if (other_start == other_end) {
+      // Other is disjoint but its last-use and the def are in the same insn.
+      // This makes the live range look like a pass-thru.
+      return TRUE;
+    } else {
+      Is_True(other_start > other_end, ("disjoint live range corrupted"));
+      // Separate out the two live range segments for easier comparison.
+      other_is_disjoint = TRUE;
+      other_start1 = other_start;
+      other_end1 = max_index;
+      other_start = 0;
+    }
+  }
+
+  // Set up the segments for comparision.
+  // At this point, this live range is either live-in, live-out, or contained.
+  this_start = start_index;
+  this_end = this_live_out ? max_index : end_index;
+
+  // The other live range is either live-in, live-out, contained, or has two
+  // disjoint segments which we already set up.
+  if (!other_is_disjoint && other_live_out) {
+    other_end = max_index;
+  }
+
+  // Compare the segments.
+  if (IN_BETWEEN(this_start, other_start, other_end) ||
+      IN_BETWEEN(this_end, other_start, other_end) ||
+      IN_BETWEEN(other_start, this_start, this_end))
+    return TRUE;
+
+  // Compare the second segment if other is disjoint.
+  if (other_is_disjoint) {
+    if (IN_BETWEEN(this_start, other_start1, other_end1) ||
+	IN_BETWEEN(this_end, other_start1, other_end1) ||
+	IN_BETWEEN(other_start1, this_start, this_end))
+      return TRUE;
+  }
+
+  // No interference.
+  return FALSE;
+}
+
+/////////////////////////////////////
+// Determine if two LRANGEs interefere in a boundary bb.
+BOOL
+LRANGE_BOUNDARY_BB::Interfere (LRANGE_BOUNDARY_BB *bb1)
+{
+  LRANGE_BOUNDARY_BB *live_in, *live_out;
+
+  Is_True(lrange->Type() == LRANGE_TYPE_COMPLEMENT, 
+	  ("Not a complement LRANGE"));
+  Is_True(bb1->Lrange()->Type() == LRANGE_TYPE_COMPLEMENT, 
+	  ("Not a complement LRANGE"));
+  Is_True(gbb == bb1->Gbb(),
+     ("Cannot check boundary interference between two different boundary BBs"));
+  
+  BOOL bb1_live_in = (bb1->start_index == 0 && bb1->end_index > 0);
+  BOOL bb1_live_out = (bb1->start_index > 0 && bb1->end_index == 0);
+
+  return Interfere(bb1_live_in, bb1_live_out, bb1->start_index, bb1->end_index);
+}
+
+/////////////////////////////////////
+// Determine if LRANGE interfere with the used registers in <gbb>.
+BOOL
+LRANGE_BOUNDARY_BB::Interfere (GRA_BB *gbb, ISA_REGISTER_CLASS rc, REGISTER reg)
+{
+  Is_True(lrange->Type() == LRANGE_TYPE_COMPLEMENT, 
+	  ("Not a complement LRANGE"));
+  return Interfere(gbb->Is_Usage_Live_In(rc, reg),
+		   gbb->Is_Usage_Live_Out(rc, reg),
+		   gbb->Usage_Start_Index(rc, reg),
+		   gbb->Usage_End_Index(rc, reg));
+}
+
+/////////////////////////////////////
+// Init a boundary BB.  Find the shape of the lrange in the BB.
+void
+LRANGE_BOUNDARY_BB::Init (GRA_BB *the_gbb, LRANGE *the_lrange)
+{
+  OP *op;
+  mUINT16 op_index, first_ref_index, last_ref_index, *index_ptr;
+  BOOL live_in, live_out;
+  int i, pass;
+
+  // If TRUE, find the first and last OP that reference TN, respectively.
+  BOOL find_first_ref = FALSE;
+  BOOL find_last_ref = FALSE;
+
+  gbb = the_gbb;
+  lrange = the_lrange;
+  TN *tn = lrange->Tn();
+  BB *bb = gbb->Bb();
+  LUNIT* lunit = gbb_mgr.Split_LUNIT(gbb);
+
+  Is_True(! lrange->Contains_Internal_BB(gbb), ("BB is not a boundary BB"));
+
+  live_in = Is_Live_In();
+  live_out = Is_Live_Out();
+
+  // A live-in boundary BB could have been marked live-out by
+  // Fix_TN_Live_Out_Info, resulting in both live-in and live-out.
+  if (live_in && live_out) {
+    // TODO:  Handle the "disjoint" case.  For now, assume live range is
+    // pass-thru.
+    start_index = 0;
+    end_index = 0;
+    return;
+  } else if (live_in) {
+    find_last_ref = TRUE;
+  } else if (live_out) {
+    find_first_ref = TRUE;
+  } else {
+    // contained or empty live range
+    find_first_ref = TRUE;
+    find_last_ref = TRUE;
+  }
+
+  // Pass 0 finds the first OP that references the TN.  Pass 1 finds the last
+  // OP that references the TN.
+  first_ref_index = last_ref_index = 0;
+  for (pass = 0; pass < 2; pass++) {
+    if (pass == 0) {
+      if (!find_first_ref)
+	continue;
+      op_index = 0;
+      op = BB_first_op(bb);
+      index_ptr = &first_ref_index;
+    } else {
+      if (!find_last_ref)
+	break;
+      op_index = gbb->OPs_Count() + 1;
+      op = BB_last_op(bb);
+      index_ptr = &last_ref_index;
+    }
+
+    while (op != NULL) {
+      // First OP in BB has index 1.
+      op_index = (pass == 0) ? op_index+1 : op_index-1;
+
+      // Analyze the uses.
+      for (i = OP_opnds(op) - 1; i >= 0; i--) {
+	TN *opnd_tn = OP_opnd(op, i);
+	if (opnd_tn == tn) {
+	  *index_ptr = op_index;
+	  break;
+	}
+      }
+      if (*index_ptr)	// Quit if found reference.
+        break;
+
+      // Analyze the defines.
+      for (i = OP_results(op) - 1; i >= 0; i--) {
+	TN *result_tn = OP_result(op, i);
+	if (result_tn == tn) {
+	  *index_ptr = op_index;
+	  break;
+	}
+      }
+      if (*index_ptr)	// Quit if found reference.
+        break;
+
+      // Next OP.
+      op = (pass == 0) ? OP_next(op) : OP_prev(op);
+    }
+
+    // Skip the backward traversal if we know TN isn't referenced in the BB.
+    if (*index_ptr == 0)
+      break;
+  }
+
+  // TODO:  The "disjoint" case not yet implemented.
+  Is_True(! (live_in && live_out),
+	  ("Live-in and live-out boundary BB currently not handled"));
+
+  if (live_in) {
+    Is_True(last_ref_index > 0 || (lunit && lunit->Spill_Below()),
+	    ("Bad OP index in live-in BB"));
+    start_index = 0;
+    // last_ref_index is 0 when the TN does not appear in any of the BB's OPs.
+    // This happens if the TN is "spill below" inserted by GRA.
+    end_index = last_ref_index;
+  } else if (live_out) {
+    Is_True(first_ref_index > 0 || (lunit && lunit->Restore_Above()),
+	    ("Bad OP index in live-out BB"));
+    // first_ref_index is 0 when the TN does not appear in any of the BB's OPs.
+    // This happens if the TN is "restore above" inserted by GRA.
+    start_index = first_ref_index;
+    end_index = 0;
+  } else {
+    // Contained or empty live range.  For empty, first_ref_index and
+    // last_ref_index are both 0.  This can happen if the BB is at the edge of
+    // the live range created by splitting.
+    Is_True((first_ref_index > 0 && last_ref_index > 0) ||
+	    (first_ref_index == 0 && last_ref_index == 0),
+	    ("Bad OP index for contained or empty live range."));
+    start_index = first_ref_index;
+    end_index = last_ref_index;
+  }
+}
+#endif

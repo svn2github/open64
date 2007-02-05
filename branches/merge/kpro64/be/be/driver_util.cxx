@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -200,7 +200,7 @@ Process_Command_Line (INT argc, char **argv)
 		continue;
 
 	    switch ( *cp++ ) {
-              
+#ifdef TARG_IA64         
 	    case 'I':       /* CG-specific */
 	                    /* -IPFEC: IPFEC related options */
 	        add_phase_args (PHASE_CG, argv[i]);
@@ -216,7 +216,7 @@ Process_Command_Line (INT argc, char **argv)
 	                    /* -VT: Visualization Tool related options */
 	        add_phase_args (PHASE_CG, argv[i]);
 	        break;          
-              
+#endif              
 	    case 'c':
 		if (strcmp (cp, "mds") == 0 && Run_ipl) {
 		    while (i < argc) {
@@ -301,7 +301,11 @@ Process_Command_Line (INT argc, char **argv)
 	    case 'g':		    /* Debug level: */
 		Debug_Level = Get_Numeric_Flag (&cp, 0, MAX_DEBUG_LEVEL, 2,
 						argv[i]);
+#ifdef TARG_IA64
 		if (Debug_Level > 0 && !opt_set)
+#else
+		  if (Debug_Level > 1 && !opt_set)
+#endif
 		    Opt_Level = 0;
 		break;
               

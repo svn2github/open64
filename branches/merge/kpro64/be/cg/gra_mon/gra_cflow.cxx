@@ -1,6 +1,10 @@
 /*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -61,9 +65,11 @@
 #include "gra_grant.h"
 
 #include "gra_cflow.h"
+#ifdef TARG_IA64
 #include "ipfec_options.h"
 #include "region_bb_util.h"
 #include "cg.h"
+#endif
 
 BOOL GRA_split_entry_exit_blocks = TRUE;
     // Split entry and exit blocks before GRA and join them after so that
@@ -246,7 +252,7 @@ Join_Exit( BB* bb )
 //  
 /////////////////////////////////////
 {
-  BB* new_exit BB_prev(bb);
+  BB* new_exit = BB_prev(bb);
 
   BB_Transfer_Exitinfo(bb,new_exit);
   GRA_GRANT_Transfer(bb,new_exit);
@@ -262,19 +268,30 @@ void
 GRA_Split_Entry_And_Exit_BBs(BOOL is_region)
 /////////////////////////////////////
 //  See interface description.
+//  GRA_pu_has_handler is computed here.
 /////////////////////////////////////
 {
   BB* bb;
   BB* next_bb = NULL;   // avoid stupid used before set warning
   BB_LIST *elist;
 
+#ifndef TARG_IA64
+  GRA_pu_has_handler = FALSE;
+  Is_True(GRA_split_entry_exit_blocks, 
+      ("GRA will not work correctly under -GRA:split_entry_exit_blocks=off"));
+#else
   if ( ! GRA_split_entry_exit_blocks ) return;
+#endif
 
   entry_bbs = NULL;
   exit_bbs = NULL;
 
   for ( bb = REGION_First_BB; bb != NULL; bb = next_bb ) {
     next_bb = BB_next(bb);
+#ifndef TARG_IA64
+    if (BB_handler(bb))
+      GRA_pu_has_handler = TRUE;
+#endif
     if ( BB_entry(bb) ) {
       DevAssert(is_region == FALSE,
 		("Procedure/Function entry block in region.\n"));
@@ -332,6 +349,7 @@ GRA_Add_Call_Spill_Block(BB* bb, BB* succ)
 //  See interface description.
 /////////////////////////////////////
 {
+#ifdef TARG_IA64
   BB *new_succ = NULL;
   if(IPFEC_Enable_Region_Formation && RGN_Formed) {
     new_succ = RGN_Gen_And_Insert_BB_After(bb);
@@ -345,6 +363,12 @@ GRA_Add_Call_Spill_Block(BB* bb, BB* succ)
     Change_Succ(bb, succ, new_succ);
     Link_Pred_Succ_with_Prob(new_succ, succ, 1.0);
   } 
+#else
+  BB *new_succ = Gen_And_Insert_BB_After(bb);
+  BB_freq(new_succ) = BB_freq(bb);
+  Change_Succ(bb, succ, new_succ);
+  Link_Pred_Succ_with_Prob(new_succ, succ, 1.0);
+#endif
   
   GRA_LIVE_Compute_Local_Info(bb);
   GRA_LIVE_Compute_Local_Info(new_succ);

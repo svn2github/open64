@@ -1,6 +1,11 @@
+/* -*- c++ -*-
+ *
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -40,6 +45,7 @@
 #include <vector>
 #include <set>
 #include <algorithm>
+#include <memory>
 
 // Forward references
 class PQS_MANAGER;
@@ -131,7 +137,7 @@ public:
 #ifdef PQS_USE_MEMPOOLS
    typedef mempool_allocator<T> set_allocator_type;
 #else
-   typedef std::allocator<T> set_allocator_type;
+   typedef std::allocator<T> set_allocator_type; // for gcc 3.2
 #endif
    typedef std::set<T,C,set_allocator_type> set_type;
    typedef typename set_type::iterator set_iterator_type;

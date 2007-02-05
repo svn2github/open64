@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1222,7 +1222,9 @@ Create_Preg_explicit(TYPE_ID mtype, const char *name,
 	switch (mtype) {
 	case MTYPE_C4:
 	case MTYPE_C8:
+#ifdef TARG_IA64
 	case MTYPE_C10:
+#endif
 	case MTYPE_FQ:
 		// reserve space for another preg
 		(void) New_PREG_explicit (scope_tab, level, preg_idx2);
@@ -1262,7 +1264,9 @@ Preg_Increment (TYPE_ID mtype)
 
     case MTYPE_C4:
     case MTYPE_C8:
+#ifdef TARG_IA64
     case MTYPE_C10:
+#endif
 #ifndef TARG_X8664
     case MTYPE_FQ:
 #endif

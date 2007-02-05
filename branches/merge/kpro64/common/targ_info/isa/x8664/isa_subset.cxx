@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,10 +48,10 @@
 // as shown in the ISA manual
 /////////////////////////////////////
 //
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/isa/x8664/isa_subset.cxx,v $
+//  $Revision: 1.140 $
+//  $Date: 05/11/10 18:45:11-08:00 $
+//  $Author: tkong@hyalite.keyresearch $
+//  $Source: common/targ_info/isa/x8664/SCCS/s.isa_subset.cxx $
 
 #include <stddef.h>
 #include "topcode.h"
@@ -254,6 +254,7 @@ main()
 		    TOP_movswq,
 		    TOP_movzwq,
 		    TOP_movslq,
+		    TOP_movzlq,
 		    TOP_mov32,
 		    TOP_mov64,
 		    TOP_mul32,
@@ -309,6 +310,14 @@ main()
 		    TOP_rori16,
 		    TOP_rori32,
 		    TOP_rori64,
+		    TOP_rol8,
+		    TOP_rol16,
+		    TOP_rol32,
+		    TOP_rol64,
+		    TOP_roli8,
+		    TOP_roli16,
+		    TOP_roli32,
+		    TOP_roli64,
 		    TOP_setb,
 		    TOP_setae,
 		    TOP_setp,
@@ -803,7 +812,16 @@ main()
 		    TOP_movhlps,
 		    TOP_movlhps,
 		    TOP_psrldq,
+		    TOP_psrlq128v64,
+		    TOP_pslldq,
+		    TOP_psllw,
+		    TOP_pslld,
+		    TOP_psllq,
+		    TOP_psrlw,
+		    TOP_psrld,
 		    TOP_psrlq,
+		    TOP_psraw,
+		    TOP_psrad,
 		    TOP_mfence,
 		    TOP_lfence,
 		    TOP_sfence,
@@ -876,6 +894,8 @@ main()
 		    TOP_fcmovu,
 		    TOP_fcmovnu,
 		    TOP_fldz,
+		    TOP_fcos,
+		    TOP_fsin,
 		    TOP_store8_m,
 		    TOP_store16_m,
 		    TOP_store32_m,
@@ -950,8 +970,12 @@ main()
 		    TOP_lock_cmpxchg64,
 		    TOP_bsf32,
 		    TOP_bsf64,
+		    TOP_bsr32,
+		    TOP_bsr64,
 		    TOP_ld64_2m,
+		    TOP_ld64_2m_n32,
 		    TOP_store64_fm,
+		    TOP_store64_fm_n32,
 		    TOP_mov64_m,
 		    TOP_add64v8,
 		    TOP_add64v16,
@@ -1011,6 +1035,13 @@ main()
 		    TOP_cmpnless,
 		    TOP_cmpordss,
 		    TOP_emms,
+		    TOP_movi32_2m,
+		    TOP_movi64_2m,
+		    TOP_movm_2i32,
+		    TOP_movm_2i64,
+		    TOP_storenti128,
+		    TOP_storelpd,
+		    TOP_pshufw64v16,
 		    TOP_UNDEFINED);
 
   ISA_Subset_End();

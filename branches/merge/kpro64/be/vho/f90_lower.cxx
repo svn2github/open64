@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -92,6 +96,10 @@
 #define TRACE_TRANSFORMATIONALS 0x40
 #define TRACE_COPIES 0x80
 #define TRACE_DEPINFO 0x100
+
+#ifdef KEY
+extern void Set_addr_saved_expr(WN *, BOOL);
+#endif
 
 static BOOL trace_dependence;
 static BOOL trace_depinfo;
@@ -1621,6 +1629,10 @@ static WN * F90_Lower_Copy_To_ATemp(WN **alloc_block, WN **free_block, WN **copy
    BOOL multiply_indices=FALSE;
    WN *sizemult;
    TYPE_ID expr_type;
+
+#ifdef KEY // bug 8083
+   Set_addr_saved_expr(expr, FALSE);
+#endif
 
    /* First, determine the type of the expression */
    is_mexpr = FALSE;
@@ -3845,6 +3857,11 @@ static BOOL F90_Do_Copies(WN *stmt, WN *block)
 	 WN_Delete(new_rhs);
 	 SET_F90_MAP(copy_store,copy_adata);
 	 WN_INSERT_BlockBefore(block,stmt,copy_store);
+         // bug 8687: the prelist of adata should be inserted before copy_store now
+#ifdef KEY // because rhs may use them         
+         WN_INSERT_BlockFirst(PRELIST(copy_adata),PRELIST(adata));
+         SET_PRELIST(adata,WN_CreateBlock());
+#endif
 	 WN_INSERT_BlockFirst(ALLOC_PRELIST(copy_adata),ALLOC_PRELIST(adata));
 	 SET_ALLOC_PRELIST(adata,WN_CreateBlock());
       }

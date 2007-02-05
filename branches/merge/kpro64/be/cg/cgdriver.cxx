@@ -1,6 +1,14 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -47,6 +55,7 @@
  * ====================================================================
  * ====================================================================
  */
+
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
@@ -98,7 +107,13 @@
 #include "cgdriver.h"
 #include "register.h"
 #include "pqs_cg.h"
+#ifdef TARG_IA64
 #include "ipfec_options.h"
+#endif
+#ifdef KEY
+#include "cg_gcov.h"
+#include "flags.h"
+#endif
 
 extern void Set_File_In_Printsrc(char *);	/* defined in printsrc.c */
 
@@ -153,17 +168,24 @@ static BOOL EBO_Opt_Level_overridden = FALSE;
 static BOOL Integer_Divide_By_Constant_overridden = FALSE;
 static BOOL Integer_Divide_Use_Float_overridden = FALSE;
 static BOOL CG_DEP_Mem_Arc_Pruning_overridden = FALSE;
+#ifdef TARG_IA64
 static BOOL CGPREP_fold_expanded_daddiu_overridden = FALSE;
 static BOOL CG_LOOP_create_loop_prologs_overridden = FALSE;
+#endif
 static BOOL clone_incr_overridden = FALSE;
 static BOOL clone_min_incr_overridden = FALSE;
 static BOOL clone_max_incr_overridden = FALSE;
 static BOOL CFLOW_Enable_Clone_overridden = FALSE;
+#ifdef TARG_X8664
+BOOL cg_load_execute_overridden = FALSE;
+#endif
 
 /* Keep	a copy of the command line options for assembly	output:	*/
 static char *option_string;
 
+#ifdef TARG_IA64
 extern BOOL SWP_KNOB_fatpoint;
+#endif
 
 /* Software pipelining options: */
 static OPTION_DESC Options_CG_SWP[] = {
@@ -179,14 +201,18 @@ static OPTION_DESC Options_CG_SWP[] = {
     0, 0, INT32_MAX,	&SWP_Options.Heuristics, NULL },
   { OVK_INT32,	OV_INTERNAL,	TRUE, "opt", "opt",
     0, 0, INT32_MAX,	&SWP_Options.Opt_Level, NULL },
+#ifdef TARG_IA64
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "do_loop", NULL,
     0, 0, 0,	&SWP_Options.Enable_Do_Loop, NULL },
+#endif
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "while_loop", NULL,
     0, 0, 0,	&SWP_Options.Enable_While_Loop, NULL },
+#ifdef TARG_IA64
   { OVK_INT32,	OV_INTERNAL,	TRUE, "miss_ratio", "miss_r",
     0, 0, INT32_MAX,	&SWP_Options.Load_Cache_Miss_Ratio, NULL },
   { OVK_INT32,	OV_INTERNAL,	TRUE, "miss_latency", "miss_l",
     0, 0, INT32_MAX,	&SWP_Options.Load_Cache_Miss_Latency, NULL },
+#endif
   { OVK_INT32,	OV_INTERNAL,	TRUE, "min_unroll_times", "min_unr",
     0, 0, INT32_MAX,	&SWP_Options.Min_Unroll_Times, &SWP_Options.Max_Unroll_Times_Set },
   { OVK_INT32,	OV_INTERNAL,	TRUE, "max_unroll_times", "max_unr",
@@ -211,13 +237,14 @@ static OPTION_DESC Options_CG_SWP[] = {
     0, 0, 0,	&SWP_Options.Predicate_Promotion, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "enable_brp", "", 
     0, 0, 0,	&SWP_Options.Enable_BRP, NULL },
+#ifdef TARG_IA64
   { OVK_INT32,  OV_INTERNAL,    TRUE, "fb_prob1", "", 
     0, 0, INT32_MAX,  &SWP_Options.FB_Prob1, NULL },
   { OVK_INT32,  OV_INTERNAL,    TRUE, "fb_prob2", "", 
     0, 0, INT32_MAX,  &SWP_Options.FB_Prob2, NULL },
   { OVK_INT32,  OV_INTERNAL,    TRUE, "fb_freq", "", 
     0, 0, INT32_MAX,  &SWP_Options.FB_Freq, NULL },
-  
+#endif  
   { OVK_COUNT }		/* List terminator -- must be last */
 };
 
@@ -227,10 +254,17 @@ static OPTION_DESC Options_GRA[] = {
     0,0,0,      &GRA_optimize_placement, NULL,
     "Enable/disable movement of spills and restores created during splitting [Default TRUE]."
   },
+#ifdef TARG_X8664
+  { OVK_INT32,	OV_INTERNAL, TRUE, "local_forced_max", "local_forced_max",
+    4, 0, 16,	&GRA_local_forced_max, &GRA_local_forced_max_set,
+    "How many locals to force allocate (out of the number requested by LRA) [Default 4]"
+  },
+#else
   { OVK_INT32,	OV_INTERNAL, TRUE, "local_forced_max", "",
     4, 0, 32,	&GRA_local_forced_max, NULL,
     "How many locals to force allocate (out of the number requested by LRA) [Default 4]"
   },
+#endif // TARG_X8664
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "avoid_glue_references_for_locals", "",
     0,0,0,      &GRA_avoid_glue_references_for_locals,NULL,
     "If possible grant the forced locals from the set of registers not referenced for glue copies in the same block.  [Default TRUE]"
@@ -323,7 +357,34 @@ static OPTION_DESC Options_GRA[] = {
     0, 0, 0,	&GRA_spill_count_factor_string, NULL,
     "Factor by which count of spills affects the priority of a split.  Only valid under OPT:space [Default 0.5]"
   },    
-  
+#ifdef CG_PATHSCALE_MERGE
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"exclude_saved_regs", "",
+    0, 0, 0,	&GRA_exclude_callee_saved_regs, NULL,
+    "If true, callee-saved registers are never used to allocate to variables by GRA"
+  },    
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"eh_exclude_saved_regs", "",
+    0, 0, 0,	&GRA_eh_exclude_callee_saved_regs, NULL,
+    "If true, callee-saved registers are never used to allocate to variables in functions with exception handlers"
+  },    
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "optimize_boundary", "",
+    0,0,0,      &GRA_optimize_boundary, NULL,
+    "Enable/disable reuse of registers in live range boundary basic blocks [Default FALSE]."
+  },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "prioritize_by_density", "",
+    0,0,0,      &GRA_prioritize_by_density, NULL,
+    "Enable/disable prioritizing live ranges by reference density [Default FALSE]."
+  },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "reclaim", "",
+    0,0,0,      &GRA_reclaim_register, NULL,
+    "Enable/disable reclaiming of registers after they have been allocated [Default FALSE]."
+  },
+#endif // KEY
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "grant_special_regs", "",
+    0,0,0,      &GRA_grant_special_regs, NULL,
+    "Force GRA to always grant rax/rcx/rdx, whether LRA needs them or not."
+  },
+#endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };
 
@@ -333,8 +394,10 @@ static OPTION_DESC Options_CG[] = {
 
   { OVK_BOOL,	OV_INTERNAL, TRUE, "warn_bad_freqs", "",
     0, 0, 0,	&CG_warn_bad_freqs, NULL },
+#ifdef TARG_IA64
   { OVK_BOOL,	OV_INTERNAL, TRUE, "loop_opt", "loop_opt",
     0, 0, 0,	&CG_enable_loop_optimizations, NULL },
+#endif
   { OVK_INT32,	OV_INTERNAL, TRUE, "skip_before", "skip_b",
     0, 0, INT32_MAX, &CG_skip_before, NULL }, 
   { OVK_INT32,	OV_INTERNAL, TRUE, "skip_after", "skip_a",
@@ -360,16 +423,44 @@ static OPTION_DESC Options_CG[] = {
   { OVK_INT32,	OV_INTERNAL, TRUE, "optimization_level", "",
     0, 0, MAX_OPT_LEVEL,
                 &CG_opt_level, &cg_opt_level_overridden },
+
+  // EBO options:
   { OVK_BOOL,	OV_INTERNAL, TRUE, "peephole_optimize", "",
     0, 0, 0,	&Enable_CG_Peephole, &Enable_CG_Peephole_overridden },
+#ifdef TARG_IA64
   { OVK_BOOL,	OV_INTERNAL, TRUE, "ebo_post_proc_rgn", "",
     0, 0, 0,	&Enable_EBO_Post_Proc_Rgn , NULL},
+#endif
   { OVK_BOOL, 	OV_INTERNAL, TRUE, "create_madds", "create_madd",
     0, 0, 0,  &CG_create_madds, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE,  "enable_ipfec_phases", "enable_ipfec",
+#ifdef TARG_IA64
+  { OVK_BOOL,   OV_INTERNAL, TRUE,  "enable_ipfec_phases", "enable_ipfec",
     0,0,0,      &CG_Enable_Ipfec_Phases, NULL },
   { OVK_BOOL, OV_INTERNAL, TRUE,  "enable_cycle_counting", "enable_cycle",
-    0,0,0,      &CG_Enable_Cycle_Count, NULL },   
+    0,0,0,      &CG_Enable_Cycle_Count, NULL },
+#endif
+#ifdef CG_PATHSCALE_MERGE
+  { OVK_BOOL, OV_INTERNAL, TRUE,  "test_coverage", "",
+    0, 0, 0,    &flag_test_coverage, NULL},
+  { OVK_LIST, OV_INTERNAL, FALSE, "profile_proc", "",
+    0, 0, 0,    &Arc_Profile_Region, NULL},
+  { OVK_LIST, OV_INTERNAL, FALSE, "profile_id1",  "",
+    0, 0, 0,    &Arc_Profile_Region, NULL},
+  { OVK_LIST, OV_INTERNAL, FALSE, "profile_id2", "",
+    0, 0, 0,    &Arc_Profile_Region, NULL},
+  { OVK_INT32,  OV_INTERNAL, FALSE,  "cse_regs", "",
+    0, INT32_MIN, INT32_MAX,    &CG_cse_regs, NULL},
+  { OVK_INT32,  OV_INTERNAL, FALSE,  "sse_cse_regs", "",
+    0, INT32_MIN, INT32_MAX,    &CG_sse_cse_regs, NULL},
+#endif
+#ifdef TARG_X8664
+  { OVK_INT32,  OV_INTERNAL, TRUE,  "sse_load_execute", "sse_load_exe",
+    0, 0, INT32_MAX,    &CG_sse_load_execute, NULL},
+  { OVK_INT32,	OV_INTERNAL, TRUE, "load_execute", "load_exe",
+    0, 0, INT32_MAX,	&CG_load_execute, &cg_load_execute_overridden },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "loadbw_execute", "loadbw_exe",
+    0, 0, 0,	&CG_loadbw_execute, NULL },
+#endif
 
   // CG Dependence Graph related options.
 
@@ -395,7 +486,11 @@ static OPTION_DESC Options_CG[] = {
 
   // Prefetching and load latency options.
  
+#ifdef TARG_IA64
   { OVK_BOOL,	OV_INTERNAL, FALSE,"prefetch", "",
+#else
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"prefetch", "",
+#endif
     0, 0, 0, &CG_enable_prefetch, &CG_enable_prefetch_overridden },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"z_conf_prefetch", "",
     0, 0, 0, &CG_enable_z_conf_prefetch,
@@ -427,6 +522,7 @@ static OPTION_DESC Options_CG[] = {
     0, 0, INT32_MAX, &CG_z_conf_L2_ld_latency, NULL },
   { OVK_INT32,	OV_INTERNAL, TRUE, "ld_latency", "",
     0, 0, INT32_MAX, &CG_ld_latency, NULL },
+
   // CGLOOP options.
 
   { OVK_BOOL,	OV_INTERNAL, TRUE, "loop_opt", "loop_opt",
@@ -460,7 +556,11 @@ static OPTION_DESC Options_CG[] = {
 		&CG_LOOP_reassociate_specified },
   { OVK_INT32, OV_INTERNAL, TRUE, "recurrence_min_omega", "",
     0, 0, INT32_MAX, &CG_LOOP_recurrence_min_omega, NULL },
-
+#ifdef CG_PATHSCALE_MERGE
+  { OVK_INT32, OV_INTERNAL, TRUE, "loop_limit", "",
+    INT32_MAX, 0, INT32_MAX, &CG_Enable_Loop_Opt_Limit, NULL },
+#endif
+  // CG Unrolling options - see also OPT:unroll_times_max:unroll_size.
 
   // Cross Iteration Loop Optimization options.
 
@@ -496,6 +596,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CFLOW_opt_after_cgprep, NULL },
   { OVK_INT32,  OV_INTERNAL, TRUE,"ebo_level", "ebo",
     0, INT32_MIN, INT32_MAX, &EBO_Opt_Level, &EBO_Opt_Level_overridden },
+#ifdef CG_PATHSCALE_MERGE
+  { OVK_INT32,  OV_INTERNAL, TRUE,"ebo_opt_mask", "",
+    0, INT32_MIN, INT32_MAX, &EBO_Opt_Mask, NULL },
+#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow", NULL,
     0, 0, 0, &CFLOW_Enable, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow", NULL,
@@ -510,8 +614,17 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CFLOW_Enable_Reorder, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_clone", "",
     0, 0, 0, &CFLOW_Enable_Clone, &CFLOW_Enable_Clone_overridden },
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order", "cflow_freq_order",
+    0, 0, 0, &CFLOW_Enable_Freq_Order, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order_on_heu", "cflow_freq_order_on_heu",
+    0, 0, 0, &CFLOW_Enable_Freq_Order_On_Heuristics, NULL },
+#else
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order", "",
     0, 0, 0, &CFLOW_Enable_Freq_Order, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order_on_heu", "",
+    0, 0, 0, &CFLOW_Enable_Freq_Order_On_Heuristics, NULL },
+#endif // KEY
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_opt_all_br_to_bcond", "",
     0, 0, 0, &CFLOW_opt_all_br_to_bcond, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"cflow_heuristic_tolerance", "",
@@ -578,6 +691,12 @@ static OPTION_DESC Options_CG[] = {
 
   { OVK_BOOL,	OV_INTERNAL, TRUE, "localize", "localize",
     0, 0, 0, &CG_localize_tns, &CG_localize_tns_Set},
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "localize_x87", "localize_x87",
+    0, 0, 0, &CG_localize_x87_tns, &CG_localize_x87_tns_Set,
+    "Localize x87 floating point variables.  Has no effect on integer variables.  Default off."
+  },
+#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE, "localize_using_stacked_regs", "localize_using_stack",
     0, 0, 0, &LOCALIZE_using_stacked_regs, NULL },
 
@@ -589,6 +708,20 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CGSPILL_Enable_Force_Rematerialization, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"lra_reorder", "",
     0, 0, 0, &LRA_do_reorder, NULL },
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_INTERNAL, FALSE, "prefer_legacy_regs", "",
+    0, 0, 0, &LRA_prefer_legacy_regs, NULL },
+#endif
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "min_spill_loc_size", "",
+    0,0,0,      &CG_min_spill_loc_size, NULL,
+    "Turn on/off minimize spill location size [Default FALSE]"
+  },    
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "min_stack_size", "",
+    0,0,0,      &CG_min_stack_size, NULL,
+    "Turn on/off minimize stack size [Default TRUE]"
+  }, 
+#endif
 
   // Global Code Motion (GCM) options.
 
@@ -632,6 +765,11 @@ static OPTION_DESC Options_CG[] = {
     0, 0, INT32_MAX, &GCM_To_BB, NULL },
   { OVK_INT32,	OV_INTERNAL, TRUE,"gcm_result_tn", "",
     0, 0, INT32_MAX, &GCM_Result_TN, NULL },
+#ifdef CG_PATHSCALE_MERGE
+  // Consider no more than this number of candidate target bb's.
+  { OVK_INT32,	OV_INTERNAL, TRUE,"gcm_bb_limit", "",
+    0, 0, INT32_MAX, &GCM_BB_Limit, NULL },
+#endif
 
   // Local Scheduling (LOCS) and HyperBlock Scheduling (HBS) options.
 
@@ -656,17 +794,27 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &IGLS_Enable_POST_HB_Scheduling, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"hb_scheduler", "hb_sched",
     0, 0, 0, &IGLS_Enable_HB_Scheduling, NULL },
+#ifdef CG_PATHSCALE_MERGE
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"local_fwd_scheduler", "local_fwd_sched",
+    0, 0, 0, &LOCS_Fwd_Scheduling, &LOCS_Fwd_Scheduling_set },
+#endif
 
   // Turns of all scheduling (LOCS, HBS, GCM) for triaging.
   { OVK_BOOL,	OV_INTERNAL, TRUE,"all_scheduler", "all_sched",
     0, 0, 0, &IGLS_Enable_All_Scheduling, NULL },
-  
+
   // Hyperblock formation (HB) options.
 
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "hb_formation", "",
     0,0,0,      &HB_formation, NULL,
     "Turn on/off hyperblock formation [Default ON]"
   },    
+#ifdef CG_PATHSCALE_MERGE
+  { OVK_INT32,	OV_INTERNAL, TRUE,  "ifc_cutoff", "",
+    4,0,100,      &HB_if_conversion_cut_off, NULL,
+    "What is the cut-off for doing If-conversion"
+  },    
+#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "hb_static_freq_heuristics", "",
     0,0,0,      &HB_static_freq_heuristics, NULL,
     "Turn on/off hyperblock formation's use of different heuristics in the presence of static frequency analysis [Default ON]"
@@ -759,7 +907,11 @@ static OPTION_DESC Options_CG[] = {
     "Turn on/off emission of unwind directives into .s file [Default OFF]"
   },
   { OVK_BOOL,   OV_INTERNAL, TRUE,  "emit_unwind_info", "",
+#ifdef TARG_X8664
+    0,0,0,      &CG_emit_unwind_info, &CG_emit_unwind_info_Set,
+#else
     0,0,0,      &CG_emit_unwind_info, NULL,
+#endif
     "Turn on/off emission of unwind into .s/.o file [Default OFF]"
   },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"volatile_asm_stop", "",
@@ -774,6 +926,54 @@ static OPTION_DESC Options_CG[] = {
   },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "enable_feedback", "",
     0, 0, 0,	&CG_enable_feedback, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"non_gas_syntax", "non_gas",
+    0, 0, 0, &CG_emit_non_gas_syntax, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"inhibit_size_directive", "inhibit_size",
+    0, 0, 0, &CG_inhibit_size_directive, NULL },
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"use_movlpd", "",
+    0, 0, 0, &CG_use_movlpd, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"use_setcc", "",
+    0, 0, 0, &CG_use_setcc, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"short_form", "",
+    0, 0, 0, &CG_use_short_form, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "p2align", "p2align",
+    0, 0, 0,	&CG_p2align, NULL },
+  { OVK_UINT64,	OV_INTERNAL, TRUE, "p2align_freq", "",
+    0, 0, UINT64_MAX>>1, &CG_p2align_freq, NULL, "freq threshold for .p2align" },
+  { OVK_UINT32,	OV_INTERNAL, TRUE,"p2align_max_skip_bytes", "",
+    3, 0, 64, &CG_p2align_max_skip_bytes, NULL, "max skip bytes for .p2align" },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "use_xortozero", "",
+    0, 0, 0,	&CG_use_xortozero, &CG_use_xortozero_Set },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "use_test", "",
+    0, 0, 0,	&CG_use_test, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "fold_constimul", "",
+    0, 0, 0,	&CG_fold_constimul, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "use_incdec", "",
+    0, 0, 0,	&CG_use_incdec, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "fold_shiftadd", "", 
+    0, 0, 0,	&CG_fold_shiftadd, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "use_prefetchnta", "", 
+    0, 0, 0,	&CG_use_prefetchnta, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "idivbyconst_opt", "", 
+    0, 0, 0,	&CG_idivbyconst_opt, NULL },
+  { OVK_UINT32,	OV_INTERNAL, TRUE, "movnti", "",
+    120, 0, UINT32_MAX>>1, &CG_movnti, NULL,
+    "Use x86-64's movnti instead of mov when writing memory blocks of this size or larger (in KB)" },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "cloop", "",
+    0, 0, 0,	&CG_cloop, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"use_lddqu", "",
+    0, 0, 0, &CG_use_lddqu, NULL },
+#endif
+
+#ifdef TARG_X8664
+  // x87:
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "x87_store", "",
+    0, 0, 0, &CG_x87_store, NULL,
+    "Store x87 floating point variables to memory after each computation, in order to reduce the variable's precision from 80 bits to 32/64 bits.  Default off."
+  },
+#endif
+
   { OVK_COUNT },
 
   // Misc:
@@ -794,6 +994,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,    &CG_SCHED_EST_use_locs, NULL },
   { OVK_INT32,   OV_INTERNAL, TRUE, "sched_est_call_cost", "",
     0, 0, INT32_MAX, &CG_SCHED_EST_call_cost, NULL },
+#ifdef CG_PATHSCALE_MERGE
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "enable_feedback", "",
+    0, 0, 0,	&CG_enable_feedback, NULL },
+#endif
   { OVK_INT32, OV_INTERNAL, TRUE, "mispredict_branch", "mispredict",
     0, 0, INT32_MAX, &CG_branch_mispredict_penalty, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "mispredict_factor", "",
@@ -823,9 +1027,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CG_cond_defs_allowed, NULL },
 
   { OVK_BOOL,	OV_INTERNAL, TRUE,"rename", "",
-    0, 0, 0, &CG_enable_rename, NULL }
+    0, 0, 0, &CG_enable_rename, NULL },
 };
 
+#ifdef TARG_IA64
 /* Ipfec related options: */
 //The &IPFEC_... flags are changed into &ORC_... flags.
 static OPTION_DESC Options_IPFEC[] = {
@@ -1239,15 +1444,18 @@ static OPTION_DESC Options_SKIP[] = {
   
   { OVK_COUNT }		/* List terminator -- must be last */
 };
+#endif
 
 OPTION_GROUP Cg_Option_Groups[] = {
   { "SWP", ':', '=', Options_CG_SWP },
   { "CG", ':', '=', Options_CG },
   { "GRA", ':', '=', Options_GRA },
+#ifdef TARG_IA64
   { "IPFEC", ':', '=', Options_IPFEC },
   { "CYCLE", ':', '=', Options_CYCLE }, 
   { "VT", ':', '=', Options_VT },
   { "SKIP", ':', '=', Options_SKIP },
+#endif
   { NULL }		/* List terminator -- must be last */
 };
 
@@ -1364,9 +1572,14 @@ disable_prefetch:
     CG_enable_nz_conf_prefetch = TRUE;
 
   if (Enable_Prefetch_For_Target()) {
-    if ( ! CG_L1_ld_latency_overridden ) CG_L1_ld_latency = 8; 
+    if ( ! CG_L1_ld_latency_overridden ) CG_L1_ld_latency = 8;
+#ifdef KEY
+    if ( ! CG_enable_pf_L1_ld_overridden ) CG_enable_pf_L1_ld = TRUE;
+    if ( ! CG_enable_pf_L1_st_overridden ) CG_enable_pf_L1_st = TRUE;
+#else
     if ( ! CG_enable_pf_L1_ld_overridden ) CG_enable_pf_L1_ld = FALSE;
     if ( ! CG_enable_pf_L1_st_overridden ) CG_enable_pf_L1_st = FALSE;
+#endif
     if ( ! CG_enable_pf_L2_ld_overridden ) CG_enable_pf_L2_ld = TRUE;
     if ( ! CG_enable_pf_L2_st_overridden ) CG_enable_pf_L2_st = TRUE;
   } else {
@@ -1431,11 +1644,19 @@ Configure_CG_Options(void)
     CGEXP_expandconstant = 2;
   }
 
-  if (!Integer_Divide_By_Constant_overridden) {
+  if (!Integer_Divide_By_Constant_overridden
+#ifdef CG_PATHSCALE_MERGE
+      && CGEXP_cvrt_int_div_to_mult
+#endif
+	  ) {
     CGEXP_cvrt_int_div_to_mult = (!OPT_Space) && (CG_opt_level > 0);
   } 
 
-  if (!Integer_Divide_Use_Float_overridden) {
+  if (!Integer_Divide_Use_Float_overridden
+#ifdef CG_PATHSCALE_MERGE
+      && CGEXP_cvrt_int_div_to_fdiv
+#endif
+	  ) {
     CGEXP_cvrt_int_div_to_fdiv =    !Kernel_Code
 				 && Enable_Idiv_In_FPU_For_Target()
 				 && !OPT_Space
@@ -1473,6 +1694,7 @@ Configure_CG_Options(void)
     EBO_Opt_Level = (CG_opt_level > 0) ? EBO_Opt_Level_Default : 0;
   }
   Enable_CG_Peephole = (CG_opt_level > 0) ? TRUE : FALSE;
+#ifdef TARG_IA64
   if (CG_opt_level <= 0) 
       Enable_EBO_Post_Proc_Rgn = FALSE ;
 
@@ -1509,6 +1731,7 @@ Configure_CG_Options(void)
       IPFEC_Enable_Compressed_Template = TRUE;
       IPFEC_Enable_Pre_Bundling = TRUE;
   }
+#endif
 
   /* Enable_Fill_Delay_Slots controls the filling of delay slots in locs
      and gcm */
@@ -1542,6 +1765,16 @@ Configure_CG_Options(void)
   }
 
   Configure_Prefetch();
+#ifdef TARG_X8664
+  if ((Target == TARGET_em64t ||
+       Target == TARGET_core) &&
+      ! CG_use_xortozero_Set) {
+    CG_use_xortozero = TRUE;
+  }
+
+  if (OPT_Space && !CG_use_xortozero_Set)	// Bug 9717
+    CG_use_xortozero = TRUE;
+#endif
 }
 
 /* =======================================================================
@@ -1678,6 +1911,7 @@ Process_Command_Line (INT argc, char **argv)
                 }
 
                 break;
+#ifdef TARG_IA64
             case 'O':
                 if (!strncasecmp (cp-1, "orc:=",5)) {
                     cp += 4 ;
@@ -1689,6 +1923,7 @@ Process_Command_Line (INT argc, char **argv)
                 }
                 break;
             }
+#endif
 	}
     }
 }
@@ -1731,18 +1966,28 @@ Prepare_Source (void)
 	    ErrMsg ( EC_Asm_Open, Asm_File_Name, errno );
 	    Terminate (1);
 	}
+#ifdef TARG_IA64
         if (Create_Cycle_Output) {
                 if ( ( Output_h_File = fopen( Output_h_File_Name, "w" ) ) == NULL ) {                        ErrMsg ( EC_Asm_Open, Output_h_File_Name, errno );
                         Terminate (1);
                 }
         } 
+#endif
     }
 
     /* Prepare relocatable object file name: */
     if ( Obj_File_Name == NULL ) {
+#ifdef KEY
+	/* bug 2025
+	   Always create the object file in /tmp, since the current dir might
+	   not be writable.
+	 */
+	char* tmp_fname = tempnam( NULL, NULL );
+	Obj_File_Name = New_Extension( tmp_fname, OBJ_FILE_EXTENSION );
+#else
 	/* Replace source file extension to get	object file: */
-        char *tmp_fname = tempnam(NULL, NULL);
-        Obj_File_Name = New_Extension (tmp_fname, OBJ_FILE_EXTENSION);
+	Obj_File_Name =	New_Extension (fname, OBJ_FILE_EXTENSION);
+#endif
     }
 
 #if 0
@@ -1849,6 +2094,10 @@ Mark_Specified_Registers_As_Not_Allocatable (void)
   }
 }
 
+#ifdef KEY
+char ** be_command_line_args = NULL;
+INT be_command_line_argc = 0;
+#endif // KEY
 
 /* ====================================================================
  *
@@ -1872,12 +2121,18 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
     Set_Error_Descriptor (EP_BE, EDESC_BE);
     Set_Error_Descriptor (EP_CG, EDESC_CG);
 
+#ifdef KEY
+    be_command_line_args = be_argv;
+    be_command_line_argc = be_argc;
+#endif // KEY
+
     /* Perform preliminary command line processing: */
     Build_Option_String ( be_argc, be_argv );
     Process_Command_Line ( cg_argc, cg_argv );
 
     CG_Configure_Opt_Level(Opt_Level);
 
+#ifdef TARG_IA64
    /* Getting the relative skip_list about if_conv, locs etc.*/ 
     locs_skip_bb = IPFEC_Build_Skiplist(raw_locs_skip_bb);
     glos_skip_bb = IPFEC_Build_Skiplist(raw_glos_skip_bb);
@@ -1902,6 +2157,7 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
     glos_rename_skip_bb = IPFEC_Build_Skiplist(raw_glos_rename_skip_bb);
     glos_rename_skip_op = IPFEC_Build_Skiplist(raw_glos_rename_skip_op);
     latency2 = IPFEC_Build_Skiplist(raw_latency2);
+#endif
     Prepare_Source ();
 } /* CG_Process_Command_Line */
 
@@ -1924,14 +2180,37 @@ CG_Init (void)
     /* this has to be done after LNO has been loaded to grep
      * prefetch_ahead fromn LNO */
     Configure_prefetch_ahead();
+#ifdef CG_PATHSCALE_MERGE
+    if (flag_test_coverage || profile_arcs)
+        CG_Init_Gcov();
+#endif // KEY
+
+#ifdef TARG_X8664
+    /* Perform forward scheduling for -m32 by default.
+     */
+    if( Is_Target_32bit() ){
+      if( !LOCS_Fwd_Scheduling_set ){
+	LOCS_Fwd_Scheduling = TRUE;
+      }
+    }
+#endif // TARG_X8664
+
 
 } /* CG_Init */
-
-
+#ifdef KEY
+extern void CG_End_Final();
+#endif
 /* Terimination routines for cg */
 void
 CG_Fini (void)
 {
+#ifdef CG_PATHSCALE_MERGE
+    extern BOOL profile_arcs;
+    if (profile_arcs)
+        CG_End_Final();
+    if (flag_test_coverage || profile_arcs)
+    	CG_End_Gcov();
+#endif
     /* List global symbols if desired: */
     if ( List_Symbols ) {
 	Print_global_symtab (Lst_File);
@@ -1943,5 +2222,16 @@ CG_Fini (void)
     MEM_POOL_Delete (&MEM_local_region_pool);
     MEM_POOL_Delete (&MEM_local_region_nz_pool);
 
+#ifdef KEY
+    // Check to see if the asm file was written correctly.  Do this by writing
+    // one extra char and checking its status.  Bug 11361.
+    if (Assembly) {
+      int n = fprintf(Asm_File, "\n");
+      if (n != 1) {
+	ErrMsg(EC_Asm_Write, Asm_File_Name);
+	Terminate(1);
+      }
+    }
+#endif
 } /* CG_Fini */
 

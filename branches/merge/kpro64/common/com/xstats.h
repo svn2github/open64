@@ -39,10 +39,10 @@
  * ====================================================================
  *
  * Module: xstats.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/xstats.h,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Description:
  *
@@ -53,7 +53,7 @@
  */
 
 #ifdef _KEEP_RCS_ID
-static char *xstats_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/xstats.h,v $ $Revision: 1.1.1.1 $";
+static char *xstats_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "opcode.h"

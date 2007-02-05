@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -108,7 +108,11 @@ TYPE_DESC Machine_Types[] =
   { MTYPE_V8I1, 64,64,64,8, 8,8,	0, 1, 0, "V8I1",MTYPE_CLASS_INTEGER|MTYPE_CLASS_SVECTOR,8, MTYPE_V8I1 },
   { MTYPE_V8I2, 64,64,64,8, 8,8,	0, 1, 0, "V8I2",MTYPE_CLASS_INTEGER|MTYPE_CLASS_SVECTOR,8, MTYPE_V8I2 },
   { MTYPE_V8I4, 64,64,64,8, 8,8,	0, 1, 0, "V8I4",MTYPE_CLASS_INTEGER|MTYPE_CLASS_SVECTOR,8, MTYPE_V8I4 },
-  { MTYPE_V8F4, 64,64,64,8, 8,8,	0, 1, 0, "V8F4",MTYPE_CLASS_FLOAT|MTYPE_CLASS_SVECTOR,8, MTYPE_V8F4 }
+  { MTYPE_V8F4, 64,64,64,8, 8,8,	0, 1, 0, "V8F4",MTYPE_CLASS_FLOAT|MTYPE_CLASS_SVECTOR,8, MTYPE_V8F4 },
+  { MTYPE_M8I1, 64,64,64,8, 8,8,	0, 1, 0, "M8I1",MTYPE_CLASS_INTEGER|MTYPE_CLASS_MVECTOR,8, MTYPE_M8I1 },
+  { MTYPE_M8I2, 64,64,64,8, 8,8,	0, 1, 0, "M8I2",MTYPE_CLASS_INTEGER|MTYPE_CLASS_MVECTOR,8, MTYPE_M8I2 },
+  { MTYPE_M8I4, 64,64,64,8, 8,8,	0, 1, 0, "M8I4",MTYPE_CLASS_INTEGER|MTYPE_CLASS_MVECTOR,8, MTYPE_M8I4 },
+  { MTYPE_M8F4, 64,64,64,8, 8,8,	0, 1, 0, "M8F4",MTYPE_CLASS_FLOAT|MTYPE_CLASS_MVECTOR,8, MTYPE_M8F4 }
 #endif // TARG_X8664
 };
 
@@ -146,8 +150,12 @@ static TYPE_ID Machine_Next_Alignment[] =
  /* MTYPE_V	  */	MTYPE_UNKNOWN,
  /* MTYPE_BS	  */	MTYPE_UNKNOWN,
  /* MTYPE_A4	  */	MTYPE_UNKNOWN,
+#ifdef TARG_IA64
  /* MTYPE_A8	  */	MTYPE_UNKNOWN,
  /* MTYPE_C10	  */	MTYPE_CQ
+#else
+ /* MTYPE_A8      */    MTYPE_UNKNOWN
+#endif
 };
 
 static TYPE_ID Machine_Prev_Alignment[] =
@@ -164,7 +172,11 @@ static TYPE_ID Machine_Prev_Alignment[] =
  /* MTYPE_U8	  */	MTYPE_U4,
  /* MTYPE_F4	  */	MTYPE_UNKNOWN,
  /* MTYPE_F8	  */	MTYPE_F4,
+#ifdef TARG_IA64
  /* MTYPE_F10	  */	MTYPE_F8,
+#else
+ /* MTYPE_F10     */    MTYPE_UNKNOWN,
+#endif
  /* MTYPE_F16	  */	MTYPE_UNKNOWN,
  /* MTYPE_STR	  */	MTYPE_UNKNOWN,
 #ifdef TARG_IA64
@@ -182,9 +194,14 @@ static TYPE_ID Machine_Prev_Alignment[] =
 #endif
  /* MTYPE_V	  */	MTYPE_UNKNOWN,
  /* MTYPE_B	  */	MTYPE_UNKNOWN,
+#ifdef TARG_IA64
  /* MTYPE_A4	  */	MTYPE_UNKNOWN,
  /* MTYPE_A8	  */	MTYPE_UNKNOWN,
  /* MTYPE_C10	  */	MTYPE_C8
+#else
+ /* MTYPE_U4      */    MTYPE_UNKNOWN,
+ /* MTYPE_U8      */    MTYPE_UNKNOWN
+#endif
 };
 
 
@@ -338,8 +355,10 @@ TYPE_ID Mtype_complex_to_real(TYPE_ID type)
 	return MTYPE_F4;
     case MTYPE_C8:
 	return MTYPE_F8;
+#ifdef TARG_IA64
     case MTYPE_C10:
 	return MTYPE_F10;
+#endif
     case MTYPE_CQ:
 	return MTYPE_FQ;
     }

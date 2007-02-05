@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1130,7 +1130,11 @@ Print_Controls ( FILE *fp, char *tag, BOOL def )
 /* handle the interation between -g and -O */
 void Fix_g_O( void )
 {
+#ifdef TARG_IA64
   if (Debug_Level == 2 || Debug_Level == 1) {
+#else
+    if (Debug_Level >= 2) {
+#endif
     if (Opt_Level > 0) {
 #ifdef FRONT_END
       ErrMsg(EC_Fix_g_O);

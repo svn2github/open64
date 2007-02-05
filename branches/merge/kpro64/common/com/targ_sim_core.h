@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -102,6 +102,12 @@ public:
 #endif
 				     );
 };
+
+extern RETURN_INFO Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level
+#ifdef TARG_X8664
+  				      , BOOL ff2c_abi
+#endif
+				     );
 
 inline mINT8
 RETURN_INFO_count (const RETURN_INFO& info) { return info.count; }

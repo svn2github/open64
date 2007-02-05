@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +45,10 @@
  * ====================================================================
  *
  * Module: targ_const.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/targ_const.cxx,v $
+ * $Revision: 1.33 $
+ * $Date: 05/11/08 12:02:22-08:00 $
+ * $Author: gautam@jacinth.keyresearch $
+ * $Source: common/com/x8664/SCCS/s.targ_const.cxx $
  *
  * Revision history:
  *  12-Jun-91 - Original Version
@@ -599,7 +603,11 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 
    if (DEBUG_Trap_Uv && MTYPE_float(optype) && 
        (NaN_Tcon(optype, c0) || NaN_Tcon(optype, c1))) {
-     *folded = FALSE;
+     // return NaN because some places in simp_add_sub are hard-coded to
+     // expect constant-folding being successful, for bug 9699
+     if (NaN_Tcon(optype, c0))
+       return c0;
+     else return c1;
    }
    else if (OPERATOR_is_compare(opr)) {
      if (MTYPE_is_integral(desc))
@@ -1305,7 +1313,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 
     case OPC_U4TAS:
     case OPC_I4TAS:
-#if 0 // not needed when HOST_IS_LITTLE_ENDIAN is true
+#if HOST_IS_BIG_ENDIAN  // See bug 4305 and bug 10763
       /* Need to move the bits if the source is an F4 */
       if (TCON_ty(c0) == MTYPE_F4) {
 	 TCON_v0(c0) = TCON_v1(c0);
@@ -1316,7 +1324,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       break;
 
     case OPC_F4TAS:
-#if 0 // not needed when HOST_IS_LITTLE_ENDIAN is true
+#if HOST_IS_BIG_ENDIAN  // See bug 4305 and bug 10763
       /* Need to move the bits if the source is not an F4 */
       if (TCON_ty(c0) != MTYPE_F4) {
 	 TCON_v1(c0) = TCON_v0(c0);
@@ -3210,6 +3218,14 @@ Host_To_Targ(TYPE_ID ty, INT64 v)
       ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), "Host_To_Targ" );
 
     case MTYPE_V16I4:
+    case MTYPE_V16I2:
+    case MTYPE_V16I1:
+    case MTYPE_V8I4:
+    case MTYPE_V8I2:
+    case MTYPE_V8I1:
+    case MTYPE_M8I4:
+    case MTYPE_M8I2:
+    case MTYPE_M8I1:
     case MTYPE_B:
     case MTYPE_I1:
     case MTYPE_I2:
@@ -3319,6 +3335,14 @@ Create_Simd_Const (TYPE_ID ty, TCON t)
     (c).vals.ival.v3 = (t).vals.ival.v0;
     break;
   case MTYPE_V16F8:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v1;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v1;
+    break;
+  case MTYPE_V16C4:
     TCON_clear(c);
     TCON_ty(c) = ty;
     (c).vals.ival.v0 = (t).vals.ival.v0;
@@ -5134,6 +5158,10 @@ Hash_TCON ( TCON * t, UINT32 modulus )
     case MTYPE_V16I8:
       hash += TCON_ll0(*t) + TCON_ll1(*t);
       break;
+    case MTYPE_V16F4:
+    case MTYPE_V16F8:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
+      break;
     default:
       ErrMsg ( EC_Inv_Mtype, Mtype_Name(TCON_ty(*t)), "Hash_TCON" );
       return 0;
@@ -5598,14 +5626,24 @@ TCON Targ_IntrinsicOp ( UINT32 intrinsic, TCON c[], BOOL *folded)
 
     case INTRN_F4AINT:
       t = Targ_WhirlOp(OPC_F4ABS,c[0],c[0],folded);
-      if ((INT32) TCON_R4(t) < (1<<30)) {
+#ifdef KEY // bug 6429: Mimic the code generated in emulate.cxx
+      if (TCON_R4(t) < (1<<23))
+#else
+      if ((INT32) TCON_R4(t) < (1<<30))
+#endif
+      {
 	 TCON_R4(c0) = (INT32) TCON_R4(c0);
       }
       break;
 
     case INTRN_F8AINT:
       t = Targ_WhirlOp(OPC_F8ABS,c[0],c[0],folded);
-      if ((INT64) TCON_R8(t) < (1LL << 62)) {
+#ifdef KEY // bug 6429: Mimic the code generated in emulate.cxx
+      if (TCON_R8(t) < (1LL << 52))
+#else
+      if ((INT64) TCON_R8(t) < (1LL << 62))
+#endif
+      {
 	 TCON_R8(c0) = (INT64) TCON_R8(c0);
       }
       break;

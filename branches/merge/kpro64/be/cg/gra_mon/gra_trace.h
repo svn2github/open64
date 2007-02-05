@@ -1,6 +1,14 @@
 /*
+ * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -246,11 +254,21 @@ void GRA_Trace_Grant_Unused_Caller_Saved();
 void GRA_Trace_Split_Removing_Block(GRA_BB* gbb);
 void GRA_Trace_Split_Add_Priority(GRA_BB* gbb, BOOL is_store);
 void GRA_Trace_Split_Sub_Priority(GRA_BB* gbb, BOOL is_store);
+#ifndef TARG_IA64
+void GRA_Trace_Split_Reclaim_Add_Priority(GRA_BB* gbb, BOOL is_store,
+					  float priority);
+void GRA_Trace_Split_Reclaim_Sub_Priority(GRA_BB* gbb, BOOL is_store,
+					  float priority);
+#endif
 void GRA_Trace_Split_Priority_On(char* msg);
 void GRA_Trace_Split_Priority_Off();
 void GRA_Trace_Preference_Conflict(LRANGE* lrange0,
 				   LRANGE* lrange1,
 				   GRA_BB* gbb );
 void GRA_Trace_LRANGE_Allocate(LRANGE* lrange);
+#ifndef TARG_IA64
+void GRA_Trace_LRANGE_Choose(LRANGE* lrange, REGISTER_SET allowed);
+void GRA_Trace_LRANGE_Choose_Reclaimable(LRANGE* lrange, REGISTER_SET allowed);
+#endif
 
 #endif

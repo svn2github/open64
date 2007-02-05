@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -96,11 +104,18 @@
 
 #include "cflow.h"
 
+#ifdef KEY
+#include <float.h> // needed to pick up FLT_MAX at PathScale
+#endif
+#ifdef TARG_IA64
 #include "region.h"
 #include "region_bb_util.h"
 #include "vt_region.h"
 #include "ipfec_options.h"
+#endif
+#ifdef TARG_IA64
 #include "speculation.h"
+#endif
 
 #define DEBUG_CFLOW Is_True_On
 
@@ -116,6 +131,9 @@ static BOOL have_eh_regions;
  */
 static float br_taken_cost;
 static float br_fall_cost;
+#ifdef KEY
+static float br_static_cost;
+#endif
 
 /* Option control:
  */
@@ -146,7 +164,9 @@ static BOOL eh_label_removed;
 #define TRACE_CLONE     0x0080
 #define TRACE_FREQ	0x0100	/* used in freq.c */
 #define TRACE_DOM	0x0200	/* used in dominate.c */
+#ifdef TARG_IA64
 #define TRACE_Empty_BB_Elim 0x0400/* used in cflow.cxx */
+#endif
 
 
 BOOL CFLOW_Trace;
@@ -159,7 +179,10 @@ BOOL CFLOW_Trace_Freq_Order;
 BOOL CFLOW_Trace_Clone;
 BOOL CFLOW_Trace_Freq;
 BOOL CFLOW_Trace_Dom;
+
+#ifdef TARG_IA64
 BOOL CFLOW_Trace_Empty_BB_Elim;
+#endif
 
 /* We need to keep some auxilary information for each BB for the various
  * optimizations we perform. The following BB_MAP provides the mechanism
@@ -270,6 +293,28 @@ void Print_BB_Info(BB *bb);
 #pragma mips_frequency_hint NEVER Print_BB_Info
 void Print_Cflow_Graph(char *banner);
 #pragma mips_frequency_hint NEVER Print_Cflow_Graph
+
+#ifdef TARG_X8664
+/* ====================================================================
+ *
+ * BB_savexmms_op
+ *
+ * Return the terminating savexmms OP in a given BB
+ *
+ * ====================================================================
+ */
+static inline OP* BB_savexmms_op( BB *bb )
+{
+  OP* op = BB_last_op(bb);
+  return ( (op != NULL) && (OP_code(op) == TOP_savexmms) ) ? op : NULL;
+}
+
+static inline bool BB_computes_got( BB* bb )
+{
+  OP* op = BB_first_op(bb);
+  return ( (op != NULL) && OP_computes_got(op) );
+}
+#endif
 
 
 /* ====================================================================
@@ -508,9 +553,14 @@ static INT *ListVar_RefCount(ST *listvar)
  *
  * ====================================================================
  */
+#ifdef TARG_IA64
 static BOOL
+#else
+static void
+#endif
 Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
 {
+#ifdef TARG_IA64
   if(IPFEC_Enable_Region_Formation && RGN_Formed) {
       if(Home_Region(bb)->Is_No_Further_Opt() ||
          Home_Region(old_succ)->Is_No_Further_Opt() ||
@@ -522,7 +572,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
          //------------------------------------------------
          return FALSE;
   }
-
+#endif
   INT i;
   INT nsuccs = BBINFO_nsuccs(bb);
   float prob = BBINFO_succ_prob(bb, isucc);
@@ -544,15 +594,23 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
 
   FmtAssert( old_edge, ("Expect old_edge") );
 
+  if ( new_edge
+       && BBLIST_prob_fb_based(new_edge)
+       && BBLIST_prob_fb_based(old_edge) ) {
+    // bb->old; bb->new; so move old edge prob to new edge.
+    BBLIST_prob(new_edge) += BBLIST_prob(old_edge);
+    BBLIST_prob(old_edge)  = 0;
+  }
   Set_BBINFO_succ_bb(bb, isucc, new_succ);
 
-  //more? is following consistent with new edge feedback?
+  //more? is following consistency with new edge feedback?
   for (i = 0; i < nsuccs; ++i) {
     if (i != isucc && BBINFO_succ_bb(bb, i) == old_succ) {
       if ( freqs_computed ) {
 	      float old_prob = BBLIST_prob(old_edge);
 	      BBLIST_prob(old_edge) = prob > old_prob ? 0.0 : old_prob - prob;
       }
+#ifdef TARG_IA64
       if(IPFEC_Enable_Region_Formation && RGN_Formed) {
         RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
 	      return TRUE;
@@ -560,9 +618,14 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
         Link_Pred_Succ_with_Prob(bb, new_succ, prob);
         return TRUE;
       }
+#else
+      }
+      Link_Pred_Succ_with_Prob(bb, new_succ, prob);
+      return;
+#endif
     }
   }
-
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed) {
       RGN_Unlink_Pred_Succ(bb,old_succ);
 	    RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
@@ -572,6 +635,10 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
   }
 
   return TRUE;
+#else
+  Unlink_Pred_Succ(bb, old_succ);
+  Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE);
+#endif
 }
 
 
@@ -823,7 +890,7 @@ Delete_BB(BB *bp, BOOL trace)
   /* Delete all OPs from BB.
    */
   BB_Remove_All(bp);
-
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed ) {
 	/* If the region has been formed,must also delete the node from
      * region.
@@ -831,6 +898,7 @@ Delete_BB(BB *bp, BOOL trace)
 	RGN_Remove_BB_And_Edges(bp, Home_Region(bp)->Regional_Cfg());
   
   }else{ 
+#endif
   /* Remove from BB chain.
    */
   Remove_BB(bp);
@@ -853,7 +921,9 @@ Delete_BB(BB *bp, BOOL trace)
     BBlist_Delete_BB(&BB_succs(pred), bp);
   }
   BBlist_Free(&BB_preds(bp));
+#ifdef TARG_IA64
   }
+#endif
   Set_BBINFO_kind(bp, BBKIND_UNKNOWN);
   Set_BBINFO_nsuccs(bp, 0);
 
@@ -1012,19 +1082,22 @@ static void Insert_Goto_BB(
   goto_prob_fb = BBLIST_prob_fb_based(sedge);
 
   goto_bb = Alloc_BB_Like(bb);
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed ) 
       RGN_Gen_And_Insert_Node(goto_bb, bb, targ_bb);
-
+#endif
 
   BB_freq(goto_bb) = BB_freq(bb) * goto_prob;
   
   Insert_BB(goto_bb, bb);
-
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed )
       RGN_Link_Pred_Succ_With_Prob(goto_bb,targ_bb, 1.0);
   else
       Link_Pred_Succ_with_Prob(goto_bb, targ_bb, 1.0);
-
+#else
+  Link_Pred_Succ_with_Prob(goto_bb, targ_bb, 1.0);
+#endif
   if (BB_freq_fb_based(bb) && goto_prob_fb) {
     BBLIST *edge = BB_Find_Succ(goto_bb, targ_bb);
     Set_BB_freq_fb_based(goto_bb);
@@ -1041,7 +1114,7 @@ static void Insert_Goto_BB(
     Set_BB_scheduled(goto_bb);
   }
   BB_Append_Ops(goto_bb, &ops);
-
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed ){
       RGN_Unlink_Pred_Succ(bb, targ_bb);
       RGN_Link_Pred_Succ_With_Prob(bb, goto_bb, goto_prob);
@@ -1049,6 +1122,10 @@ static void Insert_Goto_BB(
       Unlink_Pred_Succ(bb, targ_bb);
       Link_Pred_Succ_with_Prob(bb, goto_bb, goto_prob);
   }
+#else
+  Unlink_Pred_Succ(bb, targ_bb);
+  Link_Pred_Succ_with_Prob(bb, goto_bb, goto_prob);
+#endif
   if (goto_prob_fb) {
     BBLIST *edge = BB_Find_Succ(bb, goto_bb);
     Set_BBLIST_prob_fb_based(edge);
@@ -1070,7 +1147,7 @@ static void
 Finalize_BB(BB *bp)
 {
   BOOL fill_delay_slots = (current_flags & CFLOW_FILL_DELAY_SLOTS) != 0;
-
+#ifdef TARG_IA64
   // bug fix for OSP_105 & OSP_192
   // As to those BBs, whose unreachable_bb flag is set to TRUE, 
   // Except BBs which include EH related labels, which may not be deleted;
@@ -1081,10 +1158,12 @@ Finalize_BB(BB *bp)
   BOOL unreachable_bb = BB_unreachable(bp);
   if (unreachable_bb)
     return;
-  
+#endif  
   switch (BBINFO_kind(bp)) {
   case BBKIND_LOGIF:
+#ifdef TARG_IA64
   case BBKIND_CHK: // bug fix for OSP_104, OSP_105, OSP_192
+#endif
   {
       INT tfirst;
       INT tcount;
@@ -1097,10 +1176,12 @@ Finalize_BB(BB *bp)
       INT64 fall_through_offset;
       INT64 target_offset;
       OP *br = BB_branch_op(bp);
+#ifdef TARG_IA64
       if ((br == NULL) || OP_noop(br))// bug fix for OSP_104, OSP_105, OSP_192
       {
          br = BB_Last_chk_op(bp);
 	}
+#endif
       /* Get the fall through and the target BBs.
        */
       fall_through = BBINFO_succ_bb(bp, 1);
@@ -1189,10 +1270,14 @@ Finalize_BB(BB *bp)
 
 	/* Fall through; remove terminating branch if there is one.
 	 */
+#ifdef TARG_X8664
+        if (!region_is_scheduled) BB_Remove_Branch(bp);
+#else
 	if (!region_is_scheduled) {
 		BB_Remove_Branch(bp);
 		Reset_BB_scheduled(bp);
 	}
+#endif
       } else if (BB_asm(bp)) {
 
 	/* An asm must remain the last OP in the BB, therefore
@@ -1235,7 +1320,9 @@ Finalize_BB(BB *bp)
 	    Exp_Noop(&ops);
 	  }
 	  BB_Append_Ops(bp, &ops);
+#ifdef TARG_IA64
 	  Reset_BB_scheduled(bp);
+#endif
 	}
       }
     }
@@ -1620,7 +1707,9 @@ Initialize_BB_Info(void)
       continue;
 
     case BBKIND_LOGIF:
+#ifdef TARG_IA64
     case BBKIND_CHK: // bug fix for OSP_104, OSP_105, OSP_192
+#endif
       {
 	INT tfirst;
 	INT tcount;
@@ -1629,10 +1718,12 @@ Initialize_BB_Info(void)
 	BBLIST *target_edge;
 	BBLIST *fall_through_edge;
 	OP *br = BB_branch_op(bb);
+#ifdef TARG_IA64
 	if ((br == NULL) || OP_noop(br))// bug fix for OSP_104, OSP_105, OSP_192
        {
           br = BB_Last_chk_op(bb);  
        }
+#endif
 
 	/* Get the targets. Note that target[0] is always the "true" target.
 	 */
@@ -1683,9 +1774,9 @@ Initialize_BB_Info(void)
 	/* Determine the branch condition and operands of the compare.
 	 */
 	{
-	  TN *tn1;
-	  TN *tn2;
-	  OP *cmp;
+	  TN *tn1 = NULL;
+	  TN *tn2 = NULL;
+	  OP *cmp = NULL;
 	  VARIANT variant = CGTARG_Analyze_Compare(br, &tn1, &tn2, &cmp);
 
 	  /* If the compare op has a predicate that isn't always true,
@@ -1741,8 +1832,22 @@ Initialize_BB_Info(void)
 	  bbinfo->succs[nsuccs].prob = BBLIST_prob(succ);
 	}
 	bbinfo->nsuccs = nsuccs;
-	FmtAssert(nsuccs, ("%s BB:%d has no successors", 
-			   BBKIND_Name(bbkind), BB_id(bb)));
+
+#ifdef KEY
+	/* bug#1047
+	   An indirect goto could have no successor in the
+	   current pu, like
+	      int jump () { goto * (int (*) ()) 0xbabebec0; }
+	 */
+	if( nsuccs == 0 &&
+	    bbkind == BBKIND_INDGOTO ){
+	  DevWarn( "%s BB:%d has no successors", 
+		   BBKIND_Name(bbkind), BB_id(bb) );
+	} else
+#endif
+
+	  FmtAssert(nsuccs, ("%s BB:%d has no successors", 
+			     BBKIND_Name(bbkind), BB_id(bb)));
 	continue;
       }
     }
@@ -1779,11 +1884,13 @@ Is_Empty_BB(BB *bb)
   if (BB_gra_spill(bb)) return FALSE;
 
   switch (BB_length(bb)) {
+#ifdef TARG_IA64
   case 3:
   	if (BBINFO_kind(bb) == BBKIND_GOTO
 	&& BBINFO_nsuccs(bb)
 	&& BBINFO_cold(BBINFO_succ_bb(bb, 0)) != BBINFO_cold(bb)) return FALSE;
     if (BB_branch_op(bb) != NULL && OP_noop(BB_first_op(bb)) && OP_noop(BB_first_op(bb)->next)) return TRUE;
+#endif
   case 2:
     if (!PROC_has_branch_delay_slot() || !OP_noop(BB_last_op(bb))) return FALSE;
     /*FALLTHROUGH*/
@@ -1916,6 +2023,11 @@ Collapse_Empty_Goto(BB *bp, BB *targ, float in_freq)
 
   if (BBINFO_cold(bp) != BBINFO_cold(targ)) return targ;
 
+#ifdef TARG_X8664
+  if( BB_savexmms_op(bp) != NULL )
+    return targ;
+#endif
+
   new_targ = targ;
   cnt = 0;
   while (   BBINFO_kind(new_targ) == BBKIND_GOTO 
@@ -2017,6 +2129,24 @@ Redundant_Logif(BB *pred, BB *succ, BOOL *pnegated)
   if (   pred_cmp != succ_cmp
       && (pred_cmp != BB_branch_op(pred) || succ_cmp != BB_branch_op(succ))
   ) return FALSE;
+
+#ifdef KEY
+  /* A BBINFO_condval could be re-defined by an op which is scheduled
+     at the delay slot. */
+  if( PROC_has_branch_delay_slot() ){
+    OP* last_op = BB_last_op( pred );
+    if( !OP_br( last_op ) ){
+      for( int i = 0; i < OP_results( last_op ); i++ ){
+	TN* result = OP_result( last_op, i );
+	if( result == BBINFO_condval1(succ) ||
+	    result == BBINFO_condval2(succ) ){
+	  Is_True( false, ("TN is re-defined more than once.\n") );
+	  return FALSE;
+	}
+      }
+    }
+  }
+#endif
 
   /* They're redundant!
    */
@@ -2251,15 +2381,18 @@ Convert_If_To_Goto ( BB *bp )
 {
   INT64 v1,v2;
   BOOL result;
-  TN *tn1,*tn2;
-  OP *compare_op;
+  TN* tn1 = NULL;
+  TN* tn2 = NULL;
+  OP *compare_op = NULL;
   VARIANT br_variant = V_br_condition(BBINFO_variant(bp));
   BOOL false_br = V_false_br(BBINFO_variant(bp)) != 0;
+#ifdef TARG_IA64
   OP *op_br=BB_xfer_op(bp);
   TN *tn = OP_opnd(op_br, 0);
   if (tn==True_TN)  {
   	return FALSE;
   }
+#endif
   /* Give up immediately on branch variants we can't handle.
    */
   switch (br_variant) {
@@ -2366,10 +2499,30 @@ convert_it:
     /* Must remove the old conditional branch inst; no need to replace
      * it with an unconditional one, Finalize_BB will handle it.
      */
+#ifdef TARG_X8664
+    if( compare_op != NULL ){
+      FmtAssert( OP_bb( compare_op ) == bp,
+		 ("compare op and branch op are located at different bbs") );
+      // Delete the compare if its result isn't needed.
+      OP *op;
+      BOOL delete_compare = TRUE;
+      for (op = OP_next(compare_op); ; op = OP_next(op)) {
+	if (op == br)
+	  break;
+	else if (OP_reads_rflags(op)) {
+	  delete_compare = FALSE;
+	  break;
+	}
+      }
+      if (delete_compare)
+	BB_Remove_Op( bp, compare_op );
+    }
+#endif
     BB_Remove_Op(bp, br);
 
     /* Update succs/preds lists and verify we're in sync.
      */
+#ifdef TARG_IA64
     if (targ != dead) {
 	    if (IPFEC_Enable_Region_Formation && RGN_Formed) {
 		    RGN_Unlink_Pred_Succ(bp,dead);
@@ -2377,6 +2530,9 @@ convert_it:
 		    Unlink_Pred_Succ(bp, dead);
         } 
     }
+#else
+    if (targ != dead) Unlink_Pred_Succ(bp, dead);
+#endif
     BBLIST_prob(BB_Find_Succ(bp, targ)) = 1.0;
     Is_True(   BBlist_Len(BB_succs(bp)) == 1
 	    && BBLIST_item(BB_succs(bp)) == targ
@@ -2433,6 +2589,9 @@ try_identities:
       if (Force_IEEE_Comparisons) break;
       /*FALLTHROUGH*/
     case V_BR_I4LT: 
+#ifdef KEY
+    case V_BR_I4GT:
+#endif
     case V_BR_U4GT: 
     case V_BR_U4LT: 
     case V_BR_I4NE: 
@@ -2454,6 +2613,9 @@ try_identities:
       #pragma mips_frequency_hint NEVER
       DevWarn("Unhandled branch VARIANT (%lld) for BB:%d at line %d of %s",
 	      (INT64)br_variant, BB_id(bp), __LINE__, __FILE__);
+#ifdef TARG_X8664
+      FmtAssert( false, ("NYI") );
+#endif
     }
   }
   return FALSE;
@@ -2553,7 +2715,7 @@ Convert_Goto_To_If ( BB *bp, mBOOL *used_branch_around )
   float prob_0;
   float prob_1;
   BB *targ;
-  
+
   /* Give up if the GOTO doesn't goto the start of the target -- it's
    * too complicated.
    */
@@ -2581,6 +2743,7 @@ Convert_Goto_To_If ( BB *bp, mBOOL *used_branch_around )
   prob_0 = BBINFO_succ_prob(targ, 0);
   prob_1 = BBINFO_succ_prob(targ, 1);
 
+#ifdef TARG_IA64
   /* Give up if the GOTO's succ is a region's entry node and the goto does
    * not reside in the same region as its succ. Otherwise a SEME region may
    * be turned into a MEME region. 
@@ -2593,6 +2756,7 @@ Convert_Goto_To_If ( BB *bp, mBOOL *used_branch_around )
         return FALSE;
       }  
   }
+#endif
 
   /* At this point it is possible to do a correct conversion. The only
    * issue is if we want to avoid code expansion. Determine if we
@@ -2679,14 +2843,19 @@ Convert_Goto_To_If ( BB *bp, mBOOL *used_branch_around )
 
   /* Update preds/succs lists.
    */
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed) {
     RGN_Unlink_Pred_Succ(bp,targ);
   } else {
     Unlink_Pred_Succ(bp, targ);
   }
+#else
+  Unlink_Pred_Succ(bp, targ);
+#endif
   
   Is_True(BB_succs(bp) == NULL,
 	  ("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed) {
     RGN_Link_Pred_Succ_With_Prob(bp,targ_0,prob_0);
     RGN_Link_Pred_Succ_With_Prob(bp,targ_1,prob_1);
@@ -2694,6 +2863,10 @@ Convert_Goto_To_If ( BB *bp, mBOOL *used_branch_around )
     Link_Pred_Succ_with_Prob(bp, targ_0, prob_0, FALSE, TRUE);
     Link_Pred_Succ_with_Prob(bp, targ_1, prob_1, FALSE, TRUE);
   }
+#else
+  Link_Pred_Succ_with_Prob(bp, targ_0, prob_0, FALSE, TRUE);
+  Link_Pred_Succ_with_Prob(bp, targ_1, prob_1, FALSE, TRUE);
+#endif
 
   /* Now update the BBINFO to reflect that the GOTO block is now
    * a LOGIF block.
@@ -2860,11 +3033,15 @@ Convert_Goto_To_Return ( BB *bp )
   }
   if ( br_op ) BB_Remove_Op(bp, br_op);
 
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed) {
     RGN_Unlink_Pred_Succ(bp,targ);
   } else {
     Unlink_Pred_Succ(bp, targ);
   }
+#else
+  Unlink_Pred_Succ(bp, targ);
+#endif
   Is_True(BB_succs(bp) == NULL,
 	  ("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
 
@@ -2939,17 +3116,21 @@ Convert_Goto_To_Return ( BB *bp )
  * ====================================================================
  */
 static BOOL
-Optimize_Branches()
+Optimize_Branches(void)
 {
   INT pass;
   mBOOL *used_branch_around;
   float edge_freq = 0.0;
   BOOL changed;
+
+#ifdef TARG_IA64
   //-----------------------------------------------------------------
   // Indicate whether change succ success.This is because of region
   // formation.It is initialized to FALSE.
   //-----------------------------------------------------------------
-  BOOL chan_succ = FALSE; 
+  BOOL chan_succ = FALSE;
+#endif
+ 
   used_branch_around = (mBOOL *)alloca((PU_BB_Count + 2) * sizeof(*used_branch_around));
   bzero(used_branch_around, (PU_BB_Count + 2) * sizeof(*used_branch_around));
   pass = 0;
@@ -2959,16 +3140,20 @@ Optimize_Branches()
     pass++;
     for (bp = REGION_First_BB; bp; bp = BB_next(bp)) {
 
+#ifdef TARG_IA64
         if (IPFEC_Enable_Region_Formation && RGN_Formed) {
             if(Home_Region(bp)->Is_No_Further_Opt())
                 continue;
         }
-      
+#endif
+   
       BB *old_tgt, *new_tgt;
       ST *st;
       INT i;
       RID *rid = BB_rid(bp);
+#ifdef TARG_IA64
       BOOL flag=FALSE;
+#endif
      /* Avoid modifying any block in a region that has already
       * been scheduled.
       */
@@ -2980,8 +3165,9 @@ Optimize_Branches()
           old_tgt = BBINFO_succ_bb(bp, 0);
           new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
           if (new_tgt != old_tgt) {
+#ifdef TARG_IA64
             chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
-          }
+	  }
           if (chan_succ) {
             changed = TRUE;
           }
@@ -3032,17 +3218,56 @@ Optimize_Branches()
               }
             }
           }
-        }
-        break;
+#else
+	    Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
+	  }
+	  changed = TRUE;
+        } else {
+	  if (freqs_computed) {
+	    edge_freq = BBINFO_succ_prob(bp, 0) * BB_freq(bp);
+	  }
+	  old_tgt = BBINFO_succ_bb(bp, 0);
+	  new_tgt = Collapse_Same_Logif(bp, old_tgt, 0, edge_freq);
+	  if (new_tgt != old_tgt) {
+	    changed = TRUE;
+	    Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
+	  }
+
+	  if (freqs_computed) {
+	    edge_freq = BBINFO_succ_prob(bp, 1) * BB_freq(bp);
+	  }
+	  old_tgt = BBINFO_succ_bb(bp, 1);
+	  new_tgt = Collapse_Same_Logif(bp, old_tgt, 1, edge_freq);
+	  if (new_tgt != old_tgt) {
+	    changed = TRUE;
+	    Cflow_Change_Succ(bp, 1, old_tgt, new_tgt);
+	  }
+#endif // TARG_IA64
+#ifdef KEY
+	  /* If both false branch and true branch target to the
+	     same bb, then it is not a LOGIF bb any more. (bug#3515)
+	  */
+	  if( BBINFO_succ_bb(bp, 0) == BBINFO_succ_bb(bp, 1) ){
+	    if( !Convert_Indirect_Goto_To_Direct( bp ) ){
+	      FmtAssert( FALSE, ("Optimize_Branches: fail to merge") );
+	    }
+	  }
+#endif
+	}
+	break;
       case BBKIND_GOTO:
 	if (BBINFO_nsuccs(bp) == 0) break;
 
 	old_tgt = BBINFO_succ_bb(bp, 0);
 	new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
-
 	if (new_tgt != old_tgt) {
+#ifdef TARG_IA64
 	  chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
 	  if (chan_succ) changed = TRUE;
+#else
+	  changed = TRUE; 
+	  Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
+#endif
 	}
         if (new_tgt != BB_next(bp)) {
           if (   Convert_Goto_To_If(bp, used_branch_around)
@@ -3054,6 +3279,12 @@ Optimize_Branches()
 		   && BBINFO_cold(bp) == BBINFO_cold(new_tgt))
 	{
 
+	  /* This block branches to the next BB. Say something has
+	   * changed so that we guarantee that we will remove the
+	   * branch (in Finalize_BB). Note that in this
+	   * situation we have not modified the code, so setting
+	   * 'changed' would result in an extra scan over the BBs.
+	   */
 	  ++pass;
 
 	  if (CFLOW_Trace_Branch) {
@@ -3070,7 +3301,11 @@ Optimize_Branches()
 
 	      
 	  if (new_tgt != old_tgt) {
+#ifdef TARG_IA64
 	    chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
+#else
+	    Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
+#endif
 	  }
 	  
 	  changed = TRUE;
@@ -3091,8 +3326,13 @@ Optimize_Branches()
 	    if (new_tgt == old_tgt) continue;
 
 	    if (!Change_Switchtable_Entries(st, old_tgt, new_tgt)) continue;
+#ifdef TARG_IA64
       chan_succ = Cflow_Change_Succ(bp, i, old_tgt, new_tgt);
       if (chan_succ) changed = TRUE;
+#else
+      changed = TRUE;  
+      Cflow_Change_Succ(bp, i, old_tgt, new_tgt);
+#endif
 	  }
 	}
 	break;
@@ -3105,8 +3345,13 @@ Optimize_Branches()
 	  new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
 
 	  if (new_tgt != old_tgt) {
+#ifdef TARG_IA64
 	    chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
 	    if (chan_succ) changed = TRUE;
+#else
+	    changed = TRUE;      
+	    Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
+#endif
 	  }
 	}
 	break;
@@ -3258,19 +3503,20 @@ Delete_Unreachable_Blocks(void)
     /* Keep scanning if we must keep this BB.
      */
     if (!unreachable_bb) continue;
-
+#ifdef TARG_IA64
     if (IPFEC_Enable_Speculation) {
         if (BB_Hold_Disjoint_Speculative_Code(bp)) 
             continue;
 	
 	Delete_Recovery_Info_For_BB(bp);
     }
+#endif
     /* Delete the contents or the whole BB, depending on whether or
      * not we need to keep some labels or not.
      */
     if (   has_eh_lab 
-	       || BB_Has_Addr_Taken_Label(bp)
-	       || BB_Has_Outer_Block_Label(bp))
+	|| BB_Has_Addr_Taken_Label(bp)
+	|| BB_Has_Outer_Block_Label(bp))
     {
       Delete_BB_Contents(bp);
     } else {
@@ -3311,6 +3557,7 @@ Merge_With_Pred ( BB *b, BB *pred )
   UINT32 i;
   BB *merged_pred;
 
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed ) {
       if(Regional_Cfg_Node(pred)->Is_Entry())
           return FALSE;
@@ -3318,6 +3565,7 @@ Merge_With_Pred ( BB *b, BB *pred )
          Home_Region(pred)->Is_No_Further_Opt())
          return FALSE;
   }
+#endif
 
   /* Only handle the cases that won't get handled by Merge_With_Succ
    * or by some other means.
@@ -3330,7 +3578,9 @@ Merge_With_Pred ( BB *b, BB *pred )
   case BBKIND_LOGIF:
   case BBKIND_VARGOTO:
   case BBKIND_INDGOTO:
+#ifdef TARG_IA64
   case BBKIND_CHK:// bug fix for OSP_104, OSP_105, OSP_192
+#endif
     if (CFLOW_Trace_Merge) {
       #pragma mips_frequency_hint NEVER
       fprintf(TFile, "Merge_With_Pred rejecting merge of BB:%d into BB:%d (unsupported kind: %s)\n",
@@ -3477,20 +3727,28 @@ Merge_With_Pred ( BB *b, BB *pred )
 
   /* Update BB successor info if necessary.
    */
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed ) {
     RGN_Unlink_Pred_Succ(pred,b);
   } else {
     Unlink_Pred_Succ(pred, b);
   }
-
+#else
+  Unlink_Pred_Succ(pred, b);
+#endif
   for (i = 0; i < BBINFO_nsuccs(pred); ++i) {
     if (BBINFO_succ_bb(pred, i) == b) {
 
+#ifdef TARG_IA64
 	  if (IPFEC_Enable_Region_Formation && RGN_Formed) {
         RGN_Link_Pred_Succ_With_Prob(pred, b_targ, BBINFO_succ_prob(pred, i));
       } else {
         Link_Pred_Succ_with_Prob(pred, b_targ, BBINFO_succ_prob(pred, i));
       }
+#else
+      Link_Pred_Succ_with_Prob(pred, b_targ, BBINFO_succ_prob(pred, i));
+#endif
+
 
       Set_BBINFO_succ_bb(pred, i, b_targ);
     }
@@ -3585,6 +3843,13 @@ Can_Append_Succ(
     }
     return FALSE;
   }
+
+#ifdef TARG_X8664
+  // merging would delete the label needed by this instr
+  if( BB_savexmms_op(b) != NULL ){
+    return FALSE;
+  }
+#endif
 
   /* Reject if suc is an entry point.
    */
@@ -3855,6 +4120,9 @@ Append_Succ(
   INT i;
   RID *b_rid = BB_rid(b);
   INT nsuccs = BBINFO_nsuccs(suc);
+#ifdef KEY
+  OP *first_new_op = NULL;
+#endif
 
   /* If the block we're merging into ended in a branch, remove it.
    */
@@ -3871,6 +4139,10 @@ Append_Succ(
       OP *new_op = Dup_OP(op);
       if (OP_memory(op)) Copy_WN_For_Memory_OP(new_op, op);
       BB_Append_Op(b, new_op);
+#ifdef KEY
+      if (first_new_op == NULL)
+	first_new_op = new_op;
+#endif
 
       // After an OP is duplicated, its TN becomes GTN.
       if (!CG_localize_tns) {
@@ -3886,8 +4158,16 @@ Append_Succ(
   }
   if (!CG_localize_tns) {
     GRA_LIVE_Merge_Blocks(b, b, suc);
-    Rename_TNs_For_BB(b, NULL);
+    Rename_TNs_For_BB(b, NULL);  // why only two argument, but three parameter.
   }
+#ifndef TARG_IA64
+  else {
+    // Rename duplicated local TNs.  Otherwise, those (non-GTN) TNs would
+    // appear in <suc> as well as in the merged BB, causing LRA's
+    // Consistency_Check to complain.  Bug 4327.
+    Rename_TNs_For_BB(b, NULL, first_new_op);
+  }
+#endif
 
   /* Merge the ending of suc into b
    */
@@ -4016,21 +4296,28 @@ Append_Succ(
     BB_freq(suc) -= freq_edge;
   }
 
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed) {
     RGN_Unlink_Pred_Succ(b,suc);
   } else {
     Unlink_Pred_Succ(b, suc);
   }
-
+#else
+  Unlink_Pred_Succ(b, suc);
+#endif
   for (i = 0; i < nsuccs; ++i) {
     BB *succ_i = BBINFO_succ_bb(suc, i);
     float prob_i = BBINFO_succ_prob(suc, i);
 
+#ifdef TARG_IA64
 	if (IPFEC_Enable_Region_Formation && RGN_Formed)	{
 	  RGN_Link_Pred_Succ_With_Prob(b,succ_i,prob_i);
 	} else {
       Link_Pred_Succ_with_Prob(b, succ_i, prob_i);
     }
+#else
+	Link_Pred_Succ_with_Prob(b, succ_i, prob_i);
+#endif
 
     Set_BBINFO_succ_bb(b, i, succ_i);
     Set_BBINFO_succ_prob(b, i, prob_i);
@@ -4069,6 +4356,7 @@ static BOOL
 Merge_With_Succ(BB *b, BB *suc, BB *merged_pred, BOOL in_cgprep)
 {
 
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed ) {
       if(Regional_Cfg_Node(suc)->Is_Entry())
           return FALSE;
@@ -4076,7 +4364,7 @@ Merge_With_Succ(BB *b, BB *suc, BB *merged_pred, BOOL in_cgprep)
          Home_Region(suc)->Is_No_Further_Opt())
          return FALSE;
   }
-
+#endif
   /* Try to append <suc> to <b>.
    */
   if (!Can_Append_Succ(b, suc, merged_pred, TRUE, CFLOW_Trace_Merge)) {
@@ -4137,13 +4425,14 @@ Merge_Blocks ( BOOL in_cgprep )
       suc = BBINFO_succ_bb(b, 0);
       if (suc == b) break;
 
+#ifdef TARG_IA64
       /* We don't need not to merge profile added BB.
        * This modification originated from a bug caused by 
        * split such a merged. The result is incorrect 
        * live information and error register allocation.
        */
       if (BB_profile_added(b)) break;
-      
+#endif      
       pred = BB_Unique_Predecessor(b);
 
       /* If <suc> has a unique predecessor (it would have to be <b>),
@@ -4151,11 +4440,24 @@ Merge_Blocks ( BOOL in_cgprep )
        */
       if (BB_Unique_Predecessor(suc)) {
 
+#ifdef TARG_X8664
+	// merging would delete the label needed by this instr
+	if( BB_savexmms_op(b) != NULL ){
+	  break;
+	}
+
+	if( BB_computes_got(b) ){
+	  break;
+	}
+#endif
+
 	/* We have a candidate to merge with its successor.
 	 * Merge them if we can and know how.
 	 */
 	       if (Merge_With_Succ(b, suc, pred, in_cgprep)) {
-	           Reset_BB_scheduled(b);	
+#ifdef TARG_IA64
+	           Reset_BB_scheduled(b);
+#endif	
          	   merged = TRUE;
 	           next_b = BB_next(b);
                continue;
@@ -4167,7 +4469,9 @@ Merge_Blocks ( BOOL in_cgprep )
        */
       if (pred && Is_Empty_BB(b)) {
 	      if (Merge_With_Pred(b, pred)) {
+#ifdef TARG_IA64
 		      Reset_BB_scheduled(b);
+#endif
 			  merged = TRUE;
 	      }
      }
@@ -5609,7 +5913,7 @@ Optimize_Cyclic_Chain(BBCHAIN *chain, BB_MAP chain_map)
 
   /* If we have found a better tail, rotate the chain.
    */
-  if (best_tail != chain->tail) {	
+  if (best_tail != chain->tail) {
     BB *best_head = BB_next(best_tail);
     BB *orig_head = chain->head;
     BB *orig_tail = chain->tail;
@@ -5640,6 +5944,9 @@ static BBCHAIN *
 Grow_Chains(BBCHAIN *chains, EDGE *edges, INT n_edges, BB_MAP chain_map)
 {
   INT i;
+#ifdef KEY
+  INT j;
+#endif
 
   /* Visit the succ edges from heaviest weight to lightest.
    */
@@ -5649,6 +5956,21 @@ Grow_Chains(BBCHAIN *chains, EDGE *edges, INT n_edges, BB_MAP chain_map)
     BB *succ = e->succ;
     BBCHAIN *pchain = BB_Chain(chain_map, pred);
     BBCHAIN *schain = BB_Chain(chain_map, succ);
+
+#ifdef KEY
+    if (CFLOW_Enable_Freq_Order_On_Heuristics){
+      if (e->freq == 0) 
+        continue;
+      if  (BB_id(pred) > BB_id(succ)) {
+        for (j = i+1; j < n_edges; j++) {
+          if (edges[j].pred == pred && edges[j].succ != succ && edges[j].freq > 0)
+            break;
+        }
+        if (j != n_edges)
+          continue;
+      }
+    }
+#endif
 
     /* If this edge connects the tail of one chain to the head of
      * another, then combine the chains.
@@ -6386,10 +6708,13 @@ Clone_Blocks ( BOOL in_cgprep )
    * its relative profitability.
    */
   for (bp = REGION_First_BB; bp; bp = BB_next(bp)) {
+
+#ifdef TARG_IA64
       if(IPFEC_Enable_Region_Formation && RGN_Formed){
          if(Home_Region(bp)->Is_No_Further_Opt())
              continue;
       }
+#endif
     INT n_local_cand;
     BBLIST *edge;
     INT32 bb_length_est = Estimate_BB_Length(bp);
@@ -6419,10 +6744,12 @@ Clone_Blocks ( BOOL in_cgprep )
     n_local_cand = 0;
     FOR_ALL_BB_PREDS(bp, edge) {
       BB *pred = BBLIST_item(edge);
+#ifdef TARG_IA64
       if(IPFEC_Enable_Region_Formation && RGN_Formed){
          if(Home_Region(pred)->Is_No_Further_Opt())
              continue;
       }
+#endif
       ++npred;
       if (BB_length(pred) && BBINFO_kind(pred) == BBKIND_GOTO) {
 
@@ -6545,6 +6872,7 @@ Clone_Blocks ( BOOL in_cgprep )
     BB *pred = cand->pred;
     BB *suc = BBINFO_succ_bb(pred, 0);
 
+#ifdef TARG_IA64
     if(RGN_Formed && Home_Region(pred) != Home_Region(suc) &&
        BB_succs_len(suc) > 2)
        cost = CFLOW_clone_max_incr;
@@ -6552,6 +6880,10 @@ Clone_Blocks ( BOOL in_cgprep )
       cost = BB_Has_One_Pred(suc) ? 0 : Estimate_BB_Length(suc);
       cost -= (BB_next(pred) != suc);
     }
+#else
+    cost = BB_Has_One_Pred(suc) ? 0 : Estimate_BB_Length(suc);
+    cost -= (BB_next(pred) != suc);
+#endif
 
     if (cost <= allowance) {
       Append_Succ(pred, suc, in_cgprep, BB_Has_One_Pred(suc));
@@ -6584,6 +6916,8 @@ Clone_Blocks ( BOOL in_cgprep )
 
   return changed;
 }
+
+#ifdef TARG_IA64
 static void
 Adjust_Branch_Hint(void)
 {
@@ -6618,7 +6952,9 @@ Adjust_Branch_Hint(void)
         }
     }        
 }
- 
+
+#endif
+
 /* ====================================================================
  * ====================================================================
  *
@@ -6712,11 +7048,21 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
   // Reset the mapping between BBs and hyperblocks.
   Setup_HB_bb_map();
 
+#if 0
+// this is not ready for prime-time. It is general solution to fix
+// the problem uncovered by pv661478.
+  if (   PROC_has_branch_delay_slot()
+      && current_flags & CFLOW_FILL_DELAY_SLOTS)
+  {
+    flow_change |= Normalize_Delay_Slots();
+  }
+#endif
+
   if (CFLOW_Trace_Detail) {
     #pragma mips_frequency_hint NEVER
     Print_Cflow_Graph("CFLOW_Optimize flow graph -- before optimization");
   }
-  
+
   if (current_flags & CFLOW_BRANCH) {
     if (CFLOW_Trace_Branch) {
       #pragma mips_frequency_hint NEVER
@@ -6742,7 +7088,6 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
 		     DBar, DBar);
     }
     change = Delete_Unreachable_Blocks(); 
-
     if (CFLOW_Trace_Unreach) {
       #pragma mips_frequency_hint NEVER
       if (change) {
@@ -6835,11 +7180,12 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
   /* If we made any flow changes, re-create the preds and succs lists.
    */
   if (flow_change) Finalize_All_BBs();
-  
+
+#ifdef TARG_IA64  
   if (strcmp(phase_name,"CFLOW (third pass)") == 0) {
       Adjust_Branch_Hint();
   }
-  
+#endif
   if (CFLOW_Trace) {
     #pragma mips_frequency_hint NEVER
     fprintf(TFile, "\n%s"
@@ -6885,6 +7231,28 @@ CFLOW_Initialize(void)
   br_taken_cost = fixed + taken;
   br_fall_cost = fixed;
 
+#ifdef TARG_MIPS
+  /* If we are optimizing for space, or if we are using estimated
+     profiles, then we make the static cost for branches high so that
+     we avoid adding unconditional branches. When optimizing for
+     space, we also set the 'heuristic_tolerance' so that frequency
+     information is ignored during layout (since this results in fewer
+     unconditional jumps). */
+
+  if (OPT_Space || !CG_PU_Has_Feedback)
+  {
+    br_static_cost = 1e+07;
+    if (OPT_Space)
+      heuristic_tolerance = 1.0;
+  }
+  else
+  {
+    br_static_cost = 100;
+  }
+#else
+  br_static_cost = 0;
+#endif
+
   if (Get_Trace(TP_FLOWOPT, 0xffffffff)) {
     #pragma mips_frequency_hint NEVER
     CFLOW_Trace	= Get_Trace(TP_FLOWOPT, TRACE_CFLOW);
@@ -6897,7 +7265,9 @@ CFLOW_Initialize(void)
     CFLOW_Trace_Freq_Order = Get_Trace(TP_FLOWOPT, TRACE_FREQ_ORDER);
     CFLOW_Trace_Freq = Get_Trace(TP_FLOWOPT, TRACE_FREQ);
     CFLOW_Trace_Dom = Get_Trace(TP_FLOWOPT, TRACE_DOM);
+#ifdef TARG_IA64
     CFLOW_Trace_Empty_BB_Elim = Get_Trace(TP_FLOWOPT, TRACE_Empty_BB_Elim);
+#endif
 
     CFLOW_Trace_Branch |= CFLOW_Trace_Detail;
     CFLOW_Trace_Unreach |= CFLOW_Trace_Detail;
@@ -6905,7 +7275,9 @@ CFLOW_Initialize(void)
     CFLOW_Trace_Reorder |= CFLOW_Trace_Detail;
     CFLOW_Trace_Clone |= CFLOW_Trace_Detail;
     CFLOW_Trace_Freq_Order |= CFLOW_Trace_Detail;
+#ifdef TARG_IA64
     CFLOW_Trace_Empty_BB_Elim |= CFLOW_Trace_Detail;
+#endif
   }
 
   if (CFLOW_heuristic_tolerance && CFLOW_heuristic_tolerance[0] != '\0') {
@@ -6950,6 +7322,8 @@ CFLOW_Initialize(void)
   if (!CFLOW_opt_all_br_to_bcond) flags |= CFLOW_OPT_ALL_BR_TO_BCOND;
   disabled_flags = flags;
 }
+
+#ifdef TARG_IA64
 void 
 CFLOW_Process(void)
 {BB *bp;
@@ -7267,4 +7641,4 @@ CFLOW_Delete_Empty_BB(void)
   BB_MAP_Delete(bb_info_map);
   MEM_POOL_Pop(&MEM_local_nz_pool);
 }
-
+#endif

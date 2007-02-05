@@ -690,7 +690,11 @@ BOOL REGION_add_preg_in(RID *rid, PREG_NUM pr, TYPE_ID quad)
   if (npregs == 2) { // quad
     // for quads, put on quad list and pr+1
     // for C4, it actually is two F4's so not a quad
+#ifdef TARG_IA64
     if ((quad == MTYPE_FQ || quad == MTYPE_C8 || quad == MTYPE_C10) &&
+#else
+    if ((quad == MTYPE_FQ || quad == MTYPE_C8) &&
+#endif
 	!REGION_search_preg_set(RID_pregs_quad(rid), pr)) {
       RID_pregs_quad(rid) = PREG_LIST_Push(pr, RID_pregs_quad(rid), 
 					   &REGION_mem_pool);
@@ -768,7 +772,11 @@ BOOL REGION_add_preg_out(RID *rid, INT32 which_set, PREG_NUM pr, TYPE_ID quad)
   if (npregs == 2) { // quad
     // for quads, put on quad list and pr+1
     // for C4, it actually is two F4's so not a quad
+#ifdef TARG_IA64
     if ((quad == MTYPE_FQ || quad == MTYPE_C8 || quad == MTYPE_C10) &&
+#else
+    if ((quad == MTYPE_FQ || quad == MTYPE_C8) &&
+#endif
 	!REGION_search_preg_set(RID_pregs_quad(rid), pr)) {
       RID_pregs_quad(rid) = PREG_LIST_Push(pr, RID_pregs_quad(rid), 
 					   &REGION_mem_pool);

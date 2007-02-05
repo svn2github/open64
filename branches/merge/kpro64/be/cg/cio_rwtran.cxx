@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -620,8 +624,17 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	TN *tn = OP_result( op, res );
 	INT index;
 	for ( index = cio_copy_table_size - 1; index >= 0; --index )
-	  if ( cio_copy_table[index].tn_result == tn )
+	  if ( cio_copy_table[index].tn_result == tn ){
+#ifdef KEY
+	    /* cond_def OPs prevent the removal of earlier copy OPs
+	       with the same result TNs.
+	     */
+	    if( OP_cond_def( op ) ){
+	      Reset_OP_flag1( cio_copy_table[index].op );	      
+	    }
+#endif
 	    break;
+	  }
 	if ( index < 0 && OP_flag1( op ) ) {
 	  index = cio_copy_table_size;
 	  cio_copy_table[index].tn_result = tn;
@@ -712,6 +725,16 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	  if ( cio_copy_table[index].tn_result == tn ) {
 	    OP *op_src = cio_copy_table[index].op;
 	    if ( OP_flag1( op_src ) ) {
+#ifdef KEY
+	      // Don't propagate copy if the copy source is a dedicated
+	      // register, since the omega code can't track dedicated registers
+	      // correctly.  See explanation in bug 4426.
+	      TN *copy_src_opnd = OP_opnd( op_src, OP_COPY_OPND );
+	      if ( TN_is_dedicated( copy_src_opnd ) ) {
+		Reset_OP_flag1( op_src );
+		break;
+	      }
+#endif
 	      Set_OP_opnd( op, opnd, OP_opnd( op_src, OP_COPY_OPND ) );
 	      Set_OP_omega( op, opnd, OP_omega( op, opnd )
 			    + OP_omega( op_src, OP_COPY_OPND ) );
@@ -748,6 +771,11 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	  OP *op_src = cio_copy_table[index].op;
 	  if ( ! OP_flag1( op_src ) )
 	    break;
+#ifdef KEY
+	  // Avoid infinite recursion.  Bugs 21, 8929.
+	  if (OP_opnd(op_src, OP_COPY_OPND) == tn)
+	    break;
+#endif
 	  tn = OP_opnd( op_src, OP_COPY_OPND );
 	  Set_OP_opnd( op, OP_COPY_OPND, tn );
 	  Set_OP_omega( op, OP_COPY_OPND, OP_omega( op, OP_COPY_OPND )
@@ -772,7 +800,16 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	for ( INT index = cio_copy_table_size - 1; index >= 0; --index )
 	  if ( cio_copy_table[index].tn_result == tn ) {
 	    OP *op_src = cio_copy_table[index].op;
-	    if ( OP_flag1( op_src ) ) {
+	    if ( OP_flag1( op_src )
+#ifdef KEY
+		 /* Bug125:
+		    No need to propagate opnd again, which had happened at the
+		    previous stage. The original algorithm does not expect to see
+		    a copy operation that has the same opnd and result.
+		  */
+		 && ( OP_result(op_src,0) != OP_opnd(op_src,0) )
+#endif
+		 ) {
 	      Set_OP_opnd( op, opnd, OP_opnd( op_src, OP_COPY_OPND ) );
 	      Set_OP_omega( op, opnd, OP_omega( op, opnd )
 			    + OP_omega( op_src, OP_COPY_OPND ) );
@@ -791,6 +828,20 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
     // Update any occurances in the prolog and epilog backpatch lists
     TN *tn_old = cio_copy_table[index].tn_result;
     TN *tn_new = OP_opnd( op, OP_COPY_OPND );
+
+#ifdef KEY
+    /* Don't update the prolog and epilog if source and result are
+       the same TNs; otherwise the original omega value will be overwritten
+       by CG_LOOP_Backpatch_Replace_Body_TN().  (bug#2484)
+
+       Or should we use CG_LOOP_Backpatch_Add instead to resolve the
+       conflicts ???
+     */
+    if( tn_old == tn_new ){
+      continue;
+    }
+#endif // KEY
+
     UINT8 omega_change = OP_omega( op, OP_COPY_OPND );
     CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_epilog,
 				       tn_old, tn_new, omega_change );
@@ -884,8 +935,21 @@ CIO_RWTRAN::Mark_Op_For_Prolog( OP *op, const UINT8 omega )
   if ( OP_has_implicit_interactions( op ) )
     return NULL;
 
+#ifdef TARG_X8664
+  // Arcs between rflags setters and rflags users are labeled as MISC.  When
+  // copying an insn to the prologue, only REGIN preds are copied along with
+  // the insn; MISC preds are not copied.  As a workaround, don't copy rflags
+  // users into the prologue.  Bug 4991.
+  if (OP_reads_rflags(op))
+    return NULL;
+#endif
+
   // Step (3)  Duplicate the OP, but don't insert it anywhere yet
   OP *op_prolog = Dup_OP( op );
+#ifdef KEY
+  CG_LOOP_Init_Op(op_prolog);
+  Copy_WN_For_Memory_OP( op_prolog, op );
+#endif
   if ( Is_DB_OP_Init( op ) )
     DB_Copy_Aux_OP( op_prolog, op );
 
@@ -1422,6 +1486,15 @@ CIO_RWTRAN::Predicate_Write( OPS *ops, OP *op, TN *tn_predicate )
 
   TN *tn_base = OP_opnd( op, opnd_base );
   TN *tn_safe_base  = Build_TN_Like( tn_base );
+#if defined KEY && defined TARG_MIPS
+  Build_OP(TOP_or, tn_safe_base, tn_base, Zero_TN, ops);
+  if (TN_register_class(tn_predicate) == ISA_REGISTER_CLASS_fcc)
+    Build_OP(TOP_movt, tn_safe_base, tn_hole_base, tn_predicate, ops);
+  else
+    Build_OP(TOP_movn, tn_safe_base, tn_hole_base, tn_predicate, ops);
+  Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);      
+  Set_OP_opnd( op, opnd_base, tn_safe_base );
+#else
   TOP code = CGTARG_Which_OP_Select( TN_size( tn_base ) * 8, FALSE, FALSE );
   OP *op_select = Mk_OP( code, tn_safe_base, Zero_TN, Zero_TN, Zero_TN );
   Set_OP_selcondopnd( op_select, tn_predicate );
@@ -1434,6 +1507,7 @@ CIO_RWTRAN::Predicate_Write( OPS *ops, OP *op, TN *tn_predicate )
 
   Set_OP_opnd( op, opnd_base, tn_safe_base );
   OPS_Insert_Op_Before( ops, op, op_select );
+#endif
 }
 
 
@@ -1710,6 +1784,16 @@ CIO_RWTRAN::Backpatch_Op_In_Epilog( OP *op, const UINT8 start_omega )
 inline BOOL
 CIO_RWTRAN::Read_CICSE_Candidate_Op( OP *op )
 {
+#ifdef TARG_X8664
+  /* Bug096: a cmp operations is not suitable for read elimination or
+     cross iteration cse. */
+  if( OP_icmp(op ) )
+    return FALSE;
+
+  if (OP_code(op) == TOP_lddqu || OP_code(op) == TOP_lddqa)
+    return FALSE;
+#endif /* TARG_X8664 */
+
   if ( OP_has_implicit_interactions( op ) ||
        OP_opnds( op ) > OP_MAX_FIXED_OPNDS )
     return FALSE;
@@ -2076,6 +2160,10 @@ CIO_RWTRAN::Append_TN_Copy( TN *tn_dest, TN *tn_from, OP *point, UINT8 omega )
 BOOL
 CIO_RWTRAN::CICSE_Transform( BB *body )
 {
+#ifdef TARG_X8664
+  TN* rflags_tn = Rflags_TN();
+#endif
+
   // Count the number of OPs in the loop body.
   OP *op;
   INT op_count = 0;
@@ -2132,9 +2220,34 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
     for ( INT opnd = OP_opnds( op ) - 1; opnd >= 0; --opnd ) {
       INT source = 0;
       TN *opnd_op = OP_opnd( op, opnd );
-      if ( TN_is_register( opnd_op ) )
+      if ( TN_is_register( opnd_op ) ) {
 	source = hTN_MAP32_Get( tn_last_op, opnd_op );
+#ifdef TARG_X8664
+	// If OP uses rflag, don't eliminate the source OP that sets rflag.
+	// Bug 4934.
+	if (opnd_op == rflags_tn) {
+	  CICSE_entry &source_entry = cicse_table[source];
+	  Reset_OP_flag1(source_entry.op);
+	  source_entry.source = 0;
+	  source = 0;
+	}
+#endif
+      }
 
+#ifdef KEY
+      // Don't eliminate OP if its result is a global TN.  See example in
+      // bug 6255.
+      for (INT res = OP_results(op) - 1; res >= 0; res--) {
+	TN *tn = OP_result(op, res);
+	if (TN_is_global_reg(tn)) {
+	  CICSE_entry &source_entry = cicse_table[index];
+	  Reset_OP_flag1(source_entry.op);
+	  source_entry.source = 0;
+	  source = 0;
+	  break;
+	}
+      }
+#endif
       entry.opnd_source[opnd] = source;
       entry.opnd_omega[opnd]  = OP_omega( op, opnd );
 
@@ -2158,6 +2271,12 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 					       OP_result( op, res ), index );
       entry.result_unique[res] = ( old_index == index );
     }
+#ifdef TARG_X8664
+    // rflag is an implicit result.  Bug 4934.
+    if (TOP_is_change_rflags(OP_code(op))) {
+      hTN_MAP32_Set( tn_last_op, rflags_tn, index);
+    }
+#endif
   }
 
   // Search the CG dependence graph for definite MEMIN and MEMREAD
@@ -2460,6 +2579,13 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
   Is_True( oppor_count > 0,
 	   ( "CIO_RWTRAN::CICSE_Transform didn't abort early" ) );
 
+#ifdef KEY
+  // A heuristic to avoid imposing too much pressure on register allocation.
+  if( oppor_count >= ( REGISTER_MAX >> 1 ) ){
+    return FALSE;
+  }
+#endif
+
   // Store the opportunites into CIO_RWTRAN.opportunities
   CICSE_change *opportunities
     = (CICSE_change *) CXX_NEW_ARRAY( CICSE_change, oppor_count,
@@ -2524,8 +2650,13 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
       // If source TN occurs later as a result, then new TN is required
       // NOT ALWAYS NECESSARY!  IMPROVE THIS!
       INT tn_index = hTN_MAP32_Get( tn_last_op, change.new_tns[0] );
-      if ( tn_index == 0 ||
-            OP_Precedes( change.source, cicse_table[tn_index].op ) )
+#ifdef KEY
+      /* fix bug#1989 where the store value is not put in the table. */
+      if( tn_index == 0 )
+	change.new_tns[0] = Build_TN_Like( change.new_tns[0] );      
+      else
+#endif // KEY
+      if ( OP_Precedes( change.source, cicse_table[tn_index].op ) )
 	change.new_tns[0] = Build_TN_Like( change.new_tns[0] );
 
     } else {
@@ -2553,14 +2684,42 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
     // Determine whether removing op will require inserting TN copies
     // IMPROVE THIS LATER!
     if ( ! OP_has_predicate( change.op )
-	 || OP_opnd( change.op, OP_PREDICATE_OPND ) == True_TN )
+	 || OP_opnd( change.op, OP_PREDICATE_OPND ) == True_TN ){
       for ( INT res = OP_results( change.op ) - 1; res >= 0; --res ) {
 	TN *tn_result = OP_result( change.op, res );
 	change.need_copy[res] =
 	  ( ! entry.result_unique[res] ||
 	    GRA_LIVE_TN_Live_Outof_BB( tn_result, CG_LOOP_epilog ) ||
 	    change.new_tns[res] == tn_result /* Fix for pv779607 */ );
+#ifdef KEY
+	/* A copy is needed if <tn_result> is exposed. */
+	if( !change.need_copy[res] ){
+	  for( index_dup = oppor_index - 2; index_dup >= 0; index_dup-- ){
+	    if( tn_result == opportunities[index_dup].new_tns[res] ){
+	      change.need_copy[res] = TRUE;
+	      break;
+	    }
+	  }
+	}
+#endif
       }
+    }
+
+#ifdef KEY
+    /* To avoid a body tn in the prolog being re-defined, we need to create a
+       new tn, and a copy for it. (bug#358, bug#2912)
+    */
+    for( int start_omega = 1; start_omega <= change.omega; start_omega++ ){
+      for( INT res = OP_results( change.op ) - 1; res >= 0; --res ){
+	if( CG_LOOP_Backpatch_Find_Non_Body_TN(CG_LOOP_prolog,
+					       change.new_tns[res],
+					       start_omega) != NULL ){
+	  change.new_tns[res] = Build_TN_Like( change.new_tns[res] );
+	  change.need_copy[res] = true;
+	}
+      }
+    }
+#endif
   }
 
   // Display opportunities
@@ -2975,7 +3134,11 @@ CIO_RWTRAN::Write_Removal( BB *body )
   // Until the alternate predication code is ready, only remove writes
   // if the trip count is a known constant value, or if predication is
   // available on this target.
+#ifndef KEY
   if ( ! TN_has_value( _trip_count_tn ) && ! CGTARG_Can_Predicate() ) {
+#else
+  if ( 0 ) {
+#endif
     DevWarn( "CIO_RWTRAN::Read_Write_Removal predication not activated" );
     return FALSE;
   }

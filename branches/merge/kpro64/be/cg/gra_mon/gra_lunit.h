@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -126,6 +126,12 @@ enum LU_FLAG {
 //		by this block?
 };
 
+#ifndef TARG_IA64
+class LUNIT;
+class LRANGE;
+
+extern LUNIT* LUNIT_Create( LRANGE* lrange, GRA_BB* gbb );
+#endif
 
 class LUNIT {
 friend class LRANGE;
@@ -155,7 +161,9 @@ private:
 			// global preferencing.
   INT		last_def; // data on TN definitions within a block needed for 
 			// global preferencing.
+#ifdef TARG_IA64
   BOOL          has_use;
+#endif
   LRANGE*	global_pref; // global lr that is a preference candidate in lunit
 public:
   LUNIT(void) {}
@@ -179,8 +187,10 @@ public:
   void Has_Exposed_Use_Set(void){ flags |= LUNIT_FLAGS_has_exposed_use; }
   BOOL Has_Def(void)	{ return flags & LUNIT_FLAGS_has_def; }
   void Has_Def_Set(void)	{ flags |= LUNIT_FLAGS_has_def; }
+#ifdef TARG_IA64
   BOOL Has_Use(void)    {return has_use; }
   void Has_Use_Set(void)  { has_use = TRUE;}
+#endif
   BOOL Spill_Below_Sticks(void){ return flags & LUNIT_FLAGS_spill_below_sticks; }
   void Spill_Below_Sticks_Set(void){ flags |= LUNIT_FLAGS_spill_below_sticks; }
   BOOL Split_Lunit(void)	{ return flags & LUNIT_FLAGS_split_lunit; }
@@ -280,7 +290,9 @@ public:
 };
 
 
+#ifndef TARG_IA64
 extern LUNIT* LUNIT_Create( LRANGE* lrange, GRA_BB* gbb );
+#endif
 
 #endif
 

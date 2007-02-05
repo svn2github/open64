@@ -228,13 +228,11 @@ enum PT_ATTR {
                                       // moved past stack pointer updates
   PT_ATTR_EXTENDED        = 0x400000, // used by alias manager to represent
                                       // a consecutive array of POINTS_TO
-  PT_ATTR_THIS_PTR        = 0x800000, // indirect access of "this" pointer
-  PT_ATTR_NOT_READABLE_BY_CALLEE = 0x1000000,// not readable by callee
-  PT_ATTR_NOT_WRITABLE_BY_CALLEE = 0x2000000 // not writable by callee
-  // 26 of 32 bits used
+  PT_ATTR_THIS_PTR        = 0x800000  // indirect access of "this" pointer
 #ifdef KEY
   ,PT_ATTR_FIELD          = 0x800000  // is a field in a struct
 #endif
+
   // 24 of 32 bits used
 };
 
@@ -371,10 +369,6 @@ public:
   BOOL        Unnamed(void)          const { return !Named(); }
   BOOL        Const(void)            const { return ai._attr & PT_ATTR_CONST; }
   BOOL        Restricted(void)       const { return ai._attr & PT_ATTR_RESTRICTED; }
-  BOOL        Not_readable_by_callee(void) const
-    { return ai._attr & PT_ATTR_NOT_READABLE_BY_CALLEE;}
-  BOOL        Not_writable_by_callee(void) const
-    { return ai._attr & PT_ATTR_NOT_WRITABLE_BY_CALLEE;}
   BOOL        This_ptr(void)         const { return ai._attr & PT_ATTR_THIS_PTR; }
   BOOL        Unique_pt(void)        const { return ai._attr & PT_ATTR_UNIQUE_PT; }
   BOOL        F_param(void)          const { return ai._attr & PT_ATTR_F_PARAM; }
@@ -394,10 +388,11 @@ public:
   BOOL        Not_f90_target(void)   const { return ai._attr & PT_ATTR_NOT_F90_TARGET; }
   BOOL        Not_alloca_mem(void)   const { return ai._attr & PT_ATTR_NOT_ALLOCA_MEM; }
   BOOL        Extended(void)         const { return ai._attr & PT_ATTR_EXTENDED; }
-  mINT64      Malloc_id (void)       const { return ai.Malloc_id (); }
+  mINT64      Malloc_id (void)       const { return ai.Malloc_id (); } 
 #ifdef KEY
   BOOL        Is_field(void)         const { return ai._attr & PT_ATTR_FIELD; }
 #endif
+
 
   //  Set members
   //
@@ -441,8 +436,6 @@ public:
   void Set_ty(TY_IDX ty)                  { _ty = ty; }
   void Set_id(INT32 id)                   { _id = id; }
   void Set_attr(PT_ATTR attr)             { ai._attr = attr; }
-  void Set_not_readable_by_callee (void) { ai._attr = (PT_ATTR)(ai._attr | PT_ATTR_NOT_READABLE_BY_CALLEE); }
-  void Set_not_writable_by_callee (void) { ai._attr = (PT_ATTR)(ai._attr | PT_ATTR_NOT_WRITABLE_BY_CALLEE); }
   void Set_not_addr_saved(void)           { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_NOT_ADDR_SAVED); }
   void Set_not_addr_passed(void)          { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_NOT_ADDR_PASSED); }
   void Set_local(void)                    { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_LOCAL); }
@@ -481,8 +474,6 @@ public:
 #endif
 
   void Reset_attr(void)                   { ai._attr = PT_ATTR_NONE; }
-  void Reset_not_readable_by_callee (void) { ai._attr = (PT_ATTR)(ai._attr & ~PT_ATTR_NOT_READABLE_BY_CALLEE); }
-  void Reset_not_writable_by_callee (void) { ai._attr = (PT_ATTR)(ai._attr & ~PT_ATTR_NOT_WRITABLE_BY_CALLEE); }
   void Reset_not_addr_saved(void)         { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NOT_ADDR_SAVED); }
   void Reset_not_addr_passed(void)        { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NOT_ADDR_PASSED); }
   void Reset_local(void)                  { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_LOCAL); }
@@ -511,6 +502,7 @@ public:
 #ifdef KEY
   void Reset_is_field(void) { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_FIELD); }
 #endif
+
   void Init(void) {
     //  Set fields in POINTS_TO to invalid for error detection.
     Set_expr_kind(EXPR_IS_INVALID);

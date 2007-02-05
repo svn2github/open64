@@ -1,6 +1,10 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -47,6 +51,7 @@ extern void Cg_Dwarf_Finish (pSCNINFO text_scninfo);
 
 extern void Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos);
 
+#ifndef TARG_X8664
 extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
 				 LABEL_IDX   begin_label,
 				 LABEL_IDX   end_label,
@@ -61,8 +66,42 @@ extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
 				 // ranges symbolically.
 				 INT        low_pc,
 				 INT        high_pc);
+#else
+extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
+				 LABEL_IDX   begin_label,
+				 LABEL_IDX   end_label,
+				 LABEL_IDX   *eh_pushbp_label,
+				 LABEL_IDX   *eh_movespbp_label,
+				 LABEL_IDX   *eh_adjustsp_label,
+				 LABEL_IDX   *eh_callee_saved_reg,
+				 LABEL_IDX   *first_bb_labels,
+				 LABEL_IDX   *last_bb_labels,
+				 INT32       pu_entries,
+				 INT32       end_offset,
+				 ST         *PU_st,
+				 DST_IDX     pu_dst,
+				 Elf64_Word  eh_index,
+				 INT         eh_offset,
+				 // The following two arguments need
+				 // to go away once libunwind provides
+				 // an interface that lets us specify
+				 // ranges symbolically.
+				 INT        low_pc,
+				 INT        high_pc);
+// To force a line number entry after the end of preamble in entry BB.
+extern BOOL Cg_Dwarf_First_Op_After_Preamble_End;
+#endif // TARG_X8664
+#ifdef KEY
+// To force a line number entry at the start op of every BB.
+extern BOOL Cg_Dwarf_BB_First_Op;
+#endif
 
 extern void Cg_Dwarf_Gen_Asm_File_Table (void);
+
+#ifdef KEY
+extern void Cg_Dwarf_Gen_Macinfo (void);
+extern void Print_Directives_For_All_Files (void);
+#endif
 
 extern void Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs(FILE *asm_file,
 							 INT   section_count,

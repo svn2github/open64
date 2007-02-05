@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -322,7 +322,9 @@ BBlist_Fall_Thru_Succ (BB *bb)
 	DevAssert(TN_is_label(dest), ("expected label"));
 	if (Is_Label_For_BB(TN_label(dest), next)) {
 	  /* Remove useless explicit branch to <next> */
-	  // BB_Remove_Op(bb, br_op);
+#ifdef TARG_X8664
+	  BB_Remove_Op(bb, br_op);
+#endif
 	} else {
 	  DevAssert(OP_cond(br_op), ("BB_succs(BB:%d) wrongly contains BB:%d",
 				     BB_id(bb), BB_id(next)));

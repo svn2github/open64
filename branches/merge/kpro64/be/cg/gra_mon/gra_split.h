@@ -1,6 +1,10 @@
 /*
+ * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -81,6 +85,15 @@ static char *gra_split_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/c
 
 extern BOOL
 LRANGE_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
-                              LRANGE**           alloc_lrange );
+                              LRANGE**           alloc_lrange
+#ifndef TARG_IA64
+                              , BOOL reclaim = FALSE
+#endif
+	      );
+
+#ifndef TARG_IA64
+extern void LRANGE_Split_Reclaimed_BBs (LRANGE *lrange, REGISTER reg);
+extern BOOL Has_Live_In_Successor (GRA_BB *gbb, LRANGE *lrange);
+#endif
 
 #endif

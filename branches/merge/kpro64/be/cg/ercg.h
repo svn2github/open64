@@ -1,6 +1,10 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -74,6 +78,11 @@
 /* Register Allocation: */
 #define EC_Ill_Reg_Spill1 EC_BASE_CG+2	/* string(register-name) */
 #define EC_Ill_Reg_Spill2b EC_BASE_CG+3 /* int (suggested -O level) */
+
+/* asm() processing related. */
+#define EC_ASM_Bad_Operand EC_BASE_CG+4 /* int (line number), 
+                                           int (bad operand number), 
+                                           string (what was expected) */
 
 /* Start all target-specific codes here: */
 #define EC_TARGET	EC_BASE_CG+200

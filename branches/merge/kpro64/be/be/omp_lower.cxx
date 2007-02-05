@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1567,9 +1567,11 @@ static void Atomic_Using_Critical(WN *atomic, WN *store)
     case MTYPE_F8: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_F8");
       break;
+#ifdef TARG_IA64
     case MTYPE_F10: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_F10");
       break;
+#endif
     case MTYPE_FQ:
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_FQ");
       break;
@@ -1579,9 +1581,11 @@ static void Atomic_Using_Critical(WN *atomic, WN *store)
     case MTYPE_C8: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_C8");
       break;
+#ifdef TARG_IA64
     case MTYPE_C10:
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_C10");
       break;
+#endif
     case MTYPE_CQ: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_CQ");
       break;
@@ -2372,6 +2376,9 @@ ATOMIC_Lowering_Class WN_ATOMIC_STORE_Lowering_Class(WN *store)
     case OPR_ASHR: case OPR_LSHR: case OPR_SHL:
     case OPR_CVT: case OPR_TAS: case OPR_CVTL: case OPR_TRUNC:
     case OPR_REALPART: case OPR_IMAGPART:
+#ifdef KEY // bug 8862
+    case OPR_CAND: case OPR_CIOR:
+#endif // KEY
       break;
     case OPR_BNOT:
       if (WN_operator(WN_kid0(operation)) != OPR_BXOR) {
@@ -2399,6 +2406,7 @@ ATOMIC_Lowering_Class WN_ATOMIC_STORE_Lowering_Class(WN *store)
 #endif
       break;
 
+#ifdef TARG_IA64
     case MTYPE_F10:
 	alclass = ALCLASS_CRITICAL;	/* XXX - ALCLASS_SWAP? */
 	break;
@@ -2407,6 +2415,10 @@ ATOMIC_Lowering_Class WN_ATOMIC_STORE_Lowering_Class(WN *store)
     case MTYPE_U1: case MTYPE_U2:
     case MTYPE_FQ:
     case MTYPE_C4: case MTYPE_C8: case MTYPE_C10: case MTYPE_CQ:
+#else
+  case MTYPE_U1: case MTYPE_U2: case MTYPE_I1: case MTYPE_I2:
+  case MTYPE_C4: case MTYPE_C8: case MTYPE_CQ: case MTYPE_FQ:
+#endif
       alclass = ALCLASS_CRITICAL;
       break;
 

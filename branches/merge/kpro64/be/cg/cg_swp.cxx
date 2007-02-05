@@ -1,6 +1,10 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -55,6 +59,7 @@
 #include "cgtarget.h"
 #include "findloops.h"
 #include "ti_res_count.h"
+#include "config_asm.h"
 
 static INT loop_index;
 
@@ -76,8 +81,8 @@ void SWP_OPTIONS::PU_Configure()
   if (!Max_Unroll_Times_Set)
     Max_Unroll_Times = (CG_opt_level > 2) ? 8 : 4;  
 
-  Min_Unroll_Times = MAX(1, Min_Unroll_Times);
-  Max_Unroll_Times = MAX(1, Max_Unroll_Times);
+  Min_Unroll_Times = std::max(1, Min_Unroll_Times);
+  Max_Unroll_Times = std::max(1, Max_Unroll_Times);
 
   if (Min_Unroll_Times_Set)
     Max_Unroll_Times = Max(Max_Unroll_Times, Min_Unroll_Times);
@@ -88,15 +93,23 @@ void SWP_OPTIONS::PU_Configure()
   if (!Implicit_Prefetch_Set) {
     // Not all processors implement implicit prefetch -- disable
     // by default on those processors
+#ifndef TARG_MIPS
     if (Is_Target_Itanium()) Implicit_Prefetch = FALSE;
+#endif
   }
 }
 
 
 void SWP_OP::Print(FILE *fp) const {
   if (op) 
+#ifdef TARG_IA64
     fprintf(fp, "[%d] %s scale=%g cycle=%d mod=%d slot=%d trials=%d dir=%s\n",
 	    Index(), placed?"placed":"not-placed", scale, cycle, modulo_cycle, 
+#else
+    fprintf(fp, "[%d](%s) %s scale=%g cycle=%d mod=%d slot=%d trials=%d dir=%s\n",
+	    Index(), TOP_Name(OP_code(op)),
+	    placed?"placed":"not-placed", scale, cycle, modulo_cycle,
+#endif
 	    slot, trials,
 	    (direction==SWP_TOP_DOWN) ? "top_down" : 
 	    ((direction==SWP_BOTTOM_UP) ? "bottom_up" : "unknown"));
@@ -133,7 +146,11 @@ SWP_OP_vector::SWP_OP_vector(BB *body, BOOL doloop, MEM_POOL *pool)
   OP *op;
   INT max_idx = 0;
   FOR_ALL_BB_OPs(body, op) {
+#ifdef TARG_IA64
     max_idx = MAX(max_idx, OP_map_idx(op));
+#else
+    max_idx = std::max(max_idx, OP_map_idx(op));
+#endif
   }
   swp_map_tbl_max = max_idx + 1;
   swp_map_tbl = TYPE_MEM_POOL_ALLOC_N(INT, pool, swp_map_tbl_max);
@@ -197,9 +214,22 @@ SWP_OP_vector::SWP_OP_vector(BB *body, BOOL doloop, MEM_POOL *pool)
   // Identify loop invariants!
   tn_invariants = TN_SET_Difference(tn_uses, tn_defs, pool);
   tn_non_rotating = TN_SET_UnionD(tn_non_rotating, tn_invariants, pool);
+#ifndef TARG_IA64
+  //#ifdef KEY
+  FOR_ALL_BB_OPs(body, op) {
+    for (INT j = 0; j < OP_opnds(op); j++) {
+      TN *tn = OP_opnd(op, j);
+      if( TN_is_register(tn) )
+	tn_non_rotating = TN_SET_Union1D( tn_non_rotating, tn, pool );
+    }
+  }
+  branch = 0;
+  control_predicate_tn = NULL;
+#else
   OP *br_op = BB_branch_op(body);
   branch = SWP_index(br_op);
   control_predicate_tn = OP_has_predicate(br_op) ? OP_opnd(br_op, OP_PREDICATE_OPND) : NULL;
+#endif
   is_doloop = doloop;
   succeeded = false;
   loop_one_more_time = false;
@@ -324,6 +354,7 @@ SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace)
   if (total_op_count + SWP_OPS_OVERHEAD > SWP_OPS_LIMIT)
     return SWP_LOOP_LIMIT;
 
+#ifdef TARG_IA64
   // Disable SWP loops with low feedback trip count
   if (CG_PU_Has_Feedback)
   {
@@ -345,6 +376,7 @@ SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace)
       }
     }    
   }
+#endif
     
   return SWP_OK;
 }
@@ -436,8 +468,14 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
   double max_ii_alpha = SWP_Options.Max_II_Alpha;
   double max_ii_beta  =  SWP_Options.Max_II_Beta;
   double ii_incr_alpha =  SWP_Options.II_Incr_Alpha;
+#ifdef TARG_IA64
   double ii_incr_beta =  1.0 + (SWP_Options.II_Incr_Beta - 1.0) / MAX(1,SWP_Options.Opt_Level);
   INT sched_budget = SWP_Options.Budget * MAX(1,SWP_Options.Opt_Level);
+#else
+  double ii_incr_beta =  1.0 + (SWP_Options.II_Incr_Beta - 1.0) /
+    std::max(1,SWP_Options.Opt_Level);
+  INT sched_budget = SWP_Options.Budget * std::max(1,SWP_Options.Opt_Level);
+#endif
 
   {
     Start_Timer(T_SWpipe_CU);
@@ -448,11 +486,14 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
 
     // Make sure we have enough non-rotating registers for the loop
     SWP_REG_ASSIGNMENT swp_assign;
+
+#ifdef TARG_IA64
     if (!swp_assign.Enough_Non_Rotating_Registers(swp_op_vector.tn_non_rotating)) {
       // TODO: we might be able to convert some invariants into copy
       // and thus uses the rotating registers.
       return SWP_Failure(body, NON_ROT_REG_ALLOC_FAILED );
     }
+#endif
     
     CG_LOOP_rec_min_ii = CG_LOOP_res_min_ii = CG_LOOP_min_ii = 0;
 
@@ -469,7 +510,7 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
     if (trace)
       CG_DEP_Trace_Graph(body);
 #endif
-    
+
     {
       // Compute CG_LOOP_min_ii.
       MEM_POOL_Push(&MEM_local_pool);
@@ -485,7 +526,7 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
     double time1 = Get_User_Time(T_SWpipe_CU);
 
     // Modulo Scheduling
-    CG_LOOP_min_ii = MAX(CG_LOOP_min_ii, SWP_Options.Starting_II);
+    CG_LOOP_min_ii = std::max(CG_LOOP_min_ii, SWP_Options.Starting_II);
     INT max_ii = (INT)linear_func(CG_LOOP_min_ii, max_ii_alpha, max_ii_beta);
 
     // update CG_LOOP_min_ii using MinDist
@@ -515,6 +556,7 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
 
     double time2 = Get_User_Time(T_SWpipe_CU);
 
+#ifdef TARG_IA64
     // Perform Register Allocation to rotating register banks.  The
     // resultant allocation will be in terms of a map from TNs to 
     // positive unbounded locations (swp_assign.reg_allocation), a 
@@ -528,7 +570,6 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
       return SWP_Failure(body, REG_ALLOC_FAILED );
     }
     
-#ifdef TARG_IA64
     // Reserve rotating registers to cover the ones needed for this loop.
     // Only integer registers can vary the size of the rotating segment,
     // so there is no need to do it for other register classes.
@@ -582,9 +623,10 @@ Emit_SWP_Note(BB *bb, FILE *file)
 {
   ANNOTATION *ant = ANNOT_Get(BB_annotations(bb), ANNOT_ROTATING_KERNEL);
   ROTATING_KERNEL_INFO *info = ANNOT_rotating_kernel(ant);
+  char prefix[20];
 
   if (ROTATING_KERNEL_INFO_succeeded(info)) {
-    const char *prefix = "//<swps> ";
+    sprintf( prefix, "%s<swps> ", ASM_CMNT_LINE );
     fprintf(file, "%s\n", prefix);
     fprintf(file, "%s%3d cycles per 1 iteration in steady state\n",
 	    prefix, ROTATING_KERNEL_INFO_ii(info));
@@ -592,7 +634,7 @@ Emit_SWP_Note(BB *bb, FILE *file)
 	    prefix, ROTATING_KERNEL_INFO_stage_count(info));
     fprintf(file, "%s\n", prefix);
 
-    prefix = "//<swps>      ";
+    sprintf( prefix, "%s<swps>      ", ASM_CMNT_LINE );
 
     fprintf(file, "%smin %d cycles required by resources\n",
 	    prefix, ROTATING_KERNEL_INFO_res_min_ii(info));
@@ -607,7 +649,7 @@ Emit_SWP_Note(BB *bb, FILE *file)
 			   ROTATING_KERNEL_INFO_ii(info));
     fprintf(file, "%s\n", prefix);
   } else {
-    const char *prefix = "//<swpf> ";
+    sprintf( prefix, "%s<swpf> ", ASM_CMNT_LINE );
     fprintf(file, "%s\n", prefix);
     char *failure_msg;
     switch (ROTATING_KERNEL_INFO_failure_code(info)) {
@@ -638,9 +680,11 @@ Emit_SWP_Note(BB *bb, FILE *file)
     case SWP_LOOP_LIMIT:
       failure_msg = "loop is too big";
       break;
+#ifdef TARG_IA64
     case SWP_LOW_TRIP_COUNT:
       failure_msg = "loop has low trip count";
       break;
+#endif
     default:
       Is_True(FALSE, ("unknown SWP RETURN CODE."));
     }

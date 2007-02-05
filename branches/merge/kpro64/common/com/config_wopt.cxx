@@ -695,18 +695,19 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Warn_Uninit, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll",	"unroll",
 #ifdef TARG_IA64
-    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_WN_Unroll, NULL },
+    INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_WN_Unroll, NULL },
 #else
-    2, 0, 2,	&WOPT_Enable_WN_Unroll, NULL },
-  { OVK_BOOL,	OV_VISIBLE,	TRUE, "ip_mod_ref", "ip_mod_ref",
-    0, 0, 0,	&WOPT_Enable_IP_Mod_Ref, NULL },
-  { OVK_BOOL,	OV_VISIBLE,	TRUE, "invar_loop_bounds", "invar_loop_bounds",
+  2, 0, 2,    &WOPT_Enable_WN_Unroll, NULL },
+#endif
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "ip_mod_ref", "ip_mod_ref",
+    0, 0, 0,    &WOPT_Enable_IP_Mod_Ref, NULL },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "invar_loop_bounds", "invar_loop_bounds",
     FALSE, 0, 0, &WOPT_Enable_Invariant_Loop_Bounds, NULL },
-  { OVK_BOOL,	OV_VISIBLE,	TRUE, "subword_opt", "subword_opt",
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "subword_opt", "subword_opt",
     FALSE, 0, 0, &WOPT_Enable_Subword_Opt, NULL },
-  { OVK_BOOL,	OV_VISIBLE,	TRUE, "new_vsym", "new_vsym",
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "new_vsym", "new_vsym",
     FALSE, 0, 0, &WOPT_Enable_New_Vsym_Allocation, NULL },
-#endif // TARG_IA64
+
 #endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "wovp",	"wovp",
     0, 0, 0,	&WOPT_Enable_WOVP, NULL },

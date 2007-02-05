@@ -2307,13 +2307,21 @@ WN *WN_Iload(TYPE_ID desc, WN_OFFSET offset, TY_IDX align, WN *addr,
 
 WN *
 WN_RIload (TYPE_ID rtype, TYPE_ID desc, WN_OFFSET offset, TY_IDX align,
-	   WN *addr, UINT field_id)
+#ifndef KEY
+	   WN *addr)
+#else
+           WN *addr, UINT field_id)
+#endif
 {
   TY_IDX palign;
   palign = Make_Pointer_Type(align);
 
+#ifndef KEY
+  return WN_CreateIload (OPR_ILOAD, rtype, desc, offset, align, palign, addr);
+#else
   return WN_CreateIload (OPR_ILOAD, rtype, desc, offset, align, palign, addr,
-  			 field_id);
+                         field_id);
+#endif
 }
 
 WN *
@@ -2786,12 +2794,10 @@ WN_Float_Type_Conversion( WN *wn, TYPE_ID to_type )
   /* infer the "from" type from the given whirl */
   TYPE_ID from_type = WN_rtype(wn);
 
-  Is_True( from_type == MTYPE_F4 ||
-	   from_type == MTYPE_F8 ||
+  Is_True( from_type == MTYPE_F4 || from_type == MTYPE_F8 ||
 	   from_type == MTYPE_F10 || from_type == MTYPE_FQ,
     ("WN_Float_Type_Conversion: unexpected from_type: %d\n",from_type));
-  Is_True( to_type == MTYPE_F4 ||
-	   to_type == MTYPE_F8 ||
+  Is_True( to_type == MTYPE_F4 || to_type == MTYPE_F8 ||
 	   to_type == MTYPE_F10 || to_type == MTYPE_FQ,
     ("WN_Float_Type_Conversion: unexpected to_type: %d\n", to_type) );
 

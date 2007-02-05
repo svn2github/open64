@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -711,10 +715,32 @@ HB_Block_Select(HB* candidate, BOOL profitable_ifc)
   // hyperblock
   //
 
+#ifdef KEY
+  // Identify hammocks that have successive conditional branches between join 
+  // points. We do not handle > 1 branch level and hence we should ignore such
+  // such hyperblocks when we If-Convert.
+  BB *bb_succ;
+  BOOL no_hammock = FALSE;
+#endif
   for (bb_j = HB_Entry(candidate); bb_j && HB_Contains_Block(candidate, bb_j); ) {
     if (BB_SET_MemberP(BB_pdom_set(HB_Entry(candidate)),bb_j)) {
       join_list.push_back(bb_j);
     }
+#ifdef KEY
+    if (!no_hammock) {
+      FOR_ALL_BB_SUCCS(bb_j, succs) {
+	bb_succ = BBLIST_item(succs);
+	if (HB_Contains_Block(candidate, bb_succ) &&
+	    BB_branch_op(bb_j) &&
+	    BB_branch_op(bb_succ) &&
+	    OP_cond(BB_branch_op(bb_j)) &&
+	    OP_cond(BB_branch_op(bb_succ))) {
+	  no_hammock = TRUE;
+	  break;
+	}   
+      }
+    }
+#endif
     succs = BB_succs(bb_j);
     if (succs) {
       bb_j = BBLIST_item(succs);
@@ -736,7 +762,11 @@ HB_Block_Select(HB* candidate, BOOL profitable_ifc)
   current_blocks = BB_SET_Create_Empty(PU_BB_Count+2, &MEM_local_pool);
   visited_blocks = BB_SET_Create_Empty(PU_BB_Count+2, &MEM_local_pool);
   retval = TRUE;
-    
+  
+#ifdef KEY
+  if (join_list.size() > 1 && !no_hammock)
+    hammock_region = TRUE;
+#endif
   for (i=0; i<join_list.size()-1; i++) {
     hb_paths.clear();
     if (!Enumerate_Paths(candidate, 

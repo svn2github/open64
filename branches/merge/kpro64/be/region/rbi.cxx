@@ -71,7 +71,7 @@
 
 #define rbi_CXX	"rbi.cxx"
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = rbi_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = rbi_CXX"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "opt_wn.h"

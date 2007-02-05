@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -51,13 +55,13 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "cg_pch.h"
 #endif // USE_PCH
 #pragma hdrstop
 
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
 #include "defs.h"
 #include "config.h"
 #include "erglob.h"
@@ -96,17 +100,17 @@
  */
 
 /* Various dedicated TNs: */
-TN *RA_TN;
-TN *SP_TN;
-TN *FP_TN;
-TN *Ep_TN;
-TN *GP_TN;
-TN *Zero_TN;
-TN *Pfs_TN;
-TN *True_TN;
-TN *FZero_TN;
-TN *FOne_TN;
-TN *LC_TN;
+TN *RA_TN = NULL;
+TN *SP_TN = NULL;
+TN *FP_TN = NULL;
+TN *Ep_TN = NULL;
+TN *GP_TN = NULL;
+TN *Zero_TN = NULL;
+TN *Pfs_TN = NULL;
+TN *True_TN = NULL;
+TN *FZero_TN = NULL;
+TN *FOne_TN = NULL;
+TN *LC_TN = NULL;
 
 /* The register TNs are in a table named TNvec, indexed by their TN
  * numbers in the range 1..Last_TN.  The first part of the table, the
@@ -334,7 +338,15 @@ Dup_TN_Even_If_Dedicated(
  */
 static TN *ded_tns[ISA_REGISTER_CLASS_MAX + 1][REGISTER_MAX + 1];
 static TN *f4_ded_tns[REGISTER_MAX + 1];
+#ifdef TARG_IA64
 static TN *f10_ded_tns[REGISTER_MAX + 1];
+#endif
+#ifdef KEY
+static TN *v16_ded_tns[REGISTER_MAX + 1];
+static TN *i1_ded_tns[REGISTER_MAX + 1];
+static TN *i2_ded_tns[REGISTER_MAX + 1];
+static TN *i4_ded_tns[REGISTER_MAX + 1];
+#endif // KEY
 
 /* ====================================================================
  *
@@ -349,6 +361,10 @@ Create_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg)
 {
   INT size = REGISTER_bit_size(rclass, reg) / 8;
   BOOL is_float = rclass == ISA_REGISTER_CLASS_float;
+
+#ifdef TARG_X8664
+  is_float |= ( rclass == ISA_REGISTER_CLASS_x87 );
+#endif
 
   /* Allocate the dedicated TN at file level, because we reuse them 
    * for all PUs.
@@ -404,14 +420,19 @@ Init_Dedicated_TNs (void)
   FOne_TN = ded_tns[REGISTER_CLASS_fone][REGISTER_fone];
   LC_TN = ded_tns[REGISTER_CLASS_lc][REGISTER_lc];
   
+#if defined(KEY) && !defined(TARG_X8664)
   /* allocate gp tn.  this may use a caller saved register, so
    * we don't use the one allocated for $gp above.
    */
   GP_TN = Create_Dedicated_TN (REGISTER_CLASS_gp, REGISTER_gp);
+  tnum++;
+#endif
 
-  for (reg = REGISTER_MIN; 
-       reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
-       reg++) {
+#ifdef TARG_IA64
+    for (reg = REGISTER_MIN; 
+	 reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
+	 reg++
+    ) {
 	++tnum;
 	f4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
 	Set_TN_size(f4_ded_tns[reg], 4);
@@ -423,6 +444,38 @@ Init_Dedicated_TNs (void)
 	f10_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
 	Set_TN_size(f10_ded_tns[reg], 16);
   }
+#else // TARG_IA64
+  for (reg = REGISTER_MIN; 
+       reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
+        reg++
+       ) {
+    ++tnum;
+    f4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
+    Set_TN_size(f4_ded_tns[reg], 4);
+#ifdef KEY
+    ++tnum;
+    v16_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
+    Set_TN_size(v16_ded_tns[reg], 16);
+#endif
+  }
+#ifdef KEY
+  for (reg = REGISTER_MIN; 
+       reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_integer);
+        reg++
+       ) {
+    ++tnum;
+    i1_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
+    Set_TN_size(i1_ded_tns[reg], 1);
+    ++tnum;
+    i2_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
+    Set_TN_size(i2_ded_tns[reg], 2);
+    ++tnum;
+    i4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
+    Set_TN_size(i4_ded_tns[reg], 4);
+  }
+#endif // KEY
+
+#endif // TARG_IA64
   Last_Dedicated_TN = tnum;
 }
 
@@ -438,12 +491,47 @@ Init_Dedicated_TNs (void)
 TN *
 Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
 {
+#ifdef TARG_IA64
   if (rclass == ISA_REGISTER_CLASS_float) {
     if (size == 4)
       return f4_ded_tns[reg];
     if (size == 16)
       return f10_ded_tns[reg];
   }
+#else
+#ifdef KEY
+  // check for F4 tns and 16-byte vector tns
+  if (rclass == ISA_REGISTER_CLASS_float
+	&& size != DEFAULT_RCLASS_SIZE(rclass) )
+  {
+        switch(size) {
+	  case 4:  return f4_ded_tns[reg];
+	  case 16: return v16_ded_tns[reg];
+	}
+  }
+#else
+  // check for F4 tns; someday may have to check for F10 tns too
+  if (rclass == ISA_REGISTER_CLASS_float && size == 4
+	&& size != DEFAULT_RCLASS_SIZE(rclass) )
+  {
+	return f4_ded_tns[reg];
+  }
+#endif
+
+#ifdef KEY
+  // check for I4 tns
+  if (rclass == ISA_REGISTER_CLASS_integer
+	&& size != DEFAULT_RCLASS_SIZE(rclass) )
+  {
+        switch(size) {
+	  case 1: return i1_ded_tns[reg];
+	  case 2: return i2_ded_tns[reg];
+	  case 4: return i4_ded_tns[reg];
+	}
+  }
+#endif // KEY
+
+#endif // TARG_IA64
   return ded_tns[rclass][reg];
 }
  
@@ -468,10 +556,52 @@ Gen_Register_TN (ISA_REGISTER_CLASS rclass, INT size)
   	if ( size > 16 ) ErrMsg ( EC_TN_Size, size );
   	Set_TN_size(tn, size);
   	if ( rclass == ISA_REGISTER_CLASS_float)  Set_TN_is_float(tn);
+#ifdef TARG_X8664
+  	if ( rclass == ISA_REGISTER_CLASS_x87)  Set_TN_is_float(tn);
+#endif
     	Set_TN_register_class(tn, rclass);
   	return tn;
   }
 }
+
+#ifdef KEY
+TN *
+Gen_Typed_Register_TN (TYPE_ID mtype, INT size)
+{
+  ISA_REGISTER_CLASS rclass = Register_Class_For_Mtype (mtype);
+  TN* tn;
+
+  Is_True(rclass != ISA_REGISTER_CLASS_UNDEFINED,
+	  ("Gen_Typed_Register_TN encountered undefined reg class"));
+
+  /* If there is only one registers in a class, and it is not
+     allocatable, then just return the dedicated TN representing that
+     register. I'm not sure why this behavior is needed... */
+  if ( REGISTER_SET_EmptyP(REGISTER_CLASS_allocatable(rclass)) &&
+       (REGISTER_CLASS_register_count(rclass) == 1))
+  {
+    tn = Build_Dedicated_TN(rclass, REGISTER_MIN, size);
+  }
+  else {
+	tn = Gen_TN();
+  	Check_TN_Vec_Size ();
+  	Set_TN_number(tn,++Last_TN);
+  	TNvec(Last_TN) = tn;
+  	//if ( size > 16 ) ErrMsg ( EC_TN_Size, size );
+  	Set_TN_size(tn, size);
+
+  	if ( rclass == ISA_REGISTER_CLASS_float
+#ifdef TARG_X8664
+	     || rclass == ISA_REGISTER_CLASS_x87
+#endif
+           )
+	  Set_TN_is_float(tn);
+    	Set_TN_register_class(tn, rclass);
+  }
+
+  return tn;
+} 
+#endif
 
 // gen unique literal tn
 TN *
@@ -656,7 +786,11 @@ Gen_Adjusted_TN ( TN *tn, INT64 adjust )
  * ====================================================================
  */
 
+#ifdef TARG_IA64
 char *
+#else 
+static char *
+#endif
 sPrint_TN ( TN *tn, BOOL verbose, char *buf )
 {
   char *result = buf;
@@ -890,11 +1024,13 @@ Init_TNs_For_PU (void)
   Last_TN = Last_Dedicated_TN;
   First_Regular_TN = Last_Dedicated_TN + 1;
 
-  /* reset GP_TN to point to $gp during code expansion, in case it was
-   * changed by the last PU.  otherwise, Convert_WHIRL_To_OPs et. al.,
-   * get confused.
-   */
-  Set_TN_register(GP_TN, REGISTER_gp);
+  if( GP_TN != NULL ){
+    /* reset GP_TN to point to $gp during code expansion, in case it was
+     * changed by the last PU.  otherwise, Convert_WHIRL_To_OPs et. al.,
+     * get confused.
+     */
+    Set_TN_register(GP_TN, REGISTER_gp);
+  }
 }
 
 /* ====================================================================
@@ -960,7 +1096,11 @@ Find_TN_with_Matching_Register( TN *tn0, TN_LIST *list )
 }
 
 //TODO: probably want to move this generic routine elsewhere.
+#ifdef TARG_IA64
 BOOL
+#else
+static BOOL
+#endif
 Is_OP_Cond(OP *op)
 {
   // Conditional moves or predicated instructions have this property.
@@ -1064,7 +1204,23 @@ TN_Reaching_Value_At_Op(
 	if (reaching_def) {
 	  FOR_ALL_BB_PREDS(bb, edge) {
 	    cur_bb = BBLIST_item(edge);
+#ifdef KEY
+	    // Ignore cur_bb only if cur_bb doesn't redefine the register.
+	    // Bug 6104.
+	    if (cur_bb == bb) {
+	      OP *op;
+	      bool redefined = FALSE;
+	      FOR_ALL_BB_OPs(cur_bb, op) {
+	        if (OP_Defs_Reg(op, rc, reg)) {
+		  redefined = TRUE;
+		  break;
+	        }
+	      }
+	      if (!redefined) continue;
+	    }
+#else
 	    if (cur_bb == bb) continue;	// ignore self predecessor
+#endif
 	    BOOL live_out = REG_LIVE_Outof_BB(rc, reg, cur_bb);
 	    val_cnt += (live_out) ? 1 : 0;
 	    val_bb = (live_out) ? cur_bb : val_bb;
@@ -1080,7 +1236,11 @@ TN_Reaching_Value_At_Op(
 	}
 	bb = (val_cnt > 1) ? NULL : val_bb;
 
+#ifdef TARG_IA64
 	if (bb == NULL || BB_call(bb) || BB_rotating_kernel(bb)) break;
+#else
+	if (bb == NULL || BB_call(bb)) break;
+#endif
 
 	value_op = (reaching_def) ? BB_last_op(bb) : BB_first_op(bb);
       }
@@ -1152,7 +1312,23 @@ TN_Reaching_Value_At_Op(
 	if (reaching_def) {
 	  FOR_ALL_BB_PREDS(bb, edge) {
 	    cur_bb = BBLIST_item(edge);
+#ifdef KEY
+	    // Ignore cur_bb only if cur_bb doesn't redefine the TN.
+	    // Bug 6104.
+	    if (cur_bb == bb) {
+	      OP *op;
+	      bool redefined = FALSE;
+	      FOR_ALL_BB_OPs(cur_bb, op) {
+	        if (OP_Defs_TN(op, tn)) {
+		  redefined = TRUE;
+		  break;
+	        }
+	      }
+	      if (!redefined) continue;
+	    }
+#else
 	    if (cur_bb == bb) continue;	// ignore self predecessor
+#endif
 	    BOOL live_out = GRA_LIVE_TN_Live_Outof_BB(tn, cur_bb);
 	    val_cnt += (live_out) ? 1 : 0;
 	    val_bb = (live_out) ? cur_bb : val_bb;
@@ -1222,10 +1398,18 @@ Rematerializable_IntConst(
   switch (opcode) {
   case OPC_I8INTCONST:
   case OPC_U8INTCONST:
+#ifdef TARG_X8664 
+  // Bug 3262 - zero-extend; to be complete, we should zero-extend 
+  // OPC_I4INTCONST also. We will be conservative, since this case
+  // might have been handled already in the back-end.
+  case OPC_U4INTCONST:
+#endif
     *val = WN_const_val(home);
     break;
   case OPC_I4INTCONST:
+#ifndef TARG_X8664 // see above
   case OPC_U4INTCONST:
+#endif
 
     /* Even for U4 we sign-extend the value
      * so it matches what we want register to look like

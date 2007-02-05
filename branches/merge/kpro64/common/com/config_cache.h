@@ -47,10 +47,10 @@
  * ====================================================================
  *
  * Module: config_cache.h
- * $Revision: 1.5 $
- * $Date: 04/12/21 14:57:21-08:00 $
- * $Author: bos@eng-25.internal.keyresearch.com $
- * $Source: /home/bos/bk/kpro64-pending/common/com/SCCS/s.config_cache.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_cache.h,v $
  *
  * Revision history:
  *  14-Nov-96 - Original Version, duplicated from cache_parameters.h.
@@ -75,7 +75,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *config_cache_rcs_id = "$Source: /home/bos/bk/kpro64-pending/common/com/SCCS/s.config_cache.h $ $Revision: 1.5 $";
+static char *config_cache_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_cache.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 /*

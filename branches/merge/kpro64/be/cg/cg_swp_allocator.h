@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -439,6 +439,7 @@ public:
   void dump() {print(stderr, _sc+1, 65);}
   
   bool has_conflicts(); // Expensive correctness verification algorithm
+#ifdef TARG_IA64
   bool adjust_predicate(const SWP_OP_vector& op_state,INT32 &used_regs) {
      INT32 offset = INT32_MAX;
      
@@ -496,7 +497,7 @@ public:
     }  
   }  
   //}
-   
+#endif   
 }; // class SWP_ALLOCATOR
 
 #endif // cg_swp_allocator_INCLUDED

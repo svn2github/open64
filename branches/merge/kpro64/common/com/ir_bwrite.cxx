@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1400,6 +1400,10 @@ Open_Output_Info (char *output_file)
     return ir_output;
 }
 
+#if defined(KEY) && defined(BACK_END)
+#include "be_ipa_util.h"
+#endif
+
 void
 Write_Global_Info (PU_Info *pu_tree)
 {
@@ -1412,6 +1416,11 @@ Write_Global_Info (PU_Info *pu_tree)
     WN_write_dst(Current_DST, ir_output);
 
     WN_write_strtab(Index_To_Str (0), STR_Table_Size (), ir_output);
+
+#if defined(KEY) && defined(BACK_END)
+    if (Mod_Ref_Info_Table_Size() != 0) 
+      IPA_write_summary (IPA_irb_write_mod_ref_info, ir_output);
+#endif
 
 }
 

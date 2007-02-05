@@ -1,6 +1,10 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -81,7 +85,15 @@
 #include "cgtarget.h"
 #include "targ_proc_properties.h"
 
+#ifdef TARG_IA64
 #define TRACE_REMAT 0x2
+#endif
+#ifdef KEY
+static SPILL_SYM_INFO_MAP spill_sym_info_map;
+static void CGSPILL_Record_Spill (ST *spill_loc, OP *spill_op);
+static void CGSPILL_Inc_Restore_Count (ST *spill_loc);
+#endif
+
 static BOOL Trace_Remat; /* Trace rematerialization */
 static BOOL Trace_GRA_spill_placement;
 static const char *Remat_Phase;
@@ -146,6 +158,17 @@ typedef struct local_spills {
 static LOCAL_SPILLS lra_float_spills, lra_int_spills;
 static LOCAL_SPILLS swp_float_spills, swp_int_spills;
 
+#ifdef TARG_X8664
+static LOCAL_SPILLS lra_sse2_spills;
+static LOCAL_SPILLS lra_x87_spills;
+static LOCAL_SPILLS lra_mmx_spills;
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+static LOCAL_SPILLS lra_float32_spills;
+static LOCAL_SPILLS lra_int32_spills;
+#endif
+
 /*
  * only rematerialize LDID's homeable by gra if spilling in service
  * to gra.
@@ -153,6 +176,7 @@ static LOCAL_SPILLS swp_float_spills, swp_int_spills;
 #define Can_Rematerialize_TN(tn, cl) \
 (TN_is_rematerializable(tn) || (TN_is_gra_homeable(tn) && cl == CGSPILL_GRA))
 
+#ifdef TARG_IA64
 void
 ld_2_ld_fill (OPS *ops, BOOL force=FALSE) {
 
@@ -215,6 +239,7 @@ st_2_st_spill (OPS * ops, BOOL force=FALSE) {
     break ;
   }
 }
+#endif
 
 /* =======================================================================
  *
@@ -364,6 +389,16 @@ CGSPILL_Reset_Local_Spills (void)
   LOCAL_SPILLS_Reset(&lra_int_spills);
   LOCAL_SPILLS_Reset(&swp_float_spills);
   LOCAL_SPILLS_Reset(&swp_int_spills);
+#ifdef TARG_X8664
+  LOCAL_SPILLS_Reset(&lra_sse2_spills);
+  LOCAL_SPILLS_Reset(&lra_x87_spills);
+  LOCAL_SPILLS_Reset(&lra_mmx_spills);
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+  LOCAL_SPILLS_Reset(&lra_float32_spills);
+  LOCAL_SPILLS_Reset(&lra_int32_spills);
+#endif
 }
 
 
@@ -395,6 +430,36 @@ CGSPILL_Initialize_For_PU(void)
   LOCAL_SPILLS_mem_type(slc) = Spill_Float_Type;
   LOCAL_SPILLS_free(slc) = NULL;
   LOCAL_SPILLS_used(slc) = NULL;
+#ifdef TARG_X8664
+  slc = &lra_sse2_spills;
+  LOCAL_SPILLS_mem_type(slc) = Quad_Type;
+  LOCAL_SPILLS_free(slc) = NULL;
+  LOCAL_SPILLS_used(slc) = NULL;
+
+  slc = &lra_x87_spills;
+  LOCAL_SPILLS_mem_type(slc) = MTYPE_To_TY( MTYPE_FQ );
+  LOCAL_SPILLS_free(slc) = NULL;
+  LOCAL_SPILLS_used(slc) = NULL;
+
+  slc = &lra_mmx_spills;
+  LOCAL_SPILLS_mem_type(slc) = MTYPE_To_TY( MTYPE_M8I1 );
+  LOCAL_SPILLS_free(slc) = NULL;
+  LOCAL_SPILLS_used(slc) = NULL;
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+  slc = &lra_int32_spills;
+  LOCAL_SPILLS_mem_type(slc) = Spill_Int32_Type;
+  LOCAL_SPILLS_free(slc) = NULL;
+  LOCAL_SPILLS_used(slc) = NULL;
+
+  slc = &lra_float32_spills;
+  LOCAL_SPILLS_mem_type(slc) = Spill_Float32_Type;
+  LOCAL_SPILLS_free(slc) = NULL;
+  LOCAL_SPILLS_used(slc) = NULL;
+
+  spill_sym_info_map.clear();
+#endif // KEY
 
   Trace_Remat = Get_Trace(TP_CG, 4);
   Trace_GRA_spill_placement = Get_Trace(TP_GRA, 0x2000);
@@ -498,6 +563,27 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
       const char *root;
       TY_IDX mem_type = TN_is_float(tn) || TN_is_fcc_register(tn) ? 
 		        Spill_Float_Type : Spill_Int_Type;
+#ifdef TARG_X8664
+      /* bug#1741
+	 For -m32, the size of long double is 96-bit long.
+       */
+      if( TN_size(tn) == 16 || TN_size(tn) == 12 ){
+	mem_type = TN_register_class(tn) == ISA_REGISTER_CLASS_x87
+	  ? MTYPE_To_TY( MTYPE_FQ ) : Quad_Type;
+      }
+
+      // MMX
+      if (TN_register_class(tn) == ISA_REGISTER_CLASS_mmx) {
+	mem_type = MTYPE_To_TY(MTYPE_M8I1);
+      }
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+      if( CG_min_spill_loc_size && TN_size(tn) <= 4 ){
+	mem_type = TN_is_float(tn) ? Spill_Float32_Type : Spill_Int32_Type;
+      }
+#endif
+
       if (client == CGSPILL_GRA) {
 	root = SYM_ROOT_GRA;
       } else if (client == CGSPILL_LGRA) {
@@ -514,6 +600,21 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
     if (mem_location == NULL) {
       slc = TN_is_float(tn) || TN_is_fcc_register(tn) ?
 	      &lra_float_spills : &lra_int_spills;
+#ifdef TARG_X8664
+      if (TN_register_class(tn) == ISA_REGISTER_CLASS_mmx) {	// MMX
+	slc = &lra_mmx_spills;
+      } else if (TN_size(tn) == 16 || TN_size(tn) == 12) {
+	slc = TN_register_class(tn) == ISA_REGISTER_CLASS_x87
+	  ? &lra_x87_spills : &lra_sse2_spills;
+      }
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+      if( CG_min_spill_loc_size && TN_size(tn) <= 4 ){
+	slc = TN_is_float(tn) ? &lra_float32_spills : &lra_int32_spills;
+      }
+#endif
+
       mem_location = LOCAL_SPILLS_Get_Spill_Location (slc, SYM_ROOT_LRA);
       Set_TN_spill(tn, mem_location);
     }
@@ -564,12 +665,33 @@ CGSPILL_OP_Spill_Location (OP *op)
   if (spill_ids) {
     TN *spill_tn = NULL;
 
+#ifdef TARG_IA64
     if (OP_load(op) && (OP_results(op) == 1) && OP_spill_restore(op)) {
+#else
+      if (OP_load(op) && (OP_results(op) == 1)) {
+#endif
       spill_tn = OP_result(op,0);
+#ifdef TARG_IA64
     } else if (OP_store(op) && OP_spill_restore(op)) {
+#else
+    } else if (OP_store(op)) {
+#endif
       spill_tn = OP_opnd(op,TOP_Find_Operand_Use(OP_code(op), OU_storeval));
     }
+#ifdef KEY
+    if( spill_tn != NULL &&
+	TN_has_spill( spill_tn ) ){
+      INT n = TOP_Find_Operand_Use( OP_code(op), OU_offset );
+      if( n >= 0 ){
+	TN* ctn = OP_opnd( op, n );
+	if ( TN_is_constant(ctn) && TN_is_symbol(ctn) &&
+	     TN_var(ctn) == TN_spill(spill_tn))
+	  mem_loc = TN_spill( ctn );
+      }
+    }
+#else
     if (spill_tn) mem_loc = TN_spill(spill_tn);
+#endif
 
     if (mem_loc &&
 	(ST_level(mem_loc) > max_spill_level ||
@@ -614,7 +736,9 @@ CGSPILL_Cost_Estimate (TN *tn, ST *mem_loc,
 	OPCODE opcode = WN_opcode(home);
 	Exp_Load (OPCODE_rtype(opcode), OPCODE_desc(opcode), tn, WN_st(home),
 		   WN_offset(home), &OPs, V_NONE);
-  ld_2_ld_fill (&OPs) ;
+#ifdef TARG_IA64
+        ld_2_ld_fill (&OPs) ;
+#endif
 
 	*restore_cost = OPS_length(&OPs);
 	*store_cost = *restore_cost;
@@ -716,6 +840,21 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
       break;
 
     case OPR_CONST:
+#ifdef TARG_X8664
+    if (OPCODE_rtype(opcode) == MTYPE_V16F4 ||
+	OPCODE_rtype(opcode) == MTYPE_V16F8 ||
+	OPCODE_rtype(opcode) == MTYPE_V16I1 ||
+	OPCODE_rtype(opcode) == MTYPE_V16I2 ||
+	OPCODE_rtype(opcode) == MTYPE_V16I4 ||
+	OPCODE_rtype(opcode) == MTYPE_V16I8) {
+      TCON then = ST_tcon_val(WN_st(home));
+      TCON now  = Create_Simd_Const (OPCODE_rtype(opcode), then);
+      ST *sym = New_Const_Sym (Enter_tcon (now), 
+			       Be_Type_Tbl(OPCODE_rtype(opcode)));
+      Allocate_Object(sym);
+      Exp_OP1 (opcode, tn, Gen_Symbol_TN (sym, 0, 0), ops);
+    } else
+#endif
       Exp_OP1 (opcode, tn, Gen_Symbol_TN(WN_st(home),0,0), ops);
       break;
     case OPR_INTCONST:
@@ -732,10 +871,17 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
 #endif
 	break;
       case OPC_I4INTCONST:
+	const_tn = Gen_Literal_TN ((INT32) WN_const_val(home), 4);
+	break;
       case OPC_U4INTCONST:
+#ifdef TARG_X8664
+	/* Opteron will zero-out the higher 32-bit. (bug#3387) */
+	const_tn = Gen_Literal_TN ((UINT32) WN_const_val(home), 4);
+#else
 	/* even for U4 we sign-extend the value
 	 * so it matches what we want register to look like */
 	const_tn = Gen_Literal_TN ((INT32) WN_const_val(home), 4);
+#endif // TARG_X8664
 	break;
       default:
 	ErrMsg (EC_Unimplemented,
@@ -758,11 +904,18 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
     /* Must actually load it from memory
      */
     CGTARG_Load_From_Memory(tn, mem_loc, ops);
+#ifdef TARG_IA64
     ld_2_ld_fill (ops);
+#endif
+#ifdef KEY
+    CGSPILL_Inc_Restore_Count(mem_loc);
+#endif
   }
   Max_Sdata_Elt_Size = max_sdata_save;
+#ifdef TARG_IA64
   if(ops->last)
 	 Set_OP_spill_restore(ops->last);
+#endif
 }
 
 
@@ -797,24 +950,43 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
     if (WN_operator(home) == OPR_LDID) {
       Exp_Store (OPCODE_desc(WN_opcode(home)), src_tn, WN_st(home),
 		 WN_offset(home), ops,V_NONE);
+#ifdef TARG_IA64
       st_2_st_spill (ops) ;
+#endif
     } else if (Trace_Remat) {
 #pragma mips_frequency_hint NEVER
       Check_Phase_And_PU();
       fprintf(TFile, "<Rematerialize> Suppressing spill of rematerializable "
 		     "TN%d.\n", TN_number(src_tn));
     }
+#ifdef TARG_IA64
     if(ops->last)
 	   Set_OP_spill_restore(ops->last);
+#endif
+#ifdef KEY
+    // Looks like a bug in the Open64 compiler.
+    // In the case of entry/exit BBs, the Max_Sdata_Elt_Size might get
+    // reset and never set back if the next return is executed.
+    Max_Sdata_Elt_Size = max_sdata_save;
+#endif
+
     return;
   }
 
   CGTARG_Store_To_Memory(src_tn, mem_loc, ops);
+#ifdef TARG_IA64
   st_2_st_spill (ops);
+#endif
 
   Max_Sdata_Elt_Size = max_sdata_save;
+#ifdef TARG_IA64
   if(ops->last)
 	 Set_OP_spill_restore(ops->last);
+#endif
+
+#ifdef KEY
+  CGSPILL_Record_Spill(mem_loc, OPS_last(ops));
+#endif
 }
 
 
@@ -1190,6 +1362,10 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
       Fix_Xfer_Dependences (bb, ops);
       before_point = BB_last_op(bb);
     }
+#ifdef TARG_X8664
+    else if (last_op != NULL && OP_code(last_op) == TOP_savexmms)
+      before_point = BB_last_op(bb);
+#endif
   }
 
   if (before_point != NULL) {
@@ -1451,3 +1627,32 @@ void CGSPILL_Attach_Const_Remat(TN *tn, TYPE_ID typ, ST *st)
     }
   }
 }
+
+
+#ifdef KEY
+// Record that SPILL_OP is associated with SPILL_LOC.
+void
+CGSPILL_Record_Spill (ST *spill_loc, OP *spill_op)
+{
+  SPILL_SYM_INFO &info = spill_sym_info_map[ST_IDX((INTPTR)spill_loc)];
+
+  // Don't keep track of more than one spill.
+  info.Set_Spill_Op(info.Spill_Count() == 0 ? spill_op : NULL);
+  info.Inc_Spill_Count();
+}
+
+
+void
+CGSPILL_Inc_Restore_Count (ST *spill_loc)
+{
+  SPILL_SYM_INFO &info = spill_sym_info_map[ST_IDX((INTPTR)spill_loc)];
+  info.Inc_Restore_Count();
+}
+
+
+SPILL_SYM_INFO &
+CGSPILL_Get_Spill_Sym_Info (ST *spill_loc)
+{
+  return spill_sym_info_map[ST_IDX((INTPTR)spill_loc)];
+}
+#endif

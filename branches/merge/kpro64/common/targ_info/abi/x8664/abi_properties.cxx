@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -42,10 +42,10 @@
 ///////////////////////////////////////
 
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/abi/x8664/abi_properties.cxx,v $
+//  $Revision: 1.19 $
+//  $Date: 05/05/05 17:40:09-07:00 $
+//  $Author: gautam@jacinth.keyresearch $
+//  $Source: common/targ_info/abi/x8664/SCCS/s.abi_properties.cxx $
 
 #include <stddef.h>
 #include "abi_properties_gen.h"

@@ -1,6 +1,14 @@
 /*
+ * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -62,7 +70,7 @@
 #ifndef GRA_BB_RCS_ID
 #define GRA_BB_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_bb_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_bb.h,v $ $Revision: 1.1.1.1 $";
+static char *gra_bb_rcs_id = "$Source: ../../be/cg/gra_mon/SCCS/s.gra_bb.h $ $Revision: 1.12 $";
 #endif
 #endif
 
@@ -95,6 +103,9 @@ enum GBB_FLAG {
   GRA_BB_FLAGS_region_prolog	=  0x4, // if block borders region entry
   GRA_BB_FLAGS_region_epilog	=  0x8, // if block borders region exit
   GRA_BB_FLAGS_setjmp		=  0x10,// if block contains a call to setjmp
+#ifdef TARG_X8664
+  GRA_BB_FLAGS_savexmms		=  0x20,// if block ends with savexmms pseudo-op
+#endif
 };
 
 class GRA_BB {
@@ -119,6 +130,10 @@ private:
   REGISTER_SET  glue_registers_used[ISA_REGISTER_CLASS_MAX+1];
     // the set of registers used in this <gbb> and <rc> only in glue copy 
     // references.
+#ifndef TARG_IA64
+  REGISTER_SET  registers_referenced[ISA_REGISTER_CLASS_MAX+1];
+    // the set of registers referenced in this <gbb> for <rc>.
+#endif
   GRA_BB*       region_next;
     // Used by GRA_REGION's to keep track of their blocks.
   INT32         split_mark;
@@ -174,6 +189,64 @@ private:
     // the number of local LRANGEs for this <gbb> and <rc>.
   GRA_LOOP*	loop;
   UINT8		flags;
+#ifndef TARG_IA64
+  // ------------ Support optimizing for boundary BBs. ------------
+  mUINT16	OPs_count;	// Number of OPs in the BB.
+  REGISTER_SET  usage_live_in[ISA_REGISTER_CLASS_MAX+1];
+  REGISTER_SET  usage_live_out[ISA_REGISTER_CLASS_MAX+1];
+  mUINT16	usage_start_index[ISA_REGISTER_CLASS_MAX+1][REGISTER_MAX+1];
+  mUINT16	usage_end_index[ISA_REGISTER_CLASS_MAX+1][REGISTER_MAX+1];
+    // While registers_used indicate if a register is used anywhere in the BB,
+    // the following give more detail about how the registers are used in the
+    // BB:
+    //   usage_live_in		which usages are live in
+    //   usage_live_out		which usages are live out
+    //   usage_start_index	OP index in the BB where the usage begins
+    //   usage_end_index	OP index in the BB where the usage ends
+    // The usage_start_index and usage_end_index could be <, >, or = relative
+    // to each other, depending on the live-in and live-out properties of the
+    // usage.  Index 0 means no such OP.
+    //
+    // In general, a usage can have many disjoint segments in the BB.  We model
+    // usages that have at most one segment that is fully contained in the BB.
+    // There are 6 cases:
+    //   live-in	(live-in only)
+    //		usage_live_in=1, usage_live_out=0
+    //		usage_end_index>0
+    //   live-out	(live-out only)
+    //		usage_live_in=0, usage_live_out=1
+    //		usage_start_index>0
+    //   pass-thru	(live-in, live-out, continuous)
+    //		usage_live_in=1, usage_live_out=1
+    //		usage_start_index=0, usage_end_index=0
+    //   disjoint	(live-in, live-out, but not continuous)
+    //		usage_live_in=1, usage_live_out=1
+    //		usage_start_index>0, usage_end_index>0
+    //		  usage_start_index >= usage_end_index
+    //   contained	(usage fully contained in BB)
+    //		usage_live_in=0, usage_live_out=0
+    //		usage_start_index>0, usage_end_index>0
+    //		  usage_start_index < usage_end_index
+    //   empty		(does not appear in BB)
+    //		usage_live_in=0, usage_live_out=0
+    //		usage_start_index=0, usage_end_index=0
+    // If a usage does not fit any of the above patterns, it is because the
+    // usage has extra contained segments.  In that case, we combine the
+    // contained segment(s) with each succeeding segment until one of the above
+    // pattern is reached.  For example, if a usage has these three segments:
+    //   segment 1:	live-in
+    //   segment 2:	contained
+    //   segment 3:	live-out
+    // We treat segments 2 and 3 as one segment, resulting in the "disjoint"
+    // case.
+
+  // ------------ Support register reclaiming. ------------
+  LRANGE*	lrange_owner[ISA_REGISTER_CLASS_MAX+1][REGISTER_MAX+1];
+    // The lrange owner of the register in this <gbb>.  In the case of a
+    // boundary BB with two lranges sharing the same register, lrange_owner is
+    // the latest lranges that was allocated the register, since lrange_owner
+    // is updated as the registers are allocated.
+#endif
 
 public:
   GRA_BB(void) {}
@@ -233,6 +306,38 @@ public:
   void Region_Epilog_Set(void)  { flags |= (UINT) GRA_BB_FLAGS_region_epilog; }
   BOOL Setjmp(void)		{ return flags & GRA_BB_FLAGS_setjmp; }
   void Setjmp_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_setjmp; }
+#ifdef TARG_X8664
+  BOOL Savexmms(void)		{ return flags & GRA_BB_FLAGS_savexmms; }
+  void Savexmms_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_savexmms; }
+#endif
+#ifndef TARG_IA64
+  mUINT16 OPs_Count(void)	{ return OPs_count; }
+  mUINT16 Usage_Start_Index(ISA_REGISTER_CLASS rc, REGISTER reg)
+				{ return usage_start_index[rc][reg]; }
+  void Usage_Start_Index_Set(ISA_REGISTER_CLASS rc, REGISTER reg, mUINT16 index)
+				{ usage_start_index[rc][reg] = index; }
+  mUINT16 Usage_End_Index(ISA_REGISTER_CLASS rc, REGISTER reg)
+				{ return usage_end_index[rc][reg]; }
+  void Usage_End_Index_Set(ISA_REGISTER_CLASS rc, REGISTER reg, mUINT16 index)
+				{ usage_end_index[rc][reg] = index; }
+  BOOL Is_Usage_Live_In(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ return REGISTER_SET_MemberP(usage_live_in[rc], reg); }
+  void Usage_Live_In_Set(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ usage_live_in[rc] = REGISTER_SET_Union1(usage_live_in[rc], reg); }
+  void Usage_Live_In_Clear(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ usage_live_in[rc] = REGISTER_SET_Difference1(usage_live_in[rc], reg);}
+  BOOL Is_Usage_Live_Out( ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ return REGISTER_SET_MemberP(usage_live_out[rc], reg); }
+  void Usage_Live_Out_Set(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ usage_live_out[rc] = REGISTER_SET_Union1(usage_live_out[rc], reg); }
+  void Usage_Live_Out_Clear(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{usage_live_out[rc] = REGISTER_SET_Difference1(usage_live_out[rc],reg);}
+    // Is the given <lrange> live-out of the given <gbb>?
+  void Set_LRANGE_Owner(ISA_REGISTER_CLASS rc, REGISTER reg, LRANGE *lrange)
+	{ lrange_owner[rc][reg] = lrange; }
+  LRANGE *Get_LRANGE_Owner(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ return lrange_owner[rc][reg]; }
+#endif
 
   // inline functions
   GRA_BB* Split_List_Push( GRA_BB* new_elt ) { new_elt->split_list_next = this;
@@ -270,8 +375,18 @@ public:
   BOOL Has_Multiple_Predecessors(void);
   BOOL Region_Is_Complement(void);
   void Add_LUNIT(LUNIT *lunit);
+#ifdef TARG_IA64
   void Make_Register_Used(ISA_REGISTER_CLASS rc, REGISTER reg);
+#else
+  void Make_Register_Used(ISA_REGISTER_CLASS rc, REGISTER reg,
+                          LRANGE* lrange = NULL, BOOL reclaim = FALSE);
+#endif
   REGISTER_SET Registers_Used(ISA_REGISTER_CLASS  rc);
+#ifndef TARG_IA64
+  void Make_Register_Referenced(ISA_REGISTER_CLASS rc, REGISTER reg,
+				LRANGE* lrange = NULL);
+  REGISTER_SET Registers_Referenced(ISA_REGISTER_CLASS  rc);
+#endif
   BOOL Spill_Above_Check(LRANGE *lrange);
   void Spill_Above_Set(LRANGE *lrange);
   void Spill_Above_Reset(LRANGE *lrange);
@@ -381,7 +496,9 @@ public:
 };
 
 extern GBB_MGR gbb_mgr;
-
+#ifdef TARG_X8664
+extern OP *gra_savexmms_op;
+#endif
 
 // Use to iterate over the elements of an internally linked _Split_List of BBs.
 class GRA_BB_SPLIT_LIST_ITER {

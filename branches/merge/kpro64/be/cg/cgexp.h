@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -120,7 +124,16 @@ extern void Exp_Store (
   VARIANT variant);
 
 /* Generate a copy from 'src_tn' to 'tgt_tn'. */
+#ifdef TARG_X8664
+extern void Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair=FALSE); 
+#else
 extern void Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops); 
+#endif
+
+#ifdef TARG_X8664
+/* Generate a copy from 'src_tn' to 'tgt_tn' with zero/sign extension. */
+extern void Exp_COPY_Ext (TOP opcode, TN *tgt_tn, TN *src_tn, OPS *ops); 
+#endif /* TARG_X8664 */
 
 /* Given a simulated <op>, expand it into the sequence of instructions
  * that must be generated. The <pc_value> is the PC location of the 
@@ -143,8 +156,28 @@ extern TN * Exp_Intrinsic_Call (
   INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops, 
   LABEL_IDX *label, OPS *loop_ops);
 
+#ifdef TARG_X8664
+/* Expansion of INTRN_SAVEXMMS into TOP_savexmms pseudo instruction */
+extern void Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label, 
+				   OPS *ops);
+
+extern void Exp_Landingpadentry_Intrinsic (ST *dest1, ST *dest2, OPS* ops);
+
+extern void Exp_Fetch_and_Add( TN*, TN*, TYPE_ID, OPS* );
+extern void Exp_Fetch_and_And( TN*, TN*, TYPE_ID, OPS* );
+extern void Exp_Fetch_and_Or( TN*, TN*, TYPE_ID, OPS* );
+extern void Exp_Fetch_and_Xor( TN*, TN*, TYPE_ID, OPS* );
+extern void Exp_Fetch_and_Sub( TN*, TN*, TYPE_ID, OPS* );
+extern TN*  Exp_Compare_and_Swap( TN*, TN*, TN*, TYPE_ID, OPS* );
+
+/* expand intrinsic op */
+extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID mtype, OPS *ops);
+
+#else 
+
 /* expand intrinsic op */
 extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, OPS *ops);
+#endif // TARG_X8664
 
 /* Expand TN(const) into a sequence of ops (used in prolog)
  */
@@ -157,9 +190,23 @@ extern void Exp_Immediate (TN *dest, TN *src, BOOL is_signed, OPS *);
 	Exp_OP2 (OPCODE_make_op(OPR_SUB,mtype,MTYPE_V), dest,src1,src2,ops)
 #define Exp_MPY(mtype,dest,src1,src2,ops)	\
 	Exp_OP2 (OPCODE_make_op(OPR_MPY,mtype,MTYPE_V), dest,src1,src2,ops)
+#define Exp_BAND(mtype,dest,src1,src2,ops)	\
+	Exp_OP2 (OPCODE_make_op(OPR_BAND,mtype,MTYPE_V), dest,src1,src2,ops)
 
 /* check whether to eval the condition separate from the select */
 extern BOOL Check_Select_Expansion (OPCODE compare);
+
+#ifdef TARG_X8664
+/* create storing vectorized comparison to a preg */
+extern void Exp_Stid_And_VComp (
+        OPCODE stid, TN *result, TN *cmp_kid1, TN *cmp_kid2,
+        OPCODE compare, OPS *ops);
+
+/* create select and Vector preg as condition for select */
+extern void Exp_Select_And_VLdid (
+        OPCODE select, TN *result, TN *true_tn, TN *false_tn,
+        OPCODE compare, TN *vldid, OPS *ops);
+#endif
 
 /* create select and condition for select */
 extern void Exp_Select_And_Condition (
@@ -203,7 +250,11 @@ extern void Exp_Deposit_Bits (TYPE_ID rtype, TYPE_ID desc,
 			      TN *tgt_tn, TN *src1_tn, TN *src2_tn, OPS *ops);
 
 /* expand return instruction */
+#ifdef TARG_X8664
+extern void Exp_Return (TN *return_address, int sp_adjust, OPS *ops);
+#else
 extern void Exp_Return (TN *return_address, OPS *ops);
+#endif
 
 /* expand call instruction */
 extern void Exp_Call (OPERATOR opr, TN *return_address, TN *target, OPS *ops);
@@ -236,6 +287,19 @@ extern void Exp_Generic_Pred_Calc(TN* result1, TN *result2, COMPARE_TYPE ctype,
  */
 extern void Exp_True_False_Preds_For_Block(BB *bb,
 					   TN* &true_tn, TN * &false_tn);
+#ifdef KEY
+/*
+ * Used to reinitilalize Predicate TNs for HB 
+ */
+extern void HB_Reinit_Pred ();
+#endif
+
+#ifdef TARG_X8664
+extern void Expand_Start();
+extern void Expand_Finish();
+extern void Expand_Cmov (TOP top, TN *result, TN *src, TN *rflags, OPS *ops,
+			 TN *result2 = NULL, TN *src2 = NULL);
+#endif
 
 /* Predicate manipulation routines.
  *
@@ -255,5 +319,9 @@ extern void Exp_Pred_Compare(TN *dest, TN *cdest, TN *src1, TN *src2,
  * True if target can, false if should use target-independent logic.
  */
 extern BOOL Target_Has_Immediate_Operand (WN *parent, WN *expr);
+
+#ifdef TARG_X8664
+extern void CG_Set_Is_Stack_Used();
+#endif
 
 #endif /* cgexp_INCLUDED */

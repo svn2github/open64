@@ -266,6 +266,9 @@ inline BOOL SIMP_Check (TYPE_ID rtype, simpnode x)
     if (!MTYPE_is_float (tcon_type) && !MTYPE_is_complex (tcon_type))
       return FALSE;
     if (rtype == tcon_type ||
+#ifdef TARG_IA64
+        (rtype == MTYPE_F10 && tcon_type == MTYPE_C10) ||
+#endif
         (rtype == MTYPE_F8 && tcon_type == MTYPE_C8) ||
 	(rtype == MTYPE_F4 && tcon_type == MTYPE_C4))
       return TRUE;
@@ -392,7 +395,18 @@ inline TCON SIMP_Flt_ConstVal(simpnode x)
 
     if (rtype != tcon_type)
     {
-      if (rtype == MTYPE_F8 && tcon_type == MTYPE_C8)
+      if (rtype == MTYPE_F10 && tcon_type == MTYPE_C10)
+      {
+	TCON c;
+	if (SIMPNODE_load_offset (x) == 0)
+	  c = Extract_Complex_Real (ST_tcon_val (SIMPNODE_st(x)));
+	else if (SIMPNODE_load_offset (x) == 16)
+	  c = Extract_Complex_Imag (ST_tcon_val (SIMPNODE_st(x)));
+	else Fail_FmtAssertion ("Loading real from outside of complex value");
+
+	return c;
+      }
+      else if (rtype == MTYPE_F8 && tcon_type == MTYPE_C8)
       {
         TCON c;
         if (SIMPNODE_load_offset (x) == 0)
@@ -433,7 +447,18 @@ inline TCON SIMP_Flt_ConstVal(simpnode x)
     int ofst = SIMPNODE_const_val (SIMPNODE_array_index (arr, 0)) * 
                SIMPNODE_element_size (arr) + SIMPNODE_load_offset (base);
 
-    if (rtype == MTYPE_F8 && tcon_type == MTYPE_C8)
+    if (rtype == MTYPE_F10 && tcon_type == MTYPE_C10)
+    {
+      TCON c;
+      if (ofst == 0)
+	c = Extract_Complex_Real (ST_tcon_val (SIMPNODE_st(base)));
+      else if (ofst == 16)
+	c = Extract_Complex_Imag (ST_tcon_val (SIMPNODE_st(base)));
+      else Fail_FmtAssertion ("Loading real from outside of complex value");
+
+      return c;
+    }
+    else if (rtype == MTYPE_F8 && tcon_type == MTYPE_C8)
     {
       TCON c;
       if (ofst == 0)
@@ -615,6 +640,7 @@ static BOOL is_floating_equal(simpnode k, double d)
    switch (ty) {
     case MTYPE_F4:
     case MTYPE_F8:
+    case MTYPE_F10:
       return (d == Targ_To_Host_Float(kval));
 
     case MTYPE_FQ:
@@ -1519,6 +1545,7 @@ static simpnode  simp_neg(OPCODE opc, simpnode k0, simpnode k1,
    RSQRT(RECIP(x))    SQRT(x)
 
    // TARG_X8664
+   SQRT(x)            x * RSQRT(x)
    RECIP(x*RSQRT(x))  RSQRT(x)
 
 All of these require Rsqrt_Allowed to generate RSQRT,
@@ -1542,7 +1569,7 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
 #ifdef TARG_X8664
       case OPR_MPY:
 	SHOW_RULE("RECIP(x*RSQRT(x)) RSQRT(x)");
-	if (OPCODE_is_load(SIMPNODE_opcode(SIMPNODE_kid0(k0))) &&
+	    if (OPCODE_is_load(SIMPNODE_opcode(SIMPNODE_kid0(k0))) &&
 	    OPCODE_operator(SIMPNODE_opcode(SIMPNODE_kid1(k0))) == OPR_RSQRT &&
 	    SIMPNODE_Simp_Compare_Trees(SIMPNODE_kid0(k0), 
 					SIMPNODE_kid0(SIMPNODE_kid1(k0)))==0) {
@@ -1609,7 +1636,7 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
       r = SIMPNODE_SimpCreateExp1(OPC_FROM_OPR(OPR_SQRT,ty),SIMPNODE_kid0(k0));
       SIMP_DELETE(k0);
 #endif
-   }    
+   }
 
    return (r);
 }
@@ -1638,6 +1665,19 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
  *  is the list of types this type can be converted into without loss of information
  */
 #define B(t) (1<<t)
+#ifdef TARG_IA64
+#define PRECISE_I1 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I1)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
+#define PRECISE_I2 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
+#define PRECISE_I4 B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I4)|B(MTYPE_I8)
+#define PRECISE_I8 B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I8)
+#define PRECISE_U1 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_U1)|B(MTYPE_U2)|B(MTYPE_U4)|B(MTYPE_U8)
+#define PRECISE_U2 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_U2)|B(MTYPE_U4)|B(MTYPE_U8)
+#define PRECISE_U4 B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I8)
+#define PRECISE_U8 B(MTYPE_F10)|B(MTYPE_FQ)
+#define PRECISE_F4 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)
+#define PRECISE_F8 B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)
+#define PRECISE_F10 B(MTYPE_F10)|B(MTYPE_FQ)
+#else // TARG_IA64
 #define PRECISE_I1 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I1)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
 #define PRECISE_I2 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
 #define PRECISE_I4 B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I4)|B(MTYPE_I8)
@@ -1648,10 +1688,11 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
 #define PRECISE_U8 B(MTYPE_FQ)
 #define PRECISE_F4 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)
 #define PRECISE_F8 B(MTYPE_F8)|B(MTYPE_FQ)
+#endif // TARG_IA64
 #define PRECISE_FQ B(MTYPE_FQ)
 #define TESTABLE_TYPE (B(MTYPE_U1)|B(MTYPE_U2)|B(MTYPE_U4)|B(MTYPE_U8)|\
 		       B(MTYPE_I1)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)|\
-		       B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ))
+		       B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ))
 #define TYPEISIN(t,b) ( ((1<<(t)) & (b)) !=0)
 
 static BOOL convert_precise(TYPE_ID t1, TYPE_ID t2)
@@ -1691,6 +1732,11 @@ static BOOL convert_precise(TYPE_ID t1, TYPE_ID t2)
        case MTYPE_F8:
 	 precise_bits = PRECISE_F8;
 	 break;
+#ifdef TARG_IA64
+       case MTYPE_F10:
+         precise_bits = PRECISE_F10;
+         break;
+#endif
        case MTYPE_FQ:
 	 precise_bits = PRECISE_FQ;
 	 break;
@@ -3335,7 +3381,17 @@ static simpnode  simp_bior( OPCODE opc,
    ty = OPCODE_rtype(opc);
 
    if (k1const) {
-      c1 = SIMP_Int_ConstVal(k1); 
+#ifdef TARG_IA64
+      if (SIMP_Is_Int_Constant (k1)) {
+         c1 = SIMP_Int_ConstVal(k1); 
+      } else if (SIMP_Is_Str_Constant (k1)) {
+         c1 = Targ_To_Host (SIMP_Str_ConstVal (k1)); 
+      } else {
+         Fail_FmtAssertion ("Not a int/str constant");
+      }
+#else
+       c1 = SIMP_Int_ConstVal(k1); 
+#endif
       if (c1 == 0) {
 	 SHOW_RULE("j|0");
 	 r = k0;
@@ -5646,7 +5702,7 @@ simpnode SIMPNODE_SimplifyCvtl(OPCODE opc, INT16 cvtl_bits, simpnode k0)
    result = simp_cvtl(opc,cvtl_bits,k0);
 
    if (result) {
-      SHOW_TREE(opc,k0,(simpnode)(INTPTR) cvtl_bits, result);
+      SHOW_TREE(opc,k0,(simpnode) (INTPTR) cvtl_bits, result);
    }
    return (result);
 }

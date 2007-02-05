@@ -43,10 +43,10 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra.cxx,v $
+//  $Revision$
+//  $Date$
+//  $Author$
+//  $Source$
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -86,9 +86,11 @@ float GRA_call_split_freq;
 float GRA_spill_count_factor;
 
 static BOOL gra_spill_around_save_tn_copies;
+#ifdef TARG_IA64
 //extern BOOL fat_self_recursive;
 BOOL gra_self_recursive = FALSE;
 extern char *Cur_PU_Name;
+#endif
 
 /////////////////////////////////////
 void 
@@ -199,6 +201,7 @@ Initialize_Flags()
 }
 
 
+#ifdef TARG_IA64
 void 
 GRA_Fat_Point_Estimate(void) {
   //Initialize_Flagsa(a);
@@ -357,6 +360,8 @@ void Print_GTN()
    }
    fprintf(stdout,"**************End            GTN  ********\n" );
 }
+
+#endif
 /////////////////////////////////////
 void
 GRA_Allocate_Global_Registers( BOOL is_region )
@@ -376,7 +381,9 @@ GRA_Allocate_Global_Registers( BOOL is_region )
   gra_region_mgr.Initialize();
   GRA_Spill_Initialize();
   GRA_Trace_Initialize();
+#ifdef TARG_IA64
   Init_GTN_LIST();  
+#endif
 
   GRA_Split_Entry_And_Exit_BBs(is_region);
 
@@ -398,9 +405,11 @@ GRA_Allocate_Global_Registers( BOOL is_region )
 
   GRA_Join_Entry_And_Exit_BBs();
 
+#ifdef TARG_IA64
   Gen_UNAT_Spills_Entry_And_Exit_BB();
 
   GRA_Optimize_Restore();
+#endif
 
   Clear_Spill_BB_Flags();
 

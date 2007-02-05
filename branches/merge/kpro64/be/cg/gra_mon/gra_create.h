@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -77,7 +77,9 @@ static char *create_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/g
 #endif
 #endif
 
+#ifdef TARG_IA64
 extern void GRA_Pre_Create(void);
+#endif
 extern void GRA_Create(void);
 extern void GRA_Delete(void);
 

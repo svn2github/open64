@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -72,7 +72,7 @@
 
 #define region_bounds_CXX	"region_bounds.cxx"
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = region_bounds_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = region_bounds_CXX"$Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "wn.h"			// WN type
@@ -671,6 +671,7 @@ void Generate_region_boundaries(WN *wn, ALIAS_MANAGER *am)
 // used to avoid duplicates in boundary sets
 // NOTE: this involves linear search and should be improved
 //       (it is isolated here for your rewriting convenience)
+extern "C"
 BOOL REGION_search_preg_set(PREG_LIST *pset, PREG_NUM pr)
 {
   PREG_LIST *ptmp;

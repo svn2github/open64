@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -417,7 +417,9 @@ typedef struct Opc2Cname_Map
 static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
 {
   {OPC_U8NEG, "-"},
+#ifdef TARG_IA64
   {OPC_F10NEG, "-"},
+#endif
   {OPC_FQNEG, "-"},
   {OPC_I8NEG, "-"},
   {OPC_U4NEG, "-"},
@@ -429,23 +431,31 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_C4NEG, "_C4NEG"},
   {OPC_I4ABS, "_I4ABS"},
   {OPC_F4ABS, "_F4ABS"},
+#ifdef TARG_IA64
   {OPC_F10ABS, "_F10ABS"},
+#endif
   {OPC_FQABS, "_FQABS"},
   {OPC_I8ABS, "_I8ABS"},
   {OPC_F8ABS, "_F8ABS"},
   {OPC_F4SQRT, "_F4SQRT"},
   {OPC_C4SQRT, "_C4SQRT"},
+#ifdef TARG_IA64
   {OPC_F10SQRT, "_F10SQRT"},
+#endif
   {OPC_FQSQRT, "_FQSQRT"},
   {OPC_CQSQRT, "_CQSQRT"},
   {OPC_F8SQRT, "_F8SQRT"},
   {OPC_C8SQRT, "_C8SQRT"},
   {OPC_I4F4RND, "_I4F4RND"},
+#ifdef TARG_IA64
   {OPC_I4F10RND, "_I4F10RND"},
+#endif
   {OPC_I4FQRND, "_I4FQRND"},
   {OPC_I4F8RND, "_I4F8RND"},
   {OPC_U4F4RND, "_U4F4RND"},
+#ifdef TARG_IA64
   {OPC_U4F10RND, "_U4F10RND"},
+#endif
   {OPC_U4FQRND, "_U4FQRND"},
   {OPC_U4F8RND, "_U4F8RND"},
   {OPC_I8F4RND, "_I8F4RND"},
@@ -453,55 +463,87 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I8FQRND, "_I8FQRND"},
   {OPC_I8F8RND, "_I8F8RND"},
   {OPC_U8F4RND, "_U8F4RND"},
+#ifdef TARG_IA64
   {OPC_U8F10RND, "_U8F10RND"},
+#endif
   {OPC_U8FQRND, "_U8FQRND"},
   {OPC_U8F8RND, "_U8F8RND"},
   {OPC_I4F4TRUNC, "_I4F4TRUNC"},
+#ifdef TARG_IA64
   {OPC_I4F10TRUNC, "_I4F10TRUNC"},
+#endif
   {OPC_I4FQTRUNC, "_I4FQTRUNC"},
   {OPC_I4F8TRUNC, "_I4F8TRUNC"},
   {OPC_U4F4TRUNC, "_U4F8TRUNC"},
+#ifdef TARG_IA64
   {OPC_U4F10TRUNC, "_U4F10TRUNC"},
   {OPC_U4FQTRUNC, "_U4FQTRUNC"},
+#else
+  {OPC_U4FQTRUNC, "_U4F8TRUNC"},
+#endif
   {OPC_U4F8TRUNC, "_U4F8TRUNC"},
   {OPC_I8F4TRUNC, "_I8F4TRUNC"},
+#ifdef TARG_IA64
   {OPC_I8F10TRUNC, "_I8F10TRUNC"},
+#endif
   {OPC_I8FQTRUNC, "_I8FQTRUNC"},
   {OPC_I8F8TRUNC, "_I8F8TRUNC"},
   {OPC_U8F4TRUNC, "_U8F8TRUNC"},
+#ifdef TARG_IA64
   {OPC_U8F10TRUNC, "_U8F10TRUNC"},
   {OPC_U8FQTRUNC, "_U8FQTRUNC"},
+#else
+  {OPC_U8FQTRUNC, "_U8F8TRUNC"},
+#endif
   {OPC_U8F8TRUNC, "_U8F8TRUNC"},
   {OPC_I4F4CEIL, "_I4F4CEIL"},
+#ifdef TARG_IA64
   {OPC_I4F10CEIL, "_I4F10CEIL"},
+#endif
   {OPC_I4FQCEIL, "_I4FQCEIL"},
   {OPC_I4F8CEIL, "_I4F8CEIL"},
   {OPC_U4F4CEIL, "_U4F8CEIL"},
+#ifdef TARG_IA64
   {OPC_U4F10CEIL, "_U4F10CEIL"},
   {OPC_U4FQCEIL, "_U4FQCEIL"},
+#else
+  {OPC_U4FQCEIL, "_U4F8CEIL"},
+#endif
   {OPC_U4F8CEIL, "_U4F8CEIL"},
   {OPC_I8F4CEIL, "_I8F4CEIL"},
+#ifdef TARG_IA64
   {OPC_I8F10CEIL, "_I8F10CEIL"},
+#endif
   {OPC_I8FQCEIL, "_I8FQCEIL"},
   {OPC_I8F8CEIL, "_I8F8CEIL"},
   {OPC_U8F4CEIL, "_U8F4CEIL"},
+#ifdef TARG_IA64
   {OPC_U8F10CEIL, "_U8F10CEIL"},
+#endif
   {OPC_U8FQCEIL, "_U8FQCEIL"},
   {OPC_U8F8CEIL, "_U8F8CEIL"},
   {OPC_I4F4FLOOR, "_I4F4FLOOR"},
+#ifdef TARG_IA64
   {OPC_I4F10FLOOR, "_I4F10FLOOR"},
+#endif
   {OPC_I4FQFLOOR, "_I4FQFLOOR"},
   {OPC_I4F8FLOOR, "_I4F8FLOOR"},
   {OPC_U4F4FLOOR, "_U4F4FLOOR"},
+#ifdef TARG_IA64
   {OPC_U4F10FLOOR, "_U4F10FLOOR"},
+#endif
   {OPC_U4FQFLOOR, "_U4FQFLOOR"},
   {OPC_U4F8FLOOR, "_U4F8FLOOR"},
   {OPC_I8F4FLOOR, "_I8F4FLOOR"},
+#ifdef TARG_IA64
   {OPC_I8F10FLOOR, "_I8F10FLOOR"},
+#endif
   {OPC_I8FQFLOOR, "_I8FQFLOOR"},
   {OPC_I8F8FLOOR, "_I8F8FLOOR"},
   {OPC_U8F4FLOOR, "_U8F4FLOOR"},
+#ifdef TARG_IA64
   {OPC_U8F10FLOOR, "_U8F10FLOOR"},
+#endif
   {OPC_U8FQFLOOR, "_U8FQFLOOR"},
   {OPC_U8F8FLOOR, "_U8F8FLOOR"},
 #ifdef KEY
@@ -517,7 +559,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4LNOT, "!"},
 // << WHIRL 0.30: replaced OPC_LNOT by OPC_B and OP_I4 variants
   {OPC_U8ADD, "+"},
+#ifdef TARG_IA64
   {OPC_F10ADD, "+"},
+#endif
   {OPC_FQADD, "+"},
   {OPC_I8ADD, "+"},
   {OPC_U4ADD, "+"},
@@ -528,7 +572,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_F4ADD, "+"},
   {OPC_C4ADD, "_C4ADD"},
   {OPC_U8SUB, "-"},
+#ifdef TARG_IA64
   {OPC_F10SUB, "-"},
+#endif
   {OPC_FQSUB, "-"},
   {OPC_I8SUB, "-"},
   {OPC_U4SUB, "-"},
@@ -539,7 +585,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_F4SUB, "-"},
   {OPC_C4SUB, "_C4SUB"},
   {OPC_U8MPY, "*"},
+#ifdef TARG_IA64
   {OPC_F10MPY, "*"},
+#endif
   {OPC_FQMPY, "*"},
   {OPC_I8MPY, "*"},
   {OPC_U4MPY, "*"},
@@ -550,7 +598,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_F4MPY, "*"},
   {OPC_C4MPY, "_C4MPY"},
   {OPC_U8DIV, "/"},
+#ifdef TARG_IA64
   {OPC_F10DIV, "/"},
+#endif
   {OPC_FQDIV, "/"},
   {OPC_I8DIV, "/"},
   {OPC_U4DIV, "/"},
@@ -571,7 +621,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4MAX, "_I4MAX"},
   {OPC_U8MAX, "_U8MAX"},
   {OPC_F4MAX, "_F4MAX"},
+#ifdef TARG_IA64
   {OPC_F10MAX, "_F10MAX"},
+#endif
   {OPC_FQMAX, "_FQMAX"},
   {OPC_I8MAX, "_I8MAX"},
   {OPC_U4MAX, "_U4MAX"},
@@ -579,7 +631,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4MIN, "_I4MIN"},
   {OPC_U8MIN, "_U8MIN"},
   {OPC_F4MIN, "_F4MIN"},
+#ifdef TARG_IA64
   {OPC_F10MIN, "_F10MIN"},
+#endif
   {OPC_FQMIN, "_FQMIN"},
   {OPC_I8MIN, "_I8MIN"},
   {OPC_U4MIN, "_U4MIN"},
@@ -621,14 +675,18 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_U4LSHR, "_U4LSHR"},
   {OPC_F4RECIP, "_F4RECIP"},
   {OPC_C4RECIP, "_C4RECIP"},
+#ifdef TARG_IA64
   {OPC_F10RECIP, "_F10RECIP"},
+#endif
   {OPC_FQRECIP, "_FQRECIP"},
   {OPC_CQRECIP, "_CQRECIP"},
   {OPC_F8RECIP, "_F8RECIP"},
   {OPC_C8RECIP, "_C8RECIP"},
   {OPC_F4RSQRT, "_F4RSQRT"},
   {OPC_C4RSQRT, "_C4RSQRT"},
+#ifdef TARG_IA64
   {OPC_F10RSQRT, "_F10RSQRT"},
+#endif
   {OPC_FQRSQRT, "_FQRSQRT"},
   {OPC_CQRSQRT, "_CQRSQRT"},
   {OPC_F8RSQRT, "_F8RSQRT"},
@@ -636,7 +694,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
 // >> WHIRL 0.30: Replaced OPC_T1{EQ,NE,GT,GE,LT,LE} by OP_BT1 and OPC_I4T1 variants
 // TODO WHIRL 0.30: get rid of OPC_I4T1 variants
   {OPC_BU8EQ, "=="},
+#ifdef TARG_IA64
   {OPC_BF10EQ, "=="},
+#endif
   {OPC_BFQEQ, "=="},
   {OPC_BI8EQ, "=="},
   {OPC_BU4EQ, "=="},
@@ -646,10 +706,14 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4EQ, "=="},
   {OPC_BF4EQ, "=="},
   {OPC_BC4EQ, "=="},
+#ifdef TARG_IA64
   {OPC_I8I4EQ, "=="},
   {OPC_I8I4NE, "!="},
+#endif
   {OPC_BU8NE, "!="},
+#ifdef TARG_IA64
   {OPC_BF10NE, "!="},
+#endif
   {OPC_BFQNE, "!="},
   {OPC_BI8NE, "!="},
   {OPC_BU4NE, "!="},
@@ -662,7 +726,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4GT, ">"},
   {OPC_BU8GT, ">"},
   {OPC_BF4GT, ">"},
+#ifdef TARG_IA64
   {OPC_BF10GT, ">"},
+#endif
   {OPC_BFQGT, ">"},
   {OPC_BI8GT, ">"},
   {OPC_BU4GT, ">"},
@@ -670,7 +736,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4GE, ">="},
   {OPC_BU8GE, ">="},
   {OPC_BF4GE, ">="},
+#ifdef TARG_IA64
   {OPC_BF10GE, ">="},
+#endif
   {OPC_BFQGE, ">="},
   {OPC_BI8GE, ">="},
   {OPC_BU4GE, ">="},
@@ -678,7 +746,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4LT, "<"},
   {OPC_BU8LT, "<"},
   {OPC_BF4LT, "<"},
+#ifdef TARG_IA64
   {OPC_BF10LT, "<"},
+#endif
   {OPC_BFQLT, "<"},
   {OPC_BI8LT, "<"},
   {OPC_BU4LT, "<"},
@@ -686,11 +756,14 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4LE, "<="},
   {OPC_BU8LE, "<="},
   {OPC_BF4LE, "<="},
+#ifdef TARG_IA64
   {OPC_BF10LE, "<="},
+#endif
   {OPC_BFQLE, "<="},
   {OPC_BI8LE, "<="},
   {OPC_BU4LE, "<="},
   {OPC_BF8LE, "<="},
+#ifdef TARG_IA64
   {OPC_I4U8EQ, "=="},
   {OPC_I4F10EQ, "=="},
   {OPC_I4FQEQ, "=="},
@@ -699,9 +772,20 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4CQEQ, "=="},
   {OPC_I4F8EQ, "=="},
   {OPC_I4C8EQ, "=="},
+#endif
   {OPC_I4I4EQ, "=="},
+#ifdef TARG_X8664
+  {OPC_I4U4EQ, "=="},
+  {OPC_I4I8EQ, "=="},
+  {OPC_I4U8EQ, "=="},
+#endif
   {OPC_I4F4EQ, "=="},
+#ifdef TARG_X8664
+  {OPC_I4F8EQ, "=="},
+  {OPC_I4FQEQ, "=="},
+#endif
   {OPC_I4C4EQ, "=="},
+#ifndef TARG_X8664
   {OPC_I4U8NE, "!="},
   {OPC_I4F10NE, "!="},
   {OPC_I4FQNE, "!="},
@@ -710,9 +794,53 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4CQNE, "!="},
   {OPC_I4F8NE, "!="},
   {OPC_I4C8NE, "!="},
+#else
+  {OPC_I4C8EQ, "=="},
+  {OPC_I4CQEQ, "=="},
+  {OPC_I8I4EQ, "=="},
+  {OPC_I8U4EQ, "=="},
+  {OPC_I8I8EQ, "=="},
+  {OPC_I8U8EQ, "=="},
+  {OPC_I8F4EQ, "=="},
+  {OPC_I8F8EQ, "=="},
+  {OPC_I8FQEQ, "=="},
+  {OPC_I8C4EQ, "=="},
+  {OPC_I8C8EQ, "=="},
+  {OPC_I8CQEQ, "=="},
+  {OPC_U4I4EQ, "=="},
+  {OPC_U4U4EQ, "=="},
+  {OPC_U4I8EQ, "=="},
+  {OPC_U4U8EQ, "=="},
+  {OPC_U4F4EQ, "=="},
+  {OPC_U4F8EQ, "=="},
+  {OPC_U4FQEQ, "=="},
+  {OPC_U4C4EQ, "=="},
+  {OPC_U4C8EQ, "=="},
+  {OPC_U4CQEQ, "=="},
+  {OPC_U8I4EQ, "=="},
+  {OPC_U8U4EQ, "=="},
+  {OPC_U8I8EQ, "=="},
+  {OPC_U8U8EQ, "=="},
+  {OPC_U8F4EQ, "=="},
+  {OPC_U8F8EQ, "=="},
+  {OPC_U8FQEQ, "=="},
+  {OPC_U8C4EQ, "=="},
+  {OPC_U8C8EQ, "=="},
+  {OPC_U8CQEQ, "=="},
+#endif
   {OPC_I4I4NE, "!="},
+#ifdef TARG_X8664
+  {OPC_I4U4NE, "!="},
+  {OPC_I4I8NE, "!="},
+  {OPC_I4U8NE, "!="},
+#endif
   {OPC_I4F4NE, "!="},
+#ifdef TARG_X8664
+  {OPC_I4F8NE, "!="},
+  {OPC_I4FQNE, "!="},
+#endif
   {OPC_I4C4NE, "!="},
+#ifndef TARG_X8664
   {OPC_I4I4GT, ">"},
   {OPC_I4U8GT, ">"},
   {OPC_I4F4GT, ">"},
@@ -721,14 +849,55 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4I8GT, ">"},
   {OPC_I4U4GT, ">"},
   {OPC_I4F8GT, ">"},
+#else
+  {OPC_I4C8NE, "!="},
+  {OPC_I4CQNE, "!="},
+  {OPC_I8I4NE, "!="},
+  {OPC_I8U4NE, "!="},
+  {OPC_I8I8NE, "!="},
+  {OPC_I8U8NE, "!="},
+  {OPC_I8F4NE, "!="},
+  {OPC_I8F8NE, "!="},
+  {OPC_I8FQNE, "!="},
+  {OPC_I8C4NE, "!="},
+  {OPC_I8C8NE, "!="},
+  {OPC_I8CQNE, "!="},
+  {OPC_U4I4NE, "!="},
+  {OPC_U4U4NE, "!="},
+  {OPC_U4I8NE, "!="},
+  {OPC_U4U8NE, "!="},
+  {OPC_U4F4NE, "!="},
+  {OPC_U4F8NE, "!="},
+  {OPC_U4FQNE, "!="},
+  {OPC_U4C4NE, "!="},
+  {OPC_U4C8NE, "!="},
+  {OPC_U4CQNE, "!="},
+  {OPC_U8I4NE, "!="},
+  {OPC_U8U4NE, "!="},
+  {OPC_U8I8NE, "!="},
+  {OPC_U8U8NE, "!="},
+  {OPC_U8F4NE, "!="},
+  {OPC_U8F8NE, "!="},
+  {OPC_U8FQNE, "!="},
+  {OPC_U8C4NE, "!="},
+  {OPC_U8C8NE, "!="},
+  {OPC_U8CQNE, "!="},
+#endif
   {OPC_I4I4GE, ">="},
+#ifdef TARG_X8664
+  {OPC_I4U4GE, ">="},
+  {OPC_I4I8GE, ">="},
+#endif
   {OPC_I4U8GE, ">="},
   {OPC_I4F4GE, ">="},
+#ifdef TARG_IA64
   {OPC_I4F10GE, ">="},
   {OPC_I4FQGE, ">="},
   {OPC_I4I8GE, ">="},
   {OPC_I4U4GE, ">="},
+#endif
   {OPC_I4F8GE, ">="},
+#ifndef TARG_X8664
   {OPC_I4I4LT, "<"},
   {OPC_I4U8LT, "<"},
   {OPC_I4F4LT, "<"},
@@ -737,15 +906,127 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4I8LT, "<"},
   {OPC_I4U4LT, "<"},
   {OPC_I4F8LT, "<"},
+#else
+  {OPC_I4FQGE, ">="},
+  {OPC_I8I4GE, ">="},
+  {OPC_I8U4GE, ">="},
+  {OPC_I8I8GE, ">="},
+  {OPC_I8U8GE, ">="},
+  {OPC_I8F4GE, ">="},
+  {OPC_I8F8GE, ">="},
+  {OPC_I8FQGE, ">="},
+  {OPC_U4I4GE, ">="},
+  {OPC_U4U4GE, ">="},
+  {OPC_U4I8GE, ">="},
+  {OPC_U4U8GE, ">="},
+  {OPC_U4F4GE, ">="},
+  {OPC_U4F8GE, ">="},
+  {OPC_U4FQGE, ">="},
+  {OPC_U8I4GE, ">="},
+  {OPC_U8U4GE, ">="},
+  {OPC_U8I8GE, ">="},
+  {OPC_U8U8GE, ">="},
+  {OPC_U8F4GE, ">="},
+  {OPC_U8F8GE, ">="},
+  {OPC_U8FQGE, ">="},
+#endif
   {OPC_I4I4LE, "<="},
+#ifdef TARG_X8664
+  {OPC_I4U4LE, "<="},
+  {OPC_I4I8LE, "<="},
+#endif
   {OPC_I4U8LE, "<="},
   {OPC_I4F4LE, "<="},
+#ifndef TARG_X8664
   {OPC_I4F10LE, "<="},
+#else
+  {OPC_I4F8LE, "<="},
+#endif
   {OPC_I4FQLE, "<="},
+#ifndef TARG_X8664
   {OPC_I4I8LE, "<="},
   {OPC_I4U4LE, "<="},
 #ifdef KEY
   {OPC_U8U8EQ, "=="},
+#endif
+#else
+  {OPC_I8I4LE, "<="},
+  {OPC_I8U4LE, "<="},
+  {OPC_I8I8LE, "<="},
+  {OPC_I8U8LE, "<="},
+  {OPC_I8F4LE, "<="},
+  {OPC_I8F8LE, "<="},
+  {OPC_I8FQLE, "<="},
+  {OPC_U4I4LE, "<="},
+  {OPC_U4U4LE, "<="},
+  {OPC_U4I8LE, "<="},
+  {OPC_U4U8LE, "<="},
+  {OPC_U4F4LE, "<="},
+  {OPC_U4F8LE, "<="},
+  {OPC_U4FQLE, "<="},
+  {OPC_U8I4LE, "<="},
+  {OPC_U8U4LE, "<="},
+  {OPC_U8I8LE, "<="},
+  {OPC_U8U8LE, "<="},
+  {OPC_U8F4LE, "<="},
+  {OPC_U8F8LE, "<="},
+  {OPC_U8FQLE, "<="},
+  {OPC_I4I4GT, ">"},
+  {OPC_I4U4GT, ">"},
+  {OPC_I4I8GT, ">"},
+  {OPC_I4U8GT, ">"},
+  {OPC_I4F4GT, ">"},
+  {OPC_I4F8GT, ">"},
+  {OPC_I4FQGT, ">"},
+  {OPC_I8I4GT, ">"},
+  {OPC_I8U4GT, ">"},
+  {OPC_I8I8GT, ">"},
+  {OPC_I8U8GT, ">"},
+  {OPC_I8F4GT, ">"},
+  {OPC_I8F8GT, ">"},
+  {OPC_I8FQGT, ">"},
+  {OPC_U4I4GT, ">"},
+  {OPC_U4U4GT, ">"},
+  {OPC_U4I8GT, ">"},
+  {OPC_U4U8GT, ">"},
+  {OPC_U4F4GT, ">"},
+  {OPC_U4F8GT, ">"},
+  {OPC_U4FQGT, ">"},
+  {OPC_U8I4GT, ">"},
+  {OPC_U8U4GT, ">"},
+  {OPC_U8I8GT, ">"},
+  {OPC_U8U8GT, ">"},
+  {OPC_U8F4GT, ">"},
+  {OPC_U8F8GT, ">"},
+  {OPC_U8FQGT, ">"},
+  {OPC_I4I4LT, "<"},
+  {OPC_I4U4LT, "<"},
+  {OPC_I4I8LT, "<"},
+  {OPC_I4U8LT, "<"},
+  {OPC_I4F4LT, "<"},
+  {OPC_I4F8LT, "<"},
+  {OPC_I4FQLT, "<"},
+  {OPC_I8I4LT, "<"},
+  {OPC_I8U4LT, "<"},
+  {OPC_I8I8LT, "<"},
+  {OPC_I8U8LT, "<"},
+  {OPC_I8F4LT, "<"},
+  {OPC_I8F8LT, "<"},
+  {OPC_I8FQLT, "<"},
+  {OPC_U4I4LT, "<"},
+  {OPC_U4U4LT, "<"},
+  {OPC_U4I8LT, "<"},
+  {OPC_U4U8LT, "<"},
+  {OPC_U4F4LT, "<"},
+  {OPC_U4F8LT, "<"},
+  {OPC_U4FQLT, "<"},
+  {OPC_U8I4LT, "<"},
+  {OPC_U8U4LT, "<"},
+  {OPC_U8I8LT, "<"},
+  {OPC_U8U8LT, "<"},
+  {OPC_U8F4LT, "<"},
+  {OPC_U8F8LT, "<"},
+  {OPC_U8FQLT, "<"},
 #endif
 #ifdef TARG_X8664
   {OPC_V16F4RECIP, "_V16F4RECIP"},

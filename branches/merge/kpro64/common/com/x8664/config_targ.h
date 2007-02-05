@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -47,10 +51,10 @@ extern "C" {
  * ====================================================================
  *
  * Module: config_targ.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/config_targ.h,v $
+ * $Revision: 1.24 $
+ * $Date: 04/12/21 14:57:25-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/common/com/x8664/SCCS/s.config_targ.h $
  *
  * Revision history:
  *  15-Jun-91 - Original Version
@@ -84,7 +88,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *config_targ_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/config_targ.h,v $ $Revision: 1.1.1.1 $";
+static char *config_targ_rcs_id = "$Source: /home/bos/bk/kpro64-pending/common/com/x8664/SCCS/s.config_targ.h $ $Revision: 1.24 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "mtypes.h"
@@ -131,6 +135,7 @@ typedef enum {
   TARGET_athlon64,	/* AMD Athlon64 */
   TARGET_athlon,	/* AMD Athlon */
   TARGET_em64t,		/* Intel EM64T */
+  TARGET_core,		/* Intel Core */
   TARGET_anyx86,	/* Generic x86 processor */
   TARGET_pentium4,	/* Intel Pentium 4 */
   TARGET_xeon,		/* Intel Pentium 4 Xeon */
@@ -150,6 +155,7 @@ extern char *Targ_Name (TARGET_PROCESSOR target);
 #define Is_Target_3DNow()       (Target_3DNow == TRUE)
 #define Is_Target_Pentium4()    (Target == TARGET_pentium4)
 #define Is_Target_EM64T()	(Target == TARGET_em64t)
+#define Is_Target_Core()	(Target == TARGET_core)
 #define Is_Target_Anyx86()      (Target == TARGET_anyx86)
 #define Target_x87_precision()	(Target_x87_Precision+0)
 

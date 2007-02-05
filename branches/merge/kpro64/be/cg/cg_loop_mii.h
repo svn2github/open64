@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -140,7 +140,7 @@
 #define CG_LOOP_MII_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static const char cg_loop_mii_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_loop_mii.h,v $ $Revision: 1.1.1.1 $";
+static const char cg_loop_mii_rcs_id[] = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 extern INT32       CG_LOOP_min_ii;

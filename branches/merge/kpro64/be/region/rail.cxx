@@ -55,7 +55,7 @@
 
 #define rail_CXX	"rail.cxx"
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = rail_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = rail_CXX"$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "wn.h"			/* WN type		*/

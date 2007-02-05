@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -66,7 +66,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *mtypes_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/mtypes.h,v $ $Revision: 1.1.1.1 $";
+static char *mtypes_rcs_id = "$Source: common/com/SCCS/s.mtypes.h $ $Revision: 1.16 $";
 #endif /* _KEEP_RCS_ID */
 
 /* The predefined machine data types, present on many machines: */
@@ -118,8 +118,13 @@ static char *mtypes_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define MTYPE_V8I4      38      /* 64-bit vector of signed ints */
 #define MTYPE_V8F4      39      /* 64-bit vector of signed floats */
 
+#define MTYPE_M8I1      40      /* 64-bit MMX vector of signed bytes */
+#define MTYPE_M8I2      41      /* 64-bit MMX vector of signed short ints */
+#define MTYPE_M8I4      42      /* 64-bit MMX vector of signed ints */
+#define MTYPE_M8F4      43      /* 64-bit MMX vector of signed floats */
+
 /* must define MTYPE_LAST as the index of the last one defined. */
-#define MTYPE_LAST	39	/* Must be defined */
+#define MTYPE_LAST	43	/* Must be defined */
 #else
 #define MTYPE_LAST	27	/* Must be defined */
 #endif // TARG_X8664
@@ -138,6 +143,9 @@ typedef mUINT8	mTYPE_ID;
 #define MTYPE_CLASS_VECTOR	0x20
 #ifdef KEY
 #define MTYPE_CLASS_SVECTOR	0x60 // 2 bits for short vector (64-bit vector)
+#endif
+#ifdef TARG_X8664
+#define MTYPE_CLASS_MVECTOR	0xa0 // 2 bits for MMX vector (64-bit vector)
 #endif
 #define MTYPE_CLASS_UNSIGNED_INTEGER (MTYPE_CLASS_UNSIGNED|MTYPE_CLASS_INTEGER)
 #define MTYPE_CLASS_COMPLEX_FLOAT (MTYPE_CLASS_COMPLEX|MTYPE_CLASS_FLOAT)
@@ -191,8 +199,14 @@ extern TYPE_DESC Machine_Types[];
 #define MTYPE_is_float(n)	(MTYPE_type_class(n) & MTYPE_CLASS_FLOAT)
 #define MTYPE_is_complex(n)	(MTYPE_type_class(n) & MTYPE_CLASS_COMPLEX)
 #define MTYPE_is_vector(n)	(MTYPE_type_class(n) & MTYPE_CLASS_VECTOR)
+#ifdef TARG_X8664
+#define MTYPE_is_short_vector(n) ((MTYPE_type_class(n) & MTYPE_CLASS_SVECTOR) == MTYPE_CLASS_SVECTOR)
+#define MTYPE_is_mmx_vector(n) ((MTYPE_type_class(n) & MTYPE_CLASS_MVECTOR) == MTYPE_CLASS_MVECTOR)
+#endif // TARG_X8664
 #ifdef KEY
+#ifndef MTYPE_is_short_vector
 #define MTYPE_is_short_vector(n) (MTYPE_type_class(n)==MTYPE_CLASS_SVECTOR)
+#endif
 #define MTYPE_is_str(n)		(MTYPE_type_class(n)==MTYPE_CLASS_STR)
 #else
 #define MTYPE_is_str(n)		(MTYPE_type_class(n)==MTYPE_STR)

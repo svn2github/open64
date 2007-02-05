@@ -1,5 +1,9 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 
@@ -65,7 +69,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: common/com/SCCS/s.config.cxx $ $Revision: 1.63 $";
+static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #define __STDC_LIMIT_MACROS
@@ -253,12 +257,12 @@ BOOL LANG_Formal_Deref_Unsafe = FALSE;
  * otherwise not needed */
 BOOL LANG_Copy_Inout = FALSE;
 BOOL LANG_Copy_Inout_Set = FALSE;
+UINT32 LANG_Copy_Inout_Level = 1;
 /* Enable save/restore of FPU state in prolog/epilog, per Fortran 2003 */
 BOOL LANG_IEEE_Save = TRUE;
 BOOL LANG_IEEE_Save_Set = FALSE;
 BOOL LANG_Ignore_Target_Attribute = FALSE;
 BOOL LANG_Ignore_Target_Attribute_Set = FALSE;
-UINT32 LANG_Copy_Inout_Level = 1;
 // LANG_Math_Errno is FALSE if -fno-math-errno
 // -LANG:math_errno=off => do not set errno
 BOOL LANG_Math_Errno = TRUE; // set errno after calling math functions

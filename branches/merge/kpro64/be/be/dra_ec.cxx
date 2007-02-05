@@ -87,7 +87,12 @@ static OPCODE Ldid_Opcode [MTYPE_LAST + 1] = {
   OPC_U8U8LDID,   /* MTYPE_U8 */
   OPC_F4F4LDID,   /* MTYPE_F4 */
   OPC_F8F8LDID,   /* MTYPE_F8 */
+#ifdef TARG_IA64
   OPC_F10F10LDID, /* MTYPE_F10 */
+#endif
+#ifdef TARG_X8664
+  OPC_UNKNOWN,    /* MTYPE_F10 */
+#endif
   OPC_UNKNOWN,    /* MTYPE_F16 */
   OPC_UNKNOWN,    /* MTYPE_STR */
   OPC_FQFQLDID,   /* MTYPE_FQ */
@@ -99,7 +104,9 @@ static OPCODE Ldid_Opcode [MTYPE_LAST + 1] = {
   OPC_UNKNOWN,    /* MTYPE_BS */
   OPC_UNKNOWN,    /* MTYPE_A4 */
   OPC_UNKNOWN,    /* MTYPE_A8 */
+#ifdef TARG_IA64
   OPC_C10C10LDID, /* MTYPE_C10 */
+#endif
 };
 
 

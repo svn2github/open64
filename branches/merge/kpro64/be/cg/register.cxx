@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -114,6 +118,9 @@ CLASS_REG_PAIR      CLASS_REG_PAIR_ec;
 CLASS_REG_PAIR      CLASS_REG_PAIR_true;
 CLASS_REG_PAIR      CLASS_REG_PAIR_fzero;
 CLASS_REG_PAIR      CLASS_REG_PAIR_fone;
+#ifdef TARG_X8664
+CLASS_REG_PAIR      CLASS_REG_PAIR_f0;
+#endif
 
 const CLASS_REG_PAIR CLASS_REG_PAIR_undef =
   {CREATE_CLASS_N_REG(ISA_REGISTER_CLASS_UNDEFINED,REGISTER_UNDEFINED)};
@@ -229,6 +236,9 @@ Initialize_Register_Class(
   REGISTER_SET       shrink_wrap    = REGISTER_SET_EMPTY_SET;
   REGISTER_SET	     stacked        = REGISTER_SET_EMPTY_SET;
   REGISTER_SET	     rotating       = REGISTER_SET_EMPTY_SET;
+#ifdef TARG_X8664
+  REGISTER_SET	     eight_bit_regs = REGISTER_SET_EMPTY_SET;
+#endif
 
   /* Verify we have a valid rclass and that the type used to implement 
    * a register set is large enough.
@@ -266,7 +276,8 @@ Initialize_Register_Class(
       default:
 	Is_True(FALSE, ("unhandled allocations status: %d", alloc_status));
     }
-    
+
+#ifdef TARG_IA64    
     // "(rclass==ISA_REGISTER_CLASS_branch && reg==1)" means the branch register <b0>.
     //This is to set the register <b0> to be non-allocatable during Register allocation.
     //The reason is : enable <b0> to be allocatable will leads to change content of <b0>,
@@ -282,12 +293,15 @@ Initialize_Register_Class(
     
     if (rclass==ISA_REGISTER_CLASS_branch && reg==1)
     	is_allocatable = FALSE;
-
+#endif
 
     if ( is_allocatable ) {
       allocatable = REGISTER_SET_Union1(allocatable,reg);
-
+#ifdef TARG_X8664
+      if( FALSE ){
+#else
       if ( ABI_PROPERTY_Is_global_ptr(rclass, isa_reg) ) {
+#endif
         if ( GP_Is_Preserved ) {
           /* neither caller nor callee saved (always preserved). */
         } else if ( Is_Caller_Save_GP ) {
@@ -309,13 +323,30 @@ Initialize_Register_Class(
           func_argument = REGISTER_SET_Union1(func_argument, reg);
         if ( ABI_PROPERTY_Is_func_val(rclass, isa_reg) )
           func_value = REGISTER_SET_Union1(func_value, reg);
+#if defined(TARG_MIPS) || defined(TARG_IA64)
         if ( ABI_PROPERTY_Is_ret_addr(rclass, isa_reg) )
           shrink_wrap = REGISTER_SET_Union1(shrink_wrap, reg);
+#endif
+#if !defined(TARG_MIPS) && !defined(TARG_X8664)
         if ( ABI_PROPERTY_Is_stacked(rclass, isa_reg) )
           stacked = REGISTER_SET_Union1(stacked, reg);
+#endif
+#ifdef TARG_X8664
+	if( ABI_PROPERTY_Is_eight_bit_reg(rclass, isa_reg) ){
+	  eight_bit_regs = REGISTER_SET_Union1( eight_bit_regs, reg );
+	}
+#endif
       }
     }
 
+#ifdef TARG_X8664
+    // Any better way to get rid of this itch?
+    if (bit_size == 64 &&
+	Is_Target_32bit() &&
+	rclass != ISA_REGISTER_CLASS_float) {	// Bug 9109
+      bit_size = 32;
+    }
+#endif
     REGISTER_bit_size(rclass, reg) = bit_size;
     REGISTER_machine_id(rclass, reg) = isa_reg;
     REGISTER_allocatable(rclass, reg) = is_allocatable;
@@ -329,6 +360,7 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_static_link, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_static_link, rclass);
     }
+#if defined(TARG_MIPS) || defined(TARG_IA64)
     else if ( ABI_PROPERTY_Is_global_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_gp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_gp, rclass);
@@ -337,10 +369,12 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_ra, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_ra, rclass);
     }
+#endif
     else if ( ABI_PROPERTY_Is_stack_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_sp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_sp, rclass);
     }
+#if defined(TARG_MIPS) || defined(TARG_IA64)
     else if ( ABI_PROPERTY_Is_entry_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_ep, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_ep, rclass);
@@ -349,6 +383,8 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_zero, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_zero, rclass);
     }
+#endif
+#ifdef TARG_IA64
     else if ( ABI_PROPERTY_Is_prev_funcstate(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_pfs, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_pfs, rclass);
@@ -373,6 +409,7 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_fone, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_fone, rclass);
     }
+#endif
   }
 
   REGISTER_CLASS_universe(rclass)          =
@@ -390,6 +427,9 @@ Initialize_Register_Class(
 	= ISA_REGISTER_CLASS_INFO_Can_Store(icinfo);
   REGISTER_CLASS_multiple_save(rclass)
 	= ISA_REGISTER_CLASS_INFO_Multiple_Save(icinfo);
+#ifdef TARG_X8664
+  REGISTER_CLASS_eight_bit_regs(rclass)    = eight_bit_regs;
+#endif
 
   /* There are multiple integer return regs -- v0 is the lowest
    * of the set.
@@ -398,6 +438,12 @@ Initialize_Register_Class(
     Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_v0, REGISTER_SET_Choose(func_value));
     Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_v0, rclass);
   }
+#ifdef TARG_X8664
+  if ( rclass == ISA_REGISTER_CLASS_float ) {
+    Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_f0, REGISTER_SET_Choose(func_value));
+    Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_f0, rclass);
+  }
+#endif
 
 }
 
@@ -493,6 +539,10 @@ REGISTER_Pu_Begin(void)
 {
   ISA_REGISTER_CLASS rclass;
 
+#ifdef TARG_X8664
+  const TN* ebx_tn = Ebx_TN();
+#endif
+
   /* Scan all the registers to find if the initial allocation status
    * will be different from the current state. The initial status
    * is all registers are set to their "default".
@@ -510,6 +560,18 @@ REGISTER_Pu_Begin(void)
 	re_init = TRUE;
       }
     }
+
+#ifdef TARG_X8664
+    /* Set register %ebx as un-allocatable under -m32 -fpic. %ebx will
+       be used to hold the address pointing to the global offset table.
+    */
+    if( Is_Target_32bit() &&
+	Gen_PIC_Shared    &&
+	rclass == TN_register_class(ebx_tn) ){
+      reg_alloc_status[rclass][TN_register(ebx_tn)] = AS_not_allocatable;
+      re_init = TRUE;
+    }
+#endif
 
     if ( re_init ) Initialize_Register_Class(rclass);
 
@@ -543,7 +605,12 @@ extern void
 REGISTER_Reset_FP (void)
 {
   ISA_REGISTER_CLASS rclass;
-  if (FRAME_POINTER_REQUIRED_FOR_PU && FP_TN != NULL) {
+#ifndef TARG_X8664
+  if (FRAME_POINTER_REQUIRED_FOR_PU && FP_TN != NULL) 
+#else
+  if (Current_PU_Stack_Model != SMODEL_SMALL || Opt_Level == 0)
+#endif
+  {
 	rclass = TN_register_class(FP_TN);
 	reg_alloc_status[rclass][TN_register(FP_TN)] = AS_not_allocatable;
 	Initialize_Register_Class(rclass);

@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: config_platform.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/config_platform.h,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  11-May-96 - Original Version
@@ -69,7 +69,7 @@
 #define config_platform_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *config_platform_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/config_platform.h,v $ $Revision: 1.1.1.1 $";
+static char *config_platform_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifdef __cplusplus

@@ -40,7 +40,7 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Source: common/com/SCCS/s.config_ipa.cxx $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_ipa.cxx,v $
  *
  * Revision history:
  *  11-Apr-96 - Original Version, extracted from ipa_option.c.

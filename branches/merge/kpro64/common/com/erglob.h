@@ -1,5 +1,9 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -71,7 +75,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/erglob.h,v $ $Revision: 1.1.1.1 $";
+static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1.15 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "errors.h"	/* Always needed */
@@ -169,6 +173,7 @@ static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define EC_Inv_Opt_Val	EC_Undef_Code+65	/* str */
 #ifdef KEY
 #define EC_No_Opt_Val   EC_Undef_Code+66	/* str, str */
+#define EC_No_Apo_Early_Mp   EC_Undef_Code+67	/* none */
 #endif // KEY
 
 /* Control processing: */
@@ -415,6 +420,9 @@ static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define EC_Asm_Delete	EC_BASE_FILE+53		/* str, err */
 #define EC_Asm_Close	EC_BASE_FILE+54		/* str, err */
 #define EC_No_Asm	    EC_BASE_FILE+55		/* str */
+#ifdef KEY
+#define EC_Asm_Write	    EC_BASE_FILE+56	/* str */
+#endif
 
 #define EC_X_Exists	EC_BASE_FILE+60		/* str */
 #define EC_X_Open	EC_BASE_FILE+61		/* str, err */

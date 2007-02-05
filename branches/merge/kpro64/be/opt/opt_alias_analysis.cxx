@@ -298,10 +298,12 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
       } else if (alias0.Expr_kind() == EXPR_IS_ADDR) {
 	if (alias1.Expr_kind() == EXPR_IS_INT) {
 	  ai->Copy_fully(alias0);
+
 	  if ((alias0.Ofst_kind() == OFST_IS_FIXED || 
-	       alias0.Iofst_kind() == OFST_IS_FIXED) && alias1.Int_is_constant()) 
+	       alias0.Iofst_kind() == OFST_IS_FIXED) && alias1.Int_is_constant()) {
 	    ai->Shift_ofst( alias1.Int_const_val());
-	  else
+          } 
+	  else 
 #ifdef KEY
 	  if (!ai->Is_field()) {
 #endif
@@ -316,9 +318,10 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
 	if (alias1.Expr_kind() == EXPR_IS_ADDR) {
 	  ai->Copy_fully(alias1);
 	  if ((alias1.Ofst_kind() == OFST_IS_FIXED ||
-	       alias1.Iofst_kind() == OFST_IS_FIXED) && alias0.Int_is_constant()) 
+	       alias1.Iofst_kind() == OFST_IS_FIXED) && alias0.Int_is_constant()) {
 	    ai->Shift_ofst( alias0.Int_const_val());
-	  else
+	  }
+	  else 
 #ifdef KEY
 	  if (!ai->Is_field()) {
 #endif
@@ -2133,7 +2136,7 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   Is_True(opc != OPC_BLOCK, ("Wn is a OPR_BLOCK."));
 
   AUX_ID vp_idx;
-  OCC_TAB_ENTRY *occ = NULL;
+  OCC_TAB_ENTRY *occ;
 
   switch ( opr ) {
   case OPR_LDBITS:
@@ -2159,17 +2162,36 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_ILOAD:
   case OPR_ILDBITS:
   case OPR_MLOAD:
-    vp_idx = Identify_vsym(wn);
-    occ = Enter_occ_tab(wn, vp_idx);
-    Analyze_Base_Flow_Free(occ->Points_to(), wn);
-    vp_idx = Adjust_vsym(vp_idx, occ);
-    if (occ->Points_to()->Pointer () != NULL) {
-      // TODO: We need adjust the offset and access size for MTYPE_BS. 
-      //   give up for the time being.
-      if (WN_desc (wn) != MTYPE_BS) {
-        occ->Points_to()->Set_byte_size (WN_object_size(wn));
-      } else {
-        occ->Points_to()->Invalidate_ptr_info ();
+#ifdef KEY
+    if (WOPT_Enable_New_Vsym_Allocation) {
+      POINTS_TO pt;
+      pt.Init();
+      pt.Set_base_kind(BASE_IS_UNKNOWN);
+      pt.Set_ofst_kind(OFST_IS_INVALID);
+      Analyze_Base_Flow_Free(&pt, wn);
+      // Transfer alias class information
+      IDTYPE alias_class = Alias_classification()->Alias_class(wn);
+      pt.Set_alias_class(alias_class);
+
+      IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
+      pt.Set_ip_alias_class(ip_alias_class);
+      vp_idx = Allocate_vsym(wn, &pt);
+      occ = Enter_occ_tab(wn , vp_idx, &pt);
+    } else
+#endif
+    {
+      vp_idx = Identify_vsym(wn);
+      occ = Enter_occ_tab(wn, vp_idx);
+      Analyze_Base_Flow_Free(occ->Points_to(), wn);
+      vp_idx = Adjust_vsym(vp_idx, occ);
+      if (occ->Points_to()->Pointer () != NULL) {
+	// TODO: We need adjust the offset and access size for MTYPE_BS.
+	//   give up for the time being.
+	if (WN_desc (wn) != MTYPE_BS) {
+	  occ->Points_to()->Set_byte_size (WN_object_size(wn));
+	} else {
+	  occ->Points_to()->Invalidate_ptr_info ();
+	}
       }
     }
     break;
@@ -2177,20 +2199,38 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_ISTORE:
   case OPR_ISTBITS:
   case OPR_MSTORE:
-    vp_idx = Identify_vsym(wn);
-    occ = Enter_occ_tab(wn, vp_idx);
-    Analyze_Base_Flow_Free(occ->Points_to(), wn);
-    vp_idx = Adjust_vsym(vp_idx, occ);
-    if (occ->Points_to()->Pointer () != NULL) {
-      // TODO: We need adjust the offset and access size for MTYPE_BS. 
-      //   give up for the time being.
-      if (WN_desc (wn) != MTYPE_BS) {
-        occ->Points_to()->Set_byte_size (WN_object_size(wn));
-      } else {
-        occ->Points_to()->Invalidate_ptr_info ();
+#ifdef KEY
+    if (WOPT_Enable_New_Vsym_Allocation) {
+      POINTS_TO pt;
+      pt.Init();
+      pt.Set_base_kind(BASE_IS_UNKNOWN);
+      pt.Set_ofst_kind(OFST_IS_INVALID);
+      Analyze_Base_Flow_Free(&pt, wn);
+      // Transfer alias class information
+      IDTYPE alias_class = Alias_classification()->Alias_class(wn);
+      pt.Set_alias_class(alias_class);
+
+      IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
+      pt.Set_ip_alias_class(ip_alias_class);
+      vp_idx = Allocate_vsym(wn, &pt);
+      occ = Enter_occ_tab(wn , vp_idx, &pt);
+    } else
+#endif
+    {
+      vp_idx = Identify_vsym(wn);
+      occ = Enter_occ_tab(wn, vp_idx);
+      Analyze_Base_Flow_Free(occ->Points_to(), wn);
+      vp_idx = Adjust_vsym(vp_idx, occ);
+      if (occ->Points_to()->Pointer () != NULL) {
+        // TODO: We need adjust the offset and access size for MTYPE_BS. 
+        //   give up for the time being.
+        if (WN_desc (wn) != MTYPE_BS) {
+          occ->Points_to()->Set_byte_size (WN_object_size(wn));
+        } else {
+          occ->Points_to()->Invalidate_ptr_info ();
+        }
       }
     }
-
     break;
     
   case OPR_ICALL:
@@ -2208,23 +2248,52 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
 
   case OPR_PARM:
     if ( WN_Parm_By_Reference(wn) ) {
-      vp_idx = Identify_vsym(wn);
-      occ = Enter_occ_tab(wn, vp_idx); // treat OPR_PARM as ILOAD
-      Is_True(WN_kid0(wn) != NULL, ("bad OPR_PARM node."));
-      occ->Points_to()->Analyze_Parameter_Base(WN_kid0(wn), *this);
-      Update_From_Restricted_Map(wn, occ->Points_to());
-      // Hack to get around the fact that Analyze_Parameter_Base
-      // (usually) reinitializes the POINTS_TO...
-      Is_True(occ->Points_to()->Alias_class() == OPTIMISTIC_AC_ID ||
-	      occ->Points_to()->Alias_class() == Alias_classification()->Alias_class(wn) ||
-	      (occ->Points_to()->Alias_class() == PESSIMISTIC_AC_ID &&
-	       WOPT_Alias_Class_Limit != UINT32_MAX),
-	      ("Allocate_mu_chi_and_virtual_var: Alias class %ld for PARM "
-	       "not consistent (%ld).",
-	       occ->Points_to()->Alias_class(),
-	       Alias_classification()->Alias_class(wn)));
-      occ->Points_to()->Set_alias_class(Alias_classification()->Alias_class(wn));
-      vp_idx = Adjust_vsym(vp_idx, occ);
+#ifdef KEY
+      if (WOPT_Enable_New_Vsym_Allocation) {
+        POINTS_TO pt;
+        pt.Init();
+        pt.Set_base_kind(BASE_IS_UNKNOWN);
+        pt.Set_ofst_kind(OFST_IS_INVALID);
+
+#if 0   // This is "HACK" from Enter_occ_tab, so we disable it until
+	// we know why it is required.
+        if (WN_operator(wn) == OPR_PARM && aux_id == _default_vsym)
+	        occ->Points_to()->Set_expr_kind(EXPR_IS_ANY);
+#endif
+        pt.Analyze_Parameter_Base(WN_kid0(wn), *this);
+        Update_From_Restricted_Map(wn, &pt);
+        Is_True(pt.Alias_class() == OPTIMISTIC_AC_ID ||
+	        pt.Alias_class() == Alias_classification()->Alias_class(wn) ||
+	        (pt.Alias_class() == PESSIMISTIC_AC_ID &&
+	         WOPT_Alias_Class_Limit != UINT32_MAX),
+	          ("Allocate_mu_chi_and_virtual_var: Alias class %ld for PARM "
+	         "not consistent (%ld).",
+	         pt.Alias_class(),
+	         Alias_classification()->Alias_class(wn)));
+        pt.Set_alias_class(Alias_classification()->Alias_class(wn));
+        vp_idx = Allocate_vsym(wn, &pt);
+        occ = Enter_occ_tab(wn , vp_idx, &pt);
+      } else
+#endif
+      {
+        vp_idx = Identify_vsym(wn);
+        occ = Enter_occ_tab(wn, vp_idx); // treat OPR_PARM as ILOAD
+        Is_True(WN_kid0(wn) != NULL, ("bad OPR_PARM node."));
+        occ->Points_to()->Analyze_Parameter_Base(WN_kid0(wn), *this);
+        Update_From_Restricted_Map(wn, occ->Points_to());
+        // Hack to get around the fact that Analyze_Parameter_Base
+        // (usually) reinitializes the POINTS_TO...
+        Is_True(occ->Points_to()->Alias_class() == OPTIMISTIC_AC_ID ||
+	        occ->Points_to()->Alias_class() == Alias_classification()->Alias_class(wn) ||
+	        (occ->Points_to()->Alias_class() == PESSIMISTIC_AC_ID &&
+	         WOPT_Alias_Class_Limit != UINT32_MAX),
+	        ("Allocate_mu_chi_and_virtual_var: Alias class %ld for PARM "
+	         "not consistent (%ld).",
+	         occ->Points_to()->Alias_class(),
+	         Alias_classification()->Alias_class(wn)));
+        occ->Points_to()->Set_alias_class(Alias_classification()->Alias_class(wn));
+        vp_idx = Adjust_vsym(vp_idx, occ);
+      }
     } else {
       Is_True( WN_Parm_By_Value(wn),
 	("OPT_STAB::Allocate_mu_chi_and_virtual_var: not by value") );
@@ -2262,12 +2331,6 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
     break;
   }
 
-  if ((OPCODE_is_load(opc) || OPCODE_is_store(opc)) && occ) {
-    ALIAS_CLASSIFICATION* ac = Alias_classification();
-    if (!ac->Writable_by_call (ac->Alias_class(wn))) 
-      occ->Points_to()->Set_not_writable_by_callee (); 
-  }
-
   // Traverse the children of wn
   if ( opc == OPC_COMPGOTO ) {
     // only first kid is important, others are control-flow stuff
@@ -2279,7 +2342,6 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
       Allocate_mu_chi_and_virtual_var(WN_kid(wn,i),bb);
   }
 }
-
 
 // ======================================================================
 //
@@ -3652,9 +3714,6 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 
       BOOL is_unique_pt = occ->Points_to()->Unique_pt();
       BOOL is_restricted = occ->Points_to()->Restricted();
-      BOOL not_writable_by_callee = occ->Points_to()->Not_writable_by_callee ();
-      BOOL not_readable_by_callee = occ->Points_to()->Not_readable_by_callee ();
-
       ST *based_sym = occ->Points_to()->Based_sym();
 
       Analyze_Base_Flow_Sensitive(occ->Points_to(), wn);
@@ -3671,12 +3730,6 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 	occ->Points_to()->Set_restricted();
 	occ->Points_to()->Set_based_sym(based_sym);
       }
-
-      if (not_writable_by_callee)
-        occ->Points_to()->Set_not_writable_by_callee ();
-
-      if (not_readable_by_callee)
-        occ->Points_to()->Set_not_readable_by_callee ();
 
       if (WOPT_Enable_Update_Vsym)
 	Update_iload_vsym(occ);
@@ -4059,4 +4112,5 @@ void Print_points_to(FILE *fp, POINTS_TO *ptmp)
   else
     fprintf(fp,"<NULL>\n");
 }
+
 

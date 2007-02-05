@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -185,7 +185,7 @@
 #define opcode_INCLUDED "opcode.h"
 
 #ifdef _KEEP_RCS_ID
-static char *opcode_rcs_id = opcode_INCLUDED "$Revision: 1.1.1.1 $";
+static char *opcode_rcs_id = opcode_INCLUDED "$Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

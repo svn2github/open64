@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,6 +58,7 @@
  * ====================================================================
  * ====================================================================
  */
+
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
@@ -107,6 +116,13 @@
 #include "be_util.h"
 #include "config_asm.h"
 
+#ifdef TARG_X8664
+#include "cgexp_internals.h"
+#endif
+#ifdef KEY
+#include "cxx_template.h" // for STACK
+#endif
+
 #ifdef EMULATE_LONGLONG
 extern void Add_TN_Pair (TN*, TN*);
 extern TN *If_Get_TN_Pair(TN*);
@@ -129,17 +145,24 @@ static void region_stack_push(RID *value);
 static void region_stack_eh_set_has_call(void);
 static VARIANT WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert);
 
+#ifdef KEY
+// Expose the vars to the target-specific expand routines.
+#define WHIRL2OPS_STATIC
+#else
+#define WHIRL2OPS_STATIC static
+#endif
+
 /* The cgexp routines now take as input an OPS to which the
  * expanded OPs are added.
  */
-static OPS New_OPs;
+WHIRL2OPS_STATIC OPS New_OPs;
 
-static OP *Last_Processed_OP;
-static SRCPOS current_srcpos;
-static INT total_bb_insts;
+WHIRL2OPS_STATIC OP *Last_Processed_OP;
+WHIRL2OPS_STATIC SRCPOS current_srcpos;
+WHIRL2OPS_STATIC INT total_bb_insts;
 
 /* The current basic block being generated. */
-static BB *Cur_BB;
+WHIRL2OPS_STATIC BB *Cur_BB;
 
 static RID **region_stack_base;
 static RID **region_stack_ptr;
@@ -164,7 +187,7 @@ static WN_MAP WN_to_OP_map;
 
 OP_MAP OP_Asm_Map;
 
-
+#ifdef TARG_IA64
 inline BOOL 
 WN_Is_Bool_Operator(WN* expr) 
 {
@@ -449,6 +472,7 @@ Handle_Bool_As_Predicate(WN*condition, WN*parent, BOOL invert)
     WN_set_rtype(condition, MTYPE_B);
     return (invert) ? predicate_result1 : predicate_result0;
 }
+#endif
 
 TN *
 Get_Complement_TN(TN *tn)
@@ -473,6 +497,12 @@ void Copy_WN_For_Memory_OP(OP *dest, OP *src)
     OP_MAP_Set(OP_to_WN_map, dest, wn);
   if (predicate)
     OP_MAP64_Set(predicate_map, dest, predicate);
+#ifdef TARG_X8664
+  if( Is_Target_32bit() &&
+      OP_memory_hi( src ) ){
+    Set_OP_memory_hi( dest );
+  }
+#endif
 }
 
 
@@ -573,18 +603,33 @@ static void region_stack_eh_set_has_call(void)
 {
   RID ** p;
   for (p = region_stack_ptr - 1; p >= region_stack_base; --p)
+#ifndef TARG_IA64
+    if (RID_TYPE_eh(*p) && RID_eh_range_ptr(*p))
+#else
     if (RID_TYPE_eh(*p))
+#endif
       EH_Set_Has_Call(RID_eh_range_ptr(*p));
 }
   
 
 
+#ifdef TARG_X8664
+static BOOL WN_pragma_preamble_end_seen = FALSE;
+
+BOOL W2OPS_Pragma_Preamble_End_Seen ()
+{
+   return WN_pragma_preamble_end_seen;
+}
+#endif
 /* Process the new OPs that have been created since the last call to 
  * this routine. We set their srcpos field and increment the count
  * of number of OPs in the BB. We check if any of the new OPs have
  * a reference to GP and remember the fact.
  */
-static void
+#ifndef KEY
+static
+#endif
+void
 Process_New_OPs (void)
 {
   OP *op;
@@ -598,6 +643,12 @@ Process_New_OPs (void)
     }
     OP_srcpos(op) = current_srcpos;
     total_bb_insts++;
+#ifdef TARG_X8664
+    if (WN_pragma_preamble_end_seen) {
+      Set_OP_first_after_preamble_end(op);
+      WN_pragma_preamble_end_seen = FALSE;
+    }
+#endif
   }
   Last_Processed_OP = OPS_last(&New_OPs);
 }
@@ -857,6 +908,13 @@ Allocate_Result_TN (WN *wn, TN **opnd_tn)
   else return Build_TN_Of_Mtype (WN_rtype(wn));
 
 #else 
+#ifdef TARG_X8664 
+  if (Is_Target_64bit() && WN_operator(wn) == OPR_INTRINSIC_OP &&
+      ((INTRINSIC) WN_intrinsic(wn)) == INTRN_CTZ)
+    // bug 11315: use PARM's rtype because bsfq's result needs to be 64-bit reg
+    return Build_TN_Of_Mtype (WN_rtype(WN_kid0(wn)));
+  else
+#endif
   return Build_TN_Of_Mtype (WN_rtype(wn));
 #endif
 }
@@ -874,7 +932,13 @@ Set_OP_To_WN_Map(WN *wn)
 
   op = Last_Mem_OP ? OP_next(Last_Mem_OP) : OPS_first(&New_OPs);
   for ( ; op != NULL; op = OP_next(op)) {
-    if ( (!OP_memory(op) || OP_no_alias(op)) && !OP_call(op) 
+    if ( (!OP_memory(op) 
+#ifndef CG_PATHSCALE_MERGE // GRA's homing rely on WN node to determine if an op is a home
+	    // location load/store; since no_alias variables are also homeable,
+	    // need to remove !no_alias as condition to create the WN mapping
+			 || OP_no_alias(op)
+#endif
+					) && !OP_call(op) 
 	&& !CGTARG_Is_OP_Barrier(op) && OP_code(op) != TOP_spadjust) 
 	continue;
     if (OP_memory(op) && WN_Is_Volatile_Mem(wn)) Set_OP_volatile(op);
@@ -929,11 +993,34 @@ Preg_Is_Rematerializable(PREG_NUM preg, BOOL *gra_homeable)
 	return NULL;
   opc = WN_opcode(home);
 
+#ifdef TARG_X8664
+  /* GRA does not understand -m32, and gra will reload a double
+     type data from memory, yet only assign one register to this value.
+
+     TODO: do we need to spend effort on gra? Not much work that gra can
+           do with poor supply of available registers under -m32.
+  */
+  if( OP_NEED_PAIR( OPCODE_rtype(opc) ) ){
+    return NULL;
+  }
+
+  if( mcmodel >= MEDIUM ){
+    return NULL;
+  }
+#endif
+
   /* allow homing on symbols with simple addressing */
   if (WN_operator(home) == OPR_LDID) {
     ST *sym = WN_st(home);
     ST *basesym = Base_Symbol(sym);
     TYPE_ID rtype = OPCODE_rtype(opc);
+
+#ifdef CG_PATHSCALE_MERGE
+    if (ST_sclass(sym) == SCLASS_FORMAL_REF)
+      return NULL; // the dereferenced value has no home location
+    if (ST_is_uplevelTemp(sym))
+      return NULL; // homing to the uplevel stack location is expensive
+#endif
 
     /* can't handle quad's without lowerer support.  defer for now.
      * shouldn't see complex as they're expanded when the optimizer
@@ -959,10 +1046,16 @@ Preg_Is_Rematerializable(PREG_NUM preg, BOOL *gra_homeable)
      */
     if (GRA_home == TRUE && !Disallowed_Homeable(sym) &&
 	ST_class(sym) == CLASS_VAR) {
+#if !defined(TARG_X8664) && !defined(TARG_IA32) // skip test of GPREL for CISC's
       if (ST_gprel(basesym) ||
 	  (ST_is_split_common(basesym) && ST_gprel(ST_full(basesym)))
-	  || ST_on_stack(sym)) {
-	*gra_homeable = TRUE;
+	  || ST_on_stack(sym)) 
+#endif
+      {
+#ifdef CG_PATHSCALE_MERGE
+	if( gra_homeable != NULL )
+#endif
+	  *gra_homeable = TRUE;
 	return home;
       }
     }
@@ -1007,6 +1100,12 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
 	   preg_num, Get_Preg_Num(PREG_Table_Size(CURRENT_SYMTAB))));
 
   tn = PREG_To_TN_Array[preg_num];
+#ifdef CG_PATHSCALE_MERGE
+  // Bug 5159 - ASM preg_num are negative and should not use PREG_To_TN_Array
+  // and PREG_To_TN_Mtype arrays.
+  if (preg_num < 0)
+    tn = NULL;
+#endif
   if (tn == NULL)
   {
     ISA_REGISTER_CLASS rclass;
@@ -1045,6 +1144,18 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
 #endif
       	tn = Build_Dedicated_TN(rclass, reg, ST_size(preg_st));
 
+#ifdef TARG_X8664
+	if( reg == First_Int_Preg_Return_Offset &&
+	    Is_Target_32bit() ){
+	  if( !CGTARG_Preg_Register_And_Class(Last_Int_Preg_Return_Offset,
+					      &rclass, &reg) ){
+	    FmtAssert( FALSE, ("NYI") );
+	  }
+	  TN* pair = Build_Dedicated_TN( rclass, reg, ST_size(preg_st) );
+	  Create_TN_Pair( tn, pair );
+	}
+#endif
+
 #ifdef EMULATE_LONGLONG
         // only on IA-32
         if (reg == First_Int_Preg_Return_Offset) {
@@ -1071,6 +1182,14 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
     {
       /* create a TN for this PREG. */
       TYPE_ID mtype = TY_mtype(ST_type(preg_st));
+#ifdef TARG_X8664
+      /* bug#512
+	 MTYPE_C4 is returned in one SSE register. (check wn_lower.cxx)
+      */
+      if( mtype == MTYPE_C4 ){
+	mtype = MTYPE_F8;
+      }
+#endif
 
 #ifdef EMULATE_LONGLONG
       if (mtype == MTYPE_I8 || mtype == MTYPE_U8) {
@@ -1081,7 +1200,15 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
         tn = Build_TN_Of_Mtype (mtype);
       }
 #else
-      tn = Build_TN_Of_Mtype (mtype);
+#ifdef TARG_X8664
+      if( OP_NEED_PAIR(mtype) ){
+        mtype = (mtype == MTYPE_I8 ? MTYPE_I4 : MTYPE_U4);
+        tn = Build_TN_Of_Mtype(mtype);
+        Create_TN_Pair( tn, mtype );
+
+      } else
+#endif // TARG_X8664
+	tn = Build_TN_Of_Mtype (mtype);
 #endif
 
       if (CGSPILL_Rematerialize_Constants)
@@ -1130,8 +1257,17 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
           fprintf(TFile, "\n");
         }
     }
+#ifndef CG_PATHSCALE_MERGE
     PREG_To_TN_Array[preg_num] = tn;
     PREG_To_TN_Mtype[preg_num] = TY_mtype(ST_type(preg_st));
+#else
+    // Bug 5159 - ASM preg_num are negative and should not use PREG_To_TN_Array
+    // and PREG_To_TN_Mtype arrays.
+    if (preg_num >= 0) {
+      PREG_To_TN_Array[preg_num] = tn;
+      PREG_To_TN_Mtype[preg_num] = TY_mtype(ST_type(preg_st));
+    }
+#endif
   }
   if ( TN_is_dedicated( tn ) ) {
     dedicated_seen = TRUE;
@@ -1143,6 +1279,20 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
                                TN_register(tn),
                                ST_size(preg_st));
     }
+#ifdef CG_PATHSCALE_MERGE
+    // Do the same for integer class; we have separate set of dedicated TNs
+    // of size 4 bytes
+    if (!TN_is_float(tn) &&
+	TN_size(tn) != ST_size(preg_st)
+#ifdef TARG_X8664
+	&& Is_Target_64bit()
+#endif // TARG_X8664
+       ) {
+      tn = Build_Dedicated_TN (TN_register_class(tn),
+                               TN_register(tn),
+                               ST_size(preg_st));
+    }
+#endif
   }
 
   return tn;
@@ -1162,7 +1312,7 @@ TN_To_Assigned_PREG (TN *tn)
   if (TN_is_float(tn)) {
     i += Float_Preg_Min_Offset;
   }
-#ifdef TARG_IA32
+#if defined(TARG_IA32) || defined(TARG_X8664)
   // There's no ZERO register: eax has machine_id 0, but preg_id 1
   else {
     i += Int_Preg_Min_Offset;
@@ -1334,6 +1484,7 @@ Has_Immediate_Operand (WN *parent, WN *expr)
   case OPR_SHL:
   case OPR_LSHR:
   case OPR_ASHR:
+  case OPR_RROTATE:
   case OPR_BAND:
   case OPR_BIOR:
   case OPR_BXOR:
@@ -1370,6 +1521,15 @@ Handle_Call_Site (WN *call, OPERATOR call_opr)
 
   /* Note the presence of a call in the current PU and bb. */
   PU_Has_Calls = TRUE;
+
+#ifdef TARG_X8664
+  if( Is_Target_32bit() &&
+      Gen_PIC_Shared    &&
+      call_st != NULL   &&
+      !ST_is_export_local(call_st) ){
+    PU_References_GOT = TRUE;
+  }
+#endif
 
   /* Generate the call instruction */
   if (call_opr == OPR_CALL) {
@@ -1410,12 +1570,17 @@ Handle_Call_Site (WN *call, OPERATOR call_opr)
 
   // if caller-save-gp and not defined in own dso, then restore gp.
   // if call_st == null, then indirect call, and assume external.
+#ifdef TARG_IA64
   if (Is_Caller_Save_GP && !Constant_GP &&
       // begin - fix for OSP_211
 	  //         put the ST_is_weak_symbol condition under the guard of 
 	  //         call_st == NULL, or else it will segmentation fault.
       (call_st == NULL || ST_export(call_st) == EXPORT_PREEMPTIBLE || ST_is_weak_symbol(call_st)) )
 	  // end   -
+#else
+    if (Is_Caller_Save_GP && !Constant_GP
+        && (call_st == NULL || ST_export(call_st) == EXPORT_PREEMPTIBLE))
+#endif
   {
 	// restore old gp
 	// assume that okay to restore gp before return val of call
@@ -1441,9 +1606,11 @@ static VARIANT Memop_Variant(WN *memop)
   VARIANT variant = V_NONE;
   INT     required_alignment = MTYPE_RegisterSize(WN_desc(memop));
 
+#ifndef CG_PATHSCALE_MERGE
   /* If volatile, set the flag.
    */
   if (WN_Is_Volatile_Mem(memop)) Set_V_volatile(variant);
+#endif
 
   /* Determine the alignment related variants. We have to check both 
    * ty alignment and the offset alignment.
@@ -1464,6 +1631,12 @@ static VARIANT Memop_Variant(WN *memop)
        */
       offset = WN_load_offset(memop);
       ty_align = ST_alignment(WN_st(memop));
+#ifdef CG_PATHSCALE_MERGE // bug 8198: in absence of pointed-to type's alignment, need this
+      if (offset) {
+	INT offset_align = offset % required_alignment;
+	if (offset_align) ty_align = MIN(ty_align, offset_align);
+      }
+#endif
       break;
     case OPR_ILOAD:
     case OPR_ILDBITS:
@@ -1489,6 +1662,7 @@ static VARIANT Memop_Variant(WN *memop)
     }
 
     align = ty_align;
+#ifdef TARG_IA64
     if (offset) {
 	int ofs_mod = offset % required_alignment;
 	if (ofs_mod) {
@@ -1496,9 +1670,14 @@ static VARIANT Memop_Variant(WN *memop)
 	    align = MIN(ty_align, 1U << ofs_align);
 	}
     }
+#endif
 
     if (align < required_alignment) {
+#ifdef TARG_IA64
       Set_V_alignment(variant, ffs(align) - 1);
+#else
+      Set_V_alignment(variant, align);
+#endif
      /*
       *	TODO
       *	When we have ST information we may be able to compute an
@@ -1530,6 +1709,12 @@ static VARIANT Memop_Variant(WN *memop)
   }
   if (pf_wn) Set_V_pf_flags(variant, WN_prefetch_flag(pf_wn));
 
+#ifdef CG_PATHSCALE_MERGE
+  /* If volatile, set the flag.
+   */
+  if (variant)
+    if (WN_Is_Volatile_Mem(memop)) Set_V_volatile(variant);
+#endif
   return variant;
 }
 
@@ -1615,8 +1800,15 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
         }
       }
 #else
-      Exp_COPY (result, ldid_result, &New_OPs);
-#endif
+#ifdef TARG_X8664
+      if( OP_NEED_PAIR( ST_mtype(WN_st(ldid) ) ) ){
+	Expand_Copy( result, ldid_result, ST_mtype(WN_st(ldid)), &New_OPs );
+	
+      } else
+#endif // TARG_X8664
+	Exp_COPY (result, ldid_result, &New_OPs);
+
+#endif // EMULATE_LONGLONG
     }
   } 
   else
@@ -1797,7 +1989,12 @@ Handle_DIVPART(WN *expr, WN *parent, TN *result)
     return pregTN;
   }
 
+#ifdef TARG_X8664
+  Exp_COPY (result, pregTN, &New_OPs, TRUE);
+#else
   Exp_COPY (result, pregTN, &New_OPs);
+#endif
+
   return result;
 }
 
@@ -1819,7 +2016,12 @@ Handle_REMPART(WN *expr, WN *parent, TN *result)
     return pregTN;
   }
 
+#ifdef TARG_X8664
+  Exp_COPY (result, pregTN, &New_OPs, TRUE);
+#else
   Exp_COPY (result, pregTN, &New_OPs);
+#endif
+
   return result;
 }
 
@@ -1858,6 +2060,12 @@ Handle_MINPART(WN *expr, WN *parent, TN *result)
     return pregTN;
   }
 
+#ifdef TARG_X8664
+      if( OP_NEED_PAIR( ST_mtype(WN_st(kid) ) ) ){
+	Expand_Copy( result, pregTN, ST_mtype(WN_st(kid)), &New_OPs );
+	
+      } else
+#endif // TARG_X8664
   Exp_COPY (result, pregTN, &New_OPs);
   return result;
 }
@@ -1880,6 +2088,12 @@ Handle_MAXPART(WN *expr, WN *parent, TN *result)
     return pregTN;
   }
 
+#ifdef TARG_X8664
+      if( OP_NEED_PAIR( ST_mtype(WN_st(kid) ) ) ){
+	Expand_Copy( result, pregTN, ST_mtype(WN_st(kid)), &New_OPs );
+	
+      } else
+#endif // TARG_X8664
   Exp_COPY (result, pregTN, &New_OPs);
   return result;
 }
@@ -2022,7 +2236,9 @@ Handle_STID (WN *stid, OPCODE opcode)
 
       result = PREG_To_TN (WN_st(stid), WN_store_offset(stid));
 
-#ifdef TARG_IA32
+
+
+#if defined(TARG_IA32)
       if (TN_is_dedicated(result)) {
         // is a return value; create another TN
         TN *tmp = Build_TN_Like(result);
@@ -2032,6 +2248,7 @@ Handle_STID (WN *stid, OPCODE opcode)
         if (tmp1 = If_Get_TN_Pair(result)) {
           Add_TN_Pair(tmp, tmp2 = Build_TN_Like(tmp1));
         }
+
         Expand_Expr (kid, stid, tmp);
         Exp_COPY (result, tmp, &New_OPs);
         if (tmp1)
@@ -2040,9 +2257,40 @@ Handle_STID (WN *stid, OPCODE opcode)
       else {
         Expand_Expr (kid, stid, result);
       }
-#else
-      Expand_Expr (kid, stid, result);
+#else 
+#ifdef TARG_X8664 // bug 11088
+        if(OPCODE_is_compare(WN_opcode(kid)) && 
+                  MTYPE_is_vector(WN_desc(kid))){
+        
+        TN *op1 = Expand_Expr (WN_kid0(kid), kid, NULL);
+        TN *op2 = Expand_Expr (WN_kid1(kid), kid, NULL);
+        Exp_Stid_And_VComp(opcode, result, op1, op2, WN_opcode(kid), &New_OPs);
+        return;
+       }else
 #endif
+	 // TARG_IA64
+      //lets do something here, of course we need to handle this
+      Expand_Expr (kid, stid, result); /// I would think this is the problem
+
+#ifdef TARG_X8664
+      const TYPE_ID stid_type = OPCODE_desc(opcode);
+      const TYPE_ID kid0_type = WN_rtype(WN_kid0(stid));
+
+      if( OP_NEED_PAIR(stid_type)     &&
+	  Get_TN_Pair(result) != NULL &&
+	  MTYPE_byte_size(kid0_type) < MTYPE_byte_size(stid_type) ){
+
+	if( MTYPE_is_signed(kid0_type) ){
+	  DevWarn( "the higher 32-bit of PREG %d is set to 0",
+		   WN_store_offset(stid) );
+	}
+
+	TN* result_hi = Get_TN_Pair( result );
+	Expand_Immediate( result_hi, Gen_Literal_TN(0,4), FALSE, &New_OPs );
+      }
+#endif // TARG_X8664
+
+#endif // IA_32
       if (In_Glue_Region) {
 	if ( Trace_REGION_Interface ) {
 	    fprintf(TFile,"set op_glue on preg store in bb %d\n", BB_id(Cur_BB));
@@ -2097,7 +2345,11 @@ Handle_STBITS (WN *stbits)
   TN *field_tn;
   TN *bits_tn = Allocate_Result_TN (kid, NULL);
   const TYPE_ID desc = Mtype_TransferSign(MTYPE_U4, WN_desc(stbits));
-  const TYPE_ID rtype = Mtype_TransferSize(WN_rtype(kid), desc);
+  TYPE_ID rtype = Mtype_TransferSize(WN_rtype(kid), desc);
+#ifdef CG_PATHSCALE_MERGE // bug 7418
+  if (MTYPE_bit_size(rtype) < MTYPE_bit_size(desc))
+    rtype = desc;
+#endif
 
   Expand_Expr (kid, stbits, bits_tn);
 
@@ -2276,14 +2528,30 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
   if (result == NULL) result = Allocate_Result_TN (select, NULL);
 
   variant = WHIRL_Compare_To_OP_variant (WN_opcode(compare), FALSE);
+#ifndef CG_PATHSCALE_MERGE
   if (Check_Select_Expansion (WN_opcode(compare)) || (variant == V_BR_NONE)) {
+#else
+  if (Check_Select_Expansion (WN_opcode(compare)) || 
+      (variant == V_BR_NONE && !MTYPE_is_vector(WN_desc(compare)))) {
+#endif
 	Is_True(   WN_desc(select) != MTYPE_B
 		|| (   WN_operator_is(compare, OPR_LDID) 
 		    && WN_class(compare) == CLASS_PREG),
 		("MTYPE_B SELECT condition must be preg or relop"));
     	cond = Expand_Expr (compare, select, NULL);
 	Exp_OP3 (opcode, result, cond, trueop, falseop, &New_OPs);
+  }
+#ifdef TARG_X8664 //bug 11088
+  else if (WN_operator_is(compare, OPR_LDID) && 
+                          WN_class(compare) == CLASS_PREG){
+        Is_True(variant == V_BR_NONE && MTYPE_is_vector(WN_desc(compare)),
+                ("Hanle_Select: ldid as condition must be a vector here!"));
+        
+        cond = Expand_Expr (compare, select, NULL);
+        Exp_Select_And_VLdid(opcode, result, trueop, falseop, WN_opcode(compare),
+                             cond,&New_OPs);
   } 
+#endif
   else {
     	op1 = Expand_Expr (WN_kid0(compare), compare, NULL);
     	op2 = Expand_Expr (WN_kid1(compare), compare, NULL);
@@ -2294,6 +2562,65 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
 
   return result;
 }
+
+#ifdef TARG_X8664
+/*
+**	Handle the SHUFFLE operator.
+**
+*/
+static TN * 
+Handle_SHUFFLE (WN *shuffle, TN *result)
+{
+  TN	*op1;
+  VARIANT variant;
+
+  op1 = Expand_Expr (WN_kid0(shuffle), shuffle, NULL);
+
+  if (result == NULL) result = Allocate_Result_TN (shuffle, NULL);
+
+  variant = WN_offset(shuffle);
+  Expand_Shuffle(WN_opcode(shuffle), result, op1, variant, &New_OPs);
+
+  return result;
+}
+
+// Handle RROTATE, if it is actually a left-rotate, then generate the
+// corresponding x86 instruction.
+static TN *
+Handle_RROTATE (WN *rotate, TN *result)
+{
+  if (result == NULL) result = Allocate_Result_TN (rotate, NULL);
+
+  WN * obj = WN_kid0 (rotate);
+  WN * rotate_amount = WN_kid1 (rotate);
+
+  // Detect a rotate-left
+  if (WN_operator (rotate_amount) == OPR_SUB)
+  {
+    WN * kid0 = WN_kid0 (rotate_amount);
+    WN * kid1 = WN_kid1 (rotate_amount);
+
+    // I >> (sizeof_inbits(I) - N) <==> I << N
+    if (WN_operator (kid0) == OPR_INTCONST &&
+        WN_const_val (kid0) == MTYPE_bit_size (WN_rtype (obj)))
+    {
+      TN * op1 = Expand_Expr (obj, rotate, NULL);
+      TN * op2 = Expand_Expr (kid1, rotate_amount, NULL);
+      Expand_Left_Rotate (result, op1, op2, WN_rtype (rotate),
+                          WN_desc (rotate), &New_OPs);
+
+      return result;
+    }
+  }
+  // rotate-right
+  TN * op1 = Expand_Expr (WN_kid0(rotate), rotate, NULL);
+  TN * op2 = Expand_Expr (WN_kid1(rotate), rotate, NULL);
+
+  Exp_OP2 (WN_opcode (rotate), result, op1, op2, &New_OPs);
+
+  return result;
+}
+#endif
 
 /*
 **	Try to change logical operations into binary operations
@@ -2389,6 +2716,19 @@ Is_CVT_Noop(WN *cvt, WN *parent)
 	// normally this is removed before cg, but sometimes not
 	return TRUE;
   }
+
+#ifdef TARG_X8664
+  {
+    // Bug 3082: Ignore cvt between mmx integer types. This may not be
+    // correct, we may need to explicitly handle some of these CVTs.
+    TYPE_ID desc = WN_desc (cvt);
+    TYPE_ID rtype = WN_rtype (cvt);
+    if (MTYPE_is_mmx_vector (desc) && MTYPE_is_integral (desc) &&
+        MTYPE_is_mmx_vector (rtype) && MTYPE_is_integral (rtype))
+      return TRUE;
+  }
+#endif
+
   if (Enable_CVT_Opt)
   {
     switch(WN_opcode(cvt))
@@ -2418,7 +2758,11 @@ Is_CVT_Noop(WN *cvt, WN *parent)
       */
       if ( ! Split_64_Bit_Int_Ops && ! Only_Unsigned_64_Bit_Ops)
       {
+#ifdef TARG_X8664
+	return FALSE;
+#else
 	return TRUE;
+#endif
       }
       break;
 
@@ -2428,7 +2772,11 @@ Is_CVT_Noop(WN *cvt, WN *parent)
       /*
       *  if we can determine the upper bit:31 is zero, the cast is a nop
       */
-      if (U4ExprHasUpperBitZero(WN_kid0(cvt)))
+      if (U4ExprHasUpperBitZero(WN_kid0(cvt))
+#ifdef TARG_X8664
+          && !Is_Target_32bit() // bug 6134
+#endif // TARG_X8664
+         )
       {
 	return TRUE;
       }
@@ -2520,16 +2868,32 @@ Is_CVTL_Opcode (OPCODE opc)
 static TN* 
 Handle_ALLOCA (WN *tree, TN *result)
 {
+#ifdef TARG_IA64
   TN *tsize = Expand_Expr (WN_kid0(tree), tree, NULL);
   // align the size
   if (TN_has_value(tsize)) {
-  	INT64 size; 
-	size = TN_value(tsize);
-	size += Stack_Alignment() - 1;
-	size &= -Stack_Alignment();
-	tsize = Gen_Literal_TN (size, Pointer_Size);
+    INT64 size;
+    size = TN_value(tsize);
+    size += Stack_Alignment() - 1;
+    size &= -Stack_Alignment();
+    tsize = Gen_Literal_TN (size, Pointer_Size);
   }
   else if ( ! TN_is_zero_reg (tsize)) {
+#else
+  BOOL is_const = WN_operator(WN_kid0(tree)) == OPR_INTCONST;
+  BOOL is_zero = is_const && WN_const_val(WN_kid0(tree)) == 0;
+  TN *tsize = NULL;
+  if (!is_zero) {
+    if (is_const) {
+      // align the size
+      INT64 size = WN_const_val(WN_kid0(tree));
+      size += Stack_Alignment() - 1;
+      size &= -Stack_Alignment();
+      tsize = Gen_Literal_TN (size, Pointer_Size);
+    }
+    else {
+        tsize  = Expand_Expr (WN_kid0(tree), tree, NULL);
+#endif
 	TN *tmp1 = Build_TN_Like ( tsize );
 	TN *tmp2 = Build_TN_Like ( tsize );
 	Exp_ADD (Pointer_Mtype, tmp1, tsize, 
@@ -2540,21 +2904,37 @@ Handle_ALLOCA (WN *tree, TN *result)
 		Gen_Literal_TN (-Stack_Alignment(), Pointer_Size), 
 		&New_OPs);
 	tsize = tmp2;
+#ifndef TARG_IA64
+    }
+#endif
   }
 
   INT64 offset;
   INT stack_adjustment = Stack_Offset_Adjustment_For_PU();
+#ifdef TARG_IA64
   if ( ! TN_is_zero(tsize)) {
+#else
+  if (!is_zero) {
+#endif
 	Exp_Spadjust (SP_TN, tsize, V_SPADJUST_MINUS, &New_OPs);
 
+#ifdef TARG_X8664
+	/* Make the stack pointer be 16-byte aligned after alloca even under -m32.
+	   ( Is it a requirement ??? bug#2599)
+	 */
+	if( Is_Target_32bit() ){
+	  Exp_BAND( Pointer_Mtype,
+		    SP_TN, SP_TN, Gen_Literal_TN( -15, Pointer_Size ), &New_OPs);
+	}
+#endif
   	// return sp + arg area
 	offset = Current_PU_Actual_Size + stack_adjustment;
   }
   else {
-	// tsize == 0
 	// return original $sp + stack_adjustment
 	offset = stack_adjustment;
   }
+
   if (offset == 0) {
 	if (result == NULL)
 		result = SP_TN;
@@ -2568,6 +2948,7 @@ Handle_ALLOCA (WN *tree, TN *result)
 		Gen_Literal_TN (offset, Pointer_Size), 
 		&New_OPs);
   }
+
   return result;
 }
 
@@ -2586,6 +2967,56 @@ Handle_DEALLOCA (WN *tree)
   Set_OP_To_WN_Map (tree);
 }
 
+#ifdef TARG_X8664
+// Returns TN for any immediate operand of intrinsic 'expr'. Returns in
+// 'kidno' the kidno for the immediate operand.
+static TN*
+Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
+{
+  Is_True (WN_operator (expr) == OPR_INTRINSIC_OP,
+           ("Handle_Imm_Op: Expected INTRINSIC_OP"));
+
+  INTRINSIC id = (INTRINSIC) WN_intrinsic (expr);
+
+  switch (id)
+  {
+    case INTRN_SHUFPS:
+    case INTRN_SHUFPD:
+#ifdef Is_True_On
+      {
+        char * intrn_name = INTRN_c_name (id);
+        Is_True (WN_kid_count (expr) == 3,
+                 ("Handle_Imm_Op: Invalid # of kids of %s intrn", intrn_name));
+        Is_True (WN_operator (WN_kid0 (WN_kid2 (expr))) == OPR_INTCONST,
+           ("Handle_Imm_Op: Arg 3 of %s intrn must be immediate constant",
+            intrn_name));
+      }
+#endif
+      *kidno = 2;
+      return Gen_Literal_TN (WN_const_val (WN_kid0 (WN_kid2 (expr))), 4);
+
+    case INTRN_PSLLDQ:
+    case INTRN_PSRLDQ:
+    case INTRN_PSHUFD:
+    case INTRN_PSHUFW:
+#ifdef Is_True_On
+      {
+        char * intrn_name = INTRN_c_name (id);
+        Is_True (WN_kid_count (expr) == 2,
+                 ("Handle_Imm_Op: Invalid # of kids of %s intrn", intrn_name));
+        Is_True (WN_operator (WN_kid0 (WN_kid1 (expr))) == OPR_INTCONST,
+           ("Handle_Imm_Op: Arg 2 of %s intrn must be immediate constant",
+            intrn_name));
+      }
+#endif
+      *kidno = 1;
+      return Gen_Literal_TN (WN_const_val (WN_kid0 (WN_kid1 (expr))), 4);
+
+    default:
+      return NULL;
+  }
+}
+#endif
 
 static TN*
 Handle_INTRINSIC_OP (WN *expr, TN *result)
@@ -2594,14 +3025,60 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
   INTRN_RETKIND rkind = INTRN_return_kind(id);
   INT numkids = WN_kid_count(expr);
   TN *kid0 = Expand_Expr(WN_kid0(expr), expr, NULL);
+#ifdef TARG_X8664
+  INT imm_kidno = 0;
+  // Get any immediate operand in intrinsic.
+  TN * imm_kid = Handle_Imm_Op (expr, &imm_kidno);
+
+  TN * kid1 = NULL, * kid2 = NULL;
+
+  if (imm_kid)
+  {
+    Is_True (imm_kidno == 1 || imm_kidno == 2,
+             ("Immediate kid0 of intrinsic not supported"));
+    if (imm_kidno == 1)
+    {
+      kid1 = imm_kid;
+      if (numkids == 3)
+        kid2 = Expand_Expr(WN_kid2(expr), expr, NULL);
+    }
+    else
+    { // kid2 is immediate operand
+      Is_True (numkids == 3, ("Invalid # of kids for intrinsic"));
+      kid1 = Expand_Expr(WN_kid1(expr), expr, NULL);
+      kid2 = imm_kid;
+    }
+  }
+  else
+  {
+    kid1 = (numkids >= 2) ? Expand_Expr(WN_kid1(expr), expr, NULL) : NULL;
+
+    if (numkids == 3) {
+      kid2 = Expand_Expr(WN_kid2(expr), expr, NULL);
+    }
+  }
+  
+  FmtAssert(numkids <= 3, ("unexpected number of kids in intrinsic_op"));
+#else
   TN *kid1 = (numkids == 2) ? Expand_Expr(WN_kid1(expr), expr, NULL) : NULL;
   FmtAssert(numkids <= 2, ("unexpected number of kids in intrinsic_op"));
+#endif
 
   if (rkind != IRETURN_UNKNOWN && result == NULL) {
     result = Allocate_Result_TN(expr, NULL);
   }
 
+#ifdef CG_PATHSCALE_MERGE
+  const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
+#ifdef TARG_X8664
+  Exp_Intrinsic_Op (id, result, kid0, kid1, kid2, mtype, &New_OPs);
+#else
+  Exp_Intrinsic_Op (id, result, kid0, kid1, mtype, &New_OPs);
+#endif
+#else
   Exp_Intrinsic_Op (id, result, kid0, kid1, &New_OPs);
+#endif // KEY
+
   return result;
 }
 
@@ -2696,7 +3173,9 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 #if Is_True_On
   if (WN_rtype(expr) == MTYPE_C4 ||
       WN_rtype(expr) == MTYPE_C8 ||
+#ifdef TARG_IA64
       WN_rtype(expr) == MTYPE_C10 ||
+#endif
       WN_rtype(expr) == MTYPE_CQ) 
   {
     ErrMsg (EC_Unimplemented, "Expand_Expr: COMPLEX");
@@ -2708,7 +3187,17 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 
   top = WHIRL_To_TOP (expr);
   if (TOP_is_noop(top)
+#ifdef TARG_IA64
 	&& (opr == OPR_PAREN || opr == OPR_TAS || opr == OPR_PARM)) 
+#else
+    && (opr == OPR_PAREN ||
+#ifndef TARG_X8664
+            opr == OPR_TAS ||
+#else
+            opr == OPR_TAS && top == TOP_nop ||
+#endif
+	opr == OPR_PARM))
+#endif
   {
     /* For TAS nodes, if the new opcode is noop, we can ignore the TAS.
      * For PAREN and PARM nodes, ignore it for now.
@@ -2730,6 +3219,7 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
     Allocate_Object (WN_st(expr));
   }
 
+#ifdef TARG_IA64
   // Added for handling boolean expressions for OPR_SELECT. Previously BAND/BIOR is used
   // instead of LAND/LIOR and boolean data is interpreted as 0/1(false/true).
 if (Is_Old_Boolean_Expression(expr))
@@ -2746,7 +3236,7 @@ if (Is_Old_Boolean_Expression(expr))
 		else
 			FmtAssert(true, ("!!!Operator may handle boolean result improperly, pls check."));
 	}
-
+#endif
   /* Setup the operands */
   switch (opr) {
 
@@ -2815,6 +3305,14 @@ if (Is_Old_Boolean_Expression(expr))
   case OPR_SELECT:
     return Handle_SELECT(expr, result, opcode);
 
+#ifdef TARG_X8664
+  case OPR_SHUFFLE:
+    return Handle_SHUFFLE(expr, result);
+
+  case OPR_RROTATE:
+    return Handle_RROTATE(expr, result);
+#endif
+
   case OPR_CALL:
   case OPR_ICALL:
   case OPR_PICCALL:
@@ -2829,6 +3327,21 @@ if (Is_Old_Boolean_Expression(expr))
 	Set_TN_home (result, expr);
       }
     }
+#ifdef TARG_X8664
+    if (WN_rtype(expr) == MTYPE_V16F4 ||
+	WN_rtype(expr) == MTYPE_V16F8 ||
+	WN_rtype(expr) == MTYPE_V16C4 ||
+	WN_rtype(expr) == MTYPE_V16I1 ||
+	WN_rtype(expr) == MTYPE_V16I2 ||
+	WN_rtype(expr) == MTYPE_V16I4 ||
+	WN_rtype(expr) == MTYPE_V16I8) {
+      TCON then = ST_tcon_val(WN_st(expr));
+      TCON now  = Create_Simd_Const (WN_rtype(expr), then);
+      ST *sym = New_Const_Sym (Enter_tcon (now), Be_Type_Tbl(WN_rtype(expr)));
+      Allocate_Object(sym);
+      opnd_tn[0] = Gen_Symbol_TN (sym, 0, 0);      
+    } else       
+#endif
     opnd_tn[0] = Gen_Symbol_TN (WN_st(expr), 0, 0);
     num_opnds = 1;
     break;
@@ -2846,12 +3359,23 @@ if (Is_Old_Boolean_Expression(expr))
       const_tn = Gen_Literal_TN (WN_const_val(expr), 8);
 #endif
       break;
+#ifndef TARG_X8664
     case OPC_I4INTCONST:
     case OPC_U4INTCONST:
       /* even for U4 we sign-extend the value 
        * so it matches what we want register to look like */
       const_tn = Gen_Literal_TN ((INT32) WN_const_val(expr), 4);
       break;
+#else
+    case OPC_I4INTCONST:
+      /* Let TN_value() and WN_const_val() be consistent.
+       */
+      const_tn = Gen_Literal_TN ((INT32) WN_const_val(expr), 4);
+      break;      
+    case OPC_U4INTCONST:
+      const_tn = Gen_Literal_TN ((UINT32) WN_const_val(expr), 4);
+      break;      
+#endif /* TARG_X8664 */
     case OPC_BINTCONST:
       if (result == NULL) result = Allocate_Result_TN (expr, NULL);
       Exp_Pred_Set(result, Get_Complement_TN(result), WN_const_val(expr), &New_OPs);
@@ -2895,8 +3419,14 @@ if (Is_Old_Boolean_Expression(expr))
 
     if (CGSPILL_Rematerialize_Constants && result == NULL) {
       result = Allocate_Result_TN (expr, NULL);
-      Set_TN_is_rematerializable(result);
-      Set_TN_home (result, expr);
+#ifdef TARG_X8664
+      // Don't rematerialize a 64-bit imm value under -m32.
+      if( !OP_NEED_PAIR( WN_rtype(expr) ) )
+#endif // TARG_X8664
+	{
+	  Set_TN_is_rematerializable(result);
+	  Set_TN_home (result, expr);
+	}
     }
 
     opnd_tn[0] = const_tn;
@@ -3341,7 +3871,25 @@ static void Build_CFG(void)
 	  if ( br_op == NULL || OP_cond( br_op ) ) {
 	    if ( ! Has_External_Fallthru( bb ) ) {
  	      Link_Pred_Succ(bb, BB_next(bb));
-	    } else if ( rid ) {
+#ifdef TARG_X8664
+	      // Clean up a fake branch_wn generated by
+	      // Expand_Unsigned_Long_To_Float().
+	      if( WN_kid0(branch_wn) == NULL ){
+		BB_branch_wn(bb) = NULL;
+	      }
+#endif
+	    } 
+#ifdef CG_PATHSCALE_MERGE
+// Generally we have num_exits==0 while creating cgrin, so CGRIN_exits is
+// NULL. With exceptions disabled, PU_has_region is generally not set for
+// any PU, hence while creating the bb, we assign NULL to BB_rid. So, without
+// exceptions we have rid==0 here. With exceptions we set BB_rid, but 
+// num_exits is still 0, so we need the extra check.
+	    else if ( rid && CGRIN_exits ( RID_cginfo( rid ) ) ) 
+#else
+	    else if ( rid ) 
+#endif
+	    {
 	      label_is_external( &num, branch_wn, bb );
 	      CGRIN_exit_i( RID_cginfo( rid ), num) = bb;
 	      CGRIN_exit_label_i( RID_cginfo( rid ), num) = 0;
@@ -3454,6 +4002,9 @@ static void Build_CFG(void)
  * set the false_br flag if invert, because NaN comparisons
  * cannot be inverted.  But integer compares can be inverted.
  */
+
+ // KEY: (bug 11573) Added opcodes with U4 rtype, so that an appropriate
+ // variant is returned.
 static VARIANT
 WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
 {
@@ -3461,59 +4012,170 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   switch (opcode) {
 // >> WHIRL 0.30: replaced OPC_T1{EQ,NE,GT,GE,LT,LE} by OPC_BT1, OPC_I4T1 variants
 // TODO WHIRL 0.30: get rid of OPC_I4T1 variants
+
+  // ------------------------- OPR_EQ -------------------------
+  case OPC_U4I8EQ:
   case OPC_BI8EQ: case OPC_I4I8EQ: variant = V_BR_I8EQ; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_I8I4EQ: case OPC_U8I4EQ:
+  case OPC_U4I4EQ:
+#endif
   case OPC_BI4EQ: case OPC_I4I4EQ: variant = V_BR_I4EQ; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U8EQ:
+  case OPC_U4U8EQ:
+#endif
   case OPC_BU8EQ: case OPC_I4U8EQ: variant = V_BR_U8EQ; break;
+  case OPC_U4U4EQ:
   case OPC_BU4EQ: case OPC_I4U4EQ: variant = V_BR_U4EQ; break;
+  case OPC_U4FQEQ:
   case OPC_BFQEQ: case OPC_I4FQEQ: variant = V_BR_QEQ; break;
   case OPC_BF10EQ: case OPC_I4F10EQ: variant = V_BR_XEQ; break;
+  case OPC_U4F8EQ:
   case OPC_BF8EQ: case OPC_I4F8EQ: variant = V_BR_DEQ; break;
+  case OPC_U4F4EQ:
   case OPC_BF4EQ: case OPC_I4F4EQ: variant = V_BR_FEQ; break;
+
+  // ------------------------- OPR_NE -------------------------
+  case OPC_U4I8NE:
   case OPC_BI8NE: case OPC_I4I8NE: variant = V_BR_I8NE; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_I8I4NE: case OPC_U8I4NE:
+  case OPC_U4I4NE:
+#endif
   case OPC_BI4NE: case OPC_I4I4NE: variant = V_BR_I4NE; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U8NE:
+  case OPC_U4U8NE:
+#endif
   case OPC_BU8NE: case OPC_I4U8NE: variant = V_BR_U8NE; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U4NE:
+  case OPC_U4U4NE:
+#endif
   case OPC_BU4NE: case OPC_I4U4NE: variant = V_BR_U4NE; break;
+  case OPC_U4FQNE:
   case OPC_BFQNE: case OPC_I4FQNE: variant = V_BR_QNE; break;
   case OPC_BF10NE: case OPC_I4F10NE: variant = V_BR_XNE; break;
+  case OPC_U4F8NE:
   case OPC_BF8NE: case OPC_I4F8NE: variant = V_BR_DNE; break;
+  case OPC_U4F4NE:
   case OPC_BF4NE: case OPC_I4F4NE: variant = V_BR_FNE; break;
+
+  // ------------------------- OPR_GT -------------------------
+  case OPC_U4I8GT:
   case OPC_BI8GT: case OPC_I4I8GT: variant = V_BR_I8GT; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_I8I4GT: case OPC_U8I4GT:
+  case OPC_U4I4GT:
+#endif
   case OPC_BI4GT: case OPC_I4I4GT: variant = V_BR_I4GT; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U8GT:
+  case OPC_U4U8GT:
+#endif
   case OPC_BU8GT: case OPC_I4U8GT: variant = V_BR_U8GT; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U4GT:
+  case OPC_U4U4GT:
+#endif
   case OPC_BU4GT: case OPC_I4U4GT: variant = V_BR_U4GT; break;
+  case OPC_U4FQGT:
   case OPC_BFQGT: case OPC_I4FQGT: variant = V_BR_QGT; break;
   case OPC_BF10GT: case OPC_I4F10GT: variant = V_BR_XGT; break;
+  case OPC_U4F8GT:
   case OPC_BF8GT: case OPC_I4F8GT: variant = V_BR_DGT; break;
+  case OPC_U4F4GT:
   case OPC_BF4GT: case OPC_I4F4GT: variant = V_BR_FGT; break;
+
+  // ------------------------- OPR_GE -------------------------
+  case OPC_U4I8GE:
   case OPC_BI8GE: case OPC_I4I8GE: variant = V_BR_I8GE; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_I8I4GE: case OPC_U8I4GE:
+  case OPC_U4I4GE:
+#endif
   case OPC_BI4GE: case OPC_I4I4GE: variant = V_BR_I4GE; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U8GE:
+  case OPC_U4U8GE:
+#endif
   case OPC_BU8GE: case OPC_I4U8GE: variant = V_BR_U8GE; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U4GE:
+  case OPC_U4U4GE:
+#endif
   case OPC_BU4GE: case OPC_I4U4GE: variant = V_BR_U4GE; break;
+  case OPC_U4FQGE:
   case OPC_BFQGE: case OPC_I4FQGE: variant = V_BR_QGE; break;
   case OPC_BF10GE: case OPC_I4F10GE: variant = V_BR_XGE; break;
+  case OPC_U4F8GE:
   case OPC_BF8GE: case OPC_I4F8GE: variant = V_BR_DGE; break;
+  case OPC_U4F4GE:
   case OPC_BF4GE: case OPC_I4F4GE: variant = V_BR_FGE; break;
+
+  // ------------------------- OPR_LT -------------------------
+  case OPC_U4I8LT:
   case OPC_BI8LT: case OPC_I4I8LT: variant = V_BR_I8LT; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_I8I4LT: case OPC_U8I4LT:
+  case OPC_U4I4LT:
+#endif
   case OPC_BI4LT: case OPC_I4I4LT: variant = V_BR_I4LT; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U8LT:
+  case OPC_U4U8LT:
+#endif
   case OPC_BU8LT: case OPC_I4U8LT: variant = V_BR_U8LT; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U4LT:
+  case OPC_U4U4LT:
+#endif
   case OPC_BU4LT: case OPC_I4U4LT: variant = V_BR_U4LT; break;
+  case OPC_U4FQLT:
   case OPC_BFQLT: case OPC_I4FQLT: variant = V_BR_QLT; break;
   case OPC_BF10LT: case OPC_I4F10LT: variant = V_BR_XLT; break;
+  case OPC_U4F8LT:
   case OPC_BF8LT: case OPC_I4F8LT: variant = V_BR_DLT; break;
+  case OPC_U4F4LT:
   case OPC_BF4LT: case OPC_I4F4LT: variant = V_BR_FLT; break;
+
+  // ------------------------- OPR_LE -------------------------
+  case OPC_U4I8LE:
   case OPC_BI8LE: case OPC_I4I8LE: variant = V_BR_I8LE; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_I8I4LE: case OPC_U8I4LE:
+  case OPC_U4I4LE:
+#endif
   case OPC_BI4LE: case OPC_I4I4LE: variant = V_BR_I4LE; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U8LE:
+  case OPC_U4U8LE:
+#endif
   case OPC_BU8LE: case OPC_I4U8LE: variant = V_BR_U8LE; break;
+#ifdef CG_PATHSCALE_MERGE
+  case OPC_U8U4LE:
+  case OPC_U4U4LE:
+#endif
   case OPC_BU4LE: case OPC_I4U4LE: variant = V_BR_U4LE; break;
+  case OPC_U4FQLE:
   case OPC_BFQLE: case OPC_I4FQLE: variant = V_BR_QLE; break;
   case OPC_BF10LE: case OPC_I4F10LE: variant = V_BR_XLE; break;
+  case OPC_U4F8LE:
   case OPC_BF8LE: case OPC_I4F8LE: variant = V_BR_DLE; break;
+  case OPC_U4F4LE:
   case OPC_BF4LE: case OPC_I4F4LE: variant = V_BR_FLE; break;
+
   case OPC_BBNE: variant = V_BR_PNE; break;
   case OPC_BBEQ: variant = V_BR_PEQ; break;
 // << WHIRL 0.30: replaced OPC_T1{EQ,NE,GT,GE,LT,LE} by OPC_BT1, OPC_I4T1 variants
   }
   if (invert) variant = Negate_BR_Variant(variant);
+
+#ifdef Is_True_On
+  if (variant == V_BR_NONE && OPERATOR_is_compare(OPCODE_operator(opcode)))
+    DevWarn ("KEY: Unknown branch variant found for %s!", OPCODE_name(opcode));
+#endif
   return variant;
 }
 
@@ -3541,6 +4203,7 @@ Handle_CONDBR (WN *branch)
     operand1 = NULL;
   }
   else {
+#ifdef TARG_IA64
     /* 
     Ideally MTYPE_B should be used for the return result type of the 
     condition operator. However, it is used for other purposes already.
@@ -3577,6 +4240,39 @@ Handle_CONDBR (WN *branch)
       }
     }
   }
+#else // TARG_IA64
+  operand0 = Expand_Expr (condition, branch, NULL);
+  if (WN_rtype(condition) == MTYPE_B) {
+    Is_True(   WN_operator_is(condition, OPR_LDID) 
+	       && WN_class(condition) == CLASS_PREG,
+	       ("MTYPE_B TRUEBR/FALSEBR condition must be preg or relop"));
+    operand1 = NULL;
+    variant = V_BR_P_TRUE;
+    if (invert) {
+      PREG_NUM preg2_num = WN_load_offset(condition) + 1;
+      operand0 = PREG_To_TN_Array[preg2_num];
+    }
+  } else {
+#if !defined(TARG_IA32) && !defined(TARG_X8664)
+    operand1 = Zero_TN;
+    variant = (invert) ? V_BR_I8EQ : V_BR_I8NE;
+#else
+    if (TN_size(operand0) == 8 ||// 64-bit operands under m64, bug 9701
+	// 64-bit operands under m32, bug 9700.
+	OP_NEED_PAIR(OPCODE_rtype(WN_opcode(condition)))) {
+      operand1 = Gen_Literal_TN (0, 8);
+      variant = (invert) ? V_BR_I8EQ : V_BR_I8NE;
+    } else if (TN_size(operand0) == 1 ||
+	       TN_size(operand0) == 4) {
+      operand1 = Gen_Literal_TN (0, 4);
+      variant = (invert) ? V_BR_I4EQ : V_BR_I4NE;
+    } else {
+      Is_True(FALSE, ("Handle_CONDBR: unexpected size"));
+    }
+#endif
+  }
+}
+#endif // TARG_IA64
   target_tn = Gen_Label_TN (Get_WN_Label (branch), 0);
   Exp_OP3v (WN_opcode(branch), NULL, target_tn, operand0, operand1, 
 	variant, &New_OPs);
@@ -3672,14 +4368,16 @@ static void Handle_Entry (WN *entry)
         PU&    pu = New_PU (pu_idx);
         PU_Init (pu, ty, CURRENT_SYMTAB);
         entry_st = New_ST (GLOBAL_SYMTAB);
-	
-	// handlers from different PU might have the same name
-	// if we don't identify which PU this handler belongs to.
-	char buf[20];
-	sprintf (buf, "Handler.%d", Current_PU_Count());
-        ST_Init (entry_st, Save_Str2i (buf, ".", Get_WN_Label(entry)),
+
+	char *name = (char *) alloca (strlen("Handler")+1+8+1);
+	sprintf (name, "Handler.%d", Current_PU_Count());
+        ST_Init (entry_st, Save_Str2i (name, ".", Get_WN_Label(entry)),
                  CLASS_FUNC, SCLASS_TEXT, EXPORT_LOCAL, (TY_IDX) pu_idx);
-	Allocate_Object(entry_st);
+#ifndef TARG_IA64
+	PU_Has_Exc_Handler = TRUE;
+#endif
+        Allocate_Object(entry_st);
+
   }
   else {
     	entry_st = WN_st(entry);
@@ -3734,6 +4432,10 @@ Find_Asm_Out_Parameter_Load (const WN* stmt, PREG_NUM preg_num, ST** ded_st)
 {
   WN* ret_load = NULL;
   for(; stmt != NULL; stmt = WN_next(stmt)) {
+#ifdef CG_PATHSCALE_MERGE // bug 5733: need to stop searching at the next ASM statement
+    if (WN_operator(stmt) == OPR_ASM_STMT)
+      return NULL;
+#endif
     if (OPERATOR_is_store(WN_operator(stmt))) {
       WN* load = WN_kid0(stmt);
       OPERATOR opr = WN_operator(load);
@@ -3763,6 +4465,22 @@ Find_Asm_Out_Parameter_Load (const WN* stmt, PREG_NUM preg_num, ST** ded_st)
   return ret_load;
 }
 
+#ifdef CG_PATHSCALE_MERGE
+TYPE_ID
+Find_Preg_Type ( ST_IDX st_idx )
+{
+  char *str = &Str_Table[ ST_name_idx (St_Table[st_idx]) ];
+  if (strcmp(str, ".preg_U1") == 0 || strcmp(str, ".preg_I1") == 0)
+    return MTYPE_I1;
+  if (strcmp(str, ".preg_U2") == 0 || strcmp(str, ".preg_I2") == 0)
+    return MTYPE_I2;
+  if (strcmp(str, ".preg_U4") == 0 || strcmp(str, ".preg_I4") == 0)
+    return MTYPE_I4;
+  if (strcmp(str, ".preg_U8")  == 0 || strcmp(str, ".preg_I8") == 0)
+    return MTYPE_I8;
+  return MTYPE_I4;
+}
+#endif
 // This function handles ASM statements using the newly built support
 // for OPs with variable numbers of results and operands. Unlike
 // Handle_Asm, which allocates registers for ASM operands very early,
@@ -3780,11 +4498,11 @@ Handle_ASM (const WN* asm_wn)
 {
   // 'result' and 'opnd' below have a fixed size as well as
   // the arrays in ASM_OP_ANNOT. Define here so we can sanity check.
-  enum { MAX_OPNDS = 10, MAX_RESULTS = 10 };
+  enum { MAX_OPNDS = ASM_OP_size, MAX_RESULTS = ASM_OP_size };
 
   // these two arrays may have to be reallocatable
-  TN* result[10];
-  TN* opnd[10]; 
+  TN* result[MAX_RESULTS];
+  TN* opnd[MAX_OPNDS]; 
   INT num_results = 0;
   INT num_opnds = 0;
 
@@ -3823,6 +4541,31 @@ Handle_ASM (const WN* asm_wn)
       WN* idname = WN_kid0(clobber_pragma);
       Is_True(WN_operator(idname) == OPR_IDNAME,
               ("Wrong kid operator for ASM clobber PREG"));
+#ifndef CG_PATHSCALE_MERGE
+      // bug 4583: keep track of asm clobbered callee-saved registers, we
+      // will generate save/restore of these later.
+      {
+	PREG_NUM preg = WN_offset (idname);
+	ISA_REGISTER_CLASS rclass;
+	REGISTER reg;
+	CGTARG_Preg_Register_And_Class(preg, &rclass, &reg);
+	if (ABI_PROPERTY_Is_callee(rclass, preg-REGISTER_MIN))
+	{
+	  SAVE_REG_LOC sr;
+	  extern STACK<SAVE_REG_LOC> Saved_Callee_Saved_Regs;
+	  sr.ded_tn = Build_Dedicated_TN(rclass, reg, 0);
+	  DevAssert(sr.ded_tn, 
+	            ("Missing dedicated TN for callee-saved register %s",
+		     REGISTER_name(rclass, reg)));
+	  if (Is_Unique_Callee_Saved_Reg (sr.ded_tn))
+	  {
+	    sr.temp = CGSPILL_Get_TN_Spill_Location (sr.ded_tn, CGSPILL_LCL);
+	    sr.user_allocated = TRUE;
+	    Saved_Callee_Saved_Regs.Push(sr);
+          }
+	}
+      }
+#endif // KEY
       TN* tn = PREG_To_TN(WN_st(idname), WN_offset(idname));
       FmtAssert(tn && TN_is_register(tn) && TN_is_dedicated(tn),
                 ("Wrong TN for PREG from ASM clobber list"));
@@ -3844,7 +4587,7 @@ Handle_ASM (const WN* asm_wn)
        out_pragma = WN_next(out_pragma)) {
 
     FmtAssert(num_results < MAX_RESULTS,
-	      ("too may asm results in Handle_ASM"));
+	      ("too many asm results in Handle_ASM"));
 
     FmtAssert(WN_pragma(out_pragma) == WN_PRAGMA_ASM_CONSTRAINT,
               ("not an asm_constraint pragma"));
@@ -3853,6 +4596,9 @@ Handle_ASM (const WN* asm_wn)
     PREG_NUM preg = WN_pragma_asm_copyout_preg(out_pragma);
     ST* pref_st = NULL;
     WN* load = Find_Asm_Out_Parameter_Load(WN_next(asm_wn), preg, &pref_st);
+#ifdef CG_PATHSCALE_MERGE
+    TYPE_ID default_type = Find_Preg_Type(WN_st_idx(out_pragma));
+#endif
     TN* pref_tn = NULL;
     if (pref_st) {
       pref_tn = PREG_To_TN(MTYPE_To_PREG(ST_mtype(pref_st)),
@@ -3860,7 +4606,12 @@ Handle_ASM (const WN* asm_wn)
     }
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
+#ifndef CG_PATHSCALE_MERGE
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
+#else
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 
+				       default_type);
+#endif
 
     ASM_OP_result_constraint(asm_info)[num_results] = constraint;
     ASM_OP_result_subclass(asm_info)[num_results] = subclass;
@@ -3869,7 +4620,11 @@ Handle_ASM (const WN* asm_wn)
     ASM_OP_result_clobber(asm_info)[num_results] = 
       (strchr(constraint, '&') != NULL);
     ASM_OP_result_memory(asm_info)[num_results] = 
+#ifndef TARG_X8664
       (strchr(constraint, 'm') != NULL);
+#else
+    (strchr(constraint, 'm') != NULL || strchr(constraint, 'g') != NULL);
+#endif
     
     result[num_results] = tn;
     num_results++;
@@ -3914,22 +4669,61 @@ Handle_ASM (const WN* asm_wn)
     }
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
+#ifndef CG_PATHSCALE_MERGE
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
+#else
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 
+				       MTYPE_I4);
+#endif
 
     ASM_OP_opnd_constraint(asm_info)[num_opnds] = constraint;
     ASM_OP_opnd_subclass(asm_info)[num_opnds] = subclass;
     ASM_OP_opnd_position(asm_info)[num_opnds] = WN_asm_opnd_num(asm_input);
     ASM_OP_opnd_memory(asm_info)[num_opnds] = 
+#ifndef TARG_X8664
       (strchr(constraint, 'm') != NULL);
+#else
+      (strchr(constraint, 'm') != NULL || strchr(constraint, 'g') != NULL);
+#endif
 
-    opnd[num_opnds] = tn;
-    num_opnds++;
-    
     // we should create a TN even if it's an immediate
     // constraints on immediates are target-specific
     if (TN_is_register(tn)) {
-      Expand_Expr (load, NULL, tn);
+#ifdef TARG_X8664
+      if( ( TN_register_class(tn) == ISA_REGISTER_CLASS_x87 ) &&
+	  ( WN_rtype(load) != MTYPE_FQ ) ){
+	const TYPE_ID rtype = WN_rtype(load);
+	extern void Expand_Float_To_Float( TN*, TN*, TYPE_ID, TYPE_ID, OPS* );
+	FmtAssert( MTYPE_is_float(rtype), ("NYI") );
+	TN* tmp_tn = Gen_Typed_Register_TN( rtype, MTYPE_byte_size(rtype) );
+
+	Expand_Expr( load, NULL, tmp_tn );
+	Expand_Float_To_Float( tn, tmp_tn, MTYPE_FQ, rtype, &New_OPs );
+      } else
+#endif // TARG_X8664
+	Expand_Expr (load, NULL, tn);
     }
+
+#ifdef TARG_X8664
+    /* To save some registers, we need some special handling for
+       the "m" constraint.
+    */
+    /* Bug 5575 - do this only when -fPIC is not used. 
+       CGTARG_Process_Asm_m_constraint (added to address bug 3111) is not 
+       designed to work when -fPIC is used. 
+    */
+    if( ASM_OP_opnd_memory(asm_info)[num_opnds] && !Gen_PIC_Shared ){
+      TN* new_opnd_tn =
+	CGTARG_Process_Asm_m_constraint( load,
+					 &ASM_OP_opnd_offset(asm_info)[num_opnds],
+					 &New_OPs );
+      if( new_opnd_tn != NULL )
+	tn = new_opnd_tn;
+    }
+#endif // TARG_X8664
+
+    opnd[num_opnds] = tn;    
+    num_opnds++;
   }
 
   // now create ASM op
@@ -3939,6 +4733,13 @@ Handle_ASM (const WN* asm_wn)
   }
   OPS_Append_Op(&New_OPs, asm_op);
   OP_MAP_Set(OP_Asm_Map, asm_op, asm_info);
+
+#ifdef CG_PATHSCALE_MERGE
+  BB_Add_Annotation( Cur_BB, ANNOT_ASMINFO, asm_info );
+
+  /* Terminate the basic block */
+  Start_New_Basic_Block ();
+#endif
 }
 
 
@@ -4140,13 +4941,17 @@ static void Expand_Statement (WN *stmt)
       else
 	BB_Add_Annotation(Cur_BB, ANNOT_PRAGMA, stmt);
     }
+#ifdef TARG_X8664 
+    if (WN_pragma(stmt) == WN_PRAGMA_PREAMBLE_END)
+      WN_pragma_preamble_end_seen = TRUE;
+#endif
     break;
   case OPC_COMMENT:
     COMMENT_Add(Cur_BB, WN_GetComment(stmt));
     break;
   case OPC_EVAL:
     /* For now, just evaluate the kid0. */
-#ifdef TARG_IA32
+#if defined(TARG_IA32) || defined(TARG_X8664)
     if (WN_has_side_effects(WN_kid0(stmt)))
 #endif
     Expand_Expr (WN_kid0(stmt), NULL, NULL);
@@ -4181,6 +4986,91 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   WN *next_stmt = WN_next(intrncall);
   INTRINSIC id = (INTRINSIC) WN_intrinsic (intrncall);
 
+#ifdef TARG_X8664
+  switch( id ){
+  case INTRN_SAVE_XMMS:
+    {
+      Exp_Savexmms_Intrinsic(intrncall, 
+			     Expand_Expr(WN_kid0(intrncall), intrncall, NULL), 
+			     &label, &New_OPs);
+      BB *bb = Start_New_Basic_Block();
+      BB_Add_Annotation (bb, ANNOT_LABEL, (void *)label);
+      Set_Label_BB (label,bb);
+      return next_stmt;
+    }
+    break;
+
+  case INTRN_FETCH_AND_ADD_I4:
+  case INTRN_FETCH_AND_ADD_I8:
+    {
+      Exp_Fetch_and_Add( Expand_Expr(WN_kid0(intrncall), intrncall, NULL),
+			 Expand_Expr(WN_kid1(intrncall), intrncall, NULL),
+			 WN_rtype(intrncall),
+			 &New_OPs );
+
+      return next_stmt;
+    }
+    break;
+  case INTRN_FETCH_AND_AND_I4:
+  case INTRN_FETCH_AND_AND_I8:
+    {
+      Exp_Fetch_and_And( Expand_Expr(WN_kid0(intrncall), intrncall, NULL),
+                         Expand_Expr(WN_kid1(intrncall), intrncall, NULL),
+			 WN_rtype(intrncall),
+			 &New_OPs );
+      return next_stmt;
+    }
+    break;
+  case INTRN_FETCH_AND_OR_I4:
+  case INTRN_FETCH_AND_OR_I8:
+    {
+      Exp_Fetch_and_Or( Expand_Expr(WN_kid0(intrncall), intrncall, NULL),
+                        Expand_Expr(WN_kid1(intrncall), intrncall, NULL),
+			WN_rtype(intrncall),
+			&New_OPs );
+      return next_stmt;
+    }
+    break;
+  case INTRN_FETCH_AND_XOR_I4:
+  case INTRN_FETCH_AND_XOR_I8:
+    {
+      Exp_Fetch_and_Xor( Expand_Expr(WN_kid0(intrncall), intrncall, NULL),
+                         Expand_Expr(WN_kid1(intrncall), intrncall, NULL),
+			 WN_rtype(intrncall),
+			 &New_OPs );
+      return next_stmt;
+    }
+    break;
+  case INTRN_FETCH_AND_SUB_I4:
+  case INTRN_FETCH_AND_SUB_I8:
+    {
+      Exp_Fetch_and_Sub( Expand_Expr(WN_kid0(intrncall), intrncall, NULL),
+                         Expand_Expr(WN_kid1(intrncall), intrncall, NULL),
+			 WN_rtype(intrncall),
+			 &New_OPs );
+      return next_stmt;
+    }
+    break;
+  case INTRN_COMPARE_AND_SWAP_I4:
+  case INTRN_COMPARE_AND_SWAP_I8:
+    {
+      result = Exp_Compare_and_Swap( Expand_Expr(WN_kid0(intrncall), intrncall, NULL),
+			 Expand_Expr(WN_kid1(intrncall), intrncall, NULL),
+			 Expand_Expr(WN_kid2(intrncall), intrncall, NULL),
+			 WN_rtype(WN_kid1(intrncall)),
+			 &New_OPs );
+
+//      return next_stmt;
+      goto cont;
+    }
+    break;
+  }
+#endif
+
+#ifdef CG_PATHSCALE_MERGE
+  opnd_tn[0] = opnd_tn[1] = opnd_tn[2] = NULL;
+#endif
+
   for (i = 0; i < WN_num_actuals(intrncall); i++) {
     // TODO:  currently, literals always get expanded into regs,
     // which may not be ideal for some intrinsics like fetch_and_add.
@@ -4206,6 +5096,9 @@ Handle_INTRINSIC_CALL (WN *intrncall)
 	Start_New_Basic_Block ();
   }
 
+#ifdef CG_PATHSCALE_MERGE
+  cont:
+#endif
   /* Expand the next statement and check if it has a use of $2. If any
    * use of $2 is found, replace it by the 'result' TN of the intrncall.
    */
@@ -4226,7 +5119,12 @@ Handle_INTRINSIC_CALL (WN *intrncall)
 	TN *otn = OP_opnd(op,i);
 
 	if (   TN_is_dedicated(otn)
-	    && TN_register_and_class(otn) == CLASS_AND_REG_v0
+	    && (TN_register_and_class(otn) == CLASS_AND_REG_v0
+#ifdef TARG_X8664
+	        ||
+	        TN_register_and_class(otn) == CLASS_AND_REG_f0
+#endif
+	       )
         ) {
 	  Set_OP_opnd (op, i, result);
 	}
@@ -4279,12 +5177,20 @@ convert_stmt_list_to_OPs(WN *stmt)
       if ( RID_level( rid ) < RL_CG ) { /* the region is still WHIRL */
 	region_stack_push( rid );
 
+#ifdef TARG_IA64
 	// if current PU haven't any landing pad, no need to set EH label
 #ifdef OSP_OPT
 	if (RID_TYPE_eh(rid) && !PU_Need_Not_Create_LSDA ()) {
 #else 
 	if (RID_TYPE_eh(rid)) { 
 #endif
+#else  // TARG_IA64
+#ifdef KEY
+	  if (RID_TYPE_eh(rid) && RID_eh_range_ptr(rid)) {
+#else
+	    if (RID_TYPE_eh(rid)) {
+#endif
+#endif		    
 	  EH_Set_Start_Label(RID_eh_range_ptr(rid));
         }
 
@@ -4297,14 +5203,35 @@ convert_stmt_list_to_OPs(WN *stmt)
 	if (RID_is_glue_code(rid)) {
 		In_Glue_Region = FALSE;
 	}
-
+#ifdef TARG_IA64
 	// if current PU haven't any landing pad, no need to set EH label
 #ifdef OSP_OPT
 	if (RID_TYPE_eh(rid) && !PU_Need_Not_Create_LSDA ()) {
 #else 
 	if (RID_TYPE_eh(rid)) { 
 #endif
+#else  // TARG_IA64
+#ifdef KEY
+	  if (RID_TYPE_eh(rid) && RID_eh_range_ptr(rid)) {
+#else
+	    if (RID_TYPE_eh(rid)) {
+#endif
+#endif		    
 	  EH_Set_End_Label(RID_eh_range_ptr(rid));
+#ifndef TARG_IA64
+	  /* When a region is ended, always force to create a new bb, so
+	     that the next region will not share any common bb with the
+	     current region. (bug#3140)
+	   */
+	  {
+	    BB* old_bb = Cur_BB;
+	    Start_New_Basic_Block();
+	    if( Cur_BB == old_bb ){
+	      Cur_BB = Gen_And_Append_BB( Cur_BB );
+	      BB_rid(Cur_BB) = Non_Transparent_RID(current_region);
+	    }
+	  }
+#endif
         }
 	rid = region_stack_pop();
       } else {			/* the region has been lowered to OPs */
@@ -4427,6 +5354,10 @@ Convert_WHIRL_To_OPs (WN *tree)
     break;
   }
 
+#ifdef TARG_X8664
+  // Bug 1509 - reset preamble seen at the beginning of a PU.
+  WN_pragma_preamble_end_seen = FALSE;
+#endif
   if ( stmt )
     convert_stmt_list_to_OPs( stmt );
 

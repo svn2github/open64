@@ -1,7 +1,10 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -476,8 +479,11 @@ typedef	struct bb {
   WN           *branch_wn;	/* terminating branch whirl node  */
   struct bbregs *bbregs;	/* auxiliary register info (bbregs.h) */
   struct annotation *annotations; /* annotations attached to bb   */
-  INT		bb_cycle;
-  mBB_NUM       id_before_profile;      /* old trace number before any profile process*/
+#ifdef KEY
+  struct bb     *aux;
+#endif
+  INT           bb_cycle;
+  mBB_NUM       id_before_profile;  /* old trace number before any profile process*/ 
 } BB;
 
 #ifndef	CAN_USE_BB
@@ -515,7 +521,9 @@ typedef	struct bb {
 #define BB_unrollings(b) (CAN_USE_BB(b)->unrollings+0)
 #define BB_loop_head_bb(b) (CAN_USE_BB(b)->loop_head_bb+0)
 #define BB_loophead(bb) (BB_loop_head_bb(bb) == (bb))
-
+#ifdef KEY
+#define BB_aux(b)       (CAN_USE_BB(b)->aux)
+#endif
 /* mutators */
 inline void Set_BB_unrollings(BB *bb, UINT16 u) {
   bb->unrollings = u;
@@ -551,7 +559,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_POST_LABEL          0x200000 /* BB has a post-label, i.e. a 
 					    label at the end of the BB, rather
 					    than at the beginning */
-
+#ifdef TARG_IA64
 #define BBM_RECOVERY            0x00400000 /* BB is a recovery block */
 #define BBM_CHK_SPLIT           0x00800000 /* BB splitted from another because of chk insertion */
 #define BBM_EMITTED             0x01000000 /* BB has been emitted */
@@ -561,6 +569,8 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_CHK_SPLIT_HEAD      0x10000000 /* BB splitted from another because of chk insertion */
 #define BBM_PARTIAL_BUNDLE      0x20000000 /* BB partial bundle for across boundary*/
 #define BBM_EDGE_SPLITTING      0X40000000 /* BB is used to split critical edge */
+#define BBM_CHK_SPLIT_TAIL      0x80000000 /* BB is splited tail *///bug fix for OSP_212
+#endif
 
 #define	BB_entry(x)		(BB_flag(x) & BBM_ENTRY)
 #define BB_handler(bb)		(BB_flag(bb) & BBM_HANDLER)
@@ -585,6 +595,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_predicate_promote(bb) (BB_flag(bb) & BBM_PREDICATE_PROMOTE)
 #define	BB_has_post_label(x)		(BB_flag(x) & BBM_POST_LABEL)
 
+#ifdef TARG_IA64
 #define BB_recovery(x)          (BB_flag(x) & BBM_RECOVERY)
 #define BB_chk_split(x)         (BB_flag(x) & BBM_CHK_SPLIT)
 #define BB_chk_split_head(x)    (BB_flag(x) & BBM_CHK_SPLIT_HEAD)
@@ -594,6 +605,8 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_profile_added(x)    (BB_flag(x) & BBM_PROFILE_ADDED)
 #define BB_partial_bundle(x)	(BB_flag(x) & BBM_PARTIAL_BUNDLE)
 #define BB_edge_splitting(x)    (BB_flag(x) & BBM_EDGE_SPLITTING)      
+#define BB_chk_split_tail(x)    (BB_flag(x) & BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#endif
 
 /* #endif */
 
@@ -621,6 +634,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_predicate_promote(bb) 	(BB_flag(bb) |= BBM_PREDICATE_PROMOTE)
 #define	Set_BB_has_post_label(x)	(BB_flag(x) |= BBM_POST_LABEL)
 
+#ifdef TARG_IA64
 #define Set_BB_recovery(x)          (BB_flag(x) |= BBM_RECOVERY)
 #define Set_BB_chk_split(x)         (BB_flag(x) |= BBM_CHK_SPLIT)
 #define Set_BB_chk_split_head(x)    (BB_flag(x) |= BBM_CHK_SPLIT_HEAD)
@@ -630,6 +644,9 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_profile_added(x)    (BB_flag(x) |= BBM_PROFILE_ADDED)
 #define Set_BB_partial_bundle(x)    (BB_flag(x) |= BBM_PARTIAL_BUNDLE)
 #define Set_BB_edge_splitting(x)    (BB_flag(x) |= BBM_EDGE_SPLITTING)
+#define Set_BB_chk_split_tail(x)    (BB_flag(x) |= BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#endif
+
 /* #endif */
 
 
@@ -656,6 +673,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_predicate_promote(bb) 	(BB_flag(bb) &= ~BBM_PREDICATE_PROMOTE)
 #define	Reset_BB_has_post_label(x)	(BB_flag(x) &= ~BBM_POST_LABEL)
 
+#ifdef TARG_IA64
 #define Reset_BB_recovery(x)          (BB_flag(x) &= ~BBM_RECOVERY)
 #define Reset_BB_chk_split(x)         (BB_flag(x) &= ~BBM_CHK_SPLIT)
 #define Reset_BB_chk_split_head(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_HEAD)
@@ -665,6 +683,8 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Resset_BB_profile_added(x)    (BB_flag(x) &= ~BBM_PROFILE_ADDED)
 #define Reset_BB_partial_bundle(x)    (BB_flag(x) &= ~BBM_PARTIAL_BUNDLE)
 #define Reset_BB_edge_splitting(x)    (BB_flag(x) &= ~BBM_EDGE_SPLITTING)
+#define Reset_BB_chk_split_tail(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#endif
 
 /* #endif */
 
@@ -689,7 +709,9 @@ typedef	enum {
   BBKIND_CALL,		/* Function call */
   BBKIND_REGION_EXIT,	/* Region exit */
   BBKIND_TAIL_CALL,	/* Tail call */
+#ifdef TARG_IA64
   BBKIND_CHK,       /* end with check */
+#endif
   BBKIND_LAST		/* > last legal value */
 } BBKIND;
 
@@ -733,9 +755,19 @@ typedef	struct bblist {
 
 #define BLM_PROB_FB     0x0001 /* bblist::prob based on Feedback. */
 
+#ifdef KEY
+#define BLM_ON_TREE     0x0002 /* bblist::edge on the spanning tree */
+#endif
+
 #define BBLIST_prob_fb_based(b)       (BBLIST_flags(b) & BLM_PROB_FB)
 #define Set_BBLIST_prob_fb_based(b)   (BBLIST_flags(b) |= BLM_PROB_FB)
 #define Reset_BBLIST_prob_fb_based(b) (BBLIST_flags(b) &= ~BLM_PROB_FB)
+
+#ifdef KEY
+#define BBLIST_on_tree(b)       (BBLIST_flags(b) & BLM_ON_TREE)
+#define Set_BBLIST_on_tree(b)   (BBLIST_flags(b) |= BLM_ON_TREE)
+#define Reset_BBLIST_on_tree(b) (BBLIST_flags(b) &= ~BLM_ON_TREE)
+#endif
 
 /* Macros for stepping through BBlists. */
 #define FOR_ALL_BBLIST_ITEMS(list,item) \
@@ -1074,9 +1106,11 @@ extern void BB_REGION_Initialize(void);
 
 /* Return the op for the terminating branch of a given BB */
 extern struct op *BB_branch_op (BB *);
+#ifdef TARG_IA64
 /* Return the last non nop op of a branch bb */
 extern OP* Last_Non_Nop_op (BB *); 
-extern OP* BB_Last_chk_op(BB *); 
+extern OP* BB_Last_chk_op(BB *);
+#endif 
 
 /* Return the terminating xfer OP in a given BB */
 extern struct op* BB_xfer_op( BB *bb );

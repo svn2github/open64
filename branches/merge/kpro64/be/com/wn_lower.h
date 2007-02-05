@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -99,6 +99,7 @@ typedef INT64 LOWER_ACTIONS;
 #define LOWER_SLINK_SAVE	  0x020000000000ll
 #endif
 #define LOWER_TO_MEMLIB           0x040000000000ll
+#define LOWER_FAST_EXP            0x080000000000ll
 #define LOWER_TO_CG		  0x800000000000ll
 
 

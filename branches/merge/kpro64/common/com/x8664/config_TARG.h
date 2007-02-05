@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_TARG.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/config_TARG.h,v $
+ * $Revision: 1.7 $
+ * $Date: 04/12/21 14:57:25-08:00 $
+ * $Author: bos@eng-25.internal.keyresearch.com $
+ * $Source: /home/bos/bk/kpro64-pending/common/com/x8664/SCCS/s.config_TARG.h $
  *
  * Revision history:
  *  11-Apr-96 - Original Version
@@ -74,7 +74,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *config_TARG_h_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/config_TARG.h,v $ $Revision: 1.1.1.1 $";
+static char *config_TARG_h_rcs_id = "$Source: /home/bos/bk/kpro64-pending/common/com/x8664/SCCS/s.config_TARG.h $ $Revision: 1.7 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifdef __cplusplus

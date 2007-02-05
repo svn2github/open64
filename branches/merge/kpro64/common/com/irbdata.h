@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -168,41 +168,65 @@ INITV_repeat (const INITV_IDX inv)
 
 inline ST_IDX
 INITV_st (const INITV& initv) {
+#ifdef TARG_IA64
     INITV_read_check ((initv.kind == INITVKIND_SYMOFF) ||
 		      (initv.kind == INITVKIND_SYMIPLT));
+#else
+    INITV_read_check (initv.kind == INITVKIND_SYMOFF);
+#endif
     return initv.St ();
 }
 inline ST_IDX
 INITV_st (const INITV_IDX initv) {
+#ifdef TARG_IA64
     INITV_read_check ((Initv_Table[initv].kind == INITVKIND_SYMOFF) ||
 		      (Initv_Table[initv].kind == INITVKIND_SYMIPLT));
+#else
+    INITV_read_check (Initv_Table[initv].kind == INITVKIND_SYMOFF);
+#endif
     return Initv_Table[initv].St ();
 }
 inline void
 Set_INITV_st (INITV_IDX inv, ST_IDX st)
 {
+#ifdef TARG_IA64
     INITV_read_check (Initv_Table[inv].kind == INITVKIND_SYMOFF ||
 		      Initv_Table[inv].kind == INITVKIND_SYMIPLT);
+#else
+    INITV_read_check (Initv_Table[inv].kind == INITVKIND_SYMOFF);
+#endif
     Initv_Table[inv].u.sto.st = st;
 }
 	
 inline INT32
 INITV_ofst (const INITV& initv) {
+#ifdef TARG_IA64
     INITV_read_check (initv.kind == INITVKIND_SYMOFF || 
 		      initv.kind == INITVKIND_SYMIPLT);
+#else
+    INITV_read_check (initv.kind == INITVKIND_SYMOFF);
+#endif
     return initv.Ofst ();
 }
 inline INT32
 INITV_ofst (const INITV_IDX initv) {
+#ifdef TARG_IA64
     INITV_read_check (Initv_Table[initv].kind == INITVKIND_SYMOFF ||
 		      Initv_Table[initv].kind == INITVKIND_SYMIPLT);
+#else
+    INITV_read_check (Initv_Table[initv].kind == INITVKIND_SYMOFF);
+#endif
     return Initv_Table[initv].Ofst ();
 }
 inline void
 Set_INITV_ofst (INITV_IDX inv, INT32 ofst)
 {
+#ifdef TARG_IA64
     INITV_read_check (Initv_Table[inv].kind == INITVKIND_SYMOFF ||
 		      Initv_Table[inv].kind == INITVKIND_SYMIPLT);
+#else
+    INITV_read_check (Initv_Table[inv].kind == INITVKIND_SYMOFF);
+#endif
     Initv_Table[inv].u.sto.ofst = ofst;
 }
 
@@ -378,9 +402,10 @@ INITV_Init_String (INITV_IDX inv, char *str, INT size, UINT16 repeat = 1);
 extern void
 INITV_Init_Symoff (INITV_IDX inv, ST *st, INT64 ofst, UINT16 repeat = 1);
 
+#ifdef TARG_IA64
 extern void
 INITV_Init_Symiplt (INITV_IDX inv, ST *st, INT64 ofst, UINT16 repeat = 1);
-
+#endif
 extern void
 INITV_Init_Label (INITV_IDX inv, LABEL_IDX lab, UINT16 repeat = 1);
 
@@ -449,6 +474,7 @@ INITV_Set_SYMOFF (INITV& initv, mUINT16 rp1, ST_IDX st, INT32 ofst) {
     initv.u.sto.ofst = ofst;
 }
 
+#ifdef TARG_IA64
 inline void
 INITV_Set_SYMIPLT (INITV& initv, mUINT16 rp1, ST_IDX st, INT32 ofst) {
     initv.next = 0;
@@ -457,6 +483,7 @@ INITV_Set_SYMIPLT (INITV& initv, mUINT16 rp1, ST_IDX st, INT32 ofst) {
     initv.u.sto.st = st;
     initv.u.sto.ofst = ofst;
 }
+#endif
 
 inline void
 INITV_Set_LABEL (INITV& initv, mUINT16 rp1, LABEL_IDX lab) {

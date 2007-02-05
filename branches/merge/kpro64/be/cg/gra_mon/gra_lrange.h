@@ -1,6 +1,14 @@
 /*
+ * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -67,6 +75,9 @@ typedef INTERFERE_DEREF *INTERFERE;
 class LRANGE_SET_SUBUNIVERSE;
 class LRANGE_SUBUNIVERSE;
 class GRA_REGION;
+#ifndef TARG_IA64
+class LRANGE_BOUNDARY_BB;
+#endif
 
 //      There are three distinct types of LRANGEs:
 //
@@ -139,6 +150,9 @@ enum LR_FLAG {
   LRANGE_FLAGS_tn_is_save_reg = 0x1000, // its TN marked TN_is_save_reg
   LRANGE_FLAGS_cannot_split = 0x2000,  // meaning evident
   LRANGE_FLAGS_no_appearance = 0x4000, // should not be assigned register
+#ifdef TARG_X8664
+  LRANGE_FLAGS_spans_savexmms = 0x8000, // spans the savexmms pseudo-op
+#endif
 };
 
 // These represent a value that can be given a register by GRA.  They
@@ -190,6 +204,12 @@ private:
       TN*       original_tn;	// original GTN (before any spilling) from which
 				// this lrange was created
       LRANGE*   next_split_list_lrange;
+#ifndef TARG_IA64
+      BB_SET*   internal_bb_set; // to maintain the set of internal BBs in the
+				 // range; it is same as live_bb_set but without
+				 // the boundary bbs
+      LRANGE_BOUNDARY_BB*	boundary_bbs;	// List of boundary bbs.
+#endif
     } c;
     struct lrange_region_specific {
       TN*       tn;             // Corresponding to the LRANGE
@@ -238,6 +258,15 @@ public:
   REGISTER Orig_Reg(void)	{ return orig_reg; }
   INT32 Priority_Queue_Index(void) { return priority_queue_index; }
   void Priority_Queue_Index_Set(INT32 index) { priority_queue_index = index; }
+#ifndef TARG_IA64
+  BB_SET* Internal_BB_Set(void)	{ return u.c.internal_bb_set; }
+  void Clear_Internal_BBs(void)	{ BB_SET_ClearD(u.c.internal_bb_set); }
+
+  LRANGE_BOUNDARY_BB *Boundary_BBs(void)	{ return u.c.boundary_bbs; }
+  void *Set_Boundary_BBs(LRANGE_BOUNDARY_BB *x)	{ u.c.boundary_bbs = x; }
+  LRANGE_BOUNDARY_BB* Get_Boundary_Bb(BB *target);
+  LRANGE_BOUNDARY_BB* Remove_Boundary_Bb(BB *target);
+#endif
 
   // flags
   BOOL Listed(void)		{ return flags & LRANGE_FLAGS_listed; }
@@ -273,6 +302,10 @@ public:
   void Cannot_Split_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_cannot_split); }
   BOOL No_Appearance(void)	{ return flags & LRANGE_FLAGS_no_appearance; }
   void No_Appearance_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_no_appearance); }
+#ifdef TARG_X8664
+  BOOL Spans_Savexmms(void)	{ return flags & LRANGE_FLAGS_spans_savexmms; }
+  void Spans_Savexmms_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_savexmms); }
+#endif
 
   void Wire_Register(REGISTER r){ flags = (LR_FLAG)(flags|LRANGE_FLAGS_has_wired_register);
 				  reg = r; }
@@ -316,19 +349,35 @@ public:
   void Add_LUNIT( LUNIT* lunit );
   void Add_Lunit(  LUNIT* lunit );
   REGISTER_SET Allowed_Registers(GRA_REGION* region);
+#ifndef TARG_IA64
+  REGISTER_SET Reclaimable_Registers(GRA_REGION* region);
+#endif
   BOOL Interferes( LRANGE* lr1 );
   void Region_Interference( LRANGE* lrange1,
 			    GRA_REGION* region );
   void Remove_Neighbor(LRANGE* neighbor, GRA_REGION* region );
+#ifdef TARG_IA64
   void Allocate_Register( REGISTER reg );
+#else
+  void Allocate_Register( REGISTER reg, BOOL reclaim = FALSE );
+#endif
   INT32 Neighbor_Count(void);
   void Calculate_Priority(void);
   BOOL Find_LUNIT_For_GBB( const GRA_BB* gbb, LUNIT** lunitp );
   void Preference_Copy(LRANGE* lrange1, GRA_BB* gbb );
   void Recompute_Preference(void);
   char* Format( char* buff );
+#ifndef TARG_IA64
+  void Add_Internal_BB(GRA_BB *gbb);
+  void Remove_Internal_BB(GRA_BB *gbb);
+  BOOL Contains_Internal_BB(GRA_BB *gbb);
+  void Add_Boundary_BB(GRA_BB *gbb);
+  void Boundary_BBs_Push(LRANGE_BOUNDARY_BB *x);
+  void Update_Boundary_BBs(void);
+#endif
 };
 
+#ifdef TARG_IA64
 //Inserted by ORC for Experiments.
 struct BUFFERED_LRANGE {
     LRANGE *lrange;
@@ -339,6 +388,7 @@ struct BUFFERED_LRANGE {
     BUFFERED_LRANGE *next,*prev;
 };
 //End of Insertion.
+#endif
 
 // manages the allocation and usage of all LRANGE nodes
 class LRANGE_MGR {
@@ -464,6 +514,10 @@ public:
 
   void Replace_Current(LRANGE *lrange);
   void Splice(LRANGE *lrange);
+#ifndef TARG_IA64
+  void Push(LRANGE *lrange);
+//                      Insert <lrange> before the current element of <iter>.
+#endif
 };
 
 // looping over an internally linked BB_local_List
@@ -534,6 +588,53 @@ public:
   void Step(void)               { current = BB_SET_Choose_Next(set, current); }
 };
 
+#ifndef TARG_IA64
+class LRANGE_BOUNDARY_BB {
+  LRANGE_BOUNDARY_BB*	next;
+  LRANGE*		lrange;
+  GRA_BB*		gbb;
+  mUINT16		start_index;
+  mUINT16		end_index;
+    // start_index and end_index give the OP index in the BB where the lrange
+    // starts and ends, respectively.  The indices can be <, >, or = relative
+    // to each other, depending on the live-in and live-out properties of the
+    // lrange.  Index 0 means no such OP.
+    //
+    // There are 4 cases:
+    //   live-in	(live-in only)
+    //		end_index>0
+    //   live-out	(live-out only)
+    //		start_index>0
+    //   contained	(live range fully contained in BB)
+    //		start_index>0, end_index>0
+    //   empty		(not live anywhere in BB)
+    //		start_index=0, end_index=0
+    // Because the BB is a boundary BB, the live range cannot be pass-thru
+    // (live-in, live-out, continuous) or disjoint (live-in, live-out, not
+    // continuous).  If the live range has gaps in the BB, we combine the live
+    // range segments and model it as either live-in, live-out, or contained.
+public:
+  LRANGE_BOUNDARY_BB(void)	{ start_index = end_index = 0; }
+  ~LRANGE_BOUNDARY_BB(void)	{}
+
+  LRANGE *Lrange(void)		{ return lrange; }
+  void Lrange_Set(LRANGE *lr)	{ lrange = lr; }
+  GRA_BB *Gbb(void)		{ return gbb; }
+
+  void Init(GRA_BB *gbb, LRANGE *lrange);
+  LRANGE_BOUNDARY_BB* Next()	{ return next; }
+  void Next_Set(LRANGE_BOUNDARY_BB *x)	{ next = x; }
+  BOOL Interfere(LRANGE_BOUNDARY_BB *boundary_bb1);
+  BOOL Interfere(BOOL other_live_in, BOOL other_live_out,
+		 mUINT16 other_start_index, mUINT16 other_end_index);
+  BOOL Interfere(GRA_BB *gbb, ISA_REGISTER_CLASS rc, REGISTER reg);
+  mUINT16 Start_Index(void)	{ return start_index; }
+  mUINT16 End_Index(void)	{ return end_index; }
+
+  BOOL Is_Live_In(void);
+  BOOL Is_Live_Out(void);
+};
+#endif
 
 // these functions are used by the generated lrange_set package
 extern INT32 LRANGE_INT( LRANGE* lr );
@@ -545,4 +646,8 @@ LRANGE_Universe_ID_S( LRANGE* lrange, LRANGE_SET_SUBUNIVERSE* sub ) {
 
 extern LRANGE_MGR lrange_mgr;
 
+
+#ifndef TARG_IA64
+extern REGISTER_SET Global_Preferenced_Regs(LRANGE* lrange, GRA_BB* gbb);
+#endif
 #endif

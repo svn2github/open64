@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_vho.h
- * $Revision: 1.11 $
- * $Date: 05/08/31 16:24:20-07:00 $
- * $Author: gautam@jacinth.keyresearch $
- * $Source: common/com/SCCS/s.config_vho.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_vho.h,v $
  *
  * Revision history:
  *  05-May-96 - Extracted from be/opt/opt_config.h.

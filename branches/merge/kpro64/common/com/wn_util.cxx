@@ -47,10 +47,10 @@
 ***
 ***-------------------------------------------------------------------*/
 
-/** $Revision: 1.10 $
-*** $Date: 05/02/04 17:05:08-08:00 $
-*** $Author: gautam@jacinth.keyresearch $
-*** $Source: common/com/SCCS/s.wn_util.cxx $
+/** $Revision: 1.1.1.1 $
+*** $Date: 2005/10/21 19:00:00 $
+*** $Author: marcel $
+*** $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/wn_util.cxx,v $
 **/
 #ifdef USE_PCH
 #include "common_com_pch.h"
@@ -1489,6 +1489,17 @@ type_ok (const TY_IDX ty)
 }
 #endif
 
+#ifdef TARG_IA64
+static TY_IDX
+field_type (const TY_IDX ty_idx, UINT field_id)
+{
+  UINT cur_field_id = 0;
+  FLD_HANDLE fld = FLD_get_to_field (ty_idx, field_id, cur_field_id);
+  Is_True (! fld.Is_Null(), ("Invalid field id %d for type 0x%x",
+			     field_id, ty_idx));
+  return FLD_type (fld);
+}
+#else
 static TY_IDX
 field_type (const WN* wn)
 {
@@ -1498,12 +1509,12 @@ field_type (const WN* wn)
 
   // Handle field_id for istore.
   if (WN_operator(wn) == OPR_ISTORE)
-  {
-    TY_IDX ptr = WN_ty(wn);
-    Is_True (TY_kind(ptr) == KIND_POINTER,
-             ("field_type: Addr TY of ISTORE is not KIND_POINTER."));
-    ty = TY_pointed(ptr);
-  }
+    {
+      TY_IDX ptr = WN_ty(wn);
+      Is_True (TY_kind(ptr) == KIND_POINTER,
+	       ("field_type: Addr TY of ISTORE is not KIND_POINTER."));
+      ty = TY_pointed(ptr);
+    }
   else
     ty = WN_ty(wn);
 
@@ -1518,6 +1529,7 @@ field_type (const WN* wn)
 			     WN_field_id(wn), WN_ty(wn)));
   return FLD_type (fld);
 }
+#endif // TARG_IA64
 
 /*  Obtain the high-level type of item being accessed.
  *   It is the WN_ty() for all loads
@@ -1527,9 +1539,52 @@ field_type (const WN* wn)
  *   in WN_ty().
  *   See the WHIRL document.
  */
+#ifdef TARG_IA64
 /* KEY: MODIFICATION to above comment: For ILOAD, it is the type pointed
  * to by the addr ty.
  */
+TY_IDX
+WN_object_ty (const WN *wn)
+{
+ if (OPCODE_is_load(WN_opcode(wn))) {
+
+    if (WN_operator(wn) == OPR_MLOAD) {
+         TY_IDX ptr_ty = WN_ty(wn);
+         Is_True (TY_kind(ptr_ty) == KIND_POINTER, ("TY of ISTORE is not KIND_POINTER."));
+         return TY_pointer(ptr_ty);
+     }
+
+    if ((WN_operator(wn) == OPR_LDID ||
+         WN_operator(wn) == OPR_ILOAD 
+#ifndef KEY
+         || WN_operator(wn) == OPR_LDBITS
+#endif
+        ) && WN_field_id(wn) != 0 &&
+             TY_kind(WN_ty(wn)) == KIND_STRUCT)
+      return field_type (WN_ty(wn), WN_field_id(wn));
+    if ((WN_operator(wn) == OPR_ILOAD || WN_operator(wn) == OPR_ILDBITS)) {
+      Is_True (TY_kind(WN_load_addr_ty(wn)) == KIND_POINTER,
+        ("TY of ILOAD is not KIND_POINTER."));
+      TY_IDX ty_idx = TY_pointed(WN_load_addr_ty(wn));
+      return ty_idx;
+    }
+    return WN_ty(wn);
+  } else if (OPCODE_is_store(WN_opcode(wn))) {
+    TY_IDX ty_idx = WN_ty(wn);
+    if (!(WN_operator(wn) == OPR_STID || WN_operator(wn) == OPR_STBITS)) {
+      Is_True(TY_kind(WN_ty(wn)) == KIND_POINTER,
+              ("TY of ISTORE is not KIND_POINTER."));
+      ty_idx = TY_pointed(WN_ty(wn));
+    }
+    if (WN_field_id(wn) != 0 && TY_kind(ty_idx) == KIND_STRUCT) {
+      return field_type (ty_idx, WN_field_id(wn));
+    }
+    return ty_idx;
+  } else {
+    return (TY_IDX) 0;
+  }
+}
+#else  // TARG_IA64
 TY_IDX
 WN_object_ty (const WN *wn)
 {
@@ -1559,7 +1614,7 @@ WN_object_ty (const WN *wn)
 #ifdef KEY
 	  && WN_operator(wn) == OPR_STID
 #endif
-	 )
+	  )
 	return field_type (wn);
       return WN_ty(wn);
     } else {
@@ -1581,6 +1636,7 @@ WN_object_ty (const WN *wn)
     return (TY_IDX) 0;
   }
 }
+#endif // TARG_IA64
 
 /* Obtain the size in bytes of object being accessed.
  */

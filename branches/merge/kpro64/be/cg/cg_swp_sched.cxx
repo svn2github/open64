@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,6 +57,7 @@
 #include "defs.h"
 #include <vector>
 #include <utility>
+#include <iterator>
 #include <math.h>
 #include "cg_swp.h"
 #include "cg_swp_options.h"
@@ -63,7 +68,13 @@
 #include "cg_dep_graph.h"
 #include "ti_res_res.h"
 #include "cg_loop_mii.h"
+#ifdef TARG_IA64
 #include "cache_analysis.h"
+#endif
+#if defined(_LP64) && defined(_SGI_COMPILER_VERSION)
+/* workaround for a bug in g++ */
+#define min(a,b)  ((a < b) ? a : b)
+#endif
 
 void MinDist::Print(FILE *fp) const
 {
@@ -142,7 +153,9 @@ INT MinDist::Compute(const SWP_OP_vector& v, INT start, INT stop, INT branch, IN
       }
       mindist[start][i] = 0;
       mindist[i][stop] = 0;
+#ifdef TARG_IA64
       mindist[i][branch] = MAX(mindist[i][branch], 0);
+#endif
     }
   }
 
@@ -499,6 +512,7 @@ public:
   void Verify2(const SWP_OP_vector& v);
   MRT(const SWP_OP_vector& v, INT _ii, MEM_POOL *pool);
 };
+#ifdef TARG_IA64
 BOOL Violate_forbid_latency(INT candidate, const SWP_OP_vector& v, INT cycle, INT loop_cycle)
 {
     // cache conflict! load/load MEMREAD
@@ -513,6 +527,7 @@ BOOL Violate_forbid_latency(INT candidate, const SWP_OP_vector& v, INT cycle, IN
     }
     return FALSE;
 }
+#endif
 
 INT MRT::Find_Resources_In_Range(INT candidate, const SWP_OP_vector& v, 
 				INT earliest, INT latest, bool top_down) const {
@@ -522,7 +537,9 @@ INT MRT::Find_Resources_In_Range(INT candidate, const SWP_OP_vector& v,
   INT cycle;
   Is_True (earliest <= latest, ("swp sched:  earliest %d > latest %d", earliest, latest));
   for (cycle = begin; cycle != finish; cycle += incr) {
+#ifdef TARG_IA64
     if (Violate_forbid_latency(candidate, v, cycle, ii)) continue; 
+#endif
     if (Resources_Available(v[candidate], cycle))
       return cycle;
   }
@@ -734,8 +751,9 @@ public:
 	  }
 	}
       }
+#ifdef TARG_IA64
       break;
-	
+#endif	
     case 1:
       {
 	// operation with smallest Lstart are scheduled first
@@ -755,8 +773,9 @@ public:
 	  }
 	}
       }
+#ifdef TARG_IA64
       break;
-
+#endif
     case 2:
       {
 	// operation with largest Estart are scheduled first

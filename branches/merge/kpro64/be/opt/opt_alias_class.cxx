@@ -101,9 +101,6 @@
 #include "opt_alias_mgr.h"
 #include "wintrinsic.h"
 
-extern "C" {
-#include "bitset.h"
-}
 #ifdef KEY
 extern BOOL ST_Has_Dope_Vector(ST *st);
 #endif
@@ -1218,25 +1215,19 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
     ALIAS_CLASS_MEMBER *t_member = New_alias_class_member(expr);
     (void) New_alias_class(t_member);
 
-    BOOL expr_maybe_point = Expr_may_containt_pointer (expr);
+    BOOL expr_maybe_point = Expr_may_contain_pointer (expr);
     for (INT i = 0; i < WN_kid_count(expr); i++) {
       // Tell the recursive call that the expression need not
       // point. If it must point, we'll handle it here.
       AC_PTR_OBJ_PAIR u = Classify_deref_of_expr(WN_kid(expr, i),
 						 FALSE);
 
-#ifdef TARG_IA64
       if (expr_maybe_point && 
-          Expr_may_containt_pointer (WN_kid(expr, i))) {
+          Expr_may_contain_pointer (WN_kid(expr, i))) {
         AC_PTR_OBJ_PAIR t(t_member->Alias_class(),
 			  t_member->Alias_class()->Class_pointed_to());
         Merge_conditional(t, u);
       }
-#else
-      AC_PTR_OBJ_PAIR t(t_member->Alias_class(),
-			t_member->Alias_class()->Class_pointed_to());
-      Merge_conditional(t, u);
-#endif
     }
     AC_PTR_OBJ_PAIR t(t_member->Alias_class(),
 		      t_member->Alias_class()->Class_pointed_to());
@@ -1315,7 +1306,7 @@ ALIAS_CLASSIFICATION::Classify_lhs_of_store(WN *const stmt)
 // TODO: This function is too conservative. It need to be polished. 
 //
 BOOL
-ALIAS_CLASSIFICATION::Expr_may_containt_pointer (WN* const expr) {
+ALIAS_CLASSIFICATION::Expr_may_contain_pointer (WN* const expr) {
    
   if (!WOPT_Enable_Aggressive_Alias_Classification || !Alias_Pointer_Types) {
     return TRUE;
@@ -1359,7 +1350,7 @@ ALIAS_CLASSIFICATION::Expr_may_containt_pointer (WN* const expr) {
            WN_object_size (expr) >= Pointer_Size;
 
   case OPR_NEG: case OPR_ABS:
-    return Expr_may_containt_pointer (WN_kid0(expr));
+    return Expr_may_contain_pointer (WN_kid0(expr));
 
   case OPR_RND: 
   case OPR_TRUNC:
@@ -1380,7 +1371,7 @@ ALIAS_CLASSIFICATION::Assignment_may_xfer_pointer (WN* const stmt) {
     return TRUE;
   }
 
-  if (!Expr_may_containt_pointer (WN_kid0(stmt))) {
+  if (!Expr_may_contain_pointer (WN_kid0(stmt))) {
     return FALSE;
   }
 
@@ -1422,13 +1413,9 @@ ALIAS_CLASSIFICATION::Handle_assignment(WN *const stmt)
   // lhs_class, and that afterward we have to recompute the
   // AC_PTR_OBJ_PAIR for the lhs_class from the lhs._ref_class
   // representative.
-#ifdef TARG_IA64
   TY_IDX rhs_obj_ty = WN_object_ty (rhs);
   AC_PTR_OBJ_PAIR rhs_class = Classify_deref_of_expr(rhs, 
                                  TY_kind(rhs_obj_ty) == KIND_POINTER);
-#else 
-  AC_PTR_OBJ_PAIR rhs_class = Classify_deref_of_expr(rhs, FALSE);
-#endif
 
   lhs_class.
     Set_ref_class(lhs_ref_member->Alias_class());
@@ -1444,12 +1431,8 @@ ALIAS_CLASSIFICATION::Handle_assignment(WN *const stmt)
     (void) Classify_deref_of_expr(WN_kid2(stmt), FALSE);
   }
 
-#ifdef TARG_IA64
   if (rhs_class.Ref_class() != NULL && 
       Assignment_may_xfer_pointer (stmt)) {
-#else
-    if (rhs_class.Ref_class() != NULL) {
-#endif
     // Conditional join
     Merge_conditional(lhs_class, rhs_class);
   }
@@ -1513,12 +1496,14 @@ ALIAS_CLASSIFICATION::Callee_changes_no_points_to(const WN *const call_wn,
   else if (WN_Call_Does_Mem_Free(call_wn)) {
     return TRUE;
   }
-#ifdef TARG_IA64  
+#ifndef PATHSCALE_MERGE_ZHC
+#if 1
   else if ((WN_operator(call_wn) == OPR_CALL) &&
-           (strcmp("free", ST_name(WN_st(call_wn))) == 0)) {
+	   (strcmp("free", ST_name(WN_st(call_wn))) == 0)) {
     return TRUE;
   }
-#endif  
+#endif
+#endif
   else if (Callee_returns_new_memory(call_wn)) {
     return TRUE;
   }
@@ -1577,15 +1562,11 @@ ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
 
     // Cheap hack for now, to test performance. This should be based on
     // some real mechanism in the future instead of cheesebag hacks.
-    if ((strcmp("malloc", ST_name(st)) == 0) ||
-	(strcmp("alloca", ST_name(st)) == 0) ||
-	(strcmp("calloc", ST_name(st)) == 0) ||
-#ifdef TARG_IA64
-	(strcmp("_F90_ALLOCATE", ST_name(st)) == 0) ||
+    if ((strcmp("alloca", ST_name(st)) == 0) ||
+        (strcmp("malloc", ST_name(st)) == 0) ||
+        (strcmp("calloc", ST_name(st)) == 0) ||
+        (strcmp("_F90_ALLOCATE", ST_name(st)) == 0) ||
 	WOPT_Enable_Disambiguate_Heap_Obj && PU_has_attr_malloc (Pu_Table[ST_pu(st)])) {
-#else
-	(strcmp("_F90_ALLOCATE", ST_name(st)) == 0)) {
-#endif
       return TRUE;
     }
   }
@@ -1921,11 +1902,7 @@ ALIAS_CLASSIFICATION::Handle_call(WN *call_wn)
       }
     }
     AC_PTR_OBJ_PAIR rhs_class = Classify_deref_of_expr(parm_wn,
-#ifdef TARG_IA64
                                  TY_kind (WN_ty(parm_wn)) == KIND_POINTER);
-#else
-                                                       FALSE);
-#endif
 
     // There are really three levels of evil we can handle for each
     // parameter:

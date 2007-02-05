@@ -61,20 +61,30 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
  * ====================================================================
  */
 void
+#ifdef TARG_IA64
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath, char* version)
+#else
+TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath)
+#endif
 {
   static BOOL initialized;
 
   if ( !initialized ) {
     INT                i;
     const char        *targ_name     = PROCESSOR_Name(tproc);
+#ifdef TARG_IA64
     INT                targ_name_len = strlen(targ_name) + strlen(version);
+#else
+    INT                targ_name_len = strlen(targ_name);
+#endif
     char              *targ_so_name  = alloca(targ_name_len + strlen(".so") + 1);
 
     for (i = 0; i < targ_name_len; i++) {
       targ_so_name[i] = tolower(targ_name[i]);
     }
+#ifdef TARG_IA64
     if (strlen(version) > 0)  strcat(targ_so_name, version);
+#endif
     strcpy(targ_so_name + targ_name_len, ".so");
 
     load_so(targ_so_name, tpath, FALSE /*verbose*/);

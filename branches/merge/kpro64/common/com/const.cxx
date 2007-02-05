@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -218,9 +218,11 @@ Make_Const ( TCON c )
     case MTYPE_C8:
       opc = OPC_C8CONST;
       break;
+#ifdef TARG_IA64
     case MTYPE_C10:
       opc = OPC_C10CONST;
       break;
+#endif
     case MTYPE_CQ:
       opc = OPC_CQCONST;
       break;

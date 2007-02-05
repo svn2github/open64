@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: targ_const.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/targ_em_const.cxx,v $
+ * $Revision: 1.21 $
+ * $Date: 05/08/24 21:12:32-07:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: common/com/x8664/SCCS/s.targ_em_const.cxx $
  *
  * Revision history:
  *  10-Feb-95 - Original Version
@@ -463,6 +463,27 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 
 	fprintf(fl, "\t%s double[2] %#g %#g\n", ASM_CMNT, 
 		TCON_R8(tc), TCON_R8(tc) );
+	--rc;
+	break;
+        }
+
+      case MTYPE_V16C4: {
+	INT i;
+        char *p = (char *) & TCON_R4(tc);
+	emit_bytes( fl, p, sizeof(TCON_R4(tc)) );
+	fprintf(fl, "\t%s complex float real part %#g\n", ASM_CMNT, TCON_R4(tc) );
+
+        p = (char *) & TCON_IR4(tc);
+	emit_bytes( fl, p, sizeof(TCON_IR4(tc)) );
+	fprintf(fl, "\t%s complex float imag part %#g\n", ASM_CMNT, TCON_IR4(tc) );
+
+        p = (char *) & TCON_R4(tc);
+	emit_bytes( fl, p, sizeof(TCON_R4(tc)) );
+	fprintf(fl, "\t%s complex float real part %#g\n", ASM_CMNT, TCON_R4(tc) );
+
+        p = (char *) & TCON_IR4(tc);
+	emit_bytes( fl, p, sizeof(TCON_IR4(tc)) );
+	fprintf(fl, "\t%s complex float imag part %#g\n", ASM_CMNT, TCON_IR4(tc) );
 	--rc;
 	break;
         }

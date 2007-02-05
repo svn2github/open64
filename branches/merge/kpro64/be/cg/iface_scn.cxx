@@ -1,6 +1,10 @@
 /*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -59,9 +63,14 @@
 #include <stdio.h>
 #endif
 #include <bstring.h>
+#ifdef TARG_IA64
 #include <elf_stuff.h>
-#include <elfaccess.h>
 #include <libelf/libelf.h>
+#else
+#include "elf_stuff.h"
+#include "libelf/libelf.h"
+#endif
+#include <elfaccess.h>
 #include <stdlib.h>
 #include <cmplrs/elf_interfaces.h>
 
@@ -525,7 +534,9 @@ Classify_Type(
     case MTYPE_FQ:  ft = FT_float128;       break;
     case MTYPE_C4:  /* complex is sometimes of KIND_SCALAR */
     case MTYPE_C8:
+#ifndef TARG_X8664
     case MTYPE_C10:
+#endif
     case MTYPE_CQ:
         switch(TY_size(ty)) {
         case 8:  ft = FT_complex64;   break;
@@ -544,7 +555,9 @@ Classify_Type(
     case MTYPE_C4: ft = FT_complex64;  break;
     case MTYPE_C8: ft = FT_complex128; break;
     case MTYPE_CQ:
+#ifndef TARG_X8664
     case MTYPE_C10:
+#endif
       ft = FT_complex256; break;
     default: 
       if (TY_is_union(ty))

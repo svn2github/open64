@@ -1,6 +1,10 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -266,6 +270,43 @@ extern void CGSPILL_Attach_Intconst_Remat(TN *tn, INT64 val);
 extern void CGSPILL_Attach_Floatconst_Remat(TN *tn, TYPE_ID typ, double val);
 extern void CGSPILL_Attach_Const_Remat(TN *tn, TYPE_ID typ, ST *st);
 
+#ifdef TARG_IA64
 extern void st_2_st_spill(OPS *ops, BOOL force);
 extern void ld_2_ld_fill(OPS *ops, BOOL force);
+#endif
+#ifdef KEY
+// Keep track of the spills and restores for a spill symbol, so that EBO knows
+// which spills are dead after it deletes restores.  Only need to handle the
+// case single spill OP because EBO can't handle multiple stores.
+class SPILL_SYM_INFO {
+private:
+  INT32 spill_count;
+  INT32 restore_count;
+  OP *spill_op;		// Valid only if spill_count is 1.
+  INT32 used_by_load_exe : 1;
+public:
+  SPILL_SYM_INFO() {
+    spill_count = 0;
+    restore_count = 0;
+    spill_op = NULL;
+  }
+  INT32 Spill_Count() { return spill_count; }
+  void Inc_Spill_Count() { spill_count++; }
+  INT32 Restore_Count() { return restore_count; }
+  void Inc_Restore_Count() { restore_count++; }
+  OP *Spill_Op() { return spill_op; }
+  void Set_Spill_Op(OP *op) { spill_op = op; }
+  BOOL Used_By_Load_Exe() { return used_by_load_exe ? TRUE : FALSE; }
+  void Set_Used_By_Load_Exe() { used_by_load_exe = 1; }
+};
+
+// Map ST to spill sym info.
+typedef hash_map<ST_IDX,
+		 SPILL_SYM_INFO,
+		 __gnu_cxx::hash<ST_IDX>,
+		 std::equal_to<ST_IDX> > SPILL_SYM_INFO_MAP;
+
+SPILL_SYM_INFO &CGSPILL_Get_Spill_Sym_Info (ST *spill_loc);
+#endif
+
 #endif /* cgspill_INCLUDED */

@@ -605,6 +605,7 @@ Update_CFG()
         BOOL home_intact = BB_scheduled(home_bb);
         BOOL home_chk_split = BB_chk_split(home_bb);
         BOOL home_split_head = BB_chk_split_head(home_bb);
+        BOOL home_split_tail = BB_chk_split_tail(home_bb);//bug fix for OSP_212
 
         // Devide the basic block with the chk as the boundary.
 
@@ -636,9 +637,18 @@ Update_CFG()
 
         if(cut) {
             if(IPFEC_Chk_Compact) {
-                if(!home_chk_split || home_split_head){
+                //begin bug fix for OSP_212
+                if(!home_chk_split){
                     Set_BB_chk_split_head(home_bb);
+                    Set_BB_chk_split_tail(bottom_bb);
                 }
+                if(home_split_head)
+                    Set_BB_chk_split_head(home_bb);
+                else if(home_split_tail){
+                    Reset_BB_chk_split_tail(home_bb);
+                    Set_BB_chk_split_tail(bottom_bb);
+                }
+                //end bug fix for OSP_212
                 Set_BB_chk_split(home_bb);           
                 Set_BB_chk_split(bottom_bb);
                 if(home_intact){

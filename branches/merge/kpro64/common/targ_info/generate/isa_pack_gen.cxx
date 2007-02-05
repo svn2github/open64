@@ -456,10 +456,18 @@ void ISA_Pack_End(void)
   const char * const isa_pack_words_format = "  %3d,  /* %s */\n";
   const char * const isa_pack_null_format = 
 			"  { %-22s, %2d, %2d,   %*d },  /* %s */\n";
+#ifdef TARG_IA64
   const char * const isa_pack_operand_format = 
 			"  { %-22s, %2d, %2d, 0x%0*llxLL },  /* %s, OPND%d */\n";
   const char * const isa_pack_result_format = 
 			"  { %-22s, %2d, %2d, 0x%0*llxLL },  /* %s, RESULT%d */\n";
+#else
+  const char * const isa_pack_operand_format = 
+            "  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, OPND%d */\n";
+  const char * const isa_pack_result_format = 
+            "  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, RESULT%d */\n";
+#endif
+
   int init_digits;
   int mask_digits;
   int top;

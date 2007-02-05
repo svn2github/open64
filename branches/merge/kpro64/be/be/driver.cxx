@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -80,6 +84,7 @@
 #include "config_opt.h"             /* for Instrumentation_Enabled */
 #include "config_list.h"	    /* for List_Enabled, etc. */
 #include "config_lno.h"		    /* for LNO_Run_Lego, etc. */
+#include "config_cache.h"           /* for Mhd and Mhd_Options */
 #include "file_util.h"		    /* for New_Extension () */
 #include "xstats.h"		    /* for Print_Stats () */
 #include "data_layout.h"	    /* for Initialize_Stack_Frame() */
@@ -127,6 +132,8 @@
 #include "output_func_start_profiler.h"
 #endif
 
+extern ERROR_DESC EDESC_BE[], EDESC_CG[];
+
 #ifdef KEY
 #include "demangle.h"
 extern "C" char *cplus_demangle (const char *, int);
@@ -139,6 +146,7 @@ extern void Initialize_Targ_Info(void);
 // symbols defined in cg.so
 #ifdef __linux__
 
+#ifdef TARG_IA64
 extern void (*CG_Process_Command_Line_p) (INT, char **, INT, char **);
 #define CG_Process_Command_Line (*CG_Process_Command_Line_p)
 
@@ -163,6 +171,15 @@ extern void (*EH_Generate_Range_List_p) (WN *);
 // used to dump information of EH related INITO
 extern void (*EH_Dump_INITOs_p) (WN *, FILE *);
 #define EH_Dump_INITOs (*EH_Dump_INITOs_p)
+#else
+extern void CG_Process_Command_Line (INT, char **, INT, char **);
+extern void CG_Init ();
+extern void CG_Fini ();
+extern void CG_PU_Initialize (WN*);
+extern void CG_PU_Finalize ();
+extern WN* CG_Generate_Code (WN*, ALIAS_MANAGER*, DST_IDX, BOOL);
+extern void EH_Generate_Range_List (WN *);
+#endif // TARG_IA64
 
 #else
 
@@ -180,6 +197,7 @@ extern void (*EH_Dump_INITOs_p) (WN *, FILE *);
 // symbols defined in wopt.so
 #ifdef __linux__
 
+#ifdef TARG_IA64
 extern void (*wopt_main_p) (INT argc, char **argv, INT, char **);
 #define wopt_main (*wopt_main_p)
 
@@ -206,6 +224,17 @@ extern void (*Delete_Du_Manager_p) (DU_MANAGER *, MEM_POOL *);
 
 extern BOOL (*Verify_alias_p) (ALIAS_MANAGER *, WN *);
 #define Verify_alias (*Verify_alias_p)
+#else
+extern void wopt_main (INT argc, char **argv, INT, char **);
+extern void Wopt_Init ();
+extern void Wopt_Fini ();
+extern WN* Perform_Preopt_Optimization (WN *, WN *);
+extern WN* Perform_Global_Optimization (WN *, WN *, ALIAS_MANAGER *);
+extern WN* Pre_Optimizer (INT32, WN*, DU_MANAGER*, ALIAS_MANAGER*);
+extern DU_MANAGER* Create_Du_Manager (MEM_POOL *);
+extern void Delete_Du_Manager (DU_MANAGER *, MEM_POOL *);
+extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
+#endif // TARG_IA64
 
 #else
 
@@ -366,15 +395,19 @@ load_components (INT argc, char **argv)
 
     if (Run_cg) {
       Get_Phase_Args (PHASE_CG, &phase_argc, &phase_argv);
+#ifdef TARG_IA64
       load_so ("orc_ict.so", CG_Path, Show_Progress);
       load_so ("orc_intel.so", CG_Path, Show_Progress);
       load_so ("cg.so", CG_Path, Show_Progress);
+#endif
       CG_Process_Command_Line (phase_argc, phase_argv, argc, argv);
     }
 
     if (Run_wopt || Run_preopt || Run_lno || Run_autopar) {
       Get_Phase_Args (PHASE_WOPT, &phase_argc, &phase_argv);
+#ifdef TARG_IA64
       load_so ("wopt.so", WOPT_Path, Show_Progress);
+#endif
       wopt_main (phase_argc, phase_argv, argc, argv);
       wopt_loaded = TRUE;
     }
@@ -1202,6 +1235,7 @@ static void Update_EHRegion_Inito_Used (WN *wn) {
 
   if (opr == OPR_REGION && WN_ereg_supp(wn)) {
     INITO_IDX ino_idx = WN_ereg_supp(wn);
+#ifdef TARG_IA64
     // Note a special case of try label when
     // INITV_kind(INITO_val(ino_idx)) == INITVKIND_LABEL,
     // Shouldn't set the flag ST_IS_NOT_USED
@@ -1210,6 +1244,10 @@ static void Update_EHRegion_Inito_Used (WN *wn) {
       ST *st = INITO_st(ino_idx);
       Clear_ST_is_not_used(st);
     }
+#else
+    ST *st = INITO_st(ino_idx);
+    Clear_ST_is_not_used(st);
+#endif
   }
 
   // now recurse
@@ -1304,6 +1342,13 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 		       "RETURN_VAL & MLDID/MSTID lowering");
     }
 
+#ifdef KEY // bug 9171
+    if (Run_autopar && Early_MP_Processing) {
+      Early_MP_Processing = FALSE;
+      ErrMsg (EC_No_Apo_Early_Mp);
+    }
+#endif
+
     /* If early mp processing has been requested, then do it before running
        lno/preopt. */
     BOOL has_mp = PU_has_mp (Get_Current_PU ());
@@ -1390,8 +1435,12 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
         WB_LWR_Terminate();
     }
 
+#ifdef KEY
+    if (PU_cxx_lang (Get_Current_PU()))
+#endif
     Update_EHRegion_Inito (pu);
-   
+
+#ifdef TARG_IA64   
     // trace the info of updated EH INITO      
     if (Get_Trace (TP_EH, 0x0004)) {
       fprintf (TFile, "=======================================================================\n");
@@ -1401,6 +1450,7 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
       fprintf (TFile, "=======================================================================\n");
       EH_Dump_INITOs (pu, TFile);
     }
+#endif
 
     /* Generate EH range table for PU.  The high and low labels are
      * filled in during code generation.
@@ -1431,6 +1481,9 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 #ifdef KEY
     if (need_options_pop)
       Options_Stack->Pop_Current_Options();
+#endif
+#ifdef KEY // bug 9651
+    WN_Reset_Num_Delete_Cleanup_Fns();
 #endif
 } /* Backend_Processing */
 
@@ -1615,6 +1668,7 @@ Preprocess_PU (PU_Info *current_pu)
     WN_Annotate(pu, PROFILE_PHASE_BEFORE_VHO, &MEM_pu_pool);
   }
 
+  Set_Error_Phase ( "VHO Processing" );
   pu = VHO_Lower_Driver (current_pu, pu);
 
   if ( Cur_PU_Feedback ) {
@@ -1698,14 +1752,17 @@ Preorder_Process_PUs (PU_Info *current_pu)
   BOOL orig_olimit_opt = Olimit_opt;
 
   WN *pu;
-
 #ifdef TARG_X8664
   if (!Force_Frame_Pointer_Set)
   {
-    if (PU_src_lang (ST_pu (St_Table [PU_Info_proc_sym (current_pu)])) & PU_CXX_LANG || Debug_Level > 0)
-	Force_Frame_Pointer = true;
+    const PU & func =
+        Pu_Table [ST_pu (St_Table [PU_Info_proc_sym (current_pu)])];
+
+    // C++ PU having exception regions, or with -g
+    if ((PU_cxx_lang (func) && PU_has_region (func)) || Debug_Level > 0)
+      Force_Frame_Pointer = true;
     else
-    	Force_Frame_Pointer = false;
+      Force_Frame_Pointer = false;
   }
 #endif
 
@@ -1899,10 +1956,13 @@ main (INT argc, char **argv)
     MEM_Tracing_Enable();
   }
 #endif
+
+#ifndef KEY
   if ( List_Enabled ) {
     Prepare_Listing_File ();
     List_Compile_Options ( Lst_File, "", FALSE, List_All_Options, FALSE );
   }
+#endif
 
   Init_Operator_To_Opcode_Table();
     
@@ -2044,6 +2104,17 @@ main (INT argc, char **argv)
     fflush (stderr);
   }
   Phase_Fini ();
+
+#ifdef KEY
+  //Bug 10252: move list options to here (the end of BE), so that
+  // it can show appropriate target-dependent options
+  if ( List_Enabled ) {
+    Mhd_Options.Merge_Options(Mhd);
+    Prepare_Listing_File ();
+    List_Compile_Options ( Lst_File, "", FALSE, List_All_Options, FALSE );
+  }
+#endif
+
 
   /* free the BE symtabs. w2cf requires BE_ST in Phase_Fini */
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -141,12 +141,13 @@ INITV_Init_Symoff (INITV_IDX inv, ST *st, INT64 ofst, UINT16 repeat)
     INITV_Set_SYMOFF (Initv_Table[inv], repeat, ST_st_idx(st), ofst);
 }
 
+#ifdef TARG_IA64
 void
 INITV_Init_Symiplt (INITV_IDX inv, ST *st, INT64 ofst, UINT16 repeat)
 {
     INITV_Set_SYMIPLT (Initv_Table[inv], repeat, ST_st_idx(st), ofst);
 }
-
+#endif
 
 void
 INITV_Init_Label (INITV_IDX inv, LABEL_IDX lab, UINT16 repeat)
@@ -203,6 +204,7 @@ Irb_Init_Symoff (INITO_IDX ino, INITV_IDX inv, mUINT16 repeat, ST *st,
     return idx;
 } // Irb_Init_Symoff
 
+#ifdef TARG_IA64
 INITV_IDX
 Irb_Init_Symiplt (INITO_IDX ino, INITV_IDX inv, mUINT16 repeat, ST *st,
 		 INT64 ofst)
@@ -222,7 +224,7 @@ Irb_Init_Symiplt (INITO_IDX ino, INITV_IDX inv, mUINT16 repeat, ST *st,
 
     return idx;
 } // Irb_Init_Symiplt
-
+#endif
 
 INITV_IDX
 Irb_Init_Label (INITO_IDX ino, INITV_IDX inv, mUINT16 repeat, LABEL_IDX lab)
@@ -479,6 +481,7 @@ Print_INITV (const INITV& initv)
 		 INITV_st (initv),
 		 INITV_ofst (initv), INITV_ofst (initv)); 
 	break;
+#ifdef TARG_IA64
     case INITVKIND_SYMIPLT:
 	repeat = INITV_repeat1 (initv);
 	fprintf (TFile," SYMIPLT: %s(0x%x)+%d(0x%x)",
@@ -487,6 +490,7 @@ Print_INITV (const INITV& initv)
 		 INITV_st (initv),
 		 INITV_ofst (initv), INITV_ofst (initv)); 
 	break;
+#endif
     case INITVKIND_LABEL:
 	repeat = INITV_repeat1 (initv);
 	fprintf (TFile," LABEL: %s (%d)", LABEL_name (INITV_lab (initv)),
@@ -605,9 +609,11 @@ Get_INITV_Size (INITV_IDX inv)
 	case INITVKIND_LABEL:
 		size = Pointer_Size;
 		break;
+#ifdef TARG_IA64
 	case INITVKIND_SYMIPLT:
 		size = Pointer_Size << 1;
 		break;
+#endif
 	case INITVKIND_VAL:
 		if (TCON_ty(INITV_tc_val(inv)) == MTYPE_STR)
 			size = TCON_str_len(INITV_tc_val(inv));

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1347,6 +1351,7 @@ SWP_Allocate_Rotating_Regs(bool                trace,
   used_regs = allocator.num_allocated_regs();
   ctr_pred_loc = SWP_LIFETIME::InvalidLoc;
 
+#ifdef TARG_IA64
    //Added to adjust predicate register allocation.
   if (reg_class == ISA_REGISTER_CLASS_predicate) {
       #ifdef TARG_IA64
@@ -1357,6 +1362,7 @@ SWP_Allocate_Rotating_Regs(bool                trace,
       } */ 
       #endif
   }
+#endif
   
   if (is_alloced)
   {

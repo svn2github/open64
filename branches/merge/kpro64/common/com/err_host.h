@@ -75,7 +75,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *err_host_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/err_host.h,v $ $Revision: 1.1.1.1 $";
+static char *err_host_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 /* Define any host program-specific phase literals not defined in

@@ -1,6 +1,10 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -132,12 +136,26 @@ typedef UINT8	GCM_TYPE;
 #define Reset_BB_MEM_BARRIER(bbsch)	(BBSCH_flags(bbsch) &= ~GCM_BB_MEM_BARRIER)
 
 // Other flags:
+#ifndef TARG_IA64
+// At -O3, with pre_gcm=on the set and reset of flag1 (visit) collided with 
+// the  set and reset in hb_sched.cxx module. This flag is a temporary and 
+// hence we can use any other unused flag associated with this op to indicate
+// this "visited" property. Use the 'bundled' flag, because we won't be using
+// 'bundled' flag at KEY
+#define OP_visited(o)			OP_bundled(o)
+#define Set_OP_visited(o)    		Set_OP_bundled(o)
+#define Reset_OP_visited(o)		Reset_OP_bundled(o)
+#define OP_moved(o)			OP_bundled(o)
+#define Set_OP_moved(o)			Set_OP_bundled(o)
+#define Reset_OP_moved(o)		Reset_OP_bundled(o)
+#else
 #define OP_visited(o)			OP_flag1(o)
 #define Set_OP_visited(o)    		Set_OP_flag1(o)
 #define Reset_OP_visited(o)		Reset_OP_flag1(o)
 #define OP_moved(o)			OP_flag1(o)
 #define Set_OP_moved(o)			Set_OP_flag1(o)
 #define Reset_OP_moved(o)		Reset_OP_flag1(o)
+#endif
 
 /* GCM flags (cgdriver options) */
 extern BOOL GCM_POST_Spec_Loads;
@@ -151,6 +169,9 @@ extern INT32 GCM_From_BB;
 extern INT32 GCM_To_BB;
 extern INT32 GCM_Result_TN;
 extern BOOL CG_Skip_GCM;
+#ifdef KEY
+extern INT32 GCM_BB_Limit;
+#endif
 
 extern void GCM_Schedule_Region (HBS_TYPE locs_type);
 

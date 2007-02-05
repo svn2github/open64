@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -68,7 +68,7 @@
 
 
 #ifdef _KEEP_RCS_ID
-static char *dwarf_DST_producer_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/dwarf_DST_producer.h,v $ $Revision: 1.1.1.1 $";
+static char *dwarf_DST_producer_rcs_id = "$Source: common/com/SCCS/s.dwarf_DST_producer.h $ $Revision: 1.12 $";
 #endif /* _KEEP_RCS_ID */
 
 

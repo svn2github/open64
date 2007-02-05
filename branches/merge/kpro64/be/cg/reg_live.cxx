@@ -1,6 +1,10 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -174,8 +178,14 @@ Add_PREG_To_REGSET (PREG_NUM preg, REGSET regset)
     ISA_REGISTER_CLASS cl;
     REGISTER reg;
 
+#ifdef KEY
+    if( !CGTARG_Preg_Register_And_Class(preg, &cl, &reg) ){
+      FmtAssert( FALSE, ("Don't know how to handle PREG%d", preg) );
+    }
+#else
     FmtAssert(CGTARG_Preg_Register_And_Class(preg, &cl, &reg),
 	      ("Don't know how to handle PREG%d", preg));
+#endif // KEY
 
     regset[cl] = REGISTER_SET_Union1 (regset[cl], reg);
   }
@@ -215,10 +225,19 @@ Compute_Parameter_Regs (TY_IDX call_ty, WN *call_wn, REGSET parms)
                           : Next_Output_PLOC_Reg (ploc);
     }
   }
+
+#ifdef TARG_X8664
+  /* RAX is used to pass number of SSE regs used */
+  Add_PREG_To_REGSET( RAX, parms );
+#endif
 }
 
 static void
+#ifdef TARG_IA64
 Compute_Return_Regs (TY_IDX call_ty, REGSET return_regs)
+#else
+Compute_Return_Regs (ST *call_st, TY_IDX call_ty, REGSET return_regs)
+#endif
 {
 
   PREG_NUM retpreg[MAX_NUMBER_OF_REGISTERS_FOR_RETURN];
@@ -228,7 +247,11 @@ Compute_Return_Regs (TY_IDX call_ty, REGSET return_regs)
   if (WHIRL_Return_Info_On) {
 
     RETURN_INFO return_info = Get_Return_Info (TY_ret_type(call_ty),
-					       No_Simulated);
+					       No_Simulated
+#ifdef TARG_X8664
+		       , call_st ? PU_ff2c_abi(Pu_Table[ST_pu(call_st)]) : FALSE
+#endif
+					      );
     FmtAssert (RETURN_INFO_count(return_info) <= MAX_NUMBER_OF_REGISTERS_FOR_RETURN, 
 	("Compute_Return_Regs:  more return registers than can handle"));
 
@@ -284,7 +307,11 @@ static void Compute_PU_Regs (REGSET livein, REGSET liveout)
 
   // Find the return registers for the current procedure.
   if (liveout != NULL) {
+#ifdef TARG_IA64
     Compute_Return_Regs (ST_pu_type(pu_st), liveout);
+#else
+    Compute_Return_Regs (pu_st, ST_pu_type(pu_st), liveout);
+#endif
 
     // check return regs for each entry
     if (PU_has_altentry(Get_Current_PU())) {
@@ -295,7 +322,11 @@ static void Compute_PU_Regs (REGSET livein, REGSET liveout)
 		bb = BB_LIST_first(bbl);
 		ant = ANNOT_Get (BB_annotations(bb), ANNOT_ENTRYINFO);
 		pu_st = ENTRYINFO_name(ANNOT_entryinfo(ant));
+#ifdef TARG_IA64
 	  Compute_Return_Regs (ST_pu_type(pu_st), liveout);
+#else
+          Compute_Return_Regs (pu_st, ST_pu_type(pu_st), liveout);
+#endif
 	}
     }
 
@@ -348,8 +379,10 @@ Compute_Call_Regs (BB *bb, REGSET livein, REGSET liveout, REGSET kill)
     }
 
     // add sp, gp to the livein set.
-    livein[REGISTER_CLASS_gp] = 
-		REGISTER_SET_Union1 (livein[REGISTER_CLASS_gp], REGISTER_gp);
+    if( REGISTER_gp != REGISTER_UNDEFINED ){
+      livein[REGISTER_CLASS_gp] = 
+	REGISTER_SET_Union1 (livein[REGISTER_CLASS_gp], REGISTER_gp);
+    }
     livein[REGISTER_CLASS_sp] = 
 		REGISTER_SET_Union1 (livein[REGISTER_CLASS_sp], REGISTER_sp);
 
@@ -361,8 +394,10 @@ Compute_Call_Regs (BB *bb, REGSET livein, REGSET liveout, REGSET kill)
 
     // add ra and callee saves if tail call.
     if (BB_tail_call(bb)) {
-      livein[REGISTER_CLASS_ra] = 
-		  REGISTER_SET_Union1 (livein[REGISTER_CLASS_ra], REGISTER_ra);
+      if( REGISTER_ra != REGISTER_UNDEFINED ){
+	livein[REGISTER_CLASS_ra] = 
+	  REGISTER_SET_Union1 (livein[REGISTER_CLASS_ra], REGISTER_ra);
+      }
 
       FOR_ALL_ISA_REGISTER_CLASS(cl) {
 	REGISTER_SET callee_saves = REGISTER_CLASS_callee_saves(cl);
@@ -372,7 +407,11 @@ Compute_Call_Regs (BB *bb, REGSET livein, REGSET liveout, REGSET kill)
   }
 
   if (liveout != NULL) {
+#ifdef TARG_IA64
     Compute_Return_Regs (call_ty, liveout);
+#else
+    Compute_Return_Regs (call_st, call_ty, liveout);
+#endif
   }
 
   if (kill != NULL) {
@@ -721,7 +760,9 @@ REG_LIVE_Epilog_Temps(
 
   /* Get the return registers for the exit block.  */
   REGSET_CLEAR(temps);
+#ifdef TARG_IA64
   Compute_Return_Regs (ST_pu_type(pu_st), temps);
+#endif
 
   /* The set of available temps at the end of the exit block is
    * the caller saved regs with the return regs removed.
@@ -760,10 +801,18 @@ REG_LIVE_Epilog_Temps(
 // The implicit uses are for function call parameters and return registers.
 BOOL REG_LIVE_Implicit_Use_Outof_BB (ISA_REGISTER_CLASS cl, REGISTER reg, BB *bb)
 {
+#ifdef TARG_X8664
+  if( cl == ISA_REGISTER_CLASS_rflags ){
+    return FALSE;
+  }
+#endif
   // Always mark unallocatable registers as liveout. This includes
   // registers like sp, fp, gp and dedicated register variables.
+#ifdef TARG_IA64
   if ((!REGISTER_allocatable (cl, reg))&&(!((cl==ISA_REGISTER_CLASS_branch)&&(reg==1)))) return TRUE;
-
+#else
+  if (!REGISTER_allocatable (cl, reg)) return TRUE;
+#endif
   REGISTER_SET use[ISA_REGISTER_CLASS_MAX+1];
 
   REGSET_CLEAR(use);
@@ -786,7 +835,11 @@ BOOL REG_LIVE_Implicit_Def_Into_BB (ISA_REGISTER_CLASS cl, REGISTER reg, BB *bb)
 {
   // Always mark unallocatable registers as an implicit def into all bbs. 
   // This includes registers like sp, fp, gp and dedicated register variables.
+#ifdef TARG_IA64
   if ((!REGISTER_allocatable (cl, reg))&&(!((cl==ISA_REGISTER_CLASS_branch)&&(reg==1)))) return TRUE;
+#else
+  if (!REGISTER_allocatable (cl, reg)) return TRUE;
+#endif
 
   REGISTER_SET def[ISA_REGISTER_CLASS_MAX+1];
   REGSET_CLEAR (def);

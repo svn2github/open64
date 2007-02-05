@@ -1,6 +1,14 @@
 /*
+ * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -53,7 +61,7 @@
 #pragma hdrstop
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_bb.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: be/cg/gra_mon/SCCS/s.gra_bb.cxx $ $Revision: 1.15 $";
 #endif
 
 #include "defs.h"
@@ -77,6 +85,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_trace.h"
 
 GBB_MGR gbb_mgr;
+#ifdef TARG_X8664
+OP *gra_savexmms_op;
+#endif
 
 
 /////////////////////////////////////
@@ -110,12 +121,344 @@ GRA_BB::Add_LUNIT( LUNIT*  lunit)
 /////////////////////////////////////
 // Add <reg> to the set of registers used in the given <gbb> and <rc>.
 void
+#ifdef TARG_IA64
 GRA_BB::Make_Register_Used( ISA_REGISTER_CLASS  rc, REGISTER reg)
+#else
+GRA_BB::Make_Register_Used( ISA_REGISTER_CLASS  rc, REGISTER reg,
+			      LRANGE* lrange, BOOL reclaim )
+#endif
 {
   region-> Make_Register_Used(rc,reg);
+#ifdef TARG_IA64
   loop->Make_Register_Used(rc, reg);
+#else
+  loop->Make_Register_Used(rc, reg, reclaim);
+#endif
   registers_used[rc] = REGISTER_SET_Union1(registers_used[rc],reg);
+
+#ifndef TARG_IA64
+  // Record that REG is owned by LRANGE.
+  if (GRA_reclaim_register)
+    Set_LRANGE_Owner(rc, reg, lrange);
+
+  if (! GRA_optimize_boundary)
+    return;
+
+  // If reclaiming a register, reset its boundary usage info.
+  if (reclaim) {
+    Usage_Start_Index_Set(rc, reg, 0);
+    Usage_End_Index_Set(rc, reg, 0);
+    Usage_Live_In_Clear(rc, reg);
+    Usage_Live_Out_Clear(rc, reg);
+  }
+
+  const mUINT16 max_OP_index = 0xffff;
+
+  // TODO:  Find the exact locations in the BB where the local TN is live.
+  // For now mark the register used over the entire BB.  (This may be
+  // difficult since these include the GRA grants.)
+  if (lrange == NULL) {		// NULL means local LRANGE
+    Usage_Start_Index_Set(rc, reg, 1);
+    Usage_End_Index_Set(rc, reg, max_OP_index);
+    return;
+  }
+
+  // Fill in detailed info about register usage in this BB.  If the register
+  // isn't used thoughout the BB, it is available to hold other LRANGEs.
+
+  if (lrange->Contains_Internal_BB(this)) {
+    // Internal BB.  Make the register used throughout the BB.
+    Usage_Live_In_Set(rc, reg);
+    Usage_Live_Out_Set(rc, reg);
+    Usage_Start_Index_Set(rc, reg, 0);
+    Usage_End_Index_Set(rc, reg, 0);
+  } else {
+    // Boundary BB.  Combine the usage info from this BB and the boundary BB.
+
+    // Describe a start or end index for merging the usages.
+    typedef struct {
+      mUINT16	index;
+      BOOL	is_start_index;
+    } usage;
+
+    usage this_usage[4];	// Describe the usage in this BB before merging.
+				// Two usage segments (and hence 4 indices) are
+				// possible due to the "disjoint" case.
+    int usage_segments = 0;	// Number of usage segments originally in this
+				// BB.
+
+    usage boundary_usage[2];	// The usage in the boundary BB.
+    usage combined_usage[6];	// The merged usage.
+
+    BOOL is_preferenced = FALSE;
+
+#ifdef Is_True_On
+    LUNIT* lunit;
+    Is_True(lrange->Find_LUNIT_For_GBB(this, &lunit),
+	    ("Make_Register_Used: cannot find LUNIT"));
+    REGISTER_SET allowed_prefs =
+	  REGISTER_SET_Union(lunit->Allowed_Preferences(),
+			     Global_Preferenced_Regs(lrange, this));
+    is_preferenced = REGISTER_SET_MemberP(allowed_prefs, reg);
+#endif
+
+    // Handle BB with no OP.  Treat the usage like a pass-thru.
+    if (BB_first_op(Bb()) == NULL) {
+      Usage_Live_In_Set(rc, reg);
+      Usage_Live_Out_Set(rc, reg);
+      Usage_Start_Index_Set(rc, reg, 0);
+      Usage_End_Index_Set(rc, reg, 0);
+      return;
+    }
+
+    // Prepare the start and end indices for merging.  Starts with this BB.
+    mUINT16 this_usage_start_index = Usage_Start_Index(rc, reg);
+    mUINT16 this_usage_end_index = Usage_End_Index(rc, reg);
+    if (Is_Usage_Live_In(rc, reg) && !Is_Usage_Live_Out(rc, reg)) {
+      // live-in
+      Is_True(this_usage_start_index == 0 && this_usage_end_index > 0,
+		("Bad usage index for live-in live range"));
+      this_usage[0].index = 0;
+      this_usage[0].is_start_index = TRUE;
+      this_usage[1].index = this_usage_end_index;
+      this_usage[1].is_start_index = FALSE;
+      usage_segments = 1;
+    } else if (!Is_Usage_Live_In(rc, reg) && Is_Usage_Live_Out(rc, reg)) {
+      // live-out
+      Is_True(this_usage_start_index > 0 && this_usage_end_index == 0,
+		("Bad usage index for live-out live range"));
+      this_usage[0].index = this_usage_start_index;
+      this_usage[0].is_start_index = TRUE;
+      this_usage[1].index = max_OP_index;
+      this_usage[1].is_start_index = FALSE;
+      usage_segments = 1;
+    } else if (Is_Usage_Live_In(rc, reg) && Is_Usage_Live_Out(rc, reg)) {
+      if (this_usage_start_index > 0) {
+	// disjoint
+	Is_True(this_usage_end_index > 0 &&
+		this_usage_start_index >= this_usage_end_index,
+		("Bad usage index for disjoint live range"));
+	this_usage[0].index = 0;
+	this_usage[0].is_start_index = TRUE;
+	this_usage[1].index = this_usage_end_index;
+	this_usage[1].is_start_index = FALSE;
+
+	this_usage[2].index = this_usage_start_index;
+	this_usage[2].is_start_index = TRUE;
+	this_usage[3].index = max_OP_index;
+	this_usage[3].is_start_index = FALSE;
+	usage_segments = 2;
+      } else {
+	// pass-thru
+	Is_True(this_usage_end_index == 0,
+		("Bad usage index for pass-thru live range"));
+	// Register is already used.  Can allocated to the register only if the
+	// lrange is preferenced to the register.
+	Is_True(is_preferenced,
+		("Make_Register_Used: register is already used"));
+	return;
+      }
+    } else if (!Is_Usage_Live_In(rc, reg) && !Is_Usage_Live_Out(rc, reg)) {
+      if (this_usage_start_index > 0) {
+	// contained
+	Is_True(this_usage_end_index > 0 &&
+		this_usage_start_index <= this_usage_end_index,
+		("Bad usage index for contained live range"));
+	this_usage[0].index = this_usage_start_index;
+	this_usage[0].is_start_index = TRUE;
+	this_usage[1].index = this_usage_end_index;
+	this_usage[1].is_start_index = FALSE;
+	usage_segments = 1;
+      } else {
+	// empty.  Live range doesn't appear in BB.  Do nothing.
+      }
+    }
+
+    // Prepare the indices for the boundary BB.
+    LRANGE_BOUNDARY_BB* boundary_bb = lrange->Get_Boundary_Bb(Bb());
+    if (boundary_bb->Is_Live_In() && !boundary_bb->Is_Live_Out()) {
+      // live-in
+      boundary_usage[0].index = 0;
+      boundary_usage[0].is_start_index = TRUE;
+      if (boundary_bb->End_Index() == 0) {
+	// TN is spill below.  The register is used just until the first
+	// OP.  To indicate this, reserve the register at the first OP.
+	boundary_usage[1].index = 1;
+      } else {
+	boundary_usage[1].index = boundary_bb->End_Index();
+      }
+      Is_True(boundary_usage[1].index > 0, ("Bad OP index in live-in"));
+      boundary_usage[1].is_start_index = FALSE;
+    } else if (!boundary_bb->Is_Live_In() && boundary_bb->Is_Live_Out()) {
+      // live-out
+      if (boundary_bb->Start_Index() == 0) {
+	// TN is restore above.  Reserve the register before the last OP
+	// because we insert the restore either before or after the last OP,
+	// depending on whether the last OP is a branch.
+	boundary_usage[0].index = boundary_bb->Gbb()->OPs_Count();
+      } else {
+        boundary_usage[0].index = boundary_bb->Start_Index();
+      }
+      Is_True(boundary_usage[0].index > 0, ("Bad OP index in live-out"));
+      boundary_usage[0].is_start_index = TRUE;
+      boundary_usage[1].index = max_OP_index;
+      boundary_usage[1].is_start_index = FALSE;
+    } else if (!boundary_bb->Is_Live_In() && !boundary_bb->Is_Live_Out()) {
+      if (boundary_bb->Start_Index() > 0) {
+        Is_True(boundary_bb->End_Index() >= boundary_bb->Start_Index(),
+		("Bad usage index for contained live range"));
+	boundary_usage[0].index = boundary_bb->Start_Index();
+	boundary_usage[0].is_start_index = TRUE;
+	boundary_usage[1].index = boundary_bb->End_Index();
+	boundary_usage[1].is_start_index = FALSE;
+      } else {
+	// empty.  Live range doesn't appear in BB.  Nothing to merge.
+        Is_True(boundary_bb->End_Index() == 0,
+		("Bad usage index for empty live range"));
+	return;
+      }
+    } else {
+      // live-in and live-out.
+#ifdef Is_True_On
+      // We could just reserve the register over the entire BB and we're done.
+      // Instead, we let the rest of the code run to get more error checking.
+      boundary_usage[0].index = 1;
+      boundary_usage[0].is_start_index = TRUE;
+      boundary_usage[1].index = max_OP_index;
+      boundary_usage[1].is_start_index = FALSE;
+#else
+      // Reserve the register over the entire BB.
+      Usage_Live_In_Set(rc, reg);
+      Usage_Live_Out_Set(rc, reg);
+      Usage_Start_Index_Set(rc, reg, 0);
+      Usage_End_Index_Set(rc, reg, 0);
+      return;
+#endif
+    }
+
+    // Merge the two usages.  Order by OP index.
+    int combined_i_max = 0;
+    {
+      int this_i, boundary_i, combined_i;
+      int this_i_max = usage_segments * 2;
+      int boundary_i_max = 2;
+
+      this_i = boundary_i = combined_i = 0;
+      for ( ; this_i < this_i_max && boundary_i < boundary_i_max; ) {
+	if (this_usage[this_i].index < boundary_usage[boundary_i].index)
+	  combined_usage[combined_i++] = this_usage[this_i++];
+	else if (this_usage[this_i].index > boundary_usage[boundary_i].index)
+	  combined_usage[combined_i++] = boundary_usage[boundary_i++];
+	else {
+	  // this_usage[this_i].index == boundary_usage[boundary_i].index.
+	  // In this case, accept the end index first, since one usage must end
+	  // before the other one starts.
+	  if (this_usage[this_i].is_start_index) {
+	    combined_usage[combined_i++] = boundary_usage[boundary_i++];
+	    combined_usage[combined_i++] = this_usage[this_i++];
+	  } else {
+	    combined_usage[combined_i++] = this_usage[this_i++];
+	    combined_usage[combined_i++] = boundary_usage[boundary_i++];
+	  }
+	}
+      }
+
+      // Done merging in either this_usage or boundary_usage.  Merge in the
+      // left overs.
+      while (this_i < this_i_max) {
+	combined_usage[combined_i++] = this_usage[this_i++];
+      }
+      while (boundary_i < boundary_i_max) {
+	combined_usage[combined_i++] = boundary_usage[boundary_i++];
+      }
+      combined_i_max = combined_i;
+
+#ifdef Is_True_On
+      Is_True(combined_i_max % 2 == 0,
+	      ("Make_Register_Used: error in combined usage"));
+      // Verify each usage segment is bounded by a start index and an end
+      // index, except when the register is preferenced, in which case the
+      // usages can overlap.
+      if (!is_preferenced) {
+	for (combined_i = 0; combined_i < combined_i_max; combined_i++) {
+	  // Even means start of segment.  Odd means end of segment.
+	  Is_True(combined_usage[combined_i].is_start_index ==
+		  (combined_i % 2 == 0),
+		  ("Make_Register_Used: error in combined usage"));
+	}
+      }
+#endif
+    }
+
+    // Parse the merged usage to see what the new usage looks like.
+    {
+      BOOL live_in = FALSE;
+      BOOL live_out = FALSE;
+      mUINT16 start_index = 0;
+      mUINT16 end_index = 0;
+
+      if (combined_i_max == 0) {
+	// empty
+	Is_True(Usage_Start_Index(rc, reg) == 0 &&
+		Usage_End_Index(rc, reg) == 0 &&
+		!Is_Usage_Live_Out(rc, reg) &&
+		!Is_Usage_Live_In(rc, reg),
+		("Make_Register_Used: error in combined usage"));
+      } else {
+	// Detect live-in and live-out.
+	if (combined_usage[0].index == 0)
+	  live_in = TRUE;
+	if (combined_usage[combined_i_max-1].index == max_OP_index)
+	  live_out = TRUE;
+
+	// Handle the cases.
+	if (live_in && !live_out) {
+	  start_index = 0;
+	  end_index = combined_usage[combined_i_max-1].index;
+	} else if (!live_in && live_out) {
+	  start_index = combined_usage[0].index;
+	  end_index = 0;
+	} else if (live_in && live_out) {
+	  // There are at most 2 gaps.
+	  if (combined_i_max == 6) {
+	    // There are 2 gaps.  Pick the largest gap in order to free up the
+	    // register as much as possible.
+	    int gap1_size = combined_usage[2].index - combined_usage[1].index;
+	    int gap2_size = combined_usage[4].index - combined_usage[3].index;
+	    if (gap1_size > gap2_size) {
+	      start_index = combined_usage[2].index;
+	      end_index = combined_usage[1].index;
+	    } else {
+	      start_index = combined_usage[4].index;
+	      end_index = combined_usage[3].index;
+	    }
+	  } else if (combined_i_max == 4) {
+	    // Only one gap.
+	    start_index = combined_usage[2].index;
+	    end_index = combined_usage[1].index;
+	  } else {
+	    Is_True(FALSE,
+		    ("Make_Register_Used: error in combined usage"));
+	  }
+	} else {
+	  // !live_in && !live_out
+	  start_index = combined_usage[0].index;
+	  end_index = combined_usage[combined_i_max-1].index;
+	}
+      }
+      if (live_in)
+        Usage_Live_In_Set(rc, reg);
+      if (live_out)
+        Usage_Live_Out_Set(rc, reg);
+      Usage_Start_Index_Set(rc, reg, start_index);
+      Usage_End_Index_Set(rc, reg, end_index);
+    }
+  }
+#endif
+
+
 }
+
 
 /////////////////////////////////////
 REGISTER_SET
@@ -132,6 +475,26 @@ GRA_BB::Registers_Used( ISA_REGISTER_CLASS  rc)
       return used;
   }
 }
+
+#ifndef TARG_IA64
+/////////////////////////////////////
+// Add <reg> to the set of registers referenced in the given <gbb> and <rc>.
+void
+GRA_BB::Make_Register_Referenced (ISA_REGISTER_CLASS rc, REGISTER reg,
+				  LRANGE* lrange )
+{
+  registers_referenced[rc] = REGISTER_SET_Union1(registers_referenced[rc],reg);
+}
+
+/////////////////////////////////////
+REGISTER_SET
+GRA_BB::Registers_Referenced( ISA_REGISTER_CLASS rc)
+{
+  FmtAssert(region == gra_region_mgr.Complement_Region(),
+	    ("Registers_Referenced: lrange type not implemented"));
+  return registers_referenced[rc];
+}
+#endif
 
 /////////////////////////////////////
 // Check if <lrange> in the set of LRANGEs to be spilled above <gbb>.
@@ -267,6 +630,21 @@ GBB_MGR::Create(BB* bb, GRA_REGION* region)
     gbb->unpreferenced_wired_lranges[rc] = NULL;
     gbb->spill_above[rc] = NULL;
     gbb->restore_below[rc] = NULL;
+#ifndef TARG_IA64
+    if (GRA_optimize_boundary) {
+      gbb->usage_live_in[rc] = REGISTER_SET_EMPTY_SET;
+      gbb->usage_live_out[rc] = REGISTER_SET_EMPTY_SET;
+      for (int i = 0; i < REGISTER_MAX+1; i++) {
+	gbb->usage_start_index[rc][i] = 0;
+	gbb->usage_end_index[rc][i] = 0;
+      }
+    }
+    if (GRA_reclaim_register) {
+      for (int i = 0; i < REGISTER_MAX+1; i++) {
+	gbb->lrange_owner[rc][i] = NULL;
+      }
+    }
+#endif
   }
 
   BB_MAP_Set(map,bb,(void*) gbb);
@@ -289,6 +667,19 @@ GBB_MGR::Create(BB* bb, GRA_REGION* region)
   }
   if (BB_mod_rotating_registers(bb) || BB_mod_pred_rotating_registers(bb))
     blocks_with_rot_reg_clob = BB_SET_Union1D(blocks_with_rot_reg_clob,bb,GRA_pool);
+#ifdef TARG_X8664
+  if (BB_last_op(bb) && OP_code(BB_last_op(bb)) == TOP_savexmms) {
+    gbb->Savexmms_Set();
+    gra_savexmms_op = BB_last_op(bb);
+  }
+
+  // Count the number of OPs in the BB.
+  mUINT16 OPs_count = 0;
+  for (OP *op = BB_first_op(bb); op != NULL; op = OP_next(op)) {
+    OPs_count++;
+  }
+  gbb->OPs_count = OPs_count;
+#endif
 
   return gbb;
 }
@@ -305,7 +696,11 @@ GRA_BB::Create_Local_LRANGEs(ISA_REGISTER_CLASS rc, INT32 count)
   // requested.  So they won't need live ranges.  See gra_color for the actual
   // preallocateion.
   //
+#ifdef TARG_IA64
   count -= GRA_local_forced_max;
+#else
+  count -= GRA_LOCAL_FORCED_MAX(rc);
+#endif
   if ( count <= 0 )
     return;
 

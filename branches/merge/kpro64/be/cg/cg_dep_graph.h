@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -334,7 +342,7 @@
  *
  *    void CG_DEP_Delete_Graph(void *item)
  *
- *  Software pipelining and Hyberblock scheduling require "prebranch" 
+ *  Software pipelining and Hyperblock scheduling require "prebranch" 
  *  (CG_DEP_PREBR) arcs in
  *  the cyclic graph.  To avoid the expense of maintaining these all the
  *  time, we provide: <comp_func> is a filter function to provide clients
@@ -342,7 +350,7 @@
  *    void CG_DEP_Add_PREBR_Arcs(BB* bb, COMPARE_FUNCTION comp_func, 
  *                               BOOL ignore_latency);
  *
- *  Hyberblock scheduling also requires "postbranch" (CG_DEP_POSTBR) arcs
+ *  Hyperblock scheduling also requires "postbranch" (CG_DEP_POSTBR) arcs
  *  between the predecessor branch node and the successor op node (in the
  *  context of single-entry multiple-exit BBs). 
  *    void CG_DEP_Add_POSTBR_Arcs(list<BB*>, COMPARE_FUNCTION comp_func, 
@@ -387,7 +395,7 @@
 #define CG_DEP_GRAPH_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *cg_dep_graph_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_dep_graph.h,v $ $Revision: 1.1.1.1 $";
+static char *cg_dep_graph_rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/cg/SCCS/s.cg_dep_graph.h $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <list>
@@ -461,10 +469,12 @@ typedef enum cg_dep_kind {
 			 * transfer takes effect */
   CG_DEP_SCC,		/* Strongly connected component arcs */
 
+#ifdef TARG_IA64
   CG_DEP_PRECHK,    /* Pre-chk: the succ is a check op  */
   CG_DEP_POSTCHK,   /* Post-chk: the pred is a check op */
   CG_DEP_CTLSPEC, /* control speculation, a special dep between a cmp 
   				* and its guarded operations. */
+#endif
 
   CG_DEP_MISC,		/* Everything else: the pred must be issued
 			 * before the succ. */
@@ -653,7 +663,7 @@ inline ARC *ARC_LIST_Find_First(ARC_LIST *list, CG_DEP_KIND kind, INT16 opnd)
   return arcs ? ARC_LIST_first(arcs) : NULL;
 }
 
-typedef BOOL (*COMPARE_FUNCTION)(void*, void*);
+typedef BOOL (*COMPARE_FUNCTION)(const void*, const void*);
 
 void CG_DEP_Compute_Graph(struct bb      *bb,
 			  BOOL           assigned_regs,
@@ -689,7 +699,10 @@ void CG_DEP_Trace_Op_SCC_Arcs(OP *op);
 
 void CG_DEP_Delete_Graph(void *item);
 
+#ifdef TARG_IA64
 INT16 CG_DEP_Oper_cycle(TOP oper, CG_DEP_KIND kind);  
+#endif
+
 INT16 CG_DEP_Latency(OP *pred, OP *succ, CG_DEP_KIND kind, UINT8 opnd);
 INT16 CG_DEP_Oper_Latency(TOP              pred_oper, 
 			  TOP              succ_oper,
@@ -737,15 +750,20 @@ BOOL CG_DEP_Call_Aliases(OP *call_op, OP *op, BOOL read, BOOL write);
 
 BOOL CG_DEP_Can_OP_Move_Across_Call(OP *cur_op, OP *call_op, BOOL forw, BOOL Ignore_TN_Dep);
 
-extern BOOL OP_has_subset_predicate(void *value1, void *value2);
+extern BOOL OP_has_subset_predicate(const void *value1, const void *value2);
 
 extern BOOL OP_has_disjoint_predicate(OP *value1, OP *value2);
-inline BOOL TN_is_predicate (TN * tn) {
-      return TN_is_register(tn) && TN_register_class(tn) == ISA_REGISTER_CLASS_predicate; 
+#ifdef TARG_IA64
+inline BOOL TN_is_predicate (TN * tn) 
+{
+  return TN_is_register(tn) && TN_register_class(tn) == ISA_REGISTER_CLASS_predicate; 
 }
+#endif
 
 extern void CG_DEP_Detach_Arc(ARC *arc);
 
+#ifdef TARG_IA64
 extern ARC *new_arc(CG_DEP_KIND kind, OP *pred, OP *succ, UINT8 omega, UINT8 opnd, BOOL is_definite);
+#endif
 
 #endif /* CG_DEP_GRAPH_INCLUDED */

@@ -56,7 +56,7 @@
 #ifndef erirb_desc_INCLUDED
 #define erirb_desc_INCLUDED
 
-static char *erirb_desc_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/erirb.desc,v $ $Revision: 1.1.1.1 $";
+static char *erirb_desc_rcs_id = "$Source$ $Revision$";
 
 /* Include the error code definitions: */
 #include "erirb.h"

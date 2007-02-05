@@ -1,6 +1,10 @@
 /*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -71,6 +75,9 @@
 /* for ST */
 #include "symtab.h"
 #include "wn.h"
+#ifdef KEY
+#include "bb.h"
+#endif
 
 /* ================================================================= */
 
@@ -130,13 +137,35 @@ extern void Adjust_GP_Setup_Code ( ST* pu, BOOL allocate_registers );
 extern void Adjust_LC_Setup_Code ( void);
 extern BOOL LC_Used_In_PU;	/* flag whether LC_TN was used */
 
+#ifdef TARG_IA64
 /* Cycle Count Call */
 extern void Cycle_Count_Initialize ( ST *pu, BOOL is_region );  
 
 /* Instrument code to call _mcount */
 extern void Instru_Call_Mcount(void );
-
+#endif
 /* Tail calls: */
 extern void Optimize_Tail_Calls( ST* pu );
 
+#ifdef TARG_X8664
+void Adjust_SP_After_Call( BB* );
+#endif
+
+#ifdef KEY
+// The following are interfaces into calls.cxx Callee saved registers stack
+typedef struct save_reg_loc {
+  struct tn 	*ded_tn; /* the dedicated TN for the callee-saved register */
+  ST 		*temp;   /* the save location */
+  BOOL		user_allocated; /* true if allocated by user via asm */
+} SAVE_REG_LOC;
+
+// Return TRUE if this tn is not in the list of callee-saved TNs
+extern BOOL Is_Unique_Callee_Saved_Reg (TN *);
+// Number of callee saved registers
+extern INT Cgdwarf_Num_Callee_Saved_Regs (void);
+// Nth callee saved register dedicated TN
+extern struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n);
+// The location on the stack that corresponds to the nth TN on the stack.
+extern ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n);
+#endif
 #endif /* calls_INCLUDED */

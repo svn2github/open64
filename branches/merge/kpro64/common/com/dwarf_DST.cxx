@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,7 +39,7 @@
 
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/dwarf_DST.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: common/com/SCCS/s.dwarf_DST.cxx $ $Revision: 1.5 $";
 
 #include "dwarf_DST.h"
 #include "errors.h"         /* in ../common/util */
@@ -73,7 +77,7 @@ DST_get_ptr_to_firstChildField(DST_INFO *parent)
       field_ptr = &DST_COMPILE_UNIT_first_child(
                       DST_ATTR_IDX_TO_PTR(attr, DST_COMPILE_UNIT));
       break;
-      
+
 #ifdef KEY /* Bug 3507 */
    case DW_TAG_module:
       field_ptr = &DST_MODULE_first_child(
@@ -172,7 +176,7 @@ DST_get_ptr_to_lastChildField(DST_INFO *parent)
       field_ptr = &DST_COMPILE_UNIT_last_child(
                       DST_ATTR_IDX_TO_PTR(attr, DST_COMPILE_UNIT));
       break;
-      
+
 #ifdef KEY /* Bug 3507 */
    case DW_TAG_module:
       field_ptr = &DST_MODULE_last_child(

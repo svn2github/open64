@@ -45,10 +45,10 @@
  * ====================================================================
  *
  * Module: config_lno.h
- * $Revision: 1.39 $
- * $Date: 05/10/19 20:03:33-07:00 $
- * $Author: fchow@fluorspar.internal.keyresearch.com $
- * $Source: common/com/SCCS/s.config_lno.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_lno.h,v $
  *
  * Revision history:
  *  02-Nov-96 - Original Version
@@ -329,9 +329,9 @@ typedef struct lno_flags {
   UINT32 Num_Iters;
   UINT32 Pure_Level;
   UINT32 Small_trip_count;
-//#ifdef KEY
-//  UINT32 Trip_Count_Assumed_When_Unknown;
-//#endif
+#ifdef TARG_IA64
+  UINT32 Assume_Unknown_Trip_Count;
+#endif
   UINT32 Local_pad_size;
   UINT32 Full_unrolling;  
 #ifdef KEY
@@ -539,12 +539,10 @@ extern LNO_FLAGS Initial_LNO;
 // Largest inner loop trip count for which we'll try full unrolling
 #define LNO_Small_Trip_Count		Current_LNO->Small_trip_count
 
-/*
 #ifdef KEY
 // The trip count assumed by LNO to avoid prefetches in the absence of feedback
-#define LNO_Trip_Count_Assumed_When_Unknown   Current_LNO->Trip_Count_Assumed_When_Unknown
+#define LNO_Assume_Unknown_Trip_Count   Current_LNO->Assume_Unknown_Trip_Count
 #endif
-*/
 
 // The amount by which to pad local array dimensions
 #define LNO_Local_Pad_Size		Current_LNO->Local_pad_size

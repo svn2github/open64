@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -180,7 +184,11 @@ TYPE_ID Promoted_Mtype [MTYPE_LAST + 1] = {
   MTYPE_U8,       /* MTYPE_U8 */
   MTYPE_F4,       /* MTYPE_F4 */
   MTYPE_F8,       /* MTYPE_F8 */
+#ifndef PATHSCALE_MERGE_ZX
   MTYPE_F10,      /* MTYPE_F10 */
+#else
+  MTYPE_UNKNOWN,  /* MTYPE_F10 */
+#endif
   MTYPE_UNKNOWN,  /* MTYPE_F16 */
   MTYPE_UNKNOWN,  /* MTYPE_STR */
   MTYPE_FQ,       /* MTYPE_FQ */
@@ -188,11 +196,15 @@ TYPE_ID Promoted_Mtype [MTYPE_LAST + 1] = {
   MTYPE_C4,       /* MTYPE_C4 */
   MTYPE_C8,       /* MTYPE_C8 */
   MTYPE_CQ,       /* MTYPE_CQ */
+#ifndef PATHSCALE_MERGE_ZX
   MTYPE_V,        /* MTYPE_V */
   MTYPE_UNKNOWN,  /* MTYPE_BS */
   MTYPE_UNKNOWN,  /* MTYPE_A4 */
   MTYPE_UNKNOWN,  /* MTYPE_A8 */
   MTYPE_C10,      /* MTYPE_C10 */
+#else
+  MTYPE_V         /* MTYPE_V */
+#endif
 };
 
 #ifdef VHO_DEBUG
@@ -1285,6 +1297,36 @@ get_field_type (TY_IDX struct_type, UINT field_id)
   return FLD_type (fld);
 }
 
+#ifdef KEY
+// If there is a single field that spans across the entire
+// struct (i.e. any other field has size zero), return the field-id,
+// else return 0.
+static INT
+single_field_in_struct (TY_IDX struct_type)
+{
+  Is_True (TY_kind(struct_type) == KIND_STRUCT,
+           ("single_field_in_struct: expected struct type"));
+  
+  Is_True (TY_size(struct_type) == 4 || TY_size(struct_type) == 8,
+           ("single_field_in_struct: sizes 4/8 only supported"));
+  FLD_ITER fld_iter = Make_fld_iter (TY_fld (struct_type));
+  INT fld_count = 0;
+
+  do {
+    FLD_HANDLE fld(fld_iter);
+    fld_count++;
+    if (TY_size (FLD_type (fld)) == TY_size (struct_type))
+      return fld_count;
+    // Else if there is a field with non-zero size, then there must be
+    // multiple non-zero-size fields.
+    else if (TY_size (FLD_type (fld)))
+      return 0;
+  } while (!FLD_last_field(fld_iter++));
+
+  return 0;
+}
+#endif
+
 /* ============================================================================
  *
  * WN *VHO_Lower_Mstore ( WN * wn )
@@ -1668,7 +1710,31 @@ VHO_Lower_Mstid (WN * wn)
         } 
         wn = block;
       }
-    } else {
+    }
+#ifdef KEY
+    if (VHO_Struct_Can_Be_Lowered && VHO_Struct_Nfields)
+      ; // we already lowered the struct
+    else if ((bytes == 4 || bytes == 8) && TY_size(src_ty_idx) == bytes) {
+      // bug 7741: change MTYPE_M to MTYPE_U[48]
+      TYPE_ID mtype = (bytes == 4) ? MTYPE_U4 : MTYPE_U8;
+      WN_set_desc(wn, mtype);
+      WN_set_rtype(src_value, mtype);
+      WN_set_desc(src_value, mtype);
+
+      // bugs 9989, 10139
+      INT field_id;
+      Is_True (WN_field_id(src_value) == 0,("Expected field-id zero"));
+      if ((TY_kind(src_ty_idx) == KIND_STRUCT) &&
+          (field_id /* assign */ = single_field_in_struct (src_ty_idx)))
+        WN_set_field_id (src_value, field_id);
+
+      Is_True (WN_field_id(wn) == 0,("Expected field-id zero"));
+      if ((TY_kind(dst_ty_idx) == KIND_STRUCT) &&
+          (field_id /* assign */ = single_field_in_struct (dst_ty_idx)))
+        WN_set_field_id (wn, field_id);
+    }
+    else {
+#endif
 
 #ifdef VHO_DEBUG
     if ( VHO_Struct_Debug) 
@@ -3755,6 +3821,13 @@ vho_lower_mparm (WN * wn)
     WN_set_rtype (wn, mtype);
     WN_set_rtype (kid, mtype);
     WN_set_desc (kid, mtype);
+
+    // bugs 9989, 10139
+    INT field_id;
+    Is_True (WN_field_id(kid) == 0,("vho_lower_mparm: Expected field-id zero"));
+    if ((TY_kind(ty) == KIND_STRUCT) &&
+        (field_id /* assign */ = single_field_in_struct (ty)))
+      WN_set_field_id (kid, field_id);
   }
 
   return wn;
@@ -3861,6 +3934,8 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
 	      WN_const_val(exp) > 0 &&
 	      WN_const_val(exp) <= 5) {
 	    INT n = WN_const_val(exp);
+	    WN_kid0(WN_kid0(wn)) = vho_lower_expr(WN_kid0(WN_kid0(wn)),
+						  block, NULL); //bug 8576
 	    WN* opnd = WN_COPY_Tree ( WN_kid0(WN_kid0(wn)) );
 	    if ( n == 1 ) {
 	      wn = opnd; break;
@@ -4080,23 +4155,40 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
 
     case OPR_RROTATE:
     {
-      TYPE_ID  desc  = WN_desc(wn);
-      TYPE_ID  rtype = WN_rtype(wn);
-      INT32    size  = 8 * TY_size (Be_Type_Tbl (desc));
-      WN      *wn0   = vho_lower_expr (WN_kid0(wn), block, NULL);
-      WN      *wn1   = vho_lower_expr (WN_kid1(wn), block, NULL);
-      TYPE_ID  shift_rtype = WN_rtype(wn1);
-      WN      *rshift = WN_Lshr (rtype, WN_COPY_Tree (wn0), WN_COPY_Tree (wn1));
-      WN      *lshift = WN_Shl  (rtype, wn0,
-                                 WN_Binary (OPR_SUB, shift_rtype,
-                                            WN_Intconst (shift_rtype, size),
-                                            wn1));
+#ifdef TARG_X8664
+      // By default, generate rotate instruction only if it is C++ (bug 7932)
+      // Can be crontrolled by internal flag -VHO:rotate
+      if (!VHO_Generate_Rrotate_Set && PU_cxx_lang (Get_Current_PU()))
+        VHO_Generate_Rrotate = TRUE;
+
+      if (!VHO_Generate_Rrotate)
+#endif
+      {
+        TYPE_ID  desc  = WN_desc(wn);
+        TYPE_ID  rtype = WN_rtype(wn);
+        INT32    size  = 8 * TY_size (Be_Type_Tbl (desc));
+        WN      *wn0   = vho_lower_expr (WN_kid0(wn), block, NULL);
+        WN      *wn1   = vho_lower_expr (WN_kid1(wn), block, NULL);
+        TYPE_ID  shift_rtype = WN_rtype(wn1);
+        WN      *rshift = WN_Lshr (rtype, WN_COPY_Tree (wn0), WN_COPY_Tree (wn1));
+        WN      *lshift = WN_Shl  (rtype, wn0,
+                                   WN_Binary (OPR_SUB, shift_rtype,
+                                              WN_Intconst (shift_rtype, size),
+                                              wn1));
 #ifdef TARG_X8664 // bug 4552
       if (size < MTYPE_size_min(rtype))
 	lshift = WN_CreateCvtl(OPR_CVTL, Mtype_TransferSign(MTYPE_U4, rtype), 
 				MTYPE_V, size, lshift);
 #endif
-      wn  = WN_Bior (rtype, lshift, rshift);
+        wn  = WN_Bior (rtype, lshift, rshift);
+      }
+#ifdef TARG_X8664
+      else
+      {
+        WN_kid0 (wn) = vho_lower_expr (WN_kid0(wn), block, NULL);
+        WN_kid1 (wn) = vho_lower_expr (WN_kid1(wn), block, NULL);
+      }
+#endif // TARG_X8664
       break;
     }
 
@@ -4707,6 +4799,10 @@ vho_lower_xpragma ( WN * wn, WN * block )
 static WN *
 vho_lower_prefetch ( WN * wn, WN * block )
 {
+#ifdef KEY // bug 9499
+  // Kid0 may need to be lowered, for example, if it is a call.
+  WN_kid0(wn) = vho_lower_expr ( WN_kid0(wn), block, NULL );
+#endif
   return wn;
 } /* vho_lower_prefetch */
 
@@ -6365,10 +6461,18 @@ Is_Loop_Suitable_For_Misc_Loop_Distribute_And_Interchange(WN* wn, WN* block)
   WN *body = WN_while_body(innerloop);
   WN* stmt;
   if (!WN_first(body) || WN_operator(stmt = WN_first(body)) != OPR_ISTORE ||
-      !WN_next(stmt) || WN_operator(WN_next(stmt)) != OPR_LABEL ||
-      !WN_next(WN_next(stmt)) || 
-      WN_operator(WN_next(WN_next(stmt))) != OPR_STID ||
-      WN_next(WN_next(WN_next(stmt)))) return FALSE;
+      !WN_next(stmt)) 
+    return FALSE;
+  if (WN_operator(WN_next(stmt)) == OPR_LABEL) {
+    if (!WN_next(WN_next(stmt)) || 
+	WN_operator(WN_next(WN_next(stmt))) != OPR_STID ||
+	WN_next(WN_next(WN_next(stmt)))) 
+      return FALSE;
+  }
+  else {
+    if (WN_operator(WN_next(stmt)) != OPR_STID || WN_next(WN_next(stmt)))
+      return FALSE;
+  }
   // Find the operand that is ILOAD(ILOAD(...))
   WN* opnd;
   WN* opnd_base;
@@ -6490,8 +6594,9 @@ static WN* Misc_Loop_Distribute_And_Interchange (WN* wn, WN* block)
     const FB_Info_Loop fb_info_inner = Cur_PU_Feedback->Query_loop(orig_loop);
     FB_Info_Loop fb_info = fb_info_outer;
     fb_info.freq_iterate._value = 
-      fb_info.freq_out._value * 
-      ( fb_info_inner.freq_iterate._value/fb_info_inner.freq_out._value );
+      fb_info_inner.freq_out._value == 0.0 ? 0.0 :	// bug 10013
+        fb_info.freq_out._value * 
+        ( fb_info_inner.freq_iterate._value/fb_info_inner.freq_out._value );
     fb_info.freq_back._value = fb_info.freq_iterate._value - 
       fb_info.freq_positive._value;
     Cur_PU_Feedback->Annot_loop( post_loop, fb_info );
@@ -7282,6 +7387,204 @@ vho_lower_if ( WN * wn, WN *block )
   return wn;
 } /* vho_lower_if */
 
+#ifdef KEY // bug 8581
+// determine if two WHIRL statements are identical; only handle store statements
+// for now
+static BOOL
+Identical_stmt(WN *stmt1, WN *stmt2)
+{
+  if (stmt1 == NULL || stmt2 == NULL)
+    return FALSE;
+  if (WN_opcode(stmt1) != WN_opcode(stmt2))
+    return FALSE;
+  switch(WN_operator(stmt1)) {
+  case OPR_STID:
+    if (WN_store_offset(stmt1) != WN_store_offset(stmt2))
+      return FALSE;
+    if (WN_field_id(stmt1) != WN_field_id(stmt2))
+      return FALSE;
+    if (WN_desc(stmt1) != WN_desc(stmt2))
+      return FALSE;
+    if (WN_st_idx(stmt1) != WN_st_idx(stmt2))
+      return FALSE;
+    return WN_Simp_Compare_Trees(WN_kid0(stmt1), WN_kid0(stmt2)) == 0;
+  case OPR_STBITS:
+    if (WN_store_offset(stmt1) != WN_store_offset(stmt2))
+      return FALSE;
+    if (WN_bit_offset(stmt1) != WN_bit_offset(stmt2))
+      return FALSE;
+    if (WN_bit_size(stmt1) != WN_bit_size(stmt2))
+      return FALSE;
+    if (WN_st_idx(stmt1) != WN_st_idx(stmt2))
+      return FALSE;
+    return WN_Simp_Compare_Trees(WN_kid0(stmt1), WN_kid0(stmt2)) == 0;
+  case OPR_ISTORE:
+    if (WN_store_offset(stmt1) != WN_store_offset(stmt2))
+      return FALSE;
+    if (WN_field_id(stmt1) != WN_field_id(stmt2))
+      return FALSE;
+    if (WN_desc(stmt1) != WN_desc(stmt2))
+      return FALSE;
+    if (WN_Simp_Compare_Trees(WN_kid0(stmt1), WN_kid0(stmt2)) != 0)
+      return FALSE;
+    return WN_Simp_Compare_Trees(WN_kid1(stmt1), WN_kid1(stmt2)) == 0;
+  case OPR_ISTBITS:
+    if (WN_store_offset(stmt1) != WN_store_offset(stmt2))
+      return FALSE;
+    if (WN_bit_offset(stmt1) != WN_bit_offset(stmt2))
+      return FALSE;
+    if (WN_bit_size(stmt1) != WN_bit_size(stmt2))
+      return FALSE;
+    if (WN_Simp_Compare_Trees(WN_kid0(stmt1), WN_kid0(stmt2)) != 0)
+      return FALSE;
+    return WN_Simp_Compare_Trees(WN_kid1(stmt1), WN_kid1(stmt2)) == 0;
+  case OPR_MSTORE:
+    if (WN_store_offset(stmt1) != WN_store_offset(stmt2))
+      return FALSE;
+    if (WN_field_id(stmt1) != WN_field_id(stmt2))
+      return FALSE;
+    if (WN_Simp_Compare_Trees(WN_kid0(stmt1), WN_kid0(stmt2)) != 0)
+      return FALSE;
+    if (WN_Simp_Compare_Trees(WN_kid1(stmt1), WN_kid1(stmt2)) != 0)
+      return FALSE;
+    return WN_Simp_Compare_Trees(WN_kid2(stmt1), WN_kid2(stmt2)) == 0;
+  case OPR_BLOCK: {
+      WN *s1 = WN_first(stmt1);
+      WN *s2 = WN_first(stmt2);
+      for ( ; ; ) {
+	if (s1 == NULL && s2 == NULL)
+	  return TRUE;
+	if (! Identical_stmt(s1, s2))
+	  return FALSE;
+	s1 = WN_next(s1);
+	s2 = WN_next(s2);
+      }
+    }
+  default: ;
+  }
+  return FALSE;
+}
+
+// If the given IF has a nested IF in the ELSE part with identical THEN stmt:
+//
+//   IF (A) THEN S1; ELSE { if (B) THEN S1; ELSE S2; }
+//
+// transform it to:
+//
+//   IF (A || B) THEN S1; ELSE S2;
+//
+// S1 can be the empty statement.
+//
+// Since this is done bottom up, multiple occurrences of the identical THEN 
+// stmts can be commonized.  If tranformed, the new IF statement is returned;
+// otherwise, the original IF.
+static WN *
+Merge_identical_then_parts(WN *wn)
+{
+  WN *then_wn = WN_then(wn);
+  WN *else_wn = WN_else(wn);
+  if (WN_opcode(then_wn) != OPC_BLOCK)
+    return wn;
+  if (WN_opcode(else_wn) != OPC_BLOCK)
+    return wn;
+  if (WN_first(else_wn) == NULL)
+    return wn;
+  if (WN_first(else_wn) != WN_last(else_wn)) // else part more than 1 stmt
+    return wn;
+  if (WN_opcode(WN_first(else_wn)) != OPC_IF) // that 1 stmt is not an IF
+    return wn;
+  WN *elseifwn = WN_first(else_wn);
+  WN *then_elseifwn = WN_then(elseifwn);
+  if (! Identical_stmt(then_wn, then_elseifwn))
+    return wn;
+  WN *if_test1 = WN_if_test(wn);
+  WN *if_test2 = WN_if_test(elseifwn);
+  if (OPT_Lower_Speculate && WN_Expr_Can_Be_Speculative(if_test2, NULL))
+    WN_if_test(wn) = WN_LIOR(if_test1, if_test2);
+  else WN_if_test(wn) = WN_CIOR(if_test1, if_test2);
+  WN_else(wn) = WN_else(elseifwn);
+  // update frequencies
+  if (Cur_PU_Feedback) {
+    const FB_Info_Branch& info_branch1 = Cur_PU_Feedback->Query_branch(wn);
+    const FB_Info_Branch& info_branch2 = Cur_PU_Feedback->Query_branch(elseifwn);
+    Cur_PU_Feedback->Annot_branch( wn, FB_Info_Branch(
+    		      info_branch1.freq_taken+info_branch2.freq_taken, 
+		      info_branch2.freq_not_taken, OPR_IF ) );
+    if (WN_operator(WN_if_test(wn)) == OPR_CIOR) {
+      FB_FREQ freq_left = info_branch1.freq_taken;
+      FB_FREQ freq_right = info_branch2.freq_taken;
+      FB_FREQ freq_neither = info_branch2.freq_not_taken;
+      Cur_PU_Feedback->Annot_circuit(WN_if_test(wn), FB_Info_Circuit(freq_left,
+      						freq_right, freq_neither));
+    }
+  }
+  // clean up
+  WN_if_test(elseifwn) = NULL;
+  WN_else(elseifwn) = NULL;
+  WN_DELETE_Tree(else_wn);
+  return wn;
+}
+
+// If the given IF has a nested IF in the THEN part with identical ELSE stmt:
+//
+//   IF (A) THEN { if (B) THEN S1; ELSE S2; } ELSE S2;
+//
+// transform it to:
+//
+//   IF (A && B) THEN S1; ELSE S2;
+//
+// S2 can be the empty statement.
+//
+// Since this is done bottom up, multiple occurrences of the identical ELSE 
+// stmts can be commonized.  If tranformed, the new IF statement is returned;
+// otherwise, the original IF.
+static WN *
+Merge_identical_else_parts(WN *wn)
+{
+  WN *then_wn = WN_then(wn);
+  WN *else_wn = WN_else(wn);
+  if (WN_opcode(then_wn) != OPC_BLOCK)
+    return wn;
+  if (WN_opcode(else_wn) != OPC_BLOCK)
+    return wn;
+  if (WN_first(then_wn) == NULL)
+    return wn;
+  if (WN_first(then_wn) != WN_last(then_wn)) // then part more than 1 stmt
+    return wn;
+  if (WN_opcode(WN_first(then_wn)) != OPC_IF) // that 1 stmt is not an IF
+    return wn;
+  WN *thenifwn = WN_first(then_wn);
+  WN *else_thenifwn = WN_else(thenifwn);
+  if (! Identical_stmt(else_wn, else_thenifwn))
+    return wn;
+  WN *if_test1 = WN_if_test(wn);
+  WN *if_test2 = WN_if_test(thenifwn);
+  if (OPT_Lower_Speculate && WN_Expr_Can_Be_Speculative(if_test2, NULL))
+    WN_if_test(wn) = WN_LAND(if_test1, if_test2);
+  else WN_if_test(wn) = WN_CAND(if_test1, if_test2);
+  WN_then(wn) = WN_then(thenifwn);
+  // update frequencies
+  if (Cur_PU_Feedback) {
+    const FB_Info_Branch& info_branch1 = Cur_PU_Feedback->Query_branch(wn);
+    const FB_Info_Branch& info_branch2 = Cur_PU_Feedback->Query_branch(thenifwn);
+    Cur_PU_Feedback->Annot_branch( wn, FB_Info_Branch(info_branch2.freq_taken, 
+		      info_branch1.freq_not_taken+info_branch2.freq_not_taken, 
+		      OPR_IF ) );
+    if (WN_operator(WN_if_test(wn)) == OPR_CAND) {
+      FB_FREQ freq_left = info_branch1.freq_not_taken;
+      FB_FREQ freq_right = info_branch2.freq_taken;
+      FB_FREQ freq_neither = info_branch2.freq_not_taken;
+      Cur_PU_Feedback->Annot_circuit(WN_if_test(wn), FB_Info_Circuit(freq_left,
+      						freq_right, freq_neither));
+    }
+  }
+  // clean up
+  WN_if_test(thenifwn) = NULL;
+  WN_then(thenifwn) = NULL;
+  WN_DELETE_Tree(then_wn);
+  return wn;
+}
+#endif
 
 static WN *
 vho_lower_block ( WN * old_block )
@@ -7342,6 +7645,14 @@ vho_lower_scf ( WN * wn, WN * block )
     case OPC_IF:
 
       wn = vho_lower_if ( wn, block );
+#ifdef KEY // bug 8581
+      if (wn != NULL && WN_opcode(wn) == OPC_IF) {
+	if (VHO_Merge_Thens)
+	  wn = Merge_identical_then_parts(wn);
+	if (VHO_Merge_Elses)
+	  wn = Merge_identical_else_parts(wn);
+      }
+#endif
       break;
 
     case OPC_BLOCK:
@@ -7482,6 +7793,11 @@ WN * VHO_Lower_Driver (PU_Info* pu_info,
       wn = WN_Lower(wn, LOWER_TREEHEIGHT | LOWER_INLINE_INTRINSIC, NULL,
 		    "Intrinsic lowering");
    }
+
+#ifdef KEY // bug 6938
+   else wn = WN_Lower(wn, LOWER_FAST_EXP, NULL,
+		    "Fast exponents lowering");
+#endif
 
    return (wn);
 }

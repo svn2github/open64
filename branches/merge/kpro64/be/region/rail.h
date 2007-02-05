@@ -55,7 +55,7 @@
 #ifndef rail_INCLUDED
 #define rail_INCLUDED "rail.h"
 #ifdef _KEEP_RCS_ID
-static char *railrcs_id = rail_INCLUDED"$ $Revision: 1.1.1.1 $";
+static char *railrcs_id = rail_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 class RAIL {

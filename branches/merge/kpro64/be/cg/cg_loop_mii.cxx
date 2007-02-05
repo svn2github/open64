@@ -750,7 +750,11 @@ Maximize_Min_II(
   }
 
   CG_LOOP_min_ii = mii;
+#ifdef TARG_IA64
   CG_LOOP_rec_min_ii = Max(CG_LOOP_rec_min_ii, scc_mii);
+#else
+  CG_LOOP_rec_min_ii = scc_mii;
+#endif
   Set_CG_LOOP_SCC_rec_mii(scc,scc_mii);
 }
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -288,6 +292,10 @@ Check_BB_For_HB_Suitability(BB* bb, BB* bb_entry)
 //
 /////////////////////////////////////
 {
+#ifdef KEY
+  if (BB_asm(bb)) // we do not want to If-convert BBs with asms.
+    return FALSE;
+#endif
   //
   // Want simple branches to deal with.
   //
@@ -344,6 +352,9 @@ Check_BB_For_HB_Suitability(BB* bb, BB* bb_entry)
     return FALSE;
   }
 
+#ifdef KEY
+  if (bb != bb_entry) { // Entry BB will not be predicated and so it is okay
+#endif
   //
   // Bail if we find an op that requires guards, i.e. it cannot execute
   // without side effects.  Note that this will have to become more 
@@ -401,6 +412,9 @@ Check_BB_For_HB_Suitability(BB* bb, BB* bb_entry)
       } /* if (!TN_is_global_reg ...) */
     } /* if (!TN_is_true_pred ...) */
   } /* FOR_ALL_.. */
+#ifdef KEY
+  }
+#endif
 
   return TRUE;
 }
@@ -621,7 +635,11 @@ Check_Region(BB**                 orig_dom,
       if (!BB_SET_MemberP(BB_dom_set(pdom), dom)) {
 	for (dom = Find_Immediate_Dominator(dom);
 	     dom && !BB_SET_MemberP(BB_dom_set(pdom), dom);
+#ifdef TARG_IA64
 	     dom = Find_Immediate_Dominator(dom));
+#else
+	     dom = Find_Immediate_Dominator(pdom));
+#endif
       }
       if (dom && !BB_SET_MemberP(BB_pdom_set(dom), pdom)) {
 	for (pdom = Find_Immediate_Postdominator(pdom);
@@ -800,7 +818,9 @@ Attempt_Merge(HB_CAND_TREE*        new_region,
     //
     //  See if the fall-through successor to our exit block is the entry to a hammock
     //
+#ifdef TARG_IA64
     Remove_Explicit_Branch(hb_exit);
+#endif
     neighbor = BB_Fall_Thru_Successor(hb_exit);
     if (!neighbor) return FALSE;
     // If we allow this in, we can get some horrendously bad hyperblocks (too many paths)
@@ -1069,6 +1089,26 @@ HB_Identify_Hammock_Candidates(std::list<HB_CAND_TREE*>& candidates,
 
       if ( ! Check_HB_For_PQS_Suitability(blocks, dom)) continue;
 
+#ifdef KEY
+      // We want cg_loop to handle all loops.
+      BBLIST *succs;
+      BB *succ;
+      BOOL skip_this_hammock = FALSE;      
+      BB *member;
+      FOR_ALL_BB_SET_members (blocks, member) {
+	FOR_ALL_BB_SUCCS(member, succs) {	
+	  succ = BBLIST_item(succs);    
+	  if (succ == dom || BB_SET_MemberP(BB_dom_set(dom), succ)) {
+	    skip_this_hammock = TRUE;
+	    break;
+	  }
+	}
+	if (skip_this_hammock)
+	  break;
+      }
+      if (skip_this_hammock)
+	continue;
+#endif
       if ( HB_skip_hammocks ) {
 	// We have an unfortunate bug where if we form hyperblocks on
 	// hammocks, and then later come back with force_if_convert
@@ -1193,9 +1233,9 @@ Find_General_Region_Entry_Candidates(std::list<BB*>&  entry_candidates,
 
 /////////////////////////////////////
 static BB*
-Process_Successors(BB* bb,
-	std::priority_queue<BB*,std::vector<BB*>,BB_Freq_Compare>& bb_best,
-	std::list<BB*>& bb_kids)
+Process_Successors(BB*                                              bb,
+		   std::priority_queue<BB*,vector<BB*>,BB_Freq_Compare>& bb_best,
+		   std::list<BB*>&                                       bb_kids)
 /////////////////////////////////////
 //
 //  Look at bb's successors.  Return the one with the highest probability.
@@ -1260,7 +1300,8 @@ Form_General_Region(BB*                     bb,
 //
 /////////////////////////////////////
 {
-  std::priority_queue<BB*,std::vector<BB*>,BB_Freq_Compare> bb_best;
+  std::priority_queue<BB*,vector<BB*>,BB_Freq_Compare> bb_best;
+
   std::list<BB*> bb_kids;
   
   //

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -90,6 +90,12 @@ typedef struct SCALAR_C_NAME
  */
 const char TY2C_Aligned_Block_Name[] = "__block";
 
+#ifndef TARG_X8664
+#define MTYPE_PREDEF MTYPE_F16
+#else
+#define MTYPE_PREDEF MTYPE_V16F8
+#endif /* TARG_X8664 */
+
 static char Name_Unknown_Type[] = "__UNKNOWN_TYPE";
 static const SCALAR_C_NAME Scalar_C_Names[MTYPE_LAST + 1] =
    {{"void",               Name_Unknown_Type},  /* MTYPE_UNKNOWN 0 */
@@ -104,8 +110,12 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_LAST + 1] =
     {"unsigned long long", "_UINT64"},          /* MTYPE_U8 = 9 */
     {"float",              "_IEEE32"},          /* MTYPE_F4 = 10 */
     {"double",             "_IEEE64"},          /* MTYPE_F8 = 11 */
-    {"long double",	   "_IEEE80"},          /* MTYPE_F10 = 12 */
-    {"__float128",	   "_IEEE128"},		/* MTYPE_F16 = 13 */
+#ifndef TARG_X8664
+    {Name_Unknown_Type,    "_IEEE80"},          /* MTYPE_F10 = 12 */
+    {Name_Unknown_Type,    "_IEEE128"}  /* MTYPE_F16 = 13 = MTYPE_PREDEF */
+#else
+    {Name_Unknown_Type,        ""},             /* MTYPE_V16C4 = 12 */
+    {Name_Unknown_Type,        "_IEEE128"},     /* MTYPE_F16 = 13 */
     {Name_Unknown_Type,        ""},             /* MTYPE_STRING = 14 */
     {Name_Unknown_Type,        ""},             /* MTYPE_FQ = 15 */
     {Name_Unknown_Type,        ""},             /* MTYPE_M = 16 */
@@ -120,7 +130,6 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_LAST + 1] =
     {Name_Unknown_Type,        ""},             /* MTYPE_C16 = 25 */
     {Name_Unknown_Type,        ""},             /* MTYPE_I16 = 26 */
     {Name_Unknown_Type,        ""}		/* MTYPE_U16 = 27 */
-#ifdef TARG_X8664
    ,{Name_Unknown_Type,        "_CMPLX8[2]"},   /* MTYPE_V16C4 = 24 */
     {Name_Unknown_Type,        "_CMPLX16[1]"},  /* MTYPE_V16C8 = 25 */
     {"signed char[16]",        "_INT8[16]"},    /* MTYPE_V16I1 = 26 */
@@ -143,14 +152,18 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_LAST + 1] =
 const char Special_Void_TypeName[] = "void";
 const char Special_String_TypeName[] = "_STRING";
 const char Special_Quad_TypeName[] = "_QUAD";
+const char Special_Complex32_TypeName[] = "_COMPLEX32";
+const char Special_Complex64_TypeName[] = "_COMPLEX64";
 const char Special_ComplexQD_TypeName[] = "_COMPLEXQD";
 
 #define GET_SPECIAL_TYPENAME(mtype)\
    ((mtype) == MTYPE_V? Special_Void_TypeName : \
     ((mtype) == MTYPE_STR? Special_String_TypeName : \
      ((mtype) == MTYPE_FQ? Special_Quad_TypeName : \
-      ((mtype) == MTYPE_CQ? Special_ComplexQD_TypeName : \
-       (const char *)NULL))))
+      ((mtype) == MTYPE_C4? Special_Complex32_TypeName : \
+       ((mtype) == MTYPE_C8? Special_Complex64_TypeName : \
+	((mtype) == MTYPE_CQ? Special_ComplexQD_TypeName : \
+	 (const char *)NULL))))))
 
 #define PTR_OR_ALIGNED_WITH_STRUCT(fld_ty, struct_align) \
    (TY_Is_Pointer(fld_ty) || TY_align(fld_ty) <= struct_align)

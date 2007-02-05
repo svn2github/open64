@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -57,10 +57,10 @@
 // as shown in the ISA manual
 /////////////////////////////////////
 //
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/isa/x8664/isa_print.cxx,v $
+//  $Revision: 1.154 $
+//  $Date: 05/11/10 18:45:11-08:00 $
+//  $Author: tkong@hyalite.keyresearch $
+//  $Source: common/targ_info/isa/x8664/SCCS/s.isa_print.cxx $
 
 #include <stddef.h>
 #include <string.h>
@@ -373,6 +373,14 @@ main()
 			   TOP_rori16,
 			   TOP_rori32,
 			   TOP_rori64,
+			   TOP_rol8,
+			   TOP_rol16,
+			   TOP_rol32,
+			   TOP_rol64,
+			   TOP_roli8,
+			   TOP_roli16,
+			   TOP_roli32,
+			   TOP_roli64,
 			   TOP_sar32,
 			   TOP_sar64,
 			   TOP_sari32,
@@ -910,6 +918,7 @@ main()
 			   TOP_movswq,
 			   TOP_movzwq,
 			   TOP_movslq,
+			   TOP_movzlq,
 			   TOP_movsd,
 			   TOP_movss,
 			   TOP_movdq,
@@ -951,8 +960,15 @@ main()
 			   TOP_fcmovnu,
 			   TOP_bsf32,
 			   TOP_bsf64,
+			   TOP_bsr32,
+			   TOP_bsr64,
 			   TOP_mov64_m,
 			   TOP_pmovmskb,
+			   TOP_movi32_2m,
+			   TOP_movi64_2m,
+			   TOP_movm_2i32,
+			   TOP_movm_2i64,
+			   TOP_ld64_2m_n32,
 			   TOP_UNDEFINED );
 
   /* Two operands / no result */
@@ -976,6 +992,7 @@ main()
 			   TOP_stlps_n32,
 			   TOP_stlpd_n32,
 			   TOP_sthpd_n32,
+			   TOP_store64_fm_n32,
 			   TOP_UNDEFINED );
 
 #if 0
@@ -1290,6 +1307,8 @@ main()
 			   TOP_staps,
 			   TOP_stapd,
 			   TOP_store64_fm,
+			   TOP_storenti128,
+			   TOP_storelpd,
 			   TOP_UNDEFINED );
 
   /* instructions that read-modify-write */
@@ -1371,6 +1390,7 @@ main()
 			   TOP_pshufhw,
 			   TOP_pextrw,
 			   TOP_pinsrw,
+			   TOP_pshufw64v16,
 			   TOP_UNDEFINED );
 
   /* shift_packed */
@@ -1380,7 +1400,16 @@ main()
   Result(0);
   Instruction_Print_Group( shift_packed,
 			   TOP_psrldq,
+			   TOP_psrlq128v64,
+			   TOP_pslldq,
+			   TOP_psllw,
+			   TOP_pslld,
+			   TOP_psllq,
+			   TOP_psrlw,
+			   TOP_psrld,
 			   TOP_psrlq,
+			   TOP_psraw,
+			   TOP_psrad,
 			   TOP_UNDEFINED );
 
   /* No results / no operands TODO */
@@ -1402,6 +1431,8 @@ main()
 			   TOP_fsqrt,
 			   TOP_fldz,
 			   TOP_emms,
+			   TOP_fcos,
+			   TOP_fsin,
 			   TOP_UNDEFINED );
 
   ISA_Print_End();

@@ -185,6 +185,12 @@ BOOL CG_emit_asm_dwarf    = FALSE;
 BOOL CG_emit_unwind_info  = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #endif
+
+#ifdef KEY
+BOOL CG_emit_non_gas_syntax = FALSE;
+BOOL CG_inhibit_size_directive = FALSE;
+#endif
+
 static BOOL generate_dwarf = FALSE;
 static BOOL generate_elf_symbols = FALSE;
 
@@ -5495,6 +5501,10 @@ EMT_Begin_File (
     if (*ism_name != '\0')
     	fprintf ( Asm_File, "\t%s%s\t%s\n", ASM_CMNT, "ism", ism_name);
     List_Compile_Options ( Asm_File, "\t"ASM_CMNT, FALSE, TRUE, TRUE );
+#ifdef KEY
+    if (! CG_emit_non_gas_syntax)
+      Print_Directives_For_All_Files();
+#endif    
 
     /* TODO: do we need to do .interface stuff for asm files? */
   }

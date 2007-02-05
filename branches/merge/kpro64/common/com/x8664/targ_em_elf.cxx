@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: em_elf.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/targ_em_elf.cxx,v $
+ * $Revision: 1.5 $
+ * $Date: 05/11/07 20:34:18-08:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: common/com/x8664/SCCS/s.targ_em_elf.cxx $
  *
  * Description:
  *
@@ -178,17 +178,10 @@ Em_Add_New_Content (
 void
 Em_End_Unwind (FILE *trace_file, pSCNINFO text_scn)
 {
-  if (trace_file) {
-	// dump unwind table and unwind info
-	// should be trace file
-        unwind_process (unwind_dump2ascii, (void *) trace_file);
-  }
-  unwind_process (unwind_dump2elf, text_scn);
 }
 
 void
 Em_Cleanup_Unwind (void)
 {
-  unwind_cleanup();
 }
 

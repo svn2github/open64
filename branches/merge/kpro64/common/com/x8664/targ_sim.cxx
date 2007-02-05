@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -347,11 +347,20 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 
     case MTYPE_F4:
     case MTYPE_F8:
+      info.count = 1;
+      info.mtype [0] = mtype;
+      info.preg  [0] = PR_first_reg(SIM_INFO.flt_results);
+      break;
+
+    case MTYPE_V16I1:
+    case MTYPE_V16I2:
+    case MTYPE_V16I4:
+    case MTYPE_V16I8:
     case MTYPE_V16F4:
     case MTYPE_V16F8:
       info.count = 1;
       info.mtype [0] = mtype;
-      info.preg  [0] = PR_first_reg(SIM_INFO.flt_results);
+      info.preg  [0] = XMM0;
       break;
 
     case MTYPE_C4:
@@ -448,6 +457,14 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
         info.preg  [0] = First_X87_Preg_Return_Offset;
         info.preg  [1] = Last_X87_Preg_Return_Offset;
       }
+      break;
+
+    case MTYPE_M8I1:
+    case MTYPE_M8I2:
+    case MTYPE_M8I4:
+    case MTYPE_M8F4:
+      info.count = 0;
+      info.return_via_first_arg = TRUE;
       break;
 
     case MTYPE_M:
@@ -596,9 +613,16 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	  ploc.reg = 0;
 	break;
 	
+    case MTYPE_V16I1:
+    case MTYPE_V16I2:
     case MTYPE_V16I4:
+    case MTYPE_V16I8:
+    case MTYPE_V8I1:
+    case MTYPE_V8I2:
+    case MTYPE_V8I4:
     case MTYPE_V16F4:
     case MTYPE_V16F8:
+    case MTYPE_V8F4:
     case MTYPE_F4:
     case MTYPE_F8:
         ++Current_Float_Param_Num;
@@ -610,9 +634,10 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	}
 	break;
 
-    case MTYPE_V8I1:
-    case MTYPE_V8I2:
-    case MTYPE_V8I4:
+    case MTYPE_M8I1:
+    case MTYPE_M8I2:
+    case MTYPE_M8I4:
+    case MTYPE_M8F4:
       ploc.reg = 0; // pass in memory
       break;
 

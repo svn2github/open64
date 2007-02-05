@@ -36,7 +36,7 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Source$
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_list.cxx,v $
  *
  * Revision history:
  *  18-Mar-97 - Original Version, extracted from config.c.

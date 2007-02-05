@@ -1,6 +1,10 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -194,6 +198,9 @@ typedef struct local_op_info {
 	mBOOL op_must_not_be_moved;	/* This OP can not be moved or recreated. */
         BB *in_bb;			/* The defining BB. */
         OP *in_op;			/* The defining OP. */
+#ifdef KEY
+        int op_num;			/* OP's number in BB; first OP is 1 */
+#endif
         EBO_OP_INFO *same;		/* Other OPs with the same hash. */
         EBO_OP_INFO *prior;		/* Previous info node. */
         EBO_OP_INFO *next;		/* Next info node. */
@@ -296,6 +303,11 @@ extern BOOL EBO_Trace_Hash_Search;
  */
 void tn_info_entry_dump (EBO_TN_INFO *tninfo);
 void tn_info_table_dump ();
+#ifdef KEY
+#if 0
+void delete_useless_store_op (EBO_OP_INFO *opinfo);
+#endif
+#endif
 
 inline EBO_TN_INFO *
 get_new_tninfo (BB *current_bb, OP *current_op, TN *local_tn)
@@ -392,10 +404,12 @@ EBO_predicate_complements (TN *pred1, EBO_TN_INFO *info1,
       (info1->in_op == NULL) || (info2->in_op == NULL)) {
     return FALSE;
   }
-  //if ((pred1 != pred2) && (info1->in_op == info2->in_op)) {
+#ifndef TARG_IA64
+  if ((pred1 != pred2) && (info1->in_op == info2->in_op)) {
    /* If defined by the same instruction but not equal, they must be complements. */
-    //return TRUE;
-  //}
+    return TRUE;
+  }
+#endif
  /* Until we can resolve subsets, assume a problem. */
   return FALSE;
 }
@@ -418,7 +432,11 @@ tn_info_def (BB *current_bb, OP *current_op, TN *local_tn,
   if ((tninfo_prev != NULL)  &&
       (tninfo_prev->in_bb == current_bb) &&
       ((predicate_tn == NULL) ||
+#ifdef TARG_IA64
        (!OP_cond_def(current_op) && EBO_predicate_dominates(predicate_tn,
+#else
+       (EBO_predicate_dominates(predicate_tn,
+#endif
                                 predicate_info,
                                 (tninfo_prev->predicate_tninfo != NULL)?
                                         tninfo_prev->predicate_tninfo->local_tn:True_TN,
@@ -450,7 +468,11 @@ tn_info_use (BB *current_bb, OP *current_op, TN *local_tn,
       if (predicate_tn != NULL) {
        /* Then, if the predicates have the right relationship, we have
           found the matching input to this use. */
+#ifdef TARG_IA64
         if ( EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?
+#else
+        if (EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?
+#endif
                                              tninfo->predicate_tninfo->local_tn:True_TN,
                                     tninfo->predicate_tninfo,
                                     predicate_tn,
@@ -585,6 +607,13 @@ inline void backup_opinfo_list (EBO_OP_INFO *previous_last)
   if (EBO_last_opinfo != previous_last) {
    /* Update the hash table entry with any previous ptr. */
     while (opinfo != previous_last) {
+#ifdef KEY      
+#if 0
+      if (opinfo->in_op &&
+         OP_store(opinfo->in_op))    
+        delete_useless_store_op(opinfo);
+#endif
+#endif
       EBO_opinfo_table[opinfo->hash_index] = opinfo->same;
       opinfo = opinfo->prior;
     }

@@ -1,6 +1,14 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -102,6 +110,7 @@
 #include "hb.h"
 #include "pqs_cg.h"
 #include "tag.h"
+#ifdef TARG_IA64
 #include "ipfec.h"
 #include "ipfec_defs.h"
 #include "ipfec_options.h"
@@ -121,17 +130,23 @@
 #define _value_profile_before_region_formation
 #define can_invoke_profile_with_current_cg_opt_level (CG_opt_level>1)
 //#define can_invoke_profile_with_current_cg_opt_level (1)
-
+#endif
+#ifdef KEY
+#include "cg_gcov.h"
+#endif
 MEM_POOL MEM_local_region_pool; /* allocations local to processing a region */
 MEM_POOL MEM_local_region_nz_pool;
 
 BOOL Trace_REGION_Interface = FALSE;
 
+#ifdef TARG_IA64
 INT32 current_PU_handle = 0;
 INT32 rse_budget;
+#endif
 
 BOOL PU_Has_Calls;
 BOOL PU_References_GP;
+#ifdef TARG_IA64
 BOOL GRA_optimize_restore_pr;
 BOOL GRA_optimize_restore_b0_ar_pfs;
 BOOL GRA_optimize_restore_ar_lc;
@@ -154,24 +169,38 @@ INT Asm_File_Visited(INT file_number)
     return i;
 }
 
-BOOL CG_PU_Has_Feedback;
-
 BOOL RGN_Formed = FALSE;
+#endif
+#ifdef KEY
+BOOL PU_Has_Exc_Handler;
+#endif
 
-BOOL gra_pre_create = TRUE; 
+BOOL gra_pre_create = TRUE;
+#ifdef TARG_X8664
+BOOL PU_References_GOT;  // for -m32 -fpic
+#endif
 
 BOOL edge_done = FALSE;
-
+BOOL CG_PU_Has_Feedback;
 RID *Current_Rid;
 
 TN_MAP TN_To_PREG_Map;
+#ifdef TARG_X8664
+BB_MAP BBs_Map = NULL;
+#endif
+
+#ifdef TARG_X8664
+extern BOOL cg_load_execute_overridden;
+#endif
 
 /* WOPT alias manager */
 struct ALIAS_MANAGER *Alias_Manager;
 
 static BOOL Orig_Enable_SWP;
+#ifdef TARG_IA64
 extern BOOL gra_self_recursive;
 extern BOOL fat_self_recursive;
+#endif
 
 /* Stuff that needs to be done at the start of each PU in cg. */
 void
@@ -186,10 +215,42 @@ CG_PU_Initialize (WN *wn_pu)
 
   PU_Has_Calls = FALSE;
   PU_References_GP = FALSE;
+#ifdef TARG_IA64
   GRA_optimize_restore_pr = TRUE;
   GRA_optimize_restore_b0_ar_pfs = TRUE;
   GRA_optimize_restore_ar_lc = TRUE;
   EBO_data_spec=FALSE;
+#endif
+#ifdef TARG_X8664
+  PU_Has_Exc_Handler = FALSE;
+  if (! cg_load_execute_overridden) {
+    if ((Is_Target_EM64T() ||	// bug 10233
+	 Is_Target_Core()) &&
+        (PU_src_lang(Get_Current_PU()) == PU_F77_LANG ||
+	 PU_src_lang(Get_Current_PU()) == PU_F90_LANG)) {
+      CG_load_execute = 0;
+    } else if (! Is_Target_32bit() &&
+	(PU_src_lang(Get_Current_PU()) == PU_F77_LANG ||
+	 PU_src_lang(Get_Current_PU()) == PU_F90_LANG)) {
+      CG_load_execute = 2;
+    } else {
+      CG_load_execute = 1;
+    }
+  }
+
+  PU_References_GOT = FALSE;
+
+  if (CG_localize_x87_tns && Is_Target_SSE2()) {
+    fprintf(stderr,
+	    "Ignoring CG_localize_x87_tns since it has no effect under SSE2\n");
+    CG_localize_x87_tns = FALSE;
+  }
+  if (CG_x87_store && Is_Target_SSE2()) {
+    fprintf(stderr,
+	    "Ignoring CG_x87_store since it has no effect under SSE2\n");
+    CG_x87_store = FALSE;
+  }
+#endif
 
   Regcopies_Translated = FALSE;
 
@@ -214,7 +275,9 @@ CG_PU_Initialize (WN *wn_pu)
   LOOP_DESCR_Init_For_PU();
   TN_MAP_Init();
   BB_MAP_Init();
+#ifdef TARG_IA64
   REGION_MAP_Init();
+#endif
   OP_MAP_Init();
   CGSPILL_Initialize_For_PU ();
   CFLOW_Initialize();
@@ -270,7 +333,14 @@ CG_PU_Finalize(void)
   TN_MAP_Delete(TN_To_PREG_Map);
   TN_To_PREG_Map = NULL;
 
-  Free_BB_Memory();         /* Free non-BB_Alloc space. */
+#ifdef TARG_X8664
+  BB_MAP_Delete( BBs_Map );
+  BBs_Map = NULL;
+
+  Expand_Finish();
+#endif
+
+  Free_BB_Memory();		    /* Free non-BB_Alloc space. */
   MEM_POOL_Pop ( &MEM_local_pool );
   MEM_POOL_Pop ( &MEM_local_nz_pool );
   MEM_POOL_Pop ( &MEM_phase_pool );
@@ -300,9 +370,15 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
   PREG_To_TN_Array = (TN **) Pu_Alloc (sizeof (TN *) * last_preg_num);
   PREG_To_TN_Mtype = (TYPE_ID *) Pu_Alloc (sizeof (TYPE_ID) * last_preg_num);
 
-  PREG_To_TN_Clear();   /* this enforces different preg maps between regions */
+  PREG_To_TN_Clear();	/* this enforces different preg maps between regions */
   if (TN_To_PREG_Map == NULL)
     TN_To_PREG_Map = TN_MAP_Create();
+
+#ifdef TARG_X8664
+  if( BBs_Map == NULL ){
+    BBs_Map = BB_MAP_Create();
+  }
+#endif
 
   TN_CORRESPOND_Free(); /* remove correspondence between tns (ex. divrem) */
 
@@ -311,6 +387,10 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
   Whirl2ops_Initialize(alias_mgr);
 
   Current_Rid = REGION_get_rid( rwn );
+
+#ifdef TARG_X8664
+  Expand_Start();
+#endif
 }
 
 /*
@@ -320,7 +400,7 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
  */
 static void
 CG_Region_Finalize (WN *result_before, WN *result_after,
-            WN *rwn, struct ALIAS_MANAGER *am, BOOL generate_glue_code)
+		    WN *rwn, struct ALIAS_MANAGER *am, BOOL generate_glue_code)
 {
   RID *rid;
   CGRIN *cgrin;
@@ -331,7 +411,7 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
   rid = REGION_get_rid( rwn );
   cgrin = RID_cginfo( rid );
   FmtAssert(rid != NULL && cgrin != NULL,
-        ("CG_Region_Finalize, inconsistent region"));
+	    ("CG_Region_Finalize, inconsistent region"));
 
   REGION_set_level(rid, RL_CGSCHED);
 
@@ -349,11 +429,11 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
     for (i=0; i<num_exits; i++) {
       exit_fixup = CGRIN_exit_glue_i( cgrin, i );
       REGION_Exit_PREG_Whirl( rid, i, exit_fixup,
-                 CGRIN_tns_out_i( cgrin, i ), am );
+			     CGRIN_tns_out_i( cgrin, i ), am );
       if ( Trace_REGION_Interface ) {
-        fprintf( TFile, "<region> Exit glue code for exit %d RGN %d\n",
-                i, RID_id(rid) );
-        fdump_tree( TFile, exit_fixup );
+	fprintf( TFile, "<region> Exit glue code for exit %d RGN %d\n",
+		i, RID_id(rid) );
+	fdump_tree( TFile, exit_fixup );
       }
       WN_INSERT_BlockLast( result_after, exit_fixup );
     }
@@ -365,6 +445,7 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
   MEM_POOL_Pop (&MEM_local_region_nz_pool);
 }
 
+#ifdef TARG_IA64
 static void Config_Ipfec_Flags() {
  
   /* copy ORC_... Flags to Ipfec_... Flags */
@@ -423,6 +504,7 @@ static void Config_Ipfec_Flags() {
     IPFEC_Chk_Compact = 0;
   }
 }
+#endif
 
 /* Can be called two ways:
    1) on a region (pu_dst is NULL, returns code)
@@ -435,15 +517,34 @@ CG_Generate_Code(
     DST_IDX pu_dst, 
     BOOL region )
 {
+#ifdef TARG_IA64
   BOOL value_profile_need_gra = FALSE;
-/*later:  BOOL region = DST_IS_NULL(pu_dst); */
-  BOOL orig_reuse_temp_tns = Reuse_Temp_TNs;
   /* Initialize RGN_Formed to FALSE. */
   RGN_Formed = FALSE;
+#endif
+/*later:  BOOL region = DST_IS_NULL(pu_dst); */
+  BOOL orig_reuse_temp_tns = Reuse_Temp_TNs;
   Alias_Manager = alias_mgr;
 
   Set_Error_Phase( "Code Generation" );
   Start_Timer( T_CodeGen_CU );
+
+#ifdef TARG_X8664
+// Cannot enable emit_unwind_info if Force_Frame_Pointer is not set
+// Need this flag set for C++ exceptions and for -g
+  if (!CG_emit_unwind_info_Set)
+  	CG_emit_unwind_info = Force_Frame_Pointer;
+
+  // Don't eliminate prologue OPs in main because they guide cgemit.cxx on
+  // where to insert OPs to set up the control registers.  Bug 8141.
+  {
+    static BOOL min_stack_size = CG_min_stack_size;
+    CG_min_stack_size = min_stack_size;
+    if (!strcmp(Cur_PU_Name, "MAIN__") ||
+	!strcmp(Cur_PU_Name, "main"))
+      CG_min_stack_size = FALSE;
+  }
+#endif
 
   // Use of feedback information can be disabled in CG using the 
   // -CG:enable_feedback=off flag. The flag CG_PU_Has_Feedback is used
@@ -468,12 +569,29 @@ CG_Generate_Code(
   if (WN_operator(rwn) == OPR_FUNC_ENTRY &&
       ST_asm_function_st(*WN_st(rwn))) {
     FmtAssert(Assembly && !Object_Code,
-          ("Cannot produce non-assembly output with file-scope asm"));
+	      ("Cannot produce non-assembly output with file-scope asm"));
     fprintf(Asm_File, "\n%s\n", ST_name(WN_st(rwn)));
     return rwn;
   }
 
   Convert_WHIRL_To_OPs ( rwn );
+
+#ifdef TARG_X8664
+  if (CG_x87_store) {
+    extern void Add_Float_Stores();
+    Add_Float_Stores();
+  }
+#endif
+
+#ifdef CG_PATHSCALE_MERGE
+  extern BOOL profile_arcs;
+  if (flag_test_coverage || profile_arcs)
+//    CG_Compute_Checksum();
+//  if (flag_test_coverage)
+    CG_Gcov_Generation();
+  if (profile_arcs)
+    CG_Instrument_Arcs();
+#endif
 
   // split large bb's to minimize compile speed and register pressure
   Split_BBs();
@@ -503,6 +621,7 @@ CG_Generate_Code(
 
   EH_Prune_Range_List();
 
+#ifdef TARG_IA64
 #ifdef OSP_OPT
   // it's high time to compute pu_need_LSDA after EH_Prune_Range_List, 
   pu_need_LSDA = !PU_Need_Not_Create_LSDA ();
@@ -516,21 +635,23 @@ CG_Generate_Code(
     fprintf (TFile, "=======================================================================\n");
     EH_Print_Range_List ();
   }
+#endif
 
   Optimize_Tail_Calls( Get_Current_PU_ST() );
 
   Init_Callee_Saved_Regs_for_REGION( Get_Current_PU_ST(), region );
-
+#ifdef TARG_IA64
   //this is a hack for edge profiling
   //when invoke edge profiling, it does not save/restore b0
   //while Generate_Entry_Exit_Code will do this instead, but it need to know
   //IPFEC_Enable_Edge_Profile in time.
   Config_Ipfec_Flags();
-  
+#endif  
   Generate_Entry_Exit_Code ( Get_Current_PU_ST(), region );
   Stop_Timer ( T_Expand_CU );
   Check_for_Dump ( TP_CGEXP, NULL );
 
+#ifdef TARG_IA64
   if (IPFEC_Enable_Edge_Profile && can_invoke_profile_with_current_cg_opt_level )
   {
     Set_Error_Phase ( "edge profile instrument" );
@@ -589,11 +710,20 @@ CG_Generate_Code(
     CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
   }
 #endif
-
   if (CG_localize_tns && !value_profile_need_gra ) {
+#else // TARG_IA64
+  if (CG_localize_tns
+#ifdef TARG_X8664
+      || CG_localize_x87_tns
+#endif
+      ) {
+#endif // TARG_IA64
     /* turn all global TNs into local TNs */
     Set_Error_Phase ( "Localize" );
     Start_Timer ( T_Localize_CU );
+#ifdef CG_PATHSCALE_MERGE  // gra_live is called even if localize is on
+    GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+#endif
     Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
     Stop_Timer ( T_Localize_CU );
     Check_for_Dump ( TP_LOCALIZE, NULL );
@@ -620,12 +750,13 @@ CG_Generate_Code(
     // Perform all the optimizations that make things more simple.
     // Reordering doesn't have that property.
     CFLOW_Optimize(  (CFLOW_ALL_OPTS|CFLOW_IN_CGPREP)
-                   & ~(CFLOW_FREQ_ORDER | CFLOW_REORDER),
-                   "CFLOW (first pass)");
+		   & ~(CFLOW_FREQ_ORDER | CFLOW_REORDER),
+		   "CFLOW (first pass)");
     if (frequency_verify && CG_PU_Has_Feedback)
       FREQ_Verify("CFLOW (first pass)");
   }
 
+#ifdef TARG_IA64
   extern void Perform_Loop_Invariant_Code_Motion (void);
   if (IPFEC_Enable_LICM && CG_opt_level > 1) {
     Perform_Loop_Invariant_Code_Motion ();
@@ -645,6 +776,7 @@ CG_Generate_Code(
     Stop_Timer(T_Ipfec_Region_CU);
     RGN_Formed = TRUE;
   }
+#endif
  
   // Invoke global optimizations before register allocation at -O2 and above.
   if (CG_opt_level > 1) {
@@ -653,7 +785,11 @@ CG_Generate_Code(
     // It is important to do this after the code has been given a
     // cleanup by cflow so that it more closely resembles what it will
     // to the later phases of cg.
+#ifdef TARG_IA64
     if (!CG_PU_Has_Feedback && !IPFEC_Enable_Edge_Profile_Annot) {
+#else
+      if (!CG_PU_Has_Feedback) {
+#endif
       Set_Error_Phase("FREQ");
       Start_Timer (T_Freq_CU);
       FREQ_Compute_BB_Frequencies();
@@ -662,7 +798,7 @@ CG_Generate_Code(
          FREQ_Verify("Heuristic Frequency Computation");
     }
 
-
+#ifdef TARG_IA64
     if (IPFEC_Enable_Region_Formation) {
       // Build Ipfec region tree.
       Set_Error_Phase("Ipfec region formation");
@@ -691,15 +827,19 @@ CG_Generate_Code(
     if (IPFEC_Enable_Stride_Prefetch && IPFEC_Enable_Stride_Profile_Annot){
         Set_Error_Phase( "Stride prefetch \n");
         Stride_Region(region_tree, IPFEC_Enable_Stride_Prefetch);
- 	}
+    }
+#endif
 
     // Perform hyperblock formation (if-conversion).  Only works for
     // IA-64 at the moment. 
     //
-        
-
-    
+#ifdef KEY
+    // At Key, we form Hyperblocks although MIPS is not predicated architecture
+    if (1) {
+#else     
     if (CGTARG_Can_Predicate()) {
+#endif	    
+#ifdef TARG_IA64
       if (IPFEC_Enable_If_Conversion) {
         Set_Error_Phase( "Ipfec if conversion"); 
         IF_CONVERTOR convertor(region_tree);
@@ -714,7 +854,10 @@ CG_Generate_Code(
           draw_region_tree(region_tree->Root(),"After If Conversion");
         }
         Verify_Region_Tree(region_tree, REGION_First_BB);
-#endif
+#endif 
+#endif  // TARG_IA64
+
+#ifdef TARG_IA64
       }
       else if (!IPFEC_Enable_Region_Formation) {
         // Initialize the predicate query system in the hyperblock
@@ -723,11 +866,26 @@ CG_Generate_Code(
         if (!PQSCG_pqs_valid()) {
           PQSCG_reinit(REGION_First_BB);
         }
+#else
+      // Initialize the predicate query system in the hyperblock formation phase
+      HB_Form_Hyperblocks(region ? REGION_get_rid(rwn) : NULL, NULL);
+#ifdef KEY
+      // We do not have a slot in the BB structure to store predicate TNs.
+      // Instead, we remember the last seen block and the associated 
+      // predicate TNs. So, we need to reinitialize the TNs and the basic block
+      // once we finish the current hyper-block.
+      HB_Reinit_Pred();	
+      // CG_LOOP does not use the same mechanism for hammocks.
+      hammock_region = FALSE;
+#endif
+      if (!PQSCG_pqs_valid()) {
+	PQSCG_reinit(REGION_First_BB);
+#endif // TARG_IA64
       }
       if (frequency_verify)
         FREQ_Verify("Hyberblock Formation");
     }
-
+#ifdef TARG_IA64
     if (!CG_localize_tns || value_profile_need_gra ) {
       /* Initialize liveness info for new parts of the REGION */
       /* also compute global liveness for the REGION */
@@ -737,13 +895,28 @@ CG_Generate_Code(
       Stop_Timer ( T_GLRA_CU );
       Check_for_Dump ( TP_FIND_GLOB, NULL );
     }
-
     // Add analysis for Cache information
     if (ORC_Enable_Cache_Analysis) Cache_Location_Analysis(); 
+#endif
 
     if (CG_enable_loop_optimizations) {
+#ifdef CG_PATHSCALE_MERGE
+      /* bug#1443
+	 Earlier phase, like cflow, does not maintain GTN info if -CG:localize is on,
+	 we have to call GRA_LIVE_Init again to rebuild the consistency.
+       */
+      if (CG_localize_tns
+#ifdef TARG_X8664
+	  || CG_localize_x87_tns
+#endif
+         ){
+	Set_Error_Phase( "Global Live Range Analysis" );
+	GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+      }
+#endif
       Set_Error_Phase("CGLOOP");
       Start_Timer(T_Loop_CU);
+#ifdef TARG_IA64
       if (IPFEC_Enable_Region_Formation) {
         REGION_LOOP_UPDATE    *rgn_loop_update;
         rgn_loop_update = CXX_NEW(REGION_LOOP_UPDATE(region_tree,REGION_First_BB),&MEM_pu_pool);
@@ -759,8 +932,28 @@ CG_Generate_Code(
       } else {
         Perform_Loop_Optimizations();
       }
+#else
+      // Optimize loops (mostly innermost)
+      Perform_Loop_Optimizations();
+#endif // TARG_IA64
+      // detect GTN
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
       GRA_LIVE_Rename_TNs();  // rename TNs -- required by LRA
+#ifdef CG_PATHSCALE_MERGE
+      /* bug#1442
+	 Loop optimization will introduce new GTNs. If -CG:localize is on,
+	 we should localize all the new created GTNs.
+       */
+      if (CG_localize_tns
+#ifdef TARG_X8664
+	  || CG_localize_x87_tns
+#endif
+         ){
+	Set_Error_Phase ( "Localize" );
+	Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
+	Check_for_Dump ( TP_LOCALIZE, NULL );
+      }
+#endif // CG_PATHSCALE_MERGE
       Stop_Timer(T_Loop_CU);
       Check_for_Dump(TP_CGLOOP, NULL);
       if (frequency_verify)
@@ -772,6 +965,7 @@ CG_Generate_Code(
       CFLOW_Optimize(CFLOW_ALL_OPTS, "CFLOW (second pass)");
       if (frequency_verify)
         FREQ_Verify("CFLOW (second pass)");
+#ifdef TARG_IA64
 #ifdef Is_True_On
         if (Get_Trace(TP_IPFEC,TT_IPFEC_GRAPHIC)) {
           draw_global_cfg("after cflow opt");
@@ -779,6 +973,7 @@ CG_Generate_Code(
         }
         if (IPFEC_Enable_Region_Formation)
           Verify_Region_Tree(region_tree, REGION_First_BB);
+#endif
 #endif
     }
 
@@ -793,12 +988,12 @@ CG_Generate_Code(
   }
 
 
-
+#ifdef TARG_IA64
   BOOL locs_bundle_value = LOCS_Enable_Bundle_Formation;
   BOOL emit_bundle_value = EMIT_explicit_bundles;
   LOCS_Enable_Bundle_Formation = IPFEC_Enable_Pre_Bundling;
   EMIT_explicit_bundles = IPFEC_Enable_Pre_Bundling;
-
+#endif
   if (!Get_Trace (TP_CGEXP, 1024))
     Reuse_Temp_TNs = TRUE;  /* for spills */
 
@@ -826,6 +1021,7 @@ CG_Generate_Code(
    *   - Local scheduling after register allocation
    */
 
+#ifdef TARG_IA64
   if (!CG_localize_tns) {
     /* Initialize liveness info for new parts of the REGION */
     /* also compute global liveness for the REGION */
@@ -963,11 +1159,27 @@ CG_Generate_Code(
         }
   }
   DevWarn("Now we are testing instrumentation after RegionFormation!");
-#endif
+#endif 
   current_PU_handle++;
+#endif // TARG_IA64
+  
+#ifdef CG_PATHSCALE_MERGE
+  // Earlier phases (esp. CFLOW) might have introduced local definitions and
+  // uses for global TNs. Rename them to local TNs so that LRA can accurately
+  // compute register requests (called from scheduling).
+  //
+  // (Also, earlier phase, like cflow, does not maintain GTN info if
+  // -CG:localize is on.  Rebuild the consistency for GCM.  Bug 7219.)
+  GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
+  GRA_LIVE_Rename_TNs();
+  IGLS_Schedule_Region (TRUE /* before register allocation */);
+#endif
 
-
+#ifdef TARG_IA64
   if (!CG_localize_tns || value_profile_need_gra )
+#else
+    if (!CG_localize_tns)
+#endif
   {
     // Earlier phases (esp. GCM) might have introduced local definitions
     // and uses for global TNs. Rename them to local TNs so that GRA 
@@ -978,12 +1190,26 @@ CG_Generate_Code(
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
       Stop_Timer ( T_GLRA_CU );
       Check_for_Dump (TP_FIND_GLOB, NULL);
+#ifdef TARG_IA64
     } else if (!(IPFEC_Enable_Prepass_GLOS && (CG_opt_level > 1 || value_profile_need_gra))) {
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
+#else
+    } else {
+#endif
       GRA_LIVE_Rename_TNs ();
     }
 
+#ifdef TARG_IA64
     if (GRA_redo_liveness || IPFEC_Enable_Prepass_GLOS && (CG_opt_level > 1 || value_profile_need_gra)) {
+#else
+      if (GRA_redo_liveness
+#ifdef KEY      // Inaccurate liveness info will break GRA's boundary BB code.
+                // But don't always redo liveness, bug 4781.
+        || GRA_optimize_boundary
+#endif
+	  )
+	{
+#endif
       Start_Timer( T_GLRA_CU );
       GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
       Stop_Timer ( T_GLRA_CU );
@@ -995,12 +1221,25 @@ CG_Generate_Code(
 
   LRA_Allocate_Registers (!region);
 
+#ifdef TARG_IA64
   if (!CG_localize_tns || value_profile_need_gra) {
+#else
+    if (!CG_localize_tns ) {
+#endif
     Set_Error_Phase ( "GRA_Finish" );
     /* Done with all grant information */
     GRA_Finalize_Grants();
   }
- 
+
+#ifdef CG_PATHSCALE_MERGE
+  /* Optimize control flow (third pass).  Callapse empty GOTO BBs which GRA
+     didn't find useful in placing spill code.  Bug 9063. */
+  if (CFLOW_opt_after_cgprep &&
+      !CG_localize_tns) {
+    CFLOW_Optimize(CFLOW_BRANCH|CFLOW_UNREACHABLE, "CFLOW (third pass)");
+  }
+#endif
+
   if (!region) {
     /* Check that we didn't introduce a new gp reference */
     Adjust_GP_Setup_Code( Get_Current_PU_ST(), TRUE /* allocate registers */ );
@@ -1015,7 +1254,11 @@ CG_Generate_Code(
     Adjust_Entry_Exit_Code ( Get_Current_PU_ST() );
   }
 
+#ifdef TARG_IA64
   if (Enable_EBO_Post_Proc_Rgn) {
+#else
+  if (Enable_CG_Peephole) {
+#endif
     Set_Error_Phase("Extended Block Optimizer");
     Start_Timer(T_EBO_CU);
     EBO_Post_Process_Region (region ? REGION_get_rid(rwn) : NULL);
@@ -1023,6 +1266,7 @@ CG_Generate_Code(
     Check_for_Dump ( TP_EBO, NULL );
   }
 
+#ifdef TARG_IA64
   if (IPFEC_Enable_Postpass_LOCS) {
     if (IPFEC_sched_care_machine!=Sched_care_bundle) {
       Local_Insn_Sched(FALSE);
@@ -1064,6 +1308,32 @@ CG_Generate_Code(
      CFLOW_Delete_Empty_BB();  
      IPFEC_Enable_Region_Formation = TRUE;
   }
+#else  // TARG_IA64
+
+GLS_Schedule_Region (FALSE /* after register allocation */);
+
+#ifdef TARG_X8664
+  {
+    /* Convert all the x87 regs to stack-like regs. */
+    extern void Convert_x87_Regs( MEM_POOL* );
+    Convert_x87_Regs( &MEM_local_region_pool );
+
+    /* When a function returns a structure under -m32, the value of SP will be
+       increased by 4 bytes.
+    */
+    if( Is_Target_32bit() ){
+      for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
+	if( BB_call(bb) )
+	  Adjust_SP_After_Call( bb );
+      }
+    }
+  }
+#endif
+
+  Reuse_Temp_TNs = orig_reuse_temp_tns;		/* restore */
+
+#endif // TARG_IA64
+
   if (region) {
     /*--------------------------------------------------------------------*/
     /* old region: rwn, rid_orig                      */
@@ -1093,7 +1363,7 @@ CG_Generate_Code(
     inner_body = WN_CreateBlock();
     WN_region_body(rwn) = inner_body; /* overwrite old body, now in MOPs */
     sprintf(str,"RGN %d has been lowered to MOPs, level=%s",
-            RID_id(rid_orig), RID_level_str(rid_orig));
+	    RID_id(rid_orig), RID_level_str(rid_orig));
     comment = WN_CreateComment(str);
     WN_INSERT_BlockFirst(inner_body, comment);
 
@@ -1130,6 +1400,7 @@ CG_Generate_Code(
   } /* if (region */
 
   else { /* PU */
+#ifdef TARG_IA64
     // dump EH entry info
     if (Get_Trace (TP_EH, 0x0001)) {
       Print_PU_EH_Entry(Get_Current_PU(), WN_st(rwn), TFile);
@@ -1144,13 +1415,18 @@ CG_Generate_Code(
 #else
     if (PU_has_exc_scopes(Get_Current_PU())) {
 #endif
+#else // TARG_IA64
+      if (PU_has_exc_scopes(Get_Current_PU())) {
+#endif
       EH_Write_Range_Table(rwn);
     }
 
+#ifdef TARG_IA64
     // dump LSDA of current PU
     if (Get_Trace (TP_EH, 0x0008)) {
       EH_Dump_LSDA (TFile);
     }
+#endif
 
     /* Emit the code for the PU. This may involve writing out the code to
      * an object file or to an assembly file or both. Additional tasks
@@ -1161,18 +1437,21 @@ CG_Generate_Code(
      */
     Set_Error_Phase ( "Assembly" );
     Start_Timer ( T_Emit_CU );
+#ifdef TARG_IA64
     if (Create_Cycle_Output)
         Cycle_Count_Initialize(Get_Current_PU_ST(), region);      
     /* Generate code to call mcount. See description of gcc -pg option.
      * This instrumentation is done just before code emission.
      */
     Instru_Call_Mcount();
+#endif
     EMT_Emit_PU (Get_Current_PU_ST(), pu_dst, rwn);
     Check_for_Dump (TP_EMIT, NULL);
     Stop_Timer ( T_Emit_CU );
 
+#ifdef TARG_IA64
     if (ORC_Enable_Cache_Analysis) Cache_Analysis_End();
-
+#endif
     Set_Error_Phase("Region Finalize");
     Start_Timer(T_Region_Finalize_CU);
     CG_Region_Finalize( NULL, NULL, rwn, alias_mgr,
@@ -1184,7 +1463,7 @@ CG_Generate_Code(
 
     /* List local symbols if desired: */
     if ( List_Symbols )
-      Print_symtab (Lst_File, CURRENT_SYMTAB);
+	Print_symtab (Lst_File, CURRENT_SYMTAB);
 
     Stop_Timer ( T_CodeGen_CU );
     Set_Error_Phase ( "Codegen Driver" );
@@ -1199,21 +1478,32 @@ CG_Generate_Code(
 
 void
 Trace_IR(
+#ifdef TARG_IA64
   INT phase,        /* Phase after which we're printing */
   const char *pname,    /* Print name for phase */
   BB *cur_bb,       /* BB to limit traces to */
   BOOL after)
+#else
+  INT phase,            /* Phase after which we're printing */
+  const char *pname,    /* Print name for phase */
+  BB *cur_bb)           /* BB to limit traces to */
+#endif
 {
   INT cur_bb_id = cur_bb ? BB_id(cur_bb) : 0;
   if (   Get_Trace(TKIND_IR, phase)
       && (cur_bb_id == 0 || Get_BB_Trace(cur_bb_id)))
   {
+#ifdef TARG_IA64
     if(after)
       fprintf(TFile, "\n%s%s\tIR after %s(BEGIN)  PU:%d\n%s%s\n ",
             DBar, DBar, pname, Current_PU_Count(), DBar, DBar);
     else
       fprintf(TFile, "\n%s%s\tIR before %s(BEGIN)  PU:%d\n%s%s\n ",
             DBar, DBar, pname, Current_PU_Count(), DBar, DBar); 	
+#else
+    fprintf(TFile, "\n%s%s\tIR after %s\n%s%s\n",
+            DBar, DBar, pname, DBar, DBar);
+#endif
     if (cur_bb != NULL) {
       Print_BB(cur_bb);
     } else {
@@ -1225,13 +1515,14 @@ Trace_IR(
       }
     }
     fprintf(TFile, "%s%s\n", DBar, DBar);
+#ifdef TARG_IA64
     if(after)
       fprintf(TFile, "\n%s%s\tIR after %s(END)  PU:%d\n%s%s\n ",
             DBar, DBar, pname, Current_PU_Count(), DBar, DBar);
     else
       fprintf(TFile, "\n%s%s\tIR before %s(END)  PU:%d\n%s%s\n ",
             DBar, DBar, pname, Current_PU_Count(), DBar, DBar);
-    	
+#endif    	
   }
 }
 

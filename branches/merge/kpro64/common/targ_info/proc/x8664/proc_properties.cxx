@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -36,10 +40,10 @@
 //  
 //  Generate PROCESSOR properties information
 ///////////////////////////////////////
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/proc/x8664/proc_properties.cxx,v $
+//  $Revision$
+//  $Date$
+//  $Author$
+//  $Source$
 
 #include <stddef.h>
 #include "targ_proc.h"
@@ -82,6 +86,7 @@ main()
   Processor_Group (out_of_order, 
 		   PROCESSOR_opteron,
 		   PROCESSOR_em64t,
+		   PROCESSOR_core,
 		   PROCESSOR_UNDEFINED);
 
   /* Can the current target issue multiple instructions per cycle?
@@ -90,6 +95,7 @@ main()
   Processor_Group (superscalar,
 		   PROCESSOR_opteron,
 		   PROCESSOR_em64t,
+		   PROCESSOR_core,
 		   PROCESSOR_UNDEFINED);
 
   /* Does the target execute insts as sequence of bundles, or require 

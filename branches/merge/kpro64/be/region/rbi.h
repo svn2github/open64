@@ -54,7 +54,7 @@
 #ifndef rbi_INCLUDED
 #define rbi_INCLUDED "rbi.h"
 #ifdef _KEEP_RCS_ID
-static char *rbircs_id = rbi_INCLUDED"$ $Revision: 1.1.1.1 $";
+static char *rbircs_id = rbi_INCLUDED"$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "region_util.h"

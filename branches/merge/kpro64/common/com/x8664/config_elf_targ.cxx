@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_elf_targ.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/x8664/config_elf_targ.cxx,v $
+ * $Revision: 1.4 $
+ * $Date: 05/05/06 08:20:23-07:00 $
+ * $Author: bos@eng-25.pathscale.com $
+ * $Source: common/com/x8664/SCCS/s.config_elf_targ.cxx $
  *
  * Description:
  *

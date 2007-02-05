@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -80,7 +80,7 @@
 
 #define region_init_CXX	"region_init.cxx"
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = region_init_CXX"$Revision: 1.1.1.1 $";
+static char *rcs_id = region_init_CXX"$Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "wn.h"			// WN type

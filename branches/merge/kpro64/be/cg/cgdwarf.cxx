@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -96,6 +104,11 @@
 #include "vstring.h"
 #include "cgemit_targ.h"
 #include "cgdwarf_targ.h"
+#ifdef KEY
+#include "config_debug.h" // for DEBUG_Emit_Ehframe.
+#include <strings.h>
+#include <string.h>
+#endif
 
 BOOL Trace_Dwarf;
 
@@ -131,13 +144,30 @@ struct CGD_SYMTAB_ENTRY {
       // I think the ELF symbol index tells us everything we need to know.
     } elfsym_info;
   };
+#ifdef KEY
+  Dwarf_Unsigned   next;	// CGD_Symtab index of next entry from same PU
+  Dwarf_Unsigned   CGD_Symtab_offset;	// index in CGD_Symtab
+#endif
 
   CGD_SYMTAB_ENTRY(CGD_SYMTAB_ENTRY_TYPE entry_type, Dwarf_Unsigned idx) :
     type(entry_type), index(idx)
-      { }
+#ifdef KEY
+    , next(~0), CGD_Symtab_offset(~0)
+#endif
+      {}
+#ifdef KEY
+  bool next_is_null() { return next == ~0; }
+#endif
 };
 
 std::vector <CGD_SYMTAB_ENTRY, mempool_allocator<CGD_SYMTAB_ENTRY> > CGD_Symtab;
+
+#ifdef KEY
+// Map PU to CGD_Symtab entries specific to that PU.
+hash_map<PU_IDX, Dwarf_Unsigned> PU_IDX_To_CGD_SYMTAB_OFFSET;
+
+static DST_INFO_IDX Current_Top_Level_Idx = DST_INVALID_IDX;
+#endif
 
 Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
 				     Dwarf_Unsigned         index,
@@ -149,26 +179,52 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
   if (type == CGD_LABIDX && pu == (PU_IDX) 0) {
     pu = ST_pu(Get_Current_PU_ST());
   }
+#ifdef KEY
+  // Speed up search by looking at CGD_Symtab entries specific to the PU.
+  // Bug 8756.
+  CGD_SYMTAB_ENTRY *p;
+  Dwarf_Unsigned idx = PU_IDX_To_CGD_SYMTAB_OFFSET[pu];
+  for (p = &CGD_Symtab[idx]; !p->next_is_null(); p = &CGD_Symtab[p->next])
+#else
   std::vector <CGD_SYMTAB_ENTRY,
 	  mempool_allocator<CGD_SYMTAB_ENTRY> >::iterator p;
-  for (p = CGD_Symtab.begin(); p != CGD_Symtab.end(); ++p) {
+  for (p = CGD_Symtab.begin(); p != CGD_Symtab.end(); ++p)
+#endif
+  {
     if (p->type == type &&
 	p->index == index) {
       switch (type) {
       case CGD_LABIDX:
 	if (p->label_info.pu_idx == pu) {
+#ifdef KEY
+	  return p->CGD_Symtab_offset;
+#else
 	  return p - CGD_Symtab.begin();
+#endif
 	}
 	break;
       case CGD_ELFSYM:
+#ifdef KEY
+	return p->CGD_Symtab_offset;
+#else
 	return p - CGD_Symtab.begin();
+#endif
       default:
 	Fail_FmtAssertion("Illegal CGD_Symtab entry type");
 	break;
       }
     }
   }
+#ifdef KEY
+  CGD_SYMTAB_ENTRY new_entry = CGD_SYMTAB_ENTRY(type, index);
+  new_entry.next = PU_IDX_To_CGD_SYMTAB_OFFSET[pu];
+  new_entry.CGD_Symtab_offset = CGD_Symtab.size();
+  PU_IDX_To_CGD_SYMTAB_OFFSET[pu] = new_entry.CGD_Symtab_offset;
+  CGD_Symtab.push_back(new_entry);
+#else
   CGD_Symtab.push_back(CGD_SYMTAB_ENTRY(type, index));
+#endif
+
   if (Trace_Dwarf) {
     fprintf(TFile,
 	    "New CGD_Symtab entry: %u --> (CGD_%s,%llu)\n",
@@ -448,6 +504,7 @@ put_const_attribute (DST_CONST_VALUE cval, Dwarf_Half ref_attr, Dwarf_P_Die die)
     case DST_FORM_STRING:
       put_string (DST_CONST_VALUE_form_string(cval), ref_attr, die);
       break;
+#ifdef TARG_IA64
     case DST_FORM_DATA1:
       dwarf_add_AT_unsigned_const (dw_dbg, die, ref_attr,
 	      DST_CONST_VALUE_form_data1(cval), &dw_error);
@@ -464,6 +521,41 @@ put_const_attribute (DST_CONST_VALUE cval, Dwarf_Half ref_attr, Dwarf_P_Die die)
       dwarf_add_AT_unsigned_const (dw_dbg, die, ref_attr,
 	      DST_CONST_VALUE_form_data8(cval), &dw_error);
       break;
+#else
+      // Bug 1188
+  case DST_FORM_DATA1:
+    dwf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+				   DST_CONST_VALUE_form_data1(cval),
+				   &dw_error, 1);
+    break;
+  case DST_FORM_DATA2:
+    dwf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+				   DST_CONST_VALUE_form_data2(cval),
+				   &dw_error, 2);
+    break;
+  case DST_FORM_DATA4:
+    dwf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+				   DST_CONST_VALUE_form_data4(cval),
+				   &dw_error, 4);
+    break;
+  case DST_FORM_DATA8:
+    dwf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+				   DST_CONST_VALUE_form_data8(cval),
+				   &dw_error, 8);
+    break;
+  case DST_FORM_DATAC4:
+    dwf_add_AT_complex_const (dw_dbg, die, ref_attr,
+			      DST_CONST_VALUE_form_crdata4(cval), 
+			      DST_CONST_VALUE_form_cidata4(cval), 
+			      &dw_error, 4);
+    break;
+  case DST_FORM_DATAC8:
+    dwf_add_AT_complex_const (dw_dbg, die, ref_attr,
+			      DST_CONST_VALUE_form_crdata8(cval), 
+			      DST_CONST_VALUE_form_cidata8(cval), 
+			      &dw_error, 8);
+    break;
+#endif //TARG_IA64
   }
 }
 
@@ -471,12 +563,16 @@ put_const_attribute (DST_CONST_VALUE cval, Dwarf_Half ref_attr, Dwarf_P_Die die)
 static void
 put_dopetype (DST_INFO_IDX dope_idx, DST_flag flag, Dwarf_P_Die die)
 {
+#ifdef TARG_X8664
+  return;
+#else
    if (DST_IS_f90_pointer(flag))
 	put_reference (dope_idx, DW_AT_MIPS_ptr_dopetype, die);
    if (DST_IS_allocatable(flag))
 	put_reference (dope_idx, DW_AT_MIPS_allocatable_dopetype, die);
    if (DST_IS_assumed_shape(flag))
 	put_reference (dope_idx, DW_AT_MIPS_assumed_shape_dopetype, die);
+#endif
 }
 
    /*----------------------------------
@@ -584,6 +680,48 @@ put_subprogram(DST_flag flag,
 	        die, 
 	        DST_IS_external(flag) ? pb_pubname : pb_funcname);
     }
+#ifdef KEY
+    // Bug 4311 - The front-end does not set up the correct type information
+    // in the DST tree for the subprogram. In such cases, we use the top-level
+    // DST tree to derive the return type from a variable of same name as the
+    // subroutine. We check only the first child entry of the top level node
+    // that is either a decalaration or not a subprogram itself.
+    // The reason for following this method is there is no link back
+    // from the ST table to the DST table. So, given a ST_pu_type, we are not
+    // able to get a DST entry for that type.
+    if (DST_IS_NULL(DST_SUBPROGRAM_def_type(attr)) &&
+	(Dwarf_Language == DW_LANG_Fortran77 ||
+	 Dwarf_Language == DW_LANG_Fortran90) &&
+	Current_Top_Level_Idx != DST_INVALID_IDX) {
+      DST_INFO_IDX child_idx;
+      for (child_idx = DST_first_child (Current_Top_Level_Idx);
+	   !DST_IS_NULL(child_idx); 
+	   child_idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(child_idx))) {
+	if (child_idx != DST_INVALID_IDX) {
+	  DST_INFO *child_info = DST_INFO_IDX_TO_PTR (child_idx);
+	  if (child_info && 
+	      DST_INFO_tag(child_info) == DW_TAG_variable) {
+	    DST_ATTR_IDX child_attr_idx = DST_INFO_attributes(child_info);
+	    DST_VARIABLE *child_attr = 
+	      DST_ATTR_IDX_TO_PTR(child_attr_idx, DST_VARIABLE);
+	    if (child_attr) {
+	      DST_STR_IDX child_str_idx = DST_VARIABLE_def_name(child_attr);
+	      if (child_str_idx != DST_INVALID_IDX) {
+		ST *pu_st = Get_ST_From_DST(DST_SUBPROGRAM_def_st(attr));
+		char *pu_name = ST_name(pu_st);
+		char *variable_name = DST_STR_IDX_TO_PTR(child_str_idx);
+		if (strncasecmp(variable_name, pu_name, 
+				strlen(variable_name)) == 0)
+		  put_reference (DST_VARIABLE_decl_type(child_attr), 
+				 DW_AT_type, die);
+	      }
+	    }
+	    break;
+	  }
+	}
+      }
+    } else
+#endif
     put_reference (DST_SUBPROGRAM_def_type(attr), DW_AT_type, die);
     if (DST_IS_external(flag))  put_flag (DW_AT_external, die);
     if (DST_IS_prototyped(flag)) put_flag (DW_AT_prototyped, die);
@@ -709,10 +847,15 @@ put_location (
 	st =	Get_ST_formal_ref_base(st);
   if (st == NULL) return;
   if (ST_is_not_used(st)) return;
+#ifdef KEY	// Ignore asm string names.  Bug 7604.
+  if (ST_sym_class(st) == CLASS_NAME) return;
+#endif
 
   Base_Symbol_And_Offset (st, &base_st, &base_ofst);
 
+#ifdef TARG_IA64
   if (ST_is_not_used(base_st)) return;	/* For fixing undefined refernece bug, Added By: Mike Murphy, 22 Apr 2001 */
+#endif
 
   deref = FALSE;
   if (DST_IS_deref(flag))  /* f90 formals, dope, etc */
@@ -724,20 +867,38 @@ put_location (
 	&& ST_sclass(st) != SCLASS_COMMON && ST_sclass(st) != SCLASS_EXTERN) 
   {
 	/* symbol was not allocated, so doesn't have dwarf location */
+#ifndef KEY
 	return;
+#else
+	// Bug 4723 - Allocate any object not allocated because the rest of 
+	// compilation never encountered that object. Note that ST_is_not_used 
+	// is not set for this object.
+	Allocate_Object(st);
+	Base_Symbol_And_Offset (st, &base_st, &base_ofst);
+#endif
   }
 
   switch (ST_sclass(st)) {
     case SCLASS_FORMAL:
 	if (base_st != SP_Sym && base_st != FP_Sym) {
+                //printf ("[1] base_offset: %lld, ofst: %lld, offs: %d\n", base_ofst, ST_ofst(st), offs) ;
 		dwarf_add_expr_addr_b (expr,
+#ifdef KEY
+			           base_ofst + offs,               // need to add base offset because if the symbols has
+                                                                    // a base, the offset is not necessarily set
+#else
 				       ST_ofst(st) + offs,
+#endif
 				       Cg_Dwarf_Symtab_Entry(CGD_ELFSYM,
 							     EMT_Put_Elf_Symbol(base_st)),
 				       &dw_error);
 		if (Trace_Dwarf) {
 	  		fprintf (TFile,"LocExpr: symbol = %s, offset = %lld\n", 
-			      ST_name(base_st), ST_ofst(st) + offs); 
+#ifdef KEY
+			      ST_name(base_st), base_ofst + ST_ofst(st) + offs);
+#else
+			      ST_name(base_st), ST_ofst(st) + offs);
+#endif
 		}
 		break;
 	}
@@ -772,14 +933,24 @@ put_location (
     case SCLASS_FSTATIC:
     case SCLASS_PSTATIC:
       if (base_st != NULL) {
+         //printf ("[2] %s (%s): real base_ofst: %llx, calc base_offset: %lld, ofst: %lld, offs: %d, base_st: %p, st: %p\n", ST_name(st), ST_name(base_st), ST_ofst(base_st), base_ofst, ST_ofst(st), offs, base_st, st) ;
 	dwarf_add_expr_addr_b (expr,
+#ifdef KEY      
+			           base_ofst + offs,               // need to add base offset because if the symbols has
+                                                                    // a base, the offset is not necessarily set
+#else
 			       ST_ofst(st) + offs, 
+#endif
 			       Cg_Dwarf_Symtab_Entry(CGD_ELFSYM,
 						     EMT_Put_Elf_Symbol(base_st)),
 			       &dw_error);
 	if (Trace_Dwarf) {
 	  fprintf (TFile,"LocExpr: symbol = %s, offset = %lld\n", 
+#ifdef KEY
+			      ST_name(base_st), base_ofst + ST_ofst(st) + offs); 
+#else
 			      ST_name(base_st), ST_ofst(st) + offs); 
+#endif
 	}
       }
       else {
@@ -805,6 +976,26 @@ put_location (
       }
       break;
     default:
+#ifdef KEY
+      // Treat unknown sclass variables as SCLASS_AUTO if 
+      // the base points to the stack. Fix bug #380, also bug 11302 
+      if ((base_st == FP_Sym || base_st == SP_Sym) && ST_sclass(st) == SCLASS_UNKNOWN) {
+        if (DST_IS_base_deref(flag)) { /* f90 formal dope  */
+	  
+	  dwarf_add_expr_gen (expr, DW_OP_fbreg, Offset_from_FP(st), 
+			      0, &dw_error);
+	  
+	  dwarf_add_expr_gen (expr, DW_OP_deref, 0,0, &dw_error);
+	  dwarf_add_expr_gen (expr, DW_OP_plus_uconst, offs, 0, &dw_error);
+	  
+	} else {
+
+	  dwarf_add_expr_gen (expr, DW_OP_fbreg, Offset_from_FP(st) + offs, 
+			      0, &dw_error);
+	}
+	break;
+      }
+#endif
       ErrMsg (EC_Unimplemented, "put_location: sclass");
       return;
   }
@@ -942,7 +1133,16 @@ static void
 put_variable(DST_flag flag, DST_VARIABLE *attr, Dwarf_P_Die die)
 {
   if (DST_IS_const(flag))  /* Not yet supported */ {
+#ifndef TARG_X8664
     ErrMsg (EC_Unimplemented, "put_variable: DST_IS_const");
+#else
+    DST_CONSTANT *attr_tmp = (DST_CONSTANT *)attr;
+    FmtAssert (!DST_IS_declaration(flag), ("put_constant of non-def"));
+    put_decl(DST_CONSTANT_def_decl(attr_tmp), die);
+    put_name (DST_CONSTANT_def_name(attr_tmp), die, pb_none);
+    put_reference (DST_CONSTANT_def_type(attr_tmp), DW_AT_type, die);
+    put_const_attribute (DST_CONSTANT_def_cval(attr_tmp), DW_AT_const_value, die);    
+#endif
   }
   else if (DST_IS_memdef(flag))  /* Not yet supported */ {
     ErrMsg (EC_Unimplemented, 
@@ -954,6 +1154,11 @@ put_variable(DST_flag flag, DST_VARIABLE *attr, Dwarf_P_Die die)
     put_reference (DST_VARIABLE_decl_type(attr), DW_AT_type, die);
     put_flag (DW_AT_declaration, die);
     if (DST_IS_external(flag)) put_flag (DW_AT_external, die);
+#ifdef KEY
+    if (!DST_IS_NULL (DST_VARIABLE_decl_linkage_name(attr))) {
+        put_string (DST_VARIABLE_decl_linkage_name(attr), DW_AT_MIPS_linkage_name, die) ;
+    }
+#endif
   }
   else if (DST_IS_comm(flag)) { /* definition of a common block variable. */
     put_decl(DST_VARIABLE_comm_decl(attr), die);
@@ -996,6 +1201,11 @@ put_variable(DST_flag flag, DST_VARIABLE *attr, Dwarf_P_Die die)
 		die);
     }
     /* else if is cross-file inlined, will use name for matching */
+#ifdef KEY
+    if (!DST_IS_NULL (DST_VARIABLE_decl_linkage_name(attr))) {
+        put_string (DST_VARIABLE_def_linkage_name(attr), DW_AT_MIPS_linkage_name, die) ;
+    }
+#endif
   }
 }
 
@@ -1018,6 +1228,7 @@ put_formal_parameter(DST_flag flag, DST_FORMAL_PARAMETER *attr, Dwarf_P_Die die)
    put_reference (DST_FORMAL_PARAMETER_default_val(attr),
 		  DW_AT_default_value, 
 	          die);
+   put_reference (DST_FORMAL_PARAMETER_type(attr), DW_AT_type, die);            // bug 1735: need the type for the formal paras
    put_flag (DW_AT_declaration, die);
   } else {
 
@@ -1135,6 +1346,9 @@ put_array_type(DST_flag flag, DST_ARRAY_TYPE *attr, Dwarf_P_Die die)
     dwarf_add_AT_unsigned_const (dw_dbg, die, DW_AT_byte_size,
 		        DST_ARRAY_TYPE_byte_size(attr), &dw_error);
   if (DST_IS_declaration(flag)) put_flag (DW_AT_declaration, die);
+#ifdef TARG_X8664
+  if (DST_IS_GNU_vector(flag)) put_flag (DW_AT_GNU_vector, die);
+#endif
   /* TODO: 
    DST_put_idx_attribute(" abstract_origin",
 			 DST_ARRAY_TYPE_abstract_origin(attr), FALSE);
@@ -1152,11 +1366,14 @@ put_lower_bound (DST_flag flag, DST_SUBRANGE_TYPE *attr, Dwarf_P_Die die)
 
   if (DST_IS_lb_cval(flag)) {
     cval = DST_SUBRANGE_TYPE_lower_cval(attr);
+#ifndef TARG_X8664 
+    // Bug 2706 - was this meant for the debuggers on the MIPS platform? -
+    // - For us, we will emit lower bound no matter what the bound is.
     switch (Dwarf_Language) {
       case DW_LANG_C89:
       case DW_LANG_C:
       case DW_LANG_C_plus_plus:
-	if (cval == 0) return;
+	if (cval == 0) return; 
 	break;
       case DW_LANG_Fortran77:
       case DW_LANG_Fortran90:
@@ -1165,6 +1382,7 @@ put_lower_bound (DST_flag flag, DST_SUBRANGE_TYPE *attr, Dwarf_P_Die die)
       default:
 	break;
     }
+#endif
     dwarf_add_AT_signed_const (dw_dbg, die, DW_AT_lower_bound, cval, &dw_error);
   }
   else {
@@ -1281,8 +1499,17 @@ put_member(DST_flag flag, DST_MEMBER *attr, Dwarf_P_Die die)
 	 * so use decl flag. */
   	/* For now, assume that the member location is always a constant. */
   	expr = dwarf_new_expr (dw_dbg, &dw_error);
+#ifdef KEY
+        // the dwarf spec says that the location expression for a structure member
+        // assumes that the location of the struct itself is on the stack.  This
+        // implies that we need to add a constant, not just push one
+        // (DWARF2 page 41)
+  	dwarf_add_expr_gen (expr, DW_OP_plus_uconst, DST_MEMBER_memb_loc(attr), 0, 
+		&dw_error);
+#else
   	dwarf_add_expr_gen (expr, DW_OP_consts, DST_MEMBER_memb_loc(attr), 0, 
 		&dw_error);
+#endif
 #if pv292951
 	/* according to the spec, we should do this, but dbx doesn't like it */
 	dwarf_add_expr_gen (expr, DW_OP_plus, 0, 0, &dw_error);
@@ -1298,6 +1525,14 @@ put_member(DST_flag flag, DST_MEMBER *attr, Dwarf_P_Die die)
 				      DW_AT_data_member_location, expr, &dw_error);
 	}
   }
+#ifdef KEY
+  // Bug 1419 - add information about accessibility
+  if (Dwarf_Language == DW_LANG_C_plus_plus &&
+      DST_MEMBER_accessibility(attr) != 0)
+    dwarf_add_AT_unsigned_const(dw_dbg, die, DW_AT_accessibility, 
+				DST_MEMBER_accessibility(attr), &dw_error);
+#endif
+
 }
 
 
@@ -1327,8 +1562,30 @@ put_inheritance(DST_flag flag, DST_INHERITANCE *attr, Dwarf_P_Die die)
 
   put_reference (DST_INHERITANCE_type(attr), DW_AT_type, die);
   expr = dwarf_new_expr (dw_dbg, &dw_error);
+#ifdef KEY
+  // Bug 3107
+  // Quote from Dave's last fix:
+  // the dwarf spec says that the location expression for a structure member
+  // assumes that the location of the struct itself is on the stack.  This
+  // implies that we need to add a constant, not just push one
+  // (DWARF2 page 41)
+  if (DST_INHERITANCE_virtuality(attr) == DW_VIRTUALITY_none) 
+    dwarf_add_expr_gen (expr, DW_OP_plus_uconst, DST_INHERITANCE_memb_loc(attr), 
+			0, &dw_error);
+  else {
+    // Bug 1737 - handle virtual base class
+    dwarf_add_expr_gen (expr, DW_OP_dup, 0, 0, &dw_error);
+    dwarf_add_expr_gen (expr, DW_OP_deref, 0, 0, &dw_error);
+    dwarf_add_expr_gen (expr, DW_OP_lit0+DST_INHERITANCE_memb_loc(attr), 
+			0, 0, &dw_error);
+    dwarf_add_expr_gen (expr, DW_OP_minus, 0, 0, &dw_error);
+    dwarf_add_expr_gen (expr, DW_OP_deref, 0, 0, &dw_error);
+    dwarf_add_expr_gen (expr, DW_OP_plus, 0, 0, &dw_error);
+  }
+#else
   dwarf_add_expr_gen (expr, DW_OP_consts, DST_INHERITANCE_memb_loc(attr), 0, 
-	&dw_error);
+		      &dw_error);
+#endif
   if (expr != NULL) {
     dwarf_add_AT_location_expr (dw_dbg, die, DW_AT_data_member_location, 
 	expr, &dw_error);
@@ -1337,6 +1594,11 @@ put_inheritance(DST_flag flag, DST_INHERITANCE *attr, Dwarf_P_Die die)
 			        DST_INHERITANCE_virtuality(attr),
 				&dw_error);
   }
+#ifdef KEY
+  // Bug 1419 - add information about accessibility
+  dwarf_add_AT_unsigned_const(dw_dbg, die, DW_AT_accessibility, 
+  			      DST_INHERITANCE_accessibility(attr), &dw_error);
+#endif
 }
 
 static void
@@ -1686,6 +1948,9 @@ preorder_visit (
     }
   }
 
+#ifdef KEY
+  Current_Top_Level_Idx = idx;
+#endif
   //Current_Tree_Level = tree_level;
   Write_Attributes (tag,
 		   flag,
@@ -1960,6 +2225,15 @@ void
 Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 		     LABEL_IDX  begin_label,
 		     LABEL_IDX  end_label,
+#ifdef TARG_X8664
+		     LABEL_IDX *eh_pushbp_label,
+		     LABEL_IDX *eh_movespbp_label,
+		     LABEL_IDX *eh_adjustsp_label,
+		     LABEL_IDX *eh_callee_saved_reg,
+		     LABEL_IDX *first_bb_labels,
+		     LABEL_IDX *last_bb_labels,
+		     INT32     pu_entries,
+#endif // TARG_X8664
 		     INT32      end_offset,
 		     ST        *PU_st,
 		     DST_IDX    pu_dst,
@@ -1975,6 +2249,9 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
   Dwarf_P_Die PU_die;
   Dwarf_P_Expr expr;
   Dwarf_P_Fde fde;
+#ifdef TARG_X8664
+  Dwarf_P_Fde eh_fde = 0;
+#endif
   DST_SUBPROGRAM *PU_attr;
   static BOOL processed_globals = FALSE;
   
@@ -2032,6 +2309,7 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 
   /* setup the frame_base attribute. */
   expr = dwarf_new_expr (dw_dbg, &dw_error);
+#ifndef TARG_X8664
   if (Current_PU_Stack_Model != SMODEL_SMALL)
     dwarf_add_expr_gen (expr, DW_OP_bregx,
 	REGISTER_machine_id (TN_register_class(FP_TN), TN_register(FP_TN)),
@@ -2040,6 +2318,31 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
     dwarf_add_expr_gen (expr, DW_OP_bregx,
 	REGISTER_machine_id (TN_register_class(SP_TN), TN_register(SP_TN)),
 	Frame_Len, &dw_error);
+#else
+  // seems that gdb 5.x doesn't like bregx for AT_frame_base.
+  if (Current_PU_Stack_Model != SMODEL_SMALL)
+    dwarf_add_expr_gen (expr, 
+    			Is_Target_64bit() ? DW_OP_reg6 : DW_OP_reg5, 
+			0, 0, &dw_error) ;
+  else
+    dwarf_add_expr_gen (expr, 
+                        Is_Target_64bit() ? DW_OP_breg7 : DW_OP_breg4, 
+			Frame_Len, 0, &dw_error) ;           
+#if 0
+  /* isa_registers.cxx order of registers is different from that of gdb 
+   * Try "info registers".  
+   * If we change the order in isa_registers now, it is total chaos.
+   */
+  if (Current_PU_Stack_Model != SMODEL_SMALL)
+    dwarf_add_expr_gen (expr, DW_OP_bregx,
+	6 /* REGISTER_machine_id (TN_register_class(FP_TN), TN_register(FP_TN)) */,
+	0, &dw_error);
+  else
+    dwarf_add_expr_gen (expr, DW_OP_bregx,
+	7 /* REGISTER_machine_id (TN_register_class(SP_TN), TN_register(SP_TN)) */,
+	Frame_Len, &dw_error);
+#endif 
+#endif /* TARG_X8664 */
 
   dwarf_add_AT_location_expr(dw_dbg, PU_die, DW_AT_frame_base, expr, &dw_error);
   if (PU_is_mainpu(ST_pu(PU_st))) {
@@ -2054,11 +2357,50 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 						     end_label,
 						     scn_index);
 
+#ifndef TARG_X8664
   fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
 			    begin_entry,
 			    end_entry,
 			    end_offset,
 			    low_pc, high_pc);
+#else
+  Dwarf_Unsigned pushbp_entry = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+						      eh_pushbp_label[0],
+						      scn_index);
+  Dwarf_Unsigned movespbp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+							  eh_movespbp_label[0],
+							  scn_index);
+  Dwarf_Unsigned adjustsp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+							  eh_adjustsp_label[0],
+							  scn_index);
+  Dwarf_Unsigned callee_saved_reg;
+  INT num_callee_saved_regs;
+  if (num_callee_saved_regs = Cgdwarf_Num_Callee_Saved_Regs())
+    callee_saved_reg = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					     eh_callee_saved_reg[0],
+					     scn_index);      
+  fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
+			    begin_entry,
+			    end_entry,
+			    pushbp_entry,
+			    movespbp_entry,
+			    adjustsp_entry,
+			    callee_saved_reg,
+			    end_offset,
+			    low_pc, high_pc);  
+
+  // Generate .eh_frame FDE only for C++ or when -DEBUG:eh_frame=on
+  if (Dwarf_Language == DW_LANG_C_plus_plus || DEBUG_Emit_Ehframe)
+    eh_fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
+				 begin_entry,
+			    	 end_entry,
+			    	 pushbp_entry,
+			    	 movespbp_entry,
+			    	 adjustsp_entry,
+			    	 callee_saved_reg,
+			    	 end_offset,
+			    	 low_pc, high_pc);  
+#endif // TARG_X8664
 
   Dwarf_Unsigned eh_handle;
 
@@ -2075,8 +2417,54 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 		       end_offset,
 		       PU_die,
 		       fde,
+#ifdef TARG_X8664
+		       eh_fde,
+#endif
 		       eh_handle,
 		       eh_offset);
+#ifdef TARG_X8664
+  if (pu_entries > 1) {
+    FmtAssert(Dwarf_Language == DW_LANG_Fortran77 ||
+              Dwarf_Language == DW_LANG_Fortran90, 
+	      ("Dwarf handler: > 1 PU entry in a non-Fortran language"));
+    for (INT pu_entry = 1; pu_entry <= pu_entries; pu_entry ++) {
+      begin_entry = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					  first_bb_labels[pu_entry],
+					  scn_index);
+      end_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					  last_bb_labels[pu_entry],
+					  scn_index);
+      pushbp_entry = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					   eh_pushbp_label[pu_entry],
+					   scn_index);
+      movespbp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					       eh_movespbp_label[pu_entry],
+					       scn_index);
+      adjustsp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					       eh_adjustsp_label[pu_entry],
+					       scn_index);
+      if (num_callee_saved_regs = Cgdwarf_Num_Callee_Saved_Regs())
+	callee_saved_reg = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+						 eh_callee_saved_reg[pu_entry],
+						 scn_index);      
+      fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
+				begin_entry,
+				end_entry,
+				pushbp_entry,
+				movespbp_entry,
+				adjustsp_entry,
+				callee_saved_reg,
+				end_offset,
+				low_pc, high_pc);  
+      Em_Dwarf_Add_PU_Entries (begin_entry,
+			       end_entry,
+			       0,	// begin_offset
+			       end_offset,
+			       PU_die,
+			       fde);
+    }
+  }
+#endif
 
 }
 
@@ -2103,6 +2491,13 @@ Cg_Dwarf_Begin (BOOL is_64bit)
   cu_info = DST_INFO_IDX_TO_PTR (cu_idx);
   Dwarf_Language = Get_Dwarf_Language (cu_info);
 
+#ifdef KEY
+  if (!CG_emit_unwind_info)
+  dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf, 
+			  0,
+			  Cg_Dwarf_Enter_Elfsym);
+  else
+#endif
   dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf, 
 			  (Dwarf_Language == DW_LANG_C_plus_plus),
 			  Cg_Dwarf_Enter_Elfsym);
@@ -2116,7 +2511,7 @@ Cg_Dwarf_Begin (BOOL is_64bit)
 		    cu_die);
 
   // Invalid entry up front to keep from using the zero index.
-  CGD_Symtab.push_back(CGD_SYMTAB_ENTRY(CGD_ELFSYM, Dwarf_Unsigned(-1)));
+  CGD_Symtab.push_back(CGD_SYMTAB_ENTRY(CGD_ELFSYM, (Dwarf_Unsigned) -1));
 }
 
 
@@ -2228,6 +2623,81 @@ void Cg_Dwarf_Gen_Asm_File_Table (void)
 
 }
 
+#ifdef KEY
+void Cg_Dwarf_Gen_Macinfo (void)
+{
+  DST_IDX idx;
+  DST_MACR *macr;
+  char *macro, *macname, *macvalue;
+  INT fileindex, linenumber;
+  BOOL processed_start_file = FALSE;
+  BOOL processed_end_file = FALSE;
+
+  for (idx = DST_get_macro_info();
+       !DST_IS_NULL(idx);
+       idx = DST_MACR_next(macr)) {
+    macr = DST_MACR_IDX_TO_PTR(idx);
+    switch (DST_MACR_tag(macr)) {
+    case DW_MACINFO_define:
+      if (!processed_start_file) {
+	dwarf_start_macro_file(dw_dbg, 
+			       1 /* fileindex */, 0 /* linenumber */, &dw_error);
+	processed_start_file = TRUE;
+      }	
+      macro  = DST_STR_IDX_TO_PTR(DST_MACR_macro(macr));
+      dwarf_def_macro(dw_dbg, DST_MACR_lineno(macr), 
+		      macro, NULL, &dw_error);
+      break;
+    case DW_MACINFO_undef:
+      if (!processed_start_file) {
+	dwarf_start_macro_file(dw_dbg, 
+			       1 /* fileindex */, 0 /* linenumber */, &dw_error);
+	processed_start_file = TRUE;
+      }	
+      macname  = DST_STR_IDX_TO_PTR(DST_MACR_macro(macr));
+      macvalue = dwarf_find_macro_value_start(macname);
+      macname[strlen(macname) - strlen(macvalue) - 1] = '\0';
+      dwarf_undef_macro(dw_dbg, DST_MACR_lineno(macr), 
+			macname, &dw_error);
+      break;
+    case DW_MACINFO_start_file:
+      fileindex = DST_MACR_fileno(macr);
+      linenumber = DST_MACR_lineno(macr);
+      dwarf_start_macro_file(dw_dbg, fileindex, linenumber, &dw_error);
+      processed_start_file = TRUE;
+      break;
+    case DW_MACINFO_end_file:
+      dwarf_end_macro_file(dw_dbg, &dw_error);
+      processed_end_file = TRUE;
+      break;
+    default:
+      break;
+    }
+  }
+  if (processed_start_file && !processed_end_file)
+    // End the macinfo section manually.
+    dwarf_end_macro_file(dw_dbg, &dw_error);
+}
+
+void
+Print_Directives_For_All_Files(void) {
+  DST_IDX idx;
+  DST_FILE_NAME *file;
+  INT count = 1;
+  for (idx = DST_get_file_names(); 
+       !DST_IS_NULL(idx);
+       idx = DST_FILE_NAME_next(file)) {
+    file = DST_FILE_IDX_TO_PTR(idx);
+    fprintf(Asm_File, "\t%s\t%d\t\"%s/%s\"\n", AS_FILE, count, 
+	    incl_table[file_table[count].incl_index].path_name, 
+	    file_table[count].filename);
+    count++;
+  }
+  fputc ('\n', Asm_File);
+}
+#endif
+
+
 static void
 print_source (SRCPOS srcpos)
 {
@@ -2284,6 +2754,13 @@ print_source (SRCPOS srcpos)
   }
 }
 
+#ifdef TARG_X8664
+BOOL Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
+#endif
+#ifdef KEY
+BOOL Cg_Dwarf_BB_First_Op = FALSE;
+#endif
+
 // THis adds line info and, as a side effect,
 // builds tables in dwarf2 for the file numbers
 
@@ -2306,8 +2783,16 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 
   if (srcpos == 0 && last_srcpos == 0)
 	DevWarn("no valid srcpos at PC %d\n", code_address);
+#ifndef TARG_X8664
   if (srcpos == 0 || srcpos == last_srcpos) return;
+#else
+  if (srcpos == 0 || 
+      (!Cg_Dwarf_First_Op_After_Preamble_End && !Cg_Dwarf_BB_First_Op &&
+       srcpos == last_srcpos))
+    return;
+#endif
 
+#ifdef TARG_IA64
   // TODO:  figure out what to do about line changes in middle of bundle ???
   // For assembly, can put .loc in middle of bundle.
   // But can't generate object code with that,
@@ -2316,6 +2801,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
   if ((code_address % INST_BYTES) != 0) {
   	if (Object_Code) return;
   }
+#endif
 
   USRCPOS_srcpos(usrcpos) = srcpos;
 
@@ -2357,6 +2843,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 #endif
 	}
 #ifdef linux
+#ifndef KEY	// skip here because already generated at beginning
 	// For linux, emit .file whenever file changes,
 	// as it applies to all following  line directives,
 	// whatever the spelling.
@@ -2366,6 +2853,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 			incl_table[include_idx].path_name,
 			file_table[file_idx].filename);
 	}
+#endif
 #endif
   }
 
@@ -2377,7 +2865,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
     CGEMIT_Prn_Line_Dir_In_Asm(usrcpos);
     if (List_Source)
     	print_source (srcpos);
-  } 
+  }
   last_srcpos = srcpos;
 }
 
@@ -2385,7 +2873,11 @@ static inline Elf64_Word
 reloc_offset(char *reloc, BOOL is_64bit)
 {
   if (is_64bit) {
+#ifdef TARG_IA64
     return REL_offset(*((Elf64_AltRel *) reloc));
+#else
+    return REL_offset(*((Elf64_Rel *) reloc));
+#endif
   }
   else {
     return REL32_offset(*((Elf32_Rel *) reloc));
@@ -2409,6 +2901,28 @@ static void check_reloc_fmt_and_size(Elf64_Word     reloc_scn_type,
 				     Dwarf_Unsigned scn_buffer_size)
 {
 }
+
+#ifdef linux
+struct UINT32_unaligned {
+  UINT32 val;
+} __attribute__ ((aligned(1)));
+
+struct UINT64_unaligned {
+  UINT64 val;
+} __attribute__ ((aligned(1)));
+#else
+#pragma pack(1)
+struct UINT32_unaligned {
+  UINT32 val;
+};
+
+struct UINT64_unaligned {
+  UINT64 val;
+};
+#pragma pack(0)
+#endif /* linux */
+
+
 
 // These are intended to be file-local, and the unnamed namespace
 // tells c++ to make them file-local
@@ -2495,6 +3009,7 @@ namespace {
       case 1:
       	  value = loc[0];
       	  break;
+#ifdef TARG_IA64
       case 4:
 	  UINT32 buf32;
 	  memcpy(&buf32, loc, sizeof(buf32));
@@ -2505,6 +3020,14 @@ namespace {
 	  memcpy(&buf64, loc, sizeof(buf64));
 	  value = buf64;
       	  break;
+#else
+      case 4:
+      	    value =  ((UINT32_unaligned *)loc)->val;
+      	    break;
+      case 8:
+      	    value =  ((UINT64_unaligned *)loc)->val;
+      	    break;
+#endif
       default:
       	   Fail_FmtAssertion("Impossible vsp buffer vsp_get_bytes size %d",
 			(int)size);
@@ -2528,14 +3051,14 @@ namespace {
 Dwarf_Unsigned 
 virtual_section_position::vsp_print_bytes(
 		FILE * asm_file,
-	        Dwarf_Unsigned current_reloc_target,
+		Dwarf_Unsigned cur_reloc_target,
 		Dwarf_Unsigned cur_byte_in)
 {
 
+#ifdef TARG_IA64
     const int bytes_per_line = 8;
     Dwarf_Unsigned cur_byte = cur_byte_in;
-
-    int nlines_this_reloc = (current_reloc_target - cur_byte) / bytes_per_line;
+    int nlines_this_reloc = (cur_reloc_target - cur_byte) / bytes_per_line;
 
     int i;
     for (i = 0; i < nlines_this_reloc; ++i) {
@@ -2550,9 +3073,9 @@ virtual_section_position::vsp_print_bytes(
 		(int)vsp_get_bytes(cur_byte,1));
       ++cur_byte;
     }
-    if (cur_byte != current_reloc_target) {
+    if (cur_byte != cur_reloc_target) {
       fprintf(asm_file, "\t%s\t", AS_BYTE);
-      for (; cur_byte != current_reloc_target - 1; ) {
+      for (; cur_byte != cur_reloc_target - 1; ) {
         fprintf(asm_file, "0x%02x, ", 
 		(int)vsp_get_bytes(cur_byte,1));
 	++cur_byte;
@@ -2561,7 +3084,89 @@ virtual_section_position::vsp_print_bytes(
 		(int)vsp_get_bytes(cur_byte,1));
       ++cur_byte;
     }
+#else
+    Dwarf_Unsigned cur_byte = cur_byte_in;
+    /* The efficiency of this routine turns out to be more important
+     * than you might first suspect.  In particular, when compiling
+     * with "-O0 -g" a lot of time is spent doing file IO, and the
+     * debug info is typically the single largest data source.  To
+     * conserve space this routine packs data into words which take
+     * about half as much space as bytes in the ASCII intermediate.
+     */
 
+    const int bytes_per_word_line = 16; /* must be multiple of 4 */
+    const int bytes_per_byte_line = 8;  /* can be anything you want */
+    int i, nlines_this_reloc;
+
+    /* Write byte stream in word-sized chunks, by line  */
+    nlines_this_reloc = (cur_reloc_target - cur_byte) / bytes_per_word_line;
+    for (i = 0; i < nlines_this_reloc; i++) {
+
+      fputs("\t" AS_WORD_UNALIGNED "\t", asm_file);
+
+      int j;
+      for (j = 0; j < bytes_per_word_line; j += 4) {
+        UINT32 val = 0;
+
+        if (Target_Byte_Sex == BIG_ENDIAN) {
+          int k;
+          for (k = 3*CHAR_BIT; k >= 0; k-=CHAR_BIT) {
+            val |= vsp_get_bytes(cur_byte,1) << k;
+            cur_byte++;
+          }
+        } else {
+          int k;
+          for (k = 0; k < 4*CHAR_BIT; k+=CHAR_BIT) {
+            val |= vsp_get_bytes(cur_byte,1) << k;
+            cur_byte++;
+          }
+        }
+
+        if (j != 0) {
+          fputs(", ", asm_file);
+        }
+
+        fprintf(asm_file, "0x%08x", (int)val);
+      }
+
+      fputc('\n', asm_file);
+    }
+
+    /* Write byte stream in byte-sized chunks, by line  */
+    nlines_this_reloc = (cur_reloc_target - cur_byte) / bytes_per_byte_line;
+    for (i = 0; i < nlines_this_reloc; i++) {
+      fputs("\t" AS_BYTE "\t", asm_file);
+
+      fprintf(asm_file, "0x%02x",
+        (int)vsp_get_bytes(cur_byte,1));
+      cur_byte++;
+
+      int j;
+      for (j = 1; j < bytes_per_byte_line; j++) {
+        fprintf(asm_file, ", 0x%02x",
+          (int)vsp_get_bytes(cur_byte,1));
+        cur_byte++;
+      }
+
+      fputc('\n', asm_file);
+    }
+
+    /* Write byte stream in byte-sized chunks, remainder */
+    if (cur_byte != cur_reloc_target) {
+      fputs("\t" AS_BYTE "\t", asm_file);
+
+      fprintf(asm_file, "0x%02x",
+        (int)vsp_get_bytes(cur_byte,1));
+      cur_byte++;
+
+      for (; cur_byte < cur_reloc_target; cur_byte++) {
+        fprintf(asm_file, ", 0x%02x",
+          (int)vsp_get_bytes(cur_byte,1));
+      }
+
+      fputc('\n', asm_file);
+    } 
+#endif
     return cur_byte - cur_byte_in;
 }
 
@@ -2703,6 +3308,12 @@ Cg_Dwarf_Output_Asm_Bytes_Elf_Relocs (FILE          *asm_file,
       char *current_reloc_sym_name = Em_Get_Symbol_Name(current_reloc_sym_index);
       Dwarf_Unsigned ofst;
 
+#ifdef TARG_MIPS
+      if (CG_emit_non_gas_syntax)
+	fprintf(asm_file, "\t%s\t%s", Use_32_Bit_Pointers ? ".word" : ".dword",
+	        current_reloc_sym_name);
+      else
+#endif
       fprintf(asm_file, "\t%s\t%s", AS_ADDRESS,
 	      current_reloc_sym_name);
 
@@ -2714,7 +3325,11 @@ Cg_Dwarf_Output_Asm_Bytes_Elf_Relocs (FILE          *asm_file,
 			("reloc size error"));
 	  ofst = vsp.vsp_get_bytes(cur_byte,sizeof(UINT64));
 	
+#ifdef TARG_IA64
 	  current_reloc += sizeof(Elf64_AltRel);
+#else
+	  current_reloc += sizeof(Elf64_Rel);
+#endif
 	}
 	else {
 	  Check_Dwarf_Rel(*((Elf32_Rel *) current_reloc));
@@ -2732,8 +3347,13 @@ Cg_Dwarf_Output_Asm_Bytes_Elf_Relocs (FILE          *asm_file,
 	  // position vsp to match cur_byte, discard value
 	  vsp.vsp_get_bytes(cur_byte,sizeof(current_reloc_size));
 
+#ifdef TARG_IA64
 	  ofst = ((Elf64_AltRela *) current_reloc)->r_addend;
 	  current_reloc += sizeof(Elf64_AltRela);
+#else
+	  ofst = ((Elf64_Rela *) current_reloc)->r_addend;
+	  current_reloc += sizeof(Elf64_Rela);
+#endif
 	}
 	else {
 	  Check_Dwarf_Rela(*((Elf32_Rela *) current_reloc));
@@ -2806,6 +3426,12 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 
   virtual_section_position vsp(buffer_cnt, buffers);
 
+#ifdef KEY
+#define buflen 30
+  char dwarf_begin[buflen], dwarf_end[buflen];
+  const int alignment = Use_32_Bit_Pointers ? 4 : 8;
+#endif
+
   Dwarf_Unsigned k = 0;
   while (k <= reloc_count) {
     // The last time thru, k == reloc_count which
@@ -2852,8 +3478,13 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       //
       // If pointer-length reloc, use data8.ua, else dwarf offset
       // size to be relocated, use data4.ua
-      char *reloc_name = (reloc_buffer[k].drd_length == 8)?
+      const char *reloc_name = 
+#ifdef TARG_MIPS
+	   CG_emit_non_gas_syntax ? (Use_32_Bit_Pointers ? ".word" : ".dword") :
+#endif
+	  	(reloc_buffer[k].drd_length == 8)?
 			AS_ADDRESS_UNALIGNED: AS_WORD_UNALIGNED;
+
 #ifdef KEY
       // don't want to affect other sections, although they may also need
       // to be updated under fPIC
@@ -2936,15 +3567,20 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	break;
       case dwarf_drt_first_of_length_pair_create_second:
 	{
-	static int count=1;
 	Is_True(k + 1 < reloc_count, ("unpaired first_of_length_pair"));
 	Is_True((reloc_buffer[k + 1].drd_type ==
 		 dwarf_drt_second_of_length_pair),
 		("unpaired first_of_length_pair"));
+#ifdef TARG_IA64
+	static int count=1;
 	int this_count=count++;
 	fprintf(asm_file,".LFDE%d:\n",this_count);
 	// bug 2729
 	fprintf(asm_file, "\t%s\t.LFDE%d - .LEHCIE", reloc_name, this_count);
+#else
+	// bug 2729
+	fprintf(asm_file, "\t%s\t%s - .LEHCIE", reloc_name, dwarf_begin);
+#endif
 	++k;
 	}
 	break;
@@ -2963,6 +3599,57 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       case dwarf_drt_second_of_length_pair:
 	Fail_FmtAssertion("unpaired first/second_of_length_pair");
 	break;
+#ifdef KEY
+      // CIE begin
+      case dwarf_drt_cie_begin:
+        {
+	  Is_True (!strcmp (section_name, ".eh_frame"),
+	           ("This is valid only for EH_FRAME section"));
+
+	  static int cie_count = 0;
+	  cie_count++;
+
+	  // multiple CIEs not supported
+	  FmtAssert (cie_count == 1, ("Multiple CIEs not supported"));
+
+	  bzero (dwarf_begin, buflen);
+	  bzero (dwarf_end, buflen);
+	  // CIE begin and end labels
+	  strcpy (dwarf_begin, ".LEHCIE_begin");
+	  strcpy (dwarf_end, ".LEHCIE_end");
+	  // Compute length of CIE
+	  fprintf (asm_file, "\t%s\t%s - %s\n", reloc_name,
+	           dwarf_end, dwarf_begin);
+	  // CIE begin label
+	  fprintf (asm_file, "%s:", dwarf_begin);
+	}
+        break;
+      // FDE begin
+      case dwarf_drt_fde_begin:
+        {
+	  Is_True (!strcmp (section_name, ".eh_frame"),
+	           ("This is valid only for EH_FRAME section"));
+
+	  // End previous frame/cie
+	  fprintf (asm_file, "\t%s %d\n", AS_ALIGN, alignment);
+	  fprintf (asm_file, "%s:\n", dwarf_end);
+
+	  // Begin current frame
+	  static int count = 1;
+	  int this_count = count++;
+	  bzero (dwarf_begin, buflen);
+	  bzero (dwarf_end, buflen);
+
+	  // FDE begin and end labels
+	  sprintf (dwarf_begin, ".LFDE%d_begin", this_count);
+	  sprintf (dwarf_end, ".LFDE%d_end", this_count);
+	  // Compute length of FDE
+	  fprintf (asm_file, "\t%s\t%s - %s\n", reloc_name, dwarf_end, dwarf_begin);
+	  // FDE begin label
+	  fprintf (asm_file, "%s:", dwarf_begin);
+	}
+	break;
+#endif // KEY
       default:
 	break;
       }
@@ -2981,7 +3668,18 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	Fail_FmtAssertion("current_reloc_size %ld, 4 or 8 required!\n", 
 		(long)current_reloc_size);
       }
+#ifdef TARG_X8664
+      // Bug 5357 - we emit 0x0 for the CIE_ID for eh_frame (in accordance with
+      // g++). The following code will skip that 4byte if that is the case.
+      if (ofst == 0 && cur_byte == 4 && strcmp(section_name, ".eh_frame") == 0) 
+	fprintf(asm_file, "\t%s 0x%llx", reloc_name, (unsigned long long)ofst);
+#endif
       if (ofst != 0) {
+#ifdef KEY
+	if (reloc_buffer[k].drd_type == dwarf_drt_none)
+	    fprintf(asm_file, "\t%s 0x%llx", reloc_name, (unsigned long long)ofst);
+	else
+#endif // KEY
 	fprintf(asm_file, " + 0x%llx", (unsigned long long)ofst);
       }
       fprintf(asm_file, "\n");
@@ -2989,6 +3687,15 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
     }
     ++k;
   }
+
+#ifdef KEY
+  if (!strcmp (section_name, ".eh_frame")){
+    // End preceding frame/cie
+    fprintf (asm_file, "\t%s %d\n", AS_ALIGN, alignment);
+    fprintf (asm_file, "%s:\n", dwarf_end);
+  }
+#endif
+
   fflush(asm_file);
 }
 
@@ -2996,10 +3703,18 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 #if !defined(LIBDWARF_SORTS_RELOCS)
 static int compare_rel64(const void *const a, const void *const b)
 {
+#ifdef TARG_IA64
   if (REL_offset(*((Elf64_AltRel *) a)) < REL_offset(*((Elf64_AltRel *) b))) {
+#else
+  if (REL_offset(*((Elf64_Rel *) a)) < REL_offset(*((Elf64_Rel *) b))) {
+#endif
     return -1;
   }
+#ifdef TARG_IA64
   else if (REL_offset(*((Elf64_AltRel *) a)) > REL_offset(*((Elf64_AltRel *) b))) {
+#else
+  else if (REL_offset(*((Elf64_Rel *) a)) > REL_offset(*((Elf64_Rel *) b))) {
+#endif
     return 1;
   }
   else {
@@ -3009,10 +3724,18 @@ static int compare_rel64(const void *const a, const void *const b)
 
 static int compare_rela64(const void *const a, const void *const b)
 {
+#ifdef TARG_IA64
   if (REL_offset(*((Elf64_AltRela *) a)) < REL_offset(*((Elf64_AltRela *) b))) {
+#else
+  if (REL_offset(*((Elf64_Rela *) a)) < REL_offset(*((Elf64_Rela *) b))) {
+#endif
     return -1;
   }
+#ifdef TARG_IA64
   else if (REL_offset(*((Elf64_AltRela *) a)) > REL_offset(*((Elf64_AltRela *) b))) {
+#else
+  else if (REL_offset(*((Elf64_Rela *) a)) > REL_offset(*((Elf64_Rela *) b))) {
+#endif
     return 1;
   }
   else {
@@ -3105,8 +3828,13 @@ Cg_Dwarf_Write_Assembly_From_Elf (FILE *asm_file,
       size_t n_relocs;
       if (relsection_type == SHT_REL) {
 	if (is_64bit) {
+#ifdef TARG_IA64
 	  n_relocs = scn_handles[i].sc_bufsize / sizeof(Elf64_AltRel);
 	  qsort(reloc_sorted, n_relocs, sizeof(Elf64_AltRel), compare_rel64);
+#else
+	  n_relocs = scn_handles[i].sc_bufsize / sizeof(Elf64_Rel);
+	  qsort(reloc_sorted, n_relocs, sizeof(Elf64_Rel), compare_rel64);
+#endif
 	}
 	else {
 	  n_relocs = scn_handles[i].sc_bufsize / sizeof(Elf32_Rel);
@@ -3115,8 +3843,13 @@ Cg_Dwarf_Write_Assembly_From_Elf (FILE *asm_file,
       }
       else {
 	if (is_64bit) {
+#ifdef TARG_IA64
 	  n_relocs = scn_handles[i].sc_bufsize / sizeof(Elf64_AltRela);
 	  qsort(reloc_sorted, n_relocs, sizeof(Elf64_AltRela), compare_rela64);
+#else
+	  n_relocs = scn_handles[i].sc_bufsize / sizeof(Elf64_Rela);
+	  qsort(reloc_sorted, n_relocs, sizeof(Elf64_Rela), compare_rela64);
+#endif
 	}
 	else {
 	  qsort(reloc_sorted, n_relocs, sizeof(Elf32_Rela), compare_rela32);
@@ -3251,6 +3984,16 @@ Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs (FILE *asm_file,
 					    reloc_buf,
 					    entry_count, is_64bit);
     }
+#ifdef TARG_X8664 
+    // We will just emit the .debug_line section header but no bytes because
+    // there is a reference to .debug_line in .debug_info.
+    // We could remove the reference to .debug_line from .debug_info but
+    // we will just match Gcc's output.
+    // The .debug_line will be generated from the .loc directives by the 
+    // assembler. - bug 2779 (why did it get exposed now?)
+    else if (strcmp(section_name, ".debug_line") == 0)
+      fputs("\n\t.section .debug_line, \"\"\n", asm_file);
+#endif
     for(int i = 0; i < scn_count; ++i) {
 	scn_buffers[i]->sc_output = TRUE;
     }
@@ -3277,6 +4020,16 @@ Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs (FILE *asm_file,
 						/* reloc count = */0, 
 						is_64bit);
       }
+#ifdef TARG_X8664
+      // We will just emit the .debug_line section header but no bytes because
+      // there is a reference to .debug_line in .debug_info.
+      // We could remove the reference to .debug_line from .debug_info but
+      // we will just match Gcc's output.
+      // The .debug_line will be generated from the .loc directives by the 
+      // assembler. - bug 2779 (why did it get exposed now?)
+      else if (strcmp(section_name, ".debug_line") == 0)
+	fputs("\n\t.section .debug_line, \"\"\n", asm_file);
+#endif
     }
   }
 

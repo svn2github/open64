@@ -157,7 +157,7 @@
 #define opcode_core_INCLUDED "opcode_core.h"
 
 #ifdef _KEEP_RCS_ID
-static char *opcode_core_rcs_id = opcode_core_INCLUDED "$Revision: 1.1.1.1 $";
+static char *opcode_core_rcs_id = opcode_core_INCLUDED "$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "opcode_gen_core.h"

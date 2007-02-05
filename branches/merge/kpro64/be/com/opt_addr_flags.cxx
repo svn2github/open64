@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -56,7 +56,10 @@ void Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved);
 // are not consumed by an ILOAD, and set their addr_saved flag.
 // warn is TRUE iff we should issue a DevWarn for each ST whose addr_saved
 // flag we set.
-static void
+#ifndef KEY
+static 
+#endif
+void
 Set_addr_saved_expr(WN *wn, BOOL warn)
 {
   OPCODE opc = WN_opcode(wn);
@@ -86,6 +89,12 @@ Set_addr_saved_expr(WN *wn, BOOL warn)
     	Set_addr_saved_stmt(WN_kid(wn,1), warn);
 	return;
   }
+#ifdef KEY // only LDAs from kid 0 of ARRAY and ARRSECTION are relevant
+  if (OPCODE_operator(opc) == OPR_ARRAY || 
+      OPCODE_operator(opc) == OPR_ARRSECTION)
+    Set_addr_saved_expr(WN_kid0(wn), warn);
+  else
+#endif
   for (INT i = 0; i < WN_kid_count(wn); i++) 
     Set_addr_saved_expr(WN_kid(wn,i), warn);
 }

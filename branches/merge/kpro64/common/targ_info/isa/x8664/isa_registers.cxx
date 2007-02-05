@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -42,10 +42,10 @@
 ///////////////////////////////////////
 
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/isa/x8664/isa_registers.cxx,v $
+//  $Revision: 1.18 $
+//  $Date: 05/05/05 17:40:09-07:00 $
+//  $Author: gautam@jacinth.keyresearch $
+//  $Source: common/targ_info/isa/x8664/SCCS/s.isa_registers.cxx $
 
 #include <stddef.h>
 #include "isa_registers_gen.h"
@@ -80,6 +80,7 @@ static int rcx_reg[] = { RCX };
 static int rbp_reg[] = { RBP };
 static int rsp_reg[] = { RSP };
 static int r11_reg[] = { R11 };
+static int m32_8bit_regs[] = {RAX, RBX, RCX, RDX};
 
 static int ISA_Mask(ISA_SUBSET isa)
 {
@@ -134,6 +135,8 @@ main (int argc, char** argv)
   ISA_Register_Subclass_Create("rbp", rc_integer, 1, rbp_reg, NULL);
   ISA_Register_Subclass_Create("rsp", rc_integer, 1, rsp_reg, NULL);
   ISA_Register_Subclass_Create("r11", rc_integer, 1, r11_reg, NULL);
+
+  ISA_Register_Subclass_Create("m32_8bit_regs", rc_integer, 4, m32_8bit_regs, NULL);
 
   ISA_Registers_End();
 }

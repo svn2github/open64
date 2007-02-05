@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -51,10 +51,10 @@
 // This arrangement of instructions matches the order in the ISA manual.
 /////////////////////////////////////
 //
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/isa/x8664/isa.cxx,v $
+//  $Revision: 1.138 $
+//  $Date: 05/11/10 18:45:11-08:00 $
+//  $Author: tkong@hyalite.keyresearch $
+//  $Source: common/targ_info/isa/x8664/SCCS/s.isa.cxx $
 
 #include <stddef.h>
 #include "isa_gen.h"
@@ -266,6 +266,7 @@ main ()
 	      "ldlps_n32",
 	      "ldlpd_n32",
 	      "ldhpd_n32",
+	      "ld64_2m_n32",
 
 	      /* store without base or index register for n32 abi. */
 	      "store8_n32",
@@ -279,6 +280,7 @@ main ()
 	      "stlps_n32",
 	      "stlpd_n32",
 	      "sthpd_n32",
+	      "store64_fm_n32",
 
 	      /* 8,16-bit -> 32-bit */
 	      "movsbl",
@@ -322,6 +324,7 @@ main ()
 	      "ld32",
 	      "ldx32",
 	      "ldxx32",
+	      "movzlq",
 
 	      "neg32",
 	      "neg64",
@@ -375,6 +378,14 @@ main ()
 	      "rori16",
 	      "rori32",
 	      "rori64",
+	      "rol8",
+	      "rol16",
+	      "rol32",
+	      "rol64",
+	      "roli8",
+	      "roli16",
+	      "roli32",
+	      "roli64",
 	      "prefetch",
 	      "prefetchw",
 	      "prefetcht0",
@@ -421,6 +432,7 @@ main ()
 	      "storenti64",
 	      "storentix64",
 	      "storentixx64",
+	      "storenti128",
 	      "sar32",
 	      "sar64",
 	      "sari32",
@@ -710,6 +722,7 @@ main ()
 	      "stlps",
 	      "sthps",
 	      "stlpd",
+	      "storelpd",
 	      "sthpd",
 	      "stntpd",
 	      "stntps",
@@ -888,6 +901,15 @@ main ()
 	      "pshufw",
 	      "pshuflw",
 	      "pshufhw",
+	      "pslldq",
+	      "psllw",
+	      "pslld",
+	      "psllq",
+	      "psrlw",
+	      "psrld",
+	      "psrlq",
+	      "psraw",
+	      "psrad",
 	      "unpckhpd",
 	      "unpckhps",
 	      "unpcklpd",
@@ -897,7 +919,7 @@ main ()
 	      "movhlps",
 	      "movlhps",
 	      "psrldq",
-	      "psrlq",
+	      "psrlq128v64",
 	      "subus128v16",
 	      "pavgb",
 	      "pavgw",
@@ -905,6 +927,11 @@ main ()
 	      "pextrw",
 	      "pinsrw",
 	      "pmovmskb",
+	      "movi32_2m",
+	      "movi64_2m",
+	      "movm_2i32",
+	      "movm_2i64",
+	      "pshufw64v16",
 
               /* Fence instructions. */
 	      "mfence",
@@ -986,6 +1013,8 @@ main ()
 	      "fcmovne",
 	      "fcmovu",
 	      "fcmovnu",
+	      "fcos",
+	      "fsin",
 
 	      /* sse instructions */
 	      "cmpeqps",
@@ -1039,6 +1068,8 @@ main ()
 	      /* miscellaneous */
 	      "bsf32",
 	      "bsf64",
+	      "bsr32",
+	      "bsr64",
 
 	      /* Dummy instructions. */
 	      "begin_pregtn",

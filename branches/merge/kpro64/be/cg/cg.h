@@ -1,6 +1,10 @@
 /*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -52,14 +56,29 @@ struct bb;
 
 extern BOOL PU_Has_Calls;
 extern BOOL PU_References_GP;
+#ifdef TARG_IA64
 extern BOOL GRA_optimize_restore_pr;
 extern BOOL GRA_optimize_restore_b0_ar_pfs;
 extern BOOL GRA_optimize_restore_ar_lc;
 extern BOOL EBO_data_spec;
+#endif
+#ifndef TARG_IA64
+extern BOOL PU_Has_Exc_Handler;
+#endif
 
+
+#ifdef TARG_IA64
 extern BOOL CG_PU_Has_Feedback;
+#endif
+#ifdef TARG_X8664
+extern BOOL PU_References_GOT; // for -m32 -fpic
+#endif
 
+
+#ifdef TARG_IA64
 extern BOOL edge_done;
+#endif
+extern BOOL CG_PU_Has_Feedback;
 
 /* WOPT alias manager */
 extern struct ALIAS_MANAGER *Alias_Manager;
@@ -81,8 +100,10 @@ extern WN *CG_Generate_Code (
 extern void CG_PU_Initialize( WN *wn );
 extern void CG_PU_Finalize( void );
 
+#ifdef TARG_IA64
 // Control assemly output on file number
 extern INT Asm_File_Visited(INT file_number);
+#endif
 
 extern void CG_Change_Elf_Symbol_To_Undefined (ST* st);
 
@@ -98,8 +119,12 @@ extern void Init_gen_quad_preg(void);
 extern void Trace_IR (
   INT phase,		/* Phase after which to print */
   const char *pname,	/* Print name of phase */
+#ifdef TARG_IA64
   struct bb *bb,		/* BB to print, or NULL */
   BOOL after = TRUE
+#else
+  struct bb *bb         /* BB to print, or NULL */
+#endif
 );
 
 /* Print IR, ST, TNs for a program unit after a phase, if enabled: */
@@ -121,6 +146,8 @@ extern MEM_POOL MEM_local_region_pool;
 extern MEM_POOL MEM_local_region_nz_pool;
 
 extern RID *Current_Rid;
+#ifdef TARG_IA64
 /* indicate whether region is already been formed. */
 extern BOOL RGN_Formed;
+#endif
 #endif /* cg_INCLUDED */

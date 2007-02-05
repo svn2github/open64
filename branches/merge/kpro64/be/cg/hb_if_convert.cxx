@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,7 @@
 */
 
 #include <vector>
+#include <queue>
 #include "defs.h"
 #include "config.h"
 #include "tracing.h"
@@ -59,6 +64,10 @@
 #include "hb.h"
 #include "hb_trace.h"
 #include "hb_id_candidates.h" // For use in Force_If_Convert
+#ifdef KEY
+#include "ti_res.h" // For TI_RES_Cycle_Count
+#include "data_layout.h" // For Allocate_Temp_To_Memory
+#endif
 
 /////////////////////////////////////
 static void 
@@ -133,7 +142,9 @@ Calculate_Control_Dependences(HB* hb, BB_MAP control_dependences,
     FOR_ALL_BB_SUCCS(bb,bl) {
       BB* bb_dep;
       BB* bb_succ = BBLIST_item(bl);
+#ifdef TARG_IA64
       Remove_Explicit_Branch(bb);
+#endif
       BOOL true_edge = (BB_Fall_Thru_Successor(bb) != bb_succ);
       //
       // bb_to_add is set to (pdom(bb_succ) - pdom(bb)) & HB_Blocks. 
@@ -214,7 +225,9 @@ Reset_Freq_Data_For_BB(BB *bb, BB_MAP freq_map)
 {
    BBLIST *bl;
    FREQ_DATA *bb_freq_data = (FREQ_DATA *) BB_MAP_Get(freq_map,bb);
+#ifdef TARG_IA64
    Remove_Explicit_Branch(bb);
+#endif
    bb_freq_data->fall_thru = BB_Fall_Thru_Successor(bb);
    if (bb_freq_data->fall_thru) {
       bb_freq_data->branch_prob = 
@@ -349,6 +362,9 @@ Add_Block(BB *bb, BB *bb_to_add, std::list<HB_CAND_TREE*>& candidate_regions)
 }
 
 
+#ifdef KEY
+static BOOL merge_failed;
+#endif
 /////////////////////////////////////
 static void
 Merge_Blocks(HB*                  hb, 
@@ -370,6 +386,44 @@ Merge_Blocks(HB*                  hb,
   BB *succ;
   BBLIST *bl;
 
+#if defined KEY && defined TARG_MIPS
+  // If we already found out that we can not merge the two blocks return now
+  if (merge_failed)
+    return;
+  // Look for feasibility of merge; we want to merge only those blocks 
+  // that have same branch-to target
+  OP *op_first = BB_branch_op(bb_first);
+  OP *op_second = BB_branch_op(bb_second);
+  if (op_first && op_second) {
+    if ((OP_code(op_first) == OP_code(op_second)) && 
+	(OP_code(op_first) == TOP_beq || 
+	 OP_code(op_first) == TOP_bne)) {
+      FmtAssert((TN_is_label(OP_opnd(op_first, 2)) &&
+		  TN_is_label(OP_opnd(op_second, 2))), 
+		 ("branch target should be labelled"));
+      if (TN_label(OP_opnd(op_first, 2)) != 
+	  TN_label(OP_opnd(op_second, 2))) {
+	merge_failed = TRUE;
+	return;
+      }
+    } else if ((OP_code(op_first) == OP_code(op_second)) && 
+	       (OP_code(op_first) == TOP_bc1f || 
+		OP_code(op_first) == TOP_bc1t)) {
+      FmtAssert((TN_is_label(OP_opnd(op_first, 1)) &&
+		  TN_is_label(OP_opnd(op_second, 1))), 
+		 ("branch target should be labelled"));
+      if (TN_label(OP_opnd(op_first, 1)) != 
+	  TN_label(OP_opnd(op_second, 1))) {
+	merge_failed = TRUE;
+	return;
+      }
+    } else {
+      //FmtAssert(FALSE, ("HANDLE THIS CASE"));
+      merge_failed = TRUE;
+      return;
+    }
+  }
+#endif
   //
   // Move all of its ops to bb_first.
   //
@@ -443,6 +497,34 @@ Merge_Blocks(HB*                  hb,
   }
 
   Replace_Block(bb_first,bb_second,candidate_regions);
+#if defined KEY && defined TARG_MIPS
+  // We will end up having the branches from the 
+  // 'then' block and the 'else' block merged. Search for 'beq' on
+  // opposite predicate TNs and merge the two into a jump (unc)
+  OP *op1, *op2, *op3;
+  op2 = NULL;
+  FOR_ALL_BB_OPs(bb_first,op1) {
+    if (OP_code(op1) == TOP_beq || 
+	OP_code(op1) == TOP_bne || 
+	OP_code(op1) == TOP_bc1f || 
+	OP_code(op1) == TOP_bc1t) {
+      if (op2 == NULL)
+	op2 = op1;
+      else { // second branch instruction
+	OPS new_ops;
+	OPS_Init(&new_ops);
+	Build_OP(TOP_j, OP_opnd(op2, 
+				(OP_code(op2) == TOP_beq || 
+				 OP_code(op2) == TOP_bne)? 2: 1), &new_ops);
+	BB_Append_Ops(bb_first, &new_ops);
+	OP_Change_To_Noop(op2);
+	OP_Change_To_Noop(op1);
+	break;
+      }
+    } 
+  }
+  printf("MERGE PASSED\n");
+#endif
 }
 
 // want to AND together controlling predicate to existing qualifying predicate
@@ -620,6 +702,122 @@ AND_Predicate_To_OP (OP *op, TN *ptn1, TN *ptn2,
 	}
 }
 
+#if defined KEY && defined TARG_MIPS
+// ===================================================================
+// The code is borrowed from cio_rwtran
+//
+// Generate_Black_Holes initializes the black hole memory locations.
+//
+// Safe_Offset examines the value of a literal offset operand of a memory
+// OP which is being subtracted from the positive offset of a stack
+// location.  Return TRUE if the result will not overflow the literal
+// offset field of a memory operand.
+//
+// ====================================================================
+
+static ST *ifcbh_node_int   = NULL;
+static ST *ifcbh_node_float = NULL;
+static ST *latest_pu       = NULL;
+
+void
+Generate_Black_Holes()
+{
+  // Only need to reinitialize for each new PU.
+  if ( latest_pu == Get_Current_PU_ST() )
+    return;
+
+  latest_pu = Get_Current_PU_ST();
+
+  ifcbh_node_int   = Gen_Temp_Symbol( Spill_Int_Type,   "ifc_blackhole_int" );
+  ifcbh_node_float = Gen_Temp_Symbol( Spill_Float_Type, "ifc_blackhole_float" );
+  Allocate_Temp_To_Memory( ifcbh_node_int );
+  Allocate_Temp_To_Memory( ifcbh_node_float );
+}
+
+#define MAX_BLACK_HOLE_OFFSET 0x800
+
+BOOL
+Safe_Offset( INT64 offset, OP *op )
+{
+  return offset > - (0x8000 - MAX_BLACK_HOLE_OFFSET);
+}
+
+/////////////////////////////////////
+// ====================================================================
+//
+// Predicate_Write
+//
+// Converts an uncondition memory store OP into a store conditional on
+// a predicate tn. This is accomplished by inserting into ops a sequence 
+// of OPs that manipulate the address of the memory store OP.
+//
+// ====================================================================
+
+
+void
+Predicate_Read_Write( OPS *ops, OP *op, TN *tn_predicate )
+{
+  Generate_Black_Holes();
+
+  BOOL op_is_load = FALSE;
+  if (OP_load(op))
+    op_is_load = TRUE;
+
+  // If the OP is an indexed memory OP, the offset is a symbol, or if
+  // the literal TN to be computed below does not fit in the literal
+  // operand of an add immediate OP, we combine the base and offset
+  // into a new base, and (if necesssary) change the OP code on the
+  // memory OP.
+
+  UINT8 opnd_base   = OP_find_opnd_use( op, OU_base   );
+  UINT8 opnd_offset = OP_find_opnd_use( op, OU_offset );
+  TN *tn_offset = OP_opnd( op, opnd_offset );
+  if ( ! TN_is_constant( tn_offset ) || ! TN_has_value( tn_offset ) ||
+       Safe_Offset( TN_value( tn_offset ), op ) == FALSE ) {
+
+    TN *tn_zero = Gen_Literal_TN( 0, 4 );
+    TN *tn_new_base = Build_TN_Like( OP_opnd( op, opnd_base ) );
+
+    Exp_OP2( Pointer_Size == 4 ? OPC_I4ADD : OPC_I8ADD,
+	     tn_new_base, OP_opnd( op, opnd_base ), tn_offset, ops );
+
+    // Update op
+
+    TOP new_opcode = CGTARG_Equiv_Nonindex_Memory_Op( op );
+    if ( new_opcode != TOP_UNDEFINED ) {
+      OP_Change_Opcode( op, new_opcode );
+    }
+    Set_OP_opnd( op, opnd_base,   tn_new_base );
+    Set_OP_opnd( op, opnd_offset, tn_zero );
+    tn_offset = tn_zero;
+  }
+
+  // Generate OPS to compute the block hole address base.  Note that
+  // the address base is offset by the negative of the offset of op.
+
+  TN *tn_loadstoreval = 
+    (op_is_load != TRUE)? OP_opnd( op, OP_find_opnd_use( op, OU_storeval ) ) 
+    : OP_result( op, 0);
+  ST *st_addr = 
+    TN_is_float( tn_loadstoreval ) ? ifcbh_node_float : ifcbh_node_int;
+  TN *tn_hole_base = Build_TN_Like( OP_opnd( op, opnd_base ) );
+  Exp_Lda( Pointer_type, tn_hole_base, st_addr,
+	   - TN_value( tn_offset ), OPERATOR_UNKNOWN, ops );
+
+  // Generate a cond move, which uses the predicate TN to select 
+  // the blackhole address base
+
+  TN *tn_base = OP_opnd( op, opnd_base );
+  TN *tn_safe_base  = Build_TN_Like( tn_base );
+  Build_OP(TOP_or, tn_safe_base, tn_base, Zero_TN, ops);
+  if (TN_register_class(tn_predicate) == ISA_REGISTER_CLASS_fcc)
+    Build_OP(TOP_movt, tn_safe_base, tn_hole_base, tn_predicate, ops);
+  else
+    Build_OP(TOP_movn, tn_safe_base, tn_hole_base, tn_predicate, ops);
+  Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);      
+  Set_OP_opnd( op, opnd_base, tn_safe_base );
+}
+#endif
 /////////////////////////////////////
 void
 Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
@@ -638,6 +836,151 @@ Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
   
   if (pred_tn && pred_tn != True_TN) {
     for (OP* op = BB_first_op(bb); op != NULL; op = OP_next(op)) {
+#if defined KEY && defined TARG_MIPS
+      switch(op->opr) {
+      case TOP_j: 
+	{
+	  // Generate a conditional branch
+	  OPS new_ops;
+	  OPS_Init(&new_ops);
+	  if (TN_register_class(pred_tn) == ISA_REGISTER_CLASS_fcc)
+	    Build_OP(TOP_bc1f, pred_tn, OP_opnd(op, 0), &new_ops);
+	  else
+	    Build_OP(TOP_beq, pred_tn, Zero_TN, OP_opnd(op, 0), &new_ops);
+	  BB_Insert_Ops_Before(bb, op, &new_ops);
+	  OP_Change_To_Noop(op);
+	  break;	
+	}
+      default:
+	{
+	  if (OP_load(op)) {
+            OPS new_ops;
+	    OPS_Init(&new_ops);
+	    Predicate_Read_Write(&new_ops, op, pred_tn);
+	    BB_Insert_Ops_Before(bb, op, &new_ops);
+	    break;
+	  } else if (OP_results(op) == 1) {
+	    // For every operation, if the result is is not live out, 
+	    // then, do not predicate it.
+	    if (!GRA_LIVE_TN_Live_Outof_BB (OP_result(op, 0), bb))
+	      break;
+	    if (Eager_Level >= EAGER_MEMORY) {
+	      // If the result of this operation is an operand to 
+	      // a subsequent load in this block, then do not predicate
+	      // this operation.
+	      BOOL unremovable_op = FALSE;
+	      for (OP *op_next = op->next; 
+		   op_next != NULL && unremovable_op != TRUE;		     
+		   op_next = op_next->next) {
+		if (OP_load(op_next)) {
+		  TN *tn = OP_result(op, 0);
+		  for (INT i = 0; i < OP_opnds(op_next); i ++) {
+		    if (OP_opnd(op_next, i) == tn) {
+		      unremovable_op = TRUE;
+		      break;
+		    }
+		  }
+		}
+	      }
+	      if (unremovable_op)
+		break;
+	    }
+	    // Re-direct the result and generate a conditional move
+	    if (TN_register_class(OP_result(op, 0)) == 
+		ISA_REGISTER_CLASS_hilo)
+	      break;
+	    TN *res_tn = Build_TN_Like(OP_result(op, 0));
+	    OPS new_ops;
+	    OPS_Init(&new_ops);
+	    INT opnds = OP_opnds(op);
+	    FmtAssert((opnds != 0 && opnds <= 3), ("Handle this case"));
+	    if (OP_cond_def(op))
+	      // Just so that it does not execute the ususal expansion below
+	      opnds = 4; 
+	    switch(opnds) {
+	    case 1: 
+	      Build_OP(OP_code(op), res_tn, OP_opnd(op, 0),
+		       &new_ops);
+	      break;
+	    case 2: 
+	      Build_OP(OP_code(op), res_tn, OP_opnd(op, 0), OP_opnd(op, 1), 
+		       &new_ops);	  
+	      break;
+	    case 3: 
+	      Build_OP(OP_code(op), res_tn, OP_opnd(op, 0), OP_opnd(op, 1), 
+		       OP_opnd(op, 2), 
+		       &new_ops);	  
+	      break;
+	    }
+	    FmtAssert(!TN_is_fcc_register(res_tn), 
+		      ("Handle this case"));
+	    if (!OP_cond_def(op)) {
+	      if (!TN_is_float(res_tn)) {
+		if (TN_register_class(pred_tn) == ISA_REGISTER_CLASS_fcc)
+		  Build_OP(TOP_movf, OP_result(op, 0), res_tn, 
+			   pred_tn, &new_ops);
+		else
+		  Build_OP(TOP_movz, OP_result(op, 0), res_tn, 
+			   pred_tn, &new_ops);
+	      } else {
+		if (TN_register_class(pred_tn) == ISA_REGISTER_CLASS_fcc)
+		  Build_OP(TN_size(res_tn)==4?TOP_movf_s:TOP_movf_d, 
+			   OP_result(op, 0), res_tn, pred_tn, &new_ops);
+		else
+		  Build_OP(TN_size(res_tn)==4?TOP_movz_s:TOP_movz_d, 
+			   OP_result(op, 0), res_tn, pred_tn, &new_ops);
+	      }
+	    } else {	      
+	      FmtAssert(TN_register_class(pred_tn) != ISA_REGISTER_CLASS_fcc, 
+			("We do not handle float branches yet"));
+	      FmtAssert(TN_register_class(OP_opnd(op, 2)) !=
+			ISA_REGISTER_CLASS_fcc,
+			("We do not handle float cond ops yet"));
+	      TN *tmp_tn = Build_TN_Like(pred_tn);
+	      if (OP_code(op) == TOP_movz || OP_code(op) == TOP_movz_d || 
+		  OP_code(op) == TOP_movz_d) {
+		Build_OP(TOP_or, tmp_tn, OP_opnd(op, 1), pred_tn, &new_ops);
+		Build_OP(OP_code(op), OP_result(op, 0), OP_opnd(op, 0), 
+			 tmp_tn, &new_ops);
+	      } else { 
+		// OP_code(op) == TOP_movn || OP_code(op) == TOP_movn_d || 
+		// OP_code(op) == TOP_movn_s
+		Build_OP(TOP_xor, tmp_tn, OP_opnd(op, 1), Zero_TN, &new_ops);
+		Build_OP(TOP_sltiu, tmp_tn, tmp_tn, Gen_Literal_TN(1, 4), 
+			 &new_ops);
+		Build_OP(TOP_or, tmp_tn, tmp_tn, pred_tn, &new_ops);
+		switch(OP_code(op)) {
+		case TOP_movn:
+		  Build_OP(TOP_movz, OP_result(op, 0), OP_opnd(op, 0), tmp_tn, 
+			   &new_ops);		
+		  break;
+		case TOP_movn_d:
+		  Build_OP(TOP_movz_d, OP_result(op, 0), OP_opnd(op, 0), 
+			   tmp_tn,&new_ops);		
+		  break;
+		case TOP_movn_s:
+		  Build_OP(TOP_movz_s, OP_result(op, 0), OP_opnd(op, 0), 
+			   tmp_tn, &new_ops);		
+		  break;
+		default:
+		  FmtAssert(FALSE, ("Handle this case"));
+		}
+	      } 
+	    }
+	    Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF);      
+	    BB_Insert_Ops_Before(bb, op, &new_ops);
+	    OP_Change_To_Noop(op);
+	    break;	    
+	  } else if (OP_store(op)) {
+	    OPS new_ops;
+	    OPS_Init(&new_ops);	    
+	    Predicate_Read_Write(&new_ops, op, pred_tn);
+	    BB_Insert_Ops_Before(bb, op, &new_ops);
+	    break;	    
+	  }
+	} 
+      }
+#endif
       if ( ! OP_has_predicate(op)) continue;
 
       if (TN_is_true_pred(OP_opnd(op, OP_PREDICATE_OPND))) {
@@ -788,7 +1131,9 @@ Classify_BB(BB *bb, HB *hb)
     result |= NO_MERGE;
   }
   
+#ifdef TARG_IA64
   Remove_Explicit_Branch(bb);
+#endif
   fall_thru = BB_Fall_Thru_Successor(bb);
   other_succ = NULL;
 
@@ -1015,6 +1360,45 @@ Compute_Block_Frequencies(std::vector<BB *> &block_order, BB_MAP freq_map)
 }
 
 
+#if defined KEY && defined TARG_MIPS
+BOOL Okay_To_Predicate_BB (BB *bb, BB *prev_bb)
+{
+  if (BB_branch_op(bb) && BB_branch_op(prev_bb) &&
+      !OP_cond(BB_branch_op(bb)) && OP_cond(BB_branch_op(prev_bb))) {
+    if (OP_code(BB_branch_op(prev_bb)) == TOP_beq || 
+	OP_code(BB_branch_op(prev_bb)) == TOP_bne) {
+      if (TN_is_label(OP_opnd(BB_branch_op(bb), 0)) &&
+	  TN_is_label(OP_opnd(BB_branch_op(prev_bb), 2))) {
+	if (TN_label(OP_opnd(BB_branch_op(bb), 0)) == 
+	    TN_label(OP_opnd(BB_branch_op(prev_bb), 2)))
+	  return TRUE;
+	else
+	  return FALSE;
+      } else {
+	return FALSE;
+      }
+    } else {
+      FmtAssert((OP_code(BB_branch_op(prev_bb)) == TOP_bc1f || 
+		 OP_code(BB_branch_op(prev_bb)) == TOP_bc1t), 
+		("Handle this case"));
+      if (TN_is_label(OP_opnd(BB_branch_op(bb), 0)) &&
+	  TN_is_label(OP_opnd(BB_branch_op(prev_bb), 1))) {
+	if (TN_label(OP_opnd(BB_branch_op(bb), 0)) == 
+	    TN_label(OP_opnd(BB_branch_op(prev_bb), 1)))
+	  return TRUE;
+	else
+	  return FALSE;
+      } else {
+	return FALSE;
+      }
+    }
+  } else if (BB_length(prev_bb) == 0) {
+    return FALSE;
+  } else {
+    return TRUE;
+  }
+}
+#endif
 /////////////////////////////////////
 //
 //  Remove all branches that don't have targets
@@ -1245,7 +1629,22 @@ Remove_Branches(HB*                  hb,
      default:
        FmtAssert(0,("Unknown block classification"));
      }
-      
+           
+#if defined KEY && defined TARG_MIPS
+     merge_failed = FALSE;
+
+     if (last_block) {
+       if (!prev_bb_unmergeable) {	 
+	 // see if we can merge in future then predicate it.
+	 if (Okay_To_Predicate_BB(bb, prev_bb)) 
+	   Predicate_Block(bb,(TN*) BB_MAP_Get(predicate_tns, bb), 
+			   HB_Blocks(hb));
+	 else
+	   merge_failed = TRUE;
+       }
+     } else
+       // This avoids unnecessarily creating a conditional branch
+#endif
      // We always predicate the current block
      Predicate_Block(bb,(TN*) BB_MAP_Get(predicate_tns, bb), HB_Blocks(hb));
      
@@ -1262,6 +1661,16 @@ Remove_Branches(HB*                  hb,
 	 prev_bb = bb;
        } else {
 	 Merge_Blocks(hb,prev_bb,bb,freq_map,last_block,candidate_regions);
+#ifndef TARG_IA64
+//#ifdef KEY
+	 if (merge_failed) {
+	   printf("MERGE FAILED\n\n\n");
+	   Unlink_Pred_Succ(prev_bb, bb);
+	   Move_BB(bb, prev_bb);
+	   Link_Pred_Succ_with_Prob(prev_bb, bb, prev_hb_continuation_prob);
+	   prev_bb = bb;
+	 } else 
+#endif
 	 // Don't set prev_bb again, since we add to the current block
 	 // Also, if we have a fall_thru_goto, we want to make sure it's in all hyperblocks 
 	 // which contain the merged BB as well.
@@ -1285,6 +1694,11 @@ Remove_Branches(HB*                  hb,
        }
        fall_thru_goto = NULL;
      } else {
+#ifndef TARG_IA64
+       if (prev_bb == bb) 
+	 // only if the prev_bb changed we need to reset 
+	 // prev_bb_unmergeable
+#endif
        prev_bb_unmergeable = No_Merge(bclass);
      }
      
@@ -1412,6 +1826,10 @@ Setup_True_False_Predicates(BB *bb, control_dep_data *bb_cdep_data)
 }
 
 
+#ifndef TARG_IA64
+//#ifdef KEY
+static BOOL multiple_dependencies;
+#endif
 /////////////////////////////////////
 void
 Insert_Predicates(HB* hb, BB_MAP control_dependences, BB_MAP true_edges,
@@ -1466,6 +1884,13 @@ Insert_Predicates(HB* hb, BB_MAP control_dependences, BB_MAP true_edges,
     if (!ec) {
       ec = TYPE_MEM_POOL_ALLOC(equiv_classes, &MEM_local_pool);
       ec->control_dependences = cds;
+#ifndef TARG_IA64 // #ifdef key
+      if (BB_SET_Size(cds) > 1) {
+	// we do not deal with multiple dependencies
+	multiple_dependencies = TRUE;
+	return;
+      }
+#endif
       ec->true_edges = trues;
       eclass.push_back(ec);
     }
@@ -1478,6 +1903,52 @@ Insert_Predicates(HB* hb, BB_MAP control_dependences, BB_MAP true_edges,
     BB_MAP_Set(control_dep_info,bb,bb_cdep_data);
   }
   
+#if defined KEY && defined TARG_MIPS
+  // If more than one block end in a conditional branch,
+  // then do not do If-conversion.
+  BOOL countBranch = FALSE;
+  OP *hb_br_op;
+  FOR_ALL_BB_SET_members(HB_Blocks(hb), bb) {
+    OP *br_op = BB_branch_op(bb);
+    if (br_op && OP_cond(br_op)) {
+      if (countBranch && !hammock_region) {
+	multiple_dependencies = TRUE;
+	return;
+      }
+      countBranch = TRUE;
+      hb_br_op = br_op;
+    }
+  }
+  // When the cond branch is flop, we do not handle any cond moves in the 
+  // blocks. Also, we do not mixup int cond branch with any flop cond moves.
+  // TODO:
+  // we have to look up every hammock and make sure there are no conflicting
+  // branches and cond moves in the same fashion.
+  BOOL is_float_br = FALSE;
+  if (hb_br_op &&
+      (OP_code(hb_br_op) == TOP_bc1f || 
+       OP_code(hb_br_op) == TOP_bc1t))
+    is_float_br = TRUE; 
+  INT bb_id = hb_br_op?hb_br_op->bb->id:-1;
+  if (hb_br_op) {
+    OP *op;
+    FOR_ALL_BB_SET_members(HB_Blocks(hb), bb) {
+      if (bb->id == bb_id)
+	continue;      
+      FOR_ALL_BB_OPs(bb, op) {
+	if ((OP_cond_def(op) &&
+	    is_float_br) || 
+	    (!is_float_br &&
+	     (OP_code(op) == TOP_movf || OP_code(op) == TOP_movt ||
+	      OP_code(op) == TOP_movf_d || OP_code(op) == TOP_movf_s ||
+	      OP_code(op) == TOP_movt_d || OP_code(op) == TOP_movt_s))) {
+	  multiple_dependencies = TRUE;
+	  return;
+	}
+      }
+    }
+  }     
+#endif
   //
   // Next, set up the predicate data for the class, and insert initializations in then entry block
   //
@@ -1493,7 +1964,14 @@ Insert_Predicates(HB* hb, BB_MAP control_dependences, BB_MAP true_edges,
       // Single dependence, set up the TRUE and FALSE tns for the block.
       bb_cd = BB_SET_Choose(cds);
       bb_cdep_data = (control_dep_data*) BB_MAP_Get(control_dep_info, bb_cd);
+#ifndef TARG_IA64
+//#ifdef KEY
+      // More than one equivalence class may have the same bb_cd
+      // So, choose already existing pred_tn instead of creating new ones.
+      if (!bb_cdep_data->true_tn && !bb_cdep_data->false_tn)
+#endif
       Setup_True_False_Predicates(bb_cd, bb_cdep_data);
+
       // Set the predicate for the equivalance class
       if (BB_SET_MemberP(trues, bb_cd)) {
 	ec->pred_tn = bb_cdep_data->true_tn;
@@ -1627,6 +2105,58 @@ HB_Safe_For_If_Conversion(HB* hb)
 }
 
 
+#if defined KEY && defined TARG_MIPS
+// Compute the cost of If-Converting basic blocks in a hyper-block.
+// The original cost is the static weighted average of latencies of ops before 
+// predicating each (non-entry) basic block MINUS other savings. The cost after
+// predication and If-Conversion is the sum of all latencies of ops in each 
+// block (except the entry block) in the Hyper-Block.
+float
+HB_If_Convert_Cost_Diff(HB *hb)
+{
+  BB *bb;
+  float initial_cost = 0, transformed_cost = 0;
+  float freq;
+  OP *op;
+  INT sum_of_latencies;
+  INT count_cond_moves = 0;
+  INT op_latency;
+  if (hammock_region)
+    // TODO:
+    // We need to compute costs of each hammock in the hammocked region
+    // separately, and then add the cost diffs.
+    // For now, always if-convert hammock regions.
+    return 0.0;
+  FOR_ALL_BB_SET_members(HB_Blocks(hb), bb) {  
+    if (HB_Entry(hb) == bb) {
+      // First block not predicated.
+      continue;
+    }
+    freq = BB_freq(bb);
+    sum_of_latencies = 0;
+    FOR_ALL_BB_OPs(bb, op) {
+      op_latency = TI_RES_Cycle_Count(OP_code(op));
+      sum_of_latencies += (op_latency?op_latency:1); 
+      if (OP_results(op) == 1) // needs a conditional move in transformed code
+	count_cond_moves ++;	
+    }
+    initial_cost += sum_of_latencies*freq;
+    transformed_cost += (sum_of_latencies + count_cond_moves);
+    if (BB_branch_op(bb))
+      transformed_cost --; // branches will be removed in transformed code.
+  }
+  // Count instructions needed to compute predicate TNs
+  // To be more accurate, we need to consider integer and floating point 
+  // branches separately
+  if (BB_branch_op(HB_Entry(hb)) && 
+      (OP_code(BB_branch_op(HB_Entry(hb))) == TOP_bc1f || 
+       OP_code(BB_branch_op(HB_Entry(hb))) == TOP_bc1t))
+    transformed_cost += 4 /* c_cond type FP instructions */; 
+  else
+    transformed_cost += 3 /* xor + sltiu + sltu */; 
+  return transformed_cost - initial_cost;
+}
+#endif
 /////////////////////////////////////
 void
 HB_If_Convert(HB* hb, std::list<HB_CAND_TREE*>& candidate_regions)
@@ -1636,8 +2166,13 @@ HB_If_Convert(HB* hb, std::list<HB_CAND_TREE*>& candidate_regions)
 //
 /////////////////////////////////////
 {
-  std::vector<BB *>         block_order;
-  std::vector<INT>          block_class;
+#if defined KEY && defined TARG_MIPS
+  // Compute cost-benefit and return if too costly
+  if (HB_If_Convert_Cost_Diff(hb) > (float)HB_if_conversion_cut_off)
+    return;
+#endif
+  vector<BB *>         block_order;
+  vector<INT>          block_class;
   MEM_POOL_Push(&MEM_local_pool);
   BB_MAP true_edges = BB_MAP_Create();
   BB_MAP control_dependences = BB_MAP_Create();
@@ -1649,8 +2184,19 @@ HB_If_Convert(HB* hb, std::list<HB_CAND_TREE*>& candidate_regions)
   
   Order_And_Classify_Blocks(hb,block_order,block_class);
   Calculate_Control_Dependences(hb, control_dependences, true_edges);
+#ifndef TARG_IA64
+    multiple_dependencies = FALSE;    
+#endif
   Insert_Predicates(hb, control_dependences, true_edges, predicate_tns);
+#ifndef TARG_IA64
+  if (!multiple_dependencies)
+#endif
   Remove_Branches(hb, predicate_tns, block_order, block_class, candidate_regions);
+#ifndef TARG_IA64
+  else
+    // If hb_formation did not succeed then,no need of hb_sched phase.
+    IGLS_Enable_HB_Scheduling = 0;
+#endif
 
   BB_MAP_Delete(true_edges);
   BB_MAP_Delete(control_dependences);
@@ -1732,6 +2278,11 @@ Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
   HB *hb=&hbs;
   std::list<HB_CAND_TREE*> candidate_regions;
 
+#ifdef KEY
+  // CG_LOOP_Optimize may call even though HB_formation is false
+  if (!HB_formation)
+    return NULL;
+#endif
   MEM_POOL_Push(&MEM_local_pool);
   fall_thru_block = NULL;
   // Turn the BB_REGION into a "hyperblock"
@@ -1749,6 +2300,12 @@ Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
     return bb_entry;
   }
 
+#ifdef KEY
+  // Set Speculation Level to highest for a loop
+  // We can switch it back later.
+  EAGER_LEVEL Eager_Level_Temp = Eager_Level;
+  Eager_Level = EAGER_MEMORY;
+#endif
   HB_Blocks_Set(hb, bbs);
   HB_Entry_Set(hb, bb_entry);
   
@@ -1799,8 +2356,21 @@ Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
       HB_Trace_If_Convert_Blocks(hb);
     }
     Calculate_Control_Dependences(hb, control_dependences, true_edges);
+#ifndef TARG_IA64
+    multiple_dependencies = FALSE;
+#endif
     Insert_Predicates(hb, control_dependences, true_edges, predicate_tns);
+#ifndef TARG_IA64
+    if (!multiple_dependencies)
+#endif
     fall_thru_block = Remove_Branches(hb, predicate_tns, block_order, block_class, candidate_regions);
+#ifndef TARG_IA64 
+    else {
+      // If hb_formation did not succeed then,no need of hb_sched phase.
+      IGLS_Enable_HB_Scheduling = 0;
+      one_bb = FALSE;
+    }
+#endif
     BB_MAP_Delete(true_edges);
     BB_MAP_Delete(control_dependences);
     BB_MAP_Delete(predicate_tns);
@@ -1838,5 +2408,9 @@ Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
   }    
 
   MEM_POOL_Pop(&MEM_local_pool);
+#ifdef KEY
+  // Reset Speculation Level
+  Eager_Level = Eager_Level_Temp;
+#endif
   return single_bb;
 }

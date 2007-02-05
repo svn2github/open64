@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -139,13 +147,22 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_LSHR:
 	Expand_Shift (result, op1, op2, rtype, shift_lright, ops);
 	break;
+#ifdef TARG_X8664
+  case OPR_RROTATE:
+	Expand_Rrotate (result, op1, op2, rtype, desc, ops);
+	break;
+#endif
   case OPR_ILOAD:
   case OPR_LDID:
 	if ( V_align_all(variant) != 0 ) {
 		Expand_Misaligned_Load ( opcode, result, op1, op2, variant, ops);
 	}
 	else {
+#if defined(TARG_MIPS) || defined(TARG_X8664)
+		Expand_Load (opcode, result, op1, op2, ops);
+#else
 		Expand_Load (opcode, result, op1, op2, variant, ops);
+#endif
 	}
 	break;
   case OPR_ISTORE:
@@ -154,30 +171,54 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Misaligned_Store (desc, op1, op2, op3, variant, ops);
 	}
 	else {
+#if defined(TARG_MIPS) || defined(TARG_X8664)
+		Expand_Store (desc, op1, op2, op3, ops);
+#else
 		Expand_Store (desc, op1, op2, op3, variant, ops);
+#endif
 	}
 	break;
   case OPR_ABS:
 	Expand_Abs (result, op1, rtype, ops);
 	break;
   case OPR_MPY:
+#ifdef TARG_X8664
+	if (MTYPE_is_float(rtype) || MTYPE_is_mmx_vector(rtype))
+#else
 	if (MTYPE_is_float(rtype))
+#endif
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
+#ifdef TARG_IA64
 		Expand_Multiply (result, op1, op2, rtype, ops, opcode);
+#else
+	Expand_Multiply (result, op1, op2, rtype, ops);
+#endif
 	break;
   case OPR_HIGHMPY:
 	Expand_High_Multiply (result, op1, op2, rtype, ops);
 	break;
   case OPR_REM:
+#ifdef TARG_IA64
 	Expand_Rem (result, op1, op2, rtype, ops, opcode);
+#else
+	Expand_Rem (result, op1, op2, rtype, ops);
+#endif
 	break;
   case OPR_MOD:
 	if (MTYPE_is_signed(rtype))
+#ifdef TARG_IA64
 		Expand_Mod (result, op1, op2, rtype, ops, opcode);
+#else
+	Expand_Mod (result, op1, op2, rtype, ops );
+#endif
 	else
 		// unsigned MOD acts like REM
+#ifdef TARG_IA64
 		Expand_Rem (result, op1, op2, rtype, ops, opcode);
+#else
+	Expand_Rem (result, op1, op2, rtype, ops);
+#endif
 	break;
   case OPR_DIV:
 	if (MTYPE_is_float(rtype))
@@ -186,7 +227,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Divide (result, op1, op2, rtype, ops);
 	break;
   case OPR_DIVREM:
+#ifdef TARG_IA64
 	Expand_DivRem(result, op1, op2, op3, rtype, ops, opcode);
+#else
+        Expand_DivRem(result, op1, op2, op3, rtype, ops);
+#endif
 	break;
   case OPR_SQRT:
 	Expand_Sqrt (result, op1, rtype, ops);
@@ -262,7 +307,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_CVT:
 	Is_True(rtype != MTYPE_B, ("conversion to bool unsupported"));
 	if (MTYPE_is_float(rtype) && MTYPE_is_float(desc)) {
+#ifdef TARG_X8664
+		Expand_Float_To_Float (result, op1, rtype, desc, ops);
+#else
 		Expand_Float_To_Float (result, op1, rtype, ops);
+#endif
 	}
 	else if (MTYPE_is_float(rtype)) {
 		// desc is int
@@ -276,6 +325,12 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		// desc is bool
 		Expand_Bool_To_Int (result, op1, rtype, ops);
 	}
+#ifdef TARG_X8664
+	else if (MTYPE_is_vector (rtype)) {
+		// vector conversions not covered above
+		Expand_Conv_To_Vector (result, op1, desc, rtype, ops);
+	}
+#endif
 	else {
 		// both are int
   		// zero-extend when enlarging an unsigned value, or 
@@ -284,10 +339,22 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Convert_Length ( result, op1, op2, 
 			rtype, 
 			(MTYPE_is_signed(desc)
+#ifdef TARG_IA64
 			 && (MTYPE_bit_size(desc) < MTYPE_bit_size(rtype) ) ),
 			ops); // OSP_171
+#else
+		|| (MTYPE_bit_size(desc) > MTYPE_bit_size(rtype) ) ),
+		     ops);
+#endif
 	}
 	break;
+#ifdef TARG_X8664
+  case OPR_TAS:
+  	if (MTYPE_is_integral(rtype))
+	  Expand_Float_To_Int_Tas(result, op1, rtype, ops);
+	else Expand_Int_To_Float_Tas(result, op1, rtype, ops);
+	break;
+#endif
   case OPR_RND:
 	Expand_Float_To_Int_Round (result, op1, rtype, desc, ops);
 	break;
@@ -298,6 +365,17 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Float_To_Int_Ceil (result, op1, rtype, desc, ops);
 	break;
   case OPR_FLOOR:
+#ifdef TARG_X8664
+    if( MTYPE_is_float( rtype ) ){
+      if( MTYPE_is_quad( rtype ) )
+	Expand_Float_To_Float_Floorl( result, op1, rtype, desc, ops );
+      else if( rtype == MTYPE_F8 )
+	Expand_Float_To_Float_Floor( result, op1, rtype, desc, ops );
+      else
+	Expand_Float_To_Float_Floorf( result, op1, rtype, desc, ops );
+      break;
+    }	
+#endif
 	Expand_Float_To_Int_Floor (result, op1, rtype, desc, ops);
 	break;
   case OPR_MIN:
@@ -321,14 +399,51 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_NMSUB:
   case OPR_RECIP:
   case OPR_RSQRT:
+#ifdef TARG_X8664
+  case OPR_ATOMIC_RSQRT:	// bug 6123
+#endif
 	Expand_Flop (opcode, result, op1, op2, op3, ops);
 	break;
 
+#ifdef TARG_X8664
+  case OPR_REPLICATE:
+        Expand_Replicate (opcode, result, op1, ops);
+	break;
+
+  case OPR_REDUCE_ADD:
+        Expand_Reduce_Add (opcode, result, op1, ops);
+	break;
+
+  case OPR_REDUCE_MPY:
+        Expand_Reduce_Mpy (opcode, result, op1, ops);
+	break;
+
+  case OPR_REDUCE_MAX:
+        Expand_Reduce_Max (opcode, result, op1, ops);
+	break;
+
+  case OPR_REDUCE_MIN:
+        Expand_Reduce_Min (opcode, result, op1, ops);
+	break;
+
+#endif /* TARG_X8664 */
   default:
 	FmtAssert(FALSE, 
 		("Expand_OP:  unexpected opcode %s", OPCODE_name(opcode)));
 	break;
   }
+
+#ifdef TARG_X8664
+  /* For comparsions, the upper 32-bit of the result is ignored.
+     Thus under -m32, the value of the higher 32-bit part is undefined.
+     (bug#2499)
+  */
+  if( OPCODE_is_compare( opcode ) &&
+      OP_NEED_PAIR( rtype ) ){
+    TN* result_hi = Create_TN_Pair( result, rtype );
+    Exp_Immediate( result_hi, Gen_Literal_TN(0,4), FALSE, ops );
+  }
+#endif // TARG_X8664
 }
 
 
@@ -392,12 +507,13 @@ Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant, O
   			fprintf(TFile, " into "); Print_OP (op);
   		}
   	}
-		/* check if there is at least one OP in the expansion */
-		if (OPS_first(&new_ops) != NULL) {
-			/* Add the new OPs to the end of the list passed in */
-			OPS_Append_Ops(ops, &new_ops);
+	/* check if there is at least one OP in the expansion */
+	if (OPS_first(&new_ops) != NULL) {
+		/* Add the new OPs to the end of the list passed in */
+		OPS_Append_Ops(ops, &new_ops);
   	}
   }
+#ifdef TARG_IA64
 	else {
 		OP *last_OP = OPS_last(ops);
   	Expand_OP (opcode, result, op1, op2, op3, variant, ops);
@@ -412,4 +528,5 @@ Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant, O
 		}
 	}
 }
+#endif
 }

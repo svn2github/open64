@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -411,6 +415,9 @@
 #ifndef cg_flags_INCLUDED
 #define cg_flags_INCLUDED
 
+#ifdef KEY
+#include "flags.h"
+#endif
 
 extern BOOL CG_warn_bad_freqs;
 extern BOOL CG_enable_loop_optimizations;
@@ -427,6 +434,11 @@ extern BOOL CG_skip_local_swp;
 extern INT CG_opt_level;
 extern BOOL CG_localize_tns;
 extern BOOL CG_localize_tns_Set;
+#ifdef TARG_X8664
+extern BOOL CG_localize_x87_tns;
+extern BOOL CG_localize_x87_tns_Set;
+extern BOOL CG_x87_store;
+#endif
 extern BOOL LOCALIZE_using_stacked_regs;
 extern BOOL CG_tail_call;
 extern BOOL CG_unique_exit;
@@ -468,7 +480,9 @@ extern UINT32 CFLOW_clone_incr;
 extern UINT32 CFLOW_clone_max_incr;
 extern UINT32 CFLOW_clone_min_incr;
 extern const char *CFLOW_cold_threshold;
-
+#ifdef KEY
+extern BOOL CFLOW_Enable_Freq_Order_On_Heuristics;
+#endif
 /* FREQ:
  */
 extern BOOL FREQ_enable;
@@ -558,6 +572,9 @@ extern const char *CGEXP_sthint_L1;
 extern const char *CGEXP_sthint_L2;
 
 extern BOOL LRA_do_reorder;
+#ifdef TARG_X8664
+extern BOOL LRA_prefer_legacy_regs;
+#endif
 
 extern BOOL GRA_use_old_conflict;
 extern BOOL GRA_shrink_wrap;
@@ -577,8 +594,15 @@ extern INT32 GRA_non_home_hi;
 extern INT32 GRA_non_home_lo;
 extern const char* GRA_call_split_freq_string;
 extern const char* GRA_spill_count_factor_string;
+#ifdef KEY
+extern BOOL GRA_exclude_callee_saved_regs;
+extern BOOL GRA_eh_exclude_callee_saved_regs;
+#endif
 
 extern BOOL  HB_formation;
+#ifdef KEY
+extern INT32 HB_if_conversion_cut_off;
+#endif
 extern BOOL  HB_static_freq_heuristics;
 extern const char* HB_call_hazard_multiplier;
 extern const char* HB_memory_hazard_multiplier;
@@ -628,6 +652,38 @@ extern BOOL CG_LOOP_interleave_posti_specified;
 extern BOOL CG_LOOP_reassociate;
 extern BOOL CG_LOOP_reassociate_specified;
 extern INT32 CG_LOOP_recurrence_min_omega;
+#ifdef KEY
+extern BOOL  LOCS_Fwd_Scheduling;
+extern BOOL  LOCS_Fwd_Scheduling_set;
+extern BOOL CG_min_spill_loc_size;
+extern BOOL CG_min_stack_size;
+extern BOOL flag_test_coverage;
+extern OPTION_LIST *Arc_Profile_Region;
+extern INT32 CG_cse_regs;
+extern INT32 CG_sse_cse_regs;
+#endif
+#ifdef TARG_X8664
+extern INT32 CG_sse_load_execute;
+extern INT32 CG_load_execute;
+extern BOOL CG_use_movlpd;
+extern BOOL CG_use_setcc;
+extern BOOL CG_use_short_form;
+extern BOOL CG_loadbw_execute;
+extern BOOL CG_p2align;
+extern UINT64 CG_p2align_freq;
+extern UINT32 CG_p2align_max_skip_bytes;
+extern UINT32 CG_movnti;
+extern BOOL CG_use_xortozero;
+extern BOOL CG_use_xortozero_Set;
+extern BOOL CG_use_incdec;
+extern BOOL CG_use_test;
+extern BOOL CG_fold_shiftadd;
+extern BOOL CG_use_prefetchnta;
+extern BOOL CG_idivbyconst_opt;
+extern BOOL CG_fold_constimul;
+extern BOOL CG_cloop;
+extern BOOL CG_use_lddqu;
+#endif
 
 // Cycle Count Flags
 extern BOOL CG_Enable_Cycle_Count;

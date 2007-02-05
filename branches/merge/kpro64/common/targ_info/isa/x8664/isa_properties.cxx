@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -50,10 +50,10 @@
 // Within each ISA_PROPERTY instructions are listed in alphabetical order and
 // as shown in the ISA manual
 /////////////////////////////////////
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/isa/x8664/isa_properties.cxx,v $
+//  $Revision: 1.178 $
+//  $Date: 05/11/10 18:45:11-08:00 $
+//  $Author: tkong@hyalite.keyresearch $
+//  $Source: common/targ_info/isa/x8664/SCCS/s.isa_properties.cxx $
 
 
 #include <stddef.h>
@@ -294,6 +294,14 @@ main()
 		     TOP_rori16,
 		     TOP_rori32,
 		     TOP_rori64,
+		     TOP_rol8,
+		     TOP_rol16,
+		     TOP_rol32,
+		     TOP_rol64,
+		     TOP_roli8,
+		     TOP_roli16,
+		     TOP_roli32,
+		     TOP_roli64,
 		     TOP_sar32,
 		     TOP_sar64,
 		     TOP_sari32,
@@ -370,6 +378,8 @@ main()
 		     TOP_asm,
 		     TOP_bsf32,
 		     TOP_bsf64,
+		     TOP_bsr32,
+		     TOP_bsr64,
                      TOP_UNDEFINED);
 
   /* ===== Move operator ====== */
@@ -391,7 +401,11 @@ main()
 		     TOP_fmov,
 		     TOP_movabsq,
 		     TOP_mov64_m,
-                     TOP_UNDEFINED);
+		     TOP_movi32_2m,
+		     TOP_movi64_2m,
+		     TOP_movm_2i32,
+		     TOP_movm_2i64,
+		     TOP_UNDEFINED);
 
   /* ===== Move ext operator ====== */
   move_ext = ISA_Property_Create ("move_ext");
@@ -405,6 +419,7 @@ main()
 		     TOP_movswq,
 		     TOP_movzwq,
 		     TOP_movslq,
+		     TOP_movzlq,
                      TOP_UNDEFINED );
 
   /* ===== Memory load operator ====== */
@@ -505,6 +520,7 @@ main()
 		     TOP_fildl,
 		     TOP_fildll,
 		     TOP_ld64_2m,
+		     TOP_ld64_2m_n32,
 		     TOP_fmovsldupx,
 		     TOP_fmovshdupx,
 		     TOP_fmovddupx,
@@ -625,6 +641,8 @@ main()
 		     TOP_fcmovu,
 		     TOP_fcmovnu,
 		     TOP_fldz,
+		     TOP_fcos,
+		     TOP_fsin,
                      TOP_UNDEFINED );
 
   /* ===== arith. operations with memory operand ====== */
@@ -983,6 +1001,7 @@ main()
 		     TOP_stntps,
 		     TOP_stntpsx,
 		     TOP_stntpsxx,
+		     TOP_storenti128,
                      TOP_UNDEFINED );
 
   /* ===== Memory store operator ====== */
@@ -1077,6 +1096,9 @@ main()
 		     TOP_fisttpl,
 		     TOP_fisttpll,
 		     TOP_store64_fm,
+		     TOP_store64_fm_n32,
+		     TOP_storenti128,
+		     TOP_storelpd,
                      TOP_UNDEFINED);
 
   /* ===== Prefetch operator ====== */
@@ -1278,12 +1300,14 @@ main()
 		     TOP_sthpsxx,
 		     TOP_stlpdxx,
 		     TOP_sthpdxx,
+		     TOP_storelpd,
 		     TOP_UNDEFINED);
 
   /* ===== Unknown addr operator ====== */
   unknown_memdata = ISA_Property_Create ("unknown_memdata");
   Instruction_Group (unknown_memdata,
 		     TOP_mfence,
+		     TOP_lfence,
 		     TOP_sfence,
 		     TOP_UNDEFINED);
 
@@ -1853,7 +1877,16 @@ main()
 		     TOP_movhlps,
 		     TOP_movlhps,
 		     TOP_psrldq,
+		     TOP_psrlq128v64,
+		     TOP_pslldq,
+		     TOP_psllw,
+		     TOP_pslld,
+		     TOP_psllq,
+		     TOP_psrlw,
+		     TOP_psrld,
 		     TOP_psrlq,
+		     TOP_psraw,
+		     TOP_psrad,
 		     TOP_xzero32,
 		     TOP_xzero64,
 		     TOP_xzero128v32,
@@ -1917,10 +1950,15 @@ main()
 		     TOP_fcmovu,
 		     TOP_fcmovnu,
 		     TOP_fldz,
+		     TOP_fcos,
+		     TOP_fsin,
 		     TOP_subus128v16,
 		     TOP_pavgb,
 		     TOP_pavgw,
 		     TOP_psadbw,
+		     TOP_storenti128,
+		     TOP_storelpd,
+		     TOP_pshufw64v16,
                      TOP_UNDEFINED);
 
   /* ===== FP add operator ====== */
@@ -2791,7 +2829,16 @@ main()
 		     TOP_movhlps,
 		     TOP_movlhps,
 		     TOP_psrldq,
+		     TOP_psrlq128v64,
+		     TOP_pslldq,
+		     TOP_psllw,
+		     TOP_pslld,
+		     TOP_psllq,
+		     TOP_psrlw,
+		     TOP_psrld,
 		     TOP_psrlq,
+		     TOP_psraw,
+		     TOP_psrad,
 		     TOP_subus128v16,
 		     TOP_xzero128v32,
 		     TOP_xzero128v64,
@@ -2801,7 +2848,14 @@ main()
 		     TOP_pextrw,
 		     TOP_pinsrw,
 		     TOP_pmovmskb,
-                     TOP_UNDEFINED );
+		     TOP_movi32_2m,
+		     TOP_movi64_2m,
+		     TOP_movm_2i32,
+		     TOP_movm_2i64,
+		     TOP_storenti128,
+		     TOP_storelpd,
+		     TOP_pshufw64v16,
+		     TOP_UNDEFINED );
 
   /* ==== x86 style instructions ==== */
   x86_style = ISA_Property_Create ("x86_style");
@@ -3066,6 +3120,14 @@ main()
 		     TOP_rori16,
 		     TOP_rori32,
 		     TOP_rori64,
+		     TOP_rol8,
+		     TOP_rol16,
+		     TOP_rol32,
+		     TOP_rol64,
+		     TOP_roli8,
+		     TOP_roli16,
+		     TOP_roli32,
+		     TOP_roli64,
 		     TOP_sar32,
 		     TOP_sar64,
 		     TOP_sari32,
@@ -3253,7 +3315,16 @@ main()
 		     TOP_shufpd,
 		     TOP_shufps,
 		     TOP_psrldq,
-		     TOP_psrlq,		     
+		     TOP_psrlq128v64,		     
+		     TOP_pslldq,
+		     TOP_psllw,
+		     TOP_pslld,
+		     TOP_psllq,
+		     TOP_psrlw,
+		     TOP_psrld,
+		     TOP_psrlq,
+		     TOP_psraw,
+		     TOP_psrad,
 		     TOP_fadd,
 		     TOP_faddp,
 		     TOP_fsub,
@@ -3270,10 +3341,13 @@ main()
 		     TOP_frndint,
 		     TOP_fabs,
 		     TOP_fsqrt,
+		     TOP_fcos,
+		     TOP_fsin,
 		     TOP_subus128v16,
 		     TOP_pavgb,
 		     TOP_pavgw,
 		     TOP_psadbw,
+		     TOP_pshufw,
                      TOP_UNDEFINED );
 
   /* ===== Predicated instructions ====== */
@@ -3404,6 +3478,7 @@ main()
 		     TOP_ldlpsxx,
 		     TOP_stlpdxx,
 		     TOP_stlpsxx,
+		     TOP_storelpd,
 		     TOP_UNDEFINED);
 
   /* ===== Instructions that load and store the higher 64-bits of a xmm register */

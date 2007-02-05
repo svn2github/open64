@@ -1,6 +1,10 @@
 /*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -31,9 +35,11 @@
   http://oss.sgi.com/projects/GenInfo/NoticeExplan
 
 */
+
+
+
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-
 #include <alloca.h>
 #include "defs.h"
 #include "tracing.h"

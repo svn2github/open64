@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -100,6 +104,12 @@ INT32 Total_Spill_Var_Cnt;
 #define PHASE_NAME "be"
 #endif /* FRONT_END */
 
+
+// KEY: Similar functions available in ipl_summarize_template.h and
+// ipc_bread.cxx. This function is called by several phases while reading
+// in a PU, for example, by lw_inline and ipl, to estimate parameters like
+// olimit and weight.
+//
 /* determine # bbs and stmts to be counted for the operator */
 void
 Count_WN_Operator (OPERATOR opr, TYPE_ID rtype, INT32& bbs, INT32& stmts,
@@ -107,6 +117,9 @@ Count_WN_Operator (OPERATOR opr, TYPE_ID rtype, INT32& bbs, INT32& stmts,
 {
     /* count nscf stmts as bbs, not stmts */
     if (OPERATOR_is_non_scf(opr)) {
+#ifdef KEY
+        if (opr != OPR_RETURN && opr != OPR_RETURN_VAL)
+#endif
 	++bbs;
     } else if (OPERATOR_is_stmt(opr)) {
 	if (OPERATOR_is_call(opr)) {
@@ -124,7 +137,11 @@ Count_WN_Operator (OPERATOR opr, TYPE_ID rtype, INT32& bbs, INT32& stmts,
 	    }
 	}
     } else if (OPERATOR_is_scf(opr)) {
-	if (opr != OPR_BLOCK) {
+	if (opr != OPR_BLOCK
+#ifdef KEY
+	    && opr != OPR_FUNC_ENTRY
+#endif
+	   ) {
 	    /* blocks are counted by parent node */
 	    ++bbs;
 	}

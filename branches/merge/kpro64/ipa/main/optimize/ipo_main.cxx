@@ -1999,8 +1999,11 @@ Perform_Interprocedural_Optimization (void)
 #endif
     }
   }
-
+#ifdef TARG_IA64
+  Set_tlog_phase(PHASE_IPA);
+#else
   Set_ipa_tlog_phase(PHASE_IPA);
+#endif
 
   if (IPA_Enable_ipacom) {
     ipa_compile_init ();

@@ -84,10 +84,10 @@ BOOL Show_OPT_Warnings = TRUE;          /* Display OPT warning messages */
 OPTION_LIST *Alias_Option = NULL;
 BOOL Alias_Pointer_Parms = TRUE;        /* Parms ptr indep? */
 BOOL Alias_Pointer_Cray = FALSE;        /* Cray pointer semantics? */
-#ifndef PATHSCALE_MERGE_ZHC
+#ifdef TARG_IA64
 BOOL Alias_Pointer_Types = TRUE;	/* Ptrs to distinct basic types indep? */
 #else
-BOOL Alias_Pointer_Types = FALSE;        /* Ptrs to distinct basic types indep? */
+BOOL Alias_Pointer_Types = FALSE;       /* Ptrs to distinct basic types indep? */
 #endif
 BOOL Alias_Not_In_Union  = FALSE;	/* Ptrs point to non-union types */
 BOOL Alias_Pointer_Strongly_Typed = FALSE; /* Ptrs to distinct types indep? */
@@ -166,8 +166,14 @@ BOOL GCM_Speculative_Ptr_Deref= TRUE;  /* allow load speculation of a memory
 BOOL GCM_Speculative_Ptr_Deref_Set=FALSE;   /* ... option seen? */
 
 /***** Limits on optimization *****/
+#ifdef TARG_IA64
 #define DEFAULT_OLIMIT		24000
 #define DEFAULT_O3_OLIMIT	30000	/* allow more time for -O3 compiles */
+#else
+#define DEFAULT_OLIMIT          6000
+#define DEFAULT_O3_OLIMIT       9000    /* allow more time for -O3 compiles */
+#endif
+
 #define MAX_OLIMIT		INT32_MAX
 INT32 Olimit = DEFAULT_OLIMIT;
 static BOOL Olimit_Set = FALSE;
@@ -355,7 +361,11 @@ static OPTION_DESC Options_OPT[] = {
     "New foldings in simplifier" },
 
   { OVK_BOOL, OV_VISIBLE, 	TRUE,	"fast_math", 	"",
+#ifdef TARG_IA64
+    0, 0, 0, &OPT_Fast_Math, NULL,
+#else
     0, 0, 0, &OPT_Fast_Math, &OPT_Fast_Math_Set,
+#endif
     "Use Fast Math Library functions from ACML 2.0" },
 
   { OVK_BOOL, OV_VISIBLE, 	TRUE,	"fast_stdlib", 	"",

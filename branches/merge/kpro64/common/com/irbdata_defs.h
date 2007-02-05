@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -71,8 +71,12 @@ enum INITVKIND {
     INITVKIND_PAD	= 6,
     INITVKIND_SYMDIFF	= 7,
     INITVKIND_SYMDIFF16 = 8,
+#ifdef TARG_IA64
     INITVKIND_LABEL	= 9,
     INITVKIND_SYMIPLT	= 10	//just for function descriptor which equals to @fptr + gp
+#else 
+    INITVKIND_LABEL     = 9
+#endif
 };
 
 #ifdef KEY

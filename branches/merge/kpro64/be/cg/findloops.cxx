@@ -326,7 +326,7 @@ LOOP_DESCR_Detect_Loops (MEM_POOL *pool)
   return the_loops;
 }
 
-
+#ifdef TARG_IA64
 static void
 LOOP_DESCR_Add_BB_Helper (LOOP_DESCR *loop, BB *bb) {
 
@@ -336,7 +336,7 @@ LOOP_DESCR_Add_BB_Helper (LOOP_DESCR *loop, BB *bb) {
     LOOP_DESCR_bbset(loop) = BB_SET_Union1D(LOOP_DESCR_bbset(loop), 
                             bb, loop->mem_pool);
 }
-
+#endif
 /* ====================================================================
  * See "findloops.h" for interface description.
  * ====================================================================
@@ -348,8 +348,16 @@ LOOP_DESCR_Add_BB(LOOP_DESCR *loop, BB *bb)
 	    ("BB:%d already in a loop", BB_id(bb)));
 
   BB_MAP_Set(LOOP_DESCR_map, bb, loop);
-    
+
+#ifdef TARG_IA64
   LOOP_DESCR_Add_BB_Helper (loop, bb);
+#else
+  do {
+    LOOP_DESCR_bbset(loop) = BB_SET_Union1D(LOOP_DESCR_bbset(loop), bb,
+					    loop->mem_pool);
+    loop = LOOP_DESCR_Next_Enclosing_Loop(loop);
+  } while (loop);
+#endif
 }
 
 

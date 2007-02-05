@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -165,20 +165,26 @@ ST_Verify_Sclass_Export (ST_SCLASS storage_class, ST_EXPORT export_class,
     case SCLASS_DISTR_ARRAY:
     case SCLASS_THREAD_PRIVATE_FUNCS:
     case SCLASS_COMMENT:
+#ifndef TARG_IA64
+      Is_True (export_class == EXPORT_LOCAL ||
+               export_class == EXPORT_LOCAL_INTERNAL,
+               (msg, Export_Name(export_class), Sclass_Name (storage_class)));
+#else
       // bug fix for OSP_145
       if ( export_class == EXPORT_PREEMPTIBLE ) {
         // maybe alias to FSTATIC
-	ST_IDX base_idx = ST_base_idx (st);
+        ST_IDX base_idx = ST_base_idx (st);
         Is_True ( base_idx != ST_st_idx (st),
-	        (msg, Export_Name(export_class), Sclass_Name (storage_class)));
-	Is_True ( storage_class == ST_sclass(St_Table[base_idx]),
-		(msg, Export_Name(export_class), Sclass_Name (storage_class)));
+		  (msg, Export_Name(export_class), Sclass_Name (storage_class)));
+        Is_True ( storage_class == ST_sclass(St_Table[base_idx]),
+		  (msg, Export_Name(export_class), Sclass_Name (storage_class)));
       }
       else {
-	Is_True (export_class == EXPORT_LOCAL ||
+        Is_True (export_class == EXPORT_LOCAL ||
                  export_class == EXPORT_LOCAL_INTERNAL,
-                (msg, Export_Name(export_class), Sclass_Name (storage_class)));
+		 (msg, Export_Name(export_class), Sclass_Name (storage_class)));
       }
+#endif
       break;
     case SCLASS_COMMON:
     case SCLASS_DGLOBAL:
@@ -582,10 +588,12 @@ void INITV::Verify(UINT) const
     Is_True ( repeat1 != 0,
               (msg, "repeat1: should not be 0"));
     break;
+#ifdef TARG_IA64
   case INITVKIND_SYMIPLT:		// for function discriptor
     Is_True ( repeat1 != 0,
               (msg, "repeat1: should not be 0"));
     break;
+#endif
   case INITVKIND_ZERO:
     Is_True ( repeat1 == 0,
               (msg, "repeat1: should be 0"));
@@ -1093,6 +1101,7 @@ verify_op<T>::operator () (UINT, T *entry) const {
 
 // specialization for verifying TCONs
 
+template<>
 inline void
 verify_op <TCON>::operator () (UINT, TCON *tc) const 
 {

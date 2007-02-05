@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1132,6 +1132,49 @@ WN_get_prefetch (void *handle, PU_Info *pu)
 
 #endif /* BACK_END || BUILD_WHIRL2C || BUILD_WHIRL2F */
 
+#if defined(KEY) && defined(BACK_END)
+#include "cxx_memory.h" // for CXX_NEW_ARRAY
+#include "be_ipa_util.h"
+static void
+WN_get_mod_ref_table (void * handle)
+{
+  OFFSET_AND_SIZE shdr = get_section (handle, SHT_MIPS_WHIRL, WT_IPA_SUMMARY);
+
+  if (shdr.offset == 0)
+    return;
+
+  const char *base = (char *) handle + shdr.offset;
+
+  // First is the offset to the header
+  const BE_SUMMARY_HEADER *header =
+               (BE_SUMMARY_HEADER *) (base + *((Elf64_Word *)base));
+
+  const char *addr = base + header->offset;
+
+  const char * p = addr; // travelling pointer to data
+
+  for (INT i=0; i<header->size; i++)
+  {
+    UINT32 index;
+    New_Mod_Ref_Info (index);
+
+    Mod_Ref_Info_Table[index].pu_idx = *((PU_IDX *) p);
+    p += sizeof (PU_IDX);
+
+    mUINT32 bv_size = Mod_Ref_Info_Table[index].size = *((mUINT32 *) p);
+    p += sizeof (mUINT32);
+
+    Mod_Ref_Info_Table[index].mod = CXX_NEW_ARRAY (mUINT8, bv_size, Malloc_Mem_Pool);
+    memcpy (Mod_Ref_Info_Table[index].mod, p, bv_size);
+    p += bv_size;
+
+    Mod_Ref_Info_Table[index].ref = CXX_NEW_ARRAY (mUINT8, bv_size, Malloc_Mem_Pool);
+    memcpy (Mod_Ref_Info_Table[index].ref, p, bv_size);
+    p += bv_size;
+  }
+}
+#endif
+
 static inline void
 WN_MAP_put(WN_MAP wn_map, WN *wn, INT32 value)
 {
@@ -1337,6 +1380,10 @@ Read_Global_Info (INT32 *p_num_PUs)
     if ((INT) WN_get_global_symtab (global_fhandle) == -1) {
 	ErrMsg ( EC_IR_Scn_Read, "global symtab", global_ir_file);
     }
+
+#if defined(KEY) && defined(BACK_END)
+    WN_get_mod_ref_table (global_fhandle);
+#endif
 
     
     // for now, get dst from local file (later change to global)

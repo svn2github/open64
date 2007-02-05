@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -170,10 +170,12 @@ extern void *hTN_MAP_Get_And_Set   (hTN_MAP   map, TN *tn, void *value);
 extern INT32 hTN_MAP32_Get_And_Set (hTN_MAP32 map, TN *tn, INT32 value);
 extern INT64 hTN_MAP64_Get_And_Set (hTN_MAP64 map, TN *tn, INT64 value);
 
+#ifdef TARG_IA64
 //define float hTN_MAP
 typedef struct htn_mapf *hTN_MAPf;
 extern hTN_MAPf   hTN_MAPf_Create   (MEM_POOL *pool);
 extern void hTN_MAPf_Set   (hTN_MAPf   map, TN *tn, float value);
 extern float hTN_MAPf_Get   (hTN_MAPf   map, TN *tn);
+#endif
 
 #endif /* TN_MAP_INCLUDED */

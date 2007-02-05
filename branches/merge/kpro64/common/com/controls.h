@@ -62,7 +62,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *controls_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/controls.h,v $ $Revision: 1.1.1.1 $";
+static char *controls_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 /* The following is a list of IDs for the available controls: */

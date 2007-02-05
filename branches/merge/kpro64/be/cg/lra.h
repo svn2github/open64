@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -91,5 +91,12 @@ extern INT LRA_Register_Request (BB *bb,  ISA_REGISTER_CLASS cl);
  * <bb> is used to determine what temps are available.
  */
 extern void Assign_Temp_Regs (OPS *ops, BB *bb);
+
+#ifdef TARG_X8664
+/* If subclass consists of only one register, then return that register, else
+ * return REGISTER_UNDEFINED.
+ */
+extern REGISTER Single_Register_Subclass (ISA_REGISTER_SUBCLASS subclass);
+#endif
 
 #endif /* lra_INCLUDED */

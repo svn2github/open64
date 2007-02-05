@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -44,6 +44,7 @@ template <class T> const T& max (const T& a, const T& b)
   return (a >= b) ? a : b;
 }
 
+} // namespace
 
 void * operator new (size_t size)
 {
@@ -56,5 +57,4 @@ void operator delete (void *p)
   free (p);
 }
 
-} // namespace
 #endif

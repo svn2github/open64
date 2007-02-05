@@ -1,6 +1,10 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -156,6 +160,7 @@
  *		ra   - return address
  *		v0   - integer function return value
  *		undef- undefined class and undefined register
+ *		f0   - floating-point function return value for X8664
  *
  *
  *  Initialization:
@@ -585,7 +590,7 @@
 
 
 #ifdef _KEEP_RCS_ID
-static const char register_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/register.h,v $ $Revision: 1.1.1.1 $";
+static const char register_rcs_id[] = "$Source: /home/bos/bk/kpro64-pending/be/cg/SCCS/s.register.h $ $Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "mtypes.h"
@@ -736,6 +741,10 @@ typedef struct {
   REGISTER_SET      shrink_wrap;
   REGISTER_SET	    stacked;
   REGISTER_SET      rotating;
+#ifdef TARG_X8664
+  /* Set of registers that are eight-bit addressable. */
+  REGISTER_SET      eight_bit_regs;
+#endif
 } REGISTER_CLASS_INFO;
 
 
@@ -782,6 +791,10 @@ REGISTER_CLASS_info[ISA_REGISTER_CLASS_MAX + 1];
                                 (REGISTER_CLASS_info[x].can_store)
 #define REGISTER_CLASS_multiple_save(x)				\
                                 (REGISTER_CLASS_info[x].multiple_save)
+#ifdef TARG_X8664
+#define REGISTER_CLASS_eight_bit_regs(x)			\
+                                (REGISTER_CLASS_info[x].eight_bit_regs)
+#endif
 #define REGISTER_CLASS_last_register(x)				\
 			(REGISTER_CLASS_register_count(x) + REGISTER_MIN - 1)
 
@@ -864,6 +877,13 @@ extern CLASS_REG_PAIR		CLASS_REG_PAIR_v0;
 #define REGISTER_v0		CLASS_REG_PAIR_reg(CLASS_REG_PAIR_v0)
 #define REGISTER_CLASS_v0	CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_v0)
 #define CLASS_AND_REG_v0	CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_v0)
+
+#ifdef TARG_X8664
+extern CLASS_REG_PAIR		CLASS_REG_PAIR_f0;
+#define REGISTER_f0		CLASS_REG_PAIR_reg(CLASS_REG_PAIR_f0)
+#define REGISTER_CLASS_f0	CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_f0)
+#define CLASS_AND_REG_f0	CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_f0)
+#endif
 
 /* The static link may NOT be the same as v0 (i.e. $2) */
 extern CLASS_REG_PAIR		CLASS_REG_PAIR_static_link;

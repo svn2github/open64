@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,7 +39,7 @@
 
 #ifdef _KEEP_RCS_ID
 static const char source_file[] = __FILE__;
-static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/em_dwarf.cxx,v $ $Revision: 1.1.1.1 $";
+static const char rcs_id[] = "$Source: common/com/SCCS/s.em_dwarf.cxx $ $Revision: 1.21 $";
 #endif
 
 #include <stdio.h>
@@ -260,6 +260,7 @@ Em_Dwarf_Add_File (
 #include "symtab.h"
 #include "irbdata.h"
 #endif // KEY
+extern "C" void Assign_ST_To_Named_Section (ST *, STR_IDX);
 
 Dwarf_P_Debug 
 Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
@@ -292,6 +293,8 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
   dw_dbg = dwarf_producer_init_b (flags, setup_new_section_for_dwarf, 
 		      0, 0, &dw_error);
 
+  // Most of the following have been introduced at KEY, somehow the macro
+  // got removed.
   if (is_cplus)	/* may have eh info */
   {
     	if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
@@ -315,6 +318,15 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 	    INITV_IDX iv = New_INITV();
 	    INITV_Init_Symoff (iv, personality_st, 0, 1);
 	    New_INITO (ST_st_idx (pic_personality_st), iv);
+	    // bug 8315: With -ipa, if this file is not symtab.s (actually
+	    // control won't ever reach here for symtab.s, but better to
+	    // have the following explicit check.), this new ST won't be
+	    // assigned to its section, so do it here.
+	    // We also cannot move this symbol to symtab.s because that file
+	    // does not have language information.
+	    if (Read_Global_Data) // ipa && !symtab.I
+	      Assign_ST_To_Named_Section (pic_personality_st,
+	                                  ST_ATTR_section_name (st_attr));
 	}
   }
   else

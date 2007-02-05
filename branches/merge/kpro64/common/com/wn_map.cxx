@@ -41,8 +41,8 @@
  * ====================================================================
  *
  * Module: wn_map.c
- * $Author: gautam@jacinth.keyresearch $
- * $Source: common/com/SCCS/s.wn_map.cxx $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/wn_map.cxx,v $
  *
  * Revision history:
  *  09-Dec-94 - Original Version (derived from old wn_map.cxx file)

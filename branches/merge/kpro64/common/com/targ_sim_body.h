@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -141,7 +141,11 @@ typedef struct subprogram_interface {
 
 // gcc and edg have different restrictions on how to do a forward decl
 // of an initialized object.
+#if (__GNUC__ == 2)
+static SIM SIM_Info[];
+#else
 extern SIM SIM_Info[];
+#endif
 #define SIM_INFO	SIM_Info[Target_ABI]
 
 #define SIM_varargs_floats	((SIM_INFO.flags & SIM_VARARGS_FLOATS) != 0)
@@ -305,9 +309,11 @@ First_PLOC_Reg (PLOC ploc, TY_IDX parm_ty)
 	case MTYPE_FQ:
 		PLOC_size(first) = MTYPE_RegisterSize(MTYPE_F8);
 		break;
+#ifdef TARG_IA64
 	case MTYPE_C10:
 		PLOC_size(first) = MTYPE_RegisterSize(MTYPE_F10);
 		break;
+#endif
 	}
 	return first;
 }
@@ -349,6 +355,7 @@ Next_PLOC_Reg (PLOC prev)
 		    PLOC_reg(next) = 0;
 		}
 		break;
+#ifdef TARG_IA64
 	case MTYPE_C10:
 		PLOC_offset(next) += MTYPE_RegisterSize(MTYPE_F10);
 		if (PLOC_offset(next) == ploc_last_offset)
@@ -357,6 +364,7 @@ Next_PLOC_Reg (PLOC prev)
 		if (PLOC_reg(next) > PR_last_reg(SIM_INFO.flt_args))
 			PLOC_reg(next) = 0;
 		break;
+#endif
 	case MTYPE_F10:
 		/*
                  * When FP types wider than a register are passed in integer

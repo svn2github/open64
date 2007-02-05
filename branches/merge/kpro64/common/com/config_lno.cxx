@@ -44,10 +44,10 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Revision: 1.65 $
- * $Date: 05/10/19 20:03:33-07:00 $
- * $Author: fchow@fluorspar.internal.keyresearch.com $
- * $Source: common/com/SCCS/s.config_lno.cxx $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_lno.cxx,v $
  *
  * Revision history:
  *  11-Nov-96 - Original Version.
@@ -244,16 +244,16 @@ static LNO_FLAGS Default_LNO = {
   FALSE,        /* Build_Scalar_Reductions */
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
-#ifndef KEY
+#ifdef TARG_IA64
   1,		/* Run_doacross */
 #else
   0,		/* Run_doacross */
 #endif
   0,		/* Preferred_doacross_tile_size */
-#ifdef KEY
-  4096,		/* Parallel_overhead */ 
+#ifdef TARG_IA64
+  2048,		/* Parallel_overhead */ 
 #else
-  2600,		/* Parallel_overhead */ 
+  4096,		/* Parallel_overhead */ 
 #endif
   FALSE, 	/* Prompl */ 
   TRUE, 	/* IfMinMax */ 
@@ -261,21 +261,29 @@ static LNO_FLAGS Default_LNO = {
   TRUE, 	/* Shackle */ 
   FALSE, 	/* Cross_loop */ 
   FALSE,        /* IPA_Enabled */
+#ifdef TARG_IA64
+  100,          /* Num_Iters */
+#else
   1000,          /* Num_Iters */
+#endif
   1,		/* Pure_Level */ 
   5,            /* Small_trip_count */
-//#ifdef KEY
-//  1000, 	/* Trip_Count_Assumed_When_Unknown */
-//#endif
+#ifdef TARG_IA64
+  1000, 	/* Assume_Unknown_Trip_Count */
+#endif
   (UINT32)-1,	/* Local_pad_size */
 #ifdef TARG_X8664
   5,            /* Full_unrolling */
 #else
-  0,            /* Full_unrolling */
+  8,            /* Full_unrolling */
 #endif
 #ifdef KEY
   2000,         /* Full_unrolling_loop_size_limit */
-  FALSE,	/* Full_Unroll_Outer */
+#ifdef TARG_IA64
+  TRUE,		/* Full_Unroll_Outer */
+#else
+  FALSE,         /* Full_Unroll_Outer */
+#endif
   0,		/* Processors */
   128,		/* Parallel_per_proc_overhead */ 
   FALSE,	/* Apo_use_feedback */
@@ -425,16 +433,16 @@ LNO_FLAGS Initial_LNO = {
   FALSE,        /* Build_Scalar_Reductions */
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
-#ifndef KEY
+#ifdef TARG_IA64
   1,		/* Run_doacross */
 #else
   0,		/* Run_doacross */
 #endif
   0,		/* Preferred_doacross_tile_size */
-#ifdef KEY
-  4096,		/* Parallel_overhead */ 
+#ifdef TARG_IA64
+  2048,		/* Parallel_overhead */ 
 #else
-  2600,         /* Parallel_overhead */ 
+  4096,         /* Parallel_overhead */ 
 #endif
   FALSE, 	/* Prompl */ 
   TRUE, 	/* IfMinMax */ 
@@ -442,21 +450,29 @@ LNO_FLAGS Initial_LNO = {
   TRUE, 	/* Shackle */ 
   FALSE, 	/* Cross_loop */ 
   FALSE,        /* IPA array section information available */
+#ifdef TARG_IA64
+  100,          /* Num_Iters */
+#else
   1000,          /* Num_Iters */
+#endif
   1,		/* Pure_Level */ 
   5,            /* Small_trip_count */
-//#ifdef KEY
-//  1000, 	/* Trip_Count_Assumed_When_Unknown */
-//#endif
+#ifdef TARG_IA64
+  1000, 	/* Assume_Unknown_Trip_Count */
+#endif
   (UINT32)-1,	/* Local_pad_size */
 #ifdef TARG_X8664
   5,            /* Full_unrolling */
 #else
-  0,            /* Full_unrolling */
+  8,            /* Full_unrolling */
 #endif
 #ifdef KEY
   2000,         /* Full_unrolling_loop_size_limit */
-  FALSE,	/* Full_Unroll_Outer */
+#ifdef TARG_IA64
+  TRUE,		/* Full_Unroll_Outer */
+#else
+  TRUE,         /* Full_Unroll_Outer */
+#endif
   0,		/* Processors */
   128,		/* Parallel_per_proc_overhead */ 
   FALSE,	/* Apo_use_feedback */
@@ -523,284 +539,13 @@ MHD *Current_MHD = &Mhd_Options;
 
 static OPTION_DESC Options_LNO[] = {
 
-  LNOPT_BOOL ( "aequiv",		NULL,	Aequiv ),
-  LNOPT_U32  ( "ap",			NULL,	1,0,2,	Run_AP ),
-  LNOPT_BOOL ( "apply_illegal_xform_directives", "", Ill_xform_directives ),
-  MHOPT_I32_DUP ( "associativity",	0,0,8192,	Associativity ),
-  MHOPT_I32_DUP (   "assoc",		0,0,8192,	Associativity ),
-  LNOPT_BOOL ( "auto_dist",		NULL,	Autodist ),
-  LNOPT_BOOL ( "ad",			NULL,	Autodist ),
-  LNOPT_BOOL ( "backward_substitution",	NULL,	Backward_substitution ),
-  LNOPT_BOOL ( "blind_loop_reversal",	NULL,	Blind_loop_reversal ),
-  LNOPT_BOOL ( "blocking",		NULL,	Blocking ),
-  LNOPT_U32  ( "blocking_size",		NULL,	0,0,99999, Blocking_Size ),
-  LNOPT_BOOL ( "cache_edge_effects",	NULL,	Cache_model_edge_effects ),
-#ifdef KEY
-  LNOPT_U32  ( "ecspct",                NULL,   0,0,100, EffectiveCacheSizePct),
-#endif
-  MHOPT_NAME_DUP ( "cache_size",	CS_string ),
-  MHOPT_NAME_DUP (   "cs",		CS_string ),
-  MHOPT_I32_SET_DUP ( "clean_miss_penalty",	0,0,1000000000,
-					Clean_Miss_Penalty, CMP_Set ),
-  MHOPT_I32_SET_DUP (   "cmp",		0,0,1000000000,
-					Clean_Miss_Penalty, CMP_Set ),
-  LNOPT_BOOL ( "cse",			NULL,	Cse ),
-#ifdef KEY
-  LNOPT_U32  ( "cse_loop_skip_before",	"cse_loop_skip_before",	32,0,10000, 
-	       Cse_Loop_Skip_Before ),
-  LNOPT_U32  ( "cse_loop_skip_after",	"cse_loop_skip_after",	32,0,10000, 
-	       Cse_Loop_Skip_After ),
-  LNOPT_U32  ( "cse_loop_skip_equal",	"cse_loop_skip_equal",	32,0,10000, 
-	       Cse_Loop_Skip_Equal ),
-  LNOPT_U32  ( "simd_skip_before",	"simd_skip_before",	32,0,1000, 
-	       Simd_Skip_Before ),
-  LNOPT_U32  ( "simd_skip_after",	"simd_skip_after",	32,0,1000, 
-	       Simd_Skip_After ),
-  LNOPT_U32  ( "simd_skip_equal",	"simd_skip_equal",	32,0,1000, 
-	       Simd_Skip_Equal ),
-  LNOPT_U32  ( "simd_loop_skip_before",	"simd_loop_skip_before",32,0,1000, 
-	       Simd_Loop_Skip_Before ),
-  LNOPT_U32  ( "simd_loop_skip_after",	"simd_loop_skip_after",32,0,1000, 
-	       Simd_Loop_Skip_After ),
-  LNOPT_U32  ( "simd_loop_skip_equal",	"simd_loop_skip_equal",32,0,1000, 
-	       Simd_Loop_Skip_Equal ),
-  LNOPT_U32  ( "hoistif_skip_before",	"hoistif_skip_before",	32,0,1000, 
-	       HoistIf_Skip_Before ),
-  LNOPT_U32  ( "hoistif_skip_after",	"hoistif_skip_after",	32,0,1000, 
-	       HoistIf_Skip_After ),
-  LNOPT_U32  ( "hoistif_skip_equal",	"hoistif_skip_equal",	32,0,1000, 
-	       HoistIf_Skip_Equal ),
-  LNOPT_U32  ( "hoistif_threshold",	"hoistif_thres", 32,0,1000,
-  	       HoistIf_Threshold ),
-  LNOPT_U32  ( "svr_skip_before",	"svr_skip_before",	32,0,1000, 
-	       SVR_Skip_Before ),
-  LNOPT_U32  ( "svr_skip_after",	"svr_skip_after",	32,0,1000, 
-	       SVR_Skip_After ),
-  LNOPT_U32  ( "svr_skip_equal",	"svr_skip_equal",	32,0,1000, 
-	       SVR_Skip_Equal ),
-  LNOPT_BOOL ( "svr_phase1",			NULL,	SVR_Phase1 ),
-  LNOPT_BOOL ( "svr",                           NULL,   SVR ),
-  LNOPT_U32  ( "unswitch_skip_before",	"unswitch_skip_before",	32,0,1000, 
-	       Unswitch_Skip_Before ),
-  LNOPT_U32  ( "unswitch_skip_after",	"unswitch_skip_after",	32,0,1000, 
-	       Unswitch_Skip_After ),
-  LNOPT_U32  ( "unswitch_skip_equal",	"unswitch_skip_equal",	32,0,1000, 
-	       Unswitch_Skip_Equal ),
-  LNOPT_U32  ( "unswitch_loop_skip_before",	"unswitch_loop_skip_before",32,0,1000, 
-	       Unswitch_Loop_Skip_Before ),
-  LNOPT_U32  ( "unswitch_loop_skip_after",	"unswitch_loop_skip_after",32,0,1000, 
-	       Unswitch_Loop_Skip_After ),
-  LNOPT_U32  ( "unswitch_loop_skip_equal",	"unswitch_loop_skip_equal",32,0,1000, 
-	       Unswitch_Loop_Skip_Equal ),
-  LNOPT_U32  ( "full_unroll_skip_before", "full_unroll_skip_before",
-  	       32,0,1000, Full_Unroll_Skip_Before ),
-  LNOPT_U32  ( "full_unroll_skip_after", "full_unroll_skip_after",
-  	       32,0,1000, Full_Unroll_Skip_After ),
-  LNOPT_U32  ( "full_unroll_skip_equal", "full_unroll_skip_equal",
-  	       32,0,1000, Full_Unroll_Skip_Equal ),
-  LNOPT_U32  ( "skip_before",	"skip_b",	32,0,10000, 
-	       Skip_Before ),
-  LNOPT_U32  ( "skip_after",	"skip_a",	32,0,10000, 
-	       Skip_After ),
-  LNOPT_U32  ( "skip_equal",	"skip_e",	32,0,10000, 
-	       Skip_Equal ),
-  LNOPT_U32  ( "apo_skip_before",	"apo_skip_before",	32,0,10000, 
-	       Apo_Skip_Before ),
-  LNOPT_U32  ( "apo_skip_after",	"apo_skip_after",	32,0,10000, 
-	       Apo_Skip_After ),
-  LNOPT_U32  ( "apo_skip_equal",	"apo_skip_equal",	32,0,10000, 
-	       Apo_Skip_Equal ),
-  LNOPT_U32  ( "apo_loop_skip_before",	"apo_loop_skip_before",	32,0,10000, 
-	       Apo_Loop_Skip_Before ),
-  LNOPT_U32  ( "apo_loop_skip_after",	"apo_loop_skip_after",	32,0,10000, 
-	       Apo_Loop_Skip_After ),
-  LNOPT_U32  ( "apo_loop_skip_equal",	"apo_loop_skip_equal",	32,0,10000, 
-	       Apo_Loop_Skip_Equal ),
-  LNOPT_U32  ( "dummy_skip_before",	"dummy_skip_before",	32,0,10000, 
-	       Dummy_Skip_Before ),
-  LNOPT_U32  ( "dummy_skip_after",	"dummy_skip_after",	32,0,10000, 
-	       Dummy_Skip_After ),
-  LNOPT_U32  ( "dummy_skip_equal",	"dummy_skip_equal",	32,0,10000, 
-	       Dummy_Skip_Equal ),
-#endif /* KEY */
-  MHOPT_I32_SET_DUP ( "dirty_miss_penalty",	0,0,1000000000,
-					Dirty_Miss_Penalty, DMP_Set ),
-  MHOPT_I32_SET_DUP (   "dmp",		0,0,1000000000,
-					Dirty_Miss_Penalty, DMP_Set ),
-  LNOPT_BOOL ( "fancy_tile",		NULL,	Fancy_tile ),
-  LNOPT_BOOL ( "ff",			NULL,	Run_fiz_fuse ),
-#ifdef TARG_X8664
-  LNOPT_U32  ( "fission",		"fis",	0,0,2,	Fission ),
-#else
-  LNOPT_U32  ( "fission",		"fis",	1,0,2,	Fission ),
-#endif
-  LNOPT_U32  ( "fission_inner_register_limit",	NULL,	32,0,99999,
-					Fission_inner_register_limit ),
-  LNOPT_BOOL ( "forward_substitution",	NULL,	Forward_substitution ),
-  LNOPT_U32  ( "fusion",		"fus",	1,0,2,	Fusion ),
-  LNOPT_U32  ( "fusion_peeling_limit",	NULL,	5,0,99999,
-					Fusion_peeling_limit ),
-  LNOPT_U32  ( "gather_scatter",	"gath",	1,0,100, Gather_Scatter ),
-  LNOPT_U32  ( "gc",			NULL,	0xfffe, 0, 0xfffe,
-					Graph_capacity ),
-  LNOPT_BOOL ( "hmb",			NULL,	Hoist_messy_bounds ),
-  LNOPT_BOOL ( "ignore_pragmas",	NULL,	Ignore_pragmas ),
-  LNOPT_BOOL ( "interchange",		NULL,	Interchange ),
-  MHOPT_BOOL_SET_DUP ( "is_memory_level",
-					Is_Mem_Level, Is_Mem_Level_Set ),
-  MHOPT_BOOL_SET_DUP (   "is_mem",	Is_Mem_Level, Is_Mem_Level_Set ),
-  LNOPT_BOOL_SET ( "lego",		NULL,	Run_lego, Run_lego_set ),
-  LNOPT_BOOL ( "lego_local",		NULL,	Run_lego_localizer ),
-  MHOPT_I32_DUP ( "line_size",		0,0,8192,	Line_Size ),
-  MHOPT_I32_DUP (   "ls",		0,0,8192,	Line_Size ),
-  MHOPT_I32  ( "loop_overhead_base",	NULL,	1,0,1000, Loop_Overhead_Base ),
-  MHOPT_I32  (   "lob",			NULL,	1,0,1000, Loop_Overhead_Base ),
-  MHOPT_I32  ( "loop_overhead_memref",	NULL,	1,0,1000,
-						Loop_Overhead_Memref ),
-  MHOPT_I32  (   "lom",			NULL,	1,0,1000,
-						Loop_Overhead_Memref ),
-  LNOPT_U32  ( "max_depth",		NULL,	10,0,16,
-					Max_do_loop_depth_strict ),
-  LNOPT_BOOL ( "mem_sim",		NULL,	Mem_sim ),
-  LNOPT_BOOL ( "minvariant",		"minvar",	Minvar ),
-  MHOPT_I32_SET_DUP ( "miss_penalty",	0,0,1000000000,
-					Miss_Penalty, Miss_Penalty_Set ),
-  MHOPT_I32_SET_DUP (   "mp",		0,0,1000000000,
-					Miss_Penalty, Miss_Penalty_Set ),
-  MHOPT_BOOL ( "non_blocking_loads",	NULL,	Non_Blocking_Loads ),
-  MHOPT_BOOL (   "nbl",			NULL,	Non_Blocking_Loads ),
-  LNOPT_U32  ( "opt",			NULL,	1,0,1,	Opt ),
-  LNOPT_U32  ( "optimize_cache",	NULL,	2,0,2,	Cache_model ),
-  LNOPT_U32  (   "optc",		NULL,	2,0,2,	Cache_model ),
-  LNOPT_BOOL ( "outer",			NULL,	Run_outer ),
-#ifdef KEY
-  LNOPT_U32  ( "olf_ub",		NULL,	30,0,200,  OLF_Upper_Bound ),
-  LNOPT_U32  ( "olf_lb",		NULL,	15,0,200,  OLF_Lower_Bound ),
-#endif
-  LNOPT_U32  ( "outer_unroll",		NULL,	0,1,32, Outer_unroll ),
-  LNOPT_U32  (   "ou",			NULL,	0,1,32, Outer_unroll ),
-  LNOPT_BOOL ( "outer_unroll_deep",	NULL,	Outer_unroll_deep ),
-  LNOPT_BOOL (   "ou_deep",		NULL,	Outer_unroll_deep ),
-  LNOPT_U32  ( "outer_unroll_further",	NULL,	6,0,99999,
-					Outer_unroll_min_for_further_unroll ),
-  LNOPT_U32  (   "ou_further",		NULL,	6,0,99999,
-					Outer_unroll_min_for_further_unroll ),
-  LNOPT_U32  ( "outer_unroll_max",	NULL,	0,1,32, Outer_unroll_max ),
-  LNOPT_U32  (   "ou_max",		NULL,	0,1,32, Outer_unroll_max ),
-  LNOPT_BOOL ( "outer_unroll_model_only", NULL,	Outer_unroll_model_only ),
-  LNOPT_BOOL (   "ou_model_only",	NULL,	Outer_unroll_model_only ),
-  LNOPT_U32  ( "outer_unroll_prod_max",	NULL,	0,1,64, Outer_unroll_prod_max ),
-  LNOPT_U32  (   "ou_prod_max",		NULL,	0,1,64, Outer_unroll_prod_max ),
-  LNOPT_BOOL ( "outer_unroll_unity",	NULL,	Outer_unroll_unity ),
-  LNOPT_BOOL (   "ou_unity",		NULL,	Outer_unroll_unity ),
-  LNOPT_U32 (   "ou_aggre",		NULL,	2,0,3,  Outer_unroll_aggre ),
-  LNOPT_U32  ( "p3",			NULL,	0,0,2,	Run_p3 ),
-  MHOPT_I32_DUP ( "page_size",		0,0,8192,	Page_Size ),
-  MHOPT_I32_DUP (   "ps",		0,0,8192,	Page_Size ),
-  MHOPT_I32_DUP ( "pct_xwrites_nonhidable", 0,0,100,
-					Pct_Excess_Writes_Nonhidable ),
-  MHOPT_I32_DUP (   "xwn",		0,0,100,
-					Pct_Excess_Writes_Nonhidable ),
-  LNOPT_BOOL (   "plower",	        NULL,	Pseudo_lower ),
-  LNOPT_BOOL (   "plower_mp",           NULL,	Pseudo_lower ),
-#ifndef KEY
-  LNOPT_U32_SET  ( "prefetch",		"pref",	0,0,2,	Run_prefetch, 
-  					Run_prefetch_set ),
-#else
-  LNOPT_U32_SET  ( "prefetch",		"pref",	NO_PREFETCH,NO_PREFETCH,
-  					AGGRESSIVE_PREFETCH,	
-					Run_prefetch, Run_prefetch_set ),
-  LNOPT_BOOL_SET ( "prefetch_stores",	NULL, 	Prefetch_stores,
-  						Prefetch_stores_set ),
-#endif
-  LNOPT_U32  ( "prefetch_ahead",	NULL,	2,0,50,	Prefetch_ahead ),
-  LNOPT_U32  (   "pf_ahead",		NULL,	2,0,50,	Prefetch_ahead ),
-  LNOPT_U32  ( "prefetch_iters_ahead",	NULL,	2,0,50,	Prefetch_iters_ahead ),
-  LNOPT_U32  (   "pf_it_ahead",		NULL,	2,0,50,	Prefetch_iters_ahead ),
-  LNOPT_U32  ( "prefetch_cache_factor",	NULL,	1,1,50,	Prefetch_cache_factor),
-  LNOPT_U32  (   "pf_cf",		NULL,	1,1,50,	Prefetch_cache_factor),
-  LNOPT_BOOL ( "prefetch_indirect",	"",	Prefetch_indirect ),
-  MHOPT_BOOL_DUP ( "prefetch_level",	Prefetch_Level ),
-  MHOPT_BOOL_DUP ( "pf",		Prefetch_Level ),
-  LNOPT_BOOL_SET ( "prefetch_manual",	"",	Run_prefetch_manual,
-					Run_prefetch_manual_set ),
-  LNOPT_BOOL_SET (   "pf_manual",	NULL,	Run_prefetch_manual,
-					Run_prefetch_manual_set ),
-  LNOPT_BOOL ( "pwr2",			NULL,	Power_of_two_hack ),
-  LNOPT_BOOL ( "sclrze",		NULL,	Sclrze ),
-  LNOPT_U32  ( "se_tile_size",		NULL,	0,0,99999, SE_tile_size ),
-  LNOPT_U32  ( "split_tile",		NULL,	1,0,2,	Split_tiles ),
-  LNOPT_U32  ( "split_tile_size",	NULL,	0,0,99999, Split_tiles_size ),
-  LNOPT_BOOL ( "test",			NULL,	Run_test ),
-  LNOPT_BOOL ( "testdump",		NULL,	Test_dump ),
-  MHOPT_I32_SET_DUP ( "tlb_clean_miss_penalty",	0,0,1000000000,
-					TLB_Clean_Miss_Penalty, TLB_CMP_Set ),
-  MHOPT_I32_SET_DUP (   "tlbcmp",	0,0,1000000000,
-					TLB_Clean_Miss_Penalty, TLB_CMP_Set ),
-  MHOPT_I32_SET_DUP ( "tlb_dirty_miss_penalty",	0,0,1000000000,
-					TLB_Dirty_Miss_Penalty, TLB_DMP_Set ),
-  MHOPT_I32_SET_DUP (   "tlbdmp",	0,0,1000000000,
-					TLB_Dirty_Miss_Penalty, TLB_DMP_Set ),
-  MHOPT_I32_DUP ( "tlb_entries",	0,0,8192,	TLB_Entries ),
-  MHOPT_I32_DUP (   "tlb",		0,0,8192,	TLB_Entries ),
-  MHOPT_I32_SET_DUP ( "tlb_miss_penalty",	0,0,1000000000,
-					TLB_Miss_Penalty, TLB_MP_Set ),
-  MHOPT_I32_SET_DUP (   "tlbmp",	0,0,1000000000,
-					TLB_Miss_Penalty, TLB_MP_Set ),
-  MHOPT_BOOL ( "tlb_noblocking_model",	NULL,	TLB_NoBlocking_Model ),
-  MHOPT_I32  ( "tlb_trustworthiness",	NULL,	1,0,1000,
-					TLB_Trustworthiness ),
-  LNOPT_BOOL ( "trapezoidal_outer_unroll", NULL,
-					Trapezoidal_outer_unroll ),
-  LNOPT_BOOL ( "use_malloc",		NULL,	Use_malloc ),
-  LNOPT_BOOL ( "use_parm",		NULL,	Use_parm ),
-  LNOPT_BOOL ( "version_mp_loops",	NULL,	Version_mp_loops ),
-#ifndef KEY
-  LNOPT_BOOL ( "vintr",			NULL,	Run_vintr ),
-#else
-  LNOPT_U32_SET ("vintr",                "vintr", 1, 0, 2, Run_vintr,
-		                        Run_vintr_set ),
-  LNOPT_BOOL ( "vintr_verbose",		NULL,	Vintr_Verbose ),
-  LNOPT_U32_SET ("simd",                "simd", 1, 0, 2, Run_simd,
-		                        Run_simd_set ),
-  LNOPT_BOOL ( "simd_verbose",		NULL,	Simd_Verbose ),
-  LNOPT_BOOL ( "simd_reduction",	"simd_red",	Simd_Reduction ),
-  LNOPT_BOOL ( "simd_avoid_fusion",	NULL,	Simd_Avoid_Fusion ),
-  LNOPT_BOOL ( "hoistif",		NULL,	Run_hoistif ),
-  LNOPT_BOOL ( "ignore_feedback",	NULL,	Ignore_Feedback ),
-  LNOPT_BOOL ( "unswitch",		NULL,	Run_unswitch ),
-  LNOPT_BOOL ( "unswitch_phase1",	NULL,	Run_unswitch_phase1 ),
-  LNOPT_BOOL ( "unswitch_phase2",	NULL,	Run_unswitch_phase2 ),
-  LNOPT_BOOL ( "unswitch_verbose",	NULL,	Unswitch_Verbose ),
-  LNOPT_BOOL ( "prefetch_verbose",	NULL,	Prefetch_Verbose ),
-  LNOPT_BOOL ( "build_scalar_reductions",NULL,	Build_Scalar_Reductions ),
-#endif /* KEY */  
-  LNOPT_BOOL ( "oinvar",		NULL,	Run_oinvar ),
-  LNOPT_U32  ( "doacross",		NULL,	1,0,4,Run_doacross),
-  LNOPT_U32  ( "preferred_doacross_tile_size",
-					NULL,	0,0,999999,
-					Preferred_doacross_tile_size ),
-#ifdef KEY
-  LNOPT_U32  ( "parallel_overhead",     NULL,   4096,0,0x7fffffff, 
-					Parallel_overhead), 
-#else
-  LNOPT_U32  ( "parallel_overhead",     NULL,   2600,0,0x7fffffff, 
-					Parallel_overhead), 
-#endif
-  LNOPT_BOOL ( "prompl",                NULL,   Prompl ), 
-  LNOPT_BOOL ( "ifminmax",              NULL,   IfMinMax ), 
-  LNOPT_BOOL ( "call_info",             NULL,   Run_call_info ), 
-  LNOPT_BOOL ( "loop_finalize", 	NULL,   Loop_finalization),
-  LNOPT_BOOL ( "shackle", 		NULL,   Shackle),
-  LNOPT_BOOL ( "cross_loop", 		NULL,   Cross_loop),
-  LNOPT_BOOL ( "ipa",                   NULL,   IPA_Enabled),
-  LNOPT_U32  ( "trip_count_assumed_when_unknown",      "trip_count",   1000,0,UINT32_MAX,Num_Iters),
+  
   LNOPT_U32  ( "pure", 			NULL,   1,0,2,Pure_Level),
   LNOPT_U32  ( "small_trip_count", 	NULL,   5,0,10,Small_trip_count),
-//#ifdef KEY
-//  LNOPT_U32  ( "trip_count_assumed_when_unknown", "trip_count",   
-//  	       1000,0,1000,Trip_Count_Assumed_When_Unknown),
-//#endif
+#ifdef TARG_IA64
+  LNOPT_U32  ( "assume_unknown_trip_count", NULL,   
+  	       1000,0,1000,Assume_Unknown_Trip_Count),
+#endif
   LNOPT_U32  ( "local_pad_size", 	NULL,   0,0,1000,Local_pad_size),
   LNOPT_U32  ( "full_unroll", 	        "fu",   0,0,100,Full_unrolling),
 #ifdef KEY

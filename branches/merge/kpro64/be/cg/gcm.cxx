@@ -1,6 +1,10 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -92,6 +96,9 @@
 #include "cg_loop.h"
 #include "pf_cg.h"
 #include "targ_proc_properties.h"
+#ifdef TARG_X8664
+#include "lra.h"
+#endif
 
 // cgdriver flags variabes 
 BOOL GCM_POST_Spec_Loads = TRUE;
@@ -103,6 +110,10 @@ BOOL CG_Skip_GCM = FALSE;
 INT32 GCM_From_BB = -1;
 INT32 GCM_To_BB = -1;
 INT32 GCM_Result_TN = -1;
+#ifdef KEY
+INT32 GCM_BB_Limit = -1;
+INT32 cumulative_cand_bb;
+#endif
 
 // Internal state flags to store speculative information
 #define SPEC_NONE		0x00	// no speculative motion
@@ -197,9 +208,22 @@ static INT cur_pc = 0; // to hold the pc- value
 static INT
 sort_by_bb_frequency (const void *bb1, const void *bb2)
 {
+#ifdef KEY
+  const BB* A = *(BB**)bb1;  
+  const BB* B = *(BB**)bb2;
+
+  if( BB_freq(A) > BB_freq(B) )
+    return -1;
+  if( BB_freq(A) < BB_freq(B) )
+    return 1;
+
+  return BB_id(A) < BB_id(B) ? -1 : 1;
+
+#else
   if (BB_freq((BB *)bb1) > BB_freq((BB *)bb2)) return 1;
-  else if (BB_freq((BB *)bb1) < BB_freq((BB *)bb2)) return -1;
+  else if (BB_freq((BB *)bb1) < BB_freq((BB *)bb2)) return -1;  
   else return 0;
+#endif
 }
 
 // =======================================================================
@@ -256,7 +280,7 @@ Is_BB_Empty (BB *bb)
 static void
 Print_Trace_File(OP *cand_op, BB *src_bb, BB *cand_bb, BOOL success)
 {
-  char *str = (success) ? "SUCCESS" : "FAIL";
+  const char *str = (success) ? "SUCCESS" : "FAIL";
   fprintf (TFile, "%s_GCM(%s): MOVE ",Ignore_TN_Dep ? "POST":"PRE",str);
   Print_OP_No_SrcLine (cand_op);
   fprintf (TFile,"	FROM BB:%d => TO BB:%d:\n", 
@@ -336,6 +360,15 @@ OP_Offset_Within_Limit(OP *mem_op1, OP *mem_op2, INT lower_bound,
   return FALSE;
 }
 
+// Bug 8298: Split_BB() splits a basic block into blocks that are 
+// (approximately) half or 3/4-th the Split_BB_Length value in 
+// length each. Hence we do a (/2) - as the more conservative of the
+// two divisions. We retain the (- 60).
+
+#define Large_BB(bb, loop) \
+        (LOOP_DESCR_nestlevel((loop)) == 0 && \
+        BB_length((bb)) >= (Split_BB_Length/2 - 60))
+
 // =======================================================================
 // Check_If_Ignore_BB
 // Placeholder for all compile speed heuristics. If any of heuristics 
@@ -350,7 +383,11 @@ Check_If_Ignore_BB(BB *bb, LOOP_DESCR *loop)
 
   // Avoid processing large blocks which are not part of any loop. We
   // expect that HBS would have come up with a good schedule.
+#ifdef TARG_IA64
   if (LOOP_DESCR_nestlevel(loop) == 0 && BB_length(bb) >= (Split_BB_Length - 60))
+#else
+  if (Large_BB(bb, loop))
+#endif
     return TRUE;
 
 #if 0
@@ -456,6 +493,15 @@ static BOOL
 OP_Has_Restrictions(OP *op, BB *source_bb, BB *target_bb, mINT32 motion_type)
 {
   if (CGTARG_Is_OP_Intrinsic(op)) return TRUE;
+
+#ifdef TARG_X8664
+  if( OP_icmp(op) )
+    return TRUE;
+
+  if( TOP_is_change_rflags( OP_code(op) ) ||
+      OP_reads_rflags( op ) )
+    return TRUE;
+#endif
 
   if (OP_has_hazard(op)) return TRUE;
 
@@ -565,6 +611,36 @@ OP_Has_Restrictions(OP *op, BB *source_bb, BB *target_bb, mINT32 motion_type)
       return TRUE;
   }
 
+#ifdef TARG_X8664
+  // If OP must use or define a specific real register, then don't move it in
+  // order to avoid possible conflicts with OPs in the target BB which also use
+  // that real register.  For example, for the candidate OP "TN105 = ld32_m",
+  // which writes to %rax, and this target BB:
+  //
+  //		  call		; returns value in %rax
+  //  target_BB:  TN100 = %rax	; existing OP in target_bb which also uses %rax
+  //		  jne		; xfer_op
+  //
+  // During the GCM_BEFORE_GRA pass, if GCM moves ld32_m to target_BB, GCM
+  // would insert it before "TN100 = %rax", giving bad code since ld32_m kills
+  // the previous %rax value.  Bug 9466.
+  ASM_OP_ANNOT* asm_info = (OP_code(op) == TOP_asm) ?
+    (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, op) : NULL;
+
+  for (int i = 0; i < OP_opnds(op); i++) {
+    ISA_REGISTER_SUBCLASS subclass = asm_info ?
+      ASM_OP_opnd_subclass(asm_info)[i] : OP_opnd_reg_subclass(op, i);
+    if (Single_Register_Subclass(subclass) != REGISTER_UNDEFINED)
+      return TRUE;
+  }
+  for (int i = 0; i < OP_results(op); i++) {
+    ISA_REGISTER_SUBCLASS subclass = asm_info ?
+      ASM_OP_result_subclass(asm_info)[i] : OP_result_reg_subclass(op, i);
+    if (Single_Register_Subclass(subclass) != REGISTER_UNDEFINED)
+      return TRUE;
+  }
+#endif
+
   return FALSE;
 }
 
@@ -660,7 +736,11 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
   INT dbase_num = TOP_Find_Operand_Use(OP_code(deref_op), OU_base);
   INT doffset_num = TOP_Find_Operand_Use(OP_code(deref_op), OU_offset);
 
+#ifdef KEY
+  deref_base_tn = dbase_num >= 0 ? OP_opnd(deref_op, dbase_num) : NULL;
+#else
   deref_base_tn = OP_opnd(deref_op, dbase_num);
+#endif // KEY
 
   for (cur_op = (forw) ? BB_last_op(dest_bb) : BB_first_op(dest_bb);
        cur_op && cur_op != limit_op;
@@ -675,7 +755,11 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
       INT cbase_num = TOP_Find_Operand_Use(OP_code(cur_op), OU_base);
       INT coffset_num = TOP_Find_Operand_Use(OP_code(cur_op), OU_offset);
 
+#ifdef KEY
+      TN *cur_base_tn = cbase_num >= 0 ? OP_opnd(cur_op, cbase_num) : NULL;
+#else
       TN *cur_base_tn = OP_opnd(cur_op, cbase_num);
+#endif // KEY
       TN *cur_result_tn = OP_load(cur_op) ? OP_result(cur_op, 0) : NULL;
 
       if (!Similar_Ptr_Addrs_Match(cur_op, deref_op)) {
@@ -687,7 +771,10 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
 	  } else {
 	    // Need to check if the OP doesn;t modify the base.
 
-	    BOOL modifies_base = cur_result_tn && 
+	    BOOL modifies_base = cur_result_tn &&
+#ifdef KEY
+	      ( cur_base_tn != NULL ) &&
+#endif // KEY
 	      TNs_Are_Equivalent(cur_result_tn, cur_base_tn);
 
 	    if (!modifies_base && 
@@ -708,6 +795,7 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
     // if the memory reference is being modified by this <op>, removed it 
     // from the list of valid memory references.
 
+#ifdef TARG_IA64
     BOOL base_redef = FALSE;
     for (INT i = 0; i < OP_results(cur_op); ++i) {
       TN *result = OP_result(cur_op,i);
@@ -729,6 +817,34 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
       valid_addrs_found = FALSE;
       break;
     }
+#else // TARG_IA64
+#ifdef KEY
+    if( deref_base_tn != NULL )
+#endif // KEY
+      {
+	BOOL base_redef = FALSE;
+	for (INT i = 0; i < OP_results(cur_op); ++i) {
+	  TN *result = OP_result(cur_op,i);
+	  if (Ignore_TN_Dep) {
+	    REGISTER result_reg = TN_register(result);
+
+	    // If there was a previous update of <result_reg>, remove it.
+	    // Sometimes, this may be the first occurence of <result_reg>, so
+	    // discontinue further.
+	    if (result_reg == TN_register(deref_base_tn)) 
+	      base_redef = TRUE;
+	  } else {
+	    if (TNs_Are_Equivalent(result, deref_base_tn)) base_redef = TRUE;
+	  }
+	}
+	
+	// No need to look further if there exists a base redef.
+	if (base_redef) {
+	  valid_addrs_found = FALSE;
+	  break;
+	}
+      }
+#endif
 
     // use CG_DEP_Call_Aliases interface to determine if the
     // deref_op is being read/write in the called procedure. uses info
@@ -829,11 +945,21 @@ Null_Ptr_Deref_Spec(OP *deref_op, BB *src, BB *dest)
 	if (!taken_path) return FALSE;
   }
 
+#ifdef TARG_X8664
+  const int base_idx = TOP_Find_Operand_Use( OP_code(deref_op),OU_base );
+  if( base_idx < 0 )
+    return FALSE;
+  TN* base_tn = OP_opnd( deref_op, base_idx );
+  TN* offset_tn = OP_opnd( deref_op,
+			   TOP_Find_Operand_Use( OP_code(deref_op),OU_offset ) );
+#else
+  // !TARG_X8664
   TN *base_tn = OP_load(deref_op) ? OP_opnd(deref_op, 0) : 
 				    OP_opnd(deref_op, 1);
 
   TN *offset_tn = OP_load(deref_op) ? OP_opnd(deref_op, 1): 
 				      OP_opnd(deref_op, 2);
+#endif  // TARG_X8664
 
   // TODO: actually, any positive constant offsets which fit into page 
   // boundary can be considered
@@ -880,6 +1006,30 @@ Can_Mem_Op_Be_Moved(OP *mem_op, BB *cur_bb, BB *src_bb, BB *dest_bb,
     if (OP_store(mem_op)) 
 	return FALSE;
   }
+
+#ifdef TARG_X8664
+  /* Do not allow a load operation under -mcmodel=medium to across a
+     call, since such load will overwrite %rax that holds the return value.
+     (bug#2419)
+
+     TODO ???:
+     The right fix should be done inside OP_To_Move(), but <failed_reg_defs>
+     is not updated if an op has restrictions.
+   */
+  if( mcmodel >= MEDIUM &&
+      !Ignore_TN_Dep    &&
+      forw ){
+    BB* prev = BB_prev( src_bb );
+
+    if( prev != NULL &&
+	BB_call( prev ) ){
+      const TOP top = OP_code(mem_op);
+      if( top == TOP_ld8_m  || top == TOP_ld16_m ||
+	  top == TOP_ld32_m || top == TOP_ld64_m )
+	return FALSE;
+    }
+  }
+#endif
 
   // volatile ops shouldn't be touched at all
   if (OP_volatile(mem_op)) return FALSE;
@@ -929,8 +1079,17 @@ Can_Mem_Op_Be_Moved(OP *mem_op, BB *cur_bb, BB *src_bb, BB *dest_bb,
       } else continue;
     }
     
-    if (OP_memory(cur_op)) {
+    if (OP_memory(cur_op) 
+#ifdef TARG_X8664
+	|| OP_load_exe(cur_op)
+#endif
+	) {
+#ifdef TARG_X8664
+      read_read_dep = ( OP_load(cur_op) || OP_load_exe(cur_op) ) &&
+	( OP_load(mem_op) || OP_load_exe(mem_op) );
+#else
       read_read_dep = OP_load(cur_op) && OP_load(mem_op);
+#endif
 
       // No need to process read-read memory dependences
       if (!read_read_dep &&
@@ -1359,11 +1518,13 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 	     safe_spec = TRUE;
 	     Set_EAGER_PTR_SPEC(*spec_type);
 	   }
+#ifndef TARG_MIPS
 	   else if (GCM_Speculative_Loads && Is_Target_Itanium() &&
 		    OP_load(cur_op)) {
 	     safe_spec = TRUE;
 	     Set_CSAFE_PTR_SPEC(*spec_type);
 	   }
+#endif
 	 }
 
 	 // Check for any NULL ptr speculation cases (MIPS only).
@@ -1382,7 +1543,30 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 
    // If memory_op and either it's safe to speculate or has been proven to
    // be safe, by other safety tests, then proceed further.
+#ifdef TARG_X8664
+   BOOL op_access_mem = OP_memory(cur_op) || OP_load_exe(cur_op);
+
+   /* bug#1470
+      An asm instruction could access memory also.
+    */
+   if( !op_access_mem &&
+       OP_code(cur_op) == TOP_asm ){
+     ASM_OP_ANNOT* asm_info = (ASM_OP_ANNOT*)OP_MAP_Get(OP_Asm_Map, cur_op);
+     for( int i = 0; i < OP_results(cur_op); i++ ){
+       if( ASM_OP_result_memory(asm_info)[i] )
+	 op_access_mem = TRUE;
+     }
+
+     for( int i = 0; i < OP_opnds(cur_op); i++ ){
+       if( ASM_OP_opnd_memory(asm_info)[i] )
+	 op_access_mem = TRUE;
+     }     
+   }
+
+   if (op_access_mem && (can_spec || safe_spec)) {
+#else
    if (OP_memory(cur_op) && (can_spec || safe_spec)) {
+#endif // TARG_X8664
      
      FOR_ALL_BB_SET_members (*pred_bbs, cur_bb) {
      
@@ -1473,7 +1657,17 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 		   // REAL FIX: To interactively update REG_LIVE sets.
 
 		   (TN_is_global_reg(result) &&
-		    GTN_SET_MemberP(BB_live_in(succ_bb), result)))
+		    GTN_SET_MemberP(BB_live_in(succ_bb), result))
+
+#ifdef KEY	   // Continue the above workaround for #776729.  Check
+		   // liveness for assigned registers since they are globals
+		   // too.  Bug 8726.
+		   || (result_reg != REGISTER_UNDEFINED &&
+		       GTN_SET_MemberP(BB_live_in(succ_bb),
+				       Build_Dedicated_TN(result_cl,
+							  result_reg, 0)))
+#endif
+		   )
 		 return FALSE;
 	     } else {
 	       if (TN_is_global_reg(result) &&
@@ -2003,6 +2197,16 @@ Determine_Candidate_Blocks(BB *bb, LOOP_DESCR *loop, mINT32 motion_type,
     BOOL equiv_fwd  = 	BS_MemberP (BB_pdom_set(cand_bb), BB_id(bb)) &&
 			BS_MemberP (BB_dom_set(bb), BB_id(cand_bb));
 
+#ifdef KEY
+    /* Fix for bug#1406
+       Although <cand_bb> dominates <bb>, and <bb> post-dominates <cand_bb>,
+       it does not mean they are really equivalent, if <cand_bb> has two branches,
+       and one lead to another loop.
+       Should we fix up <equiv_bkwd> here ???
+     */
+    equiv_fwd = equiv_fwd && BB_Has_One_Succ( cand_bb );
+#endif
+
     BOOL equiv = equiv_fwd && equiv_bkwd;
 
     // don't try candidate blocks that are above/below a frequency threshold
@@ -2140,6 +2344,15 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
 	if (GCM_Loop_Prolog == NULL) {
 	  GCM_Loop_Prolog = CG_LOOP_Gen_And_Prepend_To_Prolog(bb, loop);
 	  GRA_LIVE_Compute_Liveness_For_BB(GCM_Loop_Prolog);
+#ifdef KEY
+	  // Need to update register liveness info for newly generated blocks.
+	  // There is no procedure to copy liveness info from one block to 
+	  // another. Better run REG_LIVE_Analyze_Region once.
+	  if (Ignore_TN_Dep) {
+	    REG_LIVE_Finish();
+	    REG_LIVE_Analyze_Region();
+	  }
+#endif	
 	  if (Trace_GCM) {
 #pragma mips_frequency_hint NEVER
 	    fprintf (TFile, "GCM: Circular Motion:\n");
@@ -2200,7 +2413,6 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
 
       // Update GRA_LIVE sets for pre-GCM phase.
       if (!Ignore_TN_Dep) Update_GRA_Live_Sets(cand_op, bb, cand_bb, pred_bbs);
-	
       // since the motion was successful, need to update the info
       // dynamically.
       if (bbsch && cand_bbsch) {
@@ -2230,8 +2442,10 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
 	    // indexed load/store prefx
 	    INT offset_opndnum = Memory_OP_Offset_Opndnum (succ_op);
 	    INT base_opndnum = Memory_OP_Base_Opndnum (succ_op);
+#ifdef TARG_X8664
+	    FmtAssert( base_opndnum >= 0, ("NYI") );
+#endif
 	    if (TN_has_value(OP_opnd(succ_op, offset_opndnum))) {
-	      
 	      if ((Ignore_TN_Dep && 
 		   (TN_register(OP_opnd(succ_op, base_opndnum)) == 
 		    TN_register(OP_result(cand_op,0 /*???*/)))) ||
@@ -2249,6 +2463,9 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
       INT offset_opndnum = Memory_OP_Offset_Opndnum (cand_op);
       if (TN_has_value(OP_opnd(cand_op, offset_opndnum))) {
 	INT base_opndnum = Memory_OP_Base_Opndnum (cand_op);
+#ifdef TARG_X8664
+	FmtAssert( base_opndnum >= 0, ("NYI") );
+#endif
 	OP *succ_op;
 	for (succ_op= OP_next(cand_op); 
 	     succ_op != NULL; 
@@ -2331,6 +2548,10 @@ OP_To_Move (BB *bb, BB *tgt_bb, BB_SET **pred_bbs, mINT32 motion_type, mUINT8 *s
 
     // don't consider dummy or transfer ops
     if (OP_xfer(cur_op) || OP_noop(cur_op)) continue;
+
+#ifdef KEY // bug 4850
+    if (CGTARG_Is_OP_Barrier(cur_op)) continue;
+#endif
 
     // All real OPs and some dummy OPs which have real operands/results.
     // typo?: if (OP_Real_Ops(cur_op) != 1 || OP_Real_Ops(cur_op) != 0) {
@@ -2496,7 +2717,9 @@ Adjust_Qualifying_Predicate(OP *cand_op, BB *src_bb, BB *tgt_bb,
 	TN *tn1, *tn2;
 	OP *cmp;
 	CGTARG_Analyze_Compare(tgt_br_op, &tn1, &tn2, &cmp);
+#ifdef TARG_IA64
         Remove_Explicit_Branch(tgt_bb);
+#endif
 	BOOL fall_thru = BB_Fall_Thru_Successor(tgt_bb) == src_bb;
 	
 	// If <!fall_through> set the predicate of <cand_op> to the
@@ -2558,6 +2781,12 @@ Append_Op_To_BB(OP *cand_op, BB *cand_bb, BB *src_bb,
   else 
     limit_op = BB_xfer_op(cand_bb);
 
+#ifdef TARG_X8664
+  if( limit_op != NULL && OP_cond( limit_op ) ){
+    FmtAssert( !TOP_is_change_rflags(OP_code(cand_op)), ("cand_op modifies rflags") );
+  }
+#endif
+
   // Insert before the <limit_op> or just append it.
   if (limit_op) 
     BB_Insert_Op_Before (cand_bb, limit_op, cand_op);
@@ -2585,7 +2814,9 @@ Adjust_BBSCH (OP *cand_op, BB *cand_bb, BB *bb,
     if (!TN_is_global_reg(result_tn)) {
       BBSCH_global_regcost(new_cand_bbsch)++;
       BBSCH_global_regcost(new_bbsch)++;
+#ifndef TARG_MIPS
       BBSCH_local_regcost(new_bbsch)--; 
+#endif
     } else {
       BBSCH_global_regcost(new_cand_bbsch)++;
       BBSCH_global_regcost(new_bbsch)--;
@@ -2600,7 +2831,9 @@ Adjust_BBSCH (OP *cand_op, BB *cand_bb, BB *bb,
     if (TN_is_global_reg(opnd_tn)) {
       if (!GTN_SET_MemberP(BB_live_out(cand_bb), opnd_tn)) {
 	BBSCH_global_regcost(new_cand_bbsch)--;
+#ifndef TARG_MIPS
 	BBSCH_local_regcost(new_cand_bbsch)++;
+#endif
       }
       if (!GTN_SET_MemberP(BB_live_out(bb), opnd_tn))
 	BBSCH_global_regcost(new_bbsch)--;
@@ -2730,11 +2963,21 @@ Is_Schedule_Worse(BB *bb, BB *cand_bb, BBSCH *new_bbsch,
       UINT8 delta_from = new_from_regcost[i] - old_from_regcost[i];
       UINT8 delta_to = new_to_regcost[i] - old_to_regcost[i];
 
+#ifdef KEY
+      // Implementing the TODO: need to consider register class and 
+      // consider costs separately for each class
+      improve_reg_pressure =  improve_reg_pressure &&
+	(old_from_regcost[i] <= REGISTER_CLASS_info[i].register_count &&
+	 old_to_regcost[i] <= REGISTER_CLASS_info[i].register_count &&
+	 ((old_from_regcost[i] + delta_from) <= REGISTER_CLASS_info[i].register_count) &&
+	 ((old_to_regcost[i] + delta_to) <= REGISTER_CLASS_info[i].register_count));
+#else
       improve_reg_pressure =  improve_reg_pressure &&
 	(old_from_regcost[i] <= REGISTER_MAX &&
 	 old_to_regcost[i] <= REGISTER_MAX &&
 	 ((old_from_regcost[i] + delta_from) <= REGISTER_MAX) &&
 	 ((old_to_regcost[i] + delta_to) <= REGISTER_MAX));
+#endif
     }
   }
 
@@ -2967,6 +3210,9 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
         BB_SET *pred_bbs = NULL;
 	BB *cand_bb = (BB *)VECTOR_element(cand_bbvector, j);
 
+        if (Large_BB(cand_bb, loop))
+           continue;
+
 	if (CG_Skip_GCM) {
 	  if (BB_id(bb) == GCM_From_BB && (GCM_To_BB < 0))
 	    continue;
@@ -2977,6 +3223,13 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
 	}
 	  
         if (cand_bb_limit-- <= 0) break;
+
+#ifdef KEY
+	// Consider at most GCM_BB_Limit number of candidate bb's.
+	if (GCM_BB_Limit != -1 &&
+	    cumulative_cand_bb++ >= GCM_BB_Limit)
+	  break;
+#endif
 
   	/* don't make the target basic block too large. */
   	if (BB_length(cand_bb) >= (Split_BB_Length - 50)) continue;
@@ -3088,6 +3341,15 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
 
 	    Set_BB_SCHEDULE(bbsch);
 	    Set_BB_SCHEDULE(cand_bbsch);
+#ifdef KEY
+	    // Due to the way the control is organized, it is possible that
+	    // the bb, and cand_bb never get scheduled again.
+	    // see compilation of gcc.c-torture/compile/950922-1.c
+	    // There is no harm in re-scheduling because these are the schedule info that
+	    // is latest and is going to be passed around to other modules.
+	    bbsch = Schedule_BB_For_GCM (bb, from_hbs_type, &Sched);
+	    cand_bbsch = Schedule_BB_For_GCM (cand_bb, to_hbs_type, &Sched);
+#endif
 	  }
 	  else {
 	    num_moves++;
@@ -3130,7 +3392,6 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
   if (Sched) {
 	CXX_DELETE(Sched, &MEM_local_pool);
   }
-
   L_Free();
 
   return num_moves;
@@ -3178,6 +3439,10 @@ void GCM_Schedule_Region (HBS_TYPE hbs_type)
 
     if (!GCM_POST_Enable_Scheduling) return;
   }
+
+#ifdef KEY
+  cumulative_cand_bb = 0;
+#endif
 
   if (Trace_GCM) {
     #pragma mips_frequency_hint NEVER

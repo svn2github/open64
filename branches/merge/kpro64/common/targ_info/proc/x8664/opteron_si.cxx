@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,9 +48,9 @@
 ///////////////////////////////////////////////////////////////////
 
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
+//  $Revision: 1.146 $
+//  $Date: 05/11/10 18:45:11-08:00 $
+//  $Author: tkong@hyalite.keyresearch $
 
 
 #include "si_gen.h"
@@ -136,6 +136,14 @@ int main (int argc, char *argv[])
 		     TOP_rori16,
 		     TOP_rori32,
 		     TOP_rori64,
+		     TOP_rol8,
+		     TOP_rol16,
+		     TOP_rol32,
+		     TOP_rol64,
+		     TOP_roli8,
+		     TOP_roli16,
+		     TOP_roli32,
+		     TOP_roli64,
 		     TOP_sar32,
 		     TOP_sar64,
 		     TOP_sari32,
@@ -193,6 +201,7 @@ int main (int argc, char *argv[])
 		     TOP_movswq,
 		     TOP_movzwq,
 		     TOP_movslq,
+		     TOP_movzlq,
 		     TOP_ldc32,
 		     TOP_ldc64,
 		     TOP_movabsq,
@@ -200,6 +209,8 @@ int main (int argc, char *argv[])
 		     TOP_cqto,
 		     TOP_bsf32, // guess!
 		     TOP_bsf64, // guess!
+		     TOP_bsr32, // guess!
+		     TOP_bsr64, // guess!
 		     TOP_mov64_m,
 		     TOP_cmpeqss,
 		     TOP_cmpltss,
@@ -507,6 +518,7 @@ int main (int argc, char *argv[])
 		    TOP_ld32_m,
 		    TOP_ld64_m,		    
 		    TOP_ld64_2m,
+		    TOP_ld64_2m_n32,
 		    TOP_pmovmskb,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
@@ -542,6 +554,7 @@ int main (int argc, char *argv[])
 		    TOP_store32_m,
 		    TOP_store64_m,
 		    TOP_store64_fm,
+		    TOP_store64_fm_n32,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(3);
@@ -719,6 +732,7 @@ int main (int argc, char *argv[])
 		     TOP_sthpd_n32,
 		     TOP_sthpdx,
 		     TOP_sthpdxx,
+		     TOP_storelpd,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4);
@@ -785,6 +799,7 @@ int main (int argc, char *argv[])
 		     TOP_stapd_n32,
 		     TOP_stapdx,
 		     TOP_stapdxx,
+		     TOP_storenti128,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(3);
@@ -1125,6 +1140,20 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fmul, 0);
 
+  Instruction_Group("x87 cosine",
+		    TOP_fcos,
+		    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(92);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group("x87 sine",
+		    TOP_fsin,
+		    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(93);
+  Resource_Requirement(res_issue, 0);
+
   Instruction_Group("float-alu for float vector class IV w/ memory operand",
 		    TOP_fdivx128v32,
 		    TOP_fdivxx128v32,
@@ -1260,9 +1289,27 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fadd, 0);
 
+  Instruction_Group("mmx shuffle",
+                    TOP_pshufw64v16,
+                    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_fmul, 0);
+
   Instruction_Group("float-alu for float vector class XIII",
 		    TOP_psrldq,
+		    TOP_psrlq128v64,
+		    TOP_pslldq,
+		    TOP_psllw,
+		    TOP_pslld,
+		    TOP_psllq,
+		    TOP_psrlw,
+		    TOP_psrld,
 		    TOP_psrlq,
+		    TOP_psraw,
+		    TOP_psrad,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
@@ -1649,6 +1696,20 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group("mov-int-2-mmx",
+                    TOP_movi32_2m,
+                    TOP_movi64_2m,
+                    TOP_UNDEFINED);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group("mov-mmx-2-int",
+                    TOP_movm_2i32,
+                    TOP_movm_2i64,
+                    TOP_UNDEFINED);
+  Any_Result_Available_Time(4);
+  Resource_Requirement(res_issue, 0);
 
   Instruction_Group("dummy",
 		    TOP_asm,

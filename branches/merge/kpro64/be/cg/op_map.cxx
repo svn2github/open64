@@ -1,6 +1,10 @@
 /*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -441,10 +445,12 @@ void OP_MAP_Delete(OP_MAP map)
   free_maps = map;
 }
 
+#ifdef TARG_IA64
 BOOL OP_MAP_Is_Delete(OP_MAP map)
 {
    return map->kind == _DELETED;
 }
+#endif
 
 void OP_MAP_Set(OP_MAP map, OP *op, void *value)
 {
@@ -517,7 +523,11 @@ BB_OP_MAP BB_OP_MAP_Create_Kind(BB *bb, MEM_POOL *pool, _OP_MAP_KIND kind)
 {
   INT32 size;
   BB_OP_MAP new_map = TYPE_MEM_POOL_ALLOC(struct bb_op_map, pool);
+#ifdef TARG_IA64
   INT32 nelem = BB_next_op_map_idx(bb) + 20;
+#else
+  INT32 nelem = BB_next_op_map_idx(bb);
+#endif
 
   new_map->bb = bb;
   new_map->kind = kind;

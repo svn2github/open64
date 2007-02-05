@@ -1,6 +1,14 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -51,9 +59,9 @@
 //
 // =======================================================================
 // =======================================================================
+
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-
 #include <alloca.h>
 #include <math.h>
 #include "defs.h"
@@ -89,8 +97,10 @@
 #include "hb_hazards.h"
 #include "targ_proc_properties.h"
 
+#ifdef TARG_IA64
 #include "bb.h"
 #include "op.h"
+#endif
 
 // ======================================================================
 // IGLS_Schedule_Region 
@@ -131,7 +141,7 @@ IGLS_Schedule_Region (BOOL before_regalloc)
   HB_Schedule *Sched = NULL;
   CG_THR      *thr = NULL;
 
-  Set_Error_Phase ("Hyberlock Scheduler");
+  Set_Error_Phase ("Hyperlock Scheduler");
   Start_Timer (T_Sched_CU);
   Trace_HB = Get_Trace (TP_SCHED, 1);
   should_we_schedule = IGLS_Enable_All_Scheduling;
@@ -320,12 +330,14 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 	should_we_global_schedule) {
 	Stop_Timer (T_Sched_CU);
 
-        GCM_Schedule_Region (hbs_type);
+ 	GCM_Schedule_Region (hbs_type);
 
         Set_Error_Phase ("Hyperblock Scheduler (HBS)");
 	Start_Timer (T_Sched_CU);
     }
 
+    // Do local scheduling for BBs which are not part of HBs. 
+    // (after register allocation).
     for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
       if (    ( rid = BB_rid(bb) )
 	      && ( RID_level(rid) >= RL_CGSCHED ) )
@@ -335,17 +347,22 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 
       if (should_we_do_thr && !skip_bb) Remove_Unnecessary_Check_Instrs(bb);
 
-      BOOL resched = !skip_bb && Reschedule_BB(bb); /* FALSE; */
-
-      //If we don't do IPFEC post_locals schedule,
-      //we must reset the flags of ops and bbs.
+#ifdef KEY_1873
+      /* The original code with Reschedule_BB is meanlingless. I think the original
+	 author meant BB_scheduled(bb), not Reschedule_BB(bb).
+      */
+      const BOOL resched = FALSE;
+#else
+      BOOL resched = !skip_bb && Reschedule_BB(bb); /* FALSE; */      
+#endif // KEY
       if (should_we_schedule && should_we_local_schedule &&
 	  (!skip_bb || resched)) {
 
+#ifdef TARG_IA64
         extern void Clean_Up (BB* bb);
         Clean_Up(bb); 
         Reset_BB_scheduled(bb);  
-  
+#endif  
   	// TODO: try locs_type = LOCS_DEPTH_FIRST also.
 	INT32 max_sched = (resched) ?  OP_scycle(BB_last_op(bb))+1 : INT32_MAX;
 	if (LOCS_Enable_Scheduling) {
@@ -358,6 +375,13 @@ IGLS_Schedule_Region (BOOL before_regalloc)
       }
       Handle_All_Hazards (bb);
     } /* for (bb= REGION_First_BB).. */
+
+#ifdef TARG_X8664
+    {
+      extern void CG_Sched( MEM_POOL*, BOOL );
+      CG_Sched( &MEM_local_pool, Get_Trace( TP_SCHED, 1 ) );
+    }
+#endif
 
     // Do branch optimizations here.
     if (should_we_schedule && should_we_local_schedule) {
@@ -374,7 +398,6 @@ IGLS_Schedule_Region (BOOL before_regalloc)
   if (thr) {
 	CXX_DELETE(thr, &MEM_local_pool);
   }
-
   L_Free();
    
  Check_for_Dump (TP_SCHED, NULL);

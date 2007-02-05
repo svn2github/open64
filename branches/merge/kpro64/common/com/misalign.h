@@ -63,7 +63,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *misalign_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/misalign.h,v $ $Revision: 1.1.1.1 $";
+static char *misalign_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 /* Misalignment models -- see memmodel.h for global defaults: */

@@ -1,6 +1,10 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -228,6 +232,9 @@ protected:
   BB* _curbb;
   std::list<BB*> _curbb_list;
   OP *_best_op;
+#ifdef KEY
+  OP* _last_sched_op;
+#endif
   HB_Schedule *_cur_sched;
   MEM_POOL *_pool; 
   HBS_TYPE _hbs_type;
@@ -236,9 +243,17 @@ protected:
 public:
   // Constructor/destructor:
   Priority_Selector(std::list<BB*> bblist, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool) 
-   { _curbb_list = bblist; _cur_sched = sched; _hbs_type = type; _pool = pool; }
+    { _curbb_list = bblist; _cur_sched = sched; _hbs_type = type; _pool = pool;
+#ifdef KEY
+    _last_sched_op = NULL;
+#endif // KEY
+    }
   Priority_Selector(BB* bb, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool) 
-   { _curbb = bb; _cur_sched = sched; _hbs_type = type; _pool = pool; }
+    { _curbb = bb; _cur_sched = sched; _hbs_type = type; _pool = pool;
+#ifdef KEY
+    _last_sched_op = NULL;
+#endif // KEY    
+    }
   ~Priority_Selector() {}
 
   // Tracing:
@@ -253,6 +268,9 @@ public:
     _curbb = p._curbb; 
     _curbb_list = p._curbb_list; 
     _best_op = p._best_op;
+#ifdef KEY
+    _last_sched_op = p._last_sched_op;
+#endif
   }
 
   // Iterator functions:
@@ -262,6 +280,9 @@ public:
 
   // utility functions:
   void Add_Element_Sorted(VECTOR vector, void* element, VECTOR_ELEMENT_COMPARE comp_func);
+#ifdef KEY
+  int Sched_OP_With_Preallocated_TN(OP *op);
+#endif
 
   // Extraneous functions:
   OP* Select_OP_For_Delay_Slot(OP*);
@@ -431,6 +452,9 @@ private:
   void Put_Sched_Vector_Into_HB (std::list<BB*>&);
   void Add_OP_To_Sched_Vector (OP*, BOOL);
   void Adjust_Ldst_Offsets (void);
+#ifdef KEY
+  void Adjust_Ldst_Offsets (BOOL is_fwd);
+#endif
   void Init_Register_Map (BB*);
   void Init_RFlag_Table (std::list<BB*>&, BOOL);
   void Update_Regs_For_OP (OP*);

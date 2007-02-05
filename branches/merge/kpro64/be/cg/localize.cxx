@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -251,7 +255,11 @@ Localize_Global_Return_Reg (BB *current_bb, TN *ret_tn)
 extern void
 Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 {
-	INT regnum = REGISTER_machine_id(TN_register_class(tn), TN_register(tn));
+	INT regnum = REGISTER_machine_id(TN_register_class(tn), TN_register(tn))
+#ifdef TARG_X8664
+	    	+ Int_Preg_Min_Offset
+#endif
+	    ;
 	BOOL is_func_arg;
 	BOOL is_func_retval;
 
@@ -303,7 +311,13 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 	{
 		/* save of slink */
 	}
+#ifdef TARG_X8664
+	else if (regnum==RAX && def && BB_call(current_bb)) {
+	    	/* RAX is used to pass number of SSE regs used */
+	}
+#endif
 	else if (is_func_arg || is_func_retval) {
+#ifdef TARG_IA64
                 if (def && is_func_arg && BB_call(current_bb)) {
                     goto okay;
 		}	// okay
@@ -378,6 +392,106 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 	} 
 
 okay:
+#else  // TARG_IA64
+	if (def && is_func_arg && BB_call(current_bb))
+	  ;// okay
+	else if (def && is_func_retval && BB_exit(current_bb))
+	  ;// okay
+#if defined(TARG_IA32)
+	else if (def && is_func_retval && BB_asm(current_bb))
+	  ;// okay
+#endif // TARG_IA32
+#ifdef TARG_X8664
+	/* An inline asm could read whatever it wants (bug#3059,3257). */
+	else if (BB_asm(current_bb))
+	  ;// okay
+	/* An inline asm could write whatever it wants (bug#3059). */
+	else if (!def && is_func_arg
+		 && BB_prev(current_bb) != NULL 
+		 && BB_asm(BB_prev(current_bb)))
+	  ;// okay
+#endif // TARG_X8664
+	else if (def && is_func_arg && BB_asm(current_bb))
+	  ;// okay
+	else if (def && is_func_retval && BB_call(current_bb)
+		 && RETURN_INFO_return_via_first_arg(Get_Return_Info(
+								     TY_ret_type(ST_pu_type(CALLINFO_call_st(
+													     ANNOT_callinfo(ANNOT_Get(
+																      BB_annotations(current_bb),ANNOT_CALLINFO)) ))),
+								       No_Simulated
+#ifdef TARG_X8664
+								     , PU_ff2c_abi(Pu_Table[ST_pu(CALLINFO_call_st(
+														   ANNOT_callinfo(ANNOT_Get(
+																	    BB_annotations(current_bb),ANNOT_CALLINFO)) ))])
+#endif
+								     ) ) )
+	  // can return via first arg in retval reg.
+	  ;// okay
+	else if (!def && is_func_retval && BB_entry(current_bb)
+		 && RETURN_INFO_return_via_first_arg(Get_Return_Info(
+								     TY_ret_type(PU_prototype(Get_Current_PU())), 
+								       No_Simulated
+#ifdef TARG_X8664
+								     , PU_ff2c_abi(Get_Current_PU())
+#endif
+								     ) ) )
+	  // can return via first arg in retval reg.
+	  ;// okay
+	// If arg and retval overlap,
+	// how do we distinguish between def before call
+	// and def before exit?
+	// Could combine the Param_ and Return_ routines,
+	// but instead we search to try and figure out which
+	// case it is.
+	else if (def && is_func_arg && is_func_retval
+		 && !BB_call(current_bb) && !BB_exit(current_bb)) 
+	  {
+	    if (BB_Is_Followed_By_Call (current_bb)) 
+	      Localize_Global_Param_Reg (current_bb, tn);
+	    else
+	      Localize_Global_Return_Reg_Def (current_bb, tn);
+	  }
+	else if (def && is_func_arg && !BB_call(current_bb)) {
+	  Localize_Global_Param_Reg (current_bb, tn);
+	} 
+	else if (def && is_func_retval && !BB_exit(current_bb)) {
+	  Localize_Global_Return_Reg_Def (current_bb, tn);
+	}
+	else if (!def && is_func_arg && BB_entry(current_bb)) 
+	  ;// okay
+#ifdef KEY
+	else if (!def && is_func_arg && BB_call(current_bb))
+	  ;// okay.  CSE might have replaced a use of a
+	// non-dedicated TN with a use of a param reg,
+	// bug 7219.
+#endif
+#ifdef TARG_X8664
+	else if (!def && regnum == RAX && BB_entry(current_bb)) 
+	  ;// okay because RAX gives number of xmm args
+	else if (!def && regnum == RDX &&
+		 BB_entry(current_bb) && BB_handler(current_bb))
+	  ;   // okay because RAX and RDX will be saved at the entry of a handler
+#endif
+	else if (!def && is_func_retval 
+		 && BB_prev(current_bb) != NULL 
+		 && BB_call(BB_prev(current_bb)))
+	  ;// okay
+	else if (!def && is_func_retval 
+		 && BB_prev(current_bb) != NULL 
+		 && BB_asm(BB_prev(current_bb)))
+	  ;// okay
+	else if (!def && is_func_retval
+		 && (BB_prev(current_bb) == NULL 
+		     || ! BB_call(BB_prev(current_bb)))) 
+	  {
+	    /* not after call, so must span bb's */
+	    Localize_Global_Return_Reg (current_bb, tn);
+	  }
+	else {
+	  FmtAssert (FALSE, ("use of param reg TN%d in bb %d is global", TN_number(tn), BB_id(current_bb)));
+	}
+} 
+#endif
 
 #ifdef HAS_STACKED_REGISTERS
 	// func_arg applies to formal args, 
@@ -531,10 +645,23 @@ Find_Global_TNs ( RID *rid )
             /* this use is just a copy of the def */
             continue;
 	  }
+#ifdef KEY
+	  /* Bug#931
+	     We cannot assume <op> has only one result. An extension
+	     of the previous checking.
+	   */
+	  if( OP_same_res(op) && OP_Defs_TN(op,tn) ){
+	    continue;
+	  }
+#endif
 	  if (OP_copy(op) && tn == OP_result(op,0)) {
             /* this use is just a self-copy, will disappear */
             continue;
 	  }
+#ifdef KEY
+	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
+          if (!OP_copy(op))
+#endif
           Check_If_Dedicated_TN_Is_Global (tn, bb, FALSE /*def*/);
         } else {
           Check_If_TN_Is_Global (tn, tn_in_bb, bb, FALSE /*def*/);
@@ -543,9 +670,13 @@ Find_Global_TNs ( RID *rid )
       /* process all the result TN */
       for (resnum = 0; resnum < OP_results(op); resnum++) {
         tn = OP_result(op, resnum);
-        if (TN_is_dedicated(tn))
+        if (TN_is_dedicated(tn)) {
+#ifdef KEY
+	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
+          if (!OP_copy(op))
+#endif
           Check_If_Dedicated_TN_Is_Global (tn, bb, TRUE /*def*/);
-        else {
+        } else {
           if (OP_cond_def(op)) {
             // cond_def is an implicit use
             Check_If_TN_Is_Global (tn, tn_in_bb, bb, FALSE /*def*/);
@@ -712,7 +843,15 @@ Insert_Spills_Of_Globals (void)
       /* process operand TNs first, so find uses before defs. */
       for (opndnum = 0; opndnum < OP_opnds(op); opndnum++) {
         tn = OP_opnd(op, opndnum);
-        if (tn != NULL && TN_is_global_reg(tn)) {
+        if (tn != NULL && TN_is_global_reg(tn)
+#ifdef KEY
+	    && !TN_is_dedicated(tn)
+#endif
+#ifdef TARG_X8664
+	    // Localize all if CG_localize_tns=1, else localize only floats.
+	    && (CG_localize_tns || TN_is_float(tn))
+#endif
+	    		) {
           tninfo = Get_Local_TN_For_Global (tn, spill_tns, bb, TRUE/*reuse*/);
           /* replace global tn with new local tn */
           Set_OP_opnd(op, opndnum, tninfo->local_tn);
@@ -730,7 +869,15 @@ Insert_Spills_Of_Globals (void)
       }
       for (resnum = 0; resnum < OP_results(op); resnum++) {
         tn = OP_result(op, resnum);
-        if (TN_is_global_reg(tn)) {
+        if (TN_is_global_reg(tn)
+#ifdef KEY
+	    && !TN_is_dedicated(tn)
+#endif
+#ifdef TARG_X8664
+	    // Localize all if CG_localize_tns=1, else localize only floats.
+	    && (CG_localize_tns || TN_is_float(tn))
+#endif
+	    		) {
           /* 
            * Each def of a global tn is given a new local tn,
            * unless it repeats the last def
@@ -1096,6 +1243,13 @@ Localize_or_Replace_Dedicated_TNs(void)
 
     FOR_ALL_BB_OPs (bb, op) {
 
+#ifdef TARG_X8664
+      /* Do not replace dedicated tn inside an inline asm. (bug#3067)
+       */
+      if( OP_code(op) == TOP_asm ){
+	continue;
+      }
+#endif
       for ( opndnum = 0; opndnum < OP_opnds( op ); opndnum++ ) {
 	tn = OP_opnd( op, opndnum );
 	if ( TN_is_constant(tn) || TN_is_zero_reg(tn) )
@@ -1111,7 +1265,12 @@ Localize_or_Replace_Dedicated_TNs(void)
 	// unaligned_loads have a copy of last def as an implicit use
 	if ( OP_same_res(op) && tn == OP_result(op,0) )
 	  continue;
-
+#ifdef TARG_X8664
+	// Almost all x86 insns have the OP_same_res property even though they
+	// are not recorded as such in isa_properties.cxx.  Bug 6866.
+	if ( tn == OP_result(op,0) )
+	  continue;
+#endif
 	if ( non_region_def_bb == bb ) // the def is already local
 	  continue;
 	else if ( non_region_def_bb ) {

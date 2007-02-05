@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -44,7 +44,7 @@
  * ====================================================================
  *
  * Module: targ_const.h
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/targ_const.h,v $
+ * $Source: common/com/SCCS/s.targ_const.h $
  *
  * Revision history:
  *  12-Jun-91 - Integrated from Josie

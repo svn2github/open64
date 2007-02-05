@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -81,6 +85,9 @@ void Initialize_Targ_Info(void)
   case TARGET_xeon:
   case TARGET_em64t:
     proc = PROCESSOR_em64t;
+    break;
+  case TARGET_core:
+    proc = PROCESSOR_core;
     break;
   default:
     FmtAssert(FALSE, ("targinfo doesn't handle target: %s\n", Targ_Name(Target)));

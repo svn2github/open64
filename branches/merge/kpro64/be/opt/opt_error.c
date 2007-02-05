@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* ====================================================================
@@ -51,7 +51,7 @@
  */
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_error.c,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/opt/SCCS/s.opt_error.c $ $Revision: 1.5 $";
 
 #define _GNU_SOURCE
 #include <stdio.h>

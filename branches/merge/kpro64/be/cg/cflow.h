@@ -134,8 +134,9 @@ extern BOOL CFLOW_Trace_Clone;
 extern BOOL CFLOW_Trace_Freq_Order;
 extern BOOL CFLOW_Trace_Freq;
 extern BOOL CFLOW_Trace_Dom;
+#ifdef TARG_IA64
 extern BOOL CFLOW_Trace_Empty_BB_Elim;
-
+#endif
 /* "flags" for CFLOW_Optimize:
  */
 #define CFLOW_UNREACHABLE		(0x00000001)
@@ -152,7 +153,11 @@ extern BOOL CFLOW_Trace_Empty_BB_Elim;
 	|CFLOW_FREQ_ORDER|CFLOW_CLONE)
 
 extern void CFLOW_Optimize(INT32 flags, const char *phase_name);
+
+#ifdef TARG_IA64
 extern void CFLOW_Delete_Empty_BB(void);
+#endif
+
 extern void CFLOW_Initialize(void);
 
 #endif /* cflow_INCLUDED */

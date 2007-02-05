@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -66,7 +66,9 @@ static char *gra_color_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/c
 extern void
 GRA_Color(void);
 
+#ifdef TARG_IA64
 extern void
 GRA_Optimize_Restore(void);
+#endif
 
 #endif

@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_vho.c
- * $Revision: 1.16 $
- * $Date: 05/08/31 16:24:20-07:00 $
- * $Author: gautam@jacinth.keyresearch $
- * $Source: common/com/SCCS/s.config_vho.cxx $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_vho.cxx,v $
  *
  * Revision history:
  *
@@ -104,8 +104,12 @@ BOOL    VHO_Check_Tree                  = FALSE;
 BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
 #ifdef KEY
-/* simple if-conversion at VHO lower time */
+#ifdef TARG_IA64
+BOOL    VHO_Enable_Simple_If_Conv = FALSE;   
+#else
 BOOL    VHO_Enable_Simple_If_Conv = TRUE;   
+#endif
+
 /* maximum overhead allowed after If-Conversion */
 INT32   VHO_Enable_If_Conv_Limit = 6;   
 /* enable misc. loop distribution and interchange at VHO lower time */

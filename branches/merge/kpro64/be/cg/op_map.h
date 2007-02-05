@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -153,7 +153,9 @@ extern OP_MAP _OP_MAP_Create(_OP_MAP_KIND kind);
 #define OP_MAP64_Create() _OP_MAP_Create(_I64)
 
 void OP_MAP_Delete(OP_MAP map);
+#ifdef TARG_IA64
 BOOL OP_MAP_Is_Delete(OP_MAP map);
+#endif
 
 void OP_MAP_Set(OP_MAP map, OP *op, void *value);
 void OP_MAP32_Set(OP_MAP map, OP *op, INT32 value);

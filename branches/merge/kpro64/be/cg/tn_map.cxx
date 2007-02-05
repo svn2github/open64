@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -204,6 +204,7 @@ struct htn_map64 {
   HASH_ENTRY64 *map_entry[TN_MAP_HASH];
 };
 
+#ifdef TARG_IA64
 //float hTN_MAP struct
 typedef struct hash_entryf {
   TN *tn;
@@ -215,7 +216,7 @@ struct htn_mapf {
   MEM_POOL *map_pool;
   HASH_ENTRYf *map_entry[TN_MAP_HASH];
 };
-
+#endif
 
 #define hTN_MAP_pool(map)          ((map)->map_pool)
 #define hTN_MAP_entry(map, index)  ((map)->map_entry[index])
@@ -430,6 +431,7 @@ hTN_MAP64_Get_And_Set(hTN_MAP64 map, TN *tn, INT64 value)
   return answer;
 }
 
+#ifdef TARG_IA64
 //float
 hTN_MAPf
 hTN_MAPf_Create(MEM_POOL *pool)
@@ -474,5 +476,5 @@ hTN_MAPf_Get(hTN_MAPf map, TN *tn)
   }
   return 0.0;
 }
-
+#endif
 

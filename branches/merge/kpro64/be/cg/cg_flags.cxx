@@ -1,6 +1,14 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -71,8 +79,13 @@ BOOL CG_skip_local_loop = FALSE;
 BOOL CG_skip_local_sched = FALSE;
 BOOL CG_skip_local_swp = FALSE;
 BOOL CG_opt_level;
-BOOL CG_localize_tns;
+BOOL CG_localize_tns = FALSE;
 BOOL CG_localize_tns_Set = FALSE;
+#ifdef TARG_X8664
+BOOL CG_localize_x87_tns = FALSE;
+BOOL CG_localize_x87_tns_Set = FALSE;
+BOOL CG_x87_store = FALSE;
+#endif
 BOOL LOCALIZE_using_stacked_regs = TRUE;
 BOOL CG_unique_exit = TRUE;
 
@@ -99,6 +112,9 @@ BOOL CFLOW_Enable_Branch = TRUE;
 BOOL CFLOW_Enable_Merge = TRUE;
 BOOL CFLOW_Enable_Reorder = FALSE;
 BOOL CFLOW_Enable_Freq_Order = TRUE;
+#ifdef KEY
+BOOL CFLOW_Enable_Freq_Order_On_Heuristics = FALSE;
+#endif
 BOOL CFLOW_Enable_Clone = TRUE;
 BOOL CFLOW_opt_all_br_to_bcond = FALSE;
 const char *CFLOW_heuristic_tolerance;
@@ -170,8 +186,29 @@ BOOL GCM_PRE_Enable_Scheduling = TRUE;
 BOOL GCM_POST_Enable_Scheduling = TRUE;
 BOOL GCM_Enable_Scheduling = TRUE;
 BOOL CGTARG_Enable_Brlikely = TRUE;
+#ifdef TARG_X8664
+BOOL Enable_Fill_Delay_Slots = FALSE;
+BOOL GCM_Enable_Fill_Delay_Slots = FALSE;
+BOOL CG_use_movlpd = TRUE;
+BOOL CG_use_setcc = TRUE;
+BOOL CG_use_short_form = FALSE;
+UINT64 CG_p2align_freq = 10000;
+UINT32 CG_p2align_max_skip_bytes = 3;
+UINT32 CG_movnti = 1000;
+BOOL CG_use_incdec = FALSE;
+BOOL CG_use_xortozero = TRUE; // bug 8592
+BOOL CG_use_xortozero_Set = FALSE;
+BOOL CG_use_test = FALSE;
+BOOL CG_fold_shiftadd = FALSE;
+BOOL CG_use_prefetchnta = FALSE;
+BOOL CG_idivbyconst_opt = TRUE;
+BOOL CG_fold_constimul = TRUE;
+BOOL CG_cloop = TRUE;
+BOOL CG_use_lddqu = FALSE;
+#else
 BOOL Enable_Fill_Delay_Slots = TRUE;
 BOOL GCM_Enable_Fill_Delay_Slots = TRUE;
+#endif
 const char *CGTARG_Branch_Taken_Prob = NULL;
 double CGTARG_Branch_Taken_Probability;
 BOOL CGTARG_Branch_Taken_Prob_overridden;
@@ -202,11 +239,18 @@ const char *CGEXP_sthint_L1;
 const char *CGEXP_sthint_L2;
 
 BOOL LRA_do_reorder = FALSE;
+#ifdef TARG_X8664
+BOOL LRA_prefer_legacy_regs = FALSE;
+#endif
 
 BOOL GRA_use_old_conflict = FALSE;
 BOOL GRA_shrink_wrap      = TRUE;
 BOOL GRA_loop_splitting   = TRUE;
+#ifdef TARG_IA64
 BOOL GRA_home             = FALSE;
+#else
+BOOL GRA_home             = TRUE;
+#endif
 BOOL GRA_remove_spills    = TRUE;
 BOOL GRA_preference_globals = TRUE;
 BOOL GRA_preference_dedicated = TRUE;
@@ -221,8 +265,18 @@ INT32 GRA_non_home_hi = -1;
 INT32 GRA_non_home_lo = INT32_MAX;
 const char* GRA_call_split_freq_string = "0.1";
 const char* GRA_spill_count_factor_string = "0.5";
+#ifdef KEY
+BOOL GRA_exclude_callee_saved_regs = FALSE;
+BOOL GRA_eh_exclude_callee_saved_regs = FALSE;
+#endif
 
+#ifdef KEY
+// By default OFF, unless specified by the user
+BOOL  HB_formation = FALSE;
+INT32 HB_if_conversion_cut_off = 10;
+#else
 BOOL  HB_formation = TRUE;
+#endif
 BOOL  HB_static_freq_heuristics = TRUE;
 INT   HB_max_blocks = 20;
 const char* HB_max_sched_growth = "4.1";
@@ -238,7 +292,11 @@ BOOL  HB_general_from_top = FALSE;
 BOOL  HB_allow_tail_duplication = FALSE;
 BOOL  HB_exclude_calls = FALSE;
 BOOL  HB_exclude_pgtns = TRUE;	// until bugs fixed
+#ifdef TARG_IA64
 BOOL  HB_skip_hammocks = TRUE;	// until bugs fixed
+#else
+BOOL  HB_skip_hammocks = FALSE;
+#endif
 BOOL  HB_simple_ifc = TRUE;
 BOOL  HB_simple_ifc_set = FALSE;
 INT   HB_min_blocks = 2;
@@ -266,6 +324,22 @@ BOOL CG_LOOP_interleave_posti_specified = FALSE;
 BOOL CG_LOOP_reassociate = TRUE;
 BOOL CG_LOOP_reassociate_specified = FALSE;
 INT32 CG_LOOP_recurrence_min_omega = 0;
+#ifdef KEY
+BOOL LOCS_Fwd_Scheduling = FALSE;
+BOOL LOCS_Fwd_Scheduling_set = FALSE;
+BOOL CG_min_spill_loc_size = FALSE;
+BOOL CG_min_stack_size = TRUE;
+BOOL flag_test_coverage = FALSE;
+OPTION_LIST *Arc_Profile_Region = NULL;
+INT32 CG_cse_regs = INT32_MAX - 1000;
+INT32 CG_sse_cse_regs = INT32_MAX - 1000;
+#endif
+#ifdef TARG_X8664
+INT32 CG_sse_load_execute = 0;
+INT32 CG_load_execute = 1;
+BOOL CG_loadbw_execute = FALSE;
+BOOL CG_p2align = FALSE;
+#endif
 
 // temporary flags for controlling algorithm selection for fdiv, sqrt, etc
 const char *CGEXP_fdiv_algorithm = "sgi";

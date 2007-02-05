@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1433,6 +1433,14 @@ DevWarn( const char *fmt, ... )
     vfprintf ( Error_File, fmt, args );
     fprintf ( Error_File, "\n" );
     fflush ( Error_File );
+  }
+
+  /* Finally write to trace file: */
+  if ( Trace_File != NULL ) {
+    fprintf ( Trace_File, "!!! DevWarn during %s: ", phase_name );
+    vfprintf ( Trace_File, fmt, args );
+    fprintf ( Trace_File, "\n" );
+    fflush ( Trace_File );
   }
 
   va_end(args);

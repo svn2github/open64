@@ -1,6 +1,10 @@
 /*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -134,5 +138,18 @@ extern BOOL Prefetch_Kind_Enabled(WN *wn);
 extern void TN_CORRESPOND_Free(void);
 
 extern BB * Add_Label(LABEL_IDX);
+
+#ifdef CG_PATHSCALE_MERGE
+extern OPS New_OPs;
+extern OP *Last_Processed_OP;
+extern SRCPOS current_srcpos;
+extern INT total_bb_insts;
+extern BB *Cur_BB;
+extern void Process_New_OPs(void);
+extern BB_MAP outer_label_map;
+#endif
+#ifdef TARG_X8664
+extern BOOL W2OPS_Pragma_Preamble_End_Seen (void);
+#endif
 
 #endif /* whirl2ops_INCLUDED */

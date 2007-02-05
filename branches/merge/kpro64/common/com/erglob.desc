@@ -1,5 +1,9 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -59,7 +63,7 @@
  * ====================================================================
  */
 
-static char *erglob_desc_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/erglob.desc,v $ $Revision: 1.1.1.1 $";
+static char *erglob_desc_rcs_id = "$Source: /home/bos/bk/kpro64-pending/common/com/SCCS/s.erglob.desc $ $Revision: 1.18 $";
 
 #include "erglob.h"
 
@@ -248,6 +252,9 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_No_Opt_Val,	EM_User | ES_WARNING,	RAG_EN_NONE,
     "Option  \"%s\" in group '%s' should be provided a value -- ignored",
     2, ET_STRING, ET_STRING,0,0,0,0 },
+  { EC_No_Apo_Early_Mp,	EM_User | ES_WARNING,	RAG_EN_NONE,
+    "-OPT:early_mp=on ignored since it is not allowed under -apo",
+    0, 0,0,0,0,0,0 },
 #endif
 
   /* Control processing: */
@@ -365,8 +372,12 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Ipa_Options,	EM_User | ES_WARNING,   RAG_EN_NONE,
     "Inconsistent optimization options detected between files involved\n"
     "\tin inter-procedural optimization.\n" 
+#ifdef TARG_IA64
     "\tIn order to honor their specified optimization options,\n"
     "\tcompiler will not perform layout order optimization for the functions.",
+#else
+    "\tOptimization options will be honored for the functions in each file.",
+#endif
     0, 0, 0, 0, 0, 0, 0 },
 
    /* Inconsistent types for same symbol */
@@ -839,6 +850,11 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_No_Asm,		EM_User | ES_ERRABORT,	RAG_EN_NONE,
     "Assembly file (%s) does not exist",
     1, ET_STRING, 0,0,0,0,0 },
+#ifdef KEY
+  { EC_Asm_Write,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
+    "Cannot write assembly file (%s)",
+    1, ET_STRING, 0,0,0,0,0 },
+#endif
 
   { EC_X_Exists,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
     ".X file (%s) already exists",
@@ -911,8 +927,13 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_FB_Ent_Size,     EM_User | ES_ERRABORT,  RAG_EN_NONE,
     "Feedback file %s %s entries of wrong size: expect %d; got %d",
     4, ET_STRING, ET_STRING, ET_INT, ET_INT, 0,0 },
+#ifdef TARG_IA64
   { EC_FB_File_Old,     EM_User | ES_WARNING,   RAG_EN_NONE,
     "Source/Feedback line number mismatch; %s probably outdated",
+#else
+  { EC_FB_File_Old,     EM_User | ES_ERRABORT,  RAG_EN_NONE,
+    "Feedback file checksum error; %s probably outdated",
+#endif
     1, ET_STRING, 0,0,0,0,0 },
 #ifdef KEY
   { EC_FB_No_File,     EM_User | ES_ERRABORT,   RAG_EN_NONE,

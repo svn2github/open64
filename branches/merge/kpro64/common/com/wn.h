@@ -1070,8 +1070,12 @@ extern WN *WN_RIload(TYPE_ID rtype,
 		     TYPE_ID desc,
 		     WN_OFFSET offset,
 		     TY_IDX align,
-		     WN *addri,
-		     UINT field_id = 0);
+#ifndef KEY
+		     WN *addr);
+#else
+                     WN *addri,
+                     UINT field_id = 0);
+#endif
 
 extern WN *WN_IloadLdid(TYPE_ID desc,
 			WN_OFFSET offset,

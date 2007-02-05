@@ -1,6 +1,10 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -596,7 +600,9 @@ extern BOOL CGTARG_Can_Be_Speculative( OP* op );
 extern BOOL CGTARG_Is_OP_Speculative(OP *op);
 extern BOOL CGTARG_Is_OP_Speculative_Load( OP* memop );
 extern BOOL CGTARG_Is_OP_Advanced_Load( OP* memop );
+#ifdef TARG_IA64
 extern BOOL CGTARG_Is_Form_For_Advanced_Load (ISA_ENUM_CLASS_VALUE ldform); 
+#endif
 extern BOOL CGTARG_Is_OP_Check_Load( OP* memop );
 
 extern BOOL CGTARG_OP_Defs_TN( OP* op, TN* tn );
@@ -630,7 +636,11 @@ typedef enum {
 } PEAK_RATE_CLASS;
 
 typedef struct {
+#ifdef KEY
+  mUINT16 refs[PRC_LAST];
+#else
   mINT16 refs[PRC_LAST];
+#endif
 } PRC_INFO;
 
 extern void CGTARG_Peak_Rate( PEAK_RATE_CLASS prc, PRC_INFO *info, INT ratio[2] );
@@ -650,10 +660,11 @@ extern void CGTARG_Compute_Branch_Parameters(INT32 *mispredict,
 extern BOOL CGTARG_Can_Change_To_Brlikely(OP *xfer_op, TOP *new_opcode);
 extern TOP CGTARG_Negate_Branch(TOP op);
 extern BOOL CGTARG_Is_Long_Latency(TOP op);
+extern INT32 CGTARG_Latency(TOP op);
 
 extern VARIANT CGTARG_Analyze_Branch(OP *br, TN **tn1, TN **tn2);
 extern VARIANT CGTARG_Analyze_Compare(OP *br, TN **tn1, TN **tn2,
-	 			    OP **compare_op);
+	 			      OP **compare_op);
 
 extern INT32 CGTARG_Special_Min_II(BB* loop_body, BOOL trace);
 
@@ -778,6 +789,13 @@ extern BOOL CGTARG_OP_is_counted_loop(OP *op);
 
 extern void CGTARG_Generate_Branch_Cloop(OP *op, TN *unrolled_trip_count, TN *trip_count,
 					 INT32 ntimes, TN *label_tn, OPS *prolog_ops, OPS *body_ops);
+#ifdef TARG_X8664
+extern void CGTARG_Generate_Countdown_Loop(TN *trip_count_tn, BB *tail, 
+					   OPS *prolog_ops, OPS *body_ops, 
+					   BOOL single_bb, LOOP_DESCR *loop);
+extern void CGTARG_LOOP_Optimize( LOOP_DESCR* loop );
+extern TN* CGTARG_Process_Asm_m_constraint( WN*, void**, OPS* );
+#endif
 
 /* call init routine once per asm stmt */
 extern void CGTARG_Init_Asm_Constraints (void);
@@ -785,10 +803,18 @@ extern void CGTARG_Init_Asm_Constraints (void);
 /* Given a constraint for an ASM parameter, and the load of the matching
  * argument passed to ASM (possibly NULL), choose an appropriate TN for it
  */
+#ifdef TARG_IA64
 extern TN* CGTARG_TN_For_Asm_Operand(const char* constraint, 
                                      const WN* load,
                                      TN* pref_tn,
                                      ISA_REGISTER_SUBCLASS* subclass);
+#else
+extern TN* CGTARG_TN_For_Asm_Operand(const char* constraint, 
+                                     const WN* load,
+                                     TN* pref_tn,
+                                     ISA_REGISTER_SUBCLASS* subclass, 
+				     TYPE_ID type);
+#endif
 
 /* given asm constraint and mtype, 
  * pick appropriate dedicated tn and string name */
@@ -828,11 +854,16 @@ inline BOOL CGTARG_Use_Load_Latency(OP *pred_op, TN *tn)
 /* Returns TRUE if OP is a suitable candidate for HBF. */
 extern BOOL CGTARG_Check_OP_For_HB_Suitability(OP *op);
 
+#ifdef TARG_IA64
 /* Return TRUE if OP is def use stack register; */
 extern BOOL OP_def_use_stack_regs(OP* op);
+#endif
+extern TN* CGTARG_Gen_Dedicated_Subclass_TN( OP* op, int idx, BOOL is_result );
 
+#ifdef TARG_IA64
 typedef mempool_allocator<SCHED_INFO_CLASS>  SIC_MEM_ALLOC;
 typedef	std::vector<SCHED_INFO_CLASS, SIC_MEM_ALLOC>  TOP_SET;
 void Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT8 cycles_apart);
 void Fix_Cache_Conflict_latency( BB *bb);
+#endif
 #endif /* CGTARGET_INCLUDED */

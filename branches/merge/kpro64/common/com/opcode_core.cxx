@@ -36,7 +36,7 @@
 #define opcode_core_C      "opcode_core.c"
 
 #ifdef _KEEP_RCS_ID
-static const char rcs_id[] =   opcode_core_C "$Revision: 1.1.1.1 $";
+static const char rcs_id[] =   opcode_core_C "$Revision$";
 #endif
 
 /** $Revision: 1.1.1.1 $

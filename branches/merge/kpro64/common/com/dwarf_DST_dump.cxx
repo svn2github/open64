@@ -39,7 +39,7 @@
 
 #ifdef _KEEP_RCS_ID
 static const char source_file[] = __FILE__;
-static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/dwarf_DST_dump.cxx,v $ $Revision: 1.1.1.1 $";
+static const char rcs_id[] = "$Source: common/com/SCCS/s.dwarf_DST_dump.cxx $ $Revision: 1.13 $";
 #endif
 
 #include <stdio.h>

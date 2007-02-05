@@ -1,6 +1,10 @@
 /*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -80,8 +84,10 @@ static char *gra_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_
 #include "register.h"
 #include "bb.h"
 
+#ifdef TARG_IA64
 extern void GRA_Fat_Point_Estimate(void);
 extern BOOL Check_Self_Recursive(void);
+#endif
 extern void GRA_Allocate_Global_Registers( BOOL is_region );
 extern void GRA_Initialize(void);
 extern BOOL GRA_Spill_Around_Save_TN_Copies(void);
@@ -99,18 +105,45 @@ extern float GRA_spill_count_factor;
 extern INT GRA_local_forced_max;
 extern BOOL GRA_avoid_glue_references_for_locals;
 extern BOOL GRA_split_entry_exit_blocks;
+#ifndef TARG_IA64
+extern BOOL GRA_pu_has_handler;
+#endif
 
 // interface with cgdriver
-extern BOOL GRA_split_lranges; 		// controlled by -CG:split_lranges=
-extern INT GRA_non_split_tn_id;		// controlled by -CG:non_split_tn=
-extern INT GRA_non_preference_tn_id;	// controlled by -CG:non_preference_tn=
-extern BOOL GRA_optimize_placement;	// controlled by -CG:optimize_placement=
+extern BOOL GRA_split_lranges; 		// controlled by -GRA:split_lranges
+extern INT GRA_non_split_tn_id;		// controlled by -GRA:non_split_tn
+extern INT GRA_non_preference_tn_id;	// controlled by -GRA:non_preference_tn
+extern BOOL GRA_optimize_placement;	// controlled by -GRA:optimize_placement
+#ifndef TARG_IA64 
+extern BOOL GRA_optimize_boundary;	// controlled by -GRA:optimize_boundary
+extern BOOL GRA_reclaim_register;	// controlled by -GRA:reclaim
+extern BOOL GRA_prioritize_by_density;	// controlled by -GRA:prioritize_by_density
+#endif
+
+#ifdef TARG_X8664
+extern BOOL GRA_grant_special_regs;	// controlled by -GRA:grant_special_regs
+extern BOOL GRA_local_forced_max_set;
+
+static inline INT GRA_LOCAL_FORCED_MAX( ISA_REGISTER_CLASS rc )
+{
+  if( Is_Target_32bit()         &&
+      !GRA_local_forced_max_set &&
+      rc == ISA_REGISTER_CLASS_integer )
+    return 3;
+  else
+    return GRA_local_forced_max;
+}
+#else
+#define GRA_LOCAL_FORCED_MAX(rc)   GRA_local_forced_max
+#endif // TARG_X8664
+
+#ifdef TARG_IA64
 typedef struct Init_Use_Only_GTN
 {
-     INT TN_Number;
-     INT Used_In_BB;
-     INT Used_Time;
-     Init_Use_Only_GTN *next;
+  INT TN_Number;
+  INT Used_In_BB;
+  INT Used_Time;
+  Init_Use_Only_GTN *next;
 } INIT_USE_ONLY_GTN ;
 
 extern INIT_USE_ONLY_GTN* GTN_USE_ONLY;
@@ -119,4 +152,6 @@ INIT_USE_ONLY_GTN* Build_Use_Only_GTN(MEM_POOL* pool);
 extern BOOL Search_Used_Only_Once_GTN(TN *find_tn,BB* def_bb);
 extern INIT_USE_ONLY_GTN* Search_GTN_In_List (TN *find_tn);
 extern void Build_GTN_In_List (TN *tn,BB* bb);
+#endif
+
 #endif
