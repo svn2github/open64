@@ -1216,7 +1216,7 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
     ALIAS_CLASS_MEMBER *t_member = New_alias_class_member(expr);
     (void) New_alias_class(t_member);
 
-    BOOL expr_maybe_point = Expr_may_containt_pointer (expr);
+    BOOL expr_maybe_point = Expr_may_contain_pointer (expr);
     for (INT i = 0; i < WN_kid_count(expr); i++) {
       // Tell the recursive call that the expression need not
       // point. If it must point, we'll handle it here.
@@ -1224,7 +1224,7 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
 						 FALSE);
 
       if (expr_maybe_point && 
-          Expr_may_containt_pointer (WN_kid(expr, i))) {
+          Expr_may_contain_pointer (WN_kid(expr, i))) {
         AC_PTR_OBJ_PAIR t(t_member->Alias_class(),
 			  t_member->Alias_class()->Class_pointed_to());
         Merge_conditional(t, u);
@@ -1307,7 +1307,7 @@ ALIAS_CLASSIFICATION::Classify_lhs_of_store(WN *const stmt)
 // TODO: This function is too conservative. It need to be polished. 
 //
 BOOL
-ALIAS_CLASSIFICATION::Expr_may_containt_pointer (WN* const expr) {
+ALIAS_CLASSIFICATION::Expr_may_contain_pointer (WN* const expr) {
    
   if (!WOPT_Enable_Aggressive_Alias_Classification || !Alias_Pointer_Types) {
     return TRUE;
@@ -1351,7 +1351,7 @@ ALIAS_CLASSIFICATION::Expr_may_containt_pointer (WN* const expr) {
            WN_object_size (expr) >= Pointer_Size;
 
   case OPR_NEG: case OPR_ABS:
-    return Expr_may_containt_pointer (WN_kid0(expr));
+    return Expr_may_contain_pointer (WN_kid0(expr));
 
   case OPR_RND: 
   case OPR_TRUNC:
@@ -1372,7 +1372,7 @@ ALIAS_CLASSIFICATION::Assignment_may_xfer_pointer (WN* const stmt) {
     return TRUE;
   }
 
-  if (!Expr_may_containt_pointer (WN_kid0(stmt))) {
+  if (!Expr_may_contain_pointer (WN_kid0(stmt))) {
     return FALSE;
   }
 
