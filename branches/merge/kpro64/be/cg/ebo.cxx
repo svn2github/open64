@@ -1117,7 +1117,7 @@ find_duplicate_mem_op (BB *bb,
   EBO_OP_INFO *adjacent_location = NULL;
   INT64 adjacent_offset_pred;
   INT64 adjacent_offset_succ;
-#ifdef TARG_IA64
+#ifndef TARG_IA64
 //#ifdef KEY
   // TRUE if OP is inside the live range of the replacement TN.
   BOOL inside_lr = TRUE;

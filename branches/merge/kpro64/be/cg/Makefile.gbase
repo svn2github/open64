@@ -80,6 +80,7 @@ endif
 #----------------------------------------------------------------------
 HOSTDEFS += -Dsgi
 HOSTDEFS += -DBACK_END -DMONGOOSE_BE
+HOSTDEFS += -DCG_PATHSCALE_MERGE
 ifeq ($(BUILD_OS), IRIX)
 HOSTDEFS += -D_LIBELF_XTND_64
 endif
