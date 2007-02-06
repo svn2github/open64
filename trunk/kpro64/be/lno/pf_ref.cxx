@@ -1878,6 +1878,33 @@ WN* PF_LG::Get_Ref_Version (WN* ref, INT bitpos) {
   return ref;
 }
 
+#ifdef OSP_OPT
+BOOL Contain_Induction_Variable (WN* wn, ST_IDX idx)
+{
+  if (WN_st_idx(wn) == idx) return TRUE;
+  for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
+    if (Contain_Induction_Variable(WN_kid(wn, kid), idx))
+      return TRUE;
+  return FALSE;
+}
+
+void Update_Array_Index (WN* wn, WN* wn_incr, ST_IDX idx)
+{
+  for (INT kid = 0; kid < WN_kid_count(wn); kid ++) {
+    WN* wn_kid = WN_kid(wn, kid);
+    if (WN_st_idx(wn_kid) == idx) {
+      TYPE_ID desc = Promote_Type(WN_rtype(wn_kid));
+      WN* wn_ahead = LWN_Make_Icon(desc, LNO_Prefetch_Iters_Ahead);
+      wn_ahead = LWN_CreateExp2(OPCODE_make_op(OPR_MPY, desc, MTYPE_V), 
+                                                  WN_CopyNode(wn_incr), wn_ahead);      
+      WN_kid(wn, kid) = LWN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V), wn_kid, wn_ahead);
+      LWN_Set_Parent(WN_kid(wn, kid), wn);
+    } else {
+      Update_Array_Index(wn_kid, wn_incr, idx);
+    }
+  }
+}
+#endif
 
 /***********************************************************************
  *
@@ -2197,31 +2224,50 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
               if (av->Loop_Coeff(curr_depth)) break;
             }
 
-            //In some cases, i could be larger than the maxmium array dimension
-            //e.g. U(2*I+J), the array is one-dimension, but Num_Vec()==2.
-            //So we just use the innermost dim to perform address computation.
-            if(i >= WN_num_dim(arraynode))
-              i = WN_num_dim(arraynode) - 1;
+            if(i<0) {
+              WN* wn_loop = Get_Loop()->Get_Code();        
+              WN* wn_induction = WN_index(wn_loop);
+              WN* wn_step = WN_step(wn_loop);
+              WN* wn_incr = WN_kid(wn_step, 0);
+              Is_True(WN_operator(wn_step) == OPR_STID && 
+                           WN_operator(wn_incr) == OPR_ADD, ("Incorrect loop index"));
 
-            Is_True(i>=0  && i<WN_num_dim(arraynode), ("Invalid dimension."));
+              for (i = 0; i < WN_kid_count(wn_incr); ++i) {
+                if( WN_st_idx(WN_kid(wn_incr, i)) != WN_st_idx(wn_induction) ) {
+                  wn_incr = WN_kid(wn_incr, i);
+                  break;
+                }
+              }              
 
-            DO_LOOP_INFO* dli = Get_Loop()->Get_LoopInfo();
-            INT step;
-            if (dli->Step->Is_Const()) {
-              step = LNO_Prefetch_Iters_Ahead * av->Loop_Coeff(curr_depth) * dli->Step->Const_Offset;
+              for(i=0; i<WN_num_dim(arraynode); ++i) {
+                Update_Array_Index(WN_array_index(arraynode, i), wn_incr, WN_st_idx(wn_induction));
+              }
+
+            } else {
+              //In some cases, i could be larger than the maxmium array dimension
+              //e.g. U(2*I+J), the array is one-dimension, but Num_Vec()==2.
+              //So we just use the innermost dim to perform address computation.
+              if(i >= WN_num_dim(arraynode))
+                i = WN_num_dim(arraynode) - 1;
+
+              DO_LOOP_INFO* dli = Get_Loop()->Get_LoopInfo();
+              INT step;
+              if (dli->Step->Is_Const()) {
+                step = LNO_Prefetch_Iters_Ahead * av->Loop_Coeff(curr_depth) * dli->Step->Const_Offset;
+              }
+              else {
+                // assume step is 1
+                step = LNO_Prefetch_Iters_Ahead * av->Loop_Coeff(curr_depth);
+              }
+  
+              //Update array index
+              WN* wn_index = WN_array_index(arraynode, i);
+              TYPE_ID desc = Promote_Type(WN_rtype(wn_index));
+              OPCODE addop = OPCODE_make_op(OPR_ADD, desc, MTYPE_V);
+              WN* wn_ahead = LWN_Make_Icon(desc, step);
+              WN_array_index(arraynode, i) = LWN_CreateExp2(addop, wn_index, wn_ahead); 
+              LWN_Set_Parent(WN_array_index(arraynode, i), arraynode);
             }
-            else {
-              // assume step is 1
-              step = LNO_Prefetch_Iters_Ahead * av->Loop_Coeff(curr_depth);
-            }
-
-            //Update array index
-            WN* wn_index = WN_array_index(arraynode, i);
-            TYPE_ID desc = Promote_Type(WN_rtype(wn_index));
-            OPCODE addop = OPCODE_make_op(OPR_ADD, desc, MTYPE_V);
-            WN* wn_ahead = LWN_Make_Icon(desc, step);
-            WN_array_index(arraynode, i) = LWN_CreateExp2(addop, wn_index, wn_ahead); 
-            LWN_Set_Parent(WN_array_index(arraynode, i), arraynode);
           }
 
         }
@@ -2945,6 +2991,33 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
       }
     }
     else {
+#ifdef OSP_OPT
+      BOOL messy=FALSE;
+    
+      for (i=aa->Num_Vec()-1; i>=0; i--) {
+        ACCESS_VECTOR *av = aa->Dim(i);
+        if (av->Too_Messy || av->Contains_Non_Lin_Symb()) {
+          messy = TRUE;
+          break;
+        }    
+      }
+
+      WN* wn_loop = LWN_Get_Parent(wn_array);
+      while (wn_loop && WN_opcode(wn_loop) != OPC_DO_LOOP)
+        wn_loop = LWN_Get_Parent(wn_loop);
+
+      WN* wn_induction = WN_index(wn_loop);
+      if(messy) {
+        for(i=0; i<WN_num_dim(wn_array); ++i) {
+          if( Contain_Induction_Variable(WN_array_index(wn_array, i), WN_st_idx(wn_induction)) ) {
+            _stride_in_enclosing_loop = 100*ABS(WN_element_size(wn_array));
+            _stride_accurate = FALSE;
+            break;
+          }
+        }
+      }
+#endif
+
       // innermost loop doesn't appear at all, so probably temporal locality
       // do nothing
     }
@@ -3133,6 +3206,11 @@ BOOL PF_UGS::Add_Ref (WN* ref) {
  *
  ***********************************************************************/
 void PF_UGS::ComputePFVec (PF_LEVEL level, PF_LOCLOOP locloop) {
+#ifdef OSP_OPT
+  if (!Get_Stride_Accurate())
+    return;
+#endif
+
   INT depth = Get_Depth ();
   INT linesize;
   mINT16 loopdepth;
