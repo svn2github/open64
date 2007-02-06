@@ -1,5 +1,9 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -121,8 +125,10 @@ BOOL (*Verify_alias_p) (ALIAS_MANAGER *, WN *);
 // from be/opt/opt_alias_analysis.cxx
 void (*Print_points_to_p) (FILE *fp, POINTS_TO *ptmp);
 
+#ifdef SHARED_BUILD
 // from be/opt/opt_wn.h
 AUX_ID (*WN_aux_p) (const WN*);
+#endif
 
 // from be/opt/opt_du.h
 BOOL (DU_MANAGER::*CD_is_br_taken_p) (IDTYPE);
@@ -153,6 +159,10 @@ void (*CG_Dump_Region_p) (FILE*, WN*);
 // from be/cg/eh_region.h
 void (*EH_Generate_Range_List_p) (WN *);
 void (*EH_Dump_INITOs_p) (WN *, FILE *);
+#ifdef TARG_X8664
+void (*CG_Set_Is_Stack_Used_p) ();
+#endif
+
 // ----------------------------------------------------------------------
 // symbols defined in ipl.so:
 // from ipa/local/ipl_main.cxx
