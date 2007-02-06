@@ -3015,3 +3015,12 @@ Stack_Offset_Adjustment_For_PU (void)
   else
 	return 0;
 }
+
+#ifdef TARG_X8664
+BOOL
+Stack_Frame_Has_Calls (void)
+{
+  return Frame_Has_Calls;
+}
+#endif
+

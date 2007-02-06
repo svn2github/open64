@@ -920,10 +920,12 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &EMIT_stop_bits_for_asm, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"emit_explicit_bundles", "",
     0, 0, 0, &EMIT_explicit_bundles, NULL },
+#ifdef TARG_IA64
   { OVK_BOOL,	OV_INTERNAL, TRUE,"count_cycles_on_ski", "count_cycle",
     0, 0, 0, &EMIT_count_cycles, NULL,
     "Add stop bit to divide oversubscripted op groups. [Default off]"
   },
+#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE, "enable_feedback", "",
     0, 0, 0,	&CG_enable_feedback, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"non_gas_syntax", "non_gas",
@@ -1922,8 +1924,8 @@ Process_Command_Line (INT argc, char **argv)
                     }
                 }
                 break;
-            }
 #endif
+	    }
 	}
     }
 }

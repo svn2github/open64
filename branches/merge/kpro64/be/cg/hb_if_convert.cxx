@@ -60,7 +60,10 @@
 #include "findloops.h"
 #include "pqs_cg.h"
 
+#ifdef TARG_IA64
 #include "if_conv.h"
+#endif
+
 #include "hb.h"
 #include "hb_trace.h"
 #include "hb_id_candidates.h" // For use in Force_If_Convert

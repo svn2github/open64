@@ -545,7 +545,10 @@
 #include "targ_isa_bundle.h"
 #include "ti_bundle.h"
 #include "cg_thr.h"
+
+#ifdef TARG_IA64
 #include "targ_bypass_mck.h"
+#endif
 
 extern UINT32 CGTARG_branch_taken_penalty;
 extern BOOL CGTARG_branch_taken_penalty_overridden;

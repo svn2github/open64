@@ -98,6 +98,8 @@
 #include "lra.h"
 #include "bb_set.h"       // BB_SET_* routines 
 #include "DaVinci.h"
+
+#ifdef TARG_IA64
 #include "ipfec_options.h"
 #include "cg.h"
 #include "region_bb_util.h"
@@ -105,6 +107,7 @@
 
 #include <vector>
 #include "if_conv.h"
+#endif
 
 /* Allocate basic blocks for the duration of the PU. */
 #define BB_Alloc()  TYPE_PU_ALLOC(BB)
@@ -2908,6 +2911,7 @@ Split_BBs(void)
 * Return all bb's parents bb including itself.
 *==========================================================================
 */
+#ifdef TARG_IA64
 BB_SET*
 Find_BB_Parents(BB* bb)
 {
@@ -2932,6 +2936,7 @@ Find_BB_Parents(BB* bb)
   }
   return result;
 }
+#endif
 
 // A temp BB_SET variable reserved for the BB_REGION routines because
 // creating and destroying BB_SET is an expensive operation.

@@ -415,6 +415,7 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
  *
  * ===================================================================
  */
+#ifdef TARG_IA64
 static void
 vararg_st8_2_st8_spill (BB * bb) {
 
@@ -443,6 +444,7 @@ vararg_st8_2_st8_spill (BB * bb) {
     op=new_op;
   }
 }
+#endif
 
 #ifdef KEY
 struct Save_user_allocated_saved_regs
@@ -2381,6 +2383,7 @@ Adjust_Alloca_Code (void)
 	generate data for gprof.
  * ====================================================================
  */
+#ifdef TARG_IA64
 void
 Instru_Call_Mcount(void)
 {
@@ -2390,6 +2393,7 @@ Instru_Call_Mcount(void)
     EETARG_Call_Mcount(BB_LIST_first(elist));
   }
 }
+#endif
 
 /* ====================================================================
  *

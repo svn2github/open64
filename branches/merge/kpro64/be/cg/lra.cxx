@@ -2423,6 +2423,7 @@ Compute_Livethrough_Set (BB *bb)
     /* Force LRA not to use any registers neither granted by GRA nor used
      * by GRA (LRA may spill a GRA used register and reuse it sometimes).
      */
+#ifdef TARG_IA64
     if (REGISTER_Has_Stacked_Registers(cl)) {
       for (REGISTER reg = FIRST_INPUT_REG; reg <= LAST_STACKED_REG; reg++) {
         if (reg > Get_Stacked_Callee_Next() && reg <= Get_Stacked_Caller_Next()) {
@@ -2430,6 +2431,7 @@ Compute_Livethrough_Set (BB *bb)
         }
       }
     }
+#endif
   }
   FOR_ALL_BB_OPs_FWD (bb, op) {
     INT opndnum;
@@ -2494,6 +2496,7 @@ Analyze_Spilling_Global_Register (
  *
  * Insert unat code to top and bottom of BB
  *===================================================================*/
+#ifdef TARG_IA64
 static void
 Insert_UNAT_Code(BB *bb)
 {
@@ -2511,6 +2514,7 @@ Insert_UNAT_Code(BB *bb)
   UNAT_Restore_OPS(unat_tn, NULL, &spill_nat_ops, CGSPILL_LRA, bb);
   CGSPILL_Append_Ops(bb, &spill_nat_ops);
 }
+#endif
 
 /* ======================================================================
  * Spill_Global_Register

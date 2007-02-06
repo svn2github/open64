@@ -184,6 +184,11 @@ extern ST * Find_Special_Return_Address_Symbol (void);
 /* return stack offset adjustment, which may depend on size of pu frame */
 extern INT Stack_Offset_Adjustment_For_PU (void);
 
+#ifdef TARG_X8664
+/* return TRUE if function has calls */
+extern BOOL Stack_Frame_Has_Calls (void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -142,9 +142,13 @@
 #include "cgemit_targ.h"
 #include "cg_swp.h"
 #include "tag.h"
+
+#ifdef TARG_IA64
 #include "targ_issue_port.h"
 #include "cggrp_microsched.h" 
 #include "val_prof.h"
+#endif
+
 #include "be_util.h" // for current_pu_count
 #include "dwarf_stuff.h"
 extern "C" {
@@ -1143,6 +1147,8 @@ r_apply_l_const (
     else
       vstr_sprintf (buf, vstr_len(*buf), 
       		(hexfmt ? "0x%llx" : "%lld"), TN_value(t) );
+#endif
+    
     print_TN_offset = FALSE;	/* because value used instead */
   }
   else {
@@ -3769,8 +3775,8 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     }
 
     FREQ_Print_BB_Note(bb, Asm_File);
-  }
 #endif
+  }
   if (Run_prompf) {
     if (BB_loop_head_bb(bb)) {
       Emit_Loop_Note(bb, anl_file);
@@ -5250,7 +5256,7 @@ Write_Symbol (
 	      Elf64_Sxword sym_ofst,/*   ... plus this offset */
 	      INT scn_idx,/* Section to emit it in */
 	      Elf64_Word scn_ofst,/* Section offset to emit it at */
-	      INT32repeat)/* Repeat count */
+	      INT32 repeat)/* Repeat count */
 {
   INT32 i;
   ST *basesym;
@@ -6906,7 +6912,7 @@ Setup_Text_Section_For_PU (ST *pu)
 #else
       fprintf (Asm_File, "\t%s\t%d\n", AS_ALIGN, power);
 #endif
-#endif
+//#endif
     }
     if (Object_Code) {
       // these bytes will never be executed so just insert 0's and
@@ -7214,7 +7220,9 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
           }
           Fix_Cache_Conflict_latency(bb);
       }
-#else // TARG_IA64
+  }
+#endif
+  
 #if 0
       // This code has been moved to EMT_Assemble_BB with the aim of emitting
       // it at the start of the 1st BB in the PU.
@@ -7224,10 +7232,9 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 	    strcmp( Cur_PU_Name, "main" ) == 0 ) ){
 	CGEMIT_Setup_Ctrl_Register( Asm_File );
       }
-#endif  
 #endif
-#endif // TARG_IA64
-  }
+#endif // 0
+
   /* Assemble each basic block in the PU */
   for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
 #ifdef TARG_IA64

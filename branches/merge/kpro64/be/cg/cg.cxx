@@ -552,12 +552,13 @@ CG_Generate_Code(
   CG_PU_Has_Feedback = ((Cur_PU_Feedback != NULL) && CG_enable_feedback);
   BOOL frequency_verify = Get_Trace( TP_FEEDBACK, TP_CG_FEEDBACK );
 
+#ifdef TARG_IA64  
   if (FALSE) {
      ST *func_st = Get_Current_PU_ST();
      rse_budget = PU_gp_group(Pu_Table [ST_pu (func_st)]);
      if (rse_budget == 0) DevWarn("FAINT THE RSE BUDGET IS ZERO!");
   }
-
+#endif
         
   CG_Region_Initialize ( rwn, alias_mgr );
 
@@ -1310,7 +1311,7 @@ CG_Generate_Code(
   }
 #else  // TARG_IA64
 
-GLS_Schedule_Region (FALSE /* after register allocation */);
+  IGLS_Schedule_Region (FALSE /* after register allocation */);
 
 #ifdef TARG_X8664
   {

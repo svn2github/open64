@@ -180,13 +180,15 @@
 #include "ebo.h"
 #include "hb.h"
 #include "gra_live.h"
+
 #ifdef TARG_IA64
 #include "ipfec_options.h"
 #include "if_conv.h"
 #include "region_bb_util.h"
-#endif
 
 #include "targ_issue_port.h" // To get PROCESSOR_Version
+#endif
+
 /* Error tolerance for feedback-based frequency info */
 #define FB_TOL 0.05
 

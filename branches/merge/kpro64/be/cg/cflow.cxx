@@ -573,6 +573,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
          return FALSE;
   }
 #endif
+
   INT i;
   INT nsuccs = BBINFO_nsuccs(bb);
   float prob = BBINFO_succ_prob(bb, isucc);
@@ -619,7 +620,6 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
         return TRUE;
       }
 #else
-      }
       Link_Pred_Succ_with_Prob(bb, new_succ, prob);
       return;
 #endif

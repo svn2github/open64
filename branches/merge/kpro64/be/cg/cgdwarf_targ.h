@@ -39,18 +39,37 @@
 extern BOOL Trace_Dwarf;
 
 /* construct the fde for the current procedure. */
+#ifndef TARG_X8664
 extern Dwarf_P_Fde Build_Fde_For_Proc (Dwarf_P_Debug  dw_dbg,
-				       BB            *firstbb,
-				       LABEL_IDX      begin_label,
-				       LABEL_IDX      end_label,
-				       INT32          end_offset,
-				       // The following two arguments
-				       // need to go away once
-				       // libunwind gives us an
-				       // interface that supports
-				       // symbolic ranges.
-				       INT       low_pc,
-				       INT       high_pc);
+		       BB            *firstbb,
+      		       LABEL_IDX      begin_label,
+       		       LABEL_IDX      end_label,
+       		       INT32          end_offset,
+      		       // The following two arguments
+ 		       // need to go away once
+      		       // libunwind gives us an
+      		       // interface that supports
+       		       // symbolic ranges.
+		       INT       low_pc,
+		       INT       high_pc);
+#else
+extern Dwarf_P_Fde Build_Fde_For_Proc (Dwarf_P_Debug  dw_dbg,
+		       BB            *firstbb,
+		       Dwarf_Unsigned      begin_label,
+		       Dwarf_Unsigned      end_label,
+		       Dwarf_Unsigned      pushbp_label,
+		       Dwarf_Unsigned      movespbp_label,
+		       Dwarf_Unsigned      adjustsp_label,
+		       Dwarf_Unsigned      callee_saved_reg,
+		       INT32          end_offset,
+		       // The following two arguments
+		       // need to go away once
+		       // libunwind gives us an
+		       // interface that supports
+		       // symbolic ranges.
+		       INT       low_pc,
+		       INT       high_pc);
+#endif
 
 extern void Check_Dwarf_Rel(const Elf32_Rel &);
 extern void Check_Dwarf_Rel(const Elf64_AltRel &);

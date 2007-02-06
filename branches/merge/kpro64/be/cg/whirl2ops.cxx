@@ -4030,7 +4030,9 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4EQ: case OPC_I4U4EQ: variant = V_BR_U4EQ; break;
   case OPC_U4FQEQ:
   case OPC_BFQEQ: case OPC_I4FQEQ: variant = V_BR_QEQ; break;
+#ifdef TARG_IA64
   case OPC_BF10EQ: case OPC_I4F10EQ: variant = V_BR_XEQ; break;
+#endif
   case OPC_U4F8EQ:
   case OPC_BF8EQ: case OPC_I4F8EQ: variant = V_BR_DEQ; break;
   case OPC_U4F4EQ:
@@ -4056,7 +4058,9 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4NE: case OPC_I4U4NE: variant = V_BR_U4NE; break;
   case OPC_U4FQNE:
   case OPC_BFQNE: case OPC_I4FQNE: variant = V_BR_QNE; break;
+#ifdef TARG_IA64
   case OPC_BF10NE: case OPC_I4F10NE: variant = V_BR_XNE; break;
+#endif
   case OPC_U4F8NE:
   case OPC_BF8NE: case OPC_I4F8NE: variant = V_BR_DNE; break;
   case OPC_U4F4NE:
@@ -4082,7 +4086,9 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4GT: case OPC_I4U4GT: variant = V_BR_U4GT; break;
   case OPC_U4FQGT:
   case OPC_BFQGT: case OPC_I4FQGT: variant = V_BR_QGT; break;
+#ifdef TARG_IA64
   case OPC_BF10GT: case OPC_I4F10GT: variant = V_BR_XGT; break;
+#endif
   case OPC_U4F8GT:
   case OPC_BF8GT: case OPC_I4F8GT: variant = V_BR_DGT; break;
   case OPC_U4F4GT:
@@ -4108,7 +4114,9 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4GE: case OPC_I4U4GE: variant = V_BR_U4GE; break;
   case OPC_U4FQGE:
   case OPC_BFQGE: case OPC_I4FQGE: variant = V_BR_QGE; break;
+#ifdef TARG_IA64
   case OPC_BF10GE: case OPC_I4F10GE: variant = V_BR_XGE; break;
+#endif
   case OPC_U4F8GE:
   case OPC_BF8GE: case OPC_I4F8GE: variant = V_BR_DGE; break;
   case OPC_U4F4GE:
@@ -4134,7 +4142,9 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4LT: case OPC_I4U4LT: variant = V_BR_U4LT; break;
   case OPC_U4FQLT:
   case OPC_BFQLT: case OPC_I4FQLT: variant = V_BR_QLT; break;
+#ifdef TARG_IA64
   case OPC_BF10LT: case OPC_I4F10LT: variant = V_BR_XLT; break;
+#endif
   case OPC_U4F8LT:
   case OPC_BF8LT: case OPC_I4F8LT: variant = V_BR_DLT; break;
   case OPC_U4F4LT:
@@ -4160,7 +4170,9 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4LE: case OPC_I4U4LE: variant = V_BR_U4LE; break;
   case OPC_U4FQLE:
   case OPC_BFQLE: case OPC_I4FQLE: variant = V_BR_QLE; break;
+#ifdef TARG_IA64
   case OPC_BF10LE: case OPC_I4F10LE: variant = V_BR_XLE; break;
+#endif
   case OPC_U4F8LE:
   case OPC_BF8LE: case OPC_I4F8LE: variant = V_BR_DLE; break;
   case OPC_U4F4LE:
@@ -4994,7 +5006,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
 			     Expand_Expr(WN_kid0(intrncall), intrncall, NULL), 
 			     &label, &New_OPs);
       BB *bb = Start_New_Basic_Block();
-      BB_Add_Annotation (bb, ANNOT_LABEL, (void *)label);
+      BB_Add_Annotation (bb, ANNOT_LABEL, (void *)(INTPTR)label);
       Set_Label_BB (label,bb);
       return next_stmt;
     }
