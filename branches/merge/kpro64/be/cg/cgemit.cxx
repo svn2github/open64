@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -48,6 +56,7 @@
  * ====================================================================
  * ====================================================================
  */
+
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
@@ -141,6 +150,16 @@
 extern "C" {
 #include "pro_encode_nm.h"
 }
+
+#ifndef TARG_IA64
+#include "config_lno.h" // for LNO_Run_Simd
+#endif
+
+#ifdef TARG_X8664
+#include "be_util.h"    // for Current_PU_Count
+extern void EETARG_Emit_IP_Calc_Func(void);
+#endif
+
 extern void Early_Terminate (INT status);
 
 #define PAD_SIZE_LIMIT	2048	/* max size to be padded in a section */
@@ -168,6 +187,9 @@ enum { IHOT=FALSE, ICOLD=TRUE };
 #define Reset_BB_cold	Reset_BB_local_flag1
 
 extern const char __Release_ID[];
+#ifdef KEY
+extern BOOL profile_arcs;
+#endif
 
 /* ====================================================================
  *
@@ -176,16 +198,20 @@ extern const char __Release_ID[];
  * ====================================================================
  */
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(linux)
 BOOL CG_emit_asm_dwarf    = TRUE;
 BOOL CG_emit_unwind_info  = TRUE;
+#ifdef TARG_IA64
 BOOL CG_emit_unwind_directives = TRUE;
+#else
+BOOL CG_emit_unwind_info_Set = FALSE;
+BOOL CG_emit_unwind_directives = FALSE;
+#endif
 #else
 BOOL CG_emit_asm_dwarf    = FALSE;
 BOOL CG_emit_unwind_info  = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #endif
-
 #ifdef KEY
 BOOL CG_emit_non_gas_syntax = FALSE;
 BOOL CG_inhibit_size_directive = FALSE;
@@ -418,7 +444,17 @@ Init_Section (ST *st)
 	}
 
 	if (Assembly) {
+#if defined(TARG_MIPS) || defined(TARG_X8664)
+	  CGEMIT_Prn_Scn_In_Asm(st, cur_section);
+#else
 	  CGEMIT_Prn_Scn_In_Asm(st, scn_type, scn_flags, scn_entsize, cur_section);
+#endif
+#ifdef TARG_MIPS
+	  UINT32 tmp, power;
+	  power = 0;
+	  for (tmp = STB_align(st); tmp > 1; tmp >>= 1) power++;
+	  fprintf(Asm_File, "\t%s\t%d\n", AS_ALIGN, power);
+#endif
 	}
 }
 
@@ -470,7 +506,11 @@ add_reloc_type (Elf64_AltRela *preloc, unsigned char reloc_type, pSCNINFO scn)
   if (REL64_type3(*preloc) != 0) {
     Elf64_Addr sv_offset = REL_offset(*preloc);
     Em_Add_New_Composite_Rela (preloc, scn);
+#ifdef TARG_IA64
     bzero (preloc, sizeof (Elf64_AltRela));
+#else
+    bzero (preloc, sizeof (Elf64_Rela));
+#endif
     REL_offset(*preloc) = sv_offset;
     REL64_type(*preloc) = reloc_type;
   }
@@ -544,7 +584,12 @@ void
 EMT_Write_Qualified_Name (FILE *f, ST *st)
 {
   if (ST_name(st) && *(ST_name(st)) != '\0') {
-	fprintf (f, "%s", ST_name(st));
+	fputs(ST_name(st), f);
+#ifdef TARG_X8664
+// This name is already unique, don't change it.
+	if (!strncmp (ST_name(st), ".range_table.", strlen(".range_table.")))
+		return;
+#endif // TARG_X8664
 	if ( ST_is_export_local(st) && ST_class(st) == CLASS_VAR) {
 		// local var, but being written out.
 		// so add suffix to help .s file distinguish names.
@@ -592,17 +637,18 @@ static void Print_Dynsym (FILE *pfile, ST *st)
   }
 }
 
-static void Print_Label (FILE *pfile, ST *st, INT size)
+static void Print_Label (FILE *pfile, ST *st, INT64 size)
 {
     ST *base_st;
     INT64 base_ofst;
-    
+#ifdef TARG_IA64    
     // bug fix for OSP_155
     if (ST_is_export_hidden(st)) {
         fprintf ( pfile, "\t%s\t", AS_HIDDEN);
         EMT_Write_Qualified_Name(pfile, st);
         fprintf(pfile, "\n");
     }
+#endif
 
     if (ST_is_weak_symbol(st)) {
 	fprintf ( pfile, "\t%s\t", AS_WEAK);
@@ -614,13 +660,29 @@ static void Print_Label (FILE *pfile, ST *st, INT size)
 	EMT_Write_Qualified_Name(pfile, st);
 	fprintf(pfile, "\n");
     }
-
-    if (ST_class(st) == CLASS_VAR) {
+#ifdef TARG_X8664
+	// Bug 1275 and 4351
+	// Always emit the function type
+	if (ST_class(st) == CLASS_FUNC) {
+	  fprintf ( pfile, "\t%s\t", AS_TYPE);
+	  EMT_Write_Qualified_Name(pfile, st);
+	  fprintf ( pfile, ", %s\n", AS_TYPE_FUNC);
+	}
+#endif
+    if (ST_class(st) == CLASS_VAR
+#ifdef TARG_MIPS
+	&& !CG_emit_non_gas_syntax
+#endif
+	    ) {
     	fprintf (pfile, "\t%s\t", AS_TYPE);
     	EMT_Write_Qualified_Name (pfile, st);
     	fprintf (pfile, ", %s\n", AS_TYPE_OBJECT);
     }
+#ifdef TARG_IA64
     if (size != 0) {
+#else
+    if (size != 0 && !CG_inhibit_size_directive) {
+#endif
 	/* if size is given, then emit value for asm */
       	fprintf ( pfile, "\t%s\t", AS_SIZE);
 	EMT_Write_Qualified_Name(pfile, st);
@@ -655,12 +717,33 @@ Print_Common (FILE *pfile, ST *st)
     }
     fprintf ( pfile, "\t%s\t", AS_COM);
     EMT_Write_Qualified_Name(pfile, st);
+#ifdef TARG_X8664
+    if (LNO_Run_Simd && Simd_Align && TY_size(ST_type(st)) >= 16)
+      fprintf ( pfile, ", %lld, 16\n", TY_size(ST_type(st)));
+    else
+      fprintf ( pfile, ", %lld, %d\n", 
+ 	TY_size(ST_type(st)), TY_align(ST_type(st)));
+#else
     fprintf ( pfile, ", %lld, %d\n", 
 		TY_size(ST_type(st)), TY_align(ST_type(st)));
+#endif
     Print_Dynsym (pfile, st);
     // this is needed so that we don't emit commons more than once
     if (!generate_elf_symbols) Set_ST_elf_index(st, 1);
   }
+#ifdef KEY
+  else {
+    // Emit symbol even though type size is 0, in order to avoid undefined
+    // symbol in C++.  Bug 3739.
+    //
+    // For ipa's symtab.I, can't use PU_src_lang(Get_Current_PU()) to check for
+    // C++ because the PU isn't defined.  So, add the 1 byte for all languages.
+    // Bug 3923.
+    fprintf ( pfile, "\t%s\t", AS_COM);
+    EMT_Write_Qualified_Name(pfile, st);
+    fputs (", 1, 1\n", pfile);
+  }
+#endif
 }
 
 
@@ -685,7 +768,13 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
   symindex = ST_elf_index(sym);
 
   /* check if symbol is already there. */
+#ifdef TARG_IA64 
   if (symindex != 0) return symindex;
+#else
+  if (symindex != 0 && 
+      (!LNO_Run_Simd || !Simd_Align))
+    return symindex;
+#endif
 
   if ( Trace_Elf ) {
     #pragma mips_frequency_hint NEVER
@@ -695,7 +784,15 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
   if ( ! generate_elf_symbols) {
 	// if only .s file, then just do dummy mark that we have
 	// seen this symbol and emitted any type info for it.
+#ifdef TARG_IA64
 	if (ST_class(sym) == CLASS_FUNC) {
+#else
+	  if (ST_class(sym) == CLASS_FUNC
+#ifdef TARG_MIPS
+        && !CG_emit_non_gas_syntax
+#endif
+	      ) {
+#endif
 		fprintf (Asm_File, "\t%s\t", AS_TYPE);
 		EMT_Write_Qualified_Name (Asm_File, sym);
 		fprintf (Asm_File, ", %s\n", AS_TYPE_FUNC);
@@ -706,7 +803,11 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
 	Set_ST_elf_index(sym, 1);
 	return 0;
   }
-
+  #ifndef TARG_IA64 
+  #ifdef Is_True_On
+    if (! profile_arcs || strncmp(ST_name(sym), "LPBX", 4) != 0)
+  #endif
+  #endif
   Is_True (!ST_is_not_used(sym) || ST_emit_symbol(sym), 
 	      ("Reference to not_used symbol (%s)", ST_name(sym)));
 
@@ -746,6 +847,9 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
 	case SCLASS_FSTATIC:
 	case SCLASS_DGLOBAL:
 	case SCLASS_UGLOBAL:
+#ifdef TARG_X8664
+	case SCLASS_EH_REGION:
+#endif // TARG_X8664
 	  symindex = Em_Add_New_Symbol (
 			ST_name(sym), base_ofst, TY_size(sym_type), 
 			symbind, STT_OBJECT, symother,
@@ -948,7 +1052,15 @@ r_apply_l_const (
 	val = ( ( val + 0x800080008000LL ) >> 48 ) & 0xffff;
 	hexfmt = TRUE;
       }
+#ifdef TARG_IA64
       vstr_sprintf (buf, vstr_len(*buf), (hexfmt ? "0x%llx" : "%lld"), val );
+#else
+      if ( TN_is_reloc_low16(t) )
+	vstr_sprintf (buf, vstr_len(*buf), "%hd", (signed short)val );
+      else {
+	vstr_sprintf (buf, vstr_len(*buf), (hexfmt ? "0x%llx" : "%lld"), val );
+      }
+#endif
       return TRUE;
     }
   }
@@ -961,8 +1073,12 @@ r_apply_l_const (
   if ( TN_is_symbol(t) ) {
     st = TN_var(t);
     // call put_symbol so that we emit .type info, once per symbol
-    if (ST_class(st) != CLASS_CONST) {
-    	(void) EMT_Put_Elf_Symbol (st);
+    if( (ST_class(st) != CLASS_CONST)
+#ifdef TARG_X8664
+	&& ( TN_relocs(t) != TN_RELOC_IA32_GLOBAL_OFFSET_TABLE )
+#endif
+	){
+      (void) EMT_Put_Elf_Symbol (st);
     }
     if (TN_relocs(t) != 0) {
 	// use base if referring to current pu or local data
@@ -1018,6 +1134,9 @@ r_apply_l_const (
     print_TN_offset = FALSE;	/* because value used instead */
   }
   else if ( TN_has_value(t) ) {
+#ifdef TARG_X8664
+    vstr_sprintf (buf, vstr_len(*buf),  (hexfmt ? "0x%llx" : "%lld"), TN_value(t) );
+#else
     if ( TN_size(t) <= 4 )
       vstr_sprintf (buf, vstr_len(*buf), 
 		(hexfmt ? "0x%x" : "%d"), (mINT32)TN_value(t) );
@@ -1173,7 +1292,11 @@ static void r_assemble_list (
   }
 
   fputc ('\t', Asm_File);
-  lc = TI_ASM_Print_Inst(OP_code(op), result, opnd, Asm_File);
+#ifdef TARG_X8664
+  lc = CGEMIT_Print_Inst( op, result, opnd, Asm_File );
+#else
+  lc = TI_ASM_Print_Inst( OP_code(op), result, opnd, Asm_File );
+#endif
   FmtAssert (lc != TI_RC_ERROR, ("%s", TI_errmsg));
   vstr_end(buf);
 
@@ -1189,13 +1312,18 @@ static void r_assemble_list (
 	put_TN_comment (OP_opnd(op,i), add_name, &comment);
   }
 
+#ifdef TARG_IA64
   fprintf (Asm_File, "\t\t%s", ASM_CMNT);
   fprintf (Asm_File, " [");
+#else
+  fprintf (Asm_File, "\t%s", ASM_CMNT);
+#endif
   if (OP_scycle(op) >= 0)
     if (BB_rotating_kernel(bb)) {
       ANNOTATION *annot = ANNOT_Get(BB_annotations(bb), ANNOT_ROTATING_KERNEL);
       ROTATING_KERNEL_INFO *info = ANNOT_rotating_kernel(annot);
       INT ii = info->ii;
+#ifdef TARG_IA64
       fprintf (Asm_File, "%d*II+%d", OP_scycle(op) / ii, OP_scycle(op) % ii);
     } else if (BB_scheduled(bb)) {
     if(!OP_noop(op))
@@ -1203,6 +1331,11 @@ static void r_assemble_list (
       fprintf (Asm_File, ":%d", Srcpos_To_Line(OP_srcpos(op)));
     }
   fprintf (Asm_File, "]");
+#else
+    fprintf (Asm_File, " [%d*II+%d]", OP_scycle(op) / ii, OP_scycle(op) % ii);
+    } else if (BB_scheduled(bb))
+        fprintf (Asm_File, " [%d]", OP_scycle(op));
+#endif
   if (vstr_len(comment) == 0) {
     WN *wn = Get_WN_From_Memory_OP (op);
     if (wn && Alias_Manager) {
@@ -1227,6 +1360,7 @@ static void r_assemble_list (
 	}
     }
   }
+#ifdef TARG_IA64
    /*Add value profile comment "val_prof[id, exec_count]"*/
   if (OP_flags_val_prof(op) == VAL_PROF_FLAG)
   {
@@ -1288,7 +1422,7 @@ static void r_assemble_list (
     comment = vstr_concat(comment, tbuf);
   }
 
-
+#endif
   fprintf (Asm_File, " %s\n", vstr_str(comment));
   vstr_end(comment);
 }
@@ -1315,6 +1449,7 @@ static void Verify_Operand(
   const char * const res_or_opnd = is_result ? "result" : "operand";
 
   if (ISA_OPERAND_VALTYP_Is_Register(vtype)) {
+
     REGISTER_SET class_regs;
     ISA_REGISTER_SUBCLASS sc = ISA_OPERAND_VALTYP_Register_Subclass(vtype);
     ISA_REGISTER_CLASS rc = ISA_OPERAND_VALTYP_Register_Class(vtype);
@@ -1323,8 +1458,11 @@ static void Verify_Operand(
     FmtAssert(TN_is_register(tn),
 	      ("%s %d is not a register", res_or_opnd, opnd));
 
-    FmtAssert(TN_register_class(tn) == rc,
-	      ("incorrect register class for %s %d", res_or_opnd, opnd));
+#ifdef TARG_X8664
+    if( tn != Rip_TN() )
+#endif
+      FmtAssert(TN_register_class(tn) == rc,
+		("incorrect register class for %s %d", res_or_opnd, opnd));
 
     FmtAssert(reg != REGISTER_UNDEFINED,
 	      ("undefined register for %s %d", res_or_opnd, opnd));
@@ -1345,6 +1483,11 @@ static void Verify_Operand(
       if ((TFile != stdout) && !ISA_LC_Value_In_Class(imm, lc)) {
         Print_OP_No_SrcLine (op);
       }
+#ifdef TARG_X8664
+      if( TN_size(tn) == 4 ){
+        imm = (INT32) imm;
+      }
+#endif /* TARG_X8664 */
       FmtAssert(ISA_LC_Value_In_Class(imm, lc),
 	        ("literal for %s %d is not in range", res_or_opnd, opnd));
     } else if (TN_is_label(tn)) {
@@ -1412,6 +1555,36 @@ static void Verify_Instruction(OP *op)
 	    ("%s is a member of ISA %s", 
 	     TOP_Name(top), 
 	     ISA_SUBSET_Name(ISA_SUBSET_Value)));
+
+#ifdef TARG_X8664
+  if( OP_x86_style( op ) ){
+    if( TN_register_and_class( OP_opnd( op, 0 ) ) !=
+	TN_register_and_class( OP_result( op , 0 ) ) )
+      FmtAssert( false, ("Result and the first opnd use different register.") );
+  }
+
+  if( OP_reads_rflags( op ) ){
+    OP* prev = OP_prev( op );
+    while( prev != NULL ){
+      if( TOP_is_change_rflags( OP_code(prev) ) )
+	break;
+      prev = OP_prev( prev );
+    }
+
+    // Don't complain if jnp appears in a BB without a compare OP.  This is
+    // because Expand_Ordered_Select_Compare can generate a compare followed by
+    // 2 conditional branches, the second of which is jnp.
+    FmtAssert(prev != NULL || OP_code(op) == TOP_jnp,
+	      ("set_rflags op is missing") );
+  }
+
+  /* Make sure the index register is not %rsp. */
+  int index = TOP_Find_Operand_Use( top, OU_index );
+  if( index >= 0 ){
+    REGISTER reg = TN_register( OP_opnd(op,index) );
+    FmtAssert( reg != RSP, ("%rsp can not serve as index register in lea") );
+  }
+#endif
 
   oinfo = ISA_OPERAND_Info(top);
 
@@ -1528,7 +1701,13 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 	  if (ST_class(st) == CLASS_CONST || ST_is_export_local(st)) {
       	    val -= GP_DISP;
 	  }
+#ifdef TARG_IA64
 	  if (!ISA_LC_Value_In_Class(val, LC_i16)) {
+#elif TARG_X8664
+	  if (!ISA_LC_Value_In_Class(val, LC_simm32)) {
+#else
+	  if (!ISA_LC_Value_In_Class(val, LC_simm16)) {
+#endif
 		/* 
 		 * Put in addend instead of in instruction,
 		 * and put gprel in rela section.
@@ -1543,8 +1722,16 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 	      	val = 0;
 	  }
 	  else {
+#ifdef TARG_IA64
 	    FmtAssert (ISA_LC_Value_In_Class(val, LC_i16),
 		("immediate value %lld too large for GPREL relocation", val));
+#elif TARG_X8664
+	    FmtAssert (ISA_LC_Value_In_Class(val, LC_simm32),
+		("immediate value %lld too large for GPREL relocation", val));
+#else
+	    FmtAssert (ISA_LC_Value_In_Class(val, LC_simm16),
+		("immediate value %lld too large for GPREL relocation", val));
+#endif
 	    Em_Add_New_Rel (EMT_Put_Elf_Symbol (st), R_MIPS_GPREL, PC,
 			  PU_section);
 	  }
@@ -1674,12 +1861,17 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
   }
 
   if (((tn = CGTARG_Copy_Operand_TN(op)) != NULL) &&
+#ifndef TARG_IA64
+      TN_is_register(tn) &&
+#endif
       (!OP_has_predicate(op) || (OP_opnd(op,OP_PREDICATE_OPND) == True_TN))) {
     if (TN_register(OP_result(op,0)) == TN_register(tn)) {
       DevWarn("Redundant Copy instruction in %sBB:%d (PC=0x%x)",
 	      OP_bb(op) && BB_rotating_kernel(OP_bb(op)) ? "SWPd " : "",
 	      OP_bb(op) ? BB_id(OP_bb(op)) : -1, PC);
-      Print_OP_No_SrcLine (op);
+      if (TFile != stdout) {	/* only print to .t file */
+        Print_OP_No_SrcLine (op);
+      }
     }
   } else {
     if (OP_ixor(op) &&
@@ -1688,7 +1880,9 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
       DevWarn ("Redundant XOR instruction in %sBB:%d (PC=0x%x)",
 	       BB_rotating_kernel(OP_bb(op)) ? "SWPd " : "",
 	       BB_id(OP_bb(op)), PC);
-      Print_OP_No_SrcLine (op);
+      if (TFile != stdout) {	/* only print to .t file */
+        Print_OP_No_SrcLine (op);
+      }
     }
 
     if (CGTARG_Is_Right_Shift_Op (op)) {
@@ -1696,17 +1890,21 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
         DevWarn ("Redundant shift instruction in %sBB:%d (PC=0x%x)",
 	         BB_rotating_kernel(OP_bb(op)) ? "SWPd " : "",
 	         BB_id(OP_bb(op)), PC);
-        Print_OP_No_SrcLine (op);
+        if (TFile != stdout) {	/* only print to .t file */
+          Print_OP_No_SrcLine (op);
+	}
       }
     }
   }
 
+#ifndef TARG_X8664
   if (OP_unalign_ld(op)) {
 	Is_True(TN_is_zero_reg(OP_opnd(op,2)) 
 		|| (TN_register(OP_opnd(op,2)) == TN_register(OP_result(op,0))),
 		("unaligned load last-result doesn't match new result "
 		 "in BB:%d", OP_bb(op) ? BB_id(OP_bb(op)) : -1));
   }
+#endif
 
   /* Make sure we're not emitting mov.[ds] of integer values. */
   if ((tn = CGTARG_Copy_Operand_TN(op)) != NULL 
@@ -1719,13 +1917,83 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
 
   if (OP_code(op) == TOP_noop) {
     DevWarn("Noop not removed in BB:%d (PC=0x%x)", BB_id(OP_bb(op)), PC);
-    Print_OP_No_SrcLine(op);
+    if (TFile != stdout) {	/* only print to .t file */
+      Print_OP_No_SrcLine(op);
+    }
   }
 }
 #else
 #define Perform_Sanity_Checks_For_OP(op, check_def)
 #endif
 
+#ifdef TARG_X8664
+//********************************************************
+//Bug 11034: implement dymanic allocation of pu tables to
+//various information for dwarf
+//********************************************************
+static INT32 num_pus = 64; /*initialized as 64*/
+static BOOL dw_pu_tables_allocated = FALSE;
+LABEL_IDX *Label_pushbp=NULL;
+LABEL_IDX *Label_movespbp=NULL;
+LABEL_IDX *Label_adjustsp=NULL;
+LABEL_IDX *Label_Callee_Saved_Reg=NULL;
+LABEL_IDX *Label_First_BB_PU_Entry=NULL;
+LABEL_IDX *Label_Last_BB_PU_Entry=NULL;
+
+#define ALLOCATE_LABEL_ENTRY                              \
+    (TYPE_MEM_POOL_ALLOC_N(LABEL_IDX,&MEM_src_pool,num_pus))
+
+#define DOUBLE_LABEL_ENTRY(label)                         \
+    (label=TYPE_MEM_POOL_REALLOC_N(LABEL_IDX,&MEM_src_pool,label,num_pus, 2*num_pus))
+
+static void init_dwarf_pu_tables()
+{
+   if(!dw_pu_tables_allocated){ // allocate memory 
+     Label_pushbp=ALLOCATE_LABEL_ENTRY;
+     Label_movespbp=ALLOCATE_LABEL_ENTRY;
+     Label_adjustsp=ALLOCATE_LABEL_ENTRY;
+     Label_Callee_Saved_Reg=ALLOCATE_LABEL_ENTRY;
+     Label_First_BB_PU_Entry=ALLOCATE_LABEL_ENTRY;
+     Label_Last_BB_PU_Entry=ALLOCATE_LABEL_ENTRY;
+     dw_pu_tables_allocated = TRUE;
+   } 
+   for(INT i=0; i<num_pus; i++){ //initialization
+     Label_pushbp[i] = LABEL_IDX_ZERO;
+     Label_movespbp[i] =LABEL_IDX_ZERO;
+     Label_adjustsp[i] = LABEL_IDX_ZERO;
+     Label_Callee_Saved_Reg[i] = LABEL_IDX_ZERO;
+     Label_First_BB_PU_Entry[i] = LABEL_IDX_ZERO;
+     Label_Last_BB_PU_Entry[i] = LABEL_IDX_ZERO;
+   }
+}
+    
+static void double_dwarf_pu_tables()
+{
+   FmtAssert(dw_pu_tables_allocated && Label_pushbp, 
+                ("double_dwarf_pu_tables: pu_tables were not allocated."));
+   DOUBLE_LABEL_ENTRY(Label_pushbp);
+   DOUBLE_LABEL_ENTRY(Label_movespbp);
+   DOUBLE_LABEL_ENTRY(Label_adjustsp);
+   DOUBLE_LABEL_ENTRY(Label_Callee_Saved_Reg);
+   DOUBLE_LABEL_ENTRY(Label_First_BB_PU_Entry);
+   DOUBLE_LABEL_ENTRY(Label_Last_BB_PU_Entry); 
+   num_pus = 2*num_pus;
+}
+
+static INT32 pu_entries = 0;
+
+static inline BOOL
+tn_registers_identical (TN *tn1, TN *tn2)
+{
+  return ((tn1 == tn2) ||
+          ((TN_is_register(tn1) && TN_is_register(tn2) &&
+	    (TN_is_dedicated(tn1) || 
+	     (TN_register(tn1) != REGISTER_UNDEFINED)) &&           
+	    (TN_is_dedicated(tn2) || 
+	     (TN_register(tn2) != REGISTER_UNDEFINED)) &&           
+	    (TN_register_and_class(tn1) == TN_register_and_class(tn2)))));
+}
+#endif // TARG_X8664
 
 /* Write out the 'op' into the object file and/or into the assembly file.
  */
@@ -1743,11 +2011,173 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 
   if (OP_prefetch(op)) Use_Prefetch = TRUE;
 
+#ifdef TARG_X8664
+  static INT32 label_adjustsp_pu = -1;
+  static INT32 pu_entry_count = -1;
+  BOOL adjustsp_instr = FALSE;
+
+  if ( BB_entry(bb) && CG_emit_unwind_info ) {
+    // Replace uses of entry_name with uses of ST_name, since inserting
+    // new elements into StrTab can realloc it and this pointer would be
+    // invalid: bug 4222
+    // char* entry_name;
+
+    ST *entry_sym; 
+    ENTRYINFO *ent;
+    ANNOTATION *ant;
+    ant = ANNOT_Get (BB_annotations(bb), ANNOT_ENTRYINFO);
+    ent = ANNOT_entryinfo(ant);
+    entry_sym = ENTRYINFO_name(ent);
+
+    if (BB_first_op(bb) == op) {
+      if (strcmp(ST_name(entry_sym), Cur_PU_Name) == 0) {
+	pu_entries = 0; // reinitialize
+	pu_entry_count ++;
+      }
+      else if (PU_ftn_lang(Get_Current_PU())) {
+	pu_entries ++;
+	pu_entry_count ++;
+      }
+      //bug 11034 : dynamic allocation and reallocation if necessary
+      if(!dw_pu_tables_allocated){ // this should not happen
+        Is_True (FALSE, ("r_assemble_op: dwarf pu tables not allocated."));
+        init_dwarf_pu_tables(); 
+      }
+      if(pu_entries >= num_pus-1) // not enough entry in the tables
+          double_dwarf_pu_tables(); // double the size of pu_tables
+ 
+      Label_First_BB_PU_Entry[pu_entries] = Gen_Label_For_BB(bb);
+      FmtAssert(pu_entries < num_pus-1, 
+		("Too many pus, pu_tables should have been expanded."));
+    }
+
+    if (OP_code(op) == TOP_pushq || 
+	OP_code(op) == TOP_pushl &&
+	Debug_Level > 0) {
+      char* buf;
+      LABEL* label;
+      buf = (char *)alloca(strlen(ST_name(entry_sym)) + 
+      		/* EXTRA_NAME_LEN */ 32);
+      sprintf(buf, ".LEH_pushbp_%s", ST_name(entry_sym));
+      label = &New_LABEL(CURRENT_SYMTAB, Label_pushbp[pu_entries]);
+      LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+      fprintf( Asm_File, "%s:\n", LABEL_name(Label_pushbp[pu_entries]));
+    } else if ((OP_code(op) == TOP_mov64 || 
+    		OP_code(op) == TOP_mov32) &&
+	       OP_result(op, 0) == FP_TN && 
+	       OP_opnd(op, 0) == SP_TN) {
+      char* buf;
+      LABEL* label;
+      buf = (char *)alloca(strlen(ST_name(entry_sym)) + 
+      		/* EXTRA_NAME_LEN */ 32);
+      sprintf(buf, ".LEH_movespbp_%s", ST_name(entry_sym));
+      label = &New_LABEL(CURRENT_SYMTAB, Label_movespbp[pu_entries]);
+      LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+      fprintf( Asm_File, "%s:\n", LABEL_name(Label_movespbp[pu_entries]));
+    } else if ((OP_code(op) == TOP_addi64 || 
+    		OP_code(op) == TOP_addi32 ||
+		OP_code(op) == TOP_sub64 ||
+		OP_code(op) == TOP_sub32) &&
+	       label_adjustsp_pu != pu_entry_count &&
+	       OP_result(op, 0) == SP_TN) {
+      char* buf;
+      LABEL* label;
+      buf = (char *)alloca(strlen(ST_name(entry_sym)) + 
+      		/* EXTRA_NAME_LEN */ 32);
+      sprintf(buf, ".LEH_adjustsp_%s", ST_name(entry_sym));
+      label = &New_LABEL(CURRENT_SYMTAB, Label_adjustsp[pu_entries]);
+      LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+      fprintf( Asm_File, "%s:\n", LABEL_name(Label_adjustsp[pu_entries]));
+      label_adjustsp_pu = pu_entry_count;
+      adjustsp_instr = TRUE;
+      // Bug 2929 - The exact position of the last Callee Saved Register
+      // spill does not matter. So, we could emit the csr label immediately
+      // after adjustsp label (this order is important). The positions of
+      // the callee saved register(s) on the stack will be emitted in the 
+      // concerned dwarf sections using this csr label. At higher optimization
+      // levels, the adjustsp and csr saves can be moved around by EBO and this
+      // is a work-around.
+      if (Cgdwarf_Num_Callee_Saved_Regs()) { 
+	buf = (char *)alloca(strlen(ST_name(entry_sym)) + 
+			       /* EXTRA_NAME_LEN */ 32);
+	sprintf(buf, ".LEH_csr_%s", ST_name(entry_sym));
+	label = &New_LABEL(CURRENT_SYMTAB, Label_Callee_Saved_Reg[pu_entries]);
+	LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+	fprintf( Asm_File, "%s:\n", LABEL_name(Label_Callee_Saved_Reg[pu_entries]));
+      }
+    }
+  }
+
+  Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
+  if (Debug_Level > 0 && OP_first_after_preamble_end(op)) {
+    Cg_Dwarf_First_Op_After_Preamble_End = TRUE;
+    if (OP_srcpos(op) == 0 && op->next != 0)
+      OP_srcpos(op) = OP_srcpos(OP_next(op));
+  }
+#endif
+#ifndef TARG_IA64
+  Cg_Dwarf_BB_First_Op = FALSE; 
+  if (Debug_Level > 0 && BB_first_op(bb) == op &&
+      (BB_preds_len(bb) != 1 ||
+       (BB_preds_len(bb) == 1 && 
+        BB_prev(bb) && BB_First_Pred(bb) != BB_prev(bb))))
+    Cg_Dwarf_BB_First_Op = TRUE; 
+    // Does this make Cg_Dwarf_First_Op_After_Preamble_End redundant?
+#endif
   Cg_Dwarf_Add_Line_Entry (PC, OP_srcpos(op));
   if (Assembly) {
     r_assemble_list ( op, bb );
     if (!Object_Code) words = ISA_PACK_Inst_Words(OP_code(op));
   }
+#ifdef TARG_X8664
+  if (BB_entry(bb) && CG_emit_unwind_info && Frame_Len == 0) {
+    char* entry_name;
+    ST *entry_sym; 
+    ENTRYINFO *ent;
+    ANNOTATION *ant;
+    ant = ANNOT_Get (BB_annotations(bb), ANNOT_ENTRYINFO);
+    ent = ANNOT_entryinfo(ant);
+    entry_sym = ENTRYINFO_name(ent);
+    entry_name = ST_name(entry_sym);
+    
+    // If the frame length is zero then spadjust would have been deleted
+    // So, we need to generate another psuedo label here and attach it after 
+    // the movespbp instruction.
+    if ((OP_code(op) == TOP_mov64 || 
+	 OP_code(op) == TOP_mov32) &&
+	OP_result(op, 0) == FP_TN && 
+	OP_opnd(op, 0) == SP_TN) {
+      char* buf;
+      LABEL* label;
+      buf = (char *)alloca(strlen(entry_name) + 
+      		/* EXTRA_NAME_LEN */ 32);
+      sprintf(buf, ".LEH_adjustsp_%s", entry_name);
+      label = &New_LABEL(CURRENT_SYMTAB, Label_adjustsp[pu_entries]);
+      LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+      fprintf( Asm_File, "%s:\n", LABEL_name(Label_adjustsp[pu_entries]));
+      // if we need to use entry_name here, we must use ST_name instead
+      adjustsp_instr = TRUE;
+    }
+  }
+
+  // Bug 4204 - move the ctrl register setup after the preamble. This 
+  // causes the debug information generated to let the debugger to stop
+  // at the right spot for the main entry function. Otherwise, the parameters
+  // would be displayed incorrectly. 
+  if (adjustsp_instr) {
+    // Assumption: REGION_First_BB is the first BB in the PU. If in future,
+    // we start having multiple regions in a PU here, we need to change the 
+    // following. 
+    // In such a scenario, we should need to change many of the occurrences
+    // of REGION_First_BB above.
+    if( Assembly && (REGION_First_BB == bb) &&
+	( strcmp( Cur_PU_Name, "MAIN__" ) == 0 ||
+	  strcmp( Cur_PU_Name, "main" ) == 0 ) ){
+      CGEMIT_Setup_Ctrl_Register( Asm_File );
+    }
+  }
+#endif
+
   if (Object_Code) {
     ISA_PACK_INST inst[ISA_PACK_MAX_INST_WORDS];
     words = r_assemble_binary ( op, bb, inst );
@@ -1791,14 +2221,152 @@ if (Get_Trace ( TP_EMIT,0x100 )) {
     Last_Label = LABEL_IDX_ZERO;
   }
   else {
+#ifndef TARG_X8664 
+    // Bug 2468 - can not update offset/PC for x86 target (variable length)
     Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, words);
+#endif
   }
 
   return words;
 }
 
 
+#ifdef KEY
+#include "cxx_memory.h"
 
+static char* 
+Replace_Substring(char* in, char* from, char* to)
+{
+  if (strcmp(from, to) == 0) return in;
+
+  // Assume 'from' appears 5 times in 'in' to start with and later reallocate
+  // memory if need be. Due to the context, this is more efficient than finding
+  // out the number of occurrences of 'from' in 'in'.
+  UINT  buflen = strlen(in) + 5*strlen(to) + 64;
+  char* buf = CXX_NEW(char[buflen], &MEM_local_pool);
+  char* tmp = CXX_NEW(char[buflen], &MEM_local_pool);
+  char* cpy = in;
+  char* p = NULL;
+  char* q = NULL;
+  char* leftover;
+  INT times = 5;
+  INT substitute = 1; // By default, substitutions ought to happen.
+
+  strcpy(buf, ""); // initialize
+  strcpy(tmp, ""); // initialize
+  strcat(in, "\0");
+  while ((p = strstr(in, from)) != NULL) {
+
+    leftover = p + strlen(from);
+
+    // Bug 7825 happened because in the earlier implementation, we used to 
+    // replace the 'from' instance by 'to' even if the 'from' instance happened
+    // to be a prefix of a larger instance of the token class that the incoming 
+    // 'from' belonged to. 
+    //
+    // With the 2.x GCC series, the maximum number of operands permissible in
+    // an asm() statement was 10, and as no pattern in %0 through %9 share a 
+    // common prefix, this scheme worked just fine. Since the GCC 3.x series, 
+    // asm() statements can have up to 30 operands. So, this scheme would no 
+    // longer work: wrong substitutions happenned.
+    // (e.g. %10 -> <'to' for 'from' %1>0 (Note trailing '0')).
+    //
+    // Using strstr(3) to skim over the 'in' (asm template) is fine, but does 
+    // not suffice as the basis upon which to substitute 'from' by 'to' - we 
+    // needed to ascertain that the 'from' instance happens to be a maximal 
+    // instance of token class:
+    //
+    // %<number>
+    //
+    // Note: From the GCC 3.3.5 User Manual, we have the following excerpt:
+    //
+    // "As of GCC version 3.1, it is also possible to specify input and output 
+    //  operands using symbolic names which can be referenced within the 
+    //  assembler code."
+    //
+    // However, no two instances of the token class: %[<identifier>] can have a
+    // common-prefix, so we are fine implementing our check for when the asm() 
+    // operands are referred to per the older scheme viz. in a numbered manner.
+    //
+    // Note: It might seem like iterating the operand list in the descending
+    // order of operands is a plausible workaround, but that might not be the
+    // only context in which this function is invoked. The kludge would be exposed
+    // when a single invocation involving a single numbered operand that shares a 
+    // common prefix with another numbered operand in the operand list occurs.
+    // So we rather do the right thing and fix things in the proper place.
+    //
+    // Hence the following code to implement a "maximal-munch" when we find that
+    // the 'from' pattern is a numbered operand reference. (Admittedly, we're 
+    // making this function specific to substituting references to operands in 
+    // assembler templates, but then the other option would be to specify a
+    // pattern (via regex(3)) for 'from' and that's adding dependencies and
+    // complicating matters).
+
+    if (strlen(from) >= 2 && 
+        from[0] == '%' && 
+        (isdigit(from[1]) || 
+         isalpha(from[1]) || 
+         from[1] == '*' || 
+         from[1] == '&')) {
+
+      // We've ensured that 'from' is a numbered operand reference possibly with
+      // a modifier. (See Bug 3141 Additional Comment #7 for a more extensive 
+      // list of modifiers in an operand reference that are possible in an asm()
+      // assembler template but are not documented in the GCC User Manual).
+
+      // That we have a 'from' instance in 'in' and that 'in' is '\0' 
+      // terminated, implies that 'p + 2' is a valid address. Hence:
+
+      q = p + 2;
+
+      // Now scan ahead from this point onwards ensuring that we are within 
+      // bounds (i.e. we have'nt yet hit '\0') cand a partially constructed 
+      // number or identifier continues to be formed. 
+      // Note that this weak check is is O.K. as long as 'from' is syntactically
+      // well defined.
+
+      while (*q != '\0' && (isdigit(*q) || isalpha(*q))) q++;
+
+      // We already have proof that 'p' points to a prefix of 'from' in 'in'.
+      // If the number of characters we've marched past 'p' upto 'q' above
+      // non-inclusively, equals the length of 'from' - it's an exact match
+      // and we allow the substitution to take place. Else, we want to 
+      // prohibit the substitution.
+
+      if ((q - p) == strlen(from)) 
+        substitute = 1;
+      else 
+        substitute = 0;
+
+    }
+    else substitute = 1; // Preserve prior behaviour.
+
+    strncpy(tmp, in, strlen(in) - strlen(p));
+    tmp[strlen(in) - strlen(p)] = '\0'; // terminate the string
+    strcat(buf, tmp);
+    if (substitute)
+      strcat(buf, to);
+    else
+      strcat(buf, from); // Because we are going to resume at 'from'.
+    in = leftover;
+    if (--times == 0) {
+      buf = TYPE_MEM_POOL_REALLOC_N(char, &MEM_local_pool, buf,
+				    buflen, buflen + 5*strlen(to) + 64);
+      tmp = TYPE_MEM_POOL_REALLOC_N(char, &MEM_local_pool, tmp,
+				    buflen, buflen + 5*strlen(to) + 64);
+      buflen += (5*strlen(to) + 64);	
+      times = 5; 
+    }
+  }
+  CXX_DELETE(tmp, &MEM_local_pool);
+  if (strcmp(buf, "") == 0) {
+    CXX_DELETE(buf, &MEM_local_pool);
+    return cpy;
+  }  
+  strcat(buf, in);
+  return buf;
+}
+#else
 static char* 
 Replace_Substring(char* in, char* from, char* to)
 {
@@ -1817,13 +2385,42 @@ Replace_Substring(char* in, char* from, char* to)
   }
   return in;
 }
+#endif /* KEY */
 
-  
+#ifdef TARG_X8664
+static char* int_reg_names[5][16] = {
+  /* BYTE_REG: low 8-bit */
+  { "%al", "%bl", "%bpl", "%spl", "%dil", "%sil", "%dl", "%cl",
+    "%r8b",  "%r9b",  "%r10b", "%r11b", "%r12b", "%r13b", "%r14b", "%r15b" },
+  /* BYTE_REG: high 8-bit */
+  { "%ah", "%bh", "%bph", "%sph", "%dih", "%sih", "%dh", "%ch",
+    /* The following is a filler. There is no "high"  for these registers */
+    "%r8b",  "%r9b",  "%r10b", "%r11b", "%r12b", "%r13b", "%r14b", "%r15b" },
+  /* WORD_REG: 16-bit */
+  { "%ax", "%bx", "%bp", "%sp", "%di", "%si", "%dx", "%cx",
+    "%r8w",  "%r9w",  "%r10w", "%r11w", "%r12w", "%r13w", "%r14w", "%r15w" },
+  /* DWORD_REG: 32-bit */
+  { "%eax", "%ebx", "%ebp", "%esp", "%edi", "%esi", "%edx", "%ecx",
+    "%r8d",  "%r9d",  "%r10d", "%r11d", "%r12d", "%r13d", "%r14d", "%r15d" },
+  /* QWORD_REG: 64-bit */
+  { "%rax", "%rbx", "%rbp", "%rsp", "%rdi", "%rsi", "%rdx", "%rcx",
+    "%r8",  "%r9",  "%r10", "%r11", "%r12", "%r13", "%r14", "%r15" },
+};
+#endif  
 static char* 
+#ifdef TARG_IA64
 Modify_Asm_String (char* asm_string, UINT32 position, bool memory, TN* tn, BB *bb)
+#else
+Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
+		     TN* offset_tn,  /* for memory opnd */
+		     TN* tn, BB *bb)
+#endif
 {
-  char* name;
-  if (TN_is_register(tn)) {
+  char* name = NULL;
+#ifdef TARG_X8664
+  char st_reg_name_template[7] = {'%', 's', 't', '(', '\0', ')', '\0'};
+#endif
+  if( TN_is_register(tn) ){
     ISA_REGISTER_CLASS cl = TN_register_class(tn);
     REGISTER reg = TN_register(tn);
 #ifdef HAS_STACKED_REGISTERS
@@ -1835,35 +2432,119 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory, TN* tn, BB *b
     }
 #endif
     name = (char*) REGISTER_name(cl, reg);
+#ifdef TARG_X8664
+    // Rename an integer register based on the size of the variable.
+    if (cl == ISA_REGISTER_CLASS_integer) {
+       name = (char*) CGTARG_Modified_Asm_Opnd_Name('r', tn, name);
+    }
+    // Check if you need to modify st0/st1 into parenthesised format.
+    // Save a function call to strcmp(3).
+    if (name[0] == '%' && 
+        name[1] == 's' && 
+        name[2] == 't' && 
+        (name[3] == '0' || name[3] == '1') && 
+        name[4] == '\0') { 
+      st_reg_name_template[4] = name[3];
+      name = st_reg_name_template;
+    }
+#endif
     if (memory) {
+#ifdef TARG_MIPS
+      char* buf = (char*) alloca(strlen(name)+4);
+      sprintf(buf, "0(%s)", name);
+#else
       char* buf = (char*) alloca(strlen(name)+3);
-#ifdef TARG_IA32
-      sprintf(buf, "(%s)", name);
+#ifdef TARG_X8664      
+      // ISA_REGISTER_CLASS_integer class renaming has happened above, 
+      // so we just deal with the other classes out here. 
+      if (Is_Target_32bit() && cl != ISA_REGISTER_CLASS_integer) {
+	char modifier = 'r';
+	name = (char*) CGTARG_Modified_Asm_Opnd_Name(modifier, tn, name);
+      }
+#endif
+#if defined(TARG_IA32) || defined(TARG_X8664)
+      if( offset_tn != NULL ){
+	FmtAssert( !TN_is_symbol(offset_tn), ("NYI") );
+      }
+
+      if( offset_tn != NULL &&
+	  TN_has_value(offset_tn) ){
+	sprintf(buf, "%d(%s)", (INT)TN_value(offset_tn),name);
+      } else {
+	sprintf(buf, "(%s)", name);
+      }
 #else
       sprintf(buf, "[%s]", name);
 #endif
+#endif
       name = buf;
     }
+  }
+#ifdef TARG_X8664
+  else if( TN_is_symbol(tn) ){
+    ST* base_st = NULL;
+    INT64 base_ofst = 0;
+    TN* base_tn = NULL;
+
+    ST* st = TN_var(tn);
+    Base_Symbol_And_Offset( st, &base_st, &base_ofst );
+
+    base_ofst += TN_offset(tn);
+
+    char* buf = (char*)alloca(strlen(ST_name(st)) + /* EXTRA_NAME_LEN */ 64);
+    if( base_st == SP_Sym || base_st == FP_Sym ){
+      base_tn = base_st == SP_Sym ? SP_TN : FP_TN;
+      name = (char*)REGISTER_name( TN_register_class(base_tn), TN_register(base_tn) );
+      if( Is_Target_32bit() ){
+	name = (char*)CGTARG_Modified_Asm_Opnd_Name( 'r', base_tn, name );
+      }
+
+      sprintf( buf, "%d(%s)", (int)base_ofst, name );
+
+    } else {
+      name = ST_name( st );
+
+      if( base_ofst == 0 ){
+	if( Is_Target_32bit() )
+	  sprintf( buf, "%s", name );
+	else
+	  sprintf( buf, "%s(%%rip)", name );
+      } else
+	if( Is_Target_32bit() )
+	  sprintf( buf, "%s+%d", name, (int)base_ofst );
+	else
+	  sprintf( buf, "%s+%d(%%rip)", name, (int)base_ofst );
+    }
+
+    name = buf;
   }
   else {
     FmtAssert(!memory && TN_is_constant(tn) && TN_has_value(tn),
               ("ASM operand must be a register or a numeric constant"));
     char* buf = (char*) alloca(32);
-    sprintf(buf, 
-#ifdef TARG_IA32
-            "$%lld", 
-#else
-            "%lld",
-#endif
-            TN_value(tn));
+    sprintf(buf, "$%lld",TN_value(tn));
     name = buf;
   }
+#else
+  else {
+    FmtAssert(!memory && TN_is_constant(tn) && TN_has_value(tn),
+              ("ASM operand must be a register or a numeric constant"));
+    char* buf = (char*) alloca(32);
+    sprintf(buf, "%lld",TN_value(tn));
+    name = buf;
+  }
+#endif
   
   char pattern[4];
+#ifdef TARG_IA64
   sprintf(pattern, "%%%c", '0'+position);
+#else
+  sprintf(pattern, "%%%d", position);
+#endif
   
   asm_string =  Replace_Substring(asm_string, pattern, name);
 
+#ifdef TARG_IA64
   if (TN_is_register(tn)) {
     for (INT i = 0; i < CGTARG_Num_Asm_Opnd_Modifiers; i++) {
       char modifier = CGTARG_Asm_Opnd_Modifiers[i];
@@ -1872,6 +2553,152 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory, TN* tn, BB *b
       asm_string  = Replace_Substring(asm_string, pattern, name);
     }
   }
+#else // TARG_IA64
+
+#ifdef TARG_X8664
+  if (TN_is_register(tn)) {
+    // Bug 3141: Support the 'y' modifier in operand references within
+    //           the asm template.
+    // Note that we only modify %st0 into %st(0) [and %st1 into %st(1)];
+    // so, we need to check for %st too (Which is what %y is about anyways).
+    if (strcmp(name, "%st") == 0 || strcmp(name, "%st(0)") == 0) {
+      sprintf(pattern, "%%y%d", position);
+      asm_string = Replace_Substring(asm_string, pattern, "%st(0)");
+    }
+  }
+#endif
+
+#ifdef TARG_X8664
+  // Replace any %c<num> constraint with the immediate value
+  // Replace any %n<num> constraint with the negated immediate value
+  if (!TN_is_register(tn) && !TN_is_symbol(tn)) {
+    if (strstr(asm_string, "%c")) {
+      char replace[5];
+      sprintf(replace, "%%c%d", position);
+      // Drop the '$' in name.  Bug 7406.
+      asm_string = Replace_Substring(asm_string, replace, name+1);
+    }
+    if (strstr(asm_string, "%n")) {
+      // Bug 3141: One of the problems found was that we did not support
+      // %n<num> in the asm() assembler template.
+      // The assembler downstream handles compile-time constant expressions as 
+      // immediates in instructions, so we are fine just prefixing a '-' to the 
+      // immediate value in 'name'.
+      char replace[5];
+      char tmp;
+      sprintf(replace, "%%n%d", position);
+      tmp = *name;
+      *name = '-';
+      asm_string = Replace_Substring(asm_string, replace, name);
+      *name = tmp;
+    }
+    if (strstr(asm_string, "%P")) {
+      char replace[5];
+      sprintf(replace, "%%P%d", position);
+      asm_string = Replace_Substring(asm_string, replace, name);
+    }
+  }
+  // Follow the zero dialect_number implementation as in 
+  // gcc/final.c:output_asm_insn and handle {, } and | operators
+  if (strchr(asm_string, '{')) {
+    char buf[500];
+    int next = 0;
+    buf[0] = '\0';
+    for (INT i = 0; i < strlen(asm_string); i ++) {
+      if (asm_string[i] == '{' || asm_string[i] == '}') 
+	continue;
+      else if (asm_string[i] == '|') {
+	INT j = i+1;
+	BOOL found = TRUE;
+	while (asm_string[j] != '}') {
+	  j ++;
+          if (j == strlen(asm_string)) {
+	    found = FALSE;
+	    break;
+	  }
+	}
+	if (found) {
+	  i = j;
+	  continue; 
+	} else {
+	  FmtAssert(FALSE, 
+		    ("Modify_Asm_String: Inline assembly %s has unmatched '{'",
+		     asm_string));
+	}
+      } else {
+        buf[next++] = asm_string[i]; 
+	buf[next] = '\0';
+      }
+    }
+    sprintf(asm_string, "%s", buf);
+  }
+
+  // Handle modifier between % and the operand number, such as %b0, %h0.  The
+  // modifier controls how the register or instruction name is printed.
+  {
+    // Need to test bugs 504, 2455, 3141 
+    // if any change is made in this function.
+   
+    // Handle x86 style asm operand constraints after all regular constraints.
+    // This avoids replacing same register names multiple times.
+    char x86pattern[5];
+    char *tmp_name;
+    REGISTER reg;
+    BOOL is_reg = TN_is_register(tn);
+
+    if (is_reg) {
+      reg = TN_register(tn);
+    }
+    
+    // Handle any %b constraint
+    tmp_name = is_reg ? int_reg_names[0][reg-REGISTER_MIN] : name;
+    sprintf(x86pattern, "%%b%d", position);
+    asm_string = Replace_Substring(asm_string, x86pattern, tmp_name);
+    
+    // Handle any %h constraint
+    tmp_name = is_reg ? int_reg_names[1][reg-REGISTER_MIN] : name;
+    sprintf(x86pattern, "%%h%d", position);
+    asm_string = Replace_Substring(asm_string, x86pattern, tmp_name);
+    
+    // Handle any %w constraint
+    tmp_name = is_reg ? int_reg_names[2][reg-REGISTER_MIN] : name;
+    sprintf(x86pattern, "%%w%d", position);
+    asm_string = Replace_Substring(asm_string, x86pattern, tmp_name);
+    
+    // Handle any %k constraint
+    tmp_name = is_reg ? int_reg_names[3][reg-REGISTER_MIN] : name;
+    sprintf(x86pattern, "%%k%d", position);
+    asm_string = Replace_Substring(asm_string, x86pattern, tmp_name);
+
+    // Handle any %q constraint
+    tmp_name = is_reg ? int_reg_names[4][reg-REGISTER_MIN] : name;
+    sprintf(x86pattern, "%%q%d", position);
+    asm_string = Replace_Substring(asm_string, x86pattern, tmp_name);
+
+    // Handle any %z modifier instance.
+    char *suffix = NULL;
+    sprintf(x86pattern, "%%z%d", position);
+    if (strstr(asm_string, x86pattern) != NULL) {
+      UINT size;
+      if (TN_is_symbol(tn)) {
+	ST* st = TN_var(tn);
+	size = ST_size(st);
+      } else {
+	size = TN_size(tn);
+      }
+      switch (size) {
+      case 1: suffix = "b"; break;
+      case 2: suffix = "w"; break;
+      case 4: suffix = "l"; break;
+      case 8: suffix = "q"; break;
+      default: FmtAssert(FALSE, ("Opcode suffix requested for operand %d which has size %d", position, size)); break;
+      }
+      asm_string =  Replace_Substring(asm_string, x86pattern, suffix);
+    }
+  }
+#endif// TARG_X866
+
+#endif // TARG_IA64
   
   return asm_string;
 }
@@ -1884,10 +2711,121 @@ Generate_Asm_String (OP* asm_op, BB *bb)
   ASM_OP_ANNOT* asm_info = (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, asm_op);
   char* asm_string = strdup(WN_asm_string(ASM_OP_wn(asm_info)));
 
+#ifndef TARG_IA64
+  //#ifdef KEY
+
+  // Bug 5009: ASM: need to check operand number
+  UINT n, index_count;
+  char *p, *q, c;
+
+  p = asm_string;
+
+  // In the following loop, we identify an operand reference based on the 
+  // following syntax: %<single-character-modifier>?<number> 
+  while(*p != '\0') {
+
+    // In case the '%' is followed by another one, consume it and continue.
+    if (*p == '%' && *(p + 1) == '%') {
+                                                                                                                                                  
+      p += 2; 
+      continue;
+                                                                                                                                                  
+    }
+    else if (*p == '%') {
+                                                                                                                                                  
+      p++; // (Consume the '%').
+                                                                                                                                                  
+      // In case there is a modifer, get past it, taking care not to overshoot.
+      if (*p != '\0' && !isdigit(*p)) p++;
+                                                                                                                                                  
+      // Save the start location and scan ahead, looking for a number.
+      q = p;
+      while (*p != '\0' && isdigit(*p)) p++;
+                                                                                                                                                  
+      // If we got an operand reference, warn if it is not within permissible 
+      // bounds for this asm() statement.
+      if (p - q > 0) {
+                                                                                                                                                  
+        c = *p;
+        *p = '\0';
+        n = atoi(q);
+        *p = c;
+
+        index_count = OP_opnds(asm_op) + OP_results(asm_op);
+                                                                                                                                                  
+        if (n >= index_count) {
+                                                                                                                                                  
+          char message[128]; 
+          // Every time you change the text of any of the error message that's
+          // going out - make sure the size of the message array is large 
+          // enough!
+                                                                                                                                                  
+          if (index_count == 0)
+            sprintf(message, "Not expecting to see any operand references");
+          else if (index_count == 1)
+            sprintf(message, "Only permissible reference can be to operand 0");
+          else
+            sprintf(message, 
+                    "Expecting to see references to operands numbered"
+                    " between 0 and %d inclusive",
+                    index_count - 1);
+
+          // Emit the diagnostic.
+          ErrMsg(EC_ASM_Bad_Operand, Srcpos_To_Line(OP_srcpos(asm_op)), n,
+                 message);
+                                                                                                                                                  
+        }
+      }
+    }
+    else p++;
+  }
+
+  // Bug 2486
+  static INT asm_unique_number = 111; // each asm with a %= has a unique number
+  if (strstr(asm_string, "%=")) {
+    char pattern[3];
+    char name[10];
+    strcpy(pattern, "%=");
+    sprintf(name, "%d", asm_unique_number);
+    asm_string = Replace_Substring(asm_string, pattern, name);
+    asm_unique_number ++;
+  }
+
+  if (strcmp(asm_string, "__asm_builtin_apply_load") == 0) {
+    FmtAssert(OP_opnds(asm_op) == 1, ("Has to have 1 operand"));
+    TN *tn = OP_opnd(asm_op, 0);
+    FmtAssert(TN_is_register(tn), ("opnd has to be in register"));
+    ISA_REGISTER_CLASS cl = TN_register_class(tn);
+    REGISTER reg = TN_register(tn);
+    char name[256];
+    char *asm_string;
+    asm_string = (char *)malloc(sizeof(char)*1024);
+    sprintf(name, "%s", REGISTER_name(cl, reg));
+    sprintf(asm_string, "ld $4, 8(%s)\n", name);
+    sprintf(asm_string, "%s\tld $5, 16(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tld $6, 24(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tld $7, 32(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tld $8, 40(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tld $9, 48(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tld $10, 56(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tld $11, 64(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tldc1 $f12, 72(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tldc1 $f13, 80(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tldc1 $f14, 88(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tldc1 $f15, 96(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tldc1 $f16, 104(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tldc1 $f17, 112(%s)\n", asm_string, name);    sprintf(asm_string, "%s\tldc1 $f18, 120(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s\tldc1 $f19, 128(%s)", asm_string, name);
+    return asm_string;
+  }
+#endif
   for (i = 0; i < OP_results(asm_op); i++) {
     asm_string = Modify_Asm_String(asm_string, 
                                    ASM_OP_result_position(asm_info)[i], 
                                    ASM_OP_result_memory(asm_info)[i], 
+#ifndef TARG_IA64
+				   NULL,
+#endif
                                    OP_result(asm_op, i), bb);
   }
 
@@ -1895,10 +2833,21 @@ Generate_Asm_String (OP* asm_op, BB *bb)
     asm_string = Modify_Asm_String(asm_string, 
                                    ASM_OP_opnd_position(asm_info)[i], 
                                    ASM_OP_opnd_memory(asm_info)[i], 
+#ifndef TARG_IA64
+				   (TN*)ASM_OP_opnd_offset(asm_info)[i],
+#endif
                                    OP_opnd(asm_op, i), bb);
   }
 
+#ifndef TARG_X8664
   CGTARG_Postprocess_Asm_String(asm_string);
+#else
+  if (strstr(asm_string, "%%")) {
+    char replace[3] = { '%', '%', '\0' };
+    char name[2] = { '%', '\0' };
+    asm_string = Replace_Substring(asm_string, replace, name);
+  }
+#endif
 
   return asm_string;
 }
@@ -1914,19 +2863,34 @@ Assemble_Simulated_OP(OP *op, BB *bb)
    * the assembly output.
    */
 
+  const char *stop_bit = AS_STOP_BIT;
+  
   if (OP_code(op) == TOP_asm) {
     FmtAssert(Assembly && !Object_Code,
 	      ("can't emit object code when ASM"));
-    if (AS_STOP_BIT && (EMIT_stop_bits_for_asm
-		|| (EMIT_stop_bits_for_volatile_asm && OP_volatile(op)) ) )
+    if (stop_bit && (EMIT_stop_bits_for_asm
+		     || (EMIT_stop_bits_for_volatile_asm && OP_volatile(op)) ) )
     {
-	fprintf(Asm_File, "\t%s\n", AS_STOP_BIT);
+	fprintf(Asm_File, "\t%s\n", stop_bit);
     }
+#ifdef TARG_MIPS
+    const char *asm_string = Generate_Asm_String(op, bb);
+    if (!CG_emit_non_gas_syntax)
+      if (asm_string)
+	if (strstr(asm_string, ".set"))
+          fprintf (Asm_File, "\t.set\tpush\n");
+#endif
     fprintf(Asm_File, "\t%s\n", Generate_Asm_String(op, bb));
-    if (AS_STOP_BIT && (EMIT_stop_bits_for_asm
-		|| (EMIT_stop_bits_for_volatile_asm && OP_volatile(op)) ) )
+#ifdef TARG_MIPS
+    if (!CG_emit_non_gas_syntax)
+      if (asm_string)
+	if (strstr(asm_string, ".set"))
+          fprintf (Asm_File, "\t.set\tpop\n");
+#endif
+    if (stop_bit && (EMIT_stop_bits_for_asm
+		     || (EMIT_stop_bits_for_volatile_asm && OP_volatile(op)) ) )
     {
-	fprintf(Asm_File, "\t%s\n", AS_STOP_BIT);
+	fprintf(Asm_File, "\t%s\n", stop_bit);
     }
     return;
   }
@@ -1970,11 +2934,16 @@ Assemble_Simulated_OP(OP *op, BB *bb)
 
 /* Assemble the OPs in a BB a bundle at a time.
  */
+#ifdef TARG_IA64
 static INT
+#else
+static void
+#endif
 Assemble_Bundles(BB *bb)
 {
   OP *op;
 
+#ifdef TARG_IA64
   INT bb_cycle_count = 0; //used to count the cycle for the bb cbq
   extern INT EMIT_count_cycles;
   extern INT Track_Split(INT template_index, UINT stop_mask, BOOL &extra);
@@ -1987,6 +2956,9 @@ Assemble_Bundles(BB *bb)
     return 0;
  
   Set_BB_emitted(bb);
+#else
+  FmtAssert(ISA_MAX_SLOTS > 1,("Assemble_Bundles shouldn't have been called"));
+#endif
 
   for (op = BB_first_op(bb);;) {
     ISA_BUNDLE bundle;
@@ -2000,12 +2972,16 @@ Assemble_Bundles(BB *bb)
      */
     stop_mask = 0;
     slot_mask = 0;
+#ifdef TARG_IA64
     for (slot = 0; op && slot < ISA_MAX_SLOTS; op = OP_far_next(op) ) {
+#else
+    for (slot = 0; op && slot < ISA_MAX_SLOTS; op = OP_next(op)) {
+#endif
       INT words;
       INT w;
-
+#ifdef TARG_IA64
       Set_BB_emitted(OP_bb(op));
-
+#endif
       if (OP_dummy(op)) continue;		// these don't get emitted
 
       if (OP_simulated(op)) {
@@ -2018,6 +2994,8 @@ Assemble_Bundles(BB *bb)
       for (w = 0; w < words; ++w) {
         FmtAssert(slot < ISA_MAX_SLOTS,("multi-word inst extends past end of bundle in BB:%d.",BB_id(bb)));
         slot_op[slot++] = op;
+
+#ifdef TARG_IA64
         slot_mask = slot_mask << ISA_TAG_SHIFT;
         if ( EXEC_PROPERTY_is_M_Unit(OP_code(op)) && EXEC_PROPERTY_is_I_Unit(OP_code(op)) ){
           // A type instruction, identify its property
@@ -2038,6 +3016,12 @@ Assemble_Bundles(BB *bb)
           slot_mask = slot_mask | ISA_EXEC_PROPERTY_B_Unit;
         }
         stop_mask |= (OP_end_group(op) != 0);
+#else // TARG_IA64
+        slot_mask = (slot_mask << ISA_TAG_SHIFT) | ISA_EXEC_Unit_Prop(OP_code(op));
+        stop_mask = stop_mask << 1;
+    }
+    stop_mask |= (OP_end_group(op) != 0);
+#endif // TARG_IA64
 
 #ifndef GAS_TAGS_WORKED
 // remove this when gas can handle tags inside explicit bundle
@@ -2061,7 +3045,11 @@ Assemble_Bundles(BB *bb)
       UINT64 this_slot_mask = ISA_EXEC_Slot_Mask(ibundle);
       UINT32 this_stop_mask = ISA_EXEC_Stop_Mask(ibundle);
       if (   (slot_mask & this_slot_mask) == this_slot_mask 
+#ifdef TARG_IA64
 	  && (stop_mask & ~1) == this_stop_mask) break;
+#else
+      && stop_mask == this_stop_mask) break;
+#endif
     }
 
     // Emit the warning only when bundle formation phase is enabled (ON by
@@ -2072,6 +3060,7 @@ Assemble_Bundles(BB *bb)
         Print_OP_No_SrcLine (slot_op[1]);
         Print_OP_No_SrcLine (slot_op[2]);
       }
+#ifdef TARG_IA64
     if(ibundle == ISA_MAX_BUNDLES){ 
 
      // Print_BB(slot_op[0]->bb);
@@ -2082,8 +3071,14 @@ Assemble_Bundles(BB *bb)
                 ("couldn't find bundle for slot mask=0x%llx, stop mask=0x%x in BB:%d\n",
 	             slot_mask, stop_mask, BB_id(bb)));
     }
+#else
+    FmtAssert(ibundle != ISA_MAX_BUNDLES,
+	      ("couldn't find bundle for slot mask=0x%llx, stop mask=0x%x in BB:%d\n",
+	       slot_mask, stop_mask, BB_id(bb)));
+#endif
     }
 
+#ifdef TARG_IA64
     BOOL split;
     /* We now use bb cycles from machine model, so don't use stop bit to count */ 
     bb_cycle_count += Track_Split(ibundle, stop_mask, split);
@@ -2091,32 +3086,45 @@ Assemble_Bundles(BB *bb)
       Set_OP_end_group(last); 
     }
     last = slot_op[ISA_MAX_SLOTS-1];
-
+#endif
     /* Bundle prefix
      */
+
+    const char *begin_bundle = ISA_PRINT_BEGIN_BUNDLE;
     if (Assembly && EMIT_explicit_bundles) {
-      fprintf(Asm_File, " ");
-      fprintf(Asm_File, ISA_PRINT_BEGIN_BUNDLE, ISA_EXEC_AsmName(ibundle));
-      fprintf(Asm_File, "\n");
+      fputc (' ', Asm_File);
+      fprintf(Asm_File, begin_bundle, ISA_EXEC_AsmName(ibundle));
+      fputc ('\n', Asm_File);
     }
 
     /* Assemble the bundle.
      */
+#ifdef TARG_IA64
     INT slot_i = 0;
     do {
       OP *sl_op = slot_op[slot_i];
       Perform_Sanity_Checks_For_OP(sl_op, TRUE);
       slot_i += r_assemble_op(sl_op, bb, &bundle, slot_i);
     } while ((slot_i < ISA_MAX_SLOTS) && (slot_i < slot));
+#else
+    slot = 0;
+    do {
+      OP *sl_op = slot_op[slot];
+      Perform_Sanity_Checks_For_OP(sl_op, TRUE);
+      slot += r_assemble_op(sl_op, bb, &bundle, slot);
+    } while (slot < ISA_MAX_SLOTS);
+#endif
 
     /* Bundle suffix
      */
     if (Object_Code) {
       TI_ASM_Set_Bundle_Comp(&bundle,
+#ifdef TARG_IA64
 			     ISA_BUNDLE_PACK_COMP_stop, 
 			     stop_mask & 1);
 
       TI_ASM_Set_Bundle_Comp(&bundle,
+#endif
 			     ISA_BUNDLE_PACK_COMP_template, 
 			     ibundle);
 
@@ -2126,23 +3134,33 @@ Assemble_Bundles(BB *bb)
       fprintf(Asm_File, " %s", ISA_PRINT_END_BUNDLE);
     }
   }
+#ifdef TARG_IA64
   bb_cycle_count = BB_length(bb) ? BB_cycle(bb) : 0;
+#endif
   if (Assembly) {
     fprintf(Asm_File, "\n\n");
     // output cycle count of the BB cbq
     // fprintf(Asm_File, "// BB:%d cycle count: %d\n\n", BB_id(bb),bb_cycle_count);
   }
+#ifdef TARG_IA64
   return bb_cycle_count;
+#endif
 }
 
 
 /* Assemble the OPs in a BB an OP at a time.
  */
+#ifdef TARG_IA64
 static INT
+#else
+static void
+#endif
 Assemble_Ops(BB *bb)
 {
   OP *op;
+#ifdef TARG_IA64
   INT bb_cycle_count = 0;
+#endif
 
   FmtAssert(ISA_MAX_SLOTS == 1,
 	    ("Assemble_Ops shouldn't have been called"));
@@ -2160,16 +3178,21 @@ Assemble_Ops(BB *bb)
 
     Perform_Sanity_Checks_For_OP(op, TRUE);
     words = r_assemble_op(op, bb, bundle, 0);
+#ifdef TARG_IA64
     if (OP_end_group(op))    bb_cycle_count++; 
+#endif
 
     if (Object_Code) {
       Em_Add_Bytes_To_Scn(PU_section, (char *)bundle,
 			  INST_BYTES * words, INST_BYTES);
     }
   }
+#ifdef TARG_IA64
   return bb_cycle_count;
+#endif
 }
-
+
+#ifdef TARG_IA64
 /* ====================================================================
  *
  * Emit_Loop_Unrolling_Note
@@ -2309,6 +3332,104 @@ static void Emit_Preds_And_Succs(BB*bb, FILE *file)
   	}
   fprintf(file, "\n");
 }
+#else // TARG_IA64
+/* ====================================================================
+ *
+ * Emit_Loop_Note
+ *
+ * Emit a loop note to the .s file, anl file, etc.
+ *
+ * ====================================================================
+ */
+static void
+Emit_Loop_Note(BB *bb, FILE *file)
+{
+  BOOL anl_note = file == anl_file;
+  BB *head = BB_loop_head_bb(bb);
+  UINT16 unrollings = BB_unrollings(bb);
+  ANNOTATION *info_ant = ANNOT_Get(BB_annotations(head), ANNOT_LOOPINFO);
+  LOOPINFO *info = info_ant ? ANNOT_loopinfo(info_ant) : NULL;
+  BOOL unroll_pragma = FALSE;
+  ANNOTATION *unroll_ant = ANNOT_Get(BB_annotations(head), ANNOT_PRAGMA);
+
+  while (unroll_ant && WN_pragma(ANNOT_pragma(unroll_ant)) != WN_PRAGMA_UNROLL)
+    unroll_ant = ANNOT_Get(ANNOT_next(unroll_ant), ANNOT_PRAGMA);
+  if (unroll_ant) {
+    WN *wn = ANNOT_pragma(unroll_ant);
+    if (WN_pragma_arg1(wn) > 1) {
+      if (WN_pragma_arg1(wn) == unrollings)
+	unroll_pragma = TRUE;
+      else if (BB_innermost(bb))
+	DevWarn("BB:%d unrolled %d times but pragma says to unroll %d times",
+		BB_id(bb), unrollings, WN_pragma_arg1(wn));
+    }
+  }
+
+  if (bb == head) {
+#ifdef TARG_X8664
+    if (CG_p2align) 
+      fputs ("\t.p2align 6,,7\n", file);
+#endif
+    SRCPOS srcpos = BB_Loop_Srcpos(bb);
+    INT32 lineno = SRCPOS_linenum(srcpos);
+
+    if (anl_note) {
+      INT32 fileno = SRCPOS_filenum(srcpos);
+      INT32 colno = SRCPOS_column(srcpos);
+      fprintf (anl_file,
+	       "\nmsg loop lines [%d %d %d]",
+	       fileno,
+	       lineno,
+	       colno);
+    } else {
+      fprintf (file, "%s<loop> Loop body line %d", ASM_CMNT_LINE, lineno);
+    }
+
+    if (info) {
+      WN *wn = LOOPINFO_wn(info);
+      TN *trip_tn = LOOPINFO_trip_count_tn(info);
+      BOOL constant_trip = trip_tn && TN_is_constant(trip_tn);
+      INT depth = WN_loop_depth(wn);
+      const char *estimated = constant_trip ? "" : "estimated ";
+      INT64 trip_count = constant_trip ? TN_value(trip_tn) :
+	(INT64)WN_loop_trip_est(wn);
+      const char * const fmt =   anl_note
+	? " \"nesting depth: %d, %siterations: %lld\""
+	: ", nesting depth: %d, %siterations: %lld";
+
+      fprintf (file, fmt, depth, estimated, trip_count);
+    }
+
+    fputc ('\n', file);
+  } else if (anl_note) {
+
+    /* Only interested in loop head messages for anl file
+     */
+    return;
+  } else {
+    ANNOTATION *lbl_ant = ANNOT_Get(BB_annotations(head), ANNOT_LABEL);
+    DevAssert(lbl_ant, ("loop head BB:%d has no label", BB_id(head)));
+    fprintf(file,
+	        "%s<loop> Part of loop body line %d"
+	    ", head labeled %s\n",
+	    ASM_CMNT_LINE, BB_Loop_Lineno(head), LABEL_name(ANNOT_label(lbl_ant)));
+  }
+
+  if (unrollings > 1) {
+    if (anl_note) {
+      fprintf(anl_file, "\"unrolled %d times%s%s\"\n", unrollings,
+	      BB_unrolled_fully(bb) ? " (fully)" : "",
+	      unroll_pragma ? " (pragma)" : "");
+    } else {
+      fprintf(file, "%s<loop> unrolled %d times%s%s\n", 
+	      ASM_CMNT_LINE,
+	      unrollings,
+	      BB_unrolled_fully(bb) ? " (fully)" : "",
+	      unroll_pragma ? " (pragma)" : "");
+    }
+  }
+}
+#endif // TARG_IA64
 
 /* ====================================================================
  *
@@ -2319,12 +3440,17 @@ static void Emit_Preds_And_Succs(BB*bb, FILE *file)
  * ====================================================================
  */
 
+#ifdef TARG_IA64
 static INT
+#else
+static void
+#endif
 EMT_Assemble_BB ( BB *bb, WN *rwn )
 {
   ST *st;
   ANNOTATION *ant;
   RID *rid = BB_rid(bb);
+#ifdef TARG_IA64
   INT bb_cycle_count = 0;
   ROTATING_KERNEL_INFO *info ;
 
@@ -2332,7 +3458,9 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 	#pragma mips_frequency_hint NEVER
 	fprintf(TFile, "assemble BB %d\n", BB_id(bb));
   }
+#endif
 
+#ifdef TARG_IA64
   /* DO NOT let a in-eh-range call be the last instruction in procedure
    * bug in Get_Unwind_Table in libstdc++ 
    */
@@ -2395,6 +3523,49 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
       Initial_Pu_Label = Last_Label;
     }
   }
+#else // TARG_IA64
+#ifdef TARG_X8664 
+  if (!BB_entry(bb)) {
+    float fall_thru_freq = 0.0;
+    float branch_in_freq = 0.0;
+    BBLIST *edge;
+    BB *fall_thru_pred = BB_Fall_Thru_Predecessor(bb);
+    FOR_ALL_BB_PREDS(bb, edge) {
+      BB* pred = BBLIST_item(edge);
+      BBLIST *succ_edge = BB_Find_Succ(pred, bb);
+      FmtAssert(succ_edge != NULL, ("EMT_Assemble_BB: succ bb not found"));
+      if (pred == fall_thru_pred) {
+	fall_thru_freq = BB_freq(pred) * BBLIST_prob(succ_edge);
+      } else {
+	branch_in_freq += BB_freq(pred) * BBLIST_prob(succ_edge);
+      }
+    }
+
+    int max_skip_bytes = CG_p2align_max_skip_bytes;
+    float branch_in_ratio = branch_in_freq / fall_thru_freq;
+    bool add_p2align = FALSE;
+
+    // bug 2191
+    if (branch_in_freq > 100000000.0 &&
+	branch_in_ratio > 50.0) {
+      max_skip_bytes = 15;
+      add_p2align = TRUE;
+    }
+
+    if (add_p2align ||
+	(CG_p2align_freq > 0 &&
+	  branch_in_freq > CG_p2align_freq &&
+	 branch_in_ratio > 0.5)) {
+      fprintf(Asm_File, "\t.p2align 4,,%d\n", max_skip_bytes);
+    }
+  }
+#endif
+
+  if (Trace_Inst) {
+    #pragma mips_frequency_hint NEVER
+    fprintf(TFile, "assemble BB %d\n", BB_id(bb));
+  }
+#endif // TARG_IA64
   
   if (Assembly) {
     if (rid != NULL && RID_cginfo(rid) != NULL) {
@@ -2431,7 +3602,10 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     }
   }
   if ( BB_entry(bb) ) {
+#ifndef KEY
+    // replace uses of entry_name with ST_name(entry_sym)
     char *entry_name;
+#endif
     ST *entry_sym; 
     ENTRYINFO *ent;
     SRCPOS entry_srcpos;
@@ -2439,7 +3613,10 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     ent = ANNOT_entryinfo(ant);
     entry_srcpos = ENTRYINFO_srcpos(ent);
     entry_sym = ENTRYINFO_name(ent);
+#ifndef KEY
+    // replace uses of entry_name with ST_name(entry_sym)
     entry_name = ST_name(entry_sym);
+#endif
 
     /* Set an initial line number so that if the first inst in the BB
      * has no srcpos, then we'll be ok.
@@ -2449,14 +3626,14 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     if ( ST_is_not_used(entry_sym)) {
     	// don't emit alt-entry if marked as not-used
 	DevWarn("CG reached entry marked as unused; will ignore it (%s)\n", 
-		entry_name);
+		ST_name(entry_sym)); // KEY
     }
     else {
     	Set_ST_ofst(entry_sym, PC);
-    	if (strcmp( Cur_PU_Name, entry_name ) != 0) {
+    	if (strcmp( Cur_PU_Name, ST_name(entry_sym) ) != 0) /* KEY */{ 
 		// alt-entry
       		if ( Assembly ) {
-			fprintf ( Asm_File, "\t%s\t%s\n", AS_AENT, entry_name);
+			fprintf ( Asm_File, "\t%s\t%s\n", AS_AENT, ST_name(entry_sym)); // KEY
 			Print_Label (Asm_File, entry_sym, 0 );
       		}
 		EMT_Put_Elf_Symbol (entry_sym);
@@ -2473,11 +3650,90 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     }
   }
 
+#ifndef TARG_IA64
+  // I'm not sure whether to merge it or not.
+  /* List labels attached to BB: */
+  for (ant = ANNOT_First (BB_annotations(bb), ANNOT_LABEL);
+       ant != NULL;
+       ant = ANNOT_Next (ant, ANNOT_LABEL))
+  {
+    LABEL_IDX lab = ANNOT_label(ant);
 
+    if ( Assembly ) {
+#ifdef KEY
+      // We do not want to emit labels between consecutive asms.
+      // And, we know each asm ends a BB.
+
+      /* We need to emit label for bb that has a label used to mark the
+	 beginning or ending of an exception-handling region or exception handler.
+	 (bug#3068)
+      */
+      BOOL emit_label = TRUE;
+      if( !BB_Has_Exc_Label(bb) ){
+	if (/* Bug 3815 - this was probably added to avoid generating
+	     * too many asm labels. But we don't need to worry about 
+	     * it until we hit glibc kind of code. Avoid this under 
+	     * 0 optimization level when we can have code snippets like
+	     * jmp .Lt_0_19 followed by the BB labeled .Lt_0_19. 
+	     * I don't remember why we need to avoid generating extra labels 
+	     * in the first place.
+	     */
+	    CG_opt_level > 0 && 
+	    BB_preds(bb) &&
+	    !BB_entry(bb) &&
+	    (BBlist_Len(BB_preds(bb)) == 1) &&
+	    (BBLIST_item(BB_preds(bb)) == bb->prev) &&
+	    (bb->ops.length == 1) &&
+	    BB_asm(bb))
+	  emit_label = FALSE;
+      }
+
+      if (emit_label)
+        fprintf ( Asm_File, "%s:\n", LABEL_name(lab)); 
+#else
+      fprintf ( Asm_File, "%s:\t%s 0x%llx\n", 
+			  LABEL_name(lab), ASM_CMNT, Get_Label_Offset(lab) );
+#endif
+    }
+#ifdef KEY
+    static BOOL seen_asm = FALSE;
+    static WN *rwn_tmp = NULL;
+    if (rwn_tmp != rwn) {
+      rwn_tmp = rwn;
+      seen_asm = FALSE;      
+    }
+    if (BB_asm(bb)) { 
+      seen_asm = TRUE;
+    }            
+#endif
+#ifndef TARG_IA64
+    if (Get_Label_Offset(lab) != PC) {
+#ifdef KEY
+      if (!seen_asm)
+#endif
+	DevWarn ("label %s offset %lld doesn't match PC %d", 
+		LABEL_name(lab), Get_Label_Offset(lab), PC);
+    }
+#endif
+  }
+
+  // hack to keep track of last label and offset for assembly dwarf (suneel)
+  if (Last_Label == LABEL_IDX_ZERO) {
+    Last_Label = Gen_Label_For_BB (bb);
+    Offset_From_Last_Label = 0;
+    if (Initial_Pu_Label == LABEL_IDX_ZERO) {
+      Initial_Pu_Label = Last_Label;
+    }
+  }
+#endif  // TARG_IA64
   st = BB_st(bb);
   if (st) {
     if ( Assembly ) {
+#ifdef TARG_IA64
       // fprintf ( Asm_File, "%s:\t%s 0x%llx\n", ST_name(st), ASM_CMNT, ST_ofst(st));
+#else
+      fprintf ( Asm_File, "%s:\t%s 0x%llx\n", ST_name(st), ASM_CMNT, ST_ofst(st));
+#endif
     }
     Is_True (ST_ofst(st) == PC, ("st %s offset %lld doesn't match PC %d", 
 	ST_name(st), ST_ofst(st), PC));
@@ -2492,13 +3748,29 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   /* write out all the notes for this BB */
   if (Assembly && List_Notes) {
     if (BB_loop_head_bb(bb)) {
+#ifdef TARG_IA64
       Emit_Loop_Unrolling_Note(bb, Asm_File);
+#else
+      Emit_Loop_Note(bb, Asm_File);
+#endif
     }
     if (BB_annotations(bb) && 
-	ANNOT_Get(BB_annotations(bb), ANNOT_ROTATING_KERNEL))
+	ANNOT_Get(BB_annotations(bb), ANNOT_ROTATING_KERNEL)){
+#if defined(KEY) && defined(TARG_MIPS)
+      Emit_KEY_SWP_Note( bb, Asm_File );
+#else
       Emit_SWP_Note(bb, Asm_File);
-  }
+#endif
+    }
 
+#ifdef TARG_IA64
+    if (BB_has_note(bb)) {
+      NOTE_BB_Act (bb, NOTE_PRINT_TO_FILE, Asm_File);
+    }
+
+    FREQ_Print_BB_Note(bb, Asm_File);
+  }
+#endif
   if (Run_prompf) {
     if (BB_loop_head_bb(bb)) {
       Emit_Loop_Note(bb, anl_file);
@@ -2513,16 +3785,39 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   Init_Sanity_Checking_For_BB ();
 #endif
 
+#ifdef TARG_X8664
+// Assumption: REGION_First_BB is the first BB in the PU. If in future,
+// we start having multiple regions in a PU here, we need to change the 
+// following. 
+// In such a scenario, we should need to change many of the occurrences
+// of REGION_First_BB above.
+  if( !CG_emit_unwind_info && 
+      Assembly && (REGION_First_BB == bb) &&
+      ( strcmp( Cur_PU_Name, "MAIN__" ) == 0 ||
+   	strcmp( Cur_PU_Name, "main" ) == 0 ) ){
+      CGEMIT_Setup_Ctrl_Register( Asm_File );
+  }
+#endif
   if (ISA_MAX_SLOTS > 1) {
+#ifdef TARG_IA64
     bb_cycle_count = Assemble_Bundles(bb);
+#else
+    Assemble_Bundles(bb);
+#endif
   } else {
+#ifdef TARG_IA64
     bb_cycle_count = Assemble_Ops(bb);
+#else
+    Assemble_Ops(bb);
+#endif
   }
 
   if (Object_Code && BB_exit(bb)) {
     Em_Add_New_Event (EK_EXIT, PC - 2*INST_BYTES, 0, 0, 0, PU_section);
   }
+#ifdef TARG_IA64
   return bb_cycle_count;
+#endif
 } 
 
 
@@ -3395,7 +4690,11 @@ Check_If_Should_Align_BB (BB *bb, INT32 curpc)
 	float noskip_freq = 0.01;
 	INT targ_alignment;
 	INT num_of_ops = 0; 		/* zero to begin with */
+#ifdef TARG_IA64
 #define FREQUENT_BB_DIFF 10.0
+#else
+#define FREQUENT_BB_DIFF 5.0
+#endif
 
 	/*
 	 * Align loops for best processor efficiency.
@@ -3409,15 +4708,17 @@ Check_If_Should_Align_BB (BB *bb, INT32 curpc)
 		return 0;	/* not frequent enough, so don't align */
 	if (BB_prev(bb) == NULL) 
 		return 0;	/* nowhere to put nops */
-
+#ifdef TARG_IA64
 	/* No padding if the first group in current bb contains only one bundle. */
         if (Num_of_OPs_in_First_Group(bb) <= ISA_MAX_SLOTS)
 		return 0;
-
 	/* don't want to add nops to previous bb 
 	 * unless current bb is loop head, or significantly more frequent. */
 	if (!BB_loophead(bb) &&
             (BB_freq(BB_prev(bb)) ? BB_freq(bb) / BB_freq(BB_prev(bb)) < FREQUENT_BB_DIFF : TRUE))
+#else
+	   if (BB_freq(bb) / BB_freq(BB_prev(bb)) < FREQUENT_BB_DIFF)
+#endif
 		return 0;
 
 	/* first check whether target is always label+4 */
@@ -3487,8 +4788,10 @@ static void Pad_BB_With_Noops(BB *bb, INT num)
   OP *new_op;
   OPS new_ops = OPS_EMPTY;
 
+#ifdef TARG_IA64
   /* If the issue window is two-bundle wide, we can clear the stop bit of bb's last op if it's set */
   if (ISA_MAX_ISSUE_BUNDLES == 2) Reset_OP_end_group(BB_last_op(bb));
+
   if (ISA_MAX_SLOTS > 1) {
     UINT64 slot_mask; 
     /* Choose an mfb type bundle for the nops. For we think it least likely brings hazards 
@@ -3498,7 +4801,22 @@ static void Pad_BB_With_Noops(BB *bb, INT num)
                 ((UINT64 ISA_EXEC_PROPERTY_F_Unit) << ISA_TAG_SHIFT * (ISA_MAX_SLOTS -2)) +
                 ((UINT64 ISA_EXEC_PROPERTY_B2_Unit) << ISA_TAG_SHIFT * (ISA_MAX_SLOTS -3));
                 /* 0x004010080 for Itanium */
-   
+#else // TARG_IA64
+
+    if (ISA_MAX_SLOTS > 1) {
+      INT ibundle;
+      UINT64 slot_mask;
+
+      /* Choose a bundle for the nops. For now we just pick the first
+       * bundle without a stop bit. We could chose more smartly based
+       * on the previous contents of the BB.
+       */
+      for (ibundle = 0; ibundle < ISA_MAX_BUNDLES; ++ibundle) {
+	UINT32 stop_mask = ISA_EXEC_Stop_Mask(ibundle);
+	slot_mask = ISA_EXEC_Slot_Mask(ibundle);
+	if (stop_mask == 0) break;
+      }
+#endif // TARG_IA64   
     do {
       INT slot = ISA_MAX_SLOTS - 1;
       do {
@@ -3522,8 +4840,10 @@ static void Pad_BB_With_Noops(BB *bb, INT num)
       BB_Append_Op (bb, new_op);
     } while (--num);
   }
+#ifdef TARG_IA64
   // bug fix for OSP_139
   Set_OP_end_group(BB_last_op(bb));
+#endif
 }
 
 /* ====================================================================
@@ -3623,13 +4943,54 @@ Trace_Init_Loc ( INT scn_idx, Elf64_Xword scn_ofst, INT32 repeat)
   /* Emit the section/offset/repeat as a line prefix -- the caller will
    * add context-specific information:
    */
+#ifdef TARG_IA64
   // bug fix for OSP_227
   //
   if (em_scn[scn_idx].sym)
     fprintf ( TFile, "<init>: Section %s (offset %4lld x%d): ",
   	      ST_name(em_scn[scn_idx].sym), (INT64)scn_ofst, repeat );
+#else
+  fprintf ( TFile, "<init>: Section %s (offset %4lld x%d): ",
+            ST_name(em_scn[scn_idx].sym), scn_ofst, repeat );
+#endif
 }
 
+
+#ifndef TARG_IA64
+// because we have different EH implementation with pathscale-3.0 in cg.
+static int exception_table_id=0;
+const char *lsda_ttype_base = ".LSDATTYPEB";
+const char *lsda_ttype_disp = ".LSDATTYPED";
+const char *lsda_cs_begin = ".LSDACSB";
+const char *lsda_cs_end = ".LSDACSE";
+
+static Elf64_Word Write_Diff (LABEL_IDX, LABEL_IDX, INT, Elf64_Word);
+
+static Elf64_Xword Handle_EH_Region_Length (LABEL_IDX l, 
+				INT scn_idx, Elf64_Xword scn_ofst)
+{
+    static bool first_label_seen = false;
+    static LABEL_IDX first_label=0;
+
+    // process exception region length
+    if (!first_label_seen)
+    {
+	FmtAssert (first_label==0,("EH table processing error"));
+	first_label_seen = true;
+	first_label = l;
+    }
+    else
+    {// this is the 2nd label
+	FmtAssert (first_label!=0,("EH table processing error"));
+	scn_ofst = Write_Diff (first_label, l, scn_idx, scn_ofst);
+	// reset
+	first_label_seen = false;
+	first_label = 0;
+    }
+    return scn_ofst;
+}
+#endif // KEY
+
 /* ====================================================================
  *
  * Write_TCON
@@ -3644,7 +5005,16 @@ Write_TCON (
   TCON	*tcon,		/* Constant to emit */
   INT scn_idx,		/* Section to emit it into */
   Elf64_Xword scn_ofst,	/* Section offset to emit it at */
+#ifdef TARG_IA64
   INT32	repeat)		/* Repeat count */
+#else
+  INT32 repeat          /* Repeat count */
+#ifdef KEY
+  , bool etable = 0
+  , int format = 0
+#endif // KEY
+  )
+#endif
 {
   BOOL add_null = TCON_add_null(*tcon);
   pSCNINFO scn = em_scn[scn_idx].scninfo;
@@ -3658,6 +5028,11 @@ Write_TCON (
     INT32 scn_ofst32 = (INT32)scn_ofst;
     FmtAssert(scn_ofst32 == scn_ofst, ("section offset exceeds 32 bits: 0x%llx",
 				       (INT64)scn_ofst));
+#ifndef TARG_IA64
+    if (etable)
+        Targ_Emit_EH_Const ( Asm_File, *tcon, add_null, repeat, scn_ofst32, format );
+    else
+#endif // KEY
     Targ_Emit_Const ( Asm_File, *tcon, add_null, repeat, scn_ofst32 );
   } 
   if (Object_Code) {
@@ -3672,6 +5047,8 @@ Write_TCON (
   return scn_ofst;
 }
 
+
+#ifdef TARG_IA64
 /* ====================================================================
  *
  * Write_Symoff
@@ -3857,8 +5234,137 @@ Write_Symiplt (
   scn_ofst += address_size;
   return scn_ofst;
 }
- 
+#else // TARG_IA64 
+/* ====================================================================
+ *
+ * Write_Symbol
+ *
+ * Emit a symbol value to the assembly/object file.
+ *
+ * ====================================================================
+ */
 
+static Elf64_Word
+Write_Symbol (
+	      ST * sym,/* Emit the address of this symbol */
+	      Elf64_Sxword sym_ofst,/*   ... plus this offset */
+	      INT scn_idx,/* Section to emit it in */
+	      Elf64_Word scn_ofst,/* Section offset to emit it at */
+	      INT32repeat)/* Repeat count */
+{
+  INT32 i;
+  ST *basesym;
+  INT64 base_ofst = 0;
+  pSCNINFO scn = em_scn[scn_idx].scninfo;
+  INT address_size = ((Use_32_Bit_Pointers) ? 4 : 8);
+
+  if ( Trace_Init ) {
+    #pragma mips_frequency_hint NEVER
+    Trace_Init_Loc (scn_idx, scn_ofst, repeat);
+    fprintf ( TFile, "SYM " );
+    fprintf ( TFile, "%s %+lld\n", ST_name(sym), sym_ofst );
+  }
+
+  /* make sure is allocated */
+  if (!Has_Base_Block(sym)) {
+    Allocate_Object(sym);
+    /* if did allocate on local stack, that messes up frame length */
+    Is_True(!Has_Base_Block(sym) || Is_Global_Symbol(Base_Symbol(sym)),
+	    ("Write_Symbol:  too late to allocate object on stack"));
+  }
+
+  /* If the symbol is a local label that has not been assigned an address, it is
+   * a label in a basic block that has been deleted. Emit zeros for this case 
+   * instead of the address.
+   */
+  if (ST_sclass(sym) == SCLASS_TEXT && !Has_Base_Block(sym)) {
+    INT32 padding;
+    padding = repeat * address_size;
+    if (Assembly && padding > 0) {
+#ifdef TARG_MIPS
+      if (CG_emit_non_gas_syntax)
+	fprintf(Asm_File, "\t%s %lld\n", ".space", (INT64)padding);
+      else
+#endif
+	ASM_DIR_ZERO(Asm_File, padding);
+    }
+    if (Object_Code) {
+      Em_Add_Zeros_To_Scn (scn, padding, 1);
+    }
+    scn_ofst += padding;
+    return scn_ofst;
+  }
+
+  /* For local static symbols that do not have their own elf entry,
+   * use the base symbol; funcs always have own elf entry. */
+  basesym = sym;
+  if (Has_Base_Block(sym) && ST_is_export_local(sym) && ST_class(sym) != CLASS_FUNC) {
+    Base_Symbol_And_Offset (sym, &basesym, &base_ofst);
+  }
+  if (Use_Separate_PU_Section (current_pu, basesym)) {
+    /* use PU text section rather than generic one */
+    basesym = PU_base;
+  }
+  base_ofst += sym_ofst;
+
+  if (Object_Code && repeat != 0) {
+    if (Use_32_Bit_Pointers) {
+      Em_Add_New_Content (CK_SADDR_32, scn_ofst, 4*repeat, 0, scn);
+    }
+    else {
+      Em_Add_New_Content (CK_SADDR_64, scn_ofst, 8*repeat, 0, scn);
+    }
+  }
+
+  for ( i = 0; i < repeat; i++ ) {
+    // do object code first so base section initialized
+    if (Object_Code) {
+      if (ST_sclass(sym) == SCLASS_EH_REGION_SUPP) {
+	Em_Add_Displacement_To_Scn (scn, EMT_Put_Elf_Symbol (basesym),
+				    base_ofst, 1);
+      } else {
+	Em_Add_Address_To_Scn (scn, EMT_Put_Elf_Symbol (basesym), 
+			       base_ofst, 1);
+      }
+    }
+    const char *fptr = AS_FPTR;
+    if (Assembly) {
+#ifdef TARG_MIPS
+      if (CG_emit_non_gas_syntax)
+	fprintf(Asm_File, "\t%s\t", Use_32_Bit_Pointers ? ".word" : ".dword");
+      else
+#endif
+	fprintf (Asm_File, "\t%s\t", 
+		 (scn_ofst % address_size) == 0 ? 
+		 AS_ADDRESS : AS_ADDRESS_UNALIGNED);
+      if (ST_class(sym) == CLASS_CONST) {
+	EMT_Write_Qualified_Name (Asm_File, basesym);
+	fprintf (Asm_File, " %+lld\n", base_ofst);
+      }
+      else if (ST_class(sym) == CLASS_FUNC && fptr && ! Get_Trace(TP_EMIT,0x2000)) {
+	fprintf (Asm_File, " %s(", fptr);
+	EMT_Write_Qualified_Name (Asm_File, sym);
+	fprintf (Asm_File, " %+lld)\n", sym_ofst);
+      }
+      else {
+	EMT_Write_Qualified_Name (Asm_File, sym);
+	fprintf (Asm_File, " %+lld\n", sym_ofst);
+      }
+      if (ST_class(sym) == CLASS_FUNC
+#ifdef TARG_MIPS
+	  && !CG_emit_non_gas_syntax
+#endif
+	  ) {
+	fprintf (Asm_File, "\t%s\t", AS_TYPE);
+	EMT_Write_Qualified_Name (Asm_File, sym);
+	fprintf (Asm_File, ", %s\n", AS_TYPE_FUNC);
+      }
+    } 
+    scn_ofst += address_size;
+  }
+  return scn_ofst;
+}
+#endif // TARG_IA64
 /* ====================================================================
  *
  * Write_Label
@@ -3901,6 +5407,11 @@ Write_Label (
     INT32 padding;
     padding = repeat * address_size;
     if (Assembly && padding > 0) {
+#ifdef TARG_MIPS
+      if (CG_emit_non_gas_syntax)
+	fprintf(Asm_File, "\t%s %lld\n", ".space", (INT64)padding);
+      else
+#endif
       ASM_DIR_ZERO(Asm_File, padding);
     }
     if (Object_Code) {
@@ -3932,6 +5443,11 @@ Write_Label (
 
   for ( i = 0; i < repeat; i++ ) {
     if (Assembly) {
+#ifdef TARG_MIPS
+	if (CG_emit_non_gas_syntax)
+	  fprintf(Asm_File, "\t%s\t", Use_32_Bit_Pointers ? ".word" : ".dword");
+	else
+#endif
 	fprintf (Asm_File, "\t%s\t", 
 		(scn_ofst % address_size) == 0 ? 
 		AS_ADDRESS : AS_ADDRESS_UNALIGNED);
@@ -3955,8 +5471,16 @@ Write_Symdiff (
   INT scn_idx,		/* Section to emit it in */
   Elf64_Word scn_ofst,	/* Section offset to emit it at */
   INT32	repeat,		/* Repeat count */
+#ifdef TARG_IA64
   INT size,		/* 2 or 4 bytes */
   bool beh = false)	
+#else
+  INT size              /* 2 or 4 bytes */
+#ifdef KEY
+  , bool etable = 0
+#endif // KEY
+  )
+#endif
 {
   INT32 i;
   ST *basesym1;
@@ -3999,12 +5523,23 @@ Write_Symdiff (
 
   for ( i = 0; i < repeat; i++ ) {
     if (Assembly) {
+#ifdef TARG_IA64
       if (beh)
 	fprintf(Asm_File, "\t.uleb128\t");
       else
         fprintf (Asm_File, "\t%s\t", (size == 2 ? AS_HALF : AS_WORD));
       fprintf(Asm_File, "%s", LABEL_name(lab1));
       fprintf (Asm_File, "-");
+#else
+#ifdef KEY
+      if (etable)
+        fputs ("\t.uleb128\t", Asm_File);
+      else
+#endif // KEY 
+       fprintf (Asm_File, "\t%s\t", (size == 2 ? AS_HALF : AS_WORD));
+       fputs (LABEL_name(lab1), Asm_File);
+       fputc ('-', Asm_File);
+#endif // TARG_IA64
       EMT_Write_Qualified_Name (Asm_File, sym2);
       fprintf (Asm_File, "\n");
     } 
@@ -4016,6 +5551,36 @@ Write_Symdiff (
   return scn_ofst;
 }
 
+#ifdef KEY
+#include <map>
+std::map<const ST*, const ST*> st_to_pic_st;
+// Emit PIC version of a symbol, here, a typeinfo symbol
+static Elf64_Word
+Emit_PIC_version (ST * st, Elf64_Word scn_ofst)
+{
+  if (st_to_pic_st.find (st) == st_to_pic_st.end())
+  {
+    ST * pic_st = New_ST (GLOBAL_SYMTAB);
+    STR_IDX name = Save_Str2 ("DW.ref.", ST_name (st));
+    ST_Init(pic_st, name, CLASS_VAR, SCLASS_DGLOBAL, EXPORT_HIDDEN, MTYPE_TO_TY_array[MTYPE_U8]);
+    Set_ST_is_weak_symbol (pic_st);
+    Set_ST_is_initialized (pic_st);
+    ST_ATTR_IDX st_attr_idx;
+    ST_ATTR&    st_attr = New_ST_ATTR (GLOBAL_SYMTAB, st_attr_idx);
+    ST_ATTR_Init (st_attr, ST_st_idx (pic_st), ST_ATTR_SECTION_NAME, Save_Str2 (".gnu.linkonce.d.", ST_name (pic_st)));
+                                                                                
+    INITV_IDX iv = New_INITV();
+    INITV_Init_Symoff (iv, st, 0, 1);
+    New_INITO (ST_st_idx (pic_st), iv);
+
+    Assign_ST_To_Named_Section (pic_st, ST_ATTR_section_name (st_attr));
+    st_to_pic_st [st] = pic_st;
+  }
+
+  fprintf (Asm_File, "\t.long\tDW.ref.%s-.\n", ST_name (st));
+  return scn_ofst + 4;
+}
+#endif
 
 /* ====================================================================
  *
@@ -4027,7 +5592,11 @@ Write_Symdiff (
  */
 
 static Elf64_Word
+#ifndef TARG_IA64
+Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst, bool etable=0, int format=0)
+#else
 Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
+#endif // KEY
 {
   INT32 i;
   INITV_IDX ninv;
@@ -4037,26 +5606,60 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
   ST *st;
   pSCNINFO scn = em_scn[scn_idx].scninfo;
 
+#ifndef TARG_IA64
+  static bool emit_typeinfo=false;
+#endif
+
   switch ( INITV_kind(inv) ) {
     case INITVKIND_ZERO:
       tcon = Host_To_Targ (INITV_mtype (inv), 0);
+#ifndef TARG_IA64
+      if (!emit_typeinfo)
+      scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv),
+				etable, format);
+      else if (Gen_PIC_Call_Shared || Gen_PIC_Shared) // emit_typeinfo
+      {
+  	fputs ("\t.long\t0\n", Asm_File);
+	scn_ofst += 4;
+      }
+      else
+#endif // KEY
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv));
       break;
 
     case INITVKIND_ONE:
-       tcon = Host_To_Targ (INITV_mtype (inv), 1);
+      tcon = Host_To_Targ (INITV_mtype (inv), 1);
+#ifndef TARG_IA64
+      scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv),
+				etable, format);
+#else
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv));
+#endif // KEY
       break;
     case INITVKIND_VAL:
+#ifndef TARG_IA64 
+      scn_ofst = Write_TCON (&INITV_tc_val(inv), scn_idx, scn_ofst,
+                              INITV_repeat2(inv), etable, format);
+#else
       scn_ofst = Write_TCON (&INITV_tc_val(inv), scn_idx, scn_ofst, 
 			      INITV_repeat2(inv));
+#endif // KEY
       break;
+#ifdef TARG_IA64
     case INITVKIND_SYMIPLT:
       st = &St_Table[INITV_st(inv)];
       scn_ofst = Write_Symiplt (st, INITV_ofst(inv), scn_idx, scn_ofst, INITV_repeat1(inv));
       break;
+#endif
     case INITVKIND_SYMOFF:
       st = &St_Table[INITV_st(inv)];
+#ifndef TARG_IA64
+      if ((Gen_PIC_Call_Shared || Gen_PIC_Shared) && emit_typeinfo)
+      { // handle it differently
+	scn_ofst = Emit_PIC_version (st, scn_ofst);
+      	break;
+      }
+#endif
       switch (ST_sclass(st)) {
 	case SCLASS_AUTO:
 	{ /* EH stack variable */
@@ -4075,7 +5678,11 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
 	}
       
 	default:
+#ifdef TARG_IA64
           scn_ofst = Write_Symoff ( st, INITV_ofst(inv),
+#else
+	  scn_ofst = Write_Symbol ( st, INITV_ofst(inv),
+#endif
 	  			      scn_idx, scn_ofst, INITV_repeat1(inv));
 	   break;
       }
@@ -4083,27 +5690,62 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
 
     case INITVKIND_LABEL:
 	lab = INITV_lab(inv);
+#ifndef TARG_IA64
+	if (etable)
+	{
+	    scn_ofst = Handle_EH_Region_Length (lab, scn_idx, scn_ofst);
+	    break;
+	}
+#endif // KEY
 	scn_ofst = Write_Label (lab, 0, scn_idx, scn_ofst, INITV_repeat1(inv));
 	break;
     case INITVKIND_SYMDIFF:
+#ifndef TARG_IA64
+      scn_ofst = Write_Symdiff ( INITV_lab1(inv), INITV_st2(inv),
+			scn_idx, scn_ofst, INITV_repeat1(inv), 4, etable);
+#else
       scn_ofst = Write_Symdiff ( INITV_lab1(inv), INITV_st2(inv),
 				scn_idx, scn_ofst, INITV_repeat1(inv), 4);
+#endif // KEY
       break;
     case INITVKIND_SYMDIFF16:
+#ifndef TARG_IA64
+      scn_ofst = Write_Symdiff ( INITV_lab1(inv), INITV_st2(inv),
+			scn_idx, scn_ofst, INITV_repeat1(inv), 2, etable);
+#else
       scn_ofst = Write_Symdiff ( INITV_lab1(inv), INITV_st2(inv),
 				scn_idx, scn_ofst, INITV_repeat1(inv), 2);
+#endif // KEY
       break;
 
     case INITVKIND_BLOCK:
+#ifndef TARG_IA64
+      if (INITV_flags(inv) == INITVFLAGS_TYPEINFO)
+	emit_typeinfo = true;
+#endif
       for (i = 0; i < INITV_repeat1(inv); i++) {
 	for (ninv = INITV_blk(inv); ninv; ninv = INITV_next(ninv)) {
+#ifndef TARG_IA64
+          scn_ofst = Write_INITV (ninv, scn_idx, scn_ofst, etable, format);
+#else
           scn_ofst = Write_INITV (ninv, scn_idx, scn_ofst);
+#endif // KEY
 	}
       }
+#ifndef TARG_IA64
+      if (emit_typeinfo)
+	emit_typeinfo = false;
+#endif
       break;
 
     case INITVKIND_PAD:
       if (Assembly && (INITV_pad(inv)*INITV_repeat1(inv) > 0)) {
+#ifdef TARG_MIPS
+	if (CG_emit_non_gas_syntax)
+	  fprintf(Asm_File, "\t%s %lld\n", ".space", 
+		  (INT64)(INITV_pad(inv) * INITV_repeat1(inv)));
+	else
+#endif
         ASM_DIR_ZERO(Asm_File, INITV_pad(inv) * INITV_repeat1(inv));
       }
       if (Object_Code) {
@@ -4118,6 +5760,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
   return scn_ofst;
 }
 
+#ifdef TARG_IA64
 static int
 sizeof_signed_leb128 (int value)
 {
@@ -4381,6 +6024,14 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
 #undef LSDA_CS_END  
 }
 
+#else // TARG_IA64
+#ifdef KEY
+static Elf64_Xword
+Generate_Exception_Table_Header (INT scn_idx,
+                                 Elf64_Xword scn_ofst,
+                                 LABEL_IDX *);
+#endif // KEY
+#endif // TARG_IA64
 /* Emit the initialized object to the object file */
 static void
 Write_INITO (
@@ -4405,6 +6056,12 @@ Write_INITO (
 
     if (inito_ofst > scn_ofst) {
       if (Assembly) {
+#ifdef TARG_MIPS
+	if (CG_emit_non_gas_syntax)
+	  fprintf(Asm_File, "\t%s %lld\n", ".space", 
+		  (INT64)(inito_ofst - scn_ofst));
+	else
+#endif
 	ASM_DIR_ZERO(Asm_File, (INT32)(inito_ofst - scn_ofst));
       }
       if (Object_Code) {
@@ -4437,14 +6094,167 @@ Write_INITO (
       }
     } else {
 	INITV_IDX inv;
-	FOREACH_INITV (INITO_val(ino), inv) {
-		scn_ofst = Write_INITV (inv, scn_idx, scn_ofst);
+#ifndef TARG_IA64
+        char *name = ST_name (sym);
+        bool range_table = (name != NULL) &&
+                (!strncmp (".range_table.", name,strlen(".range_table."))) &&
+                (ST_sclass (sym) == SCLASS_EH_REGION);
+        LABEL_IDX labels[2];
+        if (range_table)
+        {
+            exception_table_id++;
+            scn_ofst = Generate_Exception_Table_Header (scn_idx, scn_ofst, labels);
         }
+        bool action_table_started = false;
+	bool type_label_emitted = false;
+#endif // KEY
+	FOREACH_INITV (INITO_val(ino), inv) {
+#ifndef TARG_IA64
+            if (range_table && !action_table_started &&
+                  (INITV_flags (Initv_Table[inv]) == INITVFLAGS_ACTION_REC))
+            {
+                action_table_started = true;
+                fprintf ( Asm_File, "%s:\n", LABEL_name(labels[0]));
+            }
+	    if (range_table && !type_label_emitted && 
+	    	INITV_flags(Initv_Table[inv]) == INITVFLAGS_EH_SPEC)
+	    {
+	    	type_label_emitted = true;
+            	fprintf ( Asm_File, "%s:\n", LABEL_name(labels[1]));
+	    }
+            scn_ofst = Write_INITV (inv, scn_idx, scn_ofst, range_table,
+	    		range_table ? INITV_flags (Initv_Table[inv]) : 0);
+	    if (range_table && !type_label_emitted)
+	    {
+// Emit the type label IF we are emitting typeids AND this is the last
+// typeid, OR if we are beginning the eh-spec table (i.e. had an empty
+// typeid table) as above
+	    	if ((INITV_flags(Initv_Table[inv]) == INITVFLAGS_TYPEINFO) &&
+	      		(!INITV_next(inv) || 
+			!INITV_flags(Initv_Table[INITV_next(inv)])))
+	    	{
+	    	    type_label_emitted = true;
+            	    fprintf ( Asm_File, "%s:\n", LABEL_name(labels[1]));
+	    	}
+	    }
+#else
+		scn_ofst = Write_INITV (inv, scn_idx, scn_ofst);
+#endif // KEY
+        }
+#ifndef TARG_IA64
+        if (range_table && !type_label_emitted)
+            fprintf ( Asm_File, "%s:\n", LABEL_name(labels[1]));
+#endif // KEY
     }
     if (Assembly) {
     	fprintf ( Asm_File, "\t%s end of initialization for %s\n", ASM_CMNT, ST_name(sym) );
     }
 }
+
+#ifndef TARG_IA64
+//#ifdef KEY
+static Elf64_Word
+Write_Diff (
+  LABEL_IDX lab1,       /* left symbol */
+  LABEL_IDX lab2,       /* right symbol */
+  INT scn_idx,          /* Section to emit it in */
+  Elf64_Word scn_ofst)  /* Section offset to emit it at */
+{
+      fputs ("\t.uleb128\t", Asm_File);
+      fputs (LABEL_name(lab1), Asm_File);
+      fputc ('-', Asm_File);
+      fputs (LABEL_name(lab2), Asm_File);
+      fputc ('\n', Asm_File);
+
+      return scn_ofst+4;
+}
+
+static int
+num_digits (int in)
+{
+    int num=1;
+    while (in/10 != 0)
+    {
+        num++;
+        in = in/10;
+    }
+    return num;
+}
+
+static Elf64_Xword
+Generate_Exception_Table_Header (INT scn_idx, Elf64_Xword scn_ofst, LABEL_IDX *labels)
+{
+    // Generate LPStart pointer, currently constant
+    TCON lpstart = Host_To_Targ (MTYPE_I1, 0xff);
+    scn_ofst = Write_TCON (&lpstart, scn_idx, scn_ofst, 1);
+
+    // Generate TType format
+    TCON ttype;
+    if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
+    	ttype = Host_To_Targ (MTYPE_I1, 0x9b);
+    else
+    	ttype = Host_To_Targ (MTYPE_I1, 0);
+    scn_ofst = Write_TCON (&ttype, scn_idx, scn_ofst, 1);
+
+    // Generate TType base offset
+    int id_size = num_digits (exception_table_id);
+    LABEL_IDX ttype_base;
+    New_LABEL (CURRENT_SYMTAB, ttype_base);
+    char *ttype_base_name = (char *)malloc (strlen (lsda_ttype_base) +
+                                id_size + 1);
+    sprintf (ttype_base_name, "%s%d", lsda_ttype_base, exception_table_id);
+    Set_LABEL_name_idx (Label_Table[ttype_base], Save_Str (ttype_base_name));
+
+    LABEL_IDX ttype_disp;
+    New_LABEL (CURRENT_SYMTAB, ttype_disp);
+    char *ttype_disp_name = (char *)malloc (strlen (lsda_ttype_disp) +
+                                id_size + 1);
+    sprintf (ttype_disp_name, "%s%d", lsda_ttype_disp, exception_table_id);
+    Set_LABEL_name_idx (Label_Table[ttype_disp], Save_Str (ttype_disp_name));
+    /*
+    ST * csb = New_ST (CURRENT_SYMTAB);
+    char *csb_name = (char *)malloc ( strlen (lsda_cs_begin) +
+                                id_size + 1);
+    sprintf (csb_name, "%s%d", lsda_cs_begin, exception_table_id);
+    ST_Init (csb, Save_Str (csb_name), CLASS_BLOCK, 
+                SCLASS_EH_REGION, EXPORT_LOCAL, MTYPE_TO_TY_array[MTYPE_U4]);
+
+    ST * ttype_disp = New_ST (CURRENT_SYMTAB);
+    char *ttype_disp_name = (char *)malloc ( strlen (lsda_ttype_disp) +
+                                id_size + 1);
+    sprintf (ttype_disp_name, "%s%d", lsda_ttype_disp, exception_table_id);
+    ST_Init (ttype_disp, Save_Str (ttype_disp_name), CLASS_BLOCK, 
+                SCLASS_EH_REGION, EXPORT_LOCAL, MTYPE_TO_TY_array[MTYPE_U4]);
+    Set_ST_base_idx (*ttype_disp, ST_st_idx (*csb));
+    */
+    scn_ofst = Write_Diff (ttype_base, ttype_disp, scn_idx, scn_ofst);
+    fprintf ( Asm_File, "%s:\n", LABEL_name(ttype_disp));
+
+    // Generate call site format
+    TCON csf = Host_To_Targ (MTYPE_I1, 1);
+    scn_ofst = Write_TCON (&csf, scn_idx, scn_ofst, 1);
+
+    LABEL_IDX csb;
+    New_LABEL (CURRENT_SYMTAB, csb);
+    char *csb_name = (char *)malloc (strlen (lsda_cs_begin) +
+                                id_size + 1);
+    sprintf (csb_name, "%s%d", lsda_cs_begin, exception_table_id);
+    Set_LABEL_name_idx (Label_Table[csb], Save_Str (csb_name));
+
+    LABEL_IDX cse;
+    New_LABEL (CURRENT_SYMTAB, cse);
+    char *cse_name = (char *)malloc (strlen (lsda_cs_end) +
+                                id_size + 1);
+    sprintf (cse_name, "%s%d", lsda_cs_end, exception_table_id);
+    Set_LABEL_name_idx (Label_Table[cse], Save_Str (cse_name));
+    scn_ofst = Write_Diff (cse, csb, scn_idx, scn_ofst);
+    labels[0] = cse;
+    labels[1] = ttype_base;
+
+    fprintf ( Asm_File, "%s:\n", LABEL_name(csb));
+    return scn_ofst;
+}
+#endif // KEY
 
 /* change to a new section and new origin */
 static void
@@ -4455,10 +6265,20 @@ Change_Section_Origin (ST *base, INT64 ofst)
 			/* switch to new section. */
 			fprintf ( Asm_File, "\n\t%s %s\n", AS_SECTION, ST_name(base));
 		}
+#ifndef TARG_MIPS
+#ifdef TARG_X8664
+		if (strcmp(ST_name(base), ".except_table"))
+#endif // TARG_X8664
 		fprintf (Asm_File, "\t%s 0x%llx\n", AS_ORIGIN, ofst);
 		/* generate a '.align 0' to make sure we don't autoalign */
+#ifdef TARG_IA64
 		fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
+#endif
+#endif
 		cur_section = base;
+#ifdef TARG_MIPS
+		CGEMIT_Change_Origin_In_Asm(base, ofst);
+#endif
 	}
 	/* for nobits, add final size at end because we don't write any data. */
   	if (Object_Code && !STB_nobits(base)) {
@@ -4561,10 +6381,26 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
     }
   }
 
+#ifndef TARG_IA64
+  // Don't search GLOBAL_SYMTAB for unprocessed constants if there aren't any.
+  // Bug 8756.
+  static int prev_global_ST_Table_Size = -1;
+  static BOOL unprocessed_global_constants = TRUE;
+  if (prev_global_ST_Table_Size == ST_Table_Size(GLOBAL_SYMTAB) &&
+      !unprocessed_global_constants) {
+    goto skip_global_constants;
+  }
+  prev_global_ST_Table_Size = ST_Table_Size(GLOBAL_SYMTAB);
+  unprocessed_global_constants = FALSE;
+#endif
+
   // Then walk the CONSTANTs from the global table
   for (i = 1; i < ST_Table_Size(GLOBAL_SYMTAB); ++i) {
     ST* st = &St_Table(GLOBAL_SYMTAB,i);
     if (ST_class(st) == CLASS_CONST && !st_processed[ST_index(st)]) {
+#ifndef TARG_IA64
+      unprocessed_global_constants = TRUE;
+#endif
       INT64 ofst;
       ST* base;
       Base_Symbol_And_Offset(st, &base, &ofst);
@@ -4577,6 +6413,10 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
       st_list.push_back(st);
     }
   }
+
+#ifndef TARG_IA64
+  skip_global_constants:
+#endif
 
   // Print_ST_List(st_list, "UNSORTED");
   stable_sort (st_list.begin(), st_list.end(), size_lt);
@@ -4607,6 +6447,9 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
       // may need padding between objects in same section,
       // so always change origin
       Change_Section_Origin (base, ofst);
+#ifndef TARG_IA64
+      fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
+#endif
       Write_INITO (ino, STB_scninfo_idx(base), ofst);
     }
 
@@ -4617,7 +6460,18 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
       // we cannot assume that constants are sequentially ordered
       // by offset, because they are allocated on the fly as we
       // expand the whirl nodes.  So always reset the origin.
+#ifndef TARG_IA64
+      // Bug 617 - do not emit zero length strings 
+      // (data_layout assigns same offset to two different constants
+      // when one of them is a zero length constant).
+      if ((TCON_ty(ST_tcon_val(st)) != MTYPE_STR &&
+	   TCON_ty(ST_tcon_val(st)) != MTYPE_STRING) ||
+	  TCON_str_len(ST_tcon_val(st)) != 0)
+#endif
       Change_Section_Origin (base, ofst);
+#ifndef TARG_IA64
+      fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
+#endif
       Write_TCON (&ST_tcon_val(st), STB_scninfo_idx(base), ofst, 1);
     }
   }
@@ -4640,6 +6494,9 @@ Process_Distr_Array ()
                 ("inito (%s) not allocated?", ST_name(st)));
       Init_Section(base);
       Change_Section_Origin(base, ofst);
+#ifndef TARG_IA64
+      fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
+#endif
       Write_INITO(ino, STB_scninfo_idx(base), ofst);
     }
   }
@@ -4671,6 +6528,16 @@ Process_Bss_Data (SYMTAB_IDX stab)
       continue;	// not a leaf symbol
     if (!Has_Base_Block(sym))
       continue;	// not a data symbol
+#ifdef KEY // bug 3182: to avoid .org backwards with cray pointers
+    if (ST_sclass(sym) == SCLASS_PSTATIC &&
+	(&Get_Current_PU() != NULL) && PU_ftn_lang(Get_Current_PU()) && 
+	ST_class(ST_base(sym)) != CLASS_BLOCK &&
+	TY_size(ST_type(ST_base(sym))) == Pointer_Size &&
+	ST_ofst(sym) == 0 && TY_size(ST_type(sym)) > Pointer_Size) {
+      DevWarn("Process_Bss_Data: skipped symbol %s because based on cray pointer", ST_name(sym));
+      continue; // is based on a cray pointer
+    }
+#endif
     if (ST_sclass(sym) == SCLASS_UGLOBAL ||
         ST_sclass(sym) == SCLASS_FSTATIC ||
         ST_sclass(sym) == SCLASS_PSTATIC) {
@@ -4696,20 +6563,87 @@ Process_Bss_Data (SYMTAB_IDX stab)
   INT64 ofst;
   INT64 next_ofst;
   INT64 size;
+  INT64 size_to_skip;
+  INT64 not_yet_skip_amt = 0; // bug 10678
+#ifdef KEY // bug 10678
+  ST*	last_base = NULL;
+#endif
 
   for (bssp = bss_list.begin(); bssp != bss_list.end(); ++bssp) {
 
 	sym = *bssp;
 	Base_Symbol_And_Offset(sym, &base, &ofst);
+#ifdef KEY // bug 10678
+	if (base != last_base) {
+	  if (last_base != NULL && not_yet_skip_amt > 0)
+	    ASM_DIR_SKIP(Asm_File, not_yet_skip_amt);
+	  // initialize for new base
+	  last_base = base;
+	  not_yet_skip_amt = 0;
+	}
+#endif
 	if (ST_class(base) != CLASS_BLOCK || !STB_section(base))
 		continue;	/* not allocated */
 	if (!STB_nobits(base))
 		continue;	/* not a bss symbol */
 
+#ifdef TARG_X8664
+	// Fix bug 617
+	// Do not emit .org for any symbols with section attributes.
+	{
+	  ST* tmp_base = sym;
+	  BOOL has_named_section = FALSE;
+	  if ( ST_base(tmp_base) == base && ST_has_named_section (tmp_base)) {
+	    fprintf ( Asm_File, "\n\t%s %s\n", 
+		      AS_SECTION, ST_name(base));
+	    has_named_section = TRUE;
+	  }
+	  while ( ST_base(tmp_base) != base ) {
+	    tmp_base = ST_base(tmp_base);	  
+	    if ( ST_has_named_section (tmp_base) ) {
+	      fprintf ( Asm_File, "\n\t%s %s\n", 
+			AS_SECTION, ST_name(base));
+	      has_named_section = TRUE;
+	      break;
+	    }
+	  }
+	  if (!has_named_section) {
+	    Change_Section_Origin (base, ofst);	    
+	    if ( !Simd_Reallocate_Objects ) {
+              // If Simd_Reallocate_Objects, we already emitted alignment 
+	      // inside Change_Section_Origin - may be screwed up but we did
+	      if ( STB_align(base) == 16 ) {
+		// IPA probably realigned a FSTATIC variable destined for 
+		// this EXTERN variable 
+		// Get the alignment from the ST_type
+		fprintf( Asm_File, "\t%s\t%d\n", AS_ALIGN, 
+			TY_align( ST_type ( sym ) ) );
+	      } else
+		fprintf( Asm_File, "\t%s\t0\n", AS_ALIGN );
+	    } else // if ( !STB_align( base ) )
+	      fprintf( Asm_File, "\t%s\t0\n", AS_ALIGN );
+	  }
+	} 
+#else
 	Change_Section_Origin (base, ofst);
+#endif
 	if (Assembly) {
+#ifdef KEY // bug 11593: do not generate a definition for aliased variables
+		if (ST_class(sym) == CLASS_VAR &&
+		    ST_base_idx(sym) != ST_st_idx(sym) &&
+		    !ST_is_equivalenced(sym) &&
+		    ST_class(ST_base(sym)) != CLASS_BLOCK)
+		  goto skip_definition;
+#endif
 		size = TY_size(ST_type(sym));
+#ifdef KEY
+		// C++ requires empty classes to have unique addresses.
+		if (size == 0)
+		  Print_Label (Asm_File, sym, 1);
+		else
+#endif
 		Print_Label (Asm_File, sym, size);
+		size_to_skip = size;
 		// before emitting space,
 		// first check whether next symbol has same offset.
 		// can have overlapping symbols that are equivalenced.
@@ -4724,18 +6658,33 @@ Process_Bss_Data (SYMTAB_IDX stab)
 			else if (next_base == base && next_ofst < (ofst+size)) {
 				// have label in middle of structure,
 				// so don't emit space for full structure.
-				size = next_ofst - ofst;
+				not_yet_skip_amt = MAX(not_yet_skip_amt, size); // bug 10678
+				size_to_skip = next_ofst - ofst;
 			}
 		}
 		// assume here that if multiple symbols with same offset,
 		// are sorted so that largest size is last.
-		if (size > 0)
-		    ASM_DIR_SKIP(Asm_File, (INT32)size);
+		if (size_to_skip > 0) {
+#ifdef TARG_MIPS
+		    if (CG_emit_non_gas_syntax)
+		      fprintf(Asm_File, "\t%s %lld\n", ".space", (INT64)size_to_skip);
+		    else
+#endif
+		    ASM_DIR_SKIP(Asm_File, size_to_skip);
+		    not_yet_skip_amt = MAX(0, not_yet_skip_amt-size_to_skip); // bug 10678
+		}
 	}
+skip_definition:
 	if (generate_elf_symbols && ! ST_is_export_local(sym)) {
 		EMT_Put_Elf_Symbol (sym);
 	}
   }
+#ifdef KEY // bug 10678
+  if (bss_list.size() > 0) {
+    if (not_yet_skip_amt > 0)
+      ASM_DIR_SKIP(Asm_File, not_yet_skip_amt);
+  }
+#endif
 }
 
 
@@ -4810,7 +6759,7 @@ Setup_Text_Section_For_BB (BB *bb)
 {
   BOOL cold_bb = BB_cold(bb);
   PU_base = cold_bb ? cold_base : text_base;
-
+#ifdef TARG_IA64
   /*
   for pu that has exception handling, we can not have two code
   location right now, since there are only one unwind table
@@ -4818,7 +6767,7 @@ Setup_Text_Section_For_BB (BB *bb)
   */
   if (PU_has_exc_scopes(Get_Current_PU()))
 	cold_bb = FALSE;
-
+#endif
   if (cur_section != PU_base) {
     if (Assembly) {
       fprintf (Asm_File, "\n\t%s %s\n", AS_SECTION, ST_name(PU_base));
@@ -4950,7 +6899,14 @@ Setup_Text_Section_For_PU (ST *pu)
       UINT32 tmp, power;
       power = 0;
       for (tmp = STB_align(text_base); tmp > 1; tmp >>= 1) power++;
+#ifdef TARG_IA64
       ASM_DIR_ALIGN(power, text_base);
+#elif  defined(TARG_X8664)	
+      fprintf (Asm_File, "\t%s\t%d\n", AS_ALIGN, 1 << power );
+#else
+      fprintf (Asm_File, "\t%s\t%d\n", AS_ALIGN, power);
+#endif
+#endif
     }
     if (Object_Code) {
       // these bytes will never be executed so just insert 0's and
@@ -4962,12 +6918,35 @@ Setup_Text_Section_For_PU (ST *pu)
     text_PC = text_PC + (i * INST_BYTES);
   }
 
+#ifndef TARG_X8664
   // hack for supporting dwarf generation in assembly (suneel)
   Last_Label = Gen_Label_For_BB (REGION_First_BB);
+
   Offset_From_Last_Label = 0;
   if (Initial_Pu_Label == LABEL_IDX_ZERO) {
     Initial_Pu_Label = Last_Label;
   }
+#else
+  {
+    // The original code would create a label (if required) for the first BB
+    // and then use that label in DW_TAG_low_pc and DW_TAG_high_pc. To set 
+    // DW_TAG_high_pc, the original mechanism used to count instruction bytes. 
+    // This is hard to do for Opteron. Hence we would generate a new label 
+    // (Last_Label) 
+    // and attach it to the end of the PU.
+    char *buf;
+    LABEL *label;
+    buf = (char *)alloca(strlen(Cur_PU_Name) + /* EXTRA_NAME_LEN */ 32);
+    sprintf(buf, ".LDWend_%s", Cur_PU_Name);
+    label = &New_LABEL(CURRENT_SYMTAB, Last_Label);
+    LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+  }
+
+  Offset_From_Last_Label = 0;
+  if (Initial_Pu_Label == LABEL_IDX_ZERO) {
+    Initial_Pu_Label = Gen_Label_For_BB (REGION_First_BB);
+  }
+#endif
 
   /* check if we are changing sections. */
   if (text_base != old_base) {
@@ -4977,11 +6956,23 @@ Setup_Text_Section_For_PU (ST *pu)
       end_previous_text_region(old_section, Em_Get_Section_Offset(old_section));
     }
     if (generate_dwarf) {
-    	Em_Dwarf_Start_Text_Region_Semi_Symbolic (PU_section, text_PC,
+#ifdef TARG_X8664
+      // Bug 2468 - use the appropriate labels for the debug_aranges
+      LABEL_IDX Text_Label = LABEL_IDX_ZERO;
+      Text_Label = Gen_Label_For_BB (REGION_First_BB);
+      Em_Dwarf_Start_Text_Region_Semi_Symbolic (
+        PU_section, text_PC,
+        Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+                              Text_Label,
+                              ST_elf_index(text_base)),
+        Offset_From_Last_Label);
+#else    	
+	Em_Dwarf_Start_Text_Region_Semi_Symbolic (PU_section, text_PC,
 					      Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
 								    Last_Label,
 								    ST_elf_index(text_base)),
 					      Offset_From_Last_Label);
+#endif
 	}
   }
 
@@ -5012,12 +7003,23 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   // when PU is marked extern _inline_ in C, 
   // needn't emit anything.
   if (PU_is_extern_inline (Pu_Table[ST_pu(pu)]))
-    return;
+        return;
+  // Notes on bugs 2839 and 2934: CG_emit_asm_dwarf controls generate_dwarf
+  // and generate_elf_symbols. generate_dwarf and generate_elf_symbols are
+  // used interchangeably in cgemit for generating dwarf code as well as to 
+  // emit other useful info such as "weak" symbols. This is why we can not
+  // turn off dwarf generation (for non -g/C++ compilation).
+
 
   Trace_Inst	= Get_Trace ( TP_EMIT,1 );
   BOOL trace_unwind = Get_Trace (TP_EMIT, 64);
 
   Init_Unwind_Info (trace_unwind);
+#ifdef TARG_X8664
+  // bug 3031, 4814: initialize these unconditionally
+  // bug 11034 : dynamic memory allocation
+  init_dwarf_pu_tables();
+#endif // TARG_X8664
 
   /* In the IA-32 case, we need to convert fp register references
    * so that they reference entries in the fp register stack with the
@@ -5039,6 +7041,28 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   // We don't do this in EMT_Begin_File because may not have done
   // data layout at that point.
   static UINT last_global_index = 1;
+#ifndef TARG_IA64
+  static BOOL CG_LNO_Alignment_Overridden = FALSE;
+
+  // Bug 2028 - If the source language is Fortran, we always generate
+  // 16 byte alignment, so we do not have to look at the 
+  // CG_LNO_Alignment_Overridden flag now. In general, it is okay to emit
+  // alignment directive for common blocks as many times as long as the new
+  // alignments are equal or more restrictive than previous versions.
+  // For bug 2028 though, there is a user local variable with the same name as
+  // a common block in a different PU and that causes the assembler to complain
+  // about the alignment re-directives. For other languages we should not have 
+  // this naming clash and that is the convenience to check for F77 or F90 here.
+  if (LNO_Run_Simd && Simd_Align && !CG_LNO_Alignment_Overridden &&
+      PU_ftn_lang(Get_Current_PU()))
+    CG_LNO_Alignment_Overridden = TRUE;
+
+  if (LNO_Run_Simd && Simd_Align && !CG_LNO_Alignment_Overridden) {
+    // If LNO succeeds in vectorization, emit alignment attributes again.
+    last_global_index = 1;
+    CG_LNO_Alignment_Overridden = TRUE;
+  }
+#endif
   for (i = last_global_index; i < ST_Table_Size(GLOBAL_SYMTAB); ++i) {
 	ST* sym = &St_Table(GLOBAL_SYMTAB,i);
 	if (ST_class(sym) == CLASS_BLOCK && STB_section(sym)) {
@@ -5054,6 +7078,10 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 
   // emit global bss first so .org is correct
   Process_Bss_Data (GLOBAL_SYMTAB);
+#ifndef TARG_IA64
+  if (LNO_Run_Simd)
+    Simd_Align = FALSE;
+#endif
 
   /* Initialize any sections that might have been created by the backend. */
   FOREACH_SYMBOL (CURRENT_SYMTAB, sym, i) {
@@ -5079,13 +7107,34 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
     Em_Add_New_Event (EK_ENTRY, PC, 0, 0, 0, PU_section);
   }
   if ( Assembly ) {
+#ifdef TARG_X8664
+    if (CG_p2align) 
+      fputs ("\t.p2align 4,,15\n", Asm_File);
+    else if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) {
+      // g++ requires a minimum alignment because it uses the least significant
+      // bit of function pointers to store the virtual bit.
+      fputs ("\t.p2align 1,,\n", Asm_File);
+    }
+#endif
     fprintf ( Asm_File, "\n\t%s Program Unit: %s\n", ASM_CMNT, ST_name(pu) );
-    if (AS_ENT) CGEMIT_Prn_Ent_In_Asm (pu);
+    if (AS_ENT 
+#ifndef TARG_IA64
+	 && ! CG_inhibit_size_directive
+#endif
+	    ) CGEMIT_Prn_Ent_In_Asm (pu);
+#ifndef TARG_MIPS
 #ifdef TEMPORARY_STABS_FOR_GDB
     // This is an ugly hack to enable basic debugging for IA-32 target
     if (Debug_Level > 0) {
       fprintf(Asm_File, ".stabs \"%s:F(0,1)\",36,0,0,%s\n", ST_name(pu), ST_name(pu));
       fprintf(Asm_File, "\t%s\t%s,%s\n", AS_TYPE, ST_name(pu), AS_TYPE_FUNC);
+    }
+#endif
+#else
+    if (!CG_emit_non_gas_syntax) {
+      fprintf (Asm_File, "\t%s\t", AS_TYPE);
+      EMT_Write_Qualified_Name (Asm_File, pu);
+      fprintf (Asm_File, ", %s\n", AS_TYPE_FUNC);
     }
 #endif
     Print_Label (Asm_File, pu, 0);
@@ -5124,6 +7173,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
       }
     }
   }
+#ifdef TARG_IA64
   /* Fix MMxx => IALU etc. latency requirement just before assemble BB */
   if (Target == TARGET_ITANIUM && LOCS_Enable_Bundle_Formation) {
     TOP_SET src_op_class, tgt_op_class;
@@ -5164,38 +7214,87 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
           }
           Fix_Cache_Conflict_latency(bb);
       }
+#else // TARG_IA64
+#if 0
+      // This code has been moved to EMT_Assemble_BB with the aim of emitting
+      // it at the start of the 1st BB in the PU.
+#ifdef TARG_X8664
+      if( Assembly &&
+	  ( strcmp( Cur_PU_Name, "MAIN__" ) == 0 ||
+	    strcmp( Cur_PU_Name, "main" ) == 0 ) ){
+	CGEMIT_Setup_Ctrl_Register( Asm_File );
+      }
+#endif  
+#endif
+#endif // TARG_IA64
   }
   /* Assemble each basic block in the PU */
   for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+#ifdef TARG_IA64
     int bb_cycle_count;
+#endif
     Setup_Text_Section_For_BB(bb);
+#ifdef TARG_IA64
     bb_cycle_count = EMT_Assemble_BB (bb, rwn);
     /* count the cycle for the PU  cbq */
     pu_cycle_count = pu_cycle_count + bb_cycle_count * bb->freq;
+#else
+    EMT_Assemble_BB (bb, rwn);
+#endif
   }
+#ifdef TARG_IA64
   fprintf(Asm_File, "//PU cycle count: %f\n", pu_cycle_count);
+#endif
 
+#ifdef TARG_X8664
+  // Emit Last_Label at the end of the PU to guide Dwarf DW_AT_high_pc
+  fprintf( Asm_File, "%s:\n", LABEL_name(Last_Label));
+  Label_Last_BB_PU_Entry[pu_entries] = Last_Label;
+  // Bug 1275
+  fprintf( Asm_File, "\t.size %s, %s-%s\n", 
+	   ST_name(pu), LABEL_name(Last_Label), ST_name(pu));
+#endif
   /* Revert back to the text section to end the PU. */
   Setup_Text_Section_For_BB(REGION_First_BB);
   Is_True(PU_base == text_base, ("first region BB was not in text section"));
 
+#ifdef TARG_IA64
   /* output LSDA */
   if (EH_Get_PU_Range_INITO(false) && EH_Get_PU_Range_ST()) {
     ST* eh_range = EH_Get_PU_Range_ST();
     Write_LSDA_INITO(eh_range, EH_Get_PU_Range_INITO(true), 0, 0);
     Set_ST_is_not_used(eh_range); // do not write_inito later
   }
+#endif
 
   /* Emit the stuff needed at the end of the PU. */
-  if (Assembly && AS_END) {
-    fprintf ( Asm_File, "\t%s\t", AS_END);
-    EMT_Write_Qualified_Name(Asm_File, pu);
-    fprintf ( Asm_File, "\n");
+  const char *end = AS_END;
+  if (Assembly) {
+#ifdef TARG_MIPS
+    if (CG_emit_non_gas_syntax) {
+      fprintf ( Asm_File, "\t%s\t", AS_END);
+      EMT_Write_Qualified_Name(Asm_File, pu);
+      fputc ( '\n', Asm_File);
+    }
+    else
+#endif
+    if (end
+#ifndef TARG_IA64
+	&& ! CG_inhibit_size_directive
+#endif
+	    ) {
+      fprintf ( Asm_File, "\t%s\t", end);
+      EMT_Write_Qualified_Name(Asm_File, pu);
+      fputc ( '\n', Asm_File);
+    }
   }
-
+  
   /* Emit the initialized data associated with this PU. */
   Process_Initos_And_Literals (CURRENT_SYMTAB);
   Process_Bss_Data (CURRENT_SYMTAB);
+#ifndef TARG_IA64
+  Simd_Reallocate_Objects = FALSE;
+#endif
 
   if (generate_dwarf) {
     Elf64_Word symindex;
@@ -5212,12 +7311,21 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
     }
     else {
       sym = EH_Get_PU_Range_ST();
-#if 0
+#ifndef TARG_IA64
       if (sym != NULL) {
 	Base_Symbol_And_Offset (sym, &base, &ofst);
 	eh_offset = ofst;
 	Init_Section(base);	/* make sure eh_region is inited */
+#ifdef TARG_X8664
+// emit the begin label instead of the section name, since the section name
+// is same for different PUs, the label is different.
+	symindex = EMT_Put_Elf_Symbol (sym);
+// the above calculated offset is w.r.t the base, since we are not using the
+// base, the offset is 0.
+	eh_offset = 0;
+#else
 	symindex = ST_elf_index(base);
+#endif // TARG_X8664
       } else {
 	eh_offset = symindex = (Elf64_Word)DW_DLX_NO_EH_OFFSET;
       }
@@ -5226,6 +7334,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #endif
     }
     // Cg_Dwarf_Process_PU (PU_section, Initial_Pu_PC, PC, pu, pu_dst, symindex, eh_offset);
+#ifndef TARG_X8664
     Cg_Dwarf_Process_PU (
 		Em_Create_Section_Symbol(PU_section),
 		Initial_Pu_Label,
@@ -5235,6 +7344,26 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 		// once libunwind provides an interface that lets
 		// us specify ranges symbolically.
 		Initial_Pu_PC, PC);
+#else
+    Cg_Dwarf_Process_PU (
+		Em_Create_Section_Symbol(PU_section),
+		Initial_Pu_Label,
+		// For Opteron, we generate a last label at the end of the PU
+		Last_Label, 
+		&Label_pushbp[0],
+		&Label_movespbp[0],
+		&Label_adjustsp[0],
+		&Label_Callee_Saved_Reg[0],
+		&Label_First_BB_PU_Entry[0],
+		&Label_Last_BB_PU_Entry[0],
+		pu_entries,
+		0,
+		pu, pu_dst, symindex, eh_offset,
+		// The following two arguments need to go away
+		// once libunwind provides an interface that lets
+		// us specify ranges symbolically.
+		Initial_Pu_PC, PC);
+#endif // TARG_X8664
   }
 
   if (Run_prompf) {
@@ -5492,19 +7621,27 @@ EMT_Begin_File (
     Cg_Dwarf_Begin (!Use_32_Bit_Pointers);
   }
   Cg_Dwarf_Gen_Asm_File_Table ();
+#ifdef KEY
+  Cg_Dwarf_Gen_Macinfo ();
+#endif
 
   if (Assembly) {
     ASM_DIR_NOREORDER();
     ASM_DIR_NOAT();
+#ifdef TARG_MIPS
+    if (! CG_emit_non_gas_syntax)
+      fputs ( "\t.set\tnomacro\n", Asm_File );
+#endif
     fprintf ( Asm_File, "\t%s  %s::%s\n", ASM_CMNT, process_name, 
 			    INCLUDE_STAMP );
     if (*ism_name != '\0')
     	fprintf ( Asm_File, "\t%s%s\t%s\n", ASM_CMNT, "ism", ism_name);
     List_Compile_Options ( Asm_File, "\t"ASM_CMNT, FALSE, TRUE, TRUE );
-#ifdef KEY
+
+#ifdef KEY 
     if (! CG_emit_non_gas_syntax)
       Print_Directives_For_All_Files();
-#endif    
+#endif
 
     /* TODO: do we need to do .interface stuff for asm files? */
   }
@@ -5587,12 +7724,116 @@ Em_Options_Scn(void)
 }
 
 
+#ifndef TARG_IA64
+// stores the command line arguments passed to 'be'
+extern char ** be_command_line_args;
+extern INT be_command_line_argc;
+
+#ifdef TARG_X8664
+// similar to Targ_Name, but return all lower-case names
+static char *
+Target_Name (TARGET_PROCESSOR t)
+{
+  switch (t)
+  {
+    case TARGET_opteron: return "opteron";
+    case TARGET_athlon64: return "athlon64";
+    case TARGET_athlon: return "athlon";
+    case TARGET_em64t: return "em64t";
+    case TARGET_core: return "core";
+    case TARGET_pentium4: return "pentium4";
+    case TARGET_xeon: return "xeon";
+    case TARGET_anyx86: return "anyx86";
+    default: Fail_FmtAssertion ("Add support for %s", Targ_Name (t));
+  }
+  return NULL;
+}
+#endif // TARG_X8664
+
+// Emit compilation options and ABI/processor details into assembly file
+static void
+Emit_Options (void)
+{
+  // don't emit anything for symtab.s
+  if (!Emit_Global_Data)
+  {
+    fputs ("\t.ident\t\"#QLogic PathScale Compiler Version " PSC_FULL_VERSION " :", Asm_File);
+    fprintf (Asm_File, " %s compiled with : ", Src_File_Name);
+    // 0th is 'be', (be_command_line_argc-1)th is filename
+    for (INT cmds=1; cmds < be_command_line_argc-1; ++cmds)
+    {
+      char * option = be_command_line_args[cmds];
+      // exclude lots of options
+      if (!strncmp ("-PHASE", option, strlen ("-PHASE")) ||
+          !strncmp ("-INTERNAL", option, strlen ("-INTERNAL")) ||
+          !strncmp ("-G8", option, strlen ("-G8")) ||
+          !strncmp ("-LANG", option, strlen ("-LANG")) ||
+          !strncmp ("-LIST", option, strlen ("-LIST")) ||
+          !strncmp ("-TARG", option, strlen ("-TARG")))
+        continue;
+
+      if (!strcmp ("-show", option) ||
+          !strcmp ("-v", option) ||
+          !strcmp ("-c", option) ||
+          !strcmp ("-s", option) ||
+          !strncmp ("-fB,", option, strlen ("-fB,")) ||
+          !strncmp ("-fs,", option, strlen ("-fs,")) ||
+	  // feedback option
+	  !strncmp ("-ff,", option, strlen ("-ff,")) ||
+	  // all the trace options
+	  !strncmp ("-ti", option, strlen ("-ti")) ||
+	  !strncmp ("-tr", option, strlen ("-tr")) ||
+	  !strncmp ("-ts", option, strlen ("-ts")) ||
+	  !strncmp ("-tt", option, strlen ("-tt")) ||
+	  !strncmp ("-tf", option, strlen ("-tf")))
+        continue;
+
+      // check if IPA, then exclude some internal options
+      if (Read_Global_Data &&
+          (!strcmp ("-OPT:procedure_reorder=on", option) ||
+          !strcmp ("-CG:enable_feedback=off", option) ||
+          !strncmp ("-TENV:ipa_ident", option,
+                    strlen ("-TENV:ipa_ident")) ||
+          !strncmp ("-TENV:read_global_data", option,
+                    strlen ("-TENV:read_global_data")) ||
+          !strncmp ("-TENV:CPIC", option,
+                    strlen ("-TENV:CPIC"))))
+        continue;
+
+      fprintf (Asm_File, "%s ", option);
+    }
+    // ipa ?
+    if (Read_Global_Data) fputs ("-ipa ", Asm_File);
+#ifdef TARG_X8664
+    fprintf (Asm_File, "-march=%s ", Target_Name (Target));
+
+    if (Is_Target_SSE2()) fputs ("-msse2 ", Asm_File);
+    else fputs ("-mno-sse2 ", Asm_File);
+
+    if (Is_Target_SSE3()) fputs ("-msse3 ", Asm_File);
+    else fputs ("-mno-sse3 ", Asm_File);
+
+    if (Is_Target_3DNow()) fputs ("-m3dnow ", Asm_File);
+    else fputs ("-mno-3dnow ", Asm_File);
+
+    if (Is_Target_64bit()) fputs ("-m64", Asm_File);
+    else fputs ("-m32", Asm_File);
+#endif // TARG_X8664
+
+    fputs ("\"\n", Asm_File);
+  }
+}
+#endif // KEY
+
 void
 EMT_End_File( void )
 {
   INT16 i;
   ST *sym;
 
+#ifdef TARG_X8664
+  EETARG_Emit_IP_Calc_Func();
+#endif
   cur_section = NULL;
   Init_ST_elf_index(GLOBAL_SYMTAB);
 
@@ -5608,6 +7849,14 @@ EMT_End_File( void )
                 if (ST_is_not_used (sym)) continue;
                 EMT_Put_Elf_Symbol (sym);
         }
+#ifdef KEY
+	/* Emit .weak directive for the used weak symbol. (bug#3202)
+	 */
+	if( ST_is_weak_symbol(sym) &&
+	    !ST_is_not_used(sym) ){
+	  EMT_Put_Elf_Symbol(sym);
+	}
+#endif
   }
 
   if (Emit_Global_Data) {
@@ -5629,6 +7878,9 @@ EMT_End_File( void )
 		}
 		if (Assembly) {
  			Change_Section_Origin (sym, 0);
+#ifndef TARG_IA64
+			fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
+#endif
 			fprintf (Asm_File, "\t%s\t%s\n", AS_GLOBAL, newname);
 			ASM_DIR_STOINTERNAL(newname);
 			fprintf (Asm_File, "%s:\n", newname);
@@ -5680,8 +7932,10 @@ EMT_End_File( void )
       ST *strongsym = ST_strong(sym);
       unsigned char symtype;
 
+#ifndef KEY // the strong symbol can be another weak one linked to a strong one
       if ( ! Has_Base_Block(strongsym))
 	continue;	/* strong not allocated, so ignore weak */
+#endif
 
       if (ST_class(sym) == CLASS_FUNC) {
 	symtype = STT_FUNC;
@@ -5778,7 +8032,15 @@ EMT_End_File( void )
 	power = 0;
 	for (tmp = STB_align(sym); tmp > 1; tmp >>= 1) power++;
 	fprintf (Asm_File, "\t%s %s\n", AS_SECTION, ST_name(sym));
+#ifndef TARG_IA64
+#ifdef TARG_X8664	
+	fprintf (Asm_File, "\t%s\t%d\n", AS_ALIGN, 1 << power );
+#else
+	fprintf (Asm_File, "\t%s\t%d\n", AS_ALIGN, power);
+#endif
+#else
 	ASM_DIR_ALIGN(power, sym);
+#endif
       }
   }
 
@@ -5790,11 +8052,20 @@ EMT_End_File( void )
 
   if (Assembly) {
     ASM_DIR_GPVALUE();
+#ifdef TARG_MIPS
+    if (! CG_emit_non_gas_syntax)
+#endif
     if (CG_emit_asm_dwarf) {
       Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs(Asm_File,
 						   dwarf_section_count,
 						   !Use_32_Bit_Pointers);
     }
+#ifdef KEY // bug 5561: mark stack as non-executable
+    fprintf ( Asm_File, "\t%s\t.note.GNU-stack,\"\",@progbits\n", AS_SECTION);
+#endif
+#ifndef TARG_IA64
+    Emit_Options ();
+#endif
   }
   if (Object_Code && !CG_emit_asm_dwarf) {
     /* TODO: compute the parameters more accurately. For now we assume 
@@ -5854,4 +8125,3 @@ EMT_End_File( void )
 	}
   }
 }
-
