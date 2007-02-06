@@ -101,6 +101,9 @@
 #include "opt_alias_mgr.h"
 #include "wintrinsic.h"
 
+extern "C" {
+#include "bitset.h"
+}
 #ifdef KEY
 extern BOOL ST_Has_Dope_Vector(ST *st);
 #endif
@@ -1206,6 +1209,7 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
     return AC_PTR_OBJ_PAIR(return_acr, alloca_mem_acr);
   }
   else {
+
     // The opcode is some sort of expression and it's not a
     // leaf. Create a class to hold the value of the expression (as if
     // it were stored in a temporary) and handle the expression kids.
@@ -1496,13 +1500,11 @@ ALIAS_CLASSIFICATION::Callee_changes_no_points_to(const WN *const call_wn,
   else if (WN_Call_Does_Mem_Free(call_wn)) {
     return TRUE;
   }
-#ifndef PATHSCALE_MERGE_ZHC
 #if 1
   else if ((WN_operator(call_wn) == OPR_CALL) &&
 	   (strcmp("free", ST_name(WN_st(call_wn))) == 0)) {
     return TRUE;
   }
-#endif
 #endif
   else if (Callee_returns_new_memory(call_wn)) {
     return TRUE;
@@ -1562,11 +1564,11 @@ ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
 
     // Cheap hack for now, to test performance. This should be based on
     // some real mechanism in the future instead of cheesebag hacks.
-    if ((strcmp("alloca", ST_name(st)) == 0) ||
-        (strcmp("malloc", ST_name(st)) == 0) ||
-        (strcmp("calloc", ST_name(st)) == 0) ||
-        (strcmp("_F90_ALLOCATE", ST_name(st)) == 0) ||
-	WOPT_Enable_Disambiguate_Heap_Obj && PU_has_attr_malloc (Pu_Table[ST_pu(st)])) {
+    if ((strcmp("malloc", ST_name(st)) == 0) ||
+	(strcmp("alloca", ST_name(st)) == 0) ||
+	(strcmp("calloc", ST_name(st)) == 0) ||
+	(strcmp("_F90_ALLOCATE", ST_name(st)) == 0) ||
+        WOPT_Enable_Disambiguate_Heap_Obj && PU_has_attr_malloc (Pu_Table[ST_pu(st)])) {
       return TRUE;
     }
   }

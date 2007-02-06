@@ -1,3 +1,7 @@
+/*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -1887,6 +1891,8 @@ CODEMAP::Add_bin_node_and_fold(OPCODE op,
       return Hash_Op(cr, do_canonicalization);
     }
     else {
+      // here NOT select #ifdef KEY from pathscale, cause I'm afraid that osprey 
+      // had modified #ifdef KEY to #ifdef TARG_X8664 in last merge.
 #ifdef TARG_X8664 // bug 4518
       if (crtmp->Kind() == CK_CONST && crtmp->Dtyp() == MTYPE_U4 && 
 	  (MTYPE_signed(kid0->Dtyp()) || MTYPE_signed(kid1->Dtyp()))) 
@@ -3728,11 +3734,7 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
 		    ("Unknown kid operator for PREG ASM clobber"));
 	  info.preg_st_idx = WN_st_idx(kid);
 	  info.preg_number = WN_offset(kid);
-#ifndef PATHSCALE_MERGE_ZHC
 	  info.clobber_string_idx = WN_st_idx(prag);
-#else
-	  info.clobber_string_idx = WN_pragma_arg2(prag);
-#endif
         }
 	else {
 	  info.preg_st_idx = 0;

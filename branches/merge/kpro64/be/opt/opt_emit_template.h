@@ -1,3 +1,7 @@
+/*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -798,9 +802,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 				  1);
 	  WN_kid0(prag) = WN_CreateIdname(p->preg_number,
 					  p->preg_st_idx);
-#ifndef PATHSCALE_MERGE_ZHC
 	  if(WN_kid0(prag) == 0)
-#endif
 	    WN_pragma_arg2(prag) = p->clobber_string_idx;
 	}
 	WN_INSERT_BlockAfter(clobber_block,

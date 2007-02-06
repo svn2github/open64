@@ -1199,7 +1199,6 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	  AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(lhs->Scalar_aux_id());
 #ifdef KEY
 	  if (sym->Is_volatile())
-            //OSP 108, originally a typo. v/x
 	    v->Set_var_volatile();
 #endif
 	  v->Set_dsctyp(Mtype_from_mtype_class_and_size(MTYPE_type_class(lhs->Dtyp()), sym->Byte_size()));
@@ -1228,7 +1227,6 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	      v->Dtyp(), v->Dsctyp(), v->Offset(), Void_Type, 0, TRUE));
 	  else
 #endif
-	  // generate a new version of the new scalar variable
 	  stmt->Set_lhs(_htable->Add_def(lhs->Scalar_aux_id(), -1, stmt, 
 	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), Void_Type, 0, TRUE));
 

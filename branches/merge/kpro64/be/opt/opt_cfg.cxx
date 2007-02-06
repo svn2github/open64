@@ -1420,11 +1420,8 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 #ifdef KEY  // do not if-convert if it has either empty then or else part and it
       // is the only statement in the BB since CG's cflow can be quite effective
       ((!empty_else && !empty_then) ||
-#ifndef PATHSCALE_MERGE_ZHC
+      // here select larger than 6 from osprey, I think it may be more aggressive
        WOPT_Enable_If_Conv_Limit > 6 ||
-#else
-       WOPT_Enable_Simple_If_Conv > 1 || 
-#endif
        WN_next(wn) != NULL || // no next statement in BB
        (_current_bb->Firststmt() != NULL && // no previous statement in BB
         (_current_bb->Firststmt() != _current_bb->Laststmt() || // prev is LABEL

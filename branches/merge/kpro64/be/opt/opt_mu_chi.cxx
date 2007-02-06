@@ -1,12 +1,16 @@
+/*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 //-*-c++-*-
 // ====================================================================
 // ====================================================================
 //
 // Module: opt_mu_chi.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_mu_chi.cxx,v $
+// $Revision$
+// $Date$
+// $Author$
+// $Source$
 //
 // ====================================================================
 //
