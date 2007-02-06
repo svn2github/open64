@@ -542,7 +542,9 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_FQ:	return OPC_FQFQLDID;
     case MTYPE_C4:	return OPC_C4C4LDID;
     case MTYPE_C8:	return OPC_C8C8LDID;
+#ifdef TARG_IA64
     case MTYPE_C10:	return OPC_C10C10LDID;
+#endif
     case MTYPE_CQ:	return OPC_CQCQLDID;
 #ifdef TARG_X8664
     case MTYPE_V16I1:	return OPC_V16I1V16I1LDID;

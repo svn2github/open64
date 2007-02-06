@@ -422,10 +422,12 @@ INITV2C_struct_fill(TOKEN_BUFFER tokens,
       case INITVKIND_SYMOFF:
 	 Is_True(FALSE, ("SYMOFF initv kind in INITV2C_struct_fill()"));
 	 break;
-      
+
+#ifdef TARG_IA64	 
       case INITVKIND_SYMIPLT:
 	 Is_True(FALSE, ("SYMIPLT initv kind in INITV2C_struct_fill()"));
 	 break;
+#endif
 
       case INITVKIND_ZERO:
       case INITVKIND_ONE:
@@ -679,7 +681,9 @@ INITV2C_translate(TOKEN_BUFFER tokens,
       break;
 
    case INITVKIND_SYMOFF:
+#ifdef TARG_IA64
    case INITVKIND_SYMIPLT:
+#endif
       INITV2C_symbol(tokens, ty, initv);
       break;
    case INITVKIND_ZERO:

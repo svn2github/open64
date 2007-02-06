@@ -1767,7 +1767,7 @@ WFE_Add_Aggregate_Init_Symoff (ST *st, WN_OFFSET offset = 0)
   last_aggregate_initv = inv;
 }
 
-
+#ifdef TARG_IA64
 void
 WFE_Add_Aggregate_Init_Symiplt (ST *st, WN_OFFSET offset = 0)
 {
@@ -1781,6 +1781,7 @@ WFE_Add_Aggregate_Init_Symiplt (ST *st, WN_OFFSET offset = 0)
     Set_INITO_val(aggregate_inito, inv);
   last_aggregate_initv = inv;
 }
+#endif
 
 void
 WFE_Add_Aggregate_Init_Label (LABEL_IDX lab)
@@ -2053,6 +2054,8 @@ Add_Initv_For_Tree (tree val, UINT size)
 		  break;
 		}
 #endif
+		
+#ifdef TARG_IA64
 	       if (TREE_CODE(val) == FDESC_EXPR && WN_operator (init_wn) == OPR_LDA)
 	       {
 	       	       WFE_Add_Aggregate_Init_Symiplt (WN_st (init_wn),
@@ -2060,6 +2063,8 @@ Add_Initv_For_Tree (tree val, UINT size)
 	               WN_DELETE_Tree (init_wn);
 	               break;
 	        }
+#endif
+
 		if (WN_operator (init_wn) == OPR_LDA) {
 			WFE_Add_Aggregate_Init_Symoff (WN_st (init_wn),
 						       WN_offset (init_wn));
