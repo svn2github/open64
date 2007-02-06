@@ -146,7 +146,7 @@ extern void Initialize_Targ_Info(void);
 // symbols defined in cg.so
 #ifdef __linux__
 
-#ifdef TARG_IA64
+#ifdef KEY
 extern void (*CG_Process_Command_Line_p) (INT, char **, INT, char **);
 #define CG_Process_Command_Line (*CG_Process_Command_Line_p)
 
@@ -179,7 +179,7 @@ extern void CG_PU_Initialize (WN*);
 extern void CG_PU_Finalize ();
 extern WN* CG_Generate_Code (WN*, ALIAS_MANAGER*, DST_IDX, BOOL);
 extern void EH_Generate_Range_List (WN *);
-#endif // TARG_IA64
+#endif // KEY
 
 #else
 
@@ -197,7 +197,7 @@ extern void EH_Generate_Range_List (WN *);
 // symbols defined in wopt.so
 #ifdef __linux__
 
-#ifdef TARG_IA64
+#ifdef KEY
 extern void (*wopt_main_p) (INT argc, char **argv, INT, char **);
 #define wopt_main (*wopt_main_p)
 
@@ -234,7 +234,7 @@ extern WN* Pre_Optimizer (INT32, WN*, DU_MANAGER*, ALIAS_MANAGER*);
 extern DU_MANAGER* Create_Du_Manager (MEM_POOL *);
 extern void Delete_Du_Manager (DU_MANAGER *, MEM_POOL *);
 extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
-#endif // TARG_IA64
+#endif // KEY
 
 #else
 
