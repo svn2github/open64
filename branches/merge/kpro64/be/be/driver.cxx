@@ -405,9 +405,7 @@ load_components (INT argc, char **argv)
 
     if (Run_wopt || Run_preopt || Run_lno || Run_autopar) {
       Get_Phase_Args (PHASE_WOPT, &phase_argc, &phase_argv);
-#ifdef TARG_IA64
       load_so ("wopt.so", WOPT_Path, Show_Progress);
-#endif
       wopt_main (phase_argc, phase_argv, argc, argv);
       wopt_loaded = TRUE;
     }
