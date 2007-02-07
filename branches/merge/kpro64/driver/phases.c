@@ -616,10 +616,12 @@ static const char* dynamic_linker
 ;
 static void
 specify_dyn_linker (string_list_t *args) {
-        if (shared == CALL_SHARED) {
+#ifdef TARG_IA64
+	if (shared == CALL_SHARED) {
                 add_string(args, "-dynamic-linker");
                 add_string(args, (char*)dynamic_linker);
         }
+#endif
 }
 //#endif /* CROSS_COMPILATION */
 
@@ -632,10 +634,12 @@ static const char* ipa_dynamic_linker
 
 static void
 specify_ipa_dyn_linker (string_list_t *args) {
-        if (shared == CALL_SHARED) {
+#ifdef TARG_IA64
+	if (shared == CALL_SHARED) {
                 add_string(args, "-Wl,-dynamic-linker");
                 add_string(args, (char*)ipa_dynamic_linker);
         }
+#endif
 }
 
 #ifdef KEY
