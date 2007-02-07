@@ -111,6 +111,9 @@ CCNAME  = $(PSC_NAME_PREFIX)cc -m32 -march=anyx86 -mno-sse2
 C++NAME = $(PSC_NAME_PREFIX)CC -m32 -march=anyx86 -mno-sse2
 F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90 -march=anyx86 -mno-sse2
 endif
+ifeq ($(BUILD_TARGET), X8664)
+F90 = pathf90
+endif
 AR      = ar
 F77 = $(F90)
 endif

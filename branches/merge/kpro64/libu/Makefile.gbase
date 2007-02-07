@@ -86,7 +86,7 @@ endif
 ifeq ($(BUILD_OPTIMIZE), NODEBUG)
 OPTIMIZER = -O3
 endif
-CFLAGS += -fno-fast-stdlib
+#CFLAGS += -fno-fast-stdlib
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 LCDEFS += -DLIBDEBUG -D_ASSERT_ON -DDEBUG_MTIO

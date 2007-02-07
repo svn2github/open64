@@ -89,7 +89,7 @@ ifeq ($(BUILD_OPTIMIZE), NODEBUG)
 OPTIMIZER = -O3
 F90FLAGS =
 endif
-CFLAGS += -funwind-tables -fno-fast-stdlib
+CFLAGS += -funwind-tables # -fno-fast-stdlib
 
 FC = $(F90) -c -Wf,-eQ
 
@@ -153,9 +153,7 @@ include $(BUILD_TOT)/libfi/prodsum/prodsum.makeinclude
 # from libF77
 
 ifeq ($(BUILD_OS), LINUX)
-ifeq ($(BUILD_TARGET), IA64)
   include $(BUILD_TOT)/libF77/libF77aslibfortran.gmakeinclude
-endif
 endif
 
 LCINCS += -I$(BUILD_TOT)/libfi/include

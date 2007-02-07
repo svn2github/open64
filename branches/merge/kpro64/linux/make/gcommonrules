@@ -32,7 +32,7 @@
 #
 #
 
-#ident "$Revision: 1.1.1.1 $"
+#ident "$Revision$"
 #
 # Common makefile rules.
 #
@@ -101,23 +101,24 @@ _space :=	$(_empty) $(_empty)
 
 BISON =		bison
 
-ar =		$(AR)
-as =		$(CC)
-bison =		$(BISON)
-c++f =		$(C++F)
-cc =		$(CC)
-ccf =		$(CCF)
-cxx =		$(CXX)
-f77 =		$(F77)
-f90 =		$(F90)
-fc =		$(FC)
-ld =		$(LD)
-ln =		ln
-link.c++f =	$(C++F)
-link.ccf =	$(CCF)
-link.cxxf =	$(CXXF)
-ranlib =	$(RANLIB)
-run =	
+ar =		$(if $V,,@echo 'AR     $(CWD)/$@';) $(AR)
+as =		$(if $V,,@echo 'AS     $(CWD)/$<';) $(CC)
+bison =		$(if $V,,@echo 'BISON  $(CWD)/$<';) $(BISON)
+c++f =		$(if $V,,@echo 'C++    $(CWD)/$<';) $(C++F)
+cc =		$(if $V,,@echo 'C      $(CWD)/$<';) $(CC)
+ccf =		$(if $V,,@echo 'C      $(CWD)/$@';) $(CCF)
+cxx =		$(if $V,,@echo 'C++    $(CWD)/$<';) $(CXX)
+f77 =		$(if $V,,@echo 'F77    $(CWD)/$<';) $(F77)
+f90 =		$(if $V,,@echo 'F90    $(CWD)/$<';) $(F90)
+fc =		$(if $V,,@echo 'F90    $(CWD)/$<';) $(FC)
+ld =		$(if $V,,@echo 'LD     $(CWD)/$@';) $(LD)
+ln =		$(if $V,,@echo 'LN     $(CWD)/$@';) ln
+link.c++f =	$(if $V,,@echo 'LD     $(CWD)/$@';) $(C++F)
+link.ccf =	$(if $V,,@echo 'LD     $(CWD)/$@';) $(CCF)
+link.cxxf =	$(if $V,,@echo 'LD     $(CWD)/$@';) $(CXXF)
+link.f90f =	$(if $V,,@echo 'LD     $(CWD)/$@';) $(F90F)
+ranlib =	$(if $V,,@echo 'RANLIB $(CWD)/$@';) $(RANLIB)
+run =		$(if $V,,@echo 'RUN    $(CWD)/$<';)
 submake =	+$(if $V,,@echo 'MAKE   $(if $(2),$(2) in )$(CWD)/$(1)';) $(MAKE) -C $(1) $(if $V,,--no-print-directory) $(2)
 
 %.o : %.cxx
@@ -162,7 +163,7 @@ pic_flag := -fpic
 	$(fc) $(pic_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
 
 %.pic.o : %.F90
-	$(fc) $(pic_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $<
+	$(fc) $(pic_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
 
 prof_flag := -pg
 
@@ -185,7 +186,7 @@ prof_flag := -pg
 	$(fc) $(prof_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
 
 %.pg.o : %.F90
-	$(fc) $(prof_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $<
+	$(fc) $(prof_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
 
 ipa_flag := -ipa
 
