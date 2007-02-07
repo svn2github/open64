@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -132,7 +132,7 @@ INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc)
   if (Is_Target_32bit() && from_ty == MTYPE_U4 && 
       MTYPE_is_integral(to_ty) && MTYPE_byte_size(to_ty) == 8) {
     if (opc != NULL) 
-      *opc = OPC_U8U4CVT;
+      *opc = MTYPE_signed(to_ty) ? OPC_I8I4CVT : OPC_U8U4CVT;
     return NEED_CVT;
   }
   if ((from_ty == MTYPE_V16C8 && to_ty == MTYPE_V16F8) ||
@@ -144,6 +144,14 @@ INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc)
       *opc = OPCODE_make_op(OPR_CVT, to_ty, from_ty);
     return NEED_CVT;
   }
+#ifdef TARG_X8664 // bug 7733
+  if (MTYPE_is_vector(from_ty) || MTYPE_is_vector(to_ty)) {
+    if (from_ty == to_ty) return NOT_AT_ALL;
+    if (opc != NULL) 
+      *opc = OPCODE_make_op(OPR_CVT, to_ty, from_ty);
+    return NEED_CVT;
+  }
+#endif
 #ifdef KEY // bug 3742
   if (from_ty > MTYPE_U8 || to_ty > MTYPE_U8)
   {

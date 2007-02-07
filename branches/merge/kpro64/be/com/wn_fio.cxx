@@ -1,5 +1,8 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3339,6 +3342,18 @@ static void Gen_Iolist_PutAddrWN ( WN * block, ST * st, INT32 foffset,
 
   /*  Save the ST info for building dummy parm lists.  */
 
+#ifdef KEY
+  // Bug 10413: IPA may have constant propagated a non-existing optional
+  // argument to an IO_ITEM, skip it.
+  if (WN_operator(wn) == OPR_INTCONST)
+  {
+    // The constant must be zero.
+    FmtAssert (WN_const_val(wn) == 0,
+               ("Get_Iolist_PutAddrWN: INTCONST can only be zero"));
+    return;
+  }
+#endif
+
   wnx = wn;
   Add_To_Dummy_List(wnx);
 
@@ -4068,6 +4083,17 @@ static void Gen_Io_PutAddrWN ( WN * block, ST * st, FIOSTRUCT field, WN * wn )
   INT32 foffset;
   INT32 ftype;
   WN * wnx;
+
+#ifdef KEY
+  // Bug 10413: IPA may have constant propagated a non-existing optional
+  // argument to an IO_ITEM, skip it.
+  if (WN_operator(wn) == OPR_INTCONST)
+  {
+    FmtAssert (WN_const_val(wn) == 0,
+               ("Gen_Io_PutAddrWN: INTCONST can only be zero"));
+    return;
+  }
+#endif
 
   /*  Save the ST info for building dummy parm lists.  */
 

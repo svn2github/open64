@@ -350,7 +350,7 @@
 #define dep_graph_INCLUDED "dep_graph.h"
 
 #ifdef _KEEP_RCS_ID
-static char *dep_graph_rcs_id = dep_graph_INCLUDED "$Revision: 1.1.1.1 $";
+static char *dep_graph_rcs_id = dep_graph_INCLUDED "$Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef cxx_graph_INCLUDED

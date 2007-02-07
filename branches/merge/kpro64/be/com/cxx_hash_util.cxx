@@ -56,7 +56,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define cxx_hash_util_CXX      "cxx_hash_util.cxx"
-static char *rcs_id = cxx_hash_util_CXX" $Revision: 1.1.1.1 $";
+static char *rcs_id = cxx_hash_util_CXX" $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

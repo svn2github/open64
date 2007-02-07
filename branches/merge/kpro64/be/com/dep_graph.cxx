@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -69,7 +69,7 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/com/dep_graph.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: be/com/SCCS/s.dep_graph.cxx $ $Revision: 1.7 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>

@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -108,6 +112,9 @@ static WN *Change_types_to_32bit(WN *tree)
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
   case OPR_BNOT:
   case OPR_TAS: 
+#ifdef TARG_X8664
+  case OPR_ATOMIC_RSQRT:
+#endif
     break;
 
   case OPR_PAREN:
@@ -226,6 +233,9 @@ BOOL Only_32bit_opnds(WN *tree)
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
   case OPR_BNOT:
   case OPR_TAS: 
+#ifdef TARG_X8664
+  case OPR_ATOMIC_RSQRT:
+#endif
     return MTYPE_byte_size(rtype) <= 4;
 
   case OPR_PAREN:
@@ -385,6 +395,7 @@ RETYPE_EXPR_expr(WN *tree, BOOL can_be_32bit, BOOL addr_expr)
   case OPR_REDUCE_ADD: case OPR_REDUCE_MPY: 
   case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
   case OPR_SHUFFLE:
+  case OPR_ATOMIC_RSQRT:
 #endif // TARG_X8664
     WN_kid0(tree) = RETYPE_EXPR_expr(WN_kid0(tree), FALSE, FALSE);
     return tree;
@@ -436,7 +447,13 @@ RETYPE_EXPR_expr(WN *tree, BOOL can_be_32bit, BOOL addr_expr)
   case OPR_MAX: case OPR_MIN: 
   case OPR_MINMAX:
     WN_kid0(tree) = RETYPE_EXPR_expr(WN_kid0(tree), can_be_32bit, addr_expr);
+    if (MTYPE_byte_size(rtype) == 8 &&
+        MTYPE_byte_size(WN_rtype(WN_kid0(tree))) != 8)
+      WN_kid0(tree) = WN_Cvt(WN_rtype(WN_kid0(tree)), rtype, WN_kid0(tree));
     WN_kid1(tree) = RETYPE_EXPR_expr(WN_kid1(tree), can_be_32bit, addr_expr);
+    if (MTYPE_byte_size(rtype) == 8 &&
+        MTYPE_byte_size(WN_rtype(WN_kid1(tree))) != 8)
+      WN_kid1(tree) = WN_Cvt(WN_rtype(WN_kid1(tree)), rtype, WN_kid1(tree));
     return tree;
 
   case OPR_BAND: case OPR_BIOR: case OPR_BNOR: case OPR_BXOR:

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -85,6 +85,8 @@
 #include "intrn_info.h"
 #ifdef TARG_X8664
 #include "config_opt.h"    // for CIS_Allowed
+
+extern void (*CG_Set_Is_Stack_Used_p)();
 #endif
 
 extern void Early_Terminate (INT status);
@@ -2378,6 +2380,9 @@ Allocate_Temp_To_Memory ( ST *st )
   Is_True(ST_sclass(st) == SCLASS_AUTO, ("Allocate_Temp_To_Memory expect stack var"));
   Set_ST_is_temp_var(st);
   Process_Stack_Variable ( st );
+#ifdef TARG_X8664
+  (*CG_Set_Is_Stack_Used_p)();
+#endif
 }
 
 
@@ -3023,4 +3028,3 @@ Stack_Frame_Has_Calls (void)
   return Frame_Has_Calls;
 }
 #endif
-

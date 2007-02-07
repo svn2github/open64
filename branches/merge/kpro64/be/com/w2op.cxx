@@ -270,6 +270,11 @@ BOOL WN_Can_Be_Speculative (WN *wn, struct ALIAS_MANAGER *alias)
 
     if (ST_is_constant(WN_st(wn)))
       return TRUE;
+
+#ifdef KEY // bug 8581
+    if (ST_sclass(WN_st(wn)) != SCLASS_FORMAL_REF) // bug 9599
+      return ! WN_Is_Volatile_Mem(wn);
+#endif
     
     // fall thru
 
@@ -283,6 +288,8 @@ BOOL WN_Can_Be_Speculative (WN *wn, struct ALIAS_MANAGER *alias)
     return FALSE;
 
   case OPR_DIV:
+  case OPR_MOD:
+  case OPR_REM:
     TYPE_ID rtype = WN_rtype(wn); 
     if ((rtype == MTYPE_I4 || rtype == MTYPE_I8 || rtype == MTYPE_U4
 	|| rtype == MTYPE_U8) && WN_operator(WN_kid1(wn)) 

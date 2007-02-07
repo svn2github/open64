@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -619,6 +619,13 @@ Rename_Threadprivate_COMMON(WN* pu, WN* parent, WN *wn, RENAMING_STACK *stack, R
       }
       else if (WN_operator(wn) == OPR_STBITS)
         Fail_FmtAssertion("SCLASS_Is_Not_PU_Local() : got SCLASS_UNKNOWN");
+#ifdef KEY
+      // Bug 9084: Handle the case where a threadprivate var is marked with
+      // another pragma, e.g., copyprivate.
+      else if (WN_operator(wn) == OPR_PRAGMA &&
+               WN_pragma(wn) == WN_PRAGMA_COPYPRIVATE)
+        WN_st_idx (wn) = ST_st_idx (new_st);
+#endif
          
     }
   }

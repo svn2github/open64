@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -218,7 +218,7 @@
 #define graph_template_INCLUDED "graph_template.h"
 
 #ifdef _KEEP_RCS_ID
-static char *graph_template_rcs_id = graph_template_INCLUDED "$Revision: 1.1.1.1 $";
+static char *graph_template_rcs_id = graph_template_INCLUDED "$Revision: 1.7 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef defs_INCLUDED

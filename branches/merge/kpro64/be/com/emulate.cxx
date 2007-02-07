@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1078,6 +1082,10 @@ static WN *em_sign(WN *block, WN *x, WN *y)
   TYPE_ID	type = WN_rtype(x);
   WN		*abs, *select;
 
+#ifdef KEY // bug 9660
+  if (! MTYPE_signed(type))
+    type = Mtype_TransferSign(MTYPE_I4, type);
+#endif
   abs = WN_Abs(type, x);
   absN = AssignExpr(block, abs, type);
 
@@ -3546,8 +3554,10 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
     Is_True(TY_kind(ty_idx) == KIND_POINTER,
 	    ("em_x8664_va_start: argument not of pointer type"));
     ty_idx = TY_pointed(ty_idx);
+#if 0 // bug 10098
     Is_True(TY_kind(ty_idx) == KIND_ARRAY && TY_size(ty_idx) == 24,
 	("em_x8664_va_start: argument pointer does not point to type va_list"));
+#endif
     direct = TRUE;
     // va_list_struct_ty = TY_etype(ty_idx);
   }
@@ -3573,7 +3583,7 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
 
   wn = WN_Intconst(MTYPE_I4, fixed_int_parms * 8);
   if (direct)
-    wn = WN_Stid(MTYPE_I4, 0, WN_st(ap), MTYPE_To_TY(MTYPE_I4), wn);
+    wn = WN_Stid(MTYPE_I4, WN_offset(ap), WN_st(ap), MTYPE_To_TY(MTYPE_I4), wn);
   else {
     if (! non_leaf)
       addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
@@ -3585,7 +3595,7 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
 
   wn = WN_Intconst(MTYPE_I4, fixed_float_parms * 16 + 48);
   if (direct)
-    wn = WN_Stid(MTYPE_I4, 4, WN_st(ap), MTYPE_To_TY(MTYPE_I4), wn);
+    wn = WN_Stid(MTYPE_I4, 4 + WN_offset(ap), WN_st(ap), MTYPE_To_TY(MTYPE_I4), wn);
   else {
     if (! non_leaf)
       addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
@@ -3597,7 +3607,7 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
 
   wn = WN_Lda(Pointer_Mtype, STB_size(upformal), upformal);
   if (direct)
-    wn = WN_Stid(Pointer_Mtype, 8, WN_st(ap), MTYPE_To_TY(Pointer_Mtype), wn);
+    wn = WN_Stid(Pointer_Mtype, 8 + WN_offset(ap), WN_st(ap), MTYPE_To_TY(Pointer_Mtype), wn);
   else {
     if (! non_leaf)
       addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
@@ -3615,7 +3625,7 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
       wn = WN_Lda(Pointer_Mtype, -(fixed_int_parms * 8), reg_save_area);
     else wn = WN_Lda(Pointer_Mtype, -(fixed_float_parms*16)-48, reg_save_area);
     if (direct)
-      wn = WN_Stid(Pointer_Mtype, 16, WN_st(ap), MTYPE_To_TY(Pointer_Mtype),wn);
+      wn = WN_Stid(Pointer_Mtype, 16 + WN_offset(ap), WN_st(ap), MTYPE_To_TY(Pointer_Mtype),wn);
     else {
       if (! non_leaf)
         addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
@@ -3885,20 +3895,23 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
   case OPR_ARRAY:
   case OPR_LDA:
     return tree;
+
+  default:
+    {
+      TYPE_ID	type = WN_rtype(tree);
+      ST  *st = Gen_Temp_Symbol( MTYPE_To_TY(type), "complex-temp-expr");
+      WN  *stid;
+
+      Is_True((WN_operator_is(tree, OPR_PARM)==FALSE),("bad parm"));
+      /*
+       *  store value to an addressible temporary, and take the address of that
+       */
+      stid = WN_Stid (type, 0, st, ST_type(st), tree);
+      WN_INSERT_BlockLast(block, stid);
+
+      return WN_Lda(Pointer_type, WN_store_offset(stid), st);
+    }
   }
-
-  TYPE_ID type = WN_rtype(tree);
-  ST  *st = Gen_Temp_Symbol( MTYPE_To_TY(type), "complex-temp-expr");
-  WN  *stid;
-
-  Is_True((WN_operator_is(tree, OPR_PARM)==FALSE),("bad parm"));
-  /*
-   *  store value to an addressible temporary, and take the address of that
-   */
-  stid = WN_Stid (type, 0, st, ST_type(st), tree);
-  WN_INSERT_BlockLast(block, stid);
-
-  return WN_Lda(Pointer_type, WN_store_offset(stid), st);
 }
 
 /* ====================================================================
@@ -4295,14 +4308,31 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     } else if (WN_intrinsic(tree) == INTRN_MEMSET &&
 	       OPT_Fast_Stdlib &&
 	       Is_Target_64bit()) {
-      if (Is_Target_EM64T())
+      if (Is_Target_EM64T() || Is_Target_Core())
 	st = Gen_Intrinsic_Function(ty, "memset.pathscale.em64t");
       else
 	st = Gen_Intrinsic_Function(ty, "memset.pathscale.opteron");
 
+#ifdef TARG_X8664
+    // Rename memcpy to the PathScale optimized memcpy.
+    } else if (WN_intrinsic(tree) == INTRN_MEMCPY &&
+	       OPT_Fast_Stdlib &&
+	       Is_Target_64bit()) {
+      if (Is_Target_EM64T() || Is_Target_Core())
+	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_em64t");
+      else
+	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_opteron");
+#endif
     } else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
                Is_Target_32bit()) {
       st = Gen_Intrinsic_Function(ty, "__popcountsi2");
+#ifdef TARG_X8664
+    } else if (WN_intrinsic(tree) == INTRN_PARITY &&
+    	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
+               Is_Target_32bit()) {
+      st = Gen_Intrinsic_Function(ty, "__paritysi2");
+#endif
     } else {
       st = Gen_Intrinsic_Function(ty, function);
     }
@@ -4824,6 +4854,8 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
 
 #ifdef TARG_X8664
   case INTRN_VA_START:
+    if (strcmp(Get_Error_Phase(), "VHO Processing") == 0)
+      break; // bug 8525: cannot lower va_start at VHO time
     return em_x8664_va_start(block, WN_arg(tree, 0));
     break;
 #endif
@@ -4886,3 +4918,55 @@ extern WN *emulate(WN *block, WN *tree)
  
   return wn;
 }
+
+#ifdef KEY // bug 6938
+extern WN *emulate_fast_exp(WN *block, WN *tree)
+{
+  if (! Inline_Intrinsics_Allowed)
+    return NULL;
+
+  INTRINSIC     id = (INTRINSIC) WN_intrinsic(tree);
+  TYPE_ID	rtype = WN_rtype(tree);
+
+  switch(id) {
+  case INTRN_I4EXPEXPR:
+  case INTRN_I8EXPEXPR:
+   /*
+    *	do these regardless of flags, as they are always safe
+    */
+    return em_exp_int(block, by_value(tree, 0), by_value(tree,1), rtype);
+
+  case INTRN_F4I4EXPEXPR:
+  case INTRN_F4I8EXPEXPR:
+  case INTRN_F8I4EXPEXPR:
+  case INTRN_F8I8EXPEXPR:
+  case INTRN_FQI4EXPEXPR:
+  case INTRN_FQI8EXPEXPR:
+  case INTRN_C4I4EXPEXPR:
+  case INTRN_C4I8EXPEXPR:
+  case INTRN_C8I4EXPEXPR:
+  case INTRN_C8I8EXPEXPR:
+  case INTRN_CQI4EXPEXPR:
+  case INTRN_CQI8EXPEXPR:
+   /*
+    *   The consensus is we allow constants (-1, 0, 1, 2) as
+    *   always safe , regardless of the Fast_Exp_Allowed 
+    */
+    return em_exp_int(block, by_value(tree, 0), by_value(tree,1), rtype);
+
+  case INTRN_F4EXPEXPR:
+  case INTRN_F8EXPEXPR:
+  case INTRN_FQEXPEXPR:
+  case INTRN_C4EXPEXPR:
+  case INTRN_C8EXPEXPR:
+  case INTRN_CQEXPEXPR:
+    if (Fast_Exp_Allowed)
+      return em_exp_float(block, by_value(tree, 0), by_value(tree, 1), rtype);
+    break;
+  default: ;
+    break;
+  }
+ 
+  return NULL;
+}
+#endif

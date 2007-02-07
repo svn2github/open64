@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -117,7 +117,7 @@
 #define cxx_graph_INCLUDED "cxx_graph.h"
 
 #ifdef _KEEP_RCS_ID
-static char *cxx_graph_rcs_id = cxx_graph_INCLUDED "$Revision: 1.1.1.1 $";
+static char *cxx_graph_rcs_id = cxx_graph_INCLUDED "$Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifndef defs_INCLUDED

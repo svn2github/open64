@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -656,6 +656,8 @@ FEEDBACK::Query_switch( const WN *wn ) const
 const FB_Info_Value&
 FEEDBACK::Query_value( const WN *wn ) const
 {
+  if (! IS_VALID_DIV_VALUE(wn))
+    return _values[0];
   INT32 fb_index = Get_index_value( wn );
   return _values[fb_index];
 }
@@ -663,6 +665,8 @@ FEEDBACK::Query_value( const WN *wn ) const
 const FB_Info_Value_FP_Bin&
 FEEDBACK::Query_value_fp_bin( const WN *wn ) const
 {
+  if (! IS_VALID_MPY_VALUE(wn))
+    return _values_fp_bin[0];
   INT32 fb_index = Get_index_value_fp_bin( wn );
   return _values_fp_bin[fb_index];
 }
@@ -3169,7 +3173,7 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
       }
 
       feedback_origl->Annot_value( wn_origl, fb_info_origl );
-      feedback_origl->Annot_value( wn_clone, fb_info_clone );
+      feedback_clone->Annot_value( wn_clone, fb_info_clone );
 
     }
     break;
@@ -3192,7 +3196,7 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
       fb_info_origl.uopnd1      -= fb_info_clone.uopnd1;
 
       feedback_origl->Annot_value_fp_bin( wn_origl, fb_info_origl );
-      feedback_origl->Annot_value_fp_bin( wn_clone, fb_info_clone );
+      feedback_clone->Annot_value_fp_bin( wn_clone, fb_info_clone );
 
     }
     break;

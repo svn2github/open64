@@ -1,7 +1,11 @@
+/*
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -111,6 +115,7 @@
 #include "vho_lower.h"
 #include "fb_whirl.h"
 #include "wn_instrument.h"
+#include "erglob.h"
 
 
 // Use this switch to turn on/off additional debugging messages
@@ -1098,9 +1103,10 @@ WN_INSTRUMENT_WALKER::Instrument_Icall( WN *wn, INT32 id, WN *block )
 {
   // Get the address of the called function.
   WN* orig_wn = WN_kid( wn, WN_kid_count(wn)-1 );
-  // Make sure orig_wn does not have side-effects
+  // If orig_wn has side-effects, remove the side-effects from 'wn',
+  // because they would be part of call to profile_icall()
   if (WN_operator (orig_wn) == OPR_COMMA)
-    orig_wn = WN_kid1 (orig_wn);
+    WN_kid( wn, WN_kid_count(wn)-1 ) = WN_kid1 (orig_wn);
   WN* called_func_address = WN_COPY_Tree( orig_wn );
 
   if( !WN_Rename_Duplicate_Labels( orig_wn,
@@ -1111,7 +1117,9 @@ WN_INSTRUMENT_WALKER::Instrument_Icall( WN *wn, INT32 id, WN *block )
   }
 
   // profile_icall( handle, call_id, called_func_address )
-  Instrument_After( Gen_Call( ICALL_INSTRUMENT_NAME,
+  // Note: This profile cannot be done "after" due to instances
+  // like bug 7395.
+  Instrument_Before( Gen_Call( ICALL_INSTRUMENT_NAME,
 			       PU_Handle(),
 			       WN_Intconst( MTYPE_I4, id ),
 			       called_func_address ),
@@ -1601,7 +1609,11 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
     Push_Entry_Pragma( wn, block );
   }
 
-  else if ( opr == OPR_REGION ) {
+  else if ( opr == OPR_REGION 
+#ifdef KEY // bug 8284
+    	    && _instrumenting
+#endif
+    	  ) {
 
     // temp for _pu_handle must be scoped SHARED within PARALLEL regions
     WN *regn_prag = WN_first( WN_region_pragmas( wn ) );
@@ -1690,6 +1702,8 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
 
 #ifdef KEY
   case OPR_MPY:
+    if (! OPT_FP_Value_Instr)
+      break;
     if( OPCODE_rtype(WN_opcode(wn)) == MTYPE_F8 ) {
       _instrument_count++;
       const INT32 id = _count_value_fp_bin++;
@@ -1702,6 +1716,8 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
   case OPR_REM:
   case OPR_DIV:
   case OPR_MOD:
+    if (! OPT_Int_Value_Instr)
+      break;
     if( !WN_operator_is( WN_kid1(wn), OPR_INTCONST ) &&
 	MTYPE_is_integral( OPCODE_rtype(WN_opcode(wn) ) ) ){
       _instrument_count++;
@@ -1794,16 +1810,26 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
     {
       _instrument_count++;
       INT32 idcall = _count_call++;
-      INT32 idicall = _count_icall++;
+      INT32 idicall;
+#ifdef KEY
+      if (OPT_Icall_Instr) 
+#endif
+	idicall = _count_icall++;
       if (_instrumenting)
 	{
 	  Instrument_Call( wn, idcall, block);
-	  Instrument_Icall( wn, idicall, block);
+#ifdef KEY
+	  if (OPT_Icall_Instr) 
+#endif
+	    Instrument_Icall( wn, idicall, block);
 	}
       else
 	{
 	  Annotate_Call( wn, idcall);
-	  Annotate_Icall( wn, idicall);
+#ifdef KEY
+	  if (OPT_Icall_Instr) 
+#endif
+	    Annotate_Icall( wn, idicall);
 	}
     }
     break;
@@ -2119,13 +2145,17 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 	  
       UINT32 checksum = Get_PU_Checksum( *i );
 	
-      // KEY
+#ifdef KEY
+      if (_instrument_count != checksum)
+	ErrMsg(EC_FB_File_Old, (*i)->fb_name);
+#else
       FmtAssert( _instrument_count == checksum,
-		 ( "Instrumenter Error: (Phase %d) Feedback file %s has "
+		 ( "Instrumenter Error: (Phase %d) Suspected obsolete feedback file %s has "
 		   "invalid checksum for program unit %s in file %s. "
 		   "Computed = %d, In file = %d.",
 		   _phase, (*i)->fb_name, Cur_PU_Name, Src_File_Name,
 		   _instrument_count, checksum ) );
+#endif
     }
   }
 

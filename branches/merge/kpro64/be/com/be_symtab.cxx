@@ -155,6 +155,22 @@ ST_is_const_initialized_scalar(const ST *st, TCON &tcon_copy)
     TY_IDX  ty = ST_type(st);
     TYPE_ID mtype = TY_mtype(ty);
 
+#ifdef TARG_X8664 // bug 10673
+    switch (mtype) { // use mtype of vector elements
+      case MTYPE_M8I1:
+        mtype = MTYPE_I1;
+        break;
+      case MTYPE_M8I2:
+        mtype = MTYPE_I2;
+        break;
+      case MTYPE_M8I4:
+        mtype = MTYPE_I4;
+        break;
+      default:
+        break;
+    }
+#endif
+
     // exclude all non-scalars
     if (!Is_Simple_Type(ty)) {
 	return FALSE;

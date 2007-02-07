@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3422,15 +3422,16 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
   } else if (ST_class(old_st) != CLASS_PREG) {
 
     ty = ST_type(old_st);
+#ifdef KEY // bug 7259 and 8076
+    if ((TY_kind(ty) == KIND_STRUCT) && 
+        (vtype == VAR_REDUCTION_SCALAR || vtype == VAR_REDUCTION_ARRAY))
+      ty = FLD_type(TY_fld(ty));
+#endif
     if ((TY_kind(ty) == KIND_POINTER) &&
 	((v->is_static_array) || (vtype == VAR_REDUCTION_ARRAY)))
       ty = TY_pointed(ty);
     if ((TY_kind(ty) == KIND_ARRAY) && (vtype == VAR_REDUCTION_ARRAY))
       ty = TY_etype(ty);
-#ifdef KEY // bug 7259
-    if ((TY_kind(ty) == KIND_STRUCT) && (vtype == VAR_REDUCTION_SCALAR))
-      ty = FLD_type(TY_fld(ty));
-#endif
     if ((vtype == VAR_REDUCTION_ARRAY_OMP) && (TY_kind(ty) == KIND_POINTER)
 					&& (TY_kind(TY_pointed(ty)) == KIND_ARRAY))
 		{
@@ -4042,6 +4043,9 @@ Gen_MP_Copyprivate(WN *copyprivates, WN **copyprivate_blockp,
     TY_IDX ty = FLD_type(fld);
     wn = WN_Stid ( TY_mtype(ty), FLD_ofst(fld), st, 
                    ty, WN_Lda (Pointer_type,0,WN_st(wnx)) );
+#ifdef KEY // bug 8764
+    Set_ST_addr_saved(WN_st(wnx));
+#endif
     WN_linenum(wn) = line_number;
     WN_INSERT_BlockLast(*copyprivate_blockp, wn);
   }
@@ -4167,6 +4171,18 @@ Create_Local_Variables ( VAR_TABLE * vtab, WN * reductions,
 			         WN_offsetx(WN_kid0(WN_kid0(l))),
 			         firstprivate_blockp, alloca_blockp, NULL );
 	     v++;
+#ifdef KEY // bug 9112 : handle the extra offset specified by an ADD
+      } else if (opr == OPR_ADD && 
+      		 WN_operator(WN_kid0(WN_kid0(l))) == OPR_ARRAY) {
+	     INT ofst = WN_const_val(WN_kid1(WN_kid0(l)));
+	     Localize_Variable ( v, VAR_REDUCTION_ARRAY,
+	                         (OPERATOR) WN_pragma_arg2(l),
+                                 WN_COPY_Tree ( WN_kid0(WN_kid0(l)) ),
+			         WN_st(WN_kid0(WN_kid0(WN_kid0(l)))),
+			         WN_offsetx(WN_kid0(WN_kid0(WN_kid0(l))))+ofst,
+			         firstprivate_blockp, alloca_blockp, NULL );
+	     v++;
+#endif
       } else {
         Fail_FmtAssertion ( "invalid reduction directive" );
       }
@@ -4753,6 +4769,13 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
         Is_True(! w->is_non_pod, ("non-POD pointer expression?!?"));
 	temp = WN_RLdid ( Promote_Type(w->mtype), w->mtype, w->new_offset,
 			  w->new_st, w->ty );
+#ifdef KEY // bug 10707: honor the type in the original tree node
+	if (WN_rtype(tree) == MTYPE_F8 && WN_rtype(temp) == MTYPE_C8 ||
+	    WN_rtype(tree) == MTYPE_F4 && WN_rtype(temp) == MTYPE_C4) {
+	  WN_set_rtype(temp, WN_rtype(tree));
+	  WN_set_desc(temp, WN_desc(tree));
+	}
+#endif
 	WN_DELETE_Tree ( tree );
 	tree = temp;
 	op = WN_opcode(tree);
@@ -4772,6 +4795,12 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
         Is_True(! w->is_non_pod, ("non-POD pointer expression?!?"));
 	temp = WN_Stid ( w->mtype, w->new_offset, w->new_st, w->ty,
 			 WN_kid0(tree) );
+#ifdef KEY // bug 10707: honor the type in the original tree node
+	if (WN_desc(tree) == MTYPE_F8 && WN_desc(temp) == MTYPE_C8 ||
+	    WN_desc(tree) == MTYPE_F4 && WN_desc(temp) == MTYPE_C4) {
+	  WN_set_desc(temp, WN_desc(tree));
+	}
+#endif
 	WN_linenum(temp) = WN_linenum(tree);
 	WN_prev(temp) = WN_prev(tree);
 	if (WN_prev(temp))
@@ -5465,6 +5494,10 @@ Gen_MP_Load ( ST * st, WN_OFFSET offset, BOOL scalar_only )
   if (scalar_only && TY_kind(ty) == KIND_STRUCT)
     ty = FLD_type(TY_fld(ty));
 #endif
+#ifdef KEY // bug 10681
+  if (scalar_only && TY_kind(ty) == KIND_ARRAY)
+    ty = TY_etype(ty);
+#endif
 
   wn = WN_RLdid ( Promote_Type(TY_mtype(ty)),
                   TY_mtype(ty), offset, st, ty );
@@ -5483,6 +5516,10 @@ Gen_MP_Store ( ST * st, WN_OFFSET offset, WN * value, BOOL scalar_only)
 #ifdef KEY // bug 7259
   if (scalar_only && TY_kind(ty) == KIND_STRUCT)
     ty = FLD_type(TY_fld(ty));
+#endif
+#ifdef KEY // bug 10681
+  if (scalar_only && TY_kind(ty) == KIND_ARRAY)
+    ty = TY_etype(ty);
 #endif
 
   wn = WN_Stid ( TY_mtype(ty), offset, st, ty, value );
@@ -9332,8 +9369,9 @@ Transform_Do( WN * do_tree,
 				 local_lower,
 				 ST_type (local_lower));
       ST * do_index = WN_st (WN_index (old_do_tree));
+      INT do_offset = WN_offset (WN_index (old_do_tree));
       WN * init_do_index = WN_Stid (WN_rtype (ldid_lower),
-                                    0,
+                                    do_offset,
 				    do_index,
 				    ST_type (do_index),
 				    ldid_lower);
@@ -11085,6 +11123,11 @@ Process_Parallel_Do ( void )
   // If chunk uses a private variable (e.g. threadprivate variable), fix it
   chunk_wn = Walk_and_Localize ( chunk_wn, var_table, &lps, FALSE,
                                  &non_pod_finalization_nodes );
+  // bug 8224: If preamble uses a private variable, fix it
+  if_preamble_block = Walk_and_Localize ( if_preamble_block, var_table, &lps,
+                                          FALSE, &non_pod_finalization_nodes );
+  do_preamble_block = Walk_and_Localize ( do_preamble_block, var_table, &lps,
+                                          FALSE, &non_pod_finalization_nodes );
 #endif // KEY
 
   /* Create copyin nodes for all local vars with preamble stores. */

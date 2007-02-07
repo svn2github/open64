@@ -216,7 +216,9 @@ U64_LOWER_stmt_wn(WN *tree, BOOL leave_CVTL_at_leaf)
     return;
 
   case OPR_REGION:
+#ifdef TARG_IA64
     U64_LOWER_stmt_wn(WN_region_body(tree), leave_CVTL_at_leaf);
+#endif
     return;
 
   case OPR_DEALLOCA:	// only kid 0 contains no node relevant to U64 lowering

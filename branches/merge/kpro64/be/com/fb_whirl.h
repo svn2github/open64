@@ -43,7 +43,7 @@
 // ====================================================================
 //
 // Module: fb_whirl.h
-// $Source: be/com/SCCS/s.fb_whirl.h $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/fb_whirl.h,v $
 //
 // Description:
 //

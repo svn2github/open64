@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -738,9 +738,9 @@ DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
       // which would happen if daVinci is started more than
       // once in a session.
       sprintf(fname, "%s.%ld", logfile, time(NULL));
-      execlp ("daVinci", "daVinci", "-pipe", "-log", fname, 0);
+      execlp ("daVinci", "daVinci", "-pipe", "-log", fname, NULL);
     } else {
-      execlp ("daVinci", "daVinci", "-pipe", 0);
+      execlp ("daVinci", "daVinci", "-pipe", NULL);
     }
     // error to stdout so it appears on pipe read by parent proc.
     // use message syntax that DaVinci::Parse_Event() recognizes.
@@ -763,9 +763,15 @@ DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
   }
   _display_ok = true;
 
+#ifdef TARG_IA64
   Emit_Do( "set(font_size(10))" );  // more? provide external control.
   Emit_Do( "set(gap_height(10))" );
   Emit_Do( "set(gap_width(10))" );
+#else
+  Emit_Do( "set(font_size(6))" );  // more? provide external control.
+  Emit_Do( "set(gap_height(40))" );
+  Emit_Do( "set(gap_width(20))" );
+#endif
 }
 
 DaVinci::~DaVinci()

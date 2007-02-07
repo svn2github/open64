@@ -68,10 +68,10 @@
  * ====================================================================
  *
  * Module: opt_goto.cxx  
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/opt_goto.cxx,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  1-31-95 - Original Version
@@ -99,7 +99,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_goto_CXX "opt_goto.cxx"
-static char *rcs_id = opt_goto_CXX" $Revision: 1.1.1.1 $";
+static char *rcs_id = opt_goto_CXX" $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 // Build up a table of goto descriptors

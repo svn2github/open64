@@ -109,14 +109,14 @@
 #ifndef opt_goto_INCLUDED
 #define opt_goto_INCLUDED "opt_goto.h"
 
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/opt_goto.h,v $
+/** $Revision$
+*** $Date$
+*** $Author$
+*** $Source$
 **/
 
 #ifdef _KEEP_RCS_ID
-static char *opt_goto_rcs_id = opt_goto_INCLUDED" $Revision: 1.1.1.1 $";
+static char *opt_goto_rcs_id = opt_goto_INCLUDED" $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "wn.h"

@@ -1,5 +1,9 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -192,6 +196,7 @@ WN_UNROLL::Analyze_body_expr(WN *tree)
   case OPR_REDUCE_ADD: case OPR_REDUCE_MPY: 
   case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
   case OPR_SHUFFLE:
+  case OPR_ATOMIC_RSQRT:
 #endif // TARG_X8664
   case OPR_NEG:
   case OPR_ABS:
@@ -213,6 +218,7 @@ WN_UNROLL::Analyze_body_expr(WN *tree)
   case OPR_BAND: case OPR_BIOR: case OPR_BNOR: case OPR_BXOR:
   case OPR_ASHR: case OPR_LSHR:
   case OPR_SHL: 
+  case OPR_RROTATE:
   case OPR_EQ: case OPR_NE: 
   case OPR_GE: case OPR_GT: case OPR_LE: case OPR_LT:
   case OPR_LAND: case OPR_LIOR:
@@ -354,6 +360,7 @@ WN_UNROLL::Replicate_expr(WN *expr, INT rep_cnt)
   case OPR_REDUCE_ADD: case OPR_REDUCE_MPY: 
   case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
   case OPR_SHUFFLE:
+  case OPR_ATOMIC_RSQRT:
 #endif // TARG_X8664
   case OPR_NEG:
   case OPR_ABS:
@@ -375,6 +382,7 @@ WN_UNROLL::Replicate_expr(WN *expr, INT rep_cnt)
   case OPR_BAND: case OPR_BIOR: case OPR_BNOR: case OPR_BXOR:
   case OPR_ASHR: case OPR_LSHR:
   case OPR_SHL: 
+  case OPR_RROTATE:
   case OPR_EQ: case OPR_NE: 
   case OPR_GE: case OPR_GT: case OPR_LE: case OPR_LT:
   case OPR_LAND: case OPR_LIOR:
