@@ -159,7 +159,7 @@ INSTALL_IPA () {
 }
 
 INSTALL_CG () {
-   # INSTALL_EXEC_SUB ${AREA}/cg/cg.so                ${PHASEPATH}/cg.so
+    INSTALL_EXEC_SUB ${AREA}/cg/cg.so                ${PHASEPATH}/cg.so
 
     return 0
 }

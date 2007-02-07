@@ -398,8 +398,8 @@ load_components (INT argc, char **argv)
 #ifdef TARG_IA64
       load_so ("orc_ict.so", CG_Path, Show_Progress);
       load_so ("orc_intel.so", CG_Path, Show_Progress);
-      load_so ("cg.so", CG_Path, Show_Progress);
 #endif
+      load_so ("cg.so", CG_Path, Show_Progress);
       CG_Process_Command_Line (phase_argc, phase_argv, argc, argv);
     }
 
