@@ -471,7 +471,7 @@ LNO_FLAGS Initial_LNO = {
 #ifdef TARG_IA64
   TRUE,		/* Full_Unroll_Outer */
 #else
-  TRUE,         /* Full_Unroll_Outer */
+  FALSE,         /* Full_Unroll_Outer */
 #endif
   0,		/* Processors */
   128,		/* Parallel_per_proc_overhead */ 
@@ -796,7 +796,7 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "preferred_doacross_tile_size",
 					NULL,	0,0,999999,
 					Preferred_doacross_tile_size ),
-#ifdef KEY
+#ifndef TARG_IA64
   LNOPT_U32  ( "parallel_overhead",     NULL,   4096,0,0x7fffffff, 
 					Parallel_overhead), 
 #else
@@ -810,7 +810,11 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "shackle", 		NULL,   Shackle),
   LNOPT_BOOL ( "cross_loop", 		NULL,   Cross_loop),
   LNOPT_BOOL ( "ipa",                   NULL,   IPA_Enabled),
+#ifndef TARG_IA64
   LNOPT_U32  ( "trip_count_assumed_when_unknown",      "trip_count",   1000,0,UINT32_MAX,Num_Iters),
+#else
+  LNOPT_U32  ( "num_iters",             NULL,   100,0,UINT32_MAX,Num_Iters),
+#endif
   LNOPT_U32  ( "pure", 			NULL,   1,0,2,Pure_Level),
   LNOPT_U32  ( "small_trip_count", 	NULL,   5,0,10,Small_trip_count),
 #ifdef TARG_IA64
