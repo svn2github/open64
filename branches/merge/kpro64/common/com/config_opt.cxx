@@ -100,7 +100,11 @@ BOOL Alias_Common_Scalar = FALSE;       /* Distinguish scalar from array */
  * for use in overriding the default -- not intended for user use.
  */
 static BOOL Alias_Pointer_Cckr = FALSE;	/* -cckr default rules? */
+#ifdef TARG_IA64
+static BOOL Alias_Pointer_Types_Set = TRUE;	/* alias=typed set? */
+#else
 static BOOL Alias_Pointer_Types_Set = FALSE;	/* alias=typed set? */
+#endif
 static BOOL Alias_Not_In_Union_Set  = FALSE;	/* alias=nounion set? */
 BOOL  Alias_F90_Pointer_Unaliased = FALSE;  /* Are F90 pointers unaliased? */
 

@@ -909,19 +909,22 @@ Create_ST_For_Tree (tree decl_node)
 	      }
 	      else
               	sclass = SCLASS_EXTERN;
-#ifdef PATHSCALE_MERGE 
+#ifdef TARG_IA64 
           // bug fix for OSP_89 && OSP_173 && OSP_169
 	  extern BOOL Use_Call_Shared_Link,Gp_Rel_Aggresive_Opt;
           if (!flag_pic) {
             if (Use_Call_Shared_Link && Gp_Rel_Aggresive_Opt &&
-            sclass != SCLASS_EXTERN && sclass != SCLASS_COMMON)
-          eclass = EXPORT_PROTECTED;
-        else
-          eclass = EXPORT_PREEMPTIBLE;
+                sclass != SCLASS_EXTERN && sclass != SCLASS_COMMON)
+              eclass = EXPORT_PROTECTED;
+            else
+              eclass = EXPORT_PREEMPTIBLE;
           }
           else
-        eclass = EXPORT_PREEMPTIBLE;
+            eclass = EXPORT_PREEMPTIBLE;
         }
+#else
+            eclass = EXPORT_PREEMPTIBLE;
+          }
 #endif
             else {
               	sclass = SCLASS_FSTATIC;

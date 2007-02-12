@@ -311,9 +311,11 @@ BOOL Malloc_Free_On     = TRUE;
 BOOL Alloca_Dealloca_On = TRUE;
 BOOL Barrier_Lvalues_On = TRUE;
 
+#ifdef TARG_IA64
 BOOL Use_Call_Shared_Link = FALSE;
 BOOL Gp_Save_Restore_Opt = TRUE;
 BOOL Gp_Rel_Aggresive_Opt = TRUE;
+#endif
 
 /***** F90 Heap/stack allocation threshold */
 INT32 Heap_Allocation_Threshold=-1;      /* Allocate objects > this on the heap 
@@ -1111,6 +1113,7 @@ Configure_Ofast ( void )
   Configure_Platform ( Ofast );
 }
 
+#ifdef TARG_IA64
 /*==============================================================
 * Configure_Olegacy
 *
@@ -1145,6 +1148,7 @@ Configure_Olegacy (BOOL in_FE)
     if(Olegacy) Use_Call_Shared_Link = FALSE;
   }
 }
+#endif
 
 /* ====================================================================
  *
@@ -1186,10 +1190,12 @@ Configure (void)
   atexit(whirlstats);
 #endif
 
+#ifdef TARG_IA64
   /* Resume original settings or PRO64 if Olegacy flag is set;
    * and set default settings otherwise
    */
   Configure_Olegacy(FALSE);
+#endif
 
   /* Configure the alias options first so the list is processed and
    * we can tell for -OPT:Ofast below what overrides have occurred:
@@ -1660,7 +1666,11 @@ Configure_Alias_Options( OPTION_LIST *olist )
     if (strncasecmp( val, "any", len) == 0) {
       Alias_Pointer_Parms = TRUE;	/* observed by Fortran programs */
       Alias_Pointer_Cray = FALSE;	/* observed by Fortran programs */
+#ifdef TARG_IA64
       Alias_Pointer_Types = TRUE;	/* observed by C and C++ programs */
+#else
+      Alias_Pointer_Types = FALSE;	/* observed by C and C++ programs */
+#endif
       Alias_Not_In_Union  = TRUE;	/* observed by C++ programs only */
       Alias_Pointer_Strongly_Typed = FALSE;	/* observed by C and C++ programs */
       Alias_Pointer_Types_Set = TRUE;

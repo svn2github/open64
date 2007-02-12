@@ -1069,8 +1069,12 @@ WFE_Start_Function (tree fndecl)
           DECL_NAMESPACE_SCOPE_P (fndecl))))
       eclass = EXPORT_INTERNAL; // bug 7550
     else if (TREE_PUBLIC(fndecl) || DECL_WEAK(fndecl)) {
+#ifdef TARG_IA64
       if (Gp_Save_Restore_Opt && Use_Call_Shared_Link &&
           (DECL_INLINE(fndecl) || !DECL_WEAK(fndecl)))
+#else
+      if (DECL_INLINE(fndecl) || !DECL_WEAK(fndecl))
+#endif
 	eclass = EXPORT_PROTECTED;
       else eclass = EXPORT_PREEMPTIBLE;
     }

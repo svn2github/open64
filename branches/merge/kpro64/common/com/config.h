@@ -426,9 +426,11 @@ extern BOOL Malloc_Free_On;
 extern BOOL Alloca_Dealloca_On;
 extern BOOL Barrier_Lvalues_On;
 
+#ifdef TARG_IA64
 extern BOOL Use_Call_Shared_Link; /*For redundant save/restore gp opt */
 extern BOOL Gp_Save_Restore_Opt;
 extern BOOL Gp_Rel_Aggresive_Opt;
+#endif
 
 /***** The following is TRUE for C++  unless -no_exceptions is specified *****/
 extern BOOL Allow_Exceptions;

@@ -1222,7 +1222,7 @@ Create_ST_For_Tree (tree decl_node)
 	      }
 	      else
               	sclass = SCLASS_EXTERN;
-		
+#ifdef TARG_IA64		
 	      // bug fix for OSP_89 && OSP_173 && OSP_169
 	      if (!flag_pic) { 
 	        if (Use_Call_Shared_Link && Gp_Rel_Aggresive_Opt &&
@@ -1235,6 +1235,10 @@ Create_ST_For_Tree (tree decl_node)
 		eclass = EXPORT_PREEMPTIBLE;
 	      }
             }
+#else
+              eclass = EXPORT_PREEMPTIBLE;
+            }
+#endif
             else {
               	sclass = SCLASS_FSTATIC;
 		eclass = EXPORT_LOCAL;
