@@ -852,9 +852,12 @@ DST_INVALID_INIT
 } ;
 	
 static type_trans ate_types[] = {
-#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
  1, "BAD",       0,         /* MTYPE_UNKNOWN */
  1, "LOGICAL_1", DW_ATE_boolean,    /* MTYPE_B   */
+#else
+ 4, "BAD",       0,
+ 4, "UNK",       0,                     /* bit */
 #endif
  1, "INTEGER_1", DW_ATE_signed,		/* MTYPE_I1  */
  2, "INTEGER_2", DW_ATE_signed,		/* MTYPE_I2  */
@@ -866,8 +869,10 @@ static type_trans ate_types[] = {
  8, "INTEGER*8", DW_ATE_unsigned,	/* MTYPE_U8  */
  4, "REAL_4",    DW_ATE_float,		/* MTYPE_F4  */
  8, "REAL_8",    DW_ATE_float,		/* MTYPE_F8  */
-#ifdef PATHSCALE_MERGE
- 16,"REAL_10",   DW_ATE_float,      /* MTYPE_F10 */
+#ifdef TARG_IA64
+ 16,"REAL_10",   DW_ATE_float,          /* MTYPE_F10 */
+#else
+ 10, "UNK",      DW_ATE_float,          /* MTYPE_F10 */
 #endif
  16,"REAL_16",   DW_ATE_float,		/* MTYPE_F16 */
  1 ,"CHAR" ,     DW_ATE_signed_char,    /* MTYPE_STR */
@@ -877,11 +882,16 @@ static type_trans ate_types[] = {
  16,"COMPLEX_8", DW_ATE_complex_float,	/* MTYPE_C8  */
  32,"COMPLEX_16",DW_ATE_complex_float,	/* MTYPE_CQ  */
  1, "VOID",      0,                     /* MTYPE_V   */
-#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
  1, "UNK",   0,         /* MTYPE_BS  */
  4, "ADDRESS_4", DW_ATE_unsigned,   /* MTYPE_A4  */
  8, "ADDRESS_8", DW_ATE_unsigned,   /* MTYPE_A8  */
  32,"COMPLEX_16",DW_ATE_complex_float,  /* MTYPE_C10 */
+#else
+ 1, "LOGICAL_1", DW_ATE_boolean,
+ 2, "LOGICAL_2", DW_ATE_boolean,
+ 4, "LOGICAL_4", DW_ATE_boolean,
+ 8, "LOGICAL_8", DW_ATE_boolean,
 #endif
 } ;
 

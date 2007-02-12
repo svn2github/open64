@@ -301,10 +301,12 @@ WFE_Start_Function (tree fndecl)
 
     //This is a work around to avoid redundant save/restore gp
     if(TREE_PUBLIC(fndecl)) {
+#ifdef TARG_IA64
 	extern BOOL Gp_Save_Restore_Opt,Use_Call_Shared_Link;
         if( Gp_Save_Restore_Opt && Use_Call_Shared_Link)
             eclass = EXPORT_PROTECTED;
         else
+#endif
             eclass = EXPORT_PREEMPTIBLE;
     } else {
        eclass = EXPORT_LOCAL;
