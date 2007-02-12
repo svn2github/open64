@@ -83,7 +83,8 @@
 
 #include "wodriver.h"		// So we pick up 'extern "C"'
 
-#ifdef SHARED_BUILD
+//#ifdef SHARED_BUILD
+#if 0
 char * Ipa_File_Name = NULL;
 #endif
 

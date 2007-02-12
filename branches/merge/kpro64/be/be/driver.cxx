@@ -67,8 +67,10 @@
 #include "dso.h"		    /* for load_so() */
 #include "errors.h"		    /* Set_Error_Tables(), etc. */
 #include "err_host.tab"		    /* load all the error messages */
+#ifdef TARG_IA64
 #include "erglob.h"		    /* for EC_ errmsg */
 #include "erauxdesc.h"		    /* for BE error messages */
+#endif
 #include "mempool.h"		    /* for MEM_Initialze()  */
 #include "phase.h"		    /* for PHASE_CG */
 #include "be_util.h"                /* for Reset_Current_PU_Count(), etc */

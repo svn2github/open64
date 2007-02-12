@@ -3127,7 +3127,7 @@ Get_WN_Label (WN *wn)
   if (label_prefix != NULL) {
 	// create label name:  prefix<name>.<pu-number>.<label-index>
 	// pu and index number assure is unique across file
-	char *oldname = (LABEL_name_idx(label) == 0 ? "" : LABEL_name(label));
+	const char *oldname = (LABEL_name_idx(label) == 0 ? "" : LABEL_name(label));
   	name = (char *) alloca (strlen(label_prefix) + strlen(oldname) 
 		+ 1 + 8 + 1 + 8 + 1);
 	sprintf(name, "%s%s%s%d%s%d", label_prefix, oldname,

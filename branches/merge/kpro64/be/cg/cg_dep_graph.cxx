@@ -617,11 +617,7 @@ OP_has_subset_predicate(const void *value1, const void *value2)
 }
 
 BOOL
-#ifdef TARG_IA64
 OP_has_disjoint_predicate( OP *value1, OP *value2)
-#else
-OP_has_disjoint_predicate(const OP *value1, const OP *value2)
-#endif
 {
 #ifdef TARG_IA64
 //use IPFEC aurora PRDB in first priority!

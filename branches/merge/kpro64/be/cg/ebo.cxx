@@ -152,7 +152,9 @@ static const char source_file[] = __FILE__;
 #include "cflow.h"
 #include "cg_spill.h"
 #include "targ_proc_properties.h"
+#ifdef TARG_IA64
 #include "vt_region.h"
+#endif
 #include "ebo.h"
 #include "ebo_info.h"
 #include "ebo_special.h"
