@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -605,6 +605,9 @@ dwarf_add_AT_flag(Dwarf_P_Debug dbg,
     case DW_AT_variable_parameter:
     case DW_AT_MIPS_has_inlines:
     case DW_AT_MIPS_assumed_size:
+#ifdef TARG_X8664
+    case DW_AT_GNU_vector:
+#endif
 	break;
 
     default:{

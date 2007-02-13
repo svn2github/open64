@@ -1340,8 +1340,14 @@ _dwarf_pro_generate_debugframe(Dwarf_P_Debug dbg, Dwarf_Error * error)
 					 DEBUG_FRAME,
 					 (data-fde_start_point) +
 					 cur_off, /* r_offset */
+#ifdef TARG_IA64
 					 *(unsigned short *)(&curinst->dfp_args[0]),
 					 *(unsigned short *)(&curinst->dfp_args[2]),
+#else
+                                         *(Dwarf_Unsigned *)(curinst->dfp_args),
+                                         *(Dwarf_Unsigned *)(curinst->dfp_args
+							     + sizeof(Dwarf_Unsigned)),
+#endif
 					 dwarf_drt_first_of_length_pair,
 					 uwordb_size);
 		if (res != DW_DLV_OK) {
@@ -1843,33 +1849,58 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	    GET_CHUNK(dbg, abbrevsectno, data, nbytes, error);
 	    memcpy((void *) data, (const void *) val, nbytes);
 	}
-	/*
-	  Bug 294
-
-	  Emit an extra 0x00 at the end of all abbrev section entries.
-	  This is necessary for compiling multiple (C) files.  If not
-	  for this, the Number TAG at the beginning of a new compile
-	  unit would be eaten away by the linker.  Fortran compilation
-	  always link up with some external file or some library and
-	  will always crash TotalView.  Gdb would not crash on this
-	  bug though.
-	*/
-	if (curabbrev->abb_next) {
+#ifndef KEY
 	    GET_CHUNK(dbg,abbrevsectno,data,2,error);	/* two zeros, 
-							   for last entry */
+					for last entry */
 	    *data = 0;
 	    data++;
 	    *data = 0;
-	} else {
-	    GET_CHUNK(dbg,abbrevsectno,data,3,error);	/* two zeros, 
+#else
+	    // Bug 3507
+	    if (curabbrev->abb_tag == DW_TAG_imported_declaration) {
+	      res = _dwarf_pro_encode_leb128_nm(DW_AT_import,
+						&nbytes,
+						buff1,sizeof(buff1));
+	      if (res != DW_DLV_OK) {
+		DWARF_P_DBG_ERROR(dbg,DW_DLE_ABBREV_ALLOC, -1);
+	      }
+	      val = buff1;
+	      GET_CHUNK(dbg,abbrevsectno,data,nbytes,error);
+	      memcpy((void *)data,(const void *)val, nbytes);
+	      res = _dwarf_pro_encode_leb128_nm(DW_FORM_ref_addr,
+						&nbytes,
+						buff1,sizeof(buff1));
+	      if (res != DW_DLV_OK) {
+		DWARF_P_DBG_ERROR(dbg,DW_DLE_ABBREV_ALLOC, -1);
+	      }
+	      val = buff1;
+	      GET_CHUNK(dbg,abbrevsectno,data,nbytes,error);
+	      memcpy((void *)data,(const void *)val, nbytes);
+	    }
+            // Bug 294
+            // Emit an extra 0x00 at the end of all abbrev section entries.
+            // This is necessary for compiling multiple (C) files. If not for 
+	    // this, the Number TAG at the beginning of a new compile unit would
+	    // be eaten away by the linker. Fortran compilation always link up 
+	    // with some external file or some library and will always crash 
+	    // TotalView. Gdb would not crash on this bug though.
+            if (curabbrev->abb_next) {
+              GET_CHUNK(dbg,abbrevsectno,data,2,error);	/* two zeros, 
+							   for last entry */
+              *data = 0;
+	      data++;
+	      *data = 0;
+            } else {
+              GET_CHUNK(dbg,abbrevsectno,data,3,error);	/* two zeros, 
 							   for last entry + 
 							   one for end of file*/
-	    *data = 0;
-	    data++;
-	    *data = 0;
-	    data++;
-	    *data = 0;
-	}
+              *data = 0;
+	      data++;
+	      *data = 0;
+	      data++;
+	      *data = 0;
+            }
+#endif
 
 	curabbrev = curabbrev->abb_next;
     }
