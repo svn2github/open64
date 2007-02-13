@@ -149,7 +149,8 @@ static phase_info_t phase_info[] = {
    /* We use 'B' for options to be passed to be via ipacom. */
 
    {'a',  0x0000001000000000LL,	"asm",	PHASEPATH,	FALSE},	/* as */
-#if defined(KEY) && !defined(CROSS_COMPILATION)
+#if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
+   /* on x8664, we alwayse use gcc as the assembler */
    {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* gcc */
 #else
    {'a',  0x0000002000000000LL,	"as",	BINPATH,	FALSE},	/* gas */
@@ -159,7 +160,8 @@ static phase_info_t phase_info[] = {
    {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE},/* dsm_prelink*/
    {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH,TRUE},	/* ipa_link */
    {'l',  0x0000020000000000LL,	"ld", BINPATH, TRUE},	/* collect */
-#if defined(KEY) && !defined(CROSS_COMPILATION)
+#if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
+   /* on x8664, we alwayse use gcc/g++ as the linker */
    {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* ld */
    {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* ldplus */
 #else

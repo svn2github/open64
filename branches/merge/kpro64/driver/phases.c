@@ -1373,7 +1373,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  }
 		}
 		current_phase = P_any_as;
-#if defined(KEY) && !defined(CROSS_COMPILATION)
+#if defined TARG_X8664 || ( defined(KEY) && !defined(CROSS_COMPILATION))
 		add_string(args, "-c");		// gcc -c
 #endif
 		add_string(args, "-o");
@@ -2415,7 +2415,7 @@ determine_ld_phase (boolean run_ipa) {
         if (run_ipa) {
                 ldphase = P_ipa_link;
         }
-#ifdef CROSS_COMPILATION
+#if defined TARG_IA64 && defined CROSS_COMPILATION
         /* We use prebuilt ld to link objects for cross compiler,
          * TODO: build cross toolchains, let cross gcc to take care the link.
          */
