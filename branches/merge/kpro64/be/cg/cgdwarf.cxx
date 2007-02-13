@@ -3692,7 +3692,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
   if (!strcmp (section_name, ".eh_frame")){
     // End preceding frame/cie
     fprintf (asm_file, "\t%s %d\n", AS_ALIGN, alignment);
-    if (!strcmp (dwarf_end, ""))
+    if (strcmp (dwarf_end, ""))
       fprintf (asm_file, "%s:\n", dwarf_end);
   }
 #endif
