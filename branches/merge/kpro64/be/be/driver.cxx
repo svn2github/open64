@@ -66,9 +66,9 @@
 #include "defs.h"
 #include "dso.h"		    /* for load_so() */
 #include "errors.h"		    /* Set_Error_Tables(), etc. */
-#include "err_host.tab"		    /* load all the error messages */
-#ifdef TARG_IA64
 #include "erglob.h"		    /* for EC_ errmsg */
+#ifdef TARG_IA64
+#include "err_host.tab"		    /* load all the error messages */
 #include "erauxdesc.h"		    /* for BE error messages */
 #endif
 #include "mempool.h"		    /* for MEM_Initialze()  */
