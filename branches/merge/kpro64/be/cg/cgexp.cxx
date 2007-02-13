@@ -513,7 +513,6 @@ Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant, O
 			OPS_Append_Ops(ops, &new_ops);
   		}
   	}
-#ifdef TARG_IA64
   	else {
 		OP *last_OP = OPS_last(ops);
   		Expand_OP (opcode, result, op1, op2, op3, variant, ops);
@@ -527,6 +526,5 @@ Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant, O
 		  	}
 		}
 	}
-#endif
   }
 }
