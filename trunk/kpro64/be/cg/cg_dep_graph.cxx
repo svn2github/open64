@@ -2114,6 +2114,36 @@ static BOOL verify_mem(BOOL              result,
   return result;
 }
 
+/* -----------------------------------------------------------------------
+ *  class SAVE_RESTORE_AGG_PT_KEEP_TRACK is used only by get_mem_dep(). 
+ * It provide a way to disable the "aggressive keeping track of access
+ * pinter" (WOPT_Enable_Aggr_Pt_Keep_Track_Ptr) temporarily.  
+ * The WOPT_Enable_Aggr_Pt_Keep_Track_Ptr is disabled temporarily if
+ * LNO does not build the dependency graph or CG ignore the the graph. 
+ * The reason is that the function Aliased() which is called by 
+ * get_mem_dep() may return FALSE for a pair of memory accesses having
+ * loop carried dependence.  Funcation Aliased() is not supposed to handle
+ * loop carried dependence, however, get_mem_dep() expect it has such 
+ * capability. Turning off WOPT_Enable_Aggr_Pt_Keep_Track_Ptr will 
+ * work around this problem because Aliased() will conservatively returns
+ * TRUE value when loop-carried dependency presents. 
+ */
+extern BOOL WOPT_Enable_Aggr_Pt_Keep_Track_Ptr;
+class SAVE_RESTORE_AGG_PT_KEEP_TRACK {
+private:
+  BOOL _saved_val;  
+public: 
+  SAVE_RESTORE_AGG_PT_KEEP_TRACK (void) {
+    _saved_val = WOPT_Enable_Aggr_Pt_Keep_Track_Ptr;
+  }
+
+  void Disable (void) { WOPT_Enable_Aggr_Pt_Keep_Track_Ptr = FALSE;}
+
+  ~SAVE_RESTORE_AGG_PT_KEEP_TRACK (void) {
+    WOPT_Enable_Aggr_Pt_Keep_Track_Ptr = _saved_val; 
+  }
+};
+
 BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 /* -----------------------------------------------------------------------
  * Check whether <succ_op> can access the same location as <pred_op>
@@ -2128,6 +2158,7 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
  */
 {
   WN *pred_wn, *succ_wn;
+  SAVE_RESTORE_AGG_PT_KEEP_TRACK flag_save_restr;
   UINT8 pred_unrollings = 0, succ_unrollings = 0;
   BOOL lex_neg = (!OP_Precedes(pred_op, succ_op)) &&
       (OP_bb(pred_op) == OP_bb(succ_op)) ;
@@ -2412,6 +2443,10 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 	  return verify_mem(TRUE, definite, omega, pred_op, succ_op, cg_result,
 			    info_src);
 	}
+      }
+    } else {
+      if (omega) {
+        flag_save_restr.Disable ();
       }
     }
 

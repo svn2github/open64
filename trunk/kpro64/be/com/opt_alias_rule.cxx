@@ -252,23 +252,9 @@ BOOL ALIAS_RULE::Aliased_Indirect_Rule(const POINTS_TO *mem1, const POINTS_TO *m
     }
   }
 
-  if (mem1->Pointer () && mem2->Pointer () &&
-      WOPT_Enable_Pt_Keep_Track_Ptr) {
-    ST* st1 = mem1->Pointer ();
-    ST* st2 = mem2->Pointer ();
-    
-    if (st1 != st2 || 
-        mem1->Iofst_kind () != OFST_IS_FIXED ||
+  if (mem1->Same_pointer (mem2)) {
+    if (mem1->Iofst_kind () != OFST_IS_FIXED ||
         mem2->Iofst_kind () != OFST_IS_FIXED) {
-      return TRUE;
-    }
-
-    // it is impossible to disambiguate if the verions of the pointers
-    // are different.
-    if (!mem1->Pointer_is_aux_id() && 
-        !ST_is_constant (st1) && 
-        (mem1->Pointer_ver () == 0 ||
-         mem1->Pointer_ver () != mem2->Pointer_ver ())) {
       return TRUE;
     }
 
@@ -281,7 +267,13 @@ BOOL ALIAS_RULE::Aliased_Indirect_Rule(const POINTS_TO *mem1, const POINTS_TO *m
         high = mem2, low = mem1;
       }
       if ((low->Byte_Ofst () + low->Byte_Size ()) <= high->Byte_Ofst()) {
-        return FALSE;
+        if ((mem1->Pointer_is_named_symbol () || 
+             mem1->Pointer_is_aux_id ()) && 
+             WOPT_Enable_Pt_Keep_Track_Ptr ||
+             mem1->Pointer_is_coderep_id () &&
+             WOPT_Enable_Aggr_Pt_Keep_Track_Ptr) {
+          return FALSE;
+        }
       }
     }
   }

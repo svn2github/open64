@@ -259,12 +259,21 @@ friend class POINTS_TO;
 				   // gives the bit ofst/size within the
 				   // container 
   mUINT32	_iofst_kind :2;    // one of OFST_KIND. the kind of "offset" from _ptr. 
-  mUINT32       _ptr_is_aux_id :1; // the _ptr field is actually a aux_id, not ST*
+  // the selector of the following union <u>
+  mUINT32       _ptr_is_pointer:1;
+  mUINT32       _ptr_is_aux_id :1;
+  mUINT32       _ptr_is_coderep_id:1;
+
   PT_ATTR       _attr;		   // PT_ATTR attributes
   INT64         _byte_ofst;        // offset from base    -- controlled by _{i}ofst_kind  
   UINT64        _byte_size;        // size of access      -- controlled by _{i}ofst_kind
   ST           *_base;             // base symbol         -- controlled by _base_kind
   ST           *_based_sym;        // for restricted pointer, Fortran ref-param ...
+  union {
+    ST         *_ptr;              // pointer for indirect access
+    AUX_ID      _aux_id;           // AUX_ID of the pointer
+    INT32       _coderep_id;       // CODEREP of the pointer
+  } u;  // the name "u" is actually not necessary
   ST           *_ptr;              // pointer for indirect access 
   VER_ID        _ptr_ver;          // the version of _ptr
   IDTYPE        _alias_class;      // which equivalence class this
@@ -325,8 +334,26 @@ private:
 
   POINTS_TO(const POINTS_TO &);
 
-  void Set_ptr_is_aux_id (void) { ai._ptr_is_aux_id = 1; }
+  void Clear_Selector (void) 
+         {ai._ptr_is_pointer = ai._ptr_is_aux_id = ai._ptr_is_coderep_id = 0;}
+  void Set_ptr_is_pointer (void) {
+          Is_True (((BASE_KIND)ai._base_kind) != BASE_IS_FIXED, 
+                   ("It is expected to be indirect load"));
+          Clear_Selector (); ai._ptr_is_pointer = 1;
+       }
+  void Set_ptr_is_aux_id (void) { 
+          Is_True (((BASE_KIND)ai._base_kind) != BASE_IS_FIXED, 
+                   ("It is expected to be indirect load"));
+          Clear_Selector ();ai._ptr_is_aux_id = 1; 
+       }
+  void Set_ptr_is_coderep_id (void) {
+          Is_True (((BASE_KIND)ai._base_kind) != BASE_IS_FIXED, 
+                   ("It is expected to be indirect load"));
+          Clear_Selector ();ai._ptr_is_coderep_id=1;
+       }
   void Reset_ptr_is_aux_id (void) { ai._ptr_is_aux_id = 0; }
+  void Reset_ptr_is_pointer (void){  ai._ptr_is_pointer = 0;}
+  void Reset_ptr_is_coderep_id (void) {ai._ptr_is_coderep_id=0;}
 
 public:
   //  Member access functions
@@ -336,8 +363,19 @@ public:
   OFST_KIND   Ofst_kind(void)        const { return (OFST_KIND) ai._ofst_kind; }
   OFST_KIND   Iofst_kind(void)       const { return (OFST_KIND) ai._iofst_kind; }
   ST          *Base(void)            const { return ai._base; }
-  ST          *Pointer(void)         const { return ai._ptr; }
-  VER_ID      Pointer_ver (void)     const { return ai._ptr_ver; }
+
+  BOOL Pointer_is_named_symbol (void) const{ return ai._ptr_is_pointer != 0; }
+  BOOL Pointer_is_aux_id (void) const      { return ai._ptr_is_aux_id != 0; }
+  BOOL Pointer_is_coderep_id (void) const  { return ai._ptr_is_coderep_id != 0;}
+  ST   *Pointer(void) const
+          { return Pointer_is_named_symbol () ? ai.u._ptr : NULL; }
+  AUX_ID Pointer_aux_id(void) const
+          { return Pointer_is_aux_id () ?  ai.u._aux_id : 0; }
+  INT32  Pointer_coderep_id (void) const
+          { return Pointer_is_coderep_id() ?  ai.u._coderep_id : 0; }
+  VER_ID Pointer_ver (void)  const { 
+          return Pointer_is_named_symbol () || Pointer_is_aux_id() ? ai._ptr_ver : 0; }
+
 #if _NO_BIT_FIELDS
   mINT64      Ofst(void)             const { return ai._ofst; }
   mINT64      Size(void)             const { return ai._size; }
@@ -395,10 +433,18 @@ public:
       ai._bit_ofst = ofst;
       ai._bit_size = size;
   }
-  void Set_pointer (ST* ptr, BOOL is_aux_id)  { ai._ptr = ptr; 
-          is_aux_id ? Set_ptr_is_aux_id() : Reset_ptr_is_aux_id(); } 
-  BOOL Pointer_is_aux_id (void) const     { return ai._ptr_is_aux_id != 0; }
-  void Set_pointer_ver (VER_ID ver)       { ai._ptr_ver = ver; }
+
+  void Set_pointer (ST* ptr) {Set_ptr_is_pointer(); ai.u._ptr = ptr; }
+  void Set_pointer_as_aux_id (AUX_ID id) {Set_ptr_is_aux_id(); ai.u._aux_id = id;}
+  void Set_pointer_as_coderep_id (INT32 id) {
+         Set_ptr_is_coderep_id (); ai.u._coderep_id = id;
+       }
+  void Set_pointer_ver (VER_ID ver)  {
+         Is_True (!Pointer_is_coderep_id (),
+                  ("The version does not make sense for coderep"));
+         ai._ptr_ver = ver;
+       }
+
   void Set_based_sym(ST *sym)             { ai._based_sym = sym; }
   void Set_based_sym_depth(UINT32 d)      { ai._based_sym_depth = (d > 7) ? 7 : d; }
   void Set_malloc_id (mINT64 id)          { ai.Set_malloc_id (id); }
@@ -482,7 +528,10 @@ public:
   void Reset_not_alloca_mem(void)         { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NOT_ALLOCA_MEM); }
   void Reset_extended(void)               { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_EXTENDED); }
 
-  void Invalidate_ptr_info (void) { ai._ptr = NULL; ai._iofst_kind = OFST_IS_INVALID; ai._ptr_ver = (VER_ID)0; }
+  void Invalidate_ptr_info (void) {
+         Clear_Selector ();
+         ai.u._ptr = NULL; ai._iofst_kind = OFST_IS_INVALID; ai._ptr_ver = (VER_ID)0; 
+       }
 
   void Init(void) {
     //  Set fields in POINTS_TO to invalid for error detection.
@@ -493,8 +542,7 @@ public:
     Set_unused();
     Set_based_sym_depth(0);
     Set_base((ST*)NULL);
-    Set_pointer ((ST*)NULL, FALSE);
-    Set_pointer_ver ((VER_ID)0);
+    Invalidate_ptr_info ();
     Set_byte_ofst(0);
     Set_byte_size(0);
     Set_bit_ofst_size(0,0);
@@ -513,6 +561,12 @@ public:
 
   //  Return TRUE if bases are the same.   Return FALSE if don't know.
   BOOL Same_base(const POINTS_TO *) const;
+  
+  // Return TRUE if the two POINTS_TO share the same indirect base.
+  BOOL Same_pointer (const POINTS_TO*) const;
+
+  // Return TRUE if indirect base information helps in disambiguation 
+  BOOL Pointer_info_does_help (void) const;
 
   //  Return TRUE if bases are different.  Return FALSE if don't know.
   BOOL Different_base(const POINTS_TO *) const;
@@ -591,10 +645,23 @@ public:
       }
     }
 
+  void Copy_pointer_info (const POINTS_TO* p) 
+    {
+      Clear_Selector ();
+      if (p->Pointer_is_named_symbol()) {
+        Set_pointer (p->Pointer ());
+        Set_pointer_ver (p->Pointer_ver());
+      } else if (p->Pointer_is_aux_id()) {
+        Set_pointer_as_aux_id (p->Pointer_aux_id ());
+        Set_pointer_ver (p->Pointer_ver());
+      } else if (p->Pointer_is_coderep_id ()) {
+        Set_pointer_as_coderep_id (p->Pointer_coderep_id());
+      }
+    }
+
   void Copy_indirect_access_info (const POINTS_TO* p) 
     {
-      Set_pointer (p->Pointer (), p->Pointer_is_aux_id());
-      Set_pointer_ver (p->Pointer_ver());
+      Copy_pointer_info (p);
       Set_iofst_kind (p->Iofst_kind ());
       Set_byte_size (p->Byte_Size ());
       Set_bit_ofst_size (p->Bit_Ofst (), p->Bit_Size ());

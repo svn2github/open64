@@ -1081,6 +1081,10 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
   SET_OPT_PHASE("Preparation");
 
+  if (Get_Trace(TP_GLOBOPT, -1)) {
+    fprintf (TFile,  "%s \t Pre_Optimizer phase=%d\n %s\n", DBar, phase, DBar);
+  }
+
   Is_True(phase == PREOPT_IPA0_PHASE ||
 	  phase == PREOPT_IPA1_PHASE ||
 	  phase == PREOPT_LNO_PHASE ||

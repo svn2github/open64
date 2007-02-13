@@ -1213,7 +1213,7 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 			  lhs->Scalar_ivar_occ(), stmt, NULL/*mu*/,
 			  lhs->Dtyp(), lhs->Dsctyp(), lhs->Ilod_ty(), 0, 
 			  lhs->Offset(), (CODEREP *)(INTPTR)Make_Pointer_Type(Void_Type), 
-   		      NULL, lhs->Istr_base()));
+   		      NULL, lhs->Istr_base(), _opt_stab));
 	  stmt->Set_opr(OPR_ISTORE);
 	}
       }

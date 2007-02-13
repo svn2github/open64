@@ -281,7 +281,9 @@ BOOL  WOPT_Enable_Spre_Before_Ivr = FALSE; // For running spre early
 BOOL  WOPT_Enable_Bdce_Before_Ivr = FALSE; // For running bdce early
 BOOL  WOPT_Enable_New_Phase_Ordering = TRUE; // Enables some phases before ivr
 BOOL  WOPT_Enable_Pt_Keep_Track_Ptr = TRUE;  // POINTS_TO keeps track of pointer
-                                             // of iload/istore
+  // POINTS_TO keeps track of complex address of iload/istore. 
+BOOL  WOPT_Enable_Aggr_Pt_Keep_Track_Ptr = TRUE; 
+
 #ifdef KEY
 BOOL  WOPT_Enable_Preserve_Mem_Opnds = FALSE; // if TRUE, suppress EPRE on 
 				// iloads that are operands of FP operations
@@ -685,5 +687,7 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_WOVP, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "trk_ptr",   NULL, 
     0, 0, 0,   &WOPT_Enable_Pt_Keep_Track_Ptr, NULL },
+  { OVK_BOOL,  OV_INTERNAL,    TRUE, "aggr_trk_ptr",   NULL, 
+    0, 0, 0,   &WOPT_Enable_Aggr_Pt_Keep_Track_Ptr, NULL },
   { OVK_COUNT }		/* List terminator -- must be last */
 };

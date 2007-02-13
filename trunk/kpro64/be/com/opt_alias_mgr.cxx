@@ -1241,8 +1241,11 @@ ALIAS_RESULT Overlapped_base(const ALIAS_MANAGER *am, const WN *wn1, const WN *w
   //
   // if (!pt1.Base_is_fixed())
   pt1.Set_ofst_kind(OFST_IS_UNKNOWN);
+  pt1.Set_iofst_kind(OFST_IS_UNKNOWN);
+
   // if (!pt2.Base_is_fixed())
   pt2.Set_ofst_kind(OFST_IS_UNKNOWN);
+  pt2.Set_iofst_kind(OFST_IS_UNKNOWN);
 
   if (am->Rule()->Aliased_Memop(&pt1, &pt2, WN_object_ty(wn1), WN_object_ty(wn2))) {
     if (pt1.Same_base(&pt2)) {
