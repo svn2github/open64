@@ -1078,7 +1078,8 @@ void POINTS_TO::Print(FILE *fp) const
       Pointer_is_coderep_id ()) {
 
     if (Pointer_is_named_symbol ()) {
-       fprintf (fp, ", ptr=%s ver=%d ", ST_name(Pointer()), (INT)Pointer_ver());
+       fprintf (fp, ", ptr=%s ver=%d ", 
+                Pointer() ? ST_name(Pointer()) : NULL, (INT)Pointer_ver());
     } else if (Pointer_is_aux_id ()) {
        fprintf (fp, ", ptr=auxid-%d ver=%d ", Pointer_aux_id(), (INT)Pointer_ver());
     } else {

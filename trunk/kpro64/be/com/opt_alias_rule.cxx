@@ -221,7 +221,8 @@ ALIAS_RULE::Aliased_F90_Target_Rule(const POINTS_TO *const mem1,
 //    TRUE -- possibly aliased
 //    FALSE -- not aliased (if its address is not taken)
 //
-BOOL ALIAS_RULE::Aliased_Indirect_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2) const
+BOOL ALIAS_RULE::Aliased_Indirect_Rule
+   (const POINTS_TO *mem1, const POINTS_TO *mem2, BOOL ignore_loop_carried) const
 {
   // Change to Aliased_Indirect_Rule 
   //  Using new symtab -- addr_passed is deleted.  5/15/98.
@@ -272,7 +273,17 @@ BOOL ALIAS_RULE::Aliased_Indirect_Rule(const POINTS_TO *mem1, const POINTS_TO *m
              WOPT_Enable_Pt_Keep_Track_Ptr ||
              mem1->Pointer_is_coderep_id () &&
              WOPT_Enable_Aggr_Pt_Keep_Track_Ptr) {
-          return FALSE;
+          if (ignore_loop_carried) {
+            return FALSE;
+          } else {
+            /* If the pointer is constant, there will be no 
+             * loop-carried-dependence between the two accesses.
+             */
+            if (mem1->Pointer_is_named_symbol () &&
+	        ST_is_constant (mem1->Pointer())) {
+	       return FALSE;  
+	    }
+          }
         }
       }
     }
@@ -665,7 +676,8 @@ BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *me
 //    TRUE  -- possibly aliased
 //    FALSE -- not aliased
 //
-BOOL ALIAS_RULE::Aliased_Memop_By_Analysis(const POINTS_TO *p1, const POINTS_TO *p2) const
+BOOL ALIAS_RULE::Aliased_Memop_By_Analysis
+   (const POINTS_TO *p1, const POINTS_TO *p2, BOOL ignore_loop_carried) const
 {
   if (p1->Expr_kind() == EXPR_IS_INVALID ||
       p2->Expr_kind() == EXPR_IS_INVALID)
@@ -683,7 +695,8 @@ BOOL ALIAS_RULE::Aliased_Memop_By_Analysis(const POINTS_TO *p1, const POINTS_TO 
   if (Rule_enabled(OFST_RULE) && !Aliased_Ofst_Rule(p1, p2))
     return FALSE;
   
-  if (Rule_enabled(INDR_RULE) && !Aliased_Indirect_Rule(p1, p2))
+  if (Rule_enabled(INDR_RULE) && 
+      !Aliased_Indirect_Rule(p1, p2, ignore_loop_carried))
     return FALSE;
 
   if (Rule_enabled(ATTR_RULE) && !Aliased_Attribute_Rule(p1, p2))
@@ -753,9 +766,9 @@ BOOL ALIAS_RULE::Aliased_Memop_By_Declaration(const POINTS_TO *p1,
 //    FALSE -- not aliased
 //
 BOOL ALIAS_RULE::Aliased_Memop(const POINTS_TO *p1, const POINTS_TO *p2,
-			       TY_IDX ty1, TY_IDX ty2) const
+       TY_IDX ty1, TY_IDX ty2, BOOL ignore_loop_carried) const
 {
-  if (!Aliased_Memop_By_Analysis(p1, p2))
+  if (!Aliased_Memop_By_Analysis(p1, p2, ignore_loop_carried))
     return FALSE;
 
   if (!Aliased_Memop_By_Declaration(p1, p2, ty1, ty2))
@@ -764,9 +777,10 @@ BOOL ALIAS_RULE::Aliased_Memop(const POINTS_TO *p1, const POINTS_TO *p2,
   return TRUE;
 }
 
-BOOL ALIAS_RULE::Aliased_Memop(const POINTS_TO *p1, const POINTS_TO *p2) const
+BOOL ALIAS_RULE::Aliased_Memop(const POINTS_TO *p1, const POINTS_TO *p2,
+     BOOL ignore_loop_carried) const
 {
-  if (!Aliased_Memop_By_Analysis(p1, p2))
+  if (!Aliased_Memop_By_Analysis(p1, p2, ignore_loop_carried))
     return FALSE;
 
   if (!Aliased_Memop_By_Declaration(p1, p2, p1->Ty(), p2->Ty()))

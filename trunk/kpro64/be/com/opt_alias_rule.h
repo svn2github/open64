@@ -416,7 +416,8 @@ private:
   BOOL Aliased_Ragnarok_Unnamed(const POINTS_TO *, const POINTS_TO *) const;
   BOOL Aliased_Ragnarok_Restrict(const POINTS_TO *, const POINTS_TO *) const;
   BOOL Aliased_Disjoint(const POINTS_TO *, const POINTS_TO *) const;
-  BOOL Aliased_Indirect_Rule(const POINTS_TO *, const POINTS_TO *) const;
+  BOOL Aliased_Indirect_Rule(const POINTS_TO *, const POINTS_TO *, 
+                             BOOL ignore_loop_carried) const;
   BOOL Aliased_F90_Target_Rule(const POINTS_TO *, const POINTS_TO *,
 			       TY_IDX , TY_IDX ) const;
   
@@ -447,11 +448,13 @@ public:
 
   //  The first set returns whether two memops are aliased.
   //
-  BOOL Aliased_Memop(const POINTS_TO *, const POINTS_TO *) const;
-  BOOL Aliased_Memop(const POINTS_TO *, const POINTS_TO *, TY_IDX , TY_IDX ) const;
-  BOOL Aliased_Memop_By_Analysis(const POINTS_TO *, const POINTS_TO *) const;
+  BOOL Aliased_Memop(const POINTS_TO *, const POINTS_TO *,
+                      BOOL ignore_loop_carried = FALSE) const;
+  BOOL Aliased_Memop(const POINTS_TO *, const POINTS_TO *, TY_IDX , TY_IDX,
+                      BOOL ignore_loop_carried = FALSE) const;
+  BOOL Aliased_Memop_By_Analysis(const POINTS_TO *, const POINTS_TO *,
+                      BOOL ignore_loop_carried = FALSE) const;
   BOOL Aliased_Memop_By_Declaration(const POINTS_TO *, const POINTS_TO *, TY_IDX , TY_IDX ) const;
-  BOOL Aliased_Memop_By_Offset(const POINTS_TO *, const POINTS_TO *) const;
 
   BOOL Aliased_with_Global(const POINTS_TO *) const;
   BOOL Aliased_with_Indirect(const POINTS_TO *) const;

@@ -363,7 +363,7 @@ BOOL No_alias(const struct ALIAS_MANAGER *am, WN *wn);
 
 BOOL Valid_alias(const struct ALIAS_MANAGER *am, WN *wn);
 
-ALIAS_RESULT Aliased(const struct ALIAS_MANAGER *, WN *, WN *);
+ALIAS_RESULT Aliased(const struct ALIAS_MANAGER *, WN *, WN *, BOOL ignore_loop_carried=FALSE);
 
 ALIAS_RESULT Overlapped_base(const struct ALIAS_MANAGER *, const WN *, const WN *);
 
