@@ -324,13 +324,16 @@ class POINTS_TO {
 private:
   ALIAS_INFO    ai;
   TY_IDX        _ty;              // user-declared type for this memop
+  TY_IDX        _hl_ty;
+  UINT32        _field_id;
   INT32         _id;              // only used by the emitter.
 
   // Force everyone to use Copy_non_sticky_info or Copy_fully by
   // declaring an private assignment operator and an undefined copy
   // constructor.
   POINTS_TO &operator= (const POINTS_TO &p)
-    { ai = p.ai; _ty = p._ty; _id = p._id; return *this; }
+    { ai = p.ai; _ty = p._ty; _id = p._id; 
+      _hl_ty = p._hl_ty; _field_id = p._field_id; return *this; }
 
   POINTS_TO(const POINTS_TO &);
 
@@ -388,6 +391,8 @@ public:
   ST          *Based_sym(void)       const { return ai._based_sym; }
   UINT32      Based_sym_depth(void)  const { return ai._based_sym_depth; }
   TY_IDX      Ty(void)		     const { return _ty; }
+  TY_IDX      Highlevel_Ty (void)    const { return _hl_ty; }
+  UINT32      Field_id (void)        const { return _field_id; }
   INT32       Id(void)               const { return _id; }
   PT_ATTR     Attr(void)             const { return ai._attr; }
   BOOL        Not_addr_saved(void)   const { return ai._attr & PT_ATTR_NOT_ADDR_SAVED; }
@@ -467,6 +472,8 @@ public:
       }
     }
   void Set_ty(TY_IDX ty)                  { _ty = ty; }
+  void Set_hl_ty(TY_IDX hlty)             { _hl_ty = hlty; }
+  void Set_field_id (UINT32 fldid)        { _field_id = fldid; }
   void Set_id(INT32 id)                   { _id = id; }
   void Set_attr(PT_ATTR attr)             { ai._attr = attr; }
   void Set_not_addr_saved(void)           { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_NOT_ADDR_SAVED); }
@@ -548,6 +555,8 @@ public:
     Set_bit_ofst_size(0,0);
     Set_based_sym((ST*)NULL);
     Set_ty(0);
+    Set_hl_ty(0);
+    Set_field_id(0);
     Set_id(0);
     Set_alias_class(OPTIMISTIC_AC_ID);
     Set_ip_alias_class(OPTIMISTIC_AC_ID);

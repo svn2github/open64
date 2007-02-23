@@ -454,7 +454,10 @@ public:
                       BOOL ignore_loop_carried = FALSE) const;
   BOOL Aliased_Memop_By_Analysis(const POINTS_TO *, const POINTS_TO *,
                       BOOL ignore_loop_carried = FALSE) const;
-  BOOL Aliased_Memop_By_Declaration(const POINTS_TO *, const POINTS_TO *, TY_IDX , TY_IDX ) const;
+  BOOL Aliased_Memop_By_Declaration(const POINTS_TO *, const POINTS_TO *, 
+          TY_IDX ll_ty1, TY_IDX ll_ty2, 
+          TY_IDX hl_ty1=(TY_IDX)0,
+          TY_IDX hl_ty2=(TY_IDX)0) const;
 
   BOOL Aliased_with_Global(const POINTS_TO *) const;
   BOOL Aliased_with_Indirect(const POINTS_TO *) const;

@@ -145,8 +145,8 @@ ALIAS_RULE::Aliased_Ip_Classification_Rule(const POINTS_TO *const mem1,
 
 // return TRUE iff
 //   o. ty1 == ty2, or 
-//   o. ty1 is of aggregate and there exist a filed <f> of ty2 
-//      where Ty1_Include_Ty2(ty1, type-of-<f>) is satisfied. 
+//   o. ty1 is of aggregate and there exist a filed <f> of ty1 
+//      where Ty1_Include_Ty2(type-of-<f>, f2) is satisfied. 
 //
 // this is helper function of Aliased_This_Ptr_Rule ().
 BOOL
@@ -156,15 +156,15 @@ ALIAS_RULE::Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const
     return TRUE;
   }
 
-  if (TY_kind(ty2) != KIND_STRUCT) {
+  if (TY_kind(ty1) != KIND_STRUCT) {
     return FALSE;
   }
 
-  FLD_ITER iter = Make_fld_iter (FLD_HANDLE (Ty_Table[ty2].Fld ()));
+  FLD_ITER iter = Make_fld_iter (FLD_HANDLE (Ty_Table[ty1].Fld ()));
   do {
     TY_IDX field_ty = (*iter).type;
     if (field_ty == ty1 || (TY_kind(field_ty) == KIND_STRUCT) &&
-        Ty1_Include_Ty2 (ty1, field_ty)) {
+        Ty1_Include_Ty2 (field_ty, ty2)) {
         return TRUE;
     }
   } while (! FLD_last_field (iter++));
@@ -532,7 +532,7 @@ BOOL ALIAS_RULE::Aliased_ANSI_Type_Rule(const POINTS_TO *mem1,
   if (ty1 == (TY_IDX)NULL || ty2 == (TY_IDX)NULL)  // One of type is unknown. Assume aliased.
     return TRUE;
 
-  if (ty1 == ty2)  // aliased if same type.
+  if (ty1 == ty2 && TY_kind(ty1) != KIND_STRUCT)  // aliased if same type.
     return TRUE;
 
   // If both are scalar, do not use ANSI rule.
@@ -540,8 +540,44 @@ BOOL ALIAS_RULE::Aliased_ANSI_Type_Rule(const POINTS_TO *mem1,
   if (mem1->Base_is_fixed() && mem2->Base_is_fixed())
     return TRUE;
 
+
+  if (TY_kind(ty1) == KIND_STRUCT && TY_kind(ty2) == KIND_STRUCT) {
+    if (!Ty1_Include_Ty2 (ty1, ty2) && !Ty1_Include_Ty2 (ty2, ty1)) 
+      return FALSE;
+    
+    if (ty1 == ty2) {
+      INT32 fld1 = mem1->Field_id();
+      INT32 fld2 = mem2->Field_id();
+      if (!fld1 || !fld2 || fld1 == fld2) return TRUE;
+
+
+      UINT cur_field_id = 0;
+      FLD_HANDLE fld_hd1 = FLD_get_to_field (ty1, (UINT)fld1, cur_field_id);
+      cur_field_id = 0;
+      FLD_HANDLE fld_hd2 = FLD_get_to_field (ty2, (UINT)fld2, cur_field_id);
+
+      INT32 ofst1, ofst2;
+      ofst1 = FLD_ofst(fld_hd1);
+      ofst2 = FLD_ofst(fld_hd2);
+      
+      if (ofst1 == ofst2) {
+        return TRUE;
+      }
+
+      INT32 sz1, sz2;
+      sz1 = TY_size (FLD_type(fld_hd1));
+      sz2 = TY_size (FLD_type(fld_hd2));
+
+      BOOL may_alias = (sz1 != 0 & sz2 != 0) && 
+                       ((ofst1 < ofst2) && (ofst1 + sz1 > ofst2) ||
+	               (ofst2 < ofst1) && (ofst2 + sz2 > ofst1));
+      return may_alias;
+    }
+  }
+
   // If both mem have same base, should be handled by offset rule.
   // Do not use ansi rule.
+  // However, if the base is not fixed, offset-rule does not help out)
   // Note: same_base may return FALSE for the same object if the object
   // are passed in multiple times via distinct parameters.
   if (mem1->Same_base(mem2))
@@ -550,6 +586,7 @@ BOOL ALIAS_RULE::Aliased_ANSI_Type_Rule(const POINTS_TO *mem1,
   //  Handle SCALAR, POINTER, STRUCT, CLASS, and ARRAY
   if ((Get_stripped_mtype(ty1) & Get_stripped_mtype(ty2)) == 0)
     return FALSE;
+
 
   return TRUE;
 }
@@ -721,8 +758,8 @@ BOOL ALIAS_RULE::Aliased_Memop_By_Analysis
 //    FALSE -- not aliased
 //
 BOOL ALIAS_RULE::Aliased_Memop_By_Declaration(const POINTS_TO *p1,
-					      const POINTS_TO *p2,
-					      TY_IDX ty1, TY_IDX ty2) const
+      const POINTS_TO *p2, TY_IDX ty1, TY_IDX ty2,
+      TY_IDX hl_ty1, TY_IDX hl_ty2) const
 {
   if (p1->Expr_kind() == EXPR_IS_INVALID ||
       p2->Expr_kind() == EXPR_IS_INVALID)
@@ -734,8 +771,16 @@ BOOL ALIAS_RULE::Aliased_Memop_By_Declaration(const POINTS_TO *p1,
   if (Rule_enabled(QUAL_RULE) && !Aliased_Qualifier_Rule(p1, p2, ty1, ty2))
     return FALSE;
 
-  if (Rule_enabled(C_ANSI_RULE) && !Aliased_ANSI_Type_Rule(p1, p2, ty1, ty2))
-    return FALSE;
+  if (Rule_enabled(C_ANSI_RULE)) {
+    if (!Aliased_ANSI_Type_Rule(p1, p2, ty1, ty2))
+      return FALSE;
+    hl_ty1 = (hl_ty1 == (TY_IDX)0) ? ty1 : hl_ty1;
+    hl_ty2 = (hl_ty2 == (TY_IDX)0) ? ty2 : hl_ty2;
+    if (hl_ty1 && hl_ty2 && (hl_ty1 != ty1 || hl_ty2 != ty2) &&
+        !Aliased_ANSI_Type_Rule(p1, p2, hl_ty1, hl_ty2)) {
+      return FALSE;
+    }
+  }
 
   if (Rule_enabled(C_STRONGLY_TYPED_RULE) && !Aliased_Strongly_Typed_Rule(ty1, ty2))
     return FALSE;
@@ -753,7 +798,7 @@ BOOL ALIAS_RULE::Aliased_Memop_By_Declaration(const POINTS_TO *p1,
   if (Rule_enabled(IBM_DISJOINT_RULE) && !Aliased_Disjoint(p1, p2))
     return FALSE;
   
-  if (Rule_enabled(F90_TARGET_RULE) && !Aliased_F90_Target_Rule(p1, p2, ty1, ty2))
+  if (Rule_enabled(F90_TARGET_RULE) && !Aliased_F90_Target_Rule(p1, p2, ty1, ty2)) 
     return FALSE;
 
   return TRUE;
@@ -783,8 +828,10 @@ BOOL ALIAS_RULE::Aliased_Memop(const POINTS_TO *p1, const POINTS_TO *p2,
   if (!Aliased_Memop_By_Analysis(p1, p2, ignore_loop_carried))
     return FALSE;
 
-  if (!Aliased_Memop_By_Declaration(p1, p2, p1->Ty(), p2->Ty()))
+  if (!Aliased_Memop_By_Declaration(p1, p2, p1->Ty(), p2->Ty(),
+                p1->Highlevel_Ty (), p2->Highlevel_Ty ())) {
     return FALSE;
+  }
 
   return TRUE;
 }

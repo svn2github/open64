@@ -264,6 +264,9 @@
 ***  WN_object_ty(const WN *) 
 ***    Obtain the high level type of the object being accessed.
 ***
+***  WN_hl_object_ty (const WN*, TY_IDX& ty, UINT32& fld_id)
+***    Obtain the higher level type of object being accessed.
+***
 ***  WN_object_size(const WN *)
 ***    Obtain the size of the object being accessed.
 ***
@@ -437,6 +440,9 @@ WN *WN_LOOP_InductionVariable(
 
 /* Obtain the high-level type of the item accessed */
 extern TY_IDX WN_object_ty(const WN *);
+
+/* Obtain the higher level type of object being accessed. */
+extern void WN_hl_object_ty (const WN*, TY_IDX& ty, UINT32& fld_id);
 
 /* Obtain the size of object being accessed */
 extern INT32 WN_object_size(const WN *);
