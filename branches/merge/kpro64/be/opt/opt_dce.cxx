@@ -4101,10 +4101,12 @@ DCE::Update_region_information( void ) const
       // if it deletes the condition code or if it is an unconditional
       // branch. (547802)
       // first need to check it is still a region start, it might be deleted
-      if (regbb->Kind() == BB_REGIONSTART) {
+      if (regbb->Kind() == BB_REGIONSTART && regbb->Succ() != NULL && regbb->Succ()->Len() == 1) {
+#ifndef KEY
 	Is_True(regbb->Succ() != NULL && regbb->Succ()->Len() == 1,
 		("DCE::Update_region_information, multiple successors "
 		 "for region start"));
+#endif
 	BB_NODE *succ = regbb->Succ()->Node();
 	if (!succ->Reached())
 	  Keep_unreached_bb(succ);
