@@ -282,6 +282,7 @@ dwarf_def_macro(Dwarf_P_Debug dbg,
     libdwarf_compose_add_string(dbg, " ", 1);
     if (macvalue) {
         libdwarf_compose_add_string(dbg, " ", 1);
+	libdwarf_compose_add_string(dbg, macvalue, len2);
     }
 #else
     if (macvalue) {
@@ -289,11 +290,11 @@ dwarf_def_macro(Dwarf_P_Debug dbg,
 	libdwarf_compose_add_bytes(dbg, " ", 1);
 	libdwarf_compose_add_string(dbg, macvalue, len2);
     }
-#endif 
     else {
         libdwarf_compose_add_string(dbg, macname, len);
     }
-
+#endif
+    
     res = libdwarf_compose_complete(dbg, &compose_error_type);
     if (res != DW_DLV_OK) {
 	_dwarf_p_error(NULL, error, compose_error_type);

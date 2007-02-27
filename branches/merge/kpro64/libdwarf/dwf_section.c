@@ -321,10 +321,12 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	    // personality information.
 	    //
 	    // personality format
+#ifndef TARG_IA64
 	    db = Personality_Format;
 	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&db,
 			    sizeof(db), sizeof(Dwarf_Ubyte));
 	    data += sizeof(Dwarf_Ubyte);
+#endif
 	    // personality routine offset
 	    Dwarf_Unsigned p = 0;
 	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&p,

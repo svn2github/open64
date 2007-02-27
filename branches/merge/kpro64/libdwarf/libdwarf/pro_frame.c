@@ -378,30 +378,16 @@ dwarf_add_fde_inst(Dwarf_P_Fde fde,
 	// Use Dwarf_Unsigned for each label (bugs 4071, 4490, 9729), also
 	// affects code in pro_section.c and dwf_section.c.
 	case DW_CFA_advance_loc4:
-#ifdef TARG_IA64
-	    // We will use 2 half-words to copy the labels; cg will later
-	    // fix the relocatable symbols.
-	    dh = val1;
-	    ptr = (char *) _dwarf_p_get_alloc(NULL, 4);
-#else
             du = val1;
             ptr = (char *) _dwarf_p_get_alloc(NULL, 2 * sizeof(Dwarf_Unsigned));
-
-#endif
 	    if (ptr == NULL) {
 	      _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
 	      return((Dwarf_P_Fde)DW_DLV_BADADDR);
 	    }
-#ifdef TARG_IA64
-	    memcpy((void *)ptr, (const void *)&dh,2);
-	    dh = val2;
-	    memcpy((void *)ptr+2, (const void *)&dh,2);
-#else
             memcpy((void *)ptr, (const void *)&du, sizeof(Dwarf_Unsigned));
             du = val2;
             memcpy((void *)ptr + sizeof(Dwarf_Unsigned), (const void *)&du,
                    sizeof(Dwarf_Unsigned));
-#endif
 	    nbytes = 4;
 	    break;
 #endif // TARG_X8664
