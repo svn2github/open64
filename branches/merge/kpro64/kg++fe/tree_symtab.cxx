@@ -420,7 +420,11 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
 #if defined(TARG_IA64)
+		case 12:
 		case 16: mtype = MTYPE_F10; break;
+#elif defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+		case 12:
+		case 16: mtype = MTYPE_FQ; break;
 #else
 		case 16: mtype = MTYPE_F16; break;
 #endif
