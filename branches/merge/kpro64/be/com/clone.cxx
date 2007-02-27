@@ -526,7 +526,7 @@ IPO_CLONE::New_Clone (ST *clone_st)
 // Fix up ST entries
 // ======================================================================
 
-inline void 
+template<> inline void 
 IPO_SYMTAB::fix_table_entry<ST>::operator () (UINT idx, ST* st) const
 {
     Set_ST_st_idx(st, make_ST_IDX(idx, _sym->Get_cloned_level()));
@@ -558,7 +558,7 @@ IPO_SYMTAB::fix_table_entry<ST>::operator () (UINT idx, ST* st) const
 // ======================================================================
 // Fix up INITO entries
 // ======================================================================
-inline void 
+template<> inline void 
 IPO_SYMTAB::fix_table_entry<INITO>::operator () (UINT idx, INITO* inito) const
 {
     Set_INITO_st_idx(*inito, make_ST_IDX(ST_IDX_index(INITO_st_idx(*inito))+_sym->Get_cloned_st_last_idx(), _sym->Get_cloned_level()));
@@ -567,7 +567,7 @@ IPO_SYMTAB::fix_table_entry<INITO>::operator () (UINT idx, INITO* inito) const
 // ======================================================================
 // Fix up ST_ATTR entries
 // ======================================================================
-inline void 
+template<> inline void 
 IPO_SYMTAB::fix_table_entry<ST_ATTR>::operator () (UINT idx, ST_ATTR* st_attr) const
 {
     // bug fix for OSP_125
@@ -771,7 +771,7 @@ traverse_initvs (INITV_IDX start, ST_IDX old, ST_IDX copy)
 // their correcponding INITO to the Global Symtab
 // ======================================================================
 
-inline void
+template<> inline void
 IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
 {
     ST *copy_st;
@@ -839,7 +839,7 @@ IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
 }
 
 // bug fix for OSP_125
-inline void
+template<> inline void
 IPO_SYMTAB::promote_entry<ST_ATTR>::operator () (UINT idx, ST_ATTR* old_attr) const
 {
     // If the ST entry of the ST_ATTR has been promoted, then need to
@@ -860,7 +860,7 @@ IPO_SYMTAB::promote_entry<ST_ATTR>::operator () (UINT idx, ST_ATTR* old_attr) co
 // a different base, need to fix it
 // ======================================================================
 
-inline void
+template<> inline void
 IPO_SYMTAB::fix_base<ST>::operator () (UINT idx, ST* old_st) const
 {
     ST *copy_st = NULL;
@@ -882,7 +882,7 @@ IPO_SYMTAB::fix_base<ST>::operator () (UINT idx, ST* old_st) const
     }
 }
 
-inline void
+template<> inline void
 IPO_SYMTAB::promote_entry<INITO>::operator () (UINT idx, INITO* old_inito) const
 {
     // If the ST entry of the INITO has been promoted, then need to
