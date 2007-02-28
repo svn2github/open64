@@ -1,0 +1,169 @@
+#  Copyright (C) 2006-2007, Hewlett-Packard Company & Tsinghua University.  All rights reserved.
+#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+
+# The directory where all native compiler component build subdirectories
+# are located
+#
+
+NATIVE_BUILD_DIR = kpro64/targia32_x8664
+NATIVE_BUILD_DIR_LD = kpro64/targcygnus_ia32_x8664
+
+SUBMAKE=${MAKE}
+
+# All native compiler components:
+NATIVE_COMPONENTS = \
+		$(NATIVE_BUILD_DIR)/driver/driver \
+                $(NATIVE_BUILD_DIR)/be/be \
+                $(NATIVE_BUILD_DIR)/be/be.so \
+                $(NATIVE_BUILD_DIR)/cg/cg.so \
+                $(NATIVE_BUILD_DIR)/wopt/wopt.so \
+                $(NATIVE_BUILD_DIR)/lno/lno.so \
+                $(NATIVE_BUILD_DIR)/lw_inline/inline \
+                $(NATIVE_BUILD_DIR)/ipa/ipa.so \
+                $(NATIVE_BUILD_DIR)/ipl/ipl.so \
+                $(NATIVE_BUILD_DIR)/ipl/ipl \
+                $(NATIVE_BUILD_DIR)/targ_info/opteron.so \
+                $(NATIVE_BUILD_DIR)/targ_info/em64t.so \
+                $(NATIVE_BUILD_DIR)/whirl2c/whirl2c.so \
+                $(NATIVE_BUILD_DIR)/whirl2c/whirl2c \
+                $(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so \
+                $(NATIVE_BUILD_DIR)/whirl2f/whirl2f \
+                $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a \
+                $(NATIVE_BUILD_DIR_LD)/ld/ld-new  \
+                $(NATIVE_BUILD_DIR)/gccfe/gfec \
+                $(NATIVE_BUILD_DIR)/g++fe/gfecc 
+
+                # We use prebuilt fortran end by default
+                #$(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
+
+PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done) 
+.PHONY : $(PHONY_TARGET) install clean clobber
+
+all: build
+
+$(NATIVE_BUILD_DIR)/driver/driver driver:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver
+
+$(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe
+
+$(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe
+
+$(NATIVE_BUILD_DIR)/be/be be:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be
+
+$(NATIVE_BUILD_DIR)/be/be.so be.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be
+
+$(NATIVE_BUILD_DIR)/cg/cg.so cg.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg
+
+$(NATIVE_BUILD_DIR)/wopt/wopt.so wopt.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wopt
+
+$(NATIVE_BUILD_DIR)/lno/lno.so lno.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lno
+
+$(NATIVE_BUILD_DIR)/ipa/ipa.so ipa.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipa
+
+$(NATIVE_BUILD_DIR)/ipl/ipl.so ipl.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipl
+
+$(NATIVE_BUILD_DIR)/ipl/ipl ipl:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipl
+
+$(NATIVE_BUILD_DIR)/lw_inline/inline inline:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lw_inline
+
+$(NATIVE_BUILD_DIR)/whirl2c/whirl2c.so whirl2c.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2c
+
+$(NATIVE_BUILD_DIR)/whirl2c/whirl2c whirl2c:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2c
+
+$(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so whirl2f.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2f
+
+$(NATIVE_BUILD_DIR)/whirl2f/whirl2f whirl2f:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2f
+
+$(NATIVE_BUILD_DIR)/targ_info/opteron.so opteron.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/targ_info
+
+$(NATIVE_BUILD_DIR)/targ_info/em64t.so em64t.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/targ_info
+
+$(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ir_tools
+
+$(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90/sgi
+
+.PHONY: Force
+$(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR_LD)
+
+$(NATIVE_BUILD_DIR_LD)/Makefile:  
+	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
+
+build: ${PHONY_TARGET} 
+
+install: ;@./INSTALL.x8664
+
+clobber:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wopt clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lno clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipa clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipl clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lw_inline clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2c clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2f clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/../libkapi clean 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/targ_info clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ir_tools clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90/sgi clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90 clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
+	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER 
+	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
+		libiberty libunwindP ; do  \
+		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
+	done
+
