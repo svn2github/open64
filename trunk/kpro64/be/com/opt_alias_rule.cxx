@@ -152,19 +152,34 @@ ALIAS_RULE::Aliased_Ip_Classification_Rule(const POINTS_TO *const mem1,
 BOOL
 ALIAS_RULE::Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const
 {
-  if (ty1 == ty2) {
+  if (TY_IDX_index(ty1) == TY_IDX_index(ty2)) {
     return TRUE;
   }
 
-  if (TY_kind(ty1) != KIND_STRUCT) {
+  // if the type is array, use element type instead 
+  while (TY_KIND (ty1) == KIND_ARRAY)
+    ty1 = TY_AR_etype (ty1);
+
+  while (TY_KIND (ty2) == KIND_ARRAY)
+    ty2 = TY_AR_etype (ty2);
+   
+  if (TY_kind(ty1) != KIND_STRUCT || TY_kind(ty2) != KIND_STRUCT) {
+    // not applicable 
+    Is_True (FALSE, ("The parameter passed to Ty1_Include_Ty2() should be aggregate type"));
     return FALSE;
   }
 
   FLD_ITER iter = Make_fld_iter (FLD_HANDLE (Ty_Table[ty1].Fld ()));
   do {
     TY_IDX field_ty = (*iter).type;
-    if (field_ty == ty1 || (TY_kind(field_ty) == KIND_STRUCT) &&
-        Ty1_Include_Ty2 (field_ty, ty2)) {
+    if (TY_IDX_index(field_ty) == TY_IDX_index(ty2)) {
+      return TRUE;
+    }
+
+    while (TY_KIND (field_ty) == KIND_ARRAY)
+	field_ty = TY_AR_etype (field_ty);
+
+    if (TY_kind(field_ty) == KIND_STRUCT && Ty1_Include_Ty2 (field_ty, ty2)) {
         return TRUE;
     }
   } while (! FLD_last_field (iter++));
