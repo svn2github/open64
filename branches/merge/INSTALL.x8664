@@ -38,31 +38,35 @@ VER_MINOR="0"
 PATCH_LEVEL=""
 VERSION="${VER_MAJOR}.${VER_MINOR}"
 [ x"$PATCH_LEVEL" != x"" ] && VERSION="${VERSION}.${PATCH_LEVEL}"
-    # set the build host
+
+PREBUILT_LIB="./lib"
+PREBUILT_BIN="./bin"
+
+# set the build host
 BUILD_HOST="ia32"
 #[ `uname -m | grep -i 'i[0-9]86' | wc -l` -eq 1 ] && BUILD_HOST="ia32"
 
-    # set the target host, it must be "ia64"
-TARG_HOST="ia32"
+# set the target host, it must be "x8664"
+TARG_HOST="x8664"
 
-    # set the TARGET O.S, only linux is supported currently 
+# set the TARGET O.S, only linux is supported currently 
 TARG_OS="linux"
 
-    # set the building host's O.S, currently only linux is supported.
+# set the building host's O.S, currently only linux is supported.
 BUILD_OS="linux" 
 #[ `uname -s | grep -i linux | wc -l` -eq 1 ] && BUILD_OS="linux"
 
-    # everything we will install is under $ROOT
+# everything we will install is under $ROOT
 ROOT=${PSC_INSTALL_PREFIX}
 
 #INTERPOSE=${TARG_HOST}-pathscale-${TARG_OS}
 #[ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
 
-AREA="kpro64/targia32_x8664"
+AREA="kpro64/targ${BUILD_HOST}_${TARG_HOST}"
 
 PHASEPATH=${ROOT}/lib/${VERSION}
 NATIVE_LIB_DIR=${ROOT}/lib/${VERSION}
-[ "${TARG_HOST}" = "ia32" ] && NATIVE_LIB_DIR="${NATIVE_LIB_DIR}/32"
+NATIVE_LIB_DIR32="${NATIVE_LIB_DIR}/32"
 BIN_DIR=${ROOT}/bin
 #ALT_BIN_DIR=${ROOT}/usr/${INTERPOSE}/altbin
 
@@ -99,8 +103,6 @@ INSTALL_DRIVER () {
 # default search paths differ
 
 #    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
-
-    [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
 #    [ ! -e ${BIN_DIR}/pathcc  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathcc
 #    [ ! -e ${BIN_DIR}/pathCC  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathCC
 #    [ ! -e ${BIN_DIR}/pathf90 ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathf90
@@ -110,14 +112,14 @@ INSTALL_DRIVER () {
 #    [ ! -e ${BIN_DIR}/pathf90-${VERSION} ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathf90-${VERSION}
 #    [ ! -e ${BIN_DIR}/pathf95-${VERSION} ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/pathf95-${VERSION}
 
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathcc
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathCC
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathf90
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathf95
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathcc-${VERSION}
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathCC-${VERSION}
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathf90-${VERSION}
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/pathf95-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/opencc
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openCC
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/opencc-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openCC-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
 
     return 0
 }
@@ -149,9 +151,9 @@ INSTALL_IPA () {
     INSTALL_EXEC_SUB ${AREA}/ipa/ipa.so ${PHASEPATH}/ipa.so
     INSTALL_EXEC_SUB ${AREA}/ipl/ipl.so ${PHASEPATH}/ipl.so
 
-    ld_new_dir="targcygnus_ia32_x8664/ld"
+    ld_new_dir="kpro64/targcygnus_ia32_x8664/ld"
 
-   # INSTALL_EXEC_SUB ${ld_new_dir}/ld-new  ${PHASEPATH}/ipa_link
+    INSTALL_EXEC_SUB ${ld_new_dir}/ld-new  ${PHASEPATH}/ipa_link
 
     ln -sf ${PHASEPATH}/be ${PHASEPATH}/ipl 
 
@@ -202,44 +204,49 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
    
 INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 
-  #  d="targ${TARG_HOST}_builton${BUILD_HOST}"
-    d="targ${TARG_HOST}_${BUILD_HOST}"
+    #d="targ${TARG_HOST}_builton${BUILD_HOST}"
+    #d="targ${TARG_HOST}_${BUILD_HOST}"
+    LIBAREA=kpro64/targx8664_builtonia32
+    LIBAREA32=kpro64/targia32_builtonia32
 
-    INSTALL_DATA_SUB ${AREA}/libfortran/libfortran.a ${NATIVE_LIB_DIR}/libfortran.a
-    INSTALL_DATA_SUB ${AREA}/libfortran/libfortran_p.a ${NATIVE_LIB_DIR}/libfortran_p.a
-    INSTALL_DATA_SUB ${AREA}/libfortran/libfortran.so ${NATIVE_LIB_DIR}/libfortran.so.1
-    ln -sf ${NATIVE_LIB_DIR}/libfortran.so.1       ${NATIVE_LIB_DIR}/libfortran.so
+    for i in fortran F77 mv; do
+        INSTALL_DATA_SUB ${LIBAREA}/lib${i}/lib${i}.a     ${NATIVE_LIB_DIR}/lib${i}.a
+        INSTALL_DATA_SUB ${LIBAREA}/lib${i}/lib${i}_p.a   ${NATIVE_LIB_DIR}/lib${i}_p.a
+        INSTALL_DATA_SUB ${LIBAREA}/lib${i}/lib${i}.so    ${NATIVE_LIB_DIR}/lib${i}.so.1
+        ln -sf ${NATIVE_LIB_DIR}/lib${i}.so.1             ${NATIVE_LIB_DIR}/lib${i}.so
 
-    INSTALL_DATA_SUB ${AREA}/libu/libffio.a          ${NATIVE_LIB_DIR}/libffio.a
-    INSTALL_DATA_SUB ${AREA}/libu/libffio_p.a          ${NATIVE_LIB_DIR}/libffio_p.a
-    INSTALL_DATA_SUB ${AREA}/libu/libffio.so          ${NATIVE_LIB_DIR}/libffio.so
+        INSTALL_DATA_SUB ${LIBAREA32}/lib${i}/lib${i}.a   ${NATIVE_LIB_DIR32}/lib${i}.a
+        INSTALL_DATA_SUB ${LIBAREA32}/lib${i}/lib${i}_p.a ${NATIVE_LIB_DIR32}/lib${i}_p.a
+        INSTALL_DATA_SUB ${LIBAREA32}/lib${i}/lib${i}.so  ${NATIVE_LIB_DIR32}/lib${i}.so.1
+        ln -sf ${NATIVE_LIB_DIR32}/lib${i}.so.1           ${NATIVE_LIB_DIR32}/lib${i}.so
+    done
 
-  # INSTALL_DATA_SUB ${AREA}/libF77/libF77.a          ${NATIVE_LIB_DIR}/libF77.a
-  # INSTALL_DATA_SUB ${AREA}/libF77/libF77_p.a          ${NATIVE_LIB_DIR}/libF77_p.a
-  # INSTALL_DATA_SUB ${AREA}/libF77/libF77.so          ${NATIVE_LIB_DIR}/libF77.so
-   
-  # INSTALL_DATA_SUB ${AREA}/libm/libmpath.a       ${NATIVE_LIB_DIR}/libmpath.a
-  # INSTALL_DATA_SUB ${AREA}/libm/libmpath_p.a       ${NATIVE_LIB_DIR}/libmpath_p.a
-  # INSTALL_DATA_SUB ${AREA}/libm/libmpath.so.1       ${NATIVE_LIB_DIR}/libmpath.so.1
+    INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a            ${NATIVE_LIB_DIR}/libffio.a
+    INSTALL_DATA_SUB ${LIBAREA}/libu/libffio_p.a          ${NATIVE_LIB_DIR}/libffio_p.a
+    INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.so           ${NATIVE_LIB_DIR}/libffio.so.1
+    INSTALL_DATA_SUB ${LIBAREA32}/libu/libffio.a          ${NATIVE_LIB_DIR32}/libffio.a
+    INSTALL_DATA_SUB ${LIBAREA32}/libu/libffio_p.a        ${NATIVE_LIB_DIR32}/libffio_p.a
+    INSTALL_DATA_SUB ${LIBAREA32}/libu/libffio.so         ${NATIVE_LIB_DIR32}/libffio.so
+
+  # INSTALL_DATA_SUB ${LIBAREA}/libm/libmpath.a       ${NATIVE_LIB_DIR}/libmpath.a
+  # INSTALL_DATA_SUB ${LIBAREA}/libm/libmpath_p.a       ${NATIVE_LIB_DIR}/libmpath_p.a
+  # INSTALL_DATA_SUB ${LIBAREA}/libm/libmpath.so.1       ${NATIVE_LIB_DIR}/libmpath.so.1
   # ln -sf ${NATIVE_LIB_DIR}/libmpath.so.1       ${NATIVE_LIB_DIR}/libmpath.so
-
-    INSTALL_DATA_SUB ${AREA}/libmv/libmv.a           ${NATIVE_LIB_DIR}/libmv.a
-    INSTALL_DATA_SUB ${AREA}/libmv/libmv_p.a           ${NATIVE_LIB_DIR}/libmv_p.a
-    INSTALL_DATA_SUB ${AREA}/libmv/libmv.so.1           ${NATIVE_LIB_DIR}/libmv.so.1
-    ln -sf ${NATIVE_LIB_DIR}/libmv.so.1           ${NATIVE_LIB_DIR}/libmv.so
         
-    INSTALL_DATA_SUB ${AREA}/libmsgi/libm.a           ${NATIVE_LIB_DIR}/libmsgi.a
-    INSTALL_DATA_SUB ${AREA}/libmsgi/libm_p.a           ${NATIVE_LIB_DIR}/libmsgi_p.a
-  #  INSTALL_DATA_SUB ${AREA}/libmsgi/libm.so.1           ${NATIVE_LIB_DIR}/libmsgi.so.1
-  #  ln -sf ${NATIVE_LIB_DIR}/libmsgi.so.1           ${NATIVE_LIB_DIR}/libmsgi.so
+  # INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libm.a           ${NATIVE_LIB_DIR}/libmsgi.a
+  # INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libm_p.a           ${NATIVE_LIB_DIR}/libmsgi_p.a
+  # INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libm.so.1           ${NATIVE_LIB_DIR}/libmsgi.so.1
+  # ln -sf ${NATIVE_LIB_DIR}/libmsgi.so.1           ${NATIVE_LIB_DIR}/libmsgi.so
 
     return 0
 }
 
 INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
 
-    for i in ../lib/${TARG_HOST}-${TARG_OS}/crt/* ; do 
-	[ "`basename $i`" = "CVS" ] && continue
+    [ ! -d ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/crt ] && return 0
+    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/crt/* ; do 
+	      [ "`basename $i`" = "CVS" ] && continue
+	      [ "`basename $i`" = ".svn" ] && continue
         INSTALL_DATA_SUB $i ${PHASEPATH}/`basename $i`
     done 
     
@@ -249,18 +256,38 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
 
 INSTALL_PREBUILD_OPEN64_NATIVE_LIB () {
 
-    for i in ../lib/${TARG_HOST}-${TARG_OS}/open64/* ; do 
+    [ ! -d ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/open64 ] && return 0
+    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/open64/* ; do 
 
         x=`basename $i`
         [ "$x" = "CVS" ] && continue;
+        [ "$x" = ".svn" ] && continue;
 
         [ "$x" = "libinstr.a" ] &&
             INSTALL_DATA_SUB $i ${PHASEPATH}/$x && continue;
-            
         [ "$x" = "libcginstr.a" ] &&
             INSTALL_DATA_SUB $i ${PHASEPATH}/$x && continue;
 
         INSTALL_DATA_SUB $i ${NATIVE_LIB_DIR}/$x
+	# Create Symbol link for .1 files
+        echo "$x" | grep ".1$" 2>&1 > /dev/null	
+	[ $? -eq 0 ] && newname=`echo $x | sed 's/\.so\.1/\.so/'` \
+	  && ln -s -f ${NATIVE_LIB_DIR}/$x ${NATIVE_LIB_DIR}/${newname}
+    done
+
+    [ "$TARG_HOST" != "x8664" ] && return 0
+    [ ! -d ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/open64/32 ] && return 0
+    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/open64/32/* ; do 
+
+        x=`basename $i`
+        [ "$x" = "CVS" ] && continue;
+        [ "$x" = ".svn" ] && continue;
+
+        INSTALL_DATA_SUB $i ${NATIVE_LIB_DIR32}/$x
+        # Create Symbol link for .1 files
+        echo "$x" | grep ".1$" 2>&1 > /dev/null
+        [ $? -eq 0 ] && newname=`echo $x | sed 's/\.so\.1/\.so/'` \
+          && ln -s -f ${NATIVE_LIB_DIR32}/$x ${NATIVE_LIB_DIR32}/${newname}
     done
 
     return 0
@@ -270,10 +297,12 @@ INSTALL_PREBUILD_OPEN64_NATIVE_LIB () {
    # On native environment, we requires the end user install glibc-devel before 
    # hand.
 INSTALL_PREBUILD_GLIBC_NATIVE_LIB () {
-
-    for i in ../lib/${TARG_HOST}-${TARG_OS}/gnu/* ; do 
+    
+    [ ! -d ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu ] && return 0
+    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/* ; do 
         x=`basename $i`
         [ "$x" = "CVS" ] && continue;
+        [ "$x" = ".svn" ] && continue;
         [ "$x" = "libgcc.a"    ] && continue;
         [ "$x" = "libstdc++.a" ] && continue;
         INSTALL_EXEC_SUB $i ${NATIVE_LIB_DIR}/`basename $i`
@@ -284,9 +313,11 @@ INSTALL_PREBUILD_GLIBC_NATIVE_LIB () {
 
 INSTALL_PREBUILD_PHASE () {
 
-        # Some prebuild
-    for i in ../bin/${BUILD_HOST}-${BUILD_OS}/phase/* ; do 
-	[ "`basename $i`" = "CVS" ] && continue
+    # Some prebuild
+    [ ! -d ${PREBUILT_BIN}/${TARG_HOST}-${BUILD_OS}/phase ] && return 0
+    for i in ${PREBUILT_BIN}/${TARG_HOST}-${BUILD_OS}/phase/* ; do 
+	      [ "`basename $i`" = "CVS" ] && continue
+	      [ "`basename $i`" = ".svn" ] && continue
         INSTALL_EXEC_SUB $i ${PHASEPATH}/`basename $i`
     done
 
@@ -295,8 +326,10 @@ INSTALL_PREBUILD_PHASE () {
 
 INSTALL_CROSS_UTIL () {
 
-    for i in ../bin/${BUILD_HOST}-${BUILD_OS}/util/* ; do 
-	[ "`basename $i`" = "CVS" ] && continue
+    [ ! -d ${PREBUILT_BIN}/${BUILD_HOST}-${BUILD_OS}/util ] && return 0
+    for i in ${PREBUILT_BIN}/${BUILD_HOST}-${BUILD_OS}/util/* ; do 
+	      [ "`basename $i`" = "CVS" ] && continue
+	      [ "`basename $i`" = ".svn" ] && continue
         INSTALL_EXEC_SUB $i ${BIN_DIR}/`basename $i`
     done
 
@@ -324,7 +357,7 @@ INSTALL_NATIVE_HEADER () {
 
 INSTALL_MAN_PAGE () {
 
-    d1=osprey1.0/man/linux/man1
+    d1=kpro64/man/linux/man1
     d2=$ROOT/usr/man/man1
 
     INSTALL_DATA_SUB $d1/sgicc.1 $d2 
@@ -356,12 +389,18 @@ cd `dirname $0`
 
 [ -z ${PSC_INSTALL_PREFIX} ] && echo -e "please set environment variable PSC_INSTALL_PREFIX !\n    Notes: everything will be installed under \$PSC_INSTALL_PREFIX" && exit 1
 
+# prepare directories
+[ ! -d ${BIN_DIR} ] && mkdir -p ${BIN_DIR}
+[ ! -d ${NATIVE_LIB_DIR} ] && mkdir -p ${NATIVE_LIB_DIR}
+[ ! -d ${NATIVE_LIB_DIR32} ] && mkdir -p ${NATIVE_LIB_DIR32}
+
 INSTALL_DRIVER 
 INSTALL_FE 
 INSTALL_BE 
 INSTALL_IPA 
 INSTALL_CG 
 INSTALL_WHIRL_STUFF 
+INSTALL_MISC
 
     # Install archieves 
 #cat << _EOF_
@@ -381,13 +420,12 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES
 #[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_PREBUILD_GLIBC_NATIVE_LIB
 #[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_NATIVE_HEADER
 INSTALL_NATIVE_HEADER 
-#INSTALL_PREBUILD_OPEN64_NATIVE_LIB 
 INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES
+INSTALL_PREBUILD_OPEN64_NATIVE_LIB 
 #INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP 
 
 #[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_CROSS_UTIL
-#INSTALL_PREBUILD_PHASE 
-
-INSTALL_MISC
+INSTALL_PREBUILD_PHASE 
 
 exit 0
+

@@ -52,12 +52,12 @@ LIBRARY_SUBDIRS := \
 	libfortran \
 	libF77 \
 	libu \
-	libm \
 	libmv \
 	libinstr2 \
-	libfoobar \
-	libpscrt \
-	libopenmp
+	#libm \
+	#libfoobar \
+	#libpscrt \
+	#libopenmp
 
 #
 #  Finally, the compiler tools (components) are built.
@@ -65,7 +65,7 @@ LIBRARY_SUBDIRS := \
 #  Note that be_driver must come last since it depends on other components
 #  being built first.
 #
-TOOL_SUBDIRS := assign
+TOOL_SUBDIRS := 
 
 
 SUBDIRS := $(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
@@ -73,7 +73,7 @@ SUBDIRS := $(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
 default clean clobber:
 	+@for d in $(SUBDIRS); do \
 	    echo $(MAKE) -C $$d $@; \
-	    $(MAKE) -C $$d $@; \
+	    $(MAKE) $(if $V,,--no-print-directory) -C $$d $@; \
 	    retval=$$?; \
 	    if [ $$retval != 0 ]; then \
 		if grep -q k <<<'$(MAKEFLAGS)'; then \

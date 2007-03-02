@@ -25,17 +25,18 @@
 #       ia32-host x86_64-target build area
 #
 
-setenv CFLAGS " -g -O2 -m32 -mno-sse2"
+#setenv CFLAGS " -g -O2 -m32 -mno-sse2"
+setenv CFLAGS " -g -O2"
 
-set bk_root=`bk root`
-${bk_root}/pathscale/process-defs csh - | source /dev/stdin
+#set bk_root=`bk root`
+#${bk_root}/pathscale/process-defs csh - | source /dev/stdin
 
 set     SRC_DIR         = ../cygnus
-set	INSTALL_DIR	= ${PSC_INSTALL_PREFIX}
+set	INSTALL_DIR	= /usr/x8664-linux #${PSC_INSTALL_PREFIX}
 set     CONFIGURE       = ${SRC_DIR}/configure
 set     HOST            = i686-pathscale-linux
 set     BUILD           = i686-pathscale-linux
-set     TARG            = ${PSC_TARGET}
+set     TARG            = i686-pathscale-linux #${PSC_TARGET}
 
 ${CONFIGURE}                   \
     --srcdir=${SRC_DIR}        \
