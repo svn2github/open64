@@ -458,20 +458,26 @@ set_library_paths(string_list_t *args)
 	char *our_path;
 	
 	if (abi == ABI_N32) {
-		asprintf(&our_path, "%s/" PSC_FULL_VERSION "/32",
+		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION "/32",
 			 root_prefix);
 	} else {
+#ifdef TARG_IA64
 		asprintf(&our_path, "%s/" PSC_FULL_VERSION, root_prefix);
+#else
+		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION, root_prefix);
+#endif
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
 
 	free(our_path);
-        our_path = get_phase_dir(P_library);
+#ifdef TARG_IA64
+	our_path = get_phase_dir(P_library);
         add_string (args, concat_strings("-L", our_path));
 
         our_path= get_phase_dir(P_alt_library);
         add_string (args, concat_strings("-L", our_path));
+#endif
 }
 
 /*
