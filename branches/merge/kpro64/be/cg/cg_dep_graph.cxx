@@ -3775,7 +3775,7 @@ static void Add_MEM_Arcs(BB *bb)
   /* Count the memory OPs */
   num_mem_ops = 0;
   FOR_ALL_BB_OPs(bb, op) {
-    if (OP_load(op) || OP_like_store(op))
+    if (OP_Load(op) || OP_like_store(op))
       num_mem_ops++;
 
     if (CG_DEP_Add_Alloca_Arcs && op_defines_sp(op))
