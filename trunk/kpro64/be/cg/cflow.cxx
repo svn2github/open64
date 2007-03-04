@@ -7255,12 +7255,7 @@ CFLOW_Delete_Empty_BB(void)
          /* if bp has annotation , cp all to the tgt_succ 
           * if bp has no annotation, delete it directly
           */
-         ANNOTATION  *annotations = BB_annotations(bp);
-         if (annotations ) {
-            BOOL copy_succeed =BB_Copy_Annotations(tgt_succ, bp, ANNOT_kind(annotations)) ;
-            Is_True(copy_succeed,
-                   ("no annotations for BB:%d", BB_id(bp)));
-         }
+	 BB_Copy_All_Annotations (tgt_succ, bp);
          Delete_BB(bp, CFLOW_Trace_Empty_BB_Elim);
       }
   } 
