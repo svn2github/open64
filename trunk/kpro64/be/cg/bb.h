@@ -408,6 +408,10 @@
  *	(ANNOT_info); not its contents. The return value is the
  *	count of the annotations copied.
  *
+ *   INT BB_Copy_All_Annotations (BB* to_bb, BB* from_bb)
+ *      This function does what its name suggests. The return value is 
+ *      the count of the annotations copied.
+ * 
  *   BOOL BB_Is_Cold(BB *bb)
  *	Return a boolean to indicate if a BB is part of a cold region
  *	or not.
@@ -1012,6 +1016,7 @@ extern void Change_Succ_Prob(BB *pred, BB *succ, float prob);
 /* Add/copy an annotation to a BB */
 extern void BB_Add_Annotation(BB *bb, ANNOTATION_KIND kind, void *info);
 extern INT BB_Copy_Annotations(BB *to_bb, BB *from_bb, ANNOTATION_KIND kind);
+extern INT BB_Copy_All_Annotations(BB *to_bb, BB *from_bb);
 
 /* Free the memory associated with the live BBs and clear pointers: */
 extern	void  Free_BB_Memory ( void );

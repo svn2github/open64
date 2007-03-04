@@ -1537,6 +1537,21 @@ INT BB_Copy_Annotations(BB *to_bb, BB *from_bb, ANNOTATION_KIND kind)
   return count;
 }
 
+/* Copy all annotations from <from_bb> to <to_bb>, and returns 
+ * the number of annotations copied */
+INT BB_Copy_All_Annotations (BB *to_bb, BB *from_bb) {
+   INT32 cnt = 0;
+   ANNOTATION *ant = BB_annotations(from_bb);
+   while (ant) {
+      cnt ++; 
+      BB_Add_Annotation(to_bb, ANNOT_kind(ant), ANNOT_info(ant));
+      if(ANNOT_kind(ant) == ANNOT_LABEL) {
+        Set_Label_BB( ANNOT_label(ant), to_bb );
+      }
+      ant = ANNOT_next(ant); 
+   }
+   return cnt;
+}
 
 OP *
 BB_entry_sp_adj_op (BB *bb)
