@@ -59,6 +59,7 @@
 
 #include "ipfec_defs.h"
 #include "ipfec_options.h"
+#include "ti_latency.h" /* for TI_LATENCY_Result_Available_Cycle*/
 
 #include "region.h"
 #include "dag.h"
@@ -369,9 +370,11 @@ FAVOR_DELAY_HEUR :: Compute_Delay (
 
 
     if (Is_Leaf) { 
-        if (TOP_is_xfer(OP_code(op))) { op_info->_delay = 1.0f ; } 
-        else if (OP_load(op)) { op_info->_delay = 2.0f ; } 
-        else { op_info->_delay = 1.0f ; }  ;
+        for (INT i = 0; i < OP_results(op); i++) {
+            INT32 t = TI_LATENCY_Result_Available_Cycle(OP_code(op), i);
+	    op_info->_delay = MAX(op_info->_delay,t);  
+	}
+        if (op_info->_delay == 0.0f) { op_info->_delay = 1.0f ; } 
 
         return ;
     }
