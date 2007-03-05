@@ -1041,7 +1041,7 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
 	// update the OPSCH_scycle field for the predecessor OP.
 	OPSCH_scycle(succ_opsch) = MAX (scycle, OPSCH_scycle(succ_opsch));
 
-#ifndef TARG_IA64
+#ifdef TARG_IA64
 	OPSCH_num_preds(succ_opsch)--;
 	if (OPSCH_num_preds(succ_opsch) == 0) {
 	  VECTOR_Add_Element (_ready_vector, succ_op);
