@@ -7764,7 +7764,7 @@ Emit_Options (void)
   // don't emit anything for symtab.s
   if (!Emit_Global_Data)
   {
-    fputs ("\t.ident\t\"#QLogic PathScale Compiler Version " PSC_FULL_VERSION " :", Asm_File);
+    fputs ("\t.ident\t\"#QLogic PathScale Compiler Version " OPEN64_FULL_VERSION " :", Asm_File);
     fprintf (Asm_File, " %s compiled with : ", Src_File_Name);
     // 0th is 'be', (be_command_line_argc-1)th is filename
     for (INT cmds=1; cmds < be_command_line_argc-1; ++cmds)
