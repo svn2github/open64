@@ -207,7 +207,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #else
 			// Bug 943
 			{
-			  printf("pathcc: variable-length structure not yet implemented\n");
+			#ifdef PSC_TO_OPEN64
+			  printf("opencc: variable-length structure not yet implemented\n");
+			#endif
 			  exit(2);
 			}
 #endif

@@ -3897,8 +3897,10 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef KEY
 	// Bug 949
         if (!MTYPE_float(TY_mtype(ty_idx))) {
+	#ifdef PSC_TO_OPEN64
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
+		 "(a GNU extension)\n", lang_cplus ? "openCC" : "opencc");
+	#endif
 	  exit(2);
 	}
 #endif
@@ -3955,8 +3957,10 @@ WGEN_Expand_Expr (gs_t exp,
         if ((code == GS_REALPART_EXPR ||
 	     code == GS_IMAGPART_EXPR) &&
 	    !MTYPE_float(mtyp)) {
+	  #ifdef PSC_TO_OPEN64
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
+		 "(a GNU extension)\n", lang_cplus ? "openCC" : "opencc");
+	  #ifdef PSC_TO_OPEN64
 	  exit(2);
 	}
 #endif

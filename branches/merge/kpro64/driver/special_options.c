@@ -67,11 +67,13 @@ void
 set_defaults (void)
 {
 	int flag;
-	/* handle PSC_CC environment variable */
-	char *psc_cc = getenv("PSC_CC");
-	if (psc_cc != NULL && !is_toggled(ansi)) {
+	#ifdef PSC_TO_OPEN64
+	/* handle OPEN64_CC environment variable */
+	char *open64_cc = getenv("OPEN64_CC");
+	if (open64_cc != NULL && !is_toggled(ansi)) {
 		/* value not set yet */
-		if (strcmp(psc_cc, "-ansi") == 0) {
+		if (strcmp(open64_cc, "-ansi") == 0) {
+	#endif
 			toggle(&ansi,STRICT_ANSI);
 			prepend_option_seen (O_ansi);
 		}

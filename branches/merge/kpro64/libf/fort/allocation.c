@@ -108,8 +108,10 @@ typedef struct AllocHead {
 short get_debug_alloc_state()
 {
 	char * debugenv;
-	
-	debugenv = getenv ("PSC_FDEBUG_ALLOC");
+
+	#ifdef PSC_TO_OPEN64
+	debugenv = getenv ("OPEN64_FDEBUG_ALLOC");
+	#endif
 	if (!debugenv) {
 		return 0;
 	}

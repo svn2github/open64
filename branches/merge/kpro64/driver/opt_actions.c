@@ -1434,7 +1434,9 @@ print_file_path (char *fname, int exe)
    * so try combining into one search.
    */
 
-  if (print_relative_path("lib/" PSC_FULL_VERSION, fname))
+  #ifdef PSC_TO_OPEN64
+  if (print_relative_path("lib/" OPEN64_FULL_VERSION, fname))
+  #endif
     return;
 
   if (print_phase_path(P_be, fname))

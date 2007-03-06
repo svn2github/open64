@@ -41,7 +41,7 @@
 #  Define build parameters
 #
 
-PSC_NAME_PREFIX = path
+OPEN64_NAME_PREFIX = open
 BUILD_AREA     = ..
 BUILD_TOT      = ../..
 BUILD_BASE     = ../../libm

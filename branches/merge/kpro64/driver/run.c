@@ -234,7 +234,9 @@ static void my_putenv(const char *name, const char *fmt, ...)
 char *
 get_binutils_lib_path(void)
 {
-	static const char *binutils_library_path = "../i686-pc-linux-gnu/" PSC_TARGET "/lib";
+	#ifdef PSC_TO_OPEN64
+	static const char *binutils_library_path = "../i686-pc-linux-gnu/" OPEN64_TARGET "/lib";
+	#endif
 	char *my_path;
 	
 	asprintf(&my_path, "%s/%s", get_executable_dir(),
@@ -422,8 +424,10 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 		my_putenv ("COMPILER_PATH", "%s", get_phase_dir(P_collect));
 
 		/* Tell IPA where to find the driver. */
-		my_putenv ("COMPILER_BIN", "%s/" PSC_NAME_PREFIX "cc-"
-			   PSC_FULL_VERSION, get_executable_dir());
+		#ifdef PSC_TO_OPEN64
+		my_putenv ("COMPILER_BIN", "%s/" OPEN64_NAME_PREFIX "cc-"
+			   OPEN64_FULL_VERSION, get_executable_dir());
+		#endif
 
 		my_execv(name, argv);
 	} else {

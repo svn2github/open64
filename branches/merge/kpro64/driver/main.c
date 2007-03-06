@@ -92,7 +92,9 @@ static void dump_args (char *msg);
 static void print_help_msg (void);
 static void print_defaults (int argc, char *argv[]);
 static void append_default_options (int *argc, char *(*argv[]));
-static void append_psc_env_flags (int *argc, char *(*argv[]), char *env_var);
+#ifdef PSC_TO_OPEN64
+static void append_open64_env_flags (int *argc, char *(*argv[]), char *env_var);
+#endif
 static void print_search_path (void);
 static void display_version (boolean dump_version_only);
 
@@ -137,8 +139,10 @@ main (int argc, char *argv[])
 	orig_program_name = string_copy(argv[0]);
         file_utils_set_program_name(orig_program_name);
 
-	/* Add the contents of PSC_GENFLAGS to the command line */
-	append_psc_env_flags(&argc, &argv, "PSC_GENFLAGS");
+	/* Add the contents of OPEN64_GENFLAGS to the command line */
+	#ifdef PSC_TO_OPEN64
+	append_open64_env_flags(&argc, &argv, "OPEN64_GENFLAGS");
+	#endif
 
 	// Append the default options in compiler.defaults to argv so that they
 	// are parsed along with the command line options.
@@ -157,14 +161,16 @@ main (int argc, char *argv[])
 
 	invoked_lang = get_named_language(program_name);
 
-	/* Add the contents of PSC_CFLAGS, PSC_CXXFLAGS, PSC_FFLAGS to the
+	/* Add the contents of OPEN64_CFLAGS, OPEN64_CXXFLAGS, OPEN64_FFLAGS to the
 	   command line.  Bug 7646. */
+	#ifdef PSC_TO_OPEN64
 	if (invoked_lang == L_cc)
-	  append_psc_env_flags(&argc, &argv, "PSC_CFLAGS");
+	  append_open64_env_flags(&argc, &argv, "OPEN64_CFLAGS");
 	else if (invoked_lang == L_CC)
-	  append_psc_env_flags(&argc, &argv, "PSC_CXXFLAGS");
+	  append_open64_env_flags(&argc, &argv, "OPEN64_CXXFLAGS");
 	else if (invoked_lang == L_f77 || invoked_lang == L_f90)
-	  append_psc_env_flags(&argc, &argv, "PSC_FFLAGS");
+	  append_open64_env_flags(&argc, &argv, "OPEN64_FFLAGS");
+	#endif
 
 	check_for_driver_controls (argc, argv);
 
@@ -224,7 +230,9 @@ main (int argc, char *argv[])
 				        option_name;
 				    }
 				    else if (option_was_seen(O_compat_gcc) ||
-					     getenv("PSC_STRICT_GCC")) {
+					#ifdef PSC_TO_OPEN64
+					     getenv("OPEN64_STRICT_GCC")) {
+					#endif
 				      /* leave this env var undocumented */
 				      warning("unknown flag: %s", option_name);
 				    } else {
@@ -343,9 +351,11 @@ main (int argc, char *argv[])
 
     if (dump_version) {
         if (option_was_seen(O_compat_gcc))
-        puts(PSC_GCC_VERSION);
+	 #ifdef PSC_TO_OPEN64
+        puts(OPEN64_GCC_VERSION);
         else
-        puts(PSC_FULL_VERSION);
+        puts(OPEN64_FULL_VERSION);
+	 #endif
     }
 
         if (show_version) {
@@ -358,12 +368,14 @@ main (int argc, char *argv[])
         }
             fprintf(stderr, "Built on: %s\n", build_date);
             fprintf(stderr, "Thread model: posix\n");   // Bug 4608.
+#ifdef PSC_TO_OPEN64
 #if defined(TARG_IA64)
-            fprintf(stderr, "GNU gcc version " PSC_GCC_VERSION
-                      " (Open64 " PSC_FULL_VERSION " driver)\n");
+            fprintf(stderr, "GNU gcc version " OPEN64_GCC_VERSION
+                      " (Open64 " OPEN64_FULL_VERSION " driver)\n");
 #else
-            fprintf(stderr, "GNU gcc version " PSC_GCC_VERSION
-                    " (PathScale " PSC_FULL_VERSION " driver)\n");
+            fprintf(stderr, "GNU gcc version " OPEN64_GCC_VERSION
+                    " (Open64 " OPEN64_FULL_VERSION " driver)\n");
+#endif
 #endif
         }
 	if (show_copyright) {
@@ -377,9 +389,11 @@ main (int argc, char *argv[])
 
 	    fprintf(stderr, "See complete copyright, patent and legal notices "
 		    "in the\n");
-	    fprintf(stderr, "%.*s/share/doc/pathscale-compilers-" 
-	    	    PSC_FULL_VERSION "/LEGAL.pdf file.\n",
+	#ifdef PSC_TO_OPEN64
+	    fprintf(stderr, "%.*s/share/doc/open64-" 
+	    	    OPEN64_FULL_VERSION "/LEGAL.pdf file.\n",
 		    (int)(strlen(exe_dir) - 4), exe_dir);
+	#endif
 	}
 	if (show_search_path) {
 		print_search_path();
@@ -678,9 +692,11 @@ static void set_executable_dir (void) {
   ldir = drop_path (dir);
   if (strcmp (ldir, "bin") == 0) {
     char *basedir = directory_path (dir);
-    substitute_phase_dirs ("/usr/lib", basedir, "/lib/" PSC_FULL_VERSION);
-    substitute_phase_dirs ("/usr/lib/" PSC_NAME_PREFIX "cc-lib",
-			   basedir, "/lib/" PSC_FULL_VERSION);
+#ifdef PSC_TO_OPEN64
+    substitute_phase_dirs ("/usr/lib", basedir, "/lib/" OPEN64_FULL_VERSION);
+    substitute_phase_dirs ("/usr/lib/" OPEN64_NAME_PREFIX "cc-lib",
+			   basedir, "/lib/" OPEN64_FULL_VERSION);
+#endif
     substitute_phase_dirs ("/usr/include", basedir, "/include");
     return;
   }
@@ -693,14 +709,18 @@ static void set_executable_dir (void) {
       ldir = substring_copy (dir, 0, ldir+4-dir);
       substitute_phase_dirs ("/usr/bin", dir, "");
       substitute_phase_dirs ("/usr/lib", ldir, "");
-      substitute_phase_dirs ("/usr/lib/" PSC_NAME_PREFIX "cc-lib", dir, "");
+#ifdef PSC_TO_OPEN64
+      substitute_phase_dirs ("/usr/lib/" OPEN64_NAME_PREFIX "cc-lib", dir, "");
+#endif
       substitute_phase_dirs ("/usr/include", dir, "/include");
     } else if (ldir[12] == '\0') {
       /* directly in gcc-lib */
       ldir = substring_copy (dir, 0, ldir+4-dir);
       substitute_phase_dirs ("/usr/bin", dir, "");
       substitute_phase_dirs ("/usr/lib", ldir, "");
-      substitute_phase_dirs ("/usr/lib/" PSC_NAME_PREFIX "cc-lib", dir, "");
+#ifdef PSC_TO_OPEN64
+      substitute_phase_dirs ("/usr/lib/" OPEN64_NAME_PREFIX "cc-lib", dir, "");
+#endif
       substitute_phase_dirs ("/usr/include", dir, "/include");
     }
     return;
@@ -828,7 +848,7 @@ print_help_msg (void)
 		}
 	}
 	if (help_pattern == NULL && invoked_lang == L_cc) {
-	  fprintf(stderr, "The environment variable PSC_CC is also checked\n");
+	  fprintf(stderr, "The environment variable OPEN64_CC is also checked\n");
 	}
 	do_exit(RC_OKAY);
 }
@@ -1147,7 +1167,9 @@ static void
 append_default_options (int *argc, char *(*argv[]))
 {
   char *compiler_defaults_path =
-	 string_copy(getenv("PSC_COMPILER_DEFAULTS_PATH"));
+  #ifdef PSC_TO_OPEN64
+	 string_copy(getenv("OPEN64_COMPILER_DEFAULTS_PATH"));
+  #endif
   int default_options_count = 0;
   string_list_t *default_options_list = init_string_list();
 
@@ -1213,10 +1235,10 @@ append_default_options (int *argc, char *(*argv[]))
   }
 }
 
-/* Read the contents of a PSC_(GEN|C|CXX|F)FLAGS environment variable and add
+/* Read the contents of a OPEN64_(GEN|C|CXX|F)FLAGS environment variable and add
  * them to the command-line options. */
 static void
-append_psc_env_flags (int *argc, char *(*argv[]), char *env_var)
+append_open64_env_flags (int *argc, char *(*argv[]), char *env_var)
 {
   char * default_opt = string_copy(getenv(env_var));
   char * p, * q;
@@ -1293,10 +1315,12 @@ print_search_path ()
 	printf ("programs: %s:%s\n", exe_dir, get_phase_dir (P_be));
 	
 	if (abi == ABI_N32) {
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION "/32",
+	#ifdef PSC_TO_OPEN64
+		asprintf(&our_path, "%s/lib/" OPEN64_FULL_VERSION "/32",
 			 root_prefix);
 	} else {
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION, root_prefix);
+		asprintf(&our_path, "%s/lib/" OPEN64_FULL_VERSION, root_prefix);
+	#endif
 	}
 	
 	/* Add our libraries */
@@ -1380,7 +1404,7 @@ static void
 display_version(boolean dump_version_only)
 {
   int gcc_version;
-  char *psc_gcc_version;
+  char *open64_gcc_version;
 
   // Get GCC version.
 
@@ -1389,18 +1413,22 @@ display_version(boolean dump_version_only)
   else
     gcc_version = get_gcc_major_version();
 
+#ifdef PSC_TO_OPEN64
   if (gcc_version == 3)
-    psc_gcc_version = PSC_GCC_VERSION;
+    open64_gcc_version = OPEN64_GCC_VERSION;
   else if (gcc_version == 4)
-    psc_gcc_version = PSC_GCC4_VERSION;
+    open64_gcc_version = OPEN64_GCC4_VERSION;
   else
     internal_error("display_version: unknown GCC version %d\n", gcc_version);
+#endif
 
   if (dump_version_only == TRUE) {
+  #ifdef PSC_TO_OPEN64
     if (option_was_seen(O_compat_gcc))
-      puts(psc_gcc_version);
+      puts(open64_gcc_version);
     else
-      puts(PSC_FULL_VERSION);
+      puts(OPEN64_FULL_VERSION);
+  #endif
     return;
   }
 
@@ -1414,6 +1442,8 @@ display_version(boolean dump_version_only)
   fprintf(stderr, "Built on: %s\n", build_date);
   fprintf(stderr, "Thread model: posix\n");	// Bug 4608.
 
-  fprintf(stderr, "GNU gcc version %s", psc_gcc_version);
-  fprintf(stderr, " (PathScale " PSC_FULL_VERSION " driver)\n");
+  #ifdef PSC_TO_OPEN64
+  fprintf(stderr, "GNU gcc version %s", open64_gcc_version);
+  fprintf(stderr, " (Open64 " OPEN64_FULL_VERSION " driver)\n");
+  #endif
 }

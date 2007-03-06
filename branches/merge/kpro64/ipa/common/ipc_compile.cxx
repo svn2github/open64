@@ -315,7 +315,9 @@ ipa_compile_init ()
 #include "pathscale_defs.h"
 
   static char* smake_base = ALTBINPATH "/usr/bin/make";
-  static char* tmp_cc_name_base = PSC_INSTALL_PREFIX "/bin/" PSC_NAME_PREFIX "cc";
+#ifdef PSC_TO_OPEN64
+  static char* tmp_cc_name_base = OPEN64_INSTALL_PREFIX "/bin/" OPEN64_NAME_PREFIX "cc";
+#endif
   static char* cc_name_base = tmp_cc_name_base;
   static char* cord_name_base= "/usr/bin/gen_cord";
   static char my_cc[MAXPATHLEN];
@@ -332,9 +334,11 @@ ipa_compile_init ()
 
       my_cc[retval] = '\0';	// readlink doesn't append NULL
 
-      if (looks_like (my_cc, PSC_NAME_PREFIX "cc") ||
-	  looks_like (my_cc, PSC_NAME_PREFIX "CC") ||
-	  looks_like (my_cc, PSC_NAME_PREFIX "f90")) {
+#ifdef PSC_TO_OPEN64
+      if (looks_like (my_cc, OPEN64_NAME_PREFIX "cc") ||
+	  looks_like (my_cc, OPEN64_NAME_PREFIX "CC") ||
+	  looks_like (my_cc, OPEN64_NAME_PREFIX "f90")) {
+#endif
 	  tmp_cc_name_base = my_cc;
 	  cc_name_base = my_cc;
       } else if (looks_like (my_cc, "ipa_link")) {
@@ -359,8 +363,10 @@ ipa_compile_init ()
 		  } else {
 		    Fail_FmtAssertion ("ipa: unknown language");
 		  }
-		  strcpy(++s, "bin/" PSC_NAME_PREFIX);
-		  s += strlen("bin/" PSC_NAME_PREFIX);
+		  #ifdef PSC_TO_OPEN64
+		  strcpy(++s, "bin/" OPEN64_NAME_PREFIX);
+		  s += strlen("bin/" OPEN64_NAME_PREFIX);
+		  #endif
 		  strcpy(s, compiler_name_suffix);
 
 		  if (file_exists (my_cc)) {

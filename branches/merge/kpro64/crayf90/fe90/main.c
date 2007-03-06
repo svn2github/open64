@@ -484,7 +484,9 @@ PREPROCESS_ONLY_SKIP:
       msg_name	= "cf90";
 
 # elif defined(_HOST_OS_LINUX)
-      msg_name	= PSC_NAME_PREFIX "f95";
+#ifdef PSC_TO_OPEN64
+      msg_name	= OPEN64_NAME_PREFIX "f95";
+#endif
 
 # elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
 

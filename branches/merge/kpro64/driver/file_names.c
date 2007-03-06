@@ -261,10 +261,14 @@ static char *report_file;
 void
 init_crash_reporting (void)
 {
-	if ((report_file = getenv("PSC_CRASH_REPORT")) != NULL)
+	#ifdef PSC_TO_OPEN64
+	if ((report_file = getenv("OPEN64_CRASH_REPORT")) != NULL)
+	#endif
 		goto bail;
 
+	#ifdef PSC_TO_OPEN64 
 	if (asprintf(&report_file, "%s/open64_crash_XXXXXX", tmpdir) == -1) {
+	#endif
 		report_file = NULL;
 		goto bail;
 	}
@@ -273,8 +277,10 @@ init_crash_reporting (void)
 		report_file = NULL;
 		goto bail;
 	}
-	
-	setenv("PSC_CRASH_REPORT", report_file, 1);
+
+	#ifdef PSC_TO_OPEN64
+	setenv("OPEN64_CRASH_REPORT", report_file, 1);
+	#endif
 bail:
 	return;
 }
@@ -306,10 +312,12 @@ save_cpp_output (char *path)
 	if ((ifp = fopen(path, "r")) == NULL)
 		goto bail;
 
-	if ((save_dir = getenv("PSC_PROBLEM_REPORT_DIR")) == NULL &&
+	#ifdef PSC_TO_OPEN64
+	if ((save_dir = getenv("OPEN64_PROBLEM_REPORT_DIR")) == NULL &&
 	    (home = getenv("HOME")) != NULL) {
 		asprintf(&save_dir, "%s/.open64-bugs", home);
 	}
+	#endif
 
 	if (save_dir && mkdir(save_dir, 0700) == -1 && errno != EEXIST) {
 		save_dir = NULL;
@@ -330,9 +338,11 @@ save_cpp_output (char *path)
 	}
 	
 	now = time(NULL);
+	#ifdef PSC_TO_OPEN64
 	fprintf(ofp, "/*\n\nOpen64 compiler problem report - %s",
 		ctime(&now));
 	fprintf(ofp, "Please report this problem to http://bugs.open64.net/\n");
+	#endif
 	fprintf(ofp, "If possible, please attach a copy of this file with your "
 		"report.\n");
 	fprintf(ofp, "\nPLEASE NOTE: This file contains a preprocessed copy of the "
@@ -412,15 +422,19 @@ no_report:
 			goto b0rked;
 		}
 	}
-	
+
+	#ifdef PSC_TO_OPEN64
 	fprintf(ofp, "\n/* End of Open64 compiler problem report. */\n");
+	#endif
 	
 	asprintf(&final_path, "%s%s", save_path, suffix);
 	rename(save_path, final_path);
 
 	if (save_count == 0) {
+		#ifdef PSC_TO_OPEN64
 		fprintf(stderr, "Please report this problem to "
 			"http://bugs.open64.net/\n");
+		#endif
 	}
 
 	fprintf(stderr, "Problem report saved as %s\n", final_path);

@@ -647,7 +647,9 @@ Init_Crash_Report (void)
   if (Crash_File != NULL)
     return TRUE;
   
-  char *name = getenv("PSC_CRASH_REPORT");
+#ifdef PSC_TO_OPEN64
+  char *name = getenv("OPEN64_CRASH_REPORT");
+#endif
 
   if (name == NULL)
     return FALSE;

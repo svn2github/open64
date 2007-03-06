@@ -57,7 +57,7 @@ BUILD_OS="linux"
 #[ `uname -s | grep -i linux | wc -l` -eq 1 ] && BUILD_OS="linux"
 
 # everything we will install is under $ROOT
-ROOT=${PSC_INSTALL_PREFIX}
+ROOT=${OPEN64_INSTALL_PREFIX}
 
 #INTERPOSE=${TARG_HOST}-pathscale-${TARG_OS}
 #[ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
@@ -387,7 +387,7 @@ INSTALL_MISC () {
 
 cd `dirname $0`
 
-[ -z ${PSC_INSTALL_PREFIX} ] && echo -e "please set environment variable PSC_INSTALL_PREFIX !\n    Notes: everything will be installed under \$PSC_INSTALL_PREFIX" && exit 1
+[ -z ${OPEN64_INSTALL_PREFIX} ] && echo -e "please set environment variable OPEN64_INSTALL_PREFIX !\n    Notes: everything will be installed under \$OPEN64_INSTALL_PREFIX" && exit 1
 
 # prepare directories
 [ ! -d ${BIN_DIR} ] && mkdir -p ${BIN_DIR}

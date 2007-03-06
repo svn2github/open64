@@ -37,7 +37,7 @@ import string
 def construct_search_path():
     '''Return a list of directories to search for the messages file.'''
 
-    cmdline = 'pathf95 -print-file-name=libpscrt.a'
+    cmdline = 'openf95 -print-file-name=libpscrt.a'
     return [os.path.dirname(os.popen(os.path.join(os.path.dirname(sys.argv[0]),
                                                   cmdline),
                                      'r').read().strip())]

@@ -382,7 +382,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			// bugs 943, 11277, 10506
 			{
 			  // Should use ErrMsg (or something similar) instead.
-			  printf("pathcc: variable-length structure not yet implemented\n");
+			  #ifdef PSC_TO_OPEN64
+			  printf("opencc: variable-length structure not yet implemented\n");
+			  #endif
 			  exit(2);
 			}
 #endif

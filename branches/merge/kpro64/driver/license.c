@@ -128,9 +128,11 @@ void obtain_license (char *exedir, int argc, char *argv[]) {
         argvec[0] = exename ;
         argvec[1] = "Compiler" ;
         argvec[2] = language ;
-        argvec[3] = PSC_BUILD_DATE ;
+	 #ifdef PSC_TO_OPEN64
+        argvec[3] = OPEN64_BUILD_DATE ;
         argvec[4] = subflags ;
-        argvec[5] = PSC_FULL_VERSION ;
+        argvec[5] = OPEN64_FULL_VERSION ;
+	 #endif
         argvec[6] = NULL ;
         if (subverbose) {
             argvec[6] = "--v" ;

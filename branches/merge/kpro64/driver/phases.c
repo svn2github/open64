@@ -458,14 +458,16 @@ set_library_paths(string_list_t *args)
 	char *our_path;
 	
 	if (abi == ABI_N32) {
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION "/32",
+	#ifdef PSC_TO_OPEN64
+		asprintf(&our_path, "%s/lib/" OPEN64_FULL_VERSION "/32",
 			 root_prefix);
 	} else {
 #ifdef TARG_IA64
-		asprintf(&our_path, "%s/" PSC_FULL_VERSION, root_prefix);
+		asprintf(&our_path, "%s/" OPEN64_FULL_VERSION, root_prefix);
 #else
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION, root_prefix);
+		asprintf(&our_path, "%s/lib/" OPEN64_FULL_VERSION, root_prefix);
 #endif
+	#endif
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
@@ -660,12 +662,14 @@ add_file_args_first (string_list_t *args, phases_t index)
       // -Dfoo before user options, since user might specify -Ufoo.  Bug 6874.
       if (option_was_seen(O_pthread))
 	add_string(args, "-D_REENTRANT");
-      if (!option_was_seen(O_no_pathcc)) {
-	add_string(args, "-D__PATHSCALE__=\"" PSC_FULL_VERSION "\"");
-	add_string(args, "-D__PATHCC__=" PSC_MAJOR_VERSION);
-	add_string(args, "-D__PATHCC_MINOR__=" PSC_MINOR_VERSION);
-	add_string(args, "-D__PATHCC_PATCHLEVEL__=" PSC_PATCH_LEVEL);
+      #ifdef PSC_TO_OPEN64
+      if (!option_was_seen(O_no_opencc)) {
+	add_string(args, "-D__OPEN64__=\"" OPEN64_FULL_VERSION "\"");
+	add_string(args, "-D__OPENCC__=" OPEN64_MAJOR_VERSION);
+	add_string(args, "-D__OPENCC_MINOR__=" OPEN64_MINOR_VERSION);
+	add_string(args, "-D__OPENCC_PATCHLEVEL__=" OPEN64_PATCH_LEVEL);
       }
+      #endif
   }
 }
 #endif
@@ -783,14 +787,18 @@ add_file_args (string_list_t *args, phases_t index)
 
 		if (!option_was_seen(O_nostdinc)) {
 			char *root = directory_path(get_executable_dir());
-			add_inc_path(args, "%s/include/" PSC_FULL_VERSION,
+			#ifdef PSC_TO_OPEN64
+			add_inc_path(args, "%s/include/" OPEN64_FULL_VERSION,
 				     root);
+			#endif
 			if (source_lang == L_CC) {
 				int v[4];
 				get_gcc_version(v, 4);
 				if (v[0] > 3 || (v[0] == 3 && v[1] >= 3)) {
 					add_inc_path(args, "%s/include/"
-						     PSC_FULL_VERSION
+						     #ifdef PSC_TO_OPEN64
+						     OPEN64_FULL_VERSION
+						     #endif
 						     "/backward",
 						     root);
 				}
@@ -980,7 +988,9 @@ add_file_args (string_list_t *args, phases_t index)
 #ifdef KEY
 		{
 		  char *root = directory_path(get_executable_dir());
-		  sprintf (buf, "-include=%s/include/" PSC_FULL_VERSION, root);
+		  #ifdef PSC_TO_OPEN64
+		  sprintf (buf, "-include=%s/include/" OPEN64_FULL_VERSION, root);
+		  #endif
 		  add_string(args, buf);
 		}
 #endif
@@ -1080,7 +1090,9 @@ add_file_args (string_list_t *args, phases_t index)
 #ifdef KEY
 		{
 		  char *root = directory_path(get_executable_dir());
-		  sprintf (buf, "-include=%s/include/" PSC_FULL_VERSION, root);
+		  #ifdef PSC_TO_OPEN64
+		  sprintf (buf, "-include=%s/include/" OPEN64_FULL_VERSION, root);
+		  #endif
 		  add_string(args, buf);
 		}
 #endif
@@ -2381,7 +2393,9 @@ init_phase_names (void)
   //   command:  mips64el-key-linux-keycc-
   //   prefix:   mips64el-key-linux-
   prefix = strdup(cmd);
-  if ((x = strstr(prefix, "-" PSC_FULL_VERSION))) {
+  #ifdef PSC_TO_OPEN64
+  if ((x = strstr(prefix, "-" OPEN64_FULL_VERSION))) {
+  #endif
     *x = '\0';
   }
   // Skip all trailing '-', if any.
@@ -2477,9 +2491,11 @@ run_ld (void)
         char *our_path;
 
         if (abi == ABI_N32) {
-          asprintf(&our_path, "%s/" PSC_FULL_VERSION "/32", root_prefix);
+	 #ifdef PSC_TO_OPEN64
+          asprintf(&our_path, "%s/" OPEN64_FULL_VERSION "/32", root_prefix);
         } else {
-          asprintf(&our_path, "%s/" PSC_FULL_VERSION, root_prefix);
+          asprintf(&our_path, "%s/" OPEN64_FULL_VERSION, root_prefix);
+	 #endif
         }
 
         add_string(args, concat_strings("-L", our_path));

@@ -194,17 +194,17 @@ default: pathscale_defs.h
 
 pathscale_defs.h: $(BUILD_TOT)/../defs.mk 
 	echo '#ifndef __pathscale_defs_h' > $@
-	echo '#define PSC_NAME_PREFIX "${PSC_NAME_PREFIX}"' >> $@
-	echo '#define PSC_MAJOR_VERSION_NUM ${PSC_MAJOR_VERSION}' >> $@
-	echo '#define PSC_MINOR_VERSION_NUM ${PSC_MINOR_VERSION}' >> $@
-	echo '#define PSC_MAJOR_VERSION "${PSC_MAJOR_VERSION}"' >> $@
-	echo '#define PSC_MINOR_VERSION "${PSC_MINOR_VERSION}"' >> $@
-	echo '#define PSC_FULL_VERSION "${PSC_FULL_VERSION}"' >> $@
-	echo '#define PSC_GCC_VERSION "${PSC_GCC_VERSION}"' >> $@
-	echo '#define PSC_GCC4_VERSION "${PSC_GCC4_VERSION}"' >> $@
-	echo '#define PSC_INSTALL_PREFIX "${PSC_INSTALL_PREFIX}"' >> $@
-	echo '#define PSC_TARGET "${PSC_TARGET}"' >> $@
-	echo '#define PSC_PATCH_LEVEL "${PSC_PATCH_LEVEL}"' >> $@ 
+	echo '#define OPEN64_NAME_PREFIX "${OPEN64_NAME_PREFIX}"' >> $@
+	echo '#define OPEN64_MAJOR_VERSION_NUM ${OPEN64_MAJOR_VERSION}' >> $@
+	echo '#define OPEN64_MINOR_VERSION_NUM ${OPEN64_MINOR_VERSION}' >> $@
+	echo '#define OPEN64_MAJOR_VERSION "${OPEN64_MAJOR_VERSION}"' >> $@
+	echo '#define OPEN64_MINOR_VERSION "${OPEN64_MINOR_VERSION}"' >> $@
+	echo '#define OPEN64_FULL_VERSION "${OPEN64_FULL_VERSION}"' >> $@
+	echo '#define OPEN64_GCC_VERSION "${OPEN64_GCC_VERSION}"' >> $@
+	echo '#define OPEN64_GCC4_VERSION "${OPEN64_GCC4_VERSION}"' >> $@
+	echo '#define OPEN64_INSTALL_PREFIX "${OPEN64_INSTALL_PREFIX}"' >> $@
+	echo '#define OPEN64_TARGET "${OPEN64_TARGET}"' >> $@
+	echo '#define OPEN64_PATCH_LEVEL "${OPEN64_PATCH_LEVEL}"' >> $@ 
 	echo "#endif" >> $@
 
 clean:

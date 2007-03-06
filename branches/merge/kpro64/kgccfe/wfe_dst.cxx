@@ -2077,8 +2077,10 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
    comp_info = DST_get_command_line_options(num_copts, copts);
 #else
    // Bug 178 - AT_producer should be the name of the compiler and version info
-   comp_info = (char *)malloc(sizeof(char)*100);   
-   strcpy(comp_info, "pathcc ");
+   comp_info = (char *)malloc(sizeof(char)*100);
+#ifdef PSC_TO_OPEN64
+   strcpy(comp_info, "opencc ");
+#endif
    if (INCLUDE_STAMP)
      strcat(comp_info, INCLUDE_STAMP);
 #endif

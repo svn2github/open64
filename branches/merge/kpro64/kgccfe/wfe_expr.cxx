@@ -3205,7 +3205,9 @@ WFE_Expand_Expr (tree exp,
 	// Bug 949
 	if (TREE_CODE(TREE_REALPART(exp)) != REAL_CST || 
 	    TREE_CODE(TREE_IMAGPART(exp)) != REAL_CST) {
-	  printf("pathcc does not support complex integer data types (a gcc extension)\n");
+	  #ifdef PSC_TO_OPEN64
+	  printf("opencc does not support complex integer data types (a gcc extension)\n");
+	  #endif
 	  exit(2);
 	}
 #endif

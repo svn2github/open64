@@ -1130,7 +1130,7 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 --help	;		ALL	NONE	""
 	"print list of possible options"
--dumpmachine	{printf(PSC_TARGET "\n"); execute_flag=FALSE;}	ALL	NONE	""
+-dumpmachine	{printf(OPEN64_TARGET "\n"); execute_flag=FALSE;}	ALL	NONE	""
 	"Print the compiler's target machine"
 %%% C language options
 -flang-isoc9x	;		Cc	f	self
@@ -1207,10 +1207,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Define __GNUC__ and other macros"
 -no-gcc		;		Cc	cpp	self
 	"Don't define __GNUC__ and other macros"
--pathcc		;		Cc	cpp	""
-	"Define __PATHCC__ and other macros"
--no-pathcc		;		Cc	cpp	""
-	"Don't define __PATHCC__ and other macros"
+-opencc		;		Cc	cpp	""
+	"Define __OPENCC__ and other macros"
+-no-opencc		;		Cc	cpp	""
+	"Don't define __OPENCC__ and other macros"
 % cpp is also a define, so trick cpp
 -traditional-c/**/pp	;		Cc,cpp	NONE	"-traditional"
 	""

@@ -14,25 +14,25 @@
 # Free Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-export PSC_MAJOR_VERSION := 0
-export PSC_MINOR_VERSION := 0
-export PSC_PATCH_LEVEL := 0
-export PSC_EXTRA_VERSION := -custom
-export PSC_FULL_VERSION := $(PSC_MAJOR_VERSION).$(PSC_MINOR_VERSION).$(PSC_PATCH_LEVEL)$(PSC_EXTRA_VERSION)
-export export PSC_FULL_VERSION
-export PSC_GCC_VERSION := 3.3.1
-export PSC_ARCH_64 := x86_64
-export PSC_ARCH_32 := i386
-export PSC_ARCH := $(PSC_ARCH_64)
-export PSC_TARGET_64 := $(PSC_ARCH_64)-pathscale-linux
-export PSC_TARGET_32 := $(PSC_ARCH_32)-pathscale-linux
-export PSC_TARGET := $(PSC_TARGET_64)
-export PSC_ROOT_PREFIX := /opt/pathscale
-export PSC_PREFIX := $(PSC_ROOT_PREFIX)/$(PSC_TARGET)
-export PSC_INSTALL_PREFIX := $(PSC_PREFIX)
-export PSC_NAME_PREFIX := path
-export PSC_INCLUDE_DIR := $(PSC_INSTALL_PREFIX)/lib/gcc-lib/$(PSC_TARGET)/pathscale-$(PSC_FULL_VERSION)/include/
-export PSC_LIB_DIR := $(PSC_ROOT_PREFIX)/lib/$(PSC_FULL_VERSION)
+export OPEN64_MAJOR_VERSION := 0
+export OPEN64_MINOR_VERSION := 0
+export OPEN64_PATCH_LEVEL := 0
+export OPEN64_EXTRA_VERSION := -custom
+export OPEN64_FULL_VERSION := $(OPEN64_MAJOR_VERSION).$(OPEN64_MINOR_VERSION).$(OPEN64_PATCH_LEVEL)$(OPEN64_EXTRA_VERSION)
+export OPEN64_FULL_VERSION := 3.0
+export OPEN64_GCC_VERSION := 3.3.1
+export OPEN64_ARCH_64 := x86_64
+export OPEN64_ARCH_32 := i386
+export OPEN64_ARCH := $(OPEN64_ARCH_64)
+export OPEN64_TARGET_64 := $(OPEN64_ARCH_64)-open64-linux
+export OPEN64_TARGET_32 := $(OPEN64_ARCH_32)-open64-linux
+export OPEN64_TARGET := $(OPEN64_TARGET_64)
+export OPEN64_ROOT_PREFIX := /opt/open64
+export OPEN64_PREFIX := $(OPEN64_ROOT_PREFIX)/$(OPEN64_TARGET)
+export OPEN64_INSTALL_PREFIX := $(OPEN64_PREFIX)
+export OPEN64_NAME_PREFIX := open
+export OPEN64_INCLUDE_DIR := $(OPEN64_INSTALL_PREFIX)/lib/gcc-lib/$(OPEN64_TARGET)/open64-$(OPEN64_FULL_VERSION)/include/
+export OPEN64_LIB_DIR := $(OPEN64_ROOT_PREFIX)/lib/$(OPEN64_FULL_VERSION)
 
 top_dir := .
 compiler_dir := $(top_dir)/targia32_x8664

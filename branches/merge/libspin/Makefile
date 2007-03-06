@@ -39,7 +39,7 @@ HEADERS = gspin-tree.h \
 
 OBJECTS = $(subst .c,.o,$(SOURCES))
 
-CC = pathcc
+CC = opencc
 
 CFLAGS = -march=anyx86 -O3 -ffloat-store
 
