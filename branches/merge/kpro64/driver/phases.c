@@ -1692,6 +1692,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		// m32 currently doesn't use anything from libpscrt.  Bug 9611.
 		abi != ABI_N32) {
 		add_library(args, "pscrt");
+		add_library(args, "pscrt_p");
 	    }
 	    return;
 	}
@@ -1745,6 +1746,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	    // m32 currently doesn't use anything from libpscrt.  Bug 9611.
 	    abi != ABI_N32) {
 	    add_library(args, "pscrt");
+	    add_library(args, "pscrt_p");
 	}
 #endif
 
