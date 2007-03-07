@@ -642,11 +642,13 @@ Fixup_Rotating_Register_TN(TN *tn, const SWP_FIXUP &fixup, bool trace)
 	  REGISTER_First_Rotating_Registers(rc) + 1;
       }
 
+#ifdef TARG_IA64
       Is_True(r <= REGISTER_Last_Rotating_Registers(rc) &&
 	      r >= REGISTER_First_Rotating_Registers(rc),
-#ifdef TARG_IA64
 	      ("cannot wrap around twice."));
 #else
+      Is_True(r <= REGISTER_Last_Rotating_Registers(rc) &&
+	      r >= REGISTER_First_Rotating_Registers(rc),
       ("%d (class %d:%d:%d:%d) => %d: cannot wrap around twice.",
        old_r, rc,
        REGISTER_First_Rotating_Registers(rc),

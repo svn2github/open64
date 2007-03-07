@@ -40,8 +40,7 @@ HEADERS = gspin-tree.h \
 OBJECTS = $(subst .c,.o,$(SOURCES))
 
 CC = opencc
-
-CFLAGS = -march=anyx86 -O3 -ffloat-store
+CFLAGS =  -O3 
 
 all: libgspin.a gspin
 
@@ -53,13 +52,13 @@ $(OBJECTS): $(HEADERS)
 gspin-test-driver.o: $(HEADERS)
 
 .c.o:
-	$(CC) $(CFLAGS) -Wformat -Wswitch -c -m32 -Werror-implicit-function-declaration $<
+	$(CC) $(CFLAGS) -c $<
 
 libgspin.a: $(OBJECTS)
 	$(AR) rc $@ $(OBJECTS)
 
 gspin: gspin-test-driver.o libgspin.a
-	$(CC) $(CFLAGS) gspin-test-driver.c libgspin.a -m32 -o $@
+	$(CC) $(CFLAGS) gspin-test-driver.c libgspin.a  -o $@
 
 clean:
 	/bin/rm -f $(OBJECTS) gspin-test-driver.o libgspin.a gspin
