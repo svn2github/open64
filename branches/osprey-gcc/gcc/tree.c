@@ -6469,15 +6469,15 @@ enum language language = C;
 #define CR()  (language == C)
 
 // C++ Dummy Variables Section Begins.
-tree global_namespace; // CP_DECL_CONTEXT () references this variable in cp/name-lookup.c
-int (*p_uses_template_parms) (tree);
-tree (*p_most_general_template) (tree);
-int (*p_copy_fn_p) (tree);
-int (*p_is_empty_class) (tree);
-tree (*p_namespace_binding) (tree, tree);
+static tree global_namespace; // CP_DECL_CONTEXT () references this variable in cp/name-lookup.c
+static int (*p_uses_template_parms) (tree);
+static tree (*p_most_general_template) (tree);
+static int (*p_copy_fn_p) (tree);
+static int (*p_is_empty_class) (tree);
+static tree (*p_namespace_binding) (tree, tree);
 // tree p_complete_ctor_identifier;
-tree cp_global_trees[CPTI_MAX];
-tree (*p_get_tinfo_decl) (tree);
+static tree cp_global_trees[CPTI_MAX];
+static tree (*p_get_tinfo_decl) (tree);
 // C++ Dummy Variables Section Ends.
 
 // GSPIN stuff follows:
@@ -7219,6 +7219,7 @@ gcc_built_in_class2gsbi_class (unsigned char class)
  return (gsbi_class_t) 0;
 }
 
+#if defined(TARG_IA32) || defined(TARG_X8664)
 static inline gsbi_ts_t
 ix86_builtins2gsbi_ts (enum ix86_builtins code) 
 {
@@ -7589,6 +7590,7 @@ ix86_builtins2gsbi_ts (enum ix86_builtins code)
   gcc_assert (0);
   return (gsbi_ts_t) 0;
 }
+#endif
 
 #ifdef KEY
 /******************************************************************************/
@@ -8276,7 +8278,11 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
             _gs_hword(decl_function_code, gcc_built_in2gsbi ((int) DECL_FUNCTION_CODE (t)));
             break;
           case BUILT_IN_MD:
+#if defined(TARG_IA32) || defined(TARG_X8664)
             _gs_hword(decl_function_code, ix86_builtins2gsbi_ts ((int) DECL_FUNCTION_CODE (t)));
+#else
+            _gs_hword(decl_function_code, gcc_built_in2gsbi ((int) DECL_FUNCTION_CODE (t)));
+#endif
             break;
           default: gcc_assert (0); break;
         }
