@@ -36,7 +36,7 @@ set	INSTALL_DIR	= /usr/x8664-linux #${OPEN64_INSTALL_PREFIX}
 set     CONFIGURE       = ${SRC_DIR}/configure
 set     HOST            = i686-open64-linux
 set     BUILD           = i686-open64-linux
-set     TARG            = i686-open64-linux #${OPEN64_TARGET}
+set     TARG            = x86_64-open64-linux #${OPEN64_TARGET}
 
 ${CONFIGURE}                   \
     --srcdir=${SRC_DIR}        \
