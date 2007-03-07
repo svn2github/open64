@@ -4341,7 +4341,7 @@ WGEN_Handle_Named_Return_Value (gs_t fn)
     DST_ATTR_IDX attr_idx = DST_INFO_attributes(DST_INFO_IDX_TO_PTR(info_idx));
     DST_VARIABLE *attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_VARIABLE);
     DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = 
-      (void *)ST_st_idx(WN_st(first_formal));
+      (void *)(INTPTR)ST_st_idx(WN_st(first_formal));
     DST_SET_deref(DST_INFO_flag( DST_INFO_IDX_TO_PTR(info_idx)));
   }
 }

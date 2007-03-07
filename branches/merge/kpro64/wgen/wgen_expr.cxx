@@ -3960,7 +3960,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  #ifdef PSC_TO_OPEN64
 	  printf("%s does not support complex integer data types "
 		 "(a GNU extension)\n", lang_cplus ? "openCC" : "opencc");
-	  #ifdef PSC_TO_OPEN64
+	  #endif
 	  exit(2);
 	}
 #endif

@@ -521,7 +521,7 @@ DST_enter_static_data_mem(gs_t  parent_tree,
         mem_name,  // user typed name, not mangled
         fidx,        // user typed type name here (typedef type perhaps).
         0,           // offset (fortran uses non zero )
-        (void*) base, // underlying type here, not typedef.
+        (void*)(INTPTR) base, // underlying type here, not typedef.
         DST_INVALID_IDX,  // abstract origin
         TRUE,          // is_declaration=  decl only
         FALSE,         // is_automatic ?
@@ -1356,7 +1356,7 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_name(var_st),
 			     type,    
 			     0,  
-			     (void*) ST_st_idx(var_st), 
+			     (void*)(INTPTR) ST_st_idx(var_st), 
 			     DST_INVALID_IDX,        
 			     FALSE,                  // is_declaration
 			     ST_sclass(var_st) == SCLASS_AUTO,
@@ -1379,7 +1379,7 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_name(var_st),
 			     type,    
 			     0,  
-			     (void*) ST_st_idx(var_st), 
+			     (void*)(INTPTR) ST_st_idx(var_st), 
 			     DST_INVALID_IDX,        
 			     FALSE,                  // is_declaration
 			     ST_sclass(var_st) == SCLASS_AUTO,
@@ -2384,7 +2384,7 @@ DST_Create_var(ST *var_st, gs_t decl)
 				field_name,
 				TYPE_DST_IDX(gs_tree_type(field)),
 				0,  // offset (fortran uses non zero )
-				(void*) ST_st_idx(var_st), // underlying type here, not typedef.
+				(void*)(INTPTR) ST_st_idx(var_st), // underlying type here, not typedef.
 				DST_INVALID_IDX,        // abstract origin
 				external_decl,          // is_declaration
 				FALSE,                  // is_automatic
@@ -2404,7 +2404,7 @@ DST_Create_var(ST *var_st, gs_t decl)
         field_name,
         type,    // user typed type name here (typedef type perhaps).
 	0,  // offset (fortran uses non zero )
-        (void*) ST_st_idx(var_st), // underlying type here, not typedef.
+        (void*)(INTPTR) ST_st_idx(var_st), // underlying type here, not typedef.
         DST_INVALID_IDX,        // abstract origin
         external_decl,          // is_declaration
         FALSE,                  // is_automatic
@@ -2526,7 +2526,7 @@ DST_enter_param_vars(gs_t fndecl,
 		src,
 		name,
 		type_idx,
-		(void* )loc, // So backend can get location.
+		(void* )(INTPTR)loc, // So backend can get location.
 			// For a formal in abstract root
 			// or a plain declaration (no def)
 			// there is no location.
@@ -2618,7 +2618,7 @@ DST_enter_param_vars(gs_t fndecl,
 		src,
 		name,
 		type_idx,
-		(void* )loc, // So backend can get location.
+		(void* )(INTPTR)loc, // So backend can get location.
 			// For a formal in abstract root
 			// or a plain declaration (no def)
 			// there is no location.
@@ -2782,7 +2782,7 @@ DST_Create_Subprogram (ST *func_st, gs_t fndecl)
         funcname,
         ret_dst,        	// return type
         DST_INVALID_IDX,        // Index to alias for weak is set later
-        (void*) fstidx,         // index to fe routine for st_idx
+        (void*)(INTPTR) fstidx,         // index to fe routine for st_idx
         DW_INL_not_inlined,     // applies to C++
         DW_VIRTUALITY_none,     // applies to C++
         0,                      // vtable_elem_location
