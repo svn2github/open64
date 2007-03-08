@@ -1056,6 +1056,17 @@ Handle_Chk_Split_Bunch(BB* head_bb)
         if(bb != head_bb){
             BB_Disconnect_All_Preds(bb);
             BB_Append_All(head_bb,bb);
+            if (BB_exit(bb)) {
+               BB_Transfer_Exitinfo(bb, head_bb);
+               Exit_BB_Head = BB_LIST_Delete(bb, Exit_BB_Head);
+               Exit_BB_Head = BB_LIST_Push(head_bb, Exit_BB_Head, &MEM_pu_pool);
+            }       
+            if (BB_call(bb)) {
+               BB_Transfer_Callinfo(bb, head_bb);
+            }       
+            if (BB_asm(bb)) {
+               BB_Transfer_Asminfo (bb, head_bb);
+            }
             if(bb == tail_bb)
                 BB_Take_Over_All_Succs(head_bb,bb);
             BB_next(BB_prev(bb)) = BB_next(bb);
