@@ -94,9 +94,9 @@ endif
 
 
 ifeq ($(BUILD_COMPILER), GNU)
-ASNAME = gcc 
-CCNAME = gcc
-C++NAME = g++
+ASNAME = gcc -m32 
+CCNAME = gcc -m32
+C++NAME = g++ -m32
 #F90 = gfortran
 #F90_RTLIBS = -lgfortran
 F90 = ifort -assume 2underscores

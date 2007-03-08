@@ -3658,8 +3658,7 @@ WFE_Expand_Expr (tree exp,
 	tcon = Host_To_Targ_Float (TY_mtype (ty_idx), TREE_REAL_CST(exp));
 #else
 	REAL_VALUE_TYPE real = TREE_REAL_CST(exp);
-#ifdef TARG_IA64
-#else
+#ifndef TARG_IA64
 	int rval;
 
 	long rbuf [4];
@@ -5304,28 +5303,37 @@ WFE_Expand_Expr (tree exp,
 #ifdef KEY
 	    case BUILT_IN_FLOOR:
 	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-              if (MTYPE_is_integral(ret_mtype))
+#ifdef TARG_IA64
+	      if (MTYPE_is_integral(ret_mtype))
                 wn0 = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
               else{
                 wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F8, arg_wn);
                 wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
               }
-              whirl_generated = TRUE;
+#else
+	      wn0 = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
+#endif	      
+	      whirl_generated = TRUE;
 	      break;
 
 	    case BUILT_IN_FLOORF: 
               arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-              if (MTYPE_is_integral(ret_mtype))
+#ifdef TARG_IA64
+	      if (MTYPE_is_integral(ret_mtype))
                 wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
               else{
                 wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F4, arg_wn);
                 wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
               }
+#else
+	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+#endif	      
 	      whirl_generated = TRUE;
 	      break;
 
             case BUILT_IN_FLOORL:
               arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+#ifdef TARG_IA64
 	      if (MTYPE_is_integral(ret_mtype))
                 // bug fix for OSP_201
 		// 
@@ -5336,7 +5344,10 @@ WFE_Expand_Expr (tree exp,
 		wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F10, arg_wn);
 		wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
 	      }
-              whirl_generated = TRUE;
+#else
+	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
+#endif	      
+	      whirl_generated = TRUE;
               break;
 #endif
 
