@@ -169,9 +169,19 @@ ALIAS_RULE::Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const
     return FALSE;
   }
 
+  if (TY_fld(ty1).Is_Null()) {
+    // structure has no fields, e.g some iterators in C++, 
+    // ANSI C type rule is not applicable to this situation
+    return TRUE;
+  }
+
   FLD_ITER iter = Make_fld_iter (FLD_HANDLE (Ty_Table[ty1].Fld ()));
   do {
     TY_IDX field_ty = (*iter).type;
+
+    Is_True (TY_IDX_index(field_ty) != 0, 
+             ("Invalid type of field in strucure of type %d", (INT)ty1));
+      
     if (TY_IDX_index(field_ty) == TY_IDX_index(ty2)) {
       return TRUE;
     }
@@ -182,7 +192,7 @@ ALIAS_RULE::Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const
     if (TY_kind(field_ty) == KIND_STRUCT && Ty1_Include_Ty2 (field_ty, ty2)) {
         return TRUE;
     }
-  } while (! FLD_last_field (iter++));
+  } while (!FLD_last_field(iter++));
 
   return FALSE;
 }
