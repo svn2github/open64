@@ -122,7 +122,7 @@ ifeq ($(BUILD_TARGET), X8664)
 # should be used only for such modules (e.g. ieee_arithmetic, ieee_exceptions,
 # ieee_features, iso_fortran_env.)
 F90FLAGS += \
-   -Wf,-intrinsic_module_gen
+#   -Wf,-intrinsic_module_gen
 
 # Program gen_ieee_cpp_macros generates file ieee_cpp_macros.h, which is
 # needed by the TR15580/F2003 IEEE intrinsic modules

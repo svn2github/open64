@@ -94,7 +94,8 @@ ifeq ($(BUILD_OPTIMIZE), DEBUG)
 HOSTDEFS += -DIs_True_On
 HOSTDEFS += -DInsist_On 
 else
-CXXFLAGS += -O2 -fno-exceptions -nostdinc++ -CG:emit_unwind_info=off -D_INCLUDED_FROM_LIBINSTR_
+#CXXFLAGS += -O2 -fno-exceptions -nostdinc++ -CG:emit_unwind_info=off -D_INCLUDED_FROM_LIBINSTR_
+CXXFLAGS += -O2 -fno-exceptions -nostdinc++ -D_INCLUDED_FROM_LIBINSTR_
 endif
 
 
