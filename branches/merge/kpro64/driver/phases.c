@@ -1691,8 +1691,9 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		!option_was_seen(O_fno_fast_stdlib) &&
 		// m32 currently doesn't use anything from libpscrt.  Bug 9611.
 		abi != ABI_N32) {
-		add_library(args, "pscrt");
-		add_library(args, "pscrt_p");
+                  // Comment this since the copyright of libpscrt*.
+		  //add_library(args, "pscrt");
+		  //add_library(args, "pscrt_p");
 	    }
 	    return;
 	}
@@ -1745,8 +1746,9 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	if (!option_was_seen(O_fno_fast_stdlib) &&
 	    // m32 currently doesn't use anything from libpscrt.  Bug 9611.
 	    abi != ABI_N32) {
-	    add_library(args, "pscrt");
-	    add_library(args, "pscrt_p");
+              // Comment this since the copyright of libpscrt*.
+	      //add_library(args, "pscrt");
+	      //add_library(args, "pscrt_p");
 	}
 #endif
 

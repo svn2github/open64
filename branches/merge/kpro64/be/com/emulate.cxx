@@ -4305,7 +4305,11 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
       }
 
     // Rename memset to the PathScale optimized memset.
-    } else if (WN_intrinsic(tree) == INTRN_MEMSET &&
+    }
+// comment these code since the copyright of libpscrt*.*.
+//
+#if 0 
+    else if (WN_intrinsic(tree) == INTRN_MEMSET &&
 	       OPT_Fast_Stdlib &&
 	       Is_Target_64bit()) {
       if (Is_Target_EM64T() || Is_Target_Core())
@@ -4313,7 +4317,6 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
       else
 	st = Gen_Intrinsic_Function(ty, "memset.pathscale.opteron");
 
-#ifdef TARG_X8664
     // Rename memcpy to the PathScale optimized memcpy.
     } else if (WN_intrinsic(tree) == INTRN_MEMCPY &&
 	       OPT_Fast_Stdlib &&
@@ -4322,8 +4325,9 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_em64t");
       else
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_opteron");
+    } 
 #endif
-    } else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
     	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
                Is_Target_32bit()) {
       st = Gen_Intrinsic_Function(ty, "__popcountsi2");
