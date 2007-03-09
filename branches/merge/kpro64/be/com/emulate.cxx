@@ -3886,7 +3886,7 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
 
   case OPR_LDID:
     if (WN_class(tree) == CLASS_PREG)
-	break;
+      break;
     return WN_Lda(Pointer_type, WN_load_offset(tree), WN_st(tree));
 
   case OPR_STID:
@@ -3895,9 +3895,8 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
   case OPR_ARRAY:
   case OPR_LDA:
     return tree;
-
-  default:
-    {
+  }
+  {
       TYPE_ID	type = WN_rtype(tree);
       ST  *st = Gen_Temp_Symbol( MTYPE_To_TY(type), "complex-temp-expr");
       WN  *stid;
@@ -3910,7 +3909,6 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
       WN_INSERT_BlockLast(block, stid);
 
       return WN_Lda(Pointer_type, WN_store_offset(stid), st);
-    }
   }
 }
 
