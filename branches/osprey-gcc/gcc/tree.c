@@ -6469,15 +6469,15 @@ enum language language = C;
 #define CR()  (language == C)
 
 // C++ Dummy Variables Section Begins.
-static tree global_namespace; // CP_DECL_CONTEXT () references this variable in cp/name-lookup.c
-static int (*p_uses_template_parms) (tree);
-static tree (*p_most_general_template) (tree);
-static int (*p_copy_fn_p) (tree);
-static int (*p_is_empty_class) (tree);
-static tree (*p_namespace_binding) (tree, tree);
+tree global_namespace; // CP_DECL_CONTEXT () references this variable in cp/name-lookup.c
+int (*p_uses_template_parms) (tree);
+tree (*p_most_general_template) (tree);
+int (*p_copy_fn_p) (tree);
+int (*p_is_empty_class) (tree);
+tree (*p_namespace_binding) (tree, tree);
 // tree p_complete_ctor_identifier;
-static tree cp_global_trees[CPTI_MAX];
-static tree (*p_get_tinfo_decl) (tree);
+tree cp_global_trees[CPTI_MAX];
+tree (*p_get_tinfo_decl) (tree);
 // C++ Dummy Variables Section Ends.
 
 // GSPIN stuff follows:
@@ -7938,7 +7938,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
   }
 
   // Create the node that will represent this tree node. 
-  TREE_TO_TRANSLATED_GS (t) = (unsigned int)__gs(gcc2gs (TREE_CODE (t)));
+  TREE_TO_TRANSLATED_GS (t) = (unsigned long)__gs(gcc2gs (TREE_CODE (t)));
 
   // Argument 0 is the name of the class:
   class = TREE_CODE_CLASS (TREE_CODE (t));
