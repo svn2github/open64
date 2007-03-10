@@ -296,28 +296,28 @@ int gspin_node_size(gs_code_t code)
 {
   int arity = gs_code_arity(code);
   if (arity != 0)
-    return (1 + arity) * 4;
+    return (1 + arity) * sizeof(char *);
   switch (code) {
   case IB_CHAR:
   case IB_BOOL:
   case GS_TCC:
   case GSBI:
   case GSBI_CLASS:
-  case GS_ERROR_MARK:	return 1*4;
+  case GS_ERROR_MARK:	return 1*sizeof(char*);
 
   case IB_UNSIGNED:
   case IB_UNSIGNED_LONG:
   case IB_INT:
   case IB_LONG:
   case IB_FLOAT:
-  case IB_STRING:	return 2*4;
+  case IB_STRING:	return 2*sizeof(char*);
 
   case IB_LONG_LONG:
   case IB_UNSIGNED_LONG_LONG:
   case IB_BIT_VECTOR:
-  case IB_DOUBLE:	return 4*4;
+  case IB_DOUBLE:	return 4*sizeof(char*);
 
-  case IB_LONG_DOUBLE:	return 5*4;
+  case IB_LONG_DOUBLE:	return 5*sizeof(char*);
 
   default: GS_ASSERT(false, "gspin_node_size(): unrecognied tree code");
   }

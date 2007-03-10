@@ -108,7 +108,7 @@ extern char *mem_seg;
 // input must belong to the mmap'ed block, whose base is mem_seg; (2) addresses
 // for gspin nodes allocated by the consumer are manged by mempool, and thus
 // will belong to one of those mempool-managed non-contiguous blocks.
-int gs_mempool_address2byteofst(int arena_id, char *p) {
+long gs_mempool_address2byteofst(int arena_id, char *p) {
   if (memblk_cache[arena_id] == NULL || 
       !(p >= memblk_cache[arena_id]->mem &&
         p - memblk_cache[arena_id]->mem < GS_MEMBLOCK_SIZE)) {

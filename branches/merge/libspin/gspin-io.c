@@ -159,7 +159,7 @@ gs_unsigned_char_t *gs_read (const gs_string_t filename)
 
   // Convert indexes within the mem_seg to physical addresses.
   p = mem_seg;
-  string_section = (char *) 0xffffffff;
+  string_section = (char *)(~0L); 
   while (p - mem_seg < statbuf.st_size && p < string_section) {
     gs_t q = (gs_t) p;
     if (gs_code_arity(gs_code(q)) > 0) { // convert kid indicese to pointers
@@ -168,11 +168,11 @@ gs_unsigned_char_t *gs_read (const gs_string_t filename)
         if (gs_operand(q, j) != NULL) {
 	  GS_ASSERT((int)gs_operand(q, j) < statbuf.st_size, 
 	  	    "right offset out of bounds!.\n");
-	  gs_set_operand(q, j, (gs_t) (mem_seg + (int) gs_operand(q,j)));
+	  gs_set_operand(q, j, (gs_t) (mem_seg + (long) gs_operand(q,j)));
 	}
     }
     else if (gs_code(q) == IB_STRING) { // convert string index to pointer
-      if (string_section == (char *) 0xffffffff)
+      if (string_section == (char *)(~0L) )
 	string_section = mem_seg + gs_u(q);
       GS_ASSERT(gs_u(q) < statbuf.st_size, "left offset out of bounds!.\n");
       _gs_s_no_alloc (q, (gs_unsigned_char_t *) (mem_seg + gs_u(q)));

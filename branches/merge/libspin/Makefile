@@ -39,8 +39,8 @@ HEADERS = gspin-tree.h \
 
 OBJECTS = $(subst .c,.o,$(SOURCES))
 
-CC = opencc
-CFLAGS =  -O3 
+CC = gcc
+CFLAGS =  -g -O0 
 
 all: libgspin.a gspin
 
