@@ -1607,7 +1607,7 @@ inline UINT8 addr_omega(OP *memop, UINT8 n)
  * -----------------------------------------------------------------------
  */
 {
-  Is_True(OP_load(memop) || OP_store(memop), ("not a load or store"));
+  Is_True(OP_Load(memop) || OP_store(memop), ("not a load or store"));
   return Is_CG_LOOP_Op(memop) ? OP_omega(memop, n) : 0;
 }
 
@@ -1650,7 +1650,7 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
   OP *defop;
   BB *bb = OP_bb(op);
 
-  Is_True(OP_load(op) || OP_store(op), ("not a load or store"));
+  Is_True(OP_Load(op) || OP_store(op), ("not a load or store"));
 
   INT offset_num = OP_find_opnd_use (op, OU_offset);
   INT base_num   = OP_find_opnd_use (op, OU_base);
@@ -2354,7 +2354,7 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
   SAME_ADDR_RESULT cg_result = DONT_KNOW;
   char *info_src = "";
   UINT8 min_omega = 0;
-  BOOL memread = OP_load(pred_op) && OP_load(succ_op);
+  BOOL memread = OP_Load(pred_op) && OP_Load(succ_op);
 
   *definite = FALSE;
 
@@ -2428,8 +2428,8 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
   /* Try to analyze the address TNs ourselves unless disabled.
    */
   if (CG_DEP_Addr_Analysis && !lex_neg &&
-      (OP_load(pred_op) || OP_store(pred_op)) &&
-      (OP_load(succ_op) || OP_store(succ_op))) {
+      (OP_Load(pred_op) || OP_store(pred_op)) &&
+      (OP_Load(succ_op) || OP_store(succ_op))) {
 
     switch (cg_result = CG_DEP_Address_Analyze(pred_op, succ_op)) {
     case IDENTICAL:
@@ -3469,9 +3469,9 @@ void add_mem_arcs_from(UINT16 op_idx)
     OP *succ = mem_ops[succ_idx];
     ARC *arc;
     INT16 latency;
-    CG_DEP_KIND kind = OP_load(op) ?
-      (OP_load(succ) ? CG_DEP_MEMREAD : CG_DEP_MEMANTI) :
-      (OP_load(succ) ? CG_DEP_MEMIN : CG_DEP_MEMOUT);
+    CG_DEP_KIND kind = OP_Load(op) ?
+      (OP_Load(succ) ? CG_DEP_MEMREAD : CG_DEP_MEMANTI) :
+      (OP_Load(succ) ? CG_DEP_MEMIN : CG_DEP_MEMOUT);
 
     if (OP_volatile(succ) && OP_volatile(op)) kind = CG_DEP_MEMVOL;
 
