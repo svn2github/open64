@@ -390,7 +390,7 @@ BOOL purify_pools = FALSE;
 static BOOL purify_pools_trace = FALSE;
 static BOOL purify_pools_trace_x = FALSE;
 
-#define MAGIC_NUM 0xabcd
+#define MAGIC_NUM 0xdecf
 
 /* Accessing POOL fields.  This is defined here, as these fields are
  * all private.
@@ -1918,7 +1918,7 @@ MEM_POOL_Initialize_P
   MEM_POOL_blocks(pool) = NULL;
   MEM_POOL_frozen(pool) = FALSE;
   MEM_POOL_pure_stack(pool) = NULL;
-
+  
   /* Don't allow duplicate initializations */
   Is_True (MEM_POOL_magic_num(pool) != MAGIC_NUM,
            ("Initialization of an already initialized pool: %s\n",

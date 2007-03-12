@@ -1084,7 +1084,6 @@ CG_Generate_Code(
   }
 #endif
 
-
   LOCS_Enable_Bundle_Formation = locs_bundle_value;
   EMIT_explicit_bundles = emit_bundle_value;
 #ifndef _value_profile_before_region_formation
@@ -1334,7 +1333,7 @@ CG_Generate_Code(
   Reuse_Temp_TNs = orig_reuse_temp_tns;		/* restore */
 
 #endif // TARG_IA64
-
+  
   if (region) {
     /*--------------------------------------------------------------------*/
     /* old region: rwn, rid_orig                      */
@@ -1468,7 +1467,7 @@ CG_Generate_Code(
 
     Stop_Timer ( T_CodeGen_CU );
     Set_Error_Phase ( "Codegen Driver" );
-
+    
     return rwn;
   }
 }

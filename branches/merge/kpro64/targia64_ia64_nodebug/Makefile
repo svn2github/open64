@@ -87,6 +87,7 @@ TOOL_SUBDIRS = \
 	whirl2f \
 	wopt \
 	gdb \
+	wgen \
 	be_driver
 
 #	ld64

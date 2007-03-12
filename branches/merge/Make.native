@@ -61,6 +61,7 @@ NATIVE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a \
                 $(NATIVE_BUILD_DIR_LD)/ld/ld-new  \
                 $(NATIVE_BUILD_DIR)/gccfe/gfec \
+                $(NATIVE_BUILD_DIR)/wgen/wgen \
                 $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so \
                 $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so \
                 $(NATIVE_BUILD_DIR)/g++fe/gfecc 
@@ -78,6 +79,9 @@ $(NATIVE_BUILD_DIR)/driver/driver driver:
 
 $(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe
+
+$(NATIVE_BUILD_DIR)/wgen/wgen gfec:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen
 
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe
@@ -150,6 +154,7 @@ install: ;@./INSTALL.native
 clobber:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 

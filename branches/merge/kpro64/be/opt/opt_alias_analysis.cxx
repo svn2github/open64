@@ -2109,8 +2109,10 @@ OPT_STAB::Adjust_vsym(AUX_ID vp_idx, OCC_TAB_ENTRY *occ)
 #ifdef KEY
   Is_True(WOPT_Enable_Vsym_Unique || vp_idx == Default_vsym() ||
           pt->Base_is_fixed() || pt->Based_sym() ||
+	  (pt->Expr_kind() == EXPR_IS_ADDR && pt->Ofst_kind() == OFST_IS_UNKNOWN) ||
           aux_stab[vp_idx].Unique_vsym(),
           ("OPT_STAB::Adjust_vsym: base is disrupted."));
+
 #else
   Is_True(vp_idx == Default_vsym() || pt->Base_is_fixed() ||
 	  pt->Based_sym() || aux_stab[vp_idx].Unique_vsym(),
