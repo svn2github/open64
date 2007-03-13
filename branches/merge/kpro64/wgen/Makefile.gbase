@@ -274,8 +274,7 @@ LLDOPTS = -Wl,--export-dynamic
 LLDLIBS = $(COMUTIL_OBJS) $(LIBIBERTY_OBJS) $(LIBSPIN_OBJS)
 LLDLIBS += -lm $(CMPLRS_OBJS)
 
-#default: first $(TARGETS) last
-default: $(TARGETS) last
+default: first $(TARGETS) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is
@@ -284,7 +283,7 @@ default: $(TARGETS) last
 first:
 	$(call submake,$(TARG_CMPLRS_DIR))
 	$(call submake,$(TARG_COMUTIL_DIR))
-
+	$(call submake,$(TARG_LIBIBERTY_DIR))
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is
 #  built.

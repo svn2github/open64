@@ -80,7 +80,7 @@ $(NATIVE_BUILD_DIR)/driver/driver driver:
 $(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe
 
-$(NATIVE_BUILD_DIR)/wgen/wgen gfec:
+$(NATIVE_BUILD_DIR)/wgen/wgen wgen:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen
 
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:

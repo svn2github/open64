@@ -61,7 +61,8 @@ NATIVE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a \
                 $(NATIVE_BUILD_DIR_LD)/ld/ld-new  \
                 $(NATIVE_BUILD_DIR)/gccfe/gfec \
-                $(NATIVE_BUILD_DIR)/g++fe/gfecc 
+                $(NATIVE_BUILD_DIR)/g++fe/gfecc \
+                $(NATIVE_BUILD_DIR)/wgen/wgen
 
                 # We use prebuilt fortran end by default
                 #$(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
@@ -79,6 +80,9 @@ $(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
 
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe
+
+$(NATIVE_BUILD_DIR)/wgen/wgen wgen:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen
 
 $(NATIVE_BUILD_DIR)/be/be be:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be
@@ -146,6 +150,7 @@ clobber:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wopt clobber 
