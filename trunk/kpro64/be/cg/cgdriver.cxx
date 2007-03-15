@@ -1473,8 +1473,6 @@ Configure_CG_Options(void)
     EBO_Opt_Level = (CG_opt_level > 0) ? EBO_Opt_Level_Default : 0;
   }
   Enable_CG_Peephole = (CG_opt_level > 0) ? TRUE : FALSE;
-  if (CG_opt_level <= 0) 
-      Enable_EBO_Post_Proc_Rgn = FALSE ;
 
   if ( IPFEC_Profitability ) {
       // region formation

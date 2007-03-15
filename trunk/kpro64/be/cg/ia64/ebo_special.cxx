@@ -672,6 +672,9 @@ condition_redundant(OP *elim_op,
       ((p_opcode == TOP_cmp4_i_ge_unc) && (e_opcode == TOP_cmp4_i_lt_unc))) {
     TN *pr0 = OP_result(prev_op,0);
     TN *pr1 = OP_result(prev_op,1);
+	EBO_TN_INFO *pr0_tninfo = prev_opinfo->actual_rslt[0];
+	EBO_TN_INFO *pr1_tninfo = prev_opinfo->actual_rslt[1];
+	
     TN *er0 = OP_result(elim_op,0);
     TN *er1 = OP_result(elim_op,1);
     TN *prp = OP_opnd(prev_op,OP_PREDICATE_OPND);
@@ -680,6 +683,7 @@ condition_redundant(OP *elim_op,
     if (p_opcode != e_opcode) {
      /* We are dealing with complement compare instructions. */
       TN *save_tn = pr0;
+	  EBO_TN_INFO *save_tn_info = pr0_tninfo;
 
       if (((pr0 == True_TN) && (er0 == True_TN)) ||
           ((pr1 == True_TN) && (er1 == True_TN))) {
@@ -727,6 +731,10 @@ condition_redundant(OP *elim_op,
       pr0 = pr1;
       pr1 = save_tn;
 
+	  save_tn_info = pr0_tninfo;
+	  pr0_tninfo = pr1_tninfo;
+	  pr1_tninfo = save_tn_info;
+
       if (EBO_Trace_Optimization) {
         #pragma mips_frequency_hint NEVER
         fprintf(TFile,"%sCompare instructions are complements.\n",EBO_trace_pfx);
@@ -773,18 +781,26 @@ condition_redundant(OP *elim_op,
       return TRUE;
     }
 
+    /* Originally, in the else branch a complement predicate copy of this form:
+      (p7) cmp.eq.unc p0,p11 = r0, r0
+      is created if the $pr0 is a True TN. 
+      The author wants this instruction to have p7||p11=true.
+      However, this is wrong.
+      If p7 is true, then according to the IA64 manual, p11 should false.
+      If p7 is false, then p0 and p11 are both false.
+    */
     if (er0 != True_TN) {
-      if (pr0 != True_TN) {
+      if (pr0 != True_TN && EBO_tn_available(OP_bb(elim_op), pr0_tninfo)) {
         EBO_Copy_Predicate (er0, pr0, &ops);
       } else {
-        EBO_Complement_Predicate (er0,pr1, &ops);
+        goto can_not_combine_ops;
       }
-    } 
+    }
     if (er1 != True_TN) {
-      if (pr1 != True_TN) {
+      if (pr1 != True_TN && EBO_tn_available(OP_bb(elim_op), pr1_tninfo)) {
         EBO_Copy_Predicate (er1, pr1, &ops);
       } else {
-        EBO_Complement_Predicate (er1,pr0, &ops);
+        goto can_not_combine_ops;
       }
     }
 

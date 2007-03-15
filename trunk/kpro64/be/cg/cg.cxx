@@ -1015,7 +1015,7 @@ CG_Generate_Code(
     Adjust_Entry_Exit_Code ( Get_Current_PU_ST() );
   }
 
-  if (Enable_EBO_Post_Proc_Rgn) {
+  if (CG_opt_level > 0 && Enable_EBO_Post_Proc_Rgn) {
     Set_Error_Phase("Extended Block Optimizer");
     Start_Timer(T_EBO_CU);
     EBO_Post_Process_Region (region ? REGION_get_rid(rwn) : NULL);
