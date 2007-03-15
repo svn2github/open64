@@ -139,5 +139,9 @@ ifeq ($(BUILD_TARGET), IA64)
 CFILES += main.c
 endif
 
+ifeq ($(BUILD_TARGET), X8664)
+CFILES += main.c
+endif
+
 SRC_DIRS += \
    $(BUILD_TOT)/libf/fio

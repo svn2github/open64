@@ -2449,12 +2449,20 @@ determine_ld_phase (boolean run_ipa) {
 #else
         else if (invoked_lang == L_CC) {
                 ldphase = P_ldplus; // let g++ let care
-        } else if (invoked_lang == L_cc) {
+        }
+#ifdef TARG_IA64 
+        else if (invoked_lang == L_cc) {
                 ldphase = P_ld;     // let gcc let care
-        } else {
+        } 
+        else {
                 // using ld directly so we have more control on the link-phase.
                 ldphase = P_collect;
         }
+#else
+        else {
+            	ldphase = P_ld;     // let gcc let care
+        }
+#endif
 #endif
         return ldphase;
 }
