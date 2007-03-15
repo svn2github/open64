@@ -618,14 +618,22 @@ SCHEDULER::Collect_And_Analyse_Other_Than_Dep_Constraints
            return TRUE; 
     }
    
-        /* 2. check to see whether cand will kill some liveout defs. Renaming chances!
+        /* 2. check to see whether cand will kill some liveout defs. If yes and
+         * the LHS cannot be renamed, this instruction should not be scheduled.
          */
     if (_dflow_mgr.Upward_Sched_Kill_LiveOut_Defs 
             (cand, bb_info, &_cflow_mgr)) {
             
-        /* Now, we just do renaming for single assignment cand.
+        /* We cannot find enough renaming opportunities for the OPs with 
+         * multiple results. We might as well save some time to enjoy life.
          */
         if (OP_results(op) != 1) {
+            return FALSE;
+        }
+
+        /* Dedicated TN should not be renamed
+         */
+        if (TN_is_dedicated (OP_result(op,0))) {
             return FALSE;
         }
     }

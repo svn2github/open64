@@ -1748,7 +1748,8 @@ Find_BB_TNs (BB *bb)
             ((OP_results(op) == 0) ||
              !OP_uniq_res(op) ||
              !tn_registers_identical(tn, OP_result(op,0))) && 
-	     !OP_ld_st_unat(op)) {
+	     !OP_ld_st_unat(op) && 
+             !TN_is_dedicated(OP_opnd(op,opndnum))) {
          /* The original TN can be "physically" replaced with another TN. */
          /* Put the new TN in the expression,           */
          /* decrement the use count of the previous TN, */
