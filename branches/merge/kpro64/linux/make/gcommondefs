@@ -102,20 +102,26 @@ C++NAME = g++
 F90 = ifort -assume 2underscores
 F90_RTLIBS = $(INTEL_COMPILER_FC_HOME)/lib/libifcore.a $(INTEL_COMPILER_FC_HOME)/lib/libimf.a
 ifeq ($(BUILD_ARCH), X8664)
+# only 64bit libraries set the BUILD_ARCH to X8664 
 CCNAME  = pathcc 
 C++NAME = pathCC  
 F90 = pathf90 
 endif
 ifeq ($(BUILD_TARGET), IA32)
+# only 32bit libraries set the BUILD_TARGET to IA32
 CCNAME  = pathcc -m32 -mno-sse2
 C++NAME = pathCC -m32 -mno-sse2
 F90 = pathf90 -m32 -mno-sse2
 endif
 ifeq ($(BUILD_TARGET), X8664)
-ASNAME = gcc 
-CCNAME = gcc 
-C++NAME = g++
-F90 = pathf90
+# both the 64bit libraries and executables set the BUILD_TARGET to X8664
+# we should distinguish them
+ifeq ($(BUILD_ARCH), IA32)
+ASNAME = gcc -m32
+CCNAME = gcc -m32
+C++NAME = g++ -m32
+F90 = pathf90 -m32
+endif
 endif
 AR      = ar
 F77 = $(F90)
