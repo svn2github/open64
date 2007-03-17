@@ -60,6 +60,7 @@
 
 static mDED_PREG_NUM Input_Base_Preg = 32;
 static mDED_PREG_NUM Output_Base_Preg = 127;
+static mDED_PREG_NUM Fp_Param_Base_Preg = 136;
 
 #define I0 (Int_Preg_Min_Offset - 1)
 #define F0 Float_Preg_Min_Offset
@@ -119,6 +120,13 @@ Is_Int_Output_Preg (PREG_NUM preg)
 {
 	return (preg <= Output_Base_Preg 
 	     && preg > (Output_Base_Preg - MAX_NUMBER_OF_REGISTER_PARAMETERS));
+}
+
+extern BOOL
+Is_Fp_Output_Preg (PREG_NUM preg)
+{
+       return preg >= Fp_Param_Base_Preg && 
+              preg < (Fp_Param_Base_Preg + MAX_NUMBER_OF_REGISTER_PARAMETERS);
 }
 
 /* return whether preg is an input preg */
