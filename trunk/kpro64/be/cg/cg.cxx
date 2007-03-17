@@ -528,6 +528,10 @@ CG_Generate_Code(
   Config_Ipfec_Flags();
   
   Generate_Entry_Exit_Code ( Get_Current_PU_ST(), region );
+  if (!CG_localize_tns) {
+     CGTARG_Add_Implict_Operands ();
+  }
+
   Stop_Timer ( T_Expand_CU );
   Check_for_Dump ( TP_CGEXP, NULL );
 
