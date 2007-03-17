@@ -1733,6 +1733,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
     Print_OP(op);
   }
 
+  Remove_Hidden_Operands (op);
   Verify_Instruction(op);
 
   if (OP_prefetch(op)) Use_Prefetch = TRUE;

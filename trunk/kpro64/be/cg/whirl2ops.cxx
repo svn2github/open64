@@ -4523,6 +4523,7 @@ Convert_WHIRL_To_OPs (WN *tree)
 
   if (Trace_BBs)
     Print_All_BBs ();
+
 }
 
 void Whirl2ops_Initialize(struct ALIAS_MANAGER *alias_mgr)
