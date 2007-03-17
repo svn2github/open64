@@ -99,10 +99,6 @@ static BOOL gbb_needs_rename;   // Some local renaming required for a GBB
                                 // due to a cgprep failure.  DevWarn and
                                // rename for robustness.
 BOOL fat_self_recursive = FALSE;
-//BOOL gra_self_recursive = FALSE;
-//bug fix for OSP_212
-GTN_SET** bb_gtn_needs_complement;// use to present tns in bb
-//to be complement, use as GTN* BB_GTN_needs_complement[bb->id]
 extern BOOL gra_self_recursive;
 extern char *Cur_PU_Name;
 BOOL OP_maybe_unc_cmp(OP* op)
@@ -639,6 +635,72 @@ Scan_Region_BB_For_Referenced_TNs( GRA_BB* gbb )
 
 /////////////////////////////////////
 static void
+Create_Global_Dedicated_TN_LRANGEs(void)
+/////////////////////////////////////
+// 
+//  GRA assumes live range of dedicated TN is local one. This assumption
+//  is not always true. The definitions of dedicated TN and their uses may 
+//  be live across multiple blocks. It may be expensive to build global live 
+//  ranges of dedicated TN and construct interference graph for them. On the 
+//  other hand, the change to make that happen may be huge. This solution 
+//  solve the problem: We divide the live range of dedicated TN <t> into 
+//  two parts:
+//     1) the set of basic blocks in which <t> has real occurrrences.
+//     2) the set of basic blocks in which <t> does not have real occurrence.
+//  
+//  As mentioned above, the live-range snippet in part-1) is currently handled 
+//  as local wired live range. The coloring of live range snippet in part-1) is 
+//  correct. 
+//  
+//  What we concerned about is that register bound to <t> will be used to 
+//  color <t>'s neighbors in part-2).  Therefore, we should remove the register 
+//  associated with <t> from the available register set of blocks in part-2) to
+//  prevent that from happening. This function serves this purpose. 
+// 
+//  The net result of this function is equivalent to construting a global live 
+//  range for dedicated TN and let him join the coloring process, hence the name.
+//  
+/////////////////////////////////////////////
+{
+
+  MEM_POOL_Popper mp(&MEM_local_nz_pool);
+
+  GTN_SET* ded_gtns = GTN_SET_Create_Empty (Last_Dedicated_TN, mp.Pool());
+
+  // loop over all dedicated TNs 
+  for (TN_NUM i = Last_Dedicated_TN; i > 0; i--) {
+    TN* tn = TNvec(i);   
+    // ignore local dedicated TN
+    if (!TN_is_global_reg(tn)) continue;
+    
+    // ignore TN bound to unallocatable register 
+    REGISTER_SET alloc = REGISTER_CLASS_allocatable(TN_register_class (tn));
+    if (!REGISTER_SET_MemberP(alloc, TN_register(tn))) continue;
+    
+    ded_gtns = GTN_SET_Union1D (ded_gtns, tn, mp.Pool());
+  }
+
+  for (BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    GRA_BB* gbb = NULL;
+    GTN_SET* live_use = BB_live_use(bb);
+    GTN_SET* def_reach_in = BB_defreach_in(bb);
+
+    for (TN* tn = GTN_SET_Intersection_Choose(ded_gtns, BB_live_in(bb));
+         tn != GTN_SET_CHOOSE_FAILURE;
+         tn = GTN_SET_Intersection_Choose_Next(ded_gtns, BB_live_in(bb), tn)) {
+      if (GTN_SET_MemberP (def_reach_in, tn) &&
+          !GTN_SET_MemberP (live_use, tn)) {
+        // dedicated TN has no occurrence in this block but it is live 
+        // through this block.
+        gbb = gbb ? gbb : gbb_mgr.Get(bb);
+        gbb->Make_Register_Used(TN_register_class(tn), TN_register(tn));
+      }
+    }
+  }/* end of outer for-loop */
+}
+
+/////////////////////////////////////
+static void
 Create_LRANGEs(void)
 /////////////////////////////////////
 //
@@ -706,6 +768,7 @@ Create_LRANGEs(void)
     if ( TN_Is_Allocatable(tn) && ! lrange_mgr.Get(tn) && TN_is_global_reg(tn))
       lrange_mgr.Create_Complement(tn);
   }
+  Create_Global_Dedicated_TN_LRANGEs();
   GRA_Trace_Memory("After Create_LRANGEs()");
 }
 
@@ -1280,29 +1343,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   Initialize_Wired_LRANGEs();
   OP_OF_ONLY_DEF Op_Of_Only_Def(&MEM_local_nz_pool);
   Op_Of_Only_Def.Set_OPS_OF_ONLY_DEF(gbb);
-  //begin bug fix for OSP_212
-  GTN_SET* needs_comp = bb_gtn_needs_complement[gbb->Bb()->id];
-  //scan the complement bbs to add a local lrange to wired tn using ret-val's reg 
-  for (TN *tn = GTN_SET_Choose(needs_comp);
-     		tn != GTN_SET_CHOOSE_FAILURE && tn != NULL;
-      		tn = GTN_SET_Choose_Next(needs_comp, tn))
-  {
-      if (TN_is_global_reg(tn) && TN_is_dedicated(tn)) {
-          /* dedicated tn's reg may be corrupt, here we can't use the reg in this bb.
-           * so to create a local lrange to that dedicated tn.
-           */
-          DevWarn("local lrange of GTN%d(%s) in BB:%d", TN_number(tn),
-		    REGISTER_name(TN_register_class(tn), TN_register(tn)), gbb->Bb()->id);
-          GRA_PREF_LIVE* gpl = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn);
-          if (!gpl) {
-		    gpl = gra_pref_mgr.LIVE_Create(&MEM_local_nz_pool);
-		    hTN_MAP_Set(live_data, tn, gpl);
-          }
-          Wired_TN_Reference(gbb, TN_register_class(tn), 
-		         TN_register(tn), wired_locals);
-      }
-  }
-  //end bug fix for OSP_212
 
   for (iter.Init(gbb), op_count=1; ! iter.Done(); iter.Step(), op_count++ ) {
     OP*  xop = iter.Current();
@@ -1341,8 +1381,8 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 	hTN_MAP_Set(live_data, res_tn, gpl);
       }
 
-      if (OP_cond_def(xop)) { // there is a hidden use
-         if (!Op_Of_Only_Def.FIND_OP(xop)) {  
+      if (OP_cond_def(xop) && !Op_Of_Only_Def.FIND_OP(xop)) {
+           // there is a hidden use
            if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
                lunit->Has_Use_Set();
                if (!lunit->Has_Def()) {
@@ -1352,7 +1392,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
            } else if (!gpl->Num_Defs()) {
 	  gpl->Exposed_Use_Set(TRUE);
           }
-       } 
       }
 
       gpl->Num_Defs_Set(gpl->Num_Defs() + 1);
@@ -1452,79 +1491,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   MEM_POOL_Pop(&MEM_local_nz_pool);
 }
 
-//begin bug fix for OSP_212
-/////////////////////////////////////
-static void
-Try_To_Add_Gtn_to_Complement_BB(BB* bb, TN* tn)
-////////////////////////////////////
-//
-// try to add gtns to complement bbs.
-// iteratively from this BB to chk_split_head
-//
-/////////////////////////////////////
-{
-  if (!bb || BB_call(bb))
-    return;// maybe this case never occurs, use to catch uncertain case
-  FmtAssert((BB_chk_split(bb) || BB_recovery(bb) || BB_scheduled(bb)), 
-    ("I don't know how to deal with BB:%d, actually I thought it couldn't happen.", bb->id));
-  //add tn to bb's complement gtn_set
-  bb_gtn_needs_complement[bb->id] = GTN_SET_Union1D(
-    bb_gtn_needs_complement[bb->id], tn, GRA_pool);
-  if (BB_chk_split_head(bb) || BB_recovery(bb))
-    return;//no need to proceed
-  else{
-    BBLIST* preds;
-    FOR_ALL_BB_PREDS(bb, preds) {
-      BB *pred = BBLIST_item(preds);
-      Try_To_Add_Gtn_to_Complement_BB(pred, tn);
-    }
-  }
-}
-
-/////////////////////////////////////
-static void
-Try_To_Add_Complement_BB(GRA_BB* gbb)
-////////////////////////////////////
-//
-// try to add gbb and its preds to complement bbs.
-// iteratively scans from chk_split_tail to chk_split_head,
-//
-/////////////////////////////////////
-{
-  if (!gbb)
-    return;// maybe this case never occurs, use to catch uncertain case
-  BB* bb = gbb->Bb();
-  FmtAssert((BB_chk_split(bb) || BB_recovery(bb) || BB_scheduled(bb)), 
-    ("I don't know how to deal with BB:%d, actually I thought it couldn't happen.", bb->id));
-  if (BB_chk_split_head(bb) || BB_recovery(bb))
-    return;//no need to proceed
-   //we should complement this bb iteratively
-  GRA_BB_OP_FORWARD_ITER op_iter;
-  //scan all the op referencing dedicated tns to complement
-  for (op_iter.Init(gbb); ! op_iter.Done(); op_iter.Step() ) {
-    OP*  xop = op_iter.Current();
-      for (int i = OP_opnds(xop) - 1; i >= 0; --i ) {
-        TN *op_tn = OP_opnd(xop, i);
-        if (! TN_is_register(op_tn))
-          continue;
-        if (TN_is_global_reg(op_tn) && TN_is_dedicated(op_tn) &&
-           REGISTER_allocatable(TN_register_class(op_tn), TN_register(op_tn))) {
-          BBLIST* preds;
-          FOR_ALL_BB_PREDS(bb, preds) {
-            BB *pred = BBLIST_item(preds);
-            Try_To_Add_Gtn_to_Complement_BB(bb, op_tn);//only apply to allocatable reg's tn
-        }
-      }
-    }
-  }
-  //iteratively scan its preds  
-  BBLIST* preds;
-  FOR_ALL_BB_PREDS(bb, preds) {
-    BB *pred = BBLIST_item(preds);
-    Try_To_Add_Complement_BB(gbb_mgr.Get(pred));
-  }
-}
-//end bug fix for OSP_212
 
 /////////////////////////////////////
 static void
@@ -1541,27 +1507,6 @@ Create_LUNITs(void)
 
   MEM_POOL_Push(&MEM_local_nz_pool);
   Initialize_Wired_LRANGEs();
-  //begin bug fix for OSP_212
-  //create arrays to hold bb's gtns to complement
-  extern BB_NUM PU_BB_Count;
-  GTN_SET* tmp_gtn_array[PU_BB_Count + 1];
-  for (i = 1; i <=PU_BB_Count; i ++)
-    tmp_gtn_array[i] = GTN_SET_Create_Empty(GTN_UNIVERSE_size, GRA_pool);
-  bb_gtn_needs_complement = tmp_gtn_array;
-
-  /* chk_split in recovery phase can cause some dedicated TN's live range
-   * becoming shorter than its original one. So we should complement those
-   * dedicated TNs in its preds.
-   */
-  for (gbb_iter.Init(gra_region_mgr.Complement_Region()); ! gbb_iter.Done();
-       gbb_iter.Step() ) {
-    GRA_BB* gbb = gbb_iter.Current();
-    if (BB_chk_split_tail(gbb->Bb()) && !BB_chk_split_head(gbb->Bb())){
-	// maybe have cut a bb who has dedicated tns
-    	Try_To_Add_Complement_BB(gbb);
-    }
-  }
-  //end bug fix for OSP_212
   
   for (gbb_iter.Init(gra_region_mgr.Complement_Region()); ! gbb_iter.Done();
        gbb_iter.Step() ) {
