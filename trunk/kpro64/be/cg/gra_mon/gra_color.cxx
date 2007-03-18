@@ -528,8 +528,9 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
   else 
       current_lrange = 0;
   if ( lrange->Has_Wired_Register() ) {
-    DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
-               ("LRANGE not allowed its wired register"));
+    // Disable it for the time being
+    //DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
+    //           ("LRANGE not allowed its wired register"));
     Update_Register_Info(lrange, lrange->Reg());
     return TRUE;
   }
