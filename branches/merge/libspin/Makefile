@@ -40,7 +40,7 @@ HEADERS = gspin-tree.h \
 OBJECTS = $(subst .c,.o,$(SOURCES))
 
 CC = gcc
-CFLAGS =  -g -O0 
+CFLAGS = -m32 -g -O0 
 
 all: libgspin.a gspin
 
