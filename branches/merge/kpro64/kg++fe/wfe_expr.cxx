@@ -5305,13 +5305,13 @@ WFE_Expand_Expr (tree exp,
 	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
 #ifdef TARG_IA64
 	      if (MTYPE_is_integral(ret_mtype))
-                wn0 = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
+                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
               else{
                 wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F8, arg_wn);
                 wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
               }
 #else
-	      wn0 = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
+	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
 #endif	      
 	      whirl_generated = TRUE;
 	      break;
