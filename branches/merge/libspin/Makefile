@@ -40,7 +40,11 @@ HEADERS = gspin-tree.h \
 OBJECTS = $(subst .c,.o,$(SOURCES))
 
 CC = gcc
-CFLAGS = -m32 -g -O0 
+CFLAGS = -g -O0 
+
+ifeq ($(BUILD_TARGET), X8664)
+CFLAGS += -m32
+endif
 
 all: libgspin.a gspin
 
