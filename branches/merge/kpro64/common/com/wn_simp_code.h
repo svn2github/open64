@@ -2033,7 +2033,7 @@ static simpnode  simp_add_sub(OPCODE opc,
    /* Try the simple ones first */
 
    if (k1const && 
-       ((SIMP_IS_TYPE_INTEGRAL(ty) && SIMP_Int_ConstVal(k1)==0) ||
+       ((SIMP_IS_TYPE_INTEGRAL(ty) && !SIMP_Is_Str_Constant (k1) && SIMP_Int_ConstVal(k1)==0) ||
         (SIMP_IS_TYPE_FLOATING(ty) && is_floating_equal(k1,0.0)
 #ifdef KEY // bug 2780: if x is -0.0, it is wrong to delete the + with 0.0
 	 && IEEE_Arithmetic >= IEEE_INEXACT
@@ -2051,7 +2051,7 @@ static simpnode  simp_add_sub(OPCODE opc,
    }
 
    if (k0const && issub &&
-       ((SIMP_IS_TYPE_INTEGRAL(ty) && SIMP_Int_ConstVal(k0)==0) ||
+       ((SIMP_IS_TYPE_INTEGRAL(ty) && !SIMP_Is_Str_Constant (k1) && SIMP_Int_ConstVal(k0)==0) ||
         (SIMP_IS_TYPE_FLOATING(ty) && is_floating_equal(k0,0.0)))) {
       SHOW_RULE(" 0 - x ");
       r = SIMPNODE_SimpCreateExp1(negop,k1);
