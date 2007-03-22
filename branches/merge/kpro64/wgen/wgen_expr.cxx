@@ -2391,6 +2391,9 @@ WGEN_Address_Of(gs_t arg0)
 	  case MTYPE_C8:
 	    imag_mtype = MTYPE_F8;
 	    break;
+	  case MTYPE_C10:
+	    imag_mtype = MTYPE_F10;
+	    break;
 	  case MTYPE_CQ:
 	    imag_mtype = MTYPE_FQ;
 	    break;
@@ -2747,6 +2750,21 @@ Setup_EH_Region (bool for_unwinding)
       WN_CreateBlock(), WN_CreateBlock(), New_Region_Id(), ereg_supp), Get_Srcpos());
     Set_PU_has_region (Get_Current_PU());
     Set_PU_has_exc_scopes (Get_Current_PU());
+
+#ifdef TARG_IA64
+    // The following code creat a new TY for the ST that is created 
+    // above. Because in CG, we will get the size of the ST from its
+    // TY, we should get its right size from the INITO attached with 
+    // it, and write it into a new TY
+    TY_IDX tyi;            
+    TY& zty = New_TY (tyi);
+    UINT inito_size = Get_INITO_Size(ereg_supp);
+    TY_Init (zty, inito_size, KIND_STRUCT, MTYPE_M,ereg->u1.name_idx);
+    Set_TY_align (tyi, 4);
+    ST_Init (ereg, TY_name_idx (zty),
+	     CLASS_VAR, SCLASS_EH_REGION_SUPP, EXPORT_LOCAL, tyi);
+    Set_ST_is_initialized (ereg);
+#endif
 }
 
 static TY_IDX
@@ -3428,6 +3446,21 @@ WGEN_Expand_Expr (gs_t exp,
     case GS_ADDR_EXPR:
       wn = WGEN_Address_Of(gs_tree_operand(exp, 0));
       break;
+      
+    /*FDESC_EXPR:
+     *Operand0 is a function constant; result is part N of a function 
+     *descriptor of type ptr_mode. 
+     *So we should get function constant and exprand it.
+     */
+    case GS_FDESC_EXPR:
+      {
+    	 gs_t exp_operand = gs_tree_operand (exp, 0);
+         FmtAssert( gs_tree_code(exp_operand) == GS_FUNCTION_DECL,("Unexpected Tree Code!!"));
+         st = Get_ST (exp_operand);
+         ty_idx = ST_type (st);
+         wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
+      }
+      break;
 
     case GS_FUNCTION_DECL:
       {
@@ -3877,10 +3910,17 @@ WGEN_Expand_Expr (gs_t exp,
 	case 8: 
 	  tcon = Host_To_Targ_Float(MTYPE_F8, gs_tree_real_cst_d(exp));
 	  break;
+#ifdef TARG_IA64
+        case 12:
+        case 16:
+          tcon = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(exp));
+          break;
+#else	  
 	case 12: 
 	case 16: 
 	  tcon = Host_To_Targ_Quad(gs_tree_real_cst_ld(exp));
 	  break;
+#endif
 	default:
 	  FmtAssert(FALSE, ("WGEN_Expand_Expr: unexpected size for real constant"));
 	  break;
@@ -3915,12 +3955,19 @@ WGEN_Expand_Expr (gs_t exp,
 				     gs_tree_real_cst_d(gs_tree_realpart(exp)),
 				     gs_tree_real_cst_d(gs_tree_imagpart(exp)));
 	  break;
+#ifdef TARG_IA64
+          tcon = Host_To_Targ_Complex_10(MTYPE_C10,
+                                     gs_tree_real_cst_ld(gs_tree_realpart(exp)),
+                                     gs_tree_real_cst_ld(gs_tree_imagpart(exp)));
+          break;
+#else	  
 	case 24:
 	case 32:
 	  tcon = Host_To_Targ_Complex_Quad(
 				   gs_tree_real_cst_ld(gs_tree_realpart(exp)),
 				   gs_tree_real_cst_ld(gs_tree_imagpart(exp)));
 	  break;
+#endif
 	default:
 	  FmtAssert(FALSE, ("WGEN_Expand_Expr: unexpected size for complex constant"));
 	  break;
@@ -5460,20 +5507,50 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef KEY
 	    case GSBI_BUILT_IN_FLOOR:
 	      arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
+#ifdef TARG_IA64
+	      if (MTYPE_is_integral(ret_mtype)) {
+		  wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
+	      }
+	      else {
+                  wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F8, arg_wn);
+	          wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+	      }
+#else	      
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
+#endif
 	      whirl_generated = TRUE;
 	      break;
 
 	    case GSBI_BUILT_IN_FLOORF:
 	      arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
+#ifdef TARG_IA64
+              if (MTYPE_is_integral(ret_mtype)) {
+		  wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+	      }
+	      else {
+	          wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F4, arg_wn);
+		  wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+	      }
+#else	      
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+#endif
 	      whirl_generated = TRUE;
 	      break;
 
             case GSBI_BUILT_IN_FLOORL:
               arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
-              wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
-              whirl_generated = TRUE;
+#ifdef TARG_IA64
+              if (MTYPE_is_integral(ret_mtype)) {
+		  wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
+	      }
+              else {
+		  wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F10, arg_wn);
+		  wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+	      }
+#else	      
+	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
+#endif
+	      whirl_generated = TRUE;
               break;
 #endif
 
@@ -5567,7 +5644,7 @@ WGEN_Expand_Expr (gs_t exp,
 		iopc = INTRN_F8EXPEXPR;
 		intrinsic_op = TRUE;
 		break;
-
+#ifdef TARG_X8664
 	      case GSBI_BUILT_IN_POWI: // bug 10963
 		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
 
@@ -5594,6 +5671,7 @@ WGEN_Expand_Expr (gs_t exp,
 		intrinsic_op = TRUE;
 		iopc = INTRN_FQFQI4EXPEXPR;
 		break;
+#endif
 #endif // KEY
 
               case GSBI_BUILT_IN_CONSTANT_P:
