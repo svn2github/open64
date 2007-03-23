@@ -2213,13 +2213,9 @@ run_ld (void)
   	else
 	    append_objects_to_list (args);
 
-    if ( invoked_lang == L_f77 || invoked_lang == L_f90) {
+    if ( ldphase != P_ipa_link && ( invoked_lang == L_f77 || invoked_lang == L_f90 )) {
         specify_dyn_linker (args); 
     }
-
-#ifdef CROSS_COMPILATION 
-	specify_dyn_linker (args);
-#endif
 
 #if defined(KEY) && defined(TARG_MIPS)
 	add_string(args, "-mips64");	// call gcc with -mips64
@@ -2228,9 +2224,13 @@ run_ld (void)
 	add_instr_archive (args);
 
 	add_final_ld_args (args,ldphase);
+#ifdef CROSS_COMPILATION 
+	specify_dyn_linker (args);
+#else 
 	if ( ldphase == P_ipa_link ) {
 	  specify_ipa_dyn_linker(args);
 	}
+#endif	
 	postprocess_ld_args (args);
 
 	run_phase (ldphase, ldpath, args);
