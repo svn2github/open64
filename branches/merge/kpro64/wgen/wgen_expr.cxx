@@ -2391,12 +2391,15 @@ WGEN_Address_Of(gs_t arg0)
 	  case MTYPE_C8:
 	    imag_mtype = MTYPE_F8;
 	    break;
+#ifdef TARG_IA64
 	  case MTYPE_C10:
 	    imag_mtype = MTYPE_F10;
 	    break;
+#else
 	  case MTYPE_CQ:
 	    imag_mtype = MTYPE_FQ;
 	    break;
+#endif
 	  default:
 	    Fail_FmtAssertion ("WGEN_Address_Of: Unexpected rtype in IMAGPART_EXPR");
 	}
@@ -3452,6 +3455,7 @@ WGEN_Expand_Expr (gs_t exp,
      *descriptor of type ptr_mode. 
      *So we should get function constant and exprand it.
      */
+#ifdef TARG_IA64
     case GS_FDESC_EXPR:
       {
     	 gs_t exp_operand = gs_tree_operand (exp, 0);
@@ -3461,6 +3465,7 @@ WGEN_Expand_Expr (gs_t exp,
          wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
       }
       break;
+#endif
 
     case GS_FUNCTION_DECL:
       {
@@ -4676,8 +4681,13 @@ WGEN_Expand_Expr (gs_t exp,
 	 wn1 = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp1), MTYPE_V,
 			     MTYPE_size_min(mtyp1), wn1);
 
+#ifdef TARG_IA64
+       wn  = WN_Relational (Operator_From_Tree [code].opr,
+		            Widen_Mtype(mtyp0), wn0, wn1);
+#else
        wn  = WN_CreateExp2(Operator_From_Tree[code].opr, Widen_Mtype(mtyp),
 			   Widen_Mtype(mtyp0), wn0, wn1);
+#endif
        }
        break;
 

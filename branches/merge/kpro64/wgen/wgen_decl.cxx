@@ -1612,6 +1612,9 @@ private:
   void WGEN_Add_Aggregate_Init_Complex (gs_t rval, gs_t ival, INT size);
   void WGEN_Add_Aggregate_Init_String (char *s, INT size);
   void WGEN_Add_Aggregate_Init_Symbol (ST *st, WN_OFFSET offset = 0);
+#ifdef TARG_IA64
+  void Add_Aggregate_Init_Symiplt (ST *st, WN_OFFSET offset = 0);
+#endif
   void WGEN_Add_Aggregate_Init_Label (LABEL_IDX lab);
   void WGEN_Add_Aggregate_Init_Address (gs_t init);
   void WGEN_Add_Aggregate_Init_Vector (gs_t init_list);
@@ -1868,6 +1871,23 @@ AGGINIT::WGEN_Add_Aggregate_Init_Symbol (ST *st, WN_OFFSET offset)
     Set_INITO_val(_inito, inv);
   _last_initv = inv;
 }
+
+#ifdef TARG_IA64
+void
+AGGINIT::Add_Aggregate_Init_Symiplt (ST *st, WN_OFFSET offset)
+{
+  if (_inito == 0) return;
+  INITV_IDX inv = New_INITV();
+  INITV_Init_Symiplt (inv, st, offset);
+  Set_ST_addr_saved (st);
+  if (_last_initv != 0)
+    Set_INITV_next(_last_initv, inv);
+  else if (! _not_root)
+    Set_INITO_val(_inito, inv);
+  _last_initv = inv;
+}
+#endif
+
 
 void
 AGGINIT::WGEN_Add_Aggregate_Init_Label (LABEL_IDX lab)
@@ -2264,6 +2284,14 @@ AGGINIT::Add_Initv_For_Tree (gs_t val, UINT size)
 						  Pointer_Size);
 		  break;
 		}
+#ifdef TARG_IA64
+		if (gs_tree_code(val) == GS_FDESC_EXPR && WN_operator (init_wn) == OPR_LDA) {
+		  Add_Aggregate_Init_Symiplt (WN_st (init_wn),
+                  	                      WN_offset (init_wn));
+		  WN_DELETE_Tree (init_wn);
+		  break;
+		}
+#endif
 
 		if (WN_operator (init_wn) == OPR_LDA) {
 			WGEN_Add_Aggregate_Init_Symbol (WN_st (init_wn),
