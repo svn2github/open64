@@ -1661,6 +1661,13 @@ delete_memory_op (OP *op,
       BB_recovery(OP_bb(op))   ||
       BB_recovery(OP_bb(opinfo->in_op)))    return FALSE;
       
+  /* ld.fill and st.spill access UNAT, they should not be safely deleted 
+   * because currently the EBO does not analyze the UNAT bit.
+   */
+  if (CGTARG_Load_with_UNAT (op) || CGTARG_Store_With_UNAT (op)) {
+      return FALSE;
+  }
+
   if (OP_load(op) && OP_load(opinfo->in_op)) {
     if (TOP_Find_Operand_Use(OP_code(op), OU_postincr) >= 0) {
      /* The increment must be preserved. */

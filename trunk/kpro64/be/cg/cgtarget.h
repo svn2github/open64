@@ -825,6 +825,12 @@ inline BOOL CGTARG_Use_Load_Latency(OP *pred_op, TN *tn)
 #endif
 }
 
+/* return TRUE iff op is load with UNAT bit (IA64)*/
+extern BOOL CGTARG_Load_with_UNAT (OP* op); 
+
+/* return TRUE iff op is store with UNAT bit (IA64) */
+extern BOOL CGTARG_Store_With_UNAT (OP* op);
+
 /* Returns TRUE if OP is a suitable candidate for HBF. */
 extern BOOL CGTARG_Check_OP_For_HB_Suitability(OP *op);
 
