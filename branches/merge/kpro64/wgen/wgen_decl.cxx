@@ -2683,6 +2683,20 @@ AGGINIT::Traverse_Aggregate_Array (
     else {
       // initialize SCALARs and POINTERs
       // note that we should not be encountering bit fields
+#ifdef TARG_IA64
+      if (gen_initv) {
+        if ((next != NULL) && (gs_tree_code(tree_value) == GS_FDESC_EXPR) &&
+            (gs_tree_code(gs_tree_value(next)) == GS_FDESC_EXPR) &&
+	    (gs_tree_value(tree_value) == gs_tree_value(gs_tree_value(next))) ) {
+          init = next;
+	  next = gs_tree_chain(next);
+	  Add_Initv_For_Tree (tree_value, esize);
+	  emitted_bytes += (esize << 1);
+	  current_offset += (esize << 1);
+	  continue;
+	}
+      }
+#endif
       for (INT index = lindex; index <= hindex; index++) {
 	if (gen_initv) {
 	  Add_Initv_For_Tree (gs_tree_value(init), esize);
