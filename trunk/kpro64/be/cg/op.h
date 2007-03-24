@@ -471,6 +471,8 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_IF_CONVERTED 0x01000000 /*Is OP if-converted? */
 #define OP_MASK_RENAMED	0x02000000 /*Is OP renamed by GLOS */
 #define OP_MASK_SPILL_RESTORE 0x04000000 /*Is OP a spill or restore  */
+#define OP_MASK_
+/*Is OP a spill or restore  */
 
 
 #define OP_MASK_LAST    OP_MASK_DATA_SPEC
@@ -1242,6 +1244,12 @@ inline BOOL Is_Hidden_Opnd (OP* op, UINT8 opnd) {
    return OP_hidden_opnds(op) != 0 && opnd < OP_opnds(op) && 
           opnd >= (OP_opnds(op) - OP_hidden_opnds(op)); 
 }
+
+/* Is <op> a copy from a callee-saves register into its save-TN?  */
+BOOL OP_Is_Copy_To_Save_TN (const OP*);
+
+/*  Is <op> a copy to a callee-saves register from its save-TN?  */
+BOOL OP_Is_Copy_From_Save_TN (const OP* );
 
 #include "op_targ.h"
 
