@@ -4096,9 +4096,9 @@ REGION_TREE::Decompose_Region_To_MEME(REGION *r,RGN_SIZE size) {
     //-------------------------------------------------------------------
     for (TOPOLOGICAL_REGIONAL_CFG_ITER iter(cfg);iter != 0;++iter) {
         REGIONAL_CFG_NODE *node = *iter;
-        bb_num++;                        
 
         if (!node->Is_Region()) {
+            bb_num++;                        
             op_num += BB_length((node->BB_Node()));
         }
     }
@@ -4178,8 +4178,8 @@ REGION_TREE::Decompose_Region_To_SEME(REGION* r,RGN_FORM_PAR par) {
     for (TOPOLOGICAL_REGIONAL_CFG_ITER iter(cfg);iter != 0;++iter) {
         REGIONAL_CFG_NODE *node = *iter;
         
-        bb_num++;                        
         if (!node->Is_Region()) {
+            bb_num++;                        
             op_num += BB_length((node->BB_Node()));
         }
     }
