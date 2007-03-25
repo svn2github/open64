@@ -72,6 +72,11 @@
  *              dictated by recurring constraints (i.e., not counting
  *		resources).
  *
+ *          INT CG_LOOP_rec_min_ii_with_dspec;
+ *		The recurrence MII obtained via ignoring violable memory flow dependence.
+ *		It is not always calculated when Compute_Rec_Res_Min_II() is called. 
+ *		In that case, it is set to a negative value.
+ * 
  *      Exported functions:
  *
  *	    void CG_LOOP_Calculate_Min_Resource_II(
@@ -145,6 +150,7 @@ static const char cg_loop_mii_rcs_id[] = "$Source: /proj/osprey/CVS/open64/ospre
 
 extern INT32       CG_LOOP_min_ii;
 extern INT32       CG_LOOP_rec_min_ii;
+extern INT32       CG_LOOP_rec_min_ii_with_dspec; /* Rec MII ignoring violable mem-dep */  
 extern INT32       CG_LOOP_res_min_ii;
 
 extern void

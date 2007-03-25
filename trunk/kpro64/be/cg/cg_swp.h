@@ -386,6 +386,7 @@ extern void SWP_Emit(SWP_OP_vector& op_state,
 		     bool is_doloop, bool trace);
 
 extern void Emit_SWP_Note(BB *bb, FILE *file);
+SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace);
 
 
 // dep_graph_manager class makes sure that CG_DEP_Delete is invoked

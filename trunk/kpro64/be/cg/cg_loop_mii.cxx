@@ -58,6 +58,7 @@
 
 INT32       CG_LOOP_min_ii;
 INT32       CG_LOOP_res_min_ii;
+INT32       CG_LOOP_rec_min_ii_with_dspec; /* Rec MII ignoring violable mem-dep */  
 INT32       CG_LOOP_rec_min_ii;
 
 static INT trace_mii = -1;

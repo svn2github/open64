@@ -414,6 +414,7 @@
 
 extern BOOL CG_warn_bad_freqs;
 extern BOOL CG_enable_loop_optimizations;
+extern BOOL CG_tune_do_loop; 
 extern INT32 CG_skip_after;
 extern INT32 CG_skip_before;
 extern INT32 CG_skip_equal;

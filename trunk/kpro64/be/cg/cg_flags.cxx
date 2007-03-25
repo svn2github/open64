@@ -160,6 +160,7 @@ BOOL IGLS_Enable_PRE_HB_Scheduling = FALSE;
 BOOL IGLS_Enable_POST_HB_Scheduling = TRUE;
 BOOL IGLS_Enable_All_Scheduling = TRUE;
 BOOL CG_enable_loop_optimizations = TRUE;
+BOOL CG_tune_do_loop = TRUE;
 BOOL GCM_Motion_Across_Calls = TRUE;
 BOOL GCM_Min_Reg_Usage = TRUE;
 BOOL GCM_Pointer_Spec= TRUE;
