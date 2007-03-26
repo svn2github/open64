@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* 
@@ -37,6 +37,7 @@
 #include "defs.h"
 #include "glob.h"
 #include "erglob.h"
+#include "err_host.tab"
 #include "config.h"
 #include "file_util.h" // for Last_Pathname_Component
 #include "wgen_misc.h"
@@ -45,8 +46,13 @@ extern BOOL List_Enabled;
 extern INT Opt_Level;
 extern BOOL Enable_WFE_DFE;
 
-BOOL wgen_invoke_inliner = FALSE;
+#ifndef TARG_MIPS
 BOOL TARGET_64BIT = TRUE;
+#else
+BOOL TARGET_64BIT = FALSE;  // 11953: On MIPS, n32 is default abi
+#endif
+
+BOOL wgen_invoke_inliner = FALSE;
 int lineno = 0;
 char *Spin_File_Name = NULL;
 FILE *Spin_File = NULL;
@@ -55,6 +61,7 @@ int pstatic_as_global = 0;
 int key_exceptions = 0;
 BOOL opt_regions = 0;
 BOOL lang_cplus = FALSE;
+BOOL c_omit_external = TRUE;
 gs_t program;
 /*       MAX_DEBUG_LEVEL        2  :: Defined in flags.h */
 # define DEF_DEBUG_LEVEL        0
@@ -62,8 +69,8 @@ INT Debug_Level = DEF_DEBUG_LEVEL;	/* -gn: debug level */
 
 extern void WGEN_Weak_Finish(void);
 extern void WGEN_Expand_Top_Level_Decl(gs_t);
-extern void WGEN_Whirlify_Decl(gs_t decl);
 extern void WGEN_Expand_Defers(void);
+extern void WGEN_Expand_Decl(gs_t, BOOL);
 
 //*******************************************************
 // Process the command line arguments.
@@ -173,7 +180,7 @@ Process_Cc1_Command_Line(gs_t arg_list)
 	      break;
 
 	  case 'e':
-	      if (!strcmp( cp, "xceptions" ))
+	      if (lang_cplus && !strcmp( cp, "xceptions" ))
 		key_exceptions = TRUE;
 	      break;
 
@@ -181,12 +188,18 @@ Process_Cc1_Command_Line(gs_t arg_list)
 	      if (!strcmp( cp, "no-exceptions" )) {
 		key_exceptions = FALSE;
 	      }
-	      else if (!strcmp( cp, "exceptions" )) {
+	      else if (lang_cplus && !strcmp( cp, "exceptions" )) {
 		key_exceptions = TRUE;
 	      }
 	      else if (!strcmp( cp, "no-gnu-exceptions")) {
 		// GNU exceptions off, turn off exception here also.
 		key_exceptions = FALSE;
+	      }
+	      else if (!lang_cplus && !strcmp( cp, "no-c-omit-external")) {
+		c_omit_external = FALSE;
+	      }
+	      else if (!lang_cplus && !strcmp( cp, "c-omit-external")) {
+		c_omit_external = TRUE;
 	      }
 	      break;
 
@@ -203,12 +216,22 @@ Process_Cc1_Command_Line(gs_t arg_list)
 	      break;
 
 	  case 'm':
+#ifndef TARG_MIPS
 	      if (!strcmp( cp, "32" )) {
 		TARGET_64BIT = FALSE;
 	      }
 	      else if (!strcmp( cp, "64" )) {
 		TARGET_64BIT = TRUE;
 	      }
+#else
+	      // 11953: MIPS expects -mabi=n32 or -mabi=64
+	      if (!strcmp( cp, "abi=n32" )) {
+		TARGET_64BIT = FALSE;
+	      }
+	      else if (!strcmp( cp, "abi=64" )) {
+		TARGET_64BIT = TRUE;
+	      }
+#endif
 	      break;
 
 	  case 'o':
@@ -263,6 +286,7 @@ main ( INT argc, char **argv, char **envp)
       struct stat sbuf;
       int st;
 
+      Set_Error_Tables ( Phases, host_errlist );
       Process_Command_Line(argc, argv);
 
       st = stat(Spin_File_Name, &sbuf);
@@ -285,7 +309,7 @@ main ( INT argc, char **argv, char **envp)
 	  gs_t decl = gs_operand(list, 0);
 	  if (lang_cplus)
 	    WGEN_Expand_Top_Level_Decl(decl);
-	  else WGEN_Whirlify_Decl(decl);
+	  else WGEN_Expand_Decl(decl, TRUE);
 #ifdef KEY
 	  WGEN_Expand_Defers();
 #endif

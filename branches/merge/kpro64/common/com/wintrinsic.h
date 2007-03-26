@@ -1097,7 +1097,11 @@ typedef enum {
   INTRN_CLZ32           = 784,
   INTRN_CTZ             = 785,
 
-#define LAST_COMMON_ID 785
+  /* in GNU libm */
+  INTRN_F4CBRT          = 786,
+  INTRN_F8CBRT          = 787,
+
+#define LAST_COMMON_ID 787
 #ifdef TARG_X8664
   /* Shorter vector math functions */
   INTRN_V16F4SIN        = LAST_COMMON_ID+1,
@@ -1267,15 +1271,17 @@ typedef enum {
   INTRN_F8F8I4EXPEXPR   = LAST_COMMON_ID+159,
   INTRN_F4F4I4EXPEXPR   = LAST_COMMON_ID+160,
   INTRN_FQFQI4EXPEXPR   = LAST_COMMON_ID+161,
+  INTRN_EXPECT          = LAST_COMMON_ID+162,
     
-  INTRINSIC_LAST  = LAST_COMMON_ID+161
+  INTRINSIC_LAST  = LAST_COMMON_ID+162
 #else // Anything target-independent needs to be added on all branches of
       // this ifdef.
   INTRN_TAN           = LAST_COMMON_ID+1,
   INTRN_F8F8I4EXPEXPR = LAST_COMMON_ID+2,
   INTRN_F4F4I4EXPEXPR = LAST_COMMON_ID+3,
   INTRN_FQFQI4EXPEXPR = LAST_COMMON_ID+4,
-  INTRINSIC_LAST  = LAST_COMMON_ID+4
+  INTRN_EXPECT        = LAST_COMMON_ID+5,
+  INTRINSIC_LAST  = LAST_COMMON_ID+5
 #endif // TARG_X8664
 #else
   INTRINSIC_LAST  = 762

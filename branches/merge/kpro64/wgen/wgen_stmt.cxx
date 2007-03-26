@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1438,7 +1438,6 @@ Wgen_Expand_Asm_Operands (gs_t  string,
 
       WN_kid (asm_wn, i) =
 	WN_CreateAsm_Input (constraint_string, opnd_num, input_rvalue);
-      WN_set_kid_count(asm_wn, i+1); // wgen
       ++i;
       ++opnd_num;
     }
@@ -2107,6 +2106,35 @@ WGEN_Expand_Label (gs_t label)
   }
 } /* WGEN_Expand_Label */
 
+#ifdef KEY
+// Returns whether a COMMA needs to be generated with comma_block as first
+// operand, and wn as second operand. The caller should ensure non-empty
+// comma_block.
+static BOOL
+comma_is_not_needed (WN * comma_block, WN * wn)
+{
+  Is_True (WN_first(comma_block), ("comma_block should not be empty"));
+
+  if (WN_operator(wn) != OPR_LDID)
+    return FALSE;
+
+  WN * last_stmt = WN_last(comma_block);
+
+  if (WN_operator(last_stmt) != OPR_STID)
+    return FALSE;
+
+  ST * sym = WN_st(last_stmt);
+
+  if (sym != WN_st(wn) ||
+      Is_Global_Symbol(sym) || // bug 11799
+      WN_offset(last_stmt) != WN_offset(wn) ||
+      WN_field_id(last_stmt) != WN_field_id(wn))
+    return FALSE;
+
+  return TRUE;
+}
+#endif
+
 extern void WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
 
 void
@@ -2191,6 +2219,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
     rhs_wn = WGEN_Expand_Expr_With_Sequence_Point (
 		retval,
 		TY_mtype (ret_ty_idx));
+
     WN * cleanup_block = WN_CreateBlock ();
     WGEN_Stmt_Push (cleanup_block, wgen_stmk_temp_cleanup, Get_Srcpos ());
 #ifdef KEY
@@ -2268,7 +2297,21 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 	WGEN_Stmt_Append (cleanup_block, Get_Srcpos ());
       }
     }
-    
+
+#ifdef KEY
+    // bug 11660
+    if (WN_operator(rhs_wn) == OPR_COMMA) {
+      WN * comma_block = WN_kid0(rhs_wn);
+      if (WN_first(comma_block) &&
+          comma_is_not_needed(comma_block, WN_kid1(rhs_wn))) {
+        WN * last = WN_last (comma_block);
+        WN_EXTRACT_FromBlock (comma_block, last);
+        WGEN_Stmt_Append (comma_block, Get_Srcpos());
+        rhs_wn = WN_kid0 (last);
+      }
+    }
+#endif
+
     if ((!WGEN_Keep_Zero_Length_Structs    &&
          TY_mtype (ret_ty_idx) == MTYPE_M &&
          TY_size (ret_ty_idx) == 0)
@@ -2332,8 +2375,25 @@ Mark_Scopes_And_Labels (gs_t stmt)
     case GS_STATEMENT_LIST: {
 	gs_t stmt_list = gs_statement_list_elts(stmt);
 	gs_t list;
+	BOOL new_scope = FALSE;
+	// bug 11869: This example shows there may be a label statement
+	// without an explicit scope. In such a scenario, a jump to such
+	// a label would find incomplete scope information, and hence not
+	// know what cleanups to run. Use a statement_list as a top level
+	// scope for such instances, assuming every statement will at least
+	// have an enclosing statement_list. GNU3 may not have any
+	// enclosing statement, requiring it to use function_decl.
+	if (scope_i == -1) {
+	  PARENT_SCOPE(stmt) = 0;
+	  Push_Scope(stmt);
+	  new_scope = TRUE;
+	}
+
 	for (list = stmt_list; gs_code(list)!=EMPTY; list = gs_operand(list,1))
 	  Mark_Scopes_And_Labels(gs_operand(list,0));
+
+	if (new_scope) // End scope
+	  --scope_i;
       }
       break;
 

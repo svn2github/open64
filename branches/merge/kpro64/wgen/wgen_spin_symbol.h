@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* 
@@ -88,6 +88,8 @@ extern BOOL flag_no_common;
 #define WEAK_WORKAROUND_unknown		0
 #define WEAK_WORKAROUND_dont_make_weak	1
 #define WEAK_WORKAROUND_made_weak	2
+
+extern BOOL expanding_function_definition;
 #endif
 
 /* 
@@ -120,6 +122,13 @@ Get_TY (gs_t type_tree)
 		return Create_TY_For_Tree (type_tree, idx); // forward declared
 	      else return idx;
 	    }
+#ifdef KEY /* bug 8346 */
+	    else if (expanding_function_definition &&
+	             (TY_is_incomplete(idx) ||
+		      (TY_kind(idx)==KIND_POINTER &&
+		       TY_is_incomplete(TY_pointed(idx)))))
+	      return Create_TY_For_Tree (type_tree, idx);
+#endif
 	    else return idx;
         }
 	return Create_TY_For_Tree (type_tree, TY_IDX_ZERO);

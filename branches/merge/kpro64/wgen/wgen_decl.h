@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* 
@@ -37,14 +37,8 @@ extern void Init_Deferred_Function_Stack(void);
 extern void Init_Deferred_Decl_Init_Stack(void);
 
 /* expand namespace scope declaration into symtab and whirl */
-#ifdef KEY
-extern void WGEN_Expand_Decl (gs_t decl, BOOL can_skip = TRUE);
-#else
-extern void WGEN_Expand_Decl (gs_t decl);
-#endif
-
-/* start point for C translation to whirl  */
-extern "C" void WGEN_Whirlify_Decl(gs_t decl);
+extern BOOL expanding_function_definition;
+extern "C" void WGEN_Expand_Decl (gs_t decl, BOOL can_skip);
 
 /* called after function body processed, to write out the PU */
 extern void WGEN_Finish_Function (void);
@@ -135,10 +129,5 @@ extern WN *Current_Entry_WN(void);
  */
 extern gs_t named_ret_obj_initializer;
 #endif
-/*
-#ifdef __cplusplus
-}
-#endif
-*/
 #endif
 

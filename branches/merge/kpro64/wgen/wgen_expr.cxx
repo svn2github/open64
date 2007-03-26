@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,6 +40,7 @@ extern "C"{
 #include "wn_util.h"
 #include "targ_sim.h"
 #include "const.h"
+#include "intrn_info.h"
 #include "c_int_model.h"
 
 #include "ir_reader.h"
@@ -845,6 +846,10 @@ WGEN_Array_Expr(gs_t exp,
       else
         wn1 = WN_Intconst(MTYPE_I4, 0);
       wn2 = WGEN_Expand_Expr (gs_tree_operand (exp, 1));
+#ifdef TARG_X8664 // bug 11705
+      if (WN_operator(wn2) == OPR_SUB)
+	WN_set_rtype(wn2, Mtype_TransferSign(MTYPE_I4, WN_rtype(wn2)));
+#endif
 #ifdef KEY
       // Expand the current dimension by growing the array just expanded.  Bug
       // 4692.
@@ -2304,6 +2309,11 @@ WGEN_Address_Of(gs_t arg0)
     {
       wn = WGEN_Expand_Expr (arg0);
       ty_idx = Get_TY(gs_tree_type(arg0));
+      WN *comma = NULL;
+      if (WN_operator(wn) == OPR_COMMA) { // bug 11877
+	comma = wn;
+	wn = WN_kid1(wn);
+      }
       if (WN_operator (wn) == OPR_LDID) {
         WN_set_operator (wn, OPR_LDA);
 	WN_set_rtype(wn, Pointer_Mtype);
@@ -2319,6 +2329,10 @@ WGEN_Address_Of(gs_t arg0)
       else
         Fail_FmtAssertion ("WGEN_Address_Of has unhandled %s",
                            gs_code_name(code0));
+      if (comma) {
+	WN_set_rtype(comma, WN_rtype(wn));
+	wn = comma;
+      }
     }
     break;
 
@@ -2826,18 +2840,26 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_PAND:
+      if (MTYPE_is_mmx_vector(res_type))
+	goto unsupported;
       wn = WN_Band (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_PANDN:
+      if (MTYPE_is_mmx_vector(res_type))
+	goto unsupported;
       wn = WN_Band (res_type, WN_Bnot (res_type, arg0), arg1);
       *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_POR:
+      if (MTYPE_is_mmx_vector(res_type))
+	goto unsupported;
       wn = WN_Bior (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_PXOR:
+      if (MTYPE_is_mmx_vector(res_type))
+	goto unsupported;
       wn = WN_Bxor (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
@@ -3349,6 +3371,7 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
                                                                                 
     default:
+unsupported:
       if (Opt_Level > 0)
       { // Don't assert in front-end. If used, backend will assert.
         *iopc = INTRN_UNIMP_PURE;
@@ -3419,6 +3442,10 @@ gs_t first_in_compound_expr(gs_t node)
   return first;
 }
 
+#ifdef KEY
+extern BOOL processing_function_prototype;
+#endif
+
 WN * 
 WGEN_Expand_Expr (gs_t exp,
 		  bool need_result,
@@ -3487,7 +3514,7 @@ WGEN_Expand_Expr (gs_t exp,
     case GS_DECL_EXPR:
       {
         gs_t decl = gs_decl_expr_decl(exp);
-	WGEN_Expand_Decl (decl);
+	WGEN_Expand_Decl (decl, TRUE);
 	wn = WGEN_Expand_Expr (decl);
       }
       break;
@@ -3941,11 +3968,10 @@ WGEN_Expand_Expr (gs_t exp,
 	ty_idx = Get_TY (gs_tree_type(exp));
 #ifdef KEY
 	// Bug 949
-        if (!MTYPE_float(TY_mtype(ty_idx))) {
-	#ifdef PSC_TO_OPEN64
+	if (gs_tree_code(gs_tree_realpart(exp)) != GS_REAL_CST ||
+	    gs_tree_code(gs_tree_imagpart(exp)) != GS_REAL_CST) {
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "openCC" : "opencc");
-	#endif
+		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
 	  exit(2);
 	}
 #endif
@@ -4010,10 +4036,8 @@ WGEN_Expand_Expr (gs_t exp,
         if ((code == GS_REALPART_EXPR ||
 	     code == GS_IMAGPART_EXPR) &&
 	    !MTYPE_float(mtyp)) {
-	  #ifdef PSC_TO_OPEN64
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "openCC" : "opencc");
-	  #endif
+		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
 	  exit(2);
 	}
 #endif
@@ -4141,7 +4165,11 @@ WGEN_Expand_Expr (gs_t exp,
 	    component_ty_idx == 0) {  // only for top-level COMPONENT_REF
           // if size does not agree with ty_idx, fix ty_idx
           gs_t sizenode = gs_decl_size(arg1);
-          if (gs_tree_code(sizenode) == GS_INTEGER_CST) {
+          if (
+#ifdef KEY
+	      sizenode && // bug 11726, in absence of size expression
+#endif
+	      gs_tree_code(sizenode) == GS_INTEGER_CST) {
 	    TYPE_ID c_mtyp = TY_mtype(ty_idx);
 	    INT32 bsize = gs_get_integer_value(sizenode);
 	    if (MTYPE_size_min(c_mtyp) > bsize) {
@@ -4583,6 +4611,13 @@ WGEN_Expand_Expr (gs_t exp,
        TYPE_ID etype = TY_mtype(Get_TY(gs_tree_type(exp)));
        wn0 = WGEN_Expand_Expr(gs_tree_operand(exp, 0));
        wn1 = WGEN_Expand_Expr(gs_tree_operand(exp, 1));
+#ifdef KEY // Bug 11875
+        if (code == GS_COMPLEX_EXPR && !MTYPE_float(WN_rtype(wn0))) {
+	  printf("%s does not support complex integer data types "
+		 "(a GNU extension)\n", lang_cplus ? "openCC" : "opencc");
+	  exit(2);
+	}
+#endif
 
        //generate whirl for add
        wn  = WN_Binary(Operator_From_Tree[code].opr, 
@@ -5229,6 +5264,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  // make sure we take the address of this arg.
 	  is_aggr_init_via_ctor = true;
 	}
+	processing_function_prototype = TRUE; /* bug 8346 */
 #endif
 	for (list = gs_tree_operand (exp, 1); list; list = gs_tree_chain (list)) {
           arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
@@ -5241,6 +5277,7 @@ WGEN_Expand_Expr (gs_t exp,
             num_args++;
         }
 #ifdef KEY
+        processing_function_prototype = FALSE; /* bug 8346 */
         if (gs_tree_code(exp) == GS_AGGR_INIT_EXPR)
         {
           // bug 11159: TREE_TYPE does not contain the return type.
@@ -5655,7 +5692,7 @@ WGEN_Expand_Expr (gs_t exp,
 		iopc = INTRN_F8EXPEXPR;
 		intrinsic_op = TRUE;
 		break;
-#ifdef TARG_X8664
+
 	      case GSBI_BUILT_IN_POWI: // bug 10963
 		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
 
@@ -5682,7 +5719,6 @@ WGEN_Expand_Expr (gs_t exp,
 		intrinsic_op = TRUE;
 		iopc = INTRN_FQFQI4EXPEXPR;
 		break;
-#endif
 #endif // KEY
 
               case GSBI_BUILT_IN_CONSTANT_P:
@@ -5931,8 +5967,13 @@ WGEN_Expand_Expr (gs_t exp,
                 break;
 
 	      case GSBI_BUILT_IN_EXPECT:
+#ifdef KEY
+	        iopc = INTRN_EXPECT;
+	        intrinsic_op = TRUE;
+#else
 	        wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
 	        whirl_generated = TRUE;
+#endif
 	        break;
 
               case GSBI_BUILT_IN_FFS:
@@ -6091,7 +6132,7 @@ WGEN_Expand_Expr (gs_t exp,
           }
 
 	  if (intrinsic_op) {
-	    WN *ikids [5];
+	    WN *ikids [16];
 	    for (i = 0, list = gs_tree_operand (exp, 1);
 		 list;
 		 i++, list = gs_tree_chain (list)) {
@@ -6101,7 +6142,7 @@ WGEN_Expand_Expr (gs_t exp,
 		  (gs_decl_function_code(func) == GSBI_BUILT_IN_POWI ||
 	           gs_decl_function_code(func) == GSBI_BUILT_IN_POWIF ||
 	           gs_decl_function_code(func) == GSBI_BUILT_IN_POWIL)) {
-		WN_Int_Type_Conversion(arg_wn, MTYPE_I8);
+		arg_wn = WN_Int_Type_Conversion(arg_wn, MTYPE_I8);
 		arg_ty_idx = MTYPE_To_TY(MTYPE_I8);
 		arg_mtype = MTYPE_I8;
 	      }
@@ -6115,6 +6156,15 @@ WGEN_Expand_Expr (gs_t exp,
 					  arg_ty_idx, WN_PARM_BY_VALUE);
 	      ikids [i]  = arg_wn;
 	    }
+#if defined(KEY) && defined(TARG_X8664)
+	    // bug 11876: type in the tree node is wrong, so patch it
+	    switch (INTRN_return_kind(iopc)) {
+	    case IRETURN_M8I1: ret_mtype = MTYPE_M8I1; break;
+	    case IRETURN_M8I2: ret_mtype = MTYPE_M8I2; break;
+	    case IRETURN_M8I4: ret_mtype = MTYPE_M8I4; break;
+	    default: ;
+	    }
+#endif
 	    wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, ret_mtype, MTYPE_V,
 				      iopc, num_args, ikids);
 #ifdef KEY
@@ -6301,6 +6351,13 @@ WGEN_Expand_Expr (gs_t exp,
           wn0 = WN_CreateBlock ();
           WN_INSERT_BlockLast (wn0, call_wn);
 
+#ifdef KEY
+	  // Preserve type information if available, in preference to
+	  // (void *).
+	  if (nop_ty_idx && TY_kind(ty_idx) == KIND_POINTER &&
+	      TY_mtype(TY_pointed(ty_idx)) == MTYPE_V) /* pointer to void */
+	    ty_idx = nop_ty_idx;
+#endif
 	  wn1 = WN_Ldid (ret_mtype, -1, Return_Val_Preg, ty_idx);
 
 	  if (ret_mtype == MTYPE_M) { // copy the -1 preg to a temp area
@@ -6794,14 +6851,18 @@ WGEN_Expand_Expr (gs_t exp,
 	TYPE_ID mtyp = TY_mtype(ty_idx);
 	if (mtyp == WN_rtype(wn))
 	  break;
-	// bug 11423
-	if (WN_operator(wn) == OPR_INTCONST || WN_operator(wn) == OPR_CONST)
+	// bug 11423 and bug 11752
+	if (WN_operator(wn) == OPR_INTCONST && !MTYPE_is_vector(mtyp) || 
+	    WN_operator(wn) == OPR_CONST)
 	  WN_set_rtype(wn, mtyp);
 	else if (OPERATOR_is_load(WN_operator(wn))) {
 	  WN_set_rtype(wn, mtyp);
 	  WN_set_desc(wn, mtyp);
 	}
-	else wn = WN_CreateExp1(OPR_TAS, mtyp, MTYPE_V, wn);
+	else if (! (MTYPE_is_vector(mtyp) && MTYPE_is_vector(WN_rtype(wn)))) {
+	  // bug 11797: TAS between vector types not needed
+	  wn = WN_Tas(mtyp, MTYPE_To_TY(mtyp), wn);
+	}
       }
       break;
 

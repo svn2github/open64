@@ -1846,6 +1846,7 @@ TY::Print (FILE *f) const
 #ifdef KEY
 	if (flags & TY_RETURN_IN_MEM)	fprintf (f, " return_in_mem");
 	if (flags & TY_CONTENT_SEEN)	fprintf (f, " content_seen");
+        if (flags & TY_IS_INCOMPLETE)   fprintf (f, " incomplete");
 #endif
     }
     fprintf (f, ")");

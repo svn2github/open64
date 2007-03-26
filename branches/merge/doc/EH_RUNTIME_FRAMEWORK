@@ -114,7 +114,7 @@ Document Revision History:
 2.3. Function-try-block
   
   A function-try-block associates a handler-seq with the ctor-initializer, if 
-  present, and the function-body. An exception trhow during the execution of the
+  present, and the function-body. An exception throw during the execution of the
   initializer expressions in the ctor-initializer or during the execution of the
   function-body transfers control to a handler in a function-try-block.
   A function-try-block may looks as following:

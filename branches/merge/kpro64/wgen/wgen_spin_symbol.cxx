@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* 
@@ -82,6 +82,22 @@ extern gs_t decl_arguments;
 extern void Push_Deferred_Function(gs_t);
 extern void WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
 extern char *WGEN_Tree_Node_Name(gs_t op);
+
+#ifdef KEY
+// =====================================================================
+// bug 8346: A function's VLA argument types should only be expanded
+// when necessary, to prevent size-expression-whirl from landing in an
+// unintended location. If we attempt to expand such a type while
+// generating a function's argument types, but are not expanding that
+// specific function body, then we mark the TY as incomplete, to expand
+// it later when we actually expand that function body.
+// "expanding_function_definition" denotes when it is safe to process a
+// function's VLA argument types.
+// "processing_function_prototype" indicates when we are expanding
+// function arguments (as opposed to other VLA variable occurrences).
+// =====================================================================
+BOOL processing_function_prototype = FALSE;
+#endif
 
 // Map duplicate gcc nodes that refer to the same function.
 std::multimap<gs_t, gs_t> duplicate_of;
@@ -341,9 +357,13 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 #endif
 		TYPE_TY_IDX(type_tree) = idx;
 		if(Debug_Level >= 2) {
+#ifdef KEY // bug 11782
+		  defer_DST_type(type_tree, idx, orig_idx);
+#else
 		  DST_INFO_IDX dst = Create_DST_type_For_Tree(type_tree,
 			idx,orig_idx);
 		  TYPE_DST_IDX(type_tree) = dst;
+#endif
 	        }
 		TYPE_FIELD_IDS_USED(type_tree) =
 			TYPE_FIELD_IDS_USED(gs_type_main_variant(type_tree));
@@ -382,9 +402,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			// bugs 943, 11277, 10506
 			{
 			  // Should use ErrMsg (or something similar) instead.
-			  #ifdef PSC_TO_OPEN64
-			  printf("opencc: variable-length structure not yet implemented\n");
-			  #endif
+			  printf("pathcc: variable-length structure not yet implemented\n");
 			  exit(2);
 			}
 #endif
@@ -467,10 +485,6 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
-#ifdef TARG_IA64
-		case 12:
-		case 16: mtype = MTYPE_F10; break;
-#endif
 #ifdef TARG_X8664
 		case 12: mtype = MTYPE_FQ; break;
 #endif
@@ -487,9 +501,6 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		case 4: ErrMsg (EC_Unsupported_Type, "Complex integer");
 		case  8:  mtype = MTYPE_C4; break;
 		case 16:  mtype = MTYPE_C8; break;
-#ifdef TARG_IA64
-		case 32:  mtype = MTYPE_C10; break;
-#endif
 #ifdef TARG_X8664
 		case 24:  mtype = MTYPE_CQ; break;
 #endif
@@ -513,7 +524,12 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		break;
 	case GS_ARRAY_TYPE:
 		{	// new scope for local vars
+#ifdef KEY /* bug 8346 */
+		TY &ty = (idx == TY_IDX_ZERO) ? New_TY(idx) : Ty_Table[idx];
+		Clear_TY_is_incomplete (idx);
+#else
 		TY &ty = New_TY (idx);
+#endif
 		TY_Init (ty, tsize, KIND_ARRAY, MTYPE_M, 
 			Save_Str(Get_Name(gs_type_name(type_tree))) );
 		Set_TY_etype (ty, Get_TY (gs_tree_type(type_tree)));
@@ -528,12 +544,24 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		Set_ARB_dimension (arb, 1);
 		if (gs_type_size(gs_tree_type(type_tree)) == 0)
 			break; // anomaly:  type will never be needed
+
+		// =================== Array stride ======================
 		if (gs_tree_code(gs_type_size(gs_tree_type(type_tree))) == GS_INTEGER_CST) {
 			Set_ARB_const_stride (arb);
 			Set_ARB_stride_val (arb, 
 				gs_get_integer_value (gs_type_size(gs_tree_type(type_tree))) 
 				/ BITSPERBYTE);
 		}
+#ifdef KEY /* bug 8346 */
+		else if (!expanding_function_definition &&
+		         processing_function_prototype)
+		{
+			Set_ARB_const_stride (arb);
+			// dummy stride val 4
+			Set_ARB_stride_val (arb, 4);
+			Set_TY_is_incomplete (idx);
+		}
+#endif
 		else {
 			WN *swn;
 			swn = WGEN_Expand_Expr (gs_type_size(gs_tree_type(type_tree)));
@@ -569,9 +597,16 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			WGEN_Stmt_Append (wn, Get_Srcpos());
 			Clear_ARB_const_stride (arb);
 			Set_ARB_stride_var (arb, (ST_IDX) ST_st_idx (st));
+#ifdef KEY /* bug 8346 */
+			Clear_TY_is_incomplete (idx);
+#endif
 		}
+
+		// ================= Array lower bound =================
 		Set_ARB_const_lbnd (arb);
 		Set_ARB_lbnd_val (arb, 0);
+
+		// ================= Array upper bound =================
 		if (type_size) {
 #ifdef KEY
 		    // For Zero-length arrays, TYPE_MAX_VALUE tree is NULL
@@ -586,6 +621,15 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			Set_ARB_ubnd_val (arb, gs_get_integer_value (
 				gs_type_max_value (gs_type_domain (type_tree)) ));
 		    }
+#ifdef KEY /* bug 8346 */
+		    else if (!expanding_function_definition &&
+		             processing_function_prototype) {
+			Set_ARB_const_ubnd (arb);
+			// dummy upper bound 8
+			Set_ARB_ubnd_val (arb, 8);
+			Set_TY_is_incomplete (idx);
+		    }
+#endif
 		    else {
 			WN *uwn = WGEN_Expand_Expr (gs_type_max_value (gs_type_domain (type_tree)) );
 			if (WN_opcode (uwn) == OPC_U4I4CVT ||
@@ -613,13 +657,26 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			WGEN_Stmt_Append (wn, Get_Srcpos());
 			Clear_ARB_const_ubnd (arb);
 			Set_ARB_ubnd_var (arb, ST_st_idx (st));
+#ifdef KEY /* bug 8346 */
+			Clear_TY_is_incomplete (idx);
+#endif
 		    }
 		}
 		else {
 			Clear_ARB_const_ubnd (arb);
 			Set_ARB_ubnd_val (arb, 0);
 		}
+
+		// ==================== Array size ====================
 		if (variable_size) {
+#ifdef KEY /* bug 8346 */
+		   if (!expanding_function_definition &&
+		       processing_function_prototype) {
+		     Set_TY_is_incomplete (idx);
+		   }
+		   else
+#endif
+		   {
 			WN *swn, *wn;
 			swn = WGEN_Expand_Expr (type_size);
 			if (TY_size(TY_etype(ty))) {
@@ -654,6 +711,10 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				wn = WN_Stid (mtype, 0, st, ty_idx, swn);
 				WGEN_Stmt_Append (wn, Get_Srcpos());
 			}
+#ifdef KEY /* bug 8346 */
+			Clear_TY_is_incomplete (idx);
+#endif
+		   }
 		}
 		} // end array scope
 		break;
@@ -742,10 +803,10 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				defer_decl(field);
 #else
 			else if (gs_tree_code(field) == GS_VAR_DECL)
-				WGEN_Expand_Decl(field);
+				WGEN_Expand_Decl(field, TRUE);
 #endif
 			else if (gs_tree_code(field) == GS_TEMPLATE_DECL)
-				WGEN_Expand_Decl(field);
+				WGEN_Expand_Decl(field, TRUE);
 	        }
 
   		Set_TY_fld (ty, FLD_HANDLE());
@@ -788,6 +849,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 
 		INT32 offset = 0;
 		INT32 anonymous_fields = 0;
+#ifndef KEY	// g++'s class.c already laid out the base types.  Bug 11622.
 		gs_t type_binfo, basetypes;
 		if ((type_binfo = gs_type_binfo(type_tree)) != NULL &&
 		    (basetypes = gs_binfo_base_binfos(type_binfo)) != NULL) {
@@ -822,6 +884,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		    }
 		  }
 		}
+#endif // KEY
 
 		// Assign IDs to real fields.  The vtable ptr field is already
 		// assigned ID 1.
@@ -1007,7 +1070,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		if (!Enable_WGEN_DFE) {
 		if (cp_type_quals(type_tree) == TYPE_UNQUALIFIED) {
 			while (method != NULL_TREE) {
-				WGEN_Expand_Decl (method);
+				WGEN_Expand_Decl (method, TRUE);
 				method = TREE_CHAIN(method);
 			}
 		}
@@ -1021,7 +1084,12 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		{	// new scope for local vars
 		gs_t arg;
 		INT32 num_args, i;
+#ifdef KEY /* bug 8346 */
+		TY &ty = (idx == TY_IDX_ZERO) ? New_TY(idx) : Ty_Table[idx];
+		Clear_TY_is_incomplete (idx);
+#else
 		TY &ty = New_TY (idx);
+#endif
 		TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, 0); 
 		Set_TY_align (idx, 1);
 		TY_IDX ret_ty_idx;
@@ -1036,7 +1104,15 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		for (arg = gs_type_arg_types(type_tree);
 		     arg;
 		     arg = gs_tree_chain(arg))
+		{
 		  arg_ty_idx = Get_TY(gs_tree_value(arg));
+#ifdef KEY /* bug 8346 */
+		  if (TY_is_incomplete (arg_ty_idx) ||
+		      (TY_kind(arg_ty_idx) == KIND_POINTER &&
+		       TY_is_incomplete(TY_pointed(arg_ty_idx))))
+		    Set_TY_is_incomplete (idx);
+#endif
+		}
 
 		// if return type is pointer to a zero length struct
 		// convert it to void
@@ -1063,6 +1139,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		     num_args++, arg = gs_tree_chain(arg))
 		{
 			arg_ty_idx = Get_TY(gs_tree_value(arg));
+			Is_True (!TY_is_incomplete (arg_ty_idx) ||
+			          TY_is_incomplete (idx),
+				  ("Create_TY_For_Tree: unexpected TY flag"));
 			if (!WGEN_Keep_Zero_Length_Structs    &&
 			    TY_mtype (arg_ty_idx) == MTYPE_M &&
 			    TY_size (arg_ty_idx) == 0) {
@@ -1187,7 +1266,13 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 	  // that the records are declared, in order to preserve their scope.
 	  // Bug 4168.
 	  if (gs_tree_code(type_tree) != GS_RECORD_TYPE &&
-	      gs_tree_code(type_tree) != GS_UNION_TYPE) {
+	      gs_tree_code(type_tree) != GS_UNION_TYPE &&
+	      // Bugs 8346, 11819: Insert a TY for DST processing only
+	      // when the TY is complete to ensure that when the DST info
+	      // are created, the TY will be valid.
+	      !TY_is_incomplete(idx) &&
+	      !(TY_kind(idx) == KIND_POINTER &&
+	        TY_is_incomplete(TY_pointed(idx)))) {
 	    // Defer creating DST info until there are no partially constructed
 	    // types, in order to prevent Create_DST_type_For_Tree from calling
 	    // Get_TY, which in turn may use field IDs from partially created
@@ -1243,7 +1328,7 @@ ST*
 Create_ST_For_Tree (gs_t decl_node)
 {
   TY_IDX     ty_idx;
-  ST*        st;
+  ST*        st = NULL;
   char      *name;
   char	    tempname[32];
   ST_SCLASS  sclass;
@@ -1317,7 +1402,15 @@ Create_ST_For_Tree (gs_t decl_node)
           }
         }
 
+#ifdef KEY /* bug 8346 */
+        Is_True (!processing_function_prototype,
+                 ("Create_ST_For_Tree: processing another function prototype?"));
+        processing_function_prototype = TRUE;
         TY_IDX func_ty_idx = Get_TY(gs_tree_type(decl_node));
+        processing_function_prototype = FALSE;
+#else
+        TY_IDX func_ty_idx = Get_TY(gs_tree_type(decl_node));
+#endif
 
         sclass = SCLASS_EXTERN;
         eclass = gs_tree_public(decl_node) || gs_decl_weak(decl_node) ?
@@ -1334,7 +1427,10 @@ Create_ST_For_Tree (gs_t decl_node)
 
         // Fix bug # 34, 3356
 // gcc sometimes adds a '*' and itself handles it this way while outputing
-	char *p = gs_identifier_pointer (gs_decl_assembler_name (decl_node));
+	char *p;
+	if (gs_decl_assembler_name(decl_node) == NULL)
+	  p = name;
+	else p  = gs_identifier_pointer (gs_decl_assembler_name (decl_node));
 	if (*p == '*')
 	  p++;
         ST_Init (st, Save_Str(p),
@@ -1370,8 +1466,9 @@ Create_ST_For_Tree (gs_t decl_node)
     case GS_VAR_DECL:
       {
         if (gs_tree_code(decl_node) == GS_PARM_DECL) {
-#if 1 // wgen
-	  if (lang_cplus && decl_arguments) {
+#ifdef KEY
+	  // wgen fix for C++ and also for C, as in bug 8346.
+	  if (decl_arguments) {
 	    st = Search_decl_arguments(gs_decl_name(decl_node) ? name : NULL);
 	    if (st) {
 	      set_DECL_ST(decl_node, st); // created now
@@ -1685,7 +1782,7 @@ Create_ST_For_Tree (gs_t decl_node)
   // may have.
   if (lang_cplus && gs_tree_code(decl_node) == GS_VAR_DECL &&
       !expanded_decl(decl_node))
-    WGEN_Expand_Decl(decl_node);
+    WGEN_Expand_Decl(decl_node, TRUE);
 #endif
 
   return st;

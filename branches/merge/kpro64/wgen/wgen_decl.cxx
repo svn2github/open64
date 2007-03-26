@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* 
@@ -67,6 +67,7 @@ extern "C" {
 #include "pu_info.h"
 #include "ir_bwrite.h"
 #include "ir_reader.h"
+#include "erglob.h"  // EC_Unimplemented_Feature
 #include "wgen_decl.h"
 #include "wgen_misc.h"
 #include "wgen_dst.h"
@@ -82,6 +83,9 @@ extern "C" {
 #endif
 
 extern void WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
+extern BOOL c_omit_external; // for C programs, omit generating functions with
+			     // gs_decl_external = TRUE, which is the default
+
 int flag_openmp;
 gs_t decl_arguments;
 
@@ -380,6 +384,13 @@ WGEN_Expand_Function_Body (gs_t decl)
   for (body = bind_expr; body; body = gs_tree_chain(body))
     WGEN_Expand_Stmt(body);
 
+#ifdef KEY
+  // Bug 11904: We should attempt to expand any deferred DSTs now,
+  // because VLA types may be in terms of a local symbol, which won't
+  // be valid if we go out of scope and process the DST for that type.
+  add_deferred_DST_types();
+#endif
+
   WGEN_Finish_Function();
   WGEN_PU_count++;
   return 1;
@@ -648,11 +659,7 @@ static void process_local_classes()
 #endif
 }
 
-#ifdef KEY
 void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
-#else
-void WGEN_Expand_Decl(gs_t decl)
-#endif
 {
   Is_True(decl != NULL && gs_tree_code_class(decl) == GS_TCC_DECLARATION,
           ("Argument to WGEN_Expand_Decl isn't a decl node"));
@@ -694,7 +701,9 @@ void WGEN_Expand_Decl(gs_t decl)
 #endif
       else {
         gs_t body = gs_decl_saved_tree(decl);
-        if (body != NULL && !gs_decl_external(decl) &&
+        if (body != NULL && 
+	     (lang_cplus && !gs_decl_external(decl) ||
+	      !lang_cplus && (!c_omit_external || !gs_decl_external(decl) || gs_decl_declared_inline_p(decl))) &&
 	     !gs_decl_maybe_in_charge_constructor_p(decl) &&
 	     !gs_decl_maybe_in_charge_destructor_p(decl)) {
 
@@ -738,7 +747,7 @@ void WGEN_Expand_Decl(gs_t decl)
       for (subdecl = gs_cp_namespace_decls(decl);
 	   subdecl != NULL;
 	   subdecl = gs_tree_chain(subdecl))
-	WGEN_Expand_Decl(subdecl);
+	WGEN_Expand_Decl(subdecl, TRUE);
 #if 0 // wgen TODO
       if (decl == global_namespace)
 	process_local_classes(); 
@@ -765,7 +774,7 @@ void WGEN_Expand_Decl(gs_t decl)
 	if (gs_tree_code(gs_tree_value(t)) == GS_FUNCTION_DECL &&
 	    !gs_decl_external(gs_tree_value(t))	      &&
 	    !gs_uses_template_parms (gs_tree_value(t)))
-          WGEN_Expand_Decl (gs_tree_value(t));
+          WGEN_Expand_Decl (gs_tree_value(t), TRUE);
 	gs_set_decl_template_specializations(gentemp, 0); // don't do these twice
 
       for (gs_t t = gs_decl_template_instantiations(gentemp);
@@ -978,7 +987,7 @@ WGEN_Assemble_Asm(char *asm_string)
    * this crazy hack of a FUNC_ENTRY node written out to the .B file.
    */
                                                                                 
-  /* This code patterned after "wfe_decl.cxx":WFE_Start_Function, and
+  /* This code patterned after "wfe_decl.cxx":WGEN_Start_Function, and
      specialized for the application at hand. */
                                                                                 
 #ifdef ASM_NEEDS_WN_MAP
@@ -1066,6 +1075,9 @@ WGEN_Assemble_Asm(char *asm_string)
     --CURRENT_SYMTAB;
 }
 
+#ifdef KEY
+BOOL expanding_function_definition = FALSE;
+#endif
 
 //******************************************************
 // for a function
@@ -1134,6 +1146,10 @@ WGEN_Start_Function(gs_t fndecl)
     /* create the map table for the next PU */
     (void)WN_MAP_TAB_Create(&Map_Mem_Pool);
 
+#ifdef KEY
+    if (CURRENT_SYMTAB > 1)
+      ErrMsg (EC_Unimplemented_Feature, "Nested functions");
+#endif
     New_Scope (CURRENT_SYMTAB + 1, Malloc_Mem_Pool, TRUE);
 
     if (gs_decl_source_file (fndecl)) {
@@ -1262,8 +1278,32 @@ WGEN_Start_Function(gs_t fndecl)
 	  // If there is an 'always_inline' attribute, and function definition
 	  // is before the call(s), GNU fe will do it. If definition is after
 	  // any call, we need to handle it here.
-	  if (strcmp("always_inline", (char *)gs_identifier_pointer(attr)) == 0)
+	  // bug 11730: The above is no longer true in the new GNU4 front-end.
+	  // Such functions are now not handled in GNU fe for both C/C++.
+	  else if (strcmp("always_inline", (char *)gs_identifier_pointer(attr)) == 0)
 	      Set_PU_must_inline (Pu_Table [ST_pu (func_st)]);
+
+	  // bug 11754
+	  else if (strcmp("constructor", (char *)gs_identifier_pointer(attr)) == 0 ||
+	           strcmp("destructor", (char *)gs_identifier_pointer(attr)) == 0) {
+	    BOOL is_ctors = *(char *)gs_identifier_pointer(attr) == 'c';
+	    INITV_IDX initv = New_INITV ();
+	    INITV_Init_Symoff (initv, func_st, 0, 1);
+	    ST *init_st = New_ST (GLOBAL_SYMTAB);
+	    ST_Init (init_st, Save_Str2i (is_ctors ? "__ctors" : "__dtors",
+	    	     			  "_", ++__ctors),
+		     CLASS_VAR, SCLASS_FSTATIC,
+		     EXPORT_LOCAL, Make_Pointer_Type (ST_pu_type (func_st), FALSE));
+	    Set_ST_is_initialized (init_st);
+	    INITO_IDX inito = New_INITO (init_st, initv);
+	    ST_ATTR_IDX st_attr_idx;
+	    ST_ATTR&	st_attr = New_ST_ATTR (GLOBAL_SYMTAB, st_attr_idx);
+      	    ST_ATTR_Init (st_attr, ST_st_idx (init_st), ST_ATTR_SECTION_NAME,
+                    	  Save_Str (is_ctors ? ".ctors" : ".dtors"));
+	    Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
+	    Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
+	    Set_ST_addr_saved (func_st);
+	  }
 	}
       } 
     }
@@ -1274,6 +1314,17 @@ WGEN_Start_Function(gs_t fndecl)
     }
 
     Scope_tab [Current_scope].st = func_st;
+
+#ifdef KEY
+    // bug 8346:
+    // This should be set after setting the ST in Scope_tab above. The reason
+    // is any ST generated before the above statement will be regenerated,
+    // and that is because set_DECL_ST() does not work until the above
+    // Scope_tab ST is set. This specifies that it is now OK to fully
+    // expand any VLA parameter types.
+    expanding_function_definition = TRUE;
+#endif
+
 // Insert special variables into the local symtab, store their id's
 // in the PU_TAB, to be accessed later in the front-end, WN Lowerer,
 // inliner/ipa, and back-end.
@@ -1376,9 +1427,14 @@ WGEN_Start_Function(gs_t fndecl)
         ++i;
       }
     }
-#if 1 // wgen
+#ifdef KEY // wgen
     if (! thunk)
       decl_arguments = gs_decl_arguments (fndecl);
+
+    // bug 8346: if ty is incomplete, complete it now.
+    if (TY_is_incomplete(PU_prototype(Pu_Table[ST_pu(func_st)])))
+      Set_PU_prototype (Pu_Table[ST_pu(func_st)], Get_TY(gs_tree_type(fndecl)));
+
 #endif
 
     PU_Info *pu_info;
@@ -1507,8 +1563,6 @@ WGEN_Start_Function(gs_t fndecl)
       Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
       Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
       Set_ST_addr_saved (func_st);
-      Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
-      Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
     }
 
     // Tell the rest of the front-end this is the current function's entry wn.
@@ -1531,6 +1585,9 @@ WGEN_Start_Function(gs_t fndecl)
       }
     }
 
+#ifdef KEY
+    expanding_function_definition = FALSE; // bug 8346
+#endif
     return entry_wn;
 }
 
@@ -1660,6 +1717,7 @@ public:
   void Traverse_Aggregate_Vector (
 	ST * st,              // symbol being initialized
 	gs_t init_list,       // list of initializers for units in vector
+	TYPE_ID mtyp,         // type of vector
 	BOOL gen_initv,       // TRUE if initializing with INITV, FALSE for statements
 	UINT current_offset,  // offset from start of symbol for current vector
 	BOOL vec_cst = FALSE);// init_list is a constant or not
@@ -2185,6 +2243,10 @@ Has_Non_Constant_Init_Value (gs_t init)
 		return TRUE;
   case GS_ADDR_EXPR: {
 	gs_t t = gs_tree_operand(init, 0);
+#ifdef KEY // bug 11726
+	if (gs_tree_code_class(t) != GS_TCC_DECLARATION)
+	  return TRUE;
+#endif
 	if (gs_decl_context(t) == 0 ||
 	    gs_tree_code(gs_decl_context(t)) == GS_NAMESPACE_DECL)
 		return FALSE;
@@ -2653,8 +2715,8 @@ AGGINIT::Traverse_Aggregate_Array (
       Traverse_Aggregate_Pad (st, gen_initv, 
 			      (lindex - emitted_bytes/esize)*esize,
 			      current_offset);
-      emitted_bytes += (lindex - emitted_bytes/esize)*esize;
       current_offset += (lindex - emitted_bytes/esize)*esize;
+      emitted_bytes += (lindex - emitted_bytes/esize)*esize;
     }	
 
     gs_t tree_value = gs_tree_value(init);
@@ -2782,6 +2844,7 @@ AGGINIT::Traverse_Aggregate_Struct (
   // nonempty nonvirtual base class.
   // these are generated first in Create_TY_For_Tree (tree_symtab.cxx)
 
+#ifndef KEY	// g++'s class.c already laid out the base types.  Bug 11622.
   gs_t type_binfo, basetypes;
 
   if ((type_binfo = gs_type_binfo(type)) != NULL &&
@@ -2798,8 +2861,8 @@ AGGINIT::Traverse_Aggregate_Struct (
         field_id += TYPE_FIELD_IDS_USED(basetype);
       }
     }
-
   }
+#endif	// KEY
 
   while (field && gs_tree_code(field) != GS_FIELD_DECL)
     field = next_real_field(type, field);
@@ -2999,6 +3062,7 @@ void
 AGGINIT::Traverse_Aggregate_Vector (
   ST * st,             // symbol being initialized
   gs_t init_list,      // list of initializers for units in vector
+  TYPE_ID mtyp,	       // type of vector
   BOOL gen_initv,      // TRUE if initializing with INITV, FALSE for statements
   UINT current_offset, // offset from start of symbol for current vector
   BOOL vec_cst)	       // init_list is a constant or not
@@ -3032,6 +3096,12 @@ AGGINIT::Traverse_Aggregate_Vector (
                               0, 0, FLD_HANDLE(), emitted_bytes);
     current_offset += esize;
   }
+
+  // bug 11615: If the entire vector has not been initialized, pad till the end
+  INT pad = MTYPE_byte_size(mtyp) - emitted_bytes;
+
+  if (pad > 0)
+    Traverse_Aggregate_Pad (st, gen_initv, pad, current_offset);
 } /* Traverse_Aggregate_Vector */
 
 void
@@ -3042,7 +3112,8 @@ Traverse_Aggregate_Vector_Const (
   UINT current_offset) // offset from start of symbol for current vector
 {
   AGGINIT agginit;
-  agginit.Traverse_Aggregate_Vector (st, init_list, gen_initv, current_offset, TRUE);
+  agginit.Traverse_Aggregate_Vector(st, init_list, TY_mtype(ST_type(st)), 
+				    gen_initv, current_offset, TRUE);
 }
 #endif
 
@@ -3104,7 +3175,7 @@ AGGINIT::Traverse_Aggregate_Constructor (
   else
   if (TY_kind (ty) == KIND_SCALAR && MTYPE_is_vector (TY_mtype (ty))) {
 
-    Traverse_Aggregate_Vector(st, init_list, gen_initv, current_offset);
+    Traverse_Aggregate_Vector(st, init_list, TY_mtype(ty), gen_initv, current_offset);
   }
 #endif
 
@@ -3624,6 +3695,17 @@ WGEN_Assemble_Alias (gs_t decl, gs_t target)
 #endif
   }
 #ifdef KEY
+  if (!lang_cplus)
+  {
+    // bug 4981: symbol class of ST must match that of the target
+    if (ST_sym_class (st) != ST_sym_class (base_st))
+      ErrMsg (EC_Ill_Alias, ST_name (st), ST_name (base_st));
+
+    // bugs 5145, 11993
+    if (ST_sym_class (base_st) == CLASS_FUNC)
+      Set_PU_no_delete (Pu_Table [ST_pu (base_st)]);
+  }
+
   return TRUE;
 #endif
 /*
@@ -3954,7 +4036,7 @@ WGEN_Process_Var_Decl (gs_t decl)
 #endif
         ) {
 #ifdef KEY
-      WGEN_Expand_Decl(decl);
+      WGEN_Expand_Decl(decl, TRUE);
 #else
       DECL_ST(decl) = (ST *) 1;
       Push_Deferred_Function (decl);
@@ -4066,7 +4148,7 @@ WGEN_Expand_Top_Level_Decl (gs_t top_level_decl)
       WGEN_Assemble_Asm (asm_string);
     }
 
-    WGEN_Expand_Decl (top_level_decl);
+    WGEN_Expand_Decl (top_level_decl, TRUE);
 
 #ifdef KEY
     // Catch all the functions that are emitted by g++ that we haven't
@@ -4134,7 +4216,7 @@ WGEN_Expand_Top_Level_Decl (gs_t top_level_decl)
         } else if (gs_tree_code(decl) == GS_VAR_DECL) {
 	  WGEN_Process_Var_Decl (decl);
         } else if (gs_tree_code(decl) == GS_NAMESPACE_DECL) {
-	  WGEN_Expand_Decl (decl);
+	  WGEN_Expand_Decl (decl, TRUE);
         } else {
 	  FmtAssert(FALSE, ("WGEN_Expand_Top_Level_Decl: invalid node"));
         }
@@ -4149,7 +4231,7 @@ WGEN_Expand_Top_Level_Decl (gs_t top_level_decl)
 	    continue;
 	expanded_decl (decl) = TRUE;
 	FmtAssert (gs_tree_code(decl) == GS_VAR_DECL, ("Unexpected node in typeinfo"));
-	WGEN_Expand_Decl (decl);
+	WGEN_Expand_Decl (decl, TRUE);
     }
 #endif
 
@@ -4186,7 +4268,7 @@ WGEN_Expand_Top_Level_Decl (gs_t top_level_decl)
         st = DECL_ST(decl);
         if (ST_sclass(st) == SCLASS_EXTERN)
           Set_ST_sclass (st, SCLASS_UGLOBAL);
-        WGEN_Expand_Decl (decl);
+        WGEN_Expand_Decl (decl, TRUE);
       }
     }
   }
@@ -4208,7 +4290,7 @@ WGEN_Expand_Defers()
       gs_t decl = emit_decls[i];
       gs_code_t code = gs_tree_code(decl);
       if (code == GS_VAR_DECL)
-	WGEN_Expand_Decl(decl);
+	WGEN_Expand_Decl(decl, TRUE);
       else if (code == GS_RECORD_TYPE ||
 	       code == GS_UNION_TYPE)
 	Get_TY(decl);

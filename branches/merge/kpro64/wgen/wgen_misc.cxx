@@ -69,7 +69,6 @@ extern "C" {
 #include "tracing.h"
 #include "util.h"
 #include "errors.h"
-#include "err_host.tab"
 #include <stdarg.h>
 
 #include "wn.h"
@@ -342,9 +341,6 @@ Prepare_Source ( void )
 void
 WGEN_Init (INT argc, char **argv, char **envp )
 {
-  //set error tables, must be code in common/com
-  Set_Error_Tables ( Phases, host_errlist );
-
   Initialize_C_Int_Model();
 
   MEM_Initialize(); /// init memory

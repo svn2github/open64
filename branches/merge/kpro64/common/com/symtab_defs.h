@@ -502,6 +502,9 @@ enum TY_FLAGS
     TY_CONTENT_SEEN	= 0x1000,	// for differentiating between a 0-sized
     					// struct and its forward declaration;
 					// used by wgen
+    TY_IS_INCOMPLETE    = 0x2000,       // Type is incomplete, used by wgen to
+                                        // mark VLA types when used as function
+                                        // arguments.
 #endif
 };
 
