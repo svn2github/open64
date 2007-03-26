@@ -808,6 +808,9 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_FQPAREN:
     case OPC_C4PAREN:
     case OPC_C8PAREN:
+#ifdef TARG_IA64
+    case OPC_C10PAREN: 
+#endif
     case OPC_CQPAREN:
       /* just c0 */
       break;
@@ -1609,6 +1612,13 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_R8(c0)  = -TCON_R8(c0);
       TCON_IR8(c0)  = -TCON_IR8(c0);
       break;
+#ifdef TARG_IA64
+    case OPC_C10NEG:
+      TCON_R16(c0)  = -TCON_R16(c0);
+      TCON_IR16(c0)  = -TCON_IR16(c0);
+      break;
+#endif    
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_CQNEG:
       TCON_R16(c0) = RQ_To_R16(__c_q_neg(R16_To_RQ(TCON_R16(c0)), 
@@ -1791,6 +1801,13 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_R8(c0) += TCON_R8(c1);
       TCON_IR8(c0) += TCON_IR8(c1);
       break;
+#ifdef TARG_IA64
+    case OPC_C10ADD:
+      TCON_R16(c0) += TCON_R16(c1);
+      TCON_IR16(c0) += TCON_IR16(c1);
+      break;
+#endif      
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_CQADD:
       TCON_R16(c0) = RQ_To_R16(__c_q_add(R16_To_RQ(TCON_R16(c0)), 
@@ -1847,6 +1864,12 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_R8(c0) -= TCON_R8(c1);
       TCON_IR8(c0) -= TCON_IR8(c1);
       break;
+#ifdef TARG_IA64
+    case OPC_C10SUB:
+      TCON_R16(c0) -= TCON_R16(c1);
+      TCON_IR16(c0) -= TCON_IR16(c1);
+      break;
+#endif      
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_CQSUB:
       
@@ -1892,6 +1915,9 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 #endif
     case OPC_C4SQRT:
     case OPC_C8SQRT:
+#ifdef TARG_IA64
+    case OPC_C10SQRT:
+#endif      
     case OPC_CQSQRT:
       c0 = complex_sqrt(c0);
       break;
@@ -1943,7 +1969,15 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_IR8(c0) = TCON_R8(c0)*TCON_IR8(c1) + TCON_IR8(c0)*TCON_R8(c1);
       TCON_R8(c0) = TCON_R8(t1);
       break;
-     
+
+#ifdef TARG_IA64
+    case OPC_C10MPY:
+      TCON_R16(t1) = TCON_R16(c0)*TCON_R16(c1) - TCON_IR16(c0)*TCON_IR16(c1);
+      TCON_IR16(c0) = TCON_R16(c0)*TCON_IR16(c1) + TCON_IR16(c0)*TCON_R16(c1);
+      TCON_R16(c0) = TCON_R16(t1);
+      break;
+#endif      
+      
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_CQMPY:
       {
@@ -2061,6 +2095,9 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 #endif
 
     case OPC_C8DIV:
+#ifdef TARG_IA64
+    case OPC_C10DIV:
+#endif      
     case OPC_CQDIV:
     case OPC_C4DIV:
       c0 = complex_divide(c0,c1);
@@ -3960,6 +3997,11 @@ Targ_To_Host_ComplexReal(TCON fvalue)
     case MTYPE_C8:
       return TCON_R8(fvalue);
 
+#ifdef TARG_IA64
+    case MTYPE_C10:
+      return (double)TCON_R16(fvalue);
+#endif
+      
     case MTYPE_CQ:
       return Targ_To_Host_Float(Targ_Conv(MTYPE_CQ, fvalue));
 
@@ -3980,6 +4022,11 @@ Targ_To_Host_ComplexImag(TCON fvalue)
 
     case MTYPE_C8:
       return TCON_IR8(fvalue);
+
+#ifdef TARG_IA64
+    case MTYPE_C10:
+      return (double)TCON_R16(fvalue);
+#endif
 
     case MTYPE_CQ:
       return Targ_To_Host_Float(Targ_Conv(MTYPE_C8, fvalue));
