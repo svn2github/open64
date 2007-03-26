@@ -40,21 +40,9 @@ HEADERS = gspin-tree.h \
 OBJECTS = $(subst .c,.o,$(SOURCES))
 
 CC = gcc
-CFLAGS = -g -m32 -O0 
+CFLAGS = -g -O0 
 
 ifeq ($(BUILD_TARGET), X8664)
-CFLAGS += -m32
-endif
-
-ifeq ($(BUILD_ARCH), X8664)
-CFLAGS += -m32
-endif
-
-ifeq ($(BUILD_TARGET), IA32)
-CFLAGS += -m32
-endif
-
-ifeq ($(BUILD_ARCH), IA32)
 CFLAGS += -m32
 endif
 

@@ -485,6 +485,10 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
+#ifdef TARG_IA64
+		case 12:
+		case 16: mtype = MTYPE_F10; break;
+#endif
 #ifdef TARG_X8664
 		case 12: mtype = MTYPE_FQ; break;
 #endif
@@ -501,6 +505,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		case 4: ErrMsg (EC_Unsupported_Type, "Complex integer");
 		case  8:  mtype = MTYPE_C4; break;
 		case 16:  mtype = MTYPE_C8; break;
+#ifdef TARG_IA64
+		case 32: mtype = MTYPE_C10; break;
+#endif
 #ifdef TARG_X8664
 		case 24:  mtype = MTYPE_CQ; break;
 #endif
