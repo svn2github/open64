@@ -3961,7 +3961,8 @@ WGEN_Expand_Expr (gs_t exp,
 				     gs_tree_real_cst_d(gs_tree_imagpart(exp)));
 	  break;
 #ifdef TARG_IA64
-          tcon = Host_To_Targ_Complex_10(MTYPE_C10,
+	case 32:
+	  tcon = Host_To_Targ_Complex_10(MTYPE_C10,
                                      gs_tree_real_cst_ld(gs_tree_realpart(exp)),
                                      gs_tree_real_cst_ld(gs_tree_imagpart(exp)));
           break;
