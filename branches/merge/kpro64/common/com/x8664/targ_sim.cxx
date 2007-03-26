@@ -178,7 +178,7 @@ INT Classify_Aggregate(const TY_IDX ty,
   enum X86_64_PARM_CLASS subclasses[MAX_CLASSES];
 
   if (TY_size(ty) > 16 || TY_size(ty) == 0 ||
-      TY_is_non_pod(ty) || TY_is_packed(ty))
+      TY_is_non_pod(ty) /* || TY_is_packed(ty) bug 11892 */)
     return 0;
 
   INT size_in_dwords = (TY_size(ty) + 7) / 8;
@@ -243,6 +243,35 @@ INT Classify_Aggregate(const TY_IDX ty,
       classes[0] = X86_64_SSE_CLASS;
       classes[1] = X86_64_SSE_CLASS;
       return 2;
+    case MTYPE_V16F4:
+    case MTYPE_V16F8:
+    case MTYPE_V16C4:
+    case MTYPE_V16C8:
+      classes[0] = X86_64_SSE_CLASS;
+      classes[1] = X86_64_SSEUP_CLASS;
+      return 2;
+    case MTYPE_V16I1:
+    case MTYPE_V16I2:
+    case MTYPE_V16I4:
+    case MTYPE_V16I8:
+      classes[0] = X86_64_INTEGER_CLASS;
+      classes[1] = X86_64_INTEGER_CLASS;
+      return 2;
+    case MTYPE_V8F4:
+      classes[0] = X86_64_SSE_CLASS;
+      return 1;
+    case MTYPE_V8I1:
+    case MTYPE_V8I2:
+    case MTYPE_V8I4:
+    case MTYPE_M8I1:
+    case MTYPE_M8I2:
+    case MTYPE_M8I4:
+      classes[0] = X86_64_INTEGER_CLASS;
+      return 1;
+    case MTYPE_M8F4:
+      classes[0] = X86_64_X87_CLASS;
+      return 1;
+
     default:
 	FmtAssert (FALSE, ("Classify_Aggregate:  mtype %s",
 			   MTYPE_name(TY_mtype(ty))));

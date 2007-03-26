@@ -133,11 +133,7 @@ static  void Ipa_Inline_tlog2(char *keyword, INT64 srcpos, char *msg )
 // ====================================================================
 
 extern "C" void
-#ifdef TARG_IA64
-Set_tlog_phase(const INT32 i) 
-#else
 Set_ipa_tlog_phase(const INT32 i)
-#endif
 {
   if (i==PHASE_IPA)
     tlog_phase = "IPA";
@@ -147,11 +143,7 @@ Set_ipa_tlog_phase(const INT32 i)
 
 #ifdef KEY
 extern "C" PHASE_NAME
-#ifdef TARG_IA64
-Get_tlog_phase(void)
-#else
 Get_ipa_tlog_phase(void)
-#endif
 {
   if (!tlog_phase)
   	return INVALID;	// invalid

@@ -114,6 +114,9 @@ BOOL IPL_Generate_Elf_Symtab = TRUE;
 #else
 BOOL IPL_Generate_Elf_Symtab = FALSE;
 #endif // __linux__
+#ifdef KEY
+UINT32 IPL_Ignore_Small_Loops = 0;
+#endif
 
 // temporary placeholder until feedback is fixed
 // BOOL FB_PU_Has_Feedback = FALSE;
@@ -136,6 +139,10 @@ static OPTION_DESC Options_IPL[] = {
       0, 0, 0,  &IPL_Enable_Unknown_Frequency, NULL},
     { OVK_BOOL, OV_INTERNAL,	FALSE, "elf_symtab", "",
       0, 0, 0,	&IPL_Generate_Elf_Symtab, NULL},
+#ifdef KEY
+    { OVK_UINT32, OV_INTERNAL,	FALSE, "ignore_small_loops", "",
+      0, 0, UINT32_MAX, &IPL_Ignore_Small_Loops, NULL},
+#endif
     { OVK_COUNT }		    // List terminator -- must be last
 };
 

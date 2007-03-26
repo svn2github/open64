@@ -70,17 +70,9 @@ static char *rcs_id = 	ipo_tlog_util_INCLUDE"$Revision: 1.4 $";
 enum PHASE_NAME {PHASE_INLINER, PHASE_IPA};
 #else
 enum PHASE_NAME {PHASE_INLINER, PHASE_IPA, INVALID};
-#ifdef TARG_IA64
-extern "C" PHASE_NAME Get_tlog_phase(void);
-#else
 extern "C" PHASE_NAME Get_ipa_tlog_phase(void);
-#endif
 #endif // !KEY
-#ifdef TARG_IA64
-extern "C" void Set_tlog_phase(const INT32 phase); 
-#else
 extern "C" void Set_ipa_tlog_phase(const INT32 phase);
-#endif
 
 // TLOG interface for reporting optimizations
 extern "C" void Ipa_tlog( char *keyword, SRCPOS srcpos, const char *fmt, ... );

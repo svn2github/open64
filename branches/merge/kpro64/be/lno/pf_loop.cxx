@@ -211,7 +211,160 @@ static BOOL Has_Indirect_Ref (WN* wn)
       return TRUE;
   return FALSE;
 }
+
+// i = i + inv -- stride is just inv (inv - non const)
+static WN *Obtain_Stride_From_Loop_Step(WN *loop)
+{
+  WN *add = WN_kid0(WN_step(loop));
+  if(WN_operator(add) != OPR_ADD)
+    return NULL;
+
+ if(WN_operator(WN_kid0(add))==OPR_LDID &&
+     SYMBOL(WN_kid0(add)) == SYMBOL(WN_index(loop)) &&
+     Is_Loop_Invariant_Exp(WN_kid1(add),loop) &&
+     WN_operator(WN_kid1(add)) != OPR_INTCONST)
+     return WN_kid1(add); //i = i + inv
+
+ if(WN_operator(WN_kid1(add))==OPR_LDID &&
+     SYMBOL(WN_kid1(add)) == SYMBOL(WN_index(loop)) &&
+     Is_Loop_Invariant_Exp(WN_kid0(add),loop) &&
+     WN_operator(WN_kid0(add)) != OPR_INTCONST)
+    return WN_kid0(add); //i = inv + i
+
+  return NULL;
+}
+
+static BOOL Is_Step_One_Loop(WN *loop)
+{
+  WN *add = WN_kid0(WN_step(loop));
+  if(WN_operator(add) != OPR_ADD)
+    return FALSE;
+
+ if(WN_operator(WN_kid0(add))==OPR_LDID &&
+     SYMBOL(WN_kid0(add)) == SYMBOL(WN_index(loop)) &&
+    WN_operator(WN_kid1(add))== OPR_INTCONST &&
+    WN_const_val(WN_kid1(add))==1)
+     return TRUE; //i = i + 1
+
+ if(WN_operator(WN_kid1(add))==OPR_LDID &&
+     SYMBOL(WN_kid1(add)) == SYMBOL(WN_index(loop)) &&
+    WN_operator(WN_kid0(add))== OPR_INTCONST &&
+    WN_const_val(WN_kid0(add))==1)
+     return TRUE; //i = 1 + i
+
+ return FALSE;
+
+}
+
+//inv*i -- inv is actual stride
+static WN *Stride_From_MPY(WN *mpy, WN *loop)
+{
+  if(!mpy || WN_operator(mpy) != OPR_MPY)
+     return NULL;
+
+  if(WN_operator(WN_kid0(mpy))==OPR_LDID &&
+     SYMBOL(WN_kid0(mpy)) == SYMBOL(WN_index(loop)) &&
+     Is_Loop_Invariant_Exp(WN_kid1(mpy),loop) &&
+     WN_operator(WN_kid1(mpy)) != OPR_INTCONST)//don't handle constant
+     return WN_kid1(mpy);
+
+  if (WN_operator(WN_kid1(mpy))==OPR_LDID &&
+     SYMBOL(WN_kid1(mpy)) == SYMBOL(WN_index(loop)) &&
+     Is_Loop_Invariant_Exp(WN_kid0(mpy),loop) &&
+      WN_operator(WN_kid0(mpy)) != OPR_INTCONST)//don't handle constant
+     return WN_kid0(mpy);
+
+  return NULL;
+}
+
+//a[inv*i+b] and stride one loop, actual stride is "inv" between two iters
+//TODO: right now we only handle a*i+b, we may able to find more cases
+static WN *Obtain_Stride_From_Array_Index(WN *array_index, WN *loop)
+{
+  if(WN_operator(array_index)==OPR_MPY) //a*i
+   return Stride_From_MPY(array_index, loop);
+
+  if(WN_operator(array_index)==OPR_ADD){ // a*i+b or b + a*i
+     WN *stride = Stride_From_MPY(WN_kid0(array_index), loop);
+    if(stride && Is_Loop_Invariant_Exp(WN_kid1(array_index),loop))
+      return stride;
+     stride = Stride_From_MPY(WN_kid1(array_index), loop);
+    if(stride && Is_Loop_Invariant_Exp(WN_kid0(array_index),loop))
+      return stride;
+  }
+  return NULL;
+}
+
+//-------------------------------------------------------------------
+//Return a stride for the array if we can find a "loop" invariant one
+//
+//Right now we handle two simple cases:
+//case 1: array base is loop induction variable
+//      for(a=...; ...; a=a+inv)
+//          ...a[5]...
+//case 2: array index implies invariant stride
+//      for(i=0; ...; i++)
+//           ...a[inv*i+5]...
+//
+//TODO: find more cases and release the singly-nested loop constraint
+//-------------------------------------------------------------------
+WN *Simple_Invariant_Stride_Access(WN *array, WN *loop)
+{
+
+  INT kid;
+  if(!LNO_Prefetch_Invariant_Stride) //users don't want
+    return NULL;
+
+  ACCESS_ARRAY *aa = (ACCESS_ARRAY *) WN_MAP_Get(LNO_Info_Map,array);
+  if (!aa || aa->Too_Messy || WN_element_size(array)<0)
+   return NULL;
+
+  //we only handle one dimensional array now
+  if(WN_num_dim(array) != 1) return NULL;
+
+  //we only process singly-nested loop now
+  DO_LOOP_INFO *dli = (DO_LOOP_INFO *)WN_MAP_Get(LNO_Info_Map,loop);
+  if(!dli || !dli->Is_Inner)
+     return NULL;
+  WN *up_nest = LWN_Get_Parent(loop);
+  while(up_nest != NULL){ //we only consider singly-nested
+      if(WN_opcode(up_nest) == OPC_DO_LOOP)
+        return NULL;
+      up_nest = LWN_Get_Parent(up_nest);
+  }
+
+  if(!Is_Loop_Invariant_Exp(WN_kid0(array), loop)){//base is not loop invariant
+
+   for(kid = WN_kid_count(array)-1; kid>0; kid--){
+    if(!Is_Loop_Invariant_Exp(WN_kid(array, kid),loop))
+      return NULL; //could not tolerate other invariants
+   }
+
+   if(WN_operator(WN_kid0(array)) != OPR_LDID || //base must be the loop index
+      SYMBOL(WN_kid0(array)) != SYMBOL(WN_index(loop)))
+     return NULL;
+
+   return Obtain_Stride_From_Loop_Step(loop);
+  }//end if
+
+  //case2:
+  if(!Is_Step_One_Loop(loop))
+   return NULL;
+
+  //----------------------------------------------------------------
+  //if the loop index is i=i+1, and array index expression is: a*x+b
+  //where a and b are loop invariant, then we can still figure out
+  //the in variant stride, and gen prefetches.
+  //----------------------------------------------------------------
+  for(kid = 0; kid < WN_kid_count(array)-1; kid++)
+   if(!Is_Loop_Invariant_Exp(WN_kid(array, kid),loop))
+     return NULL;
+
+  return Obtain_Stride_From_Array_Index(WN_kid(array,WN_num_dim(array)<<1), loop);
+}
+
 #endif
+
 /***********************************************************************
  *
  * Add_Ref - If reference is reasonable, 
@@ -332,8 +485,14 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
     }
     return;
   } else if (messy) {
+#ifdef KEY //bug 10953: for cases may not be "messy"
+     if(!Simple_Invariant_Stride_Access(wn_array, _code)){
+#endif
     _num_bad++;
     return;
+#ifdef KEY //bug 10953
+   }
+#endif
   }
 
   // Find which element in the stack contains our base array

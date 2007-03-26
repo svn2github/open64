@@ -436,14 +436,28 @@ static BOOL SNL_Is_Distributable_Traverse(WN* wn_loop,
  WN* wn_first = WN_first(WN_do_body(wn_loop)); 
  if (above) { 
    WN *wn;
-   for (wn = wn_first; WN_opcode(wn) != OPC_DO_LOOP; wn = WN_next(wn)) 
+#ifdef KEY //bug 11671: we may not find a do loop, especially for APO
+   for (wn = wn_first; wn && WN_opcode(wn) != OPC_DO_LOOP; wn = WN_next(wn))
+#else
+   for (wn = wn_first; WN_opcode(wn) != OPC_DO_LOOP; wn = WN_next(wn))
+#endif
      if (!SNL_Is_Distributable_Tree(wn, wn_dist, wn_inner, above))
-       return FALSE; 
+       return FALSE;
+#ifdef KEY //bug 11671: even though wn_loop is not inner, but inner is hidden in region
+   if(wn==NULL)
+     return FALSE;
+#endif 
    if (!SNL_Is_Distributable_Traverse(wn, wn_dist, wn_inner, TRUE))
      return FALSE; 
  } else { 
    WN *wn;
-   for (wn = wn_first; WN_opcode(wn) != OPC_DO_LOOP; wn = WN_next(wn));
+#ifdef KEY //bug 11671
+  for (wn = wn_first; wn && WN_opcode(wn) != OPC_DO_LOOP; wn = WN_next(wn));
+    if(wn==NULL)
+      return FALSE;
+#else
+  for (wn = wn_first; wn && WN_opcode(wn) != OPC_DO_LOOP; wn = WN_next(wn));
+#endif
    if (!SNL_Is_Distributable_Traverse(wn, wn_dist, wn_inner, FALSE))
      return FALSE; 
    for (wn = WN_next(wn); wn != NULL; wn = WN_next(wn))

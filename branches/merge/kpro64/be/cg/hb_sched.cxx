@@ -2350,12 +2350,12 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
 #ifdef TARG_IA64
           (Is_Target_Itanium()) ? INCLUDE_CONTROL_ARCS : NO_CONTROL_ARCS
 #else
-#ifndef KEY
-	  (Is_Target_Itanium()) ? 
-#endif
-	  INCLUDE_CONTROL_ARCS
-#ifndef KEY
-	  : NO_CONTROL_ARCS
+#ifdef TARG_MIPS
+          // 11943: Control flow dependencies prevent filling of branch
+          // delay slots on MIPS machines
+          NO_CONTROL_ARCS,
+#else
+          INCLUDE_CONTROL_ARCS,
 #endif
 #endif // TARG_IA64
 	  ,

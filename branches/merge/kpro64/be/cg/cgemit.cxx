@@ -2742,7 +2742,11 @@ Generate_Asm_String (OP* asm_op, BB *bb)
       p++; // (Consume the '%').
                                                                                                                                                   
       // In case there is a modifer, get past it, taking care not to overshoot.
-      if (*p != '\0' && !isdigit(*p)) p++;
+      if (*p != '\0' && !isdigit(*p)
+#ifdef KEY // bug 11651
+          && *p != 'r' && *p != 'R'
+#endif
+         ) p++;
                                                                                                                                                   
       // Save the start location and scan ahead, looking for a number.
       q = p;

@@ -224,8 +224,10 @@ BOOL OPT_shared_memory = TRUE;	// assume use of shared memory
 /* Put each function in its own text section */
 BOOL Section_For_Each_Function = FALSE;
 BOOL Inline_Intrinsics_Early=FALSE;    /* Inline intrinsics just after VHO */
-BOOL Enable_extract_compose=TRUE;     /* This is also forced off for MIPS and IA32 in
-					  config_targ.cxx */
+BOOL Enable_extract_bits=TRUE;     /* This is also forced off for MIPS and IA32 in
+                                          config_targ.cxx */
+BOOL Enable_compose_bits=FALSE;
+
 #ifdef __linux__
 BOOL Enable_WFE_DFE = FALSE;
 #endif /* __linux __ */
@@ -277,6 +279,9 @@ BOOL OPT_Ffast_Math = FALSE;
 static BOOL OPT_Ffast_Math_Set = FALSE;
 BOOL OPT_Funsafe_Math_Optimizations = FALSE;
 static BOOL OPT_Funsafe_Math_Optimizations_Set = FALSE;
+BOOL    OPT_Float_Via_Int = FALSE; // when on, perform FP copies using int regs
+
+UINT32 OPT_Malloc_Alg = 0;      /* select malloc algorithm */
 #endif
 
 /***** Obsolete options *****/
@@ -400,6 +405,13 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0, &OPT_Funsafe_Math_Optimizations,
     &OPT_Funsafe_Math_Optimizations_Set,
     "Determines conformance to IEEE-754 arithmetic rules" },
+  { OVK_BOOL, OV_INTERNAL,      TRUE,   "float_via_int", "",
+    0, 0, 0, &OPT_Float_Via_Int, NULL,
+    "perform floating-point memory copies using integer registers" },
+
+  { OVK_UINT32, OV_VISIBLE,     TRUE,   "malloc_algorithm", "malloc_alg",
+    0, 0, 1, &OPT_Malloc_Alg, NULL,
+    "Use alternate malloc algorithm" },
 #endif
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "early_mp",		"early_mp",
@@ -730,9 +742,13 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,	&Delay_U64_Lowering, NULL,
     "Delay unsigned 64-bit lowering to after wopt" },
 
-  { OVK_BOOL,	OV_INTERNAL,	TRUE, "extract_deposit",	"extr",
-    0, 0, 0,	&Enable_extract_compose,	NULL,
-    "Enable use of extract/compose opcodes" },
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "extract_bits",   "extr",
+    0, 0, 0,    &Enable_extract_bits,   NULL,
+    "Enable use of extract opcode" },
+
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "compose_bits",   "",
+    0, 0, 0,    &Enable_compose_bits,   NULL,
+    "Enable use of compose opcode" },
 
   { OVK_BOOL, OV_VISIBLE,     FALSE, "ansi_setjmp",           "ansi_setjmp",
     0, 0, 0,  &LANG_Ansi_Setjmp_On,   &LANG_Ansi_Setjmp_Set,

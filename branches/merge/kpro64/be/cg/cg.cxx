@@ -226,8 +226,7 @@ CG_PU_Initialize (WN *wn_pu)
   if (! cg_load_execute_overridden) {
     if ((Is_Target_EM64T() ||	// bug 10233
 	 Is_Target_Core()) &&
-        (PU_src_lang(Get_Current_PU()) == PU_F77_LANG ||
-	 PU_src_lang(Get_Current_PU()) == PU_F90_LANG)) {
+         PU_src_lang(Get_Current_PU()) != PU_C_LANG) {   // bug 10233
       CG_load_execute = 0;
     } else if (! Is_Target_32bit() &&
 	(PU_src_lang(Get_Current_PU()) == PU_F77_LANG ||

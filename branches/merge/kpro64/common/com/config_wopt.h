@@ -98,7 +98,7 @@ extern BOOL WOPT_Enable_Aggressive_Doloop_Promotion;
 extern BOOL WOPT_Enable_Aggressive_IVR;
 extern BOOL WOPT_Enable_Aggressive_Lftr;
 extern BOOL WOPT_Enable_Aggressive_Phi_Simp;
-extern UINT32 WOPT_Enable_Autoaggstr_Reduction_Threshold;
+extern INT32 WOPT_Enable_Autoaggstr_Reduction_Threshold;
 extern BOOL WOPT_Enable_Alias_Classification;
 extern BOOL WOPT_Enable_Aggressive_Alias_Classification;
 extern BOOL  WOPT_Enable_Disambiguate_Heap_Obj;
@@ -239,6 +239,7 @@ extern BOOL WOPT_Enable_SLT;
 extern BOOL WOPT_Enable_Small_Br_Target; /* Disable propagation into br BBs */
 extern BOOL WOPT_Enable_Source_Order;   /* trace BB's in source order */
 extern BOOL WOPT_Enable_Speculation_Defeats_LFTR;
+extern BOOL  WOPT_Enable_Str_Red_Use_Context; /* use loop content in SR decision */
 extern BOOL WOPT_Enable_SSA_Minimization; /* SSA minimization in SSAPRE */
 extern BOOL WOPT_Enable_SSA_PRE;
 extern BOOL WOPT_Enable_Store_PRE;

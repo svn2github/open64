@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -521,7 +525,7 @@ bool output_queue::should_flush(const IPA_NODE* node)
   count += node->Weight ();
 
 #ifdef KEY
-  if (Opt_Options_Inconsistent)
+  if (IPA_Enable_Source_PU_Order || Opt_Options_Inconsistent)
   {
       if (IPA_NODE::next_file_id != -1 &&
           IPA_NODE::next_file_id != node->File_Id())
@@ -538,7 +542,12 @@ bool output_queue::should_flush(const IPA_NODE* node)
   }
 #endif
 
-  if (count >= IPA_Max_Output_File_Size) {
+  if (
+#ifdef KEY
+      // Do not consider output file size if following source code order.
+      !IPA_Enable_Source_PU_Order && !Opt_Options_Inconsistent &&
+#endif
+      count >= IPA_Max_Output_File_Size) {
       if (ProMP_Listing) {
 	ProMP_next_idx = promp_id;
 	promp_id = count;

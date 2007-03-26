@@ -543,10 +543,12 @@ POINTS_TO::Analyze_ST(ST *st, INT64 byte_ofst, INT64 byte_size,
       // if (TY_is_restrict(ST_type(st)))
       // Set_ST_pt_to_unique_mem(st);
 
-#ifdef KEY // bug 11485: vararg part of incoming parameters needs more care
+      // bug 11485: vararg part of incoming parameters needs more care
+      // bug 11669: fix triggers assertion in DEBUG MIPS; make target-dependent
+#ifdef TARG_X8664
       if (byte_ofst >= TY_size(ST_type(st))) {
-	Set_base_kind(BASE_IS_DYNAMIC);
-	Set_ofst_kind(OFST_IS_UNKNOWN);
+        Set_base_kind(BASE_IS_DYNAMIC);
+        Set_ofst_kind(OFST_IS_UNKNOWN);
       }
 #endif
       break;

@@ -277,6 +277,8 @@ typedef struct lno_flags {
 #ifdef KEY
   BOOL   Prefetch_stores;
   BOOL   Prefetch_stores_set;
+  BOOL   Prefetch_invariant_stride;
+  UINT32 Prefetch_stride_ahead;
 #endif
   UINT32 Prefetch_ahead;
   UINT32 Prefetch_iters_ahead;
@@ -471,6 +473,8 @@ extern LNO_FLAGS Initial_LNO;
 #ifdef KEY
 #define LNO_Prefetch_Stores		Current_LNO->Prefetch_stores
 #define LNO_Prefetch_Stores_Set		Current_LNO->Prefetch_stores_set
+#define LNO_Prefetch_Invariant_Stride   Current_LNO->Prefetch_invariant_stride
+#define LNO_Prefetch_Stride_Ahead       Current_LNO->Prefetch_stride_ahead
 #endif
 
 #define LNO_Prefetch_Ahead		Current_LNO->Prefetch_ahead

@@ -707,6 +707,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 
 		INT32 offset = 0;
 		INT32 anonymous_fields = 0;
+#ifndef KEY     // g++'s class.c already laid out the base types.  Bug 11622.
 		if (TYPE_BINFO(type_tree) &&
 		    BINFO_BASETYPES(TYPE_BINFO(type_tree))) {
 		  tree basetypes = BINFO_BASETYPES(TYPE_BINFO(type_tree));
@@ -740,7 +741,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		    }
 		  }
 		}
-
+#endif
 		for (field = TYPE_FIELDS(type_tree); 
 			field;
 			field = next_real_or_virtual_field(type_tree, field) )

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* -*- c++ -*-
@@ -102,6 +102,9 @@ extern void IPL_Finalize_Projected_Regions(SUMMARY_PROCEDURE *p);
 extern DYN_ARRAY<char*>* Ipl_Symbol_Names;
 extern DYN_ARRAY<char*>* Ipl_Function_Names; 
 
+#ifdef KEY
+static BOOL proc_has_pstatics = FALSE;
+#endif
 
 // helper functions
 static inline BOOL
@@ -330,6 +333,10 @@ struct update_symtab
 		fprintf (TFile, "Clearing addr_passed for %s\n", ST_name (st));
 #endif
 	}
+#ifdef KEY // bug 11801
+	if (ST_sclass(st) == SCLASS_PSTATIC)
+	  proc_has_pstatics = TRUE;
+#endif
     }
 	    
 }; // update_symtab
@@ -394,6 +401,11 @@ Recompute_Addr_Taken (const WN *proc_entry, SUMMARIZE<program>* sum)
 
     // update(override) the symtab addr_taken attributes based on our own
     // analysis 
+    //
+    // KEY bug 11801: Also while we are traversing the local symbol
+    // table, check for any pstatic symbol that may need to be
+    // promoted in IPA. This step is required if that symbol is not
+    // referenced in whirl.
     For_all (St_Table, CURRENT_SYMTAB, update_symtab ());
 } // Recompute_Addr_Taken
 
@@ -415,6 +427,10 @@ SUMMARIZE<program>::Summarize (WN *w)
 
   Init_Aux_Symbol_Info (CURRENT_SYMTAB);
     
+#ifdef KEY
+  proc_has_pstatics = FALSE;
+#endif
+
   Recompute_Addr_Taken (w, this);
 
   if (!Has_alt_entry ()) {
@@ -1092,6 +1108,28 @@ static inline INT get_loopnest (WN * w)
     switch (WN_operator (parent))
     {
 	case OPR_DO_LOOP:
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+	{
+	    if (IPL_Ignore_Small_Loops)
+	    {
+	      WN * loop_info = WN_do_loop_info(parent);
+	      if (loop_info)
+	      {
+	        // WN_loop_trip_est is just an estimate, and may only contain
+	        // the value that can be held in mUINT16.
+	        WN * trip = WN_loop_trip(loop_info);
+	        if (trip && WN_operator(trip) == OPR_INTCONST)
+	        {
+	          INT64 tripcount = WN_const_val(trip);
+	          Is_True (tripcount >= 0,
+	                   ("get_loopnest: negative loop trip count"));
+	          if (tripcount <= IPL_Ignore_Small_Loops)
+	            break;
+	        }
+	      }
+	    }
+	} // fall through
+#endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
 	case OPR_WHILE_DO:
 	case OPR_DO_WHILE:
 	    loopnest++;
@@ -1248,6 +1286,10 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 #ifdef KEY
     // Now that preopt has run, recompute PU size estimates
     Initialize_PU_Stats();
+
+    // bug 11801
+    if (proc_has_pstatics)
+      proc->Set_has_pstatic ();
 #endif
 
     Trace_Modref = Get_Trace ( TP_IPL, TT_IPL_MODREF );
@@ -1570,14 +1612,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    Process_callsite (w2, proc->Get_callsite_count (), get_loopnest (w2));
 #else
 	    Process_callsite (w2, proc->Get_callsite_count (), loopnest);
-#ifdef PATHSCALE_MERGE_ZHC
 	    Direct_Mod_Ref = TRUE;
-#endif
 #endif
 	    proc->Incr_callsite_count ();
-#ifndef PATHSCALE_MERGE_ZHC
-	    Direct_Mod_Ref = TRUE;
-#endif
 	    break;
 	    
 	case OPR_ARRAY: {
@@ -1883,8 +1920,12 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    ST* st2 = ST_st_idx (st) == ST_base_idx (st) ? st : ST_base (st);
 	    if (ST_level (st2) == CURRENT_SYMTAB) {
 		// local symtab
-		if (ST_sclass (st2) == SCLASS_PSTATIC)
+		if (ST_sclass (st2) == SCLASS_PSTATIC) {
+		    // KEY
+		    Is_True (proc->Has_pstatic(),
+		             ("Has_pstatic should already be set"));
 		    proc->Set_has_pstatic ();
+		}
 	    } else if (ST_sclass (st2) == SCLASS_FSTATIC &&
 		       !ST_class (st2) == CLASS_CONST)
 		proc->Set_has_fstatic ();
@@ -1927,7 +1968,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     }
 #endif // KEY
 
-#ifndef PATHSCALE_MERGE_ZHC
+
 {
 #ifdef KEY
     if_map.clear ();
@@ -1957,7 +1998,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     }
 #endif // KEY 
 }
-#endif
+
 
     /*loop_count_stack may not be empty! and loopnest may not be empty!!*/
     if (proc->Get_callsite_count () > 0)

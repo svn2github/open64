@@ -858,6 +858,10 @@ WFE_Array_Expr(tree exp,
       else
         wn1 = WN_Intconst(MTYPE_I4, 0);
       wn2 = WFE_Expand_Expr (TREE_OPERAND (exp, 1));
+#ifdef TARG_X8664 // bug 11705
+      if (WN_operator(wn2) == OPR_SUB)
+        WN_set_rtype(wn2, Mtype_TransferSign(MTYPE_I4, WN_rtype(wn2)));
+#endif
 #ifdef KEY
       // Expand the current dimension by growing the array just expanded.  Bug
       // 4692.
@@ -2124,6 +2128,7 @@ extern void construct_nesting ( struct nesting *,
 // mimic POPSTACK in gnu/stmt.c
 extern void popstack (struct nesting *);
 extern LABEL_IDX get_nesting_label (struct nesting *);
+extern struct nesting * wfe_get_matching_scope (struct nesting *);
 
 // process pragma statements, function definition in c-semantics.c
 extern void process_omp_stmt (tree);
@@ -2967,6 +2972,24 @@ WFE_Expand_Expr (tree exp,
 	  break;
 #endif
 
+#ifdef KEY // bug 11877
+          case CALL_EXPR: {
+            WN *comma = WFE_Expand_Expr (arg0);
+            if (WN_operator(comma) != OPR_COMMA)
+              Fail_FmtAssertion ("WFE_Expand_Expr: ADDR_EXPR of call returning void unhandled");
+            wn = WN_kid1(comma);
+            if (WN_operator(wn) != OPR_LDID)
+              Fail_FmtAssertion ("WFE_Expand_Expr: ADDR_EXPR of call returning void unhandled");
+            WN_set_operator (wn, OPR_LDA);
+            WN_set_rtype (wn, Pointer_Mtype);
+            WN_set_desc (wn, MTYPE_V);
+            WN_set_ty(wn, Make_Pointer_Type(WN_ty(wn)));
+            WN_set_rtype (comma, Pointer_Mtype);
+            wn = comma;
+            break;
+          }
+#endif
+
 	  default:
 	    {
 	      Fail_FmtAssertion ("WFE_Expand_Expr: ADDR_EXPR has unhandled %s",
@@ -3445,7 +3468,11 @@ WFE_Expand_Expr (tree exp,
 	    component_ty_idx == 0) {  // only for top-level COMPONENT_REF
           // if size does not agree with ty_idx, fix ty_idx
           tree sizenode = DECL_SIZE(arg1);
-          if (TREE_CODE(sizenode) == INTEGER_CST) {
+          if (
+#ifdef KEY
+              sizenode && // bug 11726, in absence of size expression
+#endif
+              TREE_CODE(sizenode) == INTEGER_CST) {
 	    TYPE_ID c_mtyp = TY_mtype(ty_idx);
 	    INT32 bsize = Get_Integer_Value(sizenode);
 	    if (MTYPE_size_min(c_mtyp) > bsize) {
@@ -4725,9 +4752,14 @@ WFE_Expand_Expr (tree exp,
 		arg2 = WFE_Expand_Expr (TREE_VALUE (list));
 		wn   = WN_Relational (OPR_EQ, WN_rtype (arg1), arg1, arg2);
 */
-		list = TREE_OPERAND (exp, 1);
-		wn   = WFE_Expand_Expr (TREE_VALUE (list));
-		whirl_generated = TRUE;
+#ifdef KEY
+                iopc = INTRN_EXPECT;
+                intrinsic_op = TRUE;
+#else
+                list = TREE_OPERAND (exp, 1);
+                wn   = WFE_Expand_Expr (TREE_VALUE (list));
+                whirl_generated = TRUE;
+#endif
 		break;
 	      }
 
@@ -4931,7 +4963,7 @@ WFE_Expand_Expr (tree exp,
           }
 
 	  if (intrinsic_op) {
-	    WN *ikids [5];
+	    WN *ikids [16];
 	    for (i = 0, list = TREE_OPERAND (exp, 1);
 		 list;
 		 i++, list = TREE_CHAIN (list)) {
@@ -5034,6 +5066,14 @@ WFE_Expand_Expr (tree exp,
 	else {
           wn0 = WN_CreateBlock ();
           WN_INSERT_BlockLast (wn0, call_wn);
+
+#ifdef KEY
+          // Preserve type information if available, in preference to
+          // (void *).
+          if (nop_ty_idx && TY_kind(ty_idx) == KIND_POINTER &&
+              TY_mtype(TY_pointed(ty_idx)) == MTYPE_V) /* pointer to void */
+            ty_idx = nop_ty_idx;
+#endif
 
 	  wn1 = WN_Ldid (ret_mtype, -1, Return_Val_Preg, ty_idx);
 
@@ -5722,7 +5762,11 @@ WFE_Expand_Expr (tree exp,
          WFE_Expand_Expr (init, FALSE);
 
        struct nesting *loop_nest= alloc_nesting();
-       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, 0);
+       LABEL_IDX for_exit_label_idx;
+
+       New_LABEL (CURRENT_SYMTAB, for_exit_label_idx);
+       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack,
+                          for_exit_label_idx);
 
        wfe_nesting_stack = wfe_loop_stack = loop_nest;
 
@@ -5748,6 +5792,11 @@ WFE_Expand_Expr (tree exp,
        // 5. End the loop
        WFE_Expand_End_Loop ();       
        popstack (loop_nest);
+       wn = WN_CreateLabel ((ST_IDX) 0,
+                            for_exit_label_idx,
+                            0, NULL);
+       WFE_Stmt_Append (wn, Get_Srcpos ());
+
        break;
      }
 
@@ -5757,7 +5806,11 @@ WFE_Expand_Expr (tree exp,
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
        struct nesting *loop_nest = alloc_nesting();
-       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, 0);
+       LABEL_IDX while_exit_label_idx;
+
+       New_LABEL (CURRENT_SYMTAB, while_exit_label_idx);
+       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack,
+                          while_exit_label_idx);
 
        wfe_nesting_stack = wfe_loop_stack = loop_nest;
 
@@ -5778,6 +5831,10 @@ WFE_Expand_Expr (tree exp,
        // 3. End the loop
        WFE_Expand_End_Loop ();       
        popstack (loop_nest);
+       wn = WN_CreateLabel ((ST_IDX) 0,
+                            while_exit_label_idx,
+                            0, NULL);
+       WFE_Stmt_Append (wn, Get_Srcpos ());
        break;
      }
 
@@ -5788,7 +5845,10 @@ WFE_Expand_Expr (tree exp,
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
        struct nesting *loop_nest = alloc_nesting();
-       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, 0);
+       LABEL_IDX dostmt_exit_label_idx;
+
+       New_LABEL (CURRENT_SYMTAB, dostmt_exit_label_idx);
+       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, dostmt_exit_label_idx);
 
        wfe_nesting_stack = wfe_loop_stack = loop_nest;
 
@@ -5812,6 +5872,10 @@ WFE_Expand_Expr (tree exp,
        // 3. End the loop
        WFE_Expand_End_Loop ();       
        popstack (loop_nest);
+       wn = WN_CreateLabel ((ST_IDX) 0,
+                            dostmt_exit_label_idx,
+                            0, NULL);
+       WFE_Stmt_Append (wn, Get_Srcpos ());
        break;
      }
 
@@ -5893,12 +5957,15 @@ WFE_Expand_Expr (tree exp,
        LABEL_IDX *label_idx = (LABEL_IDX *)malloc(sizeof(LABEL_IDX));
        *label_idx = 0;
 
-       if (wfe_nesting_stack == wfe_case_stack)
-         *label_idx = get_nesting_label (wfe_case_stack);
+       // bug 11701
+       struct nesting * n = wfe_get_matching_scope (wfe_nesting_stack);
+       Is_True (n, ("WFE_Expand_Expr: break stmt without enclosing scope"));
+       *label_idx = get_nesting_label (n);
 
-       WFE_Expand_Exit_Something (wfe_nesting_stack, wfe_cond_stack, 
-       				wfe_loop_stack, wfe_case_stack, label_idx);
+       WFE_Expand_Exit_Something (n, wfe_cond_stack,
+                                wfe_loop_stack, wfe_case_stack, label_idx);
        free (label_idx);
+
        break;
      }
 

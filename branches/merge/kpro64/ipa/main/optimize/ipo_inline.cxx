@@ -2139,10 +2139,11 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	    {
     		ST_IDX i = WN_st_idx (wn);
 		char * func_name = ST_name (St_Table[i]);
-		FmtAssert (func_name && 
+		Is_True (func_name && 
 			   (!strcmp (func_name, "_Unwind_Resume") || 
 			    !strcmp (func_name, "__cxa_call_unexpected") || 
-			    !strcmp (func_name, "__cxa_begin_catch")), 
+			    !strcmp (func_name, "__cxa_begin_catch") ||
+			    !strcmp (func_name, "__cxa_get_exception_ptr")), 
 			   ("Function %s has one-per-pu paramter", func_name));
 	    	// Fixup parameter
 	    	INITV_IDX exc_ptr = INITO_val ((INITO_IDX) Get_Current_PU ().unused);

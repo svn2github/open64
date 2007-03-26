@@ -95,7 +95,11 @@ static char *config_lno_rcs_id = "$Source: common/com/SCCS/s.config_lno.cxx $ $R
  */
 
 #define DEFAULT_UNROLL_PROD_MAX 16
+#ifdef KEY //bug 5375 changes unroll_max default to 5
+#define DEFAULT_UNROLL_MAX 5
+#else
 #define DEFAULT_UNROLL_MAX 10
+#endif
 
 BOOL Run_autopar = FALSE;
 #ifdef KEY
@@ -205,6 +209,8 @@ static LNO_FLAGS Default_LNO = {
 #else
   NO_PREFETCH, FALSE,	/* Run_prefetch */
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
+  TRUE,        /*Prefetch Invariant (non-constant) Stride */
+  8,            /*Prefetch_Strides_Ahead*/
 #endif
   2,		/* Prefetch_ahead */
   2,		/* Prefetch_iters_ahead */
@@ -392,8 +398,10 @@ LNO_FLAGS Initial_LNO = {
 #ifndef KEY
   0, FALSE,	/* Run_prefetch */
 #else
-  NO_PREFETCH, FALSE,	/* Run_prefetch */
+  NO_PREFETCH, FALSE,   /* Run_prefetch */
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
+  TRUE,        /* Prefetch Invariant Stride */
+  8,            /* Prefetch_Strides_Ahead */
 #endif
   2,		/* Prefetch_ahead */
   2,		/* Prefetch_iters_ahead */
@@ -728,6 +736,8 @@ static OPTION_DESC Options_LNO[] = {
 					Run_prefetch, Run_prefetch_set ),
   LNOPT_BOOL_SET ( "prefetch_stores",	NULL, 	Prefetch_stores,
   						Prefetch_stores_set ),
+  LNOPT_BOOL( "pf_inv_stride",          NULL,   Prefetch_invariant_stride),
+  LNOPT_U32 ( "pf_stride_ahead",            NULL,   8,0,128, Prefetch_stride_ahead ),
 #endif
   LNOPT_U32  ( "prefetch_ahead",	NULL,	2,0,50,	Prefetch_ahead ),
   LNOPT_U32  (   "pf_ahead",		NULL,	2,0,50,	Prefetch_ahead ),

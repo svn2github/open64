@@ -1315,7 +1315,8 @@ single_field_in_struct (TY_IDX struct_type)
   do {
     FLD_HANDLE fld(fld_iter);
     fld_count++;
-    if (TY_size (FLD_type (fld)) == TY_size (struct_type))
+    if (! FLD_is_bit_field(fld) &&
+        TY_size (FLD_type (fld)) == TY_size (struct_type))
       return fld_count;
     // Else if there is a field with non-zero size, then there must be
     // multiple non-zero-size fields.
@@ -4158,7 +4159,8 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
 #ifdef TARG_X8664
       // By default, generate rotate instruction only if it is C++ (bug 7932)
       // Can be crontrolled by internal flag -VHO:rotate
-      if (!VHO_Generate_Rrotate_Set && PU_cxx_lang (Get_Current_PU()))
+      if (!VHO_Generate_Rrotate_Set && PU_cxx_lang (Get_Current_PU()) &&
+          (Is_Target_64bit() || MTYPE_byte_size(WN_desc(wn)) <= 4))
         VHO_Generate_Rrotate = TRUE;
 
       if (!VHO_Generate_Rrotate)

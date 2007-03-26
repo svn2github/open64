@@ -1,6 +1,10 @@
 //-*-c++-*-
 
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -186,6 +190,11 @@ public:
   void Find_iv_and_mult(const EXP_OCCURS *def, CODEREP **iv_def,
 			const EXP_OCCURS *use, CODEREP **iv_use,
 			CODEREP **multiplier) const;
+
+
+  // Returns the threshold adjusted by taking into account the content of the
+  // innermost loop that bb belongs to
+  INT Local_autoaggstr_reduction_threshold(BB_NODE *bb) const;
 
   // Determine if the statement updates an induction variable, and
   // return the induction variable being updated (one on rhs), the

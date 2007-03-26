@@ -367,11 +367,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 #endif /* BACK_END */
 #if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
 // ONLY for IPA.
-#ifdef TARG_IA64
-    if (Get_tlog_phase() == PHASE_IPA && WN_operator(node) == OPR_REGION 
-#else
-	if (Get_ipa_tlog_phase() == PHASE_IPA && WN_operator(node) == OPR_REGION
-#endif
+    if (Get_ipa_tlog_phase() == PHASE_IPA && WN_operator(node) == OPR_REGION
         && WN_region_is_EH (node) && WN_block_empty (WN_region_pragmas (node)))
     {
       FmtAssert (pu, ("Null pu info"));

@@ -774,10 +774,18 @@ CSE::Generate_injury_repair( STMTREP *injury, CODEREP *new_temp,
     // Iv  : i=i+incr_amt
     // NOTE: multiplier->Dtyp() in the following statement is
     // wrong. We want the type of the temp. (bug 555210)
-    OPCODE mpy_opc = OPCODE_make_op(OPR_MPY,
-				    // multiplier->Dtyp(),
-				    old_temp->Dtyp(),
-				    MTYPE_V);
+    OPCODE mpy_opc;
+    mpy_opc = OPCODE_make_op(OPR_MPY,
+                                    // multiplier->Dtyp(),
+                                    old_temp->Dtyp(),
+                                    MTYPE_V);
+#ifdef TARG_X8664 // bug 11692
+    if (MTYPE_signed(incr_amt->Dtyp()))
+      mpy_opc = OPCODE_make_op(OPR_MPY,
+                                Mtype_TransferSign(MTYPE_I8, old_temp->Dtyp()),
+                                MTYPE_V);
+#endif
+    
     temp_incr = Htable()->Add_bin_node_and_fold( mpy_opc, 
 						 multiplier, incr_amt );
   }
@@ -918,8 +926,10 @@ CSE::Repair_injury_rec(CODEREP *iv_def, CODEREP *iv_use,
 	  (_worklist->Exp()->Opr() == OPR_ADD || 
 	   _worklist->Exp()->Opr() == OPR_SUB))
 	injury->Inc_str_red_num();
+#if 0
       Is_True(injury->Str_red_num() <= WOPT_Enable_Autoaggstr_Reduction_Threshold,
 	      ("CSE::Repair_injury_rec: autoaggstr_limit exceeded"));
+#endif
     }
     else {
       // injury was fixed already, so find the temp that the repair

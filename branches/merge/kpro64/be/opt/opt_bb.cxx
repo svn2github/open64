@@ -1135,6 +1135,7 @@ BB_LOOP::Print(FILE *fp) const
   fprintf(fp, "true loop body set: ");
   True_body_set()->Print(fp);
   fprintf(fp, "\n");
+  fprintf(fp, "size estimate: %d\n", _size_estimate);
 }
 
 
@@ -1262,4 +1263,20 @@ BB_NODE::Print_ssa (FILE *fp) const
   _stmtlist.Print(fp);
 }
 
+INT32 BB_NODE::Code_size_est(void) const
+{
+  STMTREP_CONST_ITER stmt_iter(&_stmtlist);
+  const STMTREP *stmt;
+  INT32 size = 0;
+  FOR_ALL_NODE(stmt, stmt_iter, Init()) {
+    size++;
+    if (OPERATOR_is_call(stmt->Opr()))
+      size += 10;
+    else if (stmt->Opr() == OPR_ISTORE) {
+      if (stmt->Rhs()->Kind() == CK_OP && stmt->Rhs()->Opr() == OPR_SELECT)
+        size += 19;
+    }
+  }
+  return size;
+}
 

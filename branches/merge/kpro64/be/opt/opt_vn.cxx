@@ -856,8 +856,33 @@ VN::_valnum_lhs(EXPRID      lhs_exprid,
    //
    const BOOL is_multi_scalar_mstore = (lhs_dscty == MTYPE_M &&
 					rhs_dty != MTYPE_M);
-   const BOOL do_cvt1 = 
+   BOOL do_cvt1 = 
       Need_Integral_Conversion(rhs_dty, lhs_dscty, NULL) != NOT_AT_ALL;
+#ifdef KEY // bug 11738: honor truncation effect of store
+   if (! do_cvt1 &&
+       MTYPE_is_integral(lhs_dscty) &&
+       MTYPE_byte_size(lhs_dscty) <= 4) {
+     if (_vn_to_expr[valnum] != NULL &&
+         _vn_to_expr[valnum]->get_kind() == VN_EXPR::LITERAL) {
+       TCON tcon = _vn_to_expr[valnum]->get_tcon();
+       if (MTYPE_signed(lhs_dscty)) {
+         INT64 v = Targ_To_Host(tcon);
+         if (((v << 32) >> 32) != Targ_To_Host(tcon)) {
+           do_cvt1 = TRUE;
+           rhs_dty = TCON_ty(tcon);
+         }
+       }
+       else {
+         UINT64 v = Targ_To_Host(tcon);
+         if (((v << 32) >> 32) != (UINT64) Targ_To_Host(tcon)) {
+           do_cvt1 = TRUE;
+           rhs_dty = TCON_ty(tcon);
+         }
+       }
+     }
+   }
+#endif
+
    const BOOL do_cvt2 = 
       Need_Integral_Conversion(lhs_dscty, lhs_dty, NULL) != NOT_AT_ALL;
    

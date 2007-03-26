@@ -526,6 +526,10 @@ LOOP_MODEL::Model(WN* wn,
   i = wndepth;
   WN *tmp = wn;
   _blocking_disabled = LNO_Blocking == 0;
+#if 0
+  //bug 11567 comments out this. This is because blocking is not the direct
+  //reason that prevents vectorizing an innermost loop except that the block
+  //size may be small in some cases. Instead, the culprit is the interchange.
 #ifdef TARG_X8664
   // Bug 2456 - if the innerloop is vectorizable then disable blocking for
   // thae loop.
@@ -536,19 +540,32 @@ LOOP_MODEL::Model(WN* wn,
   // a case yet. (That case is bug 4672.)
   if (Is_Vectorizable_Loop(wn) && Is_Vectorization_Beneficial(WN_do_body(wn)))
     _blocking_disabled = TRUE;
+#endif
+#endif
 
-#ifdef KEY
+#ifdef TARG_X8664
    // Bug 5880: if this loop contains a vectorizable intrinsic, and the user
    // want to vectorize it anyway (vintr==2), we disable blocking
    if(Is_Aggressive_Vintr_Loop(wn))
     _blocking_disabled = TRUE;
 #endif
 
-#endif
   if (LNO_Interchange == FALSE) {
     for (INT j = 0; j <= wndepth; j++)
       _required_permutation[j] = j;
   }
+#ifdef TARG_X8664
+  //bug 2456, bug 5724 and bug 9143
+  //if an inner loop is vectorizable and it is beneficial to do so, then
+  //we should keep this loop innermost (i.e. the innermost loop can not
+  //be changed
+ else  if(Is_Vectorizable_Loop(wn) && Is_Vectorization_Beneficial(WN_do_body(wn))){
+    _required_permutation[_inner_loop] = _inner_loop; //set inner's position
+   for (INT j = 0; j <= wndepth; j++)
+      _can_be_inner[j] = (j == _inner_loop); //only inner can be inner - don't change out
+  }
+#endif
+
   INT loop_count = 0; 
   while (tmp) {
     if (WN_operator(tmp) == OPR_DO_LOOP) {

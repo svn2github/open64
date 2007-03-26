@@ -1158,6 +1158,10 @@ CFG::Is_simple_expr(WN *wn) {
     return 1;
   if (opr == OPR_INTCONST || opr == OPR_CONST)
     return 1;
+#ifdef KEY      // bug 11542
+  if (opr == OPR_LDA)
+    return 1;
+#endif
 #if defined(TARG_IA32) || defined(TARG_X8664)
   if (! MTYPE_is_integral(WN_rtype(wn)))
     return 0;
@@ -3941,6 +3945,7 @@ invalidate_loops( BB_LOOP *loop )
       head->Body_set()->ClearD();
     if ( head->True_body_set() != NULL ) 
       head->True_body_set()->ClearD();
+    head->Set_size_estimate(0);
   }
 }
 
@@ -4123,6 +4128,7 @@ CFG::Check_if_it_can_reach_body_first_bb(BB_NODE *bb, BB_LOOP *loop)
   bb->Reset_TLBS_processing();
   if (can_reach_body_first_bb) {
     loop->True_body_set()->Union1D(bb);
+    loop->Incr_size_estimate(bb->Code_size_est());
     if (Trace()) 
       fprintf(TFile, "adding bb%d\n", bb->Id());
     return TRUE;
@@ -4165,11 +4171,13 @@ CFG::Compute_true_loop_body_set(BB_LOOP *loops)
 		    Mem_pool()));
     else loop->True_body_set()->ClearD();
     loop->True_body_set()->Union1D(loop->Body()); // body first BB is member
+    loop->Set_size_estimate(loop->Body()->Code_size_est());
     { // union true_body_set's from its immediate children
       BB_LOOP *nested_loop;
       BB_LOOP_ITER nested_loop_iter(loop->Child());
       FOR_ALL_NODE(nested_loop, nested_loop_iter, Init()) {
         loop->True_body_set()->UnionD(nested_loop->True_body_set());
+        loop->Incr_size_estimate(nested_loop->Size_estimate());
       }
     }
     // initialize non_true_body_set
@@ -4356,6 +4364,7 @@ Collect_loop_body(BB_LOOP *loop, BB_NODE *bb)
 	  ("BB %d already visited.", bb->Id()));
 
   loop->True_body_set()->Union1D(bb);
+  loop->Incr_size_estimate(bb->Code_size_est());
 
   // A loopback block can belong to two loops.
   if (bb->Innermost() == NULL)
@@ -4375,6 +4384,7 @@ Collect_loop_body(BB_LOOP *loop, BB_NODE *bb)
       Is_True(!inner->True_body_set()->EmptyP(), 
 	      ("inner loop true body set not computed."));
       loop->True_body_set()->UnionD(inner->True_body_set());
+      loop->Incr_size_estimate(inner->Size_estimate());
       if (inner->Well_formed()) {
 	if (!loop->True_body_set()->MemberP(inner->Preheader()))
 	  Collect_loop_body(loop, inner->Preheader());

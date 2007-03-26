@@ -631,13 +631,23 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
 	    RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
   } else {
       Unlink_Pred_Succ(bb, old_succ);
-      Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE);
+#ifdef KEY
+  Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
+                           BBLIST_prob_hint_based(old_edge) != 0);
+#else
+  Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE);
+#endif  
   }
 
   return TRUE;
 #else
   Unlink_Pred_Succ(bb, old_succ);
+#ifdef KEY
+  Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
+                           BBLIST_prob_hint_based(old_edge) != 0);
+#else
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE);
+#endif
 #endif
 }
 
@@ -2140,7 +2150,7 @@ Redundant_Logif(BB *pred, BB *succ, BOOL *pnegated)
 	TN* result = OP_result( last_op, i );
 	if( result == BBINFO_condval1(succ) ||
 	    result == BBINFO_condval2(succ) ){
-	  Is_True( false, ("TN is re-defined more than once.\n") );
+	  // Is_True( false, ("TN is re-defined more than once.\n") );
 	  return FALSE;
 	}
       }

@@ -211,7 +211,16 @@ public:
             { Is_True(idx <= _lastidx, ("DYN_ARRAY::[]:Subscript out of range"));
               return (_array[idx]); }
 
-  void    AddElement (const T& val) { _array[Newidx()] = val; }
+  void    AddElement (const T& val)
+  {
+#ifdef KEY /* bug 11670: Newidx() may need to allocate _array. */
+    mUINT32 idx = Newidx();
+    _array[idx] = val;
+#else
+    _array[Newidx()] = val;
+#endif
+  }
+
   mUINT32 Elements () const  { return (_lastidx+1); }
 
   mUINT32 Newidx(void);                  // allocate a valid index

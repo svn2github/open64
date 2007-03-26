@@ -135,6 +135,7 @@ extern BOOL IPA_Enable_Pure_Call_Opt;	// optimizes callsites w/o side-effects
 extern INT32 IPA_Pure_Call_skip_before;
 extern BOOL IPA_Consult_Inliner_For_Icall_Opt; // Consult inliner for icallopt?
 extern UINT32 IPA_Icall_Min_Freq;	// Min icall freq for icall opt
+extern BOOL IPA_Enable_Source_PU_Order; 
 #endif
 
 /* ===== Inlining heuristics: ===== */

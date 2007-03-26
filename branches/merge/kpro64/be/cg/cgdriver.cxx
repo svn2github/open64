@@ -460,6 +460,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, INT32_MAX,	&CG_load_execute, &cg_load_execute_overridden },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "loadbw_execute", "loadbw_exe",
     0, 0, 0,	&CG_loadbw_execute, NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE, "valgrind_friendly", "valgrind",
+    0, 0, 0,    &CG_valgrind_friendly, NULL },
 #endif
 
   // CG Dependence Graph related options.

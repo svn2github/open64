@@ -683,6 +683,7 @@ extern BOOL CG_idivbyconst_opt;
 extern BOOL CG_fold_constimul;
 extern BOOL CG_cloop;
 extern BOOL CG_use_lddqu;
+extern BOOL CG_valgrind_friendly; 
 #endif
 
 // Cycle Count Flags

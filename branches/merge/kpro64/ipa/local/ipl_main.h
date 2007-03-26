@@ -55,6 +55,9 @@ extern BOOL Do_Split_Commons;
 extern BOOL Do_Split_Commons_Set;
 extern BOOL IPL_Enable_Unknown_Frequency;
 extern BOOL IPL_Generate_Elf_Symtab;    
+#ifdef KEY
+extern UINT32 IPL_Ignore_Small_Loops;
+#endif
 extern struct DU_MANAGER *Ipl_Du_Mgr;
 extern struct ALIAS_MANAGER *Ipl_Al_Mgr;
 

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -38,6 +42,8 @@
 
 
 /* CGEXP routines for loads and stores */
+#define __STDC_LIMIT_MACROS
+#include <stdint.h> // for UINT64_MAX
 #include "elf_stuff.h"
 #include "defs.h"
 #include "em_elf.h"
@@ -61,6 +67,7 @@
 #include "cgexp.h"
 #include "cgexp_internals.h"
 #include "cgemit.h"	// for CG_emit_non_gas_syntax
+#include "cg_flags.h"	// for CG_valgrind_friendly
 
 static void Exp_Ldst( OPCODE opcode,
 		      TN *tn,
@@ -990,6 +997,8 @@ Exp_Store (
 {
   OPCODE opcode = OPCODE_make_op(OPR_STID, MTYPE_V, mtype);
   Exp_Ldst (opcode, src_tn, sym, ofst, FALSE, TRUE, FALSE, ops, variant);
+  if (TN_register_class(src_tn) == ISA_REGISTER_CLASS_mmx)
+    Build_OP(TOP_emms, ops); // bug 11800
 }
 
 static ISA_ENUM_CLASS_VALUE
@@ -1022,7 +1031,11 @@ void Exp_Prefetch (TOP opc, TN* src1, TN* src2, VARIANT variant, OPS* ops)
       return;
     }
     if ( !Is_Target_3DNow() )
+#ifdef KEY //bug 10953: LNO wants prefetchna for non-temporal prefetch
+      top = PF_GET_NON_TEMPORAL(pf_flags) ? TOP_prefetchnta : TOP_prefetcht0;
+#else       
       top = TOP_prefetcht0;
+#endif
     else
       top = TOP_prefetchw;
 
@@ -1030,7 +1043,11 @@ void Exp_Prefetch (TOP opc, TN* src1, TN* src2, VARIANT variant, OPS* ops)
     if( pfhint == ECV_pfhint_L1_load )
     {
       if ( !Is_Target_3DNow() )
-        top = TOP_prefetcht0;
+#ifdef KEY //bug 10953: LNO wants prefetchna for non-temporal prefetch
+      top = PF_GET_NON_TEMPORAL(pf_flags) ? TOP_prefetchnta : TOP_prefetcht0;
+#else
+      top = TOP_prefetcht0;
+#endif       
       else
         top = TOP_prefetch;
     }
@@ -1075,12 +1092,74 @@ void Exp_Extract_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_si
 }
 
 /* ======================================================================
+ * Bitmask_Of_Size - forms a bit mask of 1's for the number of bits
+ * ======================================================================*/
+UINT64 Bitmask_Of_Size(INT bsize)
+{
+  Is_True(bsize != 0, ("Bitmask_Of_Size: bsize cannot be 0"));
+  if (bsize >= 64)
+    return UINT64_MAX;
+  return ((UINT64) 1 << bsize) - 1;
+}
+
+/* ======================================================================
+ * Exp_Deposit_Bits2 - deposit src2_tn into a field of src1_tn returning
+ * the result in tgt_tn using the more straightforward algorithm friendly to
+ * Valgrind
+ * ======================================================================*/
+void Exp_Deposit_Bits2(TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_size,
+		       TN *tgt_tn, TN *src1_tn, TN *src2_tn, OPS *ops)
+{
+  if (!bit_size) return;
+
+  UINT targ_bit_offset = bit_offset;
+  if (Target_Byte_Sex == BIG_ENDIAN) {
+    targ_bit_offset = MTYPE_bit_size(desc) - bit_offset - bit_size;
+  }
+
+  if( Is_Target_32bit()           &&
+      MTYPE_is_size_double(rtype) &&
+      Get_TN_Pair(src2_tn) == 0 ){
+    TN* pair = Create_TN_Pair( src2_tn, rtype );
+    Exp_Immediate( pair, Gen_Literal_TN(0,4), false, ops );
+  }
+
+  // prepare r.h.s. value
+  TN *tmp1_tn = Build_TN_Like(tgt_tn);
+  int shift_amt = MTYPE_bit_size(rtype) - bit_size;
+  Expand_Shift( tmp1_tn, src2_tn, Gen_Literal_TN(shift_amt, 4),
+		rtype, shift_left, ops );
+
+  shift_amt = MTYPE_bit_size(rtype) - bit_size - targ_bit_offset;
+  Expand_Shift( tmp1_tn, tmp1_tn, Gen_Literal_TN(shift_amt, 4),
+		rtype, shift_lright, ops );
+
+  UINT64 bitmask = ~(Bitmask_Of_Size(bit_size) << targ_bit_offset);
+  if (MTYPE_byte_size(rtype) <= 4)
+    bitmask &= Bitmask_Of_Size(MTYPE_byte_size(rtype) * 8);
+  TN *tmp2_tn = Build_TN_Like(tgt_tn);
+  if( Is_Target_32bit()           &&
+      MTYPE_is_size_double(rtype) &&
+      Get_TN_Pair(tmp2_tn) == 0 )
+    (void *) Create_TN_Pair( tmp2_tn, rtype );
+  Exp_Immediate(tmp2_tn, Gen_Literal_TN(bitmask, MTYPE_byte_size(rtype)), FALSE, ops );
+
+  Expand_Binary_And( tgt_tn, tmp2_tn, src1_tn, rtype, ops );
+  Expand_Binary_Or( tgt_tn, tgt_tn, tmp1_tn, rtype, ops );
+}
+
+/* ======================================================================
  * Exp_Deposit_Bits - deposit src2_tn into a field of src1_tn returning
  * the result in tgt_tn.
  * ======================================================================*/
 void Exp_Deposit_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_size,
 		       TN *tgt_tn, TN *src1_tn, TN *src2_tn, OPS *ops)
 {
+  if (CG_valgrind_friendly) { // bug 9672
+    Exp_Deposit_Bits2(rtype, desc, bit_offset, bit_size, tgt_tn, src1_tn, src2_tn, ops);
+    return;
+  }
+
   if (!bit_size) return;
 
   UINT targ_bit_offset = bit_offset;

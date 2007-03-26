@@ -899,6 +899,11 @@ WFE_Array_Expr(tree exp,
       else
         wn1 = WN_Intconst(MTYPE_I4, 0);
       wn2 = WFE_Expand_Expr (TREE_OPERAND (exp, 1));
+#ifdef TARG_X8664 // bug 11705
+      if (WN_operator(wn2) == OPR_SUB)
+        WN_set_rtype(wn2, Mtype_TransferSign(MTYPE_I4, WN_rtype(wn2)));
+#endif
+
 #ifdef KEY
       // Expand the current dimension by growing the array just expanded.  Bug
       // 4692.
@@ -3994,7 +3999,11 @@ WFE_Expand_Expr (tree exp,
 	    component_ty_idx == 0) {  // only for top-level COMPONENT_REF
           // if size does not agree with ty_idx, fix ty_idx
           tree sizenode = DECL_SIZE(arg1);
-          if (TREE_CODE(sizenode) == INTEGER_CST) {
+          if (
+#ifdef KEY
+              sizenode && // bug 11726, in absence of size expression
+#endif
+              TREE_CODE(sizenode) == INTEGER_CST) {
 	    TYPE_ID c_mtyp = TY_mtype(ty_idx);
 	    INT32 bsize = Get_Integer_Value(sizenode);
 	    if (MTYPE_size_min(c_mtyp) > bsize) {
@@ -5379,6 +5388,9 @@ WFE_Expand_Expr (tree exp,
                   break;
                 }
 #endif
+#ifdef KEY
+                if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+#endif
 		     if (ret_mtype == MTYPE_F4) iopc = INTRN_F4SIN;
                 else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8SIN;
                 else Fail_FmtAssertion ("unexpected mtype for intrinsic 'sin'");
@@ -5398,6 +5410,9 @@ WFE_Expand_Expr (tree exp,
 		  }
                   break;
                 }
+#endif
+#ifdef KEY
+                if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
 #endif
 		     if (ret_mtype == MTYPE_F4) iopc = INTRN_F4COS;
                 else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8COS;
@@ -5680,8 +5695,13 @@ WFE_Expand_Expr (tree exp,
                 break;
 
 	      case BUILT_IN_EXPECT:
-	        wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-	        whirl_generated = TRUE;
+#ifdef KEY
+                iopc = INTRN_EXPECT;
+                intrinsic_op = TRUE;
+#else
+                wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+                whirl_generated = TRUE;
+#endif
 	        break;
 
               case BUILT_IN_FFS:
@@ -5813,7 +5833,7 @@ WFE_Expand_Expr (tree exp,
           }
 
 	  if (intrinsic_op) {
-	    WN *ikids [5];
+	    WN *ikids [16];
 	    for (i = 0, list = TREE_OPERAND (exp, 1);
 		 list;
 		 i++, list = TREE_CHAIN (list)) {
@@ -6001,7 +6021,13 @@ WFE_Expand_Expr (tree exp,
 	else {
           wn0 = WN_CreateBlock ();
           WN_INSERT_BlockLast (wn0, call_wn);
-
+#ifdef KEY
+          // Preserve type information if available, in preference to
+          // (void *).
+          if (nop_ty_idx && TY_kind(ty_idx) == KIND_POINTER &&
+              TY_mtype(TY_pointed(ty_idx)) == MTYPE_V) /* pointer to void */
+            ty_idx = nop_ty_idx;
+#endif
 	  wn1 = WN_Ldid (ret_mtype, -1, Return_Val_Preg, ty_idx);
 
 	  if (ret_mtype == MTYPE_M) { // copy the -1 preg to a temp area

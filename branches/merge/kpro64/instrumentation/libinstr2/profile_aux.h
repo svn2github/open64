@@ -1,6 +1,10 @@
 //-*-c++-*-
 
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -307,6 +311,18 @@ struct PU_Profile_Handle {
 
     void Set_file_name(char *s);
     void Set_pu_name(char *s);
+
+#ifdef KEY
+    void * operator new (size_t size) {
+      void * p = malloc (size);
+      return p;
+    }
+
+    void operator delete (void *p) {
+      free (p);
+    }
+#endif
+
 };
 
 typedef PU_Profile_Handle * PU_PROFILE_HANDLE;

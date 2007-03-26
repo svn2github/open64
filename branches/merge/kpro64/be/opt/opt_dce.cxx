@@ -1178,6 +1178,10 @@ Eval_redundant_cond_br( CODEREP *origcond, CODEREP *evalcond, COND_EVAL eval )
 	  return EVAL_UNKNOWN;
 	}
       }
+#ifdef KEY // bug 11685
+     if (origcond->Dsctyp() != evalcond->Dsctyp())
+       return EVAL_UNKNOWN;
+#endif
 
       // canonicalize so we can always assume comparison is true
       // (dealing with false is not just a matter of negating result

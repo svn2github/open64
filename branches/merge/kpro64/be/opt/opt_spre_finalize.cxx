@@ -323,8 +323,13 @@ ETABLE::SPRE_rename_expr(CODEREP *cr, BB_NODE *bb)
 	  // Part of problem exposed by 621101:
 	  // need to preserve the mu-node if this CK_IVAR is also
 	  // an ISTORE node.
-	} else
+	} else {
 	  m_cr = SPRE_rename_var(mnode->OPND(), TRUE);
+#ifdef KEY // bug 11739
+          if (m_cr && m_cr->Is_flag_set(CF_IS_ZERO_VERSION))
+            m_cr = NULL;
+#endif
+        }
       }
 
       ilod_base = SPRE_rename_expr(cr->Ilod_base(), bb);

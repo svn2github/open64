@@ -341,9 +341,16 @@ Num_Inner_Loops(WN* loop)
       }
       if (num_inner_loops > max_inner_loops) {
         max_inner_loops = num_inner_loops;
+#ifdef KEY
+        if (max_inner_loops > MAX_INNER_LOOPS) {
+          return max_inner_loops; //stop
+        }
+#else
         if (max_inner_loops >= MAX_INNER_LOOPS) {
           return MAX_INNER_LOOPS;
         }
+
+#endif
       }
     }
   }
@@ -433,16 +440,18 @@ Fully_Unroll_Short_Loops(WN* wn)
   }
   else if (oper == OPR_DO_LOOP    &&
            !Do_Loop_Has_Calls(wn) &&
-#ifdef PATHSCALE_MERGE
            (!Do_Loop_Has_Exits(wn) || Do_Loop_Is_Regular(wn)) &&
+#ifndef KEY
 	   !Do_Loop_Has_Conditional(wn) &&
-#else
-           !Do_Loop_Has_Exits(wn) &&
-           !Do_Loop_Has_Gotos(wn) &&
 #endif
+           !Do_Loop_Has_Gotos(wn) &&
            !Do_Loop_Is_Mp(wn)     &&
            !Is_Nested_Doacross(wn) &&
+#ifdef KEY
+           Num_Inner_Loops(wn) <= MAX_INNER_LOOPS) {
+#else
            Num_Inner_Loops(wn) < MAX_INNER_LOOPS) {
+#endif
     INT64 trip_count = Num_Iters(wn);
     if (trip_count == 0
 #ifdef KEY
@@ -457,10 +466,16 @@ Fully_Unroll_Short_Loops(WN* wn)
     if (trip_count >= 1 && trip_count <= LNO_Full_Unrolling_Limit) {
       if (trip_count > 1) {
 #ifdef KEY
-	if (Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit) {
-	  Fully_Unroll_Short_Loops(WN_do_body(wn));
-	  return;
-	}
+        //trip_count already used in calculating Loop_Size(do_loop), so don't mul
+        //bug 11954, 11958: Regression caused by not multiplying trip_count, because
+        //we need new LNO_Full_Unrolling_Loop_Size_Limit default.
+        //TODO: re-investigate here after work bug 10644
+        if (Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit) {
+//       if (Loop_Size(wn) > LNO_Full_Unrolling_Loop_Size_Limit) {
+          Fully_Unroll_Short_Loops(WN_do_body(wn));
+          return;
+        }
+
 	static INT count = 0;
 	count ++;
 	if (LNO_Full_Unroll_Skip_Before > count - 1 ||

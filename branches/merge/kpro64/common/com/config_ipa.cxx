@@ -264,6 +264,7 @@ BOOL IPA_Consult_Inliner_For_Icall_Opt = TRUE; // Check inlining heuristics
                                                // during icall-opt?
 UINT32 IPA_Icall_Min_Freq = DEFAULT_ICALL_MIN_FREQ; // Min freq for icall opt
                                                     // used in IPL.
+BOOL IPA_Enable_Source_PU_Order = FALSE;
 #else
 BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
 #endif
@@ -571,6 +572,9 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_UINT32, OV_INTERNAL,	FALSE, "icall_min_freq",	"",
 	  DEFAULT_ICALL_MIN_FREQ, 1, UINT32_MAX, &IPA_Icall_Min_Freq, NULL,
 	  "Min freq of icall for icall optimization"},
+    { OVK_BOOL, OV_INTERNAL,    FALSE, "source_pu_order",  "",
+          0, 0, 0,              &IPA_Enable_Source_PU_Order, NULL,
+          "Maintain source-code PU ordering in IPA output"},
 #endif // KEY
     { OVK_COUNT }	    /* List terminator -- must be last */
 };

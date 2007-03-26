@@ -106,7 +106,13 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	  if (cvt_kind == NEED_CVT) {
 	    
 	    if (MTYPE_is_integral(exp->Dsctyp())
-		&& MTYPE_is_integral(exp->Dtyp())
+#ifdef TARG_X8664 // bug 11797
+                && ! MTYPE_is_vector(exp->Dsctyp())
+#endif
+                && MTYPE_is_integral(exp->Dtyp())
+#ifdef TARG_X8664 // bug 11797
+                && ! MTYPE_is_vector(exp->Dtyp())
+#endif
 		&& ! (Only_Unsigned_64_Bit_Ops && MTYPE_signed(exp->Dtyp()))
 		&& MTYPE_size_min(kid->Dsctyp()) >= MTYPE_size_min(MTYPE_I4)
 		&& ((kid->Kind() == CK_VAR && !kid->Is_var_volatile() &&
@@ -391,6 +397,11 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       wn = WN_Tas(exp->Dtyp(), 
 		  exp->Ty_index(), 
 		  Gen_exp_wn(exp->Get_opnd(0), emitter));
+#ifdef TARG_X8664 // bug 11752: make sure operand type has same size
+      if (MTYPE_byte_size(WN_rtype(wn)) > MTYPE_byte_size(WN_rtype(WN_kid0(wn))) &&
+          WN_operator(WN_kid0(wn)) == OPR_INTCONST)
+        WN_set_rtype(WN_kid0(wn), Mtype_TransferSize(MTYPE_I8, WN_rtype(WN_kid0(wn))));
+#endif
 
       // we may want to do a little tiny simplification
       if ( WOPT_Enable_Combine_Operations ) {

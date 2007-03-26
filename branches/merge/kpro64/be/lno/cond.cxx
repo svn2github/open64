@@ -2123,6 +2123,93 @@ static BOOL Loop_Unswitch_InnerDo (WN *wn)
   return TRUE;
 }
 
+static BOOL Find_Symbol(WN * tree, SYMBOL sym)
+{
+   if(WN_opcode(tree) == OPC_BLOCK){
+     for(WN *kid = WN_first(tree); kid; kid = WN_next(kid))
+       if(Find_Symbol(kid, sym))
+        return TRUE;
+     return FALSE;
+   }
+
+   if(WN_operator(tree) == OPR_LDID){
+     if(SYMBOL(tree) == sym){
+      return TRUE;
+     }
+   }
+
+   for(INT kidno=0; kidno < WN_kid_count(tree); kidno++)
+     if(Find_Symbol(WN_kid(tree, kidno), sym)){
+        return TRUE;
+   }
+  return FALSE;
+}
+
+static WN * New_Label()
+{
+  LABEL_IDX label;
+  (void) New_LABEL (CURRENT_SYMTAB, label);
+  return WN_CreateLabel (label, 0, NULL);
+}
+
+/************************************************************
+bug 12007: generate early exit to eliminate unnecessary iters
+FOR:
+  loop {
+   if (cond) {
+      ....
+    }
+  }
+If cond is not loop invariant, and is not controled by loop
+index variable, we transform it into:
+  loop {
+    if (cond) {
+     ...
+     }
+    else goto Label;
+  }
+  Label:
+*************************************************************/
+static BOOL Gen_Early_Exit(const WN *if_stmt, WN *loop)
+{
+   WN *empty_block = WN_else(if_stmt);
+   if(!Block_is_empty(empty_block))
+       empty_block = WN_then(if_stmt); //second try
+   if(!Block_is_empty(empty_block))
+       return FALSE; //nothing to do
+
+   if(!Find_Symbol(WN_if_test(if_stmt),SYMBOL(WN_index(loop)))){
+    WN *parent = LWN_Get_Parent(loop);
+    if(WN_operator(parent) != OPR_BLOCK)
+      return FALSE;//should never happen?
+    WN *exit_label = New_Label();
+    WN_INSERT_BlockAfter(parent, loop, exit_label);
+    LWN_Set_Parent(exit_label, parent);
+    WN *exit_goto =
+         WN_CreateGoto((ST*) NULL,WN_label_number(exit_label));
+    WN_INSERT_BlockFirst(empty_block,exit_goto);
+    LWN_Set_Parent(exit_goto, empty_block);
+    LWN_Parentize(parent);
+    //update do loop information
+    DO_LOOP_INFO *dli = Get_Do_Loop_Info(loop);
+    dli->Has_Gotos = TRUE; //must be NON_NULL here
+    dli->Has_Exits = TRUE;
+    BOOL current_level = TRUE; //where label stays
+    while(parent){
+     if(WN_opcode(parent)==OPC_DO_LOOP){
+         dli = Get_Do_Loop_Info(parent);
+       if(dli){//not sure
+         dli->Has_Gotos=TRUE;
+         if(current_level)
+           dli->Has_Gotos_This_Level=TRUE;
+       }
+       current_level = FALSE;
+     }//end if do_loop
+     parent = LWN_Get_Parent(parent);
+    }//end while
+ }
+}
+
 // Called by LNO unswitching 2nd phase.
 // Expects an expression node, typically the CONDITION expression in the IF
 // statement being switched.
@@ -2212,6 +2299,11 @@ static BOOL Loop_Simple_Unswitch_InnerDo (WN * wn)
 
   if (! Is_Loop_Invariant_Exp (WN_if_test (stmt), wn))
     return FALSE; // if-test not loop invariant
+
+  if (!Is_Loop_Invariant_Exp(WN_if_test(stmt), wn)){
+     Gen_Early_Exit(stmt,wn); //bug 12007
+    return FALSE; //not unswithced
+  }
 
   // Make 2 copies of the original loop and update DU information
   WN * then_loop_copy = LWN_Copy_Tree (wn, TRUE, LNO_Info_Map);

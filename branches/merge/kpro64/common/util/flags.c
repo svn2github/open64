@@ -1119,7 +1119,14 @@ Print_Option_Group ( FILE *tf, OPTION_GROUP *og, char *prefix,
 	if ( ODESC_primary(desc) == desc
 	  || ODESC_primary(desc) == NULL  )
 	{
-	  fprintf ( tf, "%s", *((char **) ODESC_variable(desc)));
+#ifdef KEY /* bug 12020: The compiler may change the fprintf to fputs,
+              which cannot handle null. */
+          char ** var = (char **) ODESC_variable(desc);
+          if ( *var != NULL )
+            fprintf ( tf, "%s", *var);
+#else
+          fprintf ( tf, "%s", *((char **) ODESC_variable(desc)));
+#endif
 	} else {
 	  fprintf ( tf, " (See '%s' above)",
 		    ODESC_name(ODESC_primary(desc)) );

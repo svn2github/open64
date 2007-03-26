@@ -206,6 +206,9 @@ typedef struct edge {
 
 #define EF_PROB_FB_BASED        0x0001
 #define EF_FB_PROPAGATED	0x0002
+#ifdef KEY /* bug 6693 */
+#define EF_PROB_HINT_BASED      0x0004
+#endif
 
 /* Indicate if this edge probability is based on feedback.
  */
@@ -218,6 +221,15 @@ typedef struct edge {
 #define EDGE_fb_propagated(e)	(EDGE_flags(e) & EF_FB_PROPAGATED)
 #define Set_EDGE_fb_propagated(e)   (EDGE_flags(e) |= EF_FB_PROPAGATED)
 #define Reset_EDGE_fb_propagated(e) (EDGE_flags(e) &= ~EF_FB_PROPAGATED)
+
+#ifdef KEY /* bug 6693 */
+/* Indicate if this edge probability is based on user hint, through
+   pragma or builtins.
+ */
+#define EDGE_prob_hint_based(e)   (EDGE_flags(e) & EF_PROB_HINT_BASED)
+#define Set_EDGE_prob_hint_based(e)   (EDGE_flags(e) |= EF_PROB_HINT_BASED)
+#define Reset_EDGE_prob_hint_based(e) (EDGE_flags(e) &= ~EF_PROB_HINT_BASED)
+#endif
 
 /* Since we don't ever need to modify the CFG, we simply preallocate
  * a vector for chains of successor and predecessor edges, both indexed
@@ -323,6 +335,13 @@ Initialize_Freq_Edges(void)
       EDGE_slst(edge) = slst;
       EDGE_succ(edge) = succ;
       BB_succ_edges(bb) = edge;
+#ifdef KEY
+      if (BBLIST_prob(slst) != 0.0 &&
+          BBLIST_prob_hint_based(slst)) {
+        EDGE_prob(edge) = BBLIST_prob(slst);
+        Set_EDGE_prob_hint_based(edge);
+      }
+#endif
 
       FOR_ALL_BB_PREDS(succ, plst) {
         if (BBLIST_item(plst) == bb) break;
@@ -1817,7 +1836,27 @@ Compute_Branch_Probabilities(void)
       FOR_ALL_SUCC_EDGES(bb, edge) {
 	EDGE_prob(edge) = 1.0 / n_succs;
       }
-    } else {
+    }
+#ifdef KEY
+    else if (EDGE_prob_hint_based(BB_succ_edges(bb)) &&
+             EDGE_prob_hint_based(EDGE_next_succ(BB_succ_edges(bb)))) {
+      if (CFLOW_Trace_Freq) {
+        #pragma mips_frequency_hint NEVER
+        EDGE *edge1 = BB_succ_edges(bb);
+        EDGE *edge2 = EDGE_next_succ(edge1);
+        BB *succ1 = EDGE_succ(edge1);
+        BB *succ2 = EDGE_succ(edge2);
+
+        fprintf(TFile, "\n User builtin BB:%-3d -> BB:%-3d BB:%-3d -> BB:%-3d\n"
+                       "    ============================================\n",
+                       BB_id(bb), BB_id(succ1), BB_id(bb), BB_id(succ2));
+        fprintf(TFile, "     Combined  %.13f  %.13f\n",
+                       EDGE_prob(edge1), EDGE_prob(edge2));
+      }
+    }
+#endif
+ 
+    else {
 
       /* 2-way branch
        */

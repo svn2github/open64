@@ -1115,11 +1115,7 @@ Inliner(char* input_name, char* output_name)
       WN_Simplifier_Enable(FALSE);
 #endif
 
-#ifdef TARG_IA64
-    Set_tlog_phase(PHASE_INLINER);
-#else
     Set_ipa_tlog_phase(PHASE_INLINER);
-#endif
 	
     set_timer();
 

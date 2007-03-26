@@ -537,7 +537,8 @@ CODEREP::Convert_type(CODEMAP *htable, CODEREP *expr, BOOL icopy_phase)
 
 #ifdef KEY // bug 2668: screen out obvious case where no conversion is needed
   if (expr->Kind() == CK_VAR && Kind() == CK_VAR && expr->Aux_id() == Aux_id()
-      && /* bug 10220 */ ! Is_flag_set(CF_IS_ZERO_VERSION))
+      && /* bug 10220 */ ! Is_flag_set(CF_IS_ZERO_VERSION)
+      && /* bug 11616 */ MTYPE_signed(expr->Dtyp()) == MTYPE_signed(Dtyp()))
     return expr;
 #endif
   if ( MTYPE_is_integral(rhs_type) && MTYPE_is_integral(dsc_type) ) {
@@ -624,6 +625,9 @@ CODEREP::Convert_type(CODEMAP *htable, CODEREP *expr, BOOL icopy_phase)
   INT varsize;				// in bits
   if (Dsctyp() == MTYPE_BS) {
     if (Kind() == CK_VAR) {
+     if (expr->Kind() == CK_VAR && Aux_id() == expr->Aux_id() &&
+          MTYPE_signed(Dtyp()) == MTYPE_signed(expr->Dtyp()))
+        return expr;  // it's an identity assignment propagation (bug 11732)
       AUX_STAB_ENTRY *aux = htable->Sym()->Aux_stab_entry(Aux_id());
       varsize = aux->Bit_size();
     }
@@ -635,8 +639,13 @@ CODEREP::Convert_type(CODEMAP *htable, CODEREP *expr, BOOL icopy_phase)
       varsize = FLD_bsize(fld);
     }
   }
-  else if (Kind() == CK_VAR && Bit_field_valid())
+  else if (Kind() == CK_VAR && Bit_field_valid()) {
+    if (expr->Kind() == CK_VAR && Aux_id() == expr->Aux_id() &&
+        MTYPE_signed(Dtyp()) == MTYPE_signed(expr->Dtyp()))
+      return expr;  // it's an identity assignment propagation (bug 11732)
     varsize = Bit_size();
+  }
+
   else if (Kind() == CK_IVAR && Opr() == OPR_ILDBITS)
     varsize = I_bit_size();
   else return expr;
@@ -1320,10 +1329,12 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
       }
 #ifdef KEY // bug 3009
       if (Prop_identity_assignment(id_cr)) // bug 3091
-        return Copy_propagate_cr(id_cr, curbb, inside_cse, in_array);
+        return Copy_propagate_cr(id_cr, curbb, inside_cse, in_array); // recurse
 #endif
+      id_cr = x->Convert_type(Htable(), id_cr, FALSE);
       return id_cr;
      }
+
      return Prop_var(x, curbb, FALSE, inside_cse, in_array, no_complex_preg);
     }
   case CK_IVAR: {

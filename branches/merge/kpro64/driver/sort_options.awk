@@ -1,4 +1,8 @@
 #
+#  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+#
+
+#
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -53,8 +57,24 @@ if (options) {
 	# so sorting is easier.
 	# add | character between implies and help msg.
 	firstchar = substr($1,1,1);
+	lastchar = substr($1, length($1), 1);
 	if (firstchar == "-" || firstchar == "I")
 		printf "%s | ", $0 >> optfile;
+
+	# KEY:  Support double-quoting the option name.
+	else if (firstchar == "\"" &&
+		 lastchar == "\"" &&
+		 NF > 1) {		# number of fields
+		# Print out first record without double quotes.
+		printf "%s", substr($1, 2, length($1) - 2) >> optfile;
+
+		# Print out rest of records.
+		for (i = 2; i <= NF; i++) {
+		 	printf " %s", $i >> optfile;
+		}
+		printf " | " >> optfile;
+	}
+
 	else if (firstchar == "\"")
 		printf "%s\n", $0 >> optfile;
 } else {

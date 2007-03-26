@@ -350,9 +350,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	break;
 #ifdef TARG_X8664
   case OPR_TAS:
-  	if (MTYPE_is_integral(rtype))
-	  Expand_Float_To_Int_Tas(result, op1, rtype, ops);
-	else Expand_Int_To_Float_Tas(result, op1, rtype, ops);
+        if (MTYPE_is_vector(rtype)) // bugs 11797 11876
+          Expand_Int_To_Vect_Tas(result, op1, rtype, ops);
+        else if (MTYPE_is_integral(rtype))
+          Expand_Float_To_Int_Tas(result, op1, rtype, ops);
+        else Expand_Int_To_Float_Tas(result, op1, rtype, ops);
 	break;
 #endif
   case OPR_RND:

@@ -339,6 +339,7 @@ INT32 CG_sse_load_execute = 0;
 INT32 CG_load_execute = 1;
 BOOL CG_loadbw_execute = FALSE;
 BOOL CG_p2align = FALSE;
+BOOL CG_valgrind_friendly = TRUE;
 #endif
 
 // temporary flags for controlling algorithm selection for fdiv, sqrt, etc

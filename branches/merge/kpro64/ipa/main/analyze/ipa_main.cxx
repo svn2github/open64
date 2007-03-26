@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -384,7 +388,7 @@ Perform_Interprocedural_Analysis ()
 	    }
 	  }
 
-    	  if (Opt_Options_Inconsistent)
+    	  if (IPA_Enable_Source_PU_Order || Opt_Options_Inconsistent)
 	    for (UINT i = 0; i < IP_File_header.size(); ++i)
 	    { // Store the file-id in each IPA_NODE
 	      Mark_PUs_With_File_Id (IP_FILE_HDR_pu_list (IP_File_header[i]), i);

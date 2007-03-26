@@ -565,7 +565,10 @@ static BOOL FS_Worthwhile(WN* wn_orig,
   USE_LIST_ITER iter(use_list);
   DU_NODE* unode = NULL; 
   BOOL found_inner_use = FALSE; 
-  INT use_count = 0;  
+  INT use_count = 0; 
+#ifdef KEY //bug 11786 count total number of uses
+  INT total_use_count = 0;
+#endif 
   for (unode = iter.First(); !iter.Is_Empty(); unode = iter.Next()) { 
     WN *use = unode->Wn(); 
     if (WN_operator(use) != OPR_LDID)
@@ -610,15 +613,23 @@ static BOOL FS_Worthwhile(WN* wn_orig,
     for (wn = use; wn != NULL; wn = LWN_Get_Parent(wn))
       if (WN_operator(wn) == OPR_ARRAY)
 	break;
+#ifdef KEY //bug 11786: count total number of uses
+    total_use_count++;
+#endif
+
     if (wn != NULL) 
       continue; 
     use_count++;  
   }
-  if (use_count == 0) 
+  if (use_count == 0) //no use or all uses under array 
     return FALSE; 
   if (count > FS_LOAD_AND_LEAF_LIMIT && found_inner_use) 
     return FALSE; 
-  if (count > FS_LOAD_AND_LEAF_LIMIT && use_count > 1) 
+#ifdef KEY //bug 11786: let total uses to control code expansion
+  if (count > FS_LOAD_AND_LEAF_LIMIT && total_use_count > 1)
+#else
+  if (count > FS_LOAD_AND_LEAF_LIMIT && use_count > 1)
+#endif
     return FALSE;  
   if (all_uses_in_same_def_loop) {
     if (FS_Exp_Assigned_on_Loop_Iteration(wn_orig, wn_loop,

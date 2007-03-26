@@ -392,10 +392,20 @@ WFE_Expand_Function_Body (tree decl)
 
 #ifdef KEY
   WFE_Handle_Named_Return_Value(decl);
+
+  // bug 11869: This example shows there may be a label statement
+  // without an explicit scope. In such a scenario, a jump to such
+  // a label would find incomplete scope information, and hence not
+  // know what cleanups to run. Always have a top-level-scope that
+  // covers the entire function.
+  Push_Top_Level_Scope(decl);
 #endif
 
   for (body = DECL_SAVED_TREE(decl); body; body = TREE_CHAIN(body))
     Mark_Scopes_And_Labels (body);
+#ifdef KEY // bug 11869
+  Pop_Top_Level_Scope();
+#endif
 
   for (body = DECL_SAVED_TREE(decl); body; body = TREE_CHAIN(body))
     WFE_Expand_Stmt(body);
@@ -2457,6 +2467,7 @@ Traverse_Aggregate_Struct (
   // nonempty nonvirtual base class.
   // these are generated first in Create_TY_For_Tree (tree_symtab.cxx)
 
+#ifndef KEY     // g++'s class.c already laid out the base types.  Bug 11622.
   if (TYPE_BINFO(type) &&
       BINFO_BASETYPES(TYPE_BINFO(type))) {
     tree basetypes = BINFO_BASETYPES(TYPE_BINFO(type));
@@ -2472,6 +2483,7 @@ Traverse_Aggregate_Struct (
       }
     }
   }
+#endif
 
   while (field && TREE_CODE(field) != FIELD_DECL)
     field = next_real_or_virtual_field(type, field);

@@ -701,7 +701,10 @@ VN_UNARY_EXPR::simplify(VN *v)
    else if (Is_Literal_Expr(opnd))
    {
      // for IA-32, do not fold away I8I4CVT
-     if (!Split_64_Bit_Int_Ops || 
+     if (
+#ifndef TARG_X8664
+         !Split_64_Bit_Int_Ops ||
+#endif
 	 opr != OPR_CVT ||
 	 MTYPE_bit_size(OPCODE_rtype(_opc)) != 64 ||
 	 MTYPE_bit_size(OPCODE_desc(_opc)) != 32) {

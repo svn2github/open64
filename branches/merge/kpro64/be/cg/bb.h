@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -757,6 +761,7 @@ typedef	struct bblist {
 
 #ifdef KEY
 #define BLM_ON_TREE     0x0002 /* bblist::edge on the spanning tree */
+#define BLM_PROB_HINT   0x0004 /* bblist::prob based on user hint. */
 #endif
 
 #define BBLIST_prob_fb_based(b)       (BBLIST_flags(b) & BLM_PROB_FB)
@@ -767,6 +772,10 @@ typedef	struct bblist {
 #define BBLIST_on_tree(b)       (BBLIST_flags(b) & BLM_ON_TREE)
 #define Set_BBLIST_on_tree(b)   (BBLIST_flags(b) |= BLM_ON_TREE)
 #define Reset_BBLIST_on_tree(b) (BBLIST_flags(b) &= ~BLM_ON_TREE)
+
+#define BBLIST_prob_hint_based(b)       (BBLIST_flags(b) & BLM_PROB_HINT)
+#define Set_BBLIST_prob_hint_based(b)   (BBLIST_flags(b) |= BLM_PROB_HINT)
+#define Reset_BBLIST_prob_hint_based(b) (BBLIST_flags(b) &= ~BLM_PROB_HINT)
 #endif
 
 /* Macros for stepping through BBlists. */
@@ -1052,12 +1061,20 @@ extern	void  Free_BB_Memory ( void );
 extern void Link_Pred_Succ (BB *pred, BB *succ);
 extern void Link_Pred_Succ_with_Prob(BB *pred, BB *succ, float prob, 
 				     BOOL via_feedback = FALSE,
-				     BOOL set_prob = FALSE);
+				     BOOL set_prob = FALSE
+#ifdef KEY
+				     , BOOL via_hint = FALSE
+#endif
+				     );
 extern BBLIST *BBlist_Add_BB(BBLIST **lst, BB *bb);
 extern void BBlist_Delete_BB(BBLIST **lst, BB *bb);
 extern BBLIST *BBlist_Add_BB_with_Prob(BBLIST **lst, BB *bb, float prob,
 				       BOOL via_feedback = FALSE,
-				       BOOL set_prob     = FALSE);
+				       BOOL set_prob     = FALSE
+#ifdef KEY
+				       , BOOL via_hint = FALSE
+#endif
+				       );
 
 /* Unlink the pred and succ basic blocks. */
 extern void Unlink_Pred_Succ (BB *pred, BB *succ);

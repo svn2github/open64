@@ -687,6 +687,7 @@ private:
   LOOP_FLAGS    _flags;          // all kinds of flags for this loop
   WN           *_orig_wn;        // keep the original WN node to maintain the maps
   BOOL          _promoted_do;    // is a promoted do-loop
+  INT32         _size_estimate;  // rough estimate of size of the loop body
 
   BB_LOOP(const BB_LOOP&);
   BB_LOOP& operator = (const BB_LOOP&);
@@ -729,6 +730,7 @@ public:
 		well_formed = FALSE;
 		_valid_doloop = TRUE;
 		header = NULL;
+                _size_estimate = 0;  
   }
   ~BB_LOOP(void);
   BB_LOOP     *Child(void) const    { return _child;}
@@ -828,6 +830,9 @@ public:
   void         Set_entry_test(CODEREP *expr) { _entry_test = expr; }
   WN          *Wn_trip_count(void) const     { return _wn_trip_count; }
   void         Set_wn_trip_count(WN *wn)     { _wn_trip_count = wn; }
+  INT32        Size_estimate(void) const     { return _size_estimate; }
+  void         Set_size_estimate(INT32 n)    { _size_estimate = n; }
+  void         Incr_size_estimate(INT32 n)    { _size_estimate += n; }
 };
 
 class BB_LOOP_CONTAINER : public SLIST {
@@ -1613,7 +1618,7 @@ public:
   // Can this BB be cloned?
   BOOL         Clonable(BOOL           allow_loop_cloning, 
 			const BVECTOR *cr_vol_map = NULL);
-
+  INT32        Code_size_est(void) const;
 }; // end BB_NODE class
 
 

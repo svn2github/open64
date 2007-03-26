@@ -1239,6 +1239,7 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
     BOOL	sqrt, rsqrt;
 #ifdef KEY
     BOOL       sqrt_25, rsqrt_25, sqrt_75, rsqrt_75;
+    BOOL        cbrt_33, cbrt_66;
 #endif
     WN		*tree, *x_copy;
     double	n;
@@ -1264,6 +1265,7 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
     }
     n = Targ_To_Host_Float(con);
     sqrt = rsqrt = FALSE;
+    cbrt_33 = cbrt_66 = FALSE; 
 #ifdef KEY
     sqrt_25 = rsqrt_25 = sqrt_75 = rsqrt_75 = FALSE;
 #endif
@@ -1308,7 +1310,22 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
       else
 	sqrt_75 = TRUE;
       x_copy = WN_COPY_Tree(x);
-    }    
+    }  
+#if !defined (TARG_MIPS) && !defined (TARG_IA64)
+    else if (ABS((trunc(n)+1.0/3) - n) < .0000001 &&
+             ! (Is_Target_64bit() && !Is_Target_Anyx86() && OPT_Fast_Math))
+    { // the pow in fast_math is faster than cbrt, so no point converting
+      cbrt_33 = TRUE;
+      x_copy = WN_COPY_Tree(x);
+    }
+    else if (ABS((trunc(n)+2.0/3) - n) < .0000001 &&
+             ! (Is_Target_64bit() && !Is_Target_Anyx86() && OPT_Fast_Math))
+    { // the pow in fast_math is faster than cbrt, so no point converting
+      cbrt_66 = TRUE;
+      x_copy = WN_COPY_Tree(x);
+    }
+#endif
+  
 #endif
     else
     {
@@ -1440,6 +1457,33 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 		       WN_LdidPreg(type, treeN),
 		       fractional);
       }      
+    }
+
+    // evaluate (x**0.333333) by calling cbrt()/cbrtf()
+    if (cbrt_33 || cbrt_66)
+    {
+      if (type != MTYPE_F4 && type != MTYPE_F8)
+        return NULL;
+      if (tree)
+      {
+        /*
+         *  x ** n+1/3  ->      (x**n) * (x**1/3)
+         *  where the function em_exp_int has already evaluated
+         */
+         PREG_NUM xN = AssignExpr(block, x_copy, type);
+         WN *kid = WN_CreateParm(type, WN_LdidPreg(type, xN), Be_Type_Tbl(type),
+                                 WN_PARM_BY_VALUE | WN_PARM_READ_ONLY);
+         WN* fraction = WN_Create_Intrinsic(
+                                OPCODE_make_op(OPR_INTRINSIC_OP, type, MTYPE_V),
+                                type == MTYPE_F4 ? INTRN_F4CBRT : INTRN_F8CBRT,
+                                1, &kid);
+         if (cbrt_66) {
+           PREG_NUM x13 = AssignExpr(block, fraction, type);
+           fraction = WN_Mpy(type, WN_LdidPreg(type, x13),
+                                   WN_LdidPreg(type, x13));
+         }
+         tree = WN_Mpy(type, tree, fraction);
+      }
     }
 #endif
     return tree;
@@ -4859,6 +4903,12 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     if (strcmp(Get_Error_Phase(), "VHO Processing") == 0)
       break; // bug 8525: cannot lower va_start at VHO time
     return em_x8664_va_start(block, WN_arg(tree, 0));
+    break;
+#endif
+
+#ifdef KEY
+  case INTRN_F4CBRT:
+  case INTRN_F8CBRT:
     break;
 #endif
 

@@ -2719,7 +2719,7 @@ static INT Simd_Align_Analysis(INT init_align, WN *load_store,
       else {
         if (aa0->Dim(aa0->Num_Vec()-1)->Loop_Coeff(Do_Loop_Depth(innerloop))==
             -1)
-          copy = LWN_CreateExp2(OPCODE_make_op(OPR_SUB,index_type, MTYPE_V),
+          copy = LWN_CreateExp2(OPCODE_make_op(OPR_SUB,Mtype_TransferSign(MTYPE_I4, index_type), MTYPE_V),
                                 copy,
                                 WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,
                                                                  index_type,
@@ -3088,7 +3088,7 @@ static void Simd_Handle_Negative_Coefficient(
       }//end switch
     TYPE_ID index_type=WN_rtype(WN_end(loop));
     OPCODE intconst_opc= OPCODE_make_op(OPR_INTCONST,index_type, MTYPE_V);
-    OPCODE sub_opc= OPCODE_make_op(OPR_SUB,index_type, MTYPE_V); 
+    OPCODE sub_opc= OPCODE_make_op(OPR_SUB,Mtype_TransferSign(MTYPE_I4, index_type), MTYPE_V);
     WN* index = WN_kid(array, WN_num_dim(array)<<1);
     WN_kid(array, WN_num_dim(array)<<1) =
        LWN_CreateExp2(sub_opc, index,
@@ -4573,7 +4573,7 @@ static INT Simd(WN* innerloop)
 
     OPCODE intconst_opc= OPCODE_make_op(OPR_INTCONST,index_type, MTYPE_V);
     OPCODE add_opc= OPCODE_make_op(OPR_ADD,index_type, MTYPE_V);
-    OPCODE sub_opc= OPCODE_make_op(OPR_SUB,index_type, MTYPE_V);
+    OPCODE sub_opc= OPCODE_make_op(OPR_SUB,Mtype_TransferSign(MTYPE_I4, index_type), MTYPE_V);    
     TYPE_ID prog_const_type;
     //get vector type according to istore
     TYPE_ID vmtype = Simd_Get_Vector_Type(istore);
@@ -4698,8 +4698,9 @@ static INT Simd(WN* innerloop)
 	      inv_node = WN_CreateConst (OPR_CONST, vmtype, MTYPE_V, st);
 	    } else {
 	      inv_node = 
-		LWN_CreateExp1(OPCODE_make_op(OPR_REPLICATE, vmtype, desc),
-			       last_tmp);	  
+                LWN_CreateExp1(OPCODE_make_op(OPR_REPLICATE, vmtype,
+                                            Mtype_TransferSign(MTYPE_I4, desc)),
+                               last_tmp);
 	    }
 	    WN_kid0(tmp) = inv_node;
 	    // Hoist the new preg STID above this loop.

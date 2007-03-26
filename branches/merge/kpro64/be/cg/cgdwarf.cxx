@@ -1133,7 +1133,7 @@ static void
 put_variable(DST_flag flag, DST_VARIABLE *attr, Dwarf_P_Die die)
 {
   if (DST_IS_const(flag))  /* Not yet supported */ {
-#ifndef TARG_X8664
+#ifndef KEY
     ErrMsg (EC_Unimplemented, "put_variable: DST_IS_const");
 #else
     DST_CONSTANT *attr_tmp = (DST_CONSTANT *)attr;

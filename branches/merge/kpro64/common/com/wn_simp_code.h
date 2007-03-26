@@ -2019,6 +2019,10 @@ static simpnode  simp_add_sub(OPCODE opc,
    } else {
       addop = opc;
       subop = OPC_FROM_OPR(OPR_SUB,ty);
+#ifdef TARG_X8664 // bug 11400: if any operand is signed type, make SUB signed
+      if (MTYPE_signed(SIMPNODE_rtype(k0)) || MTYPE_signed(SIMPNODE_rtype(k1)))
+        subop = OPC_FROM_OPR(OPR_SUB, Mtype_TransferSign(MTYPE_I4, ty));
+#endif
    }
    negop = OPC_FROM_OPR(OPR_NEG,ty);
 
@@ -3274,7 +3278,7 @@ static simpnode  simp_band( OPCODE opc,
 	   SHOW_RULE("(j LSHR c2) & c1)");
 	   r = k0;
 	   SIMP_DELETE(k1);
-	 } else if (Enable_extract_compose && IS_POWER_OF_2(c1+1)) {
+         } else if (Enable_extract_bits && IS_POWER_OF_2(c1+1)) {
 	   r = SIMPNODE_SimpCreateExtract(MTYPE_bit_size(ty) == 32 ? OPC_U4EXTRACT_BITS : OPC_U8EXTRACT_BITS,
 					  shift_count,log2((UINT64)c1+1),
 					  SIMPNODE_kid0(k0));
@@ -3491,8 +3495,11 @@ static simpnode  simp_bior( OPCODE opc,
        SIMP_DELETE(k1);
      }
    }
-   if (Enable_extract_compose && SIMPNODE_operator(k0) == OPR_BAND && SIMPNODE_operator(k1) == OPR_BAND
-       && SIMP_Is_Int_Constant(SIMPNODE_kid1(k0)) && SIMP_Is_Int_Constant(SIMPNODE_kid1(k1)) /* KEY */)
+   if (Enable_compose_bits &&
+       SIMPNODE_operator(k0) == OPR_BAND &&
+       SIMPNODE_operator(k1) == OPR_BAND &&
+       SIMP_Is_Int_Constant(SIMPNODE_kid1(k0)) &&
+       SIMP_Is_Int_Constant(SIMPNODE_kid1(k1)) /* KEY */)
    {
      c1 = SIMP_Int_ConstVal(SIMPNODE_kid1(k0));
      c2 = SIMP_Int_ConstVal(SIMPNODE_kid1(k1));
@@ -4065,7 +4072,7 @@ static simpnode  simp_shift( OPCODE opc,
 	    SIMP_DELETE(SIMPNODE_kid1(k0));
 	    SIMP_DELETE(k0);
 	    SIMP_DELETE(k1);
-	 } else if (firstop == OPR_SHL && op == OPR_LSHR && Enable_extract_compose && c1 > c2) {
+         } else if (firstop == OPR_SHL && op == OPR_LSHR && Enable_extract_bits && c1 > c2) {
 	   SHOW_RULE("(j << c1) LSHR c2");
 	   INT16 boffset = c1 - c2;
 	   INT16 bsize = shift_size - c1;
@@ -4092,7 +4099,7 @@ static simpnode  simp_shift( OPCODE opc,
 	   }
 	   // This next one must follow this preceeding one, so that we preference
 	   // the case c1 == c2 == 32
-	 } else if (firstop == OPR_SHL && op == OPR_ASHR && Enable_extract_compose && c1 >= c2) {
+         } else if (firstop == OPR_SHL && op == OPR_ASHR && Enable_extract_bits && c1 >= c2) {
 	   SHOW_RULE("(j << c1) ASHR c2");
 	   INT16 boffset = c1 - c2;
 	   INT16 bsize = shift_size - c1;
@@ -4125,7 +4132,7 @@ static simpnode  simp_shift( OPCODE opc,
 	    SIMP_DELETE(SIMPNODE_kid1(k0));
 	    SIMP_DELETE(k0);
 	    return (r);
-	 } else if (Enable_extract_compose && IS_POWER_OF_2(c2+1)) {
+         } else if (Enable_compose_bits && IS_POWER_OF_2(c2+1)) {
 	   SHOW_RULE("(j & mask) << c1 -> COMPOSE");
 	   c2 = log2((UINT64)c2+1);
 	   r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),c1,c2,
@@ -5238,12 +5245,27 @@ static simpnode  SIMPNODE_ConstantFold2(OPCODE opc, simpnode  k0, simpnode  k1)
 #endif
 
 #ifndef WN_SIMP_WORKING_ON_WHIRL
-#ifdef KEY // bug 8865: prevents unsigned x + (-1) + (-1) from becoming
+#ifdef TARG_X8664 // bug 8865: prevents unsigned x + (-1) + (-1) from becoming
    	   //		x + 0xfffffffe for U4ADD and I8INTCONST
    if (TCON_ty(c0) == TCON_ty(c1) && MTYPE_byte_size(TCON_ty(c0)) == 8 &&
        MTYPE_is_integral(TCON_ty(c0)) && OPCODE_desc(opc) == MTYPE_V &&
        OPCODE_operator(opc) != OPR_DIV)
      opc = OPCODE_make_op(OPCODE_operator(opc), TCON_ty(c0), MTYPE_V);
+#endif
+#ifdef TARG_X8664 // bug 11830: if any operand is 64-bit, result should be
+        // 64-bit; and if any operand is signed, result should be signed
+   if (MTYPE_is_integral(OPCODE_rtype(opc)) &&
+       (OPCODE_operator(opc) == OPR_ADD || OPCODE_operator(opc) == OPR_SUB ||
+        OPCODE_operator(opc) == OPR_MPY)) {
+     if (MTYPE_byte_size(TCON_ty(c0)) == 8 || MTYPE_byte_size(TCON_ty(c1)) == 8)
+       opc = OPCODE_make_op(OPCODE_operator(opc),
+                            Mtype_TransferSize(MTYPE_I8, OPCODE_rtype(opc)),
+                            MTYPE_V);
+     if (MTYPE_signed(TCON_ty(c0)) || MTYPE_signed(TCON_ty(c1)))
+       opc = OPCODE_make_op(OPCODE_operator(opc),
+                            Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(opc)),
+                            MTYPE_V);
+   }
 #endif
 #endif
    c0 = Targ_WhirlOp(opc,c0,c1,&folded);
@@ -5355,6 +5377,8 @@ static simpnode SIMPNODE_SimplifyExp2_h(OPCODE opc, simpnode k0, simpnode k1)
 	k op (j op c1)		(k op j) op c1		op is +,*,&,|,^,MAX,MIN
 	b op (a op c1)		(b op a) op c1		R:2 op is +,*
 	b op (a op c1)		(b op a) op c1		op is MAX, MIN
+        x op (y op z)           (x op y) op z           for z being the largest
+                                                          expr (bug 10644)
 	
 	**********************************/
    
@@ -5368,7 +5392,7 @@ static simpnode SIMPNODE_SimplifyExp2_h(OPCODE opc, simpnode k0, simpnode k1)
 	    return (result);
 	 }
       
-	 if (!k1const &&
+	 if (!k0const &&
 	     SIMPNODE_opcode(k0) == opc &&
 	     SIMP_Is_Constant(SIMPNODE_kid1(k0))) {
 	    SHOW_RULE("reassociate 2a");
@@ -5402,6 +5426,35 @@ static simpnode SIMPNODE_SimplifyExp2_h(OPCODE opc, simpnode k0, simpnode k1)
 	    return (result);
 	 }
       }
+
+#ifdef KEY // bug 10644
+      if (Enable_Cfold_Reassociate &&
+          SIMPNODE_opcode(k1) == opc && SIMPNODE_operator(k0) == OPR_LDID) {
+        simpnode k10 = SIMPNODE_kid0(k1);
+        simpnode k11 = SIMPNODE_kid1(k1);
+        if (SIMPNODE_operator(k10) == OPR_ILOAD &&
+            SIMPNODE_operator(k11) == OPR_ILOAD &&
+            SIMPNODE_operator(SIMPNODE_kid0(k10)) == OPR_ARRAY &&
+            SIMPNODE_operator(SIMPNODE_kid0(k11)) == OPR_ARRAY) {
+          INT kidcnt10 = SIMPNODE_kid_count(SIMPNODE_kid0(k10));
+          INT kidcnt11 = SIMPNODE_kid_count(SIMPNODE_kid0(k11));
+          if ((kidcnt10+4) <= kidcnt11) {
+            SHOW_RULE("reassociate 4a");
+            result = SIMPNODE_SimpCreateExp2(opc,
+                                 SIMPNODE_SimpCreateExp2(opc, k0, k10), k11);
+            SIMP_DELETE(k1);
+            return (result);
+          }
+          else if ((kidcnt11+4) <= kidcnt10) {
+            SHOW_RULE("reassociate 4b");
+            result = SIMPNODE_SimpCreateExp2(opc,
+                                 SIMPNODE_SimpCreateExp2(opc, k0, k11), k10);
+            SIMP_DELETE(k1);
+            return (result);
+          }
+        }
+      }
+#endif
    }  /* Simp_Canonicalize */
 #ifndef KEY
    if (simp_func) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -2624,12 +2624,19 @@ IPA_NODE* Get_Node_From_PU(PU_Info* pu)
   NODE_INDEX node_idx = AUX_PU_node(Aux_Pu_Table[pu_idx]);
   IPA_NODE* result = IPA_Call_Graph->Graph()->Node_User(node_idx);
 
-  // Verify that the node is sane.
-  Is_True(result != 0, ("Get_Node_From_PU: null call graph node"));
 #ifdef KEY
+  // bug 11647: Verify that the node is sane. The node may be null if
+  // it has been deleted by DFE (see PU_Deleted()). The caller should
+  // handle a null return value in such a case.
+  if (result == NULL)
+    return NULL;
+
   // If it's a builtin, skip checks for info it doesn't have.
   if (result->Is_Builtin())
     return result;
+#else
+  // Verify that the node is sane.
+  Is_True(result != 0, ("Get_Node_From_PU: null call graph node"));
 #endif
   Is_True(result->PU_Info() != 0, ("Get_Node_From_PU: node has null pu"));
   Is_True(PU_Info_proc_sym(result->PU_Info()) == idx,

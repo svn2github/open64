@@ -257,6 +257,10 @@ static void lower_tree_copy_maps(WN *, WN *, LOWER_ACTIONS);
 static INT32 compute_alignment(WN *, INT64);
 static TYPE_ID compute_next_copy_quantum(TYPE_ID , INT32);
 
+#ifdef KEY
+static WN *lower_malloc_alg(WN *block, WN *tree, LOWER_ACTIONS actions);
+#endif
+
 /* ====================================================================
  *			 private variables
  * ====================================================================
@@ -2818,7 +2822,7 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
     }
 
     if( !do_reassociate ){
-      result = WN_Coerce(Mtype_TransferSign(MTYPE_I4, rtype), WN_array_index(tree, n-1));
+      result = WN_Coerce(rtype, WN_array_index(tree, n-1));
     }
 #else
    /*
@@ -2845,15 +2849,9 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
 							  actions)));
       }
 
-#ifdef TARG_X8664
-      mpy = WN_Mpy(rtype,
-		   WN_Coerce(Mtype_TransferSign(MTYPE_I4, rtype), WN_array_index(tree,i)),
-		   product);
-#else
       mpy = WN_Mpy(rtype,
 		   WN_Coerce(rtype, WN_array_index(tree,i)),
 		   product);
-#endif
 #ifdef TARG_X8664
       if( result == NULL ){
 	result = mpy;
@@ -2881,7 +2879,7 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
        *  result <- result +  index[n-1] * elm_size
        */
       WN* elm_size1 = WN_Intconst(rtype, element_size);
-      WN* inv_wn = WN_Coerce(Mtype_TransferSign(MTYPE_I4, rtype), WN_array_index( tree, n-1 ));
+      WN* inv_wn = WN_Coerce(rtype, WN_array_index( tree, n-1 ));    
       result = WN_Add(rtype,
 		      result,
 		      WN_Mpy(rtype, inv_wn, elm_size1) );
@@ -6127,6 +6125,7 @@ static WN *lower_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
 		      pty_idx, WN_st(tree));
   swn = WN_CreateIntconst (OPC_U4INTCONST, size);
   wn  = WN_CreateMstore (0, pty_idx, WN_kid0(tree), awn, swn);
+  WN_copy_linenum(tree, wn);
   WN_set_field_id(wn, WN_field_id(tree));
   wn  = lower_store (block, wn, actions);
 
@@ -6175,6 +6174,7 @@ static WN *lower_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
   wn  = WN_CreateMstore(WN_offset(tree), pty_idx, 
 			WN_COPY_Tree(WN_kid0(tree)),
                         WN_COPY_Tree(WN_kid1(tree)), swn);
+  WN_copy_linenum(tree, wn);
   WN_set_field_id(wn, WN_field_id(tree));
   wn  = lower_store(block, wn, actions);
 
@@ -6229,6 +6229,41 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
     }
   }
+
+#ifdef KEY // bug 11938
+  // If OPT_Float_Via_Int is on, and both rhs and lhs are indirect memory ops,
+  // change to use integer type for the copy
+  if (Action(LOWER_TO_CG) && OPT_Float_Via_Int && ! WN_has_sym(tree)) {
+    WN *rhs = WN_kid0(tree);
+    if (MTYPE_is_float(WN_rtype(rhs)) && MTYPE_byte_size(WN_rtype(rhs)) <= 8 &&
+        OPERATOR_is_load(WN_operator(rhs)) && ! WN_has_sym(rhs)) {
+      TYPE_ID newtyp = Mtype_TransferSize(WN_rtype(rhs), MTYPE_I4);
+      WN_set_rtype(rhs, newtyp);
+      WN_set_desc(rhs, newtyp);
+      WN_set_desc(tree, newtyp);
+    }
+  }
+#endif
+
+#ifdef TARG_X8664 // bug 11800
+  // If the store is to memory and the expression is a load from memory, both
+  // of MMX vector type, change to use integer types so it does not need to
+  // involve MMX registers
+  if (Action(LOWER_TO_CG) || Action(LOWER_BIT_FIELD_ID)) {
+    WN *rhs = WN_kid0(tree);
+    if (MTYPE_is_mmx_vector(WN_rtype(rhs)) &&
+        OPERATOR_is_load(WN_operator(rhs))) {
+      if (! (WN_has_sym(rhs) && WN_class(rhs) == CLASS_PREG) &&
+          ! (WN_has_sym(tree) && WN_class(tree) == CLASS_PREG)) {
+        TYPE_ID newtyp = Mtype_TransferSize(WN_rtype(rhs), MTYPE_I4);
+        WN_set_rtype(rhs, newtyp);
+        WN_set_desc(rhs, newtyp);
+        WN_set_desc(tree, newtyp);
+      }
+    }
+  }
+#endif
+
 
   /*
    * create any maps that need to be present
@@ -12551,6 +12586,21 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
 #endif
       WN_INSERT_BlockLast(block, trapuvBlock);
     }
+
+#ifdef KEY
+    /*
+     * Optimize the malloc algorithm.
+     */
+    if (OPT_Malloc_Alg == 1 &&
+        (!strcmp(Cur_PU_Name, "main") ||
+         !strcmp(Cur_PU_Name, "MAIN__"))) {
+      WN *mallocBlock = WN_CreateBlock();
+      mallocBlock = lower_malloc_alg(mallocBlock, tree, actions);
+      mallocBlock = lower_block(mallocBlock, actions);
+      WN_copy_linenum(tree, mallocBlock);
+      WN_INSERT_BlockLast(block, mallocBlock);
+    }
+#endif
   }
   else if (Action(LOWER_ENTRY_FORMAL_REF))
   {
@@ -13036,6 +13086,34 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
   return block;
 }
 
+#ifdef KEY
+/* ====================================================================
+ *
+ * WN *lower_malloc_alg(WN *block, WN *tree, LOWER_ACTIONS actions)
+ *
+ * Insert code to optimize malloc.
+ *
+ * ==================================================================== */
+static WN *
+lower_malloc_alg(WN *block, WN *tree, LOWER_ACTIONS actions)
+{
+  WN *call;
+  TY_IDX ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V));
+  ST *st = Gen_Intrinsic_Function(ty, "__pathscale_malloc_alg");
+
+  Set_PU_no_side_effects(Pu_Table[ST_pu(st)]);
+  Set_PU_is_pure(Pu_Table[ST_pu(st)]);
+
+  call = WN_Call(MTYPE_V, MTYPE_V, 1, st);      // bug 10736
+  WN_kid0(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, 1),
+                                MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
+  WN_copy_linenum(tree, call);
+  call = lower_call(block, call, actions);
+  WN_INSERT_BlockLast(block, call);
+
+  return block;
+}
+#endif
 
 static void lower_actions_fprintf(FILE *f, LOWER_ACTIONS actions)
 {

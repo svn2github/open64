@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -1183,7 +1183,7 @@ void Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype,
 
   if( val != 8 && val != 16  && val != 32 ){
     // Bug046
-    if( signed_extension ){
+    if( signed_extension || val >= 32 ){
       TN* tmp1 = Build_TN_Like( dest );
       TN* tmp2 = Build_TN_Like( dest );
       const int shift_amt = is_64bit ? 64 - val : 32 - val;
@@ -1192,8 +1192,10 @@ void Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype,
         Build_OP( TOP_andi32, tmp1, src, Gen_Literal_TN((1<<val)-1, 4), ops );
       else {
 	TN* tmp3 = Build_TN_Like( dest );
-	Exp_Immediate( tmp3, Gen_Literal_TN ((1<<val)-1, 8), FALSE, ops );
-	Build_OP( TOP_and64, tmp1, src, tmp3, ops );
+	if( Is_Target_32bit() && is_64bit && Get_TN_Pair(tmp3) == 0 )
+	  (void *) Create_TN_Pair( tmp3, mtype );
+	Exp_Immediate( tmp3, Gen_Literal_TN ((1LL<<val)-1LL, 8), FALSE, ops );
+	Expand_Binary_And(tmp1, src, tmp3, mtype, ops);
       }
       Expand_Shift( tmp2, tmp1, Gen_Literal_TN( shift_amt, 4 ),
 		    mtype, shift_left, ops );
@@ -3076,6 +3078,36 @@ Expand_Int_To_Float_Tas (TN *dest, TN *src, TYPE_ID fmtype, OPS *ops)
   }
 } 
 
+void
+Expand_Int_To_Vect_Tas (TN *dest, TN *src, TYPE_ID vectype, OPS *ops)
+{
+  FmtAssert(MTYPE_byte_size(vectype) == 8,
+  	    ("Expand_Int_To_Vect_Tas: 16-byte vector type not handled"));
+  FmtAssert(TN_register_class(src) == ISA_REGISTER_CLASS_integer,
+  	    ("Expand_Int_To_Vect_Tas: source operand not integer"));
+
+  // Allocate space to store the integer value
+  const TY_IDX ty = MTYPE_To_TY( vectype );
+  ST* st = Gen_Temp_Symbol( ty, "int_2_vect" );
+  Allocate_Temp_To_Memory( st );
+
+  ST* base_sym = NULL;
+  INT64 base_ofst = 0;
+
+  Base_Symbol_And_Offset_For_Addressing( st, 0, &base_sym, &base_ofst );
+  FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym,
+	     ("Expand_Float_To_Int_Tas: base symbol is on stack") );
+
+  TN* base_tn = base_sym == SP_Sym ? SP_TN : FP_TN;
+  TN* ofst_tn = Gen_Literal_TN( base_ofst, 4 );
+
+  // store the int value to memory
+  Expand_Store(MTYPE_U8, src, base_tn, ofst_tn, ops);
+
+  // load the value into the vector register
+  Expand_Load(OPCODE_make_op(OPR_LDID,vectype,vectype), dest, base_tn, ofst_tn,
+  	      ops);
+}
 
 static void Expand_non_SSE2_Float_Floor( TN* dest, TN* src, OPS* ops )
 {
@@ -3896,7 +3928,9 @@ Expand_Select (
       TN *true_tn_hi = Get_TN_Pair(true_tn);
       dest_tn_hi = Get_TN_Pair(dest_tn);
       false_tn_hi = Get_TN_Pair(false_tn);
+#if 0 // bug 11709: not needed because last Expand_Copy includes the hi part
       Expand_Copy(dest_tn_hi, true_tn_hi, mtype, ops );
+#endif
     }
     Expand_Cmov(non_sse2_fp ? TOP_fcmove : TOP_cmove, dest_tn, false_tn, p,
 		ops, dest_tn_hi, false_tn_hi);

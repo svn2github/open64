@@ -62,15 +62,16 @@ extern "C" {
 #include "wn.h"
 #include "mempool.h"
 
-/* Clients of the loop nest optimizer pass a WHIRL tree for the function, 
- * and receive back a possibly optimized version of the tree.
- */
-extern WN *Lnoptimizer(PU_Info*, WN *, struct DU_MANAGER *du_mgr, 
-	struct  ALIAS_MANAGER *alias_mgr);
-
 #ifdef __cplusplus
 }
 #endif
+
+/* Clients of the loop nest optimizer pass a WHIRL tree for the function, 
+ * and receive back a possibly optimized version of the tree.
+ */
+extern WN *Lnoptimizer(PU_Info* current_pu, WN *func_nd, struct DU_MANAGER *du_mgr,
+	struct  ALIAS_MANAGER *alias_mgr);
+
 
 #endif /* lnoptimizer_INCLUDED */
 

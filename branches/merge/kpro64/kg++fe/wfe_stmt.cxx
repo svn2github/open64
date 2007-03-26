@@ -751,6 +751,21 @@ Push_Scope (tree t)
   scope_stack[scope_i] = t;
 }
 
+#ifdef KEY
+// Called only from wfe_decl.cxx for the top level decl.
+void
+Push_Top_Level_Scope (tree t)
+{
+  PARENT_SCOPE (t) = 0;
+  Push_Scope (t);
+}
+
+// Called only from wfe_decl.cxx for the top level decl.
+void Pop_Top_Level_Scope (void)
+{
+  --scope_i;
+}
+#endif
 
 void
 Push_Temp_Cleanup (tree t, bool is_cleanup

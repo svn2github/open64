@@ -117,9 +117,10 @@ extern int instrumentation_invoked;	/* Instrument whirl */
 
 extern boolean ftz_crt;		/* add flush-to-zero crt */
 
-#ifdef KEY /* Bug 4210 */
-extern char *f90_module_dir;	/* value of -module option */
-#endif /* KEY Bug 4210 */
+#ifdef KEY
+extern char *f90_module_dir;	/* value of -module option */	// bug 4210
+extern int malloc_algorithm;
+#endif
 
 /* return whether has been toggled yet */
 extern boolean is_toggled (int obj);

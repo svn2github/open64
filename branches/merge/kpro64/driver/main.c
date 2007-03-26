@@ -510,16 +510,33 @@ main (int argc, char *argv[])
 	set_defaults();
 
 #ifdef KEY
-	// gnu_version can be set by set_defaults().  Bug 10250.
-	if (gnu_version == 4) {
-	  if (option_was_seen(O_fwritable_strings) ||
-	      option_was_seen(O_fno_writable_strings)) {
-	    warning("ignored -fwritable-strings/-fno-writable-strings because"
-		    " option not supported under GNU GCC 4");
-	    set_option_unseen(O_fwritable_strings);
-	    set_option_unseen(O_fno_writable_strings);
-	  }
-	}
+        // Perform GNU4-related checks after set_defaults has run, since
+        // set_defaults can change gnu_version.  Bug 10250.
+        if (gnu_version == 4) {
+          if (option_was_seen(O_fwritable_strings) ||
+              option_was_seen(O_fno_writable_strings)) {
+            warning("ignored -fwritable-strings/-fno-writable-strings because"
+                    " option not supported under GNU GCC 4");
+            set_option_unseen(O_fwritable_strings);
+            set_option_unseen(O_fno_writable_strings);
+          }
+          if ((source_lang == L_cc ||
+               source_lang == L_CC) &&
+              option_was_seen(O_mp)) {  // bug 11896
+            warning("ignored -mp because option not yet supported under"
+                    " GNU GCC 4");
+            set_option_unseen(O_mp);
+          }
+        } else {        // not GNU 4
+          if (option_was_seen(O_fgnu_exceptions) ||     // bug 11732
+              option_was_seen(O_fno_gnu_exceptions)) {
+            warning("ignored -fgnu-exceptions/-fno-gnu-exceptions because"
+                    " option is for GNU GCC 4 only");
+            set_option_unseen(O_fgnu_exceptions);
+            set_option_unseen(O_fno_gnu_exceptions);
+            gnu_exceptions = UNDEFINED;
+          }
+        }
 #endif
 
 	// Display version after running set_defaults, which can change
@@ -1432,7 +1449,7 @@ display_version(boolean dump_version_only)
     return;
   }
 
-  fprintf(stderr, "PathScale EKOPath(TM) Compiler Suite: Version %s\n",
+  fprintf(stderr, "Open64 Compiler Suite: Version %s\n",
 	  compiler_version);
   if (show_version > 1) {
     fprintf(stderr, "Changeset: %s\n", cset_id);

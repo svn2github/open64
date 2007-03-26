@@ -1,6 +1,6 @@
 % -*- fundamental -*-
 %
-%  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+%  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
 %
 %  Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 %
@@ -51,6 +51,13 @@
 
 % There must be no spaces in any of the fields except the last one,
 % or you can have spaces in an action if you surround it with braces.
+
+#ifdef KEY
+% Option names can be double-quoted to prevent macro substitution.  For
+% example, since this file contains the line "#define cpp p", we must
+% double-quote the option name "-no-traditional-cpp" to preserve the "cpp"
+% part.
+#endif
 
 % There are several special syntax rules for option names that are used:
 % Option names that start with I, e.g. I-foo, are internal names
@@ -239,6 +246,8 @@ I-include=%D  ;		FTN     ffe,PFA     "-include=%D"
 	"Use faster versions of some standard library functions, when available"
 -fno-fast-stdlib	;	A	FE,ld	"-OPT:fast_stdlib=off"
 	"Do not use faster versions of standard library functions"
+-nolibpscrt	;	LINK	ld	""
+	"Do not link with libpscrt"
 %I-split_common	;		LINK	ld	"-split_common"
 %	"check split COMMON for inconsistencies and fix them"
 
@@ -1756,6 +1765,12 @@ I-u%s		;		Cc	ld	"-u %s"
     "Enable optimization of EH regions formation"
 -fno-handle-exceptions	;	Cc	cfe	self
 	"Disable exception handling"
+#ifdef KEY	/* bug 11732 */
+-fgnu-exceptions	toggle(&gnu_exceptions,TRUE);	C	cfe	""
+	"Enable exception handling in the GNU front-end"
+-fno-gnu-exceptions	toggle(&gnu_exceptions,FALSE);	C	cfe	""
+	"Disable exception handling in the GNU front-end"
+#endif
 -ffixed-%s	;		Cc	NONE	"-TENV:registers_not_allocatable=%s"
 	""
 -mfixed-range=%s	;	Cc	NONE	"-TENV:registers_not_allocatable=%s"

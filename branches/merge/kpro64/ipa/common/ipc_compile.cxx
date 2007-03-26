@@ -820,7 +820,11 @@ Get_Annotation_Filename_With_Path (void) {
     else if (*Annotation_Filename == '/') {
         strcpy (buf, Annotation_Filename);
     }else {
+#ifdef KEY
+        strcpy (buf, "$$dir/");		// bug 11686
+#else
         strcpy (buf, "../");
+#endif
         strcat (buf, Annotation_Filename);
     }
      
@@ -932,15 +936,13 @@ void ipacom_doit (const char* ipaa_filename)
       // Since we are using GCC to link, don't print out the run-time support
       // files.
       char *p;
-      if (no_crt) {
-        if (((p = strstr(*i, "/crt1.o")) && p[7] == '\0') ||
-	    ((p = strstr(*i, "/crti.o")) && p[7] == '\0') ||
-	    ((p = strstr(*i, "/crtbegin.o")) && p[11] == '\0') ||
-	    ((p = strstr(*i, "/crtend.o")) && p[9] == '\0') ||
-	    ((p = strstr(*i, "/crtn.o")) && p[7] == '\0')) {
-	  continue;
-        }
-     }
+      if (((p = strstr(*i, "/crt1.o")) && p[7] == '\0') ||
+	  ((p = strstr(*i, "/crti.o")) && p[7] == '\0') ||
+	  ((p = strstr(*i, "/crtbegin.o")) && p[11] == '\0') ||
+	  ((p = strstr(*i, "/crtend.o")) && p[9] == '\0') ||
+	  ((p = strstr(*i, "/crtn.o")) && p[7] == '\0')) {
+	continue;
+      }
 #endif
       // Since we're using gcc to link, we must mangle linker
       // directives that we know about so they are acceptable to it,
@@ -1108,19 +1110,19 @@ void ipacom_doit (const char* ipaa_filename)
             fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n\n",
                 tmpdir_macro, symtab_command_line, Feedback_Filename, symtab_extra_args);
     } else if (Annotation_Filename) {
+      fprintf (makefile, "\t"
 #ifdef KEY
-      /* Enable feedback for cg. */
-      fprintf (makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=on \n\n",
+	       "dir=`pwd`; "	// for calculating feedback prefix
+#endif
+	       "cd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s "
+#ifdef KEY
+	       "-Wb,-CG:enable_feedback=on\n\n",  // enable feedback for cg
+#else
+	       "-Wb,-CG:enable_feedback=off\n\n",
+#endif
 	       tmpdir_macro, symtab_command_line, 
 	       Get_Annotation_Filename_With_Path (),
 	       symtab_extra_args);
-#else
-            fprintf (makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n\n",
-                    tmpdir_macro, symtab_command_line, 
-                    Get_Annotation_Filename_With_Path (),
-                    symtab_extra_args);
-#endif
-
     } else {
             fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off\n\n",
                 tmpdir_macro, symtab_command_line, symtab_extra_args);
@@ -1165,16 +1167,18 @@ void ipacom_doit (const char* ipaa_filename)
         fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
                 tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
     } else if (Annotation_Filename) {
+      fprintf(makefile, "\t"
 #ifdef KEY
-      /* Enable feedback for cg. */
-      fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=on \n",
+	      "dir=`pwd`; "
+#endif
+	      "cd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s "
+#ifdef KEY
+	      "-Wb,-CG:enable_feedback=on\n",	// enable feedback for cg
+#else
+	      "-Wb,-CG:enable_feedback=off\n",
+#endif
 	      tmpdir_macro, (*commands)[i], 
 	      Get_Annotation_Filename_With_Path () , extra_args);
-#else
-        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
-                tmpdir_macro, (*commands)[i], 
-                Get_Annotation_Filename_With_Path () , extra_args);
-#endif
     } else {
         fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off\n",
                 tmpdir_macro, (*commands)[i], extra_args);
@@ -1184,7 +1188,11 @@ void ipacom_doit (const char* ipaa_filename)
         fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
                 tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
     } else if (Annotation_Filename) {
-        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
+        fprintf(makefile, "\tcd %s; "
+#ifdef KEY
+		"dir=`pwd`; "
+#endif
+		"%s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
                 tmpdir_macro, (*commands)[i], 
                 Get_Annotation_Filename_With_Path (),extra_args);
     } else {

@@ -1402,6 +1402,13 @@ Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
     }
     ldidop = Ldid_from_mtype_class_and_size(sym->Mclass(), bytes);
     stidop = Stid_from_mtype_class_and_size(sym->Mclass(), bytes);
+    if (MTYPE_is_unsigned(sym->Mtype())) { // bug 11732
+      ldidop = OPCODE_make_op(OPR_LDID,
+                              Mtype_TransferSign(MTYPE_U4,OPCODE_rtype(ldidop)),
+                              Mtype_TransferSign(MTYPE_U4,OPCODE_desc(ldidop)));
+      stidop = OPCODE_make_op(OPR_STID, MTYPE_V,
+                              Mtype_TransferSign(MTYPE_U4,OPCODE_desc(ldidop)));
+    }
 #else
      ldidop = Ldid_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());
      stidop = Stid_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());

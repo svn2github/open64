@@ -2033,6 +2033,11 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
         if (DST_INFO_tag( info ) == DW_TAG_base_type) {
           attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_BASETYPE);
           name = DST_STR_IDX_TO_PTR( DST_FORMAL_PARAMETER_name(attr));
+#ifdef KEY //bug 11848: name can not be null
+         if(name == NULL)
+            Is_True(0, ("Base type should have a name in a DST entry"));
+          else
+#endif
           if (!strcmp(name, int_name1) || !strcmp(name, int_name2) ||
               !strcmp(name, int_name3)) {
             *int_idx_p = child_idx;
@@ -3428,8 +3433,17 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
       ty = FLD_type(TY_fld(ty));
 #endif
     if ((TY_kind(ty) == KIND_POINTER) &&
-	((v->is_static_array) || (vtype == VAR_REDUCTION_ARRAY)))
+        ((v->is_static_array) || (vtype == VAR_REDUCTION_ARRAY)))
+#ifdef KEY //bug 11661
+     {
+#endif
       ty = TY_pointed(ty);
+#ifdef KEY //bug 11661: for structure, we need the field type
+      if (TY_kind(ty) == KIND_STRUCT && vtype == VAR_REDUCTION_ARRAY)
+        ty = FLD_type(TY_fld(ty));
+     }
+#endif
+
     if ((TY_kind(ty) == KIND_ARRAY) && (vtype == VAR_REDUCTION_ARRAY))
       ty = TY_etype(ty);
     if ((vtype == VAR_REDUCTION_ARRAY_OMP) && (TY_kind(ty) == KIND_POINTER)

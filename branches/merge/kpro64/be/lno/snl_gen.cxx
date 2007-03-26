@@ -1321,6 +1321,13 @@ static void UT_Body_Innermost(WN* body,
       UT_Body_Exp(WN_while_test(wn), td);
       UT_Body_Innermost(WN_while_body(wn), td);
       break;
+#ifdef KEY //bug 11817: handle regions under loop body
+     case OPC_REGION:
+       UT_Body_Innermost(WN_region_pragmas(wn),td);
+       UT_Body_Innermost(WN_region_exits(wn),td);
+       UT_Body_Innermost(WN_region_body(wn),td);
+       break;
+#endif
      default:
       UT_Body_Exp(wn, td);
       break;

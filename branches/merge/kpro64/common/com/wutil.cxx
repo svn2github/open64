@@ -758,7 +758,8 @@ static const struct {
   INTRN_CTZ64,                  "CTZ64",
   INTRN_CLZ32,                  "CLZ32",
   INTRN_CTZ,                    "CTZ",
-
+  INTRN_F4CBRT,                 "F4CBRT",
+  INTRN_F8CBRT,                 "F8CBRT",
 #ifdef TARG_X8664
   INTRN_V16F4SIN,		"INTRN_V16F4SIN",
   INTRN_V16F4EXP,		"INTRN_V16F4EXP",
@@ -926,6 +927,7 @@ static const struct {
   INTRN_F8F8I4EXPEXPR,		"INTRN_F8F8I4EXPEXPR",
   INTRN_F4F4I4EXPEXPR,		"INTRN_F4F4I4EXPEXPR",
   INTRN_FQFQI4EXPEXPR,		"INTRN_FQFQI4EXPEXPR",
+  INTRN_EXPECT,                 "INTRN_EXPECT",
 #endif
 
   INTRINSIC_LAST,		"INTRINSIC_LAST"

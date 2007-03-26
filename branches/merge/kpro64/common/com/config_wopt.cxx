@@ -90,7 +90,7 @@ BOOL  WOPT_Enable_Aggressive_Doloop_Promotion = FALSE;
 BOOL  WOPT_Enable_Aggressive_IVR = TRUE;
 BOOL  WOPT_Enable_Aggressive_Lftr = TRUE;
 BOOL  WOPT_Enable_Aggressive_Phi_Simp = TRUE;
-UINT32 WOPT_Enable_Autoaggstr_Reduction_Threshold = 11;
+INT32 WOPT_Enable_Autoaggstr_Reduction_Threshold = 11;
 BOOL  WOPT_Enable_Alias_ANSI = TRUE;
 BOOL  WOPT_Enable_Alias_Classification = TRUE;
 BOOL  WOPT_Enable_Aggressive_Alias_Classification = TRUE;
@@ -228,6 +228,7 @@ INT32 WOPT_Enable_If_Conv_Limit = 6;    /* max number of leaf nodes allowed in a
 					   simple expr in simple if conv */
 BOOL  WOPT_Enable_If_Conv_For_Istore = TRUE;   /* if-conversion is applied if lhs is istore */
 BOOL  WOPT_Enable_Speculation_Defeats_LFTR = TRUE;
+BOOL  WOPT_Enable_Str_Red_Use_Context = TRUE; /* use loop content in SR decision */
 BOOL  WOPT_Enable_SSA_Minimization = TRUE; /* SSA minimization in SSAPRE */
 BOOL  WOPT_Enable_SSA_PRE = TRUE;
 BOOL  WOPT_Enable_Store_PRE = TRUE;
@@ -563,6 +564,8 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Small_Br_Target, NULL },
   { OVK_BOOL,   OV_VISIBLE,    TRUE, "spec_nix_lftr",  "",
     0, 0, 0,    &WOPT_Enable_Speculation_Defeats_LFTR, NULL },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "sr_use_context", "sr_use_context",
+    0, 0, 0,    &WOPT_Enable_Str_Red_Use_Context, NULL },
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "ssa_minimization",	"ssa_min",
     0, 0, 0,    &WOPT_Enable_SSA_Minimization, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "ssapre",		"ssapre",

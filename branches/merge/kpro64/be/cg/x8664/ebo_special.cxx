@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007.  QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -1612,6 +1612,16 @@ static BOOL Convert_Imm_And( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
   /* First, handle special cases. */
 
   if( imm_val == 0xff ){
+    // Under m32, not all general purpose registers are byte-addressable.
+    if (Is_Target_32bit() &&
+	EBO_in_peep) {
+      const REGISTER reg = TN_register(tn);
+      const REGISTER_SET regs =
+	      REGISTER_CLASS_eight_bit_regs(TN_register_class(tn));
+      if (!REGISTER_SET_MemberP(regs, reg))
+        return FALSE;
+    }
+
     new_top = TN_size(tnr) == 8 ? TOP_movzbq : TOP_movzbl;
 
   } else if( imm_val == 0xffff ){
@@ -2677,6 +2687,11 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
 
   INT prefetch_offset = WN_offset(mem_wn);
 
+#ifdef KEY
+  // bug 10953: LNO tells me this prefetch must be kept
+  if(PF_GET_KEEP_ANYWAY(WN_prefetch_flag(mem_wn)))
+   return FALSE;
+#endif  
   if (OP_find_opnd_use( op, OU_base ) >= 0)
     base = OP_opnd( op, OP_find_opnd_use( op, OU_base ));
   else
@@ -4115,8 +4130,25 @@ static BOOL Check_loadbw_execute( int ld_bytes, OP* ex_op )
 	 */
 	struct SIZE_EXT_INFO pred_size_ext_info;
 	Get_Size_Ext_Info( OP_code(pred_op), &pred_size_ext_info );
-	if( !pred_size_ext_info.sign_ext )
-	  return FALSE;
+	if (!pred_size_ext_info.sign_ext) {
+	  // If the consumer of rsp cares only about equality/inequality, then
+	  // it is ok to use 8-bit cmp.
+	  OP *op;
+	  for (op = OP_next(ex_op); op != NULL; op = OP_next(op)) {
+	    TOP top = OP_code(op);
+	    if (OP_reads_rflags(op) &&
+		top != TOP_je &&
+		top != TOP_jne &&
+		top != TOP_sete &&
+		top != TOP_setne &&
+		top != TOP_cmove &&
+		top != TOP_cmovne) {
+	      return FALSE;
+	    }
+	    if (TOP_is_change_rflags(top))
+	      break;
+	  }
+	}
       }
 
       if( OP_load( pred_op ) ){

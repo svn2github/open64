@@ -785,6 +785,14 @@ add_file_args (string_list_t *args, phases_t index)
 			break;
 		}
 
+#ifdef KEY
+		if (gnu_exceptions == FALSE &&		// bug 11732
+		    (source_lang == L_cc ||
+		     source_lang == L_CC)) {
+		  add_string(args, "-fno-exceptions");
+		}
+#endif
+
 		if (!option_was_seen(O_nostdinc)) {
 			char *root = directory_path(get_executable_dir());
 			#ifdef PSC_TO_OPEN64
@@ -1124,6 +1132,9 @@ add_file_args (string_list_t *args, phases_t index)
 		  if (strstr(uts.machine, "x86_64") == NULL) {
 		    add_string(args, "-fi386-host");		// bug 10532
 		  }
+		}
+		if (gnu_exceptions == FALSE) {			// bug 11732
+		  add_string(args, "-fno-gnu-exceptions");
 		}
 	        // fall through
 #endif
@@ -1689,11 +1700,8 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	    // If -compat-gcc, link with pscrt even if -nostdlib.  Bug 4551.
 	    if (option_was_seen(O_compat_gcc) &&
 		!option_was_seen(O_fno_fast_stdlib) &&
-		// m32 currently doesn't use anything from libpscrt.  Bug 9611.
-		abi != ABI_N32) {
-                  // Comment this since the copyright of libpscrt*.
-		  //add_library(args, "pscrt");
-		  //add_library(args, "pscrt_p");
+		!option_was_seen(O_nolibpscrt)) {	// bug 9611
+	      // add_library(args, "pscrt");
 	    }
 	    return;
 	}
@@ -1744,11 +1752,8 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	// compilers, since those libraries could use PathScale routines.
 	// Bug 3995.
 	if (!option_was_seen(O_fno_fast_stdlib) &&
-	    // m32 currently doesn't use anything from libpscrt.  Bug 9611.
-	    abi != ABI_N32) {
-              // Comment this since the copyright of libpscrt*.
-	      //add_library(args, "pscrt");
-	      //add_library(args, "pscrt_p");
+	    !option_was_seen(O_nolibpscrt)) {	// bug 9611
+	    add_library(args, "pscrt");
 	}
 #endif
 
@@ -2474,7 +2479,15 @@ run_ld (void)
 	char *ldpath;
 	string_list_t *args = init_string_list();
 
-    ldphase = determine_ld_phase (ipa == TRUE);
+	if (ipa == TRUE) {
+		ldphase = P_ipa_link;
+	}
+	else if (invoked_lang == L_CC) {
+		ldphase = P_ldplus;
+	}
+	else {
+		ldphase = P_ld;
+	}
 
 #ifdef KEY
 	// Pass "-m elf_i386" and "-m elf_x86_64" to linker.  Bug 8441.

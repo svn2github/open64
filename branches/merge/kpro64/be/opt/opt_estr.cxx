@@ -408,6 +408,22 @@ Str_red_get_fixed_operand( const CODEREP *cr, INT which_opnd )
 }
 
 //======================================================================
+// Returns the threshold adjusted by taking into account the content of the
+// innermost loop that bb belongs to
+//======================================================================
+INT
+STR_RED::Local_autoaggstr_reduction_threshold(BB_NODE *bb) const
+{
+  if (! WOPT_Enable_Str_Red_Use_Context)
+    return WOPT_Enable_Autoaggstr_Reduction_Threshold;
+  const BB_LOOP *loop = Cfg()->Find_innermost_loop_contains( bb );
+  if (loop == NULL)
+    return WOPT_Enable_Autoaggstr_Reduction_Threshold;
+  return MAX(0,
+          WOPT_Enable_Autoaggstr_Reduction_Threshold - loop->Size_estimate()/18);
+}
+
+//======================================================================
 // Determine if the statement updates an induction variable, and
 // return the induction variable being updated (one on rhs), the
 // increment amount, and whether or not it's an increment or decrement
@@ -427,7 +443,7 @@ STR_RED::Find_iv_and_incr( STMTREP *stmt, CODEREP **updated_iv,
   if (aggstr_cand)
     // check if the number of induction expression injured by this stmt
     // exceeds the threshold 
-    if (stmt->Str_red_num() >= WOPT_Enable_Autoaggstr_Reduction_Threshold)
+    if (stmt->Str_red_num() >= Local_autoaggstr_reduction_threshold(stmt->Bb()))
       return FALSE;
 
   // it's possible we've CSE'd the rhs of the iv update, so we need
@@ -665,7 +681,7 @@ STR_RED::Updated_by_iv_update(const CODEREP *first,
   if (aggstr_cand)
     // check if the number of induction expression injured by this stmt
     // exceeds the threshold 
-    if (last_def->Str_red_num() >= WOPT_Enable_Autoaggstr_Reduction_Threshold)
+    if (last_def->Str_red_num() >= Local_autoaggstr_reduction_threshold(last_def->Bb()))
       return FALSE;
 
   // Continue following the chain of IV updates only if the innermost

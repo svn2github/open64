@@ -170,7 +170,11 @@ BBlist_Add_BB (BBLIST **lst, BB *bb)
  */
 BBLIST *
 BBlist_Add_BB_with_Prob (BBLIST **lst, BB *bb, float prob,
-			 BOOL via_feedback, BOOL set_prob)
+			 BOOL via_feedback, BOOL set_prob
+#ifdef KEY
+                         , BOOL via_hint
+#endif
+			 )
 {
   BBLIST *p, *last;
 
@@ -184,6 +188,10 @@ BBlist_Add_BB_with_Prob (BBLIST **lst, BB *bb, float prob,
       Set_BBLIST_prob_fb_based(p);
     } if (set_prob || FREQ_Frequencies_Computed()) {
       BBLIST_prob(p) = prob;
+#ifdef KEY
+      if (via_hint)
+        Set_BBLIST_prob_hint_based(p);
+#endif
       Reset_BBLIST_prob_fb_based(p);
     }
     *lst = p;
@@ -207,10 +215,19 @@ BBlist_Add_BB_with_Prob (BBLIST **lst, BB *bb, float prob,
   if (via_feedback || CG_PU_Has_Feedback) {
     BBLIST_prob(p) = prob;
     Set_BBLIST_prob_fb_based(p);
-  } if (FREQ_Frequencies_Computed()) {
+  } if (
+#ifdef KEY
+        set_prob ||
+#endif
+        FREQ_Frequencies_Computed()) {
     BBLIST_prob(p) = prob;
+#ifdef KEY
+    if (via_hint)
+      Set_BBLIST_prob_hint_based(p);
+#endif
     Reset_BBLIST_prob_fb_based(p);
   }
+  
   return p;
 }
 
@@ -235,14 +252,22 @@ Link_Pred_Succ (BB *pred, BB *succ)
 
 void
 Link_Pred_Succ_with_Prob (BB *pred, BB *succ, float prob,
-			  BOOL via_feedback, BOOL set_prob)
+                          BOOL via_feedback, BOOL set_prob
+#ifdef KEY
+                          , BOOL via_hint
+#endif
+                         )
 {
   Verify_BB(pred);
   Verify_BB(succ);
 
   BBLIST *pedge;
   BBlist_Add_BB_with_Prob (&BB_succs(pred), succ, prob,
-			   via_feedback, set_prob);
+                           via_feedback, set_prob
+#ifdef KEY
+                           , via_hint
+#endif
+                          );
   pedge = BBlist_Add_BB (&BB_preds(succ), pred);
 
   /* Poison probability of pred edge since it is unused.

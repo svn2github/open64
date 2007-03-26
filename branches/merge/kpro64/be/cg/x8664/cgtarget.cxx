@@ -2141,6 +2141,12 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
       return TRUE;
   }
 
+  /* Return TRUE for emms/x87 or x87/emms pair.  Bug 11800. */
+  if ((OP_code(pred_op) == TOP_emms && TOP_is_uses_stack(OP_code(succ_op))) ||
+      (OP_code(succ_op) == TOP_emms && TOP_is_uses_stack(OP_code(pred_op)))) {
+    return TRUE;
+  }
+
   /* Return TRUE if <pred_op> can change rflags, and <succ_op> is a
      comparison op. */
 
@@ -2613,6 +2619,7 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
   if( size < cache_size )
     return;
 
+  BOOL dep_graph_computed = FALSE;
   FOR_ALL_BB_OPs_FWD( body, op ){
     if( OP_prefetch( op ) ){
       /* Get rid of any prefetchw operation, because it "loads the prefetched
@@ -2649,8 +2656,46 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
       continue;
     }
 
-    /* Here we chang any store to a non-temporal store.
-     */
+    /* Change a store to a non-temporal store.
+
+       Perform the change only if the store doesn't involve a cache line that
+       is reused.  Detect reuse by looking for OPs that load the same memory
+       location.  It doesn't matter if the load is before or after the store,
+       since the load will involve the same cache line.  Bug 11853. */
+
+    BOOL skip = FALSE;
+    if (TOP_is_vector_op(OP_code(op)) &&
+	((OP_store(op) &&
+	  !TOP_is_nt_store(OP_code(op))))) {
+      ARC_LIST *arcs;
+      if (dep_graph_computed == FALSE) {
+	CG_DEP_Compute_Graph(body, NO_ASSIGNED_REG_DEPS, NON_CYCLIC,
+			     INCLUDE_MEMREAD_ARCS, INCLUDE_MEMIN_ARCS,
+			     NO_CONTROL_ARCS, NULL );
+	dep_graph_computed = TRUE;
+      }
+      for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+	ARC *arc = ARC_LIST_first(arcs);
+	if (ARC_kind(arc) == CG_DEP_MEMIN ||
+	    ARC_kind(arc) == CG_DEP_MEMANTI) {
+	  skip = TRUE;
+	  break;
+	}
+      }
+      if (skip == TRUE)
+        continue;
+
+      for (arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+	ARC *arc = ARC_LIST_first(arcs);
+	if (ARC_kind(arc) == CG_DEP_MEMIN ||
+	    ARC_kind(arc) == CG_DEP_MEMANTI) {
+	  skip = TRUE;
+	  break;
+	}
+      }
+      if (skip == TRUE)
+        continue;
+    }
 
     TOP new_top = TOP_UNDEFINED;
 
@@ -2677,6 +2722,9 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
     if( new_top != TOP_UNDEFINED )
       OP_Change_Opcode( op, new_top );
   }
+
+  if (dep_graph_computed == TRUE)
+    CG_DEP_Delete_Graph(body);
 }
 
 
@@ -2826,6 +2874,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 	   (*constraint == 'd') || (*constraint == 'c') ||
 	   (*constraint == 'S') || (*constraint == 'D') || 
 	   (*constraint == 'A') || (*constraint == 'q') || 
+	   (*constraint == 'Q') || 
 	   (*constraint == 'e' && *(constraint+1) == 'r'))
   {
     TYPE_ID rtype;
@@ -2872,7 +2921,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
     } else     
       ret_tn = Build_TN_Of_Mtype(rtype);
 
-    if (*constraint == 'q') {
+    if (*constraint == 'q' || *constraint == 'Q') {
       // For m64, although all 16 integer registers can be addressed as 8-bit
       // registers, use only AX/BX/CX/DX for the 8-bit 'q' constraint.  An ASM,
       // such as "%h1", may ask for the second least significant byte of the
