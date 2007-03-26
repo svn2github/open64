@@ -1557,7 +1557,7 @@ Allocate_Register (
   // fat points. 
   //
   if (reg <= REGISTER_MAX) {
-#ifndef TARG_IA64
+#ifdef TARG_IA64
     last_assigned_reg[regclass] = reg;
 #endif
   }
@@ -3708,7 +3708,7 @@ Spill_Live_Range (
                    TN_number(prev_tn), TN_number(new_tn));
         }
         CGSPILL_Insert_Ops_Before(bb, op, &copy_ops);
-#ifdef TARG_IA64
+#ifndef TARG_IA64
 	resnum = 0;
 #else
         resnum = TN_Resnum_In_OP (op, spill_tn);
