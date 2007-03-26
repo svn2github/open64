@@ -2353,9 +2353,9 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
 #ifdef TARG_MIPS
           // 11943: Control flow dependencies prevent filling of branch
           // delay slots on MIPS machines
-          NO_CONTROL_ARCS,
+          NO_CONTROL_ARCS
 #else
-          INCLUDE_CONTROL_ARCS,
+          INCLUDE_CONTROL_ARCS
 #endif
 #endif // TARG_IA64
 	  ,
