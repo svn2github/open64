@@ -274,7 +274,6 @@ friend class POINTS_TO;
     AUX_ID      _aux_id;           // AUX_ID of the pointer
     INT32       _coderep_id;       // CODEREP of the pointer
   } u;  // the name "u" is actually not necessary
-  ST           *_ptr;              // pointer for indirect access 
   VER_ID        _ptr_ver;          // the version of _ptr
   IDTYPE        _alias_class;      // which equivalence class this
 				   // memop is in, according to per-PU
