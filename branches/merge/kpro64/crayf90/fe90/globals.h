@@ -3511,17 +3511,10 @@ struct  int_dope_entry  {
 typedef struct int_dope_entry           int_dope_type;
 
 
-# ifdef _HOST64
-struct exp_tbl_entry            {
-                                boolean			ext  :  1;
-                                linear_type_type	type : 63;
-                                };
-# elif _HOST32
 struct exp_tbl_entry            {
                                 boolean			ext  :  1;
                                 linear_type_type	type : 31;
                                 };
-# endif
 
 typedef struct exp_tbl_entry    exp_tbl_type;
 
