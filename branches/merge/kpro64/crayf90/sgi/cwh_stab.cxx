@@ -1275,7 +1275,7 @@ fei_object(char * name_string,
       original_st->st_idx = save_st_idx;
     }
 #endif /* KEY Bug 11574 */
-  return(cast_to_int(o));
+  return(cast_to_long(o));
 }
 
 
