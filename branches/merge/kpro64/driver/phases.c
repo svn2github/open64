@@ -2563,9 +2563,10 @@ run_ld (void)
   	else
 	    append_objects_to_list (args);
 
-    if ( invoked_lang == L_f77 || invoked_lang == L_f90) {
+    // now we use gcc/g++ to link fortran programs, so ignore these ld options
+    /*if ( invoked_lang == L_f77 || invoked_lang == L_f90) {
         specify_dyn_linker (args);
-    }
+    }*/
 
 #ifdef CROSS_COMPILATION
     specify_dyn_linker (args);
