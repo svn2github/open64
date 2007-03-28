@@ -916,7 +916,8 @@ BOOL Valid_alias(const ALIAS_MANAGER *am, WN *wn)
 
 //  Alias analysis for two WN *
 //
-ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2) 
+ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2,
+                     BOOL ignore_loop_carried) 
 {
   IDTYPE id1 = am->Id(wn1);
   IDTYPE id2 = am->Id(wn2);
@@ -972,30 +973,36 @@ ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   if (OPERATOR_is_store(WN_operator(wn1)) && OPERATOR_is_load(WN_operator(wn2)) ||
       OPERATOR_is_store(WN_operator(wn2)) && OPERATOR_is_load(WN_operator(wn1))) {
 #ifdef TARG_IA64
-    if (am->Rule()->Aliased_Memop(pt1, pt2, pt1->Ty(), pt2->Ty())) // OSP-172
+    if (am->Rule()->Aliased_Memop(pt1, pt2, ignore_loop_carried)) // OSP-172
 #else
     if (am->Rule()->Aliased_Memop(pt1, pt2, WN_object_ty(wn1), WN_object_ty(wn2)))
 #endif
       return POSSIBLY_ALIASED;
   } else {
     // cannot apply ANSI type rule to STORE <--> STORE.
-    if (am->Rule()->Aliased_Memop(pt1, pt2, (TY_IDX)NULL, (TY_IDX)NULL)) 
+    if (am->Rule()->Aliased_Memop(pt1, pt2, (TY_IDX)NULL, (TY_IDX)NULL, 
+                                  ignore_loop_carried)) { 
       return POSSIBLY_ALIASED;
+    }
   }
   return NOT_ALIASED;
 }
 
 
 ALIAS_RESULT
-ALIAS_MANAGER::Aliased(const POINTS_TO *pt1, const POINTS_TO *pt2)
+ALIAS_MANAGER::Aliased(const POINTS_TO *pt1, const POINTS_TO *pt2,
+                       BOOL ignore_loop_carried)
 {
-  if (Rule()->Aliased_Memop(pt1, pt2, (TY_IDX) NULL, (TY_IDX) NULL)) 
+  if (Rule()->Aliased_Memop(pt1, pt2, (TY_IDX) NULL, (TY_IDX) NULL, 
+                            ignore_loop_carried)) {
     return POSSIBLY_ALIASED;
+  }
   return NOT_ALIASED;
 }
 
 ALIAS_RESULT
-ALIAS_MANAGER::Aliased(WN *wn, const POINTS_TO *pt2)
+ALIAS_MANAGER::Aliased(WN *wn, const POINTS_TO *pt2,
+                       BOOL ignore_loop_carried)
 {
   IDTYPE id = Id(wn);
   
@@ -1008,13 +1015,14 @@ ALIAS_MANAGER::Aliased(WN *wn, const POINTS_TO *pt2)
       ST_sclass(pt2->Base()) == SCLASS_REG) {
     return (WN_offset(wn) != pt2->Byte_Ofst()) ? NOT_ALIASED : SAME_LOCATION;
   }
-  return Aliased(Pt(id), pt2);
+  return Aliased(Pt(id), pt2, ignore_loop_carried);
 }
 
 ALIAS_RESULT
-ALIAS_MANAGER::Aliased(const POINTS_TO *pt1, WN *wn)
+ALIAS_MANAGER::Aliased(const POINTS_TO *pt1, WN *wn, 
+                       BOOL ignore_loop_carried)
 {
-  return Aliased(wn, pt1);
+  return Aliased(wn, pt1, ignore_loop_carried);
 }
 
 void
@@ -1245,8 +1253,11 @@ ALIAS_RESULT Overlapped_base(const ALIAS_MANAGER *am, const WN *wn1, const WN *w
   //
   // if (!pt1.Base_is_fixed())
   pt1.Set_ofst_kind(OFST_IS_UNKNOWN);
+  pt1.Set_iofst_kind(OFST_IS_UNKNOWN);
+
   // if (!pt2.Base_is_fixed())
   pt2.Set_ofst_kind(OFST_IS_UNKNOWN);
+  pt2.Set_iofst_kind(OFST_IS_UNKNOWN);
 
   if (am->Rule()->Aliased_Memop(&pt1, &pt2, WN_object_ty(wn1), WN_object_ty(wn2))) {
     if (pt1.Same_base(&pt2)) {

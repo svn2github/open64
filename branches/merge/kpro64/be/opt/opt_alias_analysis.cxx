@@ -536,9 +536,9 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 	ai->Set_base((ST*)(INTPTR)ver);
 	if (st) {
  	  if (ST_class(st) != CLASS_PREG){
-	    ai->Set_pointer (st, FALSE);
+	    ai->Set_pointer (st);
 	  } else {
-	    ai->Set_pointer ((ST*)(INTPTR)aux_id, TRUE);
+	    ai->Set_pointer_as_aux_id (aux_id);
 	  }
 	  ai->Set_pointer_ver (ver);
 	  ai->Set_iofst_kind (OFST_IS_FIXED);
@@ -654,9 +654,9 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
         summary_pt.Set_base((ST *)phi);
         if (st) {
           if (ST_class(st) != CLASS_PREG){
-	          summary_pt.Set_pointer (st, FALSE);
+            summary_pt.Set_pointer (st);
           } else {
-            summary_pt.Set_pointer ((ST*)(INTPTR)aux_id, TRUE);
+            summary_pt.Set_pointer_as_aux_id (aux_id);
           }
         }
         summary_pt.Set_pointer_ver (ver);
@@ -705,9 +705,9 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
       ai->Set_base( (ST *) chi );
       if (st) {
         if (ST_class(st) != CLASS_PREG){
-          ai->Set_pointer (st, FALSE);
+          ai->Set_pointer (st);
         } else {
-          ai->Set_pointer ((ST*)(INTPTR)aux_id, TRUE);
+          ai->Set_pointer_as_aux_id (aux_id);
           if (Its_ret_val_of_malloc (ver)) {
            VER_STAB_ENTRY* verent = Ver_stab_entry(ver);
            ai->Set_malloc_id (WN_linenum(verent->Chi_wn()));
@@ -901,8 +901,7 @@ void OPT_STAB::Analyze_Base_Flow_Sensitive(POINTS_TO *pt, WN *wn)
 	pt->Set_attr(ai.Attr());
 	pt->Shift_ofst(WN_offset(wn));
 	pt->Lower_to_base(wn);
-	pt->Set_pointer (ai.Pointer (), ai.Pointer_is_aux_id());
-	pt->Set_pointer_ver (ai.Pointer_ver ());
+        pt->Copy_pointer_info (&ai);
       } else if (ai.Restricted()) {
 	pt->Set_expr_kind(EXPR_IS_ADDR);
 	pt->Set_restricted();
@@ -929,8 +928,7 @@ void OPT_STAB::Analyze_Base_Flow_Sensitive(POINTS_TO *pt, WN *wn)
 	pt->Set_attr(ai.Attr());
 	pt->Shift_ofst(WN_offset(wn));
 	pt->Lower_to_base(wn);
-	pt->Set_pointer (ai.Pointer(), ai.Pointer_is_aux_id());
-	pt->Set_pointer_ver (ai.Pointer_ver ());
+        pt->Copy_pointer_info (&ai);
       } else  if (ai.Restricted()) {
 	pt->Set_expr_kind(EXPR_IS_ADDR);
 	pt->Set_restricted();

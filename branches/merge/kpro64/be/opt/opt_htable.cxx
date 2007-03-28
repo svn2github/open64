@@ -2394,7 +2394,7 @@ CODEREP *
 CODEMAP::Add_idef(OPCODE opc, OCC_TAB_ENTRY *occ, STMTREP *stmt,
 		  MU_NODE *mnode, MTYPE dtyp, MTYPE dsctyp, TY_IDX lodty,
 		  UINT field_id, mINT32 ofst, CODEREP *size, CODEREP *lbase,
-		  CODEREP *sbase)
+		  CODEREP *sbase, OPT_STAB* optstab)
 {
   CODEREP          *cr = Alloc_stack_cr(IVAR_EXTRA_NODE_CNT);
   CODEREP          *retv;
@@ -2445,6 +2445,40 @@ CODEMAP::Add_idef(OPCODE opc, OCC_TAB_ENTRY *occ, STMTREP *stmt,
     else {
       // OPR_MLOAD OPR_PREFETCH
       retv = Hash_New_ivar(cr);
+    }
+  }
+
+  if (WOPT_Enable_Aggr_Pt_Keep_Track_Ptr) {
+    POINTS_TO* pt = retv->Points_to(optstab);
+
+    // If the "base is fixed", we don't want to set up the offset 
+    // and CODEREP as indirectly access pointer. The reason is
+    // twofolds: firstly, fixed base + offset is enough for memory 
+    // disambiguation; secondly, the offset field of POINTS_TO
+    // have different meaning when the base-is-fixed and when 
+    // CODEREP is set as a indirect base for the POINTS_TO. 
+    // For fortran cases, Add_idef() may be called upon some WNs 
+    // whose POINTS_TO has fixed base. That is why we need 
+    // condition "!pt->Base_is_fixed() to exclude this case. 
+
+    if (pt && !pt->Base_is_fixed() && !pt->Pointer_is_coderep_id () 
+        && !pt->Pointer_info_does_help()) {
+      CODEREP* ptr = retv->Ilod_base() ? retv->Ilod_base() : retv->Istr_base();
+      INT32 ofst = retv->Offset();   
+      INT32 sz   = (MTYPE_size_min(retv->Dsctyp()) >> 3); // in bytes
+      if (ptr->Kind() == CK_OP && ptr->Opr () == OPR_ADD) {
+        if (ptr->Opnd(1)->Kind() == CK_CONST) {
+          ofst += ptr->Opnd(1)->Const_val();
+          ptr = ptr->Opnd(0);
+        } else if (ptr->Opnd(0)->Kind() == CK_CONST) {
+          ofst += ptr->Opnd(0)->Const_val();
+          ptr = ptr->Opnd(1);
+        }
+      }
+      pt->Set_pointer_as_coderep_id (ptr->Coderep_id());
+      pt->Set_iofst_kind (OFST_IS_FIXED);
+      pt->Set_byte_size (sz);
+      pt->Set_byte_ofst (ofst);
     }
   }
 
@@ -3086,7 +3120,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 		    opt_stab->Get_mem_mu_node(wn), WN_rtype(wn),
 		    WN_desc(wn), WN_ty(wn), WN_field_id(wn),
 		    base_ccr.Scale(), (CODEREP *)(INTPTR) WN_load_addr_ty(wn),
-		    lbase, NULL);
+		    lbase, NULL, opt_stab);
     Is_True(retv->Kind()==CK_IVAR || (retv->Kind()==CK_OP
 				      && (retv->Opr()==OPR_CVT ||
 					  retv->Opr()==OPR_CVTL)),
@@ -3175,7 +3209,8 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     retv = Add_idef(op, opt_stab->Get_occ(wn), NULL,
 		    opt_stab->Get_mem_mu_node(wn), WN_rtype(wn),
 		    WN_desc(wn), WN_ty(wn), WN_field_id(wn),
-		    (mINT32)(INTPTR)index, (CODEREP *)(INTPTR) WN_load_addr_ty(wn), base, NULL);
+		    (mINT32)(INTPTR)index, (CODEREP *)(INTPTR) WN_load_addr_ty(wn), 
+	             base, NULL, opt_stab);
     Is_True(retv->Kind()==CK_IVAR||(retv->Kind()==CK_OP
 				    && (retv->Opr()==OPR_CVT ||
 					retv->Opr()==OPR_CVTL)),
@@ -3226,7 +3261,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 		    // information (see the assertion preceding this
 		    // Add_idef call).
 		    // -- RK 971104
-		    num_byte, lbase, NULL);
+		    num_byte, lbase, NULL, opt_stab);
     Is_True(retv->Kind() == CK_IVAR ||
 	    (retv->Kind()==CK_OP &&
 	     (retv->Opr()==OPR_CVT || retv->Opr()==OPR_CVTL)),
@@ -3708,7 +3743,7 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
                                base_ccr.Scale(),
                                (CODEREP *) 0,    // no load_addr_ty
                                lbase,
-                               NULL));
+                               NULL, opt_stab));
       WN_MAP_Set(htable->Prefetch_map(), Wn(), this);
       return;
     }
@@ -3999,7 +4034,8 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 				  TY_pointed(ilod_base_ty),
 				  WN_field_id(Wn()),
 				  base_ccr.Scale(),
-				  (CODEREP *)(INTPTR) ilod_base_ty, NULL, lbase) );
+				  (CODEREP *)(INTPTR) ilod_base_ty, NULL, 
+				  lbase, opt_stab) );
       }
       if (Lhs()->Is_ivar_volatile())
 	Set_volatile_stmt();
@@ -4029,7 +4065,8 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 				TY_pointed(ilod_base_ty),
 				WN_field_id(Wn()),
 				(mINT32)(INTPTR)index,
-				(CODEREP *)(INTPTR) ilod_base_ty, NULL, lbase) );
+				(CODEREP *)(INTPTR) ilod_base_ty, NULL, lbase, 
+                                opt_stab));
       if (Lhs()->Is_ivar_volatile())
 	Set_volatile_stmt();
     }
@@ -4078,7 +4115,8 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 			       // information (see the assertion
 			       // preceding this Set_lhs call).
 			       // -- RK 971104
-			       num_byte, NULL, lbase));
+			       num_byte, NULL, lbase,
+                               opt_stab));
       if (Lhs()->Is_ivar_volatile())
 	Set_volatile_stmt();
     }
@@ -5389,7 +5427,8 @@ void STMTREP::Clone(STMTREP *sr, CODEMAP *htable, MEM_POOL *pool)
 			       this,
 			       NULL, cr->Dtyp(), cr->Dsctyp(), cr->Ilod_ty(),
 			       cr->I_field_id(), cr->Offset(),
-			       cr->Mload_size(), NULL, cr->Istr_base()));
+			       cr->Mload_size(), NULL, cr->Istr_base(),
+                               htable->Opt_stab()));
       Set_chi_list( CXX_NEW(CHI_LIST, pool));
       Chi_list()->Clone_chi_list(sr->Chi_list(), pool);
     }

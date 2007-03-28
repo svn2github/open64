@@ -2699,7 +2699,9 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 	  }
 	}
 	else {
-	  switch (Aliased(Alias_Manager, pred_wn, succ_wn)) {
+	  BOOL ignore_loop_carried = 
+	      (omega == NULL && OP_unrolling(pred_op)==OP_unrolling(succ_op));
+	  switch (Aliased(Alias_Manager, pred_wn, succ_wn, ignore_loop_carried)) {
 	  case SAME_LOCATION:
 	    *definite = TRUE;
 	    break;
@@ -2712,6 +2714,17 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 			      cg_result, info_src);
 	  default:
 	    Is_True(FALSE, ("bad return value from Aliased"));
+	  }
+
+	  if (omega && 
+	      OP_unrolling(pred_op)==OP_unrolling(succ_op) &&
+	      min_omega <= 0 &&
+	      Aliased(Alias_Manager, pred_wn, succ_wn, TRUE) == NOT_ALIASED) {
+	       /* there is no loop-independent dependence between them. If there
+	        * is loop carried dependence between them, the distance should 
+	        * be at least one.
+	        */
+	    min_omega = 1;
 	  }
 	}
       } else {

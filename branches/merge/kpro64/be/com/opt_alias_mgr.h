@@ -160,9 +160,12 @@ public:
   void Set_homing_store( WN *store_wn, BOOL b ) const
 		{ WN_MAP32_Set(Homing_map(),store_wn,b); }
 
-  ALIAS_RESULT Aliased(WN *wn, const POINTS_TO *pt);
-  ALIAS_RESULT Aliased(const POINTS_TO *pt, WN *wn);
-  ALIAS_RESULT Aliased(const POINTS_TO *pt1, const POINTS_TO *pt2);
+  ALIAS_RESULT Aliased(WN *wn, const POINTS_TO *pt, 
+                        BOOL ignore_loop_carried = FALSE);
+  ALIAS_RESULT Aliased(const POINTS_TO *pt, WN *wn,
+                        BOOL ignore_loop_carried = FALSE);
+  ALIAS_RESULT Aliased(const POINTS_TO *pt1, const POINTS_TO *pt2,
+                        BOOL ignore_loop_carried = FALSE);
 };
 
 #endif /* opt_alias_mgr.h include */

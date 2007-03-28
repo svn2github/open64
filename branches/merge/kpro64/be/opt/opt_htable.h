@@ -1532,7 +1532,8 @@ public:
 		       mINT32,
 		       CODEREP *,
 		       CODEREP *,
-		       CODEREP *);
+		       CODEREP *, 
+                       OPT_STAB* );
 
   // add optparm node over parameters of various ops
   CODEREP    *Add_optparm( CODEREP * );
