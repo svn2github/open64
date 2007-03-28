@@ -1753,7 +1753,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	// Bug 3995.
 	if (!option_was_seen(O_fno_fast_stdlib) &&
 	    !option_was_seen(O_nolibpscrt)) {	// bug 9611
-	    add_library(args, "pscrt");
+	    // add_library(args, "pscrt");
 	}
 #endif
 
