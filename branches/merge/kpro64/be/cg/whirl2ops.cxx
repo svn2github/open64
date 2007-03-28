@@ -603,7 +603,7 @@ static void region_stack_eh_set_has_call(void)
 {
   RID ** p;
   for (p = region_stack_ptr - 1; p >= region_stack_base; --p)
-#ifndef TARG_IA64
+#ifdef KEY
     if (RID_TYPE_eh(*p) && RID_eh_range_ptr(*p))
 #else
     if (RID_TYPE_eh(*p))
@@ -5262,16 +5262,14 @@ convert_stmt_list_to_OPs(WN *stmt)
 #ifdef TARG_IA64
 	// if current PU haven't any landing pad, no need to set EH label
 #ifdef OSP_OPT
-	if (RID_TYPE_eh(rid) && !PU_Need_Not_Create_LSDA ()) {
+	if (RID_TYPE_eh(rid) &&
+	    RID_eh_range_ptr(rid) &&
+	    !PU_Need_Not_Create_LSDA ()) {
 #else 
-	if (RID_TYPE_eh(rid)) { 
+	if (RID_TYPE_eh(rid) && RID_eh_range_ptr(rid)) { 
 #endif
 #else  // TARG_IA64
-#ifdef KEY
 	  if (RID_TYPE_eh(rid) && RID_eh_range_ptr(rid)) {
-#else
-	    if (RID_TYPE_eh(rid)) {
-#endif
 #endif		    
 	  EH_Set_Start_Label(RID_eh_range_ptr(rid));
         }
@@ -5288,19 +5286,17 @@ convert_stmt_list_to_OPs(WN *stmt)
 #ifdef TARG_IA64
 	// if current PU haven't any landing pad, no need to set EH label
 #ifdef OSP_OPT
-	if (RID_TYPE_eh(rid) && !PU_Need_Not_Create_LSDA ()) {
+	if (RID_TYPE_eh(rid) && 
+	    RID_eh_range_ptr(rid) && 
+	    !PU_Need_Not_Create_LSDA ()) {
 #else 
-	if (RID_TYPE_eh(rid)) { 
+	if (RID_TYPE_eh(rid) && RID_eh_range_ptr(rid)) { 
 #endif
 #else  // TARG_IA64
-#ifdef KEY
 	  if (RID_TYPE_eh(rid) && RID_eh_range_ptr(rid)) {
-#else
-	    if (RID_TYPE_eh(rid)) {
-#endif
 #endif		    
 	  EH_Set_End_Label(RID_eh_range_ptr(rid));
-#ifndef TARG_IA64
+#ifdef KEY
 	  /* When a region is ended, always force to create a new bb, so
 	     that the next region will not share any common bb with the
 	     current region. (bug#3140)

@@ -411,8 +411,7 @@ static EH_RANGE_LIST range_list;
  * for_each as we iterate over the RID using RID_POST_ITER.
  * This will add a range for every EH region.
  */
-#ifndef TARG_IA64
-//#ifdef KEY
+#ifdef KEY
 // workaround for g++ 3.2 bug, the function object below does not
 // get called properly
 void ADD_EH_RANGE (RID * rid)
@@ -442,7 +441,7 @@ struct SET_PARENT {
   void operator()(EH_RANGE& r) {
     RID_PARENT_ITER first(r.rid);
     RID_PARENT_ITER last(NULL);
-#if (__GNUC__ < 4)
+#if (__GNUC__ < 4 || __GNUC_MINOR__ == 0)
     first = find_if(++first, last, IS_EH_RID(), std::__iterator_category(first));
 #else
     first = std::__find_if(++first, last, IS_EH_RID(), std::__iterator_category(first));
@@ -468,15 +467,11 @@ EH_Generate_Range_List(WN * pu)
   RID_POST_ITER rid_first(rid);
   RID_POST_ITER rid_last(NULL);
 
-#ifndef TARG_IA64 // workaround problem with g++ 3.2
   while (rid_first != rid_last)
   {
     ADD_EH_RANGE(*rid_first);
     ++rid_first;
   }
-#else
-  std::for_each(rid_first, rid_last, ADD_EH_RANGE());
-#endif
 
   EH_RANGE_LIST::iterator list_first(range_list.begin());
   EH_RANGE_LIST::iterator list_last (range_list.end());
@@ -680,8 +675,8 @@ struct HAS_NO_CALL_OR_HAS_NULL_OR_UNREACHABLE_LABEL {
     return true;
     }
 };
-#ifndef TARG_IA64
-//#ifdef KEY
+
+#ifdef KEY
 struct FIX_PARENT
 {
   bool operator() (EH_RANGE& r)
@@ -732,16 +727,6 @@ struct ADJUST_PARENT {
   void operator()(EH_RANGE&r) {r.parent -= r.adjustment;}
 };
 
-#ifdef TARG_IA64
-struct FIX_PARENT_IF_TO_BE_REMOVED
-{
-  bool operator() (EH_RANGE& r)
-  {
-    while (r.parent && HAS_NO_CALL_OR_HAS_NULL_OR_UNREACHABLE_LABEL()(*r.parent))
-      r.parent = r.parent->parent;
-  }
-};
-#endif
 
 void
 EH_Prune_Range_List(void)
@@ -753,11 +738,7 @@ EH_Prune_Range_List(void)
     range_list.erase(first, last);
     return;
   }
-#ifdef TARG_IA64
-  std::for_each  (first, last, FIX_PARENT_IF_TO_BE_REMOVED());
-#else
   for_each  (first, last, FIX_PARENT());
-#endif
   std::for_each  (first, last, SET_ADJUSTMENT());
   std::for_each  (first, last, CLEAR_USED());
   std::for_each  (first, last, SET_ADJUSTMENT_TO_PARENT_ADJUSTMENT());
@@ -851,7 +832,7 @@ struct FIX_MASK_PARENT {
       EH_RANGE_LIST_PARENT_ITER first(r.parent);
       EH_RANGE_LIST_PARENT_ITER last (NULL);
 #endif
-#if (__GNUC__ < 4)
+#if (__GNUC__ < 4 || __GNUC_MINOR__ == 0)
       first = find_if(first, last, IS_CLEANUP_RANGE(), std::__iterator_category(first));
 #else
       first = std::__find_if(first, last, IS_CLEANUP_RANGE(), std::__iterator_category(first));
@@ -956,7 +937,9 @@ inline INT16 parent_offset(INT32 i)
     return (INT16) (range_list[i].parent - &range_list[i]);
 }
 
-#ifdef TARG_IA64
+
+//#ifdef TARG_IA64
+
 #include <map>
 #include <set>
 typedef std::map< ST_IDX, int > 	TF_MAP;		// <type_ST_IDX, filter>
@@ -1305,6 +1288,9 @@ Print_PU_EH_Entry(PU& pu, ST* pu_st, FILE* fp)
   fprintf(fp, "\n");
 }
 
+// This function returns the size of an LEB128 encoding of value. We do
+// not use the encoding however. We emit the unencoded value with the LEB128
+// directive.
 static int
 sizeof_signed_leb128 (int value)
 {
@@ -1348,6 +1334,302 @@ EH_Get_PU_Range_INITO(bool bSetNull)
     eh_pu_range_inito = NULL;
   return ret;
 }
+
+
+void
+EH_Dump_LSDA (FILE *fp)
+{
+  if (!EH_Get_PU_Range_INITO(false) || !EH_Get_PU_Range_ST())
+    return;
+  fprintf (TFile, "=======================================================================\n");
+  fprintf (fp, "\t\tLSDA sturcture of PU:%s\n", ST_name (Get_Current_PU_ST()));
+  fprintf (TFile, "=======================================================================\n");
+  
+  ST* eh_range_table = EH_Get_PU_Range_ST();
+  INITO *ino = EH_Get_PU_Range_INITO(false);
+
+  char* sym_name = ST_name(eh_range_table);
+  FmtAssert(INITO_st(ino) == eh_range_table, ("Write_LSDA_INITO.st and inito are not paired.\n"));
+  FmtAssert(sym_name != NULL &&
+            strncmp(sym_name, ".range_table.", strlen(".range_table.")) == 0,	
+	    ("Write_LSDA_INITO.ST name = %s\n", sym_name ? sym_name : "<null>"));  
+  
+  INITV_IDX inv_blk = INITO_val(*ino);
+  FmtAssert(INITVKIND_BLOCK == INITV_kind(inv_blk), ("RangeTable.Initv1.kind != BLOCK\n"));
+  INITV_IDX first = INITV_blk(inv_blk);
+  INITV_IDX act_inv = (INITV_IDX)TCON_uval(INITV_tc_val(first));
+  INITV_IDX type_inv = (INITV_IDX)TCON_uval(INITV_tc_val(act_inv));
+  INITV_IDX eh_spec_inv = (INITV_IDX)TCON_uval(INITV_tc_val(type_inv));
+
+  INITV_IDX inv;
+  inv = INITV_next(first);
+ 
+  // call site table
+  fprintf (fp, "\n--------------------------- CALL SITE TABLE ---------------------------\n");
+  for(int i = 0;inv && inv != act_inv; inv = INITV_next(inv), i++) {
+    INITV_IDX prev_inv;
+    fprintf (fp, "Call Site Record [%d]:\n", i);
+
+    // cs_start (SymDiff)
+    FmtAssert (INITV_kind(inv) == INITVKIND_SYMDIFF || INITV_kind(inv) == INITVKIND_SYMDIFF16, 
+		    ("@start != INITVKIND_SYMDIFF."));
+    fprintf (fp, "\t[0]. cs_start:\t\t");
+    Print_INITV_idx (inv);
+
+    inv = INITV_next(inv);
+    // cs_len: range->start_label
+    fprintf (fp, "\t[1]. start_label:\t");
+    Print_INITV_idx (inv);
+    inv = INITV_next(inv);
+    // cs_len: range->end_label
+    fprintf (fp, "\t[2]. end_label:\t\t");
+    Print_INITV_idx (inv);      
+
+    inv = INITV_next(inv);
+    // cs_lp: landing pad pointer
+    if (INITVKIND_ZERO != INITV_kind(inv)) {
+      FmtAssert(INITVKIND_SYMDIFF == INITV_kind(inv) ||
+	        INITVKIND_SYMDIFF16 == INITV_kind(inv), ("CS_lp.kind != INITVKIND_SYMDIFF."));
+      fprintf (fp, "\t[3]. landing pad:\t");
+      Print_INITV_idx (inv);
+    }
+    else {
+      fprintf (fp, "\t[3]. NO landing pad:\t");
+      Print_INITV_idx (inv);
+    }
+
+    inv = INITV_next(inv);
+    // cs_action:offset in the action table
+    fprintf (fp, "\t[4]. cs_action:\t\t");
+    Print_INITV_idx (inv);
+  }
+  
+  // action table
+  inv = INITV_next(act_inv);
+  fprintf (fp, "\n---------------------------- ACTION TABLE -----------------------------\n");
+  for(int i = 0; inv && inv != type_inv; inv = INITV_next(inv), i++) {
+    fprintf (fp, "Action Record [%d]:\n", i);
+    // ar_filter
+    fprintf (fp, "\t[0]. ar_filter:\t\t");
+    Print_INITV_idx (inv);
+   
+    // ar_next
+    fprintf (fp, "\t[1]. ar_next:\t\t");
+    Print_INITV_idx (inv);
+  }
+  
+  // type table
+  inv = INITV_next(type_inv);
+  fprintf (fp, "\n------------------------------ TYPE TABLE ------------------------------\n");
+  for(int i = 0; inv && inv != eh_spec_inv; inv = INITV_next(inv)) {
+    int eh_filter = 0;
+    ST_IDX type_st_idx = 0;
+    fprintf (fp, "Exceptions Object [%d]:\n", i);
+    fprintf (fp, "\t[0]. ");
+    Print_INITV_idx (inv);
+    if (INITVKIND_ZERO != INITV_kind(inv))
+      type_st_idx = TCON_uval(INITV_tc_val(inv));
+    if (type_st_idx == 0)
+      fprintf(fp, "\t[1]. type_st_idx == 0\n");
+    else {
+      fprintf (fp, "\t[1]. exceptions object: %s\n", ST_name (type_st_idx));
+      eh_filter = Get_EH_Filter_By_Type (type_st_idx, tfmap);
+      fprintf (fp, "\t[2]. eh_filter: %d\n", eh_filter);
+    }
+  }
+
+  // type_spec table
+  fprintf (fp, "\n------------------------ TYPE SPECIFICATION TABLE -----------------------\n");
+  fprintf (fp, "Exception Objects Type in eh_spec:");
+  inv = INITV_next(eh_spec_inv);
+  for(int i = 0; inv; inv = INITV_next(inv), i++) {
+    ST_IDX type_st_idx;
+    fprintf (fp, "\t[%d]. ", i);
+    Print_INITV_idx (inv);
+    if (INITVKIND_ZERO != INITV_kind(inv)) {
+      type_st_idx = Get_EH_ST_By_Filter (TCON_ival(INITV_tc_val(inv)), ftmap);
+      fprintf (fp, "%s\n", ST_name (type_st_idx));
+    }
+    else
+      fprintf (fp, "\n");
+  }
+  fprintf (fp, "\n");
+}
+
+bool pu_need_LSDA;
+
+// check whether need not to create INITO for LSDA
+// Another way: check if exception type info stored in INITO pu.unused is NULL/ZERO
+bool
+PU_Need_Not_Create_LSDA ()
+{
+  bool flag = true;
+  for (INT32 i = 0; i < range_list.size(); i++) {
+    EH_RANGE& range = range_list[i];
+    if (range.ereg_supp == 0)	continue;
+    ST* st = INITO_st(range.ereg_supp);
+    if (ST_is_not_used(st)) 	continue;
+
+    INITV_IDX blk = INITO_val(range.ereg_supp);
+    if (INITV_kind(blk) != INITVKIND_BLOCK) 
+      continue;
+
+    INITV_IDX first = INITV_blk(blk);
+    if (INITV_kind(first) == INITVKIND_LABEL) {
+      flag = false;
+      return flag;
+    }
+  }
+  if (flag) 
+    for (INT32 i = 0; i < range_list.size(); i++) {
+      EH_RANGE& range = range_list[i];
+      if (range.ereg_supp != 0) {
+        ST* st = INITO_st(range.ereg_supp);
+        Set_ST_is_not_used(st);
+      }
+    }
+  return flag;
+}
+
+#ifdef KEY
+// bug 3416: The exception ranges in exception table must be sorted in
+// increasing order of call-site address. The problem shows up when we
+// generate nested regions due to code like "if (foo()) bar();".
+// So flatten the regions here to remove overlap between parent and child
+// regions. As a side-effect, add new ranges resulting from the splits.
+// Assumption: a parent region is always listed after its children (even if
+// not immediately after). The caller of this function must, therefore, sort
+// the list before calling.
+// Transformation:
+// R1_begin:
+//    R2_begin:
+//    R2_end:
+// R1_end:
+//
+// R2_end - R2_begin  ===>    R2_begin - R1_begin
+// R1_end - R1_begin          R2_end - R2_begin
+//                            R1_end - R2_end (bug 3736)
+//
+// TODO: Check if the new regions created have any call, if not, don't
+// create, or delete the region.
+static void flatten_regions (void)
+{
+  vector<EH_RANGE> new_ranges;
+  int i=0;
+  while (i < range_list.size() - 1)
+  {
+    if (range_list[i].parent) 
+    {
+      int first_child, last_child;
+      first_child = last_child = i++;
+      // search for the parent
+      while (range_list[first_child].parent != &range_list[i])
+      {
+        if (range_list[i].parent == range_list[first_child].parent)
+	{
+          range_list[i].parent = NULL;
+	  last_child = i;
+	}
+	i++;
+      }
+      // 'i' has the parent
+      EH_RANGE new_range (range_list[i].rid);
+      new_range.start_label = range_list[last_child].end_label;
+      new_range.end_label = range_list[i].end_label;
+      new_range.end_bb = range_list[i].end_bb;
+      new_range.has_call = range_list[i].has_call; // not accurate
+      new_ranges.push_back (new_range);
+
+      // Update the parent now to end before the 1st child
+      range_list[i].end_label = range_list[first_child].start_label;
+      range_list[i].end_bb = Get_Label_BB (range_list[i].end_label);
+      range_list[first_child].parent = NULL;
+      i = first_child + 1; // start over
+    }
+    else i++;
+  }
+
+  for (vector<EH_RANGE>::iterator iter = new_ranges.begin();
+       iter != new_ranges.end(); ++iter)
+    range_list.add_range (*iter);
+}
+
+#include <map>
+using namespace std;
+
+struct cmpst
+{
+  bool operator() (const ST_IDX i1, const ST_IDX i2) const
+  {
+  	return (i1 < i2);
+  }
+};
+
+// Seems I need some features of 'map' and some features of 'vector'. I want
+// a map from an st entry to a filter. This map would be sorted based on st.
+// I need an ordering based on filter (which is not the key in the map).
+map<ST_IDX, int, cmpst> type_filter_map;
+
+struct type_filter_entry {
+	ST_IDX st;
+	int filter;
+};
+
+struct sort_on_filter : public binary_function<type_filter_entry, 
+					type_filter_entry, bool>
+{
+  bool operator() (const type_filter_entry t1, 
+			const type_filter_entry t2) const
+  {
+	return t1.filter > t2.filter;
+  }
+};
+
+static INITO*
+Create_Type_Filter_Map (void)
+{
+  INITV_IDX i = INITV_next (INITV_next (INITO_val (Get_Current_PU().unused)));
+  INITO* ino;
+  INITO_IDX idx = TCON_uval (INITV_tc_val(i));
+  if (idx)	// idx for typeinfo_table
+  {
+    ino = &Inito_Table[idx];
+    ST* st = INITO_st(ino);
+
+    FmtAssert (!strcmp(ST_name (*st), "__TYPEINFO_TABLE__") && 
+    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
+	      ("Unexpected ST in PU"));
+    INITV_IDX blk = INITO_val(*ino);
+
+    do 
+    {
+	INITV_IDX st_entry = INITV_blk(blk);
+	// st_idx, filter
+	ST_IDX st_idx = 0;
+	if (INITV_kind (st_entry) != INITVKIND_ZERO)
+	    st_idx = TCON_uval(INITV_tc_val (st_entry));
+	int filter = TCON_ival (INITV_tc_val (INITV_next (st_entry)));
+	type_filter_map [st_idx] = filter;
+    } while (INITV_next(blk) && (blk=INITV_next(blk)));
+  }
+
+  i = INITV_next (i);
+  ino = 0;
+  idx = TCON_uval (INITV_tc_val(i));
+  if (idx)	// idx for eh-spec
+  {
+    ino = &Inito_Table[idx];
+    ST* st = INITO_st(ino);
+
+    FmtAssert (!strcmp(ST_name (*st), "__EH_SPEC_TABLE__") && 
+    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
+	      ("Unexpected ST in PU"));
+  }
+  return ino;
+}
+#endif // KEY
+
+#ifdef TARG_IA64 //zhc
 
 #define THU_EH_IMP 1
 static void
@@ -1623,327 +1905,8 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
 #endif
 }
 
-void
-EH_Dump_LSDA (FILE *fp)
-{
-  if (!EH_Get_PU_Range_INITO(false) || !EH_Get_PU_Range_ST())
-    return;
-  fprintf (TFile, "=======================================================================\n");
-  fprintf (fp, "\t\tLSDA sturcture of PU:%s\n", ST_name (Get_Current_PU_ST()));
-  fprintf (TFile, "=======================================================================\n");
-  
-  ST* eh_range_table = EH_Get_PU_Range_ST();
-  INITO *ino = EH_Get_PU_Range_INITO(false);
-
-  char* sym_name = ST_name(eh_range_table);
-  FmtAssert(INITO_st(ino) == eh_range_table, ("Write_LSDA_INITO.st and inito are not paired.\n"));
-  FmtAssert(sym_name != NULL &&
-            strncmp(sym_name, ".range_table.", strlen(".range_table.")) == 0,	
-	    ("Write_LSDA_INITO.ST name = %s\n", sym_name ? sym_name : "<null>"));  
-  
-  INITV_IDX inv_blk = INITO_val(*ino);
-  FmtAssert(INITVKIND_BLOCK == INITV_kind(inv_blk), ("RangeTable.Initv1.kind != BLOCK\n"));
-  INITV_IDX first = INITV_blk(inv_blk);
-  INITV_IDX act_inv = (INITV_IDX)TCON_uval(INITV_tc_val(first));
-  INITV_IDX type_inv = (INITV_IDX)TCON_uval(INITV_tc_val(act_inv));
-  INITV_IDX eh_spec_inv = (INITV_IDX)TCON_uval(INITV_tc_val(type_inv));
-
-  INITV_IDX inv;
-  inv = INITV_next(first);
- 
-  // call site table
-  fprintf (fp, "\n--------------------------- CALL SITE TABLE ---------------------------\n");
-  for(int i = 0;inv && inv != act_inv; inv = INITV_next(inv), i++) {
-    INITV_IDX prev_inv;
-    fprintf (fp, "Call Site Record [%d]:\n", i);
-
-    // cs_start (SymDiff)
-    FmtAssert (INITV_kind(inv) == INITVKIND_SYMDIFF || INITV_kind(inv) == INITVKIND_SYMDIFF16, 
-		    ("@start != INITVKIND_SYMDIFF."));
-    fprintf (fp, "\t[0]. cs_start:\t\t");
-    Print_INITV_idx (inv);
-
-    inv = INITV_next(inv);
-    // cs_len: range->start_label
-    fprintf (fp, "\t[1]. start_label:\t");
-    Print_INITV_idx (inv);
-    inv = INITV_next(inv);
-    // cs_len: range->end_label
-    fprintf (fp, "\t[2]. end_label:\t\t");
-    Print_INITV_idx (inv);      
-
-    inv = INITV_next(inv);
-    // cs_lp: landing pad pointer
-    if (INITVKIND_ZERO != INITV_kind(inv)) {
-      FmtAssert(INITVKIND_SYMDIFF == INITV_kind(inv) ||
-	        INITVKIND_SYMDIFF16 == INITV_kind(inv), ("CS_lp.kind != INITVKIND_SYMDIFF."));
-      fprintf (fp, "\t[3]. landing pad:\t");
-      Print_INITV_idx (inv);
-    }
-    else {
-      fprintf (fp, "\t[3]. NO landing pad:\t");
-      Print_INITV_idx (inv);
-    }
-
-    inv = INITV_next(inv);
-    // cs_action:offset in the action table
-    fprintf (fp, "\t[4]. cs_action:\t\t");
-    Print_INITV_idx (inv);
-  }
-  
-  // action table
-  inv = INITV_next(act_inv);
-  fprintf (fp, "\n---------------------------- ACTION TABLE -----------------------------\n");
-  for(int i = 0; inv && inv != type_inv; inv = INITV_next(inv), i++) {
-    fprintf (fp, "Action Record [%d]:\n", i);
-    // ar_filter
-    fprintf (fp, "\t[0]. ar_filter:\t\t");
-    Print_INITV_idx (inv);
-   
-    // ar_next
-    fprintf (fp, "\t[1]. ar_next:\t\t");
-    Print_INITV_idx (inv);
-  }
-  
-  // type table
-  inv = INITV_next(type_inv);
-  fprintf (fp, "\n------------------------------ TYPE TABLE ------------------------------\n");
-  for(int i = 0; inv && inv != eh_spec_inv; inv = INITV_next(inv)) {
-    int eh_filter = 0;
-    ST_IDX type_st_idx = 0;
-    fprintf (fp, "Exceptions Object [%d]:\n", i);
-    fprintf (fp, "\t[0]. ");
-    Print_INITV_idx (inv);
-    if (INITVKIND_ZERO != INITV_kind(inv))
-      type_st_idx = TCON_uval(INITV_tc_val(inv));
-    if (type_st_idx == 0)
-      fprintf(fp, "\t[1]. type_st_idx == 0\n");
-    else {
-      fprintf (fp, "\t[1]. exceptions object: %s\n", ST_name (type_st_idx));
-      eh_filter = Get_EH_Filter_By_Type (type_st_idx, tfmap);
-      fprintf (fp, "\t[2]. eh_filter: %d\n", eh_filter);
-    }
-  }
-
-  // type_spec table
-  fprintf (fp, "\n------------------------ TYPE SPECIFICATION TABLE -----------------------\n");
-  fprintf (fp, "Exception Objects Type in eh_spec:");
-  inv = INITV_next(eh_spec_inv);
-  for(int i = 0; inv; inv = INITV_next(inv), i++) {
-    ST_IDX type_st_idx;
-    fprintf (fp, "\t[%d]. ", i);
-    Print_INITV_idx (inv);
-    if (INITVKIND_ZERO != INITV_kind(inv)) {
-      type_st_idx = Get_EH_ST_By_Filter (TCON_ival(INITV_tc_val(inv)), ftmap);
-      fprintf (fp, "%s\n", ST_name (type_st_idx));
-    }
-    else
-      fprintf (fp, "\n");
-  }
-  fprintf (fp, "\n");
-}
-
-bool pu_need_LSDA;
-
-// check whether need not to create INITO for LSDA
-// Another way: check if exception type info stored in INITO pu.unused is NULL/ZERO
-bool
-PU_Need_Not_Create_LSDA ()
-{
-  bool flag = true;
-  for (INT32 i = 0; i < range_list.size(); i++) {
-    EH_RANGE& range = range_list[i];
-    if (range.ereg_supp == 0)	continue;
-    ST* st = INITO_st(range.ereg_supp);
-    if (ST_is_not_used(st)) 	continue;
-
-    INITV_IDX blk = INITO_val(range.ereg_supp);
-    if (INITV_kind(blk) != INITVKIND_BLOCK) 
-      continue;
-
-    INITV_IDX first = INITV_blk(blk);
-    if (INITV_kind(first) == INITVKIND_LABEL) {
-      flag = false;
-      return flag;
-    }
-  }
-  if (flag) 
-    for (INT32 i = 0; i < range_list.size(); i++) {
-      EH_RANGE& range = range_list[i];
-      if (range.ereg_supp != 0) {
-        ST* st = INITO_st(range.ereg_supp);
-        Set_ST_is_not_used(st);
-      }
-    }
-  return flag;
-}
-
-void
-EH_Write_Range_Table(WN * wn)
-{
-  if (range_list.size() == 0) {
-    eh_pu_range_st = NULL;
-    return;
-  }
-  fix_mask_ranges();
-  reorder_range_list();
-
-  ST * st = ST_For_Range_Table(wn);
-  eh_pu_range_st = st;
-
-  Create_INITO_For_Range_Table(st, WN_st(wn));
-}
-#else  // TARG_IA64
+#else // TARG_IA64
 #ifdef KEY
-// bug 3416: The exception ranges in exception table must be sorted in
-// increasing order of call-site address. The problem shows up when we
-// generate nested regions due to code like "if (foo()) bar();".
-// So flatten the regions here to remove overlap between parent and child
-// regions. As a side-effect, add new ranges resulting from the splits.
-// Assumption: a parent region is always listed after its children (even if
-// not immediately after). The caller of this function must, therefore, sort
-// the list before calling.
-// Transformation:
-// R1_begin:
-//    R2_begin:
-//    R2_end:
-// R1_end:
-//
-// R2_end - R2_begin  ===>    R2_begin - R1_begin
-// R1_end - R1_begin          R2_end - R2_begin
-//                            R1_end - R2_end (bug 3736)
-//
-// TODO: Check if the new regions created have any call, if not, don't
-// create, or delete the region.
-static void flatten_regions (void)
-{
-  vector<EH_RANGE> new_ranges;
-  int i=0;
-  while (i < range_list.size() - 1)
-  {
-    if (range_list[i].parent) 
-    {
-      int first_child, last_child;
-      first_child = last_child = i++;
-      // search for the parent
-      while (range_list[first_child].parent != &range_list[i])
-      {
-        if (range_list[i].parent == range_list[first_child].parent)
-	{
-          range_list[i].parent = NULL;
-	  last_child = i;
-	}
-	i++;
-      }
-      // 'i' has the parent
-      EH_RANGE new_range (range_list[i].rid);
-      new_range.start_label = range_list[last_child].end_label;
-      new_range.end_label = range_list[i].end_label;
-      new_range.end_bb = range_list[i].end_bb;
-      new_range.has_call = range_list[i].has_call; // not accurate
-      new_ranges.push_back (new_range);
-
-      // Update the parent now to end before the 1st child
-      range_list[i].end_label = range_list[first_child].start_label;
-      range_list[i].end_bb = Get_Label_BB (range_list[i].end_label);
-      range_list[first_child].parent = NULL;
-      i = first_child + 1; // start over
-    }
-    else i++;
-  }
-
-  for (vector<EH_RANGE>::iterator iter = new_ranges.begin();
-       iter != new_ranges.end(); ++iter)
-    range_list.add_range (*iter);
-}
-
-#include <map>
-using namespace std;
-
-struct cmpst
-{
-  bool operator() (const ST_IDX i1, const ST_IDX i2) const
-  {
-  	return (i1 < i2);
-  }
-};
-
-// Seems I need some features of 'map' and some features of 'vector'. I want
-// a map from an st entry to a filter. This map would be sorted based on st.
-// I need an ordering based on filter (which is not the key in the map).
-map<ST_IDX, int, cmpst> type_filter_map;
-
-struct type_filter_entry {
-	ST_IDX st;
-	int filter;
-};
-
-struct sort_on_filter : public binary_function<type_filter_entry, 
-					type_filter_entry, bool>
-{
-  bool operator() (const type_filter_entry t1, 
-			const type_filter_entry t2) const
-  {
-	return t1.filter > t2.filter;
-  }
-};
-
-static INITO*
-Create_Type_Filter_Map (void)
-{
-  INITV_IDX i = INITV_next (INITV_next (INITO_val (Get_Current_PU().unused)));
-  INITO* ino;
-  INITO_IDX idx = TCON_uval (INITV_tc_val(i));
-  if (idx)	// idx for typeinfo_table
-  {
-    ino = &Inito_Table[idx];
-    ST* st = INITO_st(ino);
-
-    FmtAssert (!strcmp(ST_name (*st), "__TYPEINFO_TABLE__") && 
-    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
-	      ("Unexpected ST in PU"));
-    INITV_IDX blk = INITO_val(*ino);
-
-    do 
-    {
-	INITV_IDX st_entry = INITV_blk(blk);
-	// st_idx, filter
-	ST_IDX st_idx = 0;
-	if (INITV_kind (st_entry) != INITVKIND_ZERO)
-	    st_idx = TCON_uval(INITV_tc_val (st_entry));
-	int filter = TCON_ival (INITV_tc_val (INITV_next (st_entry)));
-	type_filter_map [st_idx] = filter;
-    } while (INITV_next(blk) && (blk=INITV_next(blk)));
-  }
-
-  i = INITV_next (i);
-  ino = 0;
-  idx = TCON_uval (INITV_tc_val(i));
-  if (idx)	// idx for eh-spec
-  {
-    ino = &Inito_Table[idx];
-    ST* st = INITO_st(ino);
-
-    FmtAssert (!strcmp(ST_name (*st), "__EH_SPEC_TABLE__") && 
-    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
-	      ("Unexpected ST in PU"));
-  }
-  return ino;
-}
-
-// This function returns the size of an LEB128 encoding of value. We do
-// not use the encoding however. We emit the unencoded value with the LEB128
-// directive.
-static int
-sizeof_signed_leb128 (int value)
-{
-  char buff[ENCODE_SPACE_NEEDED];
-  int size;
-  int res = _dwarf_pro_encode_signed_leb128_nm (value, &size, buff, sizeof(buff));
-  FmtAssert (res == DW_DLV_OK, ("Encoding for exception table failed"));
-  return size;
-}
-
 static void
 Create_INITO_For_Range_Table(ST * st, ST * pu)
 {
@@ -1980,6 +1943,13 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     INITO_IDX ereg = range_list[i].ereg_supp;
     INITV_IDX first_initv = INITV_blk (INITO_val (ereg));
     Set_ST_is_not_used (*(INITO_st (ereg)));
+
+#ifdef OSP_OPT
+    if ((INITV_kind(first_initv) != INITVKIND_LABEL) &&
+                PU_is_mainpu (Get_Current_PU ())) {
+      continue;
+    }
+#endif
 
     LABEL_IDX pad_label=0;
     if (INITV_kind(first_initv) != INITVKIND_ZERO)
@@ -2193,14 +2163,6 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
   type_filter_map.clear();
 }
 
-// Temporary workaround
-struct SET_NOT_USED {
-  SET_NOT_USED() {}
-  void operator()(EH_RANGE& r) {
-      Set_ST_is_not_used(INITO_st(r.ereg_supp));
-  }
-};
-
 #else
 static void
 Create_INITO_For_Range_Table(ST * st, ST * pu)
@@ -2256,6 +2218,16 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
   }
 }
 #endif // KEY
+#endif // TARG_IA64 // zhc
+
+
+// Temporary workaround
+struct SET_NOT_USED {
+  SET_NOT_USED() {}
+  void operator()(EH_RANGE& r) {
+      Set_ST_is_not_used(INITO_st(r.ereg_supp));
+  }
+};
 
 void 
 EH_Write_Range_Table(WN * wn)
@@ -2288,7 +2260,6 @@ EH_Write_Range_Table(WN * wn)
   eh_pu_range_st = st;
   Create_INITO_For_Range_Table(st, WN_st(wn));  
 }
-#endif // TARG_IA64
 
 void print_label(LABEL_IDX label)
 {
