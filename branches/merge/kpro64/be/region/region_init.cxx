@@ -1380,6 +1380,8 @@ REGION_init(WN *itree, RID *root)
 
   INT32 nregions = rtmp.Nregions(); // doesn't count PU
   MEM_POOL_Pop(&REGION_init_pool);
+  MEM_POOL_Delete(&REGION_init_pool);
+
   return nregions;
 }
 
