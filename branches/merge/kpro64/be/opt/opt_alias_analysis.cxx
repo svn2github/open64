@@ -867,6 +867,11 @@ void OPT_STAB::Analyze_Base_Flow_Free(POINTS_TO *pt, WN *wn)
   pt->Shift_ofst(WN_offset(wn));
   pt->Lower_to_base(wn);
   pt->Set_ty(WN_object_ty(wn));
+  TY_IDX hl_ty = 0; 
+  UINT32 fld_id = 0;
+  WN_hl_object_ty (wn, hl_ty, fld_id); 
+  pt->Set_hl_ty (hl_ty);
+  pt->Set_field_id (fld_id);
   Collect_f90_pointer_info(pt, wn);
   Update_From_Restricted_Map(wn, pt);
 }
@@ -3614,11 +3619,15 @@ void OPT_STAB::Compute_FFA(RID *const rid)
 #endif // NOT_73_BETA
   
   // Disable ANSI rule for virtual variables
-  if (Default_vsym() != 0) 
+  if (Default_vsym() != 0) {
     Aux_stab_entry(Default_vsym())->Points_to()->Set_ty(0);
+    Aux_stab_entry(Default_vsym())->Points_to()->Set_hl_ty(0);
+  }
 
-  if (Return_vsym() != 0) 
+  if (Return_vsym() != 0) {
     Aux_stab_entry(Return_vsym())->Points_to()->Set_ty(0);
+    Aux_stab_entry(Return_vsym())->Points_to()->Set_hl_ty(0);
+  }
 
   // update the precomputed alias sets
   Update_alias_set_with_virtual_var();

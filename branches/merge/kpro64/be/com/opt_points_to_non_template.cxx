@@ -368,6 +368,11 @@ void POINTS_TO::Meet(const POINTS_TO *pt, ST *definition)
   if (pt->Weak_base())         Set_weak_base();
   
   if (pt->Ty() != Ty())        Set_ty((TY_IDX) 0);
+  if (pt->Highlevel_Ty () != Highlevel_Ty ()) {
+    Set_hl_ty ((TY_IDX)0);
+    Set_field_id (0);
+  }
+  if (pt->Field_id () != Field_id ()) Set_field_id (0); 
 
   if (pt->Known_f90_pointer() && Known_not_f90_pointer()) {
     DevWarn("Alias analysis: f90 pointer meets non-f90 pointer");
@@ -1013,7 +1018,8 @@ void POINTS_TO::Print(FILE *fp) const
   }
   fprintf(fp, "per-PU class %d, ", Alias_class());
   fprintf(fp, "global class %d, ", Ip_alias_class());
-  
+  fprintf(fp, "ty=%d, hlty=%d, ", Ty(), Highlevel_Ty ());
+
   // print attributes
   fprintf(fp, "attr=");
   char *pr_separator = "";

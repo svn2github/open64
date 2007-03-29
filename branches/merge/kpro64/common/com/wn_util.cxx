@@ -1638,6 +1638,42 @@ WN_object_ty (const WN *wn)
 }
 #endif // TARG_IA64
 
+void
+WN_hl_object_ty (const WN *wn, TY_IDX& ty, UINT32& fld_id)
+{
+  ty = (TY_IDX)0;
+  fld_id = 0;
+
+  if (OPCODE_is_load(WN_opcode(wn))) {
+    if (WN_operator(wn) == OPR_MLOAD) {
+         TY_IDX ptr_ty = WN_ty(wn);
+         Is_True (TY_kind(ptr_ty) == KIND_POINTER, ("TY of ISTORE is not KIND_POINTER."));
+         ty = TY_pointer(ptr_ty);
+    } else if ((WN_operator(wn) == OPR_LDID ||
+                WN_operator(wn) == OPR_ILOAD || 
+                WN_operator(wn) == OPR_LDBITS) && 
+                WN_field_id(wn) != 0 && TY_kind(WN_ty(wn)) == KIND_STRUCT) {
+      ty = WN_ty(wn); 
+      fld_id = WN_field_id(wn);
+    } else if ((WN_operator(wn) == OPR_ILOAD || 
+                WN_operator(wn) == OPR_ILDBITS)) {
+      Is_True (TY_kind(WN_load_addr_ty(wn)) == KIND_POINTER,
+        ("TY of ILOAD is not KIND_POINTER."));
+      ty = TY_pointed(WN_load_addr_ty(wn));
+    }
+  } else if (OPCODE_is_store(WN_opcode(wn))) {
+    ty = WN_ty(wn);
+    if (!(WN_operator(wn) == OPR_STID || WN_operator(wn) == OPR_STBITS)) {
+      Is_True(TY_kind(WN_ty(wn)) == KIND_POINTER,
+              ("TY of ISTORE is not KIND_POINTER."));
+      ty = TY_pointed(WN_ty(wn));
+    }
+    if (WN_field_id(wn) != 0 && TY_kind(ty) == KIND_STRUCT) {
+      fld_id = WN_field_id(wn);
+    }
+  } 
+}
+
 /* Obtain the size in bytes of object being accessed.
  */
 INT32 WN_object_size(const WN *wn)
