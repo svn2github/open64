@@ -760,8 +760,6 @@ static const struct {
   INTRN_CTZ,                    "CTZ",
   INTRN_F4CBRT,                 "F4CBRT",
   INTRN_F8CBRT,                 "F8CBRT",
-  INTRN_F4CBRT,                 "F4CBRT",
-  INTRN_F8CBRT,                 "F8CBRT",
 #ifdef TARG_X8664
   INTRN_V16F4SIN,		"INTRN_V16F4SIN",
   INTRN_V16F4EXP,		"INTRN_V16F4EXP",
