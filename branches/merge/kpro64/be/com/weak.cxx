@@ -158,9 +158,8 @@ void (*CG_Dump_Region_p) (FILE*, WN*);
 
 // from be/cg/eh_region.h
 void (*EH_Generate_Range_List_p) (WN *);
-#ifdef TARG_IA64
 void (*EH_Dump_INITOs_p) (WN *, FILE *);
-#endif
+
 #ifdef TARG_X8664
 void (*CG_Set_Is_Stack_Used_p) ();
 #endif

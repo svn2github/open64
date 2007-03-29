@@ -441,7 +441,7 @@ struct SET_PARENT {
   void operator()(EH_RANGE& r) {
     RID_PARENT_ITER first(r.rid);
     RID_PARENT_ITER last(NULL);
-#if (__GNUC__ < 4 || __GNUC_MINOR__ == 0)
+#if (__GNUC__ < 4 ||(__GNUC__ == 4 && __GNUC_MINOR__ == 0))
     first = find_if(++first, last, IS_EH_RID(), std::__iterator_category(first));
 #else
     first = std::__find_if(++first, last, IS_EH_RID(), std::__iterator_category(first));
@@ -525,7 +525,7 @@ static LABEL_IDX Duplicate_LABEL (LABEL_IDX oldi)
 	return lbi;
 }
 
-#ifdef TARG_IA64
+
 // Check whether the EH range has it's corresponding landing pad
 bool
 EH_Has_Landing_Pad (EH_RANGE *range)
@@ -544,13 +544,11 @@ EH_Has_Landing_Pad (EH_RANGE *range)
   else
    return false;
 }
-#endif
 
 void
 EH_Set_Start_Label(EH_RANGE* p)
 {
   LABEL_IDX label;
-#ifdef TARG_IA64
 #ifdef OSP_OPT
   // too much Eh label will affect the cfg and region formation,
   // further affects the register allocation and instruction schedule
@@ -558,7 +556,6 @@ EH_Set_Start_Label(EH_RANGE* p)
   if (!EH_Has_Landing_Pad (p) && PU_is_mainpu (Get_Current_PU ()))
     return;
 #endif
-#endif // TARG_IA64
   if (p->kind == ehk_guard) {
 #ifdef KEY
     EH_RANGE_LIST::reverse_iterator rfirst = range_list.rbegin();
@@ -601,14 +598,12 @@ void
 EH_Set_End_Label(EH_RANGE* p)
 {
   LABEL_IDX label;
-#ifdef TARG_IA64  
 #ifdef OSP_OPT
   // too much Eh label will affect the cfg and region formation,
   // further affects the register allocation and instruction schedule
   // for optimization of EH implementation
   if (!EH_Has_Landing_Pad (p) && PU_is_mainpu (Get_Current_PU ()))
     return;
-#endif
 #endif
   label = Gen_Temp_Label();
   BB * bb    = Add_Label(label);
@@ -938,16 +933,23 @@ inline INT16 parent_offset(INT32 i)
 }
 
 
-//#ifdef TARG_IA64
+/* This part are support routine for creating INITO of landing pad.
+   In fact, they are architecture independent, need to merge with 
+   the same support routine implemented on X8664. 
+   TODO: merge these code with code implemented by pathscale on X8664.
+ */
 
 #include <map>
 #include <set>
+using namespace std;
+
 typedef std::map< ST_IDX, int > 	TF_MAP;		// <type_ST_IDX, filter>
 typedef std::map< int, ST_IDX > 	FT_MAP; 	// <filter, type_ST_IDX>
 typedef std::set< ST_IDX >      	EH_PTS; 	// eh pic type set
 // global tfmap and ftmap for each PU
 TF_MAP tfmap;
 FT_MAP ftmap;
+
     
 static void
 EH_Build_PIC_Type(ST_IDX idx)
@@ -1048,6 +1050,77 @@ Get_TF_Map_and_EH_Spec_List(PU& pu, TF_MAP& tfmap)
   return (id != 0) ? INITV_blk(INITO_val(id)) : INITV_IDX_ZERO;
 }
 
+struct cmpst
+{
+  bool operator() (const ST_IDX i1, const ST_IDX i2) const
+  {
+  	return (i1 < i2);
+  }
+};
+
+// Seems I need some features of 'map' and some features of 'vector'. I want
+// a map from an st entry to a filter. This map would be sorted based on st.
+// I need an ordering based on filter (which is not the key in the map).
+map<ST_IDX, int, cmpst> type_filter_map;
+
+struct type_filter_entry {
+	ST_IDX st;
+	int filter;
+};
+
+struct sort_on_filter : public binary_function<type_filter_entry, 
+					type_filter_entry, bool>
+{
+  bool operator() (const type_filter_entry t1, 
+			const type_filter_entry t2) const
+  {
+	return t1.filter > t2.filter;
+  }
+};
+
+static INITO*
+Create_Type_Filter_Map (void)
+{
+  INITV_IDX i = INITV_next (INITV_next (INITO_val (Get_Current_PU().unused)));
+  INITO* ino;
+  INITO_IDX idx = TCON_uval (INITV_tc_val(i));
+  if (idx)	// idx for typeinfo_table
+  {
+    ino = &Inito_Table[idx];
+    ST* st = INITO_st(ino);
+
+    FmtAssert (!strcmp(ST_name (*st), "__TYPEINFO_TABLE__") && 
+    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
+	      ("Unexpected ST in PU"));
+    INITV_IDX blk = INITO_val(*ino);
+
+    do 
+    {
+	INITV_IDX st_entry = INITV_blk(blk);
+	// st_idx, filter
+	ST_IDX st_idx = 0;
+	if (INITV_kind (st_entry) != INITVKIND_ZERO)
+	    st_idx = TCON_uval(INITV_tc_val (st_entry));
+	int filter = TCON_ival (INITV_tc_val (INITV_next (st_entry)));
+	type_filter_map [st_idx] = filter;
+    } while (INITV_next(blk) && (blk=INITV_next(blk)));
+  }
+
+  i = INITV_next (i);
+  ino = 0;
+  idx = TCON_uval (INITV_tc_val(i));
+  if (idx)	// idx for eh-spec
+  {
+    ino = &Inito_Table[idx];
+    ST* st = INITO_st(ino);
+
+    FmtAssert (!strcmp(ST_name (*st), "__EH_SPEC_TABLE__") && 
+    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
+	      ("Unexpected ST in PU"));
+  }
+  return ino;
+}
+
 static const char*
 Get_INITV_kind (INITVKIND kind)
 {
@@ -1063,7 +1136,9 @@ Get_INITV_kind (INITVKIND kind)
 	  CASE_KIND(INITVKIND_SYMDIFF);
 	  CASE_KIND(INITVKIND_SYMDIFF16);
 	  CASE_KIND(INITVKIND_LABEL);
+#ifdef TARG_IA64
 	  CASE_KIND(INITVKIND_SYMIPLT);
+#endif
   }
   return "unknown";
 #undef CASE_KIND
@@ -1336,161 +1411,6 @@ EH_Get_PU_Range_INITO(bool bSetNull)
 }
 
 
-void
-EH_Dump_LSDA (FILE *fp)
-{
-  if (!EH_Get_PU_Range_INITO(false) || !EH_Get_PU_Range_ST())
-    return;
-  fprintf (TFile, "=======================================================================\n");
-  fprintf (fp, "\t\tLSDA sturcture of PU:%s\n", ST_name (Get_Current_PU_ST()));
-  fprintf (TFile, "=======================================================================\n");
-  
-  ST* eh_range_table = EH_Get_PU_Range_ST();
-  INITO *ino = EH_Get_PU_Range_INITO(false);
-
-  char* sym_name = ST_name(eh_range_table);
-  FmtAssert(INITO_st(ino) == eh_range_table, ("Write_LSDA_INITO.st and inito are not paired.\n"));
-  FmtAssert(sym_name != NULL &&
-            strncmp(sym_name, ".range_table.", strlen(".range_table.")) == 0,	
-	    ("Write_LSDA_INITO.ST name = %s\n", sym_name ? sym_name : "<null>"));  
-  
-  INITV_IDX inv_blk = INITO_val(*ino);
-  FmtAssert(INITVKIND_BLOCK == INITV_kind(inv_blk), ("RangeTable.Initv1.kind != BLOCK\n"));
-  INITV_IDX first = INITV_blk(inv_blk);
-  INITV_IDX act_inv = (INITV_IDX)TCON_uval(INITV_tc_val(first));
-  INITV_IDX type_inv = (INITV_IDX)TCON_uval(INITV_tc_val(act_inv));
-  INITV_IDX eh_spec_inv = (INITV_IDX)TCON_uval(INITV_tc_val(type_inv));
-
-  INITV_IDX inv;
-  inv = INITV_next(first);
- 
-  // call site table
-  fprintf (fp, "\n--------------------------- CALL SITE TABLE ---------------------------\n");
-  for(int i = 0;inv && inv != act_inv; inv = INITV_next(inv), i++) {
-    INITV_IDX prev_inv;
-    fprintf (fp, "Call Site Record [%d]:\n", i);
-
-    // cs_start (SymDiff)
-    FmtAssert (INITV_kind(inv) == INITVKIND_SYMDIFF || INITV_kind(inv) == INITVKIND_SYMDIFF16, 
-		    ("@start != INITVKIND_SYMDIFF."));
-    fprintf (fp, "\t[0]. cs_start:\t\t");
-    Print_INITV_idx (inv);
-
-    inv = INITV_next(inv);
-    // cs_len: range->start_label
-    fprintf (fp, "\t[1]. start_label:\t");
-    Print_INITV_idx (inv);
-    inv = INITV_next(inv);
-    // cs_len: range->end_label
-    fprintf (fp, "\t[2]. end_label:\t\t");
-    Print_INITV_idx (inv);      
-
-    inv = INITV_next(inv);
-    // cs_lp: landing pad pointer
-    if (INITVKIND_ZERO != INITV_kind(inv)) {
-      FmtAssert(INITVKIND_SYMDIFF == INITV_kind(inv) ||
-	        INITVKIND_SYMDIFF16 == INITV_kind(inv), ("CS_lp.kind != INITVKIND_SYMDIFF."));
-      fprintf (fp, "\t[3]. landing pad:\t");
-      Print_INITV_idx (inv);
-    }
-    else {
-      fprintf (fp, "\t[3]. NO landing pad:\t");
-      Print_INITV_idx (inv);
-    }
-
-    inv = INITV_next(inv);
-    // cs_action:offset in the action table
-    fprintf (fp, "\t[4]. cs_action:\t\t");
-    Print_INITV_idx (inv);
-  }
-  
-  // action table
-  inv = INITV_next(act_inv);
-  fprintf (fp, "\n---------------------------- ACTION TABLE -----------------------------\n");
-  for(int i = 0; inv && inv != type_inv; inv = INITV_next(inv), i++) {
-    fprintf (fp, "Action Record [%d]:\n", i);
-    // ar_filter
-    fprintf (fp, "\t[0]. ar_filter:\t\t");
-    Print_INITV_idx (inv);
-   
-    // ar_next
-    fprintf (fp, "\t[1]. ar_next:\t\t");
-    Print_INITV_idx (inv);
-  }
-  
-  // type table
-  inv = INITV_next(type_inv);
-  fprintf (fp, "\n------------------------------ TYPE TABLE ------------------------------\n");
-  for(int i = 0; inv && inv != eh_spec_inv; inv = INITV_next(inv)) {
-    int eh_filter = 0;
-    ST_IDX type_st_idx = 0;
-    fprintf (fp, "Exceptions Object [%d]:\n", i);
-    fprintf (fp, "\t[0]. ");
-    Print_INITV_idx (inv);
-    if (INITVKIND_ZERO != INITV_kind(inv))
-      type_st_idx = TCON_uval(INITV_tc_val(inv));
-    if (type_st_idx == 0)
-      fprintf(fp, "\t[1]. type_st_idx == 0\n");
-    else {
-      fprintf (fp, "\t[1]. exceptions object: %s\n", ST_name (type_st_idx));
-      eh_filter = Get_EH_Filter_By_Type (type_st_idx, tfmap);
-      fprintf (fp, "\t[2]. eh_filter: %d\n", eh_filter);
-    }
-  }
-
-  // type_spec table
-  fprintf (fp, "\n------------------------ TYPE SPECIFICATION TABLE -----------------------\n");
-  fprintf (fp, "Exception Objects Type in eh_spec:");
-  inv = INITV_next(eh_spec_inv);
-  for(int i = 0; inv; inv = INITV_next(inv), i++) {
-    ST_IDX type_st_idx;
-    fprintf (fp, "\t[%d]. ", i);
-    Print_INITV_idx (inv);
-    if (INITVKIND_ZERO != INITV_kind(inv)) {
-      type_st_idx = Get_EH_ST_By_Filter (TCON_ival(INITV_tc_val(inv)), ftmap);
-      fprintf (fp, "%s\n", ST_name (type_st_idx));
-    }
-    else
-      fprintf (fp, "\n");
-  }
-  fprintf (fp, "\n");
-}
-
-bool pu_need_LSDA;
-
-// check whether need not to create INITO for LSDA
-// Another way: check if exception type info stored in INITO pu.unused is NULL/ZERO
-bool
-PU_Need_Not_Create_LSDA ()
-{
-  bool flag = true;
-  for (INT32 i = 0; i < range_list.size(); i++) {
-    EH_RANGE& range = range_list[i];
-    if (range.ereg_supp == 0)	continue;
-    ST* st = INITO_st(range.ereg_supp);
-    if (ST_is_not_used(st)) 	continue;
-
-    INITV_IDX blk = INITO_val(range.ereg_supp);
-    if (INITV_kind(blk) != INITVKIND_BLOCK) 
-      continue;
-
-    INITV_IDX first = INITV_blk(blk);
-    if (INITV_kind(first) == INITVKIND_LABEL) {
-      flag = false;
-      return flag;
-    }
-  }
-  if (flag) 
-    for (INT32 i = 0; i < range_list.size(); i++) {
-      EH_RANGE& range = range_list[i];
-      if (range.ereg_supp != 0) {
-        ST* st = INITO_st(range.ereg_supp);
-        Set_ST_is_not_used(st);
-      }
-    }
-  return flag;
-}
-
 #ifdef KEY
 // bug 3416: The exception ranges in exception table must be sorted in
 // increasing order of call-site address. The problem shows up when we
@@ -1553,89 +1473,55 @@ static void flatten_regions (void)
        iter != new_ranges.end(); ++iter)
     range_list.add_range (*iter);
 }
+#endif
 
-#include <map>
-using namespace std;
 
-struct cmpst
+#ifdef TARG_IA64 
+bool pu_need_LSDA;
+/* This trick seems that only reasonable on IA64, you can refer to 
+   eh_personality routine in libstdc++ for more details.
+   Is there difference in libstdc++ between IA64 and X8664?
+ */
+
+// check whether need not to create INITO for LSDA
+// Another way: check if exception type info stored in INITO pu.unused is NULL/ZERO
+bool
+PU_Need_Not_Create_LSDA ()
 {
-  bool operator() (const ST_IDX i1, const ST_IDX i2) const
-  {
-  	return (i1 < i2);
+  bool flag = true;
+  for (INT32 i = 0; i < range_list.size(); i++) {
+    EH_RANGE& range = range_list[i];
+    if (range.ereg_supp == 0)	continue;
+    ST* st = INITO_st(range.ereg_supp);
+    if (ST_is_not_used(st)) 	continue;
+
+    INITV_IDX blk = INITO_val(range.ereg_supp);
+    if (INITV_kind(blk) != INITVKIND_BLOCK) 
+      continue;
+
+    INITV_IDX first = INITV_blk(blk);
+    if (INITV_kind(first) == INITVKIND_LABEL) {
+      flag = false;
+      return flag;
+    }
   }
-};
-
-// Seems I need some features of 'map' and some features of 'vector'. I want
-// a map from an st entry to a filter. This map would be sorted based on st.
-// I need an ordering based on filter (which is not the key in the map).
-map<ST_IDX, int, cmpst> type_filter_map;
-
-struct type_filter_entry {
-	ST_IDX st;
-	int filter;
-};
-
-struct sort_on_filter : public binary_function<type_filter_entry, 
-					type_filter_entry, bool>
-{
-  bool operator() (const type_filter_entry t1, 
-			const type_filter_entry t2) const
-  {
-	return t1.filter > t2.filter;
-  }
-};
-
-static INITO*
-Create_Type_Filter_Map (void)
-{
-  INITV_IDX i = INITV_next (INITV_next (INITO_val (Get_Current_PU().unused)));
-  INITO* ino;
-  INITO_IDX idx = TCON_uval (INITV_tc_val(i));
-  if (idx)	// idx for typeinfo_table
-  {
-    ino = &Inito_Table[idx];
-    ST* st = INITO_st(ino);
-
-    FmtAssert (!strcmp(ST_name (*st), "__TYPEINFO_TABLE__") && 
-    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
-	      ("Unexpected ST in PU"));
-    INITV_IDX blk = INITO_val(*ino);
-
-    do 
-    {
-	INITV_IDX st_entry = INITV_blk(blk);
-	// st_idx, filter
-	ST_IDX st_idx = 0;
-	if (INITV_kind (st_entry) != INITVKIND_ZERO)
-	    st_idx = TCON_uval(INITV_tc_val (st_entry));
-	int filter = TCON_ival (INITV_tc_val (INITV_next (st_entry)));
-	type_filter_map [st_idx] = filter;
-    } while (INITV_next(blk) && (blk=INITV_next(blk)));
-  }
-
-  i = INITV_next (i);
-  ino = 0;
-  idx = TCON_uval (INITV_tc_val(i));
-  if (idx)	// idx for eh-spec
-  {
-    ino = &Inito_Table[idx];
-    ST* st = INITO_st(ino);
-
-    FmtAssert (!strcmp(ST_name (*st), "__EH_SPEC_TABLE__") && 
-    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
-	      ("Unexpected ST in PU"));
-  }
-  return ino;
+  if (flag) 
+    for (INT32 i = 0; i < range_list.size(); i++) {
+      EH_RANGE& range = range_list[i];
+      if (range.ereg_supp != 0) {
+        ST* st = INITO_st(range.ereg_supp);
+        Set_ST_is_not_used(st);
+      }
+    }
+  return flag;
 }
-#endif // KEY
 
-#ifdef TARG_IA64 //zhc
-
-#define THU_EH_IMP 1
+/* There are subtle difference between IA64 and X8664 when creating INITO for landing pad.
+   TODO: need to merge them?
+ */
 static void
 Create_INITO_For_Range_Table(ST * st, ST * pu)
 {
-#if (THU_EH_IMP == 1)
   INITV_IDX eh_spec_iv = Get_TF_Map_and_EH_Spec_List(Get_Current_PU(), tfmap);
   INITO_IDX inito = New_INITO(st);
   INITV_IDX inv_blk = New_INITV();
@@ -1851,61 +1737,11 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     INITV_Init_Integer_2(cinv, MTYPE_I1, 0, 1);
   }
 #undef WINUX_ALLOC_INV
-
-#else
-  INITO_IDX inito = New_INITO(st);
-  INITV_IDX inv_blk = New_INITV ();
-  INITV_IDX inv;
-  INITV_IDX prev_inv;
-
-  // create block of blocks
-  prev_inv = Append_INITV (inv_blk, inito, INITV_IDX_ZERO);
-  inv_blk = New_INITV ();
-  INITV_Init_Block(prev_inv, inv_blk);
-  // header: pad(31), short/long(1), version(16), count(16)
-  inv = New_INITV ();
-  INITV_Init_Integer (inv, MTYPE_I4, 
-               	         (Use_Long_EH_Range_Offsets() ? LONG_OFFSETS 
-						      : SHORT_OFFSETS) );
-  INITV_Init_Block (inv_blk, inv);
-  prev_inv = inv;
-  inv = New_INITV ();
-  INITV_Init_Integer (inv, MTYPE_I2, HEADER_VERSION);
-  prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-  inv = New_INITV ();
-  INITV_Init_Integer (inv, MTYPE_I2, range_list.size());
-  prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-
-  for (INT32 i = 0; i < range_list.size(); i++) {
-    /* block for each range */
-    inv_blk = Append_INITV (New_INITV (), INITO_IDX_ZERO, inv_blk);
-    // supp(32), parent(16), pad(14), kind(2), low(16/32), high(16/32)
-    inv = New_INITV();
-    if (range_list[i].ereg_supp == 0)
-        INITV_Init_Integer (inv, MTYPE_I4, 0);
-    else
-        INITV_Init_Symoff (inv, INITO_st(range_list[i].ereg_supp), 0);
-    INITV_Init_Block (inv_blk, inv);
-    prev_inv = inv;
-    inv = New_INITV();
-    INITV_Init_Integer (inv, MTYPE_I2, parent_offset(i));
-    prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-    inv = New_INITV();
-    INITV_Init_Integer (inv, MTYPE_I2, range_list[i].kind);
-    prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-    inv = New_INITV();
-    INITV_Init_Symdiff (inv, range_list[i].start_label,
-			   pu, !Use_Long_EH_Range_Offsets());
-    prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-    inv = New_INITV();
-    INITV_Init_Symdiff (inv, range_list[i].end_label,
-			   pu, !Use_Long_EH_Range_Offsets());
-    prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-  }
-#endif
 }
 
 #else // TARG_IA64
+/* implementation on X8664. 
+ */
 #ifdef KEY
 static void
 Create_INITO_For_Range_Table(ST * st, ST * pu)
@@ -1943,8 +1779,7 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     INITO_IDX ereg = range_list[i].ereg_supp;
     INITV_IDX first_initv = INITV_blk (INITO_val (ereg));
     Set_ST_is_not_used (*(INITO_st (ereg)));
-
-#ifdef OSP_OPT
+#if 0
     if ((INITV_kind(first_initv) != INITVKIND_LABEL) &&
                 PU_is_mainpu (Get_Current_PU ())) {
       continue;
@@ -2164,6 +1999,9 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
 }
 
 #else
+/* The first implementation, not conform to the C++ ABI.
+   NO call site table, type table, action table, .etc. 
+ */
 static void
 Create_INITO_For_Range_Table(ST * st, ST * pu)
 {
@@ -2218,8 +2056,128 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
   }
 }
 #endif // KEY
-#endif // TARG_IA64 // zhc
+#endif // TARG_IA64 
 
+
+void
+EH_Dump_LSDA (FILE *fp)
+{
+  if (!EH_Get_PU_Range_INITO(false) || !EH_Get_PU_Range_ST())
+    return;
+  fprintf (TFile, "=======================================================================\n");
+  fprintf (fp, "\t\tLSDA sturcture of PU:%s\n", ST_name (Get_Current_PU_ST()));
+  fprintf (TFile, "=======================================================================\n");
+  
+  ST* eh_range_table = EH_Get_PU_Range_ST();
+  INITO *ino = EH_Get_PU_Range_INITO(false);
+
+  char* sym_name = ST_name(eh_range_table);
+  FmtAssert(INITO_st(ino) == eh_range_table, ("Write_LSDA_INITO.st and inito are not paired.\n"));
+  FmtAssert(sym_name != NULL &&
+            strncmp(sym_name, ".range_table.", strlen(".range_table.")) == 0,	
+	    ("Write_LSDA_INITO.ST name = %s\n", sym_name ? sym_name : "<null>"));  
+  
+  INITV_IDX inv_blk = INITO_val(*ino);
+  FmtAssert(INITVKIND_BLOCK == INITV_kind(inv_blk), ("RangeTable.Initv1.kind != BLOCK\n"));
+  INITV_IDX first = INITV_blk(inv_blk);
+  INITV_IDX act_inv = (INITV_IDX)TCON_uval(INITV_tc_val(first));
+  INITV_IDX type_inv = (INITV_IDX)TCON_uval(INITV_tc_val(act_inv));
+  INITV_IDX eh_spec_inv = (INITV_IDX)TCON_uval(INITV_tc_val(type_inv));
+
+  INITV_IDX inv;
+  inv = INITV_next(first);
+ 
+  // call site table
+  fprintf (fp, "\n--------------------------- CALL SITE TABLE ---------------------------\n");
+  for(int i = 0;inv && inv != act_inv; inv = INITV_next(inv), i++) {
+    INITV_IDX prev_inv;
+    fprintf (fp, "Call Site Record [%d]:\n", i);
+
+    // cs_start (SymDiff)
+    FmtAssert (INITV_kind(inv) == INITVKIND_SYMDIFF || INITV_kind(inv) == INITVKIND_SYMDIFF16, 
+		    ("@start != INITVKIND_SYMDIFF."));
+    fprintf (fp, "\t[0]. cs_start:\t\t");
+    Print_INITV_idx (inv);
+
+    inv = INITV_next(inv);
+    // cs_len: range->start_label
+    fprintf (fp, "\t[1]. start_label:\t");
+    Print_INITV_idx (inv);
+    inv = INITV_next(inv);
+    // cs_len: range->end_label
+    fprintf (fp, "\t[2]. end_label:\t\t");
+    Print_INITV_idx (inv);      
+
+    inv = INITV_next(inv);
+    // cs_lp: landing pad pointer
+    if (INITVKIND_ZERO != INITV_kind(inv)) {
+      FmtAssert(INITVKIND_SYMDIFF == INITV_kind(inv) ||
+	        INITVKIND_SYMDIFF16 == INITV_kind(inv), ("CS_lp.kind != INITVKIND_SYMDIFF."));
+      fprintf (fp, "\t[3]. landing pad:\t");
+      Print_INITV_idx (inv);
+    }
+    else {
+      fprintf (fp, "\t[3]. NO landing pad:\t");
+      Print_INITV_idx (inv);
+    }
+
+    inv = INITV_next(inv);
+    // cs_action:offset in the action table
+    fprintf (fp, "\t[4]. cs_action:\t\t");
+    Print_INITV_idx (inv);
+  }
+  
+  // action table
+  inv = INITV_next(act_inv);
+  fprintf (fp, "\n---------------------------- ACTION TABLE -----------------------------\n");
+  for(int i = 0; inv && inv != type_inv; inv = INITV_next(inv), i++) {
+    fprintf (fp, "Action Record [%d]:\n", i);
+    // ar_filter
+    fprintf (fp, "\t[0]. ar_filter:\t\t");
+    Print_INITV_idx (inv);
+   
+    // ar_next
+    fprintf (fp, "\t[1]. ar_next:\t\t");
+    Print_INITV_idx (inv);
+  }
+  
+  // type table
+  inv = INITV_next(type_inv);
+  fprintf (fp, "\n------------------------------ TYPE TABLE ------------------------------\n");
+  for(int i = 0; inv && inv != eh_spec_inv; inv = INITV_next(inv)) {
+    int eh_filter = 0;
+    ST_IDX type_st_idx = 0;
+    fprintf (fp, "Exceptions Object [%d]:\n", i);
+    fprintf (fp, "\t[0]. ");
+    Print_INITV_idx (inv);
+    if (INITVKIND_ZERO != INITV_kind(inv))
+      type_st_idx = TCON_uval(INITV_tc_val(inv));
+    if (type_st_idx == 0)
+      fprintf(fp, "\t[1]. type_st_idx == 0\n");
+    else {
+      fprintf (fp, "\t[1]. exceptions object: %s\n", ST_name (type_st_idx));
+      eh_filter = Get_EH_Filter_By_Type (type_st_idx, tfmap);
+      fprintf (fp, "\t[2]. eh_filter: %d\n", eh_filter);
+    }
+  }
+
+  // type_spec table
+  fprintf (fp, "\n------------------------ TYPE SPECIFICATION TABLE -----------------------\n");
+  fprintf (fp, "Exception Objects Type in eh_spec:");
+  inv = INITV_next(eh_spec_inv);
+  for(int i = 0; inv; inv = INITV_next(inv), i++) {
+    ST_IDX type_st_idx;
+    fprintf (fp, "\t[%d]. ", i);
+    Print_INITV_idx (inv);
+    if (INITVKIND_ZERO != INITV_kind(inv)) {
+      type_st_idx = Get_EH_ST_By_Filter (TCON_ival(INITV_tc_val(inv)), ftmap);
+      fprintf (fp, "%s\n", ST_name (type_st_idx));
+    }
+    else
+      fprintf (fp, "\n");
+  }
+  fprintf (fp, "\n");
+}
 
 // Temporary workaround
 struct SET_NOT_USED {

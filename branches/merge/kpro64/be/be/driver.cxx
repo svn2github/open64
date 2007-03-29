@@ -1441,7 +1441,6 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 #endif
     Update_EHRegion_Inito (pu);
 
-#ifdef TARG_IA64   
     // trace the info of updated EH INITO      
     if (Get_Trace (TP_EH, 0x0004)) {
       fprintf (TFile, "=======================================================================\n");
@@ -1451,7 +1450,6 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
       fprintf (TFile, "=======================================================================\n");
       EH_Dump_INITOs (pu, TFile);
     }
-#endif
 
     /* Generate EH range table for PU.  The high and low labels are
      * filled in during code generation.

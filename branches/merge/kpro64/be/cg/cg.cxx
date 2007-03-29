@@ -621,12 +621,11 @@ CG_Generate_Code(
 
   EH_Prune_Range_List();
 
-#ifdef TARG_IA64
-#ifdef OSP_OPT
+#if defined(TARG_IA64) && defined(OSP_OPT)
   // it's high time to compute pu_need_LSDA after EH_Prune_Range_List, 
   pu_need_LSDA = !PU_Need_Not_Create_LSDA ();
-#endif 
-
+#endif
+ 
   // trace all the EH ranges 
   if (Get_Trace (TP_EH, 0x0002)) {
     fprintf (TFile, "\n=======================================================================\n");
@@ -635,7 +634,6 @@ CG_Generate_Code(
     fprintf (TFile, "=======================================================================\n");
     EH_Print_Range_List ();
   }
-#endif
 
   Optimize_Tail_Calls( Get_Current_PU_ST() );
 
@@ -1399,33 +1397,28 @@ CG_Generate_Code(
   } /* if (region */
 
   else { /* PU */
-#ifdef TARG_IA64
     // dump EH entry info
     if (Get_Trace (TP_EH, 0x0001)) {
       Print_PU_EH_Entry(Get_Current_PU(), WN_st(rwn), TFile);
     }
     
-#ifdef OPS_OPT
+#if defined(TARG_IA64) && defined(OSP_OPT)
     /* Write the EH range table. 
      * if pu_need_LSDA is set for current PU, 
      * means no need to write EH range table
      */
-    if (PU_has_exc_scopes(Get_Current_PU()) && pu_need_LSDA) {
+    if (PU_has_exc_scopes(Get_Current_PU()) && 
+        pu_need_LSDA ) {
 #else
     if (PU_has_exc_scopes(Get_Current_PU())) {
-#endif
-#else // TARG_IA64
-      if (PU_has_exc_scopes(Get_Current_PU())) {
 #endif
       EH_Write_Range_Table(rwn);
     }
 
-#ifdef TARG_IA64
     // dump LSDA of current PU
     if (Get_Trace (TP_EH, 0x0008)) {
       EH_Dump_LSDA (TFile);
     }
-#endif
 
     /* Emit the code for the PU. This may involve writing out the code to
      * an object file or to an assembly file or both. Additional tasks
