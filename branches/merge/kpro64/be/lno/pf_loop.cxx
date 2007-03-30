@@ -400,6 +400,13 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
     // TODO: If this is always safe, then we could make it default.
     for (INT i=0; i<array->Num_Vec(); i++) {
       ACCESS_VECTOR *av = array->Dim(i);
+#ifdef OSP_OPT
+      // For IA64, prefetch can be more aggressive.
+      if (av->Contains_Non_Lin_Symb() || av->Too_Messy) {
+	  if (Has_Indirect_Ref(wn_array))
+	    messy = TRUE;
+      }
+#else
       if (av->Contains_Non_Lin_Symb()) {
         messy = TRUE;
       } else if (av->Too_Messy) {
@@ -409,6 +416,7 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
 	} else
 	  messy = TRUE;
       }
+#endif
     }
 #else
     for (INT i=0; i<array->Num_Vec(); i++) {

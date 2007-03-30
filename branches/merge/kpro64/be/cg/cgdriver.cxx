@@ -1699,8 +1699,6 @@ Configure_CG_Options(void)
   }
   Enable_CG_Peephole = (CG_opt_level > 0) ? TRUE : FALSE;
 #ifdef TARG_IA64
-  if (CG_opt_level <= 0) 
-      Enable_EBO_Post_Proc_Rgn = FALSE ;
 
   if ( IPFEC_Profitability ) {
       // region formation

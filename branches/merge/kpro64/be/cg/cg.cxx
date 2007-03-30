@@ -1252,7 +1252,7 @@ CG_Generate_Code(
   }
 
 #ifdef TARG_IA64
-  if (Enable_EBO_Post_Proc_Rgn) {
+  if (CG_opt_level > 0 && Enable_EBO_Post_Proc_Rgn) {
 #else
   if (Enable_CG_Peephole) {
 #endif

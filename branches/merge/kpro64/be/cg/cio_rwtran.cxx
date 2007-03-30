@@ -2522,6 +2522,11 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	  INT opnd;
 	  for ( opnd = OP_opnds( entry2.op ) - 1; opnd >= 0; --opnd )
 	    if ( entry1.opnd_source[opnd] != entry2.opnd_source[opnd] ||
+#ifdef OSP_OPT
+		 //Bug fix for OSP_239
+		 //TODO: This bug fix could be refined
+		 (entry1.opnd_source[opnd] > index1 && entry1.opnd_source[opnd] < index2) ||
+#endif
 		 entry1.opnd_result[opnd] != entry2.opnd_result[opnd] )
 	      break;
 	  // Add code to handle ADD and other commutative OPs
