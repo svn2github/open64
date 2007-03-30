@@ -2406,7 +2406,8 @@ Find_BB_TNs (BB *bb)
              !OP_uniq_res(op) ||
 #ifdef TARG_IA64
              !tn_registers_identical(tn, OP_result(op,0))) &&
-	    !OP_ld_st_unat(op)) {
+	     !OP_ld_st_unat(op) && 
+	     !TN_is_dedicated(OP_opnd(op,opndnum))) {
 #else
              !tn_registers_identical(tn, OP_result(op,0)))
 #ifdef KEY

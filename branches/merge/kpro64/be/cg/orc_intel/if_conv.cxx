@@ -4283,12 +4283,9 @@ BB *
 IF_CONVERTOR::Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
 {
     BB     *bb_entry = LOOP_DESCR_loophead(loop);
-    BB_SET *bbs = BB_SET_Create_Empty(PU_BB_Count, &_m);
-    BB_SET_UnionD(bbs,LOOP_DESCR_bbset(loop), &_m);
-    
+
     // possible quick exit if there is already only one block in the region
-    if (BB_SET_Size(bbs) == 1) 
-    {
+    if (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1) {
         return bb_entry;
     }
     
@@ -4357,22 +4354,25 @@ IF_CONVERTOR::Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
         BB* fall_thru_bb = NULL;
         BB* bb;
         IF_CONV_AREA* area = *(areas1.begin());
-        bbs = BB_SET_Create_Empty(PU_BB_Count, &_m);
+        BB_CONTAINER del_blks(&_m);
         BB_CONTAINER::iterator bb_iter;
-        for ( bb_iter = area -> Blocks().begin();
-        bb_iter != area -> Blocks().end();
-        bb_iter ++)
+        for (bb_iter = area -> Blocks().begin();
+             bb_iter != area -> Blocks().end();
+             bb_iter ++)
         {
 
             bb = *bb_iter;
-            bbs = BB_SET_Union1D(bbs, bb, &_m);
             REGIONAL_CFG_NODE* node = Regional_Cfg_Node(bb);
             REGION* home_region = node ? node -> Home_Region() : NULL;
             // home_region == NULL means the bb has been deleted
             if (!home_region)
             {
                 // get rid of all the old blocks from the loop descriptors
-                LOOP_DESCR_Delete_BB(loop,bb);
+                // Due to some bugs, when BB set in LOOP_DESCR is changed, 
+		// the "delete" operations should be performed after "add" 
+		// is done. 
+		// LOOP_DESCR_Delete_BB(loop, bb);
+                del_blks.push_back (bb);
             } else if (home_region != region)
             {
                 FmtAssert(fall_thru_bb == NULL, 
@@ -4387,14 +4387,19 @@ IF_CONVERTOR::Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
                 }
             }
         }
+        for (BB_CONTAINER::iterator iter = del_blks.begin();
+	     iter != del_blks.end (); iter++) {
+           LOOP_DESCR_Delete_BB(loop, *iter);
+	}
 
         BB* single_bb = NULL;
         if (can_one_bb) 
         {
             FmtAssert( areas1.size() ==1, (" loop should be shrinked to one bb"));
             IF_CONV_AREA* area = *(areas1.begin());
-            single_bb = area -> Entry_BB();
-        } 
+            if (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1)
+              single_bb = area -> Entry_BB();
+        }
         if (Get_Trace(TP_A_IFCONV, TT_IF_CONV_GRAPHIC)) 
         {
             draw_regional_cfg(region);
