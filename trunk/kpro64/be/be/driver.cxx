@@ -1089,7 +1089,8 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
  
 	rwn = WN_Lower(rwn, LOWER_TO_CG, alias_mgr, "Lowering to CG");
 #ifdef TARG_IA64
-	if (Only_Unsigned_64_Bit_Ops && ! Run_wopt)
+	if (Only_Unsigned_64_Bit_Ops && 
+            (!Run_wopt || Query_Skiplist (WOPT_Skip_List, Current_PU_Count()))) 
 	  U64_lower_wn(rwn, FALSE);
 #endif
         WB_LWR_Terminate();
