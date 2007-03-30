@@ -373,6 +373,11 @@ EBO_predicate_dominates (TN *pred1, EBO_TN_INFO *info1,
    /* A TRUE predicate dominates everything. */
     return TRUE;
   }
+  if (EBO_in_peep) {
+  /* post ebo can see physical registers, so we just compare whether these two registers are the same. */
+    extern BOOL tn_registers_identical(TN *, TN *); // this is defined in ebo_util.h file
+    return (tn_registers_identical(pred1,pred2));
+  }
   if (pred1 == pred2) {
    /* Equal predicates are fine if the values are current. */
     return (info1 == info2);
@@ -468,11 +473,7 @@ tn_info_use (BB *current_bb, OP *current_op, TN *local_tn,
       if (predicate_tn != NULL) {
        /* Then, if the predicates have the right relationship, we have
           found the matching input to this use. */
-#ifdef TARG_IA64
-        if ( EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?
-#else
         if (EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?
-#endif
                                              tninfo->predicate_tninfo->local_tn:True_TN,
                                     tninfo->predicate_tninfo,
                                     predicate_tn,
