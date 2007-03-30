@@ -753,12 +753,14 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	if (Current_Param_Num > Last_Fixed_Param && !SIM_varargs_floats) {
 		/* varargs causes float args to be int regs */
 		ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-		++Current_Param_Num;
 		++Last_Fixed_Param;
 	} else {
 		ploc.reg = Get_Current_Float_Preg_Num (SIM_INFO.flt_args);
 		ploc.vararg_reg = Get_Current_Preg_Num (SIM_INFO.int_args);
 	}
+	// OSP_249, long double parameter
+	// Increase Current_Param_Num twice for long double will occupy 2 slots
+	++Current_Param_Num;
 	break;
 
     case MTYPE_FQ:
