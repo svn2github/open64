@@ -767,6 +767,9 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 		ploc.reg = Get_Current_Float_Preg_Num (SIM_INFO.flt_args);
 		ploc.vararg_reg = Get_Current_Preg_Num (SIM_INFO.int_args);
 	}
+        // OSP_249, long double parameter
+	// Increase Current_Param_Num twice for long double will occupy 2 slots
+	++Current_Param_Num;
 	break;
 
     case MTYPE_FQ:
