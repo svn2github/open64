@@ -3009,19 +3009,14 @@ Apply_Par_Region_Default_Scopes(WN *wn, ST_TO_BOOL_HASH *processed,
  * Apply_Default_Scopes().
  *
  * Perform these checks on final scopes: (1) THREADPRIVATE common blocks
- * and variables in them can't appear in any scope clauses; (2) privatized
- * and REDUCTION variables in a worksharing construct lexically enclosed
- * by a parallel region must have shared scope in the parallel region.
+ * and variables in them can't appear in any scope clauses; (2) FIRSTPRIVATE,
+ * LASTPRIVATE and REDUCTION variables in a worksharing construct lexically 
+ * enclosed by a parallel region must have shared scope in the parallel
+ * region.
  *
- * As exceptions to the rule against reprivatization, we allow:
- *   (a) An implicit PRIVATE(i) on a parallel region that contains a PDO
- *       with a PRIVATE(i), if "i" is the PDO index variable (this can
- *       result from implicit privatization of PDO index variables).
- *   (b) If both the outer and inner pragmas are PRIVATE and compiler-
- *       generated. In this case we delete the inner PRIVATE. This can
- *       result from inlining.
- *       KEY: I don't see why the inner pragma also needs to be compiler-
- *            generated. bug 6428 shows why !compiler-generated is valid.
+ * For a PRIVATE variable in a worksharing construct lexically enclosed by
+ * a parall region, if it's not shared in that parallel region, just ignore
+ * the inner PRIVATE clause. (Reprivatization is legal)
  *
  * Parameters:
  *  wn : in/out : Whirl tree in which to perform privatization
@@ -3058,7 +3053,7 @@ Privatize_Index_Vars_And_Check_Final_Scopes(
     // check final scopes within parallel construct when we first reach
     // the construct
   if (is_worksharing || is_par_region) {
-      // exception case (a) and (b) reprivatizing pragmas to be removed
+      // reprivatizing pragmas to be removed
     WN_LIST reprivatizing_pragmas(&omp_pool);
 
     for (WN *prag = WN_first(WN_region_pragmas(wn)); prag;
@@ -3109,36 +3104,22 @@ Privatize_Index_Vars_And_Check_Final_Scopes(
           // parallel region is OK: PV 626400)
         continue; // skip reprivatization checks
 
-        // Check that REDUCTION and PRIVATE variables in an enclosed
-	// worksharing construct are shared in enclosing parallel region.
-	// Allow exception cases (a) and (b), described above.
       switch (prag_id) {
+	//Check reprivatization variables.
       case WN_PRAGMA_LOCAL:
+        if (Var_Scope(st, pragma_block_list, &how, &scope_prag) ==
+            WN_PRAGMA_DEFAULT_PRIVATE) // reprivatization
+          reprivatizing_pragmas.AddElement(prag);
+	break;
+
+        // Check that REDUCTION, FIRSTPRIVATE, LASTPRIVATE variables in an enclosed
+	// worksharing construct are shared in enclosing parallel region.
       case WN_PRAGMA_LASTLOCAL:
       case WN_PRAGMA_FIRSTPRIVATE:
       case WN_PRAGMA_REDUCTION:
         if (Var_Scope(st, pragma_block_list, &how, &scope_prag) !=
             WN_PRAGMA_DEFAULT_PRIVATE)
           break;  // no reprivatization
-
-        if (prag_id == WN_PRAGMA_LOCAL &&
-            Index_Priv_From_OMPL->Find(scope_prag)) {
-          reprivatizing_pragmas.AddElement(prag);
-	  break;  // exception case (a)
-        }
-
-	if (WN_pragma(scope_prag) == WN_PRAGMA_LOCAL &&
-	    prag_id == WN_PRAGMA_LOCAL &&
-	    WN_pragma_compiler_generated(scope_prag)
-#ifndef KEY
-	    // bug 6428
-	    && WN_pragma_compiler_generated(prag)
-#endif // !KEY
-	    )
-        {
-          reprivatizing_pragmas.AddElement(prag);
-	  break;  // exception case (b)
-        }
 
         ErrMsgLine(prag_id == WN_PRAGMA_REDUCTION ?
                    EC_MPLOWER_red_of_private : EC_MPLOWER_reprivatization,
