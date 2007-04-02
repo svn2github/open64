@@ -471,8 +471,6 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_IF_CONVERTED 0x01000000 /*Is OP if-converted? */
 #define OP_MASK_RENAMED	0x02000000 /*Is OP renamed by GLOS */
 #define OP_MASK_SPILL_RESTORE 0x04000000 /*Is OP a spill or restore  */
-#define OP_MASK_
-/*Is OP a spill or restore  */
 
 
 #define OP_MASK_LAST    OP_MASK_DATA_SPEC
