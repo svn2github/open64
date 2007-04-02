@@ -417,7 +417,13 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
         U64_LOWER_insert_cvtl_for_kid(new_nd, hob_to_do1, 1, maxsize1, hob_state1);
       }
       U64_LOWER_set_rtype(new_nd, Mtype_TransferSize(MTYPE_A8, res));
-      maxsize = MIN(MAX(maxsize, maxsize1) + 1, 64);
+
+      // If res of kid 0 and kid 1 are both MTYPE_B, we do not generate 
+      //   CVTL for res for the highest bit of the result will be treates as sign
+      //   after CVTL is expand to extr instruction
+      if( maxsize != 0 || maxsize1 != 0 ) 
+	  maxsize = MIN(MAX(maxsize, maxsize1) + 1, 64);
+
       // if both operands's high-order bits were already in designated state and
       // the operation's result cannot overflow the bit size, just return
       if (hob_state != HOB_none && hob_state == hob_state1 &&
