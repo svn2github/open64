@@ -3208,7 +3208,7 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops)
 }
 
 void
-Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * /* op1 */, OPS *ops)
+Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * op1, OPS *ops)
 {
   switch (id) {
   case INTRN_GETF_EXP:
@@ -3244,6 +3244,12 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * /* op1 */, OPS *ops)
       Build_OP (TOP_mov, result, p1, Zero_TN, ops);
       Build_OP (TOP_popcnt, result, p2, t2, ops);
     }
+    break;
+  case INTRN_ISLESSGREATER:
+    // This is the final place to expand this intrinsic
+    // If Expand it in FE can get more optimization opportunity,
+    // please handle it in FE.
+    Expand_Float_Compares(TOP_fcmp_neq, result, op0, op1, ops); 
     break;
   default:
     #pragma mips_frequency_hint NEVER
