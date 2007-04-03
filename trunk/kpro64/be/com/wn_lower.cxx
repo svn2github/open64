@@ -10291,12 +10291,17 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 	  mtype = RETURN_INFO_mtype(return_info, i);
 	  ty_idx_used = Be_Type_Tbl(mtype);
 	  Set_TY_align(ty_idx_used, algn);
-	  n_rhs = WN_CreateLdid (OPR_LDID, mtype, mtype, 
-				 WN_load_offset(o_rhs)
+          preg    = RETURN_INFO_preg (return_info, i);
+          preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+	  if (WN_st(o_rhs) == Return_Val_Preg)
+	    n_rhs = WN_CreateLdid (OPR_LDID, mtype, mtype,
+				   RETURN_INFO_preg(return_info, i), preg_st,
+				   ty_idx_used);
+	  else
+	    n_rhs = WN_CreateLdid (OPR_LDID, mtype, mtype, 
+				   WN_load_offset(o_rhs)
 				   + i * MTYPE_byte_size(mtype),
-				 WN_st_idx(o_rhs), ty_idx_used);
-	  preg    = RETURN_INFO_preg (return_info, i);
-	  preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+				   WN_st_idx(o_rhs), ty_idx_used);
 	  wn = WN_CreateStid(OPR_STID, MTYPE_V, mtype, preg, preg_st, 
 			     Be_Type_Tbl(mtype), n_rhs);
 #ifdef KEY

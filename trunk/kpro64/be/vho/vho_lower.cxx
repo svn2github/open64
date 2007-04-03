@@ -161,7 +161,7 @@ typedef struct bool_expr_info_t {
 static WN * vho_lower ( WN * wn, WN * block );
 static WN * vho_lower_stmt ( WN * stmt, WN * block );
 static WN * vho_lower_block ( WN * wn );
-static WN * vho_lower_expr ( WN * expr, WN * block, BOOL_INFO * bool_info );
+static WN * vho_lower_expr ( WN * expr, WN * block, BOOL_INFO * bool_info , BOOL is_return=FALSE);
 
 /* Table used to promote integers less than 4 bytes into their
  * 4 byte counterparts in order to get the right type for OPCODE_make_op
@@ -1965,7 +1965,7 @@ vho_initialize_bool_info ( BOOL_INFO * bool_info )
 
 
 static WN *
-vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info )
+vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info ,BOOL is_return=FALSE)
 {
   WN       * comma_block;
   WN       * result_block;
@@ -1973,13 +1973,47 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info )
   WN       * first;
   WN       * value;
   WN       * stmt;
+  WN       * prev_call;
   PREG_NUM   preg;
   BOOL       call;
 
   result = WN_kid1 (wn);
+  if( PU_cxx_lang (Get_Current_PU()) && WN_operator(WN_last(WN_kid0(wn))) == OPR_STID)
+    prev_call = WN_kid0(WN_last(WN_kid0(wn)));
+  else
+    prev_call = NULL;
   call   =   WHIRL_Return_Val_On
           && WN_operator(result) == OPR_LDID
           && WN_st(result) == Return_Val_Preg;
+
+  if ( PU_cxx_lang (Get_Current_PU())&&
+       prev_call && 
+       WN_operator(prev_call) == OPR_LDID &&
+       (WN_st(prev_call) == Return_Val_Preg || is_return)&&
+       WN_rtype(prev_call) == MTYPE_M){
+    WN_Set_Linenum ( block, VHO_Srcpos );
+    WN * next_wn;
+
+    for ( wn = WN_first( WN_kid0(wn));
+	  wn;
+	  wn = next_wn ) {
+
+      next_wn = WN_next(wn);
+
+      if (!next_wn) {
+	result = vho_lower_expr (WN_kid0(wn), block, bool_info);
+	break;
+      }
+
+      wn = vho_lower ( wn, block );
+
+      if ( wn )
+	WN_INSERT_BlockLast ( block, wn );
+    }
+    
+    return result;
+    
+  }
 
   comma_block = vho_lower_block (WN_kid0(wn));
   WN_Set_Linenum ( comma_block, VHO_Srcpos );
@@ -3776,7 +3810,7 @@ vho_lower_mparm (WN * wn)
  */
 
 static WN *
-vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
+vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info ,BOOL is_return)
 {
   OPCODE     opcode;
   OPERATOR   wn_operator;
@@ -4060,7 +4094,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
 
     case OPR_COMMA:
 
-      wn = vho_lower_comma ( wn, block, bool_info );
+      wn = vho_lower_comma ( wn, block, bool_info , is_return);
 /*
       comma_block = vho_lower_block (WN_kid0(wn));
       WN_INSERT_BlockLast ( block, comma_block );
@@ -4199,7 +4233,7 @@ vho_singleton_field (TY_IDX ty_idx)
 static WN *
 vho_lower_return_val (WN* wn, WN* block)
 {
-  WN_kid0(wn) = vho_lower_expr ( WN_kid0(wn), block, NULL );
+  WN_kid0(wn) = vho_lower_expr ( WN_kid0(wn), block, NULL ,WN_rtype(wn)==MTYPE_M);
   return wn;
 } /* vho_lower_return_val */
 
