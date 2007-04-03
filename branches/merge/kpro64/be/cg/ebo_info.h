@@ -468,11 +468,13 @@ tn_info_use (BB *current_bb, OP *current_op, TN *local_tn,
       if (predicate_tn != NULL) {
        /* Then, if the predicates have the right relationship, we have
           found the matching input to this use. */
-#ifdef TARG_IA64
-        if ( EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?
-#else
-        if (EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?
-#endif
+       if ( EBO_in_peep ) { /*post ebo set and get tninfo for physical registers, 
+       					 * so we should compare them for relationship.*/
+	   	if (tninfo->predicate_tninfo == NULL ||
+			use_tn_or_reg(tninfo->predicate_tninfo->local_tn) == use_tn_or_reg(predicate_tn))
+			break;
+       }
+       if (EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?
                                              tninfo->predicate_tninfo->local_tn:True_TN,
                                     tninfo->predicate_tninfo,
                                     predicate_tn,
