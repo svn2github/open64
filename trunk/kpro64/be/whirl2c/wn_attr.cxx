@@ -275,6 +275,10 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
      break;     
 #endif
 #endif
+   case IRETURN_PPU2:
+     ret_ty = Stab_Pointer_To(Stab_Pointer_To(Stab_Mtype_To_Ty(MTYPE_U2)));
+     break;
+
    default:
       Is_True(FALSE, 
 	      ("Unexpected INTRN_RETKIND in WN_intrinsic_return_ty()"));

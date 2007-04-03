@@ -874,6 +874,10 @@ static const struct {
 #endif // TARG_X8664
 #endif // KEY
 
+  INTRN_CTYPE_B_LOC,		"__ctype_b_loc",
+  INTRN_CTYPE_TOUPPER_LOC,	"__ctype_toupper_loc",
+  INTRN_CTYPE_TOLOWER_LOC,	"__ctype_tolower_loc",
+
   INTRINSIC_LAST,		"INTRINSIC_LAST"
 
 };

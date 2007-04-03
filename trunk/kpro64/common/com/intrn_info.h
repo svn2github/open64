@@ -78,6 +78,7 @@ typedef enum INTRN_RETKIND {
   IRETURN_V8I2,		     /* MTYPE_V8I2 */
   IRETURN_V8I4,		     /* MTYPE_V8I4 */
 #endif
+  IRETURN_PPU2,		     /* return type of ctype_b_loc():*/
 } INTRN_RETKIND;
 #define INTRN_RETKIND_LAST IRETURN_F10
 

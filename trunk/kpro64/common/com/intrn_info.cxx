@@ -2756,5 +2756,16 @@ const intrn_info_t intrn_info[INTRINSIC_LAST+1] = {
 	IRETURN_V, "STOREAPS", NULL, NULL},  
 #endif // TARG_X8664
 #endif // KEY
+
+    { /* CTYPE_B_LOC */
+        NOT_BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+        IRETURN_PPU2, "__ctype_b_loc", "CTYPE_B_LOC", "__ctype_b_loc"},
+    { /* CTYPE_TOUPPER_LOC */
+       NOT_BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+        IRETURN_PPU2, "__ctype_toupper_loc", "CTYPE_TOUPPER_LOC", "__ctype_toupper_loc"},
+    { /* CTYPE_TOLOWER_LOC */
+        NOT_BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+       IRETURN_PPU2, "__ctype_tolower_loc", "CTYPE_TOLOWER_LOC", "__ctype_tolower_loc"},
+
 };
 

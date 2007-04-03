@@ -4293,6 +4293,21 @@ WFE_Expand_Expr (tree exp,
                   ret_mtype = MTYPE_I4;
 		break;
 
+	      case BUILT_IN_CTYPE_B_LOC: 
+	        iopc = INTRN_CTYPE_B_LOC; 
+		intrinsic_op = TRUE; 
+		break;
+
+	      case BUILT_IN_CTYPE_TOUPPER_LOC: 
+	        iopc = INTRN_CTYPE_TOUPPER_LOC; 
+		intrinsic_op = TRUE; 
+		break;
+
+	      case BUILT_IN_CTYPE_TOLOWER_LOC: 
+	        iopc = INTRN_CTYPE_TOLOWER_LOC; 
+		intrinsic_op = TRUE; 
+		break;
+
 #ifdef KEY
 	      case BUILT_IN_EXTEND_POINTER:
 	        wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
