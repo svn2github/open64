@@ -371,6 +371,16 @@ wopt.so: $(BACK_END_OBJS) $(BACK_END_CXX_OBJS) $(BE_OPT_DIR)/Exported \
 	 $(LINK_DSOS) $(LLDLIBS)
 endif
 
+
+#gcc -O2 has some problem when compile this file, we we use -O1 temporally
+ifeq ($(BUILD_COMPILER), GNU)
+ifeq ($(BUILD_OPTIMIZE), NODEBUG)
+CXXFT=$(filter-out -O2,${CXXF}) -O1
+opt_wovp.o: opt_wovp.cxx
+	$(CXXFT)  -c $<
+endif
+endif
+
 LDIRT += be.so bedriver be wopt
 
 ifdef LINK_DSO
