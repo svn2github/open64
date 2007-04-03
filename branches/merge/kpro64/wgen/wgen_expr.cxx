@@ -5423,6 +5423,22 @@ WGEN_Expand_Expr (gs_t exp,
 		}
 #endif // TARG_X8664
 
+#ifdef TARG_IA64
+		// For IA64, the memcpy is not necessary
+		// We use IStore directly
+                FmtAssert( gs_tree_code(arglist) != GS_ARRAY_TYPE,
+                           ("unexpected array type for intrinsic 'va_copy'") );
+                WN* addr = WGEN_Expand_Expr( arg1 );
+                WN* value = WGEN_Expand_Expr( arg2 );
+                wn = WN_CreateIstore( OPR_ISTORE, MTYPE_V, Pointer_Mtype,
+                                      0, arg_ty_idx, value, addr, 0 );
+
+                WGEN_Stmt_Append( wn, Get_Srcpos() );
+                whirl_generated = TRUE;
+                wn = NULL;
+                break;
+#endif
+		// These code are for X8664, 64bit
 		WN *dst  = WN_CreateParm (Pointer_Mtype, WGEN_Expand_Expr (arg1),
 					  arg_ty_idx, WN_PARM_BY_VALUE);
 		WN *src  = WN_CreateParm (Pointer_Mtype, WGEN_Expand_Expr (arg2),
@@ -5438,9 +5454,7 @@ WGEN_Expand_Expr (gs_t exp,
 		WGEN_Stmt_Append (wn, Get_Srcpos());
 		whirl_generated = TRUE;
 		wn = NULL;
-#ifdef KEY
 		break;
-#endif
 	      }
 
 	      case GSBI_BUILT_IN_VA_END:
@@ -5712,12 +5726,19 @@ WGEN_Expand_Expr (gs_t exp,
 		break;
 
 	      case GSBI_BUILT_IN_POWIL: // bug 11246
+#ifdef TARG_IA64
+		// on IA64, we use MTYPE_F10 for long double
+		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F10;
+		FmtAssert(ret_mtype == MTYPE_F10,
+                          ("unexpected mtype for intrinsic 'powil'"));
+#else		
 		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_FQ;
 
 		FmtAssert(ret_mtype == MTYPE_FQ, 
 			  ("unexpected mtype for intrinsic 'powil'"));
-		intrinsic_op = TRUE;
+#endif
 		iopc = INTRN_FQFQI4EXPEXPR;
+		intrinsic_op = TRUE;
 		break;
 #endif // KEY
 
@@ -6692,12 +6713,36 @@ WGEN_Expand_Expr (gs_t exp,
         else
           Fail_FmtAssertion ("VA_ARG_EXPR: unknown operator for ap");
 
+	wn = WN_COPY_Tree(ap_load);
+	
+#ifdef TARG_IA64
+	// Adjust the address on IA64 when ty_size is large than align
+	INT64 ty_align =  gs_type_align(type) / BITS_PER_UNIT;
+	ty_align = ((ty_align + align - 1) / align) * align;
+	
+	/* Align AP for the next argument. */
+	if (ty_align > align) {
+	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+	  WN_Intconst (Pointer_Mtype, ty_align - 1));
+	  wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn,
+	  WN_Intconst (Pointer_Mtype, -ty_align));
+	}
+	/* Compute new value for AP.  */
+	if (Target_Byte_Sex == BIG_ENDIAN) {
+	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+	  WN_Intconst (Pointer_Mtype, 3));
+  	  wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn,
+  			  WN_Intconst (Pointer_Mtype, -8));
+  	}
+	wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+			WN_Intconst (Pointer_Mtype, rounded_size));
+#else			 
 	if (Target_Byte_Sex == BIG_ENDIAN) {
 	  INT64 adj;
 	  adj = gs_n(gs_tree_int_cst_low(gs_type_size(type))) / BITS_PER_UNIT;
 	  if (rounded_size > align)
 	    adj = rounded_size;
-	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
 			  WN_Intconst (Pointer_Mtype, 3));
 	  wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn,
 			  WN_Intconst (Pointer_Mtype, -8));
@@ -6706,8 +6751,10 @@ WGEN_Expand_Expr (gs_t exp,
 	} else
 
 	/* Compute new value for AP.  */
-	wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+	wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
 			WN_Intconst (Pointer_Mtype, rounded_size));
+#endif
+
 	if (ap_st)
 	  wn = WN_Stid (Pointer_Mtype, ap_offset, ap_st, ap_ty_idx, wn);
         else {
@@ -6715,9 +6762,16 @@ WGEN_Expand_Expr (gs_t exp,
                                 ap_ty_idx, wn, ap_addr, 0);
         }
         WGEN_Stmt_Append (wn, Get_Srcpos ());
+#ifdef TARG_IA64
         wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size,
+			     ty_idx, Make_Pointer_Type (ty_idx, FALSE),
+     			     ap_load);
+#else
+	wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size,
 			     ap_ty_idx, Make_Pointer_Type (ap_ty_idx, FALSE),
 			     ap_load);
+#endif
+	
 #ifdef KEY
 	if (Target_Byte_Sex != Host_Byte_Sex)
           wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, 
