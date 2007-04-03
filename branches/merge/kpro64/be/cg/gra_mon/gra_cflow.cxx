@@ -80,54 +80,6 @@ static BB_LIST* entry_bbs;  // New entry BBs created to hold prologs
 static BB_LIST* exit_bbs;   // New exit BBs create to hold epilogs
 
 /////////////////////////////////////
-inline BOOL
-OP_Is_Copy_To_Save_TN(const OP* op)
-/////////////////////////////////////
-//
-//  Is <op> a copy from a callee-saves register into its save-TN?
-//  
-/////////////////////////////////////
-{
-  INT i;
-
-  for ( i = OP_results(op) - 1; i >= 0; --i ) {
-    TN* tn = OP_result(op,i);
-    if ( TN_is_save_reg(tn)) return TRUE;
-  }
-
-  return FALSE;
-}
-
-/////////////////////////////////////
-inline BOOL
-OP_Is_Copy_From_Save_TN( const OP* op )
-/////////////////////////////////////
-//
-//  Is <op> a copy to a callee-saves register from its save-TN?
-//
-/////////////////////////////////////
-{
-  INT i;
-
-  // You'd think there'd be a better way than groveling through the operands,
-  // but short of marking these when we make them, this seems to be the most
-  // bullet-proof
-
-  for ( i = OP_results(op) - 1; i >= 0; --i ) {
-    if ( TN_is_dedicated(OP_result(op,i)) ) break;
-  }
-  if ( i < 0 ) return FALSE;
-
-  for ( i = OP_opnds(op) - 1; i >= 0; --i ) {
-    TN* tn = OP_opnd(op,i);
-    if ( TN_Is_Allocatable(tn) && TN_is_save_reg(tn))
-      return TRUE;
-  }
-
-  return FALSE;
-}
-
-/////////////////////////////////////
 static void
 Split_Entry( BB* bb )
 /////////////////////////////////////

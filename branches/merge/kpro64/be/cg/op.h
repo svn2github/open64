@@ -480,6 +480,8 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_IF_CONVERTED 0x01000000 /*Is OP if-converted? */
 #define OP_MASK_RENAMED	0x02000000 /*Is OP renamed by GLOS */
 #define OP_MASK_SPILL_RESTORE 0x04000000 /*Is OP a spill or restore  */
+#define OP_MASK_
+/*Is OP a spill or restore  */
 #endif
 #ifdef TARG_X8664
 #define OP_MASK_MEMORY_HI   0x00040000 /* Is OP load/store the high 32-bit? */
@@ -1272,6 +1274,12 @@ TN_Opernum_In_OP (OP* op, struct tn *tn)
              ("TN_Opernum_in_OP: Could not find <tn> in operands list\n"));
   return -1;
 }
+
+/* Is <op> a copy from a callee-saves register into its save-TN?  */
+BOOL OP_Is_Copy_To_Save_TN (const OP*);
+
+/*  Is <op> a copy to a callee-saves register from its save-TN?  */
+BOOL OP_Is_Copy_From_Save_TN (const OP* );
 
 #include "op_targ.h"
 

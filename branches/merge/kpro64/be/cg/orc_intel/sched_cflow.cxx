@@ -45,6 +45,7 @@
 
 #include "region.h"
 
+#include "ipfec_options.h"
 #include "sched_util.h"
 #include "sched_path.h"
 #include "sched_cflow.h"
@@ -2030,6 +2031,75 @@ BB_Has_Already_Been_Splitted (BB * bb) {
 void
 Init_Split_PU_Entry_Or_Exit_BB (void) {
     _splitted_pu_boundary_bbs.clear () ;
+  
+    /* Currently, scheduler has hard time in handling a block both are 
+     * PU entry and exit. Split it into two to make to circumvent the 
+     * problem.
+     */
+    if (!BB_exit (REGION_First_BB) || 
+        !IPFEC_Glos_Split_Entry_BB || !IPFEC_Glos_Split_Exit_BB) {
+        return ;
+    }
+
+    /* From this point through the end of this function, we are splitting 
+     * the block into a sequence of 3 blocks: pure entry block, sandwiched 
+     * middled block, and pure exit block.
+     */
+
+    /* find the split point from which through the end of REGION_First_BB are 
+     * put into pure-exit block. 
+     */ 
+    OP* exit_boundary_op = NULL, *entry_boundary_op = NULL, *op;
+    FOR_ALL_BB_OPs_FWD (REGION_First_BB, op) {
+        if (OP_no_move_before_gra (op) && OP_Is_Copy_From_Save_TN (op)) {
+            exit_boundary_op = op; break;
+        }
+    }
+    while (exit_boundary_op && 
+           (exit_boundary_op = OP_prev(exit_boundary_op)) &&
+           OP_no_move_before_gra (exit_boundary_op)) {
+    }
+
+    /* find the split point from the through the begining of REGION_First_BB
+     * are put into pre-entry block. 
+     */
+    FOR_ALL_BB_OPs_REV  (REGION_First_BB, op) {
+        if (OP_no_move_before_gra (op) && OP_Is_Copy_To_Save_TN (op)) {
+            entry_boundary_op = op; 
+            break;
+        }
+    }
+    while (entry_boundary_op && 
+           (entry_boundary_op = OP_next(entry_boundary_op)) &&
+           OP_no_move_before_gra (entry_boundary_op)) {
+    }
+
+    if (!entry_boundary_op || !exit_boundary_op) {
+        return;
+    }
+
+    /* count the number of "useful" instruction which are going to be put 
+     * in the sandwiched block.
+     */
+    INT insn_cnt = 0;
+    OP* t = entry_boundary_op;
+    for (; t && t != exit_boundary_op; t = OP_next(t)) {
+        insn_cnt ++;
+    }
+    if (t != exit_boundary_op) {
+        /* it is possible for empty PU */
+        return;
+    }
+
+    if (insn_cnt < 4) {
+        /* there are few "useful" instruction, don't need to perform prepass global sched, 
+         * <t> and <exit_boundary_op> may not meet in case of empty PU.
+         */
+       return;
+    }
+         
+    RGN_Divide_BB (REGION_First_BB, exit_boundary_op);
+    RGN_Divide_BB (REGION_First_BB, OP_prev(entry_boundary_op));
 }
 
   /* =============================================================
