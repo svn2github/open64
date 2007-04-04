@@ -1577,7 +1577,7 @@ disable_prefetch:
 
   if (Enable_Prefetch_For_Target()) {
     if ( ! CG_L1_ld_latency_overridden ) CG_L1_ld_latency = 8;
-#ifdef KEY
+#ifndef TARG_IA64
     if ( ! CG_enable_pf_L1_ld_overridden ) CG_enable_pf_L1_ld = TRUE;
     if ( ! CG_enable_pf_L1_st_overridden ) CG_enable_pf_L1_st = TRUE;
 #else
