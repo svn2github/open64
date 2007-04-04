@@ -4747,9 +4747,9 @@ WGEN_Expand_Expr (gs_t exp,
 	wn0 = WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand (exp, 0),
 						   Boolean_type);
 #endif
-	if (TY_mtype (ty_idx)  == MTYPE_V ||
-            TY_mtype (ty_idx1) == MTYPE_V ||
-            TY_mtype (ty_idx2) == MTYPE_V) {
+	if (TY_mtype (ty_idx) == MTYPE_V) {
+	  // If ty_idx is MTYPE_V, no return value is needed
+	  // We convert it into if...then...else
 	  WN *then_block = WN_CreateBlock ();
 	  WN *else_block = WN_CreateBlock ();
 	  WN *if_stmt    = WN_CreateIf (wn0, then_block, else_block);
@@ -4773,21 +4773,73 @@ WGEN_Expand_Expr (gs_t exp,
         }
 	else {
 #ifdef KEY
+
+	  FmtAssert(( TY_mtype(ty_idx1) != MTYPE_V || TY_mtype(ty_idx2) != MTYPE_V ),
+       	            ("GS_COND_EXPR: bad MTYPE for operand 0 and 1. Can not be MTYPE_V both."));
+		
 	  // Prepare a guard variable for each part of the conditional, in case
 	  // the conditional has a cleanup that is executed after the whole
 	  // conditional expression is evaluated.  The guard variable ensures
 	  // that a cleanup is executed only if its part of the conditional is
 	  // executed.
-	  WGEN_Guard_Var_Push();
-	  wn1 = WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand (exp, 1),
-						     TY_mtype (ty_idx),
-						     target_wn);
-	  gs_t guard_var1 = WGEN_Guard_Var_Pop();
 
 	  WGEN_Guard_Var_Push();
-	  wn2 = WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand (exp, 2),
-						     TY_mtype (ty_idx),
-						     target_wn);
+	  
+	  if (TY_mtype(ty_idx1) == MTYPE_V) {
+	    // The res of operand is MTYPE_V,
+	    // we generate a dummy return value 0.
+	    // usually, this return value should not be used.
+	    WN* comma_block = WN_CreateBlock ();
+	    WGEN_Stmt_Push (comma_block, wgen_stmk_comma, Get_Srcpos ());
+	    WN* null_wn = WGEN_Expand_Expr (gs_tree_operand (exp, 1), 
+			    FALSE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
+	    Is_True( (null_wn == NULL), 
+		     ("GS_COND_EXPR: Should not return a WN for MTYPE_V."));
+	    WGEN_Stmt_Pop (wgen_stmk_comma);
+	    Is_True( (TY_mtype(ty_idx) != MTYPE_BS  &&
+		      TY_mtype(ty_idx) != MTYPE_STR), 
+                     ("GS_COND_EXPR: bad MTYPE for ty_idx"));
+	    
+	    // Create a temporary st for the dummy return value.
+	    TYPE_ID comma_ty = Widen_Mtype(TY_mtype(ty_idx));
+	    ST* dummy_st = Gen_Temp_Symbol(ty_idx, "_unused");
+	    Set_ST_is_not_used(dummy_st);
+	    WN* dummy_wn = WN_Ldid(comma_ty, 0, ST_st_idx(dummy_st), ty_idx, 0);
+	    wn1 = WN_CreateComma (OPR_COMMA, comma_ty, 
+			          MTYPE_V, comma_block, dummy_wn);
+	  }
+	  else {
+	    wn1 = WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand (exp, 1),
+						        TY_mtype (ty_idx),
+						        target_wn);
+	  }
+	  gs_t guard_var1 = WGEN_Guard_Var_Pop();
+	  WGEN_Guard_Var_Push();
+
+	  if (TY_mtype(ty_idx2) == MTYPE_V) {
+	    WN* comma_block = WN_CreateBlock ();
+	    WGEN_Stmt_Push (comma_block, wgen_stmk_comma, Get_Srcpos ());
+	    WN* null_wn = WGEN_Expand_Expr (gs_tree_operand (exp, 2),
+			    FALSE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
+	    Is_True( (null_wn == NULL),
+		     ("GS_COND_EXPR: Should not return a WN for MTYPE_V."));
+	    WGEN_Stmt_Pop (wgen_stmk_comma);
+	    Is_True( (TY_mtype(ty_idx) != MTYPE_BS  &&
+		      TY_mtype(ty_idx) != MTYPE_STR),
+		      ("GS_COND_EXPR: bad MTYPE for ty_idx"));
+
+	    TYPE_ID comma_ty = Widen_Mtype(TY_mtype(ty_idx)); 
+	    ST* dummy_st = Gen_Temp_Symbol(ty_idx, "_unused");
+	    Set_ST_is_not_used(dummy_st);
+	    WN* dummy_wn = WN_Ldid(comma_ty, 0, ST_st_idx(dummy_st), ty_idx, 0);
+	    wn2 = WN_CreateComma (OPR_COMMA, comma_ty, 
+			          MTYPE_V, comma_block, dummy_wn);
+	  }
+	  else {
+	    wn2 = WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand (exp, 2),
+						        TY_mtype (ty_idx),
+						        target_wn);
+          }
 	  gs_t guard_var2 = WGEN_Guard_Var_Pop();
 
 	  // Add guard variables if they are needed.
