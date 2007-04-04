@@ -481,14 +481,30 @@ static inline gs_long_long_t gs_ll (gs_t node)
 static inline gs_void_t _gs_ld (gs_t node, gs_long_double_t ld)
 {
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  node->u2.ld = ld;
+#ifdef TARG_IA64  
+  if ( (gs_unsigned_long_t)(&(node->u2.ld)) % 16 != 0 )
+    /* using memcpy to avoid unaligned access on IA64 for long double */
+    memcpy( &(node->u2.ld), &(ld), sizeof(gs_long_double_t) );
+  else
+#else
+    node->u2.ld = ld;
+#endif
   return;
 }
 
 static inline gs_long_double_t gs_ld (gs_t node)
 {
+  gs_long_double_t ret;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  return node->u2.ld;
+#ifdef TARG_IA64
+  if ( (gs_unsigned_long_t)(&(node->u2.ld)) % 16 != 0 )
+    /* using memcpy to avoid unaigned access on IA64 for long double */
+    memcpy( &(ret), &(node->u2.ld), sizeof(gs_long_double_t) );
+  else
+#else
+    ret = node->u2.ld;
+#endif
+  return ret;
 }
 
 static inline gs_void_t _gs_c (gs_t node, gs_char_t c)

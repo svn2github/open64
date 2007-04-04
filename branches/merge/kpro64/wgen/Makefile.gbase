@@ -117,7 +117,8 @@ COMMON_TARG_INFO_ACCESS_DIR = $(BUILD_TOT)/common/targ_info/access
 COMMON_UTIL_DIR         = $(BUILD_TOT)/common/util
 COMMON_UTIL_TARG_DIR    = $(BUILD_TOT)/common/util/$(BUILD_TARGET_DIR)
 
-INCLUDE_DIR             = $(BUILD_AREA)/include
+INCLUDE_DIR             = $(BUILD_AREA)/include \
+                          $(BUILD_TOT)/libspin
 
 TARG_COMUTIL_DIR        = $(TARGDIR)/libcomutil
 TARG_CMPLRS_DIR         = $(TARGDIR)/libcmplrs
