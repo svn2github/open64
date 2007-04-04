@@ -2914,6 +2914,9 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
         }else {
             DevWarn("Eliminate useless backpatchs for TN%d", TN_number(tn));
         }
+#else
+        CG_LOOP_Backpatch_Add(CG_LOOP_epilog, tn, tn, 0);
+        CG_LOOP_Backpatch_Add(CG_LOOP_prolog, tn, tn, 1);
 #endif
       }
     }
@@ -3186,7 +3189,7 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
       }
 
       OPS body_ops = OPS_EMPTY;
-#ifndef TARG_IA64
+#ifdef TARG_IA64
       CGTARG_Generate_Remainder_Branch(new_trip_count, label_tn,
 				       &prolog_ops, &body_ops);
 #else
@@ -3232,7 +3235,7 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
       BB_Append_Ops(CG_LOOP_prolog, &zero_trip_guard_ops);
       BB_Append_Ops(body, &body_ops);
 
-#ifndef TARG_IA64 
+#ifdef TARG_IA64 
       if (freqs || BB_freq_fb_based(body)) {
 	/* BB_freq(body) doesn't yet include edge from prolog. */
 	body_freq = BB_freq(CG_LOOP_prolog) * (trip_est - 1);
