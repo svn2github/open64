@@ -1,0 +1,34 @@
+\documentclass[letterpaper]{book}
+\usepackage{longtable}
+\usepackage{makeidx}
+\LTcapwidth=\textwidth
+\makeindex
+\oddsidemargin 0in
+\evensidemargin 0in
+\textheight 9in
+\textwidth 6.5in
+\topmargin 0in
+\renewcommand{\textfraction}{.01}
+\renewcommand{\topfraction}{.99}
+\renewcommand{\bottomfraction}{.99}
+\renewcommand{\floatpagefraction}{.99}
+\setcounter{topnumber}{6}
+\setcounter{totalnumber}{6}
+\setcounter{bottomnumber}{6}
+\renewcommand{\dbltopfraction}{.99}
+\renewcommand{\dblfloatpagefraction}{.999}
+%\floatfraction .99
+
+\sloppy
+\begin{document}
+\title{\Huge\bf Open64 Compiler\\
+Whirl Intermediate Representation}
+\maketitle
+\tableofcontents
+\clearpage
+\input{whirl}
+\input{symtab}
+\clearpage
+\addcontentsline{toc}{section}{Index}
+\printindex
+\end{document}

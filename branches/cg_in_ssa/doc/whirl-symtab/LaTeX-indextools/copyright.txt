@@ -1,0 +1,20 @@
+#     Copyright (c) 2001
+#
+#          San Diego State University (SDSU)
+#          San Diego, California, USA
+#
+#     Users and possessors of this source code are hereby granted a
+#     nonexclusive, royalty-free copyright and design patent license to
+#     use this code in individual software.  License is not granted for
+#     commercial resale, in whole or in part, without prior written
+#     permission from SDSU.  This source is provided "AS IS" without express
+#     or implied warranty of any kind.
+#
+#     Richard Frost
+#     Computational Sciences
+#     College of Science
+#     San Diego State University
+#     San Diego, CA 92182
+#     http://www.rohan.sdsu.edu/~frostr/
+#     frostr@sdsu.edu
+

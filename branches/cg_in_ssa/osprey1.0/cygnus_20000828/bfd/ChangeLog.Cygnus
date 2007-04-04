@@ -1,0 +1,577 @@
+2000-05-24  Nick Clifton  <nickc@cygnus.com>
+
+	* Makefile.am (BFD32_BACKENDS): Add efi-app-ia32.lo.
+	(BFD32_BACKEND_CFILES): Add efi-app-ia32.c.
+	(BFD64_BACKENDS): Add efi-app-ia64.lo.
+	(BFD64_BACKEND_CFILES): Add efi-app-ia64.c.
+
+	* Makefile.in: Regenerate.
+	
+2000-05-05  Frank Ch. Eigler  <fche@redhat.com>
+
+	* doc/Makefile.in: Regenerated.
+
+Mon Apr 17 17:20:41 2000  Jim Wilson  <wilson@cygnus.com>
+
+	* section.c (_bfd_strip_section_from_output): Add info parameter.
+	If it passed as non-NULL, use it to check whether any input BFD
+	has an input section which uses this output section.  Change all
+	callers.
+	* bfd-in2.h: Rebuild.
+
+2000-04-08  Nick Clifton  <nickc@cygnus.com>
+
+	* elf32-arm.h (elf32_thumb_to_arm_stub): Fix typo introduced in
+	previous nios.
+
+2000-04-05  Kazu Hirata  <kazu@hxi.com>
+
+	* coff-h8300.c (h8300_reloc16_extra_cases): Fix the sanity
+	check for R_MOVL2.
+	Add bsr:16 -> bsr:8 to the R_PCRWORD_B case.
+
+Mon Mar 27 15:28:00 2000  Donald Lindsay  <dlindsay@cygnus.com>
+
+	* elf32-m32r.c (m32r_elf_generic_reloc): new function. All
+	HOWTO references to bfd_elf_generic_reloc, that have
+	partial_inplace == true, now use the new function. The function
+	is based on the recently rewritten m32r_elf_lo16_reloc(), and
+	extends its fixes to the R_M32R_{16,24,32} relocs.
+
+2000-02-28  Nick Clifton  <nickc@cygnus.com>
+
+	* coffcode.h (coff_write_object_contents): Replace constant 0x010b
+	with macro {MIPS|SH}_PE_MAGIC.
+
+2000-02-25  Nick Clifton  <nickc@cygnus.com>
+
+	* peicode.h (IMAGE_REL_BASED_HIGHADJ): Define.
+
+2000-01-04  Clinton Popetz  <cpopetz@cygnus.com>
+
+	* elf32-mips.c (mips_elf_calculate_relocation): Only set 
+	require_jalxp for R_MIPS16_26 and R_MIPS_26 relocations, and
+	set gp for R_MIPS16_GPREL.
+
+1999-09-28  Fred Fish  <fnf@cygnus.com>
+
+	* config.bfd: Add Cisco core file support to selected embedded
+	target configurations.
+
+2000-04-21  Michael Meissner  <meissner@redhat.com>
+
+	* elf64-alpha.c (elf64_alpha_copy_private_bfd_data): Abort if a
+	non-ELF file is used.
+	(elf64_alpha_merge_private_bfd_data): Ditto.
+	(bfd_elf64_bfd_copy_private_bfd_data): Define to use alpha
+	function.
+	(bfd_elf64_bfd_merge_private_bfd_data): Ditto.
+
+Mon Apr 17 17:58:33 2000  David Mosberger  <davidm@hpl.hp.com>
+
+	* config.bfd (ia64*-*-linux-gnu*): Mention bfd_efi_app_ia64_vec.
+	* elf64-ia64.c (elf64_ia64_fake_sections): Do not mistake section
+	named ".reloc" as an ELF64 relocation section.
+
+Mon Apr 17 17:19:48 2000  Jim Wilson  <wilson@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_relocate_section, case R_IA64_SEGREL64LSB):
+	Use sym_sec->output_section to find segment.  Use bfd_is_abs_section
+	to check for discarded input sections.
+
+	* elf64-ia64.c (elf64_ia64_size_dynamic_sections): Also pass
+	"info" to _bfd_strip_section_from_output ().
+
+Mon Apr 17 17:19:48 2000  Jim Wilson  <wilson@cygnus.com>
+
+	* elf32-mcore.c (elf32_mcore_size_dynamic_sections): Pass info to
+	_bfd_strip_section_from_output.
+
+2000-04-06  Nick Clifton  <nickc@cygnus.com>
+
+	* Makefile.am: Suppress 32bit HPPA support - it is currently
+          broken.
+	* config.bfd: Ditto.
+	* targets.s: Ditto.
+	* Makefile.in: Regenerate.	
+
+Fri Mar 24 16:31:03 2000  Jim Wilson  <wilson@cygnus.com>
+
+	* cpu-ia64-opc.c (elf64_ia64_operands): Add MSR support.
+
+2000-03-07  Andreas Schwab  <schwab@suse.de>
+
+	* elf64-ia64.c (elf64_ia64_relocate_section): Fix computation of
+	dynindx for LTOFF_FPTR relocations.
+
+2000-02-23  Nick Clifton  <nickc@cygnus.com>
+
+	* peicode.h (SIZEOF_ILF_STRINGS): Allow 9 bytes per section name.
+	(struct pe_ILF_vars): Add new field: 'end_string_ptr'.
+	(pe_ILF_make_a_symbol): Add assertion against end_string_ptr.
+
+Mon Feb 14 16:45:56 2000  David Mosberger  <davidm@hpl.hp.com>
+
+	* cpu-ia64-opc.c (ins_imms_scaled): Correct the code to detect
+	signed constant overflows.
+	(ins_immsu4): Cast >32 bit constant to BFD_HOST_U_64_BIT to avoid
+	integer truncation.
+	(ins_immsm1u4): Ditto.
+
+2000-02-14  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_check_relocs): Create dynrel entries
+	for fptrs whenever a dynindx exists.
+
+2000-02-13  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (struct elf64_ia64_dyn_sym_info): Renamed from
+	elf64_ia64_dyn_hash_entry; update all users.  Add addend, next,
+	want_ltoff_fptr members.
+	(struct elf64_ia64_dyn_hash_table): Remove.
+	(struct elf64_ia64_local_hash_entry): New.
+	(struct elf64_ia64_local_hash_table): New.
+	(struct elf64_ia64_link_hash_entry): New.
+	(struct elf64_ia64_link_hash_table): Replace dyn_hash_table
+	with loc_hash_table.
+	(elf64_ia64_local_hash_table_init, elf64_ia64_new_loc_hash_entry):
+	Replace dyn_hash counterparts.
+	(elf64_ia64_new_elf_hash_entry): New.
+	(elf64_ia64_hash_copy_indirect): New.
+	(elf64_ia64_hash_hide_symbol): New.
+	(elf64_ia64_hash_table_create): Use them.
+	(elf64_ia64_local_hash_lookup): New.
+	(elf64_ia64_global_dyn_sym_thunk): New.
+	(elf64_ia64_local_dyn_sym_thunk): New.
+	(elf64_ia64_dyn_hash_traverse): Remove.
+	(elf64_ia64_dyn_sym_traverse): New.
+	(get_dyn_name): Delete.
+	(get_dyn_sym_info): New.
+	(elf64_ia64_check_relocs): Track NEED_LTOFF_FPTR.
+	(allocate_dynrel_entries): Reserve reloc space for dynamic ltoff_fptr.
+	(set_got_entry): Install it.
+	(elf64_ia64_relocate_section) [LTOFF_FPTR]: Force value to zero
+	for dynamic fptr.
+
+2000-01-21  Nick Clifton  <nickc@redhat.com>
+
+	* peicode.h: Add code to handle Microsoft's Import Library
+	Format. 
+	(pe_ILF_VARS): A new structure to hold the variables needed by
+	the ILF code.
+	(pe_ILF_make_a_reloc): New function:  Create a reloc.
+	(pe_ILF_save_relocs): New function: Store the relocs created
+	by pe_ILF_make_a_reloc into a section.
+	(pe_ILF_make_a_symbol): New function: Create a symbol.
+	(pe_ILF_make_a_section): New function: Create an entire
+	section. 
+	(jtab): New array: Hold target specific data for creating
+	relocs. 
+	(pe_ILF_build_a_bfd): New function: Create a BFD describing an
+	ILF object.
+	(pe_ILF_object_p): New function: Process an ILF format object
+	file. 
+
+2000-01-03  Timothy Wall (twall@cygnus.com)
+
+        * coffcode.h (sec_to_styp_flags): don't output STYP_INFO,
+          since that space is already taken by TI COFF alignment
+          encoding.  Use STYP_DSECT instead.
+        * coff-tic54x.c: handle BFD_RELOC_32 for stabs support
+        * syms.c (_bfd_stab_section_find_nearest_line): temporary hack
+          to get stabs to work on linked files
+
+2000-01-03  Timothy Wall  <twall@cygnus.com>
+
+	* cpu-ia64-opc.c: add handlers for new operands types (IMMU62 and
+	TGT64).
+
+1999-12-30  Nick Clifton  <nickc@cygnus.com>
+
+	* coff-arm.c: Add arm-wince-pe specific reloc handling.  Reloc
+	numbers match those generated by ARM's SDK.  Code dependent
+	upon the definition of ARM_WINCE.
+
+	* config.bfd: Add arm-wince-pe target.
+
+1999-12-17  Nick Clifton  <nickc@cygnus.com>
+
+	* pe-arm.c (TARGET_UNDERSCORE): Define to zero for WinCE.
+
+1999-12-14  Nick Clifton  <nickc@cygnus.com>
+
+	* coffcode.h (coff_set_flags): Use ARMPEMAGIC instead of ARMPEMAGIC2.
+	(coff_set_arch_mach_hook): Rename ARMPEMAGIC2 to THUMBPEMAGIC.
+
+1999-12-13  Nick Clifton  <nickc@cygnus.com>
+
+	* coff-arm.c (armcoff_object_p): New function.  Detect PE format
+	object files and parse appropriately.
+
+	* coffcode.h: Recognise ARMPE magic values.
+	
+	* peicode.h (pe_print_idata): Do not attempt to seek past end of
+	section. 
+	
+1999-12-08  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (set_pltoff_entry): Set pltoff_done.
+	(elf64_ia64_final_link): Invoke set_pltoff_entry for DT_INIT/FINI.
+
+1999-12-07  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (global_sym_index): Fix typo in assert.
+
+1999-12-03  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_finish_dynamic_sections):  Fill in
+	plt0 and DT_IA_64_PLT_RESERVE from correct section.
+
+1999-12-03  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_check_relocs): Fix typo.
+	(elf64_ia64_size_dynamic_sections): Create pltoff entries for
+	DT_INIT and DT_FINI.
+	(elf64_ia64_finish_dynamic_sections): Fill them in.
+
+1999-11-24  Nick Clifton  <nickc@cygnus.com>
+
+	* configure.in (_bfd_sh_align_load_span): Only generate this
+	function for coff-sh target.  elf32-sh and sh-pe targets link
+	in coff-sh.lo in order to get this function.
+
+	* configure.in (elf): Link in coff-sh.lo for sh-pe target in
+	order to get _bfd_sh_align_load_span().
+	* configure: Regenerate.
+
+1999-11-22  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_size_dynamic_sections): Add dynamic
+	entry for DT_IA_64_PLT_RESERVE.
+
+1999-11-17  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_finish_dynamic_symbol): Remove
+	shadowing pltoff_addr decl.
+
+1999-11-10  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_relocate_section): Don't allow
+	undef_weak against speculation relocs.  Early out for undef_weak
+	against PCREL21B.
+
+1999-11-10  Nick Clifton  <nickc@cygnus.com>
+
+	* coff-sh.c (_bfd_sh_align_load_span): Only prevent
+	compilation of this function if COFF_IMAGE_WITH_PE is
+	defined. 
+
+1999-10-06  Andrew Haley  <aph@cygnus.com>
+
+	* coffcode.h (coff_write_object_contents): Don't call
+	coff_write_symbols if we already have a nonzero
+	obj_raw_syment_count.
+
+1999-11-02  Nick Clifton  <nickc@cygnus.com>
+
+	* config.bfd (targ_cpu): Add support for strongarm-pe toolchain. 
+
+Mon Nov  1 20:16:53 1999  Jim Wilson  <wilson@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_relocate_section): Implement segment
+	relative relocations.
+
+Tue Oct 26 16:33:26 1999  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (struct elf64_ia64_dyn_hash_entry): Remove sym_indx.
+	(get_dyn_name): Remove version tag from global symbols.
+	(elf64_ia64_check_relocs): Don't record dyn_h->sym_indx.
+	(global_sym_index): New.
+	(allocate_fptr): Use it.
+	(elf64_ia64_relocate_section): Likewise.
+	(elf64_ia64_finish_dynamic_symbol): Use get_dyn_name.
+
+1999-09-28  Fred Fish  <fnf@cygnus.com>
+
+        * config.bfd: Add Cisco core file support to selected embedded
+        target configurations.
+
+1999-09-20  Nick Clifton  <nickc@cygnus.com>
+
+	* libbfd.c (bfd_seek): For BeOS and Windows, zero newly created
+	file blocks.
+1999-09-13 Timothy Wall (twall@cygnus.com)
+
+	* bfd-in2.h: add accessors for section load page
+	* coff-tic54x.c: add custom bfd_get/put_l32 functions for
+	  tic54x's weird longword octet encoding
+
+1999-08-25  Tim Wall <twall@tiac.net>
+
+	* coffcode.h: set magic number based on TI COFF version
+	* reloc.c: extended addressing relocation types for tic54x
+	* coffgen.c: C_STATLAB gets assigned value based on the lma of the
+	  section vs. the vma
+
+1999-08-20  Nick Clifton  <nickc@cygnus.com>
+
+	* elf32-mcore.c (mcore_emit_base_file_entry): New function:  Emit
+	relocations into the base file.
+	(coff_mcore_relocate_section): Call mcore_emit_base_file_entry if
+	we are building a base file.
+
+Tue Aug 10 17:59:39 1999  Jim Wilson  <wilson@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_relocate_section): Add missing continue
+	after setting ret_val to false.y
+
+1999-07-31  Tim Wall <twall@tiac.net>
+
+	* Makefile.am: tic54x-*-coff, new target 
+	* Makefile.in: regenerated
+	* archures.c: bfd_arch_tic54x; Added bfd_host_bytes_per_address_unit
+	* bfd-in.h: HAS_LOAD_PAGE bfd file flag
+	* bfd-in2.h, libbfd.h: regenerated
+	* coffcode.h: TI COFF magic, absolute (section-relative) sym handling
+	* coffgen.c: initialize load_page field
+	* coffswap.h: Add macros for adjusting sym swaps
+	* config*: New tic54x-*-coff target
+	* libbfd.h: new relocation names
+	* reloc.c: Added BFD_RELOC_PARTLS7, _PARTMS9
+	* section.c: load_page field added to asection; add
+	  SEC_BLOCK/SEC_CLINK flags
+	* targets.c: Added tic54x vectors
+	* cpu-tic54x.c, coff-tic54x.c: NEW
+	
+1999-07-29  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_check_relocs): Set dynobj for plt entries.
+	(elf64_ia64_relocate_section) [PCREL21B]: Accept undef_weak as a
+	failure case.
+
+1999-07-29  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_final_link): Cope with no .got in
+	choosing a gp.
+
+Sun Jul 25 16:22:05 1999  Jim Wilson  <wilson@cygnus.com>
+
+	* reloc.c (BFD_RELOC_IA64_IMM14): Use ENUM not ENUMX before it.
+	(BFD_RELOC_IA64_LDXMOV): Add ENUMDOC after it.
+
+Fri Jul 23 13:06:41 1999  Jim Wilson  <wilson@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_size_dynamic_sections): Delete if testing
+	dynamic_sections_created.  Add assert before creating .got.plt section.
+	Only set plt_sec _raw_size if data.ofs is non-zero.
+
+Thu Jul 15 23:26:45 1999  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_reloc_type_lookup): Add GPREL64I.
+	(get_dyn_name): Tidy anonymous names.
+	(elf64_ia64_check_relocs): Don't allocate dynamic relocations
+	for sections that aren't loaded.
+	(elf64_ia64_dynamic_symbol_p): Dereference indirect symbols.
+	(allocate_fptr): Likewise.
+	(allocate_plt_entries): Likewise.  Don't rely on NEEDS_PLT.
+	(allocate_plt2_entries): Likewise.
+	(elf64_ia64_size_dynamic_sections): Thinko dropping .rela.
+	(set_got_entry): Take dynindx, not h.  Thinko in gp-rel calc.
+	(elf64_ia64_final_link): Simplify initial gp_val.
+	(elf64_ia64_relocate_section): Track unversioned h for use with
+	get_dyn_name.  Don't install dynamic relocations on sections
+	that aren't loaded.  Copy correct FPTR setup for LTOFF_FPTR.
+	Don't rely on h->plt.offset.
+	(elf64_ia64_finish_dynamic_symbol): Don't rely on NEEDS_PLT.
+
+Thu Jul 15 19:20:20 1999  Jim Wilson  <wilson@cygnus.com>
+
+	* cpu-ia64-opc.c (ins_immsu4, ins_immsm1u4): New.
+	(elf64_ia64_operands): Add entries for IMM8U4, IMM8M1U4, IMM8M1U8.
+
+1999-07-14  Richard Henderson  <rth@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_size_dynamic_sections): Don't
+	set .interp if we're not linking dynamically.
+
+1999-07-14  Richard Henderson  <rth@cygnus.com>
+
+	(Will be obsoleted by next sourceware merge)
+	* elf32-mips.c (mips_elf_final_link): Note the index
+	of the first global got symbol...
+	(mips_elf_check_relocs): ... instead of here.
+
+1999-07-13  Richard Henderson  <rth@cygnus.com>
+
+	* reloc.c (BFD_RELOC_IA64_LTOFF22X, BFD_RELOC_IA64_LDXMOV): New.
+	* bfd-in2.h, libbfd.h: Rebuild.
+
+	* elf64-ia64.c (*): s/fdesc/fptr/g
+	(struct elf64_ia64_dyn_hash_entry): Add pltoff_offset, sym_indx,
+	foo_done, want_foo members.
+	(struct elf64_ia64_link_hash_table): Remove gp_val, gp_val_defined,
+	got_offset, fdesc_offset, plt2_sec members.  Add pltoff_sec,
+	rel_pltoff_sec, minplt_entries.
+	(ia64_howto_table): Add LTOFF22X, LDXMOV.
+	(elf64_ia64_reloc_type_lookup): Likewise.
+	(PLT_RESERVED_WORDS): New.
+	(plt_min_entry): Correct br.few bits.
+	(elf64_ia64_section_from_shdr): Notice SHF_IA_64_SHORT.
+	(elf64_ia64_fake_sections): Likewise.
+	(elf64_ia64_additional_program_headers): Notice ARCHEXT and UNWIND.
+	(elf64_ia64_modify_segment_map): New function.
+	(elf64_ia64_dyn_hash_table_init): Zero the structure.
+	(elf64_ia64_new_dyn_hash_entry): Likewise.
+	(elf64_ia64_create_dynamic_sections): Use default elf version.
+	Set SEC_SHORT on .got.  Create .IA_64.pltoff and .rela.IA_64.pltoff.
+	(get_got): Set SEC_SHORT.
+	(get_fptr): Set SEC_READONLY.
+	(get_pltoff): New function.
+	(count_dyn_reloc): Use a type, not pc_rel.
+	(elf64_ia64_check_relocs): Queue dyn relocs by type.  Speculatively
+	mark for fptr, pltoff, and plt entries.  Handle LTOFF22X.
+	(elf64_ia64_always_size_sections): Delete.
+	(reorder_plt_fdesc, reorder_nonplt_fdesc): Delete.
+	(allocate_global_data_got): Renamed from reorder_global_data_got.
+	Use the want_foo members on the dyn_h.
+	(struct elf64_ia64_allocate_data): New.
+	(allocate_global_fptr_got): Likewise.
+	(allocate_local_got): Likewise.
+	(allocate_fptr): New function.
+	(allocate_plt_entries): New function.
+	(allocate_plt2_entries): Use the want_foo members.
+	(allocate_pltoff_entries): New function.
+	(allocate_dynrel_entries): Allocate by type.  Handle @pltoff properly.
+	(elf64_ia64_size_dynamic_sections): Use elf64_ia64_allocate_data.
+	Subsume always_size_sections.  Allocate everything.  Zero the 
+	ia64_info members as sections are removed.
+	(elf64_ia64_install_value): Fix return type.  Ignore LDXMOV.
+	Handle LTOFF22X.
+	(elf64_ia64_install_dyn_reloc): New function.
+	(set_got_entry): Install dynamic relocations.  Flag done.
+	(set_fptr_entry): Flag done.
+	(set_pltoff_entry): New function.
+	(elf64_ia64_final_link): New function.
+	(elf64_ia64_relocate_section): Move __gp code to final_link.
+	Propogate SHF_IA_64_NORECOV.  Do dynamic relocations.  LTOFF_FPTR
+	is gp-relative.
+	(elf64_ia64_finish_dynamic_symbol): Use set_pltoff_entry.
+	Properly install the IPLT reloc.
+	(elf64_ia64_finish_dynamic_sections): Update PLTRELSZ and JMPREL.
+	(elf64_ia64_merge_private_bfd_data): Don't support mixed-format links.
+
+
+Wed Jun 23 19:52:02 1999  Jim Wilson  <wilson@cygnus.com>
+
+	* elf64-ia64.c (elf64_ia64_relocate_section): Don't define gp
+	if info->relocatable.
+
+1999-06-21  Richard Henderson  <rth@cygnus.com>
+
+	* reloc.c: Add missing ia64 relocations.
+	* bfd-in2.h, libbfd.h: Rebuild.
+
+	* elflink.h (elf_fix_symbol_flags): Refine the test to remove
+	ELF_LINK_HASH_NEEDS_PLT.
+	* elf64-ia64.c: Convert to K&R + prototypes.
+	(init): Incorporate into lookup_howto.
+	(ia64_howto_table): Add missing relocation entries.
+	(elf64_ia64_reloc_type_lookup): Likewise.
+	(PLT_HEADER_SIZE, PLT_MIN_ENTRY_SIZE, PLT_FULL_ENTRY_SIZE): New.
+	(plt_header, plt_min_entry, plt_full_entry): New.
+	(ELF_DYNAMIC_INTERPRETER): New.
+	(elf64_ia64_section_from_shdr): Handle SHT_IA_64_EXT.
+	(elf64_ia64_fake_sections): New.
+	(elf64_ia64_add_symbol_hook): New.
+	(elf64_ia64_dynamic_symbol_p): New.
+	(elf64_ia64_new_dyn_hash_entry): Initialize new members.
+	(elf64_ia64_dyn_hash_lookup): New.
+	(elf64_ia64_dyn_hash_traverse): New.
+	(elf64_ia64_create_dynamic_sections): New.
+	(get_dyn_name, get_fdesc, get_reloc_section, count_dyn_reloc): New.
+	(elf64_ia64_check_relocs): Rewrite to handle dynamic relocations
+	and @pltoff.
+	(elf64_ia64_always_size_sections): Renamed from dynamic_size_sections.
+	(elf64_ia64_adjust_dynamic_symbol): New.
+	(reorder_plt_fdesc, reorder_nonplt_fdesc): New.
+	(reorder_global_data_got, reorder_global_fdesc_got): New.
+	(reorder_local_got): New.
+	(allocate_plt2_entries, allocate_dynrel_entries): New.
+	(elf64_ia64_size_dynamic_sections): New.
+	(elf64_ia64_install_value): Handle missing relocations.
+	(set_got_entry): Simplify arguments.  Remove get_dyn_name code.
+	(set_fptr_entry): Likewise.
+	(elf64_ia64_final_link_relocate): Integrate into relocate_section.
+	(elf64_ia64_relocate_section): Handle @pltoff.
+	(elf64_ia64_finish_dynamic_symbol): New.
+	(elf64_ia64_finish_dynamic_sections): New.
+
+1999-06-16  Nick Clifton  <nickc@cygnus.com>
+
+	* elf32-mcore.c: Add CYGNUS LOCAL markers to
+	development-in-progress dlltool support code.
+
+1999-06-03  David Mosberger  <davidm@hpl.hp.com>
+
+	* cpu-ia64.c: New file.
+	* cpu-ia64-opc.c: New file.
+	* elf64-ia64.c: New file.
+	* Makefile.am (ALL_MACHINES, ALL_MACHINES_CFILES): Add cpu-ia64.
+	(BFD64_BACKENDS, BFD64_BACKENDS_CFILES): Add elf64-ia64.
+	* archures.c (bfd_arch_ia64, bfd_ia64_arch): New.
+	* config.bfd (ia64*-*-linux-gnu*, ia64*-*-elf*): New.
+	* configure.host (ia64-*-linux*): New.
+	* configure.in (bfd_elf64_ia64_*_vec): New.
+	* elf.c (prep_headers): Handle bfd_arch_ia64.
+	* reloc.c (BFD_RELOC_IA64_*): New.
+	* targets.c (bfd_elf64_ia64_*_vec): New.
+	(bfd_target_vector): Add them.
+
+1999-05-27  DJ Delorie  <dj@cygnus.com>
+
+	* pe-mips.c (coff_mips_reloc): Allow RVAs with addends
+
+1999-05-27  DJ Delorie  <dj@cygnus.com>
+
+	* pe-mips.c (coff_pe_mips_relocate_section): copy function from i386
+	and adjust to handle mips relocs
+
+1999-05-26  DJ Delorie  <dj@cygnus.com>
+
+	* pe-mips.c (coff_pe_mips_relocate_section): Support gcc's
+	REFHI/REFLO convention.
+
+1999-05-11  DJ Delorie  <dj@cygnus.com>
+
+	* config.bfd: add sh-pe and mips-pe (Windows CE) support
+	* configure.in, configure: ditto
+	* Makefile.am, Makefile.in: ditto
+	* targets.c: ditto
+	* coff-sh.c: ditto.  Mostly adding newreloc types and PE file
+	detection.
+	* coffcode.h: ditto
+	* peicode.h: add hooks for PE reloc overrides, fix .reloc type 4
+	* pe-sh.c, pei-sh.c, pe-mips.c, pei-mips.c: new
+	
+Tue Mar  3 11:24:05 1998  Gavin Koch  <gavin@cygnus.com>
+
+	* mips-cpu.c: Reorganize sanitization.
+
+Mon Dec 15 16:08:52 1997  Nick Clifton  <nickc@cygnus.com>
+
+	* elf32-m32r.c (m32r_elf_merge_private_bfd_data): Allow M32R
+	object files to be merged into a M32RX executable.
+
+	* archures.c: Add bfd_mach_m32rx.
+
+Mon Dec 15 15:01:15 1997  Nick Clifton  <nickc@cygnus.com>
+
+	* cpu-m32r.c: Add m32rx cpu architecture.
+	* bfd-in2.h (bfd_mach_m32rx): Add identifier for M32RX
+	architecture machines.
+
+Tue Dec  9 11:37:53 1997  Andrew Cagney  <cagney@b1.cygnus.com>
+
+	* archures.c (vr5400, bfd_mach_vr5000): Define.
+
+

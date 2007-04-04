@@ -1,0 +1,137 @@
+Mon May  1 17:40:27 2000  Jim Wilson  <wilson@cygnus.com>
+
+	* configure.host (ia64-*-linux-*): Change dynamic linker name from
+	ld-linux.so to ld-linux-ia64.so.  Change gcc to ${CC}.
+
+2000-02-25 Andreas Schwab  <schwab@suse.de>
+
+	* configure.host: Add entry for ia64-*-linux-gnu*.
+
+2000-02-16  Richard Henderson  <rth@cygnus.com>
+
+	* emulparms/elf64_ia64.sh (OTHER_PLT_RELOC_SECTIONS): Renamed
+	from OTHER_GOT_RELOC_SECTIONS.
+
+1999-12-16  Timothy Wall  <twall@cygnus.com>
+
+	* ldlang.c (lang_set_startof): make sure "sizeof" symbol has value
+	  in bytes/words instead of octets.
+	* gen-doc.texi, ld.texinfo: update info files
+        * ldexp.c (fold_name): adjust SIZEOF to really return bytes
+          and not octets
+        * emultempl/ticoff.em: rename "coff-format" to "format" to avoid
+          option conflicts
+        * emulparams/tic54xcoff.sh: change "tic54x" to "c54x"
+        * Makefile.in/Makefile.am: update renamed file entries
+        * configure.tgt: recognize c54x; change emul to c54xcoff from
+          tic54xcoff 
+	* ldwrite.c (build_link_order): removed obsolete placeholder
+          statement; link_order->size is in octets, and so doesn't
+          need to be adjusted for byte.
+
+1999-12-30  Nick Clifton  <nickc@cygnus.com>
+
+	* pe.em: Add arm-wince-pe specific support.
+
+1999-12-15  Nick Clifton  <nickc@cygnus.com>
+
+	* ldfile.c (ldfile_open_file): Support libraries named *.lib.
+
+1999-12-13  Nick Clifton  <nickc@cygnus.com>
+
+	* pe-dll.c: Include support for ARM-PE
+	* emultempl/pe.em: Include support for ARM-PE
+	
+1999-12-07  Nick Clifton  <nickc@cygnus.com>
+
+	* emulparams/elf32mcore.sh: Include getopt.h.
+
+1999-11-02  Nick Clifton  <nickc@cygnus.com>
+
+	* configure.tgt (targ_extra_ofiles): Add support for strongarm-pe
+	toolchain. 
+
+1999-09-13  Tim Wall <twall@tiac.net>
+
+        * scripttempl/tic54xcoff.sc: set default flags so init/uninit
+          sections get the right default memory region.  add
+          compatibility symbols.
+        * ldlang.c: propagate input section blocking to output; some
+	  octets vs bytes cleanup.  print section size in bytes, not
+	  octets.  allow lma addresses to overlap if their pages
+	  differ.  use lma_region as a default run_region if only
+	  lma_region is specified.
+        * ldgram.y: pass back BLOCK and ALIGN expressions instead of
+          just their values
+        * ldexp.c: handle BLOCK expressions
+	* ld.texinfo: add documentation for "AT > MEMSPEC", "ALIGN",
+	  "BLOCK", and "PAGE N".  Describe --coff-format output switch.
+
+1999-08-26  Tim Wall <twall@tiac.net>
+
+	* ldlang.c: fix lma_region to default to NULL, rather than the
+	  result of a "*default*" lookup.	
+
+1999-08-26  Brendan Kehoe  <brendan@cygnus.com>
+
+	Additional changes with the
+		lma memspec, blocking twall@tiac.net
+	set to make these compile properly.
+	* emultempl/elf32.em (gld${EMULATION_NAME}_place_orphan): Add
+ 	missing three trailing args to
+ 	lang_leave_output_section_statement.
+	* emultempl/armelf.em (gld${EMULATION_NAME}_place_orphan): Likewise.
+	* emultempl/pe.em (gld_${EMULATION_NAME}_place_orphan): Likewise.
+
+1999-08-20  Tim Wall <twall@cygnus.com>
+
+	* ldlang.[ch], ldgram.y: Add "AT > MEMSPEC" (lma memspec) and "PAGE N"
+          (memory pages) handling.  ALIGN_K and BLOCK added to
+          post-section options so that ALIGN and BLOCK may be applied
+          to a memory region allocation instead of a hard address.
+	* emultempl/ticoff.em: NEW general emul for TI COFF targets
+
+1999-07-31  Tim Wall <twall@cygnus.com>
+
+        General changes allow targets with other than one octet per
+	byte to be handled cleanly.
+
+	* Makefile.am: new target tic54x
+	* Makefile.in: regenerate
+	* configure.tgt: new target tic54x
+	* ldlang.c: access bfd_octets_per_byte as needed
+	* ldwrite.c: access bfd_octets_per_byte as needed
+	* emulparams/tic54xcoff.sh: NEW target
+	* scripttempl/tic54xcoff.sc: NEW target
+	
+1999-07-14  Richard Henderson  <rth@cygnus.com>
+
+	* emulparams/elf64_ia64.sh (DATA_ADDR): Unalign on page.
+	(OTHER_GOT_SYMBOLS): PROVIDE __gp.
+	(OTHER_GOT_SECTIONS): For .IA_64.pltoff.
+	(OTHER_GOT_RELOC_SECTIONS): For .rela.IA_64.pltoff.
+	(OTHER_READONLY_SECTIONS): For .opd.
+
+1999-06-11  Jim Wilson  <wilson@cygnus.com>
+
+	* emulparams/elf64_ia64.sh (MAXPAGESIZE): Reduce from 0x10000000 to
+	0x10000.
+	(DATA_PLT): Delete.
+
+1999-06-03  David Mosberger  <davidm@hpl.hp.com>
+
+	* Makefile.am: Add ia64.
+	* configure.tgt: Likewise.
+	* emulparams/elf64_ia64.sh: New file.
+
+1999-05-11  DJ Delorie  <dj@cygnus.com>
+
+	* configure.tgt: add sh-pe and mips-pe (Windows CE) support
+	* Makefile.am, Makefile: ditto
+	* emultempl/pe.em: ditto
+	* pe-dll.c: ditto
+	(generate_reloc): support the rest of the reloc types
+	* emultempl/pe.em: add .pdata section
+	* emulparams/shpe.sh: new
+	* emulparams/mipspe.sh: new
+	
