@@ -4743,3 +4743,34 @@ void Fix_Cache_Conflict_latency(BB *bb){
         mem_ops.push_back(op);
     }
 }
+
+
+/* return TRUE iff op is load with UNAT bit (IA64)*/
+BOOL CGTARG_Load_with_UNAT (OP* op) {
+
+   switch (OP_code(op)) {
+   case TOP_ld8_fill:
+   case TOP_ld8_r_fill:
+   case TOP_ld8_i_fill:
+   case TOP_ldf_fill:
+   case TOP_ldf_r_fill:
+   case TOP_ldf_i_fill:
+       return TRUE;
+   }
+
+   return FALSE;
+}
+
+/* return TRUE iff op is store with UNAT bit (IA64) */
+BOOL CGTARG_Store_With_UNAT (OP* op) {
+  
+   switch (OP_code(op)) {
+   case TOP_st8_spill:
+   case TOP_st8_i_spill:
+   case TOP_stf_spill:
+   case TOP_stf_i_spill:
+       return TRUE;
+   }
+  
+   return FALSE;
+}
