@@ -546,7 +546,7 @@ static const struct heuristic_info heuristic[] = {
   { Opcode_Heuristic,		"OH"  },
   { Pointer_Heuristic,		"PH"  },
   { Store_Heuristic,		"SH"  },
-#ifdef KEY
+#if (defined KEY && defined TARG_X8664)
   { Sequential_Branch_Heuristic, "SBH" },
 #endif
 };
