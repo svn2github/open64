@@ -6850,6 +6850,27 @@ WGEN_Expand_Expr (gs_t exp,
       break;
 
 #ifdef KEY
+    case GS_LABEL_EXPR:
+      {
+        // We assume the type of LABEL_EXPR alwayse be void and operand(0) is LABEL_DECL
+	// Here will declare a new label
+	// Only apply to this case:
+	// int foo(int x) { if(x) { L1; } }
+	gs_t type = gs_tree_type(exp);
+	Is_True ( gs_code(type) == GS_VOID_TYPE, ("Bad expression type for LABEL_EXPR"));
+	gs_t label =  gs_tree_operand(exp, 0);
+	FmtAssert ( gs_code(label) == GS_LABEL_DECL, ("Bad operand 0 code for LABEL_EXPR"));
+
+	LABEL_IDX label_idx = WGEN_Get_LABEL (label, TRUE);
+	WN* wn1 = WN_CreateLabel ((ST_IDX) 0, label_idx, 0, NULL);
+	WGEN_Stmt_Append (wn1, Get_Srcpos());
+	Set_LABEL_addr_saved (label_idx);
+	Set_PU_no_inline (Get_Current_PU ());
+      }
+      break;
+#endif
+      
+#ifdef KEY
     case GS_EXC_PTR_EXPR:
     {
       if (key_exceptions)
