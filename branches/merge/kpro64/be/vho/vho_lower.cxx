@@ -2057,7 +2057,8 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info ,BOOL is_return=FALS
        prev_call && 
        WN_operator(prev_call) == OPR_LDID &&
        (WN_st(prev_call) == Return_Val_Preg || is_return)&&
-       WN_rtype(prev_call) == MTYPE_M){
+       WN_rtype(prev_call) == MTYPE_M &&
+       WN_rtype(wn) == MTYPE_M){
     WN_Set_Linenum ( block, VHO_Srcpos );
     WN * next_wn;
 
