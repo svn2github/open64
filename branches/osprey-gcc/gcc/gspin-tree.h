@@ -486,9 +486,8 @@ static inline gs_void_t _gs_ld (gs_t node, gs_long_double_t ld)
     /* using memcpy to avoid unaligned access on IA64 for long double */
     memcpy( &(node->u2.ld), &(ld), sizeof(gs_long_double_t) );
   else
-#else
-    node->u2.ld = ld;
 #endif
+    node->u2.ld = ld;
   return;
 }
 
@@ -501,9 +500,8 @@ static inline gs_long_double_t gs_ld (gs_t node)
     /* using memcpy to avoid unaigned access on IA64 for long double */
     memcpy( &(ret), &(node->u2.ld), sizeof(gs_long_double_t) );
   else
-#else
-    ret = node->u2.ld;
 #endif
+    ret = node->u2.ld;
   return ret;
 }
 
