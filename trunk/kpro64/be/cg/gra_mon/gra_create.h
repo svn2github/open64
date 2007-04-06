@@ -80,5 +80,6 @@ static char *create_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/g
 extern void GRA_Pre_Create(void);
 extern void GRA_Create(void);
 extern void GRA_Delete(void);
+extern void GRA_Estimate_LRA_Reg_Request (void);
 
 #endif

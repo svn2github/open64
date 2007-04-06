@@ -4461,3 +4461,21 @@ LRA_Register_Request (BB *bb,  ISA_REGISTER_CLASS cl)
   return regs_needed;
 }
 
+void
+GRA_Estimate_LRA_Reg_Request (void) {
+
+  if (Reg_Request_Table != NULL && Reg_Table_Size >= PU_BB_Count) {
+    return; // do nothing     
+  }
+         
+  MEM_POOL local_mp;
+  MEM_POOL_Constructor mp(&local_mp, "LRA Reg Request", FALSE);
+
+  for (BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    if (BB_reg_alloc (bb)) {
+      continue;
+    }
+    LRA_Compute_Register_Request (bb, &local_mp);
+  }
+}
+

@@ -380,6 +380,8 @@ GRA_Allocate_Global_Registers( BOOL is_region )
 
   GRA_Split_Entry_And_Exit_BBs(is_region);
 
+  GRA_Estimate_LRA_Reg_Request ();
+
   GRA_Create();
   GRA_Color();
 
