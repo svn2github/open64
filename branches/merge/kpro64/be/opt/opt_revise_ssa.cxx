@@ -766,6 +766,7 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
   if (OPERATOR_is_store(opr)) {
     switch(opr) {
     case OPR_STID:
+    case OPR_STBITS:
       cur = stmt->Lhs()->Aux_id();
       if (cur == i)
 	break;
