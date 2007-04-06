@@ -4084,19 +4084,13 @@ static BOOL unroll_multi_bb(LOOP_DESCR *loop, UINT8 ntimes)
 
   /* Update loop descriptor */
   LOOP_DESCR_loophead(loop) = &replicas[0];
-#ifdef TARG_IA64
   BB_SET* del = BS_Difference (LOOP_DESCR_bbset(loop), new_bbs, 
                                &MEM_local_nz_pool);
   FOR_ALL_BB_SET_members(new_bbs, bb)
     LOOP_DESCR_Add_BB(loop, bb);
   FOR_ALL_BB_SET_members(del, bb)
     LOOP_DESCR_Delete_BB(loop, bb);
-#else
-  FOR_ALL_BB_SET_members(del, bb)
-    LOOP_DESCR_Delete_BB(loop, bb);
-  FOR_ALL_BB_SET_members(new_bbs, bb)
-    LOOP_DESCR_Add_BB(loop, bb);
-#endif
+
   LOOP_DESCR_loopinfo(loop) = unrolled_info;
   LOOP_DESCR_num_exits(loop) =
     LOOP_DESCR_num_exits(loop) * ntimes - removed_exits;
