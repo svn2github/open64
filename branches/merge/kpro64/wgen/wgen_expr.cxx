@@ -6999,6 +6999,12 @@ WGEN_Expand_Expr (gs_t exp,
       break;
 #endif
 
+#ifdef KEY
+    case GS_IF_STMT:
+      WGEN_Expand_Stmt(exp, target_wn);
+      break;
+#endif
+      
     default:
        FmtAssert(FALSE,
 	 ("WGEN_Expand_Expr: not yet implemented %s",
