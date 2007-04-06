@@ -3284,9 +3284,22 @@ WFE_Expand_Expr (tree exp,
     case FIX_TRUNC_EXPR:
       {
         wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
-	ty_idx = Get_TY (TREE_TYPE(exp));
-	TYPE_ID mtyp = Widen_Mtype(TY_mtype(ty_idx));
-	wn = WN_Trunc(WN_rtype(wn0), mtyp, wn0);
+         ty_idx = Get_TY (TREE_TYPE(exp));
+         TYPE_ID mtype = Widen_Mtype(TY_mtype(ty_idx));
+         if(WN_operator(wn0) == OPR_CVT &&
+            MTYPE_is_integral(WN_desc(wn0)) &&
+            MTYPE_is_float(WN_rtype(wn0))){
+           wn1 = WN_kid0(wn0);
+           TYPE_ID kid_type = WN_rtype(wn1);
+           if(mtype == kid_type){
+             wn = wn1;
+           }
+           else{
+             wn = WN_Cvt(WN_rtype(wn1), mtype, wn1);
+           }
+         }
+         else
+           wn = WN_Trunc(WN_rtype(wn0), mtype, wn0);
       }
       break;
       
@@ -3935,28 +3948,39 @@ WFE_Expand_Expr (tree exp,
 		}
                 break;
 
-#if 0 /* turn off for the timing being due to bug */
-	    case BUILT_IN_FLOOR:
-	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
-	      whirl_generated = TRUE;
-	      break;
+#ifdef KEY
+            case BUILT_IN_FLOOR:
+              arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+              if (MTYPE_is_integral(ret_mtype))
+                wn0 = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
+              else{
+                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F8, arg_wn);
+                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+              }
+              whirl_generated = TRUE;
+              break;
 
-	    case BUILT_IN_FLOORF:
-	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
-	      whirl_generated = TRUE;
-	      break;
+            case BUILT_IN_FLOORF:
+              arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+              if (MTYPE_is_integral(ret_mtype))
+                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+              else{
+                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F4, arg_wn);
+                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+              }
+              whirl_generated = TRUE;
+              break;
 
-	    case BUILT_IN_FLOORL:
-	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-#ifdef TARG_IA64
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
-#else
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
-#endif
-	      whirl_generated = TRUE;
-	      break;
+            case BUILT_IN_FLOORL:
+              arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+              if (MTYPE_is_integral(ret_mtype))
+                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
+              else{
+                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F10, arg_wn);
+                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+              }
+              whirl_generated = TRUE;
+              break;
 #endif
 
 #ifdef KEY
