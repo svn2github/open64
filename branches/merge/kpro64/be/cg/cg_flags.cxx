@@ -160,6 +160,7 @@ BOOL LOCS_Enable_Bundle_Formation = TRUE;
 BOOL CG_tail_call = FALSE;
 BOOL GCM_Speculative_Loads = FALSE;
 BOOL GCM_Predicated_Loads = TRUE;
+BOOL CG_tune_do_loop = TRUE;
 #else
 BOOL CG_enable_thr = FALSE;
 BOOL CG_cond_defs_allowed = FALSE;

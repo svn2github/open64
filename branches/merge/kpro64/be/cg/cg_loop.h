@@ -568,6 +568,10 @@ private:
   BB         *epilog_start;
   BB         *epilog_end;
   BB         *trip_count_bb;  // The BB contains the trip count expr
+#ifdef TARG_IA64
+  INT32      acyclic_len; 
+  INT32      acyclic_len_wo_dspec;
+#endif
 
   void Attach_Prolog_And_Epilog(LOOP_DESCR *loop);
 
@@ -592,6 +596,12 @@ public:
   void Set_unroll_fully()         { unroll_fully = TRUE; }
   INT32 Unroll_factor() const     { return unroll_factor; }
   void Set_unroll_factor(INT32 n) { unroll_factor = n; }
+#ifdef TARG_IA64
+  INT32 Acyclic_len (void) const  { return acyclic_len; }
+  void Set_acyclic_len (INT32 len) { acyclic_len = len; }
+  INT32 Acyclic_len_wo_dspec (void) const { return acyclic_len_wo_dspec; }
+  void Set_acyclic_len_wo_dspec (INT32 len) { acyclic_len_wo_dspec = len; }
+#endif
 
   void Recompute_Liveness();
   bool Determine_Unroll_Fully();

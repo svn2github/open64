@@ -132,6 +132,7 @@
 #include "errors.h"
 #include "mempool.h"
 #include "cg_flags.h"
+#include "ipfec_options.h"
 #include "cgir.h"
 #include "tracing.h"
 #include "config_asm.h"
@@ -148,6 +149,7 @@
 #include "wn_util.h"
 #include "whirl2ops.h"
 
+#include "dep_graph.h"  /* for Current_Dep_Graph */
 #include "cg.h"
 #include "register.h"	/* needed for "gra.h" */
 #include "tn_set.h"	/* needed for "gra.h" */
@@ -166,6 +168,7 @@
 #include "cg_db_op.h"
 #include "dominate.h"
 #include "ti_res_count.h"
+#include "ti_latency.h"
 #include "cg_loop_scc.h"
 #include "cg_loop_recur.h"
 #include "cg_loop_mii.h"
@@ -1143,6 +1146,12 @@ CG_LOOP::CG_LOOP(LOOP_DESCR *loop)
   // copy to CG_LOOP structure
   this->loop = loop;
   this->unroll_remainder_bb = NULL;
+
+#ifdef TARG_IA64
+  acyclic_len = 0;
+  acyclic_len_wo_dspec = 0;
+#endif
+
 }
 
 
@@ -4075,10 +4084,19 @@ static BOOL unroll_multi_bb(LOOP_DESCR *loop, UINT8 ntimes)
 
   /* Update loop descriptor */
   LOOP_DESCR_loophead(loop) = &replicas[0];
-  FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), bb)
+#ifdef TARG_IA64
+  BB_SET* del = BS_Difference (LOOP_DESCR_bbset(loop), new_bbs, 
+                               &MEM_local_nz_pool);
+  FOR_ALL_BB_SET_members(new_bbs, bb)
+    LOOP_DESCR_Add_BB(loop, bb);
+  FOR_ALL_BB_SET_members(del, bb)
+    LOOP_DESCR_Delete_BB(loop, bb);
+#else
+  FOR_ALL_BB_SET_members(del, bb)
     LOOP_DESCR_Delete_BB(loop, bb);
   FOR_ALL_BB_SET_members(new_bbs, bb)
     LOOP_DESCR_Add_BB(loop, bb);
+#endif
   LOOP_DESCR_loopinfo(loop) = unrolled_info;
   LOOP_DESCR_num_exits(loop) =
     LOOP_DESCR_num_exits(loop) * ntimes - removed_exits;
@@ -4395,8 +4413,13 @@ void Unroll_Do_Loop(CG_LOOP& cl, UINT32 ntimes)
 
   /* Update loop descriptor for unrolled loop */
   LOOP_DESCR_loophead(loop) = unrolled_body;
+#ifdef TARG_IA64
+  LOOP_DESCR_Add_BB(loop, unrolled_body);
+  LOOP_DESCR_Delete_BB(loop, head);
+#else
   LOOP_DESCR_Delete_BB(loop, head);
   LOOP_DESCR_Add_BB(loop, unrolled_body);
+#endif
   LOOP_DESCR_loopinfo(loop) = unrolled_info;
 
   // Insert unrolled trip count computation! 
@@ -4460,8 +4483,13 @@ void Unroll_Do_Loop_Fully(LOOP_DESCR *loop, UINT32 ntimes)
 
   /* Update loop descriptor for unrolled loop */
   LOOP_DESCR_loophead(loop) = unrolled_body;
+#ifdef TARG_IA64
   LOOP_DESCR_Delete_BB(loop, head);
   LOOP_DESCR_Add_BB(loop, unrolled_body);
+#else
+  LOOP_DESCR_Add_BB(loop, unrolled_body);
+  LOOP_DESCR_Delete_BB(loop, head);
+#endif
   LOOP_DESCR_loopinfo(loop) = unrolled_info;
 
   /* Fixup prolog backpatches.  Replace body TNs and omegas as if
@@ -4987,9 +5015,115 @@ void Induction_Variables_Removal(CG_LOOP& cl,
   }
 }
 
-#ifdef TARG_IA64
+#ifdef TARG_IA64 
+// Estimate the lengths of critical path with and without data speculation. 
+// The lengths with and without data speculation are save to <len> 
+// and <len_wo_dspec> upon return
+//
+// Assumption: the dependence graph of <blk> is built prior to calling 
+// this function
+static INT32
+Estimate_Acyclic_Critical_Path_Len (BB* blk, BOOL allow_data_spec, 
+   INT32& len, INT32& len_wo_dspec, MEM_POOL* mp) {
+
+  len = len_wo_dspec = 0;
+
+  INT32 op_num = BB_length(blk);
+  BB_OP_MAP dep_height_map = BB_OP_MAP32_Create (blk, mp);
+
+  OP* op;
+  FOR_ALL_BB_OPs (blk, op) { BB_OP_MAP32_Set (dep_height_map, op, 0); }
+
+  // Compute acyclic len with data speculation at first
+  FOR_ALL_BB_OPs_REV(blk, op) {
+
+    INT32 dep_height = BB_OP_MAP32_Get (dep_height_map, op);
+    BOOL is_leaf = TRUE;
+    for (ARC_LIST* arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+
+      ARC* arc = ARC_LIST_first(arcs);
+      // ignore loop-carried dep 
+      if (ARC_omega (arc) != 0) continue; 
+      if (ARC_kind(arc) == CG_DEP_MEMIN && allow_data_spec && ARC_is_dotted(arc)) {
+         // data speculation will ignore this arc 
+         continue; 
+      }
+
+      OP* succ = ARC_succ (arc);
+      INT32 t = BB_OP_MAP32_Get (dep_height_map, succ) + ARC_latency(arc);
+      dep_height = MAX(dep_height, t);
+      is_leaf = FALSE;
+    }
+
+    // For leaf, the dep-height is the its latency.
+    if (is_leaf) {
+      for (INT i = 0; i < OP_results(op); i++) {
+        INT32 t = TI_LATENCY_Result_Available_Cycle(OP_code(op), i);
+        dep_height = MAX(dep_height, t);
+      }
+    }
+
+    BB_OP_MAP32_Set (dep_height_map, op, dep_height);
+    len = MAX(len, dep_height);
+  }// end of FOR_ALL_BB_OPs_REV 
+
+
+  // Compute acyclic len without data speculation at first
+  FOR_ALL_BB_OPs (blk, op) { BB_OP_MAP32_Set (dep_height_map, op, 0); }
+  FOR_ALL_BB_OPs_REV(blk, op) {
+
+    INT32 dep_height = BB_OP_MAP32_Get (dep_height_map, op);
+    BOOL is_leaf = TRUE;
+    for (ARC_LIST* arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+
+      ARC* arc = ARC_LIST_first(arcs);
+      // ignore loop carried dep 
+      if (ARC_omega (arc) != 0) continue; 
+
+      OP* succ = ARC_succ (arc);
+      INT32 t = BB_OP_MAP32_Get (dep_height_map, succ) + ARC_latency(arc);
+      dep_height = MAX(dep_height, t);
+      is_leaf = FALSE;
+    }
+
+    // For leaf, the dep-height is the its latency.
+    if (is_leaf) {
+      for (INT i = 0; i < OP_results(op); i++) {
+        INT32 t = TI_LATENCY_Result_Available_Cycle(OP_code(op), i);
+        dep_height = MAX(dep_height, t);
+      }
+    }
+
+    BB_OP_MAP32_Set (dep_height_map, op, dep_height);
+    len_wo_dspec = MAX(len, dep_height);
+  }// end of FOR_ALL_BB_OPs_REV
+}
+
+
+static void
+Prune_Violable_Mem_Deps (BB* body) {
+
+  std::vector<ARC*> arcs_to_delete;
+  OP *op;
+  FOR_ALL_BB_OPs(body, op) {
+    if (_CG_DEP_op_info(op)) {
+      for (ARC_LIST *arcs = OP_succs(op); arcs; arcs = ARC_LIST_rest(arcs)) {
+        ARC *arc = ARC_LIST_first(arcs);
+        if (ARC_kind(arc) == CG_DEP_MEMIN && ARC_is_dotted(arc)) {
+          arcs_to_delete.push_back(arc);
+        }
+      }
+   }
+  }
+  for (size_t i = 0; i < arcs_to_delete.size(); i++) {
+    CG_DEP_Detach_Arc(arcs_to_delete[i]);
+  }
+}
+
+
 //Compute CG_LOOP_{Rec,Res}_Min_II
-void Compute_Rec_Res_Min_II(CG_LOOP &cl)
+static void 
+Compute_Rec_Res_Min_II(CG_LOOP &cl, BOOL take_into_account_dspec=FALSE)
 {
   BB *body = cl.Loop_header();
   LOOP_DESCR *loop = cl.Loop();
@@ -5020,7 +5154,6 @@ void Compute_Rec_Res_Min_II(CG_LOOP &cl)
   tn_Invariants = TN_SET_Difference(tn_Uses, tn_Defs, limit_local_pool());
   tn_non_rotating = TN_SET_UnionD(tn_non_rotating, tn_Invariants, limit_local_pool());
 
-  //extern static void Prune_Regout_Deps(BB *body, TN_SET *non_rotating);
   CYCLIC_DEP_GRAPH cyclic_graph(body, limit_local_pool());
   {
     std::vector<ARC*> arcs_to_delete;
@@ -5044,7 +5177,7 @@ void Compute_Rec_Res_Min_II(CG_LOOP &cl)
              if (redundant) {
                  arcs_to_delete.push_back(arc);
              }
-          }
+	   }
           }
        }
     }
@@ -5052,18 +5185,50 @@ void Compute_Rec_Res_Min_II(CG_LOOP &cl)
       CG_DEP_Detach_Arc(arcs_to_delete[i]);
     }
   }
-  //Prune_Regout_Deps(body, tn_non_rotating);
 
   {
       CG_LOOP_rec_min_ii = CG_LOOP_res_min_ii = CG_LOOP_min_ii = 0;
+      CG_LOOP_rec_min_ii_with_dspec = -1;
+
       // Compute CG_LOOP_min_ii.
       MEM_POOL_Push(&MEM_local_pool);
       BOOL ignore_non_def_mem_deps = FALSE;
       CG_LOOP_Make_Strongly_Connected_Components(body, &MEM_local_pool, ignore_non_def_mem_deps);
       CG_LOOP_Calculate_Min_Resource_II(body, NULL, TRUE /*include pref*/, TRUE /*ignore pref stride*/);
       CG_LOOP_Calculate_Min_Recurrence_II(body, ignore_non_def_mem_deps);
+      if (take_into_account_dspec) {
+        INT32 save_rec_mii = CG_LOOP_rec_min_ii;
+        CG_LOOP_rec_min_ii = 0;
+ 
+        Prune_Violable_Mem_Deps (body);
+        CG_LOOP_Calculate_Min_Recurrence_II(body, ignore_non_def_mem_deps);
+        CG_LOOP_rec_min_ii_with_dspec = CG_LOOP_rec_min_ii;
+        CG_LOOP_rec_min_ii = save_rec_mii ;
+      } else {
+        CG_LOOP_rec_min_ii_with_dspec = -1;
+      }
 
       CG_LOOP_Clear_SCCs(loop);
+      if (take_into_account_dspec) {
+        INT32 len, len_wo_dspec;
+        Estimate_Acyclic_Critical_Path_Len 
+             (body, IPFEC_Enable_Data_Speculation, len, len_wo_dspec, &MEM_local_pool); 
+        len_wo_dspec = MAX(len_wo_dspec, CG_LOOP_res_min_ii);
+        len_wo_dspec = MAX(len_wo_dspec, 1);
+        len_wo_dspec = MAX(len_wo_dspec, CG_LOOP_min_ii);
+        len = MAX(len, CG_LOOP_res_min_ii);
+        len = MAX(len, 1);
+        if (len + 2 > len_wo_dspec) {
+          // critical len with and without speculation are very close.
+          // adjust the length to take into data spec overhead
+          len = len_wo_dspec; 
+        }
+        cl.Set_acyclic_len (len);      
+        cl.Set_acyclic_len_wo_dspec (len_wo_dspec);
+      } else {
+        cl.Set_acyclic_len (0);      
+        cl.Set_acyclic_len_wo_dspec (0);
+      }
       MEM_POOL_Pop(&MEM_local_pool);
   }
 }
@@ -5610,6 +5775,309 @@ void Fix_Backpatches(CG_LOOP& cl, bool trace)
   }
 }
 
+#ifdef TARG_IA64
+// make decision on performing SWP or unrolling upon the given loop.
+// return TRUE iff it goes for SWP.
+//
+// Assumption: CG_LOOP::Build_CG_LOOP_Info() is called prior to calling
+//   this function
+//
+static BOOL
+Do_Loop_Determine_SWP_Or_Unroll (CG_LOOP& cg_loop, BOOL trace) {
+
+  if (!CG_tune_do_loop) {
+    // Always SWP as before
+    return TRUE;
+  }
+
+  // Applicable to C and C++ only. Other kind of programming languages
+  // are not well tuned yet. So, return return TRUE to retain orginal logic
+  if (PU_src_lang(Get_Current_PU()) != PU_C_LANG &&
+      PU_src_lang(Get_Current_PU()) != PU_CXX_LANG) {
+    // Precise alias information is easy to obtain for the those
+    // programming languages other than C and C++. Data speculation
+    // is in genreal has little improvement on them.
+    return TRUE;
+  }
+
+  LOOP_DESCR* loop = cg_loop.Loop ();
+
+  TN* trip_cnt = CG_LOOP_Trip_Count(loop);
+  Is_True (trip_cnt, ("<loop> should be a DO-loop"));
+
+  // rule 1: if SWP is disabled, we have to use unrolling
+  if (!Enable_SWP) return FALSE;
+
+  // rule 2: Small trip counter, use unrolling
+  if (TN_is_constant(trip_cnt) && TN_value(trip_cnt) < 40) {
+    if (trace)
+      fprintf (TFile, "small trip count, SWP is not profitable");
+    return FALSE;
+  }
+
+  BB* body = LOOP_DESCR_loophead (loop);
+  if (BB_length(body) == 0) {
+    if (trace)
+      fprintf (TFile, "small trip count, SWP is not profitable");
+    return TRUE;
+  }
+
+  // rule 3: does not satify SWP constraints
+  if (Detect_SWP_Constraints(cg_loop, trace) != SWP_OK) {
+    return FALSE;
+  }
+
+  // rule 4: It is too costly to compute MII for bigger loop.
+  //   Hope non-SWP schedule would bring good luck
+  if (BB_length(body) >= 130) {
+    if (trace) {
+      fprintf (TFile,
+        "Loop body has %d instructions, too big for SWP", BB_length(body));
+    }
+    return FALSE;
+  }
+
+  // From this point through the end of this function, we are
+  // determining which option will produce better performance.
+  // The options are:
+  //   - SWP (without data speculation)
+  //   - Acyclic scheudle with data speculation upon probably
+  //     unrolled body.
+  //
+  // Our decision is conservative in that current analysis result
+  // does not provide any information about the alaising probability.
+
+  // If dependence-test result is unavailable, The ARC_is_dotted()
+  // flag on some loop carried dependence is very imprecise.
+  // Therefore, data speculation across iteratios (in a unrolled
+  // acyclic body) may incur significant penalty.
+  //
+  // TODO: Alias analyzer figure out the alias probablity, and annotate
+  //  it on the ARC.
+  if (!Current_Dep_Graph || CG_DEP_Ignore_LNO || CG_DEP_Ignore_WOPT) {
+    return TRUE;
+  }
+
+
+  Compute_Rec_Res_Min_II (cg_loop, TRUE);
+  if (CG_LOOP_min_ii <= 5) {
+    // SWP seems having promising performance.
+    return TRUE;
+  }
+
+  INT32 alen_wo_dspec = cg_loop.Acyclic_len_wo_dspec ();
+  INT32 alen = cg_loop.Acyclic_len ();
+
+  // Adjust the critical path length with data speculation
+  if (alen * 2 < alen_wo_dspec) {
+    // Currently, the alias analysis can not figure out the possibility of
+    // alias. The acyclic critical path len with data speculation may be
+    // too optimistic, we conservatively adjust it value when it is too small.
+    alen = (INT32)(alen * 1.5f);
+  }
+  if (alen < (INT32)(1.2f * CG_LOOP_min_ii)) {
+    alen = (INT32)(alen * 1.2f);
+  }
+  alen = MIN(alen,alen_wo_dspec);
+
+  if (alen > 0 && alen < CG_LOOP_min_ii) {
+    // rule 4: acyclic schedule with data speculation on non-unrolled loop body
+    //   has better performance than SWP.
+    if (trace) {
+      fprintf (TFile,
+        "Acyclic schedule with data speculation (%d cycle) is shorter than MII(%d)",
+         alen, CG_LOOP_min_ii);
+    }
+    return FALSE;
+  }
+
+  // rule 5: examine which transformation produce shorter average II.
+  Is_True (CG_LOOP_rec_min_ii_with_dspec > 0,
+           ("CG_LOOP_res_min_ii_with_dspec is not calculated properly"));
+
+  INT32 mii_with_dspec = MAX(CG_LOOP_rec_min_ii_with_dspec, CG_LOOP_res_min_ii);
+  mii_with_dspec = MAX(mii_with_dspec, 1);
+  // mii_with_dspec normally is too optimistic
+  mii_with_dspec = MAX(mii_with_dspec, CG_LOOP_min_ii/2);
+
+  INT32 unroll_factor = CG_LOOP_unrolled_size_max/BB_length(body);
+  unroll_factor = MAX(unroll_factor, 1);
+  unroll_factor = MIN(CG_LOOP_unroll_times_max, unroll_factor);
+  INT32 unroll_ii = alen + (unroll_factor - 1) * mii_with_dspec;
+  unroll_ii /= unroll_factor;
+
+  if (CG_LOOP_min_ii > (INT32)(1.2f * unroll_ii)) {
+    if (trace) {
+      fprintf (TFile, "The estimated average II (%d) due to unrolling and"
+                      " data speculation is shorter than MII(%d)",
+                      unroll_ii, CG_LOOP_min_ii);
+    }
+    return FALSE;
+  }
+
+  return TRUE;                                                     
+}
+
+/* This is a helper function of CG_LOOP_Optimize. As it name suggests, it
+ * perform SWP or loop unrolling on the given loop. return TRUE iff the
+ * transformation is successfully done, FALSE otherwise.
+ */
+static BOOL
+Do_Loop_Perform_SWP_or_Unroll (BOOL perform_swp, CG_LOOP& cg_loop,
+     std::vector<SWP_FIXUP>& fixup, BOOL trace_loop_opt) {
+
+   LOOP_DESCR* loop = cg_loop.Loop ();
+
+   if (perform_swp)  {
+      if (!cg_loop.Has_prolog_epilog())
+        return FALSE;
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** Before loop canonicalization ***");
+
+      if (!Prepare_Loop_For_SWP_1(cg_loop, trace_loop_opt))
+        return FALSE;
+
+      // Replace regular branch with loop-count branches.
+      // There will be a call EBO to delete the loop-exit test evaluations.
+      Gen_Counted_Loop_Branch(cg_loop);
+      Gen_SWP_Branch(cg_loop, true /* is_doloop */);
+
+      cg_loop.Recompute_Liveness();
+      Rename_TNs_For_BB(cg_loop.Loop_header(), NULL);
+      cg_loop.Recompute_Liveness();
+
+      cg_loop.Build_CG_LOOP_Info();
+      cg_loop.Recompute_Liveness();
+
+      if (cg_loop.Determine_Unroll_Fully()) {
+        Unroll_Do_Loop_Fully(loop, cg_loop.Unroll_factor());
+        cg_loop.Recompute_Liveness();
+        return TRUE;
+      }
+
+      Perform_Read_Write_Removal(loop);
+      cg_loop.Recompute_Liveness();
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** Before Postincr generation / After RW removal ***");
+
+      //  Form postincr form
+      if (!Prepare_Loop_For_SWP_2(cg_loop, trace_loop_opt))
+        return FALSE;
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** Before Fix_Recurrences / After Postincr ***");
+
+      // Break recurrences will compute dep-graph itself
+      Induction_Variables_Removal(cg_loop,
+                                  true/*delete*/,
+                                  true/*keep prefetch*/,
+                                  trace_loop_opt);
+      Fix_Recurrences_Before_Unrolling(cg_loop);
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** before ebo 1 and unrolling / after fix recurrences ***");
+
+      cg_loop.Recompute_Liveness();
+      cg_loop.EBO_Before_Unrolling();
+
+      if (SWP_Options.Predicate_Promotion) {
+        std::list<BB*> bbl;
+        bbl.push_front(cg_loop.Loop_header());
+        CG_DEP_Prune_Dependence_Arcs(bbl, TRUE, trace_loop_opt);
+        if (trace_loop_opt)
+          CG_LOOP_Trace_Loop(loop, "*** after ebo 1 and prune predicate / before unrolling ***");
+      }
+
+      Compute_Rec_Res_Min_II(cg_loop);
+      cg_loop.Determine_SWP_Unroll_Factor();
+
+      if (cg_loop.Unroll_factor() > 1) {
+        Unroll_Do_Loop(cg_loop, cg_loop.Unroll_factor());
+        cg_loop.Recompute_Liveness();
+      }
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** Before ebo 2/ after unrolling  ***");
+
+      cg_loop.EBO_Before_Unrolling();
+
+      BB_Verify_OP_Order(cg_loop.Loop_header());
+
+      // Break recurrences will compute dep-graph itself
+      Fix_Recurrences_After_Unrolling(cg_loop);
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** Before implicit prefetch / after fix recurrences 2 ***");
+
+      Gen_Implicit_Prefetches(cg_loop, trace_loop_opt);
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** Before Ind. Var. Removal / after implicit prefetch  ***");
+
+      // Update backpatches
+      cg_loop.Recompute_Liveness();
+      Induction_Variables_Removal(cg_loop,
+                                  true/*delete*/,
+                                  true/*keep prefetch*/,
+                                  trace_loop_opt);
+      cg_loop.Recompute_Liveness();
+      Fix_Backpatches(cg_loop, trace_loop_opt);
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** Before swp / after Ind. Var. Removal  ***");
+
+      if (!Perform_SWP(cg_loop, fixup, true /*doloop*/)) {
+        Undo_SWP_Branch(cg_loop, true /*is_doloop*/);
+        CG_LOOP_Remove_Notations(cg_loop, CG_LOOP_prolog, CG_LOOP_epilog);
+        cg_loop.Recompute_Liveness();
+      }
+   } else {
+      if (!cg_loop.Has_prolog_epilog())
+        return FALSE;
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** Before LOOP CANONICALIZATION ***");
+
+      // Perform_Read_Write_Removal requires that
+      //  non-definite dependence are removed
+      if (!Remove_Non_Definite_Dependence(cg_loop, false, trace_loop_opt))
+        return FALSE;
+
+      cg_loop.Build_CG_LOOP_Info();
+
+      if (trace_loop_opt)
+        CG_LOOP_Trace_Loop(loop, "*** Before SINGLE_BB_DOLOOP_UNROLL ***");
+
+      cg_loop.Recompute_Liveness();
+      cg_loop.Determine_Unroll_Factor();
+
+      if (cg_loop.Unroll_fully()) {
+        // No need to call RW removal because EBO
+        // should find all such CSEs after full unrolling.
+        Unroll_Do_Loop_Fully(loop, cg_loop.Unroll_factor());
+
+      } else {
+        Perform_Read_Write_Removal(loop);
+
+        // Break recurrences will compute dep-graph itself
+        Fix_Recurrences_Before_Unrolling(cg_loop);
+
+        if (cg_loop.Unroll_factor() > 1) {
+          Unroll_Do_Loop(cg_loop, cg_loop.Unroll_factor());
+        }
+        cg_loop.Recompute_Liveness();
+        CG_LOOP_Remove_Notations(cg_loop, CG_LOOP_prolog, CG_LOOP_epilog);
+      }
+
+      cg_loop.Recompute_Liveness();
+      cg_loop.EBO_After_Unrolling();
+    }
+
+    return TRUE;
+}
+#endif
 
 // Perform loop optimizations for one loop
 //
@@ -5623,8 +6091,12 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, std::vector<SWP_FIXUP>& fixup,
 {
   enum LOOP_OPT_ACTION {
     NO_LOOP_OPT,
+#ifdef TARG_IA64
+    SINGLE_BB_DOLOOP_SWP_OR_UNROLL,
+#else
     SINGLE_BB_DOLOOP_SWP,
     SINGLE_BB_DOLOOP_UNROLL,
+#endif
     SINGLE_BB_WHILELOOP_SWP,
     SINGLE_BB_WHILELOOP_UNROLL,
     MULTI_BB_DOLOOP
@@ -5686,10 +6158,14 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, std::vector<SWP_FIXUP>& fixup,
 
   if (single_bb) {
     if (has_trip_count) {
+#ifdef TARG_IA64
+      action = SINGLE_BB_DOLOOP_SWP_OR_UNROLL;
+#else
       if (Enable_SWP)
 	action =  SINGLE_BB_DOLOOP_SWP;
       else 
 	action =  SINGLE_BB_DOLOOP_UNROLL;
+#endif
     } else {
       if (Enable_SWP && SWP_Options.Enable_While_Loop)
 	action = SINGLE_BB_WHILELOOP_SWP;
@@ -5711,6 +6187,18 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
   }
 #endif
   switch (action) {
+#ifdef TARG_IA64
+  case SINGLE_BB_DOLOOP_SWP_OR_UNROLL:
+    {
+      CG_LOOP cg_loop(loop);
+      cg_loop.Build_CG_LOOP_Info ();
+
+      BOOL perform_swp = Do_Loop_Determine_SWP_Or_Unroll
+          (cg_loop, trace_loop_opt);
+      return Do_Loop_Perform_SWP_or_Unroll
+                (perform_swp, cg_loop, fixup, trace_loop_opt);
+    }
+#else
   case SINGLE_BB_DOLOOP_SWP:
     {
       CG_LOOP cg_loop(loop);
@@ -5880,6 +6368,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
       break;
     }
 
+#endif
   case SINGLE_BB_WHILELOOP_SWP:
     {
       CG_LOOP cg_loop(loop);

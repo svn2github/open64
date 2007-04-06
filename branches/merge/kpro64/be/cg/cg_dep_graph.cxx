@@ -3521,14 +3521,22 @@ void add_mem_arcs_from(UINT16 op_idx)
       /* Build a mem dep arc from <op> to <succ> */
       arc = new_arc_with_latency(kind, op, succ, latency, omega, 0, definite);
 
-      /* if MEMIN dependence is not a definite dependence and 
-	 !include_memin_arcs is SET, not already a check-load, then
-	 set the ARC as a dotted edge. */
-
-      if (!CGTARG_Is_OP_Check_Load(succ) && 
-	  kind == CG_DEP_MEMIN && !definite && !include_memin_arcs)
-	Set_ARC_is_dotted(arc, TRUE);
-
+#ifdef TARG_IA64
+      /* Set the dependence is violable on some circumstance */
+      if (kind == CG_DEP_MEMIN && !definite &&
+          !CGTARG_Is_OP_Check_Load(succ) &&
+          !OP_volatile (op) && !OP_volatile(succ) &&
+          !OP_asm(op) && !OP_asm(succ)) {
+        Set_ARC_is_dotted (arc, TRUE);
+      }
+#else
+      /* if MEMIN dependence is not a definite dependence and
+        !include_memin_arcs is SET, not already a check-load, then
+        set the ARC as a dotted edge. */
+      if (!CGTARG_Is_OP_Check_Load(succ) &&
+         kind == CG_DEP_MEMIN && !definite && !include_memin_arcs)
+       Set_ARC_is_dotted(arc, TRUE);
+#endif
       found_definite_memread_succ |= (kind == CG_DEP_MEMREAD && definite);
 
       /* Find latency to 0-omega store descendents of <succ>, then use this

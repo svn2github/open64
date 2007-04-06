@@ -421,6 +421,9 @@
 
 extern BOOL CG_warn_bad_freqs;
 extern BOOL CG_enable_loop_optimizations;
+#ifdef TARG_IA64
+extern BOOL CG_tune_do_loop;
+#endif
 extern INT32 CG_skip_after;
 extern INT32 CG_skip_before;
 extern INT32 CG_skip_equal;
