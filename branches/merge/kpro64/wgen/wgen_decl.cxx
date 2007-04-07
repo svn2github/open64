@@ -2911,7 +2911,12 @@ AGGINIT::Traverse_Aggregate_Struct (
     }
 
     fld_ty = FLD_type(fld);
-    if (gs_tree_code(gs_tree_value(init)) == GS_CONSTRUCTOR) {
+
+    gs_t init_value = gs_tree_value(init);
+    if ( gs_tree_code(init_value) == GS_NOP_EXPR )
+      init_value = gs_tree_operand(init_value, 0);
+    
+    if ( gs_tree_code(init_value) == GS_CONSTRUCTOR) {
       // recursively process nested ARRAYs and STRUCTs
       gs_t element_type;
       element_type = gs_tree_type(field);
@@ -2921,7 +2926,7 @@ AGGINIT::Traverse_Aggregate_Struct (
       // For an example see Traverse_Aggregate_Array
       INT array_size = TY_size(fld_ty);
 #endif
-      field_id = Traverse_Aggregate_Constructor (st, gs_tree_value(init),
+      field_id = Traverse_Aggregate_Constructor (st, init_value,
 #ifdef KEY
   						 struct_type,
 #endif
@@ -2946,9 +2951,7 @@ AGGINIT::Traverse_Aggregate_Struct (
     else if (gs_type_ptrmemfunc_p(gs_tree_type(field))) {
       gs_t element_type;
       element_type = gs_tree_type(field);
-      gs_t init_value = gs_tree_value(init);
-      if (gs_tree_code(init_value) == GS_NOP_EXPR)
-	init_value = gs_tree_operand(init_value, 0); // bug 10853
+
       GS_ASSERT(gs_tree_code(init_value) == GS_PTRMEM_CST,
 		("Traverse_Aggregate_Struct: GS_PTRMEM_CST not found"));
       // PTRMEM_CST was expanded by GCC's cplus_expand_constant.  Get the
