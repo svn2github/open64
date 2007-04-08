@@ -6609,6 +6609,7 @@ void Perform_Loop_Optimizations()
       break;
 #endif
 #endif
+    CG_LOOP_Optimize(loop, fixup);
 #endif // TARG_IA64
   }
 
