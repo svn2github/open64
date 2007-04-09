@@ -5410,6 +5410,13 @@ WGEN_Expand_Expr (gs_t exp,
 		  break;
 		}
 #endif
+		if ( arglist == NULL ||
+                      gs_tree_value (arglist) == NULL ||
+		      gs_tree_chain (arglist) == NULL ||
+		      gs_tree_value (gs_tree_chain (arglist)) == NULL ) {
+		  printf("error: too few arguments to function 'va_start'\n");
+		  Terminate(2);
+		}
 		arg1 = gs_tree_value (arglist);
 		arg2 = gs_tree_value (gs_tree_chain (arglist));
 		WN *arg_wn = WGEN_Expand_Expr (arg1);
