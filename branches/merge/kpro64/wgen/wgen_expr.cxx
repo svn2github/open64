@@ -722,6 +722,20 @@ WGEN_Array_Expr(gs_t exp,
     INT64 ofst = (BITSPERBYTE * gs_get_integer_value(gs_decl_field_offset(arg1)) +
 				gs_get_integer_value(gs_decl_field_bit_offset(arg1)))
 			      / BITSPERBYTE;
+#ifdef KEY
+    // Refer GCC 4.0.2: gcc.c-torture/compile/struct-non-lval-3.c
+    // We only handle this case so far:
+    // (p = q).x[index]
+    // the lhs of modify_expr is var_decl, not an expression
+    if ( gs_tree_code(arg0) == GS_MODIFY_EXPR ) {
+      WGEN_Expand_Expr(arg0);
+      gs_t lhs = gs_tree_operand(arg0, 0);
+      Is_True( lhs != NULL && gs_tree_code(lhs) == GS_VAR_DECL,
+		      ("Unsupported lhs for `(p=q).x[n]'"));
+      arg0 = lhs;
+    }
+#endif
+    
 #ifdef KEY // bug 9725: If the field is an array of struct, it is considered
            // a single field.
     return WGEN_Array_Expr(arg0, ty_idx, ty_idx0, ofst + component_offset,
