@@ -3149,7 +3149,7 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
             Set_OP_orig_idx(new_op, OP_map_idx(op));
             Set_OP_unroll_bb(new_op, unrolled_body);
           }
-#ifdef TARG_IA64
+#ifndef TARG_IA64
 	  CG_LOOP_Init_Op(new_op);
 #endif
 	  Copy_WN_For_Memory_OP(new_op, op);
