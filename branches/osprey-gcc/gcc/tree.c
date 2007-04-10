@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* Language-independent node constructors for parse phase of GNU compiler.
@@ -7219,7 +7219,6 @@ gcc_built_in_class2gsbi_class (unsigned char class)
  return (gsbi_class_t) 0;
 }
 
-#if defined(TARG_IA32) || defined(TARG_X8664)
 static inline gsbi_ts_t
 ix86_builtins2gsbi_ts (enum ix86_builtins code) 
 {
@@ -7590,7 +7589,6 @@ ix86_builtins2gsbi_ts (enum ix86_builtins code)
   gcc_assert (0);
   return (gsbi_ts_t) 0;
 }
-#endif
 
 #ifdef KEY
 /******************************************************************************/
@@ -7938,7 +7936,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
   }
 
   // Create the node that will represent this tree node. 
-  TREE_TO_TRANSLATED_GS (t) = (unsigned long)__gs(gcc2gs (TREE_CODE (t)));
+  TREE_TO_TRANSLATED_GS (t) = (unsigned int)__gs(gcc2gs (TREE_CODE (t)));
 
   // Argument 0 is the name of the class:
   class = TREE_CODE_CLASS (TREE_CODE (t));
@@ -8278,11 +8276,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
             _gs_hword(decl_function_code, gcc_built_in2gsbi ((int) DECL_FUNCTION_CODE (t)));
             break;
           case BUILT_IN_MD:
-#if defined(TARG_IA32) || defined(TARG_X8664)
             _gs_hword(decl_function_code, ix86_builtins2gsbi_ts ((int) DECL_FUNCTION_CODE (t)));
-#else
-            _gs_hword(decl_function_code, gcc_built_in2gsbi ((int) DECL_FUNCTION_CODE (t)));
-#endif
             break;
           default: gcc_assert (0); break;
         }
@@ -9401,6 +9395,9 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
             // TREE_VALUE
 	    gs_set_operand((gs_t) GS_NODE(t), GS_TREE_PURPOSE,
 		       gs_x_1(TREE_PURPOSE(t), seq_num));
+	    // bug 8346
+	    if (TREE_VALUE(t))
+	      STRIP_USELESS_TYPE_CONVERSION(TREE_VALUE(t));
 	    gs_set_operand((gs_t) GS_NODE(t), GS_TREE_VALUE,
 		       gs_x_1(TREE_VALUE(t), seq_num));
 	    break;

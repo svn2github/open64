@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* Top level of GCC compilers (cc1, cc1plus, etc.)
@@ -505,6 +505,19 @@ randomize (void)
       unsigned HOST_WIDE_INT value;
       static char random_seed[HOST_BITS_PER_WIDE_INT / 4 + 3];
 
+#ifdef KEY /* bugs 3099, 12015 */
+      {
+        size_t i;
+        value = 0;
+        if (dump_base_name) {
+          for (i = 0; i < strlen (dump_base_name); i++) {
+            value = (value << 1) ^ dump_base_name[i];
+          }
+        } else {
+          value = getpid ();
+        }
+      }
+#else
       /* Get some more or less random data.  */
 #ifdef HAVE_GETTIMEOFDAY
       {
@@ -522,6 +535,7 @@ randomize (void)
       }
 #endif
       value = local_tick ^ getpid ();
+#endif
 
       sprintf (random_seed, HOST_WIDE_INT_PRINT_HEX, value);
       flag_random_seed = random_seed;
@@ -882,7 +896,7 @@ check_global_declaration_1 (tree decl)
       && ! TREE_USED (decl)
       /* The TREE_USED bit for file-scope decls is kept in the identifier,
 	 to handle multiple external decls in different scopes.  */
-      && ( DECL_NAME(decl) != NULL && ! TREE_USED (DECL_NAME (decl)))
+      && ! TREE_USED (DECL_NAME (decl))
       && ! DECL_EXTERNAL (decl)
       && ! TREE_PUBLIC (decl)
       /* A volatile variable might be used in some non-obvious way.  */
