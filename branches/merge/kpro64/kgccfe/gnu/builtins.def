@@ -898,3 +898,18 @@ DEF_BUILTIN (BUILT_IN__EXIT2,
 	     1, 0, !flag_isoc99,
 	     ATTR_NORETURN_NOTHROW_LIST)
 
+DEF_LIB_BUILTIN (BUILT_IN_CTYPE_B_LOC,
+                 "__builtin___ctype_b_loc",
+                 BT_FN_PTR,
+                 ATTR_CONST_NOTHROW_LIST)
+                 
+DEF_LIB_BUILTIN (BUILT_IN_CTYPE_TOUPPER_LOC,
+                 "__builtin___ctype_toupper_loc",
+                 BT_FN_PTR,
+                 ATTR_CONST_NOTHROW_LIST)
+                 
+DEF_LIB_BUILTIN (BUILT_IN_CTYPE_TOLOWER_LOC,
+                 "__builtin___ctype_tolower_loc",
+                 BT_FN_PTR,
+                 ATTR_CONST_NOTHROW_LIST)
+

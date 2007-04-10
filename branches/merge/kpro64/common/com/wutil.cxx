@@ -930,6 +930,10 @@ static const struct {
   INTRN_EXPECT,                 "INTRN_EXPECT",
 #endif
 
+  INTRN_CTYPE_B_LOC,       "__ctype_b_loc",
+  INTRN_CTYPE_TOUPPER_LOC, "__ctype_toupper_loc",
+  INTRN_CTYPE_TOLOWER_LOC, "__ctype_tolower_loc",
+
   INTRINSIC_LAST,		"INTRINSIC_LAST"
 
 };

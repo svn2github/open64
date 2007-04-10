@@ -80,6 +80,8 @@ typedef enum INTRN_RETKIND {
   IRETURN_V16I8,             /* MTYPE_V16I8 */
   IRETURN_V16I1,             /* MTYPE_V16I1 */
 #endif
+  IRETURN_PPU2,         /* return type of ctype_b_loc() */
+  IRETURN_PPI4,         /* return type of ctype_toupper_loc() and ctype_tolower_loc() */
 } INTRN_RETKIND;
 #define INTRN_RETKIND_LAST IRETURN_F10
 
