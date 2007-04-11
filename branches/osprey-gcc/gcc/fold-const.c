@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
 /* Fold a constant sub-tree into a single node for C-compiler
@@ -7775,15 +7775,6 @@ fold (tree expr)
 
     case MULT_EXPR:
       /* (-A) * (-B) -> A * B  */
-#ifdef KEY // bug 11662: (-A) * const -> A * (-const) causes str reduction bug,
-      // so doing the old way in GNU3
-      if (flag_spin_file) {
-	if (TREE_CODE (arg0) == NEGATE_EXPR && TREE_CODE (arg1) == NEGATE_EXPR)
-	  return fold (build2(MULT_EXPR, type, TREE_OPERAND (arg0, 0),
-			      TREE_OPERAND (arg1, 0)));
-      }
-      else {
-#endif
       if (TREE_CODE (arg0) == NEGATE_EXPR && negate_expr_p (arg1))
 	return fold (build2 (MULT_EXPR, type,
 			     TREE_OPERAND (arg0, 0),
@@ -7792,9 +7783,6 @@ fold (tree expr)
 	return fold (build2 (MULT_EXPR, type,
 			     negate_expr (arg0),
 			     TREE_OPERAND (arg1, 0)));
-#ifdef KEY // bug 11662
-      }
-#endif
 
       if (TREE_CODE (type) == COMPLEX_TYPE)
 	{
