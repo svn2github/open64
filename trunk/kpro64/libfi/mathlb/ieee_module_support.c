@@ -96,7 +96,7 @@ typedef struct {
   int4 value;
   } ieee_class;
 
-# if defined(TARG_IA32)
+# if defined(TARG_IA32) || defined(TARG_X8664)
 #  define FESETENV __f90_fesetenv
 #  define FEGETENV __f90_fegetenv
 #  define FENV_T our_fenv_t
