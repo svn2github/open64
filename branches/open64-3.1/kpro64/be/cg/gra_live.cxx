@@ -1134,10 +1134,11 @@ Live_Init(
   /* if current PU haven't landing pad at all, 
    * needn't to added the corresponding defreach and live info
    */
-  if (PU_has_exc_scopes(Get_Current_PU()) && !PU_Need_Not_Create_LSDA ()) {
+  if (PU_has_exc_scopes(Get_Current_PU()) && !PU_Need_Not_Create_LSDA ()) 
 #else
-  if (PU_has_exc_scopes(Get_Current_PU())) {
+  if (PU_has_exc_scopes(Get_Current_PU())) 
 #endif
+  {
     extern TN *Caller_GP_TN;
     extern TN *Caller_FP_TN;
     extern TN *Caller_Pfs_TN;
@@ -1218,6 +1219,30 @@ Live_Init(
       TN *tn = ROTATING_KERNEL_INFO_localdef(info)[i];
       BB_defreach_out(bb) = GTN_SET_Union1D(BB_defreach_out(bb), tn, &liveness_pool);
     }
+  }
+
+  // If BB is ended by function call, add the return value to the defreach-out set. 
+  if (BB_call (bb)) {
+     ANNOTATION* annot = ANNOT_Get(BB_annotations(bb),ANNOT_CALLINFO);
+     WN *call_wn = CALLINFO_call_wn(ANNOT_callinfo(annot));
+     ST *call_st = (WN_operator(call_wn) != OPR_ICALL) ? WN_st(call_wn) : NULL;
+     TY_IDX call_ty = (call_st != NULL) ? ST_pu_type(call_st) : WN_ty(call_wn);
+     
+     RETURN_INFO return_info = Get_Return_Info (TY_ret_type(call_ty), No_Simulated
+                                    #ifdef TARG_X8664
+                                     ,call_st ? PU_ff2c_abi(Pu_Table[ST_pu(call_st)]) : FALSE
+                                    #endif
+                                    );
+
+     for (i = 0; i < RETURN_INFO_count(return_info); i++) {
+        PREG_NUM rt_preg = RETURN_INFO_preg (return_info, i);
+        TYPE_ID rt_mtype = RETURN_INFO_mtype (return_info, i);
+        Is_True (Preg_Is_Dedicated(rt_preg), 
+                 ("return value PREG (%d) is not dedicated", (INT)rt_preg));
+        TN* tn = PREG_To_TN (MTYPE_TO_PREG_array[rt_mtype], rt_preg);
+        GTN_UNIVERSE_Add_TN(tn);
+        BB_defreach_out(bb) = GTN_SET_Union1D (BB_defreach_out(bb), tn, &liveness_pool);
+     }
   }
 }
 
