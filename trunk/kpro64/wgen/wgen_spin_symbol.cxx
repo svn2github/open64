@@ -1540,7 +1540,8 @@ Create_ST_For_Tree (gs_t decl_node)
 	      }
 	    } else
 #endif
-            if (gs_decl_external(decl_node) || gs_decl_weak (decl_node)) {
+            if (gs_decl_external(decl_node) || 
+                (gs_decl_weak(decl_node) && !gs_tree_static (decl_node)) ) {
 	      sclass = SCLASS_EXTERN;
 	      level  = GLOBAL_SYMTAB;
               eclass = EXPORT_PREEMPTIBLE;
