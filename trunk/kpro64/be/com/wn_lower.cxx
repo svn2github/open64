@@ -2772,7 +2772,11 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
      is_non_contig = TRUE;
      element_size = -element_size;
   }
-
+  if (element_size == 0) {
+    // This is an array of empty struct
+    element_size = 1;
+  }
+  
 #ifdef TARG_X8664
   BOOL do_reassociate = FALSE;
 #endif
