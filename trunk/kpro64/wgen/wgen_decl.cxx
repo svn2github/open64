@@ -3521,7 +3521,7 @@ WGEN_Initialize_Decl (gs_t decl)
 		}
 		init_decl = NULL;
 	}
-	if (gs_tree_readonly(decl))
+	if (gs_tree_readonly(decl) && !gs_tree_this_volatile(decl))
 		Set_ST_is_const_var (st);
   }
   else {
