@@ -407,16 +407,10 @@ CG_CXX_OBJS = $(CG_CXX_SRCS:.cxx=.o)
 VPATH    =  $(SRC_DIRS)
 
 LCOPTS += $(STD_COMPILE_OPTS)
-ifneq ($(BUILD_COMPILER), EDG)
-LCOPTS += -fwritable-strings
-endif
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 
 LC++OPTS += $(STD_COMPILE_OPTS) $(PCH_OPTS)
-ifneq ($(BUILD_COMPILER), EDG)
-LC++OPTS += -fwritable-strings
-endif
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(addprefix -I, $(HEADER_DIRS))
 LASOPTS = $(STD_COMPILE_OPTS)
