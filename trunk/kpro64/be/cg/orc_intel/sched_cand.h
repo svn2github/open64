@@ -144,13 +144,14 @@
 
 #include "sched_path.h"
    
-class FAVOR_DELAY_HEUR ;
-
+class FAVOR_DELAY_HEUR;
+class UNRESOLVED_DEP_LST;
+class BOOKEEPING_LST;
+class CAND_MGR;
 
     /* structure to describe the unresolved dependency 
      */
 class UNRESOLVED_DEP {
-
 friend class UNRESOLVED_DEP_LST;
 friend class CAND_MGR;
 

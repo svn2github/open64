@@ -1318,12 +1318,13 @@ public:
 //   Note:
 //
 //============================================================================
+class REGION_TREE;
+class REGION_LOOP_UPDATE;
 
 class REGION {
     
 friend class REGION_TREE;
 friend class REGION_LOOP_UPDATE;
-friend class SCHEDULER;
 
 private:
     BB                *Edge_Splitting(BB *from_bb, BB *to_bb);

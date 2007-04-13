@@ -83,7 +83,7 @@ extern MEM_POOL* PU_pool;
  * the FE guarantee the value definitely match one of case-clauses), 
  * <default_lab_num> is set to -1 and <case_labels> is set to empty set. 
  */
-void
+template<> void
 SUMMARIZE<INLINER>::Identify_switch_clause_labels 
     (WN* node, INT& default_lab_num, BS* &case_labels, MEM_POOL* mem) {
 
@@ -101,7 +101,7 @@ SUMMARIZE<INLINER>::Identify_switch_clause_labels
     }
 }
 
-void
+template<> void
 SUMMARIZE<INLINER>::Collect_calls_in_switch 
     (WN* first_stmt, INT default_lab_num, BS* case_labels, 
      BS* &calls_in_switch, MEM_POOL* mp) {

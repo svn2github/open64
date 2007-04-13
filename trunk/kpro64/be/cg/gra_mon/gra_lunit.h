@@ -126,12 +126,13 @@ enum LU_FLAG {
 //		by this block?
 };
 
-#ifndef TARG_IA64
-class LUNIT;
 class LRANGE;
-
-extern LUNIT* LUNIT_Create( LRANGE* lrange, GRA_BB* gbb );
-#endif
+class LUNIT_BB_LIST_ITER;
+class LUNIT_LRANGE_LIST_ITER;
+class LUNIT_SPILL_LIST_ITER;
+class LRANGE_LUNIT_ITER;
+class LUNIT;
+LUNIT *LUNIT_Create (LRANGE*, GRA_BB*);
 
 class LUNIT {
 friend class LRANGE;
