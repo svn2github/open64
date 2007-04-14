@@ -3251,6 +3251,9 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * op1, OPS *ops)
     // please handle it in FE.
     Expand_Float_Compares(TOP_fcmp_neq, result, op0, op1, ops); 
     break;
+  case INTRN_ISUNORDERED:
+    Expand_Float_Compares(TOP_fcmp_unord, result, op0, op1, ops);
+    break;
   default:
     #pragma mips_frequency_hint NEVER
     FmtAssert (FALSE, ("WHIRL_To_OPs: illegal intrinsic op"));
