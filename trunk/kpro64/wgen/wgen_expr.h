@@ -85,6 +85,9 @@ extern WN* WGEN_Expand_Expr_With_Sequence_Point (gs_t exp, TYPE_ID mtype,
  */
 extern WN * WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
 				    gs_t lhs,
+				    /* if lhs contains CALL, promote the CALL and pass its return value by lhs_retval */
+				    /* only used in f()=g()=h(); so far */
+				    WN* lhs_retval,
 				    bool need_result,
 				    TY_IDX component_ty_idx,
 				    INT64 component_offset,

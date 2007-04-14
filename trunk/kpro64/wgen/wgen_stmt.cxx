@@ -1496,6 +1496,7 @@ Wgen_Expand_Asm_Operands (gs_t  string,
 
 	WN *output_rvalue_wn = WGEN_Lhs_Of_Modify_Expr (GS_MODIFY_EXPR,
 						       gs_tree_value (tail),
+						       NULL,
 						       plus_modifier,
 						       (TY_IDX) 0, // component type
 						       (INT64) 0,  // component offset

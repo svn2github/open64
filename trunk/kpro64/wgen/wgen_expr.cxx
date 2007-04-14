@@ -999,7 +999,8 @@ WGEN_fixup_result_decl (gs_t exp)
  */
 WN *
 WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
-		       gs_t lhs, 
+		       gs_t lhs,
+		       WN* lhs_retval,
 		       bool need_result,
 		       TY_IDX component_ty_idx, 
 		       INT64 component_offset,
@@ -1061,7 +1062,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
       FmtAssert (DECL_FIELD_ID(arg1) != 0,
                  ("WGEN_Lhs_Of_Modify_Expr: DECL_FIELD_ID used but not set"));
 #endif
-      wn = WGEN_Lhs_Of_Modify_Expr(assign_code, arg0, need_result, ty_idx0, 
+      wn = WGEN_Lhs_Of_Modify_Expr(assign_code, arg0, NULL, need_result, ty_idx0, 
 				  ofst+component_offset,
 			          field_id + DECL_FIELD_ID(arg1), is_bit_field, 
 				  rhs_wn, rhs_preg_num, is_realpart,
@@ -1073,7 +1074,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
     {
       gs_t arg0 = gs_tree_operand(lhs, 0);
       TY_IDX ty_idx0 = Get_TY(gs_tree_type(arg0));
-      wn = WGEN_Lhs_Of_Modify_Expr(assign_code, arg0, need_result, ty_idx0,
+      wn = WGEN_Lhs_Of_Modify_Expr(assign_code, arg0, NULL, need_result, ty_idx0,
 				  component_offset, field_id, is_bit_field,
 				  rhs_wn, rhs_preg_num, TRUE, FALSE);
     }
@@ -1083,7 +1084,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
     {
       gs_t arg0 = gs_tree_operand(lhs, 0);
       TY_IDX ty_idx0 = Get_TY(gs_tree_type(arg0));
-      wn = WGEN_Lhs_Of_Modify_Expr(assign_code, arg0, need_result, ty_idx0,
+      wn = WGEN_Lhs_Of_Modify_Expr(assign_code, arg0, NULL, need_result, ty_idx0,
 				  component_offset, field_id, is_bit_field,
 				  rhs_wn, rhs_preg_num, FALSE, TRUE);
     }
@@ -1113,7 +1114,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
                             (gs_tree_type(Current_Function_Decl()) ) ) ) )
       {
         WGEN_fixup_result_decl (lhs);
-        wn = WGEN_Lhs_Of_Modify_Expr (assign_code, lhs, need_result,
+        wn = WGEN_Lhs_Of_Modify_Expr (assign_code, lhs, NULL, need_result,
                                       component_ty_idx, component_offset,
                                       field_id, is_bit_field, rhs_wn,
                                       rhs_preg_num, is_realpart, is_imagpart);
@@ -1145,7 +1146,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         if (code == GS_VAR_DECL && (actual_decl = gs_decl_value_expr(lhs))) {
 
           TY_IDX ty_idx0 = Get_TY (gs_tree_type (actual_decl));
-          return WGEN_Lhs_Of_Modify_Expr(assign_code, actual_decl,
+          return WGEN_Lhs_Of_Modify_Expr(assign_code, actual_decl, NULL, 
                                          need_result, ty_idx0,
                                          component_offset, field_id,
                                          is_bit_field, rhs_wn, rhs_preg_num,
@@ -1313,50 +1314,66 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         volt = TRUE;
       }
       gs_t op = gs_tree_operand(lhs, 0);
-      WN *addr_wn = WGEN_Expand_Expr (gs_tree_operand (lhs, 0));
+
+      WN* addr_wn = NULL;
       TY_IDX desc_ty_idx = component_ty_idx;
       if (desc_ty_idx == 0)
         desc_ty_idx = hi_ty_idx;
       if (TY_is_volatile(desc_ty_idx)) {
         Clear_TY_is_volatile(desc_ty_idx);
-        volt = TRUE;
+	volt = TRUE;
       }
       Is_True(! is_bit_field || field_id <= MAX_FIELD_ID,
-	      ("WGEN_Lhs_Of_Modify_Expr: field id for bit-field exceeds limit"));
-      if (WN_has_side_effects(addr_wn) &&
-	  (need_result || 
-	   assign_code == GS_PREINCREMENT_EXPR ||
-	   assign_code == GS_PREDECREMENT_EXPR ||
-	   assign_code == GS_POSTINCREMENT_EXPR ||
-	   assign_code == GS_POSTDECREMENT_EXPR)) {
-        ST       *preg_st;
-        PREG_NUM  preg;
-        TY_IDX    address_ty_idx = Get_TY (gs_tree_type (gs_tree_operand (lhs, 0)));
-#ifdef KEY
-        //Bug 8738: PREG should NOT be VOLATILE in whirl
-        if (TY_is_volatile(address_ty_idx)) {
-           Clear_TY_is_volatile(address_ty_idx);
-           volt = TRUE;
-        }
-#endif
-        preg_st = MTYPE_To_PREG(Pointer_Mtype);
-        preg    = Create_Preg (Pointer_Mtype, NULL);
-        wn      = WN_Stid (Pointer_Mtype, preg, preg_st, address_ty_idx, addr_wn);
-        WGEN_Set_ST_Addr_Saved (addr_wn);
-#ifdef KEY
-	// Handle function calls for asm input-output constraints
-	// see torture test 990130-1.c
-	WN *body = WGEN_Stmt_Top();
-	if (body &&		// Do prepend only for asm's.  Bug 4732.
-	    WN_last(body) &&
-	    WN_operator(WN_last(body)) == OPR_ASM_STMT) {
-	  WGEN_Stmt_Prepend_Last (wn, Get_Srcpos());
-	} else
-#endif /* KEY */
-        WGEN_Stmt_Append (wn, Get_Srcpos());
-        addr_wn = WN_Ldid (Pointer_Mtype, preg, preg_st, address_ty_idx);
-      }
+              ("WGEN_Lhs_Of_Modify_Expr: field id for bit-field exceeds limit"));
 
+      if ( gs_tree_code(op) == GS_CALL_EXPR && lhs_retval != NULL ) {
+        // It's CALL_EXPR and the node has been expanded before expand the rhs.
+	// The return address of the CALL_EXPR is stored in lhs_retval.
+	// Refer WGEN_Expand_Expr : case GS_MODIFY_EXPR.
+	// We must ensure the lhs_retval is LDID
+	// Check TYPE and Operands?
+	addr_wn = lhs_retval;
+	FmtAssert(WN_operator(addr_wn) == OPR_LDID, 
+                  ("Bad Operator for INDIRECT_REF-->CALL_EXPR. LDID expected."));
+      }
+      else {
+        // Otherwise, we expand the lhs here.
+        addr_wn = WGEN_Expand_Expr (gs_tree_operand (lhs, 0));
+        if (WN_has_side_effects(addr_wn) &&
+	    (need_result || 
+	     assign_code == GS_PREINCREMENT_EXPR ||
+	     assign_code == GS_PREDECREMENT_EXPR ||
+	     assign_code == GS_POSTINCREMENT_EXPR ||
+	     assign_code == GS_POSTDECREMENT_EXPR)) {
+          ST       *preg_st;
+          PREG_NUM  preg;
+          TY_IDX    address_ty_idx = Get_TY (gs_tree_type (gs_tree_operand (lhs, 0)));
+#ifdef KEY
+          //Bug 8738: PREG should NOT be VOLATILE in whirl
+          if (TY_is_volatile(address_ty_idx)) {
+             Clear_TY_is_volatile(address_ty_idx);
+             volt = TRUE;
+          }
+#endif
+          preg_st = MTYPE_To_PREG(Pointer_Mtype);
+          preg    = Create_Preg (Pointer_Mtype, NULL);
+          wn      = WN_Stid (Pointer_Mtype, preg, preg_st, address_ty_idx, addr_wn);
+          WGEN_Set_ST_Addr_Saved (addr_wn);
+#ifdef KEY
+	  // Handle function calls for asm input-output constraints
+	  // see torture test 990130-1.c
+	  WN *body = WGEN_Stmt_Top();
+	  if (body &&		// Do prepend only for asm's.  Bug 4732.
+	      WN_last(body) &&
+	      WN_operator(WN_last(body)) == OPR_ASM_STMT) {
+	    WGEN_Stmt_Prepend_Last (wn, Get_Srcpos());
+	  } else
+#endif /* KEY */
+          WGEN_Stmt_Append (wn, Get_Srcpos());
+          addr_wn = WN_Ldid (Pointer_Mtype, preg, preg_st, address_ty_idx);
+        }
+      }
+	
       TYPE_ID rtype = Widen_Mtype(TY_mtype(desc_ty_idx));
       TYPE_ID desc = is_bit_field ? MTYPE_BS : TY_mtype(desc_ty_idx);
 
@@ -1717,7 +1734,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
       WN *else_block = WN_CreateBlock ();
 
       WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
-      WN * wn1 = WGEN_Lhs_Of_Modify_Expr (assign_code, arg0, TRUE,
+      WN * wn1 = WGEN_Lhs_Of_Modify_Expr (assign_code, arg0, NULL, TRUE,
                                          component_ty_idx, component_offset,
                                          field_id, is_bit_field,
                                          rhs_wn, rhs_preg_num, is_realpart,
@@ -1725,7 +1742,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
       WGEN_Stmt_Pop (wgen_stmk_if_then);
 
       WGEN_Stmt_Push (else_block, wgen_stmk_if_else, Get_Srcpos());
-      WN * wn2 = WGEN_Lhs_Of_Modify_Expr (assign_code, arg1, TRUE,
+      WN * wn2 = WGEN_Lhs_Of_Modify_Expr (assign_code, arg1, NULL, TRUE,
                                          component_ty_idx, component_offset,
                                          field_id, is_bit_field,
                                          rhs_wn, rhs_preg_num, is_realpart,
@@ -5131,7 +5148,8 @@ WGEN_Expand_Expr (gs_t exp,
       {
 	if (gs_tree_code(gs_tree_operand(exp, 1)) == GS_ERROR_MARK)
 	    break;
-#ifdef KEY
+        WN* call_return_val = NULL;
+
 	// If gs_tree_operand(exp, 1) is a CALL_EXPR that returns a
 	// ptr-to-member-function, then call
 	// WGEN_Expand_Ptr_To_Member_Func_Call_Expr to expand it.  Otherwise,
@@ -5141,17 +5159,46 @@ WGEN_Expand_Expr (gs_t exp,
 	  TYPE_ID desc = TY_mtype(Get_TY(gs_tree_type(exp_opnd1)));
 	  wn1 = WGEN_Expand_Ptr_To_Member_Func_Call_Expr(exp_opnd1, 0,
 						       Widen_Mtype(desc), desc);
-        } else
-#endif
-        wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1)); // r.h.s.
+        } 
+	else
+        {
+          gs_t lhs = gs_tree_operand (exp, 0);
+	  if (gs_tree_code(lhs) == GS_INDIRECT_REF &&
+              gs_tree_code(gs_tree_operand (lhs, 0)) == GS_CALL_EXPR ) {
+            // We have a function call in lhs, we need to promote it.
+	    // The expr is f()=...; we must promote f() at first.
+	    // GCC TREE is
+	    // MODIFY_EXPR
+	    //  +-0 INDIRECT_REF
+	    //  |        +-0 CALL_EXPR
+	    //  +-1 ...
+	    //  Without this workaround, 
+	    //    operand 1 will be expand first, then the CALL_EXPR in operand 0
+	    //    if there are several assignment, for example, f()=g()=h(), it's wrong.
+	    //  So we expand the CALL_EXPR at first, save its return value in call_return_val,
+	    //    then, pass call_return_val to WGEN_Lhs_Of_Modify_Expr
+	    //
+	    WN*      call = WGEN_Expand_Expr(gs_tree_operand(lhs, 0));
+	    ST*      preg_st;
+	    PREG_NUM preg;
+	    TY_IDX   call_ty_idx = Get_TY (gs_tree_type (gs_tree_operand (lhs, 0)));
+            preg_st  = MTYPE_To_PREG(Pointer_Mtype);
+	    preg     = Create_Preg (Pointer_Mtype, NULL);
+	    WGEN_Set_ST_Addr_Saved (call);
+	    WN* stid = WN_Stid (Pointer_Mtype, preg, preg_st, call_ty_idx, call);
+	    WGEN_Stmt_Append(stid, Get_Srcpos());
+            call_return_val = WN_Ldid(Pointer_Mtype, preg, preg_st, call_ty_idx);
+          }
+	
+          wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1)); // r.h.s.
+        }
 
 #ifdef KEY // wgen bugs 10849, 10893, 10908
 	if (wn1 && WN_operator(wn1) == OPR_INTCONST && 
 	    TY_size(Get_TY(gs_tree_type(gs_tree_operand(exp, 1)))) == 0)
 	  break;
 #endif
-
-	wn  = WGEN_Lhs_Of_Modify_Expr(code, gs_tree_operand (exp, 0), need_result, 
+	wn  = WGEN_Lhs_Of_Modify_Expr(code, gs_tree_operand (exp, 0), call_return_val, need_result, 
 				     0, 0, 0, FALSE, wn1, 0, FALSE, FALSE);
       }
       break;
