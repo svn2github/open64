@@ -61,18 +61,16 @@
 #include "cg_dep_graph.h"
 #include "region.h"
 
-  
-struct compare_bb
+struct compare_node
 {
-    bool operator()(const BB* bb1, const BB* bb2) const
+    bool operator()(const REGIONAL_CFG_NODE* n1, const REGIONAL_CFG_NODE* n2) const
     {
-        mBB_NUM id1 = BB_id(bb1);
-        mBB_NUM id2 = BB_id(bb2);
+        mBB_NUM id1 = n1->Id();
+        mBB_NUM id2 = n2->Id();
     
         return ( id1 < id2 );
     }
 };
-
 
 struct compare_tn
 {
