@@ -300,18 +300,16 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     typedef mempool_allocator<TN*> TN_ALLOC;
     typedef std::set<TN*, compare_tn, TN_ALLOC> TNs;
 
-    typedef mempool_allocator< std::pair<BB*, TNs> > BB_TNs_ALLOC;
-    typedef std::map<BB*, TNs, compare_bb, BB_TNs_ALLOC>  BB_TNs_MAP;
-    typedef BB_TNs_MAP::iterator   BB_TNs_MAP_ITER;
+    typedef mempool_allocator< std::pair<REGIONAL_CFG_NODE*, TNs> > NODE_TNs_ALLOC;
+    typedef std::map<REGIONAL_CFG_NODE*, TNs, compare_node, NODE_TNs_ALLOC>  NODE_TNs_MAP;
 
-    BB_TNs_MAP spec_chain_live;  // Record all live in TNs of the speculative chain.
-    BB_TNs_MAP spec_chain_def;   // Record all TNs that are defined on the speculative chain.
-    BB_TNs_MAP _pdef_in_map;  // The same as the above map, but the definition is predicated.
+    NODE_TNs_MAP spec_chain_live;  // Record all live in TNs of the speculative chain.
+    NODE_TNs_MAP spec_chain_def;   // Record all TNs that are defined on the speculative chain.
+    NODE_TNs_MAP _pdef_in_map;  // The same as the above map, but the definition is predicated.
     
     BB* home_bb = OP_bb(chk);
     REGIONAL_CFG_NODE* root = Regional_Cfg_Node(home_bb);
  
-    //typedef mempool_allocator<REGIONAL_CFG_NODE*> REGIONAL_CFG_NODE_ALLOC;
     std::list<REGIONAL_CFG_NODE* /*REGIONAL_CFG_NODE_ALLOC*/>  node_list;
     std::set<REGIONAL_CFG_NODE* /*REGIONAL_CFG_NODE_ALLOC*/>  visited;
     
@@ -324,7 +322,7 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
         TN* opnd = OP_opnd(spec_ld, i);
         if (TN_is_register(opnd) && !TN_is_const_reg(opnd)){
             Is_True(!TN_Pair_In_OP(spec_ld, opnd, opnd), ("can not be a post-incr load!"));
-            spec_chain_live[home_bb].insert(opnd);
+            spec_chain_live[root].insert(opnd);
         }
     }
     
@@ -334,7 +332,7 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     for (INT i = 0; i < OP_results(spec_ld); i++) {
         TN* rslt = OP_result(spec_ld, i);
         Is_True(TN_is_register(rslt), ("rslt tn must be a register tn!"));
-        spec_chain_def[home_bb].insert(rslt);
+        spec_chain_def[root].insert(rslt);
         spec_ld_tgt.insert(rslt);
     }
 
@@ -346,23 +344,25 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     // Iterate all successors, in topological order.
     
     for(std::list<REGIONAL_CFG_NODE*>::iterator iter = node_list.begin();
-	iter != node_list.end();
-	iter++) {
-        if( (*iter)->Is_Region() || BB_exit((*iter)->BB_Node()) )  
+        iter != node_list.end();
+        iter++) {
+        REGIONAL_CFG_NODE* node=(*iter);
+        if( !node->Is_Region() && BB_exit(node->BB_Node()) )  
             continue; 
-        BB* bb = (*iter)->BB_Node();
     
         // Initialize the associative data structures of the current BB.
 
-        for (CFG_PRED_NODE_ITER pred_iter(Regional_Cfg_Node(bb)); pred_iter != 0; ++pred_iter) {
-            if ((*pred_iter)->Is_Region() || visited.find(*pred_iter) == visited.end()) 
+        for (CFG_PRED_NODE_ITER pred_iter(node); pred_iter != 0; ++pred_iter) {
+            if ( visited.find(*pred_iter) == visited.end()) 
                 continue;
-            BB* pred = (*pred_iter)->BB_Node();
-            spec_chain_def[bb].insert(spec_chain_def[pred].begin(), spec_chain_def[pred].end());
-            spec_chain_live[bb].insert(spec_chain_live[pred].begin(), spec_chain_live[pred].end());
+            spec_chain_def[node].insert(spec_chain_def[*pred_iter].begin(), spec_chain_def[*pred_iter].end());
+            spec_chain_live[node].insert(spec_chain_live[*pred_iter].begin(), spec_chain_live[*pred_iter].end());
         }
        
-        visited.insert(*iter);
+        visited.insert(node);
+        if(node->Is_Region())
+             continue;
+        BB* bb = node->BB_Node();
 
         OP* start_op = bb == OP_bb(chk) ? OP_next(chk): BB_first_op(bb);
         for(OP* op = start_op; op != NULL; op = OP_next(op)) {
@@ -378,8 +378,7 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
             // If current op is already dependent on the chk,
             // go directly to handle its' successors.
             for(std::vector<OP*, OP_ALLOC>::iterator iter = dependent_ops.begin(); 
-			                        iter != dependent_ops.end(); 
-                                                iter++)
+                 iter != dependent_ops.end(); iter++)
             {
                 if(op == *iter){
                     goto handle_succs;
@@ -403,10 +402,10 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
             for(INT i = 0; i < OP_results(op); i++) {
                 TN* rslt = OP_result(op, i);
                 if(   spec_ld_tgt.find(rslt) != spec_ld_tgt.end() 
-                   || spec_chain_live[bb].find(rslt) != spec_chain_live[bb].end()){
+                   || spec_chain_live[node].find(rslt) != spec_chain_live[node].end()){
                     goto gen_arc;
                 }
-                if(spec_chain_def[bb].find(rslt) != spec_chain_def[bb].end()){
+                if(spec_chain_def[node].find(rslt) != spec_chain_def[node].end()){
                     output_dep = TRUE;
                 }
             }
@@ -415,7 +414,7 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
                 TN* opnd = OP_opnd(op, i);
                 if(    TN_is_register(opnd) 
                     && !TN_is_const_reg(opnd) 
-                    && spec_chain_def[bb].find(opnd) != spec_chain_def[bb].end()){ 
+                    && spec_chain_def[node].find(opnd) != spec_chain_def[node].end()){ 
                     flow_dep = TRUE; 
                     if(OP_has_predicate(op) && i == OP_PREDICATE_OPND){
                         flow_on_predicate = TRUE;
@@ -450,8 +449,8 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
                     && cur_ptn != chk_ptn
                     && cur_ptn != spec_ld_ptn){
                     goto gen_arc;
-	        }                
-	    }
+                }                
+            }
  
             // C3:
             //  - predicate opnd is not a TRUE tn, 
@@ -463,7 +462,7 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
                 Is_True(!TN_is_true_pred(cur_ptn),("flow dependent can't caused by predicate register!"));
                 goto gen_arc;
              }
-	    
+    
             // C5:
             // It is a cascaded load.
     
@@ -479,7 +478,7 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
                 TN* opnd = OP_opnd(op, i);
                 if(    TN_is_register(opnd) 
                     && !TN_is_const_reg(opnd) 
-                    && spec_chain_def[bb].find(opnd) == spec_chain_def[bb].end())
+                    && spec_chain_def[node].find(opnd) == spec_chain_def[node].end())
                 { 
                     if(TN_Pair_In_OP(op,opnd,opnd)){
                         // C2:
@@ -489,16 +488,16 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
                     }
                 }
             }
-            spec_chain_live[bb].insert(tmp_live_in.begin(),tmp_live_in.end());
+            spec_chain_live[node].insert(tmp_live_in.begin(),tmp_live_in.end());
 
             // update relative data structures.
             if(flow_dep){ 
                 for (INT i = 0; i < OP_results(op); i++) {
                     TN *rslt = OP_result(op, i);
                     Is_True(TN_is_register(rslt),("result should be a register tn!"));
-                    spec_chain_def[bb].insert(rslt);
+                    spec_chain_def[node].insert(rslt);
                 }            
-	    }
+            }
             continue;
 
 gen_arc:  
