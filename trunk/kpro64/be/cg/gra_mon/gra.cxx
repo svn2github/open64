@@ -250,7 +250,7 @@ Check_Self_Recursive(void) {
                if (ST_class(var) !=  CLASS_CONST) {
                   char *called_func = ST_name(var);
                   if (strcmp(called_func,Cur_PU_Name) == 0) {
-                      if ((!gra_self_recursive) && (max_live_in > 120)) {
+                      if ((!gra_self_recursive) && (max_live_in > 110)) {
                         gra_self_recursive = TRUE;
                         DevWarn("This FUNCTION IS FAT AND SELF_RECURSIVE ONE!The Max_Live_In is %d\n",max_live_in);
                         return gra_self_recursive;
