@@ -1882,11 +1882,12 @@ BOOL Contain_Induction_Variable (WN* wn, ST_IDX idx)
   return FALSE;
 }
 
-void Update_Array_Index (WN* wn, WN* wn_incr, ST_IDX idx)
+void Update_Array_Index (WN* wn, WN* wn_incr, WN* wn_induc)
 {
   for (INT kid = 0; kid < WN_kid_count(wn); kid ++) {
     WN* wn_kid = WN_kid(wn, kid);
-    if (WN_st_idx(wn_kid) == idx) {
+    if (WN_st_idx(wn_kid) == WN_st_idx(wn_induc)
+         && SYMBOL(wn_kid) == SYMBOL(wn_induc)) {
       TYPE_ID desc = Promote_Type(WN_rtype(wn_kid));
       WN* wn_ahead = LWN_Make_Icon(desc, LNO_Prefetch_Iters_Ahead);
       wn_ahead = LWN_CreateExp2(OPCODE_make_op(OPR_MPY, desc, MTYPE_V), 
@@ -1894,7 +1895,7 @@ void Update_Array_Index (WN* wn, WN* wn_incr, ST_IDX idx)
       WN_kid(wn, kid) = LWN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V), wn_kid, wn_ahead);
       LWN_Set_Parent(WN_kid(wn, kid), wn);
     } else {
-      Update_Array_Index(wn_kid, wn_incr, idx);
+      Update_Array_Index(wn_kid, wn_incr, wn_induc);
     }
   }
 }
@@ -2259,7 +2260,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
               }              
 
               for(i=0; i<WN_num_dim(arraynode); ++i) {
-                Update_Array_Index(WN_array_index(arraynode, i), wn_incr, WN_st_idx(wn_induction));
+                Update_Array_Index(WN_array_index(arraynode, i), wn_incr, wn_induction);
               }
 
             } else {

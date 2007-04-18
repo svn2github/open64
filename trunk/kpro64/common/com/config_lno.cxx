@@ -213,7 +213,11 @@ static LNO_FLAGS Default_LNO = {
   8,            /*Prefetch_Strides_Ahead*/
 #endif
   2,		/* Prefetch_ahead */
+#ifdef TARG_IA64
+  8,		/* Prefetch_iters_ahead */
+#else
   2,		/* Prefetch_iters_ahead */
+#endif
   2,		/* Prefetch_cache_factor */
   FALSE,	/* Prefetch_indirect */
   FALSE, FALSE,	/* Run_prefetch_manual */
@@ -404,7 +408,11 @@ LNO_FLAGS Initial_LNO = {
   8,            /* Prefetch_Strides_Ahead */
 #endif
   2,		/* Prefetch_ahead */
+#ifdef TARG_IA64
+  8,		/* Prefetch_iters_ahead */
+#else
   2,		/* Prefetch_iters_ahead */
+#endif
   2,		/* Prefetch_cache_factor */
   FALSE,	/* Prefetch_indirect */
   FALSE, FALSE,	/* Run_prefetch_manual */
@@ -741,8 +749,13 @@ static OPTION_DESC Options_LNO[] = {
 #endif
   LNOPT_U32  ( "prefetch_ahead",	NULL,	2,0,50,	Prefetch_ahead ),
   LNOPT_U32  (   "pf_ahead",		NULL,	2,0,50,	Prefetch_ahead ),
+#ifdef TARG_IA64
+  LNOPT_U32  ( "prefetch_iters_ahead",	NULL,	8,0,50,	Prefetch_iters_ahead ),
+  LNOPT_U32  (   "pf_it_ahead",		NULL,	8,0,50,	Prefetch_iters_ahead ),
+#else
   LNOPT_U32  ( "prefetch_iters_ahead",	NULL,	2,0,50,	Prefetch_iters_ahead ),
   LNOPT_U32  (   "pf_it_ahead",		NULL,	2,0,50,	Prefetch_iters_ahead ),
+#endif
   LNOPT_U32  ( "prefetch_cache_factor",	NULL,	1,1,50,	Prefetch_cache_factor),
   LNOPT_U32  (   "pf_cf",		NULL,	1,1,50,	Prefetch_cache_factor),
   LNOPT_BOOL ( "prefetch_indirect",	"",	Prefetch_indirect ),
