@@ -5504,7 +5504,7 @@ simpnode SIMPNODE_SimplifyExp1(OPCODE opc, simpnode k0)
     * OP (SELECT(X,c1,c2)) ->
     * SELECT(X,OP(c1),OP(C2))
     */
-   if (SIMPNODE_operator(k0) == OPR_SELECT && op != OPR_PARM) {
+   if (SIMPNODE_operator(k0) == OPR_SELECT && op != OPR_PARM && op != OPR_EXTRACT_BITS) {
       k1 = SIMPNODE_kid1(k0);
       k2 = SIMPNODE_kid(k0,2);
       /* Check for and do the simplification 
