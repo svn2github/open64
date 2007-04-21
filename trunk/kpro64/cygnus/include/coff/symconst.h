@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Declarations of constants for internal format of MIPS ECOFF symbols.
    Originally contributed by MIPS Computer Systems and Third Eye Software.
    Changes contributed by Cygnus Support are in the public domain.
@@ -48,7 +52,7 @@
 #define langStdc	9	/* FIXME: Collides with SGI langCplusplus */
 #define langCplusplus	9	/* FIXME: Collides with langStdc */
 #define langCplusplusV2	10	/* SGI addition */
-#define langMax		11	/* maximun allowed 32 -- 5 bits */
+#define langMax		11	/* maximum allowed 32 -- 5 bits */
 
 /* The following are value definitions for the fields in the SYMR */
 

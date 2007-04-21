@@ -1,10 +1,14 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Declarations and definitions of codes relating to the DWARF2 symbolic
    debugging information format.
    Copyright (C) 1992, 1993, 1995, 1996, 1997, 1999, 2000, 2001, 2002,
    2003 Free Software Foundation, Inc.
 
    Written by Gary Funck (gary@intrepid.com) The Ada Joint Program
-   Office (AJPO), Florida State Unviversity and Silicon Graphics Inc.
+   Office (AJPO), Florida State University and Silicon Graphics Inc.
    provided support for this effort -- June 21, 1995.
 
    Derived from the DWARF 1 implementation written by Ron Guilmette
@@ -605,7 +609,8 @@ enum dwarf_calling_convention
   {
     DW_CC_normal = 0x1,
     DW_CC_program = 0x2,
-    DW_CC_nocall = 0x3
+    DW_CC_nocall = 0x3,
+    DW_CC_GNU_renesas_sh = 0x40
   };
 
 #define DW_CC_lo_user 0x40

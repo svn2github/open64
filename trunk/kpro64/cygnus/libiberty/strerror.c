@@ -1,9 +1,10 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Extended support for using errno values.
    Written by Fred Fish.  fnf@cygnus.com
    This file is in the public domain.  --Per Bothner.  */
-
-#include "ansidecl.h"
-#include "libiberty.h"
 
 #include "config.h"
 
@@ -16,6 +17,9 @@
 #define sys_nerr sys_nerr__
 #define sys_errlist sys_errlist__
 #endif
+
+#include "ansidecl.h"
+#include "libiberty.h"
 
 #include <stdio.h>
 #include <errno.h>

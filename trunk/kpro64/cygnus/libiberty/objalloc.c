@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* objalloc.c -- routines to allocate memory for objects
    Copyright 1997 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Cygnus Solutions.
@@ -17,8 +21,8 @@ along with this program; if not, write to the Free Software
 Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "ansidecl.h"
 #include "config.h"
+#include "ansidecl.h"
 
 #include "objalloc.h"
 

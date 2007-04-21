@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Disassemble Motorola M*Core instructions.
-   Copyright 1993, 1999, 2000, 2002 Free Software Foundation, Inc.
+   Copyright 1993, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

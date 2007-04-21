@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* ELF support for BFD.
-   Copyright 1991, 1992, 1993, 1995, 1997, 1998, 1999, 2001
+   Copyright 1991, 1992, 1993, 1995, 1997, 1998, 1999, 2001, 2003
    Free Software Foundation, Inc.
 
    Written by Fred Fish @ Cygnus Support, from information published

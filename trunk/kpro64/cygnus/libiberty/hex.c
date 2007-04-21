@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Hex character manipulation support.
    Copyright (C) 1995, 2001 Free Software Foundation, Inc.
 
@@ -44,7 +48,7 @@ or zero if it is not.  Note that the value you pass will be cast to
 
 @end deftypefn
 
-@deftypefn Extension unsigned int hex_value (int @var{c})
+@deftypefn Extension {unsigned int} hex_value (int @var{c})
 
 Returns the numeric equivalent of the given character when interpreted
 as a hexidecimal digit.  The result is undefined if you pass an

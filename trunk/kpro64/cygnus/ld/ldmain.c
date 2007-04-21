@@ -1,10 +1,10 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Main program of GNU linker.
    Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001,
-   2002, 2003
+   2002, 2003, 2004, 2005
    Free Software Foundation, Inc.
    Written by Steve Chamberlain steve@cygnus.com
 
@@ -46,7 +46,6 @@
 #include "ldemul.h"
 #include "ldctor.h"
 
-
 #ifdef IPA_LINK
 #include "ipa_ld.h"
 #include "ipa_cmdline.h"
@@ -69,12 +68,6 @@ extern void *sbrk ();
 #define TARGET_SYSTEM_ROOT ""
 #endif
 
-#ifdef IPA_LINK
-int main PARAMS ((int, char **, char **));
-#else
-int main PARAMS ((int, char **));
-#endif
-
 /* EXPORTS */
 
 char *default_target;
@@ -84,7 +77,7 @@ const char *output_filename = "a.out";
 char *program_name;
 
 /* The prefix for system library directories.  */
-char *ld_sysroot;
+const char *ld_sysroot;
 
 /* The canonical representation of ld_sysroot.  */
 char * ld_canon_sysroot;
@@ -109,6 +102,14 @@ bfd_boolean version_printed;
 /* Nonzero means link in every member of an archive.  */
 bfd_boolean whole_archive;
 
+/* Nonzero means create DT_NEEDED entries only if a dynamic library
+   actually satisfies some reference in a regular object.  */
+bfd_boolean as_needed;
+
+/* Nonzero means never create DT_NEEDED entries for dynamic libraries
+   in DT_NEEDED tags.  */
+bfd_boolean add_needed = TRUE;
+
 /* TRUE if we should demangle symbol names.  */
 bfd_boolean demangling;
 
@@ -116,6 +117,10 @@ args_type command_line;
 
 ld_config_type config;
 
+sort_type sort_section;
+
+static const char *get_sysroot
+  (int, char **);
 static char *get_emulation
   (int, char **);
 static void set_scripts_dir
@@ -143,8 +148,8 @@ static bfd_boolean undefined_symbol
   (struct bfd_link_info *, const char *, bfd *, asection *, bfd_vma,
    bfd_boolean);
 static bfd_boolean reloc_overflow
-  (struct bfd_link_info *, const char *, const char *, bfd_vma,
-   bfd *, asection *, bfd_vma);
+  (struct bfd_link_info *, struct bfd_link_hash_entry *, const char *,
+   const char *, bfd_vma, bfd *, asection *, bfd_vma);
 static bfd_boolean reloc_dangerous
   (struct bfd_link_info *, const char *, bfd *, asection *, bfd_vma);
 static bfd_boolean unattached_reloc
@@ -176,8 +181,7 @@ static struct bfd_link_callbacks link_callbacks =
   reloc_overflow,
   reloc_dangerous,
   unattached_reloc,
-  notice,
-  error_handler
+  notice
 };
 
 struct bfd_link_info link_info;
@@ -190,19 +194,23 @@ remove_output (void)
       if (output_bfd)
 	bfd_cache_close (output_bfd);
       if (delete_output_file_on_failure)
-	unlink (output_filename);
+	unlink_if_ordinary (output_filename);
     }
 }
 
-void *licenseclient ;         // dummy for be.so
-
 int
-main (int argc, char **argv, char **envp)
+main (int argc, char **argv
+#ifdef IPA_LINK
+      , char **envp
+#endif
+     )
 {
   char *emulation;
   long start_time = get_run_time ();
 
+#ifdef IPA_LINK
   ipa_search_command_line(argc, argv, envp);
+#endif
 
 #if defined (HAVE_SETLOCALE) && defined (HAVE_LC_MESSAGES)
   setlocale (LC_MESSAGES, "");
@@ -224,47 +232,18 @@ main (int argc, char **argv, char **envp)
 
   xatexit (remove_output);
 
-#ifdef TARGET_SYSTEM_ROOT_RELOCATABLE
-  ld_sysroot = make_relative_prefix (program_name, BINDIR,
-				     TARGET_SYSTEM_ROOT);
-
-  if (ld_sysroot)
+  /* Set up the sysroot directory.  */
+  ld_sysroot = get_sysroot (argc, argv);
+  if (*ld_sysroot)
     {
-      struct stat s;
-      int res = stat (ld_sysroot, &s) == 0 && S_ISDIR (s.st_mode);
-
-      if (!res)
+      if (*TARGET_SYSTEM_ROOT == 0)
 	{
-	  free (ld_sysroot);
-	  ld_sysroot = NULL;
+	  einfo ("%P%F: this linker was not configured to use sysroots");
+	  ld_sysroot = "";
 	}
+      else
+	ld_canon_sysroot = lrealpath (ld_sysroot);
     }
-
-  if (! ld_sysroot)
-    {
-      ld_sysroot = make_relative_prefix (program_name, TOOLBINDIR,
-					 TARGET_SYSTEM_ROOT);
-
-      if (ld_sysroot)
-	{
-	  struct stat s;
-	  int res = stat (ld_sysroot, &s) == 0 && S_ISDIR (s.st_mode);
-
-	  if (!res)
-	    {
-	      free (ld_sysroot);
-	      ld_sysroot = NULL;
-	    }
-	}
-    }
-
-  if (! ld_sysroot)
-#endif
-    ld_sysroot = TARGET_SYSTEM_ROOT;
-
-  if (ld_sysroot && *ld_sysroot)
-    ld_canon_sysroot = lrealpath (ld_sysroot);
-
   if (ld_canon_sysroot)
     ld_canon_sysroot_len = strlen (ld_canon_sysroot);
   else
@@ -295,6 +274,7 @@ main (int argc, char **argv, char **envp)
   config.has_shared = FALSE;
   config.split_by_reloc = (unsigned) -1;
   config.split_by_file = (bfd_size_type) -1;
+  config.hash_table_size = 0;
   command_line.force_common_definition = FALSE;
   command_line.inhibit_common_definition = FALSE;
   command_line.interpreter = NULL;
@@ -302,6 +282,9 @@ main (int argc, char **argv, char **envp)
   command_line.warn_mismatch = TRUE;
   command_line.check_section_addresses = TRUE;
   command_line.accept_unknown_input_arch = FALSE;
+  command_line.reduce_memory_overheads = FALSE;
+
+  sort_section = none;
 
   /* We initialize DEMANGLING based on the environment variable
      COLLECT_NO_DEMANGLE.  The gcc collect2 program will demangle the
@@ -325,12 +308,15 @@ main (int argc, char **argv, char **envp)
   link_info.unresolved_syms_in_shared_libs = RM_NOT_YET_SET;
   link_info.allow_multiple_definition = FALSE;
   link_info.allow_undefined_version = TRUE;
+  link_info.create_default_symver = FALSE;
+  link_info.default_imported_symver = FALSE;
   link_info.keep_memory = TRUE;
   link_info.notice_all = FALSE;
   link_info.nocopyreloc = FALSE;
   link_info.new_dtags = FALSE;
   link_info.combreloc = TRUE;
   link_info.eh_frame_hdr = FALSE;
+  link_info.relro = FALSE;
   link_info.strip_discarded = TRUE;
   link_info.strip = strip_none;
   link_info.discard = discard_sec_merge;
@@ -354,6 +340,7 @@ main (int argc, char **argv, char **envp)
   link_info.flags = 0;
   link_info.flags_1 = 0;
   link_info.need_relax_finalize = FALSE;
+  link_info.warn_shared_textrel = FALSE;
 
   ldfile_add_arch ("");
 
@@ -370,6 +357,9 @@ main (int argc, char **argv, char **envp)
   lang_has_input_file = FALSE;
   parse_args (argc, argv);
 
+  if (config.hash_table_size != 0)
+    bfd_hash_set_default_size (config.hash_table_size);
+
   ldemul_set_symbols ();
 
   if (link_info.relocatable)
@@ -381,6 +371,9 @@ main (int argc, char **argv, char **envp)
       if (link_info.shared)
 	einfo (_("%P%F: -r and -shared may not be used together\n"));
     }
+
+   if (!config.dynamic_link && link_info.shared)
+     einfo (_("%P%F: -static and -shared may not be used together\n"));
 
   if (! link_info.shared)
     {
@@ -601,6 +594,51 @@ main (int argc, char **argv, char **envp)
 
   xexit (0);
   return 0;
+}
+
+/* If the configured sysroot is relocatable, try relocating it based on
+   default prefix FROM.  Return the relocated directory if it exists,
+   otherwise return null.  */
+
+static char *
+get_relative_sysroot (const char *from ATTRIBUTE_UNUSED)
+{
+#ifdef TARGET_SYSTEM_ROOT_RELOCATABLE
+  char *path;
+  struct stat s;
+
+  path = make_relative_prefix (program_name, from, TARGET_SYSTEM_ROOT);
+  if (path)
+    {
+      if (stat (path, &s) == 0 && S_ISDIR (s.st_mode))
+	return path;
+      free (path);
+    }
+#endif
+  return 0;
+}
+
+/* Return the sysroot directory.  Return "" if no sysroot is being used.  */
+
+static const char *
+get_sysroot (int argc, char **argv)
+{
+  int i;
+  const char *path;
+
+  for (i = 1; i < argc; i++)
+    if (strncmp (argv[i], "--sysroot=", strlen ("--sysroot=")) == 0)
+      return argv[i] + strlen ("--sysroot=");
+
+  path = get_relative_sysroot (BINDIR);
+  if (path)
+    return path;
+
+  path = get_relative_sysroot (TOOLBINDIR);
+  if (path)
+    return path;
+
+  return TARGET_SYSTEM_ROOT;
 }
 
 /* We need to find any explicitly given emulation in order to initialize the
@@ -1003,12 +1041,17 @@ multiple_definition (struct bfd_link_info *info ATTRIBUTE_UNUSED,
 	  && bfd_is_abs_section (nsec->output_section)))
     return TRUE;
 
+#ifdef KEY
+  // TODO:  Find out why ipa_link is not respecting weak definitions, such as
+  //        memset in libpscrt.  In binutils 2.14, this error message is
+  //        emitted only if obfd != NULL.  Do what 2.14 does until we find out
+  //        the cause of this error.
   if (obfd != NULL)
-    {
-      einfo (_("%X%C: multiple definition of `%T'\n"),
-	     nbfd, nsec, nval, name);
-      einfo (_("%D: first defined here\n"), obfd, osec, oval);
-    }
+#endif
+  einfo (_("%X%C: multiple definition of `%T'\n"),
+	 nbfd, nsec, nval, name);
+  if (obfd != NULL)
+    einfo (_("%D: first defined here\n"), obfd, osec, oval);
 
   if (command_line.relax)
     {
@@ -1200,11 +1243,11 @@ warning_callback (struct bfd_link_info *info ATTRIBUTE_UNUSED,
     return TRUE;
 
   if (section != NULL)
-    einfo ("%C: %s\n", abfd, section, address, warning);
+    einfo ("%C: %s%s\n", abfd, section, address, _("warning: "), warning);
   else if (abfd == NULL)
-    einfo ("%P: %s\n", warning);
+    einfo ("%P: %s%s\n", _("warning: "), warning);
   else if (symbol == NULL)
-    einfo ("%B: %s\n", abfd, warning);
+    einfo ("%B: %s%s\n", abfd, _("warning: "), warning);
   else
     {
       lang_input_statement_type *entry;
@@ -1241,7 +1284,10 @@ warning_callback (struct bfd_link_info *info ATTRIBUTE_UNUSED,
       info.asymbols = asymbols;
       bfd_map_over_sections (abfd, warning_find_reloc, &info);
 
-      // 'deprecated' warning removed by KEY
+#ifndef KEY	// Remove 'deprecated' warning.
+      if (! info.found)
+	einfo ("%B: %s%s\n", abfd, _("warning: "), warning);
+#endif
 
       if (entry == NULL)
 	free (asymbols);
@@ -1289,7 +1335,8 @@ warning_find_reloc (bfd *abfd, asection *sec, void *iarg)
 	  && strcmp (bfd_asymbol_name (*q->sym_ptr_ptr), info->symbol) == 0)
 	{
 	  /* We found a reloc for the symbol we are looking for.  */
-	  einfo ("%C: %s\n", abfd, sec, q->address, info->warning);
+	  einfo ("%C: %s%s\n", abfd, sec, q->address, _("warning: "),
+		 info->warning);
 	  info->found = TRUE;
 	  break;
 	}
@@ -1408,6 +1455,7 @@ int overflow_cutoff_limit = 10;
 
 static bfd_boolean
 reloc_overflow (struct bfd_link_info *info ATTRIBUTE_UNUSED,
+		struct bfd_link_hash_entry *entry,
 		const char *name,
 		const char *reloc_name,
 		bfd_vma addend,
@@ -1430,7 +1478,32 @@ reloc_overflow (struct bfd_link_info *info ATTRIBUTE_UNUSED,
       return TRUE;
     }
 
-  einfo (_(" relocation truncated to fit: %s %T"), reloc_name, name);
+  if (entry)
+    {
+      while (entry->type == bfd_link_hash_indirect
+	     || entry->type == bfd_link_hash_warning)
+	entry = entry->u.i.link;
+      switch (entry->type)
+	{
+	case bfd_link_hash_undefined:
+	case bfd_link_hash_undefweak:
+	  einfo (_(" relocation truncated to fit: %s against undefined symbol `%T'"),
+		 reloc_name, entry->root.string);
+	  break;
+	case bfd_link_hash_defined:
+	case bfd_link_hash_defweak:
+	  einfo (_(" relocation truncated to fit: %s against symbol `%T' defined in %A section in %B"),
+		 reloc_name, entry->root.string,
+		 entry->u.def.section, entry->u.def.section->owner);
+	  break;
+	default:
+	  abort ();
+	  break;
+	}
+    }
+  else
+    einfo (_(" relocation truncated to fit: %s against `%T'"),
+	   reloc_name, name);
   if (addend != 0)
     einfo ("+%v", addend);
   einfo ("\n");

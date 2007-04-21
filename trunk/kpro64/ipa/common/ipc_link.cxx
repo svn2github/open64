@@ -331,15 +331,9 @@ ipa_link_line_argv (const ARGV* output_files,
 	    static_cast<char*>(malloc(strlen(dir) + strlen(symtab_base) + 2));
 	if (!symtab)
 	    ErrMsg (EC_No_Mem, "ipa_link_line_argv");
-#ifdef KEY
-	// Don't print the path component of symtab.o since we are linking
-	// while in the ipa temp dir.  Bug 5876.
-	strcpy(symtab, symtab_base);
-#else
 	strcpy(symtab, dir);
 	strcat(symtab, "/");
 	strcat(symtab, symtab_base);
-#endif
 	argv->push_back(symtab);
     }
     

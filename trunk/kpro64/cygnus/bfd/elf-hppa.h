@@ -1,5 +1,10 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Common code for PA ELF implementations.
-   Copyright 1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
+   Copyright 1999, 2000, 2001, 2002, 2003, 2004
+   Free Software Foundation, Inc.
 
 This file is part of BFD, the Binary File Descriptor library.
 
@@ -31,7 +36,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #define elf_hppa_reloc_final_type elf64_hppa_reloc_final_type
 #define _bfd_elf_hppa_gen_reloc_type _bfd_elf64_hppa_gen_reloc_type
 #define elf_hppa_relocate_section elf64_hppa_relocate_section
-#define bfd_elf_bfd_final_link bfd_elf64_bfd_final_link
 #define elf_hppa_final_link elf64_hppa_final_link
 #endif
 #if ARCH_SIZE == 32
@@ -40,7 +44,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #define elf_hppa_reloc_final_type elf32_hppa_reloc_final_type
 #define _bfd_elf_hppa_gen_reloc_type _bfd_elf32_hppa_gen_reloc_type
 #define elf_hppa_relocate_section elf32_hppa_relocate_section
-#define bfd_elf_bfd_final_link bfd_elf32_bfd_final_link
 #define elf_hppa_final_link elf32_hppa_final_link
 #endif
 
@@ -812,6 +815,28 @@ elf_hppa_reloc_final_type (bfd *abfd,
 	    }
 	  break;
 
+	case 32:
+	  switch (field)
+	    {
+	    case e_fsel:
+	      final_type = R_PARISC_PCREL32;
+	      break;
+	    default:
+	      return R_PARISC_NONE;
+	    }
+	  break;
+
+	case 64:
+	  switch (field)
+	    {
+	    case e_fsel:
+	      final_type = R_PARISC_PCREL64;
+	      break;
+	    default:
+	      return R_PARISC_NONE;
+	    }
+	  break;
+
 	default:
 	  return R_PARISC_NONE;
 	}
@@ -1021,16 +1046,12 @@ static bfd_boolean elf_hppa_sort_unwind (bfd *abfd)
   if (s != NULL)
     {
       bfd_size_type size;
-      char *contents;
+      bfd_byte *contents;
 
-      size = s->_raw_size;
-      contents = bfd_malloc (size);
-      if (contents == NULL)
+      if (!bfd_malloc_and_get_section (abfd, s, &contents))
 	return FALSE;
 
-      if (! bfd_get_section_contents (abfd, s, contents, (file_ptr) 0, size))
-	return FALSE;
-
+      size = s->size;
       qsort (contents, (size_t) (size / 16), 16, hppa_unwind_entry_compare);
 
       if (! bfd_set_section_contents (abfd, s, contents, (file_ptr) 0, size))
@@ -1048,7 +1069,7 @@ static bfd_boolean elf_hppa_sort_unwind (bfd *abfd)
 static bfd_boolean
 elf_hppa_add_symbol_hook (bfd *abfd,
 			  struct bfd_link_info *info ATTRIBUTE_UNUSED,
-			  const Elf_Internal_Sym *sym,
+			  Elf_Internal_Sym *sym,
 			  const char **namep ATTRIBUTE_UNUSED,
 			  flagword *flagsp ATTRIBUTE_UNUSED,
 			  asection **secp,
@@ -1096,14 +1117,13 @@ elf_hppa_unmark_useless_dynamic_symbols (struct elf_link_hash_entry *h,
      Ultimately we should have better controls over the generic ELF BFD
      linker code.  */
   if (! info->relocatable
-      && ! (info->shared
-	    && info->unresolved_syms_in_shared_libs == RM_IGNORE)
+      && info->unresolved_syms_in_shared_libs != RM_IGNORE
       && h->root.type == bfd_link_hash_undefined
-      && (h->elf_link_hash_flags & ELF_LINK_HASH_REF_DYNAMIC) != 0
-      && (h->elf_link_hash_flags & ELF_LINK_HASH_REF_REGULAR) == 0)
+      && h->ref_dynamic
+      && !h->ref_regular)
     {
-      h->elf_link_hash_flags &= ~ELF_LINK_HASH_REF_DYNAMIC;
-      h->elf_link_hash_flags |= 0x8000;
+      h->ref_dynamic = 0;
+      h->pointer_equality_needed = 1;
     }
 
   return TRUE;
@@ -1131,15 +1151,14 @@ elf_hppa_remark_useless_dynamic_symbols (struct elf_link_hash_entry *h,
      Ultimately we should have better controls over the generic ELF BFD
      linker code.  */
   if (! info->relocatable
-      && ! (info->shared
-	    && info->unresolved_syms_in_shared_libs == RM_IGNORE)
+      && info->unresolved_syms_in_shared_libs != RM_IGNORE
       && h->root.type == bfd_link_hash_undefined
-      && (h->elf_link_hash_flags & ELF_LINK_HASH_REF_DYNAMIC) == 0
-      && (h->elf_link_hash_flags & ELF_LINK_HASH_REF_REGULAR) == 0
-      && (h->elf_link_hash_flags & 0x8000) != 0)
+      && !h->ref_dynamic
+      && !h->ref_regular
+      && h->pointer_equality_needed)
     {
-      h->elf_link_hash_flags |= ELF_LINK_HASH_REF_DYNAMIC;
-      h->elf_link_hash_flags &= ~0x8000;
+      h->ref_dynamic = 1;
+      h->pointer_equality_needed = 0;
     }
 
   return TRUE;
@@ -1274,7 +1293,7 @@ elf_hppa_final_link (bfd *abfd, struct bfd_link_info *info)
 			  info);
 
   /* Invoke the regular ELF backend linker to do all the work.  */
-  retval = bfd_elf_bfd_final_link (abfd, info);
+  retval = bfd_elf_final_link (abfd, info);
 
   elf_link_hash_traverse (elf_hash_table (info),
 			  elf_hppa_remark_useless_dynamic_symbols,
@@ -1323,7 +1342,6 @@ elf_hppa_relocate_section (bfd *output_bfd,
       asection *sym_sec;
       bfd_vma relocation;
       bfd_reloc_status_type r;
-      const char *sym_name;
       const char *dyn_name;
       char *dynh_buf = NULL;
       size_t dynh_buflen = 0;
@@ -1350,7 +1368,7 @@ elf_hppa_relocate_section (bfd *output_bfd,
 
 	  /* If this symbol has an entry in the PA64 dynamic hash
 	     table, then get it.  */
-	  dyn_name = get_dyn_name (input_section, h, rel,
+	  dyn_name = get_dyn_name (input_bfd, h, rel,
 				   &dynh_buf, &dynh_buflen);
 	  dyn_h = elf64_hppa_dyn_hash_lookup (&hppa_info->dyn_hash_table,
 					      dyn_name, FALSE, FALSE);
@@ -1373,7 +1391,7 @@ elf_hppa_relocate_section (bfd *output_bfd,
 
 	      /* If this symbol has an entry in the PA64 dynamic hash
 		 table, then get it.  */
-	      dyn_name = get_dyn_name (input_section, h, rel,
+	      dyn_name = get_dyn_name (input_bfd, h, rel,
 				       &dynh_buf, &dynh_buflen);
 	      dyn_h = elf64_hppa_dyn_hash_lookup (&hppa_info->dyn_hash_table,
 						  dyn_name, FALSE, FALSE);
@@ -1384,9 +1402,8 @@ elf_hppa_relocate_section (bfd *output_bfd,
 	      if (sym_sec->output_section == NULL && dyn_h == NULL)
 		{
 		  (*_bfd_error_handler)
-		    (_("%s: warning: unresolvable relocation against symbol `%s' from %s section"),
-		     bfd_archive_filename (input_bfd), h->root.root.string,
-		     bfd_get_section_name (input_bfd, input_section));
+		    (_("%B(%A): warning: unresolvable relocation against symbol `%s'"),
+		     input_bfd, input_section, h->root.root.string);
 		  relocation = 0;
 		}
 	      else if (sym_sec->output_section)
@@ -1398,19 +1415,12 @@ elf_hppa_relocate_section (bfd *output_bfd,
 	      else
 		relocation = 0;
 	    }
-	  /* Allow undefined symbols in shared libraries.  */
-	  else if (info->shared
-		   && info->unresolved_syms_in_shared_libs == RM_IGNORE
+	  else if (info->unresolved_syms_in_objects == RM_IGNORE
 		   && ELF_ST_VISIBILITY (h->other) == STV_DEFAULT)
 	    {
-	      if (info->symbolic)
-		(*info->callbacks->undefined_symbol)
-		  (info, h->root.root.string, input_bfd,
-		   input_section, rel->r_offset, FALSE);
-
 	      /* If this symbol has an entry in the PA64 dynamic hash
 		 table, then get it.  */
-	      dyn_name = get_dyn_name (input_section, h, rel,
+	      dyn_name = get_dyn_name (input_bfd, h, rel,
 				       &dynh_buf, &dynh_buflen);
 	      dyn_h = elf64_hppa_dyn_hash_lookup (&hppa_info->dyn_hash_table,
 						  dyn_name, FALSE, FALSE);
@@ -1418,15 +1428,14 @@ elf_hppa_relocate_section (bfd *output_bfd,
 	      if (dyn_h == NULL)
 		{
 		  (*_bfd_error_handler)
-		    (_("%s: warning: unresolvable relocation against symbol `%s' from %s section"),
-		     bfd_archive_filename (input_bfd), h->root.root.string,
-		     bfd_get_section_name (input_bfd, input_section));
+		    (_("%B(%A): warning: unresolvable relocation against symbol `%s'"),
+		     input_bfd, input_section, h->root.root.string);
 		}
 	      relocation = 0;
 	    }
 	  else if (h->root.type == bfd_link_hash_undefweak)
             {
-	      dyn_name = get_dyn_name (input_section, h, rel,
+	      dyn_name = get_dyn_name (input_bfd, h, rel,
 				       &dynh_buf, &dynh_buflen);
 	      dyn_h = elf64_hppa_dyn_hash_lookup (&hppa_info->dyn_hash_table,
 						  dyn_name, FALSE, FALSE);
@@ -1434,9 +1443,8 @@ elf_hppa_relocate_section (bfd *output_bfd,
 	      if (dyn_h == NULL)
 		{
 		  (*_bfd_error_handler)
-		    (_("%s: warning: unresolvable relocation against symbol `%s' from %s section"),
-		     bfd_archive_filename (input_bfd), h->root.root.string,
-		     bfd_get_section_name (input_bfd, input_section));
+		    (_("%B(%A): warning: unresolvable relocation against symbol `%s'"),
+		     input_bfd, input_section, h->root.root.string);
 		}
 	      relocation = 0;
 	    }
@@ -1449,24 +1457,13 @@ elf_hppa_relocate_section (bfd *output_bfd,
 		{
 		  if (!((*info->callbacks->undefined_symbol)
 			(info, h->root.root.string, input_bfd,
-			 input_section, rel->r_offset, TRUE)))
+			 input_section, rel->r_offset,
+			 (info->unresolved_syms_in_objects == RM_GENERATE_ERROR
+			  || ELF_ST_VISIBILITY (h->other)))))
 		    return FALSE;
 		  break;
 		}
 	    }
-	}
-
-      if (h != NULL)
-	sym_name = h->root.root.string;
-      else
-	{
-	  sym_name = bfd_elf_string_from_elf_section (input_bfd,
-						      symtab_hdr->sh_link,
-						      sym->st_name);
-	  if (sym_name == NULL)
-	    return FALSE;
-	  if (*sym_name == '\0')
-	    sym_name = bfd_section_name (input_bfd, sym_sec);
 	}
 
       r = elf_hppa_final_link_relocate (rel, input_bfd, output_bfd,
@@ -1482,9 +1479,25 @@ elf_hppa_relocate_section (bfd *output_bfd,
 	      abort ();
 	    case bfd_reloc_overflow:
 	      {
+		const char *sym_name;
+		
+		if (h != NULL)
+		  sym_name = NULL;
+		else
+		  {
+		    sym_name = bfd_elf_string_from_elf_section (input_bfd,
+								symtab_hdr->sh_link,
+								sym->st_name);
+		    if (sym_name == NULL)
+		      return FALSE;
+		    if (*sym_name == '\0')
+		      sym_name = bfd_section_name (input_bfd, sym_sec);
+		  }
+
 		if (!((*info->callbacks->reloc_overflow)
-		      (info, sym_name, howto->name, (bfd_vma) 0,
-			input_bfd, input_section, rel->r_offset)))
+		      (info, (h ? &h->root : NULL), sym_name,
+		       howto->name, (bfd_vma) 0, input_bfd,
+		       input_section, rel->r_offset)))
 		  return FALSE;
 	      }
 	      break;

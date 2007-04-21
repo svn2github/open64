@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* DLX specific support for 32-bit ELF
-   Copyright 2002, 2003 Free Software Foundation, Inc.
+   Copyright 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -97,25 +101,6 @@ static reloc_howto_type dlx_elf_howto_table[]=
 	   0xffff,                /* src_mask */
 	   0xffff,                /* dst_mask */
 	   FALSE),                /* pcrel_offset */
-
-#if 0
-    /* 26 bit jump address.  */
-    HOWTO (R_DLX_RELOC_26,        /* type */
-	   0,                     /* rightshift */
-	   2,                     /* size (0 = byte, 1 = short, 2 = long) */
-	   26,                    /* bitsize */
-	   FALSE,                 /* pc_relative */
-	   0,                     /* bitpos */
-	   complain_overflow_dont,/* complain_on_overflow */
-	   /* This needs complex overflow detection, because the upper four
-	      bits must match the PC + 4.  */
-	   bfd_elf_generic_reloc, /* special_function */
-	   "R_DLX_RELOC_26",      /* name */
-	   TRUE,                  /* partial_inplace */
-	   0x3ffffff,             /* src_mask */
-	   0x3ffffff,             /* dst_mask */
-	   FALSE),                /* pcrel_offset */
-#endif
 
     /* 32 bit relocation.  */
     HOWTO (R_DLX_RELOC_32,        /* type */
@@ -261,9 +246,6 @@ _bfd_dlx_elf_hi16_reloc (abfd, reloc_entry, symbol, data,
   /* If the skip flag is set then we simply do the generic relocating, this
      is more of a hack for dlx gas/gld, so we do not need to do the %hi/%lo
      fixup like mips gld did.   */
-#if 0
-  printf ("DEBUG: skip_dlx_elf_hi16_reloc = 0x%08x\n", skip_dlx_elf_hi16_reloc);
-#endif
   if (skip_dlx_elf_hi16_reloc)
     return bfd_elf_generic_reloc (abfd, reloc_entry, symbol, data,
                           input_section, output_bfd, error_message);
@@ -284,35 +266,14 @@ _bfd_dlx_elf_hi16_reloc (abfd, reloc_entry, symbol, data,
       && output_bfd == (bfd *) NULL)
     ret = bfd_reloc_undefined;
 
-#if 0
-  {
-    unsigned long vallo, val;
-
-    vallo = bfd_get_16 (abfd, (bfd_byte *) data + reloc_entry->address);
-    printf ("DEBUG: The relocation address = 0x%08x\n", reloc_entry->address);
-    printf ("DEBUG: The symbol        = 0x%08x\n", vallo);
-    printf ("DEBUG: The symbol name   = %s\n", bfd_asymbol_name (symbol));
-    printf ("DEBUG: The symbol->value = 0x%08x\n", symbol->value);
-    printf ("DEBUG: The vma           = 0x%08x\n", symbol->section->output_section->vma);
-    printf ("DEBUG: The output_offset = 0x%08x\n", symbol->section->output_offset);
-    printf ("DEBUG: The input_offset  = 0x%08x\n", input_section->output_offset);
-    printf ("DEBUG: The input_vma     = 0x%08x\n", input_section->vma);
-    printf ("DEBUG: The addend        = 0x%08x\n", reloc_entry->addend);
-  }
-#endif
-
   relocation = (bfd_is_com_section (symbol->section)) ? 0 : symbol->value;
   relocation += symbol->section->output_section->vma;
   relocation += symbol->section->output_offset;
   relocation += reloc_entry->addend;
   relocation += bfd_get_16 (abfd, (bfd_byte *)data + reloc_entry->address);
 
-  if (reloc_entry->address > input_section->_cooked_size)
+  if (reloc_entry->address > bfd_get_section_limit (abfd, input_section))
     return bfd_reloc_outofrange;
-
-#if 0
-  printf ("DEBUG: The finial relocation value = 0x%08x\n", relocation);
-#endif
 
   bfd_put_16 (abfd, (short)((relocation >> 16) & 0xFFFF),
               (bfd_byte *)data + reloc_entry->address);
@@ -383,19 +344,6 @@ elf32_dlx_relocate16  (abfd, reloc_entry, symbol, data,
   val =  (symbol->section->output_offset +
 	  symbol->section->output_section->vma +
 	  symbol->value) - vallo;
-#if 0
-  printf ("DEBUG elf32_dlx_relocate: We are here\n");
-  printf ("DEBUG: The insn            = 0x%08x\n", insn);
-  printf ("DEBUG: The vallo           = 0x%08x\n", vallo);
-  printf ("DEBUG: The val             = 0x%08x\n", val);
-  printf ("DEBUG: The symbol name     = %s\n", bfd_asymbol_name (symbol));
-  printf ("DEBUG: The symbol->value   = 0x%08x\n", symbol->value);
-  printf ("DEBUG: The vma             = 0x%08x\n", symbol->section->output_section->vma);
-  printf ("DEBUG: The lma             = 0x%08x\n", symbol->section->output_section->lma);
-  printf ("DEBUG: The alignment_power = 0x%08x\n", symbol->section->output_section->alignment_power);
-  printf ("DEBUG: The output_offset   = 0x%08x\n", symbol->section->output_offset);
-  printf ("DEBUG: The addend          = 0x%08x\n", reloc_entry->addend);
-#endif
 
   if (abs ((int) val) > 0x00007FFF)
     return bfd_reloc_outofrange;
@@ -461,21 +409,6 @@ elf32_dlx_relocate26  (abfd, reloc_entry, symbol, data,
   val = (symbol->section->output_offset +
 	 symbol->section->output_section->vma + symbol->value)
     - vallo;
-#if 0
-  printf ("DEBUG elf32_dlx_relocate26: We are here\n");
-  printf ("DEBUG: The insn          = 0x%08x\n", insn);
-  printf ("DEBUG: The vallo         = 0x%08x\n", vallo);
-  printf ("DEBUG: The val           = 0x%08x\n", val);
-  printf ("DEBUG: The abs(val)      = 0x%08x\n", abs (val));
-  printf ("DEBUG: The symbol name   = %s\n", bfd_asymbol_name (symbol));
-  printf ("DEBUG: The symbol->value = 0x%08x\n", symbol->value);
-  printf ("DEBUG: The vma           = 0x%08x\n", symbol->section->output_section->vma);
-  printf ("DEBUG: The output_offset = 0x%08x\n", symbol->section->output_offset);
-  printf ("DEBUG: The input_vma     = 0x%08x\n", input_section->output_section->vma);
-  printf ("DEBUG: The input_offset  = 0x%08x\n", input_section->output_offset);
-  printf ("DEBUG: The input_name    = %s\n", input_section->name);
-  printf ("DEBUG: The addend        = 0x%08x\n", reloc_entry->addend);
-#endif
 
   if (abs ((int) val) > 0x01FFFFFF)
     return bfd_reloc_outofrange;
@@ -505,9 +438,6 @@ static const struct elf_reloc_map dlx_reloc_map[] =
   {
     { BFD_RELOC_NONE,           R_DLX_NONE },
     { BFD_RELOC_16,             R_DLX_RELOC_16 },
-#if 0
-    { BFD_RELOC_DLX_JMP26,      R_DLX_RELOC_26_PCREL },
-#endif
     { BFD_RELOC_32,             R_DLX_RELOC_32 },
     { BFD_RELOC_DLX_HI16_S,     R_DLX_RELOC_16_HI },
     { BFD_RELOC_DLX_LO16,       R_DLX_RELOC_16_LO },
@@ -558,14 +488,14 @@ elf32_dlx_check_relocs (abfd, info, sec, relocs)
         /* This relocation describes the C++ object vtable hierarchy.
            Reconstruct it for later use during GC.  */
         case R_DLX_GNU_VTINHERIT:
-          if (!_bfd_elf32_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
+          if (!bfd_elf_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
             return FALSE;
           break;
 
         /* This relocation describes which C++ vtable entries are actually
            used.  Record for later use during GC.  */
         case R_DLX_GNU_VTENTRY:
-          if (!_bfd_elf32_gc_record_vtentry (abfd, sec, h, rel->r_addend))
+          if (!bfd_elf_gc_record_vtentry (abfd, sec, h, rel->r_addend))
             return FALSE;
           break;
         }

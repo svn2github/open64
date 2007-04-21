@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* xstrerror.c -- jacket routine for more robust strerror() usage.
    Fri Jun 16 18:30:00 1995  Pat Rankin  <rankin@eql.caltech.edu>
    This code is in the public domain.  */
@@ -15,8 +19,8 @@ will never return a @code{NULL} pointer.
 
 #include <stdio.h>
 
-#include "libiberty.h"
 #include "config.h"
+#include "libiberty.h"
 
 #ifdef VMS
 #include <errno.h>

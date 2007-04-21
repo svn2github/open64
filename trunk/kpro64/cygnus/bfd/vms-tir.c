@@ -1,6 +1,10 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* vms-tir.c -- BFD back-end for VAX (openVMS/VAX) and
    EVAX (openVMS/Alpha) files.
-   Copyright 1996, 1997, 1998, 1999, 2000, 2001, 2002
+   Copyright 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2004, 2005
    Free Software Foundation, Inc.
 
    TIR record handling functions
@@ -93,7 +97,7 @@ check_section (abfd, size)
   bfd_size_type offset;
 
   offset = PRIV (image_ptr) - PRIV (image_section)->contents;
-  if (offset + size > PRIV (image_section)->_raw_size)
+  if (offset + size > PRIV (image_section)->size)
     {
       PRIV (image_section)->contents
 	= bfd_realloc (PRIV (image_section)->contents, offset + size);
@@ -102,7 +106,7 @@ check_section (abfd, size)
 	  (*_bfd_error_handler) (_("No Mem !"));
 	  return -1;
 	}
-      PRIV (image_section)->_raw_size = offset + size;
+      PRIV (image_section)->size = offset + size;
       PRIV (image_ptr) = PRIV (image_section)->contents + offset;
     }
 
@@ -439,11 +443,6 @@ etir_sto (abfd, cmd, ptr)
 
     case ETIR_S_C_STO_B:
       dummy = _bfd_vms_pop (abfd, &psect);
-#if 0
-      if (is_share)		/* FIXME */
-	(*_bfd_error_handler) ("%s: byte fixups not supported",
-			       cmd_name (cmd));
-#endif
       /* FIXME: check top bits */
       image_write_b (abfd, (unsigned int) dummy & 0xff);
       break;
@@ -453,11 +452,6 @@ etir_sto (abfd, cmd, ptr)
 
     case ETIR_S_C_STO_W:
       dummy = _bfd_vms_pop (abfd, &psect);
-#if 0
-      if (is_share)		/* FIXME */
-	(*_bfd_error_handler) ("%s: word fixups not supported",
-			       cmd_name (cmd));
-#endif
       /* FIXME: check top bits */
       image_write_w (abfd, (unsigned int) dummy & 0xffff);
       break;
@@ -909,9 +903,6 @@ etir_stc (abfd, cmd, ptr)
 
     case ETIR_S_C_STC_NBH_PS:
       /* FIXME */
-#if 0
-      (*_bfd_error_handler) ("%s: not supported", cmd_name (cmd));
-#endif
       break;
 
     default:
@@ -951,10 +942,9 @@ new_section (abfd, idx)
       return 0;
     }
 
-  section->_raw_size = 0;
+  section->size = 0;
   section->vma = 0;
   section->contents = 0;
-  section->_cooked_size = 0;
   section->name = name;
   section->index = idx;
 
@@ -1612,7 +1602,7 @@ tir_ctl (bfd *abfd, unsigned char *ptr)
     case TIR_S_C_CTL_SETRB:
       /* Set relocation base: pop stack, set image location counter
 	 arg: none.  */
-      dummy = _bfd_vms_pop (abfd, &psect);
+      dummy = _bfd_vms_pop (abfd, (int *) &psect);
       if (psect >= PRIV (section_count))
 	alloc_section (abfd, psect);
       image_set_ptr (abfd, (int) psect, (uquad) dummy);
@@ -1636,7 +1626,7 @@ tir_ctl (bfd *abfd, unsigned char *ptr)
     case TIR_S_C_CTL_STLOC:
       /* Set location: pop index, restore location counter from index
 	 arg: none.  */
-      dummy = _bfd_vms_pop (abfd, &psect);
+      dummy = _bfd_vms_pop (abfd, (int *) &psect);
       (*_bfd_error_handler) (_("%s: not fully implemented"),
 			     tir_cmd_name (ptr[-1]));
       break;
@@ -1644,7 +1634,7 @@ tir_ctl (bfd *abfd, unsigned char *ptr)
     case TIR_S_C_CTL_STKDL:
       /* Stack defined location: pop index, push location counter from index
 	 arg: none.  */
-      dummy = _bfd_vms_pop (abfd, &psect);
+      dummy = _bfd_vms_pop (abfd, (int *) &psect);
       (*_bfd_error_handler) (_("%s: not fully implemented"),
 			     tir_cmd_name (ptr[-1]));
       break;
@@ -2031,7 +2021,7 @@ _bfd_vms_write_tir (abfd, objtype)
 #if VMS_DEBUG
       _bfd_vms_debug (4, "writing %d. section '%s' (%d bytes)\n",
 		      section->index, section->name,
-		      (int) (section->_raw_size));
+		      (int) (section->size));
 #endif
 
       if (section->flags & SEC_RELOC)
@@ -2267,19 +2257,6 @@ _bfd_vms_write_tir (abfd, objtype)
 				sptr->size = len;
 				sto_imm (abfd, sptr, vaddr, section->index);
 				sptr->size = hint_size;
-#if 0
-				vms_output_begin (abfd,
-						  ETIR_S_C_STO_HINT_GBL, -1);
-				vms_output_long (abfd,
-						 (unsigned long) (sec->index));
-				vms_output_quad (abfd, (uquad) addr);
-
-				hash = (_bfd_vms_length_hash_symbol
-					(abfd, sym->name, EOBJ_S_C_SYMSIZ));
-				vms_output_counted (abfd, hash);
-
-				vms_output_flush (abfd);
-#endif
 			      }
 			      break;
 			    case ALPHA_R_LINKAGE:

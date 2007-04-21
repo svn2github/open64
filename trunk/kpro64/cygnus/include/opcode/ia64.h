@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* ia64.h -- Header file for ia64 opcode table
-   Copyright (C) 1998, 1999, 2002 Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2002 Free Software Foundation, Inc.
 	Contributed by David Mosberger-Tang <davidm@hpl.hp.com> */
 
 #ifndef opcode_ia64_h

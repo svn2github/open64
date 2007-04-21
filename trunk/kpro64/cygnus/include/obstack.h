@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* obstack.h - object stack macros
    Copyright 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1996, 1997, 1998,
    1999, 2000
@@ -494,9 +498,9 @@ __extension__								\
 # define obstack_free(OBSTACK, OBJ)					\
 __extension__								\
 ({ struct obstack *__o = (OBSTACK);					\
-   void *__obj = (OBJ);							\
+   void *__obj = (void *) (OBJ);					\
    if (__obj > (void *)__o->chunk && __obj < (void *)__o->chunk_limit)  \
-     __o->next_free = __o->object_base = __obj;				\
+     __o->next_free = __o->object_base = (char *) __obj;		\
    else (obstack_free) (__o, __obj); })
 
 #else /* not __GNUC__ or not __STDC__ */

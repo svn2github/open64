@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* A Fibonacci heap datatype.
    Copyright 1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
    Contributed by Daniel Berlin (dan@cgsoftware.com).
@@ -59,7 +63,7 @@ typedef struct fibnode
   struct fibnode *right;
   fibheapkey_t key;
   void *data;
-#ifdef __GNUC__
+#if defined (__GNUC__) && (!defined (SIZEOF_INT) || SIZEOF_INT < 4)
   __extension__ unsigned long int degree : 31;
   __extension__ unsigned long int mark : 1;
 #else

@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* mmix-opc.c -- MMIX opcode table
    Copyright (C) 2001, 2003 Free Software Foundation, Inc.
    Written by Hans-Peter Nilsson (hp@bitrange.com)
@@ -67,11 +71,11 @@ const struct mmix_spec_reg mmix_spec_regs[] =
 /* All bits in the opcode-byte are significant.  Add "| ..." expressions
    to add zero-bits.  */
 #undef O
-#define O(m) ((m) << 24), ((~(m) & 255) << 24)
+#define O(m) ((unsigned long) (m) << 24UL), ((~(unsigned long) (m) & 255) << 24)
 
 /* Bits 7..1 of the opcode are significant.  */
 #undef Z
-#define Z(m) ((m) << 24), ((~(m) & 254) << 24)
+#define Z(m) ((unsigned long) (m) << 24), ((~(unsigned long) (m) & 254) << 24)
 
 /* For easier overview of the table.  */
 #define N mmix_type_normal

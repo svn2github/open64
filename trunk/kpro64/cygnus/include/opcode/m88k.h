@@ -1,5 +1,10 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Table of opcodes for the Motorola M88k family.
-   Copyright 1989, 1990, 1991, 1993, 2001 Free Software Foundation, Inc.
+   Copyright 1989, 1990, 1991, 1993, 2001, 2002
+   Free Software Foundation, Inc.
 
 This file is part of GDB and GAS.
 

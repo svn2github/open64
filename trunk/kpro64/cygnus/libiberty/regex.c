@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Extended regular expression matching and search library,
    version 0.12.
    (Implements POSIX draft P1003.2/D11.2, except for some of the
@@ -32,8 +36,10 @@
 #undef	_GNU_SOURCE
 #define _GNU_SOURCE
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
+#ifndef INSIDE_RECURSION
+# ifdef HAVE_CONFIG_H
+#  include <config.h>
+# endif
 #endif
 
 #include <ansidecl.h>

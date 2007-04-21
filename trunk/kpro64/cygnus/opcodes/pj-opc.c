@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* pj-opc.c -- Definitions for picoJava opcodes.
-   Copyright 1999, 2000, 2002 Free Software Foundation, Inc.
+   Copyright 1999, 2000, 2002, 2003 Free Software Foundation, Inc.
    Contributed by Steve Chamberlain of Transmeta (sac@pobox.com).
 
 This program is free software; you can redistribute it and/or modify

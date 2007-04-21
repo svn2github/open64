@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* MIPS ELF specific backend routines.
-   Copyright 2002, 2003 Free Software Foundation, Inc.
+   Copyright 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
 
 This file is part of BFD, the Binary File Descriptor library.
 
@@ -24,6 +28,8 @@ extern bfd_boolean _bfd_mips_elf_new_section_hook
   (bfd *, asection *);
 extern void _bfd_mips_elf_symbol_processing
   (bfd *, asymbol *);
+extern unsigned int _bfd_mips_elf_eh_frame_address_size
+  (bfd *, asection *);
 extern bfd_boolean _bfd_mips_elf_name_local_section_symbols
   (bfd *);
 extern bfd_boolean _bfd_mips_elf_section_processing
@@ -35,7 +41,7 @@ extern bfd_boolean _bfd_mips_elf_fake_sections
 extern bfd_boolean _bfd_mips_elf_section_from_bfd_section
   (bfd *, asection *, int *);
 extern bfd_boolean _bfd_mips_elf_add_symbol_hook
-  (bfd *, struct bfd_link_info *, const Elf_Internal_Sym *,
+  (bfd *, struct bfd_link_info *, Elf_Internal_Sym *,
    const char **, flagword *, asection **, bfd_vma *);
 extern bfd_boolean _bfd_mips_elf_link_output_symbol_hook
   (struct bfd_link_info *, const char *, Elf_Internal_Sym *,
@@ -101,6 +107,10 @@ extern bfd_boolean _bfd_mips_elf_write_section
 
 extern bfd_boolean _bfd_mips_elf_read_ecoff_info
   (bfd *, asection *, struct ecoff_debug_info *);
+extern void _bfd_mips16_elf_reloc_unshuffle
+  (bfd *, int, bfd_boolean, bfd_byte *);
+extern void _bfd_mips16_elf_reloc_shuffle
+  (bfd *, int, bfd_boolean, bfd_byte *);
 extern bfd_reloc_status_type _bfd_mips_elf_gprel16_with_gp
   (bfd *, asymbol *, arelent *, asection *, bfd_boolean, void *, bfd_vma);
 extern bfd_reloc_status_type _bfd_mips_elf32_gprel16_reloc
@@ -124,3 +134,4 @@ extern struct bfd_elf_special_section const _bfd_mips_elf_special_sections[];
 #define elf_backend_name_local_section_symbols \
   _bfd_mips_elf_name_local_section_symbols
 #define elf_backend_special_sections _bfd_mips_elf_special_sections
+#define elf_backend_eh_frame_address_size _bfd_mips_elf_eh_frame_address_size

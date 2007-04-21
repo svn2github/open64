@@ -645,15 +645,7 @@ size_t ipacom_process_file (char* input_file,
 
   infiles->push_back(input_base);
   outfiles->push_back(output_base);
-#ifdef KEY
-  {
-    // Don't write the path component into the linkopt file, in order to
-    // shorten the link command's arg list.  Bug 5876.
-    outfiles_fullpath->push_back(ipa_basename(output_file));
-  }
-#else
   outfiles_fullpath->push_back(output_file);
-#endif
 
   // Assemble the command line.
 

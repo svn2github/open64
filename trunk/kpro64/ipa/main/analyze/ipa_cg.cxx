@@ -345,8 +345,11 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
 		// This st would be used at least in the exception table, mark
 		// it so that ipa does not remove it in DVE
 		// TODO: Record this ref in IPL to prevent this situation.
-      		Set_AUX_ST_flags (Aux_St_Table[new_idx], USED_IN_OBJ);
-                Clear_ST_is_not_used (St_Table[new_idx]);
+
+		if (ST_IDX_level(new_idx) == GLOBAL_SYMTAB) {
+      		  Set_AUX_ST_flags (Aux_St_Table[new_idx], USED_IN_OBJ);
+                  Clear_ST_is_not_used (St_Table[new_idx]);
+		}
                 INITV_IDX filter = INITV_next (st_entry); // for backup
                 INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
                        Host_To_Targ (MTYPE_U4, new_idx)), 1);

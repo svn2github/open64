@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* BFD back-end data structures for a.out (and similar) files.
    Copyright 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
    2000, 2001, 2002, 2003, 2004
@@ -29,51 +33,23 @@
 
 #include "bfdlink.h"
 
-/* Macros for accessing components in an aout header.  Saves cluttering
-   the source with (bfd_vma) and (bfd_byte *) casts.  */
+/* Macros for accessing components in an aout header.  */
 
-#define H_PUT_64(abfd, val, where) \
-  bfd_h_put_64 ((abfd), (bfd_vma) (val), (bfd_byte *) (where))
-
-#define H_PUT_32(abfd, val, where) \
-  bfd_h_put_32 ((abfd), (bfd_vma) (val), (bfd_byte *) (where))
-
-#define H_PUT_16(abfd, val, where) \
-  bfd_h_put_16 ((abfd), (bfd_vma) (val), (bfd_byte *) (where))
-
+#define H_PUT_64 bfd_h_put_64
+#define H_PUT_32 bfd_h_put_32
+#define H_PUT_16 bfd_h_put_16
 #define H_PUT_8 bfd_h_put_8
-
-#define H_PUT_S64(abfd, val, where) \
-  bfd_h_put_signed_64 ((abfd), (bfd_vma) (val), (bfd_byte *) (where))
-
-#define H_PUT_S32(abfd, val, where) \
-  bfd_h_put_signed_32 ((abfd), (bfd_vma) (val), (bfd_byte *) (where))
-
-#define H_PUT_S16(abfd, val, where) \
-  bfd_h_put_signed_16 ((abfd), (bfd_vma) (val), (bfd_byte *) (where))
-
+#define H_PUT_S64 bfd_h_put_signed_64
+#define H_PUT_S32 bfd_h_put_signed_32
+#define H_PUT_S16 bfd_h_put_signed_16
 #define H_PUT_S8 bfd_h_put_signed_8
-
-#define H_GET_64(abfd, where) \
-  bfd_h_get_64 ((abfd), (bfd_byte *) (where))
-
-#define H_GET_32(abfd, where) \
-  bfd_h_get_32 ((abfd), (bfd_byte *) (where))
-
-#define H_GET_16(abfd, where) \
-  bfd_h_get_16 ((abfd), (bfd_byte *) (where))
-
+#define H_GET_64 bfd_h_get_64
+#define H_GET_32 bfd_h_get_32
+#define H_GET_16 bfd_h_get_16
 #define H_GET_8 bfd_h_get_8
-
-#define H_GET_S64(abfd, where) \
-  bfd_h_get_signed_64 ((abfd), (bfd_byte *) (where))
-
-#define H_GET_S32(abfd, where) \
-  bfd_h_get_signed_32 ((abfd), (bfd_byte *) (where))
-
-#define H_GET_S16(abfd, where) \
-  bfd_h_get_signed_16 ((abfd), (bfd_byte *) (where))
-
+#define H_GET_S64 bfd_h_get_signed_64
+#define H_GET_S32 bfd_h_get_signed_32
+#define H_GET_S16 bfd_h_get_signed_16
 #define H_GET_S8 bfd_h_get_signed_8
 
 /* Parameterize the a.out code based on whether it is being built
@@ -301,9 +277,12 @@ enum machine_type
   M_ALPHA_NETBSD = 141,	  /* NetBSD/alpha binary.  */
   M_ARM6_NETBSD = 143,	  /* NetBSD/arm32 binary.  */
   M_SPARCLET_1 = 147,	  /* 0x93, reserved.  */
+  M_POWERPC_NETBSD = 149, /* NetBSD/powerpc (big-endian) binary.  */
   M_VAX4K_NETBSD = 150,	  /* NetBSD/vax 4K pages binary.  */
   M_MIPS1 = 151,          /* MIPS R2000/R3000 binary.  */
   M_MIPS2 = 152,          /* MIPS R4000/R6000 binary.  */
+  M_88K_OPENBSD = 153,	  /* OpenBSD/m88k binary.  */
+  M_HPPA_OPENBSD = 154,	  /* OpenBSD/hppa binary.  */
   M_SPARC64_NETBSD = 156, /* NetBSD/sparc64 binary.  */
   M_X86_64_NETBSD = 157,  /* NetBSD/amd64 binary.  */
   M_SPARCLET_2 = 163,	  /* 0xa3, reserved.  */
@@ -631,6 +610,11 @@ extern bfd_boolean NAME(aout,bfd_free_cached_info)
 #define aout_32_bfd_is_local_label_name bfd_generic_is_local_label_name
 #endif
 
+#ifndef aout_32_bfd_is_target_special_symbol
+#define aout_32_bfd_is_target_special_symbol \
+  ((bfd_boolean (*) (bfd *, asymbol *)) bfd_false)
+#endif
+
 #ifndef WRITE_HEADERS
 #define WRITE_HEADERS(abfd, execp)					      \
       {									      \
@@ -691,8 +675,8 @@ extern bfd_boolean NAME(aout,bfd_free_cached_info)
    && obj_textsec (abfd) != NULL					\
    && obj_datasec (abfd) != NULL					\
    && (sec)->vma >= (obj_textsec (abfd)->vma +				\
-		     obj_textsec (abfd)->_cooked_size)			\
-   && ((sec)->vma + (sec)->_cooked_size) <= obj_datasec (abfd)->vma	\
+		     obj_textsec (abfd)->size)				\
+   && ((sec)->vma + (sec)->size) <= obj_datasec (abfd)->vma		\
    && ((abfd)->flags & D_PAGED) != 0)
 
 #endif /* ! defined (LIBAOUT_H) */

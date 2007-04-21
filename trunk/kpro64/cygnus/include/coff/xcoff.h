@@ -1,6 +1,10 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Internal format of XCOFF object file data structures for BFD.
 
-   Copyright 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003
+   Copyright 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2005
    Free Software Foundation, Inc.
    Written by Ian Lance Taylor <ian@cygnus.com>, Cygnus Support.
 
@@ -409,7 +413,7 @@ struct xcoff_loader_info
   size_t string_size;
 
   /* String table.  */
-  bfd_byte *strings;
+  char *strings;
 
   /* Allocated size of string table.  */
   size_t string_alc;

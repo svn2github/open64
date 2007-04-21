@@ -1,8 +1,12 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* BFD back-end for AIX on PS/2 core files.
    This was based on trad-core.c, which was written by John Gilmore of
         Cygnus Support.
    Copyright 1988, 1989, 1991, 1992, 1993, 1994, 1996, 1998, 1999, 2000,
-   2001, 2002
+   2001, 2002, 2004
    Free Software Foundation, Inc.
    Written by Minh Tran-Le <TRANLE@INTELLICORP.COM>.
    Converted to back end form by Ian Lance Taylor <ian@cygnus.com>.
@@ -122,7 +126,7 @@ aix386_core_file_p (abfd)
     goto loser;
 
   core_regsec (abfd)->flags = SEC_HAS_CONTENTS;
-  core_regsec (abfd)->_raw_size = sizeof (core->cd_regs);
+  core_regsec (abfd)->size = sizeof (core->cd_regs);
   core_regsec (abfd)->vma = (bfd_vma) -1;
 
   /* We'll access the regs afresh in the core file, like any section.  */
@@ -135,7 +139,7 @@ aix386_core_file_p (abfd)
     goto loser;
 
   core_reg2sec (abfd)->flags = SEC_HAS_CONTENTS;
-  core_reg2sec (abfd)->_raw_size = sizeof (core->cd_fpregs);
+  core_reg2sec (abfd)->size = sizeof (core->cd_fpregs);
   core_reg2sec (abfd)->vma = (bfd_vma) -1;
   core_reg2sec (abfd)->filepos =
     (file_ptr) offsetof (struct corehdr, cd_fpregs);
@@ -180,7 +184,7 @@ aix386_core_file_p (abfd)
 	goto loser;
 
       core_section (abfd, n)->flags = flags;
-      core_section (abfd, n)->_raw_size = core->cd_segs[i].cs_len;
+      core_section (abfd, n)->size = core->cd_segs[i].cs_len;
       core_section (abfd, n)->vma       = core->cd_segs[i].cs_address;
       core_section (abfd, n)->filepos   = core->cd_segs[i].cs_offset;
       core_section (abfd, n)->alignment_power = 2;
@@ -222,9 +226,12 @@ swap_abort ()
   abort ();
 }
 
-#define	NO_GET	((bfd_vma (*) PARAMS ((const bfd_byte *))) swap_abort)
-#define NO_GETS ((bfd_signed_vma (*) PARAMS ((const bfd_byte *))) swap_abort)
-#define	NO_PUT	((void (*) PARAMS ((bfd_vma, bfd_byte *))) swap_abort)
+#define	NO_GET ((bfd_vma (*) (const void *)) swap_abort)
+#define	NO_PUT ((void (*) (bfd_vma, void *)) swap_abort)
+#define	NO_GETS ((bfd_signed_vma (*) (const void *)) swap_abort)
+#define	NO_GET64 ((bfd_uint64_t (*) (const void *)) swap_abort)
+#define	NO_PUT64 ((void (*) (bfd_uint64_t, void *)) swap_abort)
+#define	NO_GETS64 ((bfd_int64_t (*) (const void *)) swap_abort)
 
 const bfd_target aix386_core_vec = {
   "aix386-core",
@@ -239,10 +246,10 @@ const bfd_target aix386_core_vec = {
   0,				/* leading underscore */
   ' ',				/* ar_pad_char */
   16,				/* ar_max_namelen */
-  NO_GET, NO_GETS, NO_PUT,
+  NO_GET64, NO_GETS64, NO_PUT64,
   NO_GET, NO_GETS, NO_PUT,
   NO_GET, NO_GETS, NO_PUT,	/* data */
-  NO_GET, NO_GETS, NO_PUT,
+  NO_GET64, NO_GETS64, NO_PUT64,
   NO_GET, NO_GETS, NO_PUT,
   NO_GET, NO_GETS, NO_PUT,	/* hdrs */
 

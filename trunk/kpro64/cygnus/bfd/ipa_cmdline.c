@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -250,7 +250,7 @@ add_Y_opt (char **argv)
 	 *******************************************************/
 #define ET_SGI_IR   (ET_LOPROC + 0)
 static bfd_boolean
-check_for_whirl(char *name)
+check_for_whirl(char *name, bfd_boolean *is_elf)
 {
     int fd = -1;
     char *raw_bits = NULL;
@@ -259,6 +259,10 @@ check_for_whirl(char *name)
     struct stat statb;
     int test;
     
+#ifdef KEY
+    *is_elf = FALSE;
+#endif
+
     fd = OPEN(name, O_RDONLY, 0755);
     if (fd < 0)
 	return FALSE;
@@ -299,6 +303,10 @@ check_for_whirl(char *name)
 	    FREE(raw_bits);
 	    return(FALSE);
     }
+
+#ifdef KEY
+    *is_elf = TRUE;
+#endif
 
     if(p_ehdr->e_ident[EI_CLASS] == ELFCLASS32){
     	Elf32_Ehdr *p32_ehdr = (Elf32_Ehdr *)raw_bits;
@@ -552,6 +560,9 @@ ipa_search_command_line(int argc,
     (*p_ipa_init_link_line) (0, NULL);
 
     for (i=1;i<argc;i++) {
+#ifdef KEY
+	bfd_boolean is_elf;
+#endif
     	char *string = argv[i];
     	if (*string == '-' && string[1] == '-') {
 	    if ((strncmp (&string[2], "ipa", strlen ("ipa")) == 0)) {
@@ -663,20 +674,7 @@ ipa_search_command_line(int argc,
 		strcpy(outfilename,"");
 		strcat(outfilename,argv[i+1]);
 	    	(*p_ipa_add_link_flag) (argv[i++]);
-#ifdef KEY
-		{
-		  // Remove the path component from the outfile name since we
-		  // will be linking in the ipa temp dir.  After linking, we
-		  // move the outfile to the temp dir's parent.  Bug 5876.
-		  char *bname = basename(argv[i]);
-		  // gnu basename() doesn't strip off multiple slashes.
-		  while (*bname == '/')
-		    bname++;
-		  (*p_ipa_add_link_flag) (bname);
-		}
-#else
 		(*p_ipa_add_link_flag) (argv[i]);
-#endif
 		continue;
 	    }
 	    else if ((strcmp(string,"-v")) == 0) {
@@ -697,19 +695,25 @@ ipa_search_command_line(int argc,
 	    }
 	}
 	/* This splits the post ipa commandline arguments */
-	else if (check_for_whirl(argv[i])){
+	else if (check_for_whirl(argv[i], &is_elf)) {
 	    (*p_ipa_insert_whirl_marker)();
 	    continue;
 	}
 
 #ifdef KEY
-	// Since we perform the final link in the ipa temp dir, get files from
-	// the temp dir's parent.  Bug 6029.
-	if (argv[i][0] != '-') {
-	  (*p_ipa_add_link_flag)
-	    ((*p_ipa_add_parent_dir_to_relative_pathname)(argv[i]));
-	  continue;
-	}
+	/* Split the ipa commandline arguments as long as any ELF object is
+	   seen, whether or not it is WHIRL.  Needed to handle the case where
+	   the only object given is a non-WHIRL object, followed by a WHIRL
+	   archive:
+
+	     pathcc -Ldir a.o -lfoo -lwhirl -lbar	; non-WHIRL a.o
+
+	   The WHIRL objects from libwhirl.a will be compiled and linked at the
+	   position of a.o.  Bug 10655.
+	 */
+
+	if (is_elf == TRUE)
+	  (*p_ipa_insert_whirl_marker)();
 #endif
     	(*p_ipa_add_link_flag) (argv[i]);
 

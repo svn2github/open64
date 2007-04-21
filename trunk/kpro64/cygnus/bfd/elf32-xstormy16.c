@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* XSTORMY16-specific support for 32-bit ELF.
-   Copyright 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
+   Copyright 2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
 
 This file is part of BFD, the Binary File Descriptor library.
 
@@ -379,7 +383,7 @@ xstormy16_elf_24_reloc (abfd, reloc_entry, symbol, data, input_section,
       return bfd_reloc_ok;
     }
 
-  if (reloc_entry->address > input_section->_cooked_size)
+  if (reloc_entry->address > bfd_get_section_limit (abfd, input_section))
     return bfd_reloc_outofrange;
 
   if (bfd_is_com_section (symbol->section))
@@ -508,22 +512,22 @@ xstormy16_elf_check_relocs (abfd, info, sec, relocs)
 
 	  if (*offset == (bfd_vma) -1)
 	    {
-	      *offset = splt->_raw_size;
-	      splt->_raw_size += 4;
+	      *offset = splt->size;
+	      splt->size += 4;
 	    }
 	  break;
 
 	  /* This relocation describes the C++ object vtable hierarchy.
 	     Reconstruct it for later use during GC.  */
         case R_XSTORMY16_GNU_VTINHERIT:
-          if (!_bfd_elf32_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
+          if (!bfd_elf_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
             return FALSE;
           break;
 
 	  /* This relocation describes which C++ vtable entries are actually
 	     used.  Record for later use during GC.  */
         case R_XSTORMY16_GNU_VTENTRY:
-          if (!_bfd_elf32_gc_record_vtentry (abfd, sec, h, rel->r_addend))
+          if (!bfd_elf_gc_record_vtentry (abfd, sec, h, rel->r_addend))
             return FALSE;
           break;
 	}
@@ -566,7 +570,7 @@ xstormy16_relax_plt_check (h, xdata)
       if (address <= 0xffff)
 	{
 	  h->plt.offset = -1;
-	  data->splt->_cooked_size -= 4;
+	  data->splt->size -= 4;
 	  *data->again = TRUE;
 	}
     }
@@ -618,13 +622,8 @@ xstormy16_elf_relax_section (dynobj, splt, info, again)
     return TRUE;
 
   /* Quick check for an empty plt.  */
-  if (splt->_raw_size == 0)
+  if (splt->size == 0)
     return TRUE;
-
-  /* If this is the first time we have been called for this section,
-     initialize the cooked size.  */
-  if (splt->_cooked_size == 0)
-    splt->_cooked_size = splt->_raw_size;
 
   /* Map across all global symbols; see which ones happen to
      fall in the low 64k.  */
@@ -682,7 +681,7 @@ xstormy16_elf_relax_section (dynobj, splt, info, again)
 	  if (address <= 0xffff)
 	    {
 	      local_plt_offsets[idx] = -1;
-	      splt->_cooked_size -= 4;
+	      splt->size -= 4;
 	      *again = TRUE;
 	    }
 	}
@@ -702,7 +701,7 @@ xstormy16_elf_relax_section (dynobj, splt, info, again)
 
   /* If we changed anything, walk the symbols again to reallocate
      .plt entry addresses.  */
-  if (*again && splt->_cooked_size > 0)
+  if (*again && splt->size > 0)
     {
       bfd_vma entry = 0;
 
@@ -727,7 +726,6 @@ xstormy16_elf_relax_section (dynobj, splt, info, again)
 	}
     }
 
-  splt->_raw_size = splt->_cooked_size;
   return TRUE;
 }
 
@@ -749,7 +747,7 @@ xstormy16_elf_always_size_sections (output_bfd, info)
   splt = bfd_get_section_by_name (dynobj, ".plt");
   BFD_ASSERT (splt != NULL);
 
-  splt->contents = (bfd_byte *) bfd_zalloc (dynobj, splt->_raw_size);
+  splt->contents = (bfd_byte *) bfd_zalloc (dynobj, splt->size);
   if (splt->contents == NULL)
     return FALSE;
 
@@ -846,41 +844,25 @@ xstormy16_elf_relocate_section (output_bfd, info, input_bfd, input_section,
 	  sym = local_syms + r_symndx;
 	  sec = local_sections [r_symndx];
 	  relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
-
-	  name = bfd_elf_string_from_elf_section
-	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
-	  name = (name == NULL) ? bfd_section_name (input_bfd, sec) : name;
 	}
       else
 	{
-	  h = sym_hashes [r_symndx - symtab_hdr->sh_info];
+	  bfd_boolean unresolved_reloc, warned;
 
-	  while (h->root.type == bfd_link_hash_indirect
-		 || h->root.type == bfd_link_hash_warning)
-	    h = (struct elf_link_hash_entry *) h->root.u.i.link;
+	  RELOC_FOR_GLOBAL_SYMBOL (info, input_bfd, input_section, rel,
+				   r_symndx, symtab_hdr, sym_hashes,
+				   h, sec, relocation,
+				   unresolved_reloc, warned);
+	}
 
-	  name = h->root.root.string;
-
-	  if (h->root.type == bfd_link_hash_defined
-	      || h->root.type == bfd_link_hash_defweak)
-	    {
-	      sec = h->root.u.def.section;
-	      relocation = (h->root.u.def.value
-			    + sec->output_section->vma
-			    + sec->output_offset);
-	    }
-	  else if (h->root.type == bfd_link_hash_undefweak)
-	    {
-	      relocation = 0;
-	    }
-	  else
-	    {
-	      if (! ((*info->callbacks->undefined_symbol)
-		     (info, h->root.root.string, input_bfd,
-		      input_section, rel->r_offset, TRUE)))
-		return FALSE;
-	      relocation = 0;
-	    }
+      if (h != NULL)
+	name = h->root.root.string;
+      else
+	{
+	  name = (bfd_elf_string_from_elf_section
+		  (input_bfd, symtab_hdr->sh_link, sym->st_name));
+	  if (name == NULL || *name == '\0')
+	    name = bfd_section_name (input_bfd, sec);
 	}
 
       switch (ELF32_R_TYPE (rel->r_info))
@@ -962,8 +944,8 @@ xstormy16_elf_relocate_section (output_bfd, info, input_bfd, input_section,
 	    {
 	    case bfd_reloc_overflow:
 	      r = info->callbacks->reloc_overflow
-		(info, name, howto->name, (bfd_vma) 0,
-		 input_bfd, input_section, rel->r_offset);
+		(info, (h ? &h->root : NULL), name, howto->name,
+		 (bfd_vma) 0, input_bfd, input_section, rel->r_offset);
 	      break;
 
 	    case bfd_reloc_undefined:
@@ -1018,7 +1000,7 @@ xstormy16_elf_finish_dynamic_sections (abfd, info)
       && (splt = bfd_get_section_by_name (dynobj, ".plt")) != NULL)
     {
       bfd_byte *contents = splt->contents;
-      unsigned int i, size = splt->_raw_size;
+      unsigned int i, size = splt->size;
       for (i = 0; i < size; i += 4)
 	{
 	  unsigned int x = bfd_get_32 (dynobj, contents + i);

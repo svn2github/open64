@@ -1,6 +1,10 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* coff information for Renesas SH
    
-   Copyright 2001, 2003 Free Software Foundation, Inc.
+   Copyright 2000, 2003 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

@@ -1,6 +1,6 @@
 /*
 
-  Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+  Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -84,7 +84,6 @@ void (*p_ipa_insert_whirl_marker)(void) = NULL;
 void (*p_Sync_symbol_attributes)(unsigned int, unsigned int, bfd_boolean, unsigned int) = NULL;
 #ifdef KEY
 void (*p_ipa_erase_link_flag)(const char*) = NULL;
-char* (*p_ipa_add_parent_dir_to_relative_pathname)(const char*) = NULL;
 void (*p_Ipalink_Set_Error_Phase)(char *) = NULL;
 void (*p_Ipalink_ErrMsg_EC_infile)(char *) = NULL;
 void (*p_Ipalink_ErrMsg_EC_outfile)(char *) = NULL;
@@ -1183,13 +1182,6 @@ ipa_set_syms(void)
     	exit(1);
     }
 
-    p_ipa_add_parent_dir_to_relative_pathname =
-      dlsym(p_handle,"ipa_add_parent_dir_to_relative_pathname");
-    if ((p_error = dlerror()) != NULL)  {
-    	fputs(p_error, stderr);
-    	exit(1);
-    }
-
     p_Ipalink_Set_Error_Phase = dlsym(p_handle,"Ipalink_Set_Error_Phase");
     if ((p_error = dlerror()) != NULL)  {
     	fputs(p_error, stderr);
@@ -1257,23 +1249,28 @@ ipa_symbol_sync(struct bfd_link_hash_entry *p_bfd_link_hash, PTR info)
     
     p_elf_link_hash = (struct elf_link_hash_entry *)ld_slookup_mext(name,is_undef);
 
-    if (p_elf_link_hash->elf_link_hash_flags & ELF_LINK_HASH_DEF_REGULAR) {
+    if (p_elf_link_hash->def_regular) {
 	result |= DEF_IN_OBJ;
     }
-    if (p_elf_link_hash->elf_link_hash_flags & ELF_LINK_HASH_REF_REGULAR) {
+    if (p_elf_link_hash->ref_regular) {
 	result |= USED_IN_OBJ;
     }
-    if (p_elf_link_hash->elf_link_hash_flags & ELF_LINK_HASH_REF_DYNAMIC) {
+    if (p_elf_link_hash->ref_dynamic) {
 	result |= USED_IN_DSO;
     }
-    if (p_elf_link_hash->elf_link_hash_flags & ELF_LINK_HASH_DEF_DYNAMIC) {
+    if (p_elf_link_hash->def_dynamic) {
 	result |= DEF_IN_DSO;
     }
-    if (p_elf_link_hash->elf_link_hash_flags & ELF_LINK_HIDDEN) {
+    if (p_elf_link_hash->hidden) {
     }
+
+#if 0	// binutils 2.16.1's elf_link_hash_entry has no bitfield corresponding
+	// to 2.15's ELF_LINK_HASH_ADDRESS_TAKEN.  Comment out this 2.15 code
+	// until proven incorrect.
     if (p_elf_link_hash->elf_link_hash_flags & ELF_LINK_HASH_ADDRESS_TAKEN) {
 	result |= ADDR_TAKEN_IN_OBJ;
     }
+#endif
 
     if (p_elf_link_hash->ipa_indx != WHIRL_ST_IDX_UNINITIALIZED &&
     	p_elf_link_hash->ipa_indx != WHIRL_ST_IDX_NOT_AVAILABLE) {

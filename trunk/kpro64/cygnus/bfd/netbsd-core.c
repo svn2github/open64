@@ -1,6 +1,10 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* BFD back end for NetBSD style core files
    Copyright 1988, 1989, 1991, 1992, 1993, 1996, 1998, 1999, 2000, 2001,
-   2002, 2004
+   2002, 2003, 2004
    Free Software Foundation, Inc.
    Written by Paul Kranenburg, EUR
 
@@ -34,7 +38,9 @@
    NetBSD/sparc64 overlaps with M_MIPS1.  */
 #define M_SPARC64_OPENBSD	M_MIPS1
 
-/* FIXME: On NetBSD/sparc CORE_FPU_OFFSET should be (sizeof (struct trapframe)).  */
+/* Offset of StackGhost cookie within `struct md_coredump' on
+   OpenBSD/sparc.  */
+#define CORE_WCOOKIE_OFFSET	344
 
 struct netbsd_core_struct
 {
@@ -61,9 +67,10 @@ netbsd_core_file_p (abfd)
      bfd *abfd;
 
 {
-  int i, val;
+  int val;
+  unsigned i;
   file_ptr offset;
-  asection *asect, *asect2;
+  asection *asect;
   struct core core;
   struct coreseg coreseg;
   bfd_size_type amt = sizeof core;
@@ -137,53 +144,84 @@ netbsd_core_file_p (abfd)
 	goto punt;
 
       asect->flags = flags;
-      asect->_raw_size = coreseg.c_size;
+      asect->size = coreseg.c_size;
       asect->vma = coreseg.c_addr;
       asect->filepos = offset;
       asect->alignment_power = 2;
 
-      offset += coreseg.c_size;
-
-#ifdef CORE_FPU_OFFSET
-      switch (CORE_GETFLAG (coreseg))
+      if (CORE_GETMID (core) == M_SPARC_NETBSD
+	  && CORE_GETFLAG (coreseg) == CORE_CPU
+	  && coreseg.c_size > CORE_WCOOKIE_OFFSET)
 	{
-	case CORE_CPU:
-	  /* Hackish...  */
-	  asect->_raw_size = CORE_FPU_OFFSET;
-	  asect2 = bfd_make_section_anyway (abfd, ".reg2");
-	  if (asect2 == NULL)
+	  /* Truncate the .reg section.  */
+	  asect->size = CORE_WCOOKIE_OFFSET;
+
+	  /* And create the .wcookie section.  */
+	  asect = bfd_make_section_anyway (abfd, ".wcookie");
+	  if (asect == NULL)
 	    goto punt;
-	  asect2->_raw_size = coreseg.c_size - CORE_FPU_OFFSET;
-	  asect2->vma = 0;
-	  asect2->filepos = asect->filepos + CORE_FPU_OFFSET;
-	  asect2->alignment_power = 2;
-	  asect2->flags = SEC_ALLOC + SEC_HAS_CONTENTS;
-	  break;
+
+	  asect->flags = SEC_ALLOC + SEC_HAS_CONTENTS;
+	  asect->size = 4;
+	  asect->vma = 0;
+	  asect->filepos = offset + CORE_WCOOKIE_OFFSET;
+	  asect->alignment_power = 2;
 	}
-#endif
+
+      offset += coreseg.c_size;
     }
 
- /* Set architecture from machine ID.  */
- switch (CORE_GETMID (core))
-   {
-   case M_X86_64_NETBSD:
-     bfd_default_set_arch_mach (abfd, bfd_arch_i386, bfd_mach_x86_64);
-     break;
+  /* Set architecture from machine ID.  */
+  switch (CORE_GETMID (core))
+    {
+    case M_ALPHA_NETBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_alpha, 0);
+      break;
 
-   case M_386_NETBSD:
-     bfd_default_set_arch_mach (abfd, bfd_arch_i386, bfd_mach_i386_i386);
-     break;
+    case M_ARM6_NETBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_arm, bfd_mach_arm_3);
+      break;
 
-   case M_SPARC_NETBSD:
-     bfd_default_set_arch_mach (abfd, bfd_arch_sparc, bfd_mach_sparc);
-     break;
+    case M_X86_64_NETBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_i386, bfd_mach_x86_64);
+      break;
 
-   case M_SPARC64_NETBSD:
-   case M_SPARC64_OPENBSD:
-     bfd_default_set_arch_mach (abfd, bfd_arch_sparc, bfd_mach_sparc_v9);
-     break;
-   }
- 
+    case M_386_NETBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_i386, bfd_mach_i386_i386);
+      break;
+
+    case M_68K_NETBSD:
+    case M_68K4K_NETBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_m68k, 0);
+      break;
+
+    case M_88K_OPENBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_m88k, 0);
+      break;
+
+    case M_HPPA_OPENBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_hppa, bfd_mach_hppa11);
+      break;
+
+    case M_POWERPC_NETBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_powerpc, bfd_mach_ppc);
+      break;
+
+    case M_SPARC_NETBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_sparc, bfd_mach_sparc);
+      break;
+
+    case M_SPARC64_NETBSD:
+    case M_SPARC64_OPENBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_sparc, bfd_mach_sparc_v9);
+      break;
+
+    case M_VAX_NETBSD:
+    case M_VAX4K_NETBSD:
+      bfd_default_set_arch_mach (abfd, bfd_arch_vax, 0);
+      break;
+    }
+
   /* OK, we believe you.  You're a core file (sure, sure).  */
   return abfd->xvec;
 
@@ -228,10 +266,12 @@ swap_abort ()
   abort ();
 }
 
-#define	NO_GET	((bfd_vma (*) PARAMS ((   const bfd_byte *))) swap_abort )
-#define	NO_PUT	((void    (*) PARAMS ((bfd_vma, bfd_byte *))) swap_abort )
-#define	NO_SIGNED_GET \
-  ((bfd_signed_vma (*) PARAMS ((const bfd_byte *))) swap_abort )
+#define	NO_GET ((bfd_vma (*) (const void *)) swap_abort)
+#define	NO_PUT ((void (*) (bfd_vma, void *)) swap_abort)
+#define	NO_GETS ((bfd_signed_vma (*) (const void *)) swap_abort)
+#define	NO_GET64 ((bfd_uint64_t (*) (const void *)) swap_abort)
+#define	NO_PUT64 ((void (*) (bfd_uint64_t, void *)) swap_abort)
+#define	NO_GETS64 ((bfd_int64_t (*) (const void *)) swap_abort)
 
 const bfd_target netbsd_core_vec =
   {
@@ -246,39 +286,39 @@ const bfd_target netbsd_core_vec =
     0,			                                   /* Symbol prefix.  */
     ' ',						   /* ar_pad_char.  */
     16,							   /* ar_max_namelen.  */
-    NO_GET, NO_SIGNED_GET, NO_PUT,	/* 64 bit data.  */
-    NO_GET, NO_SIGNED_GET, NO_PUT,	/* 32 bit data.  */
-    NO_GET, NO_SIGNED_GET, NO_PUT,	/* 16 bit data.  */
-    NO_GET, NO_SIGNED_GET, NO_PUT,	/* 64 bit hdrs.  */
-    NO_GET, NO_SIGNED_GET, NO_PUT,	/* 32 bit hdrs.  */
-    NO_GET, NO_SIGNED_GET, NO_PUT,	/* 16 bit hdrs.  */
+    NO_GET64, NO_GETS64, NO_PUT64,	/* 64 bit data.  */
+    NO_GET, NO_GETS, NO_PUT,		/* 32 bit data.  */
+    NO_GET, NO_GETS, NO_PUT,		/* 16 bit data.  */
+    NO_GET64, NO_GETS64, NO_PUT64,	/* 64 bit hdrs.  */
+    NO_GET, NO_GETS, NO_PUT,		/* 32 bit hdrs.  */
+    NO_GET, NO_GETS, NO_PUT,		/* 16 bit hdrs.  */
 
     {					/* bfd_check_format.  */
-     _bfd_dummy_target,			/* Unknown format.  */
-     _bfd_dummy_target,			/* Object file.  */
-     _bfd_dummy_target,			/* Archive.  */
-     netbsd_core_file_p			/* A core file.  */
+      _bfd_dummy_target,		/* Unknown format.  */
+      _bfd_dummy_target,		/* Object file.  */
+      _bfd_dummy_target,		/* Archive.  */
+      netbsd_core_file_p		/* A core file.  */
     },
     {					/* bfd_set_format.  */
-     bfd_false, bfd_false,
-     bfd_false, bfd_false
+      bfd_false, bfd_false,
+      bfd_false, bfd_false
     },
     {					/* bfd_write_contents.  */
-     bfd_false, bfd_false,
-     bfd_false, bfd_false
+      bfd_false, bfd_false,
+      bfd_false, bfd_false
     },
 
-       BFD_JUMP_TABLE_GENERIC (_bfd_generic),
-       BFD_JUMP_TABLE_COPY (_bfd_generic),
-       BFD_JUMP_TABLE_CORE (netbsd),
-       BFD_JUMP_TABLE_ARCHIVE (_bfd_noarchive),
-       BFD_JUMP_TABLE_SYMBOLS (_bfd_nosymbols),
-       BFD_JUMP_TABLE_RELOCS (_bfd_norelocs),
-       BFD_JUMP_TABLE_WRITE (_bfd_generic),
-       BFD_JUMP_TABLE_LINK (_bfd_nolink),
-       BFD_JUMP_TABLE_DYNAMIC (_bfd_nodynamic),
+    BFD_JUMP_TABLE_GENERIC (_bfd_generic),
+    BFD_JUMP_TABLE_COPY (_bfd_generic),
+    BFD_JUMP_TABLE_CORE (netbsd),
+    BFD_JUMP_TABLE_ARCHIVE (_bfd_noarchive),
+    BFD_JUMP_TABLE_SYMBOLS (_bfd_nosymbols),
+    BFD_JUMP_TABLE_RELOCS (_bfd_norelocs),
+    BFD_JUMP_TABLE_WRITE (_bfd_generic),
+    BFD_JUMP_TABLE_LINK (_bfd_nolink),
+    BFD_JUMP_TABLE_DYNAMIC (_bfd_nodynamic),
 
     NULL,
 
     (PTR) 0			        /* Backend_data.  */
-};
+  };

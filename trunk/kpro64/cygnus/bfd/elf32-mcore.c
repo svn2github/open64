@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Motorola MCore specific support for 32-bit ELF
-   Copyright 1994, 1995, 1999, 2000, 2001, 2002, 2003
+   Copyright 1994, 1995, 1999, 2000, 2001, 2002, 2003, 2004
    Free Software Foundation, Inc.
 
 This file is part of BFD, the Binary File Descriptor library.
@@ -350,8 +354,8 @@ mcore_elf_unsupported_reloc (abfd, reloc_entry, symbol, data, input_section,
 {
   BFD_ASSERT (reloc_entry->howto != (reloc_howto_type *)0);
 
-  _bfd_error_handler (_("%s: Relocation %s (%d) is not currently supported.\n"),
-		      bfd_archive_filename (abfd),
+  _bfd_error_handler (_("%B: Relocation %s (%d) is not currently supported.\n"),
+		      abfd,
 		      reloc_entry->howto->name,
 		      reloc_entry->howto->type);
 
@@ -406,12 +410,12 @@ mcore_elf_relocate_section (output_bfd, info, input_bfd, input_section,
   bfd_boolean ret = TRUE;
 
 #ifdef DEBUG
-  fprintf (stderr,
-	   "mcore_elf_relocate_section called for %s section %s, %ld relocations%s\n",
-	   bfd_archive_filename (input_bfd),
-	   bfd_section_name(input_bfd, input_section),
-	   (long) input_section->reloc_count,
-	   (info->relocatable) ? " (relocatable)" : "");
+  _bfd_error_handler
+    ("mcore_elf_relocate_section called for %B section %A, %ld relocations%s",
+     input_bfd,
+     input_section,
+     (long) input_section->reloc_count,
+     (info->relocatable) ? " (relocatable)" : "");
 #endif
 
   if (info->relocatable)
@@ -438,9 +442,8 @@ mcore_elf_relocate_section (output_bfd, info, input_bfd, input_section,
       if ((unsigned) r_type >= (unsigned) R_MCORE_max
 	  || ! mcore_elf_howto_table [(int)r_type])
 	{
-	  _bfd_error_handler (_("%s: Unknown relocation type %d\n"),
-			      bfd_archive_filename (input_bfd),
-			      (int) r_type);
+	  _bfd_error_handler (_("%B: Unknown relocation type %d\n"),
+			      input_bfd, (int) r_type);
 
 	  bfd_set_error (bfd_error_bad_value);
 	  ret = FALSE;
@@ -453,8 +456,8 @@ mcore_elf_relocate_section (output_bfd, info, input_bfd, input_section,
       /* Complain about known relocation that are not yet supported.  */
       if (howto->special_function == mcore_elf_unsupported_reloc)
 	{
-	  _bfd_error_handler (_("%s: Relocation %s (%d) is not currently supported.\n"),
-			      bfd_archive_filename (input_bfd),
+	  _bfd_error_handler (_("%B: Relocation %s (%d) is not currently supported.\n"),
+			      input_bfd,
 			      howto->name,
 			      (int)r_type);
 
@@ -472,30 +475,12 @@ mcore_elf_relocate_section (output_bfd, info, input_bfd, input_section,
 	}
       else
 	{
-	  h = sym_hashes [r_symndx - symtab_hdr->sh_info];
-	  if (   h->root.type == bfd_link_hash_defined
-	      || h->root.type == bfd_link_hash_defweak)
-	    {
-	      sec = h->root.u.def.section;
-	      relocation = (h->root.u.def.value
-			    + sec->output_section->vma
-			    + sec->output_offset);
-	    }
-	  else if (h->root.type == bfd_link_hash_undefweak)
-	    relocation = 0;
-	  else if (info->shared
-		   && ELF_ST_VISIBILITY (h->other) == STV_DEFAULT)
-	    relocation = 0;
-	  else
-	    {
-	      if (! ((*info->callbacks->undefined_symbol)
-			(info, h->root.root.string, input_bfd,
-		 	 input_section, rel->r_offset, TRUE)))
-		return FALSE;
+	  bfd_boolean unresolved_reloc, warned;
 
-	      ret = FALSE;
-	      continue;
-	    }
+	  RELOC_FOR_GLOBAL_SYMBOL (info, input_bfd, input_section, rel,
+				   r_symndx, symtab_hdr, sym_hashes,
+				   h, sec, relocation,
+				   unresolved_reloc, warned);
 	}
 
       switch (r_type)
@@ -539,7 +524,7 @@ mcore_elf_relocate_section (output_bfd, info, input_bfd, input_section,
 		const char * name;
 
 		if (h != NULL)
-		  name = h->root.root.string;
+		  name = NULL;
 		else
 		  {
 		    name = bfd_elf_string_from_elf_section
@@ -553,8 +538,8 @@ mcore_elf_relocate_section (output_bfd, info, input_bfd, input_section,
 		  }
 
 		(*info->callbacks->reloc_overflow)
-		  (info, name, howto->name, (bfd_vma) 0, input_bfd, input_section,
-		   offset);
+		  (info, (h ? &h->root : NULL), name, howto->name,
+		   (bfd_vma) 0, input_bfd, input_section, offset);
 	      }
 	      break;
 	    }
@@ -665,14 +650,14 @@ mcore_elf_check_relocs (abfd, info, sec, relocs)
         /* This relocation describes the C++ object vtable hierarchy.
            Reconstruct it for later use during GC.  */
         case R_MCORE_GNU_VTINHERIT:
-          if (!_bfd_elf32_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
+          if (!bfd_elf_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
             return FALSE;
           break;
 
         /* This relocation describes which C++ vtable entries are actually
            used.  Record for later use during GC.  */
         case R_MCORE_GNU_VTENTRY:
-          if (!_bfd_elf32_gc_record_vtentry (abfd, sec, h, rel->r_addend))
+          if (!bfd_elf_gc_record_vtentry (abfd, sec, h, rel->r_addend))
             return FALSE;
           break;
         }

@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Generic support for 32-bit ELF
-   Copyright 1993, 1995, 1998, 1999, 2001, 2002
+   Copyright 1993, 1995, 1998, 1999, 2001, 2002, 2004
    Free Software Foundation, Inc.
 
 This file is part of BFD, the Binary File Descriptor library.
@@ -80,15 +84,15 @@ elf32_generic_link_add_symbols (abfd, info)
 	Elf_Internal_Ehdr *ehdrp;
 
 	ehdrp = elf_elfheader (abfd);
-	(*_bfd_error_handler) (_("%s: Relocations in generic ELF (EM: %d)"),
-			       bfd_archive_filename (abfd),
+	(*_bfd_error_handler) (_("%B: Relocations in generic ELF (EM: %d)"),
+			       abfd,
 			       ehdrp->e_machine);
 
 	bfd_set_error (bfd_error_wrong_format);
 	return FALSE;
       }
 
-  return bfd_elf32_bfd_link_add_symbols (abfd, info);
+  return bfd_elf_link_add_symbols (abfd, info);
 }
 
 #define TARGET_LITTLE_SYM		bfd_elf32_little_generic_vec

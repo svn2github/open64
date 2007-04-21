@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Utilities to execute a program in a subprocess (possibly linked by pipes
    with other subprocesses), and wait for it.  Generic Win32 specialization.
    Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2003
@@ -59,7 +63,12 @@ fix_argv (argvec)
   int i;
   char * command0 = argvec[0];
 
-  /* Ensure that the executable pathname uses Win32 backslashes.  */
+  /* Ensure that the executable pathname uses Win32 backslashes. This
+     is not necessary on NT, but on W9x, forward slashes causes failure
+     of spawn* and exec* functions (and probably any function that
+     calls CreateProcess) *iff* the executable pathname (argvec[0]) is
+     a quoted string.  And quoting is necessary in case a pathname
+     contains  embedded white space. You can't win.  */
   for (; *command0 != '\0'; command0++)
     if (*command0 == '/')
       *command0 = '\\';

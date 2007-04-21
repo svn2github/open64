@@ -1,6 +1,10 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Utilities to execute a program in a subprocess (possibly linked by pipes
    with other subprocesses), and wait for it.  Shared logic.
-   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2003
+   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2003, 2004
    Free Software Foundation, Inc.
 
 This file is part of the libiberty library.
@@ -32,6 +36,9 @@ Boston, MA 02111-1307, USA.  */
 
 /* stdout file number.  */
 #define STDOUT_FILE_NO 1
+
+/* stderr file number.  */
+#define STDERR_FILE_NO 2
 
 /* value of `pipe': port index for reading.  */
 #define READ_PORT 0

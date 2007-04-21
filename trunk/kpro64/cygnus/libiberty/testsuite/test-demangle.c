@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Demangler test program,
    Copyright (C) 2002, 2003, 2004 Free Software Foundation, Inc.
    Written by Zack Weinberg <zack@codesourcery.com
@@ -26,6 +30,12 @@
 #include <stdio.h>
 #include "libiberty.h"
 #include "demangle.h"
+#ifdef HAVE_STRING_H
+#include <string.h>
+#endif
+#if HAVE_STDLIB_H
+# include <stdlib.h>
+#endif
 
 struct line
 {
@@ -119,7 +129,7 @@ main(argc, argv)
      int argc;
      char **argv;
 {
-  enum demangling_styles style;
+  enum demangling_styles style = auto_demangling;
   int no_params;
   int is_v3_ctor;
   int is_v3_dtor;

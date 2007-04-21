@@ -1,8 +1,12 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* CPU data for frv.
 
 THIS FILE IS MACHINE GENERATED WITH CGEN.
 
-Copyright 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
+Copyright 1996-2005 Free Software Foundation, Inc.
 
 This file is part of the GNU Binutils and/or GDB, the GNU debugger.
 
@@ -43,7 +47,7 @@ static const CGEN_ATTR_ENTRY bool_attr[] =
   { 0, 0 }
 };
 
-static const CGEN_ATTR_ENTRY MACH_attr[] =
+static const CGEN_ATTR_ENTRY MACH_attr[] ATTRIBUTE_UNUSED =
 {
   { "base", MACH_BASE },
   { "frv", MACH_FRV },
@@ -57,14 +61,14 @@ static const CGEN_ATTR_ENTRY MACH_attr[] =
   { 0, 0 }
 };
 
-static const CGEN_ATTR_ENTRY ISA_attr[] =
+static const CGEN_ATTR_ENTRY ISA_attr[] ATTRIBUTE_UNUSED =
 {
   { "frv", ISA_FRV },
   { "max", ISA_MAX },
   { 0, 0 }
 };
 
-static const CGEN_ATTR_ENTRY UNIT_attr[] =
+static const CGEN_ATTR_ENTRY UNIT_attr[] ATTRIBUTE_UNUSED =
 {
   { "NIL", UNIT_NIL },
   { "I0", UNIT_I0 },
@@ -97,7 +101,7 @@ static const CGEN_ATTR_ENTRY UNIT_attr[] =
   { 0, 0 }
 };
 
-static const CGEN_ATTR_ENTRY FR400_MAJOR_attr[] =
+static const CGEN_ATTR_ENTRY FR400_MAJOR_attr[] ATTRIBUTE_UNUSED =
 {
   { "NONE", FR400_MAJOR_NONE },
   { "I_1", FR400_MAJOR_I_1 },
@@ -118,7 +122,7 @@ static const CGEN_ATTR_ENTRY FR400_MAJOR_attr[] =
   { 0, 0 }
 };
 
-static const CGEN_ATTR_ENTRY FR450_MAJOR_attr[] =
+static const CGEN_ATTR_ENTRY FR450_MAJOR_attr[] ATTRIBUTE_UNUSED =
 {
   { "NONE", FR450_MAJOR_NONE },
   { "I_1", FR450_MAJOR_I_1 },
@@ -143,7 +147,7 @@ static const CGEN_ATTR_ENTRY FR450_MAJOR_attr[] =
   { 0, 0 }
 };
 
-static const CGEN_ATTR_ENTRY FR500_MAJOR_attr[] =
+static const CGEN_ATTR_ENTRY FR500_MAJOR_attr[] ATTRIBUTE_UNUSED =
 {
   { "NONE", FR500_MAJOR_NONE },
   { "I_1", FR500_MAJOR_I_1 },
@@ -179,7 +183,7 @@ static const CGEN_ATTR_ENTRY FR500_MAJOR_attr[] =
   { 0, 0 }
 };
 
-static const CGEN_ATTR_ENTRY FR550_MAJOR_attr[] =
+static const CGEN_ATTR_ENTRY FR550_MAJOR_attr[] ATTRIBUTE_UNUSED =
 {
   { "NONE", FR550_MAJOR_NONE },
   { "I_1", FR550_MAJOR_I_1 },
@@ -1825,6 +1829,7 @@ const CGEN_HW_ENTRY frv_cgen_hw_table[] =
   { "h-uint", HW_H_UINT, CGEN_ASM_NONE, 0, { 0, { (1<<MACH_BASE) } } },
   { "h-addr", HW_H_ADDR, CGEN_ASM_NONE, 0, { 0, { (1<<MACH_BASE) } } },
   { "h-iaddr", HW_H_IADDR, CGEN_ASM_NONE, 0, { 0, { (1<<MACH_BASE) } } },
+  { "h-reloc-ann", HW_H_RELOC_ANN, CGEN_ASM_NONE, 0, { 0, { (1<<MACH_BASE) } } },
   { "h-pc", HW_H_PC, CGEN_ASM_NONE, 0, { 0|A(PROFILE)|A(PC), { (1<<MACH_BASE) } } },
   { "h-psr_imple", HW_H_PSR_IMPLE, CGEN_ASM_NONE, 0, { 0, { (1<<MACH_BASE) } } },
   { "h-psr_ver", HW_H_PSR_VER, CGEN_ASM_NONE, 0, { 0, { (1<<MACH_BASE) } } },
@@ -1989,6 +1994,7 @@ const CGEN_IFLD frv_cgen_ifld_table[] =
   { FRV_F_TLBPR_NULL, "f-TLBPR-null", 0, 32, 30, 2, { 0|A(RESERVED), { (1<<MACH_BASE) } }  },
   { FRV_F_LI_OFF, "f-LI-off", 0, 32, 25, 1, { 0|A(RESERVED), { (1<<MACH_BASE) } }  },
   { FRV_F_LI_ON, "f-LI-on", 0, 32, 25, 1, { 0|A(RESERVED), { (1<<MACH_BASE) } }  },
+  { FRV_F_RELOC_ANN, "f-reloc-ann", 0, 32, 0, 0, { 0, { (1<<MACH_BASE) } }  },
   { 0, 0, 0, 0, 0, 0, {0, {0}} }
 };
 
@@ -2279,10 +2285,6 @@ const CGEN_OPERAND frv_cgen_operand_table[] =
   { "label16", FRV_OPERAND_LABEL16, HW_H_IADDR, 15, 16,
     { 0, { (const PTR) &frv_cgen_ifld_table[FRV_F_LABEL16] } }, 
     { 0|A(PCREL_ADDR), { (1<<MACH_BASE) } }  },
-/* label24: 26 bit pc relative address */
-  { "label24", FRV_OPERAND_LABEL24, HW_H_IADDR, 17, 24,
-    { 2, { (const PTR) &FRV_F_LABEL24_MULTI_IFIELD[0] } }, 
-    { 0|A(PCREL_ADDR)|A(VIRTUAL), { (1<<MACH_BASE) } }  },
 /* LRAE: Load Real Address E flag */
   { "LRAE", FRV_OPERAND_LRAE, HW_H_UINT, 5, 1,
     { 0, { (const PTR) &frv_cgen_ifld_table[FRV_F_LRAE] } }, 
@@ -2351,6 +2353,10 @@ const CGEN_OPERAND frv_cgen_operand_table[] =
   { "uhi16", FRV_OPERAND_UHI16, HW_H_UINT, 15, 16,
     { 0, { (const PTR) &frv_cgen_ifld_table[FRV_F_U16] } }, 
     { 0, { (1<<MACH_BASE) } }  },
+/* label24: 26 bit pc relative address */
+  { "label24", FRV_OPERAND_LABEL24, HW_H_IADDR, 17, 24,
+    { 2, { (const PTR) &FRV_F_LABEL24_MULTI_IFIELD[0] } }, 
+    { 0|A(PCREL_ADDR)|A(VIRTUAL), { (1<<MACH_BASE) } }  },
 /* psr_esr: PSR.ESR bit */
   { "psr_esr", FRV_OPERAND_PSR_ESR, HW_H_PSR_ESR, 0, 0,
     { 0, { (const PTR) 0 } }, 
@@ -2383,6 +2389,18 @@ const CGEN_OPERAND frv_cgen_operand_table[] =
   { "tbr_tt", FRV_OPERAND_TBR_TT, HW_H_TBR_TT, 0, 0,
     { 0, { (const PTR) 0 } }, 
     { 0|A(SEM_ONLY), { (1<<MACH_BASE) } }  },
+/* ldann: ld annotation */
+  { "ldann", FRV_OPERAND_LDANN, HW_H_RELOC_ANN, 0, 0,
+    { 0, { (const PTR) &frv_cgen_ifld_table[FRV_F_RELOC_ANN] } }, 
+    { 0, { (1<<MACH_BASE) } }  },
+/* lddann: ldd annotation */
+  { "lddann", FRV_OPERAND_LDDANN, HW_H_RELOC_ANN, 0, 0,
+    { 0, { (const PTR) &frv_cgen_ifld_table[FRV_F_RELOC_ANN] } }, 
+    { 0, { (1<<MACH_BASE) } }  },
+/* callann: call annotation */
+  { "callann", FRV_OPERAND_CALLANN, HW_H_RELOC_ANN, 0, 0,
+    { 0, { (const PTR) &frv_cgen_ifld_table[FRV_F_RELOC_ANN] } }, 
+    { 0, { (1<<MACH_BASE) } }  },
 /* sentinel */
   { 0, 0, 0, 0, 0,
     { 0, { (const PTR) 0 } },
@@ -2892,7 +2910,7 @@ static const CGEN_IBASE frv_cgen_insn_table[MAX_INSNS] =
     FRV_INSN_LDUH, "lduh", "lduh", 32,
     { 0, { (1<<MACH_BASE), UNIT_LOAD, FR400_MAJOR_I_2, FR450_MAJOR_I_2, FR500_MAJOR_I_2, FR550_MAJOR_I_3 } }
   },
-/* ld$pack @($GRi,$GRj),$GRk */
+/* ld$pack $ldann($GRi,$GRj),$GRk */
   {
     FRV_INSN_LD, "ld", "ld", 32,
     { 0, { (1<<MACH_BASE), UNIT_LOAD, FR400_MAJOR_I_2, FR450_MAJOR_I_2, FR500_MAJOR_I_2, FR550_MAJOR_I_3 } }
@@ -2957,7 +2975,7 @@ static const CGEN_IBASE frv_cgen_insn_table[MAX_INSNS] =
     FRV_INSN_NLDF, "nldf", "nldf", 32,
     { 0|A(FR_ACCESS)|A(NON_EXCEPTING), { (1<<MACH_SIMPLE)|(1<<MACH_TOMCAT)|(1<<MACH_FR500)|(1<<MACH_FR550)|(1<<MACH_FRV), UNIT_LOAD, FR400_MAJOR_NONE, FR450_MAJOR_NONE, FR500_MAJOR_I_2, FR550_MAJOR_I_3 } }
   },
-/* ldd$pack @($GRi,$GRj),$GRdoublek */
+/* ldd$pack $lddann($GRi,$GRj),$GRdoublek */
   {
     FRV_INSN_LDD, "ldd", "ldd", 32,
     { 0, { (1<<MACH_BASE), UNIT_LOAD, FR400_MAJOR_I_2, FR450_MAJOR_I_2, FR500_MAJOR_I_2, FR550_MAJOR_I_3 } }
@@ -4197,7 +4215,7 @@ static const CGEN_IBASE frv_cgen_insn_table[MAX_INSNS] =
     FRV_INSN_JMPL, "jmpl", "jmpl", 32,
     { 0|A(UNCOND_CTI), { (1<<MACH_BASE), UNIT_I0, FR400_MAJOR_I_5, FR450_MAJOR_I_5, FR500_MAJOR_I_5, FR550_MAJOR_I_6 } }
   },
-/* calll$pack @($GRi,$GRj) */
+/* calll$pack $callann($GRi,$GRj) */
   {
     FRV_INSN_CALLL, "calll", "calll", 32,
     { 0|A(UNCOND_CTI), { (1<<MACH_BASE), UNIT_I0, FR400_MAJOR_I_5, FR450_MAJOR_I_5, FR500_MAJOR_I_5, FR550_MAJOR_I_6 } }
@@ -5160,7 +5178,7 @@ static const CGEN_IBASE frv_cgen_insn_table[MAX_INSNS] =
 /* cfmovs$pack $FRj,$FRk,$CCi,$cond */
   {
     FRV_INSN_CFMOVS, "cfmovs", "cfmovs", 32,
-    { 0|A(FR_ACCESS)|A(CONDITIONAL), { (1<<MACH_SIMPLE)|(1<<MACH_TOMCAT)|(1<<MACH_FR500)|(1<<MACH_FR550)|(1<<MACH_FRV), UNIT_FM01, FR400_MAJOR_NONE, FR450_MAJOR_NONE, FR500_MAJOR_F_1, FR550_MAJOR_F_2 } }
+    { 0|A(FR_ACCESS)|A(CONDITIONAL), { (1<<MACH_SIMPLE)|(1<<MACH_TOMCAT)|(1<<MACH_FR500)|(1<<MACH_FR550)|(1<<MACH_FRV), UNIT_FMALL, FR400_MAJOR_NONE, FR450_MAJOR_NONE, FR500_MAJOR_F_1, FR550_MAJOR_F_2 } }
   },
 /* fnegs$pack $FRj,$FRk */
   {

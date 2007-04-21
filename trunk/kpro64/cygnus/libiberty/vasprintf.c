@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Like vsprintf but provides a pointer to malloc'd storage, which must
    be freed by the caller.
    Copyright (C) 1994, 2003 Free Software Foundation, Inc.
@@ -26,6 +30,9 @@ Boston, MA 02111-1307, USA.  */
 #include <stdarg.h>
 #else
 #include <varargs.h>
+#endif
+#if !defined (va_copy) && defined (__va_copy)
+# define va_copy(d,s)  __va_copy((d),(s))
 #endif
 #include <stdio.h>
 #ifdef HAVE_STRING_H

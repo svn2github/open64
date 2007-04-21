@@ -1,5 +1,9 @@
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* ALPHA ELF support for BFD.
-   Copyright 1996, 1998, 2000 Free Software Foundation, Inc.
+   Copyright 1996, 1998, 2000, 2001, 2002 Free Software Foundation, Inc.
 
    By Eric Youngdale, <eric@aib.com>.  No processor supplement available
    for this platform.
