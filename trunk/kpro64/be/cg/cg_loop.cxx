@@ -6114,11 +6114,7 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, std::vector<SWP_FIXUP>& fixup,
  
   // Determine how to optimize the loop
   //
-#ifdef TARG_IA64
-  LOOP_OPT_ACTION action;
-#else
   LOOP_OPT_ACTION action = NO_LOOP_OPT;
-#endif
   BOOL has_trip_count = CG_LOOP_Trip_Count(loop) != NULL;
   BOOL single_bb = (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1);
 
@@ -6257,9 +6253,6 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
 	  CG_LOOP_Trace_Loop(loop, "*** after ebo 1 and prune predicate / before unrolling ***");
       }
 
-#ifdef TARG_IA64
-      Compute_Rec_Res_Min_II(cg_loop);
-#endif
       cg_loop.Determine_SWP_Unroll_Factor();
 
       if (cg_loop.Unroll_factor() > 1) {
@@ -6299,11 +6292,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
 
       if (!Perform_SWP(cg_loop, fixup, true /*doloop*/)) {
 	Undo_SWP_Branch(cg_loop, true /*is_doloop*/);
-#ifdef TARG_IA64
-	CG_LOOP_Remove_Notations(cg_loop, CG_LOOP_prolog, CG_LOOP_epilog);
-#else
 	CG_LOOP_Remove_Notations(loop, CG_LOOP_prolog, CG_LOOP_epilog);
-#endif
 	cg_loop.Recompute_Liveness();
       }
       break;
@@ -6346,11 +6335,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
 	  Unroll_Do_Loop(cg_loop, cg_loop.Unroll_factor());
 	}
 	cg_loop.Recompute_Liveness();
-#ifdef TARG_IA64
-	CG_LOOP_Remove_Notations(cg_loop, CG_LOOP_prolog, CG_LOOP_epilog);
-#else
         CG_LOOP_Remove_Notations(loop, CG_LOOP_prolog, CG_LOOP_epilog);
-#endif
       }
 
 #ifdef TARG_X8664
