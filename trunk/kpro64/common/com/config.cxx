@@ -1512,10 +1512,6 @@ Configure_Source ( char	*filename )
     if ( ! Recip_Set )
       Recip_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
 #endif
-#ifndef TARG_X8664 // apsi fails at -O3 because Rsqrt_Allowed is true
-    if ( ! Rsqrt_Set )
-      Rsqrt_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
-#endif
     /* Potential non-IEEE results for exact operations: */
     if ( ! Div_Split_Set )
       Div_Split_Allowed = IEEE_Arithmetic >= IEEE_ANY;
