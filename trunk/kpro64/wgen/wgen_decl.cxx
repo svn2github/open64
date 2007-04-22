@@ -1821,10 +1821,15 @@ AGGINIT::WGEN_Add_Aggregate_Init_Real (gs_t real, INT size)
       break;
     case 8:
       buffer = gs_tree_real_cst_d(real);
+      // Strange, why need convert the order?
       WGEN_Convert_To_Host_Order((long *)&buffer);
       tc = Host_To_Targ_Float (MTYPE_F8, buffer);
       break;
-#ifdef KEY
+#ifdef TARG_IA64
+    case 16:
+      tc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(real));
+      break;
+#else
     case 12:
     case 16:
       ldbuffer.qval[2] = 0;
@@ -1875,6 +1880,12 @@ AGGINIT::WGEN_Add_Aggregate_Init_Complex (gs_t rval, gs_t ival, INT size)
       WGEN_Convert_To_Host_Order((long *)&buffer);
       itc = Host_To_Targ_Float (MTYPE_F8, buffer);
       break;
+#ifdef TARG_IA64
+    case 32:
+      rtc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(rval));
+      itc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(ival));
+      break;
+#else      
     case 24:
     case 32:
       ldbuffer.qval[2] = 0;
@@ -1885,6 +1896,7 @@ AGGINIT::WGEN_Add_Aggregate_Init_Complex (gs_t rval, gs_t ival, INT size)
       ldbuffer.ld = gs_tree_real_cst_ld(ival);
       itc = Host_To_Targ_Quad(ldbuffer.ld);
       break;
+#endif
     default:
       FmtAssert(FALSE, ("WGEN_Add_Aggregate_Init_Complex unexpected size"));
       break;
