@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* Language-independent node constructors for parse phase of GNU compiler.
@@ -9401,6 +9401,9 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
             // TREE_VALUE
 	    gs_set_operand((gs_t) GS_NODE(t), GS_TREE_PURPOSE,
 		       gs_x_1(TREE_PURPOSE(t), seq_num));
+	    // bug 8346
+	    if (TREE_VALUE(t))
+	      STRIP_USELESS_TYPE_CONVERSION(TREE_VALUE(t));
 	    gs_set_operand((gs_t) GS_NODE(t), GS_TREE_VALUE,
 		       gs_x_1(TREE_VALUE(t), seq_num));
 	    break;
