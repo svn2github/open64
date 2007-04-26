@@ -65,8 +65,8 @@ struct compare_node
 {
     bool operator()(const REGIONAL_CFG_NODE* n1, const REGIONAL_CFG_NODE* n2) const
     {
-        mBB_NUM id1 = n1->Id();
-        mBB_NUM id2 = n2->Id();
+        INT32 id1 = n1->Id();
+        INT32 id2 = n2->Id();
     
         return ( id1 < id2 );
     }
@@ -80,6 +80,22 @@ struct compare_tn
        mTN_NUM num2 = TN_number(tn2); 
     
        return (num1 < num2);
+    }
+};
+
+struct compare_op
+{
+    bool operator()(const OP* op1, const OP* op2 ) const
+    {
+       mBB_NUM id1 = BB_id(OP_bb(op1)); 
+	mBB_NUM id2 = BB_id(OP_bb(op2)); 
+       mTN_NUM num1 = OP_map_idx(op1); 
+       mTN_NUM num2 = OP_map_idx(op2); 
+
+	if(id1 == id2){
+           return (num1 < num2);
+       }
+       return id1<id2;
     }
 };
 

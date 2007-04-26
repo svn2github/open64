@@ -300,12 +300,16 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     typedef mempool_allocator<TN*> TN_ALLOC;
     typedef std::set<TN*, compare_tn, TN_ALLOC> TNs;
 
+    typedef mempool_allocator<OP*> OP_ALLOC;
+    typedef std::set<OP*, compare_op, OP_ALLOC> OPs;
+
     typedef mempool_allocator< std::pair<REGIONAL_CFG_NODE*, TNs> > NODE_TNs_ALLOC;
     typedef std::map<REGIONAL_CFG_NODE*, TNs, compare_node, NODE_TNs_ALLOC>  NODE_TNs_MAP;
+    typedef std::map<REGIONAL_CFG_NODE*, OPs, compare_node, NODE_TNs_ALLOC>  NODE_OPs_MAP;
 
     NODE_TNs_MAP spec_chain_live;  // Record all live in TNs of the speculative chain.
     NODE_TNs_MAP spec_chain_def;   // Record all TNs that are defined on the speculative chain.
-    NODE_TNs_MAP _pdef_in_map;  // The same as the above map, but the definition is predicated.
+    NODE_OPs_MAP dependent_ops;
     
     BB* home_bb = OP_bb(chk);
     REGIONAL_CFG_NODE* root = Regional_Cfg_Node(home_bb);
@@ -336,8 +340,6 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
         spec_ld_tgt.insert(rslt);
     }
 
-    typedef mempool_allocator<OP*> OP_ALLOC;
-    std::vector<OP*, OP_ALLOC> dependent_ops;
  
     TN* chk_ptn = OP_opnd(chk,0);
     TN* spec_ld_ptn = OP_opnd(chk,0); 
@@ -351,12 +353,29 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
             continue; 
     
         // Initialize the associative data structures of the current BB.
-
+        bool the_first_iter = true;
         for (CFG_PRED_NODE_ITER pred_iter(node); pred_iter != 0; ++pred_iter) {
             if ( visited.find(*pred_iter) == visited.end()) 
                 continue;
             spec_chain_def[node].insert(spec_chain_def[*pred_iter].begin(), spec_chain_def[*pred_iter].end());
             spec_chain_live[node].insert(spec_chain_live[*pred_iter].begin(), spec_chain_live[*pred_iter].end());
+            if(the_first_iter){
+                dependent_ops[node].insert(dependent_ops[*pred_iter].begin(), dependent_ops[*pred_iter].end());
+                the_first_iter=false;
+            }else{
+                for(std::set<OP*, compare_op, OP_ALLOC>::iterator iter_op = dependent_ops[node].begin();
+                    iter_op != dependent_ops[node].end(); ){
+                    if(dependent_ops[*pred_iter].find(*iter_op) == dependent_ops[*pred_iter].end()){
+                        std::set<OP*, compare_op, OP_ALLOC>::iterator iter_op_er;
+                        iter_op_er=iter_op;
+                        ++iter_op;
+                        dependent_ops[node].erase(iter_op_er);
+                    }else{
+                        ++iter_op;
+                    }
+                }
+            }
+            
         }
        
         visited.insert(node);
@@ -377,13 +396,9 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     
             // If current op is already dependent on the chk,
             // go directly to handle its' successors.
-            for(std::vector<OP*, OP_ALLOC>::iterator iter = dependent_ops.begin(); 
-                 iter != dependent_ops.end(); iter++)
-            {
-                if(op == *iter){
-                    goto handle_succs;
-                }
-            }   
+            if(dependent_ops[node].find(op) != dependent_ops[node].end()){
+                goto handle_succs;
+            }
 
             // C1:
             // If the current op is a baneful op that in the same BB
@@ -506,9 +521,9 @@ gen_arc:
 handle_succs:
             for (ARC_LIST *arcs = OP_succs(op); arcs; arcs = ARC_LIST_rest(arcs)){
                 ARC *arc = ARC_LIST_first(arcs);
-                OP  *succ = ARC_succ(arc);
+                OP  *succ = ARC_succ(arc);				  
                 if(!OP_br(op) && !ARC_is_spec(arc))
-                    dependent_ops.push_back(succ);
+                    dependent_ops[node].insert(succ);
             }
         }
 
