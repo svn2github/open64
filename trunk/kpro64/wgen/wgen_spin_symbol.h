@@ -134,6 +134,17 @@ Get_TY (gs_t type_tree)
 	return Create_TY_For_Tree (type_tree, TY_IDX_ZERO);
 }
 
+// bug fix for OSP_133
+// return section name for corresponding ST via st_attr table
+struct find_st_attr_section_name {
+        ST_IDX st;
+        find_st_attr_section_name (const ST *s) : st (ST_st_idx (s)) {}
+        BOOL operator () (UINT, const ST_ATTR *st_attr) const {
+                return (ST_ATTR_kind (*st_attr) == ST_ATTR_SECTION_NAME &&
+                                ST_ATTR_st_idx (*st_attr) == st);
+        }
+};
+
 /*
  * either return a previously created ST associated with a
  * var-decl/parm-decl/function_decl, or create a new one.
@@ -142,6 +153,13 @@ inline ST *
 Get_ST (gs_t decl_tree)
 {
 	ST *st = DECL_ST(decl_tree);
+
+	/* If the st is null, we try to create it, so that we can handle its section name.
+	 * See OSP_133
+	 */
+	if (st == NULL)
+            st = Create_ST_For_Tree (decl_tree);
+
         if (st != NULL) {
 		if (gs_tree_code(decl_tree) == GS_VAR_DECL &&
 		    ST_sclass(st) == SCLASS_EXTERN   &&
@@ -177,9 +195,53 @@ Get_ST (gs_t decl_tree)
 		    st->u2.type = ty_idx;
 		  }
 		}
+                
+                // bug fix for OSP_133
+                /* if st has declared section name, and the section name isn't
+                     * the same as current tree node's section name attribute, store
+                     * the new section name in the str table and assign it to st*/
+		if (gs_tree_code(decl_tree) == GS_VAR_DECL &&
+                               ( ST_sclass(st) == SCLASS_EXTERN ||
+                                ST_sclass(st) == SCLASS_FSTATIC ||
+                                ST_sclass(st) == SCLASS_COMMON ||
+                                ST_sclass(st) == SCLASS_UGLOBAL ||
+                                ST_sclass(st) == SCLASS_DGLOBAL) &&
+                                !ST_is_weak_symbol(st) &&
+                                !gs_decl_external(decl_tree) &&
+                                gs_tree_static(decl_tree) &&
+                                gs_decl_section_name(decl_tree)) {
+                        ST_ATTR_IDX st_attr_idx;
+                        ST_IDX idx = ST_st_idx (st);
+                        // search for section name attribute in st_attr table
+                        st_attr_idx = For_all_until (St_Attr_Table,
+                                        ST_IDX_level (idx),
+                                        find_st_attr_section_name(st));
+                        // search for section name attribute in st_attr table
+                        st_attr_idx = For_all_until (St_Attr_Table,ST_IDX_level (idx),
+                                        find_st_attr_section_name(st));
+                        if (st_attr_idx){
+                                STR_IDX str_index = ST_ATTR_section_name(St_Attr_Table(ST_IDX_level (idx), st_attr_idx));
+                                // only when they have different section names
+                                if(strcmp(Index_To_Str(str_index),
+                                                        gs_tree_string_pointer(gs_decl_section_name (decl_tree))))
+                                         Set_ST_ATTR_section_name(St_Attr_Table(ST_IDX_level (idx), st_attr_idx),
+                                         Save_Str (gs_tree_string_pointer(gs_decl_section_name (decl_tree))));}
+                                // bug fix for OSP_136
+                                /* if the old tree node doesn't have section name
+                                 * attribute, create one for current tree node */
+                        else {
+                                DevWarn ("section %s specified for %s",
+                                                gs_tree_string_pointer(gs_decl_section_name (decl_tree)), ST_name (st));
+                                ST_ATTR&    st_attr = New_ST_ATTR (ST_IDX_level (idx), st_attr_idx);
+                                ST_ATTR_Init (st_attr, idx, ST_ATTR_SECTION_NAME,
+                                                Save_Str (gs_tree_string_pointer(gs_decl_section_name (decl_tree))));
+                        }
+
+			if (!gs_decl_initial(decl_tree))
+			    Set_ST_sclass (st, SCLASS_UGLOBAL);
+                }
 #endif
         }
-	else st = Create_ST_For_Tree (decl_tree);
 	if ((CURRENT_SYMTAB > GLOBAL_SYMTAB + 1) &&
 	    ((gs_tree_code(decl_tree) == GS_VAR_DECL) ||
 	     (gs_tree_code(decl_tree) == GS_PARM_DECL)) &&
