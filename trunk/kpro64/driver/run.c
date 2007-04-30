@@ -424,10 +424,12 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 		my_putenv ("COMPILER_PATH", "%s", get_phase_dir(P_collect));
 
 		/* Tell IPA where to find the driver. */
-		#ifdef PSC_TO_OPEN64
-		my_putenv ("COMPILER_BIN", "%s/" OPEN64_NAME_PREFIX "cc-"
-			   OPEN64_FULL_VERSION, get_executable_dir());
-		#endif
+		// Fix the bug "*/cc-3.0: No such file or directory"
+		// actually, on IA64, the corresponding path is from $TOOLROOT
+		//
+#if defined(PSC_TO_OPEN64) && defined(TARG_X8664)
+		my_putenv ("COMPILER_BIN", "%s/" OPEN64_NAME_PREFIX "opencc", get_executable_dir());
+#endif
 
 		my_execv(name, argv);
 	} else {

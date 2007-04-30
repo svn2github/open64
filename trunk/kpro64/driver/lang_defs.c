@@ -47,6 +47,7 @@
 #include "string_utils.h"
 #include "errors.h"
 char *ldpath_for_pixie = NULL;
+
 /*
  * If you change any of these keys, be sure to also change the keys
  * in the OPTIONS table.
@@ -160,7 +161,7 @@ static phase_info_t phase_info[] = {
    {'a',  0x0000003000000000LL,	"",	"",		FALSE},	/* any_as */
 
    {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE},/* dsm_prelink*/
-   {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH,TRUE},	/* ipa_link */
+   {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH, TRUE},	/* ipa_link */
    {'l',  0x0000020000000000LL,	"ld", BINPATH, TRUE},	/* collect */
 #if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
    /* on x8664, we alwayse use gcc/g++ as the linker */
@@ -375,7 +376,21 @@ append_phase_dir (phases_t index, char *path)
 char *
 get_phase_dir (phases_t index)
 {
-	return phase_info[index].dir;
+// when -ipa, reset the location of ipa_link to the installed directory
+//
+	if (index == P_ipa_link) {
+#ifdef TARG_X8664
+	  char *open64_install_prefix;
+	  char *open64_ipalink_dir;
+	  open64_install_prefix = getenv ("OPEN64_INSTALL_PREFIX");
+	  asprintf (&open64_ipalink_dir, "%s/lib/3.0", open64_install_prefix);
+	  return open64_ipalink_dir;
+#else
+	  return phase_info[index].dir;
+#endif
+	}
+	else
+	  return phase_info[index].dir;
 }
 
 void

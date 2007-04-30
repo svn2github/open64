@@ -316,7 +316,13 @@ ipa_compile_init ()
 
   static char* smake_base = ALTBINPATH "/usr/bin/make";
 #ifdef PSC_TO_OPEN64
-  static char* tmp_cc_name_base = OPEN64_INSTALL_PREFIX "/bin/" OPEN64_NAME_PREFIX "cc";
+  // when ipa_link -show -keep, fix the bug -fpic1 -show is not recognized,
+  // due to the ld driver is /usr/bin/gcc, not $/opencc.
+  // static char* tmp_cc_name_base = OPEN64_INSTALL_PREFIX "/bin/" OPEN64_NAME_PREFIX "cc";
+  //
+  char* open64_install_prefix = getenv("OPEN64_INSTALL_PREFIX");
+  static char* tmp_cc_name_base;
+  asprintf (&tmp_cc_name_base, "%s/bin/opencc", open64_install_prefix);
 #endif
   static char* cc_name_base = tmp_cc_name_base;
   static char* cord_name_base= "/usr/bin/gen_cord";
