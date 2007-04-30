@@ -452,7 +452,9 @@ void RGN_Add_Regional_Cfg_Edge(BB *pred,
  
         while(succ_rgn != com_par){
             // update the entry set of succ_rgn
-            succ_rgn->Regional_Cfg()->Add_To_Entries(succ_node);
+	    succ_rgn->Regional_Cfg()->Add_To_Entries(succ_node);
+	    if(succ_rgn->Regional_Cfg()->Num_Of_Entries() > 1 && succ_rgn->Region_Type() == SEME)
+	      succ_rgn->Region_Type(MEME);
             succ_node = succ_rgn->Regional_Cfg_Node();
             succ_rgn = succ_node->Home_Region();
         };
