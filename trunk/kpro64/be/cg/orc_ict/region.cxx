@@ -2046,6 +2046,7 @@ REGIONAL_CFG::Compute_Edges_Freq(void) {
     NODE_ALLOC temp_alloc(&_m);
     NODE_LIST  temp_list(temp_alloc);
     BS          *bb_exits = BS_Create_Empty(2+PU_BB_Count, &_m); 
+    BS          *bb_entries = BS_Create_Empty(2+PU_BB_Count, &_m);
     for (TOPOLOGICAL_REGIONAL_CFG_ITER iter(this);iter != 0; ++iter) {
         BS_ClearD(bb_exits);
         NODE_VECTOR  node_exits(temp_alloc);
@@ -2126,10 +2127,9 @@ REGIONAL_CFG::Compute_Edges_Freq(void) {
             REGIONAL_CFG_NODE *succ = (*succ_iter)->Dest();
 
             if (succ->Is_Region()) {
-                BS          *bb_entries;
                 NODE_QUEUE   que;
+                BS_ClearD(bb_entries);
                 
-                bb_entries = BS_Create_Empty(2+PU_BB_Count, &_m);
                 que.push(succ);
                 //--------------------------------------------------------------
                 // If the succ node is a region,compute the bb entries of this
