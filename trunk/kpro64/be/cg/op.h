@@ -283,6 +283,8 @@
 #ifdef TARG_IA64
 /* Include the values for the variant field: */
 #include "variants.h"
+#include <vector>
+using std::vector;
 #endif
 
 /* to get the definition of SRCPOS. */
@@ -340,6 +342,8 @@ typedef struct op {
   mUINT8	results;	/* Number of results */
   mUINT8	opnds;		/* Number of operands */
 #ifdef TARG_IA64
+  mUINT8       hidden_opnds;   /* Number of hidden operands, <opnds> include
+				* hidden_opnds*/
   mUINT8        flag_value_profile;       /* flag to identify value_profile */
   mUINT32       value_profile_id;       /* unique ID to indicate value profiled No. */
   mUINT8        flag_stride_profile;      /* flag to identify stride_profile */
@@ -367,10 +371,14 @@ typedef struct op {
  * OP_opnd_offset and OP_result_offset give the offset into the
  * array to the start of the operands and results. 
  * NOTE: the offset is NOT constant for all OPs!!!
+ * NOTE: Add_Hidden_Operands() and Remove_Hidden_Operands() also 
+ *   assume that results are placed right after source operands.  
+ *   If the layout is changed, these two functions need to be changed
+ *   too.
  */
+
 #define OP_opnd_offset(o)	(0)
 #define OP_result_offset(o)	OP_opnds(o)
-
 /* Define the access functions: */
 #define OP_srcpos(o)	((o)->srcpos)
 #ifdef KEY
@@ -398,6 +406,9 @@ typedef struct op {
 #define OP_bb(o)	((o)->bb+0)
 #define OP_results(o)	((o)->results+0)
 #define OP_opnds(o)	((o)->opnds+0)
+#ifdef TARG_IA64
+#define OP_hidden_opnds(o) ((o)->hidden_opnds+0)
+#endif
 #define OP_code(o)	((TOP)(o)->opr)
 #define OP_result(o,n)	((struct tn *)(o)->res_opnd[(n)+OP_result_offset(o)])
 #define OP_opnd(o,n)	((struct tn *)(o)->res_opnd[(n)+OP_opnd_offset(o)])
@@ -1272,6 +1283,34 @@ TN_Opernum_In_OP (OP* op, struct tn *tn)
              ("TN_Opernum_in_OP: Could not find <tn> in operands list\n"));
   return -1;
 }
+
+#ifdef TARG_IA64
+inline void
+Remove_Hidden_Operands (OP* op) {
+  if (op->hidden_opnds == 0) return;
+
+  // remove the results to upward so that there is 
+  // no gap between operands and resutls 
+  INT from_idx, to_idx;
+  from_idx = op->opnds;
+
+  op->opnds -= op->hidden_opnds;
+  to_idx = op->opnds;
+
+  for (INT i = 0; i < op->results; i++) {
+    op->res_opnd[to_idx++] = op->res_opnd[from_idx++];
+  }
+
+  op->hidden_opnds = 0;
+}
+
+void Add_Hidden_Operands (OP* op, const vector<struct tn*> & opnds);
+
+inline BOOL Is_Hidden_Opnd (OP* op, UINT8 opnd) {
+  return OP_hidden_opnds(op) != 0 && opnd < OP_opnds(op) &&
+    opnd >= (OP_opnds(op) - OP_hidden_opnds(op));
+}
+#endif
 
 /* Is <op> a copy from a callee-saves register into its save-TN?  */
 BOOL OP_Is_Copy_To_Save_TN (const OP*);

@@ -188,6 +188,7 @@ static BOOL Trace_Move_GRA_Spills;      /* -Wb,-tt54:0x10 */
 typedef struct live_range {
   TN *tn;               /* the live range tn */
   mINT16 first_def;     /* instruction number for first def in live range. */
+  mINT16 first_unc_def; /* instruction number for the first unconditional def */
   mINT16 last_use;      /* instruction number for last use in live range. */
   mINT16 exposed_use;   /* instruction number for last exposed use (if any) */
   mUINT8 def_cnt;       /* number of defs in the live range. */
@@ -200,6 +201,7 @@ typedef struct live_range {
 
 #define LR_tn(lr)               ((lr)->tn)
 #define LR_first_def(lr)        ((lr)->first_def)
+#define LR_first_unc_def(lr)    ((lr)->first_unc_def)
 #define LR_last_use(lr)         ((lr)->last_use)
 #define LR_exposed_use(lr)      ((lr)->exposed_use)
 #define LR_def_cnt(lr)          ((lr)->def_cnt)
@@ -873,21 +875,12 @@ Setup_Live_Ranges (BB *bb, BOOL in_lra, MEM_POOL *pool)
 #endif
       TN *tn = OP_result(op, resnum);
       LIVE_RANGE *clr = Create_LR_For_TN (tn, bb, in_lra, pool);
-      if (OP_cond_def(op) &&
-          TN_is_global_reg(tn) &&
-          (!TN_is_dedicated(tn) ||
-           (CGTARG_Is_Preference_Copy(op) &&
-            TN_is_local_reg(OP_opnd(op,CGTARG_Copy_Operand(op))) &&
-            TN_spill(OP_opnd(op,CGTARG_Copy_Operand(op))))) &&
-          (LRA_TN_register(tn) != REGISTER_UNDEFINED) &&
-          !REGISTER_SET_MemberP(avail_set[TN_register_class(tn)], LRA_TN_register(tn))) {
-       /* Note: This series of checks was added because
+      if (OP_cond_def(op) && TN_is_global_reg(tn) 
+	  && LR_first_unc_def(clr) == 0) {
+        /* Note: This series of checks was added because
           conditionally defined values may require that a previous value be
-          carried into a block. We also need to detect when a spilled value
-          was reloaded and is copied into a dedicated register, because the
-          code that creates spills and reloads is not smart enough to add
-          the proper predicates to the memory ops. 
-
+	  carried into a block.
+	  
           The intent of this check is to extend the live range of the register
           to the top of the block.  Unfortunately, this is overly conservative
           and sometimes results in a free register being unavailable for use.
@@ -902,6 +895,12 @@ Setup_Live_Ranges (BB *bb, BOOL in_lra, MEM_POOL *pool)
       if (LR_def_cnt(clr) == 0) {
         LR_first_def(clr) = opnum;
       }
+
+      if (LR_first_unc_def(clr) == 0 && !OP_cond_def(op)) {
+	LR_first_unc_def(clr) = opnum;
+      }
+      
+
       LR_def_cnt(clr)++;
       if (TN_is_local_reg(tn)) {
 #ifdef TARG_X8664 
@@ -1874,7 +1873,9 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 #ifdef TARG_IA64
           //OSP 210, we need to include the side effect of volatility
           //         so change OP_has_sideeffects to implicit_interactions
-          if (TN_is_local_reg(result_tn) && (unused_tn_def[result_cl] != NULL) && !OP_has_implicit_interactions(op)) {
+          if (TN_is_local_reg(result_tn) &&
+	      (unused_tn_def[result_cl] != NULL) &&
+	      !OP_has_implicit_interactions(op)) {
 #else
 	  if (TN_is_local_reg(result_tn) && (unused_tn_def[result_cl] != NULL) && !OP_side_effects(op)) {
 #endif
@@ -1979,7 +1980,15 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 #endif
         
 #ifdef TARG_IA64
-      if (ok_to_free_result && opnum == LR_first_def(clr) && result_reg <= REGISTER_MAX) {
+	// HINT: conditional def does not necessarily kill reaching def
+	if (result_reg > REGISTER_MAX ||
+	    TN_is_global_reg(result_tn) &&
+	    (OP_cond_def(op) || opnum != LR_first_def(clr)) ||
+	    !TN_is_global_reg(result_tn) && opnum != LR_first_def(clr)) {
+	  ok_to_free_result = FALSE;
+	}
+
+	if (ok_to_free_result) {
 #else
       if (ok_to_free_result && opnum == LR_first_def(clr)) {
 #endif

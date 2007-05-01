@@ -66,6 +66,7 @@
 #include "opt_alias_mgr.h"
 #include "cgir.h"
 #include "cg.h"
+#include "targ_sim_core.h"
 #include "void_list.h"
 #include "cg_dep_graph.h"
 #include "cg_spill.h"
@@ -3324,6 +3325,27 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
       (OP_code(pred_op)==TOP_fsetc) &&
       (OP_code(succ_op)==TOP_fcvt_fx) )
     *latency = MAX(1, *latency);
+
+  if ((OP_call (succ_op) || OP_code(succ_op) == TOP_br_ret) &&
+      kind == CG_DEP_REGIN &&
+      opnd >= OP_opnds(succ_op) - succ_op->hidden_opnds) {
+    *latency = 0;
+  } else if (OP_call (pred_op) && kind == CG_DEP_REGANTI &&
+	     opnd >= OP_opnds(pred_op) - pred_op->hidden_opnds) {
+    *latency = 1;
+  }
+
+  // "call" and "return" instruction has hidden operand, the latency for the
+  // depenence arise form hidden operand should be 0 if we want the dependent
+  // instruction fit in one cycle or one if we want them at least 1 cycle apart.
+  //
+  if ((OP_call (succ_op) || OP_code(succ_op) == TOP_br_ret) &&
+      kind == CG_DEP_REGIN && Is_Hidden_Opnd(succ_op, opnd)) {
+    *latency = 0;
+  } else if (OP_call (pred_op) && kind == CG_DEP_REGANTI &&
+	     Is_Hidden_Opnd(pred_op, opnd)) {
+    *latency = 1;
+  }	
 }
 
 BOOL
@@ -4742,6 +4764,61 @@ void Fix_Cache_Conflict_latency(BB *bb){
 
         mem_ops.push_back(op);
     }
+}
+
+/* return the max number of hidden operands the given <top> may have */
+INT32 CGTARG_Max_Number_of_Hidden_Opnd (mTOP top) {
+  if (TOP_is_call (top)) {
+    return MAX_NUMBER_OF_REGISTER_PARAMETERS*2;
+  } else if (top == TOP_br_ret) {
+    return MAX_NUMBER_OF_REGISTERS_FOR_RETURN*2;
+  }
+  
+  return 0;
+}
+
+/* Go through all OP in the current PU and and hidden their hidden operands
+    + */
+void CGTARG_Add_Implict_Operands (void) {
+
+  vector<TN*> opnds(16);
+  OP* op;
+
+  for (BB* blk = REGION_First_BB; blk != NULL; blk = BB_next(blk)) {
+    if (!BB_call(blk) && !BB_exit (blk)) continue;
+    
+    opnds.clear ();
+    FOR_ALL_BB_OPs (blk, op) {
+      for (INT i = 0; i < OP_results(op); i++) {
+	TN* res = OP_result(op, i);
+	if (!TN_is_register (res) || !TN_is_dedicated(res)) {
+	  continue;
+	}
+	
+	if (BB_call(blk)) {
+	  PREG_NUM pnum = TN_To_PREG (res);
+	  if ((Is_Int_Output_Preg (pnum) || Is_Fp_Output_Preg
+	       (pnum)) &&
+	      find(opnds.begin (), opnds.end(), res) == opnds.end())
+	    {
+	      opnds.push_back (res);
+	    }
+	} else if (Is_Return_Preg (TN_To_PREG (res)) &&
+		   find(opnds.begin (), opnds.end(), res) ==
+		   opnds.end()) {
+	  opnds.push_back (res);
+	}
+      }/* end of for */
+    } /* FOR_ALL_BB_OPs */
+    
+    if (opnds.size () != 0) {
+      OP* xfer = BB_xfer_op (blk);
+      Is_True (TOP_is_call (OP_code(xfer)) ||
+	       OP_code(xfer) == TOP_br_ret,
+	       ("expected xfer op is either call or return"));
+      Add_Hidden_Operands (xfer, opnds);
+    }
+  }
 }
 
 

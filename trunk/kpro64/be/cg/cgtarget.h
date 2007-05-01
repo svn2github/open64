@@ -866,6 +866,12 @@ extern BOOL CGTARG_Check_OP_For_HB_Suitability(OP *op);
 #ifdef TARG_IA64
 /* Return TRUE if OP is def use stack register; */
 extern BOOL OP_def_use_stack_regs(OP* op);
+
+/* return the max number of hidden operands given <op> may have */
+extern INT32 CGTARG_Max_Number_of_Hidden_Opnd (mTOP top);
+
+/* Go through all OP in the current PU and and hidden their hidden operands */
+extern void CGTARG_Add_Implict_Operands (void);
 #endif
 extern TN* CGTARG_Gen_Dedicated_Subclass_TN( OP* op, int idx, BOOL is_result );
 

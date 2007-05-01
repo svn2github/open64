@@ -646,6 +646,11 @@ CG_Generate_Code(
   Config_Ipfec_Flags();
 #endif  
   Generate_Entry_Exit_Code ( Get_Current_PU_ST(), region );
+#ifdef TARG_IA64
+  if (!CG_localize_tns) {
+    CGTARG_Add_Implict_Operands ();
+  }
+#endif
   Stop_Timer ( T_Expand_CU );
   Check_for_Dump ( TP_CGEXP, NULL );
 

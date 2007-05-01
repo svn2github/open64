@@ -74,6 +74,9 @@ extern BOOL Is_Return_Preg (PREG_NUM preg);
 /* return whether preg is an output preg */
 extern BOOL Is_Int_Output_Preg (PREG_NUM preg);
 
+/* return whether preg is FP output preg */
+extern BOOL Is_Fp_Output_Preg (PREG_NUM preg);
+
 /* return whether preg is an input parameter preg */
 extern BOOL Is_Formal_Preg (PREG_NUM preg);
 
