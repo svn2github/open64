@@ -2080,96 +2080,17 @@ Perform_Interprocedural_Optimization (void)
   }
 #endif
 
+  if (Get_Trace(TP_IPA, IPA_TRACE_TUNING)) {
+    #pragma mips_frequency_hint NEVER
+    extern void Print_inline_decision (void);
+    Print_inline_decision ();
+  }
 
-//pengzhao
-// this chunk of code print the inlining decision like the ecc style
-if(Get_Trace(TP_IPA, IPA_TRACE_TUNING))
-{
-  FILE *orc_script = fopen ("orc_script.log", "w");
-		  INT32 callsite_linenum;
-		  INT32 callsite_colnum;
-		  USRCPOS callsite_srcpos;
-    	  char  *caller_filename, *callee_filename;
-    	  char  *caller_funcname, *callee_funcname;
-
-  IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
-  fprintf(orc_script, "\n#BEGIN_INLINE\n\n");
-  
-  for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) 
-  {
-
-    IPA_NODE* node = cg_iter.Current();
-	
-    if (node) 
-	{
-
-			// Important for the getting WN from edge
-	  IPA_NODE_CONTEXT context (node);
-	  IPA_Call_Graph->Map_Callsites (node);
-
-	  // get the node-caller's filename
-      IP_FILE_HDR& caller_hdr = node->File_Header ();
-	  caller_filename = (char *) alloca(strlen(caller_hdr.file_name)+1);
-	  strcpy(caller_filename, caller_hdr.file_name);
-			
-	  fprintf(orc_script, "COMPILE (\"%s\",%s,NOREG) {\n", DEMANGLE(caller_filename), DEMANGLE(IPA_Node_Name(node)));
-      BOOL seen_callee = FALSE;
-
-      IPA_SUCC_ITER succ_iter(node);
-      for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {
-		IPA_EDGE* tmp_edge = succ_iter.Current_Edge();
-		if(tmp_edge)
-		{
-		  EDGE_INDEX   tmp_idx = tmp_edge->Edge_Index();
-		  WN* call_wn = tmp_edge->Whirl_Node();
-		  IPA_NODE* callee =IPA_Call_Graph->Callee( tmp_idx ); 
-    	  IP_FILE_HDR& callee_hdr = callee->File_Header ();
-
-    	  if (call_wn == NULL) 
-		  {
-       			fprintf (orc_script, "Warning: no source line number found for call-edge [%s --> %s]\n", node->Name(), callee->Name());
-       	  		callsite_linenum = 0;
-				callsite_colnum = -1;
-
-    	  } else 
-		  {
-      			USRCPOS_srcpos(callsite_srcpos) = WN_Get_Linenum (call_wn);
-      			callsite_linenum = USRCPOS_linenum(callsite_srcpos);
-				callsite_colnum  = USRCPOS_column(callsite_srcpos);
-		  }
-
-  		  callee_filename = (char *) alloca(strlen(callee_hdr.file_name)+1);
-		  strcpy(callee_filename, callee_hdr.file_name);
-		  
-//          if (IPA_NODE* callee =IPA_Call_Graph->Callee( tmp_idx )) 
-		  {
-			if(IPA_Enable_Inline && tmp_edge->Has_Inline_Attrib () && !callee->Has_Noinline_Attrib())
-		    {
-              fprintf(orc_script, "  INLINE (%d,%d,\"%s\",%s,NOREG) {\n  }\n",callsite_linenum,callsite_colnum, callee_filename, DEMANGLE(IPA_Node_Name(callee)) );
-              seen_callee = TRUE;
-            }else // should inline the callee
-		    {
-//              fprintf(orc_script, "  CALL (%s)\n",IPA_Node_Name(callee) );
-              fprintf(orc_script, "  CALL (%d,%d,\"%s\",%s,NOREG)\n",callsite_linenum,callsite_colnum, callee_filename, DEMANGLE(IPA_Node_Name(callee)) );
-		  
-		    }
-//          fprintf(fp, "    %s(%f)->%s (edge_freq = %f, callee_freq = %f)\n", IPA_Node_Name(node),(node->Get_frequency())._value ,IPA_Node_Name(callee), (tmp_edge->Get_frequency())._value, (callee->Get_frequency())._value);
-         }
-		}// if(tmp_edge)
-      }//for all edges
-
-      fprintf(orc_script, "}\n");
-    }// if(node)
-  }// for all node
-  fprintf(orc_script, "\n#END_INLINE\n\n");
-  fclose (orc_script);
-}
-	if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW)) // -tt19:0x80000
-	{
-	    fprintf(TFile, "\t+++++++++++++++++++++++++++++++++++++++\n");
-  	    IPA_Call_Graph->Print_vobose(TFile);
-	    fprintf(TFile, "\t+++++++++++++++++++++++++++++++++++++++\n");
-	}
+  if (Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW)) {
+    fprintf(TFile, "\t+++++++++++++++++++++++++++++++++++++++\n");
+    IPA_Call_Graph->Print_vobose(TFile);
+    fprintf(TFile, "\t+++++++++++++++++++++++++++++++++++++++\n");
+  }
 
   IPO_main (IPA_Call_Graph);
 
@@ -2241,3 +2162,79 @@ if(Get_Trace(TP_IPA, IPA_TRACE_TUNING))
 
 } // Perform_Interprocedural_Optimization
 
+// This function prints the inlining decision in ecc style.
+void
+Print_inline_decision (void) {
+
+  FILE *orc_script = fopen ("orc_script.log", "w");
+  INT32 callsite_linenum;
+  INT32 callsite_colnum;
+  USRCPOS callsite_srcpos;
+  char *caller_filename, *callee_filename;
+  char *caller_funcname, *callee_funcname;
+
+  IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
+  fprintf (orc_script, "\n#BEGIN_INLINE\n\n");
+  
+  for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+
+    IPA_NODE* node = cg_iter.Current();
+    if (node) {
+      // Important for the getting WN from edge
+      IPA_NODE_CONTEXT context (node);
+      IPA_Call_Graph->Map_Callsites (node);
+
+      // get the node-caller's filename
+      IP_FILE_HDR& caller_hdr = node->File_Header ();
+      caller_filename = (char *) alloca(strlen(caller_hdr.file_name)+1);
+      strcpy(caller_filename, caller_hdr.file_name);
+			
+      fprintf (orc_script, "COMPILE (\"%s\",%s,NOREG) {\n", 
+               DEMANGLE(caller_filename), DEMANGLE(IPA_Node_Name(node)));
+      BOOL seen_callee = FALSE;
+
+      IPA_SUCC_ITER succ_iter(node);
+      for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {
+         IPA_EDGE* tmp_edge = succ_iter.Current_Edge();
+         if (tmp_edge) {
+	   EDGE_INDEX   tmp_idx = tmp_edge->Edge_Index();
+	   WN* call_wn = tmp_edge->Whirl_Node();
+	   IPA_NODE* callee =IPA_Call_Graph->Callee( tmp_idx ); 
+
+    	   IP_FILE_HDR& callee_hdr = callee->File_Header ();
+
+    	   if (call_wn == NULL) {
+             fprintf (orc_script, "Warning: no source line number found for call-edge [%s --> %s]\n", node->Name(), callee->Name());
+       	     callsite_linenum = 0;
+	     callsite_colnum = -1;
+    	   } else {
+             USRCPOS_srcpos(callsite_srcpos) = WN_Get_Linenum (call_wn);
+             callsite_linenum = USRCPOS_linenum(callsite_srcpos);
+	     callsite_colnum  = USRCPOS_column(callsite_srcpos);
+           }
+
+           callee_filename = (char *) alloca(strlen(callee_hdr.file_name)+1);
+           strcpy (callee_filename, callee_hdr.file_name);
+		  
+	   if (IPA_Enable_Inline && tmp_edge->Has_Inline_Attrib () && 
+	       !callee->Has_Noinline_Attrib()) {
+              fprintf (orc_script, "  INLINE (%d,%d,\"%s\",%s,NOREG) {\n  }\n",
+	               callsite_linenum,callsite_colnum, callee_filename, 
+		       DEMANGLE(IPA_Node_Name(callee)) );
+              seen_callee = TRUE;
+           } else {
+              // should inline the callee
+              fprintf (orc_script, "  CALL (%d,%d,\"%s\",%s,NOREG)\n",
+	               callsite_linenum,callsite_colnum, callee_filename, 
+		       DEMANGLE(IPA_Node_Name(callee)) );
+           }
+         }
+      }//end of for-loop
+
+      fprintf(orc_script, "}\n");
+    }
+  }
+
+  fprintf(orc_script, "\n#END_INLINE\n\n");
+  fclose (orc_script);
+}

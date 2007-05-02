@@ -1556,6 +1556,13 @@ Build_Call_Graph ()
 
   IPA_Call_Graph_Built = TRUE;
 
+  if (Get_Trace(TP_IPA, IPA_TRACE_TUNING)) {
+    FILE *tmp_call_graph = fopen("cg_dump.log", "w");
+    if (tmp_call_graph != NULL) {
+      IPA_Call_Graph->Print_vobose(tmp_call_graph);
+      fclose(tmp_call_graph);
+    }
+  }
 } // Build_Call_Graph
 
 

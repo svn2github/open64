@@ -2009,12 +2009,8 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
     for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
 	IPA_NODE* caller = cg_iter.Current();
 
-
-
 	if (caller == NULL)
 	    continue;
-//	;;printf("&&&&&&&&&&&& Considering %s\n", caller->Name());
-//	;;fflush(stdout);
 
 	if (caller->Should_Be_Skipped()) { 
 	    Total_Inlined++;
@@ -2069,14 +2065,10 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
     
 #endif  // _STANDALONE_INLINER
 
-if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING))
-{
-	fclose(e_weight);
-	fclose(Y_inlining);
-	fclose(N_inlining);
-	fclose(Verbose_inlining);
-}
+    if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
+        fclose(e_weight);
+        fclose(Y_inlining);
+        fclose(N_inlining);
+        fclose(Verbose_inlining);
+    }
 } // Perform_Inline_Analysis
-
-
-

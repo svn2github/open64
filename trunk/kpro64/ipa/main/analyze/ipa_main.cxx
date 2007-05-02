@@ -321,20 +321,6 @@ Perform_Interprocedural_Analysis ()
 	    fprintf (TFile, "\t<<<Call Graph Construction begins>>>\n");
 	
 	Build_Call_Graph ();
-//pengzhao
-	if(Get_Trace(TP_IPA, IPA_TRACE_TUNING)) // -tt19:0x40000
-	{
-  	  FILE *tmp_call_graph = fopen("cg_dump.log", "w");
-
-	  if(tmp_call_graph != NULL)
-	  {	  
-	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
-	    // KEY
-  	    IPA_Call_Graph->Print_vobose(tmp_call_graph);
-	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
-	  }
-	  fclose(tmp_call_graph);
-	}
 
 #ifdef KEY
 	if( IPA_Enable_Icall_Opt ){
