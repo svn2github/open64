@@ -125,11 +125,11 @@ SECTION Sections[_SEC_INDEX_MAX] = {
 #else
 #ifdef KEY
   {_SEC_EH_REGION,      NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
+     0|SHF_ALLOC|SHF_MIPS_NAMES,
         SHT_PROGBITS, 0,
      INT64_MAX, ".except_table", 0},
   {_SEC_EH_REGION_SUPP, NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
+     0|SHF_ALLOC|SHF_MIPS_NAMES,
         SHT_PROGBITS, 0,
      INT64_MAX, ".except_table_supp", 0},
 #else
@@ -189,4 +189,3 @@ SEC_is_nobits (SECTION_IDX sec)
 {
 	return (SEC_type(sec) & SHT_NOBITS);
 }
-
