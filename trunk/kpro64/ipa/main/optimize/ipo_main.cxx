@@ -1161,35 +1161,6 @@ Perform_Alias_Class_Annotation(void)
   }
 }
 
-static void 
-Evaluate_RSE_Cost(MEM_POOL *pool) {
-    if (! have_open_input_file) {
-        fin = fopen("struc_feedback","r");
-        have_open_input_file = TRUE;
-        while (!feof(fin)) {
-            REG_FB_POINTER reg_fb = CXX_NEW(struct reg_feedback,pool);
-            fread(reg_fb,1,sizeof(struct reg_feedback),fin);
-            REG_FB_INFO_TABLE[reg_fb->_func_name] = reg_fb;
-        }
-        fclose(fin);
-    }
-}
-
-static void
-Construct_Budget_Table(IPA_CALL_GRAPH *cg,MEM_POOL *pool) {
-    IPA_NODE_ITER cg_iter(cg,PREORDER);
-    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-        IPA_NODE* node = cg_iter.Current();
-        if (node) { 
-            if (! node->Is_Deletable()) {
-                REG_BUDGET_POINTER reg_budget_ptr = CXX_NEW(struct reg_budget,pool);
-                reg_budget_ptr->_node = node; 
-                REG_BUDGET_TABLE[IPA_Node_Name(node)] = reg_budget_ptr;
-            }
-        }
-    }
-}
-
 static IPA_EDGE *
 Get_Most_Frequent_Succ(IPA_NODE *seed,IPA_CALL_GRAPH *cg) {
     IPA_SUCC_ITER succ_iter (seed);
@@ -1765,8 +1736,6 @@ IPO_main (IPA_CALL_GRAPH* cg)
     
     Set_Error_Phase ("IPA Transformation");
 
-//	inlining_result = fopen("inlining.log", "w");
-
     if (IPA_Enable_Array_Sections) {
 	IPA_LNO_Summary = CXX_NEW(IPA_LNO_WRITE_SUMMARY(array_pool.Pool ()),
 				  array_pool.Pool ());
@@ -1907,33 +1876,6 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if(IPA_Enable_Reorder)
        IPO_Finish_reorder(); //MEM_POOL_Pop (&reorder_local_pool);pop reorder_candidate
 	 
-    //These code used to print function name is inserted by Liu Yang
-    //to do RSE experiments.
-    //if (IPA_Enable_RSE_Distribution) {
-    if (FALSE) {
-    Evaluate_RSE_Cost(&Ipo_mem_pool);
-    Construct_Budget_Table(cg,&Ipo_mem_pool);
-    Stacked_Regs_Distribution(cg);
-    //Find_A_Path();
-    IPA_NODE_ITER cg_iter(IPA_Call_Graph,PREORDER);
-    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-
-        IPA_NODE* node = cg_iter.Current();
-        if (node) {
-            INT32 bud = 0;
-            if ((node->Get_Partition_Num() == 0) ||
-                (node->Get_Partition_Num() == -1)) {
-                bud = 96;
-            } else {
-                REG_BUDGET_POINTER ptr = REG_BUDGET_TABLE[IPA_Node_Name(node)];
-                if (ptr) bud = ptr->_budget;
-            } 
-            ST *func_st = node->Func_ST();
-            Set_PU_gp_group(Pu_Table[ST_pu(func_st)],bud);
-        }
-    } 
-    } 
-       
     IP_flush_output ();			// Finish writing the PUs
     
     if (IPA_Enable_Array_Sections)
@@ -1948,8 +1890,6 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if ( INLINE_List_Actions ) {
         fprintf ( stderr, "Total number of edges = %d\n", IPA_Call_Graph->Edge_Size() );
     }
-//	fclose (inlining_result);
-
 } // IPO_main
 
 
