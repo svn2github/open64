@@ -223,6 +223,8 @@
 	""
 -I%D		;		ALL	cpp	"-I%D -include=%D"
 	"add following directory to the include search path list"
+-iquote%D	;		ALL	cpp	"-iquote=%D"
+	"add following directory to the include search path list"
 -x%-		set_explicit_lang(option_name,optargs);		ALL	NONE	""
 	"Specify explicit language for input files"
 
@@ -336,6 +338,9 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 
 -fb-type=%s Process_fb_type(optargs);   ALL    N     ""
         "Option need for the type of profiles"
+
+-frandom-seed%s  ;      ALL     N       "-frandom-seed=%s"
+        "specify random seed (string) for internal random number generator"
 
 % Basic option groups:
 % See opt_actions.c::Process_Ofast if you change the -OPT: item.
