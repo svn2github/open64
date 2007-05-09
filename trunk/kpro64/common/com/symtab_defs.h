@@ -228,7 +228,8 @@ enum FLD_FLAGS
     FLD_END_UNION	= 0x0008,	// end a union
     FLD_BEGIN_MAP	= 0x0010,	// begin a map (fortran)
     FLD_END_MAP		= 0x0020,	// end a map
-    FLD_IS_BIT_FIELD	= 0x0040	// is bit field
+    FLD_IS_BIT_FIELD	= 0x0040,	// is bit field
+    FLD_IS_ANONYMOUS    = 0x0080,       // is anonymous field
 };
 
 struct FLD

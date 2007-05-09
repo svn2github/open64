@@ -750,6 +750,10 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 #endif	// KEY
 		TY_Init (ty, tsize, KIND_STRUCT, MTYPE_M, 
 			Save_Str(Get_Name(gs_type_name(type_tree))) );
+
+                if (gs_type_name(type_tree) == NULL)
+                    Set_TY_anonymous(ty);
+
 		if (gs_tree_code(type_tree) == GS_UNION_TYPE) {
 			Set_TY_is_union(idx);
 		}
@@ -876,6 +880,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		      FLD_Init (fld, Save_Str(Get_Name(0)), 
 				Get_TY(basetype), offset);
 		      offset += Type_Size_Without_Vbases (basetype);
+                      Set_FLD_is_anonymous(fld);
 #ifdef KEY
 // temporary hack for a bug in gcc
 // Details: From layout_class_type(), it turns out that for this
@@ -930,6 +935,8 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				gs_get_integer_value(gs_decl_field_offset(field)) +
 				gs_get_integer_value(gs_decl_field_bit_offset(field))
 					/ BITSPERBYTE);
+                        if (gs_decl_name(field) == NULL)
+                            Set_FLD_is_anonymous(fld);
 		}
 
 		TYPE_FIELD_IDS_USED(type_tree) = next_field_id - 1;

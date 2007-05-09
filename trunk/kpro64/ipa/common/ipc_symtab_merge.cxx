@@ -92,6 +92,11 @@ AUX_PU_TAB Aux_Pu_Table;
 
 static IP_FILE_HDR* current_file_hdr;
 
+#include "ipc_ty_hash.h"
+#include <ext/hash_set>
+using __gnu_cxx::hash_set;
+hash_set <TY_INDEX> ty_updated_vtable;
+
 // --------------------------------------------------------------
 // Define accessors for index maps we need internally, but which
 // are never exported.

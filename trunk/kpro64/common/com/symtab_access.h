@@ -1394,6 +1394,13 @@ Set_FLD_is_bit_field (FLD_HANDLE fld)	{ fld.Entry()->flags |= FLD_IS_BIT_FIELD; 
 inline void
 Clear_FLD_is_bit_field (FLD_HANDLE fld)	{ fld.Entry()->flags &= ~FLD_IS_BIT_FIELD; }
 
+inline BOOL
+FLD_is_anonymous (FLD_HANDLE fld)       { return fld.Entry()->flags & FLD_IS_ANONYMOUS; }
+inline void
+Set_FLD_is_anonymous (FLD_HANDLE fld)   { fld.Entry()->flags |= FLD_IS_ANONYMOUS; }
+inline void
+Clear_FLD_is_anonymous (FLD_HANDLE fld) { fld.Entry()->flags &= ~FLD_IS_ANONYMOUS; }
+
 //----------------------------------------------------------------------
 // access functions for TYLIST
 //----------------------------------------------------------------------
