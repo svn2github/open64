@@ -1540,9 +1540,24 @@ Create_ST_For_Tree (gs_t decl_node)
 	      }
 	    } else
 #endif
-            if (gs_decl_external(decl_node) || 
-                (gs_decl_weak(decl_node) && !gs_tree_static (decl_node)) ) {
-	      sclass = SCLASS_EXTERN;
+            if (gs_decl_external(decl_node) || gs_decl_weak(decl_node)) {
+	      // OSP_255
+	      // Not all weak symbols are EXTERN: COMMON&WEAK, STATIC&WEAK
+	      if (!flag_no_common && gs_decl_common (decl_node)) {
+		// COMMON & WEAK: 
+		//   static vars in exported inline/template functions(IA64)
+		sclass = SCLASS_COMMON;
+	      }
+	      else if (gs_tree_static (decl_node)) {
+		// STATIC & WEAK:
+		//   static vars in exported inline/template function(X8664) 
+		sclass = SCLASS_UGLOBAL;
+	      }
+	      else {
+		// OTHERS:
+		//   treat it EXTERN ( will not allocate space )
+	        sclass = SCLASS_EXTERN;
+	      }
 	      level  = GLOBAL_SYMTAB;
               eclass = EXPORT_PREEMPTIBLE;
             }
