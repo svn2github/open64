@@ -1398,7 +1398,7 @@ CG_Generate_Code(
     Stop_Timer ( T_CodeGen_CU );
     Set_Error_Phase ( "Codegen Driver" );
 
-    CXX_DELETE(region_tree, &MEM_pu_pool);
+    if(IPFEC_Enable_Region_Formation) CXX_DELETE(region_tree, &MEM_pu_pool);
 
     return rwn_new;
   } /* if (region */
@@ -1467,7 +1467,7 @@ CG_Generate_Code(
     Stop_Timer ( T_CodeGen_CU );
     Set_Error_Phase ( "Codegen Driver" );
 
-    CXX_DELETE(region_tree, &MEM_pu_pool);
+    if(IPFEC_Enable_Region_Formation) CXX_DELETE(region_tree, &MEM_pu_pool);
     return rwn;
   }
 }
