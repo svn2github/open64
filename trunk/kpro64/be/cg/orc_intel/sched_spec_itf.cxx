@@ -54,6 +54,7 @@
      */ 
 
 
+
 /* ====================================================================
  *
  *  Change_Load_Spec_Form
@@ -106,52 +107,37 @@ SCHED_SPEC_HANDSHAKE :: Change_Load_Spec_Form
 
     // fix bug no. OSP_76 for implicit use of Actuals 
     for (OP* prev_op = OP_prev(op); prev_op; prev_op = OP_prev(prev_op)){
-	if (!OP_Scheduled(prev_op) && OP_ANNOT_OP_Def_Actual_Para (prev_op))
-	    return FALSE;
+        if (!OP_Scheduled(prev_op) && OP_ANNOT_OP_Def_Actual_Para (prev_op))
+            return FALSE;
     }
 
-    
-    if (CGTARG_Is_OP_Speculative_Load(op)) {
-         /* What about ld.s => ld.sa ? 
-          *
-          * For ld.s: we can not
-          * if you have a ld.s, you should have a chk.s and
-          * a speculative chain between them. if you want to change
-          * ld.s to ld.sa, you should change chk.s to chk.a at the 
-          * same time. This may not be difficult. But how about the 
-          * speculative chain? It is not easy to despeculate all 
-          * OPs on the speculative chain and control-speculate 
-          * them again.
-          *
-          * For ld.sa: we need not
-          * need not transform a ld.sa
-          */
+    /* ignore some speculation type since they do not entail transformation
+     * up the given load.
+     */
+    SPEC_TYPE spec_type = cand->Spec_Type();
+    if (OP_no_alias (op)) {
+        spec_type = SPEC_TYPE(spec_type & ~SPEC_DATA); 
+    }
+    if (SPEC_TYPE(spec_type & SPEC_CNTL) == SPEC_CNTL &&
+        Load_Has_Valid_Vaddr (op)) {
+        spec_type = SPEC_TYPE(spec_type & ~SPEC_CNTL); 
+    }
+    if (spec_type == SPEC_NONE) {
         return FALSE;
     }
 
-    if (CGTARG_Is_OP_Check_Load(op)) {
-         /* What about ld.a => ld.sa ? 
-          * Can never meet ld.c here.
+    Is_True (!OP_Can_not_be_Candidate (op, spec_type), 
+            ("Load cannot be further speculated due to some limitations"));
+  
+    if (CGTARG_Is_OP_Speculative(op) ||
+        CGTARG_Is_OP_Advanced_Load (op) ||
+        CGTARG_Is_OP_Check_Load (op)) {
+         /* OP_Can_not_be_Candidate () guarantees that 
+          *   a cntl/data speculated but not data/cntl speculated load
+          *  cannot be further data/cntl speculated. and 
+          *  a check load cannot be further speculatd.
           */
-        return FALSE;
-    }
-
-    SPEC_TYPE spec_type = cand->Spec_Type ();
-    if ((spec_type & SPEC_DATA) && OP_no_alias(op)) {
-        DevWarn ("data speculate no_alias OP[%d] of BB:%d", 
-                  OP_map_idx(op), BB_id(OP_bb(op)));
-        spec_type = SPEC_TYPE(spec_type & SPEC_CNTL); /* remove SPEC_DATA */
-    }
-
-
-    if (Load_Has_Valid_Vaddr (op) && !(spec_type & SPEC_DATA)) {
-            /* load always has valid virtual address and it 
-             * does not being moved beyond any aliasing stores. 
-             *
-             * NOTE: Load_Has_Valid_Vaddr () does not imply that no OPs
-             *    alias with this op.  
-             */
-        return FALSE; 
+         return FALSE;
     }
 
         /* (b): tranform to .sa IF NECESSARY 
@@ -177,9 +163,7 @@ SCHED_SPEC_HANDSHAKE :: Change_Load_Spec_Form
          
     if (to_dot_sa_form) {
         //  need not insert check for a speculative load again.
-        if (!CGTARG_Is_OP_Speculative(op)) {        
-            *insert_chk = TRUE; 
-        }
+        *insert_chk = TRUE; 
 
         if (ldform) { 
             *ldform = OP_Is_Float_Mem(op) ? ECV_fldtype_sa: ECV_ldtype_sa;
@@ -198,30 +182,19 @@ SCHED_SPEC_HANDSHAKE :: Change_Load_Spec_Form
         /* (c): transform to .a IF NECESSARY 
          */
     if (spec_type & SPEC_DATA) {
-        if (!CGTARG_Is_OP_Advanced_Load(op)) {
-            if (ldform) { 
-                *ldform = OP_Is_Float_Mem(op) ? ECV_fldtype_a: ECV_ldtype_a;
-            }
-            if (!test) {
-                Change_ld_Form(op, OP_Is_Float_Mem(op) ? ECV_fldtype_a: ECV_ldtype_a);
-            }
-            return *insert_chk = TRUE;
-        } else {
-                /* already in *.a form 
-                 */
-            return FALSE; 
+        if (ldform) { 
+            *ldform = OP_Is_Float_Mem(op) ? ECV_fldtype_a: ECV_ldtype_a;
         }
+        if (!test) {
+            Change_ld_Form(op, OP_Is_Float_Mem(op) ? ECV_fldtype_a: ECV_ldtype_a);
+        }
+        return *insert_chk = TRUE;
     }
     
         /* (d): transform to .s IF NECESSARY 
          */
     Is_True (spec_type & SPEC_CNTL, 
            ("speculation type should be SPEC_CNTL"));
-
-    if (CGTARG_Is_OP_Speculative (op)) {
-        /* already in .s form */
-        return FALSE;
-    }
 
     if (cutting_set_size == 1 && cand->Is_M_Ready () &&
         Is_Control_Speculation_Gratuitous 
@@ -241,19 +214,70 @@ SCHED_SPEC_HANDSHAKE :: Change_Load_Spec_Form
     return *insert_chk = TRUE;
 }
 
-    /* 
-     * OP_Can_not_be_Candidate 
-     * See line 109
-     */
+/* ====================================================================
+ * 
+ *  OP_Can_not_be_Candidate 
+ *
+ *  This function encapsulate the limitations of speculation supporting
+ * routings for the scheduler. Currently, following scenarios are not 
+ * supported by speculation supporting routines. As GanGe told me, one 
+ * of the reasons is that it is hard to update the speculative chain.
+ * The scenarios are:
+ *
+ *   - a data speculated but not control speculated load is going to 
+ *     be control speculated.
+ *   - a control speculated but not data speculatd load is going to be 
+ *     data speculatd. 
+ *   - a check-load cannot be further data or control speculated.
+ * 
+ * This function return TRUE iff the one of above scenarios are met. 
+ * The input parameter <spec> specify how the load <op> is further 
+ * speculated.
+ * 
+ * ====================================================================
+ */
 BOOL
-SCHED_SPEC_HANDSHAKE :: OP_Can_not_be_Candidate 
-        (OP* op, SPEC_TYPE spec_ty) {
+SCHED_SPEC_HANDSHAKE :: OP_Can_not_be_Candidate (OP* op, SPEC_TYPE spec_type) {
 
-    if ((spec_ty & SPEC_DATA)  &&  OP_load(op) && 
-         CGTARG_Is_OP_Speculative_Load (op) && 
-         !CGTARG_Is_OP_Advanced_Load (op)) {
-         return TRUE;	
-	}
-    
+    if (!OP_load (op) || spec_type == SPEC_NONE) {
+        return FALSE;
+    }
+
+    /* Get load's current form */
+    BOOL in_cntl_spec_form = CGTARG_Is_OP_Speculative_Load(op);
+    BOOL in_data_spec_form = CGTARG_Is_OP_Advanced_Load(op);
+    BOOL is_check_ld = CGTARG_Is_OP_Check_Load(op);
+
+    if (!in_cntl_spec_form && !in_data_spec_form && !is_check_ld) {
+       return FALSE; 
+    }
+
+    if (is_check_ld) {
+       /* a check load cannot be further speculated */
+       return TRUE;
+    }
+
+    /* ignore data or control specultion if it does not entail
+     * transformation upon the load.
+     */
+    if (OP_no_alias (op)) {
+        spec_type = SPEC_TYPE(spec_type & ~SPEC_DATA); 
+    }
+
+    if (SPEC_TYPE(spec_type & SPEC_CNTL) == SPEC_CNTL &&
+        Load_Has_Valid_Vaddr (op)) {
+        spec_type = SPEC_TYPE(spec_type & ~SPEC_CNTL); 
+    }
+
+    BOOL to_be_cntl_spec = (spec_type == SPEC_CNTL || 
+                            spec_type == SPEC_COMB);
+    BOOL to_be_data_spec = (spec_type == SPEC_DATA ||
+                            spec_type == SPEC_COMB);
+
+    if (!in_cntl_spec_form && to_be_cntl_spec ||
+        !in_data_spec_form && to_be_data_spec) {
+        return TRUE;  
+    }
+   
     return FALSE;
 }
