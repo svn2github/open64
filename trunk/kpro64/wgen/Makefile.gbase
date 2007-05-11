@@ -123,6 +123,7 @@ INCLUDE_DIR             = $(BUILD_AREA)/include \
 TARG_COMUTIL_DIR        = $(TARGDIR)/libcomutil
 TARG_CMPLRS_DIR         = $(TARGDIR)/libcmplrs
 TARG_LIBIBERTY_DIR      = $(TARGDIR)/libiberty
+TARG_LIBSPIN_DIR      	= $(TARGDIR)/libspin
 
 # These are the directories in which to look for source files.
 
@@ -270,7 +271,7 @@ COMUTIL_OBJS = $(TARG_COMUTIL_DIR)/libcomutil.a
 ###################################################################
 CMPLRS_OBJS  = $(TARG_CMPLRS_DIR)/libcmplrs.a
 LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
-LIBSPIN_OBJS = $(BUILD_TOT)/libspin/libgspin.a
+LIBSPIN_OBJS = $(TARG_LIBSPIN_DIR)/libgspin.a
 
 LLDOPTS = -Wl,--export-dynamic
 LLDLIBS = $(COMUTIL_OBJS) $(LIBIBERTY_OBJS) $(LIBSPIN_OBJS)
@@ -301,11 +302,13 @@ else
 	$(STD_INSTALL) -F $(STD_MONGOOSE_LOC) $(TARGETS)
 endif
 
+$(LIBSPIN_OBJS):
+	$(call submake,$(TARG_LIBSPIN_DIR))
+
 wgen : $(OBJECTS) $(LIBSPIN_OBJS)
 	$(link.cxxf) -g -o wgen $(OBJECTS) $(LDFLAGS)
 
-$(LIBSPIN_OBJS):
-	make BUILD_TARGET=$(BUILD_TARGET) -C $(BUILD_TOT)/libspin
+
 #----------------------------------------------------------------------
 #  Include the usual commonrules
 #----------------------------------------------------------------------
