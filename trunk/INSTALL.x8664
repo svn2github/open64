@@ -130,6 +130,8 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
     INSTALL_EXEC_SUB ${AREA}/wgen/wgen ${PHASEPATH}/wgen
+    INSTALL_EXEC_SUB ${AREA}/gnu4_fe/cc1 ${PHASEPATH}/cc1
+    INSTALL_EXEC_SUB ${AREA}/gnu4_fe/cc1plus ${PHASEPATH}/cc1plus
 
     # Currently we do not install fortran 90/95 front-end
     INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95

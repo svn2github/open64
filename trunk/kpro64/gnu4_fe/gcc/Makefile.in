@@ -762,8 +762,8 @@ ALL_CFLAGS = -DKEY $(X_CFLAGS) $(T_CFLAGS) \
 # win against random include files in /usr/include.
 ALL_CPPFLAGS = $(INCLUDES) $(CPPFLAGS) $(X_CPPFLAGS) $(T_CPPFLAGS)
 
-# 
-LIBGSPIN = ../../../libspin/libgspin.a
+#LIBGSPIN = ../../../libspin/libgspin.a
+LIBGSPIN = libgspin.a
 
 # Build and host support libraries.
 LIBIBERTY = ../libiberty/libiberty.a
@@ -3155,7 +3155,7 @@ mostlyclean: lang.mostlyclean
 
 # Delete all files made by compilation
 # that don't exist in the distribution.
-clean: mostlyclean lang.clean
+clean: mostlyclean lang.clean libspin_clean
 	-rm -f libgcc.a libgcc_eh.a libgcov.a
 	-rm -f libgcc_s*
 	-rm -f libunwind*
@@ -4270,4 +4270,8 @@ po/$(PACKAGE).pot: force options.c
 
 # rule for making libgspin.a
 $(LIBGSPIN):
-	make -C ../../../libspin
+	cp ../../gcc/libspin.mk .
+	make -f libspin.mk
+
+libspin_clean:
+	-make -f libspin.mk clean

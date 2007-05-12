@@ -62,6 +62,8 @@ NATIVE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR_LD)/ld/ld-new  \
                 $(NATIVE_BUILD_DIR)/gccfe/gfec \
                 $(NATIVE_BUILD_DIR)/wgen/wgen \
+                $(NATIVE_BUILD_DIR)/gnu4_fe/cc1 \
+                $(NATIVE_BUILD_DIR)/gnu4_fe/cc1plus \
                 $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so \
                 $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so \
                 $(NATIVE_BUILD_DIR)/g++fe/gfecc 
@@ -82,6 +84,12 @@ $(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
 
 $(NATIVE_BUILD_DIR)/wgen/wgen wgen:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen
+
+$(NATIVE_BUILD_DIR)/gnu4_fe/cc1 cc1:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gnu4_fe
+
+$(NATIVE_BUILD_DIR)/gnu4_fe/cc1plus cc1plus:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gnu4_fe
 
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe
@@ -155,6 +163,7 @@ clobber:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gnu4_fe clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
@@ -175,6 +184,6 @@ clobber:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER 
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
-		libiberty libunwindP ; do  \
+		libiberty libunwindP libspin ; do  \
 		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
 	done
