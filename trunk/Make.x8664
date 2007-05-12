@@ -87,10 +87,10 @@ $(NATIVE_BUILD_DIR)/wgen/wgen wgen:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen
 
 $(NATIVE_BUILD_DIR)/gnu4_fe/cc1 cc1:
-        $(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gnu4_fe
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gnu4_fe
 
 $(NATIVE_BUILD_DIR)/gnu4_fe/cc1plus cc1plus:
-        $(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gnu4_fe
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gnu4_fe
 
 $(NATIVE_BUILD_DIR)/be/be be:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be
