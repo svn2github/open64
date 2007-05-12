@@ -1579,7 +1579,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 #endif
 #endif // KEY
 
-            proc->Incr_call_count ();
 #ifdef KEY
             Process_callsite (w2, proc->Get_callsite_count (), loopnest, probability);
 #else
