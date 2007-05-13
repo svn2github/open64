@@ -286,6 +286,9 @@ dwarf_transform_to_disk_form(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	    if (dbg->de_eh_frame_cies == NULL)
 		continue;
 	    flags = SHF_MIPS_NOSTRIP;
+#ifdef TARG_X8664
+		flags |= SHF_ALLOC;
+#endif
 	    break;
 	default:
 	    /* logic error: missing a case */
