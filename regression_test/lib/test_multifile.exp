@@ -1,0 +1,74 @@
+#!/usr/bin/expect -f 
+
+proc test_multiplecase { dirname buildstat_n runstat_n runtime_n } {
+    global logdir testoutput evaluator
+    upvar $buildstat_n buildstat
+    upvar $runstat_n runstat
+    upvar $runtime_n runtime
+    
+    note "Test Case: $dirname";
+    set needexec [parse_makefile $dirname];
+
+    set pos [string last "/" $dirname];
+    if { $pos < 0 } {
+	set parent_dir "";
+	set current_dir $dirname;
+    } else {
+	set parent_dir [string range $dirname 0 [expr $pos - 1]];
+	set current_dir [string range $dirname [expr $pos + 1] [expr [string length $dirname] - 1]];
+    }
+    set old_dir [pwd];
+    set thislogdir "$logdir/$parent_dir";
+    exec mkdir -p $thislogdir;
+    set thislogfile "$thislogdir/$current_dir.ci";
+    set thisrunfile "$thislogdir/$current_dir.run";
+    cd "$testoutput/$dirname";
+    set result [catch {exec make >& $thislogfile}];
+    if { !$result } {
+	set buildstat 0;
+	if { $needexec } {
+	    cd "$testoutput/$dirname";
+	    set runcmd "${evaluator}_evaluator";
+	    set runstat [eval $runcmd $current_dir $thisrunfile runtime];
+	} else {
+	    set runstat -1
+	}
+    } else {
+	set buildstat 1;
+    }
+    cd $old_dir;
+    
+    
+}
+
+proc parse_makefile { dirname } {
+    global testoutput casedir
+    global cc cxx fc
+    global cflags cxxflags fflags
+
+    set makefileout [open "$testoutput/$dirname/Makefile" w]
+    set makefilein [open "$casedir/$dirname/Makefile" r]
+    set targetfile ""
+    set execute 1
+    puts $makefileout "CC=$cc"
+    puts $makefileout "CXX=$cxx"
+    puts $makefileout "FC=$fc"
+    puts $makefileout "CFLAGS=$cflags"
+    puts $makefileout "CXXFLAGS=$cxxflags"
+    puts $makefileout "FFLAGS=$fflags"
+    puts $makefileout "TARGET=[file tail [file rootname $dirname]]"
+    puts $makefileout ""
+
+    while { ![eof $makefilein] } {
+	set line [gets $makefilein];
+    	set line [string trimright $line]
+	if { [string equal $line "#NOEXEC"] } {
+	    set execute 0;
+	}
+	puts $makefileout $line
+    }
+    close $makefilein;
+    close $makefileout;
+
+    return $execute;
+}

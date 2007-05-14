@@ -1,0 +1,51 @@
+#!/usr/bin/expect -f
+####################################################################################
+# Load required libraries
+###################################################################################
+load_lib parse_conf.exp
+load_lib update_compiler.exp
+load_lib walk_subdirs.exp
+load_lib log_file.exp
+
+global testhome
+
+note "The Osprey Testing framework started with: ";
+note "-------------------------------------------";
+note "Configuration: $confdir/$conf.conf";
+note "Current Date:  $date";
+note "Testing Home:  $testhome";
+note "Log DIR:       $logdir";
+note "Test Output DIR:$testoutput";
+
+
+# First, Parse the configuration
+parse_conf $confdir/test.conf
+# Log the result of configuration
+print_conf_vars
+
+# Then, if the source of the compiler is given, update the compiler
+if { ! [string equal $comp_home ""] } {
+    generate_log_prologue;
+
+    set retcode [catch { update_compiler $check_in_log $compiler_build_log} upd_comp];
+#    set retcode 0
+    cd $testhome
+
+    append_checkin_info;
+    if { $retcode != 0 } {
+        # This happens when there is an error in building compiler
+        # or just no need to going becasue of no check in last night
+	# exec echo "$upd_comp" >> $compiler_build_log;
+
+	append_build_info;
+    } else {
+	cd $testhome;
+	walk_all_dirs;
+    }
+
+    generate_log_epilogue;
+} else {
+    exec echo "Compiler Source Code Directory Not Given.\nAbort Getting Checkin Logs." > $check_in_log ;
+    exec echo "Compiler Source Code Directory Not Given.\nAbort updating compiler." > $compiler_build_log;
+}
+

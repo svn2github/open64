@@ -1,0 +1,61 @@
+#!/usr/bin/expect -f
+#################################################################
+# Entry for the dejagnu testing framework
+#  dejagnu will first try to load this file
+# In this file, we try to set the configuration globally and 
+# some global variables.
+#################################################################
+
+# Configuration we are going to use
+set conf opencc
+#set conf gcc
+
+# Today's date in YYYY-MM-DD format
+set date [clock format [clock scan [system date]] -format "%Y-%m-%d"]
+
+# Home for the test framework
+set testhome [pwd]
+
+# the dir for storing log files
+set logdir   $testhome/log/$date
+
+# the dir for storing historical data
+set datdir   $testhome/dat
+
+# the dir for storing configuration files
+set confdir  $testhome/conf
+
+# the output for the test cases
+set testoutput $testhome/output/$date
+
+# the dir for the test cases
+set casedir $testhome/cases
+
+# log file for putting compiler update/building
+set compiler_build_log $logdir/compiler-build.log
+set check_in_log       $logdir/checkin.log
+
+set cc  		{}
+set cxx 		{}
+set fc  		{}
+set cflags 		{}
+set cxxflags 	        {}
+set fflags 		{}
+set sim 		{}
+set comp_home           {}
+set build               {}
+set install             {}
+set subconf             {}
+set evaluator           "default"
+set validation_only     0
+set confname            {}
+set whole_copy          0
+set time_history        3
+set mail_sender         {}
+
+system rm -rf $logdir
+system rm -rf $testoutput
+
+system mkdir -p $logdir
+system mkdir -p $testoutput
+

@@ -1,0 +1,88 @@
+#!/usr/bin/expect -f
+
+proc append_file_to_log { filename } {
+    global final_log_fd
+
+    puts $final_log_fd [exec cat $filename];
+}
+
+proc append_section_title { title } {
+    global final_log_fd
+
+    puts $final_log_fd "";
+    puts $final_log_fd "<H1>$title</H1>";
+}
+
+proc generate_log_prologue {} {
+    global logdir
+    global final_log_fd
+    global date confdir
+    global mail_sender
+
+    set final_log_fd [open "$logdir/final.log" w];
+    
+    puts $final_log_fd "From: $mail_sender";
+    puts -nonewline $final_log_fd "To:   ";
+    set first 1;
+    set fd [open "$confdir/mails.conf" r];
+    while { ![eof $fd] } {
+	set line [string trim [gets $fd]];
+	if { $line != "" } {
+	    if { $first } {
+		set first 0;
+		puts -nonewline $final_log_fd $line;
+	    } else {
+		puts -nonewline $final_log_fd ", $line";
+	    }
+	}
+    }
+    puts $final_log_fd "";
+    puts $final_log_fd "X-Mailer: Osprey Test";
+    puts $final_log_fd "Subject: Nightly Testing Result at $date";
+    puts $final_log_fd "Content-Type: text/html";
+    puts $final_log_fd "";
+    
+    puts $final_log_fd "<HTML>";
+    puts $final_log_fd "<HEAD>";
+    puts $final_log_fd "<TITLE>Nightly Testing Result at $date</TITLE>";
+    puts $final_log_fd "</HEAD>";
+    puts $final_log_fd "<BODY>";
+}
+
+proc generate_log_epilogue {} {
+    global final_log_fd
+    global logdir
+
+    puts $final_log_fd "</BODY>";
+    puts $final_log_fd "</HTML>";
+    close $final_log_fd;
+    exec /usr/sbin/exim4 -t < "$logdir/final.log";
+}
+
+proc append_checkin_info {} {
+    global final_log_fd
+    global check_in_log
+    
+    append_section_title "Check-in Log";
+    puts $final_log_fd "<PRE>"
+    append_file_to_log $check_in_log;
+    puts $final_log_fd "</PRE>"
+}
+
+proc append_build_info {} {
+    global final_log_fd
+    global compiler_build_log
+
+    append_section_title "Error on Building Compiler";
+    puts $final_log_fd "<PRE>"
+    append_file_to_log $compiler_build_log;
+    puts $final_log_fd "</PRE>"
+}
+
+proc append_case_group { case_name } {
+    global final_log_fd
+    global logdir
+
+    append_section_title "Test for $case_name";
+    append_file_to_log "$logdir/$case_name.log";
+}
