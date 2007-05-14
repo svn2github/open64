@@ -3849,9 +3849,12 @@ vho_lower_mparm (WN * wn)
   if (VHO_Struct_Opt &&
       (bytes == 4 || bytes == 8) &&
       TY_size (WN_ty (wn)) == bytes &&
-      ST_class (WN_st (kid)) != CLASS_PREG &&
-      (Is_Target_32bit() ||
-       traverse_struct (WN_ty (wn))))
+      ST_class (WN_st (kid)) != CLASS_PREG 
+#ifdef TARG_X8664
+      && (Is_Target_32bit() ||
+       traverse_struct (WN_ty (wn)))
+#endif
+     )
   {
     TYPE_ID mtype = (bytes == 4) ? MTYPE_U4 : MTYPE_U8;
     WN_set_rtype (wn, mtype);
@@ -3860,7 +3863,10 @@ vho_lower_mparm (WN * wn)
 
     // bugs 9989, 10139
     INT field_id;
-    Is_True (WN_field_id(kid) == 0,("vho_lower_mparm: Expected field-id zero"));
+    // bug fix for OSP_258
+    //
+    if ((TY_kind(ty) != KIND_STRUCT))
+      Is_True (WN_field_id(kid) == 0,("vho_lower_mparm: Expected field-id zero"));
     if ((TY_kind(ty) == KIND_STRUCT) &&
         (field_id /* assign */ = single_field_in_struct (ty)))
       WN_set_field_id (kid, field_id);
