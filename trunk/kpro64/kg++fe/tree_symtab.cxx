@@ -80,6 +80,12 @@ extern "C" {
 #endif
 #include "tree_cmp.h"
 
+#include <ext/hash_set>
+using __gnu_cxx::hash_set;
+typedef struct {
+    size_t operator()(void* p) const { return reinterpret_cast<size_t>(p); }
+} void_ptr_hash;
+
 extern INT pstatic_as_global;
 
 extern FILE *tree_dump_file; /* for debugging */
@@ -466,6 +472,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			Save_Str(Get_Name(TYPE_NAME(type_tree))) );
 		Set_TY_etype (ty, Get_TY (TREE_TYPE(type_tree)));
 		Set_TY_align (idx, TY_align(TY_etype(ty)));
+	        if (TYPE_ANONYMOUS_P(type_tree) || TYPE_NAME(type_tree) == NULL)
+	            Set_TY_anonymous(ty);
 		// assumes 1 dimension
 		// nested arrays are treated as arrays of arrays
 		ARB_HANDLE arb = New_ARB ();
@@ -628,8 +636,19 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		    is_empty_class(type_tree))
 			tsize = 0;
 #endif	// KEY
-		TY_Init (ty, tsize, KIND_STRUCT, MTYPE_M, 
-			Save_Str(Get_Name(TYPE_NAME(type_tree))) );
+                // For typedef A B, tree A and tree B link to the same TY C
+                // When parsing A, C's name is set to A
+                // When parsing B, C's name is set to B
+                // It makes C's name be random in different object files so that TY merge will fail
+                // So the name of this TY must be fixed to the main variant name.
+                if (TYPE_MAIN_VARIANT(type_tree) != type_tree)
+                    TY_Init(ty, tsize, KIND_STRUCT, MTYPE_M,
+                            Save_Str(Get_Name(TYPE_NAME(TYPE_MAIN_VARIANT(type_tree)))));
+                else
+		    TY_Init (ty, tsize, KIND_STRUCT, MTYPE_M, 
+			    Save_Str(Get_Name(TYPE_NAME(type_tree))) );
+	        if (TYPE_ANONYMOUS_P(type_tree) || TYPE_NAME(type_tree) == NULL)
+	            Set_TY_anonymous(ty);		
 		if (TREE_CODE(type_tree) == UNION_TYPE) {
 			Set_TY_is_union(idx);
 		}
@@ -701,6 +720,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		tree method = TYPE_METHODS(type_tree);
 		FLD_HANDLE fld;
 		INT32 next_field_id = 1;
+		hash_set <tree, void_ptr_hash> anonymous_base;
 
 		// Generate an anonymous field for every direct, nonempty,
 		// nonvirtual base class.  
@@ -726,6 +746,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		      FLD_Init (fld, Save_Str(Get_Name(0)), 
 				Get_TY(basetype), offset);
 		      offset += Type_Size_Without_Vbases (basetype);
+                      // For the field with base class type,
+                      // set it to anonymous and base class,
+                      // and add it into anonymous_base set 
+                      // to avoid create the anonymous field twice in the TY
+                      Set_FLD_is_anonymous(fld);
+                      Set_FLD_is_base_class(fld);
+                      anonymous_base.insert(CLASSTYPE_AS_BASE(basetype));
 #ifdef KEY
 // temporary hack for a bug in gcc
 // Details: From layout_class_type(), it turns out that for this
@@ -765,6 +792,10 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			if (TREE_CODE(field) == TEMPLATE_DECL) {
 				continue;
 			}
+                        // Do not create the anonymous base class twice
+                        if (anonymous_base.find(TREE_TYPE(field)) != anonymous_base.end()) {
+                                continue;
+                        }
 			DECL_FIELD_ID(field) = next_field_id;
 			next_field_id += 
 			  TYPE_FIELD_IDS_USED(TREE_TYPE(field)) + 1;
@@ -774,6 +805,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				Get_Integer_Value(DECL_FIELD_OFFSET(field)) +
 				Get_Integer_Value(DECL_FIELD_BIT_OFFSET(field))
 					/ BITSPERBYTE);
+                        if (DECL_NAME(field) == NULL)
+                                Set_FLD_is_anonymous(fld);
 		}
 
 		TYPE_FIELD_IDS_USED(type_tree) = next_field_id - 1;
@@ -806,6 +839,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				continue;
 			if (TREE_CODE(field) == TEMPLATE_DECL)
 				continue;
+                        // skip the field with anonymous base class
+                        if (anonymous_base.find(TREE_TYPE(field)) != anonymous_base.end())
+                                continue;
 #ifdef KEY
 			// Don't expand the field's type if it's a pointer
 			// type, in order to avoid circular dependences

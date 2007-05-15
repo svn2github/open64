@@ -339,6 +339,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			Save_Str(Get_Name(TYPE_NAME(type_tree))) );
 		Set_TY_etype (ty, Get_TY (TREE_TYPE(type_tree)));
 		Set_TY_align (idx, TY_align(TY_etype(ty)));
+	        if (TYPE_NAME(type_tree) == NULL)
+	            Set_TY_anonymous(ty);
 		// assumes 1 dimension
 		// nested arrays are treated as arrays of arrays
 		ARB_HANDLE arb = New_ARB ();
@@ -524,8 +526,19 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	case UNION_TYPE:
 		{	// new scope for local vars
 		TY &ty = (idx == TY_IDX_ZERO) ? New_TY(idx) : Ty_Table[idx];
-		TY_Init (ty, tsize, KIND_STRUCT, MTYPE_M, 
-			Save_Str(Get_Name(TYPE_NAME(type_tree))) );
+                // For typedef A B, tree A and tree B link to the same TY C
+                // When parsing A, C's name is set to A
+                // When parsing B, C's name is set to B
+                // It makes C's name be random in different object files so that TY merge will fail
+                // So the name of this TY must be fixed to the main variant name.
+                if (TYPE_MAIN_VARIANT(type_tree) != type_tree)
+                    TY_Init(ty, tsize, KIND_STRUCT, MTYPE_M,
+                    Save_Str(Get_Name(TYPE_NAME(TYPE_MAIN_VARIANT(type_tree)))));
+                else
+                    TY_Init (ty, tsize, KIND_STRUCT, MTYPE_M, 
+                             Save_Str(Get_Name(TYPE_NAME(type_tree))) );
+	        if (TYPE_NAME(type_tree) == NULL)
+	            Set_TY_anonymous(ty);
 		if (TREE_CODE(type_tree) == UNION_TYPE) {
 			Set_TY_is_union(idx);
 		}
@@ -562,6 +575,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				Get_Integer_Value(DECL_FIELD_OFFSET(field)) +
 				Get_Integer_Value(DECL_FIELD_BIT_OFFSET(field))
 					/ BITSPERBYTE );
+                        if (DECL_NAME(field) == NULL)
+                                Set_FLD_is_anonymous(fld);
 #ifdef OLDCODE
 			if ( ! DECL_BIT_FIELD(field)
 				&& Get_Integer_Value(DECL_SIZE(field)) > 0
