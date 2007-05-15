@@ -430,26 +430,42 @@ Validate_Recursive_Type (TY_INDEX index, TY_IDX_MAP& ty_map,
 
     case KIND_ARRAY:
 	Set_TY_Temp_Idx (my_mapped_idx, merged_ty_idx);
-	v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
-				 array_access ());
+	if (IPA_Enable_Old_Type_Merge)
+            v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
+				 	array_access ());
+        else
+            v_state = New_Partial_Match (merged_ty, new_ty, ty_map, str_map,
+                                        array_access ());
 	break;
 
     case KIND_STRUCT:
 	Set_TY_Temp_Idx (my_mapped_idx, merged_ty_idx);
-	v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
-				 struct_access (new_ty, merged_ty));
+        if (IPA_Enable_Old_Type_Merge)
+	    v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
+                                     struct_access (new_ty, merged_ty));
+        else 
+            v_state = New_Partial_Match (merged_ty, new_ty, ty_map, str_map,
+                                     struct_access (new_ty, merged_ty));
 	break;
 	
     case KIND_POINTER:
 	Set_TY_Temp_Idx (my_mapped_idx, merged_ty_idx);
-	v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
-				 pointer_access ());
+        if (IPA_Enable_Old_Type_Merge)
+	    v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
+				 	pointer_access ());
+        else
+            v_state = New_Partial_Match (merged_ty, new_ty, ty_map, str_map,
+                                        pointer_access ());
 	break;
 
     case KIND_FUNCTION:
 	Set_TY_Temp_Idx (my_mapped_idx, merged_ty_idx);
-	v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
+        if (IPA_Enable_Old_Type_Merge)
+	    v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
 				 function_access (new_ty, merged_ty));
+        else 
+            v_state = New_Partial_Match (merged_ty, new_ty, ty_map, str_map,
+                                 function_access (new_ty, merged_ty));
 	break;
     }
     
@@ -890,6 +906,9 @@ BOOL Is_Incomplete_Or_Recursive(TY_INDEX ty_index) {
                 }
                 ++tylist_iter;
             }
+            break;
+        case KIND_ARRAY:
+            result = Is_Incomplete_Or_Recursive(TY_IDX_index(TY_etype(ty_idx)));
             break;
     }
     processing_recursive_type.erase(ty_index);

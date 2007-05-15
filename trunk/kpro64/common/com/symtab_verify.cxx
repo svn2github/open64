@@ -989,8 +989,8 @@ void TY::Verify(UINT) const
 		 (msg, "TY_PTR_AS_ARRAY can only be set for POINTERS")); 
 
     if ( TY_anonymous (*this))
-	Is_True (kind == KIND_STRUCT,
-		 (msg, "TY_ANONYMOUS can only be set for STRUCTS/CLASSES")); 
+	Is_True (kind == KIND_STRUCT || kind == KIND_ARRAY,
+		 (msg, "TY_ANONYMOUS can only be set for STRUCTS/CLASSES/ARRAYS")); 
 
 #endif // Is_True_On
 } // TY::Verify() 

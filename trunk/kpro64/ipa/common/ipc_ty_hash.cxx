@@ -123,7 +123,7 @@ namespace
                 // The alignment of TY_POINTER may be changed 
                 // after the pointed incomplete struct is upadted. 
                 // So add TY.u2 without last 3 bits.
-                UINT64 tmp = (p[0] ^ p[1]) + p[2] + TY_IDX_without_attribute(key.Pu_flags());
+                tmp = (p[0] ^ p[1]) + p[2] + TY_IDX_without_attribute(key.Pu_flags());
                 // If TY is anonymous, do not add its name.
                 if (TY_anonymous(key))
                     tmp -= p[2];

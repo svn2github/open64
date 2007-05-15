@@ -539,6 +539,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 #endif
 		TY_Init (ty, tsize, KIND_ARRAY, MTYPE_M, 
 			Save_Str(Get_Name(gs_type_name(type_tree))) );
+                // for the anonymoust array
+                if (gs_type_name(type_tree) == NULL)
+                    Set_TY_anonymous(ty);
 		Set_TY_etype (ty, Get_TY (gs_tree_type(type_tree)));
 		Set_TY_align (idx, TY_align(TY_etype(ty)));
 		// assumes 1 dimension
