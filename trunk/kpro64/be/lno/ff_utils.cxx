@@ -491,6 +491,8 @@ static void Rename_Update_MP_Region(WN *region, WN *scalar_ref,
   WN_OFFSET old_offset = WN_offset(scalar_ref);
   BOOL done = FALSE;
   BOOL found_it = FALSE;
+  BOOL no_need = FALSE;
+
   // search for old variable in a pragma, if we find it copy the pragma
   // for the new variable
   while (!done) {
@@ -516,11 +518,16 @@ static void Rename_Update_MP_Region(WN *region, WN *scalar_ref,
 	  done = TRUE;
 	  found_it = TRUE;
         }
+      } else if (WN_pragma(tmp) == WN_PRAGMA_MASTER_BEGIN) {
+	no_need = TRUE;
       }
     }
     if (!done) tmp = WN_prev(tmp);
     if (!tmp) done = TRUE;
   }
+
+
+  if (no_need) return;
 
   // the old variable was not found, so use default mechanisms
   // if the old variable was a loop variable, do nothing, these are special
