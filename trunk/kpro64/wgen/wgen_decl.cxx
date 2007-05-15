@@ -396,6 +396,36 @@ WGEN_Expand_Function_Body (gs_t decl)
   return 1;
 }
 
+extern "C" {
+void
+WGEN_Whirlify_Decl(gs_t decl)
+{
+  gs_code_t code = gs_tree_code(decl);
+  switch(code) {
+    case GS_FUNCTION_DECL:
+	WGEN_Expand_Function_Body(decl);
+	  //Dump_DST(stdout); // wgen TODO: without this, the DST will has missing subprograms
+	break;
+    case GS_CONST_DECL: // wgen: do nothing
+	break;
+    case GS_VAR_DECL:
+      // Handle decls that are aliases for other decls
+      if (gs_decl_alias_target(decl)) {
+	WGEN_Assemble_Alias(decl, gs_decl_alias_target(decl));
+	break;
+      }
+      // fall thru
+    default: 
+	FmtAssert(code != GS_PARM_DECL, ("PARM_DECL node found at top level"));
+	if (gs_decl_initial(decl) != 0 && 
+	    gs_decl_initial(decl) != gs_error_mark_node())
+	  WGEN_Initialize_Decl(decl);
+	WGEN_Decl(decl);
+	break;
+  }
+}
+}
+
 // KEY: Adjust wn using fixed_offset and virtual_offset. adjust_this
 // indicates if we want a this-pointer adjustment, or a return-result
 // adjustment.
@@ -1639,6 +1669,9 @@ private:
   void WGEN_Add_Aggregate_Init_Complex (gs_t rval, gs_t ival, INT size);
   void WGEN_Add_Aggregate_Init_String (char *s, INT size);
   void WGEN_Add_Aggregate_Init_Symbol (ST *st, WN_OFFSET offset = 0);
+#ifdef TARG_IA64
+  void Add_Aggregate_Init_Symiplt (ST *st, WN_OFFSET offset = 0);
+#endif
   void WGEN_Add_Aggregate_Init_Label (LABEL_IDX lab);
   void WGEN_Add_Aggregate_Init_Address (gs_t init);
   void WGEN_Add_Aggregate_Init_Vector (gs_t init_list);
@@ -1789,10 +1822,15 @@ AGGINIT::WGEN_Add_Aggregate_Init_Real (gs_t real, INT size)
       break;
     case 8:
       buffer = gs_tree_real_cst_d(real);
+      // Strange, why need convert the order?
       WGEN_Convert_To_Host_Order((long *)&buffer);
       tc = Host_To_Targ_Float (MTYPE_F8, buffer);
       break;
-#ifdef KEY
+#ifdef TARG_IA64
+    case 16:
+      tc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(real));
+      break;
+#else
     case 12:
     case 16:
       ldbuffer.qval[2] = 0;
@@ -1843,6 +1881,12 @@ AGGINIT::WGEN_Add_Aggregate_Init_Complex (gs_t rval, gs_t ival, INT size)
       WGEN_Convert_To_Host_Order((long *)&buffer);
       itc = Host_To_Targ_Float (MTYPE_F8, buffer);
       break;
+#ifdef TARG_IA64
+    case 32:
+      rtc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(rval));
+      itc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(ival));
+      break;
+#else      
     case 24:
     case 32:
       ldbuffer.qval[2] = 0;
@@ -1853,6 +1897,7 @@ AGGINIT::WGEN_Add_Aggregate_Init_Complex (gs_t rval, gs_t ival, INT size)
       ldbuffer.ld = gs_tree_real_cst_ld(ival);
       itc = Host_To_Targ_Quad(ldbuffer.ld);
       break;
+#endif
     default:
       FmtAssert(FALSE, ("WGEN_Add_Aggregate_Init_Complex unexpected size"));
       break;
@@ -1897,6 +1942,23 @@ AGGINIT::WGEN_Add_Aggregate_Init_Symbol (ST *st, WN_OFFSET offset)
     Set_INITO_val(_inito, inv);
   _last_initv = inv;
 }
+
+#ifdef TARG_IA64
+void
+AGGINIT::Add_Aggregate_Init_Symiplt (ST *st, WN_OFFSET offset)
+{
+  if (_inito == 0) return;
+  INITV_IDX inv = New_INITV();
+  INITV_Init_Symiplt (inv, st, offset);
+  Set_ST_addr_saved (st);
+  if (_last_initv != 0)
+    Set_INITV_next(_last_initv, inv);
+  else if (! _not_root)
+    Set_INITO_val(_inito, inv);
+  _last_initv = inv;
+}
+#endif
+
 
 void
 AGGINIT::WGEN_Add_Aggregate_Init_Label (LABEL_IDX lab)
@@ -2022,7 +2084,7 @@ AGGINIT::WGEN_Add_Aggregate_Init_Address (gs_t init)
 		  if (const_indices) {
 		    displace *= WN_element_size(wn);
 		    WGEN_Add_Aggregate_Init_Symbol (WN_st(WN_array_base(wn)),
-			  WN_offset(WN_array_base(wn)) + displace + iload_ofst);
+			      WN_offset(WN_array_base(wn)) + displace + iload_ofst);
 		  }
 		  else FmtAssert(FALSE, ("cannot resolve to constant address in array"));
 		}
@@ -2162,21 +2224,9 @@ Has_Non_Constant_Init_Value (gs_t init)
   }
   switch (gs_tree_code(init)) {
   case GS_CONSTRUCTOR:
-#ifdef FE_GNU_4_2_0
-      {
-	INT count = gs_constructor_length(init);
-	if (!count)
-	    return TRUE;
-        for (INT i = 0; i < count; i++)
-	  if (Has_Non_Constant_Init_Value (gs_constructor_elts_value(init, i)))
-	    return TRUE;
-        return FALSE;
-      }
-#else
 	if (!gs_constructor_elts(init))
 	    return TRUE;
 	return Has_Non_Constant_Init_Value (gs_constructor_elts(init));
-#endif
   case GS_TREE_LIST:
 	{
 	gs_t p;
@@ -2266,6 +2316,23 @@ AGGINIT::Add_Initv_For_Tree (gs_t val, UINT size)
 	case GS_ADDR_EXPR:
 		WGEN_Add_Aggregate_Init_Address (gs_tree_operand(val, 0));
 		break;
+#if 0
+	case GS_PLUS_EXPR:
+		if ( gs_tree_code(gs_tree_operand(val,0)) == GS_ADDR_EXPR
+		     && gs_tree_code(gs_tree_operand(val,1)) == GS_INTEGER_CST)
+		{
+			gs_t addr_kid = gs_tree_operand(gs_tree_operand(val,0),0);
+			FmtAssert(gs_tree_code(addr_kid) == GS_VAR_DECL
+				  || gs_tree_code(addr_kid) == GS_FUNCTION_DECL,
+				("expected decl under plus_expr"));
+			WGEN_Add_Aggregate_Init_Symbol ( Get_ST (addr_kid),
+			gs_get_integer_value(gs_tree_operand(val,1)) );
+		}
+		else
+			FmtAssert(FALSE, ("unexpected tree code %s", 
+				tree_code_name[gs_tree_code(val)]));
+		break;
+#endif
 	case GS_NOP_EXPR:
 		gs_t kid;
 		kid = gs_tree_operand(val,0);
@@ -2284,22 +2351,30 @@ AGGINIT::Add_Initv_For_Tree (gs_t val, UINT size)
 		// fallthru
 	default:
 		{
-		WN *init_wn;
-		init_wn = WGEN_Expand_Expr (val);
+        WN *init_wn;
+        init_wn = WGEN_Expand_Expr (val);
+#ifdef TARG_IA64
+		if (gs_tree_code(val) == GS_FDESC_EXPR && WN_operator (init_wn) == OPR_LDA) {
+		  Add_Aggregate_Init_Symiplt (WN_st (init_wn),
+                  	                      WN_offset (init_wn));
+		  WN_DELETE_Tree (init_wn);
+		  break;
+		}
+#endif
 		if (WN_operator (init_wn) == OPR_LDA_LABEL) {
-		  gs_t label_decl = 
-		    (gs_tree_code(gs_tree_operand(val, 0)) == GS_ADDR_EXPR)?
-		    gs_tree_operand (gs_tree_operand (val, 0), 0):
-		    gs_tree_operand (val, 0);
-		  LABEL_IDX label_idx = 
-		    WGEN_Get_LABEL (label_decl, FALSE);
-		  WGEN_Add_Aggregate_Init_Label (label_idx);
-		}
-		else Add_Init_For_WHIRL(init_wn, size, 0);
-		WN_DELETE_Tree (init_wn);
-		break;
-		}
+          gs_t label_decl =
+            (gs_tree_code(gs_tree_operand(val, 0)) == GS_ADDR_EXPR)?
+            gs_tree_operand (gs_tree_operand (val, 0), 0):
+            gs_tree_operand (val, 0);
+          LABEL_IDX label_idx =
+            WGEN_Get_LABEL (label_decl, FALSE);
+          WGEN_Add_Aggregate_Init_Label (label_idx);
         }
+        else Add_Init_For_WHIRL(init_wn, size, 0);
+        WN_DELETE_Tree (init_wn);
+        break;
+		}
+	}
 }
 
 // buffer for simulating the initialized memory unit; it is managed independent
@@ -2532,80 +2607,6 @@ AGGINIT::Traverse_Aggregate_Array (
     return;
 #endif
 
-#ifdef FE_GNU_4_2_0
-  INT length = gs_constructor_length(init_list);
-  for (INT idx = 0;
-       idx < length;
-       idx++) {
-
-    gs_t element_index = gs_constructor_elts_index(init_list, idx);
-
-    // Bug 591
-    // In gcc-3.2 (updated Gnu front-end), the TREE_PURPOSE(init) 
-    // would give us the current_offset where TREE_VALUE(init) goes in. 
-    // We need to pad any gaps here. This is unlike the gcc-2.96 front-end
-    // whereby output_pending_init_elements calls assemble_zeros which
-    // calls WFE_Add_Aggregate_Init_Padding appropriately.
-    // We do not want to modify the Gnu front-end (c-typeck.c) and instead
-    // hack it inside our front-end.
-    INT lindex, hindex;
-    // wgen bug 10919: need to handle the new RANGE_EXPR for TREE_PURPOSE
-    //  while preserving the fix for bug 2373
-    if (gs_tree_code(element_index) == GS_RANGE_EXPR) {
-      lindex = gs_get_integer_value(gs_tree_operand(element_index,0));
-      hindex = gs_get_integer_value(gs_tree_operand(element_index,1));
-    }
-    else lindex = hindex = gs_get_integer_value(element_index);
-    if ( emitted_bytes/esize < lindex ) {
-      // pad (lindex - current_offset/esize)*esize bytes
-      Traverse_Aggregate_Pad (st, gen_initv, 
-			      (lindex - emitted_bytes/esize)*esize,
-			      current_offset);
-      current_offset += (lindex - emitted_bytes/esize)*esize;
-      emitted_bytes += (lindex - emitted_bytes/esize)*esize;
-    }	
-
-    gs_t tree_value = gs_constructor_elts_value(init_list, idx);
-#if 0 // wgen TODO
-    if (gs_tree_code(tree_value) == GS_PTRMEM_CST)  {
-      gs_t t = gs_expanded_ptrmem_cst(tree_value);
-      Is_True(t != NULL,
-	      ("Traverse_Aggregate_Array: expanded PTRMEM_CST is NULL"));
-      gs_set_tree_value(init, t);
-    }
-#endif
-
-    if (gs_tree_code(tree_value) == GS_CONSTRUCTOR) {
-      // recursively process nested ARRAYs and STRUCTs
-      // update array_elem_offset to current_offset to
-      // keep track of where each array element starts
-      Traverse_Aggregate_Constructor (st, tree_value,
-#ifdef KEY
-				      gs_tree_type(type),
-#endif
-				      gs_tree_type(type),
-                                      gen_initv, current_offset, current_offset,
-                                      0);
-      emitted_bytes += esize;
-      current_offset += esize;
-    }
-
-    else {
-      // initialize SCALARs and POINTERs
-      // note that we should not be encountering bit fields
-      for (INT index = lindex; index <= hindex; index++) {
-	if (gen_initv) {
-	  Add_Initv_For_Tree (tree_value, esize);
-	  emitted_bytes += esize;
-	}
-	else
-	  Gen_Assign_Of_Init_Val (st, tree_value, current_offset, 0,
-				  ety, FALSE, 0, FLD_HANDLE (), emitted_bytes);
-	current_offset += esize;
-      }
-    }
-  }
-#else
   for (init = gs_constructor_elts(init_list);
        init;
        init = next) {
@@ -2664,6 +2665,20 @@ AGGINIT::Traverse_Aggregate_Array (
     else {
       // initialize SCALARs and POINTERs
       // note that we should not be encountering bit fields
+#ifdef TARG_IA64
+      if (gen_initv) {
+        if ((next != NULL) && (gs_tree_code(tree_value) == GS_FDESC_EXPR) &&
+            (gs_tree_code(gs_tree_value(next)) == GS_FDESC_EXPR) &&
+	    (gs_tree_value(tree_value) == gs_tree_value(gs_tree_value(next))) ) {
+          init = next;
+	  next = gs_tree_chain(next);
+	  Add_Initv_For_Tree (tree_value, esize);
+	  emitted_bytes += (esize << 1);
+	  current_offset += (esize << 1);
+	  continue;
+	}
+      }
+#endif
       for (INT index = lindex; index <= hindex; index++) {
 	if (gen_initv) {
 	  Add_Initv_For_Tree (gs_tree_value(init), esize);
@@ -2676,7 +2691,6 @@ AGGINIT::Traverse_Aggregate_Array (
       }
     }
   }
-#endif
 
 #ifdef KEY
   // GCC extension allows arrays to be declared without sizes, and later
@@ -2692,19 +2706,19 @@ AGGINIT::Traverse_Aggregate_Array (
      }
      values [];
      };
-     
+
      const struct locale_data _nl_C_LC_CTYPE =
      {
      0,
      {
-     
+
      { .string = ((void *)0) },
-     
+
      { .string = "upper\0" "lower\0" "alpha\0" "digit\0" "xdigit\0" "space\0"
      "print\0" "graph\0" "blank\0" "cntrl\0" "punct\0" "alnum\0"
      },
      }
-     } 
+     }
   */
   // Here size of values is determined when _nl_C_LC_CTYPE is initialized.
   if (TY_size(ty) == 0)
@@ -2806,151 +2820,6 @@ AGGINIT::Traverse_Aggregate_Struct (
   while (field && gs_tree_code(field) != GS_FIELD_DECL)
     field = next_real_field(type, field);
 
-#ifdef FE_GNU_4_2_0
-  INT length = gs_constructor_length(init_list);
-  for (INT idx = 0;
-       idx < length;
-       idx++) {
-
-    ++field_id; // compute field_id for current field
-    gs_t element_index = gs_constructor_elts_index(init_list, idx);
-
-    // if the initialization is not for the current field,
-    // advance the fields till we find it
-    if (field && element_index && gs_tree_code(element_index) == GS_FIELD_DECL) {
-      DevWarn ("Encountered FIELD_DECL during initialization");
-      for (;;) {
-        if (field == element_index) {
-          break;
-        }
-#ifdef KEY
-	// The same field can be created more than once.  Bug 2708.
-        if (gs_decl_name(field) &&
-	    gs_decl_name(field) == gs_decl_name(element_index)) {
-          break;
-        }
-#endif
-#ifndef KEY
-        ++field_id;
-#else
-	field_id = Advance_Field_Id(fld, field_id);
-#endif
-        fld = FLD_next (fld);
-        field = next_real_field(type, field);
-        while (field && gs_tree_code(field) != GS_FIELD_DECL)
-          field = next_real_field(type, field);
-      }
-    }
-
-    // check if we need to pad upto the offset of the field
-    pad = FLD_ofst (fld) - emitted_bytes;
-
-    if (pad > 0) {
-      Traverse_Aggregate_Pad (st, gen_initv, pad, current_offset);
-      current_offset += pad;
-      emitted_bytes  += pad;
-    }
-
-    gs_t element_value = gs_constructor_elts_value(init_list, idx);
-    fld_ty = FLD_type(fld);
-    if (gs_tree_code(element_value) == GS_CONSTRUCTOR) {
-      // recursively process nested ARRAYs and STRUCTs
-      gs_t element_type;
-      element_type = gs_tree_type(field);
-#ifdef KEY
-      // The size of the struct have to be adjusted for zero-length arrays 
-      // that later get initialized and hence adjusted in size.
-      // For an example see Traverse_Aggregate_Array
-      INT array_size = TY_size(fld_ty);
-#endif
-      field_id = Traverse_Aggregate_Constructor (st, element_value,
-#ifdef KEY
-  						 struct_type,
-#endif
-                                                 element_type, gen_initv,
-                                                 current_offset,
-                                                 array_elem_offset, field_id);
-#ifdef KEY
-      // see comment above 
-      if (TY_size(fld_ty) != array_size) {
-	FmtAssert ((array_size == 0), 
-		   ("Unexpected change in size of array"));
-	TY_IDX struct_ty = Get_TY ( struct_type );
-	Ty_Table[struct_ty].size +=  TY_size(fld_ty);
-      }	
-#endif
-      emitted_bytes += TY_size(fld_ty);
-    }
-#ifdef KEY
-    // Fields corresponding to pointer-to-member-functions are represented as
-    // records with fields __pfn and __delta.  The initializer is a TREE_LIST
-    // of __pfn and __delta.  Bug 3143.
-    else if (gs_type_ptrmemfunc_p(gs_tree_type(field))) {
-      gs_t element_type;
-      element_type = gs_tree_type(field);
-      gs_t init_value = element_value;
-      if (gs_tree_code(init_value) == GS_NOP_EXPR)
-	init_value = gs_tree_operand(init_value, 0); // bug 10853
-      GS_ASSERT(gs_tree_code(init_value) == GS_PTRMEM_CST,
-		("Traverse_Aggregate_Struct: GS_PTRMEM_CST not found"));
-      // PTRMEM_CST was expanded by GCC's cplus_expand_constant.  Get the
-      // result.
-      gs_t expanded_ptrmem_cst = gs_expanded_ptrmem_cst(init_value);
-      field_id = Traverse_Aggregate_Constructor (st, expanded_ptrmem_cst,
-  						 struct_type,
-                                                 element_type, gen_initv,
-                                                 current_offset,
-                                                 array_elem_offset, field_id);
-      emitted_bytes += TY_size(fld_ty);
-    }
-#endif
-    else {
-      // initialize SCALARs and POINTERs
-      is_bit_field = FLD_is_bit_field(fld);
-      if (gen_initv) {
-        if (! is_bit_field) {
-#ifdef KEY
-	  // Bug 1021
-	  // For fields that are arrays of characters with unspecified 
-	  // lengths, update the field size and the structure size here.
-	  if (TY_size(fld_ty) == 0 && 
-	      gs_tree_code(element_value) == GS_STRING_CST &&
-	      gs_tree_string_pointer(element_value)) {
-	    Ty_Table[fld_ty].size = 
-	    	strlen(gs_tree_string_pointer(element_value));
-	    TY_IDX struct_ty = Get_TY ( struct_type );
-	    Ty_Table[struct_ty].size += TY_size(fld_ty);
-	  }
-#endif	  
-          Add_Initv_For_Tree (element_value, TY_size(fld_ty));
-          emitted_bytes += TY_size(fld_ty);
-        }
-        else { // do 1 byte a time
-          Add_Bitfield_Initv_For_Tree (element_value, fld, emitted_bytes);
-          // emitted_bytes updated by the call as reference parameter
-        }
-      }
-      else {
-        Gen_Assign_Of_Init_Val (st, element_value,
-                                current_offset, array_elem_offset,
-#ifndef KEY
-                                is_bit_field ? ty : fld_ty,
-#else
-				is_bit_field ? Get_TY(struct_type) : fld_ty,
-#endif
-                                is_bit_field, field_id, fld, emitted_bytes);
-        // emitted_bytes updated by the call as reference parameter
-      }
-    }
-
-    // advance ot next field
-    current_offset = current_offset_base + emitted_bytes;
-    fld = FLD_next(fld);
-    field = next_real_field(type, field);
-    while (field && gs_tree_code(field) != GS_FIELD_DECL)
-      field = next_real_field(type, field);
-  }
-#else
   for (init = gs_constructor_elts(init_list);
        init;
        init = gs_tree_chain(init)) {
@@ -2995,7 +2864,12 @@ AGGINIT::Traverse_Aggregate_Struct (
     }
 
     fld_ty = FLD_type(fld);
-    if (gs_tree_code(gs_tree_value(init)) == GS_CONSTRUCTOR) {
+
+    gs_t init_value = gs_tree_value(init);
+    if ( gs_tree_code(init_value) == GS_NOP_EXPR )
+      init_value = gs_tree_operand(init_value, 0);
+    
+    if ( gs_tree_code(init_value) == GS_CONSTRUCTOR) {
       // recursively process nested ARRAYs and STRUCTs
       gs_t element_type;
       element_type = gs_tree_type(field);
@@ -3005,7 +2879,7 @@ AGGINIT::Traverse_Aggregate_Struct (
       // For an example see Traverse_Aggregate_Array
       INT array_size = TY_size(fld_ty);
 #endif
-      field_id = Traverse_Aggregate_Constructor (st, gs_tree_value(init),
+      field_id = Traverse_Aggregate_Constructor (st, init_value,
 #ifdef KEY
   						 struct_type,
 #endif
@@ -3030,9 +2904,7 @@ AGGINIT::Traverse_Aggregate_Struct (
     else if (gs_type_ptrmemfunc_p(gs_tree_type(field))) {
       gs_t element_type;
       element_type = gs_tree_type(field);
-      gs_t init_value = gs_tree_value(init);
-      if (gs_tree_code(init_value) == GS_NOP_EXPR)
-	init_value = gs_tree_operand(init_value, 0); // bug 10853
+
       GS_ASSERT(gs_tree_code(init_value) == GS_PTRMEM_CST,
 		("Traverse_Aggregate_Struct: GS_PTRMEM_CST not found"));
       // PTRMEM_CST was expanded by GCC's cplus_expand_constant.  Get the
@@ -3092,7 +2964,6 @@ AGGINIT::Traverse_Aggregate_Struct (
     while (field && gs_tree_code(field) != GS_FIELD_DECL)
       field = next_real_field(type, field);
   }
-#endif
 
   // if not all fields have been initialized, then loop through
   // the remaining fields to update field_id
@@ -3155,10 +3026,6 @@ AGGINIT::Traverse_Aggregate_Vector (
   gs_t init;
   INT emitted_bytes = 0;
 
-#ifdef FE_GNU_4_2_0
-  // wgen TODO
-  return;
-#else
   if (vec_cst)
     init = gs_tree_vector_cst_elts (init_list);
   else
@@ -3191,7 +3058,6 @@ AGGINIT::Traverse_Aggregate_Vector (
 
   if (pad > 0)
     Traverse_Aggregate_Pad (st, gen_initv, pad, current_offset);
-#endif
 } /* Traverse_Aggregate_Vector */
 
 void
@@ -3299,42 +3165,42 @@ AGGINIT::Add_Init_For_WHIRL(WN *init_wn, UINT size, INT64 ofst)
     return;
   case OPR_ADD:
     if (WN_operator(WN_kid0(init_wn)) == OPR_INTCONST) {
-      Add_Init_For_WHIRL(WN_kid1(init_wn), size, 
-      			 ofst + WN_const_val(WN_kid0(init_wn)));
+      Add_Init_For_WHIRL(WN_kid1(init_wn), size,
+                 ofst + WN_const_val(WN_kid0(init_wn)));
       return;
-    } 
+    }
     if (WN_operator(WN_kid1(init_wn)) == OPR_INTCONST) {
-      Add_Init_For_WHIRL(WN_kid0(init_wn), size, 
-      			 ofst + WN_const_val(WN_kid1(init_wn)));
+      Add_Init_For_WHIRL(WN_kid0(init_wn), size,
+                 ofst + WN_const_val(WN_kid1(init_wn)));
       return;
-    } 
+    }
     break;
   case OPR_SUB:
     if (WN_operator(WN_kid1(init_wn)) == OPR_INTCONST) {
-      Add_Init_For_WHIRL(WN_kid0(init_wn), size, 
-      			 ofst - WN_const_val(WN_kid1(init_wn)));
+      Add_Init_For_WHIRL(WN_kid0(init_wn), size,
+                 ofst - WN_const_val(WN_kid1(init_wn)));
       return;
-    } 
+    }
     break;
 #ifdef KEY // bug 10924
-  case OPR_ARRAY: 
+  case OPR_ARRAY:
     {
       INT displace = 0;
       INT multiplier = 1;
       BOOL const_indices = TRUE;
       for (INT i = 0; i < WN_num_dim(init_wn); i++) {
-	if (WN_operator(WN_array_index(init_wn, i)) != OPR_INTCONST ||
-	    WN_operator(WN_array_dim(init_wn, i)) != OPR_INTCONST) {
-	  const_indices = FALSE;
-	  break;
-	}
-	displace += WN_const_val(WN_array_index(init_wn, i)) * multiplier;
-	multiplier *= WN_const_val(WN_array_dim(init_wn, i));
+    if (WN_operator(WN_array_index(init_wn, i)) != OPR_INTCONST ||
+        WN_operator(WN_array_dim(init_wn, i)) != OPR_INTCONST) {
+      const_indices = FALSE;
+      break;
+    }
+    displace += WN_const_val(WN_array_index(init_wn, i)) * multiplier;
+    multiplier *= WN_const_val(WN_array_dim(init_wn, i));
       }
       if (const_indices) {
-	displace *= WN_element_size(init_wn);
-	Add_Init_For_WHIRL(WN_array_base(init_wn), size, ofst + displace);
-	return;
+    displace *= WN_element_size(init_wn);
+    Add_Init_For_WHIRL(WN_array_base(init_wn), size, ofst + displace);
+    return;
       }
       break;
     }
@@ -3471,11 +3337,11 @@ AGGINIT::Add_Inito_For_Tree (gs_t init, ST *st)
   _inito = New_INITO (st);
   _not_root = FALSE;
   if (WN_operator(init_wn) == OPR_LDA_LABEL) {
-    gs_t label_decl = 
+    gs_t label_decl =
       (gs_tree_code(gs_tree_operand(init, 0)) == GS_ADDR_EXPR)?
       gs_tree_operand (gs_tree_operand (init, 0), 0):
       gs_tree_operand (init, 0);
-    LABEL_IDX label_idx = 
+    LABEL_IDX label_idx =
       WGEN_Get_LABEL (label_decl, FALSE);
     WGEN_Add_Aggregate_Init_Label (label_idx);
   }
@@ -3588,7 +3454,7 @@ WGEN_Initialize_Decl (gs_t decl)
 		}
 		init_decl = NULL;
 	}
-	if (gs_tree_readonly(decl))
+	if (gs_tree_readonly(decl) && !gs_tree_this_volatile(decl))
 		Set_ST_is_const_var (st);
   }
   else {
@@ -3743,8 +3609,10 @@ WGEN_Assemble_Alias (gs_t decl, gs_t target)
   // Don't expand alias until the target is expanded, so that we can set st's
   // sclass to base_st's sclass.  This may take more than one iteration since
   // the target can be an alias to another target.  Bug 4393.
-  if (!expanded_decl(base_decl))
-    WGEN_Process_Decl(base_decl);
+  if (!expanded_decl(base_decl)) {
+    //WGEN_Process_Decl(base_decl);
+    return TRUE;
+  }
   expanded_decl(decl) = TRUE;
 
   ST *base_st = Get_ST (base_decl);
@@ -4034,26 +3902,14 @@ decl_is_needed_vtable (gs_t decl)
 #endif
      ) {
             
-#ifdef FE_GNU_4_2_0
-    INT count = gs_constructor_length (gs_decl_initial (decl));
-    for (INT idx = 0;
-         idx < count;
-         idx++)
-#else
     gs_t entries = gs_constructor_elts (gs_decl_initial (decl));
 
-    for (; entries; entries = gs_tree_chain (entries))
-#endif
-    {
+    for (; entries; entries = gs_tree_chain (entries)) {
 
       gs_t fnaddr;
       gs_t fn;
 
-#ifdef FE_GNU_4_2_0
-      fnaddr = gs_constructor_elts_value (gs_decl_initial (decl), idx);
-#else
       fnaddr = gs_tree_value (entries);
-#endif
 
 #ifdef KEY
       if (gs_tree_code (fnaddr) == GS_NOP_EXPR &&
@@ -4547,7 +4403,7 @@ WGEN_Handle_Named_Return_Value (gs_t fn)
     DST_ATTR_IDX attr_idx = DST_INFO_attributes(DST_INFO_IDX_TO_PTR(info_idx));
     DST_VARIABLE *attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_VARIABLE);
     DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = 
-      (void *)ST_st_idx(WN_st(first_formal));
+      (void *)(INTPTR)ST_st_idx(WN_st(first_formal));
     DST_SET_deref(DST_INFO_flag( DST_INFO_IDX_TO_PTR(info_idx)));
   }
 }
