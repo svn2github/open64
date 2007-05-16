@@ -1573,8 +1573,10 @@ Create_ST_For_Tree (gs_t decl_node)
             }
 #ifdef KEY
 	    // Bug 8652: If GNU marks it as COMMON, we should the same.
-	    else if (!flag_no_common && gs_tree_static (decl_node) &&
-	             gs_decl_common (decl_node)) {
+	    else if (!flag_no_common &&
+		     gs_tree_static (decl_node) &&
+	             gs_decl_common (decl_node) &&
+		     gs_tree_public (decl_node)) {
 	      sclass = SCLASS_COMMON;
 	      level = GLOBAL_SYMTAB;
 	      eclass = EXPORT_PREEMPTIBLE;

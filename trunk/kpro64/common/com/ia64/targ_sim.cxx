@@ -557,8 +557,9 @@ Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level)
               case MTYPE_F10:
               case MTYPE_C8:
               case MTYPE_C10:
-
-                n = TY_size (rtype) / TY_size (Be_Type_Tbl (hfa_mtype));
+		// bug fix for OSP_257
+		// 
+                n = TY_size (rtype) / TY_size (Be_Type_Tbl (MTYPE_F8));
                 step = TY_size (Be_Type_Tbl (hfa_mtype)) /
                        TY_size (Be_Type_Tbl (MTYPE_F8));
                 info.count = n;
