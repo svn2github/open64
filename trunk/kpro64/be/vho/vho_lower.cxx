@@ -3846,15 +3846,12 @@ vho_lower_mparm (WN * wn)
   TY_IDX ty = WN_ty (kid);
   INT64 bytes = TY_size (ty);
 
-  if (VHO_Struct_Opt &&
+  if ( VHO_Struct_Opt &&
       (bytes == 4 || bytes == 8) &&
       TY_size (WN_ty (wn)) == bytes &&
-      ST_class (WN_st (kid)) != CLASS_PREG 
-#ifdef TARG_X8664
-      && (Is_Target_32bit() ||
-       traverse_struct (WN_ty (wn)))
-#endif
-     )
+      ST_class (WN_st (kid)) != CLASS_PREG &&
+      (Is_Target_32bit() ||
+       traverse_struct (WN_ty (wn))) )
   {
     TYPE_ID mtype = (bytes == 4) ? MTYPE_U4 : MTYPE_U8;
     WN_set_rtype (wn, mtype);
