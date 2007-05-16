@@ -1798,6 +1798,32 @@ Create_ST_For_Tree (gs_t decl_node)
     ST_ATTR_Init (st_attr, ST_st_idx (st), ST_ATTR_SECTION_NAME,
                   Save_Str (gs_tree_string_pointer (gs_decl_section_name (decl_node))));
   }
+
+#if defined(KEY) && defined(TARG_IA64)
+  //lookup syscall_linkage attribute for FUNCTION_DECL
+  if (gs_tree_code (decl_node) == GS_FUNCTION_DECL)
+  {
+    // Iterate the attributes of the type of the decl
+    gs_t type_attr_list = gs_type_attributes(gs_tree_type(decl_node));
+    gs_t type_attr;
+    for ( type_attr = type_attr_list; type_attr; type_attr = gs_tree_chain(type_attr)) {
+
+      if (gs_tree_purpose(type_attr) != NULL && 
+          gs_code(gs_tree_purpose(type_attr)) == GS_IDENTIFIER_NODE ) {
+        const char * attr_name = gs_tree_string_pointer(gs_tree_purpose(type_attr));
+        if( strcmp("syscall_linkage", attr_name) == 0 ) {
+          // this function has attribute "syscall_linkage"
+          DevWarn("Encounter syscall_linkage attribute!!!");
+          Set_PU_has_syscall_linkage (Pu_Table [ST_pu(st)]);
+          // We only handle the "syscall_linkage" so far
+          break;
+        }
+      }
+    } 
+  }
+#endif
+
+
   if(Debug_Level >= 2) {
     // Bug 559
     if (ST_sclass(st) != SCLASS_EXTERN) {

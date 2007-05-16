@@ -1617,6 +1617,12 @@ WGEN_Finish_Function (void)
 		      WN_operator (wn) != OPR_RETURN_VAL)
       WGEN_Stmt_Append (WN_CreateReturn (), Get_Srcpos ());
 
+#if defined (KEY) && defined(TARG_IA64)
+    if (PU_has_syscall_linkage (Get_Current_PU ())) {
+      Set_PU_no_inline (Get_Current_PU ());
+    }
+#endif
+
     if (lang_cplus) {
       // Add any handler code
       Do_Handlers ();
