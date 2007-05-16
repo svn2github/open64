@@ -349,11 +349,11 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
 		if (ST_IDX_level(new_idx) == GLOBAL_SYMTAB) {
       		  Set_AUX_ST_flags (Aux_St_Table[new_idx], USED_IN_OBJ);
                   Clear_ST_is_not_used (St_Table[new_idx]);
-		}
                 INITV_IDX filter = INITV_next (st_entry); // for backup
                 INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
                        Host_To_Targ (MTYPE_U4, new_idx)), 1);
                 Set_INITV_next (st_entry, filter);
+		}
                 idx = INITV_next (idx);
             } while (idx);
         }
@@ -373,12 +373,14 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
 		FmtAssert (st_idx > 0, ("Invalid st entry in eh-spec table"));
 		ST_IDX new_idx = sym_array[st_idx].St_idx();
 		// TODO: Record this ref in IPL to prevent this situation.
-		Set_AUX_ST_flags (Aux_St_Table[new_idx], USED_IN_OBJ);
-		Clear_ST_is_not_used (St_Table[new_idx]);
-		INITV_IDX bkup = INITV_next (idx);
-		INITV_Set_VAL (Initv_Table[idx], Enter_tcon (
-			Host_To_Targ (MTYPE_U4, new_idx)), 1);
-		Set_INITV_next (idx, bkup);
+		if (ST_IDX_level(new_idx) == GLOBAL_SYMTAB) {
+		   Set_AUX_ST_flags (Aux_St_Table[new_idx], USED_IN_OBJ);
+		   Clear_ST_is_not_used (St_Table[new_idx]);
+		   INITV_IDX bkup = INITV_next (idx);
+		   INITV_Set_VAL (Initv_Table[idx], Enter_tcon (
+			   Host_To_Targ (MTYPE_U4, new_idx)), 1);
+		   Set_INITV_next (idx, bkup);
+		}
 		idx = INITV_next (idx);
 	    } while (idx);
 	}
