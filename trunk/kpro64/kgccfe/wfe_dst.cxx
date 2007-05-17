@@ -88,8 +88,8 @@ static char *rcs_id = "$Source: kgccfe/SCCS/s.wfe_dst.cxx $ $Revision: 1.49 $";
 // To get HW_WIDE_INT ifor flags.h */
 #include "gnu/hwint.h"
 #endif /* KEY */
-#include "gnu/flags.h"
 extern "C" {
+#include "gnu/flags.h"
 #include "gnu/system.h"
 #include "gnu/tree.h"
 // #include "gnu/toplev.h"

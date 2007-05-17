@@ -62,8 +62,8 @@
 #include "gnu/hwint.h"
 #include "erglob.h"  // EC_Unimplemented_Feature
 #endif /* KEY */
-#include "gnu/flags.h"
 extern "C" {
+#include "gnu/flags.h"
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/toplev.h"

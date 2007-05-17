@@ -304,13 +304,7 @@ Count_tree_size_tuning (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ&
 //INLINING_TUNING$
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 extern BOOL DoPreopt;
-#ifdef __cplusplus
-}
-#endif
 
 // -----------------------------------------------------------------
 // SUMMARY_ENTRY_CACHE is not very effective for PHI and CHI nodes.

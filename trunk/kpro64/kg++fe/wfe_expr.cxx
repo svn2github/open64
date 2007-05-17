@@ -66,8 +66,8 @@
 #include "gnu/system.h"
 
 #ifdef KEY
-#include "gnu/flags.h"
 extern "C" {
+#include "gnu/flags.h"
 // needs "C" linkage
 #endif // KEY
 

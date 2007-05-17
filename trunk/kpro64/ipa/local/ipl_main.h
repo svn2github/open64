@@ -50,7 +50,6 @@ extern BOOL Trace_Perf;
 extern BOOL Debug_On;
 extern BOOL Do_Const;
 extern BOOL Do_Par;
-extern BOOL DoPreopt;
 extern BOOL Do_Split_Commons;
 extern BOOL Do_Split_Commons_Set;
 extern BOOL IPL_Enable_Unknown_Frequency;
@@ -64,6 +63,8 @@ extern struct ALIAS_MANAGER *Ipl_Al_Mgr;
 #ifdef __cplusplus
 }
 #endif
+
+extern BOOL DoPreopt;
 
 extern WN_MAP Summary_Map;
 extern WN_MAP Stmt_Map;

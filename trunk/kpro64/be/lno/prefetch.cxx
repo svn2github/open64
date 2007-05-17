@@ -241,7 +241,6 @@ CACHE_PARAMETERS Cache;
 extern void Dump_WN(WN*, FILE*, INT, INT = 2, INT = 2, WN** = NULL, WN* = NULL,
 		    ARRAY_DIRECTED_GRAPH16* =NULL);
 
-extern char* Cur_PU_Name;
 extern WN_MAP Parent_Map;
 WN_MAP version_map = 0;
 
