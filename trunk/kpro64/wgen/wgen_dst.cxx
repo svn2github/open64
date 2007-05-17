@@ -2307,6 +2307,7 @@ DST_Create_var(ST *var_st, gs_t decl)
     if (!gs_decl_artificial (decl) && gs_decl_name(decl) 
 #if 1 // wgen
         && gs_decl_assembler_name_set_p(decl)
+        && gs_decl_assembler_name(decl) != NULL // bug 12666
 #endif
        )
       linkage_name = gs_identifier_pointer(gs_decl_assembler_name (decl));
