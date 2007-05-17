@@ -119,7 +119,7 @@ typedef		float DFtype	__attribute__ ((mode (DF)));
 typedef		float XFtype	__attribute__ ((mode (XF)));
 #endif
 #if LIBGCC2_LONG_DOUBLE_TYPE_SIZE == 128
-typedef		float TFtype	__attribute__ ((mode (XF)));
+typedef		float TFtype	__attribute__ ((mode (TF)));
 #endif
 
 #else /* BITS_PER_UNIT != 8 */
