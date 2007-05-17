@@ -1341,6 +1341,25 @@ Search_decl_arguments(char *name)
 }
 #endif
 
+#ifdef KEY // bug 12668
+static BOOL
+Has_label_decl(gs_t init)
+{
+  if (gs_tree_code(init) == GS_LABEL_DECL)
+    return TRUE;
+  if (gs_tree_code(init) == GS_ADDR_EXPR)
+    return Has_label_decl(gs_tree_operand(init,0));
+  if (gs_tree_code(init) == GS_CONSTRUCTOR) {
+    gs_t nd;
+    for (nd = gs_constructor_elts(init); nd; nd = gs_tree_chain(nd)) {
+      if (Has_label_decl(gs_tree_value(nd)))
+       return TRUE;
+    }
+  }
+  return FALSE;
+}
+#endif
+
 ST*
 Create_ST_For_Tree (gs_t decl_node)
 {
@@ -1585,7 +1604,13 @@ Create_ST_For_Tree (gs_t decl_node)
             else {
 	      if (gs_tree_static (decl_node)) {
 		sclass = SCLASS_PSTATIC;
-		if (pstatic_as_global)
+               if (pstatic_as_global
+#ifdef KEY // bug 12668
+                   && ! (gs_decl_initial(decl_node) &&
+                         !gs_decl_external(decl_node) &&
+                         Has_label_decl(gs_decl_initial(decl_node)))
+#endif
+                 )
 			level = GLOBAL_SYMTAB;
 		else
 			level = CURRENT_SYMTAB;
