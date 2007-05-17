@@ -4794,7 +4794,12 @@ Handle_ASM (const WN* asm_wn)
        CGTARG_Process_Asm_m_constraint (added to address bug 3111) is not 
        designed to work when -fPIC is used. 
     */
-    if( ASM_OP_opnd_memory(asm_info)[num_opnds] && !Gen_PIC_Shared ){
+    if (ASM_OP_opnd_memory(asm_info)[num_opnds] &&
+       (!Gen_PIC_Shared ||
+        // Local symbols can be calculated using one instruction without a
+        // separate add, just like non-PIC code.  Bug 12605.
+        (WN_operator(load) == OPR_LDA &&
+         ST_is_export_local(WN_st(load))))) {
       TN* new_opnd_tn =
 	CGTARG_Process_Asm_m_constraint( load,
 					 &ASM_OP_opnd_offset(asm_info)[num_opnds],
