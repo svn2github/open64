@@ -3616,8 +3616,7 @@ WGEN_Assemble_Alias (gs_t decl, gs_t target)
   // sclass to base_st's sclass.  This may take more than one iteration since
   // the target can be an alias to another target.  Bug 4393.
   if (!expanded_decl(base_decl)) {
-    //WGEN_Process_Decl(base_decl);
-    return TRUE;
+    return FALSE; // bugs 12602, 12704
   }
   expanded_decl(decl) = TRUE;
 

@@ -1172,7 +1172,8 @@ Wgen_Expand_Asm_Operands (gs_t  string,
   // expand_asm_operands but not for other expand_* routines in
   // gnu/stmt.c.
 
-  int ninputs = gs_list_length (inputs);
+  // inputs can be NULL (bug 12602).
+  int ninputs = inputs ? gs_list_length (inputs) : 0;
 
   gs_t tail;
   char *constraint_string;
