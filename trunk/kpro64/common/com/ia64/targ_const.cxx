@@ -6284,6 +6284,10 @@ TCON Targ_IntrinsicOp ( UINT32 intrinsic, TCON c[], BOOL *folded)
       *folded = FALSE;
       break;
    }
+    // bug fix for OSP_296, : errno may have been set by pow, log, acos, asin
+    //x86 has fixed this problem.(related to bugs 4824, 4832)
+   if (errno != 0 && !PU_ftn_lang (Get_Current_PU()))
+     *folded = FALSE;
    return (c0);
 }
 

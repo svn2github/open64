@@ -3542,6 +3542,12 @@ fprintf(fp, SBar);
       fprintf(fp, "\n");
     }//if caller is ok
   }//for all nodes
+  for ( cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next() ){
+       IPA_NODE *node=cg_iter.Current();
+       if ( node ){
+               node->Clear_Visited();
+       }
+  }
 }//Print-vobose()
 
 // ---------------------------------------------

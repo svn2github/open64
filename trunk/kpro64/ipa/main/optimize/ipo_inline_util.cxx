@@ -243,7 +243,16 @@ Fix_Return_Pregs (WN *Call, const RETURN_PREG& rp)
 	for (INT i=0; i < rp.size (); ++i) {
 
 	    // loading of the return preg must immediately followed the call
-	    if (WN_operator (node) == OPR_STID) {
+	    if (WN_operator (node) == OPR_STID
+#if !(defined(_STANDALONE_INLINER) && defined(_LIGHTWEIGHT_INLINER))
+        //bug fix for OSP_277, let ipa_inliner handle
+		// MCALL
+		//  MLDID PRE_RETURN
+		// MRETURN_VAL
+		//
+		   || WN_operator(node) == OPR_RETURN_VAL
+#endif		   
+		   ) {
 		Fix_LDID_Of_Return_Preg (WN_kid0 (node), rp);
 		node = WN_next (node);
 	    } else
