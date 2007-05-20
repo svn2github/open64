@@ -770,7 +770,7 @@ CG_Generate_Code(
        IPFEC_Enable_Prepass_GLOS  || IPFEC_Enable_Postpass_GLOS))
     IPFEC_Enable_Region_Formation = TRUE;
 
-  REGION_TREE *region_tree;
+  REGION_TREE *region_tree = NULL;
   if (IPFEC_Enable_Region_Formation) {
     // Build Ipfec region tree.
     Set_Error_Phase("Ipfec region formation");
