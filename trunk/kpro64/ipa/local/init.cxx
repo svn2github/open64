@@ -64,7 +64,7 @@ extern void (*Ipl_Init_p) ();
 extern void (*Ipl_Fini_p) ();
 extern void (*ipl_main_p) (INT, char **);
 extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
-						  ALIAS_MANAGER*, void*);
+						  ALIAS_MANAGER*, void*, void*);
 #ifdef KEY
 extern void (*Preprocess_struct_access_p) (void);
 #endif

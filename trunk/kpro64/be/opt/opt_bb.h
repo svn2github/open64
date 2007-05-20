@@ -1089,7 +1089,7 @@ private:
               *_iphi_list;   // pt to list of EXP_OCCURS (IPHI) nodes
 
   SRCPOS       _linenum;     // the source position starting this block
-  UINT32       _freq;	     // frequency info (from profile feedback)
+  INT64        _freq;	     // frequency info (from profile feedback)
 
   union {
     IDTYPE      _rpo_id;     // number in reverse postorder CFG walk
@@ -1349,8 +1349,8 @@ public:
 
   SRCPOS       Linenum(void)	 const  { return _linenum; }
   void         Set_linenum(SRCPOS ln)	{ _linenum = ln; }
-  UINT32       Freq(void)	 const  { return _freq; }
-  void         Set_freq(UINT32 n)	{ _freq = n; }
+  INT64        Freq(void)	 const  { return _freq; }
+  void         Set_freq(INT64 n)	{ _freq = n; }
 
   // PRE/SSA related data structure
   EXP_PHI     *Exp_phi(void) const      { return _u3._exp_phi; }

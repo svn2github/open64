@@ -52,7 +52,7 @@ Ipl_Init_From_Ipa (MEM_POOL* pool);
 extern void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 				 struct ALIAS_MANAGER *alias_mgr,
-				 void* emitter );
+				 void* emitter, void* cfg );
 
 extern void 
 Ipl_Fini (void);

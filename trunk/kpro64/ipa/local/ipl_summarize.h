@@ -102,6 +102,10 @@
 #include "ipl_reorder.h"
 #endif
 
+#ifndef opt_cfg_INCLUDED // for CFG
+#include "opt_cfg.h"
+#endif
+
 //---------------------------------------------------------------
 // alternate entry point array
 // contain all the alternate entry points encountered in the
@@ -297,6 +301,7 @@ private:
     struct DU_MANAGER *du_mgr;
     struct ALIAS_MANAGER *alias_mgr;
     EMITTER *emitter;
+    CFG *cfg;
 
     DYN_ARRAY<SUMMARY_PROCEDURE> _procedure;
     DYN_ARRAY<SUMMARY_CALLSITE> _callsite;
@@ -592,6 +597,9 @@ public:
 
     void Set_emitter (EMITTER *e)		{ emitter = e; }
     EMITTER *Get_emitter () const		{ return emitter; }
+
+    void Set_CFG (CFG *c)		{ cfg = c; }
+    CFG *Get_CFG () const		{ return cfg; }
 
     SUMMARY_PROCEDURE *Get_procedure (INT id) const { return &(_procedure[id]); }
     SUMMARY_PROC_INFO *Get_proc_info (INT id) const { return &(_proc_info[id]); }

@@ -356,10 +356,10 @@
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 				 struct ALIAS_MANAGER *alias_mgr,
-				 EMITTER *emitter);
+				 EMITTER *emitter, void* cfg);
 #ifdef __linux__
 extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
-						  ALIAS_MANAGER*, void*);
+						  ALIAS_MANAGER*, void*, void*);
 #define Perform_Procedure_Summary_Phase (*Perform_Procedure_Summary_Phase_p)
 #else
 #pragma weak Perform_Procedure_Summary_Phase
@@ -1840,7 +1840,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       WB_IPL_Save(); 
       WB_IPL_Initialize(opt_wn, du_mgr, alias_mgr);
       Perform_Procedure_Summary_Phase (opt_wn, du_mgr, alias_mgr,
-				       comp_unit->Emitter());
+				       comp_unit->Emitter(), comp_unit->Cfg());
       WB_IPL_Terminate();
       WB_IPL_Restore(); 
     }
