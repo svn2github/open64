@@ -271,3 +271,8 @@ else
 	$(F90) -m32 -mno-sse2 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f
 endif
 endif
+
+ifeq ($(BUILD_COMPILER), OSP)
+s_data.o:s_data.c
+	$(CCF) -OPT:alias=no_typed -c $<
+endif
