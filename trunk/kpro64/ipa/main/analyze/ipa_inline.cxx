@@ -306,7 +306,7 @@ Get_combined_weight (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
 #ifdef KEY
-    s1.Inc_PU_Size (-2, 0, -1);
+    s1.Inc_PU_Size (-1, 0, -1);
 #else
     s1.Inc_PU_Size (-1, callee->Num_Formals(), -1);
 #endif
@@ -320,7 +320,7 @@ Get_combined_olimit (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
 #ifdef KEY
-    s1.Inc_PU_Size (-2, 0, -1);
+    s1.Inc_PU_Size (-1, 0, -1);
 #else
     s1.Inc_PU_Size (-1, callee->Num_Formals(), -1);
 #endif
@@ -1203,7 +1203,7 @@ IPA_NODE::UpdateSize (IPA_NODE *callee, IPA_EDGE *ed)
 {
     _pu_size += callee->PU_Size();
 #ifdef KEY
-    _pu_size.Inc_PU_Size (-2, 0, -1);
+    _pu_size.Inc_PU_Size (-1, 0, -1);
 #else
     _pu_size.Inc_PU_Size (-1, callee->Num_Formals(), -1);
 #endif
