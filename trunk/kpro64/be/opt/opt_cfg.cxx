@@ -2416,6 +2416,17 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
 	WN_prev(stmt) = NULL;
 	Add_one_stmt( stmt, &endsbb );
 
+        if (WN_operator(stmt) == OPR_CALL && WOPT_Enable_Noreturn_Attr_Opt) {
+          if (PU_has_attr_noreturn(Pu_Table[ST_pu(WN_st(stmt))])) {
+            // ignore the rest statements
+            if (!nextstmt || 
+                (WN_operator(nextstmt) != OPR_RETURN && 
+                 WN_operator(nextstmt) != OPR_RETURN_VAL)) {
+              nextstmt = WN_Create (OPC_RETURN, 0); 
+            }
+          }
+        }
+
 	// For RVI's temporary use, break blocks at EVERY statement
 	if ( endsbb == END_NOT && Rvi_break_stmt() )
 	  endsbb = END_FALLTHRU;
@@ -2662,8 +2673,9 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
       _exc->Link_top_es(wn);
     _current_bb->Set_hascall();
     Append_wn_in(_current_bb, wn);
-    if ( ends_bb )
+    if (ends_bb) {
       *ends_bb = Calls_break() ? END_FALLTHRU : END_NOT;
+    }
     break;
 
   case OPR_INTRINSIC_CALL:

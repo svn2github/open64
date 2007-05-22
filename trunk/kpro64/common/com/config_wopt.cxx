@@ -289,6 +289,7 @@ BOOL  WOPT_Enable_Pt_Keep_Track_Ptr = TRUE;  // POINTS_TO keeps track of pointer
                                              // of iload/istore
   // POINTS_TO keeps track of complex address of iload/istore. 
 BOOL  WOPT_Enable_Aggr_Pt_Keep_Track_Ptr = TRUE; 
+BOOL  WOPT_Enable_Noreturn_Attr_Opt = FALSE;
 
 #ifdef KEY
 BOOL  WOPT_Enable_Preserve_Mem_Opnds = FALSE; // if TRUE, suppress EPRE on 

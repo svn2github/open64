@@ -351,7 +351,7 @@
 #include "regex.h"                      // For regcomp and regexec
 #include "xstats.h"                     // For PU_WN_BB_Cnt
 #include "opt_wovp.h"     // for write once variable promotion
-
+#include "opt_misc.h"
 
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
@@ -1413,7 +1413,8 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
                                     comp_unit->Exc());
 
   comp_unit->Opt_stab()->Update_return_mu();
-
+  Analyze_pu_attr (comp_unit->Opt_stab(), Opt_current_pu_st);
+  
   if (WOPT_Enable_Zero_Version) {
     SET_OPT_PHASE("Find Zero Versions");
     comp_unit->Ssa()->Find_zero_versions();

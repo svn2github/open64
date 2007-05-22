@@ -895,6 +895,13 @@ inline void
 Clear_PU_has_attr_pure (PU& pu)      { pu.flags &= ~PU_HAS_ATTR_PURE; }
 
 inline BOOL
+PU_has_attr_noreturn (PU& pu)        { return (pu.flags & PU_HAS_ATTR_NORETURN) != 0; } 
+inline void
+Set_PU_has_attr_noreturn (PU& pu)    { pu.flags |= PU_HAS_ATTR_NORETURN; }
+inline void
+Clear_PU_has_attr_noreturn (PU& pu)  { pu.flags &= ~PU_HAS_ATTR_NORETURN; }
+
+inline BOOL
 PU_is_marked_inline (const PU& pu)	{ return (pu.flags & PU_IS_MARKED_INLINE) != 0; }
 inline void
 Set_PU_is_marked_inline (PU& pu) 	{ pu.flags |= PU_IS_MARKED_INLINE; }

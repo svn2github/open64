@@ -5033,12 +5033,18 @@ WFE_Expand_Expr (tree exp,
             wfe_invoke_inliner = TRUE;
           }
 #ifdef TARG_IA64
-          if (DECL_IS_MALLOC (func)) {
-            Set_PU_has_attr_malloc (Pu_Table[ST_pu(st)]);
-          } else if (DECL_IS_PURE(func)) {
-            Set_PU_has_attr_pure (Pu_Table[ST_pu(st)]);
+          int flags = flags_from_decl_or_type (func);
+          PU& pu_ent = Pu_Table[ST_pu(st)];
+          if (flags & ECF_MALLOC) { 
+            Set_PU_has_attr_malloc (pu_ent);
+          } else if (flags & ECF_PURE) {
+            Set_PU_has_attr_pure (pu_ent);
           } else if (TREE_READONLY(func)) {
-            Set_PU_is_pure (Pu_Table[ST_pu(st)]);
+            Set_PU_is_pure (pu_ent);
+          }
+          
+          if (flags & ECF_NORETURN) {
+            Set_PU_has_attr_noreturn (pu_ent);
           }
 #endif
         }

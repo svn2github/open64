@@ -661,6 +661,7 @@ public:
 #define PU_IS_MALLOC          0x0000020000000000LL // PU is malloc/calloc/... or their wrapper
 #define PU_HAS_ATTR_MALLOC  0x0000020000000000LL // __attribute__((malloc)) semantic 
 #define PU_HAS_ATTR_PURE    0x0000040000000000LL // __attribute__((pure)) semantic 
+#define PU_HAS_ATTR_NORETURN 0x0000080000000000LL // __attribute__((noreturn)) semantic
 
 enum PU_SRC_LANG_FLAGS
 {
