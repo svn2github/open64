@@ -69,6 +69,8 @@
                     \verb\SIM\         &   used to test cross compilers. To test a & \verb\spim\ & ---\\
                                        &   native compiler , set it to null string.&  &  \\
                     \hline\hline
+                    \verb\UPDATE_COMPILER\ & Whether update the compiler automatically. & true/false & false \\
+                    \hline
                     \verb\COMPILER\    &   The directory to save the source code of & --- & --- \\
                                        &   the compiler. & & \\
                     \hline
@@ -76,6 +78,10 @@
                     \hline
                     \verb\INSTALL\     &   The command line to install the compiler. & \verb\./INSTALL.native\ & --- \\
                     \hline\
+                    \verb\CURRENT_PLATFORM\ & The current architecture name. & IA64 & IA64 \\
+                    \hline
+                    \verb\PLATFORMS\ & The available platforms for the testcases. & IA64,X8664 & --- \\
+                    \hline
                     \verb\VALIDATION_ONLY\ & Whether only test for validation and & true/false & false \\
                                         &  not concerned about its performance.   &            &        \\
                     \hline
@@ -133,7 +139,7 @@
             \verb\CXXFLAGS\, \verb\FFLAGS\ and \verb\SIM\) has a lower priority than those in the subsidiary
             configuration files under \verb\./conf\.
 
-            It seems that only the override for \verb\VALIDATION_ONLY\, \verb\WHOLE_COPY\, \verb\EVALUATOR\ and
+            It seems that only the override for \verb\VALIDATION_ONLY\, \verb\WHOLE_COPY\, \verb\EVALUATOR\, \verb\PLATFORMS\ and
             \verb\SUBCONF\ is useful.
 
         \subsection{the Testing Process for a Group}
@@ -214,6 +220,12 @@
                     Tell the framework to generate \verb\.s\ file only.
                     This instruction implies \verb|//NOEXEC|.
 
+                \item \verb|//PLATFORM:|$<$\emph{architecture name}$>$
+
+                    The available architectures for the current test case.
+                    If more than one architectures are available, separate them by comma.
+                    If the CURRENT\_PLATFORM value is not among those architecture names, the test case will be skipped.
+
             \end{itemize}
 
             In a fortran test case, the usage of instructions are all the same with C/C++ test cases,
@@ -244,10 +256,10 @@
             The variables, which can be used in single file test cases(only except \verb\$(SOURCE)\), are also available in \verb\Makefile\.
             You can also override those variables by setting the values in the beginning of \verb\Makefile\.
 
-            Unlike the many kinds of test instructions for single source test cases,
-            only one instruction is available in multi source test cases, i.e. \verb|#NOEXEC|.
-            That instruction should be written in \verb\Makefile\ and starts from the first column of a line.
-            It tells the framework not to execute the target file after building it.
+            Like the single source test cases, you can specify some test instructions in a Makefile.
+            An test instruction should be written in a separated line and start with `\#'.
+            There're two kinds of available test instructions for test cases with multiple source files,
+            i.e. NOEXEC and PLATFORM. Their usage is the same with the single file test cases.
 
         \subsection{the Runtime Evaluation for a Test Case}
 

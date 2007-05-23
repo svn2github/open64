@@ -51,7 +51,10 @@ set validation_only     0
 set confname            {}
 set whole_copy          0
 set time_history        3
-set mail_sender         {}
+set mail_sender         ""
+set update_compiler     0
+set platforms           "IA64, X8664, IA32"
+set current_platform    ""
 
 system rm -rf $logdir
 system rm -rf $testoutput

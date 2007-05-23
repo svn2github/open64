@@ -6,8 +6,12 @@ proc test_multiplecase { dirname buildstat_n runstat_n runtime_n } {
     upvar $runstat_n runstat
     upvar $runtime_n runtime
     
-    note "Test Case: $dirname";
     set needexec [parse_makefile $dirname];
+    
+    if { $needexec == -1 } {
+	set buildstat -1;
+	return;
+    }
 
     set pos [string last "/" $dirname];
     if { $pos < 0 } {
@@ -37,8 +41,7 @@ proc test_multiplecase { dirname buildstat_n runstat_n runtime_n } {
 	set buildstat 1;
     }
     cd $old_dir;
-    
-    
+    note "Test Case: $dirname";
 }
 
 proc parse_makefile { dirname } {
@@ -62,10 +65,26 @@ proc parse_makefile { dirname } {
     while { ![eof $makefilein] } {
 	set line [gets $makefilein];
     	set line [string trimright $line]
-	if { [string equal $line "#NOEXEC"] } {
-	    set execute 0;
+	if { $line != "" && [string index $line 0] == "\#" } {
+	    set option [string range $line 1 [expr [string length $line] - 1]];
+	    set option [string trim $option];
+	    switch -glob $option {
+		NOEXEC* {
+		    set execute 0;
+		}
+		PLATFORM:* {
+		    regsub {PLATFORM:} $option {} option;
+		    set option [string trim $option];
+		    if { ![is_platform_compatible $option] } {
+			close $makefilein;
+			close $makefileout;
+			return -1;
+		    }
+		}
+	    }
+	} else {
+	    puts $makefileout $line
 	}
-	puts $makefileout $line
     }
     close $makefilein;
     close $makefileout;

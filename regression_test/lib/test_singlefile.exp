@@ -43,7 +43,6 @@ proc test_singlecase { dirname filename buildstat_n runstat_n runtime_n } {
 	
     set srcfile "$casedir/$dirname/$filename"
     set casefile [open $srcfile RDONLY];
-    note "Test Case: $dirname/$filename"
     set thislogdir [file dirname "$logdir/$dirname/[file rootname $filename]"]
     exec mkdir -p $thislogdir
     set thislogfile "$thislogdir/$filename.ci"
@@ -88,6 +87,16 @@ proc test_singlecase { dirname filename buildstat_n runstat_n runtime_n } {
 		FLAGS:* {
 		    regsub {FLAGS:} $line {} line; #trim to start //FLAGS: string
 		    set flags "$flags [string trim $line]"
+		}
+
+		PLATFORM:* {
+		    regsub {PLATFORM:} $line {} line;
+		    set line [string trim $line];
+		    if { ![is_platform_compatible $line] } {
+			close $casefile;
+			set buildstat -1;
+			return;
+		    }
 		}
 	    }
 	}
@@ -141,4 +150,5 @@ proc test_singlecase { dirname filename buildstat_n runstat_n runtime_n } {
     }
     
     close $casefile
+    note "Test Case: $dirname/$filename"
 }

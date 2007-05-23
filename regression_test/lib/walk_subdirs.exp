@@ -2,6 +2,7 @@
 load_lib parse_conf.exp
 load_lib test_singlefile.exp
 load_lib statistics.exp
+load_lib test_utils.exp
 
 proc walk_all_dirs { } {
     global casedir logdir testhome date
@@ -13,9 +14,11 @@ proc walk_all_dirs { } {
 	note "Test directory: $fn";
 	if { [file isdirectory $fn] } {
 	    set logfd [open "$testhome/log/$date/$fn.log" w];
-	    walk_dir_first_level $fn $logfd
+	    set res [walk_dir_first_level $fn $logfd];
 	    close $logfd
-	    append_case_group $fn
+	    if { $res == 0 } {
+		append_case_group $fn
+	    }
 	}
     }
     cd $old_dir
@@ -28,6 +31,7 @@ proc walk_dir_first_level { dirname logfd } {
     global sim confname
     global casedir logdir
     global subconf evaluator validation_only whole_copy
+    global platforms current_platform
 
     # Save the default parameters
     set old_subconf $subconf;
@@ -40,9 +44,17 @@ proc walk_dir_first_level { dirname logfd } {
     set old_cxxflags $cxxflags;
     set old_fflags $fflags;
     set old_whole_copy $whole_copy;
+    set old_platforms $platforms;
+    set old_current_platform $current_platform;
 
     # Parse the config file
     parse_conf "$casedir/$dirname/test.conf";
+
+    # Check if current platform is in the platform list
+    if { ![is_platform_compatible $platforms] } {
+	note "Skipped";
+	return 1;
+    }
 
     if { $validation_only } {
 	set columns 3;
@@ -69,6 +81,10 @@ proc walk_dir_first_level { dirname logfd } {
     set cxxflags $old_cxxflags;
     set fflags $old_fflags;
     set whole_copy $old_whole_copy;
+    set platforms $old_platforms;
+    set current_platform $old_current_platform;
+    
+    return 0;
 }
 
 proc deal_one_conf { conf dirname logfd columns } {
@@ -190,7 +206,7 @@ proc deal_case { is_multi logfd dirname filename } {
 	    exec mkdir -p $output_parent;
 	    exec cp -rf "$casedir/$dirname" $output_parent;
 	}
-	test_multiplecase $dirname buildstat runstat runtime
+	test_multiplecase $dirname buildstat runstat runtime;
     } else {
 	test_singlecase $dirname $filename buildstat runstat runtime;
     }

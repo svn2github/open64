@@ -1,0 +1,30 @@
+#!/usr/bin/expect -f
+
+proc bool_to_int { bool_val } {
+    set bool_val [string trim $bool_val];
+    if { [string equal -nocase $bool_val "true"] || [string equal $bool_val "1"] } {
+	return 1;
+    } else {
+	return 0;
+    }
+}
+
+proc break_into_items { list } {
+    set items [split $list ","];
+    for { set i 0 } { $i < [llength $items] } {incr i } {
+	lset items $i [string trim [lindex $items $i]];
+    }
+    return $items;
+}
+
+proc is_platform_compatible { platform_list } {
+    global current_platform
+
+    set items [break_into_items $platform_list];
+    foreach item $items {
+	if { [string equal -nocase $item $current_platform] } {
+	    return 1;
+	}
+    }
+    return 0;
+}

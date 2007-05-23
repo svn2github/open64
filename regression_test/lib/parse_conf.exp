@@ -14,49 +14,75 @@
 #           Home for the source of our compiler
 #################################################################
 
+load_lib test_utils.exp
+
+proc check_conf_var { val varname } {
+    if { $val == "" } {
+	puts "Error: Please set the vaiable $varname in test.conf";
+	exit 1;
+    }
+}
+
+proc check_conf_vars {} {
+    global update_compiler
+    global comp_home build install current_platform
+    global confdir
+
+    if { $update_compiler } {
+	check_conf_var $comp_home COMPILER;
+	check_conf_var $build BUILD;
+	check_conf_var $install INSTALL;
+    }
+    check_conf_var $current_platform CURRENT_PLATFORM;
+    
+    set fd [open "$confdir/mails.conf" r];
+    while { [gets $fd line] >= 0 } {
+	set line [string trim $line];
+	if { $line != "" } {
+	    return;
+	}
+    }
+    puts "Error: No e-mail address in mails.conf";
+    exit 1;
+}
+
 proc parse_conf { conf } {
     global comp_home build install subconf evaluator
     global cc cxx fc cflags cxxflags fflags sim
     global validation_only whole_copy
     global mail_sender
+    global update_compiler
+    global platforms current_platform
     
     # Check if given configuration file exists
     set bFileExists [file exists $conf];
     
     if { $bFileExists == 0 } {
-	error "$conf file does not exist";
+	puts "Error: $conf file does not exist";
+	exit 1;
     }
     
     set fConf [open $conf RDONLY];
     while { [gets $fConf line] >=0} {
+	set line [string trim $line];
+	if { $line == "" || [string index $line 0] == "\#"} continue;
 	set pos [string first "=" $line];
 	if { $pos != -1 } {
-	    set var [string range $line 0 [expr $pos - 1]];
+	    set var [string trim [string range $line 0 [expr $pos - 1]]];
 	    set val [string range $line [expr $pos + 1] [expr [string length $line] - 1]];
 	    switch $var {
 		COMPILER {set comp_home $val;}
 		BUILD { set build $val; }
 		INSTALL { set install $val; }
 		SUBCONF {
-		    set subconf [split $val ","];
-		    for { set i 0 } { $i < [llength $subconf] } {incr i } {
-			lset subconf $i [string trim [lindex $subconf $i]];
-		    }
+		    set subconf [break_into_items $val];
 		}
 		EVALUATOR { set evaluator $val; }
 		VALIDATION_ONLY {
-		    if { [string equal -nocase $val "true"] } {
-			set validation_only 1;
-		    } else {
-			set validation_only 0;
-		    }
+		    set validation_only [bool_to_int $val];
 		}
 		WHOLE_COPY {
-		    if { [string equal -nocase $val "true"] } {
-			set whole_copy 1;
-		    } else {
-			set whole_copy 0;
-		    }
+		    set whole_copy [bool_to_int $val];
 		}
 		CC { set cc $val; }
 		CXX { set cxx $val; }
@@ -66,11 +92,23 @@ proc parse_conf { conf } {
 		FFLAGS { set fflags $val; }
 		SIM { set sim $val; }
 		MAIL_SENDER { set mail_sender $val; }
+		UPDATE_COMPILER {
+		    set update_compiler [bool_to_int $val];
+		}
+		PLATFORMS {
+		    set platforms $val;
+		}
+		CURRENT_PLATFORM {
+		    set current_platform $val;
+		}		
 		default {
 		    puts "Error: Bad variable in $conf: $var";
 		    exit 1;
 		}
 	    }
+	} else {
+	    puts "Error: Bad line in $conf file: $line";
+	    exit 1;
 	}
     }
 }
@@ -90,6 +128,8 @@ proc parse_sub_conf { conf } {
     set confname $conf
     set fConf [open $filename RDONLY];
     while { [gets $fConf line] >=0} {
+	set line [string trim $line];
+	if { $line == "" || [string index $line 0] == "\#"} continue;
 	set pos [string first "=" $line];
 	if { $pos != -1 } {
 	    set var [string range $line 0 [expr $pos - 1]];
@@ -103,8 +143,14 @@ proc parse_sub_conf { conf } {
 		FFLAGS { set fflags $val; }
 		SIM { set sim $val; }
 		NAME { set confname $val; }
-		default { }
+		default {
+		    puts "Error: Bad variable in $conf: $var";
+		    exit 1;
+		}
 	    }
+	} else {
+	    puts "Error: Bad line in $conf file: $line";
+	    exit 1;
 	}
     }
 
