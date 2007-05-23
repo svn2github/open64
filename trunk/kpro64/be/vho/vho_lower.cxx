@@ -2235,6 +2235,17 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info ,BOOL is_return=FALS
 	}
 	else
 #endif // KEY
+#ifdef TARG_X8664
+        if (MTYPE_is_mmx_vector(rtype))
+	{
+          ST * call_tmp_st = Gen_Temp_Symbol (MTYPE_TO_TY_array[rtype], ".call");
+          wn = WN_Stid (rtype, 0, call_tmp_st, ty_idx, result);
+          WN_Set_Linenum ( wn, VHO_Srcpos );
+          WN_INSERT_BlockLast (comma_block, wn);
+          result = WN_Ldid (rtype, 0, call_tmp_st, ty_idx);
+	} 
+	else
+#endif
 	{
           PREG_NUM preg    = Create_Preg (rtype, vho_lower_comma_name);
           ST*      preg_st = MTYPE_To_PREG (rtype);
