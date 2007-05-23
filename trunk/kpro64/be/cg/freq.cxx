@@ -3153,11 +3153,11 @@ FREQ_Incorporate_Feedback(const WN* entry)
 	      float freq_take = fb_take.Value();
 	      float freq_fall = fb_fall.Value();
 	      if (take_edge) {
-		EDGE_prob(take_edge) += freq_take / freq_bb;
+		EDGE_prob(take_edge) = freq_take / freq_bb;
 		Set_EDGE_prob_fb_based(take_edge);
 	      }
 	      if (fall_edge) {
-		EDGE_prob(fall_edge) += freq_fall / freq_bb;
+		EDGE_prob(fall_edge) = freq_fall / freq_bb;
 		Set_EDGE_prob_fb_based(fall_edge);
 	      }
 	    }
@@ -3206,7 +3206,7 @@ FREQ_Incorporate_Feedback(const WN* entry)
 		  FB_FREQ fb_case = Cur_PU_Feedback->Query(wn,
 							   FB_EDGE_SWITCH(i));
 		  float freq_case = FB_FREQ_Value(fb_case);
-		  EDGE_prob(edge) += freq_case / freq_bb;
+		  EDGE_prob(edge) = freq_case / freq_bb;
 		  Set_EDGE_prob_fb_based(edge);
 		}
 	      }

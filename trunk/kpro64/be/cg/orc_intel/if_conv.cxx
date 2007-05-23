@@ -884,11 +884,8 @@ IF_CONVERTOR::Prob_Of_Area(IF_CONV_AREA *area1,
     }
     float result = BB_freq(area1 -> Entry_BB()) ? 
                    freq / BB_freq(area1 -> Entry_BB()):0;
-    
-    Is_True(result <1.0 ||FREQ_Match(result, 1.0), 
-        ("Probablity can not be greater than 1.\n"));
 
-    return result;
+    return result <1.0 ||FREQ_Match(result, 1.0) ? result: 1.0;   
 }
 
 //*****************************************************************************
