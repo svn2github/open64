@@ -1070,6 +1070,7 @@ extern void Link_Pred_Succ_with_Prob(BB *pred, BB *succ, float prob,
 #ifdef KEY
 				     , BOOL via_hint = FALSE
 #endif
+                     , BOOL incr_prob = TRUE
 				     );
 extern BBLIST *BBlist_Add_BB(BBLIST **lst, BB *bb);
 extern void BBlist_Delete_BB(BBLIST **lst, BB *bb);
@@ -1079,6 +1080,7 @@ extern BBLIST *BBlist_Add_BB_with_Prob(BBLIST **lst, BB *bb, float prob,
 #ifdef KEY
 				       , BOOL via_hint = FALSE
 #endif
+                       , BOOL incr_prob = TRUE
 				       );
 
 /* Unlink the pred and succ basic blocks. */

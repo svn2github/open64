@@ -577,6 +577,8 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
   INT i;
   INT nsuccs = BBINFO_nsuccs(bb);
   float prob = BBINFO_succ_prob(bb, isucc);
+  BOOL prob_acced = FALSE;  // whether the prob of old_edge has accumulated 
+                            // to new_edge. should always be TRUE?
 
 #if Is_True_On
   {
@@ -601,6 +603,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
     // bb->old; bb->new; so move old edge prob to new edge.
     BBLIST_prob(new_edge) += BBLIST_prob(old_edge);
     BBLIST_prob(old_edge)  = 0;
+    prob_acced = TRUE;
   }
   Set_BBINFO_succ_bb(bb, isucc, new_succ);
 
@@ -633,7 +636,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
       Unlink_Pred_Succ(bb, old_succ);
 #ifdef KEY
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
-                           BBLIST_prob_hint_based(old_edge) != 0);
+                           BBLIST_prob_hint_based(old_edge) != 0, !prob_acced);
 #else
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE);
 #endif  

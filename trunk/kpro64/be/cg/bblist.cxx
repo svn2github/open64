@@ -174,6 +174,7 @@ BBlist_Add_BB_with_Prob (BBLIST **lst, BB *bb, float prob,
 #ifdef KEY
                          , BOOL via_hint
 #endif
+                         , BOOL incr_prob
 			 )
 {
   BBLIST *p, *last;
@@ -202,7 +203,7 @@ BBlist_Add_BB_with_Prob (BBLIST **lst, BB *bb, float prob,
   last = NULL;
   for (;p != NULL; p = BBLIST_next(p)) {
     if (BBLIST_item(p) == bb) {
-      if (FREQ_Frequencies_Computed()) BBLIST_prob(p) += prob;
+      if (FREQ_Frequencies_Computed() && incr_prob) BBLIST_prob(p) += prob;
       return p;
     }
     last = p;
@@ -256,6 +257,7 @@ Link_Pred_Succ_with_Prob (BB *pred, BB *succ, float prob,
 #ifdef KEY
                           , BOOL via_hint
 #endif
+                          , BOOL incr_prob
                          )
 {
   Verify_BB(pred);
@@ -267,6 +269,7 @@ Link_Pred_Succ_with_Prob (BB *pred, BB *succ, float prob,
 #ifdef KEY
                            , via_hint
 #endif
+                           , incr_prob
                           );
   pedge = BBlist_Add_BB (&BB_preds(succ), pred);
 
