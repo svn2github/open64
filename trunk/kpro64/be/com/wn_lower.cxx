@@ -6668,8 +6668,23 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	// the store target is %eax
 	ST *c4temp_st = Gen_Temp_Symbol(MTYPE_To_TY(MTYPE_C4), ".c4");
 
+	WN *realexp_copy, *imagexp_copy;
+	PREG_NUM realexpN, imagexpN;
+	if (WN_operator(realexp) == OPR_CONST) {
+	  realexp_copy = realexp;
+	} else {
+	  realexpN = AssignExpr(block, realexp, realTY);
+	  realexp_copy = WN_LdidPreg(realTY, realexpN);
+	}
+	if (WN_operator(imagexp) == OPR_CONST) {
+	  imagexp_copy = imagexp;
+	} else {
+	  imagexpN = AssignExpr(block, imagexp, realTY);
+	  imagexp_copy = WN_LdidPreg(realTY, imagexpN);
+	}
+
 	// store the real part
-	WN *stid = WN_Stid( WN_rtype(realexp), 0, c4temp_st, realTY, realexp );
+	WN *stid = WN_Stid( WN_rtype(realexp), 0, c4temp_st, realTY, realexp_copy );
         WN_Set_Linenum( stid, WN_Get_Linenum(tree) );
         WN_INSERT_BlockLast( block, stid );
 
@@ -6680,7 +6695,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
         WN_INSERT_BlockLast( block, stid );
 
 	// store the imag part
-	stid = WN_Stid( WN_rtype(imagexp), 4, c4temp_st, realTY, imagexp );
+	stid = WN_Stid( WN_rtype(imagexp), 4, c4temp_st, realTY, imagexp_copy );
         WN_Set_Linenum (stid, WN_Get_Linenum(tree));
         WN_INSERT_BlockLast(block, stid);
 
