@@ -120,7 +120,6 @@
    
 */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <math.h>
 #include <stdarg.h>

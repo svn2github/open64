@@ -709,7 +709,7 @@ Exp_Ldst (
       	Set_OP_no_alias(OPS_last(&newops));
 	base_tn = tmp2;
 	// add offset to address
-	ofst_tn = Gen_Literal_TN(base_ofst, 4);
+	ofst_tn = Gen_Literal_TN_Ex(base_ofst);
   }
   else {
  	FmtAssert(FALSE, ("NYI: Exp_Ldst"));

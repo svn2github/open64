@@ -80,6 +80,7 @@ endif
 #----------------------------------------------------------------------
 HOSTDEFS += -Dsgi
 HOSTDEFS += -DBACK_END -DMONGOOSE_BE
+HOSTDEFS += -D__STDC_LIMIT_MACROS
 
 ifeq ($(BUILD_TARGET), X8664)
 HOSTDEFS += -DCG_PATHSCALE_MERGE

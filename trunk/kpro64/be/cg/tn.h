@@ -670,6 +670,16 @@ inline BOOL TN_is_dedicated_class_and_reg( TN *tn, UINT16 class_n_reg )
 /* Only the following routines should be used to build constant TNs. */
 
 extern	TN *Gen_Literal_TN ( INT64 val, INT size );
+
+// Produce a literal TN with the given literal value and decide the size automatically.
+inline TN * Gen_Literal_TN_Ex ( INT64 val )
+{
+  if (val >= INT32_MIN && val <= INT32_MAX)
+    return Gen_Literal_TN(val, 4);
+  else
+    return Gen_Literal_TN(val, 8);
+}
+
 // normally literals are hashed and reused; this creates unique TN
 extern TN *Gen_Unique_Literal_TN (INT64 ivalue, INT size);
 

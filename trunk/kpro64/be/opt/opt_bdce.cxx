@@ -179,7 +179,7 @@ BITWISE_DCE::Operators_without_dependency(OPERATOR opr)
 // Bitmask_of_size - forms a bit mask of 1's for the number of bits
 // ====================================================================
 UINT64
-BITWISE_DCE::Bitmask_of_size(INT32 vsize)
+BITWISE_DCE::Bitmask_of_size(UINT64 vsize)
 {
   Is_True(vsize != 0, ("BITWISE_DCE::Bitmask_of_size: size cannot be 0"));
   if (vsize >= 64)

@@ -120,6 +120,7 @@ endif
 HOSTDEFS += -Dsgi -DIPFEC
 HOSTDEFS += -DBACK_END -DMONGOOSE_BE
 HOSTDEFS += -Dlonglong
+HOSTDEFS += -D__STDC_LIMIT_MACROS
 # need to define _LONGLONG and _SVR4_SOURCE to allow compilation with -ansi.
 HOSTDEFS += -D_LONGLONG -D_SVR4_SOURCE
 

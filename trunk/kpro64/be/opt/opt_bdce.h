@@ -102,7 +102,7 @@ private:
 
   void Initialize_stmts_dead(void);
   BOOL Operators_without_dependency(OPERATOR opr);
-  UINT64 Bitmask_of_size(INT32);
+  UINT64 Bitmask_of_size(UINT64);
   UINT64 Fill_lower_bits(UINT64);
   UINT64 Bits_in_type(MTYPE);
   UINT64 Bits_in_coderep_result(CODEREP *);
