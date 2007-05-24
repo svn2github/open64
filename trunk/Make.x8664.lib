@@ -40,7 +40,13 @@ LIB_BUILD_DIR64 = kpro64/targx8664_builtonia32
 
 
 # All LIB compiler components:
-SUBDIRS := $(LIB_BUILD_DIR32) $(LIB_BUILD_DIR64)
+BUILD_HOST := $(shell uname -m)
+
+SUBDIRS := $(LIB_BUILD_DIR32)
+ifeq ($(BUILD_HOST), x86_64)
+  SUBDIRS += $(LIB_BUILD_DIR64)
+endif
+
 
 default clean clobber:
 	+@for d in $(SUBDIRS); do \

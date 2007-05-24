@@ -54,7 +54,7 @@ LIBRARY_SUBDIRS := \
 	libu \
 	libmv \
 	libinstr2 \
-	#libm \
+	libm \
 	#libfoobar \
 	#libpscrt \
         #libopenmp

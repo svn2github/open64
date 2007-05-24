@@ -238,7 +238,7 @@ endif
 last: make_deps
 
 ifeq ($(BUILD_COMPILER), GNU)
-SETPATH = LD_LIBRARY_PATH=.
+SETPATH = #LD_LIBRARY_PATH=.
 else
 SETPATH = 
 endif

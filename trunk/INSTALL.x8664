@@ -212,7 +212,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
     LIBAREA=kpro64/targx8664_builtonia32
     LIBAREA32=kpro64/targia32_builtonia32
 
-    for i in fortran F77 mv; do
+    for i in fortran ffio F77 mv; do
         INSTALL_DATA_SUB ${LIBAREA}/lib${i}/lib${i}.a     ${NATIVE_LIB_DIR}/lib${i}.a
         INSTALL_DATA_SUB ${LIBAREA}/lib${i}/lib${i}_p.a   ${NATIVE_LIB_DIR}/lib${i}_p.a
         INSTALL_DATA_SUB ${LIBAREA}/lib${i}/lib${i}.so    ${NATIVE_LIB_DIR}/lib${i}.so.1
@@ -224,12 +224,8 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         ln -sf ${NATIVE_LIB_DIR32}/lib${i}.so.1           ${NATIVE_LIB_DIR32}/lib${i}.so
     done
 
-    INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a            ${NATIVE_LIB_DIR}/libffio.a
-    INSTALL_DATA_SUB ${LIBAREA}/libu/libffio_p.a          ${NATIVE_LIB_DIR}/libffio_p.a
-    INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.so           ${NATIVE_LIB_DIR}/libffio.so.1
-    INSTALL_DATA_SUB ${LIBAREA32}/libu/libffio.a          ${NATIVE_LIB_DIR32}/libffio.a
-    INSTALL_DATA_SUB ${LIBAREA32}/libu/libffio_p.a        ${NATIVE_LIB_DIR32}/libffio_p.a
-    INSTALL_DATA_SUB ${LIBAREA32}/libu/libffio.so         ${NATIVE_LIB_DIR32}/libffio.so
+    INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a            ${NATIVE_LIB_DIR}/libmsgi.a
+    INSTALL_DATA_SUB ${LIBAREA32}/libm/libmsgi.a          ${NATIVE_LIB_DIR32}/libmsgi.a
 
   # INSTALL_DATA_SUB ${LIBAREA}/libm/libmpath.a       ${NATIVE_LIB_DIR}/libmpath.a
   # INSTALL_DATA_SUB ${LIBAREA}/libm/libmpath_p.a       ${NATIVE_LIB_DIR}/libmpath_p.a

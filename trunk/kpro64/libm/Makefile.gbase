@@ -95,10 +95,10 @@ dso_version := 1
 DSO = libmsgi.so.$(dso_version)
 CFLAGS += -Wa,"-x assembler-with-cpp"
 else
-LIBRARY = libm$(OPEN64_NAME_PREFIX).a
-PROF_LIB = libm$(OPEN64_NAME_PREFIX)_p.a
+LIBRARY = libmsgi.a
+PROF_LIB = libmsgi_p.a
 dso_version := 1
-DSO = libm$(OPEN64_NAME_PREFIX).so.$(dso_version)
+DSO = libmsgi.so.$(dso_version)
 endif
 endif
 
