@@ -50,6 +50,7 @@ template <class T> const T& max (const T& a, const T& b)
 
 } // namespace
 
+#if 0
 void * operator new (size_t size)
 {
   void * p = malloc (size);
@@ -60,5 +61,6 @@ void operator delete (void *p)
 {
   free (p);
 }
+#endif
 
 #endif

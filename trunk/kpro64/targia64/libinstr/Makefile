@@ -42,7 +42,7 @@
 #
 BUILD_AREA     = ..
 BUILD_TOT      = ../..
-BUILD_BASE     = ../../instrumentation/libinstr
+BUILD_BASE     = ../../instrumentation/libinstr2
 BUILD_ROOTS    = TARGET
 BUILD_ABI      = I64BIT
 BUILD_ARCH     = IA64
