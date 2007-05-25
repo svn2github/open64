@@ -68,31 +68,19 @@
 #include "iface_scn.h"
 #include "cg_flags.h"
 #include "glob.h"
-#include "cg.h" //To help emit assembly code
 
 
-// file numbers in ST are 1 origin.
-// gas expects zero origin (as that is what dwarf2 uses).
-// There is a problem here: what if file 1 (ST numbering)
-// has no generated code? If 0 gets skipped will gas
-// work ok? Answer: file numbers ignored if file name
-// present: gas then checks/assigns by file name, numbering
-// starting at 0.  see gas/config/tc-ia64.c
-static INT max_visited_file = 0;
 extern void
 CGEMIT_Prn_File_Dir_In_Asm(USRCPOS usrcpos,
                         const char *pathname,
                         const char *filename)
 {
-    INT File_Num = USRCPOS_filenum(usrcpos);
-    if( !CG_emit_asm_dwarf || Asm_File_Visited(File_Num) <= max_visited_file) {
+    if( !CG_emit_asm_dwarf) 
       fprintf (Asm_File, "// "); //turn the rest into comment
-    } else {
-      max_visited_file = Asm_File_Visited(File_Num); 
-    }
-    fprintf (Asm_File, "\t%s\t%d \"%s/%s\" //%d\n",AS_FILE, 
-		Asm_File_Visited(File_Num),
-		pathname,filename,File_Num);
+
+    fprintf (Asm_File, "\t%s\t%d \"%s/%s\"\n",AS_FILE, 
+		USRCPOS_filenum(usrcpos),
+		pathname,filename);
 }
 
 extern void
@@ -102,7 +90,7 @@ CGEMIT_Prn_Line_Dir_In_Asm (USRCPOS usrcpos)
       fprintf (Asm_File, "// "); //turn the rest into comment
     }
     fprintf (Asm_File, "\t.loc\t%d\t%d\t%d\n", 
-		Asm_File_Visited(USRCPOS_filenum(usrcpos)),
+		USRCPOS_filenum(usrcpos),
 		USRCPOS_linenum(usrcpos),
 		USRCPOS_column(usrcpos));
 }

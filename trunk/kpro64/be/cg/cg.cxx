@@ -155,20 +155,6 @@ BOOL EBO_data_spec;
 typedef mempool_allocator<INT> INT_ALLOC;
 typedef std::vector<INT, INT_ALLOC>  INT_CONTAINER;
 
-static INT_CONTAINER asm_file_visited;
-INT Asm_File_Visited(INT file_number)
-{   
-    INT i = 1;
-    INT_CONTAINER::iterator iter;
-    for(iter = asm_file_visited.begin();iter != asm_file_visited.end();iter++)
-    {
-        if (*iter == file_number) return i;
-        i++;
-    }
-    asm_file_visited.push_back(file_number);
-    return i;
-}
-
 BOOL RGN_Formed = FALSE;
 #endif
 #ifdef KEY

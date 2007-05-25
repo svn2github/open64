@@ -100,11 +100,6 @@ extern WN *CG_Generate_Code (
 extern void CG_PU_Initialize( WN *wn );
 extern void CG_PU_Finalize( void );
 
-#ifdef TARG_IA64
-// Control assemly output on file number
-extern INT Asm_File_Visited(INT file_number);
-#endif
-
 extern void CG_Change_Elf_Symbol_To_Undefined (ST* st);
 
 /* initialization for statics to keep the ST for locals generated
