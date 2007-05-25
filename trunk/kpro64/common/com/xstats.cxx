@@ -140,7 +140,6 @@ Count_WN_Operator (OPERATOR opr, TYPE_ID rtype, INT32& bbs, INT32& stmts,
 	if (opr != OPR_BLOCK
 #ifdef KEY
 	    && opr != OPR_FUNC_ENTRY
-	    && opr != OPR_REGION
 #endif
 	   ) {
 	    /* blocks are counted by parent node */

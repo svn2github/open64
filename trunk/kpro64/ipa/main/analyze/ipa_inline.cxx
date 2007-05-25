@@ -539,6 +539,9 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     UINT32 callee_weight = Effective_weight (callee);
     UINT32 combined_weight = Get_combined_weight (caller->PU_Size(), callee->PU_Size(), callee);
 
+    if (PU_is_operator(callee->Get_PU()) && ed->Num_Actuals() <= 2)
+      combined_weight = 1;
+
 #ifdef KEY
     float hotness = callee->Get_feedback() == NULL ? 0.0 :
       compute_hotness (ed, callee, callee_weight);       

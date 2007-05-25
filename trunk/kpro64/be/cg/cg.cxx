@@ -748,6 +748,12 @@ CG_Generate_Code(
     Check_for_Dump ( TP_EBO, NULL );
   }
 
+#ifdef KEY
+  // ebo's optimization may break the live info, we need to
+  // update the info before first pass cflow use these wrong info. see bug 313
+  GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
+#endif
+ 
   // Optimize control flow (first pass)
   if (CG_opt_level > 0 && CFLOW_opt_before_cgprep) {
     // Perform all the optimizations that make things more simple.
