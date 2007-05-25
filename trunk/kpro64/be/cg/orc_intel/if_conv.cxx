@@ -3816,7 +3816,29 @@ IF_CONVERTOR::Merge_Area(IF_CONV_AREA *area)
             {
                 BB_Remove_Op(bb, br);
             } else if (!fall_thru ) {
-                CGTARG_Predicate_OP(bb, br, True_TN);
+                //OSP_265
+                //Here means the branch will always be taken.
+                //Instead of using True_TN as predicate, we just revert br.cond back to br.
+                //CGTARG_Predicate_OP(bb, br, True_TN);
+                TOP new_top;            
+                switch (OP_code(br)) {
+                case TOP_br_cond:
+                  new_top = TOP_br;
+                  break;
+                case TOP_br_r_cond:
+                  new_top = TOP_br_r;
+                  break;
+                default:
+                  FmtAssert(0, ("Weird branch instruction!"));
+                  break;
+                }
+                OP* new_br = Mk_OP(new_top,
+              		 Gen_Enum_TN(ECV_ph_few),
+              		 Gen_Enum_TN(ECV_dh),
+              		 OP_opnd(br,4));
+                OP_srcpos(new_br) = OP_srcpos(br);
+                BB_Insert_Op_After(bb, br, new_br);
+                BB_Remove_Op(bb, br);
             }
         }
     }
