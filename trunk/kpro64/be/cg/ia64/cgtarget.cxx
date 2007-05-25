@@ -94,6 +94,7 @@
 #include "cgtarget.h"
 #include "ipfec_options.h"
 #include "cache_analysis.h"
+#include "stblock.h"        // for Base_Symbol_And_Offset_For_Addressing
 
 UINT32 CGTARG_branch_taken_penalty;
 BOOL CGTARG_branch_taken_penalty_overridden = FALSE;
@@ -3598,14 +3599,32 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   
   // TODO: check that the operand satisifies immediate range constraint
   if (strchr(immediates, *constraint)) {
-    if (load && WN_operator(load)==OPR_LDID && WN_class(load)==CLASS_PREG) {
-      // immediate could have been put in preg by wopt
-      load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
+    if (load && WN_operator(load)==OPR_LDA &&
+        ST_is_constant(WN_st(load)) ) {
+      // OSP_315, 'i' constrait, constant string
+      FmtAssert(WN_st(load) != NULL,
+                ("WN_st is NULL when handling the const symbol for 'i' constraint"));
+      ST *base_sym;
+      INT64 base_ofst;
+      ST *sym = WN_st(load);
+      Allocate_Object(sym);
+      Base_Symbol_And_Offset_For_Addressing (sym, WN_lda_offset(load), &base_sym, &base_ofst);
+      ret_tn = Gen_Symbol_TN(base_sym, base_ofst, 0);
     }
-    FmtAssert(load && WN_operator(load) == OPR_INTCONST, 
-              ("Cannot find immediate operand for ASM"));
-    ret_tn = Gen_Literal_TN(WN_const_val(load), 
-                            MTYPE_bit_size(WN_rtype(load))/8);
+    else {
+      if (load && WN_operator(load)==OPR_LDID &&
+          WN_class(load)==CLASS_PREG) {
+        // immediate could have been put in preg by wopt
+        load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
+      }
+      FmtAssert(load && WN_operator(load) == OPR_INTCONST,
+                ("Cannot find immediate operand for ASM"));
+      ret_tn = Gen_Literal_TN(WN_const_val(load),
+                              MTYPE_bit_size(WN_rtype(load))/8);
+      // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
+      //FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint),
+      //          ("The value of immediate operand supplied is not within expected range."));
+    }
   }
 
   // digit constraint means that we should reuse a previous operand

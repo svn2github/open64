@@ -2574,9 +2574,27 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
       asm_string = Replace_Substring(asm_string, pattern, "%st(0)");
     }
   }
-#endif
 
-#ifdef TARG_X8664
+  // OSP_315
+  // Replace any %c<num> constraint with the constant string
+  if (strstr(asm_string, "%c") && TN_is_symbol(tn) ) {
+    char replace[5];
+    sprintf(replace, "%%c%d", position);
+    // Since the name may be sym+offset(%rip), 
+    // we need to get rid of characters after '('
+    char* left = name;
+    while( *left != '(' && *left != '\0' )
+      left++;
+    if( *left == '(' ) {
+      *left = '\0';
+      asm_string = Replace_Substring(asm_string, replace, name);
+      *left = '('; // restore the name
+    }
+    else {
+      asm_string = Replace_Substring(asm_string, replace, name);
+    }
+  } // end of osp_315
+
   // Replace any %c<num> constraint with the immediate value
   // Replace any %n<num> constraint with the negated immediate value
   if (!TN_is_register(tn) && !TN_is_symbol(tn)) {
