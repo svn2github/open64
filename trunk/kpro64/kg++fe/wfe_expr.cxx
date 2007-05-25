@@ -1439,7 +1439,9 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
         if (TY_return_in_mem(hi_ty_idx) &&
 	    field_id == 0 &&
 	    // See if it is an indirect ref of the fake first parm.
-	    first_formal != NULL && WN_has_sym(first_formal) &&
+	    // bug fix for OSP_314
+	    //
+	    first_formal != NULL && WN_operator(first_formal) != OPR_BLOCK &&
 	    TREE_CODE(addr) == VAR_DECL &&
 	    DECL_ST(addr) == WN_st(first_formal)) {
 	  FmtAssert(TY_mtype(hi_ty_idx) == MTYPE_M,

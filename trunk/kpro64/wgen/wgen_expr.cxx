@@ -1517,7 +1517,9 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         if (TY_return_in_mem(hi_ty_idx) &&
 	    field_id == 0 &&
 	    // See if it is an indirect ref of the fake first parm.
-	    first_formal != NULL &&
+	    // bug fix for OSP_314
+	    //
+	    first_formal != NULL && (WN_operator(first_formal) != OPR_BLOCK) &&
 	    gs_tree_code(addr) == GS_VAR_DECL &&
 	    DECL_ST(addr) == WN_st(first_formal)) {
 	  FmtAssert(TY_mtype(hi_ty_idx) == MTYPE_M,
