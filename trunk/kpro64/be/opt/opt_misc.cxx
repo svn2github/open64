@@ -65,6 +65,11 @@ Analyze_pu_noreturn_attr (OPT_STAB* stab, PU* pu, ST* pu_st) {
   fprintf (stderr, "%s satisfy noreturn semantic\n", ST_name(pu_st));
 }
 
+// Analyze_pu_attr() conducts following things
+//
+//   - reveal _attribute_ semantics
+//   - points-to summary 
+// 
 void
 Analyze_pu_attr (OPT_STAB* opt_stab, ST* pu_st) {
 
@@ -79,6 +84,11 @@ Analyze_pu_attr (OPT_STAB* opt_stab, ST* pu_st) {
   // analyze __attribute__((noreturn)
   if (WOPT_Enable_Noreturn_Attr_Opt && !PU_has_attr_noreturn (pu_ent)) {
     Analyze_pu_noreturn_attr (opt_stab, &pu_ent, pu_st);
+  }
+
+  if (WOPT_Enable_Pt_Summary) {
+    SET_OPT_PHASE("Points-to Summary");
+    opt_stab->Summarize_points_to ();
   }
 }
 

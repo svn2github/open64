@@ -191,6 +191,7 @@ Is_fortran(void)
 #define FB_PRE_FLAG             0x8 /* trace feedback PRE */
 #define CFG_OPT_FLAG           0x10 /* trace CFG optimzation */
 #define WOVP_DUMP_FLAG         0x20 /* dump after write-once variable promotion*/
+#define PT_SUMMARY_FLAG        0x40 /* trace the points-to summary */    
 
 /* Flags associated with value numbering scheme and the 
  * WOPT_Enable_Value_Numbering option.

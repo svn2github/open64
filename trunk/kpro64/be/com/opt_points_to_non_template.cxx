@@ -383,6 +383,10 @@ void POINTS_TO::Meet(const POINTS_TO *pt, ST *definition)
     Reset_known_f90_pointer();
   }
 
+  if (Malloc_id() != pt->Malloc_id()) {
+    Set_malloc_id(0);
+  }
+
   CHECK_POINTS_TO(this);
 }
 

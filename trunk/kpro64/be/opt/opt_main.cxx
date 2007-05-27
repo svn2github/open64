@@ -1314,6 +1314,10 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   SET_OPT_PHASE("Create AUX Symbol table");
   WN_Simplifier_Enable(TRUE);	// so that I can fold ILOAD-LDA
   comp_unit->Opt_stab()->Create(comp_unit, rgn_level);
+  if (WOPT_Enable_Pt_Summary) {
+    comp_unit->Opt_stab()->Points_to_summarizer()->
+       Bind_callee_points_to_summary (wn_tree);
+  }
 
   MEM_POOL alias_class_pool;
 
@@ -1404,6 +1408,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   //
   // Note that this line deletes the alias classification memory pool.
   comp_unit->Opt_stab()->Alias_classification()->Release_resources();
+  if (WOPT_Enable_Pt_Summary) {
+    SET_OPT_PHASE("Points-to Summary Annotation");
+    comp_unit->Opt_stab()->Points_to_summarizer()->
+       Annotate_points_to_summary();
+  }
 
   SET_OPT_PHASE("SSA Pointer Alias Analysis");
   comp_unit->Ssa()->Pointer_Alias_Analysis();

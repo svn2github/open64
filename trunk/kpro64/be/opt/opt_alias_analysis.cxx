@@ -109,6 +109,7 @@
 #include "config_ipa.h"			// IPA_Enable_Alias_Class
 #include "region_util.h"		// RID, POINTS_TO_SET
 #include "srcpos.h"
+#include "pu_info.h"                    // for PU_Info_proc_sym
 #include "opt_base.h"			// FOR_ALL_NODE
 #include "opt_util.h"
 #include "opt_sym.h"			// aux_id
@@ -118,9 +119,11 @@
 #include "opt_points_to.h"		// Is_nested_call, etc
 #include "opt_alias_class.h"		// alias classification stuff
 #include "opt_alias_rule.h"
+#include "opt_points_to_summary.h"
 #include "region_alias_templates.h"	// REGION_search_set
 #include "opt_dbg.h"                    // for g_comp_unit
 #include "opt_main.h"                   // for COMP_UNIT
+#include "opt_alias_analysis.h"
 
 extern "C" {
 #include "bitset.h"
@@ -643,6 +646,7 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
           summary_pt.Print(TFile);
           fprintf(TFile, "this result is not very useful, and is changed into: ");
         }
+        mINT64 malloc_id = summary_pt.Malloc_id();
          // The result is virtuall useless. Following setting may provide more info.
         summary_pt.Init ();
         summary_pt.Set_expr_kind(EXPR_IS_ADDR);
@@ -661,6 +665,7 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
         }
         summary_pt.Set_pointer_ver (ver);
         summary_pt.Set_iofst_kind (OFST_IS_FIXED);
+        summary_pt.Set_malloc_id(malloc_id);
 
         if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG)) {
           summary_pt.Print (TFile);
@@ -696,6 +701,24 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
       Simplify_Pointer_Ver( Ver_stab_entry(ver)->Synonym(), ai);
     } else {
       CHI_NODE *chi = Ver_stab_entry(ver)->Chi();
+
+      if (WOPT_Enable_Pt_Summary && st && ST_class(st) != CLASS_PREG) {
+        WN* stmt = Ver_stab_entry(ver)->Chi_wn(); 
+        if (WN_operator(stmt) == OPR_CALL) {
+	   // TODO: check call's side effect here 
+	} else if (OPERATOR_is_scalar_istore (WN_operator(stmt))) {
+	  // check to see whether alias indeed happens
+          POINTS_TO* ptr = Aux_stab_entry(aux_id)->Points_to(); 
+          POINTS_TO* istore = Get_occ(stmt)->Points_to();
+	  
+          if (ptr && istore && !Rule()->Aliased_Memop (ptr, istore)) {
+	    // ignore this one, go along the U-D chain
+            Simplify_Pointer_Ver(chi->Opnd(), ai);
+	    break;
+	  }
+	}
+      }
+
       ai->Set_expr_kind(EXPR_IS_ADDR);
       ai->Set_base_kind(BASE_IS_DYNAMIC);
       ai->Set_ofst_kind(OFST_IS_FIXED);
@@ -715,6 +738,11 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
         }
         ai->Set_pointer_ver (ver);
         ai->Set_iofst_kind (OFST_IS_FIXED);
+
+        pt = CXX_NEW(POINTS_TO, &_ver_pool);
+        pt->Init();
+        pt->Copy_fully(ai);
+        Ver_stab_entry(ver)->Set_points_to(pt);
       }
     }
     break;
@@ -4095,6 +4123,384 @@ OPT_STAB::Update_alias_set_with_virtual_var(void)
     fprintf(TFile, "\n");
   }
 }
+
+// Bind given individual pointer and its points-to set with symbols 
+// visible from current lexical scope. 
+//
+void
+OPT_PU_POINTS_TO_SUMMARIZER::Bind_callee_points_to_summary 
+  (UNIFORM_NAME* ptr, PT_SET_MGR* pt_mgr, PT_SET_MGR* bound_pt_mgr) {
+
+  PT_SET* pt_set = pt_mgr->Points_to_set (ptr);
+
+  Is_True (ptr->Type () == UN_NAMED_GLOBAL, 
+           ("Currently we only handle global named pointer"));
+  Is_True (!pt_set->Has_unknown_pt(), 
+           ("Currently we can handle only points-to pointing to" 
+            "named objects"));
+                    
+  UNAME_SPACE* bound_name_space = bound_pt_mgr->Name_space ();
+
+  // duplicate the name
+  UNIFORM_NAME* bound_ptr = 
+    bound_name_space->Add_global(ptr->ST_for_named_global());
+        
+  // duplicate and bound the points-to set.
+  PT_SET* bound_pt_set = CXX_NEW(PT_SET(*pt_set, Mem_pool()), Mem_pool());
+  bound_pt_mgr->Associate (bound_ptr, bound_pt_set);
+}
+
+//
+// OPT_PU_POINTS_TO_SUMMARIZER::Bind_callee_points_to_summary() 
+//   bind callee's points-to summary the symbols visible to current PU. 
+// 
+// NOTE: this should be done before any alias analysis so that that 
+//  information can be used to improve the precision. 
+//
+void
+OPT_PU_POINTS_TO_SUMMARIZER::Bind_callee_points_to_summary (WN* entry_wn) {
+
+  if (WOPT_Enable_Pt_Summary) {
+    if (Tracing()) {
+      fprintf (TFile, "\nBegin backward points-to binding\n"); 
+    }
+
+    INT idx = 0;
+    for (WN_ITER* wni = WN_WALK_StmtIter (entry_wn);
+         wni != NULL; wni = WN_WALK_StmtNext (wni)) {
+       WN* call = WN_ITER_wn(wni);
+       if (WN_operator (call) != OPR_CALL) {
+         continue;
+       }
+ 
+       if (Tracing()) {
+         fprintf (TFile, "CALL SITE %2d: ", idx++);
+         fdump_wn (TFile, call); 
+       }
+
+       PU_POINTS_TO_SUMMARY* sum = Get_points_to_summary (WN_st(call));  
+       if (!sum) {
+         if (Tracing()) {
+           fprintf (TFile, "points-to summary is not found\n");
+         }
+         continue;
+       }
+
+       PT_SET_MGR& pt_mgr = sum->Out_set ();
+       UNAME_SPACE* ptrs = pt_mgr.Name_space();
+       if (ptrs->Cardinality () == 0) {
+         // No points-to are recorded
+         continue;
+       }
+       
+       PU_POINTS_TO_SUMMARY* bound_sum = 
+         CXX_NEW(PU_POINTS_TO_SUMMARY(Mem_pool()), Mem_pool());
+       Set_bound_pt_sum (call, bound_sum); 
+
+       UNAME_SPACE* bound_name_space = bound_sum->Out_set().Name_space();
+
+       // looping over all pointers which has points-to relationship 
+       for (UNAME_VECTOR_ITER ptr_iter = ptrs->All_names().begin (); 
+            ptr_iter != ptrs->All_names().end (); ptr_iter ++) {
+
+         UNIFORM_NAME* ptr = *ptr_iter;
+         Bind_callee_points_to_summary (ptr, &pt_mgr, &bound_sum->Out_set());
+       }
+
+       if (Tracing()) {
+         bound_sum->Print (TFile);
+       }
+
+    } // end of for-statement
+
+    if (Tracing()) {
+      fprintf (TFile, "End of backward points-to binding\n\n"); 
+    }
+  }
+}
+
+
+// helper function of Annotate_points_to_summary(void)
+//
+void
+OPT_PU_POINTS_TO_SUMMARIZER::Annotate_points_to_summary 
+  (UNIFORM_NAME* ptr, PT_SET_MGR* pt_set_mgr, CHI_LIST* chi_list) {
+
+  if (ptr->Type () == UN_NAMED_GLOBAL) {
+    POINTS_TO pt; 
+    pt_set_mgr->Points_to_set (ptr)->Meet (&pt);
+
+    if (pt.Expr_kind() != EXPR_IS_INVALID) {
+      ST* st = ptr->ST_for_named_global ();  
+      CHI_NODE* cnode;
+      CHI_LIST_ITER chi_iter;
+
+      FOR_ALL_NODE (cnode, chi_iter, Init(chi_list)) {
+        if (Opt_stab()->St(cnode->Aux_id()) == st) {
+          POINTS_TO* new_pt = CXX_NEW(POINTS_TO, Opt_stab()->Ver_pool());
+          new_pt->Copy_fully (pt);
+
+          VER_ID ver = cnode->Result();  
+          Opt_stab()->Ver_stab_entry(ver)->Set_points_to(new_pt);
+         
+          if (Tracing()) {
+            const char* indent = " ";
+            fprintf (TFile, "%schi(%s) v%d<=%d\n%s", indent,
+                     ST_name(st), cnode->Result(), cnode->Opnd(), indent);
+            new_pt->Print(TFile);
+          }
+        }
+      }
+    }
+  }
+}
+
+// Annotate_points_to_summary()
+//   Annotate the points-to relationship to the CHI node associated
+//   with each call-site. 
+//  
+//   This function should be called after MU and CHI are inserted 
+// properly and before flow-sensitive sense pointer-analysis so that
+// pointer-analysis can take advantage of annotated information. 
+// 
+void
+OPT_PU_POINTS_TO_SUMMARIZER::Annotate_points_to_summary (void) {
+  
+  CFG_ITER cfg_iter;
+  BB_NODE* bb;
+
+  if (Tracing()) {
+    fprintf (TFile, "\nBegin annotating points-to summary\n%s", DBar);
+  }
+
+  FOR_ALL_ELEM (bb, cfg_iter, Init(Opt_stab()->Cfg())) {
+    WN* stmt; 
+    STMT_ITER stmt_iter;
+
+    FOR_ALL_ELEM (stmt, stmt_iter, Init(bb->Firststmt(), bb->Laststmt())) {
+      if (WN_operator(stmt) != OPR_CALL) continue;
+
+      if (Tracing()) {
+        fprintf (TFile, "CALL SITE ");
+        fdump_wn (TFile, stmt);
+      }
+
+      PU_POINTS_TO_SUMMARY* sum = Get_bound_pt_sum (stmt);
+      if (!sum) continue;
+      UNAME_VECTOR& ptrs = sum->Out_set().Name_space()->All_names();  
+
+      CHI_LIST* chi_list = Opt_stab()->Get_generic_chi_list (stmt);       
+
+      // looping over all pointers
+      for (UNAME_VECTOR_ITER pt_iter = ptrs.begin (); 
+           pt_iter != ptrs.end (); pt_iter++) {
+         Annotate_points_to_summary (*pt_iter, &sum->Out_set(), chi_list);
+      }
+    } // end of FOR_ALL_STMT 
+  }
+
+  if (Tracing()) {
+    fprintf (TFile, "\nEnd annotating points-to summary\n%s", DBar);
+  }
+}
+
+// OPT_STAB::Summarize_points_to () -- helper function of 
+// void PU_POINTS_TO_SUMMARY::Summarize (void)
+// 
+void
+OPT_PU_POINTS_TO_SUMMARIZER::Summarize_points_to 
+  (VER_ID ver, OPT_PU_POINTS_TO_SUMMARIZER::VER_ID_VISIT_CNT& visited, 
+   PT_SET& pt_set) {
+
+  POINTS_TO *pt = Opt_stab()->Ver_stab_entry(ver)->Points_to();
+  if (pt && PU_POINTS_TO_SUMMARY::Pt_known_obj (pt)) {
+    pt_set.Add_points_to (pt, PTC_DEFINITE, PT_MUST_POINTS_TO);
+    return;
+  }
+
+  // go along the U-D chain
+  STMT_TYPE vtype = Opt_stab()->Ver_stab_entry(ver)->Type();
+  AUX_ID  aux_id = Opt_stab()->Ver_stab_entry(ver)->Aux_id();
+  ST* st = Opt_stab()->Aux_stab_entry (aux_id)->St ();
+
+  // Set this verion is visited 
+  visited.Set_visited(ver);
+
+  switch (vtype) {
+  case ENTRY_STMT:
+    {
+      // TODO: take into account the points-to hold at the entry points
+      break;
+    }
+
+  case WHIRL_STMT:
+    {
+      POINTS_TO* pt = Opt_stab()->Ver_stab_entry(ver)->Points_to();
+      if (!pt) {
+        POINTS_TO points_to; 
+        points_to.Init ();
+        Opt_stab()->Simplify_Pointer_Ver (ver, &points_to);
+        pt = Opt_stab()->Ver_stab_entry(ver)->Points_to();
+      }
+
+      Is_True (pt != NULL, ("points-to for version %d is NULL", ver));
+      if (PU_POINTS_TO_SUMMARY::Pt_known_obj (pt)) {
+        pt_set.Add_points_to (pt, PTC_DEFINITE, PT_MUST_POINTS_TO);
+        return;
+      }
+    }
+    break;
+
+  case PHI_STMT:
+    {
+      BB_NODE *pred;
+      BB_LIST_ITER bb_iter;
+      BB_NODE *bb = Opt_stab()->Ver_stab_entry(ver)->Bb();
+      PHI_NODE *phi = Opt_stab()->Ver_stab_entry(ver)->Phi();
+
+      INT i=0;
+      FOR_ALL_ELEM (pred, bb_iter, Init(bb->Pred())) {
+        VER_ID opnd_vid = phi->Opnd(i++);
+        if (visited.Visited(opnd_vid)) {
+          continue;
+        }
+        Summarize_points_to (opnd_vid, visited, pt_set);
+        if (pt_set.Has_unknown_pt ()) {
+          break;
+        }
+      }
+    }
+    return;
+
+  case CHI_STMT:
+
+    // Bypass the CHI_STMT if the chi statement is deleted.
+    if (!Opt_stab()->Ver_stab_entry(ver)->Synonym()) {
+      VER_STAB_ENTRY* ver_ent = Opt_stab()->Ver_stab_entry(ver);
+      WN* chi_wn = ver_ent->Chi_wn();
+      if (WN_operator(chi_wn) == OPR_CALL) {
+        ST* call_st = WN_st (chi_wn);
+        if (call_st) {
+          const char* st_name = ST_name(call_st);
+          if (!strcmp (st_name, "exit")) {
+           // TODO: propatage __attribute__((noreturn)) from front-end
+            return; // simply ignore them
+          } else if (!strcmp (st_name, "malloc") || 
+                     !strcmp (st_name, "fprintf") ||
+                     !strcmp (st_name, "printf")) {
+            // omit the chi node, go ahead along the U-D chain  
+            // TODO: - describe side-effect of some libc funtion
+            //       - get rid of this chi as early as Compute_FFA  
+            Summarize_points_to (ver_ent->Chi()->Opnd(), visited, pt_set); 
+            return;
+          }
+        }
+      } else if (OPERATOR_is_scalar_istore (WN_operator(chi_wn))) {
+        // check to see whether the 
+        POINTS_TO* ptr = 
+          Opt_stab()->Aux_stab_entry(ver_ent->Aux_id())->Points_to(); 
+        POINTS_TO* istore = Opt_stab()->Get_occ(chi_wn)->Points_to();
+          
+        if (ptr && istore &&
+            !Opt_stab()->Rule()->Aliased_Memop (ptr, istore)) {
+          // ignore this one, go along the U-D chain
+          Summarize_points_to (ver_ent->Chi()->Opnd(), visited, pt_set); 
+          return;
+        }
+      }
+    } else {
+      VER_ID synonym = Opt_stab()->Ver_stab_entry(ver)->Synonym();
+      if (!visited.Visited (ver)) {
+        Summarize_points_to (synonym, visited, pt_set); 
+        return;
+      }
+    } 
+    break;
+  default:
+    Warn_todo("unknown ver type");
+  }
+  
+  pt_set.Set_has_unkown_pt ();
+}
+
+void
+OPT_PU_POINTS_TO_SUMMARIZER::Summarize_points_to (void) {
+
+  MEM_POOL_Popper popper(&MEM_local_pool);
+
+  BB_NODE* exit_bb = Opt_stab()->Cfg()->Fake_exit_bb() ? 
+                     Opt_stab()->Cfg()->Fake_exit_bb() : 
+                     Opt_stab()->Cfg()->Exit_bb ();
+  
+  WN* wn = exit_bb->Laststmt ();
+  if (wn == NULL || 
+      WN_operator (wn) != OPR_RETURN && WN_operator (wn) != OPR_RETURN_VAL) {
+    return;
+  }
+
+  MU_LIST_ITER mu_iter;
+  MU_NODE* mnode;
+
+  // Looping over all global pointers inluding:
+  //    - those that are accessed within current PU, and 
+  //    - those whose points-to relationship are annotated to 
+  //      a call-site in current PU. 
+  //
+  // We begin with the MU-node associated with the RETURN statement, 
+  // and walk along U-D chain all the way down to the entry.
+  // 
+  FOR_ALL_NODE (mnode, mu_iter, Init(Opt_stab()->Get_stmt_mu_list(wn))) {
+    ST* st = Opt_stab()->St(mnode->Aux_id());
+
+    // For now, we only consider named global pointer
+    if (!st || TY_kind(ST_type(st)) != KIND_POINTER || 
+        ST_sclass (st) == SCLASS_PSTATIC) {
+      continue;
+    }
+    VER_ID ver = mnode->Opnd();
+
+    PT_SET pt_set(popper.Pool()); 
+    OPT_PU_POINTS_TO_SUMMARIZER::VER_ID_VISIT_CNT visited (popper.Pool());
+    Summarize_points_to (ver, visited, pt_set);
+    
+    if (pt_set.Has_unknown_pt () || pt_set.Certainty() != PTC_DEFINITE) {
+      // give up since it virtually does not help out
+      continue;
+    }
+    
+    PT_SET_MGR& pt_set_mgr = Pu_summary()->Out_set ();
+    UNIFORM_NAME* uname = pt_set_mgr.Add_global(st);
+    PT_SET* old_pt_set = pt_set_mgr.Points_to_set (uname);  
+    if (old_pt_set == NULL) {
+      PT_SET* t = CXX_NEW (PT_SET(pt_set, pt_set_mgr.Mem_pool()), 
+                           pt_set_mgr.Mem_pool());
+      pt_set_mgr.Associate (uname, t);
+    } else {
+      old_pt_set->Copy (pt_set);
+    }
+  }
+}
+
+void
+OPT_STAB::Summarize_points_to (void) {
+
+  PU_POINTS_TO_SUMMARY* sum = _pt_sum.Pu_summary ();
+  if (sum == NULL) {
+    sum = Allocate_PU_Points_To_Summary ();
+    FmtAssert (sum != NULL, 
+               ("fail to allocate data structure for points-to summary"));
+    _pt_sum.Set_pu_summary (sum);
+  }
+  
+  _pt_sum.Summarize_points_to ();
+  if (Get_Trace (TP_WOPT2, PT_SUMMARY_FLAG)) {
+    fprintf (TFile, "Points-to summary for PU %s\n%s", 
+             ST_name(PU_Info_proc_sym(Current_PU_Info)), DBar);
+    sum->Print (TFile);
+    fprintf (TFile, DBar); // to mark the end
+  }
+}
+
 
 
 //  Print out all the POINTS_TO alias information

@@ -152,7 +152,8 @@ static BOOL in_parallel_region = FALSE;
 
 
 OPT_STAB::OPT_STAB(MEM_POOL *pool) : aux_stab(pool), 
-  _ac_2_vsym_map(256, (IDTYPE)0, pool, FALSE)
+  _ac_2_vsym_map(256, (IDTYPE)0, pool, FALSE),
+  _pt_sum(pool)
 {
   mem_pool = pool;
   // _aux_pool = CXX_NEW(MEM_POOL, mem_pool);
@@ -194,6 +195,7 @@ OPT_STAB::OPT_STAB(MEM_POOL *pool) : aux_stab(pool),
   _has_exc_handler = FALSE;
 
   _ac_2_vsym_map.Init ();
+  _pt_sum.Set_opt_stab (this);  
 }
 
 
@@ -471,6 +473,30 @@ OPT_STAB::Count_syms(WN *wn)
     Is_True(rid != NULL,("OPT_STAB::Count_syms, NULL rid"));
     if (RID_level(rid) >= Rgn_level()) 
       return;
+  }
+
+  // Count in pointers which have points-to records in the points-to- 
+  // summary of this callee.
+  // 
+  if (WN_operator(wn) == OPR_CALL && WOPT_Enable_Pt_Summary) {
+    PU_POINTS_TO_SUMMARY* sum = _pt_sum.Get_bound_pt_sum (wn);
+    if (sum) {
+      UNAME_VECTOR& ptrs = sum->Out_set().Name_space()->All_names();  
+      for (UNAME_VECTOR_ITER iter = ptrs.begin (); 
+           iter != ptrs.end (); iter++) {
+        UNIFORM_NAME* name = *iter;  
+        if (name->Type () == UN_NAMED_GLOBAL) {
+	  ST* st = name->ST_for_named_global ();
+          ST_CHAIN_INFO *st_chain_info = st_chain_map->Lookup(ST_index(st));
+          if (st_chain_info == NULL) {
+            aux_sym_cnt++;
+            st_chain_info = CXX_NEW(ST_CHAIN_INFO, &_st_chain_pool);
+            st_chain_info->Set_list_head(aux_sym_cnt);
+            st_chain_map->Insert(ST_st_idx(st), st_chain_info);
+	  }
+	}
+      } /* end of for-loop */
+    }
   }
 
   // For compatibility with old BARRIER nodes.

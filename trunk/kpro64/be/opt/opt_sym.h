@@ -106,6 +106,7 @@
 #include "optimizer.h"
 #include "opt_wn.h"
 #include "opt_points_to.h"
+#include "opt_alias_analysis.h"
 #include "region_util.h"
 #include "wn_map.h"
 #include "opt_bb.h"
@@ -788,6 +789,7 @@ private:
 #ifdef KEY
   ALIAS_MANAGER             *_alias_mgr;
 #endif
+  OPT_PU_POINTS_TO_SUMMARIZER _pt_sum;
   BOOL			    _rgn_trace;
 
   // ------------------------------------------------------------------
@@ -1003,7 +1005,10 @@ public:
 #ifdef KEY
   ALIAS_MANAGER *Alias_Mgr(void) const   { return _alias_mgr; }
 #endif
+  OPT_PU_POINTS_TO_SUMMARIZER* Points_to_summarizer (void) 
+                                         { return &_pt_sum; }
   MEM_POOL *Occ_pool(void)               { return &_occ_pool; }
+  MEM_POOL* Ver_pool(void)               { return &_ver_pool; }
   CFG      *Cfg(void) const              { return _cfg; }
   const ALIAS_RULE *Rule(void) const     { return _rule; }
   BOOL     Is_varargs_func(void) const   { return _is_varargs_func; }
@@ -1386,6 +1391,7 @@ public:
 #endif
 
   ST      *St_ptr(WN *wn) const      { return aux_stab[WN_aux(wn)].St(); }
+  void    Summarize_points_to (void);
 };
 
 

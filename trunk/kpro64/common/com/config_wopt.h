@@ -289,6 +289,7 @@ extern BOOL  WOPT_Enable_Pt_Keep_Track_Ptr;  // POINTS_TO keep track pointer of 
   // POINTS_TO keep track complex address of ilod/istore
 extern BOOL  WOPT_Enable_Aggr_Pt_Keep_Track_Ptr;  
 extern BOOL  WOPT_Enable_Noreturn_Attr_Opt;  // __attribute_((noreturn)) related opt
+extern BOOL  WOPT_Enable_Pt_Summary;  // Points-to summary/annotation
 
 #ifdef KEY
 extern BOOL  WOPT_Enable_Preserve_Mem_Opnds; // if TRUE, suppress EPRE on 

@@ -424,6 +424,7 @@ BE_COM_PCH_CXX_SRCS = \
   opt_goto.cxx		\
   opt_ipaa_io.cxx	\
   opt_points_to_non_template.cxx	\
+  opt_points_to_summary.cxx \
   prompf.cxx		\
   standardize.cxx	\
   stblock.cxx		\
