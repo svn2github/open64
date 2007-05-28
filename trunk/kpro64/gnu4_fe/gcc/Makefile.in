@@ -763,7 +763,7 @@ ALL_CFLAGS = -DKEY $(X_CFLAGS) $(T_CFLAGS) \
 ALL_CPPFLAGS = $(INCLUDES) $(CPPFLAGS) $(X_CPPFLAGS) $(T_CPPFLAGS)
 
 #LIBGSPIN = ../../../libspin/libgspin.a
-LIBGSPIN = libgspin.a
+LIBGSPIN = ../../libspin/libgspin.a
 
 # Build and host support libraries.
 LIBIBERTY = ../libiberty/libiberty.a
@@ -3155,7 +3155,7 @@ mostlyclean: lang.mostlyclean
 
 # Delete all files made by compilation
 # that don't exist in the distribution.
-clean: mostlyclean lang.clean libspin_clean
+clean: mostlyclean lang.clean
 	-rm -f libgcc.a libgcc_eh.a libgcov.a
 	-rm -f libgcc_s*
 	-rm -f libunwind*
@@ -4270,8 +4270,5 @@ po/$(PACKAGE).pot: force options.c
 
 # rule for making libgspin.a
 $(LIBGSPIN):
-	cp ../../gcc/libspin.mk .
-	make -f libspin.mk
+	make -C ../../libspin
 
-libspin_clean:
-	-make -f libspin.mk clean
