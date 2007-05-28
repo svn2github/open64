@@ -2323,15 +2323,89 @@ add_instr_archive (string_list_t* args)
 
 extern char *get_binutils_lib_path(void);
 
+#if 0
+static char *
+find_ld_library_path(char *program_name, char *ld_library_path)
+{
+	char buf[PATH_BUF_LEN];
+	int tail;
+
+	if(strchr(program_name, '/') == NULL) {
+		/* find arg0 in $PATH by cmd "which" */
+		sprintf(buf, "which %s", program_name);
+		read_cmd_out(buf, ld_library_path);
+
+		sprintf(buf, "dirname \"");
+		realpath(ld_library_path, buf + strlen(buf));
+
+	} else {
+		sprintf(buf, "dirname \"");
+		realpath(program_name, buf + strlen(buf));
+	}
+
+	tail = strlen(buf);
+	buf[tail] = '"';
+	buf[tail+1] = '\0';
+	read_cmd_out(buf, ld_library_path);
+
+	return ld_library_path;
+}
+#endif
+
+static char *
+find_toolroot(char *program_name, char *toolroot)
+{
+	char buf[PATH_BUF_LEN];
+	FILE* fp;
+	int tail;
+
+	if(strchr(program_name, '/') == NULL) {
+		/* find arg0 in $PATH by cmd "which" */
+		sprintf(buf, "dirname \"`which %s`\"", program_name);
+	} else {
+		sprintf(buf, "dirname \"%s\"", program_name);
+	}
+
+	if((fp = popen(buf, "r")) == NULL)
+		return NULL;
+
+	toolroot[0] = '\0';
+	while(fgets(buf, PATH_BUF_LEN, fp) != NULL) {
+		strcat(toolroot, buf);
+	}
+	pclose(fp);
+
+	tail = strlen(toolroot);
+	if(toolroot[tail - 1] == '\n') {
+		toolroot[tail - 1] = '\0';
+	}
+
+	strcat(toolroot, "/../..");
+	
+	/* do we need realpath? */
+	strcpy(toolroot, realpath(toolroot, buf));
+	
+	return toolroot;
+}
+
+static char ld_library_path_found[PATH_BUF_LEN];
+
 void
 init_phase_info (void)
 {
 	char *toolroot;
+	boolean toolroot_need_free = FALSE;
 	char *comp_target_root;
 
 	if (getenv("_XPG") != NULL) 
 	   xpg_flag = TRUE;
 	ld_library_path = getenv("LD_LIBRARY_PATH");
+#if 0
+	if(ld_library_path == NULL) {
+		ld_library_path = find_ld_library_path(orig_program_name, 
+							ld_library_path_found);
+	}
+#endif
 	ld_libraryn32_path = getenv("LD_LIBRARYN32_PATH");
 	old_ld_library_path = string_copy(ld_library_path);
 	// Replace ":" with ";" because ":" has special meaning to -INTERNAL.
@@ -2348,10 +2422,22 @@ init_phase_info (void)
 	}
 
 	toolroot = getenv("TOOLROOT");
+	if (toolroot == NULL) {
+		toolroot = (char *)malloc(PATH_BUF_LEN);
+		if(find_toolroot(orig_program_name, toolroot) == NULL) {
+			free(toolroot);
+			toolroot = NULL;
+		} else
+			toolroot_need_free = TRUE;
+	}
+
 	if (toolroot != NULL) {
 		/* add toolroot as prefix to phase dirs */
                 prefix_all_phase_dirs(PHASE_MASK, toolroot);
-	}
+	} 
+
+	if(toolroot_need_free)
+		free(toolroot);
 #ifdef TARG_IA64
     get_phases_real_path ();
 #endif

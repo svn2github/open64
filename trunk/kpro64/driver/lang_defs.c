@@ -82,37 +82,38 @@ typedef struct phase_struct {
 	char *dir;
 	boolean set_ld_library_path; /* true if need to set LD_LIBRARY_PATH
 					to "dir" */
+	boolean find_dir_by_path; /* find phase dir from $PATH */
 } phase_info_t;
 /* phases_t is index into phase_info array */
 static phase_info_t phase_info[] = {
-   {'N',  0x0000000000000000LL,	"", 	"",		FALSE},	/* NONE */
-   {'A',  0x0fffffffffffffffLL,	"", 	"",		FALSE},	/* ALL */
+   {'N',  0x0000000000000000LL,	"", 	"",		FALSE, FALSE},	/* NONE */
+   {'A',  0x0fffffffffffffffLL,	"", 	"",		FALSE, FALSE},	/* ALL */
 
-   {'m',  0x0000000000000008LL,	"m4",	BINPATH,	FALSE},	/* m4 */
-   {'r',  0x0000000000000001LL,	"ratfor",BINPATH,	FALSE},	/* ratfor */
+   {'m',  0x0000000000000008LL,	"m4",	BINPATH,	FALSE, FALSE},	/* m4 */
+   {'r',  0x0000000000000001LL,	"ratfor",BINPATH,	FALSE, FALSE},	/* ratfor */
 
-   {'p',  0x0000000000000010LL,	"cpp",	PHASEPATH,	FALSE},	/* cpp */
+   {'p',  0x0000000000000010LL,	"cpp",	PHASEPATH,	FALSE, FALSE},	/* cpp */
    /* invoke gcc driver directly rather than cpp
     * because cpp can have different paths, reads spec file,
     * and may eventually be merged with cc1. */
-   {'p',  0x0000000000000020LL,	NAMEPREFIX "gcc", ALTBINPATH, FALSE}, /* gcpp */
-   {'p',  0x0000000000000040LL,	NAMEPREFIX "g++", ALTBINPATH, FALSE}, /* gcpp_plus */
-   {'p',  0x0000000000000080LL,	"fec",	 PHASEPATH,	FALSE},	/* c_cpp */
-   {'p',  0x0000000000000100LL, "cpp",   PHASEPATH,     FALSE}, /* cplus_cpp */
-   {'p',  0x0000000000000200LL,	"mfef77",PHASEPATH,	FALSE},	/* f_cpp */
-   {'p',  0x0000000000000400LL,	"ftpp"   ,PHASEPATH,	FALSE},	/* f90_cpp */
+   {'p',  0x0000000000000020LL,	NAMEPREFIX "gcc", ALTBINPATH, FALSE, TRUE}, /* gcpp */
+   {'p',  0x0000000000000040LL,	NAMEPREFIX "g++", ALTBINPATH, FALSE, TRUE}, /* gcpp_plus */
+   {'p',  0x0000000000000080LL,	"fec",	 PHASEPATH,	FALSE, FALSE},	/* c_cpp */
+   {'p',  0x0000000000000100LL, "cpp",   PHASEPATH,     FALSE, FALSE}, /* cplus_cpp */
+   {'p',  0x0000000000000200LL,	"mfef77",PHASEPATH,	FALSE, FALSE},	/* f_cpp */
+   {'p',  0x0000000000000400LL,	"ftpp"   ,PHASEPATH,	FALSE, FALSE},	/* f90_cpp */
 #ifdef KEY	// bug 9058
-   {'p',  0x0000000000000800LL,	"coco"   ,PHASEPATH,	FALSE},	/* coco */
+   {'p',  0x0000000000000800LL,	"coco"   ,PHASEPATH,	FALSE, FALSE},	/* coco */
 #endif
    /* place-holder for generic cpp, whose mask unites all cpp's; */
-   {'p',  0x0000000000000ff0LL,	"",	"",		FALSE},	/* any_cpp */
+   {'p',  0x0000000000000ff0LL,	"",	"",		FALSE, FALSE},	/* any_cpp */
 
-   {'K',  0x0000000000001000LL,	"pfa",	PHASEPATH,	FALSE},	/* pfa */
-   {'K',  0x0000000000002000LL,	"pca",	PHASEPATH,	FALSE},	/* pca */
-   {'M',  0x0000000000008000LL, "mpc",  PHASEPATH,      FALSE}, /* mpc */
+   {'K',  0x0000000000001000LL,	"pfa",	PHASEPATH,	FALSE, FALSE},	/* pfa */
+   {'K',  0x0000000000002000LL,	"pca",	PHASEPATH,	FALSE, FALSE},	/* pca */
+   {'M',  0x0000000000008000LL, "mpc",  PHASEPATH,      FALSE, FALSE}, /* mpc */
    /* place-holder for generic fe optimizer, whose mask unites opts's */
    /* don't include mpc which is controlled by a different phase letter */
-   {'K',  0x0000000000007000LL, "",     "",             FALSE}, /* any_optfe */
+   {'K',  0x0000000000007000LL, "",     "",             FALSE, FALSE}, /* any_optfe */
 
    /* the mask field really has two uses:
     * 1) to produce a union value given a set of phase keys;
@@ -125,63 +126,63 @@ static phase_info_t phase_info[] = {
     * So what we do is give it a unique value, but when matching
     * the value for options then we compare against both cpp and cfe. */
    /* ffe is chosen by same letter as cfe */
-   {'f',  0x0000000000010000LL,	"mfef77",PHASEPATH,	FALSE},	/* f_fe */
-   {'f',  0x0000000000020000LL, "mfef77",PHASEPATH,     FALSE}, /* cppf_fe */
-   {'f',  0x0000000000040000LL,	"mfef95",PHASEPATH,	FALSE},	/* f90_fe */
-   {'f',  0x0000000000080000LL,	"mfef95",PHASEPATH,	FALSE},	/* cppf90_fe */
-   {'f',  0x0000000000100000LL,	"gfec",PHASEPATH,	TRUE }, /* c_gfe */
-   {'f',  0x0000000000200000LL,	"gfecc",PHASEPATH,	TRUE }, /* cplus_gfe */
+   {'f',  0x0000000000010000LL,	"mfef77",PHASEPATH,	FALSE, FALSE},	/* f_fe */
+   {'f',  0x0000000000020000LL, "mfef77",PHASEPATH,     FALSE, FALSE}, /* cppf_fe */
+   {'f',  0x0000000000040000LL,	"mfef95",PHASEPATH,	FALSE, FALSE},	/* f90_fe */
+   {'f',  0x0000000000080000LL,	"mfef95",PHASEPATH,	FALSE, FALSE},	/* cppf90_fe */
+   {'f',  0x0000000000100000LL,	"gfec",PHASEPATH,	TRUE , FALSE}, /* c_gfe */
+   {'f',  0x0000000000200000LL,	"gfecc",PHASEPATH,	TRUE , FALSE}, /* cplus_gfe */
 #ifdef KEY
-   {'f',  0x0000000000400000LL, "cc1"   ,PHASEPATH, TRUE }, /* spin_cc1  */
-   {'f',  0x0000000000800000LL, "cc1plus",PHASEPATH,    TRUE }, /* spin_cc1plus */
-   {'f',  0x0000000001000000LL, "wgen",PHASEPATH,   TRUE }, /* wgen      */
+   {'f',  0x0000000000400000LL, "cc1"   ,PHASEPATH, TRUE , FALSE}, /* spin_cc1  */
+   {'f',  0x0000000000800000LL, "cc1plus",PHASEPATH,    TRUE , FALSE}, /* spin_cc1plus */
+   {'f',  0x0000000001000000LL, "wgen",PHASEPATH,   TRUE , FALSE}, /* wgen      */
 #endif
    /* place-holder for generic fe, whose mask unites all fe's; */
    /* this is so -Wf will apply to whatever fe is being invoked. */
-   {'f',  0x0000000000ff0000LL,	"",	"",		FALSE},	/* any_fe */
-   {'F',  0x00000000000f0000LL,	"",	"",		FALSE},	/* pseudo_f_fe */
-   {'C',  0x0000000000f00000LL,	"",	"",		FALSE},	/* pseudo_c_fe */
+   {'f',  0x0000000000ff0000LL,	"",	"",		FALSE, FALSE},	/* any_fe */
+   {'F',  0x00000000000f0000LL,	"",	"",		FALSE, FALSE},	/* pseudo_f_fe */
+   {'C',  0x0000000000f00000LL,	"",	"",		FALSE, FALSE},	/* pseudo_c_fe */
 
-   {'X',  0x0000000002000000LL, "ftnlx", PHASEPATH,	FALSE}, /* Lister */ 
+   {'X',  0x0000000002000000LL, "ftnlx", PHASEPATH,	FALSE, FALSE}, /* Lister */ 
 
-   {'i',  0x0000000010000000LL,	"inline",PHASEPATH,	TRUE},	/* inline */
-   {'i',  0x0000000020000000LL,	"ipl",	PHASEPATH,	TRUE},	/* ipl */
-   {'i',  0x00000000f0000000LL,	"",	"",		TRUE},	/* ipl, inline*/
+   {'i',  0x0000000010000000LL,	"inline",PHASEPATH,	TRUE, FALSE},	/* inline */
+   {'i',  0x0000000020000000LL,	"ipl",	PHASEPATH,	TRUE, FALSE},	/* ipl */
+   {'i',  0x00000000f0000000LL,	"",	"",		TRUE, FALSE},	/* ipl, inline*/
 
-   {'b',  0x0000000100000000LL,	"be",	PHASEPATH,	TRUE},	/* be */
+   {'b',  0x0000000100000000LL,	"be",	PHASEPATH,	TRUE, FALSE},	/* be */
    /* We use 'B' for options to be passed to be via ipacom. */
 
-   {'a',  0x0000001000000000LL,	"asm",	PHASEPATH,	FALSE},	/* as */
+   {'a',  0x0000001000000000LL,	"asm",	PHASEPATH,	FALSE, FALSE},	/* as */
 #if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
    /* on x8664, we alwayse use gcc as the assembler */
-   {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* gcc */
+   {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* gcc */
 #else
-   {'a',  0x0000002000000000LL,	"as",	BINPATH,	FALSE},	/* gas */
+   {'a',  0x0000002000000000LL,	"as",	BINPATH,	FALSE, TRUE},	/* gas */
 #endif
-   {'a',  0x0000003000000000LL,	"",	"",		FALSE},	/* any_as */
+   {'a',  0x0000003000000000LL,	"",	"",		FALSE, FALSE},	/* any_as */
 
-   {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE},/* dsm_prelink*/
-   {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH, TRUE},	/* ipa_link */
-   {'l',  0x0000020000000000LL,	"ld", BINPATH, TRUE},	/* collect */
+   {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE, FALSE},/* dsm_prelink*/
+   {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH, TRUE, FALSE},	/* ipa_link */
+   {'l',  0x0000020000000000LL,	"ld", BINPATH, TRUE, TRUE},	/* collect */
 #if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
    /* on x8664, we alwayse use gcc/g++ as the linker */
-   {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* ld */
-   {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* ldplus */
+   {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* ld */
+   {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE, TRUE}, /* ldplus */
 #else
-   {'l',  0x0000040000000000LL,	"ld", BINPATH, FALSE}, /* ld */
-   {'l',  0x0000080000000000LL,	"ld", BINPATH, FALSE}, /* ldplus */
+   {'l',  0x0000040000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ld */
+   {'l',  0x0000080000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ldplus */
 #endif
-   {'l',  0x01000f0000000000LL,	"",	"",		TRUE},	/* any_ld */
-   {'c',  0x0000100000000000LL, "cord", BINPATH,	FALSE},	/* cord */
-   {'x',  0x0000200000000000LL, "pixie", BINPATH,   FALSE}, /* pixie */
-   {'x',  0x0000400000000000LL, "prof",  BINPATH,   FALSE}, /* prof */
+   {'l',  0x01000f0000000000LL,	"",	"",		TRUE, FALSE},	/* any_ld */
+   {'c',  0x0000100000000000LL, "cord", BINPATH,	FALSE, FALSE},	/* cord */
+   {'x',  0x0000200000000000LL, "pixie", BINPATH,   FALSE, FALSE}, /* pixie */
+   {'x',  0x0000400000000000LL, "prof",  BINPATH,   FALSE, FALSE}, /* prof */
 
-   {'R',  0x0001000000000000LL, "ar",  BINPATH,      FALSE}, /* ar */
+   {'R',  0x0001000000000000LL, "ar",  BINPATH,      FALSE, FALSE}, /* ar */
 
-   {'S',  0x0010000000000000LL,	"crt",	LIBPATH,	FALSE},	/* startup */
-   {'I',  0x0020000000000000LL,	"inc",	"/usr/include",	FALSE},	/* include */
-   {'L',  0x0040000000000000LL,	"lib",	LIBPATH,	FALSE},	/* library */
-   {'L',  0x0080000000000000LL,	"alib",	ALTLIBPATH,	FALSE},	/* alt_library */
+   {'S',  0x0010000000000000LL,	"crt",	LIBPATH,	FALSE, FALSE},	/* startup */
+   {'I',  0x0020000000000000LL,	"inc",	"/usr/include",	FALSE, FALSE},	/* include */
+   {'L',  0x0040000000000000LL,	"lib",	LIBPATH,	FALSE, FALSE},	/* library */
+   {'L',  0x0080000000000000LL,	"alib",	ALTLIBPATH,	FALSE, FALSE},	/* alt_library */
 };
 mask_t PHASE_MASK=
           0x000fffffffffffffLL;
@@ -372,6 +373,30 @@ append_phase_dir (phases_t index, char *path)
 	phase_info[index].dir = concat_strings (phase_info[index].dir, path);
 }
 
+/* read output of cmd from pipe */
+char *
+read_cmd_out(char *cmd, char *out_buf)
+{
+	char buf[PATH_BUF_LEN];
+	FILE* fp;
+	int tail;
+
+	if((fp = popen(cmd, "r")) == NULL)
+		return NULL;
+
+	out_buf[0] = '\0';
+	while(fgets(buf, PATH_BUF_LEN, fp) != NULL)
+		strcat(out_buf, buf);
+
+	pclose(fp);
+
+	tail = strlen(out_buf);
+	if(out_buf[tail - 1] == '\n')
+		out_buf[tail - 1] = '\0';
+
+	return out_buf;
+}
+
 /* return phase path */
 char *
 get_phase_dir (phases_t index)
@@ -389,7 +414,15 @@ get_phase_dir (phases_t index)
 	  return phase_info[index].dir;
 #endif
 	}
-	else
+	else if(phase_info[index].find_dir_by_path) {
+		char cmd[PATH_BUF_LEN];
+		char result[PATH_BUF_LEN];
+
+		sprintf(cmd, "dirname \"`which %s`\"", phase_info[index].name);
+		if(read_cmd_out(cmd, result) == NULL)
+			return phase_info[index].dir;
+		return string_copy(result);
+	}
 	  return phase_info[index].dir;
 }
 

@@ -55,6 +55,18 @@ TARG_OS="linux"
 BUILD_OS="linux" 
 #[ `uname -s | grep -i linux | wc -l` -eq 1 ] && BUILD_OS="linux"
 
+if [ -z ${TOOLROOT} ] ; then
+    echo "NOTE: \$TOOLROOT is not set! You can either set \$TOOLROOT or specify an install directory."
+    echo "INSTALL DIRECTORY:"
+    read	# in $REPLY
+    [ ! -d $REPLY ] && echo "No such directory: $REPLY, exit." && exit 1
+    ORIGIN_DIR=`pwd`
+    cd $REPLY
+    TOOLROOT=`pwd`
+    cd $ORIGIN_DIR
+    echo "INSTALL to $TOOLROOT"
+fi 
+
     # everything we will install is under $ROOT
 ROOT=${TOOLROOT}/
 
@@ -313,12 +325,12 @@ INSTALL_MISC () {
     INSTALL_EXEC_SUB ${AREA}/targ_info/itanium.so ${PHASEPATH}/itanium.so
     INSTALL_EXEC_SUB ${AREA}/targ_info/itanium2.so ${PHASEPATH}/itanium2.so
 
-    if [ ! -z "$ROOT" ] ; then
-        for i in gcc f77 as ld g++ gas as ; do
-            x=`which $i 2>/dev/null`
-            [ ! -z "$x" ] && ln -s $x $BIN_DIR/`basename $x` 2>/dev/null
-        done
-    fi
+#    if [ ! -z "$ROOT" ] ; then
+#        for i in gcc f77 as ld g++ gas as ; do
+#            x=`which $i 2>/dev/null`
+#            [ ! -z "$x" ] && ln -s $x $BIN_DIR/`basename $x` 2>/dev/null
+#        done
+#    fi
 
         # install some scripts
     for i in ${PREBUILT_BIN}/misc/* ; do 

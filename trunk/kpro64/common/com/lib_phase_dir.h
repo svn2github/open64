@@ -54,8 +54,8 @@
 
 #include "pathscale_defs.h"
 
-#if defined(linux) && defined(TARG_IA64)
-    #if CROSS_COMPILATION
+#if defined(linux) && (defined(TARG_IA64) || defined(TARG_X8664))
+    #if CROSS_COMPILATION && defined(TARG_IA64)
 	    #define NAMEPREFIX	""
 	    #define INTERPOSE   "ia64-open64-linux"
     #else
@@ -71,7 +71,12 @@
         #define ALTBINPATH  BINPATH
     #endif 
 
-    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-open64-linux/3.0" 
+    #if defined(TARG_IA64)
+    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-open64-linux/3.0"
+    #else
+    #define LIBPATH     "/usr/" INTERPOSE "/lib/gcc-lib/x86_64-open64-linux/3.0"
+    #endif
+
     #define ALTLIBPATH	"/usr/" INTERPOSE "/lib"
 
     #define PHASEPATH	    LIBPATH

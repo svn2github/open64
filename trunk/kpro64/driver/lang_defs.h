@@ -244,4 +244,12 @@ extern mem_model_t mem_model;
 extern char *mem_model_name;
 #endif
 
+#ifdef PATH_MAX
+#define PATH_BUF_LEN PATH_MAX
+#else
+#define PATH_BUF_LEN 4096
+#endif
+
+extern char *read_cmd_out(char *cmd, char *out_buf);
+
 #endif

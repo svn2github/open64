@@ -56,18 +56,30 @@ TARG_OS="linux"
 BUILD_OS="linux" 
 #[ `uname -s | grep -i linux | wc -l` -eq 1 ] && BUILD_OS="linux"
 
+if [ -z ${TOOLROOT} ] ; then
+    echo "NOTE: \$TOOLROOT is not set! You can either set \$TOOLROOT or specify an install directory."
+    echo "INSTALL DIRECTORY:"
+    read        # in $REPLY
+    [ ! -d $REPLY ] && echo "No such directory: $REPLY, exit." && exit 1
+    ORIGIN_DIR=`pwd`
+    cd $REPLY
+    TOOLROOT=`pwd`
+    cd $ORIGIN_DIR
+    echo "INSTALL to $TOOLROOT"
+fi 
+
 # everything we will install is under $ROOT
-ROOT=${OPEN64_INSTALL_PREFIX}
+ROOT=${TOOLROOT}
 
 #INTERPOSE=${TARG_HOST}-pathscale-${TARG_OS}
 #[ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
 
 AREA="kpro64/targ${BUILD_HOST}_${TARG_HOST}"
 
-PHASEPATH=${ROOT}/lib/${VERSION}
-NATIVE_LIB_DIR=${ROOT}/lib/${VERSION}
+PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/x86_64-open64-linux/${VERSION}/
+NATIVE_LIB_DIR=${PHASEPATH}
 NATIVE_LIB_DIR32="${NATIVE_LIB_DIR}/32"
-BIN_DIR=${ROOT}/bin
+BIN_DIR=${ROOT}/usr/${INTERPOSE}/bin
 #ALT_BIN_DIR=${ROOT}/usr/${INTERPOSE}/altbin
 
 INSTALL="/usr/bin/install -D"
@@ -385,8 +397,6 @@ INSTALL_MISC () {
 }
 
 cd `dirname $0`
-
-[ -z ${OPEN64_INSTALL_PREFIX} ] && echo -e "please set environment variable OPEN64_INSTALL_PREFIX !\n    Notes: everything will be installed under \$OPEN64_INSTALL_PREFIX" && exit 1
 
 # prepare directories
 [ ! -d ${BIN_DIR} ] && mkdir -p ${BIN_DIR}
