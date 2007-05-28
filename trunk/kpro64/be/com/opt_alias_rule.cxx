@@ -104,12 +104,13 @@ BOOL ALIAS_RULE::Aliased_Base_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2)
 //    TRUE -- aliased
 //    FALSE -- not aliased
 //
-BOOL ALIAS_RULE::Aliased_Ofst_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2) const
+ALIAS_KIND ALIAS_RULE::Aliased_Ofst_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2) const
 {
-  if (mem1->Same_base(mem2) && !mem1->Overlap(mem2))
-    return FALSE;
-  else
-    return TRUE;
+  if (mem1->Same_base(mem2)) {
+    return mem1->Overlap(mem2);
+  }
+
+  return ALIAS_KIND(AR_POSSIBLE_ALIAS);
 }
 
 
@@ -250,7 +251,7 @@ ALIAS_RULE::Aliased_F90_Target_Rule(const POINTS_TO *const mem1,
 //    TRUE -- possibly aliased
 //    FALSE -- not aliased (if its address is not taken)
 //
-BOOL ALIAS_RULE::Aliased_Indirect_Rule
+ALIAS_KIND ALIAS_RULE::Aliased_Indirect_Rule
    (const POINTS_TO *mem1, const POINTS_TO *mem2, BOOL ignore_loop_carried) const
 {
   // Change to Aliased_Indirect_Rule 
@@ -263,29 +264,29 @@ BOOL ALIAS_RULE::Aliased_Indirect_Rule
 
   if ((mem1->Unnamed() && !mem1->Unique_pt())
       && mem2->Not_addr_saved())
-    return FALSE;
+    return ALIAS_KIND(AR_NOT_ALIAS);
   if ((mem2->Unnamed() && !mem2->Unique_pt())
       && mem1->Not_addr_saved())
-    return FALSE;
+    return ALIAS_KIND(AR_NOT_ALIAS);
 
   if ((mem1->Malloc_id() || mem2->Malloc_id()) &&
       WOPT_Enable_Disambiguate_Heap_Obj) {
     if (mem1->Named()) {
       Is_True (mem1->Malloc_id() == 0, ("A heap object should not have name"));
-      return FALSE;
+      return ALIAS_KIND(AR_NOT_ALIAS);
     } else if (mem2->Named()) {
       Is_True (mem2->Malloc_id() == 0, ("A heap object should not have name"));
-      return FALSE;
+      return ALIAS_KIND(AR_NOT_ALIAS);
     } else if (mem1->Malloc_id() && mem2->Malloc_id() && 
                mem1->Malloc_id () != mem2->Malloc_id()) {
-      return FALSE;
+      return ALIAS_KIND(AR_NOT_ALIAS);
     }
   }
 
   if (mem1->Same_pointer (mem2)) {
     if (mem1->Iofst_kind () != OFST_IS_FIXED ||
         mem2->Iofst_kind () != OFST_IS_FIXED) {
-      return TRUE;
+      return ALIAS_KIND(AR_POSSIBLE_ALIAS);
     }
 
     // check to see whether they overlap
@@ -303,22 +304,24 @@ BOOL ALIAS_RULE::Aliased_Indirect_Rule
              mem1->Pointer_is_coderep_id () &&
              WOPT_Enable_Aggr_Pt_Keep_Track_Ptr) {
           if (ignore_loop_carried) {
-            return FALSE;
+            return ALIAS_KIND(AR_NOT_ALIAS);
           } else {
             /* If the pointer is constant, there will be no 
              * loop-carried-dependence between the two accesses.
              */
             if (mem1->Pointer_is_named_symbol () &&
 	        ST_is_constant (mem1->Pointer())) {
-	       return FALSE;  
+               return ALIAS_KIND(AR_NOT_ALIAS);
 	    }
           }
         }
-      } /* end of if(low->Byte_Ofst()... )*/
+      } else {
+        return ALIAS_KIND(AR_DEFINITE_ALIAS);
+      }
     }
   }
 
-  return TRUE;
+  return ALIAS_KIND(AR_POSSIBLE_ALIAS);
 }
 
 //  Implement A.6.3 and A.6.4. (See opt_alias_rule.h.)
@@ -782,42 +785,47 @@ BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *me
 //    TRUE  -- possibly aliased
 //    FALSE -- not aliased
 //
-BOOL ALIAS_RULE::Aliased_Memop_By_Analysis
+ALIAS_KIND ALIAS_RULE::Aliased_Memop_By_Analysis
    (const POINTS_TO *p1, const POINTS_TO *p2, BOOL ignore_loop_carried) const
 {
   if (p1->Expr_kind() == EXPR_IS_INVALID ||
       p2->Expr_kind() == EXPR_IS_INVALID)
-    return TRUE;
+    return ALIAS_KIND (AR_POSSIBLE_ALIAS);
 
   // no analysis for weak symbol
   if ((p1->Weak() && p2->Weak()) ||
       (p1->Weak() && p2->Weak_base()) ||
       (p2->Weak() && p1->Weak_base()))
-    return TRUE;
+    return ALIAS_KIND (AR_POSSIBLE_ALIAS);
 
   if (Rule_enabled(BASE_RULE) && !Aliased_Base_Rule(p1, p2))
-    return FALSE;
+    return ALIAS_KIND (AR_NOT_ALIAS);
   
-  if (Rule_enabled(OFST_RULE) && !Aliased_Ofst_Rule(p1, p2))
-    return FALSE;
+  if (Rule_enabled(OFST_RULE)) {
+    ALIAS_KIND alias_kind = Aliased_Ofst_Rule(p1, p2);
+    if (alias_kind.Definite())
+      return alias_kind;
+  }
   
-  if (Rule_enabled(INDR_RULE) && 
-      !Aliased_Indirect_Rule(p1, p2, ignore_loop_carried))
-    return FALSE;
+  if (Rule_enabled(INDR_RULE)) {
+    ALIAS_KIND alias_kind = Aliased_Indirect_Rule (p1, p2, ignore_loop_carried);
+    if (alias_kind.Definite ())
+      return alias_kind;
+  }
 
   if (Rule_enabled(ATTR_RULE) && !Aliased_Attribute_Rule(p1, p2))
-    return FALSE;
+    return ALIAS_KIND (AR_NOT_ALIAS);
 
   if (Rule_enabled(NEST_RULE) && !Aliased_Static_Nest_Rule(p1, p2))
-    return FALSE;
+    return ALIAS_KIND (AR_NOT_ALIAS);
 
   if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2))
-    return FALSE;
+    return ALIAS_KIND (AR_NOT_ALIAS);
 
   if (Rule_enabled(IP_CLAS_RULE) && !Aliased_Ip_Classification_Rule(p1, p2))
-    return FALSE;
+    return ALIAS_KIND (AR_NOT_ALIAS);
 
-  return TRUE;
+  return ALIAS_KIND (AR_POSSIBLE_ALIAS);
 }
   
 
@@ -879,30 +887,32 @@ BOOL ALIAS_RULE::Aliased_Memop_By_Declaration(const POINTS_TO *p1,
 //    TRUE  -- possibly aliased
 //    FALSE -- not aliased
 //
-BOOL ALIAS_RULE::Aliased_Memop(const POINTS_TO *p1, const POINTS_TO *p2,
+ALIAS_KIND ALIAS_RULE::Aliased_Memop(const POINTS_TO *p1, const POINTS_TO *p2,
        TY_IDX ty1, TY_IDX ty2, BOOL ignore_loop_carried) const
 {
-  if (!Aliased_Memop_By_Analysis(p1, p2, ignore_loop_carried))
-    return FALSE;
+  ALIAS_KIND alias_kind = Aliased_Memop_By_Analysis(p1, p2, ignore_loop_carried);
+  if (alias_kind.Definite())
+    return alias_kind;
 
   if (!Aliased_Memop_By_Declaration(p1, p2, ty1, ty2))
-    return FALSE;
+    return ALIAS_KIND (AR_NOT_ALIAS);
 
-  return TRUE;
+  return ALIAS_KIND(AR_POSSIBLE_ALIAS);
 }
 
-BOOL ALIAS_RULE::Aliased_Memop(const POINTS_TO *p1, const POINTS_TO *p2,
+ALIAS_KIND ALIAS_RULE::Aliased_Memop(const POINTS_TO *p1, const POINTS_TO *p2,
      BOOL ignore_loop_carried) const
 {
-  if (!Aliased_Memop_By_Analysis(p1, p2, ignore_loop_carried))
-    return FALSE;
-
+  ALIAS_KIND alias_kind = Aliased_Memop_By_Analysis(p1, p2, ignore_loop_carried);
+  if (alias_kind.Definite()) 
+    return alias_kind;
+  
   if (!Aliased_Memop_By_Declaration(p1, p2, p1->Ty(), p2->Ty(),
                 p1->Highlevel_Ty (), p2->Highlevel_Ty ())) {
-    return FALSE;
+    return ALIAS_KIND (AR_NOT_ALIAS);
   }
 
-  return TRUE;
+  return ALIAS_KIND(AR_POSSIBLE_ALIAS);
 }
 
 

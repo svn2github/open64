@@ -318,6 +318,40 @@ class ALIAS_INFO_EXT {
 const IDTYPE OPTIMISTIC_AC_ID  = 0;
 const IDTYPE PESSIMISTIC_AC_ID = 1;
 
+typedef enum {
+  AR_INVALID,            
+  AR_NOT_ALIAS,
+  AR_POSSIBLE_ALIAS,
+  AR_DEFINITE_ALIAS,
+
+  // memops access same bytes, not necessarily same bits
+  AR_IDENTICAL_BYTES, 
+  
+  // access exactly the same bits.
+  AR_IDENTICAL,
+} ALIAS_KIND_CODE ;
+
+class ALIAS_KIND {
+private:
+  ALIAS_KIND_CODE _kind;
+
+public:
+  ALIAS_KIND (void) { _kind = AR_INVALID ; }
+  ALIAS_KIND (const ALIAS_KIND & ak) { _kind = ak._kind; }
+  ALIAS_KIND (ALIAS_KIND_CODE kind) { _kind = kind; }
+
+  ALIAS_KIND_CODE Alias_kind (void) const { return _kind; }
+
+  // converting to boolean
+  operator BOOL () const { return _kind != AR_NOT_ALIAS; }
+
+  BOOL Definite (void) const { 
+     return _kind == AR_DEFINITE_ALIAS ||
+            _kind == AR_IDENTICAL_BYTES ||
+            _kind == AR_IDENTICAL ||
+            _kind == AR_NOT_ALIAS;
+  }
+};
 
 //  POINTS_TO is a structure to contain Points-to analysis results.
 //   
@@ -599,7 +633,7 @@ public:
   BOOL Different_base(const POINTS_TO *) const;
 
   //  Check whether offset overlaps.  Their bases must be the same.
-  BOOL Overlap(const POINTS_TO *) const;
+  ALIAS_KIND Overlap(const POINTS_TO *) const;
 
   // Check if PTs are similar, used in creating region bounds and rejecting
   // duplicates

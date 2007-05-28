@@ -319,6 +319,7 @@ static char *opt_alias_rulercs_id = 	opt_alias_rule_INCLUDED"$Revision$";
 class OPT_STAB;
 class AUX_STAB_ENTRY;
 class POINTS_TO;
+class ALIAS_KIND; 
 class WN;
 typedef struct bs BS;
 
@@ -416,7 +417,7 @@ private:
   BOOL Aliased_Ragnarok_Unnamed(const POINTS_TO *, const POINTS_TO *) const;
   BOOL Aliased_Ragnarok_Restrict(const POINTS_TO *, const POINTS_TO *) const;
   BOOL Aliased_Disjoint(const POINTS_TO *, const POINTS_TO *) const;
-  BOOL Aliased_Indirect_Rule(const POINTS_TO *, const POINTS_TO *, 
+  ALIAS_KIND Aliased_Indirect_Rule(const POINTS_TO *, const POINTS_TO *, 
                              BOOL ignore_loop_carried) const;
   BOOL Aliased_F90_Target_Rule(const POINTS_TO *, const POINTS_TO *,
 			       TY_IDX , TY_IDX ) const;
@@ -441,18 +442,18 @@ public:
   BOOL Same_location(const WN *, const WN *, const POINTS_TO *, const POINTS_TO *);
 
   //  Offset,size of two memop overlapped.
-  BOOL Aliased_Ofst_Rule(const POINTS_TO *, const POINTS_TO *) const;
+  ALIAS_KIND Aliased_Ofst_Rule(const POINTS_TO *, const POINTS_TO *) const;
 
   //  Interface exported to the optimizer.
   //  We provide two sets of interface functions.
 
   //  The first set returns whether two memops are aliased.
   //
-  BOOL Aliased_Memop(const POINTS_TO *, const POINTS_TO *,
+  ALIAS_KIND Aliased_Memop(const POINTS_TO *, const POINTS_TO *,
                       BOOL ignore_loop_carried = FALSE) const;
-  BOOL Aliased_Memop(const POINTS_TO *, const POINTS_TO *, TY_IDX , TY_IDX,
+  ALIAS_KIND Aliased_Memop(const POINTS_TO *, const POINTS_TO *, TY_IDX , TY_IDX,
                       BOOL ignore_loop_carried = FALSE) const;
-  BOOL Aliased_Memop_By_Analysis(const POINTS_TO *, const POINTS_TO *,
+  ALIAS_KIND Aliased_Memop_By_Analysis(const POINTS_TO *, const POINTS_TO *,
                       BOOL ignore_loop_carried = FALSE) const;
   BOOL Aliased_Memop_By_Declaration(const POINTS_TO *, const POINTS_TO *, 
           TY_IDX ll_ty1, TY_IDX ll_ty2, 

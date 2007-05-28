@@ -189,27 +189,29 @@ BOOL POINTS_TO::Different_base(const POINTS_TO *pt) const
 //  
 //   The base must be the same, otherwise it is meaningless to call this function.
 //
-BOOL POINTS_TO::Overlap(const POINTS_TO *p) const
+ALIAS_KIND POINTS_TO::Overlap(const POINTS_TO *p) const
 {
   // can only compare fixed value.  Maybe it should be enhanced to deal with
   // symbolic constants in the future.
   //
   if (this->Ofst_kind() != OFST_IS_FIXED || 
          p->Ofst_kind() != OFST_IS_FIXED)
-    return TRUE;
+    return ALIAS_KIND (AR_POSSIBLE_ALIAS);
 
   if (this->Base_is_fixed() && ST_sclass(this->Base()) == SCLASS_REG) {
     Is_True(ST_sclass(p->Base()) == SCLASS_REG,  ("calling overlap() with different bases."));
-    return this->Byte_Ofst() == p->Byte_Ofst();
+    return (this->Byte_Ofst() == p->Byte_Ofst()) ? 
+            ALIAS_KIND (AR_DEFINITE_ALIAS) : 
+            ALIAS_KIND (AR_NOT_ALIAS); 
   }
 
   if (this->Bit_Size() == 0 && p->Bit_Size() == 0) {
     if (this->Byte_Ofst() <= p->Byte_Ofst()) {
       if (this->Byte_Ofst() + this->Byte_Size() > p->Byte_Ofst())
-	return TRUE;
+        return ALIAS_KIND (AR_DEFINITE_ALIAS);
     } else {
       if (p->Byte_Ofst() + p->Byte_Size() > this->Byte_Ofst())
-	return TRUE;
+        return ALIAS_KIND (AR_DEFINITE_ALIAS) ; 
     }
   } else {
     // one of them is a bit field
@@ -221,13 +223,13 @@ BOOL POINTS_TO::Overlap(const POINTS_TO *p) const
     
     if (ofst1 <= ofst2) {
       if (ofst1 + size1 > ofst2)
-	return TRUE;
+        return ALIAS_KIND (AR_DEFINITE_ALIAS) ;
     } else {
       if (ofst2 + size2 > ofst1)
-	return TRUE;
+        return ALIAS_KIND (AR_DEFINITE_ALIAS) ; 
     }
   }
-  return FALSE;
+  return ALIAS_KIND (AR_NOT_ALIAS);
 }
 
 void POINTS_TO::Meet_info_from_alias_class(const POINTS_TO *pt)
