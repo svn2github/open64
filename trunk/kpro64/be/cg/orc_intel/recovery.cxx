@@ -423,7 +423,7 @@ Do_Build_Recovery_Block(std::list<OP*>& Exec_Path)
                 if(    cur_ptn == spec_ld_ptn 
                     || cur_ptn == chk_ptn
                     || cur_ptn == True_TN){
-                    if(OP_load(op)){ 
+                    if(OP_load(op) && IPFEC_Enable_Cascade){ 
                         Is_True(CGTARG_Is_OP_Speculative_Load(op),("cascaded load is not a speculative load!"));
                         cascaded_loads.push_back(op);
                         cascaded_ops.push_back(op);
@@ -468,7 +468,7 @@ Do_Build_Recovery_Block(std::list<OP*>& Exec_Path)
     
     //========= Build Recovery Block=========//
             
-    if( candidate_ops.empty() && CGTARG_Is_OP_Advanced_Load(spec_ld) ){
+    if( candidate_ops.empty() && cascaded_ops.empty() && CGTARG_Is_OP_Advanced_Load(spec_ld) ){
         OP* check_ld = Dup_OP(spec_ld);
         TN* pr_tn = OP_opnd(chk, 0);
         TN* ldtype_tn = OP_Is_Float_Mem(spec_ld) ? Gen_Enum_TN(ECV_fldtype_c_nc) : Gen_Enum_TN(ECV_ldtype_c_nc);
