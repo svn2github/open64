@@ -66,10 +66,8 @@ NATIVE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/gnu4_fe/cc1plus \
                 $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so \
                 $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so \
-                $(NATIVE_BUILD_DIR)/g++fe/gfecc 
-
-                # We use prebuilt fortran end by default
-                #$(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
+                $(NATIVE_BUILD_DIR)/g++fe/gfecc \
+                $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
 
 PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done) 
 .PHONY : $(PHONY_TARGET) install clean clobber
