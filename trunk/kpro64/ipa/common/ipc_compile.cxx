@@ -77,6 +77,7 @@
 #include "ipc_link.h"                   // for ipa_link_link_argv
 
 #include "lib_phase_dir.h"              // for BINDIR etc
+#include "pathscale_defs.h"
 
 #ifdef KEY
 #include "ipc_defs.h"                   // for IPA_Target_Type
@@ -298,32 +299,10 @@ ipa_compile_init ()
 
   char* toolroot = getenv("TOOLROOT");
 
-#ifdef TARG_IA64
-
-  static char* smake_base = ALTBINPATH "/make";
-  static char* tmp_cc_name_base = "/usr/ia64-sgi-linux/bin/sgicc";
-  static char* cc_name_base = BINPATH "/opencc";
-  static char* cord_name_base= BINPATH "/gen_cord";
-
-  if (file_exists(tmp_cc_name_base))
-      cc_name_base = tmp_cc_name_base;
-
-#define MAKE_STRING "make"
-
-#elif defined(TARG_X8664)
-
-#include "pathscale_defs.h"
+#if defined(TARG_IA64) || defined(TARG_X8664)
 
   static char* smake_base = ALTBINPATH "/usr/bin/make";
-#ifdef PSC_TO_OPEN64
-  // when ipa_link -show -keep, fix the bug -fpic1 -show is not recognized,
-  // due to the ld driver is /usr/bin/gcc, not $/opencc.
-  // static char* tmp_cc_name_base = OPEN64_INSTALL_PREFIX "/bin/" OPEN64_NAME_PREFIX "cc";
-  //
-  char* open64_install_prefix = getenv("OPEN64_INSTALL_PREFIX");
   static char* tmp_cc_name_base;
-  asprintf (&tmp_cc_name_base, "%s/bin/opencc", open64_install_prefix);
-#endif
   static char* cc_name_base = tmp_cc_name_base;
   static char* cord_name_base= "/usr/bin/gen_cord";
   static char my_cc[MAXPATHLEN];
@@ -340,11 +319,9 @@ ipa_compile_init ()
 
       my_cc[retval] = '\0';	// readlink doesn't append NULL
 
-#ifdef PSC_TO_OPEN64
       if (looks_like (my_cc, OPEN64_NAME_PREFIX "cc") ||
 	  looks_like (my_cc, OPEN64_NAME_PREFIX "CC") ||
 	  looks_like (my_cc, OPEN64_NAME_PREFIX "f90")) {
-#endif
 	  tmp_cc_name_base = my_cc;
 	  cc_name_base = my_cc;
       } else if (looks_like (my_cc, "ipa_link")) {
@@ -369,10 +346,8 @@ ipa_compile_init ()
 		  } else {
 		    Fail_FmtAssertion ("ipa: unknown language");
 		  }
-		  #ifdef PSC_TO_OPEN64
 		  strcpy(++s, "bin/" OPEN64_NAME_PREFIX);
 		  s += strlen("bin/" OPEN64_NAME_PREFIX);
-		  #endif
 		  strcpy(s, compiler_name_suffix);
 
 		  if (file_exists (my_cc)) {
@@ -594,10 +569,7 @@ ipacom_process_symtab (char* symtab_file)
             && strlen((*command_map)["cc"]) != 0,
           ("Full pathname for cc not set up"));
 
-  char* toolroot = getenv("TOOLROOT");
-
-  sprintf(buf, "%s%s -c %s %s -o %s -TENV:emit_global_data=%s %s",
-	    (toolroot != 0) ? toolroot : "",
+  sprintf(buf, "%s -c %s %s -o %s -TENV:emit_global_data=%s %s",
             (*command_map)["cc"],
             abi(),
             input_symtab_name,

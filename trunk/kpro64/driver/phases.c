@@ -2576,12 +2576,6 @@ run_ld (void)
 #endif
 	if (ipa == TRUE) {
 	    ldpath = get_phase_dir (ldphase);
-	// Fix the bug ipa.so is not founded when -ipa
-	//
-#ifdef TARG_X8664
-	    char *open64_install_prefix = getenv ("OPEN64_INSTALL_PREFIX");
-	    asprintf (&ldpath, "%s/lib/3.0", open64_install_prefix);
-#endif
 	    ldpath = concat_strings (ldpath, "/ipa.so");
 	    if (!file_exists (ldpath)) {
 		error ("ipa.so is not installed on %s", get_phase_dir (ldphase));

@@ -401,18 +401,8 @@ read_cmd_out(char *cmd, char *out_buf)
 char *
 get_phase_dir (phases_t index)
 {
-// when -ipa, reset the location of ipa_link to the installed directory
-//
 	if (index == P_ipa_link) {
-#ifdef TARG_X8664
-	  char *open64_install_prefix;
-	  char *open64_ipalink_dir;
-	  open64_install_prefix = getenv ("OPEN64_INSTALL_PREFIX");
-	  asprintf (&open64_ipalink_dir, "%s/lib/3.0", open64_install_prefix);
-	  return open64_ipalink_dir;
-#else
 	  return phase_info[index].dir;
-#endif
 	}
 	else if(phase_info[index].find_dir_by_path) {
 		char cmd[PATH_BUF_LEN];

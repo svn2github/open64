@@ -56,6 +56,7 @@ extern char *fb_type;          /* type for -fb_type */
 extern char *coco_setfile;  /* setfile for -fcoco */
 #endif
 
+extern char *global_toolroot;   /* TOOLROOT, get from $TOOLROOT or guess from arg[0] */
 extern char *ldpath_for_pixie;  /* Tell pixie where to find ld */
 extern int saved_argc;		/* original argc */
 extern char **saved_argv;	/* original argv */

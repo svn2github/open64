@@ -68,6 +68,7 @@
 #include "file_utils.h"
 #include "pathscale_defs.h"
 #include "option_names.h"
+#include "lib_phase_dir.h"
 
 boolean show_flag = FALSE;
 boolean show_but_not_run = FALSE;
@@ -427,10 +428,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 		// Fix the bug "*/cc-3.0: No such file or directory"
 		// actually, on IA64, the corresponding path is from $TOOLROOT
 		//
-#if defined(PSC_TO_OPEN64) && defined(TARG_X8664)
-		my_putenv ("COMPILER_BIN", "%s/" OPEN64_NAME_PREFIX "opencc", get_executable_dir());
-#endif
-
+		my_putenv ("COMPILER_BIN", "%s/" BINPATH "/" OPEN64_NAME_PREFIX "opencc", global_toolroot);
 		my_execv(name, argv);
 	} else {
 		/* parent */
