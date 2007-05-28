@@ -60,7 +60,8 @@ if [ -z ${TOOLROOT} ] ; then
     echo "NOTE: \$TOOLROOT is not set! You can either set \$TOOLROOT or specify an install directory."
     echo "INSTALL DIRECTORY:"
     read        # in $REPLY
-    [ ! -d $REPLY ] && echo "No such directory: $REPLY, exit." && exit 1
+    [ ! -d $REPLY ] && echo "$REPLY does not exist. Will create." && mkdir -p $REPLY
+    [ ! -d $REPLY ] && echo "Can not create directory: $REPLY, exit." && exit 1
     ORIGIN_DIR=`pwd`
     cd $REPLY
     TOOLROOT=`pwd`
@@ -355,13 +356,13 @@ INSTALL_NATIVE_HEADER () {
 #    cp -f -a osprey1.0/include ${PHASEPATH}/ 
   # INSTALL_DATA_SUB ${AREA}/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
   # INSTALL_DATA_SUB ${AREA}/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
-    INSTALL_DATA_SUB ${ROOT}/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
-    INSTALL_DATA_SUB ${ROOT}/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
+    INSTALL_DATA_SUB ${ROOT}/usr/include/whirl2c.h  ${ROOT}/usr/include/${VERSION}/whirl2c.h
+    INSTALL_DATA_SUB ${ROOT}/usr/include/whirl2f.h  ${ROOT}/usr/include/${VERSION}/whirl2f.h
 
-    INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/include/${VERSION}/dwarf.h
-    INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/include/${VERSION}/libdwarf.h
-    INSTALL_DATA_SUB ${AREA}/include/libelf/libelf.h  ${ROOT}/include/${VERSION}/libelf/libelf.h
-    INSTALL_DATA_SUB ${AREA}/include/libelf/sys_elf.h  ${ROOT}/include/${VERSION}/libelf/sys_elf.h
+    INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/usr/include/${VERSION}/dwarf.h
+    INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/usr/include/${VERSION}/libdwarf.h
+    INSTALL_DATA_SUB ${AREA}/include/libelf/libelf.h  ${ROOT}/usr/include/${VERSION}/libelf/libelf.h
+    INSTALL_DATA_SUB ${AREA}/include/libelf/sys_elf.h  ${ROOT}/usr/include/${VERSION}/libelf/sys_elf.h
 
     return 0
 }

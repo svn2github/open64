@@ -65,6 +65,7 @@
 #include "objects.h"
 #include "opt_actions.h"
 #include "profile_type.h"    /* for PROFILE_TYPE */
+#include "lib_phase_dir.h"   /* for LIBPATH */
 
 #include "license.h"
 
@@ -105,6 +106,7 @@ int     fortran_line_length = 72; /* Fortran line length */
 char roundoff=0;
 boolean nocpp_flag = FALSE;
 
+char *global_toolroot = NULL;
 char *ld_library_path = NULL;
 char *ld_libraryn32_path = NULL;
 char *orig_program_name = NULL;
@@ -458,16 +460,10 @@ set_library_paths(string_list_t *args)
 	char *our_path;
 	
 	if (abi == ABI_N32) {
-	#ifdef PSC_TO_OPEN64
-		asprintf(&our_path, "%s/lib/" OPEN64_FULL_VERSION "/32",
-			 root_prefix);
+		asprintf(&our_path, "%s/", LIBPATH "/32",
+			 global_toolroot);
 	} else {
-#ifdef TARG_IA64
-		asprintf(&our_path, "%s/" OPEN64_FULL_VERSION, root_prefix);
-#else
-		asprintf(&our_path, "%s/lib/" OPEN64_FULL_VERSION, root_prefix);
-#endif
-	#endif
+		asprintf(&our_path, "%s/" LIBPATH , global_toolroot);
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
@@ -2393,8 +2389,6 @@ static char ld_library_path_found[PATH_BUF_LEN];
 void
 init_phase_info (void)
 {
-	char *toolroot;
-	boolean toolroot_need_free = FALSE;
 	char *comp_target_root;
 
 	if (getenv("_XPG") != NULL) 
@@ -2421,23 +2415,20 @@ init_phase_info (void)
 	  old_ld_library_path = get_binutils_lib_path();
 	}
 
-	toolroot = getenv("TOOLROOT");
-	if (toolroot == NULL) {
-		toolroot = (char *)malloc(PATH_BUF_LEN);
-		if(find_toolroot(orig_program_name, toolroot) == NULL) {
-			free(toolroot);
-			toolroot = NULL;
-		} else
-			toolroot_need_free = TRUE;
+	global_toolroot = getenv("TOOLROOT");
+	if (global_toolroot == NULL) {
+		global_toolroot = (char *)malloc(PATH_BUF_LEN);
+		if(find_toolroot(orig_program_name, global_toolroot) == NULL) {
+			free(global_toolroot);
+			global_toolroot = NULL;
+		}
 	}
 
-	if (toolroot != NULL) {
+	if (global_toolroot != NULL) {
 		/* add toolroot as prefix to phase dirs */
-                prefix_all_phase_dirs(PHASE_MASK, toolroot);
+                prefix_all_phase_dirs(PHASE_MASK, global_toolroot);
 	} 
 
-	if(toolroot_need_free)
-		free(toolroot);
 #ifdef TARG_IA64
     get_phases_real_path ();
 #endif

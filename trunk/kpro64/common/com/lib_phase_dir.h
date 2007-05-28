@@ -72,9 +72,9 @@
     #endif 
 
     #if defined(TARG_IA64)
-    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-open64-linux/3.0"
+    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-open64-linux/" OPEN64_FULL_VERSION
     #else
-    #define LIBPATH     "/usr/" INTERPOSE "/lib/gcc-lib/x86_64-open64-linux/3.0"
+    #define LIBPATH     "/usr/" INTERPOSE "/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION
     #endif
 
     #define ALTLIBPATH	"/usr/" INTERPOSE "/lib"

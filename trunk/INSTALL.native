@@ -59,7 +59,8 @@ if [ -z ${TOOLROOT} ] ; then
     echo "NOTE: \$TOOLROOT is not set! You can either set \$TOOLROOT or specify an install directory."
     echo "INSTALL DIRECTORY:"
     read	# in $REPLY
-    [ ! -d $REPLY ] && echo "No such directory: $REPLY, exit." && exit 1
+    [ ! -d $REPLY ] && echo "$REPLY does not exist. Will create." && mkdir -p $REPLY
+    [ ! -d $REPLY ] && echo "Can not create directory: $REPLY, exit." && exit 1
     ORIGIN_DIR=`pwd`
     cd $REPLY
     TOOLROOT=`pwd`
