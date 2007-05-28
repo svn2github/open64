@@ -456,14 +456,13 @@ add_arg(string_list_t *args, const char *format, ...)
 static void
 set_library_paths(string_list_t *args)
 {
-	char *root_prefix = directory_path(get_executable_dir());
 	char *our_path;
 	
 	if (abi == ABI_N32) {
-		asprintf(&our_path, "%s/", LIBPATH "/32",
+		asprintf(&our_path, "%s/" LIBPATH "/32",
 			 global_toolroot);
 	} else {
-		asprintf(&our_path, "%s/" LIBPATH , global_toolroot);
+		asprintf(&our_path, "%s/" LIBPATH, global_toolroot);
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
