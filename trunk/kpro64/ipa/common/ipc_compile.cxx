@@ -455,11 +455,12 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
           ("Full pathname for cc not set up"));
 
   if (argc > 0) {
-#ifdef TARG_X8664
     argv.push_back((*command_map)["cc"]);
-#else
+#if 0
+    // We do not get the commanf from TOOLROOT
+    // the (*command_map)["cc"] has considered both the $TOOLROOT and $COMPILER_BIN and $PATH
     char* command = base_addr + args[0];
-
+    printf("command=%s\n", command);
     // Look up the command name in the map; we may need to turn into into
     // a full pathname.
     if (command_map->find(command) == command_map->end()) {
@@ -488,7 +489,7 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
 	   strcpy(buf, toolroot);
            strcat(buf, ALTBINPATH "/");
 	}
-
+        printf("buf=%s\n", buf);
         (*command_map)[command] = buf;
 
       }
