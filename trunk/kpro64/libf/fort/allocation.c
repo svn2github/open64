@@ -109,9 +109,7 @@ short get_debug_alloc_state()
 {
 	char * debugenv;
 
-	#ifdef PSC_TO_OPEN64
 	debugenv = getenv ("OPEN64_FDEBUG_ALLOC");
-	#endif
 	if (!debugenv) {
 		return 0;
 	}
