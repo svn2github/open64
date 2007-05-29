@@ -210,5 +210,4 @@ pathscale_defs.h: $(BUILD_TOT)/../defs.mk
 clean:
 
 clobber:
-	@rm -rf *.h *.sg $(CMPLR_DIRS) $(LIBELF_DIRS) ia64 stl
-	@cd sys; rm -rf *.h $(SYS_DIRS)
+	@rm -rf *.h *.sg $(CMPLR_DIRS) $(LIBELF_DIRS) ia64 stl sys

@@ -274,7 +274,7 @@ endif
 endif
 
 # extra files to be removed with make clobber
-LDIRT = ii_files *.pch
+LDIRT = ii_files *.pch *.cxx *.h *.td
 
 VPATH    =  $(SRC_DIRS)
 

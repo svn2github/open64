@@ -425,7 +425,8 @@ LDIRT = $(GNU_GEN) genemit genrecog genextract \
 	stamp-emit stamp-recog \
 	stamp-extract stamp-attr stamp-flags \
 	s-gencheck \
-	move-if-change
+	move-if-change \
+	version-hg.c
 
 #------------------------------------------------------------
 #  Define target

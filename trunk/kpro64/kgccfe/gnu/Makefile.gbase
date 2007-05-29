@@ -351,7 +351,8 @@ LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(INC_DIRS))
 
-LDIRT = #$(GNU_GEN) genemit genrecog genextract \
+LDIRT = c-parse.h c-parse.c version-hg.c
+	#$(GNU_GEN) genemit genrecog genextract \
 	genattr genflags genattrtab genopinit \
 	gencodes genoutput genconfig genpeep \
 	stamp-attrtab stamp-opinit \

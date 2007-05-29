@@ -39,9 +39,13 @@
 include $(COMMONDEFS)
 
 BUILD_SUBDIRS = fe90 libf90sgi sgi
-
+ifeq ($(BUILD_COMPILER), OSP)
 default : first
 
+else
+default :
+
+endif
 first:
 	$(call submake,fe90)
 	$(call submake,libf90sgi)
