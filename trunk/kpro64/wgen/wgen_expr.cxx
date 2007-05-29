@@ -6126,6 +6126,21 @@ WGEN_Expand_Expr (gs_t exp,
                   ret_mtype = MTYPE_I4;
                 break;
 
+	      case GSBI_BUILT_IN_CTYPE_B_LOC: 
+	        iopc = INTRN_CTYPE_B_LOC; 
+		intrinsic_op = TRUE; 
+		break;
+
+	      case GSBI_BUILT_IN_CTYPE_TOUPPER_LOC: 
+	        iopc = INTRN_CTYPE_TOUPPER_LOC; 
+		intrinsic_op = TRUE; 
+		break;
+
+	      case GSBI_BUILT_IN_CTYPE_TOLOWER_LOC: 
+	        iopc = INTRN_CTYPE_TOLOWER_LOC; 
+		intrinsic_op = TRUE; 
+		break;
+
 	      case GSBI_BUILT_IN_EXTEND_POINTER:
 		wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
 		whirl_generated = TRUE;
