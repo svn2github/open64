@@ -9762,6 +9762,11 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
       lower_complex_actual (callblock, actual, ploc, actions);
 #endif
     }
+#else
+    else
+    {
+      ploc = Get_Output_Parameter_Location( MTYPE_To_TY(parmType));
+    }
 #endif
 #if 0
     else
