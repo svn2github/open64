@@ -7015,7 +7015,7 @@ static WN *lower_eval(WN *block, WN *tree, LOWER_ACTIONS actions)
 
     child = lo;
   }
-  else if (Action(LOWER_MSTORE) && WN_operator_is(child, OPR_MLOAD))
+  else if ((Action(LOWER_MSTORE) || Action(LOWER_TO_CG)) && WN_operator_is(child, OPR_MLOAD))
   {
     TY_IDX mloadTY = TY_pointed(Ty_Table[WN_ty(child)]);
 
