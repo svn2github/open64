@@ -9745,8 +9745,6 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
 	 */
 	lower_compound_non_struct_actual (callblock, actual, ploc, actions);
     }
-#endif
-#ifndef TARG_X8664
     else if (MTYPE_is_complex(parmType) && PU_ftn_lang(Get_Current_PU()))
     {
      /*
@@ -9755,18 +9753,8 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
       * Note that GCC has complex type, which should go to
       * normal processing (like quads).
       */
-#ifdef TARG_IA64
       lower_compound_non_struct_actual (callblock, actual, ploc, actions);
-#else
-      ploc = Get_Output_Parameter_Location( TY_Of_Parameter(parm));
-      lower_complex_actual (callblock, actual, ploc, actions);
    }
-#endif
-#else
-    else
-    {
-      ploc = Get_Output_Parameter_Location( MTYPE_To_TY(parmType));
-    }
 #endif
   }
 
