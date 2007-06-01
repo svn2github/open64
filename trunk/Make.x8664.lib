@@ -35,8 +35,8 @@
 # are located
 #
 
-LIB_BUILD_DIR32 = kpro64/targia32_builtonia32
-LIB_BUILD_DIR64 = kpro64/targx8664_builtonia32
+LIB_BUILD_DIR32 = osprey/targia32_builtonia32
+LIB_BUILD_DIR64 = osprey/targx8664_builtonia32
 
 
 # All LIB compiler components:
