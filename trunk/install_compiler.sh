@@ -51,21 +51,24 @@ fi
 # set the build host
 case $ARCH in 
 ia64 )
-    BUILD_HOST="ia64" ;
+    BUILD_HOST="ia64"
     TARG_HOST="ia64"
-    AREA="osprey/targ${BUILD_HOST}_${TARG_HOST}_nodebug"
+    AREA="osprey/targia64_ia64_nodebug"
+    PHASE_DIR_PREFIX="ia64"
     INSTALL_TYPE="ia64-native"
     ;;
 i386 | x86_64 )
     BUILD_HOST="ia32"
     TARG_HOST="x8664"
-    AREA="osprey/targ${BUILD_HOST}_${TARG_HOST}"
+    PHASE_DIR_PREFIX="x86_64"
+    AREA="osprey/targia32_x8664"
     INSTALL_TYPE="x8664-native"
     ;;
 cross )
     BUILD_HOST="ia32"
     TARG_HOST="ia64"
-    AREA="osprey/targ${BUILD_HOST}_${TARG_HOST}_nodebug"
+    PHASE_DIR_PREFIX="ia64"
+    AREA="osprey/targia32_ia64_nodebug"
     INSTALL_TYPE="ia64-cross"
     ;;
 *)
@@ -102,7 +105,7 @@ LD_NEW_DIR="osprey/targcygnus_${BUILD_HOST}_${TARG_HOST}/ld"
 # prepare the distination dir
 INTERPOSE=
 [ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
-PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/${TARG_HOST}-open64-linux/${VERSION}/
+PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/${PHASE_DIR_PREFIX}-open64-linux/${VERSION}/
 NATIVE_LIB_DIR=${PHASEPATH}
 BIN_DIR=${ROOT}/usr/${INTERPOSE}/bin
 ALT_BIN_DIR=${ROOT}/usr/${INTERPOSE}/altbin
@@ -271,7 +274,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         # 32bit libraries
         INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
-        INSTALL_DATA_SUB ${LIB32AREA}/libmsgi/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
     fi 
     return 0
@@ -315,7 +318,7 @@ INSTALL_PREBUILD_OPEN64_NATIVE_LIB () {
         [ "$x" = "CVS" ] && continue;
         [ "$x" = ".svn" ] && continue;
 
-        INSTALL_DATA_SUB $i ${NATIVE_LIB_DIR32}/$x
+        INSTALL_DATA_SUB $i ${NATIVE_LIB_DIR}/32/$x
     done
 
     return 0
