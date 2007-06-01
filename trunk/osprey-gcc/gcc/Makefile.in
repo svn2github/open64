@@ -763,7 +763,8 @@ ALL_CFLAGS = -DKEY $(X_CFLAGS) $(T_CFLAGS) \
 ALL_CPPFLAGS = $(INCLUDES) $(CPPFLAGS) $(X_CPPFLAGS) $(T_CPPFLAGS)
 
 #LIBGSPIN = ../../../libspin/libgspin.a
-LIBGSPIN = ../../libspin/libgspin.a
+#This is a symbol link, create by the CONFIGURE script
+LIBGSPIN = ../libgspin.a
 
 # Build and host support libraries.
 LIBIBERTY = ../libiberty/libiberty.a

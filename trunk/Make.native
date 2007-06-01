@@ -36,8 +36,9 @@
 # are located
 #
 
-NATIVE_BUILD_DIR = kpro64/targia64_ia64_nodebug
-NATIVE_BUILD_DIR_LD = kpro64/targcygnus_ia64_ia64
+NATIVE_BUILD_DIR = osprey/targia64_ia64_nodebug
+NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia64_ia64
+GNUFE_BUILD_DIR = osprey-gcc/targia64_ia64
 
 SUBMAKE=${MAKE}
 
@@ -61,12 +62,14 @@ NATIVE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a \
                 $(NATIVE_BUILD_DIR_LD)/ld/ld-new  \
                 $(NATIVE_BUILD_DIR)/gccfe/gfec \
+                $(NATIVE_BUILD_DIR)/g++fe/gfecc \
                 $(NATIVE_BUILD_DIR)/wgen/wgen \
                 $(NATIVE_BUILD_DIR)/gnu4_fe/gcc/cc1 \
                 $(NATIVE_BUILD_DIR)/gnu4_fe/gcc/cc1plus \
                 $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so \
                 $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so \
-                $(NATIVE_BUILD_DIR)/g++fe/gfecc \
+                $(GNUFE_BUILD_DIR)/gcc/cc1 \
+                $(GNUFE_BUILD_DIR)/gcc/cc1plus \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
 
 PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done) 
@@ -147,11 +150,11 @@ $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 $(NATIVE_BUILD_DIR_LD)/Makefile:  
 	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
 
-$(NATIVE_BUILD_DIR)/gnu4_fe/gcc/cc1 $(NATIVE_BUILD_DIR)/gnu4_fe/gcc/cc1plus cc1 cc1plus: $(NATIVE_BUILD_DIR)/gnu4_fe/Makefile Force
-	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gnu4_fe
+$(GNUFE_BUILD_DIR)/gcc/cc1 $(GNUFE_BUILD_DIR)/gcc/cc1plus cc1 cc1plus: $(GNUFE_BUILD_DIR)/Makefile Force
+	$(SUBMAKE) -C $(GNUFE_BUILD_DIR)
 
-$(NATIVE_BUILD_DIR)/gnu4_fe/Makefile:
-	cd $(NATIVE_BUILD_DIR)/gnu4_fe; ./CONFIGURE
+$(GNUFE_BUILD_DIR)/Makefile:
+	cd $(GNUFE_BUILD_DIR); ./CONFIGURE
 
 build: ${PHONY_TARGET} 
 
@@ -180,7 +183,7 @@ clobber:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/include clobber
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
-	cd $(NATIVE_BUILD_DIR)/gnu4_fe; ./CLOBBER
+	cd $(GNUFE_BUILD_DIR); ./CLOBBER
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
 		libiberty libunwindP libspin ; do  \
 		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \

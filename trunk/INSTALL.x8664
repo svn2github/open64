@@ -75,7 +75,8 @@ ROOT=${TOOLROOT}
 #INTERPOSE=${TARG_HOST}-pathscale-${TARG_OS}
 #[ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
 
-AREA="kpro64/targ${BUILD_HOST}_${TARG_HOST}"
+AREA="osprey/targ${BUILD_HOST}_${TARG_HOST}"
+GNUFE_AREA="osprey-gcc/targ${BUILD_HOST}_${TARG_HOST}"
 
 PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/x86_64-open64-linux/${VERSION}/
 NATIVE_LIB_DIR=${PHASEPATH}
@@ -143,8 +144,8 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
     INSTALL_EXEC_SUB ${AREA}/wgen/wgen ${PHASEPATH}/wgen
-    INSTALL_EXEC_SUB ${AREA}/gnu4_fe/gcc/cc1 ${PHASEPATH}/cc1
-    INSTALL_EXEC_SUB ${AREA}/gnu4_fe/gcc/cc1plus ${PHASEPATH}/cc1plus
+    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1 ${PHASEPATH}/cc1
+    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1plus ${PHASEPATH}/cc1plus
 
     # Currently we do not install fortran 90/95 front-end
     INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
@@ -167,7 +168,7 @@ INSTALL_IPA () {
     INSTALL_EXEC_SUB ${AREA}/ipa/ipa.so ${PHASEPATH}/ipa.so
     INSTALL_EXEC_SUB ${AREA}/ipl/ipl.so ${PHASEPATH}/ipl.so
 
-    ld_new_dir="kpro64/targcygnus_ia32_x8664/ld"
+    ld_new_dir="osprey/targcygnus_ia32_x8664/ld"
 
     INSTALL_EXEC_SUB ${ld_new_dir}/ld-new  ${PHASEPATH}/ipa_link
 
@@ -222,8 +223,8 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 
     #d="targ${TARG_HOST}_builton${BUILD_HOST}"
     #d="targ${TARG_HOST}_${BUILD_HOST}"
-    LIBAREA=kpro64/targx8664_builtonia32
-    LIBAREA32=kpro64/targia32_builtonia32
+    LIBAREA=osprey/targx8664_builtonia32
+    LIBAREA32=osprey/targia32_builtonia32
 
     for i in fortran ffio F77 mv; do
         INSTALL_DATA_SUB ${LIBAREA}/lib${i}/lib${i}.a     ${NATIVE_LIB_DIR}/lib${i}.a
@@ -369,7 +370,7 @@ INSTALL_NATIVE_HEADER () {
 
 INSTALL_MAN_PAGE () {
 
-    d1=kpro64/man/linux/man1
+    d1=osprey/man/linux/man1
     d2=$ROOT/usr/man/man1
 
     INSTALL_DATA_SUB $d1/sgicc.1 $d2 

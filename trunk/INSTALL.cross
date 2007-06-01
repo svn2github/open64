@@ -61,7 +61,7 @@ ROOT=${TOOLROOT}/
 INTERPOSE=${TARG_HOST}-open64-${TARG_OS}
 [ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
 
-AREA="kpro64/targ${BUILD_HOST}_${TARG_HOST}_nodebug"
+AREA="osprey/targ${BUILD_HOST}_${TARG_HOST}_nodebug"
 
 PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/${TARG_HOST}-open64-linux/${VERSION}/
 NATIVE_LIB_DIR=${COMP_TARGET_ROOT}/usr/${INTERPOSE}/lib
@@ -134,7 +134,7 @@ INSTALL_IPA () {
     INSTALL_EXEC_SUB ${AREA}/ipa/ipa.so ${PHASEPATH}/ipa.so
     INSTALL_EXEC_SUB ${AREA}/ipl/ipl.so ${PHASEPATH}/ipl.so
 
-    ld_new_dir="kpro64/targcygnus_${BUILD_HOST}_${TARG_HOST}/ld"
+    ld_new_dir="osprey/targcygnus_${BUILD_HOST}_${TARG_HOST}/ld"
 
     INSTALL_EXEC_SUB ${ld_new_dir}/ld-new  ${PHASEPATH}/ipa_link
 
@@ -177,7 +177,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
     INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.exp  ${PHASEPATH}/lib.exp
 
         # instrument archieves.
-    d="kpro64/targ${TARG_HOST}/"
+    d="osprey/targ${TARG_HOST}/"
     INSTALL_DATA_SUB $d/libcginstr/libcginstr.a  ${PHASEPATH}/libcginstr.a  
     INSTALL_DATA_SUB $d/libinstr/libinstr.a      ${PHASEPATH}/libinstr.a 
 
@@ -196,7 +196,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
    
 INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 
-    d="kpro64/targ${TARG_HOST}/"
+    d="osprey/targ${TARG_HOST}/"
 
     INSTALL_DATA_SUB ${d}/libfortran/libfortran.a ${NATIVE_LIB_DIR}/libfortran.a 
     INSTALL_DATA_SUB ${d}/libu/libffio.a          ${NATIVE_LIB_DIR}/libffio.a
@@ -281,17 +281,17 @@ INSTALL_CROSS_UTIL () {
 
 INSTALL_NATIVE_HEADER () {
 
-    INSTALL_DATA_SUB kpro64/include/nue/stdarg.h  ${PHASEPATH}/include/stdarg.h
-    INSTALL_DATA_SUB kpro64/include/nue/va-ia64.h  ${PHASEPATH}/include/va-ia64.h 
+    INSTALL_DATA_SUB osprey/include/nue/stdarg.h  ${PHASEPATH}/include/stdarg.h
+    INSTALL_DATA_SUB osprey/include/nue/va-ia64.h  ${PHASEPATH}/include/va-ia64.h 
 
-    cp -f -a kpro64/include ${PHASEPATH}/ 
+    cp -f -a osprey/include ${PHASEPATH}/ 
 
     return 0
 }
 
 INSTALL_MAN_PAGE () {
 
-    d1=kpro64/man/linux/man1
+    d1=osprey/man/linux/man1
     d2=$ROOT/usr/man/man1
 
     INSTALL_DATA_SUB $d1/sgicc.1 $d2 
@@ -334,7 +334,7 @@ cat << _EOF_
    Native or NUE platform (by 'make build -f Make.NUE.lib'), but do not
    worry, prebuild verion of them are provided.
   
-   kpro64/targia64/{libcginstr.a libinstr.a ftz.o libfortran.a libffio.a
+   osprey/targia64/{libcginstr.a libinstr.a ftz.o libfortran.a libffio.a
                        libmsgi.a libmv.a}
   
    Normally, you need not to build these archives.
