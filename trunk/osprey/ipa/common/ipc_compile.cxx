@@ -329,8 +329,12 @@ ipa_compile_init ()
 	  if (s) {
 	      *s = '\0';		// remove "/ipa_link"
 	      s = strrchr(my_cc, '/');
-	      *s = '\0';		// remove version number, e.g. "/2.3.99"
+	      (s) ? *s = '\0' : 0;		// remove version number, e.g. "/2.3.99"
 	      s = strrchr(my_cc, '/');
+	      (s) ? *s = '\0' : 0;                // remove the 'targ_open64_linux'
+	      s = strrchr(my_cc, '/');
+	      (s) ? *s = '\0' : 0;                // remove the 'gcc-lib'
+              s = strrchr(my_cc, '/');
 
 	      if (s) {
 		  // Invoke the C/C++/Fortran compiler depending on the source
@@ -346,8 +350,8 @@ ipa_compile_init ()
 		  } else {
 		    Fail_FmtAssertion ("ipa: unknown language");
 		  }
-		  strcpy(++s, "bin/" OPEN64_NAME_PREFIX);
-		  s += strlen("bin/" OPEN64_NAME_PREFIX);
+		  strcpy(++s, "bin/open" OPEN64_NAME_PREFIX);
+		  s += strlen("bin/open" OPEN64_NAME_PREFIX);
 		  strcpy(s, compiler_name_suffix);
 
 		  if (file_exists (my_cc)) {
@@ -898,7 +902,7 @@ void ipacom_doit (const char* ipaa_filename)
     const char* linker = strrchr(*i, '/');  
     BOOL no_crt = TRUE; 
     if (linker && (!strcmp (linker, "/ld") || !strcmp (linker, "/collect")) ||
-        !linker && (!strcmp (*i, "ld") || !strcmp (linker, "collect"))) {
+        !linker && (!strcmp (*i, "ld") || !strcmp (*i, "collect"))) {
        no_crt = FALSE;
     }
 
