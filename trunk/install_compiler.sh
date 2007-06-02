@@ -260,7 +260,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         LIBAREA="osprey/targ${TARG_HOST}/"
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a 
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
-        INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
+        INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
         INSTALL_DATA_SUB ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
     else
