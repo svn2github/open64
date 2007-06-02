@@ -2342,7 +2342,9 @@ AGGINIT::Add_Initv_For_Tree (gs_t val, UINT size)
 	case GS_NOP_EXPR:
 		gs_t kid;
 		kid = gs_tree_operand(val,0);
-		if (gs_tree_code(kid) == GS_ADDR_EXPR)
+		if (gs_tree_code(kid) == GS_ADDR_EXPR &&
+		    /* bug fix for OSP_279 */
+		    gs_tree_code(gs_tree_operand(kid,0)) == GS_STRING_CST)	
 		{
 			kid = gs_tree_operand(kid,0);
 			WGEN_Add_Aggregate_Init_Address (kid);

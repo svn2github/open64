@@ -1024,6 +1024,8 @@ GS_LOOKUP (gs_catch_body, GS_CATCH_BODY)
 
 GS_LOOKUP_FLAG (GS_FLAGS, gs_identifier_opname_p, GS_TREE_LANG_FLAG_2)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_identifier_typename_p, GS_TREE_LANG_FLAG_4)
+/* bug fix for OSP_279 */	
+GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_tinfo_p, GS_TREE_LANG_FLAG_4)
 
 static inline gs_int_t gs_list_length (gs_t t) 
 {

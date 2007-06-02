@@ -2161,7 +2161,10 @@ WGEN_Address_Of(gs_t arg0)
       // the table.
       if (code0 == GS_VAR_DECL) {
 	if (gs_decl_initial(arg0) &&
-	    gs_decl_virtual_p(arg0) &&
+	    (gs_decl_virtual_p(arg0) ||
+	      (/* bug 279 */ gs_decl_tinfo_p(arg0) /* typeinfo ? */ &&
+	        /* make sure it is not an NTBS name */
+	        gs_tree_code(gs_decl_initial(arg0)) != GS_STRING_CST)) &&
 	    !gs_decl_external(arg0)) {
 	  gs_t init = gs_decl_initial(arg0);
 	  if (gs_tree_code(init) != GS_ERROR_MARK) {
