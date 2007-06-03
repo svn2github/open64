@@ -36,7 +36,7 @@
 # are located
 #
 
-MACHINE_TYPE = $(shell uname -m | sed -e /i.86/i386/ )
+MACHINE_TYPE = $(shell uname -m | sed -e s/i.86/i386/ )
 
 ifneq ($(MACHINE_TYPE), ia64)
 ifneq ($(MACHINE_TYPE), x86_64)
