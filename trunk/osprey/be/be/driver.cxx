@@ -294,7 +294,7 @@ extern void (*ipl_main_p) (INT, char **);
 #define ipl_main (*ipl_main_p)
 
 extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
-						  ALIAS_MANAGER*, void*, void*);
+						  ALIAS_MANAGER*, void*);
 #define Perform_Procedure_Summary_Phase (*Perform_Procedure_Summary_Phase_p)
 
 #ifdef KEY	// bug 3672
@@ -791,7 +791,7 @@ Ipl_Processing (PU_Info *current_pu, WN *pu)
 	Delete_Du_Manager (du_mgr, MEM_pu_nz_pool_ptr);
     } else {
 	Set_Error_Phase ( "IPA Summary" );
-	Perform_Procedure_Summary_Phase (pu, du_mgr, al_mgr, 0, 0);
+	Perform_Procedure_Summary_Phase (pu, du_mgr, al_mgr, 0);
     }
 
     /* Write out the current proc */

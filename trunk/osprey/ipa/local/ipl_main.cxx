@@ -253,7 +253,7 @@ Ipl_Init_From_Ipa (MEM_POOL* pool)
 void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 				 struct ALIAS_MANAGER *alias_mgr,
-				 void *emitter, void *cfg)
+				 void *emitter)
 {
     Trace_IPA = Get_Trace (TP_IPL, TT_IPL_IPA);
 
@@ -285,7 +285,6 @@ Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
     Summary->Set_du_mgr (du_mgr);
     Summary->Set_alias_mgr (alias_mgr);
     Summary->Set_emitter ((EMITTER *) emitter);
-    Summary->Set_CFG ((CFG*) cfg);
     Summary->Summarize (w);
     WB_IPL_Set_Array_Summary(NULL);
     WB_IPL_Set_Scalar_Summary(NULL);
