@@ -2768,15 +2768,17 @@ CGTARG_Init_Asm_Constraints (void)
   asm_constraint_index = 0;
 }
 
-#define CONST_OK_FOR_LETTER(VALUE, C)                           \
-  ((C) == 'I' ? (VALUE) >= 0 && (VALUE) <= 31                   \
-   : (C) == 'J' ? (VALUE) >= 0 && (VALUE) <= 63                 \
-   : (C) == 'K' ? (VALUE) >= -128 && (VALUE) <= 127             \
-   : (C) == 'L' ? (VALUE) == 0xff || (VALUE) == 0xffff          \
-   : (C) == 'M' ? (VALUE) >= 0 && (VALUE) <= 3                  \
-   : (C) == 'N' ? (VALUE) >= 0 && (VALUE) <= 255                \
+#define CONST_OK_FOR_LETTER(VALUE, C)                             \
+  ((C) == 'I' ? (VALUE) >= 0 && (VALUE) <= 31                     \
+   : (C) == 'J' ? (VALUE) >= 0 && (VALUE) <= 63                   \
+   : (C) == 'K' ? (VALUE) >= -128 && (VALUE) <= 127               \
+   : (C) == 'L' ? (VALUE) == 0xff || (VALUE) == 0xffff            \
+   : (C) == 'M' ? (VALUE) >= 0 && (VALUE) <= 3                    \
+   : (C) == 'N' ? (VALUE) >= 0 && (VALUE) <= 255                  \
    : (C) == 'i' ? (VALUE) >= -0x7fffffff && (VALUE) <= 0x7fffffff \
-   : (C) == 'n' ? 1                                             \
+   : (C) == 'e' ? (VALUE) >= -0x7fffffff && (VALUE) <= 0x7fffffff \
+   : (C) == 'Z' ? (VALUE) >= 0 && (VALUE) <= 0xffffffffU          \
+   : (C) == 'n' ? 1                                               \
    : 0)
 
 // -----------------------------------------------------------------------
@@ -2821,17 +2823,30 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   
   // prefer register/memory over immediates; this isn't optimal, 
   // but we may not always be able to generate an immediate
-  static const char* immediates = "inIJKLMNO";
+  // OSP_324, support 'e' (32bit signed immediates) i
+  //   and 'Z' (32bit unsigned immediates)
+  static const char* immediates = "einIJKLMNOZ";
+
+  // OSP_323 & OSP_324
+  // See if the constraints contains any immediates
+  BOOL has_imm_traint = FALSE;
+  const char* imm_traint_p = constraint;
+  char  imm_traint = '\0';
+  while (*imm_traint_p != '\0' ) {
+    if (strchr(immediates, *imm_traint_p)) {
+      has_imm_traint = TRUE;
+      imm_traint = *imm_traint_p;
+      break;
+    }
+    imm_traint_p++;
+  }
+
   // Bug 950
   // The '#' in a constraint is inconsequential or it is just a typo
   static const char* hash = "#";
-  // OSP_323, for 'ir' constraint. I can not find the document about '#'
-  //  so, this is a work-around.
-  BOOL has_imm_traint = FALSE;
   if (!strstr(constraint, hash)) {
     while (strchr(immediates, *constraint) && *(constraint+1)) 
       {
-        has_imm_traint = TRUE;
 	constraint++;
       }
   }
@@ -2938,9 +2953,9 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 				  // size.
 				  MTYPE_byte_size(rtype));
     } 
-    else if ((has_imm_traint == TRUE || strchr(constraint, 'i'))
-             && WN_operator(load) == OPR_INTCONST) {
+    else if (has_imm_traint == TRUE && WN_operator(load) == OPR_INTCONST) {
       // OSP_323, both 'r' and 'i', such as 'ri' or 'ir'.
+      // OSP_324, both 'r' and 'Z'/'e', such as 'Zr' or 'rZ'.
       // if the load is INTCONST, it's an immediate
       if (load && WN_operator(load)==OPR_LDID &&
           WN_class(load)==CLASS_PREG) {
@@ -2952,7 +2967,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       ret_tn = Gen_Literal_TN(WN_const_val(load),
                               MTYPE_bit_size(WN_rtype(load))/8);
       // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
-      FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), 'i'),
+      FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), imm_traint),
                 ("The value of immediate operand supplied is not within expected range."));
     }
     else     
