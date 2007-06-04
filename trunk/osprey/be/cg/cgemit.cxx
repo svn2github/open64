@@ -2621,7 +2621,8 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
     if (strstr(asm_string, "%P")) {
       char replace[5];
       sprintf(replace, "%%P%d", position);
-      asm_string = Replace_Substring(asm_string, replace, name);
+      // OSP_323, with "%P", we ignore the first character '$'
+      asm_string = Replace_Substring(asm_string, replace, name+1);
     }
   }
   // Follow the zero dialect_number implementation as in 

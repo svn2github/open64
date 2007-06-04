@@ -2775,7 +2775,7 @@ CGTARG_Init_Asm_Constraints (void)
    : (C) == 'L' ? (VALUE) == 0xff || (VALUE) == 0xffff          \
    : (C) == 'M' ? (VALUE) >= 0 && (VALUE) <= 3                  \
    : (C) == 'N' ? (VALUE) >= 0 && (VALUE) <= 255                \
-   : (C) == 'i' ? (VALUE) >= 0 && (VALUE) <= 0xffffffff         \
+   : (C) == 'i' ? (VALUE) >= -0x7fffffff && (VALUE) <= 0x7fffffff \
    : (C) == 'n' ? 1                                             \
    : 0)
 
@@ -2825,9 +2825,13 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   // Bug 950
   // The '#' in a constraint is inconsequential or it is just a typo
   static const char* hash = "#";
+  // OSP_323, for 'ir' constraint. I can not find the document about '#'
+  //  so, this is a work-around.
+  BOOL has_imm_traint = FALSE;
   if (!strstr(constraint, hash)) {
     while (strchr(immediates, *constraint) && *(constraint+1)) 
       {
+        has_imm_traint = TRUE;
 	constraint++;
       }
   }
@@ -2933,7 +2937,25 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 				  // TNs of sizes < 4 bytes, use the appropriate
 				  // size.
 				  MTYPE_byte_size(rtype));
-    } else     
+    } 
+    else if ((has_imm_traint == TRUE || strchr(constraint, 'i'))
+             && WN_operator(load) == OPR_INTCONST) {
+      // OSP_323, both 'r' and 'i', such as 'ri' or 'ir'.
+      // if the load is INTCONST, it's an immediate
+      if (load && WN_operator(load)==OPR_LDID &&
+          WN_class(load)==CLASS_PREG) {
+        // immediate could have been put in preg by wopt
+        load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
+      }
+      FmtAssert(load && WN_operator(load) == OPR_INTCONST,
+                ("Cannot find immediate operand for ASM"));
+      ret_tn = Gen_Literal_TN(WN_const_val(load),
+                              MTYPE_bit_size(WN_rtype(load))/8);
+      // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
+      FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), 'i'),
+                ("The value of immediate operand supplied is not within expected range."));
+    }
+    else     
       ret_tn = Build_TN_Of_Mtype(rtype);
 
     if (*constraint == 'q' || *constraint == 'Q') {
