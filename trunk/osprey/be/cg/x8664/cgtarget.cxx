@@ -2775,7 +2775,7 @@ CGTARG_Init_Asm_Constraints (void)
    : (C) == 'L' ? (VALUE) == 0xff || (VALUE) == 0xffff            \
    : (C) == 'M' ? (VALUE) >= 0 && (VALUE) <= 3                    \
    : (C) == 'N' ? (VALUE) >= 0 && (VALUE) <= 255                  \
-   : (C) == 'i' ? (VALUE) >= -0x7fffffff && (VALUE) <= 0x7fffffff \
+   : (C) == 'i' ? 1                                               \
    : (C) == 'e' ? (VALUE) >= -0x7fffffff && (VALUE) <= 0x7fffffff \
    : (C) == 'Z' ? (VALUE) >= 0 && (VALUE) <= 0xffffffffU          \
    : (C) == 'n' ? 1                                               \
