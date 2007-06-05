@@ -39,13 +39,22 @@
 include $(COMMONDEFS)
 
 BUILD_SUBDIRS = fe90 libf90sgi sgi
-ifeq ($(BUILD_COMPILER), OSP)
+FC_COMPILER = $(shell echo $(FC) | awk '{print $$1}' )
+WHICH_FC = $(shell basename `which $(FC_COMPILER) 2>/dev/null` )
+
+ifneq (X$(WHICH_FC), X)
 default : first
 
 else
 default :
-
+	@echo "--------------------------------------------"
+	@echo "Warning: The Fortran Front End is not build!"
+	@echo "  Can not find the $(FC_COMPILER)"
+	@echo "  Please get the binary of open64 and add option BUILD_COMPILER=OSP to build the F95 Front End."
+	@echo "  -or- modify the FC in osprey/linux/make/gcommondefs to an ifort/openf90/pathf90 compatible Fortran 90 Compiler."
+	@echo "--------------------------------------------"
 endif
+
 first:
 	$(call submake,fe90)
 	$(call submake,libf90sgi)

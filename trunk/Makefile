@@ -192,7 +192,7 @@ $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ir_tools
 
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95:
-	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90/sgi
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90
 
 .PHONY: Force
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
