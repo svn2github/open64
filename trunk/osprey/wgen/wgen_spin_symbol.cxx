@@ -1746,7 +1746,9 @@ Create_ST_For_Tree (gs_t decl_node)
     Set_ST_type (st, ty_idx);
     Set_ST_assigned_to_dedicated_preg (st);
     ST_ATTR_IDX st_attr_idx;
-    ST_ATTR&    st_attr = New_ST_ATTR (CURRENT_SYMTAB, st_attr_idx);
+    // OSP_325, change CURRENT_SYMTAB to level to 
+    //   make the level of the ST and ST_ATTR the same.
+    ST_ATTR&    st_attr = New_ST_ATTR (level, st_attr_idx);
     ST_ATTR_Init (st_attr, ST_st_idx (st), ST_ATTR_DEDICATED_REGISTER, preg);
   }
 
