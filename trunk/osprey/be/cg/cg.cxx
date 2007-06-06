@@ -732,9 +732,9 @@ CG_Generate_Code(
     EBO_Pre_Process_Region (region ? REGION_get_rid(rwn) : NULL);
     if (CG_opt_level > 1
 #ifdef TARG_IA64		    
- 	    || value_profile_need_gra) 
+ 	    || value_profile_need_gra 
 #endif    
-    {
+    ) {
       // ebo's optimization may break the live info, we need to
       // update the info before first pass cflow use these wrong info. see bug 313
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
