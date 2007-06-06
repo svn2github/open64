@@ -730,8 +730,11 @@ CG_Generate_Code(
     Set_Error_Phase("Extended Block Optimizer");
     Start_Timer(T_EBO_CU);
     EBO_Pre_Process_Region (region ? REGION_get_rid(rwn) : NULL);
-#ifdef KEY
-    if (CG_opt_level > 1 || value_profile_need_gra) {
+    if (CG_opt_level > 1
+#ifdef TARG_IA64		    
+ 	    || value_profile_need_gra) 
+#endif    
+    {
       // ebo's optimization may break the live info, we need to
       // update the info before first pass cflow use these wrong info. see bug 313
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
@@ -739,7 +742,6 @@ CG_Generate_Code(
       //
       GRA_LIVE_Rename_TNs();
     }
-#endif
     Stop_Timer ( T_EBO_CU );
     Check_for_Dump ( TP_EBO, NULL );
   }
