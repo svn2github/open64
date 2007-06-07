@@ -97,21 +97,26 @@ BASIC_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so \
                 $(NATIVE_BUILD_DIR)/whirl2f/whirl2f \
                 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a \
-                $(NATIVE_BUILD_DIR_LD)/ld/ld-new  \
+                $(NATIVE_BUILD_DIR_LD)/ld/ld-new 
+
+GNU3_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/gccfe/gfec \
-                $(NATIVE_BUILD_DIR)/g++fe/gfecc \
-                $(NATIVE_BUILD_DIR)/wgen/wgen \
-                $(GNUFE_BUILD_DIR)/gcc/cc1 \
-                $(GNUFE_BUILD_DIR)/gcc/cc1plus \
-                $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
+                $(NATIVE_BUILD_DIR)/g++fe/gfecc
 
 GNU4_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/wgen/wgen \
                 $(GNUFE_BUILD_DIR)/gcc/cc1 \
                 $(GNUFE_BUILD_DIR)/gcc/cc1plus
 
-NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(GNU4_FE_COMPONENTS) $(TARGET_EXTRA_OBJ)
-CROSS_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ)
+FORT_FE_COMPONENTS = \
+                $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
+
+NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
+                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
+
+CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
+                    $(GNU3_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
+
 CROSS_PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done)
 
 PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done) 
