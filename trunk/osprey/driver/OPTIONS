@@ -342,7 +342,9 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 -frandom-seed%s  ;      ALL     N       "-frandom-seed=%s"
         "specify random seed (string) for internal random number generator"
 -fivopts    ;		ALL	NONE	""
-	     "Perform induction variable optimizations (For option compatibility only. Open64 perform it by default)"
+	     "Perform induction variable optimizations (for options compatibility only, performed by default by Open64)"
+-fno-ivopts ;		ALL	NONE	""
+	     "Don't perform induction variable optimizations (for options compatibility only, ignored by Open64)"
 
 % Basic option groups:
 % See opt_actions.c::Process_Ofast if you change the -OPT: item.
