@@ -2318,7 +2318,7 @@ add_instr_archive (string_list_t* args)
 
 extern char *get_binutils_lib_path(void);
 
-#if 0
+#if 0 // need not to set d_library_path
 static char *
 find_ld_library_path(char *program_name, char *ld_library_path)
 {
@@ -2375,7 +2375,7 @@ find_toolroot(char *program_name, char *toolroot)
 		toolroot[tail - 1] = '\0';
 	}
 
-	strcat(toolroot, "/../..");
+	strcat(toolroot, "/..");
 	
 	/* do we need realpath? */
 	strcpy(toolroot, realpath(toolroot, buf));

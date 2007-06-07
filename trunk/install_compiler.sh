@@ -105,10 +105,10 @@ LD_NEW_DIR="osprey/targcygnus_${BUILD_HOST}_${TARG_HOST}/ld"
 # prepare the distination dir
 INTERPOSE=
 [ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
-PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/${PHASE_DIR_PREFIX}-open64-linux/${VERSION}/
+PHASEPATH=${ROOT}/${INTERPOSE}/lib/gcc-lib/${PHASE_DIR_PREFIX}-open64-linux/${VERSION}/
 NATIVE_LIB_DIR=${PHASEPATH}
-BIN_DIR=${ROOT}/usr/${INTERPOSE}/bin
-ALT_BIN_DIR=${ROOT}/usr/${INTERPOSE}/altbin
+BIN_DIR=${ROOT}/${INTERPOSE}/bin
+ALT_BIN_DIR=${ROOT}/${INTERPOSE}/altbin
 
 # install commands
 INSTALL="/usr/bin/install -D"
@@ -374,14 +374,14 @@ INSTALL_NATIVE_HEADER () {
     #INSTALL_DATA_SUB osprey/include/nue/stdarg.h  ${PHASEPATH}/include/stdarg.h
     #INSTALL_DATA_SUB osprey/include/nue/va-ia64.h  ${PHASEPATH}/include/va-ia64.h 
     #cp -f -a osprey/include ${PHASEPATH}/ 
-    INSTALL_DATA_SUB ${ROOT}/usr/include/whirl2c.h  ${ROOT}/usr/include/${VERSION}/whirl2c.h
-    INSTALL_DATA_SUB ${ROOT}/usr/include/whirl2f.h  ${ROOT}/usr/include/${VERSION}/whirl2f.h
+    INSTALL_DATA_SUB ${ROOT}/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
+    INSTALL_DATA_SUB ${ROOT}/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
 
-    INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/usr/include/${VERSION}/dwarf.h
-    INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/usr/include/${VERSION}/libdwarf.h
+    INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/include/${VERSION}/dwarf.h
+    INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/include/${VERSION}/libdwarf.h
 
-    INSTALL_DATA_SUB ${AREA}/include/libelf/libelf.h  ${ROOT}/usr/include/${VERSION}/libelf/libelf.h
-    INSTALL_DATA_SUB ${AREA}/include/libelf/sys_elf.h  ${ROOT}/usr/include/${VERSION}/libelf/sys_elf.h
+    INSTALL_DATA_SUB ${AREA}/include/libelf/libelf.h  ${ROOT}/include/${VERSION}/libelf/libelf.h
+    INSTALL_DATA_SUB ${AREA}/include/libelf/sys_elf.h  ${ROOT}/include/${VERSION}/libelf/sys_elf.h
 
     return 0
 }

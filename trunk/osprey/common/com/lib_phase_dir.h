@@ -63,21 +63,21 @@
 	    #define INTERPOSE   ""
     #endif 
 
-    #define BINPATH		"/usr/" INTERPOSE "/bin"
+    #define BINPATH		"/" INTERPOSE "/bin"
 
     #ifdef CROSS_COMPILATION
-        #define ALTBINPATH  "/usr/" INTERPOSE "/altbin"
+        #define ALTBINPATH  "/" INTERPOSE "/altbin"
     #else
         #define ALTBINPATH  BINPATH
     #endif 
 
     #if defined(TARG_IA64)
-    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-open64-linux/" OPEN64_FULL_VERSION
+    #define LIBPATH	"/" INTERPOSE "/lib/gcc-lib/ia64-open64-linux/" OPEN64_FULL_VERSION
     #else
-    #define LIBPATH     "/usr/" INTERPOSE "/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION
+    #define LIBPATH     "/" INTERPOSE "/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION
     #endif
 
-    #define ALTLIBPATH	"/usr/" INTERPOSE "/lib"
+    #define ALTLIBPATH	"/" INTERPOSE "/lib"
 
     #define PHASEPATH	    LIBPATH
     #define GNUPHASEPATH	LIBPATH
@@ -85,11 +85,11 @@
 #elif defined(linux) && defined(TARG_IA32)
 
     #define NAMEPREFIX	 ""
-    #define BINPATH		 "/usr/bin"
+    #define BINPATH		 "/bin"
     #define ALTBINPATH   BINPATH
-    #define LIBPATH		 "/usr/lib"
+    #define LIBPATH		 "/lib"
     #define ALTLIBPATH	 LIBPATH
-    #define PHASEPATH	 "/usr/ia32-sgi-linux/bin"
+    #define PHASEPATH	 "/ia32-sgi-linux/bin"
     #define GNUPHASEPATH "/lib"
 
 #else

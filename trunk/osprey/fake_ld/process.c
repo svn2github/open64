@@ -170,7 +170,7 @@ do_compile (string *argv)
 	if ((toolroot = getenv ("TOOLROOT")) == 0)
 	    toolroot = "/usr/bin/";
 	else
-	    toolroot = concat_names (toolroot, "/usr/bin/");
+	    toolroot = concat_names (toolroot, "/bin/");
     }
 
     argv[0] = concat_names (toolroot, basename (argv[0]));

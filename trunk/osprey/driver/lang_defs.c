@@ -180,7 +180,7 @@ static phase_info_t phase_info[] = {
    {'R',  0x0001000000000000LL, "ar",  BINPATH,      FALSE, FALSE}, /* ar */
 
    {'S',  0x0010000000000000LL,	"crt",	LIBPATH,	FALSE, FALSE},	/* startup */
-   {'I',  0x0020000000000000LL,	"inc",	"/usr/include",	FALSE, FALSE},	/* include */
+   {'I',  0x0020000000000000LL,	"inc",	"/include",	FALSE, FALSE},	/* include */
    {'L',  0x0040000000000000LL,	"lib",	LIBPATH,	FALSE, FALSE},	/* library */
    {'L',  0x0080000000000000LL,	"alib",	ALTLIBPATH,	FALSE, FALSE},	/* alt_library */
 };

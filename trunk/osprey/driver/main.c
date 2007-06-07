@@ -710,11 +710,11 @@ static void set_executable_dir (void) {
   if (strcmp (ldir, "bin") == 0) {
     char *basedir = directory_path (dir);
 #ifdef PSC_TO_OPEN64
-    substitute_phase_dirs ("/usr/lib", basedir, "/lib/" OPEN64_FULL_VERSION);
-    substitute_phase_dirs ("/usr/lib/" OPEN64_NAME_PREFIX "cc-lib",
+    substitute_phase_dirs ("/lib", basedir, "/lib/" OPEN64_FULL_VERSION);
+    substitute_phase_dirs ("/lib/" OPEN64_NAME_PREFIX "cc-lib",
 			   basedir, "/lib/" OPEN64_FULL_VERSION);
 #endif
-    substitute_phase_dirs ("/usr/include", basedir, "/include");
+    substitute_phase_dirs ("/include", basedir, "/include");
     return;
   }
 
@@ -724,21 +724,21 @@ static void set_executable_dir (void) {
     if (ldir[12] == '/') {
       /* In target/version subdirectory. */
       ldir = substring_copy (dir, 0, ldir+4-dir);
-      substitute_phase_dirs ("/usr/bin", dir, "");
-      substitute_phase_dirs ("/usr/lib", ldir, "");
+      substitute_phase_dirs ("/bin", dir, "");
+      substitute_phase_dirs ("/lib", ldir, "");
 #ifdef PSC_TO_OPEN64
-      substitute_phase_dirs ("/usr/lib/" OPEN64_NAME_PREFIX "cc-lib", dir, "");
+      substitute_phase_dirs ("/lib/" OPEN64_NAME_PREFIX "cc-lib", dir, "");
 #endif
-      substitute_phase_dirs ("/usr/include", dir, "/include");
+      substitute_phase_dirs ("/include", dir, "/include");
     } else if (ldir[12] == '\0') {
       /* directly in gcc-lib */
       ldir = substring_copy (dir, 0, ldir+4-dir);
-      substitute_phase_dirs ("/usr/bin", dir, "");
-      substitute_phase_dirs ("/usr/lib", ldir, "");
+      substitute_phase_dirs ("/bin", dir, "");
+      substitute_phase_dirs ("/lib", ldir, "");
 #ifdef PSC_TO_OPEN64
-      substitute_phase_dirs ("/usr/lib/" OPEN64_NAME_PREFIX "cc-lib", dir, "");
+      substitute_phase_dirs ("/lib/" OPEN64_NAME_PREFIX "cc-lib", dir, "");
 #endif
-      substitute_phase_dirs ("/usr/include", dir, "/include");
+      substitute_phase_dirs ("/include", dir, "/include");
     }
     return;
   }
