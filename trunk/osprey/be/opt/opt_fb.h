@@ -244,6 +244,9 @@ public:
 
   bool Trace() const     { return _trace; }
 
+  FB_FREQ Get_node_freq_in( IDTYPE nx ) const {
+    return _fb_opt_nodes[nx].freq_total_in;
+  }
   FB_FREQ Get_node_freq_out( IDTYPE nx ) const {
     return _fb_opt_nodes[nx].freq_total_out;
   }
