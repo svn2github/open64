@@ -561,8 +561,8 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
 	"-WB,<arg> passes <arg> to the back-end via ipacom"
 %the next 2 entries are allegedly handled by the W* entry -- gbl
 %Bug#551
--Wa,%s			;		LINK	as	"-Wa,%s"
-	"pass comma-separated opts to assembler as individual opts"
+%-Wa,%s			;		LINK	as	"-Wa,%s"
+%	"pass comma-separated opts to assembler as individual opts"
 -Wl,%s			;		LINK	ld	"-Wl,%s"
 	"pass comma-separated opts to linker as individual opts"
 -Wp,%s			;		ALL	cpp	"-Wp,%s"
