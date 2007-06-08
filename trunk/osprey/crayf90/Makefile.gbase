@@ -40,7 +40,7 @@ include $(COMMONDEFS)
 
 BUILD_SUBDIRS = fe90 libf90sgi sgi
 FC_COMPILER = $(shell echo $(FC) | awk '{print $$1}' )
-WHICH_FC = $(shell basename `which $(FC_COMPILER) 2>/dev/null` )
+WHICH_FC = $(shell basename `which $(FC_COMPILER) 2>/dev/null` 2>/dev/null )
 
 ifneq (X$(WHICH_FC), X)
 default : first
