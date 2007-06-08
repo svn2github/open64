@@ -364,7 +364,7 @@ else
 ifeq ($(BUILD_TARGET),X8664)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(LIBFORTRAN_DIR)/libfortran.a
 else
-	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $$($(F90) -m32 -print-file-name=lib$(OPEN64_NAME_PREFIX)fortran.a)
+	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $$($(F90) -m32 -print-file-name=libfortran.a)
 endif
 endif
 else

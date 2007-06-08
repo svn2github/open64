@@ -57,30 +57,30 @@
 #if defined(linux) && (defined(TARG_IA64) || defined(TARG_X8664))
     #if CROSS_COMPILATION && defined(TARG_IA64)
 	    #define NAMEPREFIX	""
-	    #define INTERPOSE   "ia64-open64-linux"
+	    #define INTERPOSE   "/ia64-open64-linux"
     #else
 	    #define NAMEPREFIX	""
 	    #define INTERPOSE   ""
     #endif 
 
-    #define BINPATH		"/" INTERPOSE "/bin"
+    #define BINPATH		INTERPOSE "/bin"
 
     #ifdef CROSS_COMPILATION
-        #define ALTBINPATH  "/" INTERPOSE "/altbin"
+        #define ALTBINPATH  INTERPOSE "/altbin"
     #else
         #define ALTBINPATH  BINPATH
     #endif 
 
     #if defined(TARG_IA64)
-    #define LIBPATH	"/" INTERPOSE "/lib/gcc-lib/ia64-open64-linux/" OPEN64_FULL_VERSION
+    #define LIBPATH	INTERPOSE "/lib/gcc-lib/ia64-open64-linux/" OPEN64_FULL_VERSION
     #else
-    #define LIBPATH     "/" INTERPOSE "/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION
+    #define LIBPATH     INTERPOSE "/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION
     #endif
 
-    #define ALTLIBPATH	"/" INTERPOSE "/lib"
+    #define ALTLIBPATH	"/usr" INTERPOSE "/lib"
 
     #define PHASEPATH	    LIBPATH
-    #define GNUPHASEPATH	LIBPATH
+    #define GNUPHASEPATH    LIBPATH
 
 #elif defined(linux) && defined(TARG_IA32)
 

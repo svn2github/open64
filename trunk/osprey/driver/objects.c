@@ -280,12 +280,10 @@ static struct prof_lib prof_libs[] = {
     { "util", 0 },
     /* from our own libraries */
     { "instr", 1 },
-    { "mpath", 1 },
+    { "msgi", 1 },
     { "mv", 1 },
-#ifdef PSC_TO_OPEN64
-    { OPEN64_NAME_PREFIX "fortran", 1 },
-#endif
-    { "pscrt", 1 },
+    { "fortran", 1 },
+    /* { "pscrt", 1 }, */
     { NULL, 0 },
 };
 
@@ -331,17 +329,13 @@ add_object (int flag, char *arg)
 			/* add -lmv -lmblah */
 			add_library(lib_objects, "mv");
 			if (xpg_flag && invoked_lang == L_f77) {
-			#ifdef PSC_TO_OPEN64
-				add_library(lib_objects, "m" OPEN64_NAME_PREFIX);
+				add_library(lib_objects, "msgi" );
 			} else {
-				add_library(objects, "m" OPEN64_NAME_PREFIX);
-			#endif
+				add_library(objects, "msgi");
 			}
 			if (invoked_lang == L_CC) {
 			    add_library(cxx_prelinker_objects, "mv");
-			    #ifdef PSC_TO_OPEN64
-			    add_library(cxx_prelinker_objects, "m" OPEN64_NAME_PREFIX);
-			    #endif
+			    add_library(cxx_prelinker_objects, "msgi");
 			}
 #ifdef TARG_X8664
 			extern boolean link_with_mathlib;

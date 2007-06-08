@@ -350,8 +350,8 @@ ipa_compile_init ()
 		  } else {
 		    Fail_FmtAssertion ("ipa: unknown language");
 		  }
-		  strcpy(++s, "bin/open" OPEN64_NAME_PREFIX);
-		  s += strlen("bin/open" OPEN64_NAME_PREFIX);
+		  strcpy(++s, "bin/" OPEN64_NAME_PREFIX);
+		  s += strlen("bin/" OPEN64_NAME_PREFIX);
 		  strcpy(s, compiler_name_suffix);
 
 		  if (file_exists (my_cc)) {

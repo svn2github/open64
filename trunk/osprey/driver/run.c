@@ -428,7 +428,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 		// Fix the bug "*/cc-3.0: No such file or directory"
 		// actually, on IA64, the corresponding path is from $TOOLROOT
 		//
-		my_putenv ("COMPILER_BIN", "%s/" BINPATH "/" OPEN64_NAME_PREFIX "opencc", global_toolroot);
+		my_putenv ("COMPILER_BIN", "%s/" BINPATH "/" OPEN64_NAME_PREFIX "cc", global_toolroot);
 		my_execv(name, argv);
 	} else {
 		/* parent */
