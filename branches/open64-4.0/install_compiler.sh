@@ -55,12 +55,14 @@ ia64 )
     TARG_HOST="ia64"
     AREA="osprey/targia64_ia64_nodebug"
     PHASE_DIR_PREFIX="ia64"
+    PREBUILD_INTERPOS="ia64-linux"
     INSTALL_TYPE="ia64-native"
     ;;
 i386 | x86_64 )
     BUILD_HOST="ia32"
     TARG_HOST="x8664"
     PHASE_DIR_PREFIX="x86_64"
+    PREBUILD_INTERPOS="x8664-linux"
     AREA="osprey/targia32_x8664"
     INSTALL_TYPE="x8664-native"
     ;;
@@ -68,6 +70,7 @@ cross )
     BUILD_HOST="ia32"
     TARG_HOST="ia64"
     PHASE_DIR_PREFIX="ia64"
+    PREBUILD_INTERPOS="ia32-linux"
     AREA="osprey/targia32_ia64_nodebug"
     INSTALL_TYPE="ia64-cross"
     ;;
@@ -293,9 +296,9 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
 
 INSTALL_PREBUILD_OPEN64_NATIVE_LIB () {
 
-    [ ! -d ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/open64 ] && return 0
+    [ ! -d ${PREBUILT_LIB}/${PREBUILD_INTERPOS}/open64 ] && return 0
 
-    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/open64/* ; do 
+    for i in ${PREBUILT_LIB}/${PREBUILD_INTERPOS}/open64/* ; do 
 
         x=`basename $i`
         [ "$x" = "CVS" ] && continue;
@@ -311,8 +314,8 @@ INSTALL_PREBUILD_OPEN64_NATIVE_LIB () {
 
     # install the 32bit prebuild libraries for x8664
     [ "$TARG_HOST" != "x8664" ] && return 0
-    [ ! -d ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/open64/32 ] && return 0
-    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/open64/32/* ; do
+    [ ! -d ${PREBUILT_LIB}/${PREBUILD_INTERPOS}/open64/32 ] && return 0
+    for i in ${PREBUILT_LIB}/${PREBUILD_INTERPOS}/open64/32/* ; do
 
         x=`basename $i`
         [ "$x" = "CVS" ] && continue;
@@ -329,9 +332,9 @@ INSTALL_PREBUILD_OPEN64_NATIVE_LIB () {
    # hand.
 INSTALL_PREBUILD_GLIBC_NATIVE_LIB () {
 
-    [ ! -d ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu ] && return 0
+    [ ! -d ${PREBUILT_LIB}/${PREBUILD_INTERPOS}/gnu ] && return 0
 
-    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/* ; do 
+    for i in ${PREBUILT_LIB}/${PREBUILD_INTERPOS}/gnu/* ; do 
         x=`basename $i`
         [ "$x" = "CVS" ] && continue;
         [ "$x" = ".svn" ] && continue;
@@ -346,7 +349,7 @@ INSTALL_PREBUILD_GLIBC_NATIVE_LIB () {
 INSTALL_PREBUILD_PHASE () {
 
     # Some prebuild
-    for i in ${PREBUILT_BIN}/${BUILD_HOST}-${BUILD_OS}/phase/* ; do 
+    for i in ${PREBUILT_BIN}/${PREBUILD_INTERPOS}/phase/* ; do 
 	[ ! -e $i ] && continue;
         [ "`basename $i`" = "CVS" ] && continue
         [ "`basename $i`" = ".svn" ] && continue
@@ -358,9 +361,9 @@ INSTALL_PREBUILD_PHASE () {
 
 INSTALL_CROSS_UTIL () {
 
-    [ ! -d ${PREBUILT_BIN}/${BUILD_HOST}-${BUILD_OS}/util ] && return 0
+    [ ! -d ${PREBUILT_BIN}/${PREBUILD_INTERPOS}/util ] && return 0
 
-    for i in ${PREBUILT_BIN}/${BUILD_HOST}-${BUILD_OS}/util/* ; do 
+    for i in ${PREBUILT_BIN}/${PREBUILD_INTERPOS}/util/* ; do 
 	[ "`basename $i`" = "CVS" ] && continue
         [ "`basename $i`" = ".svn" ] && continue
     	INSTALL_EXEC_SUB $i ${BIN_DIR}/`basename $i`
