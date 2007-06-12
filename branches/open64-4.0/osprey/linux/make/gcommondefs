@@ -99,8 +99,9 @@ CCNAME = gcc
 C++NAME = g++ 
 #F90 = gfortran
 #F90_RTLIBS = -lgfortran
-F90 = ifort -assume 2underscores
-F90_RTLIBS = $(INTEL_COMPILER_FC_HOME)/lib/libifcore.a $(INTEL_COMPILER_FC_HOME)/lib/libimf.a
+#F90 = ifort -assume 2underscores
+#F90_RTLIBS = $(INTEL_COMPILER_FC_HOME)/lib/libifcore.a $(INTEL_COMPILER_FC_HOME)/lib/libimf.a
+F90 = openf90
 ifeq ($(BUILD_ARCH), X8664)
 # only 64bit libraries set the BUILD_ARCH to X8664 
 CCNAME  = opencc 
@@ -121,7 +122,7 @@ ASNAME = gcc -m32
 CCNAME = gcc -m32
 C++NAME = g++ -m32
 # or using ifort to build the FORTRAN FE
-F90 = pathf90 -m32
+F90 = openf90 -m32
 endif
 endif
 AR      = ar
