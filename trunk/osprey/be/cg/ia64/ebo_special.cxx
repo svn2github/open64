@@ -5960,7 +5960,25 @@ condition_optimization(OP *op,
   EBO_Identify_Base_and_Offset ( &op2_tninfo, &op2, &op2_offset);
 
   if ((op1_tninfo == op2_tninfo) && (op1_tninfo != NULL) && (op1 != Zero_TN)) {
-
+    TOP opcode = OP_code(op);
+    if ( opcode == TOP_cmp_geu ||
+	 opcode == TOP_cmp_geu_unc ||
+	 opcode == TOP_cmp_ltu ||
+	 opcode == TOP_cmp_ltu_unc ||
+	 opcode == TOP_cmp_gtu ||
+	 opcode == TOP_cmp_gtu_unc ||
+	 opcode == TOP_cmp_leu ||
+	 opcode == TOP_cmp_leu_unc ||
+	 opcode == TOP_cmp_i_geu ||
+	 opcode == TOP_cmp_i_geu_unc ||
+	 opcode == TOP_cmp_i_ltu ||
+	 opcode == TOP_cmp_i_ltu_unc ||
+	 opcode == TOP_cmp_i_gtu ||
+	 opcode == TOP_cmp_i_gtu_unc ||
+	 opcode == TOP_cmp_i_leu ||
+	 opcode == TOP_cmp_i_leu_unc) {
+      return FALSE;
+    }
     if (EBO_Trace_Optimization) {
       #pragma mips_frequency_hint NEVER
       fprintf(TFile,"%sResolve compare symbolically by reducing to constants %lld : %lld.\n",
