@@ -524,6 +524,16 @@ Allocate_Stacked_Register(LRANGE* lrange)
     Update_Register_Info(lrange, reg);
     return TRUE;
   }
+
+  if (abi_property == ABI_PROPERTY_caller)
+    reg = REGISTER_Request_Stacked_Register(ABI_PROPERTY_callee,
+                                            lrange->Rc());
+
+  if (reg != REGISTER_UNDEFINED) {
+    Update_Register_Info(lrange, reg);
+  return TRUE;
+}
+
 #endif
   return FALSE;
 }
