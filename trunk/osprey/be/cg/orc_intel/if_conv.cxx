@@ -798,11 +798,13 @@ IF_CONVERTOR::Is_Partial_Redundant_Def(BB* bb, OP* op, TN* tn)
     } else { 
         BB_SET* bb_queue = BB_SET_Create_Empty(PU_BB_Count, &_m);
         bb_queue = BB_SET_Union1D(bb_queue, bb, &_m);
+	BB_SET* bb_processed = BB_SET_Create_Empty(PU_BB_Count, &_m);
 
         while ( BB_SET_Size(bb_queue) ) 
         {
             BB* bb1 = BB_SET_Choose(bb_queue);
             BS_Difference1D(bb_queue, BB_id(bb1));
+	    BB_SET_Union1D(bb_processed, bb1, &_m);
 
             REGIONAL_CFG_NODE* node = Regional_Cfg_Node(bb1);
             for (CFG_PRED_NODE_ITER pred_iter(node);
@@ -817,7 +819,7 @@ IF_CONVERTOR::Is_Partial_Redundant_Def(BB* bb, OP* op, TN* tn)
                     && !BB_SET_MemberP(BB_pdom_set(pred_bb), bb))
                 {
                     return TRUE;
-                } else {
+                } else if (!BB_SET_MemberP(bb_processed, pred_bb)){
                     bb_queue = BB_SET_Union1D(bb_queue, pred_bb, &_m);
                 }
             }

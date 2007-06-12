@@ -511,6 +511,23 @@ Generate_Entry (BB *bb, BOOL gra_run )
   ENTRYINFO *ent_info = ANNOT_entryinfo(ant);
   ST *st = ENTRYINFO_name(ent_info);	/* The entry's symtab entry */
 
+  /* Add explicit definition of formal registers */
+  if ( gra_run ) {
+    FOR_ALL_BB_OPs (REGION_First_BB, op){
+      for (INT i = 0; i < OP_opnds(op); i++) {
+	TN* opnd = OP_opnd(op, i);
+	if (!TN_is_register (opnd) || !TN_is_dedicated(opnd)) {
+	  continue;
+	}
+	PREG_NUM pnum = TN_To_PREG (opnd);
+	if (Is_Formal_Preg (pnum)){
+	  Exp_COPY(opnd,opnd,&ops);
+	  Set_OP_no_move_before_gra(OPS_last(&ops));
+	}
+      }
+    }
+  }
+
   if ((BB_rid(bb) != NULL) && ( RID_level(BB_rid(bb)) >= RL_CGSCHED )) {
   	/* don't change bb's which have already been through CG */
   	return;
