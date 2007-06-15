@@ -1790,7 +1790,21 @@ Create_ST_For_Tree (gs_t decl_node)
   if (gs_tree_code(decl_node) == GS_VAR_DECL &&
       gs_decl_context(decl_node)	       &&
       gs_tree_code(gs_decl_context(decl_node)) == GS_RECORD_TYPE)
-	Get_TY(gs_decl_context(decl_node));
+  {
+    int null_field_offset = 0;
+	for (gs_t field = get_first_real_field(gs_decl_context(decl_node)); 
+		field;
+		field = next_real_field(gs_decl_context(decl_node), field) )
+	{
+		if ((gs_tree_code(field) == GS_FIELD_DECL)
+			 && ((gs_decl_field_offset(field) == NULL) || (gs_decl_field_bit_offset(field) == NULL))) {
+			null_field_offset = 1;
+			break;
+		}
+	}
+	if(!null_field_offset)
+		Get_TY(gs_decl_context(decl_node));
+  }
 
   if (Enable_WFE_DFE) {
     if (gs_tree_code(decl_node) == GS_VAR_DECL &&
