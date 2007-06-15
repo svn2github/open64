@@ -75,6 +75,12 @@ extern "C"{
 #endif
 //#include "tree_cmp.h"
 
+#include <ext/hash_set>
+using __gnu_cxx::hash_set;
+typedef struct {
+    size_t operator()(void* p) const { return reinterpret_cast<size_t>(p); }
+} void_ptr_hash;
+
 extern int pstatic_as_global;
 extern BOOL flag_no_common;
 extern gs_t decl_arguments;
@@ -901,6 +907,21 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		}
 #endif // KEY
 
+                hash_set <gs_t, void_ptr_hash> anonymous_base;
+                gs_t type_binfo, basetypes;
+
+                // find all base classes
+                if ((type_binfo = gs_type_binfo(type_tree)) != NULL &&
+                    (basetypes = gs_binfo_base_binfos(type_binfo)) != NULL) {
+                  gs_t list;
+                  for (list = basetypes; gs_code(list) != EMPTY;
+                       list = gs_operand(list, 1)) {
+                    gs_t binfo = gs_operand(list, 0);
+                    gs_t basetype = gs_binfo_type(binfo);
+                    anonymous_base.insert(basetype);
+                  } 
+                } 
+
 		// Assign IDs to real fields.  The vtable ptr field is already
 		// assigned ID 1.
 		for (field = get_first_real_field(type_tree); 
@@ -940,6 +961,8 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 					/ BITSPERBYTE);
                         if (gs_decl_name(field) == NULL)
                             Set_FLD_is_anonymous(fld);
+                        if (anonymous_base.find(gs_tree_type(field)) != anonymous_base.end())
+                            Set_FLD_is_base_class(fld); 
 		}
 
 		TYPE_FIELD_IDS_USED(type_tree) = next_field_id - 1;
@@ -1181,6 +1204,10 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		}
 		else
 			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
+                        if (gs_tree_code(type_tree) == GS_METHOD_TYPE) {
+                            TY_IDX base = Get_TY(gs_type_method_basetype(type_tree));
+                            Set_TY_baseclass(ty, base);
+                        }
 		} // end FUNCTION_TYPE scope
 		break;
 #ifdef TARG_X8664
@@ -1471,6 +1498,14 @@ Create_ST_For_Tree (gs_t decl_node)
 	  p++;
         ST_Init (st, Save_Str(p),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
+
+        // St is a constructor
+        if (gs_decl_complete_constructor_p(decl_node) && !gs_decl_copy_constructor_p(decl_node))
+            Set_PU_is_constructor(pu);
+        // St is a pure virual function
+        if (gs_decl_pure_virtual_p(decl_node) || strncmp(p, "__cxa_pure_virtual", 18) == 0)
+            Set_ST_is_pure_vfunc(st);
+
 	if (gs_decl_thunk_p(decl_node) &&
             gs_tree_code(gs_cp_decl_context(decl_node)) != GS_NAMESPACE_DECL)
 	  Set_ST_is_weak_symbol(st);

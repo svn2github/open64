@@ -1132,6 +1132,8 @@ Setup_Ty (TY& ty)
 	    Tylist_Table.Insert (0);
 	}
  	Set_TY_tylist (ty, *tylist_idx);
+        if (TY_baseclass(ty) > 0)
+            Set_TY_baseclass(ty, Get_Kid_TY_IDX(TY_baseclass(ty)));
 	break;
 
     default:

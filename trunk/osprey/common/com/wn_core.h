@@ -1433,6 +1433,7 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 					      regards points-to
 					      relationships */
 #define WN_CALL_REPLACE_BY_JUMP 0x1000	/* replace call by jump in thunks */
+#define WN_CALL_IS_VIRTUAL      0x2000  /* it is a virtual function call */
 
      /* Some flags make promises when they're clear, and others when
       * they're set. The following macro tells us which are
@@ -1491,6 +1492,10 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_Set_Call_Default_Flags(x)	(WN_call_flag(x) |= WN_CALL_CONSERVATIVE)
 #define WN_Call_No_Side_Effect(x)	((WN_call_flag(x) & (WN_CALL_NON_DATA_MOD | WN_CALL_NON_PARM_MOD | WN_CALL_PARM_MOD)) == 0)
 #define WN_Call_Pure(x)			((WN_call_flag(x) & (WN_CALL_NON_DATA_MOD | WN_CALL_NON_PARM_MOD | WN_CALL_PARM_MOD | WN_CALL_NON_DATA_REF | WN_CALL_NON_PARM_REF)) == 0)
+
+#define WN_Call_Is_Virtual(x)        (WN_call_flag(x) & WN_CALL_IS_VIRTUAL)
+#define WN_Set_Call_Is_Virtual(x)    (WN_call_flag(x) |= WN_CALL_IS_VIRTUAL)
+#define WN_Reset_Call_Is_Virtual(x)  (WN_call_flag(x) &= ~WN_CALL_IS_VIRTUAL)
 
 /* Macros for OPR_ASM_STMT flag access */
 

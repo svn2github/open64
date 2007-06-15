@@ -907,6 +907,7 @@ public:
 
     void Set_func_ptr ()		{ _state |= IPL_FUNC_PTR; }
     BOOL Is_func_ptr () const		{ return (_state & IPL_FUNC_PTR); }
+    void Reset_func_ptr ()              { _state &= ~IPL_FUNC_PTR; }
 
 #ifdef KEY
     void Set_icall_target () { _state |= IPL_ICALL_TARGET; }

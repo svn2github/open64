@@ -169,6 +169,7 @@ enum ST_FLAGS_EXT
     ST_IS_METHOD_FUNC	= 0x10,         // ST is c++ method function (make sense only 
                                         // when st-class is CLASS_FUNC	
     ST_IS_THIS_PTR      = 0x20, 	// ST is "this"-pointer
+    ST_IS_PURE_VFUNC    = 0x40,         // ST is pure virtual function
 }; // ST_FLAGS_EXT
 #endif
 
@@ -230,6 +231,7 @@ enum FLD_FLAGS
     FLD_END_MAP		= 0x0020,	// end a map
     FLD_IS_BIT_FIELD	= 0x0040,	// is bit field
     FLD_IS_ANONYMOUS    = 0x0080,       // is anonymous field
+    FLD_IS_BASE_CLASS   = 0x0100,       // is a field of base class type
 };
 
 struct FLD
@@ -544,6 +546,11 @@ public:
 #endif
     } u2;
 
+    union {
+        INITV_IDX  vtable;              // initial virtual table, for virtual class type
+        TY_IDX     baseclass;           // the base class, for member function of class
+    } u3;
+
     // access function for unions
 
     FLD_IDX Fld () const		{ return u1.fld; }
@@ -662,6 +669,7 @@ public:
 #define PU_HAS_ATTR_MALLOC  0x0000020000000000LL // __attribute__((malloc)) semantic 
 #define PU_HAS_ATTR_PURE    0x0000040000000000LL // __attribute__((pure)) semantic 
 #define PU_HAS_ATTR_NORETURN 0x0000080000000000LL // __attribute__((noreturn)) semantic
+#define PU_IS_CONSTRUCTOR    0x0000100000000000LL  // PU is a constructor of a class
 
 enum PU_SRC_LANG_FLAGS
 {

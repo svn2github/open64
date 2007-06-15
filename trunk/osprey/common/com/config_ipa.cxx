@@ -301,6 +301,9 @@ INT32 IPA_Output_File_Size = 0;
 /* This flag is to use the old type merge phase. It should be removed when the old type merge is removed. */
 BOOL IPA_Enable_Old_Type_Merge = FALSE;  
 
+/* enable devirtualization */
+BOOL IPA_Enable_Devirtualization = FALSE;
+
 static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL,	OV_VISIBLE,	FALSE, "addressing",	"",
 	  0, 0, 0,		&IPA_Enable_Addressing,	NULL,
@@ -580,6 +583,9 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "ipa_enable_old_type_merge", "",
           0, 0, 0,              &IPA_Enable_Old_Type_Merge, NULL,
           "Use the old type merge phase in IPA"},
+    { OVK_BOOL, OV_INTERNAL,    FALSE, "enable_devirtualization", "",
+          0, 0, 0,              &IPA_Enable_Devirtualization, NULL,
+          "Use devirtualization phase"},
 #endif // KEY
     { OVK_COUNT }	    /* List terminator -- must be last */
 };

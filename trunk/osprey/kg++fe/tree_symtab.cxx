@@ -769,6 +769,17 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		  }
 		}
 #endif
+
+                // find all base classes
+                if (TYPE_BINFO(type_tree) && BINFO_BASETYPES(TYPE_BINFO(type_tree))) {
+                  tree basetypes = BINFO_BASETYPES(TYPE_BINFO(type_tree));
+                  INT32 i;
+                  for (i = 0; i < TREE_VEC_LENGTH(basetypes); ++i) {
+                    tree basetype = BINFO_TYPE(TREE_VEC_ELT(basetypes, i));
+                    anonymous_base.insert(CLASSTYPE_AS_BASE(basetype));
+                  }
+                }
+
 		for (field = TYPE_FIELDS(type_tree); 
 			field;
 			field = next_real_or_virtual_field(type_tree, field) )
@@ -792,10 +803,6 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			if (TREE_CODE(field) == TEMPLATE_DECL) {
 				continue;
 			}
-                        // Do not create the anonymous base class twice
-                        if (anonymous_base.find(TREE_TYPE(field)) != anonymous_base.end()) {
-                                continue;
-                        }
 			DECL_FIELD_ID(field) = next_field_id;
 			next_field_id += 
 			  TYPE_FIELD_IDS_USED(TREE_TYPE(field)) + 1;
@@ -807,6 +814,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 					/ BITSPERBYTE);
                         if (DECL_NAME(field) == NULL)
                                 Set_FLD_is_anonymous(fld);
+                        if (anonymous_base.find(TREE_TYPE(field)) != anonymous_base.end())
+                                Set_FLD_is_base_class(fld);
 		}
 
 		TYPE_FIELD_IDS_USED(type_tree) = next_field_id - 1;
@@ -839,9 +848,6 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				continue;
 			if (TREE_CODE(field) == TEMPLATE_DECL)
 				continue;
-                        // skip the field with anonymous base class
-                        if (anonymous_base.find(TREE_TYPE(field)) != anonymous_base.end())
-                                continue;
 #ifdef KEY
 			// Don't expand the field's type if it's a pointer
 			// type, in order to avoid circular dependences
@@ -1009,6 +1015,10 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		}
 		else
 			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
+                        if (TREE_CODE(type_tree) == METHOD_TYPE) {
+                            TY_IDX base = Get_TY(TYPE_METHOD_BASETYPE(type_tree));
+                            Set_TY_baseclass(ty, base);
+                        }
 		} // end FUNCTION_TYPE scope
 		break;
 #ifdef TARG_X8664
@@ -1203,6 +1213,13 @@ Create_ST_For_Tree (tree decl_node)
 	  p++;
         ST_Init (st, Save_Str(p),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
+
+        // St is a constructor
+        if (DECL_CONSTRUCTOR_P(decl_node) && !DECL_COPY_CONSTRUCTOR_P(decl_node))
+            Set_PU_is_constructor(pu);
+        // St is a pure virual function
+        if (DECL_PURE_VIRTUAL_P(decl_node) || strncmp(p, "__cxa_pure_virtual", 18) == 0)
+            Set_ST_is_pure_vfunc(st);
 
 	p = IDENTIFIER_POINTER (DECL_NAME (decl_node));
 	if (!strncmp(p,"operator",8))

@@ -329,6 +329,7 @@ TY_Init (TY& ty, UINT64 s, TY_KIND k, TYPE_ID t, STR_IDX n)
     ty.u1.fld = 0;
     ty.name_idx = n;
     ty.u2.etype = 0;
+    ty.u3.vtable = 0;
 } // TY_Init
 
 inline UINT32

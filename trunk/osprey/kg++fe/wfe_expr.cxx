@@ -5870,13 +5870,48 @@ WFE_Expand_Expr (tree exp,
         }
 
         else {
+          WN *wn_kid0, *wn_kid0_kid0;
+          TY_IDX kid_ty_idx;
+          UINT32 kid_field_id, kid_cur_fld;
+          FLD_HANDLE kid_fld_handle;
 	  num_args++;
 	  num_handlers = Current_Handler_Count();
           call_wn = WN_Create (OPR_ICALL, ret_mtype, MTYPE_V,
 			       num_args + num_handlers);
-	  WN_kid(call_wn, num_args-1) = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
-	  WN_set_ty (call_wn, TY_pointed(Get_TY(TREE_TYPE (TREE_OPERAND (exp, 0)))));
-	}
+          wn_kid0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
+          WN_kid(call_wn, num_args-1) = wn_kid0;
+          WN_set_ty (call_wn, TY_pointed(Get_TY(TREE_TYPE(TREE_OPERAND(exp, 0)))));
+          // Check if the indirect call is a call to a virtual function
+          // First, get the TY of the address and the field ID
+          switch (WN_operator(wn_kid0)) {
+              case OPR_ILOAD :
+                  // if offset == 0, ILOAD the vptr directly
+                  kid_ty_idx = WN_ty(wn_kid0);
+                  kid_field_id = WN_field_id(wn_kid0);
+                  break;
+              case OPR_ADD :
+                  // if call the result by ADD, analysis the tree of ADD
+                  wn_kid0_kid0 = WN_kid0(wn_kid0);
+                  if (WN_operator_is(wn_kid0_kid0, OPR_ILOAD)) {
+                      kid_ty_idx = WN_ty(wn_kid0_kid0);
+                      kid_field_id = WN_field_id(wn_kid0_kid0);
+                  }
+                  else
+                      kid_ty_idx = kid_field_id = 0;
+                  break;
+              default :
+                  kid_ty_idx = kid_field_id = 0;
+                  break;
+          }
+          if (kid_ty_idx > 0 && kid_field_id > 0) {
+              // If the TY and the field ID of the address are found,
+              // then check if the field of the TY is a virtual pointer
+              kid_cur_fld = 0;
+              kid_fld_handle = FLD_get_to_field(kid_ty_idx, kid_field_id, kid_cur_fld);
+              if (!strncmp (&Str_Table[FLD_name_idx(kid_fld_handle)], "_vptr.", 6))
+                  WN_Set_Call_Is_Virtual(call_wn);
+          }	
+        }
 
 	WN_Set_Linenum (call_wn, Get_Srcpos());
 	WN_Set_Call_Default_Flags (call_wn);

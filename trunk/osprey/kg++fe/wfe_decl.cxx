@@ -2964,6 +2964,18 @@ WFE_Initialize_Decl (tree decl)
 			Add_Inito_For_Tree (DECL_INITIAL(init_decl),
 					    Get_ST(init_decl));
 		}
+                // Set the virtual table entry of a TY when creating vtable INITO
+                if (vtable_decl_p(decl, 0)) {
+                    INITV_IDX vfunc = Inito_Table[aggregate_inito].val;
+                    while (vfunc > 0 && INITV_kind(vfunc) != INITVKIND_SYMIPLT) {
+                        vfunc = (INITV_kind(vfunc) == INITVKIND_BLOCK) ?
+                                 INITV_blk(vfunc) : INITV_next(vfunc);
+                    }
+                    if (vfunc > 0) {
+                        TY_IDX base_tyi = Get_TY(DECL_CONTEXT(decl));
+                        Set_TY_vtable(base_tyi, vfunc);
+                    }
+                }
 		init_decl = NULL;
 	}
 	if (TREE_READONLY(decl))

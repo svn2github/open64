@@ -65,6 +65,9 @@
 #include "ipa_nested_pu.h"              // Build_Nested_Pu_Relations
 #include "ipo_tlog_utils.h"		// Ipa_tlog
 
+#include "ipa_chg.h"                    // Class hierarchy graph
+#include "ipa_devirtual.h"              // Devirtualization
+
 #include "ipo_defs.h"
 
 #ifndef KEY
@@ -321,6 +324,12 @@ Perform_Interprocedural_Analysis ()
 	    fprintf (TFile, "\t<<<Call Graph Construction begins>>>\n");
 	
 	Build_Call_Graph ();
+
+        if (IPA_Enable_Devirtualization) {
+            Temporary_Error_Phase ephase ("IPA Devirtualization");
+            IPA_Class_Hierarchy = Build_Class_Hierarchy();
+            IPA_devirtualization();
+        }
 
 #ifdef KEY
 	if( IPA_Enable_Icall_Opt ){
