@@ -203,7 +203,7 @@ inline mINT32  PF_LG::Get_Stride_In_Enclosing_Loop () {
   return _myugs->Get_Stride_In_Enclosing_Loop ();
 }
 
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
 inline BOOL  PF_LG::Get_Stride_Accurate() {
   return _myugs->Get_Stride_Accurate();
 }
@@ -1872,7 +1872,7 @@ WN* PF_LG::Get_Ref_Version (WN* ref, INT bitpos) {
   return ref;
 }
 
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
 BOOL Contain_Induction_Variable (WN* wn, ST_IDX idx)
 {
   if (WN_st_idx(wn) == idx) return TRUE;
@@ -2192,7 +2192,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
       break;
     }
 
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
     {
       // Go some cache lines ahead
       if ( LNO_Prefetch_Ahead || LNO_Prefetch_Iters_Ahead) {
@@ -2978,7 +2978,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
   // get stride in enclosing loop
   {
     _stride_in_enclosing_loop = 0;
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
     _stride_accurate = TRUE;
 #endif
 
@@ -3003,7 +3003,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
           _stride_in_enclosing_loop *= WN_const_val(dim_wn);
         }
         else {
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
           //OSP_233 & OSP_240 
           //
           //  DO I = 1, N
@@ -3035,7 +3035,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
       }
     }
     else {
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
       BOOL messy=FALSE;
     
       for (i=aa->Num_Vec()-1; i>=0; i--) {
@@ -3270,7 +3270,7 @@ static BOOL Pseudo_Temporal_Locality(WN *array)
  *
  ***********************************************************************/
 void PF_UGS::ComputePFVec (PF_LEVEL level, PF_LOCLOOP locloop) {
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
   if (!Get_Stride_Accurate())
     return;
 #endif

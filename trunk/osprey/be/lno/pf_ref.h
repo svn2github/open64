@@ -796,7 +796,7 @@ public:
   mINT16        Get_Stride_One_Loop ();
   mINT16        Get_Stride_One_Size ();
   mINT32        Get_Stride_In_Enclosing_Loop ();
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
   BOOL           Get_Stride_Accurate();
 #endif
   mINT16        Stride_Forward ();
@@ -834,7 +834,7 @@ class PF_UGS {
   // size in bytes travelled per iteration of immediately enclosing loop
   mINT32            _stride_in_enclosing_loop;
 
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
   // this variable is used to indicate whether the computation of _stride_in_enclosing_loop
   // is accurate or is just a kind of estimation. 
   BOOL               _stride_accurate;
@@ -871,7 +871,7 @@ public:
   mINT16                Get_Stride_One_Loop () const { return _stride_one_loop; }
   mINT16                Get_Stride_One_Size () const { return _stride_one_size; }
   mINT32                Get_Stride_In_Enclosing_Loop () const { return _stride_in_enclosing_loop; }
-#ifdef OSP_OPT
+#if defined(OSP_OPT) && defined(TARG_IA64)
   BOOL                   Get_Stride_Accurate ()    const { return _stride_accurate; }
 #endif
   mINT16                Stride_Forward ()    const { return _stride_forward; }
