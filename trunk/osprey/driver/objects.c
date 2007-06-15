@@ -329,13 +329,13 @@ add_object (int flag, char *arg)
 			/* add -lmv -lmblah */
 			add_library(lib_objects, "mv");
 			if (xpg_flag && invoked_lang == L_f77) {
-				add_library(lib_objects, "msgi" );
+				add_library(lib_objects, "m" );
 			} else {
-				add_library(objects, "msgi");
+				add_library(objects, "m");
 			}
 			if (invoked_lang == L_CC) {
 			    add_library(cxx_prelinker_objects, "mv");
-			    add_library(cxx_prelinker_objects, "msgi");
+			    add_library(cxx_prelinker_objects, "m");
 			}
 #ifdef TARG_X8664
 			extern boolean link_with_mathlib;

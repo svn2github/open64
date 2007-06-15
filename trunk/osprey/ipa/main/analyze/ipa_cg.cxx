@@ -336,7 +336,9 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
                     continue;
                 }
                 int st_idx = TCON_uval (INITV_tc_val (st_entry));
-                if (st_idx < 0)
+		// bug fix for OSP_317
+		// 
+                if (st_idx < 0 || st_idx >= sym_size)
                 {
                     idx = INITV_next (idx);
                     continue;
@@ -349,10 +351,10 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
 		if (ST_IDX_level(new_idx) == GLOBAL_SYMTAB) {
       		  Set_AUX_ST_flags (Aux_St_Table[new_idx], USED_IN_OBJ);
                   Clear_ST_is_not_used (St_Table[new_idx]);
-                INITV_IDX filter = INITV_next (st_entry); // for backup
-                INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
+                  INITV_IDX filter = INITV_next (st_entry); // for backup
+                  INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
                        Host_To_Targ (MTYPE_U4, new_idx)), 1);
-                Set_INITV_next (st_entry, filter);
+                  Set_INITV_next (st_entry, filter);
 		}
                 idx = INITV_next (idx);
             } while (idx);
