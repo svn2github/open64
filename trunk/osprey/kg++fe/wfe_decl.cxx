@@ -2964,6 +2964,7 @@ WFE_Initialize_Decl (tree decl)
 			Add_Inito_For_Tree (DECL_INITIAL(init_decl),
 					    Get_ST(init_decl));
 		}
+#ifdef TARG_IA64
                 // Set the virtual table entry of a TY when creating vtable INITO
                 if (vtable_decl_p(decl, 0)) {
                     INITV_IDX vfunc = Inito_Table[aggregate_inito].val;
@@ -2976,6 +2977,7 @@ WFE_Initialize_Decl (tree decl)
                         Set_TY_vtable(base_tyi, vfunc);
                     }
                 }
+#endif
 		init_decl = NULL;
 	}
 	if (TREE_READONLY(decl))

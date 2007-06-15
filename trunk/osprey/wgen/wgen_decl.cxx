@@ -3460,6 +3460,7 @@ WGEN_Initialize_Decl (gs_t decl)
 			agginit.Add_Inito_For_Tree (gs_decl_initial(init_decl),
 					    Get_ST(init_decl));
 		}
+#ifdef TARG_IA64
                 // Set the virtual table entry of a TY when creating vtable INITO
                 if (gs_decl_virtual_p(decl)) {
                     ST_IDX st_idx = ST_st_idx(st);
@@ -3480,6 +3481,7 @@ WGEN_Initialize_Decl (gs_t decl)
                         Set_TY_vtable(base_tyi, vfunc);
                     }
                 }
+#endif
 		init_decl = NULL;
 	}
 	if (gs_tree_readonly(decl) && !gs_tree_this_volatile(decl))

@@ -100,6 +100,8 @@ IPA_set_virtual_call_targets(TY_INDEX class_type,
     return;
 }
 
+#ifdef TARG_IA64
+
 // Find the ST_IDX of a virtual function 
 // by the class type and its offset in virtual table.
 ST_IDX
@@ -119,9 +121,13 @@ IPA_class_virtual_function(TY_INDEX class_type, size_t offset) {
     return ST_IDX_ZERO;
 }
 
+#endif
+
 // Main function of devirtualizaton. 
 void
 IPA_devirtualization() {
+
+#ifdef TARG_IA64
 
     hash_set <NODE_INDEX> node_visited;
     vector <callsite_targets_t> live_callsite;
@@ -299,6 +305,7 @@ IPA_devirtualization() {
                                 pu_node_index_table[ST_pu(st_callee)]);
         }
     }
+#endif
 }
 
 #endif
