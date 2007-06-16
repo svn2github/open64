@@ -183,6 +183,8 @@ static OP *Last_Mem_OP;
 OP_MAP OP_to_WN_map;
 static OP_MAP predicate_map = NULL;
 static WN_MAP WN_to_OP_map;
+// map between load (GOT entry) and the associated symbol
+OP_MAP OP_Ld_GOT_2_Sym_Map; 
 
 OP_MAP OP_Asm_Map;
 
@@ -5552,6 +5554,7 @@ void Whirl2ops_Initialize(struct ALIAS_MANAGER *alias_mgr)
   }
   last_loop_pragma = NULL;
   OP_Asm_Map = OP_MAP_Create();
+  OP_Ld_GOT_2_Sym_Map = OP_MAP_Create();
 }
 
 void Whirl2ops_Finalize(void)
@@ -5577,4 +5580,5 @@ void Whirl2ops_Finalize(void)
 		 "not followed by a loop, ignored");
   }
   OP_MAP_Delete(OP_Asm_Map);
+  OP_MAP_Delete(OP_Ld_GOT_2_Sym_Map); 
 }

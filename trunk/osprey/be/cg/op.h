@@ -491,6 +491,7 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_IF_CONVERTED 0x01000000 /*Is OP if-converted? */
 #define OP_MASK_RENAMED	0x02000000 /*Is OP renamed by GLOS */
 #define OP_MASK_SPILL_RESTORE 0x04000000 /*Is OP a spill or restore  */
+#define OP_MASK_LD_GOT_ENT    0x08000000 /* load GOT entry */ 
 #endif
 #ifdef TARG_X8664
 #define OP_MASK_MEMORY_HI   0x00040000 /* Is OP load/store the high 32-bit? */
@@ -498,11 +499,6 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END 0x00080000
 #define OP_MASK_COMPUTES_GOT  0x00100000  /* Does OP compute GOT ? */
 #define OP_MASK_PREFIX_LOCK   0x01000000
-#endif
-
-#ifdef TARG_IA64
-#define OP_MASK_LAST    OP_MASK_DATA_SPEC
-#define OP_MASK_MAX     0x80000000 
 #endif
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
@@ -588,7 +584,11 @@ enum OP_COND_DEF_KIND {
 # define OP_spill_restore(op)			(OP_flags(op) & OP_MASK_SPILL_RESTORE)
 # define Set_OP_spill_restore(o)		(OP_flags(o) |= OP_MASK_SPILL_RESTORE)
 # define Reset_OP_spill_restore(o)	(OP_flags(o) &= ~OP_MASK_SPILL_RESTORE)
+# define OP_load_GOT_entry(o)           (OP_flags(o) & OP_MASK_LD_GOT_ENT)
+# define Set_OP_load_GOT_entry(o)       (OP_flags(o) |= OP_MASK_LD_GOT_ENT)
+# define Reset_OP_load_GOT_entry(o)     (OP_flags(o) &= ~OP_MASK_LD_GOT_ENT)
 #endif
+
 #ifdef TARG_X8664
 # define OP_memory_hi(o)(OP_flags(o) & OP_MASK_MEMORY_HI)
 # define Set_OP_memory_hi(o)(OP_flags(o) |= OP_MASK_MEMORY_HI)

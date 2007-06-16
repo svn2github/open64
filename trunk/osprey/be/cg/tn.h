@@ -307,6 +307,7 @@ typedef enum {
   TN_RELOC_IA_LTOFF22	= 0x24,
   TN_RELOC_IA_LTOFF_FPTR= 0x25,
 #ifdef TARG_IA64
+  TN_RELOC_IA_LTOFF22X	= 0x26,      /*  ltoffx */
                                      /* IA-32 relocations start at 0x40 */
   TN_RELOC_IA32_ALL   = 0x40,        /* All 32 bits of a symbol value. */
 #endif

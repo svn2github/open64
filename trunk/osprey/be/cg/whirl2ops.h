@@ -106,6 +106,7 @@ inline WN *Get_WN_From_Memory_OP( const OP *op )
 }
 
 extern OP_MAP OP_Asm_Map;
+extern OP_MAP OP_Ld_GOT_2_Sym_Map;
 
 /* Information about the predicate under which conditional memory OPs
  * are executed.  Note that this is not currently maintained to adjust

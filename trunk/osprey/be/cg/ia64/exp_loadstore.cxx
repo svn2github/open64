@@ -57,6 +57,7 @@
 #include "cg.h"
 #include "cgexp.h"
 #include "cgexp_internals.h"
+#include "whirl2ops.h"
 
 void
 Expand_Lda (TN *dest, TN *src, OPS *ops)
@@ -691,7 +692,9 @@ Exp_Ldst (
 	}
 	else {
 		Expand_Add (tmp1, 
-			Gen_Symbol_TN (base_sym, 0, TN_RELOC_IA_LTOFF22),
+			Gen_Symbol_TN (base_sym, 0, 
+			               CG_Enable_Ldxmov_Support ? 
+			                 TN_RELOC_IA_LTOFF22X : TN_RELOC_IA_LTOFF22X),
 			base_tn, Pointer_Mtype, &newops);
 	}
 	// then get address of var
@@ -706,6 +709,11 @@ Exp_Ldst (
 			Pointer_Mtype, Pointer_Mtype, FALSE),
 		tmp2, tmp1, Gen_Literal_TN (0, 4), variant, &newops);
 	// got address should not alias
+
+	if (ST_class(sym) != CLASS_FUNC && CG_Enable_Ldxmov_Support) {
+          OP_MAP_Set (OP_Ld_GOT_2_Sym_Map, OPS_last(&newops), base_sym); 
+          Set_OP_load_GOT_entry (OPS_last(&newops));
+	}
       	Set_OP_no_alias(OPS_last(&newops));
 	base_tn = tmp2;
 	// add offset to address
