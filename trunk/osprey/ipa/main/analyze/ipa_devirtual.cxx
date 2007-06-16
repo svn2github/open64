@@ -100,8 +100,6 @@ IPA_set_virtual_call_targets(TY_INDEX class_type,
     return;
 }
 
-#ifdef TARG_IA64
-
 // Find the ST_IDX of a virtual function 
 // by the class type and its offset in virtual table.
 ST_IDX
@@ -110,8 +108,13 @@ IPA_class_virtual_function(TY_INDEX class_type, size_t offset) {
     if (initv_idx <= INITV_IDX_ZERO)
         return ST_IDX_ZERO;
     do {
+#ifndef TARG_IA64
+        FmtAssert(INITV_kind(initv_idx) == INITVKIND_SYMOFF,
+                  ("Not INITVKIND_SYMOFF."));
+#else
         FmtAssert(INITV_kind(initv_idx) == INITVKIND_SYMIPLT,
                   ("Not INITVKIND_SYMIPLT."));
+#endif
         if (offset == 0)
             return INITV_st(initv_idx);
 	offset -= (Pointer_Size << 1);
@@ -121,13 +124,9 @@ IPA_class_virtual_function(TY_INDEX class_type, size_t offset) {
     return ST_IDX_ZERO;
 }
 
-#endif
-
 // Main function of devirtualizaton. 
 void
 IPA_devirtualization() {
-
-#ifdef TARG_IA64
 
     hash_set <NODE_INDEX> node_visited;
     vector <callsite_targets_t> live_callsite;
@@ -209,10 +208,10 @@ IPA_devirtualization() {
                     FmtAssert(WN_operator_is(last, OPR_ILOAD) || WN_operator_is(last, OPR_LDID),
                         ("Virtual function call does not use ILOAD or LDID."));
                     cst.static_ty = TY_IDX_index(WN_ty(last));
-                    cst.offset = 0;
+                    cst.offset = WN_load_offset(last);
                 }
                 cst.method_node = method;
-				cst.target = NO_VFUNCTION_CANDIDATE;
+                cst.target = NO_VFUNCTION_CANDIDATE;
                 visited_class.clear();
                 IPA_set_virtual_call_targets(cst.static_ty, cst.target, cst.offset);
                 live_callsite.push_back(cst);
@@ -305,7 +304,6 @@ IPA_devirtualization() {
                                 pu_node_index_table[ST_pu(st_callee)]);
         }
     }
-#endif
 }
 
 #endif

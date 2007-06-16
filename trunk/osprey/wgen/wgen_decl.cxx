@@ -3460,7 +3460,6 @@ WGEN_Initialize_Decl (gs_t decl)
 			agginit.Add_Inito_For_Tree (gs_decl_initial(init_decl),
 					    Get_ST(init_decl));
 		}
-#ifdef TARG_IA64
                 // Set the virtual table entry of a TY when creating vtable INITO
                 if (gs_decl_virtual_p(decl)) {
                     ST_IDX st_idx = ST_st_idx(st);
@@ -3472,16 +3471,25 @@ WGEN_Initialize_Decl (gs_t decl)
                     // check if the inito entry is found
                     Is_True(match_inito > 0, ("Cannot find any matched st in INITO table."));
                     INITV_IDX vfunc = Inito_Table[make_INITO_IDX(match_inito, st_idx_level)].val;
-                    while (vfunc > 0 && INITV_kind(vfunc) != INITVKIND_SYMIPLT) {
+                    while (vfunc > 0) {
+#ifndef TARG_IA64
+                        if (INITV_kind(vfunc) == INITVKIND_SYMOFF) 
+#else
+                        if (INITV_kind(vfunc) == INITVKIND_SYMIPLT)
+#endif
+                        {
+                            ST &st_idx = St_Table[INITV_st(vfunc)];
+                            if (ST_sym_class(st) == CLASS_FUNC)
+                                break;
+                        }
                         vfunc = (INITV_kind(vfunc) == INITVKIND_BLOCK) ?
                                  INITV_blk(vfunc) : INITV_next(vfunc);
-                    }
+                    }                    
                     if (vfunc > 0) {
                         TY_IDX base_tyi = Get_TY(gs_decl_context(decl));
                         Set_TY_vtable(base_tyi, vfunc);
                     }
                 }
-#endif
 		init_decl = NULL;
 	}
 	if (gs_tree_readonly(decl) && !gs_tree_this_volatile(decl))
