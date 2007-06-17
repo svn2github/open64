@@ -181,6 +181,7 @@ Copy_Asm_OP_Annot(OP* new_op, OP* op)
   }
 }
 
+#ifdef TARG_IA64
 static inline void
 Copy_GOT_Sym_Info (OP* new_op, OP* op) {
   if (OP_load_GOT_entry(op)){
@@ -189,6 +190,7 @@ Copy_GOT_Sym_Info (OP* new_op, OP* op) {
 		OP_MAP_Get (OP_Ld_GOT_2_Sym_Map, op));
   }
 }
+#endif
 
 /* ====================================================================
  *
@@ -246,9 +248,11 @@ Dup_OP ( OP *op )
   new_op->bb = NULL;
 
   Copy_Asm_OP_Annot ( new_op, op );
+#ifdef TARG_IA64
   if (OP_load_GOT_entry(op)) {
     Copy_GOT_Sym_Info (new_op, op);
   }
+#endif
 
   if (OP_has_tag(op)) {
 	Set_OP_Tag (new_op, Gen_Tag());

@@ -243,6 +243,7 @@ static OPTION_DESC Options_CG_SWP[] = {
     0, 0, INT32_MAX,  &SWP_Options.FB_Prob2, NULL },
   { OVK_INT32,  OV_INTERNAL,    TRUE, "fb_freq", "", 
     0, 0, INT32_MAX,  &SWP_Options.FB_Freq, NULL },
+#endif  
   { OVK_COUNT }		/* List terminator -- must be last */
 };
 
@@ -703,8 +704,6 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL,   OV_INTERNAL, TRUE,  "ldxmov", "",
     0,0,0,      &CG_Enable_Ldxmov_Support, NULL },
 #endif
-
-#endif  
   { OVK_BOOL,	OV_INTERNAL, TRUE, "localize_using_stacked_regs", "localize_using_stack",
     0, 0, 0, &LOCALIZE_using_stacked_regs, NULL },
 
