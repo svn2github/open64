@@ -1454,6 +1454,12 @@ WGEN_Start_Function(gs_t fndecl)
 
     Set_PU_Info_flags(pu_info, PU_IS_COMPILER_GENERATED);
 
+    if (strstr (ST_name (func_st), "main") != NULL) {
+      PU& pu = Pu_Table[ST_pu (St_Table [PU_Info_proc_sym (pu_info)])];
+      Set_PU_is_mainpu (pu);
+      Set_PU_no_inline (pu);
+    }     
+
     if (PU_Info_Table [CURRENT_SYMTAB])
       PU_Info_next (PU_Info_Table [CURRENT_SYMTAB]) = pu_info;
     else if (CURRENT_SYMTAB == GLOBAL_SYMTAB + 1)
@@ -3478,8 +3484,8 @@ WGEN_Initialize_Decl (gs_t decl)
                         if (INITV_kind(vfunc) == INITVKIND_SYMIPLT)
 #endif
                         {
-                            ST &st_idx = St_Table[INITV_st(vfunc)];
-                            if (ST_sym_class(st) == CLASS_FUNC)
+                            ST &initv_st = St_Table[INITV_st(vfunc)];
+                            if (ST_sym_class(initv_st) == CLASS_FUNC)
                                 break;
                         }
                         vfunc = (INITV_kind(vfunc) == INITVKIND_BLOCK) ?

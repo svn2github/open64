@@ -2974,8 +2974,8 @@ WFE_Initialize_Decl (tree decl)
                         if (INITV_kind(vfunc) == INITVKIND_SYMIPLT) 
 #endif
                         {
-                            ST& st = St_Table[INITV_st(vfunc)];
-                            if (ST_sym_class(st) == CLASS_FUNC)
+                            ST& initv_st = St_Table[INITV_st(vfunc)];
+                            if (ST_sym_class(initv_st) == CLASS_FUNC)
                                 break;
                         }
                         vfunc = (INITV_kind(vfunc) == INITVKIND_BLOCK) ?
