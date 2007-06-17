@@ -259,7 +259,6 @@ GNU_SRCS =		\
   jump.c		\
   langhooks.c		\
   lcm.c			\
-  libgcc2.c		\
   line-map.c		\
   lists.c		\
   local-alloc.c		\
