@@ -673,7 +673,8 @@ void FLD::Verify (UINT64 record_size) const
       Is_True (bsize == 0, (msg, "ofst"));
     } else {
       // handle zero-size types, such as array of zero length
-      Is_True (TY_size (type) == 0, (msg, "ofst"));
+      if ( !(this->flags & FLD_LAST_FIELD) || (TY_kind (this->type) != KIND_ARRAY))
+        Is_True (TY_size (type) == 0, (msg, "ofst"));
     }
     
   }
