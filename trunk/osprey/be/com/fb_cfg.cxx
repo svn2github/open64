@@ -739,7 +739,9 @@ FB_CFG::Walk_WN_statement( WN *wn )
 	freq_branch = Cur_PU_Feedback->Query( wn, FB_EDGE_SWITCH( count ) );
 
 	nx_target = New_node( FB_EDGE_SWITCH( count ), wn, freq_branch );
-	Add_edge( Curr(), nx_target );
+	
+        if ( FB_NODEX_VALID( Curr() ) )
+	  Add_edge( Curr(), nx_target );
 	Add_delayed_edge( nx_target, wn2 );
 	count += 1;
       }
@@ -756,7 +758,8 @@ FB_CFG::Walk_WN_statement( WN *wn )
 
 	freq_branch = Cur_PU_Feedback->Query( wn, FB_EDGE_SWITCH_DEFAULT );
 	nx_target = New_node( FB_EDGE_SWITCH_DEFAULT, wn, freq_branch );
-	Add_edge( Curr(), nx_target );
+        if ( FB_NODEX_VALID( Curr() ) )
+	  Add_edge( Curr(), nx_target );
 	Add_delayed_edge( nx_target, wn2 );
       }
       Set_curr( FB_NODEX_UNINIT ); // no fall-though successor.
