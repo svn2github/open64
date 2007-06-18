@@ -251,6 +251,12 @@ Fix_Return_Pregs (WN *Call, const RETURN_PREG& rp)
 		// MRETURN_VAL
 		//
 		   || WN_operator(node) == OPR_RETURN_VAL
+       //bug fix for OSP_327, let ipa_inliner handle
+		// MCALL
+		//  MLDID PRE_RETURN
+		// MISTORE
+		//
+		   || WN_operator(node) == OPR_ISTORE
 #endif		   
 		   ) {
 		Fix_LDID_Of_Return_Preg (WN_kid0 (node), rp);
