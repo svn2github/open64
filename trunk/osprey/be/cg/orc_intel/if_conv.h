@@ -704,5 +704,6 @@ extern TN_INFO_MEM info_mem;
 BOOL Is_Para_Comp_May_Def(OP* op);
 BOOL Is_In_Infinite_Loop(REGION*);
 BOOL Is_Abnormal_Loop(REGION*);
+static OP* TN_Defined_At_Op (TN *tn, OP *op, std::vector<OP *> *ops);
 
 #endif

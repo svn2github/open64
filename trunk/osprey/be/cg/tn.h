@@ -210,6 +210,7 @@ typedef struct tn TN;
 #include "register.h"
 #include "symtab.h"
 #include "targ_isa_enums.h"
+#include "op.h"
 class WN;
 
 
@@ -727,6 +728,8 @@ extern BOOL Potential_Immediate_TN_Expr (
   struct tn *tn1,	/* The primary TN (constant) */
   INT32	disp		/* Displacement from value */
 );
+
+BOOL Is_OP_Cond(OP *op);
 
 #include "tn_targ.h"
 

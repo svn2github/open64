@@ -1095,11 +1095,7 @@ Find_TN_with_Matching_Register( TN *tn0, TN_LIST *list )
 }
 
 //TODO: probably want to move this generic routine elsewhere.
-#ifdef TARG_IA64
 BOOL
-#else
-static BOOL
-#endif
 Is_OP_Cond(OP *op)
 {
   // Conditional moves or predicated instructions have this property.
