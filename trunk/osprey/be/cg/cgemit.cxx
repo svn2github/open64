@@ -644,14 +644,12 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
 {
     ST *base_st;
     INT64 base_ofst;
-#ifdef TARG_IA64    
     // bug fix for OSP_155
     if (ST_is_export_hidden(st)) {
         fprintf ( pfile, "\t%s\t", AS_HIDDEN);
         EMT_Write_Qualified_Name(pfile, st);
         fprintf(pfile, "\n");
     }
-#endif
 
     if (ST_is_weak_symbol(st)) {
 	fprintf ( pfile, "\t%s\t", AS_WEAK);
