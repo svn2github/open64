@@ -266,6 +266,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
         INSTALL_DATA_SUB ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
+	INSTALL_DATA_SUB ${AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
     else
         LIBAREA=osprey/targx8664_builtonia32
         LIB32AREA=osprey/targia32_builtonia32
@@ -274,6 +275,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
         INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
+	INSTALL_DATA_SUB ${AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
         # 32bit libraries
         INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
@@ -385,6 +387,8 @@ INSTALL_NATIVE_HEADER () {
 
     INSTALL_DATA_SUB ${AREA}/include/libelf/libelf.h  ${ROOT}/include/${VERSION}/libelf/libelf.h
     INSTALL_DATA_SUB ${AREA}/include/libelf/sys_elf.h  ${ROOT}/include/${VERSION}/libelf/sys_elf.h
+
+    INSTALL_DATA_SUB ${AREA}/include/omp/omp.h  ${ROOT}/include/${VERSION}/omp.h
 
     return 0
 }

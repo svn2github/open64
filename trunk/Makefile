@@ -111,11 +111,14 @@ GNU4_FE_COMPONENTS = \
 FORT_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
 
+OPENMP_LIB_COMPONENTS = \
+		$(NATIVE_BUILD_DIR)/libopenmp/libopenmp.a
+
 NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
-                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
+                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) $(FORT_FE_COMPONENTS) $(OPENMP_LIB_COMPONENTS)
 
 CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
-                    $(GNU3_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
+                    $(GNU3_FE_COMPONENTS) $(FORT_FE_COMPONENTS) $(OPENMP_LIB_COMPONENTS)
 
 CROSS_PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done)
 
@@ -199,6 +202,10 @@ $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90
 
+$(NATIVE_BUILD_DIR)/libopenmp/libopenmp.a libopenmp.a:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/libopenmp
+
+
 .PHONY: Force
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR_LD)
@@ -271,7 +278,7 @@ endif
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
-		libiberty libunwindP libspin ; do  \
+		libiberty libunwindP libspin libopenmp; do  \
 		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
 	done
 
