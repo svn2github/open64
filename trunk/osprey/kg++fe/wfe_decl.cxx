@@ -1275,7 +1275,7 @@ WFE_Start_Function (tree fndecl)
     Set_PU_Info_flags(pu_info, PU_IS_COMPILER_GENERATED);
 
     // check and set the main function of program
-    if (strstr (ST_name (func_st), "main") != NULL) {
+    if (strcmp (ST_name (func_st), "main") == 0) {
       PU& pu = Pu_Table[ST_pu (St_Table [PU_Info_proc_sym (pu_info)])];
       Set_PU_is_mainpu (pu);
       Set_PU_no_inline (pu);
