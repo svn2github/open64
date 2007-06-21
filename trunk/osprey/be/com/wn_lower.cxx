@@ -14885,6 +14885,9 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
           }
           else length_wn = trip_count;
 
+	  if(Action(LOWER_ARRAY))
+	    length_wn = lower_expr(block, WN_COPY_Tree(length_wn), LOWER_ARRAY);
+
           desc_idx = WN_ty(stmt); //initialization
 
           if (WN_operator(store_addr_wn) == OPR_ARRAY)
