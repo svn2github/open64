@@ -1437,7 +1437,7 @@ ALIAS_MANAGER::Print( const WN *wn, FILE *fp ) const
   for ( i = Preg_id()+1; i <= Vec()->Lastidx(); i++) {
     fprintf( fp, "aliased_with<%d,{", i);
     for (INT32 oldid = Preg_id() + 1; oldid <= i; oldid++) {
-      if (Rule()->Aliased_Memop(Pt(oldid), Pt(i), Pt(oldid)->Ty(), Pt(i)->Ty()))
+      if (Rule()->Aliased_Memop(Pt(oldid), Pt(i), Pt(oldid)->Ty(), Pt(i)->Ty(), TRUE))
         fprintf( fp,"%d ", oldid);
     }
     fprintf( fp, "}>\n");

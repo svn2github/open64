@@ -261,6 +261,10 @@ static TYPE_ID compute_next_copy_quantum(TYPE_ID , INT32);
 static WN *lower_malloc_alg(WN *block, WN *tree, LOWER_ACTIONS actions);
 #endif
 
+// return the WN* from which <derived> was derived
+static WN* get_original_wn (WN* derived);
+static void set_original_wn (WN* derived, WN* orig);
+
 /* ====================================================================
  *			 private variables
  * ====================================================================
@@ -273,6 +277,7 @@ static struct ALIAS_MANAGER *alias_manager;
 #define PARITY_MAP_ARRAY_SIZE 32
 static WN_MAP parity_map_array[PARITY_MAP_ARRAY_SIZE];
 static WN_MAP lowering_parity_map = 0;
+static WN_MAP wn_derivation_map = WN_MAP_UNDEFINED; 
 static INT32 parity_map_index = -1;
 static LOWER_ACTIONS lowering_actions= 0;
 static BOOL save_Div_Split_Allowed ;
@@ -1463,6 +1468,20 @@ BOOL WN_parity_independent(WN *wn1, WN *wn2)
 }
 
 
+static WN* get_original_wn (WN* derived) {
+  WN* orig = NULL;
+  if (wn_derivation_map != WN_MAP_UNDEFINED) {
+    orig = (WN*)WN_MAP_Get (wn_derivation_map, derived);
+  }
+  
+  return orig;
+}
+ 
+static void set_original_wn (WN* derived, WN* orig) {
+  if (wn_derivation_map != WN_MAP_UNDEFINED) {
+    WN_MAP_Set (wn_derivation_map, derived, (void*)orig);
+  }
+}
 
 
 /* ====================================================================
@@ -1500,8 +1519,14 @@ static void lower_map(WN *tree, LOWER_ACTIONS actions)
   {
     if (alias_manager)
     {
-      if (Valid_alias(alias_manager, tree) == FALSE)
-	Create_alias(alias_manager, tree);
+      if (Valid_alias(alias_manager, tree) == FALSE) {
+        WN* orig = get_original_wn (tree);
+        if (orig && Valid_alias (alias_manager, orig)) {
+	  Copy_alias_info(alias_manager, orig, tree);
+	} else {
+	  Create_alias(alias_manager, tree);
+        }
+      }
     }
   }
 }
@@ -4280,6 +4305,8 @@ static WN *lower_miload(WN *block, WN *tree, LOWER_ACTIONS actions)
   swn = WN_CreateIntconst (OPC_U4INTCONST, size);
   wn  = WN_CreateMload (WN_offset(tree), pty_idx, WN_kid0(tree), swn);
   WN_set_field_id(wn, WN_field_id(tree));
+  set_original_wn (wn, tree);
+
   wn  = lower_expr (block, wn, actions);
 #ifdef KEY
   // Bug 1268 - copy linenumber when creating WNs.
@@ -6175,13 +6202,18 @@ static WN *lower_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
   }
 
   swn = WN_CreateIntconst(OPC_U4INTCONST, size);
-  wn  = WN_CreateMstore(WN_offset(tree), pty_idx, 
-			WN_COPY_Tree(WN_kid0(tree)),
-                        WN_COPY_Tree(WN_kid1(tree)), swn);
+  WN* kid0 = WN_COPY_Tree(WN_kid0(tree));
+  WN* kid1 = WN_COPY_Tree(WN_kid1(tree));
+  wn  = WN_CreateMstore(WN_offset(tree), pty_idx, kid0, kid1, swn);
+
   WN_copy_linenum(tree, wn);
   WN_set_field_id(wn, WN_field_id(tree));
+  set_original_wn (wn, tree);
+  set_original_wn (kid0, WN_kid0(tree));
   wn  = lower_store(block, wn, actions);
 
+  set_original_wn (wn, NULL); // avoid dangling pointer
+  set_original_wn (WN_kid0(wn), NULL);
   WN_DELETE_Tree (tree);
   return wn;
 }
@@ -12399,7 +12431,7 @@ struct is_omp_slink
  * else return FALSE
  *
  * Since The OpenMP lower generates a call not compatible with
- * the one in orginal implementation, the OpenMP lower has generate
+ * the one in original implementation, the OpenMP lower has generate
  * the slink initialization code yet. The following call is used to
  * decide whether the current PU is a OpenMP lower generated PU.
  * the arg slink is not used indeed.
@@ -13434,6 +13466,7 @@ void Lower_Init(void)
     *  create map for marking parity
     */
    lowering_parity_map = WN_MAP32_Create(MEM_pu_pool_ptr);
+   wn_derivation_map = WN_MAP_Create (MEM_pu_pool_ptr);
 
    lowering_actions = 0;
    current_state = current_state_NULL;
@@ -13449,6 +13482,8 @@ void Lowering_Finalize(void)
 {
   /* free lowering_parity_map */
   WN_MAP_Delete(lowering_parity_map);
+  WN_MAP_Delete(wn_derivation_map);
+  wn_derivation_map = WN_MAP_UNDEFINED;
   
   parity_map_index--;
   if (parity_map_index >= 0) {

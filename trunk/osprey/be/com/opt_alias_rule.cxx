@@ -611,6 +611,11 @@ BOOL ALIAS_RULE::Aliased_ANSI_Type_Rule(const POINTS_TO *mem1,
       return FALSE;
     
     if (ty1 == ty2) {
+      if (ty1 != mem1->Highlevel_Ty () || ty2 != mem2->Highlevel_Ty ()) {
+	// in this case Field_id() does not make sense.
+        return TRUE;
+      }
+
       INT32 fld1 = mem1->Field_id();
       INT32 fld2 = mem2->Field_id();
       if (!fld1 || !fld2 || fld1 == fld2) return TRUE;
