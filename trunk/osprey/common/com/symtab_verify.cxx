@@ -165,12 +165,7 @@ ST_Verify_Sclass_Export (ST_SCLASS storage_class, ST_EXPORT export_class,
     case SCLASS_DISTR_ARRAY:
     case SCLASS_THREAD_PRIVATE_FUNCS:
     case SCLASS_COMMENT:
-#ifndef TARG_IA64
-      Is_True (export_class == EXPORT_LOCAL ||
-               export_class == EXPORT_LOCAL_INTERNAL,
-               (msg, Export_Name(export_class), Sclass_Name (storage_class)));
-#else
-      // bug fix for OSP_145
+      // bug fix for OSP_145, OSP_339, __attribute__((alias(...)))
       if ( export_class == EXPORT_PREEMPTIBLE ) {
         // maybe alias to FSTATIC
         ST_IDX base_idx = ST_base_idx (st);
@@ -184,7 +179,6 @@ ST_Verify_Sclass_Export (ST_SCLASS storage_class, ST_EXPORT export_class,
                  export_class == EXPORT_LOCAL_INTERNAL,
 		 (msg, Export_Name(export_class), Sclass_Name (storage_class)));
       }
-#endif
       break;
     case SCLASS_COMMON:
     case SCLASS_DGLOBAL:

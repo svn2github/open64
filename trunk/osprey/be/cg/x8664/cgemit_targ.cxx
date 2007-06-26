@@ -466,17 +466,8 @@ void
 CGEMIT_Weak_Alias (ST *sym, ST *strongsym) 
 {
   fprintf ( Asm_File, "\t%s\t%s\n", AS_WEAK, ST_name(sym));
-  fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
-  if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
-    // modelled after EMT_Write_Qualified_Name (bug 6899)
-    if (ST_level(strongsym) == GLOBAL_SYMTAB)
-      fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
-    else
-      fprintf ( Asm_File, "%s%d%s%d", Label_Name_Separator, 
-		ST_pu(Get_Current_PU_ST()),
-      		Label_Name_Separator, ST_index(strongsym));
-  }
-  fprintf ( Asm_File, "\n");
+  // OSP_145, OSP_339, __attribute__((alias(...)))
+  CGEMIT_Alias(sym, strongsym);
 }
 
 void CGEMIT_Write_Literal_TCON(ST *lit_st, TCON tcon)
@@ -543,7 +534,21 @@ void CGEMIT_Write_Literal_Symbol (ST *lit_st, ST *sym,
 
 void CGEMIT_Alias (ST *sym, ST *strongsym) 
 {
-  fprintf ( Asm_File, "\t%s = %s\n", ST_name(sym), ST_name(strongsym));
+  // OSP_145, OSP_339, __attributr__((alias(...)))
+  fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
+  if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
+    // modelled after EMT_Write_Qualified_Name (bug 6899)
+    if (ST_level(strongsym) == GLOBAL_SYMTAB) {
+      fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
+    }
+    else {
+      Is_True(0, ("Alias to a PU scope variable, possible?"));
+      fprintf ( Asm_File, "%s%d%s%d", Label_Name_Separator,
+                ST_pu(Get_Current_PU_ST()),
+                Label_Name_Separator, ST_index(strongsym));
+    }
+  }
+  fprintf ( Asm_File, "\n");
 }
 
 
