@@ -13466,6 +13466,8 @@ void Lower_Init(void)
     *  create map for marking parity
     */
    lowering_parity_map = WN_MAP32_Create(MEM_pu_pool_ptr);
+   if (wn_derivation_map != WN_MAP_UNDEFINED)
+     WN_MAP_Delete(wn_derivation_map);
    wn_derivation_map = WN_MAP_Create (MEM_pu_pool_ptr);
 
    lowering_actions = 0;
@@ -13482,9 +13484,27 @@ void Lowering_Finalize(void)
 {
   /* free lowering_parity_map */
   WN_MAP_Delete(lowering_parity_map);
-  WN_MAP_Delete(wn_derivation_map);
-  wn_derivation_map = WN_MAP_UNDEFINED;
-  
+  if (wn_derivation_map != WN_MAP_UNDEFINED) {
+    // Lowering_Finalize() can be called in a row without intervening 
+    // Lower_Init(). This will happens when a PU has child PUs as we 
+    // can see from the following piece of code excerpted from 
+    // Preorder_Process_PUs ().
+    // 
+    // Preorder_Process_PUs () { 
+    //  ...
+    //   pu = Preprocess_PU(current_pu); // call WN_Init();
+    //  
+    //   for (PU_Info *child = PU_Info_child(current_pu);
+    //     child != NULL;
+    //     child = PU_Info_next(child)) {
+    //     Preorder_Process_PUs(child);
+    //   }
+    // }
+    // Postprocess_PU (current_pu); // call Lowering_Finialize().
+    // 
+    WN_MAP_Delete(wn_derivation_map);
+    wn_derivation_map = WN_MAP_UNDEFINED;
+  }
   parity_map_index--;
   if (parity_map_index >= 0) {
     // if there is a saved parity map, then restore it
