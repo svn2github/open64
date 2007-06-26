@@ -4251,6 +4251,22 @@ WFE_Expand_Expr (tree exp,
 		}
 #endif // TARG_X8664
 
+#ifdef TARG_IA64
+		// For IA64, the memcpy is not necessary
+		// We use IStore directly, the original code also fails
+		// in IA64 with GNU 3 front-end(OSP bug #250)
+		FmtAssert( TREE_CODE(arglist) != ARRAY_TYPE,
+                         ("unexpected array type for intrinsic 'va_copy'") );
+		WN* addr = WFE_Expand_Expr( arg1 );
+		WN* value = WFE_Expand_Expr( arg2 );
+		wn = WN_CreateIstore( OPR_ISTORE, MTYPE_V, Pointer_Mtype,
+                                      0, arg_ty_idx, value, addr, 0 );
+		WFE_Stmt_Append( wn, Get_Srcpos() );
+		whirl_generated = TRUE;
+		wn = NULL;
+		break;
+#endif		
+		
 		WN *dst  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg1),
 					  arg_ty_idx, WN_PARM_BY_VALUE);
 		WN *src  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg2),
@@ -4266,9 +4282,7 @@ WFE_Expand_Expr (tree exp,
 		WFE_Stmt_Append (wn, Get_Srcpos());
 		whirl_generated = TRUE;
 		wn = NULL;
-#ifdef KEY
 		break;
-#endif
 	      }
 
 	      case BUILT_IN_VA_END:
