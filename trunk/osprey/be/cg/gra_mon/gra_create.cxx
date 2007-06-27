@@ -1474,6 +1474,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 	  }
       } 
 #else
+	if (OP_cond_def(xop)) {
     if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
       if (!lunit->Has_Def()) {
 	lunit->Has_Exposed_Use_Set();
@@ -1483,6 +1484,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
       
       gpl->Exposed_Use_Set(TRUE);
     }
+	}
 #endif // TARG_IA64
 
       gpl->Num_Defs_Set(gpl->Num_Defs() + 1);
