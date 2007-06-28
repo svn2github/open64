@@ -471,7 +471,11 @@ tn_info_use (BB *current_bb, OP *current_op, TN *local_tn,
        if ( EBO_in_peep ) { /*post ebo set and get tninfo for physical registers, 
        					 * so we should compare them for relationship.*/
 	   	if (tninfo->predicate_tninfo == NULL ||
-			use_tn_or_reg(tninfo->predicate_tninfo->local_tn) == use_tn_or_reg(predicate_tn))
+			(TN_is_global_reg(tninfo->predicate_tninfo->local_tn) && TN_is_global_reg(predicate_tn)) &&
+			(use_tn_or_reg(tninfo->predicate_tninfo->local_tn) == use_tn_or_reg(predicate_tn))) //bug OSP_320
+			/* The previous fix's assumption is that dominate TN is spilled by previous BB.
+				So, the two TNs at least are global TNs, I'm not sure if the condition is enough.
+				Maybe we should strengthen this conditon later.*/
 			break;
        }
        if (EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?
