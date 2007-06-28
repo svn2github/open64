@@ -932,6 +932,9 @@ static BOOL
 Is_OP_Spill_Load (OP *op, ST *spill_loc)
 {
   if (!OP_load(op)) return FALSE;
+#ifdef TARG_IA64
+  if (!OP_spill_restore(op)) return FALSE;
+#endif
 
   INT n = TOP_Find_Operand_Use(OP_code(op), OU_offset);
   if (n < 0) {
@@ -3423,7 +3426,9 @@ Spill_Live_Range (
     reloadable_def = OP_VECTOR_element(Insts_Vector, first_def);
     // If this op is not a spill load, set reloadable_def to NULL, so that 
     // later, this spill TN will be first stored to the spill location after its first def
-    if ( reloadable_def && !Is_OP_Spill_Load (reloadable_def, TN_spill(spill_tn)) ){
+    // for TNs with only 1 load operation, their Live Ranges are marked with reloadable flag,
+    // However, their load operation is not marked with spill_load flag
+    if ( reloadable_def && !LR_reloadable(spill_lr) && !Is_OP_Spill_Load (reloadable_def, TN_spill(spill_tn)) ){
         reloadable_def = NULL;
     }else {
 
