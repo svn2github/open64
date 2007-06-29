@@ -61,6 +61,9 @@ hash_set <TY_INDEX> to_update_incomplete_ty;
 // For the old incomplete struct TYs that meets a new same complete struct TY 
 hash_set <TY_INDEX> updating_incomplete_ty;
 
+// For the member function TYs that need to update baseclass
+extern hash_set <TY_INDEX> to_update_baseclass;
+
 // Algorithm:
 //
 // 1) for leaf nodes, we simple insert_unqiue
@@ -932,6 +935,7 @@ Merge_All_Types (const IPC_GLOBAL_TABS& original_tabs,
     if (!IPA_Enable_Old_Type_Merge) {
         to_update_incomplete_ty.clear();
         updating_incomplete_ty.clear();
+		to_update_baseclass.clear();
     }
 
     for (UINT idx = 1; idx < file_tables->ty_tab_size; ++idx) {
@@ -959,6 +963,17 @@ Merge_All_Types (const IPC_GLOBAL_TABS& original_tabs,
             // If it is recursive or not complete, insert it into recursive table.
             if (Is_Incomplete_Or_Recursive(TY_IDX_index(ty_map.map_[idx])))
                 Insert_Recursive_Type(ty_map.map_[idx]);
+
+		// update baseclasses for member function TYs
+        for (hash_set <TY_INDEX>::iterator iter = to_update_baseclass.begin();
+             iter != to_update_baseclass.end(); iter++) {
+            TY_IDX ty_index = *iter;
+            TY &ty = Ty_tab[ty_index];
+            Is_True(TY_baseclass(ty) > 0, ("Invalid TY that has empty baseclass."));
+            TY_IDX base_idx = ty_map.map_[TY_IDX_index(TY_baseclass(ty))];
+            Is_True(TY_kind(base_idx) == KIND_STRUCT, ("Base class is not KIND_STRUCT."));
+            Set_TY_baseclass(ty, base_idx);
+        }
     }
 } // Merge_All_Types
 

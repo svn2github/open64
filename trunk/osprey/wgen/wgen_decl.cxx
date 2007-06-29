@@ -1513,6 +1513,12 @@ WGEN_Start_Function(gs_t fndecl)
       Set_TY_is_varargs (ty_idx);
       Set_TY_has_prototype (ty_idx);
       Set_PU_prototype (pu, ty_idx);
+	  
+      gs_t fntype = gs_tree_type(fndecl);
+      if (gs_tree_code(fntype) == GS_METHOD_TYPE) {
+          TY_IDX base = Get_TY(gs_type_method_basetype(fntype));
+          Set_TY_baseclass(ty, base);
+      }
     }
 
     if (!thunk && gs_decl_global_ctor_p(fndecl)) {

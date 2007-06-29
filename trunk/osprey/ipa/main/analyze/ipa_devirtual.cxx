@@ -234,6 +234,7 @@ IPA_devirtualization() {
                         // If new a class, add its corresponding method 
                         // into the target sets of the live callsites.
                         TY_INDEX class_ty = TY_IDX_index(TY_baseclass(ST_pu_type(func_st)));
+                        Is_True(TY_kind(Ty_tab[class_ty]) == KIND_STRUCT, ("Wrong base class."));
                         if (NOT_IN_SET(live_class, class_ty)) {
                             live_class.insert(class_ty);
                             for (vector <callsite_targets_t>::iterator i = live_callsite.begin();

@@ -69,6 +69,11 @@ static const TY* ty_to_be_inserted;
 using __gnu_cxx::hash_map;
 extern hash_map <STR_IDX, TY_INDEX, __new_hash::hash<STR_IDX>, std::equal_to<STR_IDX> > struct_by_name_idx;
 
+#include <ext/hash_set>
+using __gnu_cxx::hash_set;
+// For the member function TYs that need to update baseclass
+hash_set <TY_INDEX> to_update_baseclass;
+
 static inline TY_IDX
 Get_Kid_TY_IDX (TY_IDX ty_idx)
 {
@@ -1132,8 +1137,6 @@ Setup_Ty (TY& ty)
 	    Tylist_Table.Insert (0);
 	}
  	Set_TY_tylist (ty, *tylist_idx);
-        if (TY_baseclass(ty) > 0)
-            Set_TY_baseclass(ty, Get_Kid_TY_IDX(TY_baseclass(ty)));
 	break;
 
     default:
@@ -1152,10 +1155,23 @@ Insert_Unique_Ty (const TY& ty)
     ty_to_be_inserted = &new_ty;
     TY_IDX& result = ty_hash_table->find_or_insert ((TY_IDX) -1);
     if (result == (TY_IDX) -1) {
-	result = make_TY_IDX (Ty_tab.Insert (new_ty));
-        if (IPA_Enable_Old_Type_Merge)
+        result = make_TY_IDX (Ty_tab.Insert (new_ty));
+        if (IPA_Enable_Old_Type_Merge) {
             if (collecting_recursive_ty)
-	        recursive_type->push_back (result);
+	            recursive_type->push_back (result);
+        }
+        else {
+            if (TY_kind(result) == KIND_FUNCTION && TY_baseclass(result) > 0) 
+                to_update_baseclass.insert(TY_IDX_index(result));
+        }
+    }
+    else {
+        if (!IPA_Enable_Old_Type_Merge) {
+            if (TY_kind(result) == KIND_FUNCTION && TY_baseclass(result) == 0 && TY_baseclass(new_ty) > 0) {
+                Set_TY_baseclass(result, TY_baseclass(new_ty));
+                to_update_baseclass.insert(TY_IDX_index(result));
+            }
+        }
     }
     return result;
 }
@@ -1174,6 +1190,8 @@ Insert_Allocated_Ty (TY& ty, TY_IDX ty_idx)
     if (!IPA_Enable_Old_Type_Merge) {
         if (TY_kind(ty) == KIND_STRUCT)
             struct_by_name_idx[ty.name_idx] = TY_IDX_index(ty_idx);
+		if (TY_kind(result) == KIND_FUNCTION && TY_baseclass(result) > 0 )
+            to_update_baseclass.insert(TY_IDX_index(result));
     }
 }
 
