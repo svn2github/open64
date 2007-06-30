@@ -91,18 +91,6 @@ Get_Kid_TY_IDX (TY_IDX ty_idx)
 // ======================================================================
 // Fast comparision of two TY's.  Correctness guaranteed by the assertion
 // at the beginning of Initialize_Type_Merging_Hash_Tables ()
-static inline BOOL
-operator== (const TY& ty1, const TY& ty2)
-{
-    const UINT64* p1 = reinterpret_cast<const UINT64*> (&ty1);
-    const UINT64* p2 = reinterpret_cast<const UINT64*> (&ty2);
-
-    return (p1 == p2 || (p1[0] == p2[0] &&
-			 p1[1] == p2[1] &&
-			 p1[2] == p2[2] &&
-			 ty1.Pu_flags() == ty2.Pu_flags()));
-}
-
 
 namespace
 {
@@ -987,7 +975,7 @@ typedef hash_multiset<TY_INDEX, partial_ty_hash, ty_index_compare,
 // ======================================================================
 
 
-static TY_HASH_TABLE* ty_hash_table;
+static NEW_TY_HASH_TABLE* ty_hash_table;
 static FLD_HASH_TABLE* fld_hash_table;
 static ARB_HASH_TABLE* arb_hash_table;
 static TYLIST_HASH_TABLE* tylist_hash_table;
@@ -1026,7 +1014,7 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 	     ("Invalid size/alignment assumption"));
 #endif
 #endif
-    ty_hash_table = CXX_NEW (TY_HASH_TABLE (1000, TY_HASH (), equal_to<TY>(), 
+    ty_hash_table = CXX_NEW (NEW_TY_HASH_TABLE (1000, TY_HASH (), TY_IS_EQUIVALENT(), 
 					    TY_EXTRACT_KEY (), pool),
 			     pool);
     fld_hash_table = CXX_NEW (FLD_HASH_TABLE (100, FLD_HASH (),
