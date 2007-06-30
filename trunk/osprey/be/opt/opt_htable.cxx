@@ -593,6 +593,8 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
 	    return FALSE;
 	  if (TY_kind(cr_addr_ty) != KIND_POINTER)
 	    return FALSE;
+      if (Ilod_ty() != cr->Ilod_ty())
+        return FALSE;
 	  if (TY_align_exp(TY_pointed(ivar_addr_ty)) !=
 	      TY_align_exp(TY_pointed(cr_addr_ty)))
 	    return FALSE;
