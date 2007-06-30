@@ -372,8 +372,11 @@ WGEN_Convert_To_Host_Order (long *buf)
 // and:
 //   guard_var=0
 //   if (x && (guard_var=1, y))
+//
+// If NEED_COMMA is false, then only insert the conditional statements,
+// without adding any comma node.
 static void
-WGEN_add_guard_var (gs_t guard_var, WN *value_wn)
+WGEN_add_guard_var (gs_t guard_var, WN *value_wn, BOOL need_comma = TRUE)
 {
   WN *stid, *comma;
 
@@ -388,22 +391,25 @@ WGEN_add_guard_var (gs_t guard_var, WN *value_wn)
   WN *one_wn = WN_Intconst(MTYPE_I4, 1);
   stid = WN_Stid(MTYPE_I4, 0, Get_ST(guard_var), MTYPE_To_TY(MTYPE_I4),
 		 one_wn, 0);
-  if (WN_operator(value_wn) == OPR_COMMA) {
-    comma = value_wn;
-  } else if (WN_operator(WN_kid0(value_wn)) == OPR_COMMA) {
-    comma = WN_kid0(value_wn);
-  } else {
-    // Create a comma.
-    WN *wn0 = WN_CreateBlock();
-    WN *wn1 = WN_kid0(value_wn);
-    WN_Set_Linenum (wn0, Get_Srcpos());
-    comma = WN_CreateComma (OPR_COMMA, WN_rtype(wn1), MTYPE_V, wn0, wn1);
-    WN_kid0(value_wn) = comma;
+  if (need_comma) {
+    if (WN_operator(value_wn) == OPR_COMMA) {
+      comma = value_wn;
+    } else if (WN_operator(WN_kid0(value_wn)) == OPR_COMMA) {
+      comma = WN_kid0(value_wn);
+    } else {
+      // Create a comma.
+      WN *wn0 = WN_CreateBlock();
+      WN *wn1 = WN_kid0(value_wn);
+      WN_Set_Linenum (wn0, Get_Srcpos());
+      comma = WN_CreateComma (OPR_COMMA, WN_rtype(wn1), MTYPE_V, wn0, wn1);
+      WN_kid0(value_wn) = comma;
+    }
+    WN *wn = WN_kid0(comma);
+    FmtAssert(WN_operator(wn) == OPR_BLOCK,
+              ("WGEN_add_guard_var: unexpected WN operator"));
+    WN_INSERT_BlockFirst(wn, stid);
   }
-  WN *wn = WN_kid0(comma);
-  FmtAssert(WN_operator(wn) == OPR_BLOCK,
-    ("WGEN_add_guard_var: unexpected WN operator"));
-  WN_INSERT_BlockFirst(wn, stid);
+  else WN_INSERT_BlockFirst(value_wn, stid);
 }
 
 // check whether the WHIRL operator has subsumed cvtl in its semantics
@@ -4789,6 +4795,47 @@ WGEN_Expand_Expr (gs_t exp,
 	  WN *then_block = WN_CreateBlock ();
 	  WN *else_block = WN_CreateBlock ();
 	  WN *if_stmt    = WN_CreateIf (wn0, then_block, else_block);
+#ifdef KEY
+         // Bug 11937: Generate guard variables where necessary. (See
+         // explanation below).
+         //
+         // We may need to generate initializations for guard variables,
+         // so write out the IF statement at the end.
+
+         // "then" statement
+          WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
+          WGEN_Guard_Var_Push();
+          wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1), FALSE);
+          gs_t guard_var1 = WGEN_Guard_Var_Pop();
+          if (wn1) {
+            wn1 = WN_CreateEval (wn1);
+            WGEN_Stmt_Append (wn1, Get_Srcpos());
+          }
+          WGEN_Stmt_Pop (wgen_stmk_if_then);
+          // Add guard variables if they are needed.
+          if (guard_var1 != NULL) {
+            WGEN_add_guard_var(guard_var1, then_block, FALSE);
+          }
+
+          // "else" statement
+          if (gs_tree_operand(exp, 2) != NULL) {
+            WGEN_Stmt_Push (else_block, wgen_stmk_if_else, Get_Srcpos());
+            WGEN_Guard_Var_Push();
+            wn2 = WGEN_Expand_Expr (gs_tree_operand (exp, 2), FALSE);
+            gs_t guard_var2 = WGEN_Guard_Var_Pop();
+            if (wn2) {
+              wn2 = WN_CreateEval (wn2);
+              WGEN_Stmt_Append (wn2, Get_Srcpos());
+            }
+            WGEN_Stmt_Pop (wgen_stmk_if_else);
+            // Add guard variables if they are needed.
+            if (guard_var2 != NULL) {
+              WGEN_add_guard_var(guard_var2, else_block, FALSE);
+            }
+          }
+          // Generate IF statement.
+          WGEN_Stmt_Append (if_stmt, Get_Srcpos());
+#else
 	  WGEN_Stmt_Append (if_stmt, Get_Srcpos());
 	  WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
 	  wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1), FALSE);
@@ -4806,6 +4853,7 @@ WGEN_Expand_Expr (gs_t exp,
 	    }
 	    WGEN_Stmt_Pop (wgen_stmk_if_else);
 	  }
+#endif
         }
 	else {
 #ifdef KEY
