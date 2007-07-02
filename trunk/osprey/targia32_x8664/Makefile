@@ -83,7 +83,6 @@ TOOL_SUBDIRS := \
 	wopt \
 	wgen \
 	crayf90 \
-	libopenmp \
 	#f95_coco 
 
 

@@ -57,7 +57,7 @@ LIBRARY_SUBDIRS := \
 	libm \
 	#libfoobar \
 	#libpscrt \
-	#libopenmp
+	libopenmp
 
 #
 #  Finally, the compiler tools (components) are built.

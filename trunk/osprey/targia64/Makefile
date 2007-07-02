@@ -57,6 +57,7 @@ LIBRARY_SUBDIRS = \
 	libmp \
 	libstdc++ \
 	libinstr \
+	libopenmp
 
 
 #

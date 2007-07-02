@@ -31,7 +31,7 @@
 #ifndef __omp_sys_included
 #define __omp_sys_included
 
-#  ifdef TARG_X8664
+#  if defined(TARG_X8664) || defined(TARG_IA32)
 
 static inline void
 __ompc_spin_lock(volatile int* lock)

@@ -58,8 +58,7 @@ LIBRARY_SUBDIRS = \
 	libelfutil \
 	libunwind \
 	libunwindP \
-	libunwind_gdb \
-	libopenmp
+	libunwind_gdb
 
 
 #
