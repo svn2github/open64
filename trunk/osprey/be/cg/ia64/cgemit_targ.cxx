@@ -113,6 +113,7 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
   if (scn_flags & SHF_WRITE) *p++ = 'w';
   if (scn_flags & SHF_ALLOC) *p++ = 'a';
   if (scn_flags & SHF_EXECINSTR) *p++ = 'x';
+  if (scn_flags & SHF_TLS) *p++ = 'T';
   // short sections are only recognized by name, not by "s" qualifier
   // if (scn_flags & SHF_IRIX_GPREL) *p++ = 's';
   *p = '\0'; // null terminate the string.
@@ -185,6 +186,25 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
         	*buf = vstr_concat (*buf, "@ltoff(@fptr");
 		++paren;
 		break;
+	case TN_RELOC_IA_LTOFF_DTPMOD22:
+		*buf = vstr_concat (*buf, "@ltoff(@dtpmod");
+		++paren;
+		break;
+	case TN_RELOC_IA_LTOFF_DTPREL22:
+		*buf = vstr_concat (*buf, "@ltoff(@dtprel");
+		++paren;
+		break;
+	case TN_RELOC_IA_DTPREL22:
+		*buf = vstr_concat (*buf, "@dtprel");
+		break;
+	case TN_RELOC_IA_LTOFF_TPREL22:
+		*buf = vstr_concat (*buf, "@ltoff(@tprel");
+		++paren;
+		break;
+	case TN_RELOC_IA_TPREL22:
+		*buf = vstr_concat (*buf, "@tprel");
+		break;
+	
     	default:
 		#pragma mips_frequency_hint NEVER
     		FmtAssert (FALSE, ("relocs_asm: illegal reloc TN"));

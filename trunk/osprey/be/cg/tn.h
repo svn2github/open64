@@ -311,6 +311,25 @@ typedef enum {
   TN_RELOC_IA_LTOFF22X	= 0x26,      /*  ltoffx */
                                      /* IA-32 relocations start at 0x40 */
   TN_RELOC_IA32_ALL   = 0x40,        /* All 32 bits of a symbol value. */
+
+  TN_RELOC_IA_TPREL14   = 0x91,      /* For TLS both dynamic and static */
+  TN_RELOC_IA_TPREL22,
+  TN_RELOC_IA_TPREL64I,
+  TN_RELOC_IA_TPREL64MSB,
+  TN_RELOC_IA_TPREL64LSB,
+  TN_RELOC_IA_LTOFF_TPREL22,
+  TN_RELOC_IA_DTPMOD64MSB,
+  TN_RELOC_IA_DTPMOD64LSB,
+  TN_RELOC_IA_LTOFF_DTPMOD22,
+  TN_RELOC_IA_DTPREL14,
+  TN_RELOC_IA_DTPREL22,
+  TN_RELOC_IA_DTPREL64I,
+  TN_RELOC_IA_DTPREL32MSB,
+  TN_RELOC_IA_DTPREL32LSB,
+  TN_RELOC_IA_DTPREL64MSB,
+  TN_RELOC_IA_DTPREL64LSB,
+  TN_RELOC_IA_LTOFF_DTPREL22,
+
 #endif
 #ifdef TARG_X8664
   TN_RELOC_X8664_PC32 = 0x30,   /* X86-64 symbols start at 0x30 */
@@ -565,6 +584,11 @@ extern  TN *SP_TN;		// Stack Pointer
 extern	TN *RA_TN;		// Return address register
 extern  TN *Ep_TN;		// Entry point TN
 extern	TN *GP_TN;		// Global pointer register
+
+#ifdef TARG_IA64
+extern  TN *TP_TN;              // Thread Pointer register
+#endif
+
 extern	TN *Pfs_TN;		// Previous Function State TN
 extern	TN *LC_TN;		// Loop Counter TN
 extern	TN *EC_TN;		// Epilog Counter TN

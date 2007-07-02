@@ -108,6 +108,11 @@ CLASS_REG_PAIR      CLASS_REG_PAIR_zero;
 CLASS_REG_PAIR      CLASS_REG_PAIR_ep;
 CLASS_REG_PAIR      CLASS_REG_PAIR_gp;
 CLASS_REG_PAIR      CLASS_REG_PAIR_sp;
+
+#ifdef TARG_IA64
+CLASS_REG_PAIR      CLASS_REG_PAIR_tp;
+#endif
+
 CLASS_REG_PAIR      CLASS_REG_PAIR_fp;
 CLASS_REG_PAIR      CLASS_REG_PAIR_ra;
 CLASS_REG_PAIR      CLASS_REG_PAIR_v0;
@@ -368,6 +373,12 @@ Initialize_Register_Class(
     else if ( ABI_PROPERTY_Is_ret_addr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_ra, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_ra, rclass);
+    }
+#endif
+#ifdef TARG_IA64
+    else if ( ABI_PROPERTY_Is_thread_ptr(rclass, isa_reg) ) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_tp, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_tp, rclass);
     }
 #endif
     else if ( ABI_PROPERTY_Is_stack_ptr(rclass, isa_reg) ) {

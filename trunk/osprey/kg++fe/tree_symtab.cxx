@@ -1396,7 +1396,9 @@ Create_ST_For_Tree (tree decl_node)
 	  Set_ST_is_thread_private (st);
 	if (TREE_CODE (decl_node) == VAR_DECL && anon_st)
 	  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
-
+        if (TREE_CODE (decl_node) == VAR_DECL && DECL_THREAD_LOCAL (decl_node))
+          Set_ST_is_thread_local (st);
+	
         if (DECL_SIZE_UNIT (decl_node) &&
             TREE_CODE (DECL_SIZE_UNIT (decl_node)) != INTEGER_CST)
         {

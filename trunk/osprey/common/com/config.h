@@ -485,6 +485,10 @@ extern BOOL Enable_Copy_Propagate;
 /***** Put all-zero initialized file-level data in the BSS section? *****/
 extern BOOL Zeroinit_in_bss;
 
+
+/***** Thread-Local_Storage options *****/
+extern char* TLS_Model_Name;
+
 /***** IEEE 754 options *****/
 typedef enum {
   IEEE_STRICT = 0,	/* Conform strictly */

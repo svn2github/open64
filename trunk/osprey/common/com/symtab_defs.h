@@ -170,6 +170,7 @@ enum ST_FLAGS_EXT
                                         // when st-class is CLASS_FUNC	
     ST_IS_THIS_PTR      = 0x20, 	// ST is "this"-pointer
     ST_IS_PURE_VFUNC    = 0x40,         // ST is pure virtual function
+    ST_IS_THREAD_LOCAL  = 0x80,         // ST is Thread-Local_Storage, __thread
 }; // ST_FLAGS_EXT
 #endif
 

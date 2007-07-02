@@ -891,7 +891,7 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
 	    }
 	    else {
 		Elf64_Half symshndx;	/* sym section index */
-		if (ST_is_thread_private(sym)) symshndx = SHN_MIPS_LCOMMON;
+		if (ST_is_thread_local(sym)) symshndx = SHN_MIPS_LCOMMON;
 		else if (ST_is_gp_relative(sym)) symshndx = SHN_MIPS_SCOMMON;
 		else symshndx = SHN_COMMON;
 	  	symindex = Em_Add_New_Symbol (

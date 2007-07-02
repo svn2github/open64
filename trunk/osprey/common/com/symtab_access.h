@@ -570,6 +570,13 @@ Set_ST_is_pure_vfunc (ST* s)  { s->flags_ext |= ST_IS_PURE_VFUNC; }
 inline void
 Reset_ST_is_pure_vfunc (ST* s)  { s->flags_ext &= ~ST_IS_PURE_VFUNC; }
 
+inline BOOL
+ST_is_thread_local (const ST& s) { return s.flags_ext & ST_IS_THREAD_LOCAL; }
+inline void
+Set_ST_is_thread_local (ST& s) { s.flags_ext |= ST_IS_THREAD_LOCAL; }
+inline void
+Reset_ST_is_thread_local (ST& s) { s.flags_ext &= ~ST_IS_THREAD_LOCAL; }
+
 #endif /* KEY */
 
 //----------------------------------------------------------------------

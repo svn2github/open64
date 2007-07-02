@@ -153,4 +153,12 @@ extern BB_MAP outer_label_map;
 extern BOOL W2OPS_Pragma_Preamble_End_Seen (void);
 #endif
 
+/* For new call inserted during whirl to ops, 
+ * we need to finish current BB and start new bb
+ * The original ops will be append to original BB,
+ * then it will be re-initialized to contain new OPs for new BB.
+ * for example: __tls_get_addr 
+ */
+void Expand_New_Call_To_OPs(WN*, OPERATOR, OPS*);
+
 #endif /* whirl2ops_INCLUDED */

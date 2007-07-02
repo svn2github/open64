@@ -189,3 +189,10 @@ SEC_is_nobits (SECTION_IDX sec)
 {
 	return (SEC_type(sec) & SHT_NOBITS);
 }
+
+extern BOOL
+SEC_is_tls (SECTION_IDX sec)
+{
+        return (SEC_flags(sec) & SHF_TLS);
+}
+

@@ -60,10 +60,17 @@ SECTION Sections[_SEC_INDEX_MAX] = {
      0|SHF_WRITE|SHF_IA_64_SHORT|SHF_ALLOC,
 	SHT_PROGBITS, 0, 
      INT32_MAX, MIPS_SDATA, 0},
+#ifndef linux
   {_SEC_LDATA,	NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_LOCAL,
 	SHT_PROGBITS, 0, 
      INT64_MAX, ".MIPS.ldata", 0},
+#else
+  {_SEC_LDATA,  NULL,
+     0|SHF_WRITE|SHF_ALLOC|SHF_TLS,
+        SHT_PROGBITS, 0,
+     INT64_MAX, ".tdata", 0},
+#endif
   {_SEC_RDATA,	NULL,
      0|SHF_ALLOC,
 	SHT_PROGBITS, 0, 
@@ -100,9 +107,9 @@ SECTION Sections[_SEC_INDEX_MAX] = {
 #else
   // There is no MIPS_LBSS section on Linux, but we need a space holder
   {_SEC_LBSS,   NULL,
-     0,
-        0, 0,
-     0, ".unknown", 0},
+     0|SHF_WRITE|SHF_ALLOC|SHF_TLS,
+        SHT_NOBITS, 0,
+     INT64_MAX, ".tbss", 0},
 #endif
   {_SEC_GOT,	NULL,
      0|SHF_IA_64_SHORT|SHF_ALLOC,
@@ -185,3 +192,8 @@ SEC_is_nobits (SECTION_IDX sec)
 	return (SEC_type(sec) & SHT_NOBITS);
 }
 
+extern BOOL
+SEC_is_tls (SECTION_IDX sec)
+{
+	return (SEC_flags(sec) & SHF_TLS);
+}

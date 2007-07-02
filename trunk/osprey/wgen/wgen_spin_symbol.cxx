@@ -1720,6 +1720,8 @@ Create_ST_For_Tree (gs_t decl_node)
 #ifdef KEY
 	if (gs_tree_code (decl_node) == GS_VAR_DECL && gs_decl_threadprivate (decl_node))
 	  Set_ST_is_thread_private (st);
+	if (gs_tree_code (decl_node) == GS_VAR_DECL && gs_decl_thread_local (decl_node))
+          Set_ST_is_thread_local (st);
 #if 0 // wgen TODO
 	if (gs_tree_code (decl_node) == GS_VAR_DECL && anon_st)
 	  WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);

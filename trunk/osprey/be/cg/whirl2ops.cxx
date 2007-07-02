@@ -5582,3 +5582,109 @@ void Whirl2ops_Finalize(void)
   OP_MAP_Delete(OP_Asm_Map);
   OP_MAP_Delete(OP_Ld_GOT_2_Sym_Map); 
 }
+
+/*
+ * All code are copy from Handle_Call_Site(WN*, OPERATOR);
+ * Since this function is called for new function 
+ * generated during whirl2ops,
+ * We need to add the ops into New_OPs after expand the call,
+ * Start a new basic block, Then, re-init the ops.
+ * For example, __tls_get_addr
+ */
+void
+Expand_New_Call_To_OPs (WN *call, OPERATOR call_opr, OPS *ops)
+{
+  TN *tgt_tn;
+  ST *call_st = (call_opr != OPR_ICALL) ? WN_st(call) : NULL;
+  CALLINFO *call_info;
+
+  FmtAssert (ops != NULL && ops != &New_OPs,
+              ("Wrong parameter ops, can not be NULL or &New_Ops."));
+  
+  /* wn_lower_call has already expanded the parameters, so don't need
+   * to do anything more for parameters at this point.
+   */
+
+  /* Note the presence of a call in the current PU and bb. */
+  PU_Has_Calls = TRUE;
+
+#ifdef TARG_X8664
+  if( Is_Target_32bit() &&
+      Gen_PIC_Shared    &&
+      call_st != NULL   &&
+      !ST_is_export_local(call_st) ){
+    PU_References_GOT = TRUE;
+  }
+#endif
+
+  /* Generate the call instruction */
+  if (call_opr == OPR_CALL) {
+    tgt_tn = Gen_Symbol_TN (call_st, 0, 0);
+  }
+  else {
+    /* For PIC calls, force t9 to be the result register. */
+    tgt_tn = Gen_PIC_Calls ? Ep_TN : NULL;
+    tgt_tn = Expand_Expr (WN_kid(call,WN_kid_count(call)-1), call, tgt_tn);
+
+    /* If call-shared and the call is to a non PREEMPTIBLE symbol,
+     * generate a jal instead of a jalr. 
+     */
+    if (Gen_PIC_Call_Shared && 
+	call_st != NULL &&
+	!ST_is_preemptible(call_st) )
+    {
+      tgt_tn = Gen_Symbol_TN (call_st, 0, 0);
+      call_opr = OPR_CALL;
+    }
+  }
+  Last_Mem_OP = OPS_last(ops);
+  Exp_Call (call_opr, RA_TN, tgt_tn, ops);
+  Set_OP_To_WN_Map(call);
+
+  call_info = TYPE_PU_ALLOC (CALLINFO);
+  CALLINFO_call_st(call_info) = call_st;
+  CALLINFO_call_wn(call_info) = call;
+  BB_Add_Annotation (Cur_BB, ANNOT_CALLINFO, call_info);
+
+  region_stack_eh_set_has_call();
+
+  /* For now, terminate the basic block. This makes GRA work better since 
+   * it has finer granularity. It is also easier for LRA to make the
+   * assumption that a procedure call breaks a basic block. 
+   */
+  /*
+   * Before start a new BB, we add the ops to New_OPs
+   * After start the new BB, we need to re-init the ops
+   */
+  OPS_Append_Ops(&New_OPs, ops);
+  Start_New_Basic_Block ();
+  OPS_Init(ops);
+  
+  // if caller-save-gp and not defined in own dso, then restore gp.
+  // if call_st == null, then indirect call, and assume external.
+#ifdef TARG_IA64
+  if (Is_Caller_Save_GP && !Constant_GP &&
+      // begin - fix for OSP_211
+	  //         put the ST_is_weak_symbol condition under the guard of 
+	  //         call_st == NULL, or else it will segmentation fault.
+      (call_st == NULL || ST_export(call_st) == EXPORT_PREEMPTIBLE || ST_is_weak_symbol(call_st)) )
+	  // end   -
+#else
+    if (Is_Caller_Save_GP && !Constant_GP
+        && (call_st == NULL || ST_export(call_st) == EXPORT_PREEMPTIBLE))
+#endif
+  {
+	// restore old gp
+	// assume that okay to restore gp before return val of call
+	TN *caller_gp_tn = PREG_To_TN_Array[ Caller_GP_Preg ];
+	if (caller_gp_tn == NULL) {
+		caller_gp_tn = Gen_Register_TN ( ISA_REGISTER_CLASS_integer, 
+			Pointer_Size);
+		TN_MAP_Set( TN_To_PREG_Map, caller_gp_tn, 
+			(void *)(INTPTR)Caller_GP_Preg );
+		PREG_To_TN_Array[ Caller_GP_Preg ] = caller_gp_tn;
+		PREG_To_TN_Mtype[ Caller_GP_Preg ] = TY_mtype(Spill_Int_Type);
+	}
+	Exp_COPY (GP_TN, caller_gp_tn, ops);
+  }
+}

@@ -2730,15 +2730,20 @@ Allocate_Object ( ST *st )
     break;
   case SCLASS_PSTATIC :
   case SCLASS_FSTATIC :
-    if (ST_is_thread_private(st)) {
+    if (ST_is_thread_local(st)) {
       if (ST_is_initialized(st) && !ST_init_value_zero (st))
+#ifndef TARG_IA64
+        sec = _SEC_DATA;
+#else
         sec = _SEC_LDATA;
+#endif
       else
-#ifdef KEY
+#ifndef TARG_IA64
+        // We only implement TLS on IA64 so far
         sec = _SEC_BSS;
 #else
         sec = _SEC_LBSS;
-#endif // KEY
+#endif // TARG_IA64
     }
     else if (ST_is_initialized(st) && !ST_init_value_zero (st))
         sec = (ST_is_constant(st) ? _SEC_RDATA : _SEC_DATA);
@@ -2794,19 +2799,27 @@ Allocate_Object ( ST *st )
     }
     break;
   case SCLASS_UGLOBAL :
-    if (ST_is_thread_private(st)) {
-#ifdef KEY
+    if (ST_is_thread_local(st)) {
+#ifndef TARG_IA64
+      // We only implement TLS on IA64 so far
       sec = _SEC_BSS;
 #else
       sec = _SEC_LBSS;
-#endif // KEY
+#endif // TARG_IA64
     } 
     else sec = _SEC_BSS;
     sec = Shorten_Section ( st, sec );
     Allocate_Object_To_Section ( base_st, sec, Adjusted_Alignment(base_st));
     break;
   case SCLASS_DGLOBAL :
-    if (ST_is_thread_private(st)) sec = _SEC_LDATA;
+    if (ST_is_thread_local(st)) {
+#ifndef TARG_IA64
+      // We only implement TLS on IA64 so far
+      sec = _SEC_DATA;
+#else      
+      sec = _SEC_LDATA;
+#endif
+    }
     else if (ST_is_constant(st)) {
 #ifdef TARG_X8664
       if (Gen_PIC_Shared)

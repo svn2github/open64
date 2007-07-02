@@ -409,7 +409,8 @@ BE_COM_CXX_SRCS = \
   timing.cxx	 	\
   weak.cxx		\
   output_func_start_profiler.cxx        \
-  wn_instrument.cxx
+  wn_instrument.cxx \
+  tls.cxx
 
 BE_COM_PCH_CXX_SRCS = \
   be_symtab.cxx		\

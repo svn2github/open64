@@ -426,6 +426,8 @@ static OPTION_DESC Options_TENV[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "large_stack",		NULL,
     0, 0, 0,	&Force_Large_Stack_Model, NULL,
     "Generate code assuming >32KB stack frame" },
+  { OVK_NAME,   OV_VISIBLE,         FALSE, "tls-model",            NULL,
+    0, 0, 0,    &TLS_Model_Name, NULL },
 #ifdef TARG_X8664
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "frame_pointer",		NULL,
     0, 0, 0,	&Force_Frame_Pointer, &Force_Frame_Pointer_Set,
@@ -897,6 +899,8 @@ char *Emit_Global_Data = NULL;	/* only emit global data */
 char *Read_Global_Data = NULL;	/* only read global data */
 
 char *Library_Name = NULL;      /* -TENV:io_library=xxx */
+
+char *TLS_Model_Name = NULL;		/* -TENV:tls-model=xxx  */
 
 /* -foptimize-regions implies this internal variable,
  * which is used in cgdwarf_targ.cxx to close emit .restore directive

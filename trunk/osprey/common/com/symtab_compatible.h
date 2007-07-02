@@ -454,6 +454,13 @@ Clear_ST_assigned_to_dedicated_preg (ST* s)
 	{ s->flags &= ~ST_ASSIGNED_TO_DEDICATED_PREG; }
 
 inline BOOL
+ST_is_thread_local (const ST* s) { return s->flags_ext & ST_IS_THREAD_LOCAL; }
+inline void
+Set_ST_is_thread_local (ST* s) { s->flags_ext |= ST_IS_THREAD_LOCAL; }
+inline void
+Reset_ST_is_thread_local (ST* s) { s->flags_ext &= ~ST_IS_THREAD_LOCAL; }
+	
+inline BOOL
 ST_addr_taken (const ST* s)
 {
 	return ST_addr_saved(s) || ST_addr_passed(s);

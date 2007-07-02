@@ -813,6 +813,8 @@ I-xall	;		FTN	ffe	self
 	""
 -fno-optimize-sibling-calls	warn_ignored(option_name);	ALL	NONE	""
 	""
+-ftls-model=%s	check_opt_tls_model(optargs);		ALL	be	"-TENV:tls-model=%s"
+	"Thread-Local Storage model. IA64 only so far.\n\t\tShould be one of `global-dynamic', `local-dynamic', `initial-exec' or `local-exec'.\n\t\tThe default without -fpic is `initial-exec'; with -fpic the default is `global-dynamic`."
 -varargs	;		f77	ffe	self
 	"MATRA varargs"
 %-nocode last_phase=earliest_phase(P_any_fe,last_phase);  FTN ffe   self

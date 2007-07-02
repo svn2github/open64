@@ -152,6 +152,9 @@ extern boolean flag_is_superceded (int optflag);
 extern void check_convert_name(char *name);
 #endif /* KEY bug 4260 */
 
+/* check the tls-model is acceptable */
+extern void check_opt_tls_model(char *model);
+
 /* check if there is a -- and _XPG is set */
 extern void check_dashdash ( void );
 

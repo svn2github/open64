@@ -106,6 +106,8 @@
 #include <ext/hash_set>
 #endif
 
+#include "tls.h"
+
 /* My changes are a hack till blessed by Steve. (suneel) */
 #define SHORTCIRCUIT_HACK 1
 #define MMCOPY_MULT 1.2 
@@ -283,6 +285,8 @@ static LOWER_ACTIONS lowering_actions= 0;
 static BOOL save_Div_Split_Allowed ;
 static INT cur_memlib_idx        = 0;
 
+// for promote ldid/lda in param in call to up level
+static BOOL promote_tls_ldst     = FALSE;
 static BOOL traceIO              = FALSE;
 static BOOL traceSpeculate       = FALSE;
 static BOOL traceAlignment       = FALSE;
@@ -5200,6 +5204,37 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	return tree;
       }
     }
+    if ( Action(LOWER_TO_CG) && promote_tls_ldst &&
+         ST_is_tls( WN_st(tree) ) ) {
+      // There is a ldid to TLS data needs to be promoted to up level
+      // In order to avoid conflicts in output registers
+      // We create a preg to be the local copy of the TLS variable.
+      //       LDID tls_st <ST_IS_THREAD_PRIVATE>
+      //     ......
+      //   OPR_PARAM
+      // OPR_CALL
+      // --->
+      //   LDID tls_st <ST_IS_THREAD_PRIVATE>
+      // STID local_num <PREG>
+      //       LDID local_num <PREG>
+      //     ......
+      //   OPR_PARAM
+      // OPR_CALL
+      char local_name[64];
+      ST* tls_st = WN_st(tree);
+      TYPE_ID tls_mtype = ST_mtype(tls_st);
+      snprintf(local_name, 64, "%s.local", ST_name(tls_st));
+      ST* local_st = MTYPE_To_PREG(tls_mtype);
+      PREG_NUM local_num = Create_Preg(tls_mtype, local_name);
+      WN* tls_ldid = WN_COPY_Tree(tree);
+      WN* local_stid = WN_StidIntoPreg(tls_mtype, local_num,
+                                       local_st, tls_ldid);
+      WN_INSERT_BlockLast(block, local_stid);
+      WN* local_ldid = WN_LdidPreg(tls_mtype, local_num );
+      WN_Delete(tree);
+      return local_ldid;
+    }
+
     break;
 
   case OPR_ILDBITS:
@@ -5261,6 +5296,35 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	tree = lower_expr(block, ldid, actions);
 	return tree;
       }
+    }
+    if (Action(LOWER_TO_CG) && promote_tls_ldst &&
+        ST_is_tls( WN_st(tree) ) ) 
+    {
+      // promote OPR_LDA to TLS variable in the OPR_PARAM of OPR_CALL to upper level
+      // In order to avoid conflicts in output registers
+      //       OPR_LDA tls_st <ST_IS_THREAD_PRIVATE>
+      //     ......
+      //   OPR_PARAM
+      // OPR_CALL
+      // --->
+      //   OPR_LDA tls_st <ST_IS_THREAD_PRIVATE>
+      // OPR_STID local_num <PREG>
+      //       OPR_LDID local_num <PREG>
+      //     ......
+      //   OPR_PARAM
+      // OPR_CALL
+      char local_name[64];
+      ST* tls_st = WN_st(tree);
+      snprintf(local_name, 64, "local.%s", ST_name(tls_st));
+      ST* local_st = MTYPE_To_PREG(Pointer_type);
+      PREG_NUM local_num = Create_Preg ( Pointer_type, local_name);
+      WN* tls_lda = WN_COPY_Tree(tree);
+      WN* local_stid = WN_StidIntoPreg( Pointer_type, local_num, 
+                                        local_st, tls_lda);
+      WN_INSERT_BlockLast(block, local_stid);
+      WN * local_ldid = WN_LdidPreg(Pointer_type, local_num);
+      WN_Delete(tree);
+      return local_ldid;
     }
     break;
 
@@ -9584,6 +9648,18 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
   Is_True(OPERATOR_is_call(WN_operator(tree)),
 	  ("expected call node, not %s", OPERATOR_name(WN_operator(tree))));
 
+  // initialize the TLS if it's not initialized
+  TLS_init();
+  // If the tls_model is dynamic, we need to generate __tls_get_addr call.
+  // In order to avoid the output register conflict,
+  // we need to promote the ldid/lda in actual parameter to up-level.
+  // This is done in LOWER_TO_CG phase
+  if( Action(LOWER_TO_CG) && 
+      (TLS_model == TLS_MODEL_GLOBAL_DYNAMIC ||
+       TLS_model == TLS_MODEL_LOCAL_DYNAMIC )) {
+    promote_tls_ldst = TRUE;
+  }
+  
   for (i = 0; i < WN_kid_count(tree); i++) {
 #ifdef KEY // handle actual parameter being a complex under LOWER_COMPLEX action
     if (WN_operator(WN_actual(tree,i)) == OPR_PARM &&
@@ -9607,7 +9683,8 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
     WN_actual(tree, i) = lower_expr(block, WN_actual(tree, i), actions);
   }
-
+  promote_tls_ldst = FALSE;
+  
   /* Get the ST of the callee if available */
   if (WN_has_sym(tree)) {
     callee_st = WN_st(tree);

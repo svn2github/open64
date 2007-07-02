@@ -1037,6 +1037,17 @@ check_convert_name(char *name)
 }
 #endif /* KEY bug 4260 */
 
+void check_opt_tls_model(char* model)
+{
+	if ( strcmp("global-dynamic", model) == 0 ||
+	     strcmp("local-dynamic", model) == 0 ||
+	     strcmp("initial-exec", model) == 0 ||
+	     strcmp("local-exec", model) == 0 )
+		return;
+	else
+	   error("`-ftls-model=%s': unknown tls-model option", model);
+}
+
 void
 check_dashdash (void)
 {

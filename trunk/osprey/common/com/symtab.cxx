@@ -1737,6 +1737,8 @@ ST::Print (FILE *f, BOOL verbose) const
 		fprintf (f, " copy_constructor_st");
             if (flags_ext & ST_INITV_IN_OTHER_ST)
                 fprintf (f, " st_used_as_initialization");
+	    if (flags_ext & ST_IS_THREAD_LOCAL)
+                fprintf (f, " thread_local");
 	}
 #endif
 
