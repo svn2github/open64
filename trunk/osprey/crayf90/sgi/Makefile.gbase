@@ -238,7 +238,7 @@ VPATH    =  $(FE90_DIR) $(SRC_DIRS)
 
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 ifeq ($(BUILD_OS), LINUX)
-LCINCS += -I$(FE90_INCLUDES) -I$(LINUX_INC) -I$(INCLUDE_DIR)/cmplrs -I/usr/include
+LCINCS += -I$(FE90_INCLUDES) -I$(LINUX_INC) -I$(INCLUDE_DIR)/cmplrs 
 endif
 LCXXINCS = $(LCINCS)
 
