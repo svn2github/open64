@@ -1367,6 +1367,18 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn about function pointer arithmetic"
 -Wno-pointer-arith	;		Cc	f	self
 	"Do not warn about function pointer arithmetic"
+-Wpointer-sign	;		Cc,cpp	cpp,f	self
+	"Warn for pointer asignments with different signedness"
+-Wno-pointer-sign	;		Cc,cpp	cpp,f	self
+	"Don't warn for pointer asignments with different signedness"
+-Wpointer-to-int-cast        ;		Cc,cpp	cpp	self
+	"Warn for pointer casts to integer types of a different size"
+-Wno-pointer-to-int-cast        ;		Cc,cpp	cpp	self
+	"Don't warn for pointer casts to integer types of a different size"
+-Wno-int-to-pointer-cast        ;		Cc,cpp	cpp	self
+	"Don't warn for casts to pointers from integer types of a different size"
+-Wint-to-pointer-cast        ;		Cc,cpp	cpp	self
+	"Warn for casts to pointers from integer types of a different size"
 -Wredundant-decls	;		Cc	f	self
 	"Warn about multiple declarations of the same object"
 -Wno-redundant-decls	;		Cc	f	self
