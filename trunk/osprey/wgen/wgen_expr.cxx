@@ -3611,7 +3611,8 @@ WGEN_Expand_Expr (gs_t exp,
 	// be a reference, in which case use the referenced symbol instead
 	// of creating a new one.
 	if (gs_tree_code(opnd0) != GS_INDIRECT_REF &&
-	    gs_tree_code(opnd0) != GS_COMPONENT_REF)
+            gs_tree_code(opnd0) != GS_COMPONENT_REF &&
+            gs_tree_code(opnd0) != GS_ARRAY_REF)
 #endif
 	{
 	st    = Get_ST (gs_tree_operand(exp, 0));
@@ -3776,7 +3777,8 @@ WGEN_Expand_Expr (gs_t exp,
 	  wn = WN_Iload(TY_mtype(ty_idx), 0, ty_idx, ldid_wn);
 	  break;
 	}
-	else if (gs_tree_code(opnd0) == GS_COMPONENT_REF) {
+        else if (gs_tree_code(opnd0) == GS_COMPONENT_REF ||
+                 gs_tree_code(opnd0) == GS_ARRAY_REF) {
 	  wn = WGEN_Expand_Expr(opnd0);
 	  break;
 	}
