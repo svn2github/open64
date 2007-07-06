@@ -2099,6 +2099,22 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
     ISA_REGISTER_CLASS regclass = TN_register_class(tn);
     REGISTER_SET must_use = Usable_Registers(tn, clr);
 
+#ifdef KEY
+    // If ASM uses a callee-saved register, then add the register to
+    // Callee_Saved_Regs_Used.  Bug 13100.
+    if (asm_info &&
+        LRA_TN_register(tn) != REGISTER_UNDEFINED) {
+      const REGISTER reg = LRA_TN_register(tn);
+      const ISA_REGISTER_CLASS rc = TN_register_class(tn);
+      if (reg <= REGISTER_MAX &&
+          REGISTER_allocatable(rc, reg) &&
+          REGISTER_SET_MemberP(REGISTER_CLASS_callee_saves(rc), reg)) {
+        Callee_Saved_Regs_Used[rc] =
+          REGISTER_SET_Union1(Callee_Saved_Regs_Used[rc], reg);
+      }
+    }
+#endif
+    
 #ifdef TARG_X8664
     if( Is_Target_32bit() ){
       const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(regclass);
@@ -5541,4 +5557,3 @@ LRA_Register_Request (BB *bb,  ISA_REGISTER_CLASS cl)
   }
   return regs_needed;
 }
-
