@@ -385,7 +385,8 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
           } 
           else{
             WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
-            if (opnd->Kind() == CK_VAR || opnd->Kind() == CK_IVAR)
+            if (! MTYPE_is_float(exp->Asm_input_rtype()) &&
+				(opnd->Kind() == CK_VAR || opnd->Kind() == CK_IVAR))
               WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
           }
 #endif
