@@ -249,7 +249,9 @@ next_real_field (gs_t type_tree, gs_t field)
 
   if (field == gs_type_vfield(type_tree))
   {
+#if 0 //  bug 13102
     Is_True (lang_cplus, ("next_real_field: TYPE_VFIELD used for C"));
+#endif
     first_real_field = TRUE; // return first real field
   }
 

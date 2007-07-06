@@ -2921,7 +2921,7 @@ AGGINIT::Traverse_Aggregate_Struct (
     // Fields corresponding to pointer-to-member-functions are represented as
     // records with fields __pfn and __delta.  The initializer is a TREE_LIST
     // of __pfn and __delta.  Bug 3143.
-    else if (gs_type_ptrmemfunc_p(gs_tree_type(field))) {
+    else if (field && gs_type_ptrmemfunc_p(gs_tree_type(field))) {
       gs_t element_type;
       element_type = gs_tree_type(field);
 
@@ -2977,10 +2977,11 @@ AGGINIT::Traverse_Aggregate_Struct (
       }
     }
 
-    // advance ot next field
+    // advance to next field
     current_offset = current_offset_base + emitted_bytes;
     fld = FLD_next(fld);
-    field = next_real_field(type, field);
+    if (field)
+      field = next_real_field(type, field);
     while (field && gs_tree_code(field) != GS_FIELD_DECL)
       field = next_real_field(type, field);
   }
