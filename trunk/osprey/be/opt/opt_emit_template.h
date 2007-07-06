@@ -371,7 +371,8 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 // Fix bug 1766
               if (ty == MTYPE_I1 || ty == MTYPE_I2 || ty == MTYPE_U1 || ty == MTYPE_U2)
                 WN_kid(wn, i) = WN_Int_Type_Conversion( WN_kid(WN_kid(wn, i),0), ty );
-              else if (exp->Asm_input_rtype() != exp->Asm_input_dsctype()){
+              else if (! MTYPE_is_float(exp->Asm_input_rtype()) && 
+							exp->Asm_input_rtype() != exp->Asm_input_dsctype()){
                 WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
                 WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
               }
