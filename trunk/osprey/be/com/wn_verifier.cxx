@@ -806,14 +806,15 @@ BOOL WN_Verifier::LDA_ty_not_NULL(WN *wn)
 	    DevWarn("WN_verifier Error (LDA_ty_not_NULL): TY of the %s is "
 		    "either NULL or is not a pointer or scalar",
 		    OPCODE_name(opc));
+            if (DevWarn_Enabled()) {
 #ifdef KEY // print type name only for shorter output
-            if (TY_name_idx(ty) == 0)
-              fprintf(stderr, "(anon)\n");
-            else fprintf(stderr, "%s\n", TY_name(ty));
+              if (TY_name_idx(ty) == 0)
+                fprintf(stderr, "(anon)\n");
+              else fprintf(stderr, "%s\n", TY_name(ty));
 #else
-            ty.Print (stderr);
+              ty.Print (stderr);
 #endif
-
+            }
 	    return FALSE;
 	}
     }

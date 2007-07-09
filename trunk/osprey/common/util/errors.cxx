@@ -1412,6 +1412,12 @@ static BOOL dev_warn_enabled = TRUE;
 static BOOL dev_warn_enabled = FALSE;
 #endif
 
+extern BOOL 
+DevWarn_Enabled()
+{
+  return dev_warn_enabled;
+}
+
 extern void
 DevWarn( const char *fmt, ... )
 {
