@@ -700,6 +700,7 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
 #ifdef KEY
   BOOL is_bit_field = FALSE;
 #endif
+  TY_IDX hl_ty = (TY_IDX)0;
 
   switch (opr) {
   case OPR_LDA:
@@ -750,6 +751,11 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
     if (opr == OPR_LDID)
       field_id = WN_field_id(wn);
 #endif
+    if (WN_field_id(wn) != (TY_IDX)0) {
+      UINT32 dummy;
+      WN_hl_object_ty (wn, hl_ty, dummy);
+    }
+
     break;
   case OPR_STBITS:
     bit_size = WN_bit_size(wn);
@@ -792,6 +798,10 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
     if (opr == OPR_STID)
       field_id = WN_field_id(wn);
 #endif
+    if (WN_field_id(wn) != (TY_IDX)0) {
+      UINT32 dummy;
+      WN_hl_object_ty (wn, hl_ty, dummy);
+    }
     break;
   default:
     stype = VT_OTHER;
@@ -950,6 +960,7 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   sym->Set_byte_size(byte_size);
   sym->Set_bit_ofst_size(bit_ofst, bit_size);
   sym->Set_ty(wn_object_ty);
+  sym->Points_to()->Set_hl_ty (hl_ty);
 
   INT64 tmpofst;
   ST    *tmpbase;
@@ -2468,6 +2479,13 @@ OPT_STAB::Collect_ST_attr(void)
       TY_IDX ty = (psym->Field_id() != 0 && psym->Ty() != 0) ? psym->Ty() :
                    (ST_class(st) == CLASS_VAR ? ST_type(st) : (TY_IDX)0);
 #endif 
+      // Do not discard the high-level type which may be different from 
+      // object-type. This is an example: "LDID agg.field". The agg.field
+      // is treated as a seperated symbol (i.e it has unique aux_id) by 
+      // Enter_symbol(). The pt->Ty() record the type-of(agg.field), and 
+      // pt->Highlevel_ty() records/ type-of(agg).
+      // 
+      TY_IDX hl_ty = pt->Highlevel_Ty();
       pt->Analyze_ST(st, psym->St_ofst(), psym->Byte_size(),
 		     psym->Bit_ofst(), psym->Bit_size(),
 #ifdef KEY
@@ -2480,6 +2498,10 @@ OPT_STAB::Collect_ST_attr(void)
       //  if a symbol has size 0, its offset is considered unknown.
       if (pt->Byte_Size() == 0)
 	pt->Set_ofst_kind(OFST_IS_UNKNOWN);
+      
+      if (hl_ty != (TY_IDX)0 && pt->Highlevel_Ty() == (TY_IDX)0) {
+        pt->Set_hl_ty(hl_ty);
+      }
     }
 
     // Precompute the alias attributes and put them in bitsets.
