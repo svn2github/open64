@@ -1441,8 +1441,12 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
         if (opr != OPR_ASM_INPUT ||
             (x->Opnd(i)->Kind() != CK_VAR && x->Opnd(i)->Kind() != CK_IVAR) )
 	  expr = Copy_propagate_cr(x->Opnd(i), curbb, inside_cse, in_array);
-        else
+        else {
+		  // OSP_384
+		  if(opr == OPR_ASM_INPUT)
+			x->Opnd(i)->Set_flag(CF_DONT_PROP);
           expr = NULL;
+		}
 #else
 	expr = Copy_propagate_cr(x->Opnd(i), curbb, inside_cse, in_array);
 #endif
