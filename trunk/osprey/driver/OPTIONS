@@ -462,10 +462,12 @@ I-fini%s		;		CC	ld	"-fini %s"
 	""
 -profile	;	ALL	ld	self "-lm" "-TENV:call_mcount"
 	""
+#ifdef X8664 /* Bug #381, here the MACRO is X8664/IA64, no 'TARG_' prefix */
 -m32	toggle(&abi,ABI_N32);	ALL	be	"-TARG:abi=n32" 
         "Compile for 32-bit ABI"
 -m64	toggle(&abi,ABI_64);	ALL	be	"-TARG:abi=n64"
 	"Compile for 64-bit ABI"
+#endif
 #ifdef KEY /* Bug 4210 */
 -module%s	Process_module(optargs);	F90	NONE	""
 	"Directory in which to create .mod file"
