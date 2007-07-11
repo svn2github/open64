@@ -2814,7 +2814,7 @@ run_compiler (int argc, char *argv[])
 			    phase_order[i] != P_spin_cc1plus &&
 			    phase_order[i] != P_wgen &&
 #endif
-			    phase_order[i] < P_any_fe) 
+			    phase_order[i] < P_any_fe)
 			{
 			    add_command_line_arg(args, source_file);
 			    cmd_line_updated = TRUE;
@@ -2822,6 +2822,13 @@ run_compiler (int argc, char *argv[])
 			add_file_args (args, phase_order[i]);
 			run_phase (phase_order[i],
 				   get_full_phase_name(phase_order[i]), args);
+                        /* undefine the environment variable
+                         * DEPENDENCIES_OUTPUT after the pre-processor phase -
+                         * bug 386.
+                         */
+                        if (phase_order[i] == P_gcpp_plus)
+                          unsetenv("DEPENDENCIES_OUTPUT");
+
 			if ( i == 0 && (string_md == TRUE || string_mmd == TRUE)){
 			        /* Bug# 581, bug #932, bug# 1049, bug #433 */
 				/* We've run the dependency phase, so
