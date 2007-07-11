@@ -786,6 +786,24 @@ WFE_Array_Expr(tree exp,
     INT64 ofst = (BITSPERBYTE * Get_Integer_Value(DECL_FIELD_OFFSET(arg1)) +
 				Get_Integer_Value(DECL_FIELD_BIT_OFFSET(arg1)))
 			      / BITSPERBYTE;
+#ifdef KEY
+    // OSP_7, MODIFY_EXPR in ARRAY_REF
+    // Refer GCC 4.0.2: gcc.c-torture/compile/struct-non-lval-3.c
+    // We only handle this case so far:
+    // (p = q).x[index]
+    // the lhs of modify_expr is var_decl, not an expression
+    // ARRAY_REF
+    //     |---> MODIFY_EXPT
+    if (TREE_CODE(arg0) == MODIFY_EXPR) {
+      WFE_Expand_Expr(arg0);
+      tree lhs = TREE_OPERAND(arg0, 0);
+      Is_True (lhs != NULL && 
+	       (TREE_CODE(lhs) == VAR_DECL || TREE_CODE(lhs) == INDIRECT_REF),
+		      ("Unsupported lhs for `(p=q).x[n]'"));
+      arg0 = lhs;
+    }
+#endif
+
 #ifdef KEY // bug 9725: If the field is an array of struct, it is considered
            // a single field.
     return WFE_Array_Expr(arg0, ty_idx, ty_idx0, ofst + component_offset,

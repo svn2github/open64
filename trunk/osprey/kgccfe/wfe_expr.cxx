@@ -745,6 +745,24 @@ WFE_Array_Expr(tree exp,
     INT64 ofst = (BITSPERBYTE * Get_Integer_Value(DECL_FIELD_OFFSET(arg1)) +
 				Get_Integer_Value(DECL_FIELD_BIT_OFFSET(arg1)))
 			      / BITSPERBYTE;
+
+#ifdef KEY
+    // OSP_7, MODIFY_EXPR in ARRAY_REF
+    // Refer GCC 4.0.2: gcc.c-torture/compile/struct-non-lval-3.c
+    // We only handle this case so far:
+    // (p = q).x[index]
+    // the lhs of modify_expr is var_decl, not an expression
+    // ARRAY_REF
+    //     |---> MODIFY_EXPT
+    if (TREE_CODE(arg0) == MODIFY_EXPR) {
+      WFE_Expand_Expr(arg0);
+      tree lhs = TREE_OPERAND(arg0, 0);
+      Is_True (lhs != NULL && TREE_CODE(lhs) == VAR_DECL,
+		      ("Unsupported lhs for `(p=q).x[n]'"));
+      arg0 = lhs;
+    }
+#endif
+
 #ifdef KEY // bug 9725: If the field is an array of struct, it is considered
            // a single field.
     return WFE_Array_Expr(arg0, ty_idx, ty_idx0, ofst + component_offset,
@@ -907,6 +925,22 @@ WFE_Array_Expr(tree exp,
     wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
     *ty_idx = component_ty_idx == 0 ? ST_type(st) : component_ty_idx;
     return wn;
+  }
+  else if (code == COND_EXPR) {
+    // OSP_7, COND_EXPR in ARRAY_REF
+    // struct s { char c[1]; };
+    // struct s a, b, c;
+    // (i ? b : c).c[0];
+    // ARRAY_REF
+    //     |---> COND_EXPR
+    WN *wn1, *wn2;
+    wn = WFE_Expand_Expr (TREE_OPERAND(exp, 0));
+    wn1 = WFE_Array_Expr (TREE_OPERAND(exp, 1), ty_idx, component_ty_idx,
+		          component_offset, field_id);
+    wn2 = WFE_Array_Expr (TREE_OPERAND(exp, 2), ty_idx, component_ty_idx,
+		          component_offset, field_id);
+    Set_PU_has_very_high_whirl(Get_Current_PU());
+    return WN_CreateExp3(OPR_CSELECT, WN_rtype(wn1), MTYPE_V, wn, wn1, wn2);
   }
 #endif /* KEY */
   else {
@@ -2988,6 +3022,20 @@ WFE_Expand_Expr (tree exp,
             wn = comma;
             break;
           }
+
+	  case MODIFY_EXPR : {
+	    // OSP_7, MODIFY_EXPR in ADDR_EXPR
+	    // (a = b).c
+	    // ADDR_EXPR
+	    //    |--> MODIFY_EXPR
+	    WFE_Expand_Expr (arg0);
+	    tree lhs = TREE_OPERAND(arg0, 0);
+	    Is_True (lhs != NULL && TREE_CODE(lhs) == VAR_DECL,
+			    ("Unsupported lhs for `(p=q).x'"));
+	    st = Get_ST(TREE_OPERAND(arg0, 0));
+	    wn = WN_Lda(Pointer_Mtype, ST_ofst(st), st);
+	    break;
+	  }
 #endif
 
 	  default:
