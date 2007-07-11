@@ -2393,6 +2393,19 @@ WFE_Assemble_Alias (tree decl, tree target)
     return;
   }
 #endif // KEY 
+
+#ifdef KEY
+  // OSP_7, alias to undefined symbol
+  if (base_decl == NULL) {
+    Is_True( TREE_CODE(target) == IDENTIFIER_NODE,
+		    ("Unexpected TREE_CODE of target, IDENTIFIER_NODE expected"));
+    error ("'%s' aliased to undefined symbol '%s'", 
+	   IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl)), 
+	   IDENTIFIER_POINTER (target));
+    return;
+  }
+#endif	  
+  
   ST *base_st = Get_ST (base_decl);
   ST *st = Get_ST (decl);
   if (ST_is_weak_symbol(st)) {
