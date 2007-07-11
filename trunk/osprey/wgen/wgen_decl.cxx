@@ -2082,7 +2082,11 @@ AGGINIT::WGEN_Add_Aggregate_Init_Address (gs_t init)
 		  iload_ofst = WN_offset(wn);
 		  wn = WN_kid0(wn);
 		}
-		if (WN_operator(wn) != OPR_ARRAY)
+		// bug fix for OSP_128
+		//
+		if (WN_operator(wn) == OPR_INTCONST) 
+		  WGEN_Add_Aggregate_Init_Integer(WN_const_val(wn) + iload_ofst, Pointer_Size);
+		else if (WN_operator(wn) != OPR_ARRAY)
 		  WGEN_Add_Aggregate_Init_Symbol (WN_st(wn), WN_offset(wn)+iload_ofst);
 		else {
 		  FmtAssert(WN_operator(WN_array_base(wn)) == OPR_LDA,
