@@ -3768,8 +3768,14 @@ WGEN_Expand_Expr (gs_t exp,
 	// If the target area was supplied by the caller, then return an ILOAD
 	// of the target pointer.
 	if (gs_tree_code(opnd0) == GS_INDIRECT_REF) {
-
-	  if (gs_tree_code(gs_tree_operand(opnd0, 0)) == GS_NOP_EXPR)
+          // OSP_371, skip the NON_LVALUE_EXPR
+	  // INIT_EXPR
+	  //   0-> INDIRECT_REF
+	  //     0-> NON_LVALUE_EXPR
+	  //       0-> VAR_DECL
+	  //   1-> EXPR
+	  if (gs_tree_code(gs_tree_operand(opnd0, 0)) == GS_NOP_EXPR ||
+              gs_tree_code(gs_tree_operand(opnd0, 0)) == GS_NON_LVALUE_EXPR)
 	    opnd0 = gs_tree_operand(opnd0, 0);
 	  ST *st = Get_ST(gs_tree_operand(opnd0, 0));
 	  TY_IDX ty_idx = Get_TY (gs_tree_type(exp));
