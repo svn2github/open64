@@ -900,7 +900,7 @@ ARC *new_arc_with_latency(CG_DEP_KIND kind, OP *pred, OP *succ,
   ARC *arc;
   BB_OP_MAP pmap = (BB_OP_MAP)BB_MAP_Get(_cg_dep_op_info, OP_bb(pred));
   BB_OP_MAP smap = (BB_OP_MAP)BB_MAP_Get(_cg_dep_op_info, OP_bb(succ));
-
+  
   if (BB_OP_MAP_Get(pmap, pred) == NULL)
     BB_OP_MAP_Set(pmap, pred, new_op_info());
   if (BB_OP_MAP_Get(smap, succ) == NULL)
@@ -4344,6 +4344,7 @@ void Build_Cyclic_Arcs(BB *bb)
   }
 
 #ifdef Is_True_On
+  if (Get_Trace(TP_CG, 0x02))
   {
     for (INT i = 0; i < op_vec.size(); i++) {
       OP *op = op_vec[i];
