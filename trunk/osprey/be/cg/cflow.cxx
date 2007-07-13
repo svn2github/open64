@@ -3482,6 +3482,8 @@ Delete_Unreachable_Blocks(void)
 			       LABEL_name(lab), BB_id(bp));
 	      }
 	      BB_annotations(bp) = ANNOT_Unlink(BB_annotations(bp), ant);
+	      if (ANNOT_First(BB_annotations(bp), ANNOT_LABEL) == NULL) //bug fix for OSP_358
+	        Reset_BB_has_label(bp);//no label annotate, reset has_lable flag
 	      Set_Label_BB(lab, NULL);
 	      eh_label_removed = TRUE;
 	    } else {
@@ -3502,6 +3504,8 @@ Delete_Unreachable_Blocks(void)
 			       LABEL_name(lab), BB_id(bp));
 	      }
 	      BB_annotations(bp) = ANNOT_Unlink(BB_annotations(bp), ant);
+	      if (ANNOT_First(BB_annotations(bp), ANNOT_LABEL) == NULL) //bug fix for OSP_358
+	        Reset_BB_has_label(bp);//no label annotate, reset has_lable flag
 	      Set_Label_BB(lab, NULL);
 	      eh_label_removed = TRUE;
 	    } else {
