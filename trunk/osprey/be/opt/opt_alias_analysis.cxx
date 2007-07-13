@@ -3019,7 +3019,9 @@ OPT_STAB::Generate_mu_and_chi_list(WN *wn, BB_NODE *bb)
 	if (idx == vp_idx)
 	  chi->New_chi_node(idx, Occ_pool());
 	else if (Rule()->Aliased_Memop(occ->Points_to(),
-				       aux_stab[idx].Points_to())) {
+				       aux_stab[idx].Points_to(),
+				       wn_ty,
+				       aux_stab[idx].Points_to()->Ty())) {
 	  if (!IS_FORTRAN || !Var_is_loop_index(idx, bb))
 	    chi->New_chi_node(idx, Occ_pool());
 	}
