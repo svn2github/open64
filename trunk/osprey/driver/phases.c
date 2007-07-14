@@ -2592,11 +2592,9 @@ run_ld (void)
         char *our_path;
 
         if (abi == ABI_N32) {
-	 #ifdef PSC_TO_OPEN64
-          asprintf(&our_path, "%s/" OPEN64_FULL_VERSION "/32", root_prefix);
+          asprintf(&our_path, "%s" LIBPATH "/32", root_prefix);
         } else {
-          asprintf(&our_path, "%s/" OPEN64_FULL_VERSION, root_prefix);
-	 #endif
+          asprintf(&our_path, "%s" LIBPATH, root_prefix);
         }
 
         add_string(args, concat_strings("-L", our_path));
