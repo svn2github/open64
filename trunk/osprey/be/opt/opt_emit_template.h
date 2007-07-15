@@ -388,7 +388,9 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
             WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
             if (! MTYPE_is_float(exp->Asm_input_rtype()) &&
 				(opnd->Kind() == CK_VAR || opnd->Kind() == CK_IVAR))
-              WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
+			  // OSP_388 and OSP_390
+              WN_set_desc(WN_kid(wn, i), 
+							Mtype_TransferSign(exp->Asm_input_rtype(), exp->Asm_input_dsctype()));
           }
 #endif
 	}
