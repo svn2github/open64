@@ -624,7 +624,11 @@ Base_Symbol_And_Offset_For_Addressing (
 
   while( (ST_base(base) != base  ) 
 	 && (ST_sclass(base) != SCLASS_TEXT) 
+#ifdef TARG_X8664
+	 && !(ST_is_preemptible(base))
+#else
 	 && !((Gen_PIC_Shared || Gen_PIC_Call_Shared) && ST_is_preemptible(base))
+#endif
 #ifdef KEY
 	 && !ST_is_weak_symbol(base)
 #endif // KEY
