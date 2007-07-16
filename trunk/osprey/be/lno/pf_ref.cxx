@@ -1891,10 +1891,23 @@ void Update_Array_Index (WN* wn, WN* wn_incr, WN* wn_induc)
       TYPE_ID desc = Promote_Type(WN_rtype(wn_kid));
       WN* wn_ahead = LWN_Make_Icon(desc, LNO_Prefetch_Iters_Ahead);
       wn_ahead = LWN_CreateExp2(OPCODE_make_op(OPR_MPY, desc, MTYPE_V), 
-                                                  WN_CopyNode(wn_incr), wn_ahead);      
+                                                  WN_CopyNode(wn_incr), wn_ahead);
       WN_kid(wn, kid) = LWN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V), wn_kid, wn_ahead);
       LWN_Set_Parent(WN_kid(wn, kid), wn);
-    } else {
+    }
+    // bug fix for OSP_348
+    //
+    else if ((WN_operator(wn_kid) == OPR_CVT || WN_operator(wn_kid) == OPR_CVTL || WN_operator(wn_kid) == OPR_TRUNC)
+	     && (WN_st_idx(WN_kid(wn_kid, 0)) == WN_st_idx(wn_induc) && SYMBOL(WN_kid(wn_kid, 0)) == SYMBOL(wn_induc)))
+    {
+      TYPE_ID desc = Promote_Type(WN_rtype(wn_kid));
+      WN* wn_ahead = LWN_Make_Icon(desc, LNO_Prefetch_Iters_Ahead);
+      wn_ahead = LWN_CreateExp2(OPCODE_make_op(OPR_MPY, desc, MTYPE_V),
+		                WN_CopyNode(wn_incr), wn_ahead);
+      WN_kid(wn, kid) = LWN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V), wn_kid, wn_ahead);
+      LWN_Set_Parent(WN_kid(wn, kid), wn);
+    }
+    else {
       Update_Array_Index(wn_kid, wn_incr, wn_induc);
     }
   }
