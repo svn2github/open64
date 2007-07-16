@@ -409,7 +409,7 @@ EBO_predicate_complements (TN *pred1, EBO_TN_INFO *info1,
    /* If defined by the same instruction but not equal, they must be complements. */
     return TRUE;
   }
-#endif
+#endif  
  /* Until we can resolve subsets, assume a problem. */
   return FALSE;
 }
