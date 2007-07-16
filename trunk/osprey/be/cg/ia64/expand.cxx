@@ -3264,6 +3264,22 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * op1, OPS *ops)
   case INTRN_ISUNORDERED:
     Expand_Float_Compares(TOP_fcmp_unord, result, op0, op1, ops);
     break;
+  case INTRN_CLZ32:
+    // expand the intrinsic __builtin_clz, which Returns the number of leading 0-bits in X, 
+    // starting at the most significant bit position.
+    //
+    {
+      TN* t1 = Build_TN_Of_Mtype (MTYPE_F8);
+      TN* t2 = Build_TN_Of_Mtype (MTYPE_F8);
+      TN* t3 = Build_TN_Of_Mtype (MTYPE_I4);
+      Build_OP (TOP_setf_sig, t1, True_TN, op0, ops);
+      Build_OP (TOP_fcvt_xuf, t2, True_TN, Gen_Enum_TN(ECV_sf_s0), t1, ops);
+      Build_OP (TOP_getf_exp, t3, True_TN, t2, ops);
+      Build_OP (TOP_mov_i, result, True_TN, Gen_Literal_TN(65598, 4), ops);
+      Build_OP (TOP_sub, result, True_TN, result, t3, ops);
+      Build_OP (TOP_adds, result, True_TN, Gen_Literal_TN(-32, 4), result, ops);
+    }
+    break;
   default:
     #pragma mips_frequency_hint NEVER
     FmtAssert (FALSE, ("WHIRL_To_OPs: illegal intrinsic op"));
