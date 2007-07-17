@@ -3580,10 +3580,7 @@ Spill_Live_Range (
       if (!def_available) {
         def_available = TRUE;
         new_tn = Dup_TN_Even_If_Dedicated (spill_tn);
-#ifdef TARG_IA64
         Is_True(reloadable_def || spill_loc, ("Attempt to locate a NULL spill_loc!"));
-        Set_TN_spill(new_tn, spill_loc);
-#else
 #ifdef TARG_X8664
         Reset_TN_preallocated(new_tn);
 #endif
@@ -3592,7 +3589,6 @@ Spill_Live_Range (
         if (TN_has_spill(spill_tn))
 #endif
           Set_TN_spill(new_tn, spill_loc);
-#endif //TARG_IA64
         Add_Spill_Load_Before_Use (new_tn, spill_loc, reloadable_def, i, bb);
       }
       else if (Do_LRA_Trace(Trace_LRA_Spill)) {
