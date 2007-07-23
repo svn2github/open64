@@ -25,8 +25,7 @@
 #       ia32-host x86_64-target build area
 #
 
-#setenv CFLAGS " -g -O2 -m32 -mno-sse2"
-setenv CFLAGS " -g -O0 -m32"
+setenv CFLAGS " -g -O2"
 
 #set bk_root=`bk root`
 #${bk_root}/open64/process-defs csh - | source /dev/stdin
