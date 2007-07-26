@@ -49,21 +49,11 @@ GSPIN_SOURCES = gspin-test-driver.c
 GSPIN_OBJECTS = $(subst .c,.o,$(GSPIN_SOURCES))
 
 ifeq ($(BUILD_TARGET), X8664)
-CFLAGS += -DTARG_X8664
+CFLAGS += -m32 -DTARG_X8664
 endif
 
 ifeq ($(BUILD_TARGET), IA64)
 CFLAGS += -DTARG_IA64
-endif
-
-ifeq ($(BUILD_TARGET), X8664)
-ifeq ($(BUILD_ABI), I64BIT)
-CFLAGS += -m64
-endif
-endif
-
-ifeq ($(BUILD_ABI), I32BIT)
-CFLAGS += -m32
 endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
