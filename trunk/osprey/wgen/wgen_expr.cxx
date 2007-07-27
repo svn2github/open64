@@ -1257,7 +1257,8 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         }
         else result_wn = rhs_wn;
 
-        if (need_result && 
+	// OSP_382, do not store MTYPE_M into temp
+        if (need_result && rtype != MTYPE_M &&
 	    (volt ||
 	     assign_code == GS_POSTINCREMENT_EXPR ||
 	     assign_code == GS_POSTDECREMENT_EXPR)) { // save result in a preg
@@ -1467,7 +1468,8 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         }
         else result_wn = rhs_wn;
 
-        if (need_result && 
+	// OSP_382, do not store MTYPE_M into temp
+        if (need_result && rtype != MTYPE_M &&
 	    (volt ||
              assign_code == GS_POSTINCREMENT_EXPR ||
              assign_code == GS_POSTDECREMENT_EXPR)) { // save result in a preg
@@ -1673,7 +1675,8 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         }
         else result_wn = rhs_wn;
 
-        if (need_result && 
+	// OSP_382, do not store MTYPE_M into temp
+        if (need_result && rtype != MTYPE_M &&
 	    (volt ||
              assign_code == GS_POSTINCREMENT_EXPR ||
 	     assign_code == GS_POSTDECREMENT_EXPR)) { // save result in a preg
