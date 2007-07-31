@@ -74,7 +74,7 @@ TARGDEFS =
 
 CURRENT_DIR		= .
 COMMON_DIR		= $(BUILD_TOT)/common
-COMMON_COM_DIR		= $(COMMON_DIR)/com
+COMMON_COM_DIR		= $(COMMON_DIR)/com $(COMMON_DIR)/util
 TARGINFO_DIR		= $(BUILD_BASE)
 TARGINFO_ACCESS_DIR	= $(TARGINFO_DIR)/access
 TARGINFO_GENERATE_DIR 	= $(TARGINFO_DIR)/generate
@@ -93,7 +93,8 @@ SRC_DIRS = \
   $(TARGINFO_GENERATE_DIR)	\
   $(TARGINFO_ISA_DIR)		\
   $(TARGINFO_PROC_DIR)		\
-  $(TARGINFO_ABI_DIR)
+  $(TARGINFO_ABI_DIR)           \
+  $(COMMON_COM_DIR)
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
@@ -176,10 +177,18 @@ TARGINFO_ACCESS_SRCS = \
 	ti_asm.c		\
 	ti_bundle.c		\
 	ti_latency.c		\
-	ti_errors.c
+	ti_errors.c 
+
+TARGINFO_DSO_ACCESS_SRCS = \
+        ti_res.c           \
+        ti_res_count.c     \
+        ti_res_res.c
 
 TARGINFO_ACCESS_HDRS = $(TARGINFO_ACCESS_SRCS:.c=.h)
 TARGINFO_ACCESS_OBJS = $(TARGINFO_ACCESS_SRCS:.c=.o)
+
+TARGINFO_DSO_ACCESS_HDRS = $(TARGINFO_DSO_ACCESS_SRCS:.c=.h)
+TARGINFO_DSO_ACCESS_OBJS = $(TARGINFO_DSO_ACCESS_SRCS:.c=.o)
 
 TARG_INFO_SRCS = \
 	topcode.c		\
@@ -284,6 +293,14 @@ gen_util.o: gen_util.cxx gen_util.h
 
 targ_proc.o: proc_gen targ_proc.c
 	$(cc) $(CFLAGS) -c targ_proc.c
+
+## ti_res.o ti_res_count.o ti_res_res.o ##
+ti_res.o: ti_res.c ti_res.h topcode.h targ_proc.h targ_proc_properties.h
+	$(cc) $(CFLAGS) -c $(TARGINFO_ACCESS_DIR)/ti_res.c
+ti_res_count.o: ti_res_count.c ti_res_count.h topcode.h
+	$(cc) $(CFLAGS) -c $(TARGINFO_ACCESS_DIR)/ti_res_count.c
+ti_res_res.o: ti_res_res.c ti_res_res.h topcode.h
+	$(cc) $(CFLAGS) -c $(TARGINFO_ACCESS_DIR)/ti_res_res.c
 
 ## topcode.[ch] ##
 
@@ -714,8 +731,8 @@ ifeq ($(BUILD_TARGET), X8664)
 
 ## opteron ##
 
-opteron.so: opteron.o
-	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) opteron.o -shared -o opteron.so
+opteron.so: opteron.o $(TARGINFO_DSO_ACCESS_OBJS)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) opteron.o -shared -o opteron.so
 
 opteron.o: opteron.c ti_si.h
 	$(cc) $(CFLAGS) -c opteron.c
@@ -731,8 +748,8 @@ opteron_si.o: opteron_si.cxx targ_isa_subset.h topcode.h si_gen.h
 
 ## em64t ##
 
-em64t.so: em64t.o
-	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) em64t.o -shared -o em64t.so
+em64t.so: em64t.o $(TARGINFO_DSO_ACCESS_OBJS)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) em64t.o -shared -o em64t.so
 
 em64t.o: em64t.c ti_si.h
 	$(cc) $(CFLAGS) -c em64t.c
