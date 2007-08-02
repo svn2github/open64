@@ -1,0 +1,86 @@
+
+    ====================================================
+    |         Open64 Eclipse Plugin v. 1.0.0           |
+    |                  August 2007                     |
+    ====================================================
+
+
+
+Introduction:
+
+     The Open64 Eclipse Compiler plugin is designed to facilitate
+the compilation of C, C++, and Fortran projects inside of Eclipse. 
+Additionally it contains many compiler flags and will parse error
+output.
+
+
+
+Dependences:
+
+    1. Eclipse 3.2.x Installation. The Open64 plugin does not yet 
+       work with Eclipse Europa (3.3)
+
+    2. Eclipse CDT 3.1.x  Download from http://www.eclipse.org/cdt/
+
+    3. Eclipse Photran. Download from http://www.eclipse.org/photran/
+
+    4. Open64 - Any version. This should be installed on your 
+       local system and accessable from command line.
+
+    Note: Photran offers "Full Versions" of Eclipse from their 
+    downloads page. These versions already have dependeces 1-3 
+    installed.
+
+
+
+Installation Instructions:
+
+    To install the plugin, click and download either the source
+or the binary version. Move the downloaded file into your main 
+Eclipse directory (the directory containing the eclipse executable).
+Unzip the file: >$  tar -xvzf org.eclipse.open64-1.0.0.tar.gz 
+Start Eclipse with the -clean flag. 
+
+
+
+Making a Project:
+
+    1. Open Eclipse and select "File -> New -> Project"
+
+    2. Click to expand either C/C++/Fortran and select "Managed Make 
+       xxx Project"
+
+    3. Enter desired project name. Click Next.
+
+    4. From the dropdown list select "Executable (Open64 xxx)" 
+       Where xxx is C/C++ or Fortran.
+
+    5. Select Finish.
+
+
+
+Compiling a Project:
+
+    1. After adding source code click "Save". The project
+       should automatically compile. It might be necessary
+       to click "Build All" if Eclipse does not build projects
+       automatically.
+
+
+Changing Compiler Flags:
+
+    1. Right click on the main project folder. Select "Properties"
+
+    2. From the list, click "Fortran Build"
+
+    3. Select desired flags 
+
+    4. Click Apply then OK 
+
+
+Contact:
+
+    For any questions or feedback, email
+    
+    mhauskn@emory.edu
+
