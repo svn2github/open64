@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+
+     <extension
+         id="Open64CompilerErrorParser"
+         name="Fortran Error Parser for Open64 Compilers"
+         point="org.eclipse.cdt.core.ErrorParser">
+      <errorparser
+            class="org.eclipse.open64.internal.errorparsers.Open64CompilerErrorParser">
+      </errorparser>
+   </extension>
+   <extension
+         id="Open64CSuiteCompilerErrorParser"
+         name="C/C++ Error Parser for Open64 Compilers"
+         point="org.eclipse.cdt.core.ErrorParser">
+      <errorparser
+            class="org.eclipse.open64.internal.errorparsers.Open64CSuiteCompilerErrorParser">
+      </errorparser>
+   </extension>
+
+</plugin>
