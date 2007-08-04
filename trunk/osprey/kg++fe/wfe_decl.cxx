@@ -845,7 +845,7 @@ Setup_Entry_For_EH (void)
                                 0)), 1);
     Set_INITV_next (tinfo, eh_spec);
 
-    Get_Current_PU().unused = New_INITO (ST_st_idx (etable), exc_ptr_iv);
+    Get_Current_PU().eh_info = New_INITO (ST_st_idx (etable), exc_ptr_iv);
 }
 
 // Generate WHIRL representing an asm at file scope (between functions).

@@ -1940,8 +1940,8 @@ PU::Print (FILE *f) const
 #ifdef KEY
     fprintf (f, ", flags 0x%016llx,\n"
 	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d,\n"
-	     "\tEH Info (unused) %d\n",
-	     flags, lexical_level, src_lang, target_idx, (INT32)unused); 
+	     "\tEH Info (eh_info) %d\n",
+	     flags, lexical_level, src_lang, target_idx, (INT32)eh_info); 
 #else
     fprintf (f, ", flags 0x%016llx,\n"
 	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d\n",

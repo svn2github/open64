@@ -7058,7 +7058,7 @@ WGEN_Expand_Expr (gs_t exp,
     {
       if (key_exceptions)
       {
-	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
+	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
       	wn = WN_Ldid (Pointer_Mtype, 0, exc_ptr_st, Get_TY(gs_tree_type(exp)));
       }
       else

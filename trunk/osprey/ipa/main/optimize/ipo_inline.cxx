@@ -2146,7 +2146,7 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 			    !strcmp (func_name, "__cxa_get_exception_ptr")), 
 			   ("Function %s has one-per-pu paramter", func_name));
 	    	// Fixup parameter
-	    	INITV_IDX exc_ptr = INITO_val ((INITO_IDX) Get_Current_PU ().unused);
+	    	INITV_IDX exc_ptr = INITO_val ((INITO_IDX) Get_Current_PU ().eh_info);
 		WN_st_idx (kid0) = TCON_uval (INITV_tc_val (exc_ptr));
 	    }
 	}
@@ -2168,7 +2168,7 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 //
 	    // fix the first parameter, take the proper input from runtime
 	    // (1)
-	    INITV_IDX first = INITO_val ((INITO_IDX) Get_Current_PU ().unused);
+	    INITV_IDX first = INITO_val ((INITO_IDX) Get_Current_PU ().eh_info);
 	    WN_st_idx (WN_kid0 (wn)) = TCON_uval (INITV_tc_val (INITV_next (first)));
 	    // fix the 2nd parameter -- filter value
 	    int current_filter = WN_const_val (WN_kid1 (wn));
@@ -2180,7 +2180,7 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	    }
 	    Set_Tables (Callee_node());
 
-	    INITO_IDX ino = Pu_Table [ST_pu (Callee_node()->Func_ST())].unused;
+	    INITO_IDX ino = Pu_Table [ST_pu (Callee_node()->Func_ST())].eh_info;
 	    INITV_IDX tinfo = INITV_next (INITV_next (INITO_val (ino)));
 	    INITV_IDX ttable = INITO_val (TCON_uval (INITV_tc_val (tinfo)));
 	    int filter;
@@ -3596,7 +3596,7 @@ IPO_INLINE::Merge_EH_Spec_Tables (void)
 {
     INITV_IDX start, blk;
     // callee side
-    INITO_IDX tmp = Pu_Table [ST_pu (Callee_node()->Func_ST())].unused;
+    INITO_IDX tmp = Pu_Table [ST_pu (Callee_node()->Func_ST())].eh_info;
     if (tmp)
     	start = INITO_val (tmp);
     else return;
@@ -3626,7 +3626,7 @@ IPO_INLINE::Merge_EH_Spec_Tables (void)
 
     // caller side, change tables temporarily
     Set_Tables (Caller_node());
-    start = INITO_val (Pu_Table [ST_pu (Caller_node()->Func_ST())].unused);
+    start = INITO_val (Pu_Table [ST_pu (Caller_node()->Func_ST())].eh_info);
     const INITO_IDX caller_spec = TCON_uval (INITV_tc_val (INITV_next (INITV_next (INITV_next (start)))));
     if (caller_spec)
     	blk = INITV_blk (INITO_val (caller_spec));
@@ -3692,7 +3692,7 @@ IPO_INLINE::Merge_EH_Typeinfo_Tables (void)
     vector<ST_IDX> callee_typeinfos, caller_typeinfos;
     INITV_IDX start, blk, last_blk=0;
     // callee side
-    INITO_IDX tmp = Pu_Table [ST_pu (Callee_node()->Func_ST())].unused;
+    INITO_IDX tmp = Pu_Table [ST_pu (Callee_node()->Func_ST())].eh_info;
     if (tmp)
     	start = INITO_val (tmp);
     else
@@ -3713,7 +3713,7 @@ IPO_INLINE::Merge_EH_Typeinfo_Tables (void)
     // caller side
     // change tables temporarily
     Set_Tables (Caller_node());
-    start = INITO_val (Pu_Table [ST_pu (Caller_node()->Func_ST())].unused);
+    start = INITO_val (Pu_Table [ST_pu (Caller_node()->Func_ST())].eh_info);
     INITO_IDX caller_ttable = TCON_uval (INITV_tc_val (INITV_next (INITV_next (start))));
     if (caller_ttable) blk = INITO_val (caller_ttable);
     else blk = 0;

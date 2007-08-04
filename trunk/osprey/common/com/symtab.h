@@ -251,6 +251,7 @@ PU_Init (PU& pu, TY_IDX prototype, SYMTAB_IDX level)
     pu.lexical_level = level;
     pu.gp_group = 0;
     pu.src_lang = PU_UNKNOWN_LANG;
+    pu.eh_info = 0;
     pu.unused = 0;
     pu.flags = 0;
 }

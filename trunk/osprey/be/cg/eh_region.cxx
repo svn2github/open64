@@ -1012,7 +1012,7 @@ Convert_TF_Map_To_FT_Map(TF_MAP& src, FT_MAP& dst)
 static INITV_IDX
 Get_TF_Map_and_EH_Spec_List(PU& pu, TF_MAP& tfmap)
 {
-  INITO_IDX ino_idx = pu.unused;
+  INITO_IDX ino_idx = pu.eh_info;
   tfmap.clear();
 
   if (ino_idx == INITO_IDX_ZERO) {
@@ -1081,7 +1081,7 @@ struct sort_on_filter : public binary_function<type_filter_entry,
 static INITO*
 Create_Type_Filter_Map (void)
 {
-  INITV_IDX i = INITV_next (INITV_next (INITO_val (Get_Current_PU().unused)));
+  INITV_IDX i = INITV_next (INITV_next (INITO_val (Get_Current_PU().eh_info)));
   INITO* ino;
   INITO_IDX idx = TCON_uval (INITV_tc_val(i));
   if (idx)	// idx for typeinfo_table
@@ -1278,9 +1278,9 @@ EH_Print_Range_List (void)
 void
 Print_PU_EH_Entry(PU& pu, ST* pu_st, FILE* fp)
 {
-  INITO_IDX ino_idx = pu.unused;
+  INITO_IDX ino_idx = pu.eh_info;
   /*
-   *    .unused (INITO) = <etable (ST), exc_ptr_iv (INITV)>
+   *    .eh_info (INITO) = <etable (ST), exc_ptr_iv (INITV)>
    *			--> exc_ptr_iv(__Exc_Ptr__)			(ST_IDX)
    *			--> filter_iv (___Exc_Filter__)			(ST_IDX)
    *			--> tinfo (type filter entry, 0 if none)	(INITO_IDX)
@@ -1484,7 +1484,7 @@ bool pu_need_LSDA;
  */
 
 // check whether need not to create INITO for LSDA
-// Another way: check if exception type info stored in INITO pu.unused is NULL/ZERO
+// Another way: check if exception type info stored in INITO pu.eh_info is NULL/ZERO
 bool
 PU_Need_Not_Create_LSDA ()
 {

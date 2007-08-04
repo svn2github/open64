@@ -689,12 +689,11 @@ struct PU
 					// information
 
     TY_IDX prototype;			// function prototype
-    SYMTAB_IDX lexical_level;		// lexical level (of nested proc).
+    SYMTAB_IDX lexical_level;		// lexical level (of nested proc). 8-bits
     mUINT8 gp_group;			// gp_group id
     mUINT8 src_lang;			// source language
-// TODO:  can put flags in 40-bit unused field and remove 64-bit flag field.
-// TODO:  do this when can make incompatible change.
-    mUINT64 unused : 40;		// for alignment for flags
+    mUINT32 eh_info;		        // store the EH related TYPE/TYPE_SPEC info
+    mUINT64 unused  : 8;		// for alignment 
     mUINT64 flags;			// misc. attributes about this func.
 
     // operations

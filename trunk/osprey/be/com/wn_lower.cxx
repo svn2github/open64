@@ -12819,7 +12819,7 @@ static WN *lower_landing_pad_entry(WN *tree)
   WN * block = WN_CreateBlock();
   WN_INSERT_BlockAfter (block, NULL, tree);
 
-  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
+  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
   ST exc_ptr_st = St_Table[exc_ptr_param];
   // Store rax into exc_ptr variable
 #ifdef TARG_X8664
@@ -12834,7 +12834,7 @@ static WN *lower_landing_pad_entry(WN *tree)
   WN *exc_ptr_stid = WN_Stid (Pointer_Mtype, 0, &exc_ptr_st, 
 			ST_type(exc_ptr_st), exc_ptr_rax);
 
-  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().unused))));
+  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().eh_info))));
   ST filter_st = St_Table[filter_param];
   // Store rdx into filter variable
 #ifdef TARG_X8664

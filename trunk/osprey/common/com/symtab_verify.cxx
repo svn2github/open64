@@ -1010,11 +1010,11 @@ void PU::Verify(UINT) const
 	   ("Invalid TY_IDX in PU::prototype"));
 
 #ifdef KEY
-// We are using 'unused' to store ST_IDXs of 2 special variables for
+// We are using 'eh_info' to store ST_IDXs of 2 special variables for
 // C++ exception handling.
   if (!(src_lang & PU_CXX_LANG))
 #endif // !KEY
-  Is_True (unused == 0, ("unused fields must be zero"));
+  Is_True (eh_info == 0, ("eh_info fields must be zero"));
 
   // Verify flags
   static char msg[] = "Invalid PU flags: (%s)";
