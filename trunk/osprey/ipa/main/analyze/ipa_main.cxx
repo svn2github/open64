@@ -332,21 +332,6 @@ Perform_Interprocedural_Analysis ()
         }
 
 #ifdef KEY
-	if( IPA_Enable_Icall_Opt ){
-	  if( has_nested_pu ){
-	    Build_Nested_Pu_Relations();
-	    if (Verbose) {
-		fprintf (stderr, "Building Nested PU Relations...");
-		fflush (stderr);
-	    }
-	    has_nested_pu = FALSE;
-	  }
-
-	  IPA_Convert_Icalls( IPA_Call_Graph );
-	}
-#endif // KEY
-
-#ifdef KEY
         {
           IPA_NODE_ITER cg_iter(IPA_Call_Graph, POSTORDER);
 	  // Traverse the call graph and mark C++ nodes as PU_Can_Throw

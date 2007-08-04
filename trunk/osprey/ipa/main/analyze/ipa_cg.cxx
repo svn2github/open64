@@ -766,22 +766,6 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 #endif
 
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    // Fix summary information in node only once, i.e. for pu_reorder=2
-    // in the first pass.
-    if (ipa_node && (PU_src_lang (ipa_node->Get_PU()) & PU_CXX_LANG) &&
-        IPA_Call_Graph_Tmp == NULL)
-    {
-      IPA_NODE_CONTEXT context (ipa_node);   // get node context
-      IPA_update_ehinfo_in_pu (ipa_node);
-    }
-
-    if (ipa_node && PU_has_mp (ipa_node->Get_PU ()) &&
-        IPA_Call_Graph_Tmp == NULL)
-    {
-      IPA_NODE_CONTEXT context (ipa_node);   // get node context
-      IPA_update_pragma_in_pu (ipa_node);
-    }
-
     // bug 4880
     // If lang of main pu is C++, -IPA:pu_reorder defaults to 1 w/ feedback
     if (!IPA_Enable_PU_Reorder_Set && Annotation_Filename &&
