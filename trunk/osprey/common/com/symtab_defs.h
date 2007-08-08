@@ -689,7 +689,7 @@ struct PU
 					// information
 
     TY_IDX prototype;			// function prototype
-    INITO_idx eh_info;		        // store the EH related TYPE/TYPE_SPEC info. 32bits
+    INITO_IDX eh_info;		        // store the EH related TYPE/TYPE_SPEC info. 32bits
     SYMTAB_IDX lexical_level;		// lexical level (of nested proc). 8-bits
     mUINT8 gp_group;			// gp_group id
     mUINT8 src_lang;			// source language
