@@ -50,6 +50,7 @@ extern "C"{
 #include "wgen_decl.h"
 #include "wgen_expr.h"
 #include "wgen_stmt.h"
+#include "wgen_tracing.h"
 
 #define BITS_PER_UNIT 8
 
@@ -1029,6 +1030,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
     WGEN_Set_ST_Addr_Saved (rhs_wn);
   }
 
+  TRACE_EXPAND_GS(lhs);
   switch (code) {
   case GS_COMPONENT_REF:
     {
@@ -3515,6 +3517,7 @@ WGEN_Expand_Expr (gs_t exp,
 
   wn = NULL;
 
+  TRACE_EXPAND_GS(exp);
   switch(code)
   {
     // leaves

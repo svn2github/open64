@@ -160,7 +160,8 @@ FE_CXX_SRCS =           \
     wgen_stmt.cxx       \
     wgen_decl.cxx       \
     wgen_dst.cxx        \
-    wgen_spin_symbol.cxx
+    wgen_spin_symbol.cxx \
+    wgen_tracing.cxx
 #   omp_directive.cxx     \
 #   rt_symtab.cxx         \
 #   tree_symtab.cxx       \

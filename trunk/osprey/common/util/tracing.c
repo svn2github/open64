@@ -160,6 +160,7 @@ static PDESC Phases[] = {
 
   /* Front end phases: */
   { TP_SEMANTICS,	"SEM",	"Semantic analyzer" },
+  { TP_WGEN,		"WGN",	"WGEN GIMPLE to WHIRL bridge" },
   { TP_IRB,		"IRB",	"IR (WHIRL) builder" },
 
   /* Intermediate/utility phases: */

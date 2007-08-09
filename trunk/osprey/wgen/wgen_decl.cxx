@@ -74,6 +74,7 @@ extern "C" {
 #include "wgen_spin_symbol.h"
 #include "wgen_expr.h"
 #include "wgen_stmt.h"
+#include "wgen_tracing.h"
 //#include "tree_cmp.h"
 #include "wgen_dst.h" // DST_enter_member_function
 #include "dwarf_DST_dump.h"
@@ -371,6 +372,7 @@ WGEN_Expand_Function_Body (gs_t decl)
 
   expanded_decl(decl) = TRUE;
 
+  TRACE_EXPAND_GS(decl);
   (void) WGEN_Start_Function(decl);
   Set_Current_Function_Decl(decl);
 
@@ -661,6 +663,7 @@ static void process_local_classes()
 
 void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
 {
+  //  TRACE_EXPAND_GS(decl);
   Is_True(decl != NULL && gs_tree_code_class(decl) == GS_TCC_DECLARATION,
           ("Argument to WGEN_Expand_Decl isn't a decl node"));
 /*

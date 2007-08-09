@@ -125,6 +125,9 @@ Process_Command_Line(INT argc, char **argv)
 		Process_Command_Line_Group (cp-1, Common_Option_Groups);
 	      break;
 	    
+          case 't':
+              Process_Trace_Option(cp-2);
+              break;
 	  case 'v':
 	      Show_Progress = TRUE;
 	      break;

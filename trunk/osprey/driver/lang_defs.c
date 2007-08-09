@@ -135,7 +135,7 @@ static phase_info_t phase_info[] = {
 #ifdef KEY
    {'f',  0x0000000000400000LL, "cc1"   ,PHASEPATH, TRUE , FALSE}, /* spin_cc1  */
    {'f',  0x0000000000800000LL, "cc1plus",PHASEPATH,    TRUE , FALSE}, /* spin_cc1plus */
-   {'f',  0x0000000001000000LL, "wgen",PHASEPATH,   TRUE , FALSE}, /* wgen      */
+   {'w',  0x0000000001000000LL, "wgen",PHASEPATH,   TRUE , FALSE}, /* wgen      */
 #endif
    /* place-holder for generic fe, whose mask unites all fe's; */
    /* this is so -Wf will apply to whatever fe is being invoked. */

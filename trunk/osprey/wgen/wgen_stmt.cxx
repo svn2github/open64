@@ -46,6 +46,7 @@ extern "C"{
 #include "wgen_stmt.h"
 #include "wgen_decl.h"
 #include "wgen_spin_symbol.h"
+#include "wgen_tracing.h"
 #include "targ_sim.h"
 #include <ctype.h>
 //#include "tree_cmp.h"
@@ -1874,6 +1875,7 @@ WGEN_Expand_Loop (gs_t stmt)
   WN * loop_block;
   WN * loop_body;
 
+  TRACE_EXPAND_GS(stmt);
   WGEN_Record_Loop_Switch (gs_tree_code(stmt));
 
   switch (gs_tree_code(stmt)) {
@@ -3904,6 +3906,7 @@ WGEN_Expand_DO (gs_t stmt)
 void
 WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
 {
+    TRACE_EXPAND_GS(stmt);
     if (gs_tree_code(stmt) == GS_LABEL_DECL)
       lineno = gs_decl_source_line(stmt);
     else
