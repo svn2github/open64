@@ -57,7 +57,9 @@ WN* WGEN_Trace_wn(WN *wn)
 {
   if (Get_Trace(TKIND_IR, TP_WGEN)) {
     print_indent(TFile);
-    fprintf(TFile, "+++ (0x%08x) ", (unsigned int) wn);
+    const char * fmt_str = (sizeof(INTPTR) == 8) ? 
+                            "+++ (0x%016x) " : "+++ (0x%08x) ";
+    fprintf(TFile, fmt_str, (INTPTR) wn);
     fdump_wn(TFile, wn);
   }
   return wn;
