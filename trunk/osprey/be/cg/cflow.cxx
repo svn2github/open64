@@ -7554,8 +7554,11 @@ CFLOW_Delete_Empty_BB(void)
 	 // BB with EH Range labels can not be removed, even
 	 // though its length is 0 and it has no succ,
 	 // coz these labels are required by LSDA construction.
-         if (BB_Has_Exc_Label(bp))
-	   continue;
+	 // bug fix for OSP_350
+         if (BB_Has_Exc_Label(bp)
+		|| BB_Has_Addr_Taken_Label(bp)
+		|| BB_Has_Outer_Block_Label(bp))
+	   		continue;
 
 	 // Be caution to the empty GOTO BB bp, if BB_next(bp) == NULL;
 	 // In this situation, we can remove it only when none of it's
