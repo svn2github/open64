@@ -360,18 +360,14 @@ parse_Xlinker_option (char **argv, int *argi)
 	if (!strcmp(argv[*argi], "-Xlinker"))
 	{
 		/* -Xlinker */
-		int flag;
 		get_next_arg(argi);
-		warning("%s is no longer supported, use %s instead",
-			option_name, "-Wl,");
 		if (argv[*argi] == NULL) {
 		  parse_error(option_name, "no argument given for option");
 		  return add_new_option(option_name);
 		}
-		flag = add_derived_option(O_Xlinker__, argv[*argi]);
-		add_phase_for_option(flag, P_any_ld);
+		optargs = argv[*argi];
 		get_next_arg(argi);
-		return flag;
+		return add_string_option(O_WlC, optargs);
 	} else {
        		get_next_arg(argi);
 		return O_Unrecognized;
