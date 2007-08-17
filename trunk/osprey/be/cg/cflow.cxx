@@ -836,7 +836,15 @@ Delete_BB_Contents(BB *bp)
   /* Delete all OPs from BB.
    */
   BB_Remove_All(bp);
-
+#ifdef TARG_IA64
+  if (IPFEC_Enable_Region_Formation && RGN_Formed ) {
+    /* If the region has been formed,must also delete the node from
+     * region.
+     */
+    RGN_Unlink_BB_Edges(bp, Home_Region(bp)->Regional_Cfg());
+  
+  }else{ 
+#endif
   /* Remove successor edges.
    */
   FOR_ALL_BB_SUCCS(bp, edge) {
@@ -852,7 +860,9 @@ Delete_BB_Contents(BB *bp)
     BBlist_Delete_BB(&BB_succs(pred), bp);
   }
   BBlist_Free(&BB_preds(bp));
-
+#ifdef TARG_IA64
+  }
+#endif
   Set_BBINFO_kind(bp, BBKIND_GOTO);
   Set_BBINFO_nsuccs(bp, 0);
 }

@@ -642,18 +642,29 @@ Generate_Entry (BB *bb, BOOL gra_run )
       // accessible as 4(%ebp), but it is never in a register.  Nor
       // does it need to be saved.
       ST *ra_sv_sym = Find_Special_Return_Address_Symbol();
-      TN *ra_sv_tn = Build_TN_Like(RA_TN);
-      Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
-      Set_TN_spill(ra_sv_tn, ra_sv_sym);
-      Exp_COPY (ra_sv_tn, RA_TN, &ops);
-      if (MTYPE_byte_size(Pointer_Mtype) < MTYPE_byte_size(Spill_Int_Mtype) ) {
-	/* In n32 the __return_address is 4 bytes (pointer),
-	 * but we need 8-byte save/restore to make kernel and dbx happy.
-	 * So use dummy 8-byte base that was created. */
-	ra_sv_sym = ST_base(ra_sv_sym);		/* use 8-byte block */
-	Set_TN_spill(ra_sv_tn, ra_sv_sym);	/* so dwarf uses new addr */
+      // bug fix for OSP_357
+      // When gra is enabled, we build this instruction:
+      //       branch_reg1 (save register) copy.br branch_reg
+      // just like the floating point/integer registers
+      // GRA honors the save register property, and tries to allocate branch_reg1 to branch_reg
+      // If it fails, then branch_reg would be spilled, and this instruction will be deleted
+      // However, LRA does not honor this and we prefer to directly spill this branch register
+      if ( gra_run ) {
+          TN *ra_sv_tn = Build_TN_Like(RA_TN);
+          Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
+          Set_TN_spill(ra_sv_tn, ra_sv_sym);
+          Exp_COPY (ra_sv_tn, RA_TN, &ops);
+          if (MTYPE_byte_size(Pointer_Mtype) < MTYPE_byte_size(Spill_Int_Mtype) ) {
+	    /* In n32 the __return_address is 4 bytes (pointer),
+	     * but we need 8-byte save/restore to make kernel and dbx happy.
+	     * So use dummy 8-byte base that was created. */
+	    ra_sv_sym = ST_base(ra_sv_sym);		/* use 8-byte block */
+	    Set_TN_spill(ra_sv_tn, ra_sv_sym);	/* so dwarf uses new addr */
+          }
+          CGSPILL_Store_To_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb);
+      } else {
+          CGSPILL_Store_To_Memory ( RA_TN, ra_sv_sym, &ops, CGSPILL_LCL, bb );
       }
-      CGSPILL_Store_To_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb);
     }
 #ifdef TARG_IA64
     else if (PU_Has_Calls || IPFEC_Enable_Edge_Profile){

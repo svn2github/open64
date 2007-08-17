@@ -162,6 +162,8 @@ extern BB *RGN_Gen_And_Insert_BB_Before(BB *point,
  
 extern void RGN_Remove_BB_And_Edges(BB *bb, 
                   REGIONAL_CFG *regional_cfg = NULL);
+extern void RGN_Unlink_BB_Edges(BB *bb,
+                  REGIONAL_CFG *regional_cfg = NULL);
 
 extern void Add_Regional_Cfg_Edge(REGIONAL_CFG_NODE *pred, 
                                   REGIONAL_CFG_NODE *succ, 
