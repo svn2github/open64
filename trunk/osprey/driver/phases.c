@@ -1721,7 +1721,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	//	add_library(args, "m" PSC_NAME_PREFIX);
 		add_library(args, "m");
 		add_library(args, "ffio");
-		add_library(args, "msgi");
+	//	add_library(args, "msgi");
 	    }
 #ifdef KEY
 	    if (option_was_seen(O_mp) ||
