@@ -521,6 +521,9 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
   argv.push_back ("-o");
   argv.push_back (outpath);
   argv.push_back ("-c");
+
+  if (ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag)
+    argv.push_back ("-keep");
     
 } // get_command_line
 
@@ -574,11 +577,12 @@ ipacom_process_symtab (char* symtab_file)
             && strlen((*command_map)["cc"]) != 0,
           ("Full pathname for cc not set up"));
 
-  sprintf(buf, "%s -c %s %s -o %s -TENV:emit_global_data=%s %s",
+  sprintf(buf, "%s -c %s %s -o %s %s -TENV:emit_global_data=%s %s",
             (*command_map)["cc"],
             abi(),
             input_symtab_name,
             elf_symtab_name,
+            ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag ? "-keep":"",
             whirl_symtab_name,
             IPA_Enable_AutoGnum?"-Gspace 0":"");
 

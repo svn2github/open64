@@ -155,7 +155,7 @@
 	"print list of possible options that contain given string"
 %
 
--show	{show_flag = TRUE; }	ALL	GRP	self
+-show	{show_flag = TRUE; }	ALL	GRP,j	self
 	"show phases as they are being invoked"
 -show1	{show_flag = TRUE; }	ALL	NONE	""
 	""
