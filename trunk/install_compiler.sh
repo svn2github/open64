@@ -248,11 +248,26 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
     # is it necessary?
-    for i in libgcc.a libstdc++.a libstdc++.so; do 
-        F=`gcc --print-file-name $i`
-        [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
-    done
-
+    if [ "$ARCH" = "ia64" ] ; then
+        for i in libgcc.a libstdc++.a libstdc++.so; do 
+            F=`gcc --print-file-name $i`
+            [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
+        done
+    fi
+    if [ "$ARCH" = "i386" ] ; then
+        for i in libgcc.a libstdc++.a libstdc++.so; do
+	    F=`gcc --print-file-name $i`
+	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
+	done
+    fi
+    if [ "$ARCH" = "x86_64" ] ; then
+        for i in libgcc.a libstdc++.a libstdc++.so; do
+	    F=`gcc -m32 --print-file-name $i`
+	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
+	    F=`gcc -m64 --print-file-name $i`
+	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
+	done
+    fi
     return 0
 }
 
@@ -287,11 +302,26 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 
 INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
 
-    for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do 
-      f=`gcc --print-file-name=$i`
-      [ "x$f" != "x" ] && [ -e $f ] && 
-        INSTALL_DATA_SUB $f ${PHASEPATH}/$i
-    done
+    if [ "$ARCH" = "ia64" ] ; then
+        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do 
+            f=`gcc --print-file-name=$i`
+            [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/$i
+        done
+    fi
+    if [ "$ARCH" = "i386" ] ; then
+        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
+	    f=`gcc --print-file-name=$i`
+	    [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
+	done
+    fi
+    if [ "$ARCH" = "x86_64" ] ; then
+        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
+	    f=`gcc -m32 --print-file-name=$i`
+	    [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
+            f=`gcc -m64 --print-file-name=$i`
+	    [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/$i
+	done
+    fi
     return 0
 }
 
