@@ -452,6 +452,7 @@ static void Config_Ipfec_Flags() {
   IPFEC_Enable_Region_Formation = IPFEC_Enable_Region_Formation && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
   IPFEC_Enable_If_Conversion = IPFEC_Enable_If_Conversion && CG_Enable_Ipfec_Phases;
   IPFEC_Force_If_Conv = IPFEC_Force_If_Conv && CG_Enable_Ipfec_Phases;
+  IPFEC_Relaxed_If_Conv = IPFEC_Relaxed_If_Conv && CG_Enable_Ipfec_Phases;
   IPFEC_Force_Para_Comp_Gen = IPFEC_Force_Para_Comp_Gen && CG_Enable_Ipfec_Phases;
   IPFEC_Para_Comp_Gen = IPFEC_Para_Comp_Gen && CG_Enable_Ipfec_Phases;
   IPFEC_Disable_Merge_BB = IPFEC_Disable_Merge_BB && CG_Enable_Ipfec_Phases;

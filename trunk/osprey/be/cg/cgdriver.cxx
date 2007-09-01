@@ -113,6 +113,7 @@
 #include "cg_gcov.h"
 #include "flags.h"
 #endif
+#include "cg_swp.h"
 
 extern void Set_File_In_Printsrc(char *);	/* defined in printsrc.c */
 
@@ -243,7 +244,14 @@ static OPTION_DESC Options_CG_SWP[] = {
     0, 0, INT32_MAX,  &SWP_Options.FB_Prob2, NULL },
   { OVK_INT32,  OV_INTERNAL,    TRUE, "fb_freq", "", 
     0, 0, INT32_MAX,  &SWP_Options.FB_Freq, NULL },
-#endif  
+#endif 
+#ifdef SWP_USE_STL
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "ops_limit", NULL,
+    SWP_OPS_LIMIT, 0, INT32_MAX,  &SWP_Options.OPS_Limit, NULL },
+#else
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "ops_limit", NULL,
+    SWP_OPS_LIMIT, 0, SWP_OPS_LIMIT,  &SWP_Options.OPS_Limit, NULL },
+#endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };
 
@@ -1067,6 +1075,9 @@ static OPTION_DESC Options_IPFEC[] = {
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "force_if_conv", "", 
     0, 0, 0,    &ORC_Force_If_Conv, NULL, 
     "Use Ipfec if-convertor without profitablity consideration" },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "relaxed_if_conv", "",
+    0, 0, 0,    &ORC_Relaxed_If_Conv, NULL,
+    "Use Ipfec if-convertor with relaxed profability consideration" }, 
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "combine_exit", "", 
     0, 0, 0,    &ORC_Combine_Exit, NULL, 
     "Enable the combine exits with identical targets" },

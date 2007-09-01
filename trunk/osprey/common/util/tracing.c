@@ -205,6 +205,7 @@ static PDESC Phases[] = {
   { TP_PQS,		"PQS",	"Predicate query system" },
   { TP_CGPREP,		"PRP",	"Code generator scheduling prep" },
   { TP_CGLOOP,		"LOP",	"Code generator loop optimization" },
+  { TP_A_IFCONV, "IFC" "If Conversion" },
   { TP_SWPIPE,		"SWP",	"Software pipelining" },
   { TP_SRA,		"SRA",	"Software pipelining register allocation" },
   { TP_SCHED,		"SCH",	"Scheduling" },

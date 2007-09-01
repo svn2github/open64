@@ -351,7 +351,7 @@ SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace)
   if (op_count == 0) 
     return SWP_LOOP_EMPTY;     // don't bother to swp empty loops
 
-  if (total_op_count + SWP_OPS_OVERHEAD > SWP_OPS_LIMIT)
+  if (total_op_count + SWP_OPS_OVERHEAD > SWP_Options.OPS_Limit)
     return SWP_LOOP_LIMIT;
 
 #ifdef TARG_IA64
