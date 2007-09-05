@@ -4609,6 +4609,10 @@ IF_CONVERTOR::Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
       for (; area_iter != areas.end(); area_iter++) {
         head_area -> Combine_Blocks_With (*area_iter, &_m);
       }
+      // We can now delete all areas except the first one,
+      // because all the other areas have been merged into
+      // the first area
+      areas.erase (areas.begin()+1,areas.end());
       head_area -> Conv_Type(FULLY_IF_CONV);                                                     
     }
 
