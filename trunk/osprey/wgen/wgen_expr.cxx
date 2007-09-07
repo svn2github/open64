@@ -3704,6 +3704,17 @@ WGEN_Expand_Expr (gs_t exp,
 			      Get_Srcpos());
 	    }
 	  }
+          // OSP_397, if opnd 0 of TARGET_EXPR is an COMPONENT_REF
+          else if (gs_tree_code(t) == GS_AGGR_INIT_EXPR &&
+                   gs_tree_code(opnd0) == GS_COMPONENT_REF) {
+            WN *target_wn = WGEN_Address_Of(opnd0);
+            WN *result_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/, 
+                                              0, 0, 0, 0, FALSE, FALSE, target_wn);
+            /* We ignore the result_wn, for safety, place an assertion here */
+            FmtAssert(result_wn == NULL,
+                      ("result_wn should be NULL for the result is passed as param."));
+          }      
+
 	  // If the initializer returns the object in memory, then make sure
 	  // the type doesn't require a copy constructor, since such types
 	  // sometimes require one.
@@ -5160,6 +5171,25 @@ WGEN_Expand_Expr (gs_t exp,
 	    wn = WGEN_Expand_Expr(t);
 	    break;
 	  }
+          // OSP_397, initializing a class member having copy-constructor 
+          //          by the return value of a call. 
+          // Pathcc's fix is removing the upper gs_aggr_init_via_ctor_p of GS_AGGR_INIT_EXPR.
+          //   else if (gs_tree_code(initializer = gs_tree_operand(t,1)) == GS_AGGR_INIT_EXPR )
+          // From the testing result, we adopt the strict pattern match:
+          // +INIT_EXPR
+          // |  +COMPONENT_REF <this->m>
+          // +TARGET_EXPR
+          //    +VAR_DECL <tmp>
+          //    +AGGR_INIT_EXPR <=f();>
+          //    +CALL_EXPR <cleanup the tmp>
+          else if (code == GS_INIT_EXPR &&
+              gs_tree_code(gs_tree_operand(exp, 0)) == GS_COMPONENT_REF &&
+              gs_tree_code(t) == GS_TARGET_EXPR &&
+              gs_tree_code(gs_tree_operand(t, 1)) == GS_AGGR_INIT_EXPR ) {
+            gs_set_tree_operand(t, 0, gs_tree_operand(exp,0));
+            wn = WGEN_Expand_Expr(t);
+            break;
+          }
 #endif
 	  DevWarn ("INIT_EXPR/MODIFY_EXPR kid1 is TARGET_EXPR, kid0 is %s\n",
 		   gs_code_name(gs_tree_code(gs_tree_operand(exp, 0))));
