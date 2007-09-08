@@ -5970,7 +5970,7 @@ WGEN_Expand_Expr (gs_t exp,
                   wn = WN_Intconst (MTYPE_I4, 1);
 		  whirl_generated = TRUE; // KEY
 		}
-#ifdef KEY
+#ifdef KEY_bug1058
 // If not yet compile-time constant, let the backend decide if it is 
 // a constant
 		else
