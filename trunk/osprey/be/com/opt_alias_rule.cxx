@@ -324,6 +324,17 @@ ALIAS_KIND ALIAS_RULE::Aliased_Indirect_Rule
   return ALIAS_KIND(AR_POSSIBLE_ALIAS);
 }
 
+static BOOL
+LMV_may_alias (LMV_ALIAS_GROUP a1, LMV_ALIAS_GROUP a2) {
+  UINT loop1 = a1 & 0xffff0000;
+  UINT loop2 = a2 & 0xffff0000;
+  if (loop1 != loop2 || !loop1) return TRUE;
+
+  UINT grp1 = a1 & 0xffff;
+  UINT grp2 = a2 & 0xffff;
+  return grp1 == grp2;
+}
+
 //  Implement A.6.3 and A.6.4. (See opt_alias_rule.h.)
 //    TRUE:  may be aliased
 //    FALSE: not aliased
@@ -367,6 +378,16 @@ BOOL ALIAS_RULE::Aliased_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *
       mem2->Based_sym() != mem1->Based_sym() &&
       !mem1->Default_vsym())
        return FALSE;
+
+  // The alias-group, a term conined and set by loop-multiversioning,  
+  // can be employed to disambiguate alias.
+
+  LMV_ALIAS_GROUP ag1, ag2;
+  if ((ag1 = mem1->LMV_alias_group ()) &&  
+      (ag2 = mem2->LMV_alias_group()) &&
+      !LMV_may_alias (ag1, ag2)) {
+    return FALSE;
+  }
 
   return TRUE;
 }

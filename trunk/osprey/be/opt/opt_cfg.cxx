@@ -859,6 +859,23 @@ CFG::Create_blank_loop_info( BB_NODE *body_bb )
   body_bb->Set_label_loop_info(loop_info);
 }
 
+// There will be lot of troubles if the preheader is not "dedicated",
+// meaning the preheader is intermingled with the statements of the 
+// loop and other statements.
+//
+// This is especially true for loop multiversioning which duplicate 
+// not only loop body but also the preheader. The purpose of dup 
+// preheader is simply to make emiter happy: it will give up converting 
+// a while-loop into do-loop if the the init statement of the IV is not 
+// the last one of the preheader.
+// 
+void
+CFG::Create_empty_preheader (void) {
+  if (_current_bb->Firststmt() != NULL) {
+    New_bb (TRUE/*connect*/);
+  }
+}
+
 // ====================================================================
 // fully lower DO_LOOP statements
 // ====================================================================
@@ -2500,6 +2517,7 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
     break;
 
   case OPR_DO_LOOP:
+    Create_empty_preheader ();
     if (Lower_fully())
       Lower_do_loop( wn, ends_bb );
     else
@@ -2507,6 +2525,7 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
     break;
 
   case OPR_WHILE_DO:
+    Create_empty_preheader ();
     if (Lower_fully()) {
       Lower_while_do( wn, ends_bb );
     }
@@ -2516,6 +2535,7 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
     break;
 
   case OPR_DO_WHILE:
+    Create_empty_preheader ();
     if (Lower_fully())
       Lower_do_while( wn, ends_bb );
     else

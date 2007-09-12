@@ -313,7 +313,8 @@ BOOL WOPT_Enable_Subword_Opt = TRUE; // whether to replace 1- or 2-byte-sized
 BOOL WOPT_Enable_New_Vsym_Allocation = FALSE;
 #endif
 BOOL  WOPT_Enable_WOVP = TRUE; // For running write-once variable promotion
-
+BOOL WOPT_Enable_Loop_Multiver = FALSE; // For loop multiversioning
+
 /* ====================================================================
  *
  * Descriptor for the -WOPT option group.
@@ -725,5 +726,7 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,   &WOPT_Enable_Aggr_Pt_Keep_Track_Ptr, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "pt_summary",   NULL, 
     0, 0, 0,   &WOPT_Enable_Pt_Summary, NULL },
+  { OVK_BOOL,  OV_INTERNAL,    TRUE, "loop_multiver",   NULL, 
+    0, 0, 0,   &WOPT_Enable_Loop_Multiver, NULL },
   { OVK_COUNT }		/* List terminator -- must be last */
 };

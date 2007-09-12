@@ -352,6 +352,7 @@
 #include "xstats.h"                     // For PU_WN_BB_Cnt
 #include "opt_wovp.h"     // for write once variable promotion
 #include "opt_misc.h"
+#include "opt_lmv.h"
 
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
@@ -512,7 +513,7 @@ private:
   BOOL  _lpre_before_ivr; // For running lpre early
   BOOL  _spre_before_ivr; // For running spre early
   BOOL  _bdce_before_ivr; // For running bdce early
-
+  BOOL  _loop_multiver;   // loop multiversioning 
 
   WOPT_SWITCHES(const WOPT_SWITCHES&);
   WOPT_SWITCHES& operator = (const WOPT_SWITCHES&);
@@ -669,6 +670,8 @@ private:
       WOPT_Enable_Spre_Before_Ivr = FALSE; // For running spre early
       WOPT_Enable_Bdce_Before_Ivr = FALSE; // For running bdce early
     }
+    
+    if (_phase != PREOPT_LNO_PHASE) WOPT_Enable_Loop_Multiver = FALSE;
   }
 
   void Unadjust_Optimization(void) {
@@ -759,6 +762,7 @@ private:
     WOPT_Enable_Bdce_Before_Ivr = _bdce_before_ivr; // For running bdce early
 
     Alias_Pointer_Parms = _alias_pointer_parms;
+    WOPT_Enable_Loop_Multiver = _loop_multiver;
   }
 
 public:
@@ -833,6 +837,7 @@ public:
     _lpre_before_ivr = WOPT_Enable_Lpre_Before_Ivr; // For running lpre early
     _spre_before_ivr = WOPT_Enable_Spre_Before_Ivr; // For running spre early
     _bdce_before_ivr = WOPT_Enable_Bdce_Before_Ivr; // For running bdce early
+    _loop_multiver = WOPT_Enable_Loop_Multiver;
 
     Adjust_Optimization();
   }
@@ -1826,6 +1831,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
   } /* if ( phase == MAINOPT_PHASE ) */
   else { 
+    if (WOPT_Enable_Loop_Multiver) {
+      LOOP_MULTIVER lm (comp_unit);
+      lm.Perform_loop_multiversioning ();
+    }
+
     SET_OPT_PHASE("Emitter");
 
     if ( comp_unit->Cfg()->Feedback() )

@@ -876,6 +876,8 @@ SSA::Create_CODEMAP(void)
 	      DBar, DBar );
       _htable->Print(TFile);
       _cfg->Print(TFile);
+      if (_opt_stab->Cr_sr_annot_mgr ())
+        _opt_stab->Cr_sr_annot_mgr()->Print (TFile);
     }
   
     Opt_tlog( "CODEMAP", 0, "%d iloadfolds, %d istorefolds",
@@ -889,6 +891,10 @@ SSA::Create_CODEMAP(void)
   OPT_POOL_Pop(loc_pool, SSA_DUMP_FLAG);
 
   _htable->Init_var_phi_hash();
+  
+  // Clear WN annotation map lest we accidently use it in preopt/wopt.
+  if (WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()) 
+    WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Invalidate ();
 }
 
 // ====================================================================

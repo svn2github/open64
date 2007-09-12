@@ -135,6 +135,8 @@
 #include "output_func_start_profiler.h"
 #endif
 
+#include "be_memop_annot.h"
+
 extern ERROR_DESC EDESC_BE[], EDESC_CG[];
 
 #ifdef KEY
@@ -1369,6 +1371,9 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 #endif
         WB_LWR_Terminate();
     }
+
+    // annotation map should be constructed before LNO
+    WN_MEMOP_ANNOT_MGR_Constructor mem_annot_mgr;
 
     /* Add instrumentation here for lno. */
     if( Instrumentation_Enabled

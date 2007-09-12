@@ -410,7 +410,8 @@ BE_COM_CXX_SRCS = \
   weak.cxx		\
   output_func_start_profiler.cxx        \
   wn_instrument.cxx \
-  tls.cxx
+  tls.cxx               \
+  be_memop_annot.cxx
 
 BE_COM_PCH_CXX_SRCS = \
   be_symtab.cxx		\

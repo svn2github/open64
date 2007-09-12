@@ -192,6 +192,7 @@ Is_fortran(void)
 #define CFG_OPT_FLAG           0x10 /* trace CFG optimzation */
 #define WOVP_DUMP_FLAG         0x20 /* dump after write-once variable promotion*/
 #define PT_SUMMARY_FLAG        0x40 /* trace the points-to summary */    
+#define LOOP_MULTVER_FLAG      0x80 /* Loop multiversioning */ 
 
 /* Flags associated with value numbering scheme and the 
  * WOPT_Enable_Value_Numbering option.

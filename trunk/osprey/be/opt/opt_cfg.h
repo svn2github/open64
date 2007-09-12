@@ -154,6 +154,7 @@ class EXC;
 class MOD_PHI_BB_CONTAINER;
 class OPT_STAB;
 class OPT_TAIL;
+class LMV_CFG_ADAPTOR; 
 
 class CFG {
 friend class EXITBB_ITER;
@@ -312,6 +313,7 @@ private:
     END_FALLTHRU,	// ends block, and falls-through to next block
     END_BREAK,		// ends block, does not fall-through
   };
+  void         Create_empty_preheader (void); 
   // lower various high-level construct statements to CFG so they are
   // valid (just as if lowerer had handled them)
   void         Lower_do_loop(WN *wn, END_BLOCK *ends_bb );
@@ -365,6 +367,17 @@ private:
   void         Screen_out_false_loopnest(BB_LOOP *loop, BB_LOOP *sibling);
 
   void         Ident_mp_regions(void);
+
+  // functions about loop multiversioning 
+  BB_NODE*     LMV_clone_block (const BB_NODE* src, LMV_CFG_ADAPTOR*);
+  BB_NODE*     LMV_create_alike_block (BB_KIND kind, BB_NODE* model);
+  void         LMV_clone_pred_succ_relationship (LMV_CFG_ADAPTOR*); 
+  void         LMV_clone_loop_body (LMV_CFG_ADAPTOR*); 
+  void         LMV_update_internal_labels (LMV_CFG_ADAPTOR*);
+  BB_LOOP*     LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR*);
+  void         LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR*);
+  void         LMV_clone_BB_IFINFO (LMV_CFG_ADAPTOR* );
+
 
   // From here on, all are public access functions
 public:
@@ -620,6 +633,10 @@ public:
 			  _bb_vec[bb->Id()] = bb;
 			  return bb;
 			}
+
+  // code generation for loop multiversioning.
+  BOOL         LMV_eligible_for_multiversioning (const BB_LOOP*, BOOL);
+  void         LMV_clone_loop (LMV_CFG_ADAPTOR*);
 
 };
 

@@ -1564,6 +1564,18 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
 	  Opt_stab()->Last_preg(),
 	  ("EMITTER:Emit, incorrect last preg number"));
 
+  {
+    BOOL tr = _trace || Get_Trace (TP_GLOBOPT, ALIAS_DUMP_FLAG);
+    if (Opt_stab()->Phase() == PREOPT_LNO_PHASE) {
+      Opt_stab()->Cr_sr_annot_mgr()->Export_annot 
+                     (_opt_func, alias_mgr, FALSE, tr);
+    } else {
+      Opt_stab()->Cr_sr_annot_mgr()->Discard_offline_annot 
+                     (_opt_func, alias_mgr, tr);
+    }
+    WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Set_active_mgr();  
+  }
+
   Verify(_opt_func);
   
   if (_trace)  {

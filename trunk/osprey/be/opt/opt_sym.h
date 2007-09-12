@@ -141,6 +141,7 @@ class VER_STAB_LIST_NODE;
 class EXP_WORKLST;
 class EXP_OCCURS;
 class ALIAS_CLASSIFICATION;	// so we don't depend on opt_alias_class.h
+class MEMOP_ANNOT_CR_SR_MGR;
 
 #define VER_STAB_ARRAY_TYPE  SEGMENTED_ARRAY<VER_STAB_ENTRY,128>
 
@@ -925,6 +926,7 @@ private:
   //     aux id to alias class
   //     WN     to alias class
   ALIAS_CLASSIFICATION     *_alias_classification;
+  MEMOP_ANNOT_CR_SR_MGR    * _cr_sr_annot_mgr;
 
   INT32                     _const_found;  // tlog counter
 
@@ -1378,6 +1380,9 @@ public:
     { _alias_classification = &ac; }
   ALIAS_CLASSIFICATION     *Alias_classification(void) const
     { return _alias_classification; }
+
+  MEMOP_ANNOT_CR_SR_MGR* Cr_sr_annot_mgr (void) const { return _cr_sr_annot_mgr;} 
+
   void     Incorporate_alias_class_info(void);
 
   // convert EH region pragma block from aux_ids to STs and offsets

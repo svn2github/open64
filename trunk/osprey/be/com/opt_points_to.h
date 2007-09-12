@@ -49,7 +49,7 @@
 #include "wn.h"
 #include "config_wopt.h"	// for WOPT_Alias_Class_Limit,
 				//     WOPT_Ip_Alias_Class_Limit
-
+#include "be_memop_annot.h"
 
 typedef struct bs BS;
 
@@ -268,7 +268,7 @@ friend class POINTS_TO;
 				   // gives the bit ofst/size within the
 				   // container 
   mUINT32	_iofst_kind :2;    // one of OFST_KIND. the kind of "offset" from _ptr. 
-  // the selector of the following union <u>
+  // the selector of union <u>
   mUINT32       _ptr_is_pointer:1;
   mUINT32       _ptr_is_aux_id :1;
   mUINT32       _ptr_is_coderep_id:1;
@@ -291,27 +291,6 @@ friend class POINTS_TO;
 				   // memop is in, according to
 				   // whole-program analysis
 
-  // This union is used to interpret the value hold by <misc> union. Only one of the 
-  // flags is allowed to be set. <_switch> is provided to reset all flags. 
-  union {
-    mINT32 _switch;                
-    mINT32 _has_malloc_id:1;    
-  };
-
-  union {
-    mUINT64 _malloc_id;  
-  } /*misc*/; // the name for union is not necessary 
-
-  void Init_misc_alias_info (void) { _switch = 0; _malloc_id = 0; }
-
-  void Set_malloc_id (mINT64 id) { _switch = 0; _malloc_id = id; _has_malloc_id = id ? 1 : 0; };
-  mINT64 Malloc_id (void) const { return _has_malloc_id ? _malloc_id : 0; }
-};
-
-
-// alias information that are not common to all accesss can be stored in ALIAS_INFO_EXT. 
-class ALIAS_INFO_EXT {
-  INT32 _malloc_id; //  
 };
 
 // for alias classification
@@ -369,13 +348,15 @@ private:
   TY_IDX        _hl_ty;
   UINT32        _field_id;
   INT32         _id;              // only used by the emitter.
+  PT_MEM_ANNOT  _mem_annot; 
 
   // Force everyone to use Copy_non_sticky_info or Copy_fully by
   // declaring an private assignment operator and an undefined copy
   // constructor.
   POINTS_TO &operator= (const POINTS_TO &p)
     { ai = p.ai; _ty = p._ty; _id = p._id; 
-      _hl_ty = p._hl_ty; _field_id = p._field_id; return *this; }
+      _hl_ty = p._hl_ty; _field_id = p._field_id; 
+      _mem_annot = p._mem_annot; return *this; }
 
   POINTS_TO(const POINTS_TO &);
 
@@ -421,6 +402,22 @@ public:
   VER_ID Pointer_ver (void)  const { 
           return Pointer_is_named_symbol () || Pointer_is_aux_id() ? ai._ptr_ver : 0; }
 
+  // Regarding annotation 
+  BOOL Has_annotation (void) const { return _mem_annot.Has_annotation (); }
+  void Replace_or_add_annot (const MEMOP_ANNOT_ITEM& i) 
+         { _mem_annot.Replace_or_add_annot (i);}
+  void Replace_or_add_annots (MEMOP_ANNOT* annots) 
+         { _mem_annot.Replace_or_add_annots (annots); }
+  void Remove_annot (MEM_ANNOT_KIND kind) { _mem_annot.Remove_annot (kind); }
+  PT_MEM_ANNOT& Mem_annot (void) { return _mem_annot; } 
+  UINT64 Malloc_id (void) const  { return _mem_annot.Malloc_id (); }
+  void Set_malloc_id (UINT64 id) { _mem_annot.Set_malloc_id (id); }
+  LMV_ALIAS_GROUP LMV_alias_group (void) const 
+         { return _mem_annot.LMV_alias_group (); }
+  void Set_LMV_alias_group (LMV_ALIAS_GROUP grp_id) 
+         { _mem_annot.Set_LMV_alias_group(grp_id);}
+  // End of annotation stuff 
+
 #if _NO_BIT_FIELDS
   mINT64      Ofst(void)             const { return ai._ofst; }
   mINT64      Size(void)             const { return ai._size; }
@@ -464,7 +461,6 @@ public:
   BOOL        Not_f90_target(void)   const { return ai._attr & PT_ATTR_NOT_F90_TARGET; }
   BOOL        Not_alloca_mem(void)   const { return ai._attr & PT_ATTR_NOT_ALLOCA_MEM; }
   BOOL        Extended(void)         const { return ai._attr & PT_ATTR_EXTENDED; }
-  mINT64      Malloc_id (void)       const { return ai.Malloc_id (); } 
 #ifdef KEY
   BOOL        Is_field(void)         const { return ai._attr & PT_ATTR_FIELD; }
 #endif
@@ -498,7 +494,6 @@ public:
 
   void Set_based_sym(ST *sym)             { ai._based_sym = sym; }
   void Set_based_sym_depth(UINT32 d)      { ai._based_sym_depth = (d > 7) ? 7 : d; }
-  void Set_malloc_id (mINT64 id)          { ai.Set_malloc_id (id); }
   void Set_alias_class(const IDTYPE alias_class)
     {
       if (alias_class <= WOPT_Alias_Class_Limit) {
@@ -612,10 +607,7 @@ public:
     Set_id(0);
     Set_alias_class(OPTIMISTIC_AC_ID);
     Set_ip_alias_class(OPTIMISTIC_AC_ID);
-    Set_malloc_id (0);
-
-    ai.Init_misc_alias_info ();
-
+    _mem_annot.Init();
     // The default attributes: 
     Set_attr(PT_ATTR_NONE);
   }
@@ -695,6 +687,8 @@ public:
       BOOL  is_unique_pt  = Unique_pt();
       BOOL  is_restricted = Restricted();
       ST   *based_sym     = Based_sym();
+      PT_MEM_ANNOT mem_annot = Mem_annot();
+
       *this = *p;
       if (is_unique_pt) {
 	Set_unique_pt();
@@ -704,6 +698,7 @@ public:
 	Set_restricted();
 	Set_based_sym(based_sym);
       }
+      _mem_annot = mem_annot;
     }
 
   void Copy_pointer_info (const POINTS_TO* p) 
@@ -799,6 +794,29 @@ public:
   void Print(FILE *fp=stderr) const;
 };
 
+class PT_MEMOP_ANNOT_STIKER {
+private:
+  BOOL _has_annot; 
+  POINTS_TO* _pt;
+  PT_MEM_ANNOT _mem_annot;
+
+public:
+  PT_MEMOP_ANNOT_STIKER (POINTS_TO* pt) { 
+    if (_has_annot = pt->Has_annotation()) {
+      _mem_annot = pt->Mem_annot () ;
+      _pt = pt;
+    }
+  }
+
+  ~PT_MEMOP_ANNOT_STIKER (void) {
+    if (_has_annot) {
+      if (_mem_annot.Item_is_inlined ())
+        _pt->Replace_or_add_annot (_mem_annot.Get_inlined_item ());
+      else 
+        _pt->Replace_or_add_annots (_mem_annot.Get_annots_ptr ());
+    }
+  }
+};
 
 //  POINTS_TO_NODE:  contains the points_to item
 //

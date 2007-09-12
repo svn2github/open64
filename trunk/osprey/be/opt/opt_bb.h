@@ -765,6 +765,7 @@ public:
                    (BB_NODE_SET *s) { _body_set = s; }
   void         Set_true_body_set
                    (BB_NODE_SET *s) { _true_body_set = s; }
+  void         Set_merge (BB_NODE* b) { _u2._merge = b; }
   BB_LOOP     *Append (BB_LOOP*);   // insert at tail, return head
   BB_LOOP     *Append_list(BB_LOOP *);
   void         Print(FILE *fp=stderr) const;

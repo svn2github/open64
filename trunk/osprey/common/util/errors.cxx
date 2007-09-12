@@ -1443,14 +1443,6 @@ DevWarn( const char *fmt, ... )
     fflush ( Error_File );
   }
 
-  /* Finally write to trace file: */
-  if ( Trace_File != NULL ) {
-    fprintf ( Trace_File, "!!! DevWarn during %s: ", phase_name );
-    vfprintf ( Trace_File, fmt, args );
-    fprintf ( Trace_File, "\n" );
-    fflush ( Trace_File );
-  }
-
   va_end(args);
 }
 

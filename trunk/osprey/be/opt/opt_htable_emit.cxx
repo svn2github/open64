@@ -503,6 +503,14 @@ ML_WHIRL_EMITTER::Emit(void)
   /*PPP this shouldn't be necessary - the main emitter is destroying alias
     info for previously processed regions */
   REGION_update_alias_info(_opt_func,_alias_mgr);
+
+  if (Opt_stab()->Phase() == MAINOPT_PHASE) {
+    BOOL tr = Trace() || Get_Trace (TP_GLOBOPT, ALIAS_DUMP_FLAG);
+    Opt_stab()->Cr_sr_annot_mgr()->
+      Export_annot (_opt_func, _alias_mgr, TRUE, tr);
+    WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Set_active_mgr();  
+  }
+
   Verify(_opt_func);
 
   Is_True(REGION_consistency_check(_opt_func),(""));

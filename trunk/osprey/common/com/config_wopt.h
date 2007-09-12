@@ -312,5 +312,6 @@ extern BOOL WOPT_Enable_Subword_Opt; // whether to replace 1- or 2-byte-sized
 extern BOOL WOPT_Enable_New_Vsym_Allocation;
 #endif
 extern BOOL  WOPT_Enable_WOVP; // For running write-once variable promotion
+extern BOOL WOPT_Enable_Loop_Multiver;
 #endif /* config_wopt_INCLUDED */
 

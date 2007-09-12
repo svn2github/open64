@@ -325,7 +325,6 @@ typedef struct bs BS;
 
 #include "optimizer.h"
 
-
 //  Assign a bitpos to each rule.
 //  _context in ALIAS_RULE control which rules can be applied
 //
@@ -480,5 +479,9 @@ public:
   const BS *Alias_Set_Return(const OPT_STAB *) const;
   const BS *Alias_Set_Asm(const OPT_STAB *) const;
 };
+
+typedef UINT32 LMV_ALIAS_GROUP;
+inline LMV_ALIAS_GROUP Gen_LMV_alias_group(INT loop, INT grp) 
+  { return (UINT(loop & 0xffff) << 16) | UINT(grp & 0xffff) ; }
 
 #endif

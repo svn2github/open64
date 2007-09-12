@@ -101,6 +101,7 @@
 #include "config_vho.h"		// for VHO_Enable_Simple_If_Conv
 #include "targ_const_private.h" // for TCON_R4, TCON_R8, ..
 #endif
+#include "be_memop_annot.h"
 
 #ifdef TARG_X8664
 #include <ext/hash_set>
@@ -1557,6 +1558,12 @@ static void lower_copy_maps(WN *orig, WN *tree, LOWER_ACTIONS actions)
       {
         if (alias_manager)
 	  Copy_alias_info(alias_manager, orig, tree);
+      }
+      
+      // maintain the annotation whenever possible
+      WN_MEMOP_ANNOT_MGR* p = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr();
+      if (p) {
+        p->Copy_annot (orig, tree); 
       }
     }
   }
