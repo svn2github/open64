@@ -1451,7 +1451,7 @@ MEM_ACCESS::Print (FILE* f) {
   fprintf (f, "ofst:");
   _ofst.Print (f);
   
-  fprintf (f, ",sz:%d,fld:%d,", _size, _field_id);
+  fprintf (f, ",sz:%d,fld:%d,", (INT)_size, _field_id);
   if (_obj_ty != (TY_IDX)0) {
     fprintf (f, "Ty:%s,", TY_name(_obj_ty));
   }

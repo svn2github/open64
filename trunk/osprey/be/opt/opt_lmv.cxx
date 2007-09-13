@@ -221,9 +221,11 @@ LOOP_MULTIVER::Estimate_latency (const CODEREP* cr, BOOL lhs) {
     return 1;
   
   case CK_VAR:
+    {
     ST* st = _opt_stab->Aux_stab_entry (cr->Aux_id())->St ();
     if (ST_class(st) == CLASS_PREG) 
       return 1;
+    }
     return lhs ? 2 : 4;
 
   case CK_IVAR:
@@ -468,7 +470,7 @@ LOOP_MULTIVER::Not_applicable (BB_LOOP* loop) {
   // Currenly, applicable only to inner most loop
   if (loop->Child()) {
     if (_tracing) {
-      fprintf (TFile, "Not innermost loop (depth=%d), give up\n");
+      fprintf (TFile, "Not innermost loop, give up\n");
     }
     return TRUE;
   }
@@ -510,7 +512,7 @@ LOOP_MULTIVER::Pass_initial_screen (const BB_LOOP* loop) {
   if (_agg_mode && (iv = loop->Iv()) && iv->Kind() == CK_CONST && 
      iv->Const_val () < LMV_HEURISTIC::Low_trip_count_threshold ()) {
     fprintf (TFile, "The trip count is %d smaller than the threshold %d\n", 
-             iv->Const_val(), LMV_HEURISTIC::Low_trip_count_threshold ());
+             (INT)iv->Const_val(), (INT)LMV_HEURISTIC::Low_trip_count_threshold ());
     return FALSE;
   }
 
