@@ -770,8 +770,7 @@ Perform_Interprocedural_Analysis ()
 
 	if (Trace_IPA || Trace_Perf) {
 	    fprintf (TFile, "\n\tTotal code expansion = %d%%, total prog WHIRL size = 0x%x \n",
-		     (Total_Prog_Size - (INT) Orig_Prog_Weight) * 100 /
-		     (INT) Orig_Prog_Weight,
+		     Orig_Prog_Weight == 0 ? 0 : (Total_Prog_Size - (INT) Orig_Prog_Weight) * 100 / (INT) Orig_Prog_Weight,
 		     Total_Prog_Size);
 	    fprintf (TFile, "\t<<<Inlining analysis completed>>>\n");
 	}
