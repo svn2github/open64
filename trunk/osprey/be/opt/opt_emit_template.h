@@ -453,6 +453,14 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	     && OPERATOR_is_compare(exp->Opr()))
 	    exp->Set_dsctyp(WN_rtype(opnd0));
 #endif
+#ifdef KEY	//OSP_389
+	else if (OPERATOR_is_compare(exp->Opr()) && MTYPE_byte_size(exp->Dsctyp()) == 4) {
+		if (WN_operator(opnd0) == OPR_INTCONST && MTYPE_byte_size(WN_rtype(opnd0)) == 8)
+			WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dsctyp(),WN_rtype(opnd0)));
+		if (WN_operator(opnd1) == OPR_INTCONST && MTYPE_byte_size(WN_rtype(opnd1)) == 8)
+			WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dsctyp(),WN_rtype(opnd1)));
+	}
+#endif
 #ifdef KEY // bug 3347: fix INTCONSTs unnecessarily made 64-bit
 	  else if (! OPERATOR_is_compare(exp->Opr()) &&
 	      	   MTYPE_byte_size(exp->Dtyp()) == 4) {
