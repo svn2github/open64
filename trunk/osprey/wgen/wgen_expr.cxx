@@ -5970,12 +5970,13 @@ WGEN_Expand_Expr (gs_t exp,
                   wn = WN_Intconst (MTYPE_I4, 1);
 		  whirl_generated = TRUE; // KEY
 		}
-#ifdef KEY_bug1058
+#ifdef KEY
 // If not yet compile-time constant, let the backend decide if it is 
 // a constant
 		else
 		{
 		  iopc = INTRN_CONSTANT_P;
+                  if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_I4;
 		  intrinsic_op = TRUE;
 		}
 #else

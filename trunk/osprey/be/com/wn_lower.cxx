@@ -4932,25 +4932,29 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
 
 #ifdef KEY
-    if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P &&
-         Action (LOWER_TO_CG))
-    {
-	WN * old = tree;
-	WN * parm = WN_kid0 (WN_kid0 (old)); // child of OPR_PARM
+    if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P ) {
+      WN * old = tree;
+      WN * parm = WN_kid0 (WN_kid0 (old)); // child of OPR_PARM
 
-	// Check if the argument is a compile-time constant, replace the
-	// intrn op by true/false
-	if (WN_operator (parm) == OPR_INTCONST ||
-	    (OPCODE_has_sym (WN_opcode (parm)) && 
-	     ST_class (WN_st (parm)) == CLASS_CONST))
-	  tree = WN_Intconst (MTYPE_I4, 1);
-	else
-	  tree = WN_Intconst (MTYPE_I4, 0);
-
+      // Check if the argument is a compile-time constant, replace the
+      // intrn op by true/false
+      if (WN_operator (parm) == OPR_INTCONST ||
+          (OPCODE_has_sym (WN_opcode (parm)) &&
+           ST_class (WN_st (parm)) == CLASS_CONST)) {
+        tree = WN_Intconst (MTYPE_I4, 1);
+        WN_copy_linenum (old, tree);
+        WN_Delete (old);
+        kids_lowered = TRUE;
+        break;
+      }
+      if ( Action (LOWER_TO_CG) ) {
+	// Still not constant, replace it by false
+	tree = WN_Intconst (MTYPE_I4, 0);
 	WN_copy_linenum (old, tree);
 	WN_Delete (old);
 	kids_lowered = TRUE;
-	break;
+        break;
+      }
     }
 #endif
 
