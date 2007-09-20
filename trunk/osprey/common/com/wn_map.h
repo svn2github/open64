@@ -294,7 +294,7 @@ typedef INT32 		WN_MAP;
 
 /* number of reserved mappings and total number */
 #define WN_MAP_RESERVED 5
-#define WN_MAP_MAX 28
+#define WN_MAP_MAX 32
 
 typedef enum {
   WN_MAP_KIND_VOIDP = 1,
