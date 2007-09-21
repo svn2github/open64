@@ -3025,7 +3025,9 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   }
   else if (*constraint == 'y')
   {
-    ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_float));
+    // OSP_417, 'y' means any MMX registers
+    // bad register class, should be mmx, not float
+    ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx));
   }
   else
   {
