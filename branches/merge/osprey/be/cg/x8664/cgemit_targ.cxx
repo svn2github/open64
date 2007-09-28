@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -58,6 +62,7 @@
  */
 
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "elf_stuff.h"
 
@@ -73,6 +78,7 @@
 #include "tn.h"
 #include "cgemit.h"
 #include "cgemit_targ.h"
+#include "cgtarget.h"
 #include "data_layout.h"
 #include "bb.h"
 #include "op.h"
@@ -243,10 +249,15 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
       if (scn_flags & SHF_WRITE) *p++ = 'w';
       if (scn_flags & SHF_ALLOC) *p++ = 'a';
       if (scn_flags & SHF_EXECINSTR) *p++ = 'x';
+#ifdef KEY
+      if (scn_flags & SHF_TLS) *p++ = 'T';
+#endif
       *p = '\0'; // null terminate the string.
       fprintf (asm_file, ", \"%s\"", scn_flags_string);
       if (scn_type == SHT_PROGBITS)
         fprintf (asm_file, ",@progbits");
+      else if (scn_type == SHT_NOBITS)
+        fprintf (asm_file, ",@nobits");
     }
 #ifdef TARG_X8664
     if (strcmp(scn_name, ".debug_frame") == 0) // bug 2463
@@ -315,6 +326,10 @@ CGEMIT_Use_Base_ST_For_Reloc (INT reloc, ST *st)
 	// example: see gcc.c-torture/execute/func-ptr-1.c
 	else if (ST_sclass(st) == SCLASS_TEXT)
 	        return FALSE;
+#ifdef KEY
+	else if (ST_is_thread_local(st))
+	        return FALSE;
+#endif
 	else 
 		return ST_is_export_local(st);
 }
@@ -380,6 +395,18 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 	    *buf = vstr_concat( *buf, str );
 	    free( str );
 	  }
+	  return 0;
+	case TN_RELOC_X8664_TPOFF32_seg_reg:
+	  *buf = vstr_concat(*buf, Is_Target_32bit() ? "%gs:" : "%fs:");
+	  // fall through
+	case TN_RELOC_X8664_TPOFF32:
+	  *buf = vstr_concat(*buf, ST_name(st));
+	  *buf = vstr_concat(*buf, Is_Target_32bit() ? "@NTPOFF" : "@TPOFF");
+	  return 0;
+	case TN_RELOC_X8664_GOTTPOFF:
+	  *buf = vstr_concat(*buf, ST_name(st));
+	  *buf = vstr_concat(*buf,
+			     Is_Target_32bit() ? "@INDNTPOFF" : "@GOTTPOFF");
 	  return 0;
     	default:
 		#pragma mips_frequency_hint NEVER
@@ -466,8 +493,17 @@ void
 CGEMIT_Weak_Alias (ST *sym, ST *strongsym) 
 {
   fprintf ( Asm_File, "\t%s\t%s\n", AS_WEAK, ST_name(sym));
-  // OSP_145, OSP_339, __attribute__((alias(...)))
-  CGEMIT_Alias(sym, strongsym);
+  fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
+  if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
+    // modelled after EMT_Write_Qualified_Name (bug 6899)
+    if (ST_level(strongsym) == GLOBAL_SYMTAB)
+      fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
+    else
+      fprintf ( Asm_File, "%s%d%s%d", Label_Name_Separator, 
+		ST_pu(Get_Current_PU_ST()),
+      		Label_Name_Separator, ST_index(strongsym));
+  }
+  fprintf ( Asm_File, "\n");
 }
 
 void CGEMIT_Write_Literal_TCON(ST *lit_st, TCON tcon)
@@ -534,21 +570,7 @@ void CGEMIT_Write_Literal_Symbol (ST *lit_st, ST *sym,
 
 void CGEMIT_Alias (ST *sym, ST *strongsym) 
 {
-  // OSP_145, OSP_339, __attributr__((alias(...)))
-  fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
-  if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
-    // modelled after EMT_Write_Qualified_Name (bug 6899)
-    if (ST_level(strongsym) == GLOBAL_SYMTAB) {
-      fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
-    }
-    else {
-      Is_True(0, ("Alias to a PU scope variable, possible?"));
-      fprintf ( Asm_File, "%s%d%s%d", Label_Name_Separator,
-                ST_pu(Get_Current_PU_ST()),
-                Label_Name_Separator, ST_index(strongsym));
-    }
-  }
-  fprintf ( Asm_File, "\n");
+  fprintf ( Asm_File, "\t%s = %s\n", ST_name(sym), ST_name(strongsym));
 }
 
 
@@ -930,24 +952,30 @@ static void Init_OP_Name()
   OP_Name[TOP_ld16_32_n32]   = "movswl";
   OP_Name[TOP_ldu16_32_n32]  = "movzwl";
 
-  OP_Name[TOP_ld8_64]   = "movsbq";
-  OP_Name[TOP_ldx8_64]  = "movsbq";
-  OP_Name[TOP_ldxx8_64] = "movsbq";
-  OP_Name[TOP_ldu8_64]   = "movzbq";
-  OP_Name[TOP_ldxu8_64]  = "movzbq";
-  OP_Name[TOP_ldxxu8_64] = "movzbq";
-  OP_Name[TOP_ld16_64]   = "movswq";
-  OP_Name[TOP_ldx16_64]  = "movswq";
-  OP_Name[TOP_ldxx16_64] = "movswq";
-  OP_Name[TOP_ldu16_64]   = "movzwq";
-  OP_Name[TOP_ldxu16_64]  = "movzwq";
-  OP_Name[TOP_ldxxu16_64] = "movzwq";
+  OP_Name[TOP_ld8_64]		= "movsbq";
+  OP_Name[TOP_ldx8_64]		= "movsbq";
+  OP_Name[TOP_ldxx8_64]		= "movsbq";
+  OP_Name[TOP_ld8_64_off]	= "movsbq";
+  OP_Name[TOP_ldu8_64]		= "movzbq";
+  OP_Name[TOP_ldxu8_64]		= "movzbq";
+  OP_Name[TOP_ldxxu8_64]	= "movzbq";
+  OP_Name[TOP_ldu8_64_off]	= "movzbq";
+  OP_Name[TOP_ld16_64]		= "movswq";
+  OP_Name[TOP_ldx16_64]		= "movswq";
+  OP_Name[TOP_ldxx16_64]	= "movswq";
+  OP_Name[TOP_ld16_64_off]	= "movswq";
+  OP_Name[TOP_ldu16_64]		= "movzwq";
+  OP_Name[TOP_ldxu16_64]	= "movzwq";
+  OP_Name[TOP_ldxxu16_64]	= "movzwq";
+  OP_Name[TOP_ldu16_64_off]	= "movzwq";
+  OP_Name[TOP_ld32_64_off]	= "movslq";
 
   OP_Name[TOP_ld32]  = "movl";
   OP_Name[TOP_ldx32] = "movl";
   OP_Name[TOP_ldxx32]= "movl";
   OP_Name[TOP_ld32_n32]  = "movl";
   OP_Name[TOP_ld64]  = "movq";
+  OP_Name[TOP_ld64_off]  = "movq";
   OP_Name[TOP_ldx64] = "movq";
   OP_Name[TOP_ldxx64]= "movq";
   OP_Name[TOP_zero32] = "xorl";
@@ -1053,6 +1081,7 @@ static void Init_OP_Name()
   OP_Name[TOP_storexx32]= "movl";
   OP_Name[TOP_store32_n32]  = "movl";
   OP_Name[TOP_store64]  = "movq";
+  OP_Name[TOP_store64_off]  = "movq";
   OP_Name[TOP_storex64] = "movq";
   OP_Name[TOP_storexx64]= "movq";
   OP_Name[TOP_storenti32]  = "movnti";
@@ -1149,9 +1178,14 @@ static void Init_OP_Name()
   OP_Name[TOP_stdqa_n32] = "movdqa";
   OP_Name[TOP_stntpd]= "movntpd";
   OP_Name[TOP_stntps]= "movntps";
-  if ( !Is_Target_SSE3() || ! CG_use_lddqu)
+  if ( !Is_Target_SSE3() || ! CG_use_lddqu) {
     OP_Name[TOP_lddqu] = "movdqu";
+    OP_Name[TOP_lddqu_n32] = "movdqu";
+  }
+  else
+    OP_Name[TOP_lddqu_n32] = "lddqu";
   OP_Name[TOP_stdqu] = "movdqu";
+  OP_Name[TOP_stdqu_n32] = "movdqu";
   OP_Name[TOP_ldlps] = "movlps";
   OP_Name[TOP_ldlps_n32] = "movlps";
   OP_Name[TOP_stlps] = "movlps";
@@ -1169,7 +1203,9 @@ static void Init_OP_Name()
   OP_Name[TOP_ldlpdxx] = "movsd";
   OP_Name[TOP_stlpdxx] = "movsd";
   OP_Name[TOP_ldhps] = "movhps";
+  OP_Name[TOP_ldhps_n32] = "movhps";
   OP_Name[TOP_sthps] = "movhps";
+  OP_Name[TOP_sthps_n32] = "movhps";
   OP_Name[TOP_ldhpd] = "movhpd";
   OP_Name[TOP_ldhpd_n32] = "movhpd";
   OP_Name[TOP_sthpd] = "movhpd";
@@ -1204,6 +1240,8 @@ static void Init_OP_Name()
   OP_Name[TOP_staps_n32] = "movaps";
   OP_Name[TOP_stapd] = "movapd";
   OP_Name[TOP_stapd_n32] = "movapd";
+  OP_Name[TOP_stupd] = "movupd";
+  OP_Name[TOP_stups] = "movups";
   OP_Name[TOP_ldaps] = "movaps";
   OP_Name[TOP_ldaps_n32] = "movaps";
   OP_Name[TOP_ldapd] = "movapd";
@@ -1216,6 +1254,8 @@ static void Init_OP_Name()
   OP_Name[TOP_stapdxx] = "movapd";
   OP_Name[TOP_ldapsxx] = "movaps";
   OP_Name[TOP_ldapdxx] = "movapd";
+  OP_Name[TOP_ldupd] = "movupd";
+  OP_Name[TOP_ldups] = "movups";
   OP_Name[TOP_movss] = "movaps";
   OP_Name[TOP_movdq] = "movdqa";
   OP_Name[TOP_movg2x] = "movd";
@@ -1227,14 +1267,17 @@ static void Init_OP_Name()
   OP_Name[TOP_stssx]  = "movss";
   OP_Name[TOP_stssxx] = "movss";
   OP_Name[TOP_fmov] = "fld";
-  OP_Name[TOP_ld8_m]  = "movabsb";
-  OP_Name[TOP_ld16_m] = "movabsw";
-  OP_Name[TOP_ld32_m] = "movabsl";
-  OP_Name[TOP_ld64_m] = "movabsq";
-  OP_Name[TOP_store8_m]  = "movabsb";
-  OP_Name[TOP_store16_m] = "movabsw";
-  OP_Name[TOP_store32_m] = "movabsl";
-  OP_Name[TOP_store64_m] = "movabsq";
+  OP_Name[TOP_ld8_abs]  = "movabsb";
+  OP_Name[TOP_ld16_abs] = "movabsw";
+  OP_Name[TOP_ld32_abs] = "movabsl";
+  OP_Name[TOP_ld64_abs] = "movabsq";
+  OP_Name[TOP_store8_abs]  = "movabsb";
+  OP_Name[TOP_store16_abs] = "movabsw";
+  OP_Name[TOP_store32_abs] = "movabsl";
+  OP_Name[TOP_store64_abs] = "movabsq";
+
+  OP_Name[TOP_ld32_gs_seg_off]	= "movl";
+  OP_Name[TOP_ld64_fs_seg_off]	= "movq";
 
   OP_Name[TOP_cvtsd2ss_x]   = "cvtsd2ss";
   OP_Name[TOP_cvtsd2ss_xx]  = "cvtsd2ss";
@@ -1327,6 +1370,11 @@ static void Init_OP_Name()
   OP_Name[TOP_ld64_2m_n32] = "movq";
   OP_Name[TOP_store64_fm] = "movq";
   OP_Name[TOP_store64_fm_n32] = "movq";
+  OP_Name[TOP_storent64_fm] = "movntq";
+  OP_Name[TOP_ld64_2sse] = "movq";
+  OP_Name[TOP_ld64_2sse_n32] = "movq";
+  OP_Name[TOP_store64_fsse] = "movq";
+  OP_Name[TOP_store64_fsse_n32] = "movq";
   OP_Name[TOP_mov64_m] = "movq";
   OP_Name[TOP_add64v8] = "paddb";
   OP_Name[TOP_add64v16] = "paddw";
@@ -1348,6 +1396,16 @@ static void Init_OP_Name()
   OP_Name[TOP_psrlq128v64] = "psrlq";
   OP_Name[TOP_storenti128] = "movntdq";
   OP_Name[TOP_pshufw64v16] = "pshufw";
+  OP_Name[TOP_psllw_mmx] = "psllw";
+  OP_Name[TOP_pslld_mmx] = "pslld";
+  OP_Name[TOP_psrlw_mmx] = "psrlw";
+  OP_Name[TOP_psrld_mmx] = "psrld";
+  OP_Name[TOP_psraw_mmx] = "psraw";
+  OP_Name[TOP_psrad_mmx] = "psrad";
+  OP_Name[TOP_pand_mmx] = "pand";
+  OP_Name[TOP_pandn_mmx] = "pandn";
+  OP_Name[TOP_por_mmx] = "por";
+  OP_Name[TOP_pxor_mmx] = "pxor";
   return;
 }
 
@@ -1474,11 +1532,15 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
         strcat( name, "@PLT" );
     }
 
-    if( name[0] != '$' &&   /* A '$' has been added by CGEMIT_Relocs_In_Asm() */
-	( opnd != OP_find_opnd_use(op,OU_offset) &&
-	  opnd != OP_find_opnd_use(op,OU_scale)  &&
-	  opnd != OP_find_opnd_use(op,OU_target) ) ){
-      Str_Prepend( name, '$' );
+    if (name[0] != '$' &&   /* A '$' has been added by CGEMIT_Relocs_In_Asm() */
+	(opnd != OP_find_opnd_use(op,OU_offset) &&
+	 opnd != OP_find_opnd_use(op,OU_scale)  &&
+	 opnd != OP_find_opnd_use(op,OU_target)) &&
+	// Constant is not 32-bit ABI thread-local symbol offset.
+	(!(Is_Target_32bit() &&
+	   (TN_relocs(OP_opnd(op, opnd)) == TN_RELOC_X8664_TPOFF32 ||
+	    TN_relocs(OP_opnd(op, opnd)) == TN_RELOC_X8664_GOTTPOFF)))) {
+      Str_Prepend(name, '$');
     }
 
     // Bug 506
@@ -1521,6 +1583,16 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
 }
 
 
+// Return x86 segment prefix override.
+static const char *
+Segment_Prefix (OP *op)
+{
+  if (CGTARG_Is_Thread_Local_Memory_OP(op)) {
+    return Is_Target_32bit() ? "%gs:" : "%fs:";
+  }
+  return "";
+}
+
 INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f )
 {
   Init_OP_Name();
@@ -1557,20 +1629,32 @@ INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f
     case ISA_PRINT_COMP_opnd+3:
     case ISA_PRINT_COMP_opnd+4:
     case ISA_PRINT_COMP_opnd+5:
-      Is_True( 10+strlen(opnd[comp - ISA_PRINT_COMP_opnd]) < sizeof(opnd_name[opnd_i]),
-	       ("buffer size is too small") );
-      strcpy( opnd_name[opnd_i], opnd[comp - ISA_PRINT_COMP_opnd] );
-      Adjust_Opnd_Name( op, comp - ISA_PRINT_COMP_opnd, opnd_name[opnd_i] );
+      Is_True(10 + strlen(opnd[comp - ISA_PRINT_COMP_opnd])
+	        < sizeof(opnd_name[opnd_i]),
+	      ("buffer size is too small") );
+      strcpy(opnd_name[opnd_i], opnd[comp - ISA_PRINT_COMP_opnd]);
+      Adjust_Opnd_Name(op, comp - ISA_PRINT_COMP_opnd, opnd_name[opnd_i]);
       opnd_i++;
       break;
 
     case ISA_PRINT_COMP_result:
     case ISA_PRINT_COMP_result+1:
-      Is_True( 10+strlen(result[comp - ISA_PRINT_COMP_result]) < sizeof(result_name[result_i]),
-	       ("buffer size is too small") );
-      strcpy( result_name[result_i], result[comp - ISA_PRINT_COMP_result] );
-      Adjust_Opnd_Name( op, -1, result_name[result_i] );
+      Is_True(10 + strlen(result[comp - ISA_PRINT_COMP_result])
+	        < sizeof(result_name[result_i]),
+	      ("buffer size is too small"));
+      strcpy(result_name[result_i], result[comp - ISA_PRINT_COMP_result]);
+      Adjust_Opnd_Name(op, -1, result_name[result_i]);
       result_i++;
+      break;
+
+    case ISA_PRINT_COMP_segment:
+      {
+	const char *segment_prefix = Segment_Prefix(op);
+	Is_True(10 + strlen(segment_prefix) < sizeof(opnd_name[opnd_i]),
+		("buffer size is too small"));
+	strcpy(opnd_name[opnd_i], segment_prefix);
+	opnd_i++;
+      }
       break;
 
     case ISA_PRINT_COMP_name:
@@ -1578,8 +1662,8 @@ INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f
       break;
 
     default:
-      FmtAssert( false, ("Unhandled listing component %d for %s",
-			 comp, TOP_Name(topcode)) );
+      FmtAssert(false, ("Unhandled listing component %d for %s",
+			comp, TOP_Name(topcode)));
     }
 
     i++;

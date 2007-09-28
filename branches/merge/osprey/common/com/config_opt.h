@@ -183,6 +183,7 @@ extern BOOL OPT_Funsafe_Math_Optimizations;
 
 extern BOOL OPT_Float_Via_Int;
 extern UINT32 OPT_Malloc_Alg;
+extern BOOL Early_Goto_Conversion;
 #endif
 #ifdef __cplusplus
 }

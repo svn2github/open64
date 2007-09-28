@@ -603,6 +603,7 @@ extern const char* GRA_spill_count_factor_string;
 #ifdef KEY
 extern BOOL GRA_exclude_callee_saved_regs;
 extern BOOL GRA_eh_exclude_callee_saved_regs;
+extern BOOL GRA_fp_exclude_callee_saved_regs;
 #endif
 
 extern BOOL  HB_formation;
@@ -687,7 +688,7 @@ extern BOOL CG_fold_shiftadd;
 extern BOOL CG_use_prefetchnta;
 extern BOOL CG_idivbyconst_opt;
 extern BOOL CG_fold_constimul;
-extern BOOL CG_cloop;
+extern BOOL CG_LOOP_cloop;
 extern BOOL CG_use_lddqu;
 extern BOOL CG_valgrind_friendly; 
 #endif

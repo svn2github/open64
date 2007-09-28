@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -146,6 +146,12 @@ IGLS_Schedule_Region (BOOL before_regalloc)
   should_we_schedule = IGLS_Enable_All_Scheduling;
   should_we_do_thr = CG_enable_thr;
   L_Save();
+
+  // 12581: In "main" entry, always keep spadjust at top, so that debugging
+  // info and ctrl register setup occur in correct order.
+  if (strcmp(Cur_PU_Name, "MAIN__") || strcmp(Cur_PU_Name, "main")) {
+    Set_BB_scheduled(REGION_First_BB);
+  }
 
   if (before_regalloc) {
 

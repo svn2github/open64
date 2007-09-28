@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1794,6 +1798,16 @@ CIO_RWTRAN::Read_CICSE_Candidate_Op( OP *op )
     return FALSE;
 #endif /* TARG_X8664 */
 
+#ifdef TARG_MIPS
+  // Avoid backpatching OPs that define fcc.  Backpatches may require copies
+  // and there is no MIPS instruction to copy between fcc registers.  Bug
+  // 12428.
+  if (OP_results(op) &&
+      TN_register_class(OP_result(op, 0)) == ISA_REGISTER_CLASS_fcc) {
+    return FALSE;
+  }
+#endif
+
   if ( OP_has_implicit_interactions( op ) ||
        OP_opnds( op ) > OP_MAX_FIXED_OPNDS )
     return FALSE;
@@ -2092,6 +2106,11 @@ CIO_RWTRAN::Replace_Tn( BB *body, TN *tn_old, TN *tn_new, UINT8 omega_change )
     }
   }
 
+#ifdef KEY
+  // Update any occurances in the prolog backpatch list.  Bug 11749.
+  CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_prolog,
+				     tn_old, tn_new, omega_change );
+#else
   // Delete all prolog backpatches for tn_old;
   // Calling procedure must guarantee that tn_new has appropriate backpatches
   CG_LOOP_BACKPATCH *bp, *bp_next = NULL;
@@ -2100,7 +2119,8 @@ CIO_RWTRAN::Replace_Tn( BB *body, TN *tn_old, TN *tn_new, UINT8 omega_change )
     bp_next = CG_LOOP_Backpatch_Next( bp );
     CG_LOOP_Backpatch_Delete( CG_LOOP_prolog, bp );
   }
-  
+#endif  
+
   // Update any occurances in the epilog backpatch list
   CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_epilog,
 				     tn_old, tn_new, omega_change );

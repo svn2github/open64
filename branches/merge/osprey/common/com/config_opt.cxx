@@ -282,6 +282,7 @@ static BOOL OPT_Funsafe_Math_Optimizations_Set = FALSE;
 BOOL    OPT_Float_Via_Int = FALSE; // when on, perform FP copies using int regs
 
 UINT32 OPT_Malloc_Alg = 0;      /* select malloc algorithm */
+BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO
 #endif
 
 /***** Obsolete options *****/
@@ -412,6 +413,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_UINT32, OV_VISIBLE,     TRUE,   "malloc_algorithm", "malloc_alg",
     0, 0, 1, &OPT_Malloc_Alg, NULL,
     "Use alternate malloc algorithm" },
+
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",
+    0, 0, 0,    &Early_Goto_Conversion, NULL,
+    "Do GOTO conversion before VHO" },
 #endif
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "early_mp",		"early_mp",

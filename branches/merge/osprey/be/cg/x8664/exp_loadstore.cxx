@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -42,6 +46,7 @@
 
 
 /* CGEXP routines for loads and stores */
+#define __STDC_LIMIT_MACROS
 #include <stdint.h> // for UINT64_MAX
 #include "elf_stuff.h"
 #include "defs.h"
@@ -91,62 +96,69 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
 		       ISA_REGISTER_CLASS rclass)
 {
   const BOOL is_64bit = MTYPE_is_size_double(rtype);
-  const BOOL is_reloc_x8664_64 = ( ofst != NULL         &&
-				   TN_is_symbol( ofst ) &&
-				   TN_is_reloc_x8664_64( ofst ) );
+  const BOOL is_reloc_x8664_64 = (ofst != NULL &&
+				  TN_is_symbol(ofst) &&
+				  TN_is_reloc_x8664_64(ofst));
+  const BOOL is_reloc_x8664_tpoff32_seg_reg =
+		(base == NULL &&
+	         ofst != NULL &&
+		 TN_is_symbol(ofst) &&
+		 TN_is_reloc_x8664_tpoff32_seg_reg(ofst));
 
-  if( is_reloc_x8664_64 ){
-    FmtAssert( ( base == NULL ) && ( rtype == desc ),
-	       ("Illegal load operation when mcmodel is medium") );
+  if (is_reloc_x8664_64) {
+    FmtAssert((base == NULL) && (rtype == desc),
+	      ("Pick_Load_Instruction: "
+	       "Illegal load operation when mcmodel is medium"));
   }
 
   switch (desc) {
   case MTYPE_I1:
-    if( is_64bit )
-      return TOP_ld8_64;
-    if( base != NULL )
+    if (is_64bit)
+      return base == NULL ? TOP_ld8_64_off : TOP_ld8_64;
+    if (base != NULL)
       return TOP_ld8_32;
-    return is_reloc_x8664_64 ? TOP_ld8_m : TOP_ld8_32_n32;
+    return is_reloc_x8664_64 ? TOP_ld8_abs : TOP_ld8_32_n32;
   case MTYPE_U1:
-    if( is_64bit )
-      return TOP_ldu8_64;
-    if( base != NULL )
+    if (is_64bit)
+      return base == NULL ? TOP_ldu8_64_off : TOP_ldu8_64;
+    if (base != NULL)
       return TOP_ldu8_32;
-    return is_reloc_x8664_64 ? TOP_ld8_m : TOP_ldu8_32_n32;
+    return is_reloc_x8664_64 ? TOP_ld8_abs : TOP_ldu8_32_n32;
   case MTYPE_I2:
-    if( is_64bit )
-      return TOP_ld16_64;
-    if( base != NULL )
+    if (is_64bit)
+      return base == NULL ? TOP_ld16_64_off : TOP_ld16_64;
+    if (base != NULL)
       return TOP_ld16_32;
-    return is_reloc_x8664_64 ? TOP_ld16_m : TOP_ld16_32_n32;
+    return is_reloc_x8664_64 ? TOP_ld16_abs : TOP_ld16_32_n32;
   case MTYPE_U2:
-    if( is_64bit )
-      return TOP_ldu16_64;
-    if( base != NULL )
+    if (is_64bit)
+      return base == NULL ? TOP_ldu16_64_off : TOP_ldu16_64;
+    if (base != NULL)
       return TOP_ldu16_32;
-    return is_reloc_x8664_64 ? TOP_ld16_m : TOP_ldu16_32_n32;
+    return is_reloc_x8664_64 ? TOP_ld16_abs : TOP_ldu16_32_n32;
   case MTYPE_I4:
-    if( is_64bit )
-      return TOP_ld32_64;
-    if( base != NULL )
+    if (is_64bit)
+      return base == NULL ? TOP_ld32_64_off : TOP_ld32_64;
+    if (base != NULL)
       return TOP_ld32;
-    return is_reloc_x8664_64 ? TOP_ld32_m : TOP_ld32_n32;
+    return is_reloc_x8664_64 ? TOP_ld32_abs : TOP_ld32_n32;
   case MTYPE_U4:
-    if( base != NULL )
+    if (base != NULL)
       return TOP_ld32;
-    return is_reloc_x8664_64 ? TOP_ld32_m : TOP_ld32_n32;
+    return is_reloc_x8664_64 ? TOP_ld32_abs : TOP_ld32_n32;
   case MTYPE_I8:
   case MTYPE_U8:
     if (rclass == ISA_REGISTER_CLASS_mmx)
       return base == NULL ? TOP_ld64_2m_n32 : TOP_ld64_2m;
-    return is_reloc_x8664_64 ? TOP_ld64_m : TOP_ld64;
+    return base == NULL ? TOP_ld64_off :
+	   is_reloc_x8664_64 ? TOP_ld64_abs : TOP_ld64;
   case MTYPE_F4:
-    if( rclass == ISA_REGISTER_CLASS_float )
+    if (rclass == ISA_REGISTER_CLASS_float)
       return base != NULL ? TOP_ldss : TOP_ldss_n32;
     else
       return base != NULL ? TOP_flds : TOP_flds_n32;
   case MTYPE_F8:
-    if( rclass == ISA_REGISTER_CLASS_float )
+    if (rclass == ISA_REGISTER_CLASS_float)
       return base != NULL ? TOP_ldsd : TOP_ldsd_n32;
     else
       return base != NULL ? TOP_fldl : TOP_fldl_n32;
@@ -165,8 +177,14 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
   case MTYPE_V16I1:
   case MTYPE_V16I2:
   case MTYPE_V16I4:
+  case MTYPE_V16I8: 
+    return base != NULL ? TOP_lddqa : TOP_lddqa_n32;
+  case MTYPE_V8I1: 
+  case MTYPE_V8I2: 
   case MTYPE_V8I4: 
-  case MTYPE_V16I8: return base != NULL ? TOP_lddqa : TOP_lddqa_n32;
+    if (!Is_Target_SSE2())
+      return base != NULL ? TOP_ldlps : TOP_ldlps_n32;
+    else return base != NULL ? TOP_ld64_2sse : TOP_ld64_2sse_n32;
   case MTYPE_M8I1:
   case MTYPE_M8I2:
   case MTYPE_M8I4:
@@ -211,7 +229,7 @@ static void Expand_Split_Load( OPCODE opcode,
 
   if( MTYPE_is_size_double( desc ) ){
     TN* ofst_h = TN_is_symbol( ofst )
-      ? Gen_Symbol_TN( TN_var(ofst), TN_offset(ofst) + 4, TN_RELOC_NONE )
+      ? Gen_Symbol_TN( TN_var(ofst), TN_offset(ofst) + 4, TN_relocs(ofst))
       : Gen_Literal_TN( TN_value(ofst) + 4, TN_size(ofst) );
 
     if( base == NULL )
@@ -348,31 +366,37 @@ Pick_Store_Instruction( TYPE_ID mtype,
 			TN* ofst,
 			ISA_REGISTER_CLASS rclass )
 {
-  const BOOL is_reloc_x8664_64 = ( ofst != NULL         &&
-				   TN_is_symbol( ofst ) &&
-				   TN_is_reloc_x8664_64( ofst ) );
+  const BOOL is_reloc_x8664_64 = (ofst != NULL &&
+				  TN_is_symbol(ofst) &&
+				  TN_is_reloc_x8664_64(ofst));
+  const BOOL is_reloc_x8664_tpoff32_seg_reg =
+		(base == NULL &&
+		 ofst != NULL &&
+		 TN_is_symbol(ofst) &&
+		 TN_is_reloc_x8664_tpoff32_seg_reg(ofst));
 
   switch (mtype) {
   case MTYPE_I1:
   case MTYPE_U1:
     if( base != NULL )
       return TOP_store8;
-    return is_reloc_x8664_64 ? TOP_store8_m : TOP_store8_n32;
+    return is_reloc_x8664_64 ? TOP_store8_abs : TOP_store8_n32;
   case MTYPE_I2:
   case MTYPE_U2:
     if( base != NULL )
       return TOP_store16;
-    return is_reloc_x8664_64 ? TOP_store16_m : TOP_store16_n32;
+    return is_reloc_x8664_64 ? TOP_store16_abs : TOP_store16_n32;
   case MTYPE_I4:
   case MTYPE_U4:
     if( base != NULL )
       return TOP_store32;
-    return is_reloc_x8664_64 ? TOP_store32_m : TOP_store32_n32;
+    return is_reloc_x8664_64 ? TOP_store32_abs : TOP_store32_n32;
   case MTYPE_I8:
   case MTYPE_U8:
     if (rclass == ISA_REGISTER_CLASS_mmx)
       return base == NULL ? TOP_store64_fm_n32 : TOP_store64_fm;
-    return is_reloc_x8664_64 ? TOP_store64_m : TOP_store64;
+    return is_reloc_x8664_64 ? TOP_store64_abs :
+	   base == NULL ? TOP_store64_off : TOP_store64;
   case MTYPE_F4:
     if( rclass == ISA_REGISTER_CLASS_float )
       return base != NULL ? TOP_stss : TOP_stss_n32;
@@ -394,12 +418,18 @@ Pick_Store_Instruction( TYPE_ID mtype,
   case MTYPE_V16C8: 
     return base != NULL ? TOP_stapd : TOP_stapd_n32;
   case MTYPE_V8F4:
-    return base != NULL ? TOP_stsd : TOP_stsd_n32;
+    return base != NULL ? TOP_stlps : TOP_stlps_n32;
   case MTYPE_V16I1: 
   case MTYPE_V16I2: 
   case MTYPE_V16I4: 
   case MTYPE_V16I8:
     return base != NULL ? TOP_stdqa : TOP_stdqa_n32;
+  case MTYPE_V8I1: 
+  case MTYPE_V8I2: 
+  case MTYPE_V8I4: 
+    if (!Is_Target_SSE2())
+      return base != NULL ? TOP_stlps : TOP_stlps_n32;
+    else return base != NULL ? TOP_store64_fsse : TOP_store64_fsse_n32;
   case MTYPE_M8I1:
   case MTYPE_M8I2:
   case MTYPE_M8I4:
@@ -419,7 +449,7 @@ static void Expand_Split_Store( TYPE_ID mtype,
     Pick_Store_Instruction( new_mtype, base, ofst, TN_register_class(src) );
   TN* src_h = Get_TN_Pair( src );
   TN* ofst_h = TN_is_symbol( ofst )
-    ? Gen_Symbol_TN( TN_var(ofst), TN_offset(ofst) + 4, TN_RELOC_NONE )
+    ? Gen_Symbol_TN( TN_var(ofst), TN_offset(ofst) + 4, TN_relocs(ofst))
     : Gen_Literal_TN( TN_value(ofst) + 4, TN_size(ofst) );
 
   if( src_h == NULL ){
@@ -439,8 +469,6 @@ static void Expand_Split_Store( TYPE_ID mtype,
     Build_OP( new_top, src_h, ofst_h, ops );
     Set_OP_memory_hi( OPS_last( ops ) );
   }
-
-
 
   return;
 }
@@ -550,11 +578,18 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
 {
   TYPE_ID mtype = OPCODE_rtype(op);
 
-  if (mtype == MTYPE_V8I1 || mtype == MTYPE_V8I2 ||
-      mtype == MTYPE_V8I4 ||
-      mtype == MTYPE_V16I1 || mtype == MTYPE_V16I2 ||
-      mtype == MTYPE_V16I4 || mtype == MTYPE_V16I8)
-    Build_OP (TOP_lddqu, result, base, disp, ops);    
+  if (mtype == MTYPE_V16I1 || mtype == MTYPE_V16I2 ||
+      mtype == MTYPE_V16I4 || mtype == MTYPE_V16I8) {
+    if (base != NULL)
+      Build_OP (TOP_lddqu, result, base, disp, ops);    
+    else Build_OP (TOP_lddqu_n32, result, disp, ops);    
+  }
+  else if (mtype == MTYPE_V8I1 || mtype == MTYPE_V8I2 ||
+	   mtype == MTYPE_V8I4) {
+    if (base != NULL)
+      Build_OP(!Is_Target_SSE2() ? TOP_ldlps : TOP_ld64_2sse, result, base, disp, ops);    
+    else Build_OP(!Is_Target_SSE2() ? TOP_ldlps_n32 : TOP_ld64_2sse_n32, result, disp, ops);    
+  }
   else if (mtype == MTYPE_V16F8 || mtype == MTYPE_V16C8) {
     TN* ofst = TN_is_symbol( disp )
       ? Gen_Symbol_TN( TN_var(disp), TN_offset(disp) + 8, TN_RELOC_NONE )
@@ -573,8 +608,14 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
     TN* ofst = TN_is_symbol( disp )
       ? Gen_Symbol_TN( TN_var(disp), TN_offset(disp) + 8, TN_RELOC_NONE )
       : Gen_Literal_TN( TN_value(disp) + 8, TN_size(disp) );
-    Build_OP (TOP_ldlps, result, base, disp, ops);    
-    Build_OP (TOP_ldhps, result, base, ofst, ops);    
+    if (base != NULL) {
+      Build_OP (TOP_ldlps, result, base, disp, ops);    
+      Build_OP (TOP_ldhps, result, base, ofst, ops);    
+    }
+    else {
+      Build_OP (TOP_ldlps_n32, result, disp, ops);    
+      Build_OP (TOP_ldhps_n32, result, ofst, ops);    
+    }
     Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
   }
   else
@@ -592,14 +633,28 @@ void
 Expand_Misaligned_Store (TYPE_ID mtype, TN *obj_tn, TN *base_tn, TN *disp_tn, VARIANT variant, OPS *ops)
 {
   if (mtype == MTYPE_V16I1 || mtype == MTYPE_V16I2 ||
-      mtype == MTYPE_V16I4 || mtype == MTYPE_V16I8)
-    Build_OP (TOP_stdqu, obj_tn, base_tn, disp_tn, ops);
+      mtype == MTYPE_V16I4 || mtype == MTYPE_V16I8) {
+    if (base_tn != NULL)
+      Build_OP (TOP_stdqu, obj_tn, base_tn, disp_tn, ops);
+    else Build_OP (TOP_stdqu_n32, obj_tn, disp_tn, ops);
+  }
+  else if (mtype == MTYPE_V8I1 || mtype == MTYPE_V8I2 || mtype == MTYPE_V8I4) {
+    if (base_tn != NULL)
+      Build_OP(!Is_Target_SSE2() ? TOP_stlps : TOP_store64_fsse, obj_tn, base_tn, disp_tn, ops);
+    else Build_OP(!Is_Target_SSE2() ? TOP_stlps_n32 : TOP_store64_fsse_n32, obj_tn, disp_tn, ops);
+  }
   else if (mtype == MTYPE_V16F4 || mtype == MTYPE_V16C4) {
     TN* ofst = TN_is_symbol( disp_tn )
       ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
       : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
-    Build_OP (TOP_stlps, obj_tn, base_tn, disp_tn, ops);    
-    Build_OP (TOP_sthps, obj_tn, base_tn, ofst, ops);    
+    if (base_tn != NULL) {
+      Build_OP (TOP_stlps, obj_tn, base_tn, disp_tn, ops);    
+      Build_OP (TOP_sthps, obj_tn, base_tn, ofst, ops);    
+    }
+    else {
+      Build_OP (TOP_stlps_n32, obj_tn, disp_tn, ops);    
+      Build_OP (TOP_sthps_n32, obj_tn, ofst, ops);    
+    }
     Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
   } 
   else if (mtype == MTYPE_V16F8 || mtype == MTYPE_V16C8) {
@@ -651,7 +706,6 @@ Exp_Ldst (
   INT64 base_ofst = 0;
   TN* base_tn = NULL;
   TN* ofst_tn = NULL;
-  TN* tmp_tn = NULL;
   const BOOL is_lda = (!is_load && !is_store);
   OPS newops = OPS_EMPTY;
   OP* op = NULL;
@@ -755,6 +809,8 @@ Exp_Ldst (
       }
       else if( Is_Target_64bit() ){
 	if (Gen_PIC_Shared) {
+	  FmtAssert(!ST_is_thread_local(base_sym),
+		    ("Exp_Ldst: thread-local storage NYI under PIC"));
 	  if (! ST_is_export_local(base_sym) ) {
 	    TN *tmp = base_ofst == 0 ? tn : Build_TN_Like(tn);
 	    Build_OP( TOP_ld64, tmp, Rip_TN(), 
@@ -769,12 +825,30 @@ Exp_Ldst (
 	  else Build_OP( TOP_lea64, tn, Rip_TN(), 
 			 Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ),
 			 &newops );	      
-	}
-	else if (ISA_LC_Value_In_Class(base_ofst, LC_simm32) &&
+	} else if (ST_is_thread_local(base_sym)) {
+	  // Thread-local storage.  The address is:
+	  //   (symbol's offset from thread base ptr) + (thread base ptr)
+	  // The thread base pointer is at %fs:0.  %fs is the thread segment
+	  // register.
+	  TN *segment_base = Build_TN_Like(tn);
+	  Build_OP(TOP_ld64_fs_seg_off, segment_base, Gen_Literal_TN(0, 4),
+		   &newops);
+	  if (ST_sclass(base_sym) == SCLASS_EXTERN) {
+	    TN *segment_offset = Build_TN_Like(tn);
+	    Build_OP(TOP_ld64, segment_offset, Rip_TN(),
+		     Gen_Symbol_TN(base_sym, 0, TN_RELOC_X8664_GOTTPOFF),
+		     &newops);
+	    Build_OP(TOP_add64, tn, segment_base, segment_offset, &newops);
+	  } else {
+	    TN *segment_offset = Gen_Symbol_TN(base_sym, base_ofst,
+					       TN_RELOC_X8664_TPOFF32);
+	    Build_OP(TOP_addi64, tn, segment_base, segment_offset, &newops);
+	  }
+	} else if (ISA_LC_Value_In_Class(base_ofst, LC_simm32) &&
 		 mcmodel < MEDIUM ){
-	  Build_OP( TOP_ldc64, tn,
-		    Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_PC32 ),
-		    &newops );
+	  Build_OP(TOP_ldc64, tn,
+		   Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_PC32 ),
+		   &newops );
 	} else {
 #if 0 // bug 4622
 	  FmtAssert( mcmodel >= MEDIUM, ("code model is not medium or higher") );
@@ -807,6 +881,8 @@ Exp_Ldst (
 		  ("NYI: 64-bit offset under -m32"));
 
 	if( Gen_PIC_Shared && !ST_is_export_local(base_sym) ){
+	  FmtAssert(!ST_is_thread_local(base_sym),
+		    ("Exp_Ldst: thread-local storage NYI under PIC"));
 	  TN* tmp = base_ofst == 0 ? tn : Build_TN_Like(tn);
 	  Build_OP( TOP_ld32, tmp, Ebx_TN(),
 		    Gen_Symbol_TN( base_sym, 0, TN_RELOC_IA32_GOT ),
@@ -818,7 +894,20 @@ Exp_Ldst (
 	  if( base_ofst != 0 ){
 	    Build_OP( TOP_addi32, tn, tmp, Gen_Literal_TN(base_ofst, 4), &newops );
 	  }
+	} else if (ST_is_thread_local(base_sym)) {
+	  // Thread-local storage.  The address is:
+	  //   (symbol's offset from thread base ptr) + (thread base ptr)
+	  // The thread base pointer is at %gs:0.  %gs is the thread segment
+	  // register.
+	  TN *segment_base = Build_TN_Like(tn);
+	  Build_OP(TOP_ld32_gs_seg_off, segment_base, Gen_Literal_TN(0, 4),
+		   &newops);
 
+	  TN_RELOCS relocs = (ST_sclass(base_sym) == SCLASS_EXTERN) ?
+			       TN_RELOC_X8664_GOTTPOFF : TN_RELOC_X8664_TPOFF32;
+	  TN *segment_offset = Gen_Symbol_TN(base_sym, base_ofst, relocs);
+
+	  Build_OP(TOP_addi32, tn, segment_base, segment_offset, &newops);
 	} else {
 	  Build_OP( TOP_ldc32, tn,
 		    Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ),
@@ -832,9 +921,28 @@ Exp_Ldst (
       Is_True(! on_stack, ("Exp_Ldst: unexpected stack reference"));
 
       if( Is_Target_64bit() ){
-	if( mcmodel < MEDIUM && ISA_LC_Value_In_Class(base_ofst, LC_simm32) )
+
+	if (ST_is_thread_local(sym)) {
+	  FmtAssert(ISA_LC_Value_In_Class(base_ofst, LC_simm32),
+		    ("Exp_Ldst: thread-local storage base offset too large"));
+	  if (ST_sclass(sym) == SCLASS_EXTERN) {
+	    base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+	    Build_OP(TOP_ld64, base_tn, Rip_TN(),
+		     Gen_Symbol_TN(base_sym, 0,
+				   TN_RELOC_X8664_GOTTPOFF),
+		     &newops);
+	    ofst_tn = Gen_Literal_TN(base_ofst, 4);
+	    base_ofst = 0;
+	    Set_TN_is_thread_seg_ptr(base_tn);
+	  } else {
+	    ofst_tn = Gen_Symbol_TN(base_sym, base_ofst,
+				    TN_RELOC_X8664_TPOFF32_seg_reg);
+	    base_ofst = 0;
+	  }
+	} else if (mcmodel < MEDIUM &&
+		   ISA_LC_Value_In_Class(base_ofst, LC_simm32)) {
 	    base_tn = Rip_TN();
-	else {
+	} else {
 
 	  if( ISA_LC_Value_In_Class(base_ofst, LC_simm32) ){
 	    ofst_tn = Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_64 );
@@ -895,6 +1003,8 @@ Exp_Ldst (
       }
 
       if( Gen_PIC_Shared && !ST_is_export_local(base_sym) ){
+	FmtAssert(!ST_is_thread_local(base_sym),
+		  ("Exp_Ldst: thread-local storage NYI under PIC"));
 	if( Is_Target_64bit() ){
 	  TN *new_base = Build_TN_Of_Mtype(Pointer_Mtype);
 	  Build_OP (TOP_ld64, new_base, base_tn, 
@@ -919,7 +1029,24 @@ Exp_Ldst (
 	}
       }
       else if( ofst_tn == NULL ){
-	ofst_tn = Gen_Symbol_TN(base_sym, base_ofst, TN_RELOC_NONE);
+	if (ST_is_thread_local(base_sym) &&
+	    ST_sclass(sym) == SCLASS_EXTERN) {
+	  // The 64-bit case already handled above.
+	  FmtAssert(Is_Target_32bit(), ("Exp_Ldst: unexpected 64-bit target"));
+	  base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+	  Build_OP(TOP_ldc32, base_tn,
+		   Gen_Symbol_TN(base_sym, 0,
+				 TN_RELOC_X8664_GOTTPOFF),
+		   &newops);
+	  ofst_tn = Gen_Literal_TN(base_ofst, 4);
+	  base_ofst = 0;
+	  Set_TN_is_thread_seg_ptr(base_tn);
+	} else {
+	  ofst_tn = Gen_Symbol_TN(base_sym, base_ofst,
+				  ST_is_thread_local(base_sym) ?
+				    TN_RELOC_X8664_TPOFF32_seg_reg :
+				    TN_RELOC_NONE);
+	}
       }
     }
 
@@ -938,7 +1065,6 @@ Exp_Ldst (
 			         variant, &newops );
       else
 	Expand_Load ( opcode, tn, base_tn, ofst_tn, &newops );
-
     }
   }
 
@@ -983,6 +1109,8 @@ Exp_Load (
 {
   OPCODE opcode = OPCODE_make_op (OPR_LDID, rtype, desc);
   Exp_Ldst (opcode, tgt_tn, sym, ofst, FALSE, FALSE, TRUE, ops, variant);
+  if (TN_register_class(tgt_tn) == ISA_REGISTER_CLASS_mmx)
+    Build_OP(TOP_emms, ops); // bug 11800
 }
 
 void
@@ -1102,6 +1230,38 @@ UINT64 Bitmask_Of_Size(INT bsize)
 }
 
 /* ======================================================================
+ * Exp_Set_Bits - deposit all 1's into a field of src1_tn returning
+ * the result in tgt_tn, this is a specialized version of Exp_Deposit_Bits2()
+ * ======================================================================*/
+void Exp_Set_Bits(TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_size,
+		   TN *tgt_tn, TN *src1_tn, OPS *ops)
+{
+  if (!bit_size) return;
+
+  UINT targ_bit_offset = bit_offset;
+  if (Target_Byte_Sex == BIG_ENDIAN) {
+    targ_bit_offset = MTYPE_bit_size(desc) - bit_offset - bit_size;
+  }
+
+  UINT64 bitmask = Bitmask_Of_Size(bit_size) << targ_bit_offset;
+  TN *tmp1_tn;
+  if (MTYPE_byte_size(rtype) <= 4 ||
+      ISA_LC_Value_In_Class(bitmask, LC_simm32))
+    tmp1_tn = Gen_Literal_TN(bitmask, MTYPE_byte_size(rtype));
+  else {
+    tmp1_tn = Build_TN_Like(tgt_tn);
+    if( Is_Target_32bit()           &&
+	MTYPE_is_size_double(rtype) &&
+	Get_TN_Pair(tmp1_tn) == 0 )
+      (void *) Create_TN_Pair( tmp1_tn, rtype );
+    Exp_Immediate(tmp1_tn, Gen_Literal_TN(bitmask, MTYPE_byte_size(rtype)), 
+    		  FALSE, ops );
+  }
+
+  Expand_Binary_Or( tgt_tn, src1_tn, tmp1_tn, rtype, ops );
+}
+
+/* ======================================================================
  * Exp_Deposit_Bits2 - deposit src2_tn into a field of src1_tn returning
  * the result in tgt_tn using the more straightforward algorithm friendly to
  * Valgrind
@@ -1136,12 +1296,19 @@ void Exp_Deposit_Bits2(TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_si
   UINT64 bitmask = ~(Bitmask_Of_Size(bit_size) << targ_bit_offset);
   if (MTYPE_byte_size(rtype) <= 4)
     bitmask &= Bitmask_Of_Size(MTYPE_byte_size(rtype) * 8);
-  TN *tmp2_tn = Build_TN_Like(tgt_tn);
-  if( Is_Target_32bit()           &&
-      MTYPE_is_size_double(rtype) &&
-      Get_TN_Pair(tmp2_tn) == 0 )
-    (void *) Create_TN_Pair( tmp2_tn, rtype );
-  Exp_Immediate(tmp2_tn, Gen_Literal_TN(bitmask, MTYPE_byte_size(rtype)), FALSE, ops );
+  TN *tmp2_tn;
+  if (MTYPE_byte_size(rtype) <= 4 ||
+      ISA_LC_Value_In_Class(bitmask, LC_simm32))
+    tmp2_tn = Gen_Literal_TN(bitmask, MTYPE_byte_size(rtype));
+  else {
+    tmp2_tn = Build_TN_Like(tgt_tn);
+    if( Is_Target_32bit()           &&
+	MTYPE_is_size_double(rtype) &&
+	Get_TN_Pair(tmp2_tn) == 0 )
+      (void *) Create_TN_Pair( tmp2_tn, rtype );
+    Exp_Immediate(tmp2_tn, Gen_Literal_TN(bitmask, MTYPE_byte_size(rtype)), 
+    		  FALSE, ops );
+  }
 
   Expand_Binary_And( tgt_tn, tmp2_tn, src1_tn, rtype, ops );
   Expand_Binary_Or( tgt_tn, tgt_tn, tmp1_tn, rtype, ops );

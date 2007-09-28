@@ -373,6 +373,10 @@ static OPTION_DESC Options_GRA[] = {
     0, 0, 0,	&GRA_eh_exclude_callee_saved_regs, NULL,
     "If true, callee-saved registers are never used to allocate to variables in functions with exception handlers"
   },    
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"fp_exclude_saved_regs", "",
+    0, 0, 0,	&GRA_fp_exclude_callee_saved_regs, NULL,
+    "If true, floating-point callee-saved registers are never used to allocate to variables by GRA"
+  },    
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "optimize_boundary", "",
     0,0,0,      &GRA_optimize_boundary, NULL,
     "Enable/disable reuse of registers in live range boundary basic blocks [Default FALSE]."
@@ -978,7 +982,7 @@ static OPTION_DESC Options_CG[] = {
     120, 0, UINT32_MAX>>1, &CG_movnti, NULL,
     "Use x86-64's movnti instead of mov when writing memory blocks of this size or larger (in KB)" },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "cloop", "",
-    0, 0, 0,	&CG_cloop, NULL },
+    0, 0, 0,	&CG_LOOP_cloop, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"use_lddqu", "",
     0, 0, 0, &CG_use_lddqu, NULL },
 #endif
@@ -990,8 +994,6 @@ static OPTION_DESC Options_CG[] = {
     "Store x87 floating point variables to memory after each computation, in order to reduce the variable's precision from 80 bits to 32/64 bits.  Default off."
   },
 #endif
-
-  { OVK_COUNT },
 
   // Misc:
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "gra_live_predicate_aware", "",
@@ -1045,6 +1047,8 @@ static OPTION_DESC Options_CG[] = {
 
   { OVK_BOOL,	OV_INTERNAL, TRUE,"rename", "",
     0, 0, 0, &CG_enable_rename, NULL },
+
+  { OVK_COUNT }
 };
 
 #ifdef TARG_IA64

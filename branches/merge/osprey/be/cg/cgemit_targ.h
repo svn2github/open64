@@ -89,8 +89,9 @@ extern void CGEMIT_Weak_Alias (ST *sym, ST *strongsym);
 
 // generate alias directive.
 extern void CGEMIT_Alias (ST *sym, ST *strongsym);
-extern INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f );
 
 #ifdef TARG_X8664
-extern void CGEMIT_Setup_Ctrl_Register( FILE* f );
+extern INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f );
 #endif
+
+extern void CGEMIT_Setup_Ctrl_Register( FILE* f );

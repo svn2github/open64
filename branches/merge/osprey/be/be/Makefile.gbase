@@ -237,6 +237,7 @@ LDIRT = $(DERIVED_INCS) $(DERIVED_SRCS)
 BE_BE_CXX_SRCS = 	\
   cleanup.cxx		\
   fill_align.cxx        \
+  goto_conv.cxx         \
   mem_ctr.cxx           \
   dra_ec.cxx		\
   dra_file_util.cxx     \
@@ -520,8 +521,12 @@ BE_DRIVER_OBJS = \
 # extra files to be removed with make clobber
 LDIRT += ii_files so_locations  *.pch
 
+ifneq ($(BUILD_ARCH), MIPS64)
 ifeq ($(shell test -e /usr/include/valgrind/valgrind.h && echo y || echo n), y)
 HEADER_DIRS += /usr/include/valgrind
+else
+LCOPTS += -DNO_VALGRIND
+endif
 else
 LCOPTS += -DNO_VALGRIND
 endif

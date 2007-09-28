@@ -168,4 +168,8 @@ extern struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n);
 // The location on the stack that corresponds to the nth TN on the stack.
 extern ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n);
 #endif
+
+#ifdef TARG_MIPS
+extern TN *Caller_GP_TN;
+#endif
 #endif /* calls_INCLUDED */

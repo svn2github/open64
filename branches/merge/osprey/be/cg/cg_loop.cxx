@@ -2149,7 +2149,10 @@ static void unroll_names_init_tn(TN *result, UINT16 ntimes, MEM_POOL *pool)
        in the loop epilog, where <result> is a gra homeable non_body tn;
        otherwise, redundant spill code could be generated.
      */
-    else if( unrolling == ntimes - 1 && 
+     /* bug 13064: Because Dup_TN "Reset_TN_is_global_reg", we don't keep
+        the original TN for the last iteration if it is global. Instead, we
+        make a duplicate TN as other iterations below */
+    else if( unrolling == ntimes - 1 && !TN_is_global_reg(result) && 
 	     TN_is_gra_homeable(result) ){
       entry[unrolling] = result;
     }
@@ -2460,6 +2463,15 @@ static void unroll_guard_unrolled_body(LOOP_DESCR *loop,
 	    orig_trip_count_tn,
 	    Gen_Literal_TN(log2(ntimes), trip_size),
 	    &ops);
+#ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
+    Exp_OP3v(OPC_FALSEBR,
+             NULL,
+             Gen_Label_TN(continuation_lbl,0),
+             new_trip_count_tn,
+             Gen_Literal_TN(0,4),
+             trip_size == 4 ? V_BR_I8EQ : V_BR_I8EQ,
+             &ops);
+#else
     Exp_OP3v(OPC_FALSEBR,
 	     NULL,
 	     Gen_Label_TN(continuation_lbl,0),
@@ -2467,6 +2479,7 @@ static void unroll_guard_unrolled_body(LOOP_DESCR *loop,
 	     Zero_TN,
 	     V_BR_I8EQ,
 	     &ops);
+#endif
     BB_Append_Ops(CG_LOOP_prolog, &ops);
     Link_Pred_Succ_with_Prob(CG_LOOP_prolog, continuation_bb, ztrip_prob);
     Change_Succ_Prob(CG_LOOP_prolog, BB_next(CG_LOOP_prolog), 1.0 - ztrip_prob);
@@ -3224,14 +3237,23 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
 	       Gen_Literal_TN(-1, trip_size),
 	       &body_ops );
 
+#ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
       Exp_OP3v( OPC_TRUEBR,
 		NULL,
 		Gen_Label_TN( Gen_Label_For_BB(new_body),0 ),
 		var_trip_count,
-		Zero_TN,
-		V_BR_I8NE,
+		Gen_Literal_TN(0,4),
+		trip_size == 4 ? V_BR_I4NE : V_BR_I8NE,
 		&body_ops );
-
+#else
+      Exp_OP3v( OPC_TRUEBR,
+                NULL,
+                Gen_Label_TN( Gen_Label_For_BB(new_body),0 ),
+                var_trip_count,
+                Zero_TN,
+                V_BR_I8NE,
+                &body_ops );
+#endif
       float exit_prob = 1.0 / ntimes;
       Link_Pred_Succ_with_Prob( new_body, new_body, 1.0 - exit_prob );
       //Link_Pred_Succ_with_Prob( new_body, remainder_tail, exit_prob );
@@ -3548,6 +3570,15 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
 	    trip_count,
 	    Gen_Literal_TN(ntimes-1, trip_size),
 	    &ops);
+#ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
+    Exp_OP3v(OPC_FALSEBR,
+             NULL,
+             Gen_Label_TN(continuation_label,0),
+             new_trip_count,
+             Gen_Literal_TN(0,4),
+             trip_size == 4 ? V_BR_I4EQ : V_BR_I8EQ,
+             &ops);
+#else
     Exp_OP3v(OPC_FALSEBR,
 	     NULL,
 	     Gen_Label_TN(continuation_label,0),
@@ -3555,6 +3586,7 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
 	     Zero_TN,
 	     V_BR_I8EQ,
 	     &ops);
+#endif
     BB_Append_Ops(CG_LOOP_prolog, &ops);
     Link_Pred_Succ_with_Prob(CG_LOOP_prolog, remainder_epilog, ztrip_prob);
     if (freqs)
@@ -3689,6 +3721,15 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
 	    trip_counter,
 	    Gen_Literal_TN(-1, trip_size),
 	    &ops);
+#ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
+    Exp_OP3v(OPC_TRUEBR,
+             NULL,
+             Gen_Label_TN(Gen_Label_For_BB(head), 0),
+             trip_counter,
+             Gen_Literal_TN(0,4),
+             trip_size == 4 ? V_BR_I4NE : V_BR_I8NE,
+             &ops);
+#else
     Exp_OP3v(OPC_TRUEBR,
 	     NULL,
 	     Gen_Label_TN(Gen_Label_For_BB(head), 0),
@@ -3696,6 +3737,7 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
 	     Zero_TN,
 	     V_BR_I8NE,
 	     &ops);
+#endif
     BB_Append_Ops(tail, &ops);
     if (dbnum > 0) {
       FOR_ALL_OPS_OPs(&ops, op) DB_Initialize_OP(op, dbnum);

@@ -133,6 +133,7 @@
 #ifdef KEY
 #include "config_wopt.h"    // for WOPT_Enable_Simple_If_Conv
 #include "output_func_start_profiler.h"
+#include "goto_conv.h"
 #endif
 
 #include "be_memop_annot.h"
@@ -1659,6 +1660,15 @@ Preprocess_PU (PU_Info *current_pu)
   if (Run_purple) {
     Prp_Instrument_And_EmitSrc(pu);
   }
+
+#ifdef KEY
+  if (Early_Goto_Conversion)
+  {
+      GTABLE goto_table( pu, MEM_pu_pool_ptr );
+      goto_table.Remove_Gotos();
+      // goto_table gets destructed here
+  }
+#endif
 
   /* Add instrumentation here for vho lower. */
   if ( Instrumentation_Enabled

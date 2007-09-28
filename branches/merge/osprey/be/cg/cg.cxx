@@ -941,7 +941,12 @@ CG_Generate_Code(
       // detect GTN
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
       GRA_LIVE_Rename_TNs();  // rename TNs -- required by LRA
-#ifdef KEY 
+      Stop_Timer(T_Loop_CU);
+      Check_for_Dump(TP_CGLOOP, NULL);
+      if (frequency_verify)
+	FREQ_Verify("CGLOOP");
+
+#ifdef KEY
       /* bug#1442
 	 Loop optimization will introduce new GTNs. If -CG:localize is on,
 	 we should localize all the new created GTNs.
@@ -951,15 +956,13 @@ CG_Generate_Code(
 	  || CG_localize_x87_tns
 #endif
          ){
-	Set_Error_Phase ( "Localize" );
+	Set_Error_Phase ( "Localize (after CGLOOP)" );
+	Start_Timer ( T_Localize_CU );
 	Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
+	Stop_Timer ( T_Localize_CU );
 	Check_for_Dump ( TP_LOCALIZE, NULL );
       }
-#endif // KEY 
-      Stop_Timer(T_Loop_CU);
-      Check_for_Dump(TP_CGLOOP, NULL);
-      if (frequency_verify)
-        FREQ_Verify("CGLOOP");
+#endif
     }
 
     /* Optimize control flow (second pass) */
@@ -1330,6 +1333,10 @@ CG_Generate_Code(
       }
     }
   }
+#endif
+
+#if defined(KEY) && defined(TARG_MIPS)
+  CFLOW_Fixup_Long_Branches();
 #endif
 
   Reuse_Temp_TNs = orig_reuse_temp_tns;		/* restore */

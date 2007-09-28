@@ -4835,7 +4835,7 @@ WFE_Expand_Expr (tree exp,
                 if (ret_mtype == MTYPE_V)
                   ret_mtype = MTYPE_I4;
 		break;
-
+#ifdef TARG_IA64
 	      case BUILT_IN_CTYPE_B_LOC: 
 	        iopc = INTRN_CTYPE_B_LOC; 
 		intrinsic_op = TRUE; 
@@ -4850,6 +4850,7 @@ WFE_Expand_Expr (tree exp,
 	        iopc = INTRN_CTYPE_TOLOWER_LOC; 
 		intrinsic_op = TRUE; 
 		break;
+#endif
 
 #ifdef KEY
 	      case BUILT_IN_EXTEND_POINTER:

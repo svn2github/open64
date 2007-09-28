@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -997,11 +1001,9 @@ Create_Lock_Type()
     if( lock_ty_idx != TY_IDX_ZERO )
       return;
 #ifdef KEY
-#ifdef TARG_X8664
     if (Is_Target_32bit())
       lock_ty_idx = MTYPE_To_TY(MTYPE_I4);
     else
-#endif
       lock_ty_idx = MTYPE_To_TY(MTYPE_I8);
 #else
        // define lock_ty_idx as an I4 array of size 8
@@ -1760,11 +1762,7 @@ Gen_Threadpriv_Func(WN* prags, WN* block, BOOL prepend)
   ST *gtid_st = NULL;
   BOOL need_thread_num = FALSE;
 
-#ifdef TARG_X8664
   BOOL target_32bit = Is_Target_32bit();
-#else
-  BOOL target_32bit = FALSE;
-#endif
 
   const OPCODE uint_opc = (Pointer_Size == 4) ? OPC_U4INTCONST :
                          (Pointer_Size == 8) ? OPC_U8INTCONST : OPCODE_UNKNOWN;
@@ -3034,6 +3032,9 @@ Walk_and_Info_Pregs ( WN * tree )
 	Walk_and_Info_Pregs ( WN_kid(tree, i) );
 
     if (OPCODE_has_sym(op) && OPCODE_has_offset(op) && WN_st(tree) &&
+#ifdef KEY // bug 11914: if OPC_PRAGMA, WN_offsetx will not return correct pnum
+        op != OPC_PRAGMA &&
+#endif
         (ST_class(WN_st(tree)) == CLASS_PREG) &&
         !Preg_Is_Dedicated(WN_offsetx(tree))) {
       PREG_IDX pnum = Get_Preg_Idx(WN_offsetx(tree));
@@ -3433,12 +3434,12 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
       ty = FLD_type(TY_fld(ty));
 #endif
     if ((TY_kind(ty) == KIND_POINTER) &&
-        ((v->is_static_array) || (vtype == VAR_REDUCTION_ARRAY)))
+	((v->is_static_array) || (vtype == VAR_REDUCTION_ARRAY)))
 #ifdef KEY //bug 11661
      {
 #endif
       ty = TY_pointed(ty);
-#ifdef KEY //bug 11661: for structure, we need the field type
+#ifdef KEY //bug 11661: for structure, we need the field type 
       if (TY_kind(ty) == KIND_STRUCT && vtype == VAR_REDUCTION_ARRAY)
         ty = FLD_type(TY_fld(ty));
      }
@@ -4008,11 +4009,7 @@ Gen_MP_Copyprivate(WN *copyprivates, WN **copyprivate_blockp,
   FLD *next;
   ST *st, *fld_st;
 
-#ifdef TARG_X8664
   BOOL target_32bit = Is_Target_32bit();
-#else
-  BOOL target_32bit = FALSE;
-#endif
 
   /* Create a struct type */
   INT32 count = 0;
@@ -5658,6 +5655,7 @@ static ST*
 Get_Threadprv_St(WN *prags, ST *copyin_st, ST **copyin_local_st)
 {
   ST *split_block;
+  ST *copyin_global_st = NULL;
   ST *common_block = ST_Source_Block(copyin_st, &split_block);
   if (!ST_is_thread_private(copyin_st) &&
      !(split_block && ST_is_thread_private(split_block)) &&
@@ -5666,11 +5664,12 @@ Get_Threadprv_St(WN *prags, ST *copyin_st, ST **copyin_local_st)
   BOOL match = FALSE;
   prags = WN_first(prags);
 
-  while (prags) { 
+  while (prags) {
     if (WN_opcode(prags) == OPC_PRAGMA &&
         WN_pragma(prags) == WN_PRAGMA_THREADPRIVATE &&
         WN_st(prags) == common_block) {
       *copyin_local_st = ST_ptr(WN_pragma_arg1(prags));
+      copyin_global_st = ST_ptr(WN_pragma_arg2(prags));
       match = TRUE;
     }
     prags = WN_next(prags);
@@ -5678,6 +5677,11 @@ Get_Threadprv_St(WN *prags, ST *copyin_st, ST **copyin_local_st)
   if (!match)
     Fail_FmtAssertion ( "bad copyin st (%s) in MP processing",
                             ST_st_idx(copyin_st) );
+  if (copyin_global_st)
+    common_block = copyin_global_st;
+  else
+    Is_True (FALSE, ("Copyin source ST not found in MP processing"));
+
   return common_block;
 }
 
@@ -5839,18 +5843,13 @@ Gen_MP_Copyin ( BOOL is_omp )
       if (WN_opcode(wnx) == OPC_PRAGMA) {
         ST *ppthd, *global;
         global = Get_Threadprv_St(reference_block, WN_st(wnx), &ppthd);
-	// Use ST_ofst only if we are generating a pointer to the
-	// threadprivate base of the st, instead of to the st itself.
-	//
-	// If ofst == 0, WN_Add will take care of it.
-	INT64 ofst = (global == WN_st (wnx)) ? 0 : ST_ofst (WN_st (wnx));
-        wny = WN_Add(Pointer_type,
-                     WN_CreateLdid(OPCODE_make_op(OPR_LDID, Pointer_type, Pointer_type),
-                                   0, ppthd,ST_type(ppthd)), 
-                     WN_Intconst (MTYPE_I4, ofst));
-        wnz = WN_Add(Pointer_type,
-                     WN_Lda(Pointer_type, 0, global),
-                     WN_Intconst (MTYPE_I4, ofst));
+        wny = WN_CreateLdid(OPCODE_make_op(OPR_LDID,
+                                           Pointer_type, Pointer_type),
+                            0, ppthd,ST_type(ppthd)); 
+        // See bugs 12688, 12696 for OpenMP library change in
+        // __ompc_get_thdprv() that necessitates the following.
+        wnz = WN_IloadLdid(TY_mtype(ST_type(global)), 0,
+                           ST_type(global), global, 0);
         ty = ST_type(WN_st(wnx));
         size = TY_size(ty);
       } else

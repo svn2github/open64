@@ -207,7 +207,7 @@ BOOL CG_fold_shiftadd = FALSE;
 BOOL CG_use_prefetchnta = FALSE;
 BOOL CG_idivbyconst_opt = TRUE;
 BOOL CG_fold_constimul = TRUE;
-BOOL CG_cloop = TRUE;
+BOOL CG_LOOP_cloop = TRUE;
 BOOL CG_use_lddqu = FALSE;
 #else
 BOOL Enable_Fill_Delay_Slots = TRUE;
@@ -272,6 +272,7 @@ const char* GRA_spill_count_factor_string = "0.5";
 #ifdef KEY
 BOOL GRA_exclude_callee_saved_regs = FALSE;
 BOOL GRA_eh_exclude_callee_saved_regs = FALSE;
+BOOL GRA_fp_exclude_callee_saved_regs = FALSE;
 #endif
 
 #ifdef KEY

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1385,11 +1389,13 @@ Allocate_Entry_Formal(ST *formal, BOOL on_stack, BOOL in_formal_reg)
 	sec = Shorten_Section(formal, _SEC_BSS);
     	Allocate_Object_To_Section(formal, sec, Adjusted_Alignment(formal));
     }
+#ifndef TARG_MIPS // bug 12772
     else if (in_formal_reg)
     {
       /* parameter is in register, so put in FORMAL area */
       Add_Object_To_Frame_Segment ( formal, SFSEG_FORMAL, TRUE );
     }
+#endif
     else if (on_stack)
     {
       /* parameter is on stack, so put in either UPFORMAL or FTEMP area */
@@ -1400,6 +1406,13 @@ Allocate_Entry_Formal(ST *formal, BOOL on_stack, BOOL in_formal_reg)
       	Add_Object_To_Frame_Segment ( formal, SFSEG_UPFORMAL, TRUE );
       }
     }
+#ifdef TARG_MIPS // bug 12772
+    else if (in_formal_reg)
+    {
+      /* parameter is in register, so put in FORMAL area */
+      Add_Object_To_Frame_Segment ( formal, SFSEG_FORMAL, TRUE );
+    }
+#endif
     else 
     {
 	// formal not in usual parameter reg and not on stack
@@ -2034,6 +2047,7 @@ Initialize_Stack_Frame (WN *PU_tree)
 	fprintf(TFile, "<lay> Determine_Stack_Model for %s\n", 
 		ST_name(WN_st(PU_tree)));
 
+#ifndef TARG_X8664
   if (PU_has_return_address(Get_Current_PU()) 
 	&& MTYPE_byte_size(Pointer_Mtype) < MTYPE_byte_size(Spill_Int_Mtype) )
   {
@@ -2053,6 +2067,7 @@ Initialize_Stack_Frame (WN *PU_tree)
 	    MTYPE_byte_size(Spill_Int_Mtype) - MTYPE_byte_size(Pointer_Mtype) :
 	    0);
   }
+#endif
 
   Init_Segment_Descriptors();
   Init_PU_arg_area_size_array();
@@ -2088,13 +2103,20 @@ Initialize_Stack_Frame (WN *PU_tree)
 
   if (PUSH_RETURN_ADDRESS_ON_STACK) {
     // Reserve the space on stack for the return address (ia32)
-    ST* ra_st = New_ST ();
-    ST_Init (ra_st, 
-             Save_Str("return_address"),
-             CLASS_VAR,
-             SCLASS_FORMAL,
-             EXPORT_LOCAL,
-             MTYPE_To_TY(Pointer_Mtype));
+    ST* ra_st;
+#ifdef KEY // bug 12261: check before creating another return address symbol
+    if ((ra_st = Find_Special_Return_Address_Symbol()) == NULL) {
+#endif
+      ra_st = New_ST ();
+      ST_Init (ra_st, 
+	       Save_Str("return_address"),
+	       CLASS_VAR,
+	       SCLASS_FORMAL,
+	       EXPORT_LOCAL,
+	       MTYPE_To_TY(Pointer_Mtype));
+#ifdef KEY
+    }
+#endif
     Add_Object_To_Frame_Segment (ra_st, SFSEG_UPFORMAL, TRUE);
     upformal_size += MTYPE_byte_size(Pointer_Mtype);
   }
@@ -2732,19 +2754,26 @@ Allocate_Object ( ST *st )
   case SCLASS_FSTATIC :
     if (ST_is_thread_local(st)) {
       if (ST_is_initialized(st) && !ST_init_value_zero (st))
-#ifndef TARG_IA64
-        sec = _SEC_DATA;
+#ifdef KEY
+        sec = _SEC_LDATA_MIPS_LOCAL;	// bug 12619
 #else
         sec = _SEC_LDATA;
 #endif
       else
-#ifndef TARG_IA64
-        // We only implement TLS on IA64 so far
+#ifdef KEY
         sec = _SEC_BSS;
 #else
         sec = _SEC_LBSS;
-#endif // TARG_IA64
+#endif // KEY
     }
+#ifdef KEY
+    else if (ST_is_thread_local(st)) {
+      if (ST_is_initialized(st) && !ST_init_value_zero(st))
+        sec = _SEC_LDATA;
+      else
+        sec = _SEC_LBSS;
+    }
+#endif
     else if (ST_is_initialized(st) && !ST_init_value_zero (st))
         sec = (ST_is_constant(st) ? _SEC_RDATA : _SEC_DATA);
     else
@@ -2799,27 +2828,32 @@ Allocate_Object ( ST *st )
     }
     break;
   case SCLASS_UGLOBAL :
-    if (ST_is_thread_local(st)) {
-#ifndef TARG_IA64
-      // We only implement TLS on IA64 so far
+    if (ST_is_thread_private(st)) {
+#ifdef KEY
       sec = _SEC_BSS;
 #else
       sec = _SEC_LBSS;
-#endif // TARG_IA64
+#endif // KEY
     } 
+#ifdef KEY
+    else if (ST_is_thread_local(st)) {
+      sec = _SEC_LBSS;
+    }
+#endif
     else sec = _SEC_BSS;
     sec = Shorten_Section ( st, sec );
     Allocate_Object_To_Section ( base_st, sec, Adjusted_Alignment(base_st));
     break;
   case SCLASS_DGLOBAL :
-    if (ST_is_thread_local(st)) {
-#ifndef TARG_IA64
-      // We only implement TLS on IA64 so far
-      sec = _SEC_DATA;
-#else      
+    if (ST_is_thread_private(st))
+#ifdef KEY
+      sec = _SEC_LDATA_MIPS_LOCAL;	// bug 12619
+#else
       sec = _SEC_LDATA;
 #endif
-    }
+#ifdef KEY
+    else if (ST_is_thread_local(st)) sec = _SEC_LDATA;
+#endif
     else if (ST_is_constant(st)) {
 #ifdef TARG_X8664
       if (Gen_PIC_Shared)

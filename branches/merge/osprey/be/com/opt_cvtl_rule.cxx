@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007 Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -229,7 +233,11 @@ INT Need_load_type_conversion(BOOL source_sign_extd, BOOL target_sign_extd,
 #ifndef KEY
       *opc = (OPCODE) OPC_U4U8CVT;
 #else
-      *opc = (OPCODE) OPC_I8I4CVT;
+#ifdef TARG_MIPS
+      *opc = (OPCODE) OPC_I4U8CVT;  // Bug 13308: MIPS treats I8I4CVT as NOP.
+#else
+      *opc = (OPCODE) OPC_I8I4CVT;  // But I4U8CVT hurts performance on x86
+#endif
 #endif
     }
     return NEED_CVT;

@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -147,8 +155,9 @@ main()
 			   TOP_fucomip,
 			   TOP_UNDEFINED );
 
-  ISA_PRINT_TYPE cmpx =  ISA_Print_Type_Create("cmpx", "%s %s(%s),%s");
+  ISA_PRINT_TYPE cmpx =  ISA_Print_Type_Create("cmpx", "%s %s%s(%s),%s");
   Name();
+  Segment();
   Operand(2);
   Operand(1);
   Operand(0);
@@ -163,9 +172,10 @@ main()
 			   TOP_comixss,
 			   TOP_UNDEFINED );
 
-  ISA_PRINT_TYPE cmpxi =  ISA_Print_Type_Create("cmpxi", "%s %s,%s(%s)");
+  ISA_PRINT_TYPE cmpxi =  ISA_Print_Type_Create("cmpxi", "%s %s,%s%s(%s)");
   Name();
   Operand(2);
+  Segment();
   Operand(1);
   Operand(0);
   Instruction_Print_Group( cmpxi,
@@ -176,8 +186,9 @@ main()
 			   TOP_UNDEFINED );
 
 
-  ISA_PRINT_TYPE cmpxx =  ISA_Print_Type_Create("cmpxx", "%s %s(%s,%s,%s),%s");
+  ISA_PRINT_TYPE cmpxx =  ISA_Print_Type_Create("cmpxx", "%s %s%s(%s,%s,%s),%s");
   Name();
+  Segment();
   Operand(4);
   Operand(1);
   Operand(2);
@@ -194,9 +205,10 @@ main()
 			   TOP_comixxss,
 			   TOP_UNDEFINED );
 
-  ISA_PRINT_TYPE cmpxxi =  ISA_Print_Type_Create("cmpxxi", "%s %s,%s(%s,%s,%s)");
+  ISA_PRINT_TYPE cmpxxi =  ISA_Print_Type_Create("cmpxxi", "%s %s,%s%s(%s,%s,%s)");
   Name();
   Operand(4);
+  Segment();
   Operand(3);
   Operand(0);
   Operand(1);
@@ -208,8 +220,9 @@ main()
 			   TOP_cmpxxi64,
 			   TOP_UNDEFINED );
 
-  ISA_PRINT_TYPE cmpxxx =  ISA_Print_Type_Create("cmpxxx", "%s %s(,%s,%s),%s");
+  ISA_PRINT_TYPE cmpxxx =  ISA_Print_Type_Create("cmpxxx", "%s %s%s(,%s,%s),%s");
   Name();
+  Segment();
   Operand(3);
   Operand(1);
   Operand(2);
@@ -225,9 +238,10 @@ main()
 			   TOP_comixxxss,
 			   TOP_UNDEFINED );
 
-  ISA_PRINT_TYPE cmpxxxi =  ISA_Print_Type_Create("cmpxxxi", "%s %s,%s(,%s,%s)");
+  ISA_PRINT_TYPE cmpxxxi =  ISA_Print_Type_Create("cmpxxxi", "%s %s,%s%s(,%s,%s)");
   Name();
   Operand(3);
+  Segment();
   Operand(2);
   Operand(0);
   Operand(1);
@@ -258,6 +272,7 @@ main()
 			   TOP_add64v32,
 			   TOP_paddsb,
 			   TOP_paddsw,
+			   TOP_paddq,
 			   TOP_psubsb,
 			   TOP_psubsw,
 			   TOP_paddusb,
@@ -267,6 +282,7 @@ main()
 			   TOP_pmullw,
 			   TOP_pmulhw,
 			   TOP_pmulhuw,
+			   TOP_pmaddwd,
 			   TOP_fadd128v32,
 			   TOP_fadd128v64,
 			   TOP_faddsub128v32,
@@ -445,8 +461,9 @@ main()
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand */
-  ISA_PRINT_TYPE ropmem =  ISA_Print_Type_Create("ropmem", "%s %s(%s),%s");
+  ISA_PRINT_TYPE ropmem =  ISA_Print_Type_Create("ropmem", "%s %s%s(%s),%s");
   Name();
+  Segment();
   Operand(2);
   Operand(1);
   Result(0);
@@ -534,8 +551,9 @@ main()
 
   /* One result / two operands in x86 style w/ mem operand w/ scaled-index */
   ISA_PRINT_TYPE ropmemindex =  ISA_Print_Type_Create("ropmemindex", 
-						      "%s %s(%s,%s,%s),%s");
+						      "%s %s%s(%s,%s,%s),%s");
   Name();
+  Segment();
   Operand(4);
   Operand(1);
   Operand(2);
@@ -625,8 +643,9 @@ main()
 
   /* One result / two operands in x86 style w/ mem operand w/o base */
   ISA_PRINT_TYPE ropmemindexx =  ISA_Print_Type_Create("ropmemindexx", 
-						       "%s %s(,%s,%s),%s");
+						       "%s %s%s(,%s,%s),%s");
   Name();
+  Segment();
   Operand(3);
   Operand(1);
   Operand(2);
@@ -751,8 +770,9 @@ main()
 			   TOP_fstp,
 			   TOP_UNDEFINED );
 
-  ISA_PRINT_TYPE ijmpx = ISA_Print_Type_Create("opop", "%s %s(%s)");
+  ISA_PRINT_TYPE ijmpx = ISA_Print_Type_Create("opop", "%s %s%s(%s)");
   Name();
+  Segment();
   Operand(1);
   Operand(0);
   Instruction_Print_Group( ijmpx,
@@ -871,10 +891,11 @@ main()
 			   TOP_fmovddup,
 			   TOP_movlhps,
 			   TOP_movhlps,
-			   TOP_ld8_m,
-			   TOP_ld16_m,
-			   TOP_ld32_m,
-			   TOP_ld64_m,
+			   TOP_ld8_abs,
+			   TOP_ld16_abs,
+			   TOP_ld32_abs,
+			   TOP_ld64_abs,
+			   TOP_ld64_off,
 			   TOP_ldss_n32,
 			   TOP_ldsd_n32,
 			   TOP_ld8_32_n32,
@@ -882,12 +903,23 @@ main()
 			   TOP_ld16_32_n32,
 			   TOP_ldu16_32_n32,
 			   TOP_ld32_n32,
+			   TOP_ld8_64_off,
+			   TOP_ldu8_64_off,
+			   TOP_ld16_64_off,
+			   TOP_ldu16_64_off,
+			   TOP_ld32_64_off,
 			   TOP_ldaps_n32,
 			   TOP_ldapd_n32,
 			   TOP_lddqa_n32,
+			   TOP_lddqu_n32,
 			   TOP_ldlps_n32,
+			   TOP_ldhps_n32,
 			   TOP_ldlpd_n32,
 			   TOP_ldhpd_n32,
+			   TOP_cvtss2si,
+			   TOP_cvtsd2si,
+			   TOP_cvtss2siq,
+			   TOP_cvtsd2siq,
 			   TOP_cvttss2si,
 			   TOP_cvttsd2si,
 			   TOP_cvttss2siq,
@@ -902,8 +934,16 @@ main()
 			   TOP_cvtdq2ps,
 			   TOP_cvtps2pd,
 			   TOP_cvtpd2ps,
+			   TOP_cvtps2dq,
 			   TOP_cvttps2dq,
+			   TOP_cvtpd2dq,
 			   TOP_cvttpd2dq,
+			   TOP_cvtpi2ps,
+			   TOP_cvtps2pi,
+			   TOP_cvttps2pi,
+			   TOP_cvtpi2pd,
+			   TOP_cvtpd2pi,
+			   TOP_cvttpd2pi,
 			   TOP_ldc32,
 			   TOP_ldc64,
 			   TOP_movabsq,
@@ -924,6 +964,8 @@ main()
 			   TOP_movdq,
 			   TOP_movapd,
 			   TOP_movaps,
+			   TOP_movq2dq,
+			   TOP_movdq2q,
 			   TOP_movx2g64,
 			   TOP_movx2g,
 			   TOP_movg2x64,
@@ -969,6 +1011,9 @@ main()
 			   TOP_movm_2i32,
 			   TOP_movm_2i64,
 			   TOP_ld64_2m_n32,
+			   TOP_ld64_2sse_n32,
+			   TOP_movmskps,
+			   TOP_movmskpd,
 			   TOP_UNDEFINED );
 
   /* Two operands / no result */
@@ -977,10 +1022,11 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group( opop1,
-			   TOP_store8_m,
-			   TOP_store16_m,
-			   TOP_store32_m,
-			   TOP_store64_m,
+			   TOP_store8_abs,
+			   TOP_store16_abs,
+			   TOP_store32_abs,
+			   TOP_store64_abs,
+			   TOP_store64_off,
 			   TOP_stss_n32,
 			   TOP_stsd_n32,
 			   TOP_store8_n32,
@@ -989,10 +1035,15 @@ main()
 			   TOP_staps_n32,
 			   TOP_stapd_n32,
 			   TOP_stdqa_n32,
+			   TOP_stdqu_n32,
 			   TOP_stlps_n32,
+			   TOP_sthps_n32,
 			   TOP_stlpd_n32,
 			   TOP_sthpd_n32,
 			   TOP_store64_fm_n32,
+			   TOP_store64_fsse_n32,
+			   TOP_maskmovdqu,
+			   TOP_maskmovq,
 			   TOP_UNDEFINED );
 
 #if 0
@@ -1007,11 +1058,12 @@ main()
 #endif
 
   /* regular load */
-  ISA_PRINT_TYPE load =  ISA_Print_Type_Create("load", "%s %s(%s),%s");
+  ISA_PRINT_TYPE load =  ISA_Print_Type_Create("load", "%s %s%s(%s),%s");
   Name();
-  Result(0);
+  Segment();
   Operand(1);
   Operand(0);
+  Result(0);
   Instruction_Print_Group( load,
 			   TOP_ld8_32,
 			   TOP_ldu8_32,
@@ -1035,6 +1087,7 @@ main()
 			   TOP_cvtdq2ps_x,
 			   TOP_cvtps2pd_x,
 			   TOP_cvtpd2ps_x,
+			   TOP_cvtps2dq_x,
 			   TOP_cvttps2dq_x,
 			   TOP_cvttpd2dq_x,
 			   TOP_lddqa,
@@ -1045,12 +1098,15 @@ main()
 			   TOP_ldhpd,
 			   TOP_ldapd,
 			   TOP_ldaps,
+			   TOP_ldupd,
+			   TOP_ldups,
 			   TOP_lea32,
 			   TOP_lea64,
 			   TOP_fmovsldupx,
 			   TOP_fmovshdupx,
 			   TOP_fmovddupx,			   
 			   TOP_ld64_2m,
+			   TOP_ld64_2sse,
 			   TOP_UNDEFINED );
 
   /* lea instruction with indx */
@@ -1073,6 +1129,7 @@ main()
 			   TOP_cvtdq2ps_xx,
 			   TOP_cvtps2pd_xx,
 			   TOP_cvtpd2ps_xx,
+			   TOP_cvtps2dq_xx,
 			   TOP_cvttps2dq_xx,
 			   TOP_cvttpd2dq_xx,
 			   TOP_UNDEFINED );
@@ -1096,13 +1153,15 @@ main()
 			   TOP_cvtdq2ps_xxx,
 			   TOP_cvtps2pd_xxx,
 			   TOP_cvtpd2ps_xxx,
+			   TOP_cvtps2dq_xxx,
 			   TOP_cvttps2dq_xxx,
 			   TOP_cvttpd2dq_xxx,
 			   TOP_UNDEFINED );
 
   /* load instruction with indx */
-  ISA_PRINT_TYPE ldx = ISA_Print_Type_Create("ldx", "%s %s(%s,%s,%s), %s");
+  ISA_PRINT_TYPE ldx = ISA_Print_Type_Create("ldx", "%s %s%s(%s,%s,%s), %s");
   Name();
+  Segment();
   Operand(1);
   Operand(0);
   Operand(2);
@@ -1136,8 +1195,9 @@ main()
 			   TOP_UNDEFINED );
 
   /* load instruction with indx w/o base*/
-  ISA_PRINT_TYPE ldxx = ISA_Print_Type_Create("ldxx", "%s %s(,%s,%s), %s");
+  ISA_PRINT_TYPE ldxx = ISA_Print_Type_Create("ldxx", "%s %s%s(,%s,%s), %s");
   Name();
+  Segment();
   Operand(2);
   Operand(0);
   Operand(1);
@@ -1170,9 +1230,10 @@ main()
 			   TOP_UNDEFINED );
 
   /* store instruction with indx */
-  ISA_PRINT_TYPE storex = ISA_Print_Type_Create("storex", "%s %s,%s(%s,%s,%s)");
+  ISA_PRINT_TYPE storex = ISA_Print_Type_Create("storex", "%s %s,%s%s(%s,%s,%s)");
   Name();
   Operand(0);
+  Segment();
   Operand(2);
   Operand(1);
   Operand(3);
@@ -1198,10 +1259,39 @@ main()
 			   TOP_stapdx,
 			   TOP_UNDEFINED );
 
+  /* load_gs_seg_off and load_fs_seg_off are special in that the
+     segment prefix is hard-coded into the OP code.  Normally the segment is
+     specified through Segment(), which tells CG to determine the segment
+     override based on whether the base TN is a pointer to a non-default
+     segment, or if the offset symbol has relocation in a non-default segment.
+     However, for offset-only address mode, there is no base TN, and sometimes
+     the offset is a literal, which doesn't have relocation info. */
+
+  /* load from %gs segemnt with offset only */
+  ISA_PRINT_TYPE load_gs_seg_off =
+    ISA_Print_Type_Create("load_gs_seg_off", "%s %%gs:%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Instruction_Print_Group( load_gs_seg_off,
+			   TOP_ld32_gs_seg_off,
+			   TOP_UNDEFINED );
+
+  /* load from %fs segemnt with offset only */
+  ISA_PRINT_TYPE load_fs_seg_off =
+    ISA_Print_Type_Create("load_fs_seg_off", "%s %%fs:%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Instruction_Print_Group( load_fs_seg_off,
+			   TOP_ld64_fs_seg_off,
+			   TOP_UNDEFINED );
+
   /* store instruction with indx w/o base*/
-  ISA_PRINT_TYPE storexx = ISA_Print_Type_Create("storexx", "%s %s,%s(,%s,%s)");
+  ISA_PRINT_TYPE storexx = ISA_Print_Type_Create("storexx", "%s %s,%s%s(,%s,%s)");
   Name();
   Operand(0);
+  Segment();
   Operand(3);
   Operand(1);
   Operand(2);
@@ -1227,8 +1317,9 @@ main()
 			   TOP_UNDEFINED );
 
   /* prefetch */
-  ISA_PRINT_TYPE prefetch =  ISA_Print_Type_Create("prefetch", "%s %s(%s)");
+  ISA_PRINT_TYPE prefetch =  ISA_Print_Type_Create("prefetch", "%s %s%s(%s)");
   Name();
+  Segment();
   Operand(2);
   Operand(1);
   Instruction_Print_Group( prefetch,
@@ -1254,8 +1345,9 @@ main()
 			   TOP_UNDEFINED );
 
   /* prefetch */
-  ISA_PRINT_TYPE prefetchx =  ISA_Print_Type_Create("prefetchx", "%s %s(%s,%s,%s)");
+  ISA_PRINT_TYPE prefetchx =  ISA_Print_Type_Create("prefetchx", "%s %s%s(%s,%s,%s)");
   Name();
+  Segment();
   Operand(2);
   Operand(1);
   Operand(3);
@@ -1268,8 +1360,9 @@ main()
 			   TOP_prefetchntax,
 			   TOP_UNDEFINED );
 
-  ISA_PRINT_TYPE prefetchxx =  ISA_Print_Type_Create("prefetchxx", "%s %s(,%s,%s)");
+  ISA_PRINT_TYPE prefetchxx =  ISA_Print_Type_Create("prefetchxx", "%s %s%s(,%s,%s)");
   Name();
+  Segment();
   Operand(3);
   Operand(1);
   Operand(2);
@@ -1282,9 +1375,10 @@ main()
 			   TOP_UNDEFINED );
 
   /* regular store */
-  ISA_PRINT_TYPE store =  ISA_Print_Type_Create("store", "%s %s,%s(%s)");
+  ISA_PRINT_TYPE store =  ISA_Print_Type_Create("store", "%s %s,%s%s(%s)");
   Name();
   Operand(0);
+  Segment();
   Operand(2);
   Operand(1);
   Instruction_Print_Group( store,
@@ -1306,15 +1400,20 @@ main()
 			   TOP_sthpd,
 			   TOP_staps,
 			   TOP_stapd,
+			   TOP_stups,
+			   TOP_stupd,
 			   TOP_store64_fm,
+			   TOP_store64_fsse,
 			   TOP_storenti128,
 			   TOP_storelpd,
+			   TOP_storent64_fm,
 			   TOP_UNDEFINED );
 
   /* instructions that read-modify-write */
-  ISA_PRINT_TYPE rmw =  ISA_Print_Type_Create("rmw", "%s %s,%s(%s)");
+  ISA_PRINT_TYPE rmw =  ISA_Print_Type_Create("rmw", "%s %s,%s%s(%s)");
   Name();
   Operand(0);
+  Segment();
   Operand(2);
   Operand(1);
   Instruction_Print_Group( rmw,
@@ -1331,9 +1430,10 @@ main()
 			   TOP_lock_sub64,
 			   TOP_UNDEFINED );
 
-  ISA_PRINT_TYPE cmpxchg =  ISA_Print_Type_Create("cmpxchg", "%s %s,%s(%s)");
+  ISA_PRINT_TYPE cmpxchg =  ISA_Print_Type_Create("cmpxchg", "%s %s,%s%s(%s)");
   Name();
   Operand(1);
+  Segment();
   Operand(3);
   Operand(2);
   Instruction_Print_Group( cmpxchg,
@@ -1353,6 +1453,7 @@ main()
 			   TOP_unpcklps,
 			   TOP_punpcklwd,
 			   TOP_punpcklbw,
+			   TOP_punpckldq,
 			   TOP_punpckhbw,
 			   TOP_punpckhwd,
 			   TOP_punpckhdq,
@@ -1410,6 +1511,27 @@ main()
 			   TOP_psrlq,
 			   TOP_psraw,
 			   TOP_psrad,
+			   TOP_psllw_mmx,
+			   TOP_pslld_mmx,
+			   TOP_psrlw_mmx,
+			   TOP_psrld_mmx,
+			   TOP_psraw_mmx,
+			   TOP_psrad_mmx,
+			   TOP_pand_mmx,
+			   TOP_pandn_mmx,
+			   TOP_por_mmx,
+			   TOP_pxor_mmx,
+			   TOP_UNDEFINED );
+
+  /* {st,ld}mxcsr */
+  ISA_PRINT_TYPE stmxcsr =  ISA_Print_Type_Create("stmxcsr", "%s %s%s(%s)");
+  Name();
+  Segment();
+  Operand(1);
+  Operand(0);
+  Instruction_Print_Group( stmxcsr,
+			   TOP_stmxcsr,
+			   TOP_ldmxcsr,
 			   TOP_UNDEFINED );
 
   /* No results / no operands TODO */

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -56,6 +60,7 @@
  * =======================================================================
  */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 #include "defs.h"
@@ -1023,8 +1028,8 @@ Can_Mem_Op_Be_Moved(OP *mem_op, BB *cur_bb, BB *src_bb, BB *dest_bb,
     if( prev != NULL &&
 	BB_call( prev ) ){
       const TOP top = OP_code(mem_op);
-      if( top == TOP_ld8_m  || top == TOP_ld16_m ||
-	  top == TOP_ld32_m || top == TOP_ld64_m )
+      if( top == TOP_ld8_abs  || top == TOP_ld16_abs ||
+	  top == TOP_ld32_abs || top == TOP_ld64_abs )
 	return FALSE;
     }
   }
@@ -2550,6 +2555,12 @@ OP_To_Move (BB *bb, BB *tgt_bb, BB_SET **pred_bbs, mINT32 motion_type, mUINT8 *s
 
 #ifdef KEY // bug 4850
     if (CGTARG_Is_OP_Barrier(cur_op)) continue;
+#endif
+
+#ifdef TARG_X8664
+    // Don't move x87/MMX OPs in order to perserve their ordering relative to
+    // EMMS OPs.
+    if (OP_x87(cur_op) || OP_mmx(cur_op)) continue;
 #endif
 
     // All real OPs and some dummy OPs which have real operands/results.

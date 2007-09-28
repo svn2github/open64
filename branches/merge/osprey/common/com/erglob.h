@@ -346,6 +346,7 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 #ifdef KEY
 /* ASM operands: */
 #define EC_Inv_Asm_Opnd EC_Undef_Code+340       /* none */
+#define EC_Misc_Asm EC_Undef_Code+341		/* str */
 #endif
 
 

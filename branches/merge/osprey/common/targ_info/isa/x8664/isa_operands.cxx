@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -735,24 +739,23 @@ main()
   Operand(0, int64, opnd1);
   Operand(1, simm32, opnd2);
 
-  Instruction_Group("int8 load w/o base or index",
-		    TOP_ld8_m,
+  Instruction_Group("int8 load w/o base or index (movabs)",
+		    TOP_ld8_abs,
 		    TOP_UNDEFINED);
   Result(0, al);
-  Operand(0, simm32, offset);
+  Operand(0, simm64, offset);
 
-  Instruction_Group("int16 load w/o base or index",
-		    TOP_ld16_m,
+  Instruction_Group("int16 load w/o base or index (movabs)",
+		    TOP_ld16_abs,
 		    TOP_UNDEFINED);
   Result(0, ax);
-  Operand(0, simm32, offset);
+  Operand(0, simm64, offset);
 
-
-  Instruction_Group("int32 load w/o base or index",
-		    TOP_ld32_m,
+  Instruction_Group("int32 load w/o base or index (movabs)",
+		    TOP_ld32_abs,
 		    TOP_UNDEFINED);
   Result(0, eax);
-  Operand(0, simm32, offset);
+  Operand(0, simm64, offset);
 
   Instruction_Group("int32 load w/o base or index",
 		    TOP_ld8_32_n32,
@@ -765,10 +768,21 @@ main()
   Operand(0, simm32, offset);
 
   Instruction_Group("int64 load w/o base or index",
-		    TOP_ld64_m,
+		    TOP_ld64_off,
+		    TOP_ld8_64_off,
+		    TOP_ldu8_64_off,
+		    TOP_ld16_64_off,
+		    TOP_ldu16_64_off,
+		    TOP_ld32_64_off,
+		    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, simm32, offset);
+
+  Instruction_Group("int64 load w/o base or index (movabs)",
+		    TOP_ld64_abs,
 		    TOP_UNDEFINED);
   Result(0, rax);
-  Operand(0, simm32, offset);
+  Operand(0, simm64, offset);
 
   Instruction_Group("int32 load",
 		    TOP_ld8_32,
@@ -793,11 +807,23 @@ main()
   Operand(0, int64, base);
   Operand(1, simm32, offset);
 
-  Instruction_Group("int8 store w/o base or index",
-		    TOP_store8_m,
+  Instruction_Group("int32 load from %gs segment w/o base or index",
+		    TOP_ld32_gs_seg_off,
+		    TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, simm32, offset);
+
+  Instruction_Group("int64 load from %fs segment w/o base or index",
+		    TOP_ld64_fs_seg_off,
+		    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, simm32, offset);
+
+  Instruction_Group("int8 store w/o base or index (movabs)",
+		    TOP_store8_abs,
 		    TOP_UNDEFINED);
   Operand(0, al, storeval);
-  Operand(1, simm32, offset);
+  Operand(1, simm64, offset);
 
   Instruction_Group("int8 store w/o base or index",
 		    TOP_store8_n32,
@@ -805,11 +831,11 @@ main()
   Operand(0, int8, storeval);
   Operand(1, simm32, offset);
 
-  Instruction_Group("int16 store w/o base or index",
-		    TOP_store16_m,
+  Instruction_Group("int16 store w/o base or index (movabs)",
+		    TOP_store16_abs,
 		    TOP_UNDEFINED);
   Operand(0, ax, storeval);
-  Operand(1, simm32, offset);
+  Operand(1, simm64, offset);
 
   Instruction_Group("int16 store w/o base or index",
 		    TOP_store16_n32,
@@ -817,11 +843,11 @@ main()
   Operand(0, int16, storeval);
   Operand(1, simm32, offset);
 
-  Instruction_Group("int32 store w/o base or index",
-		    TOP_store32_m,
+  Instruction_Group("int32 store w/o base or index (movabs)",
+		    TOP_store32_abs,
 		    TOP_UNDEFINED);
   Operand(0, eax, storeval);
-  Operand(1, simm32, offset);
+  Operand(1, simm64, offset);
 
   Instruction_Group("int32 store w/o base or index",
 		    TOP_store32_n32,
@@ -830,10 +856,16 @@ main()
   Operand(1, simm32, offset);
 
   Instruction_Group("int64 store w/o base or index",
-		    TOP_store64_m,
+		    TOP_store64_off,
+		    TOP_UNDEFINED);
+  Operand(0, int64, storeval);
+  Operand(1, simm32, offset);
+
+  Instruction_Group("int64 store w/o base or index (movabs)",
+		    TOP_store64_abs,
 		    TOP_UNDEFINED);
   Operand(0, rax, storeval);
-  Operand(1, simm32, offset);
+  Operand(1, simm64, offset);
 
   Instruction_Group("int8 store",
 		    TOP_store8,
@@ -1093,7 +1125,9 @@ main()
   Operand(0, fp128, opnd1);
 
   Instruction_Group("vector cvt w/ trunc",
+		    TOP_cvtps2dq,
 		    TOP_cvttps2dq,
+		    TOP_cvtpd2dq,
 		    TOP_cvttpd2dq,
 		    TOP_UNDEFINED);
   Result(0, fp128);
@@ -1110,6 +1144,7 @@ main()
   Operand(1, simm32, offset);
 
   Instruction_Group("vector cvt w/ trunc I",
+		    TOP_cvtps2dq_x,
 		    TOP_cvttps2dq_x,
 		    TOP_cvttpd2dq_x,
 		    TOP_UNDEFINED);
@@ -1130,6 +1165,7 @@ main()
   Operand(3, simm32, offset); 
 
   Instruction_Group("vector cvt w/ trunc II",
+		    TOP_cvtps2dq_xx,
 		    TOP_cvttps2dq_xx,
 		    TOP_cvttpd2dq_xx,
 		    TOP_UNDEFINED);
@@ -1151,6 +1187,7 @@ main()
   Operand(2, simm32, offset);
 
   Instruction_Group("vector cvt w/ trunc III",
+		    TOP_cvtps2dq_xxx,
 		    TOP_cvttps2dq_xxx,
 		    TOP_cvttpd2dq_xxx,
 		    TOP_UNDEFINED);
@@ -1177,6 +1214,8 @@ main()
 
   Instruction_Group("fp 2 int32",
 	  	    TOP_movx2g,
+		    TOP_cvtss2si,
+		    TOP_cvtsd2si,
 		    TOP_cvttss2si,
 		    TOP_cvttsd2si,
 		    TOP_UNDEFINED);
@@ -1185,6 +1224,8 @@ main()
 
   Instruction_Group("fp 2 int64",
 		    TOP_movx2g64,
+		    TOP_cvtss2siq,
+		    TOP_cvtsd2siq,
 		    TOP_cvttss2siq,
 		    TOP_cvttsd2siq,
 		    TOP_UNDEFINED);
@@ -1343,9 +1384,11 @@ main()
 
   Instruction_Group("float load vector w/o base or index",
 		    TOP_lddqa_n32,
+		    TOP_lddqu_n32,
 		    TOP_ldapd_n32,
 		    TOP_ldaps_n32,
 		    TOP_ldlps_n32,
+		    TOP_ldhps_n32,
 		    TOP_ldlpd_n32,
 		    TOP_ldhpd_n32,
 		    TOP_UNDEFINED);
@@ -1361,6 +1404,8 @@ main()
 		    TOP_ldlpd,
 		    TOP_ldapd,
 		    TOP_ldaps,
+		    TOP_ldupd,
+		    TOP_ldups,
 		    TOP_fmovsldupx,
 		    TOP_fmovshdupx,
 		    TOP_fmovddupx,
@@ -1386,9 +1431,11 @@ main()
 
   Instruction_Group("float store vector w/o base or index",
 		    TOP_stdqa_n32,
+		    TOP_stdqu_n32,
 		    TOP_stapd_n32,
 		    TOP_staps_n32,
 		    TOP_stlps_n32,
+		    TOP_sthps_n32,
 		    TOP_stlpd_n32,
 		    TOP_sthpd_n32,
 		    TOP_UNDEFINED);
@@ -1404,6 +1451,8 @@ main()
 		    TOP_stlps,
 		    TOP_stapd,
 		    TOP_staps,
+		    TOP_stupd,
+		    TOP_stups,
 		    TOP_stntpd,
 		    TOP_stntps,
 		    TOP_storenti128,
@@ -1461,6 +1510,7 @@ main()
 		    TOP_unpcklpd,
 		    TOP_punpcklbw,
 		    TOP_punpcklwd,
+		    TOP_punpckldq,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -2364,6 +2414,8 @@ main()
   Instruction_Group("jump mem",
 		    TOP_ijmpx,
 		    TOP_icallx,
+		    TOP_stmxcsr,
+		    TOP_ldmxcsr,
 		    TOP_UNDEFINED);
   Operand(0, int64, base);
   Operand(1, simm32, offset);
@@ -2517,6 +2569,7 @@ main()
 
   Instruction_Group("int64 store from mmx",
 		    TOP_store64_fm,
+		    TOP_storent64_fm,
 		    TOP_UNDEFINED);
   Operand(0, mmx, storeval);
   Operand(1, int64, base);
@@ -2563,6 +2616,7 @@ main()
 		     TOP_sub64v32,
 		     TOP_paddsb,
 		     TOP_paddsw,
+		     TOP_paddq,
 		     TOP_psubsb,
 		     TOP_psubsw,
 		     TOP_paddusb,
@@ -2571,6 +2625,7 @@ main()
 		     TOP_psubusw,
 		     TOP_pmullw,
 		     TOP_pmulhw,
+		     TOP_pmaddwd,
 		     TOP_pcmpeqb,
 		     TOP_pcmpeqw,
 		     TOP_pcmpeqd,
@@ -2630,6 +2685,95 @@ main()
                      TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, mmx, opnd1);
+
+  Instruction_Group( "mov mmx 2 sse",
+                     TOP_movq2dq,
+                     TOP_UNDEFINED);
+  Result(0, fp64);
+  Operand(0, mmx, opnd1);
+
+  Instruction_Group( "mov sse 2 mmx",
+                     TOP_movdq2q,
+                     TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, fp64, opnd1);
+
+  Instruction_Group("packed mmx arith",
+  		     TOP_psllw_mmx,
+  		     TOP_pslld_mmx,
+  		     TOP_psrlw_mmx,
+  		     TOP_psrld_mmx,
+  		     TOP_psraw_mmx,
+  		     TOP_psrad_mmx,
+  		     TOP_pand_mmx,
+  		     TOP_pandn_mmx,
+  		     TOP_por_mmx,
+  		     TOP_pxor_mmx,
+                     TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, mmx, opnd1);
+  Operand(1, mmx, opnd2);
+
+  Instruction_Group( "vector cvt sse ps/pd 2 mmx pi",
+		     TOP_cvtps2pi,
+		     TOP_cvttps2pi,
+		     TOP_cvtpd2pi,
+		     TOP_cvttpd2pi,
+                     TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, fp128, opnd1);
+
+  Instruction_Group( "vector cvt mmx pi 2 sse ps/pd",
+		     TOP_cvtpi2ps,
+		     TOP_cvtpi2pd,
+                     TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, mmx, opnd1);
+
+  Instruction_Group("int64 load to sse",
+		    TOP_ld64_2sse,
+		    TOP_UNDEFINED);
+  Result(0, fp64);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+
+  Instruction_Group("int64 load to sse w/o base or index",
+		    TOP_ld64_2sse_n32,
+		    TOP_UNDEFINED);
+  Result(0, fp64);
+  Operand(0, simm32, offset);
+
+  Instruction_Group("int64 store from sse",
+		    TOP_store64_fsse,
+		    TOP_UNDEFINED);
+  Operand(0, fp64, storeval);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group("int64 store from sse w/o base or index",
+		    TOP_store64_fsse_n32,
+		    TOP_UNDEFINED);
+  Operand(0, fp64, storeval);
+  Operand(1, simm32, offset);
+
+  Instruction_Group("fp128 2 int32",
+		    TOP_movmskpd,
+		    TOP_movmskps,
+		    TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, fp128, opnd1);
+
+  Instruction_Group("maskmov mmx",
+		    TOP_maskmovq,
+		    TOP_UNDEFINED);
+  Operand(0, mmx, opnd1);
+  Operand(1, mmx, opnd2);
+
+  Instruction_Group("maskmov sse",
+		    TOP_maskmovdqu,
+		    TOP_UNDEFINED);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
   
   ISA_Operands_End();
   return 0;

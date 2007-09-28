@@ -180,6 +180,10 @@ typedef unsigned char Elf64_Byte;
 #define ELF_STRTAB	".strtab"
 #define ELF_SYMTAB	".symtab"
 #define ELF_TEXT	".text"
+#ifdef KEY
+#define ELF_TBSS        ".tbss"
+#define ELF_TDATA       ".tdata"
+#endif
 
 /*
  * special section names

@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -124,8 +132,8 @@ static char *cxx_graph_rcs_id = cxx_graph_INCLUDED "$Revision: 1.5 $";
 #include "defs.h"
 #endif
 
-typedef mUINT16 VINDEX16;
-typedef mUINT16 EINDEX16;
+typedef mUINT16 VINDEX16; //
+typedef mUINT16 EINDEX16; // increase graph capacity. see bug 13018
 
 extern const VINDEX16 INVALID_VINDEX16;
 extern VINDEX16 GRAPH16_CAPACITY;

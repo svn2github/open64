@@ -588,11 +588,11 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 {
   if (ST_name(st) && *(ST_name(st)) != '\0') {
 	fputs(ST_name(st), f);
-#ifdef TARG_X8664
+#ifdef KEY
 // This name is already unique, don't change it.
 	if (!strncmp (ST_name(st), ".range_table.", strlen(".range_table.")))
 		return;
-#endif // TARG_X8664
+#endif // KEY
 	if ( ST_is_export_local(st) && ST_class(st) == CLASS_VAR) {
 		// local var, but being written out.
 		// so add suffix to help .s file distinguish names.
@@ -848,9 +848,9 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
 	case SCLASS_FSTATIC:
 	case SCLASS_DGLOBAL:
 	case SCLASS_UGLOBAL:
-#ifdef TARG_X8664
+#ifdef KEY
 	case SCLASS_EH_REGION:
-#endif // TARG_X8664
+#endif // KEY
 	  symindex = Em_Add_New_Symbol (
 			ST_name(sym), base_ofst, TY_size(sym_type), 
 			symbind, STT_OBJECT, symother,
@@ -1610,6 +1610,24 @@ static void Verify_Instruction(OP *op)
   for (i = 0; i < opnds; ++i) {
     Verify_Operand(oinfo, op, i, FALSE);
   }
+
+#ifdef KEY
+  // Check for unique operand and result registers.
+  if (OP_uniq_res(op)) {
+    for (i = 0; i < results; i++) {
+      int j;
+      TN *result_tn = OP_result(op, i);
+      for (j = 0; j < opnds; j++) {
+	TN *opnd_tn = OP_opnd(op, j);
+	if (TN_is_register(opnd_tn)) {
+	  FmtAssert(!TNs_Are_Equivalent(opnd_tn, result_tn),
+		    ("need unique registers for %s operand and result",
+		     TOP_Name(top)));
+	}
+      }
+    }
+  }
+#endif
 }
 
 /* ====================================================================
@@ -1860,7 +1878,7 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
   }
 
   if (((tn = CGTARG_Copy_Operand_TN(op)) != NULL) &&
-#ifndef TARG_IA64
+#ifdef KEY
       TN_is_register(tn) &&
 #endif
       (!OP_has_predicate(op) || (OP_opnd(op,OP_PREDICATE_OPND) == True_TN))) {
@@ -1925,7 +1943,7 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
 #define Perform_Sanity_Checks_For_OP(op, check_def)
 #endif
 
-#ifdef TARG_X8664
+#ifdef KEY
 //********************************************************
 //Bug 11034: implement dymanic allocation of pu tables to
 //various information for dwarf
@@ -1992,7 +2010,7 @@ tn_registers_identical (TN *tn1, TN *tn2)
 	     (TN_register(tn2) != REGISTER_UNDEFINED)) &&           
 	    (TN_register_and_class(tn1) == TN_register_and_class(tn2)))));
 }
-#endif // TARG_X8664
+#endif // KEY
 
 /* Write out the 'op' into the object file and/or into the assembly file.
  */
@@ -2013,7 +2031,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 
   if (OP_prefetch(op)) Use_Prefetch = TRUE;
 
-#ifdef TARG_X8664
+#ifdef KEY
   static INT32 label_adjustsp_pu = -1;
   static INT32 pu_entry_count = -1;
   BOOL adjustsp_instr = FALSE;
@@ -2053,6 +2071,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 		("Too many pus, pu_tables should have been expanded."));
     }
 
+#ifdef TARG_X8664
     if (OP_code(op) == TOP_pushq || 
 	OP_code(op) == TOP_pushl &&
 	Debug_Level > 0) {
@@ -2108,6 +2127,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 	fprintf( Asm_File, "%s:\n", LABEL_name(Label_Callee_Saved_Reg[pu_entries]));
       }
     }
+#endif // TARG_X8664
   }
 
   Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
@@ -2116,8 +2136,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
     if (OP_srcpos(op) == 0 && op->next != 0)
       OP_srcpos(op) = OP_srcpos(OP_next(op));
   }
-#endif
-#ifndef TARG_IA64
+
   Cg_Dwarf_BB_First_Op = FALSE; 
   if (Debug_Level > 0 && BB_first_op(bb) == op &&
       (BB_preds_len(bb) != 1 ||
@@ -2125,7 +2144,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
         BB_prev(bb) && BB_First_Pred(bb) != BB_prev(bb))))
     Cg_Dwarf_BB_First_Op = TRUE; 
     // Does this make Cg_Dwarf_First_Op_After_Preamble_End redundant?
-#endif
+#endif // KEY
   Cg_Dwarf_Add_Line_Entry (PC, OP_srcpos(op));
   if (Assembly) {
     r_assemble_list ( op, bb );
@@ -2161,7 +2180,9 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
       adjustsp_instr = TRUE;
     }
   }
+#endif // TARG_X8664
 
+#ifdef KEY
   // Bug 4204 - move the ctrl register setup after the preamble. This 
   // causes the debug information generated to let the debugger to stop
   // at the right spot for the main entry function. Otherwise, the parameters
@@ -2494,7 +2515,11 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
     base_ofst += TN_offset(tn);
 
     char* buf = (char*)alloca(strlen(ST_name(st)) + /* EXTRA_NAME_LEN */ 64);
-    if( base_st == SP_Sym || base_st == FP_Sym ){
+
+    if (ST_is_thread_local(st)) {
+      name = ST_name(st);
+      sprintf(buf, "%%fs:%s@TPOFF", name);
+    } else if( base_st == SP_Sym || base_st == FP_Sym ){
       base_tn = base_st == SP_Sym ? SP_TN : FP_TN;
       name = (char*)REGISTER_name( TN_register_class(base_tn), TN_register(base_tn) );
       if( Is_Target_32bit() ){
@@ -2531,6 +2556,8 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
   else {
     FmtAssert(!memory && TN_is_constant(tn) && TN_has_value(tn),
               ("ASM operand must be a register or a numeric constant"));
+    FmtAssert(!(TN_is_symbol(tn) && ST_is_thread_local(TN_var(tn))),
+              ("Modify_Asm_String: thread-local ASM operand NYI"));
     char* buf = (char*) alloca(32);
     sprintf(buf, "%lld",TN_value(tn));
     name = buf;
@@ -2732,8 +2759,7 @@ Generate_Asm_String (OP* asm_op, BB *bb)
   ASM_OP_ANNOT* asm_info = (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, asm_op);
   char* asm_string = strdup(WN_asm_string(ASM_OP_wn(asm_info)));
 
-#ifndef TARG_IA64
-  //#ifdef KEY
+#ifdef KEY
 
   // Bug 5009: ASM: need to check operand number
   UINT n, index_count;
@@ -6215,9 +6241,11 @@ Generate_Exception_Table_Header (INT scn_idx, Elf64_Xword scn_ofst, LABEL_IDX *l
 
     // Generate TType format
     TCON ttype;
+#ifdef TARG_X8664
     if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
     	ttype = Host_To_Targ (MTYPE_I1, 0x9b);
     else
+#endif
     	ttype = Host_To_Targ (MTYPE_I1, 0);
     scn_ofst = Write_TCON (&ttype, scn_idx, scn_ofst, 1);
 
@@ -6943,7 +6971,7 @@ Setup_Text_Section_For_PU (ST *pu)
     text_PC = text_PC + (i * INST_BYTES);
   }
 
-#ifndef TARG_X8664
+#ifndef KEY
   // hack for supporting dwarf generation in assembly (suneel)
   Last_Label = Gen_Label_For_BB (REGION_First_BB);
 
@@ -6981,7 +7009,7 @@ Setup_Text_Section_For_PU (ST *pu)
       end_previous_text_region(old_section, Em_Get_Section_Offset(old_section));
     }
     if (generate_dwarf) {
-#ifdef TARG_X8664
+#ifdef KEY
       // Bug 2468 - use the appropriate labels for the debug_aranges
       LABEL_IDX Text_Label = LABEL_IDX_ZERO;
       Text_Label = Gen_Label_For_BB (REGION_First_BB);
@@ -7272,7 +7300,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   fprintf(Asm_File, "//PU cycle count: %f\n", pu_cycle_count);
 #endif
 
-#ifdef TARG_X8664
+#ifdef KEY
   // Emit Last_Label at the end of the PU to guide Dwarf DW_AT_high_pc
   fprintf( Asm_File, "%s:\n", LABEL_name(Last_Label));
   Label_Last_BB_PU_Entry[pu_entries] = Last_Label;
@@ -7342,7 +7370,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 	Base_Symbol_And_Offset (sym, &base, &ofst);
 	eh_offset = ofst;
 	Init_Section(base);	/* make sure eh_region is inited */
-#ifdef TARG_X8664
+#ifdef KEY
 // emit the begin label instead of the section name, since the section name
 // is same for different PUs, the label is different.
 	symindex = EMT_Put_Elf_Symbol (sym);
@@ -8079,7 +8107,7 @@ EMT_End_File( void )
   if (Assembly) {
     ASM_DIR_GPVALUE();
 #ifdef TARG_MIPS
-    if (! CG_emit_non_gas_syntax)
+    if (! CG_emit_non_gas_syntax) {
 #endif
     if (CG_emit_asm_dwarf) {
       Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs(Asm_File,
@@ -8088,9 +8116,10 @@ EMT_End_File( void )
     }
 #ifdef KEY // bug 5561: mark stack as non-executable
     fprintf ( Asm_File, "\t%s\t.note.GNU-stack,\"\",@progbits\n", AS_SECTION);
-#endif
-#ifndef TARG_IA64
     Emit_Options ();
+#endif
+#ifdef TARG_MIPS
+    }
 #endif
   }
   if (Object_Code && !CG_emit_asm_dwarf) {

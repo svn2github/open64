@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -173,6 +177,17 @@ EBO_hash_op (OP *op,
 	if (TN_is_constant(ctn) && TN_is_symbol(ctn) && 
 	    TN_var(ctn) == TN_spill(spill_tn))
 	  hash_value = EBO_SPILL_MEM_HASH;
+      }
+    } else {
+      // The above test doesn't catch all cases of EBO_SPILL_MEM_HASH, since
+      // TN_has_spill may be false even for spill OP.  This occurs for a spill
+      // store when EBO has substituted the storeval with another TN whose
+      // TN_has_spill is false.  Bug 12965.
+      const INT n = TOP_Find_Operand_Use(OP_code(op), OU_offset);
+      TN *tn = OP_opnd(op, n);
+      if (TN_is_symbol(tn) &&
+	  CGSPILL_Is_Spill_Location(TN_var(tn))) {
+	hash_value = EBO_SPILL_MEM_HASH;
       }
     }
 #else

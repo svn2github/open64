@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -39,6 +43,7 @@
 
 /* CGEXP routines for expanding divide and rem */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <signal.h>
 #include "defs.h"
@@ -814,6 +819,30 @@ Expand_Power_Of_2_Mod (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS 
  *
  *****************************************************************************/
 
+// Extend DIVIDEND_LO to DIVIDEND_HI/DIVIDEND_LO in preparation for division.
+// The result occupies rdx/rax.
+static void
+Extend_Dividend (TN **dividend_lo, TN **dividend_hi, TYPE_ID mtype,
+		 BOOL is_double, OPS *ops)
+{
+  *dividend_hi = Build_TN_Like(*dividend_lo);
+  if (MTYPE_is_signed(mtype)){
+    // Sign extend rAX to rDX with cltd/cqto.
+    //
+    // Must create new TN instead of reusing the same DIVIDEND_LO TN as src and
+    // result.  This is because DIVIDEND_LO may be read-only in WHIRL.  In
+    // general, CG cannot redefine TNs representing read-only WHIRL symbols,
+    // because other parts of CG assume these TNs are read-only.  For example,
+    // GRA assumes these TNs don't require spilling.  Bug 12283.
+    TN *new_dividend_lo = Build_TN_Like(*dividend_lo);
+    Build_OP(is_double ? TOP_cqto : TOP_cltd, new_dividend_lo, *dividend_hi,
+	     *dividend_lo, ops);
+    *dividend_lo = new_dividend_lo;
+  } else {
+    Build_OP(TOP_ldc32, *dividend_hi, Gen_Literal_TN(0, 4), ops);
+  }
+}
+
 TN *
 Expand_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {
@@ -851,13 +880,8 @@ Expand_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   default: FmtAssert (FALSE, ("Handle this")); break;
   }
   TN *result1 = Build_TN_Like(result);
-  TN *src3 = Build_TN_Like(src1);
-  if (MTYPE_is_signed(mtype)){
-    // Have to sign extend rAX to rDX with cltd/cqto.
-    Build_OP( is_double ? TOP_cqto : TOP_cltd, src1, src3, src1, ops );
-  } else 
-    Build_OP(TOP_ldc32, src3, Gen_Literal_TN(0, 4), ops);
-
+  TN *src3;
+  Extend_Dividend(&src1, &src3, mtype, is_double, ops);
   FmtAssert( !OP_NEED_PAIR(mtype), ("NYI") );
   Build_OP(top, result, result1, src1, src3, src2, ops);
 }
@@ -927,30 +951,16 @@ Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   default: FmtAssert (FALSE, ("Handle this")); break;
   }
   TN *result1 = Build_TN_Like(result);
-  TN *src3 = Build_TN_Like(src1);
-  if (MTYPE_is_signed(mtype)){
-    // Have to sign extend rAX to rDX with cltd/cqto.
-    Build_OP( is_double ? TOP_cqto : TOP_cltd, src1, src3, src1, ops );
-  } else 
-    Build_OP(TOP_ldc32, src3, Gen_Literal_TN(0, 4), ops);
+  TN *src3;
+  Extend_Dividend(&src1, &src3, mtype, is_double, ops);
   Build_OP(top, result1, result, src1, src3, src2, ops);
 }
 
 
-/*	Expand mod(x,y) as follows:
- *		t1=	rem(x,y)
- *		t2=	xor(t1,y)
- *		t3,t4=	cmp.lt(t2,0)
- *	  if t3 r=	t1+y
- *	  if t4 r=	t1
- */
+/* Expand mod. */
 void 
 Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {
-  TN *tmp1;
-  TN *tmp2;
-  TN *tmp3;
-  TN *p1;
   TOP opc;
   BOOL is_double = MTYPE_is_size_double(mtype);
 
@@ -967,27 +977,40 @@ Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     if (src2_val == 0) // Division by Zero!
       FmtAssert (FALSE, ("Division by zero detected.\n"));
 
-  /* Calculate remainder 
-   */
-  tmp1 = Build_TN_Like(result);
-  Expand_Rem(tmp1, src1, src2, mtype, ops);
+  // Calculate remainder.
+  TN *remainder = result;
+  Expand_Rem(remainder, src1, src2, mtype, ops);
 
-  /* Are signs different? 
-   */
-  tmp2 = Build_TN_Like(result);
-  Build_OP(is_double?TOP_xor64:TOP_xor32, tmp2, tmp1, src2, ops);
+  // p1 = (dividend and divisor have different signs) ? 1 : 0
+  // divisor_or_zero = p1 ? divisor : 0
+  // remainder_plus_divisor = remainder + divisor_or_zero
+  // result = (remainder == 0) ? remainder : remainder + divisor_or_zero
 
-  p1 = Rflags_TN();
-  Build_OP(is_double?TOP_test64:TOP_test32, p1, tmp2, tmp2, ops);
+  // Generate p1.
+  TN *p1 = Rflags_TN();
+  TN *src1_xor_src2 = Build_TN_Like(result);
+  Build_OP(is_double ? TOP_xor64 : TOP_xor32, src1_xor_src2, src1, src2, ops);
+  Build_OP(is_double ? TOP_test64 : TOP_test32, p1,
+	   src1_xor_src2, src1_xor_src2, ops);
 
-  /* result = divisor + remainder if p1
-   * result = remainder if ~p1
-   */
-  tmp3 = Build_TN_Like(result);
-  Build_OP(is_double?TOP_ldc64:TOP_ldc32, 
-	   tmp3, Gen_Literal_TN(0, is_double?8:4), p1, ops);
-  Expand_Cmov(TOP_cmovl, tmp3, src2, p1, ops);
-  Build_OP(is_double?TOP_add64:TOP_add32, result, tmp1, tmp3, ops);
+  // Generate divisor_or_zero.
+  TN *divisor_or_zero = Build_TN_Like(result);
+  Build_OP(is_double ? TOP_ldc64 : TOP_ldc32, 
+	   divisor_or_zero, Gen_Literal_TN(0, is_double ? 8 : 4), ops);
+  Expand_Cmov(TOP_cmovl, divisor_or_zero, src2, p1, ops);
+
+  // Generate remainder_plus_divisor (actually remainder + divisor_or_zero).
+  TN *remainder_plus_divisor = Build_TN_Like(result);
+  Build_OP(is_double ? TOP_add64 : TOP_add32,
+	   remainder_plus_divisor, remainder, divisor_or_zero, ops);
+
+  // Generate result by adjusting the remainder.
+  TN *p2 = Rflags_TN();
+  Build_OP(TOP_test32, p2, remainder, remainder, ops);	// remainder zero?
+  Expand_Cmov(TOP_cmovne, remainder, remainder_plus_divisor, p2, ops);
+
+  // Since we defined remainder as the same TN as the result, remainder is now
+  // the result.
 }
 
 
@@ -1024,11 +1047,10 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
 	INT tn_size = MTYPE_is_size_double(mtype) ? 8 : 4;
 	src2 = Expand_Immediate_Into_Register(Gen_Literal_TN(src2_val, tn_size), 
 					      is_double, ops);
-	src1 = Expand_Immediate_Into_Register(Gen_Literal_TN(src1_val, tn_size), 
+	src1 = Expand_Immediate_Into_Register(Gen_Literal_TN(src1_val, tn_size),
 					      is_double, ops);
-	TN *src3 = Build_TN_Like(src1);
-	// Have to sign extend rAX to rDX with cltd/cqto.
-	Build_OP( is_double ? TOP_cqto : TOP_cltd, src1, src3, src1, ops );
+	TN *src3;
+	Extend_Dividend(&src1, &src3, mtype, is_double, ops);
 	Build_OP(is_double ? TOP_idiv64 : TOP_idiv32, 
 		 result, result2, src1, src3, src2, ops);	
 	return;
@@ -1096,11 +1118,7 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
   case MTYPE_U8: top = TOP_div64; break;
   default: FmtAssert (FALSE, ("Handle this")); break;
   }
-  TN *src3 = Build_TN_Like(src1);
-  if (MTYPE_is_signed(mtype)){
-    // Have to sign extend rAX to rDX with cltd/cqto.
-    Build_OP( is_double ? TOP_cqto : TOP_cltd, src1, src3, src1, ops );
-  } else 
-    Build_OP(TOP_ldc32, src3, Gen_Literal_TN(0, 4), ops);
+  TN *src3;
+  Extend_Dividend(&src1, &src3, mtype, is_double, ops);
   Build_OP(top, result, result2, src1, src3, src2, ops);
 }

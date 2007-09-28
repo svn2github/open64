@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -97,6 +101,7 @@ main ()
 	      "add64v32",
 	      "paddsb",
 	      "paddsw",
+	      "paddq",
 	      "psubsb",
 	      "psubsw",
 	      "paddusb",
@@ -106,6 +111,7 @@ main ()
 	      "pmullw",
 	      "pmulhw",
 	      "pmulhuw",
+	      "pmaddwd",
 	      "and8",
 	      "and16",
 	      "and32",
@@ -237,6 +243,7 @@ main ()
 	      "ldx64",
 	      "ldxx64",
 	      "ld64_2m",
+	      "ld64_2sse",
 	      "lea32",
 	      "lea64",
 	      "leax32",
@@ -252,7 +259,20 @@ main ()
 	      "mov64",
 	      "mov64_m",
 
-	      /* load without base or index register for n32 abi. */
+	      /* Load without base or index register (offset only) for 64-bit
+	         ABI. */
+	      "ld32_64_off",
+	      "ld64_off",
+
+	      /* Store without base or index register (offset only) for 64-bit
+	         ABI. */
+	      "store64_off",
+
+	      /* Load without base or index register (offset only) for 32-bit
+		 ABI.  (These should really be named *_off to denote
+		 offset-only, instead of *_n32 for "n32" ABI.  There is no such
+		 thing as x86 "n32" ABI.  These codes correspond to offset-only
+		 addressing mode that the compiler uses under 32-bit ABI. */
 	      "ld8_32_n32",
 	      "ldu8_32_n32",
 	      "ld16_32_n32",
@@ -263,12 +283,19 @@ main ()
 	      "ldaps_n32",
 	      "ldapd_n32",
 	      "lddqa_n32",
+	      "lddqu_n32",
 	      "ldlps_n32",
 	      "ldlpd_n32",
+	      "ldhps_n32",
 	      "ldhpd_n32",
 	      "ld64_2m_n32",
+	      "ld64_2sse_n32",
 
-	      /* store without base or index register for n32 abi. */
+	      /* Store without base or index register (offset only) for 32-bit
+		 ABI.  (These should really be named *_off to denote
+		 offset-only, instead of *_n32 for "n32" ABI.  There is no such
+		 thing as x86 "n32" ABI.  These codes correspond to offset-only
+		 addressing mode that the compiler uses under 32-bit ABI. */
 	      "store8_n32",
 	      "store16_n32",
 	      "store32_n32",
@@ -277,10 +304,21 @@ main ()
 	      "staps_n32",
 	      "stapd_n32",
 	      "stdqa_n32",
+	      "stdqu_n32",
 	      "stlps_n32",
+	      "sthps_n32",
 	      "stlpd_n32",
 	      "sthpd_n32",
 	      "store64_fm_n32",
+	      "store64_fsse_n32",
+
+	      /* Load from %gs segment, without base or index register (offset
+	         only) for 32-bit ABI. */
+	      "ld32_gs_seg_off",
+
+	      /* Load from %fs segment, without base or index register (offset
+	         only) for 64-bit ABI. */
+	      "ld64_fs_seg_off",
 
 	      /* 8,16-bit -> 32-bit */
 	      "movsbl",
@@ -304,18 +342,22 @@ main ()
 	      "ld8_64",
 	      "ldx8_64",
 	      "ldxx8_64",
+	      "ld8_64_off",
 	      "movzbq",
 	      "ldu8_64",
 	      "ldxu8_64",
 	      "ldxxu8_64",
+	      "ldu8_64_off",
 	      "movswq",
 	      "ld16_64",
 	      "ldx16_64",
 	      "ldxx16_64",
+	      "ld16_64_off",
 	      "movzwq",
 	      "ldu16_64",
 	      "ldxu16_64",
 	      "ldxxu16_64",
+	      "ldu16_64_off",
 	      /* 32-bit -> 64-bit */
 	      "movslq",
 	      "ld32_64",
@@ -426,6 +468,7 @@ main ()
 	      "storex64",
 	      "storexx64",
 	      "store64_fm",
+	      "store64_fsse",
 	      "storenti32",
 	      "storentix32",
 	      "storentixx32",
@@ -675,6 +718,10 @@ main ()
 	      "cvtsi2ssq_xx",
 	      "cvtsi2ssq_xxx",
 	      /* fp -> int */
+	      "cvtss2si",
+	      "cvtsd2si",
+	      "cvtss2siq",
+	      "cvtsd2siq",
 	      "cvttss2si",
 	      "cvttsd2si",
 	      "cvttss2siq",
@@ -684,26 +731,37 @@ main ()
 	      "cvtdq2ps",
 	      "cvtps2pd",
 	      "cvtpd2ps",
+	      "cvtps2dq",
 	      "cvttps2dq",
+	      "cvtpd2dq",
 	      "cvttpd2dq",
 	      "cvtdq2pd_x",
 	      "cvtdq2ps_x",
 	      "cvtps2pd_x",
 	      "cvtpd2ps_x",
+	      "cvtps2dq_x",
 	      "cvttps2dq_x",
 	      "cvttpd2dq_x",
 	      "cvtdq2pd_xx",
 	      "cvtdq2ps_xx",
 	      "cvtps2pd_xx",
 	      "cvtpd2ps_xx",
+	      "cvtps2dq_xx",
 	      "cvttps2dq_xx",
 	      "cvttpd2dq_xx",
 	      "cvtdq2pd_xxx",
 	      "cvtdq2ps_xxx",
 	      "cvtps2pd_xxx",
 	      "cvtpd2ps_xxx",
+	      "cvtps2dq_xxx",
 	      "cvttps2dq_xxx",
 	      "cvttpd2dq_xxx",
+	      "cvtpi2ps",
+	      "cvtps2pi",
+	      "cvttps2pi",
+	      "cvtpi2pd",
+	      "cvtpd2pi",
+	      "cvttpd2pi",
 	      /* misc */
 	      "ldsd",
 	      "ldsdx",
@@ -726,6 +784,7 @@ main ()
 	      "sthpd",
 	      "stntpd",
 	      "stntps",
+	      "storent64_fm",
 	      "lddqax",
 	      "lddqux",
 	      "ldlpsx",
@@ -752,6 +811,8 @@ main ()
 	      "ldapd",
 	      "ldapdx",
 	      "ldapdxx",
+	      "ldups",
+	      "ldupd",
 	      "stdqaxx",
 	      "stntpdxx",
 	      "stntpsxx",
@@ -766,6 +827,8 @@ main ()
 	      "stapd",
 	      "stapdx",
 	      "stapdxx",
+	      "stups",
+	      "stupd",
 	      "maxsd",
 	      "maxss",
 	      "fmax128v32",
@@ -815,6 +878,8 @@ main ()
 	      "movdq",
 	      "movapd",
 	      "movaps",
+	      "movq2dq",
+	      "movdq2q",
 	      "divsd",
 	      "divxsd",
 	      "divxxsd",
@@ -888,6 +953,7 @@ main ()
 	      "fsqrt128v64",
 	      "punpcklwd",
 	      "punpcklbw",
+	      "punpckldq",
 	      "punpckhbw",
 	      "punpckhwd",
 	      "punpckhdq",
@@ -910,6 +976,16 @@ main ()
 	      "psrlq",
 	      "psraw",
 	      "psrad",
+	      "psllw_mmx",
+	      "pslld_mmx",
+	      "psrlw_mmx",
+	      "psrld_mmx",
+	      "psraw_mmx",
+	      "psrad_mmx",
+	      "pand_mmx",
+	      "pandn_mmx",
+	      "por_mmx",
+	      "pxor_mmx",
 	      "unpckhpd",
 	      "unpckhps",
 	      "unpcklpd",
@@ -932,6 +1008,10 @@ main ()
 	      "movm_2i32",
 	      "movm_2i64",
 	      "pshufw64v16",
+	      "movmskps",
+	      "movmskpd",
+	      "maskmovdqu",
+	      "maskmovq",
 
               /* Fence instructions. */
 	      "mfence",
@@ -1033,6 +1113,8 @@ main ()
 	      "cmpnless",
 	      "cmpordss",
 	      "emms",
+	      "stmxcsr",
+	      "ldmxcsr",
 
 	      /* sse3 instruction */
 	      "fisttps",  // st0 -> short int
@@ -1041,14 +1123,14 @@ main ()
 	      
 	      /* instructions to support -mcmodel=medium */
 	      "movabsq",
-	      "store8_m",
-	      "store16_m",
-	      "store32_m",
-	      "store64_m",
-	      "ld8_m",
-	      "ld16_m",
-	      "ld32_m",
-	      "ld64_m",
+	      "store8_abs",
+	      "store16_abs",
+	      "store32_abs",
+	      "store64_abs",
+	      "ld8_abs",
+	      "ld16_abs",
+	      "ld32_abs",
+	      "ld64_abs",
 
 	      /* instructions to support Open MP. */
 	      "lock_add32",

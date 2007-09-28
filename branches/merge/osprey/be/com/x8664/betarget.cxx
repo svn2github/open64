@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: betarget.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/x8664/betarget.cxx,v $
+ * $Revision: 1.22 $
+ * $Date: 05/05/13 15:03:55-07:00 $
+ * $Author: kannann@iridot.keyresearch $
+ * $Source: be/com/x8664/SCCS/s.betarget.cxx $
  *
  * Description:
  *

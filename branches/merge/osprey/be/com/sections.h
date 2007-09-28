@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -54,6 +62,9 @@ enum _sec_kind {
   _SEC_TEXT,
   _SEC_DATA,
   _SEC_SDATA,
+#ifdef KEY
+  _SEC_LDATA_MIPS_LOCAL,	// bug 12619
+#endif
   _SEC_LDATA,
   _SEC_RDATA,
   _SEC_SRDATA,

@@ -199,6 +199,8 @@ Init_Pregs ( void )
   GP_Preg = Create_Preg( TY_mtype( Spill_Int_Type ), "GP");
 }
 
+
+#ifndef TARG_X8664
 /* =======================================================================
  *
  *  Setup_GP_TN_For_PU
@@ -290,6 +292,8 @@ Setup_GP_TN_For_PU( ST *pu)
   REGISTER_Set_Allocatable(REGISTER_CLASS_gp, reg, FALSE);
   Set_TN_register(GP_TN, reg);
 }
+#endif
+
 
 /* =======================================================================
  *
@@ -968,6 +972,13 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
 #endif
     }
   }
+
+#ifdef KEY
+  /* Bug 12718: If the callee uses __builtin_return_address, we need
+   * to preserve the call. */
+  if (call_st && PU_has_return_address(Pu_Table[ST_pu(call_st)]))
+    return NULL;
+#endif
 
   /* If any stack variables have had their address taken, it is
    * possible they might be used by the called PU, but if we do the
@@ -2296,8 +2307,7 @@ Adjust_Exit(ST *pu_st, BB *bb)
     OP* op = EETARG_High_Level_Procedure_Exit ();
 #ifdef KEY // bug 3600
     OP_srcpos(op) = OP_srcpos(sp_adj);
-#endif
-#ifdef TARG_X8664
+
     if (W2OPS_Pragma_Preamble_End_Seen())
       Set_OP_first_after_preamble_end(op);
 #endif

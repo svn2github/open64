@@ -130,10 +130,10 @@ extern void Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair=FALSE);
 extern void Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops); 
 #endif
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_MIPS)
 /* Generate a copy from 'src_tn' to 'tgt_tn' with zero/sign extension. */
 extern void Exp_COPY_Ext (TOP opcode, TN *tgt_tn, TN *src_tn, OPS *ops); 
-#endif /* TARG_X8664 */
+#endif /* TARG_X8664 or TARG_MIPS */
 
 /* Given a simulated <op>, expand it into the sequence of instructions
  * that must be generated. The <pc_value> is the PC location of the 
@@ -248,6 +248,12 @@ extern void Exp_Extract_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset,
 extern void Exp_Deposit_Bits (TYPE_ID rtype, TYPE_ID desc, 
 			      UINT bit_offset, UINT bit_size, 
 			      TN *tgt_tn, TN *src1_tn, TN *src2_tn, OPS *ops);
+#ifdef TARG_X8664
+/* generate instructions to set a bit field to all 1's */
+extern void Exp_Set_Bits (TYPE_ID rtype, TYPE_ID desc,
+			      UINT bit_offset, UINT bit_size, 
+			      TN *tgt_tn, TN *src1_tn, OPS *ops);
+#endif
 
 /* expand return instruction */
 #ifdef TARG_X8664

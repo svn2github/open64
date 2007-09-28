@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -196,11 +196,10 @@ BOOL EBO_Merge_Memory_Addr( OP*, TN**, EBO_TN_INFO**, EBO_TN_INFO** );
 BOOL EBO_Load_Execution( OP*, TN**, EBO_TN_INFO** );
 BOOL EBO_Lea_Insertion( OP*, TN**, EBO_TN_INFO** );
 BOOL EBO_Fold_Load_Duplicate( OP*, TN**, EBO_TN_INFO** );
-BOOL Combine_L1_L2_Prefetches( OP*, TN**, EBO_TN_INFO** );
 void Lea_Insertion ();
 void Init_Load_Exec_Map( BB*, MEM_POOL* );
 BOOL Delete_Unwanted_Prefetches( OP* );
-
+BOOL EBO_Can_Eliminate_Zero_Opnd_OP(OP *);
 #endif /* TARG_X8664 */
 
 BOOL EBO_Can_Merge_Into_Offset (OP *op);
@@ -208,4 +207,5 @@ BOOL EBO_Can_Merge_Into_Offset (OP *op);
 #ifdef KEY
 void EBO_Special_Start( MEM_POOL* );
 void EBO_Special_Finish();
+BOOL Combine_L1_L2_Prefetches( OP*, TN**, EBO_TN_INFO** );
 #endif // KEY

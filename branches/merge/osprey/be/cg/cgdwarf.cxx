@@ -2754,10 +2754,8 @@ print_source (SRCPOS srcpos)
   }
 }
 
-#ifdef TARG_X8664
-BOOL Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
-#endif
 #ifdef KEY
+BOOL Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
 BOOL Cg_Dwarf_BB_First_Op = FALSE;
 #endif
 
@@ -2783,7 +2781,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 
   if (srcpos == 0 && last_srcpos == 0)
 	DevWarn("no valid srcpos at PC %d\n", code_address);
-#ifndef TARG_X8664
+#ifndef KEY
   if (srcpos == 0 || srcpos == last_srcpos) return;
 #else
   if (srcpos == 0 || 
@@ -3485,7 +3483,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	  	(reloc_buffer[k].drd_length == 8)?
 			AS_ADDRESS_UNALIGNED: AS_WORD_UNALIGNED;
 
-#ifdef KEY
+#ifdef TARG_X8664
       // don't want to affect other sections, although they may also need
       // to be updated under fPIC
       bool gen_pic = ((Gen_PIC_Call_Shared || Gen_PIC_Shared) &&
@@ -3497,7 +3495,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       case dwarf_drt_data_reloc:
 	fprintf(asm_file, "\t%s\t%s", reloc_name,
 		Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
-#ifdef KEY
+#ifdef TARG_X8664
 	if (gen_pic)
 	    fputs ("-.", asm_file);
 #endif
@@ -3507,7 +3505,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	// need unaligned AS_ADDRESS for dwarf, so add .ua
 	fprintf(asm_file, "\t%s\t%s", reloc_name,
 		Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
-#ifdef KEY
+#ifdef TARG_X8664
 	if (gen_pic)
 	    fprintf(asm_file, "-.");
 #endif

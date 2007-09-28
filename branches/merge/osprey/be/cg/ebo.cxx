@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -166,6 +170,11 @@ static const char source_file[] = __FILE__;
 #include "targ_sim.h"
 #include "config_wopt.h"
 #include "config_lno.h"
+#include "xstats.h"	// Spill_Var_Cnt
+
+static void Init_Remove_Dead_LRA_Stores(BS **bs, MEM_POOL *pool);
+static void Mark_LRA_Spill_Reference(OP *op, BS **bs, MEM_POOL *pool);
+static BOOL Delete_Dead_LRA_Spill(OP *op, BS **bs);
 #endif
 
 /* ===================================================================== */
@@ -1129,7 +1138,7 @@ find_duplicate_mem_op (BB *bb,
     fprintf(TFile,"%sEnter find_duplicate_mem_op\n",EBO_trace_pfx);
   }
 
-#ifdef TARG_X8664
+#ifdef KEY
   // Take OP_prefetch into account.
   if( OP_prefetch(op) ){
     return Combine_L1_L2_Prefetches( op, opnd_tn, opnd_tninfo );
@@ -1240,7 +1249,13 @@ find_duplicate_mem_op (BB *bb,
 
     BOOL hash_op_matches = ((pred_op != NULL) &&
 #ifdef TARG_X8664
-                            ( OP_memory(pred_op) || OP_load_exe(pred_op) ) &&
+                            (OP_memory(pred_op) || OP_load_exe(pred_op)) &&
+#else
+                            OP_memory(pred_op) &&
+#endif
+#ifdef TARG_X8664
+			    (CGTARG_Is_Thread_Local_Memory_OP(op) ==
+			     CGTARG_Is_Thread_Local_Memory_OP(pred_op)) &&
 			    (pred_index_tn == succ_index_tn)         &&
 			    (pred_index_tninfo == succ_index_tninfo) &&
 			    (pred_scale_tn == succ_scale_tn)         &&
@@ -1746,7 +1761,12 @@ find_duplicate_op (BB *bb,
     Print_OP_No_SrcLine(op);
   }
 
+#ifdef TARG_X8664
+  opinfo = (opcount == 0 && !EBO_Can_Eliminate_Zero_Opnd_OP(op)) ?
+	      NULL : EBO_opinfo_table[hash_value];
+#else
   opinfo = (opcount == 0) ? NULL : EBO_opinfo_table[hash_value];
+#endif
 
   while (opinfo) {
     OP *pred_op = opinfo->in_op;
@@ -2010,6 +2030,16 @@ Find_BB_TNs (BB *bb)
 #endif
 
 #ifdef TARG_X8664
+  // Delete dead LRA spills.
+  BS *LRA_spilled_value_is_used = NULL;
+  if (EBO_in_peep) {
+    Init_Remove_Dead_LRA_Stores(&LRA_spilled_value_is_used, &MEM_local_pool);
+  }
+
+  // x87
+  BOOL in_x87_state = FALSE;
+  OP *maybe_redundant_EMMS_OP = NULL;
+
   const BOOL do_load_execute = ( CG_load_execute > 0 ) && !EBO_in_pre && !EBO_in_loop;
   if( do_load_execute ){
     Init_Load_Exec_Map( bb, &MEM_local_pool );
@@ -2106,6 +2136,28 @@ Find_BB_TNs (BB *bb)
       }
     }
 
+#ifdef TARG_X8664
+    // Remove unnecessary EMMS OPs.  An EMMS is unnecessary if the x87/MMX
+    // registers are already in the x87 state (as opposed to MMX state), or if
+    // the next OP is an MMX OP (which clobbers the x87 state).
+    if (OP_code(op) == TOP_emms) {
+      if (in_x87_state)
+	OP_Change_To_Noop(op);
+      else
+	maybe_redundant_EMMS_OP = op;
+      in_x87_state = TRUE;
+    } else if (OP_x87(op)) {
+      in_x87_state = TRUE;
+      maybe_redundant_EMMS_OP = NULL;
+    } else if (OP_mmx(op)) {
+      if (maybe_redundant_EMMS_OP != NULL) {
+	OP_Change_To_Noop(maybe_redundant_EMMS_OP);
+	maybe_redundant_EMMS_OP = NULL;
+      }
+      in_x87_state = FALSE;
+    }
+#endif
+
     if ((num_opnds == 0) && (OP_results(op) == 0))
 #ifdef KEY
       goto finish;
@@ -2177,6 +2229,12 @@ Find_BB_TNs (BB *bb)
 	    WN_st(wn) == WN_st(TN_home(tn)) ){
 	  dont_replace = TRUE;
 	}
+      }
+#endif
+
+#ifdef TARG_MIPS
+      if (OP_code(op) == TOP_jalr) {
+	dont_replace = TRUE;    // Bug 12505: Don't replace RA_TN in jalr
       }
 #endif
 
@@ -2724,6 +2782,16 @@ Find_BB_TNs (BB *bb)
 
 #ifdef KEY
 finish:
+
+#ifdef TARG_X8664
+    // If OP is a memory OP that references a spilled LRA value, mark it so.
+    // Later we will delete dead LRA spills.
+    if (EBO_in_peep &&
+	!op_replaced) {
+      Mark_LRA_Spill_Reference(op, &LRA_spilled_value_is_used, &MEM_local_pool);
+    }
+#endif
+
     // Update the register usage.  Identify the next OP with register usage
     // info.
     Is_True(op_num <= op_count, ("Find_BB_TNs: wrong op_num"));
@@ -2734,6 +2802,18 @@ finish:
     }
 #endif
   }
+
+#ifdef TARG_X8664
+  // Remove dead LRA stores.  A LRA store becomes dead when all the restores
+  // are eliminated by EBO, which can happen when the spilled register is
+  // unused between the store and the load, which can happen when intervening
+  // instructions are changed from load/use to load-exe.
+  if (EBO_in_peep) {
+    FOR_ALL_BB_OPs (bb, op) {
+      Delete_Dead_LRA_Spill(op, &LRA_spilled_value_is_used);
+    }
+  }
+#endif
 
   return no_barriers_encountered;
 }
@@ -2768,8 +2848,12 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
     INT idx;
     OP *op = opinfo->in_op;
 
+#ifndef KEY
+    if (op == NULL) continue;
+#else
     // If op was replaced, then op->bb could be NULL. Just skip this op.
     if (op == NULL || op->bb == NULL) continue;
+#endif
 
     if (OP_bb(op) != bb) {
       if (EBO_Trace_Block_Flow) {
@@ -3474,6 +3558,77 @@ EBO_Post_Process_Region ( RID *rid )
   MEM_POOL_Pop(&MEM_local_pool);
 }
 
+#ifdef KEY
+#ifdef TARG_X8664
+// If OP references a symbol called lra_spill_temp_xxx, return xxx; else return
+// -1.
+static int
+Get_LRA_Spill_Temp_Number(OP *op)
+{
+  int base_idx, offset_idx;
+
+  base_idx = OP_find_opnd_use(op, OU_base);
+  if (base_idx >= 0 &&
+      OP_opnd(op, base_idx) == SP_TN) {
+    offset_idx = OP_find_opnd_use(op, OU_offset);
+    if (offset_idx >= 0) {
+      TN *offset_tn = OP_opnd(op, offset_idx);
+      if (offset_tn != NULL &&
+	  TN_is_symbol(offset_tn)) {
+	ST *st = TN_var(offset_tn);
+	char *name = ST_name(st);
+	if (strstr(name, "lra_spill_temp_") != NULL) {
+	  char *p = name + 15;	// get the number part
+	  int id = atoi(p);
+	  return id;
+	}
+      }
+    }
+  }
+  return -1;
+}
+
+static void
+Init_Remove_Dead_LRA_Stores(BS **bs, MEM_POOL *pool)
+{
+  // Indexed by xxx in lra_spill_temp_xxx.  Set to 1 if the corrsponding
+  // spilled value is used.
+  *bs = BS_Create_Empty(Spill_Var_Cnt + 1, pool);
+}
+
+static BOOL
+Delete_Dead_LRA_Spill(OP *op, BS **bs)
+{
+  if (!OP_store(op))
+    return FALSE;
+
+  int id = Get_LRA_Spill_Temp_Number(op);
+
+  // Delete store if the stored value was never used.
+  if (id > 0 &&
+      !BS_MemberP(*bs, id)) {
+    OP_Change_To_Noop(op);
+    return TRUE;
+  }
+  return FALSE;
+}
+
+// If a memory OP loads from lra_spill_temp_xxx, then mark the spilled value
+// used.  Delete stores whose spilled value is never used.
+static void
+Mark_LRA_Spill_Reference(OP *op, BS **bs, MEM_POOL *pool)
+{
+  if (OP_store(op))
+    return;
+
+  // The spilled value is used.  Mark it so.
+  int id = Get_LRA_Spill_Temp_Number(op);
+  if (id > 0) {
+    *bs = BS_Union1D(*bs, id, pool);
+  }
+}
+#endif	// TARG_X8664
+
 #if 0
 // We can not say if a particular address will be taken outside of the 
 // current extended basic block unless we look at the Symbol Table. 
@@ -3642,4 +3797,5 @@ delete_useless_store_op (EBO_OP_INFO *opinfo)
   backup_tninfo_list(save_last_tninfo);
   return;
 }
+#endif
 #endif
