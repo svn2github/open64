@@ -1348,7 +1348,6 @@ typedef enum {
   INTRN_FQFQI4EXPEXPR   = LAST_COMMON_ID+232,
   INTRN_EXPECT          = LAST_COMMON_ID+233,
     
-  INTRINSIC_LAST  = LAST_COMMON_ID+233
   #define INTRINSIC_LAST_TMP  LAST_COMMON_ID+233
 #else // Anything target-independent needs to be added on all branches of
       // this ifdef.
@@ -1360,20 +1359,16 @@ typedef enum {
   INTRN_FLOOR	      = LAST_COMMON_ID+6,
   INTRN_FLOORF	      = LAST_COMMON_ID+7,
 
-  INTRINSIC_LAST  = LAST_COMMON_ID+7
   #define INTRINSIC_LAST_TMP  LAST_COMMON_ID+7
 #endif // TARG_X8664
 #else
-  INTRINSIC_LAST  = 762
   #define INTRINSIC_LAST_TMP 762
 #endif // KEY
 
-#ifdef TARG_IA64
   INTRN_CTYPE_B_LOC       = INTRINSIC_LAST_TMP+1,
   INTRN_CTYPE_TOUPPER_LOC = INTRINSIC_LAST_TMP+2,
   INTRN_CTYPE_TOLOWER_LOC = INTRINSIC_LAST_TMP+3,
   INTRINSIC_LAST          = INTRN_CTYPE_TOLOWER_LOC,
-#endif
 } INTRINSIC;
 
 #ifdef __cplusplus
