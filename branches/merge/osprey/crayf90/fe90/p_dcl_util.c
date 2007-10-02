@@ -67,7 +67,9 @@ static char USMID[] = "\n@(#)5.0_pl/sources/p_dcl_util.c	5.7	10/28/99 10:03:56\n
 \*****************************************************************/
 
 static	int	ntr_bnds_tmp_list(opnd_type *);
+#ifndef KEY /* Bug 10572 */
 static	boolean	parse_int_spec_expr(long *, fld_type *, boolean, boolean);
+#endif /* KEY Bug 10572 */
 static	void	parse_kind_selector(void);
 static	boolean	is_attr_referenced_in_bound(int, int);
 
@@ -3011,7 +3013,10 @@ boolean merge_target(boolean	chk_semantics,
 |*	Returns TRUE if it parsed okay.					      *|
 |*									      *|
 \******************************************************************************/
-static boolean	parse_int_spec_expr(long		*len_idx,
+#ifndef KEY /* Bug 10572 */
+static
+#endif /* KEY Bug 10572 */
+boolean	parse_int_spec_expr(long		*len_idx,
 				    fld_type		*field_type,
 				    boolean		 fold_it,
 				    boolean		 char_len)

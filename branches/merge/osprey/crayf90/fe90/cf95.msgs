@@ -2378,13 +2378,12 @@ is a nonzero, unsigned integer constant.
 .ME
 $
 $ Ansi : 0169
-$msg  0169 A comma between these format fields is required by the Fortran standard.
+$msg  0169 A comma between these format fields is required by some versions of the Fortran standard.
 $nexp 0169
-Ansi : A comma between these format fields is required by the Fortran standard.
+Ansi : A comma between these format fields is required by some versions of the Fortran standard.
 .PP
 This format specification has two consecutive format descriptors with no comma
-separating them.  The Fortran standard requires commas between
-items in a format specification.  The Fortran standard allows the comma to
+separating them.  The Fortran 90 standard allows the comma to
 be omitted in the following places:
 .BL
 Between a P descriptor and an immediately following F, E, D, or G descriptor
@@ -2392,6 +2391,9 @@ Between a P descriptor and an immediately following F, E, D, or G descriptor
 Before or after a slash
 .BL
 Before or after a colon
+.PP
+In addition, the Fortran 2003 standard allows the comma to be omitted between
+a P descriptor and a repeat specifier.
 .ME
 $
 $ Ansi : 0170
@@ -10318,13 +10320,20 @@ an initialization expression.
 .ME
 $
 $ Ansi : 0771
-$msg  0771 Use of a BOZ literal constant outside of a DATA statement is an extension to the Fortran standard.
+$msg  0771 In Fortran 95, a BOZ constant may appear only in a DATA statement (in Fortran 2003, it may also appear in intrinsic INT, REAL, DBLE, or CMPLX)
 $nexp 0771
-Ansi : Use of a BOZ literal constant outside of a DATA statement is an extension to the Fortran standard.
+Ansi : In Fortran 95, a BOZ constant may appear only in a DATA statement (in Fortran 2003, it may also appear in intrinsic INT, REAL, DBLE, or CMPLX)
 .PP
-The Fortran standard only allows BOZ literal constants in a \*CDATA\fR statement
-value list.  The compiler treats them as type Boolean and allows them wherever
-type Boolean is allowed.
+The Fortran 95 standard allows BOZ literal constants only in a \*CDATA\fR
+statement value list. The Fortran 2003 standard also allows them as arguments
+to intrinsics INT, REAL, or DBLE. As an extension, the compiler allows them
+elsewhere.
+.PP
+By default, intrinsics REAL, DBLE, and CMPLX treat a BOZ constant as an
+integer and return the real value having the same magnitude. When the option
+-ansi or -ffortran2003 is in effect, the compiler behaves as Fortran 2003
+prescribes, returning the real value having the same bit pattern as the BOZ
+constant.
 .ME
 $
 $ Error : 0772
@@ -21584,4 +21593,50 @@ Ansi :  Statement functions are an obsolescent feature
 This feature was declared obsolescent in the Fortran 95 standard. An
 alternative is to create an internal procedure using the "contains" keyword.
 .ME
-$ LAST NUMBER USED : 1682
+$
+$ Error : 1683
+$msg  1683 Duplicate or conflicting IMPORT of %s
+$nexp 1683
+Error :  Duplicate or conflicting IMPORT of %s
+.PP
+The name has already appeared in an "import" statement in this interface body,
+or there is already a declaration of the name which is local to the interface
+body
+.ME
+$
+$ Error : 1684
+$msg  1684 %s cannot be imported from the host scoping unit
+$nexp 1684
+Error :  %s cannot be imported from the host scoping unit
+.PP
+The name is not accessible in the host scoping unit. Note that the declaration
+of a name in the host must precede its use in an IMPORT statement.
+.ME
+$
+$ Ansi : 1685
+$msg  1685 Not standard prior to Fortran 2003 (%s)
+$nexp 1685
+Ansi :  Not standard prior to Fortran 2003 (%s)
+.PP
+Prior to the Fortran 2003 standard, this construct was not available, though
+compilers may have allowed it as an extension.
+.ME
+$
+$ Error : 1686
+$msg  1686 Only the ENUMERATOR statement is allowed between ENUM and END ENUM statements
+$nexp 1686
+Error :  Only the ENUMERATOR statement is allowed between ENUM and END ENUM statements
+.PP
+Only the ENUMERATOR statement is allowed between ENUM and END ENUM statements
+.ME
+$
+$ Warning : 1687
+$msg  1687 %s appears in OpenMP THREADPRIVATE but is neither a module variable nor SAVEd.
+$nexp 1687
+Warning :   %s appears in OpenMP THREADPRIVATE but is neither a module variable nor SAVEd.
+.PP
+The OpenMP THREADPRIVATE directive requires either an entire common block, or
+an individual variable which is either a module variable or a variable having
+the SAVE attribute which is not in a common block.
+.ME
+$ LAST NUMBER USED : 1687

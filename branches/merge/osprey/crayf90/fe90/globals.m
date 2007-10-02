@@ -47,6 +47,10 @@
 /* These are the compiler generated integer and logical types.  They  */
 /* must always be set to the default types for the machine.           */
 
+#ifdef KEY /* Bug 11922 */
+/* Experiment shows that -i8 changes INTEGER_DEFAULT_TYPE to Integer_8, but
+ * leaves CG_INTEGER_DEFAULT_TYPE at Integer_4. */
+#endif /* KEY Bug 11922 */
 # define CG_INTEGER_DEFAULT_TYPE init_default_linear_type[Fortran_Integer]
 /* These macros are used for the default types.  They are set in init_type. */
 

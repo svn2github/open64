@@ -99,7 +99,11 @@ enum    blk_cntxt_values       {Unknown_Blk,
                                 Open_Mp_Parallel_Workshare_Blk, /* by jhs, 02/7/18 */
                                 Contains_Blk,
                                 Interface_Blk,
-				Derived_Type_Blk };
+				Derived_Type_Blk,
+#ifdef KEY /* Bug 10572 */
+				Enum_Blk
+#endif /* KEY Bug 10572 */
+				};
 
 enum	do_loop_values		{Unknown_Loop,
          			 Iterative_Loop,
@@ -191,6 +195,9 @@ enum stmt_category_values	{Init_Stmt_Cat,
 				 Sub_Func_Stmt_Cat,
 				 Dir_Integer_Stmt_Cat,
 				 Use_Stmt_Cat,
+#ifdef KEY /* Bug 11741 */
+				 Import_Stmt_Cat,
+#endif /* KEY Bug 11741 */
 				 Implicit_None_Stmt_Cat,
 				 Implicit_Stmt_Cat,
 				 Declaration_Stmt_Cat,
@@ -435,6 +442,14 @@ extern	void parse_function_stmt (void);
 extern	void parse_goto_stmt (void);
 extern	void parse_if_stmt (void);
 extern	void parse_implicit_stmt (void);
+#ifdef KEY /* Bug 11741 */
+extern	void parse_import_stmt (void);
+#endif /* KEY Bug 11741 */
+#ifdef KEY /* Bug 10572 */
+extern	void parse_enum_stmt (void);
+extern	void parse_enumerator_stmt (void);
+extern	boolean	parse_int_spec_expr(long *, fld_type *, boolean, boolean);
+#endif /* KEY Bug 10572 */
 extern	void parse_inquire_stmt (void);
 extern	void parse_intent_stmt (void);
 extern	void parse_interface_stmt (void);

@@ -106,6 +106,9 @@ enum	token_values {
 		Tok_Kwd_Assignment,	/* ASSIGNMENT			      */
 		Tok_Kwd_Automatic,	/* AUTOMATIC  			      */
 		Tok_Kwd_Backspace,	/* BACKSPACE			      */
+#ifdef KEY /* Bug 10572 */
+		Tok_Kwd_Bind,		/* BIND				      */
+#endif /* KEY Bug 10572 */
 		Tok_Kwd_Block,		/* BLOCK     BLOCKDATA, ENDBLOCKDATA  */
 		Tok_Kwd_Buffer,		/* BUFFER    BUFFERIN, BUFFEROUT      */
 		Tok_Kwd_Byte,		/* BYTE                               */
@@ -138,6 +141,10 @@ enum	token_values {
 					/*	     ENDSELECT, ENDSUBROUTINE,*/
 					/*	     ENDTYPE, ENDWHERE	      */
 		Tok_Kwd_Entry,		/* ENTRY			      */
+#ifdef KEY /* Bug 10572 */
+		Tok_Kwd_Enum,		/* ENUM 			      */
+		Tok_Kwd_Enumerator,	/* ENUMERATOR 			      */
+#endif /* KEY Bug 10572 */
 		Tok_Kwd_Equivalence,	/* EQUIVALENCE			      */
 		Tok_Kwd_Exit,		/* EXIT				      */
 		Tok_Kwd_External,	/* EXTERNAL			      */
@@ -148,6 +155,9 @@ enum	token_values {
 		Tok_Kwd_Go,		/* GO	     GOTO		      */
 		Tok_Kwd_If,		/* IF	     ELSEIF, ENDIF	      */
 		Tok_Kwd_Implicit,	/* IMPLICIT			      */
+#ifdef KEY /* Bug 11741 */
+		Tok_Kwd_Import,		/* IMPORT			      */
+#endif /* KEY Bug 11741 */
 		Tok_Kwd_In,		/* IN	     BUFFERIN, INOUT	      */
 		Tok_Kwd_Inquire,	/* INQUIRE			      */
 		Tok_Kwd_Integer,	/* INTEGER			      */
@@ -159,6 +169,9 @@ enum	token_values {
 		Tok_Kwd_Logical,	/* LOGICAL			      */
 		Tok_Kwd_Module,		/* MODULE    ENDMODULE,		      */
 					/*	     MODULEPROCEDURE	      */
+#ifdef KEY /* Bug 10572 */
+		Tok_Kwd_Name,		/* NAME				      */
+#endif /* KEY Bug 10572 */
 		Tok_Kwd_Namelist,	/* NAMELIST			      */
 		Tok_Kwd_None,		/* NONE				      */
 #ifdef KEY /* Bug 5089 */

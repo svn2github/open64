@@ -1709,7 +1709,15 @@ enum stmt_type_values           {Null_Stmt,
                                  Volatile_Stmt,
 
 				 Open_MP_End_Parallel_Workshare_Stmt,
-				 Open_MP_End_Workshare_Stmt
+				 Open_MP_End_Workshare_Stmt,
+#ifdef KEY /* Bug 11741 */
+				 Import_Stmt,
+#endif /* KEY Bug 11741 */
+#ifdef KEY /* Bug 10572 */
+				 Enum_Stmt,
+				 End_Enum_Stmt,
+				 Enumerator_Stmt
+#endif /* KEY Bug 10572 */
 
                                  /* When you add a stmt, make sure you change */
                                  /* stmt_type_str in main.h.                  */
@@ -2103,6 +2111,9 @@ struct	on_off_flags_entry {
 	 * collide with that of any user-created module. */
 	boolean		intrinsic_module_gen	: 1;		/* -intrinsic_module_gen */
 #endif/* KEY Bug 5089 */
+#ifdef KEY /* Bug 12482 */
+	boolean		fortran2003		: 1;		/* -ffortran2003 */
+#endif /* KEY Bug 12482 */
 	};
 
 /*************\
@@ -2879,6 +2890,10 @@ extern  boolean		fold_aggragate_expression(opnd_type *, expr_arg_type *,
 extern  boolean		fold_relationals(int, int, operator_type);
 extern  boolean         folder_driver(char *, int, char *, int, long_type *,
                                       int *, int, int, int, int, ...);
+#ifdef KEY /* Bug 12482 */
+extern void		copy_and_pad_boz(long_type *dst, Uint dst_words,
+			  long_type *src, Uint src_words);
+#endif /* KEY Bug 12482 */
 extern	void		free_tables(void);
 extern	void		free_get_char(void);
 extern	void		free_get_char_literal(void);

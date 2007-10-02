@@ -460,9 +460,14 @@ scp_or_parent_uses_ieee(int scp_idx) {
   for (int s = scp_idx; s; s = SCP_PARENT_IDX(s)) {
     if (SCP_USES_IEEE(s)) {
       int attr_idx = SCP_ATTR_IDX(scp_idx);
+      pgm_unit_type put = ATP_PGM_UNIT(attr_idx);
+      /* F2003 requires save/restore of FP state only for function or
+       * subroutine, but with -apo the FP state doesn't start cleanly, so as
+       * a favor to the user we call this in the main program too so the
+       * flags start out clear.
+       */
       if (Pgm_Unit == AT_OBJ_CLASS(attr_idx) &&
-	(Function == ATP_PGM_UNIT(attr_idx) ||
-	Subroutine == ATP_PGM_UNIT(attr_idx))) {
+	(Function == put || Program == put || Subroutine == put)) {
 	return TRUE;
       }
     }

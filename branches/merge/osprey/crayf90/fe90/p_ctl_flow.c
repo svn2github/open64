@@ -565,6 +565,18 @@ void parse_call_stmt (void)
 
          if (host_attr_idx != NULL_IDX) { 
 
+#ifdef KEY /* Bug 9872 */
+            /* The parentheses are optional in a call statement when the
+	     * actual argument list is empty, so I don't understand why
+	     * this code ignores the intrinsic interface when the parens
+	     * are omitted. It causes a bug whenever all the arguments to
+	     * an intrinsic are omitted, because a subsequent call with
+	     * keyword arguments can't find the keywords. Perhaps this was
+	     * discovered for "random_seed", but it applies equally to
+	     * "date_and_time", and maybe to others. If the purpose of the code
+	     * ever becomes evident and we have to restore it, we will need
+	     * to add "date_and_time" to the set of "strcmp"ed exceptions. */
+#else /* KEY Bug 9872 */
             if (LA_CH_VALUE != LPAREN &&
                 AT_IS_INTRIN(host_attr_idx) &&
                 AT_OBJ_CLASS(host_attr_idx) == Interface &&
@@ -572,6 +584,7 @@ void parse_call_stmt (void)
                 (strcmp(AT_OBJ_NAME_PTR(host_attr_idx), "RANDOM_SEED") != 0)) {
                host_attr_idx = NULL_IDX;
             }
+#endif /* KEY Bug 9872 */
 
             /* We don't want to copy down the host attr if the host */
             /* attr is a FUNCTION attr.  We are dealing with a CALL */
@@ -4084,6 +4097,13 @@ PARSE_LOGICAL_IF:
          case Format_Stmt:
          case Implicit_Stmt:
          case Implicit_None_Stmt:
+#ifdef KEY /* Bug 11741 */
+         case Import_Stmt:
+#endif /* KEY Bug 11741 */
+#ifdef KEY /* Bug 10572 */
+         case Enum_Stmt:
+         case Enumerator_Stmt:
+#endif /* KEY Bug 10572 */
          case Intent_Stmt:
          case Interface_Stmt:
          case Intrinsic_Stmt:
@@ -4227,6 +4247,9 @@ PARSE_LOGICAL_IF:
          case End_Function_Stmt:
          case End_If_Stmt:
          case End_Interface_Stmt:
+#ifdef KEY /* Bug 10572 */
+         case End_Enum_Stmt:
+#endif /* KEY Bug 10572 */
          case End_Module_Stmt:
          case End_Program_Stmt:
          case End_Select_Stmt:

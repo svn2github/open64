@@ -2575,6 +2575,207 @@ void parse_interface_stmt (void)
 }  /* parse_interface_stmt */
 
 
+#ifdef KEY /* Bug 10572 */
+/*
+ *	BNF is    , BIND ( C [, NAME = scalar-char-initialization-expr ] )
+ *
+ *  result	if null on input, then don't allow optional clause; otherwise,
+ *		on output this gives the scalar-char-initialization-expr, or
+ *		NO_Tbl_Idx and NULL_IDX if the clause is omitted
+ */
+void
+parse_language_binding_spec(opnd_type *result) {
+  if (result) {
+    OPND_FLD(*result) = NO_Tbl_Idx;
+    OPND_IDX(*result) = NULL_IDX;
+  }
+
+  if (LA_CH_VALUE != COMMA) {
+    parse_err_flush(Find_EOS, ",");
+    return;
+  }
+  NEXT_LA_CH; /* Consume comma */
+  if (!matched_specific_token(Tok_Kwd_Bind, Tok_Class_Keyword)) {
+    parse_err_flush(Find_EOS, "BIND");
+    return;
+  }
+  if (LA_CH_VALUE != LPAREN) {
+    parse_err_flush(Find_EOS, "(");
+    return;
+  }
+  NEXT_LA_CH; /* Consume left paren */
+  if (LA_CH_VALUE != 'C' && LA_CH_VALUE != 'c') {
+    parse_err_flush(Find_EOS, "C");
+    return;
+  }
+  NEXT_LA_CH; /* Consume 'c' */
+  if (result) {
+    if (LA_CH_VALUE == COMMA) {
+      NEXT_LA_CH; /* Consume comma */
+      if (!matched_specific_token(Tok_Kwd_Name, Tok_Class_Keyword)) {
+	parse_err_flush(Find_EOS, "NAME");
+	return;
+      }
+      if (LA_CH_VALUE != EQUAL) {
+	parse_err_flush(Find_EOS, "=");
+	return;
+      }
+      NEXT_LA_CH; /* Consume equal */
+      if (!parse_expr(result)) {
+        /* No action needed */
+      }
+    }
+  }
+  if (LA_CH_VALUE != RPAREN) {
+    parse_err_flush(Find_EOS, ")");
+    return;
+  }
+  NEXT_LA_CH; /* Consume right paren */
+}
+
+/*
+ *	BNF is    ENUM, BIND(C)
+ */
+void
+parse_enum_stmt() {
+   TRACE (Func_Entry, "parse_enum_stmt", NULL);
+
+   if ((STMT_OUT_OF_ORDER(curr_stmt_category, Enum_Stmt) ||
+      STMT_CANT_BE_IN_BLK(Enum_Stmt, CURR_BLK)) &&
+      iss_blk_stk_err()) {
+      PUSH_BLK_STK(Enum_Blk);
+      CURR_BLK_ERR = TRUE;
+   }
+   else {
+      PUSH_BLK_STK(Enum_Blk);
+   }
+   curr_stmt_category = Declaration_Stmt_Cat;
+
+   CURR_BLK_NO_EXEC = TRUE;
+
+   BLK_ENUM_EMPTY(blk_stk_idx) = TRUE;
+   BLK_ENUM_COUNTER(blk_stk_idx) = 0;
+
+   parse_language_binding_spec((opnd_type *) 0);
+
+   if (LA_CH_VALUE != EOS) {
+     parse_err_flush(Find_EOS, EOS_STR);
+   }
+   NEXT_LA_CH;				/* Pick up EOS */
+         
+   TRACE (Func_Exit, "parse_enum_stmt", NULL);
+
+}  /* parse_enum_stmt */
+
+/*
+ *	BNF is    	ENUMERATOR [ :: ] enumerator-list
+ *      enumerator is	id [ = scalar-int-initialization-expr ]
+ */
+void
+parse_enumerator_stmt() {
+   TRACE (Func_Entry, "parse_enumerator_stmt", NULL);
+
+   PRINTMSG(TOKEN_LINE(token), 1685, Ansi, TOKEN_COLUMN(token), "ENUM");
+
+   if ((STMT_OUT_OF_ORDER(curr_stmt_category, Enumerator_Stmt) ||
+      STMT_CANT_BE_IN_BLK(Enumerator_Stmt, CURR_BLK)) &&
+      iss_blk_stk_err()) {
+      PUSH_BLK_STK(Enum_Blk);
+      CURR_BLK_ERR = TRUE;
+      CURR_BLK_NO_EXEC = TRUE;
+   }
+
+   BLK_ENUM_EMPTY(blk_stk_idx) = FALSE;
+
+   /* Optional :: */
+   matched_specific_token(Tok_Punct_Colon_Colon, Tok_Class_Punct);
+
+   for (;;) {
+     if (!MATCHED_TOKEN_CLASS(Tok_Class_Id)) {
+	parse_err_flush(Find_Comma_Rparen, "named-constant");
+	if (LA_CH_VALUE == EOS) {
+	  break;
+	}
+	continue;
+     }
+     int line = TOKEN_LINE(token);
+     int column = TOKEN_COLUMN(token);
+     int name_idx;
+     int attr_idx = srch_sym_tbl(TOKEN_STR(token), TOKEN_LEN(token), &name_idx);
+     if (attr_idx != NULL_IDX) {
+	char *ptr2 = get_basic_type_str(ATD_TYPE_IDX(attr_idx));
+	PRINTMSG(line, 550, Error, column, AT_OBJ_NAME_PTR(attr_idx), ptr2,
+	  "ENUMERATOR", AT_DEF_LINE(attr_idx));
+     }
+     attr_idx = ntr_sym_tbl(&token, name_idx);
+     LN_DEF_LOC(name_idx) = TRUE;
+     ATD_TYPE_IDX(attr_idx) = INTEGER_DEFAULT_TYPE;
+     AT_TYPED(attr_idx) = TRUE;
+     ATD_SEEN_OUTSIDE_IMP_DO(attr_idx) = TRUE;
+     boolean have_value = TRUE;
+
+     opnd_type opnd;
+     int const_line = line;
+     int const_column = column;
+
+     if (LA_CH_VALUE == EQUAL) {
+       have_value = FALSE;
+       NEXT_LA_CH;		/* Skip = */
+
+       const_line = LA_CH_LINE;
+       const_column = LA_CH_COLUMN;
+
+       long kind_idx;
+       fld_type field_type;
+       if (parse_int_spec_expr(&kind_idx, &field_type, TRUE, FALSE)) {
+	  OPND_FLD(opnd)		= field_type;
+	  OPND_IDX(opnd)		= kind_idx;
+
+	  BLK_ENUM_COUNTER(blk_stk_idx) =
+	    * (long *) &CN_CONST(OPND_IDX(opnd));
+       }
+       else {
+	  /* error from parse_expr */
+	  AT_DCL_ERR(attr_idx) = TRUE;
+       }
+     }
+     else {
+       /* Use the value in the enum counter */
+       long temp = BLK_ENUM_COUNTER(blk_stk_idx);
+       OPND_FLD(opnd) = CN_Tbl_Idx;
+       OPND_IDX(opnd) = ntr_const_tbl(ATD_TYPE_IDX(attr_idx), FALSE, &temp);
+     }
+     BLK_ENUM_COUNTER(blk_stk_idx) += 1;
+     OPND_LINE_NUM(opnd) = const_line;
+     OPND_COL_NUM(opnd)  = const_column;
+
+     expr_arg_type exp_desc;
+     exp_desc.rank = 0;
+     if ((!AT_DCL_ERR(attr_idx)) && expr_semantics(&opnd, &exp_desc)) {
+       merge_parameter(FALSE, attr_idx, line, column, &opnd, &exp_desc,
+	 const_line, const_column);
+       if ((cif_flags & XREF_RECS) != 0) {
+	  cif_usage_rec(attr_idx, AT_Tbl_Idx, line, column,
+	    CIF_Symbol_Declaration);
+       }
+     }
+
+     if (LA_CH_VALUE != COMMA) {
+       break;
+     }
+     NEXT_LA_CH; /* Consume comma */
+   }
+
+   if (LA_CH_VALUE != EOS) {
+     parse_err_flush(Find_EOS, EOS_STR);
+   }
+
+   NEXT_LA_CH;				/* Pick up EOS */
+         
+   TRACE (Func_Exit, "parse_enumerator_stmt", NULL);
+
+}  /* parse_enum_stmt */
+#endif /* KEY Bug 10572 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -4451,6 +4652,114 @@ EXIT:
    return;
 
 }  /* parse_use_stmt */
+#ifdef KEY /* Bug 11741 */
+
+/******************************************************************************\
+|*									      *|
+|* Description:								      *|
+|*	Parses the "import" statement                                         *|
+|*	BNF    IMPORT [ :: [ import-name-list ]                               *|
+|*									      *|
+|* Input parameters:							      *|
+|*	NONE								      *|
+|*									      *|
+|* Output parameters:							      *|
+|*	NONE								      *|
+|*									      *|
+|* Returns:								      *|
+|*	NONE								      *|
+|*									      *|
+\******************************************************************************/
+void parse_import_stmt(void)
+
+{
+   boolean found_list = FALSE;
+
+   TRACE (Func_Entry, "parse_import_stmt", NULL);
+
+   PRINTMSG(TOKEN_LINE(token), 1685, Ansi, TOKEN_COLUMN(token), "IMPORT");
+
+   if ((STMT_OUT_OF_ORDER(curr_stmt_category, Import_Stmt) ||
+        STMT_CANT_BE_IN_BLK(Import_Stmt, CURR_BLK)) && iss_blk_stk_err()) {
+      /* Block error - intentionally left blank */
+   }
+   else {
+      curr_stmt_category = Import_Stmt_Cat;
+   }
+
+   /* Consume optional :: */
+   if (matched_specific_token(Tok_Punct_Colon_Colon, Tok_Class_Punct) &&
+     LA_CH_VALUE == EOS) {
+       parse_err_flush(Find_EOS, "identifier");
+   }
+
+   while (MATCHED_TOKEN_CLASS(Tok_Class_Id)) {
+     found_list = TRUE;
+     int missing_in_host = FALSE;
+     int name_idx;
+     int attr_idx = srch_sym_tbl(TOKEN_STR(token), TOKEN_LEN(token), &name_idx);
+
+     /* Name exists in symbol table already */
+     if (attr_idx != NULL_IDX) {
+       /* For "type(t) function()" we have already seen the type name, but we
+        * haven't defined it, so we want to import it */
+       if (AT_OBJ_CLASS(attr_idx) == Derived_Type && !AT_DEFINED(attr_idx)) {
+	 if (import_from_host(TOKEN_STR(token), TOKEN_LEN(token), 0, attr_idx)
+	   == NULL_IDX) {
+	   missing_in_host = TRUE;
+	 }
+       }
+       else {
+	 /* If a duplicate import, rather than a conflict between import and
+	  * local, then issue a mere warning */
+	 int severity = AT_ATTR_LINK(attr_idx) ? Warning : Error;
+	 PRINTMSG(TOKEN_LINE(token), 1683, severity, TOKEN_COLUMN(token),
+	   TOKEN_STR(token));
+       }
+     }
+
+     /* Make local name pointing to host's attribute */
+     else {
+       int host_name_idx;
+       int host_attr_idx = srch_host_sym_tbl_for_import(TOKEN_STR(token),
+         TOKEN_LEN(token), &host_name_idx);
+       if (NULL_IDX == host_attr_idx) {
+         missing_in_host = TRUE;
+       }
+       else {
+	 attr_idx = ntr_host_in_sym_tbl(&token, name_idx, host_attr_idx,
+	   host_name_idx, TRUE);
+	 AT_DEFINED(attr_idx) = AT_DEFINED(host_attr_idx);
+	 AT_LOCKED_IN(attr_idx) = TRUE;
+       }
+     }
+
+     if (missing_in_host) {
+       PRINTMSG(TOKEN_LINE(token), 1684, Error, TOKEN_COLUMN(token),
+	 TOKEN_STR(token));
+     }
+
+     if (LA_CH_VALUE == COMMA) {
+	NEXT_LA_CH;                            /* Pick up comma */
+     }
+     else {
+	break;
+     }
+   }
+
+   if (LA_CH_VALUE != EOS) {
+      parse_err_flush(Find_EOS, ", or " EOS_STR);
+   }
+
+   NEXT_LA_CH; /* Consume EOS */
+
+   if (!found_list) {
+     SCP_IMPORT(curr_scp_idx) = TRUE;
+   }
+
+   TRACE (Func_Exit, "parse_import_stmt", NULL);
+}  /* parse_import_stmt */
+#endif /* KEY Bug 11741 */
 
 /******************************************************************************\
 |*									      *|
@@ -5542,6 +5851,9 @@ static	void	issue_attr_blk_err(char		*attr_str)
       case Contains_Blk:
       case Derived_Type_Blk:
       case Interface_Blk:
+#ifdef KEY /* Bug 10572 */
+      case Enum_Blk:
+#endif /* KEY Bug 10572 */
 
          /* These things are caught earlier.  The type declaration statement */
          /* is not allowed in any of the executable blocks, so don't print   */

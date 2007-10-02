@@ -140,14 +140,22 @@ extern void
 cwh_dst_init_file(char *src_path)
 {
   char         *comp_info = NULL;
+#ifndef KEY /* bug 12559 */
   char         *file ;
+#endif /* bug 12559 */
 
   DST_Init(NULL,0) ;
 
+#ifndef KEY
   file = strrchr(src_path,'/');
 
-#ifndef KEY
   comp_info = cwh_dst_get_command_line_options(); 
+
+  comp_unit_idx = DST_mk_compile_unit(++(file),
+				      current_host_dir,
+				      comp_info,
+				      DW_LANG_Fortran90,
+				      DW_ID_case_insensitive);
 #else
   // Bug 178 - AT_producer should be the name of the compiler and version info
   comp_info = (char *)malloc(sizeof(char)*100);
@@ -189,13 +197,15 @@ cwh_dst_init_file(char *src_path)
     perror("getcwd");
     exit(2);
   }
-#endif
 
-  comp_unit_idx = DST_mk_compile_unit(++(file),
+  /* bug 12559 : preserve the pathname to the source file. */
+  comp_unit_idx = DST_mk_compile_unit(src_path,
 				      current_host_dir,
 				      comp_info,
 				      DW_LANG_Fortran90,
 				      DW_ID_case_insensitive);
+#endif
+
   (void) cwh_dst_enter_path(src_path);
   free (comp_info);
 }

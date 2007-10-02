@@ -2821,8 +2821,12 @@ static int clear_pt_unique_mem(int dummy) {
 #endif /* KEY Bug 7424 */
 #ifdef KEY /* Bug 8117 */
 extern int create_tmp_asg_or_call(opnd_type *r_opnd, expr_arg_type *exp_desc,
- opnd_type *left_opnd, int intent, boolean stmt_tmp,
- boolean save_where_dealloc_stmt, boolean call);
+  opnd_type *left_opnd, int intent, boolean stmt_tmp,
+  boolean save_where_dealloc_stmt, int info_idx, dummy_arg_type a_type,
+  dummy_arg_type d_type);
+static int common_create_tmp_asg(opnd_type *r_opnd, expr_arg_type *exp_desc,
+  opnd_type *left_opnd, int intent, boolean stmt_tmp,
+  boolean save_where_dealloc_stmt, boolean call);
 
 /*
  * Wrap an Aloc_Opr around the specified operand, so as to pass it by
@@ -4632,12 +4636,22 @@ boolean final_arg_work(opnd_type	*list_opnd,
                   char_ptr2[k] = ' ';
                }
 
+#ifdef KEY /* Bug 8117 */
+               tmp_idx = create_tmp_asg_or_call(&opnd,
+                                        &exp_desc,
+                                        &l_opnd, 
+			       		Intent_In,
+                                        TRUE, 
+                                        FALSE,
+					info_idx, a_type, d_type);
+#else /* KEY Bug 8117 */
                tmp_idx = create_tmp_asg(&opnd,
                                         &exp_desc,
                                         &l_opnd, 
 			       		Intent_In,
                                         TRUE, 
                                         FALSE);
+#endif /* KEY Bug 8117 */
 
                NTR_IR_TBL(ir_idx);
                IR_OPR(ir_idx)    = Aloc_Opr;
@@ -4691,6 +4705,22 @@ boolean final_arg_work(opnd_type	*list_opnd,
                IR_FLD_L(ir_idx) = IR_Tbl_Idx;
                IR_IDX_L(ir_idx) = unused1;
             }
+#ifdef KEY /* Bug 10410 */
+            else if (IL_FLD(list_idx) == IR_Tbl_Idx &&
+	      IR_OPR(IL_IDX(list_idx)) == Percent_Val_Opr) {
+	       /* Ordinarily Percent_Val_Opr has been removed from the tree
+	        * long ago and arg_info_list.ed.percent_val_arg has been set
+		* in its place, so the code here doesn't expect to see that
+		* operator in the tree. But size_intrinsic() sometimes needs
+		* to indicate that it has already generated Aloc_Opr, so this
+		* special case lets it do so by putting the operator into the
+		* tree at the last minute. */
+	      int pvo = IL_IDX(list_idx);
+	      IL_FLD(list_idx) = IR_FLD_L(pvo);
+	      IL_IDX(list_idx) = IR_IDX_L(pvo);
+	    }
+#endif /* KEY Bug 10410 */
+
             else {
 
                if (! io_call &&
@@ -5389,34 +5419,13 @@ boolean final_arg_work(opnd_type	*list_opnd,
             COPY_OPND(opnd, IL_OPND(list_idx));
             exp_desc = arg_info_list[info_idx].ed;
 #ifdef KEY /* Bug 8117 */
-	   /*
-	    * To reduce code size, call a runtime function to copy a
-	    * noncontiguous array to a contiguous array temporary, instead of
-	    * performing the operation in line.
-	    *
-	    * For safety, this test limits the change to the case where an
-	    * entire assumed-shape array is passed to an F77-style dummy,
-	    * because I am not certain that the runtime function satisfies all
-	    * the other cases which lead to CHECK_CONTIG_FLAG (see global
-	    * arg_assoc_tbl.) In the future, for additional reduction in code
-	    * size, one could relax this test, assuming the runtime function
-	    * works correctly for those cases.
-	    */
-	    boolean call = arg_info_list[info_idx].ed.rank &&
-	      (!arg_info_list[info_idx].ed.section) &&
-	      arg_info_list[info_idx].ed.type != Structure &&
-	      (a_type == Whole_Ass_Shape || a_type == Array_Ptr) &&
-	      (d_type == Unknown_Dummy || d_type == Sequence_Array_Dummy);
-#ifdef _DEBUG
-            runtime_copyinout_count += !!call;
-#endif /* _DEBUG */
-            tmp_idx = create_tmp_asg_or_call(&opnd,
+            tmp_idx = create_tmp_asg_or_call(&opnd, 
                                      &exp_desc, 
                                      &r_opnd, 
                                      intent,
                                      TRUE, 
                                      FALSE,
-				     call);
+				     info_idx, a_type, d_type);
 #else /* KEY Bug 8117 */
             tmp_idx = create_tmp_asg(&opnd, 
                                      &exp_desc, 
@@ -5886,16 +5895,50 @@ int	create_tmp_asg(opnd_type     *r_opnd,
 		       boolean        save_where_dealloc_stmt)
 #if KEY /* Bug 8117 */
 {
-  return create_tmp_asg_or_call(r_opnd, exp_desc, left_opnd, intent,
+  return common_create_tmp_asg(r_opnd, exp_desc, left_opnd, intent,
     stmt_tmp, save_where_dealloc_stmt, FALSE);
 }
 
-/* Like create_tmp_asg(), but also takes a "call" parameter which, if true,
- * causes us to generate a call to a library function instead of an inline
- * assignment.
+/* Like create_tmp_asg(), but (usually) generates a call to a library function
+ * instead of an inline assignment.
  */
 int
 create_tmp_asg_or_call(opnd_type *r_opnd, expr_arg_type *exp_desc,
+  opnd_type *left_opnd, int intent, boolean stmt_tmp,
+  boolean save_where_dealloc_stmt, int info_idx, dummy_arg_type a_type,
+  dummy_arg_type d_type) {
+  /*
+   * To reduce code size, call a runtime function to copy a
+   * noncontiguous array to a contiguous array temporary, instead of
+   * performing the operation in line.
+   *
+   * For safety, this test limits the change to the case where an
+   * entire assumed-shape array is passed to an F77-style dummy,
+   * because I am not certain that the runtime function satisfies all
+   * the other cases which lead to CHECK_CONTIG_FLAG (see global
+   * arg_assoc_tbl.) In the future, for additional reduction in code
+   * size, one could relax this test, assuming the runtime function
+   * works correctly for those cases.
+   */
+  boolean call = arg_info_list[info_idx].ed.rank &&
+    (!arg_info_list[info_idx].ed.section) &&
+    arg_info_list[info_idx].ed.type != Structure &&
+    (a_type == Whole_Ass_Shape || a_type == Array_Ptr) &&
+    (d_type == Unknown_Dummy || d_type == Sequence_Array_Dummy);
+
+#ifdef _DEBUG
+  runtime_copyinout_count += !!call;
+#endif /* _DEBUG */
+
+  return common_create_tmp_asg(r_opnd, exp_desc, left_opnd, intent,
+    stmt_tmp, save_where_dealloc_stmt, call);
+}
+
+/*
+ * Perform the work common to create_tmp_asg() and create_tmp_asg_or_call()
+ */
+static int
+common_create_tmp_asg(opnd_type *r_opnd, expr_arg_type *exp_desc,
  opnd_type *left_opnd, int intent, boolean stmt_tmp,
  boolean save_where_dealloc_stmt, boolean call)
 #endif /* KEY Bug 8117 */
@@ -5922,7 +5965,7 @@ create_tmp_asg_or_call(opnd_type *r_opnd, expr_arg_type *exp_desc,
    int			true_end_sh_idx;
 
 
-   TRACE (Func_Entry, "create_tmp_asg", NULL);
+   TRACE (Func_Entry, "common_create_tmp_asg", NULL);
 
    find_opnd_line_and_column(r_opnd, &line, &col);
 
@@ -6310,7 +6353,7 @@ create_tmp_asg_or_call(opnd_type *r_opnd, expr_arg_type *exp_desc,
    defer_stmt_expansion = save_defer_stmt_expansion;
    stmt_expansion_control_end(left_opnd);
 
-   TRACE (Func_Exit, "create_tmp_asg", NULL);
+   TRACE (Func_Exit, "common_create_tmp_asg", NULL);
 
    return(tmp_idx);
 
@@ -8236,6 +8279,19 @@ void flatten_function_call(opnd_type     *result)
                IR_CONTIG_ARRAY(OPND_IDX((*result))) = TRUE;
             }
          }
+#ifdef KEY /* Bug 11986, 6845 */
+	 /* If we are passing a temp by reference because the function
+	  * result is allocatable, we need to deallocate it after the
+	  * reference to it. */
+         if (ATD_ALLOCATABLE(attr_idx)) {
+	   int save_curr_stmt_sh_idx = curr_stmt_sh_idx;
+	   /* This is the statment containing the reference to the temp */
+	   curr_stmt_sh_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
+	   help_dealloc(line, col, AT_Tbl_Idx, tmp_idx, FALSE,
+	     TRUE, FALSE);
+	   curr_stmt_sh_idx = save_curr_stmt_sh_idx;
+	 }
+#endif /* KEY Bug 11986, 6845 */
       }
       else {
 

@@ -105,6 +105,10 @@
 # define BLK_NAME(IDX)			blk_stk[IDX].fld.name_idx
 # define BLK_NO_EXEC(IDX)		blk_stk[IDX].fld.no_exec
 # define BLK_NUM_CASES(IDX)		blk_stk[IDX].fld.top_lbl_idx
+#ifdef KEY /* Bug 10572 */
+# define BLK_ENUM_EMPTY(IDX)		blk_stk[IDX].fld.skip_lbl_idx
+# define BLK_ENUM_COUNTER(IDX)		blk_stk[IDX].fld.top_lbl_idx
+#endif /* KEY Bug 10572 */
 # define BLK_SKIP_LBL_IDX(IDX)		blk_stk[IDX].fld.skip_lbl_idx
 # define BLK_START_TEMP_IDX(IDX)	blk_stk[IDX].fld.start_temp_idx
 # define BLK_TC_TEMP_IDX(IDX)		blk_stk[IDX].fld.tc_temp_idx

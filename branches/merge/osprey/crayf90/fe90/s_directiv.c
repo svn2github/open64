@@ -4964,12 +4964,24 @@ static boolean assert_semantics(void)
          break;
 
       case ASSERT_PERMUTATION:
+#ifdef KEY /* Bug 12497 */
+         if (IR_FLD_R(ir_idx) == IL_Tbl_Idx) {
+	    attr_idx = IL_IDX(IR_IDX_R(ir_idx));
+	 }
+	 else
+#endif /* KEY Bug 12497 */
          attr_idx = IR_IDX_R(ir_idx);
          while (AT_ATTR_LINK(attr_idx)) {
             attr_idx = AT_ATTR_LINK(attr_idx);
             AT_LOCKED_IN(attr_idx) = TRUE;
          }
 
+#ifdef KEY /* Bug 12497 */
+         if (IR_FLD_R(ir_idx) == IL_Tbl_Idx) {
+	    IL_IDX(IR_IDX_R(ir_idx)) = attr_idx;
+	 }
+	 else
+#endif /* KEY Bug 12497 */
          IR_IDX_R(ir_idx) = attr_idx;
          break;
 

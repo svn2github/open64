@@ -881,6 +881,12 @@ void Process_Command_Line (INT argc, char ** argv)
       }
    }
 
+#ifdef KEY /* Bug 5061 */
+   /* Fortran front end relies on wn_simp to fold certain expressions, so
+    * don't allow Process_Command_Line_Group() above to turn it off */
+   Enable_WN_Simp = TRUE;
+#endif /* KEY Bug 5061 */
+
    /* Add the align switch */
    if (FE_align==8) {
       add_cray_args("-adalign");

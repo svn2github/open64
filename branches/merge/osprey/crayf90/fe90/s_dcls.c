@@ -4980,7 +4980,7 @@ lazy_create_dealloc(int line, int col) {
  * optional	is optional dummy variable
  * return	sh_idx for newly generated statement
  */
-static int
+int
 help_dealloc(int line, int col, fld_type fld, int idx,
    boolean has_pe_ref, boolean do_gen_sh, boolean optional) {
 
@@ -5156,6 +5156,61 @@ dealloc_allocatables(int line, int col, int attr_idx, fld_type fld, int idx,
 }
 
 #endif /* KEY Bug 6845 */
+#ifdef KEY /* Bug 9029 */
+/*
+ * Generate a warning message if a variable in a "threadprivate" directive
+ * violates the rules
+ * attr_idx	AT_Tbl_Idx for the variable
+ */
+static void
+threadprivate_check(int attr_idx) {
+  /*
+   * A threadprivate individual variable must not be:
+   *   equivalenced, or
+   *   in common (an entire common block an be theadprivate)
+   * but must be:
+   *   saved, or
+   *   in a program unit where all vars are saved, or
+   *   declared in a module
+   */
+  if (AT_OBJ_CLASS(attr_idx) != Data_Obj) {
+     return; /* Just in case */
+  }
+  int sb_idx = ATD_STOR_BLK_IDX(attr_idx);
+  char *msg_str = 0;
+  if (sb_idx != NULL_IDX && SB_BLK_TYPE(sb_idx) == Threadprivate) {
+    /* Would disallow common, but at this point we can't tell whether the
+     * variable is marked "threadprivate" individually (ok) or by virtue of
+     * its common block being marked "threadprivate" (also ok) or both at
+     * once (not ok.) */
+    if (ATD_IN_COMMON(attr_idx)) {
+      return;
+    }
+    if (ATD_EQUIV(attr_idx)) {
+      msg_str = "EQUIVALENCED";
+    }
+    if (msg_str) {
+      PRINTMSG(AT_DEF_LINE(attr_idx), 1441, Error, AT_DEF_COLUMN(attr_idx),
+	AT_OBJ_NAME_PTR(attr_idx),
+	msg_str,
+	"THREADPRIVATE",
+	AT_DEF_LINE(attr_idx));
+    }
+    
+    else {
+      int scp_attr_idx = SCP_ATTR_IDX(curr_scp_idx);
+      if (!(ATD_SAVED(attr_idx) ||
+	ATP_SAVE_ALL(scp_attr_idx) ||
+	(AT_OBJ_CLASS(scp_attr_idx) == Pgm_Unit &&
+	  ATP_PGM_UNIT(scp_attr_idx) == Program) ||
+	AT_MODULE_OBJECT(attr_idx))) {
+	PRINTMSG(AT_DEF_LINE(attr_idx), 1687, Warning, AT_DEF_COLUMN(attr_idx),
+	  AT_OBJ_NAME_PTR(attr_idx));
+      }
+    }
+  }
+}
+#endif /* KEY Bug 9029 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -5976,17 +6031,19 @@ static	void	attr_semantics(int	attr_idx,
          }
 
          if (
-#ifdef KEY /* Bug 6845 */
+#ifdef KEY /* Bug 6845, 10835 */
 	     /* Allocatable array */
 	     (ATD_ALLOCATABLE(attr_idx) ||
-	       /* Structure with allocatable component(s) or subcomponent(s) */
+	       /* Non-pointer structure with allocatable component(s) or
+		* subcomponent(s) */
 	       (Structure == TYP_TYPE(ATD_TYPE_IDX(attr_idx)) &&
-		 ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))))) &&
+		 ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) &&
+		 !ATD_POINTER(attr_idx))) &&
              /* Allocatable dummy must not be deallocated on exit */
 	     ATD_CLASS(attr_idx) != Dummy_Argument &&
-#else /* KEY Bug 6845 */
+#else /* KEY Bug 6845, 10835 */
 	 ATD_ALLOCATABLE(attr_idx)            &&
-#endif /* KEY Bug 6845 */
+#endif /* KEY Bug 6845, 10835 */
              ATP_PGM_UNIT(pgm_attr_idx) != Module &&
              ! ATP_SAVE_ALL(pgm_attr_idx)         &&
              ! ATD_DATA_INIT(attr_idx)            &&
@@ -6053,6 +6110,9 @@ static	void	attr_semantics(int	attr_idx,
       switch (ATD_CLASS(attr_idx)) {
       case Variable:
 
+#ifdef KEY /* Bug 9029 */
+         threadprivate_check(attr_idx);
+#endif /* KEY Bug 9029 */
          if (ATD_EQUIV(attr_idx) &&
              AL_NEXT_IDX(ATD_EQUIV_LIST(attr_idx)) == NULL_IDX) {
 
@@ -6509,6 +6569,35 @@ static	void	attr_semantics(int	attr_idx,
          type_idx = ATD_TYPE_IDX(rslt_idx);
 
          if (TYP_TYPE(type_idx) == Structure) {
+
+#ifdef KEY /* Bug 11741 */
+	    /* Someday it would be well to rewrite the processing of:
+	     *
+	     *  type(t) function f()
+	     *
+	     * so that we treat it as:
+	     *
+	     *  function() result(f)
+	     *    <import, implicit, and other specifications>
+	     *    type(t) :: f
+	     *
+	     * which would eliminate a bunch of special cases caused by the
+	     * attempt to process "type(t)" before we have seen the decls
+	     * within the function. At this spot, we face the special case that
+	     * occurs because the function type appeared prior to a no-list
+	     * "import" statement which would have accessed the host.
+	     */
+	    int type_attr = TYP_IDX(type_idx);
+	    if ((!AT_DEFINED(type_attr)) && ATP_IN_INTERFACE_BLK(attr_idx) &&
+	      SCP_IMPORT(curr_scp_idx)) {
+	      /* *#$*! srch_sym_tbl() requires padded name */
+	      token_type t = initial_token;
+	      char *name = AT_OBJ_NAME_PTR(type_attr);
+	      int name_len = strlen(name);
+	      memcpy(TOKEN_STR(t), name, name_len);
+	      import_from_host(TOKEN_STR(t), name_len, 0, type_attr);
+	    }
+#endif /* KEY Bug 11741 */
 
             if (AT_ATTR_LINK(TYP_IDX(type_idx)) != NULL_IDX) {
 
