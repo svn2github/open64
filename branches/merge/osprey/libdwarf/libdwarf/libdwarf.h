@@ -1466,6 +1466,15 @@ Dwarf_P_Fde dwarf_add_fde_inst(
     Dwarf_Unsigned 	/*val2*/, 
     Dwarf_Error* 	/*error*/);
 
+#ifdef KEY
+Dwarf_P_Fde dwarf_add_fde_inst_with_signed_offset(
+    Dwarf_P_Fde         /*fde*/,
+    Dwarf_Small 	/*op*/, 
+    Dwarf_Unsigned 	/*val1*/, 
+    Dwarf_Signed 	/*val2*/, 
+    Dwarf_Error* 	/*error*/);
+#endif
+
 Dwarf_P_Fde dwarf_new_fde(Dwarf_P_Debug	/*dbg*/, Dwarf_Error* /*error*/);
 
 Dwarf_P_Fde dwarf_fde_cfa_offset(

@@ -625,7 +625,11 @@ extern "C" {
 #define DW_CFA_def_cfa_offset   0x0e
 #define DW_CFA_def_cfa_expression 0x0f     /* DWARF3 */
 #define DW_CFA_expression       0x10       /* DWARF3 */
+#ifdef KEY
+#define DW_CFA_offset_extended_sf 0x11 /* DWARF3 */
+#else
 #define DW_CFA_cfa_offset_extended_sf 0x11 /* DWARF3 */
+#endif
 #define DW_CFA_def_cfa_sf       0x12       /* DWARF3 */
 #define DW_CFA_def_cfa_offset_sf 0x13      /* DWARF3 */
 
