@@ -113,7 +113,7 @@ IPA_CLASS_HIERARCHY::Is_Ancestor(TY_INDEX ancestor, TY_INDEX descendant) {
         return TRUE;
     for (UINT i=0; i<Get_Num_Sub_Classes(ancestor); i++) {
         TY_INDEX sub = Get_Sub_Class(ancestor, i);
-        if (Is_Sub_Class(sub, descendant))
+        if (Is_Ancestor(sub, descendant))
             return TRUE;
     }
     return FALSE;
