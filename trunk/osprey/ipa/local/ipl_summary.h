@@ -832,6 +832,7 @@ class SUMMARY_CALLSITE
 #define IPL_ICALL_TARGET        0x80
 #endif
 
+#define IPL_IS_VIRTUAL_CALL    0x100
     
 private:
 
@@ -862,6 +863,10 @@ private:
 #endif
     TYPE_ID _return_type;		// Return type of this CALL
 
+    TY_IDX  _virtual_class;     // the class of the virtual function
+    mUINT32 _vtable_offset;     // virtual function position, the offset of the vtable
+    mUINT32 _vtable_field;      // vtable field id of this call
+	
 public:
 
     /* access functions */
@@ -952,6 +957,18 @@ public:
     void Set_return_type (TYPE_ID return_type)	{ _return_type = return_type;}
     TYPE_ID Get_return_type () const		{ return _return_type;}
 
+    void Set_virtual_class(TY_IDX func) { _virtual_class = func; }
+    TY_IDX Get_virtual_class() { return _virtual_class; }
+
+    void Set_vtable_offset(UINT32 offset) { _vtable_offset = offset; }
+    UINT32 Get_vtable_offset() { return _vtable_offset; }
+
+    void Set_vtable_field(UINT32 field) { _vtable_field = field; }
+    BOOL Get_vtable_field() { return _vtable_field; }
+
+    void Set_is_virtual_call() { _state |= IPL_IS_VIRTUAL_CALL; }
+    BOOL Is_virtual_call() { return _state & IPL_IS_VIRTUAL_CALL; }
+	
     /* operations */
 
 
