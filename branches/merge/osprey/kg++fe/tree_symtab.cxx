@@ -54,7 +54,9 @@
 #include <values.h>
 #include "defs.h"
 #include "errors.h"
+extern "C" {
 #include "gnu_config.h"
+}
 #ifdef KEY	// get HW_WIDE_INT for flags.h
 #include "gnu/hwint.h"
 #endif	/* KEY */
@@ -370,7 +372,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 2:  mtype = MTYPE_I2;  break;
 		case 4:  mtype = MTYPE_I4;  break;
 		case 8:  mtype = MTYPE_I8;  break;
-#if !defined(TARG_X8664) && !defined(TARG_IA64)
+#if !defined(TARG_X8664) && !defined(TARG_MIPS) && !defined(TARG_IA64)
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
 #endif /* _LP64 */

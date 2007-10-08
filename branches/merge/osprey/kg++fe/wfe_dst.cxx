@@ -87,7 +87,9 @@ static char *rcs_id = "$Source: kg++fe/SCCS/s.wfe_dst.cxx $ $Revision: 1.71 $";
 #include "file_util.h"  /* From common/util */
 #include "srcpos.h"
 #include "symtab.h"
+extern "C" {
 #include "gnu_config.h"
+}
 #ifdef KEY	// get HW_WIDE_INT for flags.h
 #include "gnu/hwint.h"
 #endif	/* KEY */
@@ -189,44 +191,43 @@ DST_get_context(tree intree)
 {
     tree ltree = intree;
     DST_INFO_IDX l_dst_idx = DST_INVALID_INIT;
-    bool continue_looping = true;
+    //bool continue_looping = true;
 
-    while(ltree && continue_looping) {
-	continue_looping = false;
+    while(ltree /* && continue_looping */) {
+	//continue_looping = false;
 	switch(TREE_CODE(ltree)) {
 	case BLOCK:
 	    // unclear when this will happen, as yet
 	    // FIX
-	    ltree = TYPE_CONTEXT(ltree);
+	    //ltree = TYPE_CONTEXT(ltree);
             DevWarn("Unhandled BLOCK scope of decl/var");
+            return comp_unit_idx;
 
-	    break;
-	case FUNCTION_DECL: {
-		// This is a normal case!
-		l_dst_idx = DECL_DST_IDX(ltree);
-		if(DST_IS_NULL(l_dst_idx)) {
-			DevWarn("forward reference to subprogram! assuming global context\n");
-			return comp_unit_idx;
-		}
-		return l_dst_idx;
+	    //break;
+	case FUNCTION_DECL:
+	    l_dst_idx = DECL_DST_IDX(ltree);
+	    if(DST_IS_NULL(l_dst_idx)) {
+		DevWarn("forward reference to subprogram! assuming global context\n");
+		return comp_unit_idx;
+	    }
+	    return l_dst_idx;
 
-        }
-	    break;
 	case RECORD_TYPE:
-	    ltree = TYPE_CONTEXT(ltree);
-	    break;
 	case UNION_TYPE:
-	    ltree = TYPE_CONTEXT(ltree);
-	    break;
 	case QUAL_UNION_TYPE:
 	    ltree = TYPE_CONTEXT(ltree);
-	    break;
+            continue;
+	    //break;
 	case FUNCTION_TYPE:
             DevWarn("Unhandled FUNCTION_TYPE scope of decl/var/type");
 	    return comp_unit_idx;
         case REFERENCE_TYPE:
 	    // cannot find our context from here
 	    return comp_unit_idx;
+	case NAMESPACE_DECL:
+	    // I see these a lot: catching here to avoid default DevWarn
+	    ltree = DECL_CONTEXT(ltree);
+	    continue;
 	default:
 	    DevWarn("Unhandled scope of tree code %d",
 			TREE_CODE(ltree));
@@ -234,16 +235,16 @@ DST_get_context(tree intree)
 	   // *is any of this right?
            if(TREE_CODE_CLASS(TREE_CODE(ltree)) == 'd') {
 		ltree =  DECL_CONTEXT(ltree);
-		continue_looping = true;
+		//continue_looping = true;
 		continue;
 	   } else if (TREE_CODE_CLASS(TREE_CODE(ltree)) == 't') {
 		ltree =  TYPE_CONTEXT(ltree);
-		continue_looping = true;
+		//continue_looping = true;
 		continue;
-           } else {
+           }  // else {
 	      // cannot find our context from here
 		// ??
-           }
+           //}
 	   return comp_unit_idx;
 	}
 
@@ -949,8 +950,13 @@ DST_enter_struct_union_members(tree parent_tree,
     // name of it as the context, but not get the decl context(bug also in pathescale2.3)
     FmtAssert (TREE_CODE(parent_tree) == RECORD_TYPE || TREE_CODE(parent_tree) == UNION_TYPE,
 	      ("Unexpected code for parent_tree %x\n.", TREE_CODE(parent_tree)));
+#ifdef PATHSCALE_MERGE
+    tree context = TYPE_CONTEXT(parent_tree);
+#else
     tree context = TYPE_NAME(parent_tree);
-    if (TREE_CODE(context) != TYPE_DECL ||
+#endif
+    if (context == NULL ||
+        TREE_CODE(context) != TYPE_DECL ||
 	!DECL_CONTEXT(context) ||
 	TREE_CODE(DECL_CONTEXT(context)) != NAMESPACE_DECL ||
 	!DECL_NAMESPACE_STD_P(DECL_CONTEXT(context)))
@@ -1131,7 +1137,14 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 #endif
 
 		    DST_append_child(dst_idx,inhx);
+//---------------------------------------------------------------
+//bug 12948: advance "offset" only when non-empty and non-virtual
+//---------------------------------------------------------------
+#ifdef KEY
+                    if (!is_empty_base_class(basetype) &&
+#else
                     if (!is_empty_base_class(basetype) ||
+#endif
                         !TREE_VIA_VIRTUAL(binfo)) {
                       //FLD_Init (fld, Save_Str(Get_Name(0)),
                        //         Get_TY(basetype) , offset);

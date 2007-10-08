@@ -56,7 +56,9 @@
 #include <elf.h>
 #include "defs.h"
 #include "errors.h"
+extern "C" {
 #include "gnu_config.h"
+}
 #ifdef KEY	// get HW_WIDE_INT for flags.h
 #include "gnu/hwint.h"
 #endif	/* KEY */
@@ -107,6 +109,9 @@ static void WFE_Handle_Named_Return_Value(tree fn);
 // IMPORTANT:  Doesn't work for nested functions.
 tree named_ret_obj_initializer;
 extern "C" BOOL pragma_implementation_seen, pragma_interface_seen;
+
+/* ST to represent EXC_PTR_EXPR if C++ exceptions are disabled */
+ST * Dummy_Exc_Ptr_Expr = NULL;
 #endif /* KEY */
 
 static tree *deferred_function_stack;
@@ -1141,6 +1146,8 @@ WFE_Start_Function (tree fndecl)
 // inliner/ipa, and back-end.
     if (key_exceptions)
 	Setup_Entry_For_EH ();
+    else
+        Dummy_Exc_Ptr_Expr = NULL;
 
     if (func_PU_uplevel(fndecl))
       Set_PU_uplevel (Get_Current_PU ());

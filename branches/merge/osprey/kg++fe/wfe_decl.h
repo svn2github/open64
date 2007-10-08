@@ -173,6 +173,9 @@ extern WN *Current_Entry_WN(void);
  * the DECL_INITIAL in the object's VAR_DECL.
  */
 extern tree named_ret_obj_initializer;
+
+/* ST to represent EXC_PTR_EXPR if C++ exceptions are disabled */
+extern ST * Dummy_Exc_Ptr_Expr;
 #endif
 
 #ifdef REAL_VALUE_TYPE
