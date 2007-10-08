@@ -83,7 +83,9 @@ static char *rcs_id = "$Source: kgccfe/SCCS/s.wfe_dst.cxx $ $Revision: 1.49 $";
 #include "file_util.h"  /* From common/util */
 #include "srcpos.h"
 #include "symtab.h"
+extern "C" {
 #include "gnu_config.h"
+}
 #ifdef KEY
 // To get HW_WIDE_INT ifor flags.h */
 #include "gnu/hwint.h"
@@ -216,60 +218,66 @@ DST_get_context(tree intree)
     tree ltree = intree;
     struct mongoose_gcc_DST_IDX l_tree_idx;
     DST_INFO_IDX l_dst_idx;
-#ifdef KEY
-    BOOL continue_looping = TRUE;
-    
-    while(ltree && continue_looping) {
-      continue_looping = FALSE;
-#else
+//#ifdef KEY
+//    BOOL continue_looping = TRUE;
+//    
+//    while(ltree && continue_looping) {
+//      continue_looping = FALSE;
+//#else
     while(ltree) {
-#endif /* KEY */
+//#endif /* KEY */
 	switch(TREE_CODE(ltree)) {
 	case BLOCK:
 	    // unclear when this will happen, as yet
 	    // FIX
             DevWarn("Unhandled BLOCK scope of decl/var");
 
+//#ifdef KEY
+//	    ltree = NULL;
+//#endif /* KEY */
+//	    break;
+            return comp_unit_idx;
+	case FUNCTION_DECL:
+	    // This is a normal case!
+	    l_tree_idx = DECL_DST_IDX(ltree);
+	    cp_to_dst_from_tree(&l_dst_idx,&l_tree_idx);
 #ifdef KEY
-	    ltree = NULL;
-#endif /* KEY */
-	    break;
-	case FUNCTION_DECL: {
-		// This is a normal case!
-		l_tree_idx = DECL_DST_IDX(ltree);
-		cp_to_dst_from_tree(&l_dst_idx,&l_tree_idx);
-#ifdef KEY
-		// Bug 1825 - it may happen that we have not yet produced the
-		// DST info for this function yet, in which case we would be 
-		// returning an INVALID_IDX at this time. 
-		// With reference to bug 1825, the type "rule" gets this
-		// function as context because we did not see this type
-		// outside of the current function. Gcc seems to just create 
-		// an incomplete type for such cases. If ever "rule" were to
-		// be redefined outside this function, the current parameter
-		// ("rulep" in this case) will continue to be associated with 
-		// this incomplete type and the new type will have a new entry
-		// in the DST table. To mimic whatever Gcc does, we are 
-		// required to pass a valid DST index here.
-		if (l_dst_idx == DST_INVALID_IDX)
-		  l_dst_idx.byte_idx = l_dst_idx.block_idx = 0;
+	    // Bug 1825 - it may happen that we have not yet produced the
+	    // DST info for this function yet, in which case we would be 
+	    // returning an INVALID_IDX at this time. 
+	    // With reference to bug 1825, the type "rule" gets this
+	    // function as context because we did not see this type
+	    // outside of the current function. Gcc seems to just create 
+	    // an incomplete type for such cases. If ever "rule" were to
+	    // be redefined outside this function, the current parameter
+	    // ("rulep" in this case) will continue to be associated with 
+	    // this incomplete type and the new type will have a new entry
+	    // in the DST table. To mimic whatever Gcc does, we are 
+	    // required to pass a valid DST index here.
+	    if (l_dst_idx == DST_INVALID_IDX)
+	        l_dst_idx.byte_idx = l_dst_idx.block_idx = 0;
 #endif
-		return l_dst_idx;
+	    return l_dst_idx;
 
-        }
-	    break;
 	case RECORD_TYPE:
             DevWarn("Unhandled RECORD_TYPE scope of decl/var/type");
-	    break;
+	    ltree = TYPE_CONTEXT(ltree);
+            continue;
+	    //break;
 	case UNION_TYPE:
             DevWarn("Unhandled UNION_TYPE scope of decl/var/type");
-	    break;
+	    ltree = TYPE_CONTEXT(ltree);
+            continue;
+	    //break;
 	case QUAL_UNION_TYPE:
             DevWarn("Unhandled QUAL_UNION_TYPE scope of decl/var/type");
-	    break;
+	    ltree = TYPE_CONTEXT(ltree);
+            continue;
+	    //break;
 	case FUNCTION_TYPE:
             DevWarn("Unhandled FUNCTION_TYPE scope of decl/var/type");
-	    break;
+            return comp_unit_idx;
+            // break;
 	default:
 	    DevWarn("Unhandled scope of tree code %d",
 			TREE_CODE(ltree));
@@ -277,16 +285,17 @@ DST_get_context(tree intree)
 	   // *is any of this right?
            if(TREE_CODE_CLASS(TREE_CODE(ltree)) == 'd') {
 		ltree =  DECL_CONTEXT(ltree);
-                continue_looping = TRUE;
+                //continue_looping = TRUE;
 		continue;
 	   } else if (TREE_CODE_CLASS(TREE_CODE(ltree)) == 't') {
 		ltree =  TYPE_CONTEXT(ltree);
-                continue_looping = TRUE;
+                //continue_looping = TRUE;
 		continue;
-           } else {
+           } // else {
 		// ??
-           }
-	   break;
+           //}
+	   //break;
+           return comp_unit_idx;
 	}
 
     }

@@ -56,7 +56,9 @@
 #include <elf.h>
 #include "defs.h"
 #include "errors.h"
+extern "C" {
 #include "gnu_config.h"
+}
 #ifdef KEY
 // To get HW_WIDE_INT ifor flags.h */
 #include "gnu/hwint.h"

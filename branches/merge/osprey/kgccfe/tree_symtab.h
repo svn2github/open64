@@ -184,6 +184,10 @@ Get_ST (tree decl_tree)
 			Set_ST_has_nested_ref (base_st);
 		}
 	}
+#ifdef KEY
+	if (ST_is_thread_private(st) && CURRENT_SYMTAB != GLOBAL_SYMTAB)
+		Set_PU_has_mp(Get_Current_PU());
+#endif
 	return st;
 }
 
