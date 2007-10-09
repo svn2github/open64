@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -307,7 +303,6 @@ static WN* Dismantle_Nested_Doacross(WN* wn_region,
     "Nested Do Across Loop is Too Deep, Directive Ignored\n");
   return wn_outer_loop; 
 }
-
 
 #ifdef KEY
 //***********************************************************************

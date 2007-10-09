@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -429,8 +421,16 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
   }
 
   if (WN_element_size(wn_array) < 0) {
-    // Funny F90 strided array; pass for now
-    messy = TRUE;
+#ifdef TARG_X8664
+      //bug 5945: if the loop was vectorized
+      //the array is guaranteed to be contiguous, and we can prefetch
+      WN *parent = LWN_Get_Parent(wn_array);
+     if((WN_desc(parent) != MTYPE_V && MTYPE_is_vector(WN_desc(parent)))||
+       (WN_rtype(parent) != MTYPE_V && MTYPE_is_vector(WN_rtype(parent))));
+     else
+#endif
+       // Funny F90 strided array; pass for now (Guarding Loop for prefetch is expensive?)
+        messy = TRUE;
   }
 
   if (LNO_Prefetch_Indirect && messy) {

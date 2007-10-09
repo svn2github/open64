@@ -1938,7 +1938,6 @@ static WN *Gen_Pf_Addr_Node(WN *invariant_stride, WN *array, WN *loop)
 }
 #endif
 
-
 /***********************************************************************
  *
  * Given the array of sorted references (refs in sorted order of distance)
@@ -2208,6 +2207,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
 #if defined(OSP_OPT) && defined(TARG_IA64)
     {
       // Go some cache lines ahead
+
       if ( LNO_Prefetch_Ahead || LNO_Prefetch_Iters_Ahead) {
         INT increment;
         if ((level == level_1) || (level == level_1and2))
@@ -2337,6 +2337,17 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
       }
     }
 #endif
+//------------------------------------------------------------------------
+//bug 5945: CG ebo will drop some prefetches according to address patterns
+//However, for dope vector, it is difficult for CG to figure out. We know
+//that the array access is contiguous though simd in LNO, so don't drop it
+//bug 11546 : CG ebo should not drop prefetches for vectorized loads or stores
+if(LNO_Run_Prefetch > SOME_PREFETCH && 
+      (WN_element_size(arraynode) < 0 ||
+      MTYPE_is_vector(WN_desc(parent_ref)) ||
+      MTYPE_is_vector(WN_rtype(parent_ref))))
+   PF_SET_KEEP_ANYWAY(flag);
+
 
 #ifndef KEY //bug 10953
    WN* pfnode = LWN_CreatePrefetch (offset, flag, arraynode);
@@ -2363,7 +2374,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
       pfnode = LWN_CreatePrefetch (offset, flag, pf_addr_node);
    }
 #endif //bug 10953
-  
+
     WN_linenum(pfnode) = LWN_Get_Linenum(ref);
     VB_PRINT (vb_print_indent;
               printf (">> pref ");
@@ -2648,6 +2659,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         break;
       }
     }
+
     if (LNO_Analysis) {
       ls_num_indent -= 2;
       ls_print_indent; fprintf (LNO_Analysis, ")\n");
@@ -3272,7 +3284,6 @@ static BOOL Pseudo_Temporal_Locality(WN *array)
   return FALSE;
 }
 #endif
-
 
 /***********************************************************************
  *

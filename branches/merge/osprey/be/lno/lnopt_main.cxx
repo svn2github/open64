@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -421,7 +413,28 @@ INT64 Loop_Size(WN* wn)
   return count;
   
 }
+
+static BOOL Has_Negative_Offset_Preg(WN *tree)
+{
+ if(WN_operator(tree)==OPR_BLOCK){
+  for(WN *stmt = WN_first(tree); stmt; stmt=WN_next(stmt)){
+     if(Has_Negative_Offset_Preg(stmt))
+       return TRUE;
+  }
+  return FALSE;
+ }
+ if(WN_operator(tree)==OPR_LDID || WN_operator(tree)==OPR_STID){
+   if (ST_class(WN_st(tree)) == CLASS_PREG &&
+       WN_offset(tree) < 0) return TRUE;
+ }
+ for(INT kidno=0; kidno<WN_kid_count(tree); kidno++){
+   if(Has_Negative_Offset_Preg(WN_kid(tree,kidno)))
+    return TRUE;
+ }
+ return FALSE;
+} 
 #endif
+
 static void
 Fully_Unroll_Short_Loops(WN* wn)
 {
@@ -470,12 +483,14 @@ Fully_Unroll_Short_Loops(WN* wn)
         //bug 11954, 11958: Regression caused by not multiplying trip_count, because
         //we need new LNO_Full_Unrolling_Loop_Size_Limit default.
         //TODO: re-investigate here after work bug 10644
-        if (Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit) {
+	if (Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit ||
+            //bug 5159:  Loops having PREG with -ve offsets can not be unrolled since they are
+            //ASM output values and duplicating them will break CG assumption.
+            Has_Negative_Offset_Preg(WN_do_body(wn))){
 //       if (Loop_Size(wn) > LNO_Full_Unrolling_Loop_Size_Limit) {
-          Fully_Unroll_Short_Loops(WN_do_body(wn));
-          return;
-        }
-
+	  Fully_Unroll_Short_Loops(WN_do_body(wn));
+	  return;
+	}
 	static INT count = 0;
 	count ++;
 	if (LNO_Full_Unroll_Skip_Before > count - 1 ||

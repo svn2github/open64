@@ -1,8 +1,4 @@
 /*
- * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -3693,6 +3689,10 @@ ARA_LOOP_INFO::Generate_Parallel_Pragma()
 	FmtAssert(FALSE,("ARA_LOOP_INFO::Generate_Parallel_Pragma, exposed scalar use overlaps with local scalar, something is wrong"));
       if (!Overlap_Reduction_Scalar(_scalar_use.Bottom_nth(i)->_scalar)) {
 #ifdef KEY
+	// bug 11914: pregs with negative offset are used for ASM outputs
+	if (ST_class(_scalar_use.Bottom_nth(i)->_scalar.St()) == CLASS_PREG &&
+	    _scalar_use.Bottom_nth(i)->_scalar.WN_Offset() < 0)
+	  continue;
 	// Bug 6386 
 	// need to use a temporary instead of a preg for shared variables.
 	if (ST_class(_scalar_use.Bottom_nth(i)->_scalar.St()) == CLASS_PREG) {

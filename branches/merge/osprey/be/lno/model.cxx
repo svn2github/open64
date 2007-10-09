@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -526,6 +518,7 @@ LOOP_MODEL::Model(WN* wn,
   i = wndepth;
   WN *tmp = wn;
   _blocking_disabled = LNO_Blocking == 0;
+
 #if 0
   //bug 11567 comments out this. This is because blocking is not the direct
   //reason that prevents vectorizing an innermost loop except that the block
@@ -1637,7 +1630,14 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
   
   if (OPERATOR_is_leaf(oper)) {
     return (1);
-  } 
+  }
+
+//bug 12184: Don't know yet how to model the resource for vector type.
+//           Skip for now. Note those must be GNU vectors at this point. 
+#ifdef TARG_X8664
+  if(MTYPE_is_vector(rtype) || MTYPE_is_vector(desc))
+   return -1;
+#endif 
 
   if (oper == OPR_BLOCK) {
     WN *kid = WN_first (wn);
