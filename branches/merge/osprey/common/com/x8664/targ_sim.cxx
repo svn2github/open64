@@ -1,4 +1,11 @@
 /*
+ * Copyright (C) 2007 PathScale, LLC.  All rights reserved.
+ */
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -271,7 +278,6 @@ INT Classify_Aggregate(const TY_IDX ty,
     case MTYPE_M8F4:
       classes[0] = X86_64_X87_CLASS;
       return 1;
-
     default:
 	FmtAssert (FALSE, ("Classify_Aggregate:  mtype %s",
 			   MTYPE_name(TY_mtype(ty))));
@@ -387,6 +393,9 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
     case MTYPE_V16I8:
     case MTYPE_V16F4:
     case MTYPE_V16F8:
+    case MTYPE_V8I1:
+    case MTYPE_V8I2:
+    case MTYPE_V8I4:
       info.count = 1;
       info.mtype [0] = mtype;
       info.preg  [0] = XMM0;
@@ -616,6 +625,12 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
     TYPE_ID pmtype = Fix_TY_mtype (ty);	/* Target type */
     ploc.size = MTYPE_RegisterSize(pmtype);
 
+    if (Is_Target_32bit() && MTYPE_is_vector(pmtype) &&
+        (Last_Param_Offset & 7) != 0) { // bug 12075
+      Last_Param_Offset += 8 - Last_Param_Offset % 8;
+      ploc.start_offset = Last_Param_Offset;
+    }
+
     ++Current_Param_Num;
 
     INT rpad = 0;			/* padding to right of object */
@@ -762,15 +777,16 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	    /* structures are left-justified, so may be padding at end */
 	    rpad = (psize * MTYPE_RegisterSize(SIM_INFO.int_type)) - ploc.size;
 
-	    /* bug#1740
-	       Although the size of a class/struct param is 0, we should at
+	    /* Although the size of a class/struct param is 0, we should at
 	       least adjust the position for the next param.
 	       This extra padding is not required for C.
 	     */
 	    if( TY_size(ty) == 0  &&
-		Is_Target_32bit() &&
 		PU_cxx_lang(Get_Current_PU()) ){
-	      rpad = 4;
+	      if (Is_Target_32bit())
+	        rpad = 4; // bug 1740
+	      else
+	        rpad = 8; // bug 12830
 	    }
 	  }
 	}

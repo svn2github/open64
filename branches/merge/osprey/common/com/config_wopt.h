@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -211,6 +211,7 @@ extern BOOL WOPT_Enable_Prop_Ivar;	/* copy propagation thru iload's */
 extern BOOL WOPT_Enable_Prop_CSE;       /* copy propagation of CSE expressions */
 extern INT32 WOPT_Enable_Prop_Limit;	/* tree height limit in copy prop */
 #ifdef KEY
+extern INT32 WOPT_Enable_Doend_Prop_Limit; /* tree height limit in copy prop for DOEND BBs */
 extern BOOL  WOPT_Enable_Prop_Dope;	/* propagate dope vector fields? */
 #endif
 extern BOOL WOPT_Enable_Prune;		/* temporary, pv 370066 */

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -194,6 +194,7 @@ BOOL  WOPT_Enable_Prop_Ivar = TRUE;
 BOOL  WOPT_Enable_Prop_CSE = FALSE;     /* propagate CSE expressions */
 #ifdef KEY
 INT32 WOPT_Enable_Prop_Limit = 12;	/* based on bug 3095 */
+INT32 WOPT_Enable_Doend_Prop_Limit = 26; /* based on bug 13003 */
 #else
 INT32 WOPT_Enable_Prop_Limit = 14;	/* this is a guess, PV 468862 */
 #endif
@@ -253,7 +254,12 @@ BOOL  WOPT_Enable_Iload_Prop = TRUE;
 BOOL  WOPT_Enable_VN_Full = TRUE;	/* full value number (for ivars) */
 BOOL  WOPT_Enable_Simp_Iload = TRUE;   /* simplifier folding iload */
 BOOL  WOPT_Enable_Canon_Uplevel=FALSE; /* canonicalize the up level ref */
+#ifdef KEY // bug 12909
+BOOL  WOPT_Enable_Tail_Recur = TRUE;	/* tail recursion */
+#else
 BOOL  WOPT_Enable_Tail_Recur = FALSE;	/* tail recursion */
+#endif
+BOOL  WOPT_Enable_Tail_Recur_Set = FALSE;
 BOOL  WOPT_Enable_Edge_Placement = TRUE;/* insert BB on critical edge */
 BOOL  WOPT_Enable_Backedge_Placement = FALSE; /* insert BB on critical backedge */
 BOOL  WOPT_Enable_Source_Order = FALSE;     /* Dump CFG in source order */
@@ -527,6 +533,8 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_INT32,	OV_VISIBLE,	TRUE, "prop_limit",		"",
     14, 0, INT32_MAX,	&WOPT_Enable_Prop_Limit, NULL }, /* PV 468862 */
 #ifdef KEY
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "doend_prop_limit",		"",
+    14, 0, INT32_MAX,	&WOPT_Enable_Doend_Prop_Limit, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "prop_dope",		"",
     0, 0, 0,	&WOPT_Enable_Prop_Dope, NULL },
 #endif
@@ -612,19 +620,14 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_VN_Full, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "simp_iload",		"",
     0, 0, 0,	&WOPT_Enable_Simp_Iload, NULL },
-#ifdef TARG_IA64
-  { OVK_BOOL,	OV_VISIBLE,	TRUE, "if_conv",		"",
-    0, 0, 0,	&WOPT_Enable_Simple_If_Conv, NULL },
-#else
-  { OVK_INT32,  OV_VISIBLE,     TRUE, "if_conv",                "",
-    2, 0, 2,    &WOPT_Enable_Simple_If_Conv, NULL },
-#endif
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "if_conv",		"",
+    2, 0, 2,	&WOPT_Enable_Simple_If_Conv, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "ifconv_limit",		"",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_If_Conv_Limit, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "ifconv_for_istore",		"",
     0, 0, 0,	&WOPT_Enable_If_Conv_For_Istore, NULL },
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "tail_recursion",	"tail",
-    0, 0, 0,	&WOPT_Enable_Tail_Recur, NULL },
+    0, 0, 0,	&WOPT_Enable_Tail_Recur, &WOPT_Enable_Tail_Recur_Set },
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "edge_placement",	"edge",
     0, 0, 0,	&WOPT_Enable_Edge_Placement, NULL },
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "backedge_placement",	"backedge_p",

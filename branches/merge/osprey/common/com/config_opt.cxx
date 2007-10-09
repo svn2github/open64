@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -126,7 +130,11 @@ BOOL Enable_Cfold_Reassociate = FALSE;	/* Re-association allowed? */
 static BOOL Cfold_Reassoc_Set = FALSE;	/* ... option seen? */
 BOOL Enable_Cfold_Intrinsics = FALSE;	/* Intrinsic constant folding? */
 BOOL Cfold_Intrinsics_Set = FALSE;	/* ... option seen? */
+#ifdef TARG_X8664
 BOOL CIS_Allowed = TRUE;	/* combine sin(x) and cos(x) to cis(x) */
+#else
+BOOL CIS_Allowed = FALSE;	/* combine sin(x) and cos(x) to cis(x) */
+#endif
 static BOOL CIS_Set = FALSE;	/* ... option seen? */
 BOOL Enable_CVT_Opt= FALSE;	/* Remove useless convert operators */
 BOOL Enable_CVT_Opt_Set= FALSE;	/* ... option seen? */
@@ -281,9 +289,9 @@ BOOL OPT_Funsafe_Math_Optimizations = FALSE;
 static BOOL OPT_Funsafe_Math_Optimizations_Set = FALSE;
 BOOL    OPT_Float_Via_Int = FALSE; // when on, perform FP copies using int regs
 
-UINT32 OPT_Malloc_Alg = 0;      /* select malloc algorithm */
+UINT32 OPT_Malloc_Alg = 0;	/* select malloc algorithm */
 BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO
-#endif
+#endif	// KEY
 
 /***** Obsolete options *****/
 static BOOL Fprop_Limit_Set = FALSE;

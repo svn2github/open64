@@ -457,7 +457,7 @@ _Ieee_get_underflow_mode_(int *gradual) {
  */
 void _Ieee_save(FENV_T *state) {
   FEGETENV(state);
-#if defined(X86)
+#if defined(TARG_IA32)
   unsigned int save_status = state->__status_word;
   unsigned int save_mxcsr = state->__mxcsr;
   state->__status_word &= ~FE_ALL_EXCEPT;
@@ -472,11 +472,12 @@ void _Ieee_save(FENV_T *state) {
   newstate.__fp_control_register &= ~FE_ALL_EXCEPT;
   FESETENV(&newstate);
 #else /* defined(TARG_whatever) */
-# error "need code to clear flags"
+//# error "need code to clear flags"
 #endif /* defined(TARG_whatever) */
   }
 
-#if defined(X86)
+//#if defined(X86)
+#if defined(TARG_IA32)
 int _Ieee_restore(const FENV_T *state) {
   FENV_T temp;
   __asm__("fnstenv %0" : "=m" (*&temp));

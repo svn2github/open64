@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -84,6 +88,9 @@ INT32   VHO_Switch_If_Else_Limit        = 6;
 INT32   VHO_Switch_Compgoto_Limit       = 3;
 BOOL    VHO_Switch_Opt                  = TRUE;
 INT32   VHO_Switch_Opt_Threshold        = 25;
+#ifdef KEY
+BOOL    VHO_Switch_Reduce_Branch        = FALSE;
+#endif
 BOOL    VHO_Cselect_Opt                 = FALSE;
 #ifdef KEY
 BOOL    VHO_Cselect_Opt_Set             = FALSE;
@@ -104,12 +111,8 @@ BOOL    VHO_Check_Tree                  = FALSE;
 BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
 #ifdef KEY
-#ifdef TARG_IA64
-BOOL    VHO_Enable_Simple_If_Conv = FALSE;   
-#else
+/* simple if-conversion at VHO lower time */
 BOOL    VHO_Enable_Simple_If_Conv = TRUE;   
-#endif
-
 /* maximum overhead allowed after If-Conversion */
 INT32   VHO_Enable_If_Conv_Limit = 6;   
 /* enable misc. loop distribution and interchange at VHO lower time */
@@ -163,6 +166,10 @@ static OPTION_DESC Options_VHO[] = {
     10, 1, INT32_MAX,    &VHO_Switch_Opt_Threshold,   NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "switch_opt",         "switch",
     TRUE, 0, 0,  &VHO_Switch_Opt,      NULL },
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "switch_reduce_branch", "switch_reduce_branch",
+    TRUE, 0, 0,  &VHO_Switch_Reduce_Branch,      NULL },
+#endif
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "cselect_opt",        "cselect",
     TRUE, 0, 0,  &VHO_Cselect_Opt,      &VHO_Cselect_Opt_Set },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "iload_opt",          "iload",

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -265,6 +269,8 @@ BOOL IPA_Consult_Inliner_For_Icall_Opt = TRUE; // Check inlining heuristics
 UINT32 IPA_Icall_Min_Freq = DEFAULT_ICALL_MIN_FREQ; // Min freq for icall opt
                                                     // used in IPL.
 BOOL IPA_Enable_Source_PU_Order = FALSE;
+UINT32 IPA_Enable_Struct_Opt = 0;
+UINT32 IPA_Update_Struct = 0;		/* temporary, should be removed */
 #else
 BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
 #endif
@@ -578,14 +584,21 @@ static OPTION_DESC Options_IPA[] = {
 	  DEFAULT_ICALL_MIN_FREQ, 1, UINT32_MAX, &IPA_Icall_Min_Freq, NULL,
 	  "Min freq of icall for icall optimization"},
     { OVK_BOOL, OV_INTERNAL,    FALSE, "source_pu_order",  "",
-          0, 0, 0,              &IPA_Enable_Source_PU_Order, NULL,
-          "Maintain source-code PU ordering in IPA output"},
+      0, 0, 0,              &IPA_Enable_Source_PU_Order, NULL,
+      "Maintain source-code PU ordering in IPA output"},
     { OVK_BOOL, OV_INTERNAL,    FALSE, "ipa_enable_old_type_merge", "",
-          0, 0, 0,              &IPA_Enable_Old_Type_Merge, NULL,
-          "Use the old type merge phase in IPA"},
+      0, 0, 0,              &IPA_Enable_Old_Type_Merge, NULL,
+      "Use the old type merge phase in IPA"},
     { OVK_BOOL, OV_INTERNAL,    FALSE, "enable_devirtualization", "",
-          0, 0, 0,              &IPA_Enable_Devirtualization, NULL,
-          "Use devirtualization phase"},
+      0, 0, 0,              &IPA_Enable_Devirtualization, NULL,
+      "Use devirtualization phase"},
+    { OVK_UINT32, OV_INTERNAL,	FALSE, "optimize_struct",	"",
+	  0, 0, UINT32_MAX, &IPA_Enable_Struct_Opt, NULL,
+	  "Enable IPA struct optimizations"},
+    /* The following option is temporary, and should be removed soon */
+    { OVK_UINT32, OV_INTERNAL,	FALSE, "update_struct",	"",
+	  0, 0, UINT32_MAX, &IPA_Update_Struct, NULL,
+	  "Struct update"},
 #endif // KEY
     { OVK_COUNT }	    /* List terminator -- must be last */
 };

@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006. 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -95,6 +99,7 @@ static char *config_lno_rcs_id = "$Source: common/com/SCCS/s.config_lno.cxx $ $R
  */
 
 #define DEFAULT_UNROLL_PROD_MAX 16
+
 #ifdef KEY //bug 5375 changes unroll_max default to 5
 #define DEFAULT_UNROLL_MAX 5
 #else
@@ -236,7 +241,11 @@ static LNO_FLAGS Default_LNO = {
 #ifndef KEY
   TRUE,		/* Run_vintr */
 #else
+#ifdef TARG_X8664
   1,		/* Run_vintr */
+#else
+  0,		/* Run_vintr */
+#endif // TARG_X8664
   TRUE,         /* Run_vintr_set */
   FALSE,	/* Vintr_Verbose */
   1,            /* Run_simd */
@@ -431,7 +440,11 @@ LNO_FLAGS Initial_LNO = {
 #ifndef KEY
   TRUE,		/* Run_vintr */
 #else
+#ifdef TARG_X8664
   1,		/* Run_vintr */
+#else
+  0,		/* Run_vintr */
+#endif // TARG_X8664
   TRUE,         /* Run_vintr_set */
   FALSE,	/* Vintr_Verbose */
   1, 		/* Run_simd */
@@ -797,8 +810,13 @@ static OPTION_DESC Options_LNO[] = {
 #ifndef KEY
   LNOPT_BOOL ( "vintr",			NULL,	Run_vintr ),
 #else
+#ifdef TARG_X8664
   LNOPT_U32_SET ("vintr",                "vintr", 1, 0, 2, Run_vintr,
 		                        Run_vintr_set ),
+#else
+  LNOPT_U32_SET ("vintr",                "vintr", 0, 0, 2, Run_vintr,
+		                        Run_vintr_set ),
+#endif // TARG_X8664
   LNOPT_BOOL ( "vintr_verbose",		NULL,	Vintr_Verbose ),
   LNOPT_U32_SET ("simd",                "simd", 1, 0, 2, Run_simd,
 		                        Run_simd_set ),

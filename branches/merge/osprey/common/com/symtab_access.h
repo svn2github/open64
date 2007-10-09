@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1247,19 +1251,6 @@ inline void
 Clear_TY_no_ansi_alias (TY_IDX tyi) { Clear_TY_no_ansi_alias(Ty_Table[tyi]); }
 
 inline BOOL
-TY_is_incomplete (const TY& ty)         { return ty.flags & TY_IS_INCOMPLETE; }
-inline void
-Set_TY_is_incomplete (TY& ty)           { ty.flags |= TY_IS_INCOMPLETE; }
-inline void
-Clear_TY_is_incomplete (TY& ty)         { ty.flags &= ~TY_IS_INCOMPLETE; }
-inline BOOL
-TY_is_incomplete (const TY_IDX tyi)     { return TY_is_incomplete(Ty_Table[tyi]); }
-inline void
-Set_TY_is_incomplete (TY_IDX tyi)    { Set_TY_is_incomplete(Ty_Table[tyi]); }
-inline void
-Clear_TY_is_incomplete (TY_IDX tyi)  { Clear_TY_is_incomplete(Ty_Table[tyi]); }
-
-inline BOOL
 TY_is_non_pod (const TY& ty)		{ return ty.flags & TY_IS_NON_POD; }
 inline void
 Set_TY_is_non_pod (TY& ty)		{ ty.flags |= TY_IS_NON_POD; }
@@ -1297,6 +1288,19 @@ inline void
 Set_TY_content_seen (TY_IDX tyi)      { Set_TY_content_seen(Ty_Table[tyi]); }
 inline void
 Clear_TY_content_seen (TY_IDX tyi)    { Clear_TY_content_seen(Ty_Table[tyi]); }
+
+inline BOOL
+TY_is_incomplete (const TY& ty)		{ return ty.flags & TY_IS_INCOMPLETE; }
+inline void
+Set_TY_is_incomplete (TY& ty)		{ ty.flags |= TY_IS_INCOMPLETE; }
+inline void
+Clear_TY_is_incomplete (TY& ty)		{ ty.flags &= ~TY_IS_INCOMPLETE; }
+inline BOOL
+TY_is_incomplete (const TY_IDX tyi)	{ return TY_is_incomplete(Ty_Table[tyi]); }
+inline void
+Set_TY_is_incomplete (TY_IDX tyi)    { Set_TY_is_incomplete(Ty_Table[tyi]); }
+inline void
+Clear_TY_is_incomplete (TY_IDX tyi)  { Clear_TY_is_incomplete(Ty_Table[tyi]); }
 #endif
 
 // TY pu_flags

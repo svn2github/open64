@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -164,7 +164,7 @@ BOOL Ptr_Opt_Allowed = FALSE;
 BOOL Zeroinit_in_bss = TRUE;
 
 /* don't make strings gp-relative (to save gp space) */
-#if defined(TARG_X8664) || defined(TARG_IA32)
+#if defined(TARG_X8664) || defined(TARG_IA32) || defined(TARG_MIPS)
 BOOL Strings_Not_Gprelative = TRUE;
 #else
 BOOL Strings_Not_Gprelative = FALSE;
@@ -1516,6 +1516,10 @@ Configure_Source ( char	*filename )
     if ( ! Recip_Set )
       Recip_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
 #endif
+#ifndef TARG_X8664 // apsi fails at -O3 because Rsqrt_Allowed is true
+    if ( ! Rsqrt_Set )
+      Rsqrt_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
+#endif
     /* Potential non-IEEE results for exact operations: */
     if ( ! Div_Split_Set )
       Div_Split_Allowed = IEEE_Arithmetic >= IEEE_ANY;
@@ -1568,8 +1572,10 @@ Configure_Source ( char	*filename )
     if (!Fast_trunc_Set)
       Fast_trunc_Allowed = Roundoff_Level >= ROUNDOFF_SIMPLE;
 
+#ifdef TARG_X8664
     if ( ! CIS_Set )
       CIS_Allowed |= Roundoff_Level >= ROUNDOFF_SIMPLE;
+#endif
   }
 
 #if 0
@@ -1645,6 +1651,11 @@ Configure_Source ( char	*filename )
   } else if ( Get_Trace ( TP_MISC, 32 ) ) {
     Trace_Option_Groups ( TFile, Common_Option_Groups, FALSE );
   }
+
+#ifdef KEY // bug 12939
+  if (Language == LANG_CPLUS && ! WOPT_Enable_Tail_Recur_Set)
+    WOPT_Enable_Tail_Recur = FALSE;
+#endif
 }
 
 /* ====================================================================
@@ -1666,11 +1677,7 @@ Configure_Alias_Options( OPTION_LIST *olist )
     if (strncasecmp( val, "any", len) == 0) {
       Alias_Pointer_Parms = TRUE;	/* observed by Fortran programs */
       Alias_Pointer_Cray = FALSE;	/* observed by Fortran programs */
-#ifdef TARG_IA64
       Alias_Pointer_Types = TRUE;	/* observed by C and C++ programs */
-#else
-      Alias_Pointer_Types = FALSE;	/* observed by C and C++ programs */
-#endif
       Alias_Not_In_Union  = TRUE;	/* observed by C++ programs only */
       Alias_Pointer_Strongly_Typed = FALSE;	/* observed by C and C++ programs */
       Alias_Pointer_Types_Set = TRUE;

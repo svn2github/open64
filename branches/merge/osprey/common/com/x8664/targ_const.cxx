@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -601,7 +601,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
    TYPE_ID desc = OPCODE_desc(op);
    OPERATOR opr = OPCODE_operator(op);
 
-   if (DEBUG_Trap_Uv && MTYPE_float(optype) && 
+   if (DEBUG_Trap_Uv && MTYPE_float(optype) && MTYPE_float(desc) &&
        (NaN_Tcon(optype, c0) || NaN_Tcon(optype, c1))) {
      // return NaN because some places in simp_add_sub are hard-coded to
      // expect constant-folding being successful, for bug 9699
@@ -921,13 +921,13 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       Is_True(TCON_ty(c0) == MTYPE_FQ, ("Illegal operand to %s", OPCODE_name(op)));
       c0 = Targ_Conv(MTYPE_U8, c0);
       break;
-#endif
+#endif     
 #if 1 // bug 11745
     case OPC_I8U8CVT:
     case OPC_U8I8CVT:
     case OPC_I4U4CVT:
     case OPC_U4I4CVT:
-#endif     
+#endif
     case OPC_I8I4CVT:
     case OPC_I8U4CVT:
     case OPC_U8I4CVT:
@@ -3298,6 +3298,31 @@ Create_Simd_Const (TYPE_ID ty, TCON t)
     return t;
 
   switch (ty) {
+  case MTYPE_V8I1:
+  case MTYPE_M8I1:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v1 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    break;
+  case MTYPE_V8I2:
+  case MTYPE_M8I2:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0);
+    (c).vals.ival.v1 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    break;
+  case MTYPE_V8I4:
+  case MTYPE_M8I4:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v0;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v0;
+    break;
   case MTYPE_V16I1:
     TCON_clear(c);
     TCON_ty(c) = ty;
@@ -3488,7 +3513,18 @@ Host_To_Targ_UV( TYPE_ID ty)
      TCON_iv2(c)= 0xfff5a5a5;
      TCON_iv3(c)= 0xfff5a5a5;
      break;
-     
+   case MTYPE_V8I1:
+   case MTYPE_V8I2:
+   case MTYPE_M8I1:
+   case MTYPE_M8I2:
+     TCON_v0(c)= 0x5a5aa5a5;
+     TCON_v1(c)= 0x5a5aa5a5;
+     break;
+   case MTYPE_V8I4:
+   case MTYPE_M8I4:
+     TCON_v0(c)= 0xfff5a5a5;	// 64-bit Signalling NaN
+     TCON_v1(c)= 0xfff5a5a5;
+     break;
    default:
      ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), "Host_To_Targ_UV" );
      TCON_clear(c);
@@ -5152,6 +5188,16 @@ Hash_TCON ( TCON * t, UINT32 modulus )
 	hash += (*s) << ((i % 4) * 8);
       }
       break;
+#ifdef KEY
+    case MTYPE_V8I1:
+    case MTYPE_V8I2:
+    case MTYPE_V8I4:
+    case MTYPE_M8I1:
+    case MTYPE_M8I2:
+    case MTYPE_M8I4:
+      hash += TCON_v0(*t) + TCON_v1(*t);
+      break;
+#endif
     case MTYPE_V16I1:
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
       break;

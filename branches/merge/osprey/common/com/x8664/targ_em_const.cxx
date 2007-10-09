@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -405,6 +409,70 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 #endif
 	rc = 0;
 	break;
+	}
+
+      case MTYPE_V8I1:
+      case MTYPE_M8I1:
+	Emit_Repeated_Constant ( fl, AS_BYTE, TCON_v0(tc) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v0(tc)>>8) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v0(tc)>>16) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v0(tc)>>24) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, TCON_v1(tc) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v1(tc)>>8) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v1(tc)>>16) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v1(tc)>>24) & 0xff, rc, 10 );
+	rc = 0;
+	break;
+
+      case MTYPE_V8I2:
+      case MTYPE_M8I2:
+	if (CG_emit_non_gas_syntax) {
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   TCON_v0(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   (TCON_v0(tc)>>16) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   TCON_v1(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   (TCON_v1(tc)>>16) & 0xffff, rc, 8 );
+	}
+	else {	  
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   TCON_v0(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   (TCON_v0(tc)>>16) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   TCON_v1(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   (TCON_v1(tc)>>16) & 0xffff, rc, 8 );
+	}
+	rc = 0;
+	break;
+
+      case MTYPE_V8I4:
+      case MTYPE_M8I4:
+	{
+	  if (CG_emit_non_gas_syntax) {
+	    Emit_Repeated_Constant ( fl, ".word", TCON_v0(tc), rc, 4 );
+	    Emit_Repeated_Constant ( fl, ".word", TCON_v1(tc), rc, 4 );
+	  } else {
+	    Emit_Repeated_Constant ( fl, 
+				     ((loc % 4) == 0 ? AS_WORD : AS_WORD_UNALIGNED), 
+				     TCON_v0(tc), rc, 4 );
+	    Emit_Repeated_Constant ( fl, 
+				     ((loc % 4) == 0 ? AS_WORD : AS_WORD_UNALIGNED), 
+				     TCON_v1(tc), rc, 4 );
+	  }
+	  rc = 0;
+	  break;
 	}
 
       case MTYPE_V16F4: {

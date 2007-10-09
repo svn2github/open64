@@ -141,6 +141,9 @@ ST_name (ST_IDX idx)			{ return ST_name (St_Table[idx]); }
 inline ST_CLASS				// for compatibility
 ST_class (const ST_IDX s)		{ return ST_class (St_Table[s]); }
 
+inline ST_SCLASS			// for compatibility
+ST_sclass (const ST_IDX s)		{ return ST_sclass(St_Table[s]); }
+
 inline TY_IDX
 ST_type (const ST_IDX s)		{ return ST_type(St_Table[s]); }
 

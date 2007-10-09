@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -940,7 +940,7 @@ WN *WN_CreateAgoto(WN *addr)
 {
   WN *wn;
 
-  Is_True(WN_rtype(addr)==Pointer_type,
+  Is_True(MTYPE_byte_size(WN_rtype(addr)) == MTYPE_byte_size(Pointer_type),
           ("Bad addr in WN_CreateAgoto"));
   wn = WN_Create(OPC_AGOTO,1);
   WN_kid0(wn) = addr;
@@ -1840,18 +1840,19 @@ WN *WN_CreateIntconst(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, INT64 const_val
   Is_True(OPCODE_operator(opc) == OPR_INTCONST, 
 	 ("Bad opcode in WN_CreateIntconst")); 
   wn = WN_Create(opr,rtype,desc,0); 
-#ifndef TARG_X8664
   if (opc == OPC_U4INTCONST) {
+#ifndef TARG_X8664
 	/* make sure that 32-bit value is sign-extended */
 	UINT32 uval = const_val;
 	INT32 sval = uval;
   	WN_const_val(wn) = (INT64) sval;
+#else
+	/* bug 12869 make sure that high order 32 bits is zero */
+  	WN_const_val(wn) = const_val & 0x0ffffffffLL;
+#endif
   } else {
-#endif
   	WN_const_val(wn) = const_val;
-#ifndef TARG_X8664
   }
-#endif
 
   return(wn);
 }
@@ -2316,12 +2317,8 @@ WN_RIload (TYPE_ID rtype, TYPE_ID desc, WN_OFFSET offset, TY_IDX align,
   TY_IDX palign;
   palign = Make_Pointer_Type(align);
 
-#ifndef KEY
-  return WN_CreateIload (OPR_ILOAD, rtype, desc, offset, align, palign, addr);
-#else
   return WN_CreateIload (OPR_ILOAD, rtype, desc, offset, align, palign, addr,
-                         field_id);
-#endif
+  			 field_id);
 }
 
 WN *
@@ -2479,6 +2476,14 @@ WN *WN_UVConst( TYPE_ID type)
   case MTYPE_C8:
   case MTYPE_C10:
   case MTYPE_CQ:
+#ifdef TARG_X8664
+  case MTYPE_V8I1:
+  case MTYPE_V8I2:
+  case MTYPE_M8I1:
+  case MTYPE_M8I2:
+  case MTYPE_V8I4:
+  case MTYPE_M8I4:
+#endif
     return Make_Const (Host_To_Targ_UV(type));
   case MTYPE_STR:
   case MTYPE_M:
