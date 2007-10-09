@@ -3089,16 +3089,14 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
     result = Allocate_Result_TN(expr, NULL);
   }
 
-#ifdef KEY
+#ifdef TARG_IA64
+  Exp_Intrinsic_Op (id, result, kid0, kid1, &New_OPs);
+#elif defined(TARG_X8664)
   const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
-#ifdef TARG_X8664
   Exp_Intrinsic_Op (id, result, kid0, kid1, kid2, mtype, &New_OPs);
 #else
   Exp_Intrinsic_Op (id, result, kid0, kid1, mtype, &New_OPs);
 #endif
-#else
-  Exp_Intrinsic_Op (id, result, kid0, kid1, &New_OPs);
-#endif // KEY
 
   return result;
 }
