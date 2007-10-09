@@ -2636,8 +2636,9 @@ BOOL
 ST_has_Predefined_Named_Section(ST *st, SECTION_IDX &sec_idx) {
 
   for (sec_idx = _SEC_UNKNOWN; sec_idx <= _SEC_DISTR_ARRAY; sec_idx ++) {
-  	if (!strcmp(Index_To_Str(Find_Section_Name_For_ST(st)), SEC_name(sec_idx)))
-  		return TRUE;
+  	if (SEC_name(sec_idx) && 
+	    !strcmp(Index_To_Str(Find_Section_Name_For_ST(st)), SEC_name(sec_idx)))
+  	  return TRUE;
   }
 
   return FALSE;

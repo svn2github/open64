@@ -178,7 +178,9 @@ EBO_hash_op (OP *op,
 	    TN_var(ctn) == TN_spill(spill_tn))
 	  hash_value = EBO_SPILL_MEM_HASH;
       }
-    } else {
+    }
+#ifdef TARG_X8664  // zhc 
+    else {
       // The above test doesn't catch all cases of EBO_SPILL_MEM_HASH, since
       // TN_has_spill may be false even for spill OP.  This occurs for a spill
       // store when EBO has substituted the storeval with another TN whose
@@ -190,6 +192,7 @@ EBO_hash_op (OP *op,
 	hash_value = EBO_SPILL_MEM_HASH;
       }
     }
+#endif  // TARG_X8664
 #else
     if (spill_tn && TN_has_spill(spill_tn)) hash_value = EBO_SPILL_MEM_HASH;
 #endif
