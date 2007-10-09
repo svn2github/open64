@@ -13087,7 +13087,7 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
 	  Is_True((MTYPE_RegisterSize(btype) == size),
 		  ("bad size for scalar/pointer"));;
 
-#ifdef KEY
+#ifdef TARG_X8864
 	  if (DEBUG_Zero_Uv) {
 	    if (MTYPE_is_vector(btype)) {
 	      con = Make_Const(Create_Simd_Const(btype,

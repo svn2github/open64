@@ -458,6 +458,12 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define      TN_is_gra_cannot_split(r)  (TN_flags(r) &   TN_GRA_CANNOT_SPLIT)
 #define  Set_TN_is_gra_cannot_split(r)  (TN_flags(r) |=  TN_GRA_CANNOT_SPLIT)
 
+#ifdef TARG_IA64
+#define        TN_is_take_nat(r)   (TN_flags(r) &   TN_TAKE_NAT)
+#define    Set_TN_is_take_nat(r)   (TN_flags(r) |=  TN_TAKE_NAT)
+#define  Reset_TN_is_take_nat(r)   (TN_flags(r) &= ~TN_TAKE_NAT) 
+#endif
+
 #ifdef TARG_X8664
 #define       TN_is_preallocated(r)  (TN_flags(r) &   TN_PREALLOCATED)
 #define   Set_TN_is_preallocated(r)  (TN_flags(r) |=  TN_PREALLOCATED)
