@@ -382,6 +382,7 @@ CG_CXX_SRCS = 		\
   hb_tail_duplication.cxx\
   hb_block_select.cxx	\
   hb_cflow.cxx          \
+  cg_gcov.cxx           \
   $(DERIVED_SRCS)
 
 ifeq ($(BUILD_PCH), USE_PCH)
@@ -407,6 +408,16 @@ VPATH    =  $(SRC_DIRS)
 LCOPTS += $(STD_COMPILE_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
+
+ifneq ($(BUILD_ARCH), MIPS64)
+ifeq ($(shell test -e /usr/include/valgrind/valgrind.h && echo y || echo n), y)
+HEADER_DIRS += /usr/include/valgrind
+else
+LCOPTS += -DNO_VALGRIND
+endif
+else
+LCOPTS += -DNO_VALGRIND
+endif
 
 LC++OPTS += $(STD_COMPILE_OPTS) $(PCH_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
@@ -447,6 +458,7 @@ ifdef LINK_DSO
 TARGETS = debug-cg
 else
 TARGETS = cg.so
+CG_LIBRARY = libcg.a
 endif
 
 #----------------------------------------------------------------------
@@ -465,10 +477,13 @@ ifeq ($(BUILD_TARGET), MIPS)
 TARGET_SO = r10000.so
 endif
 ifeq ($(BUILD_TARGET), IA64)
-TARGET_SO = 
+TARGET_SO = itanium.so
 endif
 ifeq ($(BUILD_TARGET), IA32)
 TARGET_SO = pentium.so
+endif
+ifeq ($(BUILD_TARGET), X8664)
+TARGET_SO = opteron.so
 endif
 
 ifeq ($(BUILD_OS), IRIX)
@@ -702,3 +717,11 @@ include $(COMMONRULES)
 
 .cxx.pch:
 	$(C++F) -c $(.IMPSRC)
+
+gra_lrange.o: OPTIMIZER += -ffloat-store
+
+ifeq (gcc,$(firstword $(CCNAME)))
+# work around gcc bug optimizing this file on ia32
+cg_loop.o: OPTIMIZER = -O0
+endif
+

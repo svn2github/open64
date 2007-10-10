@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -371,8 +371,11 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 // Fix bug 1766
               if (ty == MTYPE_I1 || ty == MTYPE_I2 || ty == MTYPE_U1 || ty == MTYPE_U2)
                 WN_kid(wn, i) = WN_Int_Type_Conversion( WN_kid(WN_kid(wn, i),0), ty );
-              else if (! MTYPE_is_float(exp->Asm_input_rtype()) && 
-							exp->Asm_input_rtype() != exp->Asm_input_dsctype()){
+              else if (
+#if 1 // bug 13104
+		       ! MTYPE_is_float(exp->Asm_input_rtype()) &&
+#endif
+		       exp->Asm_input_rtype() != exp->Asm_input_dsctype()) {
                 WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
                 WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
               }
@@ -389,8 +392,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
             if (! MTYPE_is_float(exp->Asm_input_rtype()) &&
 				(opnd->Kind() == CK_VAR || opnd->Kind() == CK_IVAR))
 			  // OSP_388 and OSP_390
-              WN_set_desc(WN_kid(wn, i), 
-							Mtype_TransferSign(exp->Asm_input_rtype(), exp->Asm_input_dsctype()));
+              WN_set_desc(WN_kid(wn, i), Mtype_TransferSign(exp->Asm_input_rtype(), exp->Asm_input_dsctype()));
           }
 #endif
 	}
@@ -453,13 +455,16 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	     && OPERATOR_is_compare(exp->Opr()))
 	    exp->Set_dsctyp(WN_rtype(opnd0));
 #endif
-#ifdef KEY	//OSP_389
-	else if (OPERATOR_is_compare(exp->Opr()) && MTYPE_byte_size(exp->Dsctyp()) == 4) {
-		if (WN_operator(opnd0) == OPR_INTCONST && MTYPE_byte_size(WN_rtype(opnd0)) == 8)
-			WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dsctyp(),WN_rtype(opnd0)));
-		if (WN_operator(opnd1) == OPR_INTCONST && MTYPE_byte_size(WN_rtype(opnd1)) == 8)
-			WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dsctyp(),WN_rtype(opnd1)));
-	}
+#ifdef KEY // bug 13230: fix INTCONSTs kids of compare unnecessarily made 64-bit
+	  else if (OPERATOR_is_compare(exp->Opr()) &&
+	      	   MTYPE_byte_size(exp->Dsctyp()) == 4) {
+	    if (WN_operator(opnd0) == OPR_INTCONST && 
+		MTYPE_byte_size(WN_rtype(opnd0)) == 8)
+	      WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dsctyp(), WN_rtype(opnd0)));
+	    if (WN_operator(opnd1) == OPR_INTCONST && 
+		MTYPE_byte_size(WN_rtype(opnd1)) == 8)
+	      WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dsctyp(), WN_rtype(opnd1)));
+	  }
 #endif
 #ifdef KEY // bug 3347: fix INTCONSTs unnecessarily made 64-bit
 	  else if (! OPERATOR_is_compare(exp->Opr()) &&
@@ -555,6 +560,13 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
     }
     else if ( exp->Opr() == OPR_PARM ) {
       wn = Gen_exp_wn(exp->Ilod_base(), emitter);
+#ifdef KEY // bug 12161: fix INTCONSTs unnecessarily made 64-bit
+      if (WN_operator(wn) == OPR_INTCONST && MTYPE_byte_size(WN_rtype(wn)) == 8
+	  && MTYPE_byte_size(exp->Dtyp()) == 4) {
+	if ((WN_const_val(wn) << 32 >> 32) == WN_const_val(wn))
+	  WN_set_rtype(wn, Mtype_TransferSize(exp->Dtyp(), WN_rtype(wn)));
+      }
+#endif
       wn = WN_CreateParm(exp->Dtyp(), wn, exp->Ilod_ty(), exp->Offset());
       if (WN_Parm_By_Reference(wn)) {
 	POINTS_TO *pt = exp->Points_to(emitter->Opt_stab());
@@ -819,9 +831,9 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 				 0);
 	}
 	else {
-	  // bug fix for OSP_87 & OSP_90
-          prag = WN_CreateXpragma(WN_PRAGMA_ASM_CLOBBER,
-				  (ST_IDX) p->clobber_string_idx,
+          // bug fix for OSP_87 and OSP_90
+	  prag = WN_CreateXpragma(WN_PRAGMA_ASM_CLOBBER,
+				  (ST_IDX) 0,
 				  1);
 	  WN_kid0(prag) = WN_CreateIdname(p->preg_number,
 					  p->preg_st_idx);
@@ -920,6 +932,9 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	      || rhs_cr->Opr() == OPR_CVTL ) &&
 	     MTYPE_is_integral( rhs_cr->Dtyp() ) && 
              MTYPE_is_integral( lhs->Dsctyp() )
+#ifdef TARG_X8664
+	     && ! MTYPE_is_vector(lhs->Dsctyp())
+#endif
 	    ) {
 	  
 	  MTYPE actual_type;

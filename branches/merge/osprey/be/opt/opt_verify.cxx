@@ -1,6 +1,10 @@
 //-*-c++-*-
 
 /*
+ * Copyright 2007 (C) PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1144,6 +1148,8 @@ COMP_UNIT::Verify_version(void)
 void
 CODEMAP::Verify_hashing(void)
 {
+#ifndef KEY // bug 13042: this is found to cause the WHIRL output by wopt to
+  	    // have some operands of ADD arbitrarily swapped
 #ifdef Is_True_On
   CODEREP_ITER cr_iter;
   CODEREP *cr,*bucket;
@@ -1174,5 +1180,6 @@ CODEMAP::Verify_hashing(void)
       }
     }
   }
+#endif
 #endif
 }

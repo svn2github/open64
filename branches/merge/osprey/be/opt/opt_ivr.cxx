@@ -783,6 +783,9 @@ CODEREP::Propagatable_into_loop(const BB_LOOP *loop) const
 #ifdef KEY
 	|| Opr() == OPR_PURE_CALL_OP
 #endif
+#if defined(TARG_IA32) || defined(TARG_X8664)
+	|| Opr() == OPR_SELECT
+#endif
        )
       return FALSE;
     return TRUE;

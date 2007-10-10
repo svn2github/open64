@@ -200,8 +200,15 @@ EOCC::Collect_real_occurrences( void )
 	  CODEREP *rhs_cr = stmt->Rhs();
 	  CODEREP *lhs = stmt->Lhs();
 	  if (WOPT_Enable_Cvt_Folding && rhs_cr->Kind() == CK_OP && 
+#ifdef KEY // bug 11797
+	      ! MTYPE_is_vector(rhs_cr->Dsctyp()) &&
+	      ! MTYPE_is_vector(rhs_cr->Dtyp()) &&
+#endif
 	      (rhs_cr->Opr() == OPR_CVT && MTYPE_is_integral(rhs_cr->Dsctyp()) 
 	       || rhs_cr->Opr() == OPR_CVTL) &&
+#ifdef TARG_X8664
+	      !MTYPE_is_vector(lhs->Dsctyp()) &&
+#endif
 	      MTYPE_is_integral(rhs_cr->Dtyp()) && 
 	      MTYPE_is_integral(lhs->Dsctyp()) 
 	      ) {

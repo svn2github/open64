@@ -845,6 +845,9 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
 
     if (kind_match &&
 	aux_stab[idx].Byte_size() == byte_size &&
+#ifdef KEY // bug 12321
+	aux_stab[idx].St() == st &&
+#endif
 	aux_stab[idx].St_ofst() == ofst &&
 	aux_stab[idx].Bit_size() == bit_size &&
 	aux_stab[idx].Bit_ofst() == bit_ofst &&
@@ -3990,6 +3993,7 @@ OPT_STAB::Collect_nested_ref_info(void)
 		    1);
   }
 }
+
 
 void
 VER_STAB_ENTRY::Print_use(WN *wn, FILE *fp) const

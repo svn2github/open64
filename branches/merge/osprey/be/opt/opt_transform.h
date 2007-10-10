@@ -1,6 +1,10 @@
 //-*-c++-*-
 
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -497,6 +501,9 @@ UPDATE<TRANSFORM, CACHE, VERSION>::Process_CR_no_repeat(CODEREP *cr, bool is_mu,
       if (ilod_base || mload_size || mu) {
 	CODEREP *newcr = Alloc_stack_cr(cr->Extra_ptrs_used());
 	newcr->Copy(*cr);  
+#ifdef KEY // bug 12390: without this, would do wrong ivar copy propagation
+	newcr->Set_ivar_defstmt(NULL);
+#endif
 	if (ilod_base) 
 	  newcr->Set_ilod_base(ilod_base);
 	newcr->Set_istr_base(NULL);

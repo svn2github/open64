@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -313,7 +317,7 @@ Accumulate_Preg_Info(TY_IDX preg_ty, INT16 preg_num)
    PREG_INFO      *preg_info;
    INT             usage_kind;
 
-   if (preg_num == -1)
+   if (preg_num <= -1)
      return;
 
    Is_True(TY_Is_Scalar(preg_ty), 
