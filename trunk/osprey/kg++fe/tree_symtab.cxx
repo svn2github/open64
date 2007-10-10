@@ -1020,10 +1020,6 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		}
 		else
 			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
-                        if (TREE_CODE(type_tree) == METHOD_TYPE) {
-                            TY_IDX base = Get_TY(TYPE_METHOD_BASETYPE(type_tree));
-                            Set_TY_baseclass(ty, base);
-                        }
 		} // end FUNCTION_TYPE scope
 		break;
 #ifdef TARG_X8664
@@ -1236,6 +1232,8 @@ Create_ST_For_Tree (tree decl_node)
 #endif
 	if (TREE_CODE(TREE_TYPE(decl_node)) == METHOD_TYPE) {
 		Set_ST_is_method_func(st);
+        TY_IDX base = Get_TY(TYPE_METHOD_BASETYPE(TREE_TYPE(decl_node)));
+        Set_PU_base_class(pu, base);
 	}
 
 	if (DECL_THUNK_P(decl_node) &&

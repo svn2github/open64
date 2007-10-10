@@ -220,17 +220,18 @@ Is_constructor(SUMMARY_SYMBOL *func_sym, PU_IDX *sym_pu) {
     ST *func_st = &St_Table[func_st_idx];
     PU_IDX pui = ST_pu(func_st);
     if (PU_is_constructor(Pu_Table[pui])) {
-        TY_INDEX class_ty = TY_IDX_index(TY_baseclass(ST_pu_type(func_st)));
-        Is_True(TY_kind(Ty_tab[class_ty]) == KIND_STRUCT, ("Wrong base class."));
+        TY_IDX class_ty = PU_base_class(Pu_Table[pui]);
+        Is_True(TY_kind(class_ty) == KIND_STRUCT, ("Wrong base class."));
         *sym_pu = pui;
-        return class_ty;
+        return TY_IDX_index(class_ty);
     }
-	return 0;	
+	return TY_IDX_ZERO;	
 }
 
 // Collect the instances of classes 
 void
 IPA_collect_class_instances() {
+    hash_set <TY_INDEX> invoked_base_classes;
     IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
     // Traverse the call graph
     for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next() ){
@@ -241,18 +242,30 @@ IPA_collect_class_instances() {
         PU_IDX pui = ST_pu(method->Func_ST());
         pu_node_index_map[pui] = method->Node_Index();
 
-		SUMMARY_PROCEDURE* method_summary = method->Summary_Proc();
+        invoked_base_classes.clear();
+		
+        SUMMARY_PROCEDURE* method_summary = method->Summary_Proc();
         SUMMARY_CALLSITE* callsite_array =
             IPA_get_callsite_array(method) + method_summary->Get_callsite_index();
         int count = method_summary->Get_callsite_count();
         while (count > 0) { 
-            if (!callsite_array->Is_func_ptr()) {
-                SUMMARY_SYMBOL *sym = IPA_get_symbol_array(method) + method_summary->Get_symbol_index();
+            if (!callsite_array->Is_func_ptr() && !callsite_array->Is_intrinsic()) {
+                SUMMARY_SYMBOL *sym = IPA_get_symbol_array(method) + 
+                                      callsite_array->Get_symbol_index();
                 // if sym is a constructor, add it into live_class
                 PU_IDX sym_pu;
                 TY_INDEX new_class = Is_constructor(sym, &sym_pu);
-                if (new_class) 
-                    live_class[new_class] = sym_pu;
+                if (new_class) {
+                    TY_INDEX bclass = TY_IDX_index(PU_base_class(Pu_Table[pui]));
+                    // If new_class is the base class of the class of this consturctor,
+                    // its must be invoked by this constructor once.
+                    // If new_class occurs more than once, it must be live.
+                    if (IPA_Class_Hierarchy->Is_Sub_Class(new_class, bclass) &&
+                        invoked_base_classes.find(new_class) == invoked_base_classes.end())
+                        invoked_base_classes.insert(new_class);
+                    else
+                        live_class[new_class] = sym_pu;
+                }
             }
             callsite_array++;
             count--;
@@ -314,7 +327,7 @@ Convert_virtual_call(IPA_NODE *method) {
 
     // process all candidates in conversion_list
     while (!conversion_list.empty()) {
- 
+
         // get the front node in conversion_list and process it
         CONVERSION_CANDIDATE cand = conversion_list.front();
         conversion_list.pop();
@@ -416,7 +429,7 @@ IPA_devirtualization() {
         int count = method_summary->Get_callsite_count();
 
         Is_True(conversion_list.empty(), ("Conversion list is not empty."));
-		while (count > 0) {
+        while (count > 0) {
             // only process virtual function callsites
             if (callsite_array->Is_virtual_call()) {
                 // the formal class indicated by callsite
@@ -429,7 +442,7 @@ IPA_devirtualization() {
                     cand.callsite = callsite_array;
                     cand.actual_class = actual_class;
                     conversion_list.push(cand);
-				}
+                }
             }
             callsite_array++;
             count--;

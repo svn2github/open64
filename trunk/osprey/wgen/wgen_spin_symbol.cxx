@@ -1206,10 +1206,6 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		}
 		else
 			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
-                        if (gs_tree_code(type_tree) == GS_METHOD_TYPE) {
-                            TY_IDX base = Get_TY(gs_type_method_basetype(type_tree));
-                            Set_TY_baseclass(ty, base);
-                        }
 		} // end FUNCTION_TYPE scope
 		break;
 #ifdef TARG_X8664
@@ -1508,6 +1504,11 @@ Create_ST_For_Tree (gs_t decl_node)
         if (gs_decl_pure_virtual_p(decl_node) || strncmp(p, "__cxa_pure_virtual", 18) == 0)
             Set_ST_is_pure_vfunc(st);
 
+        if (gs_tree_code(gs_tree_type(decl_node)) == GS_METHOD_TYPE) {
+            TY_IDX base = Get_TY(gs_type_method_basetype(gs_tree_type(decl_node)));
+            Set_PU_base_class(pu, base);
+        }
+		
 	if (gs_decl_thunk_p(decl_node) &&
             gs_tree_code(gs_cp_decl_context(decl_node)) != GS_NAMESPACE_DECL)
 	  Set_ST_is_weak_symbol(st);

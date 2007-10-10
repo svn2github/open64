@@ -603,6 +603,11 @@ PU_lexical_level (const PU& pu)		{ return pu.lexical_level; }
 inline void
 Set_PU_lexical_level (PU& pu, SYMTAB_IDX l) { pu.lexical_level = l; }
 
+inline TY_IDX
+PU_base_class (const PU& pu) { return pu.base_class; }
+inline void
+Set_PU_base_class (PU& pu, TY_IDX ty_idx) { pu.base_class = ty_idx; }
+
 //----------------------------------------------------------------------
 // PU flags
 //----------------------------------------------------------------------
@@ -1093,24 +1098,6 @@ TY_copy_constructor (const TY_IDX tyi)	{ return Ty_Table[tyi].Copy_constructor (
 inline void
 Set_TY_copy_constructor (TY_IDX tyi, ST_IDX idx) { Set_TY_copy_constructor(Ty_Table[tyi],idx); }
 #endif
-
-inline TY_IDX
-TY_baseclass(const TY &ty)        { return ty.u3.baseclass; }
-inline TY_IDX
-TY_baseclass(const TY_IDX tyi)        { return Ty_Table[tyi].u3.baseclass; }
-inline void
-Set_TY_baseclass(TY &ty, TY_IDX base) { ty.u3.baseclass = base; }
-inline void
-Set_TY_baseclass(TY_IDX tyi, TY_IDX base) { Ty_Table[tyi].u3.baseclass = base; }
-  
-inline INITV_IDX
-TY_vtable(const TY &ty)            { return ty.u3.vtable; }
-inline INITV_IDX
-TY_vtable(const TY_IDX tyi)            { return Ty_Table[tyi].u3.vtable; }
-inline void
-Set_TY_vtable(TY &ty, INITV_IDX vt)   { ty.u3.vtable = vt; }
-inline void
-Set_TY_vtable(TY_IDX tyi, INITV_IDX vt)   { Ty_Table[tyi].u3.vtable = vt; }
 
 //----------------------------------------------------------------------
 // TY flags

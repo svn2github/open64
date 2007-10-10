@@ -547,11 +547,6 @@ public:
 #endif
     } u2;
 
-    union {
-        INITV_IDX  vtable;              // initial virtual table, for virtual class type
-        TY_IDX     baseclass;           // the base class, for member function of class
-    } u3;
-
     // access function for unions
 
     FLD_IDX Fld () const		{ return u1.fld; }
@@ -690,6 +685,7 @@ struct PU
 
     TY_IDX prototype;			// function prototype
     INITO_IDX eh_info;		        // store the EH related TYPE/TYPE_SPEC info. 32bits
+    TY_IDX base_class;    // the class type which this PU belongs to if this PU is a member function
     SYMTAB_IDX lexical_level;		// lexical level (of nested proc). 8-bits
     mUINT8 gp_group;			// gp_group id
     mUINT8 src_lang;			// source language

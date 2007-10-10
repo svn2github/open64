@@ -2330,6 +2330,7 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
         if (WN_Call_Is_Virtual(w)) {
             callsite->Set_is_virtual_call();
             WN *last = WN_kid(w, WN_kid_count(w)-1);
+#ifdef TARG_IA64
             if (WN_operator_is(last, OPR_ADD)) {
                 FmtAssert(WN_kid_count(last) == 2, ("Incorrect virtual call site."));
                 WN *addr = WN_kid0(last);
@@ -2351,6 +2352,16 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
                 callsite->Set_virtual_class(WN_ty(last));
                 callsite->Set_vtable_offset(0);
             }
+#endif
+#ifdef TARG_X8664
+           FmtAssert(WN_operator_is(last, OPR_ILOAD), ("Virtual function call does node use ILOAD."));
+           callsite->Set_vtable_offset(WN_load_offset(last));
+           WN *vptr = WN_kid0(last);
+           FmtAssert(WN_operator_is(vptr, OPR_ILOAD) || WN_operator_is(vptr, OPR_LDID), 
+                     ("Virtual function call does not use ILOAD or LDID."));
+           callsite->Set_virtual_class(WN_ty(vptr)); 
+           callsite->Set_vtable_field(WN_field_id(vptr));
+#endif
         }
 		
 	    break;
