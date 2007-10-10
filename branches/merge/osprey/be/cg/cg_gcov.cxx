@@ -1322,11 +1322,23 @@ CG_Instrument_Arcs()
     ld_result_tn = Build_TN_Of_Mtype(rtype);
     Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
     ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
-    Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#ifdef TARG_IA64
+    Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn,
+		 ld_result_tn, Gen_Literal_TN(count*8,4), 0, &new_ops);
+#else
+    Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, 
+		 ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#endif
     const_tn = Gen_Literal_TN(1,4);
     result_tn = Build_TN_Of_Mtype(rtype);
     Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-    Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#ifdef TARG_IA64
+    Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn,
+		  ld_result_tn, Gen_Literal_TN(count*8,4), 0, &new_ops);
+#else
+    Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn,
+		  ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#endif
     Gcov_BB_Prepend_Ops(REGION_First_BB,  &new_ops);
   }
   count++;
@@ -1364,11 +1376,23 @@ CG_Instrument_Arcs()
 	ld_result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
 	ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
-	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#ifdef TARG_IA64
+	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, 
+	             ld_result_tn, Gen_Literal_TN(count*8,4), 0, &new_ops);
+#else
+	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, 
+		     ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#endif
 	const_tn = Gen_Literal_TN(1,4);
 	result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#ifdef TARG_IA64
+	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn,
+		      ld_result_tn, Gen_Literal_TN(count*8,4), 0, &new_ops);
+#else
+	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, 
+		      ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#endif
 
         if (BB_Is_Unique_Instr_Predecessor(bb_succ, bb))
 	{
