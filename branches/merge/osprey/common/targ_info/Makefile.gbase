@@ -871,8 +871,8 @@ endif
 
 ifeq ($(BUILD_TARGET), IA64)
 
-itanium.so: itanium.o
-	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) itanium.o -shared -o itanium.so
+itanium.so: itanium.o $(TARGINFO_DSO_ACCESS_OBJS)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) itanium.o -shared -o itanium.so
 
 itanium.o: itanium.c ti_si.h
 	$(cc) $(CFLAGS) -c itanium.c
@@ -892,8 +892,8 @@ ifeq ($(BUILD_TARGET), X8664)
 
 ## opteron ##
 
-opteron.so: opteron.o
-	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) opteron.o -shared -o opteron.so
+opteron.so: opteron.o $(TARGINFO_DSO_ACCESS_OBJS)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) opteron.o -shared -o opteron.so
 
 opteron.o: opteron.c ti_si.h
 	$(cc) $(CFLAGS) -c opteron.c
@@ -909,8 +909,8 @@ opteron_si.o: opteron_si.cxx targ_isa_subset.h topcode.h si_gen.h
 
 ## em64t ##
 
-em64t.so: em64t.o
-	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) em64t.o -shared -o em64t.so
+em64t.so: em64t.o $(TARGINFO_DSO_ACCESS_OBJS)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) em64t.o -shared -o em64t.so
 
 em64t.o: em64t.c ti_si.h
 	$(cc) $(CFLAGS) -c em64t.c
