@@ -79,6 +79,7 @@
 #include "small_trips.h"
 #include "eliminate.h"
 #include "fb_whirl.h"
+#include "wn_simp.h"
 
 extern WN* Find_SCF_Inside(WN* parent_wn, OPCODE opc); // in ff_utils.cxx
 
