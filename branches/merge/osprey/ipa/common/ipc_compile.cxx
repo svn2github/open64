@@ -202,22 +202,10 @@ static const char*ipa_basename(char *name){
 
 static const char* abi()
 {
-  unsigned int abi_flag = ld_ipa_opt[LD_IPA_TARGOS].flag;
-  Is_True(abi_flag < TOS_MAX, ("Invalid abi flag %d\n", (int) abi_flag));
-
 #ifdef _TARG_MIPS
-  switch(abi_flag) {
-  case TOS_MIPS_O32:
-    return "-o32";
-  case TOS_MIPS_R32:
-    return "-r32";
-  case TOS_MIPS_N32:
-    return "-n32";
-  case TOS_MIPS_64:
-    return "-64";
-  default:
-    Fail_FmtAssertion ("ipa: invalid abi flag");
-  }
+    // 12343: Use IPA_Target_Type instead of ld_ipa_opt[LD_IPA_TARGOS].flag
+    // to distinguish between n32 and 64 in IPA
+    return IPA_Target_Type == IP_64_bit_ABI ? "-64" : "-n32";
 #endif
 
 #ifdef TARG_IA64
@@ -299,7 +287,7 @@ ipa_compile_init ()
 
   char* toolroot = getenv("TOOLROOT");
 
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
 
   static char* smake_base = ALTBINPATH "/usr/bin/make";
   static char* tmp_cc_name_base;
@@ -954,7 +942,7 @@ void ipacom_doit (const char* ipaa_filename)
     }
 
     // Print the final link command into the makefile.
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
 #ifdef KEY
     // Create a dir in /tmp and create symbolic links inside it to point to the
     // IPA .o files in the IPA tmpdir.  In the link command file, refer to
@@ -985,7 +973,11 @@ void ipacom_doit (const char* ipaa_filename)
 	    tmpdir[0] == '/' ? "" : "$$d/",
 	    symlinksdir);
     fprintf(makefile, "\t%s `sed 's:%s:%s:' %s`\n",
+#ifdef PATHSCALE_MERGE
+	    link_line->front(),
+#else
 	    strcmp(IPA_lang, "CC") ? "gcc" : "g++", // g++ to link C++, bug 9191
+#endif
 	    tmpdir, symlinksdir, link_cmdfile_name);
     fprintf(makefile, "\trm -r %s\n", symlinksdir);
 #else
@@ -1068,7 +1060,7 @@ void ipacom_doit (const char* ipaa_filename)
     if (!symtab_extra_args)
       symtab_extra_args = get_extra_args(0);
 
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
 
     if (IPA_Enable_Cord) {
     	char * obj_listfile_name = create_tmp_file("obj_file_list");
@@ -1141,7 +1133,7 @@ void ipacom_doit (const char* ipaa_filename)
             tmpdir_macro, elf_symtab_name,
             tmpdir_macro, whirl_symtab_name,
             tmpdir_macro, (*infiles)[i]);
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
     if (Feedback_Filename) {
         fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
                 tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
@@ -1259,7 +1251,7 @@ void ipacom_doit (const char* ipaa_filename)
     // SEGV should be here too; we're leaving it out because 6.2 sh doesn't
     // like it.
     fprintf(sh_cmdfile, "trap 'cleanup; exit 2' ");
-#if !defined(TARG_IA64) && !defined(TARG_X8664)
+#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_MIPS)
     fprintf(sh_cmdfile, "ABRT EMT SYS POLL ");
 #endif
     fprintf(sh_cmdfile, "HUP INT QUIT ILL TRAP FPE ");
@@ -1367,7 +1359,9 @@ static const char* get_extra_args(const char* ipaa_filename)
     break;
   case F_CALL_SHARED:
   case F_CALL_SHARED_RELOC:
+#ifndef TARG_MIPS
     args.push_back("-pic1");
+#endif
     break;
   case F_NON_SHARED:
     args.push_back("-non_shared");

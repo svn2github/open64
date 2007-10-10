@@ -64,9 +64,9 @@ ARGV *current_ld_flags;
 ARGV *comma_list;
 UINT32 comma_list_byte_count = 0;
 
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_MIPS)
 #define LINKER_NAME "gcc"
 #define LINKER_NAME_WITH_SLASH "/gcc"
 #else  /* TARG_IA64 */
@@ -153,7 +153,7 @@ ipa_init_link_line (int argc, char** argv)
     comma_list = CXX_NEW (ARGV, Malloc_Mem_Pool);
 
     // Push the path and name of the final link tool
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
 
 #if 0
     char *t_path = arg_vector[0];

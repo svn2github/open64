@@ -385,8 +385,8 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
     gtabs.symstr_tab = (char*) ld_get_section_base (p_obj, strtab_idx);
     get_global_symtab (gtabs, IP_FILE_HDR_file_info (file_header), p_obj,
 		       gsymtab); 
-#if !defined(TARG_IA64) && !defined(TARG_X8664)    // Merge the new ELF symbol table entries with the existing ones.
-    //
+#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_MIPS)
+    // Merge the new ELF symbol table entries with the existing ones.
     pair<Sym *, UINT> ext_symtab = walk_st_list (gtabs, elf_symtab);
 
     if (ext_symtab.second  > 0) {
@@ -464,7 +464,7 @@ process_whirl64 (an_object_file_ptr p_obj, INT nsec,
     process_whirl (p_obj, nsec, section_table, check_whirl_revision,
 		   file_name, tag); 
 }
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
 
     /* This is just a door to the be.so open routines. */
 extern "C" void *

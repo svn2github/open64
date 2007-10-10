@@ -1437,6 +1437,9 @@ IPO_propagate_globals(IPA_NODE *n)
     BOOL need_to_update_array_bounds = FALSE;
     WN* new_block = WN_CreateBlock();
     WN* pu = n->Whirl_Tree();
+#ifdef PATHSCALE_MERGE /* KEY */ // bug 12371
+    LWN_Parentize(pu);
+#endif
     // ST_IDX_HASH_TABLE current_hash_table(8, &Temp_pool);
     
     for (UINT32 i = 0; i < GLOBAL_ANNOT::Size; ++i) {
