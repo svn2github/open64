@@ -865,7 +865,7 @@ private:
 
     TY_IDX  _virtual_class;     // the class of the virtual function
     mUINT32 _vtable_offset;     // virtual function position, the offset of the vtable
-    mUINT32 _vtable_field;      // vtable field id of this call
+    mUINT64 _vptr_offset;       // vtable field offset of this call
 	
 public:
 
@@ -963,8 +963,8 @@ public:
     void Set_vtable_offset(UINT32 offset) { _vtable_offset = offset; }
     UINT32 Get_vtable_offset() { return _vtable_offset; }
 
-    void Set_vtable_field(UINT32 field) { _vtable_field = field; }
-    BOOL Get_vtable_field() { return _vtable_field; }
+    void Set_vptr_offset(UINT64 ofst) { _vptr_offset = ofst; }
+    UINT64 Get_vptr_offset() { return _vptr_offset; }
 
     void Set_is_virtual_call() { _state |= IPL_IS_VIRTUAL_CALL; }
     BOOL Is_virtual_call() { return _state & IPL_IS_VIRTUAL_CALL; }

@@ -31,6 +31,7 @@
 #include <ext/hash_set>
 #include "symtab.h"
 #include "wn_util.h"
+#include "wn_lower.h"
 #include "ir_reader.h"
 #include "ipo_defs.h"
 #include "ipo_parent.h"
@@ -103,7 +104,7 @@ Find_inito_by_st(ST_IDX st_idx) {
 ST_IDX
 Find_virtual_function(TY_IDX actual_class,
                       TY_IDX formal_class,	
-                      UINT32 formal_field_id, 
+                      UINT64 formal_vptr_offset, 
                       size_t func_offset) 
 {
     PU_IDX pu_idx = live_class[TY_IDX_index(actual_class)];
@@ -111,6 +112,8 @@ Find_virtual_function(TY_IDX actual_class,
     IPA_NODE_CONTEXT context(constructor);
     WN *wn_start = constructor->Whirl_Tree(TRUE);
     WN *vtab = NULL;
+    size_t ancestor_offset = IPA_Class_Hierarchy->Get_Ancestor_Offset(TY_IDX_index(actual_class), TY_IDX_index(formal_class));
+    Is_True(ancestor_offset != BASE_CLASS_NOT_FOUND, ("Wrong ancestor class."));
 
     // Traverse the constructor of the actual class 
     // and find the statement that sets the value of vtable.	
@@ -121,29 +124,21 @@ Find_virtual_function(TY_IDX actual_class,
         if (WN_operator(wn) == OPR_ISTORE) {
             WN *rhs = WN_kid0(wn);
             WN *lhs = WN_kid1(wn);
-            if (WN_operator(lhs) == OPR_ADD)
+            UINT64 add_ofst = 0;
+            if (WN_operator(lhs) == OPR_ADD) {
+                add_ofst = WN_const_val(WN_kid1(lhs));
                 lhs = WN_kid0(lhs);
+            } 
             if (WN_operator(rhs) == OPR_LDA && WN_operator(lhs) == OPR_LDID) {
                 TY_IDX this_class_ptr = ST_type(WN_st(lhs));
                 if (TY_kind(this_class_ptr) != KIND_POINTER)
                     continue;
                 TY_IDX this_class = TY_pointed(this_class_ptr);
                 if (TY_IDX_index(this_class) == TY_IDX_index(actual_class)) {
-
                     // Find the field by the statement in constructor
-                    UINT cur_field_id = 0;
-                    FLD_HANDLE fld0 =
-                        FLD_get_to_field (actual_class, WN_field_id(wn), cur_field_id);
-                    Is_True(!fld0.Is_Null(), ("Wrong field id."));
-
-                    // Find the field by the callsite context
-                    cur_field_id = 0;
-                    FLD_HANDLE fld1 =
-                        FLD_get_to_field (formal_class, formal_field_id, cur_field_id);
-                    Is_True(!fld1.Is_Null(), ("Wrong field id."));
-
+                    UINT64 ofst = WN_store_offset(wn) + add_ofst;
                     // If they are matched, this statement indicates the vtable of the actual class 
-                    if (FLD_ofst(fld0) == FLD_ofst(fld1)) {
+                    if (ofst == formal_vptr_offset + ancestor_offset) {
                         vtab = wn;
                         break;
                     }
@@ -200,7 +195,7 @@ Find_virtual_function(TY_IDX actual_class,
                 break;
 #ifdef TARG_IA64
             case INITVKIND_SYMIPLT:
-				offset -= (Pointer_Size << 1);
+                offset -= (Pointer_Size << 1);
                 initv_idx = INITV_next(initv_idx);
                 break;
 #endif
@@ -339,14 +334,14 @@ Convert_virtual_call(IPA_NODE *method) {
 
         SUMMARY_CALLSITE *callsite = cand.callsite;
         // the explicit formal class in callsite
-		TY_IDX orig_class = callsite->Get_virtual_class();
+        TY_IDX orig_class = callsite->Get_virtual_class();
         // the offset of vtable in callsite
         size_t func_offset = callsite->Get_vtable_offset();
         // the field id in callsite
-        UINT32 vtab_field = callsite->Get_vtable_field();
+        UINT64 vptr_ofst = callsite->Get_vptr_offset();
         // find the actual target function of this virtual function callsite
         ST_IDX callee_st_idx = 
-            Find_virtual_function(make_TY_IDX(cand.actual_class), orig_class, vtab_field, func_offset);
+            Find_virtual_function(make_TY_IDX(cand.actual_class), orig_class, vptr_ofst, func_offset);
 
         // fail to find the actual function, skip the callsite
         if (callee_st_idx == ST_IDX_ZERO) {
