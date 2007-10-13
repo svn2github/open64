@@ -1,5 +1,5 @@
 /*
- * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
  */
 
 /*
@@ -64,10 +64,11 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #endif
 
 #if defined(__GNUC__)
-#ifdef TARG_IA64 // workaround at PathScale for build problem
+#if 0 // workaround at PathScale for build problem
 #include <math.h>       // FLT_MAX
-#endif
+#else
 #include <float.h>	// FLT_MAX
+#endif
 #else
 #include <limits.h>
 #endif
@@ -89,7 +90,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_grant.h"
 #include "gra_interfere.h"
 
-#ifndef TARG_IA64
+#ifdef KEY
 // If TRUE, allow reuse of registers at live range boundary basic blocks.
 BOOL GRA_optimize_boundary = FALSE;
 
@@ -168,7 +169,7 @@ LRANGE_MGR::Create_Complement( TN* tn )
   result->u.c.first_lunit = NULL;
   // Why +2?  I think because 0 is reserved.
   result->u.c.live_bb_set = BB_SET_Create_Empty(PU_BB_Count+2,GRA_pool);
-#ifndef TARG_IA64
+#ifdef KEY
   result->u.c.internal_bb_set = BB_SET_Create_Empty(PU_BB_Count+2,GRA_pool);
   result->u.c.boundary_bbs = NULL;
 #endif
@@ -276,7 +277,7 @@ LRANGE::Contains_BB(GRA_BB *gbb) {
   return BB_SET_MemberP(u.c.live_bb_set, gbb->Bb());   
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 /////////////////////////////////////
 void 
 LRANGE::Add_Internal_BB(GRA_BB *gbb) { 
@@ -462,7 +463,7 @@ LRANGE::Interferes( LRANGE* lr1 )
 
   if ( Type() == LRANGE_TYPE_COMPLEMENT ) {
     if ( lr1->Type() == LRANGE_TYPE_COMPLEMENT ) {
-#ifndef TARG_IA64
+#ifdef KEY
       if (GRA_optimize_boundary) {
 	// If none of the live BBs interfere, then the LRANGEs don't interfere.
 	if (!BB_SET_IntersectsP(u.c.live_bb_set, lr1->u.c.live_bb_set))
@@ -572,9 +573,10 @@ LRANGE::Calculate_Priority(void)
       }
     }
     priority = value;
-#ifndef TARG_IA64
+#ifdef KEY
     if ((GRA_exclude_callee_saved_regs ||
-	 GRA_eh_exclude_callee_saved_regs && PU_Has_Exc_Handler)
+	 GRA_eh_exclude_callee_saved_regs && PU_Has_Exc_Handler ||
+	 GRA_fp_exclude_callee_saved_regs && TN_is_float(Tn()))
 	&& Tn_Is_Save_Reg())
       priority += 100.0F;
 
@@ -606,7 +608,7 @@ Global_Preferenced_Regs(LRANGE* lrange, GRA_BB* gbb)
 	 tn != GTN_SET_CHOOSE_FAILURE;
 	 tn = GTN_SET_Choose_Next(lrange->Global_Pref_Set(), tn)) {
       LRANGE *plrange = lrange_mgr.Get(tn);
-#ifndef TARG_IA64
+#ifdef KEY
       if (GRA_optimize_boundary) {
 	// Before making the preferenced TN's register available, check to see
 	// if that register is also used by a non-preferenced TN in the BB.  If
@@ -711,6 +713,14 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
     for (INT i = 1; i <= num_xmms; i++)
       allowed = REGISTER_SET_Difference1(allowed, REGISTER_MIN+(8-i));
   }
+
+  // If a x87 live range spans an MMX OP, disallow all x87 registers.
+  if (Spans_mmx_OP() && rc == ISA_REGISTER_CLASS_x87)
+    return REGISTER_SET_EMPTY_SET;
+
+  // If a MMX live range spans an x87 OP, disallow all MMX registers.
+  if (Spans_x87_OP() && rc == ISA_REGISTER_CLASS_mmx)
+    return REGISTER_SET_EMPTY_SET;
 #endif
 
   if (   Type() != LRANGE_TYPE_LOCAL && TN_is_save_reg(Tn())
@@ -760,7 +770,7 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
       LUNIT* lunit = lunit_iter.Current();
       GRA_BB* gbb = lunit->Gbb();
       REGISTER_SET used = gbb->Registers_Used(rc);
-#ifndef TARG_IA64
+#ifdef KEY
       if (GRA_optimize_boundary) {
 	// If <gbb> is a boundary BB, remove from <used> those registers that
 	// are unused in the parts of the BB where the lrange is live.
@@ -835,7 +845,7 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
 }
 
 
-#ifndef TARG_IA64
+#ifdef KEY
 /////////////////////////////////////
 // Return the set of registers that are reclaimable for <lrange>.  This means
 // finding the set of registers that are already allocated to some other lrange
@@ -922,11 +932,7 @@ LRANGE::Reclaimable_Registers( GRA_REGION* region )
 // <lrange> and other data structures as appropriate
 // (particularly GRA_BBs and GRA_REGIONS.)
 void
-#ifdef TARG_IA64
-LRANGE::Allocate_Register( REGISTER r )
-#else
 LRANGE::Allocate_Register( REGISTER r, BOOL reclaim )
-#endif
 {
   LRANGE_LIVE_GBB_ITER live_gbb_iter;
   LRANGE_GLUE_REF_GBB_ITER glue_gbb_iter;
@@ -941,9 +947,6 @@ LRANGE::Allocate_Register( REGISTER r, BOOL reclaim )
   switch ( Type() ) {
   case LRANGE_TYPE_LOCAL:
     GRA_GRANT_Local_Register(Gbb(),Rc(),r);
-#ifdef TARG_IA64
-    Gbb()->Make_Register_Used((ISA_REGISTER_CLASS) Rc(),r);
-#else
     Gbb()->Make_Register_Used((ISA_REGISTER_CLASS) Rc(), r, NULL, reclaim);
 #ifdef KEY
     // Update the referenced registers.
@@ -951,10 +954,9 @@ LRANGE::Allocate_Register( REGISTER r, BOOL reclaim )
       Gbb()->Make_Register_Referenced(Rc(), r, this);
     }
 #endif
-#endif // TARG_IA64
     break;
   case LRANGE_TYPE_REGION:
-#ifndef TARG_IA64
+#ifdef KEY
     // Need to call Make_Register_Referenced.
     FmtAssert(!GRA_reclaim_register,
 	      ("Allocate_Register: register reclaiming not yet supported "
@@ -973,13 +975,9 @@ LRANGE::Allocate_Register( REGISTER r, BOOL reclaim )
     for (live_gbb_iter.Init(this); ! live_gbb_iter.Done(); live_gbb_iter.Step())
     {
       GRA_BB* gbb = live_gbb_iter.Current();
-#ifdef TARG_IA64
-      gbb->Make_Register_Used(Rc(), r);
-#else
       gbb->Make_Register_Used(Rc(), r, this, reclaim);
-#endif
     }
-#ifndef TARG_IA64
+#ifdef KEY
     // Update the referenced registers.
     if (GRA_reclaim_register) {
       LRANGE_LUNIT_ITER lunit_iter;
@@ -1413,7 +1411,7 @@ LRANGE_CLIST_ITER::Splice( LRANGE* lrange )
     clist->last = lrange;
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 // Insert <lrange> before the current element.  If current element is NULL, add
 // to end of list.
 void
@@ -1536,7 +1534,7 @@ LRANGE::Format( char* buff )
   return buff;
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 /////////////////////////////////////
 // Add an already-built boundary BB to the boundary BBs list.
 void

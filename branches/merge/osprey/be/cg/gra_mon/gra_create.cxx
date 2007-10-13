@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -829,7 +833,7 @@ Create_Live_BB_Sets(void)
 
   GRA_Init_Trace_Memory();
 
-#ifndef TARG_IA64
+#ifdef KEY
   GTN_SET *incoming_GTNs;
   GTN_SET *outgoing_GTNs;
   if (GRA_optimize_boundary) {
@@ -843,7 +847,7 @@ Create_Live_BB_Sets(void)
   for ( bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ) {
     GRA_BB* gbb = gbb_mgr.Get(bb);
 
-#ifndef TARG_IA64
+#ifdef KEY
     if (GRA_optimize_boundary) {
       /*	TODO:  Define GTN_SET_IntersectionR in gtn_set.h.
       GTN_SET_IntersectionR(incoming_GTNs, BB_live_in(bb), BB_defreach_in(bb));
@@ -863,7 +867,7 @@ Create_Live_BB_Sets(void)
     ) {
       if ( TN_Is_Allocatable(tn) ) {
 	lrange_mgr.Get(tn)->Add_Live_BB(gbb);
-#ifndef TARG_IA64
+#ifdef KEY
 	if (GRA_optimize_boundary) {
 	  // The lrange enters the BB.  If the lrange also exits the BB, then
 	  // the BB is an internal BB, else the BB is a boundary BB.  (Ignore
@@ -890,7 +894,7 @@ Create_Live_BB_Sets(void)
 
         lrange->Add_Live_BB(gbb);
 
-#ifndef TARG_IA64
+#ifdef KEY
 	if (GRA_optimize_boundary) {
 	  // The lrange exits the BB.  If the lrange also enters the BB, then
 	  // the BB is an internal BB, else the BB is a boundary BB.  (Ignore
@@ -927,6 +931,10 @@ Create_Live_BB_Sets(void)
 #ifdef TARG_X8664
 	if (gbb->Savexmms() && lrange->Rc() == ISA_REGISTER_CLASS_float)
 	  lrange->Spans_Savexmms_Set();
+	if (gbb->x87_OP())
+	  lrange->Spans_x87_OP_Set();
+	if (gbb->mmx_OP())
+	  lrange->Spans_mmx_OP_Set();
 #endif
       }
     }
@@ -1166,10 +1174,9 @@ Avoid_RA_In_Call_Argument( OP* op )
 {
   INT i;
 
-#ifndef TARG_IA64
   if( RA_TN == NULL )
     return;
-#endif
+
   for ( i = OP_opnds(op) - 1; i >= 0; --i ) {
     LRANGE *lrange = lrange_mgr.Get(OP_opnd(op,i));
 
@@ -1421,6 +1428,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 
   for (iter.Init(gbb), op_count=1; ! iter.Done(); iter.Step(), op_count++ ) {
     OP*  xop = iter.Current();
+
     for ( i = OP_opnds(xop) - 1; i >= 0; --i ) {
       TN *op_tn = OP_opnd(xop, i);
       if (! TN_is_register(op_tn))
@@ -1507,7 +1515,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
       }
     }
 
-#ifndef TARG_IA64
+#ifdef KEY
     // Treat clobbered registers as though they are result registers.
     // Bug 4579.
     if (OP_code(xop) == TOP_asm) {
@@ -1578,7 +1586,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     GRA_PREF_LIVE* gpl_dest = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_dest);
     GRA_PREF_LIVE* gpl_src = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_src);
 
-#ifndef TARG_IA64
+#ifdef KEY
     // Do the same tests as below to see if a preferencing copy is allowed, but
     // do it for dedicated registers.  Bug 4579.
     BOOL allow_copy = TRUE;
@@ -1615,15 +1623,11 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     // we are conservatively assuming that there is a conflict.
     //
     if (gpl_src->Last_Def() < gpl_dest->Last_Def() &&
-#ifdef TARG_IA64
-	!gpl_dest->Exposed_Use() && gpl_dest->Num_Defs() == 1) {
-#else
-      !gpl_dest->Exposed_Use() && gpl_dest->Num_Defs() == 1
+	!gpl_dest->Exposed_Use() && gpl_dest->Num_Defs() == 1
 #ifdef KEY
-        && allow_copy
+	&& allow_copy
 #endif
-        ) {
-#endif
+	) {
 
       //
       // Complement to complement preference.
@@ -1898,11 +1902,10 @@ Add_To_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
-#ifdef TARG_IA64
+
 if ( lrange==NULL ){
   return;
 }
-#endif
   LRANGE* lrange1;
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
@@ -1933,11 +1936,9 @@ Remove_From_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
-#ifdef TARG_IA64
   if ( lrange==NULL ){
     return;
   }
-#endif
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
   LRANGE_SET*         set = live_lrange_sets[rc];

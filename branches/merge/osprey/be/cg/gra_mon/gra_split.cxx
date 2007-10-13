@@ -1,5 +1,5 @@
 /*
- * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
  */
 
 /*
@@ -106,6 +106,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 
 #include <float.h>
 #include <math.h>
+#if 1 // workaround at PathScale for build problem
+#include <float.h>      // FLT_MAX
+#endif
 #include <limits.h>
 
 #include "defs.h"
@@ -143,7 +146,7 @@ extern BOOL fat_self_recursive;
 #endif
 BOOL GRA_split_lranges = TRUE;
 INT GRA_non_split_tn_id = -1;
-#ifndef TARG_IA64
+#ifdef KEY
 BOOL GRA_pu_has_handler = FALSE;
 #endif
 
@@ -268,12 +271,8 @@ Finalize_Priority_Queue(void)
 
 /////////////////////////////////////
 static REGISTER_SET
-#ifdef TARG_IA64
-Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc )
-#else
 Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
-	     BOOL reclaim)
-#endif
+	   BOOL reclaim)
 /////////////////////////////////////
 //
 //  Return the set of registers in <rc> used by <gbb>.  If <gbb> is not in the
@@ -287,7 +286,7 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 //  complement region, and its region contains a call, we'll also add the
 //  caller saves registers.
 //
-#ifndef TARG_IA64
+#ifdef KEY
 //  If GRA_optimize_boundary is TRUE:
 //  Change the semantics of the function to return the registers in <rc> that
 //  are unavailable to hold <tn> in <gbb>.  A register is unavailable only if
@@ -302,7 +301,17 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 {
   REGISTER_SET used  = gbb->Registers_Used(rc);
 
-#ifndef TARG_IA64
+#ifdef TARG_X8664
+  // MMX OP clobbers all x87 registers.
+  if (rc == ISA_REGISTER_CLASS_x87 && gbb->mmx_OP())
+    return REGISTER_CLASS_allocatable(ISA_REGISTER_CLASS_x87);
+
+  // x87 OP clobbers all MMX registers.
+  if (rc == ISA_REGISTER_CLASS_mmx && gbb->x87_OP())
+    return REGISTER_CLASS_allocatable(ISA_REGISTER_CLASS_mmx);
+#endif
+
+#ifdef KEY
   // In the context of this function, USED means not available.  For register
   // reclaiming, a register is not available if it is not reclaimable.
   if (reclaim) {
@@ -333,12 +342,8 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 
   LUNIT*       lunit = gbb_mgr.Split_LUNIT(gbb);
 
-#ifdef TARG_IA64
-  if ( lunit != NULL ) {
-#else
-    if ( lunit != NULL &&
-	 !reclaim) {
-#endif
+  if ( lunit != NULL &&
+       !reclaim) {
     REGISTER_SET allowed_prefs = lunit->Allowed_Preferences();
 
     used = REGISTER_SET_Difference(used,allowed_prefs);
@@ -354,7 +359,7 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 	GTN_SET_MemberP(BB_live_out(gbb->Bb()),tn)) {
       used = REGISTER_SET_Union(used, REGISTER_CLASS_caller_saves(rc));
 #ifdef HAS_STACKED_REGISTERS
-#ifndef TARG_IA64
+#ifdef KEY
       // Figure out how register reclaiming interacts with stack regs.
       FmtAssert(!reclaim,
 		("Regs_Used: reclaiming not yet supported for stack regs"));
@@ -367,7 +372,7 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
     }
   }
   if (BB_mod_rotating_registers(gbb->Bb())) {
-#ifndef TARG_IA64
+#ifdef KEY
     // Figure out how register reclaiming interacts with rotating regs.
     FmtAssert(!reclaim,
 	      ("Regs_Used: reclaiming not yet supported for rotating regs"));
@@ -376,16 +381,13 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
   } else if (BB_mod_pred_rotating_registers(gbb->Bb()) &&
 	   Is_Predicate_REGISTER_CLASS(rc))
     used = REGISTER_SET_Union(used, REGISTER_CLASS_rotating(rc));
+
   return used;
 }
 
 /////////////////////////////////////
 static BOOL
-#ifdef TARG_IA64
-Max_Colorable_LUNIT( LUNIT** result )
-#else
 Max_Colorable_LUNIT( LUNIT** result, BOOL reclaim )
-#endif
 /////////////////////////////////////
 //
 //  Search for the most urgent of split_lrange's LUNITs for which there is an
@@ -411,11 +413,7 @@ Max_Colorable_LUNIT( LUNIT** result, BOOL reclaim )
     // Establish map from blocks with LUNITs to their LUNITs:
     gbb_mgr.Split_LUNIT_Set(lunit->Gbb(), lunit);
 
-#ifdef TARG_IA64
-    regs_used = Regs_Used(tn,lunit->Gbb(),rc);
-#else
     regs_used = Regs_Used(tn,lunit->Gbb(),rc,split_lrange, reclaim);
-#endif
 
     // LUNITs can be present to represent spills/restores at live range
     // split borders.  We want to skip these as seeds of splitting because:
@@ -546,7 +544,7 @@ Check_Interior_Predecessor_Spill_Cost(GRA_BB* gbb, float priority)
   return priority;
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 /////////////////////////////////////
 static void
 Calculate_Interim_Reclaim_Cost(GRA_BB *gbb, BOOL find_spills, float *priority)
@@ -673,11 +671,7 @@ Calculate_Interim_Reclaim_Saving(GRA_BB *gbb, BOOL find_spills, float *priority)
 /////////////////////////////////////
 static void
 Calculate_Interim_Split_Priority(GRA_BB* gbb, INT spills_needed,
-#ifdef TARG_IA64
-				 INT restores_needed)
-#else
-                                 INT restores_needed, BOOL reclaim)
-#endif
+				 INT restores_needed, BOOL reclaim)
 /////////////////////////////////////
 //
 //  determine the priority of the split based on the addition
@@ -820,7 +814,7 @@ Calculate_Interim_Split_Priority(GRA_BB* gbb, INT spills_needed,
     }
   }
 
-#ifndef TARG_IA64
+#ifdef KEY
   // Determine the cost of the reclaim due to the addition of GBB to the
   // reclaimed region.  Similar to the cost of the split, there are four
   // components to the cost of the reclaim:
@@ -851,22 +845,14 @@ Calculate_Interim_Split_Priority(GRA_BB* gbb, INT spills_needed,
 
   gbb->Split_Priority_Set(split_alloc_priority);
   gbb->Split_Spill_Cost_Set(tot_spill_cost);
-#ifdef TARG_IA64
-  GRA_Trace_Split(1,"Split priority after adding BB:%d is %f\n",
-#else
-    GRA_Trace_Split(1,"Split%spriority after adding BB:%d is %f\n",
-      reclaim ? " (with reclaim) " : " ",
-#endif
+  GRA_Trace_Split(1,"Split%spriority after adding BB:%d is %f\n",
+		  reclaim ? " (with reclaim) " : " ",
 		  BB_id(gbb->Bb()), split_alloc_priority);
 }
 
 /////////////////////////////////////
 static void
-#ifdef TARG_IA64
-Add_To_Colorable_Neighborhood( GRA_BB* gbb )
-#else
 Add_To_Colorable_Neighborhood( GRA_BB* gbb, BOOL reclaim )
-#endif
 /////////////////////////////////////
 //
 //  Add <gbb> to alloc_first_gbb, the list of GRA_BB's in the colorable
@@ -889,24 +875,15 @@ Add_To_Colorable_Neighborhood( GRA_BB* gbb, BOOL reclaim )
   flow_iter.Preds_Init(gbb);
   restores_needed = Traverse_Neighbors(&flow_iter,Live_Out);
 
-#ifdef TARG_IA64
-  Calculate_Interim_Split_Priority(gbb, spills_needed, restores_needed);
-#else
   Calculate_Interim_Split_Priority(gbb, spills_needed, restores_needed,
-                                   reclaim);
-#endif
-
+				   reclaim);
 }
 
 /////////////////////////////////////
 static BOOL
 Avoid_Unit_Spill(GRA_BB* gbb, REGISTER_SET allowed_regs,
 		 REGISTER_SET regs_used, REGISTER_SET *loop_allowed,
-#ifdef TARG_IA64
-		 ISA_REGISTER_CLASS rc, GRA_LOOP *maxloop)
-#else
-                 ISA_REGISTER_CLASS rc, GRA_LOOP *maxloop, BOOL reclaim)
-#endif
+		 ISA_REGISTER_CLASS rc, GRA_LOOP *maxloop, BOOL reclaim)
 /////////////////////////////////////
 //
 // if this block is a loop prolog or epilog block, or it is at the
@@ -969,7 +946,6 @@ Avoid_Unit_Spill(GRA_BB* gbb, REGISTER_SET allowed_regs,
 	*loop_allowed = REGISTER_SET_Difference(*loop_allowed,
 						region->Registers_Used(rc));
       } else {
-#ifndef TARG_IA64
 	REGISTER_SET unavailable = gloop->Registers_Used(rc);
 #ifdef KEY
 	// Make the loop-reclaimable registers available.  A register is
@@ -982,10 +958,6 @@ Avoid_Unit_Spill(GRA_BB* gbb, REGISTER_SET allowed_regs,
 	}
 #endif
 	*loop_allowed = REGISTER_SET_Difference(*loop_allowed, unavailable);
-#else
-	*loop_allowed = REGISTER_SET_Difference(*loop_allowed,
-						gloop->Registers_Used(rc));
-#endif
       }
       if (REGISTER_SET_EmptyP(*loop_allowed)) {
 	return(TRUE);
@@ -1031,11 +1003,7 @@ Avoid_Unit_Spill(GRA_BB* gbb, REGISTER_SET allowed_regs,
 
 /////////////////////////////////////
 static INT32
-#ifdef TARG_IA64
-Identify_Max_Colorable_Neighborhood( LUNIT* lunit )
-#else
 Identify_Max_Colorable_Neighborhood( LUNIT* lunit, BOOL reclaim )
-#endif
 /////////////////////////////////////
 //
 //  Starting with <lunit> find a maximal set of colorable connected blocks,
@@ -1084,20 +1052,6 @@ Identify_Max_Colorable_Neighborhood( LUNIT* lunit, BOOL reclaim )
   split_alloc_priority = 0.0;
   tot_spill_cost = 0.0;
   gbb_mgr.Split_Queued_Set(lunit->Gbb());
-#ifdef TARG_IA64
-  Add_To_Colorable_Neighborhood(lunit->Gbb());
-  allowed_regs =
-    REGISTER_SET_Difference(allowed_regs,Regs_Used(tn,lunit->Gbb(),rc));
-
-  while ( GBBPRQ_Size(&gbbprq) > 0 ) {
-    GRA_BB*         gbb       = GBBPRQ_Delete_Top(&gbbprq);
-    REGISTER_SET    regs_used = Regs_Used(tn,gbb,rc);
-    REGISTER_SET    loop_allowed = REGISTER_SET_EMPTY_SET;
-
-    if ( REGISTER_SET_EmptyP(REGISTER_SET_Difference(allowed_regs,regs_used)) ||
-	Avoid_Unit_Spill(gbb, allowed_regs, regs_used, &loop_allowed, rc,
-			 lunit->Gbb()->Loop()) ) {
-#else
   Add_To_Colorable_Neighborhood(lunit->Gbb(), reclaim);
   allowed_regs =
     REGISTER_SET_Difference(allowed_regs,Regs_Used(tn,lunit->Gbb(),rc,
@@ -1111,7 +1065,6 @@ Identify_Max_Colorable_Neighborhood( LUNIT* lunit, BOOL reclaim )
     if (REGISTER_SET_EmptyP(REGISTER_SET_Difference(allowed_regs,regs_used)) ||
 	Avoid_Unit_Spill(gbb, allowed_regs, regs_used, &loop_allowed, rc,
 			 lunit->Gbb()->Loop(), reclaim)) {
-#endif  // TARG_IA64
       border_gbb_list_head = border_gbb_list_head->Split_List_Push(gbb);
       GRA_Trace_Split(1,"BB:%d in deferred border",BB_id(gbb->Bb()));
     }
@@ -1125,11 +1078,7 @@ Identify_Max_Colorable_Neighborhood( LUNIT* lunit, BOOL reclaim )
       } else {
 	allowed_regs = REGISTER_SET_Difference(allowed_regs,regs_used);
       }
-#ifdef TARG_IA64
-      Add_To_Colorable_Neighborhood(gbb);
-#else
       Add_To_Colorable_Neighborhood(gbb, reclaim);
-#endif
       ++count;
     }
   }
@@ -1704,7 +1653,7 @@ Add_Deferred_To_Coloring_List( LRANGE_CLIST_ITER* client_iter )
 {
   LRANGE_CLIST_ITER dup_iter;
 
-#ifndef TARG_IA64
+#ifdef KEY
   for (dup_iter.Init_Following(client_iter);
        !dup_iter.Done();
        dup_iter.Step()) {
@@ -1858,7 +1807,35 @@ Fix_Rot_Reg_Clob_Info( LRANGE* lrange )
   }
 }
 
-#ifndef TARG_IA64
+#ifdef TARG_X8664
+/////////////////////////////////////
+static void
+Fix_x86_Info( LRANGE* lrange )
+/////////////////////////////////////
+//
+// Update x86-specific info about the lrange.
+//
+/////////////////////////////////////
+{
+  // Determine if lrange spans x87 OPs.
+  lrange->Spans_x87_OP_Reset();
+  if (BB_SET_Intersection_Choose(lrange->Live_BB_Set(),
+				 gbb_mgr.Blocks_With_x87_OP())
+      != BB_SET_CHOOSE_FAILURE) {
+    lrange->Spans_x87_OP_Set();
+  }
+
+  // Determine if lrange spans MMX OPs.
+  lrange->Spans_mmx_OP_Reset();
+  if (BB_SET_Intersection_Choose(lrange->Live_BB_Set(),
+				 gbb_mgr.Blocks_With_mmx_OP())
+      != BB_SET_CHOOSE_FAILURE) {
+    lrange->Spans_mmx_OP_Set();
+  }
+}
+#endif
+
+#ifdef KEY
 /////////////////////////////////////
 static void
 Make_Boundary_BBs_At_Border(GRA_BB* border_gbb, GRA_BB* alloc_gbb)
@@ -2142,12 +2119,8 @@ Compare_Priorities(float p1, float p2)
 /////////////////////////////////////
 static BOOL
 LRANGE_Do_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
-#ifdef TARG_IA64
-		LRANGE**           alloc_lrange_p )
-#else
-                LRANGE**           alloc_lrange_p,
-                BOOL reclaim)
-#endif
+		LRANGE**           alloc_lrange_p,
+		BOOL reclaim)
 /////////////////////////////////////
 //  See interface description for LRANGE_Split.
 /////////////////////////////////////
@@ -2171,9 +2144,9 @@ LRANGE_Do_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
 
 #ifdef TARG_IA64
 
-if (fat_self_recursive) return FALSE;
-GRA_Trace_Color_LRANGE("Splitting",lrange);
-#else
+  if (fat_self_recursive) return FALSE;
+  GRA_Trace_Color_LRANGE("Splitting",lrange);
+#endif
 #ifdef KEY // don't split the saved-TNs if PU has any handler entry point
   if (lrange->Tn_Is_Save_Reg() && GRA_pu_has_handler)
     return FALSE;
@@ -2181,15 +2154,10 @@ GRA_Trace_Color_LRANGE("Splitting",lrange);
 
   GRA_Trace_Color_LRANGE(reclaim ? "Splitting (with reclaim)" : "Splitting",
 			 lrange);
-#endif // TARG_IA64
 
   gbb_mgr.Begin_Split();
 
-#ifdef TARG_IA64
-  if ( ! Max_Colorable_LUNIT(&maxlunit) ) {
-#else
   if ( ! Max_Colorable_LUNIT(&maxlunit, reclaim) ) {
-#endif
     return FALSE;
   }
 
@@ -2202,11 +2170,7 @@ GRA_Trace_Color_LRANGE("Splitting",lrange);
 			&split_restore_cost, CGSPILL_GRA);
 
   GRA_Trace_Split_Priority_On("Interim method");
-#ifdef TARG_IA64
-  count = Identify_Max_Colorable_Neighborhood(maxlunit);
-#else
   count = Identify_Max_Colorable_Neighborhood(maxlunit, reclaim);
-#endif
   GRA_Trace_Split_Priority_Off();
   if ( count <= 1 ) {
     return FALSE;
@@ -2232,7 +2196,7 @@ GRA_Trace_Color_LRANGE("Splitting",lrange);
   Fix_TN_Live_Info();
   Rename_TN_References();
 
-#ifndef TARG_IA64
+#ifdef KEY
   if (GRA_optimize_boundary)
     Fix_Boundary_BBs();
 #endif
@@ -2259,6 +2223,10 @@ GRA_Trace_Color_LRANGE("Splitting",lrange);
   Fix_Call_Info(alloc_lrange);
   Fix_Rot_Reg_Clob_Info(deferred_lrange);
   Fix_Rot_Reg_Clob_Info(alloc_lrange);
+#ifdef TARG_X8664
+  Fix_x86_Info(deferred_lrange);
+  Fix_x86_Info(alloc_lrange);
+#endif
 
   if ( Get_Trace(TP_GRA,0x10) )
     Split_Consistency_Check();
@@ -2271,12 +2239,8 @@ GRA_Trace_Color_LRANGE("Splitting",lrange);
 /////////////////////////////////////
 BOOL
 LRANGE_Split(LRANGE* lrange, LRANGE_CLIST_ITER* iter,
-#ifdef TARG_IA64
-	     LRANGE**           alloc_lrange_p)
-#else
-             LRANGE**           alloc_lrange_p,
-             BOOL reclaim)
-#endif
+	     LRANGE**           alloc_lrange_p,
+	     BOOL reclaim)
 /////////////////////////////////////
 //  Wrapper for LRANGE_Do_Split to clean up after
 //  failure.
@@ -2284,11 +2248,7 @@ LRANGE_Split(LRANGE* lrange, LRANGE_CLIST_ITER* iter,
 {
   MEM_POOL_Push(&MEM_local_nz_pool);
 
-#ifdef TARG_IA64
-  BOOL ret_val = LRANGE_Do_Split(lrange, iter, alloc_lrange_p);
-#else
   BOOL ret_val = LRANGE_Do_Split(lrange, iter, alloc_lrange_p, reclaim);
-#endif
   if (!ret_val) {
     *alloc_lrange_p = lrange;
     if (split_lrange->Spans_Infreq_Call()) {
@@ -2306,7 +2266,116 @@ LRANGE_Split(LRANGE* lrange, LRANGE_CLIST_ITER* iter,
   return ret_val;
 }
 
-#ifndef TARG_IA64
+#ifdef TARG_X8664
+/////////////////////////////////////
+static void
+Identify_Mixed_x87_MMX_Neighborhood()
+/////////////////////////////////////
+//
+//  Separate out the BBs in the live range that have a mixture of x87 and MMX
+//  OPs, and those that don't.
+//
+/////////////////////////////////////
+{
+  LRANGE_LIVE_GBB_ITER iter;
+
+  border_gbb_list_head = NULL;
+  alloc_gbb_list_head = NULL;
+
+  // Use the same data structure as for normal splitting, although by "border"
+  // we mean all the BBs that don't have mixed x87 and MMX OPs.  These BBs can
+  // be on the border and beyond.
+  for (iter.Init(split_lrange); ! iter.Done(); iter.Step()) {
+    GRA_BB *gbb = iter.Current();
+    if (gbb->x87_OP() && gbb->mmx_OP()) {
+      gbb_mgr.Split_In_Alloc_LRANGE_Set(gbb);
+      alloc_gbb_list_head = alloc_gbb_list_head->Split_List_Push(gbb);
+    } else {
+      border_gbb_list_head = border_gbb_list_head->Split_List_Push(gbb);
+    }
+  }
+}
+
+/////////////////////////////////////
+BOOL
+LRANGE_Split_Mixed_x87_MMX (LRANGE* lrange, LRANGE_CLIST_ITER* iter,
+			    LRANGE** alloc_lrange_p)
+/////////////////////////////////////
+//
+//  LRANGE is a x87 or MMX live range.  Split out the part containing BBs that
+//  have a mixture of x87 and MMX OPs.  Return it in <alloc_lrange_p>.
+//
+/////////////////////////////////////
+{
+  INT32  count;
+  LUNIT* maxlunit;
+
+  split_lrange = lrange;
+
+  Is_True(split_lrange->Type() == LRANGE_TYPE_COMPLEMENT,
+	  ("LRANGE_Split_And_Localize_x87_MMX: lrange not complement"));
+  Is_True(lrange->Rc() == ISA_REGISTER_CLASS_x87 ||
+	  lrange->Rc() == ISA_REGISTER_CLASS_mmx,
+	  ("LRANGE_Split_And_Localize_x87_MMX: lrange not x87 or MMX"));
+
+  if (lrange->Cannot_Split())
+    return FALSE;
+
+  MEM_POOL_Push(&MEM_local_nz_pool);
+
+  GRA_Trace_Color_LRANGE(
+    lrange->Rc() == ISA_REGISTER_CLASS_x87 ?
+      "Splitting x87 lrange to avoid clobbering MMX registers" :
+      "Splitting MMX lrange to avoid clobbering x87 registers",
+    lrange);
+
+  gbb_mgr.Begin_Split();
+
+  // Establish map from blocks with LUNITs to their LUNITs.
+  LRANGE_LUNIT_ITER lunit_iter;
+  for (lunit_iter.Init(split_lrange); !lunit_iter.Done(); lunit_iter.Step()) {
+    LUNIT *lunit = lunit_iter.Current();
+    gbb_mgr.Split_LUNIT_Set(lunit->Gbb(), lunit);
+  }
+
+  split_lrange = lrange;
+
+  Identify_Mixed_x87_MMX_Neighborhood();
+
+  Divide_LRANGE();
+  iter->Replace_Current(alloc_lrange);
+
+  Add_Spills_And_Restores();
+  Fix_TN_Live_Info();
+  Rename_TN_References();
+
+  if (GRA_optimize_boundary)
+    Fix_Boundary_BBs();
+
+  deferred_lrange->Calculate_Priority();
+  Fix_Interference();
+
+  Add_Deferred_To_Coloring_List(iter);
+  Fix_Call_Info(deferred_lrange);
+  Fix_Rot_Reg_Clob_Info(deferred_lrange);
+  Fix_x86_Info(deferred_lrange);
+
+  Is_True(!(deferred_lrange->Spans_x87_OP() && deferred_lrange->Spans_mmx_OP()),
+	  ("LRANGE_Split_Mixed_x87_MMX: "
+	   "lrange contains both x87 and MMX after splitting"));
+
+  if ( Get_Trace(TP_GRA,0x10) )
+    Split_Consistency_Check();
+
+  *alloc_lrange_p = alloc_lrange;
+
+  MEM_POOL_Pop(&MEM_local_nz_pool);
+
+  return TRUE;
+}
+#endif
+
+#ifdef KEY
 /////////////////////////////////////
 void
 LRANGE_Split_Reclaimed_BBs (LRANGE *lrange, REGISTER reg)

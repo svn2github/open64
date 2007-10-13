@@ -1,5 +1,5 @@
 /*
- * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
  */
 
 /*
@@ -75,7 +75,7 @@ typedef INTERFERE_DEREF *INTERFERE;
 class LRANGE_SET_SUBUNIVERSE;
 class LRANGE_SUBUNIVERSE;
 class GRA_REGION;
-#ifndef TARG_IA64
+#ifdef KEY
 class LRANGE_BOUNDARY_BB;
 #endif
 
@@ -152,6 +152,8 @@ enum LR_FLAG {
   LRANGE_FLAGS_no_appearance = 0x4000, // should not be assigned register
 #ifdef TARG_X8664
   LRANGE_FLAGS_spans_savexmms = 0x8000, // spans the savexmms pseudo-op
+  LRANGE_FLAGS_spans_x87_OP = 0x10000,	// spans x87 OP
+  LRANGE_FLAGS_spans_mmx_OP = 0x20000,	// spans MMX OP
 #endif
 };
 
@@ -186,7 +188,7 @@ private:
   mREGISTER           orig_reg;         // Original register before coloring
                                         //   if there was one (eg for regions)
   LRANGE_TYPE         type:8;
-  LR_FLAG             flags:16;
+  LR_FLAG             flags:24;
   union {
     struct lrange_complement_specific {
       TN*       tn;             // Corresponding to the LRANGE
@@ -204,7 +206,7 @@ private:
       TN*       original_tn;	// original GTN (before any spilling) from which
 				// this lrange was created
       LRANGE*   next_split_list_lrange;
-#ifndef TARG_IA64
+#ifdef KEY
       BB_SET*   internal_bb_set; // to maintain the set of internal BBs in the
 				 // range; it is same as live_bb_set but without
 				 // the boundary bbs
@@ -258,7 +260,7 @@ public:
   REGISTER Orig_Reg(void)	{ return orig_reg; }
   INT32 Priority_Queue_Index(void) { return priority_queue_index; }
   void Priority_Queue_Index_Set(INT32 index) { priority_queue_index = index; }
-#ifndef TARG_IA64
+#ifdef KEY
   BB_SET* Internal_BB_Set(void)	{ return u.c.internal_bb_set; }
   void Clear_Internal_BBs(void)	{ BB_SET_ClearD(u.c.internal_bb_set); }
 
@@ -305,6 +307,13 @@ public:
 #ifdef TARG_X8664
   BOOL Spans_Savexmms(void)	{ return flags & LRANGE_FLAGS_spans_savexmms; }
   void Spans_Savexmms_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_savexmms); }
+
+  BOOL Spans_x87_OP(void)	{ return flags & LRANGE_FLAGS_spans_x87_OP; }
+  void Spans_x87_OP_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_x87_OP); }
+  void Spans_x87_OP_Reset(void)	{ flags = (LR_FLAG)(flags&~LRANGE_FLAGS_spans_x87_OP); }
+  BOOL Spans_mmx_OP(void)	{ return flags & LRANGE_FLAGS_spans_mmx_OP; }
+  void Spans_mmx_OP_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_mmx_OP); }
+  void Spans_mmx_OP_Reset(void)	{ flags = (LR_FLAG)(flags&~LRANGE_FLAGS_spans_mmx_OP); }
 #endif
 
   void Wire_Register(REGISTER r){ flags = (LR_FLAG)(flags|LRANGE_FLAGS_has_wired_register);
@@ -349,25 +358,21 @@ public:
   void Add_LUNIT( LUNIT* lunit );
   void Add_Lunit(  LUNIT* lunit );
   REGISTER_SET Allowed_Registers(GRA_REGION* region);
-#ifndef TARG_IA64
+#ifdef KEY
   REGISTER_SET Reclaimable_Registers(GRA_REGION* region);
 #endif
   BOOL Interferes( LRANGE* lr1 );
   void Region_Interference( LRANGE* lrange1,
 			    GRA_REGION* region );
   void Remove_Neighbor(LRANGE* neighbor, GRA_REGION* region );
-#ifdef TARG_IA64
-  void Allocate_Register( REGISTER reg );
-#else
   void Allocate_Register( REGISTER reg, BOOL reclaim = FALSE );
-#endif
   INT32 Neighbor_Count(void);
   void Calculate_Priority(void);
   BOOL Find_LUNIT_For_GBB( const GRA_BB* gbb, LUNIT** lunitp );
   void Preference_Copy(LRANGE* lrange1, GRA_BB* gbb );
   void Recompute_Preference(void);
   char* Format( char* buff );
-#ifndef TARG_IA64
+#ifdef KEY
   void Add_Internal_BB(GRA_BB *gbb);
   void Remove_Internal_BB(GRA_BB *gbb);
   BOOL Contains_Internal_BB(GRA_BB *gbb);
@@ -514,7 +519,7 @@ public:
 
   void Replace_Current(LRANGE *lrange);
   void Splice(LRANGE *lrange);
-#ifndef TARG_IA64
+#ifdef KEY
   void Push(LRANGE *lrange);
 //                      Insert <lrange> before the current element of <iter>.
 #endif
@@ -588,7 +593,7 @@ public:
   void Step(void)               { current = BB_SET_Choose_Next(set, current); }
 };
 
-#ifndef TARG_IA64
+#ifdef KEY
 class LRANGE_BOUNDARY_BB {
   LRANGE_BOUNDARY_BB*	next;
   LRANGE*		lrange;
@@ -646,8 +651,7 @@ LRANGE_Universe_ID_S( LRANGE* lrange, LRANGE_SET_SUBUNIVERSE* sub ) {
 
 extern LRANGE_MGR lrange_mgr;
 
-
-#ifndef TARG_IA64
+#ifdef KEY
 extern REGISTER_SET Global_Preferenced_Regs(LRANGE* lrange, GRA_BB* gbb);
 #endif
 #endif

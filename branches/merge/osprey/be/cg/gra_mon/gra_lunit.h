@@ -132,7 +132,9 @@ class LUNIT_LRANGE_LIST_ITER;
 class LUNIT_SPILL_LIST_ITER;
 class LRANGE_LUNIT_ITER;
 class LUNIT;
-LUNIT *LUNIT_Create (LRANGE*, GRA_BB*);
+class LRANGE;
+
+extern LUNIT* LUNIT_Create( LRANGE* lrange, GRA_BB* gbb );
 
 class LUNIT {
 friend class LRANGE;

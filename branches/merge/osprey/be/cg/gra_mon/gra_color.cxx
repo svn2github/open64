@@ -94,7 +94,7 @@ static char *rcs_id = "$Source: be/cg/gra_mon/SCCS/s.gra_color.cxx $ $Revision: 
 #include "whirl2ops.h"
 #endif
 
-#ifndef TARG_IA64
+#ifdef KEY
 BOOL GRA_reclaim_register = FALSE;
 #endif
 
@@ -243,11 +243,7 @@ Initialize(void)
 
 /////////////////////////////////////
 static void
-#ifdef TARG_IA64
-Update_Register_Info( LRANGE* lrange, REGISTER reg )
-#else
 Update_Register_Info( LRANGE* lrange, REGISTER reg, BOOL reclaim = FALSE )
-#endif
 /////////////////////////////////////
 //
 //  Update some information assiciated primarily with the register and used
@@ -257,12 +253,11 @@ Update_Register_Info( LRANGE* lrange, REGISTER reg, BOOL reclaim = FALSE )
 {
   ISA_REGISTER_CLASS rc = lrange->Rc();
 
-#ifdef TARG_IA64
-  lrange->Allocate_Register(reg);
-  Update_Reg_Cost(lrange,reg);
-#else
   lrange->Allocate_Register(reg, reclaim);
+#ifdef TARG_IA64
+  Update_Reg_Cost(lrange,reg);
 #endif
+
   if ( lrange->Has_Preference() ) {
     non_prefrenced_regs[rc] =
         REGISTER_SET_Difference1(non_prefrenced_regs[rc],reg);
@@ -380,15 +375,11 @@ Choose_Best_Register(REGISTER* reg, ISA_REGISTER_CLASS rc,
 
 /////////////////////////////////////
 static BOOL
-#ifdef TARG_IA64
-Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region )
-#else
 Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region
 #ifdef KEY
-                   , BOOL reclaim = FALSE
+		   , BOOL reclaim = FALSE
 #endif
-    )
-#endif
+		 )
 /////////////////////////////////////
 //
 //  If one of the registers used by a member of <lrange>'s preference class is
@@ -402,16 +393,12 @@ Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region
     LRANGE* p_lrange = iter.Current();
 
     if ( REGISTER_SET_MemberP(allowed,p_lrange->Reg()) ) {
-#ifdef TARG_IA64
-      Update_Register_Info(lrange, p_lrange->Reg());
-#else
 #ifdef KEY
       if (reclaim) {
-        LRANGE_Split_Reclaimed_BBs(lrange, p_lrange->Reg());
+	LRANGE_Split_Reclaimed_BBs(lrange, p_lrange->Reg());
       }
 #endif
       Update_Register_Info(lrange, p_lrange->Reg(), reclaim);
-#endif
       GRA_Trace_Preference_Attempt(lrange, p_lrange, region, TRUE);
       return TRUE;
     }
@@ -423,15 +410,11 @@ Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region
 
 /////////////////////////////////////
 static BOOL
-#ifdef TARG_IA64
-Choose_Avoiding_Neighbor_Preferences( LRANGE* lrange, REGISTER_SET allowed )
-#else
-  Choose_Avoiding_Neighbor_Preferences( LRANGE* lrange, REGISTER_SET allowed
+Choose_Avoiding_Neighbor_Preferences( LRANGE* lrange, REGISTER_SET allowed
 #ifdef KEY
-					, BOOL reclaim = FALSE
+				      , BOOL reclaim = FALSE
 #endif
-					)
-#endif
+				    )
 /////////////////////////////////////
 //
 //  Try to find a register for <lrange> in the <allowed> set that is preferred
@@ -475,18 +458,13 @@ Choose_Avoiding_Neighbor_Preferences( LRANGE* lrange, REGISTER_SET allowed )
 
   if (Choose_Best_Register(&reg, rc, allowed,
 			   REGISTER_Has_Stacked_Registers(rc),
-#ifdef TARG_IA64
-			   (!lrange->Spans_A_Call() || lrange->Spans_Infreq_Call()))) {
-    Update_Register_Info(lrange,reg);
-#else
-    !(lrange->Spans_A_Call() || lrange->Spans_Infreq_Call()))) {
+			   !(lrange->Spans_A_Call() || lrange->Spans_Infreq_Call()))) {
 #ifdef KEY
-  if (reclaim) {
-    LRANGE_Split_Reclaimed_BBs(lrange, reg);
-  }
+    if (reclaim) {
+      LRANGE_Split_Reclaimed_BBs(lrange, reg);
+    }
 #endif
-  Update_Register_Info(lrange, reg, reclaim);
-#endif
+    Update_Register_Info(lrange, reg, reclaim);
     return TRUE;
   }
 
@@ -517,7 +495,6 @@ Allocate_Stacked_Register(LRANGE* lrange)
   } else {
     abi_property = ABI_PROPERTY_caller;
   }
- 
   REGISTER reg = REGISTER_Request_Stacked_Register(abi_property,
 						   lrange->Rc());
   if (reg != REGISTER_UNDEFINED) {
@@ -525,6 +502,7 @@ Allocate_Stacked_Register(LRANGE* lrange)
     return TRUE;
   }
 
+#ifdef TARG_IA64
   if (abi_property == ABI_PROPERTY_caller)
     reg = REGISTER_Request_Stacked_Register(ABI_PROPERTY_callee,
                                             lrange->Rc());
@@ -533,22 +511,18 @@ Allocate_Stacked_Register(LRANGE* lrange)
     Update_Register_Info(lrange, reg);
   return TRUE;
 }
-
+#endif // TARG_IA64
 #endif
   return FALSE;
 }
 
 /////////////////////////////////////
 static BOOL
-#ifdef TARG_IA64
-Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed )
-#else
-  Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed
+Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed
 #ifdef KEY
-    , BOOL reclaim = FALSE
+			  , BOOL reclaim = FALSE
 #endif
-    )
-#endif
+			)
 /////////////////////////////////////
 //
 //  See if there is a register in 'allowed' that is not yet the preference of
@@ -563,18 +537,13 @@ Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed )
   allowed = REGISTER_SET_Intersection(allowed,npr);
   if ( Choose_Best_Register(&reg,rc,allowed,
 			    REGISTER_Has_Stacked_Registers(rc),
-#ifdef TARG_IA64
-			    (!lrange->Spans_A_Call() || lrange->Spans_Infreq_Call())) ) {
-    Update_Register_Info(lrange,reg);
-#else
-    (lrange->Spans_A_Call() || lrange->Spans_Infreq_Call())) ) {
+			    (lrange->Spans_A_Call() || lrange->Spans_Infreq_Call())) ) {
 #ifdef KEY
-  if (reclaim) {
-    LRANGE_Split_Reclaimed_BBs(lrange, reg);
-  }
+    if (reclaim) {
+      LRANGE_Split_Reclaimed_BBs(lrange, reg);
+    }
 #endif
-  Update_Register_Info(lrange, reg, reclaim);
-#endif
+    Update_Register_Info(lrange, reg, reclaim);
     return TRUE;
   }
   return FALSE;
@@ -582,14 +551,10 @@ Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed )
 
 /////////////////////////////////////
 static BOOL
-#ifdef TARG_IA64
-Choose_Anything( LRANGE* lrange, REGISTER_SET allowed )
-#else
-  Choose_Anything( LRANGE* lrange, REGISTER_SET allowed
+Choose_Anything( LRANGE* lrange, REGISTER_SET allowed
 #ifdef KEY
-    , BOOL reclaim = FALSE
-    )
-#endif
+		 , BOOL reclaim = FALSE
+	       )
 #endif
 /////////////////////////////////////
 //
@@ -604,23 +569,19 @@ Choose_Anything( LRANGE* lrange, REGISTER_SET allowed )
 
   if ( Choose_Best_Register(&reg,rc,allowed, has_stacked,
 			    !(lrange->Spans_A_Call() || lrange->Spans_Infreq_Call())) ) {
-#ifdef TARG_IA64
-    Update_Register_Info(lrange,reg);
-#else
 #ifdef KEY
-if (reclaim) {
-LRANGE_Split_Reclaimed_BBs(lrange, reg);
-}
+    if (reclaim) {
+      LRANGE_Split_Reclaimed_BBs(lrange, reg);
+    }
 #endif
-Update_Register_Info(lrange, reg, reclaim);
-#endif
+    Update_Register_Info(lrange, reg, reclaim);
     return TRUE;
   }
 
   //
   // If stacked registers are available, try to get a new one.
   //
-#ifndef TARG_IA64
+#ifdef KEY
   if (!reclaim)
 #endif
   if (has_stacked && Allocate_Stacked_Register(lrange)) {
@@ -632,16 +593,12 @@ Update_Register_Info(lrange, reg, reclaim);
   // could have been used to satisfy a preference).
   //
   if (Choose_Best_Register(&reg,rc,allowed, FALSE, FALSE)) {
-#ifdef TARG_IA64
-    Update_Register_Info(lrange,reg);
-#else
 #ifdef KEY
-if (reclaim) {
-LRANGE_Split_Reclaimed_BBs(lrange, reg);
-}
+    if (reclaim) {
+      LRANGE_Split_Reclaimed_BBs(lrange, reg);
+    }
 #endif
-Update_Register_Info(lrange, reg, reclaim);
-#endif
+    Update_Register_Info(lrange, reg, reclaim);
     return TRUE;
   }
 
@@ -693,8 +650,7 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
 #else
   GRA_Trace_LRANGE_Choose(lrange, allowed);
 #endif
-
-#if defined(HAS_STACKED_REGISTERS) && !defined(TARG_IA64)  
+#ifdef HAS_STACKED_REGISTERS
   if (REGISTER_SET_EmptyP(allowed) ) {
     //
     // Try to get a stacked register.
@@ -811,19 +767,15 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
   // so simple of a choice, particularly in the general purpose registers
   // with the register stack.
   //
-#ifdef TARG_IA64
-  if (GRA_local_forced_max == DEFAULT_FORCED_LOCAL_MAX) {
-#else
   if (GRA_LOCAL_FORCED_MAX(rc) == DEFAULT_FORCED_LOCAL_MAX) {
-#endif
     INT rc_size = (REGISTER_CLASS_last_register(rc) - REGISTER_MIN) + 1;
-#ifndef TARG_IA64
+#ifdef KEY
     rc_local_forced_max = GRA_LOCAL_FORCED_MAX(rc);
 #else
     rc_local_forced_max = Min(GRA_LOCAL_FORCED_MAX(rc), rc_size/8);
 #endif
   } else {
-#ifdef TARG_IA64 // cannot use this code because with user-assigned registers via
+#ifndef KEY // cannot use this code because with user-assigned registers via
 	// asm("reg-name"), there will be less allocatable registers resulting
 	// in 0 register granted to LRA (bug 3663)
     INT rc_size = REGISTER_SET_Size(REGISTER_CLASS_allocatable(rc));
@@ -831,30 +783,20 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
      /* There are not enough registers in this class to support this option. */
       return;
     }
-#ifdef TARG_IA64
-    if (rc_size < GRA_local_forced_max*2) {
-#else
-      if (rc_size < GRA_LOCAL_FORCED_MAX(rc)*2) {
-#endif
+    if (rc_size < GRA_LOCAL_FORCED_MAX(rc)*2) {
      /* Don't allow a request for more than half of the available registers. */
       rc_local_forced_max = rc_size/2;
     } else {
 #endif
-
-#ifdef TARG_IA64
-      rc_local_forced_max = GRA_local_forced_max;
-    }
-#else
       rc_local_forced_max = GRA_LOCAL_FORCED_MAX(rc);
-#endif // TARG_IA64
+#ifndef KEY
+    }
+#endif
   }
   
   for (iter.Init(region); ! iter.Done(); iter.Step()) {
     INT i;
     GRA_BB* gbb = iter.Current();
-#ifdef TARG_IA64
-    for ( i = Min(gbb->Register_Girth(rc),rc_local_forced_max);
-#else
     INT regs_to_grant = Min(gbb->Register_Girth(rc),rc_local_forced_max);
 #ifdef TARG_X8664
     // Give the special-purpose registers refereneced in the BB to LRA.  On the
@@ -873,7 +815,6 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
     }
 #endif
     for ( i = regs_to_grant;
-#endif // TARG_IA64
           i > 0;
           --i
     ) {
@@ -914,22 +855,18 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
           || Choose_Best_Register(&reg,rc,allowed,FALSE,FALSE)
       ) {
         gbb->Make_Register_Used(rc,reg);
-#ifndef TARG_IA64
+#ifdef KEY
 	if (GRA_reclaim_register)
 	  gbb->Make_Register_Referenced(rc, reg);
 #endif
         GRA_GRANT_Local_Register(gbb,rc,reg);
       }
       else {
-#ifdef TARG_IA64
-        DevWarn("Couldn't force allocate %d registers in rc %d for BB:%d",
-                i,rc,BB_id(gbb->Bb()));
-#endif
 #ifdef TARG_X8664
-        if( Is_Target_64bit() ){
-          DevWarn("Couldn't force allocate %d registers in rc %d for BB:%d",
-                  i,rc,BB_id(gbb->Bb()));
-        }
+	if( Is_Target_64bit() ){
+	  DevWarn("Couldn't force allocate %d registers in rc %d for BB:%d",
+		  i,rc,BB_id(gbb->Bb()));
+	}
 #endif
         break;
       }
@@ -937,7 +874,7 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
   }
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 //  Reclaim registers ...
 //////////////////////////////////////////////////////////////////////////
 //
@@ -1107,7 +1044,7 @@ Simplify_Initialize( GRA_REGION* region, ISA_REGISTER_CLASS rc,
       lr->Neighbors_Left_Initialize();
       lr->Calculate_Priority();
 
-#ifdef TARG_IA64 // for key, leave ready queue empty; rank purely based on priority
+#ifndef KEY // for key, leave ready queue empty; rank purely based on priority
       if ( lr->Neighbors_Left() < lr->Candidate_Reg_Count() ) {
         LRPRQ_Insert(ready,lr);
         lrange_mgr.One_Set_Union1(lr);
@@ -1141,7 +1078,7 @@ Simplify( GRA_REGION* region, ISA_REGISTER_CLASS rc, LRANGE_CLIST* cl )
   MEM_POOL_Push(&prq_pool);
   Simplify_Initialize(region,rc,cl,&pcl,&ready,&not_ready);
 
-#ifdef TARG_IA64 // for key, leave ready queue empty; rank purely based on priority
+#ifndef KEY // for key, leave ready queue empty; rank purely based on priority
   for (;;) {
     if ( LRPRQ_Size(&ready) != 0 )
       lr = LRPRQ_Delete_Top(&ready);
@@ -1496,7 +1433,7 @@ GRA_Color_Complement( GRA_REGION* region )
       // hosed.  we'll definitely get bad code if we've got these kind
       // of bogus frequencies, but its better than incorrect code.
       //
-#ifndef TARG_IA64
+#ifdef KEY
       if (lr->Priority() < 0.0F && !lr->Has_Wired_Register() && !Must_Split(lr)
 	  || lr->No_Appearance()) {
         GRA_Note_Spill(lr);
@@ -1526,7 +1463,7 @@ GRA_Color_Complement( GRA_REGION* region )
       // be successful due to high register pressure.  The code is fully
       // implemented but requires more testing.
       else if (GRA_reclaim_register &&
-	       Choose_Reclaimable_Register(split_alloc_lr, region))
+	       Choose_Reclaimable_Register(split_alloc_lr, region)) {
 	priority_count += lr->Priority();
       }
 #endif
@@ -1543,7 +1480,7 @@ GRA_Color_Complement( GRA_REGION* region )
       } else {
 	GRA_Note_Spill(split_alloc_lr);
       }
-#else	// TARG_IA64
+#else	// KEY
       if (lr->Priority() < 0.0F && !lr->Has_Wired_Register() && !Must_Split(lr)
 	  || lr->No_Appearance()) {
         GRA_Note_Spill(lr);
@@ -1551,7 +1488,6 @@ GRA_Color_Complement( GRA_REGION* region )
                  (!lr->Tn_Is_Save_Reg() ||
                   !REGISTER_SET_MemberP(REGISTER_CLASS_callee_saves(lr->Rc()),TN_save_reg(lr->Tn()))) &&
 		 LRANGE_Split(lr, &iter, &split_alloc_lr)) {
-
 	BOOL did_choose = Choose_Register(split_alloc_lr, region);
 	FmtAssert(did_choose,("Failed to choose a register for a split across infreq call of %s",
 			      split_alloc_lr->Format(buff)));
