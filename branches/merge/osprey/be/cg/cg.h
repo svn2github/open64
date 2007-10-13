@@ -62,7 +62,7 @@ extern BOOL GRA_optimize_restore_b0_ar_pfs;
 extern BOOL GRA_optimize_restore_ar_lc;
 extern BOOL EBO_data_spec;
 #endif
-#ifndef TARG_IA64
+#ifdef KEY
 extern BOOL PU_Has_Exc_Handler;
 #endif
 
