@@ -3291,7 +3291,6 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
           return lwn;
 #endif
 
-#ifdef KEY
 	/* (a-b) >= 0 ? (a-b) : (b-a) => abs(a-b) */
         if( ( WN_operator(test) == OPR_GT ||
 	      WN_operator(test) == OPR_GE ) &&
@@ -3311,6 +3310,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 	  }
 	}
 
+#ifdef TARG_X8664
 	/* Handle saturation arithmetic SUB operator by converting it 
 	 * to an intrinsic 
 	 * x =  (y >= 0x8000) ? y - 0x8000 : 0; 
@@ -7377,7 +7377,8 @@ vho_lower_if ( WN * wn, WN *block )
   BOOL        emit_join_label;
   WN        * rcomma_block;
 
-#ifdef KEY
+  WN* test = WN_if_test(wn);
+#ifdef TARG_X8664
   /* Handle saturation arithmetic SUB operator by converting it 
    * to an intrinsic 
    * if (y >= 0x8000)
@@ -7386,7 +7387,6 @@ vho_lower_if ( WN * wn, WN *block )
    *   x = 0;
    */
 
-  WN* test = WN_if_test(wn);  
   if ( WN_operator(test) == OPR_GT &&
        WN_rtype(test) == MTYPE_I4 &&
        WN_desc(test) == MTYPE_U4 &&
@@ -7436,6 +7436,9 @@ vho_lower_if ( WN * wn, WN *block )
     }
   }
 
+#endif // TARG_X8664
+
+#ifdef KEY
   // If-Convert:
   //   if <compare>
   //     a[i] = <expr>
