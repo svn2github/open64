@@ -3678,8 +3678,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	    fprintf(asm_file, "\t%s 0x%llx", reloc_name, (unsigned long long)ofst);
 	else
 #endif // KEY
-	 //fprintf(asm_file, " + 0x%llx", (unsigned long long)ofst);
-         ;
+	 fprintf(asm_file, " + 0x%llx", (unsigned long long)ofst);
       }
       fprintf(asm_file, "\n");
       cur_byte += current_reloc_size;

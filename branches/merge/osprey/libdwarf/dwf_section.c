@@ -308,25 +308,11 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	    data += a_bytes;
 	}
 
-//#ifdef TARG_IA64
-	// personality format
-	db = Personality_Format;
-	WRITE_UNALIGNED(dbg, (void *)data, (const void *)&db,
-			sizeof(db), sizeof(Dwarf_Ubyte));
-	data += sizeof(Dwarf_Ubyte);
-	// personality routine offset
-//#endif
 	if (personality) {
 	    // bug 9177: Emit personality format only if there is
 	    // personality information.
 	    //
 	    // personality format
-//#ifndef TARG_IA64
-	    db = Personality_Format;
-	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&db,
-			    sizeof(db), sizeof(Dwarf_Ubyte));
-	    data += sizeof(Dwarf_Ubyte);
-//#endif
 	    // personality routine offset
 	    Dwarf_Unsigned p = 0;
 	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&p,
@@ -342,7 +328,7 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	    data += sizeof(Dwarf_Ubyte);
 	}
 	if (generate_fpic_dwarf) {
-	    // fde encoding
+	    // FDE encoding should be added for all languages (bug 12323).
 	    Dwarf_Unsigned p = 0x1b;
 	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&p,
 			    sizeof(p), sizeof(Dwarf_Ubyte));
@@ -604,7 +590,6 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	    memcpy((void *)data, (const void *)afl_buff, afl_length);
     	    data += afl_length;
     	}
-
 	curinst = curfde->fde_inst;
 	while (curinst) {
 	    db = curinst->dfp_opcode;
