@@ -210,6 +210,7 @@ extern BOOL WOPT_Enable_Prop_Aggressive;/* use inverse function to avoid
 extern BOOL WOPT_Enable_Prop_Ivar;	/* copy propagation thru iload's */
 extern BOOL WOPT_Enable_Prop_CSE;       /* copy propagation of CSE expressions */
 extern INT32 WOPT_Enable_Prop_Limit;	/* tree height limit in copy prop */
+extern INT32 WOPT_Enable_Prop_Weight_Limit;  /* tree weight limit in copy prop */
 #ifdef KEY
 extern BOOL  WOPT_Enable_Prop_Dope;	/* propagate dope vector fields? */
 #endif
