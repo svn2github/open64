@@ -65,6 +65,14 @@
 #include <deque>
 #include <ext/hash_map>
 #include "fb_whirl.h"
+#include "wn_map.h"
+#include "ir_reader.h"
+#include "glob.h"
+
+#define SAMPLE_PROFILE 1
+#ifdef SAMPLE_PROFILE
+extern WN_MAP wn_sample_map;
+#endif
 
 // ====================================================================
 // FB_NODEX     -- Nodes are numbered from 0 upwards
@@ -106,7 +114,18 @@ struct FB_NODE {
   INT                 unexact_in;
   INT                 unexact_out;
 
+#ifdef SAMPLE_PROFILE
+  INT                 num_stmts;
+  INT                 total_samples;
+  INT                 count;
+#endif
+
   FB_NODE() :
+#ifdef SAMPLE_PROFILE
+    num_stmts(0),
+    total_samples(0),
+    count(0),
+#endif
     one_edge_preds( true ),
     one_edge_succs( true ),
     undelayed_succs( 0),
@@ -122,6 +141,11 @@ struct FB_NODE {
 
   FB_NODE( FB_EDGE_TYPE type, WN *src, bool same,
 	   FB_FREQ freq_in, FB_FREQ freq_out ) :
+#ifdef SAMPLE_PROFILE
+    num_stmts(0),
+    total_samples(0),
+    count(0),
+#endif
     one_edge_preds( true ),
     one_edge_succs( true ),
     undelayed_succs( 0 ),
@@ -159,6 +183,41 @@ struct FB_NODE {
       fprintf( fp, " %d", succs[t] );
     fprintf( fp, " ]\n");
   }
+
+  void Print_VCG( FILE *fp, FB_NODEX nx) const {
+    char buffer[FB_EDGE_TYPE_NAME_LENGTH];
+    FB_EDGE_TYPE_sprintf( buffer, node_type );
+#ifdef SAMPLE_PROFILE
+    fprintf(fp, "node: {title: \"%d\" label: \"%d  %d(%d:%d)\" info1: \"",
+            nx, nx, count, total_samples, num_stmts);
+#else
+    fprintf(fp, "node: {title: \"%d\" label: \"%d ", nx, nx);
+    freq_total_in.Print( fp );
+    fprintf(fp, ":");
+    freq_total_out.Print( fp );
+    fprintf(fp, "\" info1: \"");
+#endif
+
+    fprintf(fp, "%s\" info2:\"", buffer);
+    if (source) {
+#ifdef SAMPLE_PROFILE
+      SRCPOS srcpos = WN_Get_Linenum(source);
+      fdump_wn(fp, source);
+#endif
+      fprintf(fp, "%s:%d", Src_File_Name, Srcpos_To_Line(srcpos));
+    }
+    else
+      fprintf(fp, "?");
+
+    fprintf(fp, "\" }\n");
+    // Create edges
+    int i;
+    for (i = 0; i < succs.size(); ++i)
+    {
+      fprintf(fp, "edge: {sourcename: \"%d\" targetname: \"%d\" }\n", nx, succs[i]);
+    }
+  }
+
 };
 
 struct FB_EDGE_DELAYED {  // Destination is a label instead of a node
@@ -194,6 +253,10 @@ private:
   bool _trace_draw;   // Get_Trace(TP_FEEDBACK, TP_FEEDBACK_CFG_DRAW)
   bool _trace_before; // Get_Trace(TP_FEEDBACK, TP_FEEDBACK_CFG_BEFORE)
   bool _trace_prop;   // Get_Trace(TP_FEEDBACK, TP_FEEDBACK_CFG_PROP)
+
+#ifdef SAMPLE_PROFILE
+  bool _is_feedback_initialized;  // True after Initialise_Feedback is called
+#endif
 
   // vectors containing all nodes, indexed by FB_NODEX
   vector< FB_NODE, mempool_allocator<FB_NODE> > _nodes;
@@ -248,15 +311,27 @@ private:
   void Freq_propagate_node_out( FB_NODEX nx );
   void Freq_propagate();
 
+#ifdef SAMPLE_PROFILE
+  void Initialize_node_counts();
+  void Adjust_all_edge_freq();
+  BOOL Adjust_edge_freq_node_in (FB_NODEX nx);
+  BOOL Adjust_edge_freq_node_out (FB_NODEX nx);
+#endif
+
   char *Node_label( FB_NODEX nx ) const;
 
 public:
 
   FB_CFG() :
+#if 0
     _trace(        Get_Trace( TP_FEEDBACK, TP_FEEDBACK_CFG ) ),
     _trace_draw(   Get_Trace( TP_FEEDBACK, TP_FEEDBACK_CFG_DRAW ) ),
     _trace_before( Get_Trace( TP_FEEDBACK, TP_FEEDBACK_CFG_BEFORE ) ),
     _trace_prop(   Get_Trace( TP_FEEDBACK, TP_FEEDBACK_CFG_PROP ) ),
+#endif
+#ifdef SAMPLE_PROFILE
+    _is_feedback_initialized (false),
+#endif
     _nodes( mempool_allocator<FB_NODE>(&_m) ),
     _lblx_to_nx( 100, __gnu_cxx::hash<LABEL_IDX>(), std::equal_to<LABEL_IDX>(),
 		 mempool_allocator< pair<LABEL_IDX,FB_NODEX> >(&_m) ),
@@ -266,11 +341,15 @@ public:
   ~FB_CFG() {}
 
   void Construct_from_whirl( WN *wn_root, const char *caller );
+#ifdef SAMPLE_PROFILE
+  void Initialize_Feedback();
+#endif
   void Guess_unknowns( WN *wn_root, const char *caller );
   FB_VERIFY_STATUS Verify_frequencies() const;
   void Patch_whirl_frequencies() const;
 
   void Print( FILE *fp ) const;
+  void Print_VCG( FILE *fp , char * func_name) const;
   void Print_node( FILE *fp, FB_NODEX nx ) const;
   void Print_edge( FILE *fp, FB_NODEX src_nx, FB_NODEX dst_nx ) const;
   void Draw() const;

@@ -1030,6 +1030,43 @@ FEEDBACK::Query_total_out( const WN *wn ) const
 // ====================================================================
 // Annot_* functions store feedback data
 // ====================================================================
+#ifdef SAMPLE_PROFILE
+void
+FEEDBACK::Annot_sample_invoke( WN *wn, const FB_Info_Invoke& fb_info )
+{
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
+  Is_True( _invokes.size() == fb_index,
+           ("FEEDBACK::Annot_sample_invoke(%p) - unexpected index %d", wn, fb_index));
+  _invokes.push_back(fb_info);
+}
+
+void
+FEEDBACK::Annot_sample_branch( WN *wn, const FB_Info_Branch& fb_info )
+{
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
+  Is_True( _branches.size() == fb_index,
+           ("FEEDBACK::Annot_sample_branch(%p) - unexpected index %d", wn, fb_index));
+  _branches.push_back(fb_info);
+}
+
+void
+FEEDBACK::Annot_sample_loop( WN *wn, const FB_Info_Loop& fb_info )
+{
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
+  Is_True( _loops.size() == fb_index,
+           ("FEEDBACK::Annot_sample_loop(%p) - unexpected index %d", wn, fb_index));
+  _loops.push_back(fb_info);
+}
+
+void
+FEEDBACK::Annot_sample_circuit( WN *wn, const FB_Info_Circuit& fb_info )
+{
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
+  Is_True( _circuits.size() == fb_index,
+           ("FEEDBACK::Annot_sample_circuit(%p) - unexpected index %d", wn, fb_index));
+  _circuits.push_back(fb_info);
+}
+#endif
 
 void
 FEEDBACK::Annot_invoke( WN *wn, const FB_Info_Invoke& fb_info )

@@ -79,6 +79,8 @@
 #include "DaVinci.h"      // for DaVinci viewer (for FB CFG).
 #include "wb_util.h"      // more: move this to another file (gwe).
 
+//#define SAMPLE_PROFILE 1
+
 // ====================================================================
 
 FB_NODEX
@@ -100,6 +102,23 @@ FB_CFG::New_node( FB_EDGE_TYPE node_type, WN *source, FB_FREQ freq_total_in,
   _nodes.push_back(new_node);
   return new_nodex;
 }
+
+#ifdef SAMPLE_PROFILE
+void
+FB_CFG::Initialize_node_counts()
+{
+  FB_NODEX nx;
+  INT num_nodes = _nodes.size();
+  for ( nx = 0; nx < num_nodes; ++nx ) {
+    if (_nodes[nx].num_stmts > 0)
+      _nodes[nx].count = _nodes[nx].total_samples / _nodes[nx].num_stmts;
+    else
+      _nodes[nx].count = _nodes[nx].total_samples;
+    _nodes[nx].freq_total_out = _nodes[nx].freq_total_in =
+        FB_FREQ(FB_FREQ_TYPE_GUESS, (float) _nodes[nx].count);
+  }
+}
+#endif
 
 /*
  * Adjust_edge, it is used to prevent critical edge happen in fb cfg
@@ -240,6 +259,180 @@ FB_CFG::Complete_delayed_edges()
   }
 }
 
+#ifdef SAMPLE_PROFILE
+void
+FB_CFG::Initialize_Feedback()
+{
+  FB_NODEX nx = 0;
+  INT invoke_count = 0;
+  INT branch_count = 0;
+  INT loop_count = 0;
+  INT circuit_count = 0;
+  INT num_nodes = _nodes.size();
+
+  while (nx < num_nodes)
+  {
+    WN *wn = _nodes[nx].source;
+
+    if ((wn == NULL) || WN_MAP32_Get(WN_MAP_FEEDBACK, wn) != 0)
+    {
+      nx++;
+      continue;
+    }
+
+    if (FB_valid_opr_invoke(wn))
+    {
+       invoke_count++;
+       WN_MAP32_Set(WN_MAP_FEEDBACK, wn, invoke_count);
+       FB_EDGE_TYPE node_type = _nodes[nx].node_type;
+       Is_True( node_type == FB_EDGE_INCOMING ||
+                node_type == FB_EDGE_OUTGOING ||
+                node_type == FB_EDGE_ENTRY_OUTGOING,
+                ("FB_CFG::Initialize_Feedback:: unknown node type found for opr invoke"));
+
+       FB_FREQ invoke_count((float) _nodes[nx].count);
+       FB_Info_Invoke fb_invoke(invoke_count);
+       Cur_PU_Feedback->Annot_sample_invoke(wn, fb_invoke);
+    }
+    else if (FB_valid_opr_branch(wn))
+    {
+       branch_count++;
+       WN_MAP32_Set(WN_MAP_FEEDBACK, wn, branch_count);
+       FB_NODEX nx_then = nx;
+       Is_True (nx_then < num_nodes && _nodes[nx_then].node_type == FB_EDGE_BRANCH_TAKEN,
+                ("FB_CFG::Initialize_Feedback:: OPR BRANCH - mismatch for FB_EDGE_BRANCH_TAKEN node"));
+       //Is_True (_nodes[nx_then].preds.size() == 1,
+       //         ("FB_CFG::Initialize_Feedback:: OPR_IF - > 1 pred for FB_EDGE_BRANCH_TAKEN node"));
+
+       FB_NODEX nx_else = nx + 1;
+       Is_True (nx_else < num_nodes && _nodes[nx_else].node_type == FB_EDGE_BRANCH_NOT_TAKEN,
+                ("FB_CFG::Initialize_Feedback:: OPR BRANCH - mismatch for FB_EDGE_BRANCH_NOT_TAKEN node"));
+       //Is_True (_nodes[nx_else].preds.size() == 1,
+       //         ("FB_CFG::Initialize_Feedback:: OPR_IF - > 1 pred for FB_EDGE_BRANCH_NOT_TAKEN node"));
+
+       FB_FREQ taken((float) _nodes[nx_then].count);
+       FB_FREQ not_taken((float) _nodes[nx_else].count);
+       FB_Info_Branch fb_branch(taken, not_taken);
+       Cur_PU_Feedback->Annot_sample_branch(wn, fb_branch);
+       nx = nx_else;
+    }
+    else if (FB_valid_opr_circuit(wn))
+    {
+      circuit_count++;
+      WN_MAP32_Set(WN_MAP_FEEDBACK, wn, circuit_count);
+      FB_NODEX nx_left = nx;
+      FB_NODEX nx_right = nx;
+      FB_NODEX nx_neither = nx;
+
+      FB_EDGE_TYPE node_type = _nodes[nx_left].node_type;
+      Is_True( node_type == FB_EDGE_CIRCUIT_LEFT,
+              ("FB_CFG::Initialize_Feedback:: OPR CIRCUIT - expected to see FB_EDGE_CIRCUIT_LEFT"));
+      //Is_True( _nodes[nx_left].preds.size() == 1,
+      //         ("FB_CFG::Initialize_Feedback:: OPR CIRCUIT - FB_EDGE_CIRCUIT_LEFT node has > 1 pred"));
+
+      // Search for corresponding nx_right and nx_neither nodes
+      for (FB_NODEX nx_tmp = nx + 1; nx_tmp < num_nodes; ++nx_tmp)
+      {
+        if (_nodes[nx_tmp].node_type == FB_EDGE_CIRCUIT_RIGHT && _nodes[nx_tmp].source == wn)
+          nx_right = nx_tmp;
+        else if (_nodes[nx_tmp].node_type == FB_EDGE_CIRCUIT_NEITHER && _nodes[nx_tmp].source == wn)
+          nx_neither = nx_tmp;
+
+        if (nx_right != nx && nx_neither != nx)
+          break;
+      }
+
+      if (nx_right != nx && nx_neither != nx)
+      {
+        node_type = _nodes[nx_right].node_type;
+        Is_True( node_type == FB_EDGE_CIRCUIT_RIGHT,
+                ("FB_CFG::Initialize_Feedback:: OPR CIRCUIT - expected to see FB_EDGE_CIRCUIT_RIGHT"));
+        Is_True( _nodes[nx_right].preds.size() == 1,
+                 ("FB_CFG::Initialize_Feedback:: OPR CIRCUIT - FB_EDGE_CIRCUIT_RIGHT node has > 1 pred"));
+        node_type = _nodes[nx_neither].node_type;
+        Is_True( node_type == FB_EDGE_CIRCUIT_NEITHER,
+                ("FB_CFG::Initialize_Feedback:: OPR CIRCUIT - expected to see FB_EDGE_CIRCUIT_NEITHER"));
+      //Is_True( _nodes[nx_neither].preds.size() == 1,
+      //         ("FB_CFG::Initialize_Feedback:: OPR CIRCUIT - FB_EDGE_CIRCUIT_NEITHER node has > 1 pred"));
+
+        FB_FREQ left((float) _nodes[nx_left].count);
+        FB_FREQ right((float) _nodes[nx_right].count);
+        FB_FREQ neither((float) _nodes[nx_neither].count);
+        FB_Info_Circuit fb_circuit(left, right, neither);
+        Cur_PU_Feedback->Annot_sample_circuit(wn, fb_circuit);
+        if (nx_neither == nx + 3)
+          nx = nx_neither;
+      }
+    }
+    else if (FB_valid_opr_loop(wn))
+    {
+       OPERATOR opr = WN_operator(wn);
+
+       // See diagram in fb_info.h for feedback info for loops
+       switch (opr)
+       {
+         case OPR_DO_LOOP:
+         case OPR_WHILE_DO:
+         {
+           loop_count++;
+           WN_MAP32_Set(WN_MAP_FEEDBACK, wn, loop_count);
+           // This should be the nx_body
+           FB_EDGE_TYPE node_type = _nodes[nx].node_type;
+           Is_True( node_type == FB_EDGE_LOOP_ITERATE,
+                    ("FB_CFG::Initialize_Feedback:: OPR_DO_LOOP - expected to see FB_EDGE_LOOP_ITERATE"));
+           FB_NODEX nx_next = nx + 1;
+           node_type = _nodes[nx_next].node_type;
+           Is_True( node_type == FB_EDGE_LOOP_EXIT,
+                    ("FB_CFG::Initialize_Feedback:: OPR_DO_LOOP - expected to see FB_EDGE_LOOP_EXIT"));
+
+           FB_FREQ exit((float) _nodes[nx_next].count);
+           FB_FREQ iterate((float) _nodes[nx].count);
+           FB_Info_Loop fb_loop(exit, iterate);
+           Cur_PU_Feedback->Annot_sample_loop(wn, fb_loop);
+           nx = nx_next;
+           break;
+         }
+
+         case OPR_DO_WHILE:
+         {
+           FB_FREQ zero(0.0);
+           loop_count++;
+           WN_MAP32_Set(WN_MAP_FEEDBACK, wn, loop_count);
+           // This should be the nx_pos (nx count is sum of positive and back counts)
+           FB_EDGE_TYPE node_type = _nodes[nx].node_type;
+           Is_True( node_type == FB_EDGE_LOOP_POSITIVE,
+                    ("FB_CFG::Initialize_Feedback:: OPR_DO_WHILE - expected to see FB_EDGE_LOOP_POSITIVE"));
+           Is_True( _nodes[nx].preds.size() == 1,
+                    ("FB_CFG::Initialize_Feedback:: OPR_DO_WHILE - node has > 1 pred"));
+           FB_NODEX nx_body = nx + 1;
+           node_type = _nodes[nx_body].node_type;
+           Is_True( _nodes[nx_body].preds.size() == 2 && _nodes[nx_body].preds[0] == nx,
+                    ("FB_CFG::Initialize_Feedback:: OPR_DO_WHILE - expected 2 preds for nx_body"));
+           FB_NODEX nx_back = _nodes[nx_body].preds[1];
+           FB_NODEX nx_next = nx_back + 1;
+           FB_FREQ out((float) _nodes[nx_next].count);
+           FB_NODEX nx_test = _nodes[nx].preds[0];
+           FB_FREQ positive((float) _nodes[nx_test].count);
+           FB_FREQ iterate((float)_nodes[nx].count);
+           FB_FREQ back = iterate - positive;
+           FB_Info_Loop fb_loop(zero, positive, out, back);
+           Cur_PU_Feedback->Annot_sample_loop(wn, fb_loop);
+           nx = nx_body;
+           break;
+         }
+
+         default:
+           Is_True(FALSE, ("FB_CFG::Initialize_Feedback:: Unexpected Loop opr"));
+           break;
+        }
+     }
+     nx++;
+  }
+
+  _is_feedback_initialized = true;
+}
+#endif
+
 // ====================================================================
 // The following methods construct a cfg from the given whirl tree.
 // Expressions containing CALLS, CAND and CIOR are lowered in order to
@@ -274,9 +467,14 @@ FB_CFG::Walk_WN_expression( WN *wn )
   case OPR_CIOR:
     {
       FB_FREQ freq_left, freq_right, freq_neither;
+      // SAMPLE FEEDBACK CHANGES
+#ifdef S0 //SAMPLE_PROFILE
+      freq_left = freq_right = freq_neither = FB_FREQ_UNINIT;
+#else
       freq_left    = Cur_PU_Feedback->Query( wn, FB_EDGE_CIRCUIT_LEFT    );
       freq_right   = Cur_PU_Feedback->Query( wn, FB_EDGE_CIRCUIT_RIGHT   );
       freq_neither = Cur_PU_Feedback->Query( wn, FB_EDGE_CIRCUIT_NEITHER );
+#endif
 
       // Walk through the left test expression
       FB_NODEX nx_left = New_node( FB_EDGE_CIRCUIT_LEFT, wn, freq_left );
@@ -320,8 +518,14 @@ FB_CFG::Walk_WN_expression( WN *wn )
   case OPR_CSELECT:
     {
       FB_FREQ freq_then, freq_else;
+
+      // SAMPLE FEEDBACK CHANGES
+#ifdef S0 //SAMPLE_PROFILE
+      freq_then = freq_else = FB_FREQ_UNINIT;
+#else
       freq_then = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_TAKEN     );
       freq_else = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_NOT_TAKEN );
+#endif
 
       // Walk through the test expression
       FB_NODEX nx_then = New_node( FB_EDGE_BRANCH_TAKEN, wn, freq_then );
@@ -351,7 +555,10 @@ FB_CFG::Walk_WN_expression( WN *wn )
   case OPR_VFCALL:
   case OPR_PICCALL:
   case OPR_INTRINSIC_CALL:
+  {
 
+    // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
     if ( Cur_PU_Feedback->Same_in_out( wn ) ) {
 
       // Walk through the parameters
@@ -366,8 +573,12 @@ FB_CFG::Walk_WN_expression( WN *wn )
       Set_curr( nx_next );
 
     } else { // not Same_in_out
-
+      // SAMPLE FEEDBACK CHANGES
       FB_FREQ freq_entry = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INCOMING );
+//#else
+//      FB_FREQ freq_entry = FB_FREQ_UNINIT;
+//#endif
+
       FB_NODEX nx_next = New_node( FB_EDGE_CALL_INCOMING, wn, freq_entry );
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_next );
@@ -377,12 +588,21 @@ FB_CFG::Walk_WN_expression( WN *wn )
       for ( INT t = 0; t < WN_kid_count(wn); ++t )
 	Walk_WN_expression( WN_kid( wn, t ) );
 
+      // SAMPLE FEEDBACK CHANGES
+//#ifdef SAMPLE_PROFILE
+//      FB_FREQ freq_exit = FB_FREQ_UNINIT;
+//#else
       FB_FREQ freq_exit  = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_OUTGOING );
+//#endif
       nx_next = New_node( FB_EDGE_CALL_OUTGOING, wn,
 			  FB_FREQ_UNKNOWN, freq_exit );
       Add_edge( Curr(), nx_next );
       Set_curr( nx_next );
+
+//#ifndef SAMPLE_PROFILE
     }
+//#endif
+  }
     break;
 
   default:
@@ -415,9 +635,14 @@ FB_CFG::Walk_WN_test_expression( WN *wn, FB_NODEX nx_true, FB_NODEX nx_false )
       }
 
       FB_FREQ freq_left, freq_right, freq_neither;
+#ifdef S0 //SAMPLE_PROFILE
+      freq_left = freq_right = freq_neither = FB_FREQ_UNINIT;
+#else
+      // SAMPLE FEEDBACK CHANGES
       freq_left    = Cur_PU_Feedback->Query( wn, FB_EDGE_CIRCUIT_LEFT    );
       freq_right   = Cur_PU_Feedback->Query( wn, FB_EDGE_CIRCUIT_RIGHT   );
       freq_neither = Cur_PU_Feedback->Query( wn, FB_EDGE_CIRCUIT_NEITHER );
+#endif
 
       // Walk through the left test expression
       FB_NODEX nx_left = New_node( FB_EDGE_CIRCUIT_LEFT, wn, freq_left );
@@ -449,8 +674,13 @@ FB_CFG::Walk_WN_test_expression( WN *wn, FB_NODEX nx_true, FB_NODEX nx_false )
   case OPR_CSELECT:
     {
       FB_FREQ freq_then, freq_else;
+#ifdef S0 //SAMPLE_PROFILE
+      freq_then = freq_else = FB_FREQ_UNINIT;
+      // SAMPLE FEEDBACK CHANGES
+#else
       freq_then = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_TAKEN     );
       freq_else = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_NOT_TAKEN );
+#endif
 
       // Walk through the test expression
       FB_NODEX nx_then = New_node( FB_EDGE_BRANCH_TAKEN, wn, freq_then );
@@ -509,6 +739,14 @@ FB_CFG::Walk_WN_statement( WN *wn )
   WN       *wn2;
   static bool _in_preamble = FALSE;
 
+#ifdef SAMPLE_PROFILE
+  if ( FB_NODEX_VALID( Curr() ) )
+  {
+    FB_NODE *cur_node = &(_nodes[Curr()]);
+    cur_node->total_samples += WN_MAP64_Get(wn_sample_map, wn);
+    cur_node->num_stmts++;
+  }
+#endif
 
   // Skip preamble (not instrumented).
   if ( _in_preamble )
@@ -521,8 +759,11 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_FUNC_ENTRY:
     {
       // Node for FUNC_ENTRY and start of body
-      FB_FREQ freq_default =
-	Cur_PU_Feedback->Query( wn, FB_EDGE_ENTRY_OUTGOING );
+      FB_FREQ freq_default = FB_FREQ_UNINIT;
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
+      freq_default = Cur_PU_Feedback->Query( wn, FB_EDGE_ENTRY_OUTGOING );
+//#endif
       FB_NODEX nx_next = New_node( FB_EDGE_ENTRY_OUTGOING, wn,
 				   FB_FREQ_ZERO, freq_default );
       Set_curr( nx_next );
@@ -549,8 +790,11 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_ALTENTRY:
     {
       // Node for ALTENTRY and start of body
-      FB_FREQ freq_default =
-	Cur_PU_Feedback->Query( wn, FB_EDGE_ENTRY_OUTGOING );
+      FB_FREQ freq_default = FB_FREQ_UNINIT;
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
+      freq_default = Cur_PU_Feedback->Query( wn, FB_EDGE_ENTRY_OUTGOING );
+//#endif
       FB_NODEX nx_next = New_node( FB_EDGE_ENTRY_OUTGOING, wn,
 				   FB_FREQ_ZERO, freq_default );
       Set_curr( nx_next );
@@ -564,8 +808,11 @@ FB_CFG::Walk_WN_statement( WN *wn )
     if ( WN_pragma(wn) == WN_PRAGMA_PREAMBLE_END ) {
 
       // Node for preamble end PRAGMA
-      FB_FREQ freq_default =
-	Cur_PU_Feedback->Query( wn, FB_EDGE_OUTGOING );
+      FB_FREQ freq_default = FB_FREQ_UNINIT;
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
+      freq_default = Cur_PU_Feedback->Query( wn, FB_EDGE_OUTGOING );
+//#endif
       FB_NODEX nx_next = New_node( FB_EDGE_INCOMING, wn, freq_default );
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_next );
@@ -591,9 +838,13 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_DO_LOOP:
     {
       FB_FREQ freq_exit, freq_iterate;
+      // SAMPLE FEEDBACK CHANGES
+//#ifdef SAMPLE_PROFILE
+      freq_exit = freq_iterate = FB_FREQ_UNINIT;
+//#else
       freq_exit    = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_EXIT );
       freq_iterate = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_ITERATE );
-
+//#endif
       // Walk through the start of the loop
       Walk_WN_statement( WN_start(wn) );
 
@@ -619,6 +870,10 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_DO_WHILE:
     {
       FB_FREQ freq_zero, freq_positive, freq_out, freq_back;
+      // SAMPLE FEEDBACK CHANGES
+#ifdef S0 //SAMPLE_PROFILE
+      freq_zero = freq_positive = freq_out = freq_back = FB_FREQ_UNINIT;
+#else
       freq_zero     = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_ZERO );
       freq_positive = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_POSITIVE );
       freq_out      = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_OUT );
@@ -626,6 +881,7 @@ FB_CFG::Walk_WN_statement( WN *wn )
       Is_True( freq_zero.Zero() || ! freq_zero.Known(),
 	       ("FB_CFG::Walk_WN_statement: DO_WHILE freq_zero == %f nonzero",
 		freq_zero.Value()) );
+#endif
 
       // Walk through body of DO_WHILE
       FB_NODEX nx_pos  = New_node( FB_EDGE_LOOP_POSITIVE, wn, freq_positive );
@@ -648,8 +904,13 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_WHILE_DO:
     {
       FB_FREQ freq_exit, freq_iterate;
+      // SAMPLE FEEDBACK CHANGES
+#ifdef S0 //SAMPLE_PROFILE
+      freq_exit = freq_iterate = FB_FREQ_UNINIT;
+#else
       freq_exit    = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_EXIT );
       freq_iterate = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_ITERATE );
+#endif
 
       // Walk through the test expression
       FB_NODEX nx_test = New_node();
@@ -672,8 +933,13 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_IF:
     {
       FB_FREQ freq_then, freq_else;
+      // SAMPLE FEEDBACK CHANGES
+#ifdef S0 //SAMPLE_PROFILE
+      freq_then = freq_else = FB_FREQ_UNINIT;
+#else
       freq_then = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_TAKEN     );
       freq_else = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_NOT_TAKEN );
+#endif
 
       // Walk through the test expression
       FB_NODEX nx_then = New_node( FB_EDGE_BRANCH_TAKEN,     wn, freq_then );
@@ -704,8 +970,11 @@ FB_CFG::Walk_WN_statement( WN *wn )
 
   case OPR_GOTO:
     {
-      FB_FREQ freq_branch =
-	Cur_PU_Feedback->Query( wn, FB_EDGE_OUTGOING );
+      FB_FREQ freq_branch = FB_FREQ_UNINIT;
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
+	freq_branch = Cur_PU_Feedback->Query( wn, FB_EDGE_OUTGOING );
+//#endif
       FB_NODEX nx_next = New_node( FB_EDGE_OUTGOING, wn, freq_branch );
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_next );
@@ -726,7 +995,7 @@ FB_CFG::Walk_WN_statement( WN *wn )
       INT32    count    = 0;
       OPERATOR br_opr   = (opr == OPR_SWITCH ? OPR_CASEGOTO : OPR_GOTO);
       FB_NODEX nx_target;
-      FB_FREQ freq_branch;
+      FB_FREQ freq_branch = FB_FREQ_UNINIT;
 
       // Walk through expression
       Walk_WN_expression(WN_kid0(wn));
@@ -736,7 +1005,10 @@ FB_CFG::Walk_WN_statement( WN *wn )
 	Is_True( WN_operator(wn2) == br_opr,
 		 ( "XGOTO/COMPGOTO/SWITCH: expected %s, found %s",
 		   OPERATOR_name(br_opr), OPERATOR_name( WN_operator(wn2)) ) );
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
 	freq_branch = Cur_PU_Feedback->Query( wn, FB_EDGE_SWITCH( count ) );
+//#endif
 
 	nx_target = New_node( FB_EDGE_SWITCH( count ), wn, freq_branch );
 	
@@ -756,7 +1028,11 @@ FB_CFG::Walk_WN_statement( WN *wn )
 	Is_True( WN_operator(wn2) == OPR_GOTO,
 		 ( "COMPGOTO/SWITCH blk, expected GOTO" ) );
 
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
 	freq_branch = Cur_PU_Feedback->Query( wn, FB_EDGE_SWITCH_DEFAULT );
+//#endif
+
 	nx_target = New_node( FB_EDGE_SWITCH_DEFAULT, wn, freq_branch );
         if ( FB_NODEX_VALID( Curr() ) )
 	  Add_edge( Curr(), nx_target );
@@ -773,8 +1049,13 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_FALSEBR:
     {
       FB_FREQ freq_branch, freq_default;
+      // SAMPLE FEEDBACK CHANGES
+#ifdef S0 //SAMPLE_PROFILE
+      freq_branch = freq_default = FB_FREQ_UNINIT;
+#else
       freq_branch  = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_TAKEN     );
       freq_default = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_NOT_TAKEN );
+#endif
 
       // Walk through the test expression
       FB_NODEX nx_branch = New_node( FB_EDGE_BRANCH_TAKEN, wn, freq_branch );
@@ -794,8 +1075,11 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_RETURN:
   case OPR_RETURN_VAL:
     {
-      FB_FREQ freq_default =
-	Cur_PU_Feedback->Query( wn, FB_EDGE_INCOMING );
+      FB_FREQ freq_default = FB_FREQ_UNINIT;
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
+	freq_default = Cur_PU_Feedback->Query( wn, FB_EDGE_INCOMING );
+//#endif
       FB_NODEX nx_next = New_node( FB_EDGE_INCOMING, wn,
 				   freq_default, FB_FREQ_ZERO );
       if ( FB_NODEX_VALID( Curr() ) )
@@ -806,7 +1090,12 @@ FB_CFG::Walk_WN_statement( WN *wn )
 
   case OPR_LABEL:
     {
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
       FB_FREQ freq = Cur_PU_Feedback->Query( wn, FB_EDGE_INCOMING );
+//#else
+//      FB_FREQ freq = FB_FREQ_UNINIT;
+//#endif
       FB_NODEX nx_next = New_node( FB_EDGE_INCOMING, wn, freq );
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_next );
@@ -820,23 +1109,31 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_VFCALL:
   case OPR_PICCALL:
   case OPR_INTRINSIC_CALL:
+    {
 
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
     if ( Cur_PU_Feedback->Same_in_out( wn ) ) {
+//#endif
 
       // Walk through the parameters
       for ( INT t = 0; t < WN_kid_count(wn); ++t )
 	Walk_WN_expression( WN_kid( wn, t ) );
 
+//#ifndef SAMPLE_PROFILE
       FB_FREQ freq = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INOUTSAME );
+//#else
+//      FB_FREQ freq = FB_FREQ_UNINIT;
+//#endif
 
       FB_NODEX nx_next = New_node( FB_EDGE_CALL_INOUTSAME, wn, freq );
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_next );
       Set_curr( nx_next );
 
+//#ifndef SAMPLE_PROFILE
     } else { // not Same_in_out
-
-      FB_FREQ freq_entry = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INCOMING );
+      FB_FREQ freq_entry =  Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INCOMING );
       FB_NODEX nx_next = New_node( FB_EDGE_CALL_INCOMING, wn, freq_entry );
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_next );
@@ -846,11 +1143,16 @@ FB_CFG::Walk_WN_statement( WN *wn )
       for ( INT t = 0; t < WN_kid_count(wn); ++t )
 	Walk_WN_expression( WN_kid( wn, t ) );
 
-      FB_FREQ freq_exit  = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_OUTGOING );
+      // SAMPLE FEEDBACK CHANGES
+      FB_FREQ freq_exit  = FB_FREQ_UNINIT; // Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_OUTGOING );
+      freq_exit  = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_OUTGOING );
+
       nx_next = New_node( FB_EDGE_CALL_OUTGOING, wn,
 			  FB_FREQ_UNKNOWN, freq_exit );
       Add_edge( Curr(), nx_next );
       Set_curr( nx_next );
+     }
+//#endif
     }
     break;
 
@@ -860,6 +1162,8 @@ FB_CFG::Walk_WN_statement( WN *wn )
     {
       // Prepare the incoming node
       FB_FREQ freq_escape = FB_FREQ_UNINIT;
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
       if ( Cur_PU_Feedback->Same_in_out( wn ) ) {
 
 	freq_escape = FB_FREQ_ZERO;
@@ -869,13 +1173,20 @@ FB_CFG::Walk_WN_statement( WN *wn )
 	}
 
       } else {  // not Same_in_out
-
-	FB_FREQ freq_entry = Cur_PU_Feedback->Query( wn,
-						     FB_EDGE_CALL_INCOMING );
+//#endif
+        {
+      // SAMPLE FEEDBACK CHANGES
+	FB_FREQ freq_entry =  FB_FREQ_UNINIT;
+//#ifndef SAMPLE_PROFILE
+        freq_entry = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INCOMING );
+//#endif
 	FB_NODEX nx_next = New_node( FB_EDGE_CALL_INCOMING, wn, freq_entry );
 	if ( FB_NODEX_VALID( Curr() ) )
 	  Add_edge( Curr(), nx_next );
 	Set_curr( nx_next );
+//#ifndef SAMPLE_PROFILE
+      }
+//#endif
       }
 
       // Sometimes there are branches out of IO
@@ -895,6 +1206,8 @@ FB_CFG::Walk_WN_statement( WN *wn )
       }
 
       // Handle the outgoing node
+      // SAMPLE FEEDBACK CHANGES
+//#ifndef SAMPLE_PROFILE
       if ( Cur_PU_Feedback->Same_in_out( wn ) ) {
 
 	FB_FREQ freq = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INOUTSAME );
@@ -904,13 +1217,20 @@ FB_CFG::Walk_WN_statement( WN *wn )
 	Set_curr( nx_next );
 
       } else { // not Same_in_out
+//#endif
+        {
 
-	FB_FREQ freq_exit = Cur_PU_Feedback->Query( wn,
-						    FB_EDGE_CALL_OUTGOING );
+	FB_FREQ freq_exit = FB_FREQ_UNINIT;
+//#ifndef SAMPLE_PROFILE
+        freq_exit = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_OUTGOING );
+//#endif
 	FB_NODEX nx_next = New_node( FB_EDGE_CALL_OUTGOING, wn, freq_exit );
 	Add_edge( Curr(), nx_next );
 	Set_curr( nx_next );
-      }
+        }
+//#ifndef SAMPLE_PROFILE
+       }
+//#endif
     }
     break;
 
@@ -933,8 +1253,10 @@ FB_CFG::Walk_WN_statement( WN *wn )
 	Walk_WN_expression( WN_kid( wn, t ) );
 
       // Node for MSTORE
-      FB_FREQ freq_default =
-	Cur_PU_Feedback->Query( wn, FB_EDGE_OUTGOING );
+      FB_FREQ freq_default = FB_FREQ_UNINIT;
+//#ifndef SAMPLE_PROFILE
+      freq_default = Cur_PU_Feedback->Query( wn, FB_EDGE_OUTGOING );
+//#endif
       FB_NODEX nx_next = New_node( FB_EDGE_OUTGOING, wn, freq_default );
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_next );
@@ -1011,6 +1333,229 @@ FB_CFG::Patch_whirl_frequencies() const
 // ====================================================================
 // Frequency propagation
 // ====================================================================
+
+#ifdef SAMPLE_PROFILE
+
+#define MAX_NUM_ITER    5000
+void
+FB_CFG::Adjust_all_edge_freq()
+{
+  FB_NODEX nx;
+  BOOL change1 = FALSE;
+  BOOL change2 = FALSE;
+  BOOL change = FALSE;
+  INT num_nodes = _nodes.size();
+  INT num_iter = 0;
+
+  do
+  {
+    for ( nx = 0; nx < num_nodes; ++nx ) {
+      change1 = Adjust_edge_freq_node_in(nx);
+      change2 = Adjust_edge_freq_node_out(nx);
+      if (change1 || change2)
+        change = TRUE;
+    }
+    num_iter++;
+  } while (change && num_iter < MAX_NUM_ITER);
+
+  printf("\nNUM ITER = %d\n", num_iter);
+}
+
+
+BOOL
+FB_CFG::Adjust_edge_freq_node_in(FB_NODEX nx)
+{
+  FB_NODE& node = _nodes[nx];
+
+  INT num_preds = node.preds.size();
+
+  if (num_preds == 0)
+    return FALSE;
+
+  if (node.one_edge_preds)  // Every predecessor has no other successor
+  {
+    if (num_preds == 1)
+    {
+      FB_NODE& pred_node = _nodes[node.preds[0]];
+      // Make pred_node count and current node count consistent
+      if (pred_node.count != node.count)
+      {
+        if ((node.num_stmts == 0) && node.count == 0)
+        {
+	  Is_True( pred_node.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_in[%d]"
+		     " pred_node count is negative!! value = %d", nx, pred_node.count) );
+          node.count = pred_node.count;
+          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) pred_node.count);
+          return TRUE;
+        }
+        else if ((pred_node.num_stmts == 0) && pred_node.count == 0)
+        {
+	  Is_True( node.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_in[%d]"
+		     " node count is negative!! value = %d", nx, node.count) );
+          pred_node.count = node.count;
+          pred_node.freq_total_in = pred_node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) node.count);
+          return TRUE;
+        }
+        else
+        {
+	  Is_True( pred_node.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_in[%d]"
+		     " pred_node count is negative!! value = %d", nx, pred_node.count) );
+
+	  Is_True( node.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_in[%d]"
+		     " node count is negative!! value = %d", nx, node.count) );
+          pred_node.count = node.count = (pred_node.count + node.count) / 2;
+          pred_node.freq_total_in = pred_node.freq_total_out =
+            node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) node.count);
+          return TRUE;
+        }
+      }
+      return FALSE;
+    }
+    else
+    {
+      INT sum_count = 0;
+      for (INT t = 0; t < num_preds; t++)
+      {
+        FB_NODE& pred_nx = _nodes[node.preds[t]];
+	Is_True( pred_nx.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_in[nx%d]"
+		     " pred_nx %d count is negative!! value: %d", nx, t, pred_nx.count ) );
+        sum_count += pred_nx.count;
+      }
+      if (node.count < sum_count)
+      {
+          node.count = sum_count;
+          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) sum_count);
+          return TRUE;
+      }
+      else if ((node.count > sum_count) && sum_count > 0)
+      {
+        // Divide the excess count between the preds based on current pred
+        // count ratios
+        INT excess_count = node.count - sum_count;
+        INT new_sum = 0;
+        for (INT t = 0; t < num_preds; t++)
+        {
+          FB_NODE& pred_nx = _nodes[node.preds[t]];
+          float ratio = pred_nx.count/sum_count;
+          pred_nx.count = pred_nx.count + (int) (excess_count * ratio);
+	  Is_True( pred_nx.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_in[nx%d]"
+		     " pred_nx %d count is negative!! value: %d", nx, t, pred_nx.count ) );
+          pred_nx.freq_total_in = pred_nx.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) pred_nx.count);
+          new_sum += pred_nx.count;
+        }
+        // Make counts consistent
+        node.count = new_sum;
+        node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) new_sum);
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL
+FB_CFG::Adjust_edge_freq_node_out(FB_NODEX nx)
+{
+  FB_NODE& node = _nodes[nx];
+  INT num_succs = node.succs.size();
+
+  if (num_succs == 0)
+    return FALSE;
+
+  if (node.one_edge_succs)  // Every successor has no other predecessor
+  {
+    if (num_succs == 1)
+    {
+      FB_NODE& succ_node = _nodes[node.succs[0]];
+      // Make succ_node count and current node count consistent
+      if (succ_node.count != node.count)
+      {
+        if ((node.num_stmts == 0) && node.count == 0)
+        {
+          node.count = succ_node.count;
+	  Is_True( succ_node.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_out[%d]"
+		     " succ_node count is negative!! value: %d", nx, succ_node.count) );
+          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) succ_node.count);
+          return TRUE;
+        }
+        else if ((succ_node.num_stmts == 0) && succ_node.count == 0)
+        {
+	  Is_True( node.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_out[%d]"
+		     " node count is negative!! value: %d", nx, node.count) );
+          succ_node.count = node.count;
+          succ_node.freq_total_in = succ_node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) node.count);
+          return TRUE;
+        }
+        else
+        {
+	  Is_True( succ_node.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_out[%d]"
+		     " succ_node count is negative!! value: %d", nx, succ_node.count) );
+
+	  Is_True( node.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_out[%d]"
+		     " node count is negative : value = %d!!", nx, node.count) );
+          succ_node.count = node.count = (succ_node.count + node.count) / 2;
+          succ_node.freq_total_in = succ_node.freq_total_out =
+            node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) node.count);
+          return TRUE;
+        }
+      }
+      return FALSE;
+    }
+    else
+    {
+      INT sum_count = 0;
+      for (INT t = 0; t < num_succs; t++)
+      {
+        FB_NODE& succ_nx = _nodes[node.succs[t]];
+	Is_True( succ_nx.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_out[nx%d]"
+		     " succ_nx %d count is negative!! value: %d", nx, t, succ_nx.count ) );
+        sum_count += succ_nx.count;
+      }
+      if (node.count < sum_count)
+      {
+          node.count = sum_count;
+          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) sum_count);
+          return TRUE;
+      }
+      else if ((node.count > sum_count) && sum_count > 0)
+      {
+        // Divide the excess count between the succs based on current succ
+        // count ratios
+        INT excess_count = node.count - sum_count;
+        INT new_sum = 0;
+        for (INT t = 0; t < num_succs; t++)
+        {
+          FB_NODE& succ_nx = _nodes[node.succs[t]];
+          float ratio = succ_nx.count/sum_count;
+          succ_nx.count = succ_nx.count + (int) (excess_count * ratio);
+	  Is_True( succ_nx.count >= 0,
+		   ( "FB_CFG::Adjust_edge_freq_node_out[nx%d]"
+		     " succ_nx %d count is negative!! value: %d", nx, t, succ_nx.count ) );
+          succ_nx.freq_total_in = succ_nx.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) succ_nx.count);
+          new_sum += succ_nx.count;
+        }
+        // Make counts consistent
+        node.count = new_sum;
+        node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) new_sum);
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
+
+}
+#endif
 
 // For node nx, compare the sum of the incoming edge frequencies with
 // freq_total_in.  Propagate any frequency data that can be computed
@@ -1632,6 +2177,10 @@ FB_CFG::Guess_unknowns( WN *wn_root, const char *caller )
 FB_VERIFY_STATUS
 FB_CFG::Verify_frequencies() const
 {
+#ifdef SAMPLE_PROFILE
+  return FB_VERIFY_UNBALANCED;
+#endif
+
   if ( _trace )
     fprintf( TFile, "FB_CFG::Verify_frequencies:\n" );
 
@@ -1831,12 +2380,47 @@ FB_CFG::Construct_from_whirl( WN *wn_root, const char *caller )
     Print( TFile );
   }
 
+  char       *func_name   = "<unknown func>";
+
+  if ( wn_root && WN_operator( wn_root ) == OPR_FUNC_ENTRY ) {
+    func_name = ST_name( WN_entry_name( wn_root ) );
+  }
+
+  char buffer[80];
+  static bool done_print_vcg = FALSE;
+  FILE *fp;
+
+  if (!done_print_vcg)
+  {
+#ifdef SAMPLE_PROFILE
+  Initialize_node_counts();
+  sprintf(buffer, "%s_sample.vcg", func_name);
+#else
+  sprintf(buffer, "%s.vcg", func_name);
+#endif
+  fp = fopen(buffer, "w");
+  Print_VCG(fp, func_name);
+  fclose(fp);
+  }
+
   if ( _trace_draw && _trace_before )
     dV_view_fb_cfg( *this, wn_root, title );
 
+#ifndef SAMPLE_PROFILE
   // (3) Compute unknown edge frequencies by propagating known values
   Freq_propagate();
+#else
+  Adjust_all_edge_freq();
+  sprintf(buffer, "%s_sample_adj.vcg", func_name);
+  if (!done_print_vcg)
+  {
+  fp = fopen(buffer, "w");
+  Print_VCG(fp, func_name);
+  fclose(fp);
+  }
+#endif
 
+  done_print_vcg = TRUE;
   if ( _trace || _trace_draw )
     sprintf( title, "FB_CFG for %s after propagation", caller );
 
@@ -1887,6 +2471,29 @@ FB_CFG::Print( FILE *fp ) const
     _nodes[nx].Print( fp, nx );
   }
 }
+
+void
+FB_CFG::Print_VCG ( FILE * fp, char *func_name ) const
+{
+  // Print header
+  fprintf(fp, "graph: {title: \"Call-Graph annotated with basic block counts for function %s\"\n\n", func_name);
+
+  fprintf(fp, "node.color: lightyellow\n");
+  fprintf(fp, "node.textcolor: blue\n");
+  fprintf(fp, "edge.color: blue\n");
+  fprintf(fp, "edge.arrowsize: 15\n");
+  fprintf(fp, "edge.thickness: 4\n");
+  fprintf(fp, "stretch: 43\n");
+  fprintf(fp, "shrink: 100\n");
+
+  for ( FB_NODEX nx = 0; nx < _nodes.size(); ++nx ) {
+    _nodes[nx].Print_VCG( fp, nx );
+  }
+
+  fprintf(fp, "\n\n}\n");
+
+}
+
 
 class FB_Callback : public DaVinci_Callback {
 private:

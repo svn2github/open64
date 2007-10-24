@@ -63,6 +63,7 @@
 #include <dirent.h>
 #include <libgen.h>
 
+#include "fb_cfg.h"
 #include "defs.h"
 #include "dso.h"		    /* for load_so() */
 #include "errors.h"		    /* Set_Error_Tables(), etc. */
@@ -135,6 +136,7 @@
 #include "output_func_start_profiler.h"
 #endif
 
+#define SAMPLE_PROFILE 1
 #include "be_memop_annot.h"
 
 extern ERROR_DESC EDESC_BE[], EDESC_CG[];
@@ -1671,7 +1673,11 @@ Preprocess_PU (PU_Info *current_pu)
     wb_gwe(pu);
 #endif
   } else if ( Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO] ) {
+#ifdef SAMPLE_PROFILE
+    BOOL got_samples = WN_Sample_Annotate(pu, PROFILE_PHASE_BEFORE_VHO, &MEM_pu_pool);
+#else
     WN_Annotate(pu, PROFILE_PHASE_BEFORE_VHO, &MEM_pu_pool);
+#endif
   }
 
   Set_Error_Phase ( "VHO Processing" );
@@ -1905,7 +1911,11 @@ Process_Feedback_Options (OPTION_LIST* olist)
     while ((direntp = readdir(dirp)) != NULL) {
       if (strncmp(direntp->d_name, prefix, prefix_len) == 0) {
 	strcpy(dir_end, direntp->d_name);
-	Process_Feedback_File(path);
+#ifdef SAMPLE_PROFILE
+	Process_Sample_Feedback_File(path);
+#else
+        Process_Feedback_File(path);
+#endif
 #ifdef KEY
 	fb_file_count++;
 #endif

@@ -60,6 +60,7 @@
 
 #include <stdio.h>
 #include "profile_com.h"
+#include "sample_profile_com.h"
 #include "fb_info.h"
 #ifndef _BUILD_INSTR
 #include "mempool_allocator.h"
@@ -103,6 +104,7 @@ typedef vector<FB_Info_Icall>	FB_Icall_Vector;
 typedef vector<FB_Info_Switch>	FB_Switch_Vector;
 typedef vector<FB_Info_Edge>    FB_Edge_Vector;
 typedef vector<FB_Info_Value>   FB_Value_Vector;
+typedef vector<FB_Info_Freq>    FB_Sample_Freq_Vector;
 #ifdef KEY
 typedef vector<FB_Info_Value_FP_Bin>   FB_Value_FP_Bin_Vector;
 #endif
@@ -124,6 +126,7 @@ struct PU_Profile_Handle
     FB_Value_FP_Bin_Vector  Value_FP_Bin_Profile_Table;
 #endif
     FB_Value_Vector     Stride_Profile_Table; 
+    FB_Sample_Freq_Vector Freq_Sample_Table;
   
     INT32 checksum;
     
@@ -134,6 +137,7 @@ struct PU_Profile_Handle
 #endif
     INT32 pu_size;
     UINT64 runtime_fun_address;
+    char *str_table;
 
 #ifdef _BUILD_INSTR
 
@@ -241,16 +245,28 @@ struct PU_Profile_Handle
        return Stride_Profile_Table;
     }
 
+    FB_Sample_Freq_Vector& Get_Sample_Freq_Table() {
+      return Freq_Sample_Table;
+    }
+
 };
 
 typedef PU_Profile_Handle * PU_PROFILE_HANDLE;
 
 extern void Get_File_Header(FILE *fp, char *fname, Fb_Hdr *fb_hdr);
 
+extern void Get_Sample_File_Header(FILE *fp, char *fname, Fb_Sample_Hdr *fb_hdr);
+
 extern void Get_Pu_Hdr_Table(FILE *fp, char *fname, Fb_Hdr& fb_hdr, 
 			     Pu_Hdr *pu_hdr_table);
 
+extern void Get_Sample_Pu_Hdr_Table(FILE *fp, char *fname, Fb_Sample_Hdr& fb_hdr, 
+			     Pu_Sample_Hdr *pu_hdr_table);
+
 extern void Get_Str_Table(FILE *fp, char *fname, Fb_Hdr& fb_hdr, 
+			  char *str_table);
+
+extern void Get_Sample_Str_Table(FILE *fp, char *fname, Fb_Sample_Hdr& fb_hdr, 
 			  char *str_table);
 
 extern void read_invoke_profile(  PU_PROFILE_HANDLE pu_handle, 
@@ -301,6 +317,9 @@ extern void read_value_fp_bin_profile(PU_PROFILE_HANDLE pu_handle,
 extern void read_stride_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 				long pu_ofst, FILE *fp, char *fname);
           
+extern void read_sample_freq_profile(  PU_PROFILE_HANDLE pu_handle, 
+			       	       Pu_Sample_Hdr& pu_hdr_entry,
+				       long pu_ofst, FILE *fp, char *fname);
 #ifndef _BUILD_INSTR
 
 struct Fb_File_Info {
@@ -308,8 +327,13 @@ struct Fb_File_Info {
     FILE *fp;
     Fb_Hdr fb_hdr;
     Pu_Hdr *pu_hdr_table;
+    Fb_Sample_Hdr fb_sample_hdr;
+    Pu_Sample_Hdr *pu_sample_hdr_table;
     char *str_table;
 
+    Fb_File_Info(char *nm, FILE *fptr, Fb_Sample_Hdr fhdr, Pu_Sample_Hdr *ptbl, char *stbl) :
+		 name(nm), fp(fptr), fb_sample_hdr(fhdr), pu_sample_hdr_table(ptbl), 
+		 str_table(stbl) {}
     Fb_File_Info() {}
     Fb_File_Info(char *nm, FILE *fptr, Fb_Hdr fhdr, Pu_Hdr *ptbl, char *stbl) :
 		 name(nm), fp(fptr), fb_hdr(fhdr), pu_hdr_table(ptbl), 
@@ -338,6 +362,7 @@ extern Fb_File_Info_Vector Feedback_File_Info[PROFILE_PHASE_LAST];
 // Prototypes for routines in instr_reader.cxx
 
 extern void Process_Feedback_File(char *fb_name);
+extern void Process_Sample_Feedback_File(char *fb_name);
 
 extern void Close_Feedback_Files();
 
@@ -352,6 +377,15 @@ Get_PU_Profile (char *pu_name, char *src_fname,
 extern PU_PROFILE_HANDLE Get_PU_Profile(char *pu_name, char *src_fname,
 					FILE *fp, char *fb_fname, 
 					Fb_Hdr& fb_hdr, Pu_Hdr *pu_hdr_table, 
+					char *str_table); 
+					
+extern PU_PROFILE_HANDLES
+Get_PU_Sample_Profile (char *pu_name, char *src_fname,
+		Fb_File_Info_Vector& file_info_vector);
+
+extern PU_PROFILE_HANDLE Get_PU_Sample_Profile(char *pu_name, char *src_fname,
+					FILE *fp, char *fb_fname, 
+					Fb_Sample_Hdr& fb_hdr, Pu_Sample_Hdr *pu_hdr_table, 
 					char *str_table); 
 					
 // added by dxq
@@ -429,6 +463,7 @@ extern FB_Info_Value_FP_Bin& Get_Value_FP_Bin_Profile(PU_PROFILE_HANDLE pu_handl
 						      INT32 id);
 #endif
 extern FB_Info_Value& Get_Stride_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id);
+
 
 
 #endif // _BUILD_INSTR

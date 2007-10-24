@@ -81,6 +81,139 @@ BOOL Feedback_Enabled[PROFILE_PHASE_LAST] = {FALSE,FALSE,FALSE,FALSE,FALSE};
 Fb_File_Info_Vector Feedback_File_Info[PROFILE_PHASE_LAST];
 
 void
+Process_Sample_Feedback_File(char *fb_name)
+{
+  FILE *fp;
+  Fb_Sample_Hdr fb_hdr;
+  Pu_Sample_Hdr *pu_hdr_table;
+  char *str_table;
+  PROFILE_PHASE phase_num = PROFILE_PHASE_BEFORE_VHO;
+
+  if ((fp = fopen(fb_name, "r")) == NULL) {
+       profile_error("Unable to open file: %s", fb_name);
+  }
+
+  Get_Sample_File_Header(fp, fb_name, &fb_hdr);
+
+  //Is_True(fb_hdr.fb_version == (FB_SAMPLE_MAJOR_VERSION << 16)
+  //        + FB_SAMPLE_MINOR_VERSION, ("feedback file not right version") ); 
+
+  pu_hdr_table = CXX_NEW_ARRAY(Pu_Sample_Hdr, fb_hdr.fb_pu_hdr_num,
+			       MEM_pu_nz_pool_ptr);
+
+  Get_Sample_Pu_Hdr_Table(fp,fb_name,fb_hdr,pu_hdr_table);
+
+  str_table = CXX_NEW_ARRAY(char, fb_hdr.fb_str_table_size,
+			    MEM_pu_nz_pool_ptr);
+  Get_Sample_Str_Table(fp, fb_name,fb_hdr,str_table);
+ 
+  // phase_num = Get_Phase_Num(fb_hdr);
+
+  Feedback_Enabled[phase_num] = TRUE;
+
+  Fb_File_Info_Vector& fi = Feedback_File_Info[phase_num];
+
+  fi.push_back (CXX_NEW(Fb_File_Info(fb_name, fp, fb_hdr, pu_hdr_table,
+				     str_table),
+			MEM_pu_nz_pool_ptr));  
+}
+
+PU_PROFILE_HANDLES
+Get_PU_Sample_Profile (char *pu_name, char *src_fname,
+	        	Fb_File_Info_Vector& file_info_vector)
+{
+    PU_PROFILE_HANDLES handles (MEM_pu_nz_pool_ptr);
+    
+    for (File_Info_Iterator i (file_info_vector.begin ());
+	 i != file_info_vector.end (); ++i) {
+	Fb_File_Info* file_info = *i;
+	PU_PROFILE_HANDLE handle = Get_PU_Sample_Profile (pu_name, src_fname,
+						          file_info->fp,
+						          file_info->name,
+						          file_info->fb_sample_hdr,
+						          file_info->pu_sample_hdr_table,
+						          file_info->str_table);
+	if (handle)
+	    handles.push_back (handle);
+    }
+
+    return handles;
+}
+
+// Given a PU name, the main header in the feedback file, the PU
+// header table and the string table, locate the information for the 
+// PU in the feedback file. Create a new PU handle and update the
+// various tables in the PU handle with the data from the feedback file.
+// Returns a PU handle.
+
+PU_PROFILE_HANDLE
+Get_PU_Sample_Profile(char *pu_name, char *src_fname, FILE *fp, char *fb_fname, 
+	              Fb_Sample_Hdr& fb_hdr, Pu_Sample_Hdr *pu_hdr_table, char *str_table) 
+{
+  PU_PROFILE_HANDLE pu_handle;
+  Pu_Sample_Hdr pu_hdr_entry;
+  long pu_ofst;
+  char *entry_name;
+  int pu_size;
+
+#if 0
+  // Concatenate the file name and pu_name and look for the resultant string
+  // in the pu header table.
+
+  char *s;
+  s = CXX_NEW_ARRAY(char, strlen(src_fname) + strlen("/") + strlen(pu_name)
+		    + 1, MEM_pu_nz_pool_ptr);
+
+  strcpy(s,src_fname);
+  strcat(s,"/");
+  strcat(s,pu_name);
+#endif
+
+  // Build the ADDRESS_NAME_MAP
+  for (long j = 0; j < fb_hdr.fb_pu_hdr_num; j++) {
+    pu_hdr_entry = pu_hdr_table[j];
+    entry_name = str_table + pu_hdr_entry.pu_name_index;
+    // pu_size = pu_hdr_entry.pu_size;
+    // Setting pu_size to 0 for now
+    pu_size = 0;
+    PU_Addr_Name_Map[pu_hdr_entry.runtime_func_address] = entry_name;
+    PU_Addr_Pusize_Map[pu_hdr_entry.runtime_func_address] = pu_size;
+  }
+
+  // Search the PU header table
+  for (long i = 0; i < fb_hdr.fb_pu_hdr_num; i++) {
+    pu_hdr_entry = pu_hdr_table[i];
+    entry_name = str_table + pu_hdr_entry.pu_name_index;
+    if (strcmp(pu_name, entry_name) == 0) break;
+  }
+
+  // Make sure PU was found.
+  if (strcmp(pu_name, entry_name) != 0) 
+    return NULL;
+
+  pu_ofst = fb_hdr.fb_profile_offset + pu_hdr_entry.pu_profile_offset +
+            pu_hdr_entry.pu_freq_offset;
+
+  pu_handle = CXX_NEW(PU_Profile_Handle(entry_name, pu_hdr_entry.pu_checksum),
+		      MEM_pu_nz_pool_ptr);
+#ifdef KEY
+  pu_handle->pu_size = pu_hdr_entry.pu_size;
+  pu_handle->runtime_fun_address = pu_hdr_entry.runtime_func_address;
+  if (fb_fname) 
+  {
+    pu_handle->fb_name = (char *) malloc (strlen (fb_fname) + 1);
+    strcpy (pu_handle->fb_name, fb_fname);
+  }
+#endif
+
+  pu_handle->str_table = str_table;
+
+  read_sample_freq_profile(   pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
+
+  return pu_handle;
+}
+
+void
 Process_Feedback_File(char *fb_name)
 {
   FILE *fp;
@@ -580,6 +713,16 @@ Get_File_Header(FILE *fp, char *fname, Fb_Hdr *fb_hdr)
         "Error while writing to: %s", fname);
 }
 
+// Read the main header in the feedback file
+void
+Get_Sample_File_Header(FILE *fp, char *fname, Fb_Sample_Hdr *fb_hdr)
+{
+  FSEEK(fp,0,SEEK_SET,ERR_POS,fname);
+
+  FREAD(fb_hdr, sizeof(Fb_Sample_Hdr), 1, fp,
+        "Error while writing to: %s", fname);
+}
+
 // Read the PU header table; It is assumed that the caller has 
 // allocated the necessary storage in pu_hdr_table.
 
@@ -590,6 +733,16 @@ Get_Pu_Hdr_Table(FILE *fp, char *fname, Fb_Hdr& fb_hdr,
   FSEEK(fp,fb_hdr.fb_pu_hdr_offset,SEEK_SET, ERR_POS, fname);
 
   FREAD(pu_hdr_table, sizeof(Pu_Hdr), fb_hdr.fb_pu_hdr_num, fp, ERR_READ,
+	fname);
+}
+
+void
+Get_Sample_Pu_Hdr_Table(FILE *fp, char *fname, Fb_Sample_Hdr& fb_hdr, 
+	        	 Pu_Sample_Hdr *pu_hdr_table)
+{
+  FSEEK(fp,fb_hdr.fb_pu_hdr_offset,SEEK_SET, ERR_POS, fname);
+
+  FREAD(pu_hdr_table, sizeof(Pu_Sample_Hdr), fb_hdr.fb_pu_hdr_num, fp, ERR_READ,
 	fname);
 }
 
@@ -606,9 +759,37 @@ Get_Str_Table(FILE *fp, char *fname, Fb_Hdr& fb_hdr, char *str_table)
         fname);
 }
 
+void
+Get_Sample_Str_Table(FILE *fp, char *fname, Fb_Sample_Hdr& fb_hdr, char *str_table)
+{
+  FSEEK(fp,fb_hdr.fb_str_table_offset, SEEK_SET, ERR_POS, fname);
+
+  FREAD(str_table, sizeof(char), fb_hdr.fb_str_table_size, fp, ERR_READ,
+        fname);
+}
+
+// Read sample data
+// Given a PU handle, allocate storage for the Sample_Freq Table in 
+// PU handle and update it with data from feedback file.
+void
+read_sample_freq_profile(PU_PROFILE_HANDLE pu_handle, Pu_Sample_Hdr& pu_hdr_entry,
+                         long pu_ofst, FILE *fp, char *fname)
+{
+  FB_Sample_Freq_Vector& Sample_Freq_Table = pu_handle->Get_Sample_Freq_Table();
+
+  Is_True (Sample_Freq_Table.empty (), ("pu_handle not empty"));
+
+  Sample_Freq_Table.resize(pu_hdr_entry.pu_num_freq_entries);
+
+  FSEEK(fp, pu_ofst, SEEK_SET, ERR_POS, fname);
+ 
+  FREAD (&(Sample_Freq_Table.front ()), sizeof(FB_Info_Freq),
+	 pu_hdr_entry.pu_num_freq_entries, fp, ERR_READ, fname);
+}
+
+
 // Given a PU handle, allocate storage for the Invoke Table in 
 // PU handle and update it with data from feedback file.
-
 void
 read_invoke_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
                     long pu_ofst, FILE *fp, char *fname)
@@ -619,7 +800,6 @@ read_invoke_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 
   Inv_Table.resize(pu_hdr_entry.pu_num_inv_entries);
 
-  
   FSEEK(fp, pu_ofst + pu_hdr_entry.pu_inv_offset, SEEK_SET, ERR_POS, fname);
  
   FREAD (&(Inv_Table.front ()), sizeof(FB_Info_Invoke),
@@ -628,7 +808,6 @@ read_invoke_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 
 // Given a PU handle, allocate storage for the Branch Table in 
 // PU handle and update it with data from feedback file.
-
 void
 read_branch_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
                     long pu_ofst, FILE *fp, char *fname)
@@ -884,4 +1063,3 @@ read_stride_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
   FREAD (&(tnv_table.front ()), sizeof(FB_Info_Stride),
 	 pu_hdr_entry.pu_ld_count, fp, ERR_READ, fname);
   }
-

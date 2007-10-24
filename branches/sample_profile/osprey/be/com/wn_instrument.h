@@ -120,6 +120,10 @@ extern void WN_Annotate(   WN *wn, PROFILE_PHASE phase,
 
 extern void Set_Instrumentation_File_Name( char *fname );
 
+extern BOOL WN_Sample_Annotate (WN *wn, PROFILE_PHASE phase,
+                                MEM_POOL *MEM_pu_pool);
+
+
 
 // ====================================================================
 //
@@ -164,5 +168,3 @@ extern void Set_Instrumentation_File_Name( char *fname );
 // ====================================================================
 
 #endif
-
-

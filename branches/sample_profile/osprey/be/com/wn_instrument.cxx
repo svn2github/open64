@@ -116,11 +116,14 @@
 #include "fb_whirl.h"
 #include "wn_instrument.h"
 #include "erglob.h"
+#include "fb_cfg.h"
 
 
 // Use this switch to turn on/off additional debugging messages
 
 #define Instrumenter_DEBUG 0
+
+#define SAMPLE_PROFILE 1
 
 
 // ALSO, SEE:
@@ -131,7 +134,9 @@
 // Invokes instrumentation:
 //   be/be/driver.cxx (through WN_Instrument and wiw_wopt.Tree_Walk)
 
-
+#ifdef SAMPLE_PROFILE
+WN_MAP wn_sample_map = WN_MAP_UNDEFINED;
+#endif
 
 // ====================================================================
 //
@@ -457,6 +462,9 @@ public:
   void Tree_Walk( WN *wn );
 };
 
+#ifdef SAMPLE_PROFILE
+void WN_Tree_Traverse_Annotate(WN *wn, MEM_POOL *mem_pu_pool, PU_PROFILE_HANDLES fb_handles);
+#endif
 
 // ====================================================================
 //
@@ -1697,6 +1705,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
 #endif
   }
 
+#ifndef SAMPLE_PROFILE
   // Perform the instrumentation or annotation of the current node
   switch ( opr ) {
 
@@ -1857,6 +1866,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
     }
     break;
   }
+#endif
 
   // This shouldn't be necessary, but....
   if ( opr == OPR_REGION ) {
@@ -2001,10 +2011,12 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 	   ( "WN_INSTRUMENT_WALKER::Tree_Walk:"
 	     " OPR_FUNC_ENTRY expected at top of PU tree." ) );
 
+#ifndef SAMPLE_PROFILE
   // Cur_PU_Feedback should not be NULL if annotating
   Is_True( _instrumenting || Cur_PU_Feedback,
 	   ( "WN_INSTRUMENT_WALKER::Tree_Walk:"
 	     " NULL Cur_PU_Feedbackduring annotation" ) );
+#endif
 
   // Tree_Walk should not be called if annotating with empty _fb_handle
   Is_True( _instrumenting || ! _fb_handle.empty (),
@@ -2021,6 +2033,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
   fdump_tree( TFile, root );
 #endif
 
+#ifndef SAMPLE_PROFILE
   if ( !_instrumenting ) //if annotation, need to merge feedback file for Icall information.
   {
     Is_True(_fb_handle_merged == NULL, ("Merged Feedback data for Icall should be NULL before anyone merge it!"));
@@ -2030,6 +2043,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 	   DevWarn("There is no Icall feedback data for current PU!");
     }
   }
+#endif
 
 #ifdef KEY
   pu_wn = root;
@@ -2138,6 +2152,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
     }
 
   } else if ( ! _instrumenting ) { // feedback
+#ifndef SAMPLE_PROFILE
 
     // Compare checksums!
     for ( PU_PROFILE_ITERATOR i( _fb_handle.begin() );
@@ -2157,6 +2172,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 		   _instrument_count, checksum ) );
 #endif
     }
+#endif
   }
 
 #if Instrumenter_DEBUG
@@ -2225,6 +2241,108 @@ WN_Clean_Mapid_for_Calls(WN * wn)
 		}
 	}
 }
+
+#ifdef SAMPLE_PROFILE
+BOOL
+WN_Sample_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )
+{
+  fprintf(stderr, "In WN_Sample_Annotate\n");
+  Set_Error_Phase ( "WN_Sample_Annotate" );
+
+  PU_PROFILE_HANDLES fb_handles
+    = Get_PU_Sample_Profile( Cur_PU_Name, Src_File_Name,
+		             Feedback_File_Info[phase] );
+
+  if ( fb_handles.empty() ) {
+    // No samples available for this function
+    DevWarn( "No Sample found for this function" );
+    return FALSE;
+  }
+
+  if ( Cur_PU_Feedback == NULL )
+    Cur_PU_Feedback = CXX_NEW( FEEDBACK( wn, MEM_pu_pool ), MEM_pu_pool );
+
+  // Create and initialize local memory pool
+  MEM_POOL local_mempool;
+  MEM_POOL_Initialize( &local_mempool, "WN_Annotate_Sample_Pool", FALSE );
+  MEM_POOL_Push( &local_mempool);
+
+  wn_sample_map = WN_MAP64_Create(MEM_pu_pool);
+
+  // Walk through all statement nodes, and annotate with sample information
+  WN_Tree_Traverse_Annotate(wn, &local_mempool, fb_handles);
+
+  // Dispose of local memory pool
+  MEM_POOL_Pop( &local_mempool );
+  MEM_POOL_Delete( &local_mempool );
+
+  FB_CFG fb_cfg;
+  fb_cfg.Construct_from_whirl(wn, "sample annotate");
+  fb_cfg.Initialize_Feedback();
+
+  return TRUE;
+
+}
+
+void
+WN_Tree_Traverse_Annotate( WN *root, MEM_POOL *mem_pool,
+                           PU_PROFILE_HANDLES fb_handles)
+{
+  // Root must be a func entry
+  Is_True( WN_operator( root ) == OPR_FUNC_ENTRY,
+    ( "WN_Tree_Traverse_Annotate: OPR_FUNC_ENTRY expected at top of PU tree."));
+
+  for (WN_ITER *wni = WN_WALK_StmtIter(root); wni; wni = WN_WALK_StmtNext(wni))
+  {
+    WN *wn = WN_ITER_wn(wni);
+    for( PU_PROFILE_ITERATOR i( fb_handles.begin() );
+         i != fb_handles.end(); ++i )
+    {
+      const PU_PROFILE_HANDLE pu_handle = *i;
+      FB_Sample_Freq_Vector &Sample_Freq_Table = pu_handle->Get_Sample_Freq_Table();
+
+      if (Sample_Freq_Table.empty())
+        continue;
+
+      // Found a sample frequency table for this program unit
+      // Check for matching line number first, since it is less expensive
+      SRCPOS current_srcpos = WN_Get_Linenum(wn);
+      int num_entries = Sample_Freq_Table.size();
+      for (int i = 0; i < num_entries; ++i)
+      {
+        //FB_Info_Freq freq_info = *iter;
+        FB_Info_Freq freq_info = Sample_Freq_Table[i];
+        if (freq_info.line_num != Srcpos_To_Line(current_srcpos))
+          continue;
+
+        // Get source filename
+        char *filename = pu_handle->str_table + freq_info.filename_offset;
+
+        // Strip basename before matching
+        char *filename_to_match = strrchr(filename, '/');
+        if (filename_to_match == NULL)
+          filename_to_match = filename;
+        else
+          filename_to_match++;  // Skip the '/'
+
+        char *Src_File_Name_to_match = strrchr(Src_File_Name, '/');
+        if (Src_File_Name_to_match == NULL)
+          Src_File_Name_to_match = Src_File_Name;
+        else
+          Src_File_Name_to_match++;
+
+        if (strcmp(filename_to_match, Src_File_Name_to_match))
+          continue;
+
+        INT64 prev_basic_block_count = WN_MAP64_Get(wn_sample_map, wn);   
+        Is_True (prev_basic_block_count >= 0, ("Got negative basic block count"));
+        INT64 new_basic_block_count = prev_basic_block_count + (int) freq_info.freq;
+        WN_MAP64_Set(wn_sample_map, wn, new_basic_block_count);
+      }
+    }
+  }
+}
+#endif
 
 void
 WN_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )

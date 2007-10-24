@@ -80,6 +80,7 @@
 #include "instr_reader.h"
 #endif
 
+#define SAMPLE_PROFILE 1
 
 // ====================================================================
 // Tracing masks for TP_FEEDBACK tracing phase
@@ -239,6 +240,13 @@ public:
 #ifdef KEY
   void Annot_value   ( WN *wn, const FB_Info_Value  & fb_info );
   void Annot_value_fp_bin( WN *wn, const FB_Info_Value_FP_Bin  & fb_info );
+#endif
+
+#ifdef SAMPLE_PROFILE
+  void Annot_sample_invoke  ( WN *wn, const FB_Info_Invoke & fb_info );
+  void Annot_sample_branch  ( WN *wn, const FB_Info_Branch & fb_info );
+  void Annot_sample_loop    ( WN *wn, const FB_Info_Loop   & fb_info );
+  void Annot_sample_circuit ( WN *wn, const FB_Info_Circuit & fb_info );
 #endif
 
   void Annot         ( WN *wn, const FB_EDGE_TYPE type, FB_FREQ freq );

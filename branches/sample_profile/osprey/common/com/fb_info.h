@@ -64,6 +64,7 @@
 #ifndef fb_info_INCLUDED
 #define fb_info_INCLUDED
 
+#include "sample_profile_com.h"
 #include "fb_freq.h"
 #include "fb_tnv.h"
 
@@ -521,6 +522,18 @@ struct FB_Info_Stride{
       }
 };
 
+struct FB_Info_Freq {
+  /* Store line number and it's associated count */
+  UINT64 filename_offset;  // Offset into string table
+  INT32 line_num;
+  float freq;  // float used to be consistent with existing profile counts
+
+  void Print (FILE *fp) const {
+    fprintf( fp, "FB---> line = %d freq = %f\n", line_num, freq);
+  }
+};
+
+
 // Print the entire FB_Info vector
 template <class T>
 void
@@ -560,6 +573,8 @@ typedef vector<FB_Info_Edge, mempool_allocator<FB_Info_Edge> >
 					FB_Edge_Vector;
 typedef vector<FB_Info_Value, mempool_allocator<FB_Info_Value> >
                                        FB_Value_Vector;
+typedef vector<FB_Info_Freq, mempool_allocator<FB_Info_Freq> >
+                                       FB_Sample_Freq_Vector;
 #ifdef KEY
 typedef vector<FB_Info_Value_FP_Bin, mempool_allocator<FB_Info_Value_FP_Bin> >
                                        FB_Value_FP_Bin_Vector;
