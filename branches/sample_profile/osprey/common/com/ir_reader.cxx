@@ -1173,6 +1173,7 @@ static void ir_put_wn(WN * wn, INT indent)
 
 	USRCPOS srcpos;
 	USRCPOS_srcpos(srcpos) = WN_Get_Linenum(wn);
+
 	fprintf(ir_ofile, " {line: %d}", USRCPOS_linenum(srcpos));
     }
 
@@ -1579,18 +1580,6 @@ extern void fdump_wn(FILE *fp, WN *wn)
   ir_ofile = fp;
   IR_Dwarf_Gen_File_Table(TRUE/*dump_filenames*/); /* read source pathnames */
   ir_put_wn(wn, 0);
-  ir_ofile = save;
-}
-
-extern void fdump_expr(FILE *fp, WN *wn) 
-{
-  FILE *save;
-  /* building hashtable is expensive, so may not initialize until dumping */
-  if (!is_initialized) IR_reader_init();
-  save = ir_ofile;
-  ir_ofile = fp;
-  IR_Dwarf_Gen_File_Table(TRUE/*dump_filenames*/); /* read source pathnames */
-  ir_put_expr(wn, 0);
   ir_ofile = save;
 }
 

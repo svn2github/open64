@@ -86,7 +86,6 @@ extern void fdump_tree_with_alias(FILE *fp, const WN *wn, WN_MAP map, const stru
 extern void fdump_tree_with_freq(FILE *fp, const WN *wn, WN_MAP map);
 /* dump an WN node to a file other than stdout */
 extern void fdump_wn(FILE *f, WN *wn);
-extern void fdump_expr(FILE *f, WN *wn);
 /* dump a tree to a file other than stdout */
 extern void fdump_tree(FILE *f, WN *wn);
 /* dump a tree to a file other than stdout, and do not print STs */
@@ -121,3 +120,4 @@ extern void WN_TREE_dump_tree(WN *wn);
 extern void WN_TREE_fdump_tree(FILE *f, WN *wn);
 
 #endif /* ir_reader_INCLUDED */
+
