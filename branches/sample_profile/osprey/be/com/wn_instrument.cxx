@@ -1705,7 +1705,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
 #endif
   }
 
-#ifndef SAMPLE_PROFILE
   // Perform the instrumentation or annotation of the current node
   switch ( opr ) {
 
@@ -1737,7 +1736,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
 	Annotate_Value( wn, id );
     }
     break;
-#endif
 
   case OPR_PRAGMA:
     if ( WN_pragma( wn ) != WN_PRAGMA_PREAMBLE_END )
@@ -2011,12 +2009,10 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 	   ( "WN_INSTRUMENT_WALKER::Tree_Walk:"
 	     " OPR_FUNC_ENTRY expected at top of PU tree." ) );
 
-#ifndef SAMPLE_PROFILE
   // Cur_PU_Feedback should not be NULL if annotating
   Is_True( _instrumenting || Cur_PU_Feedback,
 	   ( "WN_INSTRUMENT_WALKER::Tree_Walk:"
 	     " NULL Cur_PU_Feedbackduring annotation" ) );
-#endif
 
   // Tree_Walk should not be called if annotating with empty _fb_handle
   Is_True( _instrumenting || ! _fb_handle.empty (),
@@ -2033,7 +2029,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
   fdump_tree( TFile, root );
 #endif
 
-#ifndef SAMPLE_PROFILE
   if ( !_instrumenting ) //if annotation, need to merge feedback file for Icall information.
   {
     Is_True(_fb_handle_merged == NULL, ("Merged Feedback data for Icall should be NULL before anyone merge it!"));
@@ -2043,7 +2038,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 	   DevWarn("There is no Icall feedback data for current PU!");
     }
   }
-#endif
 
 #ifdef KEY
   pu_wn = root;
@@ -2152,8 +2146,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
     }
 
   } else if ( ! _instrumenting ) { // feedback
-#ifndef SAMPLE_PROFILE
-
     // Compare checksums!
     for ( PU_PROFILE_ITERATOR i( _fb_handle.begin() );
 	  i != _fb_handle.end(); ++i ) {
@@ -2172,7 +2164,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 		   _instrument_count, checksum ) );
 #endif
     }
-#endif
   }
 
 #if Instrumenter_DEBUG
