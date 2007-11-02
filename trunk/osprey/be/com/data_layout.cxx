@@ -2183,6 +2183,12 @@ Process_Stack_Variable ( ST *st )
 
    if (! is_root_block && ST_class(st) == CLASS_BLOCK) return;
 
+   if (ST_is_return_var(st)) {
+     Set_ST_base (st, FP_Sym);
+     Set_ST_ofst (st, Is_Target_32bit()?4:8);
+     return;
+   }
+
    sc = ST_sclass(st);
    Is_True ( (sc == SCLASS_AUTO),
            ("Process_Stack_Variable: Invalid SCLASS %d\n",ST_sclass(st)) );
