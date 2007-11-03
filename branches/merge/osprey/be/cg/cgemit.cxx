@@ -1295,11 +1295,7 @@ static void r_assemble_list (
   }
 
   fputc ('\t', Asm_File);
-#ifdef TARG_X8664
   lc = CGEMIT_Print_Inst( op, result, opnd, Asm_File );
-#else
-  lc = TI_ASM_Print_Inst( OP_code(op), result, opnd, Asm_File );
-#endif
   FmtAssert (lc != TI_RC_ERROR, ("%s", TI_errmsg));
   vstr_end(buf);
 
