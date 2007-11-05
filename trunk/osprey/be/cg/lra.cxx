@@ -5103,9 +5103,11 @@ Preallocate_Single_Register_Subclasses (BB* bb)
         } 
         else{  
           // GTN has been inserted, 
-          //  just add OP to the list and
-          //  change has_use and has_def
-          it->has_use=true;
+          //  just add OP to the list but
+          //  as there's a def before the
+          //  use, so the use cannot be
+          //  exposed to the top of the
+          //  BB. So no need to add has_use
           list<OP *> & l=it->op_list;
           list<OP *>::reverse_iterator rit;
           for(rit=l.rbegin();rit!=l.rend();rit++)
