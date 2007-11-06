@@ -113,8 +113,15 @@ FB_CFG::Initialize_node_counts()
     else
       _nodes[nx].count = _nodes[nx].total_samples;
     _nodes[nx].freq_total_out = _nodes[nx].freq_total_in =
-        FB_FREQ(FB_FREQ_TYPE_GUESS, (float) _nodes[nx].count);
+        FB_FREQ(FB_FREQ_TYPE_EXACT, (float) _nodes[nx].count);
   }
+  // Initialize entry block to non-zero count
+  if (_nodes[0].count == 0) {
+    _nodes[0].count = 1;
+    _nodes[0].freq_total_out = _nodes[0].freq_total_in =
+        FB_FREQ(FB_FREQ_TYPE_EXACT, (float) _nodes[0].count);
+  }
+
 }
 #endif
 
@@ -266,6 +273,7 @@ FB_CFG::Initialize_Feedback()
   INT branch_count = 0;
   INT loop_count = 0;
   INT circuit_count = 0;
+  INT call_count = 0;
   INT num_nodes = _nodes.size();
 
   while (nx < num_nodes)
@@ -291,6 +299,36 @@ FB_CFG::Initialize_Feedback()
        FB_FREQ invoke_count((float) _nodes[nx].count);
        FB_Info_Invoke fb_invoke(invoke_count);
        Cur_PU_Feedback->Annot_sample_invoke(wn, fb_invoke);
+    }
+    else if (FB_valid_opr_call(wn))
+    {
+      call_count++;
+      WN_MAP32_Set(WN_MAP_FEEDBACK, wn, call_count);
+      FB_EDGE_TYPE node_type = _nodes[nx].node_type;
+      Is_True( node_type == FB_EDGE_CALL_INCOMING ||
+               node_type == FB_EDGE_CALL_INOUTSAME,
+               ("FB_CFG::Initialize_Feedback:: unknown node type found for opr call"));
+      if (node_type == FB_EDGE_CALL_INOUTSAME)
+      {
+        FB_FREQ in_out((float) _nodes[nx].count);
+        FB_Info_Call fb_call(in_out);
+        Cur_PU_Feedback->Annot_sample_call(wn, fb_call);
+      }
+      else
+      {
+        FB_FREQ in((float) _nodes[nx].count);
+        // Find the outgoing count
+        for (FB_NODEX nx_tmp = nx + 1; nx_tmp < num_nodes; ++nx_tmp)
+        {
+          if (_nodes[nx_tmp].node_type == FB_EDGE_CALL_OUTGOING && _nodes[nx_tmp].source == wn)
+          {
+             FB_FREQ out((float) _nodes[nx_tmp].count);
+             FB_Info_Call fb_call(in, out);
+             Cur_PU_Feedback->Annot_sample_call(wn, fb_call);
+             break;
+          }
+        }
+      }
     }
     else if (FB_valid_opr_branch(wn))
     {
@@ -1222,6 +1260,7 @@ FB_CFG::Adjust_all_edge_freq()
 
   do
   {
+    change = FALSE;
     for ( nx = 0; nx < num_nodes; ++nx ) {
       change1 = Adjust_edge_freq_node_in(nx);
       change2 = Adjust_edge_freq_node_out(nx);
@@ -1259,7 +1298,7 @@ FB_CFG::Adjust_edge_freq_node_in(FB_NODEX nx)
 		   ( "FB_CFG::Adjust_edge_freq_node_in[%d]"
 		     " pred_node count is negative!! value = %d", nx, pred_node.count) );
           node.count = pred_node.count;
-          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) pred_node.count);
+          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) pred_node.count);
           return TRUE;
         }
         else if ((pred_node.num_stmts == 0) && pred_node.count == 0)
@@ -1268,7 +1307,7 @@ FB_CFG::Adjust_edge_freq_node_in(FB_NODEX nx)
 		   ( "FB_CFG::Adjust_edge_freq_node_in[%d]"
 		     " node count is negative!! value = %d", nx, node.count) );
           pred_node.count = node.count;
-          pred_node.freq_total_in = pred_node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) node.count);
+          pred_node.freq_total_in = pred_node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) node.count);
           return TRUE;
         }
         else
@@ -1282,7 +1321,7 @@ FB_CFG::Adjust_edge_freq_node_in(FB_NODEX nx)
 		     " node count is negative!! value = %d", nx, node.count) );
           pred_node.count = node.count = (pred_node.count + node.count) / 2;
           pred_node.freq_total_in = pred_node.freq_total_out =
-            node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) node.count);
+            node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) node.count);
           return TRUE;
         }
       }
@@ -1302,7 +1341,7 @@ FB_CFG::Adjust_edge_freq_node_in(FB_NODEX nx)
       if (node.count < sum_count)
       {
           node.count = sum_count;
-          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) sum_count);
+          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) sum_count);
           return TRUE;
       }
       else if ((node.count > sum_count) && sum_count > 0)
@@ -1319,12 +1358,12 @@ FB_CFG::Adjust_edge_freq_node_in(FB_NODEX nx)
 	  Is_True( pred_nx.count >= 0,
 		   ( "FB_CFG::Adjust_edge_freq_node_in[nx%d]"
 		     " pred_nx %d count is negative!! value: %d", nx, t, pred_nx.count ) );
-          pred_nx.freq_total_in = pred_nx.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) pred_nx.count);
+          pred_nx.freq_total_in = pred_nx.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) pred_nx.count);
           new_sum += pred_nx.count;
         }
         // Make counts consistent
         node.count = new_sum;
-        node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) new_sum);
+        node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) new_sum);
         return TRUE;
       }
     }
@@ -1355,7 +1394,7 @@ FB_CFG::Adjust_edge_freq_node_out(FB_NODEX nx)
 	  Is_True( succ_node.count >= 0,
 		   ( "FB_CFG::Adjust_edge_freq_node_out[%d]"
 		     " succ_node count is negative!! value: %d", nx, succ_node.count) );
-          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) succ_node.count);
+          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) succ_node.count);
           return TRUE;
         }
         else if ((succ_node.num_stmts == 0) && succ_node.count == 0)
@@ -1364,7 +1403,7 @@ FB_CFG::Adjust_edge_freq_node_out(FB_NODEX nx)
 		   ( "FB_CFG::Adjust_edge_freq_node_out[%d]"
 		     " node count is negative!! value: %d", nx, node.count) );
           succ_node.count = node.count;
-          succ_node.freq_total_in = succ_node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) node.count);
+          succ_node.freq_total_in = succ_node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) node.count);
           return TRUE;
         }
         else
@@ -1378,7 +1417,7 @@ FB_CFG::Adjust_edge_freq_node_out(FB_NODEX nx)
 		     " node count is negative : value = %d!!", nx, node.count) );
           succ_node.count = node.count = (succ_node.count + node.count) / 2;
           succ_node.freq_total_in = succ_node.freq_total_out =
-            node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) node.count);
+            node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) node.count);
           return TRUE;
         }
       }
@@ -1398,7 +1437,7 @@ FB_CFG::Adjust_edge_freq_node_out(FB_NODEX nx)
       if (node.count < sum_count)
       {
           node.count = sum_count;
-          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) sum_count);
+          node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) sum_count);
           return TRUE;
       }
       else if ((node.count > sum_count) && sum_count > 0)
@@ -1415,12 +1454,12 @@ FB_CFG::Adjust_edge_freq_node_out(FB_NODEX nx)
 	  Is_True( succ_nx.count >= 0,
 		   ( "FB_CFG::Adjust_edge_freq_node_out[nx%d]"
 		     " succ_nx %d count is negative!! value: %d", nx, t, succ_nx.count ) );
-          succ_nx.freq_total_in = succ_nx.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) succ_nx.count);
+          succ_nx.freq_total_in = succ_nx.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) succ_nx.count);
           new_sum += succ_nx.count;
         }
         // Make counts consistent
         node.count = new_sum;
-        node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_GUESS, (float) new_sum);
+        node.freq_total_in = node.freq_total_out = FB_FREQ::FB_FREQ(FB_FREQ_TYPE_EXACT, (float) new_sum);
         return TRUE;
       }
     }
@@ -2245,14 +2284,6 @@ FB_CFG::Construct_from_whirl( WN *wn_root, const char *caller )
   // (2)  Add all remaining edges to the cfg, replacing labels by cfg nodes.
   Complete_delayed_edges();
 
-  if ( _trace_before && ( _trace || _trace_draw ) )
-    sprintf( title, "FB_CFG for %s before propagation", caller );
-
-  if ( _trace_before && _trace ) {
-    fprintf( TFile, "------------ %s ------------\n", title );
-    Print( TFile );
-  }
-
   char       *func_name   = "<unknown func>";
 
   if ( wn_root && WN_operator( wn_root ) == OPR_FUNC_ENTRY ) {
@@ -2260,10 +2291,10 @@ FB_CFG::Construct_from_whirl( WN *wn_root, const char *caller )
   }
 
   char buffer[80];
-  static bool done_print_vcg = FALSE;
   FILE *fp;
+  bool print_vcg = !strcmp("sample annotate", caller);
 
-  if (!done_print_vcg)
+  if (print_vcg)
   {
 #ifdef SAMPLE_PROFILE
   Initialize_node_counts();
@@ -2276,6 +2307,14 @@ FB_CFG::Construct_from_whirl( WN *wn_root, const char *caller )
   fclose(fp);
   }
 
+  if ( _trace_before && ( _trace || _trace_draw ) )
+    sprintf( title, "FB_CFG for %s before propagation", caller );
+
+  if ( _trace_before && _trace ) {
+    fprintf( TFile, "------------ %s ------------\n", title );
+    Print( TFile );
+  }
+
   if ( _trace_draw && _trace_before )
     dV_view_fb_cfg( *this, wn_root, title );
 
@@ -2284,16 +2323,15 @@ FB_CFG::Construct_from_whirl( WN *wn_root, const char *caller )
   Freq_propagate();
 #else
   Adjust_all_edge_freq();
-  sprintf(buffer, "%s_sample_adj.vcg", func_name);
-  if (!done_print_vcg)
+  if (print_vcg)
   {
+  sprintf(buffer, "%s_sample_adj.vcg", func_name);
   fp = fopen(buffer, "w");
   Print_VCG(fp, func_name);
   fclose(fp);
   }
 #endif
 
-  done_print_vcg = TRUE;
   if ( _trace || _trace_draw )
     sprintf( title, "FB_CFG for %s after propagation", caller );
 

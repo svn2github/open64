@@ -1066,6 +1066,15 @@ FEEDBACK::Annot_sample_circuit( WN *wn, const FB_Info_Circuit& fb_info )
            ("FEEDBACK::Annot_sample_circuit(%p) - unexpected index %d", wn, fb_index));
   _circuits.push_back(fb_info);
 }
+
+void
+FEEDBACK::Annot_sample_call( WN *wn, const FB_Info_Call& fb_info )
+{
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
+  Is_True( _calls.size() == fb_index,
+           ("FEEDBACK::Annot_sample_call(%p) - unexpected index %d", wn, fb_index));
+  _calls.push_back(fb_info);
+}
 #endif
 
 void

@@ -247,6 +247,7 @@ public:
   void Annot_sample_branch  ( WN *wn, const FB_Info_Branch & fb_info );
   void Annot_sample_loop    ( WN *wn, const FB_Info_Loop   & fb_info );
   void Annot_sample_circuit ( WN *wn, const FB_Info_Circuit & fb_info );
+  void Annot_sample_call    ( WN *wn, const FB_Info_Call & fb_info );
 #endif
 
   void Annot         ( WN *wn, const FB_EDGE_TYPE type, FB_FREQ freq );
