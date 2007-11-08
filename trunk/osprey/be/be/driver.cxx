@@ -1115,7 +1115,9 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
         WB_LWR_Initialize(rwn, alias_mgr);
 
     /* lowering MLDID/MSTID before lowering to CG */
-    if (!Run_wopt) {
+    if (!Run_wopt || 
+         // OSP 421, MLDID/MSTID is not lowered.
+         Query_Skiplist (WOPT_Skip_List, Current_PU_Count()) ) {
       rwn = WN_Lower(rwn, LOWER_MLDID_MSTID, alias_mgr, 
                        "Lower MLDID/MSTID when not running WOPT");
 #ifdef KEY // bug 7298: this flag could have been set by LNO's preopt
