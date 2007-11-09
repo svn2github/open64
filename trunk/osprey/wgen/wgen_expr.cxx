@@ -4996,6 +4996,21 @@ WGEN_Expand_Expr (gs_t exp,
 	  set_DECL_ST(ptr_var, WN_st(target_wn));
 	}
       }
+
+#ifdef NEW_INITIALIZER
+      {
+        gs_t opnd0 = gs_tree_operand(exp, 0);
+        gs_t opnd1 = gs_tree_operand(exp, 1);
+        if( lang_cplus &&
+            gs_tree_code(opnd0) == GS_INDIRECT_REF &&
+            gs_tree_code(opnd1) == GS_CONSTRUCTOR ) {
+          WN* target = WGEN_Address_Of(opnd0);
+          WGEN_Generate_Initialized_Aggregate(target, opnd1); 
+          break;
+        }
+      }
+#endif
+
       // fall through
 #endif
     case GS_MODIFY_EXPR:
@@ -5177,11 +5192,11 @@ WGEN_Expand_Expr (gs_t exp,
           //   else if (gs_tree_code(initializer = gs_tree_operand(t,1)) == GS_AGGR_INIT_EXPR )
           // From the testing result, we adopt the strict pattern match:
           // +INIT_EXPR
-          // |  +COMPONENT_REF <this->m>
-          // +TARGET_EXPR
-          //    +VAR_DECL <tmp>
-          //    +AGGR_INIT_EXPR <=f();>
-          //    +CALL_EXPR <cleanup the tmp>
+          // |-+COMPONENT_REF <this->m>
+          // |-+TARGET_EXPR
+          //   |-+VAR_DECL <tmp>
+          //   |-+AGGR_INIT_EXPR <=f();>
+          //   |-+CALL_EXPR <cleanup the tmp>
           else if (code == GS_INIT_EXPR &&
               gs_tree_code(gs_tree_operand(exp, 0)) == GS_COMPONENT_REF &&
               gs_tree_code(t) == GS_TARGET_EXPR &&
@@ -7138,7 +7153,12 @@ WGEN_Expand_Expr (gs_t exp,
    case GS_VECTOR_CST:
      {
        ST * init_st = Gen_Temp_Symbol (Get_TY(gs_tree_type(exp)), "__vec_cst");
+#ifdef NEW_INITIALIZER
+       WN* target = WN_Lda(Pointer_Mtype, 0, init_st, 0);
+       Traverse_Aggregate_Vector_Const (target, exp, 0, 0);
+#else
        Traverse_Aggregate_Vector_Const (init_st, exp, 0, 0);
+#endif
        TY_IDX ty = ST_type (init_st);
        TYPE_ID mtype = TY_mtype (ty);
        wn = WN_CreateLdid (OPR_LDID, mtype, mtype, 0, init_st, ty, 0);

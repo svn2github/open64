@@ -4751,6 +4751,20 @@ WFE_Expand_Expr (tree exp,
 	  set_DECL_ST(ptr_var, WN_st(target_wn));
 	}
       }
+
+#ifdef NEW_INITIALIZER
+      {
+        tree opnd0 = TREE_OPERAND(exp, 0);
+        tree opnd1 = TREE_OPERAND(exp, 1);
+        if( TREE_CODE(opnd0) == INDIRECT_REF &&
+            TREE_CODE(opnd1) == CONSTRUCTOR ) {
+          WN* target = WFE_Address_Of(opnd0);
+          WFE_Generate_Initialized_Aggregate(target, opnd1);
+          break;
+        }
+      }
+#endif
+
       // fall through
 #endif
     case MODIFY_EXPR:
@@ -6512,7 +6526,12 @@ WFE_Expand_Expr (tree exp,
    case VECTOR_CST:
      {
        ST * init_st = Gen_Temp_Symbol (Get_TY(TREE_TYPE(exp)), "__vec_cst");
+#ifdef NEW_INITIALIZER
+       WN* target = WN_Lda(Pointer_Mtype, 0, init_st, 0);
+       Traverse_Aggregate_Vector_Const (target, exp, 0, 0);
+#else
        Traverse_Aggregate_Vector_Const (init_st, exp, 0, 0);
+#endif
        TY_IDX ty = ST_type (init_st);
        TYPE_ID mtype = TY_mtype (ty);
        wn = WN_CreateLdid (OPR_LDID, mtype, mtype, 0, init_st, ty, 0);
