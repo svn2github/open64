@@ -3984,9 +3984,8 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
   case OPR_ARRAY:
   case OPR_LDA:
     return tree;
-
-  default:
-    {
+  } // end of switch (WN_operator(tree))
+  {
       TYPE_ID	type = WN_rtype(tree);
       ST  *st = Gen_Temp_Symbol( MTYPE_To_TY(type), "complex-temp-expr");
       WN  *stid;
@@ -3999,7 +3998,6 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
       WN_INSERT_BlockLast(block, stid);
 
       return WN_Lda(Pointer_type, WN_store_offset(stid), st);
-    }
   }
 }
 
