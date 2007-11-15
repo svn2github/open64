@@ -11241,6 +11241,9 @@ finish_function (int flags)
 	     return; see g++.dg/opt/nrv6.C.  We could be more flexible if
 	     we were to do this optimization in tree-ssa.  */
 	  && (outer = outer_curly_brace_block (fndecl))
+#if defined(KEY) && defined(TARG_X8664)
+	  && (TREE_CODE(TREE_TYPE(TREE_TYPE(fndecl))) != VECTOR_TYPE)
+#endif
 	  && chain_member (r, BLOCK_VARS (outer)))
 	finalize_nrv (&DECL_SAVED_TREE (fndecl), r, DECL_RESULT (fndecl));
 

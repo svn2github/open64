@@ -844,7 +844,9 @@ ALL_CFLAGS = -DKEY -DFE_GNU_4_2_0 $(X_CFLAGS) $(T_CFLAGS) \
 # win against random include files in /usr/include.
 ALL_CPPFLAGS = $(INCLUDES) $(CPPFLAGS) $(X_CPPFLAGS) $(T_CPPFLAGS)
 
-LIBGSPIN = ../../../libspin/libgspin42.a
+#LIBGSPIN = ../../../libspin/libgspin42.a
+#This is a symbol link, create by the CONFIGURE script
+LIBGSPIN = ../libgspin.a
 
 # Build and host support libraries.
 LIBIBERTY = ../libiberty/libiberty.a
@@ -1283,7 +1285,11 @@ config.status: $(srcdir)/configure $(srcdir)/config.gcc
 # UNSORTED
 # --------
 
-all.internal: start.encap rest.encap doc
+#all.internal: start.encap rest.encap doc
+# For Open64 compiler
+#  We only build cc1/cc1plus, how about jc1?
+all.internal: start.encap
+
 # This is what to compile if making a cross-compiler.
 all.cross: native gcc-cross$(exeext) cpp$(exeext) specs \
 	$(LIBGCC) $(EXTRA_PARTS) lang.all.cross doc @GENINSRC@ srcextra
@@ -4788,5 +4794,6 @@ po/gcc.pot: force
 		$(XGETTEXT) gcc $(srcdir)
 
 # KEY: rule for making libgspin.a
-$(LIBGSPIN):
-	make -C ../../../libspin FE=GNU_4_2_0
+# Do not build libspin.a here, it's created by targXXXX_XXXX/CONFIGURE
+#$(LIBGSPIN):
+#	make -C ../../../libspin FE=GNU_4_2_0

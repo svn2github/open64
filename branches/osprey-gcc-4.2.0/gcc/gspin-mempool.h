@@ -47,6 +47,7 @@ extern gs_arena_t gs_mempool[GS_ARENA_COUNT];
 
 extern void *__gs_mempool_alloc(unsigned int mempool_id, unsigned int count);
 extern void *gs_mempool_idx2address(int arena_id, int cell_index);
-extern int gs_mempool_address2byteofst(int arena_id, char *p);
+/* Open64, using long on IA64 as return value */
+extern long gs_mempool_address2byteofst(int arena_id, char *p);
 
 #endif // __GSPIN_GS_MEMPOOL_H__

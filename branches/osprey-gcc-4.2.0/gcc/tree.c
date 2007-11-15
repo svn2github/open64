@@ -8506,6 +8506,9 @@ gcc_built_in2gsbi (enum built_in_function code)
     case BUILT_IN_ISWXDIGIT: return GSBI_BUILT_IN_ISWXDIGIT;
     case BUILT_IN_TOWLOWER: return GSBI_BUILT_IN_TOWLOWER;
     case BUILT_IN_TOWUPPER: return GSBI_BUILT_IN_TOWUPPER;
+    case BUILT_IN_CTYPE_B_LOC: return GSBI_BUILT_IN_CTYPE_B_LOC;
+    case BUILT_IN_CTYPE_TOUPPER_LOC: return GSBI_BUILT_IN_CTYPE_TOUPPER_LOC;
+    case BUILT_IN_CTYPE_TOLOWER_LOC: return GSBI_BUILT_IN_CTYPE_TOLOWER_LOC;
     case BUILT_IN_ABORT: return GSBI_BUILT_IN_ABORT;
     case BUILT_IN_ABS: return GSBI_BUILT_IN_ABS;
     case BUILT_IN_AGGREGATE_INCOMING_ADDRESS: return GSBI_BUILT_IN_AGGREGATE_INCOMING_ADDRESS;
@@ -9579,7 +9582,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
   }
 
   // Create the node that will represent this tree node. 
-  TREE_TO_TRANSLATED_GS (t) = (unsigned int)__gs(gcc2gs (TREE_CODE (t)));
+  // Open64, we use long to represent the pointer
+  TREE_TO_TRANSLATED_GS (t) = (unsigned long)__gs(gcc2gs (TREE_CODE (t)));
 
   // Argument 0 is the name of the class:
   class = TREE_CODE_CLASS (TREE_CODE (t));
