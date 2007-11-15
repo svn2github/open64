@@ -900,9 +900,17 @@ Process_Inline ( void )
   int more_symbols = TRUE;
   char *args = option_name+7;
 
-  if (strncmp (option_name, "-noinline", 9) == 0)
-      toggle_inline_off();
-  else if (*args == '\0')
+  if (strncmp (option_name, "-noinline", 9) == 0
+#ifdef KEY
+      || strncmp (option_name, "-fno-inline", 11) == 0
+#endif
+     )
+    toggle_inline_off();
+  else if (*args == '\0'
+#ifdef KEY
+      || strncmp (option_name, "-finline", 8) == 0
+#endif
+     )
     /* Treat "-INLINE" like "-INLINE:=on" for error messages */
     toggle_inline_on();
   else do {

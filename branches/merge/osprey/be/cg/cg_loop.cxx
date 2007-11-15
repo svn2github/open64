@@ -2469,7 +2469,7 @@ static void unroll_guard_unrolled_body(LOOP_DESCR *loop,
              Gen_Label_TN(continuation_lbl,0),
              new_trip_count_tn,
              Gen_Literal_TN(0,4),
-             trip_size == 4 ? V_BR_I8EQ : V_BR_I8EQ,
+             trip_size == 4 ? V_BR_I4EQ : V_BR_I8EQ,
              &ops);
 #else
     Exp_OP3v(OPC_FALSEBR,

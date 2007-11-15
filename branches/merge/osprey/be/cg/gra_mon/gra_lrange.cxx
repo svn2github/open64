@@ -574,16 +574,19 @@ LRANGE::Calculate_Priority(void)
     }
     priority = value;
 #ifdef KEY
-    if ((GRA_exclude_callee_saved_regs ||
-	 GRA_eh_exclude_callee_saved_regs && PU_Has_Exc_Handler ||
-	 GRA_fp_exclude_callee_saved_regs && TN_is_float(Tn()))
-	&& Tn_Is_Save_Reg())
-      priority += 100.0F;
-
     // Prioritize live ranges by reference density as in classic Chow.
     if (GRA_prioritize_by_density) {
       UINT32 num_bbs = BB_SET_Size(this->Live_BB_Set());
       priority = priority / num_bbs;
+    }
+
+    // Exclude callee-saved registers from normal GRA use by always allocating
+    // them to their save TNs.
+    if ((GRA_exclude_callee_saved_regs ||
+	 GRA_eh_exclude_callee_saved_regs && PU_Has_Exc_Handler ||
+	 GRA_fp_exclude_callee_saved_regs && TN_is_float(Tn()))
+	&& Tn_Is_Save_Reg()) {
+      priority = FLT_MAX;
     }
 #endif
   }

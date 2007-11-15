@@ -569,8 +569,9 @@ Generate_Entry (BB *bb, BOOL gra_run )
   			Caller_FP_TN = stn;
         	else {
   			Caller_FP_TN = Gen_Register_TN ( 
-				ISA_REGISTER_CLASS_integer, Pointer_Size);
-  			Set_TN_save_creg (Caller_FP_TN, TN_class_reg(FP_TN));
+				ISA_REGISTER_CLASS_integer,
+				TY_size(Spill_Int_Type));
+			Set_TN_save_creg (Caller_FP_TN, TN_class_reg(FP_TN));
   			TN_MAP_Set( TN_To_PREG_Map, Caller_FP_TN, 
 				(void *)(INTPTR)Caller_FP_Preg );
   			PREG_To_TN_Array[ Caller_FP_Preg ] = Caller_FP_TN;
@@ -1662,7 +1663,7 @@ Generate_Exit (
 	Caller_FP_TN = stn;
       else {
 	Caller_FP_TN = Gen_Register_TN (
-		ISA_REGISTER_CLASS_integer, Pointer_Size);
+		ISA_REGISTER_CLASS_integer, TY_size(Spill_Int_Type));
 	TN_MAP_Set( TN_To_PREG_Map, Caller_FP_TN, (void *)(INTPTR)Caller_FP_Preg );
 	PREG_To_TN_Array[ Caller_FP_Preg ] = Caller_FP_TN;
   	PREG_To_TN_Mtype[ Caller_FP_Preg ] = TY_mtype(Spill_Int_Type);

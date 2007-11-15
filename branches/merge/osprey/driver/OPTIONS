@@ -1608,9 +1608,9 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fno-function-cse	;		Cc	f	self
 	""
--finline		;		Cc	f	self
+-finline	Process_Inline();		Cc	f	"-INLINE"
 	""
--fno-inline		;		Cc	f	self "-INLINE:=off"
+-fno-inline	Process_Inline();		Cc	f	"-INLINE:=off"
 	""
 -fabi-version=%d	;		C	f	"-fabi-version=%d"
 	""

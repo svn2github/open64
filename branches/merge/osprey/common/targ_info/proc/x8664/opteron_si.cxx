@@ -73,7 +73,7 @@ int main (int argc, char *argv[])
   const RESOURCE res_fadd   = RESOURCE_Create( "fadd",   1 );
   const RESOURCE res_fstore = RESOURCE_Create( "fstore", 1 );
 
-  Instruction_Group( "simple alu",
+  Instruction_Group( "opteron simple alu",
 		     TOP_ijmpx,
 		     TOP_icallx,
 		     TOP_ijmpxx,
