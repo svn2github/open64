@@ -421,9 +421,42 @@ FB_CFG::Initialize_Feedback()
            Is_True( node_type == FB_EDGE_LOOP_EXIT,
                     ("FB_CFG::Initialize_Feedback:: OPR_DO_LOOP - expected to see FB_EDGE_LOOP_EXIT"));
 
-           FB_FREQ exit((float) _nodes[nx_next].count);
-           FB_FREQ iterate((float) _nodes[nx].count);
-           FB_Info_Loop fb_loop(exit, iterate);
+           // Use heuristics to calculate components exit = zero + out and
+           // iterate = positive + back;   positive = out for these cases
+           float exit_count = (float) _nodes[nx_next].count;
+           float iterate_count = (float) _nodes[nx].count;
+           float zero_count = 0.0, out_count = 0.0, back_count = 0.0;
+
+           if (iterate_count == 0.0)
+           {
+             zero_count = exit_count;
+           }
+           else if (iterate_count > (2.0 * exit_count))
+           {
+             out_count = exit_count;
+             back_count = iterate_count - out_count;
+             zero_count = 0.0;
+           }
+           // iterate_count and exit_count are comparable
+           else if (exit_count > iterate_count)
+           {
+             
+             out_count = (exit_count / 2.0) < iterate_count ? (exit_count / 2.0) : iterate_count;
+             zero_count = exit_count - out_count;
+             back_count = iterate_count - out_count;
+           }
+           else
+           {
+             out_count = (iterate_count / 2.0) < exit_count ? (iterate_count / 2.0) : exit_count;
+             back_count = iterate_count - out_count;
+             zero_count = exit_count - out_count;
+           }
+             
+           FB_FREQ zero(zero_count);    
+           FB_FREQ out(out_count);
+           FB_FREQ back(back_count);
+
+           FB_Info_Loop fb_loop(zero, out, out, back);
            Cur_PU_Feedback->Annot_sample_loop(wn, fb_loop);
            nx = nx_next;
            break;
@@ -832,6 +865,7 @@ FB_CFG::Walk_WN_statement( WN *wn )
       FB_FREQ freq_exit, freq_iterate;
       freq_exit    = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_EXIT );
       freq_iterate = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_ITERATE );
+
       // Walk through the start of the loop
       Walk_WN_statement( WN_start(wn) );
 
