@@ -24,11 +24,11 @@
 find .. -name config.cache | xargs /bin/rm -f
 
 # if the libspin.a does not exist, build it first
-if [ ! -f ../../osprey/targia32_x8664/libspin42/libgspin42.a ] ; then
-    make -C ../../osprey/targia32_x8664/libspin42
+if [ ! -f ../../osprey/targia32_x8664/libspin_4_2_0/libgspin42.a ] ; then
+    make -C ../../osprey/targia32_x8664/libspin_4_2_0
 fi
 # create symbol link to libgspin42.a
-ln -s -f ../../osprey/targia32_x8664/libspin42/libgspin42.a libgspin42.a
+ln -s -f ../../osprey/targia32_x8664/libspin_4_2_0/libgspin42.a libgspin42.a
 
 # copy all header files in libspin to gcc
 cp -f ../../libspin/*.h ../gcc/

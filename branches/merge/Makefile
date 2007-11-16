@@ -60,6 +60,7 @@ ifeq ($(MACHINE_TYPE), ia64)
   NATIVE_BUILD_DIR    = osprey/targia64_ia64_nodebug
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia64_ia64
   GNUFE_BUILD_DIR     = osprey-gcc/targia64_ia64
+  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targia64_ia64
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/itanium.so 
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so
@@ -69,6 +70,7 @@ else
   NATIVE_BUILD_DIR    = osprey/targia32_x8664
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_x8664
   GNUFE_BUILD_DIR     = osprey-gcc/targia32_x8664
+  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targia32_x8664
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
   LIB_BUILD_DIR       = osprey/targia32_builtonia32
@@ -108,11 +110,17 @@ GNU4_FE_COMPONENTS = \
                 $(GNUFE_BUILD_DIR)/gcc/cc1 \
                 $(GNUFE_BUILD_DIR)/gcc/cc1plus
 
+GNU42_FE_COMPONENTS = \
+                $(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 \
+                $(GNUFE_BUILD_DIR)/gcc/cc142 \
+                $(GNUFE_BUILD_DIR)/gcc/cc1plus42
+
 FORT_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
 
 NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
-                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
+                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) \
+                    $(GNU42_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
 
 CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
                     $(GNU3_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
@@ -132,6 +140,9 @@ $(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
 
 $(NATIVE_BUILD_DIR)/wgen/wgen wgen:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen
+
+$(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 wgen42:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen_4_2_0
 
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe
@@ -207,11 +218,19 @@ $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 $(NATIVE_BUILD_DIR_LD)/Makefile:  
 	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
 
+# GNU 4.0.2 based FE
 $(GNUFE_BUILD_DIR)/gcc/cc1 $(GNUFE_BUILD_DIR)/gcc/cc1plus cc1 cc1plus: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(SUBMAKE) -C $(GNUFE_BUILD_DIR)
 
 $(GNUFE_BUILD_DIR)/Makefile:
 	cd $(GNUFE_BUILD_DIR); ./CONFIGURE
+
+# GNU 4.2.0 based FE
+$(GNUFE42_BUILD_DIR)/gcc/cc142 $(GNUFE42_BUILD_DIR)/gcc/cc1plus42 cc142 cc1plus42: $(GNUFE42_BUILD_DIR)/Makefile Force
+	$(SUBMAKE) -C $(GNUFE42_BUILD_DIR)
+
+$(GNUFE42_BUILD_DIR)/Makefile:
+	cd $(GNUFE42_BUILD_DIR); ./CONFIGURE
 
 build: ${PHONY_TARGET} 
 
