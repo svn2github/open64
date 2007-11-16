@@ -266,6 +266,7 @@ clobber clean: clean-lib
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen_4_2_0 clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
@@ -290,6 +291,7 @@ else
 endif
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER
+	cd $(GNUFE42_BUILD_DIR); ./CLOBBER
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
 		libiberty libunwindP libspin; do  \
 		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
