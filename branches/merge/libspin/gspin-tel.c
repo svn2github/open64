@@ -258,10 +258,12 @@ gs_attribute_name (gs_int_t attribute, gs_tree_code_class_t tree_code_class,
 	}
 	return (gs_string_t) NULL;
 
+#ifndef FE_GNU_4_2_0
       case GS_CONSTRUCTOR:
 	if (attribute == GS_CONSTRUCTOR_ELTS)
 	  return "GS_CONSTRUCTOR_ELTS";
 	return (gs_string_t) "NONAME";
+#endif
 
       case GS_DECL_EXPR:
 	if (attribute == GS_DECL_EXPR_DECL)
@@ -466,6 +468,21 @@ gs_attribute_name (gs_int_t attribute, gs_tree_code_class_t tree_code_class,
 	  case GS_OVL_NEXT:	OMIT; return "GS_OVL_NEXT";
 	}
 	return (gs_string_t) NULL;
+
+#ifdef FE_GNU_4_2_0
+      case GS_CONSTRUCTOR:
+	switch (attribute) {
+	  case GS_CONSTRUCTOR_LENGTH:      return "GS_CONSTRUCTOR_LENGTH";
+	  case GS_CONSTRUCTOR_ELTS_INDEX:  return "GS_CONSTRUCTOR_ELTS_INDEX";
+	  case GS_CONSTRUCTOR_ELTS_VALUE:  return "GS_CONSTRUCTOR_ELTS_VALUE";
+	}
+	return (gs_string_t) NULL;
+
+      case GS_OMP_CLAUSE:
+        if (attribute == GS_OMP_CLAUSE_DECL)
+	  return "GS_OMP_CLAUSE_DECL";
+	return (gs_string_t) NULL;
+#endif
 
       default:
         break;
@@ -677,6 +694,9 @@ gs_flag_name (gs_code_t constructor, gs_int_t attribute, gs_count_t flag,
       case GS_DECL_COPY_CONSTRUCTOR_P:		return "GS_DECL_COPY_CONSTRUCTOR_P";
       case GS_DECL_IMPLICIT_INSTANTIATION:	return "GS_DECL_IMPLICIT_INSTANTIATION";
       case GS_DECL_NAMESPACE_SCOPE_P:		return "GS_DECL_NAMESPACE_SCOPE_P";
+#ifdef FE_GNU_4_2_0
+      case GS_CP_DECL_THREADPRIVATE_P:		return "GS_CP_DECL_THREADPRIVATE_P";
+#endif
       case GS_DECL_COMPLETE_CONSTRUCTOR_P:	return "GS_DECL_COMPLETE_CONSTRUCTOR_P";
       case GS_DECL_REALLY_EXTERN:		return "GS_DECL_REALLY_EXTERN";
       case GS_DECL_USE_TEMPLATE:		return "GS_DECL_USE_TEMPLATE";
@@ -891,9 +911,13 @@ gs_t gs_build_pointer_type(gs_t to_type)
 
   t = gs_build_type(GS_POINTER_TYPE);
   gs_set_operand(t, GS_TREE_TYPE, to_type);
-  gs_set_operand(t, GS_TYPE_MODE, ptr_type);
+  {
+    gs_t type_mode = __gs(IB_STRING);
+    _gs_s (type_mode, ptr_type_mode, 1 + strlen((char *)ptr_type_mode));
+    gs_set_operand(t, GS_TYPE_MODE, type_mode);
+  }
   gs_set_type_ref_can_alias_all(t, 0);
-  gs_set_operand(t, GS_TYPE_NEXT_PTR_TO, to_type);
+  gs_set_operand(t, GS_TYPE_NEXT_PTR_TO, gs_type_pointer_to(to_type));
   gs_set_operand(to_type, GS_TYPE_POINTER_TO, t);
 
   // Copy pointer attributes from the generic pointer.

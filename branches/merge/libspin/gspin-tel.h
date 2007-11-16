@@ -140,7 +140,10 @@ extern gs_t gs_strip_nops(gs_t node);
 #  define GS_DECL_ASSEMBLER_NAME_SET_P	59
 #  define GS_DECL_ARTIFICIAL		60
 #  define GS_DECL_LANG_SPECIFIC		61
-#  define GS_DECL_THREADPRIVATE         62
+#  define GS_DECL_THREADPRIVATE         62  // RECYCLE
+#ifdef FE_GNU_4_2_0
+#  define GS_C_DECL_THREADPRIVATE_P     GS_DECL_LANG_FLAG_3
+#endif
 
 // flags specific to GS_TCC_TYPE:
 #  define GS_TYPE_UNSIGNED		23
@@ -226,7 +229,11 @@ extern gs_t gs_strip_nops(gs_t node);
 #  define GS_DECL_COPY_CONSTRUCTOR_P 		8
 #  define GS_DECL_IMPLICIT_INSTANTIATION 	9
 #  define GS_DECL_NAMESPACE_SCOPE_P 		10
-/* ** RECYCLE ** 11 */
+#ifdef FE_GNU_4_2_0
+#  define GS_CP_DECL_THREADPRIVATE_P		11
+#else
+/* RECYCLE 11 */
+#endif
 #  define GS_DECL_COMPLETE_CONSTRUCTOR_P        12
 #  define GS_DECL_REALLY_EXTERN			13
 #  define GS_DECL_USE_TEMPLATE			14
@@ -330,7 +337,13 @@ extern gs_t gs_strip_nops(gs_t node);
 #define GS_CASE_HIGH			8
 #define GS_CASE_LABEL			9
 
+#ifdef FE_GNU_4_2_0
+#define GS_CONSTRUCTOR_LENGTH		7
+#define GS_CONSTRUCTOR_ELTS_INDEX	8
+#define GS_CONSTRUCTOR_ELTS_VALUE	9
+#else
 #define GS_CONSTRUCTOR_ELTS		7
+#endif
 
 #define GS_DECL_EXPR_DECL		7
 
@@ -376,8 +389,40 @@ extern gs_t gs_strip_nops(gs_t node);
 #define GS_OBJ_TYPE_REF_OBJECT          8
 #define GS_OBJ_TYPE_REF_TOKEN           9
 
+#ifdef FE_GNU_4_2_0
+#define GS_OMP_PARALLEL_BODY            7
+#define GS_OMP_PARALLEL_CLAUSES         8
+
+#define GS_OMP_CRITICAL_BODY            7
+#define GS_OMP_CRITICAL_NAME            8
+
+#define GS_OMP_SECTIONS_BODY            7
+#define GS_OMP_SECTIONS_CLAUSES         8
+
+#define GS_OMP_SECTION_BODY             7
+
+#define GS_OMP_SINGLE_BODY              7
+#define GS_OMP_SINGLE_CLAUSES           8
+
+// GNU definition has 6 kids, but we probably won't need OMP_FOR_PRE_BODY.
+#define GS_OMP_FOR_BODY                 7
+#define GS_OMP_FOR_CLAUSES              8
+#define GS_OMP_FOR_INIT                 9
+#define GS_OMP_FOR_COND                 10
+#define GS_OMP_FOR_INCR                 11
+
+#define GS_OMP_MASTER_BODY              7
+
+#define GS_OMP_ORDERED_BODY             7
+#endif
+
 // ---- C++ ----
+#ifdef FE_GNU_4_2_0
+#define GS_CP_EXPR_FLAGS                12
+#else
 #define GS_CP_EXPR_FLAGS		11
+#endif
+
 // ---- begin GS_CP_EXPR_FLAGS definition ----
 #  define GS_STMT_IS_FULL_EXPR_P	0
 #  define GS_AGGR_INIT_VIA_CTOR_P	1
@@ -468,6 +513,20 @@ extern gs_t gs_strip_nops(gs_t node);
 #define GS_OVL_CHAIN                    GS_TREE_CHAIN
 #define GS_OVL_CURRENT                  5
 #define GS_OVL_NEXT                     6
+
+#ifdef FE_GNU_4_2_0
+// GS_OMP_CLAUSE
+#define GS_OMP_CLAUSE_CODE              4
+
+#define GS_OMP_CLAUSE_DECL              5
+#define GS_OMP_CLAUSE_DEFAULT_KIND      GS_OMP_CLAUSE_DECL
+#define GS_OMP_CLAUSE_IF_EXPR           GS_OMP_CLAUSE_DECL
+#define GS_OMP_CLAUSE_NUM_THREADS_EXPR  GS_OMP_CLAUSE_DECL
+#define GS_OMP_CLAUSE_REDUCTION_CODE    6
+
+#define GS_OMP_CLAUSE_SCHEDULE_KIND        5
+#define GS_OMP_CLAUSE_SCHEDULE_CHUNK_EXPR  6
+#endif
 //   ==== end GS_TCC_EXCEPTIONAL fields
 
 
@@ -525,6 +584,9 @@ GS_LOOKUP_FLAG (GS_FLAGS, gs_tree_nothrow, GS_TREE_NOTHROW)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_tree_public, GS_TREE_PUBLIC)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_asm_volatile_p, GS_ASM_VOLATILE_P)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_tree_private, GS_TREE_PRIVATE)
+#ifdef FE_GNU_4_2_0
+GS_LOOKUP_FLAG (GS_FLAGS, gs_omp_parallel_combined, GS_TREE_PRIVATE)
+#endif
 GS_LOOKUP_FLAG (GS_FLAGS, gs_tree_protected, GS_TREE_PROTECTED)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_tree_static, GS_TREE_STATIC)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_dwarf_access_flag_0, GS_DWARF_ACCESS_FLAG_0);
@@ -583,6 +645,13 @@ GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_artificial, GS_DECL_ARTIFICIAL)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_lang_specific, GS_DECL_LANG_SPECIFIC)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_threadprivate, GS_DECL_THREADPRIVATE)
 GS_UPDATE_FLAG (GS_FLAGS, gs_set_decl_threadprivate, GS_DECL_THREADPRIVATE)
+/* recycle end */
+
+#ifdef FE_GNU_4_2_0
+GS_LOOKUP_FLAG (GS_FLAGS, gs_c_decl_threadprivate_p, GS_C_DECL_THREADPRIVATE_P)
+GS_UPDATE_FLAG (GS_FLAGS, gs_set_c_decl_threadprivate_p, GS_C_DECL_THREADPRIVATE_P)
+#endif
+
 GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_needed, GS_DECL_NEEDED)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_reachable, GS_DECL_REACHABLE)
 
@@ -629,6 +698,17 @@ GS_UPDATE_FLAG (GS_FLAGS, gs_set_type_ref_can_alias_all, GS_TREE_STATIC)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_bit_field_ref_unsigned, GS_BIT_FIELD_REF_UNSIGNED)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_expr_has_location, GS_EXPR_HAS_LOCATION)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_emit_target_expr_cleanup, GS_EMIT_TARGET_EXPR_CLEANUP)
+
+/* gs_expr_has_location(t) must never be directly called when the nature of
+   T is not known. gs_tree_has_location(t) should be called for any type
+   of TREE node. (bug 12563) */
+static inline gs_bool_t gs_tree_has_location (gs_t t) {
+  if (gs_tree_code_class(t) >= GS_TCC_REFERENCE &&
+      gs_tree_code_class(t) <= GS_TCC_EXPRESSION)
+    return gs_expr_has_location (t);
+  else
+    return gs_false;
+}
 
 // GS_TCC_CONSTANT/GS_TCC_EXCEPTIONAL:
 
@@ -734,7 +814,24 @@ GS_LOOKUP (gs_case_low, GS_CASE_LOW)
 GS_LOOKUP (gs_case_high, GS_CASE_HIGH)
 GS_LOOKUP (gs_case_label, GS_CASE_LABEL)
 
+#ifdef FE_GNU_4_2_0
+static inline gs_int_t gs_constructor_length (gs_t t) {
+  return gs_n (gs_operand (t, GS_CONSTRUCTOR_LENGTH));
+}
+static inline gs_t gs_constructor_elts_index (gs_t t, gs_count_t index) {
+  return gs_index (gs_operand (t, GS_CONSTRUCTOR_ELTS_INDEX), index);
+}
+static inline gs_t gs_constructor_elts_value (gs_t t, gs_count_t index) {
+  return gs_index (gs_operand (t, GS_CONSTRUCTOR_ELTS_VALUE), index);
+}
+static inline void gs_constructor_elts_set_value (gs_t t, gs_count_t index,
+                                                  gs_t value) {
+  gs_t list = gs_operand (t, GS_CONSTRUCTOR_ELTS_VALUE);
+  gs_set_index (list, index, value);
+}
+#else
 GS_LOOKUP (gs_constructor_elts, GS_CONSTRUCTOR_ELTS)
+#endif
 GS_LOOKUP (gs_decl_expr_decl, GS_DECL_EXPR_DECL)
 
 static inline gs_string_t gs_expr_filename (gs_t t) {
@@ -869,6 +966,9 @@ static inline gs_bool_t gs_uses_template_parms (gs_t t) {
 GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_copy_constructor_p, GS_DECL_COPY_CONSTRUCTOR_P)
 GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_implicit_instantiation, GS_DECL_IMPLICIT_INSTANTIATION)
 GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_namespace_scope_p, GS_DECL_NAMESPACE_SCOPE_P)
+#ifdef FE_GNU_4_2_0
+GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_cp_decl_threadprivate_p, GS_CP_DECL_THREADPRIVATE_P)
+#endif
 GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_complete_constructor_p, GS_DECL_COMPLETE_CONSTRUCTOR_P)
 GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_really_extern, GS_DECL_REALLY_EXTERN)
 GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_use_template, GS_DECL_USE_TEMPLATE)
@@ -960,6 +1060,25 @@ GS_LOOKUP (gs_obj_type_ref_expr, GS_OBJ_TYPE_REF_EXPR)
 GS_LOOKUP (gs_obj_type_ref_object, GS_OBJ_TYPE_REF_OBJECT)
 GS_LOOKUP (gs_obj_type_ref_token, GS_OBJ_TYPE_REF_TOKEN)
 
+#ifdef FE_GNU_4_2_0
+GS_LOOKUP (gs_omp_parallel_body, GS_OMP_PARALLEL_BODY)
+GS_LOOKUP (gs_omp_parallel_clauses, GS_OMP_PARALLEL_CLAUSES)
+GS_LOOKUP (gs_omp_critical_body, GS_OMP_CRITICAL_BODY)
+GS_LOOKUP (gs_omp_critical_name, GS_OMP_CRITICAL_NAME)
+GS_LOOKUP (gs_omp_sections_body, GS_OMP_SECTIONS_BODY)
+GS_LOOKUP (gs_omp_sections_clauses, GS_OMP_SECTIONS_CLAUSES)
+GS_LOOKUP (gs_omp_section_body, GS_OMP_SECTION_BODY)
+GS_LOOKUP (gs_omp_single_body, GS_OMP_SINGLE_BODY)
+GS_LOOKUP (gs_omp_single_clauses, GS_OMP_SINGLE_CLAUSES)
+GS_LOOKUP (gs_omp_for_body, GS_OMP_FOR_BODY)
+GS_LOOKUP (gs_omp_for_clauses, GS_OMP_FOR_CLAUSES)
+GS_LOOKUP (gs_omp_for_init, GS_OMP_FOR_INIT)
+GS_LOOKUP (gs_omp_for_cond, GS_OMP_FOR_COND)
+GS_LOOKUP (gs_omp_for_incr, GS_OMP_FOR_INCR)
+GS_LOOKUP (gs_omp_master_body, GS_OMP_MASTER_BODY)
+GS_LOOKUP (gs_omp_ordered_body, GS_OMP_ORDERED_BODY)
+#endif
+
 // C++ Expr Flags+ {
 GS_LOOKUP_FLAG (GS_CP_EXPR_FLAGS, gs_stmt_is_full_expr_p, GS_STMT_IS_FULL_EXPR_P)
 GS_LOOKUP_FLAG (GS_CP_EXPR_FLAGS, gs_aggr_init_via_ctor_p, GS_AGGR_INIT_VIA_CTOR_P)
@@ -995,6 +1114,42 @@ GS_LOOKUP (gs_ovl_chain, GS_OVL_CHAIN)
 GS_LOOKUP (gs_ovl_current, GS_OVL_CURRENT)
 GS_LOOKUP (gs_ovl_next, GS_OVL_NEXT)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_ovl_used, GS_TREE_USED)
+
+#ifdef FE_GNU_4_2_0
+static inline gs_omp_clause_code_t gs_omp_clause_code (gs_t t)
+{
+  gs_t clause_code = gs_operand(t, GS_OMP_CLAUSE_CODE);
+  return (clause_code != (gs_t) NULL) ?
+          (gs_omp_clause_code_t) gs_n(clause_code) : GS_OMP_CLAUSE_ERROR;
+}
+GS_LOOKUP (gs_omp_clause_decl, GS_OMP_CLAUSE_DECL)
+GS_LOOKUP (gs_omp_clause_num_threads_expr, GS_OMP_CLAUSE_NUM_THREADS_EXPR)
+GS_LOOKUP (gs_omp_clause_if_expr, GS_OMP_CLAUSE_IF_EXPR)
+GS_LOOKUP (gs_omp_clause_chain, GS_TREE_CHAIN) // OMP_CLAUSE_CHAIN
+
+static inline gs_omp_clause_default_kind_t gs_omp_clause_default_kind (gs_t t)
+{
+  gs_t default_kind = gs_operand(t, GS_OMP_CLAUSE_DEFAULT_KIND);
+  return (default_kind != (gs_t) NULL) ?
+          (gs_omp_clause_default_kind_t) gs_n(default_kind) :
+          GS_OMP_CLAUSE_DEFAULT_UNSPECIFIED;
+}
+
+static inline gs_code_t gs_omp_clause_reduction_code (gs_t t)
+{
+  gs_t reduction_code = gs_operand(t, GS_OMP_CLAUSE_REDUCTION_CODE);
+  return (reduction_code != (gs_t) NULL) ?
+          (gs_code_t) gs_n(reduction_code): GS_ERROR_MARK;
+}
+
+static inline gs_omp_clause_schedule_kind_t gs_omp_clause_schedule_kind (gs_t t)
+{
+  gs_t schedule_kind = gs_operand(t, GS_OMP_CLAUSE_SCHEDULE_KIND);
+  return (gs_omp_clause_schedule_kind_t) gs_n(schedule_kind);
+}
+
+GS_LOOKUP (gs_omp_clause_schedule_chunk_expr, GS_OMP_CLAUSE_SCHEDULE_CHUNK_EXPR)
+#endif
 
 static inline gs_t gs_classtype_size(gs_t t)
 {

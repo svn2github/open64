@@ -163,6 +163,18 @@ typedef enum gs_code {
  GS_NOP_EXPR,
  GS_OBJ_TYPE_REF,
  GS_OFFSET_TYPE,
+#ifdef FE_GNU_4_2_0
+ GS_OMP_ATOMIC,
+ GS_OMP_CLAUSE,
+ GS_OMP_CRITICAL,
+ GS_OMP_FOR,
+ GS_OMP_MASTER,
+ GS_OMP_ORDERED,
+ GS_OMP_PARALLEL,
+ GS_OMP_SECTION,
+ GS_OMP_SECTIONS,
+ GS_OMP_SINGLE,
+#endif
  GS_ORDERED_EXPR,
  GS_PARM_DECL,
  GS_PHI_NODE,
@@ -332,18 +344,22 @@ typedef struct gspin
   } u0;
   union { // byte 4
     unsigned int	u;	// IB_UNSIGNED, IB_UNSIGNED_LONG
-    int			n;	// IB_INT, IB_LONG
+    int			n;	// IB_INT, IB_LONG?
     float		f;	// IB_FLOAT
     gs_t		arg[1];	// for pointing to kids of non-leaf nodes
     char *		s;	// pointer part of IB_STRING
-  } u1;
-  union { // byte 8
-    long long		ll;	// IB_LONG_LONG
-    unsigned long long	ull;	// IB_UNSIGNED_LONG_LONG, IB_BIT_VECTOR
-    double		d;	// IB_DOUBLE
-    long double		ld;	// IB_LONG_DOUBLE
-  } u2;
-} gspin_t __attribute__((aligned(4)));
+    int                 data[4]; // All types larger than 4 bytes ( see
+  } u1;                          //    gs_realign_t below
+} gspin_t;
+
+typedef union gs_realign
+{
+  int data[4];
+  long long		ll;	// IB_LONG_LONG
+  unsigned long long	ull;	// IB_UNSIGNED_LONG_LONG, IB_BIT_VECTOR
+  double		d;	// IB_DOUBLE
+  long double		ld;	// IB_LONG_DOUBLE
+} gs_realign_t;
 
 static inline gs_void_t _gs_code (gs_t node, gs_code_t c)
 {
@@ -399,31 +415,36 @@ static inline unsigned int gs_hword(gs_t node)
 
 static inline gs_void_t _gs_bv (gs_t node, gs_count_t position, bool bit)
 {
-  unsigned long long k;
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
   GS_ASSERT (bit == true || bit == false, "Bad bit value");
   // Per Bug 10335, return right away if the value of parameter bit is 0.
   if (bit == false)
     return;
-  k = 1LL << position;
-  node->u2.ull |= k;
+  realign.ull = 1LL << position;
+  node->u1.data[0] |= realign.data[0];
+  node->u1.data[1] |= realign.data[1];
   return;
 }
 
 static inline bool gs_bv (gs_t node, unsigned int position)
 {
+  gs_realign_t realign;
   if (node == NULL)
     return false;
+  realign.data[0] = node->u1.data[0];
+  realign.data[1] = node->u1.data[1];
   unsigned long long k = 1LL << position;
-  return (k & node->u2.ull) != 0;
+  return (k & realign.ull) != 0;
 }
 
 static inline gs_void_t _gs_bv_reset (gs_t node, unsigned int position)
 {
-  unsigned long long k;
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  k = 1LL << position;
-  node->u2.ull &= ~k;
+  realign.ull = ~(1LL << position);
+  node->u1.data[0] &= realign.data[0];
+  node->u1.data[1] &= realign.data[1];
   return;
 }
 static inline gs_void_t _gs_n (gs_t node, int n)
@@ -453,56 +474,68 @@ static inline gs_unsigned_t gs_u (gs_t node)
 }
 
 static inline gs_void_t _gs_ull (gs_t node, gs_unsigned_long_long_t ull)
-{
+{ // 64bit on Both IA32/IA64
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  node->u2.ull = ull;
+  realign.ull = ull;
+  node->u1.data[0] = realign.data[0];
+  node->u1.data[1] = realign.data[1];
   return;
 }
 
 static inline gs_unsigned_long_long_t gs_ull (gs_t node)
-{
+{ // 64bit
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  return node->u2.ull;
+  realign.data[0] = node->u1.data[0];
+  realign.data[1] = node->u1.data[1];
+  return realign.ull;
 }
 
 static inline gs_void_t _gs_ll (gs_t node, gs_long_long_t ll)
 {
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  node->u2.ll = ll;
+  realign.ll = ll;
+  node->u1.data[0] = realign.data[0];
+  node->u1.data[1] = realign.data[1];
   return;
 }
 
 static inline gs_long_long_t gs_ll (gs_t node)
 {
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  return node->u2.ll;
+  realign.data[0] = node->u1.data[0];
+  realign.data[1] = node->u1.data[1];
+  return realign.ll;
 }
 
 static inline gs_void_t _gs_ld (gs_t node, gs_long_double_t ld)
-{
+{ // 128bit on IA64
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-#ifdef TARG_IA64  
-  if ( (gs_unsigned_long_t)(&(node->u2.ld)) % 16 != 0 )
-    /* using memcpy to avoid unaligned access on IA64 for long double */
-    memcpy( &(node->u2.ld), &(ld), sizeof(gs_long_double_t) );
-  else
+  realign.ld = ld;
+  node->u1.data[0] = realign.data[0];
+  node->u1.data[1] = realign.data[1];
+  node->u1.data[2] = realign.data[2];
+#if defined(ARCH_MIPS) || defined(TARG_IA64)
+  node->u1.data[3] = realign.data[3];
 #endif
-    node->u2.ld = ld;
   return;
 }
 
 static inline gs_long_double_t gs_ld (gs_t node)
 {
-  gs_long_double_t ret;
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-#ifdef TARG_IA64
-  if ( (gs_unsigned_long_t)(&(node->u2.ld)) % 16 != 0 )
-    /* using memcpy to avoid unaigned access on IA64 for long double */
-    memcpy( &(ret), &(node->u2.ld), sizeof(gs_long_double_t) );
-  else
+  realign.data[0] = node->u1.data[0];
+  realign.data[1] = node->u1.data[1];
+  realign.data[2] = node->u1.data[2];
+#ifdef ARCH_MIPS
+  realign.data[3] = node->u1.data[3];
 #endif
-    ret = node->u2.ld;
-  return ret;
+  return realign.ld;
 }
 
 static inline gs_void_t _gs_c (gs_t node, gs_char_t c)
@@ -533,15 +566,21 @@ static inline gs_float_t gs_f (gs_t node)
 
 static inline gs_void_t _gs_d (gs_t node, gs_double_t d)
 {
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  node->u2.d = d;
+  realign.d = d;
+  node->u1.data[0] = realign.data[0];
+  node->u1.data[1] = realign.data[1];
   return;
 }
 
 static inline gs_double_t gs_d (gs_t node)
 {
+  gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  return node->u2.d;
+  realign.data[0] = node->u1.data[0];
+  realign.data[1] = node->u1.data[1];
+  return realign.d;
 }
 
 extern gs_void_t _gs_s (gs_t node, const gs_string_t s,
@@ -693,6 +732,11 @@ typedef enum gsbi {
   GSBI_BUILT_IN_INF,
   GSBI_BUILT_IN_INFF,
   GSBI_BUILT_IN_INFL,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_INFD32,
+  GSBI_BUILT_IN_INFD64,
+  GSBI_BUILT_IN_INFD128,
+#endif
   GSBI_BUILT_IN_J0,
   GSBI_BUILT_IN_J0F,
   GSBI_BUILT_IN_J0L,
@@ -702,12 +746,30 @@ typedef enum gsbi {
   GSBI_BUILT_IN_JN,
   GSBI_BUILT_IN_JNF,
   GSBI_BUILT_IN_JNL,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_LCEIL,
+  GSBI_BUILT_IN_LCEILF,
+  GSBI_BUILT_IN_LCEILL,
+#endif
   GSBI_BUILT_IN_LDEXP,
   GSBI_BUILT_IN_LDEXPF,
   GSBI_BUILT_IN_LDEXPL,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_LFLOOR,
+  GSBI_BUILT_IN_LFLOORF,
+  GSBI_BUILT_IN_LFLOORL,
+#endif
   GSBI_BUILT_IN_LGAMMA,
   GSBI_BUILT_IN_LGAMMAF,
   GSBI_BUILT_IN_LGAMMAL,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_LLCEIL,
+  GSBI_BUILT_IN_LLCEILF,
+  GSBI_BUILT_IN_LLCEILL,
+  GSBI_BUILT_IN_LLFLOOR,
+  GSBI_BUILT_IN_LLFLOORF,
+  GSBI_BUILT_IN_LLFLOORL,
+#endif
   GSBI_BUILT_IN_LLRINT,
   GSBI_BUILT_IN_LLRINTF,
   GSBI_BUILT_IN_LLRINTL,
@@ -741,6 +803,11 @@ typedef enum gsbi {
   GSBI_BUILT_IN_NAN,
   GSBI_BUILT_IN_NANF,
   GSBI_BUILT_IN_NANL,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_NAND32,
+  GSBI_BUILT_IN_NAND64,
+  GSBI_BUILT_IN_NAND128,
+#endif
   GSBI_BUILT_IN_NANS,
   GSBI_BUILT_IN_NANSF,
   GSBI_BUILT_IN_NANSL,
@@ -861,6 +928,11 @@ typedef enum gsbi {
   GSBI_BUILT_IN_CLOG,
   GSBI_BUILT_IN_CLOGF,
   GSBI_BUILT_IN_CLOGL,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_CLOG10,
+  GSBI_BUILT_IN_CLOG10F,
+  GSBI_BUILT_IN_CLOG10L,
+#endif
   GSBI_BUILT_IN_CONJ,
   GSBI_BUILT_IN_CONJF,
   GSBI_BUILT_IN_CONJL,
@@ -899,13 +971,23 @@ typedef enum gsbi {
   GSBI_BUILT_IN_MEMSET,
   GSBI_BUILT_IN_RINDEX,
   GSBI_BUILT_IN_STPCPY,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_STPNCPY,
+  GSBI_BUILT_IN_STRCASECMP,
+#endif
   GSBI_BUILT_IN_STRCAT,
   GSBI_BUILT_IN_STRCHR,
   GSBI_BUILT_IN_STRCMP,
   GSBI_BUILT_IN_STRCPY,
   GSBI_BUILT_IN_STRCSPN,
   GSBI_BUILT_IN_STRDUP,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_STRNDUP,
+#endif
   GSBI_BUILT_IN_STRLEN,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_STRNCASECMP,
+#endif
   GSBI_BUILT_IN_STRNCAT,
   GSBI_BUILT_IN_STRNCMP,
   GSBI_BUILT_IN_STRNCPY,
@@ -915,6 +997,10 @@ typedef enum gsbi {
   GSBI_BUILT_IN_STRSTR,
   GSBI_BUILT_IN_FPRINTF,
   GSBI_BUILT_IN_FPRINTF_UNLOCKED,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_PUTC,
+  GSBI_BUILT_IN_PUTC_UNLOCKED,
+#endif
   GSBI_BUILT_IN_FPUTC,
   GSBI_BUILT_IN_FPUTC_UNLOCKED,
   GSBI_BUILT_IN_FPUTS,
@@ -1019,12 +1105,27 @@ typedef enum gsbi {
   GSBI_BUILT_IN_FINITE,
   GSBI_BUILT_IN_FINITEF,
   GSBI_BUILT_IN_FINITEL,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_FINITED32,
+  GSBI_BUILT_IN_FINITED64,
+  GSBI_BUILT_IN_FINITED128,
+#endif
   GSBI_BUILT_IN_ISINF,
   GSBI_BUILT_IN_ISINFF,
   GSBI_BUILT_IN_ISINFL,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_ISINFD32,
+  GSBI_BUILT_IN_ISINFD64,
+  GSBI_BUILT_IN_ISINFD128,
+#endif
   GSBI_BUILT_IN_ISNAN,
   GSBI_BUILT_IN_ISNANF,
   GSBI_BUILT_IN_ISNANL,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_ISNAND32,
+  GSBI_BUILT_IN_ISNAND64,
+  GSBI_BUILT_IN_ISNAND128,
+#endif
   GSBI_BUILT_IN_ISGREATER,
   GSBI_BUILT_IN_ISGREATEREQUAL,
   GSBI_BUILT_IN_ISLESS,
@@ -1063,10 +1164,182 @@ typedef enum gsbi {
   GSBI_BUILT_IN_INIT_TRAMPOLINE,
   GSBI_BUILT_IN_ADJUST_TRAMPOLINE,
   GSBI_BUILT_IN_NONLOCAL_GOTO,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_SETJMP_SETUP,
+  GSBI_BUILT_IN_SETJMP_DISPATCHER,
+  GSBI_BUILT_IN_SETJMP_RECEIVER,
+#endif
   GSBI_BUILT_IN_STACK_SAVE,
   GSBI_BUILT_IN_STACK_RESTORE,
+#ifdef FE_GNU_4_2_0
+  GSBI_BUILT_IN_OBJECT_SIZE,
+  GSBI_BUILT_IN_MEMCPY_CHK,
+  GSBI_BUILT_IN_MEMMOVE_CHK,
+  GSBI_BUILT_IN_MEMPCPY_CHK,
+  GSBI_BUILT_IN_MEMSET_CHK,
+  GSBI_BUILT_IN_STPCPY_CHK,
+  GSBI_BUILT_IN_STRCAT_CHK,
+  GSBI_BUILT_IN_STRCPY_CHK,
+  GSBI_BUILT_IN_STRNCAT_CHK,
+  GSBI_BUILT_IN_STRNCPY_CHK,
+  GSBI_BUILT_IN_SNPRINTF_CHK,
+  GSBI_BUILT_IN_SPRINTF_CHK,
+  GSBI_BUILT_IN_VSNPRINTF_CHK,
+  GSBI_BUILT_IN_VSPRINTF_CHK,
+  GSBI_BUILT_IN_FPRINTF_CHK,
+  GSBI_BUILT_IN_PRINTF_CHK,
+  GSBI_BUILT_IN_VFPRINTF_CHK,
+  GSBI_BUILT_IN_VPRINTF_CHK,
+#endif
   GSBI_BUILT_IN_PROFILE_FUNC_ENTER,
   GSBI_BUILT_IN_PROFILE_FUNC_EXIT,
+#ifdef FE_GNU_4_2_0
+  /* sync-builtins.def builtins begin */
+  GSBI_BUILT_IN_FETCH_AND_ADD_N,
+  GSBI_BUILT_IN_FETCH_AND_ADD_1,
+  GSBI_BUILT_IN_FETCH_AND_ADD_2,
+  GSBI_BUILT_IN_FETCH_AND_ADD_4,
+  GSBI_BUILT_IN_FETCH_AND_ADD_8,
+  GSBI_BUILT_IN_FETCH_AND_ADD_16,
+  GSBI_BUILT_IN_FETCH_AND_SUB_N,
+  GSBI_BUILT_IN_FETCH_AND_SUB_1,
+  GSBI_BUILT_IN_FETCH_AND_SUB_2,
+  GSBI_BUILT_IN_FETCH_AND_SUB_4,
+  GSBI_BUILT_IN_FETCH_AND_SUB_8,
+  GSBI_BUILT_IN_FETCH_AND_SUB_16,
+  GSBI_BUILT_IN_FETCH_AND_OR_N,
+  GSBI_BUILT_IN_FETCH_AND_OR_1,
+  GSBI_BUILT_IN_FETCH_AND_OR_2,
+  GSBI_BUILT_IN_FETCH_AND_OR_4,
+  GSBI_BUILT_IN_FETCH_AND_OR_8,
+  GSBI_BUILT_IN_FETCH_AND_OR_16,
+  GSBI_BUILT_IN_FETCH_AND_AND_N,
+  GSBI_BUILT_IN_FETCH_AND_AND_1,
+  GSBI_BUILT_IN_FETCH_AND_AND_2,
+  GSBI_BUILT_IN_FETCH_AND_AND_4,
+  GSBI_BUILT_IN_FETCH_AND_AND_8,
+  GSBI_BUILT_IN_FETCH_AND_AND_16,
+  GSBI_BUILT_IN_FETCH_AND_XOR_N,
+  GSBI_BUILT_IN_FETCH_AND_XOR_1,
+  GSBI_BUILT_IN_FETCH_AND_XOR_2,
+  GSBI_BUILT_IN_FETCH_AND_XOR_4,
+  GSBI_BUILT_IN_FETCH_AND_XOR_8,
+  GSBI_BUILT_IN_FETCH_AND_XOR_16,
+  GSBI_BUILT_IN_FETCH_AND_NAND_N,
+  GSBI_BUILT_IN_FETCH_AND_NAND_1,
+  GSBI_BUILT_IN_FETCH_AND_NAND_2,
+  GSBI_BUILT_IN_FETCH_AND_NAND_4,
+  GSBI_BUILT_IN_FETCH_AND_NAND_8,
+  GSBI_BUILT_IN_FETCH_AND_NAND_16,
+  GSBI_BUILT_IN_ADD_AND_FETCH_N,
+  GSBI_BUILT_IN_ADD_AND_FETCH_1,
+  GSBI_BUILT_IN_ADD_AND_FETCH_2,
+  GSBI_BUILT_IN_ADD_AND_FETCH_4,
+  GSBI_BUILT_IN_ADD_AND_FETCH_8,
+  GSBI_BUILT_IN_ADD_AND_FETCH_16,
+  GSBI_BUILT_IN_SUB_AND_FETCH_N,
+  GSBI_BUILT_IN_SUB_AND_FETCH_1,
+  GSBI_BUILT_IN_SUB_AND_FETCH_2,
+  GSBI_BUILT_IN_SUB_AND_FETCH_4,
+  GSBI_BUILT_IN_SUB_AND_FETCH_8,
+  GSBI_BUILT_IN_SUB_AND_FETCH_16,
+  GSBI_BUILT_IN_OR_AND_FETCH_N,
+  GSBI_BUILT_IN_OR_AND_FETCH_1,
+  GSBI_BUILT_IN_OR_AND_FETCH_2,
+  GSBI_BUILT_IN_OR_AND_FETCH_4,
+  GSBI_BUILT_IN_OR_AND_FETCH_8,
+  GSBI_BUILT_IN_OR_AND_FETCH_16,
+  GSBI_BUILT_IN_AND_AND_FETCH_N,
+  GSBI_BUILT_IN_AND_AND_FETCH_1,
+  GSBI_BUILT_IN_AND_AND_FETCH_2,
+  GSBI_BUILT_IN_AND_AND_FETCH_4,
+  GSBI_BUILT_IN_AND_AND_FETCH_8,
+  GSBI_BUILT_IN_AND_AND_FETCH_16,
+  GSBI_BUILT_IN_XOR_AND_FETCH_N,
+  GSBI_BUILT_IN_XOR_AND_FETCH_1,
+  GSBI_BUILT_IN_XOR_AND_FETCH_2,
+  GSBI_BUILT_IN_XOR_AND_FETCH_4,
+  GSBI_BUILT_IN_XOR_AND_FETCH_8,
+  GSBI_BUILT_IN_XOR_AND_FETCH_16,
+  GSBI_BUILT_IN_NAND_AND_FETCH_N,
+  GSBI_BUILT_IN_NAND_AND_FETCH_1,
+  GSBI_BUILT_IN_NAND_AND_FETCH_2,
+  GSBI_BUILT_IN_NAND_AND_FETCH_4,
+  GSBI_BUILT_IN_NAND_AND_FETCH_8,
+  GSBI_BUILT_IN_NAND_AND_FETCH_16,
+  GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_N,
+  GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_1,
+  GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_2,
+  GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_4,
+  GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_8,
+  GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_16,
+  GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_N,
+  GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_1,
+  GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_2,
+  GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_4,
+  GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_8,
+  GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_16,
+  GSBI_BUILT_IN_LOCK_TEST_AND_SET_N,
+  GSBI_BUILT_IN_LOCK_TEST_AND_SET_1,
+  GSBI_BUILT_IN_LOCK_TEST_AND_SET_2,
+  GSBI_BUILT_IN_LOCK_TEST_AND_SET_4,
+  GSBI_BUILT_IN_LOCK_TEST_AND_SET_8,
+  GSBI_BUILT_IN_LOCK_TEST_AND_SET_16,
+  GSBI_BUILT_IN_LOCK_RELEASE_N,
+  GSBI_BUILT_IN_LOCK_RELEASE_1,
+  GSBI_BUILT_IN_LOCK_RELEASE_2,
+  GSBI_BUILT_IN_LOCK_RELEASE_4,
+  GSBI_BUILT_IN_LOCK_RELEASE_8,
+  GSBI_BUILT_IN_LOCK_RELEASE_16,
+  GSBI_BUILT_IN_SYNCHRONIZE,
+  /* sync-builtins.def builtins end */
+
+  /* omp-builtins.def builtins begin */
+  GSBI_BUILT_IN_OMP_GET_THREAD_NUM,
+  GSBI_BUILT_IN_OMP_GET_NUM_THREADS,
+  GSBI_BUILT_IN_GOMP_ATOMIC_START,
+  GSBI_BUILT_IN_GOMP_ATOMIC_END,
+  GSBI_BUILT_IN_GOMP_BARRIER,
+  GSBI_BUILT_IN_GOMP_CRITICAL_START,
+  GSBI_BUILT_IN_GOMP_CRITICAL_END,
+  GSBI_BUILT_IN_GOMP_CRITICAL_NAME_START,
+  GSBI_BUILT_IN_GOMP_CRITICAL_NAME_END,
+  GSBI_BUILT_IN_GOMP_LOOP_STATIC_START,
+  GSBI_BUILT_IN_GOMP_LOOP_DYNAMIC_START,
+  GSBI_BUILT_IN_GOMP_LOOP_GUIDED_START,
+  GSBI_BUILT_IN_GOMP_LOOP_RUNTIME_START,
+  GSBI_BUILT_IN_GOMP_LOOP_ORDERED_STATIC_START,
+  GSBI_BUILT_IN_GOMP_LOOP_ORDERED_DYNAMIC_START,
+  GSBI_BUILT_IN_GOMP_LOOP_ORDERED_GUIDED_START,
+  GSBI_BUILT_IN_GOMP_LOOP_ORDERED_RUNTIME_START,
+  GSBI_BUILT_IN_GOMP_LOOP_STATIC_NEXT,
+  GSBI_BUILT_IN_GOMP_LOOP_DYNAMIC_NEXT,
+  GSBI_BUILT_IN_GOMP_LOOP_GUIDED_NEXT,
+  GSBI_BUILT_IN_GOMP_LOOP_RUNTIME_NEXT,
+  GSBI_BUILT_IN_GOMP_LOOP_ORDERED_STATIC_NEXT,
+  GSBI_BUILT_IN_GOMP_LOOP_ORDERED_DYNAMIC_NEXT,
+  GSBI_BUILT_IN_GOMP_LOOP_ORDERED_GUIDED_NEXT,
+  GSBI_BUILT_IN_GOMP_LOOP_ORDERED_RUNTIME_NEXT,
+  GSBI_BUILT_IN_GOMP_PARALLEL_LOOP_STATIC_START,
+  GSBI_BUILT_IN_GOMP_PARALLEL_LOOP_DYNAMIC_START,
+  GSBI_BUILT_IN_GOMP_PARALLEL_LOOP_GUIDED_START,
+  GSBI_BUILT_IN_GOMP_PARALLEL_LOOP_RUNTIME_START,
+  GSBI_BUILT_IN_GOMP_LOOP_END,
+  GSBI_BUILT_IN_GOMP_LOOP_END_NOWAIT,
+  GSBI_BUILT_IN_GOMP_ORDERED_START,
+  GSBI_BUILT_IN_GOMP_ORDERED_END,
+  GSBI_BUILT_IN_GOMP_PARALLEL_START,
+  GSBI_BUILT_IN_GOMP_PARALLEL_END,
+  GSBI_BUILT_IN_GOMP_SECTIONS_START,
+  GSBI_BUILT_IN_GOMP_SECTIONS_NEXT,
+  GSBI_BUILT_IN_GOMP_PARALLEL_SECTIONS_START,
+  GSBI_BUILT_IN_GOMP_SECTIONS_END,
+  GSBI_BUILT_IN_GOMP_SECTIONS_END_NOWAIT,
+  GSBI_BUILT_IN_GOMP_SINGLE_START,
+  GSBI_BUILT_IN_GOMP_SINGLE_COPY_START,
+  GSBI_BUILT_IN_GOMP_SINGLE_COPY_END,
+  /* omp-builtins.def builtins end */
+#endif
   GSBI_BUILT_IN_COMPLEX_MUL_MIN,
   GSBI_BUILT_IN_COMPLEX_MUL_MAX,
   GSBI_BUILT_IN_COMPLEX_DIV_MIN,
@@ -1513,8 +1786,21 @@ typedef enum gs_tree_index
   GS_TI_PID_TYPE,
   GS_TI_PTRDIFF_TYPE,
   GS_TI_VA_LIST_TYPE,
+#ifdef FE_GNU_4_2_0
+  GS_TI_VA_LIST_GPR_COUNTER_FIELD,
+  GS_TI_VA_LIST_FPR_COUNTER_FIELD,
+#endif
   GS_TI_BOOLEAN_TYPE,
   GS_TI_FILEPTR_TYPE,
+
+#ifdef FE_GNU_4_2_0
+  GS_TI_DFLOAT32_TYPE,
+  GS_TI_DFLOAT64_TYPE,
+  GS_TI_DFLOAT128_TYPE,
+  GS_TI_DFLOAT32_PTR_TYPE,
+  GS_TI_DFLOAT64_PTR_TYPE,
+  GS_TI_DFLOAT128_PTR_TYPE,
+#endif
 
   GS_TI_VOID_LIST_NODE,
 
@@ -1538,5 +1824,38 @@ typedef enum gs_integer_type_kind {
   GS_ITK_UNSIGNED_LONG_LONG,
   GS_ITK_NONE
 } gs_integer_type_kind_t;
+
+#ifdef FE_GNU_4_2_0
+typedef enum gs_omp_clause_code {
+  GS_OMP_CLAUSE_ERROR,
+  GS_OMP_CLAUSE_PRIVATE,
+  GS_OMP_CLAUSE_SHARED,
+  GS_OMP_CLAUSE_FIRSTPRIVATE,
+  GS_OMP_CLAUSE_LASTPRIVATE,
+  GS_OMP_CLAUSE_REDUCTION,
+  GS_OMP_CLAUSE_COPYIN,
+  GS_OMP_CLAUSE_COPYPRIVATE,
+  GS_OMP_CLAUSE_IF,
+  GS_OMP_CLAUSE_NUM_THREADS,
+  GS_OMP_CLAUSE_SCHEDULE,
+  GS_OMP_CLAUSE_NOWAIT,
+  GS_OMP_CLAUSE_ORDERED,
+  GS_OMP_CLAUSE_DEFAULT
+} gs_omp_clause_code_t;
+
+typedef enum gs_omp_clause_schedule_kind {
+  GS_OMP_CLAUSE_SCHEDULE_STATIC,
+  GS_OMP_CLAUSE_SCHEDULE_DYNAMIC,
+  GS_OMP_CLAUSE_SCHEDULE_GUIDED,
+  GS_OMP_CLAUSE_SCHEDULE_RUNTIME
+} gs_omp_clause_schedule_kind_t;
+
+typedef enum gs_omp_clause_default_kind {
+  GS_OMP_CLAUSE_DEFAULT_UNSPECIFIED,
+  GS_OMP_CLAUSE_DEFAULT_SHARED,
+  GS_OMP_CLAUSE_DEFAULT_NONE,
+  GS_OMP_CLAUSE_DEFAULT_PRIVATE
+} gs_omp_clause_default_kind_t;
+#endif
 
 #endif // __GSPIN_TREE_H__

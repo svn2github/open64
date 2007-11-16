@@ -166,7 +166,7 @@ gs_unsigned_char_t *gs_read (const gs_string_t filename)
       int j;
       for (j = 0; j < gs_code_arity(gs_code(q)); j++)
         if (gs_operand(q, j) != NULL) {
-	  GS_ASSERT((int)gs_operand(q, j) < statbuf.st_size, 
+	  GS_ASSERT((long)gs_operand(q, j) < statbuf.st_size, 
 	  	    "right offset out of bounds!.\n");
 	  gs_set_operand(q, j, (gs_t) (mem_seg + (long) gs_operand(q,j)));
 	}

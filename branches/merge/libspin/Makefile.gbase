@@ -24,7 +24,15 @@
 
 VPATH =  $(BUILD_BASE)
 
-TARGETS = libgspin.a gspin
+ifeq ($(BUILD_VARIANT), GNU_4_2_0)
+NAME_SUFFIX = 42
+else
+NAME_SUFFIX =
+endif
+
+LIBSPIN = libgspin$(NAME_SUFFIX).a
+GSPIN = gspin$(NAME_SUFFIX)
+TARGETS = $(LIBSPIN) $(GSPIN)
 
 LIBSPIN_SOURCES = gspin-tree.c \
   gspin-assert.c \
@@ -60,20 +68,24 @@ ifeq ($(BUILD_OPTIMIZE), DEBUG)
 CFLAGS += -DIs_True_On
 endif
 
+ifeq ($(BUILD_VARIANT), GNU_4_2_0)
+CFLAGS += -DFE_GNU_4_2_0
+endif
+
 default: $(TARGETS)
 
 devbuild: CFLAGS = -DIs_True_On -g -Wall
-devbuild: libgspin.a gspin
+devbuild: $(TARGETS)
 
 $(LIBSPIN_OBJECTS): $(LIBSPIN_HEADERS)
 $(GSPIN_OBJECTS):   $(LIBSPIN_HEADERS)
 
 
-libgspin.a: $(LIBSPIN_OBJECTS)
+$(LIBSPIN): $(LIBSPIN_OBJECTS)
 	$(AR) rc $@ $(LIBSPIN_OBJECTS)
 
-gspin: $(GSPIN_OBJECTS)
-	$(CC) $(GSPIN_OBJECTS) libgspin.a -o $@
+$(GSPIN): $(GSPIN_OBJECTS)
+	$(CC) $(GSPIN_OBJECTS) $(LIBSPIN) -o $@
 
 
 -include $(COMMONRULES)
