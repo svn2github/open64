@@ -23,11 +23,10 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef TARG_X8664
-#include "i386.h"
-#endif
 #ifdef TARG_MIPS
 #include "mips.h"
+#else
+#include "i386.h"
 #endif
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
