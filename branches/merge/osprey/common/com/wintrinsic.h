@@ -1347,8 +1347,14 @@ typedef enum {
   INTRN_F4F4I4EXPEXPR   = LAST_COMMON_ID+231,
   INTRN_FQFQI4EXPEXPR   = LAST_COMMON_ID+232,
   INTRN_EXPECT          = LAST_COMMON_ID+233,
+  INTRN_MOVNTSS         = LAST_COMMON_ID+234,
+  INTRN_MOVNTSD         = LAST_COMMON_ID+235,
+  INTRN_EXTRQI          = LAST_COMMON_ID+236,
+  INTRN_EXTRQ           = LAST_COMMON_ID+237,
+  INTRN_INSERTQI        = LAST_COMMON_ID+238,
+  INTRN_INSERTQ         = LAST_COMMON_ID+239,
     
-  #define INTRINSIC_LAST_TMP  LAST_COMMON_ID+233
+  #define INTRINSIC_LAST_TMP  LAST_COMMON_ID+239
 #else // Anything target-independent needs to be added on all branches of
       // this ifdef.
   INTRN_TAN           = LAST_COMMON_ID+1,

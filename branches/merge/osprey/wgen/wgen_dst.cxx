@@ -1,5 +1,9 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2007 Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* 
@@ -206,60 +210,51 @@ DST_get_context(gs_t intree)
 	continue_looping = false;
 	switch(gs_tree_code(ltree)) {
 	case GS_BLOCK:
-	    // unclear when this will happen, as yet
-	    // FIX
-	    ltree = gs_type_context(ltree);
-            DevWarn("Unhandled BLOCK scope of decl/var");
-
-	    break;
-	case GS_FUNCTION_DECL: {
-		// This is a normal case!
-		l_dst_idx = DECL_DST_IDX(ltree);
-		if(DST_IS_NULL(l_dst_idx)) {
-			DevWarn("forward reference to subprogram! assuming global context\n");
-			return comp_unit_idx;
-		}
-		return l_dst_idx;
-
-        }
-	    break;
+	    // TODO: unclear when this will happen, as yet
+	    DevWarn("Unhandled BLOCK scope of decl/var");
+	    return comp_unit_idx;
+	case GS_FUNCTION_DECL:
+	    // This is a normal case!
+	    l_dst_idx = DECL_DST_IDX(ltree);
+	    if (DST_IS_NULL(l_dst_idx)) {
+		DevWarn("forward reference to subprogram!"
+			" assuming global context\n");
+		return comp_unit_idx;
+	    }
+	    return l_dst_idx;
 	case GS_RECORD_TYPE:
-	    ltree = gs_type_context(ltree);
-	    break;
 	case GS_UNION_TYPE:
-	    ltree = gs_type_context(ltree);
-	    break;
 	case GS_QUAL_UNION_TYPE:
 	    ltree = gs_type_context(ltree);
-	    break;
+	    continue;
 	case GS_FUNCTION_TYPE:
-            DevWarn("Unhandled FUNCTION_TYPE scope of decl/var/type");
+	    DevWarn("Unhandled FUNCTION_TYPE scope of decl/var/type");
 	    return comp_unit_idx;
-        case GS_REFERENCE_TYPE:
+	case GS_REFERENCE_TYPE:
 	    // cannot find our context from here
 	    return comp_unit_idx;
+	case GS_NAMESPACE_DECL:
+	case GS_TRANSLATION_UNIT_DECL:
+	    // I see these a lot: catching here to avoid default DevWarn
+	    ltree = gs_decl_context(ltree);
+	    continue;
 	default:
-	    DevWarn("Unhandled scope of tree code %d",
-			gs_tree_code(ltree));
-
-	   // *is any of this right?
-           if(gs_tree_code_class(ltree) == GS_TCC_DECLARATION) {
+	    DevWarn("Unhandled scope of tree code %d", gs_tree_code(ltree));
+	    // Best guess for general types and decls
+	    if (gs_tree_code_class(ltree) == GS_TCC_DECLARATION) {
 		ltree = gs_decl_context(ltree);
 		continue_looping = true;
 		continue;
-	   } else if (gs_tree_code_class(ltree) == GS_TCC_TYPE) {
+	    } else if (gs_tree_code_class(ltree) == GS_TCC_TYPE) {
 		ltree = gs_type_context(ltree);
 		continue_looping = true;
 		continue;
-           } else {
-	      // cannot find our context from here
-		// ??
-           }
-	   return comp_unit_idx;
+	    }
+	    // else: cannot find our context from here
+	    return comp_unit_idx;
 	}
-
     }
-    // This is  the normal case for most things.
+    // This is the normal case for most things.
     return comp_unit_idx;
 }
 
@@ -468,6 +463,37 @@ Get_Name (gs_t node)
             name = gs_identifier_pointer (gs_decl_name (gs_type_name (node)));
 	  
         } 
+      else if (gs_tree_code(node) == GS_INTEGER_TYPE) { // bug 11848
+	if (gs_type_unsigned(node))
+	  strcpy(name, "unsigned ");
+	else strcpy(name, "signed ");
+	if (strcmp(gs_type_mode(node), "QI") == 0)
+	  strcat(name, "char");
+	else if (strcmp(gs_type_mode(node), "HI") == 0)
+	  strcat(name, "short");
+	else if (strcmp(gs_type_mode(node), "SI") == 0)
+	  strcat(name, "int");
+	else if (strcmp(gs_type_mode(node), "DI") == 0)
+	  strcat(name, "long long");
+      }else if (gs_tree_code(node) == GS_COMPLEX_TYPE){
+            if (strcmp(gs_type_mode(node), "SC") == 0)
+               strcpy(name, "complex float");
+            else if(strcmp(gs_type_mode(node), "DC") == 0)
+               strcpy(name, "complex double");
+            //bug 12960: XC(160bits) and TC(256bits) have the same name             
+            else if(strcmp(gs_type_mode(node), "XC") == 0 ||
+                    strcmp(gs_type_mode(node), "TC") == 0) 
+               strcpy(name, "complex long double");            
+      }else if(gs_tree_code(node) == GS_REAL_TYPE){
+            if (strcmp(gs_type_mode(node), "SF") == 0)
+               strcpy(name, "float");
+            else if(strcmp(gs_type_mode(node), "DF") == 0)
+               strcpy(name, "double");
+            //bug 12960: XF(80bits) and TF(128bits) have the same name
+            else if(strcmp(gs_type_mode(node), "XF") == 0 ||
+                    strcmp(gs_type_mode(node), "TF") == 0 )
+               strcpy(name, "long double");
+     }
   } else {
   }
   return name;
@@ -946,9 +972,11 @@ DST_enter_struct_union_members(gs_t parent_tree,
     // Bug 3533 - Expand all member functions of classes inside ::std namespace
     // here (I don't know how to get the member functions of the classes
     // contained in ::std namespace from gxx_emitted_decl in wfe_decl.cxx).
-    gs_t context = gs_decl_context(parent_tree);
-    if (context != NULL) // bug 10483
-    if (gs_tree_code(context) != GS_TYPE_DECL ||
+    // Bug 10483 and 13050: Check for NULL context.
+    // Bug 3533: Use type context, not decl context.
+    gs_t context = gs_type_context(parent_tree);
+    if (context == NULL ||
+	gs_tree_code(context) != GS_TYPE_DECL ||
 	!gs_decl_context(context) ||
 	gs_tree_code(gs_decl_context(context)) != GS_NAMESPACE_DECL ||
 	!gs_decl_name(gs_decl_context(context)))
@@ -1132,8 +1160,16 @@ DST_enter_struct_union(gs_t type_tree, TY_IDX ttidx  , TY_IDX idx,
 #endif
 
 		    DST_append_child(dst_idx,inhx);
+//---------------------------------------------------------------
+//bug 12948: advance "offset" only when non-empty and non-virtual
+//---------------------------------------------------------------
+#ifdef KEY
+                    if (!is_empty_base_class(basetype) &&
+#else
                     if (!is_empty_base_class(basetype) ||
+#endif
                         !gs_binfo_virtual_p(binfo)) {
+
                       //FLD_Init (fld, Save_Str(Get_Name(0)),
                        //         Get_TY(basetype) , offset);
                       offset += Type_Size_Without_Vbases (basetype);
@@ -1794,7 +1830,7 @@ Create_DST_type_For_Tree (gs_t type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
     //============
     common_basetypes:
 		{
-		FmtAssert(name1 != 0,
+		FmtAssert(name1 != 0 && strlen(name1) != 0,
 		   ("name of base type empty, cannot make DST entry!"));
 
                 std::string names(name1);
@@ -2306,8 +2342,8 @@ DST_Create_var(ST *var_st, gs_t decl)
     char *linkage_name = "";	
     if (!gs_decl_artificial (decl) && gs_decl_name(decl) 
 #if 1 // wgen
-        && gs_decl_assembler_name_set_p(decl)
-        && gs_decl_assembler_name(decl) != NULL // bug 12666
+        && gs_decl_assembler_name_set_p(decl) 
+	&& gs_decl_assembler_name(decl) != NULL // bug 12666
 #endif
        )
       linkage_name = gs_identifier_pointer(gs_decl_assembler_name (decl));
@@ -2690,11 +2726,11 @@ DST_Create_Subprogram (ST *func_st, gs_t fndecl)
 	// rather than the result declaration type.
 	gs_t restype = 0;
 	if (gs_tree_type(fndecl))
-	  restype = gs_tree_type(fndecl);
-	
+	  restype = gs_tree_type(gs_tree_type(fndecl)); //bug 12820: a level of indirect
+
        if(restype) {
 	 TY_IDX itx = Get_TY(restype);
-	// ret_dst = TYPE_DST_IDX(restype);
+	 ret_dst = TYPE_DST_IDX(restype); //bug 12820: return type should be set
 	}
 
         gs_t type = gs_tree_type(fndecl);
@@ -2941,7 +2977,10 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
 #endif
 
    {
-      comp_unit_idx = DST_mk_compile_unit(Last_Pathname_Component(Src_File_Name),
+      // bug 12576: If available, use the original source file name.
+      char * dump_base_name = Orig_Src_File_Name ? Orig_Src_File_Name :
+                                                   Src_File_Name;
+      comp_unit_idx = DST_mk_compile_unit(Last_Pathname_Component(dump_base_name),
 					  current_host_dir,
 					  comp_info, 
 				lang_cplus ? DW_LANG_C_plus_plus : DW_LANG_C89,

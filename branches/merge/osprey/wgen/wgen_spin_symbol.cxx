@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -7,7 +11,6 @@
    File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
-
 
 /* 
    Copyright (C) 2002 Tensilica, Inc.  All Rights Reserved.
@@ -86,7 +89,6 @@ extern BOOL flag_no_common;
 extern gs_t decl_arguments;
 
 extern void Push_Deferred_Function(gs_t);
-extern void WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
 extern char *WGEN_Tree_Node_Name(gs_t op);
 
 #ifdef KEY
@@ -249,7 +251,7 @@ next_real_field (gs_t type_tree, gs_t field)
 
   if (field == gs_type_vfield(type_tree))
   {
-#if 0 //  bug 13102
+#if 0 // bug 13102
     Is_True (lang_cplus, ("next_real_field: TYPE_VFIELD used for C"));
 #endif
     first_real_field = TRUE; // return first real field
@@ -438,7 +440,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		case 2:  mtype = MTYPE_I2;  break;
 		case 4:  mtype = MTYPE_I4;  break;
 		case 8:  mtype = MTYPE_I8;  break;
-#ifndef TARG_X8664 
+#if !defined(TARG_X8664) && !defined(TARG_MIPS)  // Bug 12358
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
 #endif /* _LP64 */
@@ -598,7 +600,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			  TYPE_ID   mtype   = TY_mtype (ty_idx);
 			  ST       *st;
 			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
-			  // WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#ifdef FE_GNU_4_2_0
+			  WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#endif
 			  WGEN_Set_ST_Addr_Saved (swn);
 			  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
 			  WGEN_Stmt_Append (swn, Get_Srcpos());
@@ -660,8 +664,8 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			if (WN_operator (uwn) != OPR_LDID) {
 				ty_idx = Get_TY (gs_tree_type (gs_type_max_value (gs_type_domain (type_tree)) ) );
 				st = Gen_Temp_Symbol (ty_idx, "__vla_bound");
-#ifdef KEY
-			  	// WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#ifdef FE_GNU_4_2_0
+			  	WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
 #endif
 				wn = WN_Stid (TY_mtype (ty_idx), 0, st, ty_idx, uwn);
 				WGEN_Stmt_Append (wn, Get_Srcpos());
@@ -713,7 +717,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				  TYPE_ID   mtype   = TY_mtype (ty_idx);
 				  ST       *st;
 				  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
-			  	  // WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#ifdef FE_GNU_4_2_0
+			  	  WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#endif
 				  WGEN_Set_ST_Addr_Saved (swn);
 				  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
 				  WGEN_Stmt_Append (swn, Get_Srcpos());
@@ -1223,7 +1229,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  TYPE_ID elem_mtype = TY_mtype(elem_ty);
 		  switch (gs_n(gs_type_precision(type_tree))) {
 		    case 2: if (elem_mtype == MTYPE_I4)
-		    	      idx = MTYPE_To_TY(MTYPE_M8I4);
+		    	      idx = MTYPE_To_TY(MTYPE_V8I4);
 			    else if (elem_mtype == MTYPE_F4)
 		    	      idx = MTYPE_To_TY(MTYPE_V8F4);
 		    	    else if (elem_mtype == MTYPE_I8)
@@ -1266,7 +1272,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		    idx = MTYPE_To_TY(MTYPE_V16F8);
 		  else if (strncasecmp(p, "SI", 2) == 0) {
 		    if (num_elems == 2)
-		      idx = MTYPE_To_TY(MTYPE_M8I4);
+		      idx = MTYPE_To_TY(MTYPE_V8I4);
 		    else if (num_elems == 4)
 		      idx = MTYPE_To_TY(MTYPE_V16I4);
 		  }
@@ -1378,12 +1384,26 @@ Has_label_decl(gs_t init)
     return TRUE;
   if (gs_tree_code(init) == GS_ADDR_EXPR)
     return Has_label_decl(gs_tree_operand(init,0));
+#ifdef FE_GNU_4_2_0 // bug 12699
+  if (gs_tree_code(init) == GS_NOP_EXPR)
+    return Has_label_decl(gs_tree_operand(init,0));
+#endif
   if (gs_tree_code(init) == GS_CONSTRUCTOR) {
+#ifdef FE_GNU_4_2_0
+    INT length = gs_constructor_length(init);
+    gs_t element_value;
+    for (INT idx = 0; idx < length; idx++) {
+      element_value = gs_constructor_elts_value(init, idx);
+      if (Has_label_decl(element_value))
+	return TRUE;
+    }
+#else
     gs_t nd;
     for (nd = gs_constructor_elts(init); nd; nd = gs_tree_chain(nd)) {
       if (Has_label_decl(gs_tree_value(nd)))
-       return TRUE;
+	return TRUE;
     }
+#endif
   }
   return FALSE;
 }
@@ -1595,7 +1615,10 @@ Create_ST_For_Tree (gs_t decl_node)
 		!strncmp(gs_tree_string_pointer(section_name),
 			 ".gnu.linkonce.", 14)) {
 	      if (!strncmp(gs_tree_string_pointer(section_name),
-			   ".gnu.linkonce.b.", 16)) {
+			   ".gnu.linkonce.b.", 16)
+	          // bug 13054
+	          || !strncmp(gs_tree_string_pointer(section_name),
+	                      ".gnu.linkonce.sb.", 17)) {
 		sclass = SCLASS_UGLOBAL;
 		level  = GLOBAL_SYMTAB;
 		eclass = EXPORT_PREEMPTIBLE;
@@ -1604,7 +1627,25 @@ Create_ST_For_Tree (gs_t decl_node)
 		Fail_FmtAssertion("Create_ST_For_Tree: %s section NYI",
 				  gs_tree_string_pointer(section_name));
 	      }
-	    } else
+	    }
+	    // bug 13090 and 13245
+	    // Bug 13047 shows that the gnu42 front-end (specifically
+	    // the gcc/g++ part) behaves differently when built on a gnu3
+	    // system, than when built on a gnu4 system. If the compiler
+	    // is built on a gnu4 system, default_unique_section() in
+	    // varasm.c will never generate a linkonce section because
+	    // starting GNU42, this also depends on whether the host
+	    // compiling system has COMDAT groups.
+	    else if (section_name &&
+	             (!strncmp(gs_tree_string_pointer(section_name),
+			       ".sbss.", 6) ||
+		      !strncmp(gs_tree_string_pointer(section_name),
+			       ".bss.", 5))) {
+	      sclass = SCLASS_UGLOBAL;
+	      level  = GLOBAL_SYMTAB;
+	      eclass = EXPORT_PREEMPTIBLE;
+	    }
+	    else
 #endif
             if (gs_decl_external(decl_node) || gs_decl_weak(decl_node)) {
 	      // OSP_255
@@ -1720,11 +1761,16 @@ Create_ST_For_Tree (gs_t decl_node)
 	  p++;
         ST_Init (st, Save_Str(p), CLASS_VAR, sclass, eclass, ty_idx);
 #ifdef KEY
-	if (gs_tree_code (decl_node) == GS_VAR_DECL && gs_decl_threadprivate (decl_node))
+#ifdef FE_GNU_4_2_0
+	if (gs_tree_code (decl_node) == GS_VAR_DECL &&
+	    // Bug 12968: just checking for threadprivate flag is not
+	    // sufficient, because for C the flag is basically
+	    // gs_decl_lang_flag_3.
+	    gs_decl_thread_local (decl_node) &&
+	    ((!lang_cplus && gs_c_decl_threadprivate_p (decl_node)) ||
+	     (lang_cplus && gs_cp_decl_threadprivate_p (decl_node))))
 	  Set_ST_is_thread_private (st);
-	if (gs_tree_code (decl_node) == GS_VAR_DECL && gs_decl_thread_local (decl_node))
-          Set_ST_is_thread_local (st);
-#if 0 // wgen TODO
+
 	if (gs_tree_code (decl_node) == GS_VAR_DECL && anon_st)
 	  WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
 #endif
@@ -1773,10 +1819,10 @@ Create_ST_For_Tree (gs_t decl_node)
 
   // If VAR_DECL has a non-zero DECL_ASMREG, then DECL_ASMREG-1 is the register
   // number assigned by an "asm".
-  if (gs_tree_code(decl_node) == GS_VAR_DECL &&
+  if (gs_tree_code(decl_node) == GS_VAR_DECL && gs_decl_register(decl_node) &&
       gs_decl_asmreg(decl_node) != 0) {
     extern PREG_NUM Map_Reg_To_Preg []; // defined in common/com/arch/config_targ.cxx
-    int reg = gs_decl_asmreg(decl_node) - 1;
+    int reg = gs_decl_asmreg(decl_node);
     PREG_NUM preg = Map_Reg_To_Preg [reg];
     FmtAssert (preg >= 0,
                ("mapping register %d to preg failed\n", reg));
@@ -1791,23 +1837,22 @@ Create_ST_For_Tree (gs_t decl_node)
     ST_ATTR_Init (st_attr, ST_st_idx (st), ST_ATTR_DEDICATED_REGISTER, preg);
   }
 
-  if (gs_tree_code(decl_node) == GS_VAR_DECL &&
-      gs_decl_context(decl_node)	       &&
-      gs_tree_code(gs_decl_context(decl_node)) == GS_RECORD_TYPE)
-  {
-    int null_field_offset = 0;
-	for (gs_t field = get_first_real_field(gs_decl_context(decl_node)); 
-		field;
-		field = next_real_field(gs_decl_context(decl_node), field) )
-	{
-		if ((gs_tree_code(field) == GS_FIELD_DECL)
-			 && ((gs_decl_field_offset(field) == NULL) || (gs_decl_field_bit_offset(field) == NULL))) {
-			null_field_offset = 1;
-			break;
-		}
-	}
-	if(!null_field_offset)
-		Get_TY(gs_decl_context(decl_node));
+  if (gs_tree_code(decl_node) == GS_VAR_DECL) {
+    if (gs_decl_context(decl_node) &&
+	gs_tree_code(gs_decl_context(decl_node)) == GS_RECORD_TYPE) {
+      Get_TY(gs_decl_context(decl_node));
+    }
+    if (gs_decl_thread_local(decl_node)
+#ifdef FE_GNU_4_2_0
+        // Bug 12891: threadprivate variables are also marked thread-local
+        // by GNU, but we don't want to tell our backend such variables are
+        // thread-local.
+        &&  ((!lang_cplus && !gs_c_decl_threadprivate_p(decl_node)) ||
+             (lang_cplus && !gs_cp_decl_threadprivate_p(decl_node)))
+#endif
+       ) {
+      Set_ST_is_thread_local(st);
+    }
   }
 
   if (Enable_WFE_DFE) {

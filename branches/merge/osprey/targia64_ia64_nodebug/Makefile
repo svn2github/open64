@@ -88,6 +88,7 @@ TOOL_SUBDIRS = \
 	wopt \
 	gdb \
 	wgen \
+	wgen_4_2_0 \
 	be_driver
 
 #	ld64

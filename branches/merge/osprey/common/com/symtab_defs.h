@@ -668,6 +668,7 @@ public:
                                                    // C/C++: inline keyword used. Note
                                                    // PU_IS_INLINE_FUNCTION just
                                                    // indicates GNU inlining decision.
+#define PU_NO_INSTRUMENT        0x0000010000000000LL // -finstrument-functions will skip PU
 
 #endif
 #define PU_IS_MALLOC          0x0000020000000000LL // PU is malloc/calloc/... or their wrapper

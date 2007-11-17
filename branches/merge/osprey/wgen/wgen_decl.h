@@ -112,6 +112,11 @@ extern void WGEN_Resolve_Duplicate_Decls (gs_t olddecl, gs_t newdecl);
 /* call this routine to mark all the symbols in the weak decls list weak */
 extern "C" void WGEN_Weak_Finish(void);
 
+#ifdef KEY
+/* call this routine to process leftover symbols with alias targets */
+extern "C" void WGEN_Alias_Finish(void);
+#endif
+
 /* get the current function declaration.  This just comes from a static
  * global variable in the absence of nested function declarations.
  */
@@ -129,5 +134,7 @@ extern WN *Current_Entry_WN(void);
  */
 extern gs_t named_ret_obj_initializer;
 #endif
+/* KEY: ST to represent EXC_PTR_EXPR if C++ exceptions are disabled */
+extern ST * Dummy_Exc_Ptr_Expr;
 #endif
 

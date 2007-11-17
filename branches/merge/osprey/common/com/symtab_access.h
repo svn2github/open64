@@ -580,7 +580,8 @@ inline void
 Set_ST_is_thread_local (ST& s) { s.flags_ext |= ST_IS_THREAD_LOCAL; }
 inline void
 Reset_ST_is_thread_local (ST& s) { s.flags_ext &= ~ST_IS_THREAD_LOCAL; }
-
+inline void
+Clear_ST_is_thread_local (ST* s)        { s->flags_ext &= ~ST_IS_THREAD_LOCAL; }
 #endif /* KEY */
 
 //----------------------------------------------------------------------
@@ -925,8 +926,14 @@ inline void
 Set_PU_is_marked_inline (PU& pu) 	{ pu.flags |= PU_IS_MARKED_INLINE; }
 inline void
 Clear_PU_is_marked_inline (PU& pu)	{ pu.flags &= ~PU_IS_MARKED_INLINE; }
-
+inline BOOL
+PU_no_instrument (const PU& pu)         { return (pu.flags & PU_NO_INSTRUMENT) != 0; }
+inline void
+Set_PU_no_instrument (PU& pu)           { pu.flags |= PU_NO_INSTRUMENT; }
+inline void
+Clear_PU_no_instrument (PU& pu)         { pu.flags &= ~PU_NO_INSTRUMENT; }
 #endif
+
 #ifdef TARG_X8664
 inline BOOL
 PU_ff2c_abi (const PU& pu)		{ return (pu.flags & PU_FF2C_ABI) != 0;}

@@ -242,6 +242,7 @@ Get_ST (gs_t decl_tree)
                 }
 #endif
         }
+	else st = Create_ST_For_Tree (decl_tree);
 	if ((CURRENT_SYMTAB > GLOBAL_SYMTAB + 1) &&
 	    ((gs_tree_code(decl_tree) == GS_VAR_DECL) ||
 	     (gs_tree_code(decl_tree) == GS_PARM_DECL)) &&
@@ -254,6 +255,10 @@ Get_ST (gs_t decl_tree)
 			Set_ST_has_nested_ref (base_st);
 		}
 	}
+#ifdef KEY
+	if (ST_is_thread_private(st) && CURRENT_SYMTAB != GLOBAL_SYMTAB)
+	  Set_PU_has_mp(Get_Current_PU());
+#endif
 	return st;
 }
 
