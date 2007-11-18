@@ -525,7 +525,7 @@ static inline gs_void_t _gs_ld (gs_t node, gs_long_double_t ld)
   node->u1.data[0] = realign.data[0];
   node->u1.data[1] = realign.data[1];
   node->u1.data[2] = realign.data[2];
-#ifdef ARCH_MIPS
+#if defined(ARCH_MIPS) || defined(TARG_IA64)
   node->u1.data[3] = realign.data[3];
 #endif
   return;
@@ -1061,6 +1061,9 @@ typedef enum gsbi {
   GSBI_BUILT_IN_ISWXDIGIT,
   GSBI_BUILT_IN_TOWLOWER,
   GSBI_BUILT_IN_TOWUPPER,
+  GSBI_BUILT_IN_CTYPE_B_LOC,
+  GSBI_BUILT_IN_CTYPE_TOUPPER_LOC,
+  GSBI_BUILT_IN_CTYPE_TOLOWER_LOC,
   GSBI_BUILT_IN_ABORT,
   GSBI_BUILT_IN_ABS,
   GSBI_BUILT_IN_AGGREGATE_INCOMING_ADDRESS,
