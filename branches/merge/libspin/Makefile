@@ -53,9 +53,14 @@ GSPIN = gspin$(NAME_SUFFIX)
 
 ifeq ($(BUILD_ARCH), MIPS64)
   CFLAGS = -mabi=n32 -O3 -ffloat-store -DARCH_MIPS
-else
-#  CFLAGS = -march=anyx86 -m32 -O3 -ffloat-store
-   CFLAGS = -m32 -O3
+endif
+
+ifeq ($(BUILD_TARGET), X8664)
+CFLAGS += -m32 -DTARG_X8664
+endif
+
+ifeq ($(BUILD_TARGET), IA64)
+CFLAGS += -DTARG_IA64
 endif
 
 all: $(LIBSPIN) $(GSPIN)
