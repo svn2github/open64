@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -51,4 +51,3 @@ void gs_set_index (gs_t list, gs_count_t index, gs_t value)
   gs_set_operand(list, 0, value);
 }
 #endif
-

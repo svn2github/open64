@@ -1736,6 +1736,7 @@ typedef enum gsbi_ts {
   GSBI_IX86_BUILTIN_INSERTQI,
   GSBI_IX86_BUILTIN_INSERTQ,
   GSBI_IX86_BUILTIN_MAX
+
 } gsbi_ts_t;
 
 extern gs_string_t gsbi_ts_name (gsbi_ts_t code);

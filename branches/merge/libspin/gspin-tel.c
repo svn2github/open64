@@ -1,5 +1,8 @@
 /*
-  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2007. PathScale, LLC.  All rights reserved.
+ */
+/*
+  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -262,8 +265,8 @@ gs_attribute_name (gs_int_t attribute, gs_tree_code_class_t tree_code_class,
       case GS_CONSTRUCTOR:
 	if (attribute == GS_CONSTRUCTOR_ELTS)
 	  return "GS_CONSTRUCTOR_ELTS";
-	return (gs_string_t) "NONAME";
 #endif
+	return (gs_string_t) "NONAME";
 
       case GS_DECL_EXPR:
 	if (attribute == GS_DECL_EXPR_DECL)
@@ -483,7 +486,6 @@ gs_attribute_name (gs_int_t attribute, gs_tree_code_class_t tree_code_class,
 	  return "GS_OMP_CLAUSE_DECL";
 	return (gs_string_t) NULL;
 #endif
-
       default:
         break;
     }
@@ -695,7 +697,13 @@ gs_flag_name (gs_code_t constructor, gs_int_t attribute, gs_count_t flag,
       case GS_DECL_IMPLICIT_INSTANTIATION:	return "GS_DECL_IMPLICIT_INSTANTIATION";
       case GS_DECL_NAMESPACE_SCOPE_P:		return "GS_DECL_NAMESPACE_SCOPE_P";
 #ifdef FE_GNU_4_2_0
-      case GS_CP_DECL_THREADPRIVATE_P:		return "GS_CP_DECL_THREADPRIVATE_P";
+      case GS_CP_DECL_THREADPRIVATE_P:
+        return constructor == GS_FUNCTION_DECL ? "GS_DECL_CONSTRUCTOR_P" :
+                                                 "GS_CP_DECL_THREADPRIVATE_P";
+      case GS_DECL_COMPLETE_DESTRUCTOR_P:       return "GS_DECL_COMPLETE_DESTRUCTOR_P";
+      case GS_DECL_HAS_IN_CHARGE_PARM_P:        return "GS_DECL_HAS_IN_CHARGE_PARM_P";
+      case GS_DECL_HAS_VTT_PARM_P:              return "GS_DECL_HAS_VTT_PARM_P";
+      case GS_DECL_ASSIGNMENT_OPERATOR_P:       return "GS_DECL_ASSIGNMENT_OPERATOR_P";
 #endif
       case GS_DECL_COMPLETE_CONSTRUCTOR_P:	return "GS_DECL_COMPLETE_CONSTRUCTOR_P";
       case GS_DECL_REALLY_EXTERN:		return "GS_DECL_REALLY_EXTERN";
@@ -719,6 +727,13 @@ gs_flag_name (gs_code_t constructor, gs_int_t attribute, gs_count_t flag,
       case GS_ANON_UNION_TYPE_P:        return "GS_ANON_UNION_TYPE_P";
       case GS_CLASSTYPE_TEMPLATE_SPECIALIZATION:
 				return "GS_CLASSTYPE_TEMPLATE_SPECIALIZATION";
+#ifdef FE_GNU_4_2_0
+      case GS_CLASSTYPE_NON_POD_P:      return "GS_CLASSTYPE_NON_POD_P";
+      case GS_TYPE_HAS_DEFAULT_CONSTRUCTOR:
+                                return "GS_TYPE_HAS_DEFAULT_CONSTRUCTOR";
+      case GS_TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR:
+                                return "GS_TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR";
+#endif
       default:	GS_ASSERT(gs_false, ("gs_flag_name: missing flag name"));
     }
 

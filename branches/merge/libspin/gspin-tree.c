@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,7 +378,6 @@ int gspin_node_size(gs_code_t code)
 #endif
 
   default: GS_ASSERT(false, "gspin_node_size(): unrecognied tree code");
-           return 0;
   }
 }
 
@@ -1552,6 +1551,12 @@ gsbi_ts_name (gsbi_ts_t code)
     case GSBI_IX86_BUILTIN_VEC_EXT_V4HI: return "GSBI_IX86_BUILTIN_VEC_EXT_V4HI";
     case GSBI_IX86_BUILTIN_VEC_SET_V8HI: return "GSBI_IX86_BUILTIN_VEC_SET_V8HI";
     case GSBI_IX86_BUILTIN_VEC_SET_V4HI: return "GSBI_IX86_BUILTIN_VEC_SET_V4HI";
+    case GSBI_IX86_BUILTIN_MOVNTSS: return "GSBI_IX86_BUILTIN_MOVNTSS";
+    case GSBI_IX86_BUILTIN_MOVNTSD: return "GSBI_IX86_BUILTIN_MOVNTSD";
+    case GSBI_IX86_BUILTIN_EXTRQI: return "GSBI_IX86_BUILTIN_EXTRQI";
+    case GSBI_IX86_BUILTIN_EXTRQ: return "GSBI_IX86_BUILTIN_EXTRQ";
+    case GSBI_IX86_BUILTIN_INSERTQI: return "GSBI_IX86_BUILTIN_INSERTQI";
+    case GSBI_IX86_BUILTIN_INSERTQ: return "GSBI_IX86_BUILTIN_INSERTQ";
     case GSBI_IX86_BUILTIN_MAX: return "GSBI_IX86_BUILTIN_MAX";
   }
 
@@ -1630,7 +1635,7 @@ gs_dump_leaf(gs_t t, FILE *f,
       break;
 
     case IB_LONG:
-      fprintf (f, "%d ", gs_b(t));
+      fprintf (f, "%d ", gs_n(t));
       break;
 
     case IB_LONG_DOUBLE:
@@ -1838,5 +1843,10 @@ gs_dump_file (gs_t t, FILE *f)
 int gs_id (gs_t node)
 {
   return gs_mempool_address2byteofst(GS_ARENA, (char *)node);
+}
+
+void gs_print_id(gs_t node)
+{
+  printf("%d\n", gs_mempool_address2byteofst(GS_ARENA, (char *)node));
 }
 #endif
