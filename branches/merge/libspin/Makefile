@@ -60,7 +60,7 @@ endif
 
 all: $(LIBSPIN) $(GSPIN)
 
-devbuild: CFLAGS = -DIs_True_On -g -Wall -m32
+devbuild: CFLAGS = -DIs_True_On -g -Wall
 devbuild: $(LIBSPIN) $(GSPIN)
 
 $(OBJECTS): $(HEADERS)
