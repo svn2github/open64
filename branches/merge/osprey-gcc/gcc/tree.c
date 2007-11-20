@@ -7219,7 +7219,7 @@ gcc_built_in_class2gsbi_class (unsigned char class)
  return (gsbi_class_t) 0;
 }
 
-#ifdef TARG_X8664
+#if defined(TARG_IA32) || defined(TARG_X8664)
 static inline gsbi_ts_t
 ix86_builtins2gsbi_ts (enum ix86_builtins code) 
 {
@@ -7938,7 +7938,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
   }
 
   // Create the node that will represent this tree node. 
-  TREE_TO_TRANSLATED_GS (t) = (unsigned int)__gs(gcc2gs (TREE_CODE (t)));
+  TREE_TO_TRANSLATED_GS (t) = (unsigned long)__gs(gcc2gs (TREE_CODE (t)));
 
   // Argument 0 is the name of the class:
   class = TREE_CODE_CLASS (TREE_CODE (t));
@@ -8279,11 +8279,13 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
           case BUILT_IN_NORMAL:
             _gs_hword(decl_function_code, gcc_built_in2gsbi ((int) DECL_FUNCTION_CODE (t)));
             break;
-#ifdef TARG_X8664
+#if defined(TARG_IA32) || defined(TARG_X8664)
           case BUILT_IN_MD:
             _gs_hword(decl_function_code, ix86_builtins2gsbi_ts ((int) DECL_FUNCTION_CODE (t)));
-            break;
+#else
+	    _gs_hword(decl_function_code, gcc_built_in2gsbi ((int) DECL_FUNCTION_CODE (t)));
 #endif
+	    break;
           default: gcc_assert (0); break;
         }
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_BUILT_IN_CLASS, decl_built_in_class);
