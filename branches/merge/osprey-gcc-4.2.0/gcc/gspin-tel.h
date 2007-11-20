@@ -1,5 +1,9 @@
 /*
-  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+  Copyright (C) 2007. PathScale, LLC.  All rights reserved.
+ */
+
+/*
+  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -140,7 +144,7 @@ extern gs_t gs_strip_nops(gs_t node);
 #  define GS_DECL_ASSEMBLER_NAME_SET_P	59
 #  define GS_DECL_ARTIFICIAL		60
 #  define GS_DECL_LANG_SPECIFIC		61
-#  define GS_DECL_THREADPRIVATE         62  // RECYCLE
+#  define GS_DECL_THREADPRIVATE         62 // RECYCLE
 #ifdef FE_GNU_4_2_0
 #  define GS_C_DECL_THREADPRIVATE_P     GS_DECL_LANG_FLAG_3
 #endif
@@ -242,6 +246,13 @@ extern gs_t gs_strip_nops(gs_t node);
 #  define GS_DECL_PURE_VIRTUAL_P		17
 #  define GS_DECL_THIS_THUNK_P			18
 #  define GS_DECL_EXTERN_C_P			19
+#ifdef FE_GNU_4_2_0
+#  define GS_DECL_CONSTRUCTOR_P			GS_CP_DECL_THREADPRIVATE_P
+#  define GS_DECL_COMPLETE_DESTRUCTOR_P		20
+#  define GS_DECL_HAS_IN_CHARGE_PARM_P		21
+#  define GS_DECL_HAS_VTT_PARM_P		22
+#  define GS_DECL_ASSIGNMENT_OPERATOR_P		23
+#endif
 // ---- end GS_CP_DECL_FLAGS definition ----
 #define GS_DECL_TEMPLATE_INFO		30
 #define GS_DECL_SECTION_NAME		31
@@ -297,6 +308,11 @@ extern gs_t gs_strip_nops(gs_t node);
 #  define GS_ANON_UNION_TYPE_P		5
 #  define GS_CLASSTYPE_TEMPLATE_SPECIALIZATION	6
 #  define GS_TYPE_USES_TEMPLATE_PARMS	7
+#ifdef FE_GNU_4_2_0
+#  define GS_CLASSTYPE_NON_POD_P	8
+#  define GS_TYPE_HAS_DEFAULT_CONSTRUCTOR  9
+#  define GS_TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR  10
+#endif
 // ---- end GS_CP_TYPE_FLAGS definition ----
 #define GS_TYPE_VFIELD                  GS_TYPE_MIN_VALUE
 #define GS_TYPE_METHODS                 GS_TYPE_MAX_VALUE
@@ -322,6 +338,9 @@ extern gs_t gs_strip_nops(gs_t node);
 #define GS_EXPR_LINENO			6
 // Slots 7-11 are reserved for operands of expression nodes.
 // 4 seems to be the maximum arity (based on checking across all .def files).
+// ************ FE_GNU_4_2_0 ***************
+// For GNU 4.2 work, 5 slots 7-12 (excluding 12) are reserved for operands.
+// See below.
 #define GS_TREE_OPERAND_ZERO		7
 
 #define GS_ASM_STRING			7
@@ -643,6 +662,7 @@ GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_thunk_p, GS_DECL_THUNK_P)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_assembler_name_set_p, GS_DECL_ASSEMBLER_NAME_SET_P)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_artificial, GS_DECL_ARTIFICIAL)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_lang_specific, GS_DECL_LANG_SPECIFIC)
+/* recycle begin */
 GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_threadprivate, GS_DECL_THREADPRIVATE)
 GS_UPDATE_FLAG (GS_FLAGS, gs_set_decl_threadprivate, GS_DECL_THREADPRIVATE)
 /* recycle end */
@@ -936,6 +956,13 @@ static inline gs_t gs_ptrdiff_type_node(void) {
   GS_ASSERT(t != NULL, "gs_ptrdiff_type_node: got NULL node");
   return t;
 }
+#ifdef FE_GNU_4_2_0
+static inline gs_t gs_void_list_node(void) {
+  gs_t t = gs_index(gs_global_trees_list(gs_program), GS_TI_VOID_LIST_NODE);
+  GS_ASSERT(t != NULL, "gs_void_type_node: got NULL node");
+  return t;
+}
+#endif
 static inline gs_t gs_integer_type_node(void) {
   gs_t t = gs_index (gs_integer_types_list(gs_program), GS_ITK_INT);
   GS_ASSERT(t != NULL, "gs_integer_type_node: got NULL node");
@@ -982,6 +1009,22 @@ GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_this_thunk_p,
 		GS_DECL_THIS_THUNK_P)
 GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_extern_c_p,
 		GS_DECL_EXTERN_C_P)
+#ifdef FE_GNU_4_2_0
+GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_constructor_p,
+		GS_DECL_CONSTRUCTOR_P)
+GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_complete_destructor_p,
+		GS_DECL_COMPLETE_DESTRUCTOR_P)
+static inline gs_bool_t gs_decl_nonstatic_member_function_p (gs_t t) {
+  GS_ASSERT (t != (gs_t) NULL, "Got null node");
+  return (gs_tree_code (gs_tree_type (t)) == GS_METHOD_TYPE);
+}
+GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_has_in_charge_parm_p,
+		GS_DECL_HAS_IN_CHARGE_PARM_P)
+GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_has_vtt_parm_p,
+		GS_DECL_HAS_VTT_PARM_P)
+GS_LOOKUP_FLAG (GS_CP_DECL_FLAGS, gs_decl_assignment_operator_p,
+		GS_DECL_ASSIGNMENT_OPERATOR_P)
+#endif
 // C++ Decl Flags- }
 
 GS_LOOKUP (gs_decl_template_info, GS_DECL_TEMPLATE_INFO)
@@ -1009,6 +1052,14 @@ GS_LOOKUP_FLAG (GS_CP_TYPE_FLAGS, gs_class_type_p, GS_CLASS_TYPE_P)
 GS_LOOKUP_FLAG (GS_CP_TYPE_FLAGS, gs_anon_union_type_p, GS_ANON_UNION_TYPE_P)
 GS_LOOKUP_FLAG (GS_CP_TYPE_FLAGS, gs_classtype_template_specialization,
 		GS_CLASSTYPE_TEMPLATE_SPECIALIZATION)
+#ifdef FE_GNU_4_2_0
+GS_LOOKUP_FLAG (GS_CP_TYPE_FLAGS, gs_classtype_non_pod_p,
+		GS_CLASSTYPE_NON_POD_P)
+GS_LOOKUP_FLAG (GS_CP_TYPE_FLAGS, gs_type_has_default_constructor,
+		GS_TYPE_HAS_DEFAULT_CONSTRUCTOR)
+GS_LOOKUP_FLAG (GS_CP_TYPE_FLAGS, gs_type_has_implicit_copy_constructor,
+		GS_TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR)
+#endif
 // C++ Type Flags- }
 
 GS_LOOKUP (gs_type_binfo, GS_TYPE_BINFO)
@@ -1179,7 +1230,6 @@ GS_LOOKUP (gs_catch_body, GS_CATCH_BODY)
 
 GS_LOOKUP_FLAG (GS_FLAGS, gs_identifier_opname_p, GS_TREE_LANG_FLAG_2)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_identifier_typename_p, GS_TREE_LANG_FLAG_4)
-/* bug fix for OSP_279 */	
 GS_LOOKUP_FLAG (GS_FLAGS, gs_decl_tinfo_p, GS_TREE_LANG_FLAG_4)
 
 static inline gs_int_t gs_list_length (gs_t t) 
@@ -1225,4 +1275,25 @@ static inline int gs_really_constant_p(gs_t exp)
   }
   return gs_tree_constant(exp);
 }
+
+#ifdef FE_GNU_4_2_0
+static inline gs_t
+gs_skip_artificial_parms_for (gs_t fn, gs_t list)
+{
+  if (gs_decl_nonstatic_member_function_p (fn))
+    list = gs_tree_chain (list);
+  else
+    return list;
+
+  if (gs_decl_has_in_charge_parm_p (fn))
+    list = gs_tree_chain (list);
+  if (gs_decl_has_vtt_parm_p (fn))
+    list = gs_tree_chain (list);
+  return list;
+}
+
+#define gs_function_first_user_parmtype(fn) \
+    gs_skip_artificial_parms_for (fn, gs_type_arg_types (gs_tree_type (fn)))
+#endif
+
 #endif // __GSPIN_TEL_H__

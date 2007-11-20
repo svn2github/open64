@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,7 +325,11 @@ extern int gspin_node_size(gs_code_t code);
 typedef struct gspin *gs_t;
 typedef gs_t *gs_vec_t;
 
-typedef struct gspin 
+
+// Bug 13134: gspin_t should have alignment 4 to conserve memory.
+// Data types with alignment 8 and higher are stored in u1.data[] and
+// realigned in the inline procedures below using gs_realign_t.
+typedef struct gspin
 {
   union { // byte 0
     struct {
@@ -344,13 +348,14 @@ typedef struct gspin
   } u0;
   union { // byte 4
     unsigned int	u;	// IB_UNSIGNED, IB_UNSIGNED_LONG
-    int			n;	// IB_INT, IB_LONG?
+    int			n;	// IB_INT, IB_LONG
     float		f;	// IB_FLOAT
     gs_t		arg[1];	// for pointing to kids of non-leaf nodes
     char *		s;	// pointer part of IB_STRING
-    int                 data[4]; // All types larger than 4 bytes ( see
-  } u1;                          //    gs_realign_t below
+    int			data[4]; // All types larger than 4 bytes (see
+  } u1;				 //   gs_realign_t below)
 } gspin_t;
+
 
 typedef union gs_realign
 {
@@ -360,6 +365,7 @@ typedef union gs_realign
   double		d;	// IB_DOUBLE
   long double		ld;	// IB_LONG_DOUBLE
 } gs_realign_t;
+
 
 static inline gs_void_t _gs_code (gs_t node, gs_code_t c)
 {
@@ -474,7 +480,7 @@ static inline gs_unsigned_t gs_u (gs_t node)
 }
 
 static inline gs_void_t _gs_ull (gs_t node, gs_unsigned_long_long_t ull)
-{ // 64bit on Both IA32/IA64
+{
   gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
   realign.ull = ull;
@@ -484,7 +490,7 @@ static inline gs_void_t _gs_ull (gs_t node, gs_unsigned_long_long_t ull)
 }
 
 static inline gs_unsigned_long_long_t gs_ull (gs_t node)
-{ // 64bit
+{
   gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
   realign.data[0] = node->u1.data[0];
@@ -512,7 +518,7 @@ static inline gs_long_long_t gs_ll (gs_t node)
 }
 
 static inline gs_void_t _gs_ld (gs_t node, gs_long_double_t ld)
-{ // 128bit on IA64
+{
   gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
   realign.ld = ld;
@@ -1723,6 +1729,12 @@ typedef enum gsbi_ts {
   GSBI_IX86_BUILTIN_VEC_EXT_V4HI,
   GSBI_IX86_BUILTIN_VEC_SET_V8HI,
   GSBI_IX86_BUILTIN_VEC_SET_V4HI,
+  GSBI_IX86_BUILTIN_MOVNTSS,
+  GSBI_IX86_BUILTIN_MOVNTSD,
+  GSBI_IX86_BUILTIN_EXTRQI,
+  GSBI_IX86_BUILTIN_EXTRQ,
+  GSBI_IX86_BUILTIN_INSERTQI,
+  GSBI_IX86_BUILTIN_INSERTQ,
   GSBI_IX86_BUILTIN_MAX
 
 } gsbi_ts_t;
