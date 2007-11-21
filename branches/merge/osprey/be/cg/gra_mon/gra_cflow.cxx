@@ -149,13 +149,14 @@ Split_Entry( BB* bb )
   BB_freq(new_entry) = BB_freq(bb);
 
   op = BB_last_op(bb);
-  do {
-    prev_op = OP_prev(op); 
-    if (OP_Is_Copy_To_Save_TN(op)) 
-      BB_Move_Op_To_Start(new_entry, bb, op);
-    op = prev_op;
-  } while (op != NULL && op != BB_entry_sp_adj_op(new_entry));
-
+  if(op){
+   do {
+     prev_op = OP_prev(op); 
+     if (OP_Is_Copy_To_Save_TN(op)) 
+       BB_Move_Op_To_Start(new_entry, bb, op);
+     op = prev_op;
+   } while (op != NULL && op != BB_entry_sp_adj_op(new_entry));
+  }
   for (op = BB_entry_sp_adj_op (new_entry); op != NULL; op = prev_op) {
     prev_op = OP_prev(op);
     BB_Move_Op_To_Start (new_entry, bb, op);

@@ -3942,7 +3942,6 @@ vho_lower_combine_loads ( WN * wn )
 } /* vho_lower_combine_loads */
 
 #ifdef KEY
-#ifdef TARG_X8664
 // Utility function to traverse through an aggregate type and determine
 // if any field/element is floating-point: bug 7770
 // Called by vho_lower_mparm(), if there is any FP field, the mparm cannot
@@ -3976,7 +3975,6 @@ traverse_struct (const TY_IDX ty)
 
   return 1;
 }
-#endif
 #ifdef TARG_MIPS
 // Utility function to traverse through an aggregate type and determine
 // it contains either 1 or 2 floating-point fields, in which case the mparm
@@ -4032,7 +4030,7 @@ vho_lower_mparm (WN * wn)
 #ifdef TARG_X8664
       && (Is_Target_32bit() ||
           traverse_struct (WN_ty (wn)))
-#elif defined(TARG_MIPS) // bug 12809
+#elif defined(TARG_MIPS) || defined(TARG_IA64) // bug 12809
       && traverse_struct (WN_ty(wn))
 #endif
       )
