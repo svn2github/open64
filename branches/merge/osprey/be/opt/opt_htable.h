@@ -465,6 +465,10 @@ public:
     {
       Init(CK_LDA); Set_dtyp(wt);  Set_lda_ty(tt); Set_offset(ofst);
       Set_lda_aux_id(st); Set_lda_base_st(bas); Set_afield_id(field_id);
+#ifdef KEY
+      Set_dsctyp(MTYPE_V);
+#endif
+
     }
 
   void Init_const(MTYPE wt, INT64 v)
@@ -480,11 +484,20 @@ public:
 	Set_dtyp_const_val(wt, (UINT64) ((UINT64) v << 32) >> 32);
 #endif
       else Set_dtyp_const_val(wt, v);
+
+#ifdef KEY
+      Set_dsctyp(MTYPE_V);
+#endif
+
     }
 
   void Init_rconst(MTYPE wt, ST *v)
     {
       Init(CK_RCONST); Set_dtyp(wt); Set_const_id(v);
+#ifdef KEY
+      Set_dsctyp(MTYPE_V);
+#endif
+
     }
 
   void Init_op(OPCODE c, mINT16 kcnt)

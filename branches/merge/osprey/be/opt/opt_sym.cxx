@@ -922,7 +922,12 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   sym->Set_field_id(field_id);
   sym->Set_mclass(0);
   sym->Set_mtype(MTYPE_UNKNOWN);
-#ifdef KEY // bug 3091: to help create correct identity assignment for BS var
+
+#ifdef KEY 
+  // bug 13670: don't leave the field uninitialized
+  sym->Set_value_size(0);
+  sym->Set_spre_node(NULL);
+  // bug 3091: to help create correct identity assignment for BS var
   if (opr == OPR_LDID || opr == OPR_STID)
     sym->Set_wn(wn);
 #endif
@@ -1054,6 +1059,11 @@ OPT_STAB::Enter_ded_preg(ST *st, INT64 ofst, TY_IDX ty, INT32 mclass)
   sym->Set_stype(VT_NO_LDA_SCALAR);
   sym->Set_mclass(mclass);
   sym->Set_mtype(MTYPE_UNKNOWN);
+#ifdef KEY
+  // bug 13670
+  sym->Set_value_size(0);
+  sym->Set_spre_node(NULL);
+#endif
   sym->Clear_flags();
   sym->Set_st(st);
   sym->Set_st_ofst(ofst);
@@ -1091,6 +1101,11 @@ OPT_STAB::Create_vsym(EXPR_KIND k)
   vsym->Clear_flags();
   vsym->Set_mclass(0);
   vsym->Set_mtype(MTYPE_UNKNOWN);
+#ifdef KEY
+  // bug 13670
+  vsym->Set_value_size(0);
+  vsym->Set_spre_node(NULL);
+#endif
   vsym->Set_st(NULL);
   vsym->Set_st_ofst(0);
   vsym->Set_nonzerophis(NULL);
@@ -1147,6 +1162,12 @@ OPT_STAB::Create_preg(MTYPE preg_ty, char *name, WN *home_wn)
   sym->Set_synonym((AUX_ID) 0);
   sym->Set_home_sym((AUX_ID) 0);
   sym->Set_zero_cr(NULL);
+#ifdef KEY
+  // bug 13670
+  sym->Set_value_size(0);
+  sym->Set_spre_node(NULL);
+#endif
+
   sym->Points_to()->Analyze_ST(st, sym->St_ofst(),
 			       TY_size(MTYPE_To_TY(preg_ty)), 0, 0, 0,
 			       FALSE /* no equiv */);

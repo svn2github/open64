@@ -1936,6 +1936,26 @@ static WN *Gen_Pf_Addr_Node(WN *invariant_stride, WN *array, WN *loop)
 
    return stride_node;
 }
+static BOOL Larger_Dimension_Arrays_In(WN *wn, INT dim)
+{
+  if (WN_operator(wn) == OPR_BLOCK){
+    for (WN* kid=WN_first(wn); kid; kid=WN_next(kid)){
+      if(Larger_Dimension_Arrays_In(kid, dim))
+	return TRUE;
+    }
+    return FALSE;
+  }else if(WN_operator(wn) == OPR_ARRAY){
+    ACCESS_ARRAY* aa=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,wn);
+    if(aa==NULL || aa->Num_Vec() > dim)
+      return TRUE;
+  }
+
+  for (UINT kidno = 0; kidno < WN_kid_count(wn); kidno ++){
+    if (Larger_Dimension_Arrays_In(WN_kid(wn, kidno), dim))
+      return TRUE;
+  }
+  return FALSE;
+}
 #endif
 
 /***********************************************************************
@@ -1972,7 +1992,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
   while (bitvec) {
 
     // OK - now prefetch references [start through stop-1], inclusive
-
+    BOOL spatial_in_loop = FALSE;
     // 1. Create prefetch node
     // Build flag
     // Determine Read or Write prefetch
@@ -2121,9 +2141,10 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
     // Probably ignored if non-innermost loop, 
     // where we may generate a conditional.
     if ((level == level_1) || (level == level_1and2)) {
-      if (pfdesc->Kind(level_1) == all)
+      if (pfdesc->Kind(level_1) == all){
         if (level_for_cg == level_2) PF_SET_STRIDE_2L (flag, 1);
         else PF_SET_STRIDE_1L (flag, 1);
+      }
       else {
         Is_True (pfdesc->Kind(level_1) == vec,
                  ("Gen_Pref_Node: prefetch when kind is none\n"));
@@ -2132,6 +2153,13 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         mINT16* prefetch_vec = pfdesc->Vec(level_1); 
         mINT16 depth = Get_Depth();
         if (prefetch_vec[depth]) {
+	  INT dp = depth-2;
+	  while (dp >= 0) {
+	    if (prefetch_vec[dp]) break;
+	    dp--;
+	  }
+	  if(dp<0) spatial_in_loop = TRUE;
+
           if (level_for_cg == level_2)
             PF_SET_STRIDE_2L (flag, prefetch_vec[depth]);
           else PF_SET_STRIDE_1L (flag, prefetch_vec[depth]);
@@ -2163,6 +2191,13 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         mINT16* prefetch_vec = pfdesc->Vec(level_2); 
         mINT16 depth = Get_Depth();
         if (prefetch_vec[depth]) {
+	  INT dp = depth-1;
+	  while (dp >= 0) {
+	    if (prefetch_vec[dp]) break;
+	    dp--;
+	  }
+	  if(dp<0) spatial_in_loop = TRUE;
+
           PF_SET_STRIDE_2L (flag, prefetch_vec[depth]);
         }
         else {
@@ -2344,9 +2379,59 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
 //bug 11546 : CG ebo should not drop prefetches for vectorized loads or stores
 if(LNO_Run_Prefetch > SOME_PREFETCH && 
       (WN_element_size(arraynode) < 0 ||
+      (Get_Dim()==1 &&( confidence ==3 || WN_element_size(arraynode) > 8))||
       MTYPE_is_vector(WN_desc(parent_ref)) ||
-      MTYPE_is_vector(WN_rtype(parent_ref))))
-   PF_SET_KEEP_ANYWAY(flag);
+      MTYPE_is_vector(WN_rtype(parent_ref)))){
+  PF_SET_KEEP_ANYWAY(flag);
+}
+ 
+#ifdef KEY
+//--------------------------------------------------------------------------
+//Bug 13609: to make a decision for streaming prefetch
+//(1) only one array reference in this locality group
+//(2) the spatial locality only in the innermost loop
+//(3) we only consider loads here. Stores may use non-temporal stores in CG
+//(4) the array must be in good shape, and we only consider the largest dimensional
+//    arrays in a loop.
+//---------------------------------------------------------------------------
+ if(LNO_Run_Stream_Prefetch > Get_Depth()&& //depth starts from 0 from outmost
+    _refvecs.Elements() == 0 && //only one reference(leader) in this locality group
+    spatial_in_loop          && //spatial locality not across loops
+    WN_operator(parent_ref)==OPR_ILOAD){
+
+   BOOL stream_pf = TRUE;
+   ACCESS_ARRAY* aa=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,arraynode);
+   INT loopdepth = Get_Depth(); //make sure whether get depth is the depth
+   ACCESS_VECTOR* av1 = aa->Dim(aa->Num_Vec()-1); //first dimention access vector
+
+   if(av1->Non_Const_Loops() != loopdepth)
+     stream_pf = FALSE;
+
+   if(av1->Loop_Coeff(loopdepth) != 1)
+     stream_pf = FALSE;
+   for(INT ii=0; ii<loopdepth; ii++)
+     if(av1->Loop_Coeff(ii)!=0){
+       stream_pf = FALSE;
+       break;
+     }
+   for(INT ii=0; ii < aa->Num_Vec(); ii++){
+     ACCESS_VECTOR* av = aa->Dim(ii);
+     if (av->Contains_Lin_Symb() || av->Contains_Non_Lin_Symb()){
+       stream_pf = FALSE;
+       break;
+     }
+   }
+
+   if(stream_pf){
+     WN *doloop = Enclosing_Do_Loop(parent_ref);
+     if(Larger_Dimension_Arrays_In(doloop, Get_Dim()))
+       stream_pf = FALSE;
+   }
+
+   if(stream_pf)
+     PF_SET_NON_TEMPORAL(flag); //prefetchnta
+ }
+#endif
 
 
 #ifndef KEY //bug 10953

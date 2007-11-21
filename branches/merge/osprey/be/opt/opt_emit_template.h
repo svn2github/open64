@@ -575,6 +575,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       }
 #ifdef KEY // bug 7766
       else if (IS_FORTRAN && exp->Ilod_base()->Kind() == CK_LDA &&
+	       ! exp->Ilod_base()->Is_flag_set(CF_LDA_LABEL) &&
 	       ! WN_Parm_By_Reference(wn)) {
 	WN_Set_Parm_By_Reference(wn);
 	Set_ST_addr_passed(exp->Ilod_base()->Lda_base_st());

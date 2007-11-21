@@ -1631,8 +1631,8 @@ void
 ALIAS_CLASSIFICATION::Handle_call_of_nested_PU(ST *const callee_st)
 {
   if (Tracing()) {
-    fprintf(TFile, "Handling nested call of ");
-    Print_ST(TFile, callee_st, FALSE);
+    fprintf(TFile, "Handling nested call of %s", callee_st ? "" : "(NULL)");
+    if (callee_st) Print_ST(TFile, callee_st, FALSE);
     fflush(TFile);
   }
 

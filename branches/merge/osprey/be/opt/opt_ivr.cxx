@@ -2351,6 +2351,30 @@ IVR::Determine_trip_IV_and_exit_count(BB_LOOP *loopinfo,
   if (trip_init == NULL || trip_step == NULL || trip_bound == NULL)
     return;
 
+#ifdef KEY // bug 13728: if there is wraparound, do not continue
+  if (trip_init->Kind() == CK_CONST && trip_step->Kind() == CK_CONST &&
+      trip_bound->Kind() == CK_CONST) {
+    if (MTYPE_signed(trip_cand->Var()->Dtyp()))
+      if (trip_step->Const_val() > 0) {
+	if (trip_init->Const_val() > trip_bound->Const_val())
+	  return;
+      }
+      else {
+	if (trip_init->Const_val() < trip_bound->Const_val())
+	  return;
+      }
+    else
+      if (trip_step->Const_val() > 0) {
+	if ((UINT64)trip_init->Const_val() > (UINT64)trip_bound->Const_val())
+	  return;
+      }
+      else {
+	if ((UINT64)trip_init->Const_val() < (UINT64)trip_bound->Const_val())
+	  return;
+      }
+  }
+#endif
+
   if (loopinfo->Test_at_entry()) {
     // the following trip equations only applies to DO_LOOP in preopt
     // the opr represents the exit condition, so it the init-value satisfy

@@ -95,7 +95,9 @@ CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
   if (typ == MTYPE_V) 
     typ = WN_desc(wn);
 #ifdef TARG_X8664
-  else if (WN_opcode(wn) == OPC_U8U4CVT)
+  else if (WN_opcode(wn) == OPC_U8U4CVT ||
+           WN_opcode(wn) == OPC_U8U4LDID || // bug 13382
+	   WN_opcode(wn) == OPC_U8U4ILOAD)
     typ = MTYPE_U4; // U8U4CVT is deleted in Canon_cvt; otherwise will 
     		       // generate U8ADD instead of U4ADD which is wrong
 #endif

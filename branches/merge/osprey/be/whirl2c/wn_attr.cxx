@@ -267,12 +267,36 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
       ret_ty = Stab_Mtype_To_Ty(MTYPE_I4);
       break;
 #ifdef TARG_X8664
-   case IRETURN_V16F8:
-     ret_ty = Stab_Mtype_To_Ty(MTYPE_V16F8);
+   case IRETURN_V16C8:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V16C8);
+     break;
+   case IRETURN_V16I1:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V16I1);
+     break;
+   case IRETURN_V16I2:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V16I2);
+     break;
+   case IRETURN_V16I4:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V16I4);
+     break;
+   case IRETURN_V16I8:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V16I8);
      break;
    case IRETURN_V16F4:
      ret_ty = Stab_Mtype_To_Ty(MTYPE_V16F4);
-     break;     
+     break;
+   case IRETURN_V16F8:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V16F8);
+     break;
+   case IRETURN_M8I1:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_M8I1);
+     break;
+   case IRETURN_M8I2:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_M8I2);
+     break;
+   case IRETURN_M8I4:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_M8I4);
+     break;
 #endif
 #endif
    case IRETURN_PPU2:

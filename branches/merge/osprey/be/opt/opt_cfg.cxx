@@ -4877,7 +4877,12 @@ BB_NODE*
 CFG::Find_enclosing_parallel_region_bb( BB_NODE *bb)
 {
   for ( BB_NODE *dom = bb->Idom(); dom != NULL; dom = dom->Idom() ) {
-    if ( dom->Kind() == BB_REGIONSTART && dom->MP_region()) {
+    // bug 13579: Make sure the rid-type of the BB is MP. MP_region
+    // flag only ensures that the BB is inside an MP region. For C++,
+    // it could be an EH region. Here we are looking for the enclosing
+    // MP parallel region.
+    if ( dom->Kind() == BB_REGIONSTART && dom->MP_region() &&
+	 RID_TYPE_mp(dom->Regioninfo()->Rid()) ) {
       // OK, we've found a matching region, but does it include
       // the given block?
       BB_REGION *dom_region = dom->Regioninfo();

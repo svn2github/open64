@@ -224,6 +224,9 @@ static STATUS WN2C_istorex(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
 static STATUS WN2C_mstore(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
 static STATUS WN2C_stid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
 static STATUS WN2C_call(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
+#ifdef KEY
+static STATUS WN2C_asm_stmt(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
+#endif
 static STATUS WN2C_eval(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
 static STATUS WN2C_prefetch(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
 static STATUS WN2C_comment(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
@@ -376,7 +379,17 @@ static const OPR2HANDLER WN2C_Opr_Handler_Map[] =
    {OPR_COMMA, &WN2C_comma},
    {OPR_RCOMMA, &WN2C_rcomma},
    {OPR_ALLOCA, &WN2C_alloca},
-   {OPR_DEALLOCA, &WN2C_dealloca}
+   {OPR_DEALLOCA, &WN2C_dealloca},
+#ifdef KEY
+   {OPR_LDMA, &WN2C_lda},
+   {OPR_ASM_STMT, &WN2C_asm_stmt},
+   {OPR_RROTATE, &WN2C_binaryop},
+   {OPR_LDA_LABEL, &WN2C_lda},
+   {OPR_GOTO_OUTER_BLOCK, &WN2C_goto},
+   {OPR_EXTRACT_BITS, &WN2C_unaryop},
+   {OPR_COMPOSE_BITS, &WN2C_binaryop},
+#endif
+
 }; /* WN2C_Opr_Handler_Map */
 
 
@@ -1028,6 +1041,16 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_U8F8LT, "<"},
   {OPC_U8FQLT, "<"},
 #endif
+#ifdef KEY
+  {OPC_I4EXTRACT_BITS, "_I4EXTRACT_BITS"},
+  {OPC_I8EXTRACT_BITS, "_I8EXTRACT_BITS"},
+  {OPC_U4EXTRACT_BITS, "_U4EXTRACT_BITS"},
+  {OPC_U8EXTRACT_BITS, "_U8EXTRACT_BITS"},
+  {OPC_I4COMPOSE_BITS, "_I4COMPOSE_BITS"},
+  {OPC_I8COMPOSE_BITS, "_I8COMPOSE_BITS"},
+  {OPC_U4COMPOSE_BITS, "_U4COMPOSE_BITS"},
+  {OPC_U8COMPOSE_BITS, "_U8COMPOSE_BITS"},
+#endif
 #ifdef TARG_X8664
   {OPC_V16F4RECIP, "_V16F4RECIP"},
   {OPC_F8F8FLOOR, "_F8F8FLOOR"},
@@ -1056,6 +1079,14 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_V16F8ADD, "+"},
   {OPC_V16C4ADD, "+"},
   {OPC_V16C8ADD, "+"},
+  {OPC_M8I1ADD, "+"},
+  {OPC_M8I2ADD, "+"},
+  {OPC_M8I4ADD, "+"},
+  {OPC_M8F4ADD, "+"},
+  {OPC_V8I1ADD, "+"},
+  {OPC_V8I2ADD, "+"},
+  {OPC_V8I4ADD, "+"},
+  {OPC_V8F4ADD, "+"},
   {OPC_V16I1SUB, "-"},
   {OPC_V16I2SUB, "-"},
   {OPC_V16I4SUB, "-"},
@@ -1064,6 +1095,14 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_V16F8SUB, "-"},
   {OPC_V16C4SUB, "-"},
   {OPC_V16C8SUB, "-"},
+  {OPC_M8I1SUB, "-"},
+  {OPC_M8I2SUB, "-"},
+  {OPC_M8I4SUB, "-"},
+  {OPC_M8F4SUB, "-"},
+  {OPC_V8I1SUB, "-"},
+  {OPC_V8I2SUB, "-"},
+  {OPC_V8I4SUB, "-"},
+  {OPC_V8F4SUB, "-"},
   {OPC_V16I1BAND,"&"},
   {OPC_V16I2BAND,"&"},
   {OPC_V16I4BAND,"&"},
@@ -4705,6 +4744,61 @@ WN2C_call(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 } /* WN2C_call */
 
 
+#ifdef KEY
+static STATUS
+WN2C_asm_stmt(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
+{
+  TOKEN_BUFFER asm_tokens;
+
+  /* A buffer to hold the tokens representing the asm */
+  asm_tokens = New_Token_Buffer();
+
+  Append_Token_String(asm_tokens, "__asm__ ");
+  Append_Token_String(asm_tokens, "( \"");
+  const char *asmstr =  ST_name(WN_st_idx(wn));
+  char *line = Get_Name_Buf_Slot(strlen(asmstr)+15);
+  INT i = -1;
+  INT j;
+  do {
+    j = -1;
+    /* output one line per carriage return inside the string */
+    do {
+      i++; j++;
+      line[j] = asmstr[i];
+    } while (asmstr[i] != 0 && asmstr[i] != '\n');
+    if (asmstr[i] == '\n') {
+      line[j++] = '\\';
+      line[j++] = 'n';
+      line[j++] = '\"';
+      line[j++] = '\n';
+      if (asmstr[i+1] != 0) {
+	line[j++] = '\t';
+	line[j++] = '\"';
+	line[j++] = 0;
+      }
+      else {
+	i++;
+	line[j++] = '\t';
+	line[j++] = ')';
+	line[j++] = 0;
+      }
+    }
+    else if (asmstr[i] == 0) {
+      line[j++] = '\"';
+      line[j++] = ' ';
+      line[j++] = ')';
+      line[j++] = 0;
+    }
+    Append_Token_String(asm_tokens, line);
+  } while (asmstr[i] != 0);
+
+  Append_And_Reclaim_Token_List(tokens, &asm_tokens);
+
+  return EMPTY_STATUS;
+} /* WN2C_asm_stmt */
+#endif
+
+
 static STATUS 
 WN2C_eval(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 {
@@ -5529,6 +5623,16 @@ WN2C_ldid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 
    /* Get the load expression */
    addr_offset = WN_load_offset(wn);
+#ifdef KEY  // special case for asm outputs
+   if (addr_offset < -1) {
+     char buff[64];
+     sprintf(buff, "reg%%%lld", -addr_offset-2);
+     expr_tokens = New_Token_Buffer();
+     Append_Token_String(expr_tokens, buff);
+     Append_And_Reclaim_Token_List(tokens, &expr_tokens);
+     return EMPTY_STATUS;
+   }
+#endif
    expr_tokens = New_Token_Buffer();   
    if (ST_sym_class(WN_st(wn)) == CLASS_PREG)
    {

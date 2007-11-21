@@ -216,6 +216,7 @@ static LNO_FLAGS Default_LNO = {
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
   TRUE,        /*Prefetch Invariant (non-constant) Stride */
   8,            /*Prefetch_Strides_Ahead*/
+  2,            /*Streaming Prefetch*/
 #endif
   2,		/* Prefetch_ahead */
 #ifdef TARG_IA64
@@ -241,11 +242,7 @@ static LNO_FLAGS Default_LNO = {
 #ifndef KEY
   TRUE,		/* Run_vintr */
 #else
-#ifdef TARG_X8664
   1,		/* Run_vintr */
-#else
-  0,		/* Run_vintr */
-#endif // TARG_X8664
   TRUE,         /* Run_vintr_set */
   FALSE,	/* Vintr_Verbose */
   1,            /* Run_simd */
@@ -415,6 +412,7 @@ LNO_FLAGS Initial_LNO = {
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
   TRUE,        /* Prefetch Invariant Stride */
   8,            /* Prefetch_Strides_Ahead */
+  2,            /* Streaming Prefetch */
 #endif
   2,		/* Prefetch_ahead */
 #ifdef TARG_IA64
@@ -440,11 +438,7 @@ LNO_FLAGS Initial_LNO = {
 #ifndef KEY
   TRUE,		/* Run_vintr */
 #else
-#ifdef TARG_X8664
   1,		/* Run_vintr */
-#else
-  0,		/* Run_vintr */
-#endif // TARG_X8664
   TRUE,         /* Run_vintr_set */
   FALSE,	/* Vintr_Verbose */
   1, 		/* Run_simd */
@@ -759,6 +753,7 @@ static OPTION_DESC Options_LNO[] = {
   						Prefetch_stores_set ),
   LNOPT_BOOL( "pf_inv_stride",          NULL,   Prefetch_invariant_stride),
   LNOPT_U32 ( "pf_stride_ahead",            NULL,   8,0,128, Prefetch_stride_ahead ),
+  LNOPT_U32 ( "stream_prefetch",            NULL,   2,0,128, Run_stream_prefetch ),
 #endif
   LNOPT_U32  ( "prefetch_ahead",	NULL,	2,0,50,	Prefetch_ahead ),
   LNOPT_U32  (   "pf_ahead",		NULL,	2,0,50,	Prefetch_ahead ),
@@ -810,13 +805,8 @@ static OPTION_DESC Options_LNO[] = {
 #ifndef KEY
   LNOPT_BOOL ( "vintr",			NULL,	Run_vintr ),
 #else
-#ifdef TARG_X8664
   LNOPT_U32_SET ("vintr",                "vintr", 1, 0, 2, Run_vintr,
-		                        Run_vintr_set ),
-#else
-  LNOPT_U32_SET ("vintr",                "vintr", 0, 0, 2, Run_vintr,
-		                        Run_vintr_set ),
-#endif // TARG_X8664
+		 Run_vintr_set ),
   LNOPT_BOOL ( "vintr_verbose",		NULL,	Vintr_Verbose ),
   LNOPT_U32_SET ("simd",                "simd", 1, 0, 2, Run_simd,
 		                        Run_simd_set ),

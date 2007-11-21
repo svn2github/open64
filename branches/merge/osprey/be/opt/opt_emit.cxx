@@ -1638,9 +1638,19 @@ EMITTER::Can_raise_to_scf(BB_NODE *bb)
     bb_step = bb_start->Loopstep();
     bb_merge = bb_start->Loopmerge();
 #ifdef KEY // bug 8327: the incr stmt has been optimized to something else
+    // bugs 13605, 13624: A DOSTEP originally contains the step WN followed
+    // by a goto to the DOEND. DCE sometimes introduces a label at the start,
+    // and sometimes is not able to delete the goto. So the actual STEP wn
+    // may be neither the head nor the tail of the stmtlist. If DCE is later
+    // found to do more changes to the DOSTEP bb, then we should just scan
+    // the entire bb for the STEP wn.
     if (bb_step->Stmtlist()->Tail() == NULL ||
-        bb_step->Stmtlist()->Tail()->Opr() != OPR_STID ||
-        bb_step->Stmtlist()->Tail()->Rhs()->Kind() != CK_OP)
+	((bb_step->Stmtlist()->Tail()->Opr() != OPR_STID ||
+	  bb_step->Stmtlist()->Tail()->Rhs()->Kind() != CK_OP) &&
+	 // Now check the previous statement, if any.
+	 (bb_step->Stmtlist()->Tail()->Prev() == NULL ||
+	  bb_step->Stmtlist()->Tail()->Prev()->Opr() != OPR_STID ||
+	  bb_step->Stmtlist()->Tail()->Prev()->Rhs()->Kind() != CK_OP)))
       ;
     else
 #endif

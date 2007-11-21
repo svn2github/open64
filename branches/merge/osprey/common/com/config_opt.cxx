@@ -253,6 +253,7 @@ BOOL Outlining_Enabled = FALSE;
 BOOL Instrumentation_Enabled_Before = FALSE;
 
 #ifdef KEY
+INT32  OPT_Cyg_Instrument = 0;
 BOOL   Asm_Memory = FALSE;
 BOOL   Align_Unsafe = FALSE; 
 UINT32 Div_Exe_Counter = 40000;  /* A number that can avoid regression on facerec. */
@@ -393,6 +394,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL, OV_INTERNAL, 	TRUE,	"mp_barrier_opt", "",
     0, 0, 0, &OPT_MP_Barrier_Opt, NULL,
     "Optimize generation of barrier calls for OpenMP" },
+
+  { OVK_INT32, OV_VISIBLE,      TRUE,   "cyg_instr",    "",
+    4, 0, 4, &OPT_Cyg_Instrument, NULL,
+    "Insert calls to __cyg_profile_func_enter/exit" },
 
   { OVK_BOOL, OV_INTERNAL, 	TRUE,	"icall_instr", "",
     0, 0, 0, &OPT_Icall_Instr, NULL,

@@ -167,6 +167,7 @@ extern BOOL Instrumentation_Unique_Output;
 extern INT32 Feedback_Phase_Num;
 extern OPTION_LIST* Feedback_Option;
 #ifdef KEY
+extern INT32 OPT_Cyg_Instrument;
 extern BOOL profile_arcs;
 extern BOOL Asm_Memory;
 extern BOOL Align_Unsafe;

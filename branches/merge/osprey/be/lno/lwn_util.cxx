@@ -1284,7 +1284,12 @@ WN *LWN_CreateLdid(OPCODE opc, WN *orig_op)
           (WN_operator(orig_op) == OPR_STID),
 	  ("Illegal orig_op in LWN_Create_Ldid"));
   WN* wn = WN_CreateLdid(opc, WN_offset(orig_op),
-		WN_st(orig_op), WN_ty(orig_op), WN_field_id(orig_op));
+#ifndef KEY //bug 13586
+			 WN_st(orig_op), WN_ty(orig_op));
+#else
+                         WN_st(orig_op), WN_ty(orig_op),WN_field_id(orig_op));
+#endif
+
 #ifdef LNO
   Copy_alias_info(Alias_Mgr,orig_op,wn);
 #endif

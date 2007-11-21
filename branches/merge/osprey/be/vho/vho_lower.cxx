@@ -6683,11 +6683,14 @@ Is_Loop_Suitable_For_Misc_Loop_Distribute_And_Interchange(WN* wn, WN* block)
   // if-statement that contains another loop then a label statement and a
   // statement to update the loop variable.
   WN* loop_body = WN_while_body(wn);
-  if (!WN_first(loop_body) ||
-      WN_operator(WN_first(loop_body)) != OPR_ISTORE) return FALSE;
-  if (!WN_next(WN_first(loop_body)) ||
-      WN_operator(WN_next(WN_first(loop_body))) != OPR_IF) return FALSE;
-  WN* if_stmt = WN_next(WN_first(loop_body));
+  WN* loop_body_start = WN_first(loop_body);
+  if (loop_body_start && WN_operator(loop_body_start) == OPR_LABEL)
+    loop_body_start = WN_next(loop_body_start);
+  if (!loop_body_start ||
+      WN_operator(loop_body_start) != OPR_ISTORE) return FALSE;
+  if (!WN_next(loop_body_start) ||
+      WN_operator(WN_next(loop_body_start)) != OPR_IF) return FALSE;
+  WN* if_stmt = WN_next(loop_body_start);
   if (!WN_next(if_stmt)) return FALSE;
   if (WN_operator(WN_next(if_stmt)) == OPR_LABEL) {
     if (!WN_next(WN_next(if_stmt)) ||
@@ -6714,9 +6717,11 @@ Is_Loop_Suitable_For_Misc_Loop_Distribute_And_Interchange(WN* wn, WN* block)
   WN *innerloop = WN_next(WN_first(if_then_body));
   if (label_found) innerloop = WN_next(WN_next(WN_first(if_then_body)));
   WN *body = WN_while_body(innerloop);
-  WN* stmt;
-  if (!WN_first(body) || WN_operator(stmt = WN_first(body)) != OPR_ISTORE ||
-      !WN_next(stmt)) 
+  WN* stmt = WN_first(body);
+  if (stmt && WN_operator(stmt) == OPR_LABEL)
+    stmt = WN_next(stmt);
+  if (!stmt || WN_operator(stmt) != OPR_ISTORE ||
+      !WN_next(stmt))
     return FALSE;
   if (WN_operator(WN_next(stmt)) == OPR_LABEL) {
     if (!WN_next(WN_next(stmt)) || 
@@ -6725,7 +6730,9 @@ Is_Loop_Suitable_For_Misc_Loop_Distribute_And_Interchange(WN* wn, WN* block)
       return FALSE;
   }
   else {
-    if (WN_operator(WN_next(stmt)) != OPR_STID || WN_next(WN_next(stmt)))
+    if (WN_operator(WN_next(stmt)) != OPR_STID ||
+	(WN_next(WN_next(stmt)) &&
+	 WN_operator(WN_next(WN_next(stmt))) != OPR_LABEL))
       return FALSE;
   }
   // Find the operand that is ILOAD(ILOAD(...))
@@ -6815,6 +6822,7 @@ static WN* Misc_Loop_Distribute_And_Interchange (WN* wn, WN* block)
   WN* start_i_loop = WN_COPY_Tree(last);
   WN* if_stmt = WN_next(WN_first(WN_while_body(wn)));
   WN* end_i_loop;
+  if (WN_operator(if_stmt) != OPR_IF) if_stmt = WN_next(if_stmt);
   if (WN_operator(WN_next(if_stmt)) == OPR_LABEL)
     end_i_loop = WN_COPY_Tree(WN_next(WN_next(if_stmt)));
   else end_i_loop = WN_COPY_Tree(WN_next(if_stmt));
@@ -6830,18 +6838,21 @@ static WN* Misc_Loop_Distribute_And_Interchange (WN* wn, WN* block)
   WN* pre_loop_label = WN_CreateLabel( (ST_IDX) 0, pre_loop_label_idx, 0, NULL);
   WN_Set_Linenum(pre_loop_label, VHO_Srcpos);
   WN* while_body = WN_while_body(pre_loop);
-  WN_DELETE_Tree(WN_next(WN_first(while_body)));
-  WN_DELETE_Tree(WN_next(WN_next(WN_first(while_body))));
-  WN_next(WN_first(while_body)) = pre_loop_label;
-  WN_next(pre_loop_label) = end_i_loop;
+  WN* first_stmt = WN_first(while_body);
+  if (WN_operator(first_stmt) == OPR_LABEL) first_stmt = WN_next(first_stmt);
+  WN_DELETE_Tree(WN_next(WN_next(first_stmt)));
+  WN_DELETE_Tree(WN_next(first_stmt));
+  WN_next(first_stmt) = end_i_loop;
   pre_loop = vho_lower_while_do(pre_loop, block);
   WN_INSERT_BlockLast ( block, pre_loop );
 
-  WN* start_j_loop = 
-    WN_COPY_Tree(WN_first(WN_then(WN_next(WN_first(WN_while_body(wn))))));
-  WN_INSERT_BlockLast ( block, start_j_loop ); 
-  WN* post_loop = 
-    WN_next(WN_first(WN_then(WN_next(WN_first(WN_while_body(wn))))));
+  first_stmt = WN_first(WN_while_body(wn));
+  if (WN_operator(first_stmt) == OPR_LABEL) first_stmt = WN_next(first_stmt);
+  WN* start_j_loop =
+    WN_COPY_Tree(WN_first(WN_then(WN_next(first_stmt))));
+  WN_INSERT_BlockLast ( block, start_j_loop );
+  WN* post_loop =
+    WN_next(WN_first(WN_then(WN_next(first_stmt))));
   WN* orig_loop = post_loop;
   if (WN_operator(post_loop) == OPR_LABEL)
     post_loop = WN_COPY_Tree(orig_loop = WN_next(post_loop));
@@ -6864,11 +6875,25 @@ static WN* Misc_Loop_Distribute_And_Interchange (WN* wn, WN* block)
 	      0, LKIND_DEFAULT);
   WN* post_loop_label = WN_CreateLabel( (ST_IDX) 0, post_loop_label_idx, 0, NULL);
   WN_Set_Linenum(post_loop_label, VHO_Srcpos);
+  BOOL found_label = WN_operator(WN_first(WN_while_body(post_loop))) == OPR_LABEL;
   WN* end_j_loop = WN_next(WN_first(WN_while_body(post_loop)));
-  WN_DELETE_Tree(WN_first(WN_while_body(post_loop)));
-  WN_first(WN_while_body(post_loop)) = start_i_loop;
+  if (found_label)
+    {
+      end_j_loop = WN_next(end_j_loop);
+      WN_DELETE_Tree(WN_next(WN_first(WN_while_body(post_loop))));
+      WN_next(WN_first(WN_while_body(post_loop))) = start_i_loop;
+    }
+  else
+    {
+      WN_DELETE_Tree(WN_first(WN_while_body(post_loop)));
+      WN_first(WN_while_body(post_loop)) = start_i_loop;
+    }
   WN* j_loop_body = WN_COPY_Tree(wn);
   WN* i_loop_body = WN_while_body(j_loop_body);
+
+  if (WN_operator(WN_first(i_loop_body)) == OPR_LABEL)
+    WN_DELETE_FromBlock(i_loop_body, WN_first(i_loop_body));
+
   WN_DELETE_Tree(WN_first(i_loop_body));
   WN_first(i_loop_body) = WN_next(WN_first(i_loop_body));
   if_stmt = WN_first(i_loop_body);
@@ -6887,8 +6912,10 @@ static WN* Misc_Loop_Distribute_And_Interchange (WN* wn, WN* block)
       fb_info.freq_positive._value;
     Cur_PU_Feedback->Annot_loop( j_loop_body, fb_info );
 
-    const FB_Info_Branch& info_branch_orig = 
-          Cur_PU_Feedback->Query_branch( WN_next(WN_first(WN_while_body(wn))));
+    const FB_Info_Branch& info_branch_orig = (WN_operator(WN_first(WN_while_body(wn))) == OPR_LABEL) ?
+      Cur_PU_Feedback->Query_branch(WN_next(WN_next(WN_first(WN_while_body(wn))))) :
+      Cur_PU_Feedback->Query_branch( WN_next(WN_first(WN_while_body(wn))));
+
     FB_Info_Branch info_branch = info_branch_orig;
     info_branch.freq_taken._value = 
       fb_info.freq_iterate._value * (info_branch_orig.freq_taken._value /
@@ -6903,15 +6930,34 @@ static WN* Misc_Loop_Distribute_And_Interchange (WN* wn, WN* block)
   }
   WN* stmt;
   if (WN_operator(stmt = WN_next(WN_first(WN_then(if_stmt)))) == OPR_WHILE_DO)
-    WN_first(WN_then(if_stmt)) = WN_first(WN_while_body(stmt));
+    {
+      WN * first_stmt = WN_first(WN_while_body(stmt));
+      if (WN_operator(first_stmt) == OPR_LABEL)
+        WN_first(WN_then(if_stmt)) = WN_next(first_stmt);
+      else
+        WN_first(WN_then(if_stmt)) = first_stmt;
+    }
   else
-    WN_first(WN_then(if_stmt)) = WN_first(WN_while_body(WN_next(stmt)));
+    {
+      WN * first_stmt = WN_first(WN_while_body(WN_next(stmt)));
+      if (WN_operator(first_stmt) == OPR_LABEL)
+        WN_first(WN_then(if_stmt)) = WN_next(first_stmt);
+      else
+        WN_first(WN_then(if_stmt)) = first_stmt;
+    }
   WN_DELETE_Tree(WN_next(WN_first(WN_then(if_stmt))));
   WN_next(WN_first(WN_then(if_stmt))) = NULL;
-  WN_next(WN_first(WN_while_body(post_loop))) = j_loop_body;
-  WN_next(WN_next(WN_first(WN_while_body(post_loop)))) = post_loop_label;
-  WN_next(WN_next(WN_next(WN_first(WN_while_body(post_loop))))) = end_j_loop;
-  
+  if (found_label)
+    {
+      WN_next(WN_next(WN_first(WN_while_body(post_loop)))) = j_loop_body;
+      WN_next(WN_next(WN_next(WN_first(WN_while_body(post_loop))))) = end_j_loop;
+    }
+  else
+    {
+      WN_next(WN_first(WN_while_body(post_loop))) = j_loop_body;
+      WN_next(WN_next(WN_first(WN_while_body(post_loop)))) = end_j_loop;
+    }
+
   post_loop = vho_lower_while_do(post_loop, block);
 
   WN_DELETE_Tree(wn);
