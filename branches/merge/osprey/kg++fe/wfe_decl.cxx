@@ -92,6 +92,7 @@ extern "C" {
 #ifdef KEY
 #include "wfe_dst.h" // DST_enter_member_function
 #endif
+#include "targ_sim.h" // PUSH_RETURN_ADDRESS_ON_STACK
 
 extern "C" void check_gnu_errors (int *, int *);
 #ifdef KEY
@@ -1125,6 +1126,8 @@ WFE_Start_Function (tree fndecl)
     Set_PU_cxx_lang (Pu_Table [ST_pu (func_st)]);
 
 #ifdef KEY
+    if (DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fndecl))
+      Set_PU_no_instrument (Pu_Table [ST_pu (func_st)]);  // Bug 750
     if (DECL_DECLARED_INLINE_P(fndecl))
       Set_PU_is_marked_inline (Pu_Table [ST_pu (func_st)]);
 #endif
@@ -1465,8 +1468,9 @@ WFE_Finish_Function (void)
     // Insert a RETURN if it does not exist
     WN * wn = WN_last (WFE_Stmt_Top ());
     if (wn == NULL || WN_operator (wn) != OPR_RETURN &&
-		      WN_operator (wn) != OPR_RETURN_VAL)
+	WN_operator (wn) != OPR_RETURN_VAL) {
       WFE_Stmt_Append (WN_CreateReturn (), Get_Srcpos ());
+    }
 
     // Add any handler code
     Do_Handlers ();
@@ -1496,6 +1500,14 @@ WFE_Finish_Function (void)
     if (Return_Address_ST [CURRENT_SYMTAB]) {
       Set_PU_has_return_address (Get_Current_PU ());
       Set_PU_no_inline (Get_Current_PU ());
+#ifdef KEY
+      if (PU_must_inline(Get_Current_PU())) {
+	DevWarn("Disabling must_inline for PU %s",
+		ST_name(Get_Current_PU_ST()));
+	Clear_PU_must_inline(Get_Current_PU());
+      }
+#endif
+
       Return_Address_ST [CURRENT_SYMTAB] = NULL;
     }
 
@@ -3255,8 +3267,8 @@ WFE_Get_Return_Address_ST (int level)
   if (return_address_st == NULL) {
     return_address_st = New_ST (CURRENT_SYMTAB - level);
     ST_Init (return_address_st, Save_Str ("__return_address"), CLASS_VAR,
-             SCLASS_AUTO, EXPORT_LOCAL, 
-             Make_Pointer_Type (Be_Type_Tbl (MTYPE_V), FALSE));
+	     (PUSH_RETURN_ADDRESS_ON_STACK ? SCLASS_FORMAL : SCLASS_AUTO),
+	     EXPORT_LOCAL, Make_Pointer_Type (Be_Type_Tbl (MTYPE_V), FALSE));
     Set_ST_is_return_var (return_address_st);
     Return_Address_ST [CURRENT_SYMTAB - level] = return_address_st;
   }

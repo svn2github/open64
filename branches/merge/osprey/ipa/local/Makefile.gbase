@@ -291,4 +291,8 @@ ipl.so: $(IPA_OBJS) $(IPA_CXX_OBJS) $(LINK_DSOS) \
 #  Include the usual commonrules
 #----------------------------------------------------------------------
 include $(COMMONRULES)
+#----------------------------------------------------------------------
+#  Temporary workaround
+#----------------------------------------------------------------------
+ipl_summarize_util.o: OPTIMIZER += -CG:all_sched=0
 

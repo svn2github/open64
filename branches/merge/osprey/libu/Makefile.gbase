@@ -77,7 +77,6 @@ endif
 endif
 
 LF77OPTS = $(STD_COMPILE_OPTS)
-PREPFFOPTS =
 
 ifeq ($(BUILD_TARGET), IA32)
 LCDEFS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
@@ -94,19 +93,15 @@ endif
 
 ifeq ($(BUILD_ABI), N32BIT)
 O_abi=N32
-PREPFFOPTS = -n32
 endif
 ifeq ($(BUILD_ABI), 64BIT)
 O_abi=64
-PREPFFOPTS = -64
 endif
 ifeq ($(BUILD_ARCH), MIPS3)
 O_mipsisa=3
-PREPFFOPTS += -mips3
 endif
 ifeq ($(BUILD_ARCH), MIPS4)
 O_mipsisa=4
-PREPFFOPTS += -mips4
 endif
 ifdef O_abi
 LCDEFS += -DT_MIPS$(O_mipsisa)_$(O_abi)
@@ -173,6 +168,9 @@ FC = TOOLROOT=$(TOOLROOT_F90) LD_LIBRARYN32_PATH=$(TOOLROOT_F90)/usr/lib32/mips3
 endif
 ifeq ($(BUILD_ABI), N32BIT)
 FC += -Wa,-mips4 
+endif
+ifeq ($(BUILD_ABI), I32BIT)
+  FC += -m32
 endif
 ifeq ($(BUILD_ARCH), IA32)
 ## Do not build the f90 routines yet.
@@ -262,13 +260,15 @@ else
  endif
 endif
 
+LF77OPTS = $(STD_COMPILE_OPTS)
+FFLAGS_NOLANG = $(FFLAGS:N-LANG\:exceptions=O*) -shared
+
 include $(COMMONRULES)
+
 
 VPATH = $(SRC_DIRS)
 LF77INCS = $(LCINCS)
 
-.F.o:
-	$(FC) $(PREPFFOPTS) $(FFLAGS) -c $<
 
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^

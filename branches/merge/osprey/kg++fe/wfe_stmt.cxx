@@ -2448,6 +2448,7 @@ WFE_Expand_Return (tree stmt, tree retval)
       wn = WN_CreateReturn_Val(OPR_RETURN_VAL, WN_rtype(rhs_wn), MTYPE_V, rhs_wn);
     }
   }
+
   WFE_Stmt_Append(wn, Get_Srcpos());
 } /* WFE_Expand_Return */
 

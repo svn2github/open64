@@ -797,6 +797,7 @@ WFE_Expand_Return (tree retval)
         wn = WN_CreateReturn_Val(OPR_RETURN_VAL, TY_mtype(ret_ty_idx), MTYPE_V, rhs_wn);
     }
   }
+
   WFE_Stmt_Append(wn, Get_Srcpos());
 } /* WFE_Expand_Return */
 

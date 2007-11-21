@@ -1,4 +1,4 @@
-C
+\C
 C
 C  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 C
@@ -153,14 +153,14 @@ C
       PARAMETER        (WORDSZB = 6)   !  Log (base 2) of WORDSZ
 
       INTEGER           IINC, MINC
-#ifdef	__mips
+#if ! defined(_MIPSEL)
       PARAMETER        (IINC = 1)
 #else
       PARAMETER        (MINC = 1)
 #endif
 
       INTEGER (KIND=8)  IOFF, MOFF, ZERO
-#ifdef	__mips
+#if ! defined(_MIPSE
       PARAMETER        (MOFF = 0)
 #else
       PARAMETER        (IOFF = 0)
@@ -296,7 +296,7 @@ C      IF (.NOT. POWER_OF_TWO(NATLEN)) GOTO 9005 /* fix this later */
 
       IF (NMBR .EQ. 0) GOTO 9000
 
-#ifdef	__mips
+#if ! defined(_MIPSEL)
       MPTR   = LOC(NATIVE(0))
       IPTR   = LOC(FORN(0))
 #else
@@ -340,7 +340,7 @@ C      IF (.NOT. POWER_OF_TWO(NATLEN)) GOTO 9005 /* fix this later */
 
 C     Set lengths, stride and bit offsets
 
-#ifdef	__mips
+#if ! defined(_MIPSEL)
       ILEN   = FORLEN
       IOFF   = BITOFF
       MINC   = STRIDE

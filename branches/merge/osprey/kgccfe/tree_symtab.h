@@ -165,8 +165,11 @@ Get_ST (tree decl_tree)
 		if (TREE_CODE(decl_tree) == VAR_DECL) {
 		  TY_IDX ty_idx = Get_TY(TREE_TYPE(decl_tree));
 		  if (ty_idx && 
-		      TY_IDX_index(ty_idx) != TY_IDX_index(st->u2.type))
-		    st->u2.type = ty_idx;
+                      (TY_IDX_index(ty_idx) != TY_IDX_index(ST_type(st))) ||
+		      // Update alignment.  Bug 13186.
+		      (TY_align(ty_idx) != TY_align(ST_type(st)))) {
+		    Set_ST_type(st, ty_idx);
+		  }
 		}
 #endif
         }

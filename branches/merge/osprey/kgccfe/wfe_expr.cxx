@@ -4549,6 +4549,7 @@ WFE_Expand_Expr (tree exp,
 
 #ifdef KEY
               case BUILT_IN_EXP:
+	      case BUILT_IN_EXPF:
 		// bug 3390
 		// If return type is void, generate an intrinsic assuming
 		// double (so if it is without side-effects, optimizer can 

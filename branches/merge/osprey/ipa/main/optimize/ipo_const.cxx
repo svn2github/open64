@@ -1185,6 +1185,15 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 	    state_formal_array = (STATE_ARRAY*) sec->Get_formals();
     }
     INT k=0;
+#ifdef KEY
+    TYLIST_IDX tylist_idx;
+    TYLIST_IDX from_idx = TY_tylist(PU_prototype(Pu_Table[ST_pu(WN_st(w))]));
+    // function return type
+    Set_TYLIST_type (New_TYLIST (tylist_idx), Tylist_Table[from_idx]);
+    Set_TY_tylist (PU_prototype(Pu_Table[ST_pu(WN_st(w))]), tylist_idx);
+    ++from_idx;
+#endif
+
     for (i = 0; i < WN_num_formals(w); i++) {
 	WN* id = WN_kid(w,i);
 	if ((*cprop_annot)[i].Is_remove_param ()) {
@@ -1200,8 +1209,19 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 	} else {
 	    WN_kid(func_node,k) = id;
 	    ++k;
+#ifdef KEY
+	    Set_TYLIST_type (New_TYLIST (tylist_idx), Tylist_Table[from_idx]);
+#endif
+
 	}
+#ifdef KEY
+	++from_idx;
+#endif
+
     }
+#ifdef KEY
+    Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
+#endif
 
     if(k < i) {
       // Need to Change function prototype
