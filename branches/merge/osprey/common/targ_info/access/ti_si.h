@@ -410,7 +410,7 @@ inline UINT SI_RESOURCE_Bit_Index( SI_RESOURCE* res )
   return res->bit_index;
 }
 
-#ifdef __linux__
+#if defined(__linux__) && defined(TARG_X8664)
 
 extern const int * SI_resource_count_p;
 #define SI_resource_count (*SI_resource_count_p)
@@ -420,7 +420,10 @@ extern SI_RESOURCE * const * SI_resources_p;
 
 #else
 
+extern const INT SI_resource_count;
 #pragma weak SI_resource_count
+
+extern SI_RESOURCE* const SI_resources[];
 #pragma weak SI_resources
 
 #endif
@@ -481,7 +484,7 @@ SI_RESOURCE_ID_SET_Complement( SI_RESOURCE_ID_SET s )
 /****************************************************************************
  ****************************************************************************/
 
-#ifdef __linux__
+#if defined( __linux__ ) && defined(TARG_X8664)
 
 extern const SI_RRW * SI_RRW_initializer_p;
 #define SI_RRW_initializer (*SI_RRW_initializer_p)
@@ -491,7 +494,10 @@ extern const SI_RRW * SI_RRW_overuse_mask_p;
 
 #else
 
+extern const SI_RRW SI_RRW_initializer;
 #pragma weak SI_RRW_initializer
+
+extern const SI_RRW SI_RRW_overuse_mask;
 #pragma weak SI_RRW_overuse_mask
 
 #endif
@@ -534,7 +540,7 @@ inline INT SI_ISSUE_SLOT_Avail_Per_Cycle( SI_ISSUE_SLOT* slot )
   return slot->avail_per_cycle;
 }
 
-#ifdef __linux__
+#if defined (__linux__) && defined(TARG_X8664)
 
 extern const int * SI_issue_slot_count_p;
 #define SI_issue_slot_count (*SI_issue_slot_count_p)
@@ -544,7 +550,10 @@ extern SI_ISSUE_SLOT * const * SI_issue_slots_p;
 
 #else
 
+extern const INT SI_issue_slot_count;
 #pragma weak SI_issue_slot_count
+
+extern SI_ISSUE_SLOT* const SI_issue_slots[];
 #pragma weak SI_issue_slots
 
 #endif
@@ -602,13 +611,14 @@ inline SI_RRW SI_RR_Cycle_RRW( SI_RR req, UINT cycle )
 /****************************************************************************
  ****************************************************************************/
 
-#ifdef __linux__
+#if defined (__linux__) && defined(TARG_X8664)
 
 extern SI * const * SI_top_si_p;
 #define SI_top_si SI_top_si_p
 
 #else
 
+extern SI* const SI_top_si[];
 #pragma weak SI_top_si
 
 #endif
@@ -709,7 +719,7 @@ inline INT TSI_Write_Write_Interlock( TOP top )
 /****************************************************************************
  ****************************************************************************/
 
-#ifdef __linux__
+#if defined (__linux__) && defined(TARG_X8664)
 
 extern const int * SI_ID_count_p;
 #define SI_ID_count (*SI_ID_count_p)
@@ -719,7 +729,10 @@ extern SI * const * SI_ID_si_p;
 
 #else
 
+extern const INT SI_ID_count;
 #pragma weak SI_ID_count
+
+extern SI* const SI_ID_si[];
 #pragma weak SI_ID_si
 
 #endif
