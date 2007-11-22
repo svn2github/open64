@@ -154,7 +154,7 @@ extern "C" {
 #include "pro_encode_nm.h"
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 #include "config_lno.h" // for LNO_Run_Simd
 #include "config_opt.h" // for OPT_Cyg_Instrument
 #endif

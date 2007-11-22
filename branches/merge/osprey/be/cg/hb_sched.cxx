@@ -298,7 +298,7 @@ HB_Schedule::Estimate_Reg_Cost_For_OP (OP *op)
 	local_regs_avail[cl]++;
       }
     }
-#ifdef KEY
+#ifdef TARG_X8664
     // If OP defines a preallocated TN(s), then schedule OP as soon as it is
     // ready, so that it will be scheduled immediately after the move(s) that
     // copy the preallocated TN(s) to regular TN(s).  This only works for
