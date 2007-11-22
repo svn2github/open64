@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright 2007 (C) PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -215,9 +219,9 @@ static WN *lower_intrinsic_op(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_if(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_stmt(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_entry(WN *, LOWER_ACTIONS);
-#ifdef LOW_LANDING_PAD
+#ifdef KEY
 static WN *lower_landing_pad_entry(WN *);
-#endif 
+#endif // KEY
 static WN *lower_eval(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_copy_tree(WN *, LOWER_ACTIONS);
 static WN *lower_emulation(WN *, WN *, LOWER_ACTIONS, BOOL &intrinsic_lowered);
@@ -4219,6 +4223,9 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_V16I8:
     case MTYPE_V16F4:
     case MTYPE_V16F8:
+    case MTYPE_V8I1:
+    case MTYPE_V8I2:
+    case MTYPE_V8I4:
 
     case MTYPE_M8I1:
     case MTYPE_M8I2:
@@ -4573,6 +4580,10 @@ static void lower_bit_field_id(WN *wn)
   WN_set_ty (wn, (opr == OPR_ISTORE ?
 		  Make_Pointer_Type (fld_ty_idx, FALSE) :
 		  fld_ty_idx));
+#ifdef KEY // bug 12394
+  if (new_opr == OPR_ILDBITS)
+    WN_set_load_addr_ty(wn, Make_Pointer_Type(WN_ty(wn)));
+#endif
   
   Is_True(FLD_is_bit_field(fld),
 	  ("non-bit-field associated with bit-field access for  %s", OPERATOR_name(opr)));
@@ -4663,7 +4674,6 @@ static void lower_trapuv_alloca (WN *block, WN *tree, LOWER_ACTIONS actions
 	TY_IDX ty_idx;
 	if (TY_kind(pty_idx) == KIND_POINTER)
 	  ty_idx = TY_pointed(pty_idx);
-#ifdef KEY
 	else if (TY_kind(pty_idx) == KIND_SCALAR &&
 		 TY_size(pty_idx) == Pointer_Size) {
 	  // No info on the pointed-to type.  Take a wild guess and make it U4.
@@ -4673,7 +4683,6 @@ static void lower_trapuv_alloca (WN *block, WN *tree, LOWER_ACTIONS actions
 	  ty_idx = 0;
 	  Is_True(FALSE, ("lower_trapuv_alloca: pointer type not found"));
 	}
-#endif	
 	TYPE_ID type = TY_mtype(ty_idx);
 	if (DEBUG_Zero_Uv)			// Initialize vars to 0.
 	  con = WN_Intconst(MTYPE_byte_size(type)==4 ? MTYPE_U4 : MTYPE_U8, 0);
@@ -6305,6 +6314,25 @@ static BOOL Equiv (WN* wn1, WN* wn2) {
   return(TRUE);
 }
 #endif
+
+#ifdef KEY // bug 12787
+/* ====================================================================
+ * walk expr looking for an INTRINSIC_OP that will become a function call;
+ * return TRUE if found.
+   ==================================================================== */
+static BOOL has_call(WN *expr)
+{
+  if (WN_operator(expr) == OPR_INTRINSIC_OP &&
+      ! INTRN_cg_intrinsic(WN_intrinsic(expr)))
+    return TRUE;
+  for (INT i = 0; i < WN_kid_count(expr); i++) {
+    if (has_call(WN_kid(expr, i)))
+      return TRUE;
+  }
+  return FALSE;
+}
+#endif
+
 /* ====================================================================
  *
  * WN *lower_store(block, WN *tree, LOWER_ACTIONS actions)
@@ -6775,20 +6803,31 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	// the store target is %eax
 	ST *c4temp_st = Gen_Temp_Symbol(MTYPE_To_TY(MTYPE_C4), ".c4");
 
-	WN *realexp_copy, *imagexp_copy;
-	PREG_NUM realexpN, imagexpN;
-	if (WN_operator(realexp) == OPR_CONST) {
-	  realexp_copy = realexp;
-	} else {
+	WN *realexp_copy = realexp;
+	WN *imagexp_copy = imagexp;
+        PREG_NUM realexpN, imagexpN;
+#ifdef KEY // bug 12787
+        if (has_call(realexp)) {
 	  realexpN = AssignExpr(block, realexp, realTY);
-	  realexp_copy = WN_LdidPreg(realTY, realexpN);
-	}
-	if (WN_operator(imagexp) == OPR_CONST) {
-	  imagexp_copy = imagexp;
-	} else {
+          realexp_copy = WN_LdidPreg(realTY, realexpN);
+        }
+        if (has_call(imagexp)) {
 	  imagexpN = AssignExpr(block, imagexp, realTY);
-	  imagexp_copy = WN_LdidPreg(realTY, imagexpN);
-	}
+          imagexp_copy = WN_LdidPreg(realTY, imagexpN);
+        } 
+#endif
+        if (WN_operator(realexp) == OPR_CONST) {
+          realexp_copy = realexp;
+        } else {
+          realexpN = AssignExpr(block, realexp, realTY);
+          realexp_copy = WN_LdidPreg(realTY, realexpN);
+        }
+        if (WN_operator(imagexp) == OPR_CONST) {
+          imagexp_copy = imagexp;
+        } else {
+          imagexpN = AssignExpr(block, imagexp, realTY);
+          imagexp_copy = WN_LdidPreg(realTY, imagexpN);
+        }
 
 	// store the real part
 	WN *stid = WN_Stid( WN_rtype(realexp), 0, c4temp_st, realTY, realexp_copy );
@@ -7426,7 +7465,12 @@ copy_element_and_increment(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 		  WN_LdidPreg(Integer_type, offsetN));
     value = WN_CreateIload (OPR_ILOAD, Mtype_comparison(quantum), quantum,
 			    0, struct_memop_type (quantum, srcAlign),
-			    Make_Pointer_Type (srcAlign), addr);
+#ifdef KEY // bug 12394
+			    Make_Pointer_Type(struct_memop_type(quantum, srcAlign)), 
+#else
+			    Make_Pointer_Type(srcAlign), 
+#endif
+			    addr);
 
     lower_copy_maps(origLoad, value, actions);
   }
@@ -10589,15 +10633,16 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 	  mtype = RETURN_INFO_mtype(return_info, i);
 	  ty_idx_used = Be_Type_Tbl(mtype);
 	  Set_TY_align(ty_idx_used, algn);
-          preg    = RETURN_INFO_preg (return_info, i);
-          preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
-	  if (WN_st(o_rhs) == Return_Val_Preg)
-	    n_rhs = WN_CreateLdid (OPR_LDID, mtype, mtype,
-				   RETURN_INFO_preg(return_info, i), preg_st,
-				   ty_idx_used);
+	  preg    = RETURN_INFO_preg (return_info, i);
+	  preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+#ifdef KEY // bug 12812
+  	  if (WN_opcode(o_rhs) == OPC_MMLDID && WN_st(o_rhs) == Return_Val_Preg)
+	    n_rhs = WN_CreateLdid(OPR_LDID, mtype, mtype, preg, preg_st, 
+			          Be_Type_Tbl(mtype));
 	  else
-	    n_rhs = WN_CreateLdid (OPR_LDID, mtype, mtype, 
-				   WN_load_offset(o_rhs)
+#endif
+	  n_rhs = WN_CreateLdid (OPR_LDID, mtype, mtype, 
+				 WN_load_offset(o_rhs)
 				   + i * MTYPE_byte_size(mtype),
 				   WN_st_idx(o_rhs), ty_idx_used);
 	  wn = WN_CreateStid(OPR_STID, MTYPE_V, mtype, preg, preg_st, 
@@ -10765,10 +10810,10 @@ static WN *lower_stmt(WN *block, WN *tree, LOWER_ACTIONS actions)
       info = lower_expr(infoblock, info, actions);
       WN_set_label_loop_info(tree, info);
     }
-#ifdef LOW_LANDING_PAD 
+#ifdef KEY
     if (Action(LOWER_ENTRY_EXIT) && WN_Label_Is_Handler_Begin (tree))
       tree = lower_landing_pad_entry (tree);
-#endif
+#endif // KEY
     break;
 
   case OPR_EXC_SCOPE_BEGIN:
@@ -12718,13 +12763,14 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
       WN_INSERT_BlockLast(block, trapuvBlock);
     }
 
-#ifdef KEY
+#ifdef TARG_X8664
     /*
-     * Optimize the malloc algorithm.
+     * Optimize the malloc algorithm.  For non-x8664 targets, silently ignore
+     * the -OPT:malloc_alg option since the driver would have warned already.
      */
     if (OPT_Malloc_Alg == 1 &&
-        (!strcmp(Cur_PU_Name, "main") ||
-         !strcmp(Cur_PU_Name, "MAIN__"))) {
+	(!strcmp(Cur_PU_Name, "main") ||
+	 !strcmp(Cur_PU_Name, "MAIN__"))) {
       WN *mallocBlock = WN_CreateBlock();
       mallocBlock = lower_malloc_alg(mallocBlock, tree, actions);
       mallocBlock = lower_block(mallocBlock, actions);
@@ -12822,8 +12868,6 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
   return block;
 }
 
-
-#ifdef LOW_LANDING_PAD 
 // Figure out if we need anything similar for non-X8664
 static WN *lower_landing_pad_entry(WN *tree)
 {
@@ -12834,13 +12878,10 @@ static WN *lower_landing_pad_entry(WN *tree)
   ST exc_ptr_st = St_Table[exc_ptr_param];
   // Store rax into exc_ptr variable
 #ifdef TARG_X8664
+  // Store rax into exc_ptr variable
   WN *exc_ptr_rax = WN_LdidPreg (Pointer_Mtype, RAX);
 #else 
-#ifdef TARG_IA64
   WN *exc_ptr_rax = WN_LdidPreg (Pointer_Mtype, 15); // 15, eh_reg(0) 
-#else
-#error ("TARG_IA64 not defined!")
-#endif
 #endif
   WN *exc_ptr_stid = WN_Stid (Pointer_Mtype, 0, &exc_ptr_st, 
 			ST_type(exc_ptr_st), exc_ptr_rax);
@@ -12849,13 +12890,10 @@ static WN *lower_landing_pad_entry(WN *tree)
   ST filter_st = St_Table[filter_param];
   // Store rdx into filter variable
 #ifdef TARG_X8664
+  // Store rdx into filter variable
   WN *filter_rdx = WN_LdidPreg (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, RDX);
 #else
-#ifdef TARG_IA64
   WN *filter_rdx = WN_LdidPreg (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, 16); // 16, eh_reg(1) 
-#else
-#error ("TARG_IA64 not defined!")
-#endif
 #endif
   WN *filter_stid = WN_Stid (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, 0, &filter_st, 
 			ST_type(filter_st), filter_rdx);
@@ -12868,7 +12906,6 @@ static WN *lower_landing_pad_entry(WN *tree)
   WN_INSERT_BlockLast (block, filter_stid);
   return block;
 }
-#endif // LOW_LANDING_PAD
 
 
 /* ====================================================================
@@ -13050,14 +13087,19 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
 	  Is_True((MTYPE_RegisterSize(btype) == size),
 		  ("bad size for scalar/pointer"));;
 
-#ifdef KEY
+#ifdef TARG_X8864
 	  if (DEBUG_Zero_Uv) {
-	    if (MTYPE_is_integral(btype)) {
-	      con = WN_Intconst(size < 4 ?
-				  Mtype_TransferSign(btype, MTYPE_I4) : btype,
-				0);
+	    if (MTYPE_is_vector(btype)) {
+	      con = Make_Const(Create_Simd_Const(btype,
+						 Host_To_Targ(MTYPE_I4, 0)));
 	    } else {
-	      con = WN_Floatconst(btype, 0.0);
+	      if (MTYPE_is_integral(btype)) {
+		con = WN_Intconst(size < 4 ?
+				    Mtype_TransferSign(btype, MTYPE_I4) : btype,
+				  0);
+	      } else {
+		con = WN_Floatconst(btype, 0.0);
+	      }
 	    }
 	  } else
 #endif
@@ -13066,7 +13108,20 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
 #ifdef TARG_X8664
 	  // Load the constant using integer registers instead of floating
 	  // point registers, since storing NaN from x87 registers will trap.
-	  if (!MTYPE_is_integral(btype)) {
+	  if (btype == MTYPE_FQ) {
+	    TYPE_ID ty = MTYPE_U8;
+	    TCON c = ST_tcon_val(WN_st(con));
+	    WN *intconst = WN_Intconst(ty, TCON_k0(c));
+	    stid = WN_Stid(ty, 0, st, type, intconst);
+#ifdef TARG_MIPS
+	    WN_Set_Linenum(stid, WN_Get_Linenum(tree));
+	    WN_INSERT_BlockLast(block, stid);
+	    intconst = WN_Intconst(ty, TCON_k0(c));
+	    stid = WN_Stid(ty, 8, st, type, intconst);
+#endif
+	    // TODO: 4 more bytes for TARG_X8664?
+	  }
+	  else if (!MTYPE_is_integral(btype) && !MTYPE_is_vector(btype)) {
 	    Is_True(size == 4 || size == 8,
 		    ("lower_trapuv: unexpected type size"));
 	    TYPE_ID ty = (size == 8) ? MTYPE_U8 : MTYPE_U4;
@@ -13157,7 +13212,15 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
 		lda = WN_Lda(Pointer_type, 0, st);
 		num = WN_Intconst(MTYPE_I4, nMoves * qSize);
 
+#ifdef KEY
+		// The number of bytes stored may or may not be a multiple of
+		// the struct size.  To prevent the WN verifier from
+		// complaining, store through a byte pointer.  Bug 12676.
+		TY_IDX byte_ptype = Make_Pointer_Type(MTYPE_To_TY(MTYPE_U1));
+		store = WN_CreateMstore(offset, byte_ptype, con, lda, num);
+#else
 		store = WN_CreateMstore(offset, ptype, con, lda, num);
+#endif
 
 		WN_Set_Linenum(store, WN_Get_Linenum(tree));
 		WN_INSERT_BlockLast(block, store);
@@ -14013,7 +14076,6 @@ static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
   if (OPT_Enable_Lower_To_Memlib_Limit != -1 &&
       cur_memlib_idx >= OPT_Enable_Lower_To_Memlib_Limit) 
       return tree;
-  cur_memlib_idx ++;
 
   //Start a new round of optimziation
   Is_True(delete_num == 0, ("Some unclear deleted WN"));
@@ -14814,6 +14876,11 @@ static WN *Memset_MD_Array(WN *block, WN *tree, LOWER_ACTIONS actions)
          DevWarn("Memlib: multi-dim memset:  not constant");
          return tree; 
   }
+
+#ifdef KEY // bug 13219: things fall apart without this check
+  if (! WN_operator_is(store_addr_wn, OPR_ARRAY))
+    return tree; 
+#endif
 
   // Examine if eligible for full memset
   INT num_dim = 0;
