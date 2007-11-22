@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. Pathscale, LLC.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
  */
 
@@ -1386,7 +1390,9 @@ main()
 		    TOP_lddqa_n32,
 		    TOP_lddqu_n32,
 		    TOP_ldapd_n32,
+		    TOP_ldupd_n32,
 		    TOP_ldaps_n32,
+		    TOP_ldups_n32,
 		    TOP_ldlps_n32,
 		    TOP_ldhps_n32,
 		    TOP_ldlpd_n32,
@@ -1423,7 +1429,9 @@ main()
 
   Instruction_Group("float store",
 		    TOP_stsd,
+		    TOP_stntsd,
 		    TOP_stss,
+		    TOP_stntss,
 		    TOP_UNDEFINED);
   Operand(0, fp64, storeval);
   Operand(1, int64, base);
@@ -1747,23 +1755,29 @@ main()
 		    TOP_popl,
 		    TOP_UNDEFINED);
   Result(0, int32);
+  Result(1, esp);
+  Operand(0, int32, opnd1);
 
   Instruction_Group("pop64",
 		    TOP_popq,
 		    TOP_UNDEFINED);
   Result(0, int64);
+  Result(1, rsp);
+  Operand(0, int64, opnd1);
 
   Instruction_Group("push32",
 		    TOP_pushl,
 		    TOP_UNDEFINED);
   Result(0, esp);
   Operand(0, int32, opnd1);
+  Operand(1, int32, opnd1);
 
   Instruction_Group("push64",
 		    TOP_pushq,
 		    TOP_UNDEFINED);
   Result(0, rsp);
   Operand(0, int64, opnd1);
+  Operand(1, int64, opnd1);
 
   Instruction_Group("int8 compare/test with simm",
 		    TOP_cmpi8,
@@ -2346,7 +2360,9 @@ main()
 
   Instruction_Group("fp store w/ indx",
 		    TOP_stssx,
+		    TOP_stntssx,
 		    TOP_stsdx,
+		    TOP_stntsdx,
 		    TOP_UNDEFINED);
   Operand(0, fp64, storeval);
   Operand(1, int64, base);
@@ -2374,7 +2390,9 @@ main()
 
   Instruction_Group("fp store w/ indx w/o base",
 		    TOP_stssxx,
+		    TOP_stntssxx,
 		    TOP_stsdxx,
+		    TOP_stntsdxx,
 		    TOP_UNDEFINED);
   Operand(0, fp64, storeval);
   Operand(1, int64, index);

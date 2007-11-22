@@ -2,7 +2,6 @@
  *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
  */
 
-
 /*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
@@ -105,9 +104,6 @@
 BOOL Reuse_Temp_TNs = FALSE;
 
 BOOL Trace_Exp2 = FALSE;      /* extra cgexp trace*/
-
-/* Disable conversion of constant integer multiplies into shift/adds:*/
-static BOOL Disable_Const_Mult_Opt = FALSE;
 
 /* Dup_TN won't dup a dedicated tn, but for our purposes we
  * can just re-use the dedicated tn.  Don't want to re-use a
@@ -2126,7 +2122,8 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
       return;
 
-    } else if (Can_Do_Fast_Multiply (mtype, val)) {
+    } else if (CGEXP_cvrt_int_mult_to_add_shift &&
+	       Can_Do_Fast_Multiply (mtype, val)) {
       if (Expand_Constant_Multiply (result, src1, val, mtype, ops)) {
 	/* able to convert multiply into shifts/adds/subs */
 	return;
@@ -5957,7 +5954,6 @@ Init_CG_Expand (void)
   Trace_Exp = Get_Trace (TP_CGEXP, 1);
   /* whirl2ops uses -ttexp:2 */
   Trace_Exp2 = Get_Trace (TP_CGEXP, 4);
-  Disable_Const_Mult_Opt = Get_Trace (TP_CGEXP, 32);
   
   if (Initialized) return;
   Initialized = TRUE;
@@ -6008,30 +6004,35 @@ Exp_COPY_Ext (TOP opcode, TN *tgt_tn, TN *src_tn, OPS *ops)
   case TOP_ld8_64:
   case TOP_ldx8_64:
   case TOP_ldxx8_64:
+  case TOP_ld8_64_off:
   case TOP_movsbq:
     new_op = TOP_movsbq;
     break;
   case TOP_ldu8_64:
   case TOP_ldxu8_64:
   case TOP_ldxxu8_64:
+  case TOP_ldu8_64_off:
   case TOP_movzbq:
     new_op = TOP_movzbq;
     break;
   case TOP_ld16_64:
   case TOP_ldx16_64:
   case TOP_ldxx16_64:
+  case TOP_ld16_64_off:
   case TOP_movswq:
     new_op = TOP_movswq;
     break;
   case TOP_ldu16_64:
   case TOP_ldxu16_64:
   case TOP_ldxxu16_64:
+  case TOP_ldu16_64_off:
   case TOP_movzwq:
     new_op = TOP_movzwq;
     break;
   case TOP_ld32_64:
   case TOP_ldx32_64:
   case TOP_ldxx32_64:
+  case TOP_ld32_64_off:
   case TOP_movslq:
     new_op = TOP_movslq;
     break;
@@ -7256,6 +7257,14 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2,
   case INTRN_MASKMOVQ:
     Build_OP (TOP_maskmovq, op1, op0, ops);
     break;
+ //SSE4A instrinsics
+  case INTRN_MOVNTSS:
+    Build_OP (TOP_stntss, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+ case INTRN_MOVNTSD:
+    Build_OP (TOP_stntsd, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+
   default:  
     FmtAssert( FALSE, ("UNIMPLEMENTED") );
   }

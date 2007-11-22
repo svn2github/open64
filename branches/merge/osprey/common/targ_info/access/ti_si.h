@@ -1,4 +1,11 @@
 /*
+ * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -343,18 +350,11 @@ static const char SI_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/comm
 #endif
 #endif
 
-typedef enum topcode TOPCODE;
-
-#include <topcode.h>
+// KEY: Worked around linux "weak" bug for bug 13044.
+#include "ti_si_types.h"
 
 /****************************************************************************
  ****************************************************************************/
-
-typedef struct {
-  mUINT64 dw[2];
-} SI_BAD_II_SET;
-
-enum { SI_BAD_II_SET_MAX=127 };
 
 inline SI_BAD_II_SET SI_BAD_II_SET_Union( SI_BAD_II_SET s1, SI_BAD_II_SET s2 )
 {
@@ -385,17 +385,6 @@ inline SI_BAD_II_SET SI_BAD_II_SET_Empty( void )
 /****************************************************************************
  ****************************************************************************/
 
-typedef UINT SI_RESOURCE_ID;
-
-typedef const struct {
-  const char* name;
-  SI_RESOURCE_ID id;
-  mUINT8 avail_per_cycle;
-  mUINT8 word_index;
-  mUINT8 bit_index;
-} SI_RESOURCE;
-
-
 inline const char* SI_RESOURCE_Name( SI_RESOURCE* res )
 {
   return res->name;
@@ -421,9 +410,20 @@ inline UINT SI_RESOURCE_Bit_Index( SI_RESOURCE* res )
   return res->bit_index;
 }
 
-extern const INT SI_resource_count;
+#ifdef __linux__
 
-extern SI_RESOURCE* const SI_resources[];
+extern const int * SI_resource_count_p;
+#define SI_resource_count (*SI_resource_count_p)
+
+extern SI_RESOURCE * const * SI_resources_p;
+#define SI_resources SI_resources_p
+
+#else
+
+#pragma weak SI_resource_count
+#pragma weak SI_resources
+
+#endif
 
 inline const char* SI_RESOURCE_ID_Name( SI_RESOURCE_ID id )
 {
@@ -437,8 +437,6 @@ inline UINT SI_RESOURCE_ID_Avail_Per_Cycle( SI_RESOURCE_ID id )
 
 /****************************************************************************
  ****************************************************************************/
-
-typedef mUINT64 SI_RESOURCE_ID_SET;
 
 inline SI_RESOURCE_ID_SET SI_RESOURCE_ID_SET_Universe(void)
 {
@@ -483,14 +481,20 @@ SI_RESOURCE_ID_SET_Complement( SI_RESOURCE_ID_SET s )
 /****************************************************************************
  ****************************************************************************/
 
-/* SI_RRW -- A resource reservation word */
-typedef mUINT64 SI_RRW;
+#ifdef __linux__
 
-extern const SI_RRW SI_RRW_initializer;
+extern const SI_RRW * SI_RRW_initializer_p;
+#define SI_RRW_initializer (*SI_RRW_initializer_p)
+
+extern const SI_RRW * SI_RRW_overuse_mask_p;
+#define SI_RRW_overuse_mask (*SI_RRW_overuse_mask_p)
+
+#else
+
 #pragma weak SI_RRW_initializer
-
-extern const SI_RRW SI_RRW_overuse_mask;
 #pragma weak SI_RRW_overuse_mask
+
+#endif
 
 inline SI_RRW SI_RRW_Initial(void)
 {
@@ -515,12 +519,6 @@ inline SI_RRW SI_RRW_Unreserve( SI_RRW table, SI_RRW requirement )
 /****************************************************************************
  ****************************************************************************/
 
-typedef const struct {
-  const char* name;
-  mINT32 skew;
-  mINT32 avail_per_cycle;
-} SI_ISSUE_SLOT;
-
 inline const char* SI_ISSUE_SLOT_Name( SI_ISSUE_SLOT* slot )
 {
   return slot->name;
@@ -536,11 +534,20 @@ inline INT SI_ISSUE_SLOT_Avail_Per_Cycle( SI_ISSUE_SLOT* slot )
   return slot->avail_per_cycle;
 }
 
-extern const INT SI_issue_slot_count;
-#pragma weak SI_issue_slot_count
+#ifdef __linux__
 
-extern SI_ISSUE_SLOT* const SI_issue_slots[];
+extern const int * SI_issue_slot_count_p;
+#define SI_issue_slot_count (*SI_issue_slot_count_p)
+
+extern SI_ISSUE_SLOT * const * SI_issue_slots_p;
+#define SI_issue_slots SI_issue_slots_p
+
+#else
+
+#pragma weak SI_issue_slot_count
 #pragma weak SI_issue_slots
+
+#endif
 
 inline INT SI_ISSUE_SLOT_Count(void)
 {
@@ -554,11 +561,6 @@ inline SI_ISSUE_SLOT* SI_Ith_Issue_Slot( UINT i )
 
 /****************************************************************************
  ****************************************************************************/
-
-typedef const struct {
-  SI_RESOURCE* resource;
-  mINT32 total_used;
-} SI_RESOURCE_TOTAL;
 
 inline SI_RESOURCE*
 SI_RESOURCE_TOTAL_Resource( SI_RESOURCE_TOTAL* pair )
@@ -584,8 +586,6 @@ inline INT SI_RESOURCE_TOTAL_Total_Used( SI_RESOURCE_TOTAL* pair )
 /****************************************************************************
  ****************************************************************************/
 
-typedef const SI_RRW* SI_RR;
-
 inline UINT SI_RR_Length( SI_RR req )
 {
   return (INT) req[0];
@@ -601,31 +601,17 @@ inline SI_RRW SI_RR_Cycle_RRW( SI_RR req, UINT cycle )
 
 /****************************************************************************
  ****************************************************************************/
-typedef UINT SI_ID;
 
-typedef const struct {
-  const char* name;
-  SI_ID id;
-  const mUINT8 *operand_access_times;
-  const mUINT8 *result_available_times;
-  mINT32 load_access_time;
-  mINT32 last_issue_cycle;
-  mINT32 store_available_time;
-  SI_RR rr;
-  const SI_RESOURCE_ID_SET *resources_used;
-  mUINT32 ii_info_size;
-  const SI_RR *ii_rr;
-  const SI_RESOURCE_ID_SET * const *ii_resources_used;
-  SI_BAD_II_SET bad_iis;
-  mINT32 valid_issue_slot_count;
-  SI_ISSUE_SLOT * const *valid_issue_slots;
-  mINT32 resource_total_vector_size;
-  SI_RESOURCE_TOTAL *resource_total_vector;
-  mUINT8 write_write_interlock;
-} SI;
+#ifdef __linux__
 
-extern SI* const SI_top_si[];
+extern SI * const * SI_top_si_p;
+#define SI_top_si SI_top_si_p
+
+#else
+
 #pragma weak SI_top_si
+
+#endif
 
 inline const char* TSI_Name( TOP top )
 {
@@ -723,16 +709,25 @@ inline INT TSI_Write_Write_Interlock( TOP top )
 /****************************************************************************
  ****************************************************************************/
 
-extern const INT SI_ID_count;
+#ifdef __linux__
+
+extern const int * SI_ID_count_p;
+#define SI_ID_count (*SI_ID_count_p)
+
+extern SI * const * SI_ID_si_p;
+#define SI_ID_si SI_ID_si_p
+
+#else
+
 #pragma weak SI_ID_count
+#pragma weak SI_ID_si
+
+#endif
 
 inline INT SI_ID_Count(void)
 {
   return SI_ID_count;
 }
-
-extern SI* const SI_ID_si[];
-#pragma weak SI_ID_si
 
 inline const SI_RESOURCE_ID_SET*
 SI_ID_II_Cycle_Resource_Ids_Used( SI_ID id, INT ii )

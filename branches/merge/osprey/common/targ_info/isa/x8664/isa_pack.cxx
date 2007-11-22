@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. Pathscale, LLC.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
  */
 
@@ -827,10 +831,16 @@ main()
 		    TOP_stsd_n32,	0x000000ff,
 		    TOP_stss,	0x000000ff,
 		    TOP_stsd,	0x000000ff,
+		    TOP_stntss, 0x000000ff,
+		    TOP_stntsd, 0x000000ff,
 		    TOP_stssx,	0x000000ff,
 		    TOP_stssxx,	0x000000ff,
 		    TOP_stsdx,	0x000000ff,
 		    TOP_stsdxx,	0x000000ff,
+		    TOP_stntssx,  0x000000ff,
+		    TOP_stntssxx, 0x000000ff,
+		    TOP_stntsdx,  0x000000ff,
+		    TOP_stntsdxx, 0x000000ff,
 		    TOP_comisd,	0x000000ff,
 		    TOP_comixsd,	0x000000ff,
 		    TOP_comixxsd,	0x000000ff,
@@ -954,7 +964,9 @@ main()
 		    TOP_fsin,     0x000000ff,
 		    TOP_subus128v16,	0x000000ff,
 		    TOP_ldaps_n32,	0x000000ff,
+		    TOP_ldups_n32,	0x000000ff,
 		    TOP_ldapd_n32,	0x000000ff,
+		    TOP_ldupd_n32,	0x000000ff,
 		    TOP_lddqa_n32,	0x000000ff,
 		    TOP_lddqu_n32,	0x000000ff,
 		    TOP_ldlps_n32,	0x000000ff,

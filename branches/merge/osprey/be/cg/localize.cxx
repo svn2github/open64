@@ -662,7 +662,7 @@ Find_Global_TNs ( RID *rid )
             /* this use is just a self-copy, will disappear */
             continue;
 	  }
-#ifdef KEY
+#ifndef KEY
 	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
           if (!OP_copy(op))
 #endif
@@ -675,7 +675,7 @@ Find_Global_TNs ( RID *rid )
       for (resnum = 0; resnum < OP_results(op); resnum++) {
         tn = OP_result(op, resnum);
         if (TN_is_dedicated(tn)) {
-#ifdef KEY
+#ifndef KEY
 	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
           if (!OP_copy(op))
 #endif

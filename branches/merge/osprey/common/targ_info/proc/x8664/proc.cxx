@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -48,6 +52,7 @@ main ()
 {
   PROC_Create( "x8664",
 	       "opteron",
+               "barcelona",
 	       "em64t",
 	       "core",
 	       NULL );

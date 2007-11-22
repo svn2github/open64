@@ -246,7 +246,9 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
       }
     }
     if (! CG_emit_non_gas_syntax) {
-      if (scn_flags & SHF_WRITE) *p++ = 'w';
+      if ((scn_flags & SHF_WRITE) &&
+          !(scn_name && !strncmp(scn_name,".gnu.linkonce.r.",16)))
+        *p++ = 'w';
       if (scn_flags & SHF_ALLOC) *p++ = 'a';
       if (scn_flags & SHF_EXECINSTR) *p++ = 'x';
 #ifdef KEY
@@ -1255,7 +1257,9 @@ static void Init_OP_Name()
   OP_Name[TOP_ldapsxx] = "movaps";
   OP_Name[TOP_ldapdxx] = "movapd";
   OP_Name[TOP_ldupd] = "movupd";
+  OP_Name[TOP_ldupd_n32] = "movupd";
   OP_Name[TOP_ldups] = "movups";
+  OP_Name[TOP_ldups_n32] = "movups";
   OP_Name[TOP_movss] = "movaps";
   OP_Name[TOP_movdq] = "movdqa";
   OP_Name[TOP_movg2x] = "movd";
@@ -1266,6 +1270,15 @@ static void Init_OP_Name()
   OP_Name[TOP_stss]   = "movss";
   OP_Name[TOP_stssx]  = "movss";
   OP_Name[TOP_stssxx] = "movss";
+
+  //SSSE4 instructions 
+  OP_Name[TOP_stntss]   = "movntss";
+  OP_Name[TOP_stntssx]  = "movntss";
+  OP_Name[TOP_stntssxx] = "movntss";
+  OP_Name[TOP_stntsd]   = "movntsd";
+  OP_Name[TOP_stntsdx]  = "movntsd";
+  OP_Name[TOP_stntsdxx] = "movntsd";
+  
   OP_Name[TOP_fmov] = "fld";
   OP_Name[TOP_ld8_abs]  = "movabsb";
   OP_Name[TOP_ld16_abs] = "movabsw";
@@ -1313,24 +1326,30 @@ static void Init_OP_Name()
   OP_Name[TOP_cvtpd2ps_xxx] = "cvtpd2ps";
   OP_Name[TOP_cvttps2dq_xxx] = "cvttps2dq";
   OP_Name[TOP_cvttpd2dq_xxx] = "cvttpd2dq";
-
+//**********************************************************
+// For barcelona (bug 13108)
+// (1) "movlpd reg, mem"  ==> "movsd reg, mem"
+// (2) "movsd reg, reg"   ==> "movapd reg, reg"
+// NOTE: there are regardless of CG_use_movlpd TRUE or FALSE
+//***********************************************************
   if (CG_use_movlpd &&
       !Is_Target_Pentium4() &&
       !Is_Target_EM64T() &&
-      !Is_Target_Core()) {	// bug 10295
+      !Is_Target_Core() &&
+      !Is_Target_Barcelona()){// bug 10295
     // Use movlpd only for loads.  Bug 5809.
     OP_Name[TOP_ldsd] = "movlpd";
     OP_Name[TOP_ldsd_n32] = "movlpd";
     OP_Name[TOP_stsdx]  = "movsd";
     OP_Name[TOP_stsdxx] = "movsd";
-    OP_Name[TOP_movsd] = "movsd";
+    OP_Name[TOP_movsd] = "movsd"; 
     OP_Name[TOP_ldsdx]  = "movlpd";
     OP_Name[TOP_ldsdxx] = "movlpd";
     OP_Name[TOP_stsd] = "movsd";
     OP_Name[TOP_stsd_n32] = "movsd";
     OP_Name[TOP_storelpd] = "movlpd";
   }
-  else {
+  else{
     OP_Name[TOP_ldsd] = "movsd";
     OP_Name[TOP_ldsd_n32] = "movsd";
     OP_Name[TOP_stsdx]  = "movsd";
@@ -1340,6 +1359,11 @@ static void Init_OP_Name()
     OP_Name[TOP_stsd] = "movsd";
     OP_Name[TOP_stsd_n32] = "movsd";
     OP_Name[TOP_storelpd] = "movsd";
+    if (Is_Target_Barcelona() ||
+	Is_Target_EM64T()     || // em64t
+	Is_Target_Core()) {	 // use movapd for woodcrest for bug 11548
+      OP_Name[TOP_movsd] = "movapd";  
+    }
   }
 
   OP_Name[TOP_lock_add32] = "addl";

@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -124,6 +132,8 @@ extern PREG_NUM GP_Preg;
 extern PREG_NUM Return_Int_Preg[2];
 extern PREG_NUM Return_Float_Preg[2];
 
+extern BOOL Gen_Frame_Pointer;
+
 /* assign a special preg to each CALLEE_tn.  also ra, and gp */
 extern void Init_Callee_Saved_Regs_for_REGION( ST *pu, BOOL is_region );
 
@@ -149,6 +159,7 @@ extern void Optimize_Tail_Calls( ST* pu );
 
 #ifdef TARG_X8664
 void Adjust_SP_After_Call( BB* );
+extern INT Push_Pop_Int_Saved_Regs (void);
 #endif
 
 #ifdef KEY

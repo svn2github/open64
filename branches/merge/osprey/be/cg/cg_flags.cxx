@@ -209,6 +209,9 @@ BOOL CG_idivbyconst_opt = TRUE;
 BOOL CG_fold_constimul = TRUE;
 BOOL CG_LOOP_cloop = TRUE;
 BOOL CG_use_lddqu = FALSE;
+BOOL CG_push_pop_int_saved_regs = FALSE;
+BOOL CG_push_pop_int_saved_regs_Set = FALSE;
+UINT32 CG_ptr_load_use_latency = 4;
 #else
 BOOL Enable_Fill_Delay_Slots = TRUE;
 BOOL GCM_Enable_Fill_Delay_Slots = TRUE;
@@ -234,6 +237,9 @@ BOOL CGEXP_float_consts_from_ints = TRUE;
 BOOL CGEXP_cvrt_int_div_to_mult = TRUE;
 BOOL CGEXP_cvrt_int_div_to_fdiv = TRUE;
 BOOL CGEXP_opt_float_div_by_const = TRUE;
+#ifdef KEY
+BOOL CGEXP_cvrt_int_mult_to_add_shift = TRUE;
+#endif
 
 const char *CGEXP_lfhint_L1;
 const char *CGEXP_lfhint_L2;
@@ -332,6 +338,8 @@ INT32 CG_LOOP_recurrence_min_omega = 0;
 #ifdef KEY
 BOOL LOCS_Fwd_Scheduling = FALSE;
 BOOL LOCS_Fwd_Scheduling_set = FALSE;
+UINT32 LOCS_Scheduling_Algorithm = 0;
+BOOL LOCS_Scheduling_Algorithm_set = FALSE;
 BOOL CG_min_spill_loc_size = FALSE;
 BOOL CG_min_stack_size = TRUE;
 BOOL flag_test_coverage = FALSE;

@@ -696,20 +696,6 @@ void GTABLE::Patch_Do_While (WN * while_wn, WN * parent)
   {
     label_gd->Label_Wn = NULL;
 
-    // check if we can remove the label (bug 13146)
-    BOOL redundant_label = TRUE;
-    for (INT i = _gd.Elements() - 1; i >= 0; i--) {
-      GDESCRIPTOR *gd = &_gd.Bottom_nth(i);
-      if (gd->Label_Wn == label_wn) {
-        redundant_label = FALSE;
-        break;
-      }
-    }
-    if (redundant_label) {
-      // remove label
-      WN_DELETE_FromBlock(block, label_wn);
-    }
-
     // remove goto
     WN_DELETE_FromBlock(parent, WN_prev(while_wn));
     // change loop to while-do
@@ -795,32 +781,12 @@ BOOL GTABLE::Replace_Goto_With_While(GDESCRIPTOR *gd)
     cond = WN_kid0(goto_wn);
   }
 
-  // Try to remove the label for bug 13146
-  BOOL redundant_label = TRUE;
-  for (INT i = 0; i<_gd.Elements(); i++) {
-    GDESCRIPTOR *gdesc = &_gd.Bottom_nth(i);
-    if (!gdesc->Is_Dismantled && gdesc->Label_Wn == label_wn &&
-         gdesc != gd) {
-      redundant_label = FALSE;
-      break;
-    }
-  }
-
-  WN * start_wn = label_wn;
-
-  if (redundant_label)
-  {
-    start_wn = WN_next(label_wn);
-    WN_EXTRACT_FromBlock(parent, label_wn);
-    WN_Delete(label_wn);
-  }
-
   WN *block = WN_CreateBlock();
   WN_Set_Linenum(block, WN_Get_Linenum(goto_wn));
 
   // move all the statements into the block
   WN *next_wn = NULL;
-  for (WN *wn = start_wn; wn != goto_wn; wn = next_wn) {
+  for (WN *wn = label_wn; wn != goto_wn; wn = next_wn) {
     next_wn = WN_next(wn);
     wn = WN_EXTRACT_FromBlock(parent, wn);
     WN_INSERT_BlockBefore(block, NULL, wn);
@@ -829,6 +795,7 @@ BOOL GTABLE::Replace_Goto_With_While(GDESCRIPTOR *gd)
 
 
   WN *while_wn = WN_CreateDoWhile(cond, block);
+  Set_Parent(cond, while_wn);
   Set_Parent(block, while_wn);
   Set_Parent(while_wn, parent);
   WN_Set_Linenum(while_wn, WN_Get_Linenum(goto_wn));

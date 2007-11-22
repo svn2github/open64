@@ -235,6 +235,18 @@ CG_PU_Initialize (WN *wn_pu)
 	    "Ignoring CG_x87_store since it has no effect under SSE2\n");
     CG_x87_store = FALSE;
   }
+
+  // Select basic block instruction scheduling algorithm.
+  if (!LOCS_Scheduling_Algorithm_set) {
+    if (Is_Target_32bit()) {                    // 32-bit ABI
+      // Forward scheduling.
+      LOCS_Scheduling_Algorithm = 1;
+    } else {                                    // 64-bit ABI
+      // Bidirectional for Fortran, backward for C/C++.
+      LOCS_Scheduling_Algorithm = PU_ftn_lang(Get_Current_PU()) ? 2 : 0;
+    }
+  }
+
 #endif
 
   Regcopies_Translated = FALSE;

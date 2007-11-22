@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2007. Pathscale LLC. All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -171,6 +175,9 @@ static BOOL CG_DEP_Mem_Arc_Pruning_overridden = FALSE;
 #ifdef TARG_IA64
 static BOOL CGPREP_fold_expanded_daddiu_overridden = FALSE;
 static BOOL CG_LOOP_create_loop_prologs_overridden = FALSE;
+#endif
+#ifdef KEY
+static BOOL Integer_Multiply_By_Constant_overridden = FALSE;
 #endif
 static BOOL clone_incr_overridden = FALSE;
 static BOOL clone_min_incr_overridden = FALSE;
@@ -452,7 +459,7 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL, OV_INTERNAL, TRUE,  "enable_cycle_counting", "enable_cycle",
     0,0,0,      &CG_Enable_Cycle_Count, NULL },
 #endif
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   { OVK_BOOL, OV_INTERNAL, TRUE,  "test_coverage", "",
     0, 0, 0,    &flag_test_coverage, NULL},
   { OVK_LIST, OV_INTERNAL, FALSE, "profile_proc", "",
@@ -463,6 +470,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,    &Arc_Profile_Region, NULL},
   { OVK_INT32,  OV_INTERNAL, FALSE,  "cse_regs", "",
     0, INT32_MIN, INT32_MAX,    &CG_cse_regs, NULL},
+#endif
+#ifdef CG_PATHSCALE_MERGE
   { OVK_INT32,  OV_INTERNAL, FALSE,  "sse_cse_regs", "",
     0, INT32_MIN, INT32_MAX,    &CG_sse_cse_regs, NULL},
 #endif
@@ -571,10 +580,15 @@ static OPTION_DESC Options_CG[] = {
 		&CG_LOOP_reassociate_specified },
   { OVK_INT32, OV_INTERNAL, TRUE, "recurrence_min_omega", "",
     0, 0, INT32_MAX, &CG_LOOP_recurrence_min_omega, NULL },
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   { OVK_INT32, OV_INTERNAL, TRUE, "loop_limit", "",
     INT32_MAX, 0, INT32_MAX, &CG_Enable_Loop_Opt_Limit, NULL },
 #endif
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "cloop", "",
+    0, 0, 0,	&CG_LOOP_cloop, NULL },
+#endif
+
   // CG Unrolling options - see also OPT:unroll_times_max:unroll_size.
 
   // Cross Iteration Loop Optimization options.
@@ -611,7 +625,7 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CFLOW_opt_after_cgprep, NULL },
   { OVK_INT32,  OV_INTERNAL, TRUE,"ebo_level", "ebo",
     0, INT32_MIN, INT32_MAX, &EBO_Opt_Level, &EBO_Opt_Level_overridden },
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   { OVK_INT32,  OV_INTERNAL, TRUE,"ebo_opt_mask", "",
     0, INT32_MIN, INT32_MAX, &EBO_Opt_Mask, NULL },
 #endif
@@ -680,6 +694,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CGEXP_normalize_logical, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"gp_prolog_call_shared", "gp_prolog",
     0, 0, 0, &CGEXP_gp_prolog_call_shared, NULL },
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"integer_multiply_by_constant", "integer_multiply_by_constant",
+    0, 0, 0, &CGEXP_cvrt_int_mult_to_add_shift, &Integer_Multiply_By_Constant_overridden },
+#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE,"integer_divide_by_constant", "integer_divide_by_constant",
     0, 0, 0, &CGEXP_cvrt_int_div_to_mult, &Integer_Divide_By_Constant_overridden },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"integer_divide_use_float", "integer_divide_use_float",
@@ -784,7 +802,7 @@ static OPTION_DESC Options_CG[] = {
     0, 0, INT32_MAX, &GCM_To_BB, NULL },
   { OVK_INT32,	OV_INTERNAL, TRUE,"gcm_result_tn", "",
     0, 0, INT32_MAX, &GCM_Result_TN, NULL },
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   // Consider no more than this number of candidate target bb's.
   { OVK_INT32,	OV_INTERNAL, TRUE,"gcm_bb_limit", "",
     0, 0, INT32_MAX, &GCM_BB_Limit, NULL },
@@ -813,9 +831,12 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &IGLS_Enable_POST_HB_Scheduling, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"hb_scheduler", "hb_sched",
     0, 0, 0, &IGLS_Enable_HB_Scheduling, NULL },
-#ifdef CG_PATHSCALE_MERGE
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"local_fwd_scheduler", "local_fwd_sched",
+#ifdef KEY
+  { OVK_BOOL, OV_INTERNAL, TRUE, "local_fwd_scheduler", "local_fwd_sched",
     0, 0, 0, &LOCS_Fwd_Scheduling, &LOCS_Fwd_Scheduling_set },
+  { OVK_UINT32,	OV_INTERNAL, TRUE,"local_sched_algorithm", "local_sched_alg",
+    0, 0, 2, &LOCS_Scheduling_Algorithm, &LOCS_Scheduling_Algorithm_set,
+    "Select basic block instruction scheduling algorithm" },
 #endif
 
   // Turns of all scheduling (LOCS, HBS, GCM) for triaging.
@@ -828,7 +849,7 @@ static OPTION_DESC Options_CG[] = {
     0,0,0,      &HB_formation, NULL,
     "Turn on/off hyperblock formation [Default ON]"
   },    
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   { OVK_INT32,	OV_INTERNAL, TRUE,  "ifc_cutoff", "",
     4,0,100,      &HB_if_conversion_cut_off, NULL,
     "What is the cut-off for doing If-conversion"
@@ -985,6 +1006,11 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_LOOP_cloop, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"use_lddqu", "",
     0, 0, 0, &CG_use_lddqu, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "push_pop_int_saved_regs", "",
+    0, 0, 0,	&CG_push_pop_int_saved_regs, &CG_push_pop_int_saved_regs_Set },
+  { OVK_UINT32,	OV_INTERNAL, TRUE,"ptr_load_use", "",
+    4, 0, 64, &CG_ptr_load_use_latency,  NULL,
+    "extra latency between loading a pointer and its use"},
 #endif
 
 #ifdef TARG_X8664
@@ -1013,7 +1039,7 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,    &CG_SCHED_EST_use_locs, NULL },
   { OVK_INT32,   OV_INTERNAL, TRUE, "sched_est_call_cost", "",
     0, 0, INT32_MAX, &CG_SCHED_EST_call_cost, NULL },
-#ifdef CG_PATHSCALE_MERGE
+#ifndef KEY
   { OVK_BOOL,	OV_INTERNAL, TRUE, "enable_feedback", "",
     0, 0, 0,	&CG_enable_feedback, NULL },
 #endif
@@ -1674,7 +1700,7 @@ Configure_CG_Options(void)
   }
 
   if (!Integer_Divide_By_Constant_overridden
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
       && CGEXP_cvrt_int_div_to_mult
 #endif
 	  ) {
@@ -1682,7 +1708,7 @@ Configure_CG_Options(void)
   } 
 
   if (!Integer_Divide_Use_Float_overridden
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
       && CGEXP_cvrt_int_div_to_fdiv
 #endif
 	  ) {
@@ -1691,6 +1717,13 @@ Configure_CG_Options(void)
 				 && !OPT_Space
 				 && CG_opt_level > 0;
   }
+
+#ifdef KEY
+  if (!Integer_Multiply_By_Constant_overridden &&
+      CGEXP_cvrt_int_mult_to_add_shift) {
+    CGEXP_cvrt_int_mult_to_add_shift = (!OPT_Space) && (CG_opt_level > 0);
+  }
+#endif
 
   if (Kernel_Code && !CG_tail_call_overridden) CG_tail_call = FALSE;
 
@@ -1704,7 +1737,7 @@ Configure_CG_Options(void)
   if ( !CG_enable_spec_idiv_overridden && Enable_Spec_Idiv_For_Target() )
     CG_enable_spec_idiv = FALSE;
 
- if ( ! CG_LOOP_fix_recurrences_specified
+  if ( ! CG_LOOP_fix_recurrences_specified
        && (      CG_LOOP_back_substitution
               && CG_LOOP_back_substitution_specified
            ||    CG_LOOP_interleave_reductions
@@ -1801,6 +1834,9 @@ Configure_CG_Options(void)
 
   if (OPT_Space && !CG_use_xortozero_Set)	// Bug 9717
     CG_use_xortozero = TRUE;
+
+  if (Target == TARGET_barcelona && ! CG_push_pop_int_saved_regs_Set)
+    CG_push_pop_int_saved_regs = TRUE;
 #endif
 }
 
@@ -2207,23 +2243,24 @@ CG_Init (void)
     /* this has to be done after LNO has been loaded to grep
      * prefetch_ahead fromn LNO */
     Configure_prefetch_ahead();
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
     if (flag_test_coverage || profile_arcs)
-        CG_Init_Gcov();
-#endif // KEY
+      CG_Init_Gcov();
 
-#ifdef TARG_X8664
-    /* Perform forward scheduling for -m32 by default.
-     */
-    if( Is_Target_32bit() ){
-      if( !LOCS_Fwd_Scheduling_set ){
-	LOCS_Fwd_Scheduling = TRUE;
+    if (LOCS_Fwd_Scheduling_set) {
+      fprintf(stderr, "warning: -CG:local_fwd_sched is deprecated,"
+		      " use -CG:local_sched_alg\n");
+      if (!LOCS_Scheduling_Algorithm_set) {
+	LOCS_Scheduling_Algorithm = LOCS_Fwd_Scheduling ? 1 : 0;
+	LOCS_Scheduling_Algorithm_set = TRUE;
+      } else {
+	fprintf(stderr, "warning: -CG:local_fwd_sched ignored,"
+			" conflicts with -CG:local_sched_alg\n");
       }
     }
-#endif // TARG_X8664
-
-
+#endif // KEY
 } /* CG_Init */
+
 #ifdef KEY
 extern void CG_End_Final();
 #endif
@@ -2231,7 +2268,7 @@ extern void CG_End_Final();
 void
 CG_Fini (void)
 {
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
     extern BOOL profile_arcs;
     if (profile_arcs)
         CG_End_Final();

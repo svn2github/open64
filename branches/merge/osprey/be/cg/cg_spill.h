@@ -274,7 +274,10 @@ extern void CGSPILL_Attach_Const_Remat(TN *tn, TYPE_ID typ, ST *st);
 extern void st_2_st_spill(OPS *ops, BOOL force);
 extern void ld_2_ld_fill(OPS *ops, BOOL force);
 #endif
+
 #ifdef KEY
+extern void CGSPILL_Inc_Restore_Count (ST *spill_loc);
+
 // Keep track of the spills and restores for a spill symbol, so that EBO knows
 // which spills are dead after it deletes restores.  Only need to handle the
 // case single spill OP because EBO can't handle multiple stores.
@@ -289,6 +292,7 @@ public:
     spill_count = 0;
     restore_count = 0;
     spill_op = NULL;
+    used_by_load_exe = 0;
   }
   INT32 Spill_Count() { return spill_count; }
   void Inc_Spill_Count() { spill_count++; }

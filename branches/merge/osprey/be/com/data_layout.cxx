@@ -91,6 +91,7 @@
 #include "config_opt.h"    // for CIS_Allowed
 
 extern void (*CG_Set_Is_Stack_Used_p)();
+extern INT (*Push_Pop_Int_Saved_Regs_p)(void);
 #endif
 
 extern void Early_Terminate (INT status);
@@ -2332,6 +2333,15 @@ INT64 Finalize_Stack_Frame (void)
     Set_ST_base(SF_Block(SFSEG_UPFORMAL), SP_Sym);
     Assign_Offset(SF_Block(SFSEG_UPFORMAL), SP_Sym, 
 	(Frame_Has_Calls ? Stack_Offset_Adjustment : 0), 0);
+#ifdef TARG_X8664
+    {
+      int push_pop_int_saved_regs = (*Push_Pop_Int_Saved_Regs_p)();
+      if (push_pop_int_saved_regs & 1)
+        push_pop_int_saved_regs++;
+      Set_ST_ofst(SF_Block(SFSEG_UPFORMAL), ST_ofst(SF_Block(SFSEG_UPFORMAL)) +
+                    push_pop_int_saved_regs * MTYPE_byte_size(Pointer_Mtype));
+    }
+#endif
     break;
 
   case SMODEL_LARGE:
@@ -2349,9 +2359,12 @@ INT64 Finalize_Stack_Frame (void)
 
   Frame_Size = ROUNDUP(Frame_Size, stack_align);
 #ifdef TARG_X8664 // this is needed to maintain 16 bytes gap that contains
-    		  // the save area for return-addr and frame-ptr
-  if (Current_PU_Stack_Model == SMODEL_SMALL && PUSH_FRAME_POINTER_ON_STACK)
+                  // the save area for return-addr and frame-ptr
+  if (Current_PU_Stack_Model == SMODEL_SMALL && PUSH_FRAME_POINTER_ON_STACK) {
     Frame_Size += MTYPE_byte_size(Pointer_Mtype);
+    if ((*Push_Pop_Int_Saved_Regs_p)() & 1)
+      Frame_Size += MTYPE_byte_size(Pointer_Mtype);
+  }
 #endif
 
   // the stack-frame-adjustment represents N bytes of free space
@@ -2776,7 +2789,20 @@ Allocate_Object ( ST *st )
     }
 #endif
     else if (ST_is_initialized(st) && !ST_init_value_zero (st))
+#ifdef TARG_X8664
+    {
+      if (ST_is_constant(st))
+        // GNU puts CLASS_CONST data in .rodata.
+        if (Gen_PIC_Shared && ST_sym_class(st) != CLASS_CONST)
+          sec = _SEC_DATA_REL_RO; // bug 10097
+        else
+          sec = _SEC_RDATA;
+      else
+        sec = _SEC_DATA;
+    }
+#else
         sec = (ST_is_constant(st) ? _SEC_RDATA : _SEC_DATA);
+#endif
     else
 	sec = _SEC_BSS;
     sec = Shorten_Section ( st, sec );

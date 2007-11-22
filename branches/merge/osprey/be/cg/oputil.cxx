@@ -89,6 +89,7 @@
 #include "cgprep.h"
 #include "cg_loop.h"
 #include "cgtarget.h"
+#include "cg_spill.h"
 
 #ifdef TARG_IA64
 #include "targ_sim.h"
@@ -263,6 +264,16 @@ Dup_OP ( OP *op )
   if ( TOP_is_vector_high_loadstore ( OP_code ( new_op ) ) )
     Set_OP_cond_def_kind(new_op, OP_ALWAYS_COND_DEF);
 #endif
+
+#ifdef KEY
+  // If OP is a restore, increment the spill location's restore count.
+  if (OP_load(op)) {
+    ST *spill_loc = CGSPILL_OP_Spill_Location(op);
+    if (spill_loc != (ST *)0)           // It's a spill OP.
+      CGSPILL_Inc_Restore_Count(spill_loc);
+  }
+#endif
+
   return new_op;
 }
 
@@ -970,11 +981,10 @@ void Print_OP_No_SrcLine(const OP *op)
 #ifdef TARG_IA64
   if (OP_start_bundle(op)) fprintf( TFile, " }\n{\n");
   fprintf (TFile, "[%3d] ", OP_map_idx(op));
-#endif
-#ifdef TARG_X8664
-  fprintf (TFile, "[%4d] ", OP_scycle(op) );
-#endif
   fprintf (TFile, "[%4d] ", Srcpos_To_Line(OP_srcpos(op)));
+#else
+  fprintf (TFile, "[%4d,%2d] ", Srcpos_To_Line(OP_srcpos(op)), OP_scycle(op) );
+#endif
   if (OP_has_tag(op)) {
 	LABEL_IDX tag = Get_OP_Tag(op);
 	fprintf (TFile, "<tag %s>: ", LABEL_name(tag));
@@ -1281,11 +1291,13 @@ Is_Delay_Slot_Op (OP *xfer_op, OP *op)
 {
   if (op == NULL || OP_xfer(op) || OP_Real_Ops(op) != 1) return FALSE;
 
+#ifndef KEY
   // R10k chip bug workaround: Avoid placing integer mult/div in delay 
   // slots of unconditional branches. (see pv516598) for more details.
   if (xfer_op && OP_uncond(xfer_op) &&
       (OP_imul(op) || OP_idiv(op))) return FALSE;
-  
+#endif
+
   // TODO: do we need the following restriction ?
   if (OP_has_hazard(op) || OP_has_implicit_interactions(op))
     return FALSE;

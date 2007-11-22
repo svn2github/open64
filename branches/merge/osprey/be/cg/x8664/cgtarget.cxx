@@ -182,6 +182,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_stss:
       case TOP_stss_n32:
       case TOP_stssx:
+      case TOP_stntss:
+      case TOP_stntssx:
+      case TOP_stntssxx:
       case TOP_divxxxss:
       case TOP_addxxxss:
       case TOP_subxxxss:
@@ -210,6 +213,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_stsd:
       case TOP_stsd_n32:
       case TOP_stsdx:
+      case TOP_stntsd:
+      case TOP_stntsdx:
+      case TOP_stntsdxx:
       case TOP_storelpd:
       case TOP_divxxxsd:
       case TOP_addxxxsd:
@@ -247,6 +253,10 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_ldapd_n32:
       case TOP_ldaps:
       case TOP_ldaps_n32:
+      case TOP_ldups:
+      case TOP_ldups_n32:
+      case TOP_ldupd:
+      case TOP_ldupd_n32:
       case TOP_lddqax:
       case TOP_lddqux:
       case TOP_ldapdx:
@@ -2289,6 +2299,26 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 void
 CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT *latency)
 {
+  // Add latency between pointer load and pointer use.
+  if (CG_ptr_load_use_latency != 0 &&
+      kind == CG_DEP_REGIN &&
+      (OP_load(pred_op) ||
+       // Load-execute computes pointer, treat it like a pointer load.
+       OP_load_exe(pred_op)) &&
+      // Detect pointer use.
+      (OP_load(succ_op) ||
+       OP_store(succ_op) ||
+       OP_load_exe(succ_op) ||
+       OP_load_exe_store(succ_op))) {
+    int base_idx = OP_find_opnd_use(succ_op, OU_base);
+    int index_idx = OP_find_opnd_use(succ_op, OU_index);
+    if (opnd == base_idx ||
+	opnd == index_idx) {
+      *latency = MAX(*latency,
+		     TI_LATENCY_Result_Available_Cycle(OP_code(pred_op), 0)
+		       + CG_ptr_load_use_latency);
+    }
+  }
 }
 
 /* ====================================================================
@@ -2542,6 +2572,38 @@ static inline TN* OP_opnd_use( OP* op, ISA_OPERAND_USE use )
   return ( indx >= 0 ) ? OP_opnd( op, indx ) : NULL;
 }
 
+static TOP Movnti_Top(TOP old_top)
+{
+   switch(old_top){
+    case TOP_stapd:     return TOP_stntpd;   break;
+    case TOP_stapdx:    return TOP_stntpdx;  break;
+    case TOP_stapdxx:   return TOP_stntpdxx; break;
+    case TOP_staps:     return TOP_stntps;   break;
+    case TOP_stapsx:    return TOP_stntpsx;  break;
+    case TOP_stapsxx:   return TOP_stntpsxx; break;
+    case TOP_stdqa:     return TOP_stntpd;   break;
+    case TOP_stdqax:    return TOP_stntpdx;  break;
+    case TOP_stdqaxx:   return TOP_stntpdxx; break;
+
+    case TOP_store32:   return TOP_storenti32;   break;
+    case TOP_storex32:  return TOP_storentix32;  break;
+    case TOP_storexx32: return TOP_storentixx32; break;
+
+    case TOP_store64:   return TOP_storenti64;   break;
+    case TOP_storex64:  return TOP_storentix64;  break;
+    case TOP_storexx64: return TOP_storentixx64; break;
+
+    case TOP_stss:      return TOP_stntss; break;
+    case TOP_stssx:     return TOP_stntssx; break;
+    case TOP_stssxx:    return TOP_stntssxx; break;
+    case TOP_stsd:      return TOP_stntsd; break;
+    case TOP_stsdx:     return TOP_stntsdx; break;
+    case TOP_stsdxx:    return TOP_stntsdxx; break;
+    }
+   FmtAssert(FALSE,("Non-Temporal Store: not supported!"));
+   return TOP_UNDEFINED;
+}
+
 // Bug 3774 - Compute total working set size by counting
 // all disjoint source and destination bytes in the loop.
 BOOL Op_In_Working_Set ( OP* op )
@@ -2591,8 +2653,6 @@ BOOL Op_In_Working_Set ( OP* op )
  */
 void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 {
-  if (!CG_movnti) return;
-  
   UINT32 trip_count = 0;
   TN* trip_count_tn = CG_LOOP_Trip_Count(loop);
   BB* body = LOOP_DESCR_loophead(loop);
@@ -2616,14 +2676,11 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
   /* First, estimate the totol size (in bytes) that this loop will
      bring to the cache.
   */
-
   FOR_ALL_BB_OPs_FWD( body, op ){
-    if( TOP_is_vector_op( OP_code(op) ) &&
-	( ( OP_store( op )                  &&
-	    !TOP_is_nt_store( OP_code(op) ) ) ||
-	  OP_load(op) ) && 
-	!Op_In_Working_Set( op ) ) {
-      size += CGTARG_Mem_Ref_Bytes( op );
+    if(((OP_store( op ) && !TOP_is_nt_store(OP_code(op))) || //stores
+	  OP_load(op) ) && //loads
+      !Op_In_Working_Set(op)){ //that were not in the working set
+      size += CGTARG_Mem_Ref_Bytes(op);
     }
   }
 
@@ -2633,8 +2690,9 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 
   if( size < cache_size )
     return;
-
+#if 0 //temporarily disable changeset of bug 11853 for bug 12036
   BOOL dep_graph_computed = FALSE;
+#endif
   FOR_ALL_BB_OPs_FWD( body, op ){
     if( OP_prefetch( op ) ){
       /* Get rid of any prefetchw operation, because it "loads the prefetched
@@ -2664,6 +2722,9 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 	case TOP_prefetcht0:   OP_Change_Opcode(op, TOP_prefetchnta); break;
 	case TOP_prefetcht0x:  OP_Change_Opcode(op, TOP_prefetchntax); break;
 	case TOP_prefetcht0xx: OP_Change_Opcode(op, TOP_prefetchntaxx); break;
+        case TOP_prefetchnta:
+        case TOP_prefetchntax:
+        case TOP_prefetchntaxx: break; //do nothing             
 	default: FmtAssert(FALSE, ("NYI"));
 	}
       }	
@@ -2677,7 +2738,13 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
        is reused.  Detect reuse by looking for OPs that load the same memory
        location.  It doesn't matter if the load is before or after the store,
        since the load will involve the same cache line.  Bug 11853. */
-
+ /* temporarily disable this changeset for two reasons:
+  (1) we may need to consider load forwarding (even though there are reuses, no
+      cache line is required)
+  (2) this change provents performance tuning using -CG:movnti in some case 
+      (bug 12036)
+ */
+#if 0 
     BOOL skip = FALSE;
     if (TOP_is_vector_op(OP_code(op)) &&
 	((OP_store(op) &&
@@ -2711,35 +2778,53 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
       if (skip == TRUE)
         continue;
     }
-
+#endif
     TOP new_top = TOP_UNDEFINED;
-
     switch( OP_code(op) ){
-    case TOP_stapd:   new_top = TOP_stntpd;   break;
-    case TOP_stapdx:  new_top = TOP_stntpdx;  break;
-    case TOP_stapdxx: new_top = TOP_stntpdxx; break;
-    case TOP_staps:   new_top = TOP_stntps;   break;
-    case TOP_stapsx:  new_top = TOP_stntpsx;  break;
-    case TOP_stapsxx: new_top = TOP_stntpsxx; break;
-    case TOP_stdqa:   new_top = TOP_stntpd;   break;
-    case TOP_stdqax:  new_top = TOP_stntpdx;  break;
-    case TOP_stdqaxx: new_top = TOP_stntpdxx; break;
-
-    case TOP_store32:   new_top = TOP_storenti32;   break;
-    case TOP_storex32:  new_top = TOP_storentix32;  break;
-    case TOP_storexx32: new_top = TOP_storentixx32; break;
-
-    case TOP_store64:   new_top = TOP_storenti64;   break;
-    case TOP_storex64:  new_top = TOP_storentix64;  break;
-    case TOP_storexx64: new_top = TOP_storentixx64; break;
-    }
-
-    if( new_top != TOP_UNDEFINED )
+    //SSE support
+    case TOP_staps:
+    case TOP_stapsx:
+    case TOP_stapsxx: {
+         new_top = Movnti_Top(OP_code(op));
+         break;
+       }
+    //SSE2 support
+    case TOP_stapd:
+    case TOP_stapdx:
+    case TOP_stapdxx:
+    case TOP_stdqa:
+    case TOP_stdqax:
+    case TOP_stdqaxx:
+    case TOP_store32:
+    case TOP_storex32:
+    case TOP_storexx32:
+    case TOP_store64:
+    case TOP_storex64:
+    case TOP_storexx64: {
+         if(Is_Target_SSE2())
+	  new_top = Movnti_Top(OP_code(op));
+         break;
+       }
+    //SSE4a support
+    case TOP_stss:
+    case TOP_stssx:
+    case TOP_stssxx:
+    case TOP_stsd:
+    case TOP_stsdx:
+    case TOP_stsdxx: {
+         if(Is_Target_SSE4a())
+            new_top = Movnti_Top(OP_code(op));
+         break;
+       }
+    }//end switch
+    
+   if( new_top != TOP_UNDEFINED )
       OP_Change_Opcode( op, new_top );
   }
-
+#if 0 //temporarily disable the changeset of bug 11853 for bug 12036
   if (dep_graph_computed == TRUE)
     CG_DEP_Delete_Graph(body);
+#endif
 }
 
 

@@ -2201,7 +2201,7 @@ EH_Write_Range_Table(WN * wn)
 
 #ifdef KEY
   // C++ exceptions not yet supported within MP regions.
-  if (PU_mp_lower_generated (Get_Current_PU ()))
+  if (!LANG_Enable_CXX_Openmp && PU_mp_lower_generated (Get_Current_PU ()))
   {
     EH_RANGE_LIST::iterator first(range_list.begin());
     EH_RANGE_LIST::iterator last(range_list.end());

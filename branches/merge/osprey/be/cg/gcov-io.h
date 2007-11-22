@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
+ */
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -159,6 +162,7 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "mempool.h"
 
 extern MEM_POOL  *name_pool_ptr;
+#define GCC_303
 #define GCOV_GRAPH_SUFFIX ".bbg"
 
 #ifdef GCC_303

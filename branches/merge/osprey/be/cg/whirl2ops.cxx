@@ -4660,6 +4660,12 @@ Handle_ASM (const WN* asm_wn)
 		     REGISTER_name(rclass, reg)));
 	  if (Is_Unique_Callee_Saved_Reg (sr.ded_tn))
 	  {
+#ifdef TARG_X8664
+            if (CG_push_pop_int_saved_regs && ! Gen_Frame_Pointer &&
+                rclass == ISA_REGISTER_CLASS_integer)
+              sr.temp = NULL;
+            else
+#endif
 	    sr.temp = CGSPILL_Get_TN_Spill_Location (sr.ded_tn, CGSPILL_LCL);
 	    sr.user_allocated = TRUE;
 	    Saved_Callee_Saved_Regs.Push(sr);
@@ -4721,12 +4727,13 @@ Handle_ASM (const WN* asm_wn)
     ASM_OP_result_clobber(asm_info)[num_results] = 
       (strchr(constraint, '&') != NULL);
     ASM_OP_result_memory(asm_info)[num_results] = 
-#ifndef TARG_X8664
-      (strchr(constraint, 'm') != NULL);
-#else
+#ifdef TARG_X8664
     (strchr(constraint, 'm') != NULL || strchr(constraint, 'g') != NULL);
-#endif
-    
+#elif defined(TARG_MIPS)
+    (strchr(constraint, 'm') != NULL || strchr(constraint, 'R') != NULL);
+#else
+      (strchr(constraint, 'm') != NULL);
+#endif    
     result[num_results] = tn;
     num_results++;
     

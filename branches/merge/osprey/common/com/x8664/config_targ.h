@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -120,6 +124,7 @@ extern TARGET_ABI Target_ABI;
 extern BOOL Target_SSE2;
 extern BOOL Target_SSE3;
 extern BOOL Target_3DNow;
+extern BOOL Target_SSE4a;
 extern int Target_x86_Precision;
 
 /* ================ */
@@ -132,6 +137,7 @@ extern int Target_x86_Precision;
 typedef enum {
   TARGET_UNDEF,		/* Undefined */
   TARGET_opteron,	/* AMD Opteron and Athlon64 FX */
+  TARGET_barcelona,     /* AMD Barcelona (opteron) */
   TARGET_athlon64,	/* AMD Athlon64 */
   TARGET_athlon,	/* AMD Athlon */
   TARGET_em64t,		/* Intel EM64T */
@@ -153,11 +159,13 @@ extern char *Targ_Name (TARGET_PROCESSOR target);
 #define Is_Target_SSE2()        (Target_SSE2 == TRUE)
 #define Is_Target_SSE3()        (Target_SSE3 == TRUE)
 #define Is_Target_3DNow()       (Target_3DNow == TRUE)
+#define Is_Target_SSE4a()       (Target_SSE4a == TRUE)
 #define Is_Target_Pentium4()    (Target == TARGET_pentium4)
 #define Is_Target_EM64T()	(Target == TARGET_em64t)
 #define Is_Target_Core()	(Target == TARGET_core)
 #define Is_Target_Anyx86()      (Target == TARGET_anyx86)
 #define Target_x87_precision()	(Target_x87_Precision+0)
+#define Is_Target_Barcelona()   (Target == TARGET_barcelona)
 
 
 /* ========== */

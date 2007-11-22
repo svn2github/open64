@@ -286,6 +286,7 @@ Mtype_to_Ukind(MTYPE mtype)
    case MTYPE_V16I8:
    case MTYPE_V16F4:
    case MTYPE_V16F8:
+
    case MTYPE_V8I1:
    case MTYPE_V8I2:
    case MTYPE_V8I4:

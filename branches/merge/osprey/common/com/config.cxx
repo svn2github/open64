@@ -267,10 +267,12 @@ BOOL LANG_Ignore_Target_Attribute_Set = FALSE;
 // -LANG:math_errno=off => do not set errno
 BOOL LANG_Math_Errno = TRUE; // set errno after calling math functions
 BOOL LANG_Math_Errno_Set = FALSE;
-# endif
-# ifdef KEY /* Bug 3405 */
+/* KEY Bug 3405 */
 BOOL LANG_IEEE_Minus_Zero_On = FALSE;
 BOOL LANG_IEEE_Minus_Zero_Set = FALSE;
+
+BOOL LANG_Enable_CXX_Openmp = FALSE;
+BOOL LANG_Enable_CXX_Openmp_Set = FALSE;
 # endif /* KEY Bug 3405 */
 
 BOOL LANG_Pch;
@@ -715,8 +717,6 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_VISIBLE,	TRUE, "IEEE_save",		"",
       0, 0, 0,	&LANG_IEEE_Save,	&LANG_IEEE_Save_Set,
       "FORTRAN: Save/restore FPU state in procedure prolog/epilog as F2003 requires" },
-# endif
-# ifdef KEY
     /* Bug 3405 */
     { OVK_BOOL, OV_VISIBLE,	TRUE, "IEEE_minus_zero",		"",
       0, 0, 0,	&LANG_IEEE_Minus_Zero_On,	&LANG_IEEE_Minus_Zero_Set,
@@ -725,7 +725,10 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_INTERNAL,	TRUE, "math_errno",		"",
       0, 0, 0,	&LANG_Math_Errno,	&LANG_Math_Errno_Set,
       "C/C++: Set errno after calling math functions" },
-# endif /* KEY */
+    { OVK_BOOL, OV_INTERNAL,    TRUE, "cxx_openmp",             "",
+      0, 0, 0,  &LANG_Enable_CXX_Openmp,        &LANG_Enable_CXX_Openmp_Set,
+      "C++: Enable OpenMP processing." },
+#endif /* KEY */
 
     { OVK_COUNT }		    /* List terminator -- must be last */
 };

@@ -2152,7 +2152,7 @@ static void unroll_names_init_tn(TN *result, UINT16 ntimes, MEM_POOL *pool)
      /* bug 13064: Because Dup_TN "Reset_TN_is_global_reg", we don't keep
         the original TN for the last iteration if it is global. Instead, we
         make a duplicate TN as other iterations below */
-    else if( unrolling == ntimes - 1 && !TN_is_global_reg(result) && 
+    else if( unrolling == ntimes - 1 && /*!TN_is_global_reg(result) &&*/ 
 	     TN_is_gra_homeable(result) ){
       entry[unrolling] = result;
     }

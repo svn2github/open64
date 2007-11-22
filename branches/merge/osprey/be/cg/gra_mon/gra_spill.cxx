@@ -1012,7 +1012,22 @@ LRANGE_Spill( LRANGE* lrange )
 
   if (lrange->No_Appearance()) 
     return; // no need to generate spill code
-
+#ifdef TARG_X8664
+  TN*     orig_tn = lrange->Original_TN();
+  if (CG_push_pop_int_saved_regs && ! Gen_Frame_Pointer &&
+      ! TN_is_float(orig_tn) && TN_is_save_reg(orig_tn)) {
+    // put saved location info in Saved_Callee_Saved_Regs for dwarf generation
+    SAVE_REG_LOC sr;
+    sr.user_allocated = FALSE;
+    sr.temp = NULL;
+    sr.ded_tn = Build_Dedicated_TN(TN_save_rclass(orig_tn),
+                                   TN_save_reg(orig_tn), 0);
+    Saved_Callee_Saved_Regs.Push(sr);
+    // pretend it has been assigned its register to make LRA happy
+    TN_Allocate_Register(orig_tn, TN_register(sr.ded_tn));
+    return;
+  }
+#endif
   for (iter.Init(lrange); ! iter.Done(); iter.Step()) {
     LUNIT*  lunit = iter.Current();
 

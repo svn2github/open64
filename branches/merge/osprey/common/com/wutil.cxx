@@ -1009,6 +1009,12 @@ static const struct {
   INTRN_FLOOR,			"INTRN_FLOOR",
   INTRN_FLOORF,			"INTRN_FLOORF",
 #endif
+  INTRN_MOVNTSS,                "INTRN_MOVNTSS",
+  INTRN_MOVNTSD,                "INTRN_MOVNTSD",
+  INTRN_EXTRQI,                 "INTRN_EXTRQI",
+  INTRN_EXTRQ,                  "INTRN_EXTRQ",
+  INTRN_INSERTQI,               "INTRN_INSERTQI",
+  INTRN_INSERTQ,                "INTRN_INSERTQ",
 #endif
 
   INTRN_CTYPE_B_LOC,       "__ctype_b_loc",

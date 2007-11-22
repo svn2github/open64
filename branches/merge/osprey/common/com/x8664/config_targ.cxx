@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -337,6 +341,7 @@ Targ_Name ( TARGET_PROCESSOR b)
     case TARGET_pentium4: return "Pentium4";
     case TARGET_xeon: return "Xeon";
     case TARGET_anyx86: return "Anyx86";
+    case TARGET_barcelona: return "Barcelona";
     default:
       r = bnb[bnb_used].name;
       bnb_used = (bnb_used + 1) % 4;
@@ -468,6 +473,15 @@ Prepare_Target ( void )
 
     if ( strcasecmp ( Processor_Name, "opteron" ) == 0 ) {
       targ = TARGET_opteron;
+    }
+    else if ( strcasecmp ( Processor_Name, "barcelona" ) == 0 ) {
+      if (!Target_SSE2_Set && !Target_SSE3_Set)
+        Target_SSE3 = TRUE;
+#if 0 //temporily disable setting default sse4a true for barcelona
+      if (!Target_SSE2_Set && !Target_SSE4a_Set)
+        Target_SSE4a = TRUE;
+#endif
+      targ = TARGET_barcelona;
     }
     else if ( strcasecmp ( Processor_Name, "athlon64fx" ) == 0 ) {
       targ = TARGET_opteron;

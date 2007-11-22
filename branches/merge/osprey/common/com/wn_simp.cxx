@@ -414,6 +414,9 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
 # if defined (KEY) && defined (Is_True_On)
       if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))
 # endif
+#ifdef KEY // bug 13507
+      if (opr != OPR_PAIR)
+#endif
       r = WN_SimplifyExp2(op, k0, k1);
       if (r) {
 	 WN_Delete(t);

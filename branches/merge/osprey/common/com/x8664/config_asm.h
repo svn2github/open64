@@ -187,9 +187,7 @@ static char *config_asm_rcs_id = "$Source$ $Revision$";
 #define AS_WORD		".4byte"
 #define AS_WORD_UNALIGNED ".4byte" 
 #define AS_IDENT	"#ident" /* Make this ASM_CMNT_START if no ident */
-// bug fix for OSP_155
-#define AS_HIDDEN       ".hidden"
-
+#define AS_HIDDEN   ".hidden"
 
 extern BOOL CG_emit_non_gas_syntax;
 

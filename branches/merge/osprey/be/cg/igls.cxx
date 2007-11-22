@@ -259,8 +259,23 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 	if (!Sched) {
 	  Sched = CXX_NEW(HB_Schedule(), &MEM_local_pool);
 	}
-	Sched->Init(bb, hbs_type, INT32_MAX, NULL, NULL);
-	Sched->Schedule_BB(bb, NULL);
+#ifdef KEY
+        if (LOCS_Scheduling_Algorithm == 2) {
+          LOCS_Scheduling_Algorithm = 0;        // backward scheduling
+          Sched->Init(bb, hbs_type, INT32_MAX, NULL, NULL);
+          Sched->Schedule_BB(bb, NULL);
+          if (BB_length(bb) > 1) {
+            LOCS_Scheduling_Algorithm = 1;      // forward scheduling
+            Sched->Init(bb, hbs_type, OP_scycle(BB_last_op(bb))+1, NULL, NULL);
+            Sched->Schedule_BB(bb, NULL);
+          }
+          LOCS_Scheduling_Algorithm = 2;        // reset to bidirectional
+        } else
+#endif
+        {
+  	  Sched->Init(bb, hbs_type, INT32_MAX, NULL, NULL);
+	  Sched->Schedule_BB(bb, NULL);
+        }
       }
     }
   }
@@ -374,9 +389,24 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 	  if (!Sched) {
 	    Sched = CXX_NEW(HB_Schedule(), &MEM_local_pool);
 	  }
-	  Sched->Init(bb, hbs_type, max_sched, NULL, NULL);
-	  Sched->Schedule_BB(bb, NULL);
-	}
+#ifdef KEY
+          if (LOCS_Scheduling_Algorithm == 2) {
+            LOCS_Scheduling_Algorithm = 0;      // backward scheduling
+            Sched->Init(bb, hbs_type, max_sched, NULL, NULL);
+            Sched->Schedule_BB(bb, NULL);
+            if (BB_length(bb) > 1) {
+              LOCS_Scheduling_Algorithm = 1;    // forward scheduling
+              Sched->Init(bb, hbs_type, OP_scycle(BB_last_op(bb))+1, NULL,NULL);
+              Sched->Schedule_BB(bb, NULL);
+            }
+            LOCS_Scheduling_Algorithm = 2;      // reset to bidirectional
+          } else
+#endif
+          {
+	    Sched->Init(bb, hbs_type, max_sched, NULL, NULL);
+	    Sched->Schedule_BB(bb, NULL);
+	  }
+        }
       }
       Handle_All_Hazards (bb);
     } /* for (bb= REGION_First_BB).. */

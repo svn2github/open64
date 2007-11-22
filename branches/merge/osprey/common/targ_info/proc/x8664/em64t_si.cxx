@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
  */
 
@@ -46,7 +50,7 @@
 //  
 //  Description:
 //
-//  Generate a scheduling description of an Intel EM64T  processor
+//  Generate a scheduling description of an Intel EM64T processor
 //  via the si_gen interface.
 //
 ///////////////////////////////////////////////////////////////////
@@ -671,7 +675,9 @@ int main (int argc, char *argv[])
 		     TOP_lddqux,
 		     TOP_lddquxx,
 		     TOP_ldupd,
+		     TOP_ldupd_n32,
 		     TOP_ldups,
+		     TOP_ldups_n32,
 		     TOP_ldmxcsr,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
@@ -770,10 +776,16 @@ int main (int argc, char *argv[])
 		     TOP_stsd_n32,
 		     TOP_stss,
 		     TOP_stsd,
+		     TOP_stntss,
+		     TOP_stntsd,
 		     TOP_stssx,
 		     TOP_stssxx,
+		     TOP_stntssx,
+		     TOP_stntssxx,
 		     TOP_stsdx,
 		     TOP_stsdxx,
+		     TOP_stntsdx,
+		     TOP_stntsdxx,
 		     TOP_stdqa,
 		     TOP_stdqa_n32,
 		     TOP_stdqax,

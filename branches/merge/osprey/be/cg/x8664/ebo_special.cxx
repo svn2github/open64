@@ -384,11 +384,14 @@ BOOL Combine_L1_L2_Prefetches( OP* op, TN** opnd_tn, EBO_TN_INFO** opnd_tninfo )
     OP* new_op = Dup_OP( op );
     Set_OP_opnd( new_op, 0 , Gen_Enum_TN( ECV_pfhint_L1_L2_load ) );
 
-    TOP new_top = TOP_prefetcht0;
+    //Bug 13609 : keep prefetchnta suggested by LNO
+    BOOL nt = (OP_code(op)==TOP_prefetchnta);
+    TOP  new_top = nt?TOP_prefetchnta:TOP_prefetcht0;
+   
     if( OP_find_opnd_use( op, OU_base ) < 0 )
-      new_top = TOP_prefetcht0xx;
+      new_top = nt?TOP_prefetchntaxx:TOP_prefetcht0xx;
     else if( OP_find_opnd_use( op, OU_index ) >= 0 )
-      new_top = TOP_prefetcht0x;
+      new_top = nt?TOP_prefetchntax:TOP_prefetcht0x;
 
     OP_Change_Opcode( new_op, new_top );
 
@@ -3723,6 +3726,8 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_UNDEFINED, TOP_store64,	TOP_storex64,	TOP_storexx64, TOP_store64_off},
   {TOP_UNDEFINED, TOP_stss,	TOP_stssx,	TOP_stssxx,	TOP_stss_n32},
   {TOP_UNDEFINED, TOP_stsd,	TOP_stsdx,	TOP_stsdxx,	TOP_stsd_n32},
+  {TOP_UNDEFINED, TOP_stntss,   TOP_stntssx,    TOP_stntssxx,   TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_stntsd,   TOP_stntsdx,    TOP_stntsdxx,   TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_stdqa,	TOP_stdqax,	TOP_stdqaxx,	TOP_stdqa_n32},
   {TOP_UNDEFINED, TOP_stntpd,	TOP_stntpdx,	TOP_stntpdxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_stdqu,	TOP_stdqux,	TOP_stdquxx,	TOP_UNDEFINED},

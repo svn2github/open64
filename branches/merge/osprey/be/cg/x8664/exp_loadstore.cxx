@@ -591,6 +591,11 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
     else Build_OP(!Is_Target_SSE2() ? TOP_ldlps_n32 : TOP_ld64_2sse_n32, result, disp, ops);    
   }
   else if (mtype == MTYPE_V16F8 || mtype == MTYPE_V16C8) {
+    if(Is_Target_Barcelona()){
+     if(base != NULL)
+       Build_OP (TOP_ldupd, result, base, disp, ops);
+     else Build_OP (TOP_ldupd_n32, result, disp, ops);
+   }else{
     TN* ofst = TN_is_symbol( disp )
       ? Gen_Symbol_TN( TN_var(disp), TN_offset(disp) + 8, TN_RELOC_NONE )
       : Gen_Literal_TN( TN_value(disp) + 8, TN_size(disp) );
@@ -603,8 +608,14 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
       Build_OP (TOP_ldhpd_n32, result, ofst, ops);    
     }
     Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+   }
   }
   else if (mtype == MTYPE_V16F4 || mtype == MTYPE_V16C4) {
+   if(Is_Target_Barcelona()){
+     if(base != NULL)
+       Build_OP (TOP_ldups, result, base, disp, ops);
+     else Build_OP (TOP_ldups_n32, result, disp, ops);
+   }else{
     TN* ofst = TN_is_symbol( disp )
       ? Gen_Symbol_TN( TN_var(disp), TN_offset(disp) + 8, TN_RELOC_NONE )
       : Gen_Literal_TN( TN_value(disp) + 8, TN_size(disp) );
@@ -617,6 +628,7 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
       Build_OP (TOP_ldhps_n32, result, ofst, ops);    
     }
     Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+   }
   }
   else
     Expand_Composed_Load ( op, result, base, disp, variant, ops );
@@ -877,10 +889,16 @@ Exp_Ldst (
       } else {
 	// The Is_Target_32bit() cases.
 
-	FmtAssert(ISA_LC_Value_In_Class(base_ofst, LC_simm32),
-		  ("NYI: 64-bit offset under -m32"));
+	if (!ISA_LC_Value_In_Class(base_ofst, LC_simm32))
+	  ErrMsg(EC_Misc_User_Abort,
+	    ("Detected 64-bit address offset under -m32.  Try -m64 -mcmodel=medium."));
 
-	if( Gen_PIC_Shared && !ST_is_export_local(base_sym) ){
+	if( Gen_PIC_Shared && (!ST_is_export_local(base_sym) ||
+	                       // function, even if export_local?
+	                       ST_class(base_sym) == CLASS_FUNC ||
+	                       // section?
+	                       (ST_class(base_sym) == CLASS_BLOCK &&
+	                        STB_section(base_sym) /* bug 10097 */)) ){
 	  FmtAssert(!ST_is_thread_local(base_sym),
 		    ("Exp_Ldst: thread-local storage NYI under PIC"));
 	  TN* tmp = base_ofst == 0 ? tn : Build_TN_Like(tn);
@@ -1002,7 +1020,10 @@ Exp_Ldst (
 	}
       }
 
-      if( Gen_PIC_Shared && !ST_is_export_local(base_sym) ){
+      if( Gen_PIC_Shared && (!ST_is_export_local(base_sym) ||
+                              // section?
+                             (ST_class(base_sym) == CLASS_BLOCK &&
+                              STB_section(base_sym) /* bug 10097 */)) ){
 	FmtAssert(!ST_is_thread_local(base_sym),
 		  ("Exp_Ldst: thread-local storage NYI under PIC"));
 	if( Is_Target_64bit() ){

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -81,6 +85,11 @@ void Initialize_Targ_Info(void)
   case TARGET_anyx86:
     proc = PROCESSOR_opteron;
     break;
+
+  case TARGET_barcelona:
+    proc = PROCESSOR_barcelona;
+    break;
+
   case TARGET_pentium4:
   case TARGET_xeon:
   case TARGET_em64t:

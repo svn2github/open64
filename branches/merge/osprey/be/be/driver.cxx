@@ -145,6 +145,7 @@ extern ERROR_DESC EDESC_BE[], EDESC_CG[];
 extern "C" char *cplus_demangle (const char *, int);
 extern void Recompute_addr_saved_stmt (WN *);
 extern void Set_addr_saved_stmt (WN *, BOOL);
+extern void CYG_Instrument_Driver(WN *);
 #endif
 
 extern void Initialize_Targ_Info(void);
@@ -1683,7 +1684,15 @@ Preprocess_PU (PU_Info *current_pu)
   } else if ( Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO] ) {
     WN_Annotate(pu, PROFILE_PHASE_BEFORE_VHO, &MEM_pu_pool);
   }
-
+#ifdef KEY
+  /* Insert __cyg_profile_func_enter/exit instrumentation (Bug 570) */
+  if ( OPT_Cyg_Instrument > 0 && ! Run_ipl &&
+       ( ! PU_no_instrument(Get_Current_PU()) ||
+         PU_has_inlines(Get_Current_PU()) ) ) {
+    Set_Error_Phase ( "CYG Instrumenting" );
+    CYG_Instrument_Driver( pu );
+  }
+#endif
   Set_Error_Phase ( "VHO Processing" );
   pu = VHO_Lower_Driver (current_pu, pu);
 

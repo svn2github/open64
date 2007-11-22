@@ -162,6 +162,7 @@ void (*EH_Dump_INITOs_p) (WN *, FILE *);
 
 #ifdef TARG_X8664
 void (*CG_Set_Is_Stack_Used_p) ();
+INT (*Push_Pop_Int_Saved_Regs_p) (void);
 #endif
 
 // ----------------------------------------------------------------------

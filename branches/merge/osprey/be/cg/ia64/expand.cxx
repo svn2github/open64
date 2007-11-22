@@ -1149,8 +1149,14 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE
     return;
   }
 
+#ifdef KEY
+  if (CGEXP_cvrt_int_mult_to_add_shift &&
+      (TN_has_value(src1) || TN_has_value(src2) ||
+       TN_is_rematerializable(src1) ||TN_is_rematerializable(src2))) {
+#else
   if (!Disable_Const_Mult_Opt && (TN_has_value(src1) || TN_has_value(src2) ||
-				  TN_is_rematerializable(src1) ||TN_is_rematerializable(src2))) {
+      TN_is_rematerializable(src1) ||TN_is_rematerializable(src2))) {
+#endif
     TN *var_tn;
     if ( TN_has_value(src1) || TN_is_rematerializable(src1) ) {
       constant = TN_has_value(src1) ? TN_value(src1) : WN_const_val(TN_home(src1));
@@ -3145,7 +3151,6 @@ Init_CG_Expand (void)
   Trace_Exp = Get_Trace (TP_CGEXP, 1);
   /* whirl2ops uses -ttexp:2 */
   Trace_Exp2 = Get_Trace (TP_CGEXP, 4);
-  Disable_Const_Mult_Opt = Get_Trace (TP_CGEXP, 32);
   /* calls.c use -ttexp:64 */
 
   if (Initialized) return;

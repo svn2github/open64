@@ -156,6 +156,7 @@ extern "C" {
 
 #ifndef TARG_IA64
 #include "config_lno.h" // for LNO_Run_Simd
+#include "config_opt.h" // for OPT_Cyg_Instrument
 #endif
 
 #ifdef TARG_X8664
@@ -687,7 +688,7 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
 	/* if size is given, then emit value for asm */
       	fprintf ( pfile, "\t%s\t", AS_SIZE);
 	EMT_Write_Qualified_Name(pfile, st);
-	fprintf ( pfile, ", %d\n", size);
+	fprintf ( pfile, ", %d\n", (INT)size);
     }
     Base_Symbol_And_Offset (st, &base_st, &base_ofst);
     EMT_Write_Qualified_Name (pfile, st);
@@ -2582,9 +2583,29 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
       asm_string  = Replace_Substring(asm_string, pattern, name);
     }
   }
-#else // TARG_IA64
-
-#ifdef TARG_X8664
+#elif defined(TARG_MIPS)
+  // SiCortex 3443: Handle %z<num> constraint assuming no special meaning
+  if (TN_is_register(tn)) {
+    if (strstr(asm_string, "%z")) {
+      char replace[5];
+      sprintf(replace, "%%z%d", position);
+      asm_string = Replace_Substring(asm_string, replace, name);
+    }
+  }
+  // Replace any %x<num> constraint with the immediate value written in hex
+  if (!TN_is_register(tn) && !TN_is_symbol(tn)) {
+    if (strstr(asm_string, "%x")) {
+      FmtAssert(!memory && TN_is_constant(tn) && TN_has_value(tn),
+                ("ASM operand for %x constraint must be numeric constant"));
+      char* buf = (char*) alloca(32);
+      sprintf(buf, "0x%llx",TN_value(tn));
+      name = buf;
+      char replace[5];
+      sprintf(replace, "%%x%d", position);
+      asm_string = Replace_Substring(asm_string, replace, name);
+    }
+  }
+#elif defined(TARG_X8664)
   if (TN_is_register(tn)) {
     // Bug 3141: Support the 'y' modifier in operand references within
     //           the asm template.
@@ -2744,8 +2765,6 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
       asm_string =  Replace_Substring(asm_string, x86pattern, suffix);
     }
   }
-#endif// TARG_X866
-
 #endif // TARG_IA64
   
   return asm_string;
@@ -6641,7 +6660,12 @@ Process_Bss_Data (SYMTAB_IDX stab)
   INT64 size_to_skip;
   INT64 not_yet_skip_amt = 0; // bug 10678
 #ifdef KEY // bug 10678
-  ST*	last_base = NULL;
+  ST*   last_base = NULL;       // bug 10678
+  PU    *pu = &Get_Current_PU();
+
+  // bug 13829: if not inside any PU, get 1st PU
+  if (pu == NULL && Pu_Table.Size() > 1)
+    pu = &(Pu_Table[(PU_IDX)1]);
 #endif
 
   for (bssp = bss_list.begin(); bssp != bss_list.end(); ++bssp) {
@@ -6661,6 +6685,14 @@ Process_Bss_Data (SYMTAB_IDX stab)
 		continue;	/* not allocated */
 	if (!STB_nobits(base))
 		continue;	/* not a bss symbol */
+#ifdef TARG_X8664
+        // Compute SIZE now.  The x86-64 code below relies on SIZE to determine
+        // if Change_Section_Origin is needed.  Bug 13863.
+        size = TY_size(ST_type(sym));
+        // C++ requires empty classes to have unique addresses.
+        if (size == 0 && (pu == NULL || PU_cxx_lang(*pu)/*bug 13826*/))
+          size = 1;
+#endif
 
 #ifdef TARG_X8664
 	// Fix bug 617
@@ -6682,7 +6714,7 @@ Process_Bss_Data (SYMTAB_IDX stab)
 	      break;
 	    }
 	  }
-	  if (!has_named_section) {
+	  if (!has_named_section && size != 0) {
 	    Change_Section_Origin (base, ofst);	    
 	    if ( !Simd_Reallocate_Objects ) {
               // If Simd_Reallocate_Objects, we already emitted alignment 
@@ -6707,7 +6739,8 @@ Process_Bss_Data (SYMTAB_IDX stab)
 		if (ST_class(sym) == CLASS_VAR &&
 		    ST_base_idx(sym) != ST_st_idx(sym) &&
 		    !ST_is_equivalenced(sym) &&
-		    ST_class(ST_base(sym)) != CLASS_BLOCK)
+		    ST_class(ST_base(sym)) != CLASS_BLOCK &&
+                    pu != NULL && ! PU_ftn_lang(*pu) /* bug 13585 */)
 		  goto skip_definition;
 #endif
 		size = TY_size(ST_type(sym));
@@ -6736,6 +6769,8 @@ Process_Bss_Data (SYMTAB_IDX stab)
 				not_yet_skip_amt = MAX(not_yet_skip_amt, size); // bug 10678
 				size_to_skip = next_ofst - ofst;
 			}
+                        else if (next_base == base && next_ofst > (ofst+size))
+                          size_to_skip = MAX(size_to_skip, next_ofst - ofst);
 		}
 		// assume here that if multiple symbols with same offset,
 		// are sorted so that largest size is last.
@@ -7077,8 +7112,12 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   // safe(ish) to use in headers, including sys/*.h
   // when PU is marked extern _inline_ in C, 
   // needn't emit anything.
-  if (PU_is_extern_inline (Pu_Table[ST_pu(pu)]))
-        return;
+  if ( PU_is_extern_inline (Pu_Table[ST_pu(pu)]) ) {
+    if ( OPT_Cyg_Instrument >= 4 && ! PU_no_instrument(Pu_Table[ST_pu(pu)]) ) {
+      // Bug 13801
+      DevWarn( "Keeping %s for -finstrument-functions", ST_name(pu) );
+    } else return;
+  }
   // Notes on bugs 2839 and 2934: CG_emit_asm_dwarf controls generate_dwarf
   // and generate_elf_symbols. generate_dwarf and generate_elf_symbols are
   // used interchangeably in cgemit for generating dwarf code as well as to 
@@ -7814,6 +7853,7 @@ Target_Name (TARGET_PROCESSOR t)
   switch (t)
   {
     case TARGET_opteron: return "opteron";
+    case TARGET_barcelona: return "barcelona";
     case TARGET_athlon64: return "athlon64";
     case TARGET_athlon: return "athlon";
     case TARGET_em64t: return "em64t";
@@ -7892,6 +7932,9 @@ Emit_Options (void)
 
     if (Is_Target_3DNow()) fputs ("-m3dnow ", Asm_File);
     else fputs ("-mno-3dnow ", Asm_File);
+
+    if (Is_Target_SSE4a()) fputs ("-msse4a ", Asm_File);
+    else fputs ("-mno-sse4a ", Asm_File);
 
     if (Is_Target_64bit()) fputs ("-m64", Asm_File);
     else fputs ("-m32", Asm_File);

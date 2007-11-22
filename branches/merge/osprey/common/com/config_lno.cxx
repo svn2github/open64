@@ -742,10 +742,6 @@ static OPTION_DESC Options_LNO[] = {
 					Pct_Excess_Writes_Nonhidable ),
   LNOPT_BOOL (   "plower",	        NULL,	Pseudo_lower ),
   LNOPT_BOOL (   "plower_mp",           NULL,	Pseudo_lower ),
-#ifndef KEY
-  LNOPT_U32_SET  ( "prefetch",		"pref",	0,0,2,	Run_prefetch, 
-  					Run_prefetch_set ),
-#else
   LNOPT_U32_SET  ( "prefetch",		"pref",	NO_PREFETCH,NO_PREFETCH,
   					AGGRESSIVE_PREFETCH,	
 					Run_prefetch, Run_prefetch_set ),
@@ -754,7 +750,6 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL( "pf_inv_stride",          NULL,   Prefetch_invariant_stride),
   LNOPT_U32 ( "pf_stride_ahead",            NULL,   8,0,128, Prefetch_stride_ahead ),
   LNOPT_U32 ( "stream_prefetch",            NULL,   2,0,128, Run_stream_prefetch ),
-#endif
   LNOPT_U32  ( "prefetch_ahead",	NULL,	2,0,50,	Prefetch_ahead ),
   LNOPT_U32  (   "pf_ahead",		NULL,	2,0,50,	Prefetch_ahead ),
 #ifdef TARG_IA64

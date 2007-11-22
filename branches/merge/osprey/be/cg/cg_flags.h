@@ -295,6 +295,11 @@
  *	Generate a floating divide operation in place of a 32 bit
  *	integer divide.
  *
+#ifdef KEY
+ *  CGEXP_cvrt_int_mult_to_add_shift
+ *      Generate a sequence of adds and shifts in place of an integer multiply.
+#endif
+ *
  *  CGEXP_fast_imul
  *	Generate an alternative sequence for integer multiplies
  *	where possible instead of the straight forward translation.
@@ -568,6 +573,9 @@ extern BOOL CGEXP_float_consts_from_ints;
 extern BOOL CGEXP_cvrt_int_div_to_mult;
 extern BOOL CGEXP_cvrt_int_div_to_fdiv;
 extern BOOL CGEXP_opt_float_div_by_const;
+#ifdef KEY
+extern BOOL CGEXP_cvrt_int_mult_to_add_shift;
+#endif
 
 // 10/17/00: these are temporary for osprey tuning -- remove later
 extern const char *CGEXP_lfhint_L1;
@@ -662,6 +670,8 @@ extern INT32 CG_LOOP_recurrence_min_omega;
 #ifdef KEY
 extern BOOL  LOCS_Fwd_Scheduling;
 extern BOOL  LOCS_Fwd_Scheduling_set;
+extern UINT32 LOCS_Scheduling_Algorithm;
+extern BOOL LOCS_Scheduling_Algorithm_set;
 extern BOOL CG_min_spill_loc_size;
 extern BOOL CG_min_stack_size;
 extern BOOL flag_test_coverage;
@@ -690,7 +700,10 @@ extern BOOL CG_idivbyconst_opt;
 extern BOOL CG_fold_constimul;
 extern BOOL CG_LOOP_cloop;
 extern BOOL CG_use_lddqu;
-extern BOOL CG_valgrind_friendly; 
+extern BOOL CG_push_pop_int_saved_regs;
+extern BOOL CG_push_pop_int_saved_regs_Set;
+extern BOOL CG_valgrind_friendly;
+extern UINT32 CG_ptr_load_use_latency;
 #endif
 
 // Cycle Count Flags

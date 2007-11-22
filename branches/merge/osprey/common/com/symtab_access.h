@@ -926,6 +926,7 @@ inline void
 Set_PU_is_marked_inline (PU& pu) 	{ pu.flags |= PU_IS_MARKED_INLINE; }
 inline void
 Clear_PU_is_marked_inline (PU& pu)	{ pu.flags &= ~PU_IS_MARKED_INLINE; }
+
 inline BOOL
 PU_no_instrument (const PU& pu)         { return (pu.flags & PU_NO_INSTRUMENT) != 0; }
 inline void
