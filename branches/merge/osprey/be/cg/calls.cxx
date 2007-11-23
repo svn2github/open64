@@ -145,6 +145,12 @@ static enum {
 BOOL LC_Used_In_PU;
 
 /* TNs to save the callers GP and FP if needed */
+#ifdef TARG_IA64
+TN *Caller_GP_TN;
+TN *Caller_FP_TN;
+TN *Caller_Pfs_TN;
+TN *ra_intsave_tn;
+#else
 #ifdef TARG_MIPS
 TN *Caller_GP_TN;
 #else
@@ -153,7 +159,7 @@ static TN *Caller_GP_TN;
 static TN *Caller_FP_TN;
 static TN *Caller_Pfs_TN;
 static TN *ra_intsave_tn;
-
+#endif  // TARG_IA64
 
 /* Keep track of a TN with the value of the current PU's stack pointer
  * adjustment (i.e. the frame length):
