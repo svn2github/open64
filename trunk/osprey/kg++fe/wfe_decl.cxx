@@ -2269,7 +2269,8 @@ Gen_Assign_Of_Init_Val (
           TY_IDX targ_ty = WN_ty(target);
           ST* addr_st = Gen_Temp_Symbol (TY_mtype(targ_ty), "target");
           WN* wn = WN_Stid (TY_mtype(targ_ty), 0, addr_st, targ_ty,
-                            WN_Binary (OPR_ADD, Pointer_Mtype, target,
+                            WN_Binary (OPR_ADD, Pointer_Mtype, 
+				       WN_CopyNode(target),
                                        WN_Intconst(MTYPE_I4, offset) ) );
           WFE_Stmt_Append (wn, Get_Srcpos());
           target = WN_Ldid (TY_mtype(targ_ty), 0, addr_st, targ_ty);
