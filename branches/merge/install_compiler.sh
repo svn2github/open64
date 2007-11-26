@@ -455,6 +455,8 @@ INSTALL_MISC () {
     if [ "$TARG_HOST" = "x8664" ]; then
         INSTALL_EXEC_SUB ${AREA}/targ_info/opteron.so ${PHASEPATH}/opteron.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/em64t.so ${PHASEPATH}/em64t.so
+        INSTALL_EXEC_SUB ${AREA}/targ_info/core.so ${PHASEPATH}/core.so
+        INSTALL_EXEC_SUB ${AREA}/targ_info/barcelona.so ${PHASEPATH}/barcelona.so
     fi
 #    if [ ! -z "$ROOT" ] ; then
 #        for i in gcc f77 as ld g++ gas as ; do
