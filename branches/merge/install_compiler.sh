@@ -103,6 +103,7 @@ BUILD_OS="linux"
 
 # prepare the source dir
 GNUFE_AREA="osprey-gcc/targ${BUILD_HOST}_${TARG_HOST}"
+GNUFE42_AREA="osprey-gcc-4.2.0/targ${BUILD_HOST}_${TARG_HOST}"
 LD_NEW_DIR="osprey/targcygnus_${BUILD_HOST}_${TARG_HOST}/ld"
 
 # prepare the distination dir
