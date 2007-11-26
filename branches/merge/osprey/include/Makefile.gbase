@@ -201,7 +201,8 @@ pathscale_defs.h: $(BUILD_TOT)/../defs.mk
 	echo '#define OPEN64_MINOR_VERSION "${OPEN64_MINOR_VERSION}"' >> $@
 	echo '#define OPEN64_FULL_VERSION "${OPEN64_FULL_VERSION}"' >> $@
 	echo '#define OPEN64_GCC_VERSION "${OPEN64_GCC_VERSION}"' >> $@
-	echo '#define OPEN64_GCC4_VERSION "${OPEN64_GCC4_VERSION}"' >> $@
+	echo '#define OPEN64_GCC40_VERSION "${OPEN64_GCC40_VERSION}"' >> $@
+	echo '#define OPEN64_GCC42_VERSION "${OPEN64_GCC42_VERSION}"' >> $@
 	echo '#define OPEN64_INSTALL_PREFIX "${OPEN64_INSTALL_PREFIX}"' >> $@
 	echo '#define OPEN64_TARGET "${OPEN64_TARGET}"' >> $@
 	echo '#define OPEN64_PATCH_LEVEL "${OPEN64_PATCH_LEVEL}"' >> $@ 

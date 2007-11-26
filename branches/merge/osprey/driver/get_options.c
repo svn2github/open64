@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 
@@ -360,14 +364,20 @@ parse_Xlinker_option (char **argv, int *argi)
 	if (!strcmp(argv[*argi], "-Xlinker"))
 	{
 		/* -Xlinker */
+		int flag;
 		get_next_arg(argi);
+#ifndef KEY	// Support -Xlinker for bug 13641.
+		warning("%s is no longer supported, use %s instead",
+			option_name, "-Wl,");
+#endif
 		if (argv[*argi] == NULL) {
 		  parse_error(option_name, "no argument given for option");
 		  return add_new_option(option_name);
 		}
-		optargs = argv[*argi];
+		flag = add_derived_option(O_Xlinker__, argv[*argi]);
+		add_phase_for_option(flag, P_any_ld);
 		get_next_arg(argi);
-		return add_string_option(O_WlC, optargs);
+		return flag;
 	} else {
        		get_next_arg(argi);
 		return O_Unrecognized;

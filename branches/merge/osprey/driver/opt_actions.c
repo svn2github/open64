@@ -1,5 +1,8 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
+ */
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -76,6 +79,7 @@ int inline_t = UNDEFINED;
 /* Before front-end: UNDEFINED.  After front-end: TRUE if inliner will be run.
    Bug 11325. */
 int run_inline;
+int malloc_algorithm = UNDEFINED;
 #endif
 boolean dashdash_flag = FALSE;
 boolean read_stdin = FALSE;
@@ -91,7 +95,8 @@ int proc = UNDEFINED;
 #ifdef TARG_X8664
 static int target_supported_abi = UNDEFINED;
 static boolean target_supports_sse2 = FALSE;
-static boolean target_prefers_sse3 = FALSE;;
+static boolean target_prefers_sse3 = FALSE;
+static boolean target_supports_sse4a = FALSE;
 #endif
 
 extern boolean parsing_default_options;
@@ -376,6 +381,20 @@ Process_Opt_Group ( char *opt_args )
     add_option_seen ( O_ivpad );
 #endif
   }
+
+#ifdef KEY
+  /* Go look for -OPT:malloc_algorithm */
+  optval = Get_Group_Option_Value(opt_args, "malloc_algorithm", "malloc_alg");
+  if (optval != NULL &&
+      atoi(optval) > 0) {
+#ifdef TARG_X8664	// Option available only for x86-64.  Bug 12431.
+     malloc_algorithm = atoi(optval);
+#else
+     warning("ignored -OPT:malloc_algorithm because option not supported on"
+	     " this architecture");
+#endif
+  }
+#endif
 }
 
 void
@@ -571,7 +590,13 @@ Process_Targ_Group ( char *targ_args )
 	} else if (!strncasecmp(cp, "sse3=off", 9)) {
 	  add_option_seen(O_mno_sse3);
 	  toggle(&sse3, FALSE);
-	}
+	}else if (!strncasecmp(cp, "sse4a=on", 9)){
+          add_option_seen(O_mno_sse4a);
+          toggle(&sse4a, TRUE);
+        }else if (!strncasecmp(cp, "sse4a=off", 10)){
+          add_option_seen(O_mno_sse4a);
+          toggle(&sse4a, FALSE);
+        }
 #endif
 	break;
     }
@@ -605,7 +630,7 @@ Check_Target ( void )
 
 #ifdef TARG_X8664
   if (target_cpu == NULL) {
-    set_cpu ("opteron", M_ARCH);	// Default to Opteron.
+    set_cpu ("auto", M_ARCH);	// Default to auto.
   }
 
   // Uses ABI to determine ISA.  If ABI isn't set, it guesses and sets the ABI.
@@ -620,8 +645,8 @@ Check_Target ( void )
 	toggle(&abi, ABI_IA32);
     	add_option_seen ( O_ia32 );
 #elif TARG_MIPS
-	toggle(&abi, ABI_N32);
-    	add_option_seen ( O_n32 );
+	toggle(&abi, ABI_64);
+    	add_option_seen ( O_64 );
 #elif TARG_X8664
 	// User didn't specify ABI.  Use the ABI supported on host.  Bug 8488.
 	if (target_supported_abi == ABI_N32) {
@@ -905,12 +930,12 @@ Process_Inline ( void )
       || strncmp (option_name, "-fno-inline", 11) == 0
 #endif
      )
-    toggle_inline_off();
+      toggle_inline_off();
   else if (*args == '\0'
 #ifdef KEY
-      || strncmp (option_name, "-finline", 8) == 0
+           || strncmp (option_name, "-finline", 8) == 0
 #endif
-     )
+          )
     /* Treat "-INLINE" like "-INLINE:=on" for error messages */
     toggle_inline_on();
   else do {
@@ -1531,26 +1556,29 @@ static struct
   int abi;			// CPUs supporting ABI_64 also support ABI_N32
   boolean supports_sse2;	// TRUE if support SSE2
   boolean prefers_sse3;		// TRUE if target prefers code to use SSE3
+  boolean supports_sse4a;       // TRUE if support SSE4a
 } supported_cpu_types[] = {
-  { "any_64bit_x86",	"anyx86",	ABI_64,		TRUE,	FALSE },
-  { "any_32bit_x86",	"anyx86",	ABI_N32,	FALSE,	FALSE },
-  { "i386",	"anyx86",		ABI_N32,	FALSE,	FALSE },
-  { "i486",	"anyx86",		ABI_N32,	FALSE,	FALSE },
-  { "i586",	"anyx86",		ABI_N32,	FALSE,	FALSE },
-  { "athlon",	"athlon",		ABI_N32,	FALSE,	FALSE },
-  { "athlon-mp", "athlon",		ABI_N32,	FALSE,	FALSE },
-  { "athlon-xp", "athlon",		ABI_N32,	FALSE,	FALSE },
-  { "athlon64",	"athlon64",		ABI_64,		TRUE,	FALSE },
-  { "athlon64fx", "opteron",		ABI_64,		TRUE,	FALSE },
-  { "i686",	"pentium4",		ABI_N32,	FALSE,	FALSE },
-  { "ia32",	"pentium4",		ABI_N32,	TRUE,	FALSE },
-  { "k7",	"athlon",		ABI_N32,	FALSE,	FALSE },
-  { "k8",	"opteron",		ABI_64,		TRUE,	FALSE },
-  { "opteron",	"opteron",		ABI_64,		TRUE,	FALSE },
-  { "pentium4",	"pentium4",		ABI_N32,	TRUE,	FALSE },
-  { "xeon",	"xeon",			ABI_N32,	TRUE,	FALSE },
-  { "em64t",	"em64t",		ABI_64,		TRUE,	TRUE },
-  { "core",	"core",			ABI_64,		TRUE,	TRUE },
+  { "any_64bit_x86",	"anyx86",	ABI_64,		TRUE,	FALSE, FALSE},
+  { "any_32bit_x86",	"anyx86",	ABI_N32,	FALSE,	FALSE, FALSE},
+  { "i386",	"anyx86",		ABI_N32,	FALSE,	FALSE, FALSE},
+  { "i486",	"anyx86",		ABI_N32,	FALSE,	FALSE, FALSE},
+  { "i586",	"anyx86",		ABI_N32,	FALSE,	FALSE, FALSE},
+  { "athlon",	"athlon",		ABI_N32,	FALSE,	FALSE, FALSE},
+  { "athlon-mp", "athlon",		ABI_N32,	FALSE,	FALSE, FALSE},
+  { "athlon-xp", "athlon",		ABI_N32,	FALSE,	FALSE, FALSE},
+  { "athlon64",	"athlon64",		ABI_64,		TRUE,	FALSE, FALSE},
+  { "athlon64fx", "opteron",		ABI_64,		TRUE,	FALSE, FALSE},
+  { "turion",	"athlon64",		ABI_64,		TRUE,	FALSE, FALSE},
+  { "i686",	"pentium4",		ABI_N32,	FALSE,	FALSE, FALSE},
+  { "ia32",	"pentium4",		ABI_N32,	TRUE,	FALSE, FALSE},
+  { "k7",	"athlon",		ABI_N32,	FALSE,	FALSE, FALSE},
+  { "k8",	"opteron",		ABI_64,		TRUE,	FALSE, FALSE},
+  { "opteron",	"opteron",		ABI_64,		TRUE,	FALSE, FALSE},
+  { "pentium4",	"pentium4",		ABI_N32,	TRUE,	FALSE, FALSE},
+  { "xeon",	"xeon",			ABI_N32,	TRUE,	FALSE, FALSE},
+  { "em64t",	"em64t",		ABI_64,		TRUE,	TRUE,  FALSE},
+  { "core",	"core",			ABI_64,		TRUE,	TRUE,  FALSE},
+  { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE, TRUE},
   { NULL,	NULL, },
 };
   
@@ -1586,6 +1614,30 @@ get_num_after_colon (char *str)
   return num;
 }
 
+
+// Return the CPU target name to default to as a last resort.
+static char *
+get_default_cpu_name (char *msg)
+{
+  char *cpu_name = NULL;
+  char *abi_name = NULL;
+
+  if (get_platform_abi() == ABI_64) {
+    cpu_name = "anyx86";
+    abi_name = "64-bit";
+  } else {
+    cpu_name = "anyx86";
+    abi_name = "32-bit";
+  }
+
+  // NULL means not to warn.
+  if (msg != NULL)
+    warning("%s, defaulting to basic %s x86.", msg, abi_name);
+
+  return cpu_name;
+}
+
+
 // Get CPU name from /proc/cpuinfo.
 char *
 get_auto_cpu_name ()
@@ -1601,39 +1653,49 @@ get_auto_cpu_name ()
 
   f = fopen("/proc/cpuinfo", "r");
   if (f == NULL) {
-    error("cannot read /proc/cpuinfo");
-    return NULL;
+    return get_default_cpu_name("cannot read /proc/cpuinfo");
   }
+
+  // Parse /proc/cpuinfo.
   while (fgets(buf, 256, f) != NULL) {
-    if (!strncmp("cpu family", buf, 10)) {
+    // vendor_id
+    if (!strncmp("vendor_id", buf, 9)) {
+      if (strstr(buf, "AuthenticAMD")) {
+	amd = TRUE;
+      } else if (strstr(buf, "GenuineIntel")) {
+	intel = TRUE;
+      } else {
+	return get_default_cpu_name("unsupported vendor_id in /proc/cpuinfo");
+      }
+
+    // cpu family
+    } else if (!strncmp("cpu family", buf, 10)) {
       cpu_family = get_num_after_colon(buf);
-    } else if (!strncmp("model\t", buf, 6)) {
+
+    // model
+    } else if (!strncmp("model\t", buf, 6) ||
+	       !strncmp("model   ", buf, 8)) {
       model = get_num_after_colon(buf);
+
+    // model name
     } else if (!strncmp("model name", buf, 10)) {
-      if (strstr(buf, "AMD Athlon(tm) 64 ") != NULL)
-	cpu_name = "athlon64";
-      else if (strstr(buf, "AMD Athlon(tm) MP ") != NULL)
-	cpu_name = "athlon-mp";
-      else if (strstr(buf, "AMD Athlon(tm) Processor") != NULL)
-	cpu_name = "athlon";
-      else if (strstr(buf, "AMD Opteron(tm) ") != NULL)
+      if (strstr(buf, "Opteron")) {		// AMD
 	cpu_name = "opteron";
-      else if (strstr(buf, "Intel(R) Pentium(R) 4 ") != NULL)
+      } else if (strstr(buf, "Athlon")) {
+	if (strstr(buf, "64"))
+	  cpu_name = "athlon64";
+	else if (strstr(buf, "MP"))
+	  cpu_name = "athlon-mp";
+	else
+	  cpu_name = "athlon";
+      } else if (strstr(buf, "Turion")) {
+	cpu_name = "turion";
+      } else if (strstr(buf, "Pentium") &&	// Intel
+		 strstr(buf, "4")) {
 	cpu_name = "pentium4";
-      else if (strstr(buf, "Intel(R) Xeon(TM) ") != NULL) {
+      } else if (strstr(buf, "Xeon")) {
 	cpu_name = "xeon";
 	cpu_name_64bit = "em64t";
-      } else if (strstr(buf, "unknown") != NULL) {	// bug 5785
-	char *abi_name;
-	if (get_platform_abi() == ABI_64) {
-	  cpu_name = "anyx86";
-	  abi_name = "64-bit";
-	} else {
-	  cpu_name = "i386";
-	  abi_name = "32-bit";
-	}
-	warning("CPU model name in /proc/cpuinfo is \"unknown\".  "
-		"Defaulting to basic %s x86.", abi_name);
       }
     } else if (strstr(buf, "GenuineIntel")) {
       intel = TRUE;
@@ -1641,21 +1703,57 @@ get_auto_cpu_name ()
       amd = TRUE;
     }
   }
+
   fclose(f);
 
-  // Cannot determine CPU type from "model name".  Try the CPU family and model
-  // numbers.
-  if (cpu_name == NULL) {
+  // If /proc/cpuinfo doesn't have a supported model name, try to derive one
+  // from the family and model numbers.  If that fails, fall back to a default.
+  // Bug 5785.
+  if (cpu_name == NULL ||
+      // need to differentiate Core-based Xeon's
+      !strcmp(cpu_name, "xeon")) {
+    char *abi_name;
     if (intel == TRUE) {
-      if (cpu_family == 6 &&
-	  model == 15) {
-	cpu_name = "core";
+      switch (cpu_family) {
+	case 4:			// most 80486s
+	case 5:			// Intel P5, P54C, P55C, P24T
+	    return "i386";
+
+	case 6:			// P6, Core, ...
+	  if (model == 15)
+	    return "core";
+
+	  // Treat the rest of the P6 family as generic x86 since we don't
+	  // optimize for them.
+	  return "i386";
+
+	case 15:		// P4
+	  cpu_name = "xeon";
+	  cpu_name_64bit = "em64t";
+	  break;
+      }
+
+    } else if (amd == TRUE) {
+      switch (cpu_family) {
+	case 4:			// 5x86
+	case 5:			// K5, K6
+	case 6:			// K7
+	  return "athlon";
+	case 15:		// Opteron, Athlon64
+	  return "opteron";
+        case 16: 
+	  return "barcelona";   // Barcelona
       }
     }
+
+    if (cpu_name == NULL) {
+      return get_default_cpu_name("cannot deduce a supported CPU name"
+				  " from /proc/cpuinfo");
+    }
   }
-    
+
   if (cpu_name == NULL) {
-    error("cannot determine CPU type from /proc/cpuinfo");
+    error("cpu_name NULL");
     return NULL;
   }
 
@@ -1700,14 +1798,15 @@ set_cpu(char *name, m_flag flag_type)
 static void
 Get_x86_ISA ()
 {
-  char *name;
+  char *name = NULL;
 
   // Get a more specific cpu name.
   if (!strcmp(target_cpu, "auto")) {		// auto
-    name = get_auto_cpu_name();
-    if (name == NULL)
+    target_cpu = get_auto_cpu_name();		// may return anyx86
+    if (target_cpu == NULL)
       return;
-  } else if (!strcmp(target_cpu, "anyx86")) {	// anyx86
+  }
+  if (!strcmp(target_cpu, "anyx86")) {		// anyx86
     // Need ABI to select any_32bit_x86 or any_64bit_x86 ISA.
     if (abi == UNDEFINED) {
       if (get_platform_abi() == ABI_64) {
@@ -1732,6 +1831,7 @@ Get_x86_ISA ()
       target_supported_abi = supported_cpu_types[i].abi;
       target_supports_sse2 = supported_cpu_types[i].supports_sse2;
       target_prefers_sse3 = supported_cpu_types[i].prefers_sse3;
+      target_supports_sse4a = supported_cpu_types[i].supports_sse4a;
       break;
     }
   }
@@ -1753,6 +1853,11 @@ Get_x86_ISA_extensions ()
     return FALSE;
   }
 
+    if (sse4a == TRUE && //todo: sse4a may require sse2
+      !target_supports_sse4a) {
+    error("Target processor does not support SSE4a.");
+    return FALSE;
+  }
 
   if (abi == UNDEFINED) {
     internal_error("Get_x86_ISA_extensions: ABI undefined\n");
@@ -1781,6 +1886,17 @@ Get_x86_ISA_extensions ()
     sse3 = TRUE;
   }
 
+#if 0 //temporarily disable it until we have assembler and linker support for
+      //sse4a instructions
+ // Use SSE4a on systems that supports it.
+  if (target_supports_sse4a &&
+      sse2 != FALSE &&  
+      sse4a != FALSE){//not explicitly turned off
+    sse2 = TRUE;
+    sse4a = TRUE;
+  }
+#endif
+ 
   // No error.  Don't count warnings as errors.
   return TRUE;
 }

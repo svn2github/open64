@@ -50,10 +50,15 @@ LCDEFS += -DIA32
 endif
 ifeq ($(BUILD_TARGET), MIPS)
 LCDEFS += -DMIPS
+# Need to change OPEN64_PRODNAME to denote a MIPS product.
+#LCDEFS += -DOPEN64_PRODNAME='"Compiler"'
 endif
+
 ifeq ($(BUILD_TARGET), X8664)
 LCDEFS += -DX8664
 endif
+
+LCDEFS += -DOPEN64_PRODNAME='"Compiler"'
 
 LCDEFS += -DKEY 
 

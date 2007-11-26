@@ -1,5 +1,9 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -33,6 +37,7 @@
 #include "license.h"
 #include "pathscale_defs.h"
 #include "run.h"
+#include "file_utils.h"
 
 #define VERSION "1.1"
 
@@ -47,6 +52,7 @@ void obtain_license (char *exedir, int argc, char *argv[]) {
     struct stat st ;
     int i ;
     char *l ;
+    char *prodname;
 
     const char *errortext = "Unable to obtain subscription.  The PathScale compiler cannot run without a subscription.\nPlease see http://www.pathscale.com/subscription/1.1/msgs.html for details.\n" ;
    
@@ -121,12 +127,24 @@ void obtain_license (char *exedir, int argc, char *argv[]) {
 	break;
     }
 
+    { // bug 12667
+      char *dir = get_executable_dir();
+      prodname = OPEN64_PRODNAME;
+      if (dir != NULL) {
+	char *basedir = directory_path(dir);
+	char *ndir = concat_strings(basedir, "/lib/" OPEN64_FULL_VERSION "/cray");
+	if (file_exists(ndir)) {
+	  prodname = "Compiler_XTS";
+	}
+      }
+    }
+
     pid = fork() ;
     if (pid == 0) {		// child
         const char *argvec[8] ;
 
         argvec[0] = exename ;
-        argvec[1] = "Compiler" ;
+        argvec[1] = prodname;		// bug 12667
         argvec[2] = language ;
 	 #ifdef PSC_TO_OPEN64
         argvec[3] = OPEN64_BUILD_DATE ;
@@ -156,6 +174,9 @@ void obtain_license (char *exedir, int argc, char *argv[]) {
                 fprintf (stderr, "Subscription client exited with error status\n") ;
                 do_exit (1) ;
             }
+        } else {
+	  fprintf (stderr, "Subscription client error\n") ;	// bug 9164
+	  do_exit(1);
         }
 
     }

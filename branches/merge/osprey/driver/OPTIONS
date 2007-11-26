@@ -1,5 +1,7 @@
 % -*- fundamental -*-
 %
+%  Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
+%
 %  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
 %
 %  Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
@@ -155,7 +157,7 @@
 	"print list of possible options that contain given string"
 %
 
--show	{show_flag = TRUE; }	ALL	GRP,j	self
+-show	{show_flag = TRUE; }	ALL	GRP	self
 	"show phases as they are being invoked"
 -show1	{show_flag = TRUE; }	ALL	NONE	""
 	""
@@ -429,6 +431,8 @@ I-fini%s		;		CC	ld	"-fini %s"
 	"C/C++: keep C comments after cpp; Fortran: runtime subscript checking"
 -ffortran-bounds-check	;	FTN	ffe	"-DEBUG:subscript_check"
 	"check bounds"
+-ffortran2003	;	FTN	ffe	self
+	"Fortran 2003 behavior for BOZ constants in intrinsics"
 % we can safely assume that P_cpp will be the earliest phase
 % P_any_cpp is the generic union of all cpp phases
 -E	last_phase=P_any_cpp; 	ALL	NONE	self
@@ -628,10 +632,14 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
 -ggdb3	toggle(&glevel,3);		ALL	CMP	"-g3"
 	"Produce debugging information for use by GDB"
 #ifdef KEY
--gnu3	toggle(&gnu_version,3);		Cc	NONE	""
-	"Use GCC 3 C/C++ front-end."
--gnu4	toggle(&gnu_version,4);		Cc	NONE	""
-	"Use GCC 4 C/C++ front-end."
+-gnu3	toggle(&gnu_major_version,3);toggle(&gnu_minor_version,3);	Cc	NONE	""
+	"Use GCC 3.3 C/C++ front-end."
+-gnu4	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2);	Cc	NONE	""
+	"Use GCC 4.2 C/C++ front-end."
+-gnu40	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,0);	Cc	NONE	""
+	"Use GCC 4.0 C/C++ front-end."
+-gnu42	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2);	Cc	NONE	""
+	"Use GCC 4.2 C/C++ front-end."
 #endif
 -gstabs		warn_ignored(option_name);	ALL	NONE	""
 	""
@@ -657,7 +665,6 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
         ""
 -itanium toggle(&isa,ISA_IA641);        ALL     NONE    "-i64"
         ""
-
 
 %%% COMBINATIONS
 % !-non_shared means "-non_shared not specified"
@@ -863,7 +870,10 @@ I-xall	;		FTN	ffe	self
         "enable the multiprocessing directives"
 -openmp			;		FTN,Cc	ffe	-mp
         "enable the multiprocessing directives (same as -mp)"
-
+#ifdef KEY
+-fopenmp		;		Cc	cfe	self
+        ""
+#endif
 #ifndef KEY
 -dsm_clone		;		ALL	ipl,be,d	self
 	""
@@ -1169,6 +1179,12 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fcond-mismatch	;		Cc	f	self
 	""
+#ifdef KEY
+-fcxx-openmp	toggle(&fcxx_openmp,1);		Cc	NONE	self -LANG:cxx_openmp=on
+	"Do OpenMP processing under C++"
+-fno-cxx-openmp	toggle(&fcxx_openmp,0);		Cc	NONE	self -LANG:cxx_openmp=off
+	"Do not handle OpenMP under C++"
+#endif
 -fasm	;		Cc	f	self
 	""
 -fms-extensions	;		Cc	f	self
@@ -1582,7 +1598,11 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Improve FP speed by violating ANSI & IEEE rules"
 -fno-unsafe-math-optimizations	;	Cc	f	"-OPT:funsafe_math_optimizations=OFF -fmath-errno"
 	"Conform to ANSI & IEEE math rules at the expense of speed"
+#ifdef MIPS
+-ffloat-store	warn_ignored(option_name);	Cc,FTN	NONE	""
+#else
 -ffloat-store	;	Cc,FTN	be	"-CG:x87_store=1:min_spill_loc_size=1"
+#endif
 	"Do not store floats in registers"
 -fforce-addr	;		Cc	f	self
 	""
@@ -1630,7 +1650,11 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fschedule-insns	;		Cc	f	self
 	""
+-fno-schedule-insns	;		Cc	f	self
+	""
 -fschedule-insns2	;		Cc	f	self
+	""
+-fno-schedule-insns2	;		Cc	f	self
 	""
 -fstrength-reduce	;		Cc	f	self
 	"Perform strength reduction optimisations"
@@ -1640,6 +1664,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Perform jump threading optimisations"
 -ftemplate-depth-%d	;		CC	f	"-ftemplate-depth-%d"
 	"Set maximum instantiation depth for template classes"
+-ftree-ter	;		Cc	f	self
+	""
+-fno-tree-ter	;		Cc	f	self
+	""
 -funroll-all-loops	;		Cc	f	self
 	"Peform loop onrolling for all loops"
 -funroll-loops	;		Cc	f	self
@@ -1751,6 +1779,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -isystem%D	accumulate_isystem(optargs);	Cc,FTN,as,cpp	cpp	"-isystem %D"
 	""
+-isysroot%D	;		Cc,as,cpp	cpp	"-isysroot %D"
+	""
 -MD	;		Cc,as,cpp	cpp	self
 	"Write dependencies to .d output file"
 -MF%s	;		Cc,as,cpp	cpp	"-MF %s"
@@ -1784,10 +1814,15 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 % KEY: Because of limitation on derived flags, we repeat the -fexceptions
 % in the implied list.  This is to find the parent flag so action is done.
+#ifdef X8664
 -fexceptions	;	ALL	cfe	"-fexceptions -TENV:frame_pointer=on"
+	"Enable exception handling"
+#else
+-fexceptions	;	ALL	cfe	self
 	"Enable exception handling"
 -foptimize-regions  ;   Cc  cfe "-foptimize-regions -TENV:omit_ue_destroy_frame=on"
     "Enable optimization of EH regions formation"
+#endif
 -fhandle-exceptions	;	Cc	cfe	self
 	"Enable exception handling"
 -fno-exceptions	;	Cc	cfe	self
@@ -1806,13 +1841,20 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -mfixed-range=%s	;	Cc	NONE	"-TENV:registers_not_allocatable=%s"
 	""
+#ifdef X8664
 -funwind-tables	;		ALL	NONE	"-CG:emit_unwind_info=on -TENV:frame_pointer=on"
 	""
+#else
+-funwind-tables	;		ALL	NONE	"-CG:emit_unwind_info=on"
+	""
+#endif
 -fno-unwind-tables	;	Cc	NONE	"-CG:emit_unwind_info=off"
 	""
 -mconstant-gp	;		Cc	NONE	"-TENV:constant_gp=on"
 	""
 -mno-sdata	;		Cc	NONE	"-G0"
+	""
+-finstrument-functions	;	ALL	NONE	"-OPT:cyg_instr=4"
 	""
 -finhibit-size-directive	;		Cc	be	"-CG:inhibit_size_directive=1:emit_asm_dwarf=0"
 	"Do not generate .size directives"
@@ -1846,6 +1888,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Do not generate position independent code"
 -fno-PIE	;		A	FE	self
  	"Do not generate position independent code"
+-frandom-seed=%s	;		Cc	FE	"-frandom-seed=%s"
+	""
 -freg-struct-return	;		Cc	NONE	""
 	""
 -fshared-data	;		Cc	NONE	""
@@ -1881,6 +1925,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Do not use standard system startup files when linking"
 -nodefaultlibs	;		LINK	ld	self
 	"Do not use standard system libraries when linking"
+--sysroot%D	;		Cc,as,cpp	ld	"--sysroot %D -isysroot %D"
+	""
 %-Xlinker%-	warn_no_longer_supported2(option_name,"-Wl,");		LINK	ld	"-Xlinker %s"
 %	""
 % KEY	Call dedicated code to handle -Xlinker since generic code doesn't
@@ -1917,11 +1963,11 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Disable MMX extensions"
 -msse	;		ALL	NONE	self
 	"Enable SSE extensions"
--mno-sse	toggle(&sse2,FALSE);toggle(&sse3,FALSE);	ALL	be	""
-	"Disable SSE2/SSE3 extensions"
+-mno-sse	toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
+	"Disable SSE2/SSE3/SSE4a extensions"
 -msse2	toggle(&sse2,TRUE);		ALL	be	""
 	"Enable SSE2 extensions"
--mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);	ALL	be	""
+-mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
 	"Disable SSE2/SSE3 extensions"
 -msse3	toggle(&sse2,TRUE);toggle(&sse3,TRUE);	ALL	be	""
 	"Enable SSE3 extensions"
@@ -1931,6 +1977,11 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Enable 3Dnow extensions"
 -mno-3dnow	toggle(&m3dnow,FALSE);	ALL	be	""
 	"Disable 3Dnow extensions"
+-msse4a  toggle(&sse2,TRUE);toggle(&sse4a,TRUE);  ALL     be      ""
+        "Enable SSE4a extensions"
+-mno-sse4a       toggle(&sse4a,FALSE);    ALL     be      ""
+        "Disable SSE4a extensions"
+
 %%% x87
 -mx87-precision=%d	;	ALL	be	"-TARG:x87-precision=%d"
 	"Specify the precision of x87 floating-point calculations (32/64/80-bit)"
