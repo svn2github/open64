@@ -1,4 +1,6 @@
 ;
+; Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+;
 ; Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
 ;
 ; Options for the language- and target-independent parts of the compiler.
@@ -353,6 +355,11 @@ When running CSE, follow conditional jumps
 fcx-limited-range
 Common Report Var(flag_cx_limited_range)
 Omit range reduction step when performing complex division
+
+; KEY
+fcxx-openmp
+Common Report Var(open64_cxx_openmp)
+Enable C++ OpenMP
 
 fdata-sections
 Common Report Var(flag_data_sections)
