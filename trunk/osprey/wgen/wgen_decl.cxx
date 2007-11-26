@@ -2536,10 +2536,11 @@ gs_t init, UINT offset, UINT array_elem_offset,
           TY_IDX targ_ty = WN_ty(target);
           ST* addr_st = Gen_Temp_Symbol (TY_mtype(targ_ty), "target");
           WN* wn = WN_Stid (TY_mtype(targ_ty), 0, addr_st, targ_ty,
-		            WN_Binary (OPR_ADD, Pointer_Mtype, target, 
+                            WN_Binary (OPR_ADD, Pointer_Mtype, 
+				       WN_CopyNode(target),
                                        WN_Intconst(MTYPE_I4, offset) ) );
           WGEN_Stmt_Append (wn, Get_Srcpos());
-          target = WN_Ldid (TY_mtype(targ_ty), 0, addr_st, targ_ty); 
+          target = WN_Ldid (TY_mtype(targ_ty), 0, addr_st, targ_ty);
       }
       WGEN_Expand_Expr (init, TRUE, 0, 0, 0, 0, FALSE, FALSE, target);
       bytes += TY_size(ty);
@@ -3654,7 +3655,6 @@ ST* WGEN_Generate_Initialized_Aggregate(WN* target, gs_t init)
           ("Invalid target operator"));
   ST* target_st = WN_st(target);
 
-
   AGGINIT agginit;
   gs_code_t code = gs_tree_code(init);
   if (! Use_Static_Init_For_Aggregate (target_st, init))
@@ -3665,21 +3665,32 @@ ST* WGEN_Generate_Initialized_Aggregate(WN* target, gs_t init)
                                         FALSE /*gen_initv*/, 
                                         0 /*currect_ofst*/, 
                                         0, 0);
+	return target_st;
   }
   else {
-        // Impossible?
-        Is_True(FALSE, ("Fix me, Use_Static_Init_For_Aggregate returns true"));
+        // TODO: We do not need to create a temp ST in all cases.
+        //  if ST_class(target_st) is FORMAL, we need it indeed.
+        DevWarn ("Static initialize %s(%s)\n", 
+                 ST_name(target_st), Sclass_Name(ST_sclass(target_st)));
+        TY_IDX ty_idx = Get_TY(gs_tree_type(init));
+	ST *temp = New_ST (CURRENT_SYMTAB);
+	ST_Init (temp,
+        	 Save_Str2 (ST_name(target_st), ".init"),
+        	 CLASS_VAR, SCLASS_PSTATIC, EXPORT_LOCAL,
+        	 ty_idx );
 	// setup inito for target_st
-	Set_ST_is_initialized(target_st);
-	agginit.Set_inito(New_INITO(target_st));
-	agginit.Traverse_Aggregate_Constructor (target, init, 
+	Set_ST_is_initialized(temp);
+	agginit.Set_inito(New_INITO(temp));
+	WN* temp_target = WN_Lda (Pointer_Mtype, 0, temp, 0);
+
+	agginit.Traverse_Aggregate_Constructor (temp_target, init, 
 					gs_tree_type(init),
 					gs_tree_type(init),
                                         TRUE /*gen_initv*/, 
                                         0, 
                                         0, 0);
 	// following inlined from WGEN_Finish_Aggregate_Init()
-	TY_IDX ty = ST_type(target_st);
+	TY_IDX ty = ST_type(temp);
 	if (TY_size(ty) == 0 ||
 	    (TY_kind(ty) == KIND_ARRAY &&
 	     !ARB_const_ubnd (TY_arb(ty)) &&
@@ -3696,8 +3707,8 @@ ST* WGEN_Generate_Initialized_Aggregate(WN* target, gs_t init)
 	if (agginit.Last_initv() == 0) {
 	  agginit.WGEN_Add_Aggregate_Init_Padding (0);
 	}
+	return temp;
   }
-  return target_st;
 }
 #endif
 
