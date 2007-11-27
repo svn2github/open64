@@ -1,5 +1,5 @@
 %define open64_name    open64
-%define open64_version 4.0
+%define open64_version 4.1
 %define open64_release 0
 %define open64_prefix  /opt/open64
 %define open64_bin_dir %{open64_prefix}/bin
@@ -48,8 +48,8 @@ Fortran90/95 compilers for the IA-64 Linux ABI and API standards. This project
 is led by Shinming Liu at HP Inc. It is the result of partnership between 
 Tsinghua University, Institute of Computing Technology at the Chinese Academy 
 of Science, CAPSL research laboratory at the University of Delaware, 
-and Hewlett-Packard, Inc. We'd also like to acknowledge the contributions of 
-QLogic Inc (formerly PathScale Inc.) and Sun Chan at SimpLight Nanoelectronics.
+Hewlett-Packard, Inc. and Google Inc.. We'd also like to acknowledge the 
+contributions of PathScale Inc. and Sun Chan at SimpLight Nanoelectronics.
 
 
 %files
@@ -96,13 +96,14 @@ QLogic Inc (formerly PathScale Inc.) and Sun Chan at SimpLight Nanoelectronics.
 %{open64_lib_dir}/%{open64_version}/inline
 %{open64_lib_dir}/%{open64_version}/driver
 
-#%ifnarch %{ix86}
+%ifnarch %{ix86}
+%{open64_lib_dir}/%{open64_version}/libF77.a
 %{open64_lib_dir}/%{open64_version}/libffio.a
 %{open64_lib_dir}/%{open64_version}/libfortran.a
 %{open64_lib_dir}/%{open64_version}/libinstr.a
 %{open64_lib_dir}/%{open64_version}/libmsgi.a
 %{open64_lib_dir}/%{open64_version}/libmv.a
-#%endif
+%endif
 
 %{open64_bin_dir}/hpe.pl
 %{open64_bin_dir}/cycount.pl
@@ -132,10 +133,6 @@ QLogic Inc (formerly PathScale Inc.) and Sun Chan at SimpLight Nanoelectronics.
 %{open64_lib_dir}/%{open64_version}/32/libmv.a
 %endif
 
-%ifarch %{ix86} x86_64
-%{open64_lib_dir}/%{open64_version}/libF77.a
-%endif
-
 %prep
 #%setup
 
@@ -162,15 +159,44 @@ ln -s -f ${PHASEPATH}/be ${PHASEPATH}/whirl2f_be
 
 # install gcc libraries
 for i in libgcc.a libstdc++.a libstdc++.so; do
+%ifarch ia64 x86_64
   F=`gcc --print-file-name $i`
   [ ! -z "$F" ] && [ -e $F ] && ${INSTALL_DATA} $F ${PHASEPATH}/$i
+%endif
+
+%ifarch %{ix86}
+  F=`gcc --print-file-name $i`
+  [ ! -z "$F" ] && [ -e $F ] && ${INSTALL_DATA} $F ${PHASEPATH}/32/$i
+%endif
+
+%ifarch x86_64
+  F=`gcc -m32 --print-file-name $i`
+  [ ! -z "$F" ] && [ -e $F ] && ${INSTALL_DATA} $F ${PHASEPATH}/32/$i
+%endif
+
 done
 
 # install gcc startup files
 for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o ; do
+
+%ifarch ia64 x86_64
   F=`gcc --print-file-name $i`
   [ ! -z "$F" ] && [ -e $F ] && ${INSTALL_DATA} $F ${PHASEPATH}/$i
+%endif
+
+%ifarch %{ix86}
+  F=`gcc --print-file-name $i`
+  [ ! -z "$F" ] && [ -e $F ] && ${INSTALL_DATA} $F ${PHASEPATH}/32/$i
+%endif
+
+%ifarch x86_64
+  F=`gcc -m32 --print-file-name $i`
+  [ ! -z "$F" ] && [ -e $F ] && ${INSTALL_DATA} $F ${PHASEPATH}/32/$i
+%endif
+
 done
+
+echo "Install Open64 Compiler Suite v%{open64_version} to ${RPM_INSTALL_PREFIX} successfully."
 
 true
 
@@ -185,10 +211,20 @@ rm -f ${PHASEPATH}/whirl2f_be
 
 for i in libgcc.a libstdc++.a libstdc++.so; do
   rm -f ${PHASEPATH}/$i
+
+%ifarch %{ix86} x86_64
+  rm -f ${PHASEPATH}/32/$i
+%endif
+
 done
 
 for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o ; do
   rm -f ${PHASEPATH}/$i
+
+%ifarch %{ix86} x86_64
+  rm -f ${PHASEPATH}/32/$i
+%endif
+
 done
 #fi
 
@@ -197,6 +233,7 @@ true
 %postun
 
 %changelog
+* Tue Nov 27 2007 laijx jianxin.lai@hp.com
+-Update installation for gcc libraries
 * Tue Jun 5 2007 laijx jianxin.lai@hp.com
 -initial version
-
