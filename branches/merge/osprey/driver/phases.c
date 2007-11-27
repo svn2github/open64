@@ -71,7 +71,7 @@
 #include "profile_type.h"    /* for PROFILE_TYPE */
 #include "lib_phase_dir.h"   /* for LIBPATH */
 
-#include "license.h"
+int subverbose ;
 
 char *outfile = NULL;		/* from -o <outfile> */
 char *prof_file = NULL;	/* executable file for prof to work upon */

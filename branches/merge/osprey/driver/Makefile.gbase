@@ -131,8 +131,7 @@ SRC_HFILES = \
 	file_names.h \
 	objects.h \
 	phases.h \
-	run.h \
-	license.h
+	run.h 
 
 HFILES= \
 	$(SHARED_HFILES) \
@@ -160,8 +159,7 @@ SRC_CFILES = \
 	phases.c \
 	run.c \
 	special_options.c \
-	version_hg.c \
-	license.c
+	version_hg.c 
 
 CFILES=	\
 	$(SHARED_CFILES) \
