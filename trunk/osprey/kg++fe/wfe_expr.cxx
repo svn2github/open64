@@ -4759,7 +4759,33 @@ WFE_Expand_Expr (tree exp,
         if( TREE_CODE(opnd0) == INDIRECT_REF &&
             TREE_CODE(opnd1) == CONSTRUCTOR ) {
           WN* target = WFE_Address_Of(opnd0);
-          WFE_Generate_Initialized_Aggregate(target, opnd1);
+          ST* copy_st = WFE_Generate_Initialized_Aggregate(target, opnd1);
+          ST* orig_st = WN_st(target);
+          if ( ST_st_idx(copy_st) != ST_st_idx(orig_st) ) {
+            // If the returned ST is not the original one,
+            //   it means we create a new temp ST for initialization
+            // One case is on x8664, the returned struct is converted into 
+            //   the first FORMAL.
+            // When initialize the FORMAL, we need to use a temp st.
+            //   we copy the new ST into target here
+            TY_IDX copy_ty = ST_type(copy_st);
+            WN* ldid = WN_Ldid(TY_mtype(copy_ty), 0, copy_st, copy_ty);
+            if ( WN_operator(target) == OPR_LDA ) {
+              WFE_Stmt_Append(
+                         WN_Stid (TY_mtype(copy_ty), WN_lda_offset(target),
+                                  orig_st, ST_type(orig_st), ldid),
+                         Get_Srcpos() );
+            }
+            else if ( WN_operator(target) == OPR_LDID ) {
+              WFE_Stmt_Append(
+                         WN_Istore(TY_mtype(copy_ty), 0,
+                                   ST_type(orig_st), target, ldid),
+                         Get_Srcpos() );
+            }
+            else {
+              FmtAssert(FALSE, ("Bad operator for target, not LDA/LDID"));
+            }
+          }
           break;
         }
       }

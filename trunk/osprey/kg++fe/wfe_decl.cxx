@@ -3112,20 +3112,30 @@ ST* WFE_Generate_Initialized_Aggregate (WN * target, tree init)
   {
         Traverse_Aggregate_Constructor (target, init, TREE_TYPE(init),
                                         FALSE /*gen_initv*/, 0, 0, 0);
+        return target_st;
   }
   else {
-        // Impossible?
-        Is_True(FALSE, ("Fix me, Use_Static_Init_For_Aggregate returns true"));
+        // TODO: We do not need to create a temp ST in all cases.
+        //  if ST_class(target_st) is FORMAL, we need it indeed.
+        DevWarn ("Static initialize %s(%s)\n",
+                 ST_name(target_st), Sclass_Name(ST_sclass(target_st)));
+        TY_IDX ty_idx = Get_TY(TREE_TYPE(init));
+        ST *temp = New_ST (CURRENT_SYMTAB);
+        ST_Init (temp,
+                Save_Str2 (ST_name(target_st), ".init"),
+                CLASS_VAR, SCLASS_PSTATIC, EXPORT_LOCAL,
+                ty_idx );
         // setup inito for target_st
-        Set_ST_is_initialized(target_st);
-        aggregate_inito = New_INITO (target_st);
+        Set_ST_is_initialized(temp);
+        aggregate_inito = New_INITO (temp);
         not_at_root = FALSE;
         last_aggregate_initv = 0;
-        Traverse_Aggregate_Constructor (target, init, TREE_TYPE(init),
+        WN* temp_target = WN_Lda (Pointer_Mtype, 0, temp, 0);
+        Traverse_Aggregate_Constructor (temp_target, init, TREE_TYPE(init),
                                         TRUE /*gen_initv*/, 0, 0, 0);
         WFE_Finish_Aggregate_Init ();
+        return temp;
   }
-  return target_st;
 }
 #endif
 
