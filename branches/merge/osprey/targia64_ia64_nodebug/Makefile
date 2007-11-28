@@ -58,6 +58,8 @@ LIBRARY_SUBDIRS = \
 	libelfutil \
 	libunwind \
 	libunwindP \
+	libspin \
+	libspin_4_2_0 \
 	libunwind_gdb
 
 

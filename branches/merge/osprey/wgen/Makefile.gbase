@@ -126,6 +126,7 @@ TARG_COMUTIL_DIR        = $(TARGDIR)/libcomutil
 TARG_CMPLRS_DIR         = $(TARGDIR)/libcmplrs
 TARG_LIBIBERTY_DIR      = $(TARGDIR)/libiberty
 TARG_LIBSPIN_DIR      	= $(TARGDIR)/libspin
+TARG_LIBSPIN42_DIR      	= $(TARGDIR)/libspin_4_2_0
 
 # These are the directories in which to look for source files.
 
@@ -291,7 +292,13 @@ COMUTIL_OBJS = $(TARG_COMUTIL_DIR)/libcomutil.a
 ###################################################################
 CMPLRS_OBJS  = $(TARG_CMPLRS_DIR)/libcmplrs.a
 LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
-LIBSPIN_OBJS = $(BUILD_TOT)/../libspin/$(LIBSPIN)
+#LIBSPIN_OBJS = $(BUILD_TOT)/../libspin/$(LIBSPIN)
+
+ifeq ($(BUILD_VARIANT), FE_GNU_4_2_0)
+LIBSPIN_OBJS = $(TARG_LIBSPIN42_DIR)/libgspin42.a
+else
+LIBSPIN_OBJS = $(TARG_LIBSPIN_DIR)/libgspin.a
+endif
 
 LLDOPTS = -Wl,--export-dynamic
 LLDLIBS = $(COMUTIL_OBJS) $(LIBIBERTY_OBJS) $(LIBSPIN_OBJS)
@@ -322,18 +329,23 @@ else
 	$(STD_INSTALL) -F $(STD_MONGOOSE_LOC) $(TARGETS)
 endif
 
+
 $(LIBSPIN_OBJS):
+ifeq ($(BUILD_VARIANT), FE_GNU_4_2_0)
+	$(call submake,$(TARG_LIBSPIN42_DIR))
+else
 	$(call submake,$(TARG_LIBSPIN_DIR))
+endif
 
 $(TARGETS) : $(OBJECTS) $(LIBSPIN_OBJS)
 	$(link.cxxf) -g -o $@ $(OBJECTS) $(LDFLAGS)
 
-$(LIBSPIN_OBJS):
-ifeq ($(BUILD_VARIANT), FE_GNU_4_2_0)
-	make -C $(BUILD_TOT)/../libspin FE=GNU_4_2_0
-else
-	make -C $(BUILD_TOT)/../libspin
-endif
+#$(LIBSPIN_OBJS):
+#ifeq ($(BUILD_VARIANT), FE_GNU_4_2_0)
+#	make -C $(BUILD_TOT)/../libspin FE=GNU_4_2_0
+#else
+#	make -C $(BUILD_TOT)/../libspin
+#endif
 
 #----------------------------------------------------------------------
 #  Include the usual commonrules

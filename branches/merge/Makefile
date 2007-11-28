@@ -293,7 +293,7 @@ endif
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER
 	cd $(GNUFE42_BUILD_DIR); ./CLOBBER
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
-		libiberty libunwindP libspin; do  \
+		libiberty libunwindP libspin libspin_4_2_0; do  \
 		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
 	done
 
