@@ -97,12 +97,13 @@ contributions of PathScale Inc. and Sun Chan at SimpLight Nanoelectronics.
 %{open64_lib_dir}/%{open64_version}/driver
 
 %ifnarch %{ix86}
-%{open64_lib_dir}/%{open64_version}/libF77.a
+#%{open64_lib_dir}/%{open64_version}/libF77.a
 %{open64_lib_dir}/%{open64_version}/libffio.a
 %{open64_lib_dir}/%{open64_version}/libfortran.a
 %{open64_lib_dir}/%{open64_version}/libinstr.a
-%{open64_lib_dir}/%{open64_version}/libmsgi.a
+#%{open64_lib_dir}/%{open64_version}/libmsgi.a
 %{open64_lib_dir}/%{open64_version}/libmv.a
+%{open64_lib_dir}/%{open64_version}/libopenmp.a
 %endif
 
 %{open64_bin_dir}/hpe.pl
@@ -110,7 +111,7 @@ contributions of PathScale Inc. and Sun Chan at SimpLight Nanoelectronics.
 
 # ia64 specified files
 %ifarch ia64
-%{open64_lib_dir}/%{open64_version}/libm.a
+#%{open64_lib_dir}/%{open64_version}/libm.a
 %{open64_lib_dir}/%{open64_version}/libcginstr.a
 %{open64_lib_dir}/%{open64_version}/lib.exp
 %{open64_lib_dir}/%{open64_version}/lib.cat
@@ -125,12 +126,13 @@ contributions of PathScale Inc. and Sun Chan at SimpLight Nanoelectronics.
 %dir %{open64_lib_dir}/%{open64_version}/32
 %{open64_lib_dir}/%{open64_version}/opteron.so
 %{open64_lib_dir}/%{open64_version}/em64t.so
-%{open64_lib_dir}/%{open64_version}/32/libF77.a
+#%{open64_lib_dir}/%{open64_version}/32/libF77.a
 %{open64_lib_dir}/%{open64_version}/32/libffio.a
 %{open64_lib_dir}/%{open64_version}/32/libfortran.a
 %{open64_lib_dir}/%{open64_version}/32/libinstr.a
-%{open64_lib_dir}/%{open64_version}/32/libmsgi.a
+#%{open64_lib_dir}/%{open64_version}/32/libmsgi.a
 %{open64_lib_dir}/%{open64_version}/32/libmv.a
+%{open64_lib_dir}/%{open64_version}/32/libopenmp.a
 %endif
 
 %prep
@@ -233,6 +235,8 @@ true
 %postun
 
 %changelog
+* Wed Nov 28 2007 laijx jianxin.lai@hp.com
+-Remove libF77.a, libm.a, libmsgi.a, Append libopenmp.a
 * Tue Nov 27 2007 laijx jianxin.lai@hp.com
 -Update installation for gcc libraries
 * Tue Jun 5 2007 laijx jianxin.lai@hp.com
