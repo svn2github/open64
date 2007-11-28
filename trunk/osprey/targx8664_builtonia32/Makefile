@@ -50,14 +50,15 @@ LIBRARY_SUBDIRS := \
 	libelf \
 	libdwarf \
 	libfortran \
-	libF77 \
 	libu \
 	libmv \
 	libinstr2 \
-	libm \
+	libopenmp
+
+	#libF77
+	#libm \
 	#libfoobar \
 	#libpscrt \
-        libopenmp
 
 #
 #  Finally, the compiler tools (components) are built.
