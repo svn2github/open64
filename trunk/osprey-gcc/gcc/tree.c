@@ -8105,13 +8105,6 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       _gs_bv (flags, GS_DECL_COMMON, DECL_COMMON (t));
       if (CPR()) {
 	_gs_bv (flags, GS_DECL_EXTERNAL, DECL_EXTERNAL (t));
-	// bug fix for OSP_425
-	// treat the static const non-integer varible declaration in c++ class as definition.
-	if (DECL_CONTEXT(t) &&
-	    (TREE_CODE(DECL_CONTEXT(t)) == RECORD_TYPE) && 
-	    (TREE_CODE (t) == VAR_DECL) && 
-	    TREE_STATIC (t) && TREE_PUBLIC (t) && TREE_READONLY (t) )
-         _gs_bv_reset (flags, GS_DECL_EXTERNAL);
 	if (! DECL_EXTERNAL(t) && gs_bv(flags, GS_DECL_EXTERNAL))
 	  _gs_bv_reset (flags, GS_DECL_EXTERNAL);
       } else {
