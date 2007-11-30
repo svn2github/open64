@@ -113,6 +113,7 @@ contributions of PathScale Inc. and Sun Chan at SimpLight Nanoelectronics.
 %ifarch ia64
 #%{open64_lib_dir}/%{open64_version}/libm.a
 %{open64_lib_dir}/%{open64_version}/libcginstr.a
+%{open64_lib_dir}/%{open64_version}/ftz.o
 %{open64_lib_dir}/%{open64_version}/lib.exp
 %{open64_lib_dir}/%{open64_version}/lib.cat
 %{open64_lib_dir}/%{open64_version}/itanium.so
@@ -235,6 +236,8 @@ true
 %postun
 
 %changelog
+* Fri Nov 30 2007 laijx jianxin.lai@hp.com
+-Add ftz.o for IA64 
 * Wed Nov 28 2007 laijx jianxin.lai@hp.com
 -Remove libF77.a, libm.a, libmsgi.a, Append libopenmp.a
 * Tue Nov 27 2007 laijx jianxin.lai@hp.com
