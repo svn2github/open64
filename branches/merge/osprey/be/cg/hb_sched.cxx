@@ -304,7 +304,10 @@ HB_Schedule::Estimate_Reg_Cost_For_OP (OP *op)
     // copy the preallocated TN(s) to regular TN(s).  This only works for
     // backward scheduling, which is what we do when scheduling to reduce
     // register pressure.  Bug 6081.
-    Is_True(LOCS_Scheduling_Algorithm, /* !LOCS_Fwd_Scheduling,*/
+    // LOCS_Scheduling_Algorithm == 0,  Backward scheduling;
+    // LOCS_Scheduling_Algorithm == 1,  Forward scheduling;
+    // LOCS_Scheduling_Algorithm == 2,  Bi-directional scheduling(For fortran)
+    Is_True(!LOCS_Scheduling_Algorithm, /* !LOCS_Fwd_Scheduling,*/
 	    ("Estimate_Reg_Cost_For_OP: Fwd scheduling called from LRA"));
     if (TN_is_preallocated(result_tn))
       cost -= 1000;	// make it large enough to force OP to be scheduled next
