@@ -55,8 +55,16 @@ ifeq ($(BUILD_ARCH), MIPS64)
   CFLAGS = -mabi=n32 -O3 -ffloat-store -DARCH_MIPS
 endif
 
+ifeq ($(BUILD_ARCH), IA32)
+CFLAGS += -m32
+endif
+
+ifeq ($(BUILD_ARCH), X8664)
+CFLAGS += -m64
+endif
+
 ifeq ($(BUILD_TARGET), X8664)
-CFLAGS += -m32 -DTARG_X8664
+CFLAGS += -DTARG_X8664
 endif
 
 ifeq ($(BUILD_TARGET), IA64)

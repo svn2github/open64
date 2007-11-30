@@ -65,8 +65,9 @@ ifeq ($(MACHINE_TYPE), ia64)
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so
   LIB_BUILD_DIR       = osprey/targia64
-else
-# x86_64 or i386, they are the same
+endif
+ifeq ($(MACHINE_TYPE), i386)
+# i386
   NATIVE_BUILD_DIR    = osprey/targia32_x8664
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_x8664
   GNUFE_BUILD_DIR     = osprey-gcc/targia32_x8664
@@ -74,9 +75,17 @@ else
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
   LIB_BUILD_DIR       = osprey/targia32_builtonia32
-  ifeq ($(MACHINE_TYPE), x86_64)
-    LIB_BUILD_DIR    += osprey/targx8664_builtonia32
-  endif
+endif
+
+ifeq ($(MACHINE_TYPE), x86_64)
+# x86_64
+  NATIVE_BUILD_DIR    = osprey/targx8664_x8664
+  NATIVE_BUILD_DIR_LD = osprey/targcygnus_x8664_x8664
+  GNUFE_BUILD_DIR     = osprey-gcc/targx8664_x8664
+  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targx8664_x8664
+  TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
+  TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
+  LIB_BUILD_DIR       = osprey/targx8664_builtonia32
 endif
 
 CROSS_BUILD = false
@@ -283,11 +292,14 @@ clobber clean: clean-lib
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90 clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/include clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/libspin clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 clobber
 ifeq ($(MACHINE_TYPE), ia64)
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/orc_ict clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/orc_intel clobber
 else
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/libfortran clobber
+	rm -fr $(NATIVE_BUILD_DIR)/libfortran/*.mod
 endif
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER

@@ -58,12 +58,20 @@ ia64 )
     PREBUILD_INTERPOS="ia64-linux"
     INSTALL_TYPE="ia64-native"
     ;;
-i386 | x86_64 )
+i386 )
     BUILD_HOST="ia32"
     TARG_HOST="x8664"
     PHASE_DIR_PREFIX="x86_64"
     PREBUILD_INTERPOS="x8664-linux"
     AREA="osprey/targia32_x8664"
+    INSTALL_TYPE="x8664-native"
+    ;;
+x86_64 )
+    BUILD_HOST="x8664"
+    TARG_HOST="x8664"
+    PHASE_DIR_PREFIX="x86_64"
+    PREBUILD_INTERPOS="x8664-linux"
+    AREA="osprey/targx8664_x8664"
     INSTALL_TYPE="x8664-native"
     ;;
 cross )
@@ -269,7 +277,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
     fi
     if [ "$ARCH" = "x86_64" ] ; then
         for i in libgcc.a libstdc++.a libstdc++.so; do
-	    F=`gcc -m32 --print-file-name $i`
+	    F=`/usr/bin/gcc -m32 --print-file-name $i`
 	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
 	    F=`gcc -m64 --print-file-name $i`
 	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i

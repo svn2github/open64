@@ -268,7 +268,7 @@ else
 ifeq ($(BUILD_TARGET), IA64)
 	$(F90) $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f
 else
-	$(F90) -m32 -mno-sse2 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f
+	$(F90) -m64 -mno-sse2 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f
 endif
 endif
 

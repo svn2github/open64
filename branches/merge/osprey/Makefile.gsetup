@@ -443,13 +443,13 @@ ifneq ($(BUILD_COMPILER), GNU)
   STD_COMPILE_OPTS += -32 -Olimit 3000
  endif
  ifeq ($(BUILD_ABI), N32BIT)
-  STD_COMPILE_OPTS += -n32
+  STD_COMPILE_OPTS += -m32
  endif
  ifeq ($(BUILD_ABI), 64BIT)
   STD_COMPILE_OPTS += -m64
  endif
  ifeq ($(BUILD_ABI), I64BIT)
-  STD_COMPILE_OPTS += -i64
+  STD_COMPILE_OPTS += -m64
  endif
 endif
 

@@ -74,16 +74,11 @@ AR	= ar
 AWK	= awk
 
 SIZEDEFS = -D_LONGLONG -D_MIPS_SZINT=32
-ifeq ($(BUILD_ABI), 64BIT)
+ifeq ($(BUILD_ABI), I64BIT)
   _MIPS_SZLONG := 64
   SIZEDEFS += -D_MIPS_SZPTR=64 -D_MIPS_SZLONG=$(_MIPS_SZLONG) -D_LP64
 else
-  ifeq ($(BUILD_ABI), I64BIT)
-    _MIPS_SZLONG := 64
-    SIZEDEFS += -D_MIPS_SZPTR=64 -D_MIPS_SZLONG=$(_MIPS_SZLONG) -D_LP64
-  else
-    SIZEDEFS += -D_MIPS_SZPTR=32 -D_MIPS_SZLONG=32
-  endif
+  SIZEDEFS += -D_MIPS_SZPTR=32 -D_MIPS_SZLONG=32
 endif
 
 ifeq ($(BUILD_OS), LINUX)
@@ -94,84 +89,103 @@ endif
 
 
 ifeq ($(BUILD_COMPILER), GNU)
-ASNAME = gcc  
-CCNAME = gcc 
-C++NAME = g++ 
-#F90 = gfortran
-#F90_RTLIBS = -lgfortran
-#F90 = ifort -assume 2underscores
-#F90_RTLIBS = $(INTEL_COMPILER_FC_HOME)/lib/libifcore.a $(INTEL_COMPILER_FC_HOME)/lib/libimf.a
-F90 = openf90
-ifeq ($(BUILD_ARCH), X8664)
-# only 64bit libraries set the BUILD_ARCH to X8664 
-CCNAME  = opencc 
-C++NAME = openCC  
-F90 = openf90 
-endif
-ifeq ($(BUILD_TARGET), IA32)
-# only 32bit libraries set the BUILD_TARGET to IA32
-CCNAME  = opencc -m32 -mno-sse2
-C++NAME = openCC -m32 -mno-sse2
-F90 = openf90 -m32 -mno-sse2
-endif
-ifeq ($(BUILD_TARGET), X8664)
-# both the 64bit libraries and executables set the BUILD_TARGET to X8664
-# we should distinguish them
-ifeq ($(BUILD_ARCH), IA32)
-ASNAME = gcc -m32
-CCNAME = gcc -m32
-C++NAME = g++ -m32
-# or using ifort to build the FORTRAN FE
-F90 = openf90 -m32
-endif
-endif
-AR      = ar
-F77 = $(F90)
+  ASNAME = gcc  
+  CCNAME = gcc 
+  C++NAME = g++ 
+  F90 = openf90
+  #F90 = gfortran
+  #F90_RTLIBS = -lgfortran
+  #F90 = ifort -assume 2underscores
+  #F90_RTLIBS = $(INTEL_COMPILER_FC_HOME)/lib/libifcore.a $(INTEL_COMPILER_FC_HOME)/lib/libimf.a
+
+  ifeq ($(BUILD_TARGET), X8664)
+    # only 64bit libraries set the BUILD_ARCH to X8664 
+    CCNAME  += 
+    C++NAME +=  
+    F90 += -march=anyx86 
+  endif
+  ifeq ($(BUILD_TARGET), IA32)
+    # only 64bit libraries set the BUILD_ARCH to X8664 
+    CCNAME  +=
+    C++NAME +=
+    ASNAME +=
+    F90 += -march=anyx86 
+  endif
+  ifeq ($(BUILD_TARGET), IA64)
+    # only 64bit libraries set the BUILD_ARCH to X8664 
+    CCNAME  += 
+    C++NAME +=  
+    F90 += 
+  endif
+  AR      = ar
+  F77 = $(F90)
 endif
 
 ifeq ($(BUILD_COMPILER), PSC)
-ASNAME = pathcc -m32 -mno-sse2
-CCNAME = pathcc -m32 -mno-sse2
-C++NAME = pathCC -m32 -mno-sse2
-ifeq ($(BUILD_ARCH), X8664)
-CCNAME  = pathcc 
-C++NAME = pathCC 
-AR      = ar
-endif
-F90 = pathf90 -m32 
-ifeq ($(BUILD_TARGET), IA32)
-F90 += -m32 -mno-sse2
-endif
-F77 = $(F90)
+  ASNAME = pathcc 
+  CCNAME = pathcc
+  C++NAME = pathCC
+  F90 = pathf90  
+  ifeq ($(BUILD_TARGET), X8664)
+    CCNAME  += -march=anyx86
+    C++NAME += -march=anyx86
+    F90 += -march=anyx86
+  endif
+  ifeq ($(BUILD_TARGET), IA32)
+    CCNAME  += -march=anyx86
+    C++NAME += -march=anyx86
+    F90 += -march=anyx86
+  endif
+  F77 = $(F90)
+  AR      = ar
 endif
 
 ifeq ($(BUILD_COMPILER), OSP)
-ASNAME = opencc
-CCNAME = opencc
-C++NAME = openCC
-F90 = openf90
-F90_RTLIBS = -lfortran
+  ASNAME = opencc
+  CCNAME = opencc
+  C++NAME = openCC
+  F90 = openf90
+  F90_RTLIBS = -lfortran
 
-ifeq ($(BUILD_TARGET), IA32)
-# only 32bit libraries set the BUILD_TARGET to IA32
-ASNAME += -m32 -mno-sse2
-CCNAME += -m32 -mno-sse2
-C++NAME += -m32 -mno-sse2
-F90 += -m32 -mno-sse2
+  ifeq ($(BUILD_TARGET), X8664)
+    CCNAME  += -march=anyx86
+    C++NAME += -march=anyx86
+    F90 += -march=anyx86
+  endif
+  ifeq ($(BUILD_TARGET), IA32)
+    CCNAME  += -march=anyx86
+    C++NAME += -march=anyx86
+    F90 += -march=anyx86
+  endif
+  ifeq ($(BUILD_TARGET), IA64)
+    # only 64bit libraries set the BUILD_ARCH to X8664 
+    CCNAME  += 
+    C++NAME +=  
+    F90 += 
+  endif
+  F77 = $(F90)
+  AR      = ar
 endif
 
-ifeq ($(BUILD_TARGET), X8664)
-# both the 64bit libraries and executables set the BUILD_TARGET to X8664
-# we should distinguish them
 ifeq ($(BUILD_ARCH), IA32)
-ASNAME += -m32 -mno-sse2
-CCNAME += -m32 -mno-sse2
-C++NAME += -m32 -mno-sse2
-F90 += -m32 -mno-sse2
-endif
+# only 32bit libraries set the BUILD_TARGET to IA32
+  CCNAME  += -m32 -mno-sse2 
+  C++NAME += -m32 -mno-sse2
+  F90 += -m32 -mno-sse2
 endif
 
-F77 = $(F90)
+ifeq ($(BUILD_ARCH), X8664)
+  # both the 64bit libraries and executables set the BUILD_TARGET to X8664
+  # we should distinguish them
+  CCNAME  += -m64 
+  C++NAME += -m64 
+  F90 += -m64
+endif
+
+ifeq ($(BUILD_ARCH), IA64)
+  CCNAME  += 
+  C++NAME += 
+  F90 += 
 endif
 
 AS	= $(ASNAME) -D_SGI_SOURCE

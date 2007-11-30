@@ -49,6 +49,10 @@ ifeq ($(BUILD_ARCH),IA32)
 F90 += -m32 -mno-sse2
 endif
 
+ifeq ($(BUILD_ARCH),IA32)
+F90 += -m64
+endif
+
 F90FLAGS = $(OPTIMIZER) $(CSTYLE)
 F77FLAGS = $(OPTIMIZER) $(CSTYLE)
 

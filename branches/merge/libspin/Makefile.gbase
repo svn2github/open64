@@ -56,8 +56,16 @@ LIBSPIN_OBJECTS = $(subst .c,.o,$(LIBSPIN_SOURCES))
 GSPIN_SOURCES = gspin-test-driver.c
 GSPIN_OBJECTS = $(subst .c,.o,$(GSPIN_SOURCES))
 
+ifeq ($(BUILD_ARCH), IA32)
+CFLAGS += -m32
+endif
+
+ifeq ($(BUILD_ARCH), X8664)
+CFLAGS += -m64
+endif
+
 ifeq ($(BUILD_TARGET), X8664)
-CFLAGS += -m32 -DTARG_X8664
+CFLAGS += -DTARG_X8664
 endif
 
 ifeq ($(BUILD_TARGET), IA64)

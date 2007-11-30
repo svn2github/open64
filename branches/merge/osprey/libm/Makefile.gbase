@@ -109,7 +109,9 @@ TARGETS = $(LIBRARY) $(PROF_LIB) $(DSO)
 endif
 
 ifeq ($(BUILD_ABI), I64BIT)
+  ifeq ($(BUILD_COMPILER), OSP)
 LCDEFS += -OPT:IEEE_comparisons -OPT:roundoff=0 -TENV:X=1 -LNO:prefetch=0
+  endif
 endif
 ifeq ($(BUILD_ABI), N32BIT)
 LCDEFS += -n32 -Wa,-mips4
