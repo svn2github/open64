@@ -497,7 +497,7 @@ Process_Inline_Options ( void )
       INLINE_None = TRUE;
       Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining(), "edge" );
     }
-    else if ( strcmp ( OLIST_opt(ol), "in" ) == 0 ) {
+    else if ( strcmp ( OLIST_opt(ol), "in_edge" ) == 0 ) {
       Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining(), "in" );
     }
 #ifdef _STANDALONE_INLINER
@@ -530,7 +530,7 @@ Process_Inline_Options ( void )
       INLINE_None = TRUE;
       Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining() );
     }
-    else if ( strcmp ( OLIST_opt(ol), "in" ) == 0 ) {
+    else if ( strcmp ( OLIST_opt(ol), "in_edge" ) == 0 ) {
       Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining() );
     }
 #ifdef _STANDALONE_INLINER

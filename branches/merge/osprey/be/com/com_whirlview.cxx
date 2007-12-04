@@ -290,6 +290,7 @@ dV_view_whirl(WN *wn, const char *title, BOOL show_expr, FILE *trace_fp)
 {
   if ( ! DaVinci::enabled(true) ) return;
 
+  DaVinci  dv(&DV_wv_mempool, trace_fp);
   Func_wn = (WN_operator(wn) == OPR_FUNC_ENTRY ? wn : NULL);
 
   const char *trace_fname = getenv("DV_TRACE_FILE");
@@ -308,8 +309,9 @@ dV_view_whirl(WN *wn, const char *title, BOOL show_expr, FILE *trace_fp)
     MEM_POOL_Initialize(&DV_wv_mempool, "DV_wv_mempool", FALSE);
     DV_wv_mempool_init = TRUE;
   }
-  DV = CXX_NEW(DaVinci(&DV_wv_mempool, trace_fp), &DV_wv_mempool);
+ // DV = CXX_NEW(DaVinci(&DV_wv_mempool, trace_fp), &DV_wv_mempool);
 
+DV=&dv;
   const char *window_title = (title ? title : "com_whirlview tree display");
   DV->Title( window_title  );
   draw_whirl_tree( wn, show_expr );
@@ -318,7 +320,7 @@ dV_view_whirl(WN *wn, const char *title, BOOL show_expr, FILE *trace_fp)
   Callback callback;
   DV->Event_Loop( &callback );
 
-  CXX_DELETE(DV, &DV_wv_mempool);
+  //CXX_DELETE(DV, &DV_wv_mempool);
   DV      = NULL;
   Func_wn = NULL;
 

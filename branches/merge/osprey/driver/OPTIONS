@@ -1022,7 +1022,9 @@ I-scan%s		;		FTN	PFA	self
 
 -noinline	Process_Inline();		Cc	NONE	"-INLINE:=OFF"
 	"suppress inline processing"
-
+-minline-all-stringops ; Cc ipap ""
+	 "force inline all stringops,ignored at present"
+	
 -intrinsic=%s	;			FTN	ffe	"-intrinsic=%s"
 	"Add intrinsic to the initial set the compiler recognizes"
 

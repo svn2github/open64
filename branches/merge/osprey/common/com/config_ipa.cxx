@@ -777,7 +777,7 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "var_dim_array",             "",
           0, 0, 0,              &IPA_Enable_Inline_Var_Dim_Array,   NULL,
           "Enable inlining of PU with param that is variable-dim array " },
-    { OVK_LIST,	OV_VISIBLE,	FALSE, "in",	"",
+    { OVK_LIST,	OV_VISIBLE,	FALSE, "in_edge",	"",
 	  0, 0, 0,	&INLINE_List_Names,	NULL,
 	  "Inline requested CG edges " },
     { OVK_BOOL, OV_INTERNAL,    FALSE, "array_bounds",             "",

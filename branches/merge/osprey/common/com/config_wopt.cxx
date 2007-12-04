@@ -198,6 +198,7 @@ INT32 WOPT_Enable_Doend_Prop_Limit = 26; /* based on bug 13003 */
 #else
 INT32 WOPT_Enable_Prop_Limit = 14;	/* this is a guess, PV 468862 */
 #endif
+INT32 WOPT_Enable_Prop_Weight_Limit = 50000;
 #ifdef KEY
 BOOL  WOPT_Enable_Prop_Dope = FALSE;	/* propagate dope vector fields? */
 #endif
@@ -532,6 +533,8 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Prop_CSE, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "prop_limit",		"",
     14, 0, INT32_MAX,	&WOPT_Enable_Prop_Limit, NULL }, /* PV 468862 */
+  { OVK_INT32, OV_VISIBLE, TRUE, "prop_weight_limit", "",
+    14, 0, INT32_MAX, &WOPT_Enable_Prop_Weight_Limit, NULL }, 
 #ifdef KEY
   { OVK_INT32,	OV_VISIBLE,	TRUE, "doend_prop_limit",		"",
     14, 0, INT32_MAX,	&WOPT_Enable_Doend_Prop_Limit, NULL },
