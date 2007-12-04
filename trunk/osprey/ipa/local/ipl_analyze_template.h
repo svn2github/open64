@@ -1612,10 +1612,29 @@ SUMMARIZE<program>:: Record_ref_formal ( WN* w )
 
     case OPR_LDA:
 	i = Get_symbol_index(WN_st(w));
-	Get_symbol (i)->Set_aref();
-	if ( Trace_CopyProp ) 
-	    fprintf ( TFile, "\n  formal: %s : set aref\n",
-		     ST_name(WN_st(w)) );
+        // For ASM_INPUT, set dref to the symbol
+        parent_w = LWN_Get_Parent(w);
+        OPERATOR opr = parent_w ?
+          WN_operator(parent_w) : (OPERATOR) 0;
+        if (opr == OPR_ASM_INPUT) {
+          // in the case of FORMAL_REF, and ldid really refers to an
+          // indirect reference
+          if (ST_sclass(WN_st(w)) == SCLASS_FORMAL_REF ||
+              WN_operator (parent_w) == OPR_ICALL)
+            Get_symbol (i)->Set_iref ();
+          else {
+            Get_symbol (i)->Set_dref();
+            if ( Trace_CopyProp )
+              fprintf ( TFile, "\n  formal: %s : set dref\n",
+                        ST_name(WN_st(w)) );
+          }
+        }
+        else {
+	  Get_symbol (i)->Set_aref();
+	  if ( Trace_CopyProp ) 
+	      fprintf ( TFile, "\n  formal: %s : set aref\n",
+	  	        ST_name(WN_st(w)) );
+	}
 	break;
     }
 
@@ -1963,7 +1982,9 @@ SUMMARIZE<program>:: Record_ref (WN *w)
 
 	    
 	default:
-	    break;
+           if ( opr == OPR_ASM_INPUT)
+             Record_ref_formal (w);
+	   break;
 	}
 	break;
 
