@@ -82,8 +82,8 @@ extern "C" {
 #endif
 #include "tree_cmp.h"
 
-#include <ext/hash_set>
-using __gnu_cxx::hash_set;
+#include <ext/hash_map>
+using __gnu_cxx::hash_map;
 typedef struct {
     size_t operator()(void* p) const { return reinterpret_cast<size_t>(p); }
 } void_ptr_hash;
@@ -722,7 +722,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		tree method = TYPE_METHODS(type_tree);
 		FLD_HANDLE fld;
 		INT32 next_field_id = 1;
-		hash_set <tree, void_ptr_hash> anonymous_base;
+                hash_map <tree, tree, void_ptr_hash> anonymous_base;
 
 		// Generate an anonymous field for every direct, nonempty,
 		// nonvirtual base class.  
@@ -778,7 +778,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                   INT32 i;
                   for (i = 0; i < TREE_VEC_LENGTH(basetypes); ++i) {
                     tree basetype = BINFO_TYPE(TREE_VEC_ELT(basetypes, i));
-                    anonymous_base.insert(CLASSTYPE_AS_BASE(basetype));
+                    anonymous_base[CLASSTYPE_AS_BASE(basetype)] = basetype;
                   }
                 }
 
@@ -814,10 +814,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				Get_Integer_Value(DECL_FIELD_OFFSET(field)) +
 				Get_Integer_Value(DECL_FIELD_BIT_OFFSET(field))
 					/ BITSPERBYTE);
-                        if (DECL_NAME(field) == NULL)
-                                Set_FLD_is_anonymous(fld);
-                        if (anonymous_base.find(TREE_TYPE(field)) != anonymous_base.end())
-                                Set_FLD_is_base_class(fld);
+                        if (DECL_NAME(field) == NULL) 
+                          Set_FLD_is_anonymous(fld); 
+                        if (anonymous_base.find(TREE_TYPE(field)) != anonymous_base.end()) { 
+                          Set_FLD_is_base_class(fld); 
+                          // set the base class type; 
+                          tree base_class = anonymous_base[TREE_TYPE(field)]; 
+                          Set_FLD_type(fld, Get_TY(base_class)); 
+                        } 
 		}
 
 		TYPE_FIELD_IDS_USED(type_tree) = next_field_id - 1;
@@ -867,11 +871,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				continue;
 			}
 #endif
-			TY_IDX fty_idx = Get_TY(TREE_TYPE(field));
+                        if (anonymous_base.find(TREE_TYPE(field)) == anonymous_base.end()) {
+                          TY_IDX fty_idx = Get_TY(TREE_TYPE(field));
 
-			if ((TY_align (fty_idx) > align) || (TY_is_packed (fty_idx)))
-				Set_TY_is_packed (ty);
-			Set_FLD_type(fld, fty_idx);
+                          if ((TY_align (fty_idx) > align) || (TY_is_packed (fty_idx)))
+                            Set_TY_is_packed (ty);
+                          Set_FLD_type(fld, fty_idx);
+                        }
 
 			if ( ! DECL_BIT_FIELD(field)
 				&& Get_Integer_Value(DECL_SIZE(field)) > 0
@@ -1017,10 +1023,6 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		}
 		else
 			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
-                        if (TREE_CODE(type_tree) == METHOD_TYPE) {
-                            TY_IDX base = Get_TY(TYPE_METHOD_BASETYPE(type_tree));
-                            Set_TY_baseclass(ty, base);
-                        }
 		} // end FUNCTION_TYPE scope
 		break;
 #ifdef TARG_X8664
@@ -1233,6 +1235,8 @@ Create_ST_For_Tree (tree decl_node)
 #endif
 	if (TREE_CODE(TREE_TYPE(decl_node)) == METHOD_TYPE) {
 		Set_ST_is_method_func(st);
+                TY_IDX base = Get_TY(TYPE_METHOD_BASETYPE(TREE_TYPE(decl_node))); 
+                Set_PU_base_class(pu, base); 
 	}
 
 	if (DECL_THUNK_P(decl_node) &&

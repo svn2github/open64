@@ -1570,7 +1570,7 @@ WGEN_Start_Function(gs_t fndecl)
       gs_t fntype = gs_tree_type(fndecl);
       if (gs_tree_code(fntype) == GS_METHOD_TYPE) {
           TY_IDX base = Get_TY(gs_type_method_basetype(fntype));
-          Set_TY_baseclass(ty, base);
+          Set_PU_base_class(pu, base);
       }
     }
 
@@ -3801,36 +3801,6 @@ WGEN_Initialize_Decl (gs_t decl)
 			agginit.Add_Inito_For_Tree (gs_decl_initial(init_decl),
 					    Get_ST(init_decl));
 		}
-                // Set the virtual table entry of a TY when creating vtable INITO
-                if (gs_decl_virtual_p(decl)) {
-                    ST_IDX st_idx = ST_st_idx(st);
-                    SYMTAB_IDX st_idx_level = ST_IDX_level(st_idx);
-                    // search the INITO that has the same ST_IDX to st
-                    INITO_IDX match_inito = INITO_Table_Size(st_idx_level) - 1;
-                    while (match_inito > 0 && st_idx != INITO_st_idx(Inito_Table[make_INITO_IDX(match_inito, st_idx_level)])) 
-                        match_inito--;
-                    // check if the inito entry is found
-                    Is_True(match_inito > 0, ("Cannot find any matched st in INITO table."));
-                    INITV_IDX vfunc = Inito_Table[make_INITO_IDX(match_inito, st_idx_level)].val;
-                    while (vfunc > 0) {
-#ifndef TARG_IA64
-                        if (INITV_kind(vfunc) == INITVKIND_SYMOFF) 
-#else
-                        if (INITV_kind(vfunc) == INITVKIND_SYMIPLT)
-#endif
-                        {
-                            ST &initv_st = St_Table[INITV_st(vfunc)];
-                            if (ST_sym_class(initv_st) == CLASS_FUNC)
-                                break;
-                        }
-                        vfunc = (INITV_kind(vfunc) == INITVKIND_BLOCK) ?
-                                 INITV_blk(vfunc) : INITV_next(vfunc);
-                    }                    
-                    if (vfunc > 0) {
-                        TY_IDX base_tyi = Get_TY(gs_decl_context(decl));
-                        Set_TY_vtable(base_tyi, vfunc);
-                    }
-                }
 		init_decl = NULL;
 	}
 	if (gs_tree_readonly(decl) && !gs_tree_this_volatile(decl))

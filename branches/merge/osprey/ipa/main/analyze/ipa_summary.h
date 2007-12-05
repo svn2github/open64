@@ -175,6 +175,8 @@ SUMMARY_FORMAL*
 IPA_get_formal_file_array (const IP_FILE_HDR& hdr, INT32& size);
 SUMMARY_ACTUAL* 
 IPA_get_actual_file_array (const IP_FILE_HDR& hdr, INT32& size);
+SUMMARY_CALLSITE* 
+IPA_get_callsite_file_array (const IP_FILE_HDR& hdr, INT32& size); 
 SUMMARY_STRUCT_ACCESS*
 IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size);
 

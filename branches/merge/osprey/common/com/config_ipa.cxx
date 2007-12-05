@@ -589,7 +589,7 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "ipa_enable_old_type_merge", "",
       0, 0, 0,              &IPA_Enable_Old_Type_Merge, NULL,
       "Use the old type merge phase in IPA"},
-    { OVK_BOOL, OV_INTERNAL,    FALSE, "enable_devirtualization", "",
+    { OVK_BOOL, OV_INTERNAL,    FALSE, "devirtualization", "",
       0, 0, 0,              &IPA_Enable_Devirtualization, NULL,
       "Use devirtualization phase"},
     { OVK_UINT32, OV_INTERNAL,	FALSE, "optimize_struct",	"",

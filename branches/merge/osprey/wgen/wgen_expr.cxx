@@ -6882,8 +6882,24 @@ WGEN_Expand_Expr (gs_t exp,
           wn_kid0 = WGEN_Expand_Expr (gs_tree_operand (exp, 0));
           WN_kid(call_wn, num_args-1) = wn_kid0;
           WN_set_ty (call_wn, TY_pointed(Get_TY(gs_tree_type (gs_tree_operand (exp, 0)))));
-          // Check if the indirect call is a call to a virtual function
-          // First, get the TY of the address and the field ID
+
+          /* 
+             Check if the indirect call is a call to a virtual function 
+             First, get the TY of the address and the field ID 
+             1) For IA64, virtual function call is 
+                     LDID object 
+                   LDID object              ILOAD vptr field 
+                 ILOAD vptr field   or    ADD offset 
+               ICALL                    ICALL 
+             2) For X86, virtual function call is 
+                     LDID object 
+                   ILOAD vptr field 
+                 ILOAD offset 
+               ICALL 
+          */ 
+          kid_ty_idx = kid_field_id = 0; 
+#ifdef TARG_IA64 
+
           switch (WN_operator(wn_kid0)) {
               case OPR_ILOAD :
                   // if offset == 0, ILOAD the vptr directly
@@ -6897,13 +6913,19 @@ WGEN_Expand_Expr (gs_t exp,
                       kid_ty_idx = WN_ty(wn_kid0_kid0);
                       kid_field_id = WN_field_id(wn_kid0_kid0);
                   }
-                  else
-                      kid_ty_idx = kid_field_id = 0;
-                  break;
-              default :
-                  kid_ty_idx = kid_field_id = 0;
                   break;
           }
+#endif 
+#ifdef TARG_X8664 
+          if (WN_operator(wn_kid0) == OPR_ILOAD) { 
+              WN *wn_kid0_kid0 = WN_kid0(wn_kid0); 
+              if (WN_operator(wn_kid0_kid0) == OPR_ILOAD) { 
+                  kid_ty_idx = WN_ty(wn_kid0_kid0); 
+                  kid_field_id = WN_field_id(wn_kid0_kid0); 
+              } 
+          } 
+#endif 
+
           if (kid_ty_idx > 0 && kid_field_id > 0) {
               // If the TY and the field ID of the address are found,
               // then check if the field of the TY is a virtual pointer

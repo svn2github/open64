@@ -22,8 +22,6 @@
  *
  */
 
-#ifdef OSP_OPT
-
 #define __STDC_LIMIT_MACROS
 
 #include "ipa_chg.h"
@@ -113,7 +111,7 @@ IPA_CLASS_HIERARCHY::Is_Ancestor(TY_INDEX ancestor, TY_INDEX descendant) {
         return TRUE;
     for (UINT i=0; i<Get_Num_Sub_Classes(ancestor); i++) {
         TY_INDEX sub = Get_Sub_Class(ancestor, i);
-        if (Is_Sub_Class(sub, descendant))
+        if (Is_Ancestor(sub, descendant))
             return TRUE;
     }
     return FALSE;
@@ -147,5 +145,34 @@ Build_Class_Hierarchy() {
     return chg;
 }
 
-#endif
+/*
+ * Get the offset of the ancestor class in the class sub 
+ */
+size_t
+IPA_CLASS_HIERARCHY::Get_Ancestor_Offset(TY_INDEX sub, TY_INDEX anc) {
+    if (sub == anc)
+        return 0;
+    TY &ty = Ty_tab[sub];
+    if (Is_Structure_Type(ty) && !TY_is_union(ty) && ty.Fld() > 0) {
+        // search for each base class
+        FLD_IDX fld_idx = ty.Fld();
+        do {
+            FLD_HANDLE fld(fld_idx);
+            if (FLD_is_base_class(fld)) {
+                TY_INDEX current_base = TY_IDX_index(FLD_type(fld));
+                // if anc(current_base) is direct base class of sub
+                if (current_base == anc) 
+                    return FLD_ofst(fld);
+                // otherwise, search current_base recursively
+                size_t ofst = Get_Ancestor_Offset(current_base, anc);
+                if (ofst != BASE_CLASS_NOT_FOUND) 
+                    return FLD_ofst(fld) + ofst;
+            }
+            if (FLD_last_field(fld))
+                break;
+            fld_idx++;
+        } while (1); 
+    }
+    return BASE_CLASS_NOT_FOUND;
+}
 

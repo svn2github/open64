@@ -235,7 +235,17 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
       actuals[i].Set_ty(idx_maps->ty[old_ty_idx]);
     }
   }
-  
+
+  // process all TY_IDXs found in SUMMARY_CALLSITEs 
+  INT32 num_callsites; 
+  SUMMARY_CALLSITE *callsites = IPA_get_callsite_file_array(hdr, num_callsites); 
+  for (i = 0; i < num_callsites; ++i) { 
+    TY_IDX old_ty_idx = callsites[i].Get_virtual_class(); 
+    if (old_ty_idx) { 
+      callsites[i].Set_virtual_class(idx_maps->ty[old_ty_idx]); 
+    } 
+  } 
+ 
   // process all ST_IDXs found in IVARs
   INT32 num_ivars;
   IVAR* ivars = IPA_get_ivar_file_array(hdr, num_ivars);

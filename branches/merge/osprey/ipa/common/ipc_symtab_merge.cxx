@@ -93,9 +93,6 @@ AUX_PU_TAB Aux_Pu_Table;
 static IP_FILE_HDR* current_file_hdr;
 
 #include "ipc_ty_hash.h"
-#include <ext/hash_set>
-using __gnu_cxx::hash_set;
-hash_set <TY_INDEX> ty_updated_vtable;
 
 // --------------------------------------------------------------
 // Define accessors for index maps we need internally, but which
@@ -1042,6 +1039,12 @@ Merge_Global_Pu(UINT pu_idx, const IPC_GLOBAL_TABS& original_tabs)
     //
     TY_IDX prototype_idx = (*New_Ty_Idx)[PU_prototype(this_pu)];
     Set_PU_prototype(Pu_Table[new_idx], prototype_idx);
+
+    // merge base class in PU 
+    if (PU_base_class(this_pu) != TY_IDX_ZERO) { 
+        TY_IDX base_class_idx = (*New_Ty_Idx)[PU_base_class(this_pu)]; 
+        Set_PU_base_class(Pu_Table[new_idx], base_class_idx); 
+    } 
 
     // sync. up with the Aux_Pu_Table
     UINT32 aux_idx;
@@ -2096,17 +2099,6 @@ IPC_merge_global_tab (const IPC_GLOBAL_TABS &original_tabs,
 
     Merge_Global_Inito (original_tabs.inito_tab,
 			original_tabs.inito_tab_size, idx_map->initv);
-
-    // update vtable of TY
-    for (idx = 1; idx < original_tabs.ty_tab_size; idx++) {
-         TY_IDX tyi = idx_map->ty.map_[idx];
-         TY &new_ty = original_tabs.ty_tab[idx];
-         if (TY_kind(new_ty) == KIND_STRUCT && TY_vtable(new_ty) > 0
-             && NOT_IN_SET(ty_updated_vtable, tyi)) {
-             Set_TY_vtable(tyi, idx_map->initv[TY_vtable(new_ty)]);
-             ty_updated_vtable.insert(tyi);
-         }
-    }
 
     //  Set 6 : Walk the ST_ATTR table and append the records to the end
     //  end of the merged table.

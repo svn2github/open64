@@ -22,8 +22,6 @@
  *
  */
 
-#ifdef OSP_OPT
-
 #ifndef cxx_ipa_chg_INCLUDED
 #define cxx_ipa_chg_INCLUDED
 
@@ -33,6 +31,8 @@
 #include <ext/hash_map>
 
 using __gnu_cxx::hash_map;
+
+#define BASE_CLASS_NOT_FOUND (size_t)-1
 
 class IPA_CLASS_HIERARCHY {
 
@@ -56,6 +56,8 @@ public:
     BOOL Is_Sub_Class(TY_INDEX tyi, TY_INDEX sub);
     BOOL Is_Ancestor(TY_INDEX ancestor, TY_INDEX descendant); 
 
+    size_t Get_Ancestor_Offset(TY_INDEX sub, TY_INDEX anc);
+
 private:
 
     CLASS_RELATIONSHIP baseclass;
@@ -67,8 +69,6 @@ extern IPA_CLASS_HIERARCHY* IPA_Class_Hierarchy;
 
 // Build the global class hierarchy graph
 extern IPA_CLASS_HIERARCHY* Build_Class_Hierarchy();
-
-#endif
 
 #endif
 

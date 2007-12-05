@@ -1351,7 +1351,7 @@ WFE_Start_Function (tree fndecl)
 	  tree fntype = TREE_TYPE(fndecl);
       if (TREE_CODE(fntype) == METHOD_TYPE) {
           TY_IDX base = Get_TY(TYPE_METHOD_BASETYPE(fntype));
-          Set_TY_baseclass(ty, base);
+          Set_PU_base_class(pu, base);
       }
     }
 
@@ -2989,28 +2989,6 @@ WFE_Initialize_Decl (tree decl)
 			Add_Inito_For_Tree (DECL_INITIAL(init_decl),
 					    Get_ST(init_decl));
 		}
-                // Set the virtual table entry of a TY when creating vtable INITO
-                if (vtable_decl_p(decl, 0)) {
-                    INITV_IDX vfunc = Inito_Table[aggregate_inito].val;
-                    while (vfunc > 0) {
-#ifndef TARG_IA64
-                        if (INITV_kind(vfunc) == INITVKIND_SYMOFF)
-#else
-                        if (INITV_kind(vfunc) == INITVKIND_SYMIPLT) 
-#endif
-                        {
-                            ST& initv_st = St_Table[INITV_st(vfunc)];
-                            if (ST_sym_class(initv_st) == CLASS_FUNC)
-                                break;
-                        }
-                        vfunc = (INITV_kind(vfunc) == INITVKIND_BLOCK) ?
-                                 INITV_blk(vfunc) : INITV_next(vfunc);
-                    }
-                    if (vfunc > 0) {
-                        TY_IDX base_tyi = Get_TY(DECL_CONTEXT(decl));
-                        Set_TY_vtable(base_tyi, vfunc);
-                    }
-                }
 		init_decl = NULL;
 	}
 	if (TREE_READONLY(decl))
