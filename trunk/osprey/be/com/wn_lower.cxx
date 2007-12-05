@@ -5134,11 +5134,6 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (Action(LOWER_RETURN_VAL) && WN_st(tree) == Return_Val_Preg)
       return lower_return_ldid(block, tree, actions);
 
-    if (Action(LOWER_RETURN_VAL) && 
-	(PU_src_lang (Get_Current_PU()) & (PU_CXX_LANG | PU_C_LANG)) &&
-        ST_is_return_var(WN_st(tree)))
-      Force_Frame_Pointer = TRUE;
-
     if (Action(LOWER_MLDID_MSTID) && WN_opcode(tree) == OPC_MMLDID)
       return lower_mldid(block, tree, actions);
 
