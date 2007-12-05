@@ -449,6 +449,9 @@ Expand_ST_into_base_and_ofst(ST *st, INT64 st_ofst, ST **base, INT64 *ofst)
     if (ST_sclass(tmpbase) == SCLASS_TEXT)
       break;
 
+    if (ST_is_preemptible(tmpbase) && ST_class(ST_base(tmpbase)) == CLASS_BLOCK)
+      break;
+
     tmpofst += ST_ofst(tmpbase);
     tmpbase = ST_base(tmpbase); 
   }
