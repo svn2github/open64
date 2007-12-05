@@ -1978,8 +1978,7 @@ Choose_Stack_Model (INT64 frame_size)
     return SMODEL_DYNAMIC; // needed to make debugging, gprofiling work
   } 
 #endif
-
-  if (PU_has_return_address (Get_Current_PU ())) {
+  else if (PU_has_return_address (Get_Current_PU ())) {
     return SMODEL_DYNAMIC; // need to get the return address
   }
 
