@@ -2762,6 +2762,26 @@ AGGINIT::Traverse_Aggregate_Array (
     }
 
     else {
+#ifdef TARG_IA64
+      // There are two FDESC_EXPR in the GS Tree and they are the same. (why?)
+      // We need to skip the later if they are equivalent
+      if (gen_initv && 
+          gs_tree_code(tree_value) == GS_FDESC_EXPR && 
+	  idx < length - 1) {
+        gs_t next = gs_constructor_elts_value(init_list, idx+1);
+        if ((next != NULL) && 
+	    (gs_tree_code(next) == GS_FDESC_EXPR) &&
+	    // operand 1 is the POINTER_TYPE, strange. It's undocumented in GCC
+	    (gs_operand(tree_value, 1) == gs_operand(next, 1)) ) {
+  	  idx++; // Skip the next one
+	  Add_Initv_For_Tree (tree_value, esize);
+  	  emitted_bytes += (esize << 1);  // *2, fptr + gp
+  	  current_offset += (esize << 1);
+  	  continue;
+  	}
+      }
+#endif
+
       // initialize SCALARs and POINTERs
       // note that we should not be encountering bit fields
       for (INT index = lindex; index <= hindex; index++) {
