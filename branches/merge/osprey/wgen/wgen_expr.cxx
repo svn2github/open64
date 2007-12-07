@@ -1347,7 +1347,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         volt = TRUE;
       }
       gs_t op = gs_tree_operand(lhs, 0);
-      WN *addr_wn = WGEN_Expand_Expr (gs_tree_operand (lhs, 0));
+      WN *addr_wn = NULL;
       TY_IDX desc_ty_idx = component_ty_idx;
       if (desc_ty_idx == 0)
         desc_ty_idx = hi_ty_idx;
