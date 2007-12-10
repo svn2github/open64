@@ -2771,8 +2771,7 @@ AGGINIT::Traverse_Aggregate_Array (
         gs_t next = gs_constructor_elts_value(init_list, idx+1);
         if ((next != NULL) && 
 	    (gs_tree_code(next) == GS_FDESC_EXPR) &&
-	    // operand 1 is the POINTER_TYPE, strange. It's undocumented in GCC
-	    (gs_operand(tree_value, 1) == gs_operand(next, 1)) ) {
+	    (gs_tree_operand(tree_value, 0) == gs_tree_operand(next, 0)) ) {
   	  idx++; // Skip the next one
 	  Add_Initv_For_Tree (tree_value, esize);
   	  emitted_bytes += (esize << 1);  // *2, fptr + gp
