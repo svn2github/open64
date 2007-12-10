@@ -693,6 +693,18 @@ FEEDBACK::Query( const WN *wn, const FB_EDGE_TYPE type ) const
     freq     = _invokes[fb_index].freq_invoke;
     break;
 
+  case FB_EDGE_BRANCH_ENTRY:
+    fb_index = Get_index_branch( wn );
+    freq     = _branches[fb_index].freq_taken + 
+               _branches[fb_index].freq_not_taken;
+    break;
+
+  case FB_EDGE_BRANCH_JOIN:
+    fb_index = Get_index_branch( wn );
+    freq     = _branches[fb_index].freq_taken +
+               _branches[fb_index].freq_not_taken;
+    break;
+
   case FB_EDGE_BRANCH_TAKEN:
     fb_index = Get_index_branch( wn );
     freq     = _branches[fb_index].freq_taken;
@@ -701,6 +713,12 @@ FEEDBACK::Query( const WN *wn, const FB_EDGE_TYPE type ) const
   case FB_EDGE_BRANCH_NOT_TAKEN:
     fb_index = Get_index_branch( wn );
     freq     = _branches[fb_index].freq_not_taken;
+    break;
+
+  case FB_EDGE_LOOP_ENTRY:
+    fb_index = Get_index_loop( wn );
+    freq     = _loops[fb_index].freq_zero +
+               _loops[fb_index].freq_positive;
     break;
 
   case FB_EDGE_LOOP_ZERO:
@@ -761,8 +779,6 @@ FEEDBACK::Query( const WN *wn, const FB_EDGE_TYPE type ) const
 
   case FB_EDGE_CALL_INOUTSAME:
     fb_index = Get_index_call( wn );
-    Is_True( _calls[fb_index].in_out_same,
-	     ( "FEEDBACK::Query found in_out_same discrepancy" ) );
     freq     = _calls[fb_index].freq_exit;
     break;
 
@@ -1030,53 +1046,6 @@ FEEDBACK::Query_total_out( const WN *wn ) const
 // ====================================================================
 // Annot_* functions store feedback data
 // ====================================================================
-#ifdef SAMPLE_PROFILE
-void
-FEEDBACK::Annot_sample_invoke( WN *wn, const FB_Info_Invoke& fb_info )
-{
-  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
-  Is_True( _invokes.size() == fb_index,
-           ("FEEDBACK::Annot_sample_invoke(%p) - unexpected index %d", wn, fb_index));
-  _invokes.push_back(fb_info);
-}
-
-void
-FEEDBACK::Annot_sample_branch( WN *wn, const FB_Info_Branch& fb_info )
-{
-  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
-  Is_True( _branches.size() == fb_index,
-           ("FEEDBACK::Annot_sample_branch(%p) - unexpected index %d", wn, fb_index));
-  _branches.push_back(fb_info);
-}
-
-void
-FEEDBACK::Annot_sample_loop( WN *wn, const FB_Info_Loop& fb_info )
-{
-  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
-  Is_True( _loops.size() == fb_index,
-           ("FEEDBACK::Annot_sample_loop(%p) - unexpected index %d", wn, fb_index));
-  _loops.push_back(fb_info);
-}
-
-void
-FEEDBACK::Annot_sample_circuit( WN *wn, const FB_Info_Circuit& fb_info )
-{
-  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
-  Is_True( _circuits.size() == fb_index,
-           ("FEEDBACK::Annot_sample_circuit(%p) - unexpected index %d", wn, fb_index));
-  _circuits.push_back(fb_info);
-}
-
-void
-FEEDBACK::Annot_sample_call( WN *wn, const FB_Info_Call& fb_info )
-{
-  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
-  Is_True( _calls.size() == fb_index,
-           ("FEEDBACK::Annot_sample_call(%p) - unexpected index %d", wn, fb_index));
-  _calls.push_back(fb_info);
-}
-#endif
-
 void
 FEEDBACK::Annot_invoke( WN *wn, const FB_Info_Invoke& fb_info )
 {

@@ -269,11 +269,6 @@ void
 FB_CFG::Initialize_Feedback()
 {
   FB_NODEX nx = 0;
-  INT invoke_count = 0;
-  INT branch_count = 0;
-  INT loop_count = 0;
-  INT circuit_count = 0;
-  INT call_count = 0;
   INT num_nodes = _nodes.size();
 
   while (nx < num_nodes)
@@ -288,8 +283,6 @@ FB_CFG::Initialize_Feedback()
 
     if (FB_valid_opr_invoke(wn))
     {
-       invoke_count++;
-       WN_MAP32_Set(WN_MAP_FEEDBACK, wn, invoke_count);
        FB_EDGE_TYPE node_type = _nodes[nx].node_type;
        Is_True( node_type == FB_EDGE_INCOMING ||
                 node_type == FB_EDGE_OUTGOING ||
@@ -298,12 +291,10 @@ FB_CFG::Initialize_Feedback()
 
        FB_FREQ invoke_count((float) _nodes[nx].count);
        FB_Info_Invoke fb_invoke(invoke_count);
-       Cur_PU_Feedback->Annot_sample_invoke(wn, fb_invoke);
+       Cur_PU_Feedback->Annot_invoke(wn, fb_invoke);
     }
     else if (FB_valid_opr_call(wn))
     {
-      call_count++;
-      WN_MAP32_Set(WN_MAP_FEEDBACK, wn, call_count);
       FB_EDGE_TYPE node_type = _nodes[nx].node_type;
       Is_True( node_type == FB_EDGE_CALL_INCOMING ||
                node_type == FB_EDGE_CALL_INOUTSAME,
@@ -312,7 +303,7 @@ FB_CFG::Initialize_Feedback()
       {
         FB_FREQ in_out((float) _nodes[nx].count);
         FB_Info_Call fb_call(in_out);
-        Cur_PU_Feedback->Annot_sample_call(wn, fb_call);
+        Cur_PU_Feedback->Annot_call(wn, fb_call);
       }
       else
       {
@@ -324,7 +315,7 @@ FB_CFG::Initialize_Feedback()
           {
              FB_FREQ out((float) _nodes[nx_tmp].count);
              FB_Info_Call fb_call(in, out);
-             Cur_PU_Feedback->Annot_sample_call(wn, fb_call);
+             Cur_PU_Feedback->Annot_call(wn, fb_call);
              break;
           }
         }
@@ -332,30 +323,32 @@ FB_CFG::Initialize_Feedback()
     }
     else if (FB_valid_opr_branch(wn))
     {
-       branch_count++;
-       WN_MAP32_Set(WN_MAP_FEEDBACK, wn, branch_count);
+      if ( _nodes[nx].node_type == FB_EDGE_BRANCH_ENTRY ||
+	   _nodes[nx].node_type == FB_EDGE_BRANCH_NOT_TAKEN) {
+	nx++;
+	continue;
+      }
        FB_NODEX nx_then = nx;
        Is_True (nx_then < num_nodes && _nodes[nx_then].node_type == FB_EDGE_BRANCH_TAKEN,
                 ("FB_CFG::Initialize_Feedback:: OPR BRANCH - mismatch for FB_EDGE_BRANCH_TAKEN node"));
-       //Is_True (_nodes[nx_then].preds.size() == 1,
-       //         ("FB_CFG::Initialize_Feedback:: OPR_IF - > 1 pred for FB_EDGE_BRANCH_TAKEN node"));
+       Is_True (_nodes[nx_then].preds.size() == 1,
+                ("FB_CFG::Initialize_Feedback:: OPR_IF - > 1 pred for FB_EDGE_BRANCH_TAKEN node"));
 
-       FB_NODEX nx_else = nx + 1;
+       FB_NODEX nx_else = _nodes[nx].exit;
        Is_True (nx_else < num_nodes && _nodes[nx_else].node_type == FB_EDGE_BRANCH_NOT_TAKEN,
                 ("FB_CFG::Initialize_Feedback:: OPR BRANCH - mismatch for FB_EDGE_BRANCH_NOT_TAKEN node"));
-       //Is_True (_nodes[nx_else].preds.size() == 1,
-       //         ("FB_CFG::Initialize_Feedback:: OPR_IF - > 1 pred for FB_EDGE_BRANCH_NOT_TAKEN node"));
+       Is_True (_nodes[nx_else].preds.size() == 1,
+                ("FB_CFG::Initialize_Feedback:: OPR_IF - > 1 pred for FB_EDGE_BRANCH_NOT_TAKEN node"));
 
        FB_FREQ taken((float) _nodes[nx_then].count);
        FB_FREQ not_taken((float) _nodes[nx_else].count);
        FB_Info_Branch fb_branch(taken, not_taken);
-       Cur_PU_Feedback->Annot_sample_branch(wn, fb_branch);
-       nx = nx_else;
+       Cur_PU_Feedback->Annot_branch(wn, fb_branch);
     }
     else if (FB_valid_opr_circuit(wn))
     {
-      circuit_count++;
-      WN_MAP32_Set(WN_MAP_FEEDBACK, wn, circuit_count);
+      Is_True (FALSE,
+	       ("FB_CFG::Initialize_Feedback:: OPR_CIRCUIT should not exist in Sampling FB_CFG"));
       FB_NODEX nx_left = nx;
       FB_NODEX nx_right = nx;
       FB_NODEX nx_neither = nx;
@@ -363,8 +356,8 @@ FB_CFG::Initialize_Feedback()
       FB_EDGE_TYPE node_type = _nodes[nx_left].node_type;
       Is_True( node_type == FB_EDGE_CIRCUIT_LEFT,
               ("FB_CFG::Initialize_Feedback:: OPR CIRCUIT - expected to see FB_EDGE_CIRCUIT_LEFT"));
-      //Is_True( _nodes[nx_left].preds.size() == 1,
-      //         ("FB_CFG::Initialize_Feedback:: OPR CIRCUIT - FB_EDGE_CIRCUIT_LEFT node has > 1 pred"));
+      Is_True( _nodes[nx_left].preds.size() == 1,
+               ("FB_CFG::Initialize_Feedback:: OPR CIRCUIT - FB_EDGE_CIRCUIT_LEFT node has > 1 pred"));
 
       // Search for corresponding nx_right and nx_neither nodes
       for (FB_NODEX nx_tmp = nx + 1; nx_tmp < num_nodes; ++nx_tmp)
@@ -395,7 +388,7 @@ FB_CFG::Initialize_Feedback()
         FB_FREQ right((float) _nodes[nx_right].count);
         FB_FREQ neither((float) _nodes[nx_neither].count);
         FB_Info_Circuit fb_circuit(left, right, neither);
-        Cur_PU_Feedback->Annot_sample_circuit(wn, fb_circuit);
+        Cur_PU_Feedback->Annot_circuit(wn, fb_circuit);
         if (nx_neither == nx + 3)
           nx = nx_neither;
       }
@@ -410,13 +403,18 @@ FB_CFG::Initialize_Feedback()
          case OPR_DO_LOOP:
          case OPR_WHILE_DO:
          {
-           loop_count++;
-           WN_MAP32_Set(WN_MAP_FEEDBACK, wn, loop_count);
+	   if (_nodes[nx].node_type == FB_EDGE_LOOP_BACK  || 
+	       _nodes[nx].node_type == FB_EDGE_LOOP_ENTRY ||
+	       _nodes[nx].node_type == FB_EDGE_LOOP_EXIT){
+	     nx++;
+	     continue;
+	   }
+
            // This should be the nx_body
            FB_EDGE_TYPE node_type = _nodes[nx].node_type;
            Is_True( node_type == FB_EDGE_LOOP_ITERATE,
                     ("FB_CFG::Initialize_Feedback:: OPR_DO_LOOP - expected to see FB_EDGE_LOOP_ITERATE"));
-           FB_NODEX nx_next = nx + 1;
+           FB_NODEX nx_next = _nodes[nx].exit;
            node_type = _nodes[nx_next].node_type;
            Is_True( node_type == FB_EDGE_LOOP_EXIT,
                     ("FB_CFG::Initialize_Feedback:: OPR_DO_LOOP - expected to see FB_EDGE_LOOP_EXIT"));
@@ -457,16 +455,13 @@ FB_CFG::Initialize_Feedback()
            FB_FREQ back(back_count);
 
            FB_Info_Loop fb_loop(zero, out, out, back);
-           Cur_PU_Feedback->Annot_sample_loop(wn, fb_loop);
-           nx = nx_next;
+           Cur_PU_Feedback->Annot_loop(wn, fb_loop);
            break;
          }
 
          case OPR_DO_WHILE:
          {
            FB_FREQ zero(0.0);
-           loop_count++;
-           WN_MAP32_Set(WN_MAP_FEEDBACK, wn, loop_count);
            // This should be the nx_pos (nx count is sum of positive and back counts)
            FB_EDGE_TYPE node_type = _nodes[nx].node_type;
            Is_True( node_type == FB_EDGE_LOOP_POSITIVE,
@@ -485,7 +480,7 @@ FB_CFG::Initialize_Feedback()
            FB_FREQ iterate((float)_nodes[nx].count);
            FB_FREQ back = iterate - positive;
            FB_Info_Loop fb_loop(zero, positive, out, back);
-           Cur_PU_Feedback->Annot_sample_loop(wn, fb_loop);
+           Cur_PU_Feedback->Annot_loop(wn, fb_loop);
            nx = nx_body;
            break;
          }
@@ -535,6 +530,12 @@ FB_CFG::Walk_WN_expression( WN *wn )
   case OPR_CAND:
   case OPR_CIOR:
     {
+#ifdef SAMPLE_PROFILE
+      FB_Info_Circuit info_circuit( FB_FREQ_ZERO, FB_FREQ_ZERO, FB_FREQ_ZERO );
+      Cur_PU_Feedback->Annot_circuit( wn, info_circuit );
+      Walk_WN_test_expression( WN_kid0(wn) );
+      Walk_WN_test_expression( WN_kid1(wn) );
+#else
       FB_FREQ freq_left, freq_right, freq_neither;
       freq_left    = Cur_PU_Feedback->Query( wn, FB_EDGE_CIRCUIT_LEFT    );
       freq_right   = Cur_PU_Feedback->Query( wn, FB_EDGE_CIRCUIT_RIGHT   );
@@ -544,7 +545,7 @@ FB_CFG::Walk_WN_expression( WN *wn )
       FB_NODEX nx_left = New_node( FB_EDGE_CIRCUIT_LEFT, wn, freq_left );
       FB_NODEX nx_not_left = New_node();
       if (opr == OPR_CAND) {
-	Walk_WN_test_expression( WN_kid0(wn), nx_not_left, nx_left );
+ 	Walk_WN_test_expression( WN_kid0(wn), nx_not_left, nx_left );
       } else {
 	Walk_WN_test_expression( WN_kid0(wn), nx_left, nx_not_left );
       }
@@ -566,6 +567,7 @@ FB_CFG::Walk_WN_expression( WN *wn )
       Add_edge( nx_right,     nx_join );
       Add_edge( nx_neither,   nx_join );
       Set_curr( nx_join );
+#endif
     }
     break;
 
@@ -581,6 +583,14 @@ FB_CFG::Walk_WN_expression( WN *wn )
 
   case OPR_CSELECT:
     {
+#ifdef SAMPLE_PROFILE
+      FB_Info_Branch info_branch( FB_FREQ_ZERO, FB_FREQ_ZERO );
+      Cur_PU_Feedback->Annot_branch( wn, info_branch );
+
+      Walk_WN_test_expression( WN_kid0(wn) );
+      Walk_WN_test_expression( WN_kid1(wn) );
+      Walk_WN_test_expression( WN_kid2(wn) );
+#else
       FB_FREQ freq_then, freq_else;
 
       freq_then = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_TAKEN     );
@@ -606,6 +616,7 @@ FB_CFG::Walk_WN_expression( WN *wn )
       Add_edge( nx_then, nx_join );
       Add_edge( nx_else, nx_join );
       Set_curr( nx_join );
+#endif
     }
     break;
 
@@ -765,6 +776,54 @@ FB_CFG::Walk_WN_test_expression( WN *wn, FB_NODEX nx_true, FB_NODEX nx_false )
   }
 }
 
+#ifdef SAMPLE_PROFILE
+void
+FB_CFG::Walk_WN_test_expression( WN *wn)
+{
+  OPERATOR opr = WN_operator( wn );
+
+  switch ( opr ) {
+
+  case OPR_CAND:
+  case OPR_CIOR:
+    {
+      FB_Info_Circuit info_circuit( FB_FREQ_ZERO, FB_FREQ_ZERO, FB_FREQ_ZERO );
+      Cur_PU_Feedback->Annot_circuit( wn, info_circuit );
+
+      Walk_WN_test_expression( WN_kid0(wn) );
+
+      Walk_WN_test_expression( WN_kid1(wn) );
+    }
+    break;
+
+  case OPR_CSELECT:
+    {
+      FB_Info_Branch info_branch( FB_FREQ_ZERO, FB_FREQ_ZERO );
+      Cur_PU_Feedback->Annot_branch( wn, info_branch );
+
+      Walk_WN_test_expression( WN_kid0(wn) );
+      Walk_WN_test_expression( WN_kid1(wn) );
+      Walk_WN_test_expression( WN_kid2(wn) );
+    }
+    break;
+
+  case OPR_COMMA:
+    Walk_WN_statement( WN_kid0(wn) );
+    Walk_WN_test_expression( WN_kid1(wn) );
+    break;
+
+  case OPR_RCOMMA: // FIX RCOMMA !!
+    Walk_WN_test_expression( WN_kid0(wn) );
+    Walk_WN_statement( WN_kid1(wn) );
+    break;
+
+  default:
+    Walk_WN_expression(wn);
+    break;
+  }
+}
+#endif
+
 // Constructs a cfg from the whirl tree rooted at wn.  Invokes
 //
 // After Walk_WN_statement returns, the Curr() node has no successors
@@ -777,11 +836,22 @@ FB_CFG::Walk_WN_statement( WN *wn )
   static bool _in_preamble = FALSE;
 
 #ifdef SAMPLE_PROFILE
-  if ( FB_NODEX_VALID( Curr() ) )
-  {
+  if ( FB_NODEX_VALID( Curr() ) && opr != OPR_BLOCK ) {
     FB_NODE *cur_node = &(_nodes[Curr()]);
-    cur_node->total_samples += WN_MAP64_Get(wn_sample_map, wn);
-    cur_node->num_stmts++;
+    INT curr_sample = WN_MAP64_Get(wn_sample_map, wn);
+    BOOL Using_Max = FALSE;
+    BOOL Using_Average = TRUE;
+
+    if (Using_Max) {
+      if (curr_sample > cur_node->total_samples) {
+	cur_node->total_samples = curr_sample;
+	cur_node->num_stmts = 1;
+      }
+    }
+    else if (Using_Average){
+      cur_node->total_samples += WN_MAP64_Get(wn_sample_map, wn);
+      cur_node->num_stmts++;
+    }
   }
 #endif
 
@@ -869,21 +939,34 @@ FB_CFG::Walk_WN_statement( WN *wn )
       // Walk through the start of the loop
       Walk_WN_statement( WN_start(wn) );
 
-      // Walk through the test expression
-      FB_NODEX nx_test = New_node();
-      FB_NODEX nx_body = New_node( FB_EDGE_LOOP_ITERATE, wn, freq_iterate );
-      FB_NODEX nx_next = New_node( FB_EDGE_LOOP_EXIT,    wn, freq_exit    );
+      FB_NODEX nx_entry = New_node( FB_EDGE_LOOP_ENTRY,  wn, freq_exit    );
       if ( FB_NODEX_VALID( Curr() ) )
-	Add_edge( Curr(), nx_test );
-      Set_curr( nx_test );
-      Walk_WN_test_expression( WN_end(wn), nx_body, nx_next );
+        Add_edge( Curr(), nx_entry );
 
-      // Walk through body and step of DO_LOOP
+      // Walk through the test expression
+      FB_NODEX nx_test = New_node( FB_EDGE_LOOP_BACK,    wn, freq_iterate );
+      FB_NODEX nx_test_save = nx_test;
+      FB_NODEX nx_body = New_node( FB_EDGE_LOOP_ITERATE, wn, freq_iterate );
+      Add_edge( nx_entry, nx_test );
+      Set_curr( nx_test );
+      Walk_WN_test_expression( WN_end(wn) );
+      if ( FB_NODEX_VALID( Curr() ) )
+	nx_test_save = Curr();
+      Add_edge( nx_test_save, nx_body);
+
+      // Walk through the loop body
       Set_curr( nx_body );
       Walk_WN_statement( WN_do_body(wn) );
       Walk_WN_statement( WN_step(wn) );
+
       if ( FB_NODEX_VALID( Curr() ) )
-	Add_edge( Curr(), nx_test );
+        Add_edge( Curr(), nx_test );
+
+      FB_NODEX nx_next = New_node( FB_EDGE_LOOP_EXIT,    wn, freq_exit    );
+      _nodes[nx_test].exit  = nx_body;
+      _nodes[nx_entry].exit = nx_next;
+      _nodes[nx_body].exit  = nx_next;
+      Add_edge( nx_test, nx_next);
       Set_curr( nx_next );
     }
     break;
@@ -901,63 +984,98 @@ FB_CFG::Walk_WN_statement( WN *wn )
 
       // Walk through body of DO_WHILE
       FB_NODEX nx_pos  = New_node( FB_EDGE_LOOP_POSITIVE, wn, freq_positive );
-      FB_NODEX nx_body = New_node();
+      FB_NODEX nx_body = New_node( FB_EDGE_LOOP_ITERATE, wn, freq_back );
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_pos );
       Add_edge( nx_pos, nx_body );
       Set_curr( nx_body );
       Walk_WN_statement( WN_while_body(wn) );
+      Walk_WN_test_expression( WN_while_test(wn) );
 
       // Walk through the test expression
       FB_NODEX nx_back = New_node( FB_EDGE_LOOP_BACK, wn, freq_back );
       FB_NODEX nx_next = New_node( FB_EDGE_LOOP_OUT , wn, freq_out  );
-      Walk_WN_test_expression( WN_while_test(wn), nx_back, nx_next );
       Add_edge( nx_back, nx_body );
+      if ( FB_NODEX_VALID( Curr() ) ) {
+	Add_edge( Curr(), nx_back);
+	Add_edge( Curr(), nx_next);
+      }
+      
+      _nodes[nx_pos].exit  = nx_next;
+      _nodes[nx_body].exit = nx_next;
+
       Set_curr( nx_next );
     }
     break;
 
   case OPR_WHILE_DO:
     {
-      FB_FREQ freq_exit, freq_iterate;
+      FB_FREQ freq_entry, freq_exit, freq_iterate;
       freq_exit    = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_EXIT );
       freq_iterate = Cur_PU_Feedback->Query( wn, FB_EDGE_LOOP_ITERATE );
 
+      FB_NODEX nx_entry = New_node( FB_EDGE_LOOP_ENTRY,     wn, freq_exit );
+      Add_edge( Curr(), nx_entry );
+      Set_curr( nx_entry );
+
       // Walk through the test expression
-      FB_NODEX nx_test = New_node();
-      FB_NODEX nx_body = New_node( FB_EDGE_LOOP_ITERATE, wn, freq_iterate );
-      FB_NODEX nx_next = New_node( FB_EDGE_LOOP_EXIT,    wn, freq_exit    );
+      FB_NODEX nx_test = New_node( FB_EDGE_LOOP_BACK,    wn, freq_iterate );
+      FB_NODEX nx_test_save = nx_test;
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_test );
       Set_curr( nx_test );
-      Walk_WN_test_expression( WN_while_test(wn), nx_body, nx_next );
+      Walk_WN_test_expression( WN_while_test(wn) );
 
       // Walk through body of WHILE_DO
+      FB_NODEX nx_body = New_node( FB_EDGE_LOOP_ITERATE, wn, freq_iterate );
+      if ( FB_NODEX_VALID( Curr() ) )
+	nx_test_save = Curr();
+      Add_edge( nx_test_save, nx_body );
       Set_curr( nx_body );
       Walk_WN_statement( WN_while_body(wn) );
+
+      // Add the back edge
       if ( FB_NODEX_VALID( Curr() ) )
 	Add_edge( Curr(), nx_test );
+
+      FB_NODEX nx_next = New_node( FB_EDGE_LOOP_EXIT,    wn, freq_exit    );
+      _nodes[nx_test].exit  = nx_body;
+      _nodes[nx_entry].exit = nx_next;
+      _nodes[nx_body].exit  = nx_next;
+      Add_edge( nx_test_save, nx_next );
       Set_curr( nx_next );
     }
     break;
 
   case OPR_IF:
     {
-      FB_FREQ freq_then, freq_else;
+      FB_FREQ freq_entry, freq_then, freq_else, freq_join;
+      freq_entry = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_ENTRY    );
       freq_then = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_TAKEN     );
       freq_else = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_NOT_TAKEN );
+      freq_join = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_JOIN      );
+
+      FB_NODEX nx_entry = New_node( FB_EDGE_BRANCH_ENTRY,     wn, freq_entry );
+      Add_edge( Curr(), nx_entry );
 
       // Walk through the test expression
-      FB_NODEX nx_then = New_node( FB_EDGE_BRANCH_TAKEN,     wn, freq_then );
-      FB_NODEX nx_else = New_node( FB_EDGE_BRANCH_NOT_TAKEN, wn, freq_else );
-      Walk_WN_test_expression( WN_if_test(wn), nx_then, nx_else );
+      Set_curr( nx_entry );
+      Walk_WN_test_expression( WN_if_test(wn) );
 
       // Walk through THEN branch
+      FB_NODEX nx_then = New_node( FB_EDGE_BRANCH_TAKEN,     wn, freq_then );
+      _nodes[nx_entry].exit = nx_then;
+      nx_entry = Curr();
+      Add_edge( nx_entry, nx_then );
       Set_curr( nx_then );
       Walk_WN_statement( WN_then(wn) );
-      nx_then = Curr();
 
       // Walk through ELSE branch
+      FB_NODEX nx_else = New_node( FB_EDGE_BRANCH_NOT_TAKEN, wn, freq_else );
+      _nodes[nx_then].exit = nx_else;
+      Add_edge( nx_entry, nx_else );
+      nx_then = Curr();
+      FB_NODEX nx_else_save = nx_else;
       if (! WN_else_is_empty(wn) ) {
 	Set_curr( nx_else );
 	Walk_WN_statement( WN_else(wn) );
@@ -965,7 +1083,11 @@ FB_CFG::Walk_WN_statement( WN *wn )
       }
 
       // Add the join node
-      FB_NODEX nx_join = New_node();
+      FB_NODEX nx_join = New_node( FB_EDGE_BRANCH_JOIN, wn, freq_join );
+      _nodes[nx_else_save].exit = nx_join;
+      _nodes[nx_join].total_samples = WN_MAP64_Get(wn_sample_map, wn);
+      _nodes[nx_join].num_stmts = 1;
+
       if ( FB_NODEX_VALID( nx_then ) )
 	Add_edge( nx_then, nx_join );
       if ( FB_NODEX_VALID( nx_else ) )
@@ -1092,36 +1214,40 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_PICCALL:
   case OPR_INTRINSIC_CALL:
     {
-    if ( Cur_PU_Feedback->Same_in_out( wn ) ) {
-
-      // Walk through the parameters
-      for ( INT t = 0; t < WN_kid_count(wn); ++t )
-	Walk_WN_expression( WN_kid( wn, t ) );
-
-      FB_FREQ freq = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INOUTSAME );
-
-      FB_NODEX nx_next = New_node( FB_EDGE_CALL_INOUTSAME, wn, freq );
-      if ( FB_NODEX_VALID( Curr() ) )
+#ifndef SAMPLE_PROFILE
+      if ( Cur_PU_Feedback->Same_in_out( wn ) ) {
+	
+	// Walk through the parameters
+	for ( INT t = 0; t < WN_kid_count(wn); ++t )
+	  Walk_WN_expression( WN_kid( wn, t ) );
+	
+	FB_FREQ freq = Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INOUTSAME );
+	
+	FB_NODEX nx_next = New_node( FB_EDGE_CALL_INOUTSAME, wn, freq );
+	if ( FB_NODEX_VALID( Curr() ) )
+	  Add_edge( Curr(), nx_next );
+	Set_curr( nx_next );
+	
+      } else { // not Same_in_out
+#endif
+	FB_FREQ freq_entry =  Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INCOMING );
+	FB_NODEX nx_next = New_node( FB_EDGE_CALL_INCOMING, wn, freq_entry );
+	if ( FB_NODEX_VALID( Curr() ) )
+	  Add_edge( Curr(), nx_next );
+	Set_curr( nx_next );
+	
+	// Walk through the parameters
+	for ( INT t = 0; t < WN_kid_count(wn); ++t )
+	  Walk_WN_expression( WN_kid( wn, t ) );
+	
+	FB_FREQ freq_exit  =  Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_OUTGOING );
+	nx_next = New_node( FB_EDGE_CALL_OUTGOING, wn,
+			    FB_FREQ_UNKNOWN, freq_exit );
 	Add_edge( Curr(), nx_next );
-      Set_curr( nx_next );
-
-    } else { // not Same_in_out
-      FB_FREQ freq_entry =  Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_INCOMING );
-      FB_NODEX nx_next = New_node( FB_EDGE_CALL_INCOMING, wn, freq_entry );
-      if ( FB_NODEX_VALID( Curr() ) )
-	Add_edge( Curr(), nx_next );
-      Set_curr( nx_next );
-
-      // Walk through the parameters
-      for ( INT t = 0; t < WN_kid_count(wn); ++t )
-	Walk_WN_expression( WN_kid( wn, t ) );
-
-      FB_FREQ freq_exit  =  Cur_PU_Feedback->Query( wn, FB_EDGE_CALL_OUTGOING );
-      nx_next = New_node( FB_EDGE_CALL_OUTGOING, wn,
-			  FB_FREQ_UNKNOWN, freq_exit );
-      Add_edge( Curr(), nx_next );
-      Set_curr( nx_next );
-     }
+	Set_curr( nx_next );
+#ifndef SAMPLE_PROFILE
+      }
+#endif
     }
     break;
 
@@ -1318,7 +1444,7 @@ FB_CFG::Adjust_edge_freq_node_in(FB_NODEX nx)
   if (num_preds == 0)
     return FALSE;
 
-  if (node.one_edge_preds)  // Every predecessor has no other successor
+  if (node.one_edge_preds && node.node_type != FB_EDGE_LOOP_BACK)  // Every predecessor has no other successor
   {
     if (num_preds == 1)
     {
@@ -1414,7 +1540,7 @@ FB_CFG::Adjust_edge_freq_node_out(FB_NODEX nx)
   if (num_succs == 0)
     return FALSE;
 
-  if (node.one_edge_succs)  // Every successor has no other predecessor
+  if (node.one_edge_succs && node.node_type != FB_EDGE_LOOP_BACK)  // Every successor has no other predecessor
   {
     if (num_succs == 1)
     {
@@ -1501,6 +1627,194 @@ FB_CFG::Adjust_edge_freq_node_out(FB_NODEX nx)
   return FALSE;
 
 }
+
+int
+FB_CFG::Coordinate(FB_NODEX n1, FB_NODEX n2) {
+  int count1 = _nodes[n1].count;
+  int count2 = _nodes[n2].count;
+  return count1 > count2 ? count1: count2;
+}
+
+// This recursive function is used to adjust a "node block" to a certain frequency
+// A "node block" is a syntax related basic blocks. For example, if...then...else...endif
+// can form a node block, which includes all the BBs inside this it. So it's a nested struct.
+FB_NODEX 
+FB_CFG::Adjust_with_freq(FB_NODEX nx, int freq) {
+  FB_NODE& node = _nodes[nx];
+
+  switch (node.node_type) {
+
+  case FB_EDGE_BRANCH_ENTRY:
+    {
+      FB_NODEX nx_then = node.exit;
+      FB_NODEX nx_else = _nodes[nx_then].exit;
+      FB_NODEX nx_join = _nodes[nx_else].exit;
+
+      Is_True (_nodes[nx_then].node_type == FB_EDGE_BRANCH_TAKEN,
+               ("FB_CFG::Smooth_BB_count","The next node should be BRANCH_TAKEN"));
+      Is_True (_nodes[nx_else].node_type == FB_EDGE_BRANCH_NOT_TAKEN,
+               ("FB_CFG::Smooth_BB_count","The next's next node should be BRANCH_UNTAKEN"));
+      Is_True (_nodes[nx_join].node_type == FB_EDGE_BRANCH_JOIN,
+               ("FB_CFG::Smooth_BB_count","The next's next node should be BRANCH_JOIN"));
+
+      node.count = _nodes[nx_join].count = freq;
+      
+      FB_NODEX i = nx + 1;
+      for (; i < nx_then; i++) {
+        i = Adjust_with_freq(i, freq);
+      }
+      
+      int taken_orig = _nodes[nx_then].count;
+      int untaken_orig = _nodes[nx_else].count;
+      int taken_adjust;
+      int untaken_adjust;
+      
+      if ( untaken_orig == 0 ) {
+	taken_adjust = taken_orig > freq? freq : taken_orig;
+	untaken_adjust = freq - taken_adjust;
+      }
+      else if ( taken_orig + untaken_orig > 0) {
+	taken_adjust = freq * ((float)taken_orig / (taken_orig + untaken_orig));
+	untaken_adjust = freq * ((float)untaken_orig / (taken_orig + untaken_orig));
+      }
+      else {
+	taken_adjust = freq / 2;
+	untaken_adjust = freq / 2;
+      }
+      
+      // Adjust the taken branch with taken_adjust
+      i = nx_then;
+      for (; i < nx_else; i++) {
+	i = Adjust_with_freq(i, taken_adjust);
+      }
+      Is_True (_nodes[i].node_type == FB_EDGE_BRANCH_NOT_TAKEN, ("FB_CFG::Adjust_with_freq","Should be BRANCH_UNTAKEN"));
+      // Adjust the untaken branch with untaken_adjust
+      for (; i < nx_join; i++) {
+	i = Adjust_with_freq(i, untaken_adjust);
+      }
+      Is_True (_nodes[i].node_type == FB_EDGE_BRANCH_JOIN, ("FB_CFG::Adjust_with_freq","Should be BRANCH_JOIN"));
+      return nx_join;
+    }
+
+  case FB_EDGE_LOOP_ENTRY:
+  case FB_EDGE_LOOP_POSITIVE:
+    {
+      node.count = _nodes[node.exit].count = freq;
+      return node.exit;
+    }      
+
+  default:
+    node.count = freq;
+    return nx;
+  }
+}
+
+int
+FB_CFG:: Smooth_BB_count(FB_NODEX nx, FB_NODEX& end) {
+  FB_NODE& node = _nodes[nx];
+
+  switch (node.node_type) {
+  case FB_EDGE_BRANCH_ENTRY:
+    {
+      FB_NODEX nx_then = node.exit;
+      FB_NODEX nx_else = _nodes[nx_then].exit;
+      FB_NODEX nx_join = _nodes[nx_else].exit;
+      
+      Is_True (_nodes[nx_then].node_type == FB_EDGE_BRANCH_TAKEN,
+	       ("FB_CFG::Smooth_BB_count","The next node should be BRANCH_TAKEN"));
+      Is_True (_nodes[nx_else].node_type == FB_EDGE_BRANCH_NOT_TAKEN,
+	       ("FB_CFG::Smooth_BB_count","The next's next node should be BRANCH_UNTAKEN"));
+      Is_True (_nodes[nx_join].node_type == FB_EDGE_BRANCH_JOIN,
+               ("FB_CFG::Smooth_BB_count","The next's next node should be BRANCH_JOIN"));
+      
+      // Handle the branch_test
+      int total_sample = _nodes[nx_join].count > node.count? _nodes[nx_join].count: node.count;
+      FB_NODEX i = nx + 1;
+      for (; i < nx_then; i++) {
+	FB_NODEX curr;
+	int curr_sample = Smooth_BB_count(i, curr);
+	if (curr_sample > total_sample) {
+	  total_sample = curr_sample;
+	}
+	i = curr;
+      }
+
+      Is_True (_nodes[i].node_type == FB_EDGE_BRANCH_TAKEN, ("FB_CFG::Smooth_BB_count","Should be BRANCH_UNTAKEN"));
+
+      // Handle the branch_taken
+      int taken_sample = _nodes[nx_then].count;
+      for (; i < nx_else; i++) {
+	FB_NODEX curr;
+	int curr_sample = Smooth_BB_count(i, curr);
+	if (curr_sample > taken_sample) {
+	  taken_sample = curr_sample;
+	}
+	i = curr;
+      }
+      _nodes[nx_then].count = taken_sample;
+      
+      Is_True (_nodes[i].node_type == FB_EDGE_BRANCH_NOT_TAKEN, ("FB_CFG::Smooth_BB_count","Should be BRANCH_UNTAKEN"));
+      // Handle the branch_untaken
+      int untaken_sample = _nodes[i].count;
+      for (; i < nx_join; i++) {
+	FB_NODEX curr;
+	int curr_sample = Smooth_BB_count(i, curr);
+	if (curr_sample > untaken_sample) {
+	  untaken_sample = curr_sample;
+	}
+	i = curr;
+      }
+      _nodes[nx_else].count = untaken_sample;
+      
+      Is_True (_nodes[i].node_type == FB_EDGE_BRANCH_JOIN, ("FB_CFG::Smooth_BB_count","Should be BRANCH_JOIN"));
+
+      if (total_sample < taken_sample + untaken_sample)
+	total_sample = taken_sample + untaken_sample;
+      
+      Adjust_with_freq(nx, total_sample);
+
+      end = nx_join;
+      return total_sample;
+    }
+    
+  case FB_EDGE_LOOP_ENTRY:
+  case FB_EDGE_LOOP_POSITIVE:
+    {
+      // Coordinate the entry node count and exit node cout.
+      // Their count should be the same.
+      int total_sample = Coordinate(nx, node.exit);
+      node.count = _nodes[node.exit].count = total_sample;
+      // Handle the loop_body
+      int body_sample = _nodes[nx+1].count;
+      FB_NODEX i = nx + 1;
+      for (; i < node.exit; i++) {
+	FB_NODEX curr;
+	int curr_sample = Smooth_BB_count(i, curr);
+	if (curr_sample > body_sample) {
+	  body_sample = curr_sample;
+	}
+	i = curr;
+      }
+      
+      // Adjust the loop body with body_sample frequency
+      for (i = nx + 1; i < node.exit; i++){
+	i = Adjust_with_freq(i, body_sample);
+      }
+      
+      Is_True (_nodes[i].node_type == FB_EDGE_LOOP_EXIT ||
+	       _nodes[i].node_type == FB_EDGE_LOOP_OUT,
+	       ("FB_CFG::Smooth_BB_count","Should be BRANCH_JOIN"));
+      
+      end = node.exit;
+      return total_sample;
+    }
+
+  default:
+    end = nx;
+    return node.count;
+  }
+}
+
 #endif
 
 // For node nx, compare the sum of the incoming edge frequencies with
@@ -2356,7 +2670,8 @@ FB_CFG::Construct_from_whirl( WN *wn_root, const char *caller )
   // (3) Compute unknown edge frequencies by propagating known values
   Freq_propagate();
 #else
-  Adjust_all_edge_freq();
+  for (FB_NODEX nx = 0; nx < _nodes.size(); ++nx )
+    Smooth_BB_count(nx, nx);
   if (print_vcg)
   {
   sprintf(buffer, "%s_sample_adj.vcg", func_name);

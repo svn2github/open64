@@ -94,6 +94,8 @@ struct FB_NODE {
   vector<FB_NODEX> preds; // Predecessors
   vector<FB_NODEX> succs; // Successors
 
+  FB_NODEX exit;          // index of exit part of branch/loop
+
   bool one_edge_preds;    // true iff every pred has no other succs
   bool one_edge_succs;    // true iff every succ has no other preds
 
@@ -118,6 +120,7 @@ struct FB_NODE {
   INT                 num_stmts;
   INT                 total_samples;
   INT                 count;
+  float               reliability;
 #endif
 
   FB_NODE() :
@@ -137,7 +140,8 @@ struct FB_NODE {
     unknown_in( 1 ),
     unknown_out( 1 ),
     unexact_in( 1 ),
-    unexact_out( 1 ) {}
+    unexact_out( 1 ),
+    exit( 0 ){}
 
   FB_NODE( FB_EDGE_TYPE type, WN *src, bool same,
 	   FB_FREQ freq_in, FB_FREQ freq_out ) :
@@ -198,7 +202,7 @@ struct FB_NODE {
     fprintf(fp, "\" info1: \"");
 #endif
 
-    fprintf(fp, "%s\" info2:\"", buffer);
+    fprintf(fp, "%s\" info2:\" %s, ", buffer, buffer);
     if (source) {
 #ifdef SAMPLE_PROFILE
       SRCPOS srcpos = WN_Get_Linenum(source);
@@ -316,6 +320,12 @@ private:
   void Adjust_all_edge_freq();
   BOOL Adjust_edge_freq_node_in (FB_NODEX nx);
   BOOL Adjust_edge_freq_node_out (FB_NODEX nx);
+
+  void Walk_WN_test_expression( WN *wn );
+  int Coordinate (FB_NODEX n1, FB_NODEX n2);
+  FB_NODEX Adjust_with_freq (FB_NODEX nx, int freq);
+  int Smooth_BB_count (FB_NODEX nx, FB_NODEX& end);
+
 #endif
 
   char *Node_label( FB_NODEX nx ) const;

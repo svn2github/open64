@@ -4830,6 +4830,7 @@ WGEN_Expand_Expr (gs_t exp,
          // "then" statement
           WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
           WGEN_Guard_Var_Push();
+         lineno = gs_expr_lineno(gs_tree_operand (exp, 1));
           wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1), FALSE);
           gs_t guard_var1 = WGEN_Guard_Var_Pop();
           if (wn1) {
@@ -4846,6 +4847,7 @@ WGEN_Expand_Expr (gs_t exp,
           if (gs_tree_operand(exp, 2) != NULL) {
             WGEN_Stmt_Push (else_block, wgen_stmk_if_else, Get_Srcpos());
             WGEN_Guard_Var_Push();
+           lineno = gs_expr_lineno(gs_tree_operand (exp, 2));
             wn2 = WGEN_Expand_Expr (gs_tree_operand (exp, 2), FALSE);
             gs_t guard_var2 = WGEN_Guard_Var_Pop();
             if (wn2) {
@@ -4859,6 +4861,7 @@ WGEN_Expand_Expr (gs_t exp,
             }
           }
           // Generate IF statement.
+         lineno = gs_expr_lineno(exp);
           WGEN_Stmt_Append (if_stmt, Get_Srcpos());
 #else
 	  WGEN_Stmt_Append (if_stmt, Get_Srcpos());

@@ -2234,6 +2234,38 @@ WN_Clean_Mapid_for_Calls(WN * wn)
 }
 
 #ifdef SAMPLE_PROFILE
+static void
+Print_Branch( FILE *fp, WN *root )
+{
+  int i=0;
+  fprintf(fp, "Branch of %s:\n", ST_name(WN_st(root)));
+  for( WN_ITER* wni = WN_WALK_TreeIter(root);
+       wni != NULL;
+       wni = WN_WALK_TreeNext(wni) ){
+    WN *wn = WN_ITER_wn (wni);
+    
+    switch( WN_operator(wn) ){
+    case OPR_IF:
+      {
+	FB_FREQ freq_then, freq_else;
+	if (!Cur_PU_Feedback) {
+          fprintf ( fp, "Branch #%d: nan nan\n", i++);
+	  continue;
+        }
+
+	//    freq_entry = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_ENTRY    );
+	freq_then = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_TAKEN     );
+	freq_else = Cur_PU_Feedback->Query( wn, FB_EDGE_BRANCH_NOT_TAKEN );
+	float taken = freq_then._value / (freq_then._value + freq_else._value);
+	fprintf ( fp, "Branch #%d: %f %f\n", i++, taken, freq_then._value + freq_else._value);
+      }
+      break;
+    default:
+      break;
+    }
+  }
+}
+
 BOOL
 WN_Sample_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )
 {
@@ -2247,6 +2279,7 @@ WN_Sample_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )
   if ( fb_handles.empty() ) {
     // No samples available for this function
     DevWarn( "No Sample found for this function" );
+    Print_Branch(stdout, wn);
     return FALSE;
   }
 
@@ -2270,6 +2303,7 @@ WN_Sample_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )
   FB_CFG fb_cfg;
   fb_cfg.Construct_from_whirl(wn, "sample annotate");
   fb_cfg.Initialize_Feedback();
+  Print_Branch(stdout, wn);
 
   return TRUE;
 
