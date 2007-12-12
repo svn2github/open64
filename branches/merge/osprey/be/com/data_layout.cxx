@@ -974,14 +974,24 @@ Get_Section_ST_With_Given_Name (SECTION_IDX sec, ST_SCLASS sclass, STR_IDX name)
 		}
 	}
 	if (newblk == NULL) {
-		// bug fix for OSP_129
-		// bug fix for OSP_254
-		// The gnu4 FE will put static variables in STL into .gnu.linkonce.d. or .gnu.linkonce.b
-		// If the section name does not start with .gnu.linkonce.b.
-		//    It's a user-defineded section, we 
-		//       Create Data section for user-defineded section
-	      if ( sec == _SEC_BSS && strncmp(Index_To_Str(name), ".gnu.linkonce.b.", 16) )
-		sec = _SEC_DATA; 
+              // bug fix for OSP_129
+              // bug fix for OSP_254
+              // The gnu4 FE will put static variables in STL into .gnu.linkonce.d. or .gnu.linkonce.b. or .bss.
+              // If the section name doesn't start with 
+              //     .gnu.linkonce.b. -or-
+              //     .bss.     
+              //    It's a user-defineded section, we 
+              //       Create Data section for user-defineded section
+              // The goal of these code is to be compatible with GCC
+              if ( strncmp(Index_To_Str(name), ".gnu.linkonce.b.", 16) == 0 || 
+                   strncmp(Index_To_Str(name), ".bss.", 5) == 0 ) {
+                // For .gnu.linkonce.b., .bss., force to _SEC_BSS
+		sec = _SEC_BSS;
+              }
+              else if ( sec == _SEC_BSS ) {
+                // Otherwise, user defined section, force to _SEC_DATA
+                sec = _SEC_DATA;
+              }
 	      ST *blk = Get_Section_ST(sec, 0, sclass);
 	      newblk = Copy_ST_Block(blk);
 	      Set_ST_name_idx(newblk, name);
