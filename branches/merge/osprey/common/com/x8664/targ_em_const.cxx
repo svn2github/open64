@@ -373,7 +373,8 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 
       case MTYPE_FQ: {
         char *p = (char *) & TCON_R16(tc);
-	emit_bytes( fl, p, Is_Target_64bit() ? 16 : sizeof(TCON_R16(tc)) );
+        // Force the size of MTYPE_FQ to 16 for 64bit code and 12 for 32bit code
+	emit_bytes( fl, p, Is_Target_64bit() ? 16 : 12 /* sizeof(TCON_R16(tc)) */ );
 	fprintf(fl, "\t%s quad %#Lg\n", ASM_CMNT, TCON_R16(tc) );
 	--rc;
 	break;
