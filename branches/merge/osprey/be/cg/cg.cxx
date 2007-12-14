@@ -769,6 +769,12 @@ CG_Generate_Code(
     if (frequency_verify && CG_PU_Has_Feedback)
       FREQ_Verify("CFLOW (first pass)");
   }
+  else {
+    // OSP_426
+    // Enable CFLOW_Optimize to remove unreachable BBs 
+    //  to avoid assertion in LRA.
+    CFLOW_Optimize( CFLOW_UNREACHABLE, "CFLOW (unreachable at -O0)");
+  }
 
 #ifdef TARG_IA64
   extern void Perform_Loop_Invariant_Code_Motion (void);
