@@ -741,8 +741,8 @@ inline bool FB_valid_opr_circuit(const WN *wn) {
   case OPR_CALL:           \
   case OPR_ICALL:          \
   case OPR_INTRINSIC_CALL: \
-  case OPR_IO
-// case OPR_REGION:
+  case OPR_IO: \
+  case OPR_REGION
 
 inline bool FB_valid_opr_call(const WN *wn) {
   OPERATOR opr = WN_operator( wn );
