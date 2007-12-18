@@ -1270,8 +1270,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 #ifdef KEY
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback;
     LABEL_WN_MAP label_use_map;     
-    INT icall_site[100];
-    INT icall_cnt = 0;
+    vector<INT> icall_site;
 #else
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback&& IPA_Enable_Reorder;//and other things, such as Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO]
 #endif // KEY
@@ -1593,8 +1592,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		WN_operator(w2) == OPR_ICALL ){
 	      FB_FREQ freq = Cur_PU_Feedback->Query(w2, FB_EDGE_CALL_INCOMING);
 	      if( freq.Known() ){
-		icall_site[icall_cnt] =  Get_callsite_idx();
-		icall_cnt++;
+               icall_site.push_back(Get_callsite_idx());
 	      }
 	    }
 #endif	      
@@ -1974,9 +1972,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     /* Append a list of free slots to the currnet callsite_array for
        the future use by IPA_Convert_Icalls.
     */
-    FmtAssert( icall_cnt < sizeof(icall_site) / sizeof(icall_site[0]),
-	       ("icall array is too small.") );
-    for( int i = 0; i < icall_cnt; i++ ){
+    for( int i = 0; i < icall_site.size(); i++ ){
       SUMMARY_CALLSITE* icall_info = Get_callsite (icall_site[i]);
       SUMMARY_CALLSITE* callsite = New_callsite ();
 
