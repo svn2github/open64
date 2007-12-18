@@ -108,6 +108,9 @@ STACK_MODEL Current_PU_Stack_Model = SMODEL_UNDEF;
 #define ST_NAME(st)	(ST_class(st) == CLASS_CONST ? \
 	Targ_Print(NULL,STC_val(st)) : ST_name(st) )
 
+#define ST_NO_LINKAGE(st) \
+    (ST_export(st) == EXPORT_LOCAL ||   \
+     ST_export(st) == EXPORT_LOCAL_INTERNAL)
 static BOOL Frame_Has_Calls;	// whether stack frame has calls
 
 /* ====================================================================
@@ -2552,7 +2555,6 @@ else {
 if (Trace_Frame) fprintf(TFile, "<lay> didn't check Gspace for %s\n", ST_NAME(st));
 }
 #endif
-
    if (sec == _SEC_RDATA && ST_class(st) == CLASS_CONST) {
      /* by default put all short .rodata items into .srdata, unless 
 	we can put it into an appropriate merge section.
@@ -2809,7 +2811,9 @@ Allocate_Object ( ST *st )
     {
       if (ST_is_constant(st))
         // GNU puts CLASS_CONST data in .rodata.
-        if (Gen_PIC_Shared && ST_sym_class(st) != CLASS_CONST)
+        if (Gen_PIC_Shared &&
+            !ST_NO_LINKAGE(st) && 
+            ST_sym_class(st) != CLASS_CONST)
           sec = _SEC_DATA_REL_RO; // bug 10097
         else
           sec = _SEC_RDATA;
