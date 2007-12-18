@@ -2782,7 +2782,7 @@ Allocate_Object ( ST *st )
     break;
   case SCLASS_PSTATIC :
   case SCLASS_FSTATIC :
-    if (ST_is_thread_local(st)) {
+    if (ST_is_thread_private(st)) {
       if (ST_is_initialized(st) && !ST_init_value_zero (st))
 #ifdef KEY
         sec = _SEC_LDATA_MIPS_LOCAL;	// bug 12619
