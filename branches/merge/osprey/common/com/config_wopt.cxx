@@ -255,7 +255,7 @@ BOOL  WOPT_Enable_Iload_Prop = TRUE;
 BOOL  WOPT_Enable_VN_Full = TRUE;	/* full value number (for ivars) */
 BOOL  WOPT_Enable_Simp_Iload = TRUE;   /* simplifier folding iload */
 BOOL  WOPT_Enable_Canon_Uplevel=FALSE; /* canonicalize the up level ref */
-#ifdef KEY // bug 12909
+#ifdef TARG_X8664 // bug 12909
 BOOL  WOPT_Enable_Tail_Recur = TRUE;	/* tail recursion */
 #else
 BOOL  WOPT_Enable_Tail_Recur = FALSE;	/* tail recursion */
