@@ -34,7 +34,7 @@
 #
 
 VER_MAJOR="4"
-VER_MINOR="0"
+VER_MINOR="2"
 #PATCH_LEVEL=""
 VERSION="${VER_MAJOR}.${VER_MINOR}"
 
@@ -236,6 +236,7 @@ INSTALL_WHIRL_STUFF () {
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
     INSTALL_EXEC_SUB  ${AREA}/libspin/gspin      ${BIN_DIR}/gspin
+    INSTALL_EXEC_SUB  ${AREA}/libspin_4_2_0/gspin42 ${BIN_DIR}/gspin42
 
     return 0
 }
@@ -248,17 +249,24 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 
     if [ "$TARG_HOST" = "ia64" ] ; then
         # These stuffs are only valid on ia64
+        LIBAREA="osprey/targ${TARG_HOST}/"
+
         # f90 related archieves 
         INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.cat  ${PHASEPATH}/lib.cat
         INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.exp  ${PHASEPATH}/lib.exp
 
         # instrument archieves.
-        d="osprey/targ${TARG_HOST}/"
-        INSTALL_DATA_SUB $d/libcginstr/libcginstr.a  ${PHASEPATH}/libcginstr.a  
-        INSTALL_DATA_SUB $d/libinstr/libinstr.a      ${PHASEPATH}/libinstr.a 
+        INSTALL_DATA_SUB ${LIBAREA}/libcginstr/libcginstr.a  ${PHASEPATH}/libcginstr.a  
+        INSTALL_DATA_SUB ${LIBAREA}/libinstr/libinstr.a      ${PHASEPATH}/libinstr.a 
 
         #  SGI implementation for turning on FLUSH to ZERO
-        INSTALL_DATA_SUB $d/init/ftz.o     ${PHASEPATH}/ftz.o
+        INSTALL_DATA_SUB ${LIBAREA}/init/ftz.o     ${PHASEPATH}/ftz.o
+    else
+        # IA32 and x86_64
+        LIBAREA=osprey/targx8664_builtonia32
+        LIB32AREA=osprey/targia32_builtonia32
+        INSTALL_DATA_SUB ${LIBAREA}/libinstr2/libinstr.a      ${PHASEPATH}/libinstr.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libinstr2/libinstr.a      ${PHASEPATH}/32/libinstr.a
     fi
 
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
@@ -277,7 +285,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
     fi
     if [ "$ARCH" = "x86_64" ] ; then
         for i in libgcc.a libstdc++.a libstdc++.so; do
-	    F=`/usr/bin/gcc -m32 --print-file-name $i`
+	    F=`gcc -m32 --print-file-name $i`
 	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
 	    F=`gcc -m64 --print-file-name $i`
 	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
@@ -286,14 +294,15 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
     return 0
 }
 
-# Install the general propose libraries, libfortran.a, libffio.a, libmsgi.a, libmv.a and libm.a   
+# Install the general propose libraries, libfortran.a, libffio.a, libmsgi.a, libmv.a, libm.a, libopenmp.a
 INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 
     if [ "$TARG_HOST" = "ia64" ] ; then
         LIBAREA="osprey/targ${TARG_HOST}/"
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a 
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
-        INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libmsgi.a       ${PHASEPATH}/libmsgi.a
+        # libmsgi.a is no longer needed
+        #INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
         INSTALL_DATA_SUB ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
 	INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
@@ -303,7 +312,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         # 64bit libraries
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
-        INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
+        #INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
 	INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
         # 32bit libraries
@@ -311,6 +320,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
         INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/32/libopenmp.a
     fi 
     return 0
 }
