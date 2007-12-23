@@ -111,8 +111,13 @@ BOOL    VHO_Check_Tree                  = FALSE;
 BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
 #ifdef KEY
-/* simple if-conversion at VHO lower time */
-BOOL    VHO_Enable_Simple_If_Conv = TRUE;   
+
+#ifdef TARG_IA64
+BOOL  VHO_Enable_Simple_If_Conv = FALSE;
+#else
+BOOL  VHO_Enable_Simple_If_Conv = TRUE;
+#endif
+
 /* maximum overhead allowed after If-Conversion */
 INT32   VHO_Enable_If_Conv_Limit = 6;   
 /* enable misc. loop distribution and interchange at VHO lower time */
