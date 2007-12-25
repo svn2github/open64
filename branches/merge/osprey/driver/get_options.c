@@ -176,11 +176,12 @@ add_string_option_or_dash (int flag, char *arg)
 	/* check that there is an argument after the option,
 	 * which should not begin with a dash unless the argument is just '-',
 	 * and unless option ends in a comma (e.g. -pfa,%s ) */
+	/* Bug fix for OSP_428, gcc can specify --* argument for -o option
+	 * opencc should be compatiable with gcc */
 	char *s = get_option_name(flag);
 	if (arg == NULL ||
-	    (*arg == '-' &&
-	     arg[1] != '\0' &&
-	     s[strlen(s)-1] != ',')) {
+	    (*arg == '-' && arg[1] != '\0' && 
+	     (s[strlen(s)-1] != ',') && (s[1] != 'o'))) {
 		parse_error(get_option_name(flag), "no argument given for option");
 		return flag;
 	}
