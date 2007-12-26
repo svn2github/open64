@@ -2169,6 +2169,7 @@ Copy_Entry_BB_Annotation (BB* entry_bb, BB* splitted_bb) {
         case ANNOT_LOOPINFO :
         case ANNOT_SWITCH : 
         case ANNOT_ROTATING_KERNEL :
+	case ANNOT_ASMINFO :
             BB_Add_Annotation (splitted_bb,ANNOT_kind (annot),ANNOT_info(annot));
             break ;
 
