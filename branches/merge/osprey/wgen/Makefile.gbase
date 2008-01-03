@@ -303,6 +303,7 @@ endif
 LLDOPTS = -Wl,--export-dynamic
 LLDLIBS = $(COMUTIL_OBJS) $(LIBIBERTY_OBJS) $(LIBSPIN_OBJS)
 LLDLIBS += -lm $(CMPLRS_OBJS)
+LDIRT += $(TARGETS)
 
 #default: first $(TARGETS) last
 default: $(TARGETS) last

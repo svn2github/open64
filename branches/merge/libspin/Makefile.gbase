@@ -33,6 +33,7 @@ endif
 LIBSPIN = libgspin$(NAME_SUFFIX).a
 GSPIN = gspin$(NAME_SUFFIX)
 TARGETS = $(LIBSPIN) $(GSPIN)
+LDIRT += $(GSPIN)
 
 LIBSPIN_SOURCES = gspin-tree.c \
   gspin-assert.c \
