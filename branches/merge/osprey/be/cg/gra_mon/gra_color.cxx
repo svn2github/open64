@@ -1288,6 +1288,7 @@ GRA_Optimize_Restore_Regs(BB* exit, BB_SET* call_set, BB_SET* pr_set, BB_SET* lc
           op = tmp_op;
         }
         if(found_pfs && found_b0) break;
+        if(!op) break;
       }
     }
   }

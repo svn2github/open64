@@ -3120,6 +3120,12 @@ Stack_Offset_Adjustment_For_PU (void)
 	return 0;
 }
 
+extern void
+Set_Frame_Has_Calls(BOOL b)
+{
+    Frame_Has_Calls = b;
+}
+
 #ifdef TARG_X8664
 BOOL
 Stack_Frame_Has_Calls (void)

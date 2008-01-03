@@ -661,6 +661,7 @@ CG_Generate_Code(
     CG_Edge_Profile_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
     Stop_Timer( T_Ipfec_Profiling_CU );
     Check_for_Dump(TP_A_PROF, NULL);
+    Set_Frame_Has_Calls(TRUE);
   } else if (IPFEC_Enable_Edge_Profile_Annot && can_invoke_profile_with_current_cg_opt_level ) {
     Set_Error_Phase ( "edge profile annotation" );
     CG_Edge_Profile_Annotation(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
@@ -709,7 +710,7 @@ CG_Generate_Code(
     Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
     Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
     Is_True((current_PU_handle<=Max_Instr_Pu_Id)&&(current_PU_handle>=Min_Instr_Pu_Id),("The number of PU exceed the boundery !"));
-    CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
+//    CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
   }
 #endif
   if (CG_localize_tns && !value_profile_need_gra ) {
@@ -1178,7 +1179,7 @@ CG_Generate_Code(
                 && current_PU_handle <= Max_Instr_Pu_Id
                 && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
         {
-            CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST,FALSE,FALSE);
+//            CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST,FALSE,FALSE);
         }
   }
   DevWarn("Now we are testing instrumentation after RegionFormation!");

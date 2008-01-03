@@ -1,6 +1,5 @@
 #
 #
-#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -34,50 +33,47 @@
 #
 #
 
-#  Makefile for targia64
+#
+#  Makefile for libcginstr
 #
 
 #
-#  These directories must be "built" first because they generate header files
-#  which other directories depend on.
+#  Define build parameters
 #
-INCLUDE_SUBDIRS = \
-	include
-
-#
-#  Next, all of the libraries are built because the tools depend on them.
-#
-LIBRARY_SUBDIRS = \
-	init \
-	libfortran \
-	libu \
-	libmv \
-	libinstr \
-	libcginstr \
-	cg_fb_tools \
-	whirl_fb_tools \
-	libopenmp
-
-	#libmsgi \
-	#libmp \
-	#libstdc++ \
-	#libgcc \
+BUILD_AREA     = ..
+BUILD_TOT      = ../..
+BUILD_BASE     = ../../instrumentation/whirl_fb_tools
+BUILD_ROOTS    = TARGET
+BUILD_ABI      = I64BIT
+BUILD_ARCH     = IA64
+BUILD_TYPE     = SHARED
+BUILD_OPTIMIZE = -O2 
+BUILD_VARIANT  = DEFAULT
+BUILD_INSTALL  = DEFAULT
+BUILD_TARGET   = IA64
+BUILD_COMPILER = GNU
+BUILD_OS       = LINUX
+BUILD_HOST     = IA64
 
 
-#
-#  Finally, the compiler tools (components) are built.
-#
-#  Note that be_driver must come last since it depends on other components
-#  being built first.
-#
-TOOL_SUBDIRS =
+#ifdef IRIX
+# smake
 
-SUBDIRS=$(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
+#  Include (optional) parameter override file
+#if exists($(BUILD_AREA)/Makefile.override)
+#include "$(BUILD_AREA)/Makefile.override"
+#endif
+#  Include setup file which will then include Makefile.base
+#include "$(BUILD_TOT)/Makefile.setup"
 
-default clean clobber:
-	@for d in $(SUBDIRS); do \
-	    if [ -d $$d ] ; then \
-	    	echo "===> cd $$d; $(MAKE) $@"; \
-	    	cd $$d; $(MAKE) $@; cd ..; \
-	    fi; \
-	done
+#else
+# gmake
+
+#  Include (optional) parameter override file
+-include $(BUILD_AREA)/Makefile.override
+
+#  Include setup file which will then include Makefile.base
+include $(BUILD_TOT)/Makefile.gsetup
+
+#endif
+
