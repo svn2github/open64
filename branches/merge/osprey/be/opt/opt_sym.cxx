@@ -922,6 +922,7 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   sym->Set_field_id(field_id);
   sym->Set_mclass(0);
   sym->Set_mtype(MTYPE_UNKNOWN);
+  sym->Set_def_bbs(NULL);  
 
 #ifdef KEY 
   // bug 13670: don't leave the field uninitialized
@@ -1168,6 +1169,8 @@ OPT_STAB::Create_preg(MTYPE preg_ty, char *name, WN *home_wn)
   sym->Set_spre_node(NULL);
 #endif
 
+  sym->Set_def_bbs(NULL);
+  
   sym->Points_to()->Analyze_ST(st, sym->St_ofst(),
 			       TY_size(MTYPE_To_TY(preg_ty)), 0, 0, 0,
 			       FALSE /* no equiv */);
@@ -2617,8 +2620,6 @@ OPT_STAB::Incorporate_alias_class_info(void)
 // Create creates the optimizer symbol table.
 //
 // ====================================================================
-
-
 void 
 OPT_STAB::Create(COMP_UNIT *cu, REGION_LEVEL rgn_level)
 {
@@ -2722,9 +2723,10 @@ OPT_STAB::Create(COMP_UNIT *cu, REGION_LEVEL rgn_level)
   pt->Set_ofst_kind(OFST_IS_UNKNOWN);
   pt->Set_base(NULL);
   pt->Set_global();
-  
+ 
   // Collect ST attributes (used by FFA and FSA)
   Collect_ST_attr();
+  
 
   // Setup empty du chain
   _ver_stab = CXX_NEW(VER_STAB_ARRAY_TYPE(&_ver_pool), &_ver_pool);
