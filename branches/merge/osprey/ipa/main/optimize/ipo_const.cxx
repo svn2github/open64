@@ -1223,6 +1223,7 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
     Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
 #endif
 
+#ifndef KEY  // Not need it any more
     if(k < i) {
       // Need to Change function prototype
       TY_IDX old_prototype = n->Get_PU().prototype;
@@ -1244,6 +1245,8 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 
       n->Get_PU().prototype = new_prototype;
     }
+#endif
+
     if (n->Has_Aliased_Formal ()) {
 	// there are STs that are based on the deleted formals, so we
 	// need to change their storage_class to SCLASS_AUTO
