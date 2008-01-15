@@ -143,14 +143,7 @@ namespace
                         return FALSE;
                 }
             }
-            if (k1.u2.etype == k2.u2.etype)
-                return TRUE;
-            // The alignment of TY_POINTER may be changed
-            // after the pointed incomplete struct is upadted.
-            // So compare TY.u2 without last 3 bits if the TY is pointer.
-            return TY_kind(k1) == KIND_POINTER &&
-                   TY_IDX_without_attribute(k1.u2.pointed) 
-                   == TY_IDX_without_attribute(k2.u2.pointed);
+            return k1.u2.etype == k2.u2.etype;
         }
     };
 }
