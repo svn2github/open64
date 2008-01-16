@@ -445,11 +445,13 @@ ifneq ($(BUILD_COMPILER), GNU)
  ifeq ($(BUILD_ABI), N32BIT)
   STD_COMPILE_OPTS += -m32
  endif
- ifeq ($(BUILD_ABI), 64BIT)
-  STD_COMPILE_OPTS += -m64
- endif
- ifeq ($(BUILD_ABI), I64BIT)
-  STD_COMPILE_OPTS += -m64
+ ifneq ($(BUILD_ARCH), IA64)
+  ifeq ($(BUILD_ABI), 64BIT)
+   STD_COMPILE_OPTS += -m64
+  endif
+  ifeq ($(BUILD_ABI), I64BIT)
+   STD_COMPILE_OPTS += -m64
+  endif
  endif
 endif
 
