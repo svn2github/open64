@@ -639,8 +639,8 @@ VHO_Switch_Generate_Compgoto ( SRCPOS srcpos )
 
     FB_Info_Switch info_switch( n );
     info_switch[ FB_EDGE_SWITCH_INDEX( FB_EDGE_SWITCH_DEFAULT ) ]
-//      = FB_FREQ_UNKNOWN; // not VHO_Switch_Default_Freq
-        = FB_FREQ(VHO_Switch_Default_Freq.Value(), FALSE);//INLINING_TUNINING  
+      = FB_FREQ_UNKNOWN; // not VHO_Switch_Default_Freq
+    //       = FB_FREQ(VHO_Switch_Default_Freq.Value(), FALSE);//INLINING_TUNINING  
     for ( j = 0; j < n; j++ )
       info_switch[ FB_EDGE_SWITCH_INDEX( FB_EDGE_SWITCH( j ) ) ] = freq_new[j];
     Cur_PU_Feedback->Annot_switch( wn, info_switch );
