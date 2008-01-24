@@ -4273,6 +4273,6 @@ po/$(PACKAGE).pot: force options.c
 		$(XGETTEXT) $(PACKAGE) $(srcdir)
 
 # rule for making libgspin.a
-$(LIBGSPIN):
-	make -C ../../libspin
+#$(LIBGSPIN):
+#	make -C ../../libspin
 

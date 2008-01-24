@@ -143,14 +143,7 @@ namespace
                         return FALSE;
                 }
             }
-            if (k1.u2.etype == k2.u2.etype)
-                return TRUE;
-            // The alignment of TY_POINTER may be changed
-            // after the pointed incomplete struct is upadted.
-            // So compare TY.u2 without last 3 bits if the TY is pointer.
-            return TY_kind(k1) == KIND_POINTER &&
-                   TY_IDX_without_attribute(k1.u2.pointed) 
-                   == TY_IDX_without_attribute(k2.u2.pointed);
+            return k1.u2.etype == k2.u2.etype;
         }
     };
 }
@@ -993,22 +986,35 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
     
     // check if the assumption used by fast comparision of structs are valid
 #ifdef  __GNUC__
-
-    Is_True ((sizeof(TY) == 28 && __alignof__(TY) == 4) ,
-	     ("Invalid size/alignment assumption"));
-    Is_True (sizeof(FLD) == 28 && __alignof__(FLD) == 4,
-	     ("Invalid size/alignment assumption"));
-    Is_True (sizeof(ARB) == 32 && __alignof__(ARB) == 4,
-	     ("Invalid size/alignment assumption"));
+#ifndef ARCH_MIPS
+    Is_True (sizeof(TY)  == 28 && __alignof__(TY)  == 4 &&
+	     sizeof(FLD) == 28 && __alignof__(FLD) == 4 &&
+	     sizeof(ARB) == 32 && __alignof__(ARB) == 4,
+	     ("Invalid size/alignment assumption:"
+	      " TY sz %d al %d, FLD sz%d al %d, ARB sz %d al %d",
+	      sizeof(TY), __alignof__(TY), sizeof(FLD),
+	      __alignof__(FLD), sizeof(ARB), __alignof__(ARB)));
 #else
-    Is_True ((sizeof(TY) == 24) && (__builtin_alignof(TY) == 8),
-	     ("Invalid size/alignment assumption"));
-    Is_True (sizeof(FLD) == 24 && __builtin_alignof (FLD) == 8,
-	     ("Invalid size/alignment assumption"));
-    Is_True (sizeof(ARB) == 32 && __builtin_alignof (ARB) == 8,
-	     ("Invalid size/alignment assumption"));
-#endif
-#endif
+    // On MIPS architecture, INT64 has alignment 8, so TY and FLD hash
+    // functions must accommodate four bytes padding at end
+    Is_True (sizeof(TY)  == 32 && __alignof__(TY)  == 8 &&
+	     sizeof(FLD) == 32 && __alignof__(FLD) == 8 &&
+	     sizeof(ARB) == 32 && __alignof__(ARB) == 8,
+	     ("Invalid size/alignment assumption:"
+	      " TY sz %d al %d, FLD sz%d al %d, ARB sz %d al %d",
+	      sizeof(TY), __alignof__(TY), sizeof(FLD),
+	      __alignof__(FLD), sizeof(ARB), __alignof__(ARB)));
+#endif // ! TARG_MIPS
+#else
+    Is_True (sizeof(TY)  == 32 && __builtin_alignof(TY)  == 8 &&
+	     sizeof(FLD) == 32 && __builtin_alignof(FLD) == 8 &&
+	     sizeof(ARB) == 32 && __builtin_alignof(ARB) == 8,
+	     ("Invalid size/alignment assumption:"
+	      " TY sz %d al %d, FLD sz%d al %d, ARB sz %d al %d",
+	      sizeof(TY), __builtin_alignof(TY), sizeof(FLD),
+	      __builtin_alignof(FLD), sizeof(ARB), __builtin_alignof(ARB)));
+#endif // __GNUC__
+#endif // 0
     ty_hash_table = CXX_NEW (NEW_TY_HASH_TABLE (1000, TY_HASH (), TY_IS_EQUIVALENT(), 
 					    TY_EXTRACT_KEY (), pool),
 			     pool);

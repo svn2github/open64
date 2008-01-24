@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -97,7 +101,6 @@
 #include "calls.h"
 #include "cg_loop.h"
 #include "config_lno.h"  // for LNO_Prefetch_Ahead
-#include "stblock.h"     // for Base_Symbol_And_Offset_For_Addressing
 
 UINT32 CGTARG_branch_taken_penalty;
 BOOL CGTARG_branch_taken_penalty_overridden = FALSE;
@@ -169,7 +172,7 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   // says 32-bit SSE OPs use fp64 registers even though only 4 bytes are
   // referenced.
   if (OP_flop(memop) &&
-      !TOP_is_uses_stack(topcode)) {	// not x87
+      !TOP_is_x87(topcode)) {	// not x87
     switch (topcode) {
       case TOP_ldss:		// 32 bit
       case TOP_ldss_n32:
@@ -179,6 +182,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_stss:
       case TOP_stss_n32:
       case TOP_stssx:
+      case TOP_stntss:
+      case TOP_stntssx:
+      case TOP_stntssxx:
       case TOP_divxxxss:
       case TOP_addxxxss:
       case TOP_subxxxss:
@@ -207,6 +213,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_stsd:
       case TOP_stsd_n32:
       case TOP_stsdx:
+      case TOP_stntsd:
+      case TOP_stntsdx:
+      case TOP_stntsdxx:
       case TOP_storelpd:
       case TOP_divxxxsd:
       case TOP_addxxxsd:
@@ -244,6 +253,10 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_ldapd_n32:
       case TOP_ldaps:
       case TOP_ldaps_n32:
+      case TOP_ldups:
+      case TOP_ldups_n32:
+      case TOP_ldupd:
+      case TOP_ldupd_n32:
       case TOP_lddqax:
       case TOP_lddqux:
       case TOP_ldapdx:
@@ -333,7 +346,7 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_ldu8_64:
   case TOP_ldxu8_64:
   case TOP_ldxxu8_64:
-  case TOP_ld8_m:
+  case TOP_ld8_abs:
     return 1;
       
   case TOP_xor16:
@@ -371,7 +384,7 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_ldxxu16_64:
   case TOP_fldcw:
   case TOP_filds:
-  case TOP_ld16_m:
+  case TOP_ld16_abs:
     return 2;
 
   case TOP_xorx32:
@@ -427,7 +440,7 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_fildl:
   case TOP_flds:
   case TOP_flds_n32:
-  case TOP_ld32_m:
+  case TOP_ld32_abs:
   case TOP_cvtsi2sd_x:
   case TOP_cvtsi2sd_xx:
   case TOP_cvtsi2sd_xxx:
@@ -499,7 +512,8 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_fildll:
   case TOP_fldl:
   case TOP_fldl_n32:
-  case TOP_ld64_m:
+  case TOP_ld64_abs:
+  case TOP_ld64_off:
   case TOP_cvtsd2ss_x:
   case TOP_cvtsd2ss_xx:
   case TOP_cvtsd2ss_xxx:
@@ -1459,12 +1473,12 @@ VARIANT CGTARG_Analyze_Branch(
       preds++;
       // Find the cmp op.
       for (OP* op = BB_last_op(pred); op != NULL; op = OP_prev(op)) {
-        if (TOP_is_change_rflags(OP_code(op))) {
-      	  Is_True(cmp_op == NULL,
+	if (TOP_is_change_rflags(OP_code(op))) {
+	  Is_True(cmp_op == NULL,
 		  ("CGTARG_Analyze_Branch: found multiple cmp ops"));
-          cmp_op = op;
-          break;
-        }
+	  cmp_op = op;
+	  break;
+	}
       }
 #if !defined(Is_True_On)
       if (cmp_op != NULL)
@@ -2141,19 +2155,22 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
   {
     if (TOP_is_change_x87_cw(OP_code(pred_op)) &&
 	(TOP_is_read_x87_cw(OP_code(succ_op)) ||
-	 TOP_is_uses_stack(OP_code(succ_op))))
+	 TOP_is_x87(OP_code(succ_op))))
       return TRUE;
 
     if ((TOP_is_read_x87_cw(OP_code(pred_op)) ||
-	 TOP_is_uses_stack(OP_code(pred_op))) &&
+	 TOP_is_x87(OP_code(pred_op))) &&
 	TOP_is_change_x87_cw(OP_code(succ_op)))
       return TRUE;
   }
 
-  /* Return TRUE for emms/x87 or x87/emms pair.  Bug 11800. */
-  if ((OP_code(pred_op) == TOP_emms && TOP_is_uses_stack(OP_code(succ_op))) ||
-      (OP_code(succ_op) == TOP_emms && TOP_is_uses_stack(OP_code(pred_op)))) {
-    return TRUE;
+  /* Dependence exists between emms and x87/MMX OP.  Bug 11800. */
+  {
+    BOOL pred_is_x87_mmx = (OP_x87(pred_op) || OP_mmx(pred_op)) ? TRUE : FALSE;
+    BOOL succ_is_x87_mmx = (OP_x87(succ_op) || OP_mmx(succ_op)) ? TRUE : FALSE;
+    if ((OP_code(pred_op) == TOP_emms && succ_is_x87_mmx) ||
+	(OP_code(succ_op) == TOP_emms && pred_is_x87_mmx))
+      return TRUE;
   }
 
   /* Return TRUE if <pred_op> can change rflags, and <succ_op> is a
@@ -2206,14 +2223,22 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 	if( OP_Writes_Dedicated_TN( pred_op, tmp_tn ) )
 	  return TRUE;
 
-	/* Bug#352
-	   For an operation like shift, its opnd will be re-defined at
-	   function Preallocate_Single_Register_Subclasses().
-	   Thus, an implicit WAR is imposed here.
-	*/
-	if( !TN_is_dedicated( OP_opnd(succ_op,i) ) &&
-	    OP_Reads_Dedicated_TN( pred_op, tmp_tn ) )
-	  return TRUE;
+	// For an operation like shift whose operand requires a specific
+	// dedicated register R, Preallocate_Single_Register_Subclasses() will
+	// insert a move to copy the original operand into R and replace the
+	// operand with R.  Thus, an implicit WAR exists between PRED_OP and
+	// SUCC_OP.  Bug 352.
+	if (OP_Reads_Dedicated_TN(pred_op, tmp_tn)) {
+	  // SUCC_OP's operand is not yet a dedicated register.  A copy will be
+	  // inserted.
+	  if (!TN_is_dedicated(OP_opnd(succ_op, i)))
+	    return TRUE;
+
+	  // SUCC_OP's operand is not the correct dedicated register.  A copy
+	  // will be inserted.  Bug 11781.
+	  else if (TN_register(OP_opnd(succ_op, i)) != TN_register(tmp_tn))
+	    return TRUE;
+	}
       }
     }
 
@@ -2274,6 +2299,26 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 void
 CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT *latency)
 {
+  // Add latency between pointer load and pointer use.
+  if (CG_ptr_load_use_latency != 0 &&
+      kind == CG_DEP_REGIN &&
+      (OP_load(pred_op) ||
+       // Load-execute computes pointer, treat it like a pointer load.
+       OP_load_exe(pred_op)) &&
+      // Detect pointer use.
+      (OP_load(succ_op) ||
+       OP_store(succ_op) ||
+       OP_load_exe(succ_op) ||
+       OP_load_exe_store(succ_op))) {
+    int base_idx = OP_find_opnd_use(succ_op, OU_base);
+    int index_idx = OP_find_opnd_use(succ_op, OU_index);
+    if (opnd == base_idx ||
+	opnd == index_idx) {
+      *latency = MAX(*latency,
+		     TI_LATENCY_Result_Available_Cycle(OP_code(pred_op), 0)
+		       + CG_ptr_load_use_latency);
+    }
+  }
 }
 
 /* ====================================================================
@@ -2403,7 +2448,7 @@ CGTARG_Generate_Countdown_Loop ( TN *trip_count_tn,
   BOOL cmp_found = FALSE, incr_found = FALSE;
   INT opnd, result;
 
-  if (!CG_cloop)
+  if (!CG_LOOP_cloop)
     return;
 
   if (Loop_Countsdown_Xformed(tail))
@@ -2437,47 +2482,38 @@ CGTARG_Generate_Countdown_Loop ( TN *trip_count_tn,
 	 TN_value( OP_opnd ( op, 1 ) ) == 1 ) {
       incr_found = TRUE;
       incr = op;
-
-    } else if ( /* SAFETY CHECK */
-	       cmp_found && 
-	       ( OP_result( op, 0 ) == OP_opnd( cmp, 0 ) ||
-		 OP_result( op, 0 ) == OP_opnd( cmp, 1 ) ) ) {
-      incr_found = FALSE;
-      cmp_found = FALSE;
-      break;
-
-    } else if ( /* SAFETY CHECK */
-	       cmp_found &&
-	       TOP_is_store( OP_code( op ) ) && 
-	       ( OP_opnd( op, 0 ) == OP_opnd( cmp, 0 ) ||
-		 OP_opnd( op, 0 ) == OP_opnd( cmp, 1 ) ) ) {
-      // Make sure the operands to the cmp op is not one of those registers
-      // written out to memory every iteration of the loop.
-      incr_found = FALSE;
-      cmp_found = FALSE;
-      break;
-      
-    } else if ( /* SAFETY CHECK */
-	       incr_found ) {
-      TN* incr_result = OP_result ( incr, 0 );
-      for ( opnd = 0; opnd < OP_opnds( op ); opnd ++)
-	if ( OP_opnd ( op, opnd ) == incr_result ) {
-	  incr_found = FALSE;
-	  cmp_found = FALSE;
-	  break;
-	}
-      for ( result = 0; result < OP_results( op ); result ++)
-	if ( OP_result ( op, result ) == incr_result ) {
-	  incr_found = FALSE;
-	  cmp_found = FALSE;
-	  break;
-	}
-      if ( !incr_found && !cmp_found )
-	break;
     }
   }
-  if ( !incr_found || !cmp_found )
+
+  if (!incr_found || !cmp_found)
     return;
+
+  // Safety checks.  Note that OPs that define/use incr_result can appear
+  // anywhere before and after the incr OP.
+  TN *incr_result = OP_result(incr, 0);
+  for (op = branch->prev; op != NULL; op = op->prev) {
+    if (op == cmp || op == incr)
+      continue;
+
+    if (OP_result(op, 0 ) == OP_opnd(cmp, 0) ||
+	OP_result(op, 0 ) == OP_opnd(cmp, 1))
+      return;
+
+    // Make sure the operands to the cmp op is not one of those registers
+    // written out to memory every iteration of the loop.
+    if (TOP_is_store(OP_code(op)) &&
+	(OP_opnd(op, 0) == OP_opnd(cmp, 0) ||
+	 OP_opnd(op, 0) == OP_opnd(cmp, 1)))
+      return;
+      
+    for (opnd = 0; opnd < OP_opnds(op); opnd++)
+      if (OP_opnd(op, opnd) == incr_result)
+	return;
+
+    for (result = 0; result < OP_results(op); result++)
+      if (OP_result(op, result ) == incr_result)
+	return;
+  }
 
   // At this point, we know all we need to know to transform the
   // loop into a countdown loop.   
@@ -2536,6 +2572,38 @@ static inline TN* OP_opnd_use( OP* op, ISA_OPERAND_USE use )
   return ( indx >= 0 ) ? OP_opnd( op, indx ) : NULL;
 }
 
+static TOP Movnti_Top(TOP old_top)
+{
+   switch(old_top){
+    case TOP_stapd:     return TOP_stntpd;   break;
+    case TOP_stapdx:    return TOP_stntpdx;  break;
+    case TOP_stapdxx:   return TOP_stntpdxx; break;
+    case TOP_staps:     return TOP_stntps;   break;
+    case TOP_stapsx:    return TOP_stntpsx;  break;
+    case TOP_stapsxx:   return TOP_stntpsxx; break;
+    case TOP_stdqa:     return TOP_stntpd;   break;
+    case TOP_stdqax:    return TOP_stntpdx;  break;
+    case TOP_stdqaxx:   return TOP_stntpdxx; break;
+
+    case TOP_store32:   return TOP_storenti32;   break;
+    case TOP_storex32:  return TOP_storentix32;  break;
+    case TOP_storexx32: return TOP_storentixx32; break;
+
+    case TOP_store64:   return TOP_storenti64;   break;
+    case TOP_storex64:  return TOP_storentix64;  break;
+    case TOP_storexx64: return TOP_storentixx64; break;
+
+    case TOP_stss:      return TOP_stntss; break;
+    case TOP_stssx:     return TOP_stntssx; break;
+    case TOP_stssxx:    return TOP_stntssxx; break;
+    case TOP_stsd:      return TOP_stntsd; break;
+    case TOP_stsdx:     return TOP_stntsdx; break;
+    case TOP_stsdxx:    return TOP_stntsdxx; break;
+    }
+   FmtAssert(FALSE,("Non-Temporal Store: not supported!"));
+   return TOP_UNDEFINED;
+}
+
 // Bug 3774 - Compute total working set size by counting
 // all disjoint source and destination bytes in the loop.
 BOOL Op_In_Working_Set ( OP* op )
@@ -2585,8 +2653,6 @@ BOOL Op_In_Working_Set ( OP* op )
  */
 void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 {
-  if (!CG_movnti) return;
-  
   UINT32 trip_count = 0;
   TN* trip_count_tn = CG_LOOP_Trip_Count(loop);
   BB* body = LOOP_DESCR_loophead(loop);
@@ -2610,14 +2676,11 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
   /* First, estimate the totol size (in bytes) that this loop will
      bring to the cache.
   */
-
   FOR_ALL_BB_OPs_FWD( body, op ){
-    if( TOP_is_vector_op( OP_code(op) ) &&
-	( ( OP_store( op )                  &&
-	    !TOP_is_nt_store( OP_code(op) ) ) ||
-	  OP_load(op) ) && 
-	!Op_In_Working_Set( op ) ) {
-      size += CGTARG_Mem_Ref_Bytes( op );
+    if(((OP_store( op ) && !TOP_is_nt_store(OP_code(op))) || //stores
+	  OP_load(op) ) && //loads
+      !Op_In_Working_Set(op)){ //that were not in the working set
+      size += CGTARG_Mem_Ref_Bytes(op);
     }
   }
 
@@ -2627,8 +2690,9 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 
   if( size < cache_size )
     return;
-
+#if 0 //temporarily disable changeset of bug 11853 for bug 12036
   BOOL dep_graph_computed = FALSE;
+#endif
   FOR_ALL_BB_OPs_FWD( body, op ){
     if( OP_prefetch( op ) ){
       /* Get rid of any prefetchw operation, because it "loads the prefetched
@@ -2658,6 +2722,9 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 	case TOP_prefetcht0:   OP_Change_Opcode(op, TOP_prefetchnta); break;
 	case TOP_prefetcht0x:  OP_Change_Opcode(op, TOP_prefetchntax); break;
 	case TOP_prefetcht0xx: OP_Change_Opcode(op, TOP_prefetchntaxx); break;
+        case TOP_prefetchnta:
+        case TOP_prefetchntax:
+        case TOP_prefetchntaxx: break; //do nothing             
 	default: FmtAssert(FALSE, ("NYI"));
 	}
       }	
@@ -2671,7 +2738,13 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
        is reused.  Detect reuse by looking for OPs that load the same memory
        location.  It doesn't matter if the load is before or after the store,
        since the load will involve the same cache line.  Bug 11853. */
-
+ /* temporarily disable this changeset for two reasons:
+  (1) we may need to consider load forwarding (even though there are reuses, no
+      cache line is required)
+  (2) this change provents performance tuning using -CG:movnti in some case 
+      (bug 12036)
+ */
+#if 0 
     BOOL skip = FALSE;
     if (TOP_is_vector_op(OP_code(op)) &&
 	((OP_store(op) &&
@@ -2705,35 +2778,53 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
       if (skip == TRUE)
         continue;
     }
-
+#endif
     TOP new_top = TOP_UNDEFINED;
-
     switch( OP_code(op) ){
-    case TOP_stapd:   new_top = TOP_stntpd;   break;
-    case TOP_stapdx:  new_top = TOP_stntpdx;  break;
-    case TOP_stapdxx: new_top = TOP_stntpdxx; break;
-    case TOP_staps:   new_top = TOP_stntps;   break;
-    case TOP_stapsx:  new_top = TOP_stntpsx;  break;
-    case TOP_stapsxx: new_top = TOP_stntpsxx; break;
-    case TOP_stdqa:   new_top = TOP_stntpd;   break;
-    case TOP_stdqax:  new_top = TOP_stntpdx;  break;
-    case TOP_stdqaxx: new_top = TOP_stntpdxx; break;
-
-    case TOP_store32:   new_top = TOP_storenti32;   break;
-    case TOP_storex32:  new_top = TOP_storentix32;  break;
-    case TOP_storexx32: new_top = TOP_storentixx32; break;
-
-    case TOP_store64:   new_top = TOP_storenti64;   break;
-    case TOP_storex64:  new_top = TOP_storentix64;  break;
-    case TOP_storexx64: new_top = TOP_storentixx64; break;
-    }
-
-    if( new_top != TOP_UNDEFINED )
+    //SSE support
+    case TOP_staps:
+    case TOP_stapsx:
+    case TOP_stapsxx: {
+         new_top = Movnti_Top(OP_code(op));
+         break;
+       }
+    //SSE2 support
+    case TOP_stapd:
+    case TOP_stapdx:
+    case TOP_stapdxx:
+    case TOP_stdqa:
+    case TOP_stdqax:
+    case TOP_stdqaxx:
+    case TOP_store32:
+    case TOP_storex32:
+    case TOP_storexx32:
+    case TOP_store64:
+    case TOP_storex64:
+    case TOP_storexx64: {
+         if(Is_Target_SSE2())
+	  new_top = Movnti_Top(OP_code(op));
+         break;
+       }
+    //SSE4a support
+    case TOP_stss:
+    case TOP_stssx:
+    case TOP_stssxx:
+    case TOP_stsd:
+    case TOP_stsdx:
+    case TOP_stsdxx: {
+         if(Is_Target_SSE4a())
+            new_top = Movnti_Top(OP_code(op));
+         break;
+       }
+    }//end switch
+    
+   if( new_top != TOP_UNDEFINED )
       OP_Change_Opcode( op, new_top );
   }
-
+#if 0 //temporarily disable the changeset of bug 11853 for bug 12036
   if (dep_graph_computed == TRUE)
     CG_DEP_Delete_Graph(body);
+#endif
 }
 
 
@@ -2776,17 +2867,15 @@ CGTARG_Init_Asm_Constraints (void)
   asm_constraint_index = 0;
 }
 
-#define CONST_OK_FOR_LETTER(VALUE, C)                             \
-  ((C) == 'I' ? (VALUE) >= 0 && (VALUE) <= 31                     \
-   : (C) == 'J' ? (VALUE) >= 0 && (VALUE) <= 63                   \
-   : (C) == 'K' ? (VALUE) >= -128 && (VALUE) <= 127               \
-   : (C) == 'L' ? (VALUE) == 0xff || (VALUE) == 0xffff            \
-   : (C) == 'M' ? (VALUE) >= 0 && (VALUE) <= 3                    \
-   : (C) == 'N' ? (VALUE) >= 0 && (VALUE) <= 255                  \
-   : (C) == 'i' ? 1                                               \
-   : (C) == 'e' ? (VALUE) >= -0x7fffffff && (VALUE) <= 0x7fffffff \
-   : (C) == 'Z' ? (VALUE) >= 0 && (VALUE) <= 0xffffffffU          \
-   : (C) == 'n' ? 1                                               \
+#define CONST_OK_FOR_LETTER(VALUE, C)                           \
+  ((C) == 'I' ? (VALUE) >= 0 && (VALUE) <= 31                   \
+   : (C) == 'J' ? (VALUE) >= 0 && (VALUE) <= 63                 \
+   : (C) == 'K' ? (VALUE) >= -128 && (VALUE) <= 127             \
+   : (C) == 'L' ? (VALUE) == 0xff || (VALUE) == 0xffff          \
+   : (C) == 'M' ? (VALUE) >= 0 && (VALUE) <= 3                  \
+   : (C) == 'N' ? (VALUE) >= 0 && (VALUE) <= 255                \
+   : (C) == 'i' ? ((VALUE) >> 32) == 0 || ((VALUE) >> 32) == -1 \
+   : (C) == 'n' ? 1                                             \
    : 0)
 
 // -----------------------------------------------------------------------
@@ -2831,24 +2920,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   
   // prefer register/memory over immediates; this isn't optimal, 
   // but we may not always be able to generate an immediate
-  // OSP_324, support 'e' (32bit signed immediates) i
-  //   and 'Z' (32bit unsigned immediates)
-  static const char* immediates = "einIJKLMNOZ";
-
-  // OSP_323 & OSP_324
-  // See if the constraints contains any immediates
-  BOOL has_imm_traint = FALSE;
-  const char* imm_traint_p = constraint;
-  char  imm_traint = '\0';
-  while (*imm_traint_p != '\0' ) {
-    if (strchr(immediates, *imm_traint_p)) {
-      has_imm_traint = TRUE;
-      imm_traint = *imm_traint_p;
-      break;
-    }
-    imm_traint_p++;
-  }
-
+  static const char* immediates = "inIJKLMNO";
   // Bug 950
   // The '#' in a constraint is inconsequential or it is just a typo
   static const char* hash = "#";
@@ -2865,32 +2937,18 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   // TODO: check that the operand satisifies immediate range constraint
   if (strchr(immediates, *constraint))
   {
-    if (load && WN_operator(load)==OPR_LDA &&
-        ST_is_constant(WN_st(load)) ) {
-      // OSP_315, 'i' constrait, constant string
-      FmtAssert(WN_st(load) != NULL,
-               ("WN_st is NULL when handling the const symbol for 'i' constraint"));
-      ST *base_sym;
-      INT64 base_ofst;
-      ST *sym = WN_st(load);
-      Allocate_Object(sym);
-      Base_Symbol_And_Offset_For_Addressing (sym, WN_lda_offset(load), &base_sym, &base_ofst);
-      ret_tn = Gen_Symbol_TN(base_sym, base_ofst, 0);
+    if (load && WN_operator(load)==OPR_LDID && WN_class(load)==CLASS_PREG)
+    {
+      // immediate could have been put in preg by wopt
+      load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
     }
-    else {
-      if (load && WN_operator(load)==OPR_LDID && 
-          WN_class(load)==CLASS_PREG) {
-        // immediate could have been put in preg by wopt
-        load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
-      }
-      FmtAssert(load && WN_operator(load) == OPR_INTCONST,
-                ("Cannot find immediate operand for ASM"));
-      ret_tn = Gen_Literal_TN(WN_const_val(load),
-                              MTYPE_bit_size(WN_rtype(load))/8);
-      // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
-      FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint),
-                ("The value of immediate operand supplied is not within expected range."));
-    }
+    FmtAssert(load && WN_operator(load) == OPR_INTCONST, 
+              ("Cannot find immediate operand for ASM"));
+    ret_tn = Gen_Literal_TN(WN_const_val(load), 
+                            MTYPE_bit_size(WN_rtype(load))/8);
+    // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
+    FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint), 
+     ("The value of immediate operand supplied is not within expected range."));
   }
   // digit constraint means that we should reuse a previous operand
   else if (isdigit(*constraint))
@@ -2960,25 +3018,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 				  // TNs of sizes < 4 bytes, use the appropriate
 				  // size.
 				  MTYPE_byte_size(rtype));
-    } 
-    else if (has_imm_traint == TRUE && WN_operator(load) == OPR_INTCONST) {
-      // OSP_323, both 'r' and 'i', such as 'ri' or 'ir'.
-      // OSP_324, both 'r' and 'Z'/'e', such as 'Zr' or 'rZ'.
-      // if the load is INTCONST, it's an immediate
-      if (load && WN_operator(load)==OPR_LDID &&
-          WN_class(load)==CLASS_PREG) {
-        // immediate could have been put in preg by wopt
-        load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
-      }
-      FmtAssert(load && WN_operator(load) == OPR_INTCONST,
-                ("Cannot find immediate operand for ASM"));
-      ret_tn = Gen_Literal_TN(WN_const_val(load),
-                              MTYPE_bit_size(WN_rtype(load))/8);
-      // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
-      FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), imm_traint),
-                ("The value of immediate operand supplied is not within expected range."));
-    }
-    else     
+    } else     
       ret_tn = Build_TN_Of_Mtype(rtype);
 
     if (*constraint == 'q' || *constraint == 'Q') {
@@ -3025,9 +3065,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   }
   else if (*constraint == 'y')
   {
-    // OSP_417, 'y' means any MMX registers
-    // bad register class, should be mmx, not float
-    ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx));
+    ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_float));
   }
   else
   {
@@ -3419,4 +3457,27 @@ TN* CGTARG_Gen_Dedicated_Subclass_TN( OP* op, int idx, BOOL is_result )
   const ISA_REGISTER_CLASS rc = REGISTER_SUBCLASS_register_class(subclass);
 
   return Build_Dedicated_TN( rc, reg, 0 );
+}
+
+
+// Return TRUE if OP accesses thread-local memory.
+BOOL
+CGTARG_Is_Thread_Local_Memory_OP (OP* op)
+{
+  TOP code = OP_code(op);
+
+  int base_opnd = TOP_Find_Operand_Use(code, OU_base);
+  if (base_opnd != -1 &&
+      TN_is_thread_seg_ptr(OP_opnd(op, base_opnd))) {
+    return TRUE;
+  }
+
+  int offset_opnd = TOP_Find_Operand_Use(code, OU_offset);
+  if (offset_opnd != -1 &&
+      (TN_relocs(OP_opnd(op, offset_opnd)) == TN_RELOC_X8664_TPOFF32 ||
+       TN_relocs(OP_opnd(op, offset_opnd)) == TN_RELOC_X8664_TPOFF32_seg_reg)) {
+    return TRUE;
+  }
+
+  return FALSE;
 }

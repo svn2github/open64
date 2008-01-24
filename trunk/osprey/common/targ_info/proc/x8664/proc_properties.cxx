@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -85,6 +89,7 @@ main()
   out_of_order = PROC_Property_Create ("is_out_of_order");
   Processor_Group (out_of_order, 
 		   PROCESSOR_opteron,
+                   PROCESSOR_barcelona,
 		   PROCESSOR_em64t,
 		   PROCESSOR_core,
 		   PROCESSOR_UNDEFINED);
@@ -94,6 +99,7 @@ main()
   superscalar = PROC_Property_Create ("is_superscalar");
   Processor_Group (superscalar,
 		   PROCESSOR_opteron,
+                   PROCESSOR_barcelona,
 		   PROCESSOR_em64t,
 		   PROCESSOR_core,
 		   PROCESSOR_UNDEFINED);

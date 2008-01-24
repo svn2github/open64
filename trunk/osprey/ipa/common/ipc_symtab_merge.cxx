@@ -1040,11 +1040,11 @@ Merge_Global_Pu(UINT pu_idx, const IPC_GLOBAL_TABS& original_tabs)
     TY_IDX prototype_idx = (*New_Ty_Idx)[PU_prototype(this_pu)];
     Set_PU_prototype(Pu_Table[new_idx], prototype_idx);
 
-    // merge base class in PU
-    if (PU_base_class(this_pu) != TY_IDX_ZERO) {
-        TY_IDX base_class_idx = (*New_Ty_Idx)[PU_base_class(this_pu)];
-        Set_PU_base_class(Pu_Table[new_idx], base_class_idx);
-    }
+    // merge base class in PU 
+    if (PU_base_class(this_pu) != TY_IDX_ZERO) { 
+        TY_IDX base_class_idx = (*New_Ty_Idx)[PU_base_class(this_pu)]; 
+        Set_PU_base_class(Pu_Table[new_idx], base_class_idx); 
+    } 
 
     // sync. up with the Aux_Pu_Table
     UINT32 aux_idx;
@@ -1717,7 +1717,7 @@ Merge_Global_St(UINT                   idx,
     //
     char *st_name = &original_tabs.symstr_tab[ST_name_idx (original_st)];
 
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
     void *pext = ld_slookup_mext(st_name,
     	    	    	    	(ST_storage_class (original_st) == SCLASS_EXTERN));
 #else

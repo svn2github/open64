@@ -105,7 +105,7 @@ extern float GRA_spill_count_factor;
 extern INT GRA_local_forced_max;
 extern BOOL GRA_avoid_glue_references_for_locals;
 extern BOOL GRA_split_entry_exit_blocks;
-#ifndef TARG_IA64
+#ifdef KEY
 extern BOOL GRA_pu_has_handler;
 #endif
 
@@ -114,7 +114,7 @@ extern BOOL GRA_split_lranges; 		// controlled by -GRA:split_lranges
 extern INT GRA_non_split_tn_id;		// controlled by -GRA:non_split_tn
 extern INT GRA_non_preference_tn_id;	// controlled by -GRA:non_preference_tn
 extern BOOL GRA_optimize_placement;	// controlled by -GRA:optimize_placement
-#ifndef TARG_IA64 
+#ifdef KEY
 extern BOOL GRA_optimize_boundary;	// controlled by -GRA:optimize_boundary
 extern BOOL GRA_reclaim_register;	// controlled by -GRA:reclaim
 extern BOOL GRA_prioritize_by_density;	// controlled by -GRA:prioritize_by_density

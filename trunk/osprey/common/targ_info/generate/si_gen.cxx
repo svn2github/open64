@@ -1,5 +1,8 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,10 +51,10 @@
 //
 /////////////////////////////////////
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/si_gen.cxx,v $
+//  $Revision: 1.6 $
+//  $Date: 04/12/21 14:57:26-08:00 $
+//  $Author: bos@eng-25.internal.keyresearch.com $
+//  $Source: /home/bos/bk/kpro64-pending/common/targ_info/generate/SCCS/s.si_gen.cxx $
 
 
 #include <assert.h>
@@ -59,6 +62,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <string.h>
 #include <list>
 #include <map>
 #include <vector>
@@ -1440,13 +1444,15 @@ void Write_Write_Interlock()
 void Machine_Done( char* filename )
 {
   FILE* fd = fopen(filename,"w");
+  // assume we won't have a target .so name with > 40 characters
+  char so_name[40];
 
   if ( fd == NULL ) {
     fprintf(stderr,"### Error: couldn't write %s\n",filename);
     return;
   }
 
-  fprintf(fd,"#include \"ti_si.h\"\n");
+  fprintf(fd,"#include \"ti_si_types.h\"\n");
   RES::Output_All(fd);
   RES_WORD::Output_All(fd);
   ISLOT::Output_All(fd);
@@ -1454,6 +1460,12 @@ void Machine_Done( char* filename )
   TOP_SCHED_INFO_MAP::Output(fd);
 
   //  Print_End_Boiler_Plate(fd);
+
+  // Create a variable holding the name of the shared object for sanity
+  // check after loading the library.
+  strcpy (so_name, filename);
+  so_name[strlen(filename)-1] = '\0';
+  fprintf (fd,"const char * sanity_check_targ_so_name = \"%sso\";\n", so_name);
 
   fclose(fd);
 }

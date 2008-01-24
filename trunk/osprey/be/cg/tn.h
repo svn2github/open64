@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -269,6 +277,11 @@ struct tn {
 #define TN_GRA_HOMEABLE 0x0800      /* TN can be homed by gra */
 #define TN_ENUM		0x1000      /* Constant enum value */
 #define TN_GRA_CANNOT_SPLIT 0x2000  /* its live range not to be split by GRA */
+#ifdef TARG_X8664
+#define TN_PREALLOCATED	0x4000  /* TN is pre-allocated in LRA */
+#define TN_THREAD_SEG_PTR   0x8000  /* TN is pointer to thread-local storage */
+#endif
+
 #ifdef TARG_IA64
 #define TN_TAKE_NAT   0X4000   /* TN (gr,fpr) may take NaT bit */
 #endif
@@ -336,6 +349,9 @@ typedef enum {
   TN_RELOC_X8664_32   = 0x31,   /* X86-64 symbols start at 0x30 */
   TN_RELOC_X8664_64   = 0x32,   
   TN_RELOC_X8664_GOTPCREL   = 0x33,   
+  TN_RELOC_X8664_TPOFF32    = 0x34,	 /* thread-local storage (TLS) */
+  TN_RELOC_X8664_TPOFF32_seg_reg = 0x35, /* like above, with segment register */
+  TN_RELOC_X8664_GOTTPOFF   = 0x36,	 /* TLS with GOT entry */
 
 				     /* IA-32 relocations start at 0x40 */
   TN_RELOC_IA32_ALL   = 0x40,	     /* All 32 bits of a symbol value. */
@@ -448,6 +464,16 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define  Reset_TN_is_take_nat(r)   (TN_flags(r) &= ~TN_TAKE_NAT) 
 #endif
 
+#ifdef TARG_X8664
+#define       TN_is_preallocated(r)  (TN_flags(r) &   TN_PREALLOCATED)
+#define   Set_TN_is_preallocated(r)  (TN_flags(r) |=  TN_PREALLOCATED)
+#define Reset_TN_is_preallocated(r)  (TN_flags(r) &= ~TN_PREALLOCATED)
+
+#define       TN_is_thread_seg_ptr(r)	(TN_flags(r) &   TN_THREAD_SEG_PTR)
+#define   Set_TN_is_thread_seg_ptr(r)	(TN_flags(r) |=  TN_THREAD_SEG_PTR)
+#define Reset_TN_is_thread_seg_ptr(r)	(TN_flags(r) &= ~TN_THREAD_SEG_PTR)
+#endif
+
 /* Macros to check if a TN is a particular dedicated register. */
 #define TN_is_sp_reg(r)	   (TN_register_and_class(r) == CLASS_AND_REG_sp)
 #define TN_is_gp_reg(r)	   (TN_register_and_class(r) == CLASS_AND_REG_gp)
@@ -462,11 +488,14 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define TN_is_true_pred(r) (TN_register_and_class(r) == CLASS_AND_REG_true)
 #define TN_is_fzero_reg(r) (TN_register_and_class(r) == CLASS_AND_REG_fzero)
 #define TN_is_fone_reg(r)  (TN_register_and_class(r) == CLASS_AND_REG_fone)
+
+#if 0
 #ifdef TARG_X8664
 #define TN_is_preallocated(r) (CAN_USE_TN(r)->preallocated)
 #define Set_TN_preallocated(r) (CAN_USE_TN(r)->preallocated = TRUE)
 #define Reset_TN_preallocated(r) (CAN_USE_TN(r)->preallocated = FALSE)
 #endif /* TARG_X8664 */
+#endif
 
 // Check if the TN is either a constant zero or the zero register TN.
 // If you know it is a register TN, use TN_is_zero_reg directly.
@@ -547,6 +576,11 @@ inline BOOL TN_is_const_reg(const TN *r)
 #define TN_is_reloc_x8664_gotpcrel(r)   (TN_relocs(r)==TN_RELOC_X8664_GOTPCREL)
 #define Set_TN_is_reloc_x8664_gotpcrel(r) Set_TN_relocs(r,TN_RELOC_X8664_GOTPCREL)
 #define TN_is_reloc_x8664_64(r)	        (TN_relocs(r) == TN_RELOC_X8664_64)
+#define Set_TN_is_reloc_x8664_64(r)	Set_TN_relocs(r,TN_RELOC_X8664_64)
+#define TN_is_reloc_x8664_tpoff32(r)	(TN_relocs(r) == TN_RELOC_X8664_TPOFF32)
+#define Set_TN_is_reloc_x8664_tpoff32(r) Set_TN_relocs(r,TN_RELOC_X8664_TPOFF32)
+#define TN_is_reloc_x8664_tpoff32_seg_reg(r)     (TN_relocs(r) == TN_RELOC_X8664_TPOFF32_seg_reg)
+#define Set_TN_is_reloc_x8664_tpoff32_seg_reg(r) Set_TN_relocs(r,TN_RELOC_X8664_TPOFF32_seg_reg)
 #endif /* TARG_X8664 */
 
 

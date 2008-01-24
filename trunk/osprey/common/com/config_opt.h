@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -163,6 +167,7 @@ extern BOOL Instrumentation_Unique_Output;
 extern INT32 Feedback_Phase_Num;
 extern OPTION_LIST* Feedback_Option;
 #ifdef KEY
+extern INT32 OPT_Cyg_Instrument;
 extern BOOL profile_arcs;
 extern BOOL Asm_Memory;
 extern BOOL Align_Unsafe;
@@ -183,6 +188,7 @@ extern BOOL OPT_Funsafe_Math_Optimizations;
 
 extern BOOL OPT_Float_Via_Int;
 extern UINT32 OPT_Malloc_Alg;
+extern BOOL Early_Goto_Conversion;
 #endif
 #ifdef __cplusplus
 }

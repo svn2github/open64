@@ -34,10 +34,10 @@
 
 //  Spill functions for GRA
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_spill.h,v $
+//  $Revision$
+//  $Date$
+//  $Author$
+//  $Source$
 
 
 #ifndef GRA_SPILL_INCLUDED

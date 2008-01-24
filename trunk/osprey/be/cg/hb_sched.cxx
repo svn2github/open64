@@ -304,7 +304,10 @@ HB_Schedule::Estimate_Reg_Cost_For_OP (OP *op)
     // copy the preallocated TN(s) to regular TN(s).  This only works for
     // backward scheduling, which is what we do when scheduling to reduce
     // register pressure.  Bug 6081.
-    Is_True(!LOCS_Fwd_Scheduling,
+    // LOCS_Scheduling_Algorithm == 0,  Backward scheduling;
+    // LOCS_Scheduling_Algorithm == 1,  Forward scheduling;
+    // LOCS_Scheduling_Algorithm == 2,  Bi-directional scheduling(For fortran)
+    Is_True(!LOCS_Scheduling_Algorithm, /* !LOCS_Fwd_Scheduling,*/
 	    ("Estimate_Reg_Cost_For_OP: Fwd scheduling called from LRA"));
     if (TN_is_preallocated(result_tn))
       cost -= 1000;	// make it large enough to force OP to be scheduled next
@@ -1311,11 +1314,12 @@ Priority_Selector::Select_OP_For_Delay_Slot (OP *xfer_op)
     // Don't put instructions that have hazards in the delay slot.
     if (OP_has_hazard(cur_op)) continue;
 
+#ifndef KEY
     // R10k chip bug workaround: Avoid placing integer mult/div in delay
     // slots of unconditional branches. (see pv516598) for more details.
     if (OP_uncond(xfer_op) && (OP_imul(cur_op) || OP_idiv(cur_op)))
       continue;
-
+#endif
     // Don't put manual prefetches into delay slots as well.
     if (OP_prefetch(cur_op)) {
       WN *pref_wn = Get_WN_From_Memory_OP(cur_op);
@@ -2081,13 +2085,26 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
   std::list<BB*> blocks;
   blocks.push_back(bb);
 
-#ifdef TARG_X8664
+#if 0
   const BOOL org_LOCS_Fwd_Scheduling = LOCS_Fwd_Scheduling;
   if( _hbs_type & HBS_MINIMIZE_REGS ){
     LOCS_Fwd_Scheduling = FALSE;
   }
   Init_RFlag_Table( blocks, LOCS_Fwd_Scheduling );
-#else // TARG_X8664
+#endif // TARG_X8664
+
+#ifdef KEY
+  const BOOL org_LOCS_Scheduling_Algorithm = LOCS_Scheduling_Algorithm;
+  if (_hbs_type & HBS_MINIMIZE_REGS ||
+      // If scheduling for pre/post-register allocation,
+      // LOCS_Scheduling_Algorithm will always be 0 or 1.  If scheduling for
+      // some other purpose (such as GCM), it can take on other values.  In
+      // that case, just set it to 0.
+      LOCS_Scheduling_Algorithm > 1) {
+    LOCS_Scheduling_Algorithm = 0;      // backward scheduling
+  }
+  Init_RFlag_Table( blocks, LOCS_Scheduling_Algorithm);
+#else
 #ifdef TARG_IA64
   Init_RFlag_Table (blocks, TRUE);
 #else
@@ -2105,18 +2122,18 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
   Priority_Selector *priority_fn;
   Cycle_Selector *cycle_fn;
 
-#ifdef TARG_X8664
-  if( LOCS_Fwd_Scheduling ){
+#ifdef KEY
+  if( LOCS_Scheduling_Algorithm == 1 ){
     priority_fn = CXX_NEW( List_Based_Fwd(bb, this, _hbs_type, &_hb_pool),
-			   &_hb_pool );
+                           &_hb_pool );
     cycle_fn = CXX_NEW( Fwd_Cycle_Sel(), &_hb_pool );
 
   } else {
     priority_fn = CXX_NEW( List_Based_Bkwd(bb, this, _hbs_type, &_hb_pool),
-			   &_hb_pool );
+                           &_hb_pool );
     cycle_fn = CXX_NEW( Bkwd_Cycle_Sel(), &_hb_pool );
   }
-#else // TARG_X8664
+#else
 #ifdef TARG_IA64
   // Do forward scheduling and cycle selector.
   priority_fn = 
@@ -2180,8 +2197,8 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
 
   // Insert the scheduled list of instructions into the bb.
   Put_Sched_Vector_Into_BB (bb, bbsch, priority_fn->Is_Fwd_Schedule() );
-#ifdef TARG_X8664
-  LOCS_Fwd_Scheduling = org_LOCS_Fwd_Scheduling;
+#ifdef KEY
+  LOCS_Scheduling_Algorithm = org_LOCS_Scheduling_Algorithm;
 #endif
 }
 

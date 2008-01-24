@@ -2736,6 +2736,21 @@ void gen_static_dv_whole_def(opnd_type         *dv_opnd,
       }
    }
 
+#ifdef KEY /* Bug 9608 */
+   /*
+    * When we set assoc=0 for an array, we also set contig=1 so that
+    * copyinout doesn't blow up if user (illegally) passes the null
+    * pointer to a procedure lacking an explicit interface, in the
+    * (unjustified) expectation that the pointer won't be
+    * dereferenced if the procedure doesn't refer to the dummy
+    * argument. This seems cheaper than adding a test for null
+    * before and after every call.
+    */
+   if (ATD_ARRAY_IDX(attr_idx) != NULL_IDX && !DV_ASSOC(*dv_ptr)) {
+     DV_SET_A_CONTIG(*dv_ptr, 1);
+   }
+#endif /* KEY Bug 9608 */
+
    TRACE (Func_Exit, "gen_static_dv_whole_def", NULL);
 
    return;
@@ -4882,7 +4897,19 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
       IL_IDX(list_idx) = CN_INTEGER_ONE_IDX;
    }
    else {
+#ifdef KEY /* Bug 9608 */
+      /*
+       * When we set assoc=0 for an array, we also set contig=1 so that
+       * copyinout doesn't blow up if user (illegally) passes the null pointer
+       * to a procedure lacking an explicit interface, in the (unjustified)
+       * expectation that the pointer won't be dereferenced if the procedure
+       * doesn't refer to the dummy argument. This seems cheaper than adding
+       * a test for null before and after every call.
+       */
+      IL_IDX(list_idx) = rank ? CN_INTEGER_ONE_IDX : CN_INTEGER_ZERO_IDX;
+#else /* KEY Bug 9608 */
       IL_IDX(list_idx) = CN_INTEGER_ZERO_IDX;
+#endif /* KEY Bug 9608 */
    }
    IL_LINE_NUM(list_idx) = line;
    IL_COL_NUM(list_idx)  = col;
@@ -8521,7 +8548,7 @@ int cast_typeless_constant(int		cn_idx,
          if (k < 0) {
             break;
          }
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_MIPS)
          the_constant[new_word_size-1-i] = CP_CONSTANT(CN_POOL_IDX(cn_idx) + k);
 #else
          the_constant[i] = CP_CONSTANT(CN_POOL_IDX(cn_idx) + k);
@@ -8532,8 +8559,8 @@ int cast_typeless_constant(int		cn_idx,
       while (i >= 0) {
          /* fill in pad */
          if (zero_pad) {
-#ifdef TARG_X8664
-// Bug 1819
+#if defined(TARG_X8664) || defined(TARG_MIPS)
+// Bug 1819 (also 10769 for MIPS)
             the_constant[new_word_size-1-i] = 0;
 #else
             the_constant[i] = 0;

@@ -1479,6 +1479,10 @@ extern	boolean		srch_global_name_tbl(char *, int, int *);
 extern	int 		srch_hidden_name_tbl(char *, int, int, int *, int *);
 extern	int 		srch_host_stor_blk_tbl(token_type *);
 extern	int 		srch_host_sym_tbl(char *, int, int *, boolean);
+#ifdef KEY /* Bug 11741 */
+extern int srch_host_sym_tbl_for_import(char *, int, int *);
+extern int import_from_host(char *, int, int *, int);
+#endif /* KEY Bug 11741 */
 extern	int		srch_kwd_name(char *, int, int, int *);
 extern	int		srch_linked_sn(char *, int, int *);
 extern	int		srch_name_tbl(char *, int, int *, name_tbl_type *,

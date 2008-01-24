@@ -188,7 +188,10 @@ char		*blk_struct_str[]	= {
 	"Open_Mp_Parallel_Workshare_Blk", /* Open_Mp_Parallel_Workshare_Blk */
 	"Contains_Blk",	 		/* Contains_Blk	   		*/
 	"Interface_Blk",		/* Interface_Blk		*/
-	"Derived_Type_Blk"		/* Derived_Type_Blk		*/
+	"Derived_Type_Blk",		/* Derived_Type_Blk		*/
+#ifdef KEY /* Bug 10572 */
+	"Enum_Blk"			/* Enum_Blk			*/
+#endif /* KEY Bug 10572 */
 	};
 
 char		*boolean_str[]		= {
@@ -201,6 +204,9 @@ char		*context_str[]		= {
 		"Sub_Func_Stmt_Cat",
 		"Dir_Integer_Stmt_Cat",
 		"Use_Stmt_Cat",
+#ifdef KEY /* Bug 11741 */
+		"Import_Stmt_Cat",
+#endif /* KEY Bug 11741 */
 		"Implicit_None_Stmt_Cat",
 		"Implicit_Stmt_Cat",
 		"Declaration_Stmt_Cat",
@@ -1448,6 +1454,9 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Assignment",	/* Tok_Kwd_Assignment	*/
 			"Tok_Kwd_Automatic",	/* Tok_Kwd_Automatic	*/
 			"Tok_Kwd_Backspace",	/* Tok_Kwd_Backspace	*/
+#ifdef KEY /* Bug 10572 */
+			"Tok_Kwd_Bind",		/* Tok_Kwd_Bind    	*/
+#endif /* KEY Bug 10572 */
 			"Tok_Kwd_Block",	/* Tok_Kwd_Block	*/
 			"Tok_Kwd_Buffer",	/* Tok_Kwd_Buffer	*/
 			"Tok_Kwd_Byte",		/* Tok_Kwd_Byte		*/
@@ -1473,6 +1482,10 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Encode",	/* Tok_Kwd_Encode	*/
 			"Tok_Kwd_End",		/* Tok_Kwd_End		*/
 			"Tok_Kwd_Entry",	/* Tok_Kwd_Entry	*/
+#ifdef KEY /* Bug 10572 */
+			"Tok_Kwd_Enum",		/* Tok_Kwd_Enum    	*/
+			"Tok_Kwd_Enumerator",	/* Tok_Kwd_Enumerator  	*/
+#endif /* KEY Bug 10572 */
 			"Tok_Kwd_Equivalence",	/* Tok_Kwd_Equivalence	*/
 			"Tok_Kwd_Exit",		/* Tok_Kwd_Exit		*/
 			"Tok_Kwd_External",	/* Tok_Kwd_External	*/
@@ -1483,6 +1496,9 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Go",		/* Tok_Kwd_Go		*/
 			"Tok_Kwd_If",		/* Tok_Kwd_If		*/
 			"Tok_Kwd_Implicit",	/* Tok_Kwd_Implicit	*/
+#ifdef KEY /* Bug 11741 */
+			"Tok_Kwd_Import",	/* Tok_Kwd_Import	*/
+#endif /* KEY Bug 11741 */
 			"Tok_Kwd_In",		/* Tok_Kwd_In		*/
 			"Tok_Kwd_Inquire",	/* Tok_Kwd_Inquire	*/
 			"Tok_Kwd_Integer",	/* Tok_Kwd_Integer	*/
@@ -1493,6 +1509,9 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Len",		/* Tok_Kwd_Len		*/
 			"Tok_Kwd_Logical",	/* Tok_Kwd_Logical	*/
 			"Tok_Kwd_Module",	/* Tok_Kwd_Module	*/
+#ifdef KEY /* Bug 10572 */
+			"Tok_Kwd_Name",		/* Tok_Kwd_Name    	*/
+#endif /* KEY Bug 10572 */
 			"Tok_Kwd_Namelist",	/* Tok_Kwd_Namelist	*/
 			"Tok_Kwd_None",		/* Tok_Kwd_None		*/
 #ifdef KEY /* Bug 5089 */

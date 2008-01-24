@@ -1,4 +1,12 @@
 /*
+ * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -137,19 +145,21 @@ static enum {
 BOOL LC_Used_In_PU;
 
 /* TNs to save the callers GP and FP if needed */
-#if 0 // these tn are exported to gra_live.cxx::live_init for eh usage
-static TN *Caller_GP_TN;
-static TN *Caller_FP_TN;
-static TN *Caller_Pfs_TN;
-static TN *ra_intsave_tn;
-#else
+#ifdef TARG_IA64
 TN *Caller_GP_TN;
 TN *Caller_FP_TN;
 TN *Caller_Pfs_TN;
 TN *ra_intsave_tn;
+#else
+#ifdef TARG_MIPS
+TN *Caller_GP_TN;
+#else
+static TN *Caller_GP_TN;
 #endif
-
-
+static TN *Caller_FP_TN;
+static TN *Caller_Pfs_TN;
+static TN *ra_intsave_tn;
+#endif  // TARG_IA64
 
 /* Keep track of a TN with the value of the current PU's stack pointer
  * adjustment (i.e. the frame length):
@@ -157,7 +167,7 @@ TN *ra_intsave_tn;
 static TN *Frame_Len_TN;
 static TN *Neg_Frame_Len_TN;
 
-static BOOL Gen_Frame_Pointer;
+BOOL Gen_Frame_Pointer;
 
 void Split_BB_For_br(BB *bb);
 
@@ -199,6 +209,8 @@ Init_Pregs ( void )
   GP_Preg = Create_Preg( TY_mtype( Spill_Int_Type ), "GP");
 }
 
+
+#ifndef TARG_X8664
 /* =======================================================================
  *
  *  Setup_GP_TN_For_PU
@@ -290,6 +302,8 @@ Setup_GP_TN_For_PU( ST *pu)
   REGISTER_Set_Allocatable(REGISTER_CLASS_gp, reg, FALSE);
   Set_TN_register(GP_TN, reg);
 }
+#endif
+
 
 /* =======================================================================
  *
@@ -539,7 +553,8 @@ Generate_Entry (BB *bb, BOOL gra_run )
 #ifdef TARG_X8664
     /* Initialize the frame pointer if required: */
     if ( Gen_Frame_Pointer && PUSH_FRAME_POINTER_ON_STACK ) {
-      Build_OP( Is_Target_64bit() ? TOP_pushq : TOP_pushl, SP_TN, FP_TN, &ops );
+      Build_OP( Is_Target_64bit() ? TOP_pushq : TOP_pushl, SP_TN, FP_TN, SP_TN,
+      		&ops );
       Exp_COPY( FP_TN, SP_TN, &ops );
     }
 #endif
@@ -564,8 +579,10 @@ Generate_Entry (BB *bb, BOOL gra_run )
         	if ( stn = PREG_To_TN_Array[ Caller_FP_Preg ] )
   			Caller_FP_TN = stn;
         	else {
+			// Bug 13316: FP can hold 64 bit (non pointer) value
   			Caller_FP_TN = Gen_Register_TN ( 
-				ISA_REGISTER_CLASS_integer, Pointer_Size);
+				ISA_REGISTER_CLASS_integer,
+				TY_size(Spill_Int_Type));
   			Set_TN_save_creg (Caller_FP_TN, TN_class_reg(FP_TN));
   			TN_MAP_Set( TN_To_PREG_Map, Caller_FP_TN, 
 				(void *)(INTPTR)Caller_FP_Preg );
@@ -589,6 +606,10 @@ Generate_Entry (BB *bb, BOOL gra_run )
     for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
       SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);
 
+#ifdef TARG_X8664
+      if (sr.temp == NULL)
+	continue; // handled by push/pop under CG_push_pop_int_saved_regs
+#endif
       CGSPILL_Store_To_Memory (sr.ded_tn, sr.temp, &ops, CGSPILL_LCL, bb);
       Set_OP_no_move_before_gra(OPS_last(&ops));
     }
@@ -897,6 +918,11 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
   pred = BB_Unique_Predecessor(exit_bb);
   if (!pred || !BB_call(pred)) return NULL;
 
+  /* Bug 13846: The tail-call transformation discards the exit block's
+   * labels.  Make sure a label is not marked addr_saved.
+   */
+  if (BB_Has_Addr_Taken_Label(exit_bb)) return NULL;
+
   /* Get some info about the call and the callee.
    */
   ant = ANNOT_Get(BB_annotations(pred), ANNOT_CALLINFO);
@@ -968,6 +994,13 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
 #endif
     }
   }
+
+#ifdef KEY
+  /* Bug 12718: If the callee uses __builtin_return_address, we need
+   * to preserve the call. */
+  if (call_st && PU_has_return_address(Pu_Table[ST_pu(call_st)]))
+    return NULL;
+#endif
 
   /* If any stack variables have had their address taken, it is
    * possible they might be used by the called PU, but if we do the
@@ -1613,6 +1646,10 @@ Generate_Exit (
   /* restore callee-saved registers allocated to local user variables */
   for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
     SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);
+#ifdef TARG_X8664
+    if (sr.temp == NULL)
+      continue; // handled by push/pop under CG_push_pop_int_saved_regs
+#endif
     if (! sr.user_allocated)
       continue;
     /* generate the reload ops */
@@ -1650,8 +1687,9 @@ Generate_Exit (
       if ( stn = PREG_To_TN_Array[ Caller_FP_Preg ] )
 	Caller_FP_TN = stn;
       else {
+	// Bug 13316: FP can hold 64 bit (non pointer) value
 	Caller_FP_TN = Gen_Register_TN (
-		ISA_REGISTER_CLASS_integer, Pointer_Size);
+		ISA_REGISTER_CLASS_integer, TY_size(Spill_Int_Type));
 	TN_MAP_Set( TN_To_PREG_Map, Caller_FP_TN, (void *)(INTPTR)Caller_FP_Preg );
 	PREG_To_TN_Array[ Caller_FP_Preg ] = Caller_FP_TN;
   	PREG_To_TN_Mtype[ Caller_FP_Preg ] = TY_mtype(Spill_Int_Type);
@@ -2066,6 +2104,20 @@ Adjust_Entry(BB *bb)
     fprintf(TFile, "\nFinal frame size: %llu (0x%llx)\n", frame_len, frame_len);
   }
 
+#ifdef TARG_X8664
+  if (CG_push_pop_int_saved_regs && ! Gen_Frame_Pointer) {
+    OPS ops = OPS_EMPTY;
+    for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
+      SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);
+      if (sr.temp != NULL)
+	continue;
+      Build_OP(Is_Target_64bit() ? TOP_pushq : TOP_pushl, SP_TN, sr.ded_tn, 
+      	       SP_TN, &ops);
+    }
+    BB_Insert_Ops_Before(bb, ent_adj, &ops);
+  }
+#endif
+
   /* The ENTRYINFO annotation identifies the last instruction of the
    * stack frame allocation sequence. Therefore the instruction could
    * be either the adjustment of SP or FP. Find both the FP and SP
@@ -2289,6 +2341,19 @@ Adjust_Exit(ST *pu_st, BB *bb)
 	      ("Unexpected form of exit SP-adjust OP"));
   }
 
+#ifdef TARG_X8664
+  if (CG_push_pop_int_saved_regs && ! Gen_Frame_Pointer) {
+    OPS popops = OPS_EMPTY;
+    for (INT i = Saved_Callee_Saved_Regs.Elements()-1; i >= 0; i--) {
+      SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);
+      if (sr.temp != NULL)
+	continue;
+      Build_OP(Is_Target_64bit() ? TOP_popq : TOP_popl, sr.ded_tn, SP_TN, SP_TN, &popops);
+    }
+    BB_Insert_Ops_After(bb, sp_adj, &popops);
+  }
+#endif
+
   /* Perform any adjustments. We will either remove the adjustment
    * or leave it unchanged.
    */
@@ -2296,8 +2361,7 @@ Adjust_Exit(ST *pu_st, BB *bb)
     OP* op = EETARG_High_Level_Procedure_Exit ();
 #ifdef KEY // bug 3600
     OP_srcpos(op) = OP_srcpos(sp_adj);
-#endif
-#ifdef TARG_X8664
+
     if (W2OPS_Pragma_Preamble_End_Seen())
       Set_OP_first_after_preamble_end(op);
 #endif
@@ -2481,6 +2545,21 @@ struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n)
 ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n)
 {
   return Saved_Callee_Saved_Regs.Top_nth(n).temp;
+}
+#endif
+
+#ifdef TARG_X8664
+INT Push_Pop_Int_Saved_Regs(void)
+{
+  INT size = 0;
+  if (CG_push_pop_int_saved_regs && ! Gen_Frame_Pointer) {
+    for (INT i=0; i<Saved_Callee_Saved_Regs.Elements(); i++) {
+      SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);
+      if (sr.temp == NULL)
+	size++;
+    }
+  }
+  return size;
 }
 #endif
 

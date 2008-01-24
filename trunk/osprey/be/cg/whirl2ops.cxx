@@ -614,7 +614,7 @@ static void region_stack_eh_set_has_call(void)
   
 
 
-#ifdef TARG_X8664
+#ifdef KEY
 static BOOL WN_pragma_preamble_end_seen = FALSE;
 
 BOOL W2OPS_Pragma_Preamble_End_Seen ()
@@ -644,7 +644,7 @@ Process_New_OPs (void)
     }
     OP_srcpos(op) = current_srcpos;
     total_bb_insts++;
-#ifdef TARG_X8664
+#ifdef KEY
     if (WN_pragma_preamble_end_seen) {
       Set_OP_first_after_preamble_end(op);
       WN_pragma_preamble_end_seen = FALSE;
@@ -1016,7 +1016,7 @@ Preg_Is_Rematerializable(PREG_NUM preg, BOOL *gra_homeable)
     ST *basesym = Base_Symbol(sym);
     TYPE_ID rtype = OPCODE_rtype(opc);
 
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
     if (ST_sclass(sym) == SCLASS_FORMAL_REF)
       return NULL; // the dereferenced value has no home location
     if (ST_is_uplevelTemp(sym))
@@ -1053,7 +1053,7 @@ Preg_Is_Rematerializable(PREG_NUM preg, BOOL *gra_homeable)
 	  || ST_on_stack(sym)) 
 #endif
       {
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
 	if( gra_homeable != NULL )
 #endif
 	  *gra_homeable = TRUE;
@@ -1101,11 +1101,8 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
 	   preg_num, Get_Preg_Num(PREG_Table_Size(CURRENT_SYMTAB))));
 
   tn = PREG_To_TN_Array[preg_num];
-#ifdef CG_PATHSCALE_MERGE
-  // Bug 5159 - ASM preg_num are negative and should not use PREG_To_TN_Array
-  // and PREG_To_TN_Mtype arrays.
-  if (preg_num < 0)
-    tn = NULL;
+#ifdef KEY
+  Is_True(preg_num > 0, ("PREG_To_TN: non-positive preg_num"));
 #endif
   if (tn == NULL)
   {
@@ -1280,7 +1277,7 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
                                TN_register(tn),
                                ST_size(preg_st));
     }
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
     // Do the same for integer class; we have separate set of dedicated TNs
     // of size 4 bytes
     if (!TN_is_float(tn) &&
@@ -1632,7 +1629,7 @@ static VARIANT Memop_Variant(WN *memop)
        */
       offset = WN_load_offset(memop);
       ty_align = ST_alignment(WN_st(memop));
-#ifdef CG_PATHSCALE_MERGE // bug 8198: in absence of pointed-to type's alignment, need this
+#ifdef KEY // bug 8198: in absence of pointed-to type's alignment, need this
       if (offset) {
 	INT offset_align = offset % required_alignment;
 	if (offset_align) ty_align = MIN(ty_align, offset_align);
@@ -1710,7 +1707,7 @@ static VARIANT Memop_Variant(WN *memop)
   }
   if (pf_wn) Set_V_pf_flags(variant, WN_prefetch_flag(pf_wn));
 
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   /* If volatile, set the flag.
    */
   if (variant)
@@ -2269,7 +2266,6 @@ Handle_STID (WN *stid, OPCODE opcode)
         return;
        }else
 #endif
-	 // TARG_IA64
       //lets do something here, of course we need to handle this
       Expand_Expr (kid, stid, result); /// I would think this is the problem
 
@@ -2347,7 +2343,7 @@ Handle_STBITS (WN *stbits)
   TN *bits_tn = Allocate_Result_TN (kid, NULL);
   const TYPE_ID desc = Mtype_TransferSign(MTYPE_U4, WN_desc(stbits));
   TYPE_ID rtype = Mtype_TransferSize(WN_rtype(kid), desc);
-#ifdef CG_PATHSCALE_MERGE // bug 7418
+#ifdef KEY // bug 7418
   if (MTYPE_bit_size(rtype) < MTYPE_bit_size(desc))
     rtype = desc;
 #endif
@@ -2390,6 +2386,15 @@ Handle_COMPOSE_BITS (WN *compbits, TN *result, OPCODE opcode)
   TN *kid1_tn = Expand_Expr (WN_kid1(compbits), compbits, NULL);
   if (result == NULL) result = Allocate_Result_TN (compbits, NULL);
 
+#ifdef TARG_X8664
+  extern UINT64 Bitmask_Of_Size(INT bsize);
+  if (WN_operator(WN_kid1(compbits)) == OPR_INTCONST && 
+      WN_const_val(WN_kid1(compbits)) == Bitmask_Of_Size(WN_bit_size(compbits)))
+    Exp_Set_Bits(OPCODE_rtype(opcode), WN_bit_offset(compbits), 
+    		 WN_bit_offset(compbits), WN_bit_size(compbits),  
+		 result, kid0_tn, &New_OPs);
+  else
+#endif
   Exp_Deposit_Bits(OPCODE_rtype(opcode), OPCODE_rtype(opcode), 
 		   WN_bit_offset(compbits), WN_bit_size(compbits), 
 		   result, kid0_tn, kid1_tn, &New_OPs);
@@ -2784,9 +2789,22 @@ Is_CVT_Noop(WN *cvt, WN *parent)
 #endif
       break;
 
+    case OPC_U4U8CVT:
+#ifdef TARG_X8664
+     /*
+      *  Skip the truncation if the truncation result is used by a 32-bit OP,
+      *  since the 32-bit OP would ignore the upper 32-bit anyway.  Bug 12108.
+      */
+     if (Is_Target_64bit() &&
+	 parent != NULL &&
+	 MTYPE_byte_size(WN_rtype(parent)) == 4) {
+       return TRUE;
+     }
+#endif
+     // fall through
+
     case OPC_I4U8CVT:
     case OPC_I4I8CVT:
-    case OPC_U4U8CVT:
     case OPC_U4I8CVT:
      /*
       *  For truncation converts, the memory operation will
@@ -3000,6 +3018,8 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
     case INTRN_PSRLDQ:
     case INTRN_PSHUFD:
     case INTRN_PSHUFW:
+    case INTRN_PSHUFLW:
+    case INTRN_PSHUFHW:
 #ifdef Is_True_On
       {
         char * intrn_name = INTRN_c_name (id);
@@ -3069,16 +3089,14 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
     result = Allocate_Result_TN(expr, NULL);
   }
 
-#ifdef CG_PATHSCALE_MERGE
+#ifdef TARG_IA64
+  Exp_Intrinsic_Op (id, result, kid0, kid1, &New_OPs);
+#elif defined(TARG_X8664)
   const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
-#ifdef TARG_X8664
   Exp_Intrinsic_Op (id, result, kid0, kid1, kid2, mtype, &New_OPs);
 #else
   Exp_Intrinsic_Op (id, result, kid0, kid1, mtype, &New_OPs);
 #endif
-#else
-  Exp_Intrinsic_Op (id, result, kid0, kid1, &New_OPs);
-#endif // KEY
 
   return result;
 }
@@ -4642,6 +4660,12 @@ Handle_ASM (const WN* asm_wn)
 		     REGISTER_name(rclass, reg)));
 	  if (Is_Unique_Callee_Saved_Reg (sr.ded_tn))
 	  {
+#ifdef TARG_X8664
+            if (CG_push_pop_int_saved_regs && ! Gen_Frame_Pointer &&
+                rclass == ISA_REGISTER_CLASS_integer)
+              sr.temp = NULL;
+            else
+#endif
 	    sr.temp = CGSPILL_Get_TN_Spill_Location (sr.ded_tn, CGSPILL_LCL);
 	    sr.user_allocated = TRUE;
 	    Saved_Callee_Saved_Regs.Push(sr);
@@ -4703,12 +4727,13 @@ Handle_ASM (const WN* asm_wn)
     ASM_OP_result_clobber(asm_info)[num_results] = 
       (strchr(constraint, '&') != NULL);
     ASM_OP_result_memory(asm_info)[num_results] = 
-#ifndef TARG_X8664
-      (strchr(constraint, 'm') != NULL);
-#else
+#ifdef TARG_X8664
     (strchr(constraint, 'm') != NULL || strchr(constraint, 'g') != NULL);
-#endif
-    
+#elif defined(TARG_MIPS)
+    (strchr(constraint, 'm') != NULL || strchr(constraint, 'R') != NULL);
+#else
+      (strchr(constraint, 'm') != NULL);
+#endif    
     result[num_results] = tn;
     num_results++;
     
@@ -4822,7 +4847,7 @@ Handle_ASM (const WN* asm_wn)
   OPS_Append_Op(&New_OPs, asm_op);
   OP_MAP_Set(OP_Asm_Map, asm_op, asm_info);
 
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   BB_Add_Annotation( Cur_BB, ANNOT_ASMINFO, asm_info );
 
   /* Terminate the basic block */
@@ -5029,7 +5054,7 @@ static void Expand_Statement (WN *stmt)
       else
 	BB_Add_Annotation(Cur_BB, ANNOT_PRAGMA, stmt);
     }
-#ifdef TARG_X8664 
+#ifdef KEY
     if (WN_pragma(stmt) == WN_PRAGMA_PREAMBLE_END)
       WN_pragma_preamble_end_seen = TRUE;
 #endif
@@ -5152,10 +5177,26 @@ Handle_INTRINSIC_CALL (WN *intrncall)
       goto cont;
     }
     break;
+  case INTRN_STMXCSR: {
+      WN *lda = WN_kid0(WN_kid0(intrncall)); 
+      TN *ofst_tn = Gen_Symbol_TN(WN_st(lda), WN_lda_offset(lda), 0);
+      Build_OP(TOP_stmxcsr, SP_TN, ofst_tn, &New_OPs);
+      return next_stmt;
+    }
+  case INTRN_LDMXCSR: {
+      TN *val_tn = Expand_Expr(WN_kid0(WN_kid0(intrncall)), WN_kid0(intrncall), 
+      			   NULL);
+      ST *tmp_st = Gen_Temp_Symbol(MTYPE_To_TY(MTYPE_I4), "__ldmxcsr");
+      Allocate_Temp_To_Memory(tmp_st);
+      TN *ofst_tn = Gen_Symbol_TN(tmp_st, ST_ofst(tmp_st), 0);
+      Build_OP(TOP_store32, val_tn, SP_TN, ofst_tn, &New_OPs); 
+      Build_OP(TOP_ldmxcsr, SP_TN, ofst_tn, &New_OPs);
+      return next_stmt;
+    }
   }
 #endif
 
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   opnd_tn[0] = opnd_tn[1] = opnd_tn[2] = NULL;
 #endif
 
@@ -5184,7 +5225,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
 	Start_New_Basic_Block ();
   }
 
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   cont:
 #endif
   /* Expand the next statement and check if it has a use of $2. If any
@@ -5438,7 +5479,7 @@ Convert_WHIRL_To_OPs (WN *tree)
     break;
   }
 
-#ifdef TARG_X8664
+#ifdef KEY
   // Bug 1509 - reset preamble seen at the beginning of a PU.
   WN_pragma_preamble_end_seen = FALSE;
 #endif

@@ -2058,6 +2058,9 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
 
 # ifdef _ENABLE_FEI
          fei_new_select(big_int,
+#ifdef KEY /* Bug 12319 */
+                        PDG_AT_IDX(IL_IDX(list_idx2)),
+#endif /* KEY Bug 12319 */
                         PDG_AT_IDX(IL_IDX(list_idx3)));
 # endif
          break;

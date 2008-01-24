@@ -34,7 +34,7 @@
 #
 
 VER_MAJOR="4"
-VER_MINOR="1"
+VER_MINOR="2"
 #PATCH_LEVEL=""
 VERSION="${VER_MAJOR}.${VER_MINOR}"
 
@@ -58,12 +58,20 @@ ia64 )
     PREBUILD_INTERPOS="ia64-linux"
     INSTALL_TYPE="ia64-native"
     ;;
-i386 | x86_64 )
+i386 )
     BUILD_HOST="ia32"
     TARG_HOST="x8664"
     PHASE_DIR_PREFIX="x86_64"
     PREBUILD_INTERPOS="x8664-linux"
     AREA="osprey/targia32_x8664"
+    INSTALL_TYPE="x8664-native"
+    ;;
+x86_64 )
+    BUILD_HOST="x8664"
+    TARG_HOST="x8664"
+    PHASE_DIR_PREFIX="x86_64"
+    PREBUILD_INTERPOS="x8664-linux"
+    AREA="osprey/targx8664_x8664"
     INSTALL_TYPE="x8664-native"
     ;;
 cross )
@@ -103,6 +111,7 @@ BUILD_OS="linux"
 
 # prepare the source dir
 GNUFE_AREA="osprey-gcc/targ${BUILD_HOST}_${TARG_HOST}"
+GNUFE42_AREA="osprey-gcc-4.2.0/targ${BUILD_HOST}_${TARG_HOST}"
 LD_NEW_DIR="osprey/targcygnus_${BUILD_HOST}_${TARG_HOST}/ld"
 
 # prepare the distination dir
@@ -164,11 +173,17 @@ INSTALL_DRIVER () {
 # Install front-end components
 INSTALL_FE () {
 
+    # GNU3 based FE
     INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
+    # GNU 4.0.2 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen/wgen ${PHASEPATH}/wgen
     INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1 ${PHASEPATH}/cc1
     INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1plus ${PHASEPATH}/cc1plus
+    # GNU 4.2.0 based FE
+    INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
+    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc142 ${PHASEPATH}/cc142
+    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc1plus42 ${PHASEPATH}/cc1plus42
 
     if [ -f ${AREA}/crayf90/sgi/mfef95 ] ; then 
       INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
@@ -221,6 +236,7 @@ INSTALL_WHIRL_STUFF () {
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
     INSTALL_EXEC_SUB  ${AREA}/libspin/gspin      ${BIN_DIR}/gspin
+    INSTALL_EXEC_SUB  ${AREA}/libspin_4_2_0/gspin42 ${BIN_DIR}/gspin42
 
     return 0
 }
@@ -458,6 +474,8 @@ INSTALL_MISC () {
     if [ "$TARG_HOST" = "x8664" ]; then
         INSTALL_EXEC_SUB ${AREA}/targ_info/opteron.so ${PHASEPATH}/opteron.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/em64t.so ${PHASEPATH}/em64t.so
+        INSTALL_EXEC_SUB ${AREA}/targ_info/core.so ${PHASEPATH}/core.so
+        INSTALL_EXEC_SUB ${AREA}/targ_info/barcelona.so ${PHASEPATH}/barcelona.so
     fi
 #    if [ ! -z "$ROOT" ] ; then
 #        for i in gcc f77 as ld g++ gas as ; do

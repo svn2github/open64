@@ -1625,8 +1625,13 @@ intrin_tbl_type         intrin_tbl[] =
       {"X",1,0,0,0,0,0,0,0,0,0,0,COMPLEX_MASK,0},
 {"CMPLX",5,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
    {"CMPLX",5,1,1,0,0,0,0,0,0,0,Cmplx_Intrinsic,Complex_4,0},
+#ifdef KEY /* Bug 12482 */
+      {"X",1,0,0,0,0,0,0,0,0,0,0,IRC_MASK|TYPELESS_MASK,0},
+      {"Y",1,0,0,0,0,1,0,0,0,0,0,IRC_MASK|TYPELESS_MASK,0},
+#else /* KEY Bug 12482 */
       {"X",1,0,0,0,0,0,0,0,0,0,0,IRC_MASK,0},
       {"Y",1,0,0,0,0,1,0,0,0,0,0,IRC_MASK,0},
+#endif /* KEY Bug 12482 */
       {"KIND",4,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
 {"COMMAND_ARGUMENT_COUNT",22,0,1,0,1,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY},
    {"_Command_argument_count",23,0,1,0,1,0,0,0,0,0,Pathf90_Intrinsic,Integer_4,0},
@@ -2029,7 +2034,11 @@ intrin_tbl_type         intrin_tbl[] =
 #endif /* KEY Bug 1683 */
 {"DBLE",4,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
    {"DBLE",4,1,1,0,0,0,0,0,0,0,Dble_Intrinsic,Real_8,0},
+#ifdef KEY /* Bug 12482 */
+      {"A",1,0,0,0,0,0,0,0,0,0,0,IRC_MASK|TYPELESS_MASK,0},
+#else /* KEY Bug 12482 */
       {"A",1,0,0,0,0,0,0,0,0,0,0,IRC_MASK,0},
+#endif /* KEY Bug 12482 */
 {"DBLEQ",5,1,1,0,0,0,0,1,0,1,0,0,TRADITIONAL_FAMILY},
    {"DBLEQ",5,1,1,0,0,0,0,0,0,0,Dbleq_Intrinsic,Real_8,0},
       {"A",1,0,0,0,0,0,0,0,0,0,0,S16_MASK,0},
@@ -13297,6 +13306,10 @@ intrin_tbl_type         intrin_tbl[] =
    {"_TIME",5,0,0,0,1,0,0,0,1,0,Time_Intrinsic,0,0},
       {"BUF",1,0,0,0,0,0,1,0,0,7,0,(IRC_MASK|CHARACTER_MASK),0},
 #endif /* KEY Bug 4135 */
+#ifdef KEY /* Bug 12813 */
+{"TIMEF",5,0,1,0,1,0,0,1,0,1,0,0,0 /* No family */},
+   {"_Timef",6,0,1,0,1,0,0,0,1,0,Pathf90_Intrinsic,Real_8,0},
+#endif /* KEY Bug 12813 */
 {"TINY",4,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY},
    {"TINY",4,1,1,0,0,0,0,0,0,0,Tiny_Intrinsic,0,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,REAL_MASK,0},

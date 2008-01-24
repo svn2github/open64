@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -1083,8 +1083,13 @@ static WN *em_sign(WN *block, WN *x, WN *y)
   WN		*abs, *select;
 
 #ifdef KEY // bug 9660
-  if (! MTYPE_signed(type))
+  if (MTYPE_is_integral(type) && ! MTYPE_signed(type))
     type = Mtype_TransferSign(MTYPE_I4, type);
+#endif
+#ifdef KEY // bug 12052
+  if (MTYPE_is_integral(type) && 
+      MTYPE_byte_size(type) < MTYPE_byte_size(WN_rtype(y)))
+    type = Mtype_TransferSize(WN_rtype(y), type);
 #endif
   abs = WN_Abs(type, x);
   absN = AssignExpr(block, abs, type);
@@ -1650,6 +1655,7 @@ static WN *em_exp_int(WN *block, WN *x, WN *pow, TYPE_ID type)
 **	  -q = (-x, -y)
 **
 **	TODO	nail down preg offset interface
+** Bug 12895: MIPS quad represents ieee 128, so  -q = (-x, y)
 */
 static WN *em_quad_neg(WN *block, WN *tree)
 {
@@ -1677,7 +1683,11 @@ static WN *em_quad_neg(WN *block, WN *tree)
     WN	*wn, *st;
     ST	*npreg = MTYPE_To_PREG(newType);
 
+#ifdef TARG_MIPS
+    wn = WN_LdidPreg(newType, qN);  // Bug 12895
+#else
     wn = WN_Neg(newType, WN_LdidPreg(newType, qN));
+#endif
     st = WN_StidIntoPreg(newType, qN, npreg, wn);
     WN_INSERT_BlockLast(block, st);
 
@@ -1691,6 +1701,41 @@ static WN *em_quad_neg(WN *block, WN *tree)
 }
 
 
+static WN *em_quad_abs(WN *block, WN *tree)
+{
+  TYPE_ID	newType;
+  TYPE_ID	type = WN_rtype(tree);
+  PREG_NUM	qN, qNlo;
+
+  /*
+   *  assign a quad preg temp as we will be referencing twice (sortof)
+   */
+  qN = AssignExpr(block, WN_kid0(tree), type);
+
+  Is_True(! MTYPE_is_complex(type), ("em_quad_abs emulates FQ not CQ"));
+  newType = MTYPE_F8;
+  qNlo = qN+1;
+
+  {
+    WN	*wn, *st;
+    ST	*npreg = MTYPE_To_PREG(newType);
+
+#ifdef TARG_MIPS
+    wn = WN_LdidPreg(newType, qN);  // Bug 12895
+#else
+    wn = WN_Abs(newType, WN_LdidPreg(newType, qN));
+#endif
+    st = WN_StidIntoPreg(newType, qN, npreg, wn);
+    WN_INSERT_BlockLast(block, st);
+
+    wn = WN_Abs(newType, WN_LdidPreg(newType, qNlo));
+    st = WN_StidIntoPreg(newType, qNlo, npreg, wn);
+    WN_INSERT_BlockLast(block, st);
+  }
+  WN_Delete(tree);
+
+  return WN_LdidPreg(type, qN);
+}
 
 
 /*
@@ -3939,7 +3984,7 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
   case OPR_ARRAY:
   case OPR_LDA:
     return tree;
-  }
+  } // end of switch (WN_operator(tree))
   {
       TYPE_ID	type = WN_rtype(tree);
       ST  *st = Gen_Temp_Symbol( MTYPE_To_TY(type), "complex-temp-expr");

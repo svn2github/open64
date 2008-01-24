@@ -1415,6 +1415,22 @@ static void parse_slash_common_dirs(void)
          }
          SB_BLK_TYPE(ATD_STOR_BLK_IDX(attr_idx)) = Threadprivate;
 #endif
+#ifdef KEY /* Bug 9029 */
+	 /* The current function (parse_slash_common_dirs) is called only if
+	  * the token is Tok_Open_Mp_Dir_Threadprivate, so none of the
+	  * following code is relevant, and calling fnd_semantic_err with
+	  * Obj_Section_Non_Gp causes spurious errors when the identifier is
+	  * a module variable or when it is allocatable. Probably we need to
+	  * add an Attr_Threadprivate to the enumerations used in nameres.h,
+	  * and then add the corresponding table entries, and thereby make
+	  * sure that the variable cited in the THREADPRIVATE directive is
+	  * allowed by the OpenMP spec (e.g. it must not be in common, it must
+	  * not be equivalenced, and it must either have the SAVE attribute
+	  * or be a module variable.
+	  * But for now, we just disable the fnd_semantic_err check without
+	  * adding a new, more correct check.
+	  */
+#else /* KEY Bug 9029 */
 	 if(!fnd_semantic_err((token_value == Tok_SGI_Dir_Section_Gp) ?
 				 Obj_Section_Gp : Obj_Section_Non_Gp,
 				 TOKEN_LINE(token),
@@ -1456,6 +1472,7 @@ static void parse_slash_common_dirs(void)
 	    else if(token_value == Tok_SGI_Dir_Section_Non_Gp)
 	      ATD_SECTION_NON_GP(attr_idx) = TRUE;
 	  }
+#endif /* KEY Bug 9029 */
       }
       /* the above is added by jhs, 02.9.9 */
       else if (!parse_err_flush(Find_Comma_Rparen, "/common-block-name/ or identifier")) {

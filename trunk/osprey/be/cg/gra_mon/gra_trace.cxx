@@ -219,7 +219,7 @@ GRA_Trace_Split_Sub_Priority(GRA_BB* gbb, BOOL is_store)
   }
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 /////////////////////////////////////
 void
 GRA_Trace_Split_Reclaim_Add_Priority(GRA_BB* gbb, BOOL is_store, float priority)
@@ -662,12 +662,12 @@ GRA_Trace_Memory_Counts()
 /////////////////////////////////////
 {
   if (trace_memory) {
-    fprintf(TFile,"<gra> Memory use for GRA_BBs: %ld\n",
-	    (long)gbb_mgr.Alloc_Count()*sizeof(GRA_BB));
+    fprintf(TFile,"<gra> Memory use for GRA_BBs: %d\n",
+	    gbb_mgr.Alloc_Count()*sizeof(GRA_BB));
     fprintf(TFile,"<gra> Memory count of GRA_BBs: %d\n",
 	    gbb_mgr.Alloc_Count());
-    fprintf(TFile,"<gra> Memory use for GRA_REGIONs: %ld\n",
-	    (long)gra_region_mgr.Alloc_Count()*sizeof(GRA_REGION));
+    fprintf(TFile,"<gra> Memory use for GRA_REGIONs: %d\n",
+	    gra_region_mgr.Alloc_Count()*sizeof(GRA_REGION));
     fprintf(TFile,"<gra> Memory count of GRA_REGIONs: %d\n",
 	    gra_region_mgr.Alloc_Count());
   }
@@ -708,7 +708,7 @@ GRA_Trace_LRANGE_Allocate(LRANGE* lrange )
   }
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 /////////////////////////////////////
 void
 GRA_Trace_LRANGE_Choose(LRANGE* lrange, REGISTER_SET allowed)

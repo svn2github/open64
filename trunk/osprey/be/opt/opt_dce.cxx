@@ -79,6 +79,7 @@
 #include "opt_base.h"
 #include "opt_bb.h"
 #include "opt_config.h"
+#include "config_opt.h"  // OPT_Cyg_Instrument
 #include "opt_sys.h"
 #include "bb_node_set.h"
 #include "idx_32_set.h"
@@ -1717,6 +1718,15 @@ DCE::Unreachable_code_elim( void ) const
 
       // remove the block and then change the kind of the block
       Remove_unreached_statements( bb );
+
+      // Bug 13821: Don't delete unreachable blocks whose labels are
+      // taken and passed to __cyg_instrument_entry/exit
+      if ( OPT_Cyg_Instrument > 0 && bb->Labnam() != 0 &&
+	   LABEL_addr_saved( bb->Labnam() ) ) {
+	Keep_unreached_bb( bb );
+	// Restore LABEL deleted by Remove_unreached_statements
+	Check_for_label( bb );
+      }
 
       // the only kind of block whose type we won't try to change,
       // because it's otherwise illegal, is an exit block and region exit

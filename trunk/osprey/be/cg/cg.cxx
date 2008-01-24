@@ -235,6 +235,18 @@ CG_PU_Initialize (WN *wn_pu)
 	    "Ignoring CG_x87_store since it has no effect under SSE2\n");
     CG_x87_store = FALSE;
   }
+
+  // Select basic block instruction scheduling algorithm.
+  if (!LOCS_Scheduling_Algorithm_set) {
+    if (Is_Target_32bit()) {                    // 32-bit ABI
+      // Forward scheduling.
+      LOCS_Scheduling_Algorithm = 1;
+    } else {                                    // 64-bit ABI
+      // Bidirectional for Fortran, backward for C/C++.
+      LOCS_Scheduling_Algorithm = PU_ftn_lang(Get_Current_PU()) ? 2 : 0;
+    }
+  }
+
 #endif
 
   Regcopies_Translated = FALSE;
@@ -649,6 +661,7 @@ CG_Generate_Code(
     CG_Edge_Profile_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
     Stop_Timer( T_Ipfec_Profiling_CU );
     Check_for_Dump(TP_A_PROF, NULL);
+    Set_Frame_Has_Calls(TRUE);
   } else if (IPFEC_Enable_Edge_Profile_Annot && can_invoke_profile_with_current_cg_opt_level ) {
     Set_Error_Phase ( "edge profile annotation" );
     CG_Edge_Profile_Annotation(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
@@ -697,7 +710,7 @@ CG_Generate_Code(
     Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
     Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
     Is_True((current_PU_handle<=Max_Instr_Pu_Id)&&(current_PU_handle>=Min_Instr_Pu_Id),("The number of PU exceed the boundery !"));
-    CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
+//    CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
   }
 #endif
   if (CG_localize_tns && !value_profile_need_gra ) {
@@ -756,6 +769,12 @@ CG_Generate_Code(
 		   "CFLOW (first pass)");
     if (frequency_verify && CG_PU_Has_Feedback)
       FREQ_Verify("CFLOW (first pass)");
+  }
+  else {
+    // OSP_426
+    // Enable CFLOW_Optimize to remove unreachable BBs 
+    //  to avoid assertion in LRA.
+    CFLOW_Optimize( CFLOW_UNREACHABLE, "CFLOW (unreachable at -O0)");
   }
 
 #ifdef TARG_IA64
@@ -941,7 +960,12 @@ CG_Generate_Code(
       // detect GTN
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
       GRA_LIVE_Rename_TNs();  // rename TNs -- required by LRA
-#ifdef KEY 
+      Stop_Timer(T_Loop_CU);
+      Check_for_Dump(TP_CGLOOP, NULL);
+      if (frequency_verify)
+	FREQ_Verify("CGLOOP");
+
+#ifdef KEY
       /* bug#1442
 	 Loop optimization will introduce new GTNs. If -CG:localize is on,
 	 we should localize all the new created GTNs.
@@ -951,15 +975,13 @@ CG_Generate_Code(
 	  || CG_localize_x87_tns
 #endif
          ){
-	Set_Error_Phase ( "Localize" );
+	Set_Error_Phase ( "Localize (after CGLOOP)" );
+	Start_Timer ( T_Localize_CU );
 	Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
+	Stop_Timer ( T_Localize_CU );
 	Check_for_Dump ( TP_LOCALIZE, NULL );
       }
-#endif // KEY 
-      Stop_Timer(T_Loop_CU);
-      Check_for_Dump(TP_CGLOOP, NULL);
-      if (frequency_verify)
-        FREQ_Verify("CGLOOP");
+#endif
     }
 
     /* Optimize control flow (second pass) */
@@ -1157,7 +1179,7 @@ CG_Generate_Code(
                 && current_PU_handle <= Max_Instr_Pu_Id
                 && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
         {
-            CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST,FALSE,FALSE);
+//            CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST,FALSE,FALSE);
         }
   }
   DevWarn("Now we are testing instrumentation after RegionFormation!");
@@ -1330,6 +1352,10 @@ CG_Generate_Code(
       }
     }
   }
+#endif
+
+#if defined(KEY) && defined(TARG_MIPS)
+  CFLOW_Fixup_Long_Branches();
 #endif
 
   Reuse_Temp_TNs = orig_reuse_temp_tns;		/* restore */

@@ -1,6 +1,10 @@
 //-*-c++-*-
 
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -427,6 +431,14 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 	      branch_sr->Init_Goto( NULL, goto_bb->Labnam(), 0);
 	      bb->Append_stmtrep( branch_sr);
 	    } else {
+#ifdef KEY // bug 12839
+	      if (branch_sr->Op() == OPC_AGOTO) {
+		branch_sr->Set_op(OPC_GOTO);
+		branch_sr->Rhs()->DecUsecnt();
+		branch_sr->Set_rhs(NULL);
+		bb->Set_kind(BB_GOTO);
+	      }
+#endif
 	      Is_True(branch_sr->Op() == OPC_GOTO, ("expected OPC_GOTO"));
 	      branch_sr->Set_label_number(goto_bb->Labnam());
 	    }

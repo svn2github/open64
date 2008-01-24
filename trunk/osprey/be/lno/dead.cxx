@@ -155,7 +155,9 @@ extern void Process_Store(WN *store_wn, VINDEX16 v,
 
   ACCESS_ARRAY *store = 
 	(ACCESS_ARRAY *) WN_MAP_Get(LNO_Info_Map,WN_kid1(store_wn));
-
+#ifdef KEY //bug 5970: see explanation below
+  if(!store) return;
+#endif
   if (debug) {
     fprintf(TFile,"Processing the store ");
     store->Print(TFile);

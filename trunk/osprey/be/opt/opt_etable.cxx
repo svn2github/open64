@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -3045,7 +3045,7 @@ EXP_OCCURS::Load_use_cr(ETABLE *etable, CODEREP * old_cr, CODEREP *cr)
     break;
   }
 
-#ifndef KEY
+#ifndef TARG_X8664 // bug 12918: MIPS cannot use Fixup_type here
   if (Split_64_Bit_Int_Ops && MTYPE_size_min(cr->Dtyp()) == 32 &&
       MTYPE_size_min(old_cr->Dtyp()) == 64) {
     opc = MTYPE_signed(old_cr->Dtyp()) ? OPC_I8I4CVT : OPC_U8U4CVT;
@@ -3450,6 +3450,11 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
       cr->Copy(*x);	
       cr->Set_usecnt(0);
       for  (INT32 i = 0; i < x->Kid_count(); i++) {
+#ifdef KEY // bug 12471: __builtin_expect's first kid must be constant
+	if (cr->Opr() == OPR_INTRINSIC_OP && cr->Intrinsic() == INTRN_EXPECT &&
+	    i == 1)
+	  continue;
+#endif
 	expr = Recursive_rehash_and_replace(x->Opnd(i), occur, repl,
 					    FALSE, depth+1, x->Op());
 	if (expr) {

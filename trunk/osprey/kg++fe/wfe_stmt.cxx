@@ -2274,6 +2274,10 @@ WFE_Expand_Return (tree stmt, tree retval)
 
 #ifdef KEY
     bool copied_return_value = FALSE;
+#ifdef PATHSCALE_MERGE
+    bool need_iload_via_fake_parm = FALSE;
+    WN *target_wn = NULL;
+#endif
 
     // If the return object must be passed through memory and the return
     // object is created by a TARGET_EXPR, have the TARGET_EXPR write directly
@@ -2289,13 +2293,43 @@ WFE_Expand_Return (tree stmt, tree retval)
       if (TREE_CODE(t) == TARGET_EXPR) {
 	WFE_fixup_target_expr(t);
 	copied_return_value = TRUE;
+#ifdef PATHSCALE_MERGE
+      } else if (TREE_CODE(t) == CALL_EXPR) {
+	// Pass the first fake parm to the called function, so that the called
+	// function can write the result directly to the return area.
+	// Bug 12837.
+	WN *first_formal = WN_formal(Current_Entry_WN(), 0);
+	ST *st = WN_st(first_formal);
+	target_wn = WN_Ldid(Pointer_Mtype, 0, st, ST_type(st));
+	copied_return_value = TRUE;
+	need_iload_via_fake_parm = TRUE;
+#endif
       }
     }
 #endif
 
     rhs_wn = WFE_Expand_Expr_With_Sequence_Point (
 		retval,
-		TY_mtype (ret_ty_idx));
+		TY_mtype (ret_ty_idx)
+#ifdef PATHSCALE_MERGE
+                , target_wn
+#endif
+                );
+#ifdef PATHSCALE_MERGE
+    // rhs_wn is NULL if retval is a call_expr which writes the result directly
+    // into the return area.  Manufacture a rhs_wn which is an iload of the
+    // fake first parm.  Bug 12837.
+    if (rhs_wn == NULL) {
+      Is_True(need_iload_via_fake_parm == TRUE,
+	      ("WFE_Expand_Return: unexpected rhs_wn NULL"));
+      WN *first_formal = WN_formal(Current_Entry_WN(), 0);
+      ST *st = WN_st(first_formal);
+      TY_IDX ty_idx = Get_TY(TREE_TYPE(retval));
+      WN *ldid_wn = WN_Ldid(Pointer_Mtype, 0, st, ST_type(st));
+      rhs_wn = WN_Iload(TY_mtype(ty_idx), 0, ty_idx, ldid_wn);
+    }
+#endif
+
     WN * cleanup_block = WN_CreateBlock ();
     WFE_Stmt_Push (cleanup_block, wfe_stmk_temp_cleanup, Get_Srcpos ());
     Do_Temp_Cleanups (stmt);
@@ -2414,6 +2448,7 @@ WFE_Expand_Return (tree stmt, tree retval)
       wn = WN_CreateReturn_Val(OPR_RETURN_VAL, WN_rtype(rhs_wn), MTYPE_V, rhs_wn);
     }
   }
+
   WFE_Stmt_Append(wn, Get_Srcpos());
 } /* WFE_Expand_Return */
 

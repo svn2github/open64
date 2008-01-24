@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -173,6 +177,14 @@ main (int argc, char *argv[])
 	#endif
 
 	check_for_driver_controls (argc, argv);
+
+        if (0 && time(NULL) > 1080719999) {
+            fprintf(stderr, "This software has expired.\n"
+		    "Please contact PathScale, Inc. at "
+		    "http://www.pathscale.com for infomation on\n"
+		    "upgrade options.\n");
+            do_exit(1);
+        }
 
 	/* Try to find where the compiler is located and set the phase
 	   and library directories appropriately. */
@@ -351,11 +363,11 @@ main (int argc, char *argv[])
 
     if (dump_version) {
         if (option_was_seen(O_compat_gcc))
-	 #ifdef PSC_TO_OPEN64
-        puts(OPEN64_GCC_VERSION);
+#ifdef PSC_TO_OPEN64
+          puts(OPEN64_GCC_VERSION);
         else
-        puts(OPEN64_FULL_VERSION);
-	 #endif
+          puts(OPEN64_FULL_VERSION);
+ #endif
     }
 
         if (show_version) {
@@ -378,23 +390,26 @@ main (int argc, char *argv[])
 #endif
 #endif
         }
+#if 0
 	if (show_copyright) {
 	    if (show_version)
 		fputc('\n', stderr);
 	    char *exe_dir = get_executable_dir();
-
 	    fprintf(stderr, "Copyright 2000, 2001 Silicon Graphics, Inc.  "
 		    "All Rights Reserved.\n");
 	    fprintf(stderr, "Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.\n");
+	    fprintf(stderr, "Copyright 2006, 2007 QLogic Corporation.  All Rights Reserved.\n");
+	    fprintf(stderr, "Copyright 2007 PathScale, LLC.  All Rights Reserved.\n");
 
 	    fprintf(stderr, "See complete copyright, patent and legal notices "
 		    "in the\n");
-	#ifdef PSC_TO_OPEN64
+#ifdef PSC_TO_OPEN64
 	    fprintf(stderr, "%.*s/share/doc/open64-" 
 	    	    OPEN64_FULL_VERSION "/LEGAL.pdf file.\n",
 		    (int)(strlen(exe_dir) - 4), exe_dir);
-	#endif
+#endif
 	}
+#endif
 	if (show_search_path) {
 		print_search_path();
 	}
@@ -510,37 +525,46 @@ main (int argc, char *argv[])
 	set_defaults();
 
 #ifdef KEY
-        // Perform GNU4-related checks after set_defaults has run, since
-        // set_defaults can change gnu_version.  Bug 10250.
-        if (gnu_version == 4) {
-          if (option_was_seen(O_fwritable_strings) ||
-              option_was_seen(O_fno_writable_strings)) {
-            warning("ignored -fwritable-strings/-fno-writable-strings because"
-                    " option not supported under GNU GCC 4");
-            set_option_unseen(O_fwritable_strings);
-            set_option_unseen(O_fno_writable_strings);
-          }
-          if ((source_lang == L_cc ||
-               source_lang == L_CC) &&
-              option_was_seen(O_mp)) {  // bug 11896
-            warning("ignored -mp because option not yet supported under"
-                    " GNU GCC 4");
-            set_option_unseen(O_mp);
-          }
-        } else {        // not GNU 4
-          if (option_was_seen(O_fgnu_exceptions) ||     // bug 11732
-              option_was_seen(O_fno_gnu_exceptions)) {
-            warning("ignored -fgnu-exceptions/-fno-gnu-exceptions because"
-                    " option is for GNU GCC 4 only");
-            set_option_unseen(O_fgnu_exceptions);
-            set_option_unseen(O_fno_gnu_exceptions);
-            gnu_exceptions = UNDEFINED;
-          }
-        }
+	// Perform GNU4-related checks after set_defaults has run, since
+	// set_defaults can change the gnu version.  Bug 10250.
+	if (gnu_major_version == 4) {
+	  if (option_was_seen(O_fwritable_strings) ||
+	      option_was_seen(O_fno_writable_strings)) {
+	    warning("ignored -fwritable-strings/-fno-writable-strings because"
+		    " option not supported under GNU GCC 4");
+	    set_option_unseen(O_fwritable_strings);
+	    set_option_unseen(O_fno_writable_strings);
+	  }
+	  if ((source_lang == L_cc ||
+	       source_lang == L_CC) &&
+	      option_was_seen(O_mp) &&	// bug 11896
+	      gnu_minor_version < 2) {
+	    warning("ignored -mp because option not supported under"
+		    " GNU GCC 4.0");
+	    set_option_unseen(O_mp);
+	  }
+	  else if (gnu_minor_version >= 2 &&
+	           !option_was_seen(O_fno_cxx_openmp)) {
+	    add_option_seen(O_fcxx_openmp);
+	    toggle(&fcxx_openmp,1);
+	  }
+	} else {	// not GNU 4
+	  if (option_was_seen(O_fgnu_exceptions) ||	// bug 11732
+	      option_was_seen(O_fno_gnu_exceptions)) {
+	    warning("ignored -fgnu-exceptions/-fno-gnu-exceptions because"
+		    " option is for GNU GCC 4 only");
+	    set_option_unseen(O_fgnu_exceptions);
+	    set_option_unseen(O_fno_gnu_exceptions);
+	    gnu_exceptions = UNDEFINED;
+	  }
+	}
+
+	// Select the appropriate GNU version front-end.
+	init_frontend_phase_names(gnu_major_version, gnu_minor_version);
 #endif
 
 	// Display version after running set_defaults, which can change
-	// gnu_version.
+	// gnu_major_version.
         if (show_version || dump_version) {
 	  display_version(dump_version);
 	  if (!execute_flag ||
@@ -1031,6 +1055,16 @@ print_defaults(int argc, char *argv[])
   else
     internal_error("no default target cpu");
 
+#ifdef TARG_MIPS
+  // ABI
+  switch (abi) {
+    case ABI_N32:	fprintf(stderr, " -n32"); break;
+    case ABI_64:	fprintf(stderr, " -64");  break;
+    default:		internal_error("unknown default ABI");
+  }
+#endif
+
+#ifdef TARG_X8664
   // ABI
   switch (abi) {
     case ABI_N32:	fprintf(stderr, " -m32"); break;
@@ -1038,16 +1072,18 @@ print_defaults(int argc, char *argv[])
     default:		internal_error("unknown default ABI");
   }
 
-  // SSE, SSE2, SSE3, 3DNow
+  // SSE, SSE2, SSE3, 3DNow, SSE4a
   fprintf(stderr, " -msse");
   fprintf(stderr, " %s", sse2 == TRUE ? "-msse2" : "-mno-sse2");
   fprintf(stderr, " %s", sse3 == TRUE ? "-msse3" : "-mno-sse3");
   fprintf(stderr, " %s", m3dnow == TRUE ? "-m3dnow" : "-mno-3dnow");
+  fprintf(stderr, " %s", sse4a == TRUE ? "-msse4a" : "-mno-sse4a");
+#endif
 
   // -gnu3/-gnu4
   if ((invoked_lang == L_cc ||
        invoked_lang == L_CC) &&
-      !is_toggled(gnu_version)) {
+      !is_toggled(gnu_major_version)) {
     int gcc_version = get_gcc_major_version();
     if (gcc_version == 3 ||
 	gcc_version == 4) {
@@ -1425,19 +1461,22 @@ display_version(boolean dump_version_only)
 
   // Get GCC version.
 
-  if (is_toggled(gnu_version))
-    gcc_version = gnu_version;
-  else
+  if (is_toggled(gnu_major_version))
     gcc_version = get_gcc_major_version();
 
-#ifdef PSC_TO_OPEN64
-  if (gcc_version == 3)
+  if (gnu_major_version == 3)
     open64_gcc_version = OPEN64_GCC_VERSION;
-  else if (gcc_version == 4)
-    open64_gcc_version = OPEN64_GCC4_VERSION;
-  else
-    internal_error("display_version: unknown GCC version %d\n", gcc_version);
-#endif
+  else if (gnu_major_version == 4) {
+    if (gnu_minor_version == 0)
+      open64_gcc_version = OPEN64_GCC40_VERSION;
+    else if (gnu_minor_version == 2)
+      open64_gcc_version = OPEN64_GCC42_VERSION;
+    else
+      internal_error("display_version: unexpected GCC version 4.%d\n",
+		     gnu_minor_version);
+  } else
+    internal_error("display_version: unexpected GCC version %d\n",
+		   gnu_major_version);
 
   if (dump_version_only == TRUE) {
   #ifdef PSC_TO_OPEN64

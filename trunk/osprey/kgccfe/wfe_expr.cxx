@@ -2732,6 +2732,10 @@ WFE_target_builtins (tree exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_STOREDQU;
       *intrinsic_op = FALSE;
       break;
+    case IX86_BUILTIN_MOVNTI:
+      *iopc = INTRN_MOVNTI;
+      *intrinsic_op = FALSE;
+      break;
 
     default:
       if (Opt_Level > 0)
@@ -3556,22 +3560,31 @@ WFE_Expand_Expr (tree exp,
 	  TYPE_ID rtype = Widen_Mtype(TY_mtype(ty_idx));
 	  TYPE_ID desc = TY_mtype(ty_idx);
 	  if (WN_operator(wn) == OPR_ILOAD) {
+#ifdef PATHSCALE_MERGE
+            wn = WN_CreateIload(OPR_ILOAD, rtype, desc,
+			        WN_offset(wn) + ofst + component_offset, ty_idx,
+			        WN_load_addr_ty(wn), WN_kid0(wn),
+			        WN_field_id(wn)+field_id + DECL_FIELD_ID(arg1));
+#else
             wn = WN_CreateIload(OPR_ILOAD, rtype, desc,
 			        ofst + component_offset, ty_idx,
 			        Make_Pointer_Type (ty_idx, FALSE), WN_kid0(wn),
 			        field_id + DECL_FIELD_ID(arg1));
+#endif
 	  } 
 	  else if (WN_operator(wn) == OPR_LDID) {
 	    WN_set_rtype(wn, rtype);
 	    WN_set_desc(wn, desc);
 	    WN_offset(wn) = WN_offset(wn)+ofst+component_offset;
 	    WN_set_ty(wn, ty_idx);
-#ifdef PATHSCALE_MERGE
 	    // bug fix for OSP_158
     	    // if (TY_kind(ty_idx) == KIND_SCALAR)
 	    if (TY_kind(ty_idx) != KIND_STRUCT)
  	      WN_set_field_id (wn, 0);	
 	    else
+#ifdef PATHSCALE_MERGE
+	      WN_set_field_id(wn, WN_field_id(wn)+field_id + DECL_FIELD_ID(arg1));
+#else
 	      WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
 #endif
 	  } 
@@ -4066,8 +4079,11 @@ WFE_Expand_Expr (tree exp,
 	    WN_set_operator(wn, OPR_LDBITS);
 	  else WN_set_operator(wn, OPR_ILDBITS);
 	  WN_set_bit_offset_size(wn, bofst, bsiz);
-#ifdef KEY
-	  WN_set_ty (wn, MTYPE_To_TY (WN_desc(wn)));
+#ifdef PATHSCALE_MERGE
+	  TY_IDX ty = MTYPE_To_TY (WN_desc(wn));
+	  WN_set_ty (wn, ty);
+	  if (WN_operator(wn) == OPR_ILDBITS)
+	    WN_set_load_addr_ty(wn, Make_Pointer_Type(ty));  // Bug 12394
 	  break;
 #endif
 	}
@@ -4082,6 +4098,10 @@ WFE_Expand_Expr (tree exp,
 	// does not hold any more.
 		WN_set_field_id (wn, 0);
 	  WN_set_ty (wn, ty);
+#ifdef PATHSCALE_MERGE
+	  if (WN_operator(wn) == OPR_ILOAD || WN_operator(wn) == OPR_ILDBITS)
+	    WN_set_load_addr_ty(wn, Make_Pointer_Type(ty));
+#endif
 	}
 #else
 	  WN_set_ty (wn, MTYPE_To_TY (WN_desc(wn)));
@@ -4280,14 +4300,17 @@ WFE_Expand_Expr (tree exp,
 		arg2 = TREE_VALUE (TREE_CHAIN (arglist));
                 TY_IDX arg_ty_idx = Get_TY (TREE_TYPE (arg1));
 
-#ifdef TARG_X8664
+#ifdef KEY
 		/* Under -m32, convert a __builtin_va_copy to an assignment if the
 		   type of va_list is not array.
 		   Also, the original code seems to only work for -m64, like other
 		   va_XYZ code; under -m32, the source address is wrong.  (bug#2601)
 		   (But even under -m64, the using of memcpy is unnecessary.)
 		 */
-		if( !TARGET_64BIT ){
+#ifdef TARG_X8664
+		if( !TARGET_64BIT )
+#endif
+                {
 		  FmtAssert( TREE_CODE(arglist) != ARRAY_TYPE,
 			     ("unexpected array type for intrinsic 'va_copy'") );
 		  WN* addr = WFE_Expand_Expr( arg1 );
@@ -4300,24 +4323,8 @@ WFE_Expand_Expr (tree exp,
 		  wn = NULL;
 		  break;
 		}
-#endif // TARG_X8664
+#endif // KEY
 
-#ifdef TARG_IA64
-		// For IA64, the memcpy is not necessary
-		// We use IStore directly, the original code also fails
-		// in IA64 with GNU 3 front-end(OSP bug #250)
-		FmtAssert( TREE_CODE(arglist) != ARRAY_TYPE,
-                         ("unexpected array type for intrinsic 'va_copy'") );
-		WN* addr = WFE_Expand_Expr( arg1 );
-		WN* value = WFE_Expand_Expr( arg2 );
-		wn = WN_CreateIstore( OPR_ISTORE, MTYPE_V, Pointer_Mtype,
-                                      0, arg_ty_idx, value, addr, 0 );
-		WFE_Stmt_Append( wn, Get_Srcpos() );
-		whirl_generated = TRUE;
-		wn = NULL;
-		break;
-#endif		
-		
 		WN *dst  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg1),
 					  arg_ty_idx, WN_PARM_BY_VALUE);
 		WN *src  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg2),
@@ -4441,29 +4448,66 @@ WFE_Expand_Expr (tree exp,
 		}
                 break;
 
-#if 0 /* turn off for the timing being due to bug */
-	    case BUILT_IN_FLOOR:
-	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
-	      whirl_generated = TRUE;
-	      break;
-
-	    case BUILT_IN_FLOORF:
-	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
-	      whirl_generated = TRUE;
-	      break;
-
-	    case BUILT_IN_FLOORL:
-	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-#ifdef TARG_IA64
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
+#ifdef KEY
+            case BUILT_IN_FLOOR:
+              arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+#if defined TARG_MIPS
+              iopc = INTRN_FLOOR;
+              intrinsic_op = TRUE;
+#elif defined TARG_IA64
+              if (MTYPE_is_integral(ret_mtype))
+                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
+              else{
+                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F8, arg_wn);
+                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+              }
+              whirl_generated = TRUE;
 #else
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
+              wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
+              whirl_generated = TRUE;
 #endif
-	      whirl_generated = TRUE;
-	      break;
+              break;
+
+            case BUILT_IN_FLOORF:
+              arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+#if defined TARG_MIPS
+              iopc = INTRN_FLOORF;
+              intrinsic_op = TRUE;
+#elif defined TARG_IA64
+              if (MTYPE_is_integral(ret_mtype))
+                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+              else{
+                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F4, arg_wn);
+                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+              }
+              whirl_generated = TRUE;
+#else
+              wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+              whirl_generated = TRUE;
 #endif
+              break;
+
+#ifndef TARG_MIPS
+            case BUILT_IN_FLOORL:
+              arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+#ifdef TARG_IA64
+              if (MTYPE_is_integral(ret_mtype))
+                // bug fix for OSP_201
+                //
+                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
+              else{
+                // bug fix for OSP_201
+                //
+                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F10, arg_wn);
+                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+              }
+#else
+              wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
+#endif // TARG_IA64
+              whirl_generated = TRUE;
+              break;
+#endif // ! TARG_MIPS
+#endif // KEY
 
 #ifdef KEY
 	      case BUILT_IN_SQRT:
@@ -4530,6 +4574,7 @@ WFE_Expand_Expr (tree exp,
 
 #ifdef KEY
               case BUILT_IN_EXP:
+	      case BUILT_IN_EXPF:
 		// bug 3390
 		// If return type is void, generate an intrinsic assuming
 		// double (so if it is without side-effects, optimizer can 
@@ -4821,6 +4866,7 @@ WFE_Expand_Expr (tree exp,
 #ifdef KEY
                 iopc = INTRN_EXPECT;
                 intrinsic_op = TRUE;
+                if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_I4; // bug 12344
 #else
                 list = TREE_OPERAND (exp, 1);
                 wn   = WFE_Expand_Expr (TREE_VALUE (list));
@@ -4835,7 +4881,6 @@ WFE_Expand_Expr (tree exp,
                 if (ret_mtype == MTYPE_V)
                   ret_mtype = MTYPE_I4;
 		break;
-
 	      case BUILT_IN_CTYPE_B_LOC: 
 	        iopc = INTRN_CTYPE_B_LOC; 
 		intrinsic_op = TRUE; 
@@ -5136,6 +5181,7 @@ WFE_Expand_Expr (tree exp,
 	    if (WN_operator(arg_wn) == OPR_LDA) {
 	      ST *st = WN_st(arg_wn);
 	      Set_ST_addr_passed(*st);
+	      Set_ST_addr_saved(*st);
 	    }
 #endif // KEY
 	    // gcc allows non-struct actual to correspond to a struct formal;
@@ -5485,6 +5531,7 @@ WFE_Expand_Expr (tree exp,
 	WN        *ap_load   = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
         TY_IDX     ap_ty_idx = Get_TY (TREE_TYPE (TREE_OPERAND (exp, 0)));
         WN        *ap_addr;
+	TY_IDX	   ap_addr_ty;
         ST        *ap_st;
         WN_OFFSET  ap_offset;
 
@@ -5497,6 +5544,7 @@ WFE_Expand_Expr (tree exp,
           ap_st     = NULL;
           ap_offset = WN_offset (ap_load);
           ap_addr   = WN_COPY_Tree (WN_kid0 (ap_load));
+	  ap_addr_ty = WN_load_addr_ty(ap_load);
           if (WN_has_side_effects (ap_addr))
             Fail_FmtAssertion ("VA_ARG_EXPR: ap address has side effects");
         }
@@ -5552,39 +5600,59 @@ WFE_Expand_Expr (tree exp,
             WN_Intconst (Pointer_Mtype, rounded_size));
 	    } else
             /* Compute new value for AP.  */
-              wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-              WN_Intconst (Pointer_Mtype, rounded_size));
-#endif
+            wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+            WN_Intconst (Pointer_Mtype, rounded_size));
+#ifdef TARG_X8664 // bug 12118: pad since under -m32, vector types are 8-byte aligned
+	if (MTYPE_is_vector(mtype) && ! TARGET_64BIT) {
+	  wn = WN_Add(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 7));
+	  wn = WN_Div(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 8));
+	  wn = WN_Mpy(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 8));
+	}
+#endif // TARG_X8664
+#ifdef TARG_MIPS // bug 12945: pad since long doubles are 16-byte aligned
+	if (mtype == MTYPE_FQ) {
+	  wn = WN_Add(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 15));
+	  wn = WN_Div(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 16));
+	  wn = WN_Mpy(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 16));
+	}
+#endif // TARG_MIPS
+#endif // ! KEY
 		    
-#endif
+#endif // TARG_IA64
         if (ap_st)
 	  wn = WN_Stid (Pointer_Mtype, ap_offset, ap_st, ap_ty_idx, wn);
         else {
           wn = WN_CreateIstore (OPR_ISTORE, MTYPE_V, Pointer_Mtype, ap_offset,
-                                ap_ty_idx, wn, ap_addr, 0);
+                                ap_addr_ty, wn, ap_addr, 0);
         }
         WFE_Stmt_Append (wn, Get_Srcpos ());
-#ifdef TARG_IA64
-        wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -ty_size,
-			     ty_idx, Make_Pointer_Type (ty_idx, FALSE),
-			     ap_load);
-#else
-	wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size, 
-			ap_ty_idx, Make_Pointer_Type (ap_ty_idx, FALSE),
-			ap_load);
-#endif
+
 #ifdef KEY
 	if (Target_Byte_Sex != Host_Byte_Sex)
-          wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, 
 #ifdef TARG_IA64
-			  ((MTYPE_size_min(mtype)==32)?4:0)-ty_size, 
+          wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype,
+                          ((MTYPE_size_min(mtype)==32)?4:0)-ty_size,
+                          ty_idx, Make_Pointer_Type (ty_idx, FALSE),
+                          ap_load);
 #else
+          wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, 
 			  ((MTYPE_size_min(mtype)==32)?4:0)-rounded_size,	  
-#endif
-			  ap_ty_idx, 
-			  Make_Pointer_Type (ap_ty_idx, FALSE),
+			  ty_idx, Make_Pointer_Type (ty_idx, FALSE),
 			  ap_load);
 #endif
+        else
+#endif
+
+#ifdef TARG_IA64
+          wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -ty_size,
+                          ty_idx, Make_Pointer_Type (ty_idx, FALSE),
+                          ap_load);
+#else
+          wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size,
+                          ty_idx, Make_Pointer_Type (ty_idx, FALSE),
+                          ap_load);
+#endif
+
       }
       break;
 

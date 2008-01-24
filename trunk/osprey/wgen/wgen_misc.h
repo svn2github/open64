@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+/*
  * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -121,6 +124,14 @@ extern int key_exceptions;		/* from main.c */
 extern BOOL opt_regions;		/* from main.c */
 extern gs_t program;			/* from main.c */
 extern BOOL lang_cplus;			/* from main.c */
+#ifdef FE_GNU_4_2_0
+#include "wn_util.h"
+extern BOOL enable_cxx_openmp;		/* from main.c */
+extern void WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *,
+                                                  BOOL = FALSE);
+void Add_Pragma_To_MP_Regions (WN_VECTOR *, WN_PRAGMA_ID, ST *, WN_OFFSET,
+                               WN_MAP, BOOL, BOOL);
+#endif
 #if 0
 extern char *Spin_File_Name;
 extern FILE *Spin_File;

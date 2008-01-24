@@ -442,6 +442,27 @@ tn_info_def (BB *current_bb, OP *current_op, TN *local_tn,
                                         tninfo_prev->predicate_tninfo->local_tn:True_TN,
                                 tninfo_prev->predicate_tninfo)))) {
    /* The new definition completely redefines the previous. */
+#ifdef TARG_X8664
+    // In rare situations, if tninfo and tninfo_prev correspond to the same
+    // TN and are defined in the same OP, then don't consider the TN as
+    // being redefined in order to prevent EBO from deleting the OP.  For
+    // example:
+    //   rdx TN100 = idiv ...	; TN100 not used
+    // idiv requires "rax rdx" results in that order, but the WHIRL wants to
+    // return the first result via rdx (the second return value register).
+    // add_to_hash_table calls tn_info_def to add the TNs and their subclass in
+    // this order:
+    //   rax	; result 0's subclass
+    //   rdx	; result 0
+    //   rdx	; result 1's subclass
+    //   TN100	; result 1
+    // The second add of rdx would have set the first rdx's
+    // tninfo->redefined_before_block_end to TRUE.  Since result 1 is never
+    // used, EBO would think both results are not used, and the OP can be
+    // deleted.  To avoid this, don't set redefined_before_block_end.
+    // Bug 12744.
+    if (tninfo_prev->in_op != current_op)
+#endif
     tninfo_prev->redefined_before_block_end = TRUE;
   }
 

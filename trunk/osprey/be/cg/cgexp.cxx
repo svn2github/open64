@@ -330,6 +330,9 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		// vector conversions not covered above
 		Expand_Conv_To_Vector (result, op1, desc, rtype, ops);
 	}
+	else if (MTYPE_is_vector (desc)) {
+		Expand_Conv_From_Vector (result, op1, desc, rtype, ops);
+	}
 #endif
 	else {
 		// both are int
@@ -377,6 +380,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Float_To_Float_Floorf( result, op1, rtype, desc, ops );
       break;
     }	
+#elif defined (TARG_MIPS)
+        if (MTYPE_is_float (rtype)) {
+	  Expand_Float_To_Float_Floor (result, op1, rtype, desc, ops);
+	  break;
+	}
 #endif
 	Expand_Float_To_Int_Floor (result, op1, rtype, desc, ops);
 	break;

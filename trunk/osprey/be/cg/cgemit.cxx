@@ -154,8 +154,9 @@ extern "C" {
 #include "pro_encode_nm.h"
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 #include "config_lno.h" // for LNO_Run_Simd
+#include "config_opt.h" // for OPT_Cyg_Instrument
 #endif
 
 #ifdef TARG_X8664
@@ -588,11 +589,11 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 {
   if (ST_name(st) && *(ST_name(st)) != '\0') {
 	fputs(ST_name(st), f);
-#ifdef TARG_X8664
+#ifdef KEY
 // This name is already unique, don't change it.
 	if (!strncmp (ST_name(st), ".range_table.", strlen(".range_table.")))
 		return;
-#endif // TARG_X8664
+#endif // KEY
 	if ( ST_is_export_local(st) && ST_class(st) == CLASS_VAR) {
 		// local var, but being written out.
 		// so add suffix to help .s file distinguish names.
@@ -687,7 +688,7 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
 	/* if size is given, then emit value for asm */
       	fprintf ( pfile, "\t%s\t", AS_SIZE);
 	EMT_Write_Qualified_Name(pfile, st);
-	fprintf ( pfile, ", %d\n", size);
+	fprintf ( pfile, ", %d\n", (INT)size);
     }
     Base_Symbol_And_Offset (st, &base_st, &base_ofst);
     EMT_Write_Qualified_Name (pfile, st);
@@ -848,9 +849,9 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
 	case SCLASS_FSTATIC:
 	case SCLASS_DGLOBAL:
 	case SCLASS_UGLOBAL:
-#ifdef TARG_X8664
+#ifdef KEY
 	case SCLASS_EH_REGION:
-#endif // TARG_X8664
+#endif // KEY 
 	  symindex = Em_Add_New_Symbol (
 			ST_name(sym), base_ofst, TY_size(sym_type), 
 			symbind, STT_OBJECT, symother,
@@ -1610,6 +1611,25 @@ static void Verify_Instruction(OP *op)
   for (i = 0; i < opnds; ++i) {
     Verify_Operand(oinfo, op, i, FALSE);
   }
+
+#ifdef KEY
+  // Check for unique operand and result registers.
+  if (OP_uniq_res(op)) {
+    for (i = 0; i < results; i++) {
+      int j;
+      TN *result_tn = OP_result(op, i);
+      for (j = 0; j < opnds; j++) {
+        TN *opnd_tn = OP_opnd(op, j);
+        if (TN_is_register(opnd_tn)) {
+          FmtAssert(!TNs_Are_Equivalent(opnd_tn, result_tn),
+                    ("need unique registers for %s operand and result",
+                     TOP_Name(top)));
+        }
+      }
+    }
+  }
+#endif
+
 }
 
 /* ====================================================================
@@ -1925,7 +1945,7 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
 #define Perform_Sanity_Checks_For_OP(op, check_def)
 #endif
 
-#ifdef TARG_X8664
+#ifdef KEY
 //********************************************************
 //Bug 11034: implement dymanic allocation of pu tables to
 //various information for dwarf
@@ -1980,7 +2000,9 @@ static void double_dwarf_pu_tables()
 }
 
 static INT32 pu_entries = 0;
+#endif // KEY
 
+#ifdef TARG_X8664
 static inline BOOL
 tn_registers_identical (TN *tn1, TN *tn2)
 {
@@ -2013,7 +2035,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 
   if (OP_prefetch(op)) Use_Prefetch = TRUE;
 
-#ifdef TARG_X8664
+#ifdef KEY
   static INT32 label_adjustsp_pu = -1;
   static INT32 pu_entry_count = -1;
   BOOL adjustsp_instr = FALSE;
@@ -2053,6 +2075,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 		("Too many pus, pu_tables should have been expanded."));
     }
 
+#ifdef TARG_X8664
     if (OP_code(op) == TOP_pushq || 
 	OP_code(op) == TOP_pushl &&
 	Debug_Level > 0) {
@@ -2108,6 +2131,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 	fprintf( Asm_File, "%s:\n", LABEL_name(Label_Callee_Saved_Reg[pu_entries]));
       }
     }
+#endif // TARG_X8664
   }
 
   Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
@@ -2117,7 +2141,8 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
       OP_srcpos(op) = OP_srcpos(OP_next(op));
   }
 #endif
-#ifndef TARG_IA64
+
+#ifdef KEY  // zhc
   Cg_Dwarf_BB_First_Op = FALSE; 
   if (Debug_Level > 0 && BB_first_op(bb) == op &&
       (BB_preds_len(bb) != 1 ||
@@ -2161,7 +2186,6 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
       adjustsp_instr = TRUE;
     }
   }
-
   // Bug 4204 - move the ctrl register setup after the preamble. This 
   // causes the debug information generated to let the debugger to stop
   // at the right spot for the main entry function. Otherwise, the parameters
@@ -2494,15 +2518,17 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
     base_ofst += TN_offset(tn);
 
     char* buf = (char*)alloca(strlen(ST_name(st)) + /* EXTRA_NAME_LEN */ 64);
-    if( base_st == SP_Sym || base_st == FP_Sym ){
+
+    if (ST_is_thread_local(st)) {
+      name = ST_name(st);
+      sprintf(buf, "%%fs:%s@TPOFF", name);
+    } else if( base_st == SP_Sym || base_st == FP_Sym ){
       base_tn = base_st == SP_Sym ? SP_TN : FP_TN;
       name = (char*)REGISTER_name( TN_register_class(base_tn), TN_register(base_tn) );
       if( Is_Target_32bit() ){
-	name = (char*)CGTARG_Modified_Asm_Opnd_Name( 'r', base_tn, name );
+        name = (char*)CGTARG_Modified_Asm_Opnd_Name( 'r', base_tn, name );
       }
-
       sprintf( buf, "%d(%s)", (int)base_ofst, name );
-
     } else {
       name = ST_name( st );
 
@@ -2523,6 +2549,8 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
   else {
     FmtAssert(!memory && TN_is_constant(tn) && TN_has_value(tn),
               ("ASM operand must be a register or a numeric constant"));
+    FmtAssert(!(TN_is_symbol(tn) && ST_is_thread_local(TN_var(tn))),
+              ("Modify_Asm_String: thread-local ASM operand NYI"));
     char* buf = (char*) alloca(32);
     sprintf(buf, "$%lld",TN_value(tn));
     name = buf;
@@ -2555,9 +2583,29 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
       asm_string  = Replace_Substring(asm_string, pattern, name);
     }
   }
-#else // TARG_IA64
-
-#ifdef TARG_X8664
+#elif defined(TARG_MIPS)
+  // SiCortex 3443: Handle %z<num> constraint assuming no special meaning
+  if (TN_is_register(tn)) {
+    if (strstr(asm_string, "%z")) {
+      char replace[5];
+      sprintf(replace, "%%z%d", position);
+      asm_string = Replace_Substring(asm_string, replace, name);
+    }
+  }
+  // Replace any %x<num> constraint with the immediate value written in hex
+  if (!TN_is_register(tn) && !TN_is_symbol(tn)) {
+    if (strstr(asm_string, "%x")) {
+      FmtAssert(!memory && TN_is_constant(tn) && TN_has_value(tn),
+                ("ASM operand for %x constraint must be numeric constant"));
+      char* buf = (char*) alloca(32);
+      sprintf(buf, "0x%llx",TN_value(tn));
+      name = buf;
+      char replace[5];
+      sprintf(replace, "%%x%d", position);
+      asm_string = Replace_Substring(asm_string, replace, name);
+    }
+  }
+#elif defined(TARG_X8664)
   if (TN_is_register(tn)) {
     // Bug 3141: Support the 'y' modifier in operand references within
     //           the asm template.
@@ -2717,8 +2765,6 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
       asm_string =  Replace_Substring(asm_string, x86pattern, suffix);
     }
   }
-#endif// TARG_X866
-
 #endif // TARG_IA64
   
   return asm_string;
@@ -3643,6 +3689,22 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     entry_name = ST_name(entry_sym);
 #endif
 
+// #ifdef KEY
+#ifndef TARG_IA64
+    if (strcmp(ST_name(entry_sym), Cur_PU_Name) != 0 &&
+        PU_ftn_lang(Get_Current_PU())) { // PU entry
+      char *buf;
+      LABEL *label;
+      buf = (char *)alloca(strlen(ST_name(entry_sym)) + /* EXTRA_NAME_LEN */ 32);
+      sprintf(buf, ".LDWend_%s", ST_name(entry_sym));
+      label = &New_LABEL(CURRENT_SYMTAB, Label_Last_BB_PU_Entry[pu_entries+1]);
+      LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+      if (pu_entries > 0)
+        fprintf( Asm_File,
+                 "%s:\n", LABEL_name(Label_Last_BB_PU_Entry[pu_entries]));
+    }
+#endif
+
     /* Set an initial line number so that if the first inst in the BB
      * has no srcpos, then we'll be ok.
      */
@@ -3810,14 +3872,17 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   Init_Sanity_Checking_For_BB ();
 #endif
 
-#ifdef TARG_X8664
+#ifndef TARG_IA64
 // Assumption: REGION_First_BB is the first BB in the PU. If in future,
 // we start having multiple regions in a PU here, we need to change the 
 // following. 
 // In such a scenario, we should need to change many of the occurrences
 // of REGION_First_BB above.
-  if( !CG_emit_unwind_info && 
-      Assembly && (REGION_First_BB == bb) &&
+  if( 
+#ifdef TARG_X8664
+     !CG_emit_unwind_info &&
+#endif
+     Assembly && (REGION_First_BB == bb) &&
       ( strcmp( Cur_PU_Name, "MAIN__" ) == 0 ||
    	strcmp( Cur_PU_Name, "main" ) == 0 ) ){
       CGEMIT_Setup_Ctrl_Register( Asm_File );
@@ -5642,11 +5707,13 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
       if (!emit_typeinfo)
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv),
 				etable, format);
+#ifdef TARG_X8664
       else if (Gen_PIC_Call_Shared || Gen_PIC_Shared) // emit_typeinfo
       {
   	fputs ("\t.long\t0\n", Asm_File);
 	scn_ofst += 4;
       }
+#endif
       else
 #endif // KEY
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv));
@@ -5678,7 +5745,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
 #endif
     case INITVKIND_SYMOFF:
       st = &St_Table[INITV_st(inv)];
-#ifndef TARG_IA64
+#ifdef TARG_X8664
       if ((Gen_PIC_Call_Shared || Gen_PIC_Shared) && emit_typeinfo)
       { // handle it differently
 	scn_ofst = Emit_PIC_version (st, scn_ofst);
@@ -6215,9 +6282,11 @@ Generate_Exception_Table_Header (INT scn_idx, Elf64_Xword scn_ofst, LABEL_IDX *l
 
     // Generate TType format
     TCON ttype;
+#ifdef TARG_X8664
     if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
     	ttype = Host_To_Targ (MTYPE_I1, 0x9b);
     else
+#endif
     	ttype = Host_To_Targ (MTYPE_I1, 0);
     scn_ofst = Write_TCON (&ttype, scn_idx, scn_ofst, 1);
 
@@ -6591,7 +6660,12 @@ Process_Bss_Data (SYMTAB_IDX stab)
   INT64 size_to_skip;
   INT64 not_yet_skip_amt = 0; // bug 10678
 #ifdef KEY // bug 10678
-  ST*	last_base = NULL;
+  ST*   last_base = NULL;       // bug 10678
+  PU    *pu = &Get_Current_PU();
+
+  // bug 13829: if not inside any PU, get 1st PU
+  if (pu == NULL && Pu_Table.Size() > 1)
+    pu = &(Pu_Table[(PU_IDX)1]);
 #endif
 
   for (bssp = bss_list.begin(); bssp != bss_list.end(); ++bssp) {
@@ -6611,6 +6685,14 @@ Process_Bss_Data (SYMTAB_IDX stab)
 		continue;	/* not allocated */
 	if (!STB_nobits(base))
 		continue;	/* not a bss symbol */
+#ifdef TARG_X8664
+        // Compute SIZE now.  The x86-64 code below relies on SIZE to determine
+        // if Change_Section_Origin is needed.  Bug 13863.
+        size = TY_size(ST_type(sym));
+        // C++ requires empty classes to have unique addresses.
+        if (size == 0 && (pu == NULL || PU_cxx_lang(*pu)/*bug 13826*/))
+          size = 1;
+#endif
 
 #ifdef TARG_X8664
 	// Fix bug 617
@@ -6632,7 +6714,7 @@ Process_Bss_Data (SYMTAB_IDX stab)
 	      break;
 	    }
 	  }
-	  if (!has_named_section) {
+	  if (!has_named_section && size != 0) {
 	    Change_Section_Origin (base, ofst);	    
 	    if ( !Simd_Reallocate_Objects ) {
               // If Simd_Reallocate_Objects, we already emitted alignment 
@@ -6657,7 +6739,8 @@ Process_Bss_Data (SYMTAB_IDX stab)
 		if (ST_class(sym) == CLASS_VAR &&
 		    ST_base_idx(sym) != ST_st_idx(sym) &&
 		    !ST_is_equivalenced(sym) &&
-		    ST_class(ST_base(sym)) != CLASS_BLOCK)
+		    ST_class(ST_base(sym)) != CLASS_BLOCK &&
+                    pu != NULL && ! PU_ftn_lang(*pu) /* bug 13585 */)
 		  goto skip_definition;
 #endif
 		size = TY_size(ST_type(sym));
@@ -6686,6 +6769,8 @@ Process_Bss_Data (SYMTAB_IDX stab)
 				not_yet_skip_amt = MAX(not_yet_skip_amt, size); // bug 10678
 				size_to_skip = next_ofst - ofst;
 			}
+                        else if (next_base == base && next_ofst > (ofst+size))
+                          size_to_skip = MAX(size_to_skip, next_ofst - ofst);
 		}
 		// assume here that if multiple symbols with same offset,
 		// are sorted so that largest size is last.
@@ -6981,7 +7066,7 @@ Setup_Text_Section_For_PU (ST *pu)
       end_previous_text_region(old_section, Em_Get_Section_Offset(old_section));
     }
     if (generate_dwarf) {
-#ifdef TARG_X8664
+#ifdef KEY  /* TARG_X8664 */
       // Bug 2468 - use the appropriate labels for the debug_aranges
       LABEL_IDX Text_Label = LABEL_IDX_ZERO;
       Text_Label = Gen_Label_For_BB (REGION_First_BB);
@@ -7027,8 +7112,12 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   // safe(ish) to use in headers, including sys/*.h
   // when PU is marked extern _inline_ in C, 
   // needn't emit anything.
-  if (PU_is_extern_inline (Pu_Table[ST_pu(pu)]))
-        return;
+  if ( PU_is_extern_inline (Pu_Table[ST_pu(pu)]) ) {
+    if ( OPT_Cyg_Instrument >= 4 && ! PU_no_instrument(Pu_Table[ST_pu(pu)]) ) {
+      // Bug 13801
+      DevWarn( "Keeping %s for -finstrument-functions", ST_name(pu) );
+    } else return;
+  }
   // Notes on bugs 2839 and 2934: CG_emit_asm_dwarf controls generate_dwarf
   // and generate_elf_symbols. generate_dwarf and generate_elf_symbols are
   // used interchangeably in cgemit for generating dwarf code as well as to 
@@ -7040,7 +7129,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   BOOL trace_unwind = Get_Trace (TP_EMIT, 64);
 
   Init_Unwind_Info (trace_unwind);
-#ifdef TARG_X8664
+#ifdef KEY /* TARG_X8664 */
   // bug 3031, 4814: initialize these unconditionally
   // bug 11034 : dynamic memory allocation
   init_dwarf_pu_tables();
@@ -7272,7 +7361,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   fprintf(Asm_File, "//PU cycle count: %f\n", pu_cycle_count);
 #endif
 
-#ifdef TARG_X8664
+#ifdef TARG_X8664 
   // Emit Last_Label at the end of the PU to guide Dwarf DW_AT_high_pc
   fprintf( Asm_File, "%s:\n", LABEL_name(Last_Label));
   Label_Last_BB_PU_Entry[pu_entries] = Last_Label;
@@ -7342,7 +7431,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 	Base_Symbol_And_Offset (sym, &base, &ofst);
 	eh_offset = ofst;
 	Init_Section(base);	/* make sure eh_region is inited */
-#ifdef TARG_X8664
+#ifdef KEY /* TARG_X8664 */
 // emit the begin label instead of the section name, since the section name
 // is same for different PUs, the label is different.
 	symindex = EMT_Put_Elf_Symbol (sym);
@@ -7750,7 +7839,8 @@ Em_Options_Scn(void)
 }
 
 
-#ifndef TARG_IA64
+//#ifndef TARG_IA64
+#ifdef KEY
 // stores the command line arguments passed to 'be'
 extern char ** be_command_line_args;
 extern INT be_command_line_argc;
@@ -7763,6 +7853,7 @@ Target_Name (TARGET_PROCESSOR t)
   switch (t)
   {
     case TARGET_opteron: return "opteron";
+    case TARGET_barcelona: return "barcelona";
     case TARGET_athlon64: return "athlon64";
     case TARGET_athlon: return "athlon";
     case TARGET_em64t: return "em64t";
@@ -7841,6 +7932,9 @@ Emit_Options (void)
 
     if (Is_Target_3DNow()) fputs ("-m3dnow ", Asm_File);
     else fputs ("-mno-3dnow ", Asm_File);
+
+    if (Is_Target_SSE4a()) fputs ("-msse4a ", Asm_File);
+    else fputs ("-mno-sse4a ", Asm_File);
 
     if (Is_Target_64bit()) fputs ("-m64", Asm_File);
     else fputs ("-m32", Asm_File);
@@ -8079,7 +8173,7 @@ EMT_End_File( void )
   if (Assembly) {
     ASM_DIR_GPVALUE();
 #ifdef TARG_MIPS
-    if (! CG_emit_non_gas_syntax)
+    if (! CG_emit_non_gas_syntax) {
 #endif
     if (CG_emit_asm_dwarf) {
       Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs(Asm_File,
@@ -8088,9 +8182,11 @@ EMT_End_File( void )
     }
 #ifdef KEY // bug 5561: mark stack as non-executable
     fprintf ( Asm_File, "\t%s\t.note.GNU-stack,\"\",@progbits\n", AS_SECTION);
-#endif
-#ifndef TARG_IA64
     Emit_Options ();
+#endif
+
+#ifdef TARG_MIPS
+    }
 #endif
   }
   if (Object_Code && !CG_emit_asm_dwarf) {

@@ -64,14 +64,12 @@ ARGV *current_ld_flags;
 ARGV *comma_list;
 UINT32 comma_list_byte_count = 0;
 
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
 
-#ifdef TARG_X8664
 #define LINKER_NAME "gcc"
 #define LINKER_NAME_WITH_SLASH "/gcc"
-#else  /* TARG_IA64 */
-#define LINKER_NAME "ld"
-#define LINKER_NAME_WITH_SLASH "/ld"
+
+#if defined(TARG_IA64)
 #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
 #endif /* KEY */
 
@@ -153,7 +151,7 @@ ipa_init_link_line (int argc, char** argv)
     comma_list = CXX_NEW (ARGV, Malloc_Mem_Pool);
 
     // Push the path and name of the final link tool
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
 
 #if 0
     char *t_path = arg_vector[0];
@@ -202,21 +200,20 @@ ipa_add_link_flag (const char* str)
 void
 ipa_modify_link_flag (char* lname, char* fname)
 {
-	ARGV::iterator i;
-	for(i = ld_flags_part1->begin(); i != ld_flags_part1->end(); i++) {
-		if(!strcmp(lname, *i)) {
-			ld_flags_part1->erase(i);
-			ld_flags_part1->insert(i, fname);
-		}	
-	}
-	for(i = ld_flags_part2->begin(); i != ld_flags_part2->end();i++) {
-		if(!strcmp(lname, *i)) {
-			ld_flags_part2->erase(i);
-			ld_flags_part2->insert(i, fname);
-		} 
-	}
+  ARGV::iterator i;
+  for(i = ld_flags_part1->begin(); i != ld_flags_part1->end(); i++) {
+    if(!strcmp(lname, *i)) {
+      ld_flags_part1->erase(i);
+      ld_flags_part1->insert(i, fname);
+    }
+  }
+  for(i = ld_flags_part2->begin(); i != ld_flags_part2->end();i++) {
+    if(!strcmp(lname, *i)) {
+      ld_flags_part2->erase(i);
+      ld_flags_part2->insert(i, fname);
+    }
+  }
 } // ipa_modify_link_flag
-
 
 #ifdef KEY
 // Prepend "../" to name if it is a relative pathname.

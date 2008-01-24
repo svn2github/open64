@@ -3467,6 +3467,11 @@ Delete_Unreachable_Blocks(void)
       ANNOTATION *next_ant;
 
       ant = ANNOT_First(BB_annotations(bp), ANNOT_LABEL);
+
+#ifdef KEY
+      Is_True(ant != NULL, ("Delete_Unreachable_Blocks: BB has no label"));
+#endif
+
       do {
 	LABEL_IDX lab = ANNOT_label(ant);
 
@@ -7667,3 +7672,220 @@ CFLOW_Delete_Empty_BB(void)
   MEM_POOL_Pop(&MEM_local_nz_pool);
 }
 #endif
+
+#if defined(KEY) && defined(TARG_MIPS)
+
+
+// Fix for bugs 8748 and 11720:  Build a long jump using the jr instruction.
+// Save and restore own temp register.
+static void
+Build_Long_Goto(BB *targ_bb, OPS *ops)
+{
+  // Build this sequence:
+  //   sp = sp - 8      ; grow stack segment before storing r2
+  //   store r2,0(sp)   ; arbitrarily pick r2 to be tmp_reg
+  //   r2 = target_label
+  //   sp = sp + 8
+  //   jr r2
+  //   r2 = load -8(sp) ; restore r2
+
+  TN *tmp_reg = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, 3, 8);
+  LABEL_IDX label_idx = Gen_Label_For_BB(targ_bb);
+
+  // 11720: Create st that matches the label name that we can then use with
+  // relocations. (Code modified from LDA_LABEL in be/cg/whirl2ops.cxx)
+  ST *st = New_ST(CURRENT_SYMTAB);
+  ST_Init(st, Save_Str(LABEL_name(label_idx)), CLASS_NAME,
+          SCLASS_UNKNOWN, EXPORT_LOCAL, MTYPE_To_TY(Pointer_Mtype));
+
+  Build_OP(TOP_daddiu, SP_TN, SP_TN, Gen_Literal_TN(-8, 0), ops);
+  Build_OP(TOP_sd, tmp_reg, SP_TN, Gen_Literal_TN(0, 0), ops);
+
+  if (MTYPE_byte_size(Pointer_Mtype) == 8) {    // 64-bit address
+    // Cannot use TN_RELOC_HIGH16/TN_RELOC_LOW16 because that will produce a
+    // 32-bit address only.  Bug 12662.
+    TN *target_tn = Gen_Symbol_TN(st, 0, TN_RELOC_GOT_DISP);
+    Build_OP(TOP_ld, tmp_reg, GP_TN, target_tn, ops);
+  } else {                                      // 32-bit address
+    TN *target_hi_tn = Gen_Symbol_TN(st, 0, TN_RELOC_HIGH16);
+    TN *target_lo_tn = Gen_Symbol_TN(st, 0, TN_RELOC_LOW16);
+    Build_OP(TOP_lui, tmp_reg, target_hi_tn, ops);
+    Build_OP(TOP_addiu, tmp_reg, tmp_reg, target_lo_tn, ops);
+  }
+
+  Build_OP(TOP_daddiu, SP_TN, SP_TN, Gen_Literal_TN(8, 0), ops);
+  Build_OP(TOP_jr, tmp_reg, ops);
+  Build_OP(TOP_ld, tmp_reg, SP_TN, Gen_Literal_TN(-8, 0), ops);
+}
+
+// Estimate the branch distance for each branch OP.  If the distance is too
+// large to fit in the branch instruction's displacement field, replace the
+// branch with a jump.
+void
+CFLOW_Fixup_Long_Branches()
+{
+  BB *bb;
+  UINT32 *bb_position, ops_count;
+  BB_NUM old_PU_BB_Count = PU_BB_Count;
+
+  // Estimate the beginning position of each BB relative to the beginning of
+  // the PU.
+  int size = (PU_BB_Count + 1) * sizeof(UINT32);
+  bb_position = (UINT32 *) alloca(size);
+  memset(bb_position, 0, size);
+  ops_count = 0;
+  for (bb = REGION_First_BB; bb; bb = BB_next(bb)) {
+    Is_True(BB_id(bb) <= PU_BB_Count, ("CFLOW_Fixup_Long_Branches: bad BB id"));
+    bb_position[BB_id(bb)] = ops_count;
+    ops_count += BB_length(bb);
+  }
+
+  // Replace long branches with jumps.
+  for (bb = REGION_First_BB; bb; bb = BB_next(bb)) {
+    // Skip BBs that we just added.
+    if (BB_id(bb) > old_PU_BB_Count)
+      continue;
+
+    // GOTO bbs related to C++ exception handling often do not have
+    // successors.
+    if (!BB_succs(bb))
+      continue;
+
+    // Check for jumps too because the GNU assembler changes the j instruction
+    // to a branch.
+    BBKIND bb_kind = BB_kind(bb);
+    if (bb_kind == BBKIND_GOTO ||
+        bb_kind == BBKIND_LOGIF) {
+      // Get the (approx) position of the branch OP.
+      UINT32 branch_position =
+        bb_position[BB_id(BB_next(bb) ? BB_next(bb) : bb)];
+
+      // Get the target BB's position.
+      BB *succ0 = BBLIST_item(BB_succs(bb));
+      BB *succ1 = NULL;
+      BB *targ_bb = NULL;
+      BB *old_fall_thru_bb = NULL;
+
+      // Skip if the branch target BB is the same as the fall thru BB.
+      if (bb_kind == BBKIND_GOTO) {
+        targ_bb = succ0;
+      } else {  // BBKIND_LOGIF
+        if (BBLIST_next(BB_succs(bb)) == NULL)
+          continue;
+        succ1 = BBLIST_item(BBLIST_next(BB_succs(bb)));
+        if (BB_next(bb) == succ0) {
+          targ_bb = succ1;
+          old_fall_thru_bb = succ0;
+        } else {
+          targ_bb = succ0;
+          old_fall_thru_bb = succ1;
+        }
+        // Cflow should have already made the fall thru BB be the next BB.
+        Is_True(old_fall_thru_bb == BB_next(bb),
+                ("CFLOW_Fixup_Long_Branches: fall thru BB is not the next BB"));
+      }
+
+      UINT32 targ_position = bb_position[BB_id(targ_bb)];
+
+      // Estimate displacement in bytes.  Inflate estimate for safety.
+      INT64 disp
+        = (INT64)(((INT64)targ_position - (INT64)branch_position) * 4 * 1.1);
+      if (!CGTARG_Can_Fit_Displacement_In_Branch_Instruction(disp)) {
+        if (bb_kind == BBKIND_GOTO) {
+          OPS ops = OPS_EMPTY;
+          OP *branch_op = BB_branch_op(bb);
+          OP *next_op = OP_next(branch_op);
+
+          if (next_op &&
+              OP_code(next_op) == TOP_nop) {
+            BB_Remove_Op(bb, next_op);  // Delete NOP in branch delay slot.
+          }
+          BB_Remove_Op(bb, branch_op);  // Delete old jump OP.
+          Build_Long_Goto(targ_bb, &ops);
+          BB_Append_Ops(bb, &ops);
+
+          if (!CG_localize_tns) {
+            GRA_LIVE_Compute_Liveness_For_BB(bb);
+          }
+        } else {        // BBKIND_LOGIF
+          // Create <goto_bb> to hold the jump to <targ_bb>.  Insert <goto_bb>
+          // after <bb>.  (Based on Insert_Goto_BB.)
+          OPS ops = OPS_EMPTY;
+          BBLIST *sedge = BB_Find_Succ(bb, targ_bb);
+          float goto_prob = BBLIST_prob(sedge);
+          BOOL goto_prob_fb = BBLIST_prob_fb_based(sedge);
+          RID *rid = BB_rid(bb);
+          BOOL region_is_scheduled = rid && RID_level(rid) >= RL_CGSCHED;
+          BOOL fill_delay_slots = (current_flags & CFLOW_FILL_DELAY_SLOTS) != 0;
+
+          BB *goto_bb = Alloc_BB_Like(bb);
+          BB_freq(goto_bb) = BB_freq(bb) * goto_prob;
+          Insert_BB(goto_bb, bb);
+          Build_Long_Goto(targ_bb, &ops);
+
+          if (BB_freq_fb_based(bb) && goto_prob_fb) {
+            BBLIST *edge = BB_Find_Succ(goto_bb, targ_bb);
+            Set_BB_freq_fb_based(goto_bb);
+            Set_BBLIST_prob_fb_based(edge);
+          }
+
+          if (PROC_has_branch_delay_slot()
+              && (fill_delay_slots || region_is_scheduled)) {
+            Set_BB_scheduled(goto_bb);
+          }
+          BB_Append_Ops(goto_bb, &ops);
+
+          Unlink_Pred_Succ(bb, targ_bb);
+          Link_Pred_Succ_with_Prob(bb, goto_bb, goto_prob);
+          if (goto_prob_fb) {
+            BBLIST *edge = BB_Find_Succ(bb, goto_bb);
+            Set_BBLIST_prob_fb_based(edge);
+          }
+
+          INT tfirst;
+          INT tcount;
+          LABEL_IDX lab;
+          TN *lab_tn;
+          OP *branch_op = BB_branch_op(bb);
+          CGTARG_Branch_Info(branch_op, &tfirst, &tcount);
+          lab = Gen_Label_For_BB(old_fall_thru_bb);
+          lab_tn = Gen_Label_TN(lab, 0);
+          Set_OP_opnd(branch_op, tfirst, lab_tn);       // Change branch target.
+          Negate_Logif_BB(bb);                  // Negate sense of branch.
+
+          if (PROC_has_branch_delay_slot()) {
+
+            // If <bb> ends in branch likely, move the delay slot OP
+            // to <goto_bb>
+            OP *delay_op = OP_next(branch_op);
+            if (delay_op != NULL && !OP_noop(delay_op) && OP_likely(branch_op)) {
+              BB_Move_Op_To_Start(goto_bb, bb, delay_op);
+              delay_op = NULL;
+            }
+
+            // If <bb> branch delay slot is empty (because we just moved out
+            // the delay slot OP, or because GCM deliberately deleted the NOP
+            // -- see Fill_From_Successor in gcm.cxx), then insert NOP.
+            // (Fixes bug 11776)
+            if (delay_op == NULL && (fill_delay_slots || region_is_scheduled)) {
+              OPS ops = OPS_EMPTY;
+              Exp_Noop(&ops);
+              Set_BB_scheduled(bb);
+              BB_Append_Ops(bb, &ops);
+            }
+
+          }
+
+          if (!CG_localize_tns) {
+            GRA_LIVE_Compute_Liveness_For_BB(goto_bb);
+            GRA_LIVE_Compute_Liveness_For_BB(bb);
+          }
+        }
+      }
+    }
+  }
+}
+
+
+#endif  // KEY and TARG_MIPS
+

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1737,7 +1741,7 @@ ST::Print (FILE *f, BOOL verbose) const
 		fprintf (f, " copy_constructor_st");
             if (flags_ext & ST_INITV_IN_OTHER_ST)
                 fprintf (f, " st_used_as_initialization");
-	    if (flags_ext & ST_IS_THREAD_LOCAL)
+            if (flags_ext & ST_IS_THREAD_LOCAL)
                 fprintf (f, " thread_local");
 	}
 #endif

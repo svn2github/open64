@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -83,7 +83,7 @@
 #include "ipfec_options.h"
 #include "cgexp_internals.h"
 #endif
-#ifndef TARG_IA64
+#ifdef KEY
 #include "calls.h"        // for Saved_Callee_Saved_Regs
 #include "cxx_template.h" // for STACK
 extern STACK<SAVE_REG_LOC> Saved_Callee_Saved_Regs;
@@ -573,8 +573,9 @@ LRANGE_Spill_Below( LRANGE* lrange, GRA_BB* gbb )
   //
   (void) lrange->Find_LUNIT_For_GBB(gbb, &lunit);
 
-#ifndef TARG_IA64
-  if (GRA_optimize_boundary) {
+#ifdef KEY
+  if (GRA_optimize_boundary ||
+      gbb->Clobbers_Reg_Class(lrange->Rc())) {
     // Always spill after the last define.  If no such define, spill at the top
     // of the BB.
     TN_Spill_Below(tn,st,gbb,TRUE);
@@ -606,8 +607,9 @@ LRANGE_Restore_Above( LRANGE* lrange, GRA_BB* gbb )
   //
   (void) lrange->Find_LUNIT_For_GBB(gbb, &lunit);
 
-#ifndef TARG_IA64
-  if (GRA_optimize_boundary) {
+#ifdef KEY
+  if (GRA_optimize_boundary ||
+      gbb->Clobbers_Reg_Class(lrange->Rc())) {
     // Always restore before the first use.  If no such use, restore at the
     // bottom of the BB.
     TN_Restore_Above(tn,st,gbb,TRUE);
@@ -675,7 +677,7 @@ Spill_Homeable_TN(
 	       orig_tn == OP_opnd(op, st_op_num)) ||
 	      (OP_load(op) && !aliased_store_seen &&
 	       OP_result(op, 0) == orig_tn)) {
-#ifndef TARG_IA64
+#ifdef KEY
 	    // Both OPs in a stlpd/sthpd pair have the same WN, yet the sthpd
 	    // should not be deleted.  The second of such pair is always marked
 	    // cond_def, so check for it.  Bug 10550.
@@ -692,7 +694,7 @@ Spill_Homeable_TN(
 	    // won't need to store at bottom of the block unless another
 	    // def of the tn is found
 	    //
-#ifndef TARG_IA64  // Don't need store at bottom of BB only if the earlier store
+#ifdef KEY  // Don't need store at bottom of BB only if the earlier store
 	    // stores the same TN.  Bug 9429.
             if (OP_opnd(op, st_op_num) == orig_tn) {
 	      need_store = FALSE;
@@ -738,7 +740,7 @@ Spill_Homeable_TN(
 	//
 	if (!op_is_homing_load) {
 	  need_store = TRUE;
-#ifndef TARG_IA64
+#ifdef KEY
 	  if (OP_cond_def(op) && !def_seen)
 	    need_load = TRUE;
 #endif
@@ -897,7 +899,9 @@ LUNIT_Spill(LUNIT* lunit)
     // Record index of unat spill location for interface is fixed
     // This method is not very well.
     orig_lrange_tn = orig_tn;
-#else
+#endif
+
+#ifdef KEY
     if (BB_handler(bb) && BB_entry(bb) && TN_is_save_reg(orig_tn) &&
 	lunit->Has_Def() && 
 	(lunit->Spill_Below() || gbb->Is_Live_Out_LRANGE(lrange))) {
@@ -1008,7 +1012,22 @@ LRANGE_Spill( LRANGE* lrange )
 
   if (lrange->No_Appearance()) 
     return; // no need to generate spill code
-
+#ifdef TARG_X8664
+  TN*     orig_tn = lrange->Original_TN();
+  if (CG_push_pop_int_saved_regs && ! Gen_Frame_Pointer &&
+      ! TN_is_float(orig_tn) && TN_is_save_reg(orig_tn)) {
+    // put saved location info in Saved_Callee_Saved_Regs for dwarf generation
+    SAVE_REG_LOC sr;
+    sr.user_allocated = FALSE;
+    sr.temp = NULL;
+    sr.ded_tn = Build_Dedicated_TN(TN_save_rclass(orig_tn),
+                                   TN_save_reg(orig_tn), 0);
+    Saved_Callee_Saved_Regs.Push(sr);
+    // pretend it has been assigned its register to make LRA happy
+    TN_Allocate_Register(orig_tn, TN_register(sr.ded_tn));
+    return;
+  }
+#endif
   for (iter.Init(lrange); ! iter.Done(); iter.Step()) {
     LUNIT*  lunit = iter.Current();
 
@@ -1577,12 +1596,8 @@ Mark_Live_In( LRANGE* lrange, SPILL_LIST* load_list, SPILL_LIST* store_list )
 
 /////////////////////////////////////
 static BOOL
-#ifdef TARG_IA64
-Has_Successor_Not_In_LRANGE( GRA_BB* gbb, LRANGE* lrange )
-#else
 Has_Successor_Not_In_LRANGE( GRA_BB* gbb, LRANGE* lrange,
-			       GRA_BB* exclude_succ = NULL)
-#endif
+			     GRA_BB* exclude_succ = NULL)
 /////////////////////////////////////
 //
 //  Is there a successor of <gbb> which is not a member of <lrange>?
@@ -1597,7 +1612,15 @@ Has_Successor_Not_In_LRANGE( GRA_BB* gbb, LRANGE* lrange,
     if ( ! lrange->Contains_BB(succ) )
       return TRUE;
 
-#ifndef TARG_IA64
+#ifdef KEY
+    // If <lrange> is not live-in to <succ> and <succ> has OPs that can
+    // clobber <lrange>'s register class, then the register can be unavailable
+    // at the top of <succ>.
+    if (succ->Clobbers_Reg_Class(lrange->Rc()) &&
+	!succ->Is_Live_In_LRANGE(lrange)) {
+      return TRUE;
+    }
+
     if (GRA_optimize_boundary) {
       // If <succ> is a boundary BB where <lrange> is not live-in, then
       // <lrange>'s register could be used by another lrange at the beginning
@@ -1616,7 +1639,7 @@ Has_Successor_Not_In_LRANGE( GRA_BB* gbb, LRANGE* lrange,
   return FALSE;
 }
 
-#ifndef TARG_IA64
+#ifdef KEY
 /////////////////////////////////////
 static BOOL
 Reg_Used_Before_By_Other_TNs(LUNIT* lunit)
@@ -1626,11 +1649,21 @@ Reg_Used_Before_By_Other_TNs(LUNIT* lunit)
 /////////////////////////////////////
 {
   OP *op;
-  BB *bb = lunit->Gbb()->Bb();
+  GRA_BB *gbb = lunit->Gbb();
+  BB *bb = gbb->Bb();
   TN *tn = lunit->Lrange()->Tn();
   REGISTER reg = lunit->Lrange()->Reg();
+  ISA_REGISTER_CLASS rc = TN_register_class(tn);
 
   for (op = BB_first_op(bb); op != NULL; op = OP_next(op)) {
+#ifdef TARG_X8664
+    // "Used" here means register is unavailable.  A register is unavailable if
+    // it is clobbered.
+    if ((rc == ISA_REGISTER_CLASS_x87 && OP_mmx(op)) ||
+	(rc == ISA_REGISTER_CLASS_mmx && OP_x87(op)))
+      return TRUE;
+#endif
+
     // Check source operands.
     for (int i = OP_opnds(op) - 1; i >= 0; i--) {
       TN *opnd_tn = OP_opnd(op, i);
@@ -1661,11 +1694,22 @@ Reg_Used_After_By_Other_TNs(LUNIT* lunit)
 /////////////////////////////////////
 {
   OP *op;
-  BB *bb = lunit->Gbb()->Bb();
+  GRA_BB *gbb = lunit->Gbb();
+  BB *bb = gbb->Bb();
   TN *tn = lunit->Lrange()->Tn();
   REGISTER reg = lunit->Lrange()->Reg();
+  ISA_REGISTER_CLASS rc = TN_register_class(tn);
+
 
   for (op = BB_last_op(bb); op != NULL; op = OP_prev(op)) {
+#ifdef TARG_X8664
+    // "Used" here means register is unavailable.  A register is unavailable if
+    // it is clobbered.
+    if ((rc == ISA_REGISTER_CLASS_x87 && OP_mmx(op)) ||
+	(rc == ISA_REGISTER_CLASS_mmx && OP_x87(op)))
+      return TRUE;
+#endif
+
     // Check result operands.
     for (int i = OP_results(op) - 1; i >= 0; i--) {
       TN *result_tn = OP_result(op, i);
@@ -1766,7 +1810,15 @@ Move_Restore_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
       if (BB_call(bb) && ! gbb->Is_Live_Out_LRANGE(lrange) && ! callee_saves ) {
         return FALSE;
       }
-#ifndef TARG_IA64
+#ifdef KEY
+      // If <lrange> is not live-out from pred and pred has OPs that can
+      // clobber <lrange>'s register class, then the register can be
+      // unavailable at the bottom of pred.
+      if (gbb->Clobbers_Reg_Class(rc) &&
+	  !gbb->Is_Live_Out_LRANGE(lrange)) {
+	return FALSE;
+      }
+
       if (GRA_optimize_boundary) {
 	// If pred is a boundary BB, see if lrange is live-out of it.  If not,
 	// the register might be used by another lrange.
@@ -1780,12 +1832,10 @@ Move_Restore_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
       do_move = TRUE;
     } else {
       // Small possible optimization -- check for callee saves.
-#ifdef TARG_IA64
-      if (Has_Successor_Not_In_LRANGE(gbb,lrange) || BB_call(bb)) {
-#else
       GRA_BB *exclude_succ = NULL;
 #ifdef KEY
-      if (GRA_optimize_boundary) {
+      if (GRA_optimize_boundary ||
+	  lunit->Gbb()->Clobbers_Reg_Class(rc)) {
 	// When checking for succ not in lrange, don't check if the succ is the
 	// current BB.  Reg_Used_Before_By_Other_TNs will decide if the
 	// register is available in the current BB.
@@ -1793,17 +1843,10 @@ Move_Restore_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
       }
 #endif
       if (Has_Successor_Not_In_LRANGE(gbb,lrange,exclude_succ) || BB_call(bb))
-#endif // TARG_IA64
 	return FALSE;
-#ifdef TARG_IA64
-      } else if (BB_rid(bb) != BB_rid(lunit->Gbb()->Bb())) {
-#else
-        else if (BB_rid(bb) != BB_rid(lunit->Gbb()->Bb()))
-#endif
+      else if (BB_rid(bb) != BB_rid(lunit->Gbb()->Bb())) 
 	return FALSE;
-#ifdef TARG_IA64
-      }
-#endif
+
       load_count++;
     }
   }
@@ -1816,8 +1859,9 @@ Move_Restore_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
     return FALSE;
   }
 
-#ifndef TARG_IA64
-  if (GRA_optimize_boundary) {
+#ifdef KEY
+  if (GRA_optimize_boundary ||
+      lunit->Gbb()->Clobbers_Reg_Class(rc)) {
     // "Restore above" means to restore just before the first use of the TN in
     // the BB.  We can move the restore to a pred BB only if the register is
     // not used by other TNs between the start of the BB and the first use of
@@ -1925,12 +1969,8 @@ Needs_Spill( LRANGE* lrange, GRA_BB* gbb )
 
 /////////////////////////////////////
 static BOOL
-#ifdef TARG_IA64
-Has_Predecessor_Not_In_LRANGE( GRA_BB *gbb, LRANGE* lrange )
-#else
 Has_Predecessor_Not_In_LRANGE( GRA_BB *gbb, LRANGE* lrange,
-				 GRA_BB *exclude_pred = NULL)
-#endif
+			       GRA_BB *exclude_pred = NULL)
 /////////////////////////////////////
 //
 //  Is there a predecessor of <gbb> which is not a member of <lrange>?
@@ -1950,7 +1990,14 @@ Has_Predecessor_Not_In_LRANGE( GRA_BB *gbb, LRANGE* lrange,
       return TRUE;
     if ( BB_call(pred->Bb()) && not_call_saved )
       return TRUE;
-#ifndef TARG_IA64
+#ifdef KEY
+    // If <lrange> is not live-out from <pred> and <pred> has OPs that can
+    // clobber <lrange>'s register class, then the register can be unavailable
+    // at the bottom of <pred>.
+    if (pred->Clobbers_Reg_Class(lrange->Rc()) &&
+	!pred->Is_Live_Out_LRANGE(lrange)) {
+      return TRUE;
+    }
     if (GRA_optimize_boundary) {
       // If <pred> is a boundary BB where <lrange> is not live-out, then
       // <lrange>'s register could be used by another lrange at the end of
@@ -2026,25 +2073,20 @@ Move_Spill_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
   for (iter.Succs_Init(lunit->Gbb()); ! iter.Done(); iter.Step()) {
     GRA_BB* gbb = iter.Current();
 
-#ifndef TARG_IA64
     GRA_BB *exclude_pred = NULL;
 #ifdef KEY
-    if (GRA_optimize_boundary) {
+    if (GRA_optimize_boundary ||
+        lunit->Gbb()->Clobbers_Reg_Class(lrange->Rc())) {
       // When checking for pred not in lrange, don't check if the pred is the
       // current BB.  Reg_Used_After_By_Other_TNs will decide if the register
       // is available in the current BB.
       exclude_pred = lunit->Gbb();
     }
 #endif
-#endif
 
     if ( ! Needs_Spill(lrange,gbb) )
       has_successor_not_needing_spill = TRUE;
-#ifdef TARG_IA64
-    else if ( Has_Predecessor_Not_In_LRANGE(gbb,lrange) )
-#else
-      else if ( Has_Predecessor_Not_In_LRANGE(gbb,lrange,exclude_pred) )
-#endif
+    else if ( Has_Predecessor_Not_In_LRANGE(gbb,lrange,exclude_pred) )
       return FALSE;
     else if ( BB_rid(gbb->Bb()) != BB_rid(lunit->Gbb()->Bb()))
       return FALSE;
@@ -2062,8 +2104,9 @@ Move_Spill_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
     return FALSE;
   }
 
-#ifndef TARG_IA64
-  if (GRA_optimize_boundary) {
+#ifdef KEY
+  if (GRA_optimize_boundary ||
+      lunit->Gbb()->Clobbers_Reg_Class(lrange->Rc())) {
     // "Spill below" means to spill just after the last define of the TN in the
     // BB.  We can move the spill to a succ BB only if the register is not used
     // by other TNs between the last define of the TN and the end of the BB.
@@ -2400,7 +2443,7 @@ Optimize_Placement(void)
           }
 
 	} else if ( moved_reload && GRA_remove_spills &&
-#ifndef TARG_IA64
+#ifdef KEY
 		   // No_Successor_Has_Restore assumes gbb is inside lrange.
 		   // It tests if all of gbb's succs are also inside lrange and
 		   // without restores.  If so, the spill in gbb is not needed.
@@ -2503,12 +2546,11 @@ Gen_Restores_Above_And_Spills_Below(void)
     if ( ! (lunit->Live_In() || lunit->Live_Out()) )
       LUNIT_Spill(lunit);
     else {
-      if ( lunit->Restore_Above() ) {
+      if ( lunit->Restore_Above() )
         LRANGE_Restore_Above(lunit->Lrange(),lunit->Gbb());
-      } 
-      if ( lunit->Spill_Below() ) {
+
+      if ( lunit->Spill_Below() )
         LRANGE_Spill_Below(lunit->Lrange(),lunit->Gbb());
-      }
     }
   }
 }
@@ -2523,7 +2565,6 @@ Gen_Spills_Above_And_Restores_Below(void)
 /////////////////////////////////////
 {
   BB* bb;
-
 
   for ( bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ) {
     GRA_BB* gbb = gbb_mgr.Get(bb);

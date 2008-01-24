@@ -60,21 +60,32 @@ ifeq ($(MACHINE_TYPE), ia64)
   NATIVE_BUILD_DIR    = osprey/targia64_ia64_nodebug
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia64_ia64
   GNUFE_BUILD_DIR     = osprey-gcc/targia64_ia64
+  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targia64_ia64
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/itanium.so 
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so
   LIB_BUILD_DIR       = osprey/targia64
-else
-# x86_64 or i386, they are the same
+endif
+ifeq ($(MACHINE_TYPE), i386)
+# i386
   NATIVE_BUILD_DIR    = osprey/targia32_x8664
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_x8664
   GNUFE_BUILD_DIR     = osprey-gcc/targia32_x8664
+  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targia32_x8664
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
   LIB_BUILD_DIR       = osprey/targia32_builtonia32
-  ifeq ($(MACHINE_TYPE), x86_64)
-    LIB_BUILD_DIR    += osprey/targx8664_builtonia32
-  endif
+endif
+
+ifeq ($(MACHINE_TYPE), x86_64)
+# x86_64
+  NATIVE_BUILD_DIR    = osprey/targx8664_x8664
+  NATIVE_BUILD_DIR_LD = osprey/targcygnus_x8664_x8664
+  GNUFE_BUILD_DIR     = osprey-gcc/targx8664_x8664
+  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targx8664_x8664
+  TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
+  TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
+  LIB_BUILD_DIR       = osprey/targx8664_builtonia32
 endif
 
 CROSS_BUILD = false
@@ -108,11 +119,17 @@ GNU4_FE_COMPONENTS = \
                 $(GNUFE_BUILD_DIR)/gcc/cc1 \
                 $(GNUFE_BUILD_DIR)/gcc/cc1plus
 
+GNU42_FE_COMPONENTS = \
+                $(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 \
+                $(GNUFE_BUILD_DIR)/gcc/cc142 \
+                $(GNUFE_BUILD_DIR)/gcc/cc1plus42
+
 FORT_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
 
 NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
-                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
+                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) \
+                    $(GNU42_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
 
 CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
                     $(GNU3_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
@@ -132,6 +149,9 @@ $(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
 
 $(NATIVE_BUILD_DIR)/wgen/wgen wgen:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen
+
+$(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 wgen42:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen_4_2_0
 
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe
@@ -207,11 +227,19 @@ $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 $(NATIVE_BUILD_DIR_LD)/Makefile:  
 	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
 
+# GNU 4.0.2 based FE
 $(GNUFE_BUILD_DIR)/gcc/cc1 $(GNUFE_BUILD_DIR)/gcc/cc1plus cc1 cc1plus: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(SUBMAKE) -C $(GNUFE_BUILD_DIR)
 
 $(GNUFE_BUILD_DIR)/Makefile:
 	cd $(GNUFE_BUILD_DIR); ./CONFIGURE
+
+# GNU 4.2.0 based FE
+$(GNUFE42_BUILD_DIR)/gcc/cc142 $(GNUFE42_BUILD_DIR)/gcc/cc1plus42 cc142 cc1plus42: $(GNUFE42_BUILD_DIR)/Makefile Force
+	$(SUBMAKE) -C $(GNUFE42_BUILD_DIR)
+
+$(GNUFE42_BUILD_DIR)/Makefile:
+	cd $(GNUFE42_BUILD_DIR); ./CONFIGURE
 
 build: ${PHONY_TARGET} 
 
@@ -247,6 +275,7 @@ clobber clean: clean-lib
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wgen_4_2_0 clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
@@ -263,16 +292,20 @@ clobber clean: clean-lib
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90 clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/include clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/libspin clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 clobber
 ifeq ($(MACHINE_TYPE), ia64)
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/orc_ict clobber
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/orc_intel clobber
 else
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/libfortran clobber
+	rm -fr $(NATIVE_BUILD_DIR)/libfortran/*.mod
 endif
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER
+	cd $(GNUFE42_BUILD_DIR); ./CLOBBER
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
-		libiberty libunwindP libspin; do  \
+		libiberty libunwindP libspin libspin_4_2_0; do  \
 		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
 	done
 

@@ -3340,6 +3340,13 @@ static void stmt_level_semantics(void)
          case Format_Stmt:
          case Implicit_Stmt:
          case Implicit_None_Stmt:
+#ifdef KEY /* Bug 11741 */
+	 case Import_Stmt:
+#endif /* KEY Bug 11741 */
+#ifdef KEY /* Bug 10572 */
+	 case Enum_Stmt:
+	 case Enumerator_Stmt:
+#endif /* KEY Bug 10572 */
          case Intent_Stmt:
          case Interface_Stmt:
          case Intrinsic_Stmt:
@@ -3396,6 +3403,9 @@ static void stmt_level_semantics(void)
          case End_Function_Stmt:
          case End_If_Stmt:
          case End_Interface_Stmt:
+#ifdef KEY /* Bug 10572 */
+         case End_Enum_Stmt:
+#endif /* KEY Bug 10572 */
          case End_Module_Stmt:
          case End_Program_Stmt:
          case End_Select_Stmt:
@@ -3505,6 +3515,9 @@ static void stmt_level_semantics(void)
                check_for_dup_derived_type_lbl();
                break;
 
+#ifdef KEY /* Bug 10572 */
+	    case End_Enum_Stmt:
+#endif /* KEY Bug 10572 */
             case End_Interface_Stmt: /* Labeled declaration statements */
                SH_P2_SKIP_ME(curr_stmt_sh_idx) = TRUE;
                break;
@@ -3543,6 +3556,13 @@ static void stmt_level_semantics(void)
          case Format_Stmt:
          case Implicit_Stmt:
          case Implicit_None_Stmt:
+#ifdef KEY /* Bug 11741 */
+	 case Import_Stmt:
+#endif /* KEY Bug 11741 */
+#ifdef KEY /* Bug 10572 */
+	 case Enum_Stmt:
+	 case Enumerator_Stmt:
+#endif /* KEY Bug 10572 */
          case Intent_Stmt:
          case Interface_Stmt:
          case Intrinsic_Stmt:
@@ -3560,6 +3580,9 @@ static void stmt_level_semantics(void)
          case Task_Common_Stmt:
          case Type_Decl_Stmt:
          case End_Interface_Stmt:
+#ifdef KEY /* Bug 10572 */
+         case End_Enum_Stmt:
+#endif /* KEY Bug 10572 */
          case End_Type_Stmt:
          case Volatile_Stmt:
             need_new_sh = FALSE;

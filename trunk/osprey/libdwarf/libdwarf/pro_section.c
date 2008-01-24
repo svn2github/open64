@@ -285,9 +285,10 @@ dwarf_transform_to_disk_form(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	case EH_FRAME:
 	    if (dbg->de_eh_frame_cies == NULL)
 		continue;
+#ifdef KEY
+	    flags = SHF_MIPS_NOSTRIP | SHF_ALLOC;
+#else
 	    flags = SHF_MIPS_NOSTRIP;
-#ifdef TARG_X8664
-		flags |= SHF_ALLOC;
 #endif
 	    break;
 	default:
@@ -931,9 +932,11 @@ _dwarf_pro_generate_debugframe(Dwarf_P_Debug dbg, Dwarf_Error * error)
     Dwarf_Unsigned cur_off;	/* current offset of written data,
 				   held for relocation info */
 
+#ifdef TARG_X8664
     if (generate_fpic_dwarf) {
 	upointer_size = 4;
     }
+#endif
 
     elfsectno = dbg->de_elf_sects[DEBUG_FRAME];
 

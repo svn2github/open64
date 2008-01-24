@@ -96,11 +96,16 @@ extern void Expand_Float_To_Int_Floor (TN *dest, TN *src, TYPE_ID imtype, TYPE_I
 extern void Expand_Float_To_Int_Tas (TN *dest, TN *src, TYPE_ID imtype, OPS *ops);
 extern void Expand_Int_To_Float_Tas (TN *dest, TN *src, TYPE_ID fmtype, OPS *ops);
 extern void Expand_Int_To_Vect_Tas (TN *dest, TN *src, TYPE_ID fmtype, OPS *ops);
-extern void Expand_Float_To_Float_Floor (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 extern void Expand_Float_To_Float_Floorf (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 extern void Expand_Float_To_Float_Floorl (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 extern void Expand_Conv_To_Vector (TN *, TN *, TYPE_ID, TYPE_ID, OPS *);
+extern void Expand_Conv_From_Vector (TN *, TN *, TYPE_ID, TYPE_ID, OPS *);
 #endif
+
+#if defined(TARG_X8664) || defined(TARG_MIPS)
+extern void Expand_Float_To_Float_Floor (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
+#endif // TARG_X8664 || TARG_MIPS
+
 extern void Expand_Bool_To_Int (TN *dest, TN *src, TYPE_ID rtype, OPS *ops);
 extern void Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);

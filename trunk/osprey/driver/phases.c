@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -67,7 +71,7 @@
 #include "profile_type.h"    /* for PROFILE_TYPE */
 #include "lib_phase_dir.h"   /* for LIBPATH */
 
-#include "license.h"
+int subverbose ;
 
 char *outfile = NULL;		/* from -o <outfile> */
 char *prof_file = NULL;	/* executable file for prof to work upon */
@@ -274,7 +278,7 @@ copy_phase_options (string_list_t *phase_list, phases_t phase)
 			// option in the first place?)
 			//
 			// Pass -OPT: options to wgen for bug 10262.
-			if (gnu_version == 4 &&
+			if (gnu_major_version == 4 &&
 			    !strcmp("-OPT:", get_option_name(iflag))) {
 			  if (phase == P_spin_cc1 ||
 			      phase == P_spin_cc1plus)
@@ -359,7 +363,7 @@ add_targ_options ( string_list_t *args )
   }
 
 #ifdef TARG_X8664
-  // SSE2, SSE3, 3DNow
+  // SSE2, SSE3, 3DNow, SSE4a
   if (sse2 == TRUE)
     add_string(args, "-TARG:sse2=on");
   else
@@ -374,6 +378,11 @@ add_targ_options ( string_list_t *args )
     add_string(args, "-TARG:3dnow=on");
   else
     add_string(args, "-TARG:3dnow=off");
+
+  if (sse4a == TRUE)
+    add_string(args, "-TARG:sse4a=on");
+  else
+    add_string(args, "-TARG:sse4a=off");
 #endif
 }
 
@@ -456,6 +465,7 @@ add_arg(string_list_t *args, const char *format, ...)
 static void
 set_library_paths(string_list_t *args)
 {
+	char *root_prefix = directory_path(get_executable_dir());
 	char *our_path;
 	
 	if (abi == ABI_N32) {
@@ -669,6 +679,10 @@ add_file_args_first (string_list_t *args, phases_t index)
 }
 #endif
 
+#if defined(TARG_MIPS) && !defined(ARCH_MIPS)
+#define MIPS_CROSS_LIB_TOP_DIR "/opt/gentoo-root"
+#endif
+
 #ifdef KEY /* Bug 11265 */
 /*
  * Normally "-isystem" can be handled entirely by cpp. For Fortran, we want
@@ -754,9 +768,16 @@ add_file_args (string_list_t *args, phases_t index)
 	case P_gcpp_plus:
 		if (show_but_not_run)
 			add_string(args, "-###");
+#ifdef TARG_X8664
 		if( abi == ABI_N32 ){
 		  add_string(args, "-m32");
 		}
+#elif defined(TARG_MIPS)
+		if( abi == ABI_N32 )
+		  add_string(args, "-mabi=n32");
+		else
+		  add_string(args, "-mabi=64");
+#endif
 
 		if( ospace == TRUE ){	// bug 4953
 		  add_string(args, "-Os");
@@ -772,6 +793,7 @@ add_file_args (string_list_t *args, phases_t index)
 		case L_f77:
 		case L_f90:
 			add_string(args, "-traditional");
+
 			if (!option_was_seen(O_Wendif_labels))
 				add_string(args, "-Wno-endif-labels");
 		case L_cc:
@@ -1131,6 +1153,12 @@ add_file_args (string_list_t *args, phases_t index)
 		if (gnu_exceptions == FALSE) {			// bug 11732
 		  add_string(args, "-fno-gnu-exceptions");
 		}
+		if (fcxx_openmp == 1) {
+		  add_string(args, "-fcxx-openmp");
+		}
+		else if (fcxx_openmp == 0) {
+		  add_string(args, "-fno-cxx-openmp");
+		}
 	        // fall through
 #endif
 	case P_c_gfe:
@@ -1147,8 +1175,22 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 		if (quiet_flag) 
 			add_string(args, "-quiet");
+#ifdef TARG_X8664
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
+#elif defined(TARG_MIPS)
+		// endianness
+		if (endian == ENDIAN_LITTLE)
+		  add_string(args, "-mel");
+		else
+		  add_string(args, "-meb");
+
+		// abi
+		if( abi == ABI_N32 )
+		  add_string(args, "-mabi=n32");
+		else
+		  add_string(args, "-mabi=64");
+#endif
 
 		if (!option_was_seen(O_fpreprocessed) &&
 		    !option_was_seen(O_fno_preprocessed)) {
@@ -1382,8 +1424,15 @@ add_file_args (string_list_t *args, phases_t index)
 		if (show_but_not_run)
 			add_string(args, "-###");
 		{
+#ifdef TARG_X8664
 		  if( abi == ABI_N32 )
 		    add_string(args, "-m32");
+#elif defined(TARG_MIPS)
+		if( abi == ABI_N32 )
+		  add_string(args, "-mabi=n32");
+		else
+		  add_string(args, "-mabi=64");
+#endif
 
 		  // Add input source to args.  Append .s to input source if
 		  // it doesn't already end in .s.
@@ -1438,8 +1487,15 @@ add_file_args (string_list_t *args, phases_t index)
 		append_libraries_to_list (args);
 		if (show_but_not_run)
 			add_string(args, "-###");
+#ifdef TARG_X8664
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
+#elif defined(TARG_MIPS)
+		if( abi == ABI_N32 )
+		  add_string(args, "-mabi=n32");
+		else
+		  add_string(args, "-mabi=64");
+#endif
 		set_library_paths(args);
 		if (outfile != NULL) {
 			add_string(args, "-o");
@@ -1451,11 +1507,30 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 	case P_collect:
 	case P_ipa_link:
-		if( abi == ABI_N32 ){		  
+#ifdef TARG_X8664
+		if( abi == ABI_N32 ) {
 		  add_string(args, "-m32");
 		  add_string(args, "-m");
 		  add_string(args,"elf_i386");
 		}
+#elif defined(TARG_MIPS)
+		if( abi == ABI_N32 ) {
+		  add_string(args, "-mabi=n32");
+		  add_string(args, "-m");
+		  add_string(args, "elf32ltsmipn32");
+		}
+		else {
+		  add_string(args, "-mabi=64");
+		  add_string(args, "-m");
+		  add_string(args, "elf64ltsmip");
+		}
+		// Pass top level library dir to ipa so that
+		// it finds libraries like lib32/libc.so.6
+#ifndef ARCH_MIPS
+		add_library_dir (MIPS_CROSS_LIB_TOP_DIR);
+#endif
+#endif
+		/* TODO: Handle MIPS here */
 		/* add lib paths for standard libraries */
 		append_libraries_to_list (args);
 
@@ -1725,9 +1800,13 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	    }
 #ifdef KEY
 	    if (option_was_seen(O_mp) ||
-		option_was_seen(O_apo)) {	// bug 6334
+		option_was_seen(O_apo) ||	// bug 6334
+		option_was_seen(O_fopenmp)) {
                 add_string(args, "-lopenmp");
             }
+
+            if (option_was_seen (O_fprofile_arcs))
+                add_string(args, "-lgcov");    // bug 12754
 #else
 	    if (option_was_seen(O_mp)) {
                 add_string(args, "-lmp");
@@ -1736,6 +1815,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 #ifdef KEY  // bug 4230
 	    if (option_was_seen(O_pthread) ||
 		option_was_seen(O_mp) ||
+		option_was_seen(O_fopenmp) ||
 		option_was_seen(O_apo)) {	// bug 6334
 		add_string(args, "-lpthread");
 	    }
@@ -2049,8 +2129,8 @@ determine_phase_order (void)
 		link_phase = P_ld;
 
 #ifdef KEY
-	phases_t c_fe = (gnu_version == 4) ? P_spin_cc1 : P_c_gfe;
-	phases_t cplus_fe = (gnu_version == 4) ? P_spin_cc1plus : P_cplus_gfe;
+	phases_t c_fe = (gnu_major_version == 4) ? P_spin_cc1 : P_c_gfe;
+	phases_t cplus_fe = (gnu_major_version == 4) ? P_spin_cc1plus : P_cplus_gfe;
 #else
 	phases_t c_fe = P_c_gfe;
 	phases_t cplus_fe = P_cplus_gfe;
@@ -2388,6 +2468,7 @@ static char ld_library_path_found[PATH_BUF_LEN];
 void
 init_phase_info (void)
 {
+	char *toolroot;
 	char *comp_target_root;
 
 	if (getenv("_XPG") != NULL) 
@@ -2500,6 +2581,26 @@ init_phase_names (void)
     if (strcmp(phase_name, "gcc") == 0 ||
         strcmp(phase_name, "g++") == 0) {
       set_phase_name (i, concat_strings(prefix, phase_name));
+    }
+  }
+}
+
+// Change the front-end names to reflect the GNU version.
+void
+init_frontend_phase_names (int gnu_major_version, int gnu_minor_version)
+{
+  // Select the appropriate GNU 4 front-end.
+  if (gnu_major_version == 4) {
+    switch (gnu_minor_version) {
+      case 0:	// Default is 4.0.
+        break;
+      case 2:
+	set_phase_name(P_spin_cc1, "cc142");
+	set_phase_name(P_spin_cc1plus, "cc1plus42");
+	set_phase_name(P_wgen, "wgen42");
+	break;
+      default:
+        error("no support for GNU 4.%d front-end", gnu_minor_version);
     }
   }
 }
@@ -2769,10 +2870,6 @@ run_compiler (int argc, char *argv[])
 		check_existence_of_phases();
 	}
 	input_source = source_file;
-
-#ifdef PSCSUB
-        //obtain_license (get_phase_dir (P_be), argc, argv) ;
-#endif
 
 #ifdef KEY
 	// Set stack size to the hard limit.  Bug 3212.

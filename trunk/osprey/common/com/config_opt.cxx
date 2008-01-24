@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -126,7 +130,11 @@ BOOL Enable_Cfold_Reassociate = FALSE;	/* Re-association allowed? */
 static BOOL Cfold_Reassoc_Set = FALSE;	/* ... option seen? */
 BOOL Enable_Cfold_Intrinsics = FALSE;	/* Intrinsic constant folding? */
 BOOL Cfold_Intrinsics_Set = FALSE;	/* ... option seen? */
+#ifdef TARG_X8664
 BOOL CIS_Allowed = TRUE;	/* combine sin(x) and cos(x) to cis(x) */
+#else
+BOOL CIS_Allowed = FALSE;	/* combine sin(x) and cos(x) to cis(x) */
+#endif
 static BOOL CIS_Set = FALSE;	/* ... option seen? */
 BOOL Enable_CVT_Opt= FALSE;	/* Remove useless convert operators */
 BOOL Enable_CVT_Opt_Set= FALSE;	/* ... option seen? */
@@ -245,6 +253,7 @@ BOOL Outlining_Enabled = FALSE;
 BOOL Instrumentation_Enabled_Before = FALSE;
 
 #ifdef KEY
+INT32  OPT_Cyg_Instrument = 0;
 BOOL   Asm_Memory = FALSE;
 BOOL   Align_Unsafe = FALSE; 
 UINT32 Div_Exe_Counter = 40000;  /* A number that can avoid regression on facerec. */
@@ -281,8 +290,9 @@ BOOL OPT_Funsafe_Math_Optimizations = FALSE;
 static BOOL OPT_Funsafe_Math_Optimizations_Set = FALSE;
 BOOL    OPT_Float_Via_Int = FALSE; // when on, perform FP copies using int regs
 
-UINT32 OPT_Malloc_Alg = 0;      /* select malloc algorithm */
-#endif
+UINT32 OPT_Malloc_Alg = 0;	/* select malloc algorithm */
+BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO
+#endif	// KEY
 
 /***** Obsolete options *****/
 static BOOL Fprop_Limit_Set = FALSE;
@@ -385,6 +395,10 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0, &OPT_MP_Barrier_Opt, NULL,
     "Optimize generation of barrier calls for OpenMP" },
 
+  { OVK_INT32, OV_VISIBLE,      TRUE,   "cyg_instr",    "",
+    4, 0, 4, &OPT_Cyg_Instrument, NULL,
+    "Insert calls to __cyg_profile_func_enter/exit" },
+
   { OVK_BOOL, OV_INTERNAL, 	TRUE,	"icall_instr", "",
     0, 0, 0, &OPT_Icall_Instr, NULL,
     "perform profiling of indirect calls to get their called functions" },
@@ -412,6 +426,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_UINT32, OV_VISIBLE,     TRUE,   "malloc_algorithm", "malloc_alg",
     0, 0, 1, &OPT_Malloc_Alg, NULL,
     "Use alternate malloc algorithm" },
+
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",
+    0, 0, 0,    &Early_Goto_Conversion, NULL,
+    "Do GOTO conversion before VHO" },
 #endif
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "early_mp",		"early_mp",

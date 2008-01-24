@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -511,9 +511,6 @@ struct IS_SIB_RANGE {
   }
 };
 
-#if defined(KEY) && defined(TARG_MIPS)
-static BOOL Is_Target_64bit (void) { return TRUE; }
-#endif
 
 static LABEL_IDX Duplicate_LABEL (LABEL_IDX oldi)
 {
@@ -911,7 +908,14 @@ ST_For_Range_Table(WN * wn)
   TY& ty = New_TY(tyi);
   TY_Init(ty, size, KIND_STRUCT, MTYPE_M,
 	  Save_Str2(".range_table.",ST_name(pu)));
+#ifdef KEY
+  if (Is_Target_64bit())
+    Set_TY_align(tyi, 8);
+  else
+    Set_TY_align(tyi, 4);
+#else
   Set_TY_align(tyi, 4);
+#endif
   st = New_ST(CURRENT_SYMTAB);
   ST_Init(st, TY_name_idx(ty),
 	  CLASS_VAR, SCLASS_EH_REGION, EXPORT_LOCAL, tyi);
@@ -2197,7 +2201,7 @@ EH_Write_Range_Table(WN * wn)
 
 #ifdef KEY
   // C++ exceptions not yet supported within MP regions.
-  if (PU_mp_lower_generated (Get_Current_PU ()))
+  if (!LANG_Enable_CXX_Openmp && PU_mp_lower_generated (Get_Current_PU ()))
   {
     EH_RANGE_LIST::iterator first(range_list.begin());
     EH_RANGE_LIST::iterator last(range_list.end());

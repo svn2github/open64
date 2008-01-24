@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -135,7 +139,9 @@ extern BOOL IPA_Enable_Pure_Call_Opt;	// optimizes callsites w/o side-effects
 extern INT32 IPA_Pure_Call_skip_before;
 extern BOOL IPA_Consult_Inliner_For_Icall_Opt; // Consult inliner for icallopt?
 extern UINT32 IPA_Icall_Min_Freq;	// Min icall freq for icall opt
-extern BOOL IPA_Enable_Source_PU_Order; 
+extern BOOL IPA_Enable_Source_PU_Order;
+extern UINT32 IPA_Enable_Struct_Opt;
+extern UINT32 IPA_Update_Struct;
 #endif
 
 /* ===== Inlining heuristics: ===== */

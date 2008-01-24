@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -87,6 +79,7 @@
 #include "small_trips.h"
 #include "eliminate.h"
 #include "fb_whirl.h"
+#include "wn_simp.h"
 
 extern WN* Find_SCF_Inside(WN* parent_wn, OPCODE opc); // in ff_utils.cxx
 
@@ -460,6 +453,52 @@ COND_IF_INFO COND_If_Info(WN* wn_if, MEM_POOL* pool)
   return rval;
 }
 
+#ifdef KEY //bug 13026
+static void Replace_With_Init(WN *copy, SYMBOL sym, 
+                              WN *cons, TYPE_ID index_type)
+{ 
+  if (WN_operator(copy) == OPR_LDID){
+    if (SYMBOL(copy) == sym) {
+      WN *parent = LWN_Get_Parent(copy);
+      INT kid;
+      for (kid = 0; kid < WN_kid_count(parent); kid ++)
+        if (WN_kid(parent, kid) == copy)
+          break;
+      OPCODE intconst_opc=
+        OPCODE_make_op(OPR_INTCONST,index_type, MTYPE_V);
+      WN_kid(parent, kid) =
+        WN_CreateIntconst(intconst_opc, WN_const_val(cons));
+      LWN_Set_Parent(WN_kid(parent, kid), parent);
+    }
+  }
+  // recurse
+  for (INT i = 0; i < WN_kid_count(copy); i ++) {
+    Replace_With_Init(WN_kid(copy, i), sym, cons, index_type);
+  }
+  return;
+}
+
+static BOOL Loop_Not_Entered(WN *wn_do)
+{
+  BOOL not_entered = FALSE;
+  WN *start = WN_start(wn_do);
+  WN *end = WN_end(wn_do);
+  SYMBOL index_sym = SYMBOL(WN_index(wn_do));
+
+  WN *copy = LWN_Copy_Tree(end, TRUE, LNO_Info_Map);
+  if(WN_operator(start)==OPR_STID &&
+     WN_operator(WN_kid0(start))== OPR_INTCONST &&
+     SYMBOL(start)==index_sym){
+       Replace_With_Init(copy, index_sym, WN_kid0(start), WN_rtype(end));
+       copy = WN_Simplify_Tree(copy);
+       if(WN_operator(copy)==OPR_INTCONST && 
+          WN_const_val(copy)==0)
+          return TRUE;         
+  } 
+ return FALSE;
+}
+#endif
+
 COND_DO_INFO COND_Do_Info(WN* wn_do, MEM_POOL* pool)
 {
   if (pool == NULL)
@@ -544,7 +583,7 @@ COND_DO_INFO COND_Do_Info(WN* wn_do, MEM_POOL* pool)
 	      goto return_point;
 	    }	    
 #endif
-  
+    
             ACCESS_VECTOR* nox = Difference_Inequality(avlb, avub,
                                                        avlb->Nest_Depth()-1,
                                                        DIFFERENCE_EXEC_NEVER,
@@ -567,8 +606,22 @@ COND_DO_INFO COND_Do_Info(WN* wn_do, MEM_POOL* pool)
     /* add a dummy statement to avoid a warning */
     ;
   }
-
   MEM_POOL_Pop(pool);
+/*
+ bug 13026: the above eval. is based on comparison of lb and ub, and it may not
+ be correct when concluding that the loop will be executed at least once. So we 
+ have to re-eval this case.
+ for example, 
+  for( i=0; i-1 <= 39; i++) //where the comparison is unsigned
+    ...
+ The loop will not be entered
+*/
+#ifdef KEY
+  if(rval==COND_DO_AT_LEAST_ONCE){ 
+    if(Loop_Not_Entered(wn_do))
+    rval = COND_DO_NEVER;
+  }
+#endif
 
   return rval;
 }
@@ -1612,15 +1665,20 @@ static void STD_Canonicalize_Upper_Bound(WN* wn_loop)
     //      U8SUB
     //     I4I8LE
 
-    // Bug 5670 -- the above transformation to signed comparison is still
-    // not legal if both operands are unsigned. 
+    //transformation from unsigned to signed comparsion happens if:
+    // (1) at least one of the operands is signed. OR
+    // (2) for 64 bit compilation which has sufficient room for
+    //     for the operand values for signed comparison     
+    // Refer to bug 5670, bug 12467 and bug 12514:
     TYPE_ID rtype0 = WN_rtype(WN_kid0(WN_end(wn_loop)));
     TYPE_ID rtype1 = WN_rtype(WN_kid1(WN_end(wn_loop)));
 
-    if (MTYPE_is_unsigned(desc) && 
-       // at least one of the operands is signed
-        (MTYPE_is_signed(rtype0) || MTYPE_is_signed(rtype1)))
-      desc = MTYPE_complement(desc); //transform to signed comparison
+    if (MTYPE_is_unsigned(desc)){
+         if(MTYPE_is_signed(rtype0) ||
+            MTYPE_is_signed(rtype1) ||
+            Is_Target_64bit())         
+            desc = MTYPE_complement(desc); // to signed comparison
+    }
 
     WN_set_opcode(WN_end(wn_loop), 
       OPCODE_make_op(OPR_LE, OPCODE_rtype(opc), desc));

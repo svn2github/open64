@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -164,7 +164,7 @@ BOOL Ptr_Opt_Allowed = FALSE;
 BOOL Zeroinit_in_bss = TRUE;
 
 /* don't make strings gp-relative (to save gp space) */
-#if defined(TARG_X8664) || defined(TARG_IA32)
+#if defined(TARG_X8664) || defined(TARG_IA32) || defined(TARG_MIPS)
 BOOL Strings_Not_Gprelative = TRUE;
 #else
 BOOL Strings_Not_Gprelative = FALSE;
@@ -267,10 +267,12 @@ BOOL LANG_Ignore_Target_Attribute_Set = FALSE;
 // -LANG:math_errno=off => do not set errno
 BOOL LANG_Math_Errno = TRUE; // set errno after calling math functions
 BOOL LANG_Math_Errno_Set = FALSE;
-# endif
-# ifdef KEY /* Bug 3405 */
+/* KEY Bug 3405 */
 BOOL LANG_IEEE_Minus_Zero_On = FALSE;
 BOOL LANG_IEEE_Minus_Zero_Set = FALSE;
+
+BOOL LANG_Enable_CXX_Openmp = FALSE;
+BOOL LANG_Enable_CXX_Openmp_Set = FALSE;
 # endif /* KEY Bug 3405 */
 
 BOOL LANG_Pch;
@@ -715,8 +717,6 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_VISIBLE,	TRUE, "IEEE_save",		"",
       0, 0, 0,	&LANG_IEEE_Save,	&LANG_IEEE_Save_Set,
       "FORTRAN: Save/restore FPU state in procedure prolog/epilog as F2003 requires" },
-# endif
-# ifdef KEY
     /* Bug 3405 */
     { OVK_BOOL, OV_VISIBLE,	TRUE, "IEEE_minus_zero",		"",
       0, 0, 0,	&LANG_IEEE_Minus_Zero_On,	&LANG_IEEE_Minus_Zero_Set,
@@ -725,7 +725,10 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_INTERNAL,	TRUE, "math_errno",		"",
       0, 0, 0,	&LANG_Math_Errno,	&LANG_Math_Errno_Set,
       "C/C++: Set errno after calling math functions" },
-# endif /* KEY */
+    { OVK_BOOL, OV_INTERNAL,    TRUE, "cxx_openmp",             "",
+      0, 0, 0,  &LANG_Enable_CXX_Openmp,        &LANG_Enable_CXX_Openmp_Set,
+      "C++: Enable OpenMP processing." },
+#endif /* KEY */
 
     { OVK_COUNT }		    /* List terminator -- must be last */
 };
@@ -1516,6 +1519,10 @@ Configure_Source ( char	*filename )
     if ( ! Recip_Set )
       Recip_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
 #endif
+#ifndef TARG_X8664 // apsi fails at -O3 because Rsqrt_Allowed is true
+    if ( ! Rsqrt_Set )
+      Rsqrt_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
+#endif
     /* Potential non-IEEE results for exact operations: */
     if ( ! Div_Split_Set )
       Div_Split_Allowed = IEEE_Arithmetic >= IEEE_ANY;
@@ -1568,8 +1575,10 @@ Configure_Source ( char	*filename )
     if (!Fast_trunc_Set)
       Fast_trunc_Allowed = Roundoff_Level >= ROUNDOFF_SIMPLE;
 
+#ifdef TARG_X8664
     if ( ! CIS_Set )
       CIS_Allowed |= Roundoff_Level >= ROUNDOFF_SIMPLE;
+#endif
   }
 
 #if 0
@@ -1645,6 +1654,11 @@ Configure_Source ( char	*filename )
   } else if ( Get_Trace ( TP_MISC, 32 ) ) {
     Trace_Option_Groups ( TFile, Common_Option_Groups, FALSE );
   }
+
+#ifdef KEY // bug 12939
+  if (Language == LANG_CPLUS && ! WOPT_Enable_Tail_Recur_Set)
+    WOPT_Enable_Tail_Recur = FALSE;
+#endif
 }
 
 /* ====================================================================
@@ -1666,11 +1680,7 @@ Configure_Alias_Options( OPTION_LIST *olist )
     if (strncasecmp( val, "any", len) == 0) {
       Alias_Pointer_Parms = TRUE;	/* observed by Fortran programs */
       Alias_Pointer_Cray = FALSE;	/* observed by Fortran programs */
-#ifdef TARG_IA64
       Alias_Pointer_Types = TRUE;	/* observed by C and C++ programs */
-#else
-      Alias_Pointer_Types = FALSE;	/* observed by C and C++ programs */
-#endif
       Alias_Not_In_Union  = TRUE;	/* observed by C++ programs only */
       Alias_Pointer_Strongly_Typed = FALSE;	/* observed by C and C++ programs */
       Alias_Pointer_Types_Set = TRUE;

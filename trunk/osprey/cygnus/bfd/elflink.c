@@ -4715,7 +4715,7 @@ elf_link_add_archive_symbols (bfd *abfd, struct bfd_link_info *info)
 	    goto error_return;
 
 #ifdef IPA_LINK
-/* mixed archive*/
+	    /* mixed archive*/
 	  if (ipa_is_whirl(element))
 	    ipa_process_whirl(element);
 #endif

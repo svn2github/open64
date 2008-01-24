@@ -91,7 +91,7 @@
 #ifdef KEY
 static SPILL_SYM_INFO_MAP spill_sym_info_map;
 static void CGSPILL_Record_Spill (ST *spill_loc, OP *spill_op);
-static void CGSPILL_Inc_Restore_Count (ST *spill_loc);
+void CGSPILL_Inc_Restore_Count (ST *spill_loc);
 #endif
 
 static BOOL Trace_Remat; /* Trace rematerialization */

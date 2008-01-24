@@ -90,7 +90,10 @@ static	int			 blk_err_msgs[]		= {
                                1588,   /* Open_Mp_Parallel_Workshare_Blk */ /* by jhs, 02/7/18 */
 				264,	/* Contains_Blk       */
 			 	26,	/* Interface_Blk      */
-			 	25	/* Derived_Type_Blk   */
+			 	25,	/* Derived_Type_Blk   */
+#ifdef KEY /* Bug 10572 */
+			       1686	/* Enum_Blk   */
+#endif /* KEY Bug 10572 */
  				};
 
 	blk_stk_type		*blk_stk;
@@ -199,6 +202,9 @@ static stmt_type_type		token_to_stmt_type [] = {
 				Assignment_Stmt,      /* Tok_Kwd_Assignment   */
 				Automatic_Stmt,       /* Tok_Kwd_Automatic    */
 				Backspace_Stmt,	      /* Tok_Kwd_Backspace    */
+#ifdef KEY /* Bug 10572 */
+				Assignment_Stmt,      /* Tok_Kwd_Bind         */
+#endif /* KEY Bug 10572 */
 				Blockdata_Stmt,       /* Tok_Kwd_Block	      */
 				Buffer_Stmt,	      /* Tok_Kwd_Buffer	      */
 				Type_Decl_Stmt,	      /* Tok_Kwd_Byte	      */
@@ -224,6 +230,10 @@ static stmt_type_type		token_to_stmt_type [] = {
 				Encode_Stmt,	      /* Tok_Kwd_Encode	      */
 				End_Stmt,	      /* Tok_Kwd_End	      */
 				Entry_Stmt,	      /* Tok_Kwd_Entry	      */
+#ifdef KEY /* Bug 10572 */
+				Enum_Stmt,	      /* Tok_Kwd_Enum	      */
+				Enumerator_Stmt,      /* Tok_Kwd_Enumerator   */
+#endif /* KEY Bug 10572 */
 				Equivalence_Stmt,     /* Tok_Kwd_Equivalence  */
 				Exit_Stmt,	      /* Tok_Kwd_Exit	      */
 				External_Stmt,	      /* Tok_Kwd_External     */
@@ -234,6 +244,9 @@ static stmt_type_type		token_to_stmt_type [] = {
 				Goto_Stmt,	      /* Tok_Kwd_Go	      */
 				If_Cstrct_Stmt,	      /* Tok_Kwd_If	      */
 				Implicit_Stmt,	      /* Tok_Kwd_Implicit     */
+#ifdef KEY /* Bug 11741 */
+				Import_Stmt,	      /* Tok_Kwd_Import       */
+#endif /* KEY Bug 11741 */
 				Assignment_Stmt,      /* Tok_Kwd_In	      */
 				Inquire_Stmt,	      /* Tok_Kwd_Inquire      */
 				Type_Decl_Stmt,	      /* Tok_Kwd_Integer      */
@@ -244,6 +257,9 @@ static stmt_type_type		token_to_stmt_type [] = {
 				Assignment_Stmt,      /* Tok_Kwd_Len	      */
 				Type_Decl_Stmt,	      /* Tok_Kwd_Logical      */
 				Module_Stmt,	      /* Tok_Kwd_Module	      */
+#ifdef KEY /* Bug 10572 */
+				Assignment_Stmt,      /* Tok_Kwd_Name         */
+#endif /* KEY Bug 10572 */
 				Namelist_Stmt,	      /* Tok_Kwd_Namelist     */
 				Assignment_Stmt,      /* Tok_Kwd_None	      */
 #ifdef KEY /* Bug 5089 */
@@ -452,8 +468,16 @@ void		(*stmt_parsers[]) () = {
 				parse_volatile_stmt,    /* Volatile_Stmt */
 				parse_directive_stmt,
 					/* Open_MP_End_Parallel_Workshare_Stmt */
-				parse_directive_stmt
+				parse_directive_stmt,
 					/* Open_MP_End_Workshare_Stmt */
+#ifdef KEY /* Bug 11741 */
+				parse_import_stmt,	/* Import_Stmt */
+#endif /* KEY Bug 11741 */
+#ifdef KEY /* Bug 10572 */
+				parse_enum_stmt,	/* Enum_Stmt */
+				parse_end_stmt,		/* End_Enum_Stmt */
+				parse_enumerator_stmt	/* Enumerator_Stmt */
+#endif /* KEY Bug 10572 */
 				};
 
 
@@ -523,7 +547,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 		/*****  Allocatable_Stmt  *****/
 
@@ -568,7 +593,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Automatic_Stmt   *****/
 
@@ -613,7 +639,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Common_Stmt      *****/
 
@@ -657,7 +684,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Contains_Stmt    *****/
 
@@ -704,7 +732,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Cpnt_Decl_Stmt   *****/
 
@@ -755,7 +784,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
-				(ONE << Interface_Blk)),    
+				(ONE << Interface_Blk) |    
+				(ONE << Enum_Blk)),
 
 			/*****  Data_Stmt  *****/
 
@@ -770,7 +800,8 @@ long long     stmt_in_blk [] = {
 				(ONE << SGI_Psection_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Derived_Type_Stmt  *****/
 
@@ -814,7 +845,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Dimension_Stmt  *****/
 
@@ -858,12 +890,14 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Directive_Stmt  *****/
 
 			       ((ONE << Unknown_Blk) |      
-				(ONE << If_Blk)),
+				(ONE << If_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Equivalence_Stmt  *****/
 
@@ -907,7 +941,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  External_Stmt  *****/
 
@@ -952,7 +987,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Format_Stmt  *****/
 
@@ -969,7 +1005,8 @@ long long     stmt_in_blk [] = {
 				(ONE << SGI_Psection_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Implicit_Stmt  *****/
 
@@ -1013,7 +1050,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/***** Implicit_None_Stmt  *****/
 
@@ -1057,7 +1095,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Intent_Stmt  *****/
 
@@ -1104,7 +1143,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Interface_Stmt  *****/
 
@@ -1150,7 +1190,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Intrinsic_Stmt  *****/
 
@@ -1194,7 +1235,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Module_Proc_Stmt  *****/
 
@@ -1245,7 +1287,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Namelist_Stmt  *****/
 
@@ -1260,7 +1303,8 @@ long long     stmt_in_blk [] = {
 				(ONE << SGI_Psection_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Optional_Stmt  *****/
 
@@ -1307,7 +1351,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Parameter_Stmt  *****/
 
@@ -1351,7 +1396,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Pointer_Stmt  *****/
 
@@ -1395,7 +1441,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Private_Stmt  *****/
 
@@ -1444,7 +1491,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
-				(ONE << Interface_Blk)),    
+				(ONE << Interface_Blk) |    
+				(ONE << Enum_Blk)),
 
 			/*****  Public_Stmt  *****/
 
@@ -1494,7 +1542,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Save_Stmt  *****/
 
@@ -1538,7 +1587,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Sequence_Stmt  *****/
 
@@ -1589,7 +1639,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
-				(ONE << Interface_Blk)),    
+				(ONE << Interface_Blk) |    
+				(ONE << Enum_Blk)),
 
 			/*****  Stmt_Func_Stmt  *****/
 
@@ -1636,7 +1687,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Target_Stmt  *****/
 
@@ -1680,7 +1732,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Task_Common_Stmt  *****/
 
@@ -1728,7 +1781,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)), 
+                                (ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Type_Decl_Stmt  *****/
 
@@ -1771,7 +1825,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
-				(ONE << Interface_Blk)),    
+				(ONE << Interface_Blk) |    
+				(ONE << Enum_Blk)),
 
 			/*****  Use_Stmt  *****/
 
@@ -1815,7 +1870,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 
 			/*****  Blockdata_Stmt  *****/
@@ -1867,7 +1923,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Elemental_Stmt  *****/
 
@@ -1904,7 +1961,8 @@ long long     stmt_in_blk [] = {
 				(ONE << SGI_Psection_Blk) |
 				(ONE << SGI_Section_Blk) |
 				(ONE << SGI_Single_Process_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Function_Stmt  *****/
 
@@ -1942,7 +2000,8 @@ long long     stmt_in_blk [] = {
 				(ONE << SGI_Psection_Blk) |
 				(ONE << SGI_Section_Blk) |
 				(ONE << SGI_Single_Process_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Module_Stmt  *****/
 
@@ -1993,7 +2052,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Program_Stmt  *****/
 
@@ -2044,7 +2104,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Pure_Stmt  *****/
 
@@ -2081,7 +2142,8 @@ long long     stmt_in_blk [] = {
 				(ONE << SGI_Psection_Blk) |
 				(ONE << SGI_Section_Blk) |
 				(ONE << SGI_Single_Process_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Recursive_Stmt  *****/
 
@@ -2118,7 +2180,8 @@ long long     stmt_in_blk [] = {
 				(ONE << SGI_Psection_Blk) |
 				(ONE << SGI_Section_Blk) |
 				(ONE << SGI_Single_Process_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Subroutine_Stmt  *****/
 
@@ -2155,7 +2218,8 @@ long long     stmt_in_blk [] = {
 				(ONE << SGI_Psection_Blk) |
 				(ONE << SGI_Section_Blk) |
 				(ONE << SGI_Single_Process_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Blockdata_Stmt  *****/
 
@@ -2207,7 +2271,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Do_Stmt  *****/
 
@@ -2259,7 +2324,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Function_Stmt  *****/
 
@@ -2308,7 +2374,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_If_Stmt  *****/
 
@@ -2358,7 +2425,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Interface_Stmt  *****/
 
@@ -2410,7 +2478,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Module_Stmt  *****/
 
@@ -2462,7 +2531,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Program_Stmt  *****/
 
@@ -2514,7 +2584,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Select_Stmt  *****/
 
@@ -2565,7 +2636,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Stmt  *****/
 
@@ -2612,7 +2684,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Subroutine_Stmt  *****/
 
@@ -2661,7 +2734,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  End_Type_Stmt  *****/
 
@@ -2713,7 +2787,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
-				(ONE << Interface_Blk)),   
+				(ONE << Interface_Blk) |   
+				(ONE << Enum_Blk)),
 
 			/*****  End_Where_Stmt  *****/
 
@@ -2763,7 +2838,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Allocate_Stmt  *****/
 
@@ -2780,7 +2856,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Arith_If_Stmt  *****/
 
@@ -2797,7 +2874,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Assign_Stmt  *****/
 
@@ -2814,7 +2892,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Assignment_Stmt  *****/
 
@@ -2827,7 +2906,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Backspace_Stmt  *****/
 
@@ -2844,7 +2924,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Buffer_Stmt  *****/
 
@@ -2861,7 +2942,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Call_Stmt  *****/
 
@@ -2878,7 +2960,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Case_Stmt  *****/
 
@@ -2929,7 +3012,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Close_Stmt  *****/
 
@@ -2946,7 +3030,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Continue_Stmt  *****/
 
@@ -2963,7 +3048,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Cycle_Stmt  *****/
 
@@ -2985,7 +3071,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Deallocate_Stmt  *****/
 
@@ -3002,7 +3089,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Decode_Stmt  *****/
 
@@ -3019,7 +3107,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Do_Iterative_Stmt  *****/
 
@@ -3036,7 +3125,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Do_While_Stmt  *****/
 
@@ -3053,7 +3143,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Do_Infinite_Stmt  *****/
 
@@ -3070,7 +3161,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Else_Stmt  *****/
 
@@ -3121,7 +3213,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Else_If_Stmt  *****/
 
@@ -3172,7 +3265,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Else_Where_Stmt  *****/
 
@@ -3223,7 +3317,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Encode_Stmt  *****/
 
@@ -3240,7 +3335,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Endfile_Stmt  *****/
 
@@ -3257,7 +3353,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Entry_Stmt  *****/
 
@@ -3306,7 +3403,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Exit_Stmt  *****/
 
@@ -3328,7 +3426,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Go_To_Stmt  *****/
 
@@ -3345,7 +3444,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  If_Cstrct_Stmt  *****/
 
@@ -3362,7 +3462,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  If_Stmt	 *****/
 
@@ -3379,7 +3480,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Interface_Body_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Inquire_Stmt  *****/
 
@@ -3396,7 +3498,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Nullify_Stmt  *****/
 
@@ -3413,7 +3516,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Open_Stmt  *****/
 
@@ -3430,7 +3534,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Outmoded_If_Stmt  *****/
 
@@ -3447,7 +3552,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Pause_Stmt  *****/
 
@@ -3464,7 +3570,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Print_Stmt  *****/
 
@@ -3481,7 +3588,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Read_Stmt  *****/
 
@@ -3498,7 +3606,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Return_Stmt  *****/
 
@@ -3516,7 +3625,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Rewind_Stmt  *****/
 
@@ -3533,7 +3643,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Select_Stmt  *****/
 
@@ -3550,7 +3661,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Stop_Stmt  *****/
 
@@ -3567,7 +3679,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Then_Stmt  *****/
 
@@ -3586,7 +3699,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Where_Cstrct_Stmt  *****/
 
@@ -3599,7 +3713,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Where_Stmt  *****/
 
@@ -3612,7 +3727,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Write_Stmt  *****/
 
@@ -3629,7 +3745,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Type_Init_Stmt  *****/
 
@@ -3701,7 +3818,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)),
+				(ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  End_Do_Parallel_Stmt  *****/
 
@@ -3753,7 +3871,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  End_Parallel_Case_Stmt	*****/
 
@@ -3805,7 +3924,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)), 
+                                (ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Parallel_Case_Stmt  *****/
 
@@ -3857,7 +3977,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  End_Guard_Stmt	*****/
 
@@ -3909,7 +4030,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Statement_Num_Stmt  *****/ 
 
@@ -3964,7 +4086,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  SGI_End_Psection_Stmt  *****/
 
@@ -4015,7 +4138,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  SGI_End_Pdo_Stmt   *****/
 
@@ -4067,7 +4191,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  SGI_End_Parallel_Stmt  *****/
 
@@ -4114,7 +4239,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  SGI_End_Critical_Section_Stmt  *****/
 
@@ -4166,7 +4292,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  SGI_End_Single_Process_Stmt  *****/
 
@@ -4218,7 +4345,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  SGI_Region_End_Stmt  *****/
 
@@ -4270,7 +4398,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_Section_Stmt  *****/
 
@@ -4320,7 +4449,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Parallel_Stmt  *****/
 
@@ -4372,7 +4502,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Do_Stmt  *****/
 
@@ -4424,7 +4555,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Parallel_Sections_Stmt  *****/
 
@@ -4476,7 +4608,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Sections_Stmt  *****/
 
@@ -4528,7 +4661,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Section_Stmt  *****/
 
@@ -4580,7 +4714,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Single_Stmt  *****/
 
@@ -4632,7 +4767,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Parallel_Do_Stmt  *****/
 
@@ -4684,7 +4820,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Master_Stmt  *****/
 
@@ -4736,7 +4873,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Critical_Stmt  *****/
 
@@ -4788,7 +4926,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Ordered_Stmt  *****/
 
@@ -4838,7 +4977,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Forall_Cstrct_Stmt  *****/
 
@@ -4854,7 +4994,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 			/*****  Forall_Stmt  *****/
 
@@ -4870,7 +5011,8 @@ long long     stmt_in_blk [] = {
 				(ONE << Select_Blk) |
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
 
 			/*****  End_Forall_Stmt  *****/
@@ -4920,7 +5062,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)), 
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
 
                         /*****  Else_Where_Mask_Stmt  *****/
 
@@ -4971,7 +5114,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Volatile_Stmt   *****/
 
@@ -5015,7 +5159,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk)),
+				(ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Parallel_workshare_Stmt  *****/
 
@@ -5067,7 +5212,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk)),
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
 
 			/*****  Open_MP_End_Workshare_Stmt  *****/
 
@@ -5119,7 +5265,215 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
-                                (ONE << Derived_Type_Blk))
+                                (ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
+
+#ifdef KEY /* Bug 11741 */
+			/*****  Import_Stmt  *****/
+
+				((ONE << Unknown_Blk) |
+                                (ONE << Blockdata_Blk) |
+                                (ONE << Module_Blk) |
+				(ONE << Program_Blk) |
+                                (ONE << Function_Blk) |
+                                (ONE << Subroutine_Blk) |
+				(ONE << Internal_Blk) |
+				(ONE << Module_Proc_Blk) |
+				(ONE << Interface_Blk) |
+                                (ONE << Do_Blk) |
+                                (ONE << Forall_Blk) |
+                                (ONE << If_Blk) |
+                                (ONE << If_Then_Blk) |
+				(ONE << If_Else_If_Blk) |
+				(ONE << If_Else_Blk) |
+                                (ONE << Select_Blk) |
+                                (ONE << Case_Blk) |
+                                (ONE << Where_Then_Blk) |
+                                (ONE << Where_Else_Blk) |
+                                (ONE << Where_Else_Mask_Blk) |
+				(ONE << Parallel_Blk) |
+				(ONE << Doall_Blk) |
+				(ONE << Do_Parallel_Blk) |
+				(ONE << Guard_Blk) |
+				(ONE << Parallel_Case_Blk) |
+				(ONE << Wait_Blk) |
+				(ONE << SGI_Doacross_Blk) |
+				(ONE << SGI_Psection_Blk) |
+				(ONE << SGI_Section_Blk) |
+				(ONE << SGI_Pdo_Blk) |
+				(ONE << SGI_Parallel_Do_Blk) |
+				(ONE << SGI_Parallel_Blk) |
+				(ONE << SGI_Critical_Section_Blk) |
+				(ONE << SGI_Single_Process_Blk) |
+				(ONE << SGI_Region_Blk) |
+                                (ONE << Open_Mp_Parallel_Blk) |
+                                (ONE << Open_Mp_Do_Blk) |
+                                (ONE << Open_Mp_Parallel_Sections_Blk) |
+                                (ONE << Open_Mp_Sections_Blk) |
+                                (ONE << Open_Mp_Section_Blk) |
+                                (ONE << Open_Mp_Single_Blk) |
+                                (ONE << Open_Mp_Parallel_Do_Blk) |
+                                (ONE << Open_Mp_Master_Blk) |
+                                (ONE << Open_Mp_Critical_Blk) |
+                                (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) |
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) |
+                                (ONE << Contains_Blk) |
+				(ONE << Derived_Type_Blk) |
+				(ONE << Enum_Blk)),
+#endif /* KEY Bug 11741 */
+#ifdef KEY /* Bug 10572 */
+			/*****  Enum_Stmt  *****/
+
+			       ((ONE << Unknown_Blk) |
+				(ONE << Forall_Blk) |
+				(ONE << If_Blk) |
+				(ONE << If_Then_Blk) |
+				(ONE << If_Else_If_Blk) |
+				(ONE << If_Else_Blk) |
+				(ONE << Do_Blk) |
+				(ONE << Select_Blk) |
+				(ONE << Case_Blk) |
+				(ONE << Where_Then_Blk) |
+				(ONE << Where_Else_Blk) |
+				(ONE << Where_Else_Mask_Blk) |
+                                (ONE << Parallel_Blk) |
+				(ONE << SGI_Parallel_Blk) |
+                                (ONE << Doall_Blk) |
+				(ONE << Wait_Blk) |
+				(ONE << SGI_Doacross_Blk) |
+				(ONE << SGI_Parallel_Do_Blk) |
+                                (ONE << Do_Parallel_Blk) |
+				(ONE << SGI_Pdo_Blk) |
+                                (ONE << Guard_Blk) |
+				(ONE << SGI_Critical_Section_Blk) |
+                                (ONE << Parallel_Case_Blk) |
+				(ONE << SGI_Psection_Blk) |
+				(ONE << SGI_Section_Blk) |
+				(ONE << SGI_Single_Process_Blk) |
+                                (ONE << Open_Mp_Parallel_Blk) |
+                                (ONE << Open_Mp_Do_Blk) |
+                                (ONE << Open_Mp_Parallel_Sections_Blk) |
+                                (ONE << Open_Mp_Sections_Blk) |
+                                (ONE << Open_Mp_Section_Blk) |
+                                (ONE << Open_Mp_Single_Blk) |
+                                (ONE << Open_Mp_Parallel_Do_Blk) |
+                                (ONE << Open_Mp_Master_Blk) |
+                                (ONE << Open_Mp_Critical_Blk) |
+                                (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
+				(ONE << Contains_Blk) |
+				(ONE << Interface_Blk) |
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
+
+			/*****  End_Enum_Stmt  *****/
+
+				((ONE << Unknown_Blk) |
+                                (ONE << Blockdata_Blk) |
+                                (ONE << Module_Blk) |
+				(ONE << Program_Blk) |
+                                (ONE << Function_Blk) |
+                                (ONE << Subroutine_Blk) |
+				(ONE << Internal_Blk) |
+				(ONE << Module_Proc_Blk) |
+				(ONE << Interface_Body_Blk) |
+				(ONE << Interface_Blk) |
+                                (ONE << Do_Blk) |
+                                (ONE << Forall_Blk) |
+                                (ONE << If_Blk) |
+                                (ONE << If_Then_Blk) |
+				(ONE << If_Else_If_Blk) |
+				(ONE << If_Else_Blk) |
+                                (ONE << Select_Blk) |
+                                (ONE << Case_Blk) |
+                                (ONE << Where_Then_Blk) |
+                                (ONE << Where_Else_Blk) |
+                                (ONE << Where_Else_Mask_Blk) |
+				(ONE << Parallel_Blk) |
+				(ONE << Doall_Blk) |
+				(ONE << Do_Parallel_Blk) |
+				(ONE << Guard_Blk) |
+				(ONE << Parallel_Case_Blk) |
+				(ONE << Wait_Blk) |
+				(ONE << SGI_Doacross_Blk) |
+				(ONE << SGI_Psection_Blk) |
+				(ONE << SGI_Section_Blk) |
+				(ONE << SGI_Pdo_Blk) |
+				(ONE << SGI_Parallel_Do_Blk) |
+				(ONE << SGI_Parallel_Blk) |
+				(ONE << SGI_Critical_Section_Blk) |
+				(ONE << SGI_Single_Process_Blk) |
+				(ONE << SGI_Region_Blk) |
+                                (ONE << Open_Mp_Parallel_Blk) |
+                                (ONE << Open_Mp_Do_Blk) |
+                                (ONE << Open_Mp_Parallel_Sections_Blk) |
+                                (ONE << Open_Mp_Sections_Blk) |
+                                (ONE << Open_Mp_Section_Blk) |
+                                (ONE << Open_Mp_Single_Blk) |
+                                (ONE << Open_Mp_Parallel_Do_Blk) |
+                                (ONE << Open_Mp_Master_Blk) |
+                                (ONE << Open_Mp_Critical_Blk) |
+                                (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) |
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) |
+                                (ONE << Contains_Blk) |
+				(ONE << Derived_Type_Blk)),
+
+			/*****  Enumerator_Stmt  *****/
+
+				((ONE << Unknown_Blk) |
+                                (ONE << Blockdata_Blk) |
+                                (ONE << Module_Blk) |
+				(ONE << Program_Blk) |
+                                (ONE << Function_Blk) |
+                                (ONE << Subroutine_Blk) |
+				(ONE << Internal_Blk) |
+				(ONE << Module_Proc_Blk) |
+				(ONE << Interface_Body_Blk) |
+				(ONE << Interface_Blk) |
+                                (ONE << Do_Blk) |
+                                (ONE << Forall_Blk) |
+                                (ONE << If_Blk) |
+                                (ONE << If_Then_Blk) |
+				(ONE << If_Else_If_Blk) |
+				(ONE << If_Else_Blk) |
+                                (ONE << Select_Blk) |
+                                (ONE << Case_Blk) |
+                                (ONE << Where_Then_Blk) |
+                                (ONE << Where_Else_Blk) |
+                                (ONE << Where_Else_Mask_Blk) |
+				(ONE << Parallel_Blk) |
+				(ONE << Doall_Blk) |
+				(ONE << Do_Parallel_Blk) |
+				(ONE << Guard_Blk) |
+				(ONE << Parallel_Case_Blk) |
+				(ONE << Wait_Blk) |
+				(ONE << SGI_Doacross_Blk) |
+				(ONE << SGI_Psection_Blk) |
+				(ONE << SGI_Section_Blk) |
+				(ONE << SGI_Pdo_Blk) |
+				(ONE << SGI_Parallel_Do_Blk) |
+				(ONE << SGI_Parallel_Blk) |
+				(ONE << SGI_Critical_Section_Blk) |
+				(ONE << SGI_Single_Process_Blk) |
+				(ONE << SGI_Region_Blk) |
+                                (ONE << Open_Mp_Parallel_Blk) |
+                                (ONE << Open_Mp_Do_Blk) |
+                                (ONE << Open_Mp_Parallel_Sections_Blk) |
+                                (ONE << Open_Mp_Sections_Blk) |
+                                (ONE << Open_Mp_Section_Blk) |
+                                (ONE << Open_Mp_Single_Blk) |
+                                (ONE << Open_Mp_Parallel_Do_Blk) |
+                                (ONE << Open_Mp_Master_Blk) |
+                                (ONE << Open_Mp_Critical_Blk) |
+                                (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) |
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) |
+                                (ONE << Contains_Blk) |
+				(ONE << Derived_Type_Blk))
+#endif /* KEY Bug 10572 */
 
 				};
 # undef ONE
@@ -5282,8 +5636,16 @@ stmt_category_type	stmt_top_cat [] = {
 				Declaration_Stmt_Cat,  /* Volatile_Stmt      */
 				Executable_Stmt_Cat,
 						/* Open_MP_End_Parallel_Workshare_Stmt */
-				Executable_Stmt_Cat};
+				Executable_Stmt_Cat,
 						/* Open_MP_End_Workshare_Stmt */
+#ifdef KEY /* Bug 11741 */
+				Import_Stmt_Cat,	/* Import_Stmt        */
+#endif /* KEY Bug 11741 */
+#ifdef KEY /* Bug 10572 */
+				Declaration_Stmt_Cat,	/* Enum_Stmt          */
+				Declaration_Stmt_Cat,	/* End_Enum_Stmt      */
+				Declaration_Stmt_Cat};	/* Enumerator_Stmt    */
+#endif /* KEY Bug 10572 */
 
 
 boolean		first_time_tbl_alloc = TRUE;

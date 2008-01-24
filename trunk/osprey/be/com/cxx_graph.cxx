@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -59,8 +67,8 @@
 #include "cxx_memory.h"
 #include "errors.h"
 
-const VINDEX16 INVALID_VINDEX16=0xffff;
-VINDEX16 GRAPH16_CAPACITY = 0xfffe;
+const VINDEX16 INVALID_VINDEX16=0xffff; //increase from 0xffff for bug 13018
+VINDEX16 GRAPH16_CAPACITY = 0xfffe; //increase from 0xfffe for bug 13018
 
 VERTEX16&
 VERTEX16::operator=(const VERTEX16& v) {

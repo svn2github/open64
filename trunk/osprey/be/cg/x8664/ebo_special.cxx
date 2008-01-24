@@ -184,6 +184,25 @@ EBO_Special_Finish (void)
   work_pool = NULL;
 }
 
+// Return TRUE if a predessor OP's operand is available at OP.  The predecessor
+// defines the TN identified by TNINFO.  PRED_OPND_IDX tells which predecessor
+// operand.
+static BOOL
+Pred_Opnd_Avail (OP *op, EBO_TN_INFO *tninfo, int pred_opnd_idx,
+		 EBO_TN_INFO **pred_tninfo_p = NULL)
+{
+  EBO_OP_INFO *pred_opinfo;
+  EBO_TN_INFO *pred_tninfo;
+
+  pred_opinfo = locate_opinfo_entry(tninfo);
+  if (pred_opinfo == NULL)
+    return FALSE;
+  pred_tninfo = pred_opinfo->actual_opnd[pred_opnd_idx];
+  if (pred_tninfo_p != NULL)
+    *pred_tninfo_p = pred_tninfo;
+  return EBO_tn_available(OP_bb(op), pred_tninfo);
+}
+
 
 /*
  * Identify OP's that contain a constant and operate in a way that
@@ -365,11 +384,14 @@ BOOL Combine_L1_L2_Prefetches( OP* op, TN** opnd_tn, EBO_TN_INFO** opnd_tninfo )
     OP* new_op = Dup_OP( op );
     Set_OP_opnd( new_op, 0 , Gen_Enum_TN( ECV_pfhint_L1_L2_load ) );
 
-    TOP new_top = TOP_prefetcht0;
+    //Bug 13609 : keep prefetchnta suggested by LNO
+    BOOL nt = (OP_code(op)==TOP_prefetchnta);
+    TOP  new_top = nt?TOP_prefetchnta:TOP_prefetcht0;
+   
     if( OP_find_opnd_use( op, OU_base ) < 0 )
-      new_top = TOP_prefetcht0xx;
+      new_top = nt?TOP_prefetchntaxx:TOP_prefetcht0xx;
     else if( OP_find_opnd_use( op, OU_index ) >= 0 )
-      new_top = TOP_prefetcht0x;
+      new_top = nt?TOP_prefetchntax:TOP_prefetcht0x;
 
     OP_Change_Opcode( new_op, new_top );
 
@@ -517,13 +539,14 @@ static void Get_Size_Ext_Info( TOP top, SIZE_EXT_INFO* info )
   case TOP_ld32:
   case TOP_ldx32:
   case TOP_ldxx32:
-  case TOP_ld32_m:
+  case TOP_ld32_abs:
     SET_SIZE_EXT_INFO( info, 4, 4, false );
     break;
   case TOP_ld64:
   case TOP_ldx64:
   case TOP_ldxx64:
-  case TOP_ld64_m:
+  case TOP_ld64_abs:
+  case TOP_ld64_off:
     SET_SIZE_EXT_INFO( info, 8, 8, false );
     break;
   case TOP_ld8_32_n32:
@@ -538,7 +561,7 @@ static void Get_Size_Ext_Info( TOP top, SIZE_EXT_INFO* info )
   case TOP_ldxxu8_32:
     SET_SIZE_EXT_INFO( info, 1, 4, false );
     break;
-  case TOP_ld8_m:
+  case TOP_ld8_abs:
     SET_SIZE_EXT_INFO( info, 1, 1, false );
     break;
   case TOP_ld16_32_n32:
@@ -553,32 +576,37 @@ static void Get_Size_Ext_Info( TOP top, SIZE_EXT_INFO* info )
   case TOP_ldxxu16_32:
     SET_SIZE_EXT_INFO( info, 2, 4, false );
     break;
-  case TOP_ld16_m:
+  case TOP_ld16_abs:
     SET_SIZE_EXT_INFO( info, 2, 2, false );
     break;
   case TOP_ld8_64:
   case TOP_ldx8_64:
   case TOP_ldxx8_64:
+  case TOP_ld8_64_off:
     SET_SIZE_EXT_INFO( info, 1, 8, true );
     break;
   case TOP_ldu8_64:
   case TOP_ldxu8_64:
   case TOP_ldxxu8_64:
+  case TOP_ldu8_64_off:
     SET_SIZE_EXT_INFO( info, 1, 8, false );
     break;
   case TOP_ld16_64:
   case TOP_ldx16_64:
   case TOP_ldxx16_64:
+  case TOP_ld16_64_off:
     SET_SIZE_EXT_INFO( info, 2, 8, true );
     break;
   case TOP_ldu16_64:
   case TOP_ldxu16_64:
   case TOP_ldxxu16_64:
+  case TOP_ldu16_64_off:
     SET_SIZE_EXT_INFO( info, 2, 8, false );
     break;
   case TOP_ld32_64:
   case TOP_ldx32_64:
   case TOP_ldxx32_64:
+  case TOP_ld32_64_off:
     SET_SIZE_EXT_INFO( info, 4, 8, true );
     break;
 
@@ -2977,19 +3005,8 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
       int new_right_shift_val = TN_value(right) - TN_value(left);
       if (new_right_shift_val < 0)
 	return FALSE;
-
-      // Make sure alu_op opnd is not redefined between alu_op and op.
-      EBO_TN_INFO *alu_opnd0_tninfo = get_tn_info(OP_opnd(alu_op, 0));
-      EBO_TN_INFO *alu_result_tninfo = get_tn_info(OP_result(alu_op, 0));
-      if (// Give up if alu_op result is redefined because
-	  // alu_result_tninfo->sequence_num wouldn't correspond to alu_op's
-	  // sequence number in this case.  We need alu_op's sequence number
-	  // for the comparison below.
-	  alu_result_tninfo->in_op != alu_op ||
-	  // Test against alu_op's sequence number.
-          (alu_opnd0_tninfo == NULL ||
-	   alu_opnd0_tninfo->sequence_num >= alu_result_tninfo->sequence_num))
-        return FALSE;
+      if (!Pred_Opnd_Avail(op, opnd_tninfo[0], 0))
+	return FALSE;
 
       TOP mov_opcode;
       int field_size = 64 - TN_value(right);
@@ -3010,6 +3027,38 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
       new_move = Mk_OP(mov_opcode, OP_result(op, 0), tmp_tn);
       BB_Insert_Op_After(OP_bb(op), new_shift, new_move);
       return TRUE;
+    }
+  }
+
+  else if (top == TOP_shli32 ||
+	   top == TOP_shli64) {
+    // Replace:
+    //   movzbl			; zero-extend
+    //   shift-left 31		; shift left 31 bits
+    // with:
+    //   shift-left 31
+    // The shift-left makes the zero-extend obsolete by shifting over the
+    // zero-extended field.
+    const EBO_TN_INFO* tninfo = opnd_tninfo[0];
+    TN *left = OP_opnd(op, 1);	// shift amount
+    Is_True(TN_Is_Constant(left) && TN_has_value(left),
+	    ("Special_Sequence: shift amount not integer constant"));
+    int left_shift_amount = TN_value(left);
+    OP* alu_op = tninfo == NULL ? NULL : tninfo->in_op;
+    EBO_TN_INFO *alu_opnd0_tninfo = NULL;
+
+    if (alu_op &&
+	((OP_code(alu_op) == TOP_movzbl && left_shift_amount >= 31) ||
+	 (OP_code(alu_op) == TOP_movzwl && left_shift_amount >= 31) ||
+	 (OP_code(alu_op) == TOP_movzbq && left_shift_amount >= 63) ||
+	 (OP_code(alu_op) == TOP_movzwq && left_shift_amount >= 63) ||
+	 (OP_code(alu_op) == TOP_movzlq && left_shift_amount >= 63)) &&
+	Pred_Opnd_Avail(op, opnd_tninfo[0], 0, &alu_opnd0_tninfo)) {
+      Set_OP_opnd(op, 0, OP_opnd(alu_op, 0));
+      dec_ref_count(opnd_tninfo[0]);
+      inc_ref_count(alu_opnd0_tninfo);
+      opnd_tninfo[0] = alu_opnd0_tninfo;
+      return FALSE;
     }
   }
 
@@ -3668,15 +3717,17 @@ static Addr_Mode_Group *Top_To_Addr_Mode_Group[TOP_count+1];
 // listed in any order.  No duplicates allowed.  The table doesn't have to be
 // complete; it may list only those OPs that EBO can do something about.
 static Addr_Mode_Group Addr_Mode_Group_Table[] = {
-  // REG_MODE	BASE_MODE	BASE_INDEX_MODE	INDEX_MODE	N32_MODE
+  // REG_MODE	BASE_MODE	BASE_INDEX_MODE	INDEX_MODE     N32_MODE (offset)
 
   // Load and stores.
   {TOP_UNDEFINED, TOP_store8,	TOP_storex8,	TOP_storexx8,	TOP_store8_n32},
   {TOP_UNDEFINED, TOP_store16,	TOP_storex16,	TOP_storexx16, TOP_store16_n32},
   {TOP_UNDEFINED, TOP_store32,	TOP_storex32,	TOP_storexx32, TOP_store32_n32},
-  {TOP_UNDEFINED, TOP_store64,	TOP_storex64,	TOP_storexx64,	TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_store64,	TOP_storex64,	TOP_storexx64, TOP_store64_off},
   {TOP_UNDEFINED, TOP_stss,	TOP_stssx,	TOP_stssxx,	TOP_stss_n32},
   {TOP_UNDEFINED, TOP_stsd,	TOP_stsdx,	TOP_stsdxx,	TOP_stsd_n32},
+  {TOP_UNDEFINED, TOP_stntss,   TOP_stntssx,    TOP_stntssxx,   TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_stntsd,   TOP_stntsdx,    TOP_stntsdxx,   TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_stdqa,	TOP_stdqax,	TOP_stdqaxx,	TOP_stdqa_n32},
   {TOP_UNDEFINED, TOP_stntpd,	TOP_stntpdx,	TOP_stntpdxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_stdqu,	TOP_stdqux,	TOP_stdquxx,	TOP_UNDEFINED},
@@ -3699,17 +3750,17 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_UNDEFINED, TOP_ldhpd,	TOP_ldhpdx,	TOP_ldhpdxx,	TOP_ldhpd_n32},
   {TOP_UNDEFINED, TOP_sthps,	TOP_sthpsx,	TOP_sthpsxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_sthpd,	TOP_sthpdx,	TOP_sthpdxx,	TOP_sthpd_n32},
-  {TOP_UNDEFINED, TOP_ld8_64,	TOP_ldx8_64,	TOP_ldxx8_64,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_ldu8_64,	TOP_ldxu8_64,	TOP_ldxxu8_64,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_ld16_64,	TOP_ldx16_64,	TOP_ldxx16_64,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_ldu16_64,	TOP_ldxu16_64,	TOP_ldxxu16_64,	TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_ld8_64,	TOP_ldx8_64,	TOP_ldxx8_64,	TOP_ld8_64_off},
+  {TOP_UNDEFINED, TOP_ldu8_64,	TOP_ldxu8_64,	TOP_ldxxu8_64, TOP_ldu8_64_off},
+  {TOP_UNDEFINED, TOP_ld16_64,	TOP_ldx16_64,	TOP_ldxx16_64, TOP_ld16_64_off},
+  {TOP_UNDEFINED, TOP_ldu16_64,	TOP_ldxu16_64,	TOP_ldxxu16_64,	TOP_ldu16_64_off},
   {TOP_UNDEFINED, TOP_ld8_32,	TOP_ldx8_32,	TOP_ldxx8_32,  TOP_ld8_32_n32},
   {TOP_UNDEFINED, TOP_ldu8_32,	TOP_ldxu8_32,	TOP_ldxxu8_32, TOP_ldu8_32_n32},
   {TOP_UNDEFINED, TOP_ld16_32,	TOP_ldx16_32,	TOP_ldxx16_32, TOP_ld16_32_n32},
   {TOP_UNDEFINED, TOP_ldu16_32,	TOP_ldxu16_32,	TOP_ldxxu16_32, TOP_ldu16_32_n32},
   {TOP_UNDEFINED, TOP_ld32,	TOP_ldx32,	TOP_ldxx32,	TOP_ld32_n32},
-  {TOP_UNDEFINED, TOP_ld32_64,	TOP_ldx32_64,	TOP_ldxx32_64,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_ld64,	TOP_ldx64,	TOP_ldxx64,	TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_ld32_64,	TOP_ldx32_64,	TOP_ldxx32_64, TOP_ld32_64_off},
+  {TOP_UNDEFINED, TOP_ld64,	TOP_ldx64,	TOP_ldxx64,	TOP_ld64_off},
   {TOP_UNDEFINED, TOP_prefetch,	TOP_prefetchx,	TOP_prefetchxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_prefetchw,  TOP_prefetchwx,  TOP_prefetchwxx, TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_prefetcht0, TOP_prefetcht0x, TOP_prefetcht0xx, TOP_UNDEFINED},
@@ -4688,6 +4739,13 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
     return FALSE;
   }
 
+  // If load is volatile, replace with exactly one load-exe OP, in order to
+  // maintain the same number of memory accesses.
+  if (OP_volatile(ld_op) &&
+      load_uses != 1) {
+    return FALSE;
+  }
+
   TN* offset = OP_opnd( ld_op, OP_find_opnd_use( ld_op, OU_offset ) );
   TN* base   = base_reg >= 0 ? OP_opnd( ld_op, base_reg ) : NULL;
   TN* index  = index_reg >= 0 ? OP_opnd( ld_op, index_reg ) : NULL;
@@ -4751,8 +4809,10 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   Set_OP_unroll_bb( new_op, OP_unroll_bb(alu_op) );
 
   Copy_WN_For_Memory_OP( new_op, ld_op );
-  if ( OP_volatile( ld_op ) )
-    Set_OP_volatile( new_op );
+  if (OP_volatile(ld_op)) {
+    Reset_OP_volatile(ld_op);	// allow OP to be deleted
+    Set_OP_volatile(new_op);
+  }
   OP_srcpos( new_op ) = OP_srcpos( alu_op );
   BB_Insert_Op_After( bb, alu_op, new_op );
 
@@ -4813,37 +4873,6 @@ Check_No_Use_Between (OP* from, OP* to, TN* result)
 	    TNs_Are_Equivalent(FP_TN, opnd))
 	  return FALSE;
       }
-    }
-  }
-
-  return TRUE;
-}
-
-BOOL
-Check_No_Redef_Between (OP* from, OP* to, TN* opnd)
-{
-  if (!TN_is_register(opnd))
-    return FALSE;
-
-  for (OP* op = to->prev; op && op != from; op = op->prev) {
-    for (INT i = 0; i < OP_opnds(op); i ++) {
-      TN* tmp_opnd = OP_opnd(op, i);
-      if (TN_is_register(tmp_opnd) &&
-	  TNs_Are_Equivalent(tmp_opnd, opnd)) {
-	EBO_TN_INFO *src0_info, *src1_info;
-	src0_info = get_tn_info( tmp_opnd );
-	src1_info = get_tn_info( opnd );
-	if (!src0_info || !src1_info)
-	  return FALSE;
-	if (src0_info->sequence_num != src1_info->sequence_num)
-	  return FALSE;
-      }
-    }
-    for (INT i = 0; i < OP_results(op); i ++) {
-      TN* tmp_res = OP_result(op, i);
-      if (TN_is_register(tmp_res) &&
-	  TNs_Are_Equivalent(tmp_res, opnd))
-	return FALSE;
     }
   }
 
@@ -5007,10 +5036,7 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	    TNs_Are_Equivalent(OP_opnd(alu_op, 0),OP_opnd(op, 1)) &&
 	    TNs_Are_Equivalent(OP_opnd(alu_op, 0),OP_opnd(alu_op, 1)) &&
 	    Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0)) &&
-	    // Bug 129: tninfo sequence number is no good after Register
-	    // allocation. Another TN could be assigned the same register
-	    // and be defined/re-defined between op and alu_op.
-	    Check_No_Redef_Between(alu_op, op, OP_opnd(alu_op, 0))) {
+	    Pred_Opnd_Avail(op, actual_tninfo[0], 0)) {
 	  new_op = Mk_OP ((code == TOP_add32)?TOP_leax32:TOP_leax64, 
 			  OP_result(op, 0), OP_opnd(alu_op, 0), 
 			  OP_opnd(alu_op, 1), 
@@ -5059,7 +5085,7 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	      break;
 	    
 	    // There should be no redefinitions of alu_op's first opnd.
-	    if (!Check_No_Redef_Between(alu_op, op, OP_opnd(alu_op, 0)))
+	    if (!Pred_Opnd_Avail(op, actual_tninfo[1], 0))
 	      break;
 
 	    new_op = Mk_OP ((code == TOP_add32)?TOP_leax32:TOP_leax64, 
@@ -5386,7 +5412,7 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	  // There should be no other uses of result of alu_op
 	  Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0)) &&
 	  // There should be no redefinitions of alu_op's first opnd.
-	  Check_No_Redef_Between(alu_op, op, OP_opnd(alu_op, 0)) &&
+	  Pred_Opnd_Avail(op, actual_tninfo[0], 0) &&
 	  // The following scenario occurs when LRA removes a copy op between
 	  // a local TN and a GTN, after register allocation, and later EBO
 	  // deletes the assignment to the local TN. 
@@ -5526,7 +5552,7 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	     (op->next == NULL && 
 	      !GTN_SET_MemberP(BB_live_out(OP_bb(op)), OP_result(alu_op, 0)))) &&
 	    Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0)) &&
-	    Check_No_Redef_Between(alu_op, op, OP_opnd(alu_op, 0))) {
+	    Pred_Opnd_Avail(op, actual_tninfo[0], 0)) {
 	  EBO_TN_INFO *src0_info, *src1_info;
 	  src0_info = get_tn_info( OP_opnd(op, 1));
 	  src1_info = get_tn_info( OP_opnd(alu_op, 0));
@@ -5619,38 +5645,32 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 		!is_live_tn(op->next, OP_result(alu_op, 0))) ||
 	       (op->next == NULL && 
 		!GTN_SET_MemberP(BB_live_out(OP_bb(op)), OP_result(alu_op, 0)))) &&
-	      Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0))) {
-	    EBO_TN_INFO *src0_info, *src1_info;
-	    src0_info = get_tn_info( OP_opnd(op, 0));
-	    src1_info = get_tn_info( OP_opnd(alu_op, 0));
-	    if (src0_info && src1_info &&
-		src0_info->sequence_num <= src1_info->sequence_num) {
-	      new_op = Mk_OP ((code == TOP_leax32)?TOP_leax32:TOP_leax64, 
-			      OP_result(op, 0), OP_opnd(alu_op, 0), 
-			      OP_opnd(alu_op, 1), 
-			      Gen_Literal_TN(2, 4), Gen_Literal_TN(0, 4));	  
+	      Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0)) &&
+	      Pred_Opnd_Avail(op, actual_tninfo[1], 0)) {
+	    new_op = Mk_OP ((code == TOP_leax32)?TOP_leax32:TOP_leax64, 
+			    OP_result(op, 0), OP_opnd(op, 0), 
+			    OP_opnd(alu_op, 1), 
+			    Gen_Literal_TN(2, 4), Gen_Literal_TN(0, 4));	  
+	    if (rflags_read && 
+		((TOP_is_change_rflags( OP_code(new_op) ) &&
+		  !TOP_is_change_rflags( OP_code(op) )) ||
+		 (!TOP_is_change_rflags( OP_code(new_op) ) &&
+		  TOP_is_change_rflags( OP_code(op) ))))
+	      return FALSE;
 
-	      if (rflags_read && 
-		  ((TOP_is_change_rflags( OP_code(new_op) ) &&
-		    !TOP_is_change_rflags( OP_code(op) )) ||
-		   (!TOP_is_change_rflags( OP_code(new_op) ) &&
-		    TOP_is_change_rflags( OP_code(op) ))))
-		return FALSE;
+	    if (alu_op_defines_rflags_used(alu_op, op))
+	      return FALSE;
 
-	      if (alu_op_defines_rflags_used(alu_op, op))
-		return FALSE;
-
-	      OP_srcpos( new_op ) = OP_srcpos( op );
-	      if( EBO_Trace_Data_Flow ){
-		fprintf( TFile, "Lea_Insertion merges " );
-		Print_OP_No_SrcLine(op);
-		fprintf( TFile, "and " );
-		Print_OP_No_SrcLine(alu_op);
-		fprintf( TFile, "with " );
-		Print_OP_No_SrcLine(new_op);
-	      }
-	      BB_Remove_Op(OP_bb(alu_op), alu_op);
+	    OP_srcpos( new_op ) = OP_srcpos( op );
+	    if( EBO_Trace_Data_Flow ){
+	      fprintf( TFile, "Lea_Insertion merges " );
+	      Print_OP_No_SrcLine(op);
+	      fprintf( TFile, "and " );
+	      Print_OP_No_SrcLine(alu_op);
+	      fprintf( TFile, "with " );
+	      Print_OP_No_SrcLine(new_op);
 	    }
+	    BB_Remove_Op(OP_bb(alu_op), alu_op);
 	  } else if (CG_fold_shiftadd && alu_op && alu_op->bb == op->bb && 
 		     ((OP_code(alu_op) == TOP_leaxx64 && 
 		       code == TOP_leax64) ||
@@ -5859,9 +5879,9 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   
   // base and index, if defined, should not be re-defined between
   // load and op.
-  if (base && !Check_No_Redef_Between(load, op, base))
+  if (base_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, base_loc))
     return FALSE;
-  if (index && !Check_No_Redef_Between(load, op, index))
+  if (index_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, index_loc))
     return FALSE;
   
   if (base && offset && index && scale)
@@ -5925,5 +5945,22 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
     return TRUE;
   }
 
+  return FALSE;
+}
+
+// Return TRUE if OP has no operands but can be eliminated if it is a
+// duplicate.
+BOOL
+EBO_Can_Eliminate_Zero_Opnd_OP (OP *op)
+{
+  switch (OP_code(op)) {
+    case TOP_zero32:
+    case TOP_zero64:
+    case TOP_xzero32:
+    case TOP_xzero64:
+    case TOP_xzero128v32:
+    case TOP_xzero128v64:
+      return TRUE;
+  }
   return FALSE;
 }

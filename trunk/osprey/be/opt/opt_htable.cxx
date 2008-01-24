@@ -1140,7 +1140,7 @@ CODEREP::Fixup_type(MTYPE opr_type, CODEMAP *htable)
   case NEED_CVTL:
     IncUsecnt();
     cr->Init_expr(opc, this);
-    cr->Set_offset(opr_type);
+    cr->Set_offset(MTYPE_bit_size(opr_type));
     return htable->Rehash(cr);
   }
 

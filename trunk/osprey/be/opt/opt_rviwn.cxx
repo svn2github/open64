@@ -1,6 +1,10 @@
 //-*-c++-*-
 
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -8,10 +12,10 @@
 // ====================================================================
 //
 // Module: opt_rviwn.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_rviwn.cxx,v $
+// $Revision: 1.11 $
+// $Date: 04/12/21 14:57:19-08:00 $
+// $Author: bos@eng-25.internal.keyresearch.com $
+// $Source: /home/bos/bk/kpro64-pending/be/opt/SCCS/s.opt_rviwn.cxx $
 //
 // ====================================================================
 //
@@ -545,6 +549,11 @@ RVI::Is_const_candidate( const WN *parent, const WN *constant, INT whichkid ) co
   Is_True( con_opr == OPR_INTCONST,
     ("RVI::Is_const_candidate: Bad const: %s", OPCODE_name(con_opc)) );
   const INT64 con_val = WN_const_val(constant);
+
+#ifdef TARG_MIPS
+  if (con_val == 0)
+    return FALSE;
+#endif
 
   return !Can_Be_Immediate(par_opr, con_val, par_dtyp, whichkid, stid_st);
 }

@@ -53,6 +53,9 @@ LIBRARY_SUBDIRS = \
 	libu \
 	libmv \
 	libinstr \
+	libcginstr \
+	cg_fb_tools \
+	whirl_fb_tools \
 	libopenmp
 
 	#libmsgi \

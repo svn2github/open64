@@ -1147,11 +1147,10 @@ ipa_set_syms(void)
     }
 
     p_ipa_modify_link_flag = dlsym(p_handle,"ipa_modify_link_flag");
-    if ((p_error = dlerror()) != NULL)  {
-    	fputs(p_error, stderr);
-    	exit(1);
+    if ((p_error = dlerror()) != NULL) {
+      fputs(p_error, stderr);
+      exit(1);
     }
-
     p_ipa_driver = dlsym(p_handle,"ipa_driver");
     if ((p_error = dlerror()) != NULL)  {
     	fputs(p_error, stderr);

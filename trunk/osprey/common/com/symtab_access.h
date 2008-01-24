@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -576,7 +580,8 @@ inline void
 Set_ST_is_thread_local (ST& s) { s.flags_ext |= ST_IS_THREAD_LOCAL; }
 inline void
 Reset_ST_is_thread_local (ST& s) { s.flags_ext &= ~ST_IS_THREAD_LOCAL; }
-
+inline void
+Clear_ST_is_thread_local (ST* s)        { s->flags_ext &= ~ST_IS_THREAD_LOCAL; }
 #endif /* KEY */
 
 //----------------------------------------------------------------------
@@ -603,10 +608,10 @@ PU_lexical_level (const PU& pu)		{ return pu.lexical_level; }
 inline void
 Set_PU_lexical_level (PU& pu, SYMTAB_IDX l) { pu.lexical_level = l; }
 
-inline TY_IDX
-PU_base_class (const PU& pu) { return pu.base_class; }
-inline void
-Set_PU_base_class (PU& pu, TY_IDX ty_idx) { pu.base_class = ty_idx; }
+inline TY_IDX 
+PU_base_class (const PU& pu) { return pu.base_class; } 
+inline void 
+Set_PU_base_class (PU& pu, TY_IDX ty_idx) { pu.base_class = ty_idx; } 
 
 //----------------------------------------------------------------------
 // PU flags
@@ -927,7 +932,14 @@ Set_PU_is_marked_inline (PU& pu) 	{ pu.flags |= PU_IS_MARKED_INLINE; }
 inline void
 Clear_PU_is_marked_inline (PU& pu)	{ pu.flags &= ~PU_IS_MARKED_INLINE; }
 
+inline BOOL
+PU_no_instrument (const PU& pu)         { return (pu.flags & PU_NO_INSTRUMENT) != 0; }
+inline void
+Set_PU_no_instrument (PU& pu)           { pu.flags |= PU_NO_INSTRUMENT; }
+inline void
+Clear_PU_no_instrument (PU& pu)         { pu.flags &= ~PU_NO_INSTRUMENT; }
 #endif
+
 #ifdef TARG_X8664
 inline BOOL
 PU_ff2c_abi (const PU& pu)		{ return (pu.flags & PU_FF2C_ABI) != 0;}
@@ -1234,19 +1246,6 @@ inline void
 Clear_TY_no_ansi_alias (TY_IDX tyi) { Clear_TY_no_ansi_alias(Ty_Table[tyi]); }
 
 inline BOOL
-TY_is_incomplete (const TY& ty)         { return ty.flags & TY_IS_INCOMPLETE; }
-inline void
-Set_TY_is_incomplete (TY& ty)           { ty.flags |= TY_IS_INCOMPLETE; }
-inline void
-Clear_TY_is_incomplete (TY& ty)         { ty.flags &= ~TY_IS_INCOMPLETE; }
-inline BOOL
-TY_is_incomplete (const TY_IDX tyi)     { return TY_is_incomplete(Ty_Table[tyi]); }
-inline void
-Set_TY_is_incomplete (TY_IDX tyi)    { Set_TY_is_incomplete(Ty_Table[tyi]); }
-inline void
-Clear_TY_is_incomplete (TY_IDX tyi)  { Clear_TY_is_incomplete(Ty_Table[tyi]); }
-
-inline BOOL
 TY_is_non_pod (const TY& ty)		{ return ty.flags & TY_IS_NON_POD; }
 inline void
 Set_TY_is_non_pod (TY& ty)		{ ty.flags |= TY_IS_NON_POD; }
@@ -1284,6 +1283,19 @@ inline void
 Set_TY_content_seen (TY_IDX tyi)      { Set_TY_content_seen(Ty_Table[tyi]); }
 inline void
 Clear_TY_content_seen (TY_IDX tyi)    { Clear_TY_content_seen(Ty_Table[tyi]); }
+
+inline BOOL
+TY_is_incomplete (const TY& ty)		{ return ty.flags & TY_IS_INCOMPLETE; }
+inline void
+Set_TY_is_incomplete (TY& ty)		{ ty.flags |= TY_IS_INCOMPLETE; }
+inline void
+Clear_TY_is_incomplete (TY& ty)		{ ty.flags &= ~TY_IS_INCOMPLETE; }
+inline BOOL
+TY_is_incomplete (const TY_IDX tyi)	{ return TY_is_incomplete(Ty_Table[tyi]); }
+inline void
+Set_TY_is_incomplete (TY_IDX tyi)    { Set_TY_is_incomplete(Ty_Table[tyi]); }
+inline void
+Clear_TY_is_incomplete (TY_IDX tyi)  { Clear_TY_is_incomplete(Ty_Table[tyi]); }
 #endif
 
 // TY pu_flags

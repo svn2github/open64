@@ -235,17 +235,17 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
       actuals[i].Set_ty(idx_maps->ty[old_ty_idx]);
     }
   }
-  
-  // process all TY_IDXs found in SUMMARY_CALLSITEs
-  INT32 num_callsites;
-  SUMMARY_CALLSITE *callsites = IPA_get_callsite_file_array(hdr, num_callsites);
-  for (i = 0; i < num_callsites; ++i) {
-    TY_IDX old_ty_idx = callsites[i].Get_virtual_class();
-    if (old_ty_idx) {
-      callsites[i].Set_virtual_class(idx_maps->ty[old_ty_idx]);
-    }
-  }
-  
+
+  // process all TY_IDXs found in SUMMARY_CALLSITEs 
+  INT32 num_callsites; 
+  SUMMARY_CALLSITE *callsites = IPA_get_callsite_file_array(hdr, num_callsites); 
+  for (i = 0; i < num_callsites; ++i) { 
+    TY_IDX old_ty_idx = callsites[i].Get_virtual_class(); 
+    if (old_ty_idx) { 
+      callsites[i].Set_virtual_class(idx_maps->ty[old_ty_idx]); 
+    } 
+  } 
+ 
   // process all ST_IDXs found in IVARs
   INT32 num_ivars;
   IVAR* ivars = IPA_get_ivar_file_array(hdr, num_ivars);
@@ -2135,6 +2135,10 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 	break;
     }
 
+#ifdef PATHSCALE_MERGE /* KEY */
+    BOOL alt_entry_update = FALSE;
+#endif
+
     if (alt_entry_index != INVALID_NODE_INDEX && action == MARK_USED &&
 	visited[alt_entry_index] != VISITED_AND_KEEP) {
 	IPA_NODE *n = IPA_Call_Graph->Graph()->Node_User(alt_entry_index);
@@ -2146,6 +2150,9 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 	    n->Set_Undeletable();
 	}
 	visited[alt_entry_index] = VISITED_AND_KEEP;
+#ifdef PATHSCALE_MERGE /* KEY */
+	alt_entry_update = TRUE;
+#endif
     }
 
 #ifdef TODO
@@ -2167,7 +2174,23 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 				 visited[vi] == VISITED_BUT_UNDECIDED))
 	    Mark_Deletable_Funcs (vi, action, visited);
     }
-    
+   
+#ifdef PATHSCALE_MERGE /* KEY */
+    if (alt_entry_update)
+    {
+      // Bug 12048: It has been decided to keep the alternate entry point,
+      // traverse its successors to note they are reachable.
+      Is_True (alt_entry_index != INVALID_NODE_INDEX,
+               ("Mark_Deletable_Funcs: Invalid alternate entry point"));
+      NODE_ITER vitr(IPA_Call_Graph->Graph(), alt_entry_index);
+      for (NODE_INDEX vi = vitr.First_Succ(); vi != -1; vi = vitr.Next_Succ()) {
+        if (visited[vi] == 0 || (action != SEARCH_FOR_USED &&
+                                 visited[vi] == VISITED_BUT_UNDECIDED))
+          Mark_Deletable_Funcs (vi, action, visited);
+      }
+    }
+#endif
+ 
 } // Mark_Deletable_Funcs
 
 

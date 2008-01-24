@@ -185,7 +185,11 @@ PDGCS_initialize(LANG   language_code,
 					  IRB_FILE_EXTENSION);
 	 }
 	 Irb_File1 = Open_Output_Info ( Irb_File_Name ); 
+#ifdef KEY /* Bug 12559 */
+	 cwh_dst_init_file(src_fname) ;
+#else /* KEY Bug 12559 */
 	 cwh_dst_init_file(src_path_name) ;
+#endif /* KEY Bug 12559 */
          cwh_stmt_init_file(test_flag(flags,PDGCS_INITIALIZE_MP));
 	 fe_preg_init() ;
 

@@ -3803,6 +3803,50 @@ static boolean io_ctl_list_semantics(opnd_type     *list_opnd,
    return(semantically_correct);
 
 }  /* io_ctl_list_semantics */
+#ifdef KEY /* Bug 2611 */
+
+/*
+ * Whe constructing an Io_Item_Type_Code_Opr, the Cray FE ordinarily uses the
+ * type which appears in the tree of IR_Tbl_Idx and AT_Tbl_Idx nodes. For a
+ * handful of character-related intrinsics returning integers, when -i8 is in
+ * effect, the type seen by the Cray FE is integer*8 but the WHIRL op emitted
+ * by the SGI portion of the FE is integer*4. When the intrinsic is called as
+ * an operand, or as the RHS of a variable, or as the actual value of a dummy
+ * argument of type integer, this isn't a problem, because the SGI code emits
+ * conversions as a matter of course, and that code ignores the type in the
+ * Cray tree, but pays attention to the type of the WHIRL intrinsic op.
+ *
+ * But there are no conversions when generating WHIRL for an I/O list item,
+ * because a dope constant is generated to describe the type of the item to
+ * the runtime system.
+ *
+ * If we generate the wrong type in the Io_Item_Type_Code_Opr based on the
+ * type in the Cray tree, the Cray FE generates the wrong dope constant. So,
+ * although it's horrible to hard-wire a list of special cases here, there's
+ * no good alternative: the SGI world doesn't know how to map an
+ * Io_Item_Type_Code_Opr onto a dope constant, and the Cray world doesn't know
+ * what WHIRL intrinsic op will be generated (nor does it know how to discover
+ * the type of a WHIRL node.)
+ *
+ * See the call to WNRTY(wn) in cwh_convert_to_ty() for a demonstration of
+ * how type conversions gets generated in expressions or assignments.
+ *
+ * opnd		operand which is an IO list item
+ * exp_desc	description of that operand
+ * returns	type to use in constructing Io_Item_Type_Code_Opr
+ */
+static Uint
+intrinsic_special_case(opnd_type *opnd, expr_arg_type *exp_desc) {
+  if (opnd->fld == IR_Tbl_Idx) {
+    operator_type op = IR_OPR(opnd->idx);
+    if (op == Len_Trim_Opr || op == Index_Opr || op == Scan_Opr ||
+      op == Verify_Opr) {
+      return CG_INTEGER_DEFAULT_TYPE;
+      }
+    }
+  return exp_desc->type_idx;
+  }
+#endif /* KEY Bug 2611 */
 
 /******************************************************************************\
 |*									      *|
@@ -4592,7 +4636,11 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
 
             NTR_IR_TBL(asg_idx);
             IR_OPR(asg_idx) = Io_Item_Type_Code_Opr;
+#ifdef KEY /* Bug 2611 */
+            IR_TYPE_IDX(asg_idx) = intrinsic_special_case(&opnd, &exp_desc);
+#else /* KEY Bug 2611 */
             IR_TYPE_IDX(asg_idx) = exp_desc.type_idx;
+#endif /* KEY Bug 2611 */
             IR_LINE_NUM(asg_idx) = line;
             IR_COL_NUM(asg_idx) = col;
 

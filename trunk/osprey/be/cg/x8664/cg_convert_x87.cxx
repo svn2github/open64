@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -96,7 +100,7 @@ static inline Stack* Get_Stack_Info( BB* bb )
 static bool OP_refs_x87( OP* op )
 {
   // An x87 operation will access x87-stack definitely.
-  if( TOP_is_uses_stack(OP_code(op)) )
+  if( TOP_is_x87(OP_code(op)) )
     return true;
 
   // The return value could be stored in %st0
@@ -369,6 +373,9 @@ static void Print_Stack( Stack* stack )
 */
 static void Expand_Fxch( Stack* stack, OP* op, TN* dest )
 {
+  Is_True(TN_register_class(dest) == ISA_REGISTER_CLASS_x87,
+	  ("Expand_Fxch: invalid register class"));
+
   const int st_idx = Get_Stack_Index( stack, TN_register(dest) );
   FmtAssert( st_idx >= 0, ("NYI") );
   

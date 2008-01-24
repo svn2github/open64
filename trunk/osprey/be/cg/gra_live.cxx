@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -588,18 +592,23 @@ Compute_Force_TNs(void)
       Force_Live_Add(CALLEE_tn(i));
   }
 
-#ifdef TARG_IA64
-  if (Find_Special_Return_Address_Symbol() == NULL) {
-#else
-    if (Find_Special_Return_Address_Symbol() == NULL &&
-	RA_TN != NULL) {
-#endif
+  if (Find_Special_Return_Address_Symbol() == NULL &&
+      RA_TN != NULL) {
 
     /* No horrible return address builtin was used, hence we have to force
      * the return address save TN to be live */
 
     Force_Live_Add(SAVE_tn(Return_Address_Reg));
   }
+#ifdef TARG_MIPS
+  else if (SAVE_tn(Return_Address_Reg) != NULL) {
+    Force_Live_Add(SAVE_tn(Return_Address_Reg));
+  }
+
+  if (Caller_GP_TN != NULL) {
+    Force_Live_Add(Caller_GP_TN);
+  }
+#endif
 }
 
 
@@ -1138,6 +1147,38 @@ Region_Boundary_Fixup(void)
 }
 
 
+#ifdef TARG_MIPS
+/* =======================================================================
+ *
+ *  Handler_Boundary_Fixup
+ *
+ *  For exception handler entries to the PU, mark the callee-save registers
+ *  defreach_in at the entry BB.
+ *
+ * =======================================================================
+ */
+static void
+Handler_Boundary_Fixup(void)
+{
+  BB *bb;
+
+  for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    if (BB_handler(bb)) {
+      if (SAVE_tn(Return_Address_Reg) != NULL) {
+	BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb),
+					     SAVE_tn(Return_Address_Reg),
+					     &liveness_pool);
+      }
+      if (Caller_GP_TN != NULL) {
+	BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb),
+					     Caller_GP_TN,
+					     &liveness_pool);
+      }
+    }
+  }
+}
+#endif
+
 
 /* =======================================================================
  *
@@ -1556,6 +1597,11 @@ GRA_LIVE_Region_Compute_Global_Live_Info(void)
                                            Do_Nothing);
 
   Region_Boundary_Fixup();
+
+#ifdef TARG_MIPS
+  Handler_Boundary_Fixup();	// Bug 12703
+#endif
+
   /* We'll keep iterating so long as either the defreach or live
    * calculation changes anything.  I suppose sometimes this will mean
    * that we calculate liveness or defreachness after it has reached the
@@ -2387,32 +2433,27 @@ Clear_Defreach(
 
 
 // Detect TNs that should be renamed in the <bb>. 
-void
-#ifdef TARG_IA64 
-Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set)
-#else
+void 
 Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
 #ifdef KEY
-		     , OP *rename_local_TN_op
+		   , OP *rename_local_TN_op
 #endif
-		     )
-#endif
+		   )
 {
   TN_MAP op_for_tn = TN_MAP_Create ();
   OP *op;
-#ifndef TARG_IA64
+#ifdef KEY
   BOOL rename_local_TNs = FALSE;
 #endif
 
   FOR_ALL_BB_OPs_FWD (bb, op) {
-#ifndef TARG_IA64
+#ifdef KEY
     // Rename local TNs starting at rename_local_TN_op, if it exists,
     // Bug 4327.
     rename_local_TNs |= (rename_local_TN_op == op);
 #endif
     for (INT i = 0; i < OP_results(op); i++) {
       TN *tn = OP_result(op, i);
-      
       // Don't rename under the following conditions.
       if (TN_is_dedicated(tn) || OP_cond_def(op) || OP_same_res(op)) continue;
 
@@ -2421,6 +2462,14 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
         // rename tn to new_tn between last_def and op.
         Rename_TN_In_Range (tn, last_def, op);
       }
+#ifdef TARG_MIPS
+      else if (PU_Has_Exc_Handler &&
+	       (tn == Caller_GP_TN ||
+	        tn == SAVE_tn(Return_Address_Reg))) {
+	// Don't rename the caller GP TN and the saved return address TN.  They
+	// should remain global.
+      }
+#endif
       else if (TN_is_global_reg(tn) &&
 	       !TN_is_const_reg(tn) &&
 	       !GTN_SET_MemberP(BB_live_out(bb), tn)) {
@@ -2476,7 +2525,7 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
 	}
 
       }
-#ifndef TARG_IA64
+#ifdef KEY
       else if (rename_local_TNs &&
 	       !TN_is_global_reg(tn) &&
 	       !TN_is_const_reg(tn)) {
@@ -2510,8 +2559,3 @@ void GRA_LIVE_Rename_TNs (void)
 
   MEM_POOL_Pop (&MEM_local_pool);
 }
-
-
-
-
-

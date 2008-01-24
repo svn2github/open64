@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -518,7 +518,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				}
 
 				// bug 10215
-				if (gnu_version == 4) {
+				if (gnu_major_version == 4) {
 				  if (is_matching_phase(get_phase_mask(phase),
 							P_wgen)) {
 				    run_inline = FALSE;
@@ -547,7 +547,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				}
 
 				// bug 10215
-				if (gnu_version == 4) {
+				if (gnu_major_version == 4) {
 				  if (is_matching_phase(get_phase_mask(phase),
 							P_wgen)) {
 				    run_inline = TRUE;

@@ -50,10 +50,15 @@ LCDEFS += -DIA32
 endif
 ifeq ($(BUILD_TARGET), MIPS)
 LCDEFS += -DMIPS
+# Need to change OPEN64_PRODNAME to denote a MIPS product.
+#LCDEFS += -DOPEN64_PRODNAME='"Compiler"'
 endif
+
 ifeq ($(BUILD_TARGET), X8664)
 LCDEFS += -DX8664
 endif
+
+LCDEFS += -DOPEN64_PRODNAME='"Compiler"'
 
 LCDEFS += -DKEY 
 
@@ -126,8 +131,7 @@ SRC_HFILES = \
 	file_names.h \
 	objects.h \
 	phases.h \
-	run.h \
-	license.h
+	run.h 
 
 HFILES= \
 	$(SHARED_HFILES) \
@@ -155,8 +159,7 @@ SRC_CFILES = \
 	phases.c \
 	run.c \
 	special_options.c \
-	version_hg.c \
-	license.c
+	version_hg.c 
 
 CFILES=	\
 	$(SHARED_CFILES) \

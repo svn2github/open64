@@ -93,7 +93,7 @@ const char TY2C_Aligned_Block_Name[] = "__block";
 #ifndef TARG_X8664
 #define MTYPE_PREDEF MTYPE_F16
 #else
-#define MTYPE_PREDEF MTYPE_V16F8
+#define MTYPE_PREDEF MTYPE_M8F4
 #endif /* TARG_X8664 */
 
 static char Name_Unknown_Type[] = "__UNKNOWN_TYPE";

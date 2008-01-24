@@ -384,7 +384,7 @@ extern void GRA_LIVE_Finish_REGION(void);
 
 extern void GRA_LIVE_Print_Liveness( BB* bb );
 
-#ifndef TARG_IA64
+#ifdef KEY
 extern void Rename_TNs_For_BB (BB *bb, TN_SET *multiple_defined_set,
 			       OP *rename_local_TN_op = NULL);
 #else

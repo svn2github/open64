@@ -3736,6 +3736,10 @@
  * and therefore needs to save/restore FPU state on entry/exit */
 # define SCP_USES_IEEE(IDX)		scp_tbl[IDX].wd[3].fld1.flag1
 #endif /* KEY Bug 5089 */
+#ifdef KEY /* Bug 11741 */
+/* Scope is interface body having "import" sans explicit list of identifiers */
+# define SCP_IMPORT(IDX)		scp_tbl[IDX].wd[4].fld1.flag1
+#endif /* KEY Bug 11741 */
 # define SCP_INLINE_SGI(IDX)		scp_tbl[IDX].wd[3].fld1.flag2
 # define SCP_NOINLINE_SGI(IDX)		scp_tbl[IDX].wd[3].fld1.flag3
 # define SCP_DBG_PRINT_SYTB(IDX)	scp_tbl[IDX].wd[25].fld1.flag1

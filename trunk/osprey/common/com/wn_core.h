@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1284,7 +1288,11 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
       return TY_is_volatile(pointed);
     } else {
       return TY_is_volatile(WN_ty(wn)) ||
+#ifdef KEY	// bug 12404
+	OPCODE_has_2ty(opc) && TY_is_volatile(TY_pointed(WN_load_addr_ty(wn)));
+#else
 	OPCODE_has_2ty(opc) && TY_is_volatile(WN_load_addr_ty(wn));
+#endif
     }
   }
   return FALSE;
@@ -1558,7 +1566,8 @@ inline mINT16 WN_num_actuals(const WN *wn)
  *              ^^^^^^^^^                     unused           (8 bits, 16..23)
  *            ^                               read(0)/write(1) (1 bit,  24)
  *           ^                                1 if manual prefetch  (1 bit, 25)
- *         ^^                                 unused           (2 bits, 26..27)
+ *          ^                                 keep                  (1 bit, 26)
+ *         ^                                  non-temporal          (1 bit, 27)                       
  *    ^^^^                                    confidence #     (4 bits, 28..31)
  *
  ***********************************************************************/
@@ -1569,7 +1578,6 @@ inline mINT16 WN_num_actuals(const WN *wn)
 #define PF_GET_STRIDE_2L(flag)  (((flag) >> 8)   & 0xff)
 #define PF_GET_CONFIDENCE(flag) (((flag) >> 28)  & 0xf)
 #define PF_GET_MANUAL(flag)     (((flag) >> 25) & 0x1)
-
 #ifdef KEY //bug 10953
 #define PF_GET_KEEP_ANYWAY(flag) (((flag) >> 26) & 0x1)
 #define PF_GET_NON_TEMPORAL(flag) (((flag) >> 27) & 0x1)
@@ -1582,14 +1590,12 @@ inline mINT16 WN_num_actuals(const WN *wn)
 #define PF_SET_CONFIDENCE(flag, x) flag = (((flag)&0x0fffffff) | ((x)&0xf)<<28)
 #define PF_SET_MANUAL(flag)        flag |= 0x02000000
 #define PF_UNSET_MANUAL(flag)      flag &= 0xfdffffff
-
 #ifdef KEY //bug 10953
 #define PF_SET_KEEP_ANYWAY(flag)   flag |= 0x04000000
 #define PF_UNSET_KEEP_ANYWAY(flag) flag &= 0xfbffffff
 #define PF_SET_NON_TEMPORAL(flag)  flag |= 0x08000000
 #define PF_UNSET_NON_TEMPORAL(flag) flag &= 0xf7ffffff
 #endif
-
 
 #define WN_pf_read(wn)       (((~(WN_prefetch_flag(wn))) >> 24) & 0x1)
 #define WN_pf_write(wn)      (((WN_prefetch_flag(wn))  >> 24) & 0x1)

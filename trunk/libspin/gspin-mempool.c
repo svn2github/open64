@@ -66,12 +66,6 @@ void *__gs_mempool_alloc(unsigned int arena_id, unsigned int count)
   gs_arena_t *arena = &gs_mempool[arena_id];
   gs_memblock_t *memblk = arena->lastblock;
   if (memblk == NULL) {
-#ifdef TARG_IA64
-    // On IA64, the sizeof(gspin_t) is 32
-    GS_ASSERT(sizeof(gspin_t) == 32, "struct gspin size has changed.");
-#else
-    GS_ASSERT(sizeof(gspin_t) == 20, "struct gspin size has changed.");
-#endif
     memblk = gs_new_memblock(0);
     arena->firstblock = arena->lastblock = memblk;
     arena->current_index = 0;

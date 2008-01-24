@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -175,6 +179,27 @@ EBO_hash_op (OP *op,
 	  hash_value = EBO_SPILL_MEM_HASH;
       }
     }
+#ifdef TARG_X8664  // zhc 
+    // The above test doesn't catch all cases of EBO_SPILL_MEM_HASH:
+    // 1)  TN_has_spill may be false even for spill OP.  This occurs for a
+    //     spill store when EBO has substituted the storeval with another TN
+    //     whose TN_has_spill is false.  Bug 12965.
+    // 2)  It is possible TN_var(ctn) != TN_spill(spill_tn).  For example:
+    //       TN100($11) = ld .. (sym:gra_spill_temp_200)
+    //       sd TN100($11) .. (sym:gra_spill_temp_201)
+    //     For the "sd":
+    //       spill_tn is TN100($11); TN_spill(spill_tn) is gra_spill_temp_200
+    //       ctn is (sym:gra_spill_temp_201); TN_var(ctn) is gra_spill_temp_201
+    //     TN_spill is different from TN_var.  Bug 13223.
+    if (hash_value != EBO_SPILL_MEM_HASH) {
+      const INT n = TOP_Find_Operand_Use(OP_code(op), OU_offset);
+      TN *tn = OP_opnd(op, n);
+      if (TN_is_symbol(tn) &&
+          CGSPILL_Is_Spill_Location(TN_var(tn))) {
+        hash_value = EBO_SPILL_MEM_HASH;
+      }
+    }
+#endif  // TARG_X8664
 #else
     if (spill_tn && TN_has_spill(spill_tn)) hash_value = EBO_SPILL_MEM_HASH;
 #endif

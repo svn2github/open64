@@ -524,12 +524,12 @@ Perform_Interprocedural_Analysis ()
 #endif
     }
 
-    if (IPA_Enable_Devirtualization) {
-        Temporary_Error_Phase ephase ("IPA Devirtualization");
-        IPA_Class_Hierarchy = Build_Class_Hierarchy();
-        IPA_devirtualization();
-    }
-	
+    if (IPA_Enable_Devirtualization) { 
+        Temporary_Error_Phase ephase ("IPA Devirtualization"); 
+        IPA_Class_Hierarchy = Build_Class_Hierarchy(); 
+        IPA_devirtualization(); 
+    } 
+
     if ( IPA_Enable_Simple_Alias ) {
       Temporary_Error_Phase ephase ("Interprocedural Alias Analysis");
       if (Verbose) {

@@ -211,6 +211,9 @@ extern	void		translate_dv_component(opnd_type *, expr_arg_type *);
 extern  void		transform_char_sequence_ref(opnd_type *, int);
 extern  boolean         tree_produces_dealloc(opnd_type *root);
 extern  boolean         validate_char_len(opnd_type *, expr_arg_type *);
+#ifdef KEY /* Bug 11986, 6845 */
+extern int help_dealloc(int, int, fld_type, int, boolean, boolean, boolean);
+#endif /* KEY Bug 11986, 6845 */
 
 
 /*********************************************\

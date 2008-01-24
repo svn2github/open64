@@ -406,6 +406,7 @@ extern BOOL LANG_Symtab_Verify_Set;
 #ifdef KEY
 extern BOOL LANG_Formal_Deref_Unsafe;
 extern BOOL LANG_Math_Errno;
+extern BOOL LANG_Enable_CXX_Openmp;
 #endif
 
 extern BOOL WHIRL_Mtype_A_On;

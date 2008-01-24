@@ -6921,6 +6921,150 @@ environment variable.
 .Ma WARNING
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKNOMOD PSC_STACK_LIMIT is empty, so will not modify stack size limit
+$nexp FWSTKNOMOD
+PSC_STACK_LIMIT is empty, so will not modify stack size limit
+.PP
+When the environment variable PSC_STACK_LIMIT is set to the empty string, the
+Fortran runtime system will leave the stack size limit unchanged. You may set
+the variable to a specific size (for example, "256K", "512M", "2G", or
+"50%"), or you may set the variable to the empty string, in which case the
+runtime system will use the size of physical memory minus 128Mbyte per CPU.
+.Ma COMMENT
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKNOCALC Could not discover prior stack size limit (error: %s)
+$nexp FWSTKNOCALC
+Could not discover prior stack size limit (error: \fIx\fR)
+.PP
+The Fortran runtime system was attempted to obtain the prior stack size limit
+information from the operating system prior to changing the limit, but
+encountered the error shown
+.Ma WARNING
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKNOLIM Stack size was unlimited prior to start of program
+$nexp FWSTKNOLIM
+Stack size was unlimited prior to start of program
+.PP
+Before the Fortran runtime system started work, the stack size was unlimited.
+.Ma COMMENT
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKLIM Prior stack size limits: %ld current, %ld maximum
+$nexp FWSTKLIM
+Prior stack size limits: \fIn\fR current, \fIm\fR maximum
+.PP
+Before the Fortran runtime system started work, these parameters set the limit
+on the stack size.
+.Ma COMMENT
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKPHYSMEM Physical memory: %lld bytes\nNumber of CPUs: %lld
+$nexp FWSTKPHYSMEM
+Physical memory: \fIn\fR bytes
+.br
+Number of CPUs: \fIm\fR
+.PP
+This message is purely for your information
+.Ma COMMENT
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKPHYSSHR Physical memory is shared between %d threads
+$nexp FWPHYSSHR
+Physical memory is shared between \fIn\fR threads
+.PP
+This message is purely for your information
+.Ma COMMENT
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKAUTOMAX Automatic maximum stack size limit: %lld (%lld%% of RAM)
+$nexp FWSTKAUTOMAX
+Automatic maximum stack size limit: \fIn\fR (\fIm\fR% of RAM)
+.PP
+This message is purely for your information
+.Ma COMMENT
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKILLFORM Requested stack size limit of "%s" is not a valid number
+$nexp FWSTKILLFORM
+Requested stack size limit of "%s" is not a valid number
+.PP
+An error occurred when the Fortran runtime system tried to convert the value
+of environment variable PSC_STACK_LIMIT to a number. Examples of acceptable
+values are "256K", "512M", "2G", or "50%".
+.Ma WARNING
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKBADMAX Bad maximum stack size limit of %lld (specified as "%s")
+$nexp FWSTKBADMAX
+Bad maximum stack size limit of \fIn\fR (specified as "\fIx\fR")
+.PP
+The stack size limit you specified is less than the minimum value allowed
+.Ma WARNING
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKUNLIM Treating requested stack size limit of %lld as no limit
+$nexp FWSTKUNLIM
+Treating requested stack size limit of \fIn\fR as no limit
+.PP
+You requested such a large stack size limit that there will be no limit
+.Ma WARNING
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKINFIN You requested no limit on the stack size
+$nexp FWSTKINFIN
+You requested no limit on the stack size
+.PP
+This message is purely for your information
+.Ma COMMENT
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKLIMIT You have asked for a stack size limit of %lld (%lld%% of RAM)
+$nexp FWSTKLIMIT
+You have asked for a stack size limit of \fIn\fR (\fIm\fR% of RAM)
+.PP
+This message is purely for your information
+.Ma COMMENT
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKVSPHYS Your requested stack size limit is %lld%% of physical memory
+$nexp FWSTKVSPHYS
+Your requested stack size limit is \fIn\fR% of physical memory
+.PP
+You have requested a stack size limit exceeding physical memory, which could impact execution speed.
+.Ma WARNING
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKNOREDUCE Stack limit is already greater than the default
+$nexp FWSTKNOREDUCE
+Stack limit is already greater than the default
+.PP
+Although the environment variable PSC_STK_LIMIT was not set, the Fortran
+runtime system will not change the stack limit, because the prior limit was
+already greater than the default value which the runtime system would use
+.Ma COMMENT
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKNOCHG Could not change stack size limit (error was: %s)
+$nexp FWSTKNOCHG
+Could not change stack size limit (error: \fIx\fR)
+.PP
+The Fortran runtime system attempted to change the stack size limit by
+calling the operating system, but encountered the error shown
+.Ma WARNING
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWSTKINCORRECT Stack size limit was not set correctly; asked for %lld, got %ld
+$nexp FWSTKINCORRECT
+Stack size limit was not set correctly; asked for \fIn\fR, got \fIm\fR
+.PP
+The Fortran runtime system encountered no error when calling the operating
+system to change the stack size, but the change did not have the desired
+effect
+.Ma WARNING
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
 $
 $	C Compiler-initiated run-time messages
 $
@@ -6954,8 +7098,8 @@ $msg CWBNDCHK At line %d in C file '%s', subscript value %d\n\
   is out of bounds for dimension %d, which has a size of %d,\n\
   for array '%s'.
 $nexp CWBNDCHK
-At line \fIn\*C in C file \&'\fIname\*C', subscript \ 
-value \fIi\*C is out of bounds for dimension \fId\*C, \ 
+At line \fIn\*C in C file \&'\fIname\*C', subscript \
+value \fIi\*C is out of bounds for dimension \fId\*C, \
 which has a size of \fIs\*C, for array '\fIa\*C'.
 .PP
 When bounds checking is enabled, this message is issued if an

@@ -138,7 +138,7 @@ extern BOOL OP_ld_st_unat(OP *op);
 #endif
 extern INT32 EBO_Opt_Level_Default;
 extern INT32 EBO_Opt_Level;
-#ifndef TARG_IA64
+#ifdef KEY
 extern INT32 EBO_Opt_Mask;
 #define EBO_CAN_MERGE_INTO_OFFSET 	0x1
 #define EBO_COMBINE_L1_L2_PREFETCH  	0x2

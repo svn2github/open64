@@ -205,9 +205,11 @@ STR_RED::Is_cvt_linear( const CODEREP *cr ) const
   // allow U8U4CVT strength reduction if the CVT is a 1st order expr
   if ((cr->Dtyp() == MTYPE_U8 || cr->Dtyp() == MTYPE_I8)
       && cr->Dsctyp() == MTYPE_U4) {
+#ifndef TARG_X8664
     Is_True(cr->Opnd(0)->Kind() == CK_VAR, 
 	    ("STR_RED::Is_cvt_linear:  invalid str red expr."));
     if (!Htable()->Opt_stab()->Aux_stab_entry(cr->Opnd(0)->Aux_id())->EPRE_temp())
+#endif
       return TRUE;
   }
       

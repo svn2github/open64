@@ -7101,9 +7101,6 @@ gcc_built_in2gsbi (enum built_in_function code)
     case BUILT_IN_ISWXDIGIT: return GSBI_BUILT_IN_ISWXDIGIT;
     case BUILT_IN_TOWLOWER: return GSBI_BUILT_IN_TOWLOWER;
     case BUILT_IN_TOWUPPER: return GSBI_BUILT_IN_TOWUPPER;
-    case BUILT_IN_CTYPE_B_LOC: return GSBI_BUILT_IN_CTYPE_B_LOC;
-    case BUILT_IN_CTYPE_TOUPPER_LOC: return GSBI_BUILT_IN_CTYPE_TOUPPER_LOC;
-    case BUILT_IN_CTYPE_TOLOWER_LOC: return GSBI_BUILT_IN_CTYPE_TOLOWER_LOC;
     case BUILT_IN_ABORT: return GSBI_BUILT_IN_ABORT;
     case BUILT_IN_ABS: return GSBI_BUILT_IN_ABS;
     case BUILT_IN_AGGREGATE_INCOMING_ADDRESS: return GSBI_BUILT_IN_AGGREGATE_INCOMING_ADDRESS;
@@ -8125,12 +8122,6 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
       _gs_bv (flags, GS_DECL_NONLOCAL, DECL_NONLOCAL (t));
 
-      if (TREE_CODE(t) != FUNCTION_DECL && DECL_REGISTER(t)) {
-	gs_t asmreg = __gs(IB_INT);
-	_gs_n(asmreg, DECL_ASMREG(t));
-	gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASMREG, asmreg);
-      }
-
       switch (TREE_CODE(t)) {
 	case TYPE_DECL:
 	  gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ORIGINAL_TYPE,
@@ -8188,6 +8179,14 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		     gs_x_1(DECL_VALUE_EXPR(t), seq_num));
 	  _gs_bv (flags, GS_DECL_IN_TEXT_SECTION, DECL_IN_TEXT_SECTION (t));
 	  _gs_bv (flags, GS_DECL_THREAD_LOCAL, DECL_THREAD_LOCAL (t));
+
+	  if (DECL_REGISTER(t) && DECL_HARD_REGISTER(t)) {
+	    char *reg_name = IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(t));
+	    int reg_number = decode_reg_name(reg_name);
+	    gs_t asmreg = __gs(IB_INT);
+	    _gs_n(asmreg, reg_number);
+	    gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASMREG, asmreg);
+	  }
 	  break;
 
 	case PARM_DECL:
@@ -8280,13 +8279,13 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
           case BUILT_IN_NORMAL:
             _gs_hword(decl_function_code, gcc_built_in2gsbi ((int) DECL_FUNCTION_CODE (t)));
             break;
-          case BUILT_IN_MD:
 #if defined(TARG_IA32) || defined(TARG_X8664)
+          case BUILT_IN_MD:
             _gs_hword(decl_function_code, ix86_builtins2gsbi_ts ((int) DECL_FUNCTION_CODE (t)));
 #else
-            _gs_hword(decl_function_code, gcc_built_in2gsbi ((int) DECL_FUNCTION_CODE (t)));
+	    _gs_hword(decl_function_code, gcc_built_in2gsbi ((int) DECL_FUNCTION_CODE (t)));
 #endif
-            break;
+	    break;
           default: gcc_assert (0); break;
         }
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_BUILT_IN_CLASS, decl_built_in_class);
@@ -8340,7 +8339,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
          || (TREE_CODE (t) == VAR_DECL
             && (TREE_STATIC (t)
                 || DECL_EXTERNAL (t)
-                || TREE_PUBLIC (t)))) {
+                || TREE_PUBLIC (t)
+		|| DECL_REGISTER(t) && DECL_HARD_REGISTER(t)))) {
         gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASSEMBLER_NAME,
 		   gs_x_1(DECL_ASSEMBLER_NAME(t), seq_num));
       }
@@ -8708,6 +8708,28 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	  case TARGET_EXPR:
 	    _gs_bv(flags, GS_EMIT_TARGET_EXPR_CLEANUP,
 		   EMIT_TARGET_EXPR_CLEANUP(t));
+	    break;
+	  case CALL_EXPR:
+	    {
+	      /* bug 12598: Try to fold OBJ_TYPE_REF if it is present
+	         under the CALL_EXPR. Code adapted from fold_stmt() . */
+	      tree callee = get_callee_fndecl (t);
+	      if (!(callee && DECL_BUILT_IN(callee)))
+	      {
+		callee = TREE_OPERAND(t,0);
+		if (TREE_CODE(callee) == OBJ_TYPE_REF &&
+		    lang_hooks.fold_obj_type_ref
+		    && TREE_CODE (OBJ_TYPE_REF_OBJECT (callee)) == ADDR_EXPR
+		    && DECL_P (TREE_OPERAND (OBJ_TYPE_REF_OBJECT (callee), 0)))
+		    {
+		      tree t1 = TREE_TYPE (TREE_TYPE
+		                           (OBJ_TYPE_REF_OBJECT (callee)));
+		      t1 = lang_hooks.fold_obj_type_ref (callee, t1);
+		      if (t1)
+		        TREE_OPERAND (t, 0) = t1;
+		    }
+	      }
+	    }
 	    break;
 	  default:
 	    break;

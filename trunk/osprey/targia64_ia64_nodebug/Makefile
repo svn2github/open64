@@ -58,6 +58,8 @@ LIBRARY_SUBDIRS = \
 	libelfutil \
 	libunwind \
 	libunwindP \
+	libspin \
+	libspin_4_2_0 \
 	libunwind_gdb
 
 
@@ -88,6 +90,7 @@ TOOL_SUBDIRS = \
 	wopt \
 	gdb \
 	wgen \
+	wgen_4_2_0 \
 	be_driver
 
 #	ld64

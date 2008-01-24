@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006. 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -95,6 +99,7 @@ static char *config_lno_rcs_id = "$Source: common/com/SCCS/s.config_lno.cxx $ $R
  */
 
 #define DEFAULT_UNROLL_PROD_MAX 16
+
 #ifdef KEY //bug 5375 changes unroll_max default to 5
 #define DEFAULT_UNROLL_MAX 5
 #else
@@ -211,6 +216,7 @@ static LNO_FLAGS Default_LNO = {
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
   TRUE,        /*Prefetch Invariant (non-constant) Stride */
   8,            /*Prefetch_Strides_Ahead*/
+  2,            /*Streaming Prefetch*/
 #endif
   2,		/* Prefetch_ahead */
 #ifdef TARG_IA64
@@ -406,6 +412,7 @@ LNO_FLAGS Initial_LNO = {
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
   TRUE,        /* Prefetch Invariant Stride */
   8,            /* Prefetch_Strides_Ahead */
+  2,            /* Streaming Prefetch */
 #endif
   2,		/* Prefetch_ahead */
 #ifdef TARG_IA64
@@ -735,10 +742,6 @@ static OPTION_DESC Options_LNO[] = {
 					Pct_Excess_Writes_Nonhidable ),
   LNOPT_BOOL (   "plower",	        NULL,	Pseudo_lower ),
   LNOPT_BOOL (   "plower_mp",           NULL,	Pseudo_lower ),
-#ifndef KEY
-  LNOPT_U32_SET  ( "prefetch",		"pref",	0,0,2,	Run_prefetch, 
-  					Run_prefetch_set ),
-#else
   LNOPT_U32_SET  ( "prefetch",		"pref",	NO_PREFETCH,NO_PREFETCH,
   					AGGRESSIVE_PREFETCH,	
 					Run_prefetch, Run_prefetch_set ),
@@ -746,7 +749,7 @@ static OPTION_DESC Options_LNO[] = {
   						Prefetch_stores_set ),
   LNOPT_BOOL( "pf_inv_stride",          NULL,   Prefetch_invariant_stride),
   LNOPT_U32 ( "pf_stride_ahead",            NULL,   8,0,128, Prefetch_stride_ahead ),
-#endif
+  LNOPT_U32 ( "stream_prefetch",            NULL,   2,0,128, Run_stream_prefetch ),
   LNOPT_U32  ( "prefetch_ahead",	NULL,	2,0,50,	Prefetch_ahead ),
   LNOPT_U32  (   "pf_ahead",		NULL,	2,0,50,	Prefetch_ahead ),
 #ifdef TARG_IA64
@@ -798,7 +801,7 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "vintr",			NULL,	Run_vintr ),
 #else
   LNOPT_U32_SET ("vintr",                "vintr", 1, 0, 2, Run_vintr,
-		                        Run_vintr_set ),
+		 Run_vintr_set ),
   LNOPT_BOOL ( "vintr_verbose",		NULL,	Vintr_Verbose ),
   LNOPT_U32_SET ("simd",                "simd", 1, 0, 2, Run_simd,
 		                        Run_simd_set ),

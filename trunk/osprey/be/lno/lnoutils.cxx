@@ -3030,7 +3030,13 @@ static void Du_Sanity_Check_r(
       reads->Push(wn);
       DEF_LIST* def_list=Du_Mgr->Ud_Get_Def(wn);
       WN* loop=def_list->Loop_stmt();
+
+#ifdef KEY //bug 12856: don't check Loop_stmt for iloads since
+           //it will never be used
+      if (loop && WN_operator(wn)!=OPR_ILOAD) {
+#else
       if (loop) {
+#endif
         if (WN_opcode(loop)!=OPC_DO_LOOP) {
           fprintf(fp,"WARNING: %s %d [0x%p]", 
 	    OPERATOR_name(opr), WN_map_id(wn), wn);

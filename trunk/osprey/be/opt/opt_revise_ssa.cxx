@@ -1,6 +1,10 @@
 //-*-c++-*-
 
 /*
+ * Copyright 2007 (C) PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -723,28 +727,33 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
       else if (cnode->RESULT()->Dtyp() == MTYPE_UNKNOWN) { // fix the types
 	chi_res = cnode->RESULT();
 
-    TY_IDX ty = TY_IDX_ZERO;
-    ST *st = _opt_stab->St(i);
-    if (st != NULL) ty = ST_type(st);
-
-	
-    sym = _opt_stab->Aux_stab_entry(i);
-    if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
-        rtype = sym->Mtype();
-    else {
-        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
-						    sym->Byte_size()); 
+	sym = _opt_stab->Aux_stab_entry(i);
+	TY_IDX ty = TY_IDX_ZERO;
+	ST *st = _opt_stab->St(i);
+	if (st != NULL) ty = ST_type(st);
+	if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
+	    rtype = sym->Mtype();
+	else {
+	    rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+							sym->Byte_size()); 
 #ifdef KEY // bug 8186
-	if (MTYPE_is_unsigned(sym->Mtype()))
-	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
+	    if (MTYPE_is_unsigned(sym->Mtype()))
+	      rtype = Mtype_TransferSign(MTYPE_U4, rtype);
 #endif
-    }
-    if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
-      ty = MTYPE_To_TY(rtype);
-    }
+        }
+	MTYPE desc = rtype;
+#ifdef KEY // promote to register type size
+	if (i != _opt_stab->Default_vsym() && 
+	    desc != MTYPE_UNKNOWN && desc != MTYPE_M)
+	  rtype = OPCODE_rtype(Ldid_from_mtype(desc));
+#endif
+	    
+	if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
+	  ty = MTYPE_To_TY(rtype);
+	}
 	
 	chi_res->Set_dtyp(rtype);
-	chi_res->Set_dsctyp(rtype);
+	chi_res->Set_dsctyp(desc);
 	chi_res->Set_lod_ty(ty);
       }
       return;

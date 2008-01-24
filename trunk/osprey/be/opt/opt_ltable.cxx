@@ -1,6 +1,10 @@
 //-*-c++-*-
 
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -231,6 +235,11 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	cr->Set_max_depth( ( depth <= 255 ) ? depth : 255 );
 	
       for (INT32 i=0; i<cr->Kid_count(); i++)	{ 
+#ifdef KEY // bug 12471: __builtin_expect's first kid must be constant
+	if (cr->Opr() == OPR_INTRINSIC_OP && cr->Intrinsic() == INTRN_EXPECT &&
+	    i == 1)
+	  continue;
+#endif
 	LPRE_bottom_up_cr(stmt, stmt_kid_num, cr->Opnd(i), FALSE, (depth+1), cr, i);
       }
       break;
@@ -613,8 +622,7 @@ BOOL
 CODEREP::Is_rvi_lda_candidate( const CODEREP *parent, INT whichkid, const OPT_STAB *opt_stab ) const
 {
 #if defined(TARG_X8664) || defined(TARG_IA32)
-  if (! WOPT_Enable_RVI)
-    return FALSE;
+  return FALSE;
 #else
   if (parent == NULL) return FALSE;
 

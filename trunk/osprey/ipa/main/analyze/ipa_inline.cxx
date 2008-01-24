@@ -436,8 +436,11 @@ Update_Total_Prog_Size (const IPA_NODE *caller, IPA_NODE *callee,
 	callee->Set_Undeletable ();
 	return;
     }
-	
-    if (! callee->Is_Undeletable () &&
+    if (
+#ifdef KEY
+	OPT_Cyg_Instrument == 0 &&  // Bug 750; TODO: Relax restriction
+#endif
+	! callee->Is_Undeletable () &&
 	! callee->Should_Be_Skipped() &&
 	All_Calls_Inlined (callee, cg) &&
 	! callee->Is_Externally_Callable ()) {

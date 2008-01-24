@@ -2097,6 +2097,9 @@ cwh_stmt_str_falsebr_util(OPERATOR opr,
 
 void
 fei_new_select(INT32 num_cases,
+#ifdef KEY /* Bug 12319 */
+               INTPTR last_label_idx,
+#endif /* KEY Bug 12319 */
                INTPTR default_label_idx )
 {
   WN *parent_block;
@@ -2146,6 +2149,10 @@ fei_new_select(INT32 num_cases,
        
        cwh_block_set_current(parent_block);
        cwh_block_append(wn);
+#ifdef KEY /* Bug 12319 */
+       LABEL_IDX last_lb = cast_to_LB(last_label_idx);
+       WN_last_label(wn) = last_lb;
+#endif /* KEY Bug 12319 */
 
      } else {  /* empty select */
 

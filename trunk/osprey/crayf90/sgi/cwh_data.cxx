@@ -154,6 +154,11 @@ fei_static_base(INTPTR sym_idx)
      current_pos = offset;
      init_common_or_module = TRUE; 
    }
+
+#ifdef KEY // bug 13276
+   if (ST_sclass(base) == SCLASS_FORMAL_REF)
+     return;
+#endif
  
    Set_ST_is_initialized(current_st);
 

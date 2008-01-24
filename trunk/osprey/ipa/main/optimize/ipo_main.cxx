@@ -122,6 +122,8 @@
 
 #ifndef KEY
 #include "inline_script_parser.h"
+#else
+extern void IPO_WN_Update_For_Struct_Opt (IPA_NODE *);
 #endif  /* KEY */
 #include "ipa_reorder.h" //IPO_Modify_WN_for_field_reorder ()
 
@@ -600,6 +602,11 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
     IPO_propagate_globals(node);
   }
   
+#ifdef PATHSCALE_MERGE /* KEY */
+  if (IPA_Enable_Struct_Opt)
+    IPO_WN_Update_For_Struct_Opt(node);
+#endif
+
   if(IPA_Enable_Reorder && reorder_candidate.size)
     IPO_Modify_WN_for_field_reorder(node) ;
   else //just for debug  feld reorder

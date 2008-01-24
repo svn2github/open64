@@ -183,7 +183,7 @@ void EETARG_Generate_PIC_Entry_Code( BB* bb, OPS* ops )
 
     OPS_Remove_All( ops );
 
-    Build_OP( TOP_popl, ebx_tn, ops );
+    Build_OP( TOP_popl, ebx_tn, SP_TN, SP_TN, ops );
     Set_OP_computes_got( OPS_last(ops) );
     Exp_ADD( Pointer_Mtype,
              ebx_tn, ebx_tn,

@@ -304,8 +304,10 @@ extern TCON Host_To_Targ_Float ( TYPE_ID ctype, double fvalue );
 extern TCON Host_To_Targ_Float_10 ( TYPE_ID ctype, long double fvalue );
 extern TCON Host_To_Targ_Float_4 ( TYPE_ID ctype, float fvalue );
 extern TCON Host_To_Targ_Quad  ( QUAD_TYPE fvalue );
-#ifdef TARG_X8664
+#ifdef KEY
 extern TCON Create_Simd_Const ( TYPE_ID ctype, TCON t );
+#endif
+#ifdef TARG_X8664
 extern TCON Create_Simd_Prog_Const ( TYPE_ID ctype, INT64 val );
 #endif 
 

@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -367,6 +359,9 @@ static WN* find_loop_var_in_simple_ub(WN* loop) {
         loop_index=use;
   }
 
+#ifdef KEY
+   FmtAssert(loop_index,("For a do loop, its index variable must appear in loop end!"));
+#endif
   WN* tmp=LWN_Get_Parent(loop_index);
   OPERATOR opr=WN_operator(tmp);
   if (opr==OPR_MPY) {

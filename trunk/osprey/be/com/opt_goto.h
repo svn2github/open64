@@ -1,3 +1,9 @@
+
+/* 
+   Copyright (C) 2001-2004 Tensilica, Inc.  All Rights Reserved.
+   Revised to support Tensilica processors and to improve overall performance
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -189,12 +195,17 @@ private:
   void Fixup_Parents(WN *wn, WN *parent);
   void Backpatch();
   BOOL Ancestor_Through_If(GOTO_DESCRIPTOR *gd);
+  BOOL Parent_Through_If(GOTO_DESCRIPTOR *gd);
   BOOL Sibling(GOTO_DESCRIPTOR *gd);
   void Move_Goto_Out(GOTO_DESCRIPTOR *gd);
   void Replace_Goto_With_If(GOTO_DESCRIPTOR *gd);
   void Replace_Goto_With_While(GOTO_DESCRIPTOR *gd);
   void Move_Into_Else(GOTO_DESCRIPTOR *gd);
+  void Create_Truebr(GOTO_DESCRIPTOR *gd);
+  void Promote_Do_While(WN *wn);
+  WN *Func_Nd() { return _func_nd;};
   BOOL Can_Move_Into_Else(GOTO_DESCRIPTOR *gd);
+  BOOL Is_Truebr(GOTO_DESCRIPTOR *gd);
   BOOL Goto_Is_Noop(GOTO_DESCRIPTOR *gd) const;
   INT Find_Level(WN *wn);
   WN *Find_Common_Ancestor(WN *wn1, WN *wn2);

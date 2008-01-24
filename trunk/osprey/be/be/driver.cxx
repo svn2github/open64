@@ -133,6 +133,7 @@
 #ifdef KEY
 #include "config_wopt.h"    // for WOPT_Enable_Simple_If_Conv
 #include "output_func_start_profiler.h"
+#include "goto_conv.h"
 #endif
 
 #include "be_memop_annot.h"
@@ -144,6 +145,7 @@ extern ERROR_DESC EDESC_BE[], EDESC_CG[];
 extern "C" char *cplus_demangle (const char *, int);
 extern void Recompute_addr_saved_stmt (WN *);
 extern void Set_addr_saved_stmt (WN *, BOOL);
+extern void CYG_Instrument_Driver(WN *);
 #endif
 
 extern void Initialize_Targ_Info(void);
@@ -1115,9 +1117,9 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
         WB_LWR_Initialize(rwn, alias_mgr);
 
     /* lowering MLDID/MSTID before lowering to CG */
-    if (!Run_wopt || 
-         // OSP 421, MLDID/MSTID is not lowered.
-         Query_Skiplist (WOPT_Skip_List, Current_PU_Count()) ) {
+	if (!Run_wopt ||
+	    // OSP 421, MLDID/MSTID is not lowered.
+	    Query_Skiplist (WOPT_Skip_List, Current_PU_Count()) ) {
       rwn = WN_Lower(rwn, LOWER_MLDID_MSTID, alias_mgr, 
                        "Lower MLDID/MSTID when not running WOPT");
 #ifdef KEY // bug 7298: this flag could have been set by LNO's preopt
@@ -1662,6 +1664,15 @@ Preprocess_PU (PU_Info *current_pu)
     Prp_Instrument_And_EmitSrc(pu);
   }
 
+#ifdef KEY
+  if (Early_Goto_Conversion)
+  {
+      GTABLE goto_table( pu, MEM_pu_pool_ptr );
+      goto_table.Remove_Gotos();
+      // goto_table gets destructed here
+  }
+#endif
+
   /* Add instrumentation here for vho lower. */
   if ( Instrumentation_Enabled
        && (Instrumentation_Type_Num & WHIRL_PROFILE)
@@ -1675,7 +1686,15 @@ Preprocess_PU (PU_Info *current_pu)
   } else if ( Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO] ) {
     WN_Annotate(pu, PROFILE_PHASE_BEFORE_VHO, &MEM_pu_pool);
   }
-
+#ifdef KEY
+  /* Insert __cyg_profile_func_enter/exit instrumentation (Bug 570) */
+  if ( OPT_Cyg_Instrument > 0 && ! Run_ipl &&
+       ( ! PU_no_instrument(Get_Current_PU()) ||
+         PU_has_inlines(Get_Current_PU()) ) ) {
+    Set_Error_Phase ( "CYG Instrumenting" );
+    CYG_Instrument_Driver( pu );
+  }
+#endif
   Set_Error_Phase ( "VHO Processing" );
   pu = VHO_Lower_Driver (current_pu, pu);
 

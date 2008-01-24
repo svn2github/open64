@@ -1,7 +1,3 @@
-/*
- * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
- */
-
 /* 
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
@@ -62,6 +58,9 @@ int key_exceptions = 0;
 BOOL opt_regions = 0;
 BOOL lang_cplus = FALSE;
 BOOL c_omit_external = TRUE;
+#ifdef FE_GNU_4_2_0
+BOOL enable_cxx_openmp = TRUE;
+#endif
 gs_t program;
 /*       MAX_DEBUG_LEVEL        2  :: Defined in flags.h */
 # define DEF_DEBUG_LEVEL        0
@@ -71,6 +70,9 @@ extern void WGEN_Weak_Finish(void);
 extern void WGEN_Expand_Top_Level_Decl(gs_t);
 extern void WGEN_Expand_Defers(void);
 extern void WGEN_Expand_Decl(gs_t, BOOL);
+#ifdef KEY
+extern void WGEN_Alias_Finish(void);
+#endif
 
 //*******************************************************
 // Process the command line arguments.
@@ -157,7 +159,12 @@ Process_Cc1_Command_Line(gs_t arg_list)
   argv = gs_s(gs_index(arg_list, 0));
   char *command = Last_Pathname_Component(argv);
 //printf("%s\n", command);
+#ifdef FE_GNU_4_2_0
+  lang_cplus = !strcmp(command, "cc1plus42");
+#else
   lang_cplus = !strcmp(command, "cc1plus");
+#endif
+
   if (lang_cplus)
     key_exceptions = 1;
 
@@ -204,6 +211,14 @@ Process_Cc1_Command_Line(gs_t arg_list)
 	      else if (!lang_cplus && !strcmp( cp, "c-omit-external")) {
 		c_omit_external = TRUE;
 	      }
+#ifdef FE_GNU_4_2_0
+	      else if (!strcmp( cp, "no-cxx-openmp")) {
+	        enable_cxx_openmp = FALSE;
+	      }
+	      else if (lang_cplus && !strcmp( cp, "cxx-openmp")) {
+	        enable_cxx_openmp = TRUE;
+	      }
+#endif
 	      break;
 
 	  case 'g':		    /* Debug level: */
@@ -318,6 +333,10 @@ main ( INT argc, char **argv, char **envp)
 #endif
 	}
 
+#ifdef KEY
+	if (!lang_cplus)
+	  WGEN_Alias_Finish();
+#endif
 	WGEN_Weak_Finish();
 	WGEN_File_Finish ();
 	WGEN_Finish ();

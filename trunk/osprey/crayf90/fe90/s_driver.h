@@ -220,8 +220,16 @@
                           no_semantics_routine,		/* Volatile_Stmt      */
 			  directive_stmt_semantics,
 			  		/* Open_MP_End_Parallel_Workshare_Stmt */
-			  directive_stmt_semantics
+			  directive_stmt_semantics,
 				  	/* Open_MP_End_Workshare_Stmt */
+#ifdef KEY /* Bug 11741 */
+                          no_semantics_routine,        /* Import_Stmt        */
+#endif /* KEY Bug 11741 */
+#ifdef KEY /* Bug 10572 */
+                          no_semantics_routine,        /* Enum_Stmt           */
+                          no_semantics_routine,        /* End_Enum_Stmt       */
+                          no_semantics_routine         /* Enumerator_Stmt     */
+#endif /* KEY Bug 10572 */
 			};
 
 /*********************************************************\

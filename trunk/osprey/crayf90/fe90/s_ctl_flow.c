@@ -1948,14 +1948,24 @@ void do_stmt_semantics (void)
          if (cdir_switches.doall_sh_idx ||
              cdir_switches.doacross_sh_idx ||
              cdir_switches.pdo_sh_idx ||
+#ifndef KEY /* Bug 12687 */
+	     /* OpenMP standard doesn't prohibit calls to internal procedures */
              cdir_switches.do_omp_sh_idx ||
              cdir_switches.paralleldo_omp_sh_idx ||
+#endif /* KEY Bug 12687 */
              cdir_switches.paralleldo_sh_idx) {
 
             cdir_switches.parallel_region = TRUE;
             cdir_switches.no_internal_calls = TRUE;
             SH_DOALL_LOOP_END(IR_IDX_L(SH_IR_IDX(do_sh_idx))) = TRUE;
          }
+#ifdef KEY /* Bug 12687 */
+	 else if (cdir_switches.do_omp_sh_idx ||
+             cdir_switches.paralleldo_omp_sh_idx) {
+            cdir_switches.parallel_region = TRUE;
+            SH_DOALL_LOOP_END(IR_IDX_L(SH_IR_IDX(do_sh_idx))) = TRUE;
+	 }
+#endif /* KEY Bug 12687 */
 
          if (cdir_switches.do_omp_sh_idx ||
              cdir_switches.paralleldo_omp_sh_idx) {
@@ -4814,6 +4824,27 @@ void nullify_stmt_semantics (void)
 
                SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))		= dv_idx;
                SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx))	= TRUE;
+#ifdef KEY /* Bug 9608 */
+	      /*
+	       * When we set assoc=0 for an array, we also set contig=1 so that
+	       * copyinout doesn't blow up if user (illegally) passes the null
+	       * pointer to a procedure lacking an explicit interface, in the
+	       * (unjustified) expectation that the pointer won't be
+	       * dereferenced if the procedure doesn't refer to the dummy
+	       * argument. This seems cheaper than adding a test for null
+	       * before and after every call.
+	       */
+	      if (exp_desc.rank) {
+		gen_sh(Before, Assignment_Stmt, line, column, FALSE, FALSE,
+		  TRUE);
+		int contig_stmt_idx = SH_PREV_IDX(curr_stmt_sh_idx);
+		SH_IR_IDX(contig_stmt_idx) = gen_ir(
+		  IR_FLD_L(OPND_IDX(opnd)), IR_IDX_L(OPND_IDX(opnd)),
+		  Dv_Set_A_Contig, CG_INTEGER_DEFAULT_TYPE, line, column,
+		  CN_Tbl_Idx, CN_INTEGER_ONE_IDX);
+		SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
+	      }
+#endif /* KEY Bug 9608 */
             }
             else {
                PRINTMSG(line, 626, Internal, column,

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2007. PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -91,6 +95,9 @@ BOOL Target_SSE3_Set = FALSE;
 BOOL Target_3DNow = FALSE;       // -TARG:3dnow=on/off
 BOOL Target_3DNow_Set = FALSE;
 
+BOOL Target_SSE4a = FALSE;       // -TARG:sse4a=on/off
+BOOL Target_SSE4a_Set = FALSE;
+
 // bug 4327
 int Target_x87_Precision = 80;	// -TARG:x87_precision=32/64/80
 
@@ -132,6 +139,10 @@ static OPTION_DESC Options_TARG[] = {
   { OVK_BOOL,	OV_VISIBLE,	FALSE, "3dnow",		"3dnow",
     0, 0, 0,	&Target_3DNow,	&Target_3DNow_Set,
     "Enable 3DNow extensions" },
+  { OVK_BOOL,   OV_VISIBLE,     FALSE, "sse4a",         "sse4a",
+    0, 0, 0,    &Target_SSE4a,  &Target_SSE4a_Set,
+    "Enable SSE4a extensions" },
+
   { OVK_INT32,	OV_VISIBLE,	FALSE, "x87-precision", "x87-precision",
     80, 32, 80, &Target_x87_Precision,	NULL,
     "Specify the precision of x87 floating-point calculations (32, 64, or 80)"},

@@ -5572,6 +5572,11 @@ static	void	process_f_option(char	*optargs)
       source_form		= Free_Form;
       set_source_form_option	= TRUE;
    }
+#ifdef KEY /* Bug 12482 */
+   else if (EQUAL_STRS(optargs, "fortran2003")) {
+      on_off_flags.fortran2003 = TRUE;
+   }
+#endif /* KEY Bug 12482 */
    else {
       ntr_msg_queue(0, 78, Log_Error, 0, optargs, 'f', ARG_STR_ARG);
    }

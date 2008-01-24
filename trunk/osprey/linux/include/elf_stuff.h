@@ -180,6 +180,10 @@ typedef unsigned char Elf64_Byte;
 #define ELF_STRTAB	".strtab"
 #define ELF_SYMTAB	".symtab"
 #define ELF_TEXT	".text"
+#ifdef KEY
+#define ELF_TBSS        ".tbss"
+#define ELF_TDATA       ".tdata"
+#endif
 
 /*
  * special section names
@@ -428,6 +432,9 @@ typedef enum {
 #define SHF_WRITE	(1 << 0)	/* Writable */
 #define SHF_ALLOC	(1 << 1)	/* Occupies memory during execution */
 #define SHF_EXECINSTR	(1 << 2)	/* Executable */
+#ifndef SHF_TLS
+#define SHF_TLS         (1 << 10)       /* Section hold thread-local data. */
+#endif
 #define SHF_MASKPROC	0xf0000000	/* Processor-specific */
 
 /* Symbol table entry.  */

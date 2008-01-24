@@ -54,6 +54,7 @@ ipa_add_link_flag (const char *str);
 extern void
 ipa_modify_link_flag (char *lname, char *fname);
 
+
 extern void
 ipa_add_comma_list (const char* name);
 

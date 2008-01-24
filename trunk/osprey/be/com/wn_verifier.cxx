@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -806,15 +810,15 @@ BOOL WN_Verifier::LDA_ty_not_NULL(WN *wn)
 	    DevWarn("WN_verifier Error (LDA_ty_not_NULL): TY of the %s is "
 		    "either NULL or is not a pointer or scalar",
 		    OPCODE_name(opc));
-            if (DevWarn_Enabled()) {
+	    if (DevWarn_Enabled()) {
 #ifdef KEY // print type name only for shorter output
-              if (TY_name_idx(ty) == 0)
-                fprintf(stderr, "(anon)\n");
-              else fprintf(stderr, "%s\n", TY_name(ty));
+	      if (TY_name_idx(ty) == 0)
+		fprintf(stderr, "(anon)\n");
+	      else fprintf(stderr, "%s\n", TY_name(ty));
 #else
-              ty.Print (stderr);
+	      ty.Print (stderr);
 #endif
-            }
+	    }
 	    return FALSE;
 	}
     }
@@ -1026,10 +1030,16 @@ WN_Verifier::Field_id_valid (WN* wn)
 	}
 	break;
 
+    case OPR_ILOAD:
+        ty = &Ty_Table[WN_load_addr_ty(wn)];
+	// fall thru
     case OPR_ISTORE:
 	ty = &Ty_Table[TY_pointed (*ty)];
-	// fall through
-    default:
+	if (strncmp(TY_name(*ty), ".dope.", 6) == 0)
+	  break; // make exception for fortran dope vector
+	// fall thru
+    case OPR_STID:
+    case OPR_LDID:
 	if (TY_kind(*ty) != KIND_STRUCT) {
 	    Is_True (WN_field_id(wn) == 0,
 		     ("non-zero field id for memory op on scalar"));
@@ -1038,6 +1048,8 @@ WN_Verifier::Field_id_valid (WN* wn)
 		     MTYPE_byte_size(WN_desc(wn)) == TY_size(*ty),
 		     ("field_id and descriptor type are inconsistent"));
 	}
+	break;
+    default:
 	break;
     }
 

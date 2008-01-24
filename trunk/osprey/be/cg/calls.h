@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -124,6 +132,8 @@ extern PREG_NUM GP_Preg;
 extern PREG_NUM Return_Int_Preg[2];
 extern PREG_NUM Return_Float_Preg[2];
 
+extern BOOL Gen_Frame_Pointer;
+
 /* assign a special preg to each CALLEE_tn.  also ra, and gp */
 extern void Init_Callee_Saved_Regs_for_REGION( ST *pu, BOOL is_region );
 
@@ -149,6 +159,7 @@ extern void Optimize_Tail_Calls( ST* pu );
 
 #ifdef TARG_X8664
 void Adjust_SP_After_Call( BB* );
+extern INT Push_Pop_Int_Saved_Regs (void);
 #endif
 
 #ifdef KEY
@@ -167,5 +178,9 @@ extern INT Cgdwarf_Num_Callee_Saved_Regs (void);
 extern struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n);
 // The location on the stack that corresponds to the nth TN on the stack.
 extern ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n);
+#endif
+
+#ifdef TARG_MIPS
+extern TN *Caller_GP_TN;
 #endif
 #endif /* calls_INCLUDED */

@@ -643,6 +643,8 @@ CODEREP *Combine_bits_any_nzero_test(CODEREP *cr)
   }
   if (lvar != rvar)
     return NOHASH;
+  if (lvar->Kind() != CK_VAR && lvar->Kind() != CK_IVAR)
+    return NOHASH;
   // succeeded in matching pattern
   CODEREP *newcr;
   INT nbits = MTYPE_bit_size(lvar->Dsctyp()); 
@@ -725,6 +727,8 @@ CODEREP *Combine_bits_all_zero_test(CODEREP *cr)
     rbitmask = -1;
   }
   if (lvar != rvar)
+    return NOHASH;
+  if (lvar->Kind() != CK_VAR && lvar->Kind() != CK_IVAR)
     return NOHASH;
   // succeeded in matching pattern
   CODEREP *newcr;

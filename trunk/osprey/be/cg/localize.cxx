@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -658,7 +662,7 @@ Find_Global_TNs ( RID *rid )
             /* this use is just a self-copy, will disappear */
             continue;
 	  }
-#ifdef KEY
+#ifndef KEY
 	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
           if (!OP_copy(op))
 #endif
@@ -671,7 +675,7 @@ Find_Global_TNs ( RID *rid )
       for (resnum = 0; resnum < OP_results(op); resnum++) {
         tn = OP_result(op, resnum);
         if (TN_is_dedicated(tn)) {
-#ifdef KEY
+#ifndef KEY
 	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
           if (!OP_copy(op))
 #endif
@@ -792,6 +796,10 @@ Get_Local_TN_For_Global (TN *global_tn, TN_MAP spill_tns, BB *bb, BOOL reuse)
 			global_tn, CGSPILL_LCL));
 		tninfo->callee_save = FALSE;
 		preg = (PREG_NUM)(INTPTR) TN_MAP_Get( TN_To_PREG_Map, global_tn );
+#ifdef KEY
+		Is_True(preg >= 0, ("Get_Local_TN_For_Global: "
+				    "negative index to PREG_To_TN_Array"));
+#endif
 		if (preg) PREG_To_TN_Array[preg] = local_tn;
 	}
 	tninfo->local_tn = local_tn;

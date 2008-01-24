@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -274,12 +278,24 @@ Mtype_to_Ukind(MTYPE mtype)
       ukind = PREG_AS_CQ;
       break;
 #ifdef TARG_X8664
+   case MTYPE_V16C4:
+   case MTYPE_V16C8:
    case MTYPE_V16I1:
    case MTYPE_V16I2:
    case MTYPE_V16I4:
    case MTYPE_V16I8:
    case MTYPE_V16F4:
    case MTYPE_V16F8:
+
+   case MTYPE_V8I1:
+   case MTYPE_V8I2:
+   case MTYPE_V8I4:
+   case MTYPE_V8F4:
+
+   case MTYPE_M8I1:
+   case MTYPE_M8I2:
+   case MTYPE_M8I4:
+   case MTYPE_M8F4:
      ukind = PREG_AS_IEEE64;
      break;
 #endif
@@ -313,7 +329,7 @@ Accumulate_Preg_Info(TY_IDX preg_ty, INT16 preg_num)
    PREG_INFO      *preg_info;
    INT             usage_kind;
 
-   if (preg_num == -1)
+   if (preg_num <= -1)
      return;
 
    Is_True(TY_Is_Scalar(preg_ty), 

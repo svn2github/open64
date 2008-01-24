@@ -51,6 +51,7 @@
 #include "eh_region.h"
 #ifdef TARG_X8664
 #include "cgexp.h"
+#include "calls.h"
 #endif
 
 // from be/cg/cgdriver.h
@@ -74,6 +75,7 @@ extern void (*EH_Dump_INITOs_p) (WN *, FILE *);
 #ifdef TARG_X8664
 // from be/cg/cgexp.h
 extern void (*CG_Set_Is_Stack_Used_p) ();
+extern INT (*Push_Pop_Int_Saved_Regs_p) (void);
 #endif
 
 struct CG_INIT
@@ -91,6 +93,7 @@ struct CG_INIT
         EH_Dump_INITOs_p = EH_Dump_INITOs;
 #ifdef TARG_X8664
 	CG_Set_Is_Stack_Used_p = CG_Set_Is_Stack_Used;
+        Push_Pop_Int_Saved_Regs_p = Push_Pop_Int_Saved_Regs;
 #endif
     }
 } Cg_Initializer;

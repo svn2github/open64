@@ -96,6 +96,9 @@ extern BOOL Demangle;		    /* demangle C++ identifiers in error msg */
 
 extern BOOL ProMP_Listing;
 
+#ifdef KEY
+  extern INT32 OPT_Cyg_Instrument;     /* Limits DFE if on */
+#endif
 #undef DEMANGLE
 #define DEMANGLE(name) (name)
 #if 0

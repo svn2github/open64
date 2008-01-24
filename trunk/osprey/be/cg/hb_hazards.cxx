@@ -866,6 +866,7 @@ Check_For_Delay_Slot_Hazards (BB *bb)
     BB_Move_Delay_Slot_Op (bb);
   }
 
+#ifndef KEY
   // R10k chip workaround: Avoid placing integer mult/div ops in delay
   // slots of unconditional branches. (see pv516598) for more details.
   if (Is_Delay_Slot_Op (last_op, bb) && 
@@ -876,6 +877,7 @@ Check_For_Delay_Slot_Hazards (BB *bb)
       BB_Insert_Noops(xfer_op, 1, FALSE); 
     }
   }
+#endif
 }
 
 // ======================================================================

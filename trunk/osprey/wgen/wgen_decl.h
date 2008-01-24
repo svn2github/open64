@@ -73,11 +73,7 @@ extern void push_mp_local_vars (gs_t);
 extern gs_t pop_mp_local_vars (void);
 
 // Initialize a vector.
-#ifdef NEW_INITIALIZER
-extern void Traverse_Aggregate_Vector_Const (WN *, gs_t, BOOL, UINT);
-#else
 extern void Traverse_Aggregate_Vector_Const (ST *, gs_t, BOOL, UINT);
-#endif
 // Handle initialization through a modify_expr.
 extern void WGEN_Process_Initialization (gs_t);
 #endif /* KEY */
@@ -85,9 +81,6 @@ extern void WGEN_Process_Initialization (gs_t);
 /* generate a temp with extension 'name' having the initialization as specified
    by 'init' */
 extern ST *WGEN_Generate_Temp_For_Initialized_Aggregate (gs_t init, char *name);
-#ifdef NEW_INITIALIZER
-extern ST *WGEN_Generate_Initialized_Aggregate(WN *target, gs_t init);
-#endif
 
 /* handle __attribute__ ((alias)) */
 extern BOOL WGEN_Assemble_Alias (gs_t decl, gs_t target);
@@ -119,6 +112,11 @@ extern void WGEN_Resolve_Duplicate_Decls (gs_t olddecl, gs_t newdecl);
 /* call this routine to mark all the symbols in the weak decls list weak */
 extern "C" void WGEN_Weak_Finish(void);
 
+#ifdef KEY
+/* call this routine to process leftover symbols with alias targets */
+extern "C" void WGEN_Alias_Finish(void);
+#endif
+
 /* get the current function declaration.  This just comes from a static
  * global variable in the absence of nested function declarations.
  */
@@ -136,5 +134,7 @@ extern WN *Current_Entry_WN(void);
  */
 extern gs_t named_ret_obj_initializer;
 #endif
+/* KEY: ST to represent EXC_PTR_EXPR if C++ exceptions are disabled */
+extern ST * Dummy_Exc_Ptr_Expr;
 #endif
 

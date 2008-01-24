@@ -1,5 +1,13 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -124,6 +132,34 @@ find_full_path_of_gcc_file (char* const gcc_name, char* const comp_name,
             *p = '\0';
         }
 }
+
+#if 0
+/* search library_dirs for the crt file */
+char *
+find_crt_path (char *crtname)
+{
+        string_item_t *p;
+        buffer_t buf;
+        for (p = library_dirs->head; p != NULL; p = p->next) {
+                sprintf(buf, "%s/%s", p->name, crtname);
+                if (file_exists(buf)) {
+                        return string_copy(buf);
+                }
+        }
+        /* not found */
+        if (option_was_seen(O_nostdlib) || option_was_seen(O_L)) {
+                error("crt files not found in any -L directories:");
+                for (p = library_dirs->head; p != NULL; p = p->next) {
+                        fprintf(stderr, "\t%s/%s\n", p->name, crtname);
+                }
+                return crtname;
+        } else {
+                /* use default */
+                sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
+                return string_copy(buf);
+        }
+}
+#endif
 
 /* search library_dirs for the crt file */
 char*
@@ -431,7 +467,9 @@ append_objects_to_list (string_list_t *list)
 	    do_exit(1);
 	}
 	append_string_lists (list, objects);
-	append_string_lists (list, lib_objects);
+	if (xpg_flag && invoked_lang == L_f77) {
+		append_string_lists (list, lib_objects);
+	}
 }
 
 /* append cxx_prelinker_objects to end of list */
@@ -515,7 +553,6 @@ add_library_options (void)
 		internal_error("no abi set? (%d)", abi);
 	}
 }
-
 
 // Check whether the option should be turned into a linker option when pathcc
 // is called as a linker.

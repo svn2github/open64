@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -2884,14 +2888,35 @@ static void Split_BB(BB *bb)
   // Now, make all the splits fall through to one another.
   //
   bb_prev = bb;
-  for (BB* bb_tmp = BB_next(bb);
-       bb_tmp != BB_next(last_bb);
-       bb_tmp = BB_next(bb_tmp))
+  BB *bb_tmp, *bb_stop = BB_next(last_bb);
+  for (bb_tmp = BB_next(bb); bb_tmp != bb_stop; bb_tmp = BB_next(bb_tmp))
   {
     Target_Simple_Fall_Through_BB(bb_prev, bb_tmp);
     bb_prev = bb_tmp;
   }
 
+  // Bug 13664: Propagate BB_has_globals flag to new blocks for localize
+  // Faster: Insert "if (BB_has_globals(bb)) Set_BB_has_globals(new_bb);"
+  // in code above.
+  if (BB_has_globals(bb)) {
+    Reset_BB_has_globals(bb);
+    for (bb_tmp = bb; bb_tmp != bb_stop; bb_tmp = BB_next(bb_tmp)) {
+      BOOL has_dedicated = FALSE;
+      FOR_ALL_BB_OPs_FWD(bb_tmp, op) {
+	for (i = 0; i < OP_opnds(op); ++i) {
+	  TN *tn = OP_opnd(op, i);
+	  if (TN_is_dedicated(tn)) { has_dedicated = TRUE; break; }
+	}
+	if (has_dedicated) break;
+	for (i = 0; i < OP_results(op); ++i) {
+	  TN *tn = OP_result(op, i);
+	  if (TN_is_dedicated(tn)) { has_dedicated = TRUE; break; }
+	}
+	if (has_dedicated) break;
+      }	
+      if (has_dedicated) Set_BB_has_globals(bb_tmp);
+    }
+  }
 }
 
 

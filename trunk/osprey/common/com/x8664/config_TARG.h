@@ -1,4 +1,8 @@
 /*
+ * Copyright 2007. PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -118,6 +122,10 @@ extern BOOL Target_SSE3_Set;
 
 extern BOOL Target_3DNow;       // Generate 3DNow instructions?
 extern BOOL Target_3DNow_Set;
+
+extern BOOL Target_SSE4a;       // Generate 3DNow instructions?
+extern BOOL Target_SSE4a_Set;
+
 
 extern int Target_x87_Precision;	// precision of x87 calculations
 

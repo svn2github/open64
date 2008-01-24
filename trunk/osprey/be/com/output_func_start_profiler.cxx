@@ -26,6 +26,7 @@
 #include "sections.h"
 #include "stblock.h"
 
+#define GCC_303
 #define ROUNDUP(val,align)       ( (-(INT64)align) & (INT64)(val+align-1) )
 static ST* Get_Section_ST(SECTION_IDX sec, UINT align, ST_SCLASS sclass);
 

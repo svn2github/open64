@@ -1,6 +1,10 @@
 //-*-c++-*-
 
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1184,6 +1188,49 @@ CFG::Is_simple_expr(WN *wn) {
     return 0;
   if (opr == OPR_NEG || opr == OPR_ABS || opr == OPR_CVTL)
     return Is_simple_expr(WN_kid0(wn));
+  if (opr == OPR_CVT &&			// bug 11885
+      MTYPE_is_integral(WN_desc(wn)) &&
+      MTYPE_is_integral(WN_rtype(wn))) {
+    return Is_simple_expr(WN_kid0(wn));
+  }
+
+  // ADD is special because it translates into LEA, which can do one
+  // multiplication by 2, 4, or 8 for free.  Bug 11885.
+  if (opr == OPR_ADD) {
+    WN *mult = NULL;
+    WN *non_mult = NULL;
+    OPERATOR opr0 = WN_operator(WN_kid0(wn));
+    OPERATOR opr1 = WN_operator(WN_kid1(wn));
+    if (opr0 == OPR_MPY && opr1 != OPR_MPY) {
+      mult = WN_kid0(wn);
+      non_mult = WN_kid1(wn);
+    } else if (opr0 != OPR_MPY && opr1 == OPR_MPY) {
+      mult = WN_kid1(wn);
+      non_mult = WN_kid0(wn);
+    }
+    if (mult != NULL) {
+      WN *mult_opnd;
+      INT mult_kid_ans, non_mult_kid_ans;
+      INT val = -1;
+      if (WN_operator(WN_kid0(mult)) == OPR_INTCONST) {
+	val = WN_const_val(WN_kid0(mult));
+	mult_opnd = WN_kid1(mult);
+      } else if (WN_operator(WN_kid1(mult)) == OPR_INTCONST) {
+	val = WN_const_val(WN_kid1(mult));
+	mult_opnd = WN_kid0(mult);
+      }
+      if (val != 2 && val != 4 && val != 8)
+	return 0;
+      mult_kid_ans = Is_simple_expr(mult_opnd);
+      if (mult_kid_ans == 0)
+	return 0;
+      non_mult_kid_ans = Is_simple_expr(non_mult);
+      if (non_mult_kid_ans == 0)
+	return 0;
+      return mult_kid_ans + non_mult_kid_ans;
+    }
+  }	// Fall through if not exactly one operand is mult.
+
   if (opr == OPR_ADD || opr == OPR_SUB || opr == OPR_NEG ||
       opr == OPR_SHL || opr == OPR_ASHR || opr == OPR_LSHR ||
       opr == OPR_BAND || opr == OPR_BIOR || opr == OPR_BNOR || opr == OPR_BXOR)
@@ -4830,7 +4877,12 @@ BB_NODE*
 CFG::Find_enclosing_parallel_region_bb( BB_NODE *bb)
 {
   for ( BB_NODE *dom = bb->Idom(); dom != NULL; dom = dom->Idom() ) {
-    if ( dom->Kind() == BB_REGIONSTART && dom->MP_region()) {
+    // bug 13579: Make sure the rid-type of the BB is MP. MP_region
+    // flag only ensures that the BB is inside an MP region. For C++,
+    // it could be an EH region. Here we are looking for the enclosing
+    // MP parallel region.
+    if ( dom->Kind() == BB_REGIONSTART && dom->MP_region() &&
+	 RID_TYPE_mp(dom->Regioninfo()->Rid()) ) {
       // OK, we've found a matching region, but does it include
       // the given block?
       BB_REGION *dom_region = dom->Regioninfo();

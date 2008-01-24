@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -755,6 +763,9 @@ inline TOP CGTARG_Inter_RegClass_Copy(ISA_REGISTER_CLASS dst,
 
 extern BOOL CGTARG_Can_Fit_Immediate_In_Add_Instruction (INT64 immed);
 extern BOOL CGTARG_Can_Load_Immediate_In_Single_Instruction (INT64 immed);
+#ifdef TARG_MIPS
+extern BOOL CGTARG_Can_Fit_Displacement_In_Branch_Instruction (INT64 disp);
+#endif
 
 extern void CGTARG_Save_Pfs (TN *saved_pfs, OPS *ops);
 extern void CGTARG_Restore_Pfs (TN *saved_pfs, OPS *ops);
@@ -881,4 +892,10 @@ typedef	std::vector<SCHED_INFO_CLASS, SIC_MEM_ALLOC>  TOP_SET;
 void Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT8 cycles_apart);
 void Fix_Cache_Conflict_latency( BB *bb);
 #endif
+
+#ifdef KEY
+// Return TRUE if OP accesses thread-local memory.
+extern BOOL CGTARG_Is_Thread_Local_Memory_OP(OP *op);
+#endif
+
 #endif /* CGTARGET_INCLUDED */

@@ -83,6 +83,7 @@ TOOL_SUBDIRS := \
 	wopt \
 	wgen \
 	crayf90 \
+	wgen_4_2_0
 	#f95_coco 
 
 

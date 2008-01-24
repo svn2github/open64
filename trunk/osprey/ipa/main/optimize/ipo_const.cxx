@@ -1185,6 +1185,15 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 	    state_formal_array = (STATE_ARRAY*) sec->Get_formals();
     }
     INT k=0;
+#ifdef KEY
+    TYLIST_IDX tylist_idx;
+    TYLIST_IDX from_idx = TY_tylist(PU_prototype(Pu_Table[ST_pu(WN_st(w))]));
+    // function return type
+    Set_TYLIST_type (New_TYLIST (tylist_idx), Tylist_Table[from_idx]);
+    Set_TY_tylist (PU_prototype(Pu_Table[ST_pu(WN_st(w))]), tylist_idx);
+    ++from_idx;
+#endif
+
     for (i = 0; i < WN_num_formals(w); i++) {
 	WN* id = WN_kid(w,i);
 	if ((*cprop_annot)[i].Is_remove_param ()) {
@@ -1200,9 +1209,21 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 	} else {
 	    WN_kid(func_node,k) = id;
 	    ++k;
-	}
-    }
+#ifdef KEY
+	    Set_TYLIST_type (New_TYLIST (tylist_idx), Tylist_Table[from_idx]);
+#endif
 
+	}
+#ifdef KEY
+	++from_idx;
+#endif
+
+    }
+#ifdef KEY
+    Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
+#endif
+
+#ifndef KEY  // Not need it any more
     if(k < i) {
       // Need to Change function prototype
       TY_IDX old_prototype = n->Get_PU().prototype;
@@ -1224,6 +1245,8 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 
       n->Get_PU().prototype = new_prototype;
     }
+#endif
+
     if (n->Has_Aliased_Formal ()) {
 	// there are STs that are based on the deleted formals, so we
 	// need to change their storage_class to SCLASS_AUTO
@@ -1437,6 +1460,9 @@ IPO_propagate_globals(IPA_NODE *n)
     BOOL need_to_update_array_bounds = FALSE;
     WN* new_block = WN_CreateBlock();
     WN* pu = n->Whirl_Tree();
+#ifdef PATHSCALE_MERGE /* KEY */ // bug 12371
+    LWN_Parentize(pu);
+#endif
     // ST_IDX_HASH_TABLE current_hash_table(8, &Temp_pool);
     
     for (UINT32 i = 0; i < GLOBAL_ANNOT::Size; ++i) {

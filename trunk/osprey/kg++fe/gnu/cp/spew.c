@@ -1396,7 +1396,7 @@ snarf_defarg ()
 #endif
 
   arg = make_node (DEFAULT_ARG);
-  DEFARG_POINTER (arg) = (char *)buf;
+  DEFARG_POINTER (arg) = (unsigned char *)buf;
 
   return arg;
 }

@@ -220,3 +220,47 @@ _DATE_AND_TIME (dat, tim, zon, values)
 	    }
 	}
 }
+
+#ifdef KEY /* Bug 11640 */
+#include <math.h>
+
+/* Easy way to init these to zero without knowing internals */
+static _fcd dat, tim, zon;
+
+/*
+ * G77 intrinsic "secnds"
+ * start	Initial time in wall-clock seconds since midnight
+ * return	Wall-clock time in seconds since "start"
+ */
+float secnds_vms(float *start) {
+  DopeVectorType dv;
+  _f_int4 values[8];
+
+# define N_BITS_PER_CHAR 8
+  /* Set dope vector well enough to satisfy DATE_AND_TIME */
+  dv.type_lens.kind_or_star = DVD_DEFAULT;
+  dv.type_lens.int_len = sizeof(values[0]) * N_BITS_PER_CHAR;
+  dv.base_addr.a.ptr = values;
+  _DATE_AND_TIME(dat, tim, zon, &dv);
+
+  float result = 3600.0 * values[4] + 60.0 * values[5] + values[6] +
+    values[7] / 1000.0;
+#define SECPERDAY 86400
+  float stemp = fmod(*start, (float) SECPERDAY);
+  stemp = (result >= stemp) ? stemp : (stemp - (float) SECPERDAY);
+  return result - stemp;
+}
+
+float secnds_(float *);
+#pragma weak secnds_ = secnds_vms
+
+double dsecnds_vms(double *start) {
+  float temp = *start;
+  float result = secnds_vms(&temp);
+  *start = temp;
+  return result;
+}
+
+double dsecnds_(double *);
+#pragma weak dsecnds_ = dsecnds_vms
+#endif /* KEY Bug 11640 */

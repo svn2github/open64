@@ -160,4 +160,8 @@ extern void CFLOW_Delete_Empty_BB(void);
 
 extern void CFLOW_Initialize(void);
 
+#ifdef TARG_MIPS
+extern void CFLOW_Fixup_Long_Branches(void);
+#endif
+
 #endif /* cflow_INCLUDED */

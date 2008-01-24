@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -87,6 +91,7 @@
 #include "config_opt.h"    // for CIS_Allowed
 
 extern void (*CG_Set_Is_Stack_Used_p)();
+extern INT (*Push_Pop_Int_Saved_Regs_p)(void);
 #endif
 
 extern void Early_Terminate (INT status);
@@ -103,6 +108,9 @@ STACK_MODEL Current_PU_Stack_Model = SMODEL_UNDEF;
 #define ST_NAME(st)	(ST_class(st) == CLASS_CONST ? \
 	Targ_Print(NULL,STC_val(st)) : ST_name(st) )
 
+#define ST_NO_LINKAGE(st) \
+    (ST_export(st) == EXPORT_LOCAL ||   \
+     ST_export(st) == EXPORT_LOCAL_INTERNAL)
 static BOOL Frame_Has_Calls;	// whether stack frame has calls
 
 /* ====================================================================
@@ -969,14 +977,24 @@ Get_Section_ST_With_Given_Name (SECTION_IDX sec, ST_SCLASS sclass, STR_IDX name)
 		}
 	}
 	if (newblk == NULL) {
-		// bug fix for OSP_129
-		// bug fix for OSP_254
-		// The gnu4 FE will put static variables in STL into .gnu.linkonce.d. or .gnu.linkonce.b
-		// If the section name does not start with .gnu.linkonce.b.
-		//    It's a user-defineded section, we 
-		//       Create Data section for user-defineded section
-	      if ( sec == _SEC_BSS && strncmp(Index_To_Str(name), ".gnu.linkonce.b.", 16) )
-		sec = _SEC_DATA; 
+              // bug fix for OSP_129
+              // bug fix for OSP_254
+              // The gnu4 FE will put static variables in STL into .gnu.linkonce.d. or .gnu.linkonce.b. or .bss.
+              // If the section name doesn't start with 
+              //     .gnu.linkonce.b. -or-
+              //     .bss.     
+              //    It's a user-defineded section, we 
+              //       Create Data section for user-defineded section
+              // The goal of these code is to be compatible with GCC
+              if ( strncmp(Index_To_Str(name), ".gnu.linkonce.b.", 16) == 0 || 
+                   strncmp(Index_To_Str(name), ".bss.", 5) == 0 ) {
+                // For .gnu.linkonce.b., .bss., force to _SEC_BSS
+		sec = _SEC_BSS;
+              }
+              else if ( sec == _SEC_BSS ) {
+                // Otherwise, user defined section, force to _SEC_DATA
+                sec = _SEC_DATA;
+              }
 	      ST *blk = Get_Section_ST(sec, 0, sclass);
 	      newblk = Copy_ST_Block(blk);
 	      Set_ST_name_idx(newblk, name);
@@ -1385,11 +1403,13 @@ Allocate_Entry_Formal(ST *formal, BOOL on_stack, BOOL in_formal_reg)
 	sec = Shorten_Section(formal, _SEC_BSS);
     	Allocate_Object_To_Section(formal, sec, Adjusted_Alignment(formal));
     }
+#ifndef TARG_MIPS // bug 12772
     else if (in_formal_reg)
     {
       /* parameter is in register, so put in FORMAL area */
       Add_Object_To_Frame_Segment ( formal, SFSEG_FORMAL, TRUE );
     }
+#endif
     else if (on_stack)
     {
       /* parameter is on stack, so put in either UPFORMAL or FTEMP area */
@@ -1400,6 +1420,13 @@ Allocate_Entry_Formal(ST *formal, BOOL on_stack, BOOL in_formal_reg)
       	Add_Object_To_Frame_Segment ( formal, SFSEG_UPFORMAL, TRUE );
       }
     }
+#ifdef TARG_MIPS // bug 12772
+    else if (in_formal_reg)
+    {
+      /* parameter is in register, so put in FORMAL area */
+      Add_Object_To_Frame_Segment ( formal, SFSEG_FORMAL, TRUE );
+    }
+#endif
     else 
     {
 	// formal not in usual parameter reg and not on stack
@@ -1978,10 +2005,6 @@ Choose_Stack_Model (INT64 frame_size)
     return SMODEL_DYNAMIC; // needed to make debugging, gprofiling work
   } 
 #endif
-  else if (PU_has_return_address (Get_Current_PU ())) {
-    return SMODEL_DYNAMIC; // need to get the return address
-  }
-
   else if (PU_has_nested(Get_Current_PU())) {
     return SMODEL_DYNAMIC;
   } 
@@ -2038,6 +2061,7 @@ Initialize_Stack_Frame (WN *PU_tree)
 	fprintf(TFile, "<lay> Determine_Stack_Model for %s\n", 
 		ST_name(WN_st(PU_tree)));
 
+#ifndef TARG_X8664
   if (PU_has_return_address(Get_Current_PU()) 
 	&& MTYPE_byte_size(Pointer_Mtype) < MTYPE_byte_size(Spill_Int_Mtype) )
   {
@@ -2057,6 +2081,7 @@ Initialize_Stack_Frame (WN *PU_tree)
 	    MTYPE_byte_size(Spill_Int_Mtype) - MTYPE_byte_size(Pointer_Mtype) :
 	    0);
   }
+#endif
 
   Init_Segment_Descriptors();
   Init_PU_arg_area_size_array();
@@ -2092,13 +2117,20 @@ Initialize_Stack_Frame (WN *PU_tree)
 
   if (PUSH_RETURN_ADDRESS_ON_STACK) {
     // Reserve the space on stack for the return address (ia32)
-    ST* ra_st = New_ST ();
-    ST_Init (ra_st, 
-             Save_Str("return_address"),
-             CLASS_VAR,
-             SCLASS_FORMAL,
-             EXPORT_LOCAL,
-             MTYPE_To_TY(Pointer_Mtype));
+    ST* ra_st;
+#ifdef KEY // bug 12261: check before creating another return address symbol
+    if ((ra_st = Find_Special_Return_Address_Symbol()) == NULL) {
+#endif
+      ra_st = New_ST ();
+      ST_Init (ra_st, 
+	       Save_Str("return_address"),
+	       CLASS_VAR,
+	       SCLASS_FORMAL,
+	       EXPORT_LOCAL,
+	       MTYPE_To_TY(Pointer_Mtype));
+#ifdef KEY
+    }
+#endif
     Add_Object_To_Frame_Segment (ra_st, SFSEG_UPFORMAL, TRUE);
     upformal_size += MTYPE_byte_size(Pointer_Mtype);
   }
@@ -2188,12 +2220,11 @@ Process_Stack_Variable ( ST *st )
    if (! is_root_block && ST_class(st) == CLASS_BLOCK) return;
 
    if ((PU_src_lang (Get_Current_PU()) & (PU_CXX_LANG | PU_C_LANG)) &&
-        ST_is_return_var(st)) {
+       ST_is_return_var(st)) {
      Set_ST_base (st, FP_Sym);
      Set_ST_ofst (st, Is_Target_32bit()? 4 : 8);
      return;
    }
-
    sc = ST_sclass(st);
    Is_True ( (sc == SCLASS_AUTO),
            ("Process_Stack_Variable: Invalid SCLASS %d\n",ST_sclass(st)) );
@@ -2321,6 +2352,15 @@ INT64 Finalize_Stack_Frame (void)
     Set_ST_base(SF_Block(SFSEG_UPFORMAL), SP_Sym);
     Assign_Offset(SF_Block(SFSEG_UPFORMAL), SP_Sym, 
 	(Frame_Has_Calls ? Stack_Offset_Adjustment : 0), 0);
+#ifdef TARG_X8664
+    {
+      int push_pop_int_saved_regs = (*Push_Pop_Int_Saved_Regs_p)();
+      if (push_pop_int_saved_regs & 1)
+        push_pop_int_saved_regs++;
+      Set_ST_ofst(SF_Block(SFSEG_UPFORMAL), ST_ofst(SF_Block(SFSEG_UPFORMAL)) +
+                    push_pop_int_saved_regs * MTYPE_byte_size(Pointer_Mtype));
+    }
+#endif
     break;
 
   case SMODEL_LARGE:
@@ -2338,9 +2378,12 @@ INT64 Finalize_Stack_Frame (void)
 
   Frame_Size = ROUNDUP(Frame_Size, stack_align);
 #ifdef TARG_X8664 // this is needed to maintain 16 bytes gap that contains
-    		  // the save area for return-addr and frame-ptr
-  if (Current_PU_Stack_Model == SMODEL_SMALL && PUSH_FRAME_POINTER_ON_STACK)
+                  // the save area for return-addr and frame-ptr
+  if (Current_PU_Stack_Model == SMODEL_SMALL && PUSH_FRAME_POINTER_ON_STACK) {
     Frame_Size += MTYPE_byte_size(Pointer_Mtype);
+    if ((*Push_Pop_Int_Saved_Regs_p)() & 1)
+      Frame_Size += MTYPE_byte_size(Pointer_Mtype);
+  }
 #endif
 
   // the stack-frame-adjustment represents N bytes of free space
@@ -2512,7 +2555,6 @@ else {
 if (Trace_Frame) fprintf(TFile, "<lay> didn't check Gspace for %s\n", ST_NAME(st));
 }
 #endif
-
    if (sec == _SEC_RDATA && ST_class(st) == CLASS_CONST) {
      /* by default put all short .rodata items into .srdata, unless 
 	we can put it into an appropriate merge section.
@@ -2625,8 +2667,9 @@ BOOL
 ST_has_Predefined_Named_Section(ST *st, SECTION_IDX &sec_idx) {
 
   for (sec_idx = _SEC_UNKNOWN; sec_idx <= _SEC_DISTR_ARRAY; sec_idx ++) {
-  	if (!strcmp(Index_To_Str(Find_Section_Name_For_ST(st)), SEC_name(sec_idx)))
-  		return TRUE;
+  	if (SEC_name(sec_idx) && 
+	    !strcmp(Index_To_Str(Find_Section_Name_For_ST(st)), SEC_name(sec_idx)))
+  	  return TRUE;
   }
 
   return FALSE;
@@ -2741,23 +2784,45 @@ Allocate_Object ( ST *st )
     break;
   case SCLASS_PSTATIC :
   case SCLASS_FSTATIC :
-    if (ST_is_thread_local(st)) {
+    if (ST_is_thread_private(st)) {
       if (ST_is_initialized(st) && !ST_init_value_zero (st))
-#ifndef TARG_IA64
-        sec = _SEC_DATA;
+#ifdef KEY
+        sec = _SEC_LDATA_MIPS_LOCAL;	// bug 12619
 #else
         sec = _SEC_LDATA;
 #endif
       else
-#ifndef TARG_IA64
-        // We only implement TLS on IA64 so far
+#ifdef KEY
         sec = _SEC_BSS;
 #else
         sec = _SEC_LBSS;
-#endif // TARG_IA64
+#endif // KEY
     }
+#ifdef KEY
+    else if (ST_is_thread_local(st)) {
+      if (ST_is_initialized(st) && !ST_init_value_zero(st))
+        sec = _SEC_LDATA;
+      else
+        sec = _SEC_LBSS;
+    }
+#endif
     else if (ST_is_initialized(st) && !ST_init_value_zero (st))
+#ifdef TARG_X8664
+    {
+      if (ST_is_constant(st))
+        // GNU puts CLASS_CONST data in .rodata.
+        if (Gen_PIC_Shared &&
+            !ST_NO_LINKAGE(st) && 
+            ST_sym_class(st) != CLASS_CONST)
+          sec = _SEC_DATA_REL_RO; // bug 10097
+        else
+          sec = _SEC_RDATA;
+      else
+        sec = _SEC_DATA;
+    }
+#else
         sec = (ST_is_constant(st) ? _SEC_RDATA : _SEC_DATA);
+#endif
     else
 	sec = _SEC_BSS;
     sec = Shorten_Section ( st, sec );
@@ -2810,27 +2875,32 @@ Allocate_Object ( ST *st )
     }
     break;
   case SCLASS_UGLOBAL :
-    if (ST_is_thread_local(st)) {
-#ifndef TARG_IA64
-      // We only implement TLS on IA64 so far
+    if (ST_is_thread_private(st)) {
+#ifdef KEY
       sec = _SEC_BSS;
 #else
       sec = _SEC_LBSS;
-#endif // TARG_IA64
+#endif // KEY
     } 
+#ifdef KEY
+    else if (ST_is_thread_local(st)) {
+      sec = _SEC_LBSS;
+    }
+#endif
     else sec = _SEC_BSS;
     sec = Shorten_Section ( st, sec );
     Allocate_Object_To_Section ( base_st, sec, Adjusted_Alignment(base_st));
     break;
   case SCLASS_DGLOBAL :
-    if (ST_is_thread_local(st)) {
-#ifndef TARG_IA64
-      // We only implement TLS on IA64 so far
-      sec = _SEC_DATA;
-#else      
+    if (ST_is_thread_private(st))
+#ifdef KEY
+      sec = _SEC_LDATA_MIPS_LOCAL;	// bug 12619
+#else
       sec = _SEC_LDATA;
 #endif
-    }
+#ifdef KEY
+    else if (ST_is_thread_local(st)) sec = _SEC_LDATA;
+#endif
     else if (ST_is_constant(st)) {
 #ifdef TARG_X8664
       if (Gen_PIC_Shared)
@@ -3048,6 +3118,12 @@ Stack_Offset_Adjustment_For_PU (void)
 	return Stack_Offset_Adjustment;
   else
 	return 0;
+}
+
+extern void
+Set_Frame_Has_Calls(BOOL b)
+{
+    Frame_Has_Calls = b;
 }
 
 #ifdef TARG_X8664

@@ -12,10 +12,10 @@
 // ====================================================================
 //
 // Module: wn_instrument.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/wn_instrument.cxx,v $
+// $Revision: 1.28 $
+// $Date: 05/12/02 16:59:45-08:00 $
+// $Author: fchow@fluorspar.internal.keyresearch.com $
+// $Source: be/com/SCCS/s.wn_instrument.cxx $
 //
 // ====================================================================
 //
@@ -1669,13 +1669,29 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
 
       // Store return value into preg
       TYPE_ID val_type = WN_rtype( WN_kid( wn, 1 ) );
-      PREG_NUM val = Create_Preg( val_type, "__call_comma" );
-      WN *stid = WN_StidIntoPreg( val_type, val, MTYPE_To_PREG( val_type ),
-				  WN_kid( wn, 1 ) );
-      WN_INSERT_BlockLast( WN_kid( wn, 0 ), stid );
-      
-      // Comma now returns value of preg
-      WN_kid( wn, 1 ) = WN_LdidPreg( val_type, val );
+      WN *ldidpreg = WN_kid(wn, 1);
+      WN *stid;
+#ifdef KEY // bug 12245: preg cannot be used for complex types
+      if (MTYPE_is_complex(val_type)) {
+	ST *val_st = Gen_Temp_Symbol(MTYPE_TO_TY_array[val_type],"_call_comma");
+	stid = WN_Stid(val_type, 0, val_st, WN_ty(ldidpreg), ldidpreg );
+	WN_INSERT_BlockLast( WN_kid( wn, 0 ), stid );
+	
+	// Comma now returns value of preg
+	WN_kid( wn, 1 ) = WN_Ldid(val_type, 0, val_st, WN_ty(ldidpreg));
+      }
+      else {
+#endif
+	PREG_NUM val = Create_Preg( val_type, "__call_comma" );
+	stid = WN_StidIntoPreg( val_type, val, MTYPE_To_PREG( val_type ),
+				ldidpreg );
+	WN_INSERT_BlockLast( WN_kid( wn, 0 ), stid );
+	
+	// Comma now returns value of preg
+	WN_kid( wn, 1 ) = WN_LdidPreg( val_type, val );
+#ifdef KEY // bug 12245
+      }
+#endif
     }
 
     // Traverse the kids of the current expression

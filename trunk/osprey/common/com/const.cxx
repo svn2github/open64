@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -227,11 +231,38 @@ Make_Const ( TCON c )
       opc = OPC_CQCONST;
       break;
 #ifdef TARG_X8664
+    case MTYPE_V8I1:
+      opc = OPC_V8I1CONST;
+      break;
+    case MTYPE_V8I2:
+      opc = OPC_V8I2CONST;
+      break;
+    case MTYPE_V8I4:
+      opc = OPC_V8I4CONST;
+      break;
+    case MTYPE_V16I1:
+      opc = OPC_V16I1CONST;
+      break;
+    case MTYPE_V16I4:
+      opc = OPC_V16I4CONST;
+      break;
+    case MTYPE_V16I8:
+      opc = OPC_V16I8CONST;
+      break;
     case MTYPE_V16F4:
       opc = OPC_V16F4CONST;
       break;
     case MTYPE_V16F8:
       opc = OPC_V16F8CONST;
+      break;
+    case MTYPE_M8I1:
+      opc = OPC_M8I1CONST;
+      break;
+    case MTYPE_M8I2:
+      opc = OPC_M8I2CONST;
+      break;
+    case MTYPE_M8I4:
+      opc = OPC_M8I4CONST;
       break;
 #endif
     default:

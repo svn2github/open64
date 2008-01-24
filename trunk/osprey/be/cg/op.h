@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -495,11 +499,16 @@ enum OP_COND_DEF_KIND {
 #endif
 #ifdef TARG_X8664
 #define OP_MASK_MEMORY_HI   0x00040000 /* Is OP load/store the high 32-bit? */
+#endif
+#ifdef KEY
 /* Is this OP the first OP following the PRAGMA_PREAMBLE_END ? */
 #define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END 0x00080000
+#endif
+#ifdef TARG_X8664
 #define OP_MASK_COMPUTES_GOT  0x00100000  /* Does OP compute GOT ? */
 #define OP_MASK_PREFIX_LOCK   0x01000000
 #endif
+
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
 # define Set_OP_glue(o)		(OP_flags(o) |= OP_MASK_GLUE)
@@ -602,7 +611,13 @@ enum OP_COND_DEF_KIND {
 # define OP_prefix_lock(o)        (OP_flags(o) & OP_MASK_PREFIX_LOCK)
 #endif // TARG_X8664
 
-extern BOOL OP_cond_def( const OP*);
+#ifdef KEY
+# define OP_first_after_preamble_end(o) (OP_flags(o) & OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
+# define Set_OP_first_after_preamble_end(o) (OP_flags(o) |= OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
+# define Reset_OP_first_after_preamble_end(o) (OP_flags(o) &= ~OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
+#endif // KEY
+
+extern BOOL OP_cond_def(const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);
 #ifdef TARG_IA64
 extern BOOL OP_xfer(OP*);           // After RBG, chk should be taken as xfer.
@@ -680,6 +695,8 @@ extern BOOL OP_use_return_value(OP*);
 #ifdef TARG_X8664
 #define OP_x86_style(o)	        (TOP_is_x86_style(OP_code(o)))
 #define OP_reads_rflags(o)      (TOP_is_read_rflags(OP_code(o)))
+#define OP_x87(o)		(TOP_is_x87(OP_code(o)))
+#define OP_mmx(o)		(TOP_is_mmx(OP_code(o)))
 #endif
 
 #define OP_operand_info(o)	(ISA_OPERAND_Info(OP_code(o)))

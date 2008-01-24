@@ -1,5 +1,9 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -153,8 +157,18 @@ set_defaults (void)
 
 	// Use the system's GCC version to select -gnu3/-gnu4 as the default.
 	// Bug 11426.
-	if (!is_toggled(gnu_version)) {
-	  toggle(&gnu_version, get_gcc_major_version());
+	if (!is_toggled(gnu_major_version)) {
+	  toggle(&gnu_major_version, get_gcc_major_version());
+	  switch (gnu_major_version) {
+	    case 3:	// default to GCC 3.3
+	      toggle(&gnu_minor_version, 3);
+	      break;
+	    case 4:	// default to GCC 4.2
+	      toggle(&gnu_minor_version, 2);
+	      break;
+	    default:
+	      error("no support for GCC version %d", gnu_major_version);
+	  }
 	}
 #endif
 }
@@ -260,6 +274,20 @@ add_special_options (void)
 #if defined(TARG_IA32)
 	flag = add_string_option(O_D, "__NO_MATH_INLINES");
 	prepend_option_seen (flag);
+#endif
+
+#ifdef KEY
+	// Pass -fopenmp instead of -mp to GNU 4.2 or later C/C++ front-end.
+	// Bug 12824.
+	if (mpkind == NORMAL_MP &&
+	    gnu_major_version == 4 &&
+	    gnu_minor_version >= 2 &&
+	    (invoked_lang == L_cc ||
+	     invoked_lang == L_CC)) {
+	  set_option_unseen(O_mp);
+	  set_option_unseen(O_openmp);
+	  add_option_seen(O_fopenmp);
+	}
 #endif
 
 #ifndef KEY	// Bug 4406.

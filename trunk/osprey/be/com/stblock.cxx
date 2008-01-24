@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -616,6 +620,8 @@ Base_Symbol_And_Offset_For_Addressing (
   /* 3. For weak symbol, we cannot use the base where the symbol
         is allocated since weak symbol could be defined in another file.
 	(bug#3052)
+     4. For thread-local symbols, don't use the base where the symbol is
+	allocated.
    */
 #endif // KEY
 
@@ -631,6 +637,7 @@ Base_Symbol_And_Offset_For_Addressing (
 #endif
 #ifdef KEY
 	 && !ST_is_weak_symbol(base)
+	 && !ST_is_thread_local(base)
 #endif // KEY
 	 )
   {

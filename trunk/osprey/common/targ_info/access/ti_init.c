@@ -1,4 +1,11 @@
 /*
+ * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -49,8 +56,14 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #include "targ_abi_properties.h"
 #include "targ_proc.h"
 #include "dso.h"
+#include "errors.h"
 
 #include "ti_init.h"
+
+#ifdef __linux__
+const char * sanity_check_targ_so_name_p;
+#define sanity_check_targ_so_name sanity_check_targ_so_name_p
+#endif
 
 /* ====================================================================
  *
@@ -97,6 +110,30 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
     ISA_HAZARD_Initialize();
     ISA_REGISTER_Initialize();
 
+#if 0
+    // For bug 13044, sanity check that we have loaded the proper information.
+    // This cannot be used for target "core" because we use core.so which
+    // actually loads in em64t.so. TODO: fix this sanity check scenario.
+    FmtAssert (!strcmp(targ_so_name, sanity_check_targ_so_name),
+     ("TI_Initialize did not load proper information from %s", targ_so_name));
+#endif
+
     initialized = TRUE;
   }
 }
+
+#ifdef __linux__
+
+#include "ti_si_types.h"
+
+SI * const * SI_top_si_p;
+SI * const * SI_ID_si_p;
+const int * SI_ID_count_p;
+SI_ISSUE_SLOT * const * SI_issue_slots_p;
+const int * SI_issue_slot_count_p;
+SI_RESOURCE * const * SI_resources_p;
+const int * SI_resource_count_p;
+const SI_RRW * SI_RRW_initializer_p;
+const SI_RRW * SI_RRW_overuse_mask_p;
+
+#endif

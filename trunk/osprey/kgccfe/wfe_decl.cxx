@@ -56,7 +56,9 @@
 #include <elf.h>
 #include "defs.h"
 #include "errors.h"
+extern "C" {
 #include "gnu_config.h"
+}
 #ifdef KEY
 // To get HW_WIDE_INT ifor flags.h */
 #include "gnu/hwint.h"
@@ -67,7 +69,6 @@ extern "C" {
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/toplev.h"
-#include "function.h"
 #include "c-pragma.h"
 }
 #if defined(TARG_IA32) || defined(TARG_X8664)
@@ -106,6 +107,7 @@ extern "C" {
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
 #include "tree_cmp.h"
+#include "targ_sim.h" // PUSH_RETURN_ADDRESS_ON_STACK
 
 extern FILE *tree_dump_file; // for debugging only
 
@@ -343,6 +345,8 @@ WFE_Start_Function (tree fndecl)
     Set_PU_c_lang (Pu_Table [ST_pu (func_st)]);
 
 #ifdef KEY
+    if (DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fndecl))
+      Set_PU_no_instrument (Pu_Table [ST_pu (func_st)]);  // Bug 750
     if (DECL_DECLARED_INLINE_P(fndecl))
       Set_PU_is_marked_inline (Pu_Table [ST_pu (func_st)]);
 #endif
@@ -2492,8 +2496,8 @@ WFE_Get_Return_Address_ST (int level)
   if (return_address_st == NULL) {
     return_address_st = New_ST (CURRENT_SYMTAB - level);
     ST_Init (return_address_st, Save_Str ("__return_address"), CLASS_VAR,
-             SCLASS_AUTO, EXPORT_LOCAL, 
-             Make_Pointer_Type (Be_Type_Tbl (MTYPE_V), FALSE));
+	     (PUSH_RETURN_ADDRESS_ON_STACK ? SCLASS_FORMAL : SCLASS_AUTO),
+	     EXPORT_LOCAL, Make_Pointer_Type (Be_Type_Tbl (MTYPE_V), FALSE));
     Set_ST_is_return_var (return_address_st);
     Return_Address_ST [CURRENT_SYMTAB - level] = return_address_st;
   }

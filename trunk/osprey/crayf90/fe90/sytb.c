@@ -509,7 +509,13 @@ int srch_host_sym_tbl (char	*name_str,
       search_range = 1;
    } 
 
-   if (SCP_IS_INTERFACE(curr_scp_idx)) {
+   if (SCP_IS_INTERFACE(curr_scp_idx)
+#ifdef KEY /* Bug 11741 */
+     /* Do search the host when processing an interface body which contains
+      * an IMPORT statement without an identifier list */
+     && ! SCP_IMPORT(curr_scp_idx)
+#endif /* KEY Bug 11741 */
+   ) {
       curr_scp_idx = 1;  /* search intrinsics */
    }
 
@@ -528,6 +534,57 @@ int srch_host_sym_tbl (char	*name_str,
     return (idx);
 
 }  /* srch_host_sym_tbl */
+#ifdef KEY /* Bug 11741 */
+/* Like srch_host_sym_tbl, but suitable for use by "IMPORT <id-list>" stmt;
+ * and name_idx is allowed to be null. */
+int
+srch_host_sym_tbl_for_import(char *name_str, int name_len, int *name_idx)
+{
+   int save_scp_idx = curr_scp_idx;
+   int idx = NULL_IDX;
+   int dummy_name_idx;
+   int *dummy_name_idx_p = name_idx ? name_idx : &dummy_name_idx;
+   while (idx == NULL_IDX && curr_scp_idx != 1) {
+      curr_scp_idx = SCP_PARENT_IDX(curr_scp_idx);
+      idx = srch_sym_tbl (name_str, name_len, dummy_name_idx_p);
+   }
+   curr_scp_idx = save_scp_idx;
+   return idx;
+}
+
+/*
+ * Try to import from the host an attribute to take the place of a local
+ * attribute which has been created but is not yet defined. This is useful
+ * when processing:
+ *
+ *   type(t) function()
+ *     import [ t ]
+ *
+ * If possible, we bash the local attribute so its AT_ATTR_LINK points to
+ * the host's attribute.
+ *
+ * name		name of entity, padded suitably for sym_tbl searching (e.g.
+ *		it's good if the name lies inside a token_type)
+ * name_len	length of name
+ * host_name_idx	if actual arg is not null, it is set to the host name
+ *		index
+ * local_attr_idx	AT_Tbl_Idx for local attribute
+ * return	AT_Tbl_Idx for host attribute corresponding to local attribute,
+ *		or NULL_IDX if not found
+ */
+int
+import_from_host(char *name, int name_len, int *host_name_idx,
+  int local_attr_idx) {
+  int host_attr_idx = srch_host_sym_tbl_for_import(name, name_len,
+    host_name_idx);
+  if (host_attr_idx) {
+    AT_ATTR_LINK(local_attr_idx) = host_attr_idx;
+    AT_DEFINED(local_attr_idx) = AT_DEFINED(host_attr_idx);
+    AT_LOCKED_IN(local_attr_idx) = TRUE;
+  }
+  return host_attr_idx;
+}
+#endif /* KEY Bug 11741 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -3941,7 +3998,13 @@ size_offset_type	stor_bit_size_of(int		 attr_idx,
 
    TRACE (Func_Entry, "stor_bit_size_of", NULL);
 
+#ifdef KEY /* Bug 12553 */
+   /* Because sizes and offsets are expressed in bits, we need more than
+    * Integer_4 even in -m32 mode. */
+   constant.type_idx	= Integer_8;
+#else /* Bug 12553 */
    constant.type_idx	= CG_INTEGER_DEFAULT_TYPE;
+#endif /* Bug 12553 */
    constant.fld		= NO_Tbl_Idx;
    C_TO_F_INT(constant.constant, 0, CG_INTEGER_DEFAULT_TYPE);
 
@@ -4034,10 +4097,17 @@ size_offset_type	stor_bit_size_of(int		 attr_idx,
                    BD_ARRAY_SIZE(bd_idx) == Symbolic_Constant_Size) {
                   length.fld	= BD_LEN_FLD(bd_idx);
                   length.idx	= BD_LEN_IDX(bd_idx);
-//Bug 2242
-#ifdef KEY
-                  length.type_idx = CG_INTEGER_DEFAULT_TYPE;
-#endif
+#ifdef KEY /* Bug 2242, 12553 */
+		  /* Fix to 2242 blithely set this to CG_INTEGER_DEFAULT_TYPE
+		   * always. It's safer to fetch the correct type from the
+		   * constant, e.g. in case the default is i*4 but the correct
+		   * type is i*8. Presumably we always have a CN_Tbl_Idx in
+		   * this case, but if, we revert to the (perhaps incorrect,
+		   * but no worse than before) fix for 2242. */
+		  length.type_idx = (length.fld == CN_Tbl_Idx) ?
+		     CN_TYPE_IDX(length.idx) :
+		     CG_INTEGER_DEFAULT_TYPE;
+#endif /* KEY Bug 2242, 12553 */
 
                   if (!size_offset_binary_calc(&length,
                                                &constant,
