@@ -304,6 +304,7 @@ main ( INT argc, char **argv, char **envp)
       struct stat sbuf;
       int st;
 
+      Disable_Simplification_For_FE = TRUE;
       Set_Error_Tables ( Phases, host_errlist );
       Process_Command_Line(argc, argv);
 
