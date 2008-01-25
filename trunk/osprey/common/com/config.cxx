@@ -142,6 +142,7 @@ BOOL CSE_Elim_Enabled = FALSE;		/* Is CSE-elim on? -- this does
 					 * not control it, it just
 					 * shadows the opt. level
 					 */
+BOOL Disable_Simplification_For_FE = FALSE;  /* Disable Simplification for Front End*/
 
 #ifdef BACK_END
 # define DEF_DEBUG_LEVEL        0

@@ -1577,7 +1577,8 @@ WN *WN_CreateExp2(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, WN *kid0, WN *kid1)
   /* bug#2731 */
 #ifdef KEY
   if( !WN_has_side_effects(kid0) &&
-      !WN_has_side_effects(kid1) )
+      !WN_has_side_effects(kid1) &&
+      !Disable_Simplification_For_FE) /* Disable Simplification if it is called in WGEN. */
 #endif
     wn = WN_SimplifyExp2(opc, kid0, kid1);
 

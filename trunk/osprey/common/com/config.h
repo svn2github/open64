@@ -480,6 +480,8 @@ extern BOOL Enable_GOT_Call_Conversion; /* %call16 -> %got_disp? */
 extern BOOL OPT_Unroll_Analysis;	/* Enable unroll limitations? */
 extern BOOL OPT_Unroll_Analysis_Set;	/* ... option seen? */
 
+extern BOOL Disable_Simplification_For_FE;  /* Disable Simplification for Front End*/
+
 /***** Various Scalar Optimizer options *****/
 extern BOOL Enable_Copy_Propagate;
 
