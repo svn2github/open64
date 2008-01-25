@@ -365,6 +365,13 @@ WFE_Start_Function (tree fndecl)
 	    Set_PU_must_inline (Pu_Table [ST_pu (func_st)]);
     }
 
+    // check and set the main function of program
+    if (strcmp (ST_name (func_st), "main") == 0) {
+      PU& pu = Pu_Table [ST_pu (func_st)];
+      Set_PU_is_mainpu (pu);
+      Set_PU_no_inline (pu);
+    }
+
     // bug 2395
     if (DECL_NOINLINE_ATTRIB (fndecl))
 	Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
