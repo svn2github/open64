@@ -755,7 +755,7 @@ fei_lneg(TYPE result)
   wn  = WN_CreateExp1(OPC_I4LNOT, lhs) ;
 
   wn = cwh_expr_restore_arrayexp(wn,ae);
-  cwh_stk_push_typed(wn,WN_item,cast_to_TY(t_TY(result)));
+  cwh_stk_push_typed(wn,WN_item,(INTPTR)cast_to_TY(t_TY(result)));
 }
 
 /*===============================================
