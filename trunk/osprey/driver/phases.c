@@ -1865,6 +1865,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	    /* Once -fbuiltin is used, some functions, i.e., __sincos, are only
 	       provided by libmblah.a lib.
 	    */
+	    add_library(args, "mv");
 	    if (invoked_lang != L_cc) {
 	      add_library(args, "mv");			// bug 5527
 	     // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
