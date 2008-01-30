@@ -160,7 +160,7 @@ C
 #endif
 
       INTEGER (KIND=8)  IOFF, MOFF, ZERO
-#if ! defined(_MIPSE
+#if ! defined(_MIPSEL)
       PARAMETER        (MOFF = 0)
 #else
       PARAMETER        (IOFF = 0)
