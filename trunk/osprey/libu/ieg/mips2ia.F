@@ -1,4 +1,4 @@
-\C
+C
 C
 C  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 C
