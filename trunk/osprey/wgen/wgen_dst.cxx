@@ -3015,7 +3015,7 @@ WGEN_Set_Line_And_File (UINT line, const char* f, bool check)
 	// split file into directory path and file name
 	char *dir;
 	char *file_name = drop_path(file);;
-	char buf[MAXPATHLEN];
+	char * buf = (char *) alloca (strlen(file) + 1);
 	if (file_name == file) {
 		// no path
 		dir = current_working_dir;
