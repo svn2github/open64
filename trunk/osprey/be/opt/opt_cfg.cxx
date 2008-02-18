@@ -874,9 +874,10 @@ CFG::Create_blank_loop_info( BB_NODE *body_bb )
 // the last one of the preheader.
 // 
 void
-CFG::Create_empty_preheader (void) {
+CFG::Create_empty_preheader (WN* loop) {
   if (_current_bb->Firststmt() != NULL) {
-    New_bb (TRUE/*connect*/);
+    BB_NODE* blk = New_bb (TRUE/*connect*/);
+	blk->Set_linenum (WN_Get_Linenum(loop));
   }
 }
 
@@ -2564,7 +2565,7 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
     break;
 
   case OPR_DO_LOOP:
-    Create_empty_preheader ();
+    Create_empty_preheader (wn);
     if (Lower_fully())
       Lower_do_loop( wn, ends_bb );
     else
@@ -2572,7 +2573,7 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
     break;
 
   case OPR_WHILE_DO:
-    Create_empty_preheader ();
+    Create_empty_preheader (wn);
     if (Lower_fully()) {
       Lower_while_do( wn, ends_bb );
     }
@@ -2582,7 +2583,7 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
     break;
 
   case OPR_DO_WHILE:
-    Create_empty_preheader ();
+    Create_empty_preheader (wn);
     if (Lower_fully())
       Lower_do_while( wn, ends_bb );
     else

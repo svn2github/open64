@@ -313,7 +313,7 @@ private:
     END_FALLTHRU,	// ends block, and falls-through to next block
     END_BREAK,		// ends block, does not fall-through
   };
-  void         Create_empty_preheader (void); 
+  void         Create_empty_preheader (WN* loop); 
   // lower various high-level construct statements to CFG so they are
   // valid (just as if lowerer had handled them)
   void         Lower_do_loop(WN *wn, END_BLOCK *ends_bb );
