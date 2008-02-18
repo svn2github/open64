@@ -38,7 +38,7 @@
 
 include	$(COMMONDEFS)
 
-LCOPTS += -ansi -DTARG_IA64 -I. -I$(BUILD_TOT)/clibinc -D _LITTLE_ENDIAN -D__mips
+LCOPTS += -ansi -I. -I$(BUILD_TOT)/clibinc -D _LITTLE_ENDIAN -D__mips
 LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
@@ -46,11 +46,15 @@ LCDEFS += -DInsist_On -DDEBUG_IR
 endif
 
 ifeq ($(BUILD_ARCH),IA32)
-F90 += -m32 -mno-sse2
+LCOPTS += -DTARG_X8664
 endif
 
-ifeq ($(BUILD_ARCH),IA32)
-F90 += -m64
+ifeq ($(BUILD_ARCH),X8664)
+LCOPTS += -DTARG_X8664
+endif
+
+ifeq ($(BUILD_ARCH),IA64)
+LCOPTS += -DTARG_IA64
 endif
 
 F90FLAGS = $(OPTIMIZER) $(CSTYLE)
