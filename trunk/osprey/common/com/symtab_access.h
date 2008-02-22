@@ -898,13 +898,6 @@ inline void
 Clear_PU_is_operator (PU& pu)    { pu.flags &= ~PU_IS_OPERATOR; }
 
 inline BOOL
-PU_is_malloc (const PU& pu)			{ return (pu.flags & PU_IS_MALLOC) != 0; } 
-inline void
-Set_PU_is_malloc (PU& pu)			{ pu.flags |= PU_IS_MALLOC; }
-inline void
-Clear_PU_is_malloc (PU& pu)			{ pu.flags &= ~PU_IS_MALLOC; }
-
-inline BOOL
 PU_has_attr_malloc (const PU& pu)      { return (pu.flags & PU_HAS_ATTR_MALLOC) != 0; } 
 inline void
 Set_PU_has_attr_malloc (PU& pu)        { pu.flags |= PU_HAS_ATTR_MALLOC; }
