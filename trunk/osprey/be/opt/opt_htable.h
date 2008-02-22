@@ -2189,9 +2189,10 @@ struct cr_cmp {
   }
 };
  
-typedef std::pair<const CODEREP*, MEMOP_ANNOT*> CR_MEMANNOT_PAIR;
+typedef std::pair<const CODEREP* const, MEMOP_ANNOT*> CR_MEMANNOT_PAIR;
 typedef mempool_allocator<CR_MEMANNOT_PAIR> CR_ANNOT_MAP_ALLOC;
-typedef std::map<const CODEREP*, MEMOP_ANNOT*, cr_cmp, CR_ANNOT_MAP_ALLOC> CR_2_MEM_ANNOT_MAP;
+typedef std::map<const CODEREP*, MEMOP_ANNOT*, cr_cmp, CR_ANNOT_MAP_ALLOC> 
+        CR_2_MEM_ANNOT_MAP;
 
 struct sr_cmp {
   bool operator () (const STMTREP* sr1, const STMTREP* sr2) const {
@@ -2199,7 +2200,7 @@ struct sr_cmp {
   }
 };
 
-typedef std::pair<const STMTREP*, MEMOP_ANNOT*> SR_MEMANNOT_PAIR;
+typedef std::pair<const STMTREP* const, MEMOP_ANNOT*> SR_MEMANNOT_PAIR;
 typedef mempool_allocator<SR_MEMANNOT_PAIR>    SR_ANNOT_MAP_ALLOC;
 typedef std::map<const STMTREP*, MEMOP_ANNOT*, sr_cmp, SR_ANNOT_MAP_ALLOC>
         SR_2_MEM_ANNOT_MAP;

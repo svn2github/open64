@@ -380,7 +380,7 @@ private:
   // end (...,2,1,0).  The range OP* is the corresponding OPs that will
   // be inserted into the prolog or epilog.
 
-  typedef std::pair< OP_OMEGA, OP * >                      op_copy_pair;
+  typedef std::pair< const OP_OMEGA, OP * >           op_copy_pair;
   typedef std::map< OP_OMEGA, OP *, OP_OMEGA_less_prolog,
 	       mempool_allocator< op_copy_pair > >    op_copy_map_prolog;
   typedef std::map< OP_OMEGA, OP *, OP_OMEGA_less_epilog,
