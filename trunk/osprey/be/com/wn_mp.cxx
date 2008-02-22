@@ -11390,17 +11390,6 @@ Process_Parallel_Do ( void )
                                           FALSE, &non_pod_finalization_nodes );
   do_preamble_block = Walk_and_Localize ( do_preamble_block, var_table, &lps,
                                           FALSE, &non_pod_finalization_nodes );
-#endif // KE
-
-#ifdef KEY
-  // If chunk uses a private variable (e.g. threadprivate variable), fix it
-  chunk_wn = Walk_and_Localize ( chunk_wn, var_table, &lps, FALSE,
-                                 &non_pod_finalization_nodes );
-  // bug 8224: If preamble uses a private variable, fix it
-  if_preamble_block = Walk_and_Localize ( if_preamble_block, var_table, &lps,
-                                          FALSE, &non_pod_finalization_nodes );
-  do_preamble_block = Walk_and_Localize ( do_preamble_block, var_table, &lps,
-                                          FALSE, &non_pod_finalization_nodes );
 #endif // KEY
 
   /* Create copyin nodes for all local vars with preamble stores. */
