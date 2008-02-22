@@ -1516,11 +1516,13 @@ Configure_Source ( char	*filename )
   /* IEEE arithmetic options: */
   if ( IEEE_Arithmetic > IEEE_ACCURATE ) {
     /* Minor roundoff differences for inexact results: */
-#ifndef TARG_X8664 // facerec fails at -O3 if Recip_Allowed is true
+    /* the following two statement are unsafe for both X8664 and IA64
+       TODO:need to be taken care when merged into other arch*/
+#ifndef KEY // facerec fails at -O3 if Recip_Allowed is true
     if ( ! Recip_Set )
       Recip_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
 #endif
-#ifndef TARG_X8664 // apsi fails at -O3 because Rsqrt_Allowed is true
+#ifndef KEY // apsi fails at -O3 because Rsqrt_Allowed is true
     if ( ! Rsqrt_Set )
       Rsqrt_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
 #endif
