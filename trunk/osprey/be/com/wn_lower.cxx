@@ -6816,18 +6816,6 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
           imagexp_copy = WN_LdidPreg(realTY, imagexpN);
         } 
 #endif
-        if (WN_operator(realexp) == OPR_CONST) {
-          realexp_copy = realexp;
-        } else {
-          realexpN = AssignExpr(block, realexp, realTY);
-          realexp_copy = WN_LdidPreg(realTY, realexpN);
-        }
-        if (WN_operator(imagexp) == OPR_CONST) {
-          imagexp_copy = imagexp;
-        } else {
-          imagexpN = AssignExpr(block, imagexp, realTY);
-          imagexp_copy = WN_LdidPreg(realTY, imagexpN);
-        }
 
 	// store the real part
 	WN *stid = WN_Stid( WN_rtype(realexp), 0, c4temp_st, realTY, realexp_copy );
@@ -14473,7 +14461,7 @@ static WN * Locate_Ind_Path(WN *exp, WN *ind, int &numMpy)
 {
    int save_num, num;
    WN *wn;
-   if (exp == NULL) return FALSE;
+   if (exp == NULL) return NULL;
    if (WN_operator(exp) == OPR_LDID && WN_same_id(exp,ind)) {
        //??   numMpy++; // update the number of multipliers
      return exp; // return the pointer to the induction
@@ -14492,12 +14480,7 @@ static WN * Locate_Ind_Path(WN *exp, WN *ind, int &numMpy)
           if (wn = Locate_Ind_Path(WN_kid(exp,i), ind, num)) return wn;
    }
 
-   // I'm not sure to select which one when merge.
-#ifdef TARG_IA64
-   return  NULL; //none kid contains the induction
-#else
    return wn;
-#endif
 }
 
 
