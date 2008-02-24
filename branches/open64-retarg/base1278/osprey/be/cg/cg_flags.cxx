@@ -168,7 +168,11 @@ BOOL CG_tune_do_loop = TRUE;
 BOOL CG_enable_thr = FALSE;
 BOOL CG_cond_defs_allowed = FALSE;
 BOOL LOCS_Enable_Bundle_Formation = FALSE;
-BOOL CG_tail_call = TRUE;
+#if defined(TARG_PPC32)
+BOOL CG_tail_call = FALSE;// we have some problem with struct value parameter tail call OPT
+#else
+BOOL CG_tail_call = TRUE; 
+#endif
 BOOL GCM_Speculative_Loads = FALSE;
 BOOL GCM_Predicated_Loads = FALSE;
 #endif

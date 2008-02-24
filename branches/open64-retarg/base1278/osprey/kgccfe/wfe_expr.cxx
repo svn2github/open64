@@ -1035,6 +1035,182 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
   }
 
   if (code == PARM_DECL || code == VAR_DECL) {
+#if defined(TARG_PPC32) 
+    TY_IDX hi_ty_idx = Get_TY(TREE_TYPE(lhs)); // type associated with field_id
+    if (TREE_THIS_VOLATILE(lhs)) {
+      Set_TY_is_volatile(hi_ty_idx);
+      volt = TRUE;
+    }
+    TY_IDX desc_ty_idx = component_ty_idx;
+    if (desc_ty_idx == 0)
+      desc_ty_idx = hi_ty_idx;
+    if (TY_is_volatile(desc_ty_idx)) {
+      Clear_TY_is_volatile(desc_ty_idx);
+      volt = TRUE;
+    }
+    st = Get_ST (lhs);
+    if (ST_assigned_to_dedicated_preg (st)) {
+      Set_TY_is_volatile(hi_ty_idx);
+      volt = TRUE;
+    }
+    Is_True(! is_bit_field || field_id <= MAX_FIELD_ID,
+	    ("WFE_Lhs_Of_Modify_Expr: field id for bit-field exceeds limit"));
+
+    TYPE_ID rtype = Widen_Mtype(TY_mtype(desc_ty_idx));
+    TYPE_ID desc = is_bit_field ? MTYPE_BS : TY_mtype(desc_ty_idx);
+
+    WN *lvalue = NULL;
+    if ( code == PARM_DECL && MTYPE_is_m(TY_mtype(hi_ty_idx)) ) {
+      WN * wna = WN_CreateLdid(OPR_LDID, MTYPE_U4, MTYPE_U4,
+      // WN * wna = WN_CreateLdid(OPR_LDID, MTYPE_U4, Make_Pointer_Type(hi_ty_idx, FALSE),
+        ST_ofst(st), st, desc_ty_idx);
+    
+      lvalue = WN_CreateIload(OPR_ILOAD, rtype,
+  		  desc, component_offset,
+  			field_id != 0 ? hi_ty_idx : desc_ty_idx, 
+  			Make_Pointer_Type(hi_ty_idx, FALSE),
+  			wna, field_id);
+      printf("\n\n\nHere @wfe_expr.cxx:1072 Zzz...\n\n");
+    }
+    else {
+      lvalue = WN_CreateLdid(OPR_LDID, rtype, desc,
+  			ST_ofst(st) + component_offset,
+  			st, hi_ty_idx, field_id);
+    }
+
+    if (rhs_wn == NULL) {
+      // Manufacture a negative-PREG RHS for the STID we are about to
+      // generate. This feature is used in preparing WHIRL ASM
+      // statements.
+      // TODO: How to support a bit-field output of non-integral
+      // number of bytes?
+      if (rtype == MTYPE_M && desc == MTYPE_M) {
+        FmtAssert(TY_size(desc_ty_idx) == MTYPE_byte_size(Def_Int_Mtype),
+                  ("Size of ASM struct opnd must be equal to register size"));
+        desc = rtype = Def_Int_Mtype;
+        desc_ty_idx = hi_ty_idx = MTYPE_To_TY(Def_Int_Mtype);
+      }
+      ST *rhs_st = MTYPE_To_PREG(desc);
+      rhs_wn = WN_CreateLdid (OPR_LDID, rtype,
+			      desc, rhs_preg_num, rhs_st,
+			      desc_ty_idx, 0);
+#ifdef KEY
+      // Bug 8056: Need to preserve the semantics on the preg if it's size
+      // is less than 4 bytes.
+      if (MTYPE_byte_size(desc) < 4) {
+
+         rhs_wn = WN_CreateCvtl(!MTYPE_signed(desc) ? OPC_U4CVTL : OPC_I4CVTL,
+                                MTYPE_bit_size(desc),
+                                rhs_wn);
+
+      }
+#endif
+    }
+    else {
+      WN *result_wn;	// the result wn to be returned
+      
+      if (assign_code == MODIFY_EXPR) {
+	if (is_realpart)
+	  rhs_wn = WN_Binary(OPR_COMPLEX, rtype,
+			     rhs_wn,
+			     WN_Unary(OPR_IMAGPART,
+				      Mtype_complex_to_real (rtype),
+				      lvalue));
+	else
+	if (is_imagpart)
+	  rhs_wn = WN_Binary(OPR_COMPLEX, rtype,
+			     WN_Unary(OPR_REALPART,
+				      Mtype_complex_to_real (rtype),
+				      lvalue),
+			     rhs_wn);
+      }
+      else {
+	if (is_realpart)
+	  rhs_wn = WN_Binary(OPR_COMPLEX, rtype,
+			     rhs_wn,
+			     WN_Floatconst (Mtype_complex_to_real (rtype), 0.0));
+	else
+	if (is_imagpart)
+	  rhs_wn = WN_Binary(OPR_COMPLEX, rtype,
+			     WN_Floatconst (Mtype_complex_to_real (rtype), 0.0),
+			     rhs_wn);
+      }
+
+      if (assign_code == PREINCREMENT_EXPR ||
+	  assign_code == PREDECREMENT_EXPR) {
+        wn = lvalue;
+        rhs_wn = WN_Binary(Operator_From_Tree [assign_code].opr,
+		           rtype, wn, rhs_wn);
+	result_wn = rhs_wn;
+      }
+      else if (assign_code == POSTINCREMENT_EXPR ||
+	       assign_code == POSTDECREMENT_EXPR) {
+        result_wn = lvalue;
+      }
+      else result_wn = rhs_wn;
+
+      // OSP_382, do not store MTYPE_M into temp
+      if (need_result && rtype != MTYPE_M &&
+	  (volt ||
+	   assign_code == POSTINCREMENT_EXPR ||
+	   assign_code == POSTDECREMENT_EXPR)) { // save result in a preg
+        result_in_temp = TRUE;
+        result_preg_st = MTYPE_To_PREG(rtype);
+        result_preg = Create_Preg(rtype, NULL);
+        wn = WN_Stid(rtype, result_preg, result_preg_st, desc_ty_idx, result_wn,
+		     0);
+        WFE_Stmt_Append (wn, Get_Srcpos());
+        result_wn = WN_Ldid(rtype, result_preg, result_preg_st, desc_ty_idx, 0);
+      }
+
+      if (assign_code == POSTINCREMENT_EXPR ||
+	  assign_code == POSTDECREMENT_EXPR) {
+        rhs_wn = WN_Binary(Operator_From_Tree [assign_code].opr,
+		           rtype, result_wn, rhs_wn);
+      }
+      else rhs_wn = result_wn;
+
+      // rhs_wn is now always the right-hand-side of the assignment
+    }
+
+    // the assignment
+    if (!WFE_Keep_Zero_Length_Structs &&
+        desc == MTYPE_M               &&
+        TY_size (hi_ty_idx) == 0) {
+      // ignore zero length structs
+    }
+    else {
+#ifdef KEY    // bug 10422: check if the field is volatile
+      if (volt) 
+	      Set_TY_is_volatile(hi_ty_idx);
+#endif
+      if ( code == PARM_DECL && MTYPE_is_m(TY_mtype(hi_ty_idx)) ) {
+        WN * wna = WN_CreateLdid(OPR_LDID, MTYPE_U4, MTYPE_U4,
+          ST_ofst(st), st, desc_ty_idx);
+        wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, desc, component_offset, 
+			    Make_Pointer_Type (hi_ty_idx, FALSE),
+			    rhs_wn, wna, field_id);
+        
+        printf("\n\n\nHere @wfe_expr.cxx:1192 Zzz...\n\n");
+      }
+      else {
+        wn = WN_Stid (desc, ST_ofst(st) + component_offset + lhs_preg_num, st,
+  		    hi_ty_idx, rhs_wn, field_id);
+      }
+      WFE_Stmt_Append(wn, Get_Srcpos());
+    }
+    if (need_result) {
+      if (! result_in_temp)
+        wn = lvalue;
+      else wn = WN_Ldid(rtype, result_preg, result_preg_st, desc_ty_idx, 0);
+      if (is_realpart)
+	wn = WN_Unary (OPR_REALPART, Mtype_complex_to_real (rtype), wn);
+      else
+      if (is_imagpart)
+	wn = WN_Unary (OPR_IMAGPART, Mtype_complex_to_real (rtype), wn);
+    }
+    else wn = NULL;
+#else // #if !defined(TARG_PPC32)   
     TY_IDX hi_ty_idx = Get_TY(TREE_TYPE(lhs)); // type associated with field_id
     if (TREE_THIS_VOLATILE(lhs)) {
       Set_TY_is_volatile(hi_ty_idx);
@@ -1188,6 +1364,7 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
 	wn = WN_Unary (OPR_IMAGPART, Mtype_complex_to_real (rtype), wn);
     }
     else wn = NULL;
+#endif  //  #if !defined(TARG_PPC32)    
   }
   else if (code == INDIRECT_REF) {
     WN *addr_wn = WFE_Expand_Expr (TREE_OPERAND (lhs, 0));
@@ -3182,6 +3359,31 @@ WFE_Expand_Expr (tree exp,
 	if (MTYPE_is_vector (rtype) || MTYPE_is_vector (desc))
 	  desc = rtype;
 #endif
+#if defined(TARG_PPC32)
+  // PowerPC System V ABI defines : struct pass by value should pass
+  // the struct object address as paremter, the reference to the struct 
+  // should be indirectly accessed 
+  if ( code == PARM_DECL && MTYPE_is_m(TY_mtype(hi_ty_idx)) ) {
+    printf("\n\n\nHere @wfe_expr.cxx:3365 Zzz...\n\n");
+    WN * wna = WN_CreateLdid(OPR_LDID, MTYPE_U4, MTYPE_U4,
+    // WN * wna = WN_CreateLdid(OPR_LDID, MTYPE_U4, Make_Pointer_Type(hi_ty_idx, FALSE),
+      ST_ofst(st)+preg_num, st, ty_idx);
+    //  WN * wna = WN_CreateLda(OPR_LDA, Pointer_Mtype, MTYPE_V, 
+      //  ST_ofst(st)+preg_num, ty_idx, st);
+    
+    wn = WN_CreateIload(OPR_ILOAD, rtype,
+		  is_bit_field ? MTYPE_BS : desc, 
+			component_offset+preg_num,
+			field_id != 0 ? hi_ty_idx : ty_idx, 
+			Make_Pointer_Type(hi_ty_idx, FALSE),
+			wna, field_id);
+    
+	  if (cvtl_size != 0)
+	    wn = WN_CreateCvtl(OPR_CVTL, rtype, MTYPE_V, cvtl_size, wn);
+      
+    break; // done
+  }
+#endif
 	wn = WN_CreateLdid (OPR_LDID, rtype,
 			    is_bit_field ? MTYPE_BS : desc,
 			    ST_ofst(st)+component_offset+preg_num, st,
@@ -3746,10 +3948,15 @@ WFE_Expand_Expr (tree exp,
 #endif
 	    wn = WN_Cvt(WN_rtype(wn0), mtyp, wn0);
 	    // The following opcodes are not valid for MIPS
+#if defined(TARG_PPC32)
+	    if (WN_opcode(wn) == OPC_I4U4CVT ||
+	        WN_opcode(wn) == OPC_I8U8CVT) {
+#else
 	    if (WN_opcode(wn) == OPC_I4U4CVT ||
 	        WN_opcode(wn) == OPC_U4I4CVT ||
 	        WN_opcode(wn) == OPC_I8U8CVT ||
 	        WN_opcode(wn) == OPC_U8I8CVT) {
+#endif
 	      wn = WN_kid0 (wn);
 	    }
 	  }
@@ -4406,6 +4613,7 @@ WFE_Expand_Expr (tree exp,
 		  tree len1 = c_strlen_exported (arg1);
 		  if (len1) {
 		    tree len2 = c_strlen_exported (arg2);
+#if !defined(TARG_PPC32)        // contains bug
 		    if (len2) {
 		      char *ptr1 = get_string_pointer (WFE_Expand_Expr (arg1));
 		      char *ptr2 = get_string_pointer (WFE_Expand_Expr (arg2));
@@ -4416,6 +4624,7 @@ WFE_Expand_Expr (tree exp,
 			break;
 		      }
 		    }
+#endif        
 		  }
 		  iopc = INTRN_STRCMP;
 //		  intrinsic_op = TRUE;
@@ -4443,9 +4652,11 @@ WFE_Expand_Expr (tree exp,
 
 #if 0 /* turn off for the timing being due to bug */
 	    case BUILT_IN_FLOOR:
+#if !defined(TARG_PPC32)        // PPC32 can not handle FLOOR         
 	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
 	      whirl_generated = TRUE;
+#endif              
 	      break;
 
 	    case BUILT_IN_FLOORF:
@@ -5378,6 +5589,57 @@ WFE_Expand_Expr (tree exp,
 
     case VA_ARG_EXPR:
       {
+#if defined(TARG_PPC32)
+      Is_True(FALSE, ("VA NYI in wfe_expr.cxx"));
+
+      tree kid0 = TREE_OPERAND(exp, 0);
+      WN *ap_wn;
+      ap_wn = WFE_Expand_Expr(kid0);
+      if (WN_rtype(ap_wn) == MTYPE_M) {
+        if (OPCODE_is_leaf(WN_opcode(ap_wn)))
+          ap_wn = WN_Lda(Pointer_Mtype, 0, WN_st(ap_wn), 0);
+        else {
+          Is_True(OPCODE_is_load(WN_opcode(ap_wn)),
+    	      ("WFE_Expand_Expr: unexpected VA_ARG_EXPR argument"));
+          ap_wn = WN_kid0(ap_wn);
+        }
+      }
+      wn = ap_wn;
+      TY_IDX ty_idx = Get_TY (TREE_TYPE(exp));
+	    TYPE_ID mtype = Fix_TY_mtype(ty_idx);
+      wn = WN_Iload(mtype, 0, ty_idx, wn);
+#if 0
+      TY_IDX ty_idx = Get_TY (TREE_TYPE(exp));
+      TYPE_ID mtype = Fix_TY_mtype(ty_idx);
+
+      INT delta = ((TY_size(ty_idx) + 7) / 8) * 8;
+      wn0 = WN_Iload(Pointer_Mtype, 8, MTYPE_To_TY(Pointer_Mtype), 
+  		     WN_CopyNode(ap_wn));
+      wn1 = WN_Intconst(MTYPE_U8, delta);
+      wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+      wn = WN_Istore(Pointer_Mtype, 8,
+  		     Make_Pointer_Type(MTYPE_To_TY(Pointer_Mtype)),
+  		     WN_CopyNode(ap_wn), wn);
+      WFE_Stmt_Append (wn, Get_Srcpos ());
+      /* load pointer to overflow_arg_area */
+      wn = WN_Iload(Pointer_Mtype, 8, MTYPE_To_TY(Pointer_Mtype),
+  		    WN_CopyNode(ap_wn));
+      /* adjust with the amount just incremented */
+      wn1 = WN_Intconst(MTYPE_I8, -delta);
+      wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+
+      if( mtype == MTYPE_FQ ){
+        wn = WN_CreateIload(OPR_ILOAD, Widen_Mtype (mtype), mtype, 0,
+  			  ty_idx, Make_Pointer_Type(ty_idx), wn);
+      } else {
+        wn = WN_CreateIload(OPR_ILOAD, MTYPE_M, MTYPE_M, 0, ty_idx, 
+  			  Make_Pointer_Type(ty_idx), wn);
+      }
+#endif      
+      break;
+      }     
+              
+#else // defined(TARG_PPC32)
 #ifdef TARG_X8664
 	if( TARGET_64BIT ){
 	  tree kid0 = TREE_OPERAND(exp, 0);
@@ -5587,6 +5849,7 @@ WFE_Expand_Expr (tree exp,
 #endif
       }
       break;
+#endif // defined(TARG_PPC32)
 
     case ERROR_MARK:
 

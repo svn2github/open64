@@ -61,7 +61,7 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
  * ====================================================================
  */
 void
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_PPC32)
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath, char* version)
 #else
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath)

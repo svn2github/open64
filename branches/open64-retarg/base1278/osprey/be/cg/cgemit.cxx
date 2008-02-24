@@ -202,8 +202,13 @@ extern BOOL profile_arcs;
  */
 
 #if defined(TARG_IA64) || defined(linux)
+#if defined(TARG_PPC32) // turn off for now until we need to deal with dwarf
+BOOL CG_emit_asm_dwarf    = FALSE;  // Dwarf Error: wrong version in compilation unit header (is 296, should be 2)
+BOOL CG_emit_unwind_info  = FALSE;
+#else
 BOOL CG_emit_asm_dwarf    = TRUE;
 BOOL CG_emit_unwind_info  = TRUE;
+#endif
 #ifdef TARG_IA64
 BOOL CG_emit_unwind_directives = TRUE;
 #else
@@ -1003,6 +1008,53 @@ put_TN_comment (TN *t, BOOL add_name, vstring *comment)
   }
 }
 
+#include <string.h>
+
+#define IS_DIGIT(c) ((c) >= '0' && (c) <= '9')
+#define IS_UPPER_CASE(c) ((c) >= 'A' && (c) <= 'Z')
+#define IS_LOWER_CASE(c) ((c) >= 'a' && (c) <= 'z')
+#define IS_LETTER(c) (IS_UPPER_CASE((c)) || IS_LOWER_CASE((c)))
+
+/* ====================================================================
+ * 
+ * str_at_move
+ * 
+ * @author ZHOU Xing <zhouxing05@gmail.com>
+ * <br/> Dept. CS&T, Tsinghua University
+ * <br/> Dec. 28,2006
+ *
+ * move the '@ha' or '@l' string to tail
+ * 
+ * ====================================================================
+ */
+static vstring* str_at_move(vstring* vs)
+{
+	char* str = vs->str;
+	int len = vs->len;//strlen(str);
+	char* p_at = (char*)memchr(str, '@', len);
+	if(p_at == NULL || *p_at != '@')
+		return vs;
+	
+	char* buf = new char[len+1];
+	char* p = p_at;
+	for(int i = 0; i < len; i++)
+	{
+		buf[i] = *p++;
+		if(!IS_LETTER(*p))
+		{
+			buf[i+1] = '\0';
+			break;
+		}
+	}
+
+	while(*p != '\0')
+		*p_at++ = *p++;
+
+	strcpy(p_at, buf);
+	
+	delete[] buf;
+	return vs;
+}
 /* ====================================================================
  *
  * r_apply_l_const
@@ -1161,6 +1213,11 @@ r_apply_l_const (
     *buf = vstr_concat(*buf, ")");
     --paren;
   }
+#ifdef TARG_PPC32
+  // by ZHOU Xing
+  // for retarget float instr
+  str_at_move(buf);
+#endif
   return add_name;
 }
 
@@ -2476,7 +2533,11 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
 	sprintf(buf, "(%s)", name);
       }
 #else
+//#if defined(TARG_PPC32)
+//      sprintf(buf, "0(%s)", name);   //-- added by lixin for error 4
+//#else
       sprintf(buf, "[%s]", name);
+//#endif
 #endif
 #endif
       name = buf;
@@ -2752,6 +2813,10 @@ Generate_Asm_String (OP* asm_op, BB *bb)
       continue;
                                                                                                                                                   
     }
+//    else if (*p == '%' && *(p + 1) == 'U' && *(p + 3) == '%' && *(p + 4) == 'X') { //-- added by li xin for error 4
+//	    for (int k = 0; k < 6; ++k)                                            //-- added by li xin for error 4
+//		    *(p + k) = ' ';
+//    }
     else if (*p == '%') {
                                                                                                                                                   
       p++; // (Consume the '%').
@@ -5121,6 +5186,11 @@ Write_Symoff (
     INT32 padding;
     padding = repeat * address_size;
     if (Assembly && padding > 0) {
+#ifdef TARG_PPC32
+      if (CG_emit_non_gas_syntax)
+	fprintf(Asm_File, "\t%s %lld\n", ".space", (INT64)padding);
+      else
+#endif
       ASM_DIR_ZERO(Asm_File, padding);
     }
     if (Object_Code) {
@@ -5163,6 +5233,11 @@ Write_Symoff (
 	}
     }
     if (Assembly) {
+#ifdef TARG_PPC32
+	if (CG_emit_non_gas_syntax)
+	  fprintf(Asm_File, "\t%s\t", Use_32_Bit_Pointers ? ".word" : ".dword");
+	else
+#endif
 	fprintf (Asm_File, "\t%s\t", 
 		(scn_ofst % address_size) == 0 ? 
 		AS_ADDRESS : AS_ADDRESS_UNALIGNED);
@@ -5180,6 +5255,10 @@ Write_Symoff (
 		fprintf (Asm_File, " %+lld\n", (INT64)sym_ofst);
 	}
 	if (ST_class(sym) == CLASS_FUNC) {
+#ifdef TARG_PPC32
+	&& !CG_emit_non_gas_syntax
+#endif
+		) {
 		fprintf (Asm_File, "\t%s\t", AS_TYPE);
 		EMT_Write_Qualified_Name (Asm_File, sym);
 		fprintf (Asm_File, ", %s\n", AS_TYPE_FUNC);

@@ -140,7 +140,7 @@ extern void TN_CORRESPOND_Free(void);
 
 extern BB * Add_Label(LABEL_IDX);
 
-#ifdef CG_PATHSCALE_MERGE
+#if defined(CG_PATHSCALE_MERGE) || defined(TARG_PPC32)
 extern OPS New_OPs;
 extern OP *Last_Processed_OP;
 extern SRCPOS current_srcpos;

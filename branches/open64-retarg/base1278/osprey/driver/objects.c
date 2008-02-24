@@ -510,6 +510,11 @@ add_library_options (void)
 	case ABI_I64:
 		break;
 	case ABI_IA32:
+	case ABI_P32:
+#if defined(TARG_PPC32) && defined(HOST_PPC32)    
+    add_library_dir("/usr/lib");
+    add_library_dir("/usr/lib/gcc-lib/powerpc-linux/3.3.5");
+#endif    
  		break;
 	default:
 		internal_error("no abi set? (%d)", abi);

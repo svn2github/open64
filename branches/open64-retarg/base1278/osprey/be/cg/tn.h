@@ -609,7 +609,9 @@ extern	void Init_TNs_For_PU (void);
 /* Initialize the TN data structure at the start of each REGION. */ 
 extern	void Init_TNs_For_REGION (void);
 
-
+#if defined(TARG_PPC32)
+extern TN * Gen_CR_TN (UINT cr);
+#endif
 /* TN generation: */
 
 /* The following set of routines can be used only for register TNs */
@@ -655,8 +657,15 @@ inline TN *Build_TN_Like(TN *tn)
 	new_tn = Gen_Register_TN (ISA_REGISTER_CLASS_integer, TN_size(tn));
   }
   else {
-  	new_tn = Gen_Register_TN (
-		TN_register_class(tn), TN_size(tn) );
+#ifdef TARG_PPC32
+    ISA_REGISTER_CLASS rc = TN_register_class(tn);;
+    if (tn == RA_TN) {
+      rc = ISA_REGISTER_CLASS_integer;
+    }
+    new_tn = Gen_Register_TN(rc, TN_size(tn));
+#else
+    new_tn = Gen_Register_TN(TN_register_class(tn), TN_size(tn) );
+#endif
   }
   /* Propogate fpu-int flag... */
   TN_flags(new_tn) |= (TN_flags(tn) & TN_FPU_INT);

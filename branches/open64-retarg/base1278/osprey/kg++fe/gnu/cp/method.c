@@ -1141,7 +1141,7 @@ skip_artificial_parms_for (fn, list)
     list = TREE_CHAIN (list);
   return list;
 }
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_PPC32)
 #else
 #include "gt-cp-method.h"
 #endif

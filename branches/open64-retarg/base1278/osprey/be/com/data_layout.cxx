@@ -99,7 +99,11 @@ ST *Local_Spill_Sym;
 extern INT32 mp_io;
 INT32 Current_PU_Actual_Size;
 STACK_MODEL Current_PU_Stack_Model = SMODEL_UNDEF;
-
+#ifdef TARG_PPC32
+INT64 PU_Frame_Size = 0;
+static INT32 Int_Formal_Size   = 0;
+static INT32 Float_Formal_Size = 0;
+#endif
 #define ST_NAME(st)	(ST_class(st) == CLASS_CONST ? \
 	Targ_Print(NULL,STC_val(st)) : ST_name(st) )
 
@@ -614,6 +618,12 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
   INT64 old_offset;
   INT64 size = ST_size(blk);
 
+#if defined(TARG_PPC32)
+  if ( ST_sclass(blk) == SCLASS_FORMAL && MTYPE_is_m(TY_mtype(ST_type(blk))) ) {
+    size = MTYPE_RegisterSize(Spill_Int_Mtype);;
+  }
+#endif 
+
 #ifdef KEY
   // C++ requires distinct addresses for empty classes
   if (ST_class(blk) == CLASS_VAR && (!Current_pu ||
@@ -624,8 +634,16 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
   Set_STB_align(base, MAX(STB_align(base), align));
   if (!STB_decrement(base)) {
     old_offset = STB_size(base);
+#ifdef TARG_PPC32
+   Set_ST_ofst(blk, old_offset + lpad);
+   if (base == SP_Sym && ST_class(blk) == CLASS_VAR)
+    Set_STB_size(base, ROUNDUP(ST_ofst(blk) + size + rpad, align));
+   else
+    Set_STB_size(base, ST_ofst(blk) + size);
+#else
     Set_ST_ofst(blk, ROUNDUP(old_offset + lpad, align));
     Set_STB_size(base, ROUNDUP(ST_ofst(blk) + size + rpad, align));
+#endif    
   }
   else {
     old_offset = STB_size(base);
@@ -781,6 +799,12 @@ Add_Object_To_Frame_Segment ( ST *sym, SF_SEGMENT seg, BOOL allocate )
       }    
 #endif
       // struct params are left-justified.
+#if defined(TARG_PPC32)
+      if (TY_kind(ST_type(sym)) == KIND_STRUCT) {
+        size = MTYPE_RegisterSize(Spill_Int_Mtype);
+        lpad = rpad = 0;
+      } else
+#endif 
       if (TY_kind(ST_type(sym)) == KIND_STRUCT)
       {
 	rpad = ROUNDUP(size, MTYPE_RegisterSize(Spill_Int_Mtype)) - size;
@@ -804,11 +828,50 @@ Add_Object_To_Frame_Segment ( ST *sym, SF_SEGMENT seg, BOOL allocate )
       }
       break;
     }
+#if defined(TARG_PPC32)    
+    if (seg != SFSEG_FORMAL) {
     ST_Block_Merge (SF_Block(seg), sym, lpad, rpad, SF_Maxsize(seg));
+    }
+#else
+    ST_Block_Merge(SF_Block(seg), sym, lpad, rpad, SF_Maxsize(seg));
+#endif
 
 #ifndef TARG_X8664
     if (seg == SFSEG_FORMAL)
     {
+#if defined(TARG_PPC32)    
+      extern INT Float_Formal_Save_Area_Size;
+
+      ST * formal           = SF_Block(seg);
+      int type_formal_size  = 0;
+      int type_formal_bound = 0;
+      TY_IDX tyidx          = ST_type(sym);
+      TYPE_ID mtype         = tyidx >> 8;
+      
+      if ( (tyidx != MTYPE_TO_TY_array[MTYPE_F8]) && 
+          (tyidx != MTYPE_TO_TY_array[MTYPE_F4]) ) {
+        Int_Formal_Size  += (ST_size(sym) + rpad + lpad);
+        type_formal_size  = Int_Formal_Size;
+        type_formal_bound = Formal_Save_Area_Size;
+      }
+      else {
+        Float_Formal_Size += (ST_size(sym) + rpad + lpad);
+        type_formal_size   = Float_Formal_Size;
+        type_formal_bound  = Float_Formal_Save_Area_Size;
+      }      
+      
+      if (type_formal_size > type_formal_bound) {
+        ST *upformal = SF_Block(SFSEG_UPFORMAL);
+        if (Trace_Frame) 
+          fprintf(TFile, "<lay> split formal between segs\n");
+
+        Initialize_Frame_Segment(SFSEG_UPFORMAL, ST_sclass(sym), INCREMENT);
+        ST_Block_Merge(SF_Block(SFSEG_UPFORMAL), sym, lpad, rpad, SF_Maxsize(SFSEG_UPFORMAL));
+      } 
+      else {
+        ST_Block_Merge(SF_Block(seg), sym, lpad, rpad, SF_Maxsize(seg));
+      }
+#else   // TARG_PPC32
       ST *formal = SF_Block(seg);
 
      /* formal overlaps both formal and upformal area,
@@ -826,6 +889,7 @@ Add_Object_To_Frame_Segment ( ST *sym, SF_SEGMENT seg, BOOL allocate )
 	    STB_size(upformal) + STB_size(formal) - Formal_Save_Area_Size);
 	Set_STB_size(formal, Formal_Save_Area_Size);
       }
+#endif    // TARG_PPC32   
     }
 #endif
   }
@@ -1134,6 +1198,10 @@ Calc_Actual_Area ( TY_IDX pu_type, WN *pu_tree )
 	INT regsize = MTYPE_RegisterSize(Spill_Int_Mtype);
 	INTRINSIC	id;
 
+#if defined(TARG_PPC32)
+  INT int_type     = 0;
+  INT double_type  = 0;
+#endif
 	switch (WN_operator(pu_tree)) {
 	case OPR_PICCALL:
 	case OPR_ICALL:
@@ -1149,8 +1217,21 @@ Calc_Actual_Area ( TY_IDX pu_type, WN *pu_tree )
 		  if (ploc.reg == 0)  // not passed in register
 		    size = PLOC_total_size(ploc);
 #endif
-		}
-#ifndef TARG_X8664
+#if defined(TARG_PPC32)
+    if (ploc.reg == 0) {
+/*      if (MTYPE_is_float(TY_mtype(ty))) {
+        double_type += PLOC_size(ploc);
+      }
+      else {
+        int_type    += PLOC_size(ploc);
+      } */
+    }
+#endif
+    }
+#if defined(TARG_PPC32)   
+    size = int_type + double_type;
+#endif
+#if !defined(TARG_X8664) && !defined(TARG_PPC32)
 		size = PLOC_total_size(ploc);
 #endif
 		break;
@@ -1211,7 +1292,9 @@ Calc_Actual_Area ( TY_IDX pu_type, WN *pu_tree )
 		Set_PU_arg_area_size(pu_type, size);
 	}
   }
+#if !defined(TARG_PPC32)  
   size -= Formal_Save_Area_Size;
+#endif
   if (size < 0) 
     size = 0;
   else if (Trace_Frame)
@@ -1454,7 +1537,7 @@ Clear_Vararg_Symbols (void)
 extern ST*
 Get_Vararg_Symbol (PLOC ploc)
 {
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) && !defined(TARG_PPC32)
 	Is_True(PLOC_reg(ploc) < 
 		First_Int_Preg_Param_Offset+MAX_NUMBER_OF_REGISTER_PARAMETERS,
 		("Get_Vararg_Symbol:  ploc %d out of range", PLOC_reg(ploc)));
@@ -1613,19 +1696,25 @@ Allocate_All_Formals (WN *pu)
 		  sym = Gen_Temp_Symbol (vararg_type2, "vararg");
 		else
 #endif
+#if defined(TARG_PPC32)
+      if (Preg_Offset_Is_Int(PLOC_reg(ploc)))
+        vararg_type = Copy_TY(ST_type(Int_Preg));
+      else
+        vararg_type = Copy_TY(ST_type(Float_Preg));
+#endif
 		sym = Gen_Temp_Symbol (vararg_type, "vararg");
 		Set_ST_sclass (sym, SCLASS_FORMAL);
 		Set_ST_is_value_parm( sym);
 		Set_ST_addr_saved(sym);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_PPC32)
 		if (Preg_Offset_Is_Int(PLOC_reg(ploc)))
-#endif
 		vararg_symbols[PLOC_reg(ploc)-First_Int_Preg_Param_Offset] = sym;
-#ifdef TARG_X8664
 		else if( Preg_Offset_Is_Float(PLOC_reg(ploc)) )
 		  vararg_symbols[PLOC_reg(ploc)-First_Float_Preg_Param_Offset+MAX_NUMBER_OF_INT_REGISTER_PARAMETERS] = sym;
 		else
 		  FmtAssert( false, ("Unknown vararg symbol type.") );
+#else 
+      vararg_symbols[PLOC_reg(ploc)-First_Int_Preg_Param_Offset] = sym;
 #endif
 #ifndef TARG_X8664
 		Allocate_Entry_Formal(sym, PLOC_on_stack(ploc), Is_Formal_Preg(PLOC_reg(ploc)));
@@ -1825,6 +1914,10 @@ Init_Formal_Segments (INT32 formal_size, INT32 upformal_size)
   SF_Maxsize ( SFSEG_UPFORMAL ) = ROUNDUP(upformal_size, stack_align);
   SF_Maxsize ( SFSEG_FORMAL ) = ROUNDUP(formal_size, stack_align);
 #endif
+#if defined(TARG_PPC32)
+  Int_Formal_Size   = 0;
+  Float_Formal_Size = 0;
+#endif
 }
 
 /* ====================================================================
@@ -1907,8 +2000,12 @@ Merge_Fixed_Stack_Frame(ST *SP_baseST, ST *FP_baseST)
   INT32 orig_formal_size;
   FmtAssert(SP_baseST != NULL && FP_baseST != NULL,
 	    ("Initialize_Stack_Frame: Invalid parameters"));
-
+#if defined(TARG_PPC32)
+  Set_STB_size(SP_baseST, 8);
+  // Set_ST_ofst(SF_Block(SFSEG_FORMAL), Stack_Offset_Adjustment);
+#else
   Set_STB_size(SP_baseST,0);
+#endif
   Set_STB_size(FP_baseST,0);
 
   /* the actual area doesn't have allocated objects, just a size */
@@ -2159,6 +2256,9 @@ Calculate_Stack_Frame_Sizes (WN *PU_tree)
   Merge_Fixed_Stack_Frame (SP_Sym, FP_Sym);
 
   Allocate_Local_Spill_Sym ();	/* for later scheduler use */
+#if defined(TARG_PPC32)
+  MERGE_SEGMENT(SP_Sym, SFSEG_FORMAL, Max_Small_Frame_Offset);
+#endif
 }
 
 /* ====================================================================
@@ -2189,12 +2289,16 @@ Process_Stack_Variable ( ST *st )
 
    size = (is_root_block) ? STB_size(st) : TY_size(ST_type(st));
 
+#ifndef TARG_PPC32
    /* attach large objects to FP (if exists), else attach to SP */
    if (Current_PU_Stack_Model == SMODEL_SMALL || 
 	(Current_PU_Stack_Model == SMODEL_LARGE && size < Large_Object_Bytes))
 	base = SP_Sym;
    else
 	base = FP_Sym;
+#else
+   base = SP_Sym;
+#endif
    ST_Block_Merge (base, st, 0, 0, MAX_FRAME_OFFSET);
 }
 
@@ -2304,12 +2408,21 @@ INT64 Finalize_Stack_Frame (void)
 	if (Trace_Frame) fprintf(TFile, "<lay> formals not used\n");
     }
     else {
+#if !defined(TARG_PPC32)
 	MERGE_SEGMENT(SP_Sym, SFSEG_FORMAL, Max_Small_Frame_Offset);
+#endif
     }
     Frame_Size = STB_size(SP_Sym);
+#if defined(TARG_PPC32)
+    Set_STB_size(SP_Sym, ROUNDUP(Frame_Size + 12, stack_align));
+#endif
     Set_ST_base(SF_Block(SFSEG_UPFORMAL), SP_Sym);
+#if defined(TARG_PPC32)    
+    Set_ST_ofst(SF_Block(SFSEG_UPFORMAL), STB_size(SP_Sym) + Stack_Offset_Adjustment);
+#else
     Assign_Offset(SF_Block(SFSEG_UPFORMAL), SP_Sym, 
 	(Frame_Has_Calls ? Stack_Offset_Adjustment : 0), 0);
+#endif
     break;
 
   case SMODEL_LARGE:
@@ -2325,6 +2438,9 @@ INT64 Finalize_Stack_Frame (void)
 	       ("UNDEFINED Stack Model in Finalize_Stack_Frame" ));
   }
 
+#if defined(TARG_PPC32)
+  Frame_Size += 12; // PowerPC external space for SP($1), LR(Link Register) and CR(Condition Register)
+#endif
   Frame_Size = ROUNDUP(Frame_Size, stack_align);
 #ifdef TARG_X8664 // this is needed to maintain 16 bytes gap that contains
     		  // the save area for return-addr and frame-ptr
@@ -2336,9 +2452,11 @@ INT64 Finalize_Stack_Frame (void)
   // that is in the callers frame, and thus does not need to be
   // included in the new callee frame size if this is a leaf
   // (so don't need to reserve space for subsequent frames).
+#if !defined(TARG_PPC32)  
   if (!Frame_Has_Calls) {
 	Frame_Size = MAX(0, Frame_Size - Stack_Offset_Adjustment);
   }
+#endif  
 
   if ( Trace_Frame ) {
     Trace_Stack_Segments ( "Finalize_Stack_Frame", SP_Sym, FP_Sym);
@@ -2367,6 +2485,9 @@ INT64 Finalize_Stack_Frame (void)
 		ErrMsg (EC_LAY_stack_limit, Frame_Size, (INT64) rlp.rlim_cur);
 #endif
   }
+#if defined(TARG_PPC32)   
+  PU_Frame_Size = Frame_Size;
+#endif
   return Frame_Size;
 }
 

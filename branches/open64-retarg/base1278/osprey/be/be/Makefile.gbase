@@ -122,6 +122,9 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 HOSTDEFS += -DIs_True_On
@@ -603,6 +606,9 @@ TARGET_SO = pentium.so
 endif
 ifeq ($(BUILD_TARGET), X8664)
 TARGET_SO = opteron.so
+endif
+ifeq ($(BUILD_TARGET), PPC32)
+TARGET_SO = ppc.so
 endif
 
 VPATH    =  $(SRC_DIRS)

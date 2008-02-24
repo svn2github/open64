@@ -175,7 +175,11 @@ ifdef BUILD_ABI
  ifneq ($(BUILD_ABI), 64BIT)
  ifneq ($(BUILD_ABI), I32BIT)
  ifneq ($(BUILD_ABI), I64BIT)
+ ifneq ($(BUILD_ABI), P32BIT)
+ ifneq ($(BUILD_ABI), P64BIT)
    ABORT_BUILD = BUILD_ABI has bad value - $(BUILD_ABI)!
+ endif
+ endif
  endif
  endif
  endif
@@ -195,6 +199,7 @@ ifdef BUILD_ARCH
  ifneq ($(BUILD_ARCH), IA32)
  ifneq ($(BUILD_ARCH), IA64)
  ifneq ($(BUILD_ARCH), X8664)
+ ifneq ($(BUILD_ARCH), PPC32)
    ABORT_BUILD = BUILD_ARCH has bad value - $(BUILD_ARCH)!
  endif
  endif
@@ -202,7 +207,7 @@ ifdef BUILD_ARCH
  endif
  endif
  endif
-
+ endif
   ifneq ($(BUILD_ARCH), $(BUILD_TARGET))
       STD_COMPILE_OPTS += -DCROSS_COMPILATION 
  endif
@@ -251,7 +256,9 @@ ifdef BUILD_TARGET
  ifneq ($(BUILD_TARGET), IA32)
  ifneq ($(BUILD_TARGET), IA64)
  ifneq ($(BUILD_TARGET), X8664)
-   ABORT_BUILD = BUILD_TARGET has bad value - $(BUILD_TARGET)!
+ ifneq ($(BUILD_TARGET), PPC32)
+   ABORT_BUILD = BUILD_TARGET has bad value - $(BUILD_BASE)!
+ endif
  endif
  endif
  endif
@@ -271,6 +278,9 @@ BUILD_TARGET_DIR = ia64
 endif
 ifeq ($(BUILD_TARGET), X8664)
 BUILD_TARGET_DIR = x8664
+endif
+ifeq ($(BUILD_TARGET), PPC32)
+BUILD_TARGET_DIR = ppc32
 endif
 
 #
@@ -362,7 +372,9 @@ ifneq ($(BUILD_HOST), MIPS)
 ifneq ($(BUILD_HOST), IA32)
 ifneq ($(BUILD_HOST), IA64)
 ifneq ($(BUILD_HOST), X8664)
+ifneq ($(BUILD_HOST), PPC32)
    ABORT_BUILD = BUILD_HOST has bad value - $(BUILD_HOST)!
+endif
 endif
 endif
 endif
@@ -404,6 +416,16 @@ ifndef ABORT_BUILD
  ifeq ($(BUILD_ABI), I64BIT)
  ifneq ($(BUILD_ARCH), IA64)
   ABORT_BUILD = BUILD_ABI=I64BIT requires BUILD_ARCH=IA64
+ endif
+ endif
+ ifeq ($(BUILD_ABI), P32BIT)
+ ifneq ($(BUILD_ARCH), PPC32)
+  echo "# ABORT_BUILD = BUILD_ABI=P32BIT requires BUILD_ARCH=PPC32"
+ endif
+ endif
+ ifeq ($(BUILD_ABI), I64BIT)
+ ifneq ($(BUILD_ARCH), IA64)
+  echo "# ABORT_BUILD = BUILD_ABI=I64BIT requires BUILD_ARCH=IA64"
  endif
  endif
 endif
@@ -451,11 +473,20 @@ ifneq ($(BUILD_COMPILER), GNU)
  ifeq ($(BUILD_ABI), I64BIT)
   STD_COMPILE_OPTS += -i64
  endif
+ ifeq ($(BUILD_ABI), P64BIT)
+  STD_COMPILE_OPTS += -m64
+ endif
+ ifeq ($(BUILD_ABI), P32BIT)
+  STD_COMPILE_OPTS += -m32
+ endif
 endif
 
 STD_COMPILE_OPTS += -DTARG_$(BUILD_TARGET)
 
 ifeq ($(BUILD_TARGET), IA32)
+STD_COMPILE_OPTS += -DEMULATE_LONGLONG
+endif
+ifeq ($(BUILD_TARGET), PPC32)
 STD_COMPILE_OPTS += -DEMULATE_LONGLONG
 endif
 

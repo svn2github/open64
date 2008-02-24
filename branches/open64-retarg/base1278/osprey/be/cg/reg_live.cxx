@@ -221,6 +221,12 @@ Compute_Parameter_Regs (TY_IDX call_ty, WN *call_wn, REGSET parms)
     while (PLOC_is_nonempty(ploc)) {
     	if (PLOC_on_stack(ploc)) break;	// no more register parameters.
 	Add_PREG_To_REGSET (PLOC_reg(ploc), parms);
+#if defined(TARG_PPC32)
+      if (MTYPE_I8 == Ty_Table[parm_ty].mtype || 
+        MTYPE_U8 == Ty_Table[parm_ty].mtype) {
+        Add_PREG_To_REGSET (PLOC_reg(ploc)+1, parms);
+      }
+#endif
         ploc = func_entry ? Next_Input_PLOC_Reg (ploc)
                           : Next_Output_PLOC_Reg (ploc);
     }

@@ -26,6 +26,11 @@
 #include "system.h"
 #include "gnu/tree.h"
 
+#if defined(TARG_PPC32)
+// the definition in gnu/config/ppc32/rs6000.h causes problem
+// with the enumeration in common/com/ppc32/config_targ.h
+#undef TARGET_POWERPC
+#endif /* TARG_PPC32 */
 #include "wn.h"
 #include "wfe_misc.h"
 #include "wfe_stmt.h"

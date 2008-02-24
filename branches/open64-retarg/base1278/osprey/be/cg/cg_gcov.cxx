@@ -1400,6 +1400,8 @@ CG_Instrument_Arcs()
 	  tgt_label = Gen_Label_For_BB( bb_succ );
 #ifdef TARG_X8664
 	  Build_OP( TOP_jmp, Gen_Label_TN(tgt_label, 0), &new_ops);
+#elif defined(TARG_PPC32)
+	  Build_OP( TOP_ba, Gen_Label_TN(tgt_label, 0), &new_ops);
 #elif TARG_MIPS
 	  // mips
 	  Build_OP( TOP_j, Gen_Label_TN(tgt_label, 0), &new_ops);

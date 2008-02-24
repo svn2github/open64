@@ -223,7 +223,7 @@ OPTION_LIST *WOPT_Skip = NULL;		/* Skip option list */
 SKIPLIST *WOPT_Skip_List = NULL;	/* Processed skiplist */
 BOOL  WOPT_Enable_SLT = TRUE;
 BOOL  WOPT_Enable_Small_Br_Target = FALSE; /* propagation into branch BBs */
-INT32  WOPT_Enable_Simple_If_Conv = 1;   /* simple if-conversion at CFG build time: 0 - off, 1 - conservative, 2 - aggressive */
+INT32  WOPT_Enable_Simple_If_Conv = 0;   /* simple if-conversion at CFG build time: 0 - off, 1 - conservative, 2 - aggressive */
 INT32 WOPT_Enable_If_Conv_Limit = 6;    /* max number of leaf nodes allowed in a
 					   simple expr in simple if conv */
 BOOL  WOPT_Enable_If_Conv_For_Istore = TRUE;   /* if-conversion is applied if lhs is istore */

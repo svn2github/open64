@@ -224,8 +224,12 @@ BOOL OPT_shared_memory = TRUE;	// assume use of shared memory
 /* Put each function in its own text section */
 BOOL Section_For_Each_Function = FALSE;
 BOOL Inline_Intrinsics_Early=FALSE;    /* Inline intrinsics just after VHO */
+#if defined(TARG_PPC32)
+BOOL Enable_extract_bits=FALSE;
+#else
 BOOL Enable_extract_bits=TRUE;     /* This is also forced off for MIPS and IA32 in
                                           config_targ.cxx */
+#endif                                            
 BOOL Enable_compose_bits=FALSE;
 
 #ifdef __linux__

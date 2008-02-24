@@ -332,7 +332,7 @@ Initialize_Register_Class(
         if ( ABI_PROPERTY_Is_ret_addr(rclass, isa_reg) )
           shrink_wrap = REGISTER_SET_Union1(shrink_wrap, reg);
 #endif
-#if !defined(TARG_MIPS) && !defined(TARG_X8664)
+#if !defined(TARG_MIPS) && !defined(TARG_X8664) && !defined(TARG_PPC32)
         if ( ABI_PROPERTY_Is_stacked(rclass, isa_reg) )
           stacked = REGISTER_SET_Union1(stacked, reg);
 #endif
@@ -361,11 +361,13 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_fp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_fp, rclass);
     }
+#if !defined(TARG_PPC32)
     else if ( ABI_PROPERTY_Is_static_link(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_static_link, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_static_link, rclass);
     }
-#if defined(TARG_MIPS) || defined(TARG_IA64)
+#endif
+#if defined(TARG_MIPS) || defined(TARG_IA64) || defined(TARG_PPC32)
     else if ( ABI_PROPERTY_Is_global_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_gp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_gp, rclass);
@@ -935,6 +937,9 @@ REGISTER_Set_Allocatable(
   BOOL               is_allocatable
 )
 {
+  //added by li xin
+  if (rclass > ISA_REGISTER_CLASS_MAX)
+	  return;
   INT prev_status = reg_alloc_status[rclass][reg];
   INT new_status  = is_allocatable ? AS_allocatable : AS_not_allocatable;
 

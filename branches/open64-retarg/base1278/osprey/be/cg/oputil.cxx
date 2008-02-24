@@ -1304,6 +1304,14 @@ void dump_op(const OP *op)
    Set_Trace_File_internal(f);
 }
 
+void dump_ops (const OPS * ops)
+{
+  FILE *f;
+  f = TFile;
+  Set_Trace_File_internal(stdout);
+  if (ops)Print_OPs_No_SrcLines(ops->first);
+  Set_Trace_File_internal(f);  
+}
 
 /* ====================================================================
  *

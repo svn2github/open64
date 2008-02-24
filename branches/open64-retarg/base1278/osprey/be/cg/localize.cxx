@@ -73,6 +73,10 @@
 #include "cg_internal.h"
 #include "targ_sim.h"
 #include "whirl2ops.h"
+#if defined(TARG_PPC32)
+#include <queue>
+#include <set>
+#endif
 
 static BOOL Trace_Localize = FALSE;
 
@@ -1007,6 +1011,7 @@ BB_Reaches_Call_or_Exit( BB *start )
   }
 
   BB_MAP_Delete( visited );
+
   return ans;
 }
 
@@ -1052,6 +1057,30 @@ Call_or_Entry_Reaches_BB(BB *start)
       return bb;
     }
   }
+
+#if defined(TARG_PPC32)
+  std::queue<BB*> to_visit;
+  std::set<BB*>   visited_bb;
+  to_visit.push(start);
+  int cnt = 0;
+  
+  while ((!to_visit.empty()) && (cnt++ < 1000)) {
+    bb = to_visit.front();
+    visited_bb.insert(bb);
+    to_visit.pop();
+    if (BB_entry(bb)) return bb;
+
+    BBLIST* nxt;
+    BBLIST* prevs;
+    for (prevs = BB_preds(bb); prevs; prevs = nxt) {
+      BB* bb_prev = BBLIST_item(prevs);
+      nxt = BBLIST_next(prevs);
+
+      if (visited_bb.count(bb_prev) == 0) 
+        to_visit.push(bb_prev);
+    } 
+  }
+#endif
   return NULL;
 }
 

@@ -46,6 +46,10 @@ extern BOOL Trace_Exp2;	/* extra trace info */
 extern void Expand_Immediate (TN *dest, TN *src, BOOL is_signed, OPS *ops);
 extern void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
 extern void Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
+#if defined(TARG_PPC32)
+extern void Expand_SR_Adj(BOOL isAdd, TN *result, TN *imm, OPS *ops);
+extern void Expand_Convert_Length (TN *dest, TN *src, TN *length, TYPE_ID mtype, TYPE_ID desc, OPS *ops);
+#endif
 extern void Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
@@ -81,7 +85,7 @@ extern void Expand_Float_Greater_Equal (TN *dest, TN *src1, TN *src2, VARIANT va
 extern void Expand_Float_Equal (TN *dest, TN *src1, TN *src2, VARIANT variant, TYPE_ID mtype, OPS *ops);
 extern void Expand_Float_Not_Equal (TN *dest, TN *src1, TN *src2, VARIANT variant, TYPE_ID mtype, OPS *ops);
 extern void Expand_Convert_Length (TN *dest, TN *src, TN *length, TYPE_ID mtype, BOOL signed_extension, OPS *ops);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_PPC32)
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 #else
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
@@ -123,11 +127,16 @@ TN* Create_TN_Pair( TN*, TYPE_ID );
 void Create_TN_Pair( TN*, TN* );
 #endif /* TARG_X8664 */
 
-#ifdef TARG_IA64
-extern TN* Expand_Immediate_Into_Register (TN *src, OPS *ops);
-#else
-extern TN* Expand_Immediate_Into_Register (TN *src, BOOL is_64bit, OPS *ops);
+#ifdef TARG_PPC32
+#define OP_NEED_PAIR(t)  \
+   (Is_Target_32bit() && ((t)==MTYPE_I8 || (t)==MTYPE_U8))
+TN*   Get_TN_Pair(TN*);
+TN*   Create_TN_Pair(TN*, TYPE_ID);
+void  Create_TN_Pair(TN*, TN*);
+extern TN* Expand_Immediate_Into_Register (TN * reg, TN *src, TYPE_ID mtype, OPS *ops);
 #endif
+extern TN* Expand_Immediate_Into_Register (TN *src, BOOL is_64bit, OPS *ops);
+
 extern BOOL Expand_Special_And_Immed(TN *dest, TN *src1, INT64 imm, OPS *ops);
 
 /* enumerate the different kinds of shifts */
@@ -141,7 +150,7 @@ extern void Expand_Left_Rotate (TN *result, TN *src1, TN *src2, TYPE_ID rtype, T
 /* in exp_loadstore: */
 extern void Expand_Lda (TN *dest, TN *src, OPS *ops);
 // Need not distinguish them because in C++ they represent different function
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
 extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, OPS *ops);
 extern void Expand_Store (TYPE_ID mtype, TN *src1, TN *src2, TN *src3, OPS *ops);
 #else

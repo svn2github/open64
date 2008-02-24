@@ -72,6 +72,9 @@ extern "C" {
 #endif // KEY
 }
 #undef TARGET_PENTIUM // hack around macro definition in gnu
+#if defined(TARG_PPC32)
+#undef TARGET_POWERPC
+#endif /* TARG_PPC32 */
 #include "glob.h"
 #include "wn.h"
 #include "wn_util.h"

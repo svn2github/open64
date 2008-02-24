@@ -748,6 +748,13 @@ Gen_Tag_TN ( LABEL_IDX tag)
   return tn;
 }
 
+#if defined(TARG_PPC32)
+TN *
+Gen_CR_TN (UINT cr)
+{
+  return Build_Dedicated_TN(ISA_REGISTER_CLASS_condition, (REGISTER)(cr+1), 1);
+}
+#endif
 /* ====================================================================
  *
  * Gen_Adjusted_TN

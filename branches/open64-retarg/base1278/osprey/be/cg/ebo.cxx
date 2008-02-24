@@ -1613,7 +1613,9 @@ find_duplicate_mem_op (BB *bb,
       if (must_not_delete==FALSE) op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo);
 #else
     op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo
+#if defined(TARG_X8664)    
 					   , actual_tninfo
+#endif					   
 		      );
 #endif // TARG_IA64
       }

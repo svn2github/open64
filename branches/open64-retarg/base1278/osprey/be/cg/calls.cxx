@@ -98,6 +98,9 @@
 #include "entry_exit_targ.h"
 #include "targ_abi_properties.h"
 #include "cxx_template.h" 
+#if defined(TARG_PPC32)
+#include "cgexp_internals.h"  // Expand_SR_Adj
+#endif
 #include "targ_isa_registers.h"
 
 INT64 Frame_Len;
@@ -666,7 +669,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
           CGSPILL_Store_To_Memory ( RA_TN, ra_sv_sym, &ops, CGSPILL_LCL, bb );
       }
     }
-#ifdef TARG_IA64
+#if defined(TARG_IA64) 
     else if (PU_Has_Calls || IPFEC_Enable_Edge_Profile){
       // Some points need to be noted here:
       // First,
@@ -690,7 +693,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
       // is a simulated OP, cgdwarf_targ.cxx will make an assertion that no simulated OP appears.
       // I think this should be a bug. This solution is just to work around it.
       if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
-#elif TARG_X8664
+#elif defined(TARG_X8664) || defined(TARG_PPC32)
     else {
       if (gra_run && PU_Has_Calls
 	  && TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
@@ -702,10 +705,14 @@ Generate_Entry (BB *bb, BOOL gra_run )
 	// it could use a stacked reg; ideally gra would handle
 	// this, but it doesn't and is easy to just copy to int reg
 	// by hand and then let gra use stacked reg.
+#if !defined(TARG_PPC32)
 	if (ra_intsave_tn == NULL) {
         	ra_intsave_tn = Build_RCLASS_TN (ISA_REGISTER_CLASS_integer);
 		Set_TN_save_creg (ra_intsave_tn, TN_class_reg(RA_TN));
 	}
+#else
+      	ra_intsave_tn = Build_RCLASS_TN (ISA_REGISTER_CLASS_integer);
+#endif
 	Exp_COPY (ra_intsave_tn, RA_TN, &ops );
       } else {
         Exp_COPY (SAVE_tn(Return_Address_Reg), RA_TN, &ops );
@@ -794,12 +801,13 @@ Generate_Entry (BB *bb, BOOL gra_run )
 #ifdef TARG_X8664
   if( Is_Target_32bit() && Gen_PIC_Shared ){
     EETARG_Generate_PIC_Entry_Code( bb, &ops );
+  }
 #endif
 #ifdef TARG_IA64
   if (TY_is_varargs(Ty_Table[PU_prototype(Get_Current_PU())])) {
     vararg_st8_2_st8_spill (bb);
-#endif
   }
+#endif  
 
   /* Merge the new operations into the beginning of the entry BB: */
   BB_Prepend_Ops(bb, &ops);
@@ -2027,8 +2035,13 @@ Assign_Prolog_Temps(OP *first, OP *last, REGISTER_SET *temps)
 static TN *
 Gen_Prolog_LDIMM64(UINT64 val, OPS *ops)
 {
+#if defined(TARG_PPC32)
+  TN *src = Gen_Literal_TN(val, Pointer_Size);
+  TN *result = Build_TN_Of_Mtype (MTYPE_I4);
+#else
   TN *src = Gen_Literal_TN(val, 8);
   TN *result = Build_TN_Of_Mtype (MTYPE_I8);
+#endif
 
   Exp_Immediate (result, src, TRUE, ops);
 
@@ -2195,7 +2208,14 @@ Adjust_Entry(BB *bb)
 
     /* Replace the SP adjust placeholder with the new adjustment OP
      */
+    /* Replace the SP adjust placeholder with the new adjustment OP
+     */
+#if defined(TARG_PPC32)
+    BOOL isAdd = TRUE;
+    Expand_SR_Adj(TRUE, SP_TN, incr, &ops);
+#else
     Exp_SUB (Pointer_Mtype, SP_TN, SP_TN, incr, &ops);
+#endif
     FOR_ALL_OPS_OPs_FWD(&ops, op) OP_srcpos(op) = OP_srcpos(sp_adj);
     ent_adj = OPS_last(&ops);
     BB_Insert_Ops_Before(bb, sp_adj, &ops);
@@ -2330,6 +2350,10 @@ Adjust_Exit(ST *pu_st, BB *bb)
     BB_Remove_Op(bb, sp_adj);
     FOR_ALL_OPS_OPs_FWD(&ops, op) OP_srcpos(op) = OP_srcpos(sp_adj);
     sp_adj = OPS_last(&ops);
+    
+#if !defined(TARG_PPC32) // local schedular error
+    Set_OP_no_move_before_gra(sp_adj);
+#endif
 
     if ( Trace_EE ) {
       #pragma mips_frequency_hint NEVER
@@ -2343,6 +2367,9 @@ Adjust_Exit(ST *pu_st, BB *bb)
   /* Point to the [possibly] new SP adjust OP
    */
   EXITINFO_sp_adj(exit_info) = sp_adj;
+#if defined(TARG_PPC32)
+  EETARG_Fixup_Exit_Code(bb);
+#endif
 }
 
 static void

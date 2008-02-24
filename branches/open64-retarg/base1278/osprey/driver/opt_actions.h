@@ -71,7 +71,8 @@ typedef enum {
   ABI_64,
   ABI_I32,
   ABI_I64,
-  ABI_IA32
+  ABI_IA32,
+  ABI_P32
 } ABI;
 typedef enum {
   ISA_NONE      = 0,
@@ -86,6 +87,7 @@ typedef enum {
   ISA_IA641     = 11,
   ISA_IA32      = 12,
   ISA_X8664     = 13,
+  ISA_PPC32	= 14,
 } ISA;
 
 extern boolean debug;		/* debugging turned on */

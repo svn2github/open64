@@ -311,13 +311,13 @@ static TCON complex_sqrt(TCON c0)
       long double ldr,ldi,ldmag;
       ldr = TCON_R16(c0);
       ldi = TCON_IR16(c0);
-      if ((ldmag = hypotl(ldr, ldi)) == 0.0L)
+      if ((ldmag = hypot(ldr, ldi)) == 0.0L)
 	TCON_R16(r) = TCON_IR16(r) = 0.0L;
       else if (ldr > 0.0L) {
-	TCON_R16(r) = sqrtl(0.5L * (ldmag + ldr));
+	TCON_R16(r) = sqrt(0.5L * (ldmag + ldr));
 	TCON_IR16(r) = ldi / TCON_R16(r) / 2.0L;
       } else {
-	TCON_IR16(r) = sqrtl(0.5L * (ldmag - ldr));
+	TCON_IR16(r) = sqrt(0.5L * (ldmag - ldr));
 	if (ldi < 0.0L)
 	  TCON_IR16(r) = -TCON_IR16(r);
 	TCON_R16(r) = ldi / TCON_IR16(r) / 2.0L;
@@ -425,7 +425,7 @@ static TCON complex_divide(TCON c0, TCON c1)
 	c0i = TCON_IR16(c0);
 	c1r = TCON_R16(c1);
 	c1i = TCON_IR16(c1);
-	if (fabsl(c1r) < fabsl(c1i)) {
+	if (fabs(c1r) < fabs(c1i)) {
 	    t2 = c1r * (c1r / c1i) + c1i;
 	    t1 = (c0i * (c1r / c1i) - c0r) / t2;
 	    t3 = (c0r * (c1r / c1i) + c0i) / t2;
@@ -5049,7 +5049,7 @@ Targ_Is_Integral ( TCON tc, INT64 *iv )
 
     case MTYPE_F10:
       {
-	QUAD_TYPE ld = floorl(TCON_R16(tc));
+	QUAD_TYPE ld = floor(TCON_R16(tc));
 	if (ld == TCON_R16(tc)) {
 		INT64 ll = (INT64)ld;
 		if ((QUAD_TYPE)ll == ld) {

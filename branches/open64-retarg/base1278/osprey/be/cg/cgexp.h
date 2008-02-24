@@ -108,8 +108,13 @@ extern void Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3,
 /* Generate code to load the address of 'sym'+'ofst' into 'tgt_tn'. 
  * The 'call_opr' parameter indicates whether the LDA is for a call.
  */
+#if defined(TARG_PPC32)
+extern void Exp_Lda (
+  TYPE_ID mtype, TN *tgt_tn, ST *sym, INT64 ofst, OPERATOR call_opr, OPS *ops, INTRINSIC intrn_id = INTRINSIC_INVALID);
+#else 
 extern void Exp_Lda (
   TYPE_ID mtype, TN *tgt_tn, ST *sym, INT64 ofst, OPERATOR call_opr, OPS *ops);
+#endif
 
 /* Generate code to load memory location 'sym'+'ofst' into 'tgt_tn',
  * with rtype & desc explicitly given
@@ -156,6 +161,13 @@ extern TN * Exp_Intrinsic_Call (
   INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops, 
   LABEL_IDX *label, OPS *loop_ops);
 
+#if defined(TARG_PPC32)
+/* Expansion of co-processor instructions */
+extern TN * Exp_SL_Intrinsic_Call (INTRINSIC id, WN *intrncall, OPS *ops,
+				     LABEL_IDX *label, OPS *loop_ops, TN* result = NULL);
+TN* 
+Build_SL_Intrinsic_OP( INTRINSIC id, WN* intrncall, OPS *ops, TN* result =NULL);
+#endif
 #ifdef TARG_X8664
 /* Expansion of INTRN_SAVEXMMS into TOP_savexmms pseudo instruction */
 extern void Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label, 
@@ -213,7 +225,20 @@ extern void Exp_Select_And_Condition (
         OPCODE select, TN *result, TN *true_tn, TN *false_tn,
         OPCODE compare, TN *cmp_kid1, TN *cmp_kid2, VARIANT variant, OPS *ops);
 
+#if defined(TARG_PPC32)
+extern BOOL Exp_Opt_Select_And_Condition (WN * select, TN * result, TN * true_tn,
+        TN * false_tn, TN * cmp_kid1, TN * cmp_kid2, OPS * ops);
+extern void Exp_2inst_MC_Zero (TOP mc_op, TN* dest_tn, TN* true_tn, TN* false_tn, 
+        TN* cond_tn, int unsignedflag, OPS* ops );
+extern void Build_MC_OP (TOP mc_op, TN *result, TN *rs1, TN *rs2, int unsignedflag,
+        OPS *ops, OP_COND_DEF_KIND kind);
+#endif
 
+#if defined(TARG_PPC32)
+extern LABEL_IDX Exp_Select_Part1(
+        OPCODE select, TN *result, TN *true_tn, TN *false_tn,
+        OPCODE compare, TN *cmp_kid1, TN *cmp_kid2, OPS *ops);
+#endif
 /*
  * By default, when we expand multi-instruction sequences, we use a new
  * temporary TN for each intermediate result.  This simplifies things for
@@ -319,6 +344,11 @@ extern void Exp_Pred_Compare(TN *dest, TN *cdest, TN *src1, TN *src2,
  * True if target can, false if should use target-independent logic.
  */
 extern BOOL Target_Has_Immediate_Operand (WN *parent, WN *expr);
+#if defined(TARG_PPC32) 
+extern TN * Expand_Expr (WN *expr, WN *parent, TN *result, INTRINSIC intrn_id = INTRINSIC_INVALID);
+extern void Expand_Start();
+extern void Expand_Finish();
+#endif 
 
 #ifdef TARG_X8664
 extern void CG_Set_Is_Stack_Used();

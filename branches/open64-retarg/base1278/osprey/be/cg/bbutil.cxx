@@ -1261,6 +1261,15 @@ void dump_bb (BB *bb)
    Set_Trace_File_internal(f);
 }
 
+void dump_bbs (BB *bb)
+{
+   FILE *f;
+   f = TFile;
+   Set_Trace_File_internal(stdout);
+   for (;bb;bb=bb->next)Print_BB_No_Srclines(bb);
+   Set_Trace_File_internal(f);
+}
+
 /* ================================================================= */
 
 void Print_All_BBs ( void ) 

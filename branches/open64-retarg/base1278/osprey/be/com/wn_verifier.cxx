@@ -546,7 +546,7 @@ BOOL WN_Verifier::CALL_parent_LDID(WN *wn, WN *parent_wn)
   WN       *temp_wn;  
   BOOL     slink_used;
 
-#if !defined(TARG_IA64) && !defined(TARG_X8664)
+#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_PPC32)
 
   // At the LDID node with special registers that are dedicated only
   // to return values:
@@ -1034,9 +1034,11 @@ WN_Verifier::Field_id_valid (WN* wn)
 	    Is_True (WN_field_id(wn) == 0,
 		     ("non-zero field id for memory op on scalar"));
 	} else if (WN_field_id(wn) == 0) {
+#if !defined(TARG_PPC32)	
 	    Is_True (WN_desc(wn) == MTYPE_M ||
 		     MTYPE_byte_size(WN_desc(wn)) == TY_size(*ty),
-		     ("field_id and descriptor type are inconsistent"));
+		     ("field_id and descriptor type are inconsistent")); 
+#endif
 	}
 	break;
     }

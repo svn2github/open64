@@ -1092,8 +1092,13 @@ Wfe_Expand_Asm_Operands (tree  string,
       }
     }
 
+  //-- added by li xin
+  //const char* temp_string = TREE_STRING_POINTER (string);
+  
+
   WN *asm_wn = WN_CreateAsm_Stmt (ninputs + 2,
 				  const_cast<char*>TREE_STRING_POINTER (string));
+				  //const_cast<char*> clean_string(temp_string));
 
   WN *clobber_block = WN_CreateBlock ();
 

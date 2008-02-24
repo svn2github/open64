@@ -362,6 +362,9 @@ typedef HASH_TABLE<WN*,INT> WN2INT;
 #ifdef TARG_MIPS
 #define Reserved_Int_Regs	9	// $0, $26-$29, loop ub, fudge (3)
 #endif
+#ifdef TARG_PPC32
+#define Reserved_Int_Regs	3
+#endif
 #ifdef TARG_IA64
 #define Reserved_Int_Regs	10	// r0, r1, r12, r13, loop ub, fudge (5)
 #endif
@@ -1989,7 +1992,7 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
           break;
 #else
         case OPR_DIV: 
-#ifndef TARG_MIPS
+#if !(defined(TARG_MIPS) || defined(TARG_PPC32))
           *num_instr += LNOTARGET_Int_Div_Res(resource_count, double_word);
 #else
           *num_instr += LNOTARGET_Int_Div_Res(resource_count, double_word, 

@@ -179,6 +179,10 @@ BB_MAP BBs_Map = NULL;
 extern BOOL cg_load_execute_overridden;
 #endif
 
+#ifdef TARG_PPC32
+extern void Expand_Start();
+extern void Expand_Finish();
+#endif
 /* WOPT alias manager */
 struct ALIAS_MANAGER *Alias_Manager;
 
@@ -271,7 +275,7 @@ CG_PU_Initialize (WN *wn_pu)
   if (Enable_CG_Peephole) EBO_Init();
   Init_Label_Info();
 
-#ifdef EMULATE_LONGLONG
+#if defined(EMULATE_LONGLONG) && !defined(TARG_PPC32)
   extern void Init_TN_Pair();
   Init_TN_Pair ();
 #endif
@@ -325,6 +329,10 @@ CG_PU_Finalize(void)
   Expand_Finish();
 #endif
 
+#if defined(TARG_PPC32)
+  Expand_Finish();
+#endif
+
   Free_BB_Memory();		    /* Free non-BB_Alloc space. */
   MEM_POOL_Pop ( &MEM_local_pool );
   MEM_POOL_Pop ( &MEM_local_nz_pool );
@@ -373,7 +381,7 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
 
   Current_Rid = REGION_get_rid( rwn );
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_PPC32)
   Expand_Start();
 #endif
 }
@@ -429,6 +437,8 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
   MEM_POOL_Pop (&MEM_local_region_pool);
   MEM_POOL_Pop (&MEM_local_region_nz_pool);
 }
+
+static void Check_for_Dump_ALL(INT32 pass, BB *bb, const char * phase);
 
 #ifdef TARG_IA64
 static void Config_Ipfec_Flags() {
@@ -562,7 +572,7 @@ CG_Generate_Code(
   }
 
   Convert_WHIRL_To_OPs ( rwn );
-
+  Check_for_Dump(TP_CGEXP, NULL);
 #ifdef TARG_X8664
   if (CG_x87_store) {
     extern void Add_Float_Stores();
@@ -582,13 +592,14 @@ CG_Generate_Code(
 
   // split large bb's to minimize compile speed and register pressure
   Split_BBs();
-
+  Check_for_Dump(TP_CGEXP, NULL);
   if ( ! CG_localize_tns ) {
     // Localize dedicated tns involved in calls that cross bb's,
     // and replace dedicated TNs involved in REGION interface with the
     // corresponding allocated TNs from previously compiled REGIONs.
     Localize_or_Replace_Dedicated_TNs();
   }
+  Check_for_Dump(TP_CGEXP, NULL);
 
   // If using feedback, incorporate into the CFG as early as possible.
   // This phase also fills in any missing feedback using heuristics.
@@ -717,6 +728,7 @@ CG_Generate_Code(
     Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
     Stop_Timer ( T_Localize_CU );
     Check_for_Dump ( TP_LOCALIZE, NULL );
+    Check_for_Dump ( TP_CGEXP, NULL );
   } else {
     /* Initialize liveness info for new parts of the REGION */
     /* also compute global liveness for the REGION */
@@ -725,6 +737,7 @@ CG_Generate_Code(
     GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
     Stop_Timer ( T_GLRA_CU );
     Check_for_Dump ( TP_FIND_GLOB, NULL );
+    Check_for_Dump ( TP_CGEXP, NULL );
   }
 
   if (Enable_CG_Peephole) {
@@ -954,6 +967,7 @@ CG_Generate_Code(
 	Set_Error_Phase ( "Localize" );
 	Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
 	Check_for_Dump ( TP_LOCALIZE, NULL );
+	Check_for_Dump ( TP_CGEXP, NULL );
       }
 #endif // KEY 
       Stop_Timer(T_Loop_CU);
@@ -1174,7 +1188,11 @@ CG_Generate_Code(
   // -CG:localize is on.  Rebuild the consistency for GCM.  Bug 7219.)
   GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
   GRA_LIVE_Rename_TNs();
+
+#if !defined(TARG_PPC32)    //  PPC IGLS_Schedule_Region bugs
   IGLS_Schedule_Region (TRUE /* before register allocation */);
+#endif 
+
 #endif
 
 #ifdef TARG_IA64
@@ -1200,7 +1218,6 @@ CG_Generate_Code(
 #endif
       GRA_LIVE_Rename_TNs ();
     }
-
 #ifdef TARG_IA64
     if (GRA_redo_liveness || IPFEC_Enable_Prepass_GLOS && (CG_opt_level > 1 || value_profile_need_gra)) {
 #else
@@ -1221,6 +1238,8 @@ CG_Generate_Code(
     GRA_Allocate_Global_Registers( region );
   }
 
+    Set_Error_Phase ( "lra before" );
+  Check_for_Dump(TP_CGEXP, NULL);
   LRA_Allocate_Registers (!region);
 
 #ifdef TARG_IA64
@@ -1312,7 +1331,9 @@ CG_Generate_Code(
   }
 #else  // TARG_IA64
 
+#if !defined(TARG_PPC32)
   IGLS_Schedule_Region (FALSE /* after register allocation */);
+#endif
 
 #ifdef TARG_X8664
   {
@@ -1557,19 +1578,49 @@ Trace_ST (
   }
 }
 
-/* ====================================================================
- *
- * Check_for_Dump
- *
- * Check whether symbol table, TN, or IR dumps have been requested for
- * the given pass; if so, generate them to the trace file.  If a BB is
- * given, limit the dumps to that BB.
- *
- * ====================================================================
- */
-void
-Check_for_Dump ( INT32 pass, BB *bb )
+static void Check_for_Dump_ALL(INT32 pass, BB *bb, const char * phase)
 {
+#if defined(TARG_PPC32)
+  static int trace_count = 0;
+  struct {
+    INT32 num;	/* Phase number (TP_COUNT to terminate list) */
+    char *id;	/* 3-character ID for phase */
+    char *name;	/* Full descriptive name for phase */
+  } PDESC[] = {
+   /* Code generator: */
+    { TP_CG,		"CGM",	"Code Generator miscellaneous" },
+    { TP_DATALAYOUT,	"LAY",	"Data layout" },
+    { TP_CGEXP,		"EXP",	"Code generator expansion" },
+    { TP_LOCALIZE,	"LOC",	"Localize TNs" },
+    { TP_FIND_GLOB,	"GLR",	"Find global register live ranges" },
+    { TP_EBO,		"EBO",	"Extended Block Optimizer" },
+    { TP_FLOWOPT,		"FLW",	"Control flow optimization" },
+    { TP_HBF,		"HBF",	"Hyperblock Formation" },
+    { TP_PQS,		"PQS",	"Predicate query system" },
+    { TP_CGPREP,		"PRP",	"Code generator scheduling prep" },
+    { TP_CGLOOP,		"LOP",	"Code generator loop optimization" },
+    { TP_A_IFCONV, "IFC" "If Conversion" },
+    { TP_SWPIPE,		"SWP",	"Software pipelining" },
+    { TP_SRA,		"SRA",	"Software pipelining register allocation" },
+    { TP_SCHED,		"SCH",	"Scheduling" },
+    { TP_GCM,		"GCM",	"Global code motion" },
+    { TP_GRA,		"GRA",	"Global register allocation" },
+    { TP_ALLOC,		"LRA",	"Local register allocation" },
+    { TP_PSGCM,		"PSG",	"Post Schedule Global code motion" },
+    { TP_THR,		"THR",	"Tree-Height Reduction" },
+    { TP_EMIT,		"EMT",	"Code emission" },
+  };
+
+  if (TP_CG <= pass && TP_EMIT >= pass) {
+    Set_Error_Phase(PDESC[pass-TP_CG].id);
+  }
+  else {
+    trace_count++;
+    char phase_buf[128]; // Tracing%d
+    sprintf(phase_buf, "Tracing %d Phase %s", trace_count, phase);
+    Set_Error_Phase(phase_buf);
+  }
+
   if (bb == NULL || Get_BB_Trace(BB_id(bb))) {
     const char *s = Get_Error_Phase();
 
@@ -1589,6 +1640,44 @@ Check_for_Dump ( INT32 pass, BB *bb )
      */
     Trace_Memory_Allocation ( pass, s );
   }
+#endif
+}
+/* ====================================================================
+ *
+ * Check_for_Dump
+ *
+ * Check whether symbol table, TN, or IR dumps have been requested for
+ * the given pass; if so, generate them to the trace file.  If a BB is
+ * given, limit the dumps to that BB.
+ *
+ * ====================================================================
+ */
+void
+Check_for_Dump ( INT32 pass, BB *bb )
+{
+#if 0 // defined(TARG_PPC32)
+  Check_for_Dump_ALL(pass, bb, "PPC phase ");
+#else
+  if (bb == NULL || Get_BB_Trace(BB_id(bb))) {
+    const char *s = Get_Error_Phase();
+
+    /* Check to see if we should dump the STAB.
+     */
+    Trace_ST ( pass, s );
+
+    /* Check to see if we should dump the TNs.
+     */
+    Trace_TN ( pass, s );
+
+    /* Check to see if we should dump the IR.  If yes, check each BB.
+     */
+    Trace_IR ( pass, s, bb );
+
+    /* Check to see if we should give a memory allocation trace.
+     */
+    Trace_Memory_Allocation ( pass, s );
+  }
+#endif  
 }
 
 BOOL

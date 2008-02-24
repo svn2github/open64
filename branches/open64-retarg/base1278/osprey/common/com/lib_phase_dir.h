@@ -94,6 +94,18 @@
 
 #else
 #define NAMEPREFIX	""
+
+#if defined(TARG_PPC32)
+
+#define BINPATH		OPEN64_INSTALL_PREFIX "/bin"
+#define ALTBINPATH	BINPATH
+#define LIBPATH		OPEN64_INSTALL_PREFIX "/lib"
+#define ALTLIBPATH	LIBPATH
+#define PHASEPATH	OPEN64_INSTALL_PREFIX "/lib"
+#define GNUPHASEPATH	OPEN64_INSTALL_PREFIX "/lib/gcc-lib/ppc32-open64-linux/4.0/"
+
+#else
+
 #ifdef PSC_TO_OPEN64
 #define BINPATH		OPEN64_INSTALL_PREFIX "/bin"
 #define ALTBINPATH	BINPATH
@@ -102,6 +114,10 @@
 #define PHASEPATH	OPEN64_INSTALL_PREFIX "/lib"
 #define GNUPHASEPATH	OPEN64_INSTALL_PREFIX "/lib/gcc-lib/" OPEN64_TARGET "/" OPEN64_GCC_VERSION
 #endif
+
+#endif  // TARG_PPC32
+
+
 #endif
 
 #endif /* lib_phase_dir_INCLUDED */

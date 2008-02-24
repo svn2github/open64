@@ -79,7 +79,7 @@
 # endif
 
 #ifdef BACK_END
-BOOL WN_Simp_Fold_ILOAD = TRUE;
+BOOL WN_Simp_Fold_ILOAD = FALSE; //TRUE;
 #else
 BOOL WN_Simp_Fold_ILOAD = FALSE;
 #endif

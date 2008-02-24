@@ -478,6 +478,9 @@ static char *model_rcs_id = "$Source: ../../be/lno/SCCS/s.model.h $ $Revision: 1
 #ifdef TARG_MIPS
 #define	Target_INTRs	32
 #endif
+#ifdef TARG_PPC32
+#define	Target_INTRs	32
+#endif
 #ifdef TARG_IA64
 #define	Target_INTRs	128
 #endif

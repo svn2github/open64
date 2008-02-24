@@ -105,7 +105,9 @@ set_defaults (void)
 		toggle(&endian, ENDIAN_LITTLE);
 #else
 		toggle(&endian, ENDIAN_BIG);
+#if !defined(TARG_PPC32)
 		prepend_option_seen(O_EB);
+#endif
 #endif
 #endif
 	}

@@ -77,7 +77,7 @@ static char *config_host_rcs_id = "$Source$ $Revision$";
 /* What is the byte sex of the host?  Note that the variable
  * Host_Byte_Sex is set based on this definition in config_host.c.
  */
-#ifndef linux
+#if defined(HOST_PPC32) || !defined(linux) 
 #define HOST_IS_BIG_ENDIAN	1
 #define HOST_IS_LITTLE_ENDIAN	0
 #else
