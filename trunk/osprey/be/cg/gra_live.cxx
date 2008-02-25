@@ -96,6 +96,10 @@
 #include "cgtarget.h"
 #include "eh_region.h"
 
+#ifdef TARG_IA64
+extern TN *Caller_GP_TN;  // OSP_426, always mark Caller_GP_TN global
+#endif
+
 static BB_LIST *region_entry_list;
 static BB_SET  *region_exit_set;
 static MEM_POOL gra_live_pool;
@@ -604,7 +608,10 @@ Compute_Force_TNs(void)
   else if (SAVE_tn(Return_Address_Reg) != NULL) {
     Force_Live_Add(SAVE_tn(Return_Address_Reg));
   }
+#endif
 
+#ifndef TARG_X8664
+  // OSP_426, always mark Caller_GP_TN global
   if (Caller_GP_TN != NULL) {
     Force_Live_Add(Caller_GP_TN);
   }
@@ -2462,6 +2469,11 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
         // rename tn to new_tn between last_def and op.
         Rename_TN_In_Range (tn, last_def, op);
       }
+#ifdef TARG_IA64
+      else if (tn == Caller_GP_TN) {
+        // OSP_426, Don't rename the caller GP TN, keep it global
+      }
+#endif
 #ifdef TARG_MIPS
       else if (PU_Has_Exc_Handler &&
 	       (tn == Caller_GP_TN ||
