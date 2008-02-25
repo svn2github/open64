@@ -503,6 +503,8 @@ Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level)
 
         UINT64 size = TY_size(Ty_Table[rtype]);
 
+        if (size == 0) info.return_via_first_arg = FALSE;
+
         if (size > 0 && 8 * size <= 2 * SIM_INFO.max_struct_result) {
 
           TYPE_ID hfa_mtype = MTYPE_V;
