@@ -720,8 +720,7 @@ WFE_Add_Init_Block(void)
   last_aggregate_initv = inv_blk;
 }
 
-#ifdef PATHSCALE_MERGE
-#ifdef TARG_IA64
+#ifdef KEY
 float
 WFE_Convert_Internal_Real_to_IEEE_Single (REAL_VALUE_TYPE real)
 {
@@ -768,7 +767,7 @@ WFE_Convert_Internal_Real_to_IEEE_Double_Extended (REAL_VALUE_TYPE real)
   return *(long double*)(void*)&buffer[0];
 }
 #endif
-#endif
+
 void 
 WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 {
@@ -783,37 +782,23 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 #endif // KEY
   switch (size) {
     case 4:
-#ifdef TARG_IA64 
-      tc = Host_To_Targ_Float_4 (MTYPE_F4,
-	WFE_Convert_Internal_Real_to_IEEE_Single (real));
+      tc = Host_To_Targ_Float_4 (MTYPE_F4, WFE_Convert_Internal_Real_to_IEEE_Single (real));
       break;
     case 8:
-      tc = Host_To_Targ_Float (MTYPE_F8,
-	WFE_Convert_Internal_Real_to_IEEE_Double (real));
+      tc = Host_To_Targ_Float (MTYPE_F8, WFE_Convert_Internal_Real_to_IEEE_Double (real));
       break;
+#ifdef TARG_IA64
     case 16:
-      tc = Host_To_Targ_Float_10 (MTYPE_F10,
-	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (real));
+      tc = Host_To_Targ_Float_10 (MTYPE_F10, WFE_Convert_Internal_Real_to_IEEE_Double_Extended (real));
       break;
 #else
-      REAL_VALUE_TO_TARGET_SINGLE (real, t1);
-      tc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
-      break;
-    case 8:
-      REAL_VALUE_TO_TARGET_DOUBLE (real, buffer);
-#ifdef KEY
-      WFE_Convert_To_Host_Order(buffer);
-#endif
-      tc = Host_To_Targ_Float (MTYPE_F8, *(double *) &buffer);
-      break;
-#ifdef KEY
     case 12:
     case 16:
       REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, buffer);
       WFE_Convert_To_Host_Order(buffer);
-      tc = Host_To_Targ_Quad (*(long double *) &buffer);
+      //tc = Host_To_Targ_Quad (*(long double *) &buffer);
+      tc = Host_To_Targ_Quad (WFE_Convert_Internal_Real_to_IEEE_Double_Extended (real));
       break;
-#endif
 #endif
     default:
       FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Real unexpected size"));
@@ -841,7 +826,6 @@ WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT 
   int     buffer [4];
 #endif // KEY	
   switch (size) {
-#ifdef TARG_IA64
     case 8:
       rtc = Host_To_Targ_Float_4 (MTYPE_F4,
 	WFE_Convert_Internal_Real_to_IEEE_Single (rval));
@@ -854,43 +838,13 @@ WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT 
       itc = Host_To_Targ_Float (MTYPE_F8,
 	WFE_Convert_Internal_Real_to_IEEE_Double (ival));
       break;
+    case 24:
     case 32:
       rtc = Host_To_Targ_Quad (
 	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (rval));
       itc = Host_To_Targ_Quad (
 	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (ival));
       break;
-#else
-    case 8:
-      REAL_VALUE_TO_TARGET_SINGLE (rval, t1);
-      rtc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
-      REAL_VALUE_TO_TARGET_SINGLE (ival, t1);
-      itc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
-      break;
-    case 16:
-      REAL_VALUE_TO_TARGET_DOUBLE (rval, buffer);
-#ifdef KEY
-      WFE_Convert_To_Host_Order(buffer);
-#endif
-      rtc = Host_To_Targ_Float (MTYPE_F8, *(double *) &buffer);
-      REAL_VALUE_TO_TARGET_DOUBLE (ival, buffer);
-#ifdef KEY
-      WFE_Convert_To_Host_Order(buffer);
-#endif
-      itc = Host_To_Targ_Float (MTYPE_F8, *(double *) &buffer);
-      break;
-#ifdef KEY
-    case 24:
-    case 32:
-      REAL_VALUE_TO_TARGET_LONG_DOUBLE (rval, buffer);
-      WFE_Convert_To_Host_Order(buffer);
-      rtc = Host_To_Targ_Quad( *(long double *) &buffer);
-      REAL_VALUE_TO_TARGET_LONG_DOUBLE (ival, buffer);
-      WFE_Convert_To_Host_Order(buffer);
-      itc = Host_To_Targ_Quad( *(long double *) &buffer);
-      break;
-#endif
-#endif
     default:
       FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Complex unexpected size"));
       break;
