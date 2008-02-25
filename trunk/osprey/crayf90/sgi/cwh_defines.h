@@ -68,7 +68,7 @@ static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.c
 typedef INT64 OFFSET_64 ; 
 typedef unsigned long ULONG ;
 typedef long SLONG ;
-#if (defined(TARG_IA64) && defined(_LP64))
+#if ((defined(TARG_IA64) || defined(TARG_X8664)) && defined(_LP64))
 #define cast_to_TY(x) ((TY_IDX)x) 
 #define cast_to_WN(x) ((WN *) (void *)x) 
 #define cast_to_ST(x) ((ST *) (void *)x) 
