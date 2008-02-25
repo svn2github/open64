@@ -4277,7 +4277,7 @@ Expand_MinMax (TN *dest_min, TN *dest_max,
       Build_OP( TOP_xor128v32, tmp6, tmp3, tmp4, ops );
       Build_OP( TOP_and128v32, tmp7, tmp5, tmp6, ops );
       Build_OP( TOP_xor128v32, dest_max, tmp4, tmp7, ops );
-      Build_OP( TOP_xor128v32, dest_min, tmp1, ops );
+      Build_OP( TOP_xor128v32, dest_min, tmp1, tmp7, ops );
     } else
       FmtAssert(FALSE, ("NYI"));
 
