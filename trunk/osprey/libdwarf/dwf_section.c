@@ -309,23 +309,27 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	}
 
 	if (personality) {
-	    // bug 9177: Emit personality format only if there is
-	    // personality information.
-	    //
-	    // personality format
-	    // personality routine offset
-	    Dwarf_Unsigned p = 0;
-	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&p,
-			    sizeof(p), upointer_size);
-	    data += upointer_size;
+        // bug 9177: Emit personality format only if there is
+        // personality information.
+        //
+        // personality format
+        db = Personality_Format;
+        WRITE_UNALIGNED(dbg, (void *)data, (const void *)&db,
+                sizeof(db), sizeof(Dwarf_Ubyte));
+        data += sizeof(Dwarf_Ubyte);
+        // personality routine offset
+        Dwarf_Unsigned p = 0;
+        WRITE_UNALIGNED(dbg, (void *)data, (const void *)&p,
+                sizeof(p), upointer_size);
+        data += upointer_size;
 
-	    if (generate_fpic_dwarf) {
-		p = 0x1b;
-	    }
-	    // lsda encoding
-	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&p,
-			    sizeof(p), sizeof(Dwarf_Ubyte));
-	    data += sizeof(Dwarf_Ubyte);
+        if (generate_fpic_dwarf) {
+        p = 0x1b;
+        }
+        // lsda encoding
+        WRITE_UNALIGNED(dbg, (void *)data, (const void *)&p,
+                sizeof(p), sizeof(Dwarf_Ubyte));
+        data += sizeof(Dwarf_Ubyte);
 	}
 	if (generate_fpic_dwarf) {
 	    // FDE encoding should be added for all languages (bug 12323).
