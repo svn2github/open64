@@ -5366,6 +5366,46 @@ WGEN_Expand_Expr (gs_t exp,
 	  set_DECL_ST(ptr_var, WN_st(target_wn));
 	}
       }
+
+#ifdef NEW_INITIALIZER
+      {
+        gs_t opnd0 = gs_tree_operand(exp, 0);
+        gs_t opnd1 = gs_tree_operand(exp, 1);
+        if( lang_cplus &&
+            gs_tree_code(opnd0) == GS_INDIRECT_REF &&
+            gs_tree_code(opnd1) == GS_CONSTRUCTOR ) {
+          WN* target = WGEN_Address_Of(opnd0);
+          ST* copy_st = WGEN_Generate_Initialized_Aggregate(target, opnd1); 
+          ST* orig_st = WN_st(target);
+          if ( ST_st_idx(copy_st) != ST_st_idx(orig_st) ) {
+            // If the returned ST is not the original one,
+            //   it means we create a new temp ST for initialization
+            //   This happens on x8664, the returned struct is converted into a FORMAL.
+            //   When initialize the FORMAL, we need to use a temp st.
+            //   we copy the new ST into target here
+            TY_IDX copy_ty = ST_type(copy_st);
+            WN* ldid = WN_Ldid(TY_mtype(copy_ty), 0, copy_st, copy_ty);
+            if ( WN_operator(target) == OPR_LDA ) {
+              WGEN_Stmt_Append(
+                         WN_Stid (TY_mtype(copy_ty), WN_lda_offset(target),
+                                  orig_st, ST_type(orig_st), ldid),
+                         Get_Srcpos() );
+            }
+            else if ( WN_operator(target) == OPR_LDID ) {
+              WGEN_Stmt_Append(
+                         WN_Istore(TY_mtype(copy_ty), 0, 
+                                   ST_type(orig_st), target, ldid),
+                         Get_Srcpos() );
+            }
+            else {
+              FmtAssert(FALSE, ("Bad operator for target, not LDA/LDID"));
+            }
+          }
+          break;
+        }
+      }
+#endif
+
       // fall through
 #endif
     case GS_MODIFY_EXPR:
@@ -5551,11 +5591,11 @@ WGEN_Expand_Expr (gs_t exp,
           //   else if (gs_tree_code(initializer = gs_tree_operand(t,1)) == GS_AGGR_INIT_EXPR )
           // From the testing result, we adopt the strict pattern match:
           // +INIT_EXPR
-          // |  +COMPONENT_REF <this->m>
-          // +TARGET_EXPR
-          //    +VAR_DECL <tmp>
-          //    +AGGR_INIT_EXPR <=f();>
-          //    +CALL_EXPR <cleanup the tmp>
+          // |-+COMPONENT_REF <this->m>
+          // |-+TARGET_EXPR
+          //   |-+VAR_DECL <tmp>
+          //   |-+AGGR_INIT_EXPR <=f();>
+          //   |-+CALL_EXPR <cleanup the tmp>
           else if (code == GS_INIT_EXPR &&
               gs_tree_code(gs_tree_operand(exp, 0)) == GS_COMPONENT_REF &&
               gs_tree_code(t) == GS_TARGET_EXPR &&
@@ -7587,7 +7627,12 @@ WGEN_Expand_Expr (gs_t exp,
    case GS_VECTOR_CST:
      {
        ST * init_st = Gen_Temp_Symbol (Get_TY(gs_tree_type(exp)), "__vec_cst");
+#ifdef NEW_INITIALIZER
+       WN* target = WN_Lda(Pointer_Mtype, 0, init_st, 0);
+       Traverse_Aggregate_Vector_Const (target, exp, 0, 0);
+#else
        Traverse_Aggregate_Vector_Const (init_st, exp, 0, 0);
+#endif
        TY_IDX ty = ST_type (init_st);
        TYPE_ID mtype = TY_mtype (ty);
        wn = WN_CreateLdid (OPR_LDID, mtype, mtype, 0, init_st, ty, 0);
