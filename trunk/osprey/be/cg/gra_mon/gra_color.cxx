@@ -769,7 +769,7 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
   //
   if (GRA_LOCAL_FORCED_MAX(rc) == DEFAULT_FORCED_LOCAL_MAX) {
     INT rc_size = (REGISTER_CLASS_last_register(rc) - REGISTER_MIN) + 1;
-#ifdef KEY
+#ifndef TARG_IA64
     rc_local_forced_max = GRA_LOCAL_FORCED_MAX(rc);
 #else
     rc_local_forced_max = Min(GRA_LOCAL_FORCED_MAX(rc), rc_size/8);
