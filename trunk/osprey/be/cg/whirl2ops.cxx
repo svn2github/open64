@@ -4735,6 +4735,34 @@ Handle_ASM (const WN* asm_wn)
       (strchr(constraint, 'm') != NULL);
 #endif    
     result[num_results] = tn;
+
+#ifdef TARG_X8664
+
+    // if the Target is 32bit, and the return value of the inlined
+    // assembly is 64bit, the return value will be put int two
+    // registers, both of which should be explicitly defined by
+    // the Assembly op.
+    if (Is_Target_32bit() && TN_is_register(tn) && OP_NEED_PAIR(default_type)) {
+      ISA_REGISTER_CLASS rclass;
+      REGISTER reg;
+      if( !CGTARG_Preg_Register_And_Class(Last_Int_Preg_Return_Offset,
+                      &rclass, &reg) ){
+        FmtAssert( FALSE, ("NYI") );
+      }
+      TN* tn_pair = Build_Dedicated_TN( rclass, reg, MTYPE_byte_size(default_type) );
+      num_results++;
+      ASM_OP_result_constraint(asm_info)[num_results] = constraint;
+      ASM_OP_result_subclass(asm_info)[num_results] = subclass;
+      ASM_OP_result_position(asm_info)[num_results] =
+        WN_pragma_asm_opnd_num(out_pragma);
+      ASM_OP_result_clobber(asm_info)[num_results] =
+        (strchr(constraint, '&') != NULL);
+      ASM_OP_result_memory(asm_info)[num_results] =
+        (strchr(constraint, 'm') != NULL || strchr(constraint, 'g') != NULL);
+      result[num_results] = tn_pair;
+    }
+#endif
+
     num_results++;
     
     // in WHIRL store that follows ASM stmt, replace negative
