@@ -3285,6 +3285,18 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * op1, OPS *ops)
       Build_OP (TOP_adds, result, True_TN, Gen_Literal_TN(-32, 4), result, ops);
     }
     break;
+  case INTRN_CTZ:
+    // Bug fix for OSP_433
+    // expand the intrinsic __builtin_ctzl, which returns the bit index of the least significant bit
+    //
+    {
+      TN* tn1 = Build_TN_Of_Mtype (MTYPE_I8);
+      Build_OP (TOP_adds, tn1, True_TN, Gen_Literal_TN(-1, 8), op0, ops);
+      Build_OP (TOP_andcm, op0, True_TN, Gen_Literal_TN(-1, 8), op0, ops);
+      Build_OP (TOP_and, op0, True_TN, op0, tn1, ops);
+      Build_OP (TOP_popcnt, result, True_TN, op0, ops);
+    }
+    break;
   default:
     #pragma mips_frequency_hint NEVER
     FmtAssert (FALSE, ("WHIRL_To_OPs: illegal intrinsic op"));
