@@ -3924,10 +3924,21 @@ WGEN_Expand_Expr (gs_t exp,
 	else {
 	  gs_t stmt_list = gs_statement_list_elts(body);
 	  gs_t list;
+#ifdef FE_GNU_4_2_0
+          int stmt_count = gs_length(stmt_list); 
+          for (int i=0; i<stmt_count; i++) {
+            gs_t stmt = gs_index(stmt_list, i);
+            if (i == stmt_count -1 /* last stmt */ &&
+                gs_tree_code_class(stmt) != GS_TCC_STATEMENT)
+              wn = WGEN_Expand_Expr (stmt);
+            else
+              WGEN_Expand_Stmt(stmt);
+          }
+#else
 	  for (list = stmt_list; gs_code(list) != EMPTY; 
 	       list = gs_operand(list, 1)) {
 	    gs_t stmt = gs_operand(list, 0);
-#ifdef FE_GNU_4_2_0
+#ifdef KEY
 	    // Bug 12698: If the last statement is a decl node, return it.
 	    if (gs_code (gs_operand(list, 1)) == EMPTY /* last stmt ? */ &&
 	        (gs_tree_code (stmt) == GS_VAR_DECL ||
@@ -3937,6 +3948,7 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 	      WGEN_Expand_Stmt(stmt);
 	  }
+#endif
 	}
 	Unregister_Cleanup(); // KEY bug 11188
       }
@@ -5184,6 +5196,9 @@ WGEN_Expand_Expr (gs_t exp,
 	wn0 = WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand (exp, 0),
 						   Boolean_type);
 #endif
+
+        FmtAssert( (wn0 != NULL), ("Child 0 of IF can not be NULL!"));
+
 	if (TY_mtype (ty_idx) == MTYPE_V) {
 	  // If ty_idx is MTYPE_V, no return value is needed
 	  // We convert it into if...then...else
@@ -7678,10 +7693,15 @@ WGEN_Expand_Expr (gs_t exp,
 
     case GS_STATEMENT_LIST: {
 	gs_t stmt_list = gs_statement_list_elts(exp);
+#ifdef FE_GNU_4_2_0
+        for (int i=0; i < gs_length(stmt_list); i++)
+          WGEN_Expand_Stmt(gs_index(stmt_list, i), target_wn);
+#else
 	gs_t list;
 	for (list = stmt_list; gs_code(list) != EMPTY; 
 	     list = gs_operand(list, 1))
 	  WGEN_Expand_Stmt(gs_operand(list, 0), target_wn);
+#endif
       }
       break;
 
