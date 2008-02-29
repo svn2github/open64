@@ -479,6 +479,11 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_TAIL_CALL 0x00000100 /* Is OP a tail call? */
 #define OP_MASK_BUNDLED	  0x00000200 /* Is OP bundled? */
 #define OP_MASK_SPECULATIVE  0x00000400 /* Is OP a speculative live-range op? */
+#ifdef KEY
+/* Is this OP the first OP following the PRAGMA_PREAMBLE_END ? */
+#define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END 0x00000800
+#endif
+/* comment out the OP_MAKS_COND_DEF, so 0x00000800 and 0x00001000 is usable */
 /* OP_MAKS_COND_DEF  0x00001800  -- See enum defined above  */
 #define OP_MASK_NO_CI_ALIAS  0x00002000 /* no cross-iteration alias */
 #define OP_MASK_NO_MOVE_BEFORE_GRA 0x00004000 /* do not move this op before GRA */
@@ -499,16 +504,9 @@ enum OP_COND_DEF_KIND {
 #endif
 #ifdef TARG_X8664
 #define OP_MASK_MEMORY_HI   0x00040000 /* Is OP load/store the high 32-bit? */
+#define OP_MASK_COMPUTES_GOT  0x00080000  /* Does OP compute GOT ? */
+#define OP_MASK_PREFIX_LOCK   0x00100000
 #endif
-#ifdef KEY
-/* Is this OP the first OP following the PRAGMA_PREAMBLE_END ? */
-#define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END 0x00080000
-#endif
-#ifdef TARG_X8664
-#define OP_MASK_COMPUTES_GOT  0x00100000  /* Does OP compute GOT ? */
-#define OP_MASK_PREFIX_LOCK   0x01000000
-#endif
-
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
 # define Set_OP_glue(o)		(OP_flags(o) |= OP_MASK_GLUE)
@@ -1338,4 +1336,3 @@ BOOL OP_Is_Copy_From_Save_TN (const OP* );
 #include "op_targ.h"
 
 #endif /* op_INCLUDED */
-
