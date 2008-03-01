@@ -3232,6 +3232,15 @@ boolean	compare_derived_types(int	dt_idx1,
    static	 long	num_of_entries;
    static	 long	unique_dt_number;
 
+   /*
+    *  For the stmt below, GCC gets different results on X8664 and IA64.
+    *    long a = -2; int b = 32;
+    *    a |= (1 << b);    // GCC on IA64, a == -2; GCC on X8664, a == -1
+    *  On X8664, the compiler may regard 1 and (1 << b) as signed integer 
+    *  (same type as b) so that it gets the result -1.
+    *  To avoid the ambiguous stmt, we should force the number 1 be 
+    *  long integer in all this function, i.e. 1L. 
+    */
 
    TRACE (Func_Entry, "compare_derived_types", NULL);
 
@@ -3333,10 +3342,10 @@ boolean	compare_derived_types(int	dt_idx1,
       bit_idx1		= ((id2-1) % HOST_BITS_PER_WORD);
       bit_idx2		= ((id1-1) % HOST_BITS_PER_WORD);
 
-      check		= (1 << bit_idx1) & dt_cmp_tbl[entry_idx1];
+      check		= (1L << bit_idx1) & dt_cmp_tbl[entry_idx1];
 
       if (check) {
-         same = (1 << bit_idx2) & dt_cmp_tbl[entry_idx2]; 
+         same = (1L << bit_idx2) & dt_cmp_tbl[entry_idx2]; 
          goto DONE;
       }
    
@@ -3344,8 +3353,8 @@ boolean	compare_derived_types(int	dt_idx1,
       /* to same in case a recursive call happens.  Same  will get */
       /* set correctly at the end of this routine.                 */
 
-      dt_cmp_tbl[entry_idx1]	|= (1 << bit_idx1);	/* Check */
-      dt_cmp_tbl[entry_idx2]	|= (1 << bit_idx2);	/* Same  */
+      dt_cmp_tbl[entry_idx1]	|= (1L << bit_idx1);	/* Check */
+      dt_cmp_tbl[entry_idx2]	|= (1L << bit_idx2);	/* Same  */
 
    }
 
@@ -3458,10 +3467,10 @@ DONE:
    if (keep_compare) {
 
       if (same) {
-         dt_cmp_tbl[entry_idx2]	|= (1 << bit_idx2);	/* Same bit */
+         dt_cmp_tbl[entry_idx2]	|= (1L << bit_idx2);	/* Same bit */
       }
       else {
-         dt_cmp_tbl[entry_idx2]	&= ~(1 << bit_idx2);	/* Same bit */
+         dt_cmp_tbl[entry_idx2]	&= ~(1L << bit_idx2);	/* Same bit */
       }
    }
 
