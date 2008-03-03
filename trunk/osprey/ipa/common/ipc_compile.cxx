@@ -915,8 +915,22 @@ void ipacom_doit (const char* ipaa_filename)
       // directives that we know about so they are acceptable to it,
       // and passed properly to its linker.
       if (strcmp(*i, "-rpath") == 0) {
-	fputs("-Wl,-rpath,", cmdfile);
-	++i;
+        fputs("-Wl,-rpath,", cmdfile);
+        ++i;
+      }
+      if (strcmp(*i, "-rpath-link") == 0) {
+        fputs("-Wl,-rpath-link,", cmdfile);
+        ++i;
+      }
+      if (strcmp(*i, "-whole-archive") == 0) {
+        fputs("-Wl,-whole-archive", cmdfile);
+        fputs(" \n", cmdfile);
+        continue;
+      }
+      if (strcmp(*i, "-no-whole-archive") == 0) {
+        fputs("-Wl,-no-whole-archive", cmdfile);
+        fputs(" \n", cmdfile);
+        continue;
       }
       fputs(*i, cmdfile);
       fputs(" \n", cmdfile);
