@@ -2550,7 +2550,11 @@ void gen_static_dv_whole_def(opnd_type         *dv_opnd,
 
    CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
    TYP_TYPE(TYP_WORK_IDX)	= Typeless;
+#ifdef TARG_X8664
+   TYP_BIT_LEN(TYP_WORK_IDX)    = num_words * ((SET_POINTER_SIZE)?64:32);
+#else
    TYP_BIT_LEN(TYP_WORK_IDX)	= num_words * TARGET_BITS_PER_WORD;
+#endif
    type_idx			= ntr_type_tbl();
 
    const_idx	= ntr_const_tbl(type_idx, FALSE, NULL);

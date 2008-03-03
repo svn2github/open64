@@ -249,8 +249,14 @@
 #ifdef KEY /* Bug 6845 */
 # define DV_ALLOC_CPNT_OFFSET_WORD_SIZE		1
 #endif /* KEY Bug 6845 */
+
+#ifdef TARG_X8664
+# define DV_DIM_WORD_SIZE               ((SET_POINTER_SIZE)? 3 : 3)
+# define DV_HD_WORD_SIZE                ((SET_POINTER_SIZE)? 6 : 8)
+#else
 # define DV_DIM_WORD_SIZE		3       /* Size of dope vector dimen  */
 # define DV_HD_WORD_SIZE		6       /* Size of dope vector header */
+#endif
 
 # define DV_BASE_ADDR(DOPE)             (DOPE).base_addr
 # define DV_EL_LEN(DOPE)                (DOPE).el_len
