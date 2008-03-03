@@ -355,7 +355,7 @@ _lmessage(int errn, char *severity, va_list args)
 	 * "Unit n not connected") is the real problem. Usual cause is a
 	 * C-coded "main" which hides the Fortran runtime "main".
 	 */
-	char *cgm_result;
+	char *cgm_result = NULL;
 	if (((nl_catd) -1) == mcfd ||
 	  0 ==
 	    (cgm_result = catgetmsg(mcfd, NL_MSGSET, flmn, &mbuf[1], MAXMLN)) ||
