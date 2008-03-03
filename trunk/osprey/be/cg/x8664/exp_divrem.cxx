@@ -247,7 +247,7 @@ static UINT64 determine_pseudo_inverse (
 }
 
 
-UINT log2 (UINT i)
+static UINT log2 (UINT i)
 {
   UINT t = 0;
   i = i >> 1;
