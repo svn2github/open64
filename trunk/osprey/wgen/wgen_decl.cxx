@@ -1244,13 +1244,15 @@ WGEN_Start_Function(gs_t fndecl)
 	   (gs_decl_lang_specific (fndecl) &&
 	    gs_decl_implicit_instantiation (fndecl) &&
 	    gs_decl_namespace_scope_p (fndecl))))
-	eclass = EXPORT_INTERNAL; // bug 7550
-      else if (gs_tree_public(fndecl) || gs_decl_weak(fndecl)) {
-	if (gs_decl_inline(fndecl) && !gs_decl_weak(fndecl))
-	  eclass = EXPORT_PROTECTED;
-	else eclass = EXPORT_PREEMPTIBLE;
-      }
-      else eclass = EXPORT_LOCAL;
+	    eclass = EXPORT_INTERNAL; // bug 7550
+      else if (gs_decl_weak(fndecl))
+        eclass = EXPORT_PREEMPTIBLE;
+      else if (!gs_tree_public(fndecl))
+        eclass = EXPORT_LOCAL;
+      else if (gs_decl_inline(fndecl))
+        eclass = EXPORT_PROTECTED;
+      else 
+        eclass = EXPORT_PREEMPTIBLE;
       func_st = Get_ST (fndecl);
       // KEY: bugs 8873, 11247, 11287
       // The following does not differentiate between a function marked

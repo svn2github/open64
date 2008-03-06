@@ -298,22 +298,17 @@ WFE_Start_Function (tree fndecl)
     WFE_Stmt_Push (vla_block, wfe_stmk_func_body, Get_Srcpos());
 
     ST        *func_st;
-#ifdef PATHSCALE_MERGE
     ST_EXPORT  eclass;
 
     //This is a work around to avoid redundant save/restore gp
-    if(TREE_PUBLIC(fndecl)) {
-#ifdef TARG_IA64
-	extern BOOL Gp_Save_Restore_Opt,Use_Call_Shared_Link;
-        if( Gp_Save_Restore_Opt && Use_Call_Shared_Link)
-            eclass = EXPORT_PROTECTED;
-        else
-#endif
-            eclass = EXPORT_PREEMPTIBLE;
-    } else {
-       eclass = EXPORT_LOCAL;
-    }
-#endif
+    if (DECL_WEAK(fndecl))
+      eclass = EXPORT_PREEMPTIBLE;
+    else if (!TREE_PUBLIC(fndecl))
+      eclass = EXPORT_LOCAL;
+    else if (DECL_INLINE(fndecl))
+      eclass = EXPORT_PROTECTED;
+    else
+      eclass = EXPORT_PREEMPTIBLE;
 
 #ifdef KEY
     bool extern_inline = FALSE;
