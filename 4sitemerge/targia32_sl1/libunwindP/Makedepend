@@ -1,0 +1,63 @@
+libunwindP.a(body.o): ../../libunwind/producer/body.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(bsp.o): ../../libunwind/producer/bsp.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(bspstore.o): ../../libunwind/producer/bspstore.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(dump.o): ../../libunwind/utils/dump.c ../include/sys/unwind.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h
+libunwindP.a(dumpelf.o): ../../libunwind/producer/dumpelf.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../common/com/defs.h ../include/bstring.h ../include/elf_stuff.h \
+  ../../common/com/em_elf.h
+libunwindP.a(fpsr.o): ../../libunwind/producer/fpsr.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(header.o): ../../libunwind/producer/header.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(lc.o): ../../libunwind/producer/lc.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(leb.o): ../../libunwind/utils/leb.c ../include/sys/unwind.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h
+libunwindP.a(memstack.o): ../../libunwind/producer/memstack.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(overall.o): ../../libunwind/producer/overall.c \
+  ../targ_info/targ_isa_registers.h ../targ_info/targ_isa_subset.h \
+  ../targ_info/topcode.h ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(pfs.o): ../../libunwind/producer/pfs.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(preds.o): ../../libunwind/producer/preds.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(preserve.o): ../../libunwind/producer/preserve.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(priunat.o): ../../libunwind/producer/priunat.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(process.o): ../../libunwind/utils/process.c ../include/sys/unwind.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h
+libunwindP.a(producer.o): ../../libunwind/producer/producer.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(rnat.o): ../../libunwind/producer/rnat.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(rp.o): ../../libunwind/producer/rp.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(spill.o): ../../libunwind/producer/spill.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h
+libunwindP.a(unat.o): ../../libunwind/producer/unat.c ../include/sys/unwindP.h \
+  ../include/sys/mips/unwindP.h ../include/sys/mips/unwind_mips.h \
+  ../../libunwind/producer/unwind_producer.h

@@ -1,0 +1,366 @@
+	.file	"cppdefault.c"
+	.section	.debug_abbrev,"",@progbits
+.Ldebug_abbrev0:
+	.section	.debug_info,"",@progbits
+.Ldebug_info0:
+	.section	.debug_line,"",@progbits
+.Ldebug_line0:
+	.text
+.Ltext0:
+.globl cpp_include_defaults
+	.section	.rodata
+	.align 4
+.LC0:
+	.string	"/home2/mips/TOOLCHAIN//include"
+.LC1:
+	.string	"/usr/include"
+	.section	.data.rel.ro.local,"aw",@progbits
+	.align 32
+	.type	cpp_include_defaults, @object
+	.size	cpp_include_defaults, 48
+cpp_include_defaults:
+	.long	.LC0
+	.long	0
+	.long	0
+	.long	1
+	.long	.LC1
+	.long	0
+	.long	0
+	.long	0
+	.long	0
+	.long	0
+	.long	0
+	.long	0
+.globl cpp_GCC_INCLUDE_DIR
+	.section	.rodata
+	.type	cpp_GCC_INCLUDE_DIR, @object
+	.size	cpp_GCC_INCLUDE_DIR, 1
+cpp_GCC_INCLUDE_DIR:
+	.string	""
+.globl cpp_GCC_INCLUDE_DIR_len
+	.align 4
+	.type	cpp_GCC_INCLUDE_DIR_len, @object
+	.size	cpp_GCC_INCLUDE_DIR_len, 4
+cpp_GCC_INCLUDE_DIR_len:
+	.zero	4
+	.file 1 "../../../kgccfe/gnu/cppdefault.c"
+	.file 2 "../../../kgccfe/gnu/cppdefault.h"
+	.file 3 "/usr/lib/gcc/i486-linux-gnu/4.1.2/include/stddef.h"
+	.text
+.Letext0:
+	.section	.debug_info
+	.long	0x26a
+	.value	0x2
+	.long	.Ldebug_abbrev0
+	.byte	0x4
+	.uleb128 0x1
+	.long	.Ldebug_line0
+	.long	.Letext0
+	.long	.Ltext0
+	.string	"GNU C 4.1.2 (Ubuntu 4.1.2-0ubuntu4)"
+	.byte	0x1
+	.string	"../../../kgccfe/gnu/cppdefault.c"
+	.string	"/usa/handong/simplnano/cmplr-open64-merge/targia32_sl1/gccfe/gnu"
+	.uleb128 0x2
+	.byte	0x4
+	.long	0xa5
+	.uleb128 0x3
+	.long	0xaa
+	.uleb128 0x4
+	.string	"char"
+	.byte	0x1
+	.byte	0x8
+	.uleb128 0x4
+	.string	"int"
+	.byte	0x4
+	.byte	0x5
+	.uleb128 0x5
+	.long	.LASF0
+	.byte	0x4
+	.byte	0x7
+	.uleb128 0x5
+	.long	.LASF0
+	.byte	0x4
+	.byte	0x7
+	.uleb128 0x6
+	.string	"size_t"
+	.byte	0x3
+	.byte	0xd6
+	.long	0xb9
+	.uleb128 0x4
+	.string	"unsigned char"
+	.byte	0x1
+	.byte	0x8
+	.uleb128 0x4
+	.string	"short unsigned int"
+	.byte	0x2
+	.byte	0x7
+	.uleb128 0x4
+	.string	"long unsigned int"
+	.byte	0x4
+	.byte	0x7
+	.uleb128 0x4
+	.string	"signed char"
+	.byte	0x1
+	.byte	0x6
+	.uleb128 0x4
+	.string	"short int"
+	.byte	0x2
+	.byte	0x5
+	.uleb128 0x4
+	.string	"long long int"
+	.byte	0x8
+	.byte	0x5
+	.uleb128 0x4
+	.string	"long long unsigned int"
+	.byte	0x8
+	.byte	0x7
+	.uleb128 0x4
+	.string	"long int"
+	.byte	0x4
+	.byte	0x5
+	.uleb128 0x3
+	.long	0xb2
+	.uleb128 0x7
+	.long	0x1ce
+	.string	"default_include"
+	.byte	0x10
+	.byte	0x2
+	.byte	0x38
+	.uleb128 0x8
+	.string	"fname"
+	.byte	0x2
+	.byte	0x39
+	.long	0x1ce
+	.byte	0x2
+	.byte	0x23
+	.uleb128 0x0
+	.uleb128 0x8
+	.string	"component"
+	.byte	0x2
+	.byte	0x3a
+	.long	0x1ce
+	.byte	0x2
+	.byte	0x23
+	.uleb128 0x4
+	.uleb128 0x8
+	.string	"cplusplus"
+	.byte	0x2
+	.byte	0x3c
+	.long	0x164
+	.byte	0x2
+	.byte	0x23
+	.uleb128 0x8
+	.uleb128 0x8
+	.string	"cxx_aware"
+	.byte	0x2
+	.byte	0x3d
+	.long	0x164
+	.byte	0x2
+	.byte	0x23
+	.uleb128 0xc
+	.byte	0x0
+	.uleb128 0x3
+	.long	0x9f
+	.uleb128 0x9
+	.long	0x1e3
+	.long	0x169
+	.uleb128 0xa
+	.long	0xc0
+	.byte	0x2
+	.byte	0x0
+	.uleb128 0xb
+	.string	"cpp_include_defaults"
+	.byte	0x1
+	.byte	0x1d
+	.long	0x206
+	.byte	0x1
+	.byte	0x5
+	.byte	0x3
+	.long	cpp_include_defaults
+	.uleb128 0x3
+	.long	0x1d3
+	.uleb128 0x9
+	.long	0x21b
+	.long	0xaa
+	.uleb128 0xa
+	.long	0xc0
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0xb
+	.string	"cpp_GCC_INCLUDE_DIR"
+	.byte	0x1
+	.byte	0x51
+	.long	0x23d
+	.byte	0x1
+	.byte	0x5
+	.byte	0x3
+	.long	cpp_GCC_INCLUDE_DIR
+	.uleb128 0x3
+	.long	0x20b
+	.uleb128 0xb
+	.string	"cpp_GCC_INCLUDE_DIR_len"
+	.byte	0x1
+	.byte	0x52
+	.long	0x268
+	.byte	0x1
+	.byte	0x5
+	.byte	0x3
+	.long	cpp_GCC_INCLUDE_DIR_len
+	.uleb128 0x3
+	.long	0xc7
+	.byte	0x0
+	.section	.debug_abbrev
+	.uleb128 0x1
+	.uleb128 0x11
+	.byte	0x1
+	.uleb128 0x10
+	.uleb128 0x6
+	.uleb128 0x12
+	.uleb128 0x1
+	.uleb128 0x11
+	.uleb128 0x1
+	.uleb128 0x25
+	.uleb128 0x8
+	.uleb128 0x13
+	.uleb128 0xb
+	.uleb128 0x3
+	.uleb128 0x8
+	.uleb128 0x1b
+	.uleb128 0x8
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0x2
+	.uleb128 0xf
+	.byte	0x0
+	.uleb128 0xb
+	.uleb128 0xb
+	.uleb128 0x49
+	.uleb128 0x13
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0x3
+	.uleb128 0x26
+	.byte	0x0
+	.uleb128 0x49
+	.uleb128 0x13
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0x4
+	.uleb128 0x24
+	.byte	0x0
+	.uleb128 0x3
+	.uleb128 0x8
+	.uleb128 0xb
+	.uleb128 0xb
+	.uleb128 0x3e
+	.uleb128 0xb
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0x5
+	.uleb128 0x24
+	.byte	0x0
+	.uleb128 0x3
+	.uleb128 0xe
+	.uleb128 0xb
+	.uleb128 0xb
+	.uleb128 0x3e
+	.uleb128 0xb
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0x6
+	.uleb128 0x16
+	.byte	0x0
+	.uleb128 0x3
+	.uleb128 0x8
+	.uleb128 0x3a
+	.uleb128 0xb
+	.uleb128 0x3b
+	.uleb128 0xb
+	.uleb128 0x49
+	.uleb128 0x13
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0x7
+	.uleb128 0x13
+	.byte	0x1
+	.uleb128 0x1
+	.uleb128 0x13
+	.uleb128 0x3
+	.uleb128 0x8
+	.uleb128 0xb
+	.uleb128 0xb
+	.uleb128 0x3a
+	.uleb128 0xb
+	.uleb128 0x3b
+	.uleb128 0xb
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0x8
+	.uleb128 0xd
+	.byte	0x0
+	.uleb128 0x3
+	.uleb128 0x8
+	.uleb128 0x3a
+	.uleb128 0xb
+	.uleb128 0x3b
+	.uleb128 0xb
+	.uleb128 0x49
+	.uleb128 0x13
+	.uleb128 0x38
+	.uleb128 0xa
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0x9
+	.uleb128 0x1
+	.byte	0x1
+	.uleb128 0x1
+	.uleb128 0x13
+	.uleb128 0x49
+	.uleb128 0x13
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0xa
+	.uleb128 0x21
+	.byte	0x0
+	.uleb128 0x49
+	.uleb128 0x13
+	.uleb128 0x2f
+	.uleb128 0xb
+	.byte	0x0
+	.byte	0x0
+	.uleb128 0xb
+	.uleb128 0x34
+	.byte	0x0
+	.uleb128 0x3
+	.uleb128 0x8
+	.uleb128 0x3a
+	.uleb128 0xb
+	.uleb128 0x3b
+	.uleb128 0xb
+	.uleb128 0x49
+	.uleb128 0x13
+	.uleb128 0x3f
+	.uleb128 0xc
+	.uleb128 0x2
+	.uleb128 0xa
+	.byte	0x0
+	.byte	0x0
+	.byte	0x0
+	.section	.debug_pubnames,"",@progbits
+	.long	0x5b
+	.value	0x2
+	.long	.Ldebug_info0
+	.long	0x26e
+	.long	0x1e3
+	.string	"cpp_include_defaults"
+	.long	0x21b
+	.string	"cpp_GCC_INCLUDE_DIR"
+	.long	0x242
+	.string	"cpp_GCC_INCLUDE_DIR_len"
+	.long	0x0
+	.section	.debug_str,"",@progbits
+.LASF0:
+	.string	"unsigned int"
+	.ident	"GCC: (GNU) 4.1.2 (Ubuntu 4.1.2-0ubuntu4)"
+	.section	.note.GNU-stack,"",@progbits

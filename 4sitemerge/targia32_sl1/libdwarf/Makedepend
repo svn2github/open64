@@ -1,0 +1,482 @@
+libdwarf.a(dwarf_abbrev.o): ../../libdwarf/libdwarf/dwarf_abbrev.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_abbrev.h
+libdwarf.a(dwarf_addr_finder.o): ../../libdwarf/libdwarf/dwarf_addr_finder.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_arange.h \
+  ../../libdwarf/libdwarf/dwarf_line.h \
+  ../../libdwarf/libdwarf/dwarf_frame.h \
+  ../../libdwarf/libdwarf/cmplrs/dwarf_addr_finder.h \
+  ../../libdwarf/libdwarf/dwarf_error.h
+libdwarf.a(dwarf_alloc.o): ../../libdwarf/libdwarf/dwarf_alloc.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_line.h \
+  ../../libdwarf/libdwarf/dwarf_global.h \
+  ../../libdwarf/libdwarf/dwarf_arange.h \
+  ../../libdwarf/libdwarf/dwarf_abbrev.h \
+  ../../libdwarf/libdwarf/dwarf_die_deliv.h \
+  ../../libdwarf/libdwarf/dwarf_frame.h \
+  ../../libdwarf/libdwarf/dwarf_loc.h \
+  ../../libdwarf/libdwarf/dwarf_funcs.h \
+  ../../libdwarf/libdwarf/dwarf_types.h \
+  ../../libdwarf/libdwarf/dwarf_vars.h \
+  ../../libdwarf/libdwarf/dwarf_weaks.h
+libdwarf.a(dwarf_arange.o): ../../libdwarf/libdwarf/dwarf_arange.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_arange.h
+libdwarf.a(dwarf_die_deliv.o): ../../libdwarf/libdwarf/dwarf_die_deliv.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_die_deliv.h
+libdwarf.a(dwarfdump.o): ../../libdwarf/dwarfdump/dwarfdump.c \
+  ../../libdwarf/dwarfdump/globals.h ../../libdwarf/dwarfdump/config.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/libdwarf.h
+libdwarf.a(dwarf_error.o): ../../libdwarf/libdwarf/dwarf_error.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h
+libdwarf.a(dwarf_form.o): ../../libdwarf/libdwarf/dwarf_form.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_die_deliv.h
+libdwarf.a(dwarf_frame.o): ../../libdwarf/libdwarf/dwarf_frame.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_frame.h \
+  ../../libdwarf/libdwarf/dwarf_arange.h
+libdwarf.a(dwarf_funcs.o): ../../libdwarf/libdwarf/dwarf_funcs.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_funcs.h \
+  ../../libdwarf/libdwarf/dwarf_global.h
+libdwarf.a(dwarf_global.o): ../../libdwarf/libdwarf/dwarf_global.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_global.h
+libdwarf.a(dwarf_init_finish.o): ../../libdwarf/libdwarf/dwarf_init_finish.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h ../include/libelf/libelf.h \
+  ../include/libelf/sys_elf.h
+libdwarf.a(dwarf_leb.o): ../../libdwarf/libdwarf/dwarf_leb.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h
+libdwarf.a(dwarf_line.o): ../../libdwarf/libdwarf/dwarf_line.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_line.h
+libdwarf.a(dwarf_loc.o): ../../libdwarf/libdwarf/dwarf_loc.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_loc.h
+libdwarf.a(dwarf_macro.o): ../../libdwarf/libdwarf/dwarf_macro.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_macro.h
+libdwarf.a(dwarf_names.o): dwarf_names.c ../../libdwarf/dwarfdump/globals.h \
+  ../../libdwarf/dwarfdump/config.h ../include/libelf/libelf.h \
+  ../include/libelf/sys_elf.h ../../libdwarf/libdwarf/dwarf.h \
+  ../../libdwarf/libdwarf/libdwarf.h ../../libdwarf/dwarfdump/makename.h
+libdwarf.a(dwarf_print_lines.o): ../../libdwarf/libdwarf/dwarf_print_lines.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_line.h
+libdwarf.a(dwarf_query.o): ../../libdwarf/libdwarf/dwarf_query.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_die_deliv.h
+libdwarf.a(dwarf_sort_line.o): ../../libdwarf/libdwarf/dwarf_sort_line.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_line.h
+libdwarf.a(dwarf_string.o): ../../libdwarf/libdwarf/dwarf_string.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h
+libdwarf.a(dwarf_stubs.o): ../../libdwarf/libdwarf/dwarf_stubs.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h
+libdwarf.a(dwarf_types.o): ../../libdwarf/libdwarf/dwarf_types.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_types.h \
+  ../../libdwarf/libdwarf/dwarf_global.h
+libdwarf.a(dwarf_util.o): ../../libdwarf/libdwarf/dwarf_util.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_die_deliv.h
+libdwarf.a(dwarf_vars.o): ../../libdwarf/libdwarf/dwarf_vars.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_vars.h \
+  ../../libdwarf/libdwarf/dwarf_global.h
+libdwarf.a(dwarf_weaks.o): ../../libdwarf/libdwarf/dwarf_weaks.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h \
+  ../../libdwarf/libdwarf/dwarf_weaks.h \
+  ../../libdwarf/libdwarf/dwarf_global.h
+libdwarf.a(dwf_forms.o): ../../libdwarf/dwf_forms.c ../../libdwarf/libdwarf/config.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h ../../libdwarf/libdwarf/pro_expr.h
+libdwarf.a(dwf_frame.o): ../../libdwarf/dwf_frame.c ../../libdwarf/libdwarf/config.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h ../../libdwarf/libdwarf/pro_frame.h
+libdwarf.a(dwf_section.o): ../../libdwarf/dwf_section.c \
+  ../../libdwarf/libdwarf/config.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h \
+  ../../libdwarf/libdwarf/pro_line.h ../../libdwarf/libdwarf/pro_frame.h \
+  ../../libdwarf/libdwarf/pro_die.h ../../libdwarf/libdwarf/pro_macinfo.h \
+  ../../libdwarf/libdwarf/pro_types.h
+libdwarf.a(makename.o): ../../libdwarf/dwarfdump/makename.c \
+  ../../libdwarf/dwarfdump/makename.h
+libdwarf.a(print_die.o): ../../libdwarf/dwarfdump/print_die.c \
+  ../../libdwarf/dwarfdump/globals.h ../../libdwarf/dwarfdump/config.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/libdwarf.h \
+  dwarf_names.h _tag_tree_table.c _tag_attr_table.c
+libdwarf.a(print_reloc.o): ../../libdwarf/dwarfdump/print_reloc.c \
+  ../../libdwarf/dwarfdump/globals.h ../../libdwarf/dwarfdump/config.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/libdwarf.h
+libdwarf.a(print_sections.o): ../../libdwarf/dwarfdump/print_sections.c \
+  ../../libdwarf/dwarfdump/globals.h ../../libdwarf/dwarfdump/config.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/libdwarf.h \
+  dwarf_names.h
+libdwarf.a(pro_alloc.o): ../../libdwarf/libdwarf/pro_alloc.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/dwarf_incl.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf_base_types.h \
+  ../../libdwarf/libdwarf/dwarf_alloc.h \
+  ../../libdwarf/libdwarf/dwarf_opaque.h \
+  ../../libdwarf/libdwarf/dwarf_error.h \
+  ../../libdwarf/libdwarf/dwarf_util.h
+libdwarf.a(pro_arange.o): ../../libdwarf/libdwarf/pro_arange.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_arange.h \
+  ../../libdwarf/libdwarf/pro_section.h \
+  ../../libdwarf/libdwarf/pro_reloc.h
+libdwarf.a(pro_die.o): ../../libdwarf/libdwarf/pro_die.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h ../../libdwarf/libdwarf/pro_die.h
+libdwarf.a(pro_encode_nm.o): ../../libdwarf/libdwarf/pro_encode_nm.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h
+libdwarf.a(pro_error.o): ../../libdwarf/libdwarf/pro_error.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h
+libdwarf.a(pro_expr.o): ../../libdwarf/libdwarf/pro_expr.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h ../../libdwarf/libdwarf/pro_expr.h
+libdwarf.a(pro_finish.o): ../../libdwarf/libdwarf/pro_finish.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h
+libdwarf.a(pro_forms.o): ../../libdwarf/libdwarf/pro_forms.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h ../../libdwarf/libdwarf/pro_expr.h
+libdwarf.a(pro_frame.o): ../../libdwarf/libdwarf/pro_frame.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h ../../libdwarf/libdwarf/pro_frame.h
+libdwarf.a(pro_funcs.o): ../../libdwarf/libdwarf/pro_funcs.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h
+libdwarf.a(pro_init.o): ../../libdwarf/libdwarf/pro_init.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h \
+  ../../libdwarf/libdwarf/pro_reloc_symbolic.h \
+  ../../libdwarf/libdwarf/pro_reloc_stream.h
+libdwarf.a(pro_line.o): ../../libdwarf/libdwarf/pro_line.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h ../../libdwarf/libdwarf/pro_line.h
+libdwarf.a(pro_macinfo.o): ../../libdwarf/libdwarf/pro_macinfo.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h \
+  ../../libdwarf/libdwarf/pro_macinfo.h
+libdwarf.a(pro_pubnames.o): ../../libdwarf/libdwarf/pro_pubnames.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h
+libdwarf.a(pro_reloc.o): ../../libdwarf/libdwarf/pro_reloc.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h
+libdwarf.a(pro_reloc_stream.o): ../../libdwarf/libdwarf/pro_reloc_stream.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h \
+  ../../libdwarf/libdwarf/pro_reloc.h \
+  ../../libdwarf/libdwarf/pro_reloc_stream.h
+libdwarf.a(pro_reloc_symbolic.o): ../../libdwarf/libdwarf/pro_reloc_symbolic.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h \
+  ../../libdwarf/libdwarf/pro_reloc.h \
+  ../../libdwarf/libdwarf/pro_reloc_symbolic.h
+libdwarf.a(pro_section.o): ../../libdwarf/libdwarf/pro_section.c \
+  ../../libdwarf/libdwarf/config.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h \
+  ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h \
+  ../../libdwarf/libdwarf/pro_line.h ../../libdwarf/libdwarf/pro_frame.h \
+  ../../libdwarf/libdwarf/pro_die.h ../../libdwarf/libdwarf/pro_macinfo.h \
+  ../../libdwarf/libdwarf/pro_types.h
+libdwarf.a(pro_types.o): ../../libdwarf/libdwarf/pro_types.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h
+libdwarf.a(pro_vars.o): ../../libdwarf/libdwarf/pro_vars.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h
+libdwarf.a(pro_weaks.o): ../../libdwarf/libdwarf/pro_weaks.c \
+  ../../libdwarf/libdwarf/config.h ../../libdwarf/libdwarf/libdwarfdefs.h \
+  ../../libdwarf/libdwarf/pro_incl.h ../../libdwarf/libdwarf/libdwarf.h \
+  ../../libdwarf/libdwarf/dwarf.h ../../libdwarf/libdwarf/pro_opaque.h \
+  ../../libdwarf/libdwarf/pro_error.h ../../libdwarf/libdwarf/pro_util.h \
+  ../../libdwarf/libdwarf/pro_encode_nm.h \
+  ../../libdwarf/libdwarf/pro_alloc.h \
+  ../../libdwarf/libdwarf/pro_section.h

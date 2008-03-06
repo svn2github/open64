@@ -1,0 +1,238 @@
+libelfutil.a(lebdecodes32.o): ../../libelfutil/lebdecodes32.c ../include/sgidefs.h \
+  ../../include/cmplrs/leb128.h
+libelfutil.a(lebdecodes64.o): ../../libelfutil/lebdecodes64.c ../include/sgidefs.h \
+  ../../include/cmplrs/leb128.h
+libelfutil.a(lebdecodeu32.o): ../../libelfutil/lebdecodeu32.c ../include/sgidefs.h \
+  ../../include/cmplrs/leb128.h
+libelfutil.a(lebdecodeu64.o): ../../libelfutil/lebdecodeu64.c ../include/sgidefs.h \
+  ../../include/cmplrs/leb128.h
+libelfutil.a(lebencodes32.o): ../../libelfutil/lebencodes32.c ../include/sgidefs.h \
+  ../../include/cmplrs/leb128.h
+libelfutil.a(lebencodes64.o): ../../libelfutil/lebencodes64.c ../include/sgidefs.h \
+  ../../include/cmplrs/leb128.h
+libelfutil.a(lebencodeu32.o): ../../libelfutil/lebencodeu32.c ../include/sgidefs.h \
+  ../../include/cmplrs/leb128.h
+libelfutil.a(lebencodeu64.o): ../../libelfutil/lebencodeu64.c ../include/sgidefs.h \
+  ../../include/cmplrs/leb128.h
+libelfutil.a(xlate_address.o): ../../libelfutil/xlate_address.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_block_index.o): ../../libelfutil/xlate_block_index.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_block_search.o): ../../libelfutil/xlate_block_search.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_expand_reg2.o): ../../libelfutil/xlate_expand_reg2.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_expand_reg.o): ../../libelfutil/xlate_expand_reg.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_get_all_reg.o): ../../libelfutil/xlate_get_all_reg.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_get_info.o): ../../libelfutil/xlate_get_info.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_get_range.o): ../../libelfutil/xlate_get_range.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_get_reg.o): ../../libelfutil/xlate_get_reg.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_get_reg_internal.o): ../../libelfutil/xlate_get_reg_internal.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_init_elf.o): ../../libelfutil/xlate_init_elf.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_init_fd.o): ../../libelfutil/xlate_init_fd.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_named_init_elf.o): ../../libelfutil/xlate_named_init_elf.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_named_init_fd.o): ../../libelfutil/xlate_named_init_fd.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_pro_add_info.o): ../../libelfutil/xlate_pro_add_info.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_pro_add_range.o): ../../libelfutil/xlate_pro_add_range.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_pro_add_range_internal.o):  \
+ ../../libelfutil/xlate_pro_add_range_internal.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_pro_add_reg_info.o): ../../libelfutil/xlate_pro_add_reg_info.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_pro_disk_header.o): ../../libelfutil/xlate_pro_disk_header.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_pro_disk_next_block.o):  \
+ ../../libelfutil/xlate_pro_disk_next_block.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_pro_init.o): ../../libelfutil/xlate_pro_init.c \
+  ../../libelfutil/xlateincl.h ../include/sgidefs.h \
+  ../../libelfutil/xlatebase.h ../../libelfutil/syn.h \
+  ../include/libelf/libelf.h ../include/libelf/sys_elf.h \
+  ../../include/dwarf_stuff.h ../../include/dwarf.h \
+  ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h
+libelfutil.a(xlate_update_for_movement.o):  \
+ ../../libelfutil/xlate_update_for_movement.c ../include/sgidefs.h \
+  ../../libelfutil/xlateincl.h ../../libelfutil/xlatebase.h \
+  ../../libelfutil/syn.h ../include/libelf/libelf.h \
+  ../include/libelf/sys_elf.h ../../include/dwarf_stuff.h \
+  ../../include/dwarf.h ../../include/libdwarf.h ../../include/libXlate.h \
+  ../include/libelf/libelf.h ../../include/cmplrs/xlate.h \
+  ../../include/cmplrs/leb128.h ../include/bstring.h \
+  ../../libelfutil/xlateTypes.h ../../libelfutil/xlate_proTypes.h \
+  ../../libelfutil/xlatexterns.h ../../libelfutil/xlate_pro_externs.h

@@ -1,0 +1,10 @@
+MAKE   /home/share/sl1merge/src/sw/cmplr/targia32_sl1/g++fe/../g++fe/gnu
+MAKE   /home/share/sl1merge/src/sw/cmplr/targia32_sl1/g++fe/gnu/../../include
+MAKE   /home/share/sl1merge/src/sw/cmplr/targia32_sl1/g++fe/gnu/../../libiberty
+gmake[2]: Nothing to be done for `default'.
+C   gcc -m32 -D_SGI_SOURCE -D_LANGUAGE_C -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND     -DIN_GCC -DHAVE_CONFIG_H -DTARGET_NAME=\"sl-linux\" -DLONGLONG -DFRONT_END -DUSE_DECL_SRCPOS -D_NEW_SYMTAB -DFRONT_END_C -DCFE -DCIL -DDO_IL_LOWERING=0 -DNO_USR_INCLUDE=TRUE -DAUTOMATIC_TEMPLATE_INSTANTIATION=0 -DINSTANTIATION_BY_IMPLICIT_INCLUSION=0 -DBACK_END_IS_C_GEN_BE=0 -DMONGOOSE_CIF -DSGI_RAG_BACKEND -DSGI_MONGOOSE -DMIPSEL -DIs_True_On -DInsist_On -DDEBUG=1 -DCHECKING=1 -DGPLUSPLUS_FE  -I../../g++fe/gnu -I../../g++fe/gnu -I../../../kg++fe -I../../../kg++fe/gnu -I../../../kg++fe/gnu/MIPS -I../../../kg++fe/gnu/config -I../../../kg++fe/gnu/config/mips -I../../../include/gnu -I../../../kg++fe/gnu/cp -fPIC -DTARG_MIPS -DKEY   -std=gnu99 -D_GNU_SOURCE  -I../../include  -g -D_MIPSEL -D_LONGLONG -D_MIPS_SZINT=32 -D_MIPS_SZPTR=32 -D_MIPS_SZLONG=32 -MD -Wimplicit   /home/share/sl1merge/src/sw/cmplr/targia32_sl1/g++fe/gnu/../../../kg++fe/gnu/alias.c
+In file included from ../../../kg++fe/gnu/alias.c:38:
+../../../kg++fe/gnu/ggc.h:26:24: gtype-desc.h: No such file or directory
+../../../kg++fe/gnu/alias.c:2925:22: gt-alias.h: No such file or directory
+gmake[1]: *** [alias.o] Error 1
+gmake: *** [first] Error 2

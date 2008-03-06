@@ -1,0 +1,54 @@
+MAKE   /home/share/sl1merge/src/sw/cmplr/targia32_sl1/driver/../include
+C   gcc -m32 -D_SGI_SOURCE -D_LANGUAGE_C -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND     -DMIPS -DSL -DKEY  -DHOST_MIPS -DNOOPT -I. -I../../driver -I../../common/com -fPIC -DTARG_MIPS -DTARG_JAVI  -DTARG_SL -DKEY   -std=gnu99 -D_GNU_SOURCE  -I../include  -g -D_MIPSEL -D_LONGLONG -D_MIPS_SZINT=32 -D_MIPS_SZPTR=32 -D_MIPS_SZLONG=32 -MD -Wimplicit   /home/share/sl1merge/src/sw/cmplr/targia32_sl1/driver/../../driver/phases.c
+../../driver/phases.c: In function `specify_dyn_linker':
+../../driver/phases.c:422: error: `dynamic_linker' undeclared (first use in this function)
+../../driver/phases.c:422: error: (Each undeclared identifier is reported only once
+../../driver/phases.c:422: error: for each function it appears in.)
+../../driver/phases.c: In function `add_file_args':
+../../driver/phases.c:983: error: `O_cckr' undeclared (first use in this function)
+../../driver/phases.c:1060: error: parse error before "PSC_FULL_VERSION"
+../../driver/phases.c:1126: error: `O_dsm' undeclared (first use in this function)
+../../driver/phases.c:1277: error: parse error before ')' token
+../../driver/phases.c: At top level:
+../../driver/phases.c:1285: warning: type defaults to `int' in declaration of `add_string'
+../../driver/phases.c:1285: warning: parameter names (without types) in function declaration
+../../driver/phases.c:1285: error: conflicting types for `add_string'
+../../driver/string_utils.h:96: error: previous declaration of `add_string'
+../../driver/phases.c:1285: warning: extern declaration of `add_string' doesn't match global one
+../../driver/phases.c:1285: warning: data definition has no type or storage class
+../../driver/phases.c:1286: error: parse error before "if"
+../../driver/phases.c:1288: warning: type defaults to `int' in declaration of `add_string'
+../../driver/phases.c:1288: warning: parameter names (without types) in function declaration
+../../driver/phases.c:1288: warning: data definition has no type or storage class
+../../driver/phases.c:1291: error: parse error before "if"
+../../driver/phases.c:1293: warning: type defaults to `int' in declaration of `append_string_lists'
+../../driver/phases.c:1293: warning: parameter names (without types) in function declaration
+../../driver/phases.c:1293: error: conflicting types for `append_string_lists'
+../../driver/string_utils.h:115: error: previous declaration of `append_string_lists'
+../../driver/phases.c:1293: warning: extern declaration of `append_string_lists' doesn't match global one
+../../driver/phases.c:1293: warning: data definition has no type or storage class
+../../driver/phases.c:1294: error: parse error before '}' token
+../../driver/phases.c:1332: error: parse error before string constant
+../../driver/phases.c:1332: warning: type defaults to `int' in declaration of `sprintf'
+../../driver/phases.c:1332: warning: conflicting types for built-in function `sprintf'
+../../driver/phases.c:1332: warning: extern declaration of `sprintf' doesn't match global one
+../../driver/phases.c:1332: warning: data definition has no type or storage class
+../../driver/phases.c:1333: warning: type defaults to `int' in declaration of `add_string'
+../../driver/phases.c:1333: warning: parameter names (without types) in function declaration
+../../driver/phases.c:1333: warning: data definition has no type or storage class
+../../driver/phases.c:1335: error: parse error before "if"
+../../driver/phases.c:1342: warning: type defaults to `int' in declaration of `add_string'
+../../driver/phases.c:1342: warning: parameter names (without types) in function declaration
+../../driver/phases.c:1342: warning: data definition has no type or storage class
+../../driver/phases.c:1343: error: parse error before '}' token
+../../driver/phases.c:1347: warning: type defaults to `int' in declaration of `add_string'
+../../driver/phases.c:1347: warning: parameter names (without types) in function declaration
+../../driver/phases.c:1347: warning: data definition has no type or storage class
+../../driver/phases.c:1348: error: parse error before '}' token
+../../driver/phases.c:1353: warning: type defaults to `int' in declaration of `add_string'
+../../driver/phases.c:1353: warning: parameter names (without types) in function declaration
+../../driver/phases.c:1353: warning: data definition has no type or storage class
+../../driver/phases.c:1354: error: parse error before '}' token
+../../driver/phases.c:1359: warning: type defaults to `int' in declaration of `current_phase'
+../../driver/phases.c:1359: confused by earlier errors, bailing out
+make: *** [phases.o] Error 1

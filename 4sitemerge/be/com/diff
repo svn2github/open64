@@ -1,0 +1,1048 @@
+52,54d51
+< #if defined(BUILD_OS_DARWIN)
+< #include <limits.h>
+< #else /* defined(BUILD_OS_DARWIN) */
+56d52
+< #endif /* defined(BUILD_OS_DARWIN) */
+59,61d54
+< #ifdef __MINGW32__
+< #include <signal.h>
+< #else
+63,66d55
+< #endif /* __MINGW32__ */
+< #if defined(BUILD_OS_DARWIN)
+< #include <darwin_elf.h>
+< #else /* defined(BUILD_OS_DARWIN) */
+68d56
+< #endif /* defined(BUILD_OS_DARWIN) */
+75,77d62
+< #if !defined(TARG_SL)
+< #include "config_targ_opt.h"
+< #endif
+119d103
+< #include "be_memop_annot.h"
+125,130d108
+< #include "tls.h"
+< 
+< #ifdef TARG_NVISA
+< #define SHORTCIRCUIT_TO_LOGICAL_LIMIT 3
+< #endif
+< 
+161d138
+< extern void Set_addr_saved_expr(WN *wn, BOOL warn);
+262d238
+< static void lower_madd_tree_height(WN *, WN *, LOWER_ACTIONS);
+288c264
+< #if defined(KEY) 
+---
+> #if defined(KEY) && !defined(TARG_SL)
+290d265
+< static ST_IDX find_trampoline(ST_IDX func_st_idx);
+293,296d267
+< // return the WN* from which <derived> was derived
+< static WN* get_original_wn (WN* derived);
+< static void set_original_wn (WN* derived, WN* orig);
+< 
+315,316d285
+< // for promote ldid/lda in param in call to up level
+< static BOOL promote_tls_ldst     = FALSE;
+409c378
+< #if defined(TARG_X8664) || defined(VECTOR_MTYPES)
+---
+> #ifdef TARG_X8664
+422d390
+< #if defined(TARG_X8664)
+428d395
+< #endif // (TARG_X8664) || (VECTOR_MTYPES)
+500,516d466
+< static ST *
+< Standard_Preg_For_Mtype (TYPE_ID mtype)
+< {
+< #ifdef TARG_NVISA
+<   // need specific-size preg
+<   if (mtype == MTYPE_F8) 
+< 	return Float64_Preg;
+<   else if (MTYPE_is_float(mtype)) 
+< 	return Float32_Preg;
+<   else if (MTYPE_byte_size(mtype) == 8)
+< 	return Int64_Preg;
+<   else
+< 	return Int32_Preg;
+< #else
+<   return MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+< #endif
+< }
+819,820c769,770
+<   sprintf(name, "%s%s%d%s%d", LABEL_PREFIX, Label_Name_Separator, 
+< 	Current_PU_Count(), Label_Name_Separator, label);
+---
+>   sprintf(name, ".L%s%d%s%d", Label_Name_Separator, Current_PU_Count(), 
+> 	Label_Name_Separator, label);
+1411,1417d1360
+< #ifdef TARG_NVISA
+<   // we need to track what memory is being accessed when storing
+<   // an lda into a preg.  So if tree has an lda, or indirects to lda
+<   // through another preg, put that in preg table.
+<   WN *lda = Find_Lda (tree);
+<   if (lda) Set_Preg_Lda (pregNo, lda);
+< #endif
+1424,1425d1366
+<     Set_addr_saved_expr(tree, TRUE);
+< 
+1616,1621d1556
+< 
+<       // maintain the annotation whenever possible
+<       WN_MEMOP_ANNOT_MGR* p = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr();
+<       if (p) {
+<         p->Copy_annot (orig, tree); 
+<       }
+3524,3648d3458
+< #ifdef KEY
+< /* ====================================================================
+<  *
+<  * WN *sum_madd_segments(WN **segments, INT low, INT high)
+<  *
+<  *  Sum the MADD chains.
+<  *
+<  * ==================================================================== */
+< static WN *sum_madd_segments(WN **segments, INT low, INT high)
+< {
+<   WN *tree;
+< 
+<   if (high == low) {
+<     tree = segments[high];
+<   } else if (high - low == 1) {
+<     WN *opnd0 = segments[low];
+<     WN *opnd1 = segments[high];
+<     tree = WN_Add(WN_rtype(opnd0), opnd0, opnd1);
+<     WN_copy_linenum(opnd0, tree);
+<   } else {
+<     INT mid = (high + low) / 2;
+<     WN *sum0 = sum_madd_segments(segments, low, mid);
+<     WN *sum1 = sum_madd_segments(segments, mid + 1, high);
+<     tree = WN_Add(WN_rtype(sum0), sum0, sum1);
+<     WN_copy_linenum(sum0, tree);
+<   }
+<   return tree;
+< }
+< 
+< 
+< /* ====================================================================
+<  *
+<  * WN *lower_one_madd_tree_height(WN *block, WN *wn)
+<  *
+<  *  Reassociate MADD operator at this level 
+<  *  (ie no recursion)
+<  *
+<  * ==================================================================== */
+< 
+< static WN *lower_one_madd_tree_height(WN *block, WN *wn)
+< {
+<   // Tree is a MADD and potentially starts a MADD chain.
+<   Is_True(WN_operator(wn) == OPR_MADD,
+< 	  ("lower_one_madd_tree_height: MADD operator not found"));
+< 
+<   if (OPT_Madd_Height <= 0)
+<     return wn;
+< 
+<   // Count the MADDs in the chain.
+<   INT madd_count = 0;
+<   WN *this_wn;
+<   for (this_wn = wn;
+<        WN_operator(this_wn) == OPR_MADD;
+<        this_wn = WN_kid0(this_wn)) {
+<     madd_count++;
+<   }
+< 
+<   if (madd_count <= OPT_Madd_Height)
+<     return wn;
+< 
+<   INT segment_count = madd_count / OPT_Madd_Height + 1;
+<   WN **segments = (WN **) alloca(segment_count * sizeof(WN *));
+<   memset(segments, 0, segment_count * sizeof(WN *));
+< 
+<   // Split up the MADD chain.
+<   INT count = 0;
+<   INT idx = 0;
+<   WN *prev_wn = NULL;
+<   this_wn = wn;
+<   while (WN_operator(this_wn) == OPR_MADD) {
+<     WN *next_wn = WN_kid0(this_wn);
+<     count++;
+<     if (count > OPT_Madd_Height) {
+<       WN *mpy = WN_Mpy(WN_rtype(this_wn), WN_kid1(this_wn), WN_kid2(this_wn));
+<       WN_copy_linenum(this_wn, mpy);
+<       WN_kid0(prev_wn) = mpy;
+<       WN_Delete(this_wn);
+<       count = 0;
+<     } else if (count == 1) {
+<       segments[idx++] = this_wn;
+<     }
+<     prev_wn = this_wn;
+<     this_wn = next_wn;
+<   }
+< 
+<   // If the last MADD in the chain was converted to a MPY, then its kid0 still
+<   // needs to be summed.
+<   if (count == 0) {
+<     segments[idx++] = this_wn;
+<   }
+< 
+<   // Add the partial sums.
+<   WN *tree = sum_madd_segments(segments, 0, idx - 1);
+<   return tree;
+< }
+< 
+< 
+< /* ====================================================================
+<  *
+<  * WN *lower_madd_tree_height(WN *block, WN *tree)
+<  *
+<  *  Traverse tree to find subtrees that are MADD chains.  Lower the height
+<  *  of these chains.
+<  *
+<  * ==================================================================== */
+< 
+< static void lower_madd_tree_height(WN *block, WN *tree, LOWER_ACTIONS actions)
+< {
+<   if (NotAction(LOWER_TREEHEIGHT))
+<     return;
+< 
+<   if (WN_operator(tree) != OPR_MADD) {
+<     INT16 i;
+<     for (i = 0; i < WN_kid_count(tree); i++) {
+<       WN *kid = WN_kid(tree, i);
+<       if (WN_operator(kid) == OPR_MADD) {
+< 	// Kid potentially begins a MADD chain.  Reduce its height.
+< 	WN_kid(tree, i) = lower_one_madd_tree_height(block, kid);
+<       } else {
+< 	lower_madd_tree_height(block, kid, actions);
+<       }
+<     }
+<   }
+< }
+< #endif
+3711,3712c3521
+<       !(type == MTYPE_F4 || type == MTYPE_V16F4) ||
+<       !Is_Target_SSE2())
+---
+>       !(type == MTYPE_F4 || type == MTYPE_V16F4))
+3783,3787d3591
+< #ifdef TARG_NVISA
+<   // want to preserve original symbol
+<   return NULL;
+< #endif
+< 
+4332,4336c4136
+<     deref = WN_Istore(WN_desc(tree), offset, addr_ty, addr, WN_kid0(tree)
+< #ifdef KEY // bug 14036
+<                       ,WN_field_id(tree)
+< #endif
+<                      );
+---
+>     deref = WN_Istore(WN_desc(tree), offset, addr_ty, addr, WN_kid0(tree));
+4371,4374d4170
+< #ifdef TARG_NVISA
+<       // int64 are separate register class, so use unique preg num
+<       WN_load_offset(tree) = First_Int64_Preg_Return_Offset;
+< #endif
+4383,4385d4178
+< #ifdef TARG_NVISA
+<       WN_st_idx(tree) = ST_st_idx(Int32_Preg);
+< #else
+4387d4179
+< #endif
+4399,4408d4190
+< #ifdef TARG_NVISA
+<       if (mtype == MTYPE_F8) {
+< 	// doubles are separate register class, so use unique preg num
+<         WN_st_idx(tree) = ST_st_idx(Float64_Preg);
+<         WN_load_offset(tree) = First_Float64_Preg_Return_Offset;
+<       } else {
+<         WN_st_idx(tree) = ST_st_idx(Float32_Preg);
+<         WN_load_offset(tree) = First_Float_Preg_Return_Offset;
+<       }
+< #else
+4411d4192
+< #endif
+4427c4208
+< #if defined(TARG_X8664) || defined(VECTOR_MTYPES)
+---
+> #ifdef TARG_X8664
+4434,4437c4215
+<     case MTYPE_V8I1:
+<     case MTYPE_V8I2:
+<     case MTYPE_V8I4:
+< #ifdef TARG_X8664
+---
+> 
+4442d4219
+< #endif
+4446c4223
+< #endif // TARG_X8664 || VECTOR_MTYPES
+---
+> #endif
+4535d4311
+<   set_original_wn (wn, tree);
+4791,4794d4566
+< #ifdef KEY // bug 12394
+<   if (new_opr == OPR_ILDBITS)
+<     WN_set_load_addr_ty(wn, Make_Pointer_Type(WN_ty(wn)));
+< #endif
+4884a4657
+> #ifdef KEY
+4893a4667
+> #endif	
+5109,5116c4883
+<      ((MTYPE_id(type) == MTYPE_F4 || MTYPE_id(type) == MTYPE_F8)
+< #ifdef TARG_NVISA
+<       // NVISA supports integer madds
+<       || (Integer_Madd_Allowed &&
+<        (MTYPE_id(type) == MTYPE_I4 || MTYPE_id(type) == MTYPE_U4
+<         || MTYPE_id(type) == MTYPE_I8 || MTYPE_id(type) == MTYPE_U8))
+< #endif
+<       ))
+---
+>      (MTYPE_id(type) == MTYPE_F4 || MTYPE_id(type) == MTYPE_F8))
+5162,5179c4929,4943
+<     if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P ) {
+<       WN * old = tree;
+<       WN * parm = WN_kid0 (WN_kid0 (old)); // child of OPR_PARM
+< 
+<       // Check if the argument is a compile-time constant, replace the
+<       // intrn op by true/false
+<       if (WN_operator (parm) == OPR_INTCONST ||
+<           (OPCODE_has_sym (WN_opcode (parm)) &&
+<            ST_class (WN_st (parm)) == CLASS_CONST)) {
+<         tree = WN_Intconst (MTYPE_I4, 1);
+<         WN_copy_linenum (old, tree);
+<         WN_Delete (old);
+<         kids_lowered = TRUE;
+<         break;
+<       }
+<       if ( Action (LOWER_TO_CG) ) {
+< 	// Still not constant, replace it by false
+< 	tree = WN_Intconst (MTYPE_I4, 0);
+---
+>     if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P &&
+>          Action (LOWER_TO_CG))
+>     {
+> 	WN * old = tree;
+> 	WN * parm = WN_kid0 (WN_kid0 (old)); // child of OPR_PARM
+> 
+> 	// Check if the argument is a compile-time constant, replace the
+> 	// intrn op by true/false
+> 	if (WN_operator (parm) == OPR_INTCONST ||
+> 	    (OPCODE_has_sym (WN_opcode (parm)) && 
+> 	     ST_class (WN_st (parm)) == CLASS_CONST))
+> 	  tree = WN_Intconst (MTYPE_I4, 1);
+> 	else
+> 	  tree = WN_Intconst (MTYPE_I4, 0);
+> 
+5183,5184c4947
+<         break;
+<       }
+---
+> 	break;
+5445,5474d5207
+<     if ( Action(LOWER_TO_CG) && promote_tls_ldst &&
+<          ST_is_tls( WN_st(tree) ) ) {
+<       // There is a ldid to TLS data needs to be promoted to up level
+<       // In order to avoid conflicts in output registers
+<       // We create a preg to be the local copy of the TLS variable.
+<       //       LDID tls_st <ST_IS_THREAD_PRIVATE>
+<       //     ......
+<       //   OPR_PARAM
+<       // OPR_CALL
+<       // --->
+<       //   LDID tls_st <ST_IS_THREAD_PRIVATE>
+<       // STID local_num <PREG>
+<       //       LDID local_num <PREG>
+<       //     ......
+<       //   OPR_PARAM
+<       // OPR_CALL
+<       char local_name[64];
+<       ST* tls_st = WN_st(tree);
+<       TYPE_ID tls_mtype = ST_mtype(tls_st);
+<       snprintf(local_name, 64, "%s.local", ST_name(tls_st));
+<       ST* local_st = MTYPE_To_PREG(tls_mtype);
+<       PREG_NUM local_num = Create_Preg(tls_mtype, local_name);
+<       WN* tls_ldid = WN_COPY_Tree(tree);
+<       WN* local_stid = WN_StidIntoPreg(tls_mtype, local_num,
+<                                        local_st, tls_ldid);
+<       WN_INSERT_BlockLast(block, local_stid);
+<       WN* local_ldid = WN_LdidPreg(tls_mtype, local_num );
+<       WN_Delete(tree);
+<       return local_ldid;
+<     }
+5537,5578d5269
+<     if (Action(LOWER_TO_CG) && promote_tls_ldst &&
+<         ST_is_tls( WN_st(tree) ) ) 
+<     {
+<       // promote OPR_LDA to TLS variable in the OPR_PARAM of OPR_CALL to upper level
+<       // In order to avoid conflicts in output registers
+<       //       OPR_LDA tls_st <ST_IS_THREAD_PRIVATE>
+<       //     ......
+<       //   OPR_PARAM
+<       // OPR_CALL
+<       // --->
+<       //   OPR_LDA tls_st <ST_IS_THREAD_PRIVATE>
+<       // OPR_STID local_num <PREG>
+<       //       OPR_LDID local_num <PREG>
+<       //     ......
+<       //   OPR_PARAM
+<       // OPR_CALL
+<       char local_name[64];
+<       ST* tls_st = WN_st(tree);
+<       snprintf(local_name, 64, "local.%s", ST_name(tls_st));
+<       ST* local_st = MTYPE_To_PREG(Pointer_type);
+<       PREG_NUM local_num = Create_Preg ( Pointer_type, local_name);
+<       WN* tls_lda = WN_COPY_Tree(tree);
+<       WN* local_stid = WN_StidIntoPreg( Pointer_type, local_num, 
+<                                         local_st, tls_lda);
+<       WN_INSERT_BlockLast(block, local_stid);
+<       WN * local_ldid = WN_LdidPreg(Pointer_type, local_num);
+<       WN_Delete(tree);
+<       return local_ldid;
+<     }
+< #ifdef KEY
+<     if (Action(LOWER_UPLEVEL) && WN_class(tree) == CLASS_FUNC) {
+<       ST *sym = WN_st(tree);
+<       PU &pu = Pu_Table[ST_pu(sym)];
+<       if (PU_need_trampoline(pu)) {
+< 	Allocate_Object(sym); // because it may not appear again
+< 	ST_IDX tramp_st_idx = find_trampoline(ST_st_idx(sym));
+<         WN_st_idx(tree) = tramp_st_idx;
+< 	return lower_expr(block, tree, actions | LOWER_UPLEVEL);
+<       }
+<     }
+< #endif
+< 
+6329c6020
+<       preg_st = Standard_Preg_For_Mtype(mtype);
+---
+>       preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+6410c6101
+<       preg_st = Standard_Preg_For_Mtype(mtype);
+---
+>       preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+6426,6456d6116
+< #ifdef TARG_NVISA
+< // lower struct copy of asm output, which goes downward from negative preg,
+< // into sequence of ldid/stid. 
+< static WN *lower_asm_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
+< {
+<   WN *wn;
+<   WN *ldid;
+<   INT field_id = 0;
+<   TY_IDX vty = WN_ty(tree);
+<   FmtAssert(TY_can_be_vector(vty), ("not a vector type"));
+<   TY_IDX ety = TY_vector_elem_ty(vty);
+<   PREG_NUM pnum = WN_load_offset(WN_kid0(tree)); // asm out preg
+<   for (INT i = 0; i < TY_vector_count(vty); ++i) {
+<       ldid = WN_CreateLdid(OPR_LDID, TY_mtype(ety), TY_mtype(ety), 
+< 		/* asm out pregs count downward */
+< 		pnum - i, 
+< 		MTYPE_To_PREG(TY_mtype(ety)), ety);
+<       ++field_id;
+<       wn = WN_CreateStid( OPR_STID, MTYPE_V, TY_mtype(ety),
+< 		/* increment by size of element */
+< 		i * MTYPE_byte_size(TY_mtype(ety)), 
+< 		WN_st(tree), vty, ldid, field_id);
+<       wn  = lower_store (block, wn, actions);
+<       WN_Set_Linenum (wn, WN_Get_Linenum(tree));
+<       WN_INSERT_BlockLast (block, wn); // insert the last STID created 
+<   }
+<   WN_DELETE_Tree(tree);
+<   return NULL; // original MSTID disappears
+< }
+< #endif // TARG_NVISA
+< 
+6579,6596d6238
+< #ifdef KEY // bug 12787
+< /* ====================================================================
+<  * walk expr looking for an INTRINSIC_OP that will become a function call;
+<  * return TRUE if found.
+<    ==================================================================== */
+< static BOOL has_call(WN *expr)
+< {
+<   if (WN_operator(expr) == OPR_INTRINSIC_OP &&
+<       ! INTRN_cg_intrinsic(WN_intrinsic(expr)))
+<     return TRUE;
+<   for (INT i = 0; i < WN_kid_count(expr); i++) {
+<     if (has_call(WN_kid(expr, i)))
+<       return TRUE;
+<   }
+<   return FALSE;
+< }
+< #endif
+< 
+7027,7035d6668
+< #ifdef TARG_NVISA
+<     if (Action(LOWER_TO_CG) && WN_class(tree) == CLASS_PREG) {
+<       // we need to track what memory is being accessed when storing
+<       // an lda into a preg.  So if kid has an lda, put that in preg table.
+<       WN *lda = Find_Lda (WN_kid0(tree));
+<       if (lda) Set_Preg_Lda (WN_store_offset(tree), lda);
+<     }
+< #endif
+< 
+7062,7070d6694
+< #ifdef TARG_NVISA
+<     if (Action(LOWER_RETURN_VAL) && WN_desc(tree) == MTYPE_M &&
+<        WN_opcode(WN_kid0(tree)) == OPC_MMLDID && 
+<        WN_class(WN_kid0(tree)) == CLASS_PREG &&
+<        WN_load_offset(WN_kid0(tree)) < -1)
+<     {
+<        return lower_asm_mstid(block, tree, actions);
+<     }
+< #endif
+7150,7158c6774,6775
+< 		 ( 
+< #if defined(BUILD_OS_DARWIN)
+< 		   /* Darwin -m32 returns Fortran SP complex in registers too */
+< 		   1
+< #else /* defined(BUILD_OS_DARWIN) */
+< 		   PU_c_lang(Get_Current_PU()) ||
+< 		   PU_cxx_lang(Get_Current_PU()) 
+< #endif /* defined(BUILD_OS_DARWIN) */
+< 		   ) ){
+---
+> 		 ( PU_c_lang(Get_Current_PU()) ||
+> 		   PU_cxx_lang(Get_Current_PU()) ) ){
+7167,7178c6784,6797
+< 	WN *realexp_copy = realexp;
+< 	WN *imagexp_copy = imagexp;
+< #ifdef KEY // bug 12787
+<         if (has_call(realexp)) {
+< 	  PREG_NUM realexpN = AssignExpr(block, realexp, realTY);
+<           realexp_copy = WN_LdidPreg(realTY, realexpN);
+<         }
+<         if (has_call(imagexp)) {
+< 	  PREG_NUM imagexpN = AssignExpr(block, imagexp, realTY);
+<           imagexp_copy = WN_LdidPreg(realTY, imagexpN);
+<         } 
+< #endif
+---
+> 	WN *realexp_copy, *imagexp_copy;
+> 	PREG_NUM realexpN, imagexpN;
+> 	if (WN_operator(realexp) == OPR_CONST) {
+> 	  realexp_copy = realexp;
+> 	} else {
+> 	  realexpN = AssignExpr(block, realexp, realTY);
+> 	  realexp_copy = WN_LdidPreg(realTY, realexpN);
+> 	}
+> 	if (WN_operator(imagexp) == OPR_CONST) {
+> 	  imagexp_copy = imagexp;
+> 	} else {
+> 	  imagexpN = AssignExpr(block, imagexp, realTY);
+> 	  imagexp_copy = WN_LdidPreg(realTY, imagexpN);
+> 	}
+7402,7405d7020
+< #ifndef TARG_NVISA
+<   // NVISA does not vectorize, but may create selects in wopt 
+<   // which we want to preserve.  Plus this copy of nodes creates
+<   // a problem in RVI which is expecting the opt_stab to still be valid.
+7419,7423d7033
+<       //bug 13853: these three lowers happen before lno, so should
+<       //           not transform select back to if
+<       !Action(LOWER_FAST_EXP)                         &&
+<       !Action(LOWER_TREEHEIGHT)                       &&
+<       !Action(LOWER_INLINE_INTRINSIC)                 &&
+7454d7063
+< #endif // TARG_NVISA
+7818,7820d7426
+<   TY_IDX sptrType;
+<   TY_IDX dptrType;
+<   WN *offset_wn;
+7824,7829d7429
+<     offset_wn = WN_LdidPreg(Integer_type, offsetN);
+< #ifdef TARG_NVISA
+<     // insert convert if 64bit pointer and 32bit offset:
+<     if (Pointer_type != Integer_type)
+<       offset_wn = WN_Cvt(Integer_type, Pointer_type, offset_wn);
+< #endif
+7832,7837c7432
+< 		  offset_wn);
+< #ifdef KEY // bug 12394
+<     sptrType = Make_Pointer_Type (struct_memop_type(quantum, srcAlign));
+< #else
+<     sptrType = Make_Pointer_Type(srcAlign), 
+< #endif
+---
+> 		  WN_LdidPreg(Integer_type, offsetN));
+7840c7435
+< 			    sptrType, addr);
+---
+> 			    Make_Pointer_Type (srcAlign), addr);
+7849,7855d7443
+<   // need separate copy of ldid for each use
+<   offset_wn = WN_LdidPreg(Integer_type, offsetN);
+< #ifdef TARG_NVISA
+<   // insert convert if 64bit pointer and 32bit offset:
+<   if (Pointer_type != Integer_type)
+<     offset_wn = WN_Cvt(Integer_type, Pointer_type, offset_wn);
+< #endif
+7858c7446
+< 		offset_wn);
+---
+> 		WN_LdidPreg(Integer_type, offsetN));
+8577,8583d8164
+< #ifdef TARG_NVISA
+<   if (alignment > 4) {
+<     // until we get 64bit hw, need to copy 4 bytes at a time.
+< DevWarn("for quantum change alignment from %d to 4", alignment);
+<     alignment = 4;
+<   }
+< #endif
+9429,9439d9009
+< #ifdef TARG_NVISA
+<       ST	*reg;
+<       if (Preg_Offset_Is_Float32(regNo))
+< 	reg = Float32_Preg;
+<       else if (Preg_Offset_Is_Float64(regNo))
+< 	reg = Float64_Preg;
+<       else if (Preg_Offset_Is_Int64(regNo))
+< 	reg = Int64_Preg;
+<       else
+< 	reg = Int32_Preg;
+< #else
+9441d9010
+< #endif
+9545,9555d9113
+< #ifdef TARG_NVISA
+<       ST	*reg;
+<       if (Preg_Offset_Is_Float32(regNo))
+< 	reg = Float32_Preg;
+<       else if (Preg_Offset_Is_Float64(regNo))
+< 	reg = Float64_Preg;
+<       else if (Preg_Offset_Is_Int64(regNo))
+< 	reg = Int64_Preg;
+<       else
+< 	reg = Int32_Preg;
+< #else
+9557d9114
+< #endif
+9785d9341
+< /* Note no sincos() on Darwin */
+10319,10334d9874
+<   // initialize the TLS if it's not initialized
+<   TLS_init();
+<   // If the tls_model is dynamic, we need to generate __tls_get_addr call.
+<   // In order to avoid the output register conflict,
+<   // we need to promote the ldid/lda in actual parameter to up-level.
+<   // This is done in LOWER_TO_CG phase
+<   if( Action(LOWER_TO_CG) && 
+<       (TLS_model == TLS_MODEL_GLOBAL_DYNAMIC ||
+<        TLS_model == TLS_MODEL_LOCAL_DYNAMIC )) {
+< #if !defined(TARG_SL)
+<     promote_tls_ldst = TRUE;
+< #else
+<     promote_tls_ldst = FALSE;
+< #endif
+<   }
+< 
+10358d9897
+<   promote_tls_ldst = FALSE;
+10546a10086
+> #if 0
+10550a10091
+> #endif
+10591,10593d10131
+<     ty =  TY_Of_Parameter(parm);
+<     ploc = Get_Output_Parameter_Location( MTYPE_To_TY(parmType));
+<     {
+10597,10605c10135,10142
+<       TYPE_ID  type = Mtype_comparison( Fix_TY_mtype(ty));
+<       
+<       if (parmType != type)
+< 	{
+< 	  DevWarn("lower_call(): line %d, parm #%d type mismatch (WN_rtype(parm)"
+< 		  " = %s) (cannonical TY_mtype(parm))) %s)",
+< 		  Srcpos_To_Line(WN_Get_Linenum(tree)), i,
+< 		  Mtype_Name(parmType), Mtype_Name(type));
+< 	}
+---
+>     TYPE_ID  type = Mtype_comparison( Fix_TY_mtype(ty));
+> 
+>     if (parmType != type)
+>     {
+> 	DevWarn("lower_call(): line %d, parm #%d type mismatch (WN_rtype(parm)"
+> 		" = %s) (cannonical TY_mtype(parm))) %s)",
+> 		Srcpos_To_Line(WN_Get_Linenum(tree)), i,
+> 		Mtype_Name(parmType), Mtype_Name(type));
+10607c10144
+<       
+---
+> 
+10832a10370,10371
+> 
+> 
+11031c10570
+< #if ! (defined(linux) || defined(BUILD_OS_DARWIN))
+---
+> #ifndef linux 
+11056c10595
+< #if ! (defined(linux) || defined(BUILD_OS_DARWIN))
+---
+> #ifndef linux
+11191,11193d10729
+< #ifdef TARG_NVISA
+<       preg_st = Standard_Preg_For_Mtype(mtype);
+< #endif
+11277,11281c10813,10817
+<           preg_st = Standard_Preg_For_Mtype(mtype);
+< #ifdef KEY // bug 12812
+<   	  if (WN_opcode(o_rhs) == OPC_MMLDID && WN_st(o_rhs) == Return_Val_Preg)
+< 	    n_rhs = WN_CreateLdid(OPR_LDID, mtype, mtype, preg, preg_st, 
+< 			          Be_Type_Tbl(mtype));
+---
+>           preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+> 	  if (WN_st(o_rhs) == Return_Val_Preg)
+> 	    n_rhs = WN_CreateLdid (OPR_LDID, mtype, mtype,
+> 				   RETURN_INFO_preg(return_info, i), preg_st,
+> 				   ty_idx_used);
+11283d10818
+< #endif
+11316c10851
+<           preg_st = Standard_Preg_For_Mtype(mtype);
+---
+>           preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+11344c10879
+<           preg_st = Standard_Preg_For_Mtype(mtype);
+---
+>           preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+11822,11829d11356
+< #ifdef KEY
+<     if (Action(LOWER_MADD) &&
+< 	Madd_Allowed &&
+< 	Roundoff_Level >= ROUNDOFF_ASSOC) {
+<       lower_madd_tree_height(out, node, actions);
+<     }
+< #endif
+< 
+11943d11469
+< 	if (traceSpeculate) fprintf(TFile, "change CAND to LAND\n");
+11950d11475
+< 	if (traceSpeculate) fprintf(TFile, "change CIOR to LIOR\n");
+11957d11481
+< 	if (traceSpeculate) fprintf(TFile, "change CSELECT to SELECT\n");
+12100d11623
+< #ifndef TARG_NVISA // done instead at lower_if
+12102d11624
+< #endif
+12147c11669
+< static INT tree_has_cand_cior (WN *tree)
+---
+> static BOOL tree_has_cand_cior (WN *tree)
+12151d11672
+<   INT count = 0;
+12162c11683
+< 	++count;
+---
+>       return TRUE;
+12164c11685
+<   return count;
+---
+>   return FALSE;
+12180,12181d11700
+<   INT cand_cior_count = 0;
+< 
+12188,12204d11706
+< #ifdef TARG_NVISA
+<   // want to only replace CAND/CIOR with LAND/LIOR not lower whole if-tree. 
+<   // Branches are expensive for us and conversion to logical operators 
+<   // should be profitable for most cases. The bound is arbitrary for now,
+<   // the tests to measure and narrow performance do not exist
+<   // We should fine tune the bound when there is a compelling case
+<   if (Action(LOWER_SHORTCIRCUIT) && OPT_Lower_Speculate)
+<   {
+<       cand_cior_count = tree_has_cand_cior(WN_if_test(tree));
+<       if ((cand_cior_count > 0)
+<           && (cand_cior_count < SHORTCIRCUIT_TO_LOGICAL_LIMIT))
+<       {
+<           // lower_speculate doesn't use block, so can pass NULL
+<           WN_if_test(tree) = lower_speculate(NULL, WN_if_test(tree), actions);
+<       }
+<   }
+< #endif
+12590c12092
+<   if ( IEEE_Arithmetic < IEEE_INEXACT )
+---
+>   if ( IEEE_Arithmetic != IEEE_INEXACT )
+13140,13147d12641
+< #ifdef TARG_NVISA
+<   // if global entry, don't lower formals, just use named symbols
+<   if (ST_in_global_mem(WN_st(tree))) {
+<     PLOC_size(ploc) = 0; PLOC_offset(ploc) = 0; PLOC_reg(ploc) = 0;
+<     return ploc;
+<   }
+< #endif
+< 
+13276,13403d12769
+< #ifdef KEY // for handling taking address of nested functions
+< struct NESTED_FUNC_TRAMPOLINE_PAIR {
+<   ST_IDX nested_func_st_idx;
+<   ST_IDX trampoline_st_idx;
+<   NESTED_FUNC_TRAMPOLINE_PAIR(void) {}
+<   NESTED_FUNC_TRAMPOLINE_PAIR(ST_IDX nested_func, ST_IDX trampoline):
+< 	      nested_func_st_idx(nested_func), trampoline_st_idx(trampoline) {}
+< };
+< 
+< STACK<NESTED_FUNC_TRAMPOLINE_PAIR> nested_func_trampoline_map(Malloc_Mem_Pool);
+< 
+< static ST_IDX find_trampoline(ST_IDX func_st_idx) {
+<   INT i;
+<   for (i = 0; i < nested_func_trampoline_map.Elements(); i++) {
+<     if (nested_func_trampoline_map.Top_nth(i).nested_func_st_idx == func_st_idx)
+<       return nested_func_trampoline_map.Top_nth(i).trampoline_st_idx;
+<   }
+<   Fail_FmtAssertion("cannot find trampoline for nested function (%s)",
+< 		    ST_name(func_st_idx));
+< }
+< 
+< struct generate_trampoline_symbol
+< {
+<   inline void operator() (UINT32, ST *st) const {
+<     if (ST_class(st) == CLASS_FUNC) {
+<       PU &pu = Pu_Table[ST_pu(st)];
+<       if (PU_need_trampoline(pu)) {
+< 	ST *tramp_st = Gen_Temp_Symbol(
+< 			MTYPE_To_TY(Is_Target_64bit() ? MTYPE_C10: MTYPE_F10), 
+< 			ST_name(st));
+< 	Set_ST_addr_saved(tramp_st);
+< 	Set_ST_is_shared_auto(*tramp_st);
+< 	// remember the trampoline symbol generated for this nested function
+< 	nested_func_trampoline_map.Push(
+< 	      NESTED_FUNC_TRAMPOLINE_PAIR(ST_st_idx(st), ST_st_idx(tramp_st)));
+<       }
+<     }
+<   }
+< };
+< 
+< /* ====================================================================
+<  *
+<  * void allocate_trampoline_symbols(void)
+<  *
+<  * For each function nested within current function marked PU_NEED_TRAMPOLINE,
+<  * generate a corresponding local symbol of size 20 bytes that contains the
+<  * code for its trampoline that will be initialized at run-time
+<  *
+<  * ================================================================= */
+< static void allocate_trampoline_symbols(void)
+< {
+<   while (! nested_func_trampoline_map.Is_Empty() &&
+< 	 ST_IDX_level(nested_func_trampoline_map.Top().nested_func_st_idx)
+< 	      >= CURRENT_SYMTAB)
+<     nested_func_trampoline_map.Pop();
+<   if (PU_uplevel(Get_Current_PU()))
+<     For_all(St_Table, CURRENT_SYMTAB, generate_trampoline_symbol());
+< }
+< 
+< BOOL PU_has_trampoline = FALSE; // for communicating to cgemit
+< 
+< /* ====================================================================
+<  *
+<  * void generate_trampoline_code(void)
+<  *
+<  * For each trampoline allocated in current PU, generate the code
+<  * sequence that initialize the code content of the trampoline at run time
+<  * at the entry point of current PU
+<  *
+<  * ================================================================= */
+< static void generate_trampoline_code(WN *block)
+< {
+<   INT i;
+<   NESTED_FUNC_TRAMPOLINE_PAIR cur;
+<   for (i = 0; i < nested_func_trampoline_map.Elements(); i++) {
+<     cur = nested_func_trampoline_map.Top_nth(i);
+<     if (ST_IDX_level(cur.nested_func_st_idx) != CURRENT_SYMTAB)
+<       break;
+<     // generate the runtime initialization code for this trampoline and
+<     // insert at beginning of block
+<     WN *stid, *link;
+<     if (Is_Target_64bit()) {
+<       stid = WN_CreateStid(OPC_I2STID, 0, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(MTYPE_I2), WN_Intconst(MTYPE_I4, -17599));
+<       WN_INSERT_BlockFirst(block, stid);
+<       stid = WN_CreateStid(OPC_I4STID, 2, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(MTYPE_I4), 
+< 		     WN_Lda(Pointer_Mtype, 0, &St_Table[cur.nested_func_st_idx]));
+<       WN_INSERT_BlockFirst(block, stid);
+<       stid = WN_CreateStid(OPC_I2STID, 6, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(MTYPE_I2), WN_Intconst(MTYPE_I4, -17847));
+<       WN_INSERT_BlockFirst(block, stid);
+<       link = WN_LdidPreg(Pointer_Mtype, Frame_Pointer_Preg_Offset);
+<       stid = WN_CreateStid(OPC_U8STID, 8, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(Pointer_Mtype), link);
+<       WN_INSERT_BlockFirst(block, stid);
+<       stid = WN_CreateStid(OPC_I2STID, 16, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(MTYPE_I2), WN_Intconst(MTYPE_I4, -183));
+<       WN_INSERT_BlockFirst(block, stid);
+<       stid = WN_CreateStid(OPC_I1STID, 18, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(MTYPE_I1), WN_Intconst(MTYPE_I4, -29));
+<       WN_INSERT_BlockFirst(block, stid);
+<     }
+<     else {
+<       stid = WN_CreateStid(OPC_I1STID, 0, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(MTYPE_I1), WN_Intconst(MTYPE_I4, -71));
+<       WN_INSERT_BlockFirst(block, stid);
+<       link = WN_LdidPreg(Pointer_Mtype, Frame_Pointer_Preg_Offset);
+<       stid = WN_CreateStid(OPC_U4STID, 1, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(Pointer_Mtype), link);
+<       WN_INSERT_BlockFirst(block, stid);
+<       stid = WN_CreateStid(OPC_I1STID, 5, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(MTYPE_I1), WN_Intconst(MTYPE_I4, -23));
+<       WN_INSERT_BlockFirst(block, stid);
+<       stid = WN_CreateStid(OPC_U4STID, 6, cur.trampoline_st_idx, 
+< 			   MTYPE_To_TY(Pointer_Mtype),
+< 			   WN_Sub(Pointer_Mtype,
+< 		   WN_Lda(Pointer_Mtype, 0, &St_Table[cur.nested_func_st_idx]),
+< 		   WN_Lda(Pointer_Mtype, 10, &St_Table[cur.trampoline_st_idx])));
+<       WN_INSERT_BlockFirst(block, stid);
+<     }
+< 
+<     PU_has_trampoline = TRUE;
+<   }
+< }
+< #endif
+< 
+< 
+13582c12948
+< #if defined(TARG_X8664)
+---
+> #if defined(KEY) && defined(TARG_IA32)
+13672,13676d13037
+< #ifdef KEY
+<     if (Action(LOWER_RETURN_VAL));
+<       allocate_trampoline_symbols();
+< #endif
+< 
+13681,13687d13041
+< #ifdef KEY
+<     if (Action(LOWER_TO_CG)) {
+<       block = WN_CreateBlock();
+<       generate_trampoline_code(block);
+<       WN_INSERT_BlockFirst(WN_func_body(tree), block);
+<     }
+< #endif
+13698a13053
+> #ifdef LOW_LANDING_PAD 
+13710c13065,13066
+< #elif defined(TARG_IA64)
+---
+> #else 
+> #ifdef TARG_IA64
+13712,13714d13067
+< #elif defined(TARG_MIPS)
+<   // Store $4 into exc_ptr variable
+<   WN *exc_ptr_rax = WN_LdidPreg (Pointer_Mtype, 4);
+13718c13071
+< 
+---
+> #endif
+13727c13080,13081
+< #elif defined(TARG_IA64)
+---
+> #else
+> #ifdef TARG_IA64
+13729,13731d13082
+< #elif defined(TARG_MIPS)
+<   // Store $5 into filter variable
+<   WN *filter_rdx = WN_LdidPreg (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, 5);
+13735c13086
+< 
+---
+> #endif
+13747c13098
+< 
+---
+> #endif // LOW_LANDING_PAD
+13931,13936d13281
+< #if !defined(TARG_SL)
+< 	    if (MTYPE_is_vector(btype)) {
+< 	      con = Make_Const(Create_Simd_Const(btype,
+< 						 Host_To_Targ(MTYPE_I4, 0)));
+< 	    } else {
+< #endif
+13948,13949c13293
+< 
+< #ifdef KEY
+---
+> #ifdef TARG_X8664
+13952,13965c13296
+< 	  if (btype == MTYPE_FQ) {
+< 	    TYPE_ID ty = MTYPE_U8;
+< 	    TCON c = ST_tcon_val(WN_st(con));
+< 	    WN *intconst = WN_Intconst(ty, TCON_k0(c));
+< 	    stid = WN_Stid(ty, 0, st, type, intconst);
+< #ifdef TARG_MIPS
+< 	    WN_Set_Linenum(stid, WN_Get_Linenum(tree));
+< 	    WN_INSERT_BlockLast(block, stid);
+< 	    intconst = WN_Intconst(ty, TCON_k0(c));
+< 	    stid = WN_Stid(ty, 8, st, type, intconst);
+< #endif
+< 	    // TODO: 4 more bytes for TARG_X8664?
+< 	  }
+< 	  else if (!MTYPE_is_integral(btype) && !MTYPE_is_vector(btype)) {
+---
+> 	  if (!MTYPE_is_integral(btype)) {
+14055,14061d13385
+< #ifdef KEY
+< 		// The number of bytes stored may or may not be a multiple of
+< 		// the struct size.  To prevent the WN verifier from
+< 		// complaining, store through a byte pointer.  Bug 12676.
+< 		TY_IDX byte_ptype = Make_Pointer_Type(MTYPE_To_TY(MTYPE_U1));
+< 		store = WN_CreateMstore(offset, byte_ptype, con, lda, num);
+< #else
+14064d13387
+< #endif
+14367c13690
+< #if !defined(TARG_SL) // move to below since need to be called multiple timers >= -O2
+---
+> #ifndef KEY // move to below since need to be called multiple timers >= -O2
+14481,14497d13803
+<     // Lowering_Finalize() can be called in a row without intervening 
+<     // Lower_Init(). This will happens when a PU has child PUs as we 
+<     // can see from the following piece of code excerpted from 
+<     // Preorder_Process_PUs ().
+<     // 
+<     // Preorder_Process_PUs () { 
+<     //  ...
+<     //   pu = Preprocess_PU(current_pu); // call WN_Init();
+<     //  
+<     //   for (PU_Info *child = PU_Info_child(current_pu);
+<     //     child != NULL;
+<     //     child = PU_Info_next(child)) {
+<     //     Preorder_Process_PUs(child);
+<     //   }
+<     // }
+<     // Postprocess_PU (current_pu); // call Lowering_Finialize().
+<     // 
+15320d14625
+<    WN *tmp;
+15337,15339c14642
+<           if (wn = Locate_Ind_Path(WN_kid(exp,i), ind, num))
+< 	  if (tmp)
+< 	    wn = tmp;
+---
+>           if (wn = Locate_Ind_Path(WN_kid(exp,i), ind, num)) return wn;
+15341a14645,14648
+>    // I'm not sure to select which one when merge.
+> #ifdef TARG_IA64
+>    return  NULL; //none kid contains the induction
+> #else
+15342a14650
+> #endif
+15722,15726d15029
+< #ifdef KEY // bug 13219: things fall apart without this check
+<   if (! WN_operator_is(store_addr_wn, OPR_ARRAY))
+<     return tree; 
+< #endif
+< 
+15940,15941c15243,15244
+< 	 // when 'trip_count' has operator of OPR_ARRAY, an assertion will 
+< 	 // be reported in coderep so lower 'trip_count' first 
+---
+> // when 'trip_count' has operator of OPR_ARRAY, an assertion will reported in coderep
+> // so lower 'trip_count' first 

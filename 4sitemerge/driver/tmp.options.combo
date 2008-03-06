@@ -1,0 +1,146 @@
+
+% -*- fundamental -*-
+%
+%  Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+%
+%  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+%
+%  This program is free software; you can redistribute it and/or modify it
+%  under the terms of version 2 of the GNU General Public License as
+%  published by the Free Software Foundation.
+%
+%  This program is distributed in the hope that it would be useful, but
+%  WITHOUT ANY WARRANTY; without even the implied warranty of
+%  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+%
+%  Further, this software is distributed without any warranty that it is
+%  free of the rightful claim of any third person regarding infringement 
+%  or the like.  Any license provided herein, whether implied or 
+%  otherwise, applies only to this software file.  Patent licenses, if 
+%  any, provided herein do not apply to combinations of this program with 
+%  other software, or any other product whatsoever.  
+%
+%  You should have received a copy of the GNU General Public License along
+%  with this program; if not, write the Free Software Foundation, Inc., 59
+%  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+%
+%  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+%  Mountain View, CA 94043, or:
+%
+%  http://www.sgi.com
+%
+%  For further information regarding this notice, see:
+%
+%  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+%
+%
+
+% Lines beginning with % are comment lines, 
+% lines beginning with %%% denote new sections.
+
+% There are two section types, which can be interspersed:
+% Each option in the OPTIONS section has two lines.
+% The first line contains:
+% the option name, 
+% an action to be done upon reading the option, 
+% what languages accept it, 
+% what phases accept it,
+% and what other options it implies.
+% The second line contains the help message for that option.
+
+% There must be no spaces in any of the fields except the last one,
+% or you can have spaces in an action if you surround it with braces.
+
+% There are several special syntax rules for option names that are used:
+% Option names that start with I, e.g. I-foo, are internal names
+% that the user cannot access.  Internal names are used for phase options
+% (e.g. -pic2), and for implicit defaults like -D__sgi.
+% A %s after an option name means to use the next string as an argument;
+
+% a %- after an option name means to use the next string or '-' as an argument;
+
+% a %d or %x after an option name means to use the next number as an argument;
+% a %D after an option name means to use the next directory as an argument;
+% the %{s,x,d,D} formats accept an optional space before the argument;
+% if there is no number or directory for a corresponding %{x,d,D},
+% then the option is not matched.
+% A * in the middle of an argument means there can be an optional space here;
+% a * at the end of the argument means the syntax is too complicated and a
+% call to a hand-written routine called parse_<prefix>_option will be generated.
+
+% A special action is toggle(&<var>,<val>) which stores the value in the 
+% variable, and gives an error if the variable has already been set.
+% This is useful for catching conflicts like -mips1 -mips2.
+
+% The implies field should include the option name if that name is to be 
+% passed to phases.  The special word "self" for the implies field means 
+% to repeat the option name.  
+% Repeating a %{d,D,s} in the implies field shows the format to use 
+% when passing to phases, i.e. whether to have a blank space.
+
+% A simple alias is recognized when you have an option that has
+% no action, language=all, phases=none, and 1 implies option.
+% This is directly translated to the implies option when processing.
+
+% Lines in the COMBINATIONS section give 
+% an option combination, 
+% whether the combination is OKAY, a WARNING, or an ERROR,
+% and what implied behavior comes from that option.
+% The implied behavior of combinations overrides the implied behavior
+% of the individual options.
+
+% The file is first preprocessed by cpp to expand macros, and then sorted
+% by option names.
+
+% the letter keys for languages and phases must match what is in lang_defs.c
+% ALL and NONE can be used for both languages and phases.
+
+
+% languages
+
+
+
+
+% f90 used in option name, so use F90 for define
+
+
+
+
+% phases
+
+
+
+
+
+
+
+
+
+
+% pfa used in option name, so use PFA for define
+
+
+% GRP: All the pieces that swallow regular group options
+
+
+% ALLX: A except pca & pfa which don't accept the usual compilation args
+
+
+
+% <combo>	<error>		<implies>
+
+"-mips1 -n32"		ERROR	""
+"-mips2 -n32"		ERROR	""
+"-mips3 -n32"		OKAY	"-mips3 -n32" "-D__mips=3 -D_MIPS_ISA=3"  "-TARG:abi=n32:isa=mips3"
+"-mips4 -n32"		OKAY	"-mips4 -n32"   "-TARG:abi=n32:isa=mips4"
+"-mips1 -64"		ERROR	""
+"-mips2 -64"		ERROR	""
+"-mips3 -64"		OKAY	"-mips3 -64" "-D__mips=3 -D_MIPS_ISA=3" "-D_ABI64=3 -D_MIPS_SIM=_ABI64 -D_MIPS_FPSET=32 -D_LP64 -Amodel(lp64)" "-TARG:abi=64:isa=mips3"
+"-mips4 -64"		OKAY	"-mips4 -64"  "-D_ABI64=3 -D_MIPS_SIM=_ABI64 -D_MIPS_FPSET=32 -D_LP64 -Amodel(lp64)" "-TARG:abi=64:isa=mips4"
+
+
+% !-non_shared means "-non_shared not specified"
+%"-O3 !-non_shared"	WARNING		"-non_shared"
+"-KPIC -non_shared"	WARNING		"-non_shared"
+"-abi -non_shared"	WARNING		"-abi"
+

@@ -1,0 +1,11 @@
+
+
+The files:
+	dwarfdump.c
+	and all the .h and .c files in this implementation of
+	dwarfdump are copyrighted according to the file
+	DWARFDUMPCOPYRIGHT.   
+
+$Source: /scratch/mee/2.4-65/kpro64-pending/libdwarf/dwarfdump/SCCS/s.COPYING $
+$Revision: 1.1 $
+$Date: 05/04/27 11:15:36-07:00 $

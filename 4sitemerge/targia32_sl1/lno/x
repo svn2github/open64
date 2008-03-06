@@ -1,0 +1,286 @@
+access_main.o
+   222: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+access_main.o
+access_vector.o
+   469: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+access_vector.o
+aequiv.o
+   401: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+aequiv.o
+al_loop.o
+al_loop.o
+al_ref.o
+al_ref.o
+ara_live.o
+ara_live.o
+ara_loop.o
+   666: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+ara_loop.o
+ara.o
+ara.o
+ara_region.o
+   344: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+ara_region.o
+ara_utils.o
+ara_utils.o
+array_bounds.o
+   257: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+array_bounds.o
+array_lower.o
+array_lower.o
+autod.o
+   348: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+autod.o
+cache_model.o
+   352: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+cache_model.o
+call_info.o
+   319: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+call_info.o
+can.o
+   305: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+can.o
+cond.o
+   356: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+cond.o
+cross_cache.o
+   193: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+cross_cache.o
+cross_snl.o
+   227: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+cross_snl.o
+cse.o
+   279: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+cse.o
+cxx_queue.o
+cxx_queue.o
+cxx_template.o
+cxx_template.o
+dead.o
+dead.o
+debug.o
+   616: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+debug.o
+dep_graph.o
+   486: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+dep_graph.o
+dep.o
+   336: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+dep.o
+dnf.o
+dnf.o
+doacross.o
+   410: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+doacross.o
+eliminate.o
+eliminate.o
+ff_pragmas.o
+ff_pragmas.o
+ff_utils.o
+   428: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+ff_utils.o
+fis_gthr.o
+fis_gthr.o
+fission.o
+   370: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+fission.o
+fiz_fuse.o
+   216: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+fiz_fuse.o
+forward.o
+   284: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+forward.o
+frac.o
+frac.o
+fusion.o
+   381: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+fusion.o
+if_info.o
+if_info.o
+ifminmax.o
+ifminmax.o
+init.o
+init.o
+inner_fission.o
+   424: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+inner_fission.o
+ipa_lno_cost.o
+ipa_lno_cost.o
+ipa_lno_read.o
+   466: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+ipa_lno_read.o
+ipa_lno_reshape.o
+   269: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+ipa_lno_reshape.o
+lego_affinity.o
+   249: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lego_affinity.o
+lego_ec.o
+lego_ec.o
+lego_gen.o
+   734: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lego_gen.o
+lego_io.o
+   273: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lego_io.o
+lego_local.o
+   269: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lego_local.o
+lego.o
+lego.o
+lego_opts.o
+lego_opts.o
+lego_pragma.o
+   838: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lego_pragma.o
+lego_skew.o
+   191: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lego_skew.o
+lego_util.o
+   485: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lego_util.o
+lno_bv.o
+lno_bv.o
+lnodriver.o
+lnodriver.o
+lnopt_hoistif.o
+lnopt_hoistif.o
+lnopt_main.o
+   150: 00000028    24 OBJECT  GLOBAL DEFAULT    4 LNO_local_pool
+lnopt_main.o
+lno_scc.o
+   157: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lno_scc.o
+lno_split.o
+   229: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lno_split.o
+lnotarget.o
+lnotarget.o
+lnoutils.o
+   759: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+lnoutils.o
+lu_mat_textra.o
+lu_mat_textra.o
+lwn_util.o
+lwn_util.o
+lx_prompf_anl.o
+lx_prompf_anl.o
+mat_textra.o
+   157: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+mat_textra.o
+mem_sim.o
+mem_sim.o
+minvariant.o
+   310: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+minvariant.o
+model.o
+   515: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+model.o
+move.o
+   333: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+move.o
+name.o
+name.o
+oinvar.o
+   252: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+oinvar.o
+outer.o
+   238: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+outer.o
+pad.o
+   432: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+pad.o
+parallel.o
+   270: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+parallel.o
+parids.o
+   256: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+parids.o
+parmodel.o
+   205: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+parmodel.o
+permute.o
+   263: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+permute.o
+pf_loop.o
+   467: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+pf_loop.o
+pf_manual.o
+pf_manual.o
+pf_ref.o
+   624: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+pf_ref.o
+prefetch.o
+prefetch.o
+reduc.o
+   182: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+reduc.o
+reverse.o
+   236: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+reverse.o
+scalar_expand.o
+   414: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+scalar_expand.o
+sclrze.o
+sclrze.o
+sdlist.o
+   209: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+sdlist.o
+shackle_ifs.o
+   430: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+shackle_ifs.o
+shackle_mem.o
+shackle_mem.o
+shackle.o
+shackle.o
+small_trips.o
+   251: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+small_trips.o
+snl_deps.o
+snl_deps.o
+snl_dist.o
+   193: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+snl_dist.o
+snl_gen.o
+   370: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+snl_gen.o
+snl_inv.o
+   207: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+snl_inv.o
+snl_nest.o
+snl_nest.o
+snl_test.o
+   353: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+snl_test.o
+snl_trans.o
+   254: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+snl_trans.o
+snl_utils.o
+   492: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+snl_utils.o
+snl_xbounds.o
+   212: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+snl_xbounds.o
+soe.o
+soe.o
+split_tiles.o
+   214: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+split_tiles.o
+sxlimit.o
+   117: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+sxlimit.o
+sxlist.o
+   279: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+sxlist.o
+tile.o
+   427: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+tile.o
+vintr_fis.o
+vintr_fis.o
+vs_textra.o
+vs_textra.o
+wind_down.o
+   199: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND LNO_local_pool
+wind_down.o
+zmult.o
+zmult.o
