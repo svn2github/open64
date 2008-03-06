@@ -1,5 +1,0 @@
-# 1 "../../ipa/common/ipc_partition.c"
-# 1 "/usa/handong/simplnano/cmplr/targia32_sl1/ipa//"
-# 1 "<built-in>"
-# 1 "<command line>"
-# 1 "../../ipa/common/ipc_partition.c"

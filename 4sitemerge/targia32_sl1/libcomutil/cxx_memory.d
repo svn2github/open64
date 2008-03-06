@@ -1,4 +1,0 @@
-cxx_memory.o: ../../common/util/cxx_memory.cxx ../../common/com/defs.h \
-  ../include/bstring.h ../../common/util/cxx_memory.h \
-  ../../common/util/mempool.h ../../common/util/errors.h \
-  ../../common/util/errdesc.h ../../common/com/err_host.h
