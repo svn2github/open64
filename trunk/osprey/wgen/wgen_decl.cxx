@@ -2603,16 +2603,22 @@ gs_t init, UINT offset, UINT array_elem_offset,
       Is_True ((WN_operator(target) == OPR_LDID ||
                 WN_operator(target) == OPR_LDA),
                ("Bad operator for target") );
+      TY_IDX targ_ty = WN_ty(target);
+      ST* addr_st = Gen_Temp_Symbol (TY_mtype(targ_ty), "target");
+      WN* wn = NULL;
       if (WN_offset(target) != 0 || offset != 0) {
-          TY_IDX targ_ty = WN_ty(target);
-          ST* addr_st = Gen_Temp_Symbol (TY_mtype(targ_ty), "target");
-          WN* wn = WN_Stid (TY_mtype(targ_ty), 0, addr_st, targ_ty,
-                            WN_Binary (OPR_ADD, Pointer_Mtype, 
-				       WN_CopyNode(target),
-                                       WN_Intconst(MTYPE_I4, offset) ) );
-          WGEN_Stmt_Append (wn, Get_Srcpos());
-          target = WN_Ldid (TY_mtype(targ_ty), 0, addr_st, targ_ty);
+          DevWarn("Pointer Arithmetic here may introduce bugs!");
+          wn = WN_Stid (TY_mtype(targ_ty), 0, addr_st, targ_ty,
+                        WN_Binary (OPR_ADD, Pointer_Mtype, 
+			           WN_CopyNode(target),
+                                   WN_Intconst(MTYPE_I4, offset + WN_offset(target) ) ) );
       }
+      else {
+          wn = WN_Stid (TY_mtype(targ_ty), 0, addr_st, targ_ty,
+                        WN_CopyNode(target) );
+      }
+      WGEN_Stmt_Append (wn, Get_Srcpos());
+      target = WN_Ldid (TY_mtype(targ_ty), 0, addr_st, targ_ty);
       WGEN_Expand_Expr (init, TRUE, 0, 0, 0, 0, FALSE, FALSE, target);
       bytes += TY_size(ty);
       return;
@@ -2898,7 +2904,7 @@ AGGINIT::Traverse_Aggregate_Array (
 	}
 	else
 #ifdef NEW_INITIALIZER
-          Gen_Assign_Of_Init_Val (target, gs_tree_value(init), current_offset, 0,
+          Gen_Assign_Of_Init_Val (target, tree_value, current_offset, 0,
 #else
 	  Gen_Assign_Of_Init_Val (st, tree_value, current_offset, 0,
 #endif
@@ -3279,7 +3285,7 @@ AGGINIT::Traverse_Aggregate_Struct (
       }
       else {
 #ifdef NEW_INITIALIZER
-        Gen_Assign_Of_Init_Val (target, gs_tree_value(init),
+        Gen_Assign_Of_Init_Val (target, element_value,
 #else
         Gen_Assign_Of_Init_Val (st, element_value,
 #endif
