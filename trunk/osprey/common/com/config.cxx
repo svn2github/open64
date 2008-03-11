@@ -1264,8 +1264,9 @@ Configure (void)
   if (Force_GP_Prolog) Force_Jalr = TRUE;
 #ifdef TARG_X8664
   // Bug 1039 - align aggregates to 16-byte for all optimization levels
-  if ( Is_Target_SSE2() )
-    Aggregate_Alignment = 16;
+  // OSP: Some cases may failed on i386(-march=anyx86) due to the alignment
+  //if ( Is_Target_SSE2() )
+  Aggregate_Alignment = 16;
   if ( !Vcast_Complex_Set && Opt_Level > 1 )
     Vcast_Complex = TRUE;
 #endif
