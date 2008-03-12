@@ -114,6 +114,17 @@ BOOL Trace_Exp2 = FALSE;      /* extra cgexp trace*/
  * but for now we can use other routine that create a real dup tn. */
 #define DUP_TN(tn)	Dup_TN_Even_If_Dedicated(tn)
 
+static BOOL Target_Support_Cmov()
+{
+  if (Is_Target_32bit() &&
+      (Target == TARGET_anyx86 ||
+       Target == TARGET_pentium4 ||
+       Target == TARGET_xeon ||
+       Target == TARGET_athlon) )
+    return FALSE;
+  else
+    return TRUE;
+}
 
 static TN_MAP _TN_Pair_table = NULL;
 
@@ -121,11 +132,7 @@ void
 Expand_Cmov (TOP top, TN *result, TN *src, TN *rflags, OPS *ops, TN *result2,
 	     TN *src2)
 {
-  if (Is_Target_32bit() &&
-      (Target == TARGET_anyx86 ||
-       Target == TARGET_pentium4 ||
-       Target == TARGET_xeon ||
-       Target == TARGET_athlon)) {
+  if ( ! Target_Support_Cmov() ) {
     // Processor doesn't support cmov.  Emit conditional branch followed by
     // mov.
 
@@ -4112,11 +4119,29 @@ Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       src2 = tmp;
     }
 
+    // If is return reg and target does not support cmov,
+    // The MIN will be expand to multiple BBs
+    // Store the return of MIN(which is also the return of the func)
+    //      to a temp reg, then copy the temp reg to return reg
+    TN* orig_dest = NULL;
+    if ( ! Target_Support_Cmov() &&
+         TN_is_dedicated(dest) &&
+         REGISTER_SET_MemberP(
+            REGISTER_CLASS_function_value(TN_register_class(dest)),
+            TN_register(dest) ) ) {
+       orig_dest = dest;
+       dest = Dup_TN_Even_If_Dedicated(orig_dest);
+    }
+
     if( dest != src2 )
       Build_OP( mov_opcode, dest, src2, ops );
 
     Build_OP( cmp_opcode, rflags, src1, src2, ops );
     Expand_Cmov( cmov_opcode, dest, src1, rflags, ops );
+
+    if (orig_dest != NULL) {
+      Expand_Copy( orig_dest, dest, mtype, ops );
+    }
   }
 }
 
@@ -4207,12 +4232,30 @@ Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       src2 = tmp;
     }
 
+    // If is return reg and target does not support cmov,
+    // The max will be expand to multiple BBs
+    // Store the return of MAX(which is also the return of the func)
+    //   to a temp reg, then copy the temp reg to return reg
+    TN* orig_dest = NULL;
+    if ( ! Target_Support_Cmov() &&
+         TN_is_dedicated(dest) &&
+         REGISTER_SET_MemberP( 
+	    REGISTER_CLASS_function_value(TN_register_class(dest)),
+	    TN_register(dest) ) ) {
+       orig_dest = dest;
+       dest = Dup_TN_Even_If_Dedicated(orig_dest);
+    }
+
     if( dest != src2 ){
       Expand_Copy( dest, src2, mtype, ops );
     }
 
     Build_OP( cmp_opcode, rflags, src1, src2, ops );
     Expand_Cmov( cmov_opcode, dest, src1, rflags, ops );
+    
+    if (orig_dest != NULL) {
+      Expand_Copy( orig_dest, dest, mtype, ops );
+    }
   }
 }
 

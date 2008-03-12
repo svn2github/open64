@@ -175,6 +175,7 @@ Localize_Global_Return_Reg_Def (BB *current_bb, TN *ret_tn)
 	TN *new_tn = Dup_TN_Even_If_Dedicated(ret_tn);
 	Set_TN_is_global_reg(new_tn);	/* will want to spill the copy */
 	Trace_Replace("return",ret_tn, "new",new_tn, current_bb);
+        DevWarn("Localize_Global_Return_Reg_Def: replace return reg may introduce bugs!");
 
 	/* search until come to exit bb. */
 	for (bb = current_bb; bb != NULL && !BB_exit(bb); bb = BB_next(bb)) {
