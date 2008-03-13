@@ -389,6 +389,7 @@ struct mem_pure_stack {
 BOOL purify_pools = FALSE;
 static BOOL purify_pools_trace = FALSE;
 static BOOL purify_pools_trace_x = FALSE;
+static void PURIFY_OPT_Initialize(void);
 
 #define MAGIC_NUM 0xdecf
 
@@ -1556,10 +1557,10 @@ MEM_POOL_Pop_P
     MEM_PURE_STACK *tmp_stack;
     MEM_PTR tmp = NULL; 
     MEM_PTR next = NULL;
-    Is_True (MEM_POOL_pure_stack(pool),
-	     ("Pop, but no push stack on %s", MEM_POOL_name(pool)));
     if (purify_pools_trace_x)
       printf ("MEM_POOL_Pop %s 0x%p\n", MEM_POOL_name(pool), pool);
+    Is_True (MEM_POOL_pure_stack(pool),
+	     ("Pop, but no push stack on %s", MEM_POOL_name(pool)));
     tmp = MEM_POOL_last_alloc(pool);
     while (tmp) {
       next = (*(MEM_PTR*) tmp);
@@ -1899,6 +1900,9 @@ MEM_POOL_Initialize_P
   MEM_STAT_ARGS(line,file)
 )
 {
+  /* Make sure the purify_pools is initialized */
+  PURIFY_OPT_Initialize();
+
 #ifdef KEY
 #ifndef NO_VALGRIND
   static BOOL mem_overhead_pool_initialized = FALSE;
@@ -1920,6 +1924,7 @@ MEM_POOL_Initialize_P
   MEM_POOL_pure_stack(pool) = NULL;
   
   /* Don't allow duplicate initializations */
+  if (MEM_POOL_magic_num(pool) == MAGIC_NUM) __assert_fail("memory", __FILE__, __LINE__, "memory");
   Is_True (MEM_POOL_magic_num(pool) != MAGIC_NUM,
            ("Initialization of an already initialized pool: %s\n",
             MEM_POOL_name(pool)));
@@ -1955,6 +1960,64 @@ MEM_POOL_Initialize_P
   }
 }
 
+
+/* ====================================================================
+ *
+ *  PURIFY_OPT_Initialize
+ *
+ *  Initialize the purify_tools opt. Some MEM_POOL may be initialized
+ *  before the MEM_Initialize().
+ *
+ * ====================================================================
+ */
+
+static void
+PURIFY_OPT_Initialize(void)
+{
+  static BOOL initialized = FALSE;
+  if ( initialized == FALSE ) {
+    char* ppools = getenv ("PURIFY_MEMPOOLS");
+    if (ppools) {
+      if (((ppools[0] == 'O') || (ppools[0] == 'o')) &&
+          ((ppools[1] == 'N') || (ppools[1] == 'n'))) {
+        purify_pools = TRUE;
+        if ((ppools[2] == '-') &&
+            ((ppools[3] == 'T') || (ppools[3] == 't')) &&
+            ((ppools[4] == 'R') || (ppools[4] == 'r')) &&
+            ((ppools[5] == 'A') || (ppools[5] == 'a')) &&
+            ((ppools[6] == 'C') || (ppools[6] == 'c')) &&
+            ((ppools[7] == 'E') || (ppools[7] == 'e'))) {
+          purify_pools_trace = TRUE;
+          if ((ppools[8] == '-') &&
+              ((ppools[9] == 'X') || (ppools[9] == 'x'))) {
+            purify_pools_trace_x = TRUE;
+	    if ((ppools[10] == '-') && 
+	      ((ppools[11] == 'O') || (ppools[11] == 'o')) &&
+	      ((ppools[12] == 'N') || (ppools[12] == 'n')) &&
+	      ((ppools[13] == 'L') || (ppools[13] == 'l')) &&
+	      ((ppools[14] == 'Y') || (ppools[14] == 'y'))) {
+	      purify_pools_trace = FALSE; 
+              DevWarn("Using purify memory pools, limited extended tracing ###");
+	    } else 
+              DevWarn ("Using purify memory pools, with extended tracing ###");
+          }
+          else 
+            DevWarn ("Using purify memory pools, with tracing ###");
+        }
+        else DevWarn ("Using purify memory pools ###");
+      }
+      else if (((ppools[0] == 'O') || (ppools[0] == 'o')) &&
+               ((ppools[1] == 'F') || (ppools[1] == 'f')) &&
+               ((ppools[2] == 'F') || (ppools[2] == 'f'))) {
+        purify_pools = FALSE;
+      }
+      else DevWarn ("PURIFY_MEMPOOLS set to garbage, using regular pools");
+    }
+
+    initialized = TRUE;
+  }
+}
+
 /* ====================================================================
  *
  *  MEM_Initialize
@@ -1968,44 +2031,8 @@ MEM_POOL_Initialize_P
 void
 MEM_Initialize(void)
 {
-  char* ppools = getenv ("PURIFY_MEMPOOLS");
-  if (ppools) {
-    if (((ppools[0] == 'O') || (ppools[0] == 'o')) &&
-        ((ppools[1] == 'N') || (ppools[1] == 'n'))) {
-      purify_pools = TRUE;
-      if ((ppools[2] == '-') &&
-          ((ppools[3] == 'T') || (ppools[3] == 't')) &&
-          ((ppools[4] == 'R') || (ppools[4] == 'r')) &&
-          ((ppools[5] == 'A') || (ppools[5] == 'a')) &&
-          ((ppools[6] == 'C') || (ppools[6] == 'c')) &&
-          ((ppools[7] == 'E') || (ppools[7] == 'e'))) {
-        purify_pools_trace = TRUE;
-        if ((ppools[8] == '-') &&
-            ((ppools[9] == 'X') || (ppools[9] == 'x'))) {
-          purify_pools_trace_x = TRUE;
-	  if ((ppools[10] == '-') && 
-	    ((ppools[11] == 'O') || (ppools[11] == 'o')) &&
-	    ((ppools[12] == 'N') || (ppools[12] == 'n')) &&
-	    ((ppools[13] == 'L') || (ppools[13] == 'l')) &&
-	    ((ppools[14] == 'Y') || (ppools[14] == 'y'))) {
-	    purify_pools_trace = FALSE; 
-            DevWarn("Using purify memory pools, limited extended tracing ###");
-	  } else 
-            DevWarn ("Using purify memory pools, with extended tracing ###");
-        }
-        else 
-          DevWarn ("Using purify memory pools, with tracing ###");
-      }
-      else DevWarn ("Using purify memory pools ###");
-    }
-    else if (((ppools[0] == 'O') || (ppools[0] == 'o')) &&
-             ((ppools[1] == 'F') || (ppools[1] == 'f')) &&
-             ((ppools[2] == 'F') || (ppools[2] == 'f'))) {
-      purify_pools = FALSE;
-    }
-    else DevWarn ("PURIFY_MEMPOOLS set to garbage, using regular pools");
-  }
-
+  PURIFY_OPT_Initialize();
+	
   MEM_POOL_Initialize(&MEM_local_pool,"Local",TRUE);
   MEM_POOL_Initialize(&MEM_src_pool,"Source",TRUE);
   MEM_POOL_Initialize(&MEM_pu_pool,"Program unit",TRUE);
