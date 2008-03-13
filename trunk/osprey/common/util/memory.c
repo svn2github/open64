@@ -1924,7 +1924,6 @@ MEM_POOL_Initialize_P
   MEM_POOL_pure_stack(pool) = NULL;
   
   /* Don't allow duplicate initializations */
-  if (MEM_POOL_magic_num(pool) == MAGIC_NUM) __assert_fail("memory", __FILE__, __LINE__, "memory");
   Is_True (MEM_POOL_magic_num(pool) != MAGIC_NUM,
            ("Initialization of an already initialized pool: %s\n",
             MEM_POOL_name(pool)));
