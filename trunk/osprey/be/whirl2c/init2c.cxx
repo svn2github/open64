@@ -505,8 +505,8 @@ INITV2C_struct_fill(TOKEN_BUFFER tokens,
 
 static void
 INITV2C_block_struct(TOKEN_BUFFER tokens,
-		     TY_IDX       ty, 
-		     INITV_IDX    initv)
+                     TY_IDX       ty,
+                     INITV_IDX    initv)
 {
    /* Translate a INITVKIND_BLOCK for a struct to C, where the
     * location being initialized is typed as "ty" (KIND_STRUCT).
@@ -518,15 +518,15 @@ INITV2C_block_struct(TOKEN_BUFFER tokens,
    TY2C_FLD_INFO fld_info;
    BOOL          a_field_is_initialized = FALSE;
 
-   /* Walk through the list of (comma separated) initializers 
+   /* Walk through the list of (comma separated) initializers
     * for the aggregate initializer, ignoring padding.
     */
    Append_Token_Special(tokens, '{');
-   if (first_inv != 0 && 
+   if (first_inv != 0 &&
        INITV_kind(Initv_Table[first_inv]) == INITVKIND_PAD &&
        INITV_next(first_inv) == 0)
    {
-      /* Handle the special case of just having padding as an 
+      /* Handle the special case of just having padding as an
        * initializer.
        */
       Append_Token_String(tokens, "0L");
@@ -540,106 +540,49 @@ INITV2C_block_struct(TOKEN_BUFFER tokens,
       local_offset = 0;
       inv = first_inv;
       inv_repeat =  (inv != 0) ? INITV_repeat(inv) : 0;
-      for (fld = TY_flist(Ty_Table[ty]); 
-	   !fld.Is_Null () && inv != 0; 
-	   fld = FLD_next(fld))
+      for (fld = TY_flist(Ty_Table[ty]);
+           !fld.Is_Null () && inv != 0;
+           fld = FLD_next(fld))
       {
-	 if (FLD_ofst(fld) >= local_offset)
-	 {
-	    /* This field does not overlap any previous fields.
-	     */
-	    fld_info = TY2C_get_field_info(ty,
-					   FLD_type(fld),
-					   MTYPE_V,
-					   FLD_ofst(fld));
-	    if (!fld_info.found_fld.Is_Null ())
-	    {
-	       /* This field is declared in the C output.
-		*/
-	       Reclaim_Token_Buffer(&fld_info.select_tokens);
-	       if (FLD_ofst(fld) > local_offset)
-	       {
-		  /* Insert padding before this field.
-		   */
-		  if (a_field_is_initialized)
-		     Append_Token_Special(tokens, ',');
-		  else
-		     a_field_is_initialized = TRUE;
-		  INITV2C_struct_fill(tokens,
-				      &inv, &inv_repeat,
-				      &local_offset, FLD_ofst(fld));
-	       }
-	       if (inv != 0)
-	       {
-		  /* An initializer exists for this field.
-		   */
-		  if (a_field_is_initialized)
-		     Append_Token_Special(tokens, ',');
-		  else
-		     a_field_is_initialized = TRUE;
+        /*The original whirl2c will skip definition of some fields so that
+        some extra code here needed to skip the initialization for them.
+        Now we could remove them */
 
-		  /* Work around a Fortran bug! TODO: Rewrite this to
-		   * be more similar to whirl2f and to work for all cases.
-		   */
-		  if (PU_src_lang(CURRENT_SYMTAB) == PU_F77_LANG &&
-		      (INITV_kind(Initv_Table[inv]) == INITVKIND_ZERO ||
-		       INITV_kind(Initv_Table[inv]) == INITVKIND_ONE  ||
-		       INITV_kind(Initv_Table[inv]) == INITVKIND_VAL))
-		  {
-		     INT fld_size = TY_size(Ty_Table[FLD_type(fld)]);
-		     TY_IDX inv_ty;
+               if (inv != 0)
+               {
+                  /* An initializer exists for this field.
+                   */
+                  if (a_field_is_initialized)
 
-		     if (TY_Is_Array(FLD_type(fld)) ||
-			 TY_Is_Structured(FLD_type(fld)))
-		     {
-			Append_Token_Special(tokens, '{');
-		     }
+                     Append_Token_Special(tokens, ',');
+                  else
+                     a_field_is_initialized = TRUE;
 
-		     while (inv != 0                         &&
-			    fld_size > 0                     &&
-			    (INITV_kind(Initv_Table[inv]) == INITVKIND_ZERO ||
-			     INITV_kind(Initv_Table[inv]) == INITVKIND_ONE  ||
-			     INITV_kind(Initv_Table[inv]) == INITVKIND_VAL))
-		     { 
-			inv_ty = Stab_Mtype_To_Ty(TCON_ty(TCON_For_Initv(inv)));
-			INITV2C_translate(tokens, inv_ty, inv);
-			fld_size -= TY_size(inv_ty);
-			INIT2C_Next_Initv(&inv, &inv_repeat);
-			if (fld_size > 0)
-			   Append_Token_Special(tokens, ',');
-		     }
-		     if (TY_Is_Array(FLD_type(fld)) ||
-			 TY_Is_Structured(FLD_type(fld)))
-		     {
-			Append_Token_Special(tokens, '}');
-		     }
-		  }
-		  else
-		  {
-		     INITV2C_translate(tokens, FLD_type(fld), inv);
-		     INIT2C_Next_Initv(&inv, &inv_repeat);
-		  }
-
-		  local_offset += TY_size(FLD_type(fld));
-	       } /*if*/
-	    } /*if*/
-	 } /*if*/
+                  if(FLD_is_bit_field(fld)){
+                     Append_Token_String(tokens,"####Bitfield init not support####");
+                  }
+                     //If fld is a bit field, call to INITV2C_translate will not
+                     // be correct. There is still an unhandled problem
+                     INITV2C_translate(tokens, FLD_type(fld), inv);
+                     INIT2C_Next_Initv(&inv, &inv_repeat);
+                     while(inv&&INITV_kind(inv)==INITVKIND_PAD){
+                         inv=INITV_next(inv);
+                         inv_repeat=0;
+                     }
+                     if(inv==0){
+                         // A sturcture may be partly initialized.
+                        DevWarn("Unfinished initialization for structure");
+                         break;
+                     }
+                  local_offset += TY_size(FLD_type(fld));
+               } /*if*/
       } /*for*/
-      
       /* Explicitly apply any outstanding initializer.  We can here
-       * Assert that (fld!=0 xor inv!=0).
-       */
-      if (local_offset < TY_size(ty) && inv != 0)
-      {
-	 if (a_field_is_initialized)
-	    Append_Token_Special(tokens, ',');
-	 INITV2C_struct_fill(tokens,
-			     &inv, &inv_repeat,
-			     &local_offset, TY_size(ty));
-      } /*if*/
+       * Assert that (fld!=0 xor inv!=0).*/
    } /*if*/
    Append_Token_Special(tokens, '}');
 } /* INITV2C_block_struct */
+
 
 
 static void

@@ -110,6 +110,8 @@ static void ST2C_use_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
 static void ST2C_use_func(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
 static void ST2C_use_const(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
 
+static void ST2C_decl_block(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
+static void ST2C_use_block(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
 
 /* The following maps every ST class to a function that can translate
  * it to C.
@@ -123,7 +125,8 @@ static const ST2C_HANDLER_FUNC ST2C_Decl_Handle[CLASS_COUNT] =
   &ST2C_decl_func,   /* CLASS_FUNC == 0x02 */
   &ST2C_decl_const,  /* CLASS_CONST == 0x03 */
   &ST2C_decl_error,  /* CLASS_PREG == 0x04 */
-  &ST2C_decl_error,  /* CLASS_BLOCK == 0x05 */
+  //&ST2C_decl_error,  /* CLASS_BLOCK == 0x05 */
+  &ST2C_decl_block,  
   &ST2C_decl_error   /* CLASS_NAME == 0x06 */
 }; /* ST2C_Decl_Handle */
 
@@ -134,7 +137,8 @@ static const ST2C_HANDLER_FUNC ST2C_Use_Handle[CLASS_COUNT] =
   &ST2C_use_func,      /* CLASS_FUNC == 0x02 */
   &ST2C_use_const,     /* CLASS_CONST == 0x03 */
   &ST2C_use_error,     /* CLASS_PREG == 0x04 */
-  &ST2C_decl_error,    /* CLASS_BLOCK == 0x05 */
+  //&ST2C_decl_error,    /* CLASS_BLOCK == 0x05 */
+  &ST2C_use_block,  
   &ST2C_decl_error     /* CLASS_NAME == 0x06 */
 }; /* ST2C_Use_Handle */
 
@@ -615,8 +619,29 @@ ST2C_decl_const(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 } /* ST2C_decl_const */
 
 
+static void
+ST2C_decl_block(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+{
+   Is_True(ST_sym_class(st)==CLASS_BLOCK, ("expected CLASS_BLOCK ST"));
+} /* ST2C_decl_const */
+
+
+
 /*---------------- hidden routines to handle ST uses ------------------*/
 /*---------------------------------------------------------------------*/
+
+static void
+ST2C_use_block(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+{
+   Is_True(ST_sym_class(st)==CLASS_BLOCK, ("expected CLASS_BLOCK ST"));
+   Append_Token_String(tokens, W2CF_Symtab_Nameof_St(st));
+   if (!Stab_External_Def_Linkage(st))
+     Set_BE_ST_w2fc_referenced(st);
+
+} /* ST2C_decl_const */
+
+
+
 
 
 static void 

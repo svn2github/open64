@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 PathScale, LLC. All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -229,6 +233,9 @@ Mtype_to_Ukind(MTYPE mtype)
    
    switch (mtype)
    {
+   case MTYPE_B:
+    ukind = PREG_AS_INT8;
+    break;
    case MTYPE_I1: 
       ukind = PREG_AS_INT8;
       break;
@@ -300,7 +307,7 @@ Mtype_to_Ukind(MTYPE mtype)
      break;
 #endif
    default:
-      Is_True(FALSE, ("Illegal MTYPE for Mtype_to_Ukind mapping"));
+     // Is_True(FALSE, ("Illegal MTYPE for Mtype_to_Ukind mapping"));
       break;
    }
    return ukind;
@@ -311,6 +318,10 @@ static PREG_INFO *
 Get_Preg_Info(INT16 preg_num)
 {
    PREG_INFO *preg_info = NULL;
+
+   if (preg_num<0)
+     return NULL;
+
 
    /* Linear search for a matching entry in the hash table list */
    for (preg_info = Preg_Info_Hash_Tbl[PREG_INFO_HASH_IDX(preg_num)];
@@ -338,35 +349,39 @@ Accumulate_Preg_Info(TY_IDX preg_ty, INT16 preg_num)
    /* Get the preg info record corresponding to this usage.  Create one
     * if none exists.
     */
-   preg_info = Get_Preg_Info(preg_num);
-   if (preg_info == NULL)
+   if(preg_num>0)
    {
-      /* Add a new entry to the hash-table */
-      if (Free_Preg_Info == NULL)
-	 preg_info = TYPE_ALLOC_N(PREG_INFO, 1);
-      else
-      {
-	 preg_info = Free_Preg_Info;
-	 Free_Preg_Info = PREG_INFO_next(Free_Preg_Info);
-      }
+     preg_info = Get_Preg_Info(preg_num);
+     if (preg_info == NULL)
+     {
+        /* Add a new entry to the hash-table */
+        if (Free_Preg_Info == NULL)
+	   preg_info = TYPE_ALLOC_N(PREG_INFO, 1);
+        else
+        {
+	   preg_info = Free_Preg_Info;
+  	   Free_Preg_Info = PREG_INFO_next(Free_Preg_Info);
+        }
 
-      /* Reset the usage and also set the other fields */
-      for (usage_kind = (INT)FIRST_PREG_USAGE_KIND; 
-	   usage_kind <= (INT)LAST_PREG_USAGE_KIND; 
-	   usage_kind++)
-      {
-	 PREG_INFO_decl(preg_info, usage_kind) = FALSE;
-	 PREG_INFO_use(preg_info, usage_kind) = FALSE;
-      }
-      PREG_INFO_preg_num(preg_info) = preg_num;
-      PREG_INFO_next(preg_info) = 
-	 Preg_Info_Hash_Tbl[PREG_INFO_HASH_IDX(preg_num)];
-      Preg_Info_Hash_Tbl[PREG_INFO_HASH_IDX(preg_num)] = preg_info;
-   }
+        /* Reset the usage and also set the other fields */
+        for (usage_kind = (INT)FIRST_PREG_USAGE_KIND; 
+	     usage_kind <= (INT)LAST_PREG_USAGE_KIND; 
+	     usage_kind++)
+        {
+	   PREG_INFO_decl(preg_info, usage_kind) = FALSE;
+	   PREG_INFO_use(preg_info, usage_kind) = FALSE;
+        }
+        PREG_INFO_preg_num(preg_info) = preg_num;
+        PREG_INFO_next(preg_info) = 
+  	   Preg_Info_Hash_Tbl[PREG_INFO_HASH_IDX(preg_num)];
+        Preg_Info_Hash_Tbl[PREG_INFO_HASH_IDX(preg_num)] = preg_info;
+     }
    
    /* Record this usage */
    usage_kind = (INT)Mtype_to_Ukind(TY_mtype(preg_ty));
    PREG_INFO_use(preg_info, usage_kind) = TRUE;
+   
+   }
 } /* Accumulate_Preg_Info */
 
 
@@ -1315,19 +1330,22 @@ PUinfo_Preg_Type(TY_IDX preg_ty, INT16 preg_num)
       ty = preg_ty;
    else
    {
-      preg_info = Get_Preg_Info(preg_num);
-      if (preg_info == NULL)
+      if(preg_num>0)
       {
-	 Accumulate_Preg_Info(preg_ty, preg_num); /* Just to make sure */
-	 preg_info = Get_Preg_Info(preg_num);
-      }
+        preg_info = Get_Preg_Info(preg_num);
+        if (preg_info == NULL)
+        {
+	   Accumulate_Preg_Info(preg_ty, preg_num); /* Just to make sure */
+	   preg_info = Get_Preg_Info(preg_num);
+        }
 
-      this_ukind = (INT)Mtype_to_Ukind(TY_mtype(preg_ty));
-      for (usage_kind = (INT)LARGEST_iPREG_USAGE_KIND; 
-	   (usage_kind >= this_ukind && 
-	    !PREG_INFO_use(preg_info, usage_kind));
-	   usage_kind--);
-      ty = Stab_Mtype_To_Ty(Ukind_to_Mtype[usage_kind]);
+        this_ukind = (INT)Mtype_to_Ukind(TY_mtype(preg_ty));
+        for (usage_kind = (INT)LARGEST_iPREG_USAGE_KIND; 
+	     (usage_kind >= this_ukind && 
+	      !PREG_INFO_use(preg_info, usage_kind));
+	     usage_kind--);
+        ty = Stab_Mtype_To_Ty(Ukind_to_Mtype[usage_kind]);
+     }
    }
    return ty;
 } /* PUinfo_Preg_Type */

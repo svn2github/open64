@@ -1868,6 +1868,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	      label_wn &label = label_use_map [WN_label_number (w2)];
 	      Is_True (label.wn == NULL, ("Process_procedure: Duplicate labels?"));
 	      label.wn = w2;
+	      Is_True (label.wn != NULL, ("Process_procedure: Undefined label?"));
 	      break;
 	    }
 

@@ -386,7 +386,7 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
 #endif
    default:
       /* Only expression nodes should be handled here */
-      ErrMsg (EC_Invalid_Case, "TCON2C_translate", __LINE__);
+      //ErrMsg (EC_Invalid_Case, "TCON2C_translate", __LINE__);
       Append_Token_String(tokens, "/*quad_constant*/");
       break;
    } /* switch */

@@ -14474,6 +14474,7 @@ static WN * Locate_Ind_Path(WN *exp, WN *ind, int &numMpy)
      return NULL;
 
 
+
    save_num = numMpy;
    for (int i=0; i< WN_kid_count(exp); i++) {
           num = save_num;

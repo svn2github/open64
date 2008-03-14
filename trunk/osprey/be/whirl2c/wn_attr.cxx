@@ -409,7 +409,9 @@ WN_Tree_Type(const WN *wn)
       case OPR_LDA:
 	 ty = WN_ty(wn);
 	 break;
-
+      case OPR_LDA_LABEL: 
+         ty = TY_pointed(WN_ty(wn));
+         break;
       case OPR_MLOAD:
 	 /* There is not much we can do about this case */
 	 if (WN_opc_operator(WN_kid1(wn)) == OPR_INTCONST &&

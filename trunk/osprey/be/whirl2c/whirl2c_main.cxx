@@ -183,8 +183,9 @@ main (INT argc,                   /* Number of command line arguments */
     register INT         i, len;
     register INT         argidx;
     register BOOL        dash_fB_option = FALSE; /* Any -fB option? */
-    char                *newlibpath[3];
-
+    char                *newlibpath[3];//argv0 -> replace the argv[0]
+    char                *TOOLRR;//FOR get TOOTROOT 
+  
     program_name = argv[0];
 
     if (argc == 1)
@@ -192,8 +193,21 @@ main (INT argc,                   /* Number of command line arguments */
        Usage(argv[0]);
        exit(RC_NORECOVER_USER_ERROR);
     }
+   
+    //Need to proc the no TOOLROOT's condition   
+
+    TOOLRR=getenv("TOOLROOT");
+    //printf("TOOLROOT:%s\n",TOOLRR);
+ 
+    //printf("Enter cxx's path:%s\n",path);
+
+    strcpy (path, TOOLRR);
+    strcat (path, "/bin");
+
+    //strcat (argv[0], "/NFS/xmr1/trunk_w2c/bin/whirl2c");
     
-    strcpy (path, argv[0]);
+    //strcpy (path, argv[0]);
+    //printf("Enter cxx's 2 path:%s\n",path);
     if (p = strrchr(path, '/'))
 	p[0] = 0;
     else
@@ -277,12 +291,27 @@ main (INT argc,                   /* Number of command line arguments */
        } /*while*/
     } /*if (!dash_fB_option)*/
     new_argv[argc] = NULL;
-    
-    for (i = 0; i<3; i++)
-       putenv (newlibpath[i]);
-    strcat (path, "/whirl2c_be");
+   
 
+    //printf ("the -1 newlibpath[%d]:%s\n",0,newlibpath[0]); 
+    strcat (newlibpath[0],"/lib/gcc-lib/ia64-open64-linux/4.0/");
+    //printf ("the +1  newlibpath[%d]:%s\n",0,newlibpath[0]);    
+    //TOO Long to double 2
+    //strcpy (newlibpath[1],"LD_LIBRARYN32_PATH=/NFS/xmr1/trunk_w2c/bin");
+    //strcpy (newlibpath[2],"LD_LIBRARY64_PATH=/NFS/xmr1/trunk_w2c/bin");
+
+    for (i = 0; i<3; i++)
+    {
+      putenv (newlibpath[i]);
+     // printf ("the newlibpath[%d]:%s\n",i,newlibpath[i]);
+    } 
+
+   // printf("the last -1 path:%s\n",path);
+    strcat (path, "/bin/whirl2c_be");
+   // printf("the last 1 path:%s\n",path);
+    
     execv (path, new_argv);
+    //execv ("/NFS/xmr1/trunk_w2c/bin/whirl2c_be", new_argv);
     error("%s: fail to execute %s: %s.\n", argv[0], path,
 	  strerror(errno));
     exit(RC_SYSTEM_ERROR);
