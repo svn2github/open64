@@ -1530,7 +1530,9 @@ Create_ST_For_Tree (gs_t decl_node)
         } 
   
 	if (gs_decl_thunk_p(decl_node) &&
-            gs_tree_code(gs_cp_decl_context(decl_node)) != GS_NAMESPACE_DECL)
+            gs_tree_code(gs_cp_decl_context(decl_node)) != GS_NAMESPACE_DECL &&
+            eclass != EXPORT_LOCAL &&
+            eclass != EXPORT_LOCAL_INTERNAL)
 	  Set_ST_is_weak_symbol(st);
       }
       break;
