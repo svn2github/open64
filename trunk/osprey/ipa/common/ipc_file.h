@@ -118,6 +118,7 @@ struct IP_FILE_HDR
     struct pu_info *new_pu_list;	// new PUs added during IPA
     UINT32 num_procs;			// number of procedures in file
     UINT32 num_procs_processed;		// number of procedures processed
+    UINT32 num_written;                 // number of Pus written back to disk
 
     MEM_POOL mem_pool;			// file mem pool (kept till written)
 
@@ -130,13 +131,16 @@ struct IP_FILE_HDR
 
     SECTION_FILE_ANNOT* section_annot;  // per file section info
     UINT32 flags;			// Special flags for this file
+    off_t mapped_size;                  // Size of mmap memory size.
 
     // constructor
 
-    IP_FILE_HDR (const char *name, void *mmap_addr) {
+    IP_FILE_HDR (const char *name, void *mmap_addr, off_t mmap_size) {
 	bzero (this, sizeof(IP_FILE_HDR));
 	file_name = name;
 	input_map_addr = mmap_addr;
+        num_written = 0;
+        mapped_size = mmap_size;
 	MEM_POOL_Initialize (&mem_pool, const_cast<char *> (file_name),
 			     FALSE /* non-zero mempool */);
 	MEM_POOL_Push (&mem_pool);
@@ -358,7 +362,7 @@ extern IP_FILE_HDR_TABLE IP_File_header;
 
 
 extern IP_FILE_HDR &
-Setup_File_Header (const char *file_name, void *mmap_addr);
+Setup_File_Header (const char *file_name, void *mmap_addr, off_t mmap_size);
 
 // Reclaims all of the resources associated with hdr, by destroying
 // its mempool.  Precondition: all PUs have been processed.
@@ -380,6 +384,7 @@ Delete_Function_In_File (IP_FILE_HDR& hdr, UINT index)
     
     Set_IP_PROC_INFO_state (proc_info[index], IPA_DELETED);
     Inc_IP_FILE_HDR_num_procs_processed (hdr);
+    hdr.num_written++;
 }
 
 #endif /* ipc_file_INCLUDED */

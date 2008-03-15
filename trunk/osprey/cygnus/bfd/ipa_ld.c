@@ -78,8 +78,8 @@ void (*p_ipa_init_link_line)(int, char **) = NULL;
 void (*p_ipa_add_link_flag)(const char*) = NULL;
 void (*p_ipa_modify_link_flag)(char*, char*) = NULL;
 void (*p_ipa_driver)(int, char **) = NULL;
-void (*p_process_whirl64)(void *, off_t, void *, int, const char *) = NULL;
-void (*p_process_whirl32)(void *, off_t, void *, int, const char *) = NULL;
+void (*p_process_whirl64)(void *, off_t, void *, int, const char *, off_t) = NULL;
+void (*p_process_whirl32)(void *, off_t, void *, int, const char *, off_t) = NULL;
 int  (*p_Count_elf_external_gots)(void) = NULL;
 void (*p_ipa_insert_whirl_marker)(void) = NULL;
 void (*p_Sync_symbol_attributes)(unsigned int, unsigned int, bfd_boolean, unsigned int) = NULL;
@@ -1095,7 +1095,7 @@ ipa_process_whirl ( bfd *abfd)
 			    elf_elfheader (abfd)->e_shnum, 
 			    abfd->usrdata+elf_elfheader(abfd)->e_shoff,
 			    0, /* check_whirl_revision */
-			    abfd->filename);
+			    abfd->filename, mapped_size);
     else
 #endif    
       (*p_process_whirl64) ( 
@@ -1103,7 +1103,7 @@ ipa_process_whirl ( bfd *abfd)
 			    elf_elfheader (abfd)->e_shnum, 
 			    abfd->usrdata+elf_elfheader(abfd)->e_shoff,
 			    0, /* check_whirl_revision */
-			    abfd->filename);
+			    abfd->filename, mapped_size);
 }
 
 

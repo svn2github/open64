@@ -293,7 +293,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 		if (num_prefetch_ldsts == 0) {
 		    max_num_prefetch_ldsts = DEFAULT_NUM_OF_PREFETCHES;
 		    prefetch_ldsts =
-			(WN **)malloc(max_num_prefetch_ldsts * sizeof(WN*));
+			(WN **)MEM_POOL_Alloc (Malloc_Mem_Pool, max_num_prefetch_ldsts * sizeof(WN*));
 		    FmtAssert (prefetch_ldsts,
 			       ("No more memory for allocation."));
 		} else if (max_num_prefetch_ldsts == num_prefetch_ldsts + 1) {
@@ -320,7 +320,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 	    if (WN_MAP32_Get (WN_MAP_ALIAS_CLASS, node) != 0) {
 		if (alias_classes == NULL) {
 		    max_alias_class_nodes = DEFAULT_NUM_ALIAS_CLASSES;
-		    alias_classes = (WN **) malloc (max_alias_class_nodes *
+		    alias_classes = (WN **) MEM_POOL_Alloc (Malloc_Mem_Pool, max_alias_class_nodes *
 						    sizeof(WN *));
 		    FmtAssert (alias_classes != NULL, ("No more memory."));
 		} else if (max_alias_class_nodes == num_alias_class_nodes + 1) {
@@ -346,7 +346,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 	    if (WN_MAP_Get (WN_MAP_AC_INTERNAL, node) != NULL) {
 		if (ac_internals == NULL) {
 		    max_ac_internal_nodes = DEFAULT_NUM_AC_INTERNALS;
-		    ac_internals = (WN **) malloc (max_ac_internal_nodes *
+		    ac_internals = (WN **) MEM_POOL_Alloc (Malloc_Mem_Pool, max_ac_internal_nodes *
 						   sizeof(WN *));
 		    FmtAssert (ac_internals != NULL, ("No more memory."));
 		} else if (max_ac_internal_nodes == num_ac_internal_nodes + 1) {

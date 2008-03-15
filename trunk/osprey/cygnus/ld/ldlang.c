@@ -1938,13 +1938,13 @@ load_symbols (lang_input_statement_type *entry,
 							elf_elfheader (member)->e_shnum,
 							member->usrdata+elf_elfheader(member)->e_shoff,
 							0, /* check_whirl_revision */
-							member->filename);
+							member->filename, parsed_size);
 					else
 						(*p_process_whirl64) ((void *)member,
 							elf_elfheader (member)->e_shnum,
 							member->usrdata+elf_elfheader(member)->e_shoff,
 							0, /* check_whirl_revision */
-							member->filename);
+							member->filename, parsed_size);
 
 					// Since it is not a regular object archive, don't pass it to the
 					// linker.

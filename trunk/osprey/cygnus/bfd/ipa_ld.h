@@ -210,8 +210,8 @@ extern void (*p_ipa_init_link_line)(int, char **);
 extern void (*p_ipa_add_link_flag)(const char*);
 extern void (*p_ipa_modify_link_flag)(char*, char*);
 extern void (*p_ipa_driver)(int, char **);
-extern void (*p_process_whirl64)(void *, off_t, void *, int, const char *);
-extern void (*p_process_whirl32)(void *, off_t, void *, int, const char *);
+extern void (*p_process_whirl64)(void *, off_t, void *, int, const char *, off_t);
+extern void (*p_process_whirl32)(void *, off_t, void *, int, const char *, off_t);
 extern void (*p_ipa_insert_whirl_marker)(void);
 #ifdef KEY
 extern void (*p_ipa_erase_link_flag)(const char*);

@@ -62,7 +62,7 @@ Setup_Inliner_File_Header (char *input_name, void *mmap_addr)
     UINT index;
 
     IP_FILE_HDR& file_header = IP_File_header.New_entry (index);
-    new (&file_header) IP_FILE_HDR (input_name, mmap_addr);
+    new (&file_header) IP_FILE_HDR (input_name, mmap_addr, 0);
 
     return file_header;
 } // Setup_Inliner_File_Header

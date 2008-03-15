@@ -2382,6 +2382,17 @@ read_pu_including_parents(IPA_NODE* node)
 	
 }
 
+/* Release the memory possessed by the PU */
+void
+IPA_NODE::Un_Read_PU ()
+{
+  MEM_POOL_Pop(Mem_Pool());
+  MEM_POOL_Delete(Mem_Pool());
+  Clear_Mempool_Initialized();
+  WN_MAP_Delete(Parent_Map());
+  Set_Scope(NULL);
+  Set_Parent_Map(0);
+}
 
 SCOPE *
 IPA_NODE::Scope() 

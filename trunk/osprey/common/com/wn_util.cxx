@@ -146,7 +146,7 @@ extern WN_ITER* WN_WALK_TreeIter(WN *wn)
            WN_operator(wn) <= OPERATOR_LAST,
            ("Bad OPERATOR %d", WN_operator(wn)));
 
- wni = (WN_ITER*) malloc(sizeof(WN_ITER));
+ wni = (WN_ITER*)MEM_POOL_Alloc (Malloc_Mem_Pool,sizeof(WN_ITER));
  WN_ITER_wn(wni) = wn;
  WN_ITER_stack(wni) = WN_InitStack();
 
@@ -166,7 +166,7 @@ extern WN_ITER* WN_WALK_SCFIter(WN *wn)
            ("Bad OPERATOR %d", WN_operator(wn)));
  FmtAssert(OPCODE_is_scf(WN_opcode(wn)), ("Expecting a Structured Control Flow tree node"));
 
- wni = (WN_ITER*) malloc(sizeof(WN_ITER));
+ wni = (WN_ITER*) MEM_POOL_Alloc (Malloc_Mem_Pool,sizeof(WN_ITER));
  WN_ITER_wn(wni) = wn;
  WN_ITER_stack(wni) = WN_InitStack();
 
@@ -191,7 +191,7 @@ extern WN_ITER* WN_WALK_StmtIter(WN *wn)
 */
  if (OPCODE_is_scf(WN_opcode(wn)) || OPCODE_is_stmt(WN_opcode(wn)))
    {
-   wni = (WN_ITER*) malloc(sizeof(WN_ITER));
+   wni = (WN_ITER*) MEM_POOL_Alloc (Malloc_Mem_Pool,sizeof(WN_ITER));
    WN_ITER_wn(wni) = wn;
    WN_ITER_stack(wni) = WN_InitStack();
    return wni;

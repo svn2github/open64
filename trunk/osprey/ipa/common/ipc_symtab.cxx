@@ -288,7 +288,7 @@ template <class Shdr, class Sym>
 void
 process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
 	       BOOL check_whirl_revision, const char* file_name,
-	       const Sym* elf_symtab) 
+	       const Sym* elf_symtab, off_t mmap_size) 
 {
     // Given a WHIRL file, this routine will merge the global symbol-table
     // in with the current merged global symbol table which should already
@@ -368,7 +368,7 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
     }
 
     IP_FILE_HDR &file_header =
-	Setup_File_Header (file_name, ld_get_mmap_addr (p_obj));
+	Setup_File_Header (file_name, ld_get_mmap_addr (p_obj), mmap_size);
  
     // Get all tables that make up the global symbol table, as well as
     // the FILE_INFO record for this WHIRL file.  
@@ -432,7 +432,7 @@ static BOOL ipa_dot_so_initialized = FALSE;
 extern "C" void
 process_whirl32 (an_object_file_ptr p_obj, INT nsec,
 		 const Elf32_Shdr* section_table,
-		 BOOL check_whirl_revision, const char* file_name) 
+		 BOOL check_whirl_revision, const char* file_name, off_t mmap_size) 
 {
     if (!ipa_dot_so_initialized) {
 #ifdef KEY
@@ -444,13 +444,13 @@ process_whirl32 (an_object_file_ptr p_obj, INT nsec,
     
     Elf32_Sym *tag = 0;
     process_whirl (p_obj, nsec, section_table, check_whirl_revision,
-		   file_name, tag); 
+		   file_name, tag, mmap_size); 
 }
 
 extern "C" void
 process_whirl64 (an_object_file_ptr p_obj, INT nsec,
 		 const Elf64_Shdr* section_table,
-		 BOOL check_whirl_revision, const char* file_name)
+		 BOOL check_whirl_revision, const char* file_name, off_t mmap_size)
 { 
     if (!ipa_dot_so_initialized) {
 #ifdef KEY
@@ -462,7 +462,7 @@ process_whirl64 (an_object_file_ptr p_obj, INT nsec,
 
     Elf64_Sym *tag = 0;
     process_whirl (p_obj, nsec, section_table, check_whirl_revision,
-		   file_name, tag); 
+		   file_name, tag, mmap_size); 
 }
 #if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
 

@@ -140,6 +140,17 @@ public:
     bzero (table, sizeof(table));
   };
 
+  ~IPO_ADDR_HASH () {
+    for (int i = 0; i < hash_size; i++){
+      struct hash_node *cur = table[i];
+      while(cur){
+        struct hash_node *tmp = cur;
+        cur = cur->next;
+        CXX_DELETE(tmp, mem);
+      }
+    }
+  }
+
   void Insert (void *orig, void *copy);
 
   void *Lookup (void *);
@@ -250,6 +261,10 @@ public:
     _is_new_clone = TRUE;
     _hash_maps = CXX_NEW (IPO_ADDR_HASH (m), m);
   };
+
+  ~IPO_SYMTAB (){
+    CXX_DELETE(_hash_maps,Malloc_Mem_Pool);
+  }
 
   // Calls to do cloning for inlining
   IPO_SYMTAB (SCOPE *orig_scope_tab, SCOPE *cloned_scope_tab, 

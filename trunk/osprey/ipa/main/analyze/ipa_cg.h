@@ -683,6 +683,8 @@ public:
 
   void Write_PU ();
 
+  void Un_Read_PU ();
+
   void Set_Global_Tables(IPA_CALL_GRAPH*) 
   {
     DevWarn("Use IPA_NODE_CONTEXT instead of IPA_NODE::Set_Global_Tables");

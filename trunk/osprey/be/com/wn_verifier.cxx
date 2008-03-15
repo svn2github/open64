@@ -1079,8 +1079,10 @@ BOOL WN_Tree_Has_Duplicate_Labels(WN *pu_wn, MEM_POOL *tmp_pool)
                (INT) lab, LABEL_Table_Size(CURRENT_SYMTAB)));
       WN *dup_lab_wn = labels_found.Find(lab);
 
-      if (dup_lab_wn)
+      if (dup_lab_wn) {
+        WN_WALK_Abort(it);
         return TRUE;
+      }
 
       labels_found.Enter(lab, wn);
     }
