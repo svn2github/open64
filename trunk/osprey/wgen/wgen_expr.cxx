@@ -5593,8 +5593,8 @@ WGEN_Expand_Expr (gs_t exp,
 	  // replacing opnd0 of the target_expr with opnd0 of this
 	  // INIT_EXPR/MODIFY_EXPR.
 	  else if (gs_tree_code(initializer = gs_tree_operand(t,1)) ==
-	              GS_AGGR_INIT_EXPR /*&&
-	           gs_aggr_init_via_ctor_p(initializer)*/) {
+	              GS_AGGR_INIT_EXPR &&
+	           gs_aggr_init_via_ctor_p(initializer)) {
 
 	    gs_set_tree_operand(t, 0, gs_tree_operand(exp,0));
 	    wn = WGEN_Expand_Expr(t);
