@@ -266,7 +266,7 @@ static BOOL VHO_In_MP_Region_Pragma = FALSE;
 
 /* Variables related to struct lowering */
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_IA64) 
 INT32  VHO_Struct_Limit = 8;               /* max # of fields/statements     */
 #else
 INT32  VHO_Struct_Limit = 4;               /* max # of fields/statements     */
