@@ -396,7 +396,10 @@ CFG::Delete_bbs(BB_LIST *bbs, MOD_PHI_BB_CONTAINER *mod_phis)
     bbs->Remove(last_bb, _mem_pool);
   }
 */
-  CXX_DELETE(bbs, _mem_pool);
+  // The bbs is allocated on _loc_pool and it's already deleted at 
+  //     removable_bb_chain(), opt_dce.cxx:4632
+  // Refer removable_bb_chain(), opt_dce.cxx:4659
+  //CXX_DELETE(bbs, _loc_pool);
 }
 #endif
 // ====================================================================
