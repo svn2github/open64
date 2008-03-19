@@ -41,6 +41,8 @@
 #include <stdint.h>
 #include <alloca.h>
 
+#include <libgen.h>                     // for basename()
+
 #include "linker.h" // for sharable
 #include "pass1.h"			// for used_gp_area
 #include "main.h"			// for max_gpa_size
@@ -52,13 +54,30 @@
 #include "ipc_pic.h"
 #include "ld_ipa_interface.h"
 
+// set IPA_Object_Name to a legal variable name
+static void Get_IPA_Object_Name(){
+  char *bname = basename(outfilename);
+
+  while (*bname == '/')
+    bname++;
+
+  IPA_Object_Name = (char *) malloc (strlen(bname) + 1);
+
+  int i;
+  for(i=0; bname[i] != '\0'; i++) {
+    if ( bname[i] == '-' ) IPA_Object_Name[i] = '_';
+    else IPA_Object_Name[i] = bname[i];
+  }
+  IPA_Object_Name[i] = '\0';
+}
 
 // returns a unique name, used for promoting static variables to globals
 STR_IDX
 Create_Unique_Name (const char* name)
 {
     static UINT32 g_count = 0;
-    char *new_name = (char *) alloca (strlen (name) + 10);
+    
+    char *new_name = (char *) alloca (strlen (name) + strlen (IPA_Object_Name) + 10);
 
     char *p = new_name;
     
@@ -72,6 +91,9 @@ Create_Unique_Name (const char* name)
 
     *p++ = '.';
     *p++ = '.';
+
+    strcpy( p, IPA_Object_Name);
+    p += strlen(IPA_Object_Name);
 
     UINT i = ++g_count;
 
@@ -220,6 +242,8 @@ Pic_optimization ()
 {
     INT f_call_shared = (ld_ipa_opt[LD_IPA_SHARABLE].flag == F_CALL_SHARED);
     INT hs_ignore = (ld_ipa_opt[LD_IPA_HIDES].flag == HS_IGNORE);
+    
+    Get_IPA_Object_Name(); 
 
     PIC_OPT pic_opt (f_call_shared, hs_ignore);
     For_all (St_Table, GLOBAL_SYMTAB, pic_opt);

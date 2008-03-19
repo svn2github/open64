@@ -1865,9 +1865,9 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
             (!OP_has_predicate(def_op) || (OP_opnd(def_op,OP_PREDICATE_OPND) == True_TN)) &&
             (!OP_has_predicate(op) || (OP_opnd(op,OP_PREDICATE_OPND) == True_TN))) 
 	{
-	  DevWarn("Unused definition in %sBB:%d (PC=0x%x)",
+	  /*	  DevWarn("Unused definition in %sBB:%d (PC=0x%x)",
 	          OP_bb(op) && BB_rotating_kernel(OP_bb(op)) ? "SWPd " : "",
-	          OP_bb(op) ? BB_id(OP_bb(op)) : -1, defining_pcs[cl][reg]);
+	          OP_bb(op) ? BB_id(OP_bb(op)) : -1, defining_pcs[cl][reg]);*/
 	  if (TFile != stdout) {	/* only print to .t file */
 	    Print_OP_No_SrcLine (def_op);
 	  }
@@ -7987,7 +7987,7 @@ EMT_End_File( void )
 		if (!STB_section(sym)) continue;
 		// mergeable sections will be emitted into each .o
 		if (SEC_is_merge(STB_section_idx(sym))) continue;
-		newname = Index_To_Str(Save_Str2(ST_name(sym), "_symbol"));
+		newname = Index_To_Str(Save_Str2(ST_name(sym), IPA_Object_Name));
 		if (Object_Code) {
 	  		(void) Em_Add_New_Symbol (
 				newname,
@@ -8236,7 +8236,7 @@ EMT_End_File( void )
 			Reset_STB_section(sym);
 			Reset_STB_root_base(sym);
 			Set_STB_section_idx(sym,0);
-			Set_ST_name(sym, Save_Str2(ST_name(sym), "_symbol"));
+			Set_ST_name(sym, Save_Str2(ST_name(sym), IPA_Object_Name));
 			Set_ST_sclass(sym, SCLASS_EXTERN);
 			Set_ST_export(sym, EXPORT_INTERNAL);
 		}

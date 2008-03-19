@@ -380,6 +380,7 @@ BOOL SIMD_UMask = TRUE;
 BOOL SIMD_PMask = TRUE;
 #endif
 BOOL Force_GP_Prolog;	/* force usage of gp prolog */
+char *IPA_Object_Name = NULL;   /* distinguish symbols in different .so files */
 
 OPTION_LIST *Registers_Not_Allocatable = NULL;
 
@@ -556,6 +557,9 @@ static OPTION_DESC Options_TENV[] = {
   { OVK_INT32,	OV_INTERNAL,	FALSE, "iolist_reuse",	"iolist_reuse",
     100, 1, INT32_MAX,	&iolist_reuse_limit, 			NULL,
     "Maximum number of iolists which will share stack space" },
+  { /* IPA object name used for -shared compile */
+    OVK_NAME,   OV_SHY,         FALSE, "object_name",          "",
+    0, 0, 0, &IPA_Object_Name, NULL },
 
   { OVK_COUNT }		/* List terminator -- must be last */
 };

@@ -2811,11 +2811,14 @@ AGGINIT::Traverse_Aggregate_Array (
 
 #ifdef FE_GNU_4_2_0
   INT length = gs_constructor_length(init_list);
+  gs_t curr_index_elem = length > 0? gs_operand (init_list, GS_CONSTRUCTOR_ELTS_INDEX) : NULL;
+  gs_t curr_value_elem = length > 0? gs_operand (init_list, GS_CONSTRUCTOR_ELTS_VALUE) : NULL;
   for (INT idx = 0;
        idx < length;
        idx++) {
 
-    gs_t element_index = gs_constructor_elts_index(init_list, idx);
+    gs_t element_index = gs_operand(curr_index_elem, 0);
+    curr_index_elem = gs_operand(curr_index_elem, 1);
 
     // Bug 591
     // In gcc-3.2 (updated Gnu front-end), the TREE_PURPOSE(init) 
@@ -2846,7 +2849,8 @@ AGGINIT::Traverse_Aggregate_Array (
       emitted_bytes += (lindex - emitted_bytes/esize)*esize;
     }	
 
-    gs_t tree_value = gs_constructor_elts_value(init_list, idx);
+    gs_t tree_value = gs_operand(curr_value_elem, 0);
+    curr_value_elem = gs_operand(curr_value_elem, 1);
     if (gs_tree_code(tree_value) == GS_PTRMEM_CST)  {
       gs_t t = gs_expanded_ptrmem_cst(tree_value);
       Is_True(t != NULL,

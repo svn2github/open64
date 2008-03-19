@@ -192,12 +192,23 @@ static void exec_smake(char* cmdfile_name);
     	This is here because the gnu basename() doesn't strip
 	off multiple slashes.
     */
-static const char*ipa_basename(char *name){
-    const char *bname = basename(name);
+static char *ipa_basename(char *name){
+    char *bname = basename(name);
     
     while (*bname == '/')
     	bname++;
     return bname;
+}
+
+    /*
+        This is here because the result from ipa_basename may
+    contain illegal character '-', which should be changed to '_'
+    */
+static const char* proper_name(char *name){
+    for(char *i = name; *i; i++) {
+      if ( *i == '-' ) *i = '_';
+    }
+    return name;
 }
 
 static const char* abi()
@@ -1091,15 +1102,17 @@ void ipacom_doit (const char* ipaa_filename)
     fprintf(makefile, "%s/%s" TARGET_DELIMITER "\n",
             tmpdir_macro, "dummy");
 
+    char *tmpname = (char *) malloc (strlen (outfilename) + 1);
+    strcpy (tmpname, outfilename);
     if (Feedback_Filename) {
-            fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n\n",
-                tmpdir_macro, symtab_command_line, Feedback_Filename, symtab_extra_args);
+            fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off -TENV:object_name=_%s\n\n",
+                tmpdir_macro, symtab_command_line, Feedback_Filename, symtab_extra_args, proper_name(ipa_basename(outfilename)));
     } else if (Annotation_Filename) {
       fprintf (makefile, "\t"
 #ifdef KEY
 	       "dir=`pwd`; "	// for calculating feedback prefix
 #endif
-	       "cd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s "
+	       "cd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -TENV:object_name=_%s"
 #ifdef KEY
 	       "-Wb,-CG:enable_feedback=on\n\n",  // enable feedback for cg
 #else
@@ -1107,11 +1120,12 @@ void ipacom_doit (const char* ipaa_filename)
 #endif
 	       tmpdir_macro, symtab_command_line, 
 	       Get_Annotation_Filename_With_Path (),
-	       symtab_extra_args);
+	       symtab_extra_args, proper_name(ipa_basename(outfilename)));
     } else {
-            fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off\n\n",
-                tmpdir_macro, symtab_command_line, symtab_extra_args);
-    }                                                                                                                    
+             fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off -TENV:object_name=_%s\n\n",
+                     tmpdir_macro, symtab_command_line, symtab_extra_args, proper_name(ipa_basename(outfilename)));
+    }
+    free(tmpname);
     fprintf(makefile, "%s/%s" TARGET_DELIMITER "%s/%s %s/%s\n\n",
             tmpdir_macro, elf_symtab_name,
             tmpdir_macro, input_symtab_name,

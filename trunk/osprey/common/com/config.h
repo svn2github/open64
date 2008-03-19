@@ -773,6 +773,8 @@ extern char *IPA_old_ld_library_path;
 extern char *IPA_lang;
 #endif
 
+extern char *IPA_Object_Name;       /* for -shared -ipa compile */
+
 extern BOOL Scalar_Formal_Ref;		/* for fortran formal scalar refs */
 extern BOOL Non_Scalar_Formal_Ref;	/* for fortran formal non_scalar refs */
 
