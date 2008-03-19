@@ -1865,9 +1865,9 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
             (!OP_has_predicate(def_op) || (OP_opnd(def_op,OP_PREDICATE_OPND) == True_TN)) &&
             (!OP_has_predicate(op) || (OP_opnd(op,OP_PREDICATE_OPND) == True_TN))) 
 	{
-	  /*	  DevWarn("Unused definition in %sBB:%d (PC=0x%x)",
+	  DevWarn("Unused definition in %sBB:%d (PC=0x%x)",
 	          OP_bb(op) && BB_rotating_kernel(OP_bb(op)) ? "SWPd " : "",
-	          OP_bb(op) ? BB_id(OP_bb(op)) : -1, defining_pcs[cl][reg]);*/
+	          OP_bb(op) ? BB_id(OP_bb(op)) : -1, defining_pcs[cl][reg]);
 	  if (TFile != stdout) {	/* only print to .t file */
 	    Print_OP_No_SrcLine (def_op);
 	  }
