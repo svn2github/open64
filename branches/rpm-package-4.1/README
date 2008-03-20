@@ -1,0 +1,27 @@
+Readme
+-------------
+Making rpm package for Open64 compiler.
+
+Directory Layout for making the rpm package:
+<RPM-PACKAGE>/
+  BUILD/   ( temporary for building the compiler, not used yet )
+  root/    ( contains all open64 stuffs without symbol links )
+  RPMS/    ( contains the final rpm package )
+  SOURCES/ ( contains the source of the compiler, not used yet )
+  SPECS/   ( contains the spec file for rpm package )
+  SRPMS/   ( contains  the final source rppm package, not used yet )
+
+Steps for making the rpm package:
+
+1. Build and install the compiler by hand
+2. Copy all stuffs into root/, excluding the symbol links and GCC stuffs.
+   - directory layout in root/
+     root/
+       opt/
+         open64/
+           bin/
+           lib/
+   - symbol links include ipl, whirl2c_be and whirl2f_be, ...
+   - GCC stuffs include crt*.o, libgcc.*, libstdc++*, ...
+3. Change the directory to <RPM-PACKAGE> and run mkrpm.sh
+4. The final rpm package is in RPMS/$ARCH/
