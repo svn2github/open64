@@ -453,11 +453,13 @@ Fully_Unroll_Short_Loops(WN* wn)
   }
   else if (oper == OPR_DO_LOOP    &&
            !Do_Loop_Has_Calls(wn) &&
-           (!Do_Loop_Has_Exits(wn) || Do_Loop_Is_Regular(wn)) &&
 #ifndef KEY
+           (!Do_Loop_Has_Exits(wn) || Do_Loop_Is_Regular(wn)) &&
 	   !Do_Loop_Has_Conditional(wn) &&
-#endif
+#else 
+           !Do_Loop_Has_Exits(wn) &&
            !Do_Loop_Has_Gotos(wn) &&
+#endif
            !Do_Loop_Is_Mp(wn)     &&
            !Is_Nested_Doacross(wn) &&
 #ifdef KEY
@@ -1656,7 +1658,7 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
     Has_Unsummarized_Call_Cost = has_unsummarized_call_cost;
     Has_Threadprivate = FALSE; 
     Has_Gotos = has_gotos;
-#ifdef PATHSCALE_MERGE
+#ifndef KEY
     Has_Conditional = FALSE;
 #endif
     Has_Gotos_This_Level = has_gotos_this_level;

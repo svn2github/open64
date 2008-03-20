@@ -379,13 +379,11 @@ Gather_Scatter_Scalar_Expand(WN*                                loop,
 	     wtype == MTYPE_F8 || wtype == MTYPE_C4) ? 8 :
   (wtype == MTYPE_I4 || wtype == MTYPE_U4 ||
    wtype == MTYPE_F4) ? 4 :
-#ifdef PATHSCALE_MERGE
-#if defined(TARG_IA64)
+#ifdef TARG_IA64
   (wtype == MTYPE_F10) ? 16 :
 #endif
-#endif
   (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
-#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
   (wtype == MTYPE_C10 || wtype == MTYPE_CQ) ? 32 :
 #else
   (wtype == MTYPE_CQ) ? 32 :
@@ -888,7 +886,7 @@ INT64 Get_FP_Counts(WN* wn)
   } else if (OPCODE_is_expression(opcode) && !OPCODE_is_load(opcode) &&
 	     (oper != OPR_CONST)) {
     // an fp expression
-#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
     if (OPCODE_desc(opcode) == MTYPE_FQ || OPCODE_rtype(opcode) == MTYPE_FQ ||
 	OPCODE_desc(opcode) == MTYPE_F10 || OPCODE_rtype(opcode) == MTYPE_F10 ||
 	OPCODE_desc(opcode) == MTYPE_F8 || OPCODE_rtype(opcode) == MTYPE_F8 ||
@@ -1335,7 +1333,7 @@ Perform_Gather_Scatter(
     DYN_ARRAY<SCALAR_NODE*> site_U4(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_F4(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_F4(&PHASE25_default_pool);
-#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
     DYN_ARRAY<SCALAR_NODE*> use_F10(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_F10(&PHASE25_default_pool);
 #endif
@@ -1343,7 +1341,7 @@ Perform_Gather_Scatter(
     DYN_ARRAY<SCALAR_NODE*> site_FQ(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_C8(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_C8(&PHASE25_default_pool);
-#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
     DYN_ARRAY<SCALAR_NODE*> use_C10(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_C10(&PHASE25_default_pool);
 #endif
@@ -1390,7 +1388,7 @@ Perform_Gather_Scatter(
 	use_F4.AddElement(exposed_use[i-1]->Bottom_nth(j));
 	site_F4.AddElement(exposed_site[i-1]->Bottom_nth(j));
 	break;
-#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
       case MTYPE_F10:
         use_F10.AddElement(exposed_use[i-1]->Bottom_nth(j));
         site_F10.AddElement(exposed_site[i-1]->Bottom_nth(j));
@@ -1404,10 +1402,11 @@ Perform_Gather_Scatter(
 	use_C8.AddElement(exposed_use[i-1]->Bottom_nth(j));
 	site_C8.AddElement(exposed_site[i-1]->Bottom_nth(j));
 	break;
-#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
       case MTYPE_C10:
 	use_C10.AddElement(exposed_use[i-1]->Bottom_nth(j));
 	site_C10.AddElement(exposed_site[i-1]->Bottom_nth(j));
+        break;
 #endif
       case MTYPE_CQ:
 	use_CQ.AddElement(exposed_use[i-1]->Bottom_nth(j));
@@ -1462,7 +1461,7 @@ Perform_Gather_Scatter(
       Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop,
 				   loop_current, use_F4, site_F4, 
 				   if_stmt, &alloc_loop,&dealloc_loop);
-#ifdef PATHSCALE_MERGE
+#ifdef TARG_IA64
     if (use_F10.Elements())
       Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop,
                                    loop_current, use_F10, site_F10,
@@ -1476,6 +1475,12 @@ Perform_Gather_Scatter(
       Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop,
 				   loop_current, use_C8, site_C8, 
 				   if_stmt, &alloc_loop,&dealloc_loop);
+#ifdef TARG_IA64
+    if (use_C10.Elements()) 
+      Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop,
+				   loop_current, use_C10, site_C10, 
+				   if_stmt, &alloc_loop,&dealloc_loop);
+#endif
     if (use_CQ.Elements()) 
       Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop,
 				   loop_current, use_CQ, site_CQ, 

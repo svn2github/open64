@@ -2081,10 +2081,8 @@ void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
   } else if (WN_operator(wn) == OPR_PAREN) {
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
   } else if (WN_opcode(wn) == OPC_I8I4CVT
-#ifdef PATHSCALE_MERGE
-					|| WN_opcode(wn) == OPC_U8I4CVT
-#endif
-  	) {
+	     || WN_opcode(wn) == OPC_U8I4CVT
+  ) {
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
 #ifdef KEY 
   // Bug 4525 - tolerate CVTs in the access vector for -m64 compilation

@@ -2153,7 +2153,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         mINT16* prefetch_vec = pfdesc->Vec(level_1); 
         mINT16 depth = Get_Depth();
         if (prefetch_vec[depth]) {
-	  INT dp = depth-2;
+	  INT dp = depth-1;
 	  while (dp >= 0) {
 	    if (prefetch_vec[dp]) break;
 	    dp--;

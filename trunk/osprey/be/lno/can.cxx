@@ -652,7 +652,7 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
       }
-#ifdef PATHSCALE_MERGE
+#ifndef KEY
       for (INT i=0; i<dlistack->Elements()-inside_bound-1; i++) {
 	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
       }
@@ -669,7 +669,7 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
         }
 	INT i=0;
 	INT min = MIN(stack->Elements(),label_loops.Elements());
-#ifdef PATHSCALE_MERGE
+#ifndef KEY 
 	if (stack->Elements() > 0 && stack->Elements() <= label_loops.Elements()) {
 	  dlistack->Top_nth(0)->Has_Gotos = TRUE;
 	  dlistack->Top_nth(0)->Has_Conditional = TRUE;
@@ -685,22 +685,22 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
     } else if (opcode == OPC_DO_WHILE || opcode == OPC_WHILE_DO) {
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
-#ifdef PATHSCALE_MERGE
+#ifndef KEY
 	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
 #endif
       }
     } 
-#ifdef PATHSCALE_MERGE
-			else if (opcode == OPC_RETURN){
+#ifndef KEY
+    else if (opcode == OPC_RETURN){
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
-				dlistack->Bottom_nth(i)->Has_Exits = TRUE;
+	dlistack->Bottom_nth(i)->Has_Exits = TRUE;
       }
     }
 #endif
-			else {
+    else {
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
-#ifdef PATHSCALE_MERGE
+#ifndef KEY
 	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
 #endif
         dlistack->Bottom_nth(i)->Has_Gotos_This_Level = TRUE;
@@ -1505,15 +1505,13 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
         case MTYPE_I4 : case MTYPE_U4: case MTYPE_F4: load_size=4; break;
         case MTYPE_I8 : case MTYPE_U8: case MTYPE_F8: case MTYPE_C4:
 	  load_size = 8; break;
-#ifdef PATHSCALE_MERGE
 #ifdef TARG_IA64
 	case MTYPE_F10: load_size = 16; break;
 #endif
-#endif
         case MTYPE_C8 : case MTYPE_FQ: 
 	  load_size = 16; break;
-#ifdef PATHSCALE_MERGE
-				case MTYPE_C10:
+#ifdef TARG_IA64
+	case MTYPE_C10:
 #endif
         case MTYPE_CQ :
 	  load_size = 32; break;

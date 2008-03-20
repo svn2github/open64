@@ -973,7 +973,7 @@ inline BOOL Do_Loop_Has_Gotos (WN *wn)
   return(dli && dli->Has_Gotos);
 }
 
-#ifdef PATHSCALE_MERGE
+#ifndef KEY
 inline BOOL Do_Loop_Has_Conditional( WN *wn)
 {
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
