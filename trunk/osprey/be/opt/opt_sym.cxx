@@ -2677,9 +2677,20 @@ OPT_STAB::Create(COMP_UNIT *cu, REGION_LEVEL rgn_level)
 
   // Fix 648051: move loop normalization after BE address flag is valid
   if (WOPT_Enable_IVR) {
-    SET_OPT_PHASE("Loop normalization");
-    cu->Normalize_loop(cu->Input_tree());
-    SET_OPT_PHASE("Create AUX Symbol table");
+    SET_OPT_PHASE ("Loop normalization"); 
+    BOOL trace_loop = Get_Trace (TP_WOPT2, LOOP_NORM_FLAG);
+    if (trace_loop) {
+      fprintf (TFile, "%sDump before Loop Normalization \n%s", DBar, DBar);
+      fdump_tree (TFile, cu->Input_tree ());
+    }
+                  
+    cu->Normalize_loop (cu->Input_tree ());
+    
+    if (trace_loop) {
+      fprintf (TFile, "%sDump after Loop Normalization \n%s", DBar, DBar);
+      fdump_tree (TFile, cu->Input_tree ());
+    }
+    SET_OPT_PHASE ("Create AUX Symbol table");
   } 
 
   // Setup links to regular symtab, build chi and mu functions

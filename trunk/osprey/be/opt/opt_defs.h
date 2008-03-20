@@ -153,46 +153,49 @@ Is_fortran(void)
  * Tracing flags:  -ttPHASE-NUMBER:FLAG
  */
 
-/* TP_GLOBOPT (phase-number) */
-#define DOM_DUMP_FLAG	     0x0001 /* print dominator tree	      	    */
-#define SSA_DUMP_FLAG	     0x0002 /* trace construction of phi functions  */
-#define CFG_VERF_FLAG        0x0004 /* verify control flow graph  	    */ 
-#define CFG_DUMP_FLAG        0x0008 /* dump control flow graph    	    */ 
-#define DSE_DUMP_FLAG        0x0010 /* trace dead-store elim (preopt)       */
-#define PROP_DUMP_FLAG       0x0020 /* dump copy propagation's output       */
-#define FOLD_DUMP_FLAG	     0x0040 /* trace simple folding to constants    */
-#define DCE_DUMP_FLAG        0x0080 /* dump dead-code elim (on stmtrep)     */
-#define IVR_DUMP_FLAG        0x0100 /* dump/trace IV recognition            */
-#define DU_DUMP_FLAG         0x0200 /* dump/trace D-U chain construction    */
-#define EMIT_DUMP_FLAG       0x0400 /* dump after converting back into WHIRL*/
-#define ALIAS_DUMP_FLAG      0x0800 /* trace alias analysis		    */
-#define ITAB_DUMP_FLAG	     0x1000 /* itable dump flag		            */
-#define DFEQN_DUMP_FLAG	     0x2000 /* data-flow equations dump flag	    */
-#define CR_DUMP_FLAG         0x4000 /* dump CODEMAP, STMTREP and CODEREP    */
-#define DFLOC_DUMP_FLAG	     0x8000 /* data-flow equations dump flag	    */
-#define RVI_TRACE_FLAG      0x10000 /* reg-variable identification trace    */
-#define MAIN_EMIT_DUMP_FLAG 0x20000 /* main-emitter dump flag               */
-#define INDUCTION_DUMP_FLAG 0x40000 /* mainopt find induction trace flag    */
-#define OPT_LOWER_FLAG      0x80000 /* dump lowered tree in pre/main opt    */
-#define LFTR_FLAG          0x100000 /* linear function test replacement     */
-#define IVE_TRACE_FLAG     0x200000 /* induction var elim trace             */
-#define LPRE_DUMP_FLAG     0x400000 /* trace SSA-LPRE */
-#define LDX_DUMP_FLAG      0x800000 /* Index load optimization              */
-#define ALIAS_TRACE_FLAG  0x1000000 /* trace alias analysis for CG          */
-#define EXC_TRACE_FLAG    0x2000000 /* trace C++ exception handling         */
-#define TAIL_TRACE_FLAG   0x4000000 /* trace tail recursion 		    */
-#define EPRE_DUMP_FLAG    0x8000000 /* trace SSA-EPRE */
-#define SPRE_DUMP_FLAG   0x10000000 /* trace SSA-SPRE */
-#define MEM_DUMP_FLAG    0x20000000 /* mem_pool trace */
-#define STATISTICS_FLAG  0x40000000 /* trace statistics */
-#define ENABLE_STAT      0x80000000 /* enable statistics */
-#define SECOND_RENAME_FLAG      0x2 /* second CODEMAP renaming */
-#define BOOL_SIMP_FLAG          0x4 /* boolean expr simplification */
-#define FB_PRE_FLAG             0x8 /* trace feedback PRE */
-#define CFG_OPT_FLAG           0x10 /* trace CFG optimzation */
-#define WOVP_DUMP_FLAG         0x20 /* dump after write-once variable promotion*/
-#define PT_SUMMARY_FLAG        0x40 /* trace the points-to summary */    
-#define LOOP_MULTVER_FLAG      0x80 /* Loop multiversioning */ 
+/* TP_GLOBOPT (or TP_WOPT1) (phase-number) */
+#define DOM_DUMP_FLAG       0x00000001 /* print dominator tree                */
+#define SSA_DUMP_FLAG       0x00000002 /* trace construction of phi functions */
+#define CFG_VERF_FLAG       0x00000004 /* verify control flow graph           */ 
+#define CFG_DUMP_FLAG       0x00000008 /* dump control flow graph             */ 
+#define DSE_DUMP_FLAG       0x00000010 /* trace dead-store elim (preopt)      */
+#define PROP_DUMP_FLAG      0x00000020 /* dump copy propagation's output      */
+#define FOLD_DUMP_FLAG      0x00000040 /* trace simple folding to constants   */
+#define DCE_DUMP_FLAG       0x00000080 /* dump dead-code elim (on stmtrep)    */
+#define IVR_DUMP_FLAG       0x00000100 /* dump/trace IV recognition           */
+#define DU_DUMP_FLAG        0x00000200 /* dump/trace D-U chain construction   */
+#define EMIT_DUMP_FLAG      0x00000400 /* dump after converting back into WHIRL*/
+#define ALIAS_DUMP_FLAG     0x00000800 /* trace alias analysis                */
+#define ITAB_DUMP_FLAG      0x00001000 /* itable dump flag                    */
+#define DFEQN_DUMP_FLAG     0x00002000 /* data-flow equations dump flag       */
+#define CR_DUMP_FLAG        0x00004000 /* dump CODEMAP, STMTREP and CODEREP   */
+#define DFLOC_DUMP_FLAG     0x00008000 /* data-flow equations dump flag       */
+#define RVI_TRACE_FLAG      0x00010000 /* reg-variable identification trace   */
+#define MAIN_EMIT_DUMP_FLAG 0x00020000 /* main-emitter dump flag              */
+#define INDUCTION_DUMP_FLAG 0x00040000 /* mainopt find induction trace flag   */
+#define OPT_LOWER_FLAG      0x00080000 /* dump lowered tree in pre/main opt   */
+#define LFTR_FLAG           0x00100000 /* linear function test replacement    */
+#define IVE_TRACE_FLAG      0x00200000 /* induction var elim trace            */
+#define LPRE_DUMP_FLAG      0x00400000 /* trace SSA-LPRE                      */
+#define LDX_DUMP_FLAG       0x00800000 /* Index load optimization             */
+#define ALIAS_TRACE_FLAG    0x01000000 /* trace alias analysis for CG         */
+#define EXC_TRACE_FLAG      0x02000000 /* trace C++ exception handling        */
+#define TAIL_TRACE_FLAG     0x04000000 /* trace tail recursion                */
+#define EPRE_DUMP_FLAG      0x08000000 /* trace SSA-EPRE                      */
+#define SPRE_DUMP_FLAG      0x10000000 /* trace SSA-SPRE                      */
+#define MEM_DUMP_FLAG       0x20000000 /* mem_pool trace                      */
+#define STATISTICS_FLAG     0x40000000 /* trace statistics                    */
+#define ENABLE_STAT         0x80000000 /* enable statistics                   */
+
+/* TP_WOPT2 (phase-number) */
+#define SECOND_RENAME_FLAG  0x00000002 /* second CODEMAP renaming             */
+#define BOOL_SIMP_FLAG      0x00000004 /* boolean expr simplification         */
+#define FB_PRE_FLAG         0x00000008 /* trace feedback PRE                  */
+#define CFG_OPT_FLAG        0x00000010 /* trace CFG optimzation               */
+#define WOVP_DUMP_FLAG      0x00000020 /* dump after write-once variable promotion*/
+#define PT_SUMMARY_FLAG     0x00000040 /* trace the points-to summary         */    
+#define LOOP_MULTVER_FLAG   0x00000080 /* Loop multiversioning                */ 
+#define LOOP_NORM_FLAG      0x00000100 /* Trace Loop Normalization            */
 
 /* Flags associated with value numbering scheme and the 
  * WOPT_Enable_Value_Numbering option.
