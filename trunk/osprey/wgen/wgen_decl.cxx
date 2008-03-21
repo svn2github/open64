@@ -2891,6 +2891,7 @@ AGGINIT::Traverse_Aggregate_Array (
 	    (gs_tree_code(next) == GS_FDESC_EXPR) &&
 	    (gs_tree_operand(tree_value, 0) == gs_tree_operand(next, 0)) ) {
   	  idx++; // Skip the next one
+          curr_index_elem = gs_operand(curr_index_elem, 1);
 	  Add_Initv_For_Tree (tree_value, esize);
   	  emitted_bytes += (esize << 1);  // *2, fptr + gp
   	  current_offset += (esize << 1);
