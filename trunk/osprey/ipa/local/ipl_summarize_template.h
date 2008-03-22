@@ -1875,9 +1875,21 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	// label use
 	case OPR_GOTO_OUTER_BLOCK:
 	    Is_True (FALSE, ("Did not expect GOTO_OUTER_BLOCK"));
+    case OPR_REGION_EXIT:
+        {
+            WN *region_exits = LWN_Get_Parent(w2);
+            if(region_exits != NULL && WN_operator(region_exits) == OPR_BLOCK) {
+                WN *region = LWN_Get_Parent(region_exits);
+                if(region != NULL && WN_operator(region) == OPR_REGION
+                        && WN_kid0(region) == region_exits) {
+                    // skip the duplicate REGION_EXIT in REGION EXITS pragma
+                    break;
+                }
+            }
+        }
+        // fall through
         case OPR_TRUEBR:
         case OPR_FALSEBR:
-        case OPR_REGION_EXIT:
 	case OPR_GOTO:
 	case OPR_CASEGOTO:
 	    label_use_map [WN_label_number (w2)].seen = TRUE;
