@@ -815,7 +815,7 @@ ipfec_targ_gen:  $(KNOBS_OBJ) $(KNOBS_FILES) $(KAPI_LIBS)
 	ln -sf $(TARGINFO_DIR)/v26-itanium-41-external.knb v26-itanium-41-external.knb
 
 $(KAPI_LIBS): 
-	cd ${KAPI_DIR}; gmake libkapi_ia64.a;
+	cd ${KAPI_DIR}; make libkapi_ia64.a;
 #
 
 clear:
