@@ -1015,6 +1015,8 @@ main()
 		    TOP_lock_and64, 0x000000ff,
 		    TOP_lock_or32, 0x000000ff,
 		    TOP_lock_or64, 0x000000ff,
+		    TOP_lock_xadd32, 0x000000ff,
+		    TOP_lock_xadd64, 0x000000ff,
 		    TOP_lock_xor32, 0x000000ff,
 		    TOP_lock_xor64, 0x000000ff,
 		    TOP_lock_sub32, 0x000000ff,

@@ -1150,6 +1150,8 @@ main ()
 	      "lock_and64",
 	      "lock_or32",
 	      "lock_or64",
+	      "lock_xadd32",
+	      "lock_xadd64",
 	      "lock_xor32",
 	      "lock_xor64",
 	      "lock_sub32",

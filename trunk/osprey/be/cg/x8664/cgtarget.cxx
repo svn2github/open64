@@ -451,6 +451,7 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_lock_adc32:
   case TOP_lock_and32:
   case TOP_lock_or32:
+  case TOP_lock_xadd32:
   case TOP_lock_xor32:
   case TOP_lock_sub32:
     return 4;
@@ -526,6 +527,7 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_lock_add64:
   case TOP_lock_and64:
   case TOP_lock_or64:
+  case TOP_lock_xadd64:
   case TOP_lock_xor64:
   case TOP_lock_sub64:
   case TOP_fmovsldupx:

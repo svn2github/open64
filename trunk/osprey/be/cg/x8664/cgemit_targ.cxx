@@ -1379,6 +1379,9 @@ static void Init_OP_Name()
   OP_Name[TOP_lock_or32] = "orl";
   OP_Name[TOP_lock_or64] = "orq";
 
+  OP_Name[TOP_lock_xadd32] = "xaddl";
+  OP_Name[TOP_lock_xadd64] = "xaddq";
+
   OP_Name[TOP_lock_xor32] = "xorl";
   OP_Name[TOP_lock_xor64] = "xorq";
 

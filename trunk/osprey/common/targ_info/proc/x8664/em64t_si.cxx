@@ -324,6 +324,8 @@ int main (int argc, char *argv[])
 		     TOP_lock_and64,
 		     TOP_lock_or32,
 		     TOP_lock_or64,
+		     TOP_lock_xadd32,
+		     TOP_lock_xadd64,
 		     TOP_lock_xor32,
 		     TOP_lock_xor64,
 		     TOP_lock_sub32,
