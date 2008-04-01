@@ -332,13 +332,6 @@ Targ_Name ( TARGET_PROCESSOR b)
 void
 Preconfigure_Target ( void )
 {
-#if defined(linux)
-  Target_Byte_Sex = LITTLE_ENDIAN;
-#else
-  Target_Byte_Sex = BIG_ENDIAN;
-#endif
-  Same_Byte_Sex = ( Target_Byte_Sex == Host_Byte_Sex );
-
   return;
 }
 

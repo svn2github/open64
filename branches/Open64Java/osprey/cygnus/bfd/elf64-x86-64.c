@@ -655,12 +655,8 @@ elf64_x86_64_check_relocs (bfd *abfd, struct bfd_link_info *info, asection *sec,
       if (r_symndx < symtab_hdr->sh_info)
 	h = NULL;
       else
-	{
-	  h = sym_hashes[r_symndx - symtab_hdr->sh_info];
-          //OSP_413
-	  //fix the problem for fortran _MAIN problem on x86
-          h->ref_regular = 1;
-        }
+	h = sym_hashes[r_symndx - symtab_hdr->sh_info];
+
       r_type = elf64_x86_64_tls_transition (info, r_type, h == NULL);
       switch (r_type)
 	{

@@ -546,7 +546,6 @@ friend void RGN_Gen_And_Insert_Node(BB *new_bb,BB *pred_bb, BB *succ_bb,
 friend BB   *RGN_Gen_And_Insert_BB_After(BB *point,REGIONAL_CFG *regional_cfg);
 friend BB   *RGN_Gen_And_Insert_BB_Before(BB *point, REGIONAL_CFG *regional_cfg);
 friend void RGN_Remove_BB_And_Edges(BB *bb, REGIONAL_CFG *regional_cfg);
-friend void RGN_Unlink_BB_Edges(BB *bb, REGIONAL_CFG *regional_cfg);
 friend void Add_Regional_Cfg_Edge(REGIONAL_CFG_NODE *pred, REGIONAL_CFG_NODE *succ, REGION *rgn);
 friend void Del_Regional_Cfg_Edge(REGIONAL_CFG_NODE *pred, REGIONAL_CFG_NODE *succ, REGION *rgn);
 friend void RGN_Link_Pred_Succ_With_Prob(BB *pred, BB *succ, float prob,

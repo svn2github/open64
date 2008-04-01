@@ -1,7 +1,3 @@
-/*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 /* Top-level control of tree optimizations.
    Copyright 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
    Contributed by Diego Novillo <dnovillo@redhat.com>
@@ -600,20 +596,34 @@ tree_rest_of_compilation (tree fndecl)
   struct cgraph_node *saved_node = NULL, *node;
 
 #ifdef KEY
-  // This is the *only* point where we fully translate a FUNCTION_DECL for C++.
-  // Exception: C++ thunk functions are fully translated from use_thunk().
+  // This is the *only* point where we fully translate a FUNCTION_DECL for JAVA.
+
   if (!strcmp("GNU C++", lang_hooks.name) &&
+	  flag_spin_file &&
+	  lang_hooks.cp_genericize){
+	  gs_x_func_decl(fndecl);
+
+	  lang_hooks.cp_genericize(fndecl);
+
+	  walk_tree_without_duplicates(&DECL_SAVED_TREE(fndecl), 
+	  								lang_hooks.simplify_aggr_init_exprs_r, 
+									NULL);
+  }
+
+  if (!strcmp("GNU Java", lang_hooks.name) &&
       flag_spin_file &&
-      lang_hooks.cp_genericize /* C++ ? */) {
+      lang_hooks.java_genericize ){
+	/*tree orin_body = DECL_SAVED_TREE (fndecl);
+	DECL_SAVED_TREE (fndecl) = java_gimplify_block (DECL_SAVED_TREE (fndecl));
     gs_x_func_decl(fndecl);
+	DECL_SAVED_TREE (fndecl) = orin_body;*/
     // gimplify
-    lang_hooks.cp_genericize(fndecl);
-    // simplify AGGR_INIT_EXPR into CALL_EXPR.
-    walk_tree_without_duplicates (&DECL_SAVED_TREE (fndecl),
-                                  lang_hooks.simplify_aggr_init_exprs_r,
-                                  NULL);
+    lang_hooks.java_genericize(fndecl);
+
   }
 #endif
+
+
   timevar_push (TV_EXPAND);
 
   gcc_assert (!flag_unit_at_a_time || cgraph_global_info_ready);

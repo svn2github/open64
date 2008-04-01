@@ -92,6 +92,12 @@ extern boolean debug;		/* debugging turned on */
 
 extern boolean nostdinc;	/* no standard include directory */
 
+//yzm
+#ifdef KEY
+extern char *main_method;
+extern char *generated_main_file;
+#endif
+
 extern char *help_pattern;	/* pattern string for help file */
 
 extern int inline_t;            /* toggle for inline options */
@@ -151,9 +157,6 @@ extern boolean flag_is_superceded (int optflag);
 #ifdef KEY /* bug 4260 */
 extern void check_convert_name(char *name);
 #endif /* KEY bug 4260 */
-
-/* check the tls-model is acceptable */
-extern void check_opt_tls_model(char *model);
 
 /* check if there is a -- and _XPG is set */
 extern void check_dashdash ( void );

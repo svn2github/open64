@@ -745,24 +745,6 @@ WFE_Array_Expr(tree exp,
     INT64 ofst = (BITSPERBYTE * Get_Integer_Value(DECL_FIELD_OFFSET(arg1)) +
 				Get_Integer_Value(DECL_FIELD_BIT_OFFSET(arg1)))
 			      / BITSPERBYTE;
-
-#ifdef KEY
-    // OSP_7, MODIFY_EXPR in ARRAY_REF
-    // Refer GCC 4.0.2: gcc.c-torture/compile/struct-non-lval-3.c
-    // We only handle this case so far:
-    // (p = q).x[index]
-    // the lhs of modify_expr is var_decl, not an expression
-    // ARRAY_REF
-    //     |---> MODIFY_EXPT
-    if (TREE_CODE(arg0) == MODIFY_EXPR) {
-      WFE_Expand_Expr(arg0);
-      tree lhs = TREE_OPERAND(arg0, 0);
-      Is_True (lhs != NULL && TREE_CODE(lhs) == VAR_DECL,
-		      ("Unsupported lhs for `(p=q).x[n]'"));
-      arg0 = lhs;
-    }
-#endif
-
 #ifdef KEY // bug 9725: If the field is an array of struct, it is considered
            // a single field.
     return WFE_Array_Expr(arg0, ty_idx, ty_idx0, ofst + component_offset,
@@ -925,22 +907,6 @@ WFE_Array_Expr(tree exp,
     wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
     *ty_idx = component_ty_idx == 0 ? ST_type(st) : component_ty_idx;
     return wn;
-  }
-  else if (code == COND_EXPR) {
-    // OSP_7, COND_EXPR in ARRAY_REF
-    // struct s { char c[1]; };
-    // struct s a, b, c;
-    // (i ? b : c).c[0];
-    // ARRAY_REF
-    //     |---> COND_EXPR
-    WN *wn1, *wn2;
-    wn = WFE_Expand_Expr (TREE_OPERAND(exp, 0));
-    wn1 = WFE_Array_Expr (TREE_OPERAND(exp, 1), ty_idx, component_ty_idx,
-		          component_offset, field_id);
-    wn2 = WFE_Array_Expr (TREE_OPERAND(exp, 2), ty_idx, component_ty_idx,
-		          component_offset, field_id);
-    Set_PU_has_very_high_whirl(Get_Current_PU());
-    return WN_CreateExp3(OPR_CSELECT, WN_rtype(wn1), MTYPE_V, wn, wn1, wn2);
   }
 #endif /* KEY */
   else {
@@ -1136,8 +1102,7 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
       }
       else result_wn = rhs_wn;
 
-      // OSP_382, do not store MTYPE_M into temp
-      if (need_result && rtype != MTYPE_M &&
+      if (need_result && 
 	  (volt ||
 	   assign_code == POSTINCREMENT_EXPR ||
 	   assign_code == POSTDECREMENT_EXPR)) { // save result in a preg
@@ -1329,8 +1294,7 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
       }
       else result_wn = rhs_wn;
 
-      // OSP_382, do not store MTYPE_M into temp
-      if (need_result && rtype != MTYPE_M &&
+      if (need_result && 
 	  (volt ||
            assign_code == POSTINCREMENT_EXPR ||
            assign_code == POSTDECREMENT_EXPR)) { // save result in a preg
@@ -1493,8 +1457,7 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
       }
       else result_wn = rhs_wn;
 
-      // OSP_382, do not store MTYPE_M into temp
-      if (need_result && rtype != MTYPE_M &&
+      if (need_result && 
 	  (volt ||
            assign_code == POSTINCREMENT_EXPR ||
 	   assign_code == POSTDECREMENT_EXPR)) { // save result in a preg
@@ -3025,20 +2988,6 @@ WFE_Expand_Expr (tree exp,
             wn = comma;
             break;
           }
-
-	  case MODIFY_EXPR : {
-	    // OSP_7, MODIFY_EXPR in ADDR_EXPR
-	    // (a = b).c
-	    // ADDR_EXPR
-	    //    |--> MODIFY_EXPR
-	    WFE_Expand_Expr (arg0);
-	    tree lhs = TREE_OPERAND(arg0, 0);
-	    Is_True (lhs != NULL && TREE_CODE(lhs) == VAR_DECL,
-			    ("Unsupported lhs for `(p=q).x'"));
-	    st = Get_ST(TREE_OPERAND(arg0, 0));
-	    wn = WN_Lda(Pointer_Mtype, ST_ofst(st), st);
-	    break;
-	  }
 #endif
 
 	  default:
@@ -4302,22 +4251,6 @@ WFE_Expand_Expr (tree exp,
 		}
 #endif // TARG_X8664
 
-#ifdef TARG_IA64
-		// For IA64, the memcpy is not necessary
-		// We use IStore directly, the original code also fails
-		// in IA64 with GNU 3 front-end(OSP bug #250)
-		FmtAssert( TREE_CODE(arglist) != ARRAY_TYPE,
-                         ("unexpected array type for intrinsic 'va_copy'") );
-		WN* addr = WFE_Expand_Expr( arg1 );
-		WN* value = WFE_Expand_Expr( arg2 );
-		wn = WN_CreateIstore( OPR_ISTORE, MTYPE_V, Pointer_Mtype,
-                                      0, arg_ty_idx, value, addr, 0 );
-		WFE_Stmt_Append( wn, Get_Srcpos() );
-		whirl_generated = TRUE;
-		wn = NULL;
-		break;
-#endif		
-		
 		WN *dst  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg1),
 					  arg_ty_idx, WN_PARM_BY_VALUE);
 		WN *src  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg2),
@@ -4333,7 +4266,9 @@ WFE_Expand_Expr (tree exp,
 		WFE_Stmt_Append (wn, Get_Srcpos());
 		whirl_generated = TRUE;
 		wn = NULL;
+#ifdef KEY
 		break;
+#endif
 	      }
 
 	      case BUILT_IN_VA_END:
@@ -4573,13 +4508,12 @@ WFE_Expand_Expr (tree exp,
                   wn = WN_Intconst (MTYPE_I4, 1);
 		  whirl_generated = TRUE; // KEY
 		}
-#ifdef KEY
+#ifdef KEY_bug1058
 // If not yet compile-time constant, let the backend decide if it is
 // a constant
 		else
 		{
 		  iopc = INTRN_CONSTANT_P;
-                  if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_I4;
 		  intrinsic_op = TRUE;
 		}
 #else

@@ -1243,12 +1243,13 @@ Localize_or_Replace_Dedicated_TNs(void)
 
     FOR_ALL_BB_OPs (bb, op) {
 
+#ifdef TARG_X8664
       /* Do not replace dedicated tn inside an inline asm. (bug#3067)
        */
-      if (OP_code(op) == TOP_asm) {
+      if( OP_code(op) == TOP_asm ){
 	continue;
       }
-      
+#endif
       for ( opndnum = 0; opndnum < OP_opnds( op ); opndnum++ ) {
 	tn = OP_opnd( op, opndnum );
 	if ( TN_is_constant(tn) || TN_is_zero_reg(tn) )

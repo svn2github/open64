@@ -229,11 +229,6 @@ TARG_DSO_SRCS_CXX = \
 	targ_bypass.cxx \
 	cggrp_ptn_table.cxx
 
-OLD_TARGINFO_ACCESS_C = \
-        ti_res.c        \
-        ti_res_count.c  \
-        ti_res_res.c
-
 # No head file for this class file
 TARG_INFO_SRCS_ONLY = \
 	targ_bypass.cxx
@@ -264,10 +259,8 @@ TARG_DSO_OBJS_CXX = $(TARG_DSO_SRCS_CXX:.cxx=.o)
 TARG_DSO_MCK_OBJS_C = $(TARG_DSO_MCK_SRCS_C:.c=.o)
 TARG_DSO_MCK_OBJS_CXX = $(TARG_DSO_MCK_SRCS_CXX:.cxx=.o)
 
-OLD_TARGINFO_ACCESS_OBJS_C = $(OLD_TARGINFO_ACCESS_C:.c=.o)
-
-TARG_DSO_OBJS = $(TARG_DSO_OBJS_C) $(TARG_DSO_OBJS_CXX) $(OLD_TARGINFO_ACCESS_OBJS_C)
-TARG_DSO_MCK_OBJS = $(TARG_DSO_MCK_OBJS_C) $(TARG_DSO_MCK_OBJS_CXX) $(OLD_TARGINFO_ACCESS_OBJS_C)
+TARG_DSO_OBJS = $(TARG_DSO_OBJS_C) $(TARG_DSO_OBJS_CXX)
+TARG_DSO_MCK_OBJS = $(TARG_DSO_MCK_OBJS_C) $(TARG_DSO_MCK_OBJS_CXX)
 
 TARG_INFO_EXPORTS_C = $(TARG_INFO_SRCS_C:.c=.Exported)
 TARG_INFO_EXPORTS_CXX = $(TARG_INFO_SRCS_CXX:.cxx=.Exported)

@@ -433,6 +433,21 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
       ac |= IBM_DISJOINT_RULE;
 
     break;
+  case PU_JAVA_LANG:     //czw
+    ac |= DEFAULT_C_RULES;
+    ac |= DEFAULT_CXX_RULES;
+    if (Alias_Pointer_Types)
+      ac |= C_ANSI_RULE;
+    if (Alias_Pointer_Strongly_Typed)
+      ac |= C_STRONGLY_TYPED_RULE;
+    if (Alias_Pointer_Named_Data)
+      ac |= RAG_UNNAMED_RULE;
+    if (Alias_Pointer_Restricted)
+      ac |= RAG_RESTRICTED_RULE;
+    if (Alias_Pointer_Disjoint)
+      ac |= IBM_DISJOINT_RULE;
+
+    break;
   default:
     Is_True(FALSE, ("Language is unknown; mixed-language inlining illegal."));
   }
@@ -1437,7 +1452,7 @@ ALIAS_MANAGER::Print( const WN *wn, FILE *fp ) const
   for ( i = Preg_id()+1; i <= Vec()->Lastidx(); i++) {
     fprintf( fp, "aliased_with<%d,{", i);
     for (INT32 oldid = Preg_id() + 1; oldid <= i; oldid++) {
-      if (Rule()->Aliased_Memop(Pt(oldid), Pt(i), Pt(oldid)->Ty(), Pt(i)->Ty(), TRUE))
+      if (Rule()->Aliased_Memop(Pt(oldid), Pt(i), Pt(oldid)->Ty(), Pt(i)->Ty()))
         fprintf( fp,"%d ", oldid);
     }
     fprintf( fp, "}>\n");

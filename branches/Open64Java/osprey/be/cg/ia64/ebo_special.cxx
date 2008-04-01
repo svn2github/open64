@@ -93,7 +93,6 @@ static const char source_file[] = __FILE__;
 #include "cg_spill.h"
 #include "cgexp_internals.h"
 #include "data_layout.h"
-#include "cxx_hash.h"
 
 #include "ebo.h"
 #include "ebo_info.h"
@@ -107,34 +106,8 @@ static const char source_file[] = __FILE__;
 /* Define a macro to sign-extend the least signficant 32 bits */
 #define SEXT_32(val) (((INT64)(val) << 32) >> 32)
 
-typedef HASH_TABLE<ST_IDX, INITV_IDX> ST_TO_INITV_MAP;
-static ST_TO_INITV_MAP *st_initv_map = NULL;
-static BOOL st_initv_map_inited = FALSE;
-static GTN_SET *work_gtn_set = NULL;
-static BS *work_defined_set = NULL;
-static MEM_POOL *work_pool = NULL;
-
 /* ===================================================================== */
 
-/* Initialize and finalize ebo special routines. */
-
-#if 0
-void
-EBO_Special_Start (MEM_POOL *pool)
-{
-  Init_Addr_Modes();
-}
-#endif
-
-void
-EBO_Special_Finish (void)
-{
-  st_initv_map = NULL;
-  st_initv_map_inited = FALSE;
-  work_gtn_set = NULL;
-  work_defined_set = NULL;
-  work_pool = NULL;
-}
 
 /*
  * Identify OP's that contain a constant and operate in a way that
@@ -5987,25 +5960,7 @@ condition_optimization(OP *op,
   EBO_Identify_Base_and_Offset ( &op2_tninfo, &op2, &op2_offset);
 
   if ((op1_tninfo == op2_tninfo) && (op1_tninfo != NULL) && (op1 != Zero_TN)) {
-    TOP opcode = OP_code(op);
-    if ( opcode == TOP_cmp_geu ||
-	 opcode == TOP_cmp_geu_unc ||
-	 opcode == TOP_cmp_ltu ||
-	 opcode == TOP_cmp_ltu_unc ||
-	 opcode == TOP_cmp_gtu ||
-	 opcode == TOP_cmp_gtu_unc ||
-	 opcode == TOP_cmp_leu ||
-	 opcode == TOP_cmp_leu_unc ||
-	 opcode == TOP_cmp_i_geu ||
-	 opcode == TOP_cmp_i_geu_unc ||
-	 opcode == TOP_cmp_i_ltu ||
-	 opcode == TOP_cmp_i_ltu_unc ||
-	 opcode == TOP_cmp_i_gtu ||
-	 opcode == TOP_cmp_i_gtu_unc ||
-	 opcode == TOP_cmp_i_leu ||
-	 opcode == TOP_cmp_i_leu_unc) {
-      return FALSE;
-    }
+
     if (EBO_Trace_Optimization) {
       #pragma mips_frequency_hint NEVER
       fprintf(TFile,"%sResolve compare symbolically by reducing to constants %lld : %lld.\n",

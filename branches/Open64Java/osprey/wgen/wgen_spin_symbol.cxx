@@ -75,12 +75,6 @@ extern "C"{
 #endif
 //#include "tree_cmp.h"
 
-#include <ext/hash_set>
-using __gnu_cxx::hash_set;
-typedef struct {
-    size_t operator()(void* p) const { return reinterpret_cast<size_t>(p); }
-} void_ptr_hash;
-
 extern int pstatic_as_global;
 extern BOOL flag_no_common;
 extern gs_t decl_arguments;
@@ -205,7 +199,7 @@ get_first_real_or_virtual_field (gs_t type_tree)
   // return vfield only if the type contains fields (bug 10787)
   // bug 11227: C_TYPE_INCOMPLETE_VARS for C is the same as TYPE_VFIELD,
   //            make sure we do not use it for C.
-  if (lang_cplus && gs_type_fields(type_tree) && gs_type_vfield(type_tree))
+  if ((lang_cplus || lang_java)&& gs_type_fields(type_tree) && gs_type_vfield(type_tree))//czw
     return gs_type_vfield(type_tree);
 
   return gs_type_fields(type_tree);
@@ -217,9 +211,9 @@ get_virtual_field (gs_t type_tree)
   gs_t vfield;
 
   // return vfield only if the type contains fields (bug 10787)
-  if (lang_cplus &&
+  if ((lang_cplus || lang_java) &&
       gs_type_fields(type_tree) &&
-      (vfield = gs_type_vfield(type_tree)) != NULL)
+      (vfield = gs_type_vfield(type_tree)) != NULL) //czw
     return vfield;
   return NULL;
 }
@@ -236,7 +230,7 @@ get_first_real_field (gs_t type_tree)
   // first field.
   if (field == gs_type_vfield(type_tree))
   {
-    Is_True (lang_cplus, ("get_first_real_field: TYPE_VFIELD used for C"));
+    Is_True ((lang_cplus || lang_java), ("get_first_real_field: TYPE_VFIELD used for C"));//czw
     return gs_tree_chain(field);
   }
   return field;
@@ -249,9 +243,7 @@ next_real_field (gs_t type_tree, gs_t field)
 
   if (field == gs_type_vfield(type_tree))
   {
-#if 0 //  bug 13102
-    Is_True (lang_cplus, ("next_real_field: TYPE_VFIELD used for C"));
-#endif
+    Is_True ((lang_cplus || lang_java), ("next_real_field: TYPE_VFIELD used for C"));//czw
     first_real_field = TRUE; // return first real field
   }
 
@@ -475,8 +467,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 #endif // TARG_X8664
 		  Set_TY_align (idx, align);
 		break;
-	case GS_CHAR_TYPE:
-		mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U1 : MTYPE_I1);
+	case GS_CHAR_TYPE:   //add lang_java for java char type 16bits 2008-1-15 ykq
+		if(lang_java) mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U2 : MTYPE_I2);
+                else mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U1 : MTYPE_I1);
 		idx = MTYPE_To_TY (mtype);	// use predefined type
 		break;
 	case GS_ENUMERAL_TYPE:
@@ -848,9 +841,15 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		if (vfield) {
 		  Is_True(gs_tree_code(vfield) == GS_FIELD_DECL,
 			  ("Create_TY_For_Tree: bad vfield code"));
+		  //czw
+		  if(lang_cplus)
 		  Is_True(gs_decl_name(vfield) &&
 			  !strncmp(Get_Name(gs_decl_name(vfield)),"_vptr", 5),
 			  ("Create_TY_For_Tree: bad vfield name"));
+		  if(lang_java)
+		  Is_True(gs_decl_name(vfield) &&
+              !strncmp(Get_Name(gs_decl_name(vfield)),"vtable", 6),
+	              ("Create_TY_For_Tree: bad vfield name"));
 		  // The vfield field ID is either not set, or was set to 1.
 		  Is_True(DECL_FIELD_ID(vfield) <= 1,
 			  ("Create_TY_For_Tree: invalid vfield field ID"));
@@ -909,21 +908,6 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		}
 #endif // KEY
 
-                hash_set <gs_t, void_ptr_hash> anonymous_base;
-                gs_t type_binfo, basetypes;
-
-                // find all base classes
-                if ((type_binfo = gs_type_binfo(type_tree)) != NULL &&
-                    (basetypes = gs_binfo_base_binfos(type_binfo)) != NULL) {
-                  gs_t list;
-                  for (list = basetypes; gs_code(list) != EMPTY;
-                       list = gs_operand(list, 1)) {
-                    gs_t binfo = gs_operand(list, 0);
-                    gs_t basetype = gs_binfo_type(binfo);
-                    anonymous_base.insert(basetype);
-                  } 
-                } 
-
 		// Assign IDs to real fields.  The vtable ptr field is already
 		// assigned ID 1.
 		for (field = get_first_real_field(type_tree); 
@@ -963,8 +947,6 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 					/ BITSPERBYTE);
                         if (gs_decl_name(field) == NULL)
                             Set_FLD_is_anonymous(fld);
-                        if (anonymous_base.find(gs_tree_type(field)) != anonymous_base.end())
-                            Set_FLD_is_base_class(fld); 
 		}
 
 		TYPE_FIELD_IDS_USED(type_tree) = next_field_id - 1;
@@ -1385,6 +1367,20 @@ Has_label_decl(gs_t init)
 }
 #endif
 
+bool Is_Java_Undeletable_Function(char* name_str)		//czw
+{
+	if(strncmp(name_str, "_ZN", 3) == 0)
+		return true;
+	
+	if(strncmp(name_str, "_GLOBAL__I_0", 12) == 0)
+		return true;
+
+	/*if(strcmp(name_str + strlen(name_str) - 4, "C1Ev") == 0)
+		return true;*/
+
+	return false;
+}
+
 ST*
 Create_ST_For_Tree (gs_t decl_node)
 {
@@ -1492,23 +1488,16 @@ Create_ST_For_Tree (gs_t decl_node)
 	if (gs_decl_assembler_name(decl_node) == NULL)
 	  p = name;
 	else p  = gs_identifier_pointer (gs_decl_assembler_name (decl_node));
+	if(Is_Java_Undeletable_Function(p))		//czw
+	{
+		Set_PU_no_delete(pu);
+	}
+	
 	if (*p == '*')
 	  p++;
         ST_Init (st, Save_Str(p),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
 
-        // St is a constructor
-        if (gs_decl_complete_constructor_p(decl_node) && !gs_decl_copy_constructor_p(decl_node))
-            Set_PU_is_constructor(pu);
-        // St is a pure virual function
-        if (gs_decl_pure_virtual_p(decl_node) || strncmp(p, "__cxa_pure_virtual", 18) == 0)
-            Set_ST_is_pure_vfunc(st);
-
-        if (gs_tree_code(gs_tree_type(decl_node)) == GS_METHOD_TYPE) {
-            TY_IDX base = Get_TY(gs_type_method_basetype(gs_tree_type(decl_node)));
-            Set_PU_base_class(pu, base);
-        }
-		
 	if (gs_decl_thunk_p(decl_node) &&
             gs_tree_code(gs_cp_decl_context(decl_node)) != GS_NAMESPACE_DECL)
 	  Set_ST_is_weak_symbol(st);
@@ -1583,8 +1572,21 @@ Create_ST_For_Tree (gs_t decl_node)
               eclass = EXPORT_PREEMPTIBLE;
             }
             else {
+				//czw
+#ifdef KEY
+				if (gs_decl_external(decl_node) ||
+				    (gs_decl_lang_specific(decl_node) &&
+				     gs_decl_really_extern(decl_node)))
+				{
+				         sclass = SCLASS_EXTERN;
+						 eclass = EXPORT_PREEMPTIBLE;
+				}
+#endif
+				else
+				{
               	sclass = SCLASS_FSTATIC;
 		eclass = EXPORT_LOCAL;
+				}
             }
             level = GLOBAL_SYMTAB;
           }
@@ -1723,8 +1725,6 @@ Create_ST_For_Tree (gs_t decl_node)
 #ifdef KEY
 	if (gs_tree_code (decl_node) == GS_VAR_DECL && gs_decl_threadprivate (decl_node))
 	  Set_ST_is_thread_private (st);
-	if (gs_tree_code (decl_node) == GS_VAR_DECL && gs_decl_thread_local (decl_node))
-          Set_ST_is_thread_local (st);
 #if 0 // wgen TODO
 	if (gs_tree_code (decl_node) == GS_VAR_DECL && anon_st)
 	  WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
@@ -1795,21 +1795,7 @@ Create_ST_For_Tree (gs_t decl_node)
   if (gs_tree_code(decl_node) == GS_VAR_DECL &&
       gs_decl_context(decl_node)	       &&
       gs_tree_code(gs_decl_context(decl_node)) == GS_RECORD_TYPE)
-  {
-    int null_field_offset = 0;
-	for (gs_t field = get_first_real_field(gs_decl_context(decl_node)); 
-		field;
-		field = next_real_field(gs_decl_context(decl_node), field) )
-	{
-		if ((gs_tree_code(field) == GS_FIELD_DECL)
-			 && ((gs_decl_field_offset(field) == NULL) || (gs_decl_field_bit_offset(field) == NULL))) {
-			null_field_offset = 1;
-			break;
-		}
-	}
-	if(!null_field_offset)
-		Get_TY(gs_decl_context(decl_node));
-  }
+	Get_TY(gs_decl_context(decl_node));
 
   if (Enable_WFE_DFE) {
     if (gs_tree_code(decl_node) == GS_VAR_DECL &&

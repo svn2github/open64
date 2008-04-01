@@ -139,7 +139,7 @@ public:
     // Add an element to a set:
     void Add_element ( INT32 fcount, INT32 elmt ) {
 	if ( fcount > 32 ) {
-	    *(_fbv._fdata+elmt/64) |= (mINT64)1 << (elmt&63);
+	    *(_fbv._fdata+elmt/64) |= 1 << (elmt&63);
 	} else {
 	    _fbv._fbits |= 1 << elmt;
 	}
@@ -148,7 +148,7 @@ public:
     // Check for an element in a set:
     BOOL Is_element ( INT32 fcount, INT32 elmt ) {
 	if ( fcount > 32 ) {
-	    return ( *(_fbv._fdata+elmt/64) & ( (mINT64)1 << (elmt&63) ) ) != 0;
+	    return ( *(_fbv._fdata+elmt/64) & ( 1 << (elmt&63) ) ) != 0;
 	} else {
 	    return ( _fbv._fbits & ( 1 << elmt ) ) != 0;
 	}

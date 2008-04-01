@@ -65,9 +65,6 @@
 #include "ipa_nested_pu.h"              // Build_Nested_Pu_Relations
 #include "ipo_tlog_utils.h"		// Ipa_tlog
 
-#include "ipa_chg.h"                    // Class hierarchy graph
-#include "ipa_devirtual.h"              // Devirtualization
-
 #include "ipo_defs.h"
 
 #ifndef KEY
@@ -326,6 +323,21 @@ Perform_Interprocedural_Analysis ()
 	Build_Call_Graph ();
 
 #ifdef KEY
+	if( IPA_Enable_Icall_Opt ){
+	  if( has_nested_pu ){
+	    Build_Nested_Pu_Relations();
+	    if (Verbose) {
+		fprintf (stderr, "Building Nested PU Relations...");
+		fflush (stderr);
+	    }
+	    has_nested_pu = FALSE;
+	  }
+
+	  IPA_Convert_Icalls( IPA_Call_Graph );
+	}
+#endif // KEY
+
+#ifdef KEY
         {
           IPA_NODE_ITER cg_iter(IPA_Call_Graph, POSTORDER);
 	  // Traverse the call graph and mark C++ nodes as PU_Can_Throw
@@ -352,7 +364,8 @@ Perform_Interprocedural_Analysis ()
 			PU caller_pu = Pu_Table[ST_pu((caller)->Func_ST())];
 			if (IPA_Enable_EH_Region_Removal &&
 			    node->PU_Can_Throw() &&
-			    PU_src_lang (caller_pu) & PU_CXX_LANG)
+			    (PU_src_lang (caller_pu) & PU_CXX_LANG ||
+			     PU_src_lang (caller_pu) & PU_JAVA_LANG))
 		    	  caller->Set_PU_Can_Throw();
 
 		        if (node->Summary_Proc()->Has_side_effect())
@@ -524,12 +537,6 @@ Perform_Interprocedural_Analysis ()
 #endif
     }
 
-    if (IPA_Enable_Devirtualization) {
-        Temporary_Error_Phase ephase ("IPA Devirtualization");
-        IPA_Class_Hierarchy = Build_Class_Hierarchy();
-        IPA_devirtualization();
-    }
-	
     if ( IPA_Enable_Simple_Alias ) {
       Temporary_Error_Phase ephase ("Interprocedural Alias Analysis");
       if (Verbose) {
@@ -770,7 +777,8 @@ Perform_Interprocedural_Analysis ()
 
 	if (Trace_IPA || Trace_Perf) {
 	    fprintf (TFile, "\n\tTotal code expansion = %d%%, total prog WHIRL size = 0x%x \n",
-		     Orig_Prog_Weight == 0 ? 0 : (Total_Prog_Size - (INT) Orig_Prog_Weight) * 100 / (INT) Orig_Prog_Weight,
+		     (Total_Prog_Size - (INT) Orig_Prog_Weight) * 100 /
+		     (INT) Orig_Prog_Weight,
 		     Total_Prog_Size);
 	    fprintf (TFile, "\t<<<Inlining analysis completed>>>\n");
 	}

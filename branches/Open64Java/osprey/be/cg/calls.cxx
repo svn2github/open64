@@ -602,23 +602,6 @@ Generate_Entry (BB *bb, BOOL gra_run )
   }
 
   if ( gra_run ) {
-#ifdef TARG_IA64
-    /* Add explicit definition of formal registers */
-    FOR_ALL_BB_OPs (REGION_First_BB, op){
-      for (INT i = 0; i < OP_opnds(op); i++) {
-        TN* opnd = OP_opnd(op, i);
-        if (!TN_is_register (opnd) || !TN_is_dedicated(opnd)) {
-          continue;
-        }
-        PREG_NUM pnum = TN_To_PREG (opnd);
-        if (Is_Formal_Preg (pnum)){
-          Exp_COPY(opnd,opnd,&ops);
-          Set_OP_no_move_before_gra(OPS_last(&ops));
-        }
-      }
-    }
-#endif
-
     /* Copy from the callee saves registers to register TNs */
     for ( callee_num = 0; callee_num < Callee_Saved_Regs_Count; ++callee_num ) {
       TN *callee_tn = CALLEE_tn(callee_num);
@@ -642,29 +625,18 @@ Generate_Entry (BB *bb, BOOL gra_run )
       // accessible as 4(%ebp), but it is never in a register.  Nor
       // does it need to be saved.
       ST *ra_sv_sym = Find_Special_Return_Address_Symbol();
-      // bug fix for OSP_357
-      // When gra is enabled, we build this instruction:
-      //       branch_reg1 (save register) copy.br branch_reg
-      // just like the floating point/integer registers
-      // GRA honors the save register property, and tries to allocate branch_reg1 to branch_reg
-      // If it fails, then branch_reg would be spilled, and this instruction will be deleted
-      // However, LRA does not honor this and we prefer to directly spill this branch register
-      if ( gra_run ) {
-          TN *ra_sv_tn = Build_TN_Like(RA_TN);
-          Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
-          Set_TN_spill(ra_sv_tn, ra_sv_sym);
-          Exp_COPY (ra_sv_tn, RA_TN, &ops);
-          if (MTYPE_byte_size(Pointer_Mtype) < MTYPE_byte_size(Spill_Int_Mtype) ) {
-	    /* In n32 the __return_address is 4 bytes (pointer),
-	     * but we need 8-byte save/restore to make kernel and dbx happy.
-	     * So use dummy 8-byte base that was created. */
-	    ra_sv_sym = ST_base(ra_sv_sym);		/* use 8-byte block */
-	    Set_TN_spill(ra_sv_tn, ra_sv_sym);	/* so dwarf uses new addr */
-          }
-          CGSPILL_Store_To_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb);
-      } else {
-          CGSPILL_Store_To_Memory ( RA_TN, ra_sv_sym, &ops, CGSPILL_LCL, bb );
+      TN *ra_sv_tn = Build_TN_Like(RA_TN);
+      Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
+      Set_TN_spill(ra_sv_tn, ra_sv_sym);
+      Exp_COPY (ra_sv_tn, RA_TN, &ops);
+      if (MTYPE_byte_size(Pointer_Mtype) < MTYPE_byte_size(Spill_Int_Mtype) ) {
+	/* In n32 the __return_address is 4 bytes (pointer),
+	 * but we need 8-byte save/restore to make kernel and dbx happy.
+	 * So use dummy 8-byte base that was created. */
+	ra_sv_sym = ST_base(ra_sv_sym);		/* use 8-byte block */
+	Set_TN_spill(ra_sv_tn, ra_sv_sym);	/* so dwarf uses new addr */
       }
+      CGSPILL_Store_To_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb);
     }
 #ifdef TARG_IA64
     else if (PU_Has_Calls || IPFEC_Enable_Edge_Profile){

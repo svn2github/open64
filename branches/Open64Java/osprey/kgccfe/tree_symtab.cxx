@@ -916,8 +916,7 @@ Create_ST_For_Tree (tree decl_node)
 	      if (DECL_INITIAL(decl_node))
 		sclass = SCLASS_DGLOBAL;
 	      else if (TREE_STATIC(decl_node)) {
-		if (flag_no_common || DECL_SECTION_NAME(decl_node) ||
-                    DECL_THREAD_LOCAL(decl_node) )
+		if (flag_no_common || DECL_SECTION_NAME(decl_node))
               	  sclass = SCLASS_UGLOBAL;
 		else
               	  sclass = SCLASS_COMMON;
@@ -998,7 +997,6 @@ Create_ST_For_Tree (tree decl_node)
 		Set_TY_is_const (ty_idx);
 	if (TREE_THIS_VOLATILE(decl_node))
 		Set_TY_is_volatile (ty_idx);
-
 #ifdef KEY
 	// Handle aligned attribute (bug 7331)
 	if (DECL_USER_ALIGN (decl_node))
@@ -1013,9 +1011,6 @@ Create_ST_For_Tree (tree decl_node)
         if (TREE_CODE(decl_node) == PARM_DECL) {
 		Set_ST_is_value_parm(st);
         }
-	if (TREE_CODE(decl_node) == VAR_DECL && DECL_THREAD_LOCAL(decl_node)) {
-		Set_ST_is_thread_local (st);
-	}
       }
       break;
 

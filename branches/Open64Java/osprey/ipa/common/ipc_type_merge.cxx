@@ -959,7 +959,6 @@ Merge_All_Types (const IPC_GLOBAL_TABS& original_tabs,
             // If it is recursive or not complete, insert it into recursive table.
             if (Is_Incomplete_Or_Recursive(TY_IDX_index(ty_map.map_[idx])))
                 Insert_Recursive_Type(ty_map.map_[idx]);
-
     }
 } // Merge_All_Types
 

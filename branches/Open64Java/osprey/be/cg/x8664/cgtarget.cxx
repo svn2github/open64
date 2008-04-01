@@ -1451,28 +1451,20 @@ VARIANT CGTARG_Analyze_Branch(
 	    ("CGTARG_Analyze_Branch: unexpected branch OP code"));
     BBLIST *edge;
     BB *fall_thru_pred = BB_Fall_Thru_Predecessor(OP_bb(br));
-    int preds = 0;
-    // Search all the preds.  The cmp op may or may not be in the fall thru
-    // pred because cflow may have rearranged the BBs.
     FOR_ALL_BB_PREDS(OP_bb(br), edge) {
       BB *pred = BBLIST_item(edge);
-      preds++;
-      // Find the cmp op.
-      for (OP* op = BB_last_op(pred); op != NULL; op = OP_prev(op)) {
-        if (TOP_is_change_rflags(OP_code(op))) {
-      	  Is_True(cmp_op == NULL,
-		  ("CGTARG_Analyze_Branch: found multiple cmp ops"));
-          cmp_op = op;
-          break;
-        }
-      }
-#if !defined(Is_True_On)
-      if (cmp_op != NULL)
+      if (pred != fall_thru_pred) {
+	// Find the cmp op.
+	for (OP* op = BB_last_op(pred); op != NULL; op = OP_prev(op)) {
+	  if (TOP_is_change_rflags(OP_code(op))) {
+	    cmp_op = op;
+	    break;
+	  }
+	}
+	Is_True(cmp_op != NULL, ("CGTARG_Analyze_Branch: cannot find cmp op"));
 	break;
-#endif
+      }
     }
-    Is_True(preds == 2,
-	    ("CGTARG_Analyze_Branch: unexpected number of pred BBs"));
   }
 #endif
 
@@ -3009,25 +3001,12 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       mtype = WN_rtype(load);
     ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(mtype));
   }
-  else if (*constraint == 'X') // bug 11884
-  {
-    TYPE_ID mtype = MTYPE_I4;    
-    if (load)
-      mtype = WN_rtype(load);
-    ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(mtype));
-  }
   else if (*constraint == 'Y')
   {
     TYPE_ID mtype = MTYPE_F8;    
     if (load)
       mtype = WN_rtype(load);
     ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(mtype));
-  }
-  else if (*constraint == 'y')
-  {
-    // OSP_417, 'y' means any MMX registers
-    // bad register class, should be mmx, not float
-    ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx));
   }
   else
   {

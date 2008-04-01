@@ -68,6 +68,10 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 extern void gspin_gxx_emits_decl (tree);
 extern void gspin_gxx_emits_asm (char *);
 
+//yzm
+enum language { C, CPP, JAVA };
+extern enum language language;
+
 extern int flag_spin_file;
 #endif
 
@@ -1797,7 +1801,19 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
         TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (decl)))
       gs_set_flag_value (DECL_ASSEMBLER_NAME(decl),
                          GS_TREE_SYMBOL_REFERENCED, 1); // bug 11006
-    gspin_gxx_emits_decl (decl);
+
+    //yzm
+    {
+      if (language == JAVA)
+      {
+        tree chain = TREE_CHAIN(decl);
+        TREE_CHAIN(decl) = NULL;
+        gspin_gxx_emits_decl (decl);
+        TREE_CHAIN(decl) = chain;
+      }
+      else
+        gspin_gxx_emits_decl (decl);
+    }
   }
 #endif
 #else

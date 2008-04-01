@@ -170,7 +170,6 @@
 #include "cxx_memory.h"
 
 typedef void *NODE_ID;
-#define MAX_VIEW_NUM  64
 
 struct EDGE_ID {   // if multiple edges add occurence id.
   NODE_ID src;
@@ -297,16 +296,10 @@ typedef enum {
   EK_SEL_EDGE,
   EK_SEL_MENU,
   EK_SEL_NODES,
-  EK_QUIT,           // DaVinci exiting.
-  EK_CLOSE,
-  EK_DISCONNECT
+  EK_QUIT           // DaVinci exiting.
      // more: many more event kinds ..
 } EVENT_KIND;
 
-typedef enum{
-  CONTEX_UNUSE, 
-  CONTEX_ACTIVE
-}CONTEX_TYPE;
 
 struct EVENT_T {       //more? full OO-style - queue ptrs, use class heir ..
   EVENT_KIND  kind;
@@ -404,16 +397,7 @@ private:
   INT             _node_cnt;
   INT             _edge_cnt;
   pid_t           _pid;
-  INT                         _contex;
-  static std::queue<EVENT_T>  _event_q_socket[MAX_VIEW_NUM];
-  static INT                  _tcp_socket ;
-  static INT                  _davinci_count ;
-  static INT                  _contex_count ;
-  static CONTEX_TYPE          _contex_use_array[MAX_VIEW_NUM];
-  static INT                  _current_contex ;
-  static bool                 _use_socket;
-  
-  
+
   const char *Ft_Str(const FTAG ftag);
   void        Usage_Error(FTAG curr, FTAGS prereq);
 
@@ -455,11 +439,6 @@ private:
 public:
   static bool enabled(bool msg) {
     bool is_enabled = ( getenv("DAVINCIHOME") != NULL );
-    _use_socket = false;
-    if(!is_enabled) {
-      _use_socket = true;
-      is_enabled = (getenv("UDRAWIP") != NULL);
-    }
     if ( ! is_enabled ) {
       static bool msg_given = false;
       if ( ! msg_given ) {

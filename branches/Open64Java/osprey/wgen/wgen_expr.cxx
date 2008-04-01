@@ -50,7 +50,6 @@ extern "C"{
 #include "wgen_decl.h"
 #include "wgen_expr.h"
 #include "wgen_stmt.h"
-#include "wgen_tracing.h"
 
 #define BITS_PER_UNIT 8
 
@@ -373,11 +372,8 @@ WGEN_Convert_To_Host_Order (long *buf)
 // and:
 //   guard_var=0
 //   if (x && (guard_var=1, y))
-//
-// If NEED_COMMA is false, then only insert the conditional statements,
-// without adding any comma node.
 static void
-WGEN_add_guard_var (gs_t guard_var, WN *value_wn, BOOL need_comma = TRUE)
+WGEN_add_guard_var (gs_t guard_var, WN *value_wn)
 {
   WN *stid, *comma;
 
@@ -392,25 +388,22 @@ WGEN_add_guard_var (gs_t guard_var, WN *value_wn, BOOL need_comma = TRUE)
   WN *one_wn = WN_Intconst(MTYPE_I4, 1);
   stid = WN_Stid(MTYPE_I4, 0, Get_ST(guard_var), MTYPE_To_TY(MTYPE_I4),
 		 one_wn, 0);
-  if (need_comma) {
-    if (WN_operator(value_wn) == OPR_COMMA) {
-      comma = value_wn;
-    } else if (WN_operator(WN_kid0(value_wn)) == OPR_COMMA) {
-      comma = WN_kid0(value_wn);
-    } else {
-      // Create a comma.
-      WN *wn0 = WN_CreateBlock();
-      WN *wn1 = WN_kid0(value_wn);
-      WN_Set_Linenum (wn0, Get_Srcpos());
-      comma = WN_CreateComma (OPR_COMMA, WN_rtype(wn1), MTYPE_V, wn0, wn1);
-      WN_kid0(value_wn) = comma;
-    }
-    WN *wn = WN_kid0(comma);
-    FmtAssert(WN_operator(wn) == OPR_BLOCK,
-              ("WGEN_add_guard_var: unexpected WN operator"));
-    WN_INSERT_BlockFirst(wn, stid);
+  if (WN_operator(value_wn) == OPR_COMMA) {
+    comma = value_wn;
+  } else if (WN_operator(WN_kid0(value_wn)) == OPR_COMMA) {
+    comma = WN_kid0(value_wn);
+  } else {
+    // Create a comma.
+    WN *wn0 = WN_CreateBlock();
+    WN *wn1 = WN_kid0(value_wn);
+    WN_Set_Linenum (wn0, Get_Srcpos());
+    comma = WN_CreateComma (OPR_COMMA, WN_rtype(wn1), MTYPE_V, wn0, wn1);
+    WN_kid0(value_wn) = comma;
   }
-  else WN_INSERT_BlockFirst(value_wn, stid);
+  WN *wn = WN_kid0(comma);
+  FmtAssert(WN_operator(wn) == OPR_BLOCK,
+    ("WGEN_add_guard_var: unexpected WN operator"));
+  WN_INSERT_BlockFirst(wn, stid);
 }
 
 // check whether the WHIRL operator has subsumed cvtl in its semantics
@@ -639,7 +632,8 @@ WGEN_Save_Expr (gs_t save_exp,
     }
   }
   
-  if (!found) {
+  if (!found) {		//czw 1.22
+    	//{
     i = ++wgen_save_expr_stack_last;
     if (i == wgen_save_expr_stack_max) {
       if (wgen_save_expr_stack == NULL) {
@@ -1030,7 +1024,6 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
     WGEN_Set_ST_Addr_Saved (rhs_wn);
   }
 
-  TRACE_EXPAND_GS(lhs);
   switch (code) {
   case GS_COMPONENT_REF:
     {
@@ -1259,8 +1252,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         }
         else result_wn = rhs_wn;
 
-	// OSP_382, do not store MTYPE_M into temp
-        if (need_result && rtype != MTYPE_M &&
+        if (need_result && 
 	    (volt ||
 	     assign_code == GS_POSTINCREMENT_EXPR ||
 	     assign_code == GS_POSTDECREMENT_EXPR)) { // save result in a preg
@@ -1470,8 +1462,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         }
         else result_wn = rhs_wn;
 
-	// OSP_382, do not store MTYPE_M into temp
-        if (need_result && rtype != MTYPE_M &&
+        if (need_result && 
 	    (volt ||
              assign_code == GS_POSTINCREMENT_EXPR ||
              assign_code == GS_POSTDECREMENT_EXPR)) { // save result in a preg
@@ -1677,8 +1668,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         }
         else result_wn = rhs_wn;
 
-	// OSP_382, do not store MTYPE_M into temp
-        if (need_result && rtype != MTYPE_M &&
+        if (need_result && 
 	    (volt ||
              assign_code == GS_POSTINCREMENT_EXPR ||
 	     assign_code == GS_POSTDECREMENT_EXPR)) { // save result in a preg
@@ -1809,6 +1799,11 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
     break;
 
 #ifdef KEY
+    case GS_COMPOUND_EXPR:
+    // TODO: Implement. add by ykq
+    DevWarn("NYI: COMPOUND_EXPR");
+    wn = NULL;
+    break;
   case GS_FILTER_EXPR:
     // TODO: Implement.
     DevWarn("NYI: FILTER_EXPR");
@@ -2173,7 +2168,7 @@ WGEN_Address_Of(gs_t arg0)
       if (code0 == GS_VAR_DECL) {
 	if (gs_decl_initial(arg0) &&
 	    (gs_decl_virtual_p(arg0) ||
-	      (/* bug 279 */ gs_decl_tinfo_p(arg0) /* typeinfo ? */ &&
+	      (/* bug 279 */ (gs_decl_tinfo_p(arg0) || lang_java) /* typeinfo ? */ && //czw
 	        /* make sure it is not an NTBS name */
 	        gs_tree_code(gs_decl_initial(arg0)) != GS_STRING_CST)) &&
 	    !gs_decl_external(arg0)) {
@@ -3517,7 +3512,6 @@ WGEN_Expand_Expr (gs_t exp,
 
   wn = NULL;
 
-  TRACE_EXPAND_GS(exp);
   switch(code)
   {
     // leaves
@@ -3617,8 +3611,7 @@ WGEN_Expand_Expr (gs_t exp,
 	// be a reference, in which case use the referenced symbol instead
 	// of creating a new one.
 	if (gs_tree_code(opnd0) != GS_INDIRECT_REF &&
-            gs_tree_code(opnd0) != GS_COMPONENT_REF &&
-            gs_tree_code(opnd0) != GS_ARRAY_REF)
+	    gs_tree_code(opnd0) != GS_COMPONENT_REF)
 #endif
 	{
 	st    = Get_ST (gs_tree_operand(exp, 0));
@@ -3704,17 +3697,6 @@ WGEN_Expand_Expr (gs_t exp,
 			      Get_Srcpos());
 	    }
 	  }
-          // OSP_397, if opnd 0 of TARGET_EXPR is an COMPONENT_REF
-          else if (gs_tree_code(t) == GS_AGGR_INIT_EXPR &&
-                   gs_tree_code(opnd0) == GS_COMPONENT_REF) {
-            WN *target_wn = WGEN_Address_Of(opnd0);
-            WN *result_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/, 
-                                              0, 0, 0, 0, FALSE, FALSE, target_wn);
-            /* We ignore the result_wn, for safety, place an assertion here */
-            FmtAssert(result_wn == NULL,
-                      ("result_wn should be NULL for the result is passed as param."));
-          }      
-
 	  // If the initializer returns the object in memory, then make sure
 	  // the type doesn't require a copy constructor, since such types
 	  // sometimes require one.
@@ -3785,14 +3767,8 @@ WGEN_Expand_Expr (gs_t exp,
 	// If the target area was supplied by the caller, then return an ILOAD
 	// of the target pointer.
 	if (gs_tree_code(opnd0) == GS_INDIRECT_REF) {
-          // OSP_371, skip the NON_LVALUE_EXPR
-	  // INIT_EXPR
-	  //   0-> INDIRECT_REF
-	  //     0-> NON_LVALUE_EXPR
-	  //       0-> VAR_DECL
-	  //   1-> EXPR
-	  if (gs_tree_code(gs_tree_operand(opnd0, 0)) == GS_NOP_EXPR ||
-              gs_tree_code(gs_tree_operand(opnd0, 0)) == GS_NON_LVALUE_EXPR)
+
+	  if (gs_tree_code(gs_tree_operand(opnd0, 0)) == GS_NOP_EXPR)
 	    opnd0 = gs_tree_operand(opnd0, 0);
 	  ST *st = Get_ST(gs_tree_operand(opnd0, 0));
 	  TY_IDX ty_idx = Get_TY (gs_tree_type(exp));
@@ -3800,8 +3776,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  wn = WN_Iload(TY_mtype(ty_idx), 0, ty_idx, ldid_wn);
 	  break;
 	}
-        else if (gs_tree_code(opnd0) == GS_COMPONENT_REF ||
-                 gs_tree_code(opnd0) == GS_ARRAY_REF) {
+	else if (gs_tree_code(opnd0) == GS_COMPONENT_REF) {
 	  wn = WGEN_Expand_Expr(opnd0);
 	  break;
 	}
@@ -3979,7 +3954,10 @@ WGEN_Expand_Expr (gs_t exp,
 	ty_idx = Get_TY (gs_tree_type(exp));
 	TYPE_ID mtyp = TY_mtype(ty_idx);
 	mtyp = (mtyp == MTYPE_V || mtyp == MTYPE_M) ? MTYPE_I4 : Widen_Mtype(mtyp);
-	wn = WN_Intconst(mtyp, gs_get_integer_value(exp));
+       // if(!lang_java) //ykq
+        wn = WN_Intconst(mtyp, gs_get_integer_value(exp));
+        //else
+        //wn = WN_Intconst(mtyp, gs_get_integer_value_for_java(exp));
       }
       break;
 
@@ -4324,6 +4302,25 @@ WGEN_Expand_Expr (gs_t exp,
 	}
 #endif
       }
+	//czw {
+	if (key_exceptions && lang_java &&
+	    !(in_cleanup))
+	{
+	    if (!inside_eh_region)
+	    { // check that we are not already in a region
+            	WN * region_body = WN_CreateBlock();
+		inside_eh_region = true;
+            	WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
+	    }
+	} //else if (key_exceptions && inside_eh_region && opt_regions)
+	//{
+	    // The above conditions dictate that this call MUST not be inside
+	    // a region. So close the region.
+	    // TODO: Is this only for opt_regions or in general?
+	    //if (Check_For_Call_Region ())
+	    	//Did_Not_Terminate_Region = FALSE;
+	//}
+	//czw }
       break;
 
     case GS_INDIRECT_REF:
@@ -4430,6 +4427,25 @@ WGEN_Expand_Expr (gs_t exp,
 	    wn = wn0;
 	}
       }
+	//czw {
+	if (key_exceptions &&  lang_java &&
+	    !(in_cleanup))
+	{
+	    if (!inside_eh_region)
+	    { // check that we are not already in a region
+            	WN * region_body = WN_CreateBlock();
+		inside_eh_region = true;
+            	WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
+	    }
+	} //else if (key_exceptions && inside_eh_region && opt_regions)
+	//{
+	    // The above conditions dictate that this call MUST not be inside
+	    // a region. So close the region.
+	    // TODO: Is this only for opt_regions or in general?
+	    //if (Check_For_Call_Region ())
+	    	//Did_Not_Terminate_Region = FALSE;
+	//}
+	//czw }
       break;
 
     case GS_CONVERT_EXPR:
@@ -4644,16 +4660,23 @@ WGEN_Expand_Expr (gs_t exp,
       WGEN_One_Stmt (gs_tree_operand (exp, 0));
       break;
 
-    case GS_TRY_CATCH_EXPR:
+    case GS_TRY_CATCH_EXPR:     //czw
 #ifdef KEY
       // The second operand of 'exp' should be run if the first throws an
       // exception.
       // wgen TODO: This cleanup should be treated as eh_only.
-      Register_Cleanup (exp);
-      wn = WGEN_Expand_Expr (gs_tree_operand (exp, 0), need_result);
-      Unregister_Cleanup ();
+      if(lang_cplus)		//czw	1.16 16:24
+      	{
+	      Register_Cleanup (exp);
+      		wn = WGEN_Expand_Expr (gs_tree_operand (exp, 0), need_result);
+	      Unregister_Cleanup ();
+      	}
+      if(lang_java)			//czw	1.16 16:24
+      	{
+      		WGEN_Expand_Try_Catch(exp);
+      	}
 #endif
-      break;
+	break;
 
     // binary
     case GS_PLUS_EXPR: 
@@ -4701,6 +4724,25 @@ WGEN_Expand_Expr (gs_t exp,
           wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(etype), MTYPE_V,
                              TY_size (Get_TY(gs_tree_type(exp))) * 8, wn);
        }
+	//czw {
+	if (key_exceptions  && lang_java &&
+	    !(in_cleanup))
+	{
+	    if (!inside_eh_region)
+	    { // check that we are not already in a region
+            	WN * region_body = WN_CreateBlock();
+		inside_eh_region = true;
+            	WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
+	    }
+	} //else if (key_exceptions && inside_eh_region && opt_regions)
+	//{
+	    // The above conditions dictate that this call MUST not be inside
+	    // a region. So close the region.
+	    // TODO: Is this only for opt_regions or in general?
+	    //if (Check_For_Call_Region ())
+	    	//Did_Not_Terminate_Region = FALSE;
+	//}
+	//czw }
        break;
 
     case GS_LROTATE_EXPR:
@@ -4820,47 +4862,6 @@ WGEN_Expand_Expr (gs_t exp,
 	  WN *then_block = WN_CreateBlock ();
 	  WN *else_block = WN_CreateBlock ();
 	  WN *if_stmt    = WN_CreateIf (wn0, then_block, else_block);
-#ifdef KEY
-         // Bug 11937: Generate guard variables where necessary. (See
-         // explanation below).
-         //
-         // We may need to generate initializations for guard variables,
-         // so write out the IF statement at the end.
-
-         // "then" statement
-          WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
-          WGEN_Guard_Var_Push();
-          wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1), FALSE);
-          gs_t guard_var1 = WGEN_Guard_Var_Pop();
-          if (wn1) {
-            wn1 = WN_CreateEval (wn1);
-            WGEN_Stmt_Append (wn1, Get_Srcpos());
-          }
-          WGEN_Stmt_Pop (wgen_stmk_if_then);
-          // Add guard variables if they are needed.
-          if (guard_var1 != NULL) {
-            WGEN_add_guard_var(guard_var1, then_block, FALSE);
-          }
-
-          // "else" statement
-          if (gs_tree_operand(exp, 2) != NULL) {
-            WGEN_Stmt_Push (else_block, wgen_stmk_if_else, Get_Srcpos());
-            WGEN_Guard_Var_Push();
-            wn2 = WGEN_Expand_Expr (gs_tree_operand (exp, 2), FALSE);
-            gs_t guard_var2 = WGEN_Guard_Var_Pop();
-            if (wn2) {
-              wn2 = WN_CreateEval (wn2);
-              WGEN_Stmt_Append (wn2, Get_Srcpos());
-            }
-            WGEN_Stmt_Pop (wgen_stmk_if_else);
-            // Add guard variables if they are needed.
-            if (guard_var2 != NULL) {
-              WGEN_add_guard_var(guard_var2, else_block, FALSE);
-            }
-          }
-          // Generate IF statement.
-          WGEN_Stmt_Append (if_stmt, Get_Srcpos());
-#else
 	  WGEN_Stmt_Append (if_stmt, Get_Srcpos());
 	  WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
 	  wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1), FALSE);
@@ -4878,7 +4879,6 @@ WGEN_Expand_Expr (gs_t exp,
 	    }
 	    WGEN_Stmt_Pop (wgen_stmk_if_else);
 	  }
-#endif
         }
 	else {
 #ifdef KEY
@@ -4912,7 +4912,7 @@ WGEN_Expand_Expr (gs_t exp,
 	    // Create a temporary st for the dummy return value.
 	    TYPE_ID comma_ty = Widen_Mtype(TY_mtype(ty_idx));
 	    ST* dummy_st = Gen_Temp_Symbol(ty_idx, "_unused");
-	    Set_ST_is_not_used(dummy_st);
+	    //Set_ST_is_not_used(dummy_st);		//ykq
 	    WN* dummy_wn = WN_Ldid(comma_ty, 0, ST_st_idx(dummy_st), ty_idx, 0);
 	    wn1 = WN_CreateComma (OPR_COMMA, comma_ty, 
 			          MTYPE_V, comma_block, dummy_wn);
@@ -4939,7 +4939,7 @@ WGEN_Expand_Expr (gs_t exp,
 
 	    TYPE_ID comma_ty = Widen_Mtype(TY_mtype(ty_idx)); 
 	    ST* dummy_st = Gen_Temp_Symbol(ty_idx, "_unused");
-	    Set_ST_is_not_used(dummy_st);
+	    //Set_ST_is_not_used(dummy_st);		//ykq
 	    WN* dummy_wn = WN_Ldid(comma_ty, 0, ST_st_idx(dummy_st), ty_idx, 0);
 	    wn2 = WN_CreateComma (OPR_COMMA, comma_ty, 
 			          MTYPE_V, comma_block, dummy_wn);
@@ -4996,46 +4996,6 @@ WGEN_Expand_Expr (gs_t exp,
 	  set_DECL_ST(ptr_var, WN_st(target_wn));
 	}
       }
-
-#ifdef NEW_INITIALIZER
-      {
-        gs_t opnd0 = gs_tree_operand(exp, 0);
-        gs_t opnd1 = gs_tree_operand(exp, 1);
-        if( lang_cplus &&
-            gs_tree_code(opnd0) == GS_INDIRECT_REF &&
-            gs_tree_code(opnd1) == GS_CONSTRUCTOR ) {
-          WN* target = WGEN_Address_Of(opnd0);
-          ST* copy_st = WGEN_Generate_Initialized_Aggregate(target, opnd1); 
-          ST* orig_st = WN_st(target);
-          if ( ST_st_idx(copy_st) != ST_st_idx(orig_st) ) {
-            // If the returned ST is not the original one,
-            //   it means we create a new temp ST for initialization
-            //   This happens on x8664, the returned struct is converted into a FORMAL.
-            //   When initialize the FORMAL, we need to use a temp st.
-            //   we copy the new ST into target here
-            TY_IDX copy_ty = ST_type(copy_st);
-            WN* ldid = WN_Ldid(TY_mtype(copy_ty), 0, copy_st, copy_ty);
-            if ( WN_operator(target) == OPR_LDA ) {
-              WGEN_Stmt_Append(
-                         WN_Stid (TY_mtype(copy_ty), WN_lda_offset(target),
-                                  orig_st, ST_type(orig_st), ldid),
-                         Get_Srcpos() );
-            }
-            else if ( WN_operator(target) == OPR_LDID ) {
-              WGEN_Stmt_Append(
-                         WN_Istore(TY_mtype(copy_ty), 0, 
-                                   ST_type(orig_st), target, ldid),
-                         Get_Srcpos() );
-            }
-            else {
-              FmtAssert(FALSE, ("Bad operator for target, not LDA/LDID"));
-            }
-          }
-          break;
-        }
-      }
-#endif
-
       // fall through
 #endif
     case GS_MODIFY_EXPR:
@@ -5211,25 +5171,6 @@ WGEN_Expand_Expr (gs_t exp,
 	    wn = WGEN_Expand_Expr(t);
 	    break;
 	  }
-          // OSP_397, initializing a class member having copy-constructor 
-          //          by the return value of a call. 
-          // Pathcc's fix is removing the upper gs_aggr_init_via_ctor_p of GS_AGGR_INIT_EXPR.
-          //   else if (gs_tree_code(initializer = gs_tree_operand(t,1)) == GS_AGGR_INIT_EXPR )
-          // From the testing result, we adopt the strict pattern match:
-          // +INIT_EXPR
-          // |-+COMPONENT_REF <this->m>
-          // |-+TARGET_EXPR
-          //   |-+VAR_DECL <tmp>
-          //   |-+AGGR_INIT_EXPR <=f();>
-          //   |-+CALL_EXPR <cleanup the tmp>
-          else if (code == GS_INIT_EXPR &&
-              gs_tree_code(gs_tree_operand(exp, 0)) == GS_COMPONENT_REF &&
-              gs_tree_code(t) == GS_TARGET_EXPR &&
-              gs_tree_code(gs_tree_operand(t, 1)) == GS_AGGR_INIT_EXPR ) {
-            gs_set_tree_operand(t, 0, gs_tree_operand(exp,0));
-            wn = WGEN_Expand_Expr(t);
-            break;
-          }
 #endif
 	  DevWarn ("INIT_EXPR/MODIFY_EXPR kid1 is TARGET_EXPR, kid0 is %s\n",
 		   gs_code_name(gs_tree_code(gs_tree_operand(exp, 0))));
@@ -5338,6 +5279,25 @@ WGEN_Expand_Expr (gs_t exp,
 	wn  = WGEN_Lhs_Of_Modify_Expr(code, gs_tree_operand (exp, 0), call_return_val, need_result, 
 				     0, 0, 0, FALSE, wn1, 0, FALSE, FALSE);
       }
+	/*//czw {
+	if (key_exceptions  &&
+	    !(in_cleanup))
+	{
+	    if (!inside_eh_region)
+	    { // check that we are not already in a region
+            	WN * region_body = WN_CreateBlock();
+		inside_eh_region = true;
+            	WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
+	    }
+	} //else if (key_exceptions && inside_eh_region && opt_regions)
+	//{
+	    // The above conditions dictate that this call MUST not be inside
+	    // a region. So close the region.
+	    // TODO: Is this only for opt_regions or in general?
+	    //if (Check_For_Call_Region ())
+	    	//Did_Not_Terminate_Region = FALSE;
+	//}
+	//czw }*/
       break;
 
     // ternary ops
@@ -5482,6 +5442,25 @@ WGEN_Expand_Expr (gs_t exp,
 			    Make_Pointer_Type(elem_ty_idx, FALSE),
 			    wn0, field_id);
       }
+	//czw {
+	if (key_exceptions &&  lang_java &&
+	    !(in_cleanup))
+	{
+	    if (!inside_eh_region)
+	    { // check that we are not already in a region
+            	WN * region_body = WN_CreateBlock();
+		inside_eh_region = true;
+            	WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
+	    }
+	} //else if (key_exceptions && inside_eh_region && opt_regions)
+	//{
+	    // The above conditions dictate that this call MUST not be inside
+	    // a region. So close the region.
+	    // TODO: Is this only for opt_regions or in general?
+	    //if (Check_For_Call_Region ())
+	    	//Did_Not_Terminate_Region = FALSE;
+	//}
+	//czw }
       break;
 
     case GS_AGGR_INIT_EXPR:
@@ -5497,6 +5476,18 @@ WGEN_Expand_Expr (gs_t exp,
 	INT num_handlers = 0;
         INT i;
 	gs_t list;
+	/*arg0 = exp;		//czw {
+	do
+	{
+		arg0 = gs_tree_operand (arg0, 0);
+	}
+	while(gs_tree_code(arg0) == GS_NOP_EXPR);
+	gs_code_t code0 = gs_tree_code (arg0);
+	if(code0 != GS_ADDR_EXPR)
+	{
+		arg0 = gs_tree_operand (exp, 0);
+		code0 = gs_tree_code (arg0);
+	}				//czw }*/
 	arg0 = gs_tree_operand (exp, 0);
 	gs_code_t code0 = gs_tree_code (arg0);
 	// KEY:  true if type must be returned in mem
@@ -6010,13 +6001,12 @@ WGEN_Expand_Expr (gs_t exp,
                   wn = WN_Intconst (MTYPE_I4, 1);
 		  whirl_generated = TRUE; // KEY
 		}
-#ifdef KEY
+#ifdef KEY_bug1058
 // If not yet compile-time constant, let the backend decide if it is 
 // a constant
 		else
 		{
 		  iopc = INTRN_CONSTANT_P;
-                  if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_I4;
 		  intrinsic_op = TRUE;
 		}
 #else
@@ -6489,67 +6479,12 @@ WGEN_Expand_Expr (gs_t exp,
         }
 
         else {
-          WN *wn_kid0, *wn_kid0_kid0;
-          TY_IDX kid_ty_idx;
-          UINT32 kid_field_id, kid_cur_fld;
-          FLD_HANDLE kid_fld_handle;
 	  num_args++;
 	  num_handlers = Current_Handler_Count();
           call_wn = WN_Create (OPR_ICALL, ret_mtype, MTYPE_V,
 			       num_args + num_handlers);
-          
-          wn_kid0 = WGEN_Expand_Expr (gs_tree_operand (exp, 0));
-          WN_kid(call_wn, num_args-1) = wn_kid0;
-          WN_set_ty (call_wn, TY_pointed(Get_TY(gs_tree_type (gs_tree_operand (exp, 0)))));
-          /* 
-             Check if the indirect call is a call to a virtual function
-             First, get the TY of the address and the field ID
-             1) For IA64, virtual function call is 
-                                              LDID object
-                 LDID object                ILOAD vptr field
-               ILOAD vptr field    or     ADD offset
-             ICALL                      ICALL
-             2) For X86, virtual function call is
-                   LDID object
-                 ILOAD vptr field
-               ILOAD offset
-             ICALL
-          */
-          kid_ty_idx = kid_field_id = 0;
-#ifdef TARG_IA64
-          switch (WN_operator(wn_kid0)) {
-              case OPR_ILOAD :
-                  // if offset == 0, ILOAD the vptr directly
-                  kid_ty_idx = WN_ty(wn_kid0);
-                  kid_field_id = WN_field_id(wn_kid0);
-                  break;
-              case OPR_ADD :
-                  // if call the result by ADD, analysis the tree of ADD
-                  wn_kid0_kid0 = WN_kid0(wn_kid0);
-                  if (WN_operator_is(wn_kid0_kid0, OPR_ILOAD)) {
-                      kid_ty_idx = WN_ty(wn_kid0_kid0);
-                      kid_field_id = WN_field_id(wn_kid0_kid0);
-                  }
-                  break;
-          }
-#endif
-#ifdef TARG_X8664
-          if (WN_operator(wn_kid0) == OPR_ILOAD) {
-              WN *wn_kid0_kid0 = WN_kid0(wn_kid0);
-              if (WN_operator(wn_kid0_kid0) == OPR_ILOAD) {
-                  kid_ty_idx = WN_ty(wn_kid0_kid0);
-                  kid_field_id = WN_field_id(wn_kid0_kid0);
-              }
-          }
-#endif
-          if (kid_ty_idx > 0 && kid_field_id > 0) {
-              // If the TY and the field ID of the address are found,
-              // then check if the field of the TY is a virtual pointer
-              kid_cur_fld = 0;
-              kid_fld_handle = FLD_get_to_field(kid_ty_idx, kid_field_id, kid_cur_fld);
-              if (!strncmp (&Str_Table[FLD_name_idx(kid_fld_handle)], "_vptr.", 6))
-                  WN_Set_Call_Is_Virtual(call_wn);
-          }
+	  WN_kid(call_wn, num_args-1) = WGEN_Expand_Expr (gs_tree_operand (exp, 0));
+	  WN_set_ty (call_wn, TY_pointed(Get_TY(gs_tree_type (gs_tree_operand (exp, 0)))));
 	}
 
 	WN_Set_Linenum (call_wn, Get_Srcpos());
@@ -7151,7 +7086,7 @@ WGEN_Expand_Expr (gs_t exp,
     {
       if (key_exceptions)
       {
-	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
+	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
       	wn = WN_Ldid (Pointer_Mtype, 0, exc_ptr_st, Get_TY(gs_tree_type(exp)));
       }
       else
@@ -7178,12 +7113,7 @@ WGEN_Expand_Expr (gs_t exp,
    case GS_VECTOR_CST:
      {
        ST * init_st = Gen_Temp_Symbol (Get_TY(gs_tree_type(exp)), "__vec_cst");
-#ifdef NEW_INITIALIZER
-       WN* target = WN_Lda(Pointer_Mtype, 0, init_st, 0);
-       Traverse_Aggregate_Vector_Const (target, exp, 0, 0);
-#else
        Traverse_Aggregate_Vector_Const (init_st, exp, 0, 0);
-#endif
        TY_IDX ty = ST_type (init_st);
        TYPE_ID mtype = TY_mtype (ty);
        wn = WN_CreateLdid (OPR_LDID, mtype, mtype, 0, init_st, ty, 0);
@@ -7203,10 +7133,17 @@ WGEN_Expand_Expr (gs_t exp,
    case GS_TRY_FINALLY_EXPR:
      // The second operand is a cleanup to be executed on any exit from
      // evaluation of first operand.
-     Register_Cleanup (exp);
-     WGEN_Expand_Expr (gs_tree_operand (exp,0), need_result);
-     Unregister_Cleanup ();
-     WGEN_Expand_Expr (gs_tree_operand (exp,1), need_result);
+     if(lang_cplus)		//czw 1.17
+     	{
+	     Register_Cleanup (exp);
+	     WGEN_Expand_Expr (gs_tree_operand (exp,0), need_result);
+	     Unregister_Cleanup ();
+	     WGEN_Expand_Expr (gs_tree_operand (exp,1), need_result);
+     	}
+	if(lang_java)	//czw 1.17
+	{
+		WGEN_Expand_Try_Finally(exp);
+	}
      break;
 
     case GS_FILTER_EXPR:

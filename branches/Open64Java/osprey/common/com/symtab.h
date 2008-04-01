@@ -248,11 +248,9 @@ PU_Init (PU& pu, TY_IDX prototype, SYMTAB_IDX level)
     pu.target_idx = TARGET_INFO_IDX_ZERO;
     pu.prototype = prototype;
     Is_True (level > GLOBAL_SYMTAB, ("lexical level of a PU must be > 1"));
-    pu.base_class = TY_IDX_ZERO;
     pu.lexical_level = level;
     pu.gp_group = 0;
     pu.src_lang = PU_UNKNOWN_LANG;
-    pu.eh_info = 0;
     pu.unused = 0;
     pu.flags = 0;
 }

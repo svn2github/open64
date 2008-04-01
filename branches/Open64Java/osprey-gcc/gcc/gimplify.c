@@ -524,13 +524,26 @@ declare_tmp_vars (tree vars, tree scope)
       /* C99 mode puts the default 'return 0;' for main outside the outer
 	 braces.  So drill down until we find an actual scope.  */
       while (TREE_CODE (scope) == COMPOUND_EXPR)
-	scope = TREE_OPERAND (scope, 0);
+	  	if(flag_spin_file && !strcmp("GNU Java", lang_hooks.name))       //czw
+			scope = TREE_OPERAND (scope, 1);
+		else scope = TREE_OPERAND (scope, 0);
 
-      gcc_assert (TREE_CODE (scope) == BIND_EXPR);
+	  if(TREE_CODE(scope) == TRY_FINALLY_EXPR)//czw
+		  scope = TREE_OPERAND(scope, 0);
+
+      gcc_assert (TREE_CODE (scope) == BIND_EXPR  || TREE_CODE (scope) == BLOCK);  //czw
 
       temps = nreverse (last);
+	  if(TREE_CODE (scope) == BLOCK)       //czw
+	  {
+	  	TREE_CHAIN (last) = BLOCK_VARS (scope);
+      		BLOCK_VARS (scope) = temps;
+	  }
+	  if(TREE_CODE (scope) == BIND_EXPR)
+	  {
       TREE_CHAIN (last) = BIND_EXPR_VARS (scope);
       BIND_EXPR_VARS (scope) = temps;
+	  }
     }
 }
 
@@ -4748,4 +4761,34 @@ force_gimple_operand (tree expr, tree *stmts, bool simple, tree var)
   return expr;
 }
 
+tree Replace_Left_with_temp(tree left)      //czw
+{
+	  tree tmp_var, mod;
+	  tree type = TREE_TYPE (left);
+	  
+
+  /* We don't allow types that are addressable (meaning we can't make copies),
+     incomplete, or of variable size.  */
+	  gcc_assert (!TREE_ADDRESSABLE (type)
+		      && COMPLETE_TYPE_P (type)
+		      && TREE_CODE (TYPE_SIZE_UNIT (type)) == INTEGER_CST);
+
+	  tmp_var = create_tmp_var_raw (type, get_name (left));
+	  
+	  gcc_assert (!TREE_CHAIN (tmp_var) && !DECL_SEEN_IN_BIND_EXPR_P (tmp_var));
+
+	  DECL_CONTEXT (tmp_var) = current_function_decl;
+	  DECL_SEEN_IN_BIND_EXPR_P (tmp_var) = 1;
+
+	  declare_tmp_vars (tmp_var, DECL_SAVED_TREE (current_function_decl));
+		  
+	  mod = build (MODIFY_EXPR, TREE_TYPE (tmp_var), tmp_var, left);
+
+	if (EXPR_HAS_LOCATION (left))
+		SET_EXPR_LOCUS (mod, EXPR_LOCUS (left));
+	else
+		SET_EXPR_LOCATION (mod, input_location);
+
+	return mod;
+}
 #include "gt-gimplify.h"

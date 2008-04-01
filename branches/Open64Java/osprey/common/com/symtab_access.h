@@ -563,20 +563,6 @@ Set_ST_is_this_ptr (ST* s)  { s->flags_ext |= ST_IS_THIS_PTR; }
 inline void
 Reset_ST_is_this_ptr (ST* s)  { s->flags_ext &= ~ST_IS_THIS_PTR; }
 
-inline BOOL
-ST_is_pure_vfunc (const ST* s) { return s->flags_ext & ST_IS_PURE_VFUNC; }
-inline void
-Set_ST_is_pure_vfunc (ST* s)  { s->flags_ext |= ST_IS_PURE_VFUNC; }
-inline void
-Reset_ST_is_pure_vfunc (ST* s)  { s->flags_ext &= ~ST_IS_PURE_VFUNC; }
-
-inline BOOL
-ST_is_thread_local (const ST& s) { return s.flags_ext & ST_IS_THREAD_LOCAL; }
-inline void
-Set_ST_is_thread_local (ST& s) { s.flags_ext |= ST_IS_THREAD_LOCAL; }
-inline void
-Reset_ST_is_thread_local (ST& s) { s.flags_ext &= ~ST_IS_THREAD_LOCAL; }
-
 #endif /* KEY */
 
 //----------------------------------------------------------------------
@@ -602,11 +588,6 @@ inline SYMTAB_IDX
 PU_lexical_level (const PU& pu)		{ return pu.lexical_level; }
 inline void
 Set_PU_lexical_level (PU& pu, SYMTAB_IDX l) { pu.lexical_level = l; }
-
-inline TY_IDX
-PU_base_class (const PU& pu) { return pu.base_class; }
-inline void
-Set_PU_base_class (PU& pu, TY_IDX ty_idx) { pu.base_class = ty_idx; }
 
 //----------------------------------------------------------------------
 // PU flags
@@ -982,13 +963,6 @@ Set_PU_java_lang (PU& pu)		{ pu.src_lang |= PU_JAVA_LANG; }
 inline void
 Clear_PU_java_lang (PU& pu)		{ pu.src_lang &= ~PU_JAVA_LANG; }
 
-inline BOOL
-PU_is_constructor (const PU& pu)        { return (pu.flags & PU_IS_CONSTRUCTOR) != 0; }
-inline void
-Set_PU_is_constructor (PU& pu)          { pu.flags |= PU_IS_CONSTRUCTOR; }
-inline void
-Clear_PU_is_constructor (PU &pu)        { pu.flags &= ~PU_IS_CONSTRUCTOR; }
-
 // PU_ftn_lang (f77 or f90) is defined in symtab.h
 // PU_has_nested (f77 or f90) is defined in symtab.h
 //----------------------------------------------------------------------
@@ -1098,6 +1072,7 @@ TY_copy_constructor (const TY_IDX tyi)	{ return Ty_Table[tyi].Copy_constructor (
 inline void
 Set_TY_copy_constructor (TY_IDX tyi, ST_IDX idx) { Set_TY_copy_constructor(Ty_Table[tyi],idx); }
 #endif
+
 
 //----------------------------------------------------------------------
 // TY flags
@@ -1432,13 +1407,6 @@ inline void
 Set_FLD_is_anonymous (FLD_HANDLE fld)   { fld.Entry()->flags |= FLD_IS_ANONYMOUS; }
 inline void
 Clear_FLD_is_anonymous (FLD_HANDLE fld) { fld.Entry()->flags &= ~FLD_IS_ANONYMOUS; }
-
-inline BOOL
-FLD_is_base_class (FLD_HANDLE fld)       { return fld.Entry()->flags & FLD_IS_BASE_CLASS; }
-inline void
-Set_FLD_is_base_class (FLD_HANDLE fld)   { fld.Entry()->flags |= FLD_IS_BASE_CLASS; }
-inline void
-Clear_FLD_is_base_class (FLD_HANDLE fld) { fld.Entry()->flags &= ~FLD_IS_BASE_CLASS; }
 
 //----------------------------------------------------------------------
 // access functions for TYLIST

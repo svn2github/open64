@@ -182,7 +182,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 
     ST* st = WN_st(w);
 
-    if (PU_src_lang(pu) == PU_CXX_LANG) {
+    if (PU_src_lang(pu) == PU_CXX_LANG || PU_src_lang(pu) == PU_JAVA_LANG ) {
 	if ((Opt_Level > 1) && !INLINE_Static_Set)
 	    INLINE_Static = TRUE;
 	if (!IPA_Enable_DFE_Set)
@@ -231,7 +231,8 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	// attribute
 
 	if ((PU_src_lang(pu) == PU_C_LANG) ||
-	    ((PU_src_lang(pu) == PU_CXX_LANG))) {
+	    (PU_src_lang(pu) == PU_CXX_LANG)||
+	    (PU_src_lang(pu) == PU_JAVA_LANG)) {
 	    if (PU_is_inline_function (pu)) {
 		// for 7.2 don't inline functions marked weak inline
 		if (ST_is_weak_symbol(st) && ST_export(st) != EXPORT_PROTECTED

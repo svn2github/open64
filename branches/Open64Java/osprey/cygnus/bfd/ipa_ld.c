@@ -76,7 +76,6 @@ extern void *ipa_open_input(char *, off_t *) __attribute__((weak));
 void *(*p_ipa_open_input)(char *, off_t *) = NULL;
 void (*p_ipa_init_link_line)(int, char **) = NULL;
 void (*p_ipa_add_link_flag)(const char*) = NULL;
-void (*p_ipa_modify_link_flag)(char*, char*) = NULL;
 void (*p_ipa_driver)(int, char **) = NULL;
 void (*p_process_whirl64)(void *, off_t, void *, int, const char *) = NULL;
 void (*p_process_whirl32)(void *, off_t, void *, int, const char *) = NULL;
@@ -1141,12 +1140,6 @@ ipa_set_syms(void)
     }
 
     p_ipa_add_link_flag = dlsym(p_handle,"ipa_add_link_flag");
-    if ((p_error = dlerror()) != NULL)  {
-    	fputs(p_error, stderr);
-    	exit(1);
-    }
-
-    p_ipa_modify_link_flag = dlsym(p_handle,"ipa_modify_link_flag");
     if ((p_error = dlerror()) != NULL)  {
     	fputs(p_error, stderr);
     	exit(1);

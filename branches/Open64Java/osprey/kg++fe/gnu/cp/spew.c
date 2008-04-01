@@ -205,7 +205,7 @@ init_spew ()
 }
 
 #ifdef KEY
-extern bool in_omp_pragma;
+extern int in_omp_pragma;
 #endif /* KEY */
 
 /* Subroutine of read_token.  */

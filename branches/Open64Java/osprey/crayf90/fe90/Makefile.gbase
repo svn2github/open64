@@ -98,7 +98,7 @@ FE90_DIR                = $(CRAYF90_DIR)/fe90
 CLIBINC                 = $(BUILD_TOT)/clibinc/cray
 ifeq ($(BUILD_OS), LINUX)
 FE90_INCLUDES           = $(BUILD_TOT)/linux/mfef90_includes
-INCLUDE_DIR             = 
+INCLUDE_DIR             = /usr/include
 else
 INCLUDE_DIR 		= $(ROOT)/usr/include
 endif

@@ -2117,7 +2117,6 @@ SUMMARIZE<program>:: Record_mod_formal ( WN* w )
     switch ( WN_operator(w) ) {
 
     case OPR_ISTORE:
-    case OPR_MSTORE: // OSP_418, Both kid1 of MSTORE and ISTORE are the address
 	switch ( WN_operator(WN_kid1(w)) ) {
 	case OPR_ARRAY:
 	    // check to see if the base of the array is an LDA or an
@@ -2257,6 +2256,7 @@ SUMMARIZE<program>:: Record_mod (WN* w)
     switch (PU_src_lang (Get_Current_PU ())) {
     case PU_C_LANG:
     case PU_CXX_LANG:
+	case PU_JAVA_LANG:
 
 	switch (WN_operator (w)) {
 	case OPR_ISTORE:

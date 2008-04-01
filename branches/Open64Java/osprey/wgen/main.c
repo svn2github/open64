@@ -61,6 +61,7 @@ int pstatic_as_global = 0;
 int key_exceptions = 0;
 BOOL opt_regions = 0;
 BOOL lang_cplus = FALSE;
+BOOL lang_java = FALSE;		//czw
 BOOL c_omit_external = TRUE;
 gs_t program;
 /*       MAX_DEBUG_LEVEL        2  :: Defined in flags.h */
@@ -71,6 +72,7 @@ extern void WGEN_Weak_Finish(void);
 extern void WGEN_Expand_Top_Level_Decl(gs_t);
 extern void WGEN_Expand_Defers(void);
 extern void WGEN_Expand_Decl(gs_t, BOOL);
+extern void WGEN_Expand_Emitted_Decl();
 
 //*******************************************************
 // Process the command line arguments.
@@ -125,9 +127,6 @@ Process_Command_Line(INT argc, char **argv)
 		Process_Command_Line_Group (cp-1, Common_Option_Groups);
 	      break;
 	    
-          case 't':
-              Process_Trace_Option(cp-2);
-              break;
 	  case 'v':
 	      Show_Progress = TRUE;
 	      break;
@@ -158,7 +157,8 @@ Process_Cc1_Command_Line(gs_t arg_list)
   char *command = Last_Pathname_Component(argv);
 //printf("%s\n", command);
   lang_cplus = !strcmp(command, "cc1plus");
-  if (lang_cplus)
+  lang_java = !strcmp(command, "jc1");		//czw
+  if (lang_cplus || lang_java)
     key_exceptions = 1;
 
   for (i = 1; i < argc; i++) {
@@ -316,6 +316,36 @@ main ( INT argc, char **argv, char **envp)
 #ifdef KEY
 	  WGEN_Expand_Defers();
 #endif
+	}
+	/*if(lang_java)
+	{
+		gs_t list = gs_operand(program, GS_PROGRAM_DECLARATIONS);
+		// in bug 10185, first list node is  NULL, so skip first node
+		if (gs_code(list) != EMPTY)
+			list = gs_operand(list, 1);
+		for (; gs_code(list) != EMPTY; list = gs_operand(list, 1)) {
+		    gs_t decl = gs_operand(list, 0);
+			// process methods
+			//if (!Enable_WGEN_DFE) {
+				//if (cp_type_quals(type_tree) == TYPE_UNQUALIFIED) {
+					gs_t type = gs_tree_type(decl);
+					gs_t method = gs_type_methods(type);
+					if(method != 0)
+					{
+						do
+						{
+							WGEN_Expand_Decl (method, TRUE);
+							method = gs_tree_chain(method);
+						}
+						while(method);
+					}
+				//}
+			//}
+		}
+	}*/
+	if(lang_java)
+	{
+		WGEN_Expand_Emitted_Decl();
 	}
 
 	WGEN_Weak_Finish();

@@ -3449,7 +3449,7 @@ static void Simd_Unroll_Statement( INT unroll_times, INT add_to_base,
                  WN_operator(LWN_Get_Parent(iload_copy)) == OPR_SHUFFLE){
            iload_copy = WN_kid0(iload_copy); //ARRAY node
            origA = WN_kid0(origA);
-           Simd_Update_Copy_Array_Index(iload_copy, origA, -add_to_base, index_type);
+           Simd_Update_Copy_Array_Index(iload_copy, origA, add_to_base, index_type);
         }
         else if(iload_copy && WN_operator(iload_copy) == OPR_SHUFFLE &&
                  WN_operator(WN_kid0(iload_copy)) == OPR_ILOAD &&

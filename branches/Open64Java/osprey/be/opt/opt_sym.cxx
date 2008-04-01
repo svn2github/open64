@@ -196,10 +196,6 @@ OPT_STAB::OPT_STAB(MEM_POOL *pool) : aux_stab(pool),
 
   _ac_2_vsym_map.Init ();
   _pt_sum.Set_opt_stab (this);  
-
-  BOOL t = Get_Trace (TP_GLOBOPT, CR_DUMP_FLAG);
-  _cr_sr_annot_mgr = CXX_NEW (MEMOP_ANNOT_CR_SR_MGR (mem_pool, t), mem_pool);
-  _cr_sr_annot_mgr->Set_active_mgr ();
 }
 
 
@@ -208,8 +204,6 @@ OPT_STAB::~OPT_STAB(void)
   WN_MAP_Delete(WN_sym_map());
   WN_MAP_Delete(WN_box_refs());
   WN_MAP_Delete(WN_box_defs());
-
-  CXX_DELETE (_cr_sr_annot_mgr, _cr_sr_annot_mgr->Mem_pool());
 
   // Is_True(_ver_pool == NULL, ("ver pool is not deleted."));
 

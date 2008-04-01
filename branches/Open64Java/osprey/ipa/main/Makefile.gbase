@@ -170,8 +170,6 @@ IPA_ANALYZE_CXX_SRCS = \
 	ipa_option.cxx		\
 	ip_graph_trav.cxx	\
 	ipa_cg.cxx		\
-	ipa_chg.cxx		\
-	ipa_devirtual.cxx	\
 	ipa_main.cxx		\
 	ipa_cprop.cxx		\
 	ipa_cprop_annot.cxx	\

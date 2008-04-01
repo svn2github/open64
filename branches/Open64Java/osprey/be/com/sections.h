@@ -115,6 +115,5 @@ extern BOOL SEC_is_gprel (SECTION_IDX sec);
 extern BOOL SEC_is_merge (SECTION_IDX sec);
 extern BOOL SEC_is_exec (SECTION_IDX sec);
 extern BOOL SEC_is_nobits (SECTION_IDX sec);
-extern BOOL SEC_is_tls (SECTION_IDX sec);
 
 #endif

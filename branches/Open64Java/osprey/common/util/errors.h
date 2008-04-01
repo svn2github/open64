@@ -185,11 +185,6 @@ extern "C" {
  *      this supresses the warnings.  If the current behavior is to supress
  *      the warnings, calling this will enable printing them.
  *
- *  BOOL DevWarn_Enable ( void )
- *
- *      If the current behavior of DevWarn is to print the warnings, this function
- *      will return true, and fals else.
- *
  *  Lmt_DevWarn(const UINT limit, args)
  *
  *      This is a macro designed to suppress printing of DevWarn
@@ -481,8 +476,6 @@ extern void DevWarn( const char* FormatString,... )
 #endif
 	;
 #pragma mips_frequency_hint NEVER DevWarn
-
-extern BOOL DevWarn_Enabled( void );
 
 extern void DevWarn_Toggle( void );
 #pragma mips_frequency_hint NEVER DevWarn_Toggle

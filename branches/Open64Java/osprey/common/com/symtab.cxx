@@ -1621,6 +1621,7 @@ ST::Print (FILE *f, BOOL verbose) const
 	    fprintf (f, "PU[%d] ", u2.pu);
 	    if (Pu_Table[u2.pu].src_lang & PU_C_LANG)	fprintf (f, "C  ");
 	    if (Pu_Table[u2.pu].src_lang & PU_CXX_LANG)	fprintf (f, "C++  ");
+		if (Pu_Table[u2.pu].src_lang & PU_JAVA_LANG)fprintf (f, "JAVA  ");
 	    if (Pu_Table[u2.pu].src_lang & PU_F77_LANG)	fprintf (f, "F77  ");
 	    if (Pu_Table[u2.pu].src_lang & PU_F90_LANG)	fprintf (f, "F90  ");
 
@@ -1737,8 +1738,6 @@ ST::Print (FILE *f, BOOL verbose) const
 		fprintf (f, " copy_constructor_st");
             if (flags_ext & ST_INITV_IN_OTHER_ST)
                 fprintf (f, " st_used_as_initialization");
-	    if (flags_ext & ST_IS_THREAD_LOCAL)
-                fprintf (f, " thread_local");
 	}
 #endif
 
@@ -1940,8 +1939,8 @@ PU::Print (FILE *f) const
 #ifdef KEY
     fprintf (f, ", flags 0x%016llx,\n"
 	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d,\n"
-	     "\tEH Info (eh_info) %d\n",
-	     flags, lexical_level, src_lang, target_idx, (INT32)eh_info); 
+	     "\tEH Info (unused) %d\n",
+	     flags, lexical_level, src_lang, target_idx, (INT32)unused); 
 #else
     fprintf (f, ", flags 0x%016llx,\n"
 	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d\n",

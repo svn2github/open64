@@ -171,7 +171,6 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 
 /* Front end phases: */
 #define TP_SEMANTICS	8	/* Semantic analyzer */
-#define TP_WGEN	        9	/* WGEN GIMPLE to WHIRL bridge */
 #define TP_IRB		10	/* IR (WHIRL) builder */
 
 /* Intermediate utility phases: */

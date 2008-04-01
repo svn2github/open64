@@ -246,6 +246,10 @@ Set_lang (SUMMARY_PROCEDURE *proc)
  	proc->Set_lang (LANG_CPLUS);
 	break;
 
+	case PU_JAVA_LANG:
+ 	proc->Set_lang (LANG_JAVA);
+	break;
+
     case PU_F77_LANG:
 	proc->Set_lang (LANG_F77);
 	break;

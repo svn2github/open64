@@ -110,6 +110,7 @@ set_defaults (void)
 #endif
 	}
 
+	prepend_option_seen(O_usejavaf);
 	prepend_option_seen(O_usegfe);
 	prepend_option_seen(O_usef90);
 
@@ -254,6 +255,8 @@ add_special_options (void)
 #ifdef KEY
 		add_phase_for_option(O_traditional, P_spin_cc1);
 		add_phase_for_option(O_traditional, P_spin_cc1plus);
+		//yzm
+		add_phase_for_option(O_traditional, P_spin_jc1);
 #endif
 	}
 

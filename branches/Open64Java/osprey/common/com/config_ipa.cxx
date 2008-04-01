@@ -301,9 +301,6 @@ INT32 IPA_Output_File_Size = 0;
 /* This flag is to use the old type merge phase. It should be removed when the old type merge is removed. */
 BOOL IPA_Enable_Old_Type_Merge = FALSE;  
 
-/* enable devirtualization */
-BOOL IPA_Enable_Devirtualization = FALSE;
-
 static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL,	OV_VISIBLE,	FALSE, "addressing",	"",
 	  0, 0, 0,		&IPA_Enable_Addressing,	NULL,
@@ -583,9 +580,6 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "ipa_enable_old_type_merge", "",
           0, 0, 0,              &IPA_Enable_Old_Type_Merge, NULL,
           "Use the old type merge phase in IPA"},
-    { OVK_BOOL, OV_INTERNAL,    FALSE, "devirtualization", "",
-          0, 0, 0,              &IPA_Enable_Devirtualization, NULL,
-          "Use devirtualization phase"},
 #endif // KEY
     { OVK_COUNT }	    /* List terminator -- must be last */
 };
@@ -764,7 +758,7 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "var_dim_array",             "",
           0, 0, 0,              &IPA_Enable_Inline_Var_Dim_Array,   NULL,
           "Enable inlining of PU with param that is variable-dim array " },
-    { OVK_LIST,	OV_VISIBLE,	FALSE, "in_edge",	"",
+    { OVK_LIST,	OV_VISIBLE,	FALSE, "in",	"",
 	  0, 0, 0,	&INLINE_List_Names,	NULL,
 	  "Inline requested CG edges " },
     { OVK_BOOL, OV_INTERNAL,    FALSE, "array_bounds",             "",

@@ -379,8 +379,8 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
       {
 	// Note: Don't set EHinfo_Updated here, as we are not yet done with
 	// the entire PU.
-	Is_True (PU_src_lang (cg_node->Get_PU()) & PU_CXX_LANG, 
-		   ("Exception region in non-C++ PU"));
+	Is_True ((PU_src_lang (cg_node->Get_PU()) & PU_CXX_LANG || PU_src_lang (cg_node->Get_PU()) & PU_JAVA_LANG ), 
+		   ("Exception region in non-C++ and non-java PU"));
 
 	int sym_size;
 	SUMMARY_SYMBOL * sym_array = IPA_get_symbol_file_array (cg_node->File_Header(), sym_size);

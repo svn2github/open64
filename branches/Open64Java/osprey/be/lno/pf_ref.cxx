@@ -203,7 +203,7 @@ inline mINT32  PF_LG::Get_Stride_In_Enclosing_Loop () {
   return _myugs->Get_Stride_In_Enclosing_Loop ();
 }
 
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#ifdef OSP_OPT
 inline BOOL  PF_LG::Get_Stride_Accurate() {
   return _myugs->Get_Stride_Accurate();
 }
@@ -350,6 +350,7 @@ extern void Listing_Emit_WN (FILE* fp, WN* wn) {
 
   // it's an ISTORE, more painful
   switch (PU_src_lang(Get_Current_PU())) {
+  case PU_JAVA_LANG:
   case PU_C_LANG:
   case PU_CXX_LANG:
   {
@@ -1872,7 +1873,7 @@ WN* PF_LG::Get_Ref_Version (WN* ref, INT bitpos) {
   return ref;
 }
 
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#ifdef OSP_OPT
 BOOL Contain_Induction_Variable (WN* wn, ST_IDX idx)
 {
   if (WN_st_idx(wn) == idx) return TRUE;
@@ -1891,23 +1892,10 @@ void Update_Array_Index (WN* wn, WN* wn_incr, WN* wn_induc)
       TYPE_ID desc = Promote_Type(WN_rtype(wn_kid));
       WN* wn_ahead = LWN_Make_Icon(desc, LNO_Prefetch_Iters_Ahead);
       wn_ahead = LWN_CreateExp2(OPCODE_make_op(OPR_MPY, desc, MTYPE_V), 
-                                                  WN_CopyNode(wn_incr), wn_ahead);
+                                                  WN_CopyNode(wn_incr), wn_ahead);      
       WN_kid(wn, kid) = LWN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V), wn_kid, wn_ahead);
       LWN_Set_Parent(WN_kid(wn, kid), wn);
-    }
-    // bug fix for OSP_348
-    //
-    else if ((WN_operator(wn_kid) == OPR_CVT || WN_operator(wn_kid) == OPR_CVTL || WN_operator(wn_kid) == OPR_TRUNC)
-	     && (WN_st_idx(WN_kid(wn_kid, 0)) == WN_st_idx(wn_induc) && SYMBOL(WN_kid(wn_kid, 0)) == SYMBOL(wn_induc)))
-    {
-      TYPE_ID desc = Promote_Type(WN_rtype(wn_kid));
-      WN* wn_ahead = LWN_Make_Icon(desc, LNO_Prefetch_Iters_Ahead);
-      wn_ahead = LWN_CreateExp2(OPCODE_make_op(OPR_MPY, desc, MTYPE_V),
-		                WN_CopyNode(wn_incr), wn_ahead);
-      WN_kid(wn, kid) = LWN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V), wn_kid, wn_ahead);
-      LWN_Set_Parent(WN_kid(wn, kid), wn);
-    }
-    else {
+    } else {
       Update_Array_Index(wn_kid, wn_incr, wn_induc);
     }
   }
@@ -2205,7 +2193,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
       break;
     }
 
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#ifdef OSP_OPT
     {
       // Go some cache lines ahead
       if ( LNO_Prefetch_Ahead || LNO_Prefetch_Iters_Ahead) {
@@ -2991,7 +2979,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
   // get stride in enclosing loop
   {
     _stride_in_enclosing_loop = 0;
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#ifdef OSP_OPT
     _stride_accurate = TRUE;
 #endif
 
@@ -3016,7 +3004,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
           _stride_in_enclosing_loop *= WN_const_val(dim_wn);
         }
         else {
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#ifdef OSP_OPT
           //OSP_233 & OSP_240 
           //
           //  DO I = 1, N
@@ -3048,7 +3036,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
       }
     }
     else {
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#ifdef OSP_OPT
       BOOL messy=FALSE;
     
       for (i=aa->Num_Vec()-1; i>=0; i--) {
@@ -3283,7 +3271,7 @@ static BOOL Pseudo_Temporal_Locality(WN *array)
  *
  ***********************************************************************/
 void PF_UGS::ComputePFVec (PF_LEVEL level, PF_LOCLOOP locloop) {
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#ifdef OSP_OPT
   if (!Get_Stride_Accurate())
     return;
 #endif

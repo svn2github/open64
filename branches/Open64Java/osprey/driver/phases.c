@@ -268,7 +268,14 @@ copy_phase_options (string_list_t *phase_list, phases_t phase)
 			 * Make sure it matches both parent and implied lang.
 			 * Also, don't add object options. */
 
-#ifdef KEY		// Hack to filter out -OPT: options to spin_cc1,
+#ifdef KEY		
+			// yzm
+			// disable -O* in jc1 and   in jvgenmain
+			if (!strncmp("-O", get_option_name(iflag),2))
+			  if (phase == P_spin_jc1 || phase == P_jvgenmain)
+			  continue;
+
+			// Hack to filter out -OPT: options to spin_cc1,
 			// which takes all front-end options except -OPT:.  Bug
 			// 10209.  (Why is -OPT classified as a front-end
 			// option in the first place?)
@@ -277,7 +284,8 @@ copy_phase_options (string_list_t *phase_list, phases_t phase)
 			if (gnu_version == 4 &&
 			    !strcmp("-OPT:", get_option_name(iflag))) {
 			  if (phase == P_spin_cc1 ||
-			      phase == P_spin_cc1plus)
+			      phase == P_spin_cc1plus ||
+			      phase == P_spin_jc1)
 			    continue;
 			  else if (phase == P_wgen)
 			    matches_phase = TRUE;
@@ -335,6 +343,9 @@ add_language_option ( string_list_t *args )
 	break;
     case L_CC:
 	add_string ( args, "-LANG:=cplus" );
+	break;
+	case L_java:
+	add_string ( args, "-LANG:=java" ); // ykq
 	break;
   }
 }
@@ -699,6 +710,14 @@ add_file_args (string_list_t *args, phases_t index)
 	string_item_t *p;
 	char *count_file_name;
 	char *the_file = fix_name_by_phase(source_file, index);
+
+        char *jvgenmain_class;
+	char *jvgenmain_file;
+\
+        //modified by yzm
+        char *delim = ".";
+	char *class_name;
+	char *libpath;
 
 	/* current_phase is used to say which file might be the last output 
 	 * file and thus might need a local name rather than a tmp name */
@@ -1118,6 +1137,70 @@ add_file_args (string_list_t *args, phases_t index)
 
 		break;
 
+//yzm
+#ifdef KEY
+	case P_spin_jc1:
+		add_string(args, input_source);
+
+	        add_string(args, "-fhash-synchronization");
+	        add_string(args, "-fno-use-divide-subroutine");
+	        add_string(args, "-fuse-boehm-gc");
+	        add_string(args, "-fnon-call-exceptions");
+	        add_string(args, "-fno-omit-frame-pointer");
+	        add_string(args, "-fkeep-inline-functions");
+
+		if (gnu_exceptions == FALSE) {			// bug 11732
+		  add_string(args, "-fno-gnu-exceptions");
+		}
+		if (show_but_not_run)
+			add_string(args, "-###");
+		if (show_version) {
+			add_string(args, "-version");
+		}
+		if (quiet_flag) 
+			add_string(args, "-quiet");
+
+	        add_string(args, "-dumpbase");
+	        add_string(args, input_source);
+
+		if( abi == ABI_N32 )
+			add_string(args, "-m32");
+
+  		if( fmath_errno == 0 )
+			add_string(args, "-fno-math-errno");
+
+  		if( ffast_math == 1 )
+			add_string(args, "-ffast-math");
+
+		add_string(args, "-mtune=pentiumpro");
+		add_string(args, "-auxbase");
+
+	        class_name = (char *)malloc(sizeof(char) * strlen(input_source));
+	        strcpy(class_name, input_source);
+	        class_name = strtok(class_name, delim);
+
+		add_string(args, class_name);
+
+		{
+			int flag;
+			int iflag;
+			FOREACH_OPTION_SEEN(flag) 
+			{
+				FOREACH_IMPLIED_OPTION(iflag, flag) 
+				{
+					if (!strcmp("-O0", get_option_name(iflag)))
+				                add_string(args, "-O0");
+				}
+			}
+		}
+
+	        add_string(args, "-dx");
+
+		add_string(args, "-spinfile");
+		add_string(args, construct_name(the_file, "spin"));
+		break;
+#endif
+
 #ifdef KEY
 	case P_spin_cc1:
 	case P_spin_cc1plus:
@@ -1167,14 +1250,17 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, "-ffast-math");
 
 		add_string(args, "-dumpbase");
+
 #ifndef KEY
 		add_string(args, drop_path(the_file));
 #else
+
 		// Bug 2458 - path to the source file should not be dropped
 		// in the command to the front-end because this is used in
 		// building the DST info (DW_TAG_name in DW_TAG_compile unit)
 		add_string(args, the_file);
 #endif
+
 		add_string(args, input_source);
 
 #ifdef KEY
@@ -1184,6 +1270,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, construct_name(the_file, "spin"));
 		  break;
 		}
+
 #endif
 		add_string(args, "-o");
 		add_string(args, construct_name(the_file,"B"));
@@ -1197,7 +1284,7 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 #endif
 	case P_inline:
-		if (source_kind == S_B)
+		if (source_kind == S_B) //ykq
 		    sprintf (buf, "-fB,%s", the_file);
 		else
 		    sprintf(buf, "-fB,%s",
@@ -1216,8 +1303,7 @@ add_file_args (string_list_t *args, phases_t index)
 		else
 		    sprintf(buf, "-fB,%s",
 			    construct_name(the_file,"B"));
-		add_string (args, buf);
-
+		add_string (args, buf);	
 		if (instrumentation_invoked == TRUE) {
 		  if (fb_file != NULL)
 		    sprintf(buf, "-fi,%s.instr", fb_file);
@@ -1266,6 +1352,7 @@ add_file_args (string_list_t *args, phases_t index)
 		    append_string_lists (args, ipl_cmds);
 		}
 		break; 
+
 	case P_be:
 		add_language_option ( args );
 		add_targ_options ( args );
@@ -1297,7 +1384,8 @@ add_file_args (string_list_t *args, phases_t index)
 		    temp = the_file;
 		    break;
 		default:
-		    if (post_fe_phase () == P_inline)
+		   // if (post_fe_phase () == P_inline)  ykq for add call promotion before inline
+		    if (post_fe_phase () == P_ipl)
 			temp = construct_name(the_file,"I");
 		    else
 			temp = construct_name(the_file,"B");
@@ -1358,6 +1446,7 @@ add_file_args (string_list_t *args, phases_t index)
 					 )
 			  {
 			    sprintf(buf, "-fo,%s", outfile);
+
 			  } else {
 			        sprintf(buf, "-fo,%s", 
 			            construct_given_name(the_file,"o",
@@ -1369,6 +1458,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args,"--");
 		add_string(args, the_file);
 		break;
+		
 	case P_as:
 	case P_gas:
 #ifdef KEY
@@ -1384,7 +1474,6 @@ add_file_args (string_list_t *args, phases_t index)
 		{
 		  if( abi == ABI_N32 )
 		    add_string(args, "-m32");
-
 		  // Add input source to args.  Append .s to input source if
 		  // it doesn't already end in .s.
 		  int len = strlen(input_source);
@@ -1401,6 +1490,7 @@ add_file_args (string_list_t *args, phases_t index)
 		add_string(args, "-c");		// gcc -c
 #endif
 		add_string(args, "-o");
+
 		/* cc -c -o <file> puts output from as in <file>,
 		 * unless there are multiple source files. */
 		if (outfile != NULL
@@ -1422,25 +1512,28 @@ add_file_args (string_list_t *args, phases_t index)
 			     remember_last_phase == P_any_as)) {
 			  char *temp_obj_file = get_object_file (the_file);
 			  add_string(args, temp_obj_file);
+
 			} else
 			add_string(args, construct_given_name(the_file,"o",
 			  (keep_flag || multiple_source_files || ((shared == RELOCATABLE) && (ipa == TRUE))) ? TRUE : FALSE));
+
 		}
 		break;
 	case P_ld:
 	case P_ldplus:
+	case P_gcj:
 		/* For C/C++:
 		 * gcc invokes collect2 which invokes ld.
 		 * Because the path to collect2 varies, 
 		 * just invoke gcc to do the link. */
 
 		/* add lib paths for standard libraries like libgcc.a */
-		append_libraries_to_list (args);
+		append_libraries_to_list (args); 
 		if (show_but_not_run)
 			add_string(args, "-###");
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
-		set_library_paths(args);
+		 set_library_paths(args); 
 		if (outfile != NULL) {
 			add_string(args, "-o");
 			add_string(args, outfile);
@@ -1578,6 +1671,7 @@ add_file_args (string_list_t *args, phases_t index)
                 add_string(args, ">");
 		add_string(args, "/dev/null");
 		break;
+
 	}
 }
 
@@ -1721,7 +1815,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	//	add_library(args, "m" PSC_NAME_PREFIX);
 		add_library(args, "m");
 		add_library(args, "ffio");
-	//	add_library(args, "msgi");
+		add_library(args, "msgi");
 	    }
 #ifdef KEY
 	    if (option_was_seen(O_mp) ||
@@ -1736,7 +1830,8 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 #ifdef KEY  // bug 4230
 	    if (option_was_seen(O_pthread) ||
 		option_was_seen(O_mp) ||
-		option_was_seen(O_apo)) {	// bug 6334
+		option_was_seen(O_apo)||
+		invoked_lang == L_java) {	// bug 6334  & add java ykq
 		add_string(args, "-lpthread");
 	    }
 #endif
@@ -1757,7 +1852,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
      * lib{stdc++,gcc,c,etc}.{so,a} are taken care by gcc/g++ itself.
      */
     if (shared != DSO_SHARED && shared != RELOCATABLE &&
-        ld_phase != P_ld && ld_phase != P_ldplus) {
+        ld_phase != P_ld && ld_phase != P_ldplus && ld_phase != P_gcj) {
             if (invoked_lang == L_CC) {
             add_library(args, "stdc++");
             }
@@ -1770,14 +1865,17 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	    	if (invoked_lang == L_CC) {
 			add_library(args, "stdc++");
 	    	}
-		if (invoked_lang == L_CC && !option_was_seen(O_static)) {
-			add_libgcc_s (args);
+		if (invoked_lang == L_CC && !option_was_seen(O_static)) { 
+			//add_libgcc_s (args);
 		}
 		add_library (args, "gcc");
 		add_library (args, "c");
-		if (invoked_lang == L_CC && !option_was_seen(O_static))
-			add_libgcc_s (args);
-		add_library(args, "gcc");
+		//if (invoked_lang == L_CC && !option_was_seen(O_static))
+		//	add_libgcc_s (args);
+		//d_library(args, "gcc");
+	    if (invoked_lang == L_java && !option_was_seen(O_static))
+			add_library(args, "gcj");
+		    //add_libgcc_s (args); 
 	}
 #endif
 	if (shared != RELOCATABLE) {
@@ -1793,7 +1891,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	}
 #ifdef TARG_IA64
     if (shared != DSO_SHARED && shared != RELOCATABLE &&
-        ld_phase != P_ld && ld_phase != P_ldplus) {
+        ld_phase != P_ld && ld_phase != P_ldplus && ld_phase != P_gcj) {
         add_string(args, find_crt_path("crtend.o"));
         add_string(args, find_crt_path("crtn.o"));
     }
@@ -1823,7 +1921,7 @@ static void
 add_rpath_link_option (string_list_t *args) {
 
     phases_t ld_phase = determine_ld_phase (FALSE);
-    if (ld_phase == P_ld || ld_phase == P_ldplus) {
+    if (ld_phase == P_ld || ld_phase == P_ldplus || ld_phase == P_gcj) {
         return; // gcc/g++ will take care
     }
 
@@ -1887,7 +1985,9 @@ postprocess_ld_args (string_list_t *args)
 }
 #endif
 
-#define MAX_PHASE_ORDER 10
+//yzm
+//MAX_PHASE_ORDER will be 11 if we parse JAVA
+#define MAX_PHASE_ORDER 13
 static phases_t phase_order[MAX_PHASE_ORDER];
 static int phase_order_index = 0;
 
@@ -1922,11 +2022,13 @@ post_fe_phase (void)
     // Afterward, it is set to inline_t if the inline setting is explicitly
     // given on the command line; otherwise it is set to the inline request
     // from the front-end.  Bug 11325
-    else if (run_inline != UNDEFINED)
-      return run_inline == TRUE ? P_inline : P_be;
+    else if (run_inline != UNDEFINED){
+      return run_inline == TRUE ? P_inline : P_be; 
+	 }
 #endif
-    else if (inline_t == TRUE || inline_t == UNDEFINED)
+    else if (inline_t == TRUE || inline_t == UNDEFINED){
 	return P_inline;
+	}
     else
 	return P_be;
 } /* post_fe_phase */
@@ -2022,7 +2124,13 @@ determine_phase_order (void)
 	      cpp_phase = P_NONE;
 	   }
 #endif
-	} else if (source_lang == L_as
+	}
+    else if (source_lang == L_java)
+	{
+		cpp_phase = P_spin_jc1;
+	}
+	
+	else if (source_lang == L_as
 		&& (abi == ABI_I32 || abi == ABI_I64 || abi == ABI_IA32))
 	{
 		cpp_phase = P_gcpp;	/* use ansi-style cpp */
@@ -2045,6 +2153,8 @@ determine_phase_order (void)
 		link_phase = P_ipa_link;
 	else if (invoked_lang == L_CC)
 		link_phase = P_ldplus;
+	else if (invoked_lang == L_java) //ykq
+		link_phase = P_gcj;
 	else
 		link_phase = P_ld;
 
@@ -2068,6 +2178,9 @@ determine_phase_order (void)
 		    	add_phase(P_gcpp);
 		    next_phase = (source_lang == L_CC ? cplus_fe : c_fe);
 		}
+		break;
+	case S_java:
+		next_phase = P_spin_jc1;
 		break;
 	case S_i:
 	case S_ii:
@@ -2161,6 +2274,7 @@ determine_phase_order (void)
 #ifdef KEY
 		case P_spin_cc1:
 		case P_spin_cc1plus:
+		case P_spin_jc1:
 			add_phase(next_phase);
 			next_phase = P_wgen;
 			break;
@@ -2185,16 +2299,17 @@ determine_phase_order (void)
 			next_phase = P_be;
 			break;
 		case P_ipl:
-			add_phase(next_phase);
-			if (option_was_seen(O_ar)) {
-			    next_phase = P_ar;
-			}
-			else {
-			    next_phase = link_phase;
-			}
-			break;
+	         add_phase(next_phase);
+             if (option_was_seen(O_ar)) {
+               next_phase = P_ar;
+              }
+             else {
+               next_phase = link_phase;
+              }
+             break;
 		case P_be:
 			add_phase(next_phase);
+
 			/* may or may not generate objects directly */
 			if (skip_as == TRUE) {
 			   if (option_was_seen(O_ar)) {
@@ -2209,6 +2324,7 @@ determine_phase_order (void)
 		case P_as:
 		case P_gas:
 			add_phase(next_phase);
+
 			if (option_was_seen(O_ar)) {
 			    next_phase = P_ar;
 			}
@@ -2219,6 +2335,7 @@ determine_phase_order (void)
 		case P_ld:
 		case P_ldplus:
 		case P_collect:
+		case P_gcj:  //ykq
 		case P_ipa_link:
 			add_phase(next_phase);
                         if (cordflag==TRUE) {
@@ -2231,6 +2348,10 @@ determine_phase_order (void)
 		case P_cord:
 			add_phase(next_phase);
 			add_phase(P_NONE);
+			next_phase = P_NONE;
+			break;
+		case P_jvgenmain:
+			add_phase(next_phase);
 			next_phase = P_NONE;
 			break;
 		case P_NONE:
@@ -2408,7 +2529,7 @@ init_phase_info (void)
 	    if (old_ld_library_path[i] == ':')
 	      old_ld_library_path[i] = ';';
 	  }
-	  asprintf(&old_ld_library_path, "%s;%s", old_ld_library_path,
+	  asprintf(&old_ld_library_path, "%s%s", old_ld_library_path,
 		   get_binutils_lib_path());
 	} else {
 	  old_ld_library_path = get_binutils_lib_path();
@@ -2498,7 +2619,8 @@ init_phase_names (void)
   for (i = P_LAST-1; i >= (int) P_NONE; i--) {
     char *phase_name = get_phase_name(i);
     if (strcmp(phase_name, "gcc") == 0 ||
-        strcmp(phase_name, "g++") == 0) {
+        strcmp(phase_name, "g++") == 0 ||
+        strcmp(phase_name, "gcj") == 0) {   //ykq
       set_phase_name (i, concat_strings(prefix, phase_name));
     }
   }
@@ -2548,6 +2670,30 @@ determine_ld_phase (boolean run_ipa) {
         return ldphase;
 }
 
+
+//yzm
+void 
+run_jvgenmain(void)
+{
+	string_list_t *args;
+	char *jvgenmain_class;
+	args = init_string_list();
+
+	//modified by yzm
+	jvgenmain_class = (char *)malloc(sizeof(char) * (strlen(main_method) + 5));
+	strcpy(jvgenmain_class, main_method);
+	jvgenmain_class = strcat(jvgenmain_class, "main");
+		
+	add_string(args, jvgenmain_class);
+
+    jvgenmain_class = strcat(jvgenmain_class, ".i");			   
+	generated_main_file = construct_name(jvgenmain_class, "i");
+                   
+	add_string(args, generated_main_file);
+
+	run_phase (P_jvgenmain, get_full_phase_name(P_jvgenmain), args);
+}
+
 void
 run_ld (void)
 {
@@ -2560,6 +2706,9 @@ run_ld (void)
 	}
 	else if (invoked_lang == L_CC) {
 		ldphase = P_ldplus;
+	}
+	else if (invoked_lang == L_java) {
+        ldphase = P_gcj; 
 	}
 	else {
 		ldphase = P_ld;
@@ -2592,9 +2741,12 @@ run_ld (void)
         char *our_path;
 
         if (abi == ABI_N32) {
-          asprintf(&our_path, "%s" LIBPATH "/32", root_prefix);
+	 #ifdef PSC_TO_OPEN64
+          //asprintf(&our_path, "%s/" OPEN64_FULL_VERSION "/32", root_prefix); //ykq
+           asprintf(&our_path, "%s/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION, root_prefix);
         } else {
-          asprintf(&our_path, "%s" LIBPATH, root_prefix);
+          asprintf(&our_path, "%s/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION, root_prefix);
+	 #endif
         }
 
         add_string(args, concat_strings("-L", our_path));
@@ -2606,13 +2758,14 @@ run_ld (void)
 	      case L_f90:	str = "F90";	break;
 	      case L_cc:	str = "C";	break;
 	      case L_CC:	str = "CC";	break;
+		  case L_java:	str = "java";	break; //ykq
 	      default:		internal_error("run_ld: unknown language\n");
 	    }
 	    add_string(args, concat_strings("-INTERNAL:lang=", str));
 
 	    init_crt_paths ();
-	    if (invoked_lang == L_CC ||
-		instrumentation_invoked == TRUE ) {
+	    if (invoked_lang == L_CC /*||
+		instrumentation_invoked == TRUE*/ ) { //ykq
 	      init_stdc_plus_plus_path();
 	    }
 	}
@@ -2656,6 +2809,7 @@ run_ld (void)
     if ( ldphase == P_ipa_link ) {
       specify_ipa_dyn_linker(args);
     }
+
 	postprocess_ld_args (args);
 
 	run_phase (ldphase, ldpath, args);
@@ -2791,7 +2945,7 @@ run_compiler (int argc, char *argv[])
 #endif
 		    phase_order[i] == P_inline)
 		    continue;
-		
+
 		if (is_matching_phase(get_phase_mask(phase_order[i]), P_any_ld)) {
 			source_kind = S_o;
 			/* reset source-lang to be invoked-lang for linking */
@@ -2810,9 +2964,11 @@ run_compiler (int argc, char *argv[])
 #ifdef KEY
 			    phase_order[i] != P_spin_cc1 &&
 			    phase_order[i] != P_spin_cc1plus &&
+			    //yzm
+			    phase_order[i] != P_spin_jc1 &&
 			    phase_order[i] != P_wgen &&
 #endif
-			    phase_order[i] < P_any_fe)
+			    phase_order[i] < P_any_fe) 
 			{
 			    add_command_line_arg(args, source_file);
 			    cmd_line_updated = TRUE;
@@ -2820,13 +2976,6 @@ run_compiler (int argc, char *argv[])
 			add_file_args (args, phase_order[i]);
 			run_phase (phase_order[i],
 				   get_full_phase_name(phase_order[i]), args);
-                        /* undefine the environment variable
-                         * DEPENDENCIES_OUTPUT after the pre-processor phase -
-                         * bug 386.
-                         */
-                        if (phase_order[i] == P_gcpp_plus)
-                          unsetenv("DEPENDENCIES_OUTPUT");
-
 			if ( i == 0 && (string_md == TRUE || string_mmd == TRUE)){
 			        /* Bug# 581, bug #932, bug# 1049, bug #433 */
 				/* We've run the dependency phase, so

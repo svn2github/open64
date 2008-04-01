@@ -2045,7 +2045,7 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info ,BOOL is_return=FALS
   BOOL       call;
 
   result = WN_kid1 (wn);
-  if( PU_cxx_lang (Get_Current_PU()) && WN_operator(WN_last(WN_kid0(wn))) == OPR_STID)
+  if((PU_cxx_lang (Get_Current_PU()) || PU_java_lang (Get_Current_PU())) && WN_operator(WN_last(WN_kid0(wn))) == OPR_STID)
     prev_call = WN_kid0(WN_last(WN_kid0(wn)));
   else
     prev_call = NULL;
@@ -2053,7 +2053,7 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info ,BOOL is_return=FALS
           && WN_operator(result) == OPR_LDID
           && WN_st(result) == Return_Val_Preg;
 
-  if ( PU_cxx_lang (Get_Current_PU())&&
+  if ((PU_cxx_lang (Get_Current_PU())|| PU_java_lang (Get_Current_PU()))&&
        prev_call && 
        WN_operator(prev_call) == OPR_LDID &&
        (WN_st(prev_call) == Return_Val_Preg || is_return)&&
@@ -4208,7 +4208,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info ,BOOL is_return)
 #ifdef TARG_X8664
       // By default, generate rotate instruction only if it is C++ (bug 7932)
       // Can be crontrolled by internal flag -VHO:rotate
-      if (!VHO_Generate_Rrotate_Set && PU_cxx_lang (Get_Current_PU()) &&
+      if (!VHO_Generate_Rrotate_Set &&(PU_cxx_lang (Get_Current_PU())|| PU_java_lang (Get_Current_PU()))&&
           (Is_Target_64bit() || MTYPE_byte_size(WN_desc(wn)) <= 4))
         VHO_Generate_Rrotate = TRUE;
 
@@ -5295,6 +5295,7 @@ vho_lower_do_loop ( WN * wn, WN *block )
   Is_True (WN_first (lower_block) == NULL ||
            PU_c_lang (Get_Current_PU())  ||
            PU_cxx_lang (Get_Current_PU()) || 
+           PU_java_lang (Get_Current_PU()) ||
 	   Instrumentation_Enabled,
            ("lowering of do loop test generated statements in Fortran"));
 #endif

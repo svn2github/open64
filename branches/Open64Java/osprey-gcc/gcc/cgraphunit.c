@@ -1868,7 +1868,7 @@ cgraph_build_static_cdtor (char which, tree body, int priority)
   DECL_IGNORED_P (decl) = 1;
   DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (decl) = 1;
   DECL_SAVED_TREE (decl) = body;
-  TREE_PUBLIC (decl) = ! targetm.have_ctors_dtors;
+  TREE_PUBLIC (decl) = flag_spin_file ? 1 : ! targetm.have_ctors_dtors;		//czw
   DECL_UNINLINABLE (decl) = 1;
 
   DECL_INITIAL (decl) = make_node (BLOCK);
@@ -1889,7 +1889,9 @@ cgraph_build_static_cdtor (char which, tree body, int priority)
       gcc_unreachable ();
     }
 
-  gimplify_function_tree (decl);
+	if(!flag_spin_file)		//czw
+  gimplify_function_tree (decl);  
+  
 
   /* ??? We will get called LATE in the compilation process.  */
   if (cgraph_global_info_ready)

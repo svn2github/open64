@@ -249,7 +249,10 @@ COMMON_COM_TARG_CXX_SRCS =	\
   targ_em_dwarf.cxx     \
 
 COMMON_UTIL_SRCS =	\
-  bitset.c
+  bitset.c	\
+  ti_res.c              \
+  ti_res_count.c        \
+  ti_res_res.c
 
 CG_C_SRCS = \
   $(COMMON_UTIL_SRCS)

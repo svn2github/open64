@@ -932,9 +932,6 @@ static BOOL
 Is_OP_Spill_Load (OP *op, ST *spill_loc)
 {
   if (!OP_load(op)) return FALSE;
-#ifdef TARG_IA64
-  if (!OP_spill_restore(op)) return FALSE;
-#endif
 
   INT n = TOP_Find_Operand_Use(OP_code(op), OU_offset);
   if (n < 0) {
@@ -2099,22 +2096,6 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
     ISA_REGISTER_CLASS regclass = TN_register_class(tn);
     REGISTER_SET must_use = Usable_Registers(tn, clr);
 
-#ifdef KEY
-    // If ASM uses a callee-saved register, then add the register to
-    // Callee_Saved_Regs_Used.  Bug 13100.
-    if (asm_info &&
-        LRA_TN_register(tn) != REGISTER_UNDEFINED) {
-      const REGISTER reg = LRA_TN_register(tn);
-      const ISA_REGISTER_CLASS rc = TN_register_class(tn);
-      if (reg <= REGISTER_MAX &&
-          REGISTER_allocatable(rc, reg) &&
-          REGISTER_SET_MemberP(REGISTER_CLASS_callee_saves(rc), reg)) {
-        Callee_Saved_Regs_Used[rc] =
-          REGISTER_SET_Union1(Callee_Saved_Regs_Used[rc], reg);
-      }
-    }
-#endif
-    
 #ifdef TARG_X8664
     if( Is_Target_32bit() ){
       const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(regclass);
@@ -3442,9 +3423,7 @@ Spill_Live_Range (
     reloadable_def = OP_VECTOR_element(Insts_Vector, first_def);
     // If this op is not a spill load, set reloadable_def to NULL, so that 
     // later, this spill TN will be first stored to the spill location after its first def
-    // for TNs with only 1 load operation, their Live Ranges are marked with reloadable flag,
-    // However, their load operation is not marked with spill_load flag
-    if ( reloadable_def && !LR_reloadable(spill_lr) && !Is_OP_Spill_Load (reloadable_def, TN_spill(spill_tn)) ){
+    if ( reloadable_def && !Is_OP_Spill_Load (reloadable_def, TN_spill(spill_tn)) ){
         reloadable_def = NULL;
     }else {
 
@@ -3580,7 +3559,10 @@ Spill_Live_Range (
       if (!def_available) {
         def_available = TRUE;
         new_tn = Dup_TN_Even_If_Dedicated (spill_tn);
+#ifdef TARG_IA64
         Is_True(reloadable_def || spill_loc, ("Attempt to locate a NULL spill_loc!"));
+        Set_TN_spill(new_tn, spill_loc);
+#else
 #ifdef TARG_X8664
         Reset_TN_preallocated(new_tn);
 #endif
@@ -3589,6 +3571,7 @@ Spill_Live_Range (
         if (TN_has_spill(spill_tn))
 #endif
           Set_TN_spill(new_tn, spill_loc);
+#endif //TARG_IA64
         Add_Spill_Load_Before_Use (new_tn, spill_loc, reloadable_def, i, bb);
       }
       else if (Do_LRA_Trace(Trace_LRA_Spill)) {
@@ -5063,94 +5046,10 @@ static void Verify_TARG_X86_Op_For_BB( BB* bb )
 }
 #endif
 
-#include <list>
-using namespace std;
-struct GTN_OP_INFO{
-  GTN_OP_INFO():gtn(NULL),has_use(false),has_def(false){}
-  GTN_OP_INFO(TN * t,bool u=false,bool d=false):gtn(t),has_use(u),has_def(d){}
-  TN * gtn;
-  bool has_use;
-  bool has_def;
-  list<OP *> op_list;
-};
- 
 static void
 Preallocate_Single_Register_Subclasses (BB* bb)
 {
-  // build a list of GTNs and the list of OP where it's used, 
-  //  so that we can check if we have a register-conflict
-  //  with GTNs when preallocating a register to a TN
-  typedef list<GTN_OP_INFO> GTN_LIST;
-  typedef GTN_LIST::iterator GTN_LIST_IT;
-  typedef list<OP *> OP_LIST;
-
-  GTN_LIST gtn_list;
-  for(OP * op=BB_first_op(bb);op!=NULL;op=OP_next(op)){
-    for(int i=0;i<OP_opnds(op);i++){
-      TN * tn=OP_opnd(op,i);
-      if(TN_is_global_reg(tn)){
-        GTN_LIST_IT it;
-        for(it=gtn_list.begin();it!=gtn_list.end();it++){
-          if(it->gtn==tn)
-            break;
-        }
-        if(it==gtn_list.end()){  
-          // GTN hasn't been inserted yet,
-          //  insert the GTN
-          //  insert OP to the list
-          gtn_list.push_back(GTN_OP_INFO(tn,true,false));
-          (gtn_list.rbegin())->op_list.push_back(op);
-        } 
-        else{  
-          // GTN has been inserted, 
-          //  just add OP to the list but
-          //  as there's a def before the
-          //  use, so the use cannot be
-          //  exposed to the top of the
-          //  BB. So no need to add has_use
-          list<OP *> & l=it->op_list;
-          list<OP *>::reverse_iterator rit;
-          for(rit=l.rbegin();rit!=l.rend();rit++)
-            if(*rit==op)
-              break;
-          if(rit==l.rend())   // add op to the list if op hasn't been inserted
-            l.push_back(op);
-        }
-      }
-    }
-    for(int i=0;i<OP_results(op);i++){
-      TN * tn=OP_result(op,i);
-      if(TN_is_global_reg(tn)){
-        GTN_LIST_IT it;
-        for(it=gtn_list.begin();it!=gtn_list.end();it++){
-          if(it->gtn==tn)
-            break;
-        }
-        if(it==gtn_list.end()){
-          // GTN hasn't been inserted yet,
-          //  insert the GTN
-          //  insert OP to the list
-          gtn_list.push_back(GTN_OP_INFO(tn,false,true));
-          (gtn_list.rbegin())->op_list.push_back(op);
-        }
-        else{
-          // GTN has been inserted,
-          //  just add OP to the list and
-          //  change has_use and has_def
-          it->has_def=true;
-          list<OP *> & l=it->op_list;
-          list<OP *>::reverse_iterator rit;
-          for(rit=l.rbegin();rit!=l.rend();rit++)
-            if(*rit==op)
-              break;
-          if(rit==l.rend())   // add op to the list if op hasn't been inserted
-            l.push_back(op);
-        }
-      }
-    }
-  }
-
-  OP * op;
+  OP* op;
   FOR_ALL_BB_OPs (bb, op) {
 
     ASM_OP_ANNOT* asm_info = (OP_code(op) == TOP_asm) ?
@@ -5239,63 +5138,6 @@ Preallocate_Single_Register_Subclasses (BB* bb)
 	OP_srcpos(OPS_last(&post_ops)) = OP_srcpos(op);
         BB_Insert_Ops_After(bb, op, &post_ops);
       }
-
-      // we must check if this register has been used by a GTN
-      //  before we assign it to a TN
-      // if there is conflict, we copy the GTN at the beginning and end of the BB
-      OP * first_op=BB_first_op(bb); 
-      OP * last_op=first_op;
-      while(OP_next(last_op)!=NULL) last_op=OP_next(last_op);
-
-      for(GTN_LIST_IT it=gtn_list.begin();it!=gtn_list.end();){
-        TN * gtn=it->gtn;
-        OP_LIST & l=it->op_list;
-        if(LRA_TN_register(gtn)==reg
-            && TN_register_class(gtn)==TN_register_class(old_tn)){  // GTN also uses this register
-          TN * new_tn=Build_TN_Like(gtn);
-          OP * last_ref=NULL;
-          bool gtn_in_last_op=false;
-          for(OP_LIST::iterator lit=l.begin();lit!=l.end();lit++){  // substitude the GTN with a local TN
-            last_ref=*lit;
-            // we will put the TN->GTN copies before the last TN
-            //  so we don't want to replace the GTN in the last op with local TN
-            //  we assume that there can't be preallocated registers in the last op
-            if(last_ref==last_op){     
-              gtn_in_last_op=true;
-              continue;
-            }
-            for(int i=0;i<OP_opnds(last_ref);i++){
-              TN * tn=OP_opnd(last_ref,i);
-              if(tn==gtn)
-                Set_OP_opnd(last_ref,i,new_tn);
-            }
-            for(int i=0;i<OP_results(last_ref);i++){
-              TN * tn=OP_result(last_ref,i);
-              if(tn==gtn)
-                Set_OP_result(last_ref,i,new_tn);
-            }
-          }
-          if(it->has_use){
-            OPS pre_ops=OPS_EMPTY;
-            Exp_COPY(new_tn,gtn,&pre_ops);
-            OP_srcpos(OPS_last(&pre_ops)) = OP_srcpos(op);
-            BB_Insert_Ops_Before(bb,first_op,&pre_ops);
-          }
-          if(it->has_def){
-            OPS post_ops=OPS_EMPTY;
-            Exp_COPY(gtn,new_tn,&post_ops);
-            OP_srcpos(OPS_last(&post_ops)) = OP_srcpos(op);
-            BB_Insert_Ops_Before(bb,last_op,&post_ops);
-          }
-          // after processing this GTN, we remove it from the list,
-          //  so that every GTN is processed at most once
-          GTN_LIST_IT tmp=it;  
-          it++;
-          gtn_list.erase(tmp);
-        }
-        else
-          it++;
-      }
     }
 
     /* latest_new_op records the last appended op to <op>. */
@@ -5370,64 +5212,6 @@ Preallocate_Single_Register_Subclasses (BB* bb)
 	OP_srcpos(OPS_last(&pre_ops)) = OP_srcpos(op);
         BB_Insert_Ops_Before(bb, op, &pre_ops);
       }
-
-
-      // we must check if this register has been used by a GTN
-      //  before we assign it to a TN
-      // if there is conflict, we copy the GTN at the beginning and end of the BB
-      OP * first_op=BB_first_op(bb);
-      OP * last_op=first_op;
-      while(OP_next(last_op)!=NULL) last_op=OP_next(last_op);
-
-      for(GTN_LIST_IT it=gtn_list.begin();it!=gtn_list.end();){
-        TN * gtn=it->gtn;
-        OP_LIST & l=it->op_list;
-        if(LRA_TN_register(gtn)==reg
-            && TN_register_class(gtn)==TN_register_class(old_tn)){  // GTN also uses this register
-          TN * new_tn=Build_TN_Like(gtn);
-          OP * last_ref=NULL;
-          bool gtn_in_last_op=false;
-          for(OP_LIST::iterator lit=l.begin();lit!=l.end();lit++){  // substitude the GTN with a local TN
-            last_ref=*lit;
-            // we will put the TN->GTN copies before the last TN
-            //  so we don't want to replace the GTN in the last op with local TN
-            //  we assume that there can't be preallocated registers in the last op
-            if(last_ref==last_op){
-              gtn_in_last_op=true;
-              continue;
-            }
-            for(int i=0;i<OP_opnds(last_ref);i++){
-              TN * tn=OP_opnd(last_ref,i);
-              if(tn==gtn)
-                Set_OP_opnd(last_ref,i,new_tn);
-            }
-            for(int i=0;i<OP_results(last_ref);i++){
-              TN * tn=OP_result(last_ref,i);
-              if(tn==gtn)
-                Set_OP_result(last_ref,i,new_tn);
-            }
-          }
-          if(it->has_use){
-            OPS pre_ops=OPS_EMPTY;
-            Exp_COPY(new_tn,gtn,&pre_ops);
-            OP_srcpos(OPS_last(&pre_ops)) = OP_srcpos(op);
-            BB_Insert_Ops_Before(bb,first_op,&pre_ops);
-          }
-          if(it->has_def){
-            OPS post_ops=OPS_EMPTY;
-            Exp_COPY(gtn,new_tn,&post_ops);
-            OP_srcpos(OPS_last(&post_ops)) = OP_srcpos(op);
-            BB_Insert_Ops_Before(bb,last_op,&post_ops);
-          }
-          // after processing this GTN, we remove it from the list,
-          //  so that every GTN is processed at most once
-          GTN_LIST_IT tmp=it;
-          it++;
-          gtn_list.erase(tmp);
-        }
-        else
-          it++;
-      } 
     }
   }
 }
@@ -5752,3 +5536,4 @@ LRA_Register_Request (BB *bb,  ISA_REGISTER_CLASS cl)
   }
   return regs_needed;
 }
+

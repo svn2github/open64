@@ -707,7 +707,7 @@ public:
 	Global_hash_table = 0;
 	//reorder added:
     	Ty_to_access_map=CXX_NEW(TY_TO_ACCESS_MAP(20),mem);
-	loop_count_stack=CXX_NEW(LOOP_COUNT_STACK(mem),mem);;
+	loop_count_stack=CXX_NEW(LOOP_COUNT_STACK(mem),mem);
 
 
 	Init_Aux_Symbol_Info (GLOBAL_SYMTAB);

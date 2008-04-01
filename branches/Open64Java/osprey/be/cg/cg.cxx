@@ -452,7 +452,6 @@ static void Config_Ipfec_Flags() {
   IPFEC_Enable_Region_Formation = IPFEC_Enable_Region_Formation && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
   IPFEC_Enable_If_Conversion = IPFEC_Enable_If_Conversion && CG_Enable_Ipfec_Phases;
   IPFEC_Force_If_Conv = IPFEC_Force_If_Conv && CG_Enable_Ipfec_Phases;
-  IPFEC_Relaxed_If_Conv = IPFEC_Relaxed_If_Conv && CG_Enable_Ipfec_Phases;
   IPFEC_Force_Para_Comp_Gen = IPFEC_Force_Para_Comp_Gen && CG_Enable_Ipfec_Phases;
   IPFEC_Para_Comp_Gen = IPFEC_Para_Comp_Gen && CG_Enable_Ipfec_Phases;
   IPFEC_Disable_Merge_BB = IPFEC_Disable_Merge_BB && CG_Enable_Ipfec_Phases;
@@ -606,7 +605,7 @@ CG_Generate_Code(
   // eliminate unneeded EH ranges.  This gets rid of ranges which
   // do not have calls or throws. 
 
-  EH_Prune_Range_List();
+  EH_Prune_Range_List();				
 
 #if defined(TARG_IA64) && defined(OSP_OPT)
   // it's high time to compute pu_need_LSDA after EH_Prune_Range_List, 
@@ -711,7 +710,7 @@ CG_Generate_Code(
     /* turn all global TNs into local TNs */
     Set_Error_Phase ( "Localize" );
     Start_Timer ( T_Localize_CU );
-#ifdef KEY  // gra_live is called even if localize is on
+#ifdef CG_PATHSCALE_MERGE  // gra_live is called even if localize is on
     GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
 #endif
     Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
@@ -902,7 +901,7 @@ CG_Generate_Code(
 #endif
 
     if (CG_enable_loop_optimizations) {
-#ifdef KEY 
+#ifdef CG_PATHSCALE_MERGE
       /* bug#1443
 	 Earlier phase, like cflow, does not maintain GTN info if -CG:localize is on,
 	 we have to call GRA_LIVE_Init again to rebuild the consistency.
@@ -941,7 +940,7 @@ CG_Generate_Code(
       // detect GTN
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
       GRA_LIVE_Rename_TNs();  // rename TNs -- required by LRA
-#ifdef KEY 
+#ifdef CG_PATHSCALE_MERGE
       /* bug#1442
 	 Loop optimization will introduce new GTNs. If -CG:localize is on,
 	 we should localize all the new created GTNs.
@@ -955,7 +954,7 @@ CG_Generate_Code(
 	Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
 	Check_for_Dump ( TP_LOCALIZE, NULL );
       }
-#endif // KEY 
+#endif // CG_PATHSCALE_MERGE
       Stop_Timer(T_Loop_CU);
       Check_for_Dump(TP_CGLOOP, NULL);
       if (frequency_verify)
@@ -1071,8 +1070,7 @@ CG_Generate_Code(
   if (IPFEC_Enable_Opt_after_schedule) {
     BOOL tmp = CG_localize_tns ;
     CG_localize_tns = TRUE;
-    CFLOW_Optimize(CFLOW_BRANCH|CFLOW_UNREACHABLE|CFLOW_MERGE|CFLOW_REORDER /* |CFLOW_FREQ_ORDER */,
-		    "CFLOW (third pass)");
+    CFLOW_Optimize(CFLOW_BRANCH|CFLOW_UNREACHABLE|CFLOW_MERGE|CFLOW_REORDER, "CFLOW (third pass)");
     CG_localize_tns = tmp ;
   }
   
@@ -1165,7 +1163,7 @@ CG_Generate_Code(
   current_PU_handle++;
 #endif // TARG_IA64
   
-#ifdef KEY 
+#ifdef CG_PATHSCALE_MERGE
   // Earlier phases (esp. CFLOW) might have introduced local definitions and
   // uses for global TNs. Rename them to local TNs so that LRA can accurately
   // compute register requests (called from scheduling).
@@ -1233,7 +1231,7 @@ CG_Generate_Code(
     GRA_Finalize_Grants();
   }
 
-#ifdef KEY
+#ifdef CG_PATHSCALE_MERGE
   /* Optimize control flow (third pass).  Callapse empty GOTO BBs which GRA
      didn't find useful in placing spill code.  Bug 9063. */
   if (CFLOW_opt_after_cgprep &&

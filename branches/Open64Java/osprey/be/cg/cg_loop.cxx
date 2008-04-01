@@ -5327,7 +5327,7 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
     }
   
   INT unroll_times = SWP_Options.Min_Unroll_Times;
-  INT loop_size_limit = MIN(SWP_Options.OPS_Limit, CG_LOOP_unrolled_size_max);
+  INT loop_size_limit = MIN(SWP_OPS_LIMIT, CG_LOOP_unrolled_size_max);
   for (i = min_unr; i <= max_unr; i++) {
     if (i * loop_size < loop_size_limit) {
       if (swp_cycles[i] < (swp_cycles[unroll_times] * (1.0 - (i - unroll_times) * 0.01)))
@@ -5786,7 +5786,8 @@ Do_Loop_Determine_SWP_Or_Unroll (CG_LOOP& cg_loop, BOOL trace) {
   // Applicable to C and C++ only. Other kind of programming languages
   // are not well tuned yet. So, return return TRUE to retain orginal logic
   if (PU_src_lang(Get_Current_PU()) != PU_C_LANG &&
-      PU_src_lang(Get_Current_PU()) != PU_CXX_LANG) {
+      PU_src_lang(Get_Current_PU()) != PU_CXX_LANG &&
+      PU_src_lang(Get_Current_PU()) != PU_JAVA_LANG) {
     // Precise alias information is easy to obtain for the those
     // programming languages other than C and C++. Data speculation
     // is in genreal has little improvement on them.
@@ -6127,7 +6128,7 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, std::vector<SWP_FIXUP>& fixup,
 
   if (!single_bb && 
       CG_LOOP_force_ifc > 0 &&
-      Loop_Amenable_For_SWP (loop, trace_loop_opt)) {
+      Loop_Amenable_For_SWP(loop, trace_loop_opt)) {
 
     BB *new_single_bb;
 #ifdef TARG_IA64

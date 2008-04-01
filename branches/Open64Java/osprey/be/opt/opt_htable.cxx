@@ -72,7 +72,6 @@
 #include "mtypes.h"
 #include "cxx_memory.h"
 #include "wn_util.h"
-#include "wn_tree_util.h"               // for TREE_ITER
 #include "targ_const.h"			// for TCON-related stuff
 #include "const.h"			// for symbol/TCON-related
 #include "pf_cg.h"
@@ -98,7 +97,6 @@
 #include "bb_node_set.h"
 #include "opt_bb.h"
 #include "opt_cvtl_rule.h"
-#include "opt_alias_mgr.h"
 
 #include <strings.h>   // bcopy
 
@@ -3012,10 +3010,6 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
       }
       ccr->Set_tree(retv);
       ccr->Set_scale(0);
-      if (WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()) {
-        MEMOP_ANNOT* annot = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Get_annot (wn);
-        if (annot) { opt_stab->Cr_sr_annot_mgr()->Import_annot (retv, annot); }
-      }
       return TRUE;
     }
     else if (oper == OPR_LDA) {
@@ -3203,12 +3197,6 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     }
     ccr->Set_tree(retv);
     ccr->Set_scale(0);
-
-    if (WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()) {
-      MEMOP_ANNOT* annot = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Get_annot (wn);
-      if (annot) { opt_stab->Cr_sr_annot_mgr()->Import_annot (retv, annot); }
-    }
-
     return FALSE;
   }
   else if (oper == OPR_ILOADX) {
@@ -3232,11 +3220,6 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
       stmt->Set_volatile_stmt();
     ccr->Set_tree(retv);
     ccr->Set_scale(0);
-
-    if (WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()) {
-      MEMOP_ANNOT* annot = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Get_annot (wn);
-      if (annot) { opt_stab->Cr_sr_annot_mgr()->Import_annot (retv, annot); }
-    }
     return FALSE;
   }
   else if (oper == OPR_MLOAD) {
@@ -3288,11 +3271,6 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
       stmt->Set_volatile_stmt();
     ccr->Set_tree(retv);
     ccr->Set_scale(0);
-
-    if (WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()) {
-      MEMOP_ANNOT* annot = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Get_annot (wn);
-      if (annot) { opt_stab->Cr_sr_annot_mgr()->Import_annot (retv, annot); }
-    }
     return FALSE;
   }
   else if ( oper == OPR_PARM ) {
@@ -3870,13 +3848,6 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
   // No need to do anything for "black-box" statements
   if ( WN_is_black_box( Wn() ) )
     return;
-
-  if (OPERATOR_is_store (opr)) {
-    if (WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()) {
-      MEMOP_ANNOT* annot = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Get_annot (Wn());
-      if (annot) opt_stab->Cr_sr_annot_mgr()->Import_annot (this, annot);
-    }
-  }
 
   // Create the internal representation for the lhs of this statement.
   switch (opr) {
@@ -5499,355 +5470,6 @@ void STMTREP::Clone(STMTREP *sr, CODEMAP *htable, MEM_POOL *pool)
   }
 }
 
-/////////////////////////////////////////////////////////////////////////
-//
-//   Implementation of MEMOP_ANNOT_CR_SR_MGR 
-//
-////////////////////////////////////////////////////////////////////////
-//
-MEMOP_ANNOT_CR_SR_MGR::MEMOP_ANNOT_CR_SR_MGR (MEM_POOL* mp, BOOL trace):
-  MEMOP_ANNOT_MGR(mp) {
 
-  _imported = BS_Create_Empty (128, _mp);
-  _exported = BS_Create_Empty (128, _mp);
 
-  _trace = trace;
-}
- 
-// Lookup the corresponding annotation 
-MEMOP_ANNOT*
-MEMOP_ANNOT_CR_SR_MGR::Get_annot (CODEREP* cr) {
-  Is_True (cr != NULL, ("CODEREP is NULL"));
-  CR_2_MEM_ANNOT_MAP::const_iterator iter = _cr_map.find ((const CODEREP*)cr);
-  return iter != _cr_map.end () ? (*iter).second : NULL;
-}
-  
-MEMOP_ANNOT_ITEM*
-MEMOP_ANNOT_CR_SR_MGR::Get_annot (CODEREP* cr, MEM_ANNOT_KIND kind) {
-  Is_True (cr != NULL, ("CODEREP is NULL"));
 
-  MEMOP_ANNOT* annot = Get_annot (cr);
-  MEMOP_ANNOT_ITEM_VECT& v = annot->All_items ();
-  for (MEMOP_ANNOT_ITEM_ITER iter = v.begin (); iter != v.end (); iter++) {
-    if ((*iter).Kind () == kind) 
-      return &(*iter);
-  }
-  return NULL;
-}
-
-MEMOP_ANNOT*
-MEMOP_ANNOT_CR_SR_MGR::Get_annot (STMTREP* sr) {
-  Is_True (sr != NULL, ("STMTREP is NULL"));
-
-  SR_2_MEM_ANNOT_MAP::const_iterator iter = _sr_map.find (sr);
-  return iter != _sr_map.end () ? (*iter).second : NULL;
-}
-
-MEMOP_ANNOT_ITEM*
-MEMOP_ANNOT_CR_SR_MGR::Get_annot (STMTREP* sr, MEM_ANNOT_KIND kind) {
-  Is_True (sr != NULL, ("STMTREP is NULL"));
-
-  MEMOP_ANNOT* annot = Get_annot (sr);
-  MEMOP_ANNOT_ITEM_VECT& v = annot->All_items ();
-  for (MEMOP_ANNOT_ITEM_ITER iter = v.begin (); iter != v.end (); iter++) {
-    if ((*iter).Kind () == kind) 
-      return &(*iter);
-  }
-}
-
-// Associate a MEMOP_ANNOT with given WN/CODEREP/STMTREP
-//
-void
-MEMOP_ANNOT_CR_SR_MGR::Add_annot (CODEREP* cr, const MEMOP_ANNOT_ITEM& annot_item) {
-  Is_True (cr != NULL, ("CODEREP is NULL"));
-
-  Is_True (cr->Kind() == CK_VAR || cr->Kind() == CK_IVAR, 
-           ("Expression should be load"));
-  MEMOP_ANNOT* annot = Get_annot (cr);  
-  if (annot) 
-    annot->Replace_or_add (annot_item); 
-  else {
-    annot = Alloc_annot ();
-    annot->Replace_or_add (annot_item);
-    _cr_map[cr] = annot; 
-  }
-}
- 
-void
-MEMOP_ANNOT_CR_SR_MGR::Add_annot 
-  (STMTREP* stmt, const MEMOP_ANNOT_ITEM& annot_item) {
-
-  Is_True (stmt != NULL, ("STMTREP is NULL"));
-  Is_True (OPCODE_is_store (stmt->Op()), ("statement should be store"));
-  
-  MEMOP_ANNOT* annot = Get_annot (stmt);
-  if (annot) 
-    annot->Replace_or_add (annot_item); 
-  else {
-    annot = Alloc_annot ();
-    annot->Replace_or_add (annot_item);
-    _sr_map[stmt] = annot; 
-  }
-}
-
-void
-MEMOP_ANNOT_CR_SR_MGR::Set_annot (CODEREP* cr, MEMOP_ANNOT* annot) {
-
-  Is_True (cr != NULL, ("CODEREP is NULL"));
-  Is_True (Alloc_by_this_class (annot), 
-           ("annotation is not allocated by this class"));
-  _cr_map[cr] = annot; 
-}
-
-void
-MEMOP_ANNOT_CR_SR_MGR::Set_annot (STMTREP* sr, MEMOP_ANNOT* annot) {
-  Is_True (sr != NULL, ("STMTREP is NULL"));
-  Is_True (Alloc_by_this_class (annot), 
-           ("annotation is not allocated by this class"));
-  _sr_map[sr] = annot;
-}
-
-// Transfer annotation from WN=>MEMOP_ANNOT map.
-//
-MEMOP_ANNOT*
-MEMOP_ANNOT_CR_SR_MGR::Import_annot (CODEREP* cr, MEMOP_ANNOT* annot) {
-  MEMOP_ANNOT* t = Alloc_annot ();
-  *t = *annot;
-  Set_imported (t);
-  Set_annot (cr,t);  
-  Set_imported (t);
-  return t;
-}
-
-MEMOP_ANNOT*
-MEMOP_ANNOT_CR_SR_MGR::Import_annot (STMTREP* sr, MEMOP_ANNOT* annot) {
-  MEMOP_ANNOT* t = Alloc_annot ();
-  *t = *annot;
-  Set_imported (t);
-  Set_annot (sr,t);  
-  Set_imported (t);
-  return t;
-}
-
-MEMOP_ANNOT*
-MEMOP_ANNOT_CR_SR_MGR::Import_annot (MEMOP_ANNOT* annot) {
-  MEMOP_ANNOT* t = Alloc_annot ();
-  *t = *annot;
-  Set_imported (t);
-  return t;
-}
-
-// Transfer the annotation associated with any descendant of <root> 
-// to MEMOP_ANNOT_WN_MAP. If there is only one annotation, we have two
-// options:
-//   - inline the annotation in POINTS_TO, or 
-//   - allocate annot structure and associate it with corresponding WN
-//
-//  Of couse, the 2nd option is more expensive than the 1st.However, 
-//  we have to do that when this function is invoked by LNO preopt because
-//  POINTS_TOs will be discarded soon make the annotation lost. However, 
-//  the life-time of annotation structures is under control of preopt/wopt.
-//
-//  2nd option should be used when <inline_annot> is set, otherwise, 
-//  1st option is used.
-//
-void
-MEMOP_ANNOT_CR_SR_MGR::Export_annot 
-  (WN* root, const ALIAS_MANAGER* am, BOOL inline_annot, BOOL trace) {
-
-  WN_MEMOP_ANNOT_MGR* wn_annot_mgr = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr(); 
-  Is_True (wn_annot_mgr != NULL, ("Annotation manager is NULL"));
-
-  if (trace) {
-    fprintf (TFile, "Export memory annotations:\n");
-  }
-
-  // Clear stale maps
-  wn_annot_mgr->Invalidate ();
-
-  for (TREE_ITER iter (root); iter.Wn() != NULL; ++iter) {
-
-    WN* wn = iter.Wn();
-    OPERATOR opr = WN_operator (wn);  
-    if (!OPERATOR_is_load (opr) && !OPERATOR_is_store (opr)) { continue; }
-    
-    if ((OPERATOR_is_scalar_load (opr) || OPERATOR_is_scalar_store (opr)) &&
-        ST_sclass(WN_st(wn)) == SCLASS_REG) {
-      continue;
-    }
-
-    IDTYPE alias_id = am->Id(wn); 
-    Is_True (alias_id != 0, 
-        ("Function MEMOP_ANNOT_CR_SR_MGR::Export_annot() should be called "
-	 "after alias ID are generated"));
-
-    POINTS_TO* pt = am->Pt(alias_id);
-    if (!pt->Has_annotation ()) continue;
-   
-    MEMOP_ANNOT* annot = NULL;
-    PT_MEM_ANNOT& mem_annot = pt->Mem_annot ();
-
-    if (mem_annot.Item_is_inlined ()) {
-
-      const MEMOP_ANNOT_ITEM& item = mem_annot.Get_inlined_item ();
-      Is_True (item.Kind() != MEM_ANNOT_INVALID, 
-               ("Invalid item kind is supposed to has been eliminated at this time"));
-
-      if (!inline_annot) {
-        annot = wn_annot_mgr->Alloc_annot ();  
-        annot->Replace_or_add (item);
-      } else if (trace) {
-        fprintf (TFile, "WN:id%3d is annot with (inlined):<", alias_id);
-	item.Print (TFile);
-	fprintf (TFile, ">\n");
-      }
-
-    } else {
-
-      MEMOP_ANNOT* t = mem_annot.Get_annots_ptr ();
-      INT item_cnt = t->Item_count();
-
-      if (inline_annot && item_cnt == 1) {
-	
-	// if there is only one annotation, inline it into the POINTS_TO structure.  
-	//
-        MEMOP_ANNOT_ITEM& item = (*t)[0];
-        mem_annot.Remove_all_annot ();
-        mem_annot.Replace_or_add_annot (item); 
-	Is_True (mem_annot.Item_is_inlined (), 
-	         ("Item should be inlined with POINTS_TO structure"));
-        if (trace) {
-          fprintf (TFile, "WN:id%3d is annot with (inlined):<", alias_id);
-	  item.Print (TFile);
-	  fprintf (TFile, ">\n");
-	}
-      } else if (item_cnt > 0) {
-        annot = wn_annot_mgr->Alloc_annot ();  
-        *annot = *t;
-      } else {
-        // number of annotation = 0
-        pt->Mem_annot().Invalidate (); 
-      }
-
-      Set_exported (t);
-    }
-
-    if (annot) {
-      Set_exported (annot);
-
-      wn_annot_mgr->Set_annot (wn, annot); 
-      mem_annot.Remove_all_annot ();
-      mem_annot.Set_annots (annot);
-
-      if (trace) {
-        fprintf (TFile, "WN:id%3d is annot with:<", alias_id);
-        annot->Print (TFile);
-	fprintf (TFile, ">\n");
-      }
-    }
-  }
-
-  if (trace) {
-    INT cnt = 0;
-    fprintf (TFile, "These annotations are not exported:");
-
-    MOA_VECT_ITER iter = _all_annot.begin (); 
-    Is_True (iter != _all_annot.end(), ("There are at least one element")); 
-    // the first annotation (id:0) is NULL, ignore it
-
-    for (iter++; iter != _all_annot.end (); iter++) {
-      if (!Is_exported (*iter)) {
-        cnt++;
-	fprintf (TFile, "%d,", (*iter)->Id());
-      }
-    }
-
-    if (cnt == 0) { fprintf (TFile, "none"); }
-    fprintf (TFile, "\n");
-  }
-}
-
-// When active WN_MEMOP_ANNOT_MGR is NULL, we need to discard the "offline" 
-// annotation in that "offline" data structure will be allocated by 
-// WN_MEMOP_ANNOT_MGR.
-// 
-void
-MEMOP_ANNOT_CR_SR_MGR::Discard_offline_annot 
-  (WN* root, const ALIAS_MANAGER* am, BOOL trace) {
-
-  WN_MEMOP_ANNOT_MGR* wn_annot_mgr = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr(); 
-  Is_True (wn_annot_mgr == NULL, ("Annotation manager is supposed to be NULL"));
-
-  if (trace) {
-    fprintf (TFile, "Discard offline annotations:\n");
-  }
-
-  for (TREE_ITER iter (root); iter.Wn() != NULL; ++iter) {
-
-    WN* wn = iter.Wn();
-    OPERATOR opr = WN_operator (wn);  
-    if (!OPERATOR_is_load (opr) && !OPERATOR_is_store (opr)) { continue; }
-    
-    if ((OPERATOR_is_scalar_load (opr) || OPERATOR_is_scalar_store (opr)) &&
-        ST_sclass(WN_st(wn)) == SCLASS_REG) {
-      continue;
-    }
-
-    IDTYPE alias_id = am->Id(wn); 
-    Is_True (alias_id != 0, 
-        ("Function MEMOP_ANNOT_CR_SR_MGR::Export_annot() should be called "
-	 "after alias ID are generated"));
-
-    POINTS_TO* pt = am->Pt(alias_id);
-    if (!pt->Has_annotation ()) continue;
-   
-    PT_MEM_ANNOT& mem_annot = pt->Mem_annot ();
-    if (!mem_annot.Item_is_inlined ()) {
-      mem_annot.Invalidate ();
-    }
-  }
-}
-
-void
-MEMOP_ANNOT_CR_SR_MGR::Print (FILE* f, BOOL verbose) const {
-  
-  fprintf (f, "Memory annotations are:\n%s", DBar);
-   
-  for (MOA_VECT_CITER iter = _all_annot.begin (); 
-       iter != _all_annot.end(); iter++) {
-
-    MEMOP_ANNOT* p = *iter;
-    if (p) { p->Print (f); fprintf (f,"\n"); }
-  }
-
-  fprintf (f, "Imported annotations are:");  
-  BS_Print (_imported, f);
-  fprintf (f, "\n");
-
-  fprintf (f, "Exported annotations are:");  
-  BS_Print (_exported, f);
-  fprintf (f, "\n");
-
-  if (!verbose) { fprintf (f, "\n"); return; }
-
-  for (CR_2_MEM_ANNOT_MAP::const_iterator iter = _cr_map.begin ();
-       iter != _cr_map.end (); iter++) {
-    const CR_MEMANNOT_PAIR& pair = *iter; 
-    fprintf (f, "CR%d <", pair.first->Coderep_id());
-    pair.first->Print_node (0, f);
-    fprintf (f, "is annotated with:");
-    pair.second->Print (f);
-    fprintf (f, "\n");
-  }
-   
-  for (SR_2_MEM_ANNOT_MAP::const_iterator iter = _sr_map.begin ();
-       iter != _sr_map.end (); iter++) {
-    const SR_MEMANNOT_PAIR& pair = *iter; 
-    fprintf (f, "stmt<");
-    pair.first->Print_node (f);
-    fprintf (f, "> is annotated with:"); 
-    pair.second->Print (f);
-    fprintf (f, "\n");
-  }
-  fprintf (f, "\n");
-}

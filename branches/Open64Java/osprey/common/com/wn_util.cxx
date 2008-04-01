@@ -1690,12 +1690,7 @@ INT32 WN_object_size(const WN *wn)
   case OPR_STBITS:
   case OPR_ILDBITS:
   case OPR_ISTBITS:
-    if (WN_desc(wn) != MTYPE_M)
-      return (MTYPE_size_min(WN_desc(wn)) >> 3);
-    else {
-      TY_IDX ty = WN_object_ty (wn);
-      return (ty != (TY_IDX)0) ? TY_size(ty) : 0;
-    }
+    return (MTYPE_size_min(WN_desc(wn)) >> 3);
   case OPR_MLOAD:
     if (WN_operator(WN_kid1(wn)) == OPR_INTCONST)
       return WN_const_val(WN_kid1(wn));

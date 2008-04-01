@@ -104,8 +104,6 @@
 #include "opt_ssa.h"
 
 #include <vector>
-#include <map>
-#include "be_memop_annot.h"
 
 using idmap::ID_MAP;
 
@@ -2162,97 +2160,5 @@ void traverseSR(STMTREP *stmt, traverseCR &traverse_cr)
       traverse_cr(lhs, stmt, 1);
 }
 
-///////////////////////////////////////////////////////////////////////////
-//
-//   MEMOP_ANNOT_CR_SR_MAP is a map between CODEREP/STMTREP to their 
-// corresponding annotations. 
-//
-///////////////////////////////////////////////////////////////////////////
-//
-struct cr_cmp {
-  bool operator () (const CODEREP* cr1, const CODEREP* cr2) const {
-    Is_True (cr1->Coderep_id() != 0 && cr2->Coderep_id() != 0, ("CODEREP does not has ID"));
-    return cr1->Coderep_id() < cr2->Coderep_id(); 
-  }
-};
- 
-typedef std::pair<const CODEREP*, MEMOP_ANNOT*> CR_MEMANNOT_PAIR;
-typedef mempool_allocator<CR_MEMANNOT_PAIR> CR_ANNOT_MAP_ALLOC;
-typedef std::map<const CODEREP*, MEMOP_ANNOT*, cr_cmp, CR_ANNOT_MAP_ALLOC> CR_2_MEM_ANNOT_MAP;
-
-struct sr_cmp {
-  bool operator () (const STMTREP* sr1, const STMTREP* sr2) const {
-    return sr1 < sr2;
-  }
-};
-
-typedef std::pair<const STMTREP*, MEMOP_ANNOT*> SR_MEMANNOT_PAIR;
-typedef mempool_allocator<SR_MEMANNOT_PAIR>    SR_ANNOT_MAP_ALLOC;
-typedef std::map<const STMTREP*, MEMOP_ANNOT*, sr_cmp, SR_ANNOT_MAP_ALLOC>
-        SR_2_MEM_ANNOT_MAP;
-
-class MEMOP_ANNOT_CR_SR_MGR : public MEMOP_ANNOT_MGR {
-private:
-  CR_2_MEM_ANNOT_MAP _cr_map;
-  SR_2_MEM_ANNOT_MAP _sr_map;
-  BOOL _trace;
-  BS* _imported;
-  BS* _exported;
-
-  void Set_imported (MEMOP_ANNOT* a) 
-        { _imported = BS_Union1D (_imported, a->Id(), _mp); }
-  BOOL Is_imported (MEMOP_ANNOT* a) const 
-        { return BS_MemberP (_imported, a->Id());}
-
-  void Set_exported (MEMOP_ANNOT* a)
-        { _exported = BS_Union1D (_exported, a->Id(), _mp); }
-  BOOL Is_exported (MEMOP_ANNOT* a)
-        { return BS_MemberP (_exported, a->Id()); }
-
-public:
-  MEMOP_ANNOT_CR_SR_MGR (MEM_POOL* mp, BOOL trace);
-
-  // Lookup the corresponding annotation 
-  MEMOP_ANNOT*      Get_annot (CODEREP* cr);
-  MEMOP_ANNOT_ITEM* Get_annot (CODEREP* cr, MEM_ANNOT_KIND kind) ;
-  MEMOP_ANNOT*      Get_annot (STMTREP* sr) ;
-  MEMOP_ANNOT_ITEM* Get_annot (STMTREP* sr, MEM_ANNOT_KIND kind);
-
-  // Associate a MEMOP_ANNOT with given WN/CODEREP/STMTREP
-  void Add_annot (CODEREP* cr, const MEMOP_ANNOT_ITEM& annot_item);
-  void Add_annot (STMTREP* stmt, const MEMOP_ANNOT_ITEM& annot_item);
-  void Set_annot (CODEREP* cr, MEMOP_ANNOT* annot);
-  void Set_annot (STMTREP* sr, MEMOP_ANNOT* annot);
-
-  // Import annotation from WN=>MEMOP_ANNOT map.
-  MEMOP_ANNOT* Import_annot (CODEREP* cr, MEMOP_ANNOT* annot) ;
-  MEMOP_ANNOT* Import_annot (STMTREP* sr, MEMOP_ANNOT* annot) ;
-  MEMOP_ANNOT* Import_annot (MEMOP_ANNOT* annot) ;
-
-  // Export the annotation associated with any descendant of <tree> 
-  // to MEMOP_ANNOT_WN_MAP. If there is only one annotation, we have two
-  // options:
-  //   - inline the annotation in POINTS_TO, or 
-  //   - allocate annot structure and associate it with corresponding WN
-  //
-  //  Of couse, the 2nd option is more expensive than the 1st.However, 
-  //  we have to do that when this function is invoked by LNO preopt because
-  //  POINTS_TOs will be discarded soon make the annotation lost. However, 
-  //  the life-time of annotation structures is under control of preopt/wopt.
-  //
-  //  2nd option should be used when <inline_annot> is set, otherwise, 
-  //  1st option is used.
-  //
-  void Export_annot (WN* tree, const ALIAS_MANAGER*, 
-                     BOOL inline_annot, BOOL trace);
-
-  // When active WN_MEMOP_ANNOT_MGR is NULL, we need to discard the "offline" 
-  // annotation in that "offline" data structure is supposed to be allocated by 
-  // WN_MEMOP_ANNOT_MGR.
-  //
-  void Discard_offline_annot (WN*, const ALIAS_MANAGER*, BOOL trace);
-
-  void Print (FILE* f, BOOL verbose=FALSE) const;
-};
 
 #endif  /* // opt_htable_INCLUDED */

@@ -197,7 +197,6 @@ INT32 WOPT_Enable_Prop_Limit = 12;	/* based on bug 3095 */
 #else
 INT32 WOPT_Enable_Prop_Limit = 14;	/* this is a guess, PV 468862 */
 #endif
-INT32 WOPT_Enable_Prop_Weight_Limit = 50000;
 #ifdef KEY
 BOOL  WOPT_Enable_Prop_Dope = FALSE;	/* propagate dope vector fields? */
 #endif
@@ -314,8 +313,7 @@ BOOL WOPT_Enable_Subword_Opt = TRUE; // whether to replace 1- or 2-byte-sized
 BOOL WOPT_Enable_New_Vsym_Allocation = FALSE;
 #endif
 BOOL  WOPT_Enable_WOVP = TRUE; // For running write-once variable promotion
-BOOL WOPT_Enable_Loop_Multiver = FALSE; // For loop multiversioning
-
+
 /* ====================================================================
  *
  * Descriptor for the -WOPT option group.
@@ -527,8 +525,6 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Prop_CSE, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "prop_limit",		"",
     14, 0, INT32_MAX,	&WOPT_Enable_Prop_Limit, NULL }, /* PV 468862 */
-  { OVK_INT32,  OV_VISIBLE,     TRUE, "prop_weight_limit",             "",
-    14, 0, INT32_MAX,   &WOPT_Enable_Prop_Weight_Limit, NULL }, /* PV 468862 */
 #ifdef KEY
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "prop_dope",		"",
     0, 0, 0,	&WOPT_Enable_Prop_Dope, NULL },
@@ -729,7 +725,5 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,   &WOPT_Enable_Aggr_Pt_Keep_Track_Ptr, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "pt_summary",   NULL, 
     0, 0, 0,   &WOPT_Enable_Pt_Summary, NULL },
-  { OVK_BOOL,  OV_INTERNAL,    TRUE, "loop_multiver",   NULL, 
-    0, 0, 0,   &WOPT_Enable_Loop_Multiver, NULL },
   { OVK_COUNT }		/* List terminator -- must be last */
 };

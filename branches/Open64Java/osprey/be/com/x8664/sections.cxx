@@ -189,22 +189,3 @@ SEC_is_nobits (SECTION_IDX sec)
 {
 	return (SEC_type(sec) & SHT_NOBITS);
 }
-
-// Enable compilation of TLS support on platforms that don't have
-// TLS support visible in their elf.h header files.
-//
-// This is _not_ the nicest thing to do, and not robust against
-// program evolution, but needed for successful compilation. Making this more
-// robust is a TODO, FIXME
-//
-#ifdef TARG_X8664
-#ifndef SHF_TLS
-#define SHF_TLS (1<<10)
-#endif
-#endif
-
-extern BOOL
-SEC_is_tls (SECTION_IDX sec)
-{
-        return (SEC_flags(sec) & SHF_TLS);
-}

@@ -182,6 +182,18 @@ Process_Command_Line (INT argc, char **argv)
     char *myname;
     BOOL opt_set = FALSE;
     BOOL dashdash_flag = FALSE;
+
+    /*add a bool to identical ipl due to modify its phase:w:c ---ykq*/
+	/*BOOL is_ipl =FALSE;
+	char* tempname=Last_Pathname_Component (argv[0]);
+	if(strcmp(tempname,"ipl")==0) is_ipl=TRUE;
+	for(i=1; i<argc; i++){
+	if(is_ipl && strncmp(argv[i],"-PHASE",6)==0) {
+	   if(strcmp(argv[i],"-PHASE:c")==0) strcpy(argv[i],"-PHASE:i");
+	   else strcpy(argv[i],"-PHASE:p:i");
+	   break;
+		}
+		}*/
     
     /* Check the command line flags: */
     for (i = 1; i < argc; i++) {

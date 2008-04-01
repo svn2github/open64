@@ -3536,7 +3536,8 @@ WN* Read_Pragma_Distribute (WN* pwn) {
   // If it is a VLA, move the alloca
   if (Is_VLA (array_st)) {
     if (PU_src_lang(CURRENT_SYMTAB) == PU_C_LANG ||
-        PU_src_lang(CURRENT_SYMTAB) == PU_CXX_LANG) {
+        PU_src_lang(CURRENT_SYMTAB) == PU_CXX_LANG ||
+        PU_src_lang(CURRENT_SYMTAB) == PU_JAVA_LANG) {
       Move_Alloca (array_st);
     }
   }
@@ -3726,7 +3727,8 @@ extern WN* Read_Pragma_Redistribute (WN* pwn, BOOL gen_phase) {
   // If it is a VLA, move the alloca
   if (Is_VLA (array_st)) {
     if (PU_src_lang(CURRENT_SYMTAB) == PU_C_LANG ||
-        PU_src_lang(CURRENT_SYMTAB) == PU_CXX_LANG) {
+        PU_src_lang(CURRENT_SYMTAB) == PU_CXX_LANG ||
+        PU_src_lang(CURRENT_SYMTAB) == PU_JAVA_LANG) {
       Move_Alloca (array_st);
     }
   }

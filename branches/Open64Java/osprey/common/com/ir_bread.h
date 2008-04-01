@@ -144,7 +144,7 @@ extern INT WN_get_flags (void *handle, char ***argv);
 extern void* Open_Input_Info (char *input_file);
 extern void* Open_Global_Input (char *input_file);
 extern void* Open_Local_Input (char *input_file);
-extern PU_Info *Read_Global_Info (INT32 *p_num_PUs);
+extern PU_Info *Read_Global_Info (INT32 *p_num_PUs, bool input_o = false);		//czw
 extern void Read_Local_Info (MEM_POOL *pool, PU_Info *pu);
 extern void Free_Local_Info (PU_Info *pu);
 extern void Free_Dep_Graph (void);

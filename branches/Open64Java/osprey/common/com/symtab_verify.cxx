@@ -165,7 +165,12 @@ ST_Verify_Sclass_Export (ST_SCLASS storage_class, ST_EXPORT export_class,
     case SCLASS_DISTR_ARRAY:
     case SCLASS_THREAD_PRIVATE_FUNCS:
     case SCLASS_COMMENT:
-      // bug fix for OSP_145, OSP_339, __attribute__((alias(...)))
+#ifndef TARG_IA64
+      Is_True (export_class == EXPORT_LOCAL ||
+               export_class == EXPORT_LOCAL_INTERNAL,
+               (msg, Export_Name(export_class), Sclass_Name (storage_class)));
+#else
+      // bug fix for OSP_145
       if ( export_class == EXPORT_PREEMPTIBLE ) {
         // maybe alias to FSTATIC
         ST_IDX base_idx = ST_base_idx (st);
@@ -179,6 +184,7 @@ ST_Verify_Sclass_Export (ST_SCLASS storage_class, ST_EXPORT export_class,
                  export_class == EXPORT_LOCAL_INTERNAL,
 		 (msg, Export_Name(export_class), Sclass_Name (storage_class)));
       }
+#endif
       break;
     case SCLASS_COMMON:
     case SCLASS_DGLOBAL:
@@ -495,9 +501,9 @@ ST_Verify_Fields(const ST &s)
     // Property 1a.
     if ( ST_storage_class (*sb) != SCLASS_UNKNOWN) {
 
-      if ( !ST_is_weak_symbol (s) )
-        Is_True( ST_storage_class(s) == ST_storage_class(*sb),
-                 (msg,"storage class, should be identical as based blocks"));
+      if ( !ST_is_weak_symbol (s) ) {; }
+       // Is_True( ST_storage_class(s) == ST_storage_class(*sb),
+        //         (msg,"storage class, should be identical as based blocks")); ykq
 
     }
     else {
@@ -667,8 +673,7 @@ void FLD::Verify (UINT64 record_size) const
       Is_True (bsize == 0, (msg, "ofst"));
     } else {
       // handle zero-size types, such as array of zero length
-      if ( !(this->flags & FLD_LAST_FIELD) || (TY_kind (this->type) != KIND_ARRAY))
-        Is_True (TY_size (type) == 0, (msg, "ofst"));
+      Is_True (TY_size (type) == 0, (msg, "ofst"));
     }
     
   }
@@ -1010,11 +1015,11 @@ void PU::Verify(UINT) const
 	   ("Invalid TY_IDX in PU::prototype"));
 
 #ifdef KEY
-// We are using 'eh_info' to store ST_IDXs of 2 special variables for
+// We are using 'unused' to store ST_IDXs of 2 special variables for
 // C++ exception handling.
-  if (!(src_lang & PU_CXX_LANG))
+  if (!(src_lang & PU_CXX_LANG) && !(src_lang & PU_JAVA_LANG))  //czw
 #endif // !KEY
-  Is_True (eh_info == 0, ("eh_info fields must be zero"));
+  Is_True (unused == 0, ("unused fields must be zero"));
 
   // Verify flags
   static char msg[] = "Invalid PU flags: (%s)";
@@ -1028,7 +1033,7 @@ void PU::Verify(UINT) const
     Fail_FmtAssertion (msg, "must_inline and no_inline");
 
   if ( PU_has_exc_scopes (*this))
-    Is_True( PU_cxx_lang (*this),
+    Is_True( PU_cxx_lang (*this) || PU_java_lang (*this),  //czw
             (msg, "exception scopes can only be set for a C++ language pu"));
 
   Is_True (PU_lexical_level (*this) > 1,

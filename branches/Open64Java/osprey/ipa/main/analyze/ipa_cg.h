@@ -595,6 +595,7 @@ public:
   BOOL Is_Lang_F90() const      { return PU_f90_lang (Get_PU()); }
 #ifdef KEY
   BOOL Is_Lang_CXX() const      { return PU_cxx_lang (Get_PU()); }
+  BOOL Is_Lang_JAVA() const      { return PU_java_lang (Get_PU()); }
 #endif
 
 

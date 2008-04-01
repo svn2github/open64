@@ -83,6 +83,8 @@
 
 BOOL Trace_Exp = FALSE;	/* General code expansion trace */
 
+extern void region_stack_eh_set_has_call();		//czw
+
 
 /* ====================================================================
  *
@@ -204,6 +206,8 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #else
 	Expand_Rem (result, op1, op2, rtype, ops);
 #endif
+	if(Current_pu->src_lang == PU_JAVA_LANG)
+		region_stack_eh_set_has_call();		//czw
 	break;
   case OPR_MOD:
 	if (MTYPE_is_signed(rtype))
@@ -219,12 +223,18 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #else
 	Expand_Rem (result, op1, op2, rtype, ops);
 #endif
+	if(Current_pu->src_lang == PU_JAVA_LANG)
+		region_stack_eh_set_has_call();		//czw
 	break;
   case OPR_DIV:
 	if (MTYPE_is_float(rtype))
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
 		Expand_Divide (result, op1, op2, rtype, ops);
+	
+	if(Current_pu->src_lang == PU_JAVA_LANG)
+		region_stack_eh_set_has_call();		//czw
+	
 	break;
   case OPR_DIVREM:
 #ifdef TARG_IA64

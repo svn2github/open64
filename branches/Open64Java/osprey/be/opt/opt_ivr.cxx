@@ -1699,7 +1699,7 @@ IVR::Compute_trip_count(const OPCODE cmp_opc,
   BOOL diff_divisable_by_step =
     bound->Divisable(step, Opt_stab()) && init->Divisable(step, Opt_stab());
   if (apply_cxx_pointer_rule &&
-      PU_src_lang(Get_Current_PU()) == PU_CXX_LANG &&
+      ((PU_src_lang(Get_Current_PU()) == PU_CXX_LANG)||(PU_src_lang(Get_Current_PU()) == PU_JAVA_LANG)) &&
       !loop->Exit_early() &&
       !diff_divisable_by_step &&
       step->Kind() == CK_CONST &&

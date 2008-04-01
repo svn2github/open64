@@ -236,16 +236,6 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
     }
   }
   
-  // process all TY_IDXs found in SUMMARY_CALLSITEs
-  INT32 num_callsites;
-  SUMMARY_CALLSITE *callsites = IPA_get_callsite_file_array(hdr, num_callsites);
-  for (i = 0; i < num_callsites; ++i) {
-    TY_IDX old_ty_idx = callsites[i].Get_virtual_class();
-    if (old_ty_idx) {
-      callsites[i].Set_virtual_class(idx_maps->ty[old_ty_idx]);
-    }
-  }
-  
   // process all ST_IDXs found in IVARs
   INT32 num_ivars;
   IVAR* ivars = IPA_get_ivar_file_array(hdr, num_ivars);
@@ -324,15 +314,16 @@ IPA_mark_commons_used_in_io (const IP_FILE_HDR& hdr)
 void
 IPA_update_ehinfo_in_pu (IPA_NODE *node)
 {
-	if (!(PU_src_lang (node->Get_PU()) & PU_CXX_LANG) ||
-	    !node->Get_PU().eh_info)
+	if ((!(PU_src_lang (node->Get_PU()) & PU_CXX_LANG) &&
+		!(PU_src_lang (node->Get_PU()) & PU_JAVA_LANG))||
+	    !node->Get_PU().unused)
 	    return;
 
         int sym_size;
         SUMMARY_SYMBOL* sym_array = IPA_get_symbol_file_array(node->File_Header(), sym_size);
         FmtAssert (sym_array != NULL, ("Missing SUMMARY_SYMBOL section"));
                                                                                 
-        INITV_IDX tinfo = INITV_next (INITV_next (INITO_val (node->Get_PU().eh_info)));
+        INITV_IDX tinfo = INITV_next (INITV_next (INITO_val (node->Get_PU().unused)));
         INITO_IDX inito = TCON_uval (INITV_tc_val (tinfo));
         if (inito)
         {
@@ -346,9 +337,7 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
                     continue;
                 }
                 int st_idx = TCON_uval (INITV_tc_val (st_entry));
-		// bug fix for OSP_317
-		// 
-                if (st_idx < 0 || st_idx >= sym_size)
+                if (st_idx < 0)
                 {
                     idx = INITV_next (idx);
                     continue;
@@ -361,10 +350,10 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
 		if (ST_IDX_level(new_idx) == GLOBAL_SYMTAB) {
       		  Set_AUX_ST_flags (Aux_St_Table[new_idx], USED_IN_OBJ);
                   Clear_ST_is_not_used (St_Table[new_idx]);
-                  INITV_IDX filter = INITV_next (st_entry); // for backup
-                  INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
+                INITV_IDX filter = INITV_next (st_entry); // for backup
+                INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
                        Host_To_Targ (MTYPE_U4, new_idx)), 1);
-                  Set_INITV_next (st_entry, filter);
+                Set_INITV_next (st_entry, filter);
 		}
                 idx = INITV_next (idx);
             } while (idx);
@@ -776,11 +765,27 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 #endif
 
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    // Fix summary information in node only once, i.e. for pu_reorder=2
+    // in the first pass.
+    if (ipa_node && ((PU_src_lang (ipa_node->Get_PU()) & PU_CXX_LANG)||(PU_src_lang(ipa_node->Get_PU()) & PU_JAVA_LANG)) &&
+        IPA_Call_Graph_Tmp == NULL)
+    {
+      IPA_NODE_CONTEXT context (ipa_node);   // get node context
+      IPA_update_ehinfo_in_pu (ipa_node);
+    }
+
+    if (ipa_node && PU_has_mp (ipa_node->Get_PU ()) &&
+        IPA_Call_Graph_Tmp == NULL)
+    {
+      IPA_NODE_CONTEXT context (ipa_node);   // get node context
+      IPA_update_pragma_in_pu (ipa_node);
+    }
+
     // bug 4880
     // If lang of main pu is C++, -IPA:pu_reorder defaults to 1 w/ feedback
     if (!IPA_Enable_PU_Reorder_Set && Annotation_Filename &&
         ipa_node && !strcmp (ipa_node->Name(), "main") &&
-	(PU_src_lang (ipa_node->Get_PU()) & PU_CXX_LANG))
+	(PU_src_lang (ipa_node->Get_PU()) & PU_CXX_LANG || PU_src_lang (ipa_node->Get_PU()) & PU_JAVA_LANG))
     {
       // Remind us to fix this place if default changes
       Is_True (IPA_Enable_PU_Reorder == REORDER_DISABLE,
@@ -1092,7 +1097,9 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 		// If we have no WHIRL, we assume any C++ PU can throw
 		if (IPA_Enable_EH_Region_Removal &&
 		    (PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & 
-		     PU_CXX_LANG))
+		     PU_CXX_LANG ||
+		     PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & 
+		     PU_JAVA_LANG))
 		    caller->Set_PU_Can_Throw ();
 
 		// If we have no WHIRL, assume it may have side-effect
@@ -1200,7 +1207,6 @@ Connect_call_graph()
 	IPA_Call_Graph->Set_Root (root);
     } else
         visited_count += Mark_reachable (IPA_Call_Graph->Root(), visited);
-
     
     // 2 walks through the graph
     // first connect all nodes that have no predecessors
@@ -1530,7 +1536,7 @@ Build_Call_Graph ()
     For_all_entries (IP_File_header, add_nodes ());
 
     For_all_entries (IP_File_header, add_edges ());
-
+	
     Connect_call_graph();
 #ifdef KEY
     if (IPA_Enable_PU_Reorder != REORDER_BY_EDGE_FREQ)
@@ -2077,6 +2083,48 @@ enum DFE_ACTION
 				// functions among unreachable functions
     MARK_DELETED		// definitely mark as deletable
 };
+
+/*bool Is_Java_Undeletable_Function(char* name_str)
+{
+	char* integer_start = NULL;
+	char* integer_end = NULL;
+	
+	if(strcmp(name_str + strlen(name_str) - 36, "4mainEP6JArrayIPN4java4lang6StringEE") == 0)
+		return true;
+	
+	if(strncmp(name_str, "_GLOBAL__I_0", 12) == 0)
+		return true;
+
+	for(;*name_str != '\0'; name_str++)
+	{
+		if(integer_start == NULL)
+			if(*name_str > '0' && *name_str < '9')
+				integer_start = name_str;
+		if(integer_start != NULL)
+			if(*name_str < '0' || *name_str > '9')
+			{
+				integer_end = name_str - 1;
+				break;
+			}
+	}
+	if(*name_str == '\0')
+		return false;
+	
+	int i = 1, integer = 0;
+	do
+	{
+		integer += (*integer_end - '0') * i;
+		i *= 10;
+		integer_end--;
+	}
+	while(integer_end != integer_start - 1);
+	
+	name_str += integer;
+	if(*name_str == 'C')
+		return true;
+
+	return false;
+}*/
  
 //-------------------------------------------------------------------------
 // Walk the graph pre-order, set the "deletable" bit if walk_only is false
@@ -2105,7 +2153,7 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 	break;
 
     case SEARCH_FOR_USED:
-	if (node->Is_Externally_Callable() || node->Is_Undeletable()) {
+	  if (node->Is_Externally_Callable() || node->Is_Undeletable()) {
 	    node->Clear_Deletable ();
 	    node->Set_Undeletable();
 	    action = MARK_USED;

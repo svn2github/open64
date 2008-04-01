@@ -104,7 +104,7 @@
 #define 	MAX_FORMULA_VARS 	100
 #define 	ASCII_CHAR_COUNT	256
 
-enum SOURCE_LANGUAGE {SRC_NONE, SRC_FORTRAN, SRC_C}; 
+enum SOURCE_LANGUAGE {SRC_NONE, SRC_FORTRAN, SRC_C, SRC_JAVA}; 
 enum SKIP_CLASS	     {SKIP_NONE, SKIP_ALPHANUMERIC, SKIP_NUMERIC, SKIP_HEX}; 
 
 WN*     	WB_global_fd = NULL;
@@ -4067,6 +4067,10 @@ static void Initialize_Language() {
   case PU_F77_LANG:
     WB_language = SRC_FORTRAN; 
     fprintf(stdout, "WHIRL-TO-SOURCE language is FORTRAN.  "); 
+    break;
+  case PU_JAVA_LANG:
+  	WB_language = SRC_JAVA; 
+    fprintf(stdout, "WHIRL-TO-SOURCE language is JAVA.  "); 
     break;
   default:
     WB_language = SRC_NONE; 

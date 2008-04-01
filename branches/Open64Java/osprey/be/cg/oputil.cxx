@@ -181,16 +181,6 @@ Copy_Asm_OP_Annot(OP* new_op, OP* op)
   }
 }
 
-#ifdef TARG_IA64
-static inline void
-Copy_GOT_Sym_Info (OP* new_op, OP* op) {
-  if (OP_load_GOT_entry(op)){
-     OP_MAP_Set (OP_Ld_GOT_2_Sym_Map, 
-                new_op, 
-		OP_MAP_Get (OP_Ld_GOT_2_Sym_Map, op));
-  }
-}
-#endif
 
 /* ====================================================================
  *
@@ -248,17 +238,10 @@ Dup_OP ( OP *op )
   new_op->bb = NULL;
 
   Copy_Asm_OP_Annot ( new_op, op );
-#ifdef TARG_IA64
-  if (OP_load_GOT_entry(op)) {
-    Copy_GOT_Sym_Info (new_op, op);
-  }
-#endif
-
   if (OP_has_tag(op)) {
 	Set_OP_Tag (new_op, Gen_Tag());
   }
-
-
+  
 #ifdef TARG_X8664
   if ( TOP_is_vector_high_loadstore ( OP_code ( new_op ) ) )
     Set_OP_cond_def_kind(new_op, OP_ALWAYS_COND_DEF);

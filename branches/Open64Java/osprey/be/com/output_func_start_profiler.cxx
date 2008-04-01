@@ -156,6 +156,8 @@ OUTPUT_FUNC_START_PROFILER::Generate_Func_Start_Profiler_PU(void)
         Set_PU_f77_lang(new_pu);
     if(PU_f90_lang(PU_Info_pu(*_pu_tree_p)))
         Set_PU_f90_lang(new_pu);
+    if(PU_java_lang(PU_Info_pu(*_pu_tree_p)))    //czw
+        Set_PU_java_lang(new_pu);
 /*
     PU_Info* tmp_pu_tree = *_pu_tree_p;
     while (PU_Info_next(tmp_pu_tree))

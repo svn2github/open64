@@ -70,6 +70,12 @@ static char *rcs_id = "$Source: driver/SCCS/s.main.c $ $Revision: 1.109 $";
 #include "objects.h"
 #include "version.h"
 
+//yzm
+#ifdef KEY
+char *main_method = NULL;
+char *generated_main_file;
+#endif
+
 char *help_pattern;
 boolean debug;
 boolean nostdinc = TRUE;
@@ -582,6 +588,18 @@ main (int argc, char *argv[])
 		add_minus_c_option();	/* for .ii file */
 	}
 
+//yzm
+#ifdef KEY
+	else if (invoked_lang == L_java &&
+		  ((last_phase == P_any_ld) && (shared != RELOCATABLE)) ||
+		  (last_phase == P_pixie)) 
+	{
+                /* compile all files to object files, do ld later */
+                last_phase = P_any_as;
+                add_minus_c_option();   /* for .ii file */
+	}
+#endif
+
 	if (Use_feedback) {
 	   struct stat stat_buf;
 	   time_t fb_file_mod_time;
@@ -645,6 +663,49 @@ main (int argc, char *argv[])
 		run_compiler(argc, argv);
 		if (multiple_source_files) cleanup();
 	}
+
+//yzm
+#ifdef KEY
+
+//generate jvgenmain
+	if (invoked_lang == L_java && main_method != NULL && (num_files == 0 || remember_last_phase != last_phase) )
+        {
+		run_jvgenmain();
+	}
+
+	if (invoked_lang == L_java && main_method != NULL && (num_files == 0 || remember_last_phase != last_phase) )
+	{
+		//modify object list
+	        add_object(O_object, get_object_file(generated_main_file));
+
+		//change first phase
+		first_phase = P_any_fe;
+
+		//compile jvgenmain
+                source_file = generated_main_file;
+
+                run_inline = UNDEFINED;
+ 
+                if (execute_flag && !file_exists(source_file)) {
+                        error("file does not exist:  %s", source_file);
+                }
+		else
+		{
+	                source_kind = get_source_kind_from_suffix(get_suffix_string(S_c));
+	                source_lang = get_source_lang(source_kind);
+	                if (source_lang != invoked_lang
+	                        && source_lang != L_as
+	                        && (fullwarn || (source_lang == L_f90)) )
+	                {
+	                        warning("compiler not invoked with language of source file; will compile with %s but link with %s", get_lang_name(source_lang), get_lang_name(invoked_lang));
+	                }
+	                run_compiler(argc, argv);
+	                if (multiple_source_files) cleanup();
+		}
+	}
+
+#endif
+
 	if (has_errors()) {
 		cleanup();
 		cleanup_temp_objects();
@@ -933,6 +994,7 @@ static struct explicit_lang {
 	{ "f95-cpp-input", S_i, L_f90, },
 	{ "none", S_NONE, L_NONE, },
 	{ "ratfor", S_r, L_f77, },
+	{ "JAVA", S_java, L_java, },
 	{ NULL, S_NONE, L_NONE, },
 };
 

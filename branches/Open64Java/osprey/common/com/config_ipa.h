@@ -338,8 +338,6 @@ extern UINT32  IPA_Max_Density;
 /* This flag is to use the old type merge phase. It should be removed when the old type merge is removed. */
 extern BOOL IPA_Enable_Old_Type_Merge;	
 
-extern BOOL IPA_Enable_Devirtualization;
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

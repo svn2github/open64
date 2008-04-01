@@ -442,9 +442,6 @@ extern BOOL CG_localize_x87_tns;
 extern BOOL CG_localize_x87_tns_Set;
 extern BOOL CG_x87_store;
 #endif
-#ifdef TARG_IA64
-extern BOOL CG_Enable_Ldxmov_Support;
-#endif 
 extern BOOL LOCALIZE_using_stacked_regs;
 extern BOOL CG_tail_call;
 extern BOOL CG_unique_exit;

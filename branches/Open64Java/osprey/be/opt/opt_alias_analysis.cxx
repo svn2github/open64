@@ -114,7 +114,6 @@
 #include "opt_util.h"
 #include "opt_sym.h"			// aux_id
 #include "opt_ssa.h"
-#include "opt_htable.h"
 #include "opt_cfg.h"			// Cfg()
 #include "opt_mu_chi.h"			// OCC_TAB_ENTRY, New_mu_node
 #include "opt_points_to.h"		// Is_nested_call, etc
@@ -498,8 +497,6 @@ BOOL OPT_STAB::Its_ret_val_of_malloc (VER_ID ver_id) {
 //
 void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 {
-  PT_MEMOP_ANNOT_STIKER mem_annot_stiker(ai);
-
   INT32 vtype = Ver_stab_entry(ver)->Type();
   POINTS_TO  *pt = Ver_stab_entry(ver)->Points_to();
   AUX_ID  aux_id = Ver_stab_entry(ver)->Aux_id();
@@ -649,7 +646,7 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
           summary_pt.Print(TFile);
           fprintf(TFile, "this result is not very useful, and is changed into: ");
         }
-	PT_MEM_ANNOT mem_annot_saved = summary_pt.Mem_annot();
+        mINT64 malloc_id = summary_pt.Malloc_id();
          // The result is virtuall useless. Following setting may provide more info.
         summary_pt.Init ();
         summary_pt.Set_expr_kind(EXPR_IS_ADDR);
@@ -668,10 +665,8 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
         }
         summary_pt.Set_pointer_ver (ver);
         summary_pt.Set_iofst_kind (OFST_IS_FIXED);
-	if (mem_annot_saved.Has_annotation ()) {
-	  PT_MEM_ANNOT& t = summary_pt.Mem_annot();
-	  t = mem_annot_saved ;
-	}
+        summary_pt.Set_malloc_id(malloc_id);
+
         if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG)) {
           summary_pt.Print (TFile);
         }
@@ -768,9 +763,6 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 void OPT_STAB::Simplify_Pointer(WN *wn_addr, POINTS_TO *ai)
 {
   OPERATOR opr = WN_operator(wn_addr);
-
-  PT_MEMOP_ANNOT_STIKER t(ai);
-
   switch (opr) {
     
   case OPR_ARRAY:
@@ -826,8 +818,6 @@ void OPT_STAB::Simplify_Pointer(WN *wn_addr, POINTS_TO *ai)
     ai->Set_ofst_kind(OFST_IS_UNKNOWN);
     break;
   }     
-  
-
   CHECK_POINTS_TO(ai);
 }
 
@@ -3688,7 +3678,6 @@ void OPT_STAB::Compute_FFA(RID *const rid)
       }
     }
 #endif
-    Cr_sr_annot_mgr()->Print (TFile); 
   }
 }
 

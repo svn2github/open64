@@ -236,37 +236,7 @@ BB *RGN_Gen_And_Insert_BB_Before(BB *point, REGIONAL_CFG *regional_cfg){
         fprintf(TFile, "*** end of RGN_Gen_And_Insert_BB_Before ***\n");
     return new_bb;
 }
-
-void RGN_Unlink_BB_Edges(BB *bb, REGIONAL_CFG *regional_cfg) {
-    if (Get_Trace(TP_A_REGION, TT_RGN_SUMMERY))
-        fprintf(TFile, "*** beginning of RGN_Remove_BB_And_Edges(bb_id:%d *** \n",
-                BB_id(bb));
-    
-    REGION *bb_rgn = Home_Region(bb);
-    if(regional_cfg == NULL)
-        regional_cfg = bb_rgn->Regional_Cfg();
-    else
-        Is_True(bb_rgn->Regional_Cfg()==regional_cfg, ("RGN_Remove_BB_And_Edges"));
-  
-    
-    BBLIST *pred_list=NULL, *succ_list=NULL;
-
-    // delete all incoming edges
-    while(pred_list = BB_preds(bb)){
-        BB *pred = BBLIST_item(pred_list);
-        RGN_Unlink_Pred_Succ(pred, bb);
-    }       
-            
-    // delete all outcoming edges
-    while (succ_list = BB_succs(bb)){
-        BB *succ = BBLIST_item(succ_list);
-        RGN_Unlink_Pred_Succ(bb, succ);
-    };
-
-    if (Get_Trace(TP_A_REGION, TT_RGN_SUMMERY))
-        fprintf(TFile, "*** end of RGN_Remove_BB_And_Edges *** \n");
-
-} 
+ 
 
 //=============================================================================
 //

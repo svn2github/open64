@@ -1837,7 +1837,7 @@ IP_ALIAS_CLASSIFICATION::Handle_call(WN *const call_wn)
       fprintf(TFile, "Store of return value:\n");
       fdump_tree(TFile, stmt);
     }
-    IP_ALIAS_CLASS_MEMBER *lhs_member = Classify_lhs_of_store(stmt);;
+    IP_ALIAS_CLASS_MEMBER *lhs_member = Classify_lhs_of_store(stmt);
     IP_ALIAS_CLASS_MEMBER *rhs_member = return_class_member;
     Conditional_join(lhs_member->Alias_class()->Data_class_pointed_to(),
 		     rhs_member->Alias_class()->Data_class_pointed_to());

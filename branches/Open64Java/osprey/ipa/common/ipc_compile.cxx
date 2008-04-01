@@ -347,6 +347,8 @@ ipa_compile_init ()
 		    compiler_name_suffix = "cc";
 		  } else if (!strcmp(IPA_lang, "CC")) {
 		    compiler_name_suffix = "CC";
+		  } else if (!strcmp(IPA_lang, "java")) {  // for open64-java --ykq
+		    compiler_name_suffix = "java";
 		  } else {
 		    Fail_FmtAssertion ("ipa: unknown language");
 		  }
@@ -521,9 +523,6 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
   argv.push_back ("-o");
   argv.push_back (outpath);
   argv.push_back ("-c");
-
-  if (ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag)
-    argv.push_back ("-keep");
     
 } // get_command_line
 
@@ -577,12 +576,11 @@ ipacom_process_symtab (char* symtab_file)
             && strlen((*command_map)["cc"]) != 0,
           ("Full pathname for cc not set up"));
 
-  sprintf(buf, "%s -c %s %s -o %s %s -TENV:emit_global_data=%s %s",
+  sprintf(buf, "%s -c %s %s -o %s -TENV:emit_global_data=%s %s",
             (*command_map)["cc"],
             abi(),
             input_symtab_name,
             elf_symtab_name,
-            ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag ? "-keep":"",
             whirl_symtab_name,
             IPA_Enable_AutoGnum?"-Gspace 0":"");
 
@@ -985,7 +983,7 @@ void ipacom_doit (const char* ipaa_filename)
 	    tmpdir[0] == '/' ? "" : "$$d/",
 	    symlinksdir);
     fprintf(makefile, "\t%s `sed 's:%s:%s:' %s`\n",
-	    strcmp(IPA_lang, "CC") ? "gcc" : "g++", // g++ to link C++, bug 9191
+	    strcmp(IPA_lang, "CC") ? (strcmp(IPA_lang, "java")? "gcc" :"gcj" ) : "g++" , // g++ to link C++, bug 9191
 	    tmpdir, symlinksdir, link_cmdfile_name);
     fprintf(makefile, "\trm -r %s\n", symlinksdir);
 #else

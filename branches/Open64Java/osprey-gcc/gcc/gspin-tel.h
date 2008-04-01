@@ -36,6 +36,7 @@ extern gs_t gs_build_target_expr(gs_t k0, gs_t k1, gs_t k2, gs_t k3);
 extern gs_t gs_c_common_truthvalue_conversion(gs_t node);
 extern gs_t gs_strip_nops(gs_t node);
 
+
 /*  Define kid positions */
 
 // ---------------------------------------------------------------------------
@@ -758,7 +759,14 @@ GS_LOOKUP (gs_tree_int_cst_high, GS_TREE_INT_CST_HIGH)
 static inline gs_long_long_t gs_get_integer_value (gs_t t)
 {
   GS_ASSERT (t != (gs_t) NULL, (gs_string_t) "Got null node");
-  return (gs_long_long_t) gs_ull (gs_tree_int_cst_low (t));
+  return (gs_long_long_t) gs_ull(gs_tree_int_cst_low (t));
+}
+static inline gs_long_long_t gs_get_integer_value_for_java (gs_t t)
+{
+  GS_ASSERT (t != (gs_t) NULL, (gs_string_t) "Got null node");
+  gs_long_long_t low = gs_ull(gs_tree_int_cst_low (t));
+  gs_long_long_t high = gs_ull(gs_tree_int_cst_high (t));
+  return (high << 32) | low;
 }
 
 static inline gs_float_t gs_tree_real_cst_f (gs_t t) {

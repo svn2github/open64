@@ -115,6 +115,7 @@ extern void
 Whirl2Src_Init (WN* func_nd) 
 {
   switch (PU_src_lang(Get_Current_PU())) {
+  case PU_JAVA_LANG:	
   case PU_C_LANG:
   case PU_CXX_LANG:
     Whirl2C_Init (func_nd);
@@ -174,6 +175,7 @@ extern void
 Whirl2Src_Emit (FILE* fp, WN* wn) 
 {
   switch (PU_src_lang(Get_Current_PU())) {
+  case PU_JAVA_LANG:
   case PU_C_LANG:
   case PU_CXX_LANG:
     Whirl2C_Emit (fp, wn);
@@ -219,6 +221,7 @@ Whirl2Src_Translate_Iload_Str(char  *str_buf,
   INT i;
   for (i=0; i<buf_size; i++) str_buf[i]='\0';
   switch (PU_src_lang(Get_Current_PU())) {
+  	case PU_JAVA_LANG:
     case PU_C_LANG:
     case PU_CXX_LANG:
       W2C_Push_PU (w2src_func_nd, iload);
@@ -244,6 +247,7 @@ Whirl2Src_Translate_Istore_Str(char *str_buf,
   INT i;
   for (i=0; i<buf_size; i++) str_buf[i]='\0';
   switch (PU_src_lang(Get_Current_PU())) {
+  	case PU_JAVA_LANG:
     case PU_C_LANG:
     case PU_CXX_LANG:
       W2C_Push_PU (w2src_func_nd, istore);

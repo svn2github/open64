@@ -121,6 +121,7 @@
 % f90 used in option name, so use F90 for define
 #define F90	F
 #define FTN	f77,F90
+#define JAVA	j
 #define as	a
 #define LINK	Cc,FTN
 % phases
@@ -155,7 +156,7 @@
 	"print list of possible options that contain given string"
 %
 
--show	{show_flag = TRUE; }	ALL	GRP,j	self
+-show	{show_flag = TRUE; }	ALL	GRP	self
 	"show phases as they are being invoked"
 -show1	{show_flag = TRUE; }	ALL	NONE	""
 	""
@@ -345,12 +346,6 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	     "Perform induction variable optimizations (for options compatibility only, performed by default by Open64)"
 -fno-ivopts ;		ALL	NONE	""
 	     "Don't perform induction variable optimizations (for options compatibility only, ignored by Open64)"
--ftree-vectorize ;		ALL	NONE	""
-	     "Perform 'tree' specific vectorization; for options compatibility only, ignored by Open64"
--fno-tree-vectorize ;		ALL	NONE	""
-	     "Don't perform 'tree' specific vectorization; for options compatibility only, ignored by Open64"
--directives-only ; ALL NONE ""
-             "ignored by open64"
 
 % Basic option groups:
 % See opt_actions.c::Process_Ofast if you change the -OPT: item.
@@ -407,7 +402,7 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
         "Use ISO/ANSI standard-conforming C++ language and library"
 -LANG:%s	;		LINK	GRP	"-LANG:%s"
 	"option group to control language features"
--INTERNAL:%s	;		LINK	GRP,ipap	"-INTERNAL:%s"
+-INTERNAL:%s	;		Ccj,FTN 	GRP,ipap	"-INTERNAL:%s"
 	"option group to control features while testing"
 -DEFAULT:%s	Process_Default_Group(optargs);		ALL	N	""
 	""
@@ -464,12 +459,10 @@ I-fini%s		;		CC	ld	"-fini %s"
 	""
 -profile	;	ALL	ld	self "-lm" "-TENV:call_mcount"
 	""
-#ifdef X8664 /* Bug #381, here the MACRO is X8664/IA64, no 'TARG_' prefix */
 -m32	toggle(&abi,ABI_N32);	ALL	be	"-TARG:abi=n32" 
         "Compile for 32-bit ABI"
 -m64	toggle(&abi,ABI_64);	ALL	be	"-TARG:abi=n64"
 	"Compile for 64-bit ABI"
-#endif
 #ifdef KEY /* Bug 4210 */
 -module%s	Process_module(optargs);	F90	NONE	""
 	"Directory in which to create .mod file"
@@ -680,6 +673,8 @@ I-object		;	ALL	ld	""
 % -noas says to skip the assembler phase
 -noas	toggle(&skip_as,TRUE);		ALL	NONE	""
 	""
+I-usejavaf		;		j	NONE	"-INTERNAL:return_val=on -INTERNAL:mldid_mstid=on -INTERNAL:return_info=on"
+     	""
 -usegfe		;		Cc	NONE	"-INTERNAL:return_val=on -INTERNAL:mldid_mstid=on -INTERNAL:return_info=on"
 	""
 -usef90		;		F90	NONE	"-INTERNAL:return_val=on -INTERNAL:mldid_mstid=on -INTERNAL:return_info=on"
@@ -817,8 +812,6 @@ I-xall	;		FTN	ffe	self
 	""
 -fno-optimize-sibling-calls	warn_ignored(option_name);	ALL	NONE	""
 	""
--ftls-model=%s	check_opt_tls_model(optargs);		ALL	be	"-TENV:tls-model=%s"
-	"Thread-Local Storage model. IA64 only so far.\n\t\tShould be one of `global-dynamic', `local-dynamic', `initial-exec' or `local-exec'.\n\t\tThe default without -fpic is `initial-exec'; with -fpic the default is `global-dynamic`."
 -varargs	;		f77	ffe	self
 	"MATRA varargs"
 %-nocode last_phase=earliest_phase(P_any_fe,last_phase);  FTN ffe   self
@@ -1012,9 +1005,6 @@ I-scan%s		;		FTN	PFA	self
 
 -noinline	Process_Inline();		Cc	NONE	"-INLINE:=OFF"
 	"suppress inline processing"
-
--minline-all-stringops ;                        Cc     ipap    ""
-        "force inline all stringops, ignored at present"
 
 -intrinsic=%s	;			FTN	ffe	"-intrinsic=%s"
 	"Add intrinsic to the initial set the compiler recognizes"
@@ -1374,18 +1364,6 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn about function pointer arithmetic"
 -Wno-pointer-arith	;		Cc	f	self
 	"Do not warn about function pointer arithmetic"
--Wpointer-sign	;		Cc,cpp	cpp,f	self
-	"Warn for pointer asignments with different signedness"
--Wno-pointer-sign	;		Cc,cpp	cpp,f	self
-	"Don't warn for pointer asignments with different signedness"
--Wpointer-to-int-cast        ;		Cc,cpp	cpp	self
-	"Warn for pointer casts to integer types of a different size"
--Wno-pointer-to-int-cast        ;		Cc,cpp	cpp	self
-	"Don't warn for pointer casts to integer types of a different size"
--Wno-int-to-pointer-cast        ;		Cc,cpp	cpp	self
-	"Don't warn for casts to pointers from integer types of a different size"
--Wint-to-pointer-cast        ;		Cc,cpp	cpp	self
-	"Warn for casts to pointers from integer types of a different size"
 -Wredundant-decls	;		Cc	f	self
 	"Warn about multiple declarations of the same object"
 -Wno-redundant-decls	;		Cc	f	self
@@ -2091,6 +2069,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Like -v, only nothing is run and args are quoted"
 -rdynamic			;		LINK	ld	"-Wl,--export-dynamic"
 	""
+
+-main=%s	save_name(&main_method,optargs);	JAVA	NONE	""
+	""
+
 % KEY	The driver ignores options by changing them into -dummy, which does
 %	nothing.
 -dummy	;		ALL	NONE	""

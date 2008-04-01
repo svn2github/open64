@@ -101,13 +101,10 @@
 #include "config_vho.h"		// for VHO_Enable_Simple_If_Conv
 #include "targ_const_private.h" // for TCON_R4, TCON_R8, ..
 #endif
-#include "be_memop_annot.h"
 
 #ifdef TARG_X8664
 #include <ext/hash_set>
 #endif
-
-#include "tls.h"
 
 /* My changes are a hack till blessed by Steve. (suneel) */
 #define SHORTCIRCUIT_HACK 1
@@ -264,10 +261,6 @@ static TYPE_ID compute_next_copy_quantum(TYPE_ID , INT32);
 static WN *lower_malloc_alg(WN *block, WN *tree, LOWER_ACTIONS actions);
 #endif
 
-// return the WN* from which <derived> was derived
-static WN* get_original_wn (WN* derived);
-static void set_original_wn (WN* derived, WN* orig);
-
 /* ====================================================================
  *			 private variables
  * ====================================================================
@@ -280,14 +273,11 @@ static struct ALIAS_MANAGER *alias_manager;
 #define PARITY_MAP_ARRAY_SIZE 32
 static WN_MAP parity_map_array[PARITY_MAP_ARRAY_SIZE];
 static WN_MAP lowering_parity_map = 0;
-static WN_MAP wn_derivation_map = WN_MAP_UNDEFINED; 
 static INT32 parity_map_index = -1;
 static LOWER_ACTIONS lowering_actions= 0;
 static BOOL save_Div_Split_Allowed ;
 static INT cur_memlib_idx        = 0;
 
-// for promote ldid/lda in param in call to up level
-static BOOL promote_tls_ldst     = FALSE;
 static BOOL traceIO              = FALSE;
 static BOOL traceSpeculate       = FALSE;
 static BOOL traceAlignment       = FALSE;
@@ -1473,20 +1463,6 @@ BOOL WN_parity_independent(WN *wn1, WN *wn2)
 }
 
 
-static WN* get_original_wn (WN* derived) {
-  WN* orig = NULL;
-  if (wn_derivation_map != WN_MAP_UNDEFINED) {
-    orig = (WN*)WN_MAP_Get (wn_derivation_map, derived);
-  }
-  
-  return orig;
-}
- 
-static void set_original_wn (WN* derived, WN* orig) {
-  if (wn_derivation_map != WN_MAP_UNDEFINED) {
-    WN_MAP_Set (wn_derivation_map, derived, (void*)orig);
-  }
-}
 
 
 /* ====================================================================
@@ -1524,14 +1500,8 @@ static void lower_map(WN *tree, LOWER_ACTIONS actions)
   {
     if (alias_manager)
     {
-      if (Valid_alias(alias_manager, tree) == FALSE) {
-        WN* orig = get_original_wn (tree);
-        if (orig && Valid_alias (alias_manager, orig)) {
-	  Copy_alias_info(alias_manager, orig, tree);
-	} else {
-	  Create_alias(alias_manager, tree);
-        }
-      }
+      if (Valid_alias(alias_manager, tree) == FALSE)
+	Create_alias(alias_manager, tree);
     }
   }
 }
@@ -1558,12 +1528,6 @@ static void lower_copy_maps(WN *orig, WN *tree, LOWER_ACTIONS actions)
       {
         if (alias_manager)
 	  Copy_alias_info(alias_manager, orig, tree);
-      }
-      
-      // maintain the annotation whenever possible
-      WN_MEMOP_ANNOT_MGR* p = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr();
-      if (p) {
-        p->Copy_annot (orig, tree); 
       }
     }
   }
@@ -4316,8 +4280,6 @@ static WN *lower_miload(WN *block, WN *tree, LOWER_ACTIONS actions)
   swn = WN_CreateIntconst (OPC_U4INTCONST, size);
   wn  = WN_CreateMload (WN_offset(tree), pty_idx, WN_kid0(tree), swn);
   WN_set_field_id(wn, WN_field_id(tree));
-  set_original_wn (wn, tree);
-
   wn  = lower_expr (block, wn, actions);
 #ifdef KEY
   // Bug 1268 - copy linenumber when creating WNs.
@@ -4932,29 +4894,25 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
 
 #ifdef KEY
-    if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P ) {
-      WN * old = tree;
-      WN * parm = WN_kid0 (WN_kid0 (old)); // child of OPR_PARM
+    if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P &&
+         Action (LOWER_TO_CG))
+    {
+	WN * old = tree;
+	WN * parm = WN_kid0 (WN_kid0 (old)); // child of OPR_PARM
 
-      // Check if the argument is a compile-time constant, replace the
-      // intrn op by true/false
-      if (WN_operator (parm) == OPR_INTCONST ||
-          (OPCODE_has_sym (WN_opcode (parm)) &&
-           ST_class (WN_st (parm)) == CLASS_CONST)) {
-        tree = WN_Intconst (MTYPE_I4, 1);
-        WN_copy_linenum (old, tree);
-        WN_Delete (old);
-        kids_lowered = TRUE;
-        break;
-      }
-      if ( Action (LOWER_TO_CG) ) {
-	// Still not constant, replace it by false
-	tree = WN_Intconst (MTYPE_I4, 0);
+	// Check if the argument is a compile-time constant, replace the
+	// intrn op by true/false
+	if (WN_operator (parm) == OPR_INTCONST ||
+	    (OPCODE_has_sym (WN_opcode (parm)) && 
+	     ST_class (WN_st (parm)) == CLASS_CONST))
+	  tree = WN_Intconst (MTYPE_I4, 1);
+	else
+	  tree = WN_Intconst (MTYPE_I4, 0);
+
 	WN_copy_linenum (old, tree);
 	WN_Delete (old);
 	kids_lowered = TRUE;
-        break;
-      }
+	break;
     }
 #endif
 
@@ -5215,37 +5173,6 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	return tree;
       }
     }
-    if ( Action(LOWER_TO_CG) && promote_tls_ldst &&
-         ST_is_tls( WN_st(tree) ) ) {
-      // There is a ldid to TLS data needs to be promoted to up level
-      // In order to avoid conflicts in output registers
-      // We create a preg to be the local copy of the TLS variable.
-      //       LDID tls_st <ST_IS_THREAD_PRIVATE>
-      //     ......
-      //   OPR_PARAM
-      // OPR_CALL
-      // --->
-      //   LDID tls_st <ST_IS_THREAD_PRIVATE>
-      // STID local_num <PREG>
-      //       LDID local_num <PREG>
-      //     ......
-      //   OPR_PARAM
-      // OPR_CALL
-      char local_name[64];
-      ST* tls_st = WN_st(tree);
-      TYPE_ID tls_mtype = ST_mtype(tls_st);
-      snprintf(local_name, 64, "%s.local", ST_name(tls_st));
-      ST* local_st = MTYPE_To_PREG(tls_mtype);
-      PREG_NUM local_num = Create_Preg(tls_mtype, local_name);
-      WN* tls_ldid = WN_COPY_Tree(tree);
-      WN* local_stid = WN_StidIntoPreg(tls_mtype, local_num,
-                                       local_st, tls_ldid);
-      WN_INSERT_BlockLast(block, local_stid);
-      WN* local_ldid = WN_LdidPreg(tls_mtype, local_num );
-      WN_Delete(tree);
-      return local_ldid;
-    }
-
     break;
 
   case OPR_ILDBITS:
@@ -5307,35 +5234,6 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	tree = lower_expr(block, ldid, actions);
 	return tree;
       }
-    }
-    if (Action(LOWER_TO_CG) && promote_tls_ldst &&
-        ST_is_tls( WN_st(tree) ) ) 
-    {
-      // promote OPR_LDA to TLS variable in the OPR_PARAM of OPR_CALL to upper level
-      // In order to avoid conflicts in output registers
-      //       OPR_LDA tls_st <ST_IS_THREAD_PRIVATE>
-      //     ......
-      //   OPR_PARAM
-      // OPR_CALL
-      // --->
-      //   OPR_LDA tls_st <ST_IS_THREAD_PRIVATE>
-      // OPR_STID local_num <PREG>
-      //       OPR_LDID local_num <PREG>
-      //     ......
-      //   OPR_PARAM
-      // OPR_CALL
-      char local_name[64];
-      ST* tls_st = WN_st(tree);
-      snprintf(local_name, 64, "local.%s", ST_name(tls_st));
-      ST* local_st = MTYPE_To_PREG(Pointer_type);
-      PREG_NUM local_num = Create_Preg ( Pointer_type, local_name);
-      WN* tls_lda = WN_COPY_Tree(tree);
-      WN* local_stid = WN_StidIntoPreg( Pointer_type, local_num, 
-                                        local_st, tls_lda);
-      WN_INSERT_BlockLast(block, local_stid);
-      WN * local_ldid = WN_LdidPreg(Pointer_type, local_num);
-      WN_Delete(tree);
-      return local_ldid;
     }
     break;
 
@@ -6277,18 +6175,13 @@ static WN *lower_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
   }
 
   swn = WN_CreateIntconst(OPC_U4INTCONST, size);
-  WN* kid0 = WN_COPY_Tree(WN_kid0(tree));
-  WN* kid1 = WN_COPY_Tree(WN_kid1(tree));
-  wn  = WN_CreateMstore(WN_offset(tree), pty_idx, kid0, kid1, swn);
-
+  wn  = WN_CreateMstore(WN_offset(tree), pty_idx, 
+			WN_COPY_Tree(WN_kid0(tree)),
+                        WN_COPY_Tree(WN_kid1(tree)), swn);
   WN_copy_linenum(tree, wn);
   WN_set_field_id(wn, WN_field_id(tree));
-  set_original_wn (wn, tree);
-  set_original_wn (kid0, WN_kid0(tree));
   wn  = lower_store(block, wn, actions);
 
-  set_original_wn (wn, NULL); // avoid dangling pointer
-  set_original_wn (WN_kid0(wn), NULL);
   WN_DELETE_Tree (tree);
   return wn;
 }
@@ -6766,7 +6659,8 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 		 WN_st(tree) == Float_Preg && 
 		 WN_load_offset(tree) == First_X87_Preg_Return_Offset &&
 		 ( PU_c_lang(Get_Current_PU()) ||
-		   PU_cxx_lang(Get_Current_PU()) ) ){
+		   PU_cxx_lang(Get_Current_PU()) ||
+		   PU_java_lang(Get_Current_PU())) ){
 	/* For C/C++ under -m32, if the return value is type
 	   "__complex__ float", the real part will be stored at %eax, and
 	   the imag part will be stored at %edx.  (bug#2842)
@@ -9659,18 +9553,6 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
   Is_True(OPERATOR_is_call(WN_operator(tree)),
 	  ("expected call node, not %s", OPERATOR_name(WN_operator(tree))));
 
-  // initialize the TLS if it's not initialized
-  TLS_init();
-  // If the tls_model is dynamic, we need to generate __tls_get_addr call.
-  // In order to avoid the output register conflict,
-  // we need to promote the ldid/lda in actual parameter to up-level.
-  // This is done in LOWER_TO_CG phase
-  if( Action(LOWER_TO_CG) && 
-      (TLS_model == TLS_MODEL_GLOBAL_DYNAMIC ||
-       TLS_model == TLS_MODEL_LOCAL_DYNAMIC )) {
-    promote_tls_ldst = TRUE;
-  }
-  
   for (i = 0; i < WN_kid_count(tree); i++) {
 #ifdef KEY // handle actual parameter being a complex under LOWER_COMPLEX action
     if (WN_operator(WN_actual(tree,i)) == OPR_PARM &&
@@ -9694,8 +9576,7 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
     WN_actual(tree, i) = lower_expr(block, WN_actual(tree, i), actions);
   }
-  promote_tls_ldst = FALSE;
-  
+
   /* Get the ST of the callee if available */
   if (WN_has_sym(tree)) {
     callee_st = WN_st(tree);
@@ -12519,7 +12400,7 @@ struct is_omp_slink
  * else return FALSE
  *
  * Since The OpenMP lower generates a call not compatible with
- * the one in original implementation, the OpenMP lower has generate
+ * the one in orginal implementation, the OpenMP lower has generate
  * the slink initialization code yet. The following call is used to
  * decide whether the current PU is a OpenMP lower generated PU.
  * the arg slink is not used indeed.
@@ -12830,7 +12711,7 @@ static WN *lower_landing_pad_entry(WN *tree)
   WN * block = WN_CreateBlock();
   WN_INSERT_BlockAfter (block, NULL, tree);
 
-  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
+  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
   ST exc_ptr_st = St_Table[exc_ptr_param];
   // Store rax into exc_ptr variable
 #ifdef TARG_X8664
@@ -12845,7 +12726,7 @@ static WN *lower_landing_pad_entry(WN *tree)
   WN *exc_ptr_stid = WN_Stid (Pointer_Mtype, 0, &exc_ptr_st, 
 			ST_type(exc_ptr_st), exc_ptr_rax);
 
-  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().eh_info))));
+  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().unused))));
   ST filter_st = St_Table[filter_param];
   // Store rdx into filter variable
 #ifdef TARG_X8664
@@ -13554,9 +13435,6 @@ void Lower_Init(void)
     *  create map for marking parity
     */
    lowering_parity_map = WN_MAP32_Create(MEM_pu_pool_ptr);
-   if (wn_derivation_map != WN_MAP_UNDEFINED)
-     WN_MAP_Delete(wn_derivation_map);
-   wn_derivation_map = WN_MAP_Create (MEM_pu_pool_ptr);
 
    lowering_actions = 0;
    current_state = current_state_NULL;
@@ -13572,27 +13450,7 @@ void Lowering_Finalize(void)
 {
   /* free lowering_parity_map */
   WN_MAP_Delete(lowering_parity_map);
-  if (wn_derivation_map != WN_MAP_UNDEFINED) {
-    // Lowering_Finalize() can be called in a row without intervening 
-    // Lower_Init(). This will happens when a PU has child PUs as we 
-    // can see from the following piece of code excerpted from 
-    // Preorder_Process_PUs ().
-    // 
-    // Preorder_Process_PUs () { 
-    //  ...
-    //   pu = Preprocess_PU(current_pu); // call WN_Init();
-    //  
-    //   for (PU_Info *child = PU_Info_child(current_pu);
-    //     child != NULL;
-    //     child = PU_Info_next(child)) {
-    //     Preorder_Process_PUs(child);
-    //   }
-    // }
-    // Postprocess_PU (current_pu); // call Lowering_Finialize().
-    // 
-    WN_MAP_Delete(wn_derivation_map);
-    wn_derivation_map = WN_MAP_UNDEFINED;
-  }
+  
   parity_map_index--;
   if (parity_map_index >= 0) {
     // if there is a saved parity map, then restore it
@@ -15027,9 +14885,6 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
 
           }
           else length_wn = trip_count;
-
-	  if(Action(LOWER_ARRAY))
-	    length_wn = lower_expr(block, WN_COPY_Tree(length_wn), LOWER_ARRAY);
 
           desc_idx = WN_ty(stmt); //initialization
 

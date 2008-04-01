@@ -1803,6 +1803,7 @@ void WB_BROWSER::Initialize_Language()
 {
   if (Pu() != NULL) { 
     switch (PU_src_lang(*Pu())) {
+	case PU_JAVA_LANG:
     case PU_C_LANG:
     case PU_CXX_LANG:
       Set_Source_Language(WB_SRC_C);

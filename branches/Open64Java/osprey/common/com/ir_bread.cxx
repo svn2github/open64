@@ -1367,7 +1367,7 @@ Open_Local_Input (char *input_file)
  */
 
 PU_Info *
-Read_Global_Info (INT32 *p_num_PUs)
+Read_Global_Info (INT32 *p_num_PUs, bool input_o)		//czw
 {
     PU_Info *pu_tree;
 
@@ -1382,6 +1382,7 @@ Read_Global_Info (INT32 *p_num_PUs)
     }
 
 #if defined(KEY) && defined(BACK_END)
+if(!input_o)		//czw
     WN_get_mod_ref_table (global_fhandle);
 #endif
 

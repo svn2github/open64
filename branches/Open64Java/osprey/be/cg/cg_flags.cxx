@@ -85,10 +85,6 @@ BOOL CG_localize_x87_tns = FALSE;
 BOOL CG_localize_x87_tns_Set = FALSE;
 BOOL CG_x87_store = FALSE;
 #endif
-#ifdef TARG_IA64
-BOOL CG_Enable_Ldxmov_Support = TRUE;
-#endif
-
 BOOL LOCALIZE_using_stacked_regs = TRUE;
 BOOL CG_unique_exit = TRUE;
 

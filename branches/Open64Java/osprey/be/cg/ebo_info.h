@@ -409,7 +409,7 @@ EBO_predicate_complements (TN *pred1, EBO_TN_INFO *info1,
    /* If defined by the same instruction but not equal, they must be complements. */
     return TRUE;
   }
-#endif  
+#endif
  /* Until we can resolve subsets, assume a problem. */
   return FALSE;
 }
@@ -471,11 +471,7 @@ tn_info_use (BB *current_bb, OP *current_op, TN *local_tn,
        if ( EBO_in_peep ) { /*post ebo set and get tninfo for physical registers, 
        					 * so we should compare them for relationship.*/
 	   	if (tninfo->predicate_tninfo == NULL ||
-			(TN_is_global_reg(tninfo->predicate_tninfo->local_tn) && TN_is_global_reg(predicate_tn)) &&
-			(use_tn_or_reg(tninfo->predicate_tninfo->local_tn) == use_tn_or_reg(predicate_tn))) //bug OSP_320
-			/* The previous fix's assumption is that dominate TN is spilled by previous BB.
-				So, the two TNs at least are global TNs, I'm not sure if the condition is enough.
-				Maybe we should strengthen this conditon later.*/
+			use_tn_or_reg(tninfo->predicate_tninfo->local_tn) == use_tn_or_reg(predicate_tn))
 			break;
        }
        if (EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?

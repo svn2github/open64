@@ -302,21 +302,7 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
     U64_LOWER_insert_cvtl_for_kid(new_nd, hob_to_do, 0, maxsize, hob_state);
     // if bit offset is 0, can do same optimization as ORP_CVTL; omit for now
     U64_LOWER_set_rtype(new_nd, Mtype_TransferSize(MTYPE_A8, res));
-    // bug fix for OSP_336
-    /* >    U4EXTRACT_BITS o:16 s:15 
-       >   F8I4CVT
-       Here, compiler will insert a cvtl between the node and its kid.
-       >     U8EXTRACT_BITS o:16 s:15
-       >    I8CVTL 15 
-       >   F8I8CVT
-       I think res is not MTYPE_BS, so maxsize should be MTYPE_bit_size(res).
-     */
-    if (res == MTYPE_BS) {
-      maxsize = U64_LOWER_bit_size(tree); // maxsize cannot be 64 or 0
-    }
-    else {
-      maxsize = MTYPE_bit_size(res);// when result type is not bits
-    }
+    maxsize = U64_LOWER_bit_size(tree); // maxsize cannot be 64 or 0
     hob_state = MTYPE_signed(res) ? HOB_sign_xtd : HOB_zero_xtd;
     hob_to_do = HOB_none;
     return U64_LOWER_form_node(new_nd, tree);

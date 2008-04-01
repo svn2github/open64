@@ -786,24 +786,6 @@ WFE_Array_Expr(tree exp,
     INT64 ofst = (BITSPERBYTE * Get_Integer_Value(DECL_FIELD_OFFSET(arg1)) +
 				Get_Integer_Value(DECL_FIELD_BIT_OFFSET(arg1)))
 			      / BITSPERBYTE;
-#ifdef KEY
-    // OSP_7, MODIFY_EXPR in ARRAY_REF
-    // Refer GCC 4.0.2: gcc.c-torture/compile/struct-non-lval-3.c
-    // We only handle this case so far:
-    // (p = q).x[index]
-    // the lhs of modify_expr is var_decl, not an expression
-    // ARRAY_REF
-    //     |---> MODIFY_EXPT
-    if (TREE_CODE(arg0) == MODIFY_EXPR) {
-      WFE_Expand_Expr(arg0);
-      tree lhs = TREE_OPERAND(arg0, 0);
-      Is_True (lhs != NULL && 
-	       (TREE_CODE(lhs) == VAR_DECL || TREE_CODE(lhs) == INDIRECT_REF),
-		      ("Unsupported lhs for `(p=q).x[n]'"));
-      arg0 = lhs;
-    }
-#endif
-
 #ifdef KEY // bug 9725: If the field is an array of struct, it is considered
            // a single field.
     return WFE_Array_Expr(arg0, ty_idx, ty_idx0, ofst + component_offset,
@@ -1217,8 +1199,7 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
         }
         else result_wn = rhs_wn;
 
-	// OSP_382, do not store MTYPE_M into temp
-        if (need_result && rtype != MTYPE_M &&
+        if (need_result && 
 	    (volt ||
 	     assign_code == POSTINCREMENT_EXPR ||
 	     assign_code == POSTDECREMENT_EXPR)) { // save result in a preg
@@ -1402,8 +1383,7 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
         }
         else result_wn = rhs_wn;
 
-	// OSP_382, do not store MTYPE_M into temp
-        if (need_result && rtype != MTYPE_M &&
+        if (need_result && 
 	    (volt ||
              assign_code == POSTINCREMENT_EXPR ||
              assign_code == POSTDECREMENT_EXPR)) { // save result in a preg
@@ -1609,8 +1589,7 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
         }
         else result_wn = rhs_wn;
 
-	// OSP_382, do not store MTYPE_M into temp
-        if (need_result && rtype != MTYPE_M &&
+        if (need_result && 
 	    (volt ||
              assign_code == POSTINCREMENT_EXPR ||
 	     assign_code == POSTDECREMENT_EXPR)) { // save result in a preg
@@ -3479,33 +3458,22 @@ WFE_Expand_Expr (tree exp,
 	  // If opnd 0 of the TARGET_EXPR is an INDIRECT_REF, then tell
 	  // WFE_Expand_Expr to put the result in the area addressed by the
 	  // INDIRECT_REF.
-          // OSP_397, initializing member of a class having copy-constructor
-          // This fix is done by Pathscale. Thanks
-          // If opnd0 is not DECL, then generate the addr of opnd 0
-          // Otherwise, get the ST and get the addr of the st
-          if (TREE_CODE(opnd0) == INDIRECT_REF) {
-            if (TREE_CODE_CLASS(TREE_CODE(TREE_OPERAND(opnd0,0))) != 'd') {
-              WN * target_wn = WFE_Address_Of (opnd0);
-              WFE_Expand_Expr (t, TRUE /* for return_in_mem */,
-                               0, 0, 0, 0, FALSE, FALSE, target_wn);
-            }
-            else {
-	      ST *st = Get_ST(TREE_OPERAND(opnd0, 0));
-	      WN *ldid_wn = WN_Ldid (Pointer_Mtype, 0, st, ST_type(st));
-	      WN *result_wn = WFE_Expand_Expr (t, TRUE, 0, 0, 0, 0, FALSE, FALSE,
-                                               ldid_wn);
-	      // If the result of expanding t is not an indirect reference to the
-	      // result area we want, then it means t has not copied the value
-	      // into the result area.  Do the copy.
-	      if (result_wn &&
-                  !(WN_operator(result_wn) == OPR_ILOAD &&
-		    WN_operator(WN_kid0(result_wn)) == OPR_LDID &&
-		    WN_st(WN_kid0(result_wn)) == st)) {
-	        WFE_Stmt_Append(WN_Istore(WN_rtype(result_wn), 0, ST_type(st),
-                                          WN_CopyNode(ldid_wn), result_wn),
-                                Get_Srcpos());
-	      }
-            }
+	  if (TREE_CODE(opnd0) == INDIRECT_REF) {
+	    ST *st = Get_ST(TREE_OPERAND(opnd0, 0));
+	    WN *ldid_wn = WN_Ldid (Pointer_Mtype, 0, st, ST_type(st));
+	    WN *result_wn = WFE_Expand_Expr (t, TRUE, 0, 0, 0, 0, FALSE, FALSE,
+					     ldid_wn);
+	    // If the result of expanding t is not an indirect reference to the
+	    // result area we want, then it means t has not copied the value
+	    // into the result area.  Do the copy.
+	    if (result_wn &&
+		!(WN_operator(result_wn) == OPR_ILOAD &&
+		  WN_operator(WN_kid0(result_wn)) == OPR_LDID &&
+		  WN_st(WN_kid0(result_wn)) == st)) {
+	      WFE_Stmt_Append(WN_Istore(WN_rtype(result_wn), 0, ST_type(st),
+					WN_CopyNode(ldid_wn), result_wn),
+			      Get_Srcpos());
+	    }
 	  }
 	  // If the initializer returns the object in memory, then make sure
 	  // the type doesn't require a copy constructor, since such types
@@ -3576,22 +3544,13 @@ WFE_Expand_Expr (tree exp,
 #ifdef KEY
 	// If the target area was supplied by the caller, then return an ILOAD
 	// of the target pointer.
-        // OSP_397, fix by Pathscale.
-        // If the opnd0 is a DECL, then get the ST and load from the st
-        // Otherwise, expand opnd 0
-        if (TREE_CODE(opnd0) == INDIRECT_REF) {
-          if (TREE_CODE_CLASS(TREE_CODE(TREE_OPERAND(opnd0,0))) == 'd') {
-            ST *st = Get_ST(TREE_OPERAND(opnd0, 0));
-            TY_IDX ty_idx = Get_TY (TREE_TYPE(exp));
-            WN *ldid_wn = WN_Ldid (Pointer_Mtype, 0, st, ST_type(st));
-            wn = WN_Iload(TY_mtype(ty_idx), 0, ty_idx, ldid_wn);
-            break;
-          }
-          else {
-            wn = WFE_Expand_Expr(opnd0);
-	    break;
-          }
-        }
+	if (TREE_CODE(opnd0) == INDIRECT_REF) {
+	  ST *st = Get_ST(TREE_OPERAND(opnd0, 0));
+	  TY_IDX ty_idx = Get_TY (TREE_TYPE(exp));
+	  WN *ldid_wn = WN_Ldid (Pointer_Mtype, 0, st, ST_type(st));
+	  wn = WN_Iload(TY_mtype(ty_idx), 0, ty_idx, ldid_wn);
+	  break;
+	}
 #endif
       }
 
@@ -4751,46 +4710,6 @@ WFE_Expand_Expr (tree exp,
 	  set_DECL_ST(ptr_var, WN_st(target_wn));
 	}
       }
-
-#ifdef NEW_INITIALIZER
-      {
-        tree opnd0 = TREE_OPERAND(exp, 0);
-        tree opnd1 = TREE_OPERAND(exp, 1);
-        if( TREE_CODE(opnd0) == INDIRECT_REF &&
-            TREE_CODE(opnd1) == CONSTRUCTOR ) {
-          WN* target = WFE_Address_Of(opnd0);
-          ST* copy_st = WFE_Generate_Initialized_Aggregate(target, opnd1);
-          ST* orig_st = WN_st(target);
-          if ( ST_st_idx(copy_st) != ST_st_idx(orig_st) ) {
-            // If the returned ST is not the original one,
-            //   it means we create a new temp ST for initialization
-            // One case is on x8664, the returned struct is converted into 
-            //   the first FORMAL.
-            // When initialize the FORMAL, we need to use a temp st.
-            //   we copy the new ST into target here
-            TY_IDX copy_ty = ST_type(copy_st);
-            WN* ldid = WN_Ldid(TY_mtype(copy_ty), 0, copy_st, copy_ty);
-            if ( WN_operator(target) == OPR_LDA ) {
-              WFE_Stmt_Append(
-                         WN_Stid (TY_mtype(copy_ty), WN_lda_offset(target),
-                                  orig_st, ST_type(orig_st), ldid),
-                         Get_Srcpos() );
-            }
-            else if ( WN_operator(target) == OPR_LDID ) {
-              WFE_Stmt_Append(
-                         WN_Istore(TY_mtype(copy_ty), 0,
-                                   ST_type(orig_st), target, ldid),
-                         Get_Srcpos() );
-            }
-            else {
-              FmtAssert(FALSE, ("Bad operator for target, not LDA/LDID"));
-            }
-          }
-          break;
-        }
-      }
-#endif
-
       // fall through
 #endif
     case MODIFY_EXPR:
@@ -4916,7 +4835,6 @@ WFE_Expand_Expr (tree exp,
 	  // kg++fe to access through the fake arg0, in order to avoid
 	  // (indirect_ref (nop (var_decl))) which is generated by g++.
 	  tree init_expr_opnd0 = TREE_OPERAND(exp, 0);
-          tree initializer = NULL;
 	  if (TREE_CODE(init_expr_opnd0) == INDIRECT_REF &&
 	      TREE_CODE(TREE_OPERAND(init_expr_opnd0, 0)) == VAR_DECL) {
 	    tree target_expr_opnd0 = TREE_OPERAND(t, 0);
@@ -4942,19 +4860,6 @@ WFE_Expand_Expr (tree exp,
 	    wn = WFE_Expand_Expr(t);
 	    break;
 	  }
-          // OSP_397, initializing a class member having copy-constructor
-          // fixed by Pathscale
-          // Bug 13261: Handle INDIRECT_REF generated by g++, when its
-          // operand is not a decl.
-          else if (TREE_CODE(init_expr_opnd0) == INDIRECT_REF &&
-                   ((initializer = TREE_OPERAND(t,1)) ||
-                    (initializer = TREE_OPERAND(t,3))) &&
-                   (TREE_CODE(initializer) == CALL_EXPR ||
-                    TREE_CODE(initializer) == AGGR_INIT_EXPR)) {
-            TREE_OPERAND(t,0) = init_expr_opnd0;
-            wn = WFE_Expand_Expr(t);
-            break;
-          }
 	  DevWarn ("INIT_EXPR/MODIFY_EXPR kid1 is TARGET_EXPR, kid0 is %s\n",
 		   Operator_From_Tree [TREE_CODE(TREE_OPERAND(exp, 0))].name);
         }
@@ -5278,22 +5183,6 @@ WFE_Expand_Expr (tree exp,
 		}
 #endif // TARG_X8664
 
-#ifdef TARG_IA64
-		// For IA64, the memcpy is not necessary
-		// We use IStore directly, the original code also fails
-		// in IA64 with GNU 3 front-end(OSP bug #250)
-		FmtAssert( TREE_CODE(arglist) != ARRAY_TYPE,
-                           ("unexpected array type for intrinsic 'va_copy'") );
-		WN* addr = WFE_Expand_Expr( arg1 );
-		WN* value = WFE_Expand_Expr( arg2 );
-		wn = WN_CreateIstore( OPR_ISTORE, MTYPE_V, Pointer_Mtype,
-                                      0, arg_ty_idx, value, addr, 0 );
-		WFE_Stmt_Append( wn, Get_Srcpos() );
-		whirl_generated = TRUE;
-		wn = NULL;
-		break;
-#endif		
-		
 		WN *dst  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg1),
 					  arg_ty_idx, WN_PARM_BY_VALUE);
 		WN *src  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg2),
@@ -5309,7 +5198,9 @@ WFE_Expand_Expr (tree exp,
 		WFE_Stmt_Append (wn, Get_Srcpos());
 		whirl_generated = TRUE;
 		wn = NULL;
+#ifdef KEY
 		break;
+#endif
 	      }
 
 	      case BUILT_IN_VA_END:
@@ -5575,13 +5466,12 @@ WFE_Expand_Expr (tree exp,
                   wn = WN_Intconst (MTYPE_I4, 1);
 		  whirl_generated = TRUE; // KEY
 		}
-#ifdef KEY
+#ifdef KEY_bug1058
 // If not yet compile-time constant, let the backend decide if it is 
 // a constant
 		else
 		{
 		  iopc = INTRN_CONSTANT_P;
-                  if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_I4;
 		  intrinsic_op = TRUE;
 		}
 #else
@@ -5980,67 +5870,13 @@ WFE_Expand_Expr (tree exp,
         }
 
         else {
-          WN *wn_kid0, *wn_kid0_kid0;
-          TY_IDX kid_ty_idx;
-          UINT32 kid_field_id, kid_cur_fld;
-          FLD_HANDLE kid_fld_handle;
 	  num_args++;
 	  num_handlers = Current_Handler_Count();
           call_wn = WN_Create (OPR_ICALL, ret_mtype, MTYPE_V,
 			       num_args + num_handlers);
-          wn_kid0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
-          WN_kid(call_wn, num_args-1) = wn_kid0;
-          WN_set_ty (call_wn, TY_pointed(Get_TY(TREE_TYPE(TREE_OPERAND(exp, 0)))));
-          /* 
-             Check if the indirect call is a call to a virtual function
-             First, get the TY of the address and the field ID
-             1) For IA64, virtual function call is 
-                                             LDID object
-                 LDID object                ILOAD vptr field
-               ILOAD vptr field    or     ADD offset
-             ICALL                      ICALL
-             2) For X86, virtual function call is
-                   LDID object
-                 ILOAD vptr field
-               ILOAD offset
-             ICALL
-          */
-          kid_ty_idx = kid_field_id = 0;
-#ifdef TARG_IA64
-          switch (WN_operator(wn_kid0)) {
-              case OPR_ILOAD :
-                  // if offset == 0, ILOAD the vptr directly
-                  kid_ty_idx = WN_ty(wn_kid0);
-                  kid_field_id = WN_field_id(wn_kid0);
-                  break;
-              case OPR_ADD :
-                  // if call the result by ADD, analysis the tree of ADD
-                  wn_kid0_kid0 = WN_kid0(wn_kid0);
-                  if (WN_operator_is(wn_kid0_kid0, OPR_ILOAD)) {
-                      kid_ty_idx = WN_ty(wn_kid0_kid0);
-                      kid_field_id = WN_field_id(wn_kid0_kid0);
-                  }
-                  break;
-          }
-#endif
-#ifdef TARG_X8664
-          if (WN_operator(wn_kid0) == OPR_ILOAD) {
-              WN *wn_kid0_kid0 = WN_kid0(wn_kid0);
-              if (WN_operator(wn_kid0_kid0) == OPR_ILOAD) {
-                  kid_ty_idx = WN_ty(wn_kid0_kid0);
-                  kid_field_id = WN_field_id(wn_kid0_kid0);
-              }
-          }
-#endif
-          if (kid_ty_idx > 0 && kid_field_id > 0) {
-              // If the TY and the field ID of the address are found,
-              // then check if the field of the TY is a virtual pointer
-              kid_cur_fld = 0; 
-              kid_fld_handle = FLD_get_to_field(kid_ty_idx, kid_field_id, kid_cur_fld);
-              if (!strncmp (&Str_Table[FLD_name_idx(kid_fld_handle)], "_vptr.", 6))
-                  WN_Set_Call_Is_Virtual(call_wn);
-          }
-        }
+	  WN_kid(call_wn, num_args-1) = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
+	  WN_set_ty (call_wn, TY_pointed(Get_TY(TREE_TYPE (TREE_OPERAND (exp, 0)))));
+	}
 
 	WN_Set_Linenum (call_wn, Get_Srcpos());
 	WN_Set_Call_Default_Flags (call_wn);
@@ -6525,7 +6361,7 @@ WFE_Expand_Expr (tree exp,
     {
       if (key_exceptions)
       {
-	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
+	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
       	wn = WN_Ldid (Pointer_Mtype, 0, exc_ptr_st, Get_TY(TREE_TYPE(exp)));
       }
       else
@@ -6552,12 +6388,7 @@ WFE_Expand_Expr (tree exp,
    case VECTOR_CST:
      {
        ST * init_st = Gen_Temp_Symbol (Get_TY(TREE_TYPE(exp)), "__vec_cst");
-#ifdef NEW_INITIALIZER
-       WN* target = WN_Lda(Pointer_Mtype, 0, init_st, 0);
-       Traverse_Aggregate_Vector_Const (target, exp, 0, 0);
-#else
        Traverse_Aggregate_Vector_Const (init_st, exp, 0, 0);
-#endif
        TY_IDX ty = ST_type (init_st);
        TYPE_ID mtype = TY_mtype (ty);
        wn = WN_CreateLdid (OPR_LDID, mtype, mtype, 0, init_st, ty, 0);

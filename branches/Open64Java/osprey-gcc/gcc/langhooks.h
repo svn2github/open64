@@ -1,7 +1,3 @@
-/*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
 /* The lang_hooks data structure.
    Copyright 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
 
@@ -436,10 +432,14 @@ struct lang_hooks
   tree (*expr_to_decl) (tree expr, bool *tc, bool *ti, bool *se);
 
 #ifdef KEY
-  tree (*cplus_expand_constant) (tree cst);
-  tree (*mangle_decl) (const tree decl);
-  void (*cp_genericize) (tree fn);
-  tree (*simplify_aggr_init_exprs_r) (tree *t, int *i, void *p);
+  tree (*cplus_expand_constant)(tree cst);
+  tree (*mangle_decl)(const tree decl);
+  void (*cp_genericize)(tree fn);
+  tree (*simplify_aggr_init_exprs_r)(tree *t, int *i, void *p);
+  //yzm
+  void (*java_genericize)(tree fn);
+  //yzm
+  tree (*java_mangle_decl)(struct obstack *obstack, tree decl);
 #endif
 
   /* Whenever you add entries here, make sure you adjust langhooks-def.h

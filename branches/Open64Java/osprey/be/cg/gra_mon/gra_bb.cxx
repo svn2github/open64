@@ -96,10 +96,8 @@ GRA_BB::Register_Girth( ISA_REGISTER_CLASS rc )
 {
   INT rr = LRA_Register_Request(bb,rc);
   INT rs = REGISTER_SET_Size(REGISTER_CLASS_allocatable(rc));
-#ifndef TARG_X8664
   if ( rr < GRA_local_forced_max && rr != 0 )
     rr = GRA_local_forced_max;
-#endif
   return rr <= rs ? rr : rs; 
 }
 

@@ -329,13 +329,13 @@ add_object (int flag, char *arg)
 			/* add -lmv -lmblah */
 			add_library(lib_objects, "mv");
 			if (xpg_flag && invoked_lang == L_f77) {
-				add_library(lib_objects, "m" );
+				add_library(lib_objects, "msgi" );
 			} else {
-				add_library(objects, "m");
+				add_library(objects, "msgi");
 			}
 			if (invoked_lang == L_CC) {
 			    add_library(cxx_prelinker_objects, "mv");
-			    add_library(cxx_prelinker_objects, "m");
+			    add_library(cxx_prelinker_objects, "msgi");
 			}
 #ifdef TARG_X8664
 			extern boolean link_with_mathlib;
@@ -371,7 +371,7 @@ add_object (int flag, char *arg)
 
 	       break;
 	case O_WlC:
-	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	       if (ld_phase == P_ld || ld_phase == P_ldplus || ld_phase == P_gcj) {
 	         add_string(objects, concat_strings("-Wl,", arg));
 	       } else {
 	         /* the arg would look like "-F,arg1,arg2,argn", 
@@ -387,14 +387,14 @@ add_object (int flag, char *arg)
 	       }
 	       break;
 	case O__whole_archive:
-	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	       if (ld_phase == P_ld || ld_phase == P_ldplus || ld_phase == P_gcj) {
 	         add_string(objects, "-Wl,-whole-archive");
 	       } else {
 	         add_string(objects, "-whole-archive");
 	       }
 	       break;
 	case O__no_whole_archive:
-	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	       if (ld_phase == P_ld || ld_phase == P_ldplus || ld_phase == P_gcj) {
 	         add_string(objects, "-Wl,-no-whole-archive");
 	       } else {
 	         add_string(objects, "-no-whole-archive");

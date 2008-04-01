@@ -135,8 +135,6 @@
 #include "output_func_start_profiler.h"
 #endif
 
-#include "be_memop_annot.h"
-
 extern ERROR_DESC EDESC_BE[], EDESC_CG[];
 
 #ifdef KEY
@@ -1115,9 +1113,7 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
         WB_LWR_Initialize(rwn, alias_mgr);
 
     /* lowering MLDID/MSTID before lowering to CG */
-    if (!Run_wopt || 
-         // OSP 421, MLDID/MSTID is not lowered.
-         Query_Skiplist (WOPT_Skip_List, Current_PU_Count()) ) {
+    if (!Run_wopt) {
       rwn = WN_Lower(rwn, LOWER_MLDID_MSTID, alias_mgr, 
                        "Lower MLDID/MSTID when not running WOPT");
 #ifdef KEY // bug 7298: this flag could have been set by LNO's preopt
@@ -1374,9 +1370,6 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
         WB_LWR_Terminate();
     }
 
-    // annotation map should be constructed before LNO
-    WN_MEMOP_ANNOT_MGR_Constructor mem_annot_mgr;
-
     /* Add instrumentation here for lno. */
     if( Instrumentation_Enabled
 	&& (Instrumentation_Type_Num & WHIRL_PROFILE)
@@ -1446,7 +1439,7 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
     }
 
 #ifdef KEY
-    if (PU_cxx_lang (Get_Current_PU()))
+    if (PU_cxx_lang (Get_Current_PU())  || PU_java_lang (Get_Current_PU()))      //czw
 #endif
     Update_EHRegion_Inito (pu);
 
@@ -1767,7 +1760,7 @@ Preorder_Process_PUs (PU_Info *current_pu)
         Pu_Table [ST_pu (St_Table [PU_Info_proc_sym (current_pu)])];
 
     // C++ PU having exception regions, or with -g
-    if ((PU_cxx_lang (func) && PU_has_region (func)) || Debug_Level > 0)
+    if (((PU_cxx_lang (func) || PU_java_lang (func)) && PU_has_region (func)) || Debug_Level > 0)      //czw
       Force_Frame_Pointer = true;
     else
       Force_Frame_Pointer = false;
@@ -2145,7 +2138,6 @@ main (INT argc, char **argv)
   } while (scope_level != 0);
 
   BE_symtab_free_be_scopes();
-
   
   if (need_wopt_output || need_lno_output || need_ipl_output) {
     Write_Global_Info (pu_tree);

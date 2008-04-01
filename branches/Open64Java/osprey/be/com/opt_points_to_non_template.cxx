@@ -385,8 +385,9 @@ void POINTS_TO::Meet(const POINTS_TO *pt, ST *definition)
     Reset_known_f90_pointer();
   }
 
-  // If anntations disagree, invalidate them
-  _mem_annot.Meet(pt->_mem_annot);
+  if (Malloc_id() != pt->Malloc_id()) {
+    Set_malloc_id(0);
+  }
 
   CHECK_POINTS_TO(this);
 }
@@ -1147,10 +1148,6 @@ void POINTS_TO::Print(FILE *fp) const
       if (Bit_Size() != 0)
         fprintf(fp, "bit size is %d, ", Bit_Size());
     }
-  }
-
-  if (_mem_annot.Has_annotation ()) {
-    _mem_annot.Print (fp, FALSE);
   }
 
   fprintf (fp, "\n");

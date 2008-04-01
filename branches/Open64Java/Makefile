@@ -106,7 +106,8 @@ GNU3_FE_COMPONENTS = \
 GNU4_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/wgen/wgen \
                 $(GNUFE_BUILD_DIR)/gcc/cc1 \
-                $(GNUFE_BUILD_DIR)/gcc/cc1plus
+                $(GNUFE_BUILD_DIR)/gcc/cc1plus \
+                $(GNUFE_BUILD_DIR)/gcc/jc1
 
 FORT_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
@@ -199,7 +200,6 @@ $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95:
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90
 
-
 .PHONY: Force
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 	$(SUBMAKE) -C $(NATIVE_BUILD_DIR_LD)
@@ -207,7 +207,7 @@ $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 $(NATIVE_BUILD_DIR_LD)/Makefile:  
 	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
 
-$(GNUFE_BUILD_DIR)/gcc/cc1 $(GNUFE_BUILD_DIR)/gcc/cc1plus cc1 cc1plus: $(GNUFE_BUILD_DIR)/Makefile Force
+$(GNUFE_BUILD_DIR)/gcc/cc1 $(GNUFE_BUILD_DIR)/gcc/cc1plus $(GNUFE_BUILD_DIR)/gcc/jc1 cc1 cc1plus jc1: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(SUBMAKE) -C $(GNUFE_BUILD_DIR)
 
 $(GNUFE_BUILD_DIR)/Makefile:
@@ -272,7 +272,7 @@ endif
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
-		libiberty libunwindP libspin; do  \
+		libiberty libunwindP libspin ; do  \
 		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
 	done
 

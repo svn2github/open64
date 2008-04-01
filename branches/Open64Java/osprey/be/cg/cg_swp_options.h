@@ -54,7 +54,6 @@
 #define cg_swp_options_INCLUDED "cg_swp_options.h"
 
 #include "cg_flags.h"
-#include "cg_swp.h"
 
 struct SWP_OPTIONS {
 
@@ -89,7 +88,6 @@ struct SWP_OPTIONS {
   INT32 FB_Prob2;	// combined with frequency
   INT32 FB_Freq;	// lower bound of feedback freqency
 #endif
-  INT32 OPS_Limit;
 
   // Options not accessible from command line
   //  -  some are basically compile-time constants;
@@ -217,9 +215,6 @@ struct SWP_OPTIONS {
     // Lower bound of feedback frequency
     FB_Freq = 100000;
 #endif
-
-    // Max number of OPs which should be SWPed
-    OPS_Limit = SWP_OPS_LIMIT;
   }
 
   // PU Configure:

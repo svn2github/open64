@@ -1574,29 +1574,19 @@ Expand_Bool_Comparison (BOOL equals, TN *dest, TN *src1, TN *src2, OPS *ops)
     // return result of comparison in a predicate register
     TOP action = equals ? TOP_cmp_ne : TOP_cmp_eq;
     TN *p1 = dest;
-    TN *p2 = Get_Complement_TN (dest);
+    TN *p2 = Get_Complement_TN(dest);
     TN *tn = Build_TN_Of_Mtype (MTYPE_I4);
 
     // generate: tn = (src1 == src2)
-    Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN (1, 4), ops);
-    Build_OP (TOP_xor_i, tn, src1, Gen_Literal_TN (1, 4), tn, ops);
-    Build_OP (TOP_xor_i, tn, src2, Gen_Literal_TN (1, 4), tn, ops);
+    Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN(1, 4), ops);
+    Build_OP (TOP_xor_i, tn, src1, Gen_Literal_TN(1, 4), tn, ops);
+    Build_OP (TOP_xor_i, tn, src2, Gen_Literal_TN(1, 4), tn, ops);
 
     Build_OP (action, p1, p2, True_TN, tn, Zero_TN, ops);
-  } 
-  else if (TN_is_dedicated (dest)) {
-    TN *tn = Build_TN_Of_Mtype (MTYPE_I4);
-    
-    Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN (equals, 4), ops);
-    Build_OP (TOP_xor_i, tn, src1, Gen_Literal_TN (1, 4), tn, ops);
-    Build_OP (TOP_xor_i, tn, src2, Gen_Literal_TN (1, 4), tn, ops);
-    
-    Build_OP (TOP_mov, dest, True_TN, tn, ops); 
-  }
-  else {
-    Build_OP (TOP_mov_i, dest, True_TN, Gen_Literal_TN (equals, 4), ops);
-    Build_OP (TOP_xor_i, dest, src1, Gen_Literal_TN (1, 4), dest, ops);
-    Build_OP (TOP_xor_i, dest, src2, Gen_Literal_TN (1, 4), dest, ops);
+  } else {
+    Build_OP (TOP_mov_i, dest, True_TN, Gen_Literal_TN(equals, 4), ops);
+    Build_OP (TOP_xor_i, dest, src1, Gen_Literal_TN(1, 4), dest, ops);
+    Build_OP (TOP_xor_i, dest, src2, Gen_Literal_TN(1, 4), dest, ops);
   }
 }
 
@@ -3263,22 +3253,6 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * op1, OPS *ops)
     break;
   case INTRN_ISUNORDERED:
     Expand_Float_Compares(TOP_fcmp_unord, result, op0, op1, ops);
-    break;
-  case INTRN_CLZ32:
-    // expand the intrinsic __builtin_clz, which Returns the number of leading 0-bits in X, 
-    // starting at the most significant bit position.
-    //
-    {
-      TN* t1 = Build_TN_Of_Mtype (MTYPE_F8);
-      TN* t2 = Build_TN_Of_Mtype (MTYPE_F8);
-      TN* t3 = Build_TN_Of_Mtype (MTYPE_I4);
-      Build_OP (TOP_setf_sig, t1, True_TN, op0, ops);
-      Build_OP (TOP_fcvt_xuf, t2, True_TN, Gen_Enum_TN(ECV_sf_s0), t1, ops);
-      Build_OP (TOP_getf_exp, t3, True_TN, t2, ops);
-      Build_OP (TOP_mov_i, result, True_TN, Gen_Literal_TN(65598, 4), ops);
-      Build_OP (TOP_sub, result, True_TN, result, t3, ops);
-      Build_OP (TOP_adds, result, True_TN, Gen_Literal_TN(-32, 4), result, ops);
-    }
     break;
   default:
     #pragma mips_frequency_hint NEVER

@@ -71,6 +71,7 @@ static lang_info_t language_info[] = {
 	{'F',	0x00000010,	{"f90", OPEN64_NAME_PREFIX "f95"}},		/* f90/95 */
 	{'a',	0x00000020,	{"as", OPEN64_NAME_PREFIX "as","gas"}},		/* as */
 	{'l',	0x00000040,	{"ld", OPEN64_NAME_PREFIX "ld"}},		/* ld */
+	{'j',	0x00000080, {"java", OPEN64_NAME_PREFIX "java"}},	/* java */
 	#endif
 	{'I',	0x80000000,	{"int"}},		/* Internal option */
 };
@@ -135,59 +136,78 @@ static phase_info_t phase_info[] = {
 #ifdef KEY
    {'f',  0x0000000000400000LL, "cc1"   ,PHASEPATH, TRUE , FALSE}, /* spin_cc1  */
    {'f',  0x0000000000800000LL, "cc1plus",PHASEPATH,    TRUE , FALSE}, /* spin_cc1plus */
-   {'w',  0x0000000001000000LL, "wgen",PHASEPATH,   TRUE , FALSE}, /* wgen      */
+//yzm
+   {'f',  0x0000000001000000LL, "jc1",   PHASEPATH,  TRUE,  FALSE},
+   {'f',  0x0000000010000000LL, "wgen",PHASEPATH,   TRUE , FALSE}, /* wgen      */
+//yzm
+   {'f',  0x0000000002000000LL, "jvgenmain", PHASEPATH, TRUE, FALSE},
 #endif
    /* place-holder for generic fe, whose mask unites all fe's; */
    /* this is so -Wf will apply to whatever fe is being invoked. */
-   {'f',  0x0000000000ff0000LL,	"",	"",		FALSE, FALSE},	/* any_fe */
+   {'f',  0x000000000fff0000LL,	"",	"",		FALSE, FALSE},	/* any_fe */
    {'F',  0x00000000000f0000LL,	"",	"",		FALSE, FALSE},	/* pseudo_f_fe */
    {'C',  0x0000000000f00000LL,	"",	"",		FALSE, FALSE},	/* pseudo_c_fe */
 
-   {'X',  0x0000000002000000LL, "ftnlx", PHASEPATH,	FALSE, FALSE}, /* Lister */ 
+   {'X',  0x0000000040000000LL, "ftnlx", PHASEPATH,	FALSE, FALSE}, /* Lister */ 
 
-   {'i',  0x0000000010000000LL,	"inline",PHASEPATH,	TRUE, FALSE},	/* inline */
-   {'i',  0x0000000020000000LL,	"ipl",	PHASEPATH,	TRUE, FALSE},	/* ipl */
-   {'i',  0x00000000f0000000LL,	"",	"",		TRUE, FALSE},	/* ipl, inline*/
+   {'i',  0x0000000100000000LL,	"inline",PHASEPATH,	TRUE, FALSE},	/* inline */
+   {'i',  0x0000000200000000LL,	"ipl",	PHASEPATH,	TRUE, FALSE},	/* ipl */
+   {'i',  0x0000000f00000000LL,	"",	"",		TRUE, FALSE},	/* ipl, inline*/
 
-   {'b',  0x0000000100000000LL,	"be",	PHASEPATH,	TRUE, FALSE},	/* be */
+   {'b',  0x0000001000000000LL,	"be",	PHASEPATH,	TRUE, FALSE},	/* be */
    /* We use 'B' for options to be passed to be via ipacom. */
+#ifdef KEY
+//yzm
+   {'b',  0x0000003000000000LL, "",   PHASEPATH,        TRUE, FALSE},
+#endif
 
-   {'a',  0x0000001000000000LL,	"asm",	PHASEPATH,	FALSE, FALSE},	/* as */
+   {'a',  0x0000010000000000LL,	"asm",	PHASEPATH,	FALSE, FALSE},	/* as */
 #if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
    /* on x8664, we alwayse use gcc as the assembler */
-   {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* gcc */
+   {'a',  0x0000020000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* gcc */
 #else
-   {'a',  0x0000002000000000LL,	"as",	BINPATH,	FALSE, TRUE},	/* gas */
+   {'a',  0x0000020000000000LL,	"as",	BINPATH,	FALSE, TRUE},	/* gas */
 #endif
-   {'a',  0x0000003000000000LL,	"",	"",		FALSE, FALSE},	/* any_as */
 
-   {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE, FALSE},/* dsm_prelink*/
-   {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH, TRUE, FALSE},	/* ipa_link */
-   {'l',  0x0000020000000000LL,	"ld", BINPATH, TRUE, TRUE},	/* collect */
+//yzm
+#ifdef KEY
+   {'a',  0x0000042026000000LL, "",     "",            FALSE,  FALSE},  /*any jvgenmain*/
+#endif
+
+
+   {'a',  0x0000070000000000LL,	"",	"",		FALSE, FALSE},	/* any_as */
+
+   {'d',  0x0000080000000000LL, "dsm_prelink", PHASEPATH,FALSE, FALSE},/* dsm_prelink*/
+   {'j',  0x0000100000000000LL,	"ipa_link", GNUPHASEPATH, TRUE, FALSE},	/* ipa_link */
+   {'l',  0x0000200000000000LL,	"ld", BINPATH, TRUE, TRUE},	/* collect */
 #if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
    /* on x8664, we alwayse use gcc/g++ as the linker */
-   {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* ld */
-   {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE, TRUE}, /* ldplus */
+   {'l',  0x0000400000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* ld */
+   {'l',  0x0000800000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE, TRUE}, /* ldplus */
 #else
-   {'l',  0x0000040000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ld */
-   {'l',  0x0000080000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ldplus */
+   {'l',  0x0000400000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ld */
+   {'l',  0x0000800000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ldplus */
 #endif
-   {'l',  0x01000f0000000000LL,	"",	"",		TRUE, FALSE},	/* any_ld */
-   {'c',  0x0000100000000000LL, "cord", BINPATH,	FALSE, FALSE},	/* cord */
-   {'x',  0x0000200000000000LL, "pixie", BINPATH,   FALSE, FALSE}, /* pixie */
-   {'x',  0x0000400000000000LL, "prof",  BINPATH,   FALSE, FALSE}, /* prof */
+   {'l',  0x0001000000000000LL, NAMEPREFIX "gcj", BINPATH, FALSE, TRUE}, /*ld_gcj  ykq*/ 
 
-   {'R',  0x0001000000000000LL, "ar",  BINPATH,      FALSE, FALSE}, /* ar */
+   {'l',  0x0001f00000000000LL, "", "",     TRUE, FALSE},   /* any_ld */
+   {'c',  0x0002000000000000LL, "cord", BINPATH,	FALSE, FALSE},	/* cord */
+   {'x',  0x0004000000000000LL, "pixie", BINPATH,   FALSE, FALSE}, /* pixie */
+   {'x',  0x0008000000000000LL, "prof",  BINPATH,   FALSE, FALSE}, /* prof */
 
-   {'S',  0x0010000000000000LL,	"crt",	LIBPATH,	FALSE, FALSE},	/* startup */
-   {'I',  0x0020000000000000LL,	"inc",	"/include",	FALSE, FALSE},	/* include */
-   {'L',  0x0040000000000000LL,	"lib",	LIBPATH,	FALSE, FALSE},	/* library */
-   {'L',  0x0080000000000000LL,	"alib",	ALTLIBPATH,	FALSE, FALSE},	/* alt_library */
+   {'R',  0x0010000000000000LL, "ar",  BINPATH,      FALSE, FALSE}, /* ar */
+
+   {'S',  0x0100000000000000LL,	"crt",	LIBPATH,	FALSE, FALSE},	/* startup */
+   {'I',  0x0200000000000000LL,	"inc",	"/include",	FALSE, FALSE},	/* include */
+   {'L',  0x0400000000000000LL,	"lib",	LIBPATH,	FALSE, FALSE},	/* library */
+   {'L',  0x0800000000000000LL,	"alib",	ALTLIBPATH,	FALSE, FALSE},	/* alt_library */
 };
+
+//yzm
 mask_t PHASE_MASK=
-          0x000fffffffffffffLL;
+          0x00ffffffffffffffLL;
 mask_t LIB_MASK =
-          0xfff0000000000000LL;
+          0xff00000000000000LL;
 
 #define MAX_SUFFIXES	8
 typedef struct source_struct {
@@ -216,6 +236,7 @@ static source_info_t source_info[] = {
 	{"N"},				/* N */
 	{"O"},				/* O */
 	{"o"},				/* o */
+	{"java","class","jar"}, 			/* java */
 };
 
 languages_t invoked_lang;
@@ -542,6 +563,7 @@ get_source_kind (char *src)
 			case L_f77: return S_f;
 			case L_f90: return S_f90;
 			case L_as: return S_s;
+			case L_java:  return S_java;
 			}
 		}
 	}
@@ -604,6 +626,8 @@ get_source_lang (source_kind_t sk)
 		return L_f90;
 	case S_o:
 		return invoked_lang;
+	case S_java:
+		return L_java;
 	}
 	return L_NONE;
 }

@@ -23,9 +23,5 @@ BUILD_HOST     = IA32
 #  Include (optional) parameter override file
 -include $(BUILD_AREA)/Makefile.override
 
-#  Temporary setting. There's some bug if compile libopenmp with Open64,
-#  so we need to compile it with gcc now.
-BUILD_COMPILER = GNU
-
 #  Include setup file which will then include Makefile.base
 include $(BUILD_TOT)/Makefile.gsetup

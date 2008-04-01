@@ -644,12 +644,14 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
 {
     ST *base_st;
     INT64 base_ofst;
+#ifdef TARG_IA64    
     // bug fix for OSP_155
     if (ST_is_export_hidden(st)) {
         fprintf ( pfile, "\t%s\t", AS_HIDDEN);
         EMT_Write_Qualified_Name(pfile, st);
         fprintf(pfile, "\n");
     }
+#endif
 
     if (ST_is_weak_symbol(st)) {
 	fprintf ( pfile, "\t%s\t", AS_WEAK);
@@ -891,7 +893,7 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
 	    }
 	    else {
 		Elf64_Half symshndx;	/* sym section index */
-		if (ST_is_thread_local(sym)) symshndx = SHN_MIPS_LCOMMON;
+		if (ST_is_thread_private(sym)) symshndx = SHN_MIPS_LCOMMON;
 		else if (ST_is_gp_relative(sym)) symshndx = SHN_MIPS_SCOMMON;
 		else symshndx = SHN_COMMON;
 	  	symindex = Em_Add_New_Symbol (
@@ -1295,7 +1297,11 @@ static void r_assemble_list (
   }
 
   fputc ('\t', Asm_File);
+#ifdef TARG_X8664
   lc = CGEMIT_Print_Inst( op, result, opnd, Asm_File );
+#else
+  lc = TI_ASM_Print_Inst( OP_code(op), result, opnd, Asm_File );
+#endif
   FmtAssert (lc != TI_RC_ERROR, ("%s", TI_errmsg));
   vstr_end(buf);
 
@@ -6062,7 +6068,8 @@ static void
 Write_INITO (
   INITO* inop,		/* Constant to emit */
   INT scn_idx,		/* Section to emit it into */
-  Elf64_Xword scn_ofst)	/* Section offset to emit it at */
+  Elf64_Xword scn_ofst,	/* Section offset to emit it at */
+  std::vector<std::string>* class_strs = NULL)		//czw
 {
   pSCNINFO scn = em_scn[scn_idx].scninfo;
   Elf64_Xword inito_ofst;
@@ -6102,6 +6109,10 @@ Write_INITO (
     sym = INITO_st(ino);
     if (Assembly) {
         char *name = ST_name(sym);
+	if(strcmp(name + strlen(name) - 8, "6class$E") == 0)
+	{
+		class_strs->push_back(name);
+	}
         if (name != NULL && *name != 0) {
 	  Print_Label (Asm_File, sym, TY_size(ST_type(sym)));
         }
@@ -6451,6 +6462,8 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
   stable_sort (st_list.begin(), st_list.end(), section_lt);
   // Print_ST_List(st_list, "SORTED BY SECTION");
 
+  std::vector<std::string> class_strs;		//czw
+  
   for (st_iter = st_list.begin(); st_iter != st_list.end(); ++st_iter) {
 
     INT64 ofst;
@@ -6475,7 +6488,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
 #ifndef TARG_IA64
       fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
 #endif
-      Write_INITO (ino, STB_scninfo_idx(base), ofst);
+      Write_INITO (ino, STB_scninfo_idx(base), ofst, &class_strs);
     }
 
     else {
@@ -6499,6 +6512,16 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
 #endif
       Write_TCON (&ST_tcon_val(st), STB_scninfo_idx(base), ofst, 1);
     }
+  }
+  if(true/*java*/)				//czw
+  {
+  	fprintf ( Asm_File, "\t.section\t.jcr,\"aw\",@progbits\n");
+	fprintf ( Asm_File, "\t.align 4\n");
+	for(int i = 0; i < class_strs.size(); i++)
+	{
+		class_strs[i] = "\t.long\t" + class_strs[i] + "\n";
+	  	fprintf(Asm_File, class_strs[i].c_str());
+	}
   }
 }
 
@@ -7135,7 +7158,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #ifdef TARG_X8664
     if (CG_p2align) 
       fputs ("\t.p2align 4,,15\n", Asm_File);
-    else if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) {
+    else if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG || PU_src_lang (Get_Current_PU()) & PU_JAVA_LANG) {
       // g++ requires a minimum alignment because it uses the least significant
       // bit of function pointers to store the virtual bit.
       fputs ("\t.p2align 1,,\n", Asm_File);
@@ -7314,7 +7337,12 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
       fputc ( '\n', Asm_File);
     }
   }
-  
+  /*if(!strncmp(ST_name(pu),"_GLOBAL__I_0", 12))     //czw
+  {
+	  fprintf ( Asm_File, "\t.section .ctors,\"aw\",@progbits\n");
+	  fprintf ( Asm_File, "\t.align 4\n");
+	  fprintf ( Asm_File, "\t.long %s\n", ST_name(pu));
+  }*/
   /* Emit the initialized data associated with this PU. */
   Process_Initos_And_Literals (CURRENT_SYMTAB);
   Process_Bss_Data (CURRENT_SYMTAB);

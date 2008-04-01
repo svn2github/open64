@@ -133,3 +133,7 @@ extern gs_t first_in_compound_expr(gs_t);
 #endif /* __cplusplus */
 
 #endif
+
+extern void WGEN_Expand_Try_Catch (gs_t stmt);		//czw
+extern void WGEN_Expand_Try_Finally(gs_t stmt);		//czw
+//extern Try_Monitor try_monitor;							//czw

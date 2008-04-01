@@ -967,6 +967,20 @@ Process_Nonlocal_File(char* input_name, void* handle)
 
 #endif // _LIGHTWEIGHT_INLINER
 
+bool Is_Input_from_IPL(char* filename)		//czw
+{
+	if(strcmp(filename + strlen(filename) - 2, ".o") == 0)
+		return true;
+
+	char* p = filename + strlen(filename);
+	while(*p != '.')
+		p--;
+
+	if(strncmp(p - 3, "cco", 3) == 0)
+		return true;
+
+	return false;
+}
 //----------------------------------------------------------------
 // the name of the input and output files
 //----------------------------------------------------------------
@@ -985,7 +999,7 @@ Process_Local_File(char* input_name, void *handle, INT& num_PU)
     const MEM_POOL* mpool = IP_FILE_HDR_mem_pool(file_header);
     MEM_POOL_Push((MEM_POOL *)(mpool));
 
-    pu_tree = Read_Global_Info (&PU_count);
+    pu_tree = Read_Global_Info (&PU_count, Is_Input_from_IPL(input_name));		//czw
     inline_init(file_header);
 
     Initialize_Special_Global_Symbols ();

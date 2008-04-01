@@ -75,7 +75,8 @@ typedef enum {
   LANG_ANSI_C,	/* ANSI standard C */
   LANG_CPLUS,	/* simple C++ */
   LANG_DELTA,	/* Delta C++ */
-  LANG_COUNT	/* Must be last */
+  LANG_JAVA,
+  LANG_COUNT  /* Must be last */
 } LANGUAGE;
 
 #ifdef __cplusplus

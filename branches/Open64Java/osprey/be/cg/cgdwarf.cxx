@@ -2499,7 +2499,7 @@ Cg_Dwarf_Begin (BOOL is_64bit)
   else
 #endif
   dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf, 
-			  (Dwarf_Language == DW_LANG_C_plus_plus),
+			  Dwarf_Language ,		//czw
 			  Cg_Dwarf_Enter_Elfsym);
 
   /* Read in the compile unit entry */

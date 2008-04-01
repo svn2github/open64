@@ -5003,7 +5003,7 @@ COMP_UNIT::Find_uninit_locals_for_entry(BB_NODE *bb)
     char *output_var_name = &Str_Table[sym->St()->u1.name_idx];
     char *p = NULL;
     char *v = NULL;
-    if ((PU_src_lang(Get_Current_PU()) & PU_CXX_LANG)) {
+    if ((PU_src_lang(Get_Current_PU()) & PU_CXX_LANG)||(PU_src_lang(Get_Current_PU()) & PU_JAVA_LANG) ) {
       // C++ mangled names begin with "_Z".
       if (output_pu_name[0] == '_' && output_pu_name[1] == 'Z') {
 	p = cplus_demangle(output_pu_name, DMGL_PARAMS|DMGL_ANSI|DMGL_TYPES);

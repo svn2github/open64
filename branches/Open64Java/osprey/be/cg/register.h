@@ -157,7 +157,6 @@
  *		gp   - global pointer
  *		sp   - stack pointer
  *		fp   - frame pointer
- *		tp   - thread pointer
  *		ra   - return address
  *		v0   - integer function return value
  *		undef- undefined class and undefined register
@@ -863,13 +862,6 @@ extern CLASS_REG_PAIR		CLASS_REG_PAIR_sp;
 #define REGISTER_sp		CLASS_REG_PAIR_reg(CLASS_REG_PAIR_sp)
 #define REGISTER_CLASS_sp	CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_sp)
 #define CLASS_AND_REG_sp	CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_sp)
-
-#ifdef TARG_IA64
-extern CLASS_REG_PAIR           CLASS_REG_PAIR_tp;
-#define REGISTER_tp             CLASS_REG_PAIR_reg(CLASS_REG_PAIR_tp)
-#define REGISTER_CLASS_tp       CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_tp)
-#define CLASS_AND_REG_tp        CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_tp)
-#endif
 
 extern CLASS_REG_PAIR		CLASS_REG_PAIR_fp;
 #define REGISTER_fp		CLASS_REG_PAIR_reg(CLASS_REG_PAIR_fp)

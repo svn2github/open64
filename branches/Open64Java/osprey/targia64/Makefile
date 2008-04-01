@@ -52,13 +52,11 @@ LIBRARY_SUBDIRS = \
 	libfortran \
 	libu \
 	libmv \
-	libinstr \
-	libopenmp
-
-	#libmsgi \
-	#libmp \
-	#libstdc++ \
+	libmsgi
 	#libgcc \
+	libmp \
+	libstdc++ \
+	libinstr \
 
 
 #

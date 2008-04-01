@@ -371,8 +371,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 // Fix bug 1766
               if (ty == MTYPE_I1 || ty == MTYPE_I2 || ty == MTYPE_U1 || ty == MTYPE_U2)
                 WN_kid(wn, i) = WN_Int_Type_Conversion( WN_kid(WN_kid(wn, i),0), ty );
-              else if (! MTYPE_is_float(exp->Asm_input_rtype()) && 
-							exp->Asm_input_rtype() != exp->Asm_input_dsctype()){
+              else if (exp->Asm_input_rtype() != exp->Asm_input_dsctype()){
                 WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
                 WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
               }
@@ -386,11 +385,8 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
           } 
           else{
             WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
-            if (! MTYPE_is_float(exp->Asm_input_rtype()) &&
-				(opnd->Kind() == CK_VAR || opnd->Kind() == CK_IVAR))
-			  // OSP_388 and OSP_390
-              WN_set_desc(WN_kid(wn, i), 
-							Mtype_TransferSign(exp->Asm_input_rtype(), exp->Asm_input_dsctype()));
+            if (opnd->Kind() == CK_VAR || opnd->Kind() == CK_IVAR)
+              WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
           }
 #endif
 	}
@@ -452,14 +448,6 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	     && MTYPE_byte_size(WN_rtype(opnd0))< MTYPE_byte_size(exp->Dsctyp())
 	     && OPERATOR_is_compare(exp->Opr()))
 	    exp->Set_dsctyp(WN_rtype(opnd0));
-#endif
-#ifdef KEY	//OSP_389
-	else if (OPERATOR_is_compare(exp->Opr()) && MTYPE_byte_size(exp->Dsctyp()) == 4) {
-		if (WN_operator(opnd0) == OPR_INTCONST && MTYPE_byte_size(WN_rtype(opnd0)) == 8)
-			WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dsctyp(),WN_rtype(opnd0)));
-		if (WN_operator(opnd1) == OPR_INTCONST && MTYPE_byte_size(WN_rtype(opnd1)) == 8)
-			WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dsctyp(),WN_rtype(opnd1)));
-	}
 #endif
 #ifdef KEY // bug 3347: fix INTCONSTs unnecessarily made 64-bit
 	  else if (! OPERATOR_is_compare(exp->Opr()) &&

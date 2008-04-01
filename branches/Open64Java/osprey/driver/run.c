@@ -93,7 +93,8 @@ static void my_execv(const char *name, char *const argv[])
     int len = strlen(name);
     int passthru = len > 4 && name[len - 4] == '/' &&
 	(strcmp(name + len - 3, "gcc") == 0 ||
-	 strcmp(name + len - 3, "g++") == 0);
+	 strcmp(name + len - 3, "g++") == 0 ||
+	 strcmp(name + len - 3, "gcj") == 0);
     
     if (show_but_not_run) {
 	int i;
@@ -236,7 +237,8 @@ char *
 get_binutils_lib_path(void)
 {
 	#ifdef PSC_TO_OPEN64
-	static const char *binutils_library_path = "../i686-pc-linux-gnu/" OPEN64_TARGET "/lib";
+	//static const char *binutils_library_path = "../i686-pc-linux-gnu/" OPEN64_TARGET "/lib"; 
+	static const char *binutils_library_path = "../lib"; //ykq
 	#endif
 	char *my_path;
 	
@@ -597,12 +599,14 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				break;
 			} 
 			if (internal_err) {
-				if (phase == P_ld || phase == P_ldplus ||
+				if (phase == P_ld || phase == P_ldplus || phase == P_gcj ||
 #ifdef KEY
 				    phase == P_gas ||	// bug 4846
 				    phase == P_f_coco ||	// bug 9058
 				    phase == P_spin_cc1 ||
 				    phase == P_spin_cc1plus ||
+				    //yzm
+				    phase == P_spin_jc1 ||
 				    status == RC_GCC_INTERNAL_ERROR ||  //bug 9637
 #endif
 				    phase == P_gcpp || phase == P_gcpp_plus) {
@@ -625,6 +629,8 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				    || phase == P_wgen
 				    || phase == P_spin_cc1
 				    || phase == P_spin_cc1plus
+				    //yzm
+				    || phase == P_spin_jc1
 #endif
 				   ) {
 					nomsg_error(RC_INTERNAL_ERROR);

@@ -60,8 +60,15 @@ int __f90_main(int argc, char **argv, char **arge)
         return (0);
 }
 
+void __f90_MAIN(void)
+{
+        /* This function will not be called! */
+        abort();
+}
+
 #ifdef PATHSCALE_MERGE
 typeof(__f90_main) main __attribute__((weak, alias("__f90_main")));
+typeof(__f90_MAIN) MAIN__ __attribute__((weak, alias("__f90_MAIN")));
 #endif
 
 #endif

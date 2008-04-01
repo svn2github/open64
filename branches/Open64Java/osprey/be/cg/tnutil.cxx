@@ -104,11 +104,6 @@ TN *SP_TN = NULL;
 TN *FP_TN = NULL;
 TN *Ep_TN = NULL;
 TN *GP_TN = NULL;
-
-#ifdef TARG_IA64
-TN *TP_TN = NULL;
-#endif
-
 TN *Zero_TN = NULL;
 TN *Pfs_TN = NULL;
 TN *True_TN = NULL;
@@ -432,11 +427,6 @@ Init_Dedicated_TNs (void)
   tnum++;
 #endif
 
-#ifdef TARG_IA64  
-  TP_TN = Create_Dedicated_TN (REGISTER_CLASS_tp, REGISTER_tp);
-  tnum++;
-#endif
-  
 #ifdef TARG_IA64
     for (reg = REGISTER_MIN; 
 	 reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
@@ -1105,7 +1095,11 @@ Find_TN_with_Matching_Register( TN *tn0, TN_LIST *list )
 }
 
 //TODO: probably want to move this generic routine elsewhere.
+#ifdef TARG_IA64
 BOOL
+#else
+static BOOL
+#endif
 Is_OP_Cond(OP *op)
 {
   // Conditional moves or predicated instructions have this property.

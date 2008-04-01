@@ -34,7 +34,7 @@
 #
 
 VER_MAJOR="4"
-VER_MINOR="1"
+VER_MINOR="0"
 #PATCH_LEVEL=""
 VERSION="${VER_MAJOR}.${VER_MINOR}"
 
@@ -157,6 +157,7 @@ INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
 
     INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openjava
 
     return 0
 }
@@ -169,6 +170,8 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/wgen/wgen ${PHASEPATH}/wgen
     INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1 ${PHASEPATH}/cc1
     INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1plus ${PHASEPATH}/cc1plus
+    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/jc1 ${PHASEPATH}/jc1
+    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/jvgenmain ${PHASEPATH}/jvgenmain
 
     if [ -f ${AREA}/crayf90/sgi/mfef95 ] ; then 
       INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
@@ -233,104 +236,63 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 
     if [ "$TARG_HOST" = "ia64" ] ; then
         # These stuffs are only valid on ia64
-        LIBAREA="osprey/targ${TARG_HOST}/"
-
         # f90 related archieves 
         INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.cat  ${PHASEPATH}/lib.cat
         INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.exp  ${PHASEPATH}/lib.exp
 
         # instrument archieves.
-        INSTALL_DATA_SUB ${LIBAREA}/libcginstr/libcginstr.a  ${PHASEPATH}/libcginstr.a  
-        INSTALL_DATA_SUB ${LIBAREA}/libinstr/libinstr.a      ${PHASEPATH}/libinstr.a 
+        d="osprey/targ${TARG_HOST}/"
+        INSTALL_DATA_SUB $d/libcginstr/libcginstr.a  ${PHASEPATH}/libcginstr.a  
+        INSTALL_DATA_SUB $d/libinstr/libinstr.a      ${PHASEPATH}/libinstr.a 
 
         #  SGI implementation for turning on FLUSH to ZERO
-        INSTALL_DATA_SUB ${LIBAREA}/init/ftz.o     ${PHASEPATH}/ftz.o
-    else
-        # IA32 and x86_64
-        LIBAREA=osprey/targx8664_builtonia32
-        LIB32AREA=osprey/targia32_builtonia32
-        INSTALL_DATA_SUB ${LIBAREA}/libinstr2/libinstr.a      ${PHASEPATH}/libinstr.a
-        INSTALL_DATA_SUB ${LIB32AREA}/libinstr2/libinstr.a      ${PHASEPATH}/32/libinstr.a
+        INSTALL_DATA_SUB $d/init/ftz.o     ${PHASEPATH}/ftz.o
     fi
 
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
     # is it necessary?
-    if [ "$ARCH" = "ia64" ] ; then
-        for i in libgcc.a libstdc++.a libstdc++.so; do 
-            F=`gcc --print-file-name $i`
-            [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
-        done
-    fi
-    if [ "$ARCH" = "i386" ] ; then
-        for i in libgcc.a libstdc++.a libstdc++.so; do
-	    F=`gcc --print-file-name $i`
-	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-	done
-    fi
-    if [ "$ARCH" = "x86_64" ] ; then
-        for i in libgcc.a libstdc++.a libstdc++.so; do
-	    F=`gcc -m32 --print-file-name $i`
-	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-	    F=`gcc -m64 --print-file-name $i`
-	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
-	done
-    fi
+    for i in libgcc.a libstdc++.a libstdc++.so libgcj.a libgcj.so ld-linux.so.2; do 
+        F=`gcc --print-file-name $i`
+        [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
+    done
+
     return 0
 }
 
-# Install the general propose libraries, libfortran.a, libffio.a, libmsgi.a, libmv.a, libm.a, libopenmp.a
+# Install the general propose libraries, libfortran.a, libffio.a, libmsgi.a, libmv.a and libm.a   
 INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 
     if [ "$TARG_HOST" = "ia64" ] ; then
         LIBAREA="osprey/targ${TARG_HOST}/"
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a 
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
-        # libmsgi.a is no longer needed
-        #INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libmsgi.a       ${PHASEPATH}/libmsgi.a
+        INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
         INSTALL_DATA_SUB ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
-	INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
     else
         LIBAREA=osprey/targx8664_builtonia32
         LIB32AREA=osprey/targia32_builtonia32
         # 64bit libraries
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
-        #INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
+        INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
-	INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
         # 32bit libraries
         INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
         INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
-        INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/32/libopenmp.a
     fi 
     return 0
 }
 
 INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
 
-    if [ "$ARCH" = "ia64" ] ; then
-        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do 
-            f=`gcc --print-file-name=$i`
-            [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/$i
-        done
-    fi
-    if [ "$ARCH" = "i386" ] ; then
-        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
-	    f=`gcc --print-file-name=$i`
-	    [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
-	done
-    fi
-    if [ "$ARCH" = "x86_64" ] ; then
-        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
-	    f=`gcc -m32 --print-file-name=$i`
-	    [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
-            f=`gcc -m64 --print-file-name=$i`
-	    [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/$i
-	done
-    fi
+    for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do 
+      f=`gcc --print-file-name=$i`
+      [ "x$f" != "x" ] && [ -e $f ] && 
+        INSTALL_DATA_SUB $f ${PHASEPATH}/$i
+    done
     return 0
 }
 
@@ -381,6 +343,7 @@ INSTALL_PREBUILD_GLIBC_NATIVE_LIB () {
         [ "$x" = ".svn" ] && continue;
         [ "$x" = "libstdc++.a" ] && continue; 
         [ "$x" = "libgcc.a"    ] && continue;
+        [ "$x" = "libgcj.a"    ] && continue;
         INSTALL_EXEC_SUB $i ${NATIVE_LIB_DIR}/`basename $i`
     done  
     
@@ -426,8 +389,6 @@ INSTALL_NATIVE_HEADER () {
 
     INSTALL_DATA_SUB ${AREA}/include/libelf/libelf.h  ${ROOT}/include/${VERSION}/libelf/libelf.h
     INSTALL_DATA_SUB ${AREA}/include/libelf/sys_elf.h  ${ROOT}/include/${VERSION}/libelf/sys_elf.h
-
-    INSTALL_DATA_SUB ${AREA}/include/omp/omp.h  ${ROOT}/include/${VERSION}/omp.h
 
     return 0
 }

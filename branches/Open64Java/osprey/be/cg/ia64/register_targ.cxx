@@ -68,7 +68,6 @@
 #define LAST_ROTATING_INTEGER_REG (127+REGISTER_MIN)
 #define LAST_ROTATING_FLOAT_REG (127+REGISTER_MIN)
 #define LAST_ROTATING_PREDICATE_REG (63+REGISTER_MIN)
-#define MAX_NUM_OF_OUTPUT_REGISTERS 8
 
 
 static INT stacked_callee_next;
@@ -222,15 +221,13 @@ REGISTER REGISTER_Request_Stacked_Register(INT has_abi_property,
       stacked_callee_used = REGISTER_SET_Union1(stacked_callee_used, 
 					        result_reg);
     }
-  } else if ((has_abi_property == ABI_PROPERTY_caller ||
-	     has_abi_property == ABI_PROPERTY_stacked) && num_caller < MAX_NUM_OF_OUTPUT_REGISTERS) {
+  } else if (has_abi_property == ABI_PROPERTY_caller ||
+	     has_abi_property == ABI_PROPERTY_stacked) {
     result_reg = stacked_caller_next--;
     stacked_caller_used =
       REGISTER_SET_Union1(stacked_caller_used, result_reg);
     num_caller++;
   }
-  else
-    return REGISTER_UNDEFINED;
   if (fat_self_recursive) { 
       DevWarn(" STACKED REGISTER %d ALLOCATED TO TN %d\n",result_reg,current_lrange);
   }

@@ -58,6 +58,7 @@ typedef enum {
 	L_f90,
 	L_as,
 	L_ld,
+	L_java,
 	L_internal,	/* pseudo-language to mark internal options */
 	L_LAST
 } languages_t;
@@ -81,6 +82,7 @@ typedef enum {
 	S_N,
 	S_O,
 	S_o,
+	S_java,
 	S_LAST
 } source_kind_t;
 
@@ -118,7 +120,10 @@ typedef enum {
 #ifdef KEY
 	P_spin_cc1,	/* gnu gcc4 C fe */
 	P_spin_cc1plus,	/* gnu gcc4 C++ fe */
+//yzm
+	P_spin_jc1,
 	P_wgen,		/* wgen */
+	P_jvgenmain,
 #endif
 	P_any_fe,	/* generic union of all fe's */
 	P_pseudo_f_fe,	/* not a real phase, just a placeholder 
@@ -132,9 +137,17 @@ typedef enum {
 	p_any_ipl,	/* either ipl or inline */
 
 	P_be,		/* composite optimizing back-end */
+//yzm
+#ifdef KEY
+	P_any_be,
+#endif
 
 	P_as,		/* gnu assembler */
 	P_gas,		/* gnu assembler */
+//yzm
+#ifdef KEY
+	P_any_jvgenmain,
+#endif
 	P_any_as,	/* generic union of all asm's */
 
 	P_dsm_prelink,  /* support for distributed reshape automatic cloning */
@@ -142,7 +155,12 @@ typedef enum {
 	P_collect,	/* gnu linker wrapper */
 	P_ld,		/* loader */
 	P_ldplus,	/* loader for c++ */
+//yzm
+#ifdef KEY
+    P_gcj,
+#endif
 	P_any_ld,	/* generic union of all ld's */
+
 	P_cord,		/* cord */
 	P_pixie,	/* pixie */
 	P_prof,		/* Prof */

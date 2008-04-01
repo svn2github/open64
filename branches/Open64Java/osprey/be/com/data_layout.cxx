@@ -588,7 +588,7 @@ Assign_Offset (ST *blk, ST *base, INT32 lpad, INT32 rpad)
 #ifdef KEY
     // C++ requires distinct addresses for empty classes
     if (ST_class(blk) == CLASS_VAR && (!Current_pu || 
-       (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)) && size == 0)
+       (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG || PU_src_lang (Get_Current_PU()) & PU_JAVA_LANG)) && size == 0)
       size = 1;
 #endif
     /* point to start of object */
@@ -617,7 +617,7 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
 #ifdef KEY
   // C++ requires distinct addresses for empty classes
   if (ST_class(blk) == CLASS_VAR && (!Current_pu ||
-     (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)) && size == 0)
+     (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG || PU_src_lang (Get_Current_PU()) & PU_JAVA_LANG)) && size == 0)
     size = 1;
 #endif
 
@@ -776,7 +776,8 @@ Add_Object_To_Frame_Segment ( ST *sym, SF_SEGMENT seg, BOOL allocate )
        */
       if( size == 0 &&
 	  ( Current_pu == NULL ||
-	    PU_cxx_lang( Get_Current_PU() ) ) ){
+	    PU_cxx_lang( Get_Current_PU()) ||
+	    PU_java_lang( Get_Current_PU()) )){
 	size = 1;
       }    
 #endif
@@ -1768,7 +1769,7 @@ Calc_Local_Area (void)
 	    local_size += ST_size(&st);
 #ifdef KEY
 	    if (ST_class(&st) == CLASS_VAR && (!Current_pu ||
-               (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)) && ST_size(&st) == 0)
+               (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG || PU_src_lang (Get_Current_PU()) & PU_JAVA_LANG)) && ST_size(&st) == 0)
 	      local_size++;
 #endif
 	    break;
@@ -2182,13 +2183,6 @@ Process_Stack_Variable ( ST *st )
    ST 		*base;
 
    if (! is_root_block && ST_class(st) == CLASS_BLOCK) return;
-
-   if ((PU_src_lang (Get_Current_PU()) & (PU_CXX_LANG | PU_C_LANG)) &&
-        ST_is_return_var(st)) {
-     Set_ST_base (st, FP_Sym);
-     Set_ST_ofst (st, Is_Target_32bit()? 4 : 8);
-     return;
-   }
 
    sc = ST_sclass(st);
    Is_True ( (sc == SCLASS_AUTO),
@@ -2737,20 +2731,15 @@ Allocate_Object ( ST *st )
     break;
   case SCLASS_PSTATIC :
   case SCLASS_FSTATIC :
-    if (ST_is_thread_local(st)) {
+    if (ST_is_thread_private(st)) {
       if (ST_is_initialized(st) && !ST_init_value_zero (st))
-#ifndef TARG_IA64
-        sec = _SEC_DATA;
-#else
         sec = _SEC_LDATA;
-#endif
       else
-#ifndef TARG_IA64
-        // We only implement TLS on IA64 so far
+#ifdef KEY
         sec = _SEC_BSS;
 #else
         sec = _SEC_LBSS;
-#endif // TARG_IA64
+#endif // KEY
     }
     else if (ST_is_initialized(st) && !ST_init_value_zero (st))
         sec = (ST_is_constant(st) ? _SEC_RDATA : _SEC_DATA);
@@ -2806,27 +2795,19 @@ Allocate_Object ( ST *st )
     }
     break;
   case SCLASS_UGLOBAL :
-    if (ST_is_thread_local(st)) {
-#ifndef TARG_IA64
-      // We only implement TLS on IA64 so far
+    if (ST_is_thread_private(st)) {
+#ifdef KEY
       sec = _SEC_BSS;
 #else
       sec = _SEC_LBSS;
-#endif // TARG_IA64
+#endif // KEY
     } 
     else sec = _SEC_BSS;
     sec = Shorten_Section ( st, sec );
     Allocate_Object_To_Section ( base_st, sec, Adjusted_Alignment(base_st));
     break;
   case SCLASS_DGLOBAL :
-    if (ST_is_thread_local(st)) {
-#ifndef TARG_IA64
-      // We only implement TLS on IA64 so far
-      sec = _SEC_DATA;
-#else      
-      sec = _SEC_LDATA;
-#endif
-    }
+    if (ST_is_thread_private(st)) sec = _SEC_LDATA;
     else if (ST_is_constant(st)) {
 #ifdef TARG_X8664
       if (Gen_PIC_Shared)

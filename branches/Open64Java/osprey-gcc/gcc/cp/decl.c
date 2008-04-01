@@ -10655,9 +10655,6 @@ finish_function (int flags)
 	  && (outer = BLOCK_SUBBLOCKS (DECL_INITIAL (fndecl)))
 	  /* Skip the artificial function body block.  */
 	  && (outer = BLOCK_SUBBLOCKS (outer))
-#if defined(KEY) && defined(TARG_X8664)
-	  && (TREE_CODE(TREE_TYPE(TREE_TYPE(fndecl))) != VECTOR_TYPE)
-#endif
 	  && chain_member (r, BLOCK_VARS (outer)))
 	finalize_nrv (&DECL_SAVED_TREE (fndecl), r, DECL_RESULT (fndecl));
 

@@ -121,6 +121,7 @@ extern int key_exceptions;		/* from main.c */
 extern BOOL opt_regions;		/* from main.c */
 extern gs_t program;			/* from main.c */
 extern BOOL lang_cplus;			/* from main.c */
+extern BOOL lang_java;			//czw
 #if 0
 extern char *Spin_File_Name;
 extern FILE *Spin_File;

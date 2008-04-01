@@ -6463,10 +6463,14 @@ lang_check_failed (const char* file, int line, const char* function)
 #include <ctype.h>
 #include "c-common.h" 
 
-enum language { C, CPP };
+enum language { C, CPP, JAVA };
 enum language language = C;
 #define CPR() (language == CPP)
 #define CR()  (language == C)
+//yzm
+//determine JAVA files
+#define JAVAR() (language == JAVA)
+
 
 // C++ Dummy Variables Section Begins.
 tree global_namespace; // CP_DECL_CONTEXT () references this variable in cp/name-lookup.c
@@ -7602,6 +7606,11 @@ unsigned int gspin_label_count = 0;
 
 // C++: Are we processing the final global namespace?
 int processing_global_namespace = 0;
+
+// yzm
+// JAVA: Are we processing the function declaration?
+int processing_function_decls = 0;
+
 // Function prototypes
 gs_t gs_x (tree node);
 gs_t gs_x_func_decl (tree node);
@@ -7629,6 +7638,9 @@ static gs_t program   = (gs_t) NULL,
 
 // dot to insert new declaration tree
 static gs_t program_decls_dot = (gs_t) NULL;
+
+//yzm
+struct obstack gspin_obstack;
 
 void gspin_write (void) 
 {
@@ -7695,6 +7707,12 @@ gspin_init(void)
   if (strcmp ("GNU C++", lang_hooks.name) == 0) {
     language = CPP;
   }
+  //yzm
+  //modified to process JAVA files
+  else if (strcmp ("GNU Java", lang_hooks.name) == 0) {
+	  language = JAVA;
+  }
+
   else if (strcmp ("GNU C", lang_hooks.name) == 0) {
     language = C;
   }
@@ -7763,6 +7781,11 @@ gspin_init(void)
 
   if ((atexit (gspin_write)) != 0) 
     fprintf (stderr, "gspin_write registration with atexit (3) failed.\n");
+
+//  printf("init obstack!\n");
+  //yzm
+  gcc_obstack_init (&gspin_obstack);
+
 }
 
 // Add the global trees containing common types.
@@ -7773,8 +7796,8 @@ gspin_init_global_trees_list(void)
 
   global_trees_list = __gs (EMPTY);
   for (i = TI_MAX - 1; i >= TI_ERROR_MARK; i--) {
-    GS_ASSERT(global_trees[i] != NULL,
-	      ("gspin_init_global_trees_list: global_tree not initialized"));
+    /*GS_ASSERT(global_trees[i] != NULL,
+	      ("gspin_init_global_trees_list: global_tree not initialized"));*/
     global_trees_list = gs_cons (gs_x (global_trees [i]), global_trees_list);
   }
   gs_set_operand(program, GS_GLOBAL_TREES_LIST, global_trees_list);
@@ -7882,7 +7905,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // "translate_this_func_decl" set, it means this is the proper time
       // to expand this function, and it may now have a function body --
       // whatever is the state of the function_decl, we want to get it now.
-      if (CPR() && translate_this_func_decl)
+      if ((CPR() || JAVAR()) && translate_this_func_decl)
         goto REVISIT;
       else if (CR()) {
         // Don't re-translate the function if it was fully translated before.
@@ -7983,6 +8006,25 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     _gs_bv (flags, GS_DECL_WEAK, DECL_WEAK (t));
   }
 
+  //yzm
+  if (JAVAR() &&
+      TREE_CODE(t) == FUNCTION_DECL) {
+    if (!DECL_ASSEMBLER_NAME_SET_P(t) &&
+	DECL_CONTEXT (t) != NULL) {
+      //yzm
+      SET_DECL_ASSEMBLER_NAME( t, lang_hooks.java_mangle_decl(&gspin_obstack, t) );
+    }
+    gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASSEMBLER_NAME,
+                   gs_x_1(DECL_ASSEMBLER_NAME(t), seq_num));
+    _gs_bv(flags, GS_DECL_ASSEMBLER_NAME_SET_P, DECL_ASSEMBLER_NAME_SET_P(t));
+    // Also update some flags. Even if the decl is not defined
+    // in this translation unit, it needs to have the proper flags so that
+    // its scope is correctly set. Updating all possible flags here is
+    // difficult. If we don't see this definition, wgen seems to require
+    // two flags.
+    _gs_bv (flags, GS_TREE_PUBLIC, TREE_PUBLIC (t));
+    _gs_bv (flags, GS_DECL_WEAK, DECL_WEAK (t));
+  }
 
   // See if the FUNCTION_DECL should be fully or partially translated.  For
   // bodyless functions such as printf, always translate them fully.  For C++,
@@ -8000,7 +8042,19 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     if (CR()) {				// C
       if (!DECL_BUILT_IN(t))
 	return GS_NODE(t);
-    } else {				// C++
+    } 
+
+	//yzm
+	//modified to translate JAVA core functions
+	else if (JAVAR()){
+		if(DECL_SAVED_TREE(t))
+		{
+			return GS_NODE(t);
+		}
+		//printf("JAVA built-in function!\n");
+	}
+	
+	else {				// C++
       if ( // not a bodyless function
 	  DECL_SAVED_TREE(t) ||
 	  (DECL_LANG_SPECIFIC(t) &&
@@ -8318,6 +8372,13 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // Don't care about the DECL_INITIAL In a TYPE_DECL.  (For C++, the
       // DECL_INITIAL is used as DECL_FRIENDLIST.)  Bug 11281.
       if (TREE_CODE (t) != TYPE_DECL) {
+
+        //yzm
+/*        if (!(JAVAR() &&
+              DECL_INITIAL(t) != NULL &&
+              TREE_CODE_CLASS (TREE_CODE (DECL_INITIAL(t))) == tcc_expression &&
+              !processing_function_decls))*/
+
 	gs_set_operand((gs_t) GS_NODE(t), GS_DECL_INITIAL,
 		       gs_x_1 (DECL_INITIAL(t), seq_num));
       }
@@ -9554,8 +9615,17 @@ gs_t
 gs_x_func_decl (tree t)
 {
   translate_func_decl = 1;	// Translate FUNCTION_DECLs.
+
+  //yzm
+  processing_function_decls = 1;
+
   sequence_num++;
-  return gs_x_1(t, sequence_num);
+
+  //yzm
+  gs_t result = gs_x_1(t, sequence_num);
+  processing_function_decls = 0;
+  return result;
+//  return gs_x_1(t, sequence_num);
 }
 
 gs_t

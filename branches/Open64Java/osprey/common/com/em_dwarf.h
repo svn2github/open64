@@ -43,18 +43,19 @@
 #include "dwarf_stuff.h"
 #include "srcpos.h"
 #include "targ_em_dwarf.h"
+#include "dwarf_DST.h"		//czw
 
 #if defined(__cplusplus)
 extern Dwarf_P_Debug Em_Dwarf_Begin (BOOL is_64bit,
 				     BOOL dwarf_trace,
-				     BOOL is_cplus,
+				     DST_language dst_lang,		//czw
 				     symbol_index_recorder record_symidx = NULL);
 
 extern void Em_Dwarf_Write_Scns (Cg_Dwarf_Sym_To_Elfsym_Ofst translate_elfsym = NULL);
 #else
 extern Dwarf_P_Debug Em_Dwarf_Begin (BOOL is_64bit,
 				     BOOL dwarf_trace,
-				     BOOL is_cplus);
+				     DST_language dst_lang);		//czw
 
 extern void Em_Dwarf_Write_Scns (void);
 #endif

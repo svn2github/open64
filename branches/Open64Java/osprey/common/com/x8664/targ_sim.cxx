@@ -400,7 +400,8 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 	   %eax and %edx, respectively.    (bug#2707)
 	 */
 	if( PU_c_lang(Get_Current_PU()) ||
-	    PU_cxx_lang(Get_Current_PU()) ){
+	    PU_cxx_lang(Get_Current_PU()) ||
+	    PU_java_lang(Get_Current_PU())){
 
 	  if( level == Use_Simulated ){
 	    info.count = 1;
@@ -769,7 +770,7 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	     */
 	    if( TY_size(ty) == 0  &&
 		Is_Target_32bit() &&
-		PU_cxx_lang(Get_Current_PU()) ){
+		(PU_cxx_lang(Get_Current_PU())|| PU_java_lang(Get_Current_PU()))){
 	      rpad = 4;
 	    }
 	  }

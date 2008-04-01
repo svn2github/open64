@@ -68,7 +68,7 @@
 #include "iface_scn.h"
 #include "cg_flags.h"
 #include "glob.h"
-#include "targ_isa_print.h"
+
 
 extern void
 CGEMIT_Prn_File_Dir_In_Asm(USRCPOS usrcpos,
@@ -113,7 +113,6 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
   if (scn_flags & SHF_WRITE) *p++ = 'w';
   if (scn_flags & SHF_ALLOC) *p++ = 'a';
   if (scn_flags & SHF_EXECINSTR) *p++ = 'x';
-  if (scn_flags & SHF_TLS) *p++ = 'T';
   // short sections are only recognized by name, not by "s" qualifier
   // if (scn_flags & SHF_IRIX_GPREL) *p++ = 's';
   *p = '\0'; // null terminate the string.
@@ -179,32 +178,10 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 	case TN_RELOC_IA_LTOFF22:
         	*buf = vstr_concat (*buf, "@ltoff");
 		break;
-	case TN_RELOC_IA_LTOFF22X:
-        	*buf = vstr_concat (*buf, "@ltoffx");
-		break;
 	case TN_RELOC_IA_LTOFF_FPTR:
         	*buf = vstr_concat (*buf, "@ltoff(@fptr");
 		++paren;
 		break;
-	case TN_RELOC_IA_LTOFF_DTPMOD22:
-		*buf = vstr_concat (*buf, "@ltoff(@dtpmod");
-		++paren;
-		break;
-	case TN_RELOC_IA_LTOFF_DTPREL22:
-		*buf = vstr_concat (*buf, "@ltoff(@dtprel");
-		++paren;
-		break;
-	case TN_RELOC_IA_DTPREL22:
-		*buf = vstr_concat (*buf, "@dtprel");
-		break;
-	case TN_RELOC_IA_LTOFF_TPREL22:
-		*buf = vstr_concat (*buf, "@ltoff(@tprel");
-		++paren;
-		break;
-	case TN_RELOC_IA_TPREL22:
-		*buf = vstr_concat (*buf, "@tprel");
-		break;
-	
     	default:
 		#pragma mips_frequency_hint NEVER
     		FmtAssert (FALSE, ("relocs_asm: illegal reloc TN"));
@@ -350,78 +327,4 @@ CGEMIT_Alias (ST *sym, ST *strongsym)
 	}
 	else // global export symbol
 		fprintf (Asm_File, "%s#\n", ST_name(strongsym));
-}
-
-INT CGEMIT_Print_Inst (OP* op, const char* result[], const char* opnd[], FILE* f ) {
-
-  INT i;
-  INT st;
-  INT comp;
-  TOP topcode = OP_code(op);
-  const char *arg[ISA_PRINT_COMP_MAX];
-  const char *Opnds[ISA_PRINT_COMP_MAX];
-  const char *Res[ISA_PRINT_COMP_MAX];
-
-  const ISA_PRINT_INFO *pinfo = ISA_PRINT_Info(topcode);
-
-  FmtAssert( pinfo != NULL, ("no ISA_PRINT_INFO for %s", TOP_Name(topcode)));
-
-  i = 0;
-  do {
-    comp = ISA_PRINT_INFO_Comp(pinfo, i);
-
-    switch (comp) {
-    case ISA_PRINT_COMP_name:
-      arg[i] = ISA_PRINT_AsmName(topcode);
-      break;
-
-    case ISA_PRINT_COMP_opnd:
-    case ISA_PRINT_COMP_opnd+1:
-    case ISA_PRINT_COMP_opnd+2:
-    case ISA_PRINT_COMP_opnd+3:
-    case ISA_PRINT_COMP_opnd+4:
-    case ISA_PRINT_COMP_opnd+5:
-      Opnds[comp-ISA_PRINT_COMP_opnd] = 
-      arg[i] = opnd[comp - ISA_PRINT_COMP_opnd];
-      break;
-
-    case ISA_PRINT_COMP_result:
-    case ISA_PRINT_COMP_result+1:
-      Res[comp-ISA_PRINT_COMP_result] = 
-      arg[i] = result[comp - ISA_PRINT_COMP_result];
-      break;
-
-    case ISA_PRINT_COMP_end:
-      break;
-
-    default:
-      FmtAssert (false, ("Unhandled listing component %d for %s", 
-                        comp, TOP_Name(topcode)));
-      break;
-    };
-    
-    i++;
-  } while (comp != ISA_PRINT_COMP_end);
-
-  // Intercept some special cases -- this render it easier to add some
-  // simulated instructions without changing the whole machine model 
-  // and CG. 
-  //
-  if (OP_load_GOT_entry(op) && topcode == TOP_ld8) {
-    extern OP_MAP OP_Ld_GOT_2_Sym_Map; 
-    ST* sym = (ST*)OP_MAP_Get (OP_Ld_GOT_2_Sym_Map, op);
-    if (sym) { 
-      st = fprintf (f, "%5s ld8.mov %s=[%s], %s%s", Opnds[0], 
-                       Res[0], Opnds[3], ST_name(sym), 
-		       Symbol_Name_Suffix);
-      return st;
-    }
-  }
-
-  st = fprintf (f, ISA_PRINT_INFO_Format(pinfo),
-		     arg[0], arg[1], arg[2], arg[3], 
-		     arg[4], arg[5], arg[6], arg[7],
-		     arg[8]);
-  FmtAssert( st != -1, ("fprintf failed: not enough disk space") );
-  return st;
 }

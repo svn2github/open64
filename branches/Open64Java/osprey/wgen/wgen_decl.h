@@ -73,11 +73,7 @@ extern void push_mp_local_vars (gs_t);
 extern gs_t pop_mp_local_vars (void);
 
 // Initialize a vector.
-#ifdef NEW_INITIALIZER
-extern void Traverse_Aggregate_Vector_Const (WN *, gs_t, BOOL, UINT);
-#else
 extern void Traverse_Aggregate_Vector_Const (ST *, gs_t, BOOL, UINT);
-#endif
 // Handle initialization through a modify_expr.
 extern void WGEN_Process_Initialization (gs_t);
 #endif /* KEY */
@@ -85,12 +81,9 @@ extern void WGEN_Process_Initialization (gs_t);
 /* generate a temp with extension 'name' having the initialization as specified
    by 'init' */
 extern ST *WGEN_Generate_Temp_For_Initialized_Aggregate (gs_t init, char *name);
-#ifdef NEW_INITIALIZER
-extern ST *WGEN_Generate_Initialized_Aggregate(WN *target, gs_t init);
-#endif
 
 /* handle __attribute__ ((alias)) */
-extern BOOL WGEN_Assemble_Alias (gs_t decl, gs_t target);
+extern ST* WGEN_Assemble_Alias (gs_t decl, gs_t target);
 
 /* handle __attribute__ ((constructor)) */
 extern void WGEN_Assemble_Constructor (char *name);

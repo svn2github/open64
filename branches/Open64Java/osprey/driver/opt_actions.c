@@ -91,7 +91,7 @@ int proc = UNDEFINED;
 #ifdef TARG_X8664
 static int target_supported_abi = UNDEFINED;
 static boolean target_supports_sse2 = FALSE;
-static boolean target_prefers_sse3 = FALSE;;
+static boolean target_prefers_sse3 = FALSE;
 #endif
 
 extern boolean parsing_default_options;
@@ -1036,17 +1036,6 @@ check_convert_name(char *name)
 	parse_error(option_name, "bad conversion name");
 }
 #endif /* KEY bug 4260 */
-
-void check_opt_tls_model(char* model)
-{
-	if ( strcmp("global-dynamic", model) == 0 ||
-	     strcmp("local-dynamic", model) == 0 ||
-	     strcmp("initial-exec", model) == 0 ||
-	     strcmp("local-exec", model) == 0 )
-		return;
-	else
-	   error("`-ftls-model=%s': unknown tls-model option", model);
-}
 
 void
 check_dashdash (void)
