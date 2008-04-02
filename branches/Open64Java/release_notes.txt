@@ -1,0 +1,537 @@
+ Open64 Compiler Version 4.0 Release Notes 
+
+
+
+                June 13, 2007
+
+
+
+1. Overview
+
+2. New Features
+
+  2.1 Front End New Features
+  
+  2.2 Back End New Features
+
+3. The Packages of the Compiler Suite
+
+4. Installing the Compiler Suite
+
+  4.1 Install from bz2 Package
+  
+  4.2 Install from RPM packages
+
+5. Build the compiler Suite - directly from source
+
+  4.1 Prerequisites
+
+  4.2 Build Steps
+
+  4.3 Build Fortran Front-End
+
+  4.4 Some Notes on Build
+
+6. Bug Reporting
+
+7. Known Problems, Limitation and Some Notes
+
+8. Credits
+
+
+
+1. Overview
+
+=============
+
+ 
+
+ The objective of the Osprey project is to bring the Open64 compiler
+
+ to that of a production quality compiler and catch up wit the GCC/G++
+
+ features evolution. In this release, we introduce a new GCC 4.0.2 based
+ 
+ front end to make the compiler compatible both with GCC 3.x and 4.x. 
+ 
+ Also, we integrate Pathscale's code generator for x86_64. With the x86_64 
+ 
+ code generator, the compiler can not only generate code for IA64, but also 
+ 
+ for IA32/x86_64. Most importantly, the source code of all previous archives
+
+ are merged into one subversion tree and it is readily available for
+
+ researchers and developers to join the development and incrementally
+
+ check in changes. The website for that is 
+
+ http://www.open64.net/
+
+ 
+
+ The release consists of two kinds of packages: a suite of pre-built 
+ 
+ compiler binaries including C, C++, F95 and related archives, and 
+ 
+ a suite of corresponding compiler source codes. The pre-built compilers 
+ 
+ are build using a self-build bootstrap process. They are provided both in
+ 
+ .bz2 and RPM packages.
+
+
+ We will aggressively continue to update the GCC/G++ front end to the
+
+ latest version after this release. Another important focus after this
+
+ release is further performance improvement in the HPC area. We are
+
+ looking forward for collaboration from the open source community for
+
+ this effort. The SVN source control and Bugzilla system are built up
+
+ to facilitate this. Our checkin testing will be continuously improved
+
+ to achieve the "checkin early and checkin fast with little to no
+
+ impact to overall quality" development environment.
+
+
+
+ For a more detailed description of our kernel boot work-arounds and
+
+ procedure, our performance comparison numbers, please send mail to
+
+ http://sourceforge.net/projects/open64.
+
+
+
+2. New Features
+
+2.1 Front End New Features
+
+-------------------
+
+ In this release, the compiler contains two different GCC based front-ends. 
+ 
+ One is based on the GCC 3.3.1, which is compatible with GCC 3.x and the
+ 
+ other is based on the GCC 4.0.2, which is compatible with GCC 4.x. 
+ 
+ The new GCC 4.0.2 based front end has better C++ ABI support than the 
+ 
+ GCC 3.3.1 based front end. 
+ 
+ The driver of the compiler will determine which front end should be used 
+ 
+ based on the version of GCC is installed on the system. If the first gcc 
+ 
+ found in the $PATH is GCC 4.x, the GCC 4.0.2 based front end will be invoked. 
+
+ Otherwise, the GCC 3.3.1 based front end will be used.
+ 
+ To force using GCC 3.3.1 or GCC 4.0.2 based front end, please add
+ 
+ '-gnu3' or '-gnu4' to the command line, respectively.
+ 
+ 
+2.2 Back End New Features
+
+-------------------
+
+  In this release, we integrate Pathscale's code generator for x86_64 into
+  
+  the compiler. Now, the compiler can generate code not only for Itanium, but
+  
+  also for x86_64/ia32. We have tested the back end at -O0/-O2/-O3. 
+  
+  The PBO (Profile-Based Optimization) and ipa (Inter-Procedure 
+  
+  Analysis/Optimization) is not tested heavily yet. They may not work on both 
+  
+  Itanium and x86_64/IA32.
+  
+
+3. The Packages of the Compiler Suite
+======================================
+
+ This compiler is available in both in binary and source-code form for
+ 
+ different target machines.
+
+ o: open64-4.0-0.src.tar.bz2
+
+   This package contains all compiler's source code. it's machine independent.
+
+
+ o:open64-4.0-0.ia64.tar.bz2
+
+   This package contains all the binary code for ia64 machine including
+   
+   prebuilt library. The compiler is built on an Itanium2 based system with
+   
+   kernel 2.6.9 and glibc 2.3.4. The OS is RHEL4 for IA64. The GCC version 
+   
+   is 3.4.5. The compiler is built twice for releasing. The first stage 
+   
+   is built by 'gcc -O0', the we use the compiler built in the first stage 
+   
+   to build the release compiler by 'opencc -O2'. The libraries is built 
+   
+   by the release compiler. 
+
+
+ o:open64-4.0-0.i386.tar.bz2, open64-4.0-0.x86_64.tar.bz2
+
+   These two package are the same, contain all the binary code for i386 and 
+   
+   x86_64 machine. The compiler is built on an x86_64 based system with 
+   
+   kernel 2.6.9 and glibc 2.3.4. The OS is RHEL4 for x86_64. We upgrade the 
+   
+   GCC version to 4.1.2. The compiler is built by 'gcc -O2'. The 64-bit and 
+   
+   32-bit libraries are built on the same system by the Open64 compiler itself.
+ 
+
+ o:open64-4.0-0.i386.rpm, open64-4.0-0.x86_64.rpm, open64-4.0-0.ia64.rpm    
+
+   these three packages are binaries rpm for different machine. The binaries 
+   
+   are the same in both bz2 and rpm packages. It's more easy to install the 
+   
+   compiler from the rpm.
+
+
+4. Installing the Compiler Suite
+
+=================================
+
+
+4.1 Install from bz2 Package
+
+-------------------
+ Before installing the compiler, the environment variable $TOOLROOT
+
+ should be set properly. As the name suggests, this variable specifies
+
+ the root of the installation hierarchy. You can set it to anywhere
+
+ you have write permission. For example, in GNU BASH this may be done
+
+ with the following command: may set this variable by adding this
+
+ command to the $HOME/.bash_profile file:
+
+   export TOOLROOT=$HOME/mycompiler
+
+ 
+
+ After that, run 'source $HOME/.bash_profile' to make the change effective
+
+
+
+ Now, to complete the installation:
+
+ o. expand open64-4.0-0-ia64.tar.gz with the command:
+
+    tar zxvf open64-4.0-0-ia64.tar.gz
+
+ o. Run script 'INSTALL.sh'
+
+
+
+ The C, C++, Fortran compilers are now available in folder
+
+ $TOOLROOT/bin. They are opencc, openCC, openf90 respectively.
+
+
+4.2 Install from RPM Package
+
+-------------------
+
+ To install the compiler from rpm:
+ 
+ $ rpm -ivh open64-4.0-0.ia64.rpm
+ 
+ This command will install the Open64 compiler to /opt/open64. The C, C++, 
+ 
+ Fortran compilers are in folder /opt/open64/bin.
+ 
+ To install the compiler to another location:
+ 
+ $ rpm --prefix=/path/to/folder -ivh open64-4.0-0.ia64.rpm
+ 
+ Then the compiler will be installed to /path/to/folder
+
+
+5. Build the compiler Suite - directly from source
+
+====================================================
+
+
+ If you choose to build the compiler suite from the source tar ball,
+
+ follow the steps outlined below.
+
+
+
+5.1 Prerequisites
+
+-------------------
+
+ In order to compile Open64 successfully, your system should meet the
+
+ following requirements:
+
+
+
+ o.Linux OS on IA64/ix86/x86_64
+
+  Open64 as well as its variants have been successfully built on many Unix
+
+  variants and Unix-like systems. This release has only been tested extensively
+
+  on IA64/ix86/x86_64 running Linux operating systems. If you are going to
+
+  build it on any platform other than Linux on IA64/ix86/x86_64, you may need 
+  
+  to make some minor changes to the source code.
+
+
+
+ o.GNU Compiler Collection
+
+   Currently, GCC 3.3.x through 4.1.x are supported. GCC 4.1.x is preferred.
+
+
+
+ o.A open64 binary for building the Fortran Front End
+ 
+   you can just download the Open64 binary for system and install it to 
+    
+   some place and make sure that openf90 is in your PATH before building 
+    
+   the Fortran front end.
+
+
+5.2 Build Steps
+
+-------------------
+
+  Follow these steps to build the compiler:
+
+
+
+ Step 1. Expand the source tarball
+
+   After that, the whole source hierarchy will be in directory rooted at
+
+   open64-4.0-0/. Change working directory to open64-4.0-0/.
+
+
+
+ Step 2. Build the compiler components by simply invoking command:
+
+     make or make V=1(V=1 will show all the building information)
+
+   If you want to build a debuggable compiler, use this command instead:
+
+     make BUILD_OPTIMIZE=DEBUG
+
+
+   note that, if you type "make", it will only build the compiler's source 
+     
+   code by default it won't build the prebuilt library. if you want to 
+     
+   build it by yourself, type 
+          
+     make library
+    
+  
+   The defaut Fortran compiler in source code is openf90. If the openf90 is 
+     
+   not in the PATH, the Fortran front end will not be built. During the 
+     
+   installation, the prebuilt version will be picked up. Then, we can use
+     
+   it to build the Fortran front end again. 
+     
+   Developers may find this command handy in building individual component,     
+     
+   say wopt.so:
+
+     make BUILD_OPTIMIZE=DEBUG wopt.so 
+
+
+ step 3. set environment variable TOOLROOT to anywhere you have write
+
+  permission as detailed in section 3. 
+  
+  If you do not want to use $TOOLROOT, just skip this step.
+
+
+ step 4. call 'make install'  or 'install_compiler.sh' to install
+
+  all compiler components and archives.
+
+  If $TOOLROOT is set, the compiler will be installed to that folder. 
+  
+  Otherwise, a path will be prompted.
+
+  The C, C++, Fortran compilers are now available in folder
+
+  $TOOLROOT/bin/ They are opencc, openCC, openf90 respectively.
+
+
+5.3.Build Fortran Front-End
+
+-------------------------------
+
+ The Fortran front-end executable is provided in both
+
+ binary and source packages. Normally, you need *NOT* to build it by yourself.
+
+
+ If you are going to build one, make sure that an Openf90 is already in 
+ 
+ your $PATH(you need to download a binary form and install it  somewhere).
+ 
+ then just type:
+   
+   make mfef95.
+   
+ the makefile will use a pre-hand openf90 to build the new mfef95 for you.
+
+
+
+5.4 Some Notes on Build
+
+--------------------------
+
+ o.The compiler is built with flag '-Werror' which treats warnings as error.
+
+  If the build process terminates due to warnings, you can get around this
+
+  with:
+
+      make ... ERROR_ON_WARNINGS="" ...
+
+  i.e. simply repeat the make process with ERROR_ON_WARNINGS="".
+
+
+
+ o.GNU Make utility version 3.81 is shipped with many of the latest Linux
+
+  distributions. Building the compiler suite with it may cause some weird
+
+  complaints pertaining to dependent files don't exist (they are actually
+
+  there). You can ignore those complaints, and repeat the make command to
+
+  continue.
+
+
+
+6. Bug Reporting
+
+==================
+
+
+
+   You are WELCOME to report bugs. The bugs tracked at
+
+   http://bugs.open64.net/. Bug reports should include these items in
+
+   order to be reproduced:
+
+ o. the compiler release version;
+
+ o. system details -- the OS, libc etc;
+
+ o. the compilation flags that trigger the bug;
+
+ o. the test file if applicable (it is highly appreciated if the test file
+
+   is minimized);
+
+ o. the correct output of the test file.
+
+
+
+7. Known Problems, Limitation and Some Notes
+
+==============================================
+
+ o. Due to limited resources, the archives shipped with this compiler may
+
+  not be built successfully from the source.  'make library' may not work
+  
+  correctly. 
+  
+ o. libmsgi.a in prebuilt library didn't work very well, so the compiler won't 
+ 
+  link it by default.
+         
+
+ o. we can bootstrap the compiler on ia64, but may meet error at x8664 if the 
+ 
+  first stage compiler is built by gcc3.x
+
+ o. Currently, we build the compiler *ONLY* on Linux/IA64, x86_64, i386.
+
+  'make cross' is supposed to be used to build the cross compiler on
+
+  Linux/IA32 systems targeting IA64. However, we have not tested this 
+  
+  thoroughly.
+
+
+ o. The perlbmk benchmark in CPU2006 suite may not run successfully without
+
+  some changes to its source code. It is *NOT* an Open64 bug. The problem is
+
+  with the perlbmk benchmark itself. Please check the bug-81
+
+  (https://bugs.open64.net/) for details. This problem can be solved by
+
+  deleting following lines from file spec_config.h (of perlbmk benchmark):
+
+     1172 #undef HASATTRIBUTE
+
+     1173 #ifndef HASATTRIBUTE
+
+     1174 #define __attribute__(_arg_)
+
+     1175 #endif
+
+ o. IPA and PBO option is not support very well in this release. See the 
+ 
+  bugzillar or detail bug information about IPA and Feedback.
+
+ o. A full list of known bugs can be found in our bug database. You can visit
+
+  http://bugs.open64.net
+
+  to view them.
+
+
+
+
+8. Credits
+============
+ This project is led by Shin-Ming Liu at HP Inc. It is the result of
+
+partnership between Tsinghua University, Institute of Computing
+
+Technology at the Chinese Academy of Science, CAPSL research laboratory
+
+at the University of Delaware, and Hewlett-Packard, Inc.
+ 
+  
+  We'd also like to acknowledge the contributions of QLogic Inc
+
+(formerly PathScale Inc.), Google Inc, Paul Yuan at Peking University 
+
+and Sun Chan at SimpLight Nanoelectronics.
