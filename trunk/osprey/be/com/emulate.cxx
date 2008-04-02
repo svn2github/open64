@@ -1314,6 +1314,14 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 	rsqrt_75 = TRUE;
       else
 	sqrt_75 = TRUE;
+#ifdef TARG_IA64
+      // non-constant float x could be negative;
+      // so it could be error to fold the INTRN_EXPEXPR to sqrt
+      //
+      if (!Is_Constant (x) ||
+          Targ_To_Host_Float (Const_Val (x)) < 0)
+        return NULL;
+#endif
       x_copy = WN_COPY_Tree(x);
     }  
 #if !defined (TARG_MIPS) && !defined (TARG_IA64)
@@ -1434,7 +1442,15 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
       // rsqrtsd or rsqrtpd is absent.
       if (rsqrt_75 && (type == MTYPE_F8 || type == MTYPE_V16F8))
 	return NULL;
-#endif 
+#endif
+#ifdef TARG_IA64
+      // non-constant float x could be negative;
+      // so it could be error to fold the INTRN_EXPEXPR to sqrt
+      // 
+      if (!Is_Constant (x_copy) ||
+	  Targ_To_Host_Float (Const_Val (x_copy)) < 0)
+        return NULL;
+#endif
       if (tree)
       {
 	/*

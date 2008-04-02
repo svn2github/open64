@@ -1538,14 +1538,10 @@ Configure_Source ( char	*filename )
 
   /* Constant folding options: */
   if ( ! Roundoff_Set && Opt_Level > 2 ) {
-#ifndef KEY
-    Roundoff_Level = ROUNDOFF_ASSOC;
-#else
 #ifdef TARG_IA64
     Roundoff_Level = ROUNDOFF_ASSOC;
 #else
     Roundoff_Level = ROUNDOFF_SIMPLE;
-#endif
 #endif
   }
   if ( Roundoff_Level > ROUNDOFF_NONE ) {
