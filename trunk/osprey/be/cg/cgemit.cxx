@@ -6955,7 +6955,7 @@ Setup_Text_Section_For_PU (ST *pu)
 		text_PC);
   }
 
-  if (Section_For_Each_Function || PU_in_elf_section(current_pu)) {
+  if ((Section_For_Each_Function && !ST_has_named_section(pu)) || PU_in_elf_section(current_pu)) {
 	/* create new text section */
 	text_base = Copy_ST(orig_text_base);
 	Set_ST_blk(text_base, Copy_BLK(ST_blk(orig_text_base)));
@@ -7987,6 +7987,7 @@ EMT_End_File( void )
 		if (!STB_section(sym)) continue;
 		// mergeable sections will be emitted into each .o
 		if (SEC_is_merge(STB_section_idx(sym))) continue;
+        if (!strncmp(ST_name(sym), ".gnu.linkonce.", 14)) continue;
 		newname = Index_To_Str(Save_Str2(ST_name(sym), IPA_Object_Name));
 		if (Object_Code) {
 	  		(void) Em_Add_New_Symbol (

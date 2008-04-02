@@ -1925,6 +1925,8 @@ Create_ST_For_Tree (gs_t decl_node)
     ST_ATTR&    st_attr = New_ST_ATTR (level, st_attr_idx);
     ST_ATTR_Init (st_attr, ST_st_idx (st), ST_ATTR_SECTION_NAME,
                   Save_Str (gs_tree_string_pointer (gs_decl_section_name (decl_node))));
+    if (strncmp(gs_tree_string_pointer (gs_decl_section_name (decl_node)), ".gnu.linkonce.", 14))
+      Set_ST_has_named_section (st);
   }
 
 #if defined(KEY) && defined(TARG_IA64)
