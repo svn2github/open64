@@ -2886,7 +2886,7 @@ AGGINIT::Traverse_Aggregate_Array (
       if (gen_initv && 
           gs_tree_code(tree_value) == GS_FDESC_EXPR && 
 	  idx < length - 1) {
-        gs_t next = gs_operand(curr_value_elem, 1);
+        gs_t next = curr_value_elem;
         if ((next != NULL) && 
 	    (gs_tree_code(next) == GS_FDESC_EXPR) &&
 	    (gs_tree_operand(tree_value, 0) == gs_tree_operand(next, 0)) ) {
