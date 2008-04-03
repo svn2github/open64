@@ -7634,37 +7634,53 @@ TN* Gen_Second_Immd_Op( TN *src2, OPS* ops )
 /* Expand FETCH_AND_ADD intrinsic into the following format
       lock (addr) = (addr) + opnd1
  */
-void Exp_Fetch_and_Add( TN* addr, TN* opnd1, TYPE_ID mtype, OPS* ops )
+TN* Exp_Fetch_and_Add( TN* addr, TN* opnd1, TYPE_ID mtype, OPS* ops )
 {
   TOP top = TOP_UNDEFINED;
 
   switch( mtype ){
   case MTYPE_I4:
   case MTYPE_U4:
-    top = TOP_lock_add32;
+    // OSP
+    // top = TOP_lock_add32;
+    top = TOP_lock_xadd32;
     break;
 
   case MTYPE_I8:
   case MTYPE_U8:
-    top = TOP_lock_add64;
+    // OSP
+    // top = TOP_lock_add64;
+    top = TOP_lock_xadd64;
     break;
 
   default:
     FmtAssert( FALSE,
 	       ("Exp_Fetch_and_Add: support me now") );
   }
-  if (Is_Target_32bit() && top == TOP_lock_add64){
+
+  TN * result = Build_TN_Of_Mtype(mtype);
+
+  if (Is_Target_32bit() && top == TOP_lock_add64) {
+    FmtAssert( FALSE,
+               ("Exp_Fetch_and_Add: unsupported Fetch_and_Add_I8 with -m32") );
+    Expand_Load( OPCODE_make_op (OPR_LDID, mtype, mtype),
+                 result, addr, Gen_Literal_TN(0,4), ops );
+
     TN *result_h = Gen_Second_Immd_Op( opnd1, ops );
     Build_OP( TOP_lock_add32, opnd1, addr, Gen_Literal_TN(0,4), ops );
     Build_OP( TOP_lock_adc32, result_h, addr, Gen_Literal_TN(4,4), ops );
   }
-  else
-    Build_OP( top, opnd1, addr, Gen_Literal_TN(0,4), ops );
+  else {
+    Exp_COPY( result, opnd1, ops);
+    Build_OP( top, result, addr, Gen_Literal_TN(0,4), ops );
+  }
 
   Set_OP_prefix_lock( OPS_last(ops) );
 
   if (Is_Target_32bit() && top == TOP_lock_add64)
     Set_OP_prefix_lock( OP_prev(OPS_last(ops)) );
+
+  return result;
 }
 
 TN* Exp_Compare_and_Swap( TN* addr, TN* opnd1, TN* opnd2, TYPE_ID mtype, OPS* ops )

@@ -163,7 +163,7 @@ extern void Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label,
 
 extern void Exp_Landingpadentry_Intrinsic (ST *dest1, ST *dest2, OPS* ops);
 
-extern void Exp_Fetch_and_Add( TN*, TN*, TYPE_ID, OPS* );
+extern TN*  Exp_Fetch_and_Add( TN*, TN*, TYPE_ID, OPS* );
 extern void Exp_Fetch_and_And( TN*, TN*, TYPE_ID, OPS* );
 extern void Exp_Fetch_and_Or( TN*, TN*, TYPE_ID, OPS* );
 extern void Exp_Fetch_and_Xor( TN*, TN*, TYPE_ID, OPS* );

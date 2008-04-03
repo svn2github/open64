@@ -5144,12 +5144,14 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   case INTRN_FETCH_AND_ADD_I4:
   case INTRN_FETCH_AND_ADD_I8:
     {
-      Exp_Fetch_and_Add( Expand_Expr(WN_kid0(intrncall), intrncall, NULL),
+      result = Exp_Fetch_and_Add( Expand_Expr(WN_kid0(intrncall), intrncall, NULL),
 			 Expand_Expr(WN_kid1(intrncall), intrncall, NULL),
 			 WN_rtype(intrncall),
 			 &New_OPs );
 
-      return next_stmt;
+      // OSP
+      // return next_stmt;
+      goto cont;
     }
     break;
   case INTRN_FETCH_AND_AND_I4:

@@ -2127,6 +2127,63 @@ emit_builtin_compare_and_swap (gs_t exp, INT32 k)
   return wn;
 } /* emit_builtin_compare_and_swap */
 
+/* OSP
+ * emit_builtin_sync_fetch_op
+ *   for FETCH_AND_OP (ADD, SUB, AND, OR, XOR, NAND)
+ *   for OP_AND_FETCH (ADD, SUB, AND, OR, XOR, NAND)
+ * It's necessary for GNU 4.2 FE
+ */
+static WN *
+emit_builtin_sync_fetch_op (INTRINSIC iopc, gs_t exp, INT32 k)
+{
+  WN        *wn;
+  WN        *arg_wn;
+  WN        *ikids [2];
+  TYPE_ID    obj_mtype;
+  TY_IDX     arg_ty_idx;
+  TYPE_ID    arg_mtype;
+  gs_t       list = gs_tree_operand (exp, 1);
+  OPCODE     opc;
+
+  obj_mtype  = TY_mtype (TY_pointed (Get_TY(gs_tree_type(gs_tree_value(list)))));
+  arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
+  arg_mtype  = TY_mtype (arg_ty_idx);
+  arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
+  arg_wn     = WN_CreateParm (arg_mtype, arg_wn, arg_ty_idx, WN_PARM_BY_VALUE);
+  ikids [0]  = arg_wn;
+  list       = gs_tree_chain (list);
+  arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
+  arg_mtype  = TY_mtype (arg_ty_idx);
+  arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
+  arg_wn     = WN_CreateParm (arg_mtype, arg_wn, arg_ty_idx, WN_PARM_BY_VALUE);
+  ikids [1]  = arg_wn;
+  list       = gs_tree_chain (list);
+
+  Is_True( (obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8), 
+           ("Unsupported object type in emit_builtin_sync_fetch_op") );
+
+  emit_barrier (TRUE, list, k);
+  
+  opc = OPCODE_make_op(OPR_INTRINSIC_CALL, obj_mtype, MTYPE_V);
+  wn = WN_Create_Intrinsic (opc, iopc, 2, ikids);
+  WGEN_Stmt_Append (wn, Get_Srcpos());
+
+  ST       *preg_st = MTYPE_To_PREG(obj_mtype);
+  TY_IDX    preg_ty_idx = Be_Type_Tbl(obj_mtype);
+  PREG_NUM  preg = Create_Preg (obj_mtype, NULL);
+
+  wn = WN_Ldid (obj_mtype, -1, Return_Val_Preg, preg_ty_idx);
+  wn = WN_Stid (obj_mtype, preg, preg_st, preg_ty_idx, wn),
+  WGEN_Stmt_Append (wn, Get_Srcpos());
+
+  emit_barrier (FALSE, list, k);
+
+  wn = WN_Ldid (obj_mtype, preg, preg_st, preg_ty_idx);
+
+  return wn;
+} /* emit_builtin_sync_fetch_op */
+
 static void
 emit_builtin_synchronize (gs_t exp, INT32 k)
 {
@@ -6453,6 +6510,27 @@ WGEN_Expand_Expr (gs_t exp,
 
               case BUILT_IN_COMPARE_AND_SWAP:
                 wn = emit_builtin_compare_and_swap (exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+#endif
+
+#ifdef FE_GNU_4_2_0
+	      // OSP
+              case GSBI_BUILT_IN_FETCH_AND_ADD_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_ADD_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_ADD_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_ADD_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I8, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
 #endif
