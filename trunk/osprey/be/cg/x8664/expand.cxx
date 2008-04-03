@@ -1851,9 +1851,11 @@ Expand_Rrotate (TN *result, TN *src1, TN *src2, TYPE_ID rtype, TYPE_ID desc, OPS
     }
   }
 
-  if( OP_NEED_PAIR( rtype ) )
-    FmtAssert(FALSE,("RROTATE of simulated 64-bit integer NYI"));
-  else
+  if( OP_NEED_PAIR( rtype ) ) {
+    // FmtAssert(FALSE,("RROTATE of simulated 64-bit integer NYI"));
+    // using lshr to simulate the rroate for 64-bit integer.
+    Expand_Shift (result, src1, src2, rtype, shift_lright, ops);
+  } else
     Build_OP(top, result, src1, src2, ops);
 }
 
