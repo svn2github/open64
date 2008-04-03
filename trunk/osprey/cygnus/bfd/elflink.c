@@ -3846,10 +3846,22 @@ elf_link_add_object_symbols (bfd *abfd, struct bfd_link_info *info)
 
 	    case bfd_link_hash_defined:
 	    case bfd_link_hash_defweak:
+#ifdef KEY
+              /* section_is_invalid: section field is the bfd */
+              if ( h->root.u.def.section_is_invalid )
+                old_bfd = (bfd*)h->root.u.def.section;
+              else
+#endif
 	      old_bfd = h->root.u.def.section->owner;
 	      break;
 
 	    case bfd_link_hash_common:
+#ifdef KEY
+              /* section_is_invalid: section field is the bfd */
+              if ( h->root.u.def.section_is_invalid )
+                old_bfd = (bfd*)h->root.u.def.section;
+              else
+#endif
 	      old_bfd = h->root.u.c.p->section->owner;
 	      old_alignment = h->root.u.c.p->alignment_power;
 	      break;
