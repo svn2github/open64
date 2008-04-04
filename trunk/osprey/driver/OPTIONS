@@ -1865,9 +1865,9 @@ I-u%s		;		Cc	ld	"-u %s"
 -foptimize-regions  ;   Cc  cfe "-foptimize-regions -TENV:omit_ue_destroy_frame=on"
     "Enable optimization of EH regions formation"
 #endif
--fhandle-exceptions	;	Cc	cfe	self
+-fhandle-exceptions	;	Cc	cpp,cfe	self
 	"Enable exception handling"
--fno-exceptions	;	Cc	cfe	self
+-fno-exceptions	;	Cc	cpp,cfe	self
 	"Disable exception handling"
 -fno-optimize-regions   ;   Cc  cfe self
     "Enable optimization of EH regions formation"
