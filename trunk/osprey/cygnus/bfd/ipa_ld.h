@@ -309,6 +309,9 @@ ipa_is_whirl(bfd *);
 extern void
 ipa_process_whirl ( bfd *);
 
+extern void
+ipa_process_whirl_in_archive ( bfd *, bfd *);
+
 extern int 
 Count_elf_external_gots (void);
 

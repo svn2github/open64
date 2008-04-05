@@ -4728,8 +4728,9 @@ elf_link_add_archive_symbols (bfd *abfd, struct bfd_link_info *info)
 
 #ifdef IPA_LINK
 	    /* mixed archive*/
-	  if (ipa_is_whirl(element))
-	    ipa_process_whirl(element);
+	  if (ipa_is_whirl(element)) {
+	    ipa_process_whirl_in_archive(abfd, element);
+	  }
 #endif
 
 	  /* If there are any new undefined symbols, we need to make

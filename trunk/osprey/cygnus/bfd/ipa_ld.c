@@ -1106,7 +1106,55 @@ ipa_process_whirl ( bfd *abfd)
 			    abfd->filename, mapped_size);
 }
 
+    /*******************************************************
+        Function: ipa_process_whirl_in_archive
 
+        If the whirl is in a mixed archive, this
+        archive should already be opened. So this
+        function just map the mmap pointer to the
+        correct position in the archive.
+
+     *******************************************************/
+
+void ipa_process_whirl_in_archive ( bfd *abfd, bfd *element)
+{
+  char *buf;
+  struct ar_hdr *p_hdr;
+  off_t mapped_size;
+  ld_set_cur_obj(element);
+  p_hdr = arch_hdr(element);
+  mapped_size = strtol (p_hdr->ar_size, NULL, 10);
+
+  if ((buf = bfd_alloc(element, mapped_size)) == NULL) {
+    einfo(("%F%B: bfd_alloc failed for member %B\n"), abfd, element);
+  }
+  if (bfd_seek(element, 0, SEEK_SET) != 0) {
+    einfo(("%F%B: bfd_seek failed for member %B\n"), abfd, element);
+  }
+  if (bfd_bread(buf, mapped_size, element) != mapped_size) {
+    einfo(("%F%B: bfd_read failed for member %B\n"), abfd, element);
+  }
+  element->usrdata = buf;
+
+#if !defined(__ALWAYS_USE_64BIT_ELF__)
+  /* Should be sync. with Config_Target_From_ELF() defined in be.so
+   */
+  if( ( elf_elfheader (element)->e_flags & EF_IRIX_ABI64 ) == 0 )
+    (*p_process_whirl32) (
+			  (void *)element,
+			  elf_elfheader (element)->e_shnum,
+			  element->usrdata+elf_elfheader(element)->e_shoff,
+			  0, /* check_whirl_revision */
+			  abfd->filename, mapped_size);
+  else
+#endif
+    (*p_process_whirl64) (
+			  (void *)element,
+			  elf_elfheader (element)->e_shnum,
+			  element->usrdata+elf_elfheader(element)->e_shoff,
+			  0, /* check_whirl_revision */
+			  element->filename, mapped_size);
+}
 
 	/*******************************************************
 		Function: ipa_set_syms
