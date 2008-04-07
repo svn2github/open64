@@ -1,5 +1,5 @@
 %define open64_name    open64
-%define open64_version 4.1
+%define open64_version 4.2
 %define open64_release 0
 %define open64_prefix  /opt/open64
 %define open64_bin_dir %{open64_prefix}/bin
@@ -71,6 +71,7 @@ contributions of PathScale Inc. and Sun Chan at SimpLight Nanoelectronics.
 %{open64_bin_dir}/openf95-%{open64_version}
 %{open64_bin_dir}/ir_b2a
 %{open64_bin_dir}/gspin
+%{open64_bin_dir}/gspin42
 %{open64_bin_dir}/kopencc
 
 %{open64_lib_dir}/%{open64_version}/kdriver
@@ -79,15 +80,18 @@ contributions of PathScale Inc. and Sun Chan at SimpLight Nanoelectronics.
 %{open64_lib_dir}/%{open64_version}/ipl.so
 %{open64_lib_dir}/%{open64_version}/gfecc
 %{open64_lib_dir}/%{open64_version}/wgen
+%{open64_lib_dir}/%{open64_version}/wgen42
 %{open64_lib_dir}/%{open64_version}/ipa_link
 %{open64_lib_dir}/%{open64_version}/cf95.cat
 %{open64_lib_dir}/%{open64_version}/lno.so
 %{open64_lib_dir}/%{open64_version}/whirl2f
 %{open64_lib_dir}/%{open64_version}/wopt.so
 %{open64_lib_dir}/%{open64_version}/cc1
+%{open64_lib_dir}/%{open64_version}/cc142
 %{open64_lib_dir}/%{open64_version}/cg.so
 %{open64_lib_dir}/%{open64_version}/be
 %{open64_lib_dir}/%{open64_version}/cc1plus
+%{open64_lib_dir}/%{open64_version}/cc1plus42
 %{open64_lib_dir}/%{open64_version}/ipa.so
 %{open64_lib_dir}/%{open64_version}/gfec
 %{open64_lib_dir}/%{open64_version}/whirl2c.so
@@ -161,7 +165,7 @@ ln -s -f ${PHASEPATH}/be ${PHASEPATH}/whirl2c_be
 ln -s -f ${PHASEPATH}/be ${PHASEPATH}/whirl2f_be
 
 # install gcc libraries
-for i in libgcc.a libstdc++.a libstdc++.so; do
+for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do
 %ifarch ia64 x86_64
   F=`gcc --print-file-name $i`
   [ ! -z "$F" ] && [ -e $F ] && ${INSTALL_DATA} $F ${PHASEPATH}/$i
@@ -236,6 +240,9 @@ true
 %postun
 
 %changelog
+* Thu Mar 20 2008 laijx jianxin.lai@hp.com
+-Open64 4.2 release 
+-Add libgcc_s.so, GNU 4.2 FE stuffs: cc142, cc1plus42, wgen42, gspin42
 * Fri Nov 30 2007 laijx jianxin.lai@hp.com
 -Add ftz.o for IA64 
 * Wed Nov 28 2007 laijx jianxin.lai@hp.com

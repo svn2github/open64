@@ -11,6 +11,11 @@ Directory Layout for making the rpm package:
   SPECS/   ( contains the spec file for rpm package )
   SRPMS/   ( contains  the final source rppm package, not used yet )
 
+To tell rpm-build to use the <RPM-PACKAGE> as the TOP DIR, please add this line below to $HOME/.rpmmacros. 
+If $HOME/.rpmmacros does not exist, please create it. Replace <RPM-PACKAGE> with the actual path.
+
+%_topdir <RPM-PACKAGE>
+
 Steps for making the rpm package:
 
 1. Build and install the compiler by hand
