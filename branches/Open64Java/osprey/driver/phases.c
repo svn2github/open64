@@ -1172,7 +1172,7 @@ add_file_args (string_list_t *args, phases_t index)
   		if( ffast_math == 1 )
 			add_string(args, "-ffast-math");
 
-		add_string(args, "-mtune=pentiumpro");
+		//add_string(args, "-mtune=pentiumpro"); ykq
 		add_string(args, "-auxbase");
 
 	        class_name = (char *)malloc(sizeof(char) * strlen(input_source));
@@ -1384,8 +1384,7 @@ add_file_args (string_list_t *args, phases_t index)
 		    temp = the_file;
 		    break;
 		default:
-		   // if (post_fe_phase () == P_inline)  ykq for add call promotion before inline
-		    if (post_fe_phase () == P_ipl)
+		    if (post_fe_phase () == P_inline) 
 			temp = construct_name(the_file,"I");
 		    else
 			temp = construct_name(the_file,"B");

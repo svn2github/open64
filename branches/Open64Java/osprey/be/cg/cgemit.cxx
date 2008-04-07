@@ -6488,7 +6488,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
 #ifndef TARG_IA64
       fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
 #endif
-      Write_INITO (ino, STB_scninfo_idx(base), ofst, &class_strs);
+      Write_INITO (ino, STB_scninfo_idx(base), ofst, &class_strs);		//czw
     }
 
     else {

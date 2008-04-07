@@ -6835,6 +6835,8 @@ WGEN_Expand_Expr (gs_t exp,
     case GS_LOOP_EXPR:
       {
         DevWarn ("Encountered LOOP_EXPR at line %d\n", lineno);
+	if(!lang_java)		//czw
+	{
         LABEL_IDX saved_loop_expr_exit_label = loop_expr_exit_label;
         loop_expr_exit_label = 0;
         gs_t body = gs_loop_expr_body(exp);
@@ -6851,16 +6853,37 @@ WGEN_Expand_Expr (gs_t exp,
           WGEN_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, loop_expr_exit_label, 0, NULL),
                            Get_Srcpos ());
         loop_expr_exit_label = saved_loop_expr_exit_label;
+	}
+	else
+	{
+		gs_t body = gs_loop_expr_body(exp);
+		gs_t loop_exit = exp;
+		while(gs_tree_code(loop_exit) != GS_EXIT_EXPR)
+			loop_exit = gs_tree_operand(loop_exit, 0);
+		//WN *loop_test = WGEN_Expand_Expr (gs_tree_operand(loop_exit, 0));
+		WN *loop_test = WN_Relational (OPR_EQ, MTYPE_I4, WGEN_Expand_Expr (gs_tree_operand(loop_exit, 0)), WN_Intconst (MTYPE_I4, 0));		//czw	NOT operation
+	        WN *loop_body = WN_CreateBlock ();
+	        if (body) {
+	          WGEN_Stmt_Push (loop_body, wgen_stmk_while_body, Get_Srcpos());
+	          wn = WGEN_Expand_Expr (body);
+	          WGEN_Stmt_Pop (wgen_stmk_while_body);
+	        }
+	        WN *loop_stmt = WN_CreateWhileDo (loop_test, loop_body);
+	        WGEN_Stmt_Append (loop_stmt, Get_Srcpos());
+	}
       }
       break;
 
     case GS_EXIT_EXPR:
       {
         DevWarn ("Encountered EXIT_EXPR at line %d\n", lineno);
+	if(!lang_java)		//czw
+	{
 	WN *test = WGEN_Expand_Expr (gs_tree_operand(exp, 0));
         New_LABEL (CURRENT_SYMTAB, loop_expr_exit_label);
         WN *stmt = WN_CreateTruebr (loop_expr_exit_label, test);
         WGEN_Stmt_Append (stmt, Get_Srcpos ());
+	}
       }
       break;
 
@@ -7072,11 +7095,14 @@ WGEN_Expand_Expr (gs_t exp,
 	gs_t label =  gs_tree_operand(exp, 0);
 	FmtAssert ( gs_code(label) == GS_LABEL_DECL, ("Bad operand 0 code for LABEL_EXPR"));
 
-	LABEL_IDX label_idx = WGEN_Get_LABEL (label, TRUE);
-	WN* wn1 = WN_CreateLabel ((ST_IDX) 0, label_idx, 0, NULL);
-	WGEN_Stmt_Append (wn1, Get_Srcpos());
-	Set_LABEL_addr_saved (label_idx);
-	Set_PU_no_inline (Get_Current_PU ());
+	if(!lang_java || DECL_LABEL_IDX(label) != 0)		//czw
+	{
+		LABEL_IDX label_idx = WGEN_Get_LABEL (label, TRUE);
+		WN* wn1 = WN_CreateLabel ((ST_IDX) 0, label_idx, 0, NULL);
+		WGEN_Stmt_Append (wn1, Get_Srcpos());
+		Set_LABEL_addr_saved (label_idx);
+		Set_PU_no_inline (Get_Current_PU ());
+	}
       }
       break;
 #endif
