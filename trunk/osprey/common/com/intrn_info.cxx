@@ -3184,6 +3184,13 @@ const intrn_info_t intrn_info[INTRINSIC_LAST+1] = {
     { /* INSERTQ */
         BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, CGINTRINSIC,
         IRETURN_V16I8, "INSERTQ", NULL, NULL},
+    { /* PADDD128*/
+        BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, CGINTRINSIC,
+       IRETURN_V16I4, "PADDD128", NULL, NULL},
+   { /* PADDW128*/
+        BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, CGINTRINSIC,
+       IRETURN_V16I2, "PADDW128", NULL, NULL},
+
 #endif
 #endif // KEY
     { /* CTYPE_B_LOC */
@@ -3196,4 +3203,3 @@ const intrn_info_t intrn_info[INTRINSIC_LAST+1] = {
         NOT_BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
         IRETURN_PPI4, "__ctype_tolower_loc", "CTYPE_TOLOWER_LOC", "__ctype_tolower_loc"},
 };
-

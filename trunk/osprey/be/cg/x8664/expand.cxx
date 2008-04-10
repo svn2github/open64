@@ -6515,6 +6515,12 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID m
   case INTRN_PADDUSB:
     Build_OP( TOP_paddusb, result, op0, op1, ops );
     break;
+  case INTRN_PADDD128:
+    Build_OP( TOP_add128v32, result, op0, op1, ops );
+    break;
+  case INTRN_PADDW128:
+    Build_OP( TOP_add128v16, result, op0, op1, ops );
+    break;
   case INTRN_PADDUSW:
     Build_OP( TOP_paddusw, result, op0, op1, ops );
     break;

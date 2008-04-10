@@ -1353,8 +1353,9 @@ typedef enum {
   INTRN_EXTRQ           = LAST_COMMON_ID+237,
   INTRN_INSERTQI        = LAST_COMMON_ID+238,
   INTRN_INSERTQ         = LAST_COMMON_ID+239,
-    
-  #define INTRINSIC_LAST_TMP  LAST_COMMON_ID+239
+  INTRN_PADDD128        = LAST_COMMON_ID+240,  
+  INTRN_PADDW128        = LAST_COMMON_ID+241,
+  #define INTRINSIC_LAST_TMP  LAST_COMMON_ID+241
 #else // Anything target-independent needs to be added on all branches of
       // this ifdef.
   INTRN_TAN           = LAST_COMMON_ID+1,
