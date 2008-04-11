@@ -88,7 +88,11 @@ BOOL Show_OPT_Warnings = TRUE;          /* Display OPT warning messages */
 OPTION_LIST *Alias_Option = NULL;
 BOOL Alias_Pointer_Parms = TRUE;        /* Parms ptr indep? */
 BOOL Alias_Pointer_Cray = FALSE;        /* Cray pointer semantics? */
+#ifdef TARG_IA64
+BOOL Alias_Pointer_Types = TRUE;       /* Ptrs to distinct basic types indep? */
+#else
 BOOL Alias_Pointer_Types = FALSE;       /* Ptrs to distinct basic types indep? */
+#endif
 BOOL Alias_Not_In_Union  = FALSE;	/* Ptrs point to non-union types */
 BOOL Alias_Pointer_Strongly_Typed = FALSE; /* Ptrs to distinct types indep? */
 BOOL Alias_Pointer_Named_Data = FALSE;	/* No pointers to named data? */
@@ -100,7 +104,11 @@ BOOL Alias_Common_Scalar = FALSE;       /* Distinguish scalar from array */
  * for use in overriding the default -- not intended for user use.
  */
 static BOOL Alias_Pointer_Cckr = FALSE;	/* -cckr default rules? */
-static BOOL Alias_Pointer_Types_Set = FALSE;	/* alias=typed set? */
+#ifdef TARG_IA64
+static BOOL Alias_Pointer_Types_Set = TRUE;    /* alias=typed set? */
+#else
+static BOOL Alias_Pointer_Types_Set = FALSE;   /* alias=typed set? */
+#endif
 static BOOL Alias_Not_In_Union_Set  = FALSE;	/* alias=nounion set? */
 BOOL  Alias_F90_Pointer_Unaliased = FALSE;  /* Are F90 pointers unaliased? */
 
