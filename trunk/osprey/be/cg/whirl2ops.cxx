@@ -2790,6 +2790,12 @@ Is_CVT_Noop(WN *cvt, WN *parent)
       break;
 
     case OPC_U4U8CVT:
+//OSP_437
+//The deletion of the U4U8CVT should
+//only be done for certain types of operations, which should not include
+//DIV and REM, Pathscal will have a better solution, now we just comment it out
+//will refine that soon.
+#if 0
 #ifdef TARG_X8664
      /*
       *  Skip the truncation if the truncation result is used by a 32-bit OP,
@@ -2800,6 +2806,7 @@ Is_CVT_Noop(WN *cvt, WN *parent)
 	 MTYPE_byte_size(WN_rtype(parent)) == 4) {
        return TRUE;
      }
+#endif
 #endif
      // fall through
 
