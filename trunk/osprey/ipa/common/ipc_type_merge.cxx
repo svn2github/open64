@@ -249,75 +249,9 @@ namespace
         return FALSE;
     }
 
-    // This old partial match function should be removed when the old type merge is removed. Yao Shi, 2007.4.19 
     template <class ACCESS>
     VALIDATION_STATE
     Partial_Match (const TY& merged_ty, const TY& new_ty,
-		   TY_IDX_MAP& ty_map,
-		   const SYMSTR_IDX_MAP& str_map,
-		   const ACCESS& ty_node)
-    {
-	Is_True (TY_kind (new_ty) == ty_node.kind (),
-		 ("Invalid type attributes for array"));
-
-	if (TY_size (merged_ty) != TY_size (new_ty) ||
-	    TY_kind (merged_ty) != TY_kind (new_ty) ||
-	    TY_mtype (merged_ty) != TY_mtype (new_ty) ||
-	    TY_flags (merged_ty) != TY_flags (new_ty) ||
-	    TY_name_idx (merged_ty) != str_map[TY_name_idx (new_ty)])
-	    return VALIDATE_FAIL;
-
-	UINT kid_count = ty_node.kid_count ();
-	UINT i;
-	for (i = 0; i < kid_count; ++i) {
-	    if (TY_IDX_Attributes (ty_node.kid (merged_ty, i)) !=
-		TY_IDX_Attributes (ty_node.kid (new_ty, i)))
-		return VALIDATE_FAIL;
-	}
-
-	if (! ty_node.validate (merged_ty, new_ty))
-	    return VALIDATE_FAIL;
-
-	BOOL all_kids_committed = TRUE;
-	// everything matches so far, now look at the kids
-	for (i = 0; i < kid_count; ++i) {
-	    TY_INDEX kid_index = TY_IDX_index (ty_node.kid (new_ty, i));
-	    TY_IDX kid_mapped_idx = ty_map.map_[kid_index];
-
-	    if (TY_Inserted (kid_mapped_idx))
-		return VALIDATE_FAIL;
-
-	    if (Is_TY_Temp_Idx (kid_mapped_idx)) {
-		all_kids_committed = FALSE;
-		Clean_TY_IDX (kid_mapped_idx);
-	    }
-	    
-	    if (Valid_TY_IDX (kid_mapped_idx)) {
-		if (TY_IDX_index (ty_node.kid (merged_ty, i)) !=
-		    TY_IDX_index (kid_mapped_idx))
-		    return VALIDATE_FAIL;
-	    } else {
-		VALIDATION_STATE v_state =
-		    Validate_Recursive_Type (kid_index, ty_map, str_map, 
-					     ty_node.kid (merged_ty, i));
-		
-		if (v_state == VALIDATE_FAIL)
-		    return v_state;
-		else if (v_state == VALIDATE_OK)
-		    all_kids_committed = FALSE;
-	    }
-	}
-
-	// all kids' types match
-	if (all_kids_committed) {
-	    return VALIDATE_COMMIT;
-	} else
-	    return VALIDATE_OK;
-    } // Partial_Match
-
-    template <class ACCESS>
-    VALIDATION_STATE
-    New_Partial_Match (const TY& merged_ty, const TY& new_ty,
                    TY_IDX_MAP& ty_map,
                    const SYMSTR_IDX_MAP& str_map,
                    const ACCESS& ty_node)
@@ -430,41 +364,25 @@ Validate_Recursive_Type (TY_INDEX index, TY_IDX_MAP& ty_map,
 
     case KIND_ARRAY:
 	Set_TY_Temp_Idx (my_mapped_idx, merged_ty_idx);
-	if (IPA_Enable_Old_Type_Merge)
-            v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
-				 	array_access ());
-        else
-            v_state = New_Partial_Match (merged_ty, new_ty, ty_map, str_map,
-                                        array_access ());
+        v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
+                                 array_access ());
 	break;
 
     case KIND_STRUCT:
 	Set_TY_Temp_Idx (my_mapped_idx, merged_ty_idx);
-        if (IPA_Enable_Old_Type_Merge)
-	    v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
-                                     struct_access (new_ty, merged_ty));
-        else 
-            v_state = New_Partial_Match (merged_ty, new_ty, ty_map, str_map,
-                                     struct_access (new_ty, merged_ty));
+        v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
+                                 struct_access (new_ty, merged_ty));
 	break;
 	
     case KIND_POINTER:
 	Set_TY_Temp_Idx (my_mapped_idx, merged_ty_idx);
-        if (IPA_Enable_Old_Type_Merge)
-	    v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
-				 	pointer_access ());
-        else
-            v_state = New_Partial_Match (merged_ty, new_ty, ty_map, str_map,
-                                        pointer_access ());
+        v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
+                                 pointer_access ());
 	break;
 
     case KIND_FUNCTION:
 	Set_TY_Temp_Idx (my_mapped_idx, merged_ty_idx);
-        if (IPA_Enable_Old_Type_Merge)
-	    v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
-				 function_access (new_ty, merged_ty));
-        else 
-            v_state = New_Partial_Match (merged_ty, new_ty, ty_map, str_map,
+        v_state = Partial_Match (merged_ty, new_ty, ty_map, str_map,
                                  function_access (new_ty, merged_ty));
 	break;
     }
@@ -541,16 +459,14 @@ static TY_IDX
 Find_Recursive_Type (TY_INDEX index, TY_IDX_MAP& ty_map,
 		     const SYMSTR_IDX_MAP& str_map, const TY& ty)
 {
-    if (!IPA_Enable_Old_Type_Merge) {
-        if (TY_kind(ty) == KIND_STRUCT) {
-            STR_IDX struct_name = str_map[TY_name_idx(ty)];
-            TY_INDEX find_ty = struct_by_name_idx[struct_name];
-            // if a merged TY is found and one of the new and the merged TY is incomplete,
-            // do not continue to find TY, return the merged TY directly.
-            if (find_ty &&
-                (TY_is_incomplete_struct(make_TY_IDX(find_ty)) || TY_is_incomplete_struct(ty)))
-                return make_TY_IDX(find_ty);
-        }
+    if (TY_kind(ty) == KIND_STRUCT) {
+        STR_IDX struct_name = str_map[TY_name_idx(ty)];
+        TY_INDEX find_ty = struct_by_name_idx[struct_name];
+        // if a merged TY is found and one of the new and the merged TY is incomplete,
+        // do not continue to find TY, return the merged TY directly.
+        if (find_ty &&
+            (TY_is_incomplete_struct(make_TY_IDX(find_ty)) || TY_is_incomplete_struct(ty)))
+            return make_TY_IDX(find_ty);
     }
 
     // Get a list of all types in the merged symtab that match "ty" except
@@ -611,21 +527,19 @@ Commit_Recursive_Type (TY_INDEX index, TY_IDX_MAP& ty_map,
 {
     const TY& new_ty = file_tables->ty_tab[index];
     
-    if (!IPA_Enable_Old_Type_Merge) {
-        if (TY_is_incomplete_struct(new_ty) || TY_is_incomplete_struct(merged_ty_idx)) {
-            // If the new TY is complete and the merged TY is incomplete,
-            // the merged TY should be updated.
-            if (!TY_is_incomplete_struct(new_ty)) {
-                // If 2 TY in a object file have the same name, do not merge them.
-                // So if the first one is merged, insert a new TY for the second one.
-                if (IN_SET(updating_incomplete_ty, TY_IDX_index(merged_ty_idx)))
-                    TY_Init(New_TY(merged_ty_idx), 0, KIND_STRUCT, MTYPE_M, 0);
-                to_update_incomplete_ty.insert(index);
-                updating_incomplete_ty.insert(TY_IDX_index(merged_ty_idx));
-            }
-            ty_map.set_map(index, merged_ty_idx);
-            return;
+    if (TY_is_incomplete_struct(new_ty) || TY_is_incomplete_struct(merged_ty_idx)) {
+        // If the new TY is complete and the merged TY is incomplete,
+        // the merged TY should be updated.
+        if (!TY_is_incomplete_struct(new_ty)) {
+            // If 2 TY in a object file have the same name, do not merge them.
+            // So if the first one is merged, insert a new TY for the second one.
+            if (IN_SET(updating_incomplete_ty, TY_IDX_index(merged_ty_idx)))
+                TY_Init(New_TY(merged_ty_idx), 0, KIND_STRUCT, MTYPE_M, 0);
+            to_update_incomplete_ty.insert(index);
+            updating_incomplete_ty.insert(TY_IDX_index(merged_ty_idx));
         }
+        ty_map.set_map(index, merged_ty_idx);
+        return;
     }
 
     TY_IDX& my_mapped_idx = ty_map.map_[index];
@@ -721,8 +635,6 @@ namespace
 		     (void) New_TY (recursive_ty_idx);
 		     Set_TY_Inserted (ty_map.map_[TY_IDX_index (kid_idx)],
 				      recursive_ty_idx);
-                     if (IPA_Enable_Old_Type_Merge) 
-                         Initialize_New_Recursive_Type (recursive_ty_idx);
 		} else {
 		    Is_True (Valid_TY_IDX (matched_idx), ("Invalid TY_IDX"));
 		    // found a match, we can commit the entire recursive type 
@@ -740,24 +652,14 @@ namespace
 	    TY& new_ty = Ty_Table[my_mapped_idx];
 	    new_ty = ty;
 	    Insert_Allocated_Ty (new_ty, my_mapped_idx);
-            if (IPA_Enable_Old_Type_Merge) {
-	        Finalize_New_Recursive_Type ();
-            }
-            else {
-                if (TY_is_incomplete_struct(my_mapped_idx))
-                    updating_incomplete_ty.insert(TY_IDX_index(my_mapped_idx));
-            }
+            if (TY_is_incomplete_struct(my_mapped_idx))
+                updating_incomplete_ty.insert(TY_IDX_index(my_mapped_idx));
 	    return my_mapped_idx;
 	} else {
-            if (IPA_Enable_Old_Type_Merge) {
-	        return Insert_Unique_Ty (ty);
-            }
-            else {
-                TY_IDX return_idx = Insert_Unique_Ty(ty);
-                if (TY_is_incomplete_struct(return_idx))
-                    updating_incomplete_ty.insert(TY_IDX_index(return_idx));
-                return return_idx;
-            }
+            TY_IDX return_idx = Insert_Unique_Ty(ty);
+            if (TY_is_incomplete_struct(return_idx))
+                updating_incomplete_ty.insert(TY_IDX_index(return_idx));
+            return return_idx;
         }
     } // Insert_Ty_Specific
 } // namespace
@@ -776,29 +678,27 @@ Insert_Ty (TY_INDEX index, TY_IDX_MAP& ty_map, const SYMSTR_IDX_MAP& str_map)
 
     TY_IDX return_idx;
 
-    if (!IPA_Enable_Old_Type_Merge) {
-        if (TY_kind(ty) == KIND_STRUCT) {
-            STR_IDX struct_name = str_map[ty.name_idx];
-            return_idx = make_TY_IDX(struct_by_name_idx[struct_name]);
-            // If the new ty is incomplete struct and find a TY has the same name,
-            // then map the mew ty to the old one.
-            if (TY_is_incomplete_struct(ty) && return_idx > 0) {
-                ty_map.set_map(index, return_idx);
-                return return_idx;
-            }
-            // If ty is complete struct and a corresponding incomplete one exists,
-            // then map the new ty to the old one and update the old one.
-            if ((!TY_is_incomplete_struct(ty)) && return_idx > 0 
-                && TY_is_incomplete_struct(return_idx)) {
-                // If 2 TY in a object file have the same name, do not merge them.
-                // So if the first one is merged, insert a new TY for the second one.
-                if (IN_SET(updating_incomplete_ty, TY_IDX_index(return_idx))) 
-                    TY_Init(New_TY(return_idx), 0, KIND_STRUCT, MTYPE_M, 0);
-                ty_map.set_map(index, return_idx);
-                to_update_incomplete_ty.insert(index);
-                updating_incomplete_ty.insert(TY_IDX_index(return_idx));
-                return return_idx;
-            }
+    if (TY_kind(ty) == KIND_STRUCT) {
+        STR_IDX struct_name = str_map[ty.name_idx];
+        return_idx = make_TY_IDX(struct_by_name_idx[struct_name]);
+        // If the new ty is incomplete struct and find a TY has the same name,
+        // then map the mew ty to the old one.
+        if (TY_is_incomplete_struct(ty) && return_idx > 0) {
+            ty_map.set_map(index, return_idx);
+            return return_idx;
+        }
+        // If ty is complete struct and a corresponding incomplete one exists,
+        // then map the new ty to the old one and update the old one.
+        if ((!TY_is_incomplete_struct(ty)) && return_idx > 0 
+            && TY_is_incomplete_struct(return_idx)) {
+            // If 2 TY in a object file have the same name, do not merge them.
+            // So if the first one is merged, insert a new TY for the second one.
+            if (IN_SET(updating_incomplete_ty, TY_IDX_index(return_idx))) 
+                TY_Init(New_TY(return_idx), 0, KIND_STRUCT, MTYPE_M, 0);
+            ty_map.set_map(index, return_idx);
+            to_update_incomplete_ty.insert(index);
+            updating_incomplete_ty.insert(TY_IDX_index(return_idx));
+            return return_idx;
         }
     }
 
@@ -835,18 +735,16 @@ Insert_Ty (TY_INDEX index, TY_IDX_MAP& ty_map, const SYMSTR_IDX_MAP& str_map)
     
     ty_map.set_map (index, return_idx);
 
-    if (!IPA_Enable_Old_Type_Merge) {
-        switch (TY_kind(return_idx)) {
-            case KIND_POINTER:
-                // Update the pointer to incomplete struct 
-                // when updating the incomplete struct
-                if (TY_align(TY_pointed(return_idx)) == 1)
-                    Set_TY_align(Ty_Table[return_idx].u2.pointed, TY_align(TY_pointed(ty)));
-                break;
-            case KIND_STRUCT:
-                struct_by_name_idx[TY_name_idx(return_idx)] = TY_IDX_index(return_idx);
-                break;
-        }
+    switch (TY_kind(return_idx)) {
+        case KIND_POINTER:
+            // Update the pointer to incomplete struct 
+            // when updating the incomplete struct
+            if (TY_align(TY_pointed(return_idx)) == 1)
+                Set_TY_align(Ty_Table[return_idx].u2.pointed, TY_align(TY_pointed(ty)));
+            break;
+        case KIND_STRUCT:
+            struct_by_name_idx[TY_name_idx(return_idx)] = TY_IDX_index(return_idx);
+            break;
     }
 
     return return_idx;
@@ -929,10 +827,8 @@ Merge_All_Types (const IPC_GLOBAL_TABS& original_tabs,
     TY_IDX_MAP& ty_map = idx_map.ty;
     const SYMSTR_IDX_MAP& str_map = idx_map.sym_str;
     
-    if (!IPA_Enable_Old_Type_Merge) {
-        to_update_incomplete_ty.clear();
-        updating_incomplete_ty.clear();
-    }
+    to_update_incomplete_ty.clear();
+    updating_incomplete_ty.clear();
 
     for (UINT idx = 1; idx < file_tables->ty_tab_size; ++idx) {
 	if (ty_map.map_[idx] == 0)
@@ -941,24 +837,22 @@ Merge_All_Types (const IPC_GLOBAL_TABS& original_tabs,
 	    Is_True (Valid_TY_IDX (ty_map.map_[idx]), ("Invalid TY_IDX"));
     }
 
-    if (!IPA_Enable_Old_Type_Merge) {
-        // Update incomplete structs
-        for (hash_set <TY_INDEX>::iterator iter = to_update_incomplete_ty.begin();
-            iter != to_update_incomplete_ty.end(); iter++) {
-            TY_INDEX new_ty_idx = *iter;
-            TY_IDX merged_ty_idx = ty_map.map_[new_ty_idx];
-            if (TY_is_incomplete_struct(merged_ty_idx)) {
-                TY &new_ty = Ty_Table[merged_ty_idx];
-                new_ty = file_tables->ty_tab[new_ty_idx];
-                Insert_Allocated_Ty(new_ty, merged_ty_idx);
-            }
-            ty_map.set_map(new_ty_idx, merged_ty_idx);
+    // Update incomplete structs
+    for (hash_set <TY_INDEX>::iterator iter = to_update_incomplete_ty.begin();
+        iter != to_update_incomplete_ty.end(); iter++) {
+        TY_INDEX new_ty_idx = *iter;
+        TY_IDX merged_ty_idx = ty_map.map_[new_ty_idx];
+        if (TY_is_incomplete_struct(merged_ty_idx)) {
+            TY &new_ty = Ty_Table[merged_ty_idx];
+            new_ty = file_tables->ty_tab[new_ty_idx];
+            Insert_Allocated_Ty(new_ty, merged_ty_idx);
         }
-        for (UINT idx = 1; idx < file_tables->ty_tab_size; ++idx)
-            // Check if the TY is complete and non-recursive.
-            // If it is recursive or not complete, insert it into recursive table.
-            if (Is_Incomplete_Or_Recursive(TY_IDX_index(ty_map.map_[idx])))
-                Insert_Recursive_Type(ty_map.map_[idx]);
+        ty_map.set_map(new_ty_idx, merged_ty_idx);
     }
+    for (UINT idx = 1; idx < file_tables->ty_tab_size; ++idx)
+        // Check if the TY is complete and non-recursive.
+        // If it is recursive or not complete, insert it into recursive table.
+        if (Is_Incomplete_Or_Recursive(TY_IDX_index(ty_map.map_[idx])))
+            Insert_Recursive_Type(ty_map.map_[idx]);
 } // Merge_All_Types
 

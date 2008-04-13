@@ -158,14 +158,6 @@ TY_IDX_without_attribute(TY_IDX tyi) {
     return tyi & (~TY_ALIGN);
 }
 
-// below 2 functions should be removed when old type merge is removed.
-
-void
-Initialize_New_Recursive_Type (TY_IDX ty_idx);
-
-void
-Finalize_New_Recursive_Type ();
-
 typedef vector<TY_IDX> TY_IDX_VEC;
 
 extern void

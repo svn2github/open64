@@ -304,9 +304,6 @@ UINT32 IPA_Max_Output_File_Size = DEFAULT_OUTPUT_FILE_SIZE;
 /* percentage change of the max. output file size */
 INT32 IPA_Output_File_Size = 0;
 
-/* This flag is to use the old type merge phase. It should be removed when the old type merge is removed. */
-BOOL IPA_Enable_Old_Type_Merge = FALSE;  
-
 /* enable devirtualization */
 BOOL IPA_Enable_Devirtualization = FALSE;
 
@@ -586,9 +583,6 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "source_pu_order",  "",
       0, 0, 0,              &IPA_Enable_Source_PU_Order, NULL,
       "Maintain source-code PU ordering in IPA output"},
-    { OVK_BOOL, OV_INTERNAL,    FALSE, "ipa_enable_old_type_merge", "",
-      0, 0, 0,              &IPA_Enable_Old_Type_Merge, NULL,
-      "Use the old type merge phase in IPA"},
     { OVK_BOOL, OV_INTERNAL,    FALSE, "devirtualization", "",
       0, 0, 0,              &IPA_Enable_Devirtualization, NULL,
       "Use devirtualization phase"},
