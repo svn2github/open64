@@ -1863,17 +1863,17 @@ I-u%s		;		Cc	ld	"-u %s"
 % KEY: Because of limitation on derived flags, we repeat the -fexceptions
 % in the implied list.  This is to find the parent flag so action is done.
 #ifdef X8664
--fexceptions	;	ALL	cfe	"-fexceptions -TENV:frame_pointer=on"
+-fexceptions	;	ALL	cfe	"-fexceptions -fgnu-exceptions -TENV:frame_pointer=on"
 	"Enable exception handling"
 #else
--fexceptions	;	ALL	cfe	self
+-fexceptions	;	ALL	cfe	"-fexceptions -fgnu-exceptions"
 	"Enable exception handling"
 -foptimize-regions  ;   Cc  cfe "-foptimize-regions -TENV:omit_ue_destroy_frame=on"
     "Enable optimization of EH regions formation"
 #endif
 -fhandle-exceptions	;	Cc	cpp,cfe	self
 	"Enable exception handling"
--fno-exceptions	;	Cc	cpp,cfe	self
+-fno-exceptions	;	Cc	cpp,cfe	"-fno-exceptions -fno-gnu-exceptions"
 	"Disable exception handling"
 -fno-optimize-regions   ;   Cc  cfe self
     "Enable optimization of EH regions formation"
