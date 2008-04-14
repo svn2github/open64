@@ -2832,6 +2832,11 @@ WN_Type_Conversion( WN *wn, TYPE_ID to_type )
   TYPE_ID from_type = WN_rtype(wn);
   BOOL from_flt,to_flt;		/* is type a floating type? */
 
+  //OSP_434
+  //special handling for vector intrinsic, CG expansion need to generated special
+  //instruction queue for this CVT, can't optimization this
+  if(MTYPE_is_vector(from_type))
+    return wn;
   /* quickie check of no-op */
   if ( from_type == to_type )
     return wn;
