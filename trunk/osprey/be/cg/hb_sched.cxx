@@ -2093,7 +2093,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
   Init_RFlag_Table( blocks, LOCS_Fwd_Scheduling );
 #endif // TARG_X8664
 
-#ifdef KEY
+#ifndef TARG_IA64
   const BOOL org_LOCS_Scheduling_Algorithm = LOCS_Scheduling_Algorithm;
   if (_hbs_type & HBS_MINIMIZE_REGS ||
       // If scheduling for pre/post-register allocation,
@@ -2105,11 +2105,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
   }
   Init_RFlag_Table( blocks, LOCS_Scheduling_Algorithm);
 #else
-#ifdef TARG_IA64
-  Init_RFlag_Table (blocks, TRUE);
-#else
-  Init_RFlag_Table (blocks, FALSE);
-#endif
+  Init_RFlag_Table (blocks, TRUE); // forward scheduling
 #endif
 
 
@@ -2122,7 +2118,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
   Priority_Selector *priority_fn;
   Cycle_Selector *cycle_fn;
 
-#ifdef KEY
+#ifndef TARG_IA64
   if( LOCS_Scheduling_Algorithm == 1 ){
     priority_fn = CXX_NEW( List_Based_Fwd(bb, this, _hbs_type, &_hb_pool),
                            &_hb_pool );
@@ -2134,17 +2130,10 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
     cycle_fn = CXX_NEW( Bkwd_Cycle_Sel(), &_hb_pool );
   }
 #else
-#ifdef TARG_IA64
   // Do forward scheduling and cycle selector.
   priority_fn = 
     CXX_NEW(List_Based_Fwd(bb, this, _hbs_type, &_hb_pool), &_hb_pool);
   cycle_fn = CXX_NEW(Fwd_Cycle_Sel(), &_hb_pool);
-#else
-  // Do backward scheduling and cycle selector.
-  priority_fn = 
-    CXX_NEW(List_Based_Bkwd(bb, this, _hbs_type, &_hb_pool), &_hb_pool);
-  cycle_fn = CXX_NEW(Bkwd_Cycle_Sel(), &_hb_pool);
-#endif
 #endif
 
 
@@ -2197,7 +2186,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
 
   // Insert the scheduled list of instructions into the bb.
   Put_Sched_Vector_Into_BB (bb, bbsch, priority_fn->Is_Fwd_Schedule() );
-#ifdef KEY
+#ifndef TARG_IA64
   LOCS_Scheduling_Algorithm = org_LOCS_Scheduling_Algorithm;
 #endif
 }
@@ -2349,6 +2338,9 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
     skip_sched =  (BBs_Processed < CG_local_skip_before ||
 		   BBs_Processed > CG_local_skip_after ||
 		   BBs_Processed == CG_local_skip_equal);
+    if (skip_sched)
+      fprintf (TFile, "[%d] BB:%d was skipped in HB_Schedule_BB\n", 
+	BBs_Processed, BB_id(bb));
     if (!skip_sched)
       fprintf (TFile, "[%d] BB:%d processed in HB_Schedule_BB\n", 
 	BBs_Processed, BB_id(bb));
