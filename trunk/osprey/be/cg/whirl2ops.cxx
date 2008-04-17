@@ -2790,12 +2790,6 @@ Is_CVT_Noop(WN *cvt, WN *parent)
       break;
 
     case OPC_U4U8CVT:
-//OSP_437
-//The deletion of the U4U8CVT should
-//only be done for certain types of operations, which should not include
-//DIV and REM, Pathscal will have a better solution, now we just comment it out
-//will refine that soon.
-#if 0
 #ifdef TARG_X8664
      /*
       *  Skip the truncation if the truncation result is used by a 32-bit OP,
@@ -2803,10 +2797,15 @@ Is_CVT_Noop(WN *cvt, WN *parent)
       */
      if (Is_Target_64bit() &&
 	 parent != NULL &&
-	 MTYPE_byte_size(WN_rtype(parent)) == 4) {
+         MTYPE_byte_size(WN_rtype(parent)) == 4 &&
+         // Multiplies and divides can get expanded into large code sequences
+         // which may assume the upper bits are all zeros.  Bug 14339.
+         WN_operator(parent) != OPR_MPY &&
+         WN_operator(parent) != OPR_DIV &&
+         WN_operator(parent) != OPR_REM &&
+         WN_operator(parent) != OPR_DIVREM) {
        return TRUE;
      }
-#endif
 #endif
      // fall through
 
