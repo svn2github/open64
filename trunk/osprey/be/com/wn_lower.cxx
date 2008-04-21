@@ -6182,6 +6182,9 @@ static WN *lower_return_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
 			    RETURN_INFO_preg(return_info, i), preg_st,
 			    Be_Type_Tbl(mtype));
       base_expr = WN_COPY_Tree(WN_kid1(tree));
+
+// OSP-438: The type of Istore node should be a pointer to mtype.
+// (Previously, we just use Be_Type_Tbl(mtype) as the type of Istore).
       wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, mtype, 
 		           WN_store_offset(tree)+i*MTYPE_byte_size(mtype),
 			   Make_Pointer_Type(Be_Type_Tbl(mtype), FALSE), n_rhs, base_expr);
