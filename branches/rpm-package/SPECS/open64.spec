@@ -131,6 +131,8 @@ contributions of PathScale Inc. and Sun Chan at SimpLight Nanoelectronics.
 %dir %{open64_lib_dir}/%{open64_version}/32
 %{open64_lib_dir}/%{open64_version}/opteron.so
 %{open64_lib_dir}/%{open64_version}/em64t.so
+%{open64_lib_dir}/%{open64_version}/barcelona.so
+%{open64_lib_dir}/%{open64_version}/core.so
 #%{open64_lib_dir}/%{open64_version}/32/libF77.a
 %{open64_lib_dir}/%{open64_version}/32/libffio.a
 %{open64_lib_dir}/%{open64_version}/32/libfortran.a
@@ -216,7 +218,7 @@ rm -f ${PHASEPATH}/ipl
 rm -f ${PHASEPATH}/whirl2c_be
 rm -f ${PHASEPATH}/whirl2f_be
 
-for i in libgcc.a libstdc++.a libstdc++.so; do
+for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do
   rm -f ${PHASEPATH}/$i
 
 %ifarch %{ix86} x86_64
@@ -240,6 +242,8 @@ true
 %postun
 
 %changelog
+* Wed Apr 16 2008 laijx jianxin.lai@hp.com
+-Add barcelona.so, core.so for IA32/x86_64
 * Thu Mar 20 2008 laijx jianxin.lai@hp.com
 -Open64 4.2 release 
 -Add libgcc_s.so, GNU 4.2 FE stuffs: cc142, cc1plus42, wgen42, gspin42
