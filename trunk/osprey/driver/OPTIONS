@@ -847,7 +847,7 @@ I-xall	;		FTN	ffe	self
 -fno-tree-vrp	warn_ignored(option_name);	ALL	NONE	""
 	""
 -Wframe-larger-than-100000000   warn_ignored(option_name);      ALL     NONE    ""
-        " help noticing functions with larger than usual frame sizes"
+        "help noticing functions with larger than usual frame sizes"
 -Wno-vla   warn_ignored(option_name);      ALL     NONE    ""
         "prevent the -pedantic warning of the variable length array"
 -Wno-error=%s   warn_ignored(option_name);      ALL     NONE    ""

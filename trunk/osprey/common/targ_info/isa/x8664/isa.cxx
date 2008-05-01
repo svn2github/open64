@@ -1011,6 +1011,7 @@ main ()
 	      "pextrw",
 	      "pinsrw",
 	      "pmovmskb",
+              "pmovmskb128",
 	      "movi32_2m",
 	      "movi64_2m",
 	      "movm_2i32",

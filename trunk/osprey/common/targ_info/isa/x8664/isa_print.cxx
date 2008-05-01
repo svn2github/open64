@@ -1008,6 +1008,7 @@ main()
 			   TOP_bsr64,
 			   TOP_mov64_m,
 			   TOP_pmovmskb,
+                           TOP_pmovmskb128,  
 			   TOP_movi32_2m,
 			   TOP_movi64_2m,
 			   TOP_movm_2i32,

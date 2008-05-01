@@ -2613,6 +2613,12 @@ main()
   Result(0, int32);
   Operand(0, mmx, opnd1);
 
+  Instruction_Group("xmm packed move",
+                    TOP_pmovmskb128,
+                    TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, fp128, opnd1);
+
   Instruction_Group("packed word modification",
 		    TOP_pextrw,
 		    TOP_UNDEFINED);

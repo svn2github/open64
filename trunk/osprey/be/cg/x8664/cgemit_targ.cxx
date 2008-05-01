@@ -1420,6 +1420,7 @@ static void Init_OP_Name()
   OP_Name[TOP_movi64_2m] = "movd";
   OP_Name[TOP_movm_2i32] = "movd";
   OP_Name[TOP_movm_2i64] = "movd";
+  OP_Name[TOP_pmovmskb128] = "pmovmskb";
   OP_Name[TOP_psrlq128v64] = "psrlq";
   OP_Name[TOP_storenti128] = "movntdq";
   OP_Name[TOP_pshufw64v16] = "pshufw";

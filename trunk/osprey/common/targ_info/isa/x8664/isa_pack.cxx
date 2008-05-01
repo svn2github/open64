@@ -1078,6 +1078,7 @@ main()
 		    TOP_pextrw, 0x000000ff,
 		    TOP_pinsrw, 0x000000ff,
 		    TOP_pmovmskb, 0x000000ff,
+                    TOP_pmovmskb128, 0x000000ff,
 		    TOP_cmpeqps, 0x000000ff,
 		    TOP_cmpltps, 0x000000ff,
 		    TOP_cmpleps, 0x000000ff,

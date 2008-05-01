@@ -2139,6 +2139,7 @@ main()
 		     TOP_storenti128,
 		     TOP_storelpd,
 		     TOP_pshufw64v16,
+                     TOP_pmovmskb128,
                      TOP_UNDEFINED);
 
   /* ===== FP add operator ====== */
@@ -3065,6 +3066,7 @@ main()
 		     TOP_pextrw,
 		     TOP_pinsrw,
 		     TOP_pmovmskb,
+                     TOP_pmovmskb128,
 		     TOP_movi32_2m,
 		     TOP_movi64_2m,
 		     TOP_movm_2i32,

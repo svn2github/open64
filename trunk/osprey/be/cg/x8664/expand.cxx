@@ -6648,6 +6648,9 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID m
   case INTRN_PMOVMSKB:
     Build_OP( TOP_pmovmskb, result, op0, ops );
     break;
+  case INTRN_PMOVMSKB128:
+    Build_OP( TOP_pmovmskb128, result, op0, ops );
+    break;
   case INTRN_COMIEQSS:
     Build_OP( TOP_comiss, rflags, op0, op1, ops );
     Build_OP( TOP_sete, result, rflags, ops);

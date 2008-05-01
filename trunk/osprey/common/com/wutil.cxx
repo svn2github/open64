@@ -1018,6 +1018,7 @@ static const struct {
   INTRN_INSERTQ,                "INTRN_INSERTQ",
   INTRN_PADDD128,               "INTRN_PADDD128",
   INTRN_PADDW128,               "INTRN_PADDW128",
+  INTRN_PMOVMSKB128,               "INTRN_PMOVMSKB128", 
 #endif
 
   INTRN_CTYPE_B_LOC,       "__ctype_b_loc",

@@ -3188,6 +3188,9 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PMOVMSKB:
       *iopc = INTRN_PMOVMSKB;
       break;
+    case GSBI_IX86_BUILTIN_PMOVMSKB128:
+      *iopc = INTRN_PMOVMSKB128;
+      break;
     case GSBI_IX86_BUILTIN_ADDPS:
       *iopc = INTRN_ADDPS;
       break;

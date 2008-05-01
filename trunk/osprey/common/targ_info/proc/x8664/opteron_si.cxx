@@ -541,7 +541,6 @@ int main (int argc, char *argv[])
 		    TOP_ld64_2m_n32,
 		    TOP_ld32_gs_seg_off,
 		    TOP_ld64_fs_seg_off,
-		    TOP_pmovmskb,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(3);
@@ -1042,6 +1041,7 @@ int main (int argc, char *argv[])
 		     TOP_cvttsd2si,
 		     TOP_cvttss2siq,
 		     TOP_cvttsd2siq,
+                     TOP_pmovmskb128,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
@@ -1816,6 +1816,7 @@ int main (int argc, char *argv[])
   Instruction_Group("mov-mmx-2-int",
                     TOP_movm_2i32,
                     TOP_movm_2i64,
+		    TOP_pmovmskb,
                     TOP_UNDEFINED);
   Any_Result_Available_Time(4);
   Resource_Requirement(res_issue, 0);
