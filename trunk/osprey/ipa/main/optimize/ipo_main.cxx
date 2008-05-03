@@ -835,7 +835,7 @@ Delete_Proc (IPA_NODE *node)
     node->Un_Read_PU();
     /* Free the mmaped memory if all PUs in the file are released */
     if (node->File_Header().num_written == IP_FILE_HDR_num_procs(node->File_Header()))
-      WN_free_input(IP_FILE_HDR_input_map_addr(node->File_Header()), node->File_Header().mapped_size);
+      Destroy_File_Header(node->File_Header());
 
 } // Delete_Proc
 

@@ -381,8 +381,6 @@ void free_pu_cg_resources(PU_Info* pu, Vector& file_hdr_list)
 	node->Mod_Ref_Info ()->Free_Ref_Sets ();
     MEM_POOL_Delete(node->Mem_Pool());
     node->File_Header().num_written++;
-    if (node->File_Header().num_written == IP_FILE_HDR_num_procs(node->File_Header()))
-      WN_free_input(IP_FILE_HDR_input_map_addr(node->File_Header()), node->File_Header().mapped_size);
     node->Clear_Mempool_Initialized();
     node->Set_Processed();
   }

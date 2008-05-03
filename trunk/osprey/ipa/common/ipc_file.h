@@ -105,6 +105,7 @@ class SECTION_FILE_ANNOT;
 
 // Flags for IP_FILE_HDR
 #define FILE_HAS_NESTED_PU	0x00000001	// File contains nested PU
+#define FILE_INSIDE_ARCHIVE 0x00000002  // File is contained in archive
 
 struct IP_FILE_HDR
 {
@@ -345,6 +346,16 @@ IP_FILE_HDR_section_annot (const IP_FILE_HDR& hdr) {
 inline void
 Set_IP_FILE_HDR_section_annot (IP_FILE_HDR& hdr, SECTION_FILE_ANNOT* annot) {
     hdr.section_annot = annot;
+}
+
+inline BOOL
+IP_FILE_HDR_inside_archive (IP_FILE_HDR& hdr) {
+    return (hdr.flags & FILE_INSIDE_ARCHIVE);
+}
+
+inline void
+Set_IP_FILE_HDR_inside_Archive (IP_FILE_HDR& hdr) {
+    hdr.flags |= FILE_INSIDE_ARCHIVE;
 }
 
 inline BOOL

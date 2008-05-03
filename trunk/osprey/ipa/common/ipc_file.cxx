@@ -110,6 +110,10 @@ UINT32 IP_FILE_HDR_PUs_in_state(const IP_FILE_HDR& hdr, IPA_STATE_TYPE state)
   return std::count_if(first, last, proc_info_state_is(state));
 }
 
+#ifdef OSP_OPT
+extern void WN_free_input (void *handle, off_t mapped_size);
+#endif
+
 	/*******************************************************
 		Function: Destroy_File_Header
 
@@ -121,6 +125,16 @@ void Destroy_File_Header(IP_FILE_HDR& hdr)
   Is_True(IP_FILE_HDR_all_procs_processed(hdr),
           ("Can't destroy file hdr %s.  Num procs = %u, processed = %u.",
            hdr.file_name, hdr.num_procs, hdr.num_procs_processed));
+
+#ifdef OSP_OPT
+  // If the file is in archive, the mmaped address should be aligned
+  if (!IP_FILE_HDR_inside_archive(hdr))
+    WN_free_input(IP_FILE_HDR_input_map_addr(hdr), hdr.mapped_size);
+  else {
+    off_t offset = ((long)IP_FILE_HDR_input_map_addr(hdr)) % getpagesize();
+    WN_free_input((char *)IP_FILE_HDR_input_map_addr(hdr) - offset, hdr.mapped_size + offset);
+  }
+#endif
 
   MEM_POOL_Delete(&hdr.mem_pool);
 }
