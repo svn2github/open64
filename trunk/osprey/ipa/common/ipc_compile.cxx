@@ -1112,7 +1112,7 @@ void ipacom_doit (const char* ipaa_filename)
 #ifdef KEY
 	       "dir=`pwd`; "	// for calculating feedback prefix
 #endif
-	       "cd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -TENV:object_name=_%s"
+	       "cd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -TENV:object_name=_%s "
 #ifdef KEY
 	       "-Wb,-CG:enable_feedback=on\n\n",  // enable feedback for cg
 #else
