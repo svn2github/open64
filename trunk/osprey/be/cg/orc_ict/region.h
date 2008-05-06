@@ -1686,6 +1686,7 @@ friend class REGION_LOOP_UPDATE;
 friend class REGIONAL_CFG;
 
 friend void Verify_Region_Tree(REGION_TREE *tree,BB *first_bb);
+friend void RGN_Unlink_BB_Edges(BB *bb, REGIONAL_CFG *regional_cfg);
 friend void RGN_Remove_BB_And_Edges(BB *bb, REGIONAL_CFG *regional_cfg);
 typedef mempool_allocator<REGION*>       REGION_ALLOC;
 
