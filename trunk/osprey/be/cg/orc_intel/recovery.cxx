@@ -388,9 +388,8 @@ Do_Build_Recovery_Block(std::list<OP*>& Exec_Path)
             }
         }
         if(on_cascaded_chain){
-            // OSP, if op is load, invalidate it
-            if(OP_load(op)) {
-                Is_True(CGTARG_Is_OP_Speculative_Load(op),("cascaded load is not a speculative load!"));
+            // OSP, if op is speculative load, invalidate it
+            if( CGTARG_Is_OP_Speculative_Load(op) ) {
                 cascaded_loads.push_back(op);
             }
 
