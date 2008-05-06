@@ -158,7 +158,9 @@ BOOL WOVP::Write_once_check(IDTYPE id, BB_LIST_CONTAINER *bb_queue)
             if(cnode->Aux_id()==id){
               if(def_stmt != NULL)
                 return FALSE;
+              // OSP begin - fix for bug #440
               def_stmt = it_stmt;
+              // OSP end - fix for bug #440
             }
           }
         }
