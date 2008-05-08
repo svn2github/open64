@@ -5432,7 +5432,7 @@ static void namelist_static_dv_whole_def(opnd_type         *l_opnd,
 
    CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
    TYP_TYPE(TYP_WORK_IDX)	= Typeless;
-#ifdef TARG_X8664
+#if defined (TARG_X8664) && defined (_HOST64)
    // OSP_TODO, need to be re-checked
    TYP_BIT_LEN(TYP_WORK_IDX)    = (num_words - words_in_address) *
 	                          ((SET_POINTER_SIZE) ? 64 : 32);
