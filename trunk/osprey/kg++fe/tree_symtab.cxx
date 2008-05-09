@@ -1555,15 +1555,27 @@ Create_ST_For_Tree (tree decl_node)
 #endif
 
   if (DECL_SECTION_NAME (decl_node)) {
-    DevWarn ("section %s specified for %s",
-             TREE_STRING_POINTER (DECL_SECTION_NAME (decl_node)),
-             ST_name (st));
-    if (TREE_CODE (decl_node) == FUNCTION_DECL)
-      level = GLOBAL_SYMTAB;
-    ST_ATTR_IDX st_attr_idx;
-    ST_ATTR&    st_attr = New_ST_ATTR (level, st_attr_idx);
-    ST_ATTR_Init (st_attr, ST_st_idx (st), ST_ATTR_SECTION_NAME,
-                  Save_Str (TREE_STRING_POINTER (DECL_SECTION_NAME (decl_node))));
+    if (strncmp(TREE_STRING_POINTER (DECL_SECTION_NAME (decl_node)),
+                ".gnu.linkonce.",
+                14) != 0 ) {
+      // OSP, only handle non-.gnu.linkonce.* section name
+      DevWarn ("section %s specified for %s",
+               TREE_STRING_POINTER (DECL_SECTION_NAME (decl_node)),
+               ST_name (st));
+      if (TREE_CODE (decl_node) == FUNCTION_DECL)
+        level = GLOBAL_SYMTAB;
+      ST_ATTR_IDX st_attr_idx;
+      ST_ATTR&    st_attr = New_ST_ATTR (level, st_attr_idx);
+      ST_ATTR_Init (st_attr, ST_st_idx (st), ST_ATTR_SECTION_NAME,
+                    Save_Str (TREE_STRING_POINTER (DECL_SECTION_NAME (decl_node))));
+      Set_ST_has_named_section (st);
+    }
+    else {
+      // OSP. Ignore .gnu.linkonce.* section name
+      DevWarn ("Ignore %s specified for %s",
+               TREE_STRING_POINTER (DECL_SECTION_NAME (decl_node)),
+               ST_name (st));
+    }
   }
 /*
   if (DECL_SYSCALL_LINKAGE (decl_node)) {
