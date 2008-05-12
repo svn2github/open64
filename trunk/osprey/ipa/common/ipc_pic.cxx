@@ -61,14 +61,15 @@ static void Get_IPA_Object_Name(){
   while (*bname == '/')
     bname++;
 
-  IPA_Object_Name = (char *) malloc (strlen(bname) + 1);
+  char *new_name = (char *) alloca (strlen(bname) + 1);
 
   int i;
   for(i=0; bname[i] != '\0'; i++) {
-    if ( bname[i] == '-' ) IPA_Object_Name[i] = '_';
-    else IPA_Object_Name[i] = bname[i];
+    if ( bname[i] == '-' ) new_name[i] = '_';
+    else new_name[i] = bname[i];
   }
-  IPA_Object_Name[i] = '\0';
+  new_name[i] = '\0';
+  IPA_Object_Name = Index_To_Str(Save_Str(new_name));
 }
 
 // returns a unique name, used for promoting static variables to globals
