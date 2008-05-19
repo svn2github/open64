@@ -1,0 +1,679 @@
+Change Log for Open64 4.2
+========================================================================
+
+Open64 4.2 is based on Open64 4.1 and merged with Pathscale Compiler v3.1
+with the following enhancements and bug fixes:
+
+------------------------------------------------------------------------
+r1537 | laijx | 2008-05-17 12:34:43 +0800 (Sat, 17 May 2008) | 2 lines
+
+Revert rev 1528 because it makes 447.dealII failed again at -O3 -ipa.
+The failed unittest caused by the enhancement should be investigated later
+
+------------------------------------------------------------------------
+r1536 | dehao | 2008-05-15 10:01:24 +0800 (Thu, 15 May 2008) | 3 lines
+
+In ipa_link, pass the "-soname=xxx" to the real linker.
+
+------------------------------------------------------------------------
+r1535 | dehao | 2008-05-14 10:48:04 +0800 (Wed, 14 May 2008) | 3 lines
+
+Revert r1533, which will break the ipa compiler
+
+------------------------------------------------------------------------
+r1534 | laijx | 2008-05-12 21:55:20 +0800 (Mon, 12 May 2008) | 2 lines
+
+Fix a typo in igls. This fix comes from Pathscale 3.2 beta.
+
+------------------------------------------------------------------------
+r1533 | dehao | 2008-05-12 21:09:50 +0800 (Mon, 12 May 2008) | 3 lines
+
+Change the way we to allocate space for IPA_Object_Name, in order to avoid 
+the memory leak of the memory attribute to IPA_Object_Name.
+
+------------------------------------------------------------------------
+r1532 | laijx | 2008-05-09 16:01:37 +0800 (Fri, 09 May 2008) | 2 lines
+
+Ignore .gnu.linkonce.* in both gnu3 and gnu4 FE.
+This fix is an enhancement to rev 1487
+------------------------------------------------------------------------
+r1531 | laijx | 2008-05-09 15:22:40 +0800 (Fri, 09 May 2008) | 1 line
+
+Add -lm to non-C program in static linking
+------------------------------------------------------------------------
+r1530 | dehao | 2008-05-08 19:38:55 +0800 (Thu, 08 May 2008) | 3 lines
+
+Add -DOSP_OPT to the cygnus ld.
+
+------------------------------------------------------------------------
+r1529 | laijx | 2008-05-08 16:57:00 +0800 (Thu, 08 May 2008) | 3 lines
+
+Re-patch rev 1451. The previous patch can only be applied to 64-bit
+compiler on x86_64.
+
+------------------------------------------------------------------------
+r1528 | tianwei | 2008-05-08 11:48:57 +0800 (Thu, 08 May 2008) | 4 lines
+
+revert back the vho lowering enhancement previously done. now the code is 
+same as pathscale's code.
+problem: once this enhancement is done for the performance improvement for 
+eon on ia64 long time ago, but                                                     
+it will bring a lot of unittest failed.
+
+------------------------------------------------------------------------
+r1527 | jianian.yan | 2008-05-06 15:11:14 +0800 (Tue, 06 May 2008) | 2 lines
+
+Check in bug fix notation.
+
+------------------------------------------------------------------------
+r1526 | laijx | 2008-05-06 10:06:51 +0800 (Tue, 06 May 2008) | 4 lines
+
+Remove the node from the region after its contents are removed.
+Otherwise, there will be an assertion during verifying the region CFG.
+This fix enables bootstrap with '-O2 -DIs_True_On'.
+
+------------------------------------------------------------------------
+r1525 | laijx | 2008-05-06 09:39:49 +0800 (Tue, 06 May 2008) | 3 lines
+
+Fix the regression of 403.gcc caused by rev 1522.
+Only speculative load needs to be invalidated.
+
+------------------------------------------------------------------------
+r1524 | tianwei | 2008-05-05 09:46:40 +0800 (Mon, 05 May 2008) | 3 lines
+
+add a missing space for -TENV:object_name, pathcc won't use object_name 
+any more, need to know why.
+this fix is contributed by David in AMD
+
+------------------------------------------------------------------------
+r1523 | laijx | 2008-05-03 23:42:36 +0800 (Sat, 03 May 2008) | 5 lines
+
+br.call can not reside in the middle multiway branch
+unless all the branches (including call) are predicated with disjoint predidates.
+This fix disable such kind of cases without checking its predidates.
+
+------------------------------------------------------------------------
+r1522 | laijx | 2008-05-03 23:15:15 +0800 (Sat, 03 May 2008) | 8 lines
+
+For this case:
+ld.a r1=[r0]
+ld.s r2=[r1]
+ld.s r3=[r2]
+......
+In the cascaded recovery code, only the first load is invalidated.
+It's wrong. We need to invalidate all related loads using the result of 
+the first advanced load.
+
+------------------------------------------------------------------------
+r1521 | tianwei | 2008-05-03 21:05:12 +0800 (Sat, 03 May 2008) | 2 lines
+
+add another six intrinsic support, mainly just convert xxx128 to xxx.
+
+------------------------------------------------------------------------
+r1520 | dehao | 2008-05-03 10:20:35 +0800 (Sat, 03 May 2008) | 3 lines
+
+Using mmap to load in the archive files if it contains whirl object files.
+
+------------------------------------------------------------------------
+r1519 | tianwei | 2008-05-01 15:06:21 +0800 (Thu, 01 May 2008) | 4 lines
+
+add the support for intrinsic PMOVMSKB128, since it's operand is xmm(float), 
+different from existed PMOVM SKB which need mmx operand,
+so we add a new top code for it.
+Reviewd by Fred.
+
+------------------------------------------------------------------------
+r1517 | dehao | 2008-04-21 09:59:23 +0800 (Mon, 21 Apr 2008) | 3 lines
+
+Add comment for r1516.
+
+------------------------------------------------------------------------
+r1516 | dehao | 2008-04-20 22:32:32 +0800 (Sun, 20 Apr 2008) | 2 lines
+
+Fix Bug OSP#438
+
+------------------------------------------------------------------------
+r1515 | hucheng | 2008-04-18 00:05:47 +0800 (Fri, 18 Apr 2008) | 3 lines
+
+  Fix the bug of 410.bwaves under -O3 -ipa.
+  Restrict the backward scheduling on IA64
+
+------------------------------------------------------------------------
+r1514 | tianwei | 2008-04-17 10:05:18 +0800 (Thu, 17 Apr 2008) | 2 lines
+
+checkin pathscale's fix for this problem, thanks for Fred.
+
+------------------------------------------------------------------------
+r1513 | tianwei | 2008-04-17 09:37:00 +0800 (Thu, 17 Apr 2008) | 2 lines
+
+turn off the type alias for IA64 again. now it's well tested. and only h264 
+failed at -O2 and -O3.
+
+------------------------------------------------------------------------
+r1512 | jianian.yan | 2008-04-16 09:55:10 +0800 (Wed, 16 Apr 2008) | 2 lines
+
+Fix the bootstrap bug, which fails 483@2K6. Also check in Malin's fix.
+
+------------------------------------------------------------------------
+r1511 | laijx | 2008-04-14 18:15:39 +0800 (Mon, 14 Apr 2008) | 1 line
+
+disable or enable GNU FE exceptions when -fexception or -fno-exception is set
+------------------------------------------------------------------------
+r1510 | tianwei | 2008-04-14 10:44:54 +0800 (Mon, 14 Apr 2008) | 2 lines
+
+fix a stupid error, and checkin this again.
+
+------------------------------------------------------------------------
+r1509 | shiyao | 2008-04-14 04:19:10 +0800 (Mon, 14 Apr 2008) | 3 lines
+
+Remove old type merge phase and rename some variables and functions by 
+removing "new" in names.
+
+------------------------------------------------------------------------
+r1508 | tianwei | 2008-04-14 00:00:54 +0800 (Mon, 14 Apr 2008) | 2 lines
+
+this fix break the bootstrap compiler, I will refine this fix later, now 
+revert it and make the nightly testly work
+
+------------------------------------------------------------------------
+r1507 | tianwei | 2008-04-11 19:24:37 +0800 (Fri, 11 Apr 2008) | 4 lines
+
+1. add some comment for the OPTIONS
+2. revert to turn on the type alias, the testing result shows that if we 
+turn off the type alias, many program failed. it's totally unreasonable,
+we will check that offline, before that, turn on that again.
+
+------------------------------------------------------------------------
+r1506 | laijx | 2008-04-11 18:28:10 +0800 (Fri, 11 Apr 2008) | 4 lines
+
+Fix the RE for this case:
+string foo() { ... }
+void bar() { string * p = new string( foo() ); }
+
+------------------------------------------------------------------------
+r1505 | tianwei | 2008-04-11 16:08:43 +0800 (Fri, 11 Apr 2008) | 2 lines
+
+workaround the problem of the unsafe deletion  CVT, pathscale will give 
+a better solution later
+
+------------------------------------------------------------------------
+r1504 | laijx | 2008-04-11 10:35:35 +0800 (Fri, 11 Apr 2008) | 2 lines
+
+Remove the unnamed namespace to avoid the errors from GCC 4.1.x and above:
+/usr/bin/ld: ipl_main.o: @gprel relocation against dynamic symbol Phi_To_Idx_Map
+
+------------------------------------------------------------------------
+r1503 | tianwei | 2008-04-10 13:04:08 +0800 (Thu, 10 Apr 2008) | 2 lines
+
+ignore the three gcc related flag
+
+------------------------------------------------------------------------
+r1502 | tianwei | 2008-04-10 11:27:25 +0800 (Thu, 10 Apr 2008) | 4 lines
+
+add five gnu built_in support, and did some workaround to prevent the 
+optimiztion to delete the special CVTL.
+FIX ME will refine that if there're any futher problem.
+
+------------------------------------------------------------------------
+r1501 | tianwei | 2008-04-10 11:17:37 +0800 (Thu, 10 Apr 2008) | 2 lines
+
+change the type alias to false by default on IA64 as X86.
+
+------------------------------------------------------------------------
+r1498 | dehao | 2008-04-05 10:06:49 +0800 (Sat, 05 Apr 2008) | 4 lines
+
+Change the way ipa_link deals with mixed archive. Instead of opening the 
+fake .o file to read whirl from it, thie fix reads the whirl directly 
+from the archive.
+
+Code reviewed by Sun Chan.
+
+------------------------------------------------------------------------
+r1497 | dehao | 2008-04-04 11:10:13 +0800 (Fri, 04 Apr 2008) | 3 lines
+
+Pass flags "-fno-exceptions" and "-fhandle-exceptions" to pre-processor.
+
+
+------------------------------------------------------------------------
+r1496 | hucheng | 2008-04-03 23:56:46 +0800 (Thu, 03 Apr 2008) | 3 lines
+
+  Using LSHR to simulate RROTATE for 64-bit integer.
+
+------------------------------------------------------------------------
+r1495 | dehao | 2008-04-03 20:08:41 +0800 (Thu, 03 Apr 2008) | 2 lines
+
+Finally fixed... for r1487
+
+------------------------------------------------------------------------
+r1494 | laijx | 2008-04-03 18:26:35 +0800 (Thu, 03 Apr 2008) | 2 lines
+
+Fix the SEGV in ipa_link.
+
+------------------------------------------------------------------------
+r1493 | laijx | 2008-04-03 17:41:18 +0800 (Thu, 03 Apr 2008) | 3 lines
+
+Restore orginal wgen_decl.cxx to make the nightly testing work.
+This file should be modified later.
+
+------------------------------------------------------------------------
+r1492 | laijx | 2008-04-03 15:09:20 +0800 (Thu, 03 Apr 2008) | 3 lines
+
+Enable the FETCH_AND_ADD intrinsics on IA64 and x8664
+__sync_fetch_and_add -> GSBI_BUILT_IN_FETCH_AND_ADD -> 
+INTRN_FETCH_AND_ADD -> Expand to instructions.
+
+------------------------------------------------------------------------
+r1491 | dehao | 2008-04-03 12:24:58 +0800 (Thu, 03 Apr 2008) | 3 lines
+
+A patch to r1487
+
+------------------------------------------------------------------------
+r1490 | hucheng | 2008-04-03 00:36:50 +0800 (Thu, 03 Apr 2008) | 3 lines
+
+  Folding Exp() intrinsic call to sqrt should based on the assumption
+  that the base should be no-negative value.
+
+------------------------------------------------------------------------
+r1489 | carrot | 2008-04-03 00:11:29 +0800 (Thu, 03 Apr 2008) | 1 line
+
+add gcc compatible options
+------------------------------------------------------------------------
+r1487 | dehao | 2008-04-02 13:42:29 +0800 (Wed, 02 Apr 2008) | 6 lines
+
+Fix 3 problems for -shared -ipa build:
+1. Set the flag has_named_section in Wgen correctly
+2. When generating symbol table in ipa, if the symbol is set with 
+   "has_named_section", we shouldn't generate seperate section for this symbol.
+3. In type merging (IPA Cloning), if we merge two symbols, one of which 
+   is set with "has_named_section", the merged symbol should also has 
+   "has_named_section" set.
+
+------------------------------------------------------------------------
+r1486 | laijx | 2008-04-02 10:25:10 +0800 (Wed, 02 Apr 2008) | 1 line
+
+During bundling, Force to start a new cycle for the code in new line 
+to get better debugability with '-g'
+
+------------------------------------------------------------------------
+r1484 | laijx | 2008-03-31 16:00:07 +0800 (Mon, 31 Mar 2008) | 3 lines
+
+Add an instruction 'xadd' to x86_64.
+It can be used for FETCH_AND_ADD on IA32/x86_64.
+
+------------------------------------------------------------------------
+r1483 | ributzka | 2008-03-25 12:22:25 +0800 (Tue, 25 Mar 2008) | 2 lines
+
+Misc. cleanup
+
+------------------------------------------------------------------------
+r1482 | dehao | 2008-03-22 12:37:42 +0800 (Sat, 22 Mar 2008) | 2 lines
+
+A patch to r1480
+
+------------------------------------------------------------------------
+r1481 | zx | 2008-03-22 12:09:44 +0800 (Sat, 22 Mar 2008) | 3 lines
+
+Each REGION_EXIT appears both in REGION EXITS block and region body;
+Only REGION_EXIT in region body shoule be handled as goto.
+
+------------------------------------------------------------------------
+r1480 | dehao | 2008-03-21 16:01:27 +0800 (Fri, 21 Mar 2008) | 2 lines
+
+Fix the bug introduced by r1477, which will introduce "Error: attempt 
+to move .org backwards" for C++ programs in IA64
+
+------------------------------------------------------------------------
+r1479 | ributzka | 2008-03-21 02:02:22 +0800 (Fri, 21 Mar 2008) | 2 lines
+
+Add tracing for 'Loop Normalization' and 'Boolean Simplification'.
+
+------------------------------------------------------------------------
+r1478 | hucheng | 2008-03-20 17:01:39 +0800 (Thu, 20 Mar 2008) | 2 lines
+
+  Fix the merge issue.
+
+------------------------------------------------------------------------
+r1477 | hucheng | 2008-03-20 16:59:59 +0800 (Thu, 20 Mar 2008) | 6 lines
+
+ Build ipa_link with -O0, I suggest to build it in targia* directory.
+ Check in the workaround to find out the right path needed by ipa_link,
+ with "gcc -print-file-name=*.so". Note that it's done only after
+ normal path selection failed.
+
+------------------------------------------------------------------------
+r1475 | dehao | 2008-03-19 12:55:09 +0800 (Wed, 19 Mar 2008) | 2 lines
+
+Last check in contains some modified files which should not be checked 
+in... revert those changes.
+
+------------------------------------------------------------------------
+r1474 | dehao | 2008-03-19 11:42:20 +0800 (Wed, 19 Mar 2008) | 3 lines
+
+This fix added support to -shared with ipa. Set unique names to the 
+symbols in different .so files.
+
+------------------------------------------------------------------------
+r1473 | laijx | 2008-03-19 10:58:58 +0800 (Wed, 19 Mar 2008) | 1 line
+
+missing a comma. sorry for my careless.
+
+------------------------------------------------------------------------
+r1472 | laijx | 2008-03-18 15:23:01 +0800 (Tue, 18 Mar 2008) | 1 line
+
+correct the tree code class for CONSTRUCTOR andd COMPLEX_EXPR
+
+------------------------------------------------------------------------
+r1471 | laijx | 2008-03-17 16:32:18 +0800 (Mon, 17 Mar 2008) | 2 lines
+
+Fix a mempool related problem in wopt.
+The BB_LIST is allocated on _loc_pool and it's already freed at another place
+
+------------------------------------------------------------------------
+r1470 | dehao | 2008-03-17 16:15:39 +0800 (Mon, 17 Mar 2008) | 3 lines
+
+Set VHO_Struct_Limit to 8 for IA64
+
+------------------------------------------------------------------------
+r1469 | dehao | 2008-03-17 16:09:12 +0800 (Mon, 17 Mar 2008) | 2 lines
+
+Fix the bug which is originated for bug #397, and is fixed by 
+Jianxin @ r1235. However, the 4.2 merge commented a checking condition out.
+
+------------------------------------------------------------------------
+r1468 | dehao | 2008-03-15 16:23:28 +0800 (Sat, 15 Mar 2008) | 7 lines
+
+This check in is about IPA scalability, which includes:
+1. Fix several memory leak bugs.
+2. In ipa, release the memory of an IPA_NODE once it's not written back to disk.
+3. In ipa, release the mmap memory once all PUs in the mmapped file are 
+   written back to disk.
+
+Code reviewed by Sun Chan.
+
+------------------------------------------------------------------------
+r1467 | hucheng | 2008-03-14 15:19:12 +0800 (Fri, 14 Mar 2008) | 2 lines
+
+  Check in the whirl2c improvements. Most of them are done by Mengru.
+
+------------------------------------------------------------------------
+r1466 | dehao | 2008-03-14 11:09:07 +0800 (Fri, 14 Mar 2008) | 2 lines
+
+When we set thunk function to weak, we have to make sure that the function 
+is not a LOCAL and LOCAL_INTERNAL symbol.
+
+------------------------------------------------------------------------
+r1465 | laijx | 2008-03-13 16:11:21 +0800 (Thu, 13 Mar 2008) | 1 line
+
+Remove an unnecessary assertion from previous check-in memory.c
+------------------------------------------------------------------------
+r1464 | laijx | 2008-03-13 16:07:24 +0800 (Thu, 13 Mar 2008) | 1 line
+
+Make sure purify_pools is initialized before it's used
+------------------------------------------------------------------------
+r1463 | laijx | 2008-03-12 14:05:32 +0800 (Wed, 12 Mar 2008) | 2 lines
+
+Expand MAX/MIN to a temp reg if the target tn is return tn on anyx86 
+because it may be expanded to several BBs and the return tn will be 
+replaced wrongly by Localize_Global_Return_Reg_Def() later.
+Enable O0 bootstrap on IA32 (-march=anyx86)
+
+------------------------------------------------------------------------
+r1462 | laijx | 2008-03-11 20:53:02 +0800 (Tue, 11 Mar 2008) | 1 line
+
+Fix several typo in previous NEW_INITIALIZER patch and enable it in wgen by default
+
+------------------------------------------------------------------------
+r1461 | dehao | 2008-03-11 10:44:48 +0800 (Tue, 11 Mar 2008) | 2 lines
+
+Add the overload function operator!= to mempool_allocator, so that gcc4.2 
+can be used to build open64
+
+------------------------------------------------------------------------
+r1460 | laijx | 2008-03-11 10:02:13 +0800 (Tue, 11 Mar 2008) | 1 line
+
+increase the alignment size of aggregate to 16 byte
+------------------------------------------------------------------------
+r1456 | hucheng | 2008-03-06 19:51:47 +0800 (Thu, 06 Mar 2008) | 2 lines
+
+  Re-organize the logic of export scope setting of ST.
+
+------------------------------------------------------------------------
+r1455 | dehao | 2008-03-05 11:20:01 +0800 (Wed, 05 Mar 2008) | 5 lines
+
+If a function is marked as
+__attribute__ ((weak))
+This function should not be marked as "EXPORT_PROTECTED" because it can 
+be preempted by other extern functions with the same name.
+
+------------------------------------------------------------------------
+r1454 | dehao | 2008-03-03 22:01:04 +0800 (Mon, 03 Mar 2008) | 3 lines
+
+Set UINT log2(UINT) to file static because it is only used in exp_divrem.cxx
+
+------------------------------------------------------------------------
+r1453 | laijx | 2008-03-03 20:55:40 +0800 (Mon, 03 Mar 2008) | 1 line
+
+cgm_result is not initialized. If there are some errors and lib.cat is 
+not found, the program will crash
+
+------------------------------------------------------------------------
+r1452 | dehao | 2008-03-03 14:45:55 +0800 (Mon, 03 Mar 2008) | 3 lines
+
+Fix the ipa compile time bug to make sure "-rpath-link", "-whole-archive", 
+"-no-whole-archive" are passed to linker.
+
+------------------------------------------------------------------------
+r1451 | laijx | 2008-03-03 10:22:28 +0800 (Mon, 03 Mar 2008) | 3 lines
+
+Fix the bug in 64-bit compiler on x86_64 with flag '-m32':
+The length of initial data of DV exceeds the object's size.
+
+------------------------------------------------------------------------
+r1450 | shiyao | 2008-03-02 02:46:26 +0800 (Sun, 02 Mar 2008) | 7 lines
+
+For the stmt below, GCC gets different results on X8664 and IA64.
+    long a = -2; int b = 32;
+    a |= (1 << b);    // GCC on IA64, a == -2; GCC on X8664, a == -1
+On X8664, the compiler may regard 1 and (1 << b) as signed integer (same 
+type as b) so that it gets the result -1.
+To avoid the ambiguous stmt, we should force the number 1 be long integer 
+in all this function, i.e. 1L.
+
+------------------------------------------------------------------------
+r1449 | hucheng | 2008-02-29 21:48:55 +0800 (Fri, 29 Feb 2008) | 2 lines
+
+  Change to use the immediate form of andcm.
+
+------------------------------------------------------------------------
+r1448 | hucheng | 2008-02-29 21:09:06 +0800 (Fri, 29 Feb 2008) | 2 lines
+
+  Fix for bug 433 that open64 cannot support __builtin_ctzl.
+
+------------------------------------------------------------------------
+r1447 | laijx | 2008-02-29 15:42:20 +0800 (Fri, 29 Feb 2008) | 4 lines
+
+Fix the wgen's bug about iterating the STATEMENT_LIST wrongly for GNU 4.2.
+In GNU 4.0 FE, the STATEMENT_LIST is a list and can be iterated by its operand.
+But in GNU 4.2 FE, it's an array.
+
+------------------------------------------------------------------------
+r1446 | hucheng | 2008-02-29 15:28:40 +0800 (Fri, 29 Feb 2008) | 2 lines
+
+  Fixed the overlaped FLAG defintion for OP.
+
+------------------------------------------------------------------------
+r1445 | dehao | 2008-02-29 10:53:24 +0800 (Fri, 29 Feb 2008) | 3 lines
+
+remove the unnecessary header files included, which will include a wrong 
+system header file and lead to bootstrap problem.
+
+------------------------------------------------------------------------
+r1444 | laijx | 2008-02-28 21:30:06 +0800 (Thu, 28 Feb 2008) | 1 line
+
+Fix a merge bug in GRA, which may cause the GRA to spill the branch 
+registers and generate some lousy code
+
+------------------------------------------------------------------------
+r1443 | dehao | 2008-02-28 11:15:46 +0800 (Thu, 28 Feb 2008) | 3 lines
+
+Fix the merge bug of the fix r1370
+
+------------------------------------------------------------------------
+r1442 | dehao | 2008-02-28 10:06:58 +0800 (Thu, 28 Feb 2008) | 3 lines
+
+Fix the bug when inlined assembly returns 64bit value in 32bit x86. The 
+return value will be saved into two registers, both of which should be 
+defined explicitly by the assembly op.
+
+------------------------------------------------------------------------
+r1441 | hucheng | 2008-02-27 16:18:47 +0800 (Wed, 27 Feb 2008) | 2 lines
+
+  Ignore the gcc related option -femit-class-debug-always and -ftree-vrp
+
+------------------------------------------------------------------------
+r1440 | hucheng | 2008-02-27 16:12:31 +0800 (Wed, 27 Feb 2008) | 2 lines
+
+  Fix the merge issue which generating error dwarf section data, such as 
+eh_frame section.
+
+------------------------------------------------------------------------
+r1439 | laijx | 2008-02-27 11:00:18 +0800 (Wed, 27 Feb 2008) | 15 lines
+
+Merge the fix to bug 397 and 420:
+When initialize a array of struct, in original implementation, there is a
+temporary symbol used to construct the structs, then the temporary object is
+copied to destination bit-wised.
+In the new implementation, in order to avoid generating the temporary symbol,
+we pass the address of the distination to the Aggreagte_XXX functions to
+complete the construction. The second bit-wised copy is unnecessary at all.
+
+There is a macro NEW_INITIALIZER in the patch to reserve original code. By
+default, this patch is disabled. If you want to enable it, please remove the
+'#' before the 'HOSTDEFS += -DNEW_INITIALIZER' in osprey/wgen/Makefile.gbase and
+osprey/kg++fe/Makefile.gbase. This patch should be enabled and all original
+code should be removed later.
+
+------------------------------------------------------------------------
+r1438 | dehao | 2008-02-25 18:47:20 +0800 (Mon, 25 Feb 2008) | 3 lines
+
+When return by struct and the struct size is zero, we shouldn't return it 
+via the first arg.
+
+------------------------------------------------------------------------
+r1437 | hucheng | 2008-02-25 16:31:34 +0800 (Mon, 25 Feb 2008) | 2 lines
+
+  Fix the bug when setting double const to TCON, bug of 464.h264ref when -gnu3
+
+------------------------------------------------------------------------
+r1436 | shiyao | 2008-02-25 15:24:36 +0800 (Mon, 25 Feb 2008) | 5 lines
+
+For mfef95 compilation on X8664
+(1) add TARG_X8664 in cwh_defines.h
+(2) let libf90sgi.a link _pow??.c like that on IA64
+
+------------------------------------------------------------------------
+r1435 | laijx | 2008-02-25 13:03:03 +0800 (Mon, 25 Feb 2008) | 1 line
+
+Re-fix #426 in bugzilla for IA64, always mark Caller_GP_TN to be global
+------------------------------------------------------------------------
+r1434 | chuntao | 2008-02-25 12:57:52 +0800 (Mon, 25 Feb 2008) | 6 lines
+
+fix of bug 432, which occurs when compiling 481.wrf on x8664 with -O3
+This is a bug exposed by previous bug fix, which removes linux/mfef95_include/stdarg.h
+The compiler passes three arguments to a function which is supposed to 
+accept four arguments in its va_list.
+Adding the fourth argument to the list solves the problem.
+
+------------------------------------------------------------------------
+r1429 | hucheng | 2008-02-23 18:05:29 +0800 (Sat, 23 Feb 2008) | 2 lines
+
+  Fix the impertinent merge.
+
+------------------------------------------------------------------------
+r1428 | tianwei | 2008-02-22 19:16:43 +0800 (Fri, 22 Feb 2008) | 2 lines
+
+fix the merge error for IEEE arithmetic relax for IA64, this caused the 
+VE error for 416.gamess
+
+------------------------------------------------------------------------
+r1427 | hucheng | 2008-02-22 15:33:28 +0800 (Fri, 22 Feb 2008) | 2 lines
+
+  Remove the redundant PU_IS_MALLOC flag.
+
+------------------------------------------------------------------------
+r1426 | laijx | 2008-02-22 12:44:45 +0800 (Fri, 22 Feb 2008) | 2 lines
+
+Modify the wrong template parameters for std::map to make it compatible 
+with libstdc++ in GCC 4.0.x
+
+------------------------------------------------------------------------
+r1425 | laijx | 2008-02-22 11:18:16 +0800 (Fri, 22 Feb 2008) | 1 line
+
+Revert rev 1385, it may cause LRA assertion for some C++ cases
+------------------------------------------------------------------------
+r1424 | hucheng | 2008-02-22 10:03:53 +0800 (Fri, 22 Feb 2008) | 2 lines
+
+  Fix the merge error pointed by Sun Chan.
+
+------------------------------------------------------------------------
+r1423 | laijx | 2008-02-18 15:01:16 +0800 (Mon, 18 Feb 2008) | 1 line
+
+Correct the -m64/-m32 flag for IA32 and the macro TARG_X8664/TARG_IA64
+------------------------------------------------------------------------
+r1422 | laijx | 2008-02-18 12:39:58 +0800 (Mon, 18 Feb 2008) | 1 line
+
+Fix the bug of losing debug info for loops
+------------------------------------------------------------------------
+r1420 | rhundt | 2008-02-07 01:11:09 +0800 (Thu, 07 Feb 2008) | 3 lines
+
+Adopt Pathscale's fix.
+
+------------------------------------------------------------------------
+r1419 | rhundt | 2008-02-06 07:46:09 +0800 (Wed, 06 Feb 2008) | 5 lines
+
+Fix a nice little buffer overflow problem for longer paths. How did
+this one get in here? I hope there aren't many more of this kind.
+-- Robert
+
+------------------------------------------------------------------------
+r1418 | laijx | 2008-02-03 17:22:47 +0800 (Sun, 03 Feb 2008) | 1 line
+
+Remove the wrong leading '\' from the first line
+------------------------------------------------------------------------
+r1417 | laijx | 2008-01-31 00:09:36 +0800 (Thu, 31 Jan 2008) | 1 line
+
+Add missing MIPSEL macro and )
+------------------------------------------------------------------------
+r1416 | hucheng | 2008-01-28 14:13:33 +0800 (Mon, 28 Jan 2008) | 2 lines
+
+  For building mfef95 on 64-bit system.
+
+------------------------------------------------------------------------
+r1415 | hucheng | 2008-01-28 14:10:29 +0800 (Mon, 28 Jan 2008) | 2 lines
+
+  Add the -lmv when linking
+
+------------------------------------------------------------------------
+r1414 | hucheng | 2008-01-28 13:59:18 +0800 (Mon, 28 Jan 2008) | 2 lines
+
+  Fix the bug when expanding div-rem operation, see the bug "Signal 
+Floating point exception" when building 458 in spec2k6.
+
+------------------------------------------------------------------------
+r1413 | shiyao | 2008-01-25 14:45:04 +0800 (Fri, 25 Jan 2008) | 3 lines
+
+Set the flag of main function and let it be no-inline
+
+------------------------------------------------------------------------
+r1412 | jianian.yan | 2008-01-25 11:26:14 +0800 (Fri, 25 Jan 2008) | 3 lines
+
+Disable some type of simplification in FE. Fast exponents lowering will 
+do the same thing.
+
+------------------------------------------------------------------------
+r1411 | laijx | 2008-01-24 17:18:55 +0800 (Thu, 24 Jan 2008) | 4 lines
+
+Replace all files in trunk with the merge branch.
+Now the files in trunk should be the same as in the merge branch
+
+------------------------------------------------------------------------
