@@ -1,3 +1,9 @@
+README.Pro64.src
+-----------------------------------------------------------------------
+NOTICE: This is the README.src file for SGI Pro64(TM) compiler.
+        SGI Pro64 compiler is the ancestor of the Open64 compiler.
+-----------------------------------------------------------------------
+
 This document contains information about installing and building
 the SGI Pro64 compiler source release.
 
