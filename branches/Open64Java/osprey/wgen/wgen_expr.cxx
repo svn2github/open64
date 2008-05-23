@@ -1799,10 +1799,26 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
     break;
 
 #ifdef KEY
-    case GS_COMPOUND_EXPR:
-    // TODO: Implement. add by ykq
-    DevWarn("NYI: COMPOUND_EXPR");
-    wn = NULL;
+    case GS_COMPOUND_EXPR:		//czw
+    { 
+    gs_t var = gs_tree_operand(lhs, 1);
+	while(gs_tree_code(var) != GS_VAR_DECL)
+		var = gs_tree_operand(var, 1);
+	
+	WGEN_Expand_Stmt(lhs);
+	wn = WGEN_Lhs_Of_Modify_Expr(assign_code,
+		       var,
+		       lhs_retval,
+		       need_result,
+		       component_ty_idx, 
+		       component_offset,
+		       field_id,
+		       is_bit_field,
+		       rhs_wn,
+		       rhs_preg_num,
+		       is_realpart,
+		       is_imagpart);
+    }
     break;
   case GS_FILTER_EXPR:
     // TODO: Implement.
@@ -3488,6 +3504,29 @@ gs_t first_in_compound_expr(gs_t node)
 extern BOOL processing_function_prototype;
 #endif
 
+bool findexit(gs_t body, gs_t& exit_node)				//for java loop_expr management		//czw
+{
+	static gs_t first = 0;
+	if(gs_tree_code(body) == GS_COMPOUND_EXPR)
+	{
+		findexit(gs_tree_operand(body, 1), exit_node);
+		return findexit(gs_tree_operand(body, 0), exit_node);
+	}
+	if(gs_tree_code(body) == GS_BIND_EXPR)
+	{
+		if(first == 0)
+			first = body;
+	}
+	if(gs_tree_code(body) == GS_EXIT_EXPR)
+	{
+		if(first == 0)
+			first = body;
+		exit_node = body;
+	}
+	bool ret = first == 0? false: gs_tree_code(first) == GS_EXIT_EXPR;
+	first = 0;
+	return ret;
+}
 WN * 
 WGEN_Expand_Expr (gs_t exp,
 		  bool need_result,
@@ -3954,10 +3993,10 @@ WGEN_Expand_Expr (gs_t exp,
 	ty_idx = Get_TY (gs_tree_type(exp));
 	TYPE_ID mtyp = TY_mtype(ty_idx);
 	mtyp = (mtyp == MTYPE_V || mtyp == MTYPE_M) ? MTYPE_I4 : Widen_Mtype(mtyp);
-       // if(!lang_java) //ykq
+       // if(!lang_java) //ykq for java long type is 64 bits
         wn = WN_Intconst(mtyp, gs_get_integer_value(exp));
-        //else
-        //wn = WN_Intconst(mtyp, gs_get_integer_value_for_java(exp));
+       // else
+       // wn = WN_Intconst(mtyp, (gs_get_integer_highvalue(exp)<<32|gs_get_integer_value(exp)));
       }
       break;
 
@@ -4725,7 +4764,7 @@ WGEN_Expand_Expr (gs_t exp,
                              TY_size (Get_TY(gs_tree_type(exp))) * 8, wn);
        }
 	//czw {
-	if (key_exceptions  && lang_java &&
+	if (key_exceptions  && lang_java && (code == GS_TRUNC_DIV_EXPR || code == GS_TRUNC_MOD_EXPR) &&
 	    !(in_cleanup))
 	{
 	    if (!inside_eh_region)
@@ -5476,18 +5515,7 @@ WGEN_Expand_Expr (gs_t exp,
 	INT num_handlers = 0;
         INT i;
 	gs_t list;
-	/*arg0 = exp;		//czw {
-	do
-	{
-		arg0 = gs_tree_operand (arg0, 0);
-	}
-	while(gs_tree_code(arg0) == GS_NOP_EXPR);
-	gs_code_t code0 = gs_tree_code (arg0);
-	if(code0 != GS_ADDR_EXPR)
-	{
-		arg0 = gs_tree_operand (exp, 0);
-		code0 = gs_tree_code (arg0);
-	}				//czw }*/
+
 	arg0 = gs_tree_operand (exp, 0);
 	gs_code_t code0 = gs_tree_code (arg0);
 	// KEY:  true if type must be returned in mem
@@ -6857,18 +6885,21 @@ WGEN_Expand_Expr (gs_t exp,
 	else
 	{
 		gs_t body = gs_loop_expr_body(exp);
-		gs_t loop_exit = exp;
-		while(gs_tree_code(loop_exit) != GS_EXIT_EXPR)
-			loop_exit = gs_tree_operand(loop_exit, 0);
-		//WN *loop_test = WGEN_Expand_Expr (gs_tree_operand(loop_exit, 0));
-		WN *loop_test = WN_Relational (OPR_EQ, MTYPE_I4, WGEN_Expand_Expr (gs_tree_operand(loop_exit, 0)), WN_Intconst (MTYPE_I4, 0));		//czw	NOT operation
+		gs_t loop_exit = 0;
+		bool  whiledo = findexit(body, loop_exit);
+		
+		WN *loop_test = loop_exit ? WN_Relational (OPR_EQ, MTYPE_I4,  WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand(loop_exit, 0), Boolean_type), WN_Intconst (MTYPE_I4, 0)) : WN_Intconst (MTYPE_I4, 1);		//czw	NOT operation
 	        WN *loop_body = WN_CreateBlock ();
 	        if (body) {
 	          WGEN_Stmt_Push (loop_body, wgen_stmk_while_body, Get_Srcpos());
 	          wn = WGEN_Expand_Expr (body);
 	          WGEN_Stmt_Pop (wgen_stmk_while_body);
 	        }
-	        WN *loop_stmt = WN_CreateWhileDo (loop_test, loop_body);
+		WN *loop_stmt;
+		if(whiledo)
+	       	loop_stmt = WN_CreateWhileDo (loop_test, loop_body);
+		else
+	       	loop_stmt = WN_CreateDoWhile (loop_test, loop_body);
 	        WGEN_Stmt_Append (loop_stmt, Get_Srcpos());
 	}
       }

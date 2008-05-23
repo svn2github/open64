@@ -942,9 +942,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			fld = New_FLD ();
 			FLD_Init (fld, Save_Str(Get_Name(gs_decl_name(field))), 
 				0, // type
-				gs_get_integer_value(gs_decl_field_offset(field)) +
-				gs_get_integer_value(gs_decl_field_bit_offset(field))
-					/ BITSPERBYTE);
+				/*gs_decl_field_offset(field) == NULL ? 0 : */gs_get_integer_value(gs_decl_field_offset(field)) +
+				/*gs_decl_field_bit_offset(field) == NULL ? 0 : */(gs_get_integer_value(gs_decl_field_bit_offset(field))
+					/ BITSPERBYTE));			//czw 
                         if (gs_decl_name(field) == NULL)
                             Set_FLD_is_anonymous(fld);
 		}

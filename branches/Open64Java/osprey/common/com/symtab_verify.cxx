@@ -501,9 +501,9 @@ ST_Verify_Fields(const ST &s)
     // Property 1a.
     if ( ST_storage_class (*sb) != SCLASS_UNKNOWN) {
 
-      if ( !ST_is_weak_symbol (s) ) {; }
-       // Is_True( ST_storage_class(s) == ST_storage_class(*sb),
-        //         (msg,"storage class, should be identical as based blocks")); ykq
+      if ( !ST_is_weak_symbol (s)) {;}//ykq: necessary?
+       //Is_True( ST_storage_class(s) == ST_storage_class(*sb), 
+        //         (msg,"storage class, should be identical as based blocks")); 
 
     }
     else {
@@ -1034,7 +1034,7 @@ void PU::Verify(UINT) const
 
   if ( PU_has_exc_scopes (*this))
     Is_True( PU_cxx_lang (*this) || PU_java_lang (*this),  //czw
-            (msg, "exception scopes can only be set for a C++ language pu"));
+            (msg, "exception scopes can only be set for a C++ and java language pu"));
 
   Is_True (PU_lexical_level (*this) > 1,
 	   (msg, "Lexical level for pu should be > 1"));

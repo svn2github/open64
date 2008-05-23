@@ -346,6 +346,12 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	     "Perform induction variable optimizations (for options compatibility only, performed by default by Open64)"
 -fno-ivopts ;		ALL	NONE	""
 	     "Don't perform induction variable optimizations (for options compatibility only, ignored by Open64)"
+-fno-store-check  ;  JAVA  f "-fno-store-check"
+         ""
+-fno-bounds-check ;  JAVA  f "-fno-bounds-check"
+         ""
+-fjni ;   JAVA  f  "-fjni"
+    "Option for java JNI call "
 
 % Basic option groups:
 % See opt_actions.c::Process_Ofast if you change the -OPT: item.

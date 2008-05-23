@@ -376,8 +376,6 @@ WGEN_Expand_Function_Body (gs_t decl)
 
   WGEN_Handle_Named_Return_Value(decl);
 
-  //if(lang_cplus)//czw
-  {
   gs_t bind_expr = gs_decl_saved_tree(decl);
 
   for (body = bind_expr; body; body = gs_tree_chain(body))
@@ -385,21 +383,7 @@ WGEN_Expand_Function_Body (gs_t decl)
 
   for (body = bind_expr; body; body = gs_tree_chain(body))
     WGEN_Expand_Stmt(body);
-  }
-  /*
-  if(lang_java)//czw
-  {
-	  gs_t body = gs_decl_saved_tree(decl);
-	  if(gs_tree_code(body) == COMPOUND_EXPR)
-	  	WGEN_Expand_Stmt(compound_expr);
-	  if(gs_tree_code(body) == GS_BLOCK)
-	  {
-		  for (body_expr = gs_subblock(body); body; body = gs_tree_chain(body))
-			Mark_Scopes_And_Labels (body);
-		   
-		  for (body = bind_expr; body; body = gs_tree_chain(body))
-			WGEN_Expand_Stmt(body);
-  }*/
+
 #ifdef KEY
   // Bug 11904: We should attempt to expand any deferred DSTs now,
   // because VLA types may be in terms of a local symbol, which won't
@@ -4086,9 +4070,6 @@ WGEN_Process_Var_Decl (gs_t decl)
       && !DECL_ST(decl)
 #endif
       ) {
-	//czw
-	//if(lang_cplus)
-	{
     if (!gs_decl_weak(decl)
 	|| decl_is_needed_vtable (decl)
 #ifdef KEY
@@ -4102,11 +4083,6 @@ WGEN_Process_Var_Decl (gs_t decl)
       Push_Deferred_Function (decl);
 #endif
     }
-	}
-	if(lang_java)
-	{
-	
-	}
   }
 } /* WGEN_Process_Var_Decl */
 
@@ -4184,7 +4160,7 @@ WGEN_Process_Namespace_Decl (gs_t namespace_decl)
 } /* WGEN_Process_Namespace_Decl */
 extern "C"
 void
-WGEN_Expand_Emitted_Decl()
+WGEN_Expand_Emitted_Decl()			//czw
 {
 	gs_t list;
 	// Catch all the functions that are emitted by g++ that we haven't

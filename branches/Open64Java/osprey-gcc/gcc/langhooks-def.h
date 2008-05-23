@@ -256,7 +256,9 @@ extern tree lhd_make_node (enum tree_code);
 #define LANG_HOOKS_MANGLE_DECL	NULL
 #define LANG_HOOKS_CP_GENERICIZE	NULL
 #define LANG_HOOKS_SIMPLIFY_AGGR_INIT_EXPRS_R	NULL
+//yzm
 #define LANG_HOOKS_JAVA_GENERICIZE	NULL
+//yzm
 #define LANG_HOOKS_JAVA_MANGLE_DECL	NULL
 #endif
 

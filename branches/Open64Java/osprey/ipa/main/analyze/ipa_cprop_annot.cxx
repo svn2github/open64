@@ -1508,7 +1508,13 @@ PU_is_dead (IPA_NODE *node, BOOL *updated)
 {
     IPA_EDGE *e;
     IPA_PRED_ITER pred_iter (node);
+	
+	char* mainstr=node->Name();
+    int length= strlen(mainstr);	
+	if(strcmp(mainstr + length - 36, "4mainEP6JArrayIPN4java4lang6StringEE") == 0)
+		return FALSE;  //ykq 2008-4-15
 
+		
     if (node->Is_Externally_Callable () || 
         node->Summary_Proc()->Is_alt_entry () ||
 	node->Summary_Proc()->Has_alt_entry ())

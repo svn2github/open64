@@ -310,7 +310,7 @@ main ( INT argc, char **argv, char **envp)
 	  list = gs_operand(list, 1);
 	for (; gs_code(list) != EMPTY; list = gs_operand(list, 1)) {
 	  gs_t decl = gs_operand(list, 0);
-	  if (lang_cplus)
+	  if (lang_cplus)		//czw
 	    WGEN_Expand_Top_Level_Decl(decl);
 	  else WGEN_Expand_Decl(decl, TRUE);
 #ifdef KEY
@@ -343,7 +343,7 @@ main ( INT argc, char **argv, char **envp)
 			//}
 		}
 	}*/
-	if(lang_java)
+	if(lang_java)		//czw
 	{
 		WGEN_Expand_Emitted_Decl();
 	}

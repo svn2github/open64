@@ -6463,6 +6463,7 @@ lang_check_failed (const char* file, int line, const char* function)
 #include <ctype.h>
 #include "c-common.h" 
 
+//yzm
 enum language { C, CPP, JAVA };
 enum language language = C;
 #define CPR() (language == CPP)
@@ -7609,7 +7610,7 @@ int processing_global_namespace = 0;
 
 // yzm
 // JAVA: Are we processing the function declaration?
-int processing_function_decls = 0;
+//int processing_function_decls = 0;
 
 // Function prototypes
 gs_t gs_x (tree node);
@@ -7640,7 +7641,9 @@ static gs_t program   = (gs_t) NULL,
 static gs_t program_decls_dot = (gs_t) NULL;
 
 //yzm
+#ifdef KEY
 struct obstack gspin_obstack;
+#endif
 
 void gspin_write (void) 
 {
@@ -7708,10 +7711,12 @@ gspin_init(void)
     language = CPP;
   }
   //yzm
+#ifdef KEY
   //modified to process JAVA files
   else if (strcmp ("GNU Java", lang_hooks.name) == 0) {
 	  language = JAVA;
   }
+#endif
 
   else if (strcmp ("GNU C", lang_hooks.name) == 0) {
     language = C;
@@ -7784,7 +7789,9 @@ gspin_init(void)
 
 //  printf("init obstack!\n");
   //yzm
+#ifdef KEY
   gcc_obstack_init (&gspin_obstack);
+#endif
 
 }
 
@@ -7905,7 +7912,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // "translate_this_func_decl" set, it means this is the proper time
       // to expand this function, and it may now have a function body --
       // whatever is the state of the function_decl, we want to get it now.
-      if ((CPR() || JAVAR()) && translate_this_func_decl)
+      if ((CPR() 
+//yzm
+#ifdef KEY
+	|| JAVAR()
+#endif
+	) && translate_this_func_decl)
         goto REVISIT;
       else if (CR()) {
         // Don't re-translate the function if it was fully translated before.
@@ -8007,24 +8019,20 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
   }
 
   //yzm
+#ifdef KEY
   if (JAVAR() &&
       TREE_CODE(t) == FUNCTION_DECL) {
     if (!DECL_ASSEMBLER_NAME_SET_P(t) &&
 	DECL_CONTEXT (t) != NULL) {
-      //yzm
       SET_DECL_ASSEMBLER_NAME( t, lang_hooks.java_mangle_decl(&gspin_obstack, t) );
     }
     gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASSEMBLER_NAME,
                    gs_x_1(DECL_ASSEMBLER_NAME(t), seq_num));
     _gs_bv(flags, GS_DECL_ASSEMBLER_NAME_SET_P, DECL_ASSEMBLER_NAME_SET_P(t));
-    // Also update some flags. Even if the decl is not defined
-    // in this translation unit, it needs to have the proper flags so that
-    // its scope is correctly set. Updating all possible flags here is
-    // difficult. If we don't see this definition, wgen seems to require
-    // two flags.
     _gs_bv (flags, GS_TREE_PUBLIC, TREE_PUBLIC (t));
     _gs_bv (flags, GS_DECL_WEAK, DECL_WEAK (t));
   }
+#endif
 
   // See if the FUNCTION_DECL should be fully or partially translated.  For
   // bodyless functions such as printf, always translate them fully.  For C++,
@@ -8045,6 +8053,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     } 
 
 	//yzm
+#ifdef KEY
 	//modified to translate JAVA core functions
 	else if (JAVAR()){
 		if(DECL_SAVED_TREE(t))
@@ -8053,6 +8062,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		}
 		//printf("JAVA built-in function!\n");
 	}
+#endif
 	
 	else {				// C++
       if ( // not a bodyless function
@@ -9617,13 +9627,13 @@ gs_x_func_decl (tree t)
   translate_func_decl = 1;	// Translate FUNCTION_DECLs.
 
   //yzm
-  processing_function_decls = 1;
+//  processing_function_decls = 1;
 
   sequence_num++;
 
   //yzm
   gs_t result = gs_x_1(t, sequence_num);
-  processing_function_decls = 0;
+//  processing_function_decls = 0;
   return result;
 //  return gs_x_1(t, sequence_num);
 }

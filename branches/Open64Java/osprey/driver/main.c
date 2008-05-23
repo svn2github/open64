@@ -595,7 +595,7 @@ main (int argc, char *argv[])
 		  (last_phase == P_pixie)) 
 	{
                 /* compile all files to object files, do ld later */
-                last_phase = P_any_as;
+                last_phase = P_any_as;   
                 add_minus_c_option();   /* for .ii file */
 	}
 #endif
@@ -668,15 +668,12 @@ main (int argc, char *argv[])
 #ifdef KEY
 
 //generate jvgenmain
-	if (invoked_lang == L_java && main_method != NULL && (num_files == 0 || remember_last_phase != last_phase) )
+	if (invoked_lang == L_java && main_method != NULL /*&& (num_files == 0 || remember_last_phase != last_phase)*/ )
         {
 		run_jvgenmain();
-	}
-
-	if (invoked_lang == L_java && main_method != NULL && (num_files == 0 || remember_last_phase != last_phase) )
-	{
+		
 		//modify object list
-	        add_object(O_object, get_object_file(generated_main_file));
+	    add_object(O_object, get_object_file(generated_main_file));
 
 		//change first phase
 		first_phase = P_any_fe;

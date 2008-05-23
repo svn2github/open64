@@ -117,7 +117,7 @@ static Dwarf_Error dw_error;
 static BOOL Disable_DST = FALSE;
 static DST_INFO_IDX cu_idx;
 static Elf64_Word cur_text_index;
-static DST_language Dwarf_Language;
+DST_language Dwarf_Language;		//czw   removed static
 //static INT Current_Tree_Level;
 
 /* used as array to hold pointers to enclosing procedure's DIEs */

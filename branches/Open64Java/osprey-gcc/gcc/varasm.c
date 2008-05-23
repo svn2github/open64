@@ -1804,6 +1804,7 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
 
     //yzm
     {
+#ifdef KEY
       if (language == JAVA)
       {
         tree chain = TREE_CHAIN(decl);
@@ -1812,6 +1813,7 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
         TREE_CHAIN(decl) = chain;
       }
       else
+#endif
         gspin_gxx_emits_decl (decl);
     }
   }

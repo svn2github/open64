@@ -2130,6 +2130,7 @@ finish_method (tree fndecl)
       *tp = build2 (COMPOUND_EXPR, TREE_TYPE (*tp), init, *tp);
     }
 
+//yzm
 #ifdef KEY
       /* We genericize later, in tree_rest_of_compilation, so that
 	 we can work on the TREE before gimplification. */

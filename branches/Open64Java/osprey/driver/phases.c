@@ -271,9 +271,11 @@ copy_phase_options (string_list_t *phase_list, phases_t phase)
 #ifdef KEY		
 			// yzm
 			// disable -O* in jc1 and   in jvgenmain
+#ifdef KEY
 			if (!strncmp("-O", get_option_name(iflag),2))
 			  if (phase == P_spin_jc1 || phase == P_jvgenmain)
 			  continue;
+#endif
 
 			// Hack to filter out -OPT: options to spin_cc1,
 			// which takes all front-end options except -OPT:.  Bug
@@ -284,8 +286,12 @@ copy_phase_options (string_list_t *phase_list, phases_t phase)
 			if (gnu_version == 4 &&
 			    !strcmp("-OPT:", get_option_name(iflag))) {
 			  if (phase == P_spin_cc1 ||
-			      phase == P_spin_cc1plus ||
-			      phase == P_spin_jc1)
+			      phase == P_spin_cc1plus 
+//yzm
+#ifdef KEY
+			      || phase == P_spin_jc1
+#endif
+				)
 			    continue;
 			  else if (phase == P_wgen)
 			    matches_phase = TRUE;
@@ -713,11 +719,14 @@ add_file_args (string_list_t *args, phases_t index)
 
         char *jvgenmain_class;
 	char *jvgenmain_file;
-\
+
         //modified by yzm
+#ifdef KEY
         char *delim = ".";
 	char *class_name;
 	char *libpath;
+#endif
+
 
 	/* current_phase is used to say which file might be the last output 
 	 * file and thus might need a local name rather than a tmp name */
@@ -1284,7 +1293,7 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 #endif
 	case P_inline:
-		if (source_kind == S_B) //ykq
+		if (source_kind == S_B) 
 		    sprintf (buf, "-fB,%s", the_file);
 		else
 		    sprintf(buf, "-fB,%s",
@@ -1494,7 +1503,8 @@ add_file_args (string_list_t *args, phases_t index)
 		 * unless there are multiple source files. */
 		if (outfile != NULL
 			&& last_phase == current_phase
-	 		&& !multiple_source_files
+	 		&& !multiple_source_files 
+	 		&& invoked_lang != L_java   // add ykq for enbale -o flag
 #ifndef KEY	// -dsm no longer supported.  Bug 4406.
 			&& !(remember_last_phase == P_any_ld &&
 			         option_was_seen(O_dsm) )
@@ -1984,9 +1994,7 @@ postprocess_ld_args (string_list_t *args)
 }
 #endif
 
-//yzm
-//MAX_PHASE_ORDER will be 11 if we parse JAVA
-#define MAX_PHASE_ORDER 13
+#define MAX_PHASE_ORDER 10
 static phases_t phase_order[MAX_PHASE_ORDER];
 static int phase_order_index = 0;
 
@@ -2124,10 +2132,13 @@ determine_phase_order (void)
 	   }
 #endif
 	}
+//yzm
+#ifdef KEY
     else if (source_lang == L_java)
 	{
 		cpp_phase = P_spin_jc1;
 	}
+#endif
 	
 	else if (source_lang == L_as
 		&& (abi == ABI_I32 || abi == ABI_I64 || abi == ABI_IA32))
@@ -2178,9 +2189,12 @@ determine_phase_order (void)
 		    next_phase = (source_lang == L_CC ? cplus_fe : c_fe);
 		}
 		break;
+//yzm
+#ifdef KEY
 	case S_java:
 		next_phase = P_spin_jc1;
 		break;
+#endif
 	case S_i:
 	case S_ii:
 		if (source_lang == L_f77)
@@ -2273,7 +2287,10 @@ determine_phase_order (void)
 #ifdef KEY
 		case P_spin_cc1:
 		case P_spin_cc1plus:
+//yzm
+#ifdef KEY
 		case P_spin_jc1:
+#endif
 			add_phase(next_phase);
 			next_phase = P_wgen;
 			break;
@@ -2349,10 +2366,13 @@ determine_phase_order (void)
 			add_phase(P_NONE);
 			next_phase = P_NONE;
 			break;
+//yzm
+#ifdef KEY
 		case P_jvgenmain:
 			add_phase(next_phase);
 			next_phase = P_NONE;
 			break;
+#endif
 		case P_NONE:
 			break;
 		default:
@@ -2742,9 +2762,9 @@ run_ld (void)
         if (abi == ABI_N32) {
 	 #ifdef PSC_TO_OPEN64
           //asprintf(&our_path, "%s/" OPEN64_FULL_VERSION "/32", root_prefix); //ykq
-           asprintf(&our_path, "%s/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION, root_prefix);
+           asprintf(&our_path, "%s/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION"/32", root_prefix);
         } else {
-          asprintf(&our_path, "%s/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION, root_prefix);
+          asprintf(&our_path, "%s/" OPEN64_FULL_VERSION, root_prefix);
 	 #endif
         }
 
@@ -2964,7 +2984,9 @@ run_compiler (int argc, char *argv[])
 			    phase_order[i] != P_spin_cc1 &&
 			    phase_order[i] != P_spin_cc1plus &&
 			    //yzm
+#ifdef KEY
 			    phase_order[i] != P_spin_jc1 &&
+#endif
 			    phase_order[i] != P_wgen &&
 #endif
 			    phase_order[i] < P_any_fe) 

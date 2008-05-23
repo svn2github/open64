@@ -1305,6 +1305,7 @@ java_parse_file (int set_yydebug ATTRIBUTE_UNUSED)
   cgraph_finalize_compilation_unit ();
   cgraph_optimize ();
 
+//yzm
 #ifdef KEY
  if (flag_spin_file)
 

@@ -71,7 +71,9 @@ static lang_info_t language_info[] = {
 	{'F',	0x00000010,	{"f90", OPEN64_NAME_PREFIX "f95"}},		/* f90/95 */
 	{'a',	0x00000020,	{"as", OPEN64_NAME_PREFIX "as","gas"}},		/* as */
 	{'l',	0x00000040,	{"ld", OPEN64_NAME_PREFIX "ld"}},		/* ld */
+//yzm
 	{'j',	0x00000080, {"java", OPEN64_NAME_PREFIX "java"}},	/* java */
+
 	#endif
 	{'I',	0x80000000,	{"int"}},		/* Internal option */
 };
@@ -158,7 +160,7 @@ static phase_info_t phase_info[] = {
    /* We use 'B' for options to be passed to be via ipacom. */
 #ifdef KEY
 //yzm
-   {'b',  0x0000003000000000LL, "",   PHASEPATH,        TRUE, FALSE},
+   {'b',  0x0000001000000000LL, "",   PHASEPATH,        TRUE, FALSE},
 #endif
 
    {'a',  0x0000010000000000LL,	"asm",	PHASEPATH,	FALSE, FALSE},	/* as */
@@ -170,12 +172,13 @@ static phase_info_t phase_info[] = {
 #endif
 
 //yzm
-#ifdef KEY
-   {'a',  0x0000042026000000LL, "",     "",            FALSE,  FALSE},  /*any jvgenmain*/
+/*#ifdef KEY
+   {'a',  0x0000042026000000LL, "",     "",            FALSE,  FALSE},  
 #endif
+*/
 
 
-   {'a',  0x0000070000000000LL,	"",	"",		FALSE, FALSE},	/* any_as */
+   {'a',  0x0000030000000000LL,	"",	"",		FALSE, FALSE},	/* any_as */
 
    {'d',  0x0000080000000000LL, "dsm_prelink", PHASEPATH,FALSE, FALSE},/* dsm_prelink*/
    {'j',  0x0000100000000000LL,	"ipa_link", GNUPHASEPATH, TRUE, FALSE},	/* ipa_link */
@@ -236,7 +239,9 @@ static source_info_t source_info[] = {
 	{"N"},				/* N */
 	{"O"},				/* O */
 	{"o"},				/* o */
+//yzm
 	{"java","class","jar"}, 			/* java */
+
 };
 
 languages_t invoked_lang;
@@ -563,7 +568,11 @@ get_source_kind (char *src)
 			case L_f77: return S_f;
 			case L_f90: return S_f90;
 			case L_as: return S_s;
+//yzm
+#ifdef KEY
 			case L_java:  return S_java;
+#endif
+
 			}
 		}
 	}
@@ -626,8 +635,11 @@ get_source_lang (source_kind_t sk)
 		return L_f90;
 	case S_o:
 		return invoked_lang;
+//yzm
+#ifdef KEY
 	case S_java:
 		return L_java;
+#endif
 	}
 	return L_NONE;
 }

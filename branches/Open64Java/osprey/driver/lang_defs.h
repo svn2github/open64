@@ -58,7 +58,9 @@ typedef enum {
 	L_f90,
 	L_as,
 	L_ld,
+//yzm
 	L_java,
+
 	L_internal,	/* pseudo-language to mark internal options */
 	L_LAST
 } languages_t;
@@ -82,7 +84,9 @@ typedef enum {
 	S_N,
 	S_O,
 	S_o,
+//yzm
 	S_java,
+
 	S_LAST
 } source_kind_t;
 
@@ -145,9 +149,11 @@ typedef enum {
 	P_as,		/* gnu assembler */
 	P_gas,		/* gnu assembler */
 //yzm
+/*
 #ifdef KEY
 	P_any_jvgenmain,
 #endif
+*/
 	P_any_as,	/* generic union of all asm's */
 
 	P_dsm_prelink,  /* support for distributed reshape automatic cloning */

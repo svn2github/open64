@@ -761,13 +761,13 @@ static inline gs_long_long_t gs_get_integer_value (gs_t t)
   GS_ASSERT (t != (gs_t) NULL, (gs_string_t) "Got null node");
   return (gs_long_long_t) gs_ull(gs_tree_int_cst_low (t));
 }
-static inline gs_long_long_t gs_get_integer_value_for_java (gs_t t)
+/*static inline gs_long_long_t gs_get_integer_highvalue(gs_t t)
 {
   GS_ASSERT (t != (gs_t) NULL, (gs_string_t) "Got null node");
-  gs_long_long_t low = gs_ull(gs_tree_int_cst_low (t));
-  gs_long_long_t high = gs_ull(gs_tree_int_cst_high (t));
-  return (high << 32) | low;
-}
+  //gs_long_long_t low = gs_ull(gs_tree_int_cst_low (t));
+  return (gs_long_long_t) gs_ull(gs_tree_int_cst_high (t));
+  //return (high << 32) | low;
+}*/
 
 static inline gs_float_t gs_tree_real_cst_f (gs_t t) {
   return gs_f (gs_operand (t, GS_TREE_REAL_CST_F));

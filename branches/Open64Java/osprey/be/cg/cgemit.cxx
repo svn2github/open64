@@ -165,6 +165,8 @@ extern void EETARG_Emit_IP_Calc_Func(void);
 
 extern void Early_Terminate (INT status);
 
+extern DST_language Dwarf_Language;		//czw
+
 #define PAD_SIZE_LIMIT	2048	/* max size to be padded in a section */
 
 /* c++ mangled names can be any arbitrary length,
@@ -5938,7 +5940,10 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
 #define LSDA_CS_END		"thu_LSDA_CS_End_"
 
   fprintf(Asm_File, ".%s%d:\n", LSDA_HANDLER_START, nRangeTable);
+if(Dwarf_Language == DW_LANG_C_plus_plus)		//czw
   fprintf(Asm_File, "\t.personality\t__gxx_personality_v0#\n");
+if(Dwarf_Language == DW_LANG_Java)				//czw
+  fprintf(Asm_File, "\t.personality\t__gcj_personality_v0#\n");
   fprintf(Asm_File, "\t.handlerdata\n");
   fprintf(Asm_File, "\t.align\t8\n");
   fprintf(Asm_File, ".%s%d:\n", LSDA_START, nRangeTable);
@@ -6513,15 +6518,26 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
       Write_TCON (&ST_tcon_val(st), STB_scninfo_idx(base), ofst, 1);
     }
   }
-  if(true/*java*/)				//czw
+  //if(Dwarf_Language == DW_LANG_Java)				//czw
   {
   	fprintf ( Asm_File, "\t.section\t.jcr,\"aw\",@progbits\n");
+
+#ifndef TARG_IA64
 	fprintf ( Asm_File, "\t.align 4\n");
 	for(int i = 0; i < class_strs.size(); i++)
 	{
 		class_strs[i] = "\t.long\t" + class_strs[i] + "\n";
 	  	fprintf(Asm_File, class_strs[i].c_str());
 	}
+#endif
+#ifdef TARG_IA64
+	fprintf ( Asm_File, "\t.align 8\n");
+	for(int i = 0; i < class_strs.size(); i++)
+	{
+		class_strs[i] = "\tdata8\t" + class_strs[i] + "\n";
+	  	fprintf(Asm_File, class_strs[i].c_str());
+	}
+#endif
   }
 }
 

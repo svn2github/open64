@@ -595,6 +595,7 @@ tree_rest_of_compilation (tree fndecl)
   location_t saved_loc;
   struct cgraph_node *saved_node = NULL, *node;
 
+//yzm
 #ifdef KEY
   // This is the *only* point where we fully translate a FUNCTION_DECL for JAVA.
 

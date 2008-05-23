@@ -606,7 +606,9 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				    phase == P_spin_cc1 ||
 				    phase == P_spin_cc1plus ||
 				    //yzm
+#ifdef KEY
 				    phase == P_spin_jc1 ||
+#endif
 				    status == RC_GCC_INTERNAL_ERROR ||  //bug 9637
 #endif
 				    phase == P_gcpp || phase == P_gcpp_plus) {
@@ -630,7 +632,9 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				    || phase == P_spin_cc1
 				    || phase == P_spin_cc1plus
 				    //yzm
+#ifdef KEY
 				    || phase == P_spin_jc1
+#endif
 #endif
 				   ) {
 					nomsg_error(RC_INTERNAL_ERROR);

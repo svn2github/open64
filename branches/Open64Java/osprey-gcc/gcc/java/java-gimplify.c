@@ -46,6 +46,9 @@ static tree lookup_tmp_var (tree val, bool is_formal);
 
 static void dump_java_tree (enum tree_dump_index, tree);
 
+extern tree Replace_Left_with_temp(tree left);      //czw
+
+
 /* Convert a Java tree to GENERIC.  */
 
 void

@@ -876,7 +876,6 @@ Do_Handlers (void)
 #ifdef KEY
   processing_handler = false;
 
-//if(lang_cplus)  //czw
   Do_Cleanups_For_EH();
   try_monitor.Clean_Up();
 
@@ -2678,12 +2677,26 @@ if(lang_java)
 }
 #ifdef KEY
     if (key_exceptions && processing_handler) {
-	Try_Info ti = try_monitor.Indexing_TI();		//czw
-	FmtAssert (ti.scope, ("NULL scope"));
-	int j = ti.scope->size()-1;
-	while (j != -1) {
-	    Maybe_Emit_Cleanup (j, TRUE);
-	    --j;
+		if(lang_cplus)
+		{
+			Try_Info ti = try_monitor.Indexing_TI();		//czw
+			FmtAssert (ti.scope, ("NULL scope"));
+			int j = ti.scope->size()-1;
+			while (j != -1) {
+			    Maybe_Emit_Cleanup (j, TRUE);
+			    --j;
+		}
+		if(lang_java)
+			for(int index = try_monitor.Get_Current_Try(); index != -1; index = try_monitor.Get_Parent(index))
+			{
+				gs_t t = try_monitor.Get_Indexed_Try(index).stmt;
+				if(gs_tree_code(t) == GS_TRY_FINALLY_EXPR)
+				{
+					try_monitor.Push_State(index, finally_branch);
+					WGEN_Expand_Stmt(gs_tree_operand(t, 1));
+					try_monitor.Pop_State();
+				}
+			}
 	}
     }
 #endif
@@ -3307,7 +3320,7 @@ Get_typeinfo_var (gs_t t)
 
 // Given a type tree, return the typeinfo var for the exception tables
 static gs_t
-Get_type_class (gs_t t)
+Get_type_class (gs_t t)		//czw
 {
     //assert(NOP_EXPR)
     gs_t addr = gs_tree_operand(t, 0);
@@ -4371,7 +4384,7 @@ WGEN_Expand_Try_Catch (gs_t stmt)
 #ifdef KEY
   if (!try_block_seen)
   {
-    if (manual_unwinding_needed())    //need to see //czw
+    if (manual_unwinding_needed())
 	Set_PU_needs_manual_unwinding (Get_Current_PU());
     try_block_seen = true;
   }
@@ -4519,7 +4532,7 @@ WGEN_Expand_Try_Finally (gs_t stmt)			//czw 1.17
 #ifdef KEY
   if (!try_block_seen)
   {
-    if (manual_unwinding_needed())    //need to see //czw
+    if (manual_unwinding_needed()) 
 	Set_PU_needs_manual_unwinding (Get_Current_PU());
     try_block_seen = true;
   }
