@@ -474,40 +474,41 @@ enum OP_COND_DEF_KIND {
 
 /* Define the flag masks. */
 
-#define OP_MASK_GLUE	  0x00000001 /* Is OP region "glue"? */
-#define OP_MASK_NO_ALIAS  0x00000002 /* Is OP Memop that can't be aliased */
-#define OP_MASK_COPY	  0x00000004 /* Is OP a COPY? */
-#define OP_MASK_FLAG1	  0x00000008 /* temporary flag for local use */
-#define OP_MASK_VOLATILE  0x00000010 /* Is OP a volatile Memop? */
-#define OP_MASK_HOISTED   0x00000020 /* Is there a WN map attatched to a hoisted OP */
-#define OP_MASK_END_GROUP 0x00000040 /* Is OP end of an instruction group */
-#define OP_MASK_M_UNIT	  0x00000080 /* Is OP assigned to M unit */
-#define OP_MASK_TAIL_CALL 0x00000100 /* Is OP a tail call? */
-#define OP_MASK_BUNDLED	  0x00000200 /* Is OP bundled? */
-#define OP_MASK_SPECULATIVE  0x00000400 /* Is OP a speculative live-range op? */
+#define OP_MASK_GLUE	      0x00000001 /* Is OP region "glue"? */
+#define OP_MASK_NO_ALIAS      0x00000002 /* Is OP Memop that can't be aliased */
+#define OP_MASK_COPY	      0x00000004 /* Is OP a COPY? */
+#define OP_MASK_FLAG1	      0x00000008 /* temporary flag for local use */
+#define OP_MASK_VOLATILE      0x00000010 /* Is OP a volatile Memop? */
+#define OP_MASK_HOISTED       0x00000020 /* Is there a WN map attatched to a hoisted OP */
+#define OP_MASK_END_GROUP     0x00000040 /* Is OP end of an instruction group */
+#define OP_MASK_M_UNIT	      0x00000080 /* Is OP assigned to M unit */
+#define OP_MASK_TAIL_CALL     0x00000100 /* Is OP a tail call? */
+#define OP_MASK_BUNDLED	      0x00000200 /* Is OP bundled? */
+#define OP_MASK_SPECULATIVE   0x00000400 /* Is OP a speculative live-range op? */
 /* OP_MAKS_COND_DEF  0x00001800  -- See enum defined above  */
-#define OP_MASK_NO_CI_ALIAS  0x00002000 /* no cross-iteration alias */
-#define OP_MASK_NO_MOVE_BEFORE_GRA 0x00004000 /* do not move this op before GRA */
-#define OP_MASK_TAG 	  0x00008000 /* OP has tag */
-#define OP_MASK_SPADJ_PLUS  0x00010000 /* Is OP de-alloca spadjust (plus)? */
-#define OP_MASK_SPADJ_MINUS 0x00020000 /* Is OP alloca spadjust (minus)? */
+#define OP_MASK_NO_CI_ALIAS   0x00002000 /* no cross-iteration alias */
+#define OP_MASK_NO_MOVE_BEFORE_GRA \
+                              0x00004000 /* do not move this op before GRA */
+#define OP_MASK_TAG 	      0x00008000 /* OP has tag */
+#define OP_MASK_SPADJ_PLUS    0x00010000 /* Is OP de-alloca spadjust (plus)? */
+#define OP_MASK_SPADJ_MINUS   0x00020000 /* Is OP alloca spadjust (minus)? */
 #ifdef TARG_IA64
-#define OP_MASK_START_BD    0x00040000 /* Is OP start of a bundle */
-#define OP_MASK_SAFE_LOAD   0x00080000 /* Is OP safe load */
-#define OP_MASK_SCHEDULED   0x00100000 /* Has OP been scheduled */
-#define OP_MASK_CNTL_SPEC   0x00200000 /* Is OP control speculated? */ 
-#define OP_MASK_DATA_SPEC   0x00400000 /* Is OP data speculated? */
-#define OP_MASK_PREFETCHED   0x00800000 /* Has OP been prefetched? */
-#define OP_MASK_IF_CONVERTED 0x01000000 /*Is OP if-converted? */
-#define OP_MASK_RENAMED	0x02000000 /*Is OP renamed by GLOS */
-#define OP_MASK_SPILL_RESTORE 0x04000000 /*Is OP a spill or restore  */
+#define OP_MASK_START_BD      0x00040000 /* Is OP start of a bundle */
+#define OP_MASK_SAFE_LOAD     0x00080000 /* Is OP safe load */
+#define OP_MASK_SCHEDULED     0x00100000 /* Has OP been scheduled */
+#define OP_MASK_CNTL_SPEC     0x00200000 /* Is OP control speculated? */ 
+#define OP_MASK_DATA_SPEC     0x00400000 /* Is OP data speculated? */
+#define OP_MASK_PREFETCHED    0x00800000 /* Has OP been prefetched? */
+#define OP_MASK_IF_CONVERTED  0x01000000 /* Is OP if-converted? */
+#define OP_MASK_RENAMED	      0x02000000 /* Is OP renamed by GLOS */
+#define OP_MASK_SPILL_RESTORE 0x04000000 /* Is OP a spill or restore  */
 #define OP_MASK_LD_GOT_ENT    0x08000000 /* load GOT entry */ 
 #endif
-/* Is this OP the first OP following the PRAGMA_PREAMBLE_END ? */
-#define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END 0x00080000
+#define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END  \
+                              0x10000000 /* first OP following PRAGMA_PREAMBLE_END? */
 #ifdef TARG_X8664
-#define OP_MASK_MEMORY_HI   0x00040000 /* Is OP load/store the high 32-bit? */
-#define OP_MASK_COMPUTES_GOT  0x00100000  /* Does OP compute GOT ? */
+#define OP_MASK_MEMORY_HI     0x00040000 /* Is OP load/store the high 32-bit? */
+#define OP_MASK_COMPUTES_GOT  0x00100000 /* Does OP compute GOT ? */
 #define OP_MASK_PREFIX_LOCK   0x01000000
 #endif
 #if defined(TARG_IA64) || defined(TARG_SL)
@@ -516,11 +517,11 @@ enum OP_COND_DEF_KIND {
 # define Reset_OP_renamed(o)	(OP_flags(o) &= ~OP_MASK_RENAMED)
  
 #if defined(TARG_SL) 
-#define OP_MASK_RENAMED   0x00100000  /* Is OP renamed during global sched */
+#define OP_MASK_RENAMED       0x00100000  /* Is OP renamed during global sched */
 #define OP_MASK_BC2_OP        0x00200000  /* Is OP renamed during global sched */
-#define OP_MASK_C2_BR_OP 0x00400000
-#define OP_MASK_16bit_OP 0x00400000  /* Is OP rechanged as 16-bit OP*/
-#define OP_MASK_PAIRED_OP 0x00800000  /* Is OP paired: 2 continus 16-bit OP */ 
+#define OP_MASK_C2_BR_OP      0x00400000
+#define OP_MASK_16bit_OP      0x00400000  /* Is OP rechanged as 16-bit OP*/
+#define OP_MASK_PAIRED_OP     0x00800000  /* Is OP paired: 2 continus 16-bit OP */ 
 #define OP_bc2_op(op)		(OP_flags(op) & OP_MASK_BC2_OP)
 #define Set_OP_bc2_op(o)	(OP_flags(o) |= OP_MASK_BC2_OP)
 #define Reset_OP_bc2_op(o)	(OP_flags(o) &= ~OP_MASK_BC2_OP)
