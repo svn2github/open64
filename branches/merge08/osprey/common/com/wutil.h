@@ -52,17 +52,16 @@ extern "C" {
  * This module contains the external interfaces (data structures and
  * prototypes) for routines which provide utility services related to
  * Whirl intrinsics.
+ * INTRINSIC_name moved to intrn_info.
  *
  * ====================================================================
  * ====================================================================
  */
-
-char *get_intrinsic_name(INTRINSIC opcode);
+char * get_intrinsic_name ( INTRINSIC opcode );
 char *get_iostatement_name(IOSTATEMENT opcode);
 char *get_ioitem_name(IOITEM opcode);
 char *get_iolibrary_name(IOLIB opcode);
 
-#define INTRINSIC_name(op) get_intrinsic_name(op)
 #define IOSTATEMENT_name(op) get_iostatement_name(op)
 #define IOITEM_name(op) get_ioitem_name(op)
 

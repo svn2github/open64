@@ -41,10 +41,10 @@
  * =======================================================================
  *
  *  Module: cg_spill.c
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_spill.cxx,v $
+ *  $Revision: 1.20 $
+ *  $Date: 05/12/05 08:59:04-08:00 $
+ *  $Author: bos@eng-24.pathscale.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cg_spill.cxx $
  *
  *  Description:
  *  ============
@@ -84,14 +84,12 @@
 #include "opt_alias_interface.h"
 #include "cgtarget.h"
 #include "targ_proc_properties.h"
+#include "tag.h"
 
-#ifdef TARG_IA64
-#define TRACE_REMAT 0x2
-#endif
 #ifdef KEY
 static SPILL_SYM_INFO_MAP spill_sym_info_map;
 static void CGSPILL_Record_Spill (ST *spill_loc, OP *spill_op);
-void CGSPILL_Inc_Restore_Count (ST *spill_loc);
+static void CGSPILL_Inc_Restore_Count (ST *spill_loc);
 #endif
 
 static BOOL Trace_Remat; /* Trace rematerialization */
@@ -161,7 +159,6 @@ static LOCAL_SPILLS swp_float_spills, swp_int_spills;
 #ifdef TARG_X8664
 static LOCAL_SPILLS lra_sse2_spills;
 static LOCAL_SPILLS lra_x87_spills;
-static LOCAL_SPILLS lra_mmx_spills;
 #endif /* TARG_X8664 */
 
 #ifdef KEY
@@ -176,70 +173,6 @@ static LOCAL_SPILLS lra_int32_spills;
 #define Can_Rematerialize_TN(tn, cl) \
 (TN_is_rematerializable(tn) || (TN_is_gra_homeable(tn) && cl == CGSPILL_GRA))
 
-#ifdef TARG_IA64
-void
-ld_2_ld_fill (OPS *ops, BOOL force=FALSE) {
-
-  BOOL ld_is_last_op = TRUE ;
-
-  OP * op = OPS_last(ops);
-
-  if (!OP_load (op)) {
-    if (OP_code(op) == TOP_cmp_i_ne || OP_code(op) == TOP_mov_t_br) {
-      op = OP_prev(op); ld_is_last_op = FALSE ;
-    } else 
-      op = NULL ;
-  }
-
-  if (!op) return ;
-
-  switch (OP_code(op)) {
-  case TOP_ld1:
-  case TOP_ld2:
-  case TOP_ld4:
-  case TOP_ld8:
-      if (!TN_is_take_nat(OP_result(op,0)) && !force) break; 
-      OPS_Remove_Op (ops,op);
-      op = Mk_OP(TOP_ld8_fill, OP_result(op,0), 
-                 OP_opnd(op,OP_find_opnd_use(op,OU_predicate)),
-                 Gen_Enum_TN(ECV_ldhint),
-                 OP_opnd(op,OP_find_opnd_use(op,OU_base)));
-
-      if (ld_is_last_op || (OPS_length(ops) == 1)) 
-        OPS_Append_Op (ops,op);
-      else
-        OPS_Insert_Op_Before (ops, OPS_last(ops),op);
-    
-  }
-}
-
-void 
-st_2_st_spill (OPS * ops, BOOL force=FALSE) {
- 
-  OP * op = OPS_last(ops) ;
-  TN *tn = OP_opnd(op,OP_find_opnd_use(op,OU_storeval));
-  switch (OP_code(op)) {
-  case TOP_st1:
-  case TOP_st2:
-  case TOP_st4:
-  case TOP_st8:
-      if (!TN_is_take_nat(tn) && !force) break; 
-      OPS_Remove_Op (ops,op); 
-      op = Mk_OP(TOP_st8_spill, /* op code */
-                 OP_opnd(op,OP_find_opnd_use(op,OU_predicate)), /* guarded predicate */
-                 Gen_Enum_TN(ECV_sthint), /* hint */
-                 OP_opnd(op,OP_find_opnd_use(op,OU_base)),
-                 OP_opnd(op,OP_find_opnd_use(op,OU_storeval)));
-      OPS_Append_Op (ops,op);
-    
-    break ;
-  case TOP_stfs:
-  case TOP_stfd:
-  case TOP_stfe:
-    break ;
-  }
-}
-#endif
 
 /* =======================================================================
  *
@@ -392,7 +325,6 @@ CGSPILL_Reset_Local_Spills (void)
 #ifdef TARG_X8664
   LOCAL_SPILLS_Reset(&lra_sse2_spills);
   LOCAL_SPILLS_Reset(&lra_x87_spills);
-  LOCAL_SPILLS_Reset(&lra_mmx_spills);
 #endif /* TARG_X8664 */
 
 #ifdef KEY
@@ -438,11 +370,6 @@ CGSPILL_Initialize_For_PU(void)
 
   slc = &lra_x87_spills;
   LOCAL_SPILLS_mem_type(slc) = MTYPE_To_TY( MTYPE_FQ );
-  LOCAL_SPILLS_free(slc) = NULL;
-  LOCAL_SPILLS_used(slc) = NULL;
-
-  slc = &lra_mmx_spills;
-  LOCAL_SPILLS_mem_type(slc) = MTYPE_To_TY( MTYPE_M8I1 );
   LOCAL_SPILLS_free(slc) = NULL;
   LOCAL_SPILLS_used(slc) = NULL;
 #endif /* TARG_X8664 */
@@ -571,17 +498,16 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
 	mem_type = TN_register_class(tn) == ISA_REGISTER_CLASS_x87
 	  ? MTYPE_To_TY( MTYPE_FQ ) : Quad_Type;
       }
-
-      // MMX
-      if (TN_register_class(tn) == ISA_REGISTER_CLASS_mmx) {
-	mem_type = MTYPE_To_TY(MTYPE_M8I1);
-      }
 #endif /* TARG_X8664 */
 
 #ifdef KEY
       if( CG_min_spill_loc_size && TN_size(tn) <= 4 ){
 	mem_type = TN_is_float(tn) ? Spill_Float32_Type : Spill_Int32_Type;
       }
+#if defined(TARG_SL)
+      if (TN_size(tn) <= MTYPE_byte_size(TY_mtype(mem_type)))
+        DevWarn("TN size is larger than the size of spill type.") ;
+#endif
 #endif
 
       if (client == CGSPILL_GRA) {
@@ -601,9 +527,7 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
       slc = TN_is_float(tn) || TN_is_fcc_register(tn) ?
 	      &lra_float_spills : &lra_int_spills;
 #ifdef TARG_X8664
-      if (TN_register_class(tn) == ISA_REGISTER_CLASS_mmx) {	// MMX
-	slc = &lra_mmx_spills;
-      } else if (TN_size(tn) == 16 || TN_size(tn) == 12) {
+      if( TN_size(tn) == 16 || TN_size(tn) == 12 ){
 	slc = TN_register_class(tn) == ISA_REGISTER_CLASS_x87
 	  ? &lra_x87_spills : &lra_sse2_spills;
       }
@@ -665,17 +589,9 @@ CGSPILL_OP_Spill_Location (OP *op)
   if (spill_ids) {
     TN *spill_tn = NULL;
 
-#ifdef TARG_IA64
-    if (OP_load(op) && (OP_results(op) == 1) && OP_spill_restore(op)) {
-#else
-      if (OP_load(op) && (OP_results(op) == 1)) {
-#endif
+    if (OP_load(op) && (OP_results(op) == 1)) {
       spill_tn = OP_result(op,0);
-#ifdef TARG_IA64
-    } else if (OP_store(op) && OP_spill_restore(op)) {
-#else
     } else if (OP_store(op)) {
-#endif
       spill_tn = OP_opnd(op,TOP_Find_Operand_Use(OP_code(op), OU_storeval));
     }
 #ifdef KEY
@@ -735,22 +651,29 @@ CGSPILL_Cost_Estimate (TN *tn, ST *mem_loc,
       {
 	OPCODE opcode = WN_opcode(home);
 	Exp_Load (OPCODE_rtype(opcode), OPCODE_desc(opcode), tn, WN_st(home),
-		   WN_offset(home), &OPs, V_NONE);
-#ifdef TARG_IA64
-        ld_2_ld_fill (&OPs) ;
-#endif
-
+		  WN_offset(home), &OPs, V_NONE);
 	*restore_cost = OPS_length(&OPs);
 	*store_cost = *restore_cost;
       }
       break;
     case OPR_LDA:
+#ifdef TARG_SL2
+      Exp_Lda(	WN_rtype(home),
+		result,
+		WN_st(home),
+		WN_lda_offset(home),
+		OPERATOR_UNKNOWN,
+		&OPs,
+              WN_is_internal_mem_ofst(home));
+#else 
       Exp_Lda(	WN_rtype(home),
 		result,
 		WN_st(home),
 		WN_lda_offset(home),
 		OPERATOR_UNKNOWN,
 		&OPs);
+
+#endif 
       *restore_cost = OPS_length(&OPs);
       break; 
     case OPR_INTCONST:
@@ -826,8 +749,7 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
     case OPR_LDID:
       /* homing load */
       Exp_Load (OPCODE_rtype(opcode), OPCODE_desc(opcode), tn,
-		 WN_st(home), WN_offset(home), ops, V_NONE);
-
+		WN_st(home), WN_offset(home), ops, V_NONE);
       if (Trace_Remat && !TN_is_gra_homeable(tn)) {
 #pragma mips_frequency_hint NEVER
 	fprintf(TFile, "<Rematerialize> LDID for rematerializeable TN%d\n",
@@ -835,10 +757,14 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
       }
       break;
     case OPR_LDA:
+#ifdef TARG_SL2
+      Exp_Lda (OPCODE_rtype(opcode), tn, WN_st(home), WN_lda_offset(home),
+	       OPERATOR_UNKNOWN, ops, WN_is_internal_mem_ofst(home));
+#else 
       Exp_Lda (OPCODE_rtype(opcode), tn, WN_st(home), WN_lda_offset(home),
 	       OPERATOR_UNKNOWN, ops);
+#endif 
       break;
-
     case OPR_CONST:
 #ifdef TARG_X8664
     if (OPCODE_rtype(opcode) == MTYPE_V16F4 ||
@@ -904,18 +830,11 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
     /* Must actually load it from memory
      */
     CGTARG_Load_From_Memory(tn, mem_loc, ops);
-#ifdef TARG_IA64
-    ld_2_ld_fill (ops);
-#endif
 #ifdef KEY
     CGSPILL_Inc_Restore_Count(mem_loc);
 #endif
   }
   Max_Sdata_Elt_Size = max_sdata_save;
-#ifdef TARG_IA64
-  if(ops->last)
-	 Set_OP_spill_restore(ops->last);
-#endif
 }
 
 
@@ -926,7 +845,6 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
  * See interface description
  *
  * ======================================================================*/
-
 void 
 CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
 			 CGSPILL_CLIENT client, BB *bb)
@@ -949,40 +867,25 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
     WN *home = TN_home(src_tn);
     if (WN_operator(home) == OPR_LDID) {
       Exp_Store (OPCODE_desc(WN_opcode(home)), src_tn, WN_st(home),
-		 WN_offset(home), ops,V_NONE);
-#ifdef TARG_IA64
-      st_2_st_spill (ops) ;
-#endif
+		 WN_offset(home), ops, V_NONE);
+
     } else if (Trace_Remat) {
 #pragma mips_frequency_hint NEVER
       Check_Phase_And_PU();
       fprintf(TFile, "<Rematerialize> Suppressing spill of rematerializable "
 		     "TN%d.\n", TN_number(src_tn));
     }
-#ifdef TARG_IA64
-    if(ops->last)
-	   Set_OP_spill_restore(ops->last);
-#endif
 #ifdef KEY
-    // Looks like a bug in the Open64 compiler.
+    // Looks like a bug in the Open64 compiler. 
     // In the case of entry/exit BBs, the Max_Sdata_Elt_Size might get
     // reset and never set back if the next return is executed.
-    Max_Sdata_Elt_Size = max_sdata_save;
+    Max_Sdata_Elt_Size = max_sdata_save;  
 #endif
-
     return;
   }
 
   CGTARG_Store_To_Memory(src_tn, mem_loc, ops);
-#ifdef TARG_IA64
-  st_2_st_spill (ops);
-#endif
-
   Max_Sdata_Elt_Size = max_sdata_save;
-#ifdef TARG_IA64
-  if(ops->last)
-	 Set_OP_spill_restore(ops->last);
-#endif
 
 #ifdef KEY
   CGSPILL_Record_Spill(mem_loc, OPS_last(ops));
@@ -1344,6 +1247,11 @@ void
 CGSPILL_Append_Ops (BB *bb, OPS *ops)
 {
   OP *before_point = NULL;
+  BOOL after_tagged_op = FALSE;
+  LABEL_IDX tag_idx = 0;
+
+  OP *orig_last_op;
+  OP *new_last_op;
 
   if (BB_exit(bb)) {
     before_point = Find_First_Copy(bb);
@@ -1351,8 +1259,16 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
     if (OP_prev(before_point) != NULL && OP_xfer(OP_prev(before_point))) {
 	before_point = OP_prev(before_point);
     }
-  }
-  else {
+  } else if( BB_zdl_body(bb) ) {
+    orig_last_op = BB_last_op(bb);
+    Is_True( OP_has_tag(orig_last_op), ("the last op of zdl body has no tag") );
+    Is_True( !OP_xfer(orig_last_op) && 
+             OP_code(orig_last_op) != TOP_c2_joint &&
+             OP_code(orig_last_op) != TOP_loop, 
+             ("bad opcode of a tagged op, in zdl") );
+    after_tagged_op = TRUE;
+    tag_idx = Get_OP_Tag( orig_last_op );
+  } else {
     OP *last_op;
 
     if (PROC_has_branch_delay_slot())
@@ -1362,6 +1278,21 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
       Fix_Xfer_Dependences (bb, ops);
       before_point = BB_last_op(bb);
     }
+
+#ifdef TARG_SL2 //adjust before_point if the bb has c2_joint instruction
+  if(last_op != NULL) {
+    OP* tmp;
+    FOR_ALL_BB_OPs_REV(bb, tmp)
+    {
+       if(OP_code(tmp) == TOP_c2_joint  || OP_code(tmp) == TOP_loop )
+       {
+          before_point = tmp;
+	   break;
+	 }
+    }
+  }
+#endif 
+
 #ifdef TARG_X8664
     else if (last_op != NULL && OP_code(last_op) == TOP_savexmms)
       before_point = BB_last_op(bb);
@@ -1372,6 +1303,15 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
     BB_Insert_Ops_Before (bb, before_point, ops);
   }
    else {
+    new_last_op = ops->last;
+    if( new_last_op && after_tagged_op ){
+      Is_True( !OP_xfer(new_last_op) && 
+               OP_code(new_last_op) != TOP_c2_joint &&
+               OP_code(new_last_op) != TOP_loop, 
+               ("bad opcode of a tagged op, in zdl") );
+      Set_OP_Tag( new_last_op, tag_idx );
+      Reset_OP_has_tag( orig_last_op );
+    }
     BB_Append_Ops (bb, ops);
   }
   Reset_BB_scheduled (bb);
@@ -1634,7 +1574,7 @@ void CGSPILL_Attach_Const_Remat(TN *tn, TYPE_ID typ, ST *st)
 void
 CGSPILL_Record_Spill (ST *spill_loc, OP *spill_op)
 {
-  SPILL_SYM_INFO &info = spill_sym_info_map[ST_IDX((INTPTR)spill_loc)];
+  SPILL_SYM_INFO &info = spill_sym_info_map[ST_IDX(spill_loc)];
 
   // Don't keep track of more than one spill.
   info.Set_Spill_Op(info.Spill_Count() == 0 ? spill_op : NULL);
@@ -1645,7 +1585,7 @@ CGSPILL_Record_Spill (ST *spill_loc, OP *spill_op)
 void
 CGSPILL_Inc_Restore_Count (ST *spill_loc)
 {
-  SPILL_SYM_INFO &info = spill_sym_info_map[ST_IDX((INTPTR)spill_loc)];
+  SPILL_SYM_INFO &info = spill_sym_info_map[ST_IDX(spill_loc)];
   info.Inc_Restore_Count();
 }
 
@@ -1653,6 +1593,6 @@ CGSPILL_Inc_Restore_Count (ST *spill_loc)
 SPILL_SYM_INFO &
 CGSPILL_Get_Spill_Sym_Info (ST *spill_loc)
 {
-  return spill_sym_info_map[ST_IDX((INTPTR)spill_loc)];
+  return spill_sym_info_map[ST_IDX(spill_loc)];
 }
 #endif

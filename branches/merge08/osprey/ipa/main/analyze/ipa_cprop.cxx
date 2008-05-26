@@ -56,7 +56,11 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "mempool.h"
 #include "clone.h"
@@ -747,7 +751,7 @@ Connect_indirect_call (IPA_NODE* caller)
 	    continue;
 
 #ifdef KEY
-	if( call->Is_icall_slot() )
+	if( call->Is_icall_target() )
 	  continue;
 #endif
 

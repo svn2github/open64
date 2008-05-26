@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -42,10 +42,10 @@
 // ====================================================================
 //
 // Module: instr_reader.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/common/instrument/instr_reader.cxx,v $
+// $Revision: 1.14 $
+// $Date: 05/12/05 08:59:43-08:00 $
+// $Author: bos@eng-24.pathscale.com $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/common/instrument/SCCS/s.instr_reader.cxx $
 //
 // Revision history:
 //  03-Aug-98 - Original Version
@@ -75,6 +75,10 @@ extern ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
 static char* ERR_POS = "Error in positioning within %s";
 static char* ERR_READ = "Error in reading from %s";
 
+#if defined(TARG_SL)
+static char* ERR_WRITE = "Error in writing to %s";
+#endif
+
 #ifndef _BUILD_INSTR
 
 BOOL Feedback_Enabled[PROFILE_PHASE_LAST] = {FALSE,FALSE,FALSE,FALSE,FALSE};
@@ -92,6 +96,7 @@ Process_Feedback_File(char *fb_name)
   if ((fp = fopen(fb_name, "r")) == NULL) {
        profile_error("Unable to open file: %s", fb_name);
   }
+
 
   Get_File_Header(fp, fb_name, &fb_hdr);
 
@@ -609,6 +614,169 @@ Get_Str_Table(FILE *fp, char *fname, Fb_Hdr& fb_hdr, char *str_table)
 // Given a PU handle, allocate storage for the Invoke Table in 
 // PU handle and update it with data from feedback file.
 
+#if defined(TARG_SL)
+
+#define FREQ_FP_OFFSET 3.0
+#define RESET_FREQ_FP_OFFSET(x)  (x - FREQ_FP_OFFSET)
+
+void
+cast_invoke_freq(FB_Info_Invoke*  fb_ink, ULONG num_inv_items)
+{
+  for(INT i=0;i<num_inv_items;i++) {
+
+//    fb_ink->freq_invoke._value= (float)(*((UINT32*)(&(fb_ink->freq_invoke._value))))  - FREQ_FP_OFFSET;
+    float value=(float)(*((UINT32*)(&(fb_ink->Access_Freq_Invoke().Access_Value()))));
+    fb_ink->Access_Freq_Invoke().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    fb_ink++;
+  }
+
+  return;
+}
+
+void
+cast_branch_freq(FB_Info_Branch* fb_bra, ULONG num_bra_items)
+{
+  for(INT i=0;i<num_bra_items;i++) {
+
+//    fb_bra->freq_taken._value=(float)(*((UINT32*)(&(fb_bra->freq_taken._value)))) - FREQ_FP_OFFSET;
+    float value;
+    value= (float)(*((UINT32*)(&(fb_bra->Access_Freq_Taken().Access_Value()))));
+    fb_bra->Access_Freq_Taken().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+
+//    fb_bra->freq_not_taken._value=(float)(*((UINT32*)(&(fb_bra->freq_not_taken._value)))) - FREQ_FP_OFFSET;
+    value = (float)(*((UINT32*)(&(fb_bra->Access_Freq_Not_Taken().Access_Value()))));    
+    fb_bra->Access_Freq_Not_Taken().Set_Value(RESET_FREQ_FP_OFFSET( value ) );  
+    fb_bra++;
+  }
+  
+  return;
+}
+
+void
+cast_freq (FB_FREQ*  fb, ULONG num_fb_items)
+{
+  for(INT i=0;i<num_fb_items;i++) {
+
+//    fb->_value=(float)(*((UINT32*)(&(fb->_value)))) - FREQ_FP_OFFSET;
+    float value=(float)(*((UINT32*)(&(fb->Access_Value()))));
+    fb->Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    fb++;
+  }
+
+  return;
+}
+
+void
+cast_loop_freq(FB_Info_Loop*  fb_loop, ULONG num_loop_items)
+{
+
+  for(INT i=0;i<num_loop_items;i++) {
+//    fb_loop->freq_zero._value=(float)(*((UINT32*)(&(fb_loop->freq_zero._value)))) - FREQ_FP_OFFSET;
+    float value;
+    value= (float)(*((UINT32*)(&(fb_loop->Access_Freq_Zero().Access_Value()))));
+    fb_loop->Access_Freq_Zero().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+
+//    fb_loop->freq_positive._value=(float)(*((UINT32*)(&(fb_loop->freq_positive._value)))) - FREQ_FP_OFFSET;
+    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Positive().Access_Value()))));
+    fb_loop->Access_Freq_Positive().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   
+
+//    fb_loop->freq_out._value=(float)(*((UINT32*)(&(fb_loop->freq_out._value)))) - FREQ_FP_OFFSET;
+    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Out().Access_Value()))));
+    fb_loop->Access_Freq_Out().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
+
+//    fb_loop->freq_back._value=(float)(*((UINT32*)(&(fb_loop->freq_back._value)))) - FREQ_FP_OFFSET;
+    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Back().Access_Value()))));
+    fb_loop->Access_Freq_Back().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
+
+//    fb_loop->freq_exit._value=(float)(*((UINT32*)(&(fb_loop->freq_exit._value)))) - FREQ_FP_OFFSET;
+    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Exit().Access_Value()))));
+    fb_loop->Access_Freq_Exit().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
+
+//    fb_loop->freq_iterate._value=(float)(*((UINT32*)(&(fb_loop->freq_iterate._value)))) - FREQ_FP_OFFSET;
+    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Iterate().Access_Value()))));
+    fb_loop->Access_Freq_Iterate().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
+
+
+    fb_loop++;
+  }
+
+  return;
+  	
+}	
+
+void
+cast_scircuit_freq(FB_Info_Circuit* fb_cir, ULONG num_cir_items)
+{
+
+  for(INT i=0;i<num_cir_items;i++) {
+//    fb_cir->freq_left._value=(float)(*((UINT32*)(&(fb_cir->freq_left._value)))) - FREQ_FP_OFFSET;
+    float value;
+    value= (float)(*((UINT32*)(&( fb_cir->Access_Freq_Left().Access_Value())))) ;
+    fb_cir->Access_Freq_Left().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+
+//    fb_cir->freq_right._value=(float)(*((UINT32*)(&(fb_cir->freq_right._value)))) - FREQ_FP_OFFSET;
+    value= (float)(*((UINT32*)(&( fb_cir->Access_Freq_Right().Access_Value())))) ;
+    fb_cir->Access_Freq_Right().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+
+//    fb_cir->freq_neither._value=(float)(*((UINT32*)(&(fb_cir->freq_neither._value)))) - FREQ_FP_OFFSET;
+    value= (float)(*((UINT32*)(&( fb_cir->Access_Freq_Neither().Access_Value())))) ;
+    fb_cir->Access_Freq_Neither().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+
+    fb_cir++;
+  }
+  
+  return;
+}	
+
+void 
+cast_call_freq(FB_Info_Call* fb_call, ULONG num_call_items)
+{
+  for(INT i=0;i<num_call_items;i++) {
+//    fb_call->freq_entry._value=(float)(*((UINT32*)(&(fb_call->freq_entry._value)))) - FREQ_FP_OFFSET;
+    float value;
+    value= (float)(*((UINT32*)(&( fb_call->Access_Freq_Entry().Access_Value()))))  ;
+    fb_call->Access_Freq_Entry().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+	
+//    fb_call->freq_exit._value=(float)(*((UINT32*)(&(fb_call->freq_exit._value)))) - FREQ_FP_OFFSET;
+    value= (float)(*((UINT32*)(&( fb_call->Access_Freq_Exit().Access_Value()))))  ;
+    fb_call->Access_Freq_Exit().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+
+    fb_call++;
+  }
+  
+  return;
+
+}
+
+#ifdef KEY
+void
+cast_value_freq(FB_Info_Value* fb_val, ULONG num_val_Items)
+{
+  for(INT i=0;i <num_val_Items;i++) {
+//    fb_val->exe_counter._value = (float)(*((UINT32*)(&(fb_val->exe_counter._value)))) - FREQ_FP_OFFSET;
+    float value;
+    value=(float)(*((UINT32*)(&(fb_val->Access_Exe_Counter().Access_Value()))));
+    fb_val->Access_Exe_Counter().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+	
+    for(INT j=0;j<TNV;j++) {
+//      fb_val->freq[j]._value= (float)(*((UINT32*)(&(fb_val->freq[j]._value)))) - FREQ_FP_OFFSET;
+      value=(float)(*((UINT32*)(&((fb_val->Access_Freq())[j].Access_Value()))));
+      ((fb_val->Access_Freq())[j]).Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+
+    }
+    fb_val++;
+  }
+  
+  return;
+
+}
+
+#endif
+
+#endif
+
+
+
 void
 read_invoke_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
                     long pu_ofst, FILE *fp, char *fname)
@@ -619,11 +787,15 @@ read_invoke_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 
   Inv_Table.resize(pu_hdr_entry.pu_num_inv_entries);
 
-  
   FSEEK(fp, pu_ofst + pu_hdr_entry.pu_inv_offset, SEEK_SET, ERR_POS, fname);
- 
+
   FREAD (&(Inv_Table.front ()), sizeof(FB_Info_Invoke),
 	 pu_hdr_entry.pu_num_inv_entries, fp, ERR_READ, fname);
+
+#if defined(TARG_SL)
+  cast_invoke_freq(&(Inv_Table.front ()), pu_hdr_entry.pu_num_inv_entries);
+#endif  
+
 }
 
 // Given a PU handle, allocate storage for the Branch Table in 
@@ -638,12 +810,16 @@ read_branch_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
   Is_True (Br_Table.empty (), ("pu_handle not empty"));
 
   Br_Table.resize(pu_hdr_entry.pu_num_br_entries);
-
   
   FSEEK(fp, pu_ofst + pu_hdr_entry.pu_br_offset, SEEK_SET, ERR_POS, fname);
 
   FREAD (&(Br_Table.front ()), sizeof(FB_Info_Branch),
 	 pu_hdr_entry.pu_num_br_entries, fp, ERR_READ, fname);
+
+#if defined(TARG_SL)
+  cast_branch_freq(&(Br_Table.front ()), pu_hdr_entry.pu_num_br_entries);
+#endif
+
 }
 
 // Given a PU handle, allocate storage for the Switch Table in 
@@ -678,6 +854,9 @@ read_switch_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
       FREAD (&(first->freq_targets.front ()), sizeof(FB_FREQ), *target, fp,
 	     ERR_READ, fname);  
 
+#if defined(TARG_SL)
+      cast_freq(&(first->freq_targets.front ()),  *target);
+#endif
       ++target;
   }
 } 
@@ -713,6 +892,11 @@ read_cgoto_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 
       FREAD (&(first->freq_targets.front ()), sizeof(FB_FREQ), *target, fp,
 	     ERR_READ, fname); 
+
+#if defined(TARG_SL)
+      cast_freq(&(first->freq_targets.front ()), *target);
+#endif
+
       ++target;
   }
 }  
@@ -734,6 +918,11 @@ read_loop_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
  
   FREAD (&(Loop_Table.front ()), sizeof (FB_Info_Loop),
 	 pu_hdr_entry.pu_num_loop_entries, fp, ERR_READ, fname);
+
+#if defined(TARG_SL)
+  cast_loop_freq(&(Loop_Table.front ()), pu_hdr_entry.pu_num_loop_entries);
+#endif
+
 }
 
 // Given a PU handle, allocate storage for the Short Circuit Table in 
@@ -754,6 +943,11 @@ read_scircuit_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
  
   FREAD (&(Scircuit_Table.front ()), sizeof(FB_Info_Circuit),
 	 pu_hdr_entry.pu_num_scircuit_entries, fp, ERR_READ, fname);
+
+#if defined(TARG_SL)
+  cast_scircuit_freq(&(Scircuit_Table.front ()), pu_hdr_entry.pu_num_scircuit_entries);
+#endif
+
 }
 
 // Given a PU handle, allocate storage for the Call Table in 
@@ -770,9 +964,14 @@ read_call_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
   Call_Table.resize(pu_hdr_entry.pu_num_call_entries);
 
   FSEEK(fp, pu_ofst + pu_hdr_entry.pu_call_offset, SEEK_SET, ERR_POS, fname);
- 
+  
   FREAD (&(Call_Table.front ()), sizeof(FB_Info_Call),
 	 pu_hdr_entry.pu_num_call_entries, fp, ERR_READ, fname);
+
+#if defined(TARG_SL)
+  cast_call_freq(&(Call_Table.front ()), pu_hdr_entry.pu_num_call_entries);
+#endif
+
 }
 
 
@@ -827,6 +1026,11 @@ void read_value_profile( PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
  
   FREAD (&(Value_Table.front ()), sizeof(FB_Info_Value),
 	 pu_hdr_entry.pu_num_value_entries, fp, ERR_READ, fname);
+
+#if defined(TARG_SL)
+  cast_value_freq(&(Value_Table.front ()), pu_hdr_entry.pu_num_value_entries);
+#endif
+
 }
 #endif // KEY
 

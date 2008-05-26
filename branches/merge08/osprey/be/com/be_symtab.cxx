@@ -105,6 +105,24 @@ ST_is_const_initialized (const ST* st)
     if (BE_ST_unknown_const(st))
       return FALSE;
 
+    // if is extern const, then is same as unknown const
+    if (ST_sclass(st) == SCLASS_EXTERN)
+	return FALSE;
+#ifdef TARG_NVISA
+    if (ST_in_shared_mem(st))
+    	// may be readonly but don't know initial value
+	return FALSE;
+    if (ST_in_constant_mem(st)) {
+      // if is constant and initialized, will stay same value
+      // For now, can only assume is true for __cuda variables
+      // as others can be changed by host.
+      if (ST_is_initialized(st) && strncmp(ST_name(st),"__cuda",6) == 0)
+	return TRUE;
+      else
+	return FALSE;
+    }
+#endif
+
     // uninitialized constant is the same as initialized with zero, so we
     // don't check the ST_is_initialized bit
 
@@ -135,13 +153,15 @@ public:
     { return INITO_st_idx(*inito) == st_idx; }
 };
 
-// Say whether the specified ST is a constant scalar variable
+// Say whether the specified ST  and offset refer to a constant scalar variable
 // initialized by a constant, and if so, copy the TCON for the
 // constant into *tcon_copy. The caller takes responsibility for
 // entering the TCON into the table if the copy gets modified somehow
 // and s/he wants to save the modified version.
+// Note that this handles either scalar ST or an array ST where the
+// offset refers to a scalar element.
 BOOL
-ST_is_const_initialized_scalar(const ST *st, TCON &tcon_copy)
+ST_is_const_initialized_scalar(const ST *st, INT64 offset, TCON &tcon_copy)
 {
     // Make sure it is not a constant with an unknown value.
     if (BE_ST_unknown_const(st) != 0) {
@@ -173,6 +193,18 @@ ST_is_const_initialized_scalar(const ST *st, TCON &tcon_copy)
 
     // exclude all non-scalars
     if (!Is_Simple_Type(ty)) {
+      if (offset != 0) {
+	return FALSE;
+      }
+    }
+    // if array then element must be scalar
+    else if (TY_kind(ty) == KIND_ARRAY) {
+      // only handle arrays of scalars
+      if (!Is_Simple_Type(TY_etype(ty))) {
+	return FALSE;
+      }
+    }
+    else { // someday could do structures, but for now give up.
 	return FALSE;
     }
     
@@ -267,3 +299,62 @@ ST_is_const_and_has_initv(const ST *st)
 
   return ST_has_initv(st);
 }
+
+
+#ifdef TARG_NVISA
+// Search tree for a LDA, returning NULL if not found.
+// Will search through preg homes to find LDA.
+// Can also return LDID if is LDID of parameter pointer.
+WN*
+Find_Lda (WN *tree)
+{
+  if (tree == NULL) 
+	return NULL;
+
+  WN *lda;
+  switch (WN_operator(tree)) {
+  case OPR_LDA:
+	return tree;
+  case OPR_LDID:
+	if (WN_class(tree) == CLASS_PREG) {
+	  // first see if is an associated lda, then try home
+	  lda = Preg_Lda(WN_offset(tree));
+	  if (lda) return lda;
+	  return Find_Lda (Preg_Home(WN_offset(tree)));
+	}
+        else if (ST_sclass(WN_st(tree)) == SCLASS_FORMAL
+	  && ST_in_shared_mem(WN_st(tree)))
+	{
+	  TY_IDX ty = WN_ty(tree);
+	  if (TY_kind(ty) == KIND_STRUCT) {
+	      UINT cur_field_id = 0;
+	      FLD_HANDLE fld = FLD_get_to_field (
+		ty, WN_field_id(tree), cur_field_id);
+	      if ( ! fld.Is_Null())
+		ty = FLD_type(fld);
+	  }
+	  if (TY_kind(ty) == KIND_POINTER) {
+	    // not an lda, but is ldid of entry shared parameter pointer,
+	    // which must point to global.
+	    return tree;
+	  }
+	}
+	return NULL;
+  case OPR_ADD:
+  case OPR_SUB:
+	lda = Find_Lda (WN_kid0(tree));
+	if (lda) return lda;
+	lda = Find_Lda (WN_kid1(tree));
+	if (lda) return lda;
+	return NULL;
+  case OPR_SELECT:
+	lda = Find_Lda (WN_kid1(tree));
+	if (lda) return lda;
+	lda = Find_Lda (WN_kid2(tree));
+	if (lda) return lda;
+	return NULL;
+  default:
+	return NULL;
+  }
+}
+#endif

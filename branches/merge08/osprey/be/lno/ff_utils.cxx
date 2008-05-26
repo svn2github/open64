@@ -573,6 +573,10 @@ static void Rename_Update_MP(WN *scalar_ref,ST* new_st,
     } else if ((WN_opcode(region) == OPC_DO_LOOP) && Do_Loop_Is_Mp(region)) {
       WN *loop = region;
       region = LWN_Get_Parent(LWN_Get_Parent(region));
+#ifdef KEY
+      if (PU_cxx_lang(Get_Current_PU()) && Is_Eh_Or_Try_Region(region))
+        region = LWN_Get_Parent(LWN_Get_Parent(region));
+#endif
       Rename_Update_MP_Region(region,scalar_ref,new_st,new_offset,loop,
 	Outer_Mp_Region(region));
     }
@@ -1629,6 +1633,19 @@ extern BOOL Generate_Array_Dependence_For_Statement_Dependence_Graph(
   return TRUE;
 }
 
+#ifdef KEY
+static BOOL Loop_Has_Asm (WN* loop)
+{
+  LWN_ITER* itr = LWN_WALK_TreeIter(WN_do_body(loop));
+  for (; itr != NULL; itr = LWN_WALK_TreeNext(itr)) {
+    WN* node = itr->wn;
+    if (WN_operator(node) == OPR_ASM_STMT)
+      return TRUE;
+  }
+  return FALSE;
+}
+#endif
+
 extern ARRAY_DIRECTED_GRAPH16* Build_Statement_Dependence_Graph(
   WN* in_loop,
   REDUCTION_MANAGER* Red_Mgr,
@@ -1636,6 +1653,11 @@ extern ARRAY_DIRECTED_GRAPH16* Build_Statement_Dependence_Graph(
   WN_MAP sdm,
   MEM_POOL* pool)
 {
+#ifdef KEY //bug 14121: statement dependence graph will be incorrect
+           //if the loop contains Asm statement.
+  if(Loop_Has_Asm(in_loop))
+   return NULL;
+#endif
 
   MEM_POOL_Push(&LNO_local_pool);
   ARRAY_DIRECTED_GRAPH16 *sdg;

@@ -38,10 +38,10 @@
  * =======================================================================
  *
  *  Module: tn_map.h
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/tn_map.h,v $
+ *  $Revision: 1.2 $
+ *  $Date: 02/11/07 23:41:27-00:00 $
+ *  $Author: fchow@keyresearch.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.tn_map.h $
  *
  *  Description:
  *  ============
@@ -169,13 +169,5 @@ extern INT64 hTN_MAP64_Get (hTN_MAP64 map, TN *tn);
 extern void *hTN_MAP_Get_And_Set   (hTN_MAP   map, TN *tn, void *value);
 extern INT32 hTN_MAP32_Get_And_Set (hTN_MAP32 map, TN *tn, INT32 value);
 extern INT64 hTN_MAP64_Get_And_Set (hTN_MAP64 map, TN *tn, INT64 value);
-
-#ifdef TARG_IA64
-//define float hTN_MAP
-typedef struct htn_mapf *hTN_MAPf;
-extern hTN_MAPf   hTN_MAPf_Create   (MEM_POOL *pool);
-extern void hTN_MAPf_Set   (hTN_MAPf   map, TN *tn, float value);
-extern float hTN_MAPf_Get   (hTN_MAPf   map, TN *tn);
-#endif
 
 #endif /* TN_MAP_INCLUDED */

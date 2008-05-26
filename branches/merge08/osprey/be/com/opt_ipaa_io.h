@@ -38,10 +38,10 @@
 // ====================================================================
 //
 // Module: opt_ipaa_io.h
-// $Revision$
-// $Date$
-// $Author$
-// $Source$
+// $Revision: 1.2 $
+// $Date: 02/11/07 23:41:38-00:00 $
+// $Author: fchow@keyresearch.com $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.opt_ipaa_io.h $
 //
 // Revision history:
 //  22-Nov-95 - Original Version
@@ -60,7 +60,7 @@
 #define cxx_opt_ipaa_io_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *opt_ipaa_io_rcs_id = "$Source$ $Revision$";
+static char *opt_ipaa_io_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.opt_ipaa_io.h $ $Revision: 1.2 $";
 #endif /* _KEEP_RCS_ID */
 
 extern "C" {

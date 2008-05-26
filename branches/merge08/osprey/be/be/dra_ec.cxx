@@ -76,7 +76,7 @@ TY_IDX DRA_EC_struct_ptr_ty = (TY_IDX) NULL;
 
 static OPCODE Ldid_Opcode [MTYPE_LAST + 1] = {
   OPC_UNKNOWN,    /* MTYPE_UNKNOWN */
-  OPC_UNKNOWN,    /* MTYPE_B */
+  OPC_UNKNOWN,    /* MTYPE_UNKNOWN */
   OPC_I4I1LDID,   /* MTYPE_I1 */
   OPC_I4I2LDID,   /* MTYPE_I2 */
   OPC_I4I4LDID,   /* MTYPE_I4 */
@@ -89,10 +89,10 @@ static OPCODE Ldid_Opcode [MTYPE_LAST + 1] = {
   OPC_F8F8LDID,   /* MTYPE_F8 */
 #ifdef TARG_IA64
   OPC_F10F10LDID, /* MTYPE_F10 */
-#endif
-#ifdef TARG_X8664
+#else
   OPC_UNKNOWN,    /* MTYPE_F10 */
 #endif
+  OPC_UNKNOWN,    /* MTYPE_F10 */
   OPC_UNKNOWN,    /* MTYPE_F16 */
   OPC_UNKNOWN,    /* MTYPE_STR */
   OPC_FQFQLDID,   /* MTYPE_FQ */
@@ -100,7 +100,7 @@ static OPCODE Ldid_Opcode [MTYPE_LAST + 1] = {
   OPC_C4C4LDID,   /* MTYPE_C4 */
   OPC_C8C8LDID,   /* MTYPE_C8 */
   OPC_CQCQLDID,   /* MTYPE_CQ */
-  OPC_UNKNOWN,    /* MTYPE_V */
+  OPC_UNKNOWN,     /* MTYPE_V */
   OPC_UNKNOWN,    /* MTYPE_BS */
   OPC_UNKNOWN,    /* MTYPE_A4 */
   OPC_UNKNOWN,    /* MTYPE_A8 */

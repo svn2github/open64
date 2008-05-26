@@ -125,6 +125,9 @@
 #include "opt_dbg.h"                    // for g_comp_unit
 #include "opt_main.h"                   // for COMP_UNIT
 #include "opt_alias_analysis.h"
+#if defined(TARG_SL)                    // for INTRN_has_no_sideeffect
+#include "intrn_info.h"
+#endif
 
 extern "C" {
 #include "bitset.h"
@@ -3067,6 +3070,27 @@ OPT_STAB::Generate_mu_and_chi_list(WN *wn, BB_NODE *bb)
 	call_st = WN_sym(wn);
       else if (opr == OPR_ICALL)
 	num_parms--;
+#if defined(TARG_SL)
+      // for intrinsic function which has no side effect and 
+      // is pure function we needn't add chi for it. 
+      else if( opr == OPR_INTRINSIC_CALL && 
+	 WN_intrinsic(wn) &&
+	 INTRN_is_pure(WN_intrinsic(wn)) && 
+  	 INTRN_has_no_side_effects(WN_intrinsic(wn)) && 
+	 (WN_intrinsic(wn) >= INTRN_SL2_BEGIN && WN_intrinsic(wn) <= INTRN_SL2_END))
+      {
+	 for (INT32 i = 0; i < WN_kid_count(wn); i++) {
+           occ = Get_occ(WN_kid(wn, i));
+	    if (occ != NULL) {
+	      vp_idx = occ->Aux_id(); 
+	      occ->New_mem_mu_node(vp_idx, Occ_pool()); 
+	      if (aux_stab[vp_idx].Aux_id_list() == NULL) 
+	        Update_aux_id_list(vp_idx);
+	   }
+        }
+        break;
+     }
+#endif 
 
       occ = Get_occ(wn);
       mu = Get_stmt_mu_list(wn);

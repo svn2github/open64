@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -45,7 +45,11 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 #include <sys/types.h>
+#if defined(BUILD_OS_DARWIN)
+#include "darwin_elf.h"
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <ctype.h>
 #include "wn.h"
 #include "wn_map.h"

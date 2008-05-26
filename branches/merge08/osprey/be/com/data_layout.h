@@ -42,10 +42,10 @@
  * ====================================================================
  *
  * Module: data_layout.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/data_layout.h,v $
+ * $Revision: 1.9 $
+ * $Date: 05/12/05 08:59:12-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.data_layout.h $
  *
  * Revision history:
  *  11-Nov-94 - Original Version
@@ -188,6 +188,10 @@ extern void Set_Frame_Has_Calls(BOOL b);
 #ifdef TARG_X8664
 /* return TRUE if function has calls */
 extern BOOL Stack_Frame_Has_Calls (void);
+#endif
+
+#if defined(TARG_SL)
+extern void Pre_Allocate_Objects(WN *);
 #endif
 
 #ifdef __cplusplus

@@ -389,6 +389,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
           } 
           else{
             WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
+	    // bug 13104
             if (! MTYPE_is_float(exp->Asm_input_rtype()) &&
 				(opnd->Kind() == CK_VAR || opnd->Kind() == CK_IVAR))
 			  // OSP_388 and OSP_390
@@ -615,6 +616,11 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
     }
     else {
       wn = WN_CreateLda(OPR_LDA, exp->Dtyp(), MTYPE_V, exp->Offset(), exp->Lda_ty(), exp->Lda_base_st(), exp->Afield_id());
+#ifdef TARG_SL
+      if(exp->Is_flag_set(CF_INTERNAL_MEM_OFFSET)) {
+          WN_Set_is_internal_mem_ofst(wn);
+      }
+#endif 
       // Generate a small amount of alias information for LDA nodes as
       // well, since LNO may use the LDA's as handles on symbols that it
       // wants to equivalence. In that situation, it may need to
@@ -633,6 +639,13 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
     {
       AUX_STAB_ENTRY *aux_entry = 
 	emitter->Opt_stab()->Aux_stab_entry(exp->Aux_id());
+#ifdef TARG_SL
+      if (exp->Dtyp() == MTYPE_I2 && exp->Dsctyp() == MTYPE_I2) {
+        wn = WN_Create((aux_entry->Bit_size() > 0 && aux_entry->Field_id() == 0)
+			? OPR_LDBITS : OPR_LDID,
+	   	        MTYPE_I4, exp->Dsctyp(), 0); 
+      } else
+#endif
       wn = WN_Create((aux_entry->Bit_size() > 0 && aux_entry->Field_id() == 0)
 			? OPR_LDBITS : OPR_LDID,
 		     exp->Dtyp(), exp->Dsctyp(), 0); 
@@ -645,11 +658,23 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       if (ST_class (st) == CLASS_PREG &&
           exp->Dsctyp() != MTYPE_M &&  // added to fix bug #567932
 	  TY_size (ty_idx) != MTYPE_byte_size (exp->Dsctyp())) {
-	DevWarn("PREG (%s) has mismatching MTYPE-size and TY-size; refer to bug #567932", 
-		ST_name(st));
-	Set_TY_IDX_index (ty_idx,
-			  TY_IDX_index(MTYPE_To_TY (exp->Dsctyp())));
-	field_id = 0;
+	BOOL reset_type = TRUE;
+	if (field_id != 0 && TY_kind(ty_idx) == KIND_STRUCT) {
+	  // check if is referring to struct field which does match size
+	  UINT cur_field_id = 0;
+	  FLD_HANDLE fld = FLD_get_to_field (ty_idx, field_id, cur_field_id);
+	  Is_True (! fld.Is_Null(), ("Invalid field id %d for type 0x%x",
+                          field_id, ty_idx));
+	  if (TY_size(FLD_type(fld)) == MTYPE_byte_size(exp->Dsctyp()))
+		reset_type = FALSE;
+	}
+	if (reset_type) {
+	  DevWarn("PREG (%s) has mismatching MTYPE-size and TY-size; refer to bug #567932", 
+		  ST_name(st));
+	  Set_TY_IDX_index (ty_idx,
+			    TY_IDX_index(MTYPE_To_TY (exp->Dsctyp())));
+	  field_id = 0;
+	}
       }
       WN_set_ty(wn, ty_idx);
       WN_st_idx(wn) = ST_st_idx(st);
@@ -806,6 +831,12 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       rhs_wn = Gen_exp_wn( srep->Rhs(), emitter );
       rwn = WN_CreateCompgoto(num_entries, rhs_wn, block_wn, default_wn, 0);
     }
+#ifdef TARG_SL //fork_joint
+     if (srep->Fork_stmt_flags())
+	 	WN_Set_is_compgoto_para(rwn);
+     else if(srep->Minor_fork_stmt_flags()) 
+	 	WN_Set_is_compgoto_for_minor(rwn);
+#endif 
     break;
 
   case OPR_ASM_STMT:
@@ -834,7 +865,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	else {
           // bug fix for OSP_87 and OSP_90
 	  prag = WN_CreateXpragma(WN_PRAGMA_ASM_CLOBBER,
-				  (ST_IDX) 0,
+				  (ST_IDX) p->clobber_string_idx,
 				  1);
 	  WN_kid0(prag) = WN_CreateIdname(p->preg_number,
 					  p->preg_st_idx);

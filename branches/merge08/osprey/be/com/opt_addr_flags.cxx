@@ -66,8 +66,16 @@ Set_addr_saved_expr(WN *wn, BOOL warn)
   Is_True(OPCODE_is_expression(opc),
 	  ("Update_addr_saved: opcode must be expression"));
 
+#ifdef TARG_NVISA
+  // only ignore if LDA directly under ILOAD,
+  // cause if other expression (like ILOAD(add(lda,mul))
+  // then will not be simple ldid in cg.
+  if (OPCODE_operator(opc) == OPR_ILOAD && WN_operator(WN_kid(wn,0)) == OPR_LDA)
+    return;	// ignore
+#else
   if (OPCODE_is_load(opc))
     return;
+#endif
 
   if (OPCODE_operator(opc) == OPR_LDA) {
     ST *st = WN_st(wn);
@@ -79,6 +87,29 @@ Set_addr_saved_expr(WN *wn, BOOL warn)
 		ST_name(st));
     }
   }
+#ifdef TARG_NVISA
+  // If accessing larger area than symbol,
+  // must be a cast, and requires accessing memory location.
+  // Other targets can handle this because var symbols have memory location,
+  // but we try to map remaining vars to registers later in cgexp.
+  // So need to mark that this symbol cannot be put in a reg;
+  // easiest to reuse addr_saved flag for this purpose, as that flag is
+  // already checked, and can think of this cast as being an implicit use
+  // of the addr.
+  else if (OPCODE_operator(opc) == OPR_LDID) {
+    ST *st = WN_st(wn);
+    if (ST_class(st) == CLASS_VAR && !ST_addr_saved(st)
+      && !TY_has_union(ST_type(st)))
+    {
+      if (MTYPE_byte_size(OPCODE_desc(opc))
+        > MTYPE_byte_size(Mtype_For_Type_Offset(ST_type(st),WN_offset(wn))))
+      {
+        DevWarn("set addr_saved on ldid that accesses larger area");
+        Set_ST_addr_saved(st);
+      }
+    }
+  }
+#endif
   if (OPCODE_operator(opc) == OPR_COMMA) {
     	Set_addr_saved_stmt(WN_kid(wn,0), warn);
     	Set_addr_saved_expr(WN_kid(wn,1), warn);
@@ -151,6 +182,23 @@ Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved)
   if (OPCODE_is_black_box(opc)) 
     return;
   
+#ifdef TARG_NVISA
+  // See earlier comment about LDID
+  if (OPCODE_operator(opc) == OPR_STID) {
+    ST *st = WN_st(wn);
+    if (ST_class(st) == CLASS_VAR && !ST_addr_saved(st)
+      && !TY_has_union(ST_type(st)))
+    {
+      if (MTYPE_byte_size(OPCODE_desc(opc))
+        > MTYPE_byte_size(Mtype_For_Type_Offset(ST_type(st),WN_offset(wn))))
+      {
+        DevWarn("set addr_saved on stid that accesses larger area");
+        Set_ST_addr_saved(st);
+      }
+    }
+  }
+#endif
+
   if (opc == OPC_BLOCK) {
     for (WN *stmt = WN_first(wn); stmt != NULL; stmt = WN_next(stmt))  
       Set_addr_saved_stmt(stmt, use_passed_not_saved);
@@ -176,6 +224,16 @@ Recompute_addr_saved_stmt(WN *wn)
     // the RHS expr of any store is kid0
     // Any idea on how to assert?
     Set_addr_saved_expr(WN_kid0(wn), TRUE);
+  }
+  if (OPCODE_operator(opc) == OPR_ISTORE) {
+    // can be address on lhs too
+    Set_addr_saved_expr(WN_kid1(wn), TRUE);
+  }
+  else if (OPCODE_operator(opc) == OPR_ASM_STMT) {
+    // need to search input nodes
+    for (INT i = 2; i < WN_kid_count(wn); ++i) {
+      Set_addr_saved_expr(WN_kid(wn, i), TRUE);
+    }
   }
 
   if (OPCODE_is_black_box(opc)) 

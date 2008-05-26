@@ -250,7 +250,7 @@
 # define DV_ALLOC_CPNT_OFFSET_WORD_SIZE		1
 #endif /* KEY Bug 6845 */
 
-#ifdef TARG_X8664
+#if defined (TARG_X8664) && defined (_HOST64)
 # define DV_DIM_WORD_SIZE               ((SET_POINTER_SIZE)? 3 : 3)
 # define DV_HD_WORD_SIZE                ((SET_POINTER_SIZE)? 6 : 8)
 #else

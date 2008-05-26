@@ -177,7 +177,7 @@ OCC_TAB_ENTRY *
 OPT_REVISE_SSA::Get_new_occ(CODEREP *cr, BOOL is_store)
 {
   WN *wn = WN_Create(cr->Op(), 1);  // OCC_TAB_ENTRY needs a wn
-  bzero(wn, sizeof(WN));
+  BZERO(wn, sizeof(WN));
   WN_set_operator(wn, OPR_ILOAD);
   WN_set_desc(wn, cr->Dsctyp());
   WN_set_rtype(wn, cr->Dtyp());
@@ -250,7 +250,7 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
   case CK_VAR: 
     if (cr->Bit_field_valid()) {
       WN wn;
-      bzero(&wn, sizeof(WN));
+      BZERO (&wn, sizeof(WN));
       WN_set_operator(&wn, OPR_LDID);
       WN_set_desc(&wn, cr->Dsctyp());
       WN_set_rtype(&wn, cr->Dtyp());
@@ -367,7 +367,7 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld(void)
 	  _symbols_to_revise->Union1D(lhs->Aux_id()); // pv 805267
 
           WN wn;
-          bzero(&wn, sizeof(WN));
+          BZERO(&wn, sizeof(WN));
 	  WN_set_operator(&wn, OPR_STID);
 	  WN_set_desc(&wn, stmt->Desc());
 	  WN_set_rtype(&wn, MTYPE_V);
@@ -555,7 +555,7 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 #endif
 	  // this indirect can be folded
 	  CODEREP *lda = lhs->Istr_base();
-          bzero(&wn, sizeof(WN));
+          BZERO(&wn, sizeof(WN));
 	  WN_set_operator(&wn, opr == OPR_ISTORE ? OPR_STID : OPR_STBITS);
 	  WN_set_desc(&wn, stmt->Desc());
 	  WN_set_rtype(&wn, MTYPE_V);
@@ -635,6 +635,9 @@ OPT_REVISE_SSA::Update_phis(BB_NODE *bb)
       TY_IDX ty = TY_IDX_ZERO;
       ST *st = _opt_stab->St(i);
       if (st != NULL) ty = ST_type(st);
+      // Original code used mclass to get rtype,
+      // but have since added mtype to sym, 
+      // and mtype is more accurate than mclass (preserves sign
       if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
          rtype = sym->Mtype();
       else {
@@ -1189,6 +1192,10 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 #endif
 	   ) {
 
+          TY_IDX stbits_tyidx = Void_Type;
+	  if (opr == OPR_STBITS) {
+	    stbits_tyidx = MTYPE_To_TY(lhs->Dsctyp());
+	  }
 	  // Add a new chi node for the old STBITS lhs symbol (pv 805267)
 	  if (stmt->Chi_list() == NULL)
 	    stmt->Set_chi_list(CXX_NEW(CHI_LIST, _htable->Mem_pool()));
@@ -1234,11 +1241,11 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 #ifdef KEY // bug 9179
 	  if (opr == OPR_STID)
 	    stmt->Set_lhs(_htable->Add_def(v->Aux_id(), -1, stmt, 
-	      v->Dtyp(), v->Dsctyp(), v->Offset(), Void_Type, 0, TRUE));
+	      v->Dtyp(), v->Dsctyp(), v->Offset(), stbits_tyidx, 0, TRUE));
 	  else
 #endif
 	  stmt->Set_lhs(_htable->Add_def(lhs->Scalar_aux_id(), -1, stmt, 
-	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), Void_Type, 0, TRUE));
+	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), stbits_tyidx, 0, TRUE));
 
 	  stmt->Set_opr(OPR_STID);
 	  if (v->Aux_id() < _first_new_aux_id)
@@ -1346,7 +1353,7 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
 #endif
 #if 1 // bug fix aug-26-02
     // indirect load is not volatile, but folded-to scalar is volatile
-    if (x->Is_var_volatile() || _opt_stab->Is_volatile(cr->Scalar_aux_id())) 
+    if (x->Is_var_volatile()) 
       return NULL;
 #endif
     x->Set_dtyp(cr->Dtyp());
@@ -1362,6 +1369,17 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
       x->Set_offset(cr->Offset()+cr->Ilod_base()->Offset());
     if (cr->Opr() == OPR_ILDBITS) 
       x->Set_bit_field_valid();
+    // if sizes don't match, add cvt
+    if (MTYPE_is_integral(x->Dtyp()) 
+      && MTYPE_byte_size(cr->Dtyp()) != MTYPE_byte_size(x->Dtyp())) 
+    {
+      DevWarn("insert cvt above zero-version");
+      CODEREP cvt_cr;
+      cvt_cr.Init_expr(OPCODE_make_op(OPR_CVT, cr->Dtyp(), x->Dtyp()), x);
+      x = _htable->Rehash(&cvt_cr);
+    }
+    else
+      x->Set_dtyp(cr->Dtyp());
     cr->DecUsecnt();
     return x;
   case CK_OP:

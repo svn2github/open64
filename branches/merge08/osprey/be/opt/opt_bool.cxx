@@ -219,6 +219,11 @@ Simplify_bool_expr(COMP_UNIT *cu)
     UPDATE<BOOL_SIMP, PER_BB_CACHE> 
       UPDATE_bool_simp(cu, &bool_simp, Get_Trace(TP_WOPT2, BOOL_SIMP_FLAG) );
     UPDATE_bool_simp.Process_PU();
+
+    if (Get_Trace (TP_WOPT2, BOOL_SIMP_FLAG)) {
+      fprintf (TFile, "%sDump after Boolean Simplification\n%s", DBar, DBar );
+      cu->Cfg()->Print (TFile);
+    }
   }
 
 #if 0

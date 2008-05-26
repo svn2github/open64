@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -37,7 +37,7 @@
 */
 
 
-/* $Header: /home/bos/bk/kpro64-pending/include/cmplrs/host.h 1.6 04/12/21 14:57:36-08:00 bos@eng-25.internal.keyresearch.com $ */
+/* $Header: /depot/CVSROOT/javi/src/sw/cmplr/include/cmplrs/host.h,v 1.1 2005/07/27 02:22:36 kevinlo Exp $ */
 
 #ifndef _HOST_H
 #define _HOST_H

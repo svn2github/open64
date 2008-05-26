@@ -42,10 +42,10 @@
 // =======================================================================
 //
 //  Module: cg_swp_allocator.cxx
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_swp_allocator.cxx,v $
+//  $Revision: 1.7 $
+//  $Date: 05/12/05 08:59:04-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cg_swp_allocator.cxx $
 //
 //  Revision comments:
 //
@@ -82,14 +82,14 @@
 //
 // ====================================================================
 // ====================================================================
-#include <stdint.h>
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifndef STANDALONE_SWP_ALLOCATOR
 #include <stdio.h>
 #include <stdarg.h>
 #include <vector>
 #include <algorithm>
-#include <utility>
 #include "defs.h"
 #include "glob.h"    // for Cur_PU_Name
 #include "timing.h"
@@ -726,7 +726,7 @@ SWP_ALLOCATOR::_print_status(FILE *outf)
 	    "Need more registers; "
 	    "gave up after allocating %d (of %d) lifetimes.\n"
 	    "The last allocation ran the register count up to %d\n", 
-	    _num_allocated_lifetimes, (INT)_lifetime.size(), num_allocated_regs());
+	    _num_allocated_lifetimes, _lifetime.size(), num_allocated_regs());
     break;
 
   default:
@@ -1029,6 +1029,7 @@ SWP_Is_Variant(TN_SET *invariants, TN *tn)
 	  !TN_SET_MemberP(invariants, tn));
 }
 
+
 static void
 SWP_Update_Lifetime(TN2INT32_MAP &tn2lt_map,
 		    LIFETIME_SET &lt, 
@@ -1060,7 +1061,7 @@ SWP_Update_Lifetime(TN2INT32_MAP &tn2lt_map,
   
   // Access the map entry for this TN.
   //
-  std::pair<TN2INT32_MAP::iterator, bool> insert_status = 
+  pair<TN2INT32_MAP::iterator, bool> insert_status = 
     tn2lt_map.insert(TN2INT32_MAP::value_type(tn, -1));
 
   if (insert_status.second)  // A new map-entry was inserted for the tn
@@ -1349,19 +1350,6 @@ SWP_Allocate_Rotating_Regs(bool                trace,
   //
   used_regs = allocator.num_allocated_regs();
   ctr_pred_loc = SWP_LIFETIME::InvalidLoc;
-
-#ifdef TARG_IA64
-   //Added to adjust predicate register allocation.
-  if (reg_class == ISA_REGISTER_CLASS_predicate) {
-      #ifdef TARG_IA64
-      BOOL success = allocator.adjust_predicate(op_state,used_regs);
-      /*if (!success) {
-        printf("Do not success because of SWP p63!\n"); 
-        return FALSE;
-      } */ 
-      #endif
-  }
-#endif
   
   if (is_alloced)
   {
@@ -1376,7 +1364,6 @@ SWP_Allocate_Rotating_Regs(bool                trace,
       if (lt_itr->location() < offset)
 	offset = lt_itr->location();
 
-     
     // Next, update the "allocation" map to reflect our results, and
     // also determine the location of any register without a TN ptr.
     //
@@ -1392,7 +1379,6 @@ SWP_Allocate_Rotating_Regs(bool                trace,
 		 "control predicate location"));
 	
 	ctr_pred_loc = loc;
-	//if (lt_itr->tn() == op_state.control_predicate_tn) ctr_pred_loc = 0;
       }
       if (reg_class != ISA_REGISTER_CLASS_predicate  ||
 	  lt_itr->tn() != NULL) {

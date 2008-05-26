@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: wn2f_load_store.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/wn2f_load_store.cxx,v $
+ * $Revision: 1.5 $
+ * $Date: 05/12/05 08:59:32-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/whirl2f/SCCS/s.wn2f_load_store.cxx $
  *
  * Revision history:
  *  12-Apr-95 - Original Version
@@ -62,7 +62,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/wn2f_load_store.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/whirl2f/SCCS/s.wn2f_load_store.cxx $ $Revision: 1.5 $";
 #endif
 
 #include "whirl2f_common.h"
@@ -995,11 +995,9 @@ WN2F_ldid(TOKEN_BUFFER tokens, WN *wn, WN2F_CONTEXT context)
             break;
          case MTYPE_F4:
          case MTYPE_F8:
-         case MTYPE_F10:
          case MTYPE_FQ:
          case MTYPE_C4:
          case MTYPE_C8:
-         case MTYPE_C10:
          case MTYPE_CQ:
             sprintf(buffer, "reg%d", First_Float_Preg_Return_Offset);
             Append_Token_String(tokens, buffer);

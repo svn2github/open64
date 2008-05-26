@@ -41,10 +41,10 @@
  * =======================================================================
  *
  *  Module: cg_swp_emit.cxx
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_swp_emit.cxx,v $
+ *  $Revision: 1.6 $
+ *  $Date: 05/12/05 08:59:04-08:00 $
+ *  $Author: bos@eng-24.pathscale.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cg_swp_emit.cxx $
  *
  *  Description:
  *  ============
@@ -184,12 +184,12 @@ SWP_Reorder_OPs(const SWP_OP_vector& op_state,
   BB_Remove_All(body);  // remove all OPs
 
   INT         i;
-  std::vector<INT> sorted_op;
+  vector<INT> sorted_op;
   for (i = 0; i < op_state.size(); i++) {
     if (op_state[i].op) 
       sorted_op.push_back(i);
   }
-  std::sort(sorted_op.begin(), sorted_op.end(), Order_Op_State_by_Modulo_Cycles(op_state));
+  sort(sorted_op.begin(), sorted_op.end(), Order_Op_State_by_Modulo_Cycles(op_state));
 
   INT ii = op_state.ii;
   for (i = 0; i < sorted_op.size(); i++) {
@@ -232,7 +232,7 @@ Lookup_Register_TN(SWP_REG_ASSIGNMENT::REG2TN_MAP& reg2tn_map,
     rtn = Dup_TN(tn);
     Set_TN_class_reg(rtn, rp);
     // Set TN is dedicated.  Otherwise GRA will assign registers again.
-#ifndef TARG_IA64
+#ifdef KEY
     Set_TN_is_dedicated(rtn);
 #endif
     reg2tn_map[rp] = rtn;
@@ -256,15 +256,15 @@ TN *SWP_REG_ASSIGNMENT::Get_Register_TN(TN *tn, INT adjustment)
 {
   Is_True(adjustment >= 0,
 	  ("SWP_REG_ASSIGNMENT: Unexpected negative register-number offset."));
-#ifdef TARG_IA64
+#ifndef KEY
   Is_True(reg_allocation.find(tn) != reg_allocation.end(),
 	  ("SWP_REG_ASSIGNMENT: can't locate TN%d.", TN_number(tn)));
 #endif
   CLASS_REG_PAIR rp = reg_allocation[tn];
   REGISTER r = CLASS_REG_PAIR_reg(rp);
   ISA_REGISTER_CLASS c = CLASS_REG_PAIR_rclass(rp);
-#ifndef TARG_IA64
-//#ifdef KEY
+
+#ifdef KEY
   c = ISA_REGISTER_CLASS_integer;
 #endif
     
@@ -279,9 +279,6 @@ TN *SWP_REG_ASSIGNMENT::Get_Register_TN(TN *tn, INT adjustment)
   // delay the modulo computation to a postpass (see SWP_Fixup).
   //
   r = r + adjustment + rotating_reg_base[c];
-  /*if (c == ISA_REGISTER_CLASS_predicate) {
-    r = r + 2;
-  }*/
 
   // workaround g++ bug:  Set_CLASS_REG_PAIR_reg(rp, r);
   Set_CLASS_REG_PAIR(rp, c, r);
@@ -373,8 +370,7 @@ void SWP_REG_ASSIGNMENT::Update_Annotation(ROTATING_KERNEL_INFO *info)
     //
     REGISTER_SET tmp = REGISTER_CLASS_allocatable(i);
     tmp = REGISTER_SET_Difference(tmp, non_rotating_reg[i]);
-#ifdef TARG_IA64
-//#ifndef KEY
+#ifndef KEY
     if (i != ISA_REGISTER_CLASS_integer) {
       // assume all rotating registers are killed 
       // for some reason, rotating reg are not in REGISTER_CLASS_allocatable()?
@@ -432,7 +428,6 @@ SWP_Add_Glue(TN *result, TN *opnd, BB *bb, bool append)
     BB_Prepend_Ops(bb, &ops);
 }
 
-
 // Replace the TN in the SWP loop by register-assigned TNs.
 //  - A TN in SWP are used in different stages, hence have
 //    different register allocated.   Since one TN only has
@@ -476,23 +471,15 @@ SWP_Rename_TNs(const SWP_OP_vector& op_state,
 	if (TN_is_register(tn) &&
 	    !TN_is_dedicated(tn)) {
 	  TN *newtn;
-#ifdef TARG_IA64
-	  if (!TN_SET_MemberP(non_rotating, tn)) {
-	    INT ofst = reg_assign.Get_Register_Offset(op_state[i].cycle, ii, OP_omega(op,j));
-	    newtn = reg_assign.Get_Register_TN(tn, ofst);
-	  } else 
-	    newtn = reg_assign.Get_Non_Rotating_Register_TN(tn);
-#else
 	  if (TN_SET_MemberP(non_rotating, tn)) {
 	    newtn = reg_assign.Get_Non_Rotating_Register_TN(tn);
 	  } else { 
 	    INT ofst = reg_assign.Get_Register_Offset(op_state[i].cycle, ii, OP_omega(op,j));
 	    if (SWP_REG_ASSIGNMENT::Trace()) {
-	      fprintf(TFile, "op %d: reg ofst for operand tn %d = %d (cycle %d, omega %d)\n", i, TN_number(tn), ofst, op_state[i].cycle, OP_omega(op,j));
+		fprintf(TFile, "op %d: reg ofst for operand tn %d = %d (cycle %d, omega %d)\n", i, TN_number(tn), ofst, op_state[i].cycle, OP_omega(op,j));
 	    }
 	    newtn = reg_assign.Get_Register_TN(tn, ofst);
 	  }
-#endif
 	  Set_OP_opnd(op, j, newtn);
 	}
       }
@@ -503,23 +490,15 @@ SWP_Rename_TNs(const SWP_OP_vector& op_state,
 	  Is_True(!TN_SET_MemberP(invariants, tn),
 		  ("SWP_Rename_Body: result TN%d cannot be an invariant.", TN_number(tn)));
 	  TN *newtn;
-#ifdef TARG_IA64
-	  if (!TN_SET_MemberP(non_rotating, tn)) {
-	    INT ofst = reg_assign.Get_Register_Offset(op_state[i].cycle, ii, 0);
-	    newtn = reg_assign.Get_Register_TN(tn, ofst);
-	  } else
-	    newtn = reg_assign.Get_Non_Rotating_Register_TN(tn);
-#else
 	  if (TN_SET_MemberP(non_rotating, tn)) {
 	    newtn = reg_assign.Get_Non_Rotating_Register_TN(tn);
 	  } else {
 	    INT ofst = reg_assign.Get_Register_Offset(op_state[i].cycle, ii, 0);
 	    if (SWP_REG_ASSIGNMENT::Trace()) {
-	      fprintf(TFile, "op %d: reg ofst for result tn %d = %d (cycle %d)\n", i, TN_number(tn), ofst, op_state[i].cycle);
+		fprintf(TFile, "op %d: reg ofst for result tn %d = %d (cycle %d)\n", i, TN_number(tn), ofst, op_state[i].cycle);
 	    }
 	    newtn = reg_assign.Get_Register_TN(tn, ofst);
 	  }
-#endif // TARG_IA64
 	  Set_OP_result(op, k, newtn);
 	}
       }
@@ -552,11 +531,9 @@ SWP_Rename_TNs(const SWP_OP_vector& op_state,
       if (!TN_SET_MemberP(non_rotating, body_tn)) {
 	INT omega = CG_LOOP_BACKPATCH_omega(bp);
 	INT ofst = reg_assign.Get_Liveout_Register_Offset(sc, omega);
-#ifndef TARG_IA64
 	if (SWP_REG_ASSIGNMENT::Trace()) {
 		fprintf(TFile, "reg ofst for epilog tn %d = %d\n", TN_number(body_tn), ofst);
 	}
-#endif
 	newtn = reg_assign.Get_Register_TN(body_tn, ofst);
       } else
 	newtn = reg_assign.Get_Non_Rotating_Register_TN(body_tn);
@@ -598,24 +575,6 @@ Fixup_Rotating_Register_TN(TN *tn, const SWP_FIXUP &fixup, bool trace)
     //
     if (r >= REGISTER_First_Rotating_Registers(rc)) {
       if (rc == ISA_REGISTER_CLASS_predicate) {
-#ifdef TARG_IA64      	
-        //Bug fix:
-        //The order of calculate must be guarded!
-        
-      	if ( ((int)(r - fixup.control_loc)) < 0 ) {
-          r += REGISTER_Last_Rotating_Registers(rc) - 
-	          REGISTER_First_Rotating_Registers(rc) + 1;
-          r -= fixup.control_loc;
-      	} else {
-	  r -= fixup.control_loc;  // Control lifetime uses first rotating regs
-	  if (r < REGISTER_First_Rotating_Registers(rc))
-	    r += REGISTER_Last_Rotating_Registers(rc) - 
-	            REGISTER_First_Rotating_Registers(rc) + 1;
-	  else if (r > REGISTER_Last_Rotating_Registers(rc))
-	    r -= REGISTER_Last_Rotating_Registers(rc) - 
-	            REGISTER_First_Rotating_Registers(rc) + 1;
-        }
-#else
 	r -= fixup.control_loc;  // Control lifetime uses first rotating regs
 	if ((int)r < (int)REGISTER_First_Rotating_Registers(rc))
 	  r += REGISTER_Last_Rotating_Registers(rc) - 
@@ -629,33 +588,20 @@ Fixup_Rotating_Register_TN(TN *tn, const SWP_FIXUP &fixup, bool trace)
 	    REGISTER_Number_Stacked_Rotating(rc)) {
 	  r -= REGISTER_Number_Stacked_Rotating(rc);
 	}
-#endif // TARG_IA64
-      }
-      else if (rc == ISA_REGISTER_CLASS_integer) {
-	if (r >= REGISTER_First_Rotating_Registers(rc) +
-	    REGISTER_Number_Stacked_Rotating(rc)) {
-	  r -= REGISTER_Number_Stacked_Rotating(rc);
-	}
       }
       else if (r > REGISTER_Last_Rotating_Registers(rc)) {
 	r -= REGISTER_Last_Rotating_Registers(rc) - 
 	  REGISTER_First_Rotating_Registers(rc) + 1;
       }
 
-#ifdef TARG_IA64
       Is_True(r <= REGISTER_Last_Rotating_Registers(rc) &&
 	      r >= REGISTER_First_Rotating_Registers(rc),
-	      ("cannot wrap around twice."));
-#else
-      Is_True(r <= REGISTER_Last_Rotating_Registers(rc) &&
-	      r >= REGISTER_First_Rotating_Registers(rc),
-      ("%d (class %d:%d:%d:%d) => %d: cannot wrap around twice.",
-       old_r, rc,
-       REGISTER_First_Rotating_Registers(rc),
-       REGISTER_Last_Rotating_Registers(rc),
-       fixup.control_loc,
-       r));
-#endif
+	      ("%d (class %d:%d:%d:%d) => %d: cannot wrap around twice.",
+	       old_r, rc,
+	       REGISTER_First_Rotating_Registers(rc),
+	       REGISTER_Last_Rotating_Registers(rc),
+	       fixup.control_loc,
+	       r));
     }
   }
   if (old_r != r) 
@@ -826,28 +772,7 @@ SWP_Emit(SWP_OP_vector& op_state,
 	}
       }
     }
-#ifdef TARG_IA64
-    REGISTER_SET all_non_rotating[ISA_REGISTER_CLASS_MAX+1];
-    ISA_REGISTER_CLASS i;
-    FOR_ALL_ISA_REGISTER_CLASS(i) {
-      all_non_rotating[i] = REGISTER_SET_Difference_Range(REGISTER_CLASS_allocatable(i),
-                                                          REGISTER_First_Rotating_Registers(i),
-                                                          REGISTER_Last_Rotating_Registers(i));
-    }
-    FOR_ALL_BB_OPs(body, op) {
-      for (INT k = 0; k < OP_results(op); k++) {
-        TN *tn = OP_result(op, k);
-        if (!TN_is_const_reg(tn) && TN_register(tn) != REGISTER_UNDEFINED){
-          ISA_REGISTER_CLASS rc = TN_register_class(tn);      
-          REGISTER r = TN_register(tn);
-          if(r <= REGISTER_MAX //OSP_43
-              && REGISTER_SET_MemberP(all_non_rotating[rc],r)){
-            ROTATING_KERNEL_INFO_localdef(info).push_back(tn);
-          }
-        }
-      }
-    }
-#endif
+
     BB_Add_Annotation(body, ANNOT_ROTATING_KERNEL, (void *)info);
   }
 

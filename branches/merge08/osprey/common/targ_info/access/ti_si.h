@@ -1,8 +1,5 @@
 /*
- * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
- */
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -333,9 +330,9 @@
  */
 
 /*  $REVISION: $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_si.h,v $
+ *  $Date: 2005/07/27 02:17:55 $
+ *  $Author: kevinlo $
+ *  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_si.h,v $
  */
 
 #ifndef SI_INCLUDED
@@ -346,15 +343,22 @@ extern "C" {
 #ifndef SI_RCS_ID
 #define SI_RCS_ID
 #ifdef _KEEP_RCS_ID
-static const char SI_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_si.h,v $ $Revision: 1.1.1.1 $";
+static const char SI_rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_si.h,v $ $Revision: 1.1 $";
 #endif
 #endif
 
-// KEY: Worked around linux "weak" bug for bug 13044.
-#include "ti_si_types.h"
+typedef enum topcode TOPCODE;
+
+#include <topcode.h>
 
 /****************************************************************************
  ****************************************************************************/
+
+typedef struct {
+  mUINT64 dw[2];
+} SI_BAD_II_SET;
+
+enum { SI_BAD_II_SET_MAX=127 };
 
 inline SI_BAD_II_SET SI_BAD_II_SET_Union( SI_BAD_II_SET s1, SI_BAD_II_SET s2 )
 {
@@ -385,6 +389,17 @@ inline SI_BAD_II_SET SI_BAD_II_SET_Empty( void )
 /****************************************************************************
  ****************************************************************************/
 
+typedef UINT SI_RESOURCE_ID;
+
+typedef const struct {
+  const char* name;
+  SI_RESOURCE_ID id;
+  mUINT8 avail_per_cycle;
+  mUINT8 word_index;
+  mUINT8 bit_index;
+} SI_RESOURCE;
+
+
 inline const char* SI_RESOURCE_Name( SI_RESOURCE* res )
 {
   return res->name;
@@ -410,22 +425,20 @@ inline UINT SI_RESOURCE_Bit_Index( SI_RESOURCE* res )
   return res->bit_index;
 }
 
-#if defined(__linux__) && defined(TARG_X8664)
-
-extern const int * SI_resource_count_p;
-#define SI_resource_count (*SI_resource_count_p)
-
-extern SI_RESOURCE * const * SI_resources_p;
-#define SI_resources SI_resources_p
-
-#else
-
+#if defined(sl1_gen) || defined(TARG_IA64)
 extern const INT SI_resource_count;
 #pragma weak SI_resource_count
+#elif defined(TARG_SL) || defined(TARG_X8664) 
+extern INT *SI_resource_count_p;
+#define SI_resource_count (*SI_resource_count_p)
+#endif
 
+#if defined(sl1_gen)  || defined(TARG_IA64)
 extern SI_RESOURCE* const SI_resources[];
 #pragma weak SI_resources
-
+#elif defined(TARG_SL) || defined(TARG_X8664) 
+extern SI_RESOURCE* (*SI_resources_p)[];
+#define SI_resources (*SI_resources_p)
 #endif
 
 inline const char* SI_RESOURCE_ID_Name( SI_RESOURCE_ID id )
@@ -440,6 +453,8 @@ inline UINT SI_RESOURCE_ID_Avail_Per_Cycle( SI_RESOURCE_ID id )
 
 /****************************************************************************
  ****************************************************************************/
+
+typedef mUINT64 SI_RESOURCE_ID_SET;
 
 inline SI_RESOURCE_ID_SET SI_RESOURCE_ID_SET_Universe(void)
 {
@@ -484,22 +499,23 @@ SI_RESOURCE_ID_SET_Complement( SI_RESOURCE_ID_SET s )
 /****************************************************************************
  ****************************************************************************/
 
-#if defined( __linux__ ) && defined(TARG_X8664)
+/* SI_RRW -- A resource reservation word */
+typedef mUINT64 SI_RRW;
 
-extern const SI_RRW * SI_RRW_initializer_p;
-#define SI_RRW_initializer (*SI_RRW_initializer_p)
-
-extern const SI_RRW * SI_RRW_overuse_mask_p;
-#define SI_RRW_overuse_mask (*SI_RRW_overuse_mask_p)
-
-#else
-
+#if defined(sl1_gen)  || defined(TARG_IA64)
 extern const SI_RRW SI_RRW_initializer;
 #pragma weak SI_RRW_initializer
+#elif defined(TARG_SL) || defined(TARG_X8664) 
+extern SI_RRW *SI_RRW_initializer_p;
+#define SI_RRW_initializer (*SI_RRW_initializer_p)
+#endif
 
+#if defined(sl1_gen) || defined(TARG_IA64)
 extern const SI_RRW SI_RRW_overuse_mask;
 #pragma weak SI_RRW_overuse_mask
-
+#elif defined(TARG_SL) || defined(TARG_X8664)  
+extern SI_RRW *SI_RRW_overuse_mask_p;
+#define SI_RRW_overuse_mask (*SI_RRW_overuse_mask_p)
 #endif
 
 inline SI_RRW SI_RRW_Initial(void)
@@ -525,6 +541,12 @@ inline SI_RRW SI_RRW_Unreserve( SI_RRW table, SI_RRW requirement )
 /****************************************************************************
  ****************************************************************************/
 
+typedef const struct {
+  const char* name;
+  mINT32 skew;
+  mINT32 avail_per_cycle;
+} SI_ISSUE_SLOT;
+
 inline const char* SI_ISSUE_SLOT_Name( SI_ISSUE_SLOT* slot )
 {
   return slot->name;
@@ -540,22 +562,20 @@ inline INT SI_ISSUE_SLOT_Avail_Per_Cycle( SI_ISSUE_SLOT* slot )
   return slot->avail_per_cycle;
 }
 
-#if defined (__linux__) && defined(TARG_X8664)
-
-extern const int * SI_issue_slot_count_p;
-#define SI_issue_slot_count (*SI_issue_slot_count_p)
-
-extern SI_ISSUE_SLOT * const * SI_issue_slots_p;
-#define SI_issue_slots SI_issue_slots_p
-
-#else
-
+#if defined(sl1_gen) || defined(TARG_IA64)
 extern const INT SI_issue_slot_count;
 #pragma weak SI_issue_slot_count
+#elif defined(TARG_SL)  || defined(TARG_X8664) 
+extern INT *SI_issue_slot_count_p;
+#define SI_issue_slot_count (*SI_issue_slot_count_p)
+#endif
 
+#if defined(sl1_gen) || defined(TARG_IA64)
 extern SI_ISSUE_SLOT* const SI_issue_slots[];
 #pragma weak SI_issue_slots
-
+#elif defined(TARG_SL)  || defined(TARG_X8664) 
+extern SI_ISSUE_SLOT *(*SI_issue_slots_p)[];
+#define SI_issue_slots (*SI_issue_slots_p)
 #endif
 
 inline INT SI_ISSUE_SLOT_Count(void)
@@ -570,6 +590,11 @@ inline SI_ISSUE_SLOT* SI_Ith_Issue_Slot( UINT i )
 
 /****************************************************************************
  ****************************************************************************/
+
+typedef const struct {
+  SI_RESOURCE* resource;
+  mINT32 total_used;
+} SI_RESOURCE_TOTAL;
 
 inline SI_RESOURCE*
 SI_RESOURCE_TOTAL_Resource( SI_RESOURCE_TOTAL* pair )
@@ -595,6 +620,8 @@ inline INT SI_RESOURCE_TOTAL_Total_Used( SI_RESOURCE_TOTAL* pair )
 /****************************************************************************
  ****************************************************************************/
 
+typedef const SI_RRW* SI_RR;
+
 inline UINT SI_RR_Length( SI_RR req )
 {
   return (INT) req[0];
@@ -610,17 +637,38 @@ inline SI_RRW SI_RR_Cycle_RRW( SI_RR req, UINT cycle )
 
 /****************************************************************************
  ****************************************************************************/
+typedef UINT SI_ID;
 
-#if defined (__linux__) && defined(TARG_X8664)
+typedef const struct {
+  const char* name;
+  SI_ID id;
+  const mUINT8 *operand_access_times;
+  const mUINT8 *result_available_times;
+  mINT32 load_access_time;
+  mINT32 last_issue_cycle;
+  mINT32 store_available_time;
+  SI_RR rr;
+#if defined(TARG_SL2)
+  SI_RR alter_rr; 
+#endif
+  const SI_RESOURCE_ID_SET *resources_used;
+  mUINT32 ii_info_size;
+  const SI_RR *ii_rr;
+  const SI_RESOURCE_ID_SET * const *ii_resources_used;
+  SI_BAD_II_SET bad_iis;
+  mINT32 valid_issue_slot_count;
+  SI_ISSUE_SLOT * const *valid_issue_slots;
+  mINT32 resource_total_vector_size;
+  SI_RESOURCE_TOTAL *resource_total_vector;
+  mUINT8 write_write_interlock;
+} SI;
 
-extern SI * const * SI_top_si_p;
-#define SI_top_si SI_top_si_p
-
-#else
-
+#if defined(sl1_gen) || defined(TARG_IA64)
 extern SI* const SI_top_si[];
 #pragma weak SI_top_si
-
+#elif defined(TARG_SL) || defined(TARG_X8664) 
+extern SI* (*SI_top_si_p)[];
+#define SI_top_si (*SI_top_si_p)
 #endif
 
 inline const char* TSI_Name( TOP top )
@@ -667,6 +715,13 @@ inline SI_RR TSI_Resource_Requirement( TOP top )
 {
   return SI_top_si[(INT) top]->rr;
 }
+
+#if defined(TARG_SL2)
+inline SI_RR TSI_Alternative_Resource_Requirement( TOP top )
+{
+  return SI_top_si[(INT) top]->alter_rr;
+}
+#endif 
 
 inline SI_BAD_II_SET TSI_Bad_IIs( TOP top )
 {
@@ -718,29 +773,26 @@ inline INT TSI_Write_Write_Interlock( TOP top )
 
 /****************************************************************************
  ****************************************************************************/
-
-#if defined (__linux__) && defined(TARG_X8664)
-
-extern const int * SI_ID_count_p;
-#define SI_ID_count (*SI_ID_count_p)
-
-extern SI * const * SI_ID_si_p;
-#define SI_ID_si SI_ID_si_p
-
-#else
-
+#if defined(sl1_gen) || defined(TARG_IA64)
 extern const INT SI_ID_count;
 #pragma weak SI_ID_count
-
-extern SI* const SI_ID_si[];
-#pragma weak SI_ID_si
-
+#elif defined(TARG_SL) || defined(TARG_X8664)  
+extern INT *SI_ID_count_p;
+#define SI_ID_count (*SI_ID_count_p)
 #endif
 
 inline INT SI_ID_Count(void)
 {
   return SI_ID_count;
 }
+
+#if defined(sl1_gen) || defined(TARG_IA64)
+extern SI* const SI_ID_si[];
+#pragma weak SI_ID_si
+#elif defined(TARG_SL) || defined(TARG_X8664)  
+extern SI *(*SI_ID_si_p)[];
+#define SI_ID_si (*SI_ID_si_p)
+#endif
 
 inline const SI_RESOURCE_ID_SET*
 SI_ID_II_Cycle_Resource_Ids_Used( SI_ID id, INT ii )

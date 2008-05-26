@@ -37,9 +37,11 @@
 #ifndef _IPA_LNO_FILE
 #define _IPA_LNO_FILE "ipa_lno_file.h"
 
+#if ! defined(BUILD_OS_DARWIN)
 #ifndef __SYS_ELF_H__ 
 #include <elf.h>
 #endif 
+#endif /* ! defined(BUILD_OS_DARWIN) */
 
 #ifndef pu_info_INCLUDED
 #include "pu_info.h"

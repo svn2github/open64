@@ -115,6 +115,7 @@
 #define opt_vn_expr_taxonomy_INCLUDED "opt_vn_expr_taxonomy.h"
 
 #include "opt_vn_expr.h"
+#include "intrn_info.h"
 #include "wutil.h"
 
 #ifdef __STL_USE_NAMESPACES

@@ -117,6 +117,11 @@ EXP_WORKLST::Insert_one_operand(      ETABLE  *const etable,
   // In the following assertion, checking
   // (was_integral_load_store && Is_the_same_as(insert_cr->Opnd(0)))
   // first is not OK because insert_cr can be a CK_VAR node.
+  Is_Trace(etable->Tracing(), (TFile, "EXP_WORKLST::Insert_one_operand\n"));
+  Is_Trace(etable->Tracing(), (TFile, "Inserted expression:\n"));
+  Is_Trace_cmd(etable->Tracing(), insert_cr->Print(3, TFile));
+  Is_Trace(etable->Tracing(), (TFile, "CFG \n"));
+  Is_Trace_cmd(etable->Tracing(), etable->Cfg()->Print(TFile));
   Is_True(Is_the_same_as(insert_cr) ||
 	  (was_integral_load_store && 
 	   Is_the_same_as(insert_cr->Opnd(0))),

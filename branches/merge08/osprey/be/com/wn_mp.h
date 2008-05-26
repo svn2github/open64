@@ -72,7 +72,7 @@
 #ifndef wnmp_INCLUDED
 #define wnmp_INCLUDED "wn_mp.h"
 
-#ifndef __ELF_H__
+#if (! defined(__ELF_H__)) && (! defined(BUILD_OS_DARWIN))
 #include <elf.h>            /* pu_info.h can't compile without this */
 #endif
 

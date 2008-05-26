@@ -56,7 +56,11 @@
 //--------------------------------------------------------------------------
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>                        // Elf64_Word
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>                        // Elf64_Word
+#endif /* defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "tracing.h"
 #include "loop_info.h"
@@ -973,6 +977,10 @@ DO_LOOP_INFO_BASE::Print(FILE *fp, INT indentation)
 // 3) Intersect sections in if then else parts
 //------------------------------------------------------------
 
+extern "C" void Print_DO_LOOP_INFO_BASE (FILE *fp, DO_LOOP_INFO_BASE *b)
+{
+  b->Print(fp);
+}
 
 
 

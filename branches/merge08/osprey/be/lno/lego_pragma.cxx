@@ -2729,7 +2729,7 @@ static void Read_Pragma_Data_Affinity (WN* do_wn, WN* rwn) {
                  "affinity must be for an array reference (ignoring).");
     return;
   }
-#ifdef __linux
+#if defined(__linux) || defined(BUILD_OS_DARWIN)
   // Nothing we can do about this for now.
   return;
 #endif
@@ -3036,7 +3036,7 @@ static BOOL Check_Expr (WN* expr_wn, SYMBOL* index_sym,
  ***********************************************************************/
 static void Read_Pragma_Thread_Affinity (WN* pwn, WN* do_wn, WN* rwn) {
 
-#ifdef __linux
+#if defined(__linux) || defined(BUILD_OS_DARWIN)
   // Nothing we can do about this for now.
   return; 
 #endif 

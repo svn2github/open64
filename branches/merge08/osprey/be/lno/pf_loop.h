@@ -1,4 +1,12 @@
 /*
+ *  Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -406,7 +414,8 @@ public:
 };
 
 extern mINT16 Loop_Confidence (DO_LOOP_INFO* dli);
-#ifdef KEY //introduced by bug 10953
+#ifdef TARG_X8664 //introduced by bug 10953
 extern WN *Simple_Invariant_Stride_Access(WN *array, WN *loop);
 #endif
+
 #endif // pf_loop_INCLUDED

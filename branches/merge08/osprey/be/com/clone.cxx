@@ -54,7 +54,11 @@
  * ====================================================================
  */
 
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>		  
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>		  
+#endif /* defined(BUILD_OS_DARWIN) */
 
 // ======================================================================
 #include "defs.h"                       // pre-defined types
@@ -318,7 +322,7 @@ IPO_CLONE::Copy_Node (const WN *src_wn)
 	while (new_size < size)
 	    new_size *= 2;
 	_raw_buffer = (WN *)MEM_POOL_Alloc(WN_mem_pool_ptr, new_size);
- 	bzero (_raw_buffer, new_size);
+ 	BZERO (_raw_buffer, new_size);
 	_raw_buf_size = new_size;
     }
 
@@ -340,6 +344,11 @@ IPO_CLONE::Copy_Node (const WN *src_wn)
 
     WN_Copy_u1u2 (wn, src_wn);
     WN_Copy_u3 (wn, src_wn);
+	
+#if defined(TARG_SL) || defined(TARG_SL2)
+//  need copy these sl2 special flag also see bug 154 
+    WN_Copy_sl_ext(wn, src_wn); 
+#endif 
 
     return(wn);
 } // Copy_Node
@@ -522,11 +531,13 @@ IPO_CLONE::New_Clone (ST *clone_st)
 // IPO_SYMTAB Related Functions
 // ======================================================================
 
+
 // ======================================================================
 // Fix up ST entries
 // ======================================================================
 
-template<> inline void 
+template <>
+inline void 
 IPO_SYMTAB::fix_table_entry<ST>::operator () (UINT idx, ST* st) const
 {
     Set_ST_st_idx(st, make_ST_IDX(idx, _sym->Get_cloned_level()));
@@ -558,7 +569,8 @@ IPO_SYMTAB::fix_table_entry<ST>::operator () (UINT idx, ST* st) const
 // ======================================================================
 // Fix up INITO entries
 // ======================================================================
-template<> inline void 
+template <>
+inline void 
 IPO_SYMTAB::fix_table_entry<INITO>::operator () (UINT idx, INITO* inito) const
 {
     Set_INITO_st_idx(*inito, make_ST_IDX(ST_IDX_index(INITO_st_idx(*inito))+_sym->Get_cloned_st_last_idx(), _sym->Get_cloned_level()));
@@ -567,7 +579,8 @@ IPO_SYMTAB::fix_table_entry<INITO>::operator () (UINT idx, INITO* inito) const
 // ======================================================================
 // Fix up ST_ATTR entries
 // ======================================================================
-template<> inline void 
+template <>
+inline void 
 IPO_SYMTAB::fix_table_entry<ST_ATTR>::operator () (UINT idx, ST_ATTR* st_attr) const
 {
     // bug fix for OSP_125
@@ -770,8 +783,8 @@ traverse_initvs (INITV_IDX start, ST_IDX old, ST_IDX copy)
 // Walk the ST list and for those that are PU-level static, move them and
 // their correcponding INITO to the Global Symtab
 // ======================================================================
-
-template<> inline void
+template<>
+inline void
 IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
 {
     ST *copy_st;
@@ -839,7 +852,8 @@ IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
 }
 
 // bug fix for OSP_125
-template<> inline void
+template <>
+inline void
 IPO_SYMTAB::promote_entry<ST_ATTR>::operator () (UINT idx, ST_ATTR* old_attr) const
 {
     // If the ST entry of the ST_ATTR has been promoted, then need to
@@ -860,7 +874,8 @@ IPO_SYMTAB::promote_entry<ST_ATTR>::operator () (UINT idx, ST_ATTR* old_attr) co
 // a different base, need to fix it
 // ======================================================================
 
-template<> inline void
+template <>
+inline void
 IPO_SYMTAB::fix_base<ST>::operator () (UINT idx, ST* old_st) const
 {
     ST *copy_st = NULL;
@@ -882,7 +897,8 @@ IPO_SYMTAB::fix_base<ST>::operator () (UINT idx, ST* old_st) const
     }
 }
 
-template<> inline void
+template <>
+inline void
 IPO_SYMTAB::promote_entry<INITO>::operator () (UINT idx, INITO* old_inito) const
 {
     // If the ST entry of the INITO has been promoted, then need to

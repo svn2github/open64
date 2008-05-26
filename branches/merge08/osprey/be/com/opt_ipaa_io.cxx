@@ -59,7 +59,11 @@
 #pragma hdrstop
 
 #include <sys/types.h>	    /* for off_t */
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 
 #include "defs.h"
 #include "mempool.h"
@@ -71,6 +75,9 @@
 #include "wn.h"
 #include "wn_map.h"
 
+#ifdef __MINGW32__
+#include <WINDOWS.h>
+#endif /* __MINGW32__ */
 #include "ir_bwrite.h"
 #include "ir_bcom.h"
 #include "opt_ipaa_io.h"

@@ -42,7 +42,6 @@
 #define PQS_DEFS_included
 
 #include <stdio.h>
-#include <vector>
 #include <set>
 #include <algorithm>
 #include <memory>

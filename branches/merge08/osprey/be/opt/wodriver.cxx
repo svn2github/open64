@@ -83,10 +83,12 @@
 
 #include "wodriver.h"		// So we pick up 'extern "C"'
 
-//#ifdef SHARED_BUILD
-#if 0
-char * Ipa_File_Name = NULL;
+#ifdef SHARED_BUILD
+#if defined(BUILD_OS_DARWIN)
+extern char * Ipa_File_Name;
+#endif /* defined(BUILD_OS_DARWIN) */
 #endif
+
 
 /* ====================================================================
  *
@@ -115,10 +117,12 @@ wopt_main (INT wopt_argc, char **wopt_argv, INT be_argc, char **be_argv)
     FmtAssert (FALSE,
 	       ("BE version (in be/com/be_version.h) mismatch between be.so (%s) and wopt.so (%s)", 
 		&Get_BE_Version != NULL ? Get_BE_Version() : "undef", BE_VERSION));
-
   /* Construct a skip list from the -WOPT:skip_* options: */
   WOPT_Skip_List = Build_Skiplist ( WOPT_Skip );
-
+#if 0
+  extern INT32 WOPT_Unroll_Skip;
+  WOPT_Unroll_Skip_List = Build_Skiplist ( WOPT_Unroll_Skip );
+#endif
 } /* wopt_main */
 
 

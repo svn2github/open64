@@ -37,10 +37,10 @@
  * =======================================================================
  *
  *  Module: gtn_tn_set.c
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gtn_tn_set.cxx,v $
+ *  $Revision: 1.2 $
+ *  $Date: 02/11/07 23:41:25-00:00 $
+ *  $Author: fchow@keyresearch.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.gtn_tn_set.cxx $
  *
  *  Revision comments:
  *
@@ -113,7 +113,7 @@ GTN_TN_SET_Print(GTN_SET *gtn_set, FILE *file)
 
   TN_SET *tn_set = TN_SET_Create_Empty (Last_TN + 1,&local_pool);
   for ( TN *tn = GTN_SET_Choose(gtn_set);
-	tn != GTN_SET_CHOOSE_FAILURE && tn != NULL;
+	tn != GTN_SET_CHOOSE_FAILURE;
 	tn = GTN_SET_Choose_Next(gtn_set,tn)) 
   {
     FmtAssert(TN_is_global_reg(tn),("TN%d is not global",TN_number(tn)));

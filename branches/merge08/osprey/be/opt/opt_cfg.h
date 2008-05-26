@@ -388,6 +388,9 @@ public:
   BOOL	       Trace(void) const { return _trace; }
   void         Print(FILE *fp=stderr, 
 		     BOOL dfs_order = TRUE, IDTYPE bb_id = (IDTYPE) -1);
+  void         PrintLoopVis(BB_LOOP * loop, int & id);
+  void         PrintVis(BOOL draw_loops);
+  void         PrintCDVis(void);
   void         Validate(FILE *fp=stderr);
 
   // create the control-flow graph
@@ -637,6 +640,10 @@ public:
   // code generation for loop multiversioning.
   BOOL         LMV_eligible_for_multiversioning (const BB_LOOP*, BOOL);
   void         LMV_clone_loop (LMV_CFG_ADAPTOR*);
+  BOOL         If_convertible_cond(WN* wn);
+  BOOL         If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
+  BOOL         Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
+  WN*          Conv_to_select(WN* wn);
 
 };
 

@@ -101,6 +101,7 @@
 #include "opt_alias_mgr.h"
 
 #include <strings.h>   // bcopy
+#include "opt_sys.h"
 
 EXP_KIDS_ITER::EXP_KIDS_ITER(mUINT32 cnt, CODEREP **kp)
 {
@@ -464,6 +465,9 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
   case CK_LDA:
     if (Lda_base_st() == cr->Lda_base_st() && Offset() == cr->Offset() &&
 	Is_flag_set(CF_LDA_LABEL) == cr->Is_flag_set(CF_LDA_LABEL) &&
+#ifdef TARG_SL2
+       Is_flag_set(CF_INTERNAL_MEM_OFFSET) == cr->Is_flag_set(CF_INTERNAL_MEM_OFFSET) &&
+#endif 
 	Afield_id() == cr->Afield_id()) 
       return TRUE;
     else
@@ -594,6 +598,8 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
 	  if (TY_kind(ivar_addr_ty) != KIND_POINTER)
 	    return FALSE;
 	  if (TY_kind(cr_addr_ty) != KIND_POINTER)
+	    return FALSE;
+	  if (Ilod_ty() != cr->Ilod_ty())
 	    return FALSE;
 	  if (TY_align_exp(TY_pointed(ivar_addr_ty)) !=
 	      TY_align_exp(TY_pointed(cr_addr_ty)))
@@ -793,6 +799,14 @@ CODEREP::Print(INT indent, FILE *fp) const
   }
 }
 
+
+// this is to make it easier to print codereps in the debugger
+void
+dump_coderep (CODEREP *cr)
+{
+  cr->Print(0,stdout);
+}
+
 void
 CODEREP::Print_node(INT32 indent, FILE *fp) const
 {
@@ -855,6 +869,16 @@ CODEREP::Print_node(INT32 indent, FILE *fp) const
     fprintf(fp, "LDA %s sym%d %d", MTYPE_name(Dtyp()),Lda_aux_id(),Offset());
     break;
   case CK_VAR:
+#ifdef TARG_NVISA
+    // maybe it is just me, but I find it confusing that loads were printed
+    // as dsctyp dtyp when whirl has them ordered as dtyp dsctyp.
+    // So switch the order.
+    fprintf(fp, " %s%s", MTYPE_name(Dtyp()), MTYPE_name(Dsctyp()));
+    if (! Bit_field_valid())
+      fprintf(fp, "LDID");
+    else fprintf(fp, "LDBITS");
+    fprintf(fp, " sym%dv%d %d ty=%x ", Aux_id(), Version(), Offset(), Lod_ty());
+#else
     fprintf(fp, ">");	// mark line visually as htable dump
     for (i = 0; i < indent; i++) fprintf(fp, " ");
     if (! Bit_field_valid())
@@ -862,6 +886,7 @@ CODEREP::Print_node(INT32 indent, FILE *fp) const
     else fprintf(fp, "LDBITS");
     fprintf(fp, " %s %s sym%dv%d %d ty=%x ", MTYPE_name(Dsctyp()),
 	    MTYPE_name(Dtyp()), Aux_id(), Version(), Offset(), Lod_ty());
+#endif
     break;
   case CK_CONST:
     fprintf(fp, ">");	// mark line visually as htable dump
@@ -1065,8 +1090,10 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_F4;
       else if ( rtype == MTYPE_C8 )
 	return MTYPE_F8;
+#if defined(TARG_IA64)
       else if ( rtype == MTYPE_C10 )
 	return MTYPE_F10;
+#endif
       else if ( rtype == MTYPE_CQ )
 	return MTYPE_FQ;
       else {
@@ -1084,8 +1111,10 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_C4;
       else if ( rtype == MTYPE_F8 )
 	return MTYPE_C8;
+#if defined(TARG_IA64)
       else if ( rtype == MTYPE_F10 )
 	return MTYPE_C10;
+#endif
       else if ( rtype == MTYPE_FQ )
 	return MTYPE_CQ;
       else {
@@ -1895,7 +1924,7 @@ CODEMAP::Add_bin_node_and_fold(OPCODE op,
     else {
       // here NOT select #ifdef KEY from pathscale, cause I'm afraid that osprey 
       // had modified #ifdef KEY to #ifdef TARG_X8664 in last merge.
-#ifdef TARG_X8664 // bug 4518
+#ifdef KEY // bug 4518
       if (crtmp->Kind() == CK_CONST && crtmp->Dtyp() == MTYPE_U4 && 
 	  (MTYPE_signed(kid0->Dtyp()) || MTYPE_signed(kid1->Dtyp()))) 
 	return Add_const(MTYPE_I4, crtmp->Const_val());
@@ -2066,7 +2095,7 @@ CODEMAP::Canon_mpy(WN       *wn,
     return propagated+propagated1;
   }
   if (kid1.Tree() == NULL) {
-    if (kid1.Scale() == 0) {	// mult by 0: fold to 0
+    if (kid1.Scale() == 0 && !ccr->Tree()->Has_volatile_content()) {	// mult by 0: fold to 0
       ccr->Tree()->DecUsecnt_rec();
       ccr->Set_tree(NULL);
       ccr->Set_scale(0);
@@ -2077,7 +2106,7 @@ CODEMAP::Canon_mpy(WN       *wn,
     cr->Set_opnd(1, Add_const(WN_rtype(wn), kid1.Scale()));
     ccr->Set_scale(ccr->Scale() * kid1.Scale());
     }
-  else if (ccr->Tree() == NULL) {
+  else if (ccr->Tree() == NULL && !kid1.Tree()->Has_volatile_content()) {
     if (ccr->Scale() == 0) {	// mult by 0; fold to 0
       kid1.Tree()->DecUsecnt_rec();
       ccr->Set_tree(NULL);
@@ -2137,7 +2166,7 @@ CODEMAP::Canon_cvt(WN       *wn,
     return propagated;
 
   if ( WOPT_Enable_Cvt_Folding && 
-#ifdef TARG_X8664 // bug 5851
+#if defined(TARG_X8664) || defined(TARG_NVISA) // bug 5851
        ! Is_Target_32bit() &&
 #endif
       (op == OPC_I8U4CVT || op == OPC_U8U4CVT) && 
@@ -2156,7 +2185,7 @@ CODEMAP::Canon_cvt(WN       *wn,
   
   CODEREP *retv;
   CODEREP *expr;
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
   if (!Is_Target_32bit() && ccr->Tree() != NULL && Allow_wrap_around_opt) {
     if (ccr->Tree()->Kind() == CK_OP && ccr->Tree()->Op() == OPC_I8I4CVT && 
         op == OPC_I4I8CVT) { // bug 10707
@@ -2176,7 +2205,7 @@ CODEMAP::Canon_cvt(WN       *wn,
   retv = Hash_Op(cr);
   ccr->Set_tree(retv);
   ccr->Set_scale(0);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
   }
 #endif
   return propagated;
@@ -2200,6 +2229,11 @@ CODEMAP::Add_def(IDTYPE st, mINT16 version, STMTREP *stmt,
       dtyp = dsctyp;  // necessary canonicalization
   }
   
+#ifdef TARG_SL
+  if (dtyp == MTYPE_I2 && dsctyp == MTYPE_I2) {
+    dtyp = MTYPE_I4;
+  }
+#endif  
 #ifdef Is_True_On
   // check dtyp and dsctyp consistency
   if (MTYPE_is_float(dtyp)) {
@@ -2685,11 +2719,13 @@ CODEMAP::Add_tcon(TCON_IDX tc)
 
     case MTYPE_F4:
     case MTYPE_F8:
+#if defined(TARG_IA64)
     case MTYPE_F10:
+    case MTYPE_C10:
+#endif
     case MTYPE_FQ:
     case MTYPE_C4:
     case MTYPE_C8:
-    case MTYPE_C10:
     case MTYPE_CQ:
       {
         ST *new_sym = New_Const_Sym(tc, MTYPE_To_TY(mtype));
@@ -2986,14 +3022,36 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
           if (retv->Kind() == CK_OP) {
             // if CRSIMP flag is turned on, the opr is +,-,
             // and the kid1 is a constant, pull the constant out.
-            const OPERATOR opr = retv->Opr();
+            OPERATOR opr = retv->Opr();
+            CODEREP *retv_op = retv;
+            // may have CVT of ADD/SUB, so look under the CVT;
+            // but then need to move cvt to non-const operand.
+            // but only do this if integer cvt and op under cvt
+            if (opr == OPR_CVT
+              && MTYPE_is_integral(retv->Dtyp())
+              && MTYPE_is_integral(retv->Dsctyp())
+              && retv->Opnd(0)->Kind() == CK_OP)
+            {
+              retv_op = retv->Opnd(0);
+              opr = retv_op->Opr();
+            }
             if (WOPT_Enable_CRSIMP &&
                 (opr == OPR_ADD || opr == OPR_SUB) &&
-                retv->Get_opnd(1)->Kind() == CK_CONST) {
-                  CODEREP *cr = retv->Get_opnd(0);
+                retv_op->Get_opnd(1)->Kind() == CK_CONST) {
+                  CODEREP *cr = retv_op->Get_opnd(0);
+#ifdef TARG_NVISA
+                  if (retv->Opr() == OPR_CVT) {
+                    // need to preserve cvt
+                    // changing CVT(ADD(x,c)) to scale(CVT(x),c)
+                    DevWarn("pull out constant when cvt(add)");
+                    cr = retv;
+                    cr->Set_opnd(0, retv_op->Get_opnd(0));
+                    cr = Hash_Op(cr); // need to rehash when changing node
+                  }
+#endif
                   cr->DecUsecnt();
                   ccr->Set_tree(cr);
-                  cr = retv->Get_opnd(1);
+                  cr = retv_op->Get_opnd(1);
                   cr->DecUsecnt();
                   if (opr == OPR_SUB)
                     ccr->Set_scale(0 - cr->Const_val());
@@ -3037,6 +3095,11 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
       Is_True(opt_stab->Base(WN_aux(wn)) != NULL, ("base st is null."));
       cr->Init_lda(OPCODE_rtype(op), WN_aux(wn), 
 		   (INT32)ofst, (TY_IDX) WN_ty(wn), lda_st, WN_field_id(wn));
+#ifdef TARG_SL2
+      if(WN_is_internal_mem_ofst(wn)) {
+        cr->Set_flag(CF_INTERNAL_MEM_OFFSET);
+      }
+#endif 
       retv = Hash_Lda(cr);
       ccr->Set_tree(retv);
       return FALSE;
@@ -3261,7 +3324,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 
     CODEREP *lbase = base_ccr.Tree() ? base_ccr.Tree() :
     				       Add_const(Pointer_type, (INT64) 0);
-#ifndef linux
+#if !(defined(linux) || defined(BUILD_OS_DARWIN))
     FmtAssert(sizeof(num_byte) == sizeof(TY_IDX),
 	      ("CODEMAP::Add_expr: Cannot union MLOAD size with "
 	       "Ilod_base_ty"));
@@ -3431,11 +3494,13 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     cr->Init_op(WN_opcode(wn), kcnt);
     for (INT i = 0; i < kcnt; ++i) {
 // Bug 1573
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
       BOOL save_flag = WOPT_Enable_Input_Prop;
       if (OPERATOR_is_scalar_load (WN_operator(WN_kid(wn, i))) || OPERATOR_is_scalar_iload (WN_operator(WN_kid(wn, i))))
         WOPT_Enable_Input_Prop = FALSE;
+#endif
       FmtAssert(i == 0, ("Asm_Input should have only one kid")); 
+#ifdef KEY
 // Bug 1575
       cr->Set_asm_input_rtype(WN_rtype(WN_kid(wn, i)));
       cr->Set_asm_input_dsctype(WN_desc(WN_kid(wn, i)));
@@ -3447,7 +3512,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 			      stmt,
 			      &propagated,
 			      copyprop);
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
       if (OPERATOR_is_scalar_load (WN_operator(WN_kid(wn, i))) || OPERATOR_is_scalar_iload (WN_operator(WN_kid(wn, i))))
         WOPT_Enable_Input_Prop = save_flag;
 #endif
@@ -3623,6 +3688,10 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
 
   case OPR_GOTO:
   case OPR_REGION_EXIT:
+#ifdef    TARG_SL2 //fork_joint
+  case OPR_SL2_FORK_MAJOR:
+  case OPR_SL2_FORK_MINOR:  	
+#endif 
     Set_label_number(WN_label_number(Wn()));
     break;
 
@@ -3949,6 +4018,11 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
         }
         dtyp = Mtype_from_class_size(dsctyp, dtyp);
       }
+#ifdef TARG_SL
+        if (dtyp == MTYPE_I2 && dsctyp == MTYPE_I2) {
+          dtyp = MTYPE_I4;
+        }
+#endif
       opc = OPCODE_make_op(opr == OPR_ISTORE ? OPR_ILOAD : OPR_ILDBITS, dtyp, dsctyp);
       base_ccr.Set_scale(base_ccr.Scale() + WN_offset(Wn()));
       base_ccr.Trim_to_16bits(WN_kid(Wn(), 1), htable);
@@ -4124,7 +4198,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 
       CODEREP *lbase = ( base_ccr.Tree() ? base_ccr.Tree() :
 			 htable->Add_const(Pointer_type, (INT64) 0) );
-#ifndef linux
+#if !(defined(linux) || defined(BUILD_OS_DARWIN))
       FmtAssert(sizeof(num_byte) == sizeof(TY_IDX),
 		("CODEMAP::Add_expr: Cannot union MSTORE size with "
 		 "Ilod_base_ty"));
@@ -4974,6 +5048,12 @@ STMTREP::Print(FILE *fp) const
   }
 }
 
+void
+dump_stmtrep (STMTREP *sr)
+{
+  sr->Print(stdout);
+}
+
 // Print the STMTREP node
 //
 void
@@ -5417,7 +5497,7 @@ CODEMAP::Insert_var_phi(CODEREP *new_lhs, BB_NODE *bb)
 
 void STMTREP::Clone(STMTREP *sr, CODEMAP *htable, MEM_POOL *pool)
 {
-  bcopy(sr,this,sizeof(STMTREP));
+  BCOPY(sr,this,sizeof(STMTREP));
   
   Set_Next(NULL); Set_Prev(NULL);
 
@@ -5497,6 +5577,30 @@ void STMTREP::Clone(STMTREP *sr, CODEMAP *htable, MEM_POOL *pool)
     }
     Reset_has_zver();
   }
+}
+
+BOOL CODEREP::Has_volatile_content(void) const
+{
+  switch(Kind()) {
+  case CK_CONST:
+  case CK_RCONST:
+  case CK_LDA:
+    return FALSE;
+  case CK_VAR:
+    return Is_var_volatile();
+  case CK_IVAR:
+    if (Opr() == OPR_MLOAD && Mload_size()->Has_volatile_content())
+      return TRUE;
+    if (Ilod_base()->Has_volatile_content())
+      return TRUE;
+    return Is_ivar_volatile();
+  case CK_OP: {
+      for (INT32 i=0; i < Kid_count(); i++)
+	if (Opnd(i)->Has_volatile_content())
+	  return TRUE;
+    }
+  }
+  return FALSE;
 }
 
 /////////////////////////////////////////////////////////////////////////

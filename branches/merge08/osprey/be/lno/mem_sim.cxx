@@ -169,7 +169,7 @@ static INT Size(OPCODE opcode)
     case MTYPE_I2: case MTYPE_U2: return 2;
     case MTYPE_I4: case MTYPE_U4: case MTYPE_F4: return 4;
     case MTYPE_I8: case MTYPE_U8: case MTYPE_F8: case MTYPE_C4: return 8;
-#ifdef PATHSCALE_MERGE
+#if defined(TARG_IA64)
     case MTYPE_F10:
 #endif								
     case MTYPE_C8: case MTYPE_FQ: return 16;

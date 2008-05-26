@@ -82,6 +82,7 @@ static char *rcs_id = 	opt_combine_CXX"$Revision: 1.8 $";
 #include "opt_defs.h"
 
 #include "opt_combine.h"
+#include "betarget.h" // for Can_Do_Fast_Divide
 
 
 // ====================================================================
@@ -119,7 +120,11 @@ Combine_div_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
       return TRUE;
     }
   }
-  else if ( WOPT_Enable_DIVREM && MTYPE_is_integral(rtype) ) {
+
+  else if ( WOPT_Enable_DIVREM && MTYPE_is_integral(rtype)  && 
+	    ! (WN_operator_is(WN_kid1(old_wn), OPR_INTCONST) && 
+	       Can_Do_Fast_Divide(MTYPE_I4, WN_const_val(WN_kid1(old_wn))))) {
+    
     // Transform:  DIV        DIVPART
     //             a b  =>    DIVREM
     //                        a    b

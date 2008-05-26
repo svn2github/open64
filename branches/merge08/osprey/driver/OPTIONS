@@ -169,8 +169,8 @@
 	"suppress timing information (g++) "
 -version {show_version++; show_copyright = TRUE; execute_flag = FALSE;} ALL	NONE	""
 	"Show the version of the compiler being used"
--copyright {show_copyright = TRUE; execute_flag = FALSE;} ALL	NONE	""
-	"Show the copyright for the compiler being used"
+%-copyright {show_copyright = TRUE; execute_flag = FALSE;} ALL	NONE	""
+%	"Show the copyright for the compiler being used"
 % Fix for bug 492
 -dumpversion {dump_version = TRUE; execute_flag = FALSE;} ALL	NONE	""
 	"Show the version of the compiler being used, and nothing else"
@@ -347,6 +347,8 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	     "Perform induction variable optimizations (for options compatibility only, performed by default by Open64)"
 -fno-ivopts ;		ALL	NONE	""
 	     "Don't perform induction variable optimizations (for options compatibility only, ignored by Open64)"
+-frename-registers  ;           ALL     NONE    ""
+             "for options compatibility only, ignored by Open64"
 -ftree-vectorize ;		ALL	NONE	""
 	     "Perform 'tree' specific vectorization; for options compatibility only, ignored by Open64"
 -fno-tree-vectorize ;		ALL	NONE	""
@@ -447,6 +449,8 @@ I-fini%s		;		CC	ld	"-fini %s"
 	"use the following as the target for make dependencies"
 -MDignore%s	;		ALL	ld	"-MDignore %s"
 	""
+-fdollars-in-identifiers   ;    ALL     cpp     self
+        "Accept `$' in identifiers"
 % first_phase is P_cpp by default, so set it to anything different
 -nocpp	nocpp_flag=TRUE;first_phase=P_any_fe; 	FTN	FE	self
 	"don't do cpp processing"
@@ -780,6 +784,16 @@ I-xall	;		FTN	ffe	self
 	"Check result of operator new for NULL"
 -fno-check-new	;	CC	cfe	self
 	"Do not check result of operator new for NULL"
+-fvisibility-inlines-hidden ;   CC      cfe     self
+        "for options compatibility only, ignored by Open64"
+-frepo          ;       CC      cfe     self
+        "Enable automatic template instantiation at link time, for options compatibility only, ignored by Open64"
+-fconserve-space        ;       CC      cfe     self
+        "Put uninitialized or runtime-initialized global variables into the common segment, for options compatibility only, ignored by Open64"
+-felide-constructors    ;       CC      cfe     self
+        "for options compatibility only, ignored by Open64"
+-fno-implement-inlines  ;       CC      cfe     self
+        "Do not emit out-of-line copies of inline functions controlled by `#pragma implementation', for options compatibility only, ignored by Open64"
 -ffor-scope	;	CC	cfe	self
 	"Variables declared in a for-init loop are constrained to that scope"
 -fno-for-scope	;	CC	cfe	self
@@ -829,9 +843,15 @@ I-xall	;		FTN	ffe	self
 -fno-emit-class-debug-always	warn_ignored(option_name);	ALL	NONE	""
 	""
 -ftree-vrp	warn_ignored(option_name);	ALL	NONE	""
-	""
+	"Perform Value Range Propagation on trees"
 -fno-tree-vrp	warn_ignored(option_name);	ALL	NONE	""
 	""
+-Wframe-larger-than-100000000   warn_ignored(option_name);      ALL     NONE    ""
+        "help noticing functions with larger than usual frame sizes"
+-Wno-vla   warn_ignored(option_name);      ALL     NONE    ""
+        "prevent the -pedantic warning of the variable length array"
+-Wno-error=%s   warn_ignored(option_name);      ALL     NONE    ""
+        "makes -Ws warnings not be error"
 -ftls-model=%s	check_opt_tls_model(optargs);		ALL	be	"-TENV:tls-model=%s"
 	"Thread-Local Storage model. IA64 only so far.\n\t\tShould be one of `global-dynamic', `local-dynamic', `initial-exec' or `local-exec'.\n\t\tThe default without -fpic is `initial-exec'; with -fpic the default is `global-dynamic`."
 -varargs	;		f77	ffe	self
@@ -1493,6 +1513,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Do not warn if floating point values are compared for equality"
 -Wformat-nonliteral	;		Cc	f	self
 	"If -Wformat, warn if format string is not a string literal"
+-Wno-format-zero-length ;               Cc      f       self
+        "Do not warn about zero-length format string"
 -Wno-format-nonliteral	;		Cc	f	self
 	"Do not warn if format string is not a string literal"
 -Wformat-security	;		Cc	f	self
@@ -1503,6 +1525,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"If -Wformat, warn on candidates for `format' attributes"
 -Wno-missing-format-attribute	;		Cc	f	self
 	"Do not warn on candidates for `format' attributes"
+-Wno-missing-field-initializers ;               Cc      f       self
+        "Do not warn if a structure's initializer has some fields missing"
 -Wno-deprecated-declarations	;		Cc	f	self
 	"Do not warn about deprecated code"
 -Wno-format-extra-args	;		Cc	f	self
@@ -1624,6 +1648,20 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fgcse		;		Cc	f	self
 	""
+-fno-gcse       ;               Cc      f       self
+        "Disable global common subexpression elimination, for options compatibility only, ignored by Open64"
+-falign-functions       ;               Cc      f       self
+        "Align the start of functions to the machine-dependent default value, for options compatibility only, ignored by Open64"
+-falign-functions=%d    ;               Cc      f       "-falign-functions=%d"
+        "Align the start of functions to the next power-of-two greater than n, for options compatibility only, ignored by Open64"
+-falign-jumps=%d        ;               Cc      f       "-falign-jumps=%d"
+        "Align branch targets to a power-of-two boundary, for options compatibility only, ignored by Open64"
+-falign-loops           ;               Cc      f       self
+        "Align loops to a machine-dependent default value, for options compatibility only, ignored by Open64"
+-falign-loops=%d        ;               Cc      f       "-falign-loops=%d"
+        "Align loops to a power-of-two boundary, skipping up to n bytes, for options compatibility only, ignored by Open64"
+-falign-labels          ;               Cc      f       self
+        "Align all branch targets to a machine-dependent default value, for options compatibility only, ignored by Open64"
 -finline-functions	;		Cc	f	self
 	"Automatically integrate simple functions into their callers"
 -fno-inline-functions	;		Cc	f	self 
@@ -1825,17 +1863,17 @@ I-u%s		;		Cc	ld	"-u %s"
 % KEY: Because of limitation on derived flags, we repeat the -fexceptions
 % in the implied list.  This is to find the parent flag so action is done.
 #ifdef X8664
--fexceptions	;	ALL	cfe	"-fexceptions -TENV:frame_pointer=on"
+-fexceptions	;	ALL	cfe	"-fexceptions -fgnu-exceptions -TENV:frame_pointer=on"
 	"Enable exception handling"
 #else
--fexceptions	;	ALL	cfe	self
+-fexceptions	;	ALL	cfe	"-fexceptions -fgnu-exceptions"
 	"Enable exception handling"
 -foptimize-regions  ;   Cc  cfe "-foptimize-regions -TENV:omit_ue_destroy_frame=on"
     "Enable optimization of EH regions formation"
 #endif
--fhandle-exceptions	;	Cc	cfe	self
+-fhandle-exceptions	;	Cc	cpp,cfe	self
 	"Enable exception handling"
--fno-exceptions	;	Cc	cfe	self
+-fno-exceptions	;	Cc	cpp,cfe	"-fno-exceptions -fno-gnu-exceptions"
 	"Disable exception handling"
 -fno-optimize-regions   ;   Cc  cfe self
     "Enable optimization of EH regions formation"
@@ -1876,6 +1914,14 @@ I-u%s		;		Cc	ld	"-u %s"
 	"use strict ref/def initialization model"
 -fno-ident	;		Cc	cfe	self
 	"Ignore #ident directives"
+-fident         ;               Cc      cfe     self
+        "for options compatibility only, ignored by Open64"
+-fwrapv         ;               Cc      cfe     self
+        "for options compatibility only, ignored by Open64"
+-fvisibility=hidden     ;               Cc      cfe     self
+        "Set the default ELF image symbol visibility to be hidden, for options compatibility only, ignored by Open64"
+-fvisibility=default    ;               Cc      cfe     self
+        "Make every ELF image symbol public, for options compatibility only, ignored by Open64"
 -fno-gnu-linker	;		Cc	NONE	""
 	""
 -fpcc-struct-return	;		Cc	NONE	""
@@ -2016,6 +2062,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -print-search-dirs	{show_search_path=TRUE; execute_flag=FALSE;}	ALL	NONE	""
 	"Print the installation directory and directories the compiler will search"
+-fvar-tracking          ;       ALL             cfe     self
+        "Run variable tracking pass, for options compatibility only, ignored by Open64"
 -fpreprocessed		;	Cc,as,cpp	cpp,cfe	self
 	"Tell preprocessor that input has already been preprocessed"
 -fno-preprocessed		;	Cc,as,cpp	cpp,cfe	self
@@ -2041,6 +2089,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 --dependencies	;	ALL	NONE	"-M"
 	""
+--dumpversion ; ALL NONE "-dumpversion"
+  ""
 --extra-warnings	;	ALL	NONE	"-W"
 	""
 --force-link%s	;	ALL	NONE	"-u %s"
@@ -2149,6 +2199,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Like -v, only nothing is run and args are quoted"
 -rdynamic			;		LINK	ld	"-Wl,--export-dynamic"
 	""
+-Bsymbolic      ;       LINK     ld        self
+        "Let the linker to resolve as many symbols as possible at link time"
 % KEY	The driver ignores options by changing them into -dummy, which does
 %	nothing.
 -dummy	;		ALL	NONE	""

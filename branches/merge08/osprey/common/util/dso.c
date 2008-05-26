@@ -68,8 +68,8 @@ load_so (char *soname, char *path, BOOL verbose)
     } else {
         full_path = soname;
     }
-
-#ifndef linux
+  
+#if ! (defined(linux) || defined(BUILD_OS_DARWIN))
     if (sgidladd (full_path, RTLD_LAZY) == NULL)
 #else
     if (dlopen (full_path, /*RTLD_NOW |*/ RTLD_LAZY|RTLD_GLOBAL) == NULL)

@@ -742,6 +742,7 @@ public:
   BB_NODE     *End(void) const      { return _end; }
   BB_NODE     *Body(void) const     { return _body; }
   BB_NODE     *Step(void) const     { return _step; }
+  void         Set_merge(BB_NODE *b){ _u2._merge = b; }
   BB_NODE     *Merge(void) const    { return _u2._merge; }
   BB_NODE     *Dotail(void) const   { return _u2._dotail; }
   BB_NODE     *Header(void) const   { return header; }
@@ -765,7 +766,6 @@ public:
                    (BB_NODE_SET *s) { _body_set = s; }
   void         Set_true_body_set
                    (BB_NODE_SET *s) { _true_body_set = s; }
-  void         Set_merge (BB_NODE* b) { _u2._merge = b; }
   BB_LOOP     *Append (BB_LOOP*);   // insert at tail, return head
   BB_LOOP     *Append_list(BB_LOOP *);
   void         Print(FILE *fp=stderr) const;
@@ -1151,6 +1151,7 @@ public:
   ~BB_NODE(void)                           {}
 
   void         Print(FILE *fp=stderr) const;// print the bb structure
+  void         PrintVis(void) const;            // print the bb structure
   void         Print_wn(FILE *fp=stderr) const;  // print the bb structure
   void         Print_ssa(FILE *fp=stderr) const; // print the bb structure
   void         Print_head(FILE *fp=stderr) // print the cfg info of the bb

@@ -54,7 +54,11 @@
  * ====================================================================
  */
 
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>		    // for ipa_cg.h (Elf64_Word)
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h>		    // for pid_t
 #include <unistd.h>		    // for fork(), pipe(), etc.
 #include <signal.h>		    // for SIGINT

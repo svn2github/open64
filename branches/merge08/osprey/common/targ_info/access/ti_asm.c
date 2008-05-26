@@ -39,7 +39,7 @@
 
 #ifdef _KEEP_RCS_ID
 static const char source_file[] = __FILE__;
-static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_asm.c,v $ $Revision: 1.1.1.1 $";
+static const char rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_asm.c,v $ $Revision: 1.2 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <stdio.h>
@@ -188,7 +188,12 @@ INT TI_ASM_Print_Inst(
     case ISA_PRINT_COMP_opnd+3:
     case ISA_PRINT_COMP_opnd+4:
     case ISA_PRINT_COMP_opnd+5:
-      arg[i] = opnd[comp - ISA_PRINT_COMP_opnd];
+#ifdef TARG_SL
+    case ISA_PRINT_COMP_opnd+6:
+    case ISA_PRINT_COMP_opnd+7:
+    case ISA_PRINT_COMP_opnd+8:
+#endif
+       arg[i] = opnd[comp - ISA_PRINT_COMP_opnd];
       break;
 
     case ISA_PRINT_COMP_result:
@@ -211,7 +216,11 @@ INT TI_ASM_Print_Inst(
   st = fprintf (f, ISA_PRINT_INFO_Format(pinfo),
 		     arg[0], arg[1], arg[2], arg[3], 
 		     arg[4], arg[5], arg[6], arg[7],
+#ifdef TARG_SL
+		     arg[8], arg[9]);
+#else
 		     arg[8]);
+#endif
   if (st == -1) {
 	sprintf(TI_errmsg, "fprintf failed:  not enough disk space");
 	return TI_RC_ERROR;

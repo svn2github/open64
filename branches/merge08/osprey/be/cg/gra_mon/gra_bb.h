@@ -1,8 +1,4 @@
 /*
- * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
- */
-
-/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -40,10 +36,10 @@
 
 */
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_bb.h,v $
+//  $Revision: 1.13 $
+//  $Date: 05/12/05 08:59:09-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_bb.h $
 
 //  Description:
 //
@@ -70,7 +66,7 @@
 #ifndef GRA_BB_RCS_ID
 #define GRA_BB_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_bb_rcs_id = "$Source: ../../be/cg/gra_mon/SCCS/s.gra_bb.h $ $Revision: 1.12 $";
+static char *gra_bb_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_bb.h $ $Revision: 1.13 $";
 #endif
 #endif
 
@@ -105,8 +101,6 @@ enum GBB_FLAG {
   GRA_BB_FLAGS_setjmp		=  0x10,// if block contains a call to setjmp
 #ifdef TARG_X8664
   GRA_BB_FLAGS_savexmms		=  0x20,// if block ends with savexmms pseudo-op
-  GRA_BB_FLAGS_x87_OP		=  0x40,// if block contains x87 OPs
-  GRA_BB_FLAGS_mmx_OP		=  0x80,// if block contains mmx OPs
 #endif
 };
 
@@ -132,10 +126,6 @@ private:
   REGISTER_SET  glue_registers_used[ISA_REGISTER_CLASS_MAX+1];
     // the set of registers used in this <gbb> and <rc> only in glue copy 
     // references.
-#ifdef KEY
-  REGISTER_SET  registers_referenced[ISA_REGISTER_CLASS_MAX+1];
-    // the set of registers referenced in this <gbb> for <rc>.
-#endif
   GRA_BB*       region_next;
     // Used by GRA_REGION's to keep track of their blocks.
   INT32         split_mark;
@@ -192,7 +182,6 @@ private:
   GRA_LOOP*	loop;
   UINT8		flags;
 #ifdef KEY
-  // ------------ Support optimizing for boundary BBs. ------------
   mUINT16	OPs_count;	// Number of OPs in the BB.
   REGISTER_SET  usage_live_in[ISA_REGISTER_CLASS_MAX+1];
   REGISTER_SET  usage_live_out[ISA_REGISTER_CLASS_MAX+1];
@@ -241,13 +230,6 @@ private:
     //   segment 3:	live-out
     // We treat segments 2 and 3 as one segment, resulting in the "disjoint"
     // case.
-
-  // ------------ Support register reclaiming. ------------
-  LRANGE*	lrange_owner[ISA_REGISTER_CLASS_MAX+1][REGISTER_MAX+1];
-    // The lrange owner of the register in this <gbb>.  In the case of a
-    // boundary BB with two lranges sharing the same register, lrange_owner is
-    // the latest lranges that was allocated the register, since lrange_owner
-    // is updated as the registers are allocated.
 #endif
 
 public:
@@ -311,22 +293,8 @@ public:
 #ifdef TARG_X8664
   BOOL Savexmms(void)		{ return flags & GRA_BB_FLAGS_savexmms; }
   void Savexmms_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_savexmms; }
-  BOOL x87_OP(void)		{ return flags & GRA_BB_FLAGS_x87_OP; }
-  void x87_OP_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_x87_OP; }
-  BOOL mmx_OP(void)		{ return flags & GRA_BB_FLAGS_mmx_OP; }
-  void mmx_OP_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_mmx_OP; }
 #endif
-
 #ifdef KEY
-  // Return TRUE if BB has OPs the clobber the register class RC.
-  BOOL Clobbers_Reg_Class(ISA_REGISTER_CLASS rc) {
-#ifdef TARG_X8664
-    return ((rc == ISA_REGISTER_CLASS_x87 && mmx_OP()) ||
-	    (rc == ISA_REGISTER_CLASS_mmx && x87_OP()));
-#else
-    return FALSE;
-#endif
-  }
   mUINT16 OPs_Count(void)	{ return OPs_count; }
   mUINT16 Usage_Start_Index(ISA_REGISTER_CLASS rc, REGISTER reg)
 				{ return usage_start_index[rc][reg]; }
@@ -349,10 +317,6 @@ public:
   void Usage_Live_Out_Clear(ISA_REGISTER_CLASS rc, REGISTER reg)
 	{usage_live_out[rc] = REGISTER_SET_Difference1(usage_live_out[rc],reg);}
     // Is the given <lrange> live-out of the given <gbb>?
-  void Set_LRANGE_Owner(ISA_REGISTER_CLASS rc, REGISTER reg, LRANGE *lrange)
-	{ lrange_owner[rc][reg] = lrange; }
-  LRANGE *Get_LRANGE_Owner(ISA_REGISTER_CLASS rc, REGISTER reg)
-	{ return lrange_owner[rc][reg]; }
 #endif
 
   // inline functions
@@ -392,13 +356,8 @@ public:
   BOOL Region_Is_Complement(void);
   void Add_LUNIT(LUNIT *lunit);
   void Make_Register_Used(ISA_REGISTER_CLASS rc, REGISTER reg,
-			  LRANGE* lrange = NULL, BOOL reclaim = FALSE);
+			  LRANGE* lrange = NULL);
   REGISTER_SET Registers_Used(ISA_REGISTER_CLASS  rc);
-#ifdef KEY
-  void Make_Register_Referenced(ISA_REGISTER_CLASS rc, REGISTER reg,
-				LRANGE* lrange = NULL);
-  REGISTER_SET Registers_Referenced(ISA_REGISTER_CLASS  rc);
-#endif
   BOOL Spill_Above_Check(LRANGE *lrange);
   void Spill_Above_Set(LRANGE *lrange);
   void Spill_Above_Reset(LRANGE *lrange);
@@ -420,10 +379,6 @@ class GBB_MGR {
   BB_MAP map;   // Weird typedef includes the '*'.
   BB_SET *blocks_with_calls; // BB_SET containing those bb's that have calls.
   BB_SET *blocks_with_rot_reg_clob; // bb's that clobber rotating registers
-#ifdef TARG_X8664
-  BB_SET *blocks_with_x87_OP; // BB_SET containing those bb's that have x87 OPs.
-  BB_SET *blocks_with_mmx_OP; // BB_SET containing those bb's that have MMX OPs.
-#endif
 public:
   GBB_MGR(void) {};
   ~GBB_MGR(void) {};
@@ -431,10 +386,6 @@ public:
   // access functions
   BB_SET *Blocks_With_Calls(void)	{ return blocks_with_calls; }
   BB_SET *Blocks_With_Rot_Reg_Clob(void){ return blocks_with_rot_reg_clob; }
-#ifdef TARG_X8664
-  BB_SET *Blocks_With_x87_OP(void)	{ return blocks_with_x87_OP; }
-  BB_SET *Blocks_With_mmx_OP(void)	{ return blocks_with_mmx_OP; }
-#endif
   void Incr_Wired_Local_Count(void)	{ ++wired_local_count; }
   INT Alloc_Count(void)			{ return alloc_count; }
 

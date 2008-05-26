@@ -2603,16 +2603,22 @@ gs_t init, UINT offset, UINT array_elem_offset,
       Is_True ((WN_operator(target) == OPR_LDID ||
                 WN_operator(target) == OPR_LDA),
                ("Bad operator for target") );
+      TY_IDX targ_ty = WN_ty(target);
+      ST* addr_st = Gen_Temp_Symbol (TY_mtype(targ_ty), "target");
+      WN* wn = NULL;
       if (WN_offset(target) != 0 || offset != 0) {
-          TY_IDX targ_ty = WN_ty(target);
-          ST* addr_st = Gen_Temp_Symbol (TY_mtype(targ_ty), "target");
-          WN* wn = WN_Stid (TY_mtype(targ_ty), 0, addr_st, targ_ty,
-                            WN_Binary (OPR_ADD, Pointer_Mtype, 
-				       WN_CopyNode(target),
-                                       WN_Intconst(MTYPE_I4, offset) ) );
-          WGEN_Stmt_Append (wn, Get_Srcpos());
-          target = WN_Ldid (TY_mtype(targ_ty), 0, addr_st, targ_ty);
+          DevWarn("Pointer Arithmetic here may introduce bugs!");
+          wn = WN_Stid (TY_mtype(targ_ty), 0, addr_st, targ_ty,
+                        WN_Binary (OPR_ADD, Pointer_Mtype, 
+			           WN_CopyNode(target),
+                                   WN_Intconst(MTYPE_I4, offset + WN_offset(target) ) ) );
       }
+      else {
+          wn = WN_Stid (TY_mtype(targ_ty), 0, addr_st, targ_ty,
+                        WN_CopyNode(target) );
+      }
+      WGEN_Stmt_Append (wn, Get_Srcpos());
+      target = WN_Ldid (TY_mtype(targ_ty), 0, addr_st, targ_ty);
       WGEN_Expand_Expr (init, TRUE, 0, 0, 0, 0, FALSE, FALSE, target);
       bytes += TY_size(ty);
       return;
@@ -2805,11 +2811,14 @@ AGGINIT::Traverse_Aggregate_Array (
 
 #ifdef FE_GNU_4_2_0
   INT length = gs_constructor_length(init_list);
+  gs_t curr_index_elem = length > 0? gs_operand (init_list, GS_CONSTRUCTOR_ELTS_INDEX) : NULL;
+  gs_t curr_value_elem = length > 0? gs_operand (init_list, GS_CONSTRUCTOR_ELTS_VALUE) : NULL;
   for (INT idx = 0;
        idx < length;
        idx++) {
 
-    gs_t element_index = gs_constructor_elts_index(init_list, idx);
+    gs_t element_index = gs_operand(curr_index_elem, 0);
+    curr_index_elem = gs_operand(curr_index_elem, 1);
 
     // Bug 591
     // In gcc-3.2 (updated Gnu front-end), the TREE_PURPOSE(init) 
@@ -2840,7 +2849,8 @@ AGGINIT::Traverse_Aggregate_Array (
       emitted_bytes += (lindex - emitted_bytes/esize)*esize;
     }	
 
-    gs_t tree_value = gs_constructor_elts_value(init_list, idx);
+    gs_t tree_value = gs_operand(curr_value_elem, 0);
+    curr_value_elem = gs_operand(curr_value_elem, 1);
     if (gs_tree_code(tree_value) == GS_PTRMEM_CST)  {
       gs_t t = gs_expanded_ptrmem_cst(tree_value);
       Is_True(t != NULL,
@@ -2876,11 +2886,13 @@ AGGINIT::Traverse_Aggregate_Array (
       if (gen_initv && 
           gs_tree_code(tree_value) == GS_FDESC_EXPR && 
 	  idx < length - 1) {
-        gs_t next = gs_constructor_elts_value(init_list, idx+1);
+        gs_t next = gs_operand(curr_value_elem, 0); 
         if ((next != NULL) && 
 	    (gs_tree_code(next) == GS_FDESC_EXPR) &&
 	    (gs_tree_operand(tree_value, 0) == gs_tree_operand(next, 0)) ) {
   	  idx++; // Skip the next one
+          curr_index_elem = gs_operand(curr_index_elem, 1);
+          curr_value_elem = gs_operand(curr_value_elem, 1);
 	  Add_Initv_For_Tree (tree_value, esize);
   	  emitted_bytes += (esize << 1);  // *2, fptr + gp
   	  current_offset += (esize << 1);
@@ -2898,7 +2910,7 @@ AGGINIT::Traverse_Aggregate_Array (
 	}
 	else
 #ifdef NEW_INITIALIZER
-          Gen_Assign_Of_Init_Val (target, gs_tree_value(init), current_offset, 0,
+          Gen_Assign_Of_Init_Val (target, tree_value, current_offset, 0,
 #else
 	  Gen_Assign_Of_Init_Val (st, tree_value, current_offset, 0,
 #endif
@@ -3279,7 +3291,7 @@ AGGINIT::Traverse_Aggregate_Struct (
       }
       else {
 #ifdef NEW_INITIALIZER
-        Gen_Assign_Of_Init_Val (target, gs_tree_value(init),
+        Gen_Assign_Of_Init_Val (target, element_value,
 #else
         Gen_Assign_Of_Init_Val (st, element_value,
 #endif

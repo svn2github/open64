@@ -78,6 +78,7 @@ extern char * Targ_Print ( char *fmt, TCON c );
 #include "wio.h"
 #include "wintrinsic.h"
 #include "wutil.h"
+#include "intrn_info.h"
 #include "wn_pragmas.h"
 
 #include "opt_base.h"

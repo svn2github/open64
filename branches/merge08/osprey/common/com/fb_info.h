@@ -42,10 +42,10 @@
 // ====================================================================
 //
 // Module: fb_info.h
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/fb_info.h,v $
+// $Revision: 1.12 $
+// $Date: 05/12/05 08:59:36-08:00 $
+// $Author: bos@eng-24.pathscale.com $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/common/com/SCCS/s.fb_info.h $
 //
 // Description:
 //
@@ -102,6 +102,10 @@ struct FB_Info_Invoke {
   FB_Info_Invoke() :
     freq_invoke( FB_FREQ_UNINIT ) {}
 
+#if defined(TARG_SL)
+  FB_FREQ& Access_Freq_Invoke() { return freq_invoke; };
+#endif
+
   void Print( FILE *fp ) const {
     fprintf( fp, "FB---> invoke = " );
     freq_invoke.Print( fp );
@@ -117,14 +121,41 @@ struct FB_Info_Invoke {
 // use vector later, like FB_Info_Switch.
 #define TNV 10
 struct FB_Info_Value {
+#if defined(TARG_SL)
+  INT32   num_values;   // how many valid entries in the value array
+#else
   INT64   num_values;   // how many valid entries in the value array
+#endif  
+
   FB_FREQ exe_counter;  // how many times this inst is executed
+
+#if defined(TARG_SL)
+  INT32   value[TNV];   // the top TNV profiled values
+#else
   INT64   value[TNV];   // the top TNV profiled values
+#endif  
+
   FB_FREQ freq[TNV];    // the corresponding freq for each value
 
-  FB_Info_Value() : num_values(0), exe_counter(0.0) {}
+#if defined(TARG_SL)
+  FB_FREQ& Access_Exe_Counter(){ return exe_counter;}
+  FB_FREQ* Access_Freq(){return freq;}
 
+#endif
+
+
+#if defined(TARG_SL) && defined(__SL__) 
+  FB_Info_Value() : num_values(0), exe_counter(0) {}
+#else
+  FB_Info_Value() : num_values(0), exe_counter(0.0) {}
+#endif
+
+#if defined(TARG_SL)
+  FB_Info_Value( const INT32 num, const INT32 e, const INT32* v, const INT32* f ) {
+#else
   FB_Info_Value( const INT64 num, const INT64 e, const INT64* v, const INT64* f ) {
+#endif  
+
     num_values = MIN( TNV, num );
     exe_counter = e;
 
@@ -152,6 +183,19 @@ struct FB_Info_Value_FP_Bin {
   FB_FREQ uopnd0;       // how many times was operand 0 == 1.0
   FB_FREQ uopnd1;       // how many times was operand 1 == 1.0
 
+#if defined(TARG_SL) && defined(__SL__) 
+  FB_Info_Value_FP_Bin() : exe_counter(0), zopnd0(0), zopnd1(0),
+                           uopnd0(0), uopnd1(0) {}
+
+  FB_Info_Value_FP_Bin( const INT32 e, const INT32 z0, const INT32 z1,
+  			const INT32 u0, const INT32 u1 ) {
+    exe_counter = e;
+    zopnd0 = z0;
+    zopnd1 = z1;
+    uopnd0 = u0;
+    uopnd1 = u1;
+  }
+#else
   FB_Info_Value_FP_Bin() : exe_counter(0.0), zopnd0(0.0), zopnd1(0.0),
                            uopnd0(0.0), uopnd1(0.0) {}
 
@@ -163,6 +207,7 @@ struct FB_Info_Value_FP_Bin {
     uopnd0 = u0;
     uopnd1 = u1;
   }
+#endif
 
   FB_FREQ Total() const {    return exe_counter;   }
 
@@ -182,6 +227,11 @@ struct FB_Info_Branch {
                           // (then clause for IF, Kid0 for CSELECT)
   FB_FREQ freq_not_taken; // number of times branch not taken
                           // (else clause for IF, Kid1 for CSELECT)
+
+#if defined (TARG_SL)
+  FB_FREQ& Access_Freq_Taken(){ return freq_taken;}
+  FB_FREQ& Access_Freq_Not_Taken(){ return freq_not_taken;}
+#endif
 
   FB_Info_Branch( FB_FREQ taken, FB_FREQ not_taken )
     : freq_taken(     taken ),
@@ -250,6 +300,15 @@ struct FB_Info_Loop {
   FB_FREQ freq_exit;
   FB_FREQ freq_iterate;
 
+#if defined (TARG_SL)
+  FB_FREQ& Access_Freq_Zero() {return freq_zero;}
+  FB_FREQ& Access_Freq_Positive() {return freq_positive;}
+  FB_FREQ& Access_Freq_Out() {return freq_out;}
+  FB_FREQ& Access_Freq_Back() {return freq_back;}
+  FB_FREQ& Access_Freq_Exit() {return freq_exit;}
+  FB_FREQ& Access_Freq_Iterate() {return freq_iterate;}  
+#endif
+
   FB_Info_Loop( FB_FREQ zero, FB_FREQ positive, FB_FREQ out, FB_FREQ back,
 		FB_FREQ exit, FB_FREQ iterate )
     : freq_zero(     zero ),
@@ -283,6 +342,7 @@ struct FB_Info_Loop {
       freq_exit(     FB_FREQ_UNINIT ),
       freq_iterate(  FB_FREQ_UNINIT ) {}
 
+
   void Print( FILE *fp ) const {
     fprintf( fp, "FB---> zero = " );
     freq_zero.Print( fp );
@@ -313,6 +373,9 @@ struct FB_Info_Loop {
     freq_iterate.Print_simple( fp );
   }
 
+#if defined(TARG_SL) && defined(__SL__) 
+
+#else
   FB_FREQ Total() const {
     return ( freq_exit + freq_iterate );
   }
@@ -324,6 +387,8 @@ struct FB_Info_Loop {
     else
       return 0.1;  // This is a wild guess!!
   }
+  
+#endif
 };
 
 struct FB_Info_Circuit {
@@ -331,6 +396,12 @@ struct FB_Info_Circuit {
   FB_FREQ freq_left;   // "taken" means false for CAND, true for CIOR
   FB_FREQ freq_right;
   FB_FREQ freq_neither;
+
+#if defined(TARG_SL)
+  FB_FREQ& Access_Freq_Left(){return freq_left;}
+  FB_FREQ& Access_Freq_Right(){return freq_right;}
+  FB_FREQ& Access_Freq_Neither(){return freq_neither;}
+#endif
 
   FB_Info_Circuit( FB_FREQ left, FB_FREQ right, FB_FREQ neither )
     : freq_left(    left    ),
@@ -372,6 +443,11 @@ struct FB_Info_Call {
   BOOL    in_out_same;  // TRUE iff freq_entry and freq_exit must be ==
   BOOL    dummy_buffer; // FB_Info_Call size must be 0 mod 64bits for
 			//   consistent feedback file alignment in IA32/64
+
+#if defined(TARG_SL)
+  FB_FREQ&  Access_Freq_Entry(){return freq_entry;}
+  FB_FREQ&  Access_Freq_Exit(){return freq_exit;}
+#endif
 
   FB_Info_Call( FB_FREQ entry, FB_FREQ exit, BOOL same = FALSE )
     : freq_entry(  entry ),
@@ -735,14 +811,22 @@ inline bool FB_valid_opr_circuit(const WN *wn) {
 
 // ====================================================================
 // Feedback info for a call
-
+#if defined(TARG_SL) && defined(TARG_SL2)
 #define fb_opr_cases_call  \
   case OPR_PICCALL:        \
   case OPR_CALL:           \
   case OPR_ICALL:          \
   case OPR_INTRINSIC_CALL: \
-  case OPR_IO: \
-  case OPR_REGION
+  case OPR_IO:	\
+ case OPR_REGION
+#else
+#define fb_opr_cases_call  \
+  case OPR_PICCALL:        \
+  case OPR_CALL:           \
+  case OPR_ICALL:          \
+  case OPR_INTRINSIC_CALL: \
+  case OPR_IO
+#endif
 
 inline bool FB_valid_opr_call(const WN *wn) {
   OPERATOR opr = WN_operator( wn );
@@ -770,6 +854,11 @@ inline bool FB_valid_opr_switch (const WN *wn) {
   switch ( opr ) {
   fb_opr_cases_switch:
     return true;
+#if defined (TARG_SL)	 && defined(TARG_SL2) 
+  case OPR_SL2_FORK_MAJOR:
+  case OPR_SL2_FORK_MINOR:
+    return TRUE;
+#endif
   default:
     return false;
   }

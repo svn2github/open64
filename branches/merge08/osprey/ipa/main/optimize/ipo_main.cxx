@@ -69,13 +69,18 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h>
 #include <signal.h>
 #include <alloca.h>
 #include <cmplrs/rcodes.h>		// for RC_SYSTEM_ERROR
 #include <float.h>
 #include <ext/hash_set>
+#include <queue>
 
 #include "defs.h"
 #include "erglob.h"
@@ -343,6 +348,52 @@ Trans_Order_Walk (IPA_NODE_VECTOR& vect, mBOOL* visited, IPA_GRAPH* cg,
     vect.push_back (node);
 } // Trans_Order_Walk 
 
+#if defined(TARG_SL)
+typedef queue<NODE_INDEX> NODE_INDEX_QUEUE;
+
+// A breadth-first search of the call graph.
+static void
+Build_BFS_Order (IPA_NODE_VECTOR& vect, IPA_GRAPH* cg,
+		  NODE_INDEX root) 
+{
+    mBOOL *visited = (mBOOL *) alloca (GRAPH_vmax (cg) * sizeof(mBOOL));
+    bzero (visited, GRAPH_vmax (cg) * sizeof(mBOOL));
+    vect.reserve (GRAPH_vcnt (cg));
+
+    NODE_INDEX_QUEUE myqueue;
+    myqueue.push(root);
+
+    while (!myqueue.empty()) {
+
+        NODE_INDEX cur = myqueue.front();
+        myqueue.pop();
+
+        if (!visited[cur]) {
+            visited[cur] = TRUE;
+            NODE_ITER vitr (cg, cur);
+            NODE_INDEX child;
+            for (child = vitr.First_Succ (); child != -1;
+            	 child = vitr.Next_Succ ())
+            {
+	            if (!visited[child])
+                    myqueue.push(child); 
+            }
+           
+            IPA_NODE* node = cg->Node_User (cur);
+            if (node == NULL)
+                continue;
+#ifdef KEY
+            if (node->Is_Builtin())
+                continue;
+#endif
+            //printf("BFS - Pushing node (%d): %s\n", node->Node_Index(), IPA_Node_Name(node));
+            vect.push_back(node);
+        }
+
+    } // while
+}
+#endif // TARG_SL
+
 static inline void
 Build_Transformation_Order (IPA_NODE_VECTOR& vect, IPA_GRAPH* cg,
 			    NODE_INDEX root)
@@ -602,17 +653,21 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
     IPO_propagate_globals(node);
   }
   
-#ifdef PATHSCALE_MERGE /* KEY */
+#ifdef KEY
   if (IPA_Enable_Struct_Opt)
     IPO_WN_Update_For_Struct_Opt(node);
 #endif
 
   if(IPA_Enable_Reorder && reorder_candidate.size)
     IPO_Modify_WN_for_field_reorder(node) ;
-  else //just for debug  feld reorder
+  else // just for debug  field reorder
     Compare_whirl_tree(node);
 
-  if (IPA_Enable_Cloning && node->Is_Clone_Candidate()) {
+  if (
+#if defined(TARG_SL)
+      !ld_ipa_opt[LD_IPA_IPISR].flag && 
+#endif
+      IPA_Enable_Cloning && node->Is_Clone_Candidate()) {
 
     IPA_NODE *cloned_node = cg->Create_Clone(node);
     cloned_node->Set_Propagated_Const ();
@@ -825,12 +880,17 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
     
 } // IPO_Process_edge
 
+extern void WN_free_input (void *handle, off_t mapped_size);
 
 static inline void
-Delete_Proc (const IPA_NODE *node)
+Delete_Proc (IPA_NODE *node)
 {
     Set_ST_is_not_used (node->Func_ST ());
     Delete_Function_In_File (node->File_Header(), node->Proc_Info_Index ());
+    node->Un_Read_PU();
+    /* Free the mmaped memory if all PUs in the file are released */
+    if (node->File_Header().num_written == IP_FILE_HDR_num_procs(node->File_Header()))
+      WN_free_input(IP_FILE_HDR_input_map_addr(node->File_Header()), node->File_Header().mapped_size);
 
 } // Delete_Proc
 
@@ -1118,6 +1178,11 @@ Perform_Alias_Class_Annotation(void)
     WN_write_PU_Infos(pu_info_tree, output_file);
     WN_write_dst(Current_DST, output_file);
 
+#if defined(TARG_SL)
+    if (ld_ipa_opt[LD_IPA_IPISR].flag)
+        WN_write_isr_cg(ipisr_cg, output_file);
+#endif
+
     // close the two files
     Close_Output_Info();
     Free_Local_Input();
@@ -1167,6 +1232,37 @@ Perform_Alias_Class_Annotation(void)
     }
   }
 }
+
+
+static void 
+Evaluate_RSE_Cost(MEM_POOL *pool) {
+    if (! have_open_input_file) {
+        fin = fopen("struc_feedback","r");
+        have_open_input_file = TRUE;
+        while (!feof(fin)) {
+            REG_FB_POINTER reg_fb = CXX_NEW(struct reg_feedback,pool);
+            fread(reg_fb,1,sizeof(struct reg_feedback),fin);
+            REG_FB_INFO_TABLE[reg_fb->_func_name] = reg_fb;
+        }
+        fclose(fin);
+    }
+}
+
+static void
+Construct_Budget_Table(IPA_CALL_GRAPH *cg,MEM_POOL *pool) {
+    IPA_NODE_ITER cg_iter(cg,PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE* node = cg_iter.Current();
+        if (node) { 
+            if (! node->Is_Deletable()) {
+                REG_BUDGET_POINTER reg_budget_ptr = CXX_NEW(struct reg_budget,pool);
+                reg_budget_ptr->_node = node; 
+                REG_BUDGET_TABLE[IPA_Node_Name(node)] = reg_budget_ptr;
+            }
+        }
+    }
+}
+
 
 static IPA_EDGE *
 Get_Most_Frequent_Succ(IPA_NODE *seed,IPA_CALL_GRAPH *cg) {
@@ -1723,6 +1819,11 @@ check_for_nested_PU (IPA_NODE * node)
 	    &child_node->File_Header()))
 	{
           check_for_nested_PU (child_node);
+#if defined(TARG_SL)
+	  if (ld_ipa_opt[LD_IPA_IPISR].flag) {
+	    ErrMsg(EC_Ipa_Outfile, "Encountered nested PU when -ipisr is turned on");
+	  }
+#endif
 	  IPA_Rename_Builtins (child_node);
 	  child_node->Write_PU();
 	}
@@ -1731,6 +1832,18 @@ check_for_nested_PU (IPA_NODE * node)
     }
 }
 #endif // KEY
+
+#if defined(TARG_SL)
+// ipisr_cg is the call graph used for interprocedural ISR register
+// allocation. It'll put into MIPS_WHISRL_IPISR section of *.I by ipa.
+// The struct of the call graph is as follows.
+//   <PU0's 1st caller id>, ..., <PU0's last caller id>, <-1>
+//   <PU1's 1st caller id>, ..., <PU1's last caller id>, <-1>
+//   ...
+//   <PUn's 1st caller id>, ..., <PUn's last caller id>, <-1>
+// The PU id is equal to the ID in be. -1 is used to mark the end of callers. 
+vector<mINT32> ipisr_cg;
+#endif
 
 static void
 IPO_main (IPA_CALL_GRAPH* cg)
@@ -1788,6 +1901,73 @@ IPO_main (IPA_CALL_GRAPH* cg)
       Perform_Transformation (*first, cg);
 
     }
+
+#if defined(TARG_SL)
+    // Other non-postorder emitions
+
+    // If -ipisr, emit PUs in BFS order. 
+    // At this time, ld_ipa_opt[LD_IPA_IPISR].flag is true. 
+    if (IPA_Enable_PU_Reorder == REORDER_BY_BFS)
+    {	// reorder by breadth-first ordering 
+
+        IPA_NODE_VECTOR emit_order, emit_queue;
+        Build_BFS_Order (emit_order, cg->Graph(), cg->Root());
+
+        mINT32 cnt = 0;
+      
+        // Emit the PU in BFS order 
+        for (IPA_NODE_VECTOR::iterator first = emit_order.begin ();
+	        first != emit_order.end (); ++first) 
+        {
+            IPA_NODE* emit = *first;
+            if (!PU_Deleted (cg->Graph(), emit->Node_Index(), // deleted
+                                &emit->File_Header()) && 
+                !PU_Written (cg->Graph(), emit,    // written
+                                &emit->File_Header())
+            ) {
+	          // bug 4668
+	          check_for_nested_PU (emit);
+	          IPA_Rename_Builtins(emit);
+	          emit->Write_PU();
+              emit->Set_Emit_Id(cnt++); // It equals to the PU id in cg
+              emit_queue.push_back(emit);
+	        }
+        }
+
+        // Build ipisr_cg. 
+        for (IPA_NODE_VECTOR::iterator first = emit_queue.begin ();
+	        first != emit_queue.end (); ++first) 
+        {
+            IPA_NODE* callee = *first;
+            IPA_PRED_ITER pred_iter(callee);
+            vector<mINT32> visited;
+
+            //printf("Find %s's preds\n", IPA_Node_Name(callee));
+            for (pred_iter.First(); !pred_iter.Is_Empty(); pred_iter.Next()) { 
+
+                IPA_EDGE *edge = pred_iter.Current_Edge ();
+                if (edge == NULL) continue;
+
+                IPA_NODE *caller = cg->Caller (edge);
+                mINT32 id = caller->Emit_Id();
+
+                //printf("%s --> %s\n", IPA_Node_Name(callee), IPA_Node_Name(caller));
+
+                Is_True(emit_queue.end() 
+                            != find(emit_queue.begin(), emit_queue.end(), caller),
+                        ("In IPISR, the caller is not in the emit queue!\n"));
+
+                // If this caller is not added yet
+                if (visited.end() == find(visited.begin(), visited.end(), id)) {
+                    ipisr_cg.push_back(id);
+                    visited.push_back(id);
+                }
+            }
+
+            ipisr_cg.push_back(-1); // -1 marks the end of the call list
+        }
+    }
+#endif // TARG_SL
 
 #ifdef KEY
     { // PU reordering heuristics
@@ -2026,12 +2206,6 @@ Perform_Interprocedural_Optimization (void)
     MEM_Trace ();
   }
 #endif
-
-  if (Get_Trace(TP_IPA, IPA_TRACE_TUNING)) {
-    #pragma mips_frequency_hint NEVER
-    extern void Print_inline_decision (void);
-    Print_inline_decision ();
-  }
 
   if (Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW)) {
     fprintf(TFile, "\t+++++++++++++++++++++++++++++++++++++++\n");

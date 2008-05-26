@@ -62,7 +62,13 @@
 #include <sys/types.h>		    // for pid_t
 #include <unistd.h>		    // for fork(), pipe(), etc.
 #include <signal.h>		    // for SIGINT
+#ifndef __MINGW32__
+#if defined(BUILD_OS_DARWIN) || defined(__CYGWIN__) || defined(__APPLE__)
+#include <sys/wait.h>		    // for waitpid()
+#else 
 #include <wait.h>		    // for waitpid()
+#endif /* defined(BUILD_OS_DARWIN) */
+#endif /* __MINGW32__ */
 #include <stdarg.h>                 // for varargs.
 #include <time.h>
 #include <string.h>
@@ -726,9 +732,11 @@ DaVinci::Kill_Davinci()
     INT stat;
     
     _display_ok = false;
+#ifndef __MINGW32__
     kill (_pid, SIGINT);
     waitpid (_pid, &stat, WNOHANG);  // capture any SIGCHLD so not to
 				    // confuse master.
+#endif /* __MINGW32__ */
     _io.Close();
 }
 
@@ -738,6 +746,7 @@ DaVinci::Kill_Davinci()
 DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
   _menu_state(m)
 {
+#ifndef __MINGW32__
   _m                = m;
   _basic_menu_added = false;
   _in_event_loop    = false;
@@ -901,6 +910,7 @@ DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
   Emit_Do( "set(gap_height(40))" );
   Emit_Do( "set(gap_width(20))" );
 #endif
+#endif /* __MINGW32__ */
 }
 
 DaVinci::~DaVinci()

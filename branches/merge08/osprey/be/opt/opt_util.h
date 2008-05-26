@@ -170,5 +170,8 @@ typedef vector<bool, BVECTOR_ALLOCATOR> BVECTOR; // TODO add range checks
 //
 class CFG;
 void Set_volatile_map(CFG *cfg, BVECTOR &vol);
+#if defined(TARG_SL)
+extern BOOL CR_Intrinsic_Op_Slave(CODEREP * cr);
+#endif
 
 #endif  // opt_util_INCLUDED

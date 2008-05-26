@@ -2399,8 +2399,8 @@ Disambiguate_Aliased_Actuals (PARM_ATTR_VEC& parm_attr, PU& pu)
     BOOL* aliased = (BOOL*) alloca (num_parm * sizeof(BOOL));
     BOOL* scalar = (BOOL*) alloca (num_parm * sizeof(BOOL));
 
-    bzero (aliased, sizeof(BOOL)*num_parm);
-    bzero (scalar, sizeof(BOOL)*num_parm);
+    BZERO (aliased, sizeof(BOOL)*num_parm);
+    BZERO (scalar, sizeof(BOOL)*num_parm);
 
     // record those ST that are aliased
     for (i = 0; i < num_parm; ++i) {

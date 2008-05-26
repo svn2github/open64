@@ -208,6 +208,11 @@ enum CR_FLAG {
   CF_IS_ZERO_VERSION= 0x80,// is a zero version
   CF_FOLDED_LDID   = 0x100,// is folded from (ILOAD(LDA)) 
   CF_MADEUP_TYPE   = 0x200,// the type is made up by SSA
+#ifdef TARG_SL2
+  // offset relative to internal memory (vbuf & sbuf)  and used as parameter 
+  // in intrinisc_vbuf_offset and intrinsic_sbuf_offset
+  CF_INTERNAL_MEM_OFFSET = 0x400, 
+#endif 
   // do not add new values without checking CODEREP's flags field
 };
 
@@ -248,6 +253,10 @@ enum ISVAR_FLAG {
   ISVAR_MP_SHARED	      = 0x08,   // shared variable in MP region
 #endif
 };
+
+enum ISCONST_FLAG {
+  ISCONST_RVI_CANDIDATE = 0x1,    // used by TARG_SL 
+}; 
 
 // return value of Propagatable to tell whether an expression can be
 // propagated to the current point in the code
@@ -300,10 +309,17 @@ private:
   CODEKIND  kind:7;                  // code kind
   MTYPE     _dtyp:6;                 // data type
   MTYPE     dsctyp:6;                // descriptor type for various opcode
+#ifdef TARG_SL2 
+  UINT32    usecnt:12;               // number of times this node's
+                                     // expression appears.
+                                     // not used for ISCONST and ISLDA
+  CR_FLAG   flags:11;                
+#else
   UINT32    usecnt:13;               // number of times this node's
                                      // expression appears.
                                      // not used for ISCONST and ISLDA
-  CR_FLAG   flags:10;                
+  CR_FLAG   flags:10;    
+#endif            
   UINT32   _is_sign_extd:1;          // load is sign
   UINT32    is_lcse:1;               // one bit for lcse, also used for IVE
   UINT32    is_saved:1;              // another bit for already saved
@@ -364,7 +380,14 @@ private:
     } islda;
     union {                          // ISCONST ISRCONST
       ST        *const_id;            // symbolic constant or constant, ISRCONST
+#if defined(TARG_SL)
+      struct {
+        INT64    const_val;           // constant value, ISCONST
+        mUINT16  _isconst_flags; 
+      }isconst_val; 
+#else 
       INT64     const_val;           // constant value, ISCONST
+#endif
     } isconst;
     // KEY: added fields _asm_input_dtyp, _asm_input_dsctyp, _unused
     struct {                         // for code kind ISOP
@@ -479,7 +502,7 @@ public:
 	Set_dtyp_const_val(wt, (v << 32) >> 32);
 #else
       if (wt == MTYPE_I4) 
-	Set_dtyp_const_val(wt, (v << 32) >> 32);
+	Set_dtyp_const_val(wt, ((INT64)v << 32) >> 32);
       else if (wt == MTYPE_U4) 
 	Set_dtyp_const_val(wt, (UINT64) ((UINT64) v << 32) >> 32);
 #endif
@@ -607,21 +630,26 @@ public:
   MTYPE     Asm_input_dsctype(void) const   { return u2.isop._asm_input_dsctyp; }
   MTYPE     Set_asm_input_dsctype(MTYPE dt) {  u2.isop._asm_input_dsctyp = dt; }
 #endif  
-#ifndef TARG_X8664
-  void	    Set_dtyp_const_val(MTYPE dt, INT64 v) { Is_True(Kind() == CK_CONST,
+  void	    Set_dtyp_const_val(MTYPE dt, INT64 v) { 
+					Is_True(Kind() == CK_CONST,
 					    ("CODEREP::Set_dtyp_const_val, illegal kind"));
-					if (v == (v << 32) >> 32)
-					  _dtyp = MTYPE_I4;
-					else _dtyp = MTYPE_I8;
-					u2.isconst.const_val = v; }
-#else
-  void	    Set_dtyp_const_val(MTYPE dt, UINT64 v) { Is_True(Kind() == CK_CONST,
-					    ("CODEREP::Set_dtyp_const_val, illegal kind"));
-					if (v == (v << 32) >> 32)
+					// use given mtype if value fits
+					if (dt == MTYPE_U4
+					  && (v == ((UINT64) v << 32) >> 32))
 					  _dtyp = MTYPE_U4;
-					else _dtyp = MTYPE_I8;
+					else if (dt == MTYPE_I4
+					  && (v == ((INT64) v << 32) >> 32))
+					  _dtyp = MTYPE_I4;
+					else if (dt == MTYPE_U8)
+					  _dtyp = MTYPE_U8;
+					else 
+					  _dtyp = MTYPE_I8;
+#if defined(TARG_SL)
+					u2.isconst.isconst_val.const_val = v; }
+#else
 					u2.isconst.const_val = v; }
-#endif
+#endif // TARG_SL
+
   void      Set_dtyp_strictly(MTYPE dt) { _dtyp = dt; }
   MTYPE     Dsctyp(void) const        { return dsctyp; }
   void      Set_dsctyp(const MTYPE t) { dsctyp = t; }
@@ -794,6 +822,18 @@ public:
     return u2.isvar._isvar_flags & ISVAR_MP_SHARED;
   }
 #endif
+#if defined(TARG_SL)
+  void Set_RVI_Candidate() {
+    u2.isconst.isconst_val._isconst_flags |= ISCONST_RVI_CANDIDATE; 
+  }
+  BOOL RVI_Candidate() {
+    return u2.isconst.isconst_val._isconst_flags & ISCONST_RVI_CANDIDATE; 
+  }
+  void Reset_RVI_Candidate() {
+    u2.isconst.isconst_val._isconst_flags &= ~ISCONST_RVI_CANDIDATE; 
+  }
+
+#endif
 
   void Reset_field_id(void) 	     { u2.isvar.fieldid = 0; }
 
@@ -877,12 +917,20 @@ public:
     					return u2.islda.afieldid; }
   void      Set_const_val(INT64 v)    { Is_True(Kind() == CK_CONST,
 				     ("CODEREP::Set_const_val, illegal kind"));
+#if defined(TARG_SL)
+					u2.isconst.isconst_val.const_val = v; }
+#else
 					u2.isconst.const_val = v; }
+#endif
   INT64     Const_val(void) const     { Is_True(Kind() == CK_CONST,
 					 ("CODEREP::Const_val, illegal kind"));
 					Is_True(!MTYPE_float(_dtyp),
 					 ("CODEREP::Const_val, illegal type"));
+#if defined(TARG_SL)
+					return u2.isconst.isconst_val.const_val; }
+#else
 					return u2.isconst.const_val; }
+#endif
   // return the floating point value of a CK_RCONST
   // the Is_True checks are in Const_ftcon because that is the
   // 	routine that is always called
@@ -1183,6 +1231,7 @@ public:
 
   WN       *Rvi_home_wn( OPT_STAB *opt_stab ) const;
   BOOL      Contains_only_constants(void) const;
+  BOOL	    Has_volatile_content(void) const;
 }; // end of class CODEREP
 
 // Functions to tell how much extra space should be allocated with a
@@ -1454,7 +1503,11 @@ public:
   // hash functions that search htable and create new node if not found
   CODEREP    *Hash_Lda(CODEREP *cr)
     { Is_True(cr->Kind() == CK_LDA,("CODEMAP::Hash_Lda, wrong kind"));
+#ifdef TARG_SL
+      IDX_32 hash_idx = Hash_lda(cr->Lda_base_st(),(IDTYPE)(cr->Offset() + cr->Is_flag_set(CF_INTERNAL_MEM_OFFSET)));
+#else 
       IDX_32 hash_idx = Hash_lda(cr->Lda_base_st(),(IDTYPE)cr->Offset());
+#endif
       return Find_or_append_CR(hash_idx,cr,0);
     }
   CODEREP    *Hash_Const(CODEREP *cr)
@@ -1764,7 +1817,13 @@ private:
   UINT32      _str_red_num: 4;  // for IV update stmts, # of induction exprs
   				// injured by it during EPRE
   UINT32      _asm_stmt_flags:3;  // the ASM_STMT flags
+#ifdef TARG_SL //fork_joint
+ BOOL       _sl2_compgoto_para : 1; //used to mark if the stmt is a compgoto for sl2 major fork. 
+ BOOL       _sl2_compgoto_for_minor: 1; // used to mark if the stmt is a compgoto for sl2 minor fork. 
+ UINT        _unused : 3;      // allocate new flag bits from here.
+#else  
   UINT        _unused : 5;      // allocate new flag bits from here.
+#endif
 #else
   UINT        _unused : 12;      // allocate new flag bits from here.
 #endif
@@ -2049,6 +2108,14 @@ public:
   UINT32     Str_red_num(void) const	{ return _str_red_num; }
   void	     Inc_str_red_num(void)	{ _str_red_num++; }
 
+#ifdef TARG_SL //fork_joint
+  // we need passing fork compgoto flag from whirl node to stmtrep 
+  BOOL      Fork_stmt_flags(void) const   { return _sl2_compgoto_para; }
+  void       Set_fork_stmt_flags(BOOL f)  { _sl2_compgoto_para = f; }
+  BOOL      Minor_fork_stmt_flags(void)  const  { return _sl2_compgoto_for_minor; } 
+  void        Set_minor_fork_stmt_flags(BOOL f) { _sl2_compgoto_for_minor = f; } 
+#endif 
+
   // for the ASM_STMT flags
 #ifdef KEY
   UINT32     Asm_stmt_flags(void) const    { return _asm_stmt_flags; }
@@ -2189,10 +2256,9 @@ struct cr_cmp {
   }
 };
  
-typedef std::pair<const CODEREP* const, MEMOP_ANNOT*> CR_MEMANNOT_PAIR;
+typedef std::pair<const CODEREP*, MEMOP_ANNOT*> CR_MEMANNOT_PAIR;
 typedef mempool_allocator<CR_MEMANNOT_PAIR> CR_ANNOT_MAP_ALLOC;
-typedef std::map<const CODEREP*, MEMOP_ANNOT*, cr_cmp, CR_ANNOT_MAP_ALLOC> 
-        CR_2_MEM_ANNOT_MAP;
+typedef std::map<const CODEREP*, MEMOP_ANNOT*, cr_cmp, CR_ANNOT_MAP_ALLOC> CR_2_MEM_ANNOT_MAP;
 
 struct sr_cmp {
   bool operator () (const STMTREP* sr1, const STMTREP* sr2) const {
@@ -2200,7 +2266,7 @@ struct sr_cmp {
   }
 };
 
-typedef std::pair<const STMTREP* const, MEMOP_ANNOT*> SR_MEMANNOT_PAIR;
+typedef std::pair<const STMTREP*, MEMOP_ANNOT*> SR_MEMANNOT_PAIR;
 typedef mempool_allocator<SR_MEMANNOT_PAIR>    SR_ANNOT_MAP_ALLOC;
 typedef std::map<const STMTREP*, MEMOP_ANNOT*, sr_cmp, SR_ANNOT_MAP_ALLOC>
         SR_2_MEM_ANNOT_MAP;

@@ -78,7 +78,8 @@ using std::forward_iterator_tag;
 #endif
 
 // ARRAY_Ptr is pointer to SEG_ARRAY,
-// _PTR is pointer to SEG_ARRAY::value_type,
+// VALUE_Ptr is pointer to SEG_ARRAY::value_type,
+// (Changed _PTR to VALUE_Ptr to avoid conflict on cygwin)
 // REF is reference to SEG_ARRAY::value_type.
 //
 // These are template parameters because we need both constant and
@@ -90,21 +91,21 @@ using std::forward_iterator_tag;
 // TO DO: add a conversion from the mutable version to the constant
 // version.
 
-template <class ARRAY_Ptr, class T, class _PTR, class REF>
+template <class ARRAY_Ptr, class T, class VALUE_Ptr, class REF>
 class SEGMENTED_ARRAY_ITERATOR
 {
 public:
   typedef T                         value_type;
   typedef UINT                      difference_type;
   typedef std::forward_iterator_tag iterator_category;
-  typedef _PTR                      pointer;
+  typedef VALUE_Ptr                 pointer;
   typedef REF                       reference;
 
 private:
     
     ARRAY_Ptr segmented_array;
-    _PTR ptr;				// pointer to the current element
-    _PTR segment_last;			// ptr after the current segment
+    VALUE_Ptr ptr;			// pointer to the current element
+    VALUE_Ptr segment_last;		// ptr after the current segment
     UINT map_idx;			// index to the map array
 
 private:
@@ -128,8 +129,8 @@ public:
     SEGMENTED_ARRAY_ITERATOR () {}
 
     REF operator* () const		{ return *ptr; }
-    _PTR Ptr () const			{ return ptr; }
-    _PTR operator->() const              { return ptr; }
+    VALUE_Ptr Ptr () const		{ return ptr; }
+    VALUE_Ptr operator->() const        { return ptr; }
     UINT Index () const {
       return map_idx * segmented_array->Block_size() +
              (ptr - segmented_array->Block_begin(map_idx));

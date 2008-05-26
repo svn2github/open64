@@ -1521,3 +1521,6 @@ MEM_RANGE::Print (FILE* f) {
   _access_range.Print (f);
   fprintf (f, "\n"); 
 }
+
+void VAR_VAL_RANGE::Print(FILE* f) {
+}

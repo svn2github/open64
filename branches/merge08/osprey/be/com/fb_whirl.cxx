@@ -42,10 +42,10 @@
 // ====================================================================
 //
 // Module: fb_whirl.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/fb_whirl.cxx,v $
+// $Revision: 1.28 $
+// $Date: 06/01/13 15:35:23-08:00 $
+// $Author: gautam@jacinth.keyresearch $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.fb_whirl.cxx $
 //
 // Description:
 //
@@ -516,6 +516,22 @@ FEEDBACK::FB_set_in_out_same( WN *wn )
     FB_set_in_out_same_node( iter.Wn() );
 }
 
+#if defined(TARG_SL) && defined(TARG_SL2)
+void
+FEEDBACK::FB_reset_in_out_same_node( WN *wn )
+{
+  // Set in_out_same true for all calls
+  if ( FB_valid_opr_call( wn ) ) {
+
+    if ( _trace )
+      fprintf( TFile, "FEEDBACK::FB_set_in_out_same_node(0x%p):\n", wn );
+
+    FB_Info_Call info_call = Query_call( wn );
+    info_call.in_out_same = false;
+    Annot_call( wn, info_call );
+  }
+}
+#endif
 
 // ====================================================================
 // Print function displays feedback info for tracing purposes
@@ -3687,7 +3703,13 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
 
 } // Read_Feedback_Info
 
-#if 1
+#if 1 && ! defined(BUILD_OS_DARWIN) /* Temporarily remove whirl browser */
+#include <sys/types.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
+#include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h>
 #include <elf.h>
 #include <ctype.h>

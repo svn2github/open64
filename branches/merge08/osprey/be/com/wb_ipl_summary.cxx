@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -40,7 +40,11 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <sys/types.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <ctype.h>
 #include "wn.h"
 #include "wn_map.h"
@@ -819,3 +823,7 @@ void WB_BROWSER::Summary(FILE* fp)
   Reset_Subcommand();
 } 
 
+extern "C" void WB_BROWSER_Summary (FILE *fp, WB_BROWSER *wb)
+{
+  wb->Summary(fp);
+}

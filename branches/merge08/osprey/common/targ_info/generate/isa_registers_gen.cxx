@@ -46,10 +46,10 @@
 //
 /////////////////////////////////////
 //
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_registers_gen.cxx,v $
+//  $Revision: 1.1 $
+//  $Date: 2005/07/27 02:18:05 $
+//  $Author: kevinlo $
+//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/isa_registers_gen.cxx,v $
 
 
 #include <stddef.h>
@@ -400,8 +400,7 @@ void ISA_Registers_End(void)
   sprintf (filename, "%s", FNAME);
   Emit_Header (hfile, filename, interface);
   fprintf(hfile,"#include \"targ_isa_subset.h\"\n");
-
-  fprintf(hfile, "\n#define ISA_REGISTER_FIRST (%d)\n", first_reg);  
+  fprintf(hfile, "\n#define ISA_REGISTER_FIRST (%d)\n", first_reg);
   fprintf(hfile, "\n#define ISA_REGISTER_MAX (%d)\n", max_reg);
 
   /**************************************************

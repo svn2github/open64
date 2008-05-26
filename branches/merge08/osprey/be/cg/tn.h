@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
- */
-
-/*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -50,10 +42,10 @@
  * ====================================================================
  *
  * Module: tn.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/tn.h,v $
+ * $Revision: 1.21 $
+ * $Date: 05/12/05 08:59:09-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.tn.h $
  *
  * Description:
  *
@@ -221,6 +213,13 @@ typedef struct tn TN;
 #include "op.h"
 class WN;
 
+#ifndef INT32_MAX
+# define INT32_MAX              (2147483647)
+#endif
+#ifndef INT32_MIN
+# define INT32_MIN              (-2147483647-1)
+#endif
+
 
 /* Define the TN number type: */
 typedef INT32 TN_NUM;	/* Individual objects */
@@ -284,6 +283,9 @@ struct tn {
 
 #ifdef TARG_IA64
 #define TN_TAKE_NAT   0X4000   /* TN (gr,fpr) may take NaT bit */
+#endif
+#if defined(TARG_SL)
+#define TN_V1BUF_ADDR   0x4000      /* the tn is v1buf address in iload/istore*/
 #endif
 
 /* Define the TN_relocs values */
@@ -358,6 +360,21 @@ typedef enum {
   TN_RELOC_IA32_GOT   = 0x41,
   TN_RELOC_IA32_GLOBAL_OFFSET_TABLE = 0x42
 #endif
+#if defined(TARG_SL)
+TN_RELOC_GPREL_V1 = 0x41,
+TN_RELOC_GPREL_V2 = 0x42,
+TN_RELOC_GPREL_V4 = 0x43,
+TN_RELOC_GPREL_S  = 0x44,
+TN_RELOC_GPREL_V1_15 = 0x45,
+TN_RELOC_GPREL_V2_15 = 0x46,
+TN_RELOC_GPREL_V4_15 = 0x47,
+/* 11bit offset from vbuf start address */ 
+TN_RELOC_GPREL_SL2_V11 = 0x48,
+/* 15bit offset from vbuf start address */
+TN_RELOC_GPREL_SL2_V15 = 0x49,
+/* 14bit offset from sbuf start address */ 
+TN_RELOC_GPREL_SL2_S  = 0x50,
+#endif 
 } TN_RELOCS;
 
 
@@ -458,6 +475,11 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define      TN_is_gra_cannot_split(r)  (TN_flags(r) &   TN_GRA_CANNOT_SPLIT)
 #define  Set_TN_is_gra_cannot_split(r)  (TN_flags(r) |=  TN_GRA_CANNOT_SPLIT)
 
+#if defined(TARG_SL)
+#define      TN_is_v1buf_addr(r)    (TN_flags(r) &   TN_V1BUF_ADDR)
+#define  Set_TN_is_v1buf_addr(r)    (TN_flags(r) |=  TN_V1BUF_ADDR)
+#endif 
+
 #ifdef TARG_IA64
 #define        TN_is_take_nat(r)   (TN_flags(r) &   TN_TAKE_NAT)
 #define    Set_TN_is_take_nat(r)   (TN_flags(r) |=  TN_TAKE_NAT)
@@ -488,14 +510,6 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define TN_is_true_pred(r) (TN_register_and_class(r) == CLASS_AND_REG_true)
 #define TN_is_fzero_reg(r) (TN_register_and_class(r) == CLASS_AND_REG_fzero)
 #define TN_is_fone_reg(r)  (TN_register_and_class(r) == CLASS_AND_REG_fone)
-
-#if 0
-#ifdef TARG_X8664
-#define TN_is_preallocated(r) (CAN_USE_TN(r)->preallocated)
-#define Set_TN_preallocated(r) (CAN_USE_TN(r)->preallocated = TRUE)
-#define Reset_TN_preallocated(r) (CAN_USE_TN(r)->preallocated = FALSE)
-#endif /* TARG_X8664 */
-#endif
 
 // Check if the TN is either a constant zero or the zero register TN.
 // If you know it is a register TN, use TN_is_zero_reg directly.
@@ -629,7 +643,47 @@ extern	TN *EC_TN;		// Epilog Counter TN
 extern	TN *True_TN;		// TN for true condition (predicate)
 extern  TN *FZero_TN;		// Floating zero (0.0) register TN
 extern  TN *FOne_TN;		// Floating one (1.0) register TN
-
+#if defined(TARG_SL)
+extern  TN *TMP1_TN;              // tmp TN, similar to AT-reg of mips1
+extern  TN *TMP2_TN;              // tmp TN, similar to AT-reg of mips1
+extern  TN *JA_TN;
+extern  TN *LC0_TN;
+extern  TN *LC1_TN;
+extern  TN *LC2_TN;
+extern  TN *LC3_TN;
+extern  TN *HI_TN;
+extern  TN *Acc0_TN;
+extern  TN *Acc1_TN;
+extern  TN *Acc2_TN;
+extern  TN *Acc3_TN;
+extern TN *Addr0_TN;
+extern TN *Addr1_TN;
+extern TN *Addr2_TN;
+extern TN *Addr3_TN;
+extern TN *Addr4_TN;
+extern TN *Addr5_TN;
+extern TN *Addr6_TN;
+extern TN *Addr7_TN;
+extern TN *Addrsize0_TN;
+extern TN *Addrsize1_TN;
+extern TN *Addrsize2_TN;
+extern TN *Addrsize3_TN;
+extern TN *Addrsize4_TN;
+extern TN *Addrsize5_TN;
+extern TN *Addrsize6_TN;
+extern TN *Addrsize7_TN;
+extern  PREG_NUM AccPregN ;
+extern  PREG_NUM AddPregN;
+extern int ACCreg[4];
+extern int Addreg[8];
+
+extern  TN* C2_ACC_TN;          // TN for c2 sum4 accumulator
+extern  TN* C2_ACC_CTRL_TN;     // TN for c2 sum4 accumulator
+extern  TN* C2_MVSEL_TN;        // TN for c2 mvsel internal 
+extern  TN* C2_VLCS_TN;         // TN for c2 vlcs internal 
+extern  TN* C2_MOVPAT_TN;       // TN for c2 mov pat register
+#endif
+
 /* ====================================================================
  * Prototypes of external routines.
  * ====================================================================
@@ -672,6 +726,23 @@ inline BOOL TNs_Are_Equivalent(TN *tn1, TN *tn2)
   return FALSE;
 }
 
+/*
+ *  tn_registers_identical 
+ *  Returns TRUE if TNs are identical register tn
+ */
+inline BOOL 
+tn_registers_identical (TN *tn1, TN *tn2)
+{
+  return ((tn1 == tn2) ||
+          ((TN_is_register(tn1) && TN_is_register(tn2) &&
+	    (TN_is_dedicated(tn1) || 
+	     (TN_register(tn1) != REGISTER_UNDEFINED)) &&           
+	    (TN_is_dedicated(tn2) || 
+	     (TN_register(tn2) != REGISTER_UNDEFINED)) &&           
+	    (TN_register_and_class(tn1) == TN_register_and_class(tn2)))));
+}
+
+
 /* Build a TN that matches the register class */
 inline TN* Build_RCLASS_TN (ISA_REGISTER_CLASS rclass)
 {
@@ -689,8 +760,16 @@ inline TN *Build_TN_Like(TN *tn)
 	new_tn = Gen_Register_TN (ISA_REGISTER_CLASS_integer, TN_size(tn));
   }
   else {
-  	new_tn = Gen_Register_TN (
-		TN_register_class(tn), TN_size(tn) );
+#if defined(TARG_SL)
+    ISA_REGISTER_CLASS rc = TN_register_class(tn);
+    if (tn == RA_TN || tn == JA_TN || tn == LC0_TN || tn == LC1_TN || tn == LC2_TN || tn == LC3_TN ||
+	tn == HI_TN ) {
+      rc = ISA_REGISTER_CLASS_integer;
+    }
+    new_tn = Gen_Register_TN(rc, TN_size(tn));
+#else
+    new_tn = Gen_Register_TN(TN_register_class(tn), TN_size(tn) );
+#endif
   }
   /* Propogate fpu-int flag... */
   TN_flags(new_tn) |= (TN_flags(tn) & TN_FPU_INT);
@@ -726,6 +805,40 @@ inline BOOL TN_is_dedicated_class_and_reg( TN *tn, UINT16 class_n_reg )
 	 && TN_register_and_class(tn) == class_n_reg;
 }
 
+#ifdef TARG_SL
+inline BOOL TN_is_AccRegister(TN *tn) {
+  if (tn == Acc0_TN || tn == Acc1_TN || tn == Acc2_TN || tn == Acc3_TN) {
+    return TRUE;
+  } 
+  return FALSE;
+}
+
+inline BOOL TN_is_AddrRegister(TN *tn) {
+  if (tn == Addr0_TN || tn == Addr1_TN || tn == Addr2_TN ||
+      tn == Addr3_TN || tn == Addr4_TN || tn == Addr5_TN ||
+      tn == Addr6_TN || tn == Addr7_TN) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+inline BOOL TN_is_LoopRegister(TN *tn) {
+  if (tn == LC0_TN || tn == LC1_TN || tn == LC2_TN || tn == LC3_TN) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+inline BOOL TN_is_AddrSizeRegister(TN *tn) {
+  if (tn == Addrsize0_TN || tn == Addrsize1_TN || tn == Addrsize2_TN ||
+      tn == Addrsize3_TN || tn == Addrsize4_TN || tn == Addrsize5_TN ||
+      tn == Addrsize6_TN || tn == Addrsize7_TN) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+#endif
 
 /* Only the following routines should be used to build constant TNs. */
 

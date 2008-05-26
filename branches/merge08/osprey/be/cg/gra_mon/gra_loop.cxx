@@ -60,15 +60,8 @@ GRA_LOOP_MGR gra_loop_mgr;
 /////////////////////////////////////
 // set the register used bitset in the loop for a register.
 void
-GRA_LOOP::Make_Register_Used( ISA_REGISTER_CLASS rc, REGISTER reg,
-			      BOOL reclaim )
+GRA_LOOP::Make_Register_Used( ISA_REGISTER_CLASS rc, REGISTER reg )
 {
-#ifdef KEY
-  // Nothing to do for reclaiming, since REG was already marked used.
-  if (reclaim)
-    return;
-#endif
-
   if (this == NULL) return;
 
   registers_used[rc] = REGISTER_SET_Union1(registers_used[rc],reg);
@@ -78,27 +71,6 @@ GRA_LOOP::Make_Register_Used( ISA_REGISTER_CLASS rc, REGISTER reg,
   }
 }
 
-#ifdef KEY
-/////////////////////////////////////
-// Return the set of registers referenced in the loop.
-REGISTER_SET
-GRA_LOOP::Registers_Referenced (ISA_REGISTER_CLASS rc)
-{
-  BB *bb;
-  BB_SET *loop_bbs = LOOP_DESCR_bbset(Loop_Descr());
-  REGISTER_SET referenced = REGISTER_SET_EMPTY_SET;
-
-  for (bb = BB_SET_Choose(loop_bbs);
-       bb != BB_SET_CHOOSE_FAILURE;
-       bb = BB_SET_Choose_Next(loop_bbs, bb)) {
-    GRA_BB* gbb = gbb_mgr.Get(bb);
-    Is_True(gbb != NULL, ("GRA_LOOP::Registers_Referenced: cannot find gbb"));
-    referenced = REGISTER_SET_Union(referenced, gbb->Registers_Referenced(rc));
-  }
-  return referenced;
-}
-
-#endif
 
 /////////////////////////////////////
 //  create a GRA_LOOP node for a loop represented by LOOP_DESCR ld.
@@ -112,7 +84,6 @@ GRA_LOOP_MGR::Create(LOOP_DESCR *ld)
   GRA_LOOP* gloop = TYPE_MEM_POOL_ALLOC(GRA_LOOP, GRA_pool);
 #ifdef KEY
   bzero( gloop, sizeof(gloop[0]) );
-  gloop->Loop_Descr_Set(ld);
 #endif
   gloop->Nest_Level_Set(LOOP_DESCR_nestlevel(ld));
   gloop->Loop_Head_Set(LOOP_DESCR_loophead(ld));

@@ -78,8 +78,13 @@ void (*p_ipa_init_link_line)(int, char **) = NULL;
 void (*p_ipa_add_link_flag)(const char*) = NULL;
 void (*p_ipa_modify_link_flag)(char*, char*) = NULL;
 void (*p_ipa_driver)(int, char **) = NULL;
-void (*p_process_whirl64)(void *, off_t, void *, int, const char *) = NULL;
-void (*p_process_whirl32)(void *, off_t, void *, int, const char *) = NULL;
+#ifdef OSP_OPT
+void (*p_process_whirl64)(void *, off_t, void *, int, const char *, off_t, bfd_boolean) = NULL;
+void (*p_process_whirl32)(void *, off_t, void *, int, const char *, off_t, bfd_boolean) = NULL;
+#else
+void (*p_process_whirl64)(void *, off_t, void *, int, const char *, off_t) = NULL;
+void (*p_process_whirl32)(void *, off_t, void *, int, const char *, off_t) = NULL;
+#endif
 int  (*p_Count_elf_external_gots)(void) = NULL;
 void (*p_ipa_insert_whirl_marker)(void) = NULL;
 void (*p_Sync_symbol_attributes)(unsigned int, unsigned int, bfd_boolean, unsigned int) = NULL;
@@ -1095,7 +1100,11 @@ ipa_process_whirl ( bfd *abfd)
 			    elf_elfheader (abfd)->e_shnum, 
 			    abfd->usrdata+elf_elfheader(abfd)->e_shoff,
 			    0, /* check_whirl_revision */
-			    abfd->filename);
+#ifdef OSP_OPT
+			    abfd->filename, mapped_size, FALSE);
+#else
+                            abfd->filename, mapped_size);
+#endif
     else
 #endif    
       (*p_process_whirl64) ( 
@@ -1103,10 +1112,101 @@ ipa_process_whirl ( bfd *abfd)
 			    elf_elfheader (abfd)->e_shnum, 
 			    abfd->usrdata+elf_elfheader(abfd)->e_shoff,
 			    0, /* check_whirl_revision */
-			    abfd->filename);
+#ifdef OSP_OPT
+			    abfd->filename, mapped_size, FALSE);
+#else
+                            abfd->filename, mapped_size);
+#endif
 }
 
+#ifdef OSP_OPT
+    /*******************************************************
+        Function: ipa_mmap_file_in_archive
 
+        If the whirl is in an archive, this function
+        tries to mmap the file to memory, and return
+        the mmaped address.
+
+     *******************************************************/
+
+char *ipa_mmap_file_in_archive ( bfd *bfd, int fd, off_t mapped_size) {
+  off_t offset = bfd->origin % getpagesize();
+  char *buf = (char *)mmap(0, mapped_size + offset, PROT_READ|PROT_WRITE,
+                     MAP_PRIVATE, fd, bfd->origin - offset);
+
+  if (buf == (char *)(-1)) {
+    return NULL;
+  }
+
+  return buf + offset;
+}
+
+#endif
+
+    /*******************************************************
+        Function: ipa_process_whirl_in_archive
+
+        If the whirl is in a mixed archive, this
+        archive should already be opened. So this
+        function just map the mmap pointer to the
+        correct position in the archive.
+
+     *******************************************************/
+
+void ipa_process_whirl_in_archive ( bfd *abfd, bfd *element)
+{
+  char *buf;
+  struct ar_hdr *p_hdr;
+  off_t mapped_size;
+  ld_set_cur_obj(element);
+  p_hdr = arch_hdr(element);
+  mapped_size = strtol (p_hdr->ar_size, NULL, 10);
+
+#ifdef OSP_OPT
+  int fd = open(abfd->filename, O_RDONLY);
+  if ((buf = ipa_mmap_file_in_archive(element, fd, mapped_size)) == NULL) {
+    einfo(("%F%B: ipa_mmap_file_in_archive failed for member %B\n"), abfd, element);
+  }
+#else
+  if ((buf = bfd_alloc(element, mapped_size)) == NULL) {
+    einfo(("%F%B: bfd_alloc failed for member %B\n"), abfd, element);
+  }
+  if (bfd_seek(element, 0, SEEK_SET) != 0) {
+    einfo(("%F%B: bfd_seek failed for member %B\n"), abfd, element);
+  }
+  if (bfd_bread(buf, mapped_size, element) != mapped_size) {
+    einfo(("%F%B: bfd_read failed for member %B\n"), abfd, element);
+  }
+#endif
+  element->usrdata = buf;
+
+#if !defined(__ALWAYS_USE_64BIT_ELF__)
+  /* Should be sync. with Config_Target_From_ELF() defined in be.so
+   */
+  if( ( elf_elfheader (element)->e_flags & EF_IRIX_ABI64 ) == 0 )
+    (*p_process_whirl32) (
+			  (void *)element,
+			  elf_elfheader (element)->e_shnum,
+			  element->usrdata+elf_elfheader(element)->e_shoff,
+			  0, /* check_whirl_revision */
+#ifdef OSP_OPT
+			  abfd->filename, mapped_size, TRUE);
+#else
+                          abfd->filename, mapped_size);
+#endif
+  else
+#endif
+    (*p_process_whirl64) (
+			  (void *)element,
+			  elf_elfheader (element)->e_shnum,
+			  element->usrdata+elf_elfheader(element)->e_shoff,
+			  0, /* check_whirl_revision */
+#ifdef OSP_OPT
+			  element->filename, mapped_size, TRUE);
+#else
+                          element->filename, mapped_size);
+#endif
+}
 
 	/*******************************************************
 		Function: ipa_set_syms

@@ -37,10 +37,10 @@
  * ====================================================================
  *
  *  Module: cg_loop_mii.h
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_loop_mii.h,v $
+ *  $Revision: 1.2 $
+ *  $Date: 02/11/07 23:41:21-00:00 $
+ *  $Author: fchow@keyresearch.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cg_loop_mii.h $
  *
  *  Revision history:
  *   16-Oct-91 - Original Version
@@ -71,11 +71,6 @@
  *              Set by this module to a lower bound on the II as
  *              dictated by recurring constraints (i.e., not counting
  *		resources).
- *
- *          INT CG_LOOP_rec_min_ii_with_dspec;
- *              The recurrence MII obtained via ignoring violable memory flow dependence.
- *              It is not always calculated when Compute_Rec_Res_Min_II() is called.
- *              In that case, it is set to a negative value.
  *
  *      Exported functions:
  *
@@ -145,14 +140,11 @@
 #define CG_LOOP_MII_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static const char cg_loop_mii_rcs_id[] = "$Source$ $Revision$";
+static const char cg_loop_mii_rcs_id[] = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cg_loop_mii.h $ $Revision: 1.2 $";
 #endif /* _KEEP_RCS_ID */
 
 extern INT32       CG_LOOP_min_ii;
 extern INT32       CG_LOOP_rec_min_ii;
-#ifdef TARG_IA64
-extern INT32       CG_LOOP_rec_min_ii_with_dspec; /* Rec MII ignoring violable mem-dep */
-#endif
 extern INT32       CG_LOOP_res_min_ii;
 
 extern void

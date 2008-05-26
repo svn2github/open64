@@ -267,9 +267,6 @@ enum SWP_RETURN_CODE {
   MOD_SCHED_FAILED,                  // swp failed: failure to schedule
   REG_ALLOC_SUCCEEDED,               // reg alloc succeeded
   MOD_SCHED_SUCCEEDED,               // mod sched succeeded
-#ifdef TARG_IA64
-  SWP_LOW_TRIP_COUNT,		     // disable swp due to low trip count
-#endif
 };
 
 enum SCHED_DIRECTION {
@@ -304,7 +301,7 @@ struct SWP_OP {
 class SWP_OP_vector {
 
 #if SWP_USE_STL
-	std::vector<SWP_OP>  v;
+  vector<SWP_OP>  v;
 #else
   INT v_size;
   SWP_OP v[SWP_OPS_LIMIT * 4];
@@ -362,7 +359,7 @@ public:
 class MinDist {
   static const INT NEG_INF = -999;
 #if SWP_USE_STL
-  std::vector< std::vector<INT> >  mindist;
+  vector< vector<INT> >  mindist;
   INT size() const { mindist.size(); }
 #else
   INT mindist[SWP_OPS_LIMIT][SWP_OPS_LIMIT];
@@ -392,9 +389,7 @@ extern void SWP_Emit(SWP_OP_vector& op_state,
 		     bool is_doloop, bool trace);
 
 extern void Emit_SWP_Note(BB *bb, FILE *file);
-#ifdef TARG_IA64
-SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace);
-#endif
+
 
 // dep_graph_manager class makes sure that CG_DEP_Delete is invoked
 //   before Perform_SWP exits

@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: init2f.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/init2f.cxx,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:13:43 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/whirl2f/init2f.cxx,v $
  *
  * Revision history:
  *  15-June-95 - Original Version
@@ -75,7 +75,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/init2f.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/be/whirl2f/init2f.cxx,v $ $Revision: 1.1 $";
 #endif
 
 #include "whirl2f_common.h"
@@ -184,15 +184,13 @@ Set_Tcon_Value(TCON *tcon, MTYPE mtype, INT typesize, char *bytes)
       break;
 
    case MTYPE_F4:
-      *tcon = Host_To_Targ_Float_4(mtype, rep.val.val1.f[0]);
+      /* TODO: export Host_To_Targ_Float_4() from be.so 
+       */
+      *tcon = Host_To_Targ_Float(mtype, rep.val.val1.f[0]);
       break;
 
    case MTYPE_F8:
       *tcon = Host_To_Targ_Float(mtype, rep.val.val1.d[0]);
-      break;
-
-   case MTYPE_F10:
-      *tcon = Host_To_Targ_Float_10(mtype, rep.val.val1.q);
       break;
 
    case MTYPE_FQ:
@@ -205,10 +203,6 @@ Set_Tcon_Value(TCON *tcon, MTYPE mtype, INT typesize, char *bytes)
 
    case MTYPE_C8: 
      *tcon = Host_To_Targ_Complex (mtype,rep.val.val1.d[0],rep.val.val1.d[1]);
-     break;
-
-   case MTYPE_C10:
-     *tcon = Host_To_Targ_Complex_10 (mtype, rep.val.val1.q, rep.val.val2.q);
      break;
 
    case MTYPE_CQ:     

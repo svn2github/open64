@@ -44,13 +44,23 @@
 #pragma hdrstop
 #include <unistd.h>		    /* for unlink() */
 #include <fcntl.h>		    /* for open() */
+#ifdef __MINGW32__
+#include <WINDOWS.h>
+#else
 #include <sys/mman.h>		    /* for mmap() */
+#endif /* __MINGW32__ */
 #include <alloca.h>		    /* for alloca() */
 #include <signal.h>		    /* for signal() */
 #include <errno.h>		    /* for system error code */
 #include "elf_stuff.h"		    /* for all Elf stuff */
 #include <sys/elf_whirl.h>	    /* for WHIRL sections' sh_info */
 #include <cmplrs/rcodes.h>
+
+#ifdef __MINGW32__
+#include <io.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif /* __MINGW32__ */
 
 #ifndef USE_STANDARD_TYPES
 #define USE_STANDARD_TYPES	    /* override unwanted defines in "defs.h" */
@@ -120,7 +130,11 @@ extern void Depgraph_Write (void *depgraph, Output_File *fl, WN_MAP off_map);
     mmap((void *)(addr), (size_t)(len), (int)(prot), (int)(flags),	\
 	 (int)(fd), (off_t)(off))
 
-#ifndef linux
+#ifdef __MINGW32__
+#define OPEN(path, flag, mode)						\
+    open((const char *)(path), (int)(flag), (int)(mode))
+#else
+#if ! (defined(linux) || defined(BUILD_OS_DARWIN))
 #define MUNMAP(addr, len)						\
     munmap((void *)(addr), (size_t)(len))
 #else
@@ -130,13 +144,14 @@ extern void Depgraph_Write (void *depgraph, Output_File *fl, WN_MAP off_map);
 
 #define OPEN(path, flag, mode)						\
     open((const char *)(path), (int)(flag), (mode_t)(mode))
+#endif /* __MINGW32__ */
 
 static void (*old_sigsegv) (int);   /* the previous signal handler */
 static void (*old_sigbus) (int);   /* the previous signal handler */
 
 Output_File *Current_Output = 0;
 
-#ifdef linux
+#if (defined(linux) || defined(BUILD_OS_DARWIN))
 #define MAPPED_SIZE 0x400000
 #endif
 
@@ -149,7 +164,9 @@ cleanup (Output_File *fl)
     fl->num_of_section = 0;
     fl->section_list = NULL;
 
+#if !defined(TARG_NVISA)
     MUNMAP (fl->map_addr, fl->mapped_size);
+#endif
     fl->map_addr = NULL;
     fl->file_size = 0;
 } /* cleanup */
@@ -176,9 +193,11 @@ ir_bwrite_signal_handler (int sig, int err_num)
 		     Current_Output->file_name : "mmapped object",
 		     err_str);
     switch (sig) {
+#ifndef __MINGW32__
     case SIGBUS:
 	old_handler = old_sigbus;
 	break;
+#endif /* __MINGW32__ */
     case SIGSEGV:
 	old_handler = old_sigsegv;
 	break;
@@ -186,7 +205,11 @@ ir_bwrite_signal_handler (int sig, int err_num)
     
     if (old_handler == SIG_DFL) {
       /* resignal - will get default handler */
+#ifdef __MINGW32__
+      raise(sig);
+#else
       kill(getpid(), sig);
+#endif /* __MINGW32__ */
     } else if (old_handler != SIG_IGN) {
       /* call old handler */
       (*old_handler)(sig);
@@ -294,11 +317,8 @@ write_output (UINT64 e_shoff, const typename ELF::Elf_Shdr& strtab_sec,
     typename ELF::Elf_Ehdr* ehdr = (typename ELF::Elf_Ehdr *) fl->map_addr;
     strcpy ((char *) ehdr->e_ident, ELFMAG);
     ehdr->e_ident[EI_CLASS] = tag.Elf_class ();
-#ifndef linux
-    ehdr->e_ident[EI_DATA] = ELFDATA2MSB; /* assume MSB for now */
-#else
-    ehdr->e_ident[EI_DATA] = ELFDATA2LSB; /* assume LSB for now */
-#endif
+    ehdr->e_ident[EI_DATA] = 
+	(Host_Byte_Sex == BIG_ENDIAN ? ELFDATA2MSB : ELFDATA2LSB);
     ehdr->e_ident[EI_VERSION] = EV_CURRENT;
     ehdr->e_type = ET_IR;
     ehdr->e_machine = Get_Elf_Target_Machine();
@@ -374,8 +394,19 @@ create_temp_file (Output_File *fl)
     path = (char *) malloc (strlen(tmpdir) + strlen(DEFAULT_TEMPLATE) + 1);
     if (path == 0)
 	return -1;
+#ifdef __MINGW32__
+    {
+    int mode = O_RDWR | O_CREAT | O_EXCL ;
+    do {
+      strcpy (path, tmpdir);
+      strcat (path, DEFAULT_TEMPLATE);
+      mktemp( path );
+    } while( (fd = open(path, mode)) < 0 );
+    }
+#else
     strcpy (path, tmpdir);
     strcat (path, DEFAULT_TEMPLATE);
+#endif /* __MINGW32__ */
     fd = mkstemp (path);
     if (fd != -1)
 	unlink (path);
@@ -404,10 +435,11 @@ WN_open_output (char *file_name)
 	old_sigsegv = signal (SIGSEGV, reinterpret_cast<void (*)(int)>
 			      (ir_bwrite_signal_handler));
 
+#ifndef __MINGW32__
     if (old_sigbus == 0)
 	old_sigbus = signal (SIGBUS, reinterpret_cast<void (*)(int)>
 			     (ir_bwrite_signal_handler)); 
-	
+#endif /* __MINGW32__ */	
 
     fl = (Output_File *)malloc(sizeof(Output_File));
     if (!fl) return NULL;
@@ -417,12 +449,18 @@ WN_open_output (char *file_name)
     } else {
 	fl->file_name = file_name;
 	// set mode to rw for all; users umask will AND with that.
+#ifdef __MINGW32__
+	fl->output_fd = OPEN (file_name, _O_RDWR| _O_CREAT| _O_TRUNC, _S_IREAD| _S_IWRITE);
+#else
 	fl->output_fd = OPEN (file_name, O_RDWR|O_CREAT|O_TRUNC, 0666);
     }
+#endif /* __MINGW32__ */
     if (fl->output_fd < 0)
 	return NULL;
 
-#ifdef linux
+#if defined(linux) || defined(__APPLE__)
+    ftruncate(fl->output_fd, MAPPED_SIZE);
+#elif defined(_WIN32)
     ftruncate(fl->output_fd, MAPPED_SIZE);
 #endif
 
@@ -749,6 +787,33 @@ WN_write_dst (DST_TYPE dst, Output_File *fl)
 
 } /* WN_write_dst */
 
+void 
+WN_write_isr_cg(vector<mINT32>& cg, Output_File *fl)
+{
+    Section *cur_section;
+
+    cur_section = get_section (WT_CALLGRAPH, MIPS_WHIRL_CALLGRAPH, fl);
+    
+    fl->file_size = ir_b_align (fl->file_size, sizeof(mINT32), 0);
+    cur_section->shdr.sh_offset = fl->file_size;
+
+    UINT32 sz = sizeof(mINT32) * cg.size();    
+
+    mINT32 *buf = (mINT32*) malloc (sz);
+    mINT32 *ptr = buf;
+
+    for (vector<mINT32>::iterator iter = cg.begin(); 
+           iter != cg.end(); iter++) 
+    {
+       *(ptr++) = *iter; 
+    }
+
+    (void) ir_b_save_buf (buf, sz, sizeof(mINT32), 0, fl);
+
+    cur_section->shdr.sh_size = fl->file_size - cur_section->shdr.sh_offset;
+    cur_section->shdr.sh_addralign = sizeof(mINT32);
+}
+
 
 #ifdef BACK_END
 
@@ -908,7 +973,7 @@ WN_write_feedback (PU_Info* pu, Output_File* fl)
 		   pu_hdr.pu_value_fp_bin_offset);   
 #endif
 
-    bcopy (&pu_hdr, fl->map_addr + feedback_base, sizeof(pu_hdr));
+    BCOPY (&pu_hdr, fl->map_addr + feedback_base, sizeof(pu_hdr));
     
 
     Set_PU_Info_state (pu, WT_FEEDBACK, Subsect_Written);
@@ -1311,11 +1376,20 @@ WN_close_output (Output_File *fl)
 	write_output (e_shoff, strtab_sec, fl, ELF64());
     }
 
+#ifdef _WIN32
+    UnmapViewOfFile(fl->map_addr);
+    CloseHandle(fl->mapHd);
+    if (_chsize(fl->output_fd, fl->file_size))
+       ErrMsg (EC_IR_Close, fl->file_name, GetLastError ());
+#else
+    // for cygwin need to unmap before truncate, okay on linux too.
+    MUNMAP(fl->map_addr, fl->mapped_size);
     if (ftruncate(fl->output_fd, fl->file_size) != 0)
 	ErrMsg (EC_IR_Close, fl->file_name, errno);
+#endif
 
     close (fl->output_fd);
-    cleanup (fl);		    /* unmaps output file */
+    cleanup (fl);
 
 } /* WN_close_output */
 
@@ -1326,11 +1400,19 @@ WN_close_file (void *this_fl)
     if (fl->output_fd < 0)
 	ErrMsg (EC_IR_Close, fl->file_name, EBADF);
     
+#ifdef _WIN32
+    UnmapViewOfFile(fl->map_addr);
+    CloseHandle(fl->mapHd);
+    if (_chsize(fl->output_fd, fl->file_size))
+        ErrMsg (EC_IR_Close, fl->file_name, GetLastError());
+#else
+    MUNMAP(fl->map_addr, fl->mapped_size);
     if (ftruncate(fl->output_fd, fl->file_size) != 0)
 	ErrMsg (EC_IR_Close, fl->file_name, errno);
+#endif
 
     close (fl->output_fd);
-    cleanup (fl);		    /* unmaps output file */
+    cleanup (fl);
 
 }
 
@@ -1433,7 +1515,6 @@ Close_Output_Info (void)
 }
 
 
-#ifdef linux
 extern "C" void
 WN_write_elf_symtab (const void* symtab, UINT64 size, UINT64 entsize,
 		     UINT align, Output_File* fl)
@@ -1460,7 +1541,7 @@ WN_write_elf_symtab (const void* symtab, UINT64 size, UINT64 entsize,
     cur_section->shdr.sh_link = strtab_idx;
     cur_section->shdr.sh_entsize = entsize;
 } // WN_write_elf_symtab
-#endif // linux
+
 #endif // OWN_ERROR_PACKAGE
 
 

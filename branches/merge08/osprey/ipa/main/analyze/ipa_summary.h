@@ -79,6 +79,9 @@ class TERM;
 class IVAR;
 class SCALAR_INFO;
 class SUMMARY_STRUCT_ACCESS;
+#ifdef KEY
+class SUMMARY_TY_INFO;
+#endif
 
 class IPL_SUMMARY_PTRS
 {
@@ -131,6 +134,10 @@ SUMMARY_GLOBAL*
 IPA_get_global_file_array (const IP_FILE_HDR& hdr, INT32& size);
 SUMMARY_STRUCT_ACCESS*
 IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size);
+#ifdef KEY
+SUMMARY_TY_INFO*
+IPA_get_ty_info_file_array (const IP_FILE_HDR& hdr, INT32& size);
+#endif
 
 
 // ---------------------------------------------------------------
@@ -179,6 +186,11 @@ SUMMARY_CALLSITE*
 IPA_get_callsite_file_array (const IP_FILE_HDR& hdr, INT32& size); 
 SUMMARY_STRUCT_ACCESS*
 IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size);
+#ifdef KEY
+SUMMARY_TY_INFO*
+IPA_get_ty_info_file_array (const IP_FILE_HDR& hdr, INT32& size);
+#endif
+
 
 // ----------------------------------------------------------------
 // Access to the following SUMMARY arrays will go through the file

@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: mempool.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/util/mempool.h,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:17:56 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/util/mempool.h,v $
  *
  * Revision history:
  *  19-Sep-89 - Original Version

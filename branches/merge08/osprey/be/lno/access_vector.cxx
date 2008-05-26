@@ -2081,23 +2081,23 @@ void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
   } else if (WN_operator(wn) == OPR_PAREN) {
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
   } else if (WN_opcode(wn) == OPC_I8I4CVT
-#ifdef PATHSCALE_MERGE
-					|| WN_opcode(wn) == OPC_U8I4CVT
-#endif
-  	) {
+	     || WN_opcode(wn) == OPC_U8I4CVT ) {
+    // Bug 14132 -- OPC_U8I4CVT should also be ok
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
+  }
 #ifdef KEY 
   // Bug 4525 - tolerate CVTs in the access vector for -m64 compilation
   // when the type of loop variable is I8 but the rest of the ARRAY kids 
   // are of type U4/I4. The CVT and the associated CVTL introduced by the 
   // front-end or inliner can be ignored. The return type can be assumed 
   // to be of type I4.
-  } else if (WN_opcode(wn) == OPC_I4U8CVT &&
+  else if (WN_opcode(wn) == OPC_I4U8CVT &&
 	     WN_opcode(WN_kid0(wn)) == OPC_U8CVTL &&
 	     WN_cvtl_bits(WN_kid0(wn)) == 32) {
-    Add_Sum(WN_kid0(WN_kid0(wn)),coeff,stack,allow_nonlin);    
+    Add_Sum(WN_kid0(WN_kid0(wn)),coeff,stack,allow_nonlin);  
+  }  
 #endif
-  } else {
+  else {
     Too_Messy = TRUE;
   }
 }

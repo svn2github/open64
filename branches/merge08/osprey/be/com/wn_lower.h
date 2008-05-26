@@ -100,6 +100,7 @@ typedef INT64 LOWER_ACTIONS;
 #endif
 #define LOWER_TO_MEMLIB           0x040000000000ll
 #define LOWER_FAST_EXP            0x080000000000ll
+#define LOWER_EARLY_MLOAD         0x100000000000ll
 #define LOWER_TO_CG		  0x800000000000ll
 
 

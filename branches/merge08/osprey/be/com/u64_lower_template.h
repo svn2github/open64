@@ -383,7 +383,6 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
 
   case OPR_CVT:
     if (! MTYPE_is_integral(res)) { 
-      hob_to_do = MTYPE_is_signed(desc) ? HOB_sign_xtd : HOB_zero_xtd;
       U64_LOWER_insert_cvtl_for_kid(new_nd, hob_to_do, 0, maxsize, hob_state);
       maxsize = 0; 
       if (MTYPE_is_integral(desc))
@@ -437,7 +436,6 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
       //   after CVTL is expand to extr instruction
       if( maxsize != 0 || maxsize1 != 0 ) 
 	  maxsize = MIN(MAX(maxsize, maxsize1) + 1, 64);
-
       // if both operands's high-order bits were already in designated state and
       // the operation's result cannot overflow the bit size, just return
       if (hob_state != HOB_none && hob_state == hob_state1 &&

@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,15 +41,15 @@
 // =======================================================================
 //
 //  Module: hb_sched.cxx
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/hb_sched.cxx,v $
+//  $Revision: 1.50 $
+//  $Date: 05/12/05 08:59:07-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.hb_sched.cxx $
 //
 //  Description:
 //  ============
 //
-//  Hyperblock (HB) Scheduling routines.
+//  Hyberblock (HB) Scheduling routines.
 //
 // =======================================================================
 // =======================================================================
@@ -95,7 +91,7 @@
 #include "targ_isa_bundle.h"
 #include "ti_bundle.h"
 #include "whirl2ops.h"
-
+#include "tag.h"
 // ======================================================================
 // Declarations (macros, variables)
 // ======================================================================
@@ -211,6 +207,11 @@ Memory_OP_Base_Opndnum (OP *op)
 INT
 Memory_OP_Offset_Opndnum (OP *op)
 {
+#ifdef TARG_SL2
+  if( TOP_is_c2_load(OP_code(op)) || TOP_is_c2_store(OP_code(op)) )
+    return TOP_Find_Operand_Use( OP_code(op), OU_offset );
+#endif
+
 #ifdef TARG_X8664
   return TOP_Find_Operand_Use( OP_code(op), OU_offset );
 #else
@@ -304,10 +305,7 @@ HB_Schedule::Estimate_Reg_Cost_For_OP (OP *op)
     // copy the preallocated TN(s) to regular TN(s).  This only works for
     // backward scheduling, which is what we do when scheduling to reduce
     // register pressure.  Bug 6081.
-    // LOCS_Scheduling_Algorithm == 0,  Backward scheduling;
-    // LOCS_Scheduling_Algorithm == 1,  Forward scheduling;
-    // LOCS_Scheduling_Algorithm == 2,  Bi-directional scheduling(For fortran)
-    Is_True(!LOCS_Scheduling_Algorithm, /* !LOCS_Fwd_Scheduling,*/
+    Is_True(!LOCS_Fwd_Scheduling,
 	    ("Estimate_Reg_Cost_For_OP: Fwd scheduling called from LRA"));
     if (TN_is_preallocated(result_tn))
       cost -= 1000;	// make it large enough to force OP to be scheduled next
@@ -406,7 +404,7 @@ Is_Ldst_Addiu_Pair (OPSCH *opsch1, OPSCH *opsch2, OP *op1,OP *op2)
   // Also check that if the memory OP is a store, the source is not the same
   // as the result of the addiu.
   INT base_opndnum = Memory_OP_Base_Opndnum(ldst_op);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
   if( base_opndnum < 0 ){
     return FALSE;
   }
@@ -420,6 +418,8 @@ Is_Ldst_Addiu_Pair (OPSCH *opsch1, OPSCH *opsch2, OP *op1,OP *op2)
 
   INT64 addiu_const = TN_value (OP_opnd(addiu_op, 1));
   INT offset_opndnum = Memory_OP_Offset_Opndnum(ldst_op);
+  if( offset_opndnum < 0 )
+    return FALSE;
   INT64 ldst_const = TN_value (OP_opnd(ldst_op, offset_opndnum));
 
   return TOP_Can_Have_Immediate (ldst_const + addiu_const*multiplier, OP_code(ldst_op));
@@ -438,6 +438,8 @@ Fixup_Ldst_Offset (OP *ldst_op, INT64 addiu_const, INT64 multiplier,
   INT index;
 
   index = Memory_OP_Offset_Opndnum (ldst_op);
+  if( index < 0 )
+    return;
   old_ofst_tn = OP_opnd(ldst_op, index);
 
   if (Trace_HB) {
@@ -649,7 +651,8 @@ Init_OPSCH_For_BB (BB *bb, BB_MAP value_map, MEM_POOL *pool)
       // check if the memory OP has an offset field (i.e. it is not an 
       // indexed load/store/prefx.
       INT offset_opndnum = Memory_OP_Offset_Opndnum (op);
-      if (TN_has_value(OP_opnd(op,offset_opndnum))) {
+      if ( offset_opndnum >= 0 &&
+           TN_has_value(OP_opnd(op,offset_opndnum)) ) {
 	Set_OPSCH_ldst (opsch);
       }
     }
@@ -686,7 +689,7 @@ sort_by_slack (const void *opsch1, const void *opsch2)
   INT slack1 = OPSCH_lstart((OPSCH*) opsch1) - OPSCH_estart((OPSCH*) opsch1);
   INT slack2 = OPSCH_lstart((OPSCH*) opsch2) - OPSCH_estart((OPSCH*) opsch2);
  
-  return ((OPSCH*)(INTPTR) slack1 < (OPSCH*)(INTPTR) slack2);
+  return ((OPSCH*) slack1 < (OPSCH*) slack2);
 }
  
 // ======================================================================
@@ -977,9 +980,8 @@ HB_Schedule::Compute_BBSCH (BB *bb, BBSCH *bbsch)
   // ops present in this block divided by the longest critical latency
   // the idea is that this would give a rough feel of the amount of 
   // parallelism present in this bb when compared to CGTARG_Peak_Rate
-  BBSCH_block_parallelism (bbsch) =  (INT)
- 	  ((VECTOR_count(_sched_vector) != 0) ?
- 	ceil(VECTOR_count(_sched_vector) / (critical_length + 1.)) : -1);
+  BBSCH_block_parallelism (bbsch) =  (VECTOR_count(_sched_vector) != 0) ?
+    (mINT16)ceil(VECTOR_count(_sched_vector) / (critical_length + 1.)) : -1;
 
  if (Cur_Gcm_Type & GCM_MINIMIZE_REGS) {
 
@@ -1044,7 +1046,7 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
 	// update the OPSCH_scycle field for the predecessor OP.
 	OPSCH_scycle(succ_opsch) = MAX (scycle, OPSCH_scycle(succ_opsch));
 
-#ifdef TARG_IA64
+#ifndef KEY
 	OPSCH_num_preds(succ_opsch)--;
 	if (OPSCH_num_preds(succ_opsch) == 0) {
 	  VECTOR_Add_Element (_ready_vector, succ_op);
@@ -1153,7 +1155,7 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
 	OPSCH *succ_opsch = OP_opsch (succ_op, _hb_map);
 	if (!OPSCH_scheduled(succ_opsch)) {
 	  INT opndnum = Memory_OP_Base_Opndnum (op);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
 	  if( opndnum < 0 ){
 	    continue;
 	  }
@@ -1219,6 +1221,9 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
   }
 
 #ifdef TARG_X8664
+
+  // for SL2, until we deal with SIMD, we skip this - sunchan
+
   /* For two load/store operations that access the same array,
      schedule the one load/store the lower address first.
 
@@ -1314,12 +1319,11 @@ Priority_Selector::Select_OP_For_Delay_Slot (OP *xfer_op)
     // Don't put instructions that have hazards in the delay slot.
     if (OP_has_hazard(cur_op)) continue;
 
-#ifndef KEY
     // R10k chip bug workaround: Avoid placing integer mult/div in delay
     // slots of unconditional branches. (see pv516598) for more details.
     if (OP_uncond(xfer_op) && (OP_imul(cur_op) || OP_idiv(cur_op)))
       continue;
-#endif
+
     // Don't put manual prefetches into delay slots as well.
     if (OP_prefetch(cur_op)) {
       WN *pref_wn = Get_WN_From_Memory_OP(cur_op);
@@ -1839,7 +1843,7 @@ HB_Schedule::Invoke_Pre_HBS_Phase(BB* bb)
   OP *op, *prev_op;
   OP *next_op;
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
   op = BB_last_op( bb );
   if( op != NULL && OP_cond(op) ){
     /* If a previous test op has been removed, then don't execute this
@@ -1848,7 +1852,11 @@ HB_Schedule::Invoke_Pre_HBS_Phase(BB* bb)
        rflags will not be set up correctly.
     */
     for( op = OP_prev(op); op != NULL; op = OP_prev(op) ){
+#ifdef TARG_X8664
       if( TOP_is_change_rflags( OP_code(op) ) ){
+#else
+	if (1) { // rflags is defined inside targ_info/isa/x8664
+#endif
 	if( !OP_icmp( op ) )
 	  return;
 	break;
@@ -2085,26 +2093,13 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
   std::list<BB*> blocks;
   blocks.push_back(bb);
 
-#if 0
+#if defined(TARG_X8664) || defined(TARG_PR) || defined(TARG_SL)
   const BOOL org_LOCS_Fwd_Scheduling = LOCS_Fwd_Scheduling;
   if( _hbs_type & HBS_MINIMIZE_REGS ){
     LOCS_Fwd_Scheduling = FALSE;
   }
   Init_RFlag_Table( blocks, LOCS_Fwd_Scheduling );
-#endif // TARG_X8664
-
-#ifdef KEY
-  const BOOL org_LOCS_Scheduling_Algorithm = LOCS_Scheduling_Algorithm;
-  if (_hbs_type & HBS_MINIMIZE_REGS ||
-      // If scheduling for pre/post-register allocation,
-      // LOCS_Scheduling_Algorithm will always be 0 or 1.  If scheduling for
-      // some other purpose (such as GCM), it can take on other values.  In
-      // that case, just set it to 0.
-      LOCS_Scheduling_Algorithm > 1) {
-    LOCS_Scheduling_Algorithm = 0;      // backward scheduling
-  }
-  Init_RFlag_Table( blocks, LOCS_Scheduling_Algorithm);
-#else
+#else // TARG_X8664
 #ifdef TARG_IA64
   Init_RFlag_Table (blocks, TRUE);
 #else
@@ -2122,18 +2117,18 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
   Priority_Selector *priority_fn;
   Cycle_Selector *cycle_fn;
 
-#ifdef KEY
-  if( LOCS_Scheduling_Algorithm == 1 ){
+#if defined(TARG_X8664) || defined(TARG_SL)
+  if( LOCS_Fwd_Scheduling ){
     priority_fn = CXX_NEW( List_Based_Fwd(bb, this, _hbs_type, &_hb_pool),
-                           &_hb_pool );
+			   &_hb_pool );
     cycle_fn = CXX_NEW( Fwd_Cycle_Sel(), &_hb_pool );
 
   } else {
     priority_fn = CXX_NEW( List_Based_Bkwd(bb, this, _hbs_type, &_hb_pool),
-                           &_hb_pool );
+			   &_hb_pool );
     cycle_fn = CXX_NEW( Bkwd_Cycle_Sel(), &_hb_pool );
   }
-#else
+#else // TARG_X8664 || TARG_SL
 #ifdef TARG_IA64
   // Do forward scheduling and cycle selector.
   priority_fn = 
@@ -2197,8 +2192,8 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
 
   // Insert the scheduled list of instructions into the bb.
   Put_Sched_Vector_Into_BB (bb, bbsch, priority_fn->Is_Fwd_Schedule() );
-#ifdef KEY
-  LOCS_Scheduling_Algorithm = org_LOCS_Scheduling_Algorithm;
+#ifdef TARG_X8664
+  LOCS_Fwd_Scheduling = org_LOCS_Fwd_Scheduling;
 #endif
 }
 
@@ -2327,7 +2322,22 @@ HB_Schedule::Init(std::list<BB*> bblist, HBS_TYPE hbs_type, mINT8 *regs_avail)
 void
 HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
 {
+  /* In some cases, the bb is an empty one */
+  if( BB_length(bb) == 0 )
+    return;
 
+#if defined(TARG_SL)
+  LABEL_IDX tag_idx = 0;
+  OP* orig_last_op = NULL;
+  if( CG_enable_zero_delay_loop ) {
+    if( BB_zdl_body(bb) ) {
+      orig_last_op = BB_last_op(bb);
+      Is_True(OP_has_tag(orig_last_op), ("zdl loop body's last op is not tagged"));
+      tag_idx = Get_OP_Tag( orig_last_op );
+    }
+  }
+#endif
+ 
   Invoke_Pre_HBS_Phase(bb);
 
   std::list<BB*> bblist;
@@ -2364,17 +2374,13 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
 	  NON_CYCLIC,
 	  INCLUDE_MEMREAD_ARCS,
 	  INCLUDE_MEMIN_ARCS,
-#ifdef TARG_IA64
-          (Is_Target_Itanium()) ? INCLUDE_CONTROL_ARCS : NO_CONTROL_ARCS
-#else
-#ifdef TARG_MIPS
-          // 11943: Control flow dependencies prevent filling of branch
-          // delay slots on MIPS machines
-          NO_CONTROL_ARCS
-#else
-          INCLUDE_CONTROL_ARCS
+#ifndef KEY
+	  (Is_Target_Itanium()) ? 
 #endif
-#endif // TARG_IA64
+	  INCLUDE_CONTROL_ARCS
+#ifndef KEY
+	  : NO_CONTROL_ARCS
+#endif
 	  ,
 	  NULL);
 
@@ -2408,6 +2414,20 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
       }
     }
   }
+#if defined(TARG_SL)
+  if( CG_enable_zero_delay_loop) {
+    if( BB_zdl_body(bb) ) {
+      Is_True( tag_idx > 0, ("incorrect tag index") );
+      OP* last_op = BB_last_op(bb);
+      /* the last tagged OP is moved to other places */
+      if( !OP_has_tag(last_op) ) {
+        Reset_OP_has_tag( orig_last_op );
+        Set_OP_Tag( last_op, tag_idx );
+      }
+    }
+  }
+#endif
+
 }
 
 void

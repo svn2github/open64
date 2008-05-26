@@ -50,6 +50,9 @@
 #include "elf-bfd.h"
 #include "libbfd.h"
 #include "aout/ar.h"            // struct ar_hdr
+#ifdef OSP_OPT
+#include <fcntl.h>              // for open()
+#endif
 
 #if !defined(EF_IRIX_ABI64)
 #define EF_IRIX_ABI64   0x00000010
@@ -1906,6 +1909,13 @@ load_symbols (lang_input_statement_type *entry,
 			if(!mixed && seen_whirl_obj) {
 				// All inner .o files are WHIRL in the archive. Here member is NULL!
 				member = bfd_openr_next_archived_file (entry->the_bfd, member);
+#ifdef OSP_OPT
+                                // Open the file and use mmap to read in whirl files inside the archive.
+                                int fd = open(entry->filename, O_RDONLY);
+                                if (fd == -1) {
+                                  einfo(("%F%B: cannot open archive file\n"), entry->the_bfd);
+                                }
+#endif
 				while (member != NULL) {
 					char *buf;
 					struct ar_hdr *p_hdr;
@@ -1922,6 +1932,11 @@ load_symbols (lang_input_statement_type *entry,
 					p_hdr = arch_hdr(member);
 					parsed_size = strtol (p_hdr->ar_size, NULL, 10);
 
+#ifdef OSP_OPT
+                                        if ((buf = ipa_mmap_file_in_archive(member, fd, parsed_size)) == NULL) {
+                                          einfo(("%F%B: ipa_mmap_file_in_archive failed for member %B\n"), entry->the_bfd, member);
+                                        }
+#else
 					if ((buf = bfd_alloc(member, parsed_size)) == NULL) {	
 						einfo(_("%F%B: bfd_alloc failed for member %B\n"), entry->the_bfd, member);
 					}
@@ -1931,6 +1946,7 @@ load_symbols (lang_input_statement_type *entry,
 					if (bfd_bread(buf, parsed_size, member) != parsed_size) {
 						einfo(_("%F%B: bfd_read failed for member %B\n"), entry->the_bfd, member);
 					}
+#endif
 
 					member->usrdata = buf;
 					if ((elf_elfheader(member)->e_flags & EF_IRIX_ABI64) == 0)
@@ -1938,13 +1954,21 @@ load_symbols (lang_input_statement_type *entry,
 							elf_elfheader (member)->e_shnum,
 							member->usrdata+elf_elfheader(member)->e_shoff,
 							0, /* check_whirl_revision */
-							member->filename);
+#ifdef OSP_OPT
+							member->filename, parsed_size, TRUE);
+#else
+                                                        member->filename, parsed_size);
+#endif
 					else
 						(*p_process_whirl64) ((void *)member,
 							elf_elfheader (member)->e_shnum,
 							member->usrdata+elf_elfheader(member)->e_shoff,
 							0, /* check_whirl_revision */
-							member->filename);
+#ifdef OSP_OPT
+							member->filename, parsed_size, TRUE);
+#else
+                                                        member->filename, parsed_size);
+#endif
 
 					// Since it is not a regular object archive, don't pass it to the
 					// linker.

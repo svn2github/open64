@@ -153,7 +153,7 @@ BOOL  W2C_Verbose = TRUE;           /* Show translation information */
 BOOL  W2C_No_Pragmas = FALSE;       /* Do not emit pragmas */
 BOOL  W2C_Emit_Adims = FALSE;       /* Emit comments for array dims */
 BOOL  W2C_Emit_Prefetch = FALSE;    /* Emit comments for prefetches */
-BOOL  W2C_Emit_All_Regions = FALSE; /* Emit cmplr-generated regions */
+BOOL  W2C_Emit_All_Regions = TRUE;  /* Emit cmplr-generated regions */
 BOOL  W2C_Emit_Linedirs = FALSE;    /* Emit preproc line-directives */
 BOOL  W2C_Emit_Nested_PUs = FALSE;  /* Emit code for nested PUs */
 BOOL  W2C_Emit_Frequency = FALSE;   /* Emit feedback frequency info */
@@ -268,8 +268,15 @@ Process_Filename_Options(const char *src_filename, const char *irb_filename)
     */
    fname = Last_Pathname_Component(filename);
    if ( W2C_File_Name[W2C_DOTH_FILE] == NULL ) {
-      W2C_File_Name[W2C_DOTH_FILE] = 
+     if ( W2C_File_Name[W2C_DOTC_FILE] == NULL ) {
+       W2C_File_Name[W2C_DOTH_FILE] = 
 	 New_Extension ( fname, W2C_Extension(W2C_DOTH_FILE) );
+     }
+     else {
+       /* create from dotc file name */
+       W2C_File_Name[W2C_DOTH_FILE] = 
+	 New_Extension ( W2C_File_Name[W2C_DOTC_FILE], W2C_Extension(W2C_DOTH_FILE) );
+     }
    }
    if ( W2C_File_Name[W2C_DOTC_FILE] == NULL ) {
       W2C_File_Name[W2C_DOTC_FILE] = 
@@ -1042,7 +1049,7 @@ W2C_Fini(void)
       W2C_Verbose = TRUE;           /* Show translation information */
       W2C_No_Pragmas = FALSE;       /* Do not emit pragmas */
       W2C_Emit_Adims = FALSE;       /* Emit comments for array dims */
-      W2C_Emit_Prefetch = FALSE;    /* Emit comments for prefetches */
+      W2C_Emit_Prefetch = FALSE;     /* Emit comments for prefetches */
       W2C_Emit_All_Regions = FALSE; /* Emit cmplr-generated regions */
       W2C_Emit_Linedirs = FALSE;    /* Emit preproc line-directives */
       W2C_Emit_Nested_PUs = FALSE;  /* Emit code for nested PUs */

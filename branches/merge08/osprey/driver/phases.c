@@ -2362,7 +2362,7 @@ check_existence_of_phases (void)
 		give_warning = TRUE;
 
 	    if (give_warning)
-		warning ("%s does not contain all of the PathScale compiler"
+		warning ("%s does not contain all of the Open64 compiler"
 			 " phases.", get_phase_dir(phase_order[i])); 
 	    break;
 	}

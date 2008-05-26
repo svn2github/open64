@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -58,11 +54,11 @@
 //
 /////////////////////////////////////
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_create.cxx,v $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_create.cxx,v $
+//  $Revision: 1.13 $
+//  $Date: 05/12/05 08:59:10-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_create.cxx $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_create.cxx $
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -70,11 +66,8 @@
 #pragma hdrstop
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_create.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_create.cxx $ $Revision: 1.13 $";
 #endif
-
-#include <list>
-#include <vector>
 
 #include "defs.h"
 #include "mempool.h"
@@ -98,177 +91,15 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_cflow.h"
 #include "gra_pref.h"
 #include "register.h"
-
+#ifdef TARG_SL2 //para_region_mgr
+#include "gra_para_region.h"
+#endif 
 #include "tracing.h"
 
-#define FREE(ptr) MEM_POOL_FREE(Malloc_Mem_Pool,ptr)
 INT GRA_non_preference_tn_id = -1;
 static BOOL gbb_needs_rename;   // Some local renaming required for a GBB
                                 // due to a cgprep failure.  DevWarn and
-                               // rename for robustness.
-
-#ifdef TARG_IA64
-BOOL fat_self_recursive = FALSE;
-extern BOOL gra_self_recursive;
-extern char *Cur_PU_Name;
-BOOL OP_maybe_unc_cmp(OP* op)
-{
-                  TOP op_code = OP_code(op);
-                  switch (op_code) {
-                  case  TOP_cmp_ne:
-                  case  TOP_cmp_ge:
-                  case  TOP_cmp_le:
-                  case  TOP_cmp_lt:
-                  case  TOP_cmp_ltu:
-                  case  TOP_cmp_leu:
-                  case  TOP_cmp_gt:
-                  case  TOP_cmp_gtu:
-                  case  TOP_cmp_geu:
-                  case  TOP_cmp_i_ne:
-                  case  TOP_cmp_i_ge:
-                  case  TOP_cmp_i_le:
-                  case  TOP_cmp_i_lt:
-                  case  TOP_cmp_i_ltu:
-                  case  TOP_cmp_i_leu:
-                  case  TOP_cmp_i_gt:
-                  case  TOP_cmp_i_gtu:
-                  case  TOP_cmp_i_geu:
-                  case  TOP_cmp4_ne:
-                  case  TOP_cmp4_ge:
-                  case  TOP_cmp4_le:
-                  case  TOP_cmp4_lt:
-                  case  TOP_cmp4_ltu:
-                  case  TOP_cmp4_leu:
-                  case  TOP_cmp4_gt:
-                  case  TOP_cmp4_gtu:
-                  case  TOP_cmp4_geu:
-                  case  TOP_cmp4_i_ne:
-                  case  TOP_cmp4_i_ge:
-                  case  TOP_cmp4_i_le:
-                  case  TOP_cmp4_i_gt:
-                  case  TOP_cmp4_i_lt:
-                  case  TOP_cmp4_i_ltu:
-                  case  TOP_cmp4_i_leu:
-                  case  TOP_cmp4_i_gtu:
-                  case  TOP_cmp4_i_geu:
-
-                        {  return TRUE;
-                        }
-                  default: return FALSE;
-                  }
-
-}
-OP* Search_Pair_OP(OP *op,OP* def_op1,TN* res_tn,TN* predicated_tn)
-{
-    for (OP* find_op=BB_first_op(OP_bb(op));find_op;find_op=OP_next(find_op)){
-        if (OP_cond_def(find_op)) {
-           TN *pn = OP_opnd(find_op, OP_PREDICATE_OPND);
-           DEF_KIND kind ;
-           OP *def_op2 = TN_Reaching_Value_At_Op(pn,find_op,&kind,TRUE);
-           if ((pn!=predicated_tn)&&(def_op2==def_op1)&&(OP_results(find_op)==1)&&(OP_result(find_op,0)==res_tn)) {
-               return find_op;
-           }
-         }
-    }
-    return NULL;
-}
-OP* Check_Disjoint_Predicate_Guarded_Def (OP* xop)
-{
-   if (OP_cond_def(xop)||(OP_results(xop)==1)) {
-       TOP opcode=OP_code(xop);
-       TN *pn = OP_opnd(xop, OP_PREDICATE_OPND);
-       if (pn==True_TN) return FALSE;
-       DEF_KIND kind ;
-       OP *def_op = TN_Reaching_Value_At_Op(pn,xop,&kind,TRUE);
-       BOOL Yes=FALSE;
-       if ((def_op)&&(OP_bb(def_op)==OP_bb(xop))) {
-          if((OP_cmp_unc(def_op))||(OP_maybe_unc_cmp(def_op))) {
-             OP* find_op=Search_Pair_OP(xop,def_op,OP_result(xop,0),pn);
-             if (find_op) {
-                 return find_op;
-              }
-           }
-       }
-    }
-   return NULL;
-}
-class OP_OF_ONLY_DEF
-{
-   typedef struct OP_IDX {
-       INT idx;
-       OP_IDX *next;
-   }OP_IDX_TYPE;
-   OP_IDX_TYPE *op_idx_array;
-   MEM_POOL *own_mem;
-   public:
-        INT *op_idx ;
-        OP_OF_ONLY_DEF(MEM_POOL *pool) {
-              own_mem=pool;
-              op_idx_array = NULL;
-        }
-        OP_IDX_TYPE* Create_Array_Member (void) {
-              OP_IDX_TYPE *new_op_idx_array ; 
-              new_op_idx_array = TYPE_MEM_POOL_ALLOC(OP_IDX_TYPE,own_mem);
-              new_op_idx_array->idx=0 ;
-              new_op_idx_array->next =NULL;
-              return new_op_idx_array;
-         }
-         void Add (OP* op) {
-             OP_IDX_TYPE *head= op_idx_array;
-             if (head == NULL) {
-                 OP_IDX_TYPE *s_op_idx_array=Create_Array_Member();
-                 s_op_idx_array->idx = OP_map_idx(op);
-                 head=s_op_idx_array;
-                 op_idx_array=s_op_idx_array;
-             }else {
-                while (head->next!=NULL) {
-                   if (head->idx == OP_map_idx(op))
-                      return;
-                   head = head->next;
-                }
-                if (head->idx == OP_map_idx(op))
-                   return;
-                OP_IDX_TYPE *s_op_idx_array=Create_Array_Member();
-                s_op_idx_array->idx = OP_map_idx(op);
-                head->next = s_op_idx_array;
-             }
-         }
-         BOOL FIND_OP(OP* find_op) {
-              OP* op;
-              OP_IDX_TYPE *head= op_idx_array;
-              head= op_idx_array;
-              while (head !=NULL) {
-                 if (OP_map_idx(find_op)==head->idx){
-                    return TRUE;
-                 }else 
-                    head = head->next;
-              }
-              return FALSE;
-         }
-         
-         ~OP_OF_ONLY_DEF(void){
-         }
-         void Set_OPS_OF_ONLY_DEF(GRA_BB* gbb)
-         {
-            GRA_BB_OP_FORWARD_ITER iter;
-            INT op_count;
-            for (iter.Init(gbb),op_count=1;!iter.Done();iter.Step(),op_count++) 
-            {
-
-                OP* xop = iter.Current();
-                if(OP_cond_def(xop)){
-                   OP* another_op =Check_Disjoint_Predicate_Guarded_Def(xop);
-                   if (another_op) {
-                      Add(xop);
-                      Add(another_op);
-                   }
-                } 
-            }
-            return;
-         }
-
-};
-#endif // TARG_IA64
+                                // rename for robustness.
 
 static void
 Identify_Region_Boundries(void)
@@ -478,9 +309,19 @@ Create_GRA_BBs_And_Regions(void)
   for ( bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ) {
     GRA_REGION* region = gra_region_mgr.Get(BB_rid(bb));
     GRA_BB*     gbb    = gbb_mgr.Create(bb,region);
-
     region->Add_GBB(gbb);
     gra_loop_mgr.Set_GBB_Loop(gbb);
+
+#ifdef TARG_SL2 //minor_reg_mgr
+    RID * rid = BB_rid(bb);
+    GRA_PARA_REGION* para_region = gra_para_region_mgr.Get(rid);
+    if(rid && RID_TYPE_minor(rid)) {
+	gra_para_region_mgr.Add_Rid_Into_Minor_Vector(rid);
+    }	
+    if(para_region) 
+	para_region->Add_BB(bb);
+#endif
+
 
     if (!GRA_use_old_conflict) {
       GTN_SET*    needs_a_register = GTN_SET_Create(GTN_UNIVERSE_size,
@@ -577,13 +418,6 @@ Scan_Region_BB_For_Referenced_TNs( GRA_BB* gbb )
       ded_tns[TN_register_class(tn)][TN_register(tn)] = tn;
       Region_TN_Reference(tn,region);
     }
-#ifdef TARG_IA64
-    for (i = 0; i < ROTATING_KERNEL_INFO_localdef(info).size(); i++) {
-      TN *tn = ROTATING_KERNEL_INFO_localdef(info)[i];
-      ded_tns[TN_register_class(tn)][TN_register(tn)] = tn;
-      Region_TN_Reference(tn,region);
-    }
-#endif
     
     OP *op;
     FOR_ALL_BB_OPs(bb, op) {
@@ -645,75 +479,6 @@ Scan_Region_BB_For_Referenced_TNs( GRA_BB* gbb )
     }
   }
 }
-
-#ifdef TARG_IA64
-/////////////////////////////////////
- static void
- Create_Global_Dedicated_TN_LRANGEs(void)
-/////////////////////////////////////
-//
-//  GRA assumes live range of dedicated TN is local one. This assumption
-//  is not always true. The definitions of dedicated TN and their uses may
-//  be live across multiple blocks. It may be expensive to build global live
-//  ranges of dedicated TN and construct interference graph for them. On the
-//  other hand, the change to make that happen may be huge. This solution
-//  solve the problem: We divide the live range of dedicated TN <t> into
-//  two parts:
-//     1) the set of basic blocks in which <t> has real occurrrences.
-//     2) the set of basic blocks in which <t> does not have real occurrence.
-//
-//  As mentioned above, the live-range snippet in part-1) is currently handled
-//  as local wired live range. The coloring of live range snippet in part-1) is
-//  correct.
-//
-//  What we concerned about is that register bound to <t> will be used to
-//  color <t>'s neighbors in part-2).  Therefore, we should remove the register
-//  associated with <t> from the available register set of blocks in part-2) to
-//  prevent that from happening. This function serves this purpose.
-//
-//  The net result of this function is equivalent to construting a global live
-//  range for dedicated TN and let him join the coloring process, hence the name.
-//
-/////////////////////////////////////////////
-{
-
-  MEM_POOL_Popper mp(&MEM_local_nz_pool);
-  
-  GTN_SET* ded_gtns = GTN_SET_Create_Empty (Last_Dedicated_TN, mp.Pool());
-  
-  // loop over all dedicated TNs
-  for (TN_NUM i = Last_Dedicated_TN; i > 0; i--) {
-    TN* tn = TNvec(i);
-    // ignore local dedicated TN
-    if (!TN_is_global_reg(tn)) continue;
-    
-    // ignore TN bound to unallocatable register
-    // ignore TN bound to unallocatable register
-    REGISTER_SET alloc = REGISTER_CLASS_allocatable(TN_register_class (tn));
-    if (!REGISTER_SET_MemberP(alloc, TN_register(tn))) continue;
-    
-    ded_gtns = GTN_SET_Union1D (ded_gtns, tn, mp.Pool());
-  }
-  
-  for (BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
-    GRA_BB* gbb = NULL;
-    GTN_SET* live_use = BB_live_use(bb);
-    GTN_SET* def_reach_in = BB_defreach_in(bb);
-    
-    for (TN* tn = GTN_SET_Intersection_Choose(ded_gtns, BB_live_in(bb));
-	 tn != GTN_SET_CHOOSE_FAILURE;
-	 tn = GTN_SET_Intersection_Choose_Next(ded_gtns, BB_live_in(bb), tn)) {
-      if (GTN_SET_MemberP (def_reach_in, tn) &&
-	  !GTN_SET_MemberP (live_use, tn)) {
-	// dedicated TN has no occurrence in this block but it is live
-        // through this block.
-        gbb = gbb ? gbb : gbb_mgr.Get(bb);
-	gbb->Make_Register_Used(TN_register_class(tn), TN_register(tn));
-      }
-    }
-  }/* end of outer for-loop */
-}
-#endif
 
 /////////////////////////////////////
 static void
@@ -784,10 +549,6 @@ Create_LRANGEs(void)
     if ( TN_Is_Allocatable(tn) && ! lrange_mgr.Get(tn) && TN_is_global_reg(tn))
       lrange_mgr.Create_Complement(tn);
   }
-#ifdef TARG_IA64 
-  Create_Global_Dedicated_TN_LRANGEs();
-#endif
-
   GRA_Trace_Memory("After Create_LRANGEs()");
 }
 
@@ -931,10 +692,6 @@ Create_Live_BB_Sets(void)
 #ifdef TARG_X8664
 	if (gbb->Savexmms() && lrange->Rc() == ISA_REGISTER_CLASS_float)
 	  lrange->Spans_Savexmms_Set();
-	if (gbb->x87_OP())
-	  lrange->Spans_x87_OP_Set();
-	if (gbb->mmx_OP())
-	  lrange->Spans_mmx_OP_Set();
 #endif
       }
     }
@@ -1392,11 +1149,6 @@ Load_From_Home(OP* op, TN* op_tn)
   return FALSE;
 }
 
-#ifdef TARG_IA64
-extern INIT_USE_ONLY_GTN *GTN_USE_ONLY;
-extern void Build_GTN_In_List (TN *tn,BB *bb);
-#endif
-
 /////////////////////////////////////
 static void
 Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
@@ -1421,11 +1173,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 
   lrange_mgr.Clear_One_Set();
   Initialize_Wired_LRANGEs();
-#ifdef TARG_IA64
-  OP_OF_ONLY_DEF Op_Of_Only_Def(&MEM_local_nz_pool);
-  Op_Of_Only_Def.Set_OPS_OF_ONLY_DEF(gbb);
-#endif
-
   for (iter.Init(gbb), op_count=1; ! iter.Done(); iter.Step(), op_count++ ) {
     OP*  xop = iter.Current();
 
@@ -1439,9 +1186,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 	hTN_MAP_Set(live_data, op_tn, gpl);
       }
       if (Complement_TN_Reference(xop, op_tn, gbb, &lunit, wired_locals)) {
-#ifdef TARG_IA64
-        lunit->Has_Use_Set();
-#endif
         if (!lunit->Has_Def()) {
 	  lunit->Has_Exposed_Use_Set();
 	  gpl->Exposed_Use_Set(TRUE);
@@ -1452,10 +1196,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
       } else if (!gpl->Num_Defs()) {
 	gpl->Exposed_Use_Set(TRUE);
       }
-#ifdef TARG_IA64
-      Build_GTN_In_List(op_tn,gbb->Bb());
-#endif
-
     }
 
     for ( i = OP_results(xop) - 1; i >= 0; --i ) {
@@ -1468,32 +1208,16 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 	hTN_MAP_Set(live_data, res_tn, gpl);
       }
 
-#ifdef TARG_IA64
-      if (OP_cond_def(xop) && !Op_Of_Only_Def.FIND_OP(xop)) {
-	// there is a hidden use
-	if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
-	    lunit->Has_Use_Set();
-	    if (!lunit->Has_Def()) {
-	      lunit->Has_Exposed_Use_Set();
-	      gpl->Exposed_Use_Set(TRUE);
-	    }
-	  } else if (!gpl->Num_Defs()) {
+      if (OP_cond_def(xop)) { // there is a hidden use
+        if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
+          if (!lunit->Has_Def()) {
+	    lunit->Has_Exposed_Use_Set();
 	    gpl->Exposed_Use_Set(TRUE);
 	  }
-      } 
-#else
-	if (OP_cond_def(xop)) {
-    if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
-      if (!lunit->Has_Def()) {
-	lunit->Has_Exposed_Use_Set();
-	gpl->Exposed_Use_Set(TRUE);
+        } else if (!gpl->Num_Defs()) {
+	  gpl->Exposed_Use_Set(TRUE);
+        }
       }
-    } else if (!gpl->Num_Defs()) {
-      
-      gpl->Exposed_Use_Set(TRUE);
-    }
-	}
-#endif // TARG_IA64
 
       gpl->Num_Defs_Set(gpl->Num_Defs() + 1);
       gpl->Last_Def_Set(op_count);
@@ -1664,18 +1388,17 @@ Create_LUNITs(void)
 /////////////////////////////////////
 {
   GRA_REGION_GBB_ITER gbb_iter;
-  int i;
+
   GRA_Init_Trace_Memory();
 
   MEM_POOL_Push(&MEM_local_nz_pool);
   Initialize_Wired_LRANGEs();
-  
+
   for (gbb_iter.Init(gra_region_mgr.Complement_Region()); ! gbb_iter.Done();
        gbb_iter.Step() ) {
     GRA_BB* gbb = gbb_iter.Current();
     Scan_Complement_BB_For_Referenced_TNs(gbb);
   }
-
   MEM_POOL_Pop(&MEM_local_nz_pool);
   GRA_Trace_Memory("After Create_LUNITs()");
 }
@@ -1902,10 +1625,6 @@ Add_To_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
-
-if ( lrange==NULL ){
-  return;
-}
   LRANGE* lrange1;
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
@@ -1936,9 +1655,6 @@ Remove_From_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
-  if ( lrange==NULL ){
-    return;
-  }
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
   LRANGE_SET*         set = live_lrange_sets[rc];
@@ -2187,62 +1903,50 @@ Create_Interference_Graph(void)
   GRA_Trace_Memory("After Build_Region_Interference_Graph()");
 }
 
-#ifdef TARG_IA64
-//=============================================================
-//
-// Compute the fatest point value of every function,for those
-// functions too fat and self recursive,we can make some special
-// optimization heuristics.
-//                          -- ORC  
-//
-//============================================================
-static void
-Compute_GRA_Fat_Point(void) {
-    
-  ISA_REGISTER_CLASS           rc;
-  TN*                          tn;
-  //GTN_SET*                     interferences;
-  GRA_REGION_RC_NL_LRANGE_ITER iter0;
-  GRA_REGION_RC_NL_LRANGE_ITER iter1;
-  GRA_REGION_GBB_ITER          gbb_iter;
-  GRA_REGION *region = gra_region_mgr.Complement_Region();
-  MEM_POOL_Push(&MEM_local_nz_pool);
-  //interferences = GTN_SET_Create(GTN_UNIVERSE_size,&MEM_local_nz_pool);
-  typedef mempool_allocator<INT>                 INT_ALLOC;
-  typedef std::vector<INT,INT_ALLOC>                  INT_VECTOR;
-  INT_VECTOR fats(PU_BB_Count+2, (INT32)0,INT_ALLOC(&MEM_local_nz_pool));
-  FOR_ALL_ISA_REGISTER_CLASS( rc ) { //Perhaps only int register is needed to be computed.
+#ifdef TARG_SL2 //minor_reg_alloc
+/* this function is used to mark flag for lrange which spans multi regions and 
+  * this flags is used to update exclude set for each parallel body in minor mode
+  */
+void 
+Mark_Lrange_For_Minor_Thread()
+{
+    ISA_REGISTER_CLASS rc;
+    GRA_REGION_RC_NL_LRANGE_ITER iter0;
+    GRA_REGION_GBB_ITER          gbb_iter;
+    GRA_REGION *region = gra_region_mgr.Complement_Region();
 
+//    FOR_ALL_ISA_REGISTER_CLASS( rc ) {
+      rc = ISA_REGISTER_CLASS_integer;
       for (iter0.Init(region,rc); ! iter0.Done(); iter0.Step()) {
-	LRANGE* lrange0 = iter0.Current();
-	LRANGE_LIVE_GBB_ITER live_gbb_iter;
-	
-	//GTN_SET_ClearD(interferences);
-
-	for (live_gbb_iter.Init(lrange0); ! live_gbb_iter.Done(); live_gbb_iter.Step()) {
-	  GRA_BB *live_gbb = live_gbb_iter.Current();
-          //How to new a int vector here?
-	  fats[(live_gbb->Bb())->id] += 1;
-	}
-      }	
-   }
-   INT32 fatest_point = 0; 
-   INT32 fat_bb_id   = 0;
-   for (INT32 i = 0;i < PU_BB_Count;i++) {
-       if (fats[i] > fatest_point) {
-           fatest_point = fats[i];
-           fat_bb_id = i;
-       }
-   }    
+	 LRANGE* lrange0 = iter0.Current();
+	 LRANGE_LIVE_GBB_ITER live_gbb_iter;
+	 LRANGE_LUNIT_ITER lunit_iter; 
+/*  for now we think the rid_count greater than 2 means the lrange spans multi-region, 
+  *  there only two parallel regions active at same time in minor mode
+  */ 
+        vector<INT> met_rid;
+        for (lunit_iter.Init(lrange0); !lunit_iter.Done(); lunit_iter.Step()) 
+        {
+            LUNIT* lunit = lunit_iter.Current();
+	     GRA_BB *live_gbb = lunit->Gbb();
+	     BB* bb = live_gbb->Bb();
+	     if(BB_rid(bb) && RID_TYPE_minor(BB_rid(bb))) {  // NULL for func_entry region 
+              if(find(met_rid.begin(), met_rid.end(), RID_id(BB_rid(bb))) == met_rid.end()) {
+                 met_rid.push_back(RID_id(BB_rid(bb)));
+              }		
+	     }
+	 }
+	 if(met_rid.size() > 1 && met_rid.size() < 3) 
+	 {
+	    lrange0->Spans_Multiregions_Set();
+	 }
+	 met_rid.clear();
+      }
+//}
    
-   if ((gra_self_recursive)&&(fatest_point > 100)) {
-       fat_self_recursive = TRUE;
-       DevWarn("The fatest point %d is greater than 80 and also self recursive!\n",fatest_point);
-   }    
-   MEM_POOL_Pop(&MEM_local_nz_pool);
- 
 }
-#endif // TARG_IA64
+#endif 
+
 /////////////////////////////////////
 void
 GRA_Create(void)
@@ -2255,9 +1959,10 @@ GRA_Create(void)
   Create_Live_BB_Sets();
   Create_LUNITs();
   Create_Interference_Graph();
-#ifdef TARG_IA64
-  Compute_GRA_Fat_Point();
+#ifdef TARG_SL2 //minor_reg_alloc
+  Mark_Lrange_For_Minor_Thread();
 #endif
+
 }
 
 

@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,10 +41,10 @@
  * =======================================================================
  *
  *  Module: localize.c
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/localize.cxx,v $
+ *  $Revision: 1.21 $
+ *  $Date: 05/12/05 08:59:08-08:00 $
+ *  $Author: bos@eng-24.pathscale.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.localize.cxx $
  *
  *  Description:
  *  ============
@@ -321,182 +317,111 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 	}
 #endif
 	else if (is_func_arg || is_func_retval) {
-#ifdef TARG_IA64
-                if (def && is_func_arg && BB_call(current_bb)) {
-                    goto okay;
-		}	// okay
-		if (def && is_func_retval && BB_exit(current_bb)) {
-                    goto okay;
-		}	// okay
-#ifdef TARG_IA32
-		if (def && is_func_retval && BB_asm(current_bb)) {
-                    goto okay;
-		}	// okay
+		if (def && is_func_arg && BB_call(current_bb))
+			;	// okay
+		else if (def && is_func_retval && BB_exit(current_bb))
+			;	// okay
+#if defined(TARG_IA32)
+		else if (def && is_func_retval && BB_asm(current_bb))
+			;	// okay
+#endif // TARG_IA32
+#if defined(TARG_X8664) || defined(TARG_SL)
+		/* An inline asm could read whatever it wants (bug#3059,3257). */
+		else if (BB_asm(current_bb))
+			;	// okay
+		/* An inline asm could write whatever it wants (bug#3059). */
+		else if (!def && is_func_arg
+			 && BB_prev(current_bb) != NULL 
+			 && BB_asm(BB_prev(current_bb)))
+			;	// okay	
+#endif // TARG_X8664 || TARG_SL
+		else if (def && is_func_arg && BB_asm(current_bb))
+			;	// okay
+		else if (def && is_func_retval && BB_call(current_bb)
+		    && RETURN_INFO_return_via_first_arg(Get_Return_Info(
+			  TY_ret_type(ST_pu_type(CALLINFO_call_st(
+			    ANNOT_callinfo(ANNOT_Get(
+				BB_annotations(current_bb),ANNOT_CALLINFO)) ))),
+			  No_Simulated
+#ifdef TARG_X8664
+			  , PU_ff2c_abi(Pu_Table[ST_pu(CALLINFO_call_st(
+			    ANNOT_callinfo(ANNOT_Get(
+				BB_annotations(current_bb),ANNOT_CALLINFO)) ))])
 #endif
-		if (def && is_func_arg && BB_asm(current_bb)) {
-                    goto okay;
-		}	// okay
-		if (def && is_func_retval && BB_call(current_bb)) {
-                    WN* wn = CALLINFO_call_wn(ANNOT_callinfo(ANNOT_Get(BB_annotations(current_bb),ANNOT_CALLINFO)));
-                    ST* st = CALLINFO_call_st(ANNOT_callinfo(ANNOT_Get(BB_annotations(current_bb),ANNOT_CALLINFO)));
-                    BOOL ok = FALSE;
-                    if(st != NULL ){
-		        ok = RETURN_INFO_return_via_first_arg(Get_Return_Info(TY_ret_type(ST_pu_type(st)),No_Simulated));
-                    }else if(WN_operator(wn) == OPR_ICALL){
-		        ok = RETURN_INFO_return_via_first_arg(Get_Return_Info(TY_ret_type(WN_ty(wn)),No_Simulated));
-                    }
-                    if(ok) goto okay;
+			  ) ) )
 			// can return via first arg in retval reg.
-		}	// okay
-		if (!def && is_func_retval && BB_entry(current_bb)
+			;	// okay
+		else if (!def && is_func_retval && BB_entry(current_bb)
 		    && RETURN_INFO_return_via_first_arg(Get_Return_Info(
 			  TY_ret_type(PU_prototype(Get_Current_PU())), 
-			  No_Simulated) ) )
+			  No_Simulated
+#ifdef TARG_X8664
+			  , PU_ff2c_abi(Get_Current_PU())
+#endif
+			  ) ) )
 			// can return via first arg in retval reg.
-		{
-                    goto okay;
-		}	// okay
+			;	// okay
 		// If arg and retval overlap,
 		// how do we distinguish between def before call
 		// and def before exit?
 		// Could combine the Param_ and Return_ routines,
 		// but instead we search to try and figure out which
 		// case it is.
-		if (def && is_func_arg && is_func_retval && !BB_call(current_bb) && !BB_exit(current_bb)) {
-                    if (BB_Is_Followed_By_Call (current_bb)) 
-                        Localize_Global_Param_Reg (current_bb, tn);
-                    else
-                        Localize_Global_Return_Reg_Def (current_bb, tn);
-                    goto okay;
+		else if (def && is_func_arg && is_func_retval
+			&& !BB_call(current_bb) && !BB_exit(current_bb)) 
+		{
+			if (BB_Is_Followed_By_Call (current_bb)) 
+				Localize_Global_Param_Reg (current_bb, tn);
+			else
+				Localize_Global_Return_Reg_Def (current_bb, tn);
 		}
-		if (def && is_func_arg && !BB_call(current_bb)) {
-                    Localize_Global_Param_Reg (current_bb, tn);
-                    goto okay;
+		else if (def && is_func_arg && !BB_call(current_bb)) {
+			Localize_Global_Param_Reg (current_bb, tn);
 		} 
-		if (def && is_func_retval && !BB_exit(current_bb)) {
-                    Localize_Global_Return_Reg_Def (current_bb, tn);
-                    goto okay;
+		else if (def && is_func_retval && !BB_exit(current_bb)) {
+			Localize_Global_Return_Reg_Def (current_bb, tn);
 		}
-		if (!def && is_func_arg && BB_entry(current_bb)) {
-                    goto okay;
-		}	// okay
-		if (!def && is_func_retval && BB_prev(current_bb) != NULL && BB_call(BB_prev(current_bb))) {
-                    goto okay;
-		}	// okay
-		if (!def && is_func_retval && BB_prev(current_bb) != NULL && BB_asm(BB_prev(current_bb))) {
-                    goto okay;
-		}	// okay
-		if (!def && is_func_retval && (BB_prev(current_bb) == NULL || ! BB_call(BB_prev(current_bb)))) {
-			/* not after call, so must span bb's */
-		    Localize_Global_Return_Reg (current_bb, tn);
-                    goto okay;
-		}
-		FmtAssert (FALSE, ("use of param reg TN%d in bb %d is global", TN_number(tn), BB_id(current_bb)));
-
-	} 
-
-okay:
-#else  // TARG_IA64
-	if (def && is_func_arg && BB_call(current_bb))
-	  ;// okay
-	else if (def && is_func_retval && BB_exit(current_bb))
-	  ;// okay
-#if defined(TARG_IA32)
-	else if (def && is_func_retval && BB_asm(current_bb))
-	  ;// okay
-#endif // TARG_IA32
-#ifdef TARG_X8664
-	/* An inline asm could read whatever it wants (bug#3059,3257). */
-	else if (BB_asm(current_bb))
-	  ;// okay
-	/* An inline asm could write whatever it wants (bug#3059). */
-	else if (!def && is_func_arg
-		 && BB_prev(current_bb) != NULL 
-		 && BB_asm(BB_prev(current_bb)))
-	  ;// okay
-#endif // TARG_X8664
-	else if (def && is_func_arg && BB_asm(current_bb))
-	  ;// okay
-	else if (def && is_func_retval && BB_call(current_bb)
-		 && RETURN_INFO_return_via_first_arg(Get_Return_Info(
-								     TY_ret_type(ST_pu_type(CALLINFO_call_st(
-													     ANNOT_callinfo(ANNOT_Get(
-																      BB_annotations(current_bb),ANNOT_CALLINFO)) ))),
-								       No_Simulated
-#ifdef TARG_X8664
-								     , PU_ff2c_abi(Pu_Table[ST_pu(CALLINFO_call_st(
-														   ANNOT_callinfo(ANNOT_Get(
-																	    BB_annotations(current_bb),ANNOT_CALLINFO)) ))])
-#endif
-								     ) ) )
-	  // can return via first arg in retval reg.
-	  ;// okay
-	else if (!def && is_func_retval && BB_entry(current_bb)
-		 && RETURN_INFO_return_via_first_arg(Get_Return_Info(
-								     TY_ret_type(PU_prototype(Get_Current_PU())), 
-								       No_Simulated
-#ifdef TARG_X8664
-								     , PU_ff2c_abi(Get_Current_PU())
-#endif
-								     ) ) )
-	  // can return via first arg in retval reg.
-	  ;// okay
-	// If arg and retval overlap,
-	// how do we distinguish between def before call
-	// and def before exit?
-	// Could combine the Param_ and Return_ routines,
-	// but instead we search to try and figure out which
-	// case it is.
-	else if (def && is_func_arg && is_func_retval
-		 && !BB_call(current_bb) && !BB_exit(current_bb)) 
-	  {
-	    if (BB_Is_Followed_By_Call (current_bb)) 
-	      Localize_Global_Param_Reg (current_bb, tn);
-	    else
-	      Localize_Global_Return_Reg_Def (current_bb, tn);
-	  }
-	else if (def && is_func_arg && !BB_call(current_bb)) {
-	  Localize_Global_Param_Reg (current_bb, tn);
-	} 
-	else if (def && is_func_retval && !BB_exit(current_bb)) {
-	  Localize_Global_Return_Reg_Def (current_bb, tn);
-	}
-	else if (!def && is_func_arg && BB_entry(current_bb)) 
-	  ;// okay
+		else if (!def && is_func_arg && BB_entry(current_bb)) 
+			;	// okay
 #ifdef KEY
-	else if (!def && is_func_arg && BB_call(current_bb))
-	  ;// okay.  CSE might have replaced a use of a
-	// non-dedicated TN with a use of a param reg,
-	// bug 7219.
+		else if (!def && is_func_arg && BB_call(current_bb))
+			;	// okay.  CSE might have replaced a use of a
+				// non-dedicated TN with a use of a param reg,
+				// bug 7219.
 #endif
 #ifdef TARG_X8664
-	else if (!def && regnum == RAX && BB_entry(current_bb)) 
-	  ;// okay because RAX gives number of xmm args
-	else if (!def && regnum == RDX &&
-		 BB_entry(current_bb) && BB_handler(current_bb))
-	  ;   // okay because RAX and RDX will be saved at the entry of a handler
+		else if (!def && regnum == RAX && BB_entry(current_bb)) 
+			;	// okay because RAX gives number of xmm args
+		else if (!def && regnum == RDX &&
+			 BB_entry(current_bb) && BB_handler(current_bb))
+		  ;   // okay because RAX and RDX will be saved at the entry of a handler
 #endif
-	else if (!def && is_func_retval 
-		 && BB_prev(current_bb) != NULL 
-		 && BB_call(BB_prev(current_bb)))
-	  ;// okay
-	else if (!def && is_func_retval 
-		 && BB_prev(current_bb) != NULL 
-		 && BB_asm(BB_prev(current_bb)))
-	  ;// okay
-	else if (!def && is_func_retval
-		 && (BB_prev(current_bb) == NULL 
-		     || ! BB_call(BB_prev(current_bb)))) 
-	  {
-	    /* not after call, so must span bb's */
-	    Localize_Global_Return_Reg (current_bb, tn);
-	  }
-	else {
-	  FmtAssert (FALSE, ("use of param reg TN%d in bb %d is global", TN_number(tn), BB_id(current_bb)));
-	}
-} 
+		else if (!def && is_func_retval 
+		    && BB_prev(current_bb) != NULL 
+		    && BB_call(BB_prev(current_bb)))
+			;	// okay
+		else if (!def && is_func_retval 
+		    && BB_prev(current_bb) != NULL 
+		    && BB_asm(BB_prev(current_bb)))
+			;	// okay
+#if defined(TARG_SL)
+		else if (is_func_retval && BB_entry(current_bb) && BB_exit(current_bb))
+		  ; // okay
+		else if (is_func_retval && BB_exit(current_bb) && !def) {
+		  ; // okay
+		}
 #endif
-
+		else if (!def && is_func_retval
+		    && (BB_prev(current_bb) == NULL 
+			|| ! BB_call(BB_prev(current_bb)))) 
+		{
+			/* not after call, so must span bb's */
+			Localize_Global_Return_Reg (current_bb, tn);
+		}
+		else {
+			FmtAssert (FALSE, ("use of param reg TN%d in bb %d is global", TN_number(tn), BB_id(current_bb)));
+		}
+	} 
 #ifdef HAS_STACKED_REGISTERS
 	// func_arg applies to formal args, 
 	// but actual args may be different numbered registers
@@ -535,6 +460,14 @@ Check_If_TN_Is_Global (TN *tn, TN_MAP tn_in_bb, BB *current_bb, BOOL def)
   
   Is_True(!TN_is_dedicated(tn), ("tn is dedicated"));
 
+#if defined(TARG_SL)
+  // workaround for vla where we generate 64bit inst from gcc tree
+  if (TN_size(tn) == 8) {
+    DevWarn("setting TN %d from 8 to 4", TN_number(tn));
+    Set_TN_size(tn, 4);
+  }
+#endif
+
   mapped_bb = (BB*) TN_MAP_Get (tn_in_bb, tn);
 
   if (rid && (RID_bounds_exist(rid) == REGION_BOUND_EXISTS)
@@ -554,7 +487,7 @@ Check_If_TN_Is_Global (TN *tn, TN_MAP tn_in_bb, BB *current_bb, BOOL def)
 	Set_TN_is_global_reg(tn);
 	if (Trace_Localize) {
 		fPrint_TN (TFile, "%s is a global tn,", tn);
-		fprintf (TFile, " corresponding to preg %d\n", preg);
+		fprintf (TFile, "(%d) corresponding to preg %d\n", TN_size(tn), preg);
 	}
 	if (def) {
 	  for (INT i=0; i<RID_num_exits(rid); i++)
@@ -596,6 +529,7 @@ TN_LIST_Mark_Is_Global( TN_LIST *tnl0 )
   }
 }
   
+extern void dump_tn(TN*);
 /* 
  * Iterate through bb's to find any global TN's,
  * which are defined as any TN's that exist in multiple bb's.
@@ -662,7 +596,7 @@ Find_Global_TNs ( RID *rid )
             /* this use is just a self-copy, will disappear */
             continue;
 	  }
-#ifndef KEY
+#ifdef KEY
 	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
           if (!OP_copy(op))
 #endif
@@ -675,7 +609,7 @@ Find_Global_TNs ( RID *rid )
       for (resnum = 0; resnum < OP_results(op); resnum++) {
         tn = OP_result(op, resnum);
         if (TN_is_dedicated(tn)) {
-#ifndef KEY
+#ifdef KEY
 	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
           if (!OP_copy(op))
 #endif
@@ -796,10 +730,6 @@ Get_Local_TN_For_Global (TN *global_tn, TN_MAP spill_tns, BB *bb, BOOL reuse)
 			global_tn, CGSPILL_LCL));
 		tninfo->callee_save = FALSE;
 		preg = (PREG_NUM)(INTPTR) TN_MAP_Get( TN_To_PREG_Map, global_tn );
-#ifdef KEY
-		Is_True(preg >= 0, ("Get_Local_TN_For_Global: "
-				    "negative index to PREG_To_TN_Array"));
-#endif
 		if (preg) PREG_To_TN_Array[preg] = local_tn;
 	}
 	tninfo->local_tn = local_tn;
@@ -1251,12 +1181,13 @@ Localize_or_Replace_Dedicated_TNs(void)
 
     FOR_ALL_BB_OPs (bb, op) {
 
+#ifdef TARG_X8664
       /* Do not replace dedicated tn inside an inline asm. (bug#3067)
        */
-      if (OP_code(op) == TOP_asm) {
+      if( OP_code(op) == TOP_asm ){
 	continue;
       }
-      
+#endif
       for ( opndnum = 0; opndnum < OP_opnds( op ); opndnum++ ) {
 	tn = OP_opnd( op, opndnum );
 	if ( TN_is_constant(tn) || TN_is_zero_reg(tn) )

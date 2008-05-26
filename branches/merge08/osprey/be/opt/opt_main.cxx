@@ -348,17 +348,20 @@
 #include "dep_graph.h"			/* for tracing Current_Dep_Graph */
 #include "wb_ipl.h"			/* whirl browser for ipl */ 
 
+#ifndef __MINGW32__
 #include "regex.h"                      // For regcomp and regexec
+#endif /* __MINGW32__ */
 #include "xstats.h"                     // For PU_WN_BB_Cnt
 #include "opt_wovp.h"     // for write once variable promotion
 #include "opt_misc.h"
 #include "opt_lmv.h"
+#include "opt_lmv_helper.h"
 
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 				 struct ALIAS_MANAGER *alias_mgr,
 				 EMITTER *emitter);
-#ifdef __linux__
+#if defined(__linux__) || defined(STATIC_BUILD) || defined(BUILD_OS_DARWIN)
 extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 						  ALIAS_MANAGER*, void*);
 #define Perform_Procedure_Summary_Phase (*Perform_Procedure_Summary_Phase_p)
@@ -914,6 +917,7 @@ static BOOL Disable_opt(WN *wn_tree, ST *pu_st)
     sprintf(rgn_name,"region %d (function %s)",
 	    RID_id(REGION_get_rid(wn_tree)),pu_name);
 
+#ifndef __MINGW32__
   // skip the functions specified
   if (WOPT_Enable_Skip != NULL) {
     regex_t buf;
@@ -924,6 +928,7 @@ static BOOL Disable_opt(WN *wn_tree, ST *pu_st)
       return TRUE;
     }
   }
+#endif /* __MINGW32__ */
 
   // skip_equal, skip_before, skip_after function count specified
   if ( Query_Skiplist ( WOPT_Skip_List, Current_PU_Count() ) ) {
@@ -932,6 +937,7 @@ static BOOL Disable_opt(WN *wn_tree, ST *pu_st)
     return TRUE;
   }
 
+#ifndef __MINGW32__
   // process the functions specified
   if (WOPT_Enable_Process != NULL) {
     regex_t buf;
@@ -943,6 +949,7 @@ static BOOL Disable_opt(WN *wn_tree, ST *pu_st)
       return TRUE;
     }
   }
+#endif /* __MINGW32__ */
 
   return FALSE;
 }
@@ -1175,6 +1182,8 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
 #ifdef TARG_X8664
     BOOL target_64bit = Is_Target_64bit();
+#elif defined(TARG_SL)
+    BOOL target_64bit = FALSE;
 #else
     BOOL target_64bit = TRUE;
 #endif
@@ -1184,7 +1193,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       WN_retype_expr(wn_tree);
 #endif
 
-#if defined(KEY) && !defined(TARG_IA64)
+#if defined(KEY) && !(defined(TARG_IA64) || defined(TARG_SL))
     WN_unroll(wn_tree);
 #endif
 
@@ -1285,7 +1294,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   // check for inadvertent increase in size of data structures
   Is_True(sizeof(CODEREP) == 48,
     ("Size of CODEREP has been changed (is now %d)!",sizeof(CODEREP)));
-#ifdef linux
+#if defined(linux) || defined(BUILD_OS_DARWIN)
   Is_True(sizeof(STMTREP) == 60,
     ("Size of STMTREP has been changed (is now %d)!",sizeof(STMTREP)));
 #else
@@ -1668,7 +1677,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
       if (WOPT_Enable_DCE) {
 	SET_OPT_PHASE("Dead Code Elimination 2");
-	comp_unit->Do_dead_code_elim(FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
+	comp_unit->Do_dead_code_elim(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,
 				     NULL);
 
 	if ( comp_unit->Cfg()->Feedback() )
@@ -1935,5 +1944,8 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
   if (WN_opcode(opt_wn) == OPC_FUNC_ENTRY)
     Set_PU_Info_tree_ptr (Current_PU_Info, opt_wn);
+
+  WN_CopyMap(opt_wn, WN_MAP_FEEDBACK, wn_orig);
+
   return opt_wn;
 }

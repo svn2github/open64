@@ -45,7 +45,7 @@ extern "C" {
 
 /*
 	dwarf.h   DWARF  debugging information values
-	$Revision: 1.5 $    $Date: 05/05/25 10:54:11-07:00 $    
+	$Revision: 1.2 $    $Date: 05/12/05 08:59:58-08:00 $    
 
 	The comment "DWARF3" appears where there are
 	new entries from DWARF3, and other comments apply
@@ -625,11 +625,13 @@ extern "C" {
 #define DW_CFA_def_cfa_offset   0x0e
 #define DW_CFA_def_cfa_expression 0x0f     /* DWARF3 */
 #define DW_CFA_expression       0x10       /* DWARF3 */
-#ifdef KEY
-#define DW_CFA_offset_extended_sf 0x11 /* DWARF3 */
-#else
-#define DW_CFA_cfa_offset_extended_sf 0x11 /* DWARF3 */
+
+#if defined(TARG_X8664) || defined(TARG_IA64)                                                       
+#define DW_CFA_offset_extended_sf 0x11 /* DWARF3 */                     
+#else                                                                     
+#define DW_CFA_cfa_offset_extended_sf 0x11 /* DWARF3 */                     
 #endif
+
 #define DW_CFA_def_cfa_sf       0x12       /* DWARF3 */
 #define DW_CFA_def_cfa_offset_sf 0x13      /* DWARF3 */
 
@@ -642,6 +644,10 @@ extern "C" {
 #define DW_CFA_GNU_window_save   0x2d  /* GNU */
 #define DW_CFA_GNU_args_size     0x2e /* GNU */
 #define DW_CFA_GNU_negative_offset_extended  0x2f /* GNU */
+
+#define DW_CFA_SL_gpr_reginfo    0x3c   /* SL */
+#define DW_CFA_SL_cr_reginfo     0x3d   /* SL */
+#define DW_CFA_SL_sr_reginfo     0x3e   /* SL */
 
 #define DW_CFA_high_user         0x3f
 
@@ -688,7 +694,9 @@ extern "C" {
 #define DW_FRAME_REG28	28 /* integer reg 28 */
 #define DW_FRAME_REG29	29 /* integer reg 29 */
 #define DW_FRAME_REG30	30 /* integer reg 30 */
-#define DW_FRAME_REG31	31 /* integer reg 31, aka ra */
+#define DW_FRAME_REG31	31 /* integer reg 31 */
+#define DW_FRAME_REG34  34 /* link address reg, aka ja */
+#define DW_FRAME_REG35  35 /* return address reg, aka ra */
 	
 	/* MIPS1, 2 have only some of these 64-bit registers.
 	** MIPS1  save/restore takes 2 instructions per 64-bit reg, and

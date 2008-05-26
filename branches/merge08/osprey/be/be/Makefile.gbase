@@ -196,6 +196,7 @@ HEADER_DIRS = \
   $(BE_DIR)		\
   $(BE_COM_TARG_DIR)	\
   $(BE_CG_DIR)		\
+  $(BE_CG_DIR)/$(BUILD_TARGET_DIR)		\
   $(BE_OPT_DIR)		\
   $(BE_LNO_DIR)		\
   $(BE_REGION_DIR)	\
@@ -248,7 +249,13 @@ BE_BE_CXX_SRCS = 	\
   rewrite_pragmas.cxx	\
   wb_omp.cxx		\
   wb_lwr.cxx		\
-  wb_anl.cxx
+  wb_anl.cxx   
+ifeq ($(BUILD_TARGET), MIPS)
+  BE_BE_CXX_SRCS +=  isr.cxx
+endif
+
+BE_WN_FIO_SRCS = 	\
+  wn_fio.cxx
 
 BE_BE_TARG_CXX_SRCS =	\
   fill_align_targ.cxx	\
@@ -327,8 +334,16 @@ COMMON_COM_TARG_CXX_SRCS =	\
   targ_const.cxx	\
   targ_sim.cxx
 
+ifeq ($(BUILD_TARGET), MIPS)
 COMMON_TARG_INFO_ACCESS_SRCS=\
-  ti_init.c
+  ti_init.c		\
+  ti_res.c		\
+  ti_res_count.c	\
+  ti_res_res.c
+else
+COMMON_TARG_INFO_ACCESS_SRCS=\
+  ti_init.c		
+endif
 
 ifeq ($(BUILD_TARGET), X8664)
 COMMON_UTIL_QUAD_SRCS = \
@@ -409,9 +424,9 @@ BE_COM_CXX_SRCS = \
   printsrc.cxx		\
   timing.cxx	 	\
   weak.cxx		\
-  output_func_start_profiler.cxx \
+  output_func_start_profiler.cxx        \
   wn_cyg_instrument.cxx \
-  wn_instrument.cxx     \
+  wn_instrument.cxx \
   tls.cxx               \
   be_memop_annot.cxx
 
@@ -440,7 +455,6 @@ BE_COM_PCH_CXX_SRCS = \
   wb_ipl.cxx		\
   wb_util.cxx		\
   whirl2src.cxx		\
-  wn_fio.cxx		\
   wn_lower.cxx		\
   u64_lower_wn.cxx	\
   wn_mp.cxx		\
@@ -599,7 +613,7 @@ LLDLIBS += $(LIBIBERTY_OBJS)
 # while building cg.so . This is needed by the linker on linux.
 # So, arbitrarily pick one of the target .so's to define TARGET_SO.
 ifeq ($(BUILD_TARGET), MIPS)
-TARGET_SO = r10000.so
+TARGET_SO = 
 endif
 ifeq ($(BUILD_TARGET), IA64)
 TARGET_SO = itanium.so
@@ -693,14 +707,13 @@ c_q_sub.o: c_q_sub.c $(COMMON_COM_DIR)/defs.h $(COMMON_UTIL_DIR)/quad.h
 	$(CCF) -OPT:roundoff=0 -c $<
 endif
 
-ifeq ($(BUILD_COMPILER), OSP)
-wn_fio.o: wn_fio.cxx
-	$(CXXF) -OPT:alias=no_typed -c $<
-endif
-
+wn_fio.o: wn_fio.cxx 
+	$(CXXF) -g -c $<
+#	$(CXXF) -OPT:alias=no_typed -c $<
 
 LDIRT += be wopt.so be.so cg.so lno.so whirl2c.so whirl2f.so purple.so prompf_anl.so
 LDIRT += ipl.so inline.so r4000.so r5000.so r8000.so r10000.so itanium.so pentium.so opteron.so
+
 
 ifeq ($(BUILD_PCH), USE_PCH)
 common_com_pch_files: $(COMMON_COM_PCH_OBJS) common_com_pch.pch
@@ -736,17 +749,17 @@ $(EXPORT_FILE_BE_SO): $(EXPORT_FILE_BE_SO_SRCS)
 
 ifeq ($(BUILD_PCH), USE_PCH)
 be.so:  $(BE_C_OBJS) $(BE_CXX_OBJS) $(COMMON_COM_PCH_OBJS) $(BE_COM_PCH_OBJS) \
-		$(BE_AS_OBJS) $(BE_BE_DIR)/so_locations $(EXPORT_FILE_BE_SO) 
+		$(BE_AS_OBJS) wn_fio.o $(BE_BE_DIR)/so_locations $(EXPORT_FILE_BE_SO) 
 	$(link.c++f) $(STD_DSO_LOADOPTS) $(EXPORT_LIST_BE_SO) $(BE_C_OBJS) \
 		$(BE_CXX_OBJS) $(COMMON_COM_PCH_OBJS) $(BE_COM_PCH_OBJS) \
-		$(BE_AS_OBJS) $(TARG_INFO_LIB_DIR)/libtarginfo.a \
+		$(BE_AS_OBJS) wn_fio.o $(TARG_INFO_LIB_DIR)/libtarginfo.a \
 		-o $@ $(BE_DSO_OPTS)
 
 else
 be.so:	$(BE_C_OBJS) $(BE_CXX_OBJS) $(BE_AS_OBJS) $(BE_BE_DIR)/so_locations \
-		$(EXPORT_FILE_BE_SO)
+		$(EXPORT_FILE_BE_SO) wn_fio.o
 	$(link.c++f) $(STD_DSO_LOADOPTS) $(EXPORT_LIST_BE_SO) $(BE_C_OBJS) \
-		$(BE_CXX_OBJS) $(BE_AS_OBJS) \
+		$(BE_CXX_OBJS) $(BE_AS_OBJS) wn_fio.o \
 		$(TARG_INFO_LIB_DIR)/libtarginfo.a $(LINK_TARGET_SO) \
 		-o $@ $(BE_DSO_OPTS)
 endif
@@ -773,3 +786,7 @@ pure: $(TARGETS_PURE)
 install.pure:: pure
 	$(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) -F $(STD_MONGOOSE_LOC) be.so.pure
 
+ifeq (gcc,$(firstword $(CCNAME)))
+# work around gcc bug optimizing this file on ia32
+flags.o: OPTIMIZER = -O0
+endif

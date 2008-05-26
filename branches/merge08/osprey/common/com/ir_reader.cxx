@@ -71,7 +71,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#ifndef __MINGW32__
 #include <sys/mman.h>
+#endif /* __MINGW32__ */
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -112,6 +114,7 @@ extern char * Targ_Print ( char *fmt, TCON c );
 #include "wn_pragmas.h"
 #include "wutil.h"
 #ifdef BACK_END
+#include "intrn_info.h"
 #include "region_util.h"
 #include "dvector.h"
 #endif /* BACK_END */
@@ -229,7 +232,7 @@ extern void fdump_dep_tree(FILE *, const WN *, struct ALIAS_MANAGER *);
 
 /*  Suppress warning if not resolved at link-time. */
 /* CG_Dump_Region is defined in cg.so, only call if cg.so is loaded */
-#ifdef __linux__
+#if defined(__linux__) || defined(BUILD_OS_DARWIN) || !defined(SHARED_BUILD)
 extern void (*CG_Dump_Region_p) (FILE*, WN*);
 #define CG_Dump_Region (*CG_Dump_Region_p)
 #else
@@ -560,6 +563,13 @@ extern void IR_Dwarf_Gen_File_Table (BOOL dump_filenames)
       incl_table[count] = name;
       count++;
     }
+#if defined(TARG_SL)
+  /* Wenbo/2007-04-29: Because we use incl_table's 0th entry for current
+     working dir. */
+  if (incl_table == NULL)
+    incl_table = (char **) malloc ((count + 2) * sizeof (char *));
+  incl_table[0] = "./";
+#endif
   
   ir_print_filename(dump_filenames); /* print the loc 0 0 heading */
 
@@ -977,8 +987,10 @@ static void ir_put_wn(WN * wn, INT indent)
 	    Is_True(OPCODE_operator(opcode) == OPR_INTRINSIC_OP ||
 		    OPCODE_operator(opcode) == OPR_INTRINSIC_CALL,
 		    ("ir_put_wn, expected an intrinsic"));
+#if defined(BACK_END)
 	    fprintf(ir_ofile, " <%d,%s>", WN_intrinsic(wn),
 		    INTRINSIC_name((INTRINSIC) WN_intrinsic(wn)));
+#endif
 	    break;
 	}
     }
@@ -1013,7 +1025,7 @@ static void ir_put_wn(WN * wn, INT indent)
     if (OPCODE_has_ndim(opcode))
 	fprintf(ir_ofile, " %d", WN_num_dim(wn));
     if (OPCODE_has_esize(opcode))
-	fprintf(ir_ofile, " %lld", WN_element_size(wn));
+	fprintf(ir_ofile, " %" LL_FORMAT "d", WN_element_size(wn));
 
     if (OPCODE_has_num_entries(opcode))
 	fprintf(ir_ofile, " %d", WN_num_entries(wn));
@@ -1021,10 +1033,10 @@ static void ir_put_wn(WN * wn, INT indent)
 	fprintf(ir_ofile, " %d", WN_last_label(wn));
 
     if (OPCODE_has_value(opcode)) {
-	fprintf(ir_ofile, " %lld", WN_const_val(wn));
+	fprintf(ir_ofile, " %" LL_FORMAT "d", WN_const_val(wn));
 	/* Also print the hex value for INTCONSTs */
 	if (OPCODE_operator(opcode) == OPR_INTCONST || opcode == OPC_PRAGMA) {
-	    fprintf(ir_ofile, " (0x%llx)", WN_const_val(wn));
+	    fprintf(ir_ofile, " (0x%" LL_FORMAT "x)", WN_const_val(wn));
 	}
     }
 
@@ -1136,6 +1148,9 @@ static void ir_put_wn(WN * wn, INT indent)
 	INT flag =  WN_flag(wn);
 	fprintf(ir_ofile, " # ");
 	if (flag & WN_PARM_BY_REFERENCE) fprintf(ir_ofile, " by_reference ");
+#if defined(TARG_SL)
+	if (flag & WN_PARM_DEREFERENCE) fprintf(ir_ofile, " by_dereference ");
+#endif
 	if (flag & WN_PARM_BY_VALUE)     fprintf(ir_ofile, " by_value ");
 	if (flag & WN_PARM_OUT)          fprintf(ir_ofile, " out ");
 	if (flag & WN_PARM_DUMMY)        fprintf(ir_ofile, " dummy ");

@@ -41,7 +41,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>                        // Elf64_Word
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>                        // Elf64_Word
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h>                  // ir_bwrite.h needs it
 
 #include "defs.h"

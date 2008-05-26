@@ -41,10 +41,10 @@
  * =======================================================================
  *
  *  Module: cg_flags.h
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_flags.h,v $
+ *  $Revision: 1.57 $
+ *  $Date: 06/01/19 16:18:29-08:00 $
+ *  $Author: fchow@fluorspar.internal.keyresearch.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cg_flags.h $
  *
  *  Description:
  *  ============
@@ -259,7 +259,11 @@
  *
  *  IGLS_Enable_All_Scheduling
  *    Enables all the scheduling phases in CG (i.e LOCS, HBS and GCM).
- *
+ * 
+ * RGN_Enable_All_Scheduling
+ *    Enables all the scheduling phases using region including 
+ *    Perform_Global_Schedule and Local_Insn_Schedule
+ * 
  *  CGTARG_Enable_Brlikely
  *	Enable the generation of branch-likely instructions.. 
  *
@@ -294,11 +298,6 @@
  *  CGEXP_cvrt_int_div_to_fdiv
  *	Generate a floating divide operation in place of a 32 bit
  *	integer divide.
- *
-#ifdef KEY
- *  CGEXP_cvrt_int_mult_to_add_shift
- *      Generate a sequence of adds and shifts in place of an integer multiply.
-#endif
  *
  *  CGEXP_fast_imul
  *	Generate an alternative sequence for integer multiplies
@@ -426,8 +425,12 @@
 
 extern BOOL CG_warn_bad_freqs;
 extern BOOL CG_enable_loop_optimizations;
-#ifdef TARG_IA64
-extern BOOL CG_tune_do_loop;
+#ifdef TARG_SL
+extern BOOL CG_enable_zero_delay_loop;
+extern UINT32 CG_zdl_enabled_level;
+extern UINT32 CG_zdl_skip_e;
+extern UINT32 CG_zdl_skip_a;
+extern UINT32 CG_zdl_skip_b;
 #endif
 extern INT32 CG_skip_after;
 extern INT32 CG_skip_before;
@@ -435,6 +438,50 @@ extern INT32 CG_skip_equal;
 extern INT32 CG_local_skip_after;
 extern INT32 CG_local_skip_before;
 extern INT32 CG_local_skip_equal;
+#if defined(TARG_SL)
+extern INT32 CG_local_sched_bb_max;
+extern INT32 CG_bb_sched_op_num_max;
+extern INT32 CG_local_sched_pu_skip_before;
+extern INT32 CG_local_sched_pu_skip_after;
+extern INT32 CG_local_sched_pu_skip_equal;
+extern INT32 CG_local_sched_bb_skip_before;
+extern INT32 CG_local_sched_bb_skip_after;
+extern INT32 CG_local_sched_bb_skip_equal;
+extern INT32 CG_local_sched_op_skip_before;
+extern INT32 CG_local_sched_op_skip_after;
+extern INT32 CG_local_sched_op_skip_equal;
+extern INT32 CG_GCM_skip_before;
+extern INT32 CG_GCM_skip_after;
+extern INT32 CG_GCM_skip_equal;
+extern INT32 CG_GCM_loop_skip_before;
+extern INT32 CG_GCM_loop_skip_after;
+extern INT32 CG_GCM_loop_skip_equal;
+extern INT32 CG_GCM_op_skip_before;
+extern INT32 CG_GCM_op_skip_after;
+extern INT32 CG_GCM_op_skip_equal;
+extern INT32 CG_GCM_LICM_loop_skip_before;
+extern INT32 CG_GCM_LICM_loop_skip_after;
+extern INT32 CG_GCM_LICM_loop_skip_equal;
+extern INT32 CG_GCM_LICM_op_skip_before;
+extern INT32 CG_GCM_LICM_op_skip_after;
+extern INT32 CG_GCM_LICM_op_skip_equal;
+extern INT32 CG_LOOP_DCE_loop_skip_before;
+extern INT32 CG_LOOP_DCE_loop_skip_after;
+extern INT32 CG_LOOP_DCE_loop_skip_equal;
+extern INT32 CG_LOOP_DCE_op_skip_before;
+extern INT32 CG_LOOP_DCE_op_skip_after;
+extern INT32 CG_LOOP_DCE_op_skip_equal;
+extern BOOL CG_GCM_enable_critical_edge_motion;
+extern BOOL CG_GCM_enable_mvtc_optimization;
+extern BOOL CG_GCM_enable_reduce_loop_count;
+extern BOOL CG_GCM_enable_licm;
+extern BOOL CG_GCM_enable_dce;
+extern BOOL CG_GCM_enable_rce;
+extern BOOL CG_GCM_enable_break_dependence;
+
+// this flag is used to control if candidate list need to reshuffle according to that user give
+extern const char* Cand_List_Pattern; 
+#endif 
 extern BOOL CG_skip_local_hbf;
 extern BOOL CG_skip_local_loop;
 extern BOOL CG_skip_local_sched;
@@ -444,12 +491,9 @@ extern BOOL CG_localize_tns;
 extern BOOL CG_localize_tns_Set;
 #ifdef TARG_X8664
 extern BOOL CG_localize_x87_tns;
-extern BOOL CG_localize_x87_tns_Set;
+extern BOOL CG_localize_x87_tns_Set;w
 extern BOOL CG_x87_store;
 #endif
-#ifdef TARG_IA64
-extern BOOL CG_Enable_Ldxmov_Support;
-#endif 
 extern BOOL LOCALIZE_using_stacked_regs;
 extern BOOL CG_tail_call;
 extern BOOL CG_unique_exit;
@@ -491,6 +535,9 @@ extern UINT32 CFLOW_clone_incr;
 extern UINT32 CFLOW_clone_max_incr;
 extern UINT32 CFLOW_clone_min_incr;
 extern const char *CFLOW_cold_threshold;
+#if defined (TARG_SL) && defined (TARG_SL2)
+extern const char *CFLOW_hot_threshold;
+#endif
 #ifdef KEY
 extern BOOL CFLOW_Enable_Freq_Order_On_Heuristics;
 #endif
@@ -552,6 +599,31 @@ extern BOOL IGLS_Enable_PRE_HB_Scheduling;
 extern BOOL IGLS_Enable_POST_HB_Scheduling;
 extern BOOL IGLS_Enable_HB_Scheduling;
 extern BOOL IGLS_Enable_All_Scheduling;
+#if defined(TARG_IA64) || defined(TARG_SL)
+extern BOOL RGN_Enable_All_Scheduling;
+extern BOOL CG_Enable_Regional_Global_Sched;
+extern BOOL CG_Enable_Regional_Local_Sched;
+extern BOOL CG_Enable_Include_Memread_Arc;
+extern BOOL CG_Enable_REGION_formation;
+#endif
+#ifdef TARG_SL2
+extern const char* App_Name;
+#endif
+
+#if defined(TARG_SL)
+extern BOOL CG_Gen_16bit ;
+extern BOOL CG_Enable_br16;
+extern INT32 CG_localsch_pre_size;
+extern BOOL CG_dsp_thread; 
+extern INT32 CG_check_quadword;
+extern BOOL CG_radd16;
+extern BOOL CG_ignore_mem_alias;
+extern BOOL CG_stack_layout;
+extern INT32 CG_ISR;
+extern INT32 CG_Max_Accreg;
+extern INT32 CG_Max_Addreg;
+extern BOOL CG_round_spreg;
+#endif
 
 extern BOOL EMIT_pjump_all;
 extern BOOL EMIT_use_cold_section;
@@ -573,9 +645,6 @@ extern BOOL CGEXP_float_consts_from_ints;
 extern BOOL CGEXP_cvrt_int_div_to_mult;
 extern BOOL CGEXP_cvrt_int_div_to_fdiv;
 extern BOOL CGEXP_opt_float_div_by_const;
-#ifdef KEY
-extern BOOL CGEXP_cvrt_int_mult_to_add_shift;
-#endif
 
 // 10/17/00: these are temporary for osprey tuning -- remove later
 extern const char *CGEXP_lfhint_L1;
@@ -586,6 +655,13 @@ extern const char *CGEXP_sthint_L1;
 extern const char *CGEXP_sthint_L2;
 
 extern BOOL LRA_do_reorder;
+#ifdef TARG_SL2 //sl2 specific option
+extern BOOL Enable_Checking_Register_Allocation;
+extern BOOL CG_sl2;
+extern BOOL CG_SL2_enable_combine_condmv; 
+#endif 
+
+
 #ifdef TARG_X8664
 extern BOOL LRA_prefer_legacy_regs;
 #endif
@@ -611,7 +687,6 @@ extern const char* GRA_spill_count_factor_string;
 #ifdef KEY
 extern BOOL GRA_exclude_callee_saved_regs;
 extern BOOL GRA_eh_exclude_callee_saved_regs;
-extern BOOL GRA_fp_exclude_callee_saved_regs;
 #endif
 
 extern BOOL  HB_formation;
@@ -670,8 +745,6 @@ extern INT32 CG_LOOP_recurrence_min_omega;
 #ifdef KEY
 extern BOOL  LOCS_Fwd_Scheduling;
 extern BOOL  LOCS_Fwd_Scheduling_set;
-extern UINT32 LOCS_Scheduling_Algorithm;
-extern BOOL LOCS_Scheduling_Algorithm_set;
 extern BOOL CG_min_spill_loc_size;
 extern BOOL CG_min_stack_size;
 extern BOOL flag_test_coverage;
@@ -698,19 +771,10 @@ extern BOOL CG_fold_shiftadd;
 extern BOOL CG_use_prefetchnta;
 extern BOOL CG_idivbyconst_opt;
 extern BOOL CG_fold_constimul;
-extern BOOL CG_LOOP_cloop;
+extern BOOL CG_cloop;
 extern BOOL CG_use_lddqu;
-extern BOOL CG_push_pop_int_saved_regs;
-extern BOOL CG_push_pop_int_saved_regs_Set;
-extern BOOL CG_valgrind_friendly;
-extern UINT32 CG_ptr_load_use_latency;
 #endif
 
-// Cycle Count Flags
-extern BOOL CG_Enable_Cycle_Count;
-extern BOOL Cycle_PU_Enable;    
-extern BOOL Cycle_BB_Enable;    
-extern const char *Cycle_String;
 // temporary flags for controlling algorithm selection for fdiv, sqrt, etc
 extern const char *CGEXP_fdiv_algorithm;
 extern const char *CGEXP_sqrt_algorithm;

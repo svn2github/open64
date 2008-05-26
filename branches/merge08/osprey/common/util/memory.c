@@ -1,5 +1,8 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
+ */
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,7 +42,11 @@
 
 
 #include <sys/types.h>
+#if defined(BUILD_OS_DARWIN)
+#include <stdlib.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <malloc.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <bstring.h>
 #include "defs.h"
 #include "mempool.h"
@@ -389,8 +396,9 @@ struct mem_pure_stack {
 BOOL purify_pools = FALSE;
 static BOOL purify_pools_trace = FALSE;
 static BOOL purify_pools_trace_x = FALSE;
+static void PURIFY_OPT_Initialize(void);
 
-#define MAGIC_NUM 0xdecf
+#define MAGIC_NUM 0xabcd
 
 /* Accessing POOL fields.  This is defined here, as these fields are
  * all private.
@@ -839,7 +847,7 @@ MEM_POOL_Report(
                   total_fs,
                   (INT)MEM_STAT_total(as),
                   max_s_fs,
-                  (INT)MEM_STAT_max_s(as),
+		  (INT)MEM_STAT_max_s(as),
                   count_fs,
                   MEM_STAT_count(as),
                   last_grew_fs,
@@ -878,7 +886,7 @@ void
 MEM_Trace(void)
 {
 #ifdef Is_True_On
-/* need linux malloc or -lmalloc on irix to use mallinfo */
+/* need linux malloc or -lmalloc on irix to use mallinfo; none on Darwin */
 #if defined(linux) || defined(MEM_STATS)
   MEM_POOL *pool;
   struct    mallinfo mi = mallinfo();
@@ -980,7 +988,7 @@ Allocate_Block (MEM_POOL *pool)
     ErrMsg (EC_No_Mem, "Allocate_Block");
 
   if ( MEM_POOL_bz(pool) )
-    bzero (block, BLOCK_SIZE + PAD_TO_ALIGN(sizeof(MEM_BLOCK)));
+    BZERO (block, BLOCK_SIZE + PAD_TO_ALIGN(sizeof(MEM_BLOCK)));
   
 #ifdef ZAP_ON_FREE
   else
@@ -1038,7 +1046,7 @@ Allocate_Large_Block (MEM_POOL *pool, INT32 size)
     ErrMsg (EC_No_Mem, "Allocate_Large_Block");
 
   if ( MEM_POOL_bz(pool) ) {
-    bzero (block, size);
+    BZERO (block, size);
   }
   
 #ifdef ZAP_ON_FREE
@@ -1218,7 +1226,7 @@ MEM_POOL_Realloc_P
       printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), old_block);
 #endif
   if ( old_size < new_size )
-    bzero((char*)result + old_size,new_size - old_size);
+    BZERO((char*)result + old_size,new_size - old_size);
   return result;
 #endif
 
@@ -1262,7 +1270,7 @@ MEM_POOL_Realloc_P
                MEM_POOL_name(pool), old_block);
       /* Do a malloc and copy */
       ret_val = (MEM_PTR) malloc (new_size+8);
-      bcopy(old_block, (MEM_PTR) (((size_t) ret_val)+8), old_size);
+      BCOPY(old_block, (MEM_PTR) (((size_t) ret_val)+8), old_size);
     }
     else {
       /* either found it or old_block was null, so do a real realloc */
@@ -1282,7 +1290,7 @@ MEM_POOL_Realloc_P
       MEM_POOL_last_alloc(pool) = ret_val;
       ret_val = (MEM_PTR) ((size_t) ret_val + 8);
       if ( old_size < new_size )
-        bzero((char*)ret_val + old_size,new_size - old_size);
+        BZERO((char*)ret_val + old_size,new_size - old_size);
     }
     if (purify_pools_trace)
       printf ("pool %s, realloc 0x%p, new size %llu, (0x%p - 0x%p)\n",
@@ -1324,7 +1332,7 @@ MEM_POOL_Realloc_P
       return old_block;
     else {
       result = Raw_Allocate (pool, new_size);
-      bcopy (old_block, result, old_size);
+      BCOPY (old_block, result, old_size);
       return result;
     }
   } else {
@@ -1335,7 +1343,7 @@ MEM_POOL_Realloc_P
       /* this is a valid large block that we can reallocate */
       if (new_size <= MIN_LARGE_BLOCK_SIZE) {
 	result = Raw_Allocate (pool, new_size);
-	bcopy (old_block, result, new_size);
+	BCOPY (old_block, result, new_size);
 	MEM_POOL_FREE (pool, old_block);
 	return result;
       } else {
@@ -1355,7 +1363,7 @@ MEM_POOL_Realloc_P
 	MEM_LARGE_BLOCK_ptr(large_block) = (MEM_PTR)
 	  (((char *)large_block) + MEM_LARGE_BLOCK_OVERHEAD);
 	if (MEM_POOL_bz(pool)) {
-	  bzero (((char *) MEM_LARGE_BLOCK_ptr(large_block)) + old_size,
+	  BZERO (((char *) MEM_LARGE_BLOCK_ptr(large_block)) + old_size,
 		 new_size - old_size);
 	}
 	p = MEM_LARGE_BLOCK_prev(large_block);
@@ -1371,9 +1379,9 @@ MEM_POOL_Realloc_P
     } else {
       result = Raw_Allocate (pool, new_size);
       if (new_size > old_size)
-	bcopy (old_block, result, old_size);
+	BCOPY (old_block, result, old_size);
       else
-	bcopy (old_block, result, new_size);
+	BCOPY (old_block, result, new_size);
       return result;
     }
   }
@@ -1610,7 +1618,7 @@ MEM_POOL_Pop_P
 	VALGRIND_MAKE_WRITABLE(MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
 #endif /* NO_VALGRIND */
 #endif /* KEY */
-	bzero (MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
+	BZERO (MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
 #ifdef KEY
 #ifndef NO_VALGRIND
 	VALGRIND_MAKE_NOACCESS(MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
@@ -1650,7 +1658,7 @@ MEM_POOL_Pop_P
     VALGRIND_MAKE_WRITABLE(bsp, sizeof(MEM_POOL_BLOCKS));
 #endif /* NO_VALGRIND */
 #endif /* KEY */
-    bzero (bsp, sizeof(MEM_POOL_BLOCKS));
+    BZERO (bsp, sizeof(MEM_POOL_BLOCKS));
 #ifdef KEY
 #ifndef NO_VALGRIND
     VALGRIND_MAKE_NOACCESS(bsp, sizeof(MEM_POOL_BLOCKS));
@@ -1870,7 +1878,7 @@ void MEM_POOL_Delete(MEM_POOL *pool)
   MEM_POOL_BLOCKS_rest(bsp) = free_mem_pool_blocks_list;
   free_mem_pool_blocks_list = bsp;
 
-  bzero (pool, sizeof(MEM_POOL));
+  BZERO (pool, sizeof(MEM_POOL));
   MEM_POOL_magic_num(pool) = 0;
 }
 
@@ -1899,6 +1907,9 @@ MEM_POOL_Initialize_P
   MEM_STAT_ARGS(line,file)
 )
 {
+  /* Make sure the purify_pools is initialized */
+  PURIFY_OPT_Initialize();
+
 #ifdef KEY
 #ifndef NO_VALGRIND
   static BOOL mem_overhead_pool_initialized = FALSE;
@@ -1918,7 +1929,7 @@ MEM_POOL_Initialize_P
   MEM_POOL_blocks(pool) = NULL;
   MEM_POOL_frozen(pool) = FALSE;
   MEM_POOL_pure_stack(pool) = NULL;
-  
+
   /* Don't allow duplicate initializations */
   Is_True (MEM_POOL_magic_num(pool) != MAGIC_NUM,
            ("Initialization of an already initialized pool: %s\n",
@@ -1952,6 +1963,64 @@ MEM_POOL_Initialize_P
      * the moment.
      */
     MEM_POOL_blocks(pool) = NULL;
+  }
+}
+
+
+
+/* ====================================================================
+ *
+ *  PURIFY_OPT_Initialize
+ *
+ *  Initialize the purify_tools opt. Some MEM_POOL may be initialized
+ *  before the MEM_Initialize().
+ *
+ * ====================================================================
+ */
+static void
+PURIFY_OPT_Initialize(void)
+{
+  static BOOL initialized = FALSE;
+  if ( initialized == FALSE ) {
+    char* ppools = getenv ("PURIFY_MEMPOOLS");
+    if (ppools) {
+      if (((ppools[0] == 'O') || (ppools[0] == 'o')) &&
+          ((ppools[1] == 'N') || (ppools[1] == 'n'))) {
+        purify_pools = TRUE;
+        if ((ppools[2] == '-') &&
+            ((ppools[3] == 'T') || (ppools[3] == 't')) &&
+            ((ppools[4] == 'R') || (ppools[4] == 'r')) &&
+            ((ppools[5] == 'A') || (ppools[5] == 'a')) &&
+            ((ppools[6] == 'C') || (ppools[6] == 'c')) &&
+            ((ppools[7] == 'E') || (ppools[7] == 'e'))) {
+          purify_pools_trace = TRUE;
+          if ((ppools[8] == '-') &&
+              ((ppools[9] == 'X') || (ppools[9] == 'x'))) {
+            purify_pools_trace_x = TRUE;
+	    if ((ppools[10] == '-') && 
+	      ((ppools[11] == 'O') || (ppools[11] == 'o')) &&
+	      ((ppools[12] == 'N') || (ppools[12] == 'n')) &&
+	      ((ppools[13] == 'L') || (ppools[13] == 'l')) &&
+	      ((ppools[14] == 'Y') || (ppools[14] == 'y'))) {
+	      purify_pools_trace = FALSE; 
+              DevWarn("Using purify memory pools, limited extended tracing ###");
+	    } else 
+              DevWarn ("Using purify memory pools, with extended tracing ###");
+          }
+          else 
+            DevWarn ("Using purify memory pools, with tracing ###");
+        }
+        else DevWarn ("Using purify memory pools ###");
+      }
+      else if (((ppools[0] == 'O') || (ppools[0] == 'o')) &&
+               ((ppools[1] == 'F') || (ppools[1] == 'f')) &&
+               ((ppools[2] == 'F') || (ppools[2] == 'f'))) {
+        purify_pools = FALSE;
+      }
+      else DevWarn ("PURIFY_MEMPOOLS set to garbage, using regular pools");
+    }
+
+    initialized = TRUE;
   }
 }
 
@@ -2076,7 +2145,7 @@ Realloc_Clear ( MEM_PTR ptr, INT32 new_size, INT32 old_size )
   if ( new_size > old_size ) {
     MEM_PTR start_of_new = (MEM_PTR) ( ((char *) result) + old_size );
     INT32 num_added_bytes = new_size - old_size;
-    bzero ( start_of_new, num_added_bytes );
+    BZERO ( start_of_new, num_added_bytes );
   }
 
   return result;

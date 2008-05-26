@@ -305,7 +305,11 @@ UINT32 IPA_Max_Output_File_Size = DEFAULT_OUTPUT_FILE_SIZE;
 INT32 IPA_Output_File_Size = 0;
 
 /* This flag is to use the old type merge phase. It should be removed when the old type merge is removed. */
+#if !defined(TARG_SL)
 BOOL IPA_Enable_Old_Type_Merge = FALSE;  
+#else
+BOOL IPA_Enable_Old_Type_Merge = TRUE;  //jczhang: Not enabled in SL
+#endif
 
 /* enable devirtualization */
 BOOL IPA_Enable_Devirtualization = FALSE;

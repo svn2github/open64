@@ -1205,7 +1205,8 @@ Synch_ST_flags (ST& merged_st, const ST& original_st)
 	ST_KEEP_NAME_W2F | ST_IS_RESHAPED | ST_EMIT_SYMBOL | ST_GPREL |
 	ST_NOT_GPREL | ST_IS_NAMELIST | ST_IS_F90_TARGET |
 	ST_DECLARED_STATIC | ST_IS_THREAD_PRIVATE | ST_ADDR_SAVED |
-	ST_ADDR_PASSED | ST_INIT_VALUE_ZERO | ST_IS_INITIALIZED; 
+	ST_ADDR_PASSED | ST_INIT_VALUE_ZERO | ST_IS_INITIALIZED |
+        ST_HAS_NAMED_SECTION; 
 
     UINT32 original_flags = original_st.flags;
     UINT32 merged_flags = merged_st.flags;
@@ -1332,7 +1333,8 @@ Enter_Original_St(const IPC_GLOBAL_TABS& original_tabs,
 	Merge_Global_St (ST_IDX_index (ST_raw_base_idx(original_st)),
 			 original_tabs);
     Set_ST_raw_base_idx(new_st, base_idx);
-#ifdef TARG_X8664
+
+#if defined(TARG_X8664) || defined(TARG_SL)
     if ( ST_sclass(new_st) != SCLASS_COMMON &&
 	 // Avoid Fortran Equivalenced arrays (to complete fix for bug 1988)
 	 !ST_is_equivalenced(new_st) &&
@@ -1522,7 +1524,7 @@ Merge_St_With_St(const IPC_GLOBAL_TABS &original_tabs,
     Synch_St_With_St (original_tabs, merged_st, original_st);
 
     (*New_St_Idx).set_map (ST_st_idx(original_st), ST_st_idx(merged_st));
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
     if ( ST_sclass(merged_st) != SCLASS_COMMON &&
 	 // Avoid Fortran Equivalenced arrays (to complete fix for bug 1988)
 	 !ST_is_equivalenced(merged_st) &&
@@ -1717,7 +1719,7 @@ Merge_Global_St(UINT                   idx,
     //
     char *st_name = &original_tabs.symstr_tab[ST_name_idx (original_st)];
 
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
     void *pext = ld_slookup_mext(st_name,
     	    	    	    	(ST_storage_class (original_st) == SCLASS_EXTERN));
 #else

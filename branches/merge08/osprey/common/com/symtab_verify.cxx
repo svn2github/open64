@@ -364,6 +364,7 @@ ST_Verify_Flags (const ST &s)
             (msg, "Class", Class_Name(ST_sym_class(s)), "ST_IS_CONST_VAR")); 
 
     Is_True(ST_sclass(s) != SCLASS_AUTO   &&
+    /* okay to have const formal in nvisa */
             ST_sclass(s) != SCLASS_FORMAL &&
             ST_sclass(s) != SCLASS_FORMAL_REF,
             (msg, "Storage class", Sclass_Name(ST_sclass(s)), 
@@ -434,7 +435,9 @@ ST_Verify_Fields(const ST &s)
 
   switch (ST_sym_class (s)) {
   case CLASS_FUNC:
+#ifndef KEY
     Is_True (ST_level (&s) == GLOBAL_SYMTAB, (msg, "sym_class"));
+#endif
     Is_True( 0 < ST_pu(s) && ST_pu(s) < PU_Table_Size (), (msg, "pu")); 
 
     // Verify the PU associated with this st

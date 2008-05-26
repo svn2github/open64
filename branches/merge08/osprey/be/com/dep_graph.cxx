@@ -73,7 +73,11 @@ static char *rcs_id = "$Source: be/com/SCCS/s.dep_graph.cxx $ $Revision: 1.7 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 
 #define USE_STANDARD_TYPES	    /* override unwanted defines in "defs.h" */
 
@@ -86,6 +90,9 @@ static char *rcs_id = "$Source: be/com/SCCS/s.dep_graph.cxx $ $Revision: 1.7 $";
 #include "irbdata.h"		    /* for inito */
 #include "dwarf_DST_mem.h"	    /* for DST */
 #include "pu_info.h"
+#ifdef __MINGW32__
+#include <WINDOWS.h>
+#endif /* __MINGW32__ */
 #include "ir_bwrite.h"
 #include "ir_bcom.h"
 

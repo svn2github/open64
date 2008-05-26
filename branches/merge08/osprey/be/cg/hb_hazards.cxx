@@ -41,10 +41,10 @@
 // =======================================================================
 //
 //  Module: hb_hazards.cxx
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/hb_hazards.cxx,v $
+//  $Revision: 1.7 $
+//  $Date: 05/12/05 08:59:07-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.hb_hazards.cxx $
 //
 //  Description:
 //  ============
@@ -263,12 +263,7 @@ Is_Delay_Slot_Op (OP *op, BB *bb)
 {
   if (op != BB_last_op(bb)) return FALSE;
   OP *xfer_op = OP_prev(op);
-#ifdef TARG_IA64
-  // if (xfer_op == NULL || !OP_xfer(xfer_op)) return FALSE;
-  if (xfer_op == NULL || !TOP_is_xfer(OP_code(xfer_op))) return FALSE;
-#else
   if (xfer_op == NULL || !OP_xfer(xfer_op)) return FALSE;
-#endif
   return TRUE;
 }
 
@@ -390,12 +385,7 @@ Handle_Post_Hazard (OP *op, INT opnd, INT ops_to_check)
       break;
     }
     ops_to_check -= OP_Real_Ops (scan_op);
-#ifdef TARG_IA64
-    //if (OP_xfer(scan_op)) ops_to_check -= 1;  // account for the delay slot
-    if (TOP_is_xfer(OP_code(scan_op))) ops_to_check -= 1;  // account for the delay slot
-#else
     if (OP_xfer(scan_op)) ops_to_check -= 1;  // account for the delay slot
-#endif
   }
   if (add_noops) {
     // add ops_to_check number of noops.
@@ -468,7 +458,7 @@ Handle_Additive_Hazards (OP *op, INT opnd, INT numops)
 // Placeholder routine to check if <op> has any dependence conflict with
 // <prev_op>.
 // ======================================================================
-BOOL
+static BOOL
 Is_There_OP_Dependence(OP *op, OP *prev_op)
 {
 
@@ -494,33 +484,12 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
       // which sets the predicate and the branch operation which uses
       // the same predicate.
 
-#ifdef TARG_IA64
-      //if (OP_icmp(prev_op) && OP_xfer(op)) {
-      if (OP_icmp(prev_op) && TOP_is_xfer(OP_code(op))) {
-#else
       if (OP_icmp(prev_op) && OP_xfer(op)) {
-#endif
-
 	TN *tn1, *tn2;
 	OP *cmp_op;
 	
 	CGTARG_Analyze_Compare(op, &tn1, &tn2, &cmp_op);
 	if (prev_op == cmp_op) continue;
-
-#ifdef TARG_IA64
-        // add one special case; 
-        // if we caring for predicate compare. 
-        // CGTARG_Analyze_Compare return cmp_op as null;
-        // but when prev_op just condition op it always 
-        // donot have any dependency between prev_op and op
-        // Such as:
-        // (p6) cmp P7,P8 = r3, r4
-        // (p7) br.cond _Lt.1.8
-        // always can be put into one bundle
-        if (read_dependence && OP_cond_def(prev_op) && !cmp_op) continue;
-	
-	if (read_dependence) continue; //cmp-branch always can be same bundle
-#endif
       }
 
       // (2) Ignore all dependences originating from p0 predicate.
@@ -535,16 +504,8 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
 
       // (5) A check load and a subsequent instruction that reads the
       // target of the check load may exist in the same instruction group.
-#ifdef TARG_IA64
-      if (read_dependence && CGTARG_Is_OP_Check_Load(prev_op)) continue;
-#else
       if (read_dependence && CGTARG_Is_OP_Speculative(prev_op)) continue;
-#endif
 
-#ifdef TARG_IA64
-      // (6) mov TOBR, br B0
-      if (read_dependence && OP_code(prev_op)==TOP_mov_t_br && OP_xfer(op)) continue;
-#endif
       return TRUE;
     }
   }
@@ -581,12 +542,7 @@ Delay_Scheduling_OP(OP *op, INT slot_pos, TI_BUNDLE *bundle)
   // inserted before (instead of after). As a result, any <xfer_op>
   // will be the last_op in a legal bundle.
 
-#ifdef TARG_IA64
-  //if (BB_last_op(OP_bb(op)) == op && OP_xfer(op) && 
-  if (BB_last_op(OP_bb(op)) == op && TOP_is_xfer(OP_code(op)) && 
-#else
-  if (BB_last_op(OP_bb(op)) == op && OP_xfer(op) &&
-#endif
+  if (BB_last_op(OP_bb(op)) == op && OP_xfer(op) && 
       (slot_pos != (ISA_MAX_SLOTS - 1))) 
     return TRUE;
 
@@ -832,12 +788,7 @@ Check_For_Other_Hazards(OP *op)
 
   if (PROC_has_branch_delay_slot()) {
     // Check for delay slot hazards.
-#ifdef TARG_IA64
-    //if (OP_xfer(op)) {
-    if (TOP_is_xfer(OP_code(op))) {
-#else
-      if (OP_xfer(op)) {
-#endif
+    if (OP_xfer(op)) {
       Handle_Post_Hazard (op, OPND_NONE, 1);
       Add_Post_Hazard_To_Q (op, OPND_NONE, 1);
     }
@@ -866,7 +817,6 @@ Check_For_Delay_Slot_Hazards (BB *bb)
     BB_Move_Delay_Slot_Op (bb);
   }
 
-#ifndef KEY
   // R10k chip workaround: Avoid placing integer mult/div ops in delay
   // slots of unconditional branches. (see pv516598) for more details.
   if (Is_Delay_Slot_Op (last_op, bb) && 
@@ -877,8 +827,79 @@ Check_For_Delay_Slot_Hazards (BB *bb)
       BB_Insert_Noops(xfer_op, 1, FALSE); 
     }
   }
-#endif
 }
+
+
+#if defined(TARG_SL)
+void Repl_Tmp_TN(BB *bb)
+{
+  OP *op;
+  OP *prev_op;
+  TN *tmp_tn;
+
+  prev_op = BB_first_op(bb);
+  op = OP_next(prev_op);
+  tmp_tn = TMP1_TN;
+  while (op) {
+    Is_True(prev_op, ("prev_op is null in BB %d",BB_id(bb)));
+    for (INT j = 0; j < OP_results(prev_op); ++j) {
+      TN *result_tn = OP_result(prev_op, j);
+      ISA_REGISTER_CLASS cl = TN_register_class(result_tn);
+
+     if (!OP_cond_def(prev_op) && !OP_same_res(op) && !OP_same_res(prev_op)) {
+	// need to screen out depb since the dest is also implicit use, 
+	// replacing the implicit use won't help
+	if (cl == ISA_REGISTER_CLASS_integer) {
+	  REGISTER reg = TN_register(result_tn);
+	  BOOL read_dep = CGTARG_OP_Refs_TN(op, result_tn);
+	  BOOL write_dep = CGTARG_OP_Defs_TN(op, result_tn);
+	  BOOL read_dep2 = OP_Refs_Reg(op, cl, reg); 
+	  BOOL write_dep2 = OP_Defs_Reg(op, cl, reg);
+
+	  if (CGTARG_OP_Refs_TN(prev_op, tmp_tn) || OP_Refs_Reg(prev_op, cl, TN_register(tmp_tn)))
+	    continue;    // if previous opr has been replaced, doing so will not help
+
+	  if ((read_dep && write_dep) || (read_dep2 && write_dep2)) {
+	    // result of prev inst is being used and defined by this op
+	    // change result tn to tmp_tn, and the op tn to tmp_tn
+	    // this eliminates such psuedo WaW dep
+	    Is_True(OP_has_result(prev_op), ("result to be repl conflict"));
+	    Set_OP_result(prev_op, j, tmp_tn);
+
+	    BOOL mod = FALSE;
+	    for ( INT num = 0; num < OP_opnds(op); num++ ) {
+	      TN *opnd_tn = OP_opnd(op, num);
+	      if (opnd_tn == result_tn) {
+		Set_OP_opnd(op, num, tmp_tn);
+		mod = TRUE;
+	      }
+	      else if (TN_is_register(opnd_tn) && (TN_register_class(opnd_tn)==cl) &&
+		       TN_register(opnd_tn) == reg) {
+		Set_OP_opnd(op, num, tmp_tn);
+		mod = TRUE;
+	      }
+	      
+	    }
+	    Is_True(mod, ("cannot find result tn to fix up"));
+	    if (tmp_tn == TMP1_TN) {
+            tmp_tn = TMP2_TN;
+	    } else {
+			tmp_tn = TMP1_TN;
+	    }
+
+	    // only one tmp available, so change one result only
+	    continue;
+	  }
+	}
+      }
+    }
+    prev_op = op;
+    op = OP_next(op);
+  }
+}
+extern void dump_bb (BB *bb);
+#endif
+
 
 // ======================================================================
 // Eliminate hazards for 'bb' by adding noops.
@@ -924,4 +945,10 @@ Handle_All_Hazards (BB *bb)
   }
   // Check for any extra hazards.
   Insert_Stop_Bits(bb);
+
+#if defined(TARG_SL)
+  // remove pseudo WaW dependence
+  Repl_Tmp_TN(bb);
+#endif
+
 }

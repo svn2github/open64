@@ -33,7 +33,7 @@
 */
 
 
-/* $Header$ */
+/* $Header: /depot/CVSROOT/javi/src/sw/cmplr/include/rld_interface.h,v 1.1 2005/07/27 02:22:18 kevinlo Exp $ */
 
 /*
  Everything in this header is intended solely for use by

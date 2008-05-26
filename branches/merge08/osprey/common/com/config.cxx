@@ -84,11 +84,12 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/con
 #endif /* ~FRONT_F90 */
 #endif /*  FRONT_END */
 #include <ctype.h>	/* For isdigit */
-#include "elf_stuff.h"
-
 #define USE_STANDARD_TYPES 1
 #include "defs.h"
+#if ! defined(BUILD_OS_DARWIN)
+#include "elf_stuff.h"
 #include "em_elf.h"
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include "config.h"
 #include "config_platform.h"
 #include "config_targ.h"
@@ -106,7 +107,11 @@ static INT32 Ignore_Int;
 /* The following contains the phase-specific option groups and their
  * associated variable definitions:
  */
+#if defined(TARG_NVISA)
+#include "config_targ_opt.cxx"
+#else
 #include "config_TARG.cxx"
+#endif
 #include "config_debug.cxx"
 #include "config_ipa.cxx"
 #include "config_list.cxx"
@@ -209,7 +214,11 @@ static char *Language_Name = NULL;	/* Source language name */
 LANGUAGE Language = LANG_UNKNOWN;	/* See language.h */
 BOOL CXX_Bool_On = TRUE;
 BOOL CXX_Bool_Set = FALSE;
+#if defined(TARG_SL)
+BOOL CXX_Exceptions_On = FALSE;
+#else
 BOOL CXX_Exceptions_On = TRUE;
+#endif
 BOOL CXX_Exceptions_Set = FALSE;
 BOOL CXX_Alias_Const=FALSE;
 BOOL CXX_Alias_Const_Set=FALSE;
@@ -296,7 +305,7 @@ BOOL WHIRL_Merge_Types_Set = FALSE;
 BOOL WHIRL_Comma_Rcomma_On = TRUE;
 BOOL WHIRL_Comma_Rcomma_Set = FALSE;
 BOOL WHIRL_Mtype_A_On = FALSE;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_NVISA)
 BOOL WHIRL_Mtype_B_On = TRUE;
 #else
 BOOL WHIRL_Mtype_B_On = FALSE;
@@ -380,6 +389,7 @@ BOOL SIMD_UMask = TRUE;
 BOOL SIMD_PMask = TRUE;
 #endif
 BOOL Force_GP_Prolog;	/* force usage of gp prolog */
+char *IPA_Object_Name = NULL;   /* distinguish symbols in different .so files */
 
 OPTION_LIST *Registers_Not_Allocatable = NULL;
 
@@ -556,6 +566,15 @@ static OPTION_DESC Options_TENV[] = {
   { OVK_INT32,	OV_INTERNAL,	FALSE, "iolist_reuse",	"iolist_reuse",
     100, 1, INT32_MAX,	&iolist_reuse_limit, 			NULL,
     "Maximum number of iolists which will share stack space" },
+  { /* IPA object name used for -shared compile */
+    OVK_NAME,   OV_SHY,         FALSE, "object_name",          "",
+    0, 0, 0, &IPA_Object_Name, NULL },
+#if defined(TARG_SL)
+  { OVK_BOOL,   OV_VISIBLE,	FALSE, "sl2_initbuf",	NULL,
+    0, 0, 0,    &Sl2_Inibuf, NULL, "Need to Init buf for sl2" },
+  { OVK_BOOL,   OV_VISIBLE,	FALSE, "sl2_ibuf_name",	NULL,
+    0, 0, 0,    &Sl2_Ibuf_Name, NULL, "function name to Init buf for sl2" },
+#endif
 
   { OVK_COUNT }		/* List terminator -- must be last */
 };
@@ -876,8 +895,13 @@ BOOL Enable_SWP = FALSE;		/* but see cgdriver.c */
 BOOL Enable_SWP_overridden = FALSE;
 
 /***** What is the byte	sex of the host	and target? *****/
+#if defined(TARG_SL)
+UINT8 Host_Byte_Sex = LITTLE_ENDIAN;	/* Set in config_host.c	*/
+UINT8 Target_Byte_Sex =	LITTLE_ENDIAN;	/* Set in config_targ.c	*/
+#else
 UINT8 Host_Byte_Sex = BIG_ENDIAN;	/* Set in config_host.c	*/
 UINT8 Target_Byte_Sex =	BIG_ENDIAN;	/* Set in config_targ.c	*/
+#endif
 BOOL  Same_Byte_Sex = TRUE;		/* Set in config_targ.c	*/
 
 /***** Miscellaneous code generation options *****/
@@ -912,6 +936,10 @@ char *TLS_Model_Name = NULL;		/* -TENV:tls-model=xxx  */
 BOOL Omit_UE_DESTROY_FRAME = FALSE;  /* tmp close Epilogue overflow error */
 
 INT  target_io_library;
+#if defined (TARG_SL)
+BOOL Sl2_Inibuf=FALSE;
+char* Sl2_Ibuf_Name=NULL;
+#endif
 
 #ifdef TARG_X8664
 char* Mcmodel_Name = NULL;      /* -TENV:mcmodel=xxx */
@@ -949,6 +977,9 @@ char *Purple_Path = 0;		    /* path to purple.so */
 char *Prompf_Anl_Path = 0;	    /* path to prompf_anl.so */
 WN_MAP Prompf_Id_Map = WN_MAP_UNDEFINED; 
 			/* Maps WN constructs to unique identifiers */
+#if defined(TARG_SL)
+BOOL Run_ipisr = FALSE;         /* run ipisr register allocation */
+#endif
 #endif /* BACK_END */
 char *Inline_Path = 0;                    /* path to inline.so */
 #if defined(BACK_END) || defined(QIKKI_BE)
@@ -1039,124 +1070,7 @@ Configure_Platform ( char *platform_name )
     Processor_Name = POPTS_pname(popts);
   }
 }
-
-/* ====================================================================
- *
- * Configure_Ofast
- *
- * Configure option defaults which depend on -Ofast (the baseline SPEC
- * optimizaiton option).  These currently include:
- *
- *   -OPT:Olimit=0 -- no limit on optimization region size.
- *   -OPT:roundoff=3 -- do any mathematically valid rearrangement.
- *   -OPT:div_split=ON -- allow splitting a/b => a*recip(b).
- *   -OPT:speculative_null_ptr_deref=ON -- allow speculation past the null
- *				   	   ptr test. assumes page zero as 
- *					   readable.
- *   -OPT:alias=typed -- pointers to different types don't alias.
- *   -WOPT:copy_ops=OFF -- don't copy-propagate operations that the IVR
- *		can't handle (OFF by default now, but just in case...).
- *   -WOPT:estr_fb_injury=ON -- SSAPRE strength reduction uses
- *                              feedback frequency rather than loop
- *                              nesting to decide whether each IV
- *                              update should be viewed as injury or
- *                              kill.
- *
- * This must be done before abi/isa/processor configuration.
- *
- * ====================================================================
- */
 
-static void
-Configure_Ofast ( void )
-{
-  /* We assume that the driver has defaulted Opt_Level properly. */
-  /* First set the options that are common to all targets: */
-  if ( ! Olimit_Set ) {
-#ifdef KEY
-// bug 2679
-// With -OPT:Olimit=0, we assign MAX_OLIMIT to it, do the same here.
-    Olimit = MAX_OLIMIT;
-#else
-    Olimit = 0;
-#endif
-    Olimit_Set = TRUE;
-  }
-  if ( ! Roundoff_Set ) {
-#ifndef KEY
-    Roundoff_Level = ROUNDOFF_ANY;
-#else
-    Roundoff_Level = ROUNDOFF_ASSOC;
-#endif
-    Roundoff_Set = TRUE;
-  }
-
-  if ( ! Div_Split_Set ) {
-    Div_Split_Allowed = TRUE;
-    Div_Split_Set = TRUE;
-  }
-/* #645549: There exists an OS bug which gets triggered by NULL ptr
-   speculation. Disable NULL ptr speculation for Ofast (base flags).
-   They will however continue to be turned ON for SPEC peak flags.
-
-  if ( ! GCM_Eager_Null_Ptr_Deref_Set ) {
-    GCM_Eager_Null_Ptr_Deref = TRUE;
-    GCM_Eager_Null_Ptr_Deref_Set = TRUE;
-  }
-*/
-  if ( ! Alias_Pointer_Types_Set ) {
-    Alias_Pointer_Types = TRUE;
-    Alias_Pointer_Types_Set = TRUE;
-  }
-  if ( ! WOPT_Enable_Copy_Prop_Bad_Ops_Set ) {
-    WOPT_Enable_Copy_Prop_Bad_Ops = FALSE;
-    WOPT_Enable_Copy_Prop_Bad_Ops_Set = TRUE;
-  }
-  if ( ! WOPT_Enable_Estr_FB_Injury_Set ) {
-    WOPT_Enable_Estr_FB_Injury = TRUE;
-    WOPT_Enable_Estr_FB_Injury_Set = TRUE;
-  }
-
-  /* Get platform and its associated options: */
-  Configure_Platform ( Ofast );
-}
-
-#ifdef TARG_IA64
-/*==============================================================
-* Configure_Olegacy
-*
-* Set default call-shared and alias=typed if legacy is NULL
-* Set default non-shared and alias=notyped otherwise
-* in_FE indicates that whether this is invoked in FE
-*===============================================================
-*/
-extern BOOL Olegacy;
-
-void
-Configure_Olegacy (BOOL in_FE)
-{
-  if(!in_FE) {
-    /* We assume that the driver has defaulted CALL-SHARED and alias=typed. */
-    /* First set the options that are common to all targets: */
-    if ( ! Olegacy ) {
-      Use_Call_Shared_Link = TRUE;
-      if(Alias_Pointer_Types_Set) {
-        Alias_Pointer_Types = TRUE;
-        Alias_Pointer_Types_Set = TRUE;
-      }
-    }
-    else {
-      Use_Call_Shared_Link = FALSE;
-      if(Alias_Pointer_Types_Set) {
-        Alias_Pointer_Types = FALSE;
-        Alias_Pointer_Types_Set = TRUE;
-      }
-    }
-  } else {
-    if(Olegacy) Use_Call_Shared_Link = FALSE;
-  }
-}
-#endif
 
 /* ====================================================================
  *
@@ -1198,12 +1112,6 @@ Configure (void)
   atexit(whirlstats);
 #endif
 
-#ifdef TARG_IA64
-  /* Resume original settings or PRO64 if Olegacy flag is set;
-   * and set default settings otherwise
-   */
-  Configure_Olegacy(FALSE);
-#endif
 
   /* Configure the alias options first so the list is processed and
    * we can tell for -OPT:Ofast below what overrides have occurred:
@@ -1215,10 +1123,6 @@ Configure (void)
     Configure_Platform ( Platform_Name );
   }
 
-  /* First, if -OPT:Ofast (a.k.a. SPEC) is set, configure defaults: */
-  if ( Ofast != NULL ) {
-    Configure_Ofast ();
-  }
 
 
   /* Perform host-specific and target-specific configuration: */
@@ -1264,7 +1168,8 @@ Configure (void)
   if (Force_GP_Prolog) Force_Jalr = TRUE;
 #ifdef TARG_X8664
   // Bug 1039 - align aggregates to 16-byte for all optimization levels
-  if ( Is_Target_SSE2() )
+  // OSP: Some cases may failed on i386(-march=anyx86) due to the alignment
+  // bug 13998 - do this even under -mno-sse2
     Aggregate_Alignment = 16;
   if ( !Vcast_Complex_Set && Opt_Level > 1 )
     Vcast_Complex = TRUE;
@@ -1391,6 +1296,11 @@ Configure_Source ( char	*filename )
   Goto_Skip_List = Build_Skiplist ( Goto_Skip );
 #endif
 
+#if defined(TARG_SL)
+  /* Are we skipping any branches for DDB? */
+  DDB_Skip_List = Build_Skiplist ( DDB_Skip );
+#endif
+
   /* F90 is a recursive language, so this needs to be set */
   if (!LANG_Recursive_Set && Language == LANG_F90)
      LANG_Recursive = TRUE;
@@ -1417,8 +1327,10 @@ Configure_Source ( char	*filename )
   if ( ! Cfold_Aggr_Set )
     Enable_Cfold_Aggressive = TRUE;
 
+#ifndef TARG_NVISA // nvisa wants to preserve 32<->64 conversions
   if (!Enable_CVT_Opt_Set)
     Enable_CVT_Opt = ( Opt_Level > 0);
+#endif
 
   CSE_Elim_Enabled = Opt_Level > 0;
 
@@ -1465,7 +1377,7 @@ Configure_Source ( char	*filename )
   Enable_BB_Splitting = ! Get_Trace ( TP_FLOWOPT, 0x080 );
 
   if (Opt_Level > 2 && ! Olimit_Set)
-	Olimit = DEFAULT_O3_OLIMIT;
+	Olimit = MAX(Olimit,DEFAULT_O3_OLIMIT);
   if (Olimit == 0) {
 	/* 0 Olimit means no limit or infinite limit */
 	Olimit = MAX_OLIMIT;
@@ -1516,13 +1428,13 @@ Configure_Source ( char	*filename )
   /* IEEE arithmetic options: */
   if ( IEEE_Arithmetic > IEEE_ACCURATE ) {
     /* Minor roundoff differences for inexact results: */
-    /* the following two statement are unsafe for both X8664 and IA64
-       TODO:need to be taken care when merged into other arch*/
-#ifndef KEY // facerec fails at -O3 if Recip_Allowed is true
+#if !defined(TARG_IA64) && !defined(TARG_X8664)
+    // facerec fails at -O3 if Recip_Allowed is true
     if ( ! Recip_Set )
       Recip_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
 #endif
-#ifndef KEY // apsi fails at -O3 because Rsqrt_Allowed is true
+#if !defined(TARG_IA64) && !defined(TARG_X8664)
+    // apsi fails at -O3 because Rsqrt_Allowed is true
     if ( ! Rsqrt_Set )
       Rsqrt_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
 #endif
@@ -1578,7 +1490,7 @@ Configure_Source ( char	*filename )
     if (!Fast_trunc_Set)
       Fast_trunc_Allowed = Roundoff_Level >= ROUNDOFF_SIMPLE;
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
     if ( ! CIS_Set )
       CIS_Allowed |= Roundoff_Level >= ROUNDOFF_SIMPLE;
 #endif
@@ -1656,6 +1568,13 @@ Configure_Source ( char	*filename )
     Trace_Option_Groups ( TFile, Common_Option_Groups, TRUE );
   } else if ( Get_Trace ( TP_MISC, 32 ) ) {
     Trace_Option_Groups ( TFile, Common_Option_Groups, FALSE );
+  }
+
+  // If -fc,<name> but no -CLIST:dotc_filename=<name>,
+  // then copy -fc name to clist option for use in whirl2c.
+  // This allows c: in paths for windows.
+  if (Whirl2C_File_Name && CLIST_dotc_filename == NULL) {
+    CLIST_dotc_filename = Whirl2C_File_Name;
   }
 
 #ifdef KEY // bug 12939
@@ -1883,11 +1802,19 @@ Build_Skiplist ( OPTION_LIST *olist )
   {
     if ( !strncmp ( "skip_a", OLIST_opt(ol), 6 ) ||
 	 !strncmp ( "region_skip_a", OLIST_opt(ol), 13 ) ||
-	 !strncmp ( "goto_skip_a", OLIST_opt(ol), 11 ) ) {
+	 !strncmp ( "goto_skip_a", OLIST_opt(ol), 11 ) 
+#if defined(TARG_SL)
+	 || !strncmp ( "ddb_skip_a", OLIST_opt(ol), 10 )
+#endif
+	 ) {
       Set_SKIPLIST_kind ( sl, count, SK_AFTER );
     } else if ( !strncmp ( "skip_b", OLIST_opt(ol), 6 ) ||
 	        !strncmp ( "region_skip_b", OLIST_opt(ol), 13 ) ||
-	        !strncmp ( "goto_skip_b", OLIST_opt(ol), 11 ) ) {
+	        !strncmp ( "goto_skip_b", OLIST_opt(ol), 11 ) 
+#if defined(TARG_SL)
+	     || !strncmp ( "ddb_skip_b", OLIST_opt(ol), 10 )
+#endif
+		) {
       Set_SKIPLIST_kind ( sl, count, SK_BEFORE );
     } else {
       Set_SKIPLIST_kind ( sl, count, SK_EQUAL );

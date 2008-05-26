@@ -750,7 +750,7 @@ Copy_array_range (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
  */                                                                                                        
 
 template <class T, UINT block_size>
-UINT32
+void
 Delete_array_item (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
 		  RELATED_SEGMENTED_ARRAY<T, block_size>& to_array,
 		  UINT32 first_idx = 0, UINT32 last_idx = (UINT32) -1)

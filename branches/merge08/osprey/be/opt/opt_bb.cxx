@@ -1253,6 +1253,32 @@ BB_NODE::Print (FILE *fp) const
 }
 
 void
+BB_NODE::PrintVis (void) const
+{
+  BB_LIST_ITER bb_succ_iter(Succ());
+  BB_NODE *succ;
+  WN * wn;
+
+#ifdef TARG_NVISA
+  // mark the blocks with __synchthreads as red
+  STMT_ITER stmt_iter;
+  FOR_ALL_ELEM(wn, stmt_iter, Init(Firststmt(), Laststmt())) {
+    INTRINSIC id;
+    if (WN_operator(wn) == OPR_INTRINSIC_CALL) {
+      id = WN_intrinsic(wn);
+      if (id == INTRN_SYNCHRONIZE) {
+	fprintf(stdout, "BB%d[color=red]\n", Id());
+	break;
+      }
+    }
+  }
+#endif
+  FOR_ALL_ELEM(succ, bb_succ_iter, Init()) {
+    fprintf(stdout, "  BB%d -> BB%d\n", Id(), succ->Id());
+  }
+}
+
+void
 BB_NODE::Print_ssa (FILE *fp) const
 {
   // only print the ssa representation of the code

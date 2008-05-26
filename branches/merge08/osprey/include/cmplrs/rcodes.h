@@ -43,7 +43,7 @@
 #define __RCODES_H
 
 #ifdef INCLUDE_ID
-static char *rcodes_h_id="$Header: /proj/osprey/CVS/open64/osprey1.0/include/cmplrs/rcodes.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static char *rcodes_h_id="$Header: /depot/CVSROOT/javi/src/sw/cmplr/include/cmplrs/rcodes.h,v 1.1 2005/07/27 02:22:36 kevinlo Exp $";
 #endif
 
 /* 
@@ -64,7 +64,7 @@ static char *rcodes_h_id="$Header: /proj/osprey/CVS/open64/osprey1.0/include/cmp
 #define RC_SYSTEM_ERROR		32	/* a O/S or environment error */
 #define RC_GCC_ERROR		33	/* gcc's error number */
 #ifdef KEY
-#define RC_GCC_INTERNAL_ERROR	34	/* gcc internal error */
+#define RC_GCC_INTERNAL_ERROR   34      /* gcc internal error */
 #endif
 #define RC_OVERFLOW_ERROR	64	/* an overflow error; try recompiling */
 

@@ -1515,6 +1515,10 @@ extern BOOL WN_has_side_effects (const WN*);
 
 extern WN *WN_Rrotate (TYPE_ID desc, WN *src, WN *cnt);
 
+#if defined(TARG_SL)
+extern WN* WN_CreateFork(INT32 label_number, BOOL major);
+extern BOOL WN_Intrinsic_OP_Slave(WN * wn);
+#endif // TARG_SL
 #endif /* wn_INCLUDED */
 
 

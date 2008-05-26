@@ -192,7 +192,7 @@ Increase_Incl_Table_Size (UINT16 incl_idx)
     if (incl_table == NULL) {
       ErrMsg ( EC_No_Mem, "Increase_Incl_Table_Size" );
     }
-    bzero (&incl_table[incl_table_size], new_idx - incl_table_size);
+    BZERO (&incl_table[incl_table_size], new_idx - incl_table_size);
     incl_table_size = new_idx;
   }
 }
@@ -226,7 +226,7 @@ Increase_File_Table_Size (UINT16 file_idx)
     if (file_table == NULL) {
       ErrMsg ( EC_No_Mem, "Increase_File_Table_Size" );
     }
-    bzero (&file_table[file_table_size], new_idx - file_table_size);
+    BZERO (&file_table[file_table_size], new_idx - file_table_size);
     file_table_size = new_idx;
   }
 }
@@ -371,7 +371,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 				 cie_init_byte_len,
 				 &dw_error);
 
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_SL) 
   // Generate a CIE for .eh_frame only if it is C++ or if -DEBUG:eh_frame=on
   if (is_cplus || DEBUG_Emit_Ehframe)
     eh_cie_index = dwf_add_ehframe_cie (dw_dbg, augmenter,

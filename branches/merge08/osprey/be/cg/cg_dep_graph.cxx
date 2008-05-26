@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -46,10 +42,10 @@
  * =======================================================================
  *
  *  Module: cg_dep_graph.cxx
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_dep_graph.cxx,v $
+ *  $Revision: 1.46 $
+ *  $Date: 05/12/05 08:59:03-08:00 $
+ *  $Author: bos@eng-24.pathscale.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cg_dep_graph.cxx $
  *
  *  Description:
  *  ============
@@ -65,13 +61,12 @@
 #endif // USE_PCH
 #pragma hdrstop
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
-
 #define USE_STANDARD_TYPES
-#include <sys/types.h>
-#include <list>
-#include <vector>
 #include <map>
+#include <vector>
+#include <sys/types.h>
 #include "defs.h"
 #include "mempool.h"
 #include "errors.h"
@@ -118,30 +113,22 @@
 
 #include "cg_dep_graph.h"
 #include "cg_dep_graph_util.h"
-
-#ifdef TARG_IA64
-#include "speculation.h"
-#include "recovery.h"
-#endif
-
 #include "data_layout.h"
 
-#ifdef TARG_IA64
-/* for ORC's dag constructor */
-#include <set>
-#include <ext/hash_map>
-#include "ipfec_defs.h"
-#include "region_bb_util.h"
-#include "dag.h"
-#include "prdb.h"
-#include "op_targ.h"
-#include "dag.h"
+/* HD - for Build_LUT_Insn, I include the following */
+#include <iostream>
+#include <vector>
+#include <stdlib.h>
+#include <strings.h>
+#include <map>
+#include <fstream>
+#include <string>
+#include <ctype.h>
+#include "glob.h"
+#include "lib_phase_dir.h"
 
-/* for cache information */
-#include "targ_cache_info.h"
-#include "cache_analysis.h"
-
-// #include "w2op.h"
+#if defined(TARG_IA64) || defined(TARG_SL)
+#include "dag.h"
 #endif
 
 /* Without this, C++ inlines even with -g */
@@ -154,6 +141,9 @@
 #else
 #define OP_Load(o)   OP_load(o)
 #endif
+
+#define Set_OP_opnds(o,n)	((o)->opnds = (n))
+#define Set_OP_results(o,n)	((o)->results = (n))
 
 //
 // =====================================================================
@@ -230,11 +220,6 @@ static const struct dep_info dep_info_data[] = {
   { CG_DEP_PREBR,   "PREBR",   CYC_ISSUED,  CYC_COMMIT,  1 },
   { CG_DEP_POSTBR,  "POSTBR",  CYC_ISSUED,  CYC_COMMIT,  1 },
   { CG_DEP_SCC,     "SCC",     CYC_UNKNOWN, CYC_UNKNOWN, 0 },
-#ifdef TARG_IA64
-  { CG_DEP_PRECHK,  "PRECHK",  CYC_ISSUED,  CYC_COMMIT,  1 },
-  { CG_DEP_POSTCHK, "POSTCHK", CYC_ISSUED,  CYC_COMMIT,  1 },
-  { CG_DEP_CTLSPEC, "CTLSPEC", CYC_WRITE, CYC_READ,   0 },
-#endif
   { CG_DEP_MISC,    "MISC",    CYC_ISSUE,   CYC_ISSUE,   0 },
 };
 
@@ -245,6 +230,9 @@ static const struct dep_info dep_info_data[] = {
 //
 
 BB_MAP _cg_dep_op_info;			/* used in exported inline functions */
+
+enum { PRUNE_NONE, PRUNE_NON_CYCLIC, PRUNE_NON_CYCLIC_WITH_REG,
+       PRUNE_CYCLIC_0, PRUNE_CYCLIC_1 };
 
 BOOL CG_DEP_Ignore_LNO = FALSE;			/* exported */
 BOOL CG_DEP_Ignore_WOPT = FALSE;		/* exported */
@@ -266,15 +254,18 @@ BB * _cg_dep_bb; // exported to cg_dep_graph_update.h so it can
 		 // be used in an inline function there.
 
 static std::list<BB*> _cg_dep_bbs;
-MEM_POOL dep_map_nz_pool;
+static MEM_POOL dep_map_nz_pool;
+#if defined(TARG_IA32) || defined(TARG_X8664)
+static MEM_POOL dep_nz_pool;
+#else
 MEM_POOL dep_nz_pool;
-BOOL include_assigned_registers;
-BOOL cyclic;
-BOOL include_memread_arcs;
-BOOL include_memin_arcs;
-BOOL include_control_arcs;
-BOOL tracing;
-
+#endif
+static BOOL include_assigned_registers;
+static BOOL cyclic;
+static BOOL include_memread_arcs;
+static BOOL include_memin_arcs;
+static BOOL include_control_arcs;
+static BOOL tracing;
 
 //
 // =====================================================================
@@ -292,10 +283,18 @@ inline BOOL OP_like_barrier(OP *op)
   return (CGTARG_Is_OP_Barrier(op) || OP_Alloca_Barrier(op));
 }
 
-BOOL OP_like_store(OP *op)
+inline BOOL OP_like_store(OP *op)
 {
+#ifdef TARG_SL2 
+  BOOL like_store = (OP_store(op) || CGTARG_Is_OP_Intrinsic(op) || 
+		     CGTARG_Is_OP_Barrier(op) || OP_code(op) == TOP_asm ||
+		     OP_code(op) == TOP_c2_joint );
+#else 
   BOOL like_store = (OP_store(op) || CGTARG_Is_OP_Intrinsic(op) || 
 		     CGTARG_Is_OP_Barrier(op) || OP_code(op) == TOP_asm);
+#endif 
+
+
 
 #ifdef TARG_X8664
   like_store |= OP_load_exe_store(op);
@@ -312,7 +311,7 @@ BOOL OP_like_store(OP *op)
 // must be preserved for all practical purposes.
 // -----------------------------------------------------------------------
 //
-BOOL
+inline BOOL
 is_xfer_depndnce_reqd(const void *op, const void *xfer_op)
 
 {
@@ -432,7 +431,6 @@ ARC_LIST_Find(ARC_LIST *list, CG_DEP_KIND kind, INT16 opnd)
   return NULL;
 }
 
-
 /* -----------------------------------------------------------------------
  * Use the already-built arcs to find the input OP to a given OP.
  * Note that this assume we are building the arcs by processing a block
@@ -452,7 +450,7 @@ ARC_LIST_Find_Defining_Op(OP *op, INT16 rslt, CG_DEP_KIND kind, INT16 opnd)
   for (; list; list = ARC_LIST_rest(list)) {
     ARC *arc = ARC_LIST_first(list);
     if (ARC_kind(arc) == kind &&
-        (!ARC_has_opnd(arc) || opnd == DONT_CARE || ARC_opnd(arc) == opnd)) {
+	(!ARC_has_opnd(arc) || opnd == DONT_CARE || ARC_opnd(arc) == opnd)) {
       OP *new_op = ARC_pred(arc);
       if (op == new_op) continue;
       if (rslt == -1) {
@@ -473,7 +471,7 @@ ARC_LIST_Find_Defining_Op(OP *op, INT16 rslt, CG_DEP_KIND kind, INT16 opnd)
   return first_match;
 }
 
-
+
 //
 // =====================================================================
 //
@@ -505,6 +503,9 @@ static _CG_DEP_OP_INFO *free_op_info = NULL;
 /* See above for specification */
 #define init_op_info() (free_op_info = NULL)
 
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static
+#endif
 _CG_DEP_OP_INFO *new_op_info(void)
 /* See above for specification */
 {
@@ -555,19 +556,6 @@ inline void delete_op_info(OP *op)
 BOOL
 OP_has_subset_predicate(const void *value1, const void *value2)
 {
-#ifdef TARG_IA64
-//use IPFEC aurora PRDB in first priority!
-  if(PRDB_Valid()){
-  	PRDB_GEN* prdb = Get_PRDB();
-  	if(Home_Region(OP_bb((OP*)value1)) != Home_Region(OP_bb((OP*)value2))) return FALSE;
-  	if(Home_Region(OP_bb((OP*)value1))->Region_Type() == IMPROPER ||
-  		Home_Region(OP_bb((OP*)value1))->Is_No_Further_Opt()) return FALSE;
-  	if(!OP_has_predicate((OP*)value1) || !OP_has_predicate((OP*)value2)) return FALSE;
-  	return prdb->Partition_Graph(Home_Region(OP_bb((OP*)value1)))->Is_Subset(
-          TN_OP_PAIR(OP_opnd((OP*)value2, OP_PREDICATE_OPND),(OP*)value2),
-          TN_OP_PAIR(OP_opnd((OP*)value1, OP_PREDICATE_OPND),(OP*)value1));
-  }
-#endif
 
   BOOL v1P = FALSE; // value1 has a qualifying predicate.
   BOOL v2P = FALSE; // value2 has a qualifying predicate.
@@ -616,21 +604,8 @@ OP_has_subset_predicate(const void *value1, const void *value2)
 }
 
 BOOL
-OP_has_disjoint_predicate( OP *value1, OP *value2)
+OP_has_disjoint_predicate(const OP *value1, const OP *value2)
 {
-#ifdef TARG_IA64
-//use IPFEC aurora PRDB in first priority!
-  if(PRDB_Valid()){
-  	PRDB_GEN* prdb = Get_PRDB();
-  	if(Home_Region(OP_bb(value1)) != Home_Region(OP_bb(value2))) return FALSE;
-  	if(Home_Region(OP_bb(value1))->Region_Type() == IMPROPER ||
-  		Home_Region(OP_bb(value1))->Is_No_Further_Opt()) return FALSE;
-  	if(!OP_has_predicate(value1) || !OP_has_predicate(value2)) return FALSE;
-  	return prdb->Partition_Graph(Home_Region(OP_bb(value1)))->Is_Disjoint(
-          TN_OP_PAIR(OP_opnd(value1, OP_PREDICATE_OPND),value1),
-          TN_OP_PAIR(OP_opnd(value2, OP_PREDICATE_OPND),value2));
-  }
-#endif
 
   // Check if OPs have associated predicates and don't execute under same
   // conditions.
@@ -704,7 +679,7 @@ static void maintain_prebr_arc(OP *op);
 // not be ignored by the dep graph builder.  (We ignore non-dedicated
 // assignments when include_assigned_registers is FALSE.)
 // -----------------------------------------------------------------------
-BOOL has_assigned_reg(TN *tn)
+inline BOOL has_assigned_reg(TN *tn)
 
 {
   return TN_is_register(tn) &&
@@ -718,7 +693,7 @@ TN_LIST *same_reg[REGISTER_MAX+1][ISA_REGISTER_CLASS_MAX+1];
 #define init_reg_assignments() bzero(same_reg, sizeof(same_reg))
 
 // See above for interface.
-void add_reg_assignment(TN *tn)
+inline void add_reg_assignment(TN *tn)
 {
   REGISTER rnum = TN_register(tn);
   ISA_REGISTER_CLASS rclass = TN_register_class(tn);
@@ -893,6 +868,9 @@ inline BOOL ALIAS_RESULT_positive(ALIAS_RESULT result)
 // Creates a new arc of type <kind> from node <pred> to node <succ> with
 // <latency> and <omega> set. <opnd> is the operand number and <is_definite>
 // tells if the dependence is a definite type.
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static 
+#endif
 ARC *new_arc_with_latency(CG_DEP_KIND kind, OP *pred, OP *succ,
 				 INT16 latency, UINT8 omega,
 				 UINT8 opnd, BOOL is_definite)
@@ -900,7 +878,7 @@ ARC *new_arc_with_latency(CG_DEP_KIND kind, OP *pred, OP *succ,
   ARC *arc;
   BB_OP_MAP pmap = (BB_OP_MAP)BB_MAP_Get(_cg_dep_op_info, OP_bb(pred));
   BB_OP_MAP smap = (BB_OP_MAP)BB_MAP_Get(_cg_dep_op_info, OP_bb(succ));
-  
+
   if (BB_OP_MAP_Get(pmap, pred) == NULL)
     BB_OP_MAP_Set(pmap, pred, new_op_info());
   if (BB_OP_MAP_Get(smap, succ) == NULL)
@@ -936,11 +914,12 @@ ARC *new_arc_with_latency(CG_DEP_KIND kind, OP *pred, OP *succ,
   Set_ARC_is_dotted(arc, FALSE);
 
   attach_arc(arc);
+
   return arc;
 }
 
 // See above for specification.
-ARC *new_arc(CG_DEP_KIND kind, OP *pred, OP *succ, UINT8 omega,
+inline ARC *new_arc(CG_DEP_KIND kind, OP *pred, OP *succ, UINT8 omega,
 		    UINT8 opnd, BOOL is_definite)
 {
   INT16 latency = (CG_DEP_Adjust_OOO_Latency && PROC_is_out_of_order() &&
@@ -950,7 +929,6 @@ ARC *new_arc(CG_DEP_KIND kind, OP *pred, OP *succ, UINT8 omega,
 				  is_definite);
   return arc;
 }
-
 
 // See above for specification.
 inline void delete_arc(ARC *arc)
@@ -1021,6 +999,9 @@ inline void delete_arc(ARC *arc)
 #define Set_ARC_LIST_prev Set_ARC_rest_succs
 #define Set_ARC_LIST_rest Set_ARC_rest_preds
 
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static 
+#endif
 TN_MAP gtn_use_map;
 
 // See above for interface.
@@ -1038,6 +1019,9 @@ ARC_LIST *CG_DEP_GTN_Use_Arcs(TN *tn)
 }
 
 // See above for interface.
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static 
+#endif
 void add_gtn_use_arc(OP *op, UINT8 opnd)
 {
   TN *tn = OP_opnd(op, opnd);
@@ -1114,9 +1098,10 @@ static void delete_gtn_use_arc(OP *op, UINT8 opnd)
   }
 }
 
-#undef ARC_LIST_prev       // ARC_rest_succs
-#undef Set_ARC_LIST_prev   // Set_ARC_rest_succs
-#undef Set_ARC_LIST_rest   // Set_ARC_rest_preds
+#undef ARC_LIST_prev // ARC_rest_succs
+#undef Set_ARC_LIST_prev // Set_ARC_rest_succs
+#undef Set_ARC_LIST_rest // Set_ARC_rest_preds
+
 
 
 /* =====================================================================
@@ -1157,27 +1142,6 @@ inline INT16 get_cycle(TOP opcode, INT16 ckind, UINT8 opnd)
   ErrMsg(EC_Ill_Cycle, ckind, "get_cycle");
   return 0;
 }
-
-#ifdef TARG_IA64
-// -----------------------------------------------------------------------
-// See "cg_dep_graph.h" for interface description.
-// -----------------------------------------------------------------------
-//
- 
-INT16
-CG_DEP_Oper_cycle(TOP oper, CG_DEP_KIND kind)
-{
-  // Initialize the dep_info table.
-  INT i;
-  for (i = 0; i < sizeof(dep_info_data) / sizeof(dep_info_data[0]); i++) {
-    CG_DEP_KIND kind = dep_info_data[i].kind;
-    dep_info[kind] = dep_info_data + i;
-  }
- 
-  FmtAssert(DEP_INFO_tail(kind) == CYC_WRITE, ("Failed option to get the cycle of the last op "));
-  return get_cycle(oper, DEP_INFO_tail(kind), 0);
-}   
-#endif
 
 // -----------------------------------------------------------------------
 // See "cg_dep_graph.h" for interface description.
@@ -1279,16 +1243,10 @@ CG_DEP_Latency(OP *pred, OP *succ, CG_DEP_KIND kind, UINT8 opnd)
 	  }
 	}
       }
-#ifdef TARG_IA64
-      // we need update the latency by using L2 cycle;
-      if (Cache_L2_Has_Data(pred)) {
-         ld_latency_adjust = Cache_Read_Cycle(CACHE_L2) - Cache_Read_Cycle(CACHE_L1D); 
-      }
-#endif
+
       ld_latency_adjust = MAX(ld_latency_adjust, CG_ld_latency);
 
       latency += ld_latency_adjust;
-      
     }
   }
 
@@ -1339,10 +1297,6 @@ CG_DEP_Trace_Arc(ARC *arc, BOOL is_succ, BOOL verbose)
 	  ARC_latency(arc), ARC_omega(arc));
   if (ARC_is_mem(arc) && ARC_is_definite(arc))
     fprintf(TFile, "  definite");
-#ifdef TARG_IA64
-  if (ARC_is_dotted(arc))
-    fprintf(TFile, "  dotted");
-#endif
   fprintf(TFile, "\n");
 
   if (verbose) {
@@ -1511,6 +1465,20 @@ inline void defop_set(OP *op)
     }
     CG_DEP_Add_Def(op, i, defop_by_tn, &MEM_pu_pool);
   }
+#ifdef TARG_SL2
+  TN_LIST * extra_results = op->extra_result;
+  while( extra_results ) {
+    TN *result_tn = TN_LIST_first( extra_results );
+    REGISTER reg = defop_get_reg_for_tn(result_tn);
+    if (reg != REGISTER_UNDEFINED) {
+      defop_by_reg[TN_register_class(result_tn)][reg] = 
+	OP_LIST_Push(op, defop_by_reg[TN_register_class(result_tn)][reg],
+		     &MEM_pu_pool);
+    }
+    CG_DEP_Add_Def_By_TN(op, result_tn, defop_by_tn, &MEM_pu_pool);
+    extra_results = TN_LIST_rest( extra_results );
+  }
+#endif
 }
 
 // See above for specification.
@@ -1637,6 +1605,7 @@ inline BOOL addr_invariant_in_loop(OP *memop)
   return TRUE;
 }
 
+
 /* --------------------------------------------------
  * Look through the OPS that perform a computation
  * to identify a constant offset that is added to a
@@ -1657,6 +1626,7 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
 
   *initial_sym = NULL;
   *sym = NULL;
+
   *base_tn = OP_opnd(op, base_num);
   *offset = (offset_num < 0) ? 0 : TN_value(OP_opnd(op, offset_num));
   defop_base_tn = *base_tn;
@@ -1697,14 +1667,14 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
 
         result_num = 0;
         defop_offset_tn = OP_opnd(defop, 1);
-#ifdef TARG_X8664    // in pathscale-3.0 is #ifdef KEY
+#ifdef KEY
         defop_base_tn = OP_opnd(defop, 0);
 #else
         defop_base_tn = OP_opnd(defop, 2);
 #endif
         if (TN_is_constant(defop_offset_tn)) {
           *base_tn = defop_base_tn;
-#ifdef TARG_X8664
+#ifdef KEY
 	  base_num = 0;
 #else
           base_num = 2;
@@ -1821,8 +1791,7 @@ static BOOL symbolic_addr_subtract(OP *pred_op, OP *succ_op, SAME_ADDR_RESULT *r
     if ((pred_root != NULL) && (pred_base != NULL) &&
         (succ_root != NULL) && (succ_base != NULL)) {
       if ((pred_sym != NULL) && (succ_sym != NULL) &&
-          (ST_sclass(pred_initial_sym) != SCLASS_UNKNOWN) && (ST_sclass(
-succ_initial_sym) != SCLASS_UNKNOWN)) {
+          (ST_sclass(pred_initial_sym) != SCLASS_UNKNOWN) && (ST_sclass(succ_initial_sym) != SCLASS_UNKNOWN)) {
         if ((pred_sym != succ_sym) ||
             (ST_sclass(pred_initial_sym) != ST_sclass(succ_initial_sym))) {
          /* Different base symbols imply different locations. */
@@ -1837,8 +1806,7 @@ succ_initial_sym) != SCLASS_UNKNOWN)) {
 #endif
         }
       } else if ((pred_root == succ_root) && (pred_base == succ_base)) {
-       /* The index computations have a common origin so we can use offsets 
-to determine conflicts. */
+       /* The index computations have a common origin so we can use offsets to determine conflicts. */
       } else {
 #ifdef TARG_X8664
 	if( pred_base != succ_base ||
@@ -1882,6 +1850,7 @@ static BOOL addr_subtract(OP *pred_op, OP *succ_op, TN *pred_tn,
  * -----------------------------------------------------------------------
  */
 {
+  Is_True( pred_tn && succ_tn, ("When computing address subtraction of two dependent operations, the base(offset) TNs are NULL"));
   if (pred_tn && succ_tn) {
     if (TN_is_constant(pred_tn) && TN_is_constant(succ_tn)) {
       if (TN_has_value(pred_tn) && TN_has_value(succ_tn)) {
@@ -2004,6 +1973,68 @@ CG_DEP_Mem_Ops_Offsets_Overlap(OP *memop1, OP *memop2, BOOL *identical)
   return TRUE;
 }
 
+#ifdef TARG_SL2
+/* HD - Check whether the instruction load/store from Vbuf or Sbuf
+ *      If two instruction access different buffer, then they are 
+ *      certainly distinct, or else, we need more computation.
+ */
+static inline bool C2_LDST_Sbuf(OP *op)
+{
+  bool ret = false;
+  switch (OP_code(op)) {
+  case TOP_c2_ldi_s_h_u:
+  case TOP_c2_ldi_s_h:
+  case TOP_c2_ldi_s_w:
+  case TOP_c2_ldi_c:
+
+  case TOP_c2_sti_c:
+  case TOP_c2_sti_s_h:
+  case TOP_c2_sti_s_w:
+    ret = true;
+    break;
+  default:
+    break;
+  }
+  return ret;
+}
+
+static inline bool C2_LDST_Vbuf(OP *op)
+{
+  bool ret = false;
+  switch (OP_code(op)) {
+  case TOP_c2_ldi_v2g_b_u:
+  case TOP_c2_ldi_v2g_b:
+  case TOP_c2_ldi_v2g_h_u:
+  case TOP_c2_ldi_v2g_h:
+  case TOP_c2_ldi_v2g_w:
+  case TOP_c2_ldi_v_b_u:
+  case TOP_c2_ldi_v_b:
+  case TOP_c2_ldi_v_h:
+  case TOP_c2_ldi_v_w:
+  case TOP_c2_ldi_v_m_b_u:
+  case TOP_c2_ldi_v_m_b:
+  case TOP_c2_ldi_v_m_h:
+  case TOP_c2_ldi_v_m_w:
+
+  case TOP_c2_sti_v_b:  
+  case TOP_c2_sti_v_h:  
+  case TOP_c2_sti_v_w:  
+  case TOP_c2_sti_v_m_b:  
+  case TOP_c2_sti_v_m_h:  
+  case TOP_c2_sti_v_m_w:  
+  case TOP_c2_sti_g2v_b:
+  case TOP_c2_sti_g2v_h:
+  case TOP_c2_sti_g2v_w:
+    ret = true;
+    break;
+  default:
+    break;
+  }
+  return ret;
+}
+
+#endif
+  
 static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
 /* -----------------------------------------------------------------------
  * Requires: Incoming register arcs for <pred_op> and <succ_op> are built.
@@ -2028,6 +2059,10 @@ static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
 {
   SAME_ADDR_RESULT res = DONT_KNOW;
   INT64 diff0, diff1;
+#ifdef TARG_SL
+  if (CG_ignore_mem_alias)
+    return DONT_KNOW;
+#endif
 
 #ifndef TARG_X8664
   /* Unaligned mem ops can be tricky and aren't very common.
@@ -2082,25 +2117,21 @@ static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
   (void) OP_Base_Offset_TNs (succ_op, &succ_base, &succ_offset);
 
   diff0 = 0;
-	 /* for constant address */ 	
-  if (addr_subtract(pred_op, succ_op, pred_base, succ_base, &diff0) &&
-      addr_subtract(pred_op, succ_op, pred_offset, succ_offset, &diff1)) {
-    return analyze_overlap(pred_op, succ_op, diff0 + diff1);
-#ifdef TARG_IA64
-  } else {
-
-  	  /* for variable address */
-      if (pred_base == succ_base && pred_offset == succ_offset) {
-      	 if (CGTARG_Mem_Ref_Bytes (pred_op) == CGTARG_Mem_Ref_Bytes (succ_op)) {
-		     return  IDENTICAL;
-	 	 } else  {
-		 	 return  OVERLAPPING ;
-		 }
-	  }
+  diff1 = 0;
+  if( pred_base && succ_base && pred_offset && succ_offset ){ 
+    /* we have both base & offset TNs */
+    if( addr_subtract(pred_op, succ_op, pred_base, succ_base, &diff0) &&
+        addr_subtract(pred_op, succ_op, pred_offset, succ_offset, &diff1)) 
+#if 0
+      return analyze_overlap(pred_op, succ_op, diff0 + diff1);
+#else
+    return DONT_KNOW;
 #endif
-  }
-
+  } 
+ 
+  /* we have no idea at all */
   return DONT_KNOW;
+  
 }
 
 inline BOOL under_same_cond_tn(OP *pred_op, OP *succ_op, UINT8 omega)
@@ -2118,7 +2149,6 @@ inline BOOL under_same_cond_tn(OP *pred_op, OP *succ_op, UINT8 omega)
  * ---------------------------------------------------------------------
  */
 {
-#ifdef TARG_X8664 // merged from pathscale-3.0
 #ifdef KEY
   // CIO can not do WW elimination because MIPS is not predicated 
   // architecture
@@ -2150,8 +2180,6 @@ inline BOOL under_same_cond_tn(OP *pred_op, OP *succ_op, UINT8 omega)
       return FALSE;
   }      
 #endif
-#endif // TARG_X8664
-
   TN *pred_guard, *succ_guard;
   UINT8 pred_guard_omega, succ_guard_omega;
   BOOL pred_invguard, succ_invguard;
@@ -2329,6 +2357,122 @@ static BOOL verify_mem(BOOL              result,
   return result;
 }
 
+//====================================================================
+// Real_Memory_WN
+//
+// For some intrinsics, the real memory operations are their parameter
+// WNs.  It returns how many real memory WNs are put in real_mems
+//
+// This function is a specific function, and analyze WN case by case
+// I need a data structure, which records which parameters of a INTRINSIC
+// OP/CALL is memory operation. I hard code here.
+//====================================================================
+#ifdef TARG_SL
+static INT32 Real_Memory_WN( OP *op, WN *input, WN **real_mems )
+{
+  real_mems[0] = NULL;
+  real_mems[1] = NULL;
+
+  // There are some memory access like gra spill, it has no WN map,
+  // say input, so I set real_mems[] to NULL and return.
+  if( !input )
+    return 0;
+
+  TOP opcode = OP_code(op);
+  if( !TOP_is_c3_load(opcode) && !TOP_is_c3_store(opcode) ){
+    real_mems[0] = input;
+    real_mems[1] = NULL;
+    return 1;
+  } 
+
+  INT32 kids = WN_kid_count(input);
+  INT32 id = 0;
+  INT32 num = 0;
+  for( ; id < kids; id++ ){
+    WN *kid = WN_kid(input,id);
+    OPERATOR kid_opr = WN_operator(kid);
+    if( kid_opr == OPR_PARM ){
+      if( WN_Parm_Dereference(kid) )
+        real_mems[num++] = kid;
+    }
+  }
+
+  Is_True( (num<=2), ("more than two load addr in an intrinsic") ); 
+  
+  if( num==0 ){
+    real_mems[0] = input;
+    real_mems[1] = NULL;
+    return 1;
+  }
+ 
+  return num;
+}
+#endif
+
+
+//====================================================================
+// Aliased_By_WOPT 
+//
+// This function determines alias using alias manager in WOPT, between
+// two WNs
+// (1) verify_mem_res is TRUE if they alias, else it's set FALSE
+//====================================================================
+static void Aliased_By_WOPT( WN *pred_wn, WN *succ_wn, 
+                             OP *pred_op, OP *succ_op,
+                             SAME_ADDR_RESULT cg_result,
+                             UINT8 *omega,
+                             char *info_src,
+                             BOOL *verify_mem_res ,
+                             BOOL *definite )
+{
+  // We now insert barrier (fwd_bar, bwd_bar) nodes while lowering
+  // ALLOCA/DEALLOCA nodes. These barrier nodes carry aliasing info.
+  // Check for those instances here and query the Aliased_with_region.
+  if(succ_wn && OP_Alloca_Barrier(succ_op)){
+  
+    switch (Aliased_with_region(Alias_Manager, pred_wn, succ_wn, 
+  			      READ_AND_WRITE)) {
+    case SAME_LOCATION:
+    case POSSIBLY_ALIASED:
+      *definite = TRUE;
+      *verify_mem_res = verify_mem(TRUE, definite, omega, pred_op, succ_op, 
+  		                  cg_result, info_src);
+      break;
+    case NOT_ALIASED:
+      *definite = FALSE;
+      *verify_mem_res = verify_mem(FALSE, definite, omega, pred_op, succ_op, 
+  		                  cg_result, info_src);
+      break;
+    default:
+      Is_True(FALSE, ("bad return value from Aliased_with_region"));
+    }
+  }else{
+    switch (Aliased(Alias_Manager, pred_wn, succ_wn)) {
+    case SAME_LOCATION:
+      *definite = TRUE;
+      *verify_mem_res = verify_mem(TRUE, definite, omega, pred_op, succ_op, 
+  		                  cg_result, info_src);
+      break;
+    case POSSIBLY_ALIASED:
+      /* Definite iff addr analysis says definite */
+      *definite = cg_result == IDENTICAL;
+      *verify_mem_res = verify_mem(TRUE, definite, omega, pred_op, succ_op, 
+  		                  cg_result, info_src);
+      break;
+    case NOT_ALIASED:
+      *verify_mem_res = verify_mem(FALSE, definite, omega, pred_op, succ_op, 
+  		                  cg_result, info_src);
+      break;
+    default:
+      Is_True(FALSE, ("bad return value from Aliased"));
+    }
+  }
+  return;
+}
+
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static
+#endif
 BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 /* -----------------------------------------------------------------------
  * Check whether <succ_op> can access the same location as <pred_op>
@@ -2344,12 +2488,7 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 {
   WN *pred_wn, *succ_wn;
   UINT8 pred_unrollings = 0, succ_unrollings = 0;
-#ifdef TARG_IA64
-  BOOL lex_neg = (!OP_Precedes(pred_op, succ_op)) &&
-      (OP_bb(pred_op) == OP_bb(succ_op)) ;
-#else
   BOOL lex_neg = !OP_Precedes(pred_op, succ_op);
-#endif
   SAME_ADDR_RESULT cg_result = DONT_KNOW;
   char *info_src = "";
   UINT8 min_omega = 0;
@@ -2360,7 +2499,7 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
   /* Don't bother checking for lexicographically negative deps
    * when we're not looking for loop-carried deps.
    */
-  if (omega == NULL && lex_neg)
+  if (omega == NULL && lex_neg) 
     return FALSE;
 
   /* Prefetches don't alias anything (but see make_prefetch_arcs) */
@@ -2371,20 +2510,10 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
   if (OP_no_alias(pred_op) || OP_no_alias(succ_op)) 
     return FALSE;
 
-#ifdef TARG_IA64
-  /* Advanced loads do alias with succ stores.
-   * Since we do not want the respective store of a ld.a
-   * being moved forward across the ld.a. */
-  if ((OP_load(pred_op) && CGTARG_Is_OP_Advanced_Load(pred_op)) &&
-      (OP_store(succ_op)))
-    return TRUE;
-#else
-
   /* Advanced loads don't alias with anything. */
   if ((OP_load(pred_op) && CGTARG_Is_OP_Advanced_Load(pred_op)) ||
       (OP_load(succ_op) && CGTARG_Is_OP_Advanced_Load(succ_op)))
     return FALSE;
-#endif
 
   /* Volatile ops are dependent on all other volatile OPs (but dependence
    * is marked as not definite to prevent removal by r/w elimination).
@@ -2402,7 +2531,6 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
   /* Don't check for MEMREAD (load-load) dependence when:
    *  (a) we're not including MEMREAD arcs in the graph, or
    *  (b) either load is restoring a spill
-   *  (c) don;t access same cache line
    */
   if (memread &&
       (!include_memread_arcs ||
@@ -2426,7 +2554,8 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 
   /* Try to analyze the address TNs ourselves unless disabled.
    */
-  if (CG_DEP_Addr_Analysis && !lex_neg &&
+ 
+ if (CG_DEP_Addr_Analysis && !lex_neg &&
       (OP_Load(pred_op) || OP_store(pred_op)) &&
       (OP_Load(succ_op) || OP_store(succ_op))) {
 
@@ -2439,19 +2568,13 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
       if (!CG_DEP_Verify_Mem_Deps) return TRUE;
       break;
     case OVERLAPPING:
-#ifdef TARG_IA64
-      *definite = TRUE;
-#else
       *definite = FALSE;
-#endif
       /* Don't include non-definite MEMREAD arcs */
       if (memread) return FALSE;
       if (omega) *omega = lex_neg;
       if (!CG_DEP_Verify_Mem_Deps) return TRUE;
       break;
-
     case DISTINCT:
-
       if (omega == NULL) {
 	if (!CG_DEP_Verify_Mem_Deps) return FALSE;
       } else {
@@ -2472,8 +2595,26 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
    * information to determine dependence relation.
    */
 
-  pred_wn = OP_hoisted(pred_op) ? NULL : Get_WN_From_Memory_OP(pred_op);
-  succ_wn = OP_hoisted(succ_op) ? NULL : Get_WN_From_Memory_OP(succ_op);	      
+  //pred_wn = OP_hoisted(pred_op) ? NULL : Get_WN_From_Memory_OP(pred_op);
+  //succ_wn = OP_hoisted(succ_op) ? NULL : Get_WN_From_Memory_OP(succ_op);
+  pred_wn = Get_WN_From_Memory_OP(pred_op);
+  succ_wn = Get_WN_From_Memory_OP(succ_op);
+
+  // for some intrinsics, the real memory operations are their parameter
+  // WNs, like LDID
+#ifdef TARG_SL
+  WN *pred_real_mem_wns[2];
+  WN *succ_real_mem_wns[2];
+  INT pred_real_mem_num = 0;
+  INT succ_real_mem_num = 0;
+  pred_real_mem_num = Real_Memory_WN(pred_op, pred_wn, pred_real_mem_wns);
+  succ_real_mem_num = Real_Memory_WN(succ_op, succ_wn, succ_real_mem_wns);
+  // To make life easier, I only check the second real mem wn when using
+  // wopt alias manager
+  pred_wn = pred_real_mem_wns[0];
+  succ_wn = succ_real_mem_wns[0];
+#endif
+
   if (OP_unroll_bb(pred_op))
     pred_unrollings = BB_unrollings(OP_unroll_bb(pred_op));
   if (OP_unroll_bb(succ_op))
@@ -2492,11 +2633,12 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
             (OP_load(pred_op) && OP_store(succ_op)) &&
             (OP_results(pred_op) == 1) &&
             TNs_Are_Equivalent(OP_result(pred_op,0),
-                               OP_opnd(succ_op, TOP_Find_Operand_Use(OP_code(succ_op), OU_storeval)))) {
-          /* A value is loaded from one location and stored to a spill location.
+                               OP_opnd(succ_op,TOP_Find_Operand_Use(OP_code(succ_op), OU_storeval)))) {
+         /* A value is loaded from one location and stored to a spill location.
             This is not a memory dependency, but should show up as a REGIN dependency
             later on. */
-          return verify_mem(FALSE, definite, omega, pred_op, succ_op, cg_result, info_src);
+          return verify_mem(FALSE, definite, omega, pred_op, succ_op, cg_result,
+                            info_src);
         }
 	*definite = TRUE;
       } else {
@@ -2677,56 +2819,35 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 
       /* Now try the WOPT alias manager */
       info_src = "WOPT";
-      if (Alias_Manager != NULL && !CG_DEP_Ignore_WOPT) {
-
-	// We now insert barrier (fwd_bar, bwd_bar) nodes while lowering
-	// ALLOCA/DEALLOCA nodes. These barrier nodes carry aliasing info.
-	// Check for those instances here and query the Aliased_with_region.
-	if (succ_wn && OP_Alloca_Barrier(succ_op)) {
-
-	  switch (Aliased_with_region(Alias_Manager, pred_wn, succ_wn, 
-				      READ_AND_WRITE)) {
-	  case SAME_LOCATION:
-	  case POSSIBLY_ALIASED:
-	    *definite = TRUE;
-	    break;
-	  case NOT_ALIASED:
-	    *definite = FALSE;
-	    break;
-	  default:
-	    Is_True(FALSE, ("bad return value from Aliased_with_region"));
-	  }
-	}
-	else {
-	  BOOL ignore_loop_carried = 
-	      (omega == NULL && OP_unrolling(pred_op)==OP_unrolling(succ_op));
-	  switch (Aliased(Alias_Manager, pred_wn, succ_wn, ignore_loop_carried)) {
-	  case SAME_LOCATION:
-	    *definite = TRUE;
-	    break;
-	  case POSSIBLY_ALIASED:
-	    /* Definite iff addr analysis says definite */
-	    *definite = cg_result == IDENTICAL;
-	    break;
-	  case NOT_ALIASED:
-	    return verify_mem(FALSE, definite, omega, pred_op, succ_op, 
-			      cg_result, info_src);
-	  default:
-	    Is_True(FALSE, ("bad return value from Aliased"));
-	  }
-
-	  if (omega && 
-	      OP_unrolling(pred_op)==OP_unrolling(succ_op) &&
-	      min_omega <= 0 &&
-	      Aliased(Alias_Manager, pred_wn, succ_wn, TRUE) == NOT_ALIASED) {
-	       /* there is no loop-independent dependence between them. If there
-	        * is loop carried dependence between them, the distance should 
-	        * be at least one.
-	        */
-	    min_omega = 1;
-	  }
-	}
-      } else {
+      if( Alias_Manager != NULL && !CG_DEP_Ignore_WOPT ){
+        BOOL definite_1 = FALSE, definite_2 = FALSE, 
+             definite_3 = FALSE, definite_4 = FALSE;
+        BOOL ret_1 = FALSE, ret_2 = FALSE, ret_3 = FALSE, ret_4 = FALSE;
+        BOOL res_1 = FALSE, res_2 = FALSE, res_3 = FALSE, res_4 = FALSE;
+        Aliased_By_WOPT( pred_real_mem_wns[0], 
+                                   succ_real_mem_wns[0], pred_op, succ_op,
+                                   cg_result, omega, info_src, 
+                                   &res_1, &definite_1 );
+        if( pred_real_mem_wns[1] )
+          Aliased_By_WOPT( pred_real_mem_wns[1], 
+                                   succ_real_mem_wns[0], pred_op, succ_op,
+                                   cg_result, omega, info_src, 
+                                   &res_2, &definite_2 );
+        if( succ_real_mem_wns[1] )
+          Aliased_By_WOPT( pred_real_mem_wns[0], 
+                                   succ_real_mem_wns[1], pred_op, succ_op,
+                                   cg_result, omega, info_src, 
+                                   &res_3, &definite_3 );
+        if( pred_real_mem_wns[1] && succ_real_mem_wns[1] )
+          Aliased_By_WOPT( pred_real_mem_wns[1], 
+                                   succ_real_mem_wns[1], pred_op, succ_op,
+                                   cg_result, omega, info_src, 
+                                   &res_4, &definite_4 );
+        *definite = definite_1 || definite_2 || definite_3 || definite_4;
+        BOOL res = res_1 || res_2 || res_3 || res_4;
+        if (omega) *omega = MAX(lex_neg, min_omega);
+        return res;
+      }else{
 
 	  /* Fallback: Treat as possibly aliased unless addr analysis says
 	   * they're definitely aliased.
@@ -2947,7 +3068,6 @@ CG_DEP_Mem_Ops_Alias(OP *memop1, OP *memop2, BOOL *identical)
   return TRUE;
 }
 
-
 // ======================================================================
 // Can_OP_Move_Across_Call
 // returns TRUE if <cur_op> can be moved across <call_op>. It first 
@@ -2984,10 +3104,6 @@ CG_DEP_Can_OP_Move_Across_Call(OP *cur_op, OP *call_op, BOOL forw,
       TN *result = OP_result(cur_op,i);
       if (Ignore_TN_Dep) {
 	REGISTER reg = TN_register(result);
-#ifdef TARG_IA64
-	if (reg == REGISTER_UNDEFINED) continue;
-	// Is_True(reg != REGISTER_UNDEFINED, ("reg should not be REGISTER_UNDEFINED"));
-#endif
 	ISA_REGISTER_CLASS rclass = TN_register_class (result);
 	 
 	// prune out regs which have implicit meaning.
@@ -3017,10 +3133,6 @@ CG_DEP_Can_OP_Move_Across_Call(OP *cur_op, OP *call_op, BOOL forw,
       if (TN_is_constant(opnd_tn)) continue;
       if (Ignore_TN_Dep) {
 	REGISTER opnd_reg = TN_register(opnd_tn);
-#ifdef TARG_IA64
-	if (opnd_reg == REGISTER_UNDEFINED) continue;
-	// Is_True(opnd_reg != REGISTER_UNDEFINED, ("reg should not be REGISTER_UNDEFINED"));
-#endif
 	ISA_REGISTER_CLASS opnd_cl = TN_register_class (opnd_tn);
 
 	// prune out regs which have implicit meaning.
@@ -3202,11 +3314,7 @@ Add_MISC_Arcs(BB* bb)
 
     for (next_op = OP_next(op); next_op; next_op = OP_next(next_op)) {
       if (CGTARG_Dependence_Required(op, next_op)) {
-#ifdef TARG_IA64
-          new_arc(CG_DEP_MISC, op, next_op, 0, 0, FALSE);	
-#else
-	  new_arc_with_latency(CG_DEP_MISC, op, next_op, 0, 0, 0, FALSE);
-#endif
+	new_arc_with_latency(CG_DEP_MISC, op, next_op, 0, 0, 0, FALSE);
       }
     }
   } // FOR_ALL_BB_OPs loop
@@ -3273,7 +3381,7 @@ inline BOOL succ_arc_shorter(ARC *arc1, ARC *arc2)
   return closer;
 }
 
-ARC *shorter_succ_arc(ARC *arc1, ARC *arc2)
+inline ARC *shorter_succ_arc(ARC *arc1, ARC *arc2)
 /* -----------------------------------------------------------------------
  * Requires: ARC_pred(arc1) == ARC_pred(arc2)
  * Returns the shorter of <arc1> and <arc2>.  See succ_arc_shorter, above.
@@ -3331,7 +3439,10 @@ inline ARC *shorter_pred_arc(ARC *arc1, ARC *arc2)
   return shorter;
 }
 
-static void adjust_arc_for_rw_elim(ARC *arc, BOOL is_succ, ARC *shortest,
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static 
+#endif
+void adjust_arc_for_rw_elim(ARC *arc, BOOL is_succ, ARC *shortest,
 				   ARC *shortest_to_from_store)
 /* -----------------------------------------------------------------------
  * See adjust_for_rw_elim below.  This does the work for a single arc.
@@ -3392,6 +3503,9 @@ static void adjust_arc_for_rw_elim(ARC *arc, BOOL is_succ, ARC *shortest,
   }
 }
 
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static 
+#endif
 void adjust_for_rw_elim(ARC_LIST *arcs, UINT32 num_definite_arcs,
 			       ARC *shortest, ARC *shortest_to_from_store)
 /* -----------------------------------------------------------------------
@@ -3452,7 +3566,7 @@ void add_mem_arcs_from(UINT16 op_idx)
   UINT16 succ_idx, s, num_definite_arcs = 0;
   ARC *shortest = NULL, *shortest_to_store = NULL;
   /* Index of first possible memory successor of <op>. */
-  UINT16 first_poss_succ_idx = cyclic ? 0 : op_idx+1;
+  UINT16 first_poss_succ_idx = cyclic ? -1 : op_idx+1;
   /* Max number of 0-omega successors of <op>. */
   UINT16 num_poss_0_succs = num_mem_ops - op_idx - 1;
   BOOL found_definite_memread_succ = FALSE;
@@ -3487,7 +3601,7 @@ void add_mem_arcs_from(UINT16 op_idx)
 
     if (OP_volatile(succ) && OP_volatile(op)) kind = CG_DEP_MEMVOL;
 
-    if (kind == CG_DEP_MEMREAD && !include_memread_arcs) 
+    if (kind == CG_DEP_MEMREAD && !include_memread_arcs)
       continue;
 
     if (!cyclic && CG_DEP_Mem_Arc_Pruning >= PRUNE_NON_CYCLIC ||
@@ -3514,28 +3628,18 @@ void add_mem_arcs_from(UINT16 op_idx)
       if (!have_latency) latency =
         (CG_DEP_Adjust_OOO_Latency && PROC_is_out_of_order() && !definite) ? 
 	0 : CG_DEP_Latency(op, succ, kind, 0);
-#ifdef TARG_IA64      
-      if (omega == 0) Cache_Adjust_Latency(op,succ,kind,&latency);
-#endif
+
       /* Build a mem dep arc from <op> to <succ> */
       arc = new_arc_with_latency(kind, op, succ, latency, omega, 0, definite);
 
-#ifdef TARG_IA64
-      /* Set the dependence is violable on some circumstance */
-      if (kind == CG_DEP_MEMIN && !definite &&
-          !CGTARG_Is_OP_Check_Load(succ) &&
-          !OP_volatile (op) && !OP_volatile(succ) &&
-          !OP_asm(op) && !OP_asm(succ)) {
-        Set_ARC_is_dotted (arc, TRUE);
-      }
-#else
-      /* if MEMIN dependence is not a definite dependence and
-        !include_memin_arcs is SET, not already a check-load, then
-        set the ARC as a dotted edge. */
-      if (!CGTARG_Is_OP_Check_Load(succ) &&
-         kind == CG_DEP_MEMIN && !definite && !include_memin_arcs)
-       Set_ARC_is_dotted(arc, TRUE);
-#endif
+      /* if MEMIN dependence is not a definite dependence and 
+	 !include_memin_arcs is SET, not already a check-load, then
+	 set the ARC as a dotted edge. */
+
+      if (!CGTARG_Is_OP_Check_Load(succ) && 
+	  kind == CG_DEP_MEMIN && !definite && !include_memin_arcs)
+	Set_ARC_is_dotted(arc, TRUE);
+
       found_definite_memread_succ |= (kind == CG_DEP_MEMREAD && definite);
 
       /* Find latency to 0-omega store descendents of <succ>, then use this
@@ -3589,62 +3693,6 @@ void add_mem_arcs_from(UINT16 op_idx)
     adjust_for_rw_elim(OP_succs(op), num_definite_arcs, shortest,
 		       shortest_to_store);
 }
-
-#ifdef KEY
-// OP has a homeable TN.  Add memory arcs between OP and memory OPs accessing
-// the home location.  PREV_MEM_OPS_SEEN is the number of memory OPs preceeding
-// OP in the BB.
-void
-add_home_mem_arcs_for_op (OP *op, TN *home_tn, int prev_mem_ops_seen)
-{
-  int i;
-
-  for (i = 0; i < num_mem_ops; i++) {
-    OP *mem_op = mem_ops[i];
-    if (mem_op == op)
-      continue;
-    WN* wn = Get_WN_From_Memory_OP(mem_op);
-    if (wn != NULL &&
-	Aliased(Alias_Manager, TN_home(home_tn), wn) == SAME_LOCATION) {
-      if (i < prev_mem_ops_seen) {
-	// MEM_OP preceeds OP.
-	new_arc(CG_DEP_MISC, mem_op, op, 0, 0, FALSE);
-      } else {
-	// OP preceeds MEM_OP.
-	new_arc(CG_DEP_MISC, op, mem_op, 0, 0, FALSE);
-      }
-    }
-  }
-}
-
-void
-add_home_mem_arcs (BB *bb)
-{
-  OP *op;
-  int i, mem_ops_seen;
-
-  mem_ops_seen = 0;
-  FOR_ALL_BB_OPs(bb, op) {
-    if (OP_Load(op) || OP_like_store(op))
-      mem_ops_seen++;
-    // Analyze the operands and results' home locations.
-    for (i = 0; i < OP_opnds(op); i++) {
-      TN *opnd = OP_opnd(op, i);
-      if (TN_is_register(opnd) &&
-	  TN_is_gra_homeable(opnd)) {
-	add_home_mem_arcs_for_op(op, opnd, mem_ops_seen);
-      }
-    }
-    for (i = 0; i < OP_results(op); i++) {
-      TN *result = OP_result(op, i);
-      if (TN_is_register(result) &&
-	  TN_is_gra_homeable(result)) {
-	add_home_mem_arcs_for_op(op, result, mem_ops_seen);
-      }
-    }
-  }
-}
-#endif
 
 inline BOOL op_defines_sp(OP *op)
 {
@@ -3713,17 +3761,13 @@ static STACKREF_KIND Memory_OP_References_Stack(OP *op)
      * load/store and an indirect load/store with an LDA for an address.
      * For the above cases, get the symbol for the variable being accessed.
      */
-    /*
-     for LDA case, there're still a case that the ST is CLASS_BLOCK,which maybe
-     bss section symbol generated by data layout,for example.
-    */
     ST *st = NULL;
     if (WN_has_sym(wn)) {
       st = WN_st(wn);
 #ifdef KEY
       Is_True(ST_class(st) == CLASS_VAR || ST_class(st) == CLASS_CONST ||
-              ST_class(st) == CLASS_FUNC || ST_class(st) == CLASS_BLOCK, 
-      	      ("expected CLASS_VAR/CONST/FUNC/BLOCK symbol"));
+              ST_class(st) == CLASS_FUNC, 
+      	      ("expected CLASS_VAR/CONST/FUNC symbol"));
 #else
       Is_True(ST_class(st) == CLASS_VAR, ("expected CLASS_VAR symbol"));
 #endif
@@ -3763,7 +3807,7 @@ static STACKREF_KIND Memory_OP_References_Stack(OP *op)
 //
 // Add an arc from <mem_op> to the <exit_sp_adj_op> under the given conditions.
 //
-void maybe_add_exit_sp_adj_arc (OP *mem_op, OP *exit_sp_adj_op) 
+inline void maybe_add_exit_sp_adj_arc (OP *mem_op, OP *exit_sp_adj_op) 
 {
   if (   Memory_OP_References_Stack(mem_op) != STACKREF_NO
       && OP_Precedes(mem_op, exit_sp_adj_op))
@@ -3772,8 +3816,10 @@ void maybe_add_exit_sp_adj_arc (OP *mem_op, OP *exit_sp_adj_op)
   }
 }
 
-BOOL 
-CG_DEP_Alloca_Aliases(OP *mem_op)
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static 
+#endif
+BOOL CG_DEP_Alloca_Aliases(OP *mem_op)
 {
   WN * mem_wn = Get_WN_From_Memory_OP(mem_op);
   
@@ -3808,7 +3854,6 @@ static void Add_MEM_Arcs(BB *bb)
 
   /* Return if there's nothing to do */
   if (num_mem_ops < 1) return;
-
 
   /* For an exit block, add an arc from every stack memory op to the
    * SP adjustment op.
@@ -3892,13 +3937,120 @@ static void Add_MEM_Arcs(BB *bb)
     }
   }
 
+  MEM_POOL_Pop(&MEM_local_pool);
+
+  /* This acts as a flag, so be sure to reset it. */
+  mem_op_lat_0 = NULL;
+
+  /* Make add_mem_arcs_from/to crash immediately when <mem_ops> not right */
+  mem_ops = NULL;
+}
+
+
+
+#if defined(TARG_SL2)
+
+static void Add_Vbuf_MEM_Arcs(BB *bb)
+/* -----------------------------------------------------------------------
+ * Add memory arcs to the current dep graph.
+ * ----------------------------------------------------------------------- */
+{
+  OP *op;
+  UINT16 i;
+  UINT32 sp_defs = 0;
+
+  /* Count the memory OPs */
+  num_mem_ops = 0;
+  FOR_ALL_BB_OPs(bb, op) {
+    if (OP_vbuf_load(op) || OP_vbuf_store(op))
+      num_mem_ops++;
+  }
+
+  /* Return if there's nothing to do */
+  if (num_mem_ops < 1) return;
+
+
+  /* For an exit block, add an arc from every stack memory op to the
+   * SP adjustment op.
+   */
+  if (BB_exit(bb)) {
+    OP *exit_sp_adj = BB_exit_sp_adj_op(bb);
 #ifdef KEY
-  // Add memory arcs between OPs whose TNs have home locations and the
-  // load/stores of those home locations.  This is so that when GRA inserts
-  // spill code around the OPs, the spill code will read/write memory in the
-  // correct order relative to the load/stores.  Bug 7847.
-  add_home_mem_arcs(bb);
+    /* <exit_sp_adj> could reside in a different bb, say _epilog_bb
+       for bug#3241.
+     */
+    if (exit_sp_adj &&
+	OP_bb(exit_sp_adj) == bb)
+#endif // KEY
+      {
+	for (op = exit_sp_adj; op != NULL; op = OP_prev(op)) {
+	  maybe_add_exit_sp_adj_arc (op, exit_sp_adj);
+	}
+      }
+  }
+
+#ifdef KEY
+  // To fix the position of asm ops w.r.t. other operations, create 
+  // dependency with all other ops. 
+  // TODO: Need to find out if the better way is to create a new BB for 
+  // every asm. 
+  {
+    FOR_ALL_BB_OPs(bb, op) {
+      if (OP_code(op) == TOP_asm) {
+	OP *op_tmp;
+	BOOL tail = FALSE;
+
+	FOR_ALL_BB_OPs(bb, op_tmp) {
+	  if (op_tmp == op) {
+	    tail = TRUE;
+	    continue;
+	  }
+	  if (!tail) 
+	    new_arc_with_latency(CG_DEP_MEMOUT, op_tmp, op, 1, 0, 0,FALSE);
+	  else
+	    new_arc_with_latency(CG_DEP_MEMOUT, op, op_tmp, 1, 0, 0,FALSE);
+	}
+      }
+    }
+  }
 #endif
+  if (!cyclic && num_mem_ops == 1) return;
+
+  /* Initialize data structures used by add_mem_arcs_from */
+  MEM_POOL_Push(&MEM_local_pool);
+  mem_ops = TYPE_L_ALLOC_N(OP *, num_mem_ops);
+  i = 0;
+  FOR_ALL_BB_OPs(bb, op) {
+    if (OP_vbuf_load(op) || OP_vbuf_store(op)){
+      mem_ops[i++] = op;
+    }
+  }
+  if (CG_DEP_Mem_Arc_Pruning >= PRUNE_CYCLIC_0 ||
+      !cyclic && CG_DEP_Mem_Arc_Pruning >= PRUNE_NON_CYCLIC)
+    mem_op_lat_0 = TYPE_L_ALLOC_N(INT32 *, num_mem_ops);
+
+  /* Call add_mem_arcs_from, which does the real work */
+  for (i = 0; i < num_mem_ops; i++)
+    add_mem_arcs_from(i);
+
+  /* Workaround for PV 707179.  Also see code above dependent on
+   * CG_DEP_Add_Alloca_Arcs.
+   */
+  if (CG_DEP_Add_Alloca_Arcs) {
+    for (op = BB_first_op(bb); op && sp_defs > 0; op = OP_next(op)) {
+      if (op_defines_sp(op)) {
+	--sp_defs;
+	for (i = 0; i < num_mem_ops; i++) {
+	  if (CG_DEP_Alloca_Aliases(mem_ops[i])) {
+	    if (OP_Precedes(op, mem_ops[i]))
+	      new_arc(CG_DEP_MISC, op, mem_ops[i], 0, 0, FALSE);
+	    else
+	      new_arc(CG_DEP_MISC, mem_ops[i], op, 0, 0, FALSE);
+	  }
+	}
+      }
+    }
+  }
 
   MEM_POOL_Pop(&MEM_local_pool);
 
@@ -3909,6 +4061,7 @@ static void Add_MEM_Arcs(BB *bb)
   mem_ops = NULL;
 }
 
+#endif 
 static void make_virtual_anti_or_output_arc(CG_DEP_KIND kind, OP *pred, 
 					    OP *succ, UINT8 opnd)
 /* -----------------------------------------------------------------------
@@ -3987,25 +4140,59 @@ OP_Shadowed_By_Prev_OPs(OP                    *defop,
   return FALSE;
 }
 
+
+/* Get word size for c2.load/store instructions in multi-mode*/ 
+#ifdef TARG_SL2 
+static 
+INT Get_Word_Size_For_Multi_Mode(TOP opcode) 
+{ 
+   switch(opcode) 
+   {
+     case TOP_c2_ldi_v_m_b_u:
+     case TOP_c2_ldi_v_m_b:
+     case TOP_c2_ld_v_m_b:
+     case TOP_c2_ld_v_m_b_u:
+     case TOP_c2_sti_v_m_b:
+     case TOP_c2_st_v_m_b:
+      return 1;
+     break;
+     case TOP_c2_ldi_v_m_h:
+     case TOP_c2_ld_v_m_h:
+     case TOP_c2_sti_v_m_h:
+     case TOP_c2_st_v_m_h:
+      return 2;
+     break;
+     case TOP_c2_ldi_v_m_w:
+     case TOP_c2_ld_v_m_w:
+     case TOP_c2_sti_v_m_w:
+     case TOP_c2_st_v_m_w:
+      return 4;
+     break;
+     default:
+      FmtAssert(FALSE, ("invalid opcode for multi-mode c2.ld/st"));
+   }
+}
+#endif 
+
+
 //
-// -----------------------------------------------------------------------
+// ------------------------------------------------------------------
 // Add_Forw_REG_Arcs
 // Compute register dependences that can be computed in a single forward
 // pass. They include REGIN, REGOUT, Prefetch dependences.
-// -----------------------------------------------------------------------
+// ------------------------------------------------------------------
 //
 static void
 Add_Forw_REG_Arcs(BB *bb)
 {
   OP *op;
-  
   FOR_ALL_BB_OPs(bb, op) {
     INT32 i;
 
-    if (OP_store(op) || OP_load(op)) {
-      /* Generate any prefetch arcs */
-      make_prefetch_arcs(op, bb);
-    }
+  if (OP_store(op) || OP_load(op)) {
+    /* Generate any prefetch arcs */
+     make_prefetch_arcs(op, bb);
+  }
 
     for (i = 0; i < OP_opnds(op); i++) {
       OP_LIST *defop_list = defop_for_op(op, i, FALSE);
@@ -4029,19 +4216,92 @@ Add_Forw_REG_Arcs(BB *bb)
 	  // allocated to multiple TNs. This is a deficiency of the 
 	  // current PQS implementation.
 
-#ifdef TARG_IA64
-	  if ((!PRDB_Valid() && include_assigned_registers) ||
-#else
 	  if (include_assigned_registers ||
-#endif
 	      !OP_has_disjoint_predicate(defop,op)) {
+#ifdef TARG_SL2 	      
+           if(TOP_is_c2_multi_mode_load(OP_code(defop))) {
+             Is_True( defop->extra_result, 
+                      (" multi mode defop should have already been created with extra opnds/results") );
+             TN_LIST * more_tns = defop->extra_operand;
+             INT32 row_count = 0;
+             while( more_tns ){
+               row_count++;
+               more_tns = TN_LIST_rest( more_tns );
+             } 
+             Is_True( (row_count >= 0), 
+                      ("Invalid row_count in multi_mode c2.ld/st"));
+             INT word_size = Get_Word_Size_For_Multi_Mode(OP_code(defop)); 
+             new_arc_with_latency(CG_DEP_REGIN, defop, op, row_count*word_size, 0, i,  FALSE);
+           }
+           else {
+             new_arc(CG_DEP_REGIN, defop, op, 0, i, FALSE);
+           }
+#else 
 	    new_arc(CG_DEP_REGIN, defop, op, 0, i, FALSE);
+#endif 
 	  }
 	}
 	prev_list = OP_LIST_Push(defop, prev_list, &dep_nz_pool);
 	defop_list = OP_LIST_rest(defop_list);
       }
     }
+
+    /* for multi mode SL2 store instructions, it has extra operands */
+#ifdef TARG_SL2
+    TN_LIST * extra_opnds = op->extra_operand;
+    while( extra_opnds ){
+      /* Strictly, I should get the defop using defop_by_reg,
+       * But since each SL2 vector registers have one single TN,
+       * and all the places use the same TN, so I use defop_by_tn
+       */
+      TN* opnd_tn = TN_LIST_first( extra_opnds );
+      OP_LIST *defop_list = defop_for_tn( opnd_tn );
+      if( has_assigned_reg(opnd_tn) )
+	add_reg_assignment(opnd_tn);
+
+      OP_LIST *prev_list = NULL;
+      while (defop_list) {
+	OP *defop = OP_LIST_first(defop_list);
+	if (!OP_Shadowed_By_Prev_OPs(defop, prev_list, 
+				     OP_has_subset_predicate)) {
+
+	  if (include_assigned_registers ||
+	      !OP_has_disjoint_predicate(defop,op)) {
+            /* the position of operands in 'op' is treated as 0,
+             * since all the extra operands begin with 0th opnd.
+             */
+#ifdef TARG_SL2 	      
+           if(TOP_is_c2_multi_mode_load(OP_code(defop))) {
+             Is_True( defop->extra_result, 
+                      (" multi mode defop should have already been created with extra opnds/results") );
+             TN_LIST * more_tns = defop->extra_operand;
+             INT32 row_count = 0;
+             while( more_tns ){
+               row_count++;
+               more_tns = TN_LIST_rest( more_tns );
+             } 
+	     Is_True( (row_count >= 0), 
+                      ("Invalid row_count in multi_mode c2.ld/st") );
+             INT word_size = Get_Word_Size_For_Multi_Mode(OP_code(defop)); 
+             new_arc_with_latency(CG_DEP_REGIN, defop, op, row_count*word_size, 0, 0,  FALSE);
+           }
+           else {
+             new_arc(CG_DEP_REGIN, defop, op, 0, 0, FALSE);
+           }
+#else 
+	    new_arc(CG_DEP_REGIN, defop, op, 0, 0, FALSE);
+#endif 
+             
+
+	  }
+	}
+	prev_list = OP_LIST_Push(defop, prev_list, &dep_nz_pool);
+	defop_list = OP_LIST_rest(defop_list);
+      }
+
+      extra_opnds = TN_LIST_rest( extra_opnds );
+    }
+#endif
 
     for (i = 0; i < OP_results(op); i++) {
       OP_LIST *prev_defop_list = defop_for_op(op, i, TRUE);
@@ -4068,11 +4328,7 @@ Add_Forw_REG_Arcs(BB *bb)
 	  // allocated to multiple TNs. This is a deficiency of the 
 	  // current PQS implementation.
 
-#ifdef TARG_IA64
-	  if ((!PRDB_Valid() && include_assigned_registers) ||
-#else
 	  if (include_assigned_registers ||
-#endif
 	      !OP_has_disjoint_predicate(prev_defop,op)) {
 	    new_arc(CG_DEP_REGOUT, prev_defop, op, 0, 0, FALSE);
 	  }
@@ -4082,7 +4338,35 @@ Add_Forw_REG_Arcs(BB *bb)
 	prev_defop_list = OP_LIST_rest(prev_defop_list);
       }
     }
-    
+   
+#ifdef TARG_SL2 
+    /* for multi mode sl2 load, it has extra results. */
+    TN_LIST * extra_results = op->extra_result;
+    while( extra_results ) {
+      TN* tn = TN_LIST_first( extra_results );
+      OP_LIST *prev_defop_list = defop_for_tn(tn);
+      if( has_assigned_reg(tn) )
+	add_reg_assignment(tn);
+
+      OP_LIST *prev_list = NULL;
+      while (prev_defop_list) {
+	OP *prev_defop = OP_LIST_first(prev_defop_list);
+
+	if (!OP_Shadowed_By_Prev_OPs(prev_defop, prev_list, OP_has_subset_predicate)) {
+
+	  if (include_assigned_registers ||
+	      !OP_has_disjoint_predicate(prev_defop,op)) {
+	    new_arc(CG_DEP_REGOUT, prev_defop, op, 0, 0, FALSE);
+	  }
+	}
+
+	prev_list = OP_LIST_Push(prev_defop, prev_list, &dep_nz_pool);
+	prev_defop_list = OP_LIST_rest(prev_defop_list);
+      }
+      extra_results = TN_LIST_rest( extra_results );
+    }
+#endif
+ 
     defop_set(op);  // Push this op's definitions
   }
 }
@@ -4121,14 +4405,8 @@ Add_Bkwd_REG_Arcs(BB *bb, TN_SET *need_anti_out_dep)
 	  // allocated to multiple TNs. This is a deficiency of the 
 	  // current PQS implementation.
 
-#ifdef TARG_IA64
-	    if ((!PRDB_Valid() && include_assigned_registers) ||
-	         !OP_has_disjoint_predicate(defop,op) ||
-      	         TN_is_predicate(OP_opnd(op,i))) {  
-#else
-	      if (include_assigned_registers ||
-		  !OP_has_disjoint_predicate(defop,op)) {
-#endif
+	    if (include_assigned_registers ||
+	      !OP_has_disjoint_predicate(defop,op)) {
 	      tn_def_found = TRUE;
 	      /*
 	       * Build non-cyclic REGANTI arc to next def
@@ -4143,6 +4421,39 @@ Add_Bkwd_REG_Arcs(BB *bb, TN_SET *need_anti_out_dep)
 	  add_gtn_use_arc(op, i);
       }
     }
+
+#ifdef TARG_SL2
+    TN_LIST * extra_operands = op->extra_operand;
+    while( extra_operands ) {
+      TN *opnd = TN_LIST_first( extra_operands );
+      if (TN_is_register(opnd) && !TN_is_const_reg(opnd)) {
+	BOOL tn_def_found = FALSE;
+	OP_LIST *defop_list = defop_for_tn(opnd);
+	OP_LIST *prev_list = NULL;
+	while (defop_list) {
+	  OP *defop = OP_LIST_first(defop_list);
+	  if (defop != op &&
+	      !OP_Shadowed_By_Prev_OPs(defop, prev_list, OP_has_subset_predicate)) {
+
+	    if (include_assigned_registers ||
+	      !OP_has_disjoint_predicate(defop,op)) {
+	      tn_def_found = TRUE;
+	      new_arc(CG_DEP_REGANTI, op, defop, 0, 0, FALSE);
+	    }
+	  }
+	  prev_list = OP_LIST_Push(defop, prev_list, &dep_nz_pool);
+	  defop_list = OP_LIST_rest(defop_list);
+	}
+        /* change i->0, since we treat all the extra operands to 
+         * the first operand
+         */
+	if(!tn_def_found && !ARC_LIST_Find(OP_preds(op), CG_DEP_REGIN, 0))
+	  add_gtn_use_arc(op, 0);
+      }
+      extra_operands = TN_LIST_rest( extra_operands );
+    }
+#endif
+
   }
 }
 
@@ -4151,7 +4462,7 @@ Add_Bkwd_REG_Arcs(BB *bb, TN_SET *need_anti_out_dep)
 //  - used by Build_Cyclic_Arcs
 //
 struct TN_2_DEFS_VECTOR_MAP {
-  typedef std::vector<int> DEFS_VECTOR_TYPE;
+  typedef vector<int> DEFS_VECTOR_TYPE;
   typedef std::map<TN*, DEFS_VECTOR_TYPE> TN_2_DEFS_VECTOR_MAP_TYPE;
   typedef TN_2_DEFS_VECTOR_MAP_TYPE::iterator iterator;
 
@@ -4348,7 +4659,6 @@ void Build_Cyclic_Arcs(BB *bb)
   }
 
 #ifdef Is_True_On
-  if (Get_Trace(TP_CG, 0x02))
   {
     for (INT i = 0; i < op_vec.size(); i++) {
       OP *op = op_vec[i];
@@ -4372,88 +4682,64 @@ void Build_Cyclic_Arcs(BB *bb)
 #endif
 }
 
-#ifdef TARG_IA64
-//=============================================================================
-//
-//Function:  Add_CHK_Arcs
-//Input:
-//    - bb 
-//Output:
-//    - No explicit output.
-//Description:
-//    - Since chk is inserted into basic block, we should build corresponding
-//      arcs during DAG construction.
-//=============================================================================
-void 
-Add_CHK_Arcs(BB *bb)
+/* ----------------------------------------------------------------------
+ * Add_Zdl_Arcs
+ *
+ * For the tail bb(body bb) of a zdl loop, we need to add an arc for each
+ * OP in the BB to the tagged OP at the end of the BB. This means we didnt
+ * schedule the last tagged OP. This will hurt performance somehow
+ *
+ * TODO: I need to Move the tag to the last OP , after scheduling ( We
+ * use Hyperblock Scheduling )
+ *
+ */
+static void  Add_Zdl_Arcs( BB* bb )
 {
-    BOOL is_recovery  = BB_recovery(bb);
-
-    if(BB_length(bb) < 2) 
-      return;
-    
-    OP* barrier = NULL;
-    if(is_recovery) {
-      barrier = BB_first_op(bb);
-    }
-    
-    OP* sp_adj = NULL;
-    if (BB_exit(bb)) {
-       sp_adj = BB_exit_sp_adj_op (bb);
-    }
-
-    for(OP* op = BB_first_op(bb); op; op = OP_next(op)){
-        if(barrier == op) continue;
-        if(barrier){
-            if(OP_chk(barrier)){
-               INT32 latency = 0;
-               if (sp_adj == op) {
-                  /* We change the latency to be 1 so that the 
-                   * sp-adj and chk will not in the same 
-                   * instruction group. If they are in same 
-                   * instruction group, e.g  
-                   *    chk.a.clr 
-                   *    add sp=96,sp ;;
-                   *    ...
-                   * that the block that contain check will be 
-                   * splitted at the chk-cycle boundaries, and hence 
-                   * the sp-adjust will reside in an non-exit block.  
-                   * However, sp-adj is assumed to be in exit-block 
-                   * almost anywhere in the CG.
-                   */      
-                   latency = 1;
-                   break;
-                }
-                new_arc_with_latency (latency == 0 ? CG_DEP_POSTCHK : CG_DEP_MISC, 
-                                      barrier, op, latency, 0, 0, FALSE);
-            } else if(OP_xfer(barrier) || OP_call(barrier)){
-                new_arc_with_latency(CG_DEP_POSTBR, barrier, op, 0, 0, 0, FALSE);
-            }else{
-                new_arc_with_latency(CG_DEP_MISC, barrier, op, 0, 0, 0, FALSE);
-            }
-        }
-        if(OP_chk(op) || OP_xfer(op) || OP_call(op))
-            barrier = op;
-    }
-    
-    barrier = NULL;
-    for(OP* op = BB_last_op(bb); op; op = OP_prev(op)){
-        if(barrier && !OP_xfer(op) && !OP_call(op) && !OP_chk(op)){
-            if(OP_chk(barrier)){
-                if(OP_store(op) && OP_chk_a(barrier)){
-                    new_arc_with_latency(CG_DEP_PRECHK, op, barrier, 1, 0, 0, FALSE);
-                }else{
-                    new_arc_with_latency(CG_DEP_PRECHK, op, barrier, 0, 0, 0, FALSE);
-                }
-            }else{
-                new_arc_with_latency(CG_DEP_PREBR, op, barrier, 0, 0, 0, FALSE);
-            }
-        }        
-        if(OP_chk(op) || OP_xfer(op) || OP_call(op))
-            barrier = op;
-    }
+  return ;
 }
-#endif
+
+/* -----------------------------------------------------------------
+ * Add_All_C2_Arcs
+ * 
+ * For sl2 instructions which need to read LUT to get its operands and 
+ * results, the dependency is very difficult to build. So far, I make 
+ * them dependent to all the others.
+ *
+ * Two such instructions totally: c2.vspel, c2.vspmac
+ */
+static void Add_All_C2_Arcs( BB* bb )
+{
+  /* this vector contains the LUT OPs in the BB */
+  std::vector<OP*> c2_op_vec;
+  std::vector<OP*>::iterator it;
+  
+  OP *op;
+  FOR_ALL_BB_OPs( bb, op ){
+    if( OP_code(op) == TOP_c2_vspel_mul_h ||
+        OP_code(op) == TOP_c2_vspel_mul_w ||
+        OP_code(op) == TOP_c2_vspel_adds  ||
+        OP_code(op) == TOP_c2_vspel_mac_h ||
+        OP_code(op) == TOP_c2_vspel_mac_w    
+      ){
+      c2_op_vec.push_back(op);
+    }
+  }
+ 
+  for( it = c2_op_vec.begin(); it != c2_op_vec.end(); it++ ) {
+    /* for all the ops before c2_op */
+    for( op = BB_first_op(bb); op && op != *it; op = OP_next(op) ){
+      new_arc(CG_DEP_REGIN, op, *it, 0, 1, FALSE);
+    }
+    /* for all the ops after lut-op */
+    for( op = OP_next(*it) ; op; op = OP_next(op) ){
+      new_arc(CG_DEP_REGIN, *it, op, 0, 1, FALSE);
+    }
+  }
+ 
+  return;
+}
+
+
 
 /* -----------------------------------------------------------------------
  * Compute the whole dependence graph for <bb> anew.
@@ -4506,10 +4792,25 @@ Compute_BB_Graph(BB *bb, TN_SET *need_anti_out_dep)
     defop_init();
     Add_Bkwd_REG_Arcs(bb, need_anti_out_dep);
     defop_finish();
+
+#if defined(TARG_SL)
+    //Add_All_C2_Arcs(bb);
+
+    if( CG_enable_zero_delay_loop ){
+      if( BB_zdl_body(bb) ) {
+        Add_Zdl_Arcs(bb);
+      }
+    }
+  
+#endif
   }
   
   // Build memory arcs
   Add_MEM_Arcs(bb);
+
+#if defined(TARG_SL2)
+  Add_Vbuf_MEM_Arcs(bb); 
+#endif
 
   std::list<BB*> bb_list;
   bb_list.push_back(bb);
@@ -4520,10 +4821,6 @@ Compute_BB_Graph(BB *bb, TN_SET *need_anti_out_dep)
 
   // Build target-dependent (if any) MISC arcs .
   Add_MISC_Arcs(bb);
-#ifdef TARG_IA64
-  // Build pre-chk and post-chk  arcs.
-  Add_CHK_Arcs(bb);
-#endif
 }
 
 
@@ -4905,8 +5202,8 @@ CG_DEP_Delete_Graph(void *item)
   _cg_dep_bbs.clear();
   
 }
-
-#ifdef TARG_IA64
+  
+#if defined(TARG_IA64) || defined(TARG_SL)
 void 
 CG_DEP_Delete_DAG(void)
 /* -----------------------------------------------------------------------
@@ -4922,12 +5219,14 @@ CG_DEP_Delete_DAG(void)
   MEM_POOL_Delete(&dep_map_nz_pool);
   MEM_POOL_Delete(&dep_nz_pool);
 }
-#endif
-
+  
 // -----------------------------------------------------------------------
 // Computes the whole graph for the block.
 // -----------------------------------------------------------------------
 //
+#else
+static 
+#endif
 void 
 Invoke_Init_Routines()
 {
@@ -4937,7 +5236,6 @@ Invoke_Init_Routines()
   MEM_POOL_Push(&dep_nz_pool);
   MEM_POOL_Push(&dep_map_nz_pool);
 
-  
   // Initiliaze preparatory routines.
   init_op_info();
   init_reg_assignments();
@@ -5191,8 +5489,9 @@ CG_DEP_Compute_Graph(BB      *bb,
 		     BOOL    control_arcs,
 		     TN_SET *need_anti_out_dep)
 {
-  Is_True(BB_rid(bb) == NULL || RID_level(BB_rid(bb)) < RL_CGSCHED,
-	  ("cannot compute dep graph for SWP replication BB:%d", BB_id(bb)));
+  Is_True(BB_rid(bb) == NULL || RID_level(BB_rid(bb)) < RL_CGSCHED
+    || RID_TYPE_major(BB_rid(bb)) || RID_TYPE_minor(BB_rid(bb)),
+   	  ("cannot compute dep graph for SWP replication BB:%d", BB_id(bb)));
 
   tracing = Get_Trace(TP_CG, 1);
 
@@ -5232,7 +5531,7 @@ CG_DEP_Compute_Region_Graph(std::list<BB*>    bb_region,
   _cg_dep_bbs = bb_region;
 
   include_assigned_registers = assigned_regs;
-  cyclic = FALSE;
+  cyclic = TRUE;
   include_memread_arcs = memread_arcs;
   include_control_arcs = control_arcs;
 
@@ -5244,8 +5543,9 @@ CG_DEP_Compute_Region_Graph(std::list<BB*>    bb_region,
   }
 }
 
-#ifdef TARG_IA64
-OP* get_def_op(OP* op , CG_DEP_KIND kind, UINT8 opnd)
+
+static OP*
+get_def_op(OP* op , CG_DEP_KIND kind, UINT8 opnd)
 // get the define op for <op> accroding to CG_DEP_REGIN arc .
 // ARC_LIST_rest only look for ops inside one BB.
 // Note : must ensure one of the two opnd of <op> is const.
@@ -5271,7 +5571,9 @@ OP* get_def_op(OP* op , CG_DEP_KIND kind, UINT8 opnd)
   if (nearest_op==NULL || nearest_op==op || OP_bb(nearest_op) != bb) return NULL;
   else {
     // If nearest_op is mov , then continue to find the previous def op
-    if (OP_code(nearest_op)==TOP_mov) {
+#ifdef TARG_IA64
+    if (OP_code(nearest_op)==TOP_mov) 
+    {
       def_op = nearest_op;
       // Continue to find the pred nearest def of of def_op
       list = OP_preds(def_op);
@@ -5291,12 +5593,16 @@ OP* get_def_op(OP* op , CG_DEP_KIND kind, UINT8 opnd)
       
     }
     else return nearest_op; // Not mov , return def op
+#else 
+    return nearest_op;
+#endif
   }//else
   
   return NULL;
 }
 
-BOOL similar_ops(OP * op1 , OP* op2)
+static BOOL
+similar_ops(OP * op1 , OP* op2)
 // Return TRUE iff op1 and op2 are the same kinds, and they both in the
 // [add, sub , mul, div ] set
 {
@@ -5307,8 +5613,8 @@ BOOL similar_ops(OP * op1 , OP* op2)
     return FALSE;
 }
 
-TN* get_const_tn(OP* op)
-{
+static TN*
+get_const_tn(OP* op) {
   TN* tn1 = OP_opnd(op, 1);
   TN* tn2 = OP_opnd(op, 2);
   if (TN_is_constant(tn1)) {
@@ -5322,8 +5628,8 @@ TN* get_const_tn(OP* op)
       }
 }
 
-UINT get_var_tn_idx(OP* op)
-{
+static UINT
+get_var_tn_idx(OP* op) {
   TN* tn1 = OP_opnd(op, 1);
   TN* tn2 = OP_opnd(op, 2);
   if (TN_is_constant(tn1)) {
@@ -5337,18 +5643,23 @@ UINT get_var_tn_idx(OP* op)
       }
 }
 
-BOOL get_definite_alias_info(OP *pred_op, OP *succ_op)
+static BOOL
+get_definite_alias_info(OP *pred_op, OP *succ_op)
 // return TRUE : definite alias
 // return FALSE: cannot judge (possibly aliased)
 {
-  Is_True((OP_load(pred_op) || OP_like_store(pred_op)) &&
-     (OP_load(succ_op) || OP_like_store(succ_op)) ,
-     ("not a load or store"));
+#if defined(TARG_SL)
+  if (OP_code(pred_op) == TOP_asm || OP_code(succ_op) == TOP_asm)
+    return TRUE;
+#endif
 
-  if (OP_like_store (pred_op) && !OP_store (pred_op) ||
-      OP_like_store (succ_op) && !OP_store (succ_op)) {
-     return FALSE;
-  }
+#ifdef TARG_SL2
+  if(OP_code(pred_op) == TOP_c2_joint || OP_code(succ_op) == TOP_c2_joint)
+    return TRUE;
+#endif 
+  Is_True((OP_load(pred_op) || OP_store(pred_op)) &&
+     (OP_load(succ_op) || OP_store(succ_op)) ,
+     ("not a load or store"));
 
   BB* pred_bb = OP_bb(pred_op); // for debug
   BB* succ_bb = OP_bb(succ_op); // for debug
@@ -5415,8 +5726,6 @@ BOOL get_definite_alias_info(OP *pred_op, OP *succ_op)
   return FALSE;
 }
 
-extern
-
 void
 DAG_BUILDER::Build_Mem_Arcs(OP *op)
 {
@@ -5444,10 +5753,13 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
     if (kind == CG_DEP_MEMREAD &&
         OP_volatile(pred) && OP_volatile(op)) kind = CG_DEP_MEMVOL;
 
-    if (kind == CG_DEP_MEMREAD && !_include_memread_arcs && 
-       !Cache_Has_Conflict(pred,op,kind))
-      continue;
+#if defined(TARG_SL)
+    if (kind == CG_DEP_MEMOUT && OP_code(op) == TOP_asm) kind = CG_DEP_MEMVOL;
+#endif
 
+    if (kind == CG_DEP_MEMREAD && !_include_memread_arcs) {
+      continue;
+    }
     if (!_cyclic && CG_DEP_Mem_Arc_Pruning >= PRUNE_NON_CYCLIC ||
         _cyclic && omega == 0 && CG_DEP_Mem_Arc_Pruning >= PRUNE_CYCLIC_0) {
       if (kind == CG_DEP_MEMREAD) {
@@ -5461,8 +5773,7 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
       have_latency = TRUE;
     }
 
-    if (get_mem_dep(pred, op, &definite, _cyclic ? &omega : NULL) ||
-        (kind == CG_DEP_MEMREAD && Cache_Has_Conflict(pred,op,kind))) {
+    if (get_mem_dep(pred, op, &definite, _cyclic ? &omega : NULL)) {
 
       // For OOO machine (eg. T5), non-definite memory dependences can be 
       // relaxed to edges with zero latency. The belief is that this can 
@@ -5471,11 +5782,8 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
       if (!have_latency) latency =
         (CG_DEP_Adjust_OOO_Latency && PROC_is_out_of_order() && !definite) ? 
         0 : CG_DEP_Latency(pred, op, kind, 0);
-      
-      if (omega == 0)
-          Cache_Adjust_Latency(pred,op,kind, &latency);
-      /* Build a mem dep arc from <op> to <succ> */
 
+      /* Build a mem dep arc from <op> to <succ> */
       if(!definite) {
         definite = get_definite_alias_info(pred, op);
       }
@@ -5485,7 +5793,6 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
       /* if MEMIN dependence is not a definite dependence and 
          !_include_memin_arcs is SET, not already a check-load, then
          set the ARC as a dotted edge. */
-
       if (!CGTARG_Is_OP_Check_Load(op) &&
           kind == CG_DEP_MEMIN && !definite && !_include_memin_arcs) {
         /* volatile op dep on all other valatile ops no matter the dependence 
@@ -5493,13 +5800,11 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
          * the dependence is indefinite to prevent removal by r/w elimination.
          * So, we need futher checking. 
          */
-	// bug fix for OSP_88
-	if ((!OP_volatile (pred) || !OP_volatile(op)) && !OP_asm(pred)) {
-	  Set_ARC_is_dotted(arc, TRUE);
-	  _num_data_spec_arcs++;
+        if (!OP_volatile (pred) || !OP_volatile(op)) {
+            Set_ARC_is_dotted(arc, TRUE);
+            _num_data_spec_arcs++;
         }
       }
-
       found_definite_memread_succ |= (kind == CG_DEP_MEMREAD && definite);
     }
   }
@@ -5572,27 +5877,11 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
   TN * tn_ptr = OP_opnd (op, OP_PREDICATE_OPND);
 
   // Start building REGIN Arcs .
-  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and 
-  // new version.
-  
   for (i = 0; i < OP_opnds(op); i++) {
-
-#ifndef  DAG_BITSET_SWITCH_ON
-    
-    OPs& def_ops = Get_Def_Use_OPs(op, i, CG_DEP_REGIN);
-    // Build REGIN arc from operand's def.
-    for (OPs::iterator ops_iter = def_ops.begin();
-         ops_iter != def_ops.end();
-         ops_iter++) {
-            
-#else
     // get the relative def ops into vect : _Define_OPs[]
     Get_Define_OPs(op, i, CG_DEP_REGIN); 
-    for(DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
-                ops_iter!=_Define_OPs.end();
-                ops_iter++  ){
-          
-#endif
+    for (DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
+         ops_iter!=_Define_OPs.end(); ops_iter++) {
 
       // #795487: PQS doesn't work with register allocated code. It
       // uses TN as a handle to query predicate relations and relies
@@ -5600,42 +5889,19 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
       // after register allocation, since a same register can be
       // allocated to multiple TNs. This is a deficiency of the 
       // current PQS implementation.
-      
       if (!OP_has_disjoint_predicate(*ops_iter, op)) {
-            if(i == OP_PREDICATE_OPND) {
-                ARC *arc_ptr = new_arc(CG_DEP_CTLSPEC, *ops_iter, op, 0, i, FALSE);
-                Set_ARC_is_dotted (arc_ptr, TRUE);
-            } else {
-                ARC *arc_ptr = new_arc(CG_DEP_REGIN, *ops_iter, op, 0, i, FALSE);
-            }
+        ARC *arc_ptr = new_arc(CG_DEP_REGIN, *ops_iter, op, 0, i, FALSE);
       }
-    }// for
+    }
   }
   
-
   // Start building REGOUT Arcs .
-  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and
-  // new version.
-  
   for (i = 0; i < OP_results(op); i++) {
 
-#ifndef  DAG_BITSET_SWITCH_ON
-    
-    OPs& prev_def_ops = Get_Def_Use_OPs(op, i, CG_DEP_REGOUT);
-    // Build REGOUT arc from previous def of same result.
-    for (OPs::iterator ops_iter = prev_def_ops.begin();
-         ops_iter != prev_def_ops.end();
-         ops_iter++) {
-    
-#else
     // get the relative def ops into vect : _Define_OPs[]
-    Get_Define_OPs(op, i, CG_DEP_REGOUT);
-    for(DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
-                ops_iter!=_Define_OPs.end();
-                ops_iter++  ){
-                        
-#endif
-
+    Get_Define_OPs (op, i, CG_DEP_REGOUT);
+    for (DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
+         ops_iter!=_Define_OPs.end(); ops_iter++){
       // #795487: See above.
       // if (_include_assigned_registers ||
       //    !OP_has_disjoint_predicate(*ops_iter,op)) {
@@ -5702,7 +5968,7 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
 
         BOOL tn_def_found = FALSE;
         
-          
+#ifdef TARG_IA64
         // the following has exchanged *ops_iter and op to each other
         TN * tn = OP_result(*ops_iter,j) ;
         if (TN_is_register(tn) && TN_register_class(tn) == 
@@ -5726,12 +5992,15 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
             adjust_reganti_latency (arc) ;
           }
         }// else
+#else 
+        ARC * arc = new_arc(CG_DEP_REGANTI, op, *ops_iter, 0, (UINT8)i, FALSE);
+        OUT = TRUE;
+        adjust_reganti_latency (arc) ;
+#endif
       }// for(j = 0; j < OP_results(op); j++){
     }
   }
   
 #endif // end of #ifndef  DAG_BITSET_SWITCH_ON
-
-
 }
-#endif
+

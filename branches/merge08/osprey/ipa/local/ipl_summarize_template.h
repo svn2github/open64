@@ -1270,6 +1270,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 #ifdef KEY
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback;
     LABEL_WN_MAP label_use_map;     
+    UINT64 PU_invoke_count = 0;
     vector<INT> icall_site;
 #else
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback&& IPA_Enable_Reorder;//and other things, such as Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO]
@@ -1336,12 +1337,13 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
 	if (freq.Known()) {
 	    proc->Set_has_PU_freq ();
-#ifndef KEY
+#ifdef KEY
+	    PU_invoke_count = (UINT64) freq.Value();
+#else
 	    SUMMARY_FEEDBACK *fb = New_feedback ();
 	    proc->Set_feedback_index (Get_feedback_idx ());
 #endif
 	    fb->Set_frequency_count (freq);
-//		printf("&&&&&&&&&&&&& %s -> %f\n",ST_name(WN_st(w)), fb->Get_frequency_count()._value);
 	}
 	else {
 	  // FB_PU_Has_Feedback = FALSE;
@@ -1585,17 +1587,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
             Direct_Mod_Ref = TRUE;
 #endif
             proc->Incr_callsite_count ();
-            Direct_Mod_Ref = TRUE;
 
-#ifdef KEY
-	    if( Cur_PU_Feedback != NULL &&
-		WN_operator(w2) == OPR_ICALL ){
-	      FB_FREQ freq = Cur_PU_Feedback->Query(w2, FB_EDGE_CALL_INCOMING);
-	      if( freq.Known() ){
-               icall_site.push_back(Get_callsite_idx());
-	      }
-	    }
-#endif	      
             // update actual parameter count
             if (Do_common_const && 
                 !Process_control_dependence (w2, Get_callsite_idx())) {
@@ -1647,10 +1639,20 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    Direct_Mod_Ref = TRUE;
 #endif
 	    Record_ref (w2);
+#ifdef KEY
+	    if (Do_reorder) {
+	      loop_count = PU_invoke_count;
+	      if (!loop_count_stack->Is_Empty())
+	        loop_count *= loop_count_stack->Top();
+	      if (loop_count)
+	        Record_struct_access(w2,loop_count);
+	    }
+#else
 	    if(Do_reorder && !loop_count_stack->Is_Empty() ){
 		loop_count=loop_count_stack->Top();
 	        Record_struct_access(w2,loop_count);
 	    }
+#endif
 	    break;
 	  
 	case OPR_STID:
@@ -1666,11 +1668,21 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_MSTORE:
 	    Direct_Mod_Ref = TRUE;
 	    Record_mod (w2);
+#ifdef KEY
+	    if (Do_reorder) {
+	      loop_count = PU_invoke_count;
+	      if (!loop_count_stack->Is_Empty())
+	        loop_count *= loop_count_stack->Top();
+	      if (loop_count)
+	        Record_struct_access(w2,loop_count);
+	    }
+#else
             if(Do_reorder && !loop_count_stack->Is_Empty() ) {
 	        loop_count=loop_count_stack->Top();
 	         Record_struct_access(w2,loop_count);
             }
-	    break;
+#endif
+ 	    break;
 
 	case OPR_IO:
 #ifdef KEY
@@ -1683,10 +1695,20 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    break;
 	case OPR_ILDA:
 	case OPR_MLOAD:
-	     if(Do_reorder && !loop_count_stack->Is_Empty() ) {
+#ifdef KEY
+	    if (Do_reorder) {
+	      loop_count = PU_invoke_count;
+	      if (!loop_count_stack->Is_Empty())
+	        loop_count *= loop_count_stack->Top();
+	      if (loop_count)
+	        Record_struct_access(w2,loop_count);
+	    }
+#else
+	    if(Do_reorder && !loop_count_stack->Is_Empty() ) {
 		    loop_count=loop_count_stack->Top();
 		    Record_struct_access(w2,loop_count);
-               }
+            }
+#endif
 		break;
 
 	    // Exceptions now come as REGIONS (not as EXC_SCOPE_BEGINS)
@@ -1868,15 +1890,28 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	      label_wn &label = label_use_map [WN_label_number (w2)];
 	      Is_True (label.wn == NULL, ("Process_procedure: Duplicate labels?"));
 	      label.wn = w2;
+	      Is_True (label.wn != NULL, ("Process_procedure: Undefined label?"));
 	      break;
 	    }
 
 	// label use
 	case OPR_GOTO_OUTER_BLOCK:
 	    Is_True (FALSE, ("Did not expect GOTO_OUTER_BLOCK"));
+	case OPR_REGION_EXIT:
+	{
+	  WN *region_exits = LWN_Get_Parent(w2);
+	  if(region_exits != NULL && WN_operator(region_exits) == OPR_BLOCK) {
+	    WN *region = LWN_Get_Parent(region_exits);
+	    if(region != NULL && WN_operator(region) == OPR_REGION
+	       && WN_kid0(region) == region_exits) {
+	      // skip the duplicate REGION_EXIT in REGION EXITS pragma
+	      break;
+	    }
+	  }
+	}
+	// fall through
         case OPR_TRUEBR:
         case OPR_FALSEBR:
-        case OPR_REGION_EXIT:
 	case OPR_GOTO:
 	case OPR_CASEGOTO:
 	    label_use_map [WN_label_number (w2)].seen = TRUE;
@@ -1977,7 +2012,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
       SUMMARY_CALLSITE* callsite = New_callsite ();
 
       callsite->Set_callsite_id( proc->Get_callsite_count()  );
-      callsite->Set_icall_slot();
+      callsite->Set_icall_target();
 
       callsite->Set_param_count( icall_info->Get_param_count() );
       callsite->Set_return_type( icall_info->Get_return_type() );
@@ -2988,6 +3023,10 @@ SUMMARIZE<program>::Trace(FILE* fp)
     Get_common_shape(0)->Print_array(fp, Get_common_shape_idx()+1);
   if (Has_struct_access_entry()) //reorder
   	Get_struct_access(0)->Print_array(fp, Get_struct_access_idx()+1);
+#ifdef KEY
+  if (Has_ty_info_entry())
+  	Get_ty_info(0)->Print_array(fp, Get_ty_info_idx()+1);
+#endif
 }
 
 template <PROGRAM program>
@@ -3071,6 +3110,33 @@ SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
     cur_summary->Inc_fld_count(fld_id, loop_count);
     return;
 }
+
+#ifdef KEY
+template <PROGRAM program>
+void
+SUMMARIZE<program>::Record_ty_info_for_type (TY_IDX ty, TY_FLAGS flags)
+{
+  SUMMARY_TY_INFO * ty_info;
+  UINT32 ty_index = TY_IDX_index(ty);
+
+  Is_True (TY_kind(ty) == KIND_STRUCT,
+           ("Record_ty_info_for_type expects STRUCT ty"));
+
+  INT index = Ty_info_hash_table->Find(ty_index);
+
+  if (index == 0)
+  {
+    ty_info = New_ty_info();
+    ty_info->Set_ty(ty);
+    Ty_info_hash_table->Enter(ty_index, Get_ty_info_idx() + 1);
+  }
+  else
+    ty_info = Get_ty_info(index - 1);
+
+  if (flags & TY_NO_SPLIT)
+    ty_info->Set_ty_no_split();
+}
+#endif
 
 #endif // ipl_summarize_template_INCLUDED
 

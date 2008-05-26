@@ -46,16 +46,15 @@ extern BOOL Trace_Exp2;	/* extra trace info */
 extern void Expand_Immediate (TN *dest, TN *src, BOOL is_signed, OPS *ops);
 extern void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
 extern void Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
+#if defined(TARG_PR)
+extern void Expand_SR_Adj(BOOL isAdd, TN *result, TN *imm, OPS *ops);
+#endif
 extern void Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
 extern void Expand_Aux_Sign (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops);
 extern void Expand_Abs (TN *result, TN *x, TYPE_ID mtype, OPS *ops);
-#ifdef TARG_IA64
-extern void Expand_Multiply (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops, OPCODE opcode);
-#else
 extern void Expand_Multiply (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops);
-#endif
 extern void Expand_High_Multiply (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops);
 extern void Expand_Sqrt (TN *result, TN *x, TYPE_ID mtype, OPS *ops);
 extern void Expand_Binary_Complement (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
@@ -81,7 +80,7 @@ extern void Expand_Float_Greater_Equal (TN *dest, TN *src1, TN *src2, VARIANT va
 extern void Expand_Float_Equal (TN *dest, TN *src1, TN *src2, VARIANT variant, TYPE_ID mtype, OPS *ops);
 extern void Expand_Float_Not_Equal (TN *dest, TN *src1, TN *src2, VARIANT variant, TYPE_ID mtype, OPS *ops);
 extern void Expand_Convert_Length (TN *dest, TN *src, TN *length, TYPE_ID mtype, BOOL signed_extension, OPS *ops);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_MIPS)
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 #else
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
@@ -95,17 +94,11 @@ extern void Expand_Float_To_Int_Floor (TN *dest, TN *src, TYPE_ID imtype, TYPE_I
 #ifdef TARG_X8664
 extern void Expand_Float_To_Int_Tas (TN *dest, TN *src, TYPE_ID imtype, OPS *ops);
 extern void Expand_Int_To_Float_Tas (TN *dest, TN *src, TYPE_ID fmtype, OPS *ops);
-extern void Expand_Int_To_Vect_Tas (TN *dest, TN *src, TYPE_ID fmtype, OPS *ops);
+extern void Expand_Float_To_Float_Floor (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 extern void Expand_Float_To_Float_Floorf (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 extern void Expand_Float_To_Float_Floorl (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 extern void Expand_Conv_To_Vector (TN *, TN *, TYPE_ID, TYPE_ID, OPS *);
-extern void Expand_Conv_From_Vector (TN *, TN *, TYPE_ID, TYPE_ID, OPS *);
 #endif
-
-#if defined(TARG_X8664) || defined(TARG_MIPS)
-extern void Expand_Float_To_Float_Floor (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
-#endif // TARG_X8664 || TARG_MIPS
-
 extern void Expand_Bool_To_Int (TN *dest, TN *src, TYPE_ID rtype, OPS *ops);
 extern void Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
@@ -128,7 +121,7 @@ TN* Create_TN_Pair( TN*, TYPE_ID );
 void Create_TN_Pair( TN*, TN* );
 #endif /* TARG_X8664 */
 
-#ifdef TARG_IA64
+#ifndef KEY
 extern TN* Expand_Immediate_Into_Register (TN *src, OPS *ops);
 #else
 extern TN* Expand_Immediate_Into_Register (TN *src, BOOL is_64bit, OPS *ops);
@@ -145,7 +138,6 @@ extern void Expand_Left_Rotate (TN *result, TN *src1, TN *src2, TYPE_ID rtype, T
 
 /* in exp_loadstore: */
 extern void Expand_Lda (TN *dest, TN *src, OPS *ops);
-// Need not distinguish them because in C++ they represent different function
 #if defined(TARG_MIPS) || defined(TARG_X8664)
 extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, OPS *ops);
 extern void Expand_Store (TYPE_ID mtype, TN *src1, TN *src2, TN *src3, OPS *ops);
@@ -166,14 +158,8 @@ extern TOP Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops);
 
 /* in exp_divrem: */
 extern TN* Expand_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
-#ifdef TARG_IA64
-extern void Expand_DivRem (TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode);
-extern void Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode);
-extern void Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode);
-#else
 extern void Expand_DivRem (TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
-#endif
 extern void Expand_Float_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Float_Recip (TN *result, TN *src, TYPE_ID mtype, OPS *ops);

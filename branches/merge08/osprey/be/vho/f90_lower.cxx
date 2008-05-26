@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -76,8 +72,10 @@
 #include "f90_lower.h"
 
 #ifdef __GNUC__
+#if ! defined(BUILD_OS_DARWIN)
 #pragma weak Anl_File_Path
 #pragma weak New_Construct_Id
+#endif /* defined(BUILD_OS_DARWIN) */
 #endif
 
 /* Useful macros */
@@ -4212,6 +4210,10 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
    TYPE_ID ty;
    WN* region;
 
+#ifdef KEY // bug14194
+   for (i=0; i<MAX_NDIM; i++)
+     sizes[i] = NULL;
+#endif
 
    if (kids[1]) {
       dim = F90_Get_Dim(kids[1]);
@@ -4345,7 +4347,11 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
       
       /* Create a single loopnest */
       num_temps += 1;
+#ifdef KEY // bug14194
+      dim = rank + 1 - dim; /* account for ordering */
+#else
       dim = ndim + 2 - dim; /* account for ordering */
+#endif /* KEY */
       sprintf(tempname,"@f90red_%d",num_temps);
       loopnest = create_doloop(&index,tempname,sizes[dim-1],DIR_POSITIVE,loopnest);
       for (i=0,j=0; i < ndim+1; i++) {
@@ -4425,6 +4431,11 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
    ST * retval;
    TY_IDX  retty, ret_elem_ptr;
    TYPE_ID expr_ty;
+
+#ifdef KEY // bug14194
+   for (i=0; i<MAX_NDIM; i++)
+     sizes[i] = NULL;
+#endif
 
    if (kids[1]) {
       dim = F90_Get_Dim(kids[1]);
@@ -4566,7 +4577,11 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
       
       /* Create a single loopnest */
       num_temps += 1;
+#ifdef KEY // bug14194
+      dim = rank + 1 - dim; /* account for ordering */
+#else
       dim = ndim + 2 - dim; /* account for ordering */
+#endif /* KEY */
       sprintf(tempname,"@f90red_%d",num_temps);
 #ifdef KEY /* Bug 3395 */
       loopnest = create_doloop(&index,tempname,sizes[dim-1],DIR_NEGATIVE,loopnest);
@@ -5625,10 +5640,12 @@ static BOOL F90_Generate_Loops(WN *stmt, WN *block)
    char tempname[32]; /* This isn't going to overflow */
    BOOL add_prompf;
 
+#ifndef KEY // bug 8567
    /* Don't walk I/O statements */
    if (WN_operator(stmt) == OPR_IO) {
       return(TRUE);
    }
+#endif
 
    adata = GET_F90_MAP(stmt);
    if (adata) {

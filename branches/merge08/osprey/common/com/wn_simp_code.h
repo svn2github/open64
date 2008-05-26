@@ -1409,7 +1409,11 @@ static simpnode  simp_abs(OPCODE opc, simpnode k0, simpnode k1,
       SHOW_RULE("ABS(-x) -> ABS(x)");     
       r = SIMPNODE_SimpCreateExp1(opc,SIMPNODE_kid0(k0));
       SIMP_DELETE(k0);
-   } else if (opr == OPR_CVT) {
+   } else if (opr == OPR_CVT
+#ifdef KEY // bug 12971
+	      && ! MTYPE_is_vector(OPCODE_rtype(opc))
+#endif
+	      ) {
       cvt_op = SIMPNODE_opcode(k0);
       sty = OPCODE_desc(cvt_op);
       dty = OPCODE_rtype(cvt_op);
@@ -1591,7 +1595,12 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
 #ifdef TARG_X8664
 	 if (Rsqrt_Allowed >= 1 &&
 	     // x86-64 rsqrt supports single-precision only.
-	     (ty == MTYPE_F4 || ty == MTYPE_V16F4))
+	     (ty == MTYPE_F4 || ty == MTYPE_V16F4) &&
+	     Is_Target_SSE2())
+#elif defined(TARG_NVISA)
+	 if (Rsqrt_Allowed >= 1 &&
+	     // ptx rsqrt supports single-precision only.
+	     (ty == MTYPE_F4))
 #else	    
 	 if (Rsqrt_Allowed)
 #endif
@@ -1619,7 +1628,8 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
 #ifdef TARG_X8664
 	      Rsqrt_Allowed == 2 &&
 	      // x86-64 rsqrt supports single-precision only.
-	      (ty == MTYPE_F4 || ty == MTYPE_V16F4)
+	      (ty == MTYPE_F4 || ty == MTYPE_V16F4) &&
+	      Is_Target_SSE2()
 #else
 	      Rsqrt_Allowed
 #endif
@@ -1802,6 +1812,17 @@ static simpnode  simp_cvt(OPCODE opc, simpnode k0, simpnode k1,
 	    newopc = OPCODE_UNKNOWN; /* Suppress for PREGs */
 	 }
 
+#ifdef TARG_NVISA
+         // we want to keep 4<->8byte conversions cause separate registers
+         if ((MTYPE_byte_size(source_type) == 4
+           && MTYPE_byte_size(dest_type) == 8)
+          || (MTYPE_byte_size(source_type) == 8
+           && MTYPE_byte_size(dest_type) == 4))
+         {
+            newopc = OPCODE_UNKNOWN;
+         }
+#endif
+
 	 if (newopc != OPCODE_UNKNOWN) {
 	    SHOW_RULE("CVT(LOAD)");
 	    WN_set_opcode(k0,newopc);
@@ -1811,7 +1832,9 @@ static simpnode  simp_cvt(OPCODE opc, simpnode k0, simpnode k1,
    }
 #endif	 
 
-#ifndef EMULATE_LONGLONG
+#if !defined(EMULATE_LONGLONG) && !defined(TARG_NVISA)
+// NVISA needs cvt; result will be 32bit, but whirl still has U8LSHR
+// and will then use as 32bit.
 
 // KEY: SIMP_Is_Constant changed to SIMP_Is_Int_Constant
 
@@ -2012,6 +2035,10 @@ static simpnode  simp_add_sub(OPCODE opc,
    INT32 num_const,num_ops,i,j,k,ic1,ic2,d1,d2;
    
    ty = OPCODE_rtype(opc);
+#ifdef TARG_MIPS // bug 13069
+   if (ty == MTYPE_FQ)
+     return 0;
+#endif
    issub = (OPCODE_operator(opc) == OPR_SUB);
    if (issub) {
       subop = opc;
@@ -2037,7 +2064,10 @@ static simpnode  simp_add_sub(OPCODE opc,
    /* Try the simple ones first */
 
    if (k1const && 
-       ((SIMP_IS_TYPE_INTEGRAL(ty) && !SIMP_Is_Str_Constant (k1) && SIMP_Int_ConstVal(k1)==0) ||
+       ((SIMP_IS_TYPE_INTEGRAL(ty) &&  // KEY: Bug 12430
+	 ((SIMP_Is_Int_Constant(k1) && SIMP_Int_ConstVal(k1)==0) ||
+	  (SIMP_Is_Str_Constant(k1) &&
+	   Targ_To_Host(SIMP_Str_ConstVal(k1))==0))) ||
         (SIMP_IS_TYPE_FLOATING(ty) && is_floating_equal(k1,0.0)
 #ifdef KEY // bug 2780: if x is -0.0, it is wrong to delete the + with 0.0
 	 && IEEE_Arithmetic >= IEEE_INEXACT
@@ -2055,7 +2085,10 @@ static simpnode  simp_add_sub(OPCODE opc,
    }
 
    if (k0const && issub &&
-       ((SIMP_IS_TYPE_INTEGRAL(ty) && !SIMP_Is_Str_Constant (k1) && SIMP_Int_ConstVal(k0)==0) ||
+       ((SIMP_IS_TYPE_INTEGRAL(ty) &&  // KEY: Bug 12430
+	 ((SIMP_Is_Int_Constant(k0) && SIMP_Int_ConstVal(k0)==0) ||
+	  (SIMP_Is_Str_Constant(k0) &&
+	   Targ_To_Host(SIMP_Str_ConstVal(k0))==0))) ||
         (SIMP_IS_TYPE_FLOATING(ty) && is_floating_equal(k0,0.0)))) {
       SHOW_RULE(" 0 - x ");
       r = SIMPNODE_SimpCreateExp1(negop,k1);
@@ -3286,6 +3319,23 @@ static simpnode  simp_band( OPCODE opc,
 	   SIMP_DELETE(SIMPNODE_kid1(k0));
 	 }
       }	  
+#if defined(TARG_SL)
+        else if ((SIMPNODE_operator(k0) == OPR_LDID) && (c1 > 0xffff) && (MTYPE_bit_size(SIMPNODE_rtype(k0)) == MTYPE_bit_size(ty))) {
+         SHOW_RULE(" ((j & c1)  && (c1 > 0xffff) ");
+         INT32 shift_count = 0;
+         // When expanding into extract, need to take care of the endianness.
+         // See gcc.c-torture/execute/200201271-1.c
+         if (Target_Byte_Sex != Host_Byte_Sex)
+           shift_count = MTYPE_bit_size(ty) - shift_count - log2((UINT64)c1+1);
+         mask_bits = create_bitmask(MTYPE_bit_size(ty) - shift_count);
+         if (Enable_extract_bits && IS_POWER_OF_2(c1+1)) {
+           r = SIMPNODE_SimpCreateExtract(MTYPE_bit_size(ty) == 32 ? OPC_U4EXTRACT_BITS : OPC_U8EXTRACT_BITS,
+                                          shift_count,log2((UINT64)c1+1),
+                                          k0);
+           SIMP_DELETE(k1);
+         }
+	}
+#endif
    } else if ((SIMPNODE_operator(k0)==OPR_BNOT) && (SIMPNODE_operator(k1)==OPR_BNOT)) {
       SHOW_RULE(" ~j & ~k ");
       r = SIMPNODE_SimpCreateExp1(OPC_FROM_OPR(OPR_BNOT,ty),

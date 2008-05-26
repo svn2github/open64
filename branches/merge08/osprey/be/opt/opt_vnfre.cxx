@@ -1548,8 +1548,8 @@ VALNUM_FRE::_save_to_temp(BB_NODE *in_bb,
    const MTYPE dtype = rhs->Dtyp();
    CODEREP    *lhs = 
       _etable->New_temp_cr(dtype, 
-			   rhs->Check_if_result_is_address(_etable->
-							   Htable()->Sym()));
+		   rhs->Check_if_result_is_address(_etable->Htable()->Sym()),
+		   rhs);
 
    VNFRE::add_valnum(lhs, get_valnum(rhs->Coderep_id()).ordinal());
 

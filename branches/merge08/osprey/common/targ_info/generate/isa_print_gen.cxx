@@ -1,9 +1,5 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
- */
-
-/*
- * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,10 +44,10 @@
 //
 /////////////////////////////////////
 //
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_print_gen.cxx,v $
+//  $Revision: 1.3 $
+//  $Date: 2005/10/21 02:47:37 $
+//  $Author: weitang $
+//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/isa_print_gen.cxx,v $
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -69,17 +65,23 @@
  * (It would be better to get the max operands and results from the
  * generated targ_isa_operands.h file -- Ken)
  */
+
+#ifdef TARG_SL
+#define MAX_OPNDS 9
+#define MAX_RESULTS 4
+#else
 #define MAX_OPNDS 6
 #define MAX_RESULTS 2
+#endif
 
 typedef enum {
 	END	= 0,			// end of list marker
 	NAME	= 1,			// instruction name/mnemonic
 #ifdef TARG_X8664
-   	SEGMENT = 2,			// address segment prefix
-	OPND    = 3,			// OPND+n => operand n
+        SEGMENT = 2,                    // address segment prefix
+        OPND    = 3,                    // OPND+n => operand n
 #else
-	OPND    = 2,			// OPND+n => operand n
+        OPND    = 2,                    // OPND+n => operand n
 #endif
    	RESULT  = OPND+MAX_OPNDS,	// RESULT+n => result n
 } COMP_TYPE;
@@ -183,7 +185,7 @@ const char* Print_Name(int print_index)
 	comp_name[i] = "ISA_PRINT_COMP_name";
 #ifdef TARG_X8664
       } else if (i == SEGMENT) {
-	comp_name[i] = "ISA_PRINT_COMP_segment";
+        comp_name[i] = "ISA_PRINT_COMP_segment";
 #endif
       } else if (i == OPND) {
 	comp_name[i] = "ISA_PRINT_COMP_opnd";
@@ -388,7 +390,7 @@ void ISA_Print_End(void)
 	"  %-21s = %d,  /* %s */\n"
 	"  %-21s = %d,  /* %s */\n"
 #ifdef TARG_X8664
-	"  %-21s = %d,  /* %s */\n"
+        "  %-21s = %d,  /* %s */\n"
 #endif
 	"  %-21s = %d,  /* %s */\n"
    	"  %-21s = %d,  /* %s */\n"
@@ -397,7 +399,7 @@ void ISA_Print_End(void)
 	Print_Name(END), END, "End of list marker",
 	Print_Name(NAME), NAME, "Instruction name",
 #ifdef TARG_X8664
-	Print_Name(SEGMENT), SEGMENT, "Address segment prefix",
+        Print_Name(SEGMENT), SEGMENT, "Address segment prefix",
 #endif
 	Print_Name(OPND), OPND, "OPND+n => operand n",
 	Print_Name(RESULT), RESULT, "RESULT+n => result n",
@@ -545,10 +547,11 @@ void Segment (void)
 {
   if (current_print_desc->args == MAX_LISTING_OPERANDS) {
     fprintf(stderr, "### Error: too many listing operands for %s\n",
-		    current_print_desc->type->name);
+                    current_print_desc->type->name);
     exit(EXIT_FAILURE);
   }
   current_print_desc->arg[current_print_desc->args] = SEGMENT;
   current_print_desc->args++;
 }
 #endif
+

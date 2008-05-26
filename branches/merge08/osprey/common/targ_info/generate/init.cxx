@@ -22,7 +22,7 @@
 // Temple Place - Suite 330, Boston MA 02111-1307, USA.
 ///////////////////////////////////////////////////////////////////////////
 
-#ifdef __linux__
+#if defined(__linux__) || defined(BUILD_OS_DARWIN) 
 
 // Work around linux "weak" bug explained in be/com/weak.cxx, so that
 // processor specific instruction latencies and other information is
@@ -78,4 +78,4 @@ struct TARG_INFO_INIT
   }
 } Targ_Info_Initializer;
 
-#endif // __linux__
+#endif // __linux__ || BUILD_OS_DARWIN

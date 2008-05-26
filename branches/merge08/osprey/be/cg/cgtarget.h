@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
- */
-
-/*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -345,10 +337,10 @@
  *        These routines check to see if <memop> is a speculative,
  *        advanced or check load. Assumes that <memop> is a load operation.
  *  
- *	INT CGTARG_Analyze_Compare(OP *br,
- *				   TN **tn1, 
- *				   TN **tn2, 
- *				   OP **compare_op)
+ *	VARIANT CGTARG_Analyze_Compare(OP *br,
+ *				       TN **tn1, 
+ *				       TN **tn2, 
+ *				       OP **compare_op)
  *	  Analyze a branch to determine the condition of the branch and
  *	  TNs being compared. Where possible and appropriate if the branch
  *	  is based on the result of an slt instruction, take that in to
@@ -365,9 +357,7 @@
  *	  NOTES: Currently restricted to integer branches; also see
  *	  CGTARG_Analyze_Branch
  *
- *      INT CGTARG_Analyze_Branch(OP *br,
- *				  TN **tn1, 
- *				  TN **tn2)
+ *      VARIANT CGTARG_Analyze_Branch(OP *br, TN **tn1, TN **tn2)
  *	  Analyze a branch to determine the condition of the branch and
  *	  the operand TNs.
  * 
@@ -534,10 +524,10 @@
  */
 
 /* 
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cgtarget.h,v $
+ * $Revision: 1.15 $
+ * $Date: 05/12/05 08:59:06-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cgtarget.h $
  */
 
 #ifndef CGTARGET_INCLUDED
@@ -554,15 +544,10 @@
 #include "ti_bundle.h"
 #include "cg_thr.h"
 
-#ifdef TARG_IA64
-#include "targ_bypass_mck.h"
-#endif
-
 extern UINT32 CGTARG_branch_taken_penalty;
 extern BOOL CGTARG_branch_taken_penalty_overridden;
 
 #include "cgtarget_arch.h"
-
 
 class CG_GROUPING; // Defined only for isa where it is used (e.g. IA-64).
 
@@ -611,9 +596,6 @@ extern BOOL CGTARG_Can_Be_Speculative( OP* op );
 extern BOOL CGTARG_Is_OP_Speculative(OP *op);
 extern BOOL CGTARG_Is_OP_Speculative_Load( OP* memop );
 extern BOOL CGTARG_Is_OP_Advanced_Load( OP* memop );
-#ifdef TARG_IA64
-extern BOOL CGTARG_Is_Form_For_Advanced_Load (ISA_ENUM_CLASS_VALUE ldform); 
-#endif
 extern BOOL CGTARG_Is_OP_Check_Load( OP* memop );
 
 extern BOOL CGTARG_OP_Defs_TN( OP* op, TN* tn );
@@ -763,9 +745,6 @@ inline TOP CGTARG_Inter_RegClass_Copy(ISA_REGISTER_CLASS dst,
 
 extern BOOL CGTARG_Can_Fit_Immediate_In_Add_Instruction (INT64 immed);
 extern BOOL CGTARG_Can_Load_Immediate_In_Single_Instruction (INT64 immed);
-#ifdef TARG_MIPS
-extern BOOL CGTARG_Can_Fit_Displacement_In_Branch_Instruction (INT64 disp);
-#endif
 
 extern void CGTARG_Save_Pfs (TN *saved_pfs, OPS *ops);
 extern void CGTARG_Restore_Pfs (TN *saved_pfs, OPS *ops);
@@ -817,7 +796,7 @@ extern void CGTARG_Init_Asm_Constraints (void);
 /* Given a constraint for an ASM parameter, and the load of the matching
  * argument passed to ASM (possibly NULL), choose an appropriate TN for it
  */
-#ifdef TARG_IA64
+#ifndef KEY
 extern TN* CGTARG_TN_For_Asm_Operand(const char* constraint, 
                                      const WN* load,
                                      TN* pref_tn,
@@ -865,37 +844,9 @@ inline BOOL CGTARG_Use_Load_Latency(OP *pred_op, TN *tn)
 #endif
 }
 
-/* return TRUE iff op is load with UNAT bit (IA64)*/
-extern BOOL CGTARG_Load_with_UNAT (OP* op); 
-
-/* return TRUE iff op is store with UNAT bit (IA64) */
-extern BOOL CGTARG_Store_With_UNAT (OP* op);
-
 /* Returns TRUE if OP is a suitable candidate for HBF. */
 extern BOOL CGTARG_Check_OP_For_HB_Suitability(OP *op);
 
-#ifdef TARG_IA64
-/* Return TRUE if OP is def use stack register; */
-extern BOOL OP_def_use_stack_regs(OP* op);
-
-/* return the max number of hidden operands given <op> may have */
-extern INT32 CGTARG_Max_Number_of_Hidden_Opnd (mTOP top);
-
-/* Go through all OP in the current PU and and hidden their hidden operands */
-extern void CGTARG_Add_Implict_Operands (void);
-#endif
 extern TN* CGTARG_Gen_Dedicated_Subclass_TN( OP* op, int idx, BOOL is_result );
-
-#ifdef TARG_IA64
-typedef mempool_allocator<SCHED_INFO_CLASS>  SIC_MEM_ALLOC;
-typedef	std::vector<SCHED_INFO_CLASS, SIC_MEM_ALLOC>  TOP_SET;
-void Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT8 cycles_apart);
-void Fix_Cache_Conflict_latency( BB *bb);
-#endif
-
-#ifdef KEY
-// Return TRUE if OP accesses thread-local memory.
-extern BOOL CGTARG_Is_Thread_Local_Memory_OP(OP *op);
-#endif
 
 #endif /* CGTARGET_INCLUDED */

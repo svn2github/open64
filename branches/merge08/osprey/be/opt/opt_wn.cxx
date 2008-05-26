@@ -68,7 +68,9 @@ static char *rcs_id = 	opt_wn_CXX"$Revision: 1.31 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/types.h>
+#if ! defined(BUILD_OS_DARWIN)
 #include <elf.h>         // for pu_info.h
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "tracing.h"
 #include "mempool.h"
@@ -538,7 +540,9 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_U8:	return OPC_U8U8LDID;
     case MTYPE_F4:	return OPC_F4F4LDID;
     case MTYPE_F8:	return OPC_F8F8LDID;
+#if defined(TARG_IA64)
     case MTYPE_F10:	return OPC_F10F10LDID;
+#endif
     case MTYPE_FQ:	return OPC_FQFQLDID;
     case MTYPE_C4:	return OPC_C4C4LDID;
     case MTYPE_C8:	return OPC_C8C8LDID;

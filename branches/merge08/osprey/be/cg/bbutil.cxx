@@ -1,8 +1,4 @@
 /*
- * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,10 +41,10 @@
  * ====================================================================
  *
  * Module: bbutil.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/bbutil.cxx,v $
+ * $Revision: 1.15 $
+ * $Date: 05/12/05 08:59:02-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.bbutil.cxx $
  *
  * Revision history:
  *  22-Sept-89 - Original Version
@@ -63,10 +59,10 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 #include <stdio.h>
-#include <iterator>
 #include "defs.h"
 #include "symtab.h"
 #include "config.h"
@@ -101,16 +97,6 @@
 #include "lra.h"
 #include "bb_set.h"       // BB_SET_* routines 
 #include "DaVinci.h"
-
-#ifdef TARG_IA64
-#include "ipfec_options.h"
-#include "cg.h"
-#include "region_bb_util.h"
-#include "region.h"
-
-#include <vector>
-#include "if_conv.h"
-#endif
 
 /* Allocate basic blocks for the duration of the PU. */
 #define BB_Alloc()  TYPE_PU_ALLOC(BB)
@@ -540,28 +526,8 @@ Target_Simple_Fall_Through_BB(
   BB_next(bb) = target_bb;
   BB_prev(target_bb) = bb;
 
-#ifdef TARG_IA64   
-  if(IPFEC_Enable_Region_Formation && RGN_Formed) {
-    BB *bb_wo_node = NULL;
-    REGIONAL_CFG_NODE *src_node   = Regional_Cfg_Node(bb);
-    REGIONAL_CFG_NODE *target_node = Regional_Cfg_Node(target_bb);
-    Is_True(((src_node != NULL)||(target_node != NULL)),("Two node NULL error in Target Simple Fall Through BB"));
-    if (target_node == NULL) {
-      REGION *rgn = Home_Region(bb);
-      REGIONAL_CFG *regional_cfg = rgn->Regional_Cfg();
-      RGN_Gen_And_Insert_Node(target_bb,NULL,NULL,regional_cfg);
-    } else if (src_node == NULL) {
-      REGION *rgn = Home_Region(target_bb);
-      REGIONAL_CFG *regional_cfg = rgn->Regional_Cfg();
-      RGN_Gen_And_Insert_Node(bb,NULL,NULL,regional_cfg);
-    }
-    RGN_Link_Pred_Succ_With_Prob (bb, target_bb, 1.0F);
-  } else {
-    Link_Pred_Succ_with_Prob (bb, target_bb, 1.0F);
-  }  
-#else
   Link_Pred_Succ_with_Prob (bb, target_bb, 1.0F);
-#endif
+
   br = BB_Remove_Branch(bb);
   FmtAssert(!(br && OP_cond(br)), ("Unexpected conditional branch."));
 }
@@ -658,14 +624,14 @@ Negate_Logif_BB(
 
 /* =======================================================================
  *
- *  Add_Goto_Op
+ *  Add_Goto
  *
  *  See interface description.
  *
  * =======================================================================
  */
 void
-Add_Goto_Op
+Add_Goto
 (
   BB *bb,
   BB *target_bb
@@ -691,23 +657,7 @@ Add_Goto_Op
       OP_srcpos(op) = srcpos;
   }
   BB_Append_Ops(bb,&ops);
-}
 
-/* =======================================================================
- *
- *  Add_Goto
- *
- *  See interface description.pt *
- * =======================================================================
- */
-void
-Add_Goto
-(
-  BB *bb,
-  BB *target_bb
-)
-{
-  Add_Goto_Op(bb, target_bb);
   Link_Pred_Succ_with_Prob(bb, target_bb, 1.0F);
 }
 
@@ -755,9 +705,8 @@ static const char * const BBKIND_names[] = {
   /* 6 */	"CALL",
   /* 7 */	"REGION_EXIT",
   /* 8 */	"TAIL_CALL",
-#ifdef TARG_IA64
-  /* 9 */	"CHK",
-#endif
+  /* 9 */"BBKIND_ZDL_BODY", 
+  /* 10 */"BBKIND_FORK",
 };
 /* WARNING: the order of this array must match #defines in bb.h. */
 
@@ -800,11 +749,10 @@ BB_kind(BB *bb)
    */
   if (BB_call(bb)) return BBKIND_CALL;
 
-#ifdef TARG_IA64
-  /* A chk bb end with a chk op
-   */
-  if (BB_Last_chk_op(bb)) return BBKIND_CHK;// bug fix for OSP_104, OSP_105, OSP_192
+#if defined(TARG_SL)
+  if ( BB_zdl_body(bb)) return BBKIND_ZDL_BODY;
 #endif
+
   /* Get the branch OP and the number of successors.
    */
   br = BB_branch_op(bb);
@@ -825,6 +773,13 @@ BB_kind(BB *bb)
     DevWarn("BB_kind: Unable to determine BB_kind for BB:%d", BB_id(bb));
     return BBKIND_UNKNOWN;
   }
+
+#if defined(TARG_SL) && defined(TARG_SL2)
+  if (OP_fork(br)) {
+    FmtAssert(nsuccs == 2, ("BB_kind: FORK BB has %d successors", nsuccs));
+    return BBKIND_FORK;
+  }
+#endif
 
   /* Get some info about the terminating branch.
    */
@@ -974,14 +929,6 @@ Print_BB_Header ( BB *bp, BOOL flow_info_only, BOOL print_tn_info )
     if (BB_call(bp))	fprintf ( TFile, "  Tail call block\n" );
     else		fprintf ( TFile, "  Exit block\n" );
   } else if (BB_call(bp)) fprintf ( TFile, "  Call block\n" );
-#ifdef TARG_IA64
-  if (BB_chk_split(bp)) 	fprintf ( TFile, "  Check split block\n" );
-  if (BB_chk_split_head(bp)) 	fprintf ( TFile, "  Check split head block\n" );
-  //bug fix for OSP_212
-  if (BB_chk_split_tail(bp))    fprintf ( TFile, "  Check split tail block\n" );
-  if (BB_recovery(bp)) 	fprintf ( TFile, "  Recovery block\n" );
-  if (BB_scheduled(bp)) 	fprintf ( TFile, "  Scheduled BB\n" );
-#endif
 
   if (BB_rid(bp)) {
     INT exits;
@@ -1159,7 +1106,7 @@ Print_BB_Pragmas( BB *bp )
       if ((UINT32)pragma >= (UINT32)MAX_WN_PRAGMA) {
 	fprintf(TFile, "%d", pragma);
       } else {
-        fprintf(TFile, "%s", WN_pragmas[WN_pragma(wn)].name);
+	fprintf(TFile, "%s", WN_pragmas[WN_pragma(wn)].name);
       }
       switch (pragma) {
       case WN_PRAGMA_MIPS_FREQUENCY_HINT:
@@ -1213,33 +1160,13 @@ void Trace_BB ( BB *bp, char *msg )
 
 void Print_BB ( BB *bp )
 {
-  
-  BBLIST *bl;
-  if ( BB_entry(bp) ) {
-    ANNOTATION *ant = ANNOT_Get (BB_annotations(bp), ANNOT_ENTRYINFO);
-    ENTRYINFO *ent = ANNOT_entryinfo (ant);
-    fprintf ( TFile, "\n\t.proc  %s#\n", ST_name(ENTRYINFO_name(ent)) );
-  }
-  fprintf ( TFile, "%s", SBar);
-  fprintf ( TFile, "// Block: %d", BB_id(bp) );
-  fprintf ( TFile, " Pred:" );
-  FOR_ALL_BB_PREDS (bp, bl) {
-    fprintf ( TFile, " %d", BB_id(BBLIST_item(bl)));
-  }
-  fprintf ( TFile, " Succ:" );
-  FOR_ALL_BB_SUCCS (bp, bl) {
-    fprintf ( TFile, " %d", BB_id(BBLIST_item(bl)));
-  }
-  fprintf ( TFile, "\n" );
-  fprintf ( TFile, "%s", SBar );
-  
+  fprintf ( TFile, "%sBB:%d \n%s", SBar, BB_id(bp), SBar );
   Print_BB_Header ( bp, FALSE, TRUE );
   Print_BB_Pragmas ( bp );
   fprintf ( TFile, "\n" );
   NOTE_BB_Act(bp, NOTE_PRINT_TO_FILE, TFile);
   FREQ_Print_BB_Note(bp, TFile);
   if (BB_first_op(bp))	Print_OPs (BB_first_op(bp));
-  if (BB_exit(bp) && !BB_call(bp)) { fprintf ( TFile, "\n\t.endp\n" ); }
 } 
 
 /* ================================================================= */
@@ -1253,8 +1180,8 @@ void Print_BB_No_Srclines ( BB *bp )
   NOTE_BB_Act(bp, NOTE_PRINT_TO_FILE, TFile);
   FREQ_Print_BB_Note(bp, TFile);
   if (BB_first_op(bp))	Print_OPs_No_SrcLines(BB_first_op(bp));
-}
- 
+} 
+
 // Debugging routine
 void dump_bb (BB *bb)
 {
@@ -1349,7 +1276,6 @@ Print_Flow_Graph ( char *banner, BOOL verbose )
 OP *
 BB_branch_op( BB *bb )
 {
-  
   OP *op = BB_last_op(bb);
 
   /* Test the last two OPs looking for the terminating branch (it may not 
@@ -1367,41 +1293,6 @@ BB_branch_op( BB *bb )
   return NULL;
 }
 
-#ifdef TARG_IA64
-/* ====================================================================
- *
- * Last_Non_Nop_op
- *
- * Return the last non nop OP in a given BB   
- *
- * ====================================================================
- */
-
-OP *
-Last_Non_Nop_op( BB *bb )
-{
-  OP *op;
-  for (op =BB_last_op(bb); op; op = OP_prev(op)) {
-      if (!(OP_noop(op))) return op;
-  }
-  return NULL;
- 
-}
-
-OP *
-BB_Last_chk_op( BB *bb )
-{
-  
-  OP *op = Last_Non_Nop_op(bb);
-
-  if (!op || !OP_chk(op)){
-      return NULL;
-  } else {
-      return op;
-  }
-  return NULL;
-}
-#endif
 
 /* ====================================================================
  *
@@ -1426,36 +1317,6 @@ BB_xfer_op( BB *bb )
     if (PROC_has_branch_delay_slot()) {
       op = OP_prev(op);
       if (op && OP_xfer(op)) return op;
-    }
-  }
-
-  return NULL;
-}
-
-/* ====================================================================
- *
- * BB_call_op
- *
- * Return the call OP in a given BB
- *
- * ====================================================================
- */
-
-OP*
-BB_call_op( BB *bb )
-{
-  if(!BB_call(bb)) return NULL;
-  OP *op = BB_last_op(bb);
-
-  /* Test the last two OPs looking for the terminating xfer OP (it may not
-   * be the last OP if we have put something in the delay slot).
-   */
-  if (op) {
-    if (OP_call(op)) return op;
-
-    if (PROC_has_branch_delay_slot()) {
-      op = OP_prev(op);
-      if (op && OP_call(op)) return op;
     }
   }
 
@@ -1578,31 +1439,12 @@ INT BB_Copy_Annotations(BB *to_bb, BB *from_bb, ANNOTATION_KIND kind)
        ant = ANNOT_Next(ant, kind))
   {
     BB_Add_Annotation(to_bb, kind, ANNOT_info(ant));
-    if( kind == ANNOT_LABEL ){
-        Set_Label_BB( ANNOT_label(ant), to_bb );
-    }
     ++count;
   }
 
   return count;
 }
 
-/* Copy all annotations from <from_bb> to <to_bb>, and returns 
- * the number of annotations copied 
- */
-INT BB_Copy_All_Annotations (BB *to_bb, BB *from_bb) {
-   INT32 cnt = 0;
-   ANNOTATION *ant = BB_annotations(from_bb);
-   while (ant) {
-      cnt ++; 
-      BB_Add_Annotation(to_bb, ANNOT_kind(ant), ANNOT_info(ant));
-      if(ANNOT_kind(ant) == ANNOT_LABEL) {
-        Set_Label_BB( ANNOT_label(ant), to_bb );
-      }
-      ant = ANNOT_next(ant); 
-   }
-   return cnt;
-}
 
 OP *
 BB_entry_sp_adj_op (BB *bb)
@@ -1702,7 +1544,7 @@ Gen_Label_For_BB(BB *bb)
   LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
 
   Set_Label_BB (lab, bb);
-  BB_Add_Annotation (bb, ANNOT_LABEL, (void *)(INTPTR)lab);
+  BB_Add_Annotation (bb, ANNOT_LABEL, (void *)lab);
   return lab;
 
 #undef EXTRA_NAME_LEN
@@ -1894,39 +1736,6 @@ BB *BB_Unique_Successor( BB *bb )
   }
   return succ;
 }
-
-void
-Remove_Explicit_Branch (BB *bb)
-/* -----------------------------------------------------------------------
- * Remove useless explicit branch to BB_next(bb) 
- * -----------------------------------------------------------------------
- */
-{
-  if ( bb == NULL) return;
-  BB *next = BB_next(bb);
-
-  if (next && BB_Find_Succ(bb, next)) {
-    /* Make sure it's not a branch target (direct or indirect). */
-    OP *br_op = BB_branch_op(bb);
-    if (br_op) {
-      INT tfirst, tcount;
-      CGTARG_Branch_Info(br_op, &tfirst, &tcount);
-      if (tcount != 0) {
-        TN *dest = OP_opnd(br_op, tfirst);
-        DevAssert(tcount == 1, ("%d branch targets, expected 1", tcount));
-        DevAssert(TN_is_label(dest), ("expected label"));
-        if (Is_Label_For_BB(TN_label(dest), next)) {
-          /* Remove useless explicit branch to <next> */
-          BB_Remove_Op(bb, br_op);
-        } else {
-          DevAssert(OP_cond(br_op), ("BB_succs(BB:%d) wrongly contains BB:%d",
-                                     BB_id(bb), BB_id(next)));
-        }
-      }
-    }
-  }
-}
-
 
 /* =======================================================================
  *
@@ -2130,16 +1939,19 @@ BB_MAP BB_Depth_First_Map(BB_SET *region, BB *entry)
   } else {
     BB_LIST *entries;
     INT32 max_id = 0;
-    for (entries = Entry_BB_Head; entries; entries = BB_LIST_rest(entries)) {
-      // when compile with -fno-execptions, the entry block of EH handler possibly 
-      // belongs to two separate closure sets of successor relation of Entry_BB_Head and
-      // BB_LIST_rest(Entry_BB_Head). So needn't do map_depth_first twice for the same BB.
-      FmtAssert ((region == NULL || BB_SET_MemberP(region, BB_LIST_first(entries))),
-		 ("BB_Depth_First_Map visited BB:%d twice", BB_id(BB_LIST_first(entries)))); 
-      
-      if (BB_MAP32_Get(dfo_map, BB_LIST_first(entries)) != 0)
+    for (entries = Entry_BB_Head; entries; entries = BB_LIST_rest(entries)){
+#ifdef KEY
+      /* bug#1458
+	 Don't visit an unrecognizable region twice.
+       */
+      if( BB_MAP32_Get( dfo_map, BB_LIST_first(entries) ) != 0 ){
+	FmtAssert( region == NULL,
+		   ("BB_Depth_First_Map visited a region twice") );
 	continue;
-      max_id = map_depth_first (dfo_map, region, BB_LIST_first(entries), max_id);
+      }
+#endif
+      max_id = map_depth_first(dfo_map, region, BB_LIST_first(entries),
+			       max_id);
     }
   }
   return dfo_map;
@@ -2399,11 +2211,7 @@ BB_Transfer_Entryinfo(BB* from, BB* to)
   Reset_BB_entry(from);
   if (BB_handler(from)) {
     Set_BB_handler(to);
-#ifdef TARG_IA64
-    Reset_BB_handler(to);
-#else
     Reset_BB_handler(from);
-#endif
   }
   annot = ANNOT_Get(BB_annotations(from),ANNOT_ENTRYINFO);
   Is_True(annot != NULL,("No entryinfo annotation for BB%d",BB_id(from)));
@@ -2494,8 +2302,6 @@ void Change_Succ(BB *pred, BB *old_succ, BB *new_succ)
   BBLIST_item(succs) = new_succ;
   if (FREQ_Frequencies_Computed()) {
     adjust = BB_freq(pred) * BBLIST_prob(succs);
-    if ((BB_freq(pred) == 0) && (BBLIST_prob(succs) >= 0) && !(adjust == adjust)) /* the result of NaN compare will always be false */
-	adjust = 0;
   } else if (BB_freq_fb_based(pred)) {
     /* Guess that P(succ) is same for all succs */
     adjust = BB_freq(pred) / BBlist_Len(BB_succs(pred));
@@ -2664,6 +2470,29 @@ BOOL BB_Is_Cold(BB *bb)
   return FALSE;
 }
 
+#if defined(TARG_SL) && defined(TARG_SL2)
+/* =======================================================================
+ *
+ *  BB_Is_Hot
+ *
+ *  See interface description.
+ *
+ * =======================================================================
+ */
+BOOL BB_Is_Hot(BB *bb)
+{
+  RID *r;
+
+  /* We are part of a cold region if <bb>'s containing region is "cold"
+   * or one of it's ancestors is.
+   */
+  for (r = BB_rid(bb); r; r = RID_parent(r)) {
+    if (RID_type(r) == RID_TYPE_hot) return TRUE;
+  }
+  return FALSE;
+}
+
+#endif
 
 /* =======================================================================
  *
@@ -2888,35 +2717,14 @@ static void Split_BB(BB *bb)
   // Now, make all the splits fall through to one another.
   //
   bb_prev = bb;
-  BB *bb_tmp, *bb_stop = BB_next(last_bb);
-  for (bb_tmp = BB_next(bb); bb_tmp != bb_stop; bb_tmp = BB_next(bb_tmp))
+  for (BB* bb_tmp = BB_next(bb);
+       bb_tmp != BB_next(last_bb);
+       bb_tmp = BB_next(bb_tmp))
   {
     Target_Simple_Fall_Through_BB(bb_prev, bb_tmp);
     bb_prev = bb_tmp;
   }
 
-  // Bug 13664: Propagate BB_has_globals flag to new blocks for localize
-  // Faster: Insert "if (BB_has_globals(bb)) Set_BB_has_globals(new_bb);"
-  // in code above.
-  if (BB_has_globals(bb)) {
-    Reset_BB_has_globals(bb);
-    for (bb_tmp = bb; bb_tmp != bb_stop; bb_tmp = BB_next(bb_tmp)) {
-      BOOL has_dedicated = FALSE;
-      FOR_ALL_BB_OPs_FWD(bb_tmp, op) {
-	for (i = 0; i < OP_opnds(op); ++i) {
-	  TN *tn = OP_opnd(op, i);
-	  if (TN_is_dedicated(tn)) { has_dedicated = TRUE; break; }
-	}
-	if (has_dedicated) break;
-	for (i = 0; i < OP_results(op); ++i) {
-	  TN *tn = OP_result(op, i);
-	  if (TN_is_dedicated(tn)) { has_dedicated = TRUE; break; }
-	}
-	if (has_dedicated) break;
-      }	
-      if (has_dedicated) Set_BB_has_globals(bb_tmp);
-    }
-  }
 }
 
 
@@ -2945,38 +2753,6 @@ Split_BBs(void)
   }
 }
 
-/*=========================================================================
-* Find_BB_Parents
-*
-* Return all bb's parents bb including itself.
-*==========================================================================
-*/
-#ifdef TARG_IA64
-BB_SET*
-Find_BB_Parents(BB* bb)
-{
-  BB_SET* result = BB_SET_Create_Empty(PU_BB_Count+2, &BB_MEM_pool);
-  BB_CONTAINER_ALLOC bb_mem(&BB_MEM_pool);
-  BB_CONTAINER bb_vector(bb_mem);
-  BB_CONTAINER::iterator iter;
-  bb_vector.push_back(bb);
-  BOOL bb_visited[PU_BB_Count+2];
-  for(INT i = 0; i < PU_BB_Count+2; i++) bb_visited[i] = FALSE;
-  bb_visited[bb->id] = TRUE;
-  while(!bb_vector.empty()) {
-    BBLIST* pre_bbs = NULL;
-    iter = bb_vector.begin();
-  	result = BB_SET_Union1D(result, *iter, &BB_MEM_pool);
-    for(pre_bbs = BB_preds(*iter),iter = bb_vector.erase(iter); pre_bbs != NULL; pre_bbs = BBLIST_next(pre_bbs))
-    {
-      if(!BBLIST_item(pre_bbs) || bb_visited[BBLIST_item(pre_bbs)->id]) continue;
-      bb_vector.push_back(BBLIST_item(pre_bbs));
-      bb_visited[BBLIST_item(pre_bbs)->id] = TRUE;
-    }
-  }
-  return result;
-}
-#endif
 
 // A temp BB_SET variable reserved for the BB_REGION routines because
 // creating and destroying BB_SET is an expensive operation.
@@ -3040,7 +2816,7 @@ static BB_REGION_SET region_temp;
  *
  *========================================================================
  */
-void BB_REGION_to_Vector(std::vector<BB*>& bv, const BB_REGION& r)
+void BB_REGION_to_Vector(vector<BB*>& bv, const BB_REGION& r)
 {
   BB_REGION_SET region_temp;
 
@@ -3053,7 +2829,7 @@ void BB_REGION_to_Vector(std::vector<BB*>& bv, const BB_REGION& r)
   // Recursively put bbs reachable from the entries blocks without 
   // passing through an exit block into the bitset.  Process each BB
   // at most once.
-  std::vector<BB*> stack(r.entries.begin(), r.entries.end());
+  vector<BB*> stack(r.entries.begin(), r.entries.end());
   while (!stack.empty()) {
     BB *bb = stack.back();
     stack.pop_back();
@@ -3095,7 +2871,7 @@ BB_SET *BB_REGION_to_BB_SET(BB_SET *bbs, const BB_REGION& r, MEM_POOL *pool)
   // Recursively put bbs reachable from the entries blocks without 
   // passing through an exit block into the bitset.  Process each BB
   // at most once.
-  std::vector<BB*> stack(r.entries.begin(), r.entries.end());
+  vector<BB*> stack(r.entries.begin(), r.entries.end());
   while (!stack.empty()) {
     BB *bb = stack.back();
     stack.pop_back();
@@ -3201,7 +2977,7 @@ void BB_REGION::Verify() const
   // Verify that all OPs has CG_LOOP_INFO
   if (Has_omega()) {
     
-    std::vector<BB*> stack(entries.begin(), entries.end());
+    vector<BB*> stack(entries.begin(), entries.end());
     while (!stack.empty()) {
       BB *bb = stack.back();
       stack.pop_back();

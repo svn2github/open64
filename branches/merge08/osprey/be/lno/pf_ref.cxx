@@ -203,7 +203,7 @@ inline mINT32  PF_LG::Get_Stride_In_Enclosing_Loop () {
   return _myugs->Get_Stride_In_Enclosing_Loop ();
 }
 
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#if defined(TARG_IA64)
 inline BOOL  PF_LG::Get_Stride_Accurate() {
   return _myugs->Get_Stride_Accurate();
 }
@@ -1872,7 +1872,7 @@ WN* PF_LG::Get_Ref_Version (WN* ref, INT bitpos) {
   return ref;
 }
 
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#if defined(TARG_IA64)
 BOOL Contain_Induction_Variable (WN* wn, ST_IDX idx)
 {
   if (WN_st_idx(wn) == idx) return TRUE;
@@ -1936,6 +1936,101 @@ static WN *Gen_Pf_Addr_Node(WN *invariant_stride, WN *array, WN *loop)
 
    return stride_node;
 }
+
+static BOOL Is_Other_Array_Bad(WN *wn, INT dim)
+{
+  if (WN_operator(wn) == OPR_BLOCK){
+    for (WN* kid=WN_first(wn); kid; kid=WN_next(kid)){ 
+      if(Is_Other_Array_Bad(kid, dim))
+        return TRUE;
+    }
+    return FALSE;
+ }else if(WN_operator(wn) == OPR_ARRAY){
+   if(WN_element_size(wn) < 0){ //bug 14169: may not be contiguous
+    WN *array_parent = LWN_Get_Parent(wn);
+    if(WN_operator(array_parent)!=OPR_ILOAD &&
+       WN_operator(array_parent)!=OPR_ISTORE)
+      return TRUE;
+     if(!MTYPE_is_vector(WN_desc(array_parent)))
+      return TRUE;
+    }
+    ACCESS_ARRAY* aa=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,wn);
+    if(aa==NULL || aa->Num_Vec() > dim) 
+      return TRUE;
+ }
+
+  for (UINT kidno = 0; kidno < WN_kid_count(wn); kidno ++){
+    if (Is_Other_Array_Bad(WN_kid(wn, kidno), dim))
+      return TRUE;
+  }
+ return FALSE;
+}
+
+//expression contains no other array reference other than "array"
+static BOOL Well_Formed_Expr(WN *expr, WN *array)
+{
+  if(WN_operator(expr) == OPR_BLOCK)
+    return FALSE;
+  else if(WN_operator(expr)==OPR_ARRAY){
+   if(!Tree_Equiv(expr, array))
+    return FALSE;
+  }
+  for(INT ii = 0; ii< WN_kid_count(expr); ii++)
+   if(!Well_Formed_Expr(WN_kid(expr, ii), array))
+      return FALSE;
+ return TRUE;
+}
+
+static BOOL Good_Stmt_To_Adjust_Offset(WN *stmt, WN *array)
+{
+  if(!stmt) return FALSE;
+  OPERATOR opr= WN_operator(stmt);
+  switch(opr){
+   case OPR_BLOCK:
+      if(WN_first(stmt)==WN_last(stmt))
+        return Good_Stmt_To_Adjust_Offset(WN_first(stmt), array);
+      else return FALSE;
+      break;
+   case OPR_IF:{
+       WN *then_part = WN_then(stmt);
+       WN *else_part = WN_else(stmt);
+       if(else_part && WN_first(else_part) != NULL)
+        return FALSE;
+       if(!then_part || !WN_first(then_part))
+        return FALSE;
+       if(WN_first(then_part) != WN_last(then_part))
+        return FALSE;
+       return Good_Stmt_To_Adjust_Offset(WN_first(then_part), array);
+      }
+     break;
+   case OPR_ISTORE:{
+      WN *kid1 = WN_kid1(stmt);
+      WN *kid0 = WN_kid0(stmt);
+      if(WN_operator(kid1) != OPR_ARRAY || !Tree_Equiv(kid1, array))
+       return FALSE;
+      if(!Well_Formed_Expr(kid0, array) || WN_operator(kid0) != OPR_BXOR)
+          return FALSE;
+       return TRUE;
+    }
+    break;
+    default:
+        return FALSE;
+     break;
+   }      
+}  
+
+
+static BOOL Good_Loop_To_Adjust_Offset(WN *loop, WN *array)
+{
+   WN *body = WN_do_body(loop);
+   if(!body || WN_first(body)==NULL )
+      return FALSE;
+   if(WN_first(body)==WN_last(body))
+     return Good_Stmt_To_Adjust_Offset(WN_first(body), array);
+   return FALSE;
+}  
+
+
 static BOOL Larger_Dimension_Arrays_In(WN *wn, INT dim)
 {
   if (WN_operator(wn) == OPR_BLOCK){
@@ -2153,7 +2248,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         mINT16* prefetch_vec = pfdesc->Vec(level_1); 
         mINT16 depth = Get_Depth();
         if (prefetch_vec[depth]) {
-	  INT dp = depth-2;
+	  INT dp = depth-1;
 	  while (dp >= 0) {
 	    if (prefetch_vec[dp]) break;
 	    dp--;
@@ -2239,7 +2334,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
       break;
     }
 
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#if defined(TARG_IA64)
     {
       // Go some cache lines ahead
 
@@ -2372,6 +2467,8 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
       }
     }
 #endif
+#if defined(TARG_X8664) || defined(TARG_IA64)
+
 //------------------------------------------------------------------------
 //bug 5945: CG ebo will drop some prefetches according to address patterns
 //However, for dope vector, it is difficult for CG to figure out. We know
@@ -2385,7 +2482,51 @@ if(LNO_Run_Prefetch > SOME_PREFETCH &&
   PF_SET_KEEP_ANYWAY(flag);
 }
  
-#ifdef KEY
+//------------------------------------------------------------------------
+//bug 5945: CG ebo will drop some prefetches according to address patterns
+//However, for dope vector, it is difficult for CG to figure out. We know
+//that the array access is contiguous though simd in LNO, so don't drop it
+//bug 11546 : CG ebo should not drop prefetches for vectorized loads or stores
+if(LNO_Run_Prefetch > SOME_PREFETCH && 
+      (WN_element_size(arraynode) < 0 ||
+      (Get_Dim()==1 &&( confidence ==3 || WN_element_size(arraynode) > 8))||
+      MTYPE_is_vector(WN_desc(parent_ref)) ||
+      MTYPE_is_vector(WN_rtype(parent_ref)))){
+   PF_SET_KEEP_ANYWAY(flag);
+ }
+
+//bug 14144: It is difficult for CG to figure out the address patterns for
+//indirect array access even though the base is a constant array reference 
+if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
+   Get_Dim() == 1 && confidence >=2 &&
+   WN_operator(WN_array_base(arraynode))==OPR_LDID &&
+   strncmp(SYMBOL(WN_array_base(arraynode)).Name(),"_misym_temp_",12)==0){
+   PF_SET_KEEP_ANYWAY(flag);
+   WN *loop = Enclosing_Do_Loop(parent_ref);
+   if(loop && Good_Loop_To_Adjust_Offset(loop,ref)){
+     INT fancy_offset_incr=0;
+#ifdef TARG_X8664
+     if(Is_Target_Core() || Is_Target_EM64T())
+       fancy_offset_incr=8;
+     else if(Is_Target_Barcelona())
+       fancy_offset_incr=28;
+     else
+#endif
+     {
+        fancy_offset_incr=28;
+        if(LNO_Run_Stream_Prefetch && spatial_in_loop)
+        PF_SET_NON_TEMPORAL(flag);
+     }
+    if(LNO_Prefetch_Ahead==2){
+      if((level == level_1) || (level == level_1and2))
+        offset += fancy_offset_incr*Cache.LineSize(1);
+      else
+        offset += fancy_offset_incr*Cache.LineSize(2);
+    }
+   }
+  }
+
+
 //--------------------------------------------------------------------------
 //Bug 13609: to make a decision for streaming prefetch
 //(1) only one array reference in this locality group
@@ -2397,7 +2538,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH &&
  if(LNO_Run_Stream_Prefetch > Get_Depth()&& //depth starts from 0 from outmost
     _refvecs.Elements() == 0 && //only one reference(leader) in this locality group
     spatial_in_loop          && //spatial locality not across loops
-    WN_operator(parent_ref)==OPR_ILOAD){
+    WN_operator(parent_ref)==OPR_ILOAD){  //only consider load
 
    BOOL stream_pf = TRUE;
    ACCESS_ARRAY* aa=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,arraynode);
@@ -2424,7 +2565,14 @@ if(LNO_Run_Prefetch > SOME_PREFETCH &&
 
    if(stream_pf){
      WN *doloop = Enclosing_Do_Loop(parent_ref);
+#if defined(TARG_IA64)
      if(Larger_Dimension_Arrays_In(doloop, Get_Dim()))
+#elif defined(TARG_X8664)
+     if(Is_Other_Array_Bad(doloop, Get_Dim()))
+#else  
+       // take your pick here
+     if(Larger_Dimension_Arrays_In(doloop, Get_Dim()))
+#endif
        stream_pf = FALSE;
    }
 
@@ -2434,7 +2582,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH &&
 #endif
 
 
-#ifndef KEY //bug 10953
+#if !(defined(TARG_X9664) || defined(TARG_IA64)) //bug 10953
    WN* pfnode = LWN_CreatePrefetch (offset, flag, arraynode);
 #else //bug 10953
    WN* pfnode=NULL;
@@ -3088,7 +3236,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
   // get stride in enclosing loop
   {
     _stride_in_enclosing_loop = 0;
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#if defined(TARG_IA64)
     _stride_accurate = TRUE;
 #endif
 
@@ -3113,7 +3261,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
           _stride_in_enclosing_loop *= WN_const_val(dim_wn);
         }
         else {
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#if defined(TARG_IA64)
           //OSP_233 & OSP_240 
           //
           //  DO I = 1, N
@@ -3145,7 +3293,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
       }
     }
     else {
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#if defined(TARG_IA64)
       BOOL messy=FALSE;
     
       for (i=aa->Num_Vec()-1; i>=0; i--) {
@@ -3379,7 +3527,7 @@ static BOOL Pseudo_Temporal_Locality(WN *array)
  *
  ***********************************************************************/
 void PF_UGS::ComputePFVec (PF_LEVEL level, PF_LOCLOOP locloop) {
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#if defined(TARG_IA64)
   if (!Get_Stride_Accurate())
     return;
 #endif

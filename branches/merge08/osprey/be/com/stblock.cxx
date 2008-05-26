@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
- */
-
-/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -44,10 +40,10 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/stblock.cxx,v $
+ * $Revision: 1.10 $
+ * $Date: 05/12/05 08:59:14-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.stblock.cxx $
  *
  * Revision history:
  *  11-Nov-94 - Original Version
@@ -64,9 +60,16 @@
 #include "be_com_pch.h"
 #endif /* USE_PCH */
 #pragma hdrstop
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <cmplrs/rcodes.h>
 #include <sys/resource.h>
+#ifndef __MINGW32__
+#include <sys/resource.h>
+#endif /* __MINGW32__ */
 #include "defs.h"
 #include "erglob.h"
 #include "erbe.h"
@@ -264,6 +267,14 @@ INT32 ST_alignment(ST *sym)
       basealign=	Adjusted_Alignment(base);
 
       Is_True((basealign>=align), ("sym has align > than base"));
+
+#ifdef TARG_NVISA
+      // When we emit ptx we ignore the allocation offset
+      // and emit each variable separately, then let OCG 
+      // assign addresses.  So it is not safe to change alignment
+      // based on the offset and segment.
+      return align;
+#endif
 
       while (basealign > align)
       {
@@ -630,11 +641,7 @@ Base_Symbol_And_Offset_For_Addressing (
 
   while( (ST_base(base) != base  ) 
 	 && (ST_sclass(base) != SCLASS_TEXT) 
-#ifdef TARG_X8664
-	 && !(ST_is_preemptible(base))
-#else
 	 && !((Gen_PIC_Shared || Gen_PIC_Call_Shared) && ST_is_preemptible(base))
-#endif
 #ifdef KEY
 	 && !ST_is_weak_symbol(base)
 	 && !ST_is_thread_local(base)

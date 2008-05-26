@@ -1,8 +1,4 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,10 +37,10 @@
  * ====================================================================
  *
  * Module: wn2f_io.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/wn2f_io.cxx,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:13:43 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/whirl2f/wn2f_io.cxx,v $
  *
  * Revision history:
  *  5-June-95 - Original Version
@@ -71,7 +67,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/wn2f_io.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/be/whirl2f/wn2f_io.cxx,v $ $Revision: 1.1 $";
 #endif
 
 #include "whirl2f_common.h"
@@ -362,7 +358,7 @@ WN2F_io_control(TOKEN_BUFFER tokens,
 			  Concat2_Strings("IOC", IOITEM_name(item_kind))));
       Append_Token_String(tokens, IOITEM_name(item_kind));
       Append_Token_Special(tokens, '=');
-      Append_Token_String(tokens, "<??""?>");
+      Append_Token_String(tokens, "<???>");
       break;
       
    case IOC_KEY_START:

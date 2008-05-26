@@ -322,6 +322,9 @@ private:
     DYN_ARRAY<INLINE_ATTR> _inline_attr;
     DYN_ARRAY<SUMMARY_STRUCT_ACCESS> _struct_access;//reordering
     
+#ifdef KEY
+    DYN_ARRAY<SUMMARY_TY_INFO> _ty_info;
+#endif
     BOOL Trace_Modref;			// trace mod/ref analysis
 
     /* used as cache to keep track of which global symbols have been
@@ -336,6 +339,11 @@ private:
     //for reordering
     typedef hash_map<mUINT32,SUMMARY_STRUCT_ACCESS*> TY_TO_ACCESS_MAP;
     TY_TO_ACCESS_MAP *Ty_to_access_map;// mapping ty_index to SUMMARY_STRUCT_ACCESS
+
+#ifdef KEY
+    typedef HASH_TABLE<UINT32, INT> TY_INFO_HASH_TABLE;
+    TY_INFO_HASH_TABLE * Ty_info_hash_table;
+#endif
 
     typedef STACK<UINT64> LOOP_COUNT_STACK;
 	LOOP_COUNT_STACK *loop_count_stack;
@@ -479,6 +487,14 @@ private:
 
     }
 
+#ifdef KEY
+    SUMMARY_TY_INFO *New_ty_info () {
+	INT new_idx = _ty_info.Newidx ();
+	_ty_info[new_idx].Init ();
+	return &(_ty_info[new_idx]);
+    }
+#endif
+
     void Process_alt_procedure (WN *w, INT formal_index, INT formal_count);
     void Process_callsite (WN *w, INT id, INT loopnest, float =-1);
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
@@ -541,6 +557,11 @@ private:
     	num_ele=last_struct_access_of_PU-first_struct_access_of_PU;
     	return num_ele;
     };
+
+#ifdef KEY
+    void Record_ty_info_for_type (TY_IDX ty, TY_FLAGS flags);
+#endif
+
     // Functions needed for execution cost analysis
     INT IPL_GEN_Value(WN* wn_value, DYN_ARRAY<SUMMARY_VALUE>* sv,
       DYN_ARRAY<SUMMARY_EXPR>* sx);
@@ -620,7 +641,11 @@ public:
     TCON **Get_tcon (INT idx) const		{ return &(_tcon[idx]); }
     ALT_ENTRY *Get_alt_entry (INT idx) const	{ return &(_alt_entry[idx]); }
     INLINE_ATTR *Get_inline_attr (INT idx) const { return &(_inline_attr[idx]); }
-	SUMMARY_STRUCT_ACCESS * Get_struct_access(INT idx)const{return &(_struct_access[idx]);}
+    SUMMARY_STRUCT_ACCESS * Get_struct_access(INT idx)const{return &(_struct_access[idx]);}
+    
+#ifdef KEY
+    SUMMARY_TY_INFO *Get_ty_info (INT idx) const      { return &(_ty_info[idx]); }
+#endif
     
     BOOL Has_procedure_entry () const	{ return _procedure.Lastidx () != -1; }
     BOOL Has_proc_info_entry () const	{ return _proc_info.Lastidx () != -1; }
@@ -643,7 +668,10 @@ public:
     BOOL Has_inline_attr () const	{ return _inline_attr.Lastidx
 					    () != -1; }
     BOOL Has_global_stid_entry () const	{ return _global_stid.Lastidx () != -1; }
-	BOOL Has_struct_access_entry()const{return _struct_access.Lastidx()!=-1;}
+    BOOL Has_struct_access_entry() const{return _struct_access.Lastidx()!=-1;}
+#ifdef KEY
+    BOOL Has_ty_info_entry() const      { return _ty_info.Lastidx () != -1; }
+#endif
 
     INT Get_procedure_idx () const	{ return _procedure.Lastidx (); }
     INT Get_proc_info_idx () const	{ return _proc_info.Lastidx (); }
@@ -666,6 +694,9 @@ public:
     INT Get_inline_attr_idx () const	{ return _inline_attr.Lastidx (); }
     INT Get_global_stid_idx () const	{ return _global_stid.Lastidx (); }
     INT Get_struct_access_idx() const	{return _struct_access.Lastidx();}
+#ifdef KEY
+    INT Get_ty_info_idx () const        { return _ty_info.Lastidx (); }
+#endif
 
     // constructor
 
@@ -692,8 +723,11 @@ public:
 	_tcon.Set_Mem_Pool (m);
 	_alt_entry.Set_Mem_Pool (m);
 	_inline_attr.Set_Mem_Pool (m);
-	_global_stid.Set_Mem_Pool(m);
-	_struct_access.Set_Mem_Pool(m);
+	_global_stid.Set_Mem_Pool (m);
+	_struct_access.Set_Mem_Pool (m);
+#ifdef KEY
+	_ty_info.Set_Mem_Pool (m);
+#endif
 	Trace_Modref = FALSE;
 	entry_point = NULL;
 	File_Pragmas = FALSE;
@@ -708,7 +742,9 @@ public:
 	//reorder added:
     	Ty_to_access_map=CXX_NEW(TY_TO_ACCESS_MAP(20),mem);
 	loop_count_stack=CXX_NEW(LOOP_COUNT_STACK(mem),mem);;
-
+#ifdef KEY
+    	Ty_info_hash_table = CXX_NEW (TY_INFO_HASH_TABLE(113, mem), mem);
+#endif
 
 	Init_Aux_Symbol_Info (GLOBAL_SYMTAB);
 

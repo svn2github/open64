@@ -497,7 +497,17 @@ void Post_Multi_Branch(void)
              if (!Multi_Branch_Valid_OP(op)) {
                   invalid_op = TRUE;
                   break;
-             } else {
+             }
+             // OSP, bb has more than one pred, which means at least, one pred contains a br
+             // br.call can not reside in the middle multiway branch 
+             //   unless all the branches (including call) are predicated with disjoint predidates
+             // So, if the op is call, it's still invalid
+             // TODO: check the predidate of the br in BB_preds
+	     else if ( BB_preds_len(bb) > 1 && OP_call(op) ) {
+	          invalid_op = TRUE;
+		  break;
+	     }
+	     else {
                   valid_ops_num++;
              }
          }
@@ -648,6 +658,9 @@ void Post_Multi_Branch(void)
                             // copy ops to other predecessors.
                             OP *cur_op; 
                             FOR_ALL_OPS_OPs(&dup_new_ops,cur_op) {
+                                // br.call can not be here unless we checked the predicates of the branches in preds.
+                                Is_True ( !OP_call(cur_op), ("call can not be here!") );
+
                                 BB_Insert_Op_Before(pred_bb, BB_branch_op(pred_bb), Dup_OP(cur_op)); 
                                 // multi-branch in one BB fix bug in vpr 2.o BB 44 PU 36
                             }

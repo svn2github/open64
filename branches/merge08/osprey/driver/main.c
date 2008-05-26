@@ -178,14 +178,6 @@ main (int argc, char *argv[])
 
 	check_for_driver_controls (argc, argv);
 
-        if (0 && time(NULL) > 1080719999) {
-            fprintf(stderr, "This software has expired.\n"
-		    "Please contact PathScale, Inc. at "
-		    "http://www.pathscale.com for infomation on\n"
-		    "upgrade options.\n");
-            do_exit(1);
-        }
-
 	/* Try to find where the compiler is located and set the phase
 	   and library directories appropriately. */
 	set_executable_dir();
@@ -381,13 +373,8 @@ main (int argc, char *argv[])
             fprintf(stderr, "Built on: %s\n", build_date);
             fprintf(stderr, "Thread model: posix\n");   // Bug 4608.
 #ifdef PSC_TO_OPEN64
-#if defined(TARG_IA64)
-            fprintf(stderr, "GNU gcc version " OPEN64_GCC_VERSION
-                      " (Open64 " OPEN64_FULL_VERSION " driver)\n");
-#else
             fprintf(stderr, "GNU gcc version " OPEN64_GCC_VERSION
                     " (Open64 " OPEN64_FULL_VERSION " driver)\n");
-#endif
 #endif
         }
 #if 0

@@ -120,7 +120,11 @@ struct Fb_Hdr {
 struct Pu_Hdr {
   INT32 pu_checksum;
   INT32 pu_size;
+#if defined(TARG_SL)
+  UINT32 runtime_fun_address;
+#else
   UINT64 runtime_fun_address;
+#endif
   ULONG pu_name_index;
   ULONG pu_file_offset;
   ULONG pu_inv_offset;

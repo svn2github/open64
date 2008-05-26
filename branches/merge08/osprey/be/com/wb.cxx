@@ -58,8 +58,19 @@
 #include "wb_browser.h" 
 #include "wb.h"
 
+#if defined(TARG_NVISA) || defined(TARG_SL) || defined(TARG_X8664)
+// this is in ipa, and we don't build it, so ignore
+extern "C" void cg_sdebug(char init_buffer[]) { 
+	FmtAssert(FALSE, ("NYI"));
+}
+// this is in lno, and we don't build it, so ignore
+extern "C" void s_lno_debug(char init_buffer[]) { 
+	FmtAssert(FALSE, ("NYI"));
+}
+#else
 #pragma weak _Z11s_lno_debugPc
 #pragma weak _Z9cg_sdebugPc
+#endif
 
 extern void s_f90_lower_debug(char init_buffer[]); 
 extern void s_omp_debug(char init_buffer[]); 

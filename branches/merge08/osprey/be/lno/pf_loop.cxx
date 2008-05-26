@@ -203,7 +203,8 @@ static BOOL Has_Indirect_Ref (WN* wn)
       return TRUE;
   return FALSE;
 }
-
+#endif 
+#if defined(TARG_X8664) || defined(TARG_IA64)
 // i = i + inv -- stride is just inv (inv - non const)
 static WN *Obtain_Stride_From_Loop_Step(WN *loop)
 {
@@ -392,7 +393,7 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
     // TODO: If this is always safe, then we could make it default.
     for (INT i=0; i<array->Num_Vec(); i++) {
       ACCESS_VECTOR *av = array->Dim(i);
-#if defined(OSP_OPT) && defined(TARG_IA64)
+#if defined(TARG_IA64)
       // For IA64, prefetch can be more aggressive.
       if (av->Contains_Non_Lin_Symb() || av->Too_Messy) {
 	  if (Has_Indirect_Ref(wn_array))

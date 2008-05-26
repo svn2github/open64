@@ -71,6 +71,11 @@
 #include "tag.h"
 #include "targ_issue_port.h" // To get PROCESSOR_Version
 
+#ifndef INT32_MAX
+# define INT32_MAX              (2147483647)
+#endif
+
+
 /* ====================================================================
  *
  *  Gen_SWP_Branch

@@ -37,7 +37,6 @@
 */
 
 
-#include <list>
 #include "defs.h"
 #include "config.h"
 #include "tracing.h"
@@ -334,7 +333,7 @@ HB_Init(void)
   HB_minimum_priority = atof(HB_min_priority);
   HB_bb_map = BB_MAP_Create();
   HB_Trace_Init();
-#ifndef TARG_IA64
+#ifndef KEY
   // Turn off hyperblock formation if we can't predicate
   if (!CGTARG_Can_Predicate()) {
 #else

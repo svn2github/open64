@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,10 +41,10 @@
  * ====================================================================
  *
  * Module: cgexp.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cgexp.cxx,v $
+ * $Revision: 1.24 $
+ * $Date: 05/12/05 08:59:05-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cgexp.cxx $
  *
  * History:  extracted target-independent parts from expand.cxx
  *
@@ -168,6 +164,9 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_ISTORE:
   case OPR_STID:
 	if ( V_align_all(variant) != 0 ) {
+#if defined(TARG_SL)
+	  Is_True(0, ("SL does not handle unaligned store"));
+#endif
 		Expand_Misaligned_Store (desc, op1, op2, op3, variant, ops);
 	}
 	else {
@@ -182,43 +181,23 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Abs (result, op1, rtype, ops);
 	break;
   case OPR_MPY:
-#ifdef TARG_X8664
-	if (MTYPE_is_float(rtype) || MTYPE_is_mmx_vector(rtype))
-#else
 	if (MTYPE_is_float(rtype))
-#endif
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
-#ifdef TARG_IA64
-		Expand_Multiply (result, op1, op2, rtype, ops, opcode);
-#else
-	Expand_Multiply (result, op1, op2, rtype, ops);
-#endif
+		Expand_Multiply (result, op1, op2, rtype, ops);
 	break;
   case OPR_HIGHMPY:
 	Expand_High_Multiply (result, op1, op2, rtype, ops);
 	break;
   case OPR_REM:
-#ifdef TARG_IA64
-	Expand_Rem (result, op1, op2, rtype, ops, opcode);
-#else
 	Expand_Rem (result, op1, op2, rtype, ops);
-#endif
 	break;
   case OPR_MOD:
 	if (MTYPE_is_signed(rtype))
-#ifdef TARG_IA64
-		Expand_Mod (result, op1, op2, rtype, ops, opcode);
-#else
-	Expand_Mod (result, op1, op2, rtype, ops );
-#endif
+		Expand_Mod (result, op1, op2, rtype, ops);
 	else
 		// unsigned MOD acts like REM
-#ifdef TARG_IA64
-		Expand_Rem (result, op1, op2, rtype, ops, opcode);
-#else
-	Expand_Rem (result, op1, op2, rtype, ops);
-#endif
+		Expand_Rem (result, op1, op2, rtype, ops);
 	break;
   case OPR_DIV:
 	if (MTYPE_is_float(rtype))
@@ -227,11 +206,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Divide (result, op1, op2, rtype, ops);
 	break;
   case OPR_DIVREM:
-#ifdef TARG_IA64
-	Expand_DivRem(result, op1, op2, op3, rtype, ops, opcode);
-#else
-        Expand_DivRem(result, op1, op2, op3, rtype, ops);
-#endif
+	Expand_DivRem(result, op1, op2, op3, rtype, ops);
 	break;
   case OPR_SQRT:
 	Expand_Sqrt (result, op1, rtype, ops);
@@ -307,7 +282,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_CVT:
 	Is_True(rtype != MTYPE_B, ("conversion to bool unsupported"));
 	if (MTYPE_is_float(rtype) && MTYPE_is_float(desc)) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_MIPS)
 		Expand_Float_To_Float (result, op1, rtype, desc, ops);
 #else
 		Expand_Float_To_Float (result, op1, rtype, ops);
@@ -330,34 +305,23 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		// vector conversions not covered above
 		Expand_Conv_To_Vector (result, op1, desc, rtype, ops);
 	}
-	else if (MTYPE_is_vector (desc)) {
-		Expand_Conv_From_Vector (result, op1, desc, rtype, ops);
-	}
 #endif
 	else {
 		// both are int
-  		// zero-extend when enlarging an unsigned value, or 
-  		//   converting to smaller unsigned vlaue (e.g U4I8CVT)
+  		// only zero-extend when enlarging an unsigned value; 
 		// else sign-extend.
 		Expand_Convert_Length ( result, op1, op2, 
 			rtype, 
 			(MTYPE_is_signed(desc)
-#ifdef TARG_IA64
-			 && (MTYPE_bit_size(desc) < MTYPE_bit_size(rtype) ) ),
-			ops); // OSP_171
-#else
-		|| (MTYPE_bit_size(desc) > MTYPE_bit_size(rtype) ) ),
-		     ops);
-#endif
+			|| (MTYPE_bit_size(desc) > MTYPE_bit_size(rtype) ) ),
+			ops);
 	}
 	break;
 #ifdef TARG_X8664
   case OPR_TAS:
-        if (MTYPE_is_vector(rtype)) // bugs 11797 11876
-          Expand_Int_To_Vect_Tas(result, op1, rtype, ops);
-        else if (MTYPE_is_integral(rtype))
-          Expand_Float_To_Int_Tas(result, op1, rtype, ops);
-        else Expand_Int_To_Float_Tas(result, op1, rtype, ops);
+  	if (MTYPE_is_integral(rtype))
+	  Expand_Float_To_Int_Tas(result, op1, rtype, ops);
+	else Expand_Int_To_Float_Tas(result, op1, rtype, ops);
 	break;
 #endif
   case OPR_RND:
@@ -380,11 +344,6 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Float_To_Float_Floorf( result, op1, rtype, desc, ops );
       break;
     }	
-#elif defined (TARG_MIPS)
-        if (MTYPE_is_float (rtype)) {
-	  Expand_Float_To_Float_Floor (result, op1, rtype, desc, ops);
-	  break;
-	}
 #endif
 	Expand_Float_To_Int_Floor (result, op1, rtype, desc, ops);
 	break;
@@ -409,9 +368,6 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_NMSUB:
   case OPR_RECIP:
   case OPR_RSQRT:
-#ifdef TARG_X8664
-  case OPR_ATOMIC_RSQRT:	// bug 6123
-#endif
 	Expand_Flop (opcode, result, op1, op2, op3, ops);
 	break;
 
@@ -503,38 +459,21 @@ Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant, O
 	}
   }
   else {
-	/* Sometimes the whole ops sequence is needed in Expand_OP.
-	So instead of create a new OPS structure, the old one is added.
-	*/
-	if (OPS_length(ops)==0) {
-		OPS new_ops;
-  		OPS_Init(&new_ops);
-  		Expand_OP (opcode, result, op1, op2, op3, variant, &new_ops);
-  		if (Trace_Exp) {
-  			#pragma mips_frequency_hint NEVER
-  			OP *op;
-  			FOR_ALL_OPS_OPs (&new_ops, op) {
-  				fprintf(TFile, " into "); Print_OP (op);
-  			}
-  		}
-		/* check if there is at least one OP in the expansion */
-		if (OPS_first(&new_ops) != NULL) {
-			/* Add the new OPs to the end of the list passed in */
-			OPS_Append_Ops(ops, &new_ops);
-  		}
-  	}
-  	else {
-		OP *last_OP = OPS_last(ops);
-  		Expand_OP (opcode, result, op1, op2, op3, variant, ops);
-  		if (Trace_Exp) {
-  			if (OP_next(last_OP)!=NULL) {
-  				#pragma mips_frequency_hint NEVER
-	  			OP *op;
-		  		for (op = OP_next(last_OP); op && op != OP_next(OPS_last(ops)); op = OP_next(op)){
-			  		fprintf(TFile, " into "); Print_OP (op);
-			  	}
-		  	}
+	OPS new_ops;
+  	OPS_Init(&new_ops);
+  	Expand_OP (opcode, result, op1, op2, op3, variant, &new_ops);
+  	if (Trace_Exp) {
+		#pragma mips_frequency_hint NEVER
+		OP *op;
+		FOR_ALL_OPS_OPs (&new_ops, op) {
+			fprintf(TFile, " into "); Print_OP (op);
 		}
-	}
+  	}
+	/* check if there is at least one OP in the expansion */
+	if (OPS_first(&new_ops) != NULL) {
+		/* Add the new OPs to the end of the list passed in */
+		OPS_Append_Ops(ops, &new_ops);
+  	}
   }
 }
+

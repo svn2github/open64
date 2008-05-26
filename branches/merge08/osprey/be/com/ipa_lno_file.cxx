@@ -43,7 +43,11 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <fcntl.h> 
 #include <errno.h>
 #include <signal.h>
@@ -75,7 +79,7 @@
 // change SHT_MIPS_NUM to 42.  
 #define SHT_MIPS_IPALNO  (SHT_LOPROC + 42)
 
-#ifdef linux
+#if defined(linux) || defined(BUILD_OS_DARWIN)
 #define MAPPED_SIZE 0x400000
 #endif
 
@@ -269,7 +273,7 @@ void IPA_LNO_WRITE_FILE::Open_Write_File(char *file_name)
     return;
   } 
 
-#ifdef linux
+#if defined(linux) || defined(BUILD_OS_DARWIN)
     ftruncate(ofl->output_fd, MAPPED_SIZE);
 #endif
 

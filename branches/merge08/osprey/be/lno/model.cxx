@@ -531,8 +531,8 @@ LOOP_MODEL::Model(WN* wn,
   // vectorization and cache-blocking. For now, we may shut this off 
   // by preventing cache-blocking only under -LNO:simd=2. Need to come across
   // a case yet. (That case is bug 4672.)
-  if (Is_Vectorizable_Loop(wn) && Is_Vectorization_Beneficial(WN_do_body(wn)))
-    _blocking_disabled = TRUE;
+  //  if (Is_Vectorizable_Loop(wn) && Is_Vectorization_Beneficial(WN_do_body(wn)))
+  //    _blocking_disabled = TRUE;
 #endif
 #endif
 
@@ -1698,13 +1698,11 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
     // regular floating point
     else if (desc  == MTYPE_F4 || 
              desc  == MTYPE_F8 ||
-#ifdef PATHSCALE_MERGE
+#if defined(TARG_IA64)
              desc  == MTYPE_F10 ||
-#endif
-             rtype == MTYPE_F4 ||
-#ifdef PATHSCALE_MERGE
              rtype  == MTYPE_F10 ||
 #endif
+             rtype == MTYPE_F4 ||
              rtype == MTYPE_F8) {
       // multiply-adds
       if (Target_ISA_Has_Madd() && 
@@ -1753,13 +1751,11 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
     } 
     else if (desc  == MTYPE_C4 || 
              desc  == MTYPE_C8 ||
-#ifdef PATHSCALE_MERGE
+#if defined(TARG_IA64)
              desc  == MTYPE_C10 ||
-#endif
-             rtype == MTYPE_C4 ||
-#ifdef PATHSCALE_MERGE
              rtype  == MTYPE_C10 ||
 #endif
+             rtype == MTYPE_C4 ||
              rtype == MTYPE_C8) {
       if (oper == OPR_ADD || oper== OPR_SUB) {
         *num_instr += LNOTARGET_Complex_Add_Res(resource_count, rtype);
@@ -3388,13 +3384,11 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
     // regular floating point
     else if (desc  == MTYPE_F4 || 
              desc  == MTYPE_F8 ||
-#ifdef PATHSCALE_MERGE
+#if defined(TARG_IA64)
              desc  == MTYPE_F10 ||
-#endif
-             rtype == MTYPE_F4 ||
-#ifdef PATHSCALE_MERGE
              rtype  == MTYPE_F10 ||
 #endif
+             rtype == MTYPE_F4 ||
              rtype == MTYPE_F8) {
       // multiply-adds
       if (Target_ISA_Has_Madd() && 
@@ -3441,14 +3435,12 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
       }
     }
     else if (desc  == MTYPE_C4 || 
-#ifdef PATHSCALE_MERGE
+#if defined(TARG_IA64)
              desc  == MTYPE_C10 ||
+             rtype  == MTYPE_C10 ||
 #endif
              desc  == MTYPE_C8 ||
              rtype == MTYPE_C4 ||
-#ifdef PATHSCALE_MERGE
-             rtype  == MTYPE_C10 ||
-#endif
              rtype == MTYPE_C8) {
       if (oper == OPR_ADD || oper == OPR_SUB) {
         op_latency = LNOTARGET_Complex_Add_Lat(rtype);
@@ -4115,18 +4107,18 @@ WN2INT *se_needed, ARRAY_REF *ar)
           (*num_scalar_refs)++;
           Enter(&symb, is_store, 1);
         } else if ((type == MTYPE_C4) || (type==MTYPE_C8) ||
-#ifdef PATHSCALE_MERGE
-									 (type == MTYPE_F10) ||
+#if defined(TARG_IA64)
+		   (type == MTYPE_F10) ||
 #endif
                    (type == MTYPE_FQ)) {
           SYMBOL symb(wn);
           (*num_scalar_refs)+=2;
           Enter(&symb, is_store, 2);
-#ifdef PATHSCALE_MERGE
-        } else if (type == MTYPE_C10 || type == MTYPE_CQ) {
-#else
-        } else if (type == MTYPE_CQ) {
+        } else if (type == MTYPE_CQ
+#if defined(TARG_IA64)
+	    || type == MTYPE_CQ
 #endif
+	      ) {
           SYMBOL symb(wn);
           (*num_scalar_refs)+=4;
           Enter(&symb, is_store, 4);
@@ -4211,14 +4203,14 @@ void SYMBOL_TREE::Enter_Scalar_Refs(WN *wn, ARRAY_REF *ar,
         Enter(&symb, is_store, 1);
         (*num_scalar_refs)++;
       } else if ((type == MTYPE_C4) || (type==MTYPE_C8) || 
-#ifdef PATHSCALE_MERGE      	
+#if defined(TARG_IA64)
       	(type == MTYPE_F10) ||
 #endif
       	(type == MTYPE_FQ)) {
         Enter(&symb, is_store, 2);
         (*num_scalar_refs)+=2;
       } else if (type == MTYPE_CQ
-#ifdef PATHSCALE_MERGE      	
+#if defined(TARG_IA64)
       	|| type == MTYPE_C10
 #endif
       	) {
@@ -4538,18 +4530,13 @@ REGISTER_MODEL::Count_Op(WN* wn)
   } else if (!OPCODE_is_leaf(opcode)) {
     TYPE_ID ti = OPCODE_rtype(opcode);
     TYPE_ID ti2 = OPCODE_desc(opcode);
-#ifdef PATHSCALE_MERGE
-    if (ti == MTYPE_C4 || ti2 == MTYPE_C4 ||
-	ti == MTYPE_C8 || ti2 == MTYPE_C8 ||
-	ti == MTYPE_C10 || ti2 == MTYPE_C10 ||
-	ti == MTYPE_CQ || ti2 == MTYPE_CQ ||
-        ti == MTYPE_F10 || ti2 == MTYPE_F10 ||
-	ti == MTYPE_FQ || ti2 == MTYPE_FQ) {
-#else
     if ((ti == MTYPE_C4) || (ti == MTYPE_C8) || (ti == MTYPE_CQ) ||
         (ti2 == MTYPE_C4) || (ti2 == MTYPE_C8) || (ti2 == MTYPE_CQ) ||
-        (ti == MTYPE_FQ) || (ti2 == MTYPE_FQ)) {
+#if defined(TARG_IA64)
+	ti == MTYPE_C10 || ti2 == MTYPE_C10 ||
+        ti == MTYPE_F10 || ti2 == MTYPE_F10 ||
 #endif
+        (ti == MTYPE_FQ) || (ti2 == MTYPE_FQ)) {
         result = 2.0;
     } else if ((ti == MTYPE_F4) || (ti == MTYPE_F8) || 
         (ti2 == MTYPE_F4) || (ti2 == MTYPE_F8)) { 

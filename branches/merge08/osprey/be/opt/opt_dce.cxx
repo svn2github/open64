@@ -75,6 +75,7 @@
 #include "pf_cg.h"
 
 #include "cxx_base.h"
+#include "erbe.h"
 
 #include "opt_base.h"
 #include "opt_bb.h"
@@ -159,6 +160,9 @@ class DCE {
                                          // analysis during dce 
 
     MOD_PHI_BB_CONTAINER *_mod_phis;     // NULL if !Htable()->Phi_hash_valid()
+#if defined(TARG_SL)
+    vector<STMTREP *> *_injured_aux_intrnop; // stacks used for store aux intrinsic op need repaired to live
+#endif
 
     // which phase of DCE is running
     enum {
@@ -417,6 +421,9 @@ public:
 				       cfg->Loc_pool()),
 	_retvsym_visited = BS_Create_Empty(Htable()->Coderep_id_cnt() + 1,
 					   cfg->Loc_pool());
+#if defined(TARG_SL)
+        _injured_aux_intrnop = CXX_NEW(vector<STMTREP *>, cfg->Loc_pool());
+#endif
       }
 
     ~DCE(void)
@@ -447,8 +454,54 @@ public:
     BOOL Unreachable_code_elim(void) const;
     BOOL Dead_store_elim(void) ;
     void Init_return_vsym( void );
+#if defined(TARG_SL)
+    void Append_Injured_AuxIntrnOp (STMTREP *stmt) const {
+       _injured_aux_intrnop->insert(_injured_aux_intrnop->begin(), (STMTREP *)stmt);
+    };
+    void Repair_Injured_AuxIntrnOP() const;
+#endif
     
 }; // end of class DCE
+
+#if defined(TARG_SL)
+void
+DCE::Repair_Injured_AuxIntrnOP() const {
+
+  for (INT32 i = 0; i < _injured_aux_intrnop->size(); i++) {
+    STMTREP *stmt = (*_injured_aux_intrnop)[i];
+    if (stmt->Live_stmt())
+      continue;
+    CODEREP *rhs = stmt->Rhs();
+    if (CR_Intrinsic_Op_Slave(rhs)) {
+      CODEREP *parm2cr = rhs->Opnd(0);	// first parameter
+      Is_True(parm2cr->Kind() == CK_IVAR, ("Repair_Injured_AuxIntrnOP::kid of intrinsic op must be parameter"));
+      CODEREP *op2cr = parm2cr->Ilod_base();
+      if (op2cr) {
+        switch (op2cr->Kind()) {
+          case CK_VAR: 
+          {
+            if(op2cr->Defstmt()->Live_stmt())	
+	      Mark_statement_live(stmt);	
+	  }
+	  break;	
+	  case CK_OP: 
+          {
+	    Mark_statement_live(stmt);
+	  };
+     	  break; 	
+	  default:
+	    Is_True (0, ("Repair_Injured_AuxIntrnOP::slave intrinsic op(c3_ptr): first parameter is unsupported kind coderep"));	
+        } // end switch
+      } else {
+        Is_True (0, ("Repair_Injured_AuxIntrnOP::slave intrinsic op(c3_ptr): first parameter is null"));
+      }
+    } else {
+      Is_True(0, ("Repair_Injured_AuxIntrnOP::rhs is not injure AuxIntrn"));
+    }
+  }
+  return;
+}
+#endif
 
 // ====================================================================
 // Keep this only until we figure it out, then re-inline it above
@@ -1139,8 +1192,50 @@ DCE::Check_conditional_branches_pred( CFG *cfg ) const
 // ====================================================================
 
 COND_EVAL
+Helper_Eval_redundant_cond_br( CODEREP *origcond, CODEREP *evalcond )
+{
+  if (origcond->Kind() == CK_OP && OPERATOR_is_compare(origcond->Opr())) 
+  {
+    CODEREP *kid0 = origcond->Opnd(0);
+    CODEREP *kid1 = origcond->Opnd(0);
+    if(kid0->Non_leaf()) {
+      if(kid0->Opr()==OPR_INTRINSIC_OP 
+#ifdef TARG_SL2
+          && (kid0->Intrinsic()==INTRN_OP_C2_SCOND_BR ||
+                   kid0->Intrinsic()==INTRN_OP_C2_SCOND_BR_R)
+#ifndef fork_joint
+           && (kid0 ->Intrinsic() == INTRN_C2_THREAD_MAJOR || 
+                 kid0 ->Intrinsic() == INTRN_C2_THREAD_MINOR) 
+#endif 
+
+#endif //TARG_SL2
+         )
+        return EVAL_UNKNOWN;
+    
+    } 
+    else if(kid1->Non_leaf()) {
+      if(kid1->Opr()==OPR_INTRINSIC_OP 
+#ifdef TARG_SL2
+             && (kid1->Intrinsic()==INTRN_OP_C2_SCOND_BR ||
+                   kid1->Intrinsic()==INTRN_OP_C2_SCOND_BR_R)
+#ifndef fork_joint
+             && (kid1 ->Intrinsic() == INTRN_C2_THREAD_MAJOR ||
+                   kid1 ->Intrinsic() == INTRN_C2_THREAD_MINOR)
+#endif 
+#endif 
+	 )
+      return EVAL_UNKNOWN;
+    }
+  }
+}
+
+COND_EVAL
 Eval_redundant_cond_br( CODEREP *origcond, CODEREP *evalcond, COND_EVAL eval ) 
 {
+#if defined(TARG_SL)
+  if (Helper_Eval_redundant_cond_br(origcond, evalcond) == EVAL_UNKNOWN)
+    return EVAL_UNKNOWN;
+#endif
 
   // exact match means the evalcond and origcond evaluate the same way
   if ( origcond == evalcond ) {
@@ -1721,8 +1816,13 @@ DCE::Unreachable_code_elim( void ) const
 
       // Bug 13821: Don't delete unreachable blocks whose labels are
       // taken and passed to __cyg_instrument_entry/exit
+#if !defined(TARG_SL)
       if ( OPT_Cyg_Instrument > 0 && bb->Labnam() != 0 &&
 	   LABEL_addr_saved( bb->Labnam() ) ) {
+#else
+      if ( 0 && bb->Labnam() != 0 &&
+	   LABEL_addr_saved( bb->Labnam() ) ) {
+#endif
 	Keep_unreached_bb( bb );
 	// Restore LABEL deleted by Remove_unreached_statements
 	Check_for_label( bb );
@@ -1899,6 +1999,12 @@ DCE::Required_store( const STMTREP *stmt, OPERATOR oper ) const
   // store to a volatile location?
   if (lhs->Is_var_volatile())
     return ( TRUE );
+
+#if defined(TARG_SL)
+  if (CR_Intrinsic_Op_Slave(stmt->Rhs())) {
+    Append_Injured_AuxIntrnOp((STMTREP *)stmt);
+  }
+#endif
 
   // statement of form i = i are not required
   //  (even it stores a dedicated register)
@@ -4359,6 +4465,9 @@ DCE::Find_required_statements( void ) const
     }
 
   } // end loop through blocks
+#ifdef TARG_SL
+  Repair_Injured_AuxIntrnOP();
+#endif
 
   // see if there are infinite loops that we need to keep around
   Mark_infinite_loops_live();
@@ -5027,8 +5136,7 @@ COMP_UNIT::Find_uninit_locals_for_entry(BB_NODE *bb)
       }
     }
 
-    fprintf(stderr, "Warning: variable %s in %s might be used uninitialized\n",
-	    output_var_name, output_pu_name);
+    ErrMsg(EC_Uninitialized, output_var_name, Cur_PU_Name);
     if (p != NULL && p != Cur_PU_Name)
       free(p);
     if (v != NULL && v != &Str_Table[sym->St()->u1.name_idx])

@@ -1,8 +1,4 @@
 /*
- * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -49,10 +45,10 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_lrange.cxx,v $
+//  $Revision: 1.24 $
+//  $Date: 05/12/05 08:59:10-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_lrange.cxx $
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -60,7 +56,7 @@
 #pragma hdrstop
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_lrange.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_lrange.cxx $ $Revision: 1.24 $";
 #endif
 
 #if defined(__GNUC__)
@@ -574,19 +570,15 @@ LRANGE::Calculate_Priority(void)
     }
     priority = value;
 #ifdef KEY
+    if ((GRA_exclude_callee_saved_regs ||
+	 GRA_eh_exclude_callee_saved_regs && PU_Has_Exc_Handler)
+	&& Tn_Is_Save_Reg())
+      priority += 100.0F;
+
     // Prioritize live ranges by reference density as in classic Chow.
     if (GRA_prioritize_by_density) {
       UINT32 num_bbs = BB_SET_Size(this->Live_BB_Set());
       priority = priority / num_bbs;
-    }
-
-    // Exclude callee-saved registers from normal GRA use by always allocating
-    // them to their save TNs.
-    if ((GRA_exclude_callee_saved_regs ||
-	 GRA_eh_exclude_callee_saved_regs && PU_Has_Exc_Handler ||
-	 GRA_fp_exclude_callee_saved_regs && TN_is_float(Tn()))
-	&& Tn_Is_Save_Reg()) {
-      priority = FLT_MAX;
     }
 #endif
   }
@@ -716,37 +708,13 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
     for (INT i = 1; i <= num_xmms; i++)
       allowed = REGISTER_SET_Difference1(allowed, REGISTER_MIN+(8-i));
   }
-
-  // If a x87 live range spans an MMX OP, disallow all x87 registers.
-  if (Spans_mmx_OP() && rc == ISA_REGISTER_CLASS_x87)
-    return REGISTER_SET_EMPTY_SET;
-
-  // If a MMX live range spans an x87 OP, disallow all MMX registers.
-  if (Spans_x87_OP() && rc == ISA_REGISTER_CLASS_mmx)
-    return REGISTER_SET_EMPTY_SET;
 #endif
 
   if (   Type() != LRANGE_TYPE_LOCAL && TN_is_save_reg(Tn())
   ) {
-#ifdef TARG_IA64
-    // we copied the reg. class (creg) of this copy TN in
-    // Init_Callee_Saved_Regs_for_REGION, this confuses TN_save_reg to
-    // return a dedicated TN (of lc), then in turn tries to allocate that
-    // which is not allowed, eventually, it cause GRA to allocate from RSE
-    // We can go ahead allocate registers
-    if (TN_save_rclass(Tn()) == REGISTER_CLASS_lc) {
-        allowed = REGISTER_SET_Difference(allowed,
-                                    REGISTER_CLASS_callee_saves(rc));
-    }else {
-        REGISTER sv_reg = TN_save_reg(Tn());
-        REGISTER_SET singleton = REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET,sv_reg);
-        allowed = REGISTER_SET_Intersection(allowed,singleton);
-    }
-#else
     REGISTER sv_reg = TN_save_reg(Tn());
     REGISTER_SET singleton = REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET,sv_reg);
     allowed = REGISTER_SET_Intersection(allowed,singleton);
-#endif
   }
 
   switch (Type()) {
@@ -847,95 +815,12 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
   }
 }
 
-
-#ifdef KEY
-/////////////////////////////////////
-// Return the set of registers that are reclaimable for <lrange>.  This means
-// finding the set of registers that are already allocated to some other lrange
-// but are not referenced in the BBs spanned by <lrange>.  <lrange> must belong
-// to <region>.
-REGISTER_SET
-LRANGE::Reclaimable_Registers( GRA_REGION* region )
-{
-  LRANGE_LIVE_GBB_ITER gbb_iter;
-  LRANGE_LUNIT_ITER    lunit_iter;
-  INTERFERE_ITER       int_iter;
-  ISA_REGISTER_CLASS   rc      = Rc();
-  REGISTER_SET         reclaimable = REGISTER_CLASS_allocatable(rc);
-
-#ifdef HAS_STACKED_REGISTERS
-  FmtAssert(FALSE,("Reclaimable_Registers: stacked register not implemented"));
-#endif
-
-  // if the live range spans an instruction that clobbers rotating registers,
-  // disallow rotating registers
-  if (Spans_Rot_Reg_Clob()) 
-    reclaimable = REGISTER_SET_Difference(reclaimable,
-					  REGISTER_CLASS_rotating(rc));
-
-  // if the live range spans a setjmp, disallow callee-saved registers
-  if (Spans_A_Setjmp() && ! TN_is_save_reg(Tn()))
-    reclaimable = REGISTER_SET_Difference(reclaimable,
-					  REGISTER_CLASS_callee_saves(rc));
-
-#ifdef TARG_X8664
-  // if the live range spans savexmms pseudo-op, disallow FP parm registers
-  if (Spans_Savexmms() && rc == ISA_REGISTER_CLASS_float) {
-    INT num_xmms = TN_value(OP_opnd(gra_savexmms_op, 1));
-    for (INT i = 1; i <= num_xmms; i++)
-      reclaimable = REGISTER_SET_Difference1(reclaimable, REGISTER_MIN+(8-i));
-  }
-#endif
-
-  if (   Type() != LRANGE_TYPE_LOCAL && TN_is_save_reg(Tn())
-  ) {
-    REGISTER sv_reg = TN_save_reg(Tn());
-    REGISTER_SET singleton = REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET,sv_reg);
-    reclaimable = REGISTER_SET_Intersection(reclaimable, singleton);
-  }
-
-  switch (Type()) {
-
-  case LRANGE_TYPE_LOCAL:
-    FmtAssert(FALSE, ("Reclaimable_Registers: unexpected LRANGE_TYPE_LOCAL"));
-    return REGISTER_SET_EMPTY_SET;
-
-  case LRANGE_TYPE_COMPLEMENT:
-    for (gbb_iter.Init(this); ! gbb_iter.Done(); gbb_iter.Step()) {
-      GRA_BB* gbb = gbb_iter.Current();
-      REGISTER_SET used = gbb->Registers_Used(rc);
-      REGISTER_SET referenced = gbb->Registers_Referenced(rc);
-      // Consider a register reclaimable if it is used and not referenced.
-      // Experiment with other criteria in the future.
-      reclaimable = REGISTER_SET_Intersection(reclaimable, used);
-      reclaimable = REGISTER_SET_Difference(reclaimable, referenced);
-    }
-    if (Avoid_RA())
-      reclaimable = REGISTER_SET_Difference1(reclaimable, TN_register(RA_TN));
-
-    if (Spans_A_Call()) 
-      reclaimable = REGISTER_SET_Difference(reclaimable,
-					    REGISTER_CLASS_caller_saves(rc));
-    return reclaimable;
-
-  case LRANGE_TYPE_REGION:
-    FmtAssert(FALSE,
-	      ("Reclaimable_Registers: LRANGE_TYPE_REGION not implemented"));
-    return REGISTER_SET_EMPTY_SET;
-
-  default:
-    FmtAssert(FALSE,("Unknown type of LRANGE %d",Type()));
-    return REGISTER_SET_EMPTY_SET;
-  }
-}
-#endif
-
 /////////////////////////////////////
 // We've picked <reg> as the register for <lrange>.  Update
 // <lrange> and other data structures as appropriate
 // (particularly GRA_BBs and GRA_REGIONS.)
 void
-LRANGE::Allocate_Register( REGISTER r, BOOL reclaim )
+LRANGE::Allocate_Register( REGISTER r )
 {
   LRANGE_LIVE_GBB_ITER live_gbb_iter;
   LRANGE_GLUE_REF_GBB_ITER glue_gbb_iter;
@@ -950,21 +835,9 @@ LRANGE::Allocate_Register( REGISTER r, BOOL reclaim )
   switch ( Type() ) {
   case LRANGE_TYPE_LOCAL:
     GRA_GRANT_Local_Register(Gbb(),Rc(),r);
-    Gbb()->Make_Register_Used((ISA_REGISTER_CLASS) Rc(), r, NULL, reclaim);
-#ifdef KEY
-    // Update the referenced registers.
-    if (GRA_reclaim_register) {
-      Gbb()->Make_Register_Referenced(Rc(), r, this);
-    }
-#endif
+    Gbb()->Make_Register_Used((ISA_REGISTER_CLASS) Rc(),r);
     break;
   case LRANGE_TYPE_REGION:
-#ifdef KEY
-    // Need to call Make_Register_Referenced.
-    FmtAssert(!GRA_reclaim_register,
-	      ("Allocate_Register: register reclaiming not yet supported "
-	       "for LRANGE_TYPE_REGION"));
-#endif
     TN_Allocate_Register(Tn(),r);
     Region()->Make_Register_Used(Rc(), r);
     for (glue_gbb_iter.Init(this); ! glue_gbb_iter.Done(); glue_gbb_iter.Step())
@@ -978,19 +851,8 @@ LRANGE::Allocate_Register( REGISTER r, BOOL reclaim )
     for (live_gbb_iter.Init(this); ! live_gbb_iter.Done(); live_gbb_iter.Step())
     {
       GRA_BB* gbb = live_gbb_iter.Current();
-      gbb->Make_Register_Used(Rc(), r, this, reclaim);
+      gbb->Make_Register_Used(Rc(), r, this);
     }
-#ifdef KEY
-    // Update the referenced registers.
-    if (GRA_reclaim_register) {
-      LRANGE_LUNIT_ITER lunit_iter;
-      for (lunit_iter.Init(this); !lunit_iter.Done(); lunit_iter.Step()) {
-	LUNIT *lunit = lunit_iter.Current();
-	if (Contains_BB(lunit->Gbb()))
-	  lunit->Gbb()->Make_Register_Referenced(Rc(), r, this);
-      }
-    }
-#endif
   }
 
   GRA_Trace_LRANGE_Allocate(this);

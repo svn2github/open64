@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -127,8 +129,12 @@ HEADER_DIRS = \
   $(TARGDIR)/be		\
   $(BUILD_TOT)/include
 
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
+HEADER_DIRS += $(TARGDIR)/include/libelf
+else
 ifeq ($(BUILD_OS), LINUX)
 HEADER_DIRS += $(TARGDIR)/include/libelf
+endif
 endif
 
 #----------------------------------------------------------------------
@@ -198,7 +204,8 @@ IPA_ANALYZE_CXX_SRCS = \
 	ipa_nested_pu.cxx \
         ipa_cost.cxx \
 	ipa_reorder.cxx \
-	ipa_builtins.cxx
+	ipa_builtins.cxx \
+	ipa_struct_opt.cxx
 
 IPA_OPTIMIZE_SRCS = \
 #	ipo_parent.c \
@@ -303,20 +310,39 @@ DSOSTARTOPT_N32 = $(DSOSTARTOPT)
 TARGETS = ipa.so
 TARGETS_PURE = ipa.so.pure
 
-default: first $(TARGETS) last
+#----------------------------------------------------------------------
+#  For parallel makes, makefile must satisfy:
+#  -> Submake for include/ finished before building any objects;
+#  -> All archive/library submakes finished before linking targets;
+#  -> All targets finished before make_deps or make_libdeps.
+#----------------------------------------------------------------------
+
+default: make_deps
+make_deps: $(TARGETS)
+.PHONY: default install make_deps
+
 pure: $(TARGETS_PURE)
 
 #----------------------------------------------------------------------
-#  The commands in this section are done BEFORE any other target is
-#  built.
+#  Library prerequisites are updated via submake
 #----------------------------------------------------------------------
-first:
-## verify that be.so is up to date
-	$(call submake,$(TARG_BE_DIR))
-## verify that ipl.so is up to date
-	$(call submake,$(TARG_IPL_DIR))
 
-last : make_deps
+.PHONY: force
+force: ;
+
+$(TARG_IPL_DIR)/ipl.so: force
+	$(call submake,$(TARG_IPL_DIR),ipl.so)
+$(TARG_BE_DIR)/be.so: force
+	$(call submake,$(TARG_BE_DIR),be.so)
+
+be.so: $(BE_BE_DIR)/so_locations $(TARG_BE_DIR)/be.so
+	ln -sf $(TARG_BE_DIR)/be.so .
+ipl.so: $(TARG_IPL_DIR)/ipl.so
+	ln -sf $(TARG_IPL_DIR)/ipl.so
+
+#----------------------------------------------------------------------
+#  Build and install 'ipa.so'
+#----------------------------------------------------------------------
 
 install: default
 	$(STD_INSTALL) -F $(STD_MONGOOSE_LOC) $(TARGETS)
@@ -324,13 +350,6 @@ install: default
 	$(STD_INSTALL) -F $(STD_MONGOOSE_LOC) pfa_reshuffle
 install.pure: $(TARGETS_PURE)
 	$(STD_INSTALL) -F $(STD_MONGOOSE_LOC) $(TARGETS_PURE)
-
-be.so: $(BE_BE_DIR)/so_locations \
-		$(TARG_BE_DIR)/be.so 
-	ln -s $(TARG_BE_DIR)/be.so .
-
-ipl.so: $(TARG_IPL_DIR)/ipl.so 
-	ln -s $(TARG_IPL_DIR)/ipl.so .
 
 ipa.so: $(IPA_ALL_OBJS) $(BE_BE_DIR)/so_locations \
 		$(TARG_BE_DIR)/be.so be.so $(TARG_IPL_DIR)/ipl.so ipl.so 

@@ -146,6 +146,7 @@ extern char *DSTdump_File_Name; /* Dwarf intermediate (i.e. DST) dump file */
 extern char *Global_File_Name;	/* Global symbol table file */
 
 extern char *License_File_Name ; /* name of license file */
+extern char *Whirl2C_File_Name; /* Whirl2C output file */
 
 /* Current file handles if open, NULL otherwise: */
 extern FILE *Src_File;		/* Source file */

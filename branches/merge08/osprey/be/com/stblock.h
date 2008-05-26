@@ -38,10 +38,10 @@
  * ====================================================================
  *
  * Module: stblock.h
- * $Revision$
- * $Date$
- * $Author$
- * $Source$
+ * $Revision: 1.2 $
+ * $Date: 02/11/07 23:41:39-00:00 $
+ * $Author: fchow@keyresearch.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.stblock.h $
  *
  * Revision history:
  *  11-Nov-94 - Original Version

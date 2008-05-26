@@ -33,7 +33,7 @@
 */
 
 
-/* $Header$ */
+/* $Header: /depot/CVSROOT/javi/src/sw/cmplr/include/cmplrs/f_errno.h,v 1.1 2005/07/27 02:22:37 kevinlo Exp $ */
 /*
  *
  * f77 I/O error definitions

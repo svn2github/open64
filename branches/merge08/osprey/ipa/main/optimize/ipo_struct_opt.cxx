@@ -1,5 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////
 //
+// Copyright (C) 2007, 2008. PathScale, LLC. All Rights Reserved.
+//
 // Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
 //
 // This program is free software; you can redistribute it and/or modify it
@@ -24,6 +26,7 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#include <math.h>
 
 #include "defs.h"
 #include "wn.h"
@@ -33,6 +36,7 @@
 
 #include "ipa_cg.h"
 #include "ipo_parent.h"
+#include "ipa_struct_opt.h"
 
 // ======================================================================
 // Implements a form of structure splitting.
@@ -47,18 +51,20 @@
 // a type we are performing the optimization on, the function must be an
 // allocation function like malloc, calloc, realloc.
 //
-// TY should have 2 fields only.
+// TY should have 2 fields only (being relaxed)
 //
 // An object of pointer-to-TY should not be present as a function parameter.
 //
-// It should be a local variable.
+// It should be a local variable (being relaxed)
 //
 // An object of pointer-to-TY may appear as a field in another 'struct'
 // type parent_TY, if there is only one such parent_TY, and parent_TY
 // contains only one such field.
 
-TY_IDX candidate_ty_idx = TY_IDX_ZERO;
+mUINT32 candidate_ty_idx = 0;
 mUINT32 candidate_fld_id = 0;
+mUINT32 Struct_split_candidate_index = 0;
+mUINT32 Struct_update_index = 0;
 
 static WN_MAP PU_Parent_Map = 0;
 static WN_MAP_TAB * PU_Map_Tab = NULL;
@@ -69,7 +75,10 @@ static WN_MAP_TAB * PU_Map_Tab = NULL;
 //  * we should find a better way to detect memory management routines,
 //    like generating intrinsics for them and detecting these intrinsics.
 
-ST * fld1_st = NULL, * fld2_st = NULL;
+ST * fld_st[10]; // TODO: dynamic memory allocation
+TY_IDX Struct_split_types[20]; // TODO: dynamic memory allocation
+
+WN_OFFSET preg_id = 0;
 
 struct FLD_MAP
 {
@@ -81,7 +90,7 @@ struct FLD_MAP
 
 static FLD_MAP * field_map_info;
 
-// size is a size expression, return the WN for the constant
+// expr is a size expression, return the WN for the constant
 // part of the expr that needs update.
 WN * size_wn (WN * expr)
 {
@@ -93,7 +102,7 @@ WN * size_wn (WN * expr)
   else Fail_FmtAssertion ("Unrecognized expression");
 
   FmtAssert (WN_operator(wn) == OPR_INTCONST, ("Constant size expected"));
-  FmtAssert (WN_const_val(wn) >= TY_size(candidate_ty_idx),
+  FmtAssert (WN_const_val(wn) >= TY_size(Ty_tab[candidate_ty_idx]),
               ("allocation constant cannot be less than type size"));
   return wn;
 }
@@ -121,12 +130,12 @@ void fixup_realloc_pointer (WN * call)
   WN * ptr = WN_kid0(WN_kid0(call));
 
   if (WN_operator(ptr) == OPR_ILOAD && WN_operator(WN_kid0(ptr)) == OPR_LDID &&
-      WN_ty(ptr) == IPA_Update_Struct)
+      TY_IDX_index(WN_ty(ptr)) == Struct_update_index)
   {
     UINT field_id = WN_field_id(ptr);
     FmtAssert (field_id == candidate_fld_id, ("Unexpected field id in iload"));
     UINT cur_field_id = 0;
-    FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct, ++field_id, cur_field_id);
+    FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8, ++field_id, cur_field_id);
     FmtAssert (!fld.Is_Null(), ("Field not found"));
     WN_set_field_id(ptr, field_id);
     WN_offset(ptr) = FLD_ofst(fld);
@@ -147,23 +156,31 @@ void handle_function_return (WN * block, WN * wn)
 
   WN * size = size_expr(call);
 
-  INT num_elements = WN_const_val(size) / TY_size(candidate_ty_idx);
-  FLD_HANDLE fld1 = TY_fld(candidate_ty_idx);
-  FLD_HANDLE fld2 = FLD_next(fld1);
+  INT num_elements = WN_const_val(size) / TY_size(Ty_tab[candidate_ty_idx]);
 
-  TY_IDX ptr_ty1 = Make_Pointer_Type(FLD_type(fld1));
-  TY_IDX ptr_ty2 = Make_Pointer_Type(FLD_type(fld2));
-
-  fld1_st = Gen_Temp_Symbol (ptr_ty1, "fld1");
-  fld2_st = Gen_Temp_Symbol (ptr_ty2, "fld2");
+  TY_IDX type = TY_IDX_ZERO;
+  TY_IDX ptr_ty[10]; // TODO: dynamic mem alloc
+  for (INT i=0; i<Struct_split_count; i++)
+  {
+      type = Struct_split_types[i];
+      ptr_ty[i] = Make_Pointer_Type(type);
+      fld_st[i] = Gen_Temp_Symbol (ptr_ty[i], "fld");
+  }
 
   // allocation for first field
-  WN_const_val(size) = num_elements * TY_size(FLD_type(fld1));
+  WN_const_val(size) = num_elements * TY_size(Struct_split_types[0]);
   // wn is stid
-  WN_st_idx(wn) = ST_st_idx(fld1_st);
+  {
+    // Sanity check, and track ST being replaced.
+    ST * sym = WN_st(wn);
+    FmtAssert (ST_class(sym) == CLASS_PREG,
+               ("handle_function_return: Expected return store into preg"));
+    preg_id = WN_offset(wn);
+  }
+  WN_st_idx(wn) = ST_st_idx(fld_st[0]);
   WN_offset(wn) = 0;
-  WN_set_ty(wn, ptr_ty1);
-  WN_set_ty(WN_kid0(wn), ptr_ty1);
+  WN_set_ty(wn, ptr_ty[0]);
+  WN_set_ty(WN_kid0(wn), ptr_ty[0]);
 
   // allocation for second field
   if (!strcmp(ST_name(WN_st(new_call)), "realloc"))
@@ -171,12 +188,20 @@ void handle_function_return (WN * block, WN * wn)
     // Fix up first argument of realloc for alloc of second field
     fixup_realloc_pointer(new_call);
   }
-  size = size_expr(new_call);
-  WN_const_val(size) = num_elements * TY_size(FLD_type(fld2));
-  WN * val = WN_Ldid(WN_desc(WN_kid0(wn)), -1, Return_Val_Preg, ptr_ty2);
-  WN * stid = WN_Stid(WN_rtype(val), 0, fld2_st, ST_type(fld2_st), val);
-  WN_INSERT_BlockLast(block, new_call);
-  WN_INSERT_BlockLast(block, stid);
+
+  WN * last_alloc = new_call;
+  for (INT i=1; i<Struct_split_count; i++)
+  {
+    if (i < Struct_split_count-1)
+      new_call = WN_COPY_Tree (new_call);
+    size = size_expr(last_alloc);
+    WN_const_val(size) = num_elements * TY_size(Struct_split_types[i]);
+    WN * val = WN_Ldid(WN_desc(WN_kid0(wn)), -1, Return_Val_Preg, ptr_ty[i]);
+    WN * stid = WN_Stid(WN_rtype(val), 0, fld_st[i], ST_type(fld_st[i]), val);
+    WN_INSERT_BlockLast(block, last_alloc);
+    WN_INSERT_BlockLast(block, stid);
+    last_alloc = new_call;
+  }
 }
 
 // Handle assignment statement
@@ -184,30 +209,63 @@ void handle_assignment (WN * block, WN * wn)
 {
   FmtAssert (WN_operator(wn) == OPR_STID, ("Expected assignment stmt"));
 
-  UINT32 field_id = WN_field_id(wn);
-  FmtAssert (field_id != 0, ("Field-id should be non-zero"));
-  UINT32 new_field_id = field_map_info[field_id-1].new_field_id;
+  if (IPA_Enable_Struct_Opt == 2 &&
+      TY_kind(WN_ty(wn)) == KIND_POINTER &&
+      TY_IDX_index(TY_pointed(WN_ty(wn))) == candidate_ty_idx)
+  { // pointer assignment
+    // First, some sanity checks
+    WN * kid = WN_kid0(wn);
+    // Must be ldid of a preg
+    Is_True (WN_operator(kid) == OPR_LDID &&
+             ST_class(WN_st(kid)) == CLASS_PREG, ("NYI"));
 
-  FmtAssert (new_field_id == candidate_fld_id, ("Unexpected field-id found"));
+    TY_IDX ptr_ty0 = Make_Pointer_Type(Struct_field_layout[0].u.new_ty);
+    WN_set_ty(kid, ptr_ty0);
+    WN_st_idx(kid) = ST_st_idx(fld_st[0]);
+    WN_offset(kid) = 0; // reset offset
+    WN_set_ty(wn, ptr_ty0);
+    WN_st_idx(wn) = Struct_field_layout[0].st_idx;
 
-  UINT cur_field_id = 0;
-  FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
+    // Generate rest of assignments
+    for (INT i=1; i<Struct_split_count; i++)
+    {
+      TY_IDX ptr_ty = Make_Pointer_Type(Struct_field_layout[i].u.new_ty);
+      WN * stid = WN_Stid(WN_desc(wn),
+                          0,
+                          &St_Table[Struct_field_layout[i].st_idx],
+                          ptr_ty,
+                          WN_Ldid(WN_desc(wn), 0, fld_st[i], ptr_ty));
+      WN_INSERT_BlockLast(block, stid);
+    }
+  }
+  else if (TY_IDX_index(WN_ty(wn)) == Struct_update_index)
+  {
+    UINT32 field_id = WN_field_id(wn);
+    FmtAssert (field_id != 0, ("Field-id should be non-zero"));
+    UINT32 new_field_id = field_map_info[field_id-1].new_field_id;
+
+    FmtAssert (new_field_id == candidate_fld_id, ("Unexpected field-id found"));
+
+    UINT cur_field_id = 0;
+    FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8,
                                            new_field_id, cur_field_id);
-  FmtAssert (!fld.Is_Null(), ("Field not found"));
-  // update assignment
-  WN_set_field_id(wn, new_field_id);
-  WN_offset(wn) = FLD_ofst(fld);
-  WN_Delete(WN_kid0(wn));
-  WN_kid0(wn) = WN_Ldid(WN_desc(wn), 0, fld1_st, Make_Pointer_Type(FLD_type(fld)));
-  // get next field
-  cur_field_id = 0;
-  fld = FLD_get_to_field (IPA_Update_Struct, ++new_field_id, cur_field_id);
-  FmtAssert (!fld.Is_Null(), ("Field not found"));
+    FmtAssert (!fld.Is_Null(), ("Field not found"));
+    // update assignment
+    WN_set_field_id(wn, new_field_id);
+    WN_offset(wn) = FLD_ofst(fld);
+    WN_Delete(WN_kid0(wn));
+    WN_kid0(wn) = WN_Ldid(WN_desc(wn), 0, fld_st[0], Make_Pointer_Type(FLD_type(fld)));
+    // get next field
+    // TODO: generalize
+    cur_field_id = 0;
+    fld = FLD_get_to_field (Struct_update_index<<8, ++new_field_id, cur_field_id);
+    FmtAssert (!fld.Is_Null(), ("Field not found"));
 
-  // generate assignment for next field
-  WN * val = WN_Ldid(WN_desc(WN_kid0(wn)), 0, fld2_st, Make_Pointer_Type(FLD_type(fld)));
-  WN * stid = WN_Stid(WN_rtype(val), FLD_ofst(fld), WN_st(wn), WN_ty(wn), val, new_field_id);
-  WN_INSERT_BlockLast(block, stid);
+    // generate assignment for next field
+    WN * val = WN_Ldid(WN_desc(WN_kid0(wn)), 0, fld_st[1], Make_Pointer_Type(FLD_type(fld)));
+    WN * stid = WN_Stid(WN_rtype(val), FLD_ofst(fld), WN_st(wn), WN_ty(wn), val, new_field_id);
+    WN_INSERT_BlockLast(block, stid);
+  }
 }
 
 // call to memory free routine
@@ -221,24 +279,24 @@ WN * handle_function_call (WN * parent, WN * wn)
   {
     // pointer to be freed.
     WN * ptr = WN_kid0(WN_kid0(call));
-    FLD_HANDLE fld1 = TY_fld(candidate_ty_idx);
-    FLD_HANDLE fld2 = FLD_next(fld1);
-
-    TY_IDX ptr_ty1 = Make_Pointer_Type(FLD_type(fld1));
-    TY_IDX ptr_ty2 = Make_Pointer_Type(FLD_type(fld2));
 
     // free for first field
-    WN_st_idx(ptr) = ST_st_idx(fld1_st);
+    WN_st_idx(ptr) = ST_st_idx(fld_st[0]);
     WN_offset(ptr) = 0;
-    WN_set_ty(ptr, ptr_ty1);
+    WN_set_ty(ptr, Make_Pointer_Type(Struct_split_types[0]));
 
-    // free for second field
-    WN * new_call = WN_COPY_Tree (call);
-    WN_st_idx(WN_kid0(WN_kid0(new_call))) = ST_st_idx(fld2_st);
-    WN_set_ty(WN_kid0(WN_kid0(new_call)), ptr_ty2);
+    // free for remaining fields
+    for (INT i=1; i<Struct_split_count; i++)
+    {
+      WN * new_call = WN_COPY_Tree (call);
+      WN_st_idx(WN_kid0(WN_kid0(new_call))) = ST_st_idx(fld_st[i]);
+      WN_set_ty(WN_kid0(WN_kid0(new_call)),
+                Make_Pointer_Type(Struct_split_types[i]));
 
-    WN_INSERT_BlockAfter(parent, wn, new_call);
-    return new_call;
+      WN_INSERT_BlockAfter(parent, wn, new_call);
+      call = new_call;
+    }
+    return call;
   }
   else Fail_FmtAssertion ("NYI");
 
@@ -263,7 +321,7 @@ void duplicate_call (WN * block, WN * call)
   UINT32 new_field_id = WN_field_id(addr);
 
   UINT cur_field_id = 0;
-  FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
+  FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8,
                                            ++new_field_id, cur_field_id);
   FmtAssert (!fld.Is_Null(), ("Field not found"));
   WN_set_field_id(addr, new_field_id);
@@ -277,7 +335,7 @@ void handle_istore_assignment (WN * block, WN * stmt)
 {
   FmtAssert (WN_operator(stmt) == OPR_ISTORE,
              ("handle_istore_assignment: expected ISTORE"));
-  if (TY_pointed(WN_ty(stmt)) == IPA_Update_Struct)
+  if (TY_IDX_index(TY_pointed(WN_ty(stmt))) == Struct_update_index)
   {
     // Handle LHS of istore.
     UINT field_id = WN_field_id(stmt);
@@ -285,7 +343,7 @@ void handle_istore_assignment (WN * block, WN * stmt)
                ("handle_istore_assignment: unexpected field id"));
     WN * new_istore = WN_COPY_Tree(stmt);
     UINT cur_field_id = 0;
-    FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
+    FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8,
                                            field_id, cur_field_id);
     FmtAssert (!fld.Is_Null(), ("Field not found"));
     FmtAssert (FLD_ofst(fld) == WN_offset(stmt),
@@ -295,7 +353,7 @@ void handle_istore_assignment (WN * block, WN * stmt)
 
     // Handle LHS of istore for next field.
     cur_field_id = 0;
-    fld = FLD_get_to_field (IPA_Update_Struct,
+    fld = FLD_get_to_field (Struct_update_index<<8,
                                            ++field_id, cur_field_id);
     FmtAssert (!fld.Is_Null(), ("Field not found"));
     WN_set_field_id(new_istore, field_id);
@@ -306,24 +364,21 @@ void handle_istore_assignment (WN * block, WN * stmt)
     {
       // Update RHS of both assignment statements.
       FmtAssert (TY_kind(WN_ty(rhs)) == KIND_POINTER &&
-                 TY_pointed(WN_ty(rhs)) == candidate_ty_idx,
+                 TY_IDX_index(TY_pointed(WN_ty(rhs))) == candidate_ty_idx,
                  ("Unexpected pointer"));
 
-      FLD_HANDLE fld1 = TY_fld(candidate_ty_idx);
-      FLD_HANDLE fld2 = FLD_next(fld1);
-
-      TY_IDX ty = FLD_type(fld1);
+      TY_IDX ty = Struct_field_layout[0].u.new_ty;
       WN_kid0(stmt) = WN_Ldid(WN_desc(rhs),
                                     0,
-                                    fld1_st,
+                                    fld_st[0],
                                     Make_Pointer_Type(ty));
       WN_Delete(rhs);
 
-      ty = FLD_type(fld2);
+      ty = Struct_field_layout[1].u.new_ty;
       rhs = WN_kid0(new_istore);
       WN_kid0(new_istore) = WN_Ldid(WN_desc(rhs),
                                     0,
-                                    fld2_st,
+                                    fld_st[1],
                                     Make_Pointer_Type(ty));
       WN_Delete(rhs);
     }
@@ -335,123 +390,6 @@ void handle_istore_assignment (WN * block, WN * stmt)
   }
   else Fail_FmtAssertion ("NYI");
 }
-
-#if 0
-// Delete this function after verifying all the needed functionality has
-// been moved over to the new function.
-//
-void handle_istore (WN * block, WN * parent, WN * wn)
-{
-  Is_True (WN_operator(wn) == OPR_ISTORE, ("Unexpected operator"));
-
-  if (TY_pointed(WN_ty(wn)) == candidate_ty_idx)
-  {
-        FmtAssert (WN_operator(parent) == OPR_BLOCK,
-                 ("parent of stmt should be OPR_BLOCK"));
-        WN * addr = WN_kid1(wn);
-        if (WN_operator(addr) == OPR_LDID)
-        {
-          FLD_HANDLE fld1 = TY_fld(candidate_ty_idx);
-          FLD_HANDLE fld2 = FLD_next(fld1);
-
-          ST * base_st = NULL;
-          TY_IDX ty = TY_IDX_ZERO;
-
-          if (WN_field_id(wn) == 1)
-          {
-            base_st = fld1_st;
-            ty = FLD_type(fld1);
-          }
-          else
-          {
-            base_st = fld2_st;
-            ty = FLD_type(fld2);
-          }
-
-          // analyze the base
-          FmtAssert (TY_kind(WN_ty(addr)) == KIND_POINTER, (""));
-          if (TY_pointed(WN_ty(addr)) == candidate_ty_idx)
-          {
-            WN_kid1(wn) = WN_Ldid(WN_desc(addr),
-                                  0,
-                                  base_st,
-                                  Make_Pointer_Type(ty));
-            WN_Delete(addr);
-          }
-
-          WN_set_field_id(wn,0);
-          WN_offset(wn) = 0;
-          WN_set_ty(wn, Make_Pointer_Type(ty));
-        }
-        else
-        {
-          FmtAssert (WN_operator(addr) == OPR_ADD, ("NYI"));
-          WN * base = WN_kid0(addr);
-          WN * ofst = WN_kid1(addr);
-
-          FLD_HANDLE fld1 = TY_fld(candidate_ty_idx);
-          FLD_HANDLE fld2 = FLD_next(fld1);
-          TY_IDX ty = TY_IDX_ZERO;
-          if (WN_field_id(wn) == 1)
-          {
-            ty = FLD_type(fld1);
-          }
-          else
-          {
-            ty = FLD_type(fld2);
-          }
-          // analyze the base
-          if (WN_operator(base) == OPR_ILOAD &&
-              WN_ty(base) == IPA_Update_Struct)
-          {
-            UINT field_id = WN_field_id(base);
-            FmtAssert (field_id == candidate_fld_id, (""));
-            if (WN_field_id(wn) != 1)
-            {
-              field_id++;
-              UINT cur_field_id = 0;
-              FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
-                                             field_id, cur_field_id);
-              FmtAssert (!fld.Is_Null(), (""));
-              WN_set_field_id(base, field_id);
-              WN_offset(base) = FLD_ofst(fld);
-            }
-            // else don't need to do anything
-          }
-          // update offset
-          WN * size = WN_kid1(ofst);
-          FmtAssert (WN_operator(size) == OPR_INTCONST, ("NYI"));
-          WN_const_val(size) = TY_size(ty);
-
-          WN_offset(wn) = 0;
-          WN_set_ty(wn, Make_Pointer_Type(ty));
-          WN_set_field_id(wn, 0);
-        }
-  }
-  else if (TY_pointed(WN_ty(wn)) == IPA_Update_Struct &&
-           // check if loading the whole struct or a field from it.
-           WN_field_id(wn))
-  {
-    UINT field_id = WN_field_id(wn);
-    FmtAssert (field_id, (""));
-    if (field_id != candidate_fld_id)
-    {
-      UINT new_field_id = field_map_info[field_id-1].new_field_id;
-      UINT cur_field_id = 0;
-      FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
-                                           new_field_id, cur_field_id);
-      FmtAssert (!fld.Is_Null(), (""));
-      WN_set_field_id (wn, new_field_id);
-      WN_offset(wn) = FLD_ofst(fld);
-    }
-    else
-    {
-      DevWarn ("Need to duplicate istore");
-      handle_istore_assignment (block, wn);
-    }
-  }
-}
-#endif
 
 // Input:
 //   block: to insert any new statements generated.
@@ -477,7 +415,7 @@ void handle_kid_of_istore (WN * block, WN * parent, WN * wn, INT kidid, UINT fie
           UINT id = field_id;
           // Propagate the new field-id if required.
           if (WN_operator(wn) == OPR_ILOAD &&
-              WN_ty(wn) == candidate_ty_idx &&
+              TY_IDX_index(WN_ty(wn)) == candidate_ty_idx &&
               WN_field_id(wn))
             id = WN_field_id(wn);
           handle_kid_of_istore (block, wn, kid, kidno, id, lhs);
@@ -488,7 +426,7 @@ void handle_kid_of_istore (WN * block, WN * parent, WN * wn, INT kidid, UINT fie
   if (WN_operator(wn) == OPR_ILOAD)
   {
     WN * addr = WN_kid0(wn);
-    if (WN_ty(wn) == IPA_Update_Struct && WN_field_id(wn))
+    if (TY_IDX_index(WN_ty(wn)) == Struct_update_index && WN_field_id(wn))
     {
       FmtAssert (WN_operator(addr) == OPR_LDID, ("NYI"));
       UINT id = WN_field_id(wn);
@@ -497,61 +435,49 @@ void handle_kid_of_istore (WN * block, WN * parent, WN * wn, INT kidid, UINT fie
         new_field_id++;
 
       UINT cur_field_id = 0;
-      FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
+      FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8,
                                          new_field_id, cur_field_id);
       FmtAssert (!fld.Is_Null(), ("Field not found"));
       WN_set_field_id(wn, new_field_id);
       WN_offset(wn) = FLD_ofst(fld);
     }
-    else if (WN_ty(wn) == candidate_ty_idx && WN_field_id(wn))
+    else if (TY_IDX_index(WN_ty(wn)) == candidate_ty_idx && WN_field_id(wn))
     {
-      FLD_HANDLE fld1 = TY_fld(candidate_ty_idx);
-      FLD_HANDLE fld2 = FLD_next(fld1);
-      TY_IDX ty = TY_IDX_ZERO;
-      if (WN_field_id(wn) == 1)
-      {
-        ty = FLD_type(fld1);
-      }
-      else
-      {
-        ty = FLD_type(fld2);
-      }
+      INT field_id = WN_field_id(wn);
+      TY_IDX ty = Struct_field_layout[field_id-1].u.new_ty;
+      INT field_num = 0;
+
+      if (TY_kind(ty) == KIND_STRUCT)
+        field_num = Struct_field_layout[field_id-1].fld_id;
+
       // adjust type size if present
       if (WN_operator(WN_kid0(wn)) == OPR_ADD &&
           WN_operator(WN_kid1(WN_kid0(wn))) == OPR_MPY)
       {
         WN * size = WN_kid1(WN_kid1(WN_kid0(wn)));
         FmtAssert (WN_operator(size) == OPR_INTCONST &&
-                   WN_const_val(size) == TY_size(candidate_ty_idx),
+                   WN_const_val(size) == TY_size(Ty_tab[candidate_ty_idx]),
                    ("Error while updating type size under iload"));
         WN_const_val(size) = TY_size(ty);
       }
 
-      WN_kid(parent, kidid) = WN_Iload(WN_desc(wn), 0, ty, addr);
+      WN_kid(parent, kidid) = WN_Iload(WN_desc(wn), 0, ty, addr, field_num);
       WN_Delete(wn);
     }
   }
   else if (WN_operator(wn) == OPR_LDID &&
-           lhs && // lhs of istore?
+           (lhs ||
+            IPA_Enable_Struct_Opt == 2) && // lhs of istore?
            TY_kind(WN_ty(wn)) == KIND_POINTER &&
-           TY_pointed(WN_ty(wn)) == candidate_ty_idx)
+           TY_IDX_index(TY_pointed(WN_ty(wn))) == candidate_ty_idx)
   {
-    FLD_HANDLE fld1 = TY_fld(candidate_ty_idx);
-    FLD_HANDLE fld2 = FLD_next(fld1);
+    ST * base_st = fld_st[field_id - 1];
+    TY_IDX ty = Struct_field_layout[field_id - 1].u.new_ty;
 
-    ST * base_st = NULL;
-    TY_IDX ty = TY_IDX_ZERO;
-
-    if (field_id == 1)
-    {
-      base_st = fld1_st;
-      ty = FLD_type(fld1);
-    }
-    else
-    {
-      base_st = fld2_st;
-      ty = FLD_type(fld2);
-    }
+    if (IPA_Enable_Struct_Opt == 2 &&
+        ST_class(WN_st(wn)) == CLASS_VAR &&
+        Is_Global_Symbol(WN_st(wn)))
+      base_st = &St_Table[Struct_field_layout[field_id - 1].st_idx];
 
     WN_kid(parent, kidid) = WN_Ldid(WN_desc(wn),
                                     0,
@@ -573,36 +499,31 @@ void handle_istore (WN * block, WN * parent, WN * wn)
   handle_kid_of_istore(block, wn, WN_kid0(wn), 0, WN_field_id(wn), FALSE);
 
   // handle istore now
-  if (TY_pointed(WN_ty(wn)) == candidate_ty_idx && WN_field_id(wn))
+  if (TY_IDX_index(TY_pointed(WN_ty(wn))) == candidate_ty_idx &&
+      WN_field_id(wn))
   {
     WN * addr = WN_kid1(wn);
+    const INT field_id = WN_field_id(wn);
 
-    FLD_HANDLE fld1 = TY_fld(candidate_ty_idx);
-    FLD_HANDLE fld2 = FLD_next(fld1);
-    TY_IDX ty = TY_IDX_ZERO;
-    if (WN_field_id(wn) == 1)
-    {
-      ty = FLD_type(fld1);
-    }
-    else
-    {
-      ty = FLD_type(fld2);
-    }
+    TY_IDX ty = Struct_field_layout[field_id - 1].u.new_ty;
 
     // Update the type size.
     if (WN_operator(addr) == OPR_ADD && WN_operator(WN_kid1(addr)) == OPR_MPY)
     {
       WN * size = WN_kid1(WN_kid1(addr));
       FmtAssert (WN_operator(size) == OPR_INTCONST &&
-                 WN_const_val(size) == TY_size(candidate_ty_idx),
+                 WN_const_val(size) == TY_size(Ty_tab[candidate_ty_idx]),
                  ("Error while updating type size under istore"));
       WN_const_val(size) = TY_size(ty);
     }
-    WN_set_field_id(wn, 0);
+    if (TY_kind(ty) == KIND_STRUCT)
+      WN_set_field_id(wn, Struct_field_layout[field_id - 1].fld_id);
+    else
+      WN_set_field_id(wn, 0);
     WN_offset(wn) = 0;
     WN_set_ty(wn, Make_Pointer_Type(ty));
   }
-  else if (TY_pointed(WN_ty(wn)) == IPA_Update_Struct &&
+  else if (TY_IDX_index(TY_pointed(WN_ty(wn))) == Struct_update_index &&
            // check if loading the whole struct or a field from it.
            WN_field_id(wn))
   {
@@ -611,7 +532,7 @@ void handle_istore (WN * block, WN * parent, WN * wn)
     {
       UINT new_field_id = field_map_info[field_id-1].new_field_id;
       UINT cur_field_id = 0;
-      FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
+      FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8,
                                            new_field_id, cur_field_id);
       FmtAssert (!fld.Is_Null(), ("Field not found"));
       WN_set_field_id (wn, new_field_id);
@@ -623,6 +544,199 @@ void handle_istore (WN * block, WN * parent, WN * wn)
       handle_istore_assignment (block, wn);
     }
   }
+}
+
+// Analyze the expression containing the pointer to TY-being-split.
+// WN is KIDID'th kid of PARENT.
+WN * analyze_addressof_ty_being_split (WN * parent, WN * wn, WN * addr,
+                                       INT kidid)
+{
+  Is_True (WN_operator(wn) == OPR_ILOAD && TY_IDX_index(WN_ty(wn)) == candidate_ty_idx,
+           ("Expected ILOAD through pointer to TY being split"));
+
+  FLD_HANDLE fld1 = TY_fld(Ty_tab[candidate_ty_idx]);
+  FLD_HANDLE fld2 = FLD_next(fld1);
+
+  switch (WN_operator(addr))
+  {
+    case OPR_LDID:
+    {
+      // Addr is a pointer to the TY being split, so update the LDID symbol
+      // and any offset present in the iload.
+      WN_OFFSET ofst = 0;
+      TY_IDX ty = TY_IDX_ZERO;
+      ST * base_st = NULL;
+      if (WN_field_id(wn) == 1)
+      {
+        ofst = FLD_ofst(fld1);
+        ty = FLD_type(fld1);
+        base_st = fld_st[0];
+      }
+      else
+      {
+        Is_True (WN_field_id(wn) == 2, ("Unexpected field id"));
+        ofst = FLD_ofst(fld2);
+        ty = FLD_type(fld2);
+        base_st = fld_st[1];
+      }
+      INT index = (WN_load_offset(wn)-ofst) / TY_size(Ty_tab[candidate_ty_idx]);
+      WN * base = WN_Ldid(WN_desc(addr), 0, base_st, Make_Pointer_Type(ty));
+      WN_kid(parent, kidid) = WN_Iload(WN_desc(wn), index*TY_size(ty), ty, base);
+      // delete old address expression
+      WN_DELETE_Tree(wn);
+      wn = WN_kid(parent, kidid);
+    }
+    break;
+
+    case OPR_ADD:
+    {
+      WN * base = WN_kid0(addr);
+      WN * ofst = WN_kid1(addr);
+
+      FmtAssert (WN_operator(ofst) == OPR_MPY, ("Unexpected offset expression"));
+      if (WN_operator(base) == OPR_LDID &&
+          TY_IDX_index(WN_ty(base)) == Struct_update_index)
+      {
+        // Loading a struct that needs update because one of its fields is
+        // a pointer to the type being split. Field-id gives the field being
+        // loaded, and must be a pointer to candidate_ty_idx.
+        TY_IDX ty = TY_IDX_ZERO;
+        UINT32 field_id = field_map_info[WN_field_id(base)-1].new_field_id;
+        if (WN_field_id(wn) == 1)
+        {
+          ty = Struct_split_types[0];
+        }
+        else
+        {
+          ty = Struct_split_types[1];
+          field_id++;
+        }
+        UINT cur_field_id = 0;
+        FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8,
+                                               field_id, cur_field_id);
+        FmtAssert (!fld.Is_Null(), ("Field not found"));
+        WN_set_field_id(base, field_id);
+        WN_offset(base) = FLD_ofst(fld);
+
+        // update offset
+        WN * size = WN_kid1(ofst);
+        FmtAssert (WN_operator(size) == OPR_INTCONST, ("NYI"));
+        WN_const_val(size) = TY_size(ty);
+        // The offset may have been folded into the original iload, so
+        // determine if we need the offset from it.
+        UINT load_ofst = WN_load_offset(wn) >= 0 ? 0 : WN_load_offset(wn);
+        WN_kid(parent, kidid) = WN_Iload(WN_desc(wn), load_ofst, ty, addr);
+        WN_Delete(wn);
+        wn = WN_kid(parent, kidid);
+      }
+      else if (WN_operator(base) == OPR_LDID)
+      {
+        const INT field_id = WN_field_id(wn);
+        ST * base_st = fld_st[field_id - 1];
+        TY_IDX ty = Struct_field_layout[field_id - 1].u.new_ty;
+
+        if (IPA_Enable_Struct_Opt == 2 &&
+            ST_class(WN_st(base)) == CLASS_VAR &&
+            Is_Global_Symbol(WN_st(base)))
+          base_st = &St_Table[Struct_field_layout[field_id - 1].st_idx];
+
+        // update offset
+        WN * size = WN_kid1(ofst);
+        FmtAssert (WN_operator(size) == OPR_INTCONST, ("NYI"));
+        WN_const_val(size) = TY_size(ty);
+        // update base
+        WN_kid0(addr) = WN_Ldid(WN_desc(base), 0, base_st, Make_Pointer_Type(ty));
+        WN_kid(parent, kidid) = WN_Iload(WN_desc(wn), 0, ty, addr);
+        // delete old base ptr
+        WN_DELETE_Tree(base);
+        WN_Delete(wn);
+        wn = WN_kid(parent, kidid);
+      }
+      else
+      {
+        TY_IDX ty = Struct_field_layout[WN_field_id(wn) - 1].u.new_ty;
+        // update offset
+        WN * size = WN_kid1(ofst);
+        FmtAssert (WN_operator(size) == OPR_INTCONST, ("NYI"));
+        WN_const_val(size) = TY_size(ty);
+        WN_kid(parent, kidid) = WN_Iload(WN_desc(wn), 0, ty, addr);
+        WN_Delete(wn);
+        wn = WN_kid(parent, kidid);
+      }
+    }
+    break;
+
+    case OPR_ILOAD:
+      if (TY_IDX_index(WN_ty(addr)) == Struct_update_index)
+      {
+        // base will be updated later
+        WN_OFFSET ofst = 0;
+        TY_IDX ty = TY_IDX_ZERO;
+        if (WN_field_id(wn) == 1)
+        {
+          ofst = FLD_ofst(fld1);
+          ty = FLD_type(fld1);
+        }
+        else
+        {
+          ofst = FLD_ofst(fld2);
+          ty = FLD_type(fld2);
+        }
+        INT index = (WN_load_offset(wn)-ofst) / TY_size(Ty_tab[candidate_ty_idx]);
+        WN_kid(parent, kidid) = WN_Iload(WN_desc(wn), index*TY_size(ty), ty, addr, 0);
+        // delete old kid
+        WN_Delete(wn);
+        wn = WN_kid(parent, kidid);
+      }
+      break;
+
+    default: Fail_FmtAssertion ("NYI");
+  }
+
+  return wn;
+}
+
+void handle_compare (WN * g)
+{
+  if (preg_id == 0)
+    return;
+
+  WN * p = WN_kid0(g);
+  WN * w = WN_kid0(p);
+
+  Is_True (WN_operator(w) == OPR_LDID, (""));
+
+  ST * sym = WN_st(w);
+
+  if (ST_class(sym) != CLASS_PREG ||
+      WN_offset(w) != preg_id)
+    return;
+
+  // TODO: generalize
+  if (WN_operator(p) != OPR_EQ)
+    Fail_FmtAssertion ("NYI");
+
+  WN * kid1 = WN_kid1(p);
+  Is_True (kid1 != w, (""));
+
+  if (WN_operator(kid1) != OPR_INTCONST ||
+      WN_const_val(kid1) != 0)
+    return;
+
+  WN * sym1 = WN_Ldid(WN_desc(w), 0, fld_st[0], ST_type(fld_st[0]));
+  WN * sym2 = WN_Ldid(WN_desc(w), 0, fld_st[1], ST_type(fld_st[1]));
+
+  WN * cond = WN_CIOR(WN_EQ(WN_desc(p), sym1, WN_Intconst(MTYPE_U4, 0)),
+                      WN_EQ(WN_desc(p), sym2, WN_Intconst(MTYPE_U4, 0)));
+
+  for (INT id=0; id<WN_kid_count(g); id++)
+    if (WN_kid(g,id) == p)
+    {
+      WN_kid(g,id) = cond;
+      break;
+    }
+
+  WN_DELETE_Tree(p);
 }
 
 WN * traverse_wn_tree (WN * block, WN * grandparent, WN * parent, WN * wn, INT kidid)
@@ -665,21 +779,16 @@ WN * traverse_wn_tree (WN * block, WN * grandparent, WN * parent, WN * wn, INT k
   {
     case OPR_STID:
     {
-      if (WN_ty(wn) == IPA_Update_Struct && WN_field_id(wn))
+      if (TY_IDX_index(WN_ty(wn)) == Struct_update_index && WN_field_id(wn))
       {
         // We are storing into object of type struct that is being
         // updated, check what field is being accessed.
-        if (WN_field_id(wn) == candidate_fld_id)
-        {
-      //      Fail_FmtAssertion ("NYI");
-          // This should have been handled by now.
-        }
-        else if (WN_field_id(wn))
+        if (WN_field_id(wn) != candidate_fld_id)
         { // update the field id
           UINT32 field_id = WN_field_id(wn);
           UINT32 new_field_id = field_map_info[field_id-1].new_field_id;
           UINT cur_field_id = 0;
-          FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
+          FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8,
                                            new_field_id, cur_field_id);
           FmtAssert (!fld.Is_Null(), ("Field not found"));
           WN_set_field_id(wn, new_field_id);
@@ -689,36 +798,42 @@ WN * traverse_wn_tree (WN * block, WN * grandparent, WN * parent, WN * wn, INT k
     }
     break;
 
+    case OPR_IF:
+    {
+      // If there is a conditional checking the return value from a
+      // memory allocation routine for NULL, we need to update the check.
+      // At this point, we just assume this is such a conditional.
+      WN * test = WN_if_test(wn);
+
+      if (WN_operator(test) == OPR_EQ &&
+          WN_operator(WN_kid0(test)) == OPR_LDID)
+      {
+        TY_IDX ty = WN_ty(WN_kid0(test));
+        if (TY_kind(ty) == KIND_POINTER &&
+            TY_IDX_index(TY_pointed(ty)) == candidate_ty_idx)
+          handle_compare (wn);
+      }
+    }
+    break;
+
     case OPR_LDID:
     {
       TY_IDX ty = WN_ty(wn);
       if (TY_kind(ty) == KIND_POINTER &&
-          TY_pointed(ty) == candidate_ty_idx)
+          TY_IDX_index(TY_pointed(ty)) == candidate_ty_idx)
       {
         if (WN_st(wn) == Return_Val_Preg)
           handle_function_return (block, parent);
-        else if (WN_operator(parent) == OPR_STID &&
-                 WN_ty(parent) == IPA_Update_Struct)
+        else if (WN_operator(parent) == OPR_STID) //&&
+                // TY_IDX_index(WN_ty(parent)) == Struct_update_index)
           handle_assignment (block, parent);
-        else if (WN_operator(parent) == OPR_ISTORE /*||
-                 WN_operator(parent) == OPR_ILOAD ||
-                 WN_operator(grandparent) == OPR_ISTORE ||
-                 WN_operator(grandparent) == OPR_ILOAD*/)
+        else if (WN_operator(parent) == OPR_ISTORE)
         {
           Fail_FmtAssertion ("Should not reach here");
           //handle_istore_assignment(block, parent, wn, kidid);
         }
       }
-      else if (TY_kind(ty) == KIND_POINTER &&
-               TY_pointed(ty) == IPA_Update_Struct)
-      {
-	// ** Allocation of an object of such a type is not yet supported. **
-	//
-        // We are loading a pointer to a struct being updated, check
-        // what fields of the struct are being accessed.
-        // This is being handled later, and we should not need this.
-      }
-      else if (ty == IPA_Update_Struct)
+      else if (TY_IDX_index(ty) == Struct_update_index)
       {
         // We are loading an object of type struct that is being
         // updated, check what field is being accessed.
@@ -732,7 +847,7 @@ WN * traverse_wn_tree (WN * block, WN * grandparent, WN * parent, WN * wn, INT k
           UINT32 field_id = WN_field_id(wn);
           UINT32 new_field_id = field_map_info[field_id-1].new_field_id;
           UINT cur_field_id = 0;
-          FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
+          FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8,
                                            new_field_id, cur_field_id);
           FmtAssert (!fld.Is_Null(), ("Field not found"));
           WN_set_field_id(wn, new_field_id);
@@ -744,181 +859,43 @@ WN * traverse_wn_tree (WN * block, WN * grandparent, WN * parent, WN * wn, INT k
 
     case OPR_ILOAD:
     {
-      if (WN_ty(wn) == candidate_ty_idx)
-      {
-          WN * addr = WN_kid0(wn); // kid of iload
-
-          FLD_HANDLE fld1 = TY_fld(candidate_ty_idx);
-          FLD_HANDLE fld2 = FLD_next(fld1);
-
-          if (WN_operator(addr) == OPR_LDID)
-          {
-            WN_OFFSET ofst = 0;
-            TY_IDX ty = TY_IDX_ZERO;
-            if (WN_field_id(wn) == 1)
-            {
-              ofst = FLD_ofst(fld1);
-              ty = FLD_type(fld1);
-            }
-            else
-            {
-              ofst = FLD_ofst(fld2);
-              ty = FLD_type(fld2);
-            }
-            INT index = (WN_load_offset(wn)-ofst) / TY_size(candidate_ty_idx);
-            WN_kid0(parent) = WN_Iload(WN_desc(wn), index*TY_size(ty), ty, addr);
-            // delete old kid
-            WN_Delete(wn);
-            wn = WN_kid0(parent);
-          }
-          else if (WN_operator(addr) == OPR_ADD && /* FIX THIS */
-                   WN_operator(WN_kid0(addr)) == OPR_LDID &&
-                   WN_ty(WN_kid0(addr)) == IPA_Update_Struct)
-          {
-            WN * base = WN_kid0(addr);
-            WN * ofst = WN_kid1(addr);
-
-            FmtAssert (WN_operator(base) == OPR_LDID &&
-                       WN_operator(ofst) == OPR_MPY, ("NYI"));
-            TY_IDX ty = TY_IDX_ZERO;
-            UINT32 field_id = field_map_info[WN_field_id(base)-1].new_field_id;
-            if (WN_field_id(wn) == 1)
-            {
-              ty = FLD_type(fld1);
-            }
-            else
-            {
-              ty = FLD_type(fld2);
-              field_id++;
-            }
-            UINT cur_field_id = 0;
-            FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
-                                               field_id, cur_field_id);
-            FmtAssert (!fld.Is_Null(), ("Field not found"));
-            WN_set_field_id(base, field_id);
-            WN_offset(base) = FLD_ofst(fld);
-
-            // update offset
-            WN * size = WN_kid1(ofst);
-            FmtAssert (WN_operator(size) == OPR_INTCONST, ("NYI"));
-            WN_const_val(size) = TY_size(ty);
-            // The offset may have been folded into the original iload, so
-            // determine if we need the offset from it.
-            UINT load_ofst = WN_load_offset(wn) >= 0 ? 0 : WN_load_offset(wn);
-            WN_kid0(parent) = WN_Iload(WN_desc(wn), load_ofst, ty, addr);
-            WN_Delete(wn);
-            wn = WN_kid0(parent);
-          }
-          else if (WN_operator(addr) == OPR_ADD && /* FIX THIS */
-                   WN_operator(WN_kid0(addr)) == OPR_LDID)
-          {
-            WN * base = WN_kid0(addr);
-            WN * ofst = WN_kid1(addr);
-
-            FmtAssert (WN_operator(base) == OPR_LDID &&
-                       WN_operator(ofst) == OPR_MPY, ("NYI"));
-            ST * base_st = NULL;
-            TY_IDX ty = TY_IDX_ZERO;
-            if (WN_field_id(wn) == 1)
-            {
-              base_st = fld1_st;
-              ty = FLD_type(fld1);
-            }
-            else
-            {
-              base_st = fld2_st;
-              ty = FLD_type(fld2);
-            }
-            // update offset
-            WN * size = WN_kid1(ofst);
-            FmtAssert (WN_operator(size) == OPR_INTCONST, ("NYI"));
-            WN_const_val(size) = TY_size(ty);
-            // update base
-            WN_kid0(addr) = WN_Ldid(WN_desc(base), 0, base_st, Make_Pointer_Type(ty));
-            WN_kid0(parent) = WN_Iload(WN_desc(wn), 0, ty, addr);
-            // delete old base ptr
-            WN_DELETE_Tree(base);
-            WN_Delete(wn);
-            wn = WN_kid0(parent);
-          }
-          else if (WN_operator(addr) == OPR_ADD)
-          {
-            WN * ofst = WN_kid1(addr);
-            FmtAssert (WN_operator(ofst) == OPR_MPY, ("Unexpected expression"));
-            TY_IDX ty = TY_IDX_ZERO;
-            if (WN_field_id(wn) == 1)
-            {
-              ty = FLD_type(fld1);
-            }
-            else
-            {
-              ty = FLD_type(fld2);
-            }
-            // update offset
-            WN * size = WN_kid1(ofst);
-            FmtAssert (WN_operator(size) == OPR_INTCONST, ("NYI"));
-            WN_const_val(size) = TY_size(ty);
-            WN_kid0(parent) = WN_Iload(WN_desc(wn), 0, ty, addr);
-            WN_Delete(wn);
-            wn = WN_kid0(parent);
-          }
-          else if (WN_operator(addr) == OPR_ILOAD &&
-                   WN_ty(addr) == IPA_Update_Struct)
-          {
-            // base will be updated later
-            WN_OFFSET ofst = 0;
-            TY_IDX ty = TY_IDX_ZERO;
-            if (WN_field_id(wn) == 1)
-            {
-              ofst = FLD_ofst(fld1);
-              ty = FLD_type(fld1);
-            }
-            else
-            {
-              ofst = FLD_ofst(fld2);
-              ty = FLD_type(fld2);
-            }
-            INT index = (WN_load_offset(wn)-ofst) / TY_size(candidate_ty_idx);
-            WN_kid0(parent) = WN_Iload(WN_desc(wn), index*TY_size(ty), ty, addr, 0);
-            // delete old kid
-            WN_Delete(wn);
-            wn = WN_kid0(parent);
-          }
-          else Fail_FmtAssertion ("NYI");
+      if (TY_IDX_index(WN_ty(wn)) == candidate_ty_idx)
+      { // ILOAD <TY-being-split> <pointer-to-TY-being-split>
+        wn = analyze_addressof_ty_being_split (parent, wn, WN_kid0(wn), kidid);
       }
-      else if (WN_ty(wn) == IPA_Update_Struct && WN_field_id(wn))
+      else if (TY_IDX_index(WN_ty(wn)) == Struct_update_index && WN_field_id(wn))
       {
         if (WN_operator(parent) == OPR_PARM &&
             WN_field_id(wn) == candidate_fld_id)
           duplicate_call(block, grandparent);
         else
         {
-        UINT32 field_id = WN_field_id(wn);
-        FmtAssert (field_id != 0, ("Non-zero field-id expected"));
-        UINT32 new_field_id = field_map_info[field_id-1].new_field_id;
-        WN * addr = WN_operator(parent) == OPR_ILOAD ? parent :
-                    WN_operator(grandparent) == OPR_ILOAD ? grandparent :
-                    NULL;
-        if (addr &&
-            WN_ty(addr) == candidate_ty_idx &&
-            WN_field_id(addr) == 2)
-          new_field_id++;
-        else
-        {
-          addr = WN_operator(parent) == OPR_ISTORE ? parent :
-                 WN_operator(grandparent) == OPR_ISTORE ? grandparent :
-                 NULL;
+          UINT32 field_id = WN_field_id(wn);
+          FmtAssert (field_id != 0, ("Non-zero field-id expected"));
+          UINT32 new_field_id = field_map_info[field_id-1].new_field_id;
+          WN * addr = WN_operator(parent) == OPR_ILOAD ? parent :
+                      WN_operator(grandparent) == OPR_ILOAD ? grandparent :
+                      NULL;
           if (addr &&
-              TY_pointed(WN_ty(addr)) == candidate_ty_idx &&
+              TY_IDX_index(WN_ty(addr)) == candidate_ty_idx &&
               WN_field_id(addr) == 2)
             new_field_id++;
-        }
-        UINT cur_field_id = 0;
-        FLD_HANDLE fld = FLD_get_to_field (IPA_Update_Struct,
-                                           new_field_id, cur_field_id);
-        FmtAssert (!fld.Is_Null(), ("Field not found"));
-        WN_set_field_id(wn, new_field_id);
-        WN_offset(wn) = FLD_ofst(fld);
+          else
+          {
+            addr = WN_operator(parent) == OPR_ISTORE ? parent :
+                   WN_operator(grandparent) == OPR_ISTORE ? grandparent :
+                   NULL;
+            if (addr &&
+                TY_IDX_index(TY_pointed(WN_ty(addr))) == candidate_ty_idx &&
+                WN_field_id(addr) == 2)
+              new_field_id++;
+          }
+          UINT cur_field_id = 0;
+          FLD_HANDLE fld = FLD_get_to_field (Struct_update_index<<8,
+                                             new_field_id, cur_field_id);
+          FmtAssert (!fld.Is_Null(), ("Field not found"));
+          WN_set_field_id(wn, new_field_id);
+          WN_offset(wn) = FLD_ofst(fld);
         }
       }
     }
@@ -935,7 +912,7 @@ WN * traverse_wn_tree (WN * block, WN * grandparent, WN * parent, WN * wn, INT k
         WN * arg = WN_kid0(WN_kid0(wn));
         if (WN_operator(arg) == OPR_LDID &&
             TY_kind(WN_ty(arg)) == KIND_POINTER &&
-            TY_pointed(WN_ty(arg)) == candidate_ty_idx)
+            TY_IDX_index(TY_pointed(WN_ty(arg))) == candidate_ty_idx)
           wn = handle_function_call (parent, wn);
       }
     }
@@ -947,12 +924,114 @@ WN * traverse_wn_tree (WN * block, WN * grandparent, WN * parent, WN * wn, INT k
   return wn;
 }
 
-// Update field table before whirl update.
-void IPO_Fld_Table_Update_For_Struct_Opt (TY_IDX ty)
+extern INT struct_field_count(TY_IDX);
+static BOOL new_types_created = FALSE;
+
+void IPO_generate_new_types (mUINT32 ty)
 {
-  static int done=0; // clean this up
-  if (done) return;
-  done = 1;
+  TY_IDX orig_ty = ty << 8;
+  new_types_created = TRUE;
+
+  INT field_count = struct_field_count (orig_ty);
+
+  INT idx = 0;
+  INT type_count = 0;
+
+  while (idx < field_count)
+  {
+    const INT struct_id = Struct_field_layout[idx].u.struct_id;
+    BOOL create_new_ty = TRUE;
+    FLD_HANDLE last_fld = FLD_HANDLE();
+    INT offset = 0;
+    TY_IDX new_ty = TY_IDX_ZERO;
+
+    // Get the current field from the original struct that is to be
+    // inserted first in the new struct, or to be handled as a separate
+    // field by itself.
+    UINT cur_field_id = 0;
+    FLD_HANDLE orig = FLD_get_to_field (orig_ty, idx+1, cur_field_id);
+
+    for (INT i=idx+1; i<field_count; i++)
+    {
+      if (struct_id == Struct_field_layout[i].u.struct_id)
+      {
+        // Got multiple fields together, so create a struct TY if not
+        // already done.
+        if (create_new_ty)
+        {
+          // Create first field
+          FLD_HANDLE fld = New_FLD();
+          memcpy (fld.Entry(), orig.Entry(), sizeof(FLD));
+          Is_True (offset == 0, ("First field should have offset zero"));
+          Set_FLD_ofst (fld, offset);
+          offset += TY_size(FLD_type(fld));
+          // Create new struct TY
+          // The name of the new type ends in a number which is the
+          // field-id of the field in the original struct (this number
+          // is just for readability purposes).
+          TY_Init (New_TY(new_ty), sizeof(int) /* dummy size */,
+                   KIND_STRUCT, MTYPE_M,
+                   Save_Str2i(TY_name(orig_ty), "..", idx+1));
+          Set_TY_fld(new_ty, fld);
+          create_new_ty = FALSE;
+        }
+        cur_field_id = 0;
+        orig = FLD_get_to_field (orig_ty, i+1, cur_field_id);
+        // Create current field
+        FLD_HANDLE fld = New_FLD();
+        memcpy (fld.Entry(), orig.Entry(), sizeof(FLD));
+        INT align = TY_align(FLD_type(fld));
+        offset = (INT)ceil(((double)offset)/align)*align;
+        Set_FLD_ofst (fld, offset);
+        offset += TY_size(FLD_type(fld));
+        last_fld = fld; // last field in new struct
+      }
+    }
+
+    if (create_new_ty)
+    {
+      // New struct TY has not been created. So this will be a single field
+      // by itself.
+      new_ty = FLD_type(orig);
+    }
+    else
+    {
+      // Struct TY
+      Is_True (new_ty != TY_IDX_ZERO, (""));
+      Is_True (TY_kind(new_ty) == KIND_STRUCT, (""));
+      Is_True (!last_fld.Is_Null(), (""));
+      Set_FLD_last_field (last_fld);
+      Set_TY_size (new_ty, offset);
+    }
+
+    ST * st = NULL;
+    if (IPA_Enable_Struct_Opt == 2)
+    {
+      st = New_ST(GLOBAL_SYMTAB);
+      ST_Init (st, Save_Str2i("aa", "..", idx), CLASS_VAR, SCLASS_COMMON, EXPORT_PREEMPTIBLE, Make_Pointer_Type(new_ty));
+    }
+
+    while (idx < field_count &&
+           struct_id == Struct_field_layout[idx].u.struct_id)
+    {
+      if (IPA_Enable_Struct_Opt == 2)
+        Struct_field_layout[idx].st_idx = ST_st_idx(st);
+      Struct_field_layout[idx++].u.new_ty = new_ty;
+    }
+
+    Struct_split_types[type_count++] = new_ty;
+  }
+
+  FmtAssert (type_count == Struct_split_count, (""));
+  Struct_split_types[type_count] = TY_IDX_ZERO;
+}
+
+static BOOL fld_table_updated = FALSE;
+
+// Update field table before whirl update.
+void IPO_Fld_Table_Update_For_Struct_Opt (mUINT32 ty)
+{
+  fld_table_updated = TRUE;
 
   mUINT32 old_field_id, new_field_id;
   WN_OFFSET old_ofst, new_ofst;
@@ -960,9 +1039,9 @@ void IPO_Fld_Table_Update_For_Struct_Opt (TY_IDX ty)
   old_field_id = new_field_id = 1;
   old_ofst = new_ofst = 0;
 
-  FmtAssert (TY_kind(ty) == KIND_STRUCT, ("struct type expected"));
+  FmtAssert (TY_kind(Ty_tab[ty]) == KIND_STRUCT, ("struct type expected"));
 
-  FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty));
+  FLD_ITER fld_iter = Make_fld_iter(TY_fld(Ty_tab[ty]));
   FLD_IDX first_fld_idx = Fld_Table.size();
   FLD_HANDLE last_field;
   BOOL child_flattened = FALSE;
@@ -977,7 +1056,7 @@ void IPO_Fld_Table_Update_For_Struct_Opt (TY_IDX ty)
 
   field_map_info = (FLD_MAP *) malloc (fld_count * sizeof(FLD_MAP));
 
-  fld_iter = Make_fld_iter(TY_fld(ty));
+  fld_iter = Make_fld_iter(TY_fld(Ty_tab[ty]));
   do
   {
     FLD_HANDLE fld(fld_iter);
@@ -987,15 +1066,15 @@ void IPO_Fld_Table_Update_For_Struct_Opt (TY_IDX ty)
     field_map_info[old_field_id-1].new_field_id = new_field_id;
 
     if (TY_kind(FLD_type(fld)) == KIND_POINTER &&
-        TY_pointed(FLD_type(fld)) == IPA_Enable_Struct_Opt)
+        TY_IDX_index(TY_pointed(FLD_type(fld))) == candidate_ty_idx)
     {
       FmtAssert (!child_flattened, ("Unexpected struct-type field"));
       FmtAssert (old_field_id == new_field_id, ("Field update error"));
       candidate_fld_id = old_field_id;
       child_flattened = TRUE;
       UINT32 ofst = FLD_ofst(fld);
-      FmtAssert (TY_kind(IPA_Enable_Struct_Opt) == KIND_STRUCT, ("struct expected"));
-      FLD_HANDLE nested = TY_fld(IPA_Enable_Struct_Opt);
+      FmtAssert (TY_kind(Ty_tab[candidate_ty_idx]) == KIND_STRUCT, ("struct expected"));
+      FLD_HANDLE nested = TY_fld(Ty_tab[candidate_ty_idx]);
       memcpy (&Fld_Table[new_fld.Idx()], &Fld_Table[nested.Idx()], sizeof(FLD));
       FmtAssert (FLD_ofst(new_fld) == 0, ("Offset mismatch"));
       Set_FLD_ofst (new_fld, ofst);
@@ -1022,15 +1101,27 @@ void IPO_Fld_Table_Update_For_Struct_Opt (TY_IDX ty)
     new_field_id++;
   } while (!FLD_last_field(fld_iter++));
 
-  Ty_Table[ty].Set_fld(first_fld_idx);
-  Set_TY_size(ty, TY_size(ty)+Pointer_Size);
+  Ty_tab[ty].Set_fld(first_fld_idx);
+  Set_TY_size(Ty_tab[ty], TY_size(Ty_tab[ty])+Pointer_Size);
   Set_FLD_last_field(last_field);
 }
 
 // Top level routine for optimization
 void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
 {
+  if (IPA_Update_Struct)
+  {
+    // This option will soon be removed, and is kept as a workaround that
+    // the user can use to specify the 2 type IDs.
+    Struct_split_candidate_index = IPA_Enable_Struct_Opt;
+    Struct_update_index = IPA_Update_Struct;
+  }
+
+  if (!Struct_split_candidate_index)
+    return;
+
   WN * tree = node->Whirl_Tree();
+  preg_id = 0;
   FmtAssert (tree, ("Null whirl tree"));
 
   PU_Parent_Map = node->Parent_Map();
@@ -1043,11 +1134,14 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
 
   // parentize before
   WN_Parentize(tree, PU_Parent_Map, PU_Map_Tab);
-  candidate_ty_idx = IPA_Enable_Struct_Opt;
+  candidate_ty_idx = Struct_split_candidate_index;
   // Assign candidate_ty_idx here.
-  FmtAssert (candidate_ty_idx != TY_IDX_ZERO, ("No TY to optimize"));
-  if (IPA_Update_Struct)
-    IPO_Fld_Table_Update_For_Struct_Opt (IPA_Update_Struct);
+  FmtAssert (candidate_ty_idx != 0, ("No TY to optimize"));
+  if (Struct_update_index && !fld_table_updated)
+    IPO_Fld_Table_Update_For_Struct_Opt (Struct_update_index);
+
+  if (!new_types_created)
+    IPO_generate_new_types (Struct_split_candidate_index);
   traverse_wn_tree (NULL, NULL, tree, WN_func_body(tree), 0);
   // parentize after
   WN_Parentize(tree, PU_Parent_Map, PU_Map_Tab);

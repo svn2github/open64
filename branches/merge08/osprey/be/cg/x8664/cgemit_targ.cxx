@@ -1379,6 +1379,9 @@ static void Init_OP_Name()
   OP_Name[TOP_lock_or32] = "orl";
   OP_Name[TOP_lock_or64] = "orq";
 
+  OP_Name[TOP_lock_xadd32] = "xaddl";
+  OP_Name[TOP_lock_xadd64] = "xaddq";
+
   OP_Name[TOP_lock_xor32] = "xorl";
   OP_Name[TOP_lock_xor64] = "xorq";
 
@@ -1417,6 +1420,7 @@ static void Init_OP_Name()
   OP_Name[TOP_movi64_2m] = "movd";
   OP_Name[TOP_movm_2i32] = "movd";
   OP_Name[TOP_movm_2i64] = "movd";
+  OP_Name[TOP_pmovmskb128] = "pmovmskb";
   OP_Name[TOP_psrlq128v64] = "psrlq";
   OP_Name[TOP_storenti128] = "movntdq";
   OP_Name[TOP_pshufw64v16] = "pshufw";

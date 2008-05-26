@@ -33,7 +33,7 @@
 */
 
 
-/* $Header$ */
+/* $Header: /depot/CVSROOT/javi/src/sw/cmplr/include/cmplrs/newinst.h,v 1.1 2005/07/27 02:22:36 kevinlo Exp $ */
 #define fli_op 0x26
 
 /* this should eventually go into sys/inst.h */

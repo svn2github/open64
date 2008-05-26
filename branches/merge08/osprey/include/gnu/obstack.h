@@ -417,14 +417,17 @@ __extension__								\
 /* These assume that the obstack alignment is good enough for pointers or ints,
    and that the data added so far to the current object
    shares that much alignment.  */
-
-#if (__GNUC__ < 4)
+/* HD - void** ++ is not a compliant with c standard, so I add 4 to this pointer
+ * pointer explicitly 
+ *  *((void **)__o->next_free)++ = ((void *)datum);			\
+ */
 # define obstack_ptr_grow(OBSTACK,datum)				\
 __extension__								\
 ({ struct obstack *__o = (OBSTACK);					\
    if (__o->next_free + sizeof (void *) > __o->chunk_limit)		\
      _obstack_newchunk (__o, sizeof (void *));				\
-   *((void **)__o->next_free)++ = ((void *)datum);			\
+   *((void **)__o->next_free) = ((void *)datum);			\
+   (__o->next_free) += 4 ;			\
    (void) 0; })
 
 # define obstack_int_grow(OBSTACK,datum)				\
@@ -437,35 +440,6 @@ __extension__								\
 
 # define obstack_ptr_grow_fast(h,aptr) (*((void **) (h)->next_free)++ = (void *)aptr)
 # define obstack_int_grow_fast(h,aint) (*((int *) (h)->next_free)++ = (int) aint)
-#else
-# define obstack_ptr_grow(OBSTACK,datum)				\
-__extension__								\
-({ struct obstack *__o = (OBSTACK);					\
-   if (__o->next_free + sizeof (void *) > __o->chunk_limit)		\
-     _obstack_newchunk (__o, sizeof (void *));				\
-   obstack_ptr_grow_fast (__o, datum); })
-
-# define obstack_int_grow(OBSTACK,datum)				\
-__extension__								\
-({ struct obstack *__o = (OBSTACK);					\
-   if (__o->next_free + sizeof (int) > __o->chunk_limit)		\
-     _obstack_newchunk (__o, sizeof (int));				\
-   obstack_int_grow_fast (__o, datum); })
-
-# define obstack_ptr_grow_fast(OBSTACK,aptr)				\
-__extension__								\
-({ struct obstack *__o1 = (OBSTACK);					\
-   *(const void **) __o1->next_free = (aptr);				\
-   __o1->next_free += sizeof (const void *);				\
-   (void) 0; })
-
-# define obstack_int_grow_fast(OBSTACK,aint)				\
-__extension__								\
-({ struct obstack *__o1 = (OBSTACK);					\
-   *(int *) __o1->next_free = (aint);					\
-   __o1->next_free += sizeof (int);					\
-   (void) 0; })
-#endif
 
 # define obstack_blank(OBSTACK,length)					\
 __extension__								\

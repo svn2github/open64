@@ -62,6 +62,7 @@
 #include "const.h"                      // for MAX_SYMBOLIC_CONST_NAME_LEN
 #include "ttype.h"
 #include "targ_sim.h"
+#include "config_asm.h"
 
 // global tables
 FILE_INFO	File_info;
@@ -155,7 +156,11 @@ Copy_ST_No_Base (ST *st, SYMTAB_IDX scope)
     static INT Temp_Index = 0;
     STR_IDX new_name;
     if (scope == GLOBAL_SYMTAB) 
+#ifdef TARG_NVISA
+        new_name = Save_Str2i(ST_name(st),"__", Temp_Index++);
+#else
         new_name = Save_Str2i(ST_name(st),"..", Temp_Index++);
+#endif
     else
 	new_name = ST_name_idx(st);
 
@@ -576,7 +581,7 @@ static void INTRINSIC_LIST_add(ST *st)
 
 ST *
 INTRINSIC_LIST_lookup(TY_IDX  ty,
-		      char   *function_name)
+		      const char   *function_name)
 {
   vector<ST *>::iterator result =
                 std::find_if(intrinsic_list.begin(),
@@ -591,8 +596,7 @@ INTRINSIC_LIST_lookup(TY_IDX  ty,
 }
 
 ST *
-Gen_Intrinsic_Function(TY_IDX  ty,
-		       char   *function_name)
+Gen_Intrinsic_Function(TY_IDX  ty, const char   *function_name)
 {
   ST *st = INTRINSIC_LIST_lookup(ty, function_name);
 
@@ -1192,6 +1196,74 @@ TY_is_unique (const TY_IDX ty_idx)
   };
 } // TY_is_unique
 
+/* ty either is union or has union in one of its fields (called recursively) */
+BOOL
+TY_has_union (TY_IDX ty)
+{
+  if (TY_kind(ty) != KIND_STRUCT) 
+    return FALSE;
+  if (TY_is_union(ty))
+    return TRUE;
+
+  FLD_HANDLE fld = TY_fld (ty);
+  TY_IDX fty;
+  do {
+    fty = FLD_type(fld);
+    if (TY_has_union(fty))
+      return TRUE;
+    fld = FLD_next (fld);
+  } while (!fld.Is_Null ());
+  return FALSE;
+}
+
+#ifdef TARG_NVISA
+/* number of elements in the vector */
+UINT
+TY_vector_count (TY_IDX ty)
+{
+  FmtAssert(TY_can_be_vector(ty), ("not a vector type"));
+  FmtAssert(TY_kind(ty) == KIND_STRUCT, ("vector not a struct type"));
+  INT count = 0;
+  FLD_HANDLE fld = TY_fld (ty);
+  do {
+	++count;
+    	fld = FLD_next (fld);
+  } while (!fld.Is_Null ());
+  return count;
+}
+#endif
+
+// return mtype associated with type and offset
+TYPE_ID
+Mtype_For_Type_Offset (TY_IDX ty, INT64 offset)
+{
+  switch (TY_kind(ty)) {
+  case KIND_STRUCT:
+    {
+      // return mtype of field
+      FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty));
+      do {
+        FLD_HANDLE fld(fld_iter);
+        if (Is_Composite_Type(FLD_type(fld))
+          && offset >= FLD_ofst(fld)
+          && offset < FLD_ofst(fld) + TY_size(FLD_type(fld)))
+        {
+          return Mtype_For_Type_Offset (FLD_type(fld), offset - FLD_ofst(fld));
+        }
+        if (FLD_ofst(fld) == offset)
+          return TY_mtype(FLD_type(fld));
+      } while (!FLD_last_field(fld_iter++));
+      FmtAssert(FALSE, ("couldn't find matching field"));
+    }
+  case KIND_ARRAY:
+    // return mtype of elements, recursing in case array of structs
+    return Mtype_For_Type_Offset (TY_etype(ty),
+        offset % TY_size(TY_etype(ty)));
+  default:
+    return TY_mtype(ty);
+  }
+}
+
 //----------------------------------------------------------------------
 // PREG-related utilities
 //----------------------------------------------------------------------
@@ -1668,10 +1740,13 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (flags & PU_NEEDS_MANUAL_UNWINDING) fprintf (f, " needs_manual_unwinding");
 	    if (flags & PU_IS_EXTERN_INLINE) fprintf (f, " extern_inline");
 	    if (flags & PU_IS_MARKED_INLINE) fprintf (f, " inline_keyword");
+	    if (flags & PU_NO_INSTRUMENT) fprintf (f, " no_instrument");
+	    if (flags & PU_NEED_TRAMPOLINE) fprintf (f, " need_trampoline");
 #endif
 #ifdef TARG_X8664
 	    if (flags & PU_FF2C_ABI) fprintf (f, " ff2c_abi");
 #endif
+	    if (flags & PU_IS_CDECL) fprintf (f, " cdecl");
 	    if (TY_return_to_param(ty_idx))	fprintf (f, " return_to_param");
 	    if (TY_is_varargs(ty_idx))		fprintf (f, " varargs");
 	    if (TY_has_prototype(ty_idx))	fprintf (f, " prototype");
@@ -1743,6 +1818,20 @@ ST::Print (FILE *f, BOOL verbose) const
                 fprintf (f, " st_used_as_initialization");
             if (flags_ext & ST_IS_THREAD_LOCAL)
                 fprintf (f, " thread_local");
+#ifdef TARG_NVISA
+	    if (memory_space == MEMORY_GLOBAL)
+		fprintf (f, " __global__");
+	    if (memory_space == MEMORY_SHARED)
+		fprintf (f, " __shared__");
+	    if (memory_space == MEMORY_CONSTANT)
+                fprintf (f, " __constant__");
+	    if (memory_space == MEMORY_LOCAL)
+                fprintf (f, " __local__");
+	    if (memory_space == MEMORY_TEXTURE)
+                fprintf (f, " __texture__");
+	    if (memory_space == MEMORY_PARAM)
+                fprintf (f, " __param__");
+#endif /* TARG_NVISA */
 	}
 #endif
 
@@ -1853,6 +1942,10 @@ TY::Print (FILE *f) const
 	if (flags & TY_RETURN_IN_MEM)	fprintf (f, " return_in_mem");
 	if (flags & TY_CONTENT_SEEN)	fprintf (f, " content_seen");
         if (flags & TY_IS_INCOMPLETE)   fprintf (f, " incomplete");
+	if (flags & TY_NO_SPLIT)        fprintf (f, " no_split");
+#endif
+#ifdef TARG_NVISA
+	if (flags & TY_CAN_BE_VECTOR) 	fprintf (f, "  vector");
 #endif
     }
     fprintf (f, ")");
@@ -2211,7 +2304,10 @@ Gen_Temp_Named_Symbol (TY_IDX ty, const char *rootname,
 {
   static INT Temp_Index = 0;
   ST *st = New_ST(CURRENT_SYMTAB);
-  STR_IDX str_idx = Save_Str2i(rootname, "_temp_", Temp_Index++);
+  STR_IDX str_idx = Save_Str2i(
+    // put _temp first so don't need knowledge of legal prefix in Gen_Temp call
+    (Label_Name_Separator "temp" Label_Name_Separator), 
+    rootname, Temp_Index++);
   ST_Init(st, str_idx, sym_class, storage_class, EXPORT_LOCAL, ty);
   return st;
 }
@@ -2621,7 +2717,7 @@ Initialize_Special_Global_Symbols ()
 #endif // KEY
     Void_Type = MTYPE_To_TY (MTYPE_V);
 
-#ifdef TARG_X8664 
+#if !defined(TARG_IA64) && !defined(TARG_SL)
     Spill_Int32_Type   = MTYPE_To_TY (Spill_Int32_Mtype);
     Spill_Float32_Type = MTYPE_To_TY (Spill_Float32_Mtype);
 #endif
@@ -2642,10 +2738,10 @@ Initialize_Symbol_Tables (BOOL reserve_index_zero)
     
     Scope_tab = (SCOPE *) MEM_POOL_Alloc (Malloc_Mem_Pool,
 					  Max_scope * sizeof(SCOPE));
-    bzero(Scope_tab, Max_scope * sizeof(SCOPE));
+    BZERO(Scope_tab, Max_scope * sizeof(SCOPE));
 
-    bzero (MTYPE_TO_PREG_array, sizeof(ST*) * (MTYPE_LAST + 1));
-    bzero (MTYPE_TO_TY_array, sizeof(TY_IDX) * (MTYPE_LAST + 1));
+    BZERO (MTYPE_TO_PREG_array, sizeof(ST*) * (MTYPE_LAST + 1));
+    BZERO (MTYPE_TO_TY_array, sizeof(TY_IDX) * (MTYPE_LAST + 1));
 
     if (reserve_index_zero) {
 	// For producer, we reserve first entry for all global tables
@@ -2653,13 +2749,13 @@ Initialize_Symbol_Tables (BOOL reserve_index_zero)
 	Initialize_Strtab (0x1000);	// start with 4Kbytes for strtab.
 
 	UINT dummy_idx;
-	bzero (&New_PU ((PU_IDX&) dummy_idx), sizeof(PU));
-	bzero (&New_TY ((TY_IDX&) dummy_idx), sizeof(TY));
-	bzero (New_FLD ().Entry(), sizeof(FLD));
-	bzero (&New_TYLIST ((TYLIST_IDX&) dummy_idx), sizeof(TYLIST));
-	bzero (New_ARB ().Entry(), sizeof(ARB));
-	bzero (&New_BLK ((BLK_IDX&) dummy_idx), sizeof(BLK));
-	bzero (&Initv_Table.New_entry ((INITV_IDX&) dummy_idx), sizeof(INITV));
+	BZERO (&New_PU ((PU_IDX&) dummy_idx), sizeof(PU));
+	BZERO (&New_TY ((TY_IDX&) dummy_idx), sizeof(TY));
+	BZERO (New_FLD ().Entry(), sizeof(FLD));
+	BZERO (&New_TYLIST ((TYLIST_IDX&) dummy_idx), sizeof(TYLIST));
+	BZERO (New_ARB ().Entry(), sizeof(ARB));
+	BZERO (&New_BLK ((BLK_IDX&) dummy_idx), sizeof(BLK));
+	BZERO (&Initv_Table.New_entry ((INITV_IDX&) dummy_idx), sizeof(INITV));
 	Init_Constab ();
 	New_Scope (GLOBAL_SYMTAB, Malloc_Mem_Pool, TRUE);
 	Create_Special_Global_Symbols ();
@@ -2669,7 +2765,7 @@ Initialize_Symbol_Tables (BOOL reserve_index_zero)
     if (!Read_Global_Data) {
        // reserve zero index in BLK table
        UINT blk_idx;
-       bzero (&New_BLK ((BLK_IDX&) blk_idx), sizeof(BLK));
+       BZERO (&New_BLK ((BLK_IDX&) blk_idx), sizeof(BLK));
     }
 #endif
 }
@@ -2699,7 +2795,7 @@ Init_Constab ()
     if (Tcon_Table.Size () == 0) {
 	TCON Zero;
 	UINT32 idx;
-        bzero (&Zero, sizeof(TCON));
+        BZERO (&Zero, sizeof(TCON));
         idx = Tcon_Table.Insert (Zero);	// index 0: dummy
 	Set_TCON_ty (Zero, MTYPE_F4); 
         idx = Tcon_Table.Insert (Zero);	// index 1: float (0.0)

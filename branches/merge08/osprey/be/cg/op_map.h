@@ -37,10 +37,10 @@
  * =======================================================================
  *
  *  Module: op_map.h
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/op_map.h,v $
+ *  $Revision: 1.2 $
+ *  $Date: 02/11/07 23:41:27-00:00 $
+ *  $Author: fchow@keyresearch.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.op_map.h $
  *
  *  Revision comments:
  *
@@ -153,9 +153,6 @@ extern OP_MAP _OP_MAP_Create(_OP_MAP_KIND kind);
 #define OP_MAP64_Create() _OP_MAP_Create(_I64)
 
 void OP_MAP_Delete(OP_MAP map);
-#ifdef TARG_IA64
-BOOL OP_MAP_Is_Delete(OP_MAP map);
-#endif
 
 void OP_MAP_Set(OP_MAP map, OP *op, void *value);
 void OP_MAP32_Set(OP_MAP map, OP *op, INT32 value);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -40,10 +40,10 @@
 //-*-c++-*-
 /* ====================================================================
  * Module: privatize_common.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/privatize_common.h,v $
+ * $Revision: 1.7 $
+ * $Date: 05/12/05 08:59:14-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.privatize_common.h $
  *
  * Revision history:
  *  11-12-97 : First created by Dave Kohr

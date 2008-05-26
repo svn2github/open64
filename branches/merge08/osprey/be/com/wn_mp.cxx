@@ -51,7 +51,11 @@
 *  csc.
 */
 #include <sys/types.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 
 #define USE_STANDARD_TYPES          /* override unwanted defines in "defs.h" */
 
@@ -65,6 +69,9 @@
 #include "irbdata.h"                /* for inito */
 #include "dwarf_DST_mem.h"          /* for DST */
 #include "pu_info.h"
+#ifdef __MINGW32__
+#include <WINDOWS.h>
+#endif /* __MINGW32__ */
 #include "ir_bwrite.h"
 #include "ir_reader.h"
 #include "ir_bcom.h"
@@ -79,7 +86,9 @@
 
 #include <string.h>
 
+#if ! defined(BUILD_OS_DARWIN)
 #include <elf.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include "alloca.h"
 #include "cxx_template.h"
 #include "defs.h"
@@ -129,6 +138,7 @@
 #include "config_opt.h"
 #endif
 
+#include "opt_sys.h"  // For BZERO
 /*
 MP lowerer cleanup TODO by DRK:
 
@@ -190,7 +200,7 @@ inline void WN_set_offsetx ( WN *wn, WN_OFFSET ofst )
   }
 }
 
-inline TYPE_ID Promote_Type(TYPE_ID mtype)
+static inline TYPE_ID Promote_Type(TYPE_ID mtype)
 {
   switch (mtype) {
     case MTYPE_I1 : case MTYPE_I2: return(MTYPE_I4);
@@ -994,6 +1004,12 @@ Get_Gtid(ST * gtid)
 The lock type of Intel RTL is an I4 array of size 8. But where to put it?
 Does every named lock need a different lock? Remained to be tested.
 */
+#if defined(TARG_SL)
+BOOL Is_Target_32bit()
+{
+  return TRUE;
+}
+#endif
 
 static void 
 Create_Lock_Type()
@@ -1001,9 +1017,11 @@ Create_Lock_Type()
     if( lock_ty_idx != TY_IDX_ZERO )
       return;
 #ifdef KEY
+#ifdef TARG_X8664
     if (Is_Target_32bit())
       lock_ty_idx = MTYPE_To_TY(MTYPE_I4);
     else
+#endif
       lock_ty_idx = MTYPE_To_TY(MTYPE_I8);
 #else
        // define lock_ty_idx as an I4 array of size 8
@@ -2059,7 +2077,7 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
     dst = DST_mk_formal_parameter( srcpos,
 			ST_name( st ),
 			int_idx,	/* type DST_IDX */
-			NULL,
+			ST_st_idx(st),	/* symbol */
 			DST_INVALID_IDX,
 			DST_INVALID_IDX,
 			FALSE,
@@ -2072,7 +2090,7 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
 			ST_name( st ),
 			int_idx, 	/* type DST_IDX */
 			0 /* offset */,
-			(void *) NULL,	/* a_variable_ptr */
+			ST_st_idx(st),	/* symbol */
 			DST_INVALID_IDX,
 			FALSE,		/* memory allocated */
 			TRUE, 		/* parameter has sc_auto */
@@ -2206,7 +2224,7 @@ Create_New_DST ( DST_INFO_IDX dst, ST *st , BOOL append_to_nested )
 			name,
 			type_idx, 	/* type DST_IDX */
 			0 /* offset */,
-			(void *) NULL,	/* a_variable_ptr */
+			ST_st_idx(st),	/* symbol */
 			DST_INVALID_IDX,
 			FALSE,		/* memory allocated */
 			TRUE, 		/* parameter has sc_auto */
@@ -2238,7 +2256,7 @@ Create_Func_DST ( char * st_name )
 			st_name,
 			DST_INVALID_IDX,	/* return type */
 			DST_INVALID_IDX,	/* for weak symbols */
-			(void *) NULL,
+			ST_st_idx(parallel_proc),
 			DW_INL_not_inlined,
 			DW_VIRTUALITY_none,
 			0,
@@ -4214,7 +4232,11 @@ Gen_MP_Copyprivate(WN *copyprivates, WN **copyprivate_blockp,
   FLD *next;
   ST *st, *fld_st;
 
+#ifndef TARG_NVISA
   BOOL target_32bit = Is_Target_32bit();
+#else
+  BOOL target_32bit = FALSE;
+#endif
 
   /* Create a struct type */
   INT32 count = 0;
@@ -5952,7 +5974,7 @@ Post_MP_Processing (WN * pu)
   // Localize the variables
   INT32 vsize = (local_count + 1) * sizeof(VAR_TABLE);
   var_table = (VAR_TABLE *) alloca (vsize);
-  bzero (var_table, vsize);
+  BZERO (var_table, vsize);
 
   mpt = MPP_ORPHAN;
 
@@ -7145,7 +7167,7 @@ static WN *Gen_MP_Workshare_Region(WN *workshare_region)
     WN *nested_alloca_block = NULL;
 
     vt = (VAR_TABLE *) alloca((vt_size + 1) * sizeof(VAR_TABLE));
-    bzero(vt, (vt_size + 1) * sizeof(VAR_TABLE));
+    BZERO(vt, (vt_size + 1) * sizeof(VAR_TABLE));
     Create_Local_Variables(vt, NULL, NULL, nested_local_nodes,
                            NULL, NULL,
                            NULL, &nested_alloca_block);
@@ -7294,7 +7316,7 @@ static WN *Gen_MP_SingleProcess_Region(WN *single_region)
     WN *nested_alloca_block = NULL, *firstprivate_block = NULL;
 
     vt = (VAR_TABLE *) alloca((vt_size + 1) * sizeof(VAR_TABLE));
-    bzero(vt, (vt_size + 1) * sizeof(VAR_TABLE));
+    BZERO(vt, (vt_size + 1) * sizeof(VAR_TABLE));
     Create_Local_Variables(vt, NULL, NULL, nested_local_nodes,
                            nested_firstprivate_nodes, &firstprivate_block,
                            NULL, &nested_alloca_block);
@@ -10550,9 +10572,15 @@ Process_PDO ( WN * tree )
   // bug 13534: Sometimes the DO_LOOP may be inside a C++ exception
   // region. Extract it out of the region, after some validation checks.
   if (pdo_node && WN_operator(pdo_node) == OPR_REGION &&
-      WN_region_kind(pdo_node) == REGION_KIND_EH &&
-      pdo_node == WN_last(body_block)) {
+      WN_region_kind(pdo_node) == REGION_KIND_EH /* &&
+      pdo_node == WN_last(body_block) */) {
+
     // The region is the only statement in the parallel DO.
+    // Bug 14036: The above line is not true any more. The
+    // restriction in the above line has been
+    // removed, because there is often a label after the EH
+    // region containing the DO loop, to account for the label
+    // a "break" may jump to.
     WN * region_body = WN_region_body(pdo_node);
     WN * stmt = WN_first(region_body);
     for (; stmt; stmt = WN_next(stmt)) {
@@ -10603,7 +10631,7 @@ Process_PDO ( WN * tree )
         // privatize within DO_LOOP but not code before or after it
       vsize = (nested_local_count + 1) * sizeof(VAR_TABLE);
       nested_var_table = (VAR_TABLE *) alloca ( vsize );
-      bzero ( nested_var_table, vsize );
+      BZERO ( nested_var_table, vsize );
       Create_Local_Variables ( nested_var_table, nested_reduction_nodes,
 			       nested_lastlocal_nodes, nested_local_nodes,
 			       nested_firstprivate_nodes,
@@ -10641,7 +10669,7 @@ Process_PDO ( WN * tree )
       // Use local versions of the global tables.
       INT32 vsize_l = (nested_local_count + 1) * sizeof (VAR_TABLE);
       VAR_TABLE * nested_var_table_l = (VAR_TABLE *) alloca (vsize_l);
-      bzero ( nested_var_table_l, vsize_l );
+       ( nested_var_table_l, vsize_l );
       Create_Local_Variables ( nested_var_table_l, nested_reduction_nodes,
 			       nested_lastlocal_nodes, nested_local_nodes,
 			       nested_firstprivate_nodes,
@@ -11717,7 +11745,7 @@ static void Localize_in_serialized_parallel (void)
 {
   INT32 vsize_l = (local_count + 1) * sizeof(VAR_TABLE);
   VAR_TABLE * var_table_l = (VAR_TABLE *) alloca ( vsize_l );
-  bzero ( var_table_l, vsize_l );
+  BZERO ( var_table_l, vsize_l );
   Create_Local_Variables ( var_table_l, reduction_nodes, lastlocal_nodes,
                            local_nodes, firstprivate_nodes,
 			   &firstprivate_block, NULL, &alloca_block );
@@ -11869,17 +11897,17 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
   lsize = sizeof(LABEL_INFO_TABLE) * LABEL_Table_Size(CURRENT_SYMTAB);
   label_info_table = (LABEL_INFO_TABLE *) alloca ( lsize );
-  bzero ( label_info_table, lsize );
+  BZERO ( label_info_table, lsize );
 
   ssize = 4096 * sizeof(SHARED_TABLE);
   shared_table = (SHARED_TABLE *) alloca ( ssize );
-  bzero ( shared_table, ssize );
+  BZERO ( shared_table, ssize );
 
   if (mpid_size == 0) {
     mpid_size = 1028;
     msize = mpid_size * sizeof(MPID_TABLE);
     mpid_table = (MPID_TABLE *) malloc ( msize );
-    bzero ( mpid_table, msize );
+    BZERO ( mpid_table, msize );
   }
 
   pu_has_eh = PU_has_exc_scopes(Get_Current_PU());
@@ -12497,7 +12525,7 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
     vsize = (local_count + 1) * sizeof(VAR_TABLE);
     var_table = (VAR_TABLE *) alloca ( vsize );
-    bzero ( var_table, vsize );
+    BZERO ( var_table, vsize );
 
     fp = WN_LdidPreg ( Pointer_type, Frame_Pointer_Preg_Offset );
 
@@ -12635,7 +12663,7 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
     vsize = (local_count + 1) * sizeof(VAR_TABLE);
     var_table = (VAR_TABLE *) alloca ( vsize );
-    bzero ( var_table, vsize );
+    BZERO ( var_table, vsize );
 
     fp = WN_LdidPreg ( Pointer_type, Frame_Pointer_Preg_Offset );
 
@@ -12996,7 +13024,7 @@ LowerMP_PU_Init()
     region_id = 0;
     lock_id = 0;
     if (mpid_size > 0)
-      bzero ( mpid_table, mpid_size * sizeof(MPID_TABLE) );
+      BZERO ( mpid_table, mpid_size * sizeof(MPID_TABLE) );
       // ignore pu_chunk_node and pu_mpsched_node from prior PU; no need to
       // deallocate it since Whirl mempool gets popped at end of compiling
       // the PU

@@ -1081,6 +1081,7 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
       OPCODE opc = WN_opcode(ref_wn);
       rtype = OPCODE_rtype(opc);
       dtype = OPCODE_desc(opc);
+      Is_True(!(dtype==MTYPE_I2 && rtype== MTYPE_I2), ("Create illegal coderep i2i2"));
 
 #ifndef TARG_X8664
       // Fix 770676
@@ -1260,6 +1261,13 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
 
     // add new stmtrep with Wn set
     stmt = bb->Add_stmtnode(wn, mem_pool);
+
+#ifdef TARG_SL //fork_joint
+    if(WN_is_compgoto_para(wn)) 
+       stmt->Set_fork_stmt_flags(TRUE);
+    else if(WN_is_compgoto_for_minor(wn)) 
+	stmt -> Set_minor_fork_stmt_flags(TRUE);
+#endif 
 
     stmt->Enter_rhs(htable, opt_stab, copyprop, exc);
     stmt->Enter_lhs(htable, opt_stab, copyprop);

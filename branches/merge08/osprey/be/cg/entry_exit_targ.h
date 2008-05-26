@@ -50,11 +50,6 @@ extern void EETARG_Init_Entry_Exit_Code (WN *pu_wn, BOOL need_frame_pointer);
 extern void EETARG_Save_Extra_Callee_Tns (OPS *ops);
 extern void EETARG_Restore_Extra_Callee_Tns (OPS *ops);
 
-#ifdef TARG_IA64
-// Instrument code to call _mcount function in libc.a for -pg option
-extern void EETARG_Call_Mcount(BB *bb);
-#endif
-
 // target-specific adjustments to entry ops
 extern void EETARG_Fixup_Entry_Code (BB *bb);
 

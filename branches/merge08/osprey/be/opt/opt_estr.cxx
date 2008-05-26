@@ -175,8 +175,12 @@ BOOL
 STR_RED::Is_cvt_linear( const CODEREP *cr ) const
 {
   // screen out non-register size types
-  if (MTYPE_size_min(cr->Dsctyp()) < MTYPE_size_min(MTYPE_I4))
+  if (MTYPE_size_min(cr->Dsctyp()) < MTYPE_size_min(MTYPE_I4)) {
+    if (WOPT_Enable_STR_Short && (MTYPE_size_min(cr->Dsctyp()) == MTYPE_size_min(MTYPE_I2))) {
+      return TRUE;
+    }
     return FALSE;
+  }
 
   // e.g., disable str-red of I8I4CVT ... if do not allow wrap around opt
   if (! Allow_wrap_around_opt && 

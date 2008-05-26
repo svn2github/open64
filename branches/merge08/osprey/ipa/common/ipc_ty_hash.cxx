@@ -86,6 +86,18 @@ Get_Kid_TY_IDX (TY_IDX ty_idx)
 // ======================================================================
 // Fast comparision of two TY's.  Correctness guaranteed by the assertion
 // at the beginning of Initialize_Type_Merging_Hash_Tables ()
+static inline BOOL
+operator== (const TY& ty1, const TY& ty2)
+{
+    const UINT64* p1 = reinterpret_cast<const UINT64*> (&ty1);
+    const UINT64* p2 = reinterpret_cast<const UINT64*> (&ty2);
+
+    return (p1 == p2 || (p1[0] == p2[0] &&
+			 p1[1] == p2[1] &&
+			 p1[2] == p2[2] &&
+			 ty1.Pu_flags() == ty2.Pu_flags()));
+}
+
 
 namespace
 {
@@ -143,7 +155,14 @@ namespace
                         return FALSE;
                 }
             }
-            return k1.u2.etype == k2.u2.etype;
+            if (k1.u2.etype == k2.u2.etype)
+                return TRUE;
+            // The alignment of TY_POINTER may be changed
+            // after the pointed incomplete struct is upadted.
+            // So compare TY.u2 without last 3 bits if the TY is pointer.
+            return TY_kind(k1) == KIND_POINTER &&
+                   TY_IDX_without_attribute(k1.u2.pointed) 
+                   == TY_IDX_without_attribute(k2.u2.pointed);
         }
     };
 }
@@ -986,7 +1005,7 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
     
     // check if the assumption used by fast comparision of structs are valid
 #ifdef  __GNUC__
-#ifndef ARCH_MIPS
+#ifndef TARG_SL
     Is_True (sizeof(TY)  == 28 && __alignof__(TY)  == 4 &&
 	     sizeof(FLD) == 28 && __alignof__(FLD) == 4 &&
 	     sizeof(ARB) == 32 && __alignof__(ARB) == 4,
@@ -1004,8 +1023,8 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 	      " TY sz %d al %d, FLD sz%d al %d, ARB sz %d al %d",
 	      sizeof(TY), __alignof__(TY), sizeof(FLD),
 	      __alignof__(FLD), sizeof(ARB), __alignof__(ARB)));
-#endif // ! TARG_MIPS
-#else
+#endif // ! TARG_SL
+#else // for SL as well as IRIX, this is guaranteed by compiler, except for packed data
     Is_True (sizeof(TY)  == 32 && __builtin_alignof(TY)  == 8 &&
 	     sizeof(FLD) == 32 && __builtin_alignof(FLD) == 8 &&
 	     sizeof(ARB) == 32 && __builtin_alignof(ARB) == 8,

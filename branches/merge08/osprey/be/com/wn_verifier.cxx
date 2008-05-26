@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -46,10 +42,10 @@
 // ====================================================================
 //
 // Module: wn_verifier.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/wn_verifier.cxx,v $
+// $Revision: 1.12 $
+// $Date: 05/12/05 08:59:16-08:00 $
+// $Author: bos@eng-24.pathscale.com $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.wn_verifier.cxx $
 //
 // Revision history:
 //  8-20-97 naftulin - Original Version
@@ -456,7 +452,11 @@ WN_Verifier::Is_WHIRL_tree(WN *wn, WN *parent_wn)
 // preg: which are now pregs # 2, 3, 32, 34
 BOOL WN_Verifier::Is_dedicated_return_register(WN_OFFSET preg)
 {
+#if defined(TARG_NVISA) || defined(TARG_SL)
+  return Is_Return_Preg(preg);
+#else
   return ((preg == 2) || (preg == 3) || (preg == 32) || (preg==34));
+#endif
 }
 
 /*--------------------------------------------------------------
@@ -499,7 +499,12 @@ WN_Verifier::Is_return_register_of_call(WN *call_wn, PREG_NUM preg)
   // I will need to worry about the Use_Similated later on
   const PU& pu = Pu_Table[ST_pu (WN_st (call_wn))];
 
-  if (WHIRL_Return_Info_On) {
+#if defined(TARG_NVISA)
+  FmtAssert(WHIRL_Return_Info_On, ("return_info required"));
+#else
+  if (WHIRL_Return_Info_On) 
+#endif
+  {
 
     RETURN_INFO return_info = Get_Return_Info (TY_ret_type (Ty_Table[PU_prototype (pu)]),
 					       Complex_Not_Simulated
@@ -508,20 +513,21 @@ WN_Verifier::Is_return_register_of_call(WN *call_wn, PREG_NUM preg)
 #endif
 					      );
 
-    if (RETURN_INFO_count(return_info) <= 2) {
-
-      ty1 = RETURN_INFO_mtype (return_info, 0);
-      ty2 = RETURN_INFO_mtype (return_info, 1);
-      retreg1 = RETURN_INFO_preg (return_info, 0);
-      retreg2 = RETURN_INFO_preg (return_info, 1);
+    if (RETURN_INFO_count(return_info) <= MAX_NUMBER_OF_REGISTERS_FOR_RETURN) {
+      INT i;
+      for (i = 0; i < RETURN_INFO_count(return_info); ++i) {
+        if (preg == RETURN_INFO_preg(return_info,i))
+          return TRUE;
+      }
+      return FALSE;
     }
-
     else
       Fail_FmtAssertion (
-	"WN_Verifier::Is_return_register_of_call: more than 2 return registers");
+	"WN_Verifier::Is_return_register_of_call: more than expected return registers");
   }
 
-  else
+#if !defined(TARG_NVISA)
+  else 
     Get_Return_Mtypes (TY_ret_type (Ty_Table[PU_prototype (pu)]),
 		       Complex_Not_Simulated, &ty1,&ty2);
   //Get_(MTYPE_To_TY(WN_rtype(call_wn)),
@@ -530,6 +536,7 @@ WN_Verifier::Is_return_register_of_call(WN *call_wn, PREG_NUM preg)
   if (!WHIRL_Return_Info_On)
     Get_Return_Pregs(ty1,ty2,&retreg1,&retreg2);  
   return ((preg == retreg1) || (preg == retreg2)); 
+#endif
 }
 
 
@@ -816,7 +823,7 @@ BOOL WN_Verifier::LDA_ty_not_NULL(WN *wn)
 		fprintf(stderr, "(anon)\n");
 	      else fprintf(stderr, "%s\n", TY_name(ty));
 #else
-	      ty.Print (stderr);
+	    ty.Print (stderr);
 #endif
 	    }
 	    return FALSE;
@@ -1029,7 +1036,6 @@ WN_Verifier::Field_id_valid (WN* wn)
 	    }
 	}
 	break;
-
     case OPR_ILOAD:
         ty = &Ty_Table[WN_load_addr_ty(wn)];
 	// fall thru
@@ -1037,7 +1043,7 @@ WN_Verifier::Field_id_valid (WN* wn)
 	ty = &Ty_Table[TY_pointed (*ty)];
 	if (strncmp(TY_name(*ty), ".dope.", 6) == 0)
 	  break; // make exception for fortran dope vector
-	// fall thru
+	// fall through
     case OPR_STID:
     case OPR_LDID:
 	if (TY_kind(*ty) != KIND_STRUCT) {
@@ -1050,7 +1056,7 @@ WN_Verifier::Field_id_valid (WN* wn)
 	}
 	break;
     default:
-	break;
+        break;
     }
 
     return TRUE;
@@ -1079,8 +1085,10 @@ BOOL WN_Tree_Has_Duplicate_Labels(WN *pu_wn, MEM_POOL *tmp_pool)
                (INT) lab, LABEL_Table_Size(CURRENT_SYMTAB)));
       WN *dup_lab_wn = labels_found.Find(lab);
 
-      if (dup_lab_wn)
+      if (dup_lab_wn){
+        WN_WALK_Abort(it);
         return TRUE;
+      }
 
       labels_found.Enter(lab, wn);
     }

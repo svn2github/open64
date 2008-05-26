@@ -158,7 +158,7 @@ BOOL WOVP::Write_once_check(IDTYPE id, BB_LIST_CONTAINER *bb_queue)
             if(cnode->Aux_id()==id){
               if(def_stmt != NULL)
                 return FALSE;
-              def_stmt = tmp_stmt;
+              def_stmt = it_stmt;
             }
           }
         }
@@ -270,9 +270,13 @@ void WOVP::Do_wovp()
       wo_loc->Set_promote(TRUE);
     }
   }
-  if(!_wovp_loc.empty())
+  if(!_wovp_loc.empty()) {
     Promote();
-  if(Get_Trace(TP_WOPT2, WOVP_DUMP_FLAG)){
+    // wovp optimization modified the symbol and need to canonicalize 
+    // the coderep of cfg
+    _cfg->Htable()->Verify_hashing();
+
+  }  if(Get_Trace(TP_WOPT2, WOVP_DUMP_FLAG)){
     fprintf(TFile, "%sAfter Write Once Variable Promotion\n%s", DBar, DBar);
     Print_wo_loc(Get_Trace_File());
     _cfg->Print(Get_Trace_File());

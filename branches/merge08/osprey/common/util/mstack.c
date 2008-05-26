@@ -41,7 +41,7 @@
 */
 
 
-static char *Version = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/util/mstack.c,v $ $Revision: 1.1.1.1 $";
+static char *Version = "$Source: /home/bos/bk/kpro64-pending/common/util/SCCS/s.mstack.c $ $Revision: 1.5 $";
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

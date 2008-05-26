@@ -41,10 +41,10 @@
 //============================================================================
 //
 // Module: region_init.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/be/region/region_init.cxx,v $
+// $Revision: 1.9 $
+// $Date: 05/12/05 08:59:31-08:00 $
+// $Author: bos@eng-24.pathscale.com $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/be/region/SCCS/s.region_init.cxx $
 //
 // Revision history:
 //  27-FEB-95 dahl - Original Version
@@ -80,7 +80,7 @@
 
 #define region_init_CXX	"region_init.cxx"
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = region_init_CXX"$Revision: 1.8 $";
+static char *rcs_id = region_init_CXX"$Revision: 1.9 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "wn.h"			// WN type
@@ -1151,12 +1151,33 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
   }
 
   // these next two lines can be removed after 7.2 (see PV 457243)
+#ifdef TARG_SL2 //add_type_for_minor  //PARA_EXTENSION
+  if (!RID_TYPE_eh(rid) && !RID_TYPE_mp(rid) && !RID_TYPE_sl2_enclosing_region(rid) && !RID_TYPE_sl2_para(rid)) 
+#else 
   if (!RID_TYPE_eh(rid) && !RID_TYPE_mp(rid)) 
+#endif   	
     REGION_has_black_regions(rid); // set black bit to top region
 
   // if region requires bounds, better tell root rid (propagates up to PU)
   if (!RID_TYPE_transparent(rid) || RID_contains_bounds(rid))
+#ifdef TARG_SL2 //fork_joint
+  {
+       /* if region requires bounds we need propagate the flag up to PU, when rid is not 
+         * region 0 (PU) 
+         */ 
+         
+         if(RID_TYPE_sl2_para(rid)) 
+              RID_contains_bounds(rid) = TRUE;
+
+         RID*  tmp_rid = root; 
+         while(!RID_TYPE_func_entry(tmp_rid))
+            tmp_rid = RID_parent(tmp_rid); 
+         
+	  RID_contains_bounds(tmp_rid) = TRUE;   // propagate the flag to PU if root is not func_entry
+   }
+#else 
     RID_contains_bounds(root) = TRUE;
+#endif //fork_joint
 
   //-----------------------------------------------------------------
   // visit body looking for nested regions
@@ -1379,9 +1400,7 @@ REGION_init(WN *itree, RID *root)
   }
 
   INT32 nregions = rtmp.Nregions(); // doesn't count PU
-  MEM_POOL_Pop(&REGION_init_pool);
   MEM_POOL_Delete(&REGION_init_pool);
-
   return nregions;
 }
 

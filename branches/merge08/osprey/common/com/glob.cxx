@@ -141,6 +141,7 @@ char *DSTdump_File_Name = NULL; /* Dwarf (i.e. DST) dump file */
 char *Global_File_Name = NULL;	/* Global symbol table file */
 
 char *License_File_Name = NULL ;	/* license file */
+char *Whirl2C_File_Name = NULL ;	/* whirl2c output file */
 
 /* Current file	handles	if open, NULL otherwise: */
 FILE *Src_File = NULL;		/* Source file */

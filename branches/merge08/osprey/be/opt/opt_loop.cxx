@@ -1242,7 +1242,7 @@ Can_raise_to_doloop(BB_LOOP *loop, BOOL repair, CODEMAP *htable)
   // do not raise it to a DO loop.  MP loops can not have early exits,
   // so this is not an issue.  
 
-#ifndef OSP_OPT
+#if !defined(OSP_OPT) || !defined(TARG_IA64)
   if (loop->Exit_early()) return RAISE(FALSE, "loop exits early");
 #endif
   BB_NODE *header = loop->Header();

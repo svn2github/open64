@@ -2023,7 +2023,8 @@ public:
                               BOOL     lookup_only = FALSE);
 
   // Generate a temporary register independently of any worklist.
-  CODEREP	 *New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable);
+  CODEREP	 *New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable, 
+				CODEREP *rhs);
 
   // used by EOCC, SR, LFTR
   void		  Check_lftr_non_candidate(STMTREP *stmt, CODEREP *cr, OPCODE opc);

@@ -2127,6 +2127,63 @@ emit_builtin_compare_and_swap (gs_t exp, INT32 k)
   return wn;
 } /* emit_builtin_compare_and_swap */
 
+/* OSP
+ * emit_builtin_sync_fetch_op
+ *   for FETCH_AND_OP (ADD, SUB, AND, OR, XOR, NAND)
+ *   for OP_AND_FETCH (ADD, SUB, AND, OR, XOR, NAND)
+ * It's necessary for GNU 4.2 FE
+ */
+static WN *
+emit_builtin_sync_fetch_op (INTRINSIC iopc, gs_t exp, INT32 k)
+{
+  WN        *wn;
+  WN        *arg_wn;
+  WN        *ikids [2];
+  TYPE_ID    obj_mtype;
+  TY_IDX     arg_ty_idx;
+  TYPE_ID    arg_mtype;
+  gs_t       list = gs_tree_operand (exp, 1);
+  OPCODE     opc;
+
+  obj_mtype  = TY_mtype (TY_pointed (Get_TY(gs_tree_type(gs_tree_value(list)))));
+  arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
+  arg_mtype  = TY_mtype (arg_ty_idx);
+  arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
+  arg_wn     = WN_CreateParm (arg_mtype, arg_wn, arg_ty_idx, WN_PARM_BY_VALUE);
+  ikids [0]  = arg_wn;
+  list       = gs_tree_chain (list);
+  arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
+  arg_mtype  = TY_mtype (arg_ty_idx);
+  arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
+  arg_wn     = WN_CreateParm (arg_mtype, arg_wn, arg_ty_idx, WN_PARM_BY_VALUE);
+  ikids [1]  = arg_wn;
+  list       = gs_tree_chain (list);
+
+  Is_True( (obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8), 
+           ("Unsupported object type in emit_builtin_sync_fetch_op") );
+
+  emit_barrier (TRUE, list, k);
+  
+  opc = OPCODE_make_op(OPR_INTRINSIC_CALL, obj_mtype, MTYPE_V);
+  wn = WN_Create_Intrinsic (opc, iopc, 2, ikids);
+  WGEN_Stmt_Append (wn, Get_Srcpos());
+
+  ST       *preg_st = MTYPE_To_PREG(obj_mtype);
+  TY_IDX    preg_ty_idx = Be_Type_Tbl(obj_mtype);
+  PREG_NUM  preg = Create_Preg (obj_mtype, NULL);
+
+  wn = WN_Ldid (obj_mtype, -1, Return_Val_Preg, preg_ty_idx);
+  wn = WN_Stid (obj_mtype, preg, preg_st, preg_ty_idx, wn),
+  WGEN_Stmt_Append (wn, Get_Srcpos());
+
+  emit_barrier (FALSE, list, k);
+
+  wn = WN_Ldid (obj_mtype, preg, preg_st, preg_ty_idx);
+
+  return wn;
+} /* emit_builtin_sync_fetch_op */
+
 static void
 emit_builtin_synchronize (gs_t exp, INT32 k)
 {
@@ -2908,6 +2965,8 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PSUBD:
     case GSBI_IX86_BUILTIN_PSUBQ:
     case GSBI_IX86_BUILTIN_SUBPD:
+    case GSBI_IX86_BUILTIN_PSUBW128:
+    case GSBI_IX86_BUILTIN_PSUBD128:
       wn = WN_Sub (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
@@ -2957,6 +3016,12 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PADDSW:
       *iopc = INTRN_PADDSW;
       break;
+    case GSBI_IX86_BUILTIN_PADDD128:
+      *iopc = INTRN_PADDD128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDW128:
+      *iopc = INTRN_PADDW128;
+      break;
     case GSBI_IX86_BUILTIN_PSUBSB:
       *iopc = INTRN_PSUBSB;
       break;
@@ -2970,21 +3035,25 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_PADDUSW;
       break;
     case GSBI_IX86_BUILTIN_PSUBUSB:
+    case GSBI_IX86_BUILTIN_PSUBUSB128:  
       *iopc = INTRN_PSUBUSB;
       break;
     case GSBI_IX86_BUILTIN_PSUBUSW:
+    case GSBI_IX86_BUILTIN_PSUBUSW128:
       *iopc = INTRN_PSUBUSW;
       break;
     case GSBI_IX86_BUILTIN_PMULLW:
       *iopc = INTRN_PMULLW;
       break;
     case GSBI_IX86_BUILTIN_PMULHW:
+    case GSBI_IX86_BUILTIN_PMULHW128:
       *iopc = INTRN_PMULHW;
       break;
     case GSBI_IX86_BUILTIN_PCMPEQB:
       *iopc = INTRN_PCMPEQB;
       break;
     case GSBI_IX86_BUILTIN_PCMPEQW:
+    case GSBI_IX86_BUILTIN_PCMPEQW128:
       *iopc = INTRN_PCMPEQW;
       break;
     case GSBI_IX86_BUILTIN_PCMPEQD:
@@ -3009,6 +3078,7 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_PUNPCKHDQ;
       break;
     case GSBI_IX86_BUILTIN_PUNPCKLBW:
+    case GSBI_IX86_BUILTIN_PUNPCKLBW128:
       *iopc = INTRN_PUNPCKLBW;
       break;
     case GSBI_IX86_BUILTIN_PUNPCKLWD:
@@ -3021,9 +3091,11 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_PACKSSWB;
       break;
     case GSBI_IX86_BUILTIN_PACKSSDW:
+    case GSBI_IX86_BUILTIN_PACKSSDW128:
       *iopc = INTRN_PACKSSDW;
       break;
     case GSBI_IX86_BUILTIN_PACKUSWB:
+    case GSBI_IX86_BUILTIN_PACKUSWB128:
       *iopc = INTRN_PACKUSWB;
       break;
     case GSBI_IX86_BUILTIN_PMULHUW:
@@ -3121,6 +3193,9 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
 #endif
     case GSBI_IX86_BUILTIN_PMOVMSKB:
       *iopc = INTRN_PMOVMSKB;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVMSKB128:
+      *iopc = INTRN_PMOVMSKB128;
       break;
     case GSBI_IX86_BUILTIN_ADDPS:
       *iopc = INTRN_ADDPS;
@@ -3479,6 +3554,9 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_PMADDWD:
+      *iopc = INTRN_PMADDWD;
+      break;
+    case GSBI_IX86_BUILTIN_PMADDWD128:
       *iopc = INTRN_PMADDWD;
       break;
     case GSBI_IX86_BUILTIN_PSLLW:
@@ -5520,6 +5598,24 @@ WGEN_Expand_Expr (gs_t exp,
        // by kg++fe to access through the fake arg0, in order to avoid
        // (indirect_ref (nop (var_decl))) which is generated by g++.
       {
+        // OSP
+        gs_t init_expr_opnd0 = gs_tree_operand(exp, 0);
+        if ( gs_tree_code(init_expr_opnd0) == GS_INDIRECT_REF ) {
+          gs_t init_expr_opnd1 = gs_tree_operand(exp, 1);
+          gs_t var_decl = gs_tree_operand(init_expr_opnd0, 0);
+          if ( gs_tree_code(var_decl) == GS_NON_LVALUE_EXPR )
+            var_decl = gs_tree_operand(var_decl, 0);
+          if ( ( gs_tree_code(init_expr_opnd1) == GS_TARGET_EXPR ||
+                 ( gs_tree_code(init_expr_opnd1) == GS_NOP_EXPR &&
+                   gs_tree_code(gs_tree_operand(init_expr_opnd1, 0)) == GS_TARGET_EXPR ) ) &&
+               gs_tree_code(var_decl) == GS_VAR_DECL ) {
+            ST *st = Get_ST(var_decl);
+            WN *target_wn = WN_Ldid(Pointer_Mtype, 0, st, ST_type(st));
+            wn = WGEN_Expand_Expr(init_expr_opnd1, TRUE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
+            break;
+          }
+        }
+#if 0
 	gs_t init_expr_opnd0 = gs_tree_operand(exp, 0);
 	if (gs_tree_code(gs_tree_operand(exp, 1)) == GS_NOP_EXPR &&
 	    gs_tree_code(gs_tree_operand(gs_tree_operand(exp, 1), 0)) == GS_TARGET_EXPR &&
@@ -5531,6 +5627,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  wn = WGEN_Expand_Expr(t, TRUE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
 	  break;
 	}
+#endif
       }
 #endif
       if (lang_cplus)
@@ -5593,8 +5690,8 @@ WGEN_Expand_Expr (gs_t exp,
 	  // replacing opnd0 of the target_expr with opnd0 of this
 	  // INIT_EXPR/MODIFY_EXPR.
 	  else if (gs_tree_code(initializer = gs_tree_operand(t,1)) ==
-	              GS_AGGR_INIT_EXPR /*&&
-	           gs_aggr_init_via_ctor_p(initializer)*/) {
+	              GS_AGGR_INIT_EXPR &&
+	           gs_aggr_init_via_ctor_p(initializer)) {
 
 	    gs_set_tree_operand(t, 0, gs_tree_operand(exp,0));
 	    wn = WGEN_Expand_Expr(t);
@@ -6453,6 +6550,27 @@ WGEN_Expand_Expr (gs_t exp,
 
               case BUILT_IN_COMPARE_AND_SWAP:
                 wn = emit_builtin_compare_and_swap (exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+#endif
+
+#ifdef FE_GNU_4_2_0
+	      // OSP
+              case GSBI_BUILT_IN_FETCH_AND_ADD_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_ADD_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_ADD_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_ADD_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I8, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
 #endif

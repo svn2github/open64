@@ -114,6 +114,17 @@ BOOL Trace_Exp2 = FALSE;      /* extra cgexp trace*/
  * but for now we can use other routine that create a real dup tn. */
 #define DUP_TN(tn)	Dup_TN_Even_If_Dedicated(tn)
 
+static BOOL Target_Support_Cmov()
+{
+  if (Is_Target_32bit() &&
+      (Target == TARGET_anyx86 ||
+       Target == TARGET_pentium4 ||
+       Target == TARGET_xeon ||
+       Target == TARGET_athlon) )
+    return FALSE;
+  else
+    return TRUE;
+}
 
 static TN_MAP _TN_Pair_table = NULL;
 
@@ -121,11 +132,7 @@ void
 Expand_Cmov (TOP top, TN *result, TN *src, TN *rflags, OPS *ops, TN *result2,
 	     TN *src2)
 {
-  if (Is_Target_32bit() &&
-      (Target == TARGET_anyx86 ||
-       Target == TARGET_pentium4 ||
-       Target == TARGET_xeon ||
-       Target == TARGET_athlon)) {
+  if ( ! Target_Support_Cmov() ) {
     // Processor doesn't support cmov.  Emit conditional branch followed by
     // mov.
 
@@ -1844,9 +1851,11 @@ Expand_Rrotate (TN *result, TN *src1, TN *src2, TYPE_ID rtype, TYPE_ID desc, OPS
     }
   }
 
-  if( OP_NEED_PAIR( rtype ) )
-    FmtAssert(FALSE,("RROTATE of simulated 64-bit integer NYI"));
-  else
+  if( OP_NEED_PAIR( rtype ) ) {
+    // FmtAssert(FALSE,("RROTATE of simulated 64-bit integer NYI"));
+    // using lshr to simulate the rroate for 64-bit integer.
+    Expand_Shift (result, src1, src2, rtype, shift_lright, ops);
+  } else
     Build_OP(top, result, src1, src2, ops);
 }
 
@@ -4112,11 +4121,29 @@ Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       src2 = tmp;
     }
 
+    // If is return reg and target does not support cmov,
+    // The MIN will be expand to multiple BBs
+    // Store the return of MIN(which is also the return of the func)
+    //      to a temp reg, then copy the temp reg to return reg
+    TN* orig_dest = NULL;
+    if ( ! Target_Support_Cmov() &&
+         TN_is_dedicated(dest) &&
+         REGISTER_SET_MemberP(
+            REGISTER_CLASS_function_value(TN_register_class(dest)),
+            TN_register(dest) ) ) {
+       orig_dest = dest;
+       dest = Dup_TN_Even_If_Dedicated(orig_dest);
+    }
+
     if( dest != src2 )
       Build_OP( mov_opcode, dest, src2, ops );
 
     Build_OP( cmp_opcode, rflags, src1, src2, ops );
     Expand_Cmov( cmov_opcode, dest, src1, rflags, ops );
+
+    if (orig_dest != NULL) {
+      Expand_Copy( orig_dest, dest, mtype, ops );
+    }
   }
 }
 
@@ -4207,12 +4234,30 @@ Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       src2 = tmp;
     }
 
+    // If is return reg and target does not support cmov,
+    // The max will be expand to multiple BBs
+    // Store the return of MAX(which is also the return of the func)
+    //   to a temp reg, then copy the temp reg to return reg
+    TN* orig_dest = NULL;
+    if ( ! Target_Support_Cmov() &&
+         TN_is_dedicated(dest) &&
+         REGISTER_SET_MemberP( 
+	    REGISTER_CLASS_function_value(TN_register_class(dest)),
+	    TN_register(dest) ) ) {
+       orig_dest = dest;
+       dest = Dup_TN_Even_If_Dedicated(orig_dest);
+    }
+
     if( dest != src2 ){
       Expand_Copy( dest, src2, mtype, ops );
     }
 
     Build_OP( cmp_opcode, rflags, src1, src2, ops );
     Expand_Cmov( cmov_opcode, dest, src1, rflags, ops );
+    
+    if (orig_dest != NULL) {
+      Expand_Copy( orig_dest, dest, mtype, ops );
+    }
   }
 }
 
@@ -6470,6 +6515,12 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID m
   case INTRN_PADDUSB:
     Build_OP( TOP_paddusb, result, op0, op1, ops );
     break;
+  case INTRN_PADDD128:
+    Build_OP( TOP_add128v32, result, op0, op1, ops );
+    break;
+  case INTRN_PADDW128:
+    Build_OP( TOP_add128v16, result, op0, op1, ops );
+    break;
   case INTRN_PADDUSW:
     Build_OP( TOP_paddusw, result, op0, op1, ops );
     break;
@@ -6596,6 +6647,9 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID m
     break;
   case INTRN_PMOVMSKB:
     Build_OP( TOP_pmovmskb, result, op0, ops );
+    break;
+  case INTRN_PMOVMSKB128:
+    Build_OP( TOP_pmovmskb128, result, op0, ops );
     break;
   case INTRN_COMIEQSS:
     Build_OP( TOP_comiss, rflags, op0, op1, ops );
@@ -7591,37 +7645,53 @@ TN* Gen_Second_Immd_Op( TN *src2, OPS* ops )
 /* Expand FETCH_AND_ADD intrinsic into the following format
       lock (addr) = (addr) + opnd1
  */
-void Exp_Fetch_and_Add( TN* addr, TN* opnd1, TYPE_ID mtype, OPS* ops )
+TN* Exp_Fetch_and_Add( TN* addr, TN* opnd1, TYPE_ID mtype, OPS* ops )
 {
   TOP top = TOP_UNDEFINED;
 
   switch( mtype ){
   case MTYPE_I4:
   case MTYPE_U4:
-    top = TOP_lock_add32;
+    // OSP
+    // top = TOP_lock_add32;
+    top = TOP_lock_xadd32;
     break;
 
   case MTYPE_I8:
   case MTYPE_U8:
-    top = TOP_lock_add64;
+    // OSP
+    // top = TOP_lock_add64;
+    top = TOP_lock_xadd64;
     break;
 
   default:
     FmtAssert( FALSE,
 	       ("Exp_Fetch_and_Add: support me now") );
   }
-  if (Is_Target_32bit() && top == TOP_lock_add64){
+
+  TN * result = Build_TN_Of_Mtype(mtype);
+
+  if (Is_Target_32bit() && top == TOP_lock_add64) {
+    FmtAssert( FALSE,
+               ("Exp_Fetch_and_Add: unsupported Fetch_and_Add_I8 with -m32") );
+    Expand_Load( OPCODE_make_op (OPR_LDID, mtype, mtype),
+                 result, addr, Gen_Literal_TN(0,4), ops );
+
     TN *result_h = Gen_Second_Immd_Op( opnd1, ops );
     Build_OP( TOP_lock_add32, opnd1, addr, Gen_Literal_TN(0,4), ops );
     Build_OP( TOP_lock_adc32, result_h, addr, Gen_Literal_TN(4,4), ops );
   }
-  else
-    Build_OP( top, opnd1, addr, Gen_Literal_TN(0,4), ops );
+  else {
+    Exp_COPY( result, opnd1, ops);
+    Build_OP( top, result, addr, Gen_Literal_TN(0,4), ops );
+  }
 
   Set_OP_prefix_lock( OPS_last(ops) );
 
   if (Is_Target_32bit() && top == TOP_lock_add64)
     Set_OP_prefix_lock( OP_prev(OPS_last(ops)) );
+
+  return result;
 }
 
 TN* Exp_Compare_and_Swap( TN* addr, TN* opnd1, TN* opnd2, TYPE_ID mtype, OPS* ops )

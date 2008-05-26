@@ -195,6 +195,18 @@ Process_IPA_Options ( INT argc, char **argv )
 	    IPA_Max_Output_File_Size / 100 * IPA_Output_File_Size;
     }
 
+#if defined(TARG_SL)
+    if (ld_ipa_opt[LD_IPA_IPISR].flag) {
+        if (IPA_Enable_PU_Reorder != REORDER_DISABLE) 
+            DevWarn("IPA_Enable_PU_Reorder is overrided by -ipisr option!"); 
+        IPA_Enable_PU_Reorder = REORDER_BY_BFS; 
+
+        if (IPA_Enable_Source_PU_Order) 
+            DevWarn("IPA_Enable_Source_PU_Order is overrided by -ipisr option!"); 
+        IPA_Enable_Source_PU_Order = FALSE;
+    }
+#endif
+
     if ( Get_Trace ( TKIND_ALLOC, TP_IPA ) ) {
 	IPA_Enable_Memtrace = TRUE;
 	MEM_Tracing_Enable ();

@@ -43,7 +43,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h> 
 
 #ifdef KEY
@@ -71,6 +75,12 @@
 #include "ipc_dst_utils.h"		// for DST_create
 #include "ipo_alias_class.h"
 #include "ipo_defs.h"			// IPA_NODE_CONTEXT
+
+#include "ipo_main.h"           // for ipisr_cg
+
+#include <cmplrs/host.h>        // for typedef string
+#include "ld_ipa_option.h"      // For ld_ipa_opt 
+#include "ipc_weak.h"           
 
 #ifdef KEY
 #include "ipa_builtins.h"
@@ -331,6 +341,8 @@ Write_Dummy_PUs (Output_File* output_file)
 }
 
 
+extern void WN_free_input (void *handle, off_t mapped_size);
+
 // Free the resources associated with a pu tree.  There are two kinds
 // of resources: ones associated with cg nodes, and ones associated with
 // file headers.  The former is trivial: just get the call graph node and
@@ -379,6 +391,9 @@ void free_pu_cg_resources(PU_Info* pu, Vector& file_hdr_list)
     if (node->Mod_Ref_Info ())
 	node->Mod_Ref_Info ()->Free_Ref_Sets ();
     MEM_POOL_Delete(node->Mem_Pool());
+    node->File_Header().num_written++;
+    if (node->File_Header().num_written == IP_FILE_HDR_num_procs(node->File_Header()))
+      WN_free_input(IP_FILE_HDR_input_map_addr(node->File_Header()), node->File_Header().mapped_size);
     node->Clear_Mempool_Initialized();
     node->Set_Processed();
   }
@@ -688,6 +703,13 @@ void output_queue::flush() {
     DST_TYPE merged_dst = IPC_merge_DSTs(head, &pool);
     WN_write_PU_Infos(head, out_file);
     WN_write_dst(merged_dst, out_file);
+
+#if defined(TARG_SL)
+    // The ipisr cg section may be rewritten in Perform_Alias_Class_Annotation
+    if (ld_ipa_opt[LD_IPA_IPISR].flag)
+        WN_write_isr_cg(ipisr_cg, out_file);
+#endif // TARG_SL
+
     WN_write_revision(out_file);
 
     close_output_file();

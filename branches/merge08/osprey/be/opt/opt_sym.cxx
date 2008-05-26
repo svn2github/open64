@@ -706,6 +706,7 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
 #ifdef KEY
   BOOL is_bit_field = FALSE;
 #endif
+  TY_IDX hl_ty = (TY_IDX)0;
 
   switch (opr) {
   case OPR_LDA:
@@ -756,6 +757,10 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
     if (opr == OPR_LDID)
       field_id = WN_field_id(wn);
 #endif
+    if (WN_field_id(wn) != (TY_IDX)0) {
+      UINT32 dummy;
+      WN_hl_object_ty(wn, hl_ty, dummy);
+    }
     break;
   case OPR_STBITS:
     bit_size = WN_bit_size(wn);
@@ -798,6 +803,10 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
     if (opr == OPR_STID)
       field_id = WN_field_id(wn);
 #endif
+    if (WN_field_id(wn) != (TY_IDX)0) {
+      UINT32 dummy;
+      WN_hl_object_ty(wn, hl_ty, dummy);
+    }
     break;
   default:
     stype = VT_OTHER;
@@ -965,6 +974,7 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   sym->Set_byte_size(byte_size);
   sym->Set_bit_ofst_size(bit_ofst, bit_size);
   sym->Set_ty(wn_object_ty);
+  sym->Points_to()->Set_hl_ty(hl_ty);
 
   INT64 tmpofst;
   ST    *tmpbase;
@@ -1201,7 +1211,17 @@ AUX_STAB_ENTRY::Change_to_new_preg(OPT_STAB *opt_stab, CODEMAP *htable)
   char * name = St_name();
   Set_st(MTYPE_To_PREG(preg_ty));
   Set_stype(VT_NO_LDA_SCALAR);
+#ifdef TARG_NVISA
+  // want to find def for filling in home_wn of preg,
+  // which is needed for correct memory state info in Find_Lda.
+  WN *home_wn = NULL;
+  if (cr->Defstmt() && cr->Defstmt()->Rhs()) {
+    home_wn = cr->Defstmt()->Rhs()->Rvi_home_wn(opt_stab);
+  }
+  mINT64 offset = opt_stab->Alloc_preg(preg_ty, name, home_wn);
+#else
   mINT64 offset = opt_stab->Alloc_preg(preg_ty,name);
+#endif
   Set_st_ofst(offset);
   Set_st_group(0);	// clears "overlap" union
   Set_synonym((AUX_ID) 0);
@@ -2102,7 +2122,7 @@ OPT_STAB::Make_st_group(void)
 	  sorted[i]->Byte_size() * 8 : sorted[i]->Bit_size();
         if (ofst < hi) {
            // Merge
-#ifdef linux
+#if defined(linux) || defined(BUILD_OS_DARWIN)
 //         hi = (( hi > ofst + size ) ?  hi : ofst + size ) ;
            if (hi < ofst + size)
              hi = ofst + size;
@@ -2501,6 +2521,13 @@ OPT_STAB::Collect_ST_attr(void)
       TY_IDX ty = (psym->Field_id() != 0 && psym->Ty() != 0) ? psym->Ty() :
                    (ST_class(st) == CLASS_VAR ? ST_type(st) : (TY_IDX)0);
 #endif 
+      // Do not discard the high-level type which may be different from
+      // object-type. This is an example: "LDID agg.field". The agg.field
+      // is treated as a separate symbol (i.e. it has unique aux_id) by 
+      // Enter_symbol(). The pt->Ty() record the type-of(agg.field), and
+      // pt->Highlevel_ty() records type-of(agg).
+      //
+      TY_IDX hl_ty = pt->Highlevel_Ty();
       pt->Analyze_ST(st, psym->St_ofst(), psym->Byte_size(),
 		     psym->Bit_ofst(), psym->Bit_size(),
 #ifdef KEY
@@ -2513,6 +2540,10 @@ OPT_STAB::Collect_ST_attr(void)
       //  if a symbol has size 0, its offset is considered unknown.
       if (pt->Byte_Size() == 0)
 	pt->Set_ofst_kind(OFST_IS_UNKNOWN);
+
+      if (hl_ty != (TY_IDX)0 && pt->Highlevel_Ty() == (TY_IDX)0) {
+	pt->Set_hl_ty(hl_ty);
+      }
     }
 
     // Precompute the alias attributes and put them in bitsets.
@@ -2677,8 +2708,21 @@ OPT_STAB::Create(COMP_UNIT *cu, REGION_LEVEL rgn_level)
 
   // Fix 648051: move loop normalization after BE address flag is valid
   if (WOPT_Enable_IVR) {
+
     SET_OPT_PHASE("Loop normalization");
+    BOOL trace_loop = Get_Trace (TP_WOPT2, LOOP_NORM_FLAG);
+    if (trace_loop) {
+      fprintf (TFile, "%sDump before Loop Normalization \n%s", DBar, DBar);
+      fdump_tree (TFile, cu->Input_tree ());
+    }
+
     cu->Normalize_loop(cu->Input_tree());
+    
+    if (trace_loop) {
+      fprintf (TFile, "%sDump after Loop Normalization \n%s", DBar, DBar);
+      fdump_tree (TFile, cu->Input_tree ());
+    }
+
     SET_OPT_PHASE("Create AUX Symbol table");
   } 
 

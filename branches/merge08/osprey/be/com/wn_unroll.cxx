@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -34,6 +30,8 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "defs.h"
 #include "config.h"
 #include "opt_config.h"
@@ -45,6 +43,8 @@
 #include "wn.h"
 #include "wn_util.h"
 #include "wn_lower.h"
+
+static INT loop_count = 0;
 
 class WN_UNROLL { // for implementing the actual unrolling mechanism
 private:
@@ -208,7 +208,7 @@ WN_UNROLL::Analyze_body_expr(WN *tree)
 
   // binary
   case OPR_MLOAD:
-  case OPR_MPY:
+  case OPR_MPY: case OPR_HIGHMPY:
   case OPR_DIV: 
   case OPR_MOD: case OPR_REM:
   case OPR_DIVREM:
@@ -372,7 +372,7 @@ WN_UNROLL::Replicate_expr(WN *expr, INT rep_cnt)
 
   // binary
   case OPR_MLOAD:
-  case OPR_MPY:
+  case OPR_MPY: case OPR_HIGHMPY:
   case OPR_DIV: 
   case OPR_MOD: case OPR_REM:
   case OPR_DIVREM:
@@ -587,17 +587,91 @@ WN_UNROLL::Unroll(INT unroll_times)
 static void
 WN_UNROLL_loop(WN *doloop)
 {
+  // look for pragma unroll in previous stmt;
+  // look past intermediate stores or other pragmas 
+  // that may get inserted between pragma and loop
+  UINT pragma_unroll_times = 0;
+  WN *stmt = WN_prev(doloop);
+  while (stmt) {
+    if (WN_operator(stmt) == OPR_PRAGMA) {
+      if (WN_pragma(stmt) == WN_PRAGMA_UNROLL) {
+        pragma_unroll_times = WN_pragma_arg1(stmt);
+        break;
+      }
+    }
+    else if ( ! OPERATOR_is_store(WN_operator(stmt)))
+      break;
+    stmt = WN_prev(stmt);
+  }
+
   WN_UNROLL wn_unroll(doloop);
   if (wn_unroll.Step_amt() == 0) 
     return; // variable step amount
+  if (wn_unroll.End() == NULL)
+    return; // non-well-formed loop
   if (wn_unroll.Loop_info()) {
     if (WN_Loop_Unimportant_Misc(wn_unroll.Loop_info()))
       return;
+  }
+
+#ifdef TARG_NVISA
+  ++loop_count;
+  if ( Query_Skiplist ( WOPT_Unroll_Skip_List, loop_count ) )
+    return;
+
+  // We only want to unroll small loops with known trip count,
+  // or loops that user specifies with pragma unroll.
+  // We unroll here cause no lno or cg unroller and we want 
+  // to create constant array indexes that can be optimized.
+  if (wn_unroll.Loop_info()) {
+    if (WN_loop_trip_est(wn_unroll.Loop_info())
+      && WN_operator(wn_unroll.Trips()) == OPR_INTCONST) 
+    {
+      unroll_times = WN_const_val(wn_unroll.Trips());
+    }
+    // if no known trip count, try to use pragma info
+    if (unroll_times == 0) {
+      if (pragma_unroll_times == UINT32_MAX) {
+        DevWarn("pragma unroll but no trip count, so ignore");
+        return;
+      }
+      unroll_times = pragma_unroll_times;
+    }
+    if (unroll_times == 0)
+      return;	// unknown trip count
+    if (pragma_unroll_times && unroll_times > pragma_unroll_times) {
+      DevWarn("pragma says to unroll less than full unrolling");
+      unroll_times = pragma_unroll_times;
+    }
+    wn_unroll.Analyze_body_stmt(WN_kid(doloop, 4));
+    if (wn_unroll.Node_count() == 0)
+      return; // empty loop (seems silly, but can happen)
+
+    // Can either check that times and size are each less than max,
+    // or that times*size is small enough.
+    // Do latter since result size is what really matters.
+DevWarn("unrolled size would be %d * %d", wn_unroll.Node_count(), unroll_times);
+    // if pragma unroll with no arg, then want to unroll no matter what size
+    max_unroll_size = OPT_unroll_times * OPT_unroll_size;
+    max_unroll_size = MAX(pragma_unroll_times, max_unroll_size);
+
+    // use the size limit if there was no pragma specified unroll amount
+    if (pragma_unroll_times == 0 && (unroll_times * wn_unroll.Node_count()) > max_unroll_size)
+      return;	// too big
+#if 0
+    if (unroll_times > OPT_unroll_times)
+      return;	// too big
+    if (wn_unroll.Node_count() > OPT_unroll_size)
+      return;	// too big
+#endif
+  }
+  else
+    return;	// no loop info
+#else // TARG_NVISA
+  if (wn_unroll.Loop_info()) {
     if (WN_loop_trip_est(wn_unroll.Loop_info()) <= 16)
       return;
   }
-  if (wn_unroll.End() == NULL)
-    return; // non-well-formed loop
   if (WN_operator(wn_unroll.Trips()) == OPR_INTCONST)
     if (WN_const_val(wn_unroll.Trips()) <= 16)
       return; // constant trip count too low
@@ -606,7 +680,7 @@ WN_UNROLL_loop(WN *doloop)
     return; // CG will unroll it
   USRCPOS srcpos;
   USRCPOS_srcpos(srcpos)  = WN_Get_Linenum(doloop);
-  INT unroll_times;
+  INT unroll_times = 0;
   if (wn_unroll.Istore_count() == 0) {
     if (wn_unroll.Node_count() < 40)
       unroll_times = 8;
@@ -631,6 +705,7 @@ WN_UNROLL_loop(WN *doloop)
       return;
     }
   }
+#endif // TARG_NVISA
   wn_unroll.Unroll(unroll_times);
   if (WOPT_Enable_Verbose)
     fprintf(stderr, "WN_UNROLL has unrolled loop at %s:%d %d times\n",

@@ -42,10 +42,10 @@
 // ====================================================================
 //
 // Module: fb_freq.h
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/fb_freq.h,v $
+// $Revision: 1.8 $
+// $Date: 05/12/05 08:59:36-08:00 $
+// $Author: bos@eng-24.pathscale.com $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/common/com/SCCS/s.fb_freq.h $
 //
 // Description:
 //
@@ -139,11 +139,22 @@ enum FB_FREQ_TYPE {
 
 const float FB_FREQ_EPSILON = 0.0001;
 
+#if defined(TARG_SL) && defined(__SL__) 
+#define  FREQ_OFFSET 3
+#define  FREQ_SET_OFFSET(value)    (value + FREQ_OFFSET)
+#define  FREQ_RESET_OFFSET(value)  (value - FREQ_OFFSET)
+#endif
+
 class FB_FREQ {
 public:
 
   FB_FREQ_TYPE  _type;
+  
+#if defined(TARG_SL) && defined(__SL__) 
+  UINT32    _value;
+#else
   float         _value;
+#endif
 
   // In order to simplify FB_FREQ operations, two internal restrictions
   // are imposed:
@@ -151,12 +162,44 @@ public:
   // (2) If _type <  0, then _value == (float) _type.
 
   // Private constructor, for binary operations
+  
+#if defined(TARG_SL) && defined(__SL__) 
+  FB_FREQ( FB_FREQ_TYPE type, UINT32 value )
+    : _type( type ), _value( FREQ_SET_OFFSET(value) ) { }
+#else
   FB_FREQ( FB_FREQ_TYPE type, float value )
     : _type( type ), _value( value ) { }
+#endif  
+
 
 public:
 
   // Constructor methods
+#if defined(TARG_SL) && defined(__SL__) 
+  FB_FREQ()
+    : _type( FB_FREQ_TYPE_UNINIT ),
+      _value( FREQ_SET_OFFSET((UINT32) FB_FREQ_TYPE_UNINIT) ) {}
+
+  FB_FREQ( UINT32 value, bool exact )
+    : _type( exact ? FB_FREQ_TYPE_EXACT : FB_FREQ_TYPE_GUESS ),
+      _value( FREQ_SET_OFFSET(value))
+    { Is_True( value >= 0, ( "FB_FREQ: negative value %ld", value ) ); }
+  FB_FREQ( INT32 value )
+    : _type( FB_FREQ_TYPE_EXACT ),
+      _value( FREQ_SET_OFFSET((UINT32) value))
+    { Is_True( value >= 0, ( "FB_FREQ: negative value %ld", value ) ); }
+  FB_FREQ( UINT32 value )
+    : _type( FB_FREQ_TYPE_EXACT ),
+      _value(FREQ_SET_OFFSET(value))
+    { Is_True( value >= 0, ( "FB_FREQ: negative value %ld", value ) ); }
+
+  FB_FREQ( FB_FREQ_TYPE type )
+    : _type( type ),
+      _value( type >= 0 ? FREQ_SET_OFFSET(0) : FREQ_SET_OFFSET((UINT32) type) ) {
+    Is_True( FB_FREQ_TYPE_IS_VALID( type ),
+	     ( "FB_FREQ: invalid type %d", type ) );
+  }
+#else
 
   FB_FREQ()
     : _type( FB_FREQ_TYPE_UNINIT ),
@@ -166,6 +209,18 @@ public:
     : _type( exact ? FB_FREQ_TYPE_EXACT : FB_FREQ_TYPE_GUESS ),
       _value( value )
     { Is_True( value >= 0.0, ( "FB_FREQ: negative value %f", value ) ); }
+
+#if defined(TARG_SL) 
+  FB_FREQ( INT32 value )
+    : _type( FB_FREQ_TYPE_EXACT ),
+      _value( (UINT32) value )
+    { Is_True( value >= 0, ( "FB_FREQ: negative value %lld", value ) ); }
+
+
+   float& Access_Value() { return _value; }
+   void   Set_Value(float val) { _value=val; }
+
+#endif
 
 #ifdef KEY
   FB_FREQ( double value )
@@ -190,7 +245,57 @@ public:
     Is_True( FB_FREQ_TYPE_IS_VALID( type ),
 	     ( "FB_FREQ: invalid type %d", type ) );
   }
+#endif
 
+#if defined(TARG_SL) && defined(__SL__) 
+
+  UINT32 Value() const { return _value; }
+
+  friend FB_FREQ operator+ ( const FB_FREQ freq1, const FB_FREQ freq2 ) {
+    FB_FREQ_TYPE type = FB_FREQ_TYPE_COMBINE( freq1._type, freq2._type );
+    if ( FB_FREQ_TYPE_NOT_KNOWN( type ) )
+      return FB_FREQ( type );
+    return FB_FREQ( type, FREQ_RESET_OFFSET(freq1._value) +FREQ_RESET_OFFSET( freq2._value));
+  }
+
+  FB_FREQ operator+= ( const FB_FREQ freq ) {
+    _type = FB_FREQ_TYPE_COMBINE( _type, freq._type );
+    if ( FB_FREQ_TYPE_NOT_KNOWN( _type ) )
+      _value = FREQ_SET_OFFSET((UINT32) _type);
+    else
+      _value += FREQ_RESET_OFFSET(freq._value) ;
+    return *this;
+  }
+
+  void Print( FILE *fp ) const {
+    switch ( _type ) {
+    case FB_FREQ_TYPE_EXACT:
+      fprintf( fp, "%d!", _value );
+      break;
+    case FB_FREQ_TYPE_GUESS:
+      fprintf( fp, "%d?", _value );
+      break;
+    case FB_FREQ_TYPE_UNKNOWN:
+      fprintf( fp, "unknown" );
+      break;
+    case FB_FREQ_TYPE_UNINIT:
+      fprintf( fp, "uninitialized" );
+      break;
+    case FB_FREQ_TYPE_ERROR:
+      fprintf( fp, "error" );
+      break;
+    default:
+      Is_True( FALSE, ("FB_FREQ: Unexpected type %d", _type ));
+      break;
+    }
+  }
+
+  void Print_simple (FILE * fp) const {
+    fprintf(fp, "_type = %d   |  _value = %f \n", _type, _value);
+  }
+
+
+#else
   // Member access methods
 
   float Value() const { return _value; }
@@ -444,13 +549,18 @@ public:
     }
     return length;
   }
+#endif  
 };
 
 
 // Some FB_FREQ constants.  For unknown and uninitialized frequencies,
 // use these instead of invoking an FB_FREQ constructor.
-
+#if defined(TARG_SL) && defined(__SL__) 
+const FB_FREQ FB_FREQ_ZERO(    0, true /*EXACT*/  );
+#else
 const FB_FREQ FB_FREQ_ZERO(    0.0, true /*EXACT*/  );
+#endif
+
 const FB_FREQ FB_FREQ_UNKNOWN( FB_FREQ_TYPE_UNKNOWN );
 const FB_FREQ FB_FREQ_UNINIT(  FB_FREQ_TYPE_UNINIT  );
 const FB_FREQ FB_FREQ_ERROR(   FB_FREQ_TYPE_ERROR   );

@@ -47,7 +47,11 @@
 #include "be_com_pch.h"
 #endif /* USE_PCH */
 #pragma hdrstop
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <isam.h>
 #include "defs.h"
 #include "strtab.h"
@@ -3179,11 +3183,13 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
 	      WN_CreateExp1 ( OPC_I4F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
+#if defined(TARG_IA64)
       else if (vtype == MTYPE_F10)
         wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
               WN_CreateExp1 ( OPC_I4F10CVT,
               WN_CreateLdid ( OPC_F10F10LDID, WN_offset(wn), WN_st(wn),
                               Be_Type_Tbl(MTYPE_F10) )));
+#endif
       else if (vtype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	      WN_CreateExp1 ( OPC_I4FQCVT,
@@ -3211,11 +3217,13 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
 	      WN_CreateExp1 ( OPC_I8F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
+#if defined(TARG_IA64)
       else if (vtype == MTYPE_F10)
         wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
               WN_CreateExp1 ( OPC_I8F10CVT,
               WN_CreateLdid ( OPC_F10F10LDID, WN_offset(wn), WN_st(wn),
                               Be_Type_Tbl(MTYPE_F10) )));
+#endif
       else if (vtype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	      WN_CreateExp1 ( OPC_I8FQCVT,

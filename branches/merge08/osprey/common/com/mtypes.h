@@ -125,8 +125,32 @@ static char *mtypes_rcs_id = "$Source: common/com/SCCS/s.mtypes.h $ $Revision: 1
 
 /* must define MTYPE_LAST as the index of the last one defined. */
 #define MTYPE_LAST	43	/* Must be defined */
-#else
+#elif !defined(TARG_SL)
 #define MTYPE_LAST	27	/* Must be defined */
+#else // TARG_SL
+  /* mtype list for sbuf type */
+  #define MTYPE_SB1     28
+  #define MTYPE_SB2     29
+  #define MTYPE_SB4     30
+  #define MTYPE_SB8     31
+  #define MTYPE_SBU1    32
+  #define MTYPE_SBU2    33
+  #define MTYPE_SBU4    34
+  #define MTYPE_SBU8    35
+ /* mtype list for sdram type */
+  #define MTYPE_SD1     36
+  #define MTYPE_SD2     37
+  #define MTYPE_SD4     38
+  #define MTYPE_SD8     39
+  #define MTYPE_SDU1    40
+  #define MTYPE_SDU2    41
+  #define MTYPE_SDU4    42
+  #define MTYPE_SDU8    43
+  /* mtype list for vbuf type */  
+  #define MTYPE_VBUF1   44
+  #define MTYPE_VBUF2   45
+  #define MTYPE_VBUF4   46
+  #define MTYPE_LAST    46
 #endif // TARG_X8664
 
 /* Define the type: */

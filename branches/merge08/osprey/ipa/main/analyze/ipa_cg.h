@@ -216,6 +216,9 @@ private:
   CALLEE_STATE      *_callee_state;	// callee state
 
   PU_SIZE            _pu_size;		// estimated size of this PU
+#if defined(TARG_SL)
+  mINT32             _emit_id;          // emit id of the PU in the *.I, start from 0
+#endif // TARG_SL
 
 #ifdef KEY
   struct pu_info    *_builtin_pu_info;
@@ -246,7 +249,6 @@ private:
   INLINED_BODY_LIST  _inlined_list;     // Hold pts to all inlined callees
                                         // for this node
 #endif // _LIGHTWEIGHT_INLINER
-
 public:
 
   // Constructor
@@ -683,6 +685,8 @@ public:
 
   void Write_PU ();
 
+  void Un_Read_PU ();
+
   void Set_Global_Tables(IPA_CALL_GRAPH*) 
   {
     DevWarn("Use IPA_NODE_CONTEXT instead of IPA_NODE::Set_Global_Tables");
@@ -771,6 +775,11 @@ public:
   void Free_inlined_list();
 
 #endif // _LIGHTWEIGHT_INLINER
+
+#if defined(TARG_SL)
+  void Set_Emit_Id(mINT32 i) { _emit_id = i; }
+  mINT32 Emit_Id() const     { return _emit_id; }
+#endif // TARG_SL
 
 }; // IPA_NODE
 

@@ -1,10 +1,4 @@
-/*
- *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
- */
 
-/*
- * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
 
 /*
 
@@ -62,7 +56,7 @@ enum _sec_kind {
   _SEC_TEXT,
   _SEC_DATA,
   _SEC_SDATA,
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_SL)
   _SEC_LDATA_MIPS_LOCAL,	// bug 12619
 #endif
   _SEC_LDATA,
@@ -81,6 +75,19 @@ enum _sec_kind {
   _SEC_DISTR_ARRAY,
 #ifdef TARG_X8664
   _SEC_DATA_REL_RO,
+#endif
+#ifdef TARG_SL
+  _SEC_SSDATA,
+/* currently assembler only support _SEC_VSDATA, after assembler support all 
+ * section for _SEC_VS[1,2,4]DATA, we need replace _SEC_VSDATA with following 
+ * individual section
+ */
+  _SEC_VSDATA,
+
+  _SEC_VS1DATA,
+  _SEC_VS2DATA,
+  _SEC_VS4DATA,
+
 #endif
   _SEC_THREAD_PRIVATE_FUNCS,
   _SEC_INDEX_MAX,

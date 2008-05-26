@@ -98,6 +98,10 @@ typedef enum INTRN_RETKIND {
 #define NOT_ACTUAL	FALSE
 #define CGINTRINSIC	TRUE
 #define NOT_CGINTRINSIC	FALSE
+#if defined(TARG_SL)
+#define NOT_SLAVE       CGINTRINSIC
+#define SLAVE           NOT_CGINTRINSIC
+#endif
 
 // the info we store for each intrinsic
 typedef struct intrn_info_t {
@@ -106,10 +110,10 @@ typedef struct intrn_info_t {
  mBOOL		has_no_side_effects;
  mBOOL		never_returns;
  mBOOL		is_actual;
- mBOOL		is_cg_intrinsic;
+  mBOOL		is_cg_intrinsic;
  INTRN_RETKIND	return_kind;
  char		*c_name;
- char		*specific_name;
+ char		*specific_name; // deprecated, but leave in struct for now
  char		*runtime_name;
 } intrn_info_t;
 
@@ -155,14 +159,148 @@ inline char * INTRN_c_name (const INTRINSIC i)
   return intrn_info[i].c_name;
 }
 
-inline char * INTRN_specific_name (const INTRINSIC i)
-{
-  return intrn_info[i].specific_name;
-}
-
 inline char * INTRN_rt_name (const INTRINSIC i)
 {
   return intrn_info[i].runtime_name;
 }
+inline char * INTRINSIC_name (const INTRINSIC i)
+{
+  if (INTRN_c_name(i))
+	return INTRN_c_name(i);
+  else if (INTRN_rt_name(i))
+	return INTRN_rt_name(i);
+  else
+  	return intrn_info[i].specific_name;
+}
+
+#if defined(TARG_SL)
+inline BOOL INTRN_is_slave (const INTRINSIC i)
+{
+  if (i == INTRN_C3_PTR)
+    return TRUE;
+  return FALSE;
+}
+
+inline BOOL INTRN_copy_addr(const INTRINSIC i)
+{
+  if(i==INTRN_C3_INIT_ADDR || i==INTRN_C3_SAVE_ADDR ||
+      i==INTRN_VBUF_OFFSET || i==INTRN_SBUF_OFFSET)
+    return TRUE;
+  return FALSE;
+}
+
+typedef struct {
+  INTRINSIC id;
+  INT32 addr_id;
+  INT32 sw_id;
+  INT32 macro_id;
+  INT32 size_id;
+  INT32 size_coeff;
+  INT32 size_stride;
+  BOOL maybe_strided;
+} C2_LS_ATTR; 
+
+#define C2_LS_LAST 14
+static C2_LS_ATTR c2_ls_attr_tab[C2_LS_LAST] = {
+  INTRN_C2_LD_V, 1,2,3,5,16,0,FALSE,
+  INTRN_C2_LD_G, 0,-1,-1,3,1,0,FALSE,
+  INTRN_C2_LD_V2G, 0,-1,-1,2,1,16,TRUE,
+  INTRN_C2_LD_V_IMM, 4,-1,1,3,16,0,FALSE,
+  INTRN_C2_LD_C_IMM, 1,-1,-1,-1,1,0,FALSE,
+  INTRN_C2_LD_G_IMM, 2,-1,-1,1,1,0,FALSE,
+  INTRN_C2_LD_V2G_IMM, 2,-1,-1,1,1,16,TRUE,
+  INTRN_C2_ST_V, 1,-1,2,3,16,0,FALSE,
+  INTRN_C2_ST_G, 1,-1,-1,3,1,0,FALSE,
+  INTRN_C2_ST_G2V, 1,-1,-1,2,1,16,TRUE,
+  INTRN_C2_ST_V_IMM, 3,-1,2,1,16,0,FALSE,
+  INTRN_C2_ST_C_IMM, 1,-1,-1,-1,1,0,FALSE,
+  INTRN_C2_ST_G_IMM, 2,-1,-1,1,1,0,FALSE,
+  INTRN_C2_ST_G2V_IMM, 2,-1,-1,1,1,16,TRUE,
+};
+
+inline BOOL INTRN_has_memop(INTRINSIC intrn)
+{
+  for(INT i=0;i<C2_LS_LAST;i++) {
+    if(c2_ls_attr_tab[i].id==intrn)
+      return TRUE;
+  }
+  return FALSE;
+}
+
+inline INT32 INTRN_get_addr_parm(INTRINSIC intrn, INT i)
+{
+  for(INT i=0;i<C2_LS_LAST;i++) {
+    if(c2_ls_attr_tab[i].id==intrn)
+      return c2_ls_attr_tab[i].addr_id;
+  }
+  return -1;
+}
+
+inline INT32 INTRN_get_size_parm(INTRINSIC intrn)
+{
+  for(INT i=0;i<C2_LS_LAST;i++) {
+    if(c2_ls_attr_tab[i].id==intrn)
+      return c2_ls_attr_tab[i].size_id;
+  }
+  return -1;
+}
+
+inline INT32 INTRN_get_size(INT i)
+{
+  switch(i){
+    case 0: return 2;
+    case 1: return 4;
+    case 2: return 1;
+    default: 
+      return -1;
+  }
+}
+
+inline INT32 INTRN_get_size_coeff(INTRINSIC intrn)
+{
+  for(INT i=0;i<C2_LS_LAST;i++) {
+    if(c2_ls_attr_tab[i].id==intrn)
+      return c2_ls_attr_tab[i].size_coeff;
+  }
+  return -1;
+}
+
+inline INT32 INTRN_get_size_stride(INTRINSIC intrn)
+{
+  for(INT i=0;i<C2_LS_LAST;i++) {
+    if(c2_ls_attr_tab[i].id==intrn)
+      return c2_ls_attr_tab[i].size_stride;
+  }
+  return -1;
+}
+
+inline INT32 INTRN_get_macro_parm(INTRINSIC intrn)
+{
+  for(INT i=0;i<C2_LS_LAST;i++) {
+    if(c2_ls_attr_tab[i].id==intrn)
+      return c2_ls_attr_tab[i].macro_id;
+  }
+  return -1;
+}
+
+inline INT32 INTRN_get_sw_parm(INTRINSIC intrn)
+{
+  for(INT i=0;i<C2_LS_LAST;i++) {
+    if(c2_ls_attr_tab[i].id==intrn)
+      return c2_ls_attr_tab[i].sw_id;
+  }
+  return -1;
+}
+
+inline BOOL INTRN_maybe_stride(INTRINSIC intrn)
+{
+  for(INT i=0;i<C2_LS_LAST;i++) {
+    if(c2_ls_attr_tab[i].id==intrn)
+      return c2_ls_attr_tab[i].maybe_strided;
+  }
+  return FALSE;
+}
+
+#endif // TARG_SL
 
 #endif

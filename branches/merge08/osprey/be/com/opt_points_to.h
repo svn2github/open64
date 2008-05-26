@@ -268,7 +268,7 @@ friend class POINTS_TO;
 				   // gives the bit ofst/size within the
 				   // container 
   mUINT32	_iofst_kind :2;    // one of OFST_KIND. the kind of "offset" from _ptr. 
-  // the selector of union <u>
+  // the selector of the following union <u>
   mUINT32       _ptr_is_pointer:1;
   mUINT32       _ptr_is_aux_id :1;
   mUINT32       _ptr_is_coderep_id:1;
@@ -302,12 +302,10 @@ typedef enum {
   AR_NOT_ALIAS,
   AR_POSSIBLE_ALIAS,
   AR_DEFINITE_ALIAS,
-
   // memops access same bytes, not necessarily same bits
+  // aliased and with identical bytes can be dce'd
   AR_IDENTICAL_BYTES, 
-  
-  // access exactly the same bits.
-  AR_IDENTICAL,
+  AR_IDENTICAL,    // access exactly the same bits.
 } ALIAS_KIND_CODE ;
 
 class ALIAS_KIND {

@@ -51,7 +51,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "stab.h"			// for ST*
 #include "wn.h"
@@ -499,7 +503,7 @@ public:
     /* operations */
 
     void Init () {
-	bzero (this, sizeof(CTRL_DEP));
+	BZERO (this, sizeof(CTRL_DEP));
 	_head_of_chain = FALSE;
     }
 

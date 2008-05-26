@@ -106,7 +106,6 @@ inline WN *Get_WN_From_Memory_OP( const OP *op )
 }
 
 extern OP_MAP OP_Asm_Map;
-extern OP_MAP OP_Ld_GOT_2_Sym_Map;
 
 /* Information about the predicate under which conditional memory OPs
  * are executed.  Note that this is not currently maintained to adjust
@@ -148,15 +147,9 @@ extern INT total_bb_insts;
 extern BB *Cur_BB;
 extern void Process_New_OPs(void);
 extern BB_MAP outer_label_map;
+#endif
+#ifdef TARG_X8664
 extern BOOL W2OPS_Pragma_Preamble_End_Seen (void);
 #endif
-
-/* For new call inserted during whirl to ops, 
- * we need to finish current BB and start new bb
- * The original ops will be append to original BB,
- * then it will be re-initialized to contain new OPs for new BB.
- * for example: __tls_get_addr 
- */
-void Expand_New_Call_To_OPs(WN*, OPERATOR, OPS*);
 
 #endif /* whirl2ops_INCLUDED */

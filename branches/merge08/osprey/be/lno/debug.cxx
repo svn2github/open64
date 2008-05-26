@@ -99,6 +99,7 @@
 #include "wb.h"
 #include "DaVinci.h"
 #include "wutil.h"
+#include "intrn_info.h"  // INTRINSIC_name
 
 #define 	BUFFER_MAX 		132 
 #define 	MAX_FORMULA_VARS 	100

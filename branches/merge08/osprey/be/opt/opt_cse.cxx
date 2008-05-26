@@ -926,10 +926,6 @@ CSE::Repair_injury_rec(CODEREP *iv_def, CODEREP *iv_use,
 	  (_worklist->Exp()->Opr() == OPR_ADD || 
 	   _worklist->Exp()->Opr() == OPR_SUB))
 	injury->Inc_str_red_num();
-#if 0
-      Is_True(injury->Str_red_num() <= WOPT_Enable_Autoaggstr_Reduction_Threshold,
-	      ("CSE::Repair_injury_rec: autoaggstr_limit exceeded"));
-#endif
     }
     else {
       // injury was fixed already, so find the temp that the repair

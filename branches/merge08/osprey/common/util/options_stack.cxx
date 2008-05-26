@@ -65,7 +65,10 @@
 #include "flags.h"		// Common_Option_Group
 #include "options_stack.h"	// options stack
 
+#ifdef SHARED_BUILD
+// defined in be, outside of be.so
 #pragma weak Process_Command_Line
+#endif
 
 //============================================================================
 // Push_Current_Options

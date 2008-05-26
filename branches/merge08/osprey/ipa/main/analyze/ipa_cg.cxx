@@ -60,7 +60,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/elf_whirl.h>
 #include <alloca.h>
 
@@ -256,6 +260,21 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
       ivars[i].Set_St_Idx(idx_maps->st[ivars[i].St_Idx()]);
     }
   }
+
+#ifdef KEY
+  INT32 num_ty_infos;
+  SUMMARY_TY_INFO* ty_infos = IPA_get_ty_info_file_array(hdr, num_ty_infos);
+  for (i = 0; i < num_ty_infos; ++i) {
+    TY_IDX old_ty_idx = ty_infos[i].Get_ty();
+    Is_True (old_ty_idx, ("Non-zero type ids expected in SUMMARY_TYPE"));
+    if (old_ty_idx) {
+      ty_infos[i].Set_ty(idx_maps->ty[old_ty_idx]);
+      if (ty_infos[i].Is_ty_no_split())
+        Set_TY_no_split (ty_infos[i].Get_ty());
+    }
+  }
+#endif
+
   // process all ty_idxs found in SUMMARY_STRUCT_ACCESS, and sum them up!
   if(IPA_Enable_Reorder){
       INT32 num_tys,new_ty;
@@ -886,12 +905,12 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 
 #ifdef KEY
       if (IPA_Enable_Pure_Call_Opt &&
-          (callsite_array[callsite_index].Is_icall_slot() ||
+          (callsite_array[callsite_index].Is_icall_target() ||
 	   callsite_array[callsite_index].Is_func_ptr() ||
 	   callsite_array[callsite_index].Is_intrinsic()))
 	caller->Summary_Proc()->Set_has_side_effect ();
 
-      if( callsite_array[callsite_index].Is_icall_slot() ){
+      if( callsite_array[callsite_index].Is_icall_target() ){
 	continue;
       }
 #endif	       
@@ -1187,7 +1206,7 @@ Connect_call_graph()
 {
     UINT num_nodes = GRAPH_vcnt (IPA_Call_Graph->Graph());
     mBOOL *visited = (mBOOL *) alloca ((GRAPH_vmax(IPA_Call_Graph->Graph())+1) * sizeof(mBOOL)); // Adding one to prepare for the dummy ROOT
-    bzero (visited, (GRAPH_vmax(IPA_Call_Graph->Graph())+1) * sizeof(mBOOL));
+    BZERO (visited, (GRAPH_vmax(IPA_Call_Graph->Graph())+1) * sizeof(mBOOL));
 
     UINT32 visited_count = 0;
 
@@ -1731,7 +1750,7 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
   std::map<WN*,UINT16> wn_cs_id_map;
   int* new_call_id =
     (int*)alloca( sizeof(new_call_id[0]) * node_summary->Get_callsite_count() );
-  bzero( new_call_id, sizeof(new_call_id[0]) * node_summary->Get_callsite_count() );
+  BZERO( new_call_id, sizeof(new_call_id[0]) * node_summary->Get_callsite_count() );
 
   std::map<UINT16,ST*> new_st_map;
 
@@ -1857,7 +1876,7 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
       for( int i = node_summary->Get_call_count();
 	   i < node_summary->Get_callsite_count();
 	   i++ ){
-	if( callsite_array[i].Is_icall_slot() ){
+	if( callsite_array[i].Is_icall_target() ){
 	  callsite = &callsite_array[i];
 	  break;
 	}
@@ -1868,7 +1887,7 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
       FmtAssert( callsite != NULL, ("Convert_Icall: no available callsite found") );
 
       node_summary->Incr_call_count();
-      callsite->Reset_icall_slot();
+      callsite->Reset_icall_target();
       callsite->Set_param_count( WN_num_actuals(wn) );
       callsite->Set_return_type( WN_rtype(wn) );
       callsite->Set_callsite_freq();
@@ -1953,7 +1972,7 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
 
   const size_t aux_callsite_size = callsite_count * sizeof( SUMMARY_CALLSITE );
   SUMMARY_CALLSITE* aux_callsite = (SUMMARY_CALLSITE*)alloca( aux_callsite_size );
-  bzero( aux_callsite, aux_callsite_size );
+  BZERO( aux_callsite, aux_callsite_size );
 
   std::map<UINT16,ST*> aux_st_map;
 
@@ -1999,8 +2018,8 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
   SUMMARY_SYMBOL* symbol_array = IPA_get_symbol_array (node);
   
   for( int j = 0; j < callsite_count; j++ ){
-    FmtAssert( !callsite_array[j].Is_icall_slot(),
-	       ("callsite is an icall slot") );
+    FmtAssert( !callsite_array[j].Is_icall_target(),
+	       ("callsite is an icall target") );
     
     if( callsite_array[j].Is_func_ptr() ){
       append_icall_list (node->Icall_List(), &callsite_array[j] );
@@ -2135,7 +2154,7 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 	break;
     }
 
-#ifdef PATHSCALE_MERGE /* KEY */
+#ifdef KEY
     BOOL alt_entry_update = FALSE;
 #endif
 
@@ -2150,7 +2169,7 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 	    n->Set_Undeletable();
 	}
 	visited[alt_entry_index] = VISITED_AND_KEEP;
-#ifdef PATHSCALE_MERGE /* KEY */
+#ifdef KEY 
 	alt_entry_update = TRUE;
 #endif
     }
@@ -2175,7 +2194,7 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 	    Mark_Deletable_Funcs (vi, action, visited);
     }
    
-#ifdef PATHSCALE_MERGE /* KEY */
+#ifdef KEY 
     if (alt_entry_update)
     {
       // Bug 12048: It has been decided to keep the alternate entry point,
@@ -2299,7 +2318,7 @@ Eliminate_Dead_Func (BOOL update_modref_count)
 {
     mUINT8 *visited = (mUINT8 *)
 	alloca (GRAPH_vmax (IPA_Call_Graph->Graph()) * sizeof(mUINT8));
-    bzero (visited, sizeof(mUINT8) * GRAPH_vmax(IPA_Call_Graph->Graph()));
+    BZERO (visited, sizeof(mUINT8) * GRAPH_vmax(IPA_Call_Graph->Graph()));
 
     NODE_INDEX vi;
 
@@ -2383,6 +2402,19 @@ read_pu_including_parents(IPA_NODE* node)
 }
 
 
+/* Release the memory possessed by the PU */
+void
+IPA_NODE::Un_Read_PU ()
+{
+  MEM_POOL_Pop(Mem_Pool());
+  MEM_POOL_Delete(Mem_Pool());
+  Clear_Mempool_Initialized();
+  WN_MAP_Delete(Parent_Map());
+  Set_Scope(NULL);
+  Set_Parent_Map(0);
+}
+
+
 SCOPE *
 IPA_NODE::Scope() 
 {
@@ -2404,7 +2436,7 @@ IPA_NODE::Scope()
     INT size = (Lexical_Level()+1) * sizeof(SCOPE);
     SCOPE *new_scope_tab = (SCOPE *)
         MEM_POOL_Alloc (Malloc_Mem_Pool, size);
-    bzero(new_scope_tab, size);
+    BZERO(new_scope_tab, size);
 
     // Copy only the Global SYMTAB info
     memcpy(new_scope_tab, Scope_tab, sizeof(SCOPE)*2);
@@ -2483,11 +2515,11 @@ Add_Mod_Ref_Info (IPA_NODE * node)
 
   // MOD
   mUINT8 * MOD = CXX_NEW_ARRAY (mUINT8, bv_size, Malloc_Mem_Pool);
-  bzero (MOD, bv_size);
+  BZERO (MOD, bv_size);
 
   // REF
   mUINT8 * REF = CXX_NEW_ARRAY (mUINT8, bv_size, Malloc_Mem_Pool);
-  bzero (REF, bv_size);
+  BZERO (REF, bv_size);
 
   for (INT i=1; i<ST_Table_Size (GLOBAL_SYMTAB); i++)
   {
@@ -2776,7 +2808,7 @@ IPA_add_new_procedure (const IPA_NODE* node)
   if (max_proc_in_file == NULL) {
     UINT32 bytes = IP_File_header.size() * sizeof(INT32);
     max_proc_in_file = (INT32*) MEM_POOL_Alloc(Malloc_Mem_Pool, bytes);
-    bzero (max_proc_in_file, bytes);
+    BZERO (max_proc_in_file, bytes);
   }
   
   INT32& max_proc_size = max_proc_in_file[node->File_Index()];
@@ -3236,7 +3268,7 @@ IPA_CALL_GRAPH::Update_Node_After_Preopt (IPA_NODE* node,
   for (UINT16 j = 0; j < callsite_count; ++j) {
 
 #ifdef KEY
-    if( callsite_array[j].Is_icall_slot() ){
+    if( callsite_array[j].Is_icall_target() ){
       continue;
     }
 #endif	       

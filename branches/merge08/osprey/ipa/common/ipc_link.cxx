@@ -64,7 +64,7 @@ ARGV *current_ld_flags;
 ARGV *comma_list;
 UINT32 comma_list_byte_count = 0;
 
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
 
 #define LINKER_NAME "gcc"
 #define LINKER_NAME_WITH_SLASH "/gcc"
@@ -104,10 +104,13 @@ static char* get_linker_name(int argc, char** argv)
 
     if (where_am_i) {
 	char *slash = strrchr (where_am_i, '/');
-	#ifdef PSC_TO_OPEN64
+#if defined(VENDOR_PSC)
+	asprintf (&linker_name, "%.*s/../" PSC_TARGET "/bin/" LINKER_NAME,
+		  slash - where_am_i, where_am_i);
+#else
 	asprintf (&linker_name, "%.*s/../" OPEN64_TARGET "/bin/" LINKER_NAME,
-	#endif
 		  (int)(slash - where_am_i), where_am_i);
+#endif
 	if (file_exists (linker_name)) {
 	    return linker_name;
 	}

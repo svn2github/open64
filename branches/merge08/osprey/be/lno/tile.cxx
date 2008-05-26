@@ -396,7 +396,7 @@ static void Processor_Update_Outer_Tile(WN* outer_loop,
 static BOOL Has_Calls(WN* wn_tree)
 {
   LWN_ITER* itr = LWN_WALK_TreeIter(wn_tree);
-  for (; itr != NULL; itr = itr = LWN_WALK_TreeNext(itr)) {
+  for (; itr != NULL; itr = LWN_WALK_TreeNext(itr)) {
     WN* wn = itr->wn; 
     if (OPCODE_is_call(WN_opcode(wn)))
       return TRUE;

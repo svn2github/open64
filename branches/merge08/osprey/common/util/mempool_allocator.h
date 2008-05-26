@@ -83,6 +83,7 @@ public:
 
   void construct(pointer p, const T& val) { new(p) T(val); }
   void destroy(pointer p) { p->~T(); }
+  bool operator!=( class mempool_allocator<T>& p) { return pool != p.pool; }
 };
 
 template<>

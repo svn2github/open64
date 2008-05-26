@@ -139,14 +139,14 @@ Insert_Allocated_Ty (TY& ty, TY_IDX ty_idx);
 #define IN_SET(__set, __element) (__set.find(__element) != __set.end())
 #define NOT_IN_SET(__set, __element) (__set.find(__element) == __set.end())
     
-void
-Insert_Recursive_Type (TY_IDX ty_idx);
-
 inline BOOL
 TY_is_incomplete_struct (const TY &ty) {
     return TY_kind(ty) == KIND_STRUCT &&
            TY_size(ty) == 0 && ty.Fld() == 0;
 }
+
+extern void 
+Insert_Recursive_Type (TY_IDX ty_idx);
 
 inline BOOL
 TY_is_incomplete_struct (TY_IDX tyi) {

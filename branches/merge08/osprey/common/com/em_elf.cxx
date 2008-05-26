@@ -142,7 +142,7 @@ Increase_Data_Buffer_Size ( pSCNINFO scninfo, Elf64_Xword newsize )
   if ( newbuf == NULL ) {
     ErrMsg ( EC_No_Mem, "Increase_Data_Buffer_Size" );
   }
-  bzero ( newbuf + (INTPS) SCNINFO_limit(scninfo),
+  BZERO ( newbuf + (INTPS) SCNINFO_limit(scninfo),
 	  newsize32 - (INT32) SCNINFO_limit(scninfo) );
 
   SCNINFO_buffer(scninfo) = newbuf;
@@ -1135,7 +1135,7 @@ Create_Elf_Header (INT isa, BOOL old_abi, BOOL big_endian, BOOL pic,
     	Set_Elf_Version ((unsigned char *) &(ehdr64->e_ident));
 	ehdr64->e_machine = Get_Elf_Target_Machine();
 	ehdr64->e_type = ET_REL;
-#ifndef linux
+#if ! (defined(linux) || defined(BUILD_OS_DARWIN))
 	ehdr64->e_flags = e_flags;
 #else
 	ehdr64->e_flags = 0x23000000LL | e_flags;
@@ -1189,7 +1189,7 @@ Read_Section (pSCNINFO scninfo, Elf64_Word scndx)
     Elf_Scn *scn;
 
     /* initialize the SCNINFO to all zeros */
-    bzero (scninfo, sizeof(SCNINFO));
+    BZERO (scninfo, sizeof(SCNINFO));
     scn = elf_getscn (Elf_Ptr, scndx);
     scndata = elf_getdata (scn, (Elf_Data *)0);
     elf_flagscn (scn, ELF_C_SET, ELF_F_DIRTY);
@@ -1338,7 +1338,7 @@ pSCNINFO Em_New_Section (
     scninfo = (pSCNINFO) malloc (sizeof (SCNINFO));
     if (scninfo == NULL) 
 	ErrMsg ( EC_No_Mem, "Em_New_Section" );
-    bzero (scninfo, sizeof(SCNINFO));
+    BZERO (scninfo, sizeof(SCNINFO));
     scn = Create_New_Section (scnname, scntype, scnflags, scnentsize);
     SCNINFO_scnptr(scninfo) = scn;
     SCNINFO_align(scninfo) = scnalign;

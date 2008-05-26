@@ -156,6 +156,7 @@ Generate_cyg_profile_func( BOOL is_exit, ST *st_func,
   WN_kid0( call_wn ) = arg0;
   WN_kid1( call_wn ) = arg1;
   WN_Set_Linenum( call_wn, WN_Get_Linenum(wn) );
+  WN_Set_Call_Default_Flags( call_wn );  // 14023
   if ( is_exit ) {
     WN_INSERT_BlockBefore( block, wn, call_wn );
   } else {

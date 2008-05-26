@@ -180,5 +180,6 @@ extern
 BOOL Record_scalar_flow(WN* stid);
 
 extern void Mark_formal_summary_symbol(ST* s);
+extern "C" void Print_DO_LOOP_INFO_BASE (FILE *fp, DO_LOOP_INFO_BASE *b);
 
 #endif

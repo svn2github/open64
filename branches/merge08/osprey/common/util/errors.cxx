@@ -74,9 +74,12 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <string.h>
+#if (__GNUC__==2)
+extern "C" char *strsignal (int __sig);
+#endif
 #include <ctype.h>
 
-#ifndef linux
+#if !( defined(linux) || defined(BUILD_OS_DARWIN))
 #define _LANGUAGE_C			/* work around system header bug */
 extern "C" {
 #include <sys/fpu.h>			/* we don't have a C++ sys/fpu.h */
@@ -85,7 +88,7 @@ extern "C" {
 #include <sys/syssgi.h>
 #endif
 
-#ifdef KEY
+#if defined(KEY) && defined(linux)
 #include <execinfo.h>
 #endif
 
@@ -190,7 +193,7 @@ static SEVERITY_DESCRIPTOR Severities[] = {
  * ====================================================================
  */
 
-#ifdef MONGOOSE_BE
+#if defined(MONGOOSE_BE) && defined(SHARED_BUILD)
 #include "err_host.tab"		    /* for error tables */
 #else /* MONGOOSE_BE */
 /* these table pointers get pointed at the client's tables */
@@ -205,7 +208,7 @@ static bool do_traceback = false;
 #define Phase_List(n)	(Phases[n].descriptors)
 #define Phase_Name(n)	(Phases[n].name)
 
-#ifndef linux
+#if !defined(linux) && !defined(__APPLE__)
 extern char *sys_siglist[];
 #endif
 
@@ -220,7 +223,7 @@ extern void Rag_Handle_Woff_Args(char	*wstring);
 
 static void dump_backtrace(FILE *fp = stderr, size_t start_frame = 1)
 {
-#ifdef KEY
+#if defined(KEY) && defined(linux) /* "backtrace" is unique to GNU/Linux libc */
     const int nframes = 32;
     void *buf[nframes];
     char **strings;
@@ -256,7 +259,9 @@ catch_signal (INT sig, INT error_num)
     signal ( sig, SIG_DFL );
 
     switch (sig) {
+#ifndef __MINGW32__
     case SIGBUS:
+#endif /* __MINGW32__ */
     case SIGSEGV:
 	if (error_num == ENXIO || error_num == ENOSPC)
 	    /* special case for I/O error on mmapped object: report as an
@@ -265,7 +270,11 @@ catch_signal (INT sig, INT error_num)
 			 strerror(error_num));
     }
     
+#ifdef __MINGW32__
+    fprintf (stderr,  "Signal: %s", "caught" );
+#else /* __MINGW32__ */
     fprintf (stderr,  "Signal: %s", strsignal(sig) );
+#endif /* __MINGW32__ */
     fflush ( stderr );
     fprintf ( stderr, " in %s phase.\n",
 	      Current_Phase ? Current_Phase : "startup" );
@@ -273,15 +282,28 @@ catch_signal (INT sig, INT error_num)
     do_traceback = true;
     
     Signal_Cleanup ( sig );	    /* Must be provided in err_host */
+#ifdef __MINGW32__
+    if ( sig == SIGINT || sig == SIGTERM ) {
+	raise ( sig);	/* pass signal on to driver */
+    	/*NOTREACHED*/
+	exit(RC_INTERNAL_ERROR);
+    }
+#else
     if ( sig == SIGHUP ||  sig == SIGINT || sig == SIGTERM ) {
 	kill ( getpid(), sig);	/* pass signal on to driver */
     	/*NOTREACHED*/
 	exit(RC_INTERNAL_ERROR);
     }
+#endif /* __MINGW32__ */
     signal ( SIGILL, SIG_DFL );
+#ifdef __MINGW32__
+    ErrMsgLine ( EC_Signal, ERROR_LINE_UNKNOWN,
+		"caught", Current_Phase );
+#else
     signal ( SIGBUS, SIG_DFL );
     ErrMsgLine ( EC_Signal, ERROR_LINE_UNKNOWN,
 		strsignal(sig), Current_Phase );
+#endif /* __MINGW32__ */
     /*NOTREACHED*/
     exit(RC_INTERNAL_ERROR);
 }
@@ -308,20 +330,23 @@ setup_signal_handler (int s)
 void
 Handle_Signals ( void )
 {
+#ifndef __MINGW32__
     setup_signal_handler (SIGHUP);
-    setup_signal_handler (SIGINT);
     setup_signal_handler (SIGQUIT);
-    setup_signal_handler (SIGILL);
     setup_signal_handler (SIGTRAP);
+    setup_signal_handler (SIGBUS);
+#endif /* __MINGW32__ */
+    setup_signal_handler (SIGINT);
+    setup_signal_handler (SIGILL);
     setup_signal_handler (SIGIOT);
-#ifndef linux
+    setup_signal_handler (SIGABRT);
+#if !(defined(linux) || defined(BUILD_OS_DARWIN))
     setup_signal_handler (SIGEMT);
 #endif
     setup_signal_handler (SIGFPE);
-    setup_signal_handler (SIGBUS);
     setup_signal_handler (SIGSEGV);
     setup_signal_handler (SIGTERM);
-#ifndef linux
+#if !(defined(linux) || defined(BUILD_OS_DARWIN))
     syssgi(SGI_SET_FP_PRECISE, 1);
     set_fpc_csr(get_fpc_csr() & ~FPCSR_FLUSH_ZERO);
     syssgi(SGI_SET_FP_PRESERVE, 1);
@@ -647,9 +672,7 @@ Init_Crash_Report (void)
   if (Crash_File != NULL)
     return TRUE;
   
-#ifdef PSC_TO_OPEN64
   char *name = getenv("OPEN64_CRASH_REPORT");
-#endif
 
   if (name == NULL)
     return FALSE;
@@ -695,7 +718,7 @@ Emit_Message (
   char *hmsg,		/* Header line of message */
   char *emsg )		/* Error line of message */
 {
-  char msg[512];
+  char msg[1024];
   BOOL report_location = FALSE;
 
   /* Report the assertion failure location: */
@@ -746,14 +769,15 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
 {
   INT dlevel = ED_severity(edesc);	/* Declared severity */
   INT mlevel = dlevel;			/* Mapped severity */
-  char hmsg[512];
+# define BUFLEN 1024
+# define BUFLEN_NONUSER 1024
+  char hmsg[BUFLEN];
   vstring emsg;
   INTPS mparm[MAX_ERR_PARMS];
 
   /* Formatting buffer: */
-# define BUFLEN 512
   INT loc;
-  static char buf[BUFLEN];
+  static char buf[BUFLEN_NONUSER];
   char *result;
   INT kind;
 
@@ -786,7 +810,8 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
     }
 #ifndef METAKAP
     if ( Cur_PU_Name != NULL ) {
-      loc += sprintf ( &hmsg[loc], " (user routine '%s')", Cur_PU_Name );
+      INT n = snprintf ( &hmsg[loc], 300, " (user routine '%s')", Cur_PU_Name );
+      loc += MIN(300, n);
     }
     if ( ED_compiler(edesc) && Current_Phase != NULL ) {
       loc += sprintf ( &hmsg[loc], " during %s phase", Current_Phase );
@@ -876,7 +901,7 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
       default:	result = Host_Format_Parm ( kind, va_arg(vp,char *) );
 		/* Copy the string from the result into buffer: */
 		++loc;
-		strncpy ( &buf[loc], result, BUFLEN-loc );
+		strncpy ( &buf[loc], result, BUFLEN_NONUSER-loc );
 		result = &buf[loc];
 		loc += strlen (result);
 		mparm[pnum] = (INTPS) result;
@@ -886,7 +911,7 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
   }
 
   /* Prepare main error message: */
-  emsg = vstr_begin(512);
+  emsg = vstr_begin(BUFLEN);
   emsg = vstr_concat (emsg, SEV_symbol(mlevel));
   loc = vstr_sprintf (&emsg, vstr_len(emsg), ED_format(edesc), mparm[0], 
 		mparm[1], mparm[2], mparm[3], mparm[4], mparm[5] );
@@ -901,7 +926,11 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
   /* Abort at highest severity level: */
   if ( mlevel >= ES_ERRABORT ) {
     Signal_Cleanup( 0 );
+#ifdef __MINGW32__
+    if ( ecode == EC_Signal )	raise ( SIGILL );
+#else /* __MINGW32__ */
     if ( ecode == EC_Signal )	kill ( getpid(), SIGILL );
+#endif /* __MINGW32__ */
     exit(RC_INTERNAL_ERROR);
   }
 
@@ -921,14 +950,14 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
 {
   INT dlevel = ED_severity(edesc);	/* Declared severity */
   INT mlevel = dlevel;			/* Mapped severity */
-  char hmsg[512];
+  char hmsg[BUFLEN];
   vstring emsg;
   INTPS mparm[MAX_ERR_PARMS];
 
   /* Formatting buffer: */
-# define BUFLEN 512
+# define BUFLEN_USER 512
   INT loc;
-  static char buf[BUFLEN];
+  static char buf[BUFLEN_USER];
   char *result;
   INT kind;
 
@@ -1041,7 +1070,7 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
       default:	result = Host_Format_Parm ( kind, va_arg(vp,char *) );
 		/* Copy the string from the result into buffer: */
 		++loc;
-		strncpy ( &buf[loc], result, BUFLEN-loc );
+		strncpy ( &buf[loc], result, BUFLEN_USER-loc );
 		result = &buf[loc];
 		loc += strlen (result);
 		mparm[pnum] = (INTPS) result;
@@ -1076,7 +1105,11 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
   /* Abort at highest severity level: */
   if ( mlevel >= ES_ERRABORT ) {
     Signal_Cleanup( 0 );
+#ifdef __MINGW32__
+    if ( ecode == EC_Signal )	raise ( SIGILL );
+#else /* __MINGW32__ */
     if ( ecode == EC_Signal )	kill ( getpid(), SIGILL );
+#endif /* __MINGW32__ */
     exit(RC_NORECOVER_USER_ERROR);
   }
 
@@ -1361,7 +1394,8 @@ Get_Current_Phase_Number( void )
 }
 
 
-#ifndef MONGOOSE_BE
+#if !defined(MONGOOSE_BE) || !defined(SHARED_BUILD)
+/* be dynamically sets the tables, but static builds must call this */
 /* ====================================================================
  *
  * Set_Error_Tables
@@ -1407,10 +1441,14 @@ Set_Error_Descriptor (INT phase, ERROR_DESC *descriptor)
  */
 
 #if Is_True_On
+#if defined(TARG_SL) || defined(TARG_NVISA)
+static BOOL dev_warn_enabled = FALSE;
+#else
 static BOOL dev_warn_enabled = TRUE;
+#endif // TARG_SL
 #else
 static BOOL dev_warn_enabled = FALSE;
-#endif
+#endif // Is_True_On
 
 extern BOOL 
 DevWarn_Enabled()
@@ -1429,26 +1467,33 @@ DevWarn( const char *fmt, ... )
 
   if ( dev_warn_enabled ) {
     /* Write to standard error first: */
+    /* with newer gcc need to do start/end around each vprintf */
+    va_start ( args, fmt );
     fprintf ( stderr, "!!! DevWarn during %s: ", phase_name );
     vfprintf ( stderr, fmt, args );
     fprintf ( stderr, "\n" );
     fflush ( stderr );
+    va_end(args);
   }
  
   /* Then write to error file if enabled: */
   if ( Init_Error_File() ) {
+    va_start ( args, fmt );
     fprintf ( Error_File, "!!! DevWarn during %s: ", phase_name );
     vfprintf ( Error_File, fmt, args );
     fprintf ( Error_File, "\n" );
     fflush ( Error_File );
+    va_end(args);
   }
 
   /* Finally write to trace file: */
   if ( Trace_File != NULL ) {
+    va_start ( args, fmt );
     fprintf ( Trace_File, "!!! DevWarn during %s: ", phase_name );
     vfprintf ( Trace_File, fmt, args );
     fprintf ( Trace_File, "\n" );
     fflush ( Trace_File );
+    va_end(args);
   }
 
   va_end(args);

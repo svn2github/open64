@@ -374,7 +374,7 @@ Convert_virtual_call(IPA_NODE *method) {
                 break;
             }
         }
-        callsite->Reset_icall_slot();
+        callsite->Reset_icall_target();
         callsite->Reset_func_ptr();
         callsite->Set_param_count(WN_num_actuals(new_wn));
         callsite->Set_return_type(WN_rtype(new_wn));

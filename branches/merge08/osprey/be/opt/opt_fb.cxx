@@ -778,6 +778,13 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
 	  node.in_out_same = false;
 	  break;
 	}
+#if defined (TARG_SL) && defined(TARG_SL2)
+	else if (WN_operator( wn ) != OPR_IO &&
+		 (WN_is_compgoto_for_minor ( wn ) || WN_is_compgoto_para ( wn ))) {
+	  node.in_out_same = false;
+	  break;
+	}
+#endif
       }
     }
 
@@ -791,6 +798,33 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
       wn_last = bb->Laststmt();
 
     if ( wn_last == NULL ) {
+#if defined(TARG_SL)  && defined(TARG_SL2)
+      if(bb->Kind()==BB_REGIONSTART) {
+	RID* rid=bb->Regioninfo()->Rid();
+	if(rid!=NULL) {
+	  WN* rgn=bb->Regioninfo()->Orig_wn();
+	  if( rgn!=NULL && WN_operator(rgn)==OPR_REGION) {
+	    FB_FREQ in_freq = Cur_PU_Feedback->Query( rgn, FB_EDGE_CALL_INCOMING );
+	    if ( bb->Succ() )
+	      Add_edge( bb->Id(), bb->Nth_succ(0)->Id(), FB_EDGE_OUTGOING, in_freq);
+	  }
+	}
+      }
+      else if (bb->Kind()==BB_REGIONEXIT) {
+	RID* rid=bb->Regioninfo()->Rid();
+	if(rid!=NULL) {
+	  WN* rgn=bb->Regioninfo()->Orig_wn();
+	  if( rgn!=NULL && WN_operator(rgn)==OPR_REGION)   {
+	    FB_FREQ out_freq = Cur_PU_Feedback->Query( rgn, FB_EDGE_CALL_OUTGOING);
+	    if ( bb->Succ() )
+	      Add_edge( bb->Id(), bb->Nth_succ(0)->Id(), FB_EDGE_OUTGOING, out_freq);
+	  }
+	}
+      }
+      else if (! cfg->Removable_bb( bb->Nth_succ(0) ) )
+	Add_edge( bb->Id(), bb->Nth_succ(0)->Id(), FB_EDGE_OUTGOING, FB_FREQ_ZERO );
+      else 
+#endif
       // Raymond says it's a bug that bb->Succ() could be NULL, but we do 
       // see such a case?!?
       if ( bb->Succ() )
@@ -926,6 +960,40 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
 	break;
 
       case OPR_REGION:
+#if defined (TARG_SL) && defined(TARG_SL2) 
+	{
+	  BB_LIST* succs = bb->Succ();
+	  INT succ_count=0;
+	  while(succs!=NULL) {
+	    succ_count++;
+	    BB_NODE* succbb=succs->Node();
+	    if(succbb->Kind() == BB_EXIT)
+	      //according to the cfg building process, the successor bb of BB_EXIT KIND
+	      // after a region will be used to prevent SSAPRE to do something 
+	      Add_edge ( bb->Id(), succbb->Id(), FB_EDGE_OUTGOING, FB_FREQ_ZERO);
+	    else  {
+	      FB_FREQ freq_out = Cur_PU_Feedback->Query( wn_last, FB_EDGE_CALL_OUTGOING );	
+	      Add_edge ( bb->Id(), succbb->Id(), FB_EDGE_CALL_OUTGOING, FB_FREQ_UNINIT);
+	    }
+	    succs=succs->Next();
+	  }
+	}
+	break;
+      case OPR_REGION_EXIT:
+	{
+	  RID* rid=bb->Regioninfo()->Rid();
+	  if(rid!=NULL) {	
+	    WN* rgn=bb->Regioninfo()->Orig_wn();
+	    if( rgn!=NULL && WN_operator(rgn)==OPR_REGION )   {
+	      FB_FREQ freq_out = Cur_PU_Feedback->Query( rgn, FB_EDGE_CALL_OUTGOING );
+	      if(bb->Succ()) {
+		Add_edge( bb->Id(), bb->Nth_succ(0)->Id(), FB_EDGE_OUTGOING,freq_out);
+	      }
+	    }
+	  }	  
+      	}
+	break;		
+#endif
       case OPR_PICCALL:
       case OPR_CALL:
       case OPR_ICALL:
@@ -990,6 +1058,9 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
 	break;
 
       default:
+#if defined (TARG_SL)	
+	if ( bb->Succ() ) 
+#endif	  	
 	Add_edge( bb->Id(), bb->Nth_succ(0)->Id(),
 		  FB_EDGE_OUTGOING, FB_FREQ_UNINIT );
 	break;
@@ -1746,13 +1817,21 @@ OPT_FEEDBACK::Print( FILE *fp ) const
   fprintf( fp, "OPT_FEEDBACK annotation:\n" );
 
   // Display nodes
+#ifdef KEY /* Mac port */
+  fprintf( fp, "%ld nodes:\n", (long) (_fb_opt_nodes.size() - 1) );
+#else /* KEY Mac port */
   fprintf( fp, "%d nodes:\n", (INT)(_fb_opt_nodes.size() - 1) );
+#endif
   for ( IDTYPE nx = 1; nx < _fb_opt_nodes.size(); nx++ ) {
     _fb_opt_nodes[nx].Print( nx, fp );
   }
 
   // Display edges
+#ifdef KEY /* Mac port */
+  fprintf( fp, "%ld edges:\n", (long) (_fb_opt_edges.size() - 1) );
+#else /* KEY Mac port */
   fprintf( fp, "%d edges:\n", (INT)(_fb_opt_edges.size() - 1) );
+#endif
   for ( IDTYPE ex = 1; ex < _fb_opt_edges.size(); ex++ ) {
     _fb_opt_edges[ex].Print( ex, fp );
   }
@@ -1873,8 +1952,13 @@ OPT_FEEDBACK::Verify( CFG *cfg, const char *const phase )
     if ( bb->Id() >= _fb_opt_nodes.size() ) {
       valid = false;
       if ( _trace )
+#ifdef KEY /* Mac port */
+	fprintf( TFile, "  CFG bb%d missing feedback! (_fb_opt_nodes.size()"
+		 " = %ld)\n", bb->Id(), (long) _fb_opt_nodes.size() );
+#else /* KEY Mac port */
 	fprintf( TFile, "  CFG bb%d missing feedback! (_fb_opt_nodes.size()"
 		 " = %d)\n", bb->Id(), (INT)_fb_opt_nodes.size() );
+#endif
     }
     const OPT_FB_NODE& node = _fb_opt_nodes[bb->Id()];
 

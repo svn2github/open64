@@ -221,6 +221,22 @@ static bool is_redundant_cmp(CODEREP *cmp, BB_NODE *bb, BB_NODE *pred,
       break;
     }
   }
+#if defined(TARG_SL)
+#ifndef fork_joint // for searching
+/* if(intrinsic_c2_thread_major())  
+  *            .......
+  * if(intrinsic_c2_thread_major())
+  *              .......
+  * we must not regard this consecutive fork/joint as same condition. 
+  * as for we just borrow if-else structure to do fork-joint 
+  */ 
+  if(cmp->Kind()==CK_OP && 
+     (cmp->Get_opnd(0)->Intrinsic()  == INTRN_C2_THREAD_MAJOR || 
+     cmp ->Get_opnd(0)->Intrinsic() == INTRN_C2_THREAD_MINOR))
+      return false;
+#endif 
+#endif
+
   if (!found_succ) return false;
 
   COND_EVAL ce;

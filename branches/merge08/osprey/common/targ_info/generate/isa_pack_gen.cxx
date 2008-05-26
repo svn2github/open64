@@ -45,10 +45,10 @@
 //
 /////////////////////////////////////
 //
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_pack_gen.cxx,v $
+//  $Revision: 1.1 $
+//  $Date: 2005/07/27 02:18:05 $
+//  $Author: kevinlo $
+//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/isa_pack_gen.cxx,v $
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -456,18 +456,10 @@ void ISA_Pack_End(void)
   const char * const isa_pack_words_format = "  %3d,  /* %s */\n";
   const char * const isa_pack_null_format = 
 			"  { %-22s, %2d, %2d,   %*d },  /* %s */\n";
-#ifdef TARG_IA64
   const char * const isa_pack_operand_format = 
-			"  { %-22s, %2d, %2d, 0x%0*llxLL },  /* %s, OPND%d */\n";
+			"  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, OPND%d */\n";
   const char * const isa_pack_result_format = 
-			"  { %-22s, %2d, %2d, 0x%0*llxLL },  /* %s, RESULT%d */\n";
-#else
-  const char * const isa_pack_operand_format = 
-            "  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, OPND%d */\n";
-  const char * const isa_pack_result_format = 
-            "  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, RESULT%d */\n";
-#endif
-
+			"  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, RESULT%d */\n";
   int init_digits;
   int mask_digits;
   int top;
@@ -654,7 +646,7 @@ void ISA_Pack_End(void)
     op_assembly *op_pack = op_packs[top];
     fprintf(cfile, "  {");
     for (w = 0; w < inst_words; ++w) {
-      fprintf(cfile, " 0x%0*llxLL,",
+      fprintf(cfile, " 0x%0*llx,",
 		     init_digits, op_pack ? op_pack->opcode_mask[w] : 0LL);
     }
     fprintf(cfile, " }, /* %s */\n", TOP_Name((TOP)top));
@@ -670,6 +662,7 @@ void ISA_Pack_End(void)
       op_assembly *op_pack = op_packs[top];
       int words = op_pack ? op_pack->desc->max_word + 1 
 			  : (TOP_is_dummy(top) ? 0 : 1);
+
       fprintf(cfile, isa_pack_words_format,
 		     words,
 		     TOP_Name((TOP)top));
@@ -689,7 +682,11 @@ void ISA_Pack_End(void)
   fprintf(hfile, "\ninline INT ISA_PACK_Inst_Words(TOP topcode)\n"
 		 "{\n");
   if (inst_words == 1) {
+#if defined(TARG_SL)
+    fprintf(hfile, "  return TOP_is_dummy(topcode) ? 0 : (TOP_is_instr16(topcode) ? 1:2);\n"); // SL inst are by hword count
+#else
     fprintf(hfile, "  return TOP_is_dummy(topcode) ? 0 : 1;\n");
+#endif
   } else {
     fprintf(hfile, "  extern const mUINT8 ISA_PACK_inst_words[%d];\n"
 		   "  return ISA_PACK_inst_words[(INT)topcode];\n",

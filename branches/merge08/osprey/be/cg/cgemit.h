@@ -42,7 +42,7 @@
 #define cgemit_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static char *cgemit_rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/cg/SCCS/s.cgemit.h $ $Revision: 1.7 $";
+static char *cgemit_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cgemit.h $ $Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "dwarf_DST_mem.h"

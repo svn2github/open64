@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -47,7 +47,11 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 #include <math.h>
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <alloca.h>
 
 #include "defs.h"
@@ -1083,7 +1087,7 @@ static WN *em_sign(WN *block, WN *x, WN *y)
   WN		*abs, *select;
 
 #ifdef KEY // bug 9660
-  if (MTYPE_is_integral(type) && ! MTYPE_signed(type))
+  if (! MTYPE_signed(type) && ! MTYPE_signed(type))
     type = Mtype_TransferSign(MTYPE_I4, type);
 #endif
 #ifdef KEY // bug 12052
@@ -1243,8 +1247,8 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
     TCON	con = Const_Val(pow);
     BOOL	sqrt, rsqrt;
 #ifdef KEY
-    BOOL       sqrt_25, rsqrt_25, sqrt_75, rsqrt_75;
-    BOOL        cbrt_33, cbrt_66;
+    BOOL        sqrt_25, rsqrt_25, sqrt_75, rsqrt_75;
+    BOOL	cbrt_33, cbrt_66;
 #endif
     WN		*tree, *x_copy;
     double	n;
@@ -1270,8 +1274,8 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
     }
     n = Targ_To_Host_Float(con);
     sqrt = rsqrt = FALSE;
-    cbrt_33 = cbrt_66 = FALSE; 
 #ifdef KEY
+    cbrt_33 = cbrt_66 = FALSE;
     sqrt_25 = rsqrt_25 = sqrt_75 = rsqrt_75 = FALSE;
 #endif
 
@@ -1314,10 +1318,17 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 	rsqrt_75 = TRUE;
       else
 	sqrt_75 = TRUE;
+
+      // non-constant float x could be negative; 
+      // so it could be error to fold the INTRN_EXPEXPR to sqrt 
+#define FLOAT_CANNOT_BE_FOLDED(x) (!Is_Constant (x) || Targ_To_Host_Float (Const_Val (x)))
+      if (FLOAT_CANNOT_BE_FOLDED(x))
+        return NULL; 
+
       x_copy = WN_COPY_Tree(x);
-    }  
+    }    
 #if !defined (TARG_MIPS) && !defined (TARG_IA64)
-    else if (ABS((trunc(n)+1.0/3) - n) < .0000001 &&
+    else if (ABS((trunc(n)+1.0/3) - n) < .0000001 && 
              ! (Is_Target_64bit() && !Is_Target_Anyx86() && OPT_Fast_Math))
     { // the pow in fast_math is faster than cbrt, so no point converting
       cbrt_33 = TRUE;
@@ -1330,7 +1341,6 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
       x_copy = WN_COPY_Tree(x);
     }
 #endif
-  
 #endif
     else
     {
@@ -1435,6 +1445,10 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
       if (rsqrt_75 && (type == MTYPE_F8 || type == MTYPE_V16F8))
 	return NULL;
 #endif 
+
+      if (FLOAT_CANNOT_BE_FOLDED(x_copy))
+	return NULL;
+
       if (tree)
       {
 	/*
@@ -1463,34 +1477,35 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 		       fractional);
       }      
     }
-
     // evaluate (x**0.333333) by calling cbrt()/cbrtf()
+#if !defined(TARG_SL)
     if (cbrt_33 || cbrt_66)
     {
       if (type != MTYPE_F4 && type != MTYPE_F8)
-        return NULL;
+	return NULL;
       if (tree)
       {
-        /*
-         *  x ** n+1/3  ->      (x**n) * (x**1/3)
-         *  where the function em_exp_int has already evaluated
-         */
-         PREG_NUM xN = AssignExpr(block, x_copy, type);
-         WN *kid = WN_CreateParm(type, WN_LdidPreg(type, xN), Be_Type_Tbl(type),
-                                 WN_PARM_BY_VALUE | WN_PARM_READ_ONLY);
-         WN* fraction = WN_Create_Intrinsic(
-                                OPCODE_make_op(OPR_INTRINSIC_OP, type, MTYPE_V),
-                                type == MTYPE_F4 ? INTRN_F4CBRT : INTRN_F8CBRT,
-                                1, &kid);
-         if (cbrt_66) {
-           PREG_NUM x13 = AssignExpr(block, fraction, type);
-           fraction = WN_Mpy(type, WN_LdidPreg(type, x13),
-                                   WN_LdidPreg(type, x13));
-         }
-         tree = WN_Mpy(type, tree, fraction);
+	/*
+	 *  x ** n+1/3 	->	(x**n) * (x**1/3)
+	 *  where the function em_exp_int has already evaluated	
+	 */
+	 PREG_NUM xN = AssignExpr(block, x_copy, type);
+	 WN *kid = WN_CreateParm(type, WN_LdidPreg(type, xN), Be_Type_Tbl(type),
+	 			 WN_PARM_BY_VALUE | WN_PARM_READ_ONLY);
+	 WN* fraction = WN_Create_Intrinsic(
+	 			OPCODE_make_op(OPR_INTRINSIC_OP, type, MTYPE_V),
+		      		type == MTYPE_F4 ? INTRN_F4CBRT : INTRN_F8CBRT,
+				1, &kid);
+	 if (cbrt_66) {
+	   PREG_NUM x13 = AssignExpr(block, fraction, type);
+	   fraction = WN_Mpy(type, WN_LdidPreg(type, x13), 
+	   			   WN_LdidPreg(type, x13));
+	 }
+	 tree = WN_Mpy(type, tree, fraction);
       }
     }
-#endif
+#endif // !TARG_SL
+#endif // KEY bug 6932
     return tree;
   }
  
@@ -2803,6 +2818,131 @@ static WN *em_bclr(WN *block, WN *n, WN *i)
 }
 
 /* ====================================================================
+ * Parity - Use xors to combine integers bits down to a single bit.
+ *   t1 =  x ^ (x  >> 32);
+ *   t2 = t1 ^ (t1 >> 16);
+ *   t3 = t2 ^ (t2 >>  8);
+ *   t4 = t3 ^ (t3 >>  4);
+ *   return (0x6996 >> (t4 & 0xf)) & 1;
+ * ==================================================================== */
+
+static WN *em_parity(WN *block, WN *wn)
+{
+  TYPE_ID type = WN_rtype(wn);
+  INT bitsize = MTYPE_size_reg(type);
+  // Parity of sign/zero extension is always zero.
+  if ((WN_operator(wn) == OPR_LDID || WN_operator(wn) == OPR_ILOAD)
+      && bitsize > MTYPE_size_reg(WN_desc(wn))) {
+    bitsize = MTYPE_size_reg(WN_desc(wn));
+  }
+  PREG_NUM preg = AssignExpr( block, wn, type );
+
+  // t1 =  x ^ (x  >> 32);
+  if (bitsize > 32) {
+    wn = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 32) );
+    wn = WN_Bxor( type, wn, WN_LdidPreg(type, preg) );
+    preg = AssignExpr( block, wn, type );
+  }
+  // t2 = t1 ^ (t1 >> 16);
+  if (bitsize > 16) {
+    wn = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 16) );
+    wn = WN_Bxor( type, wn, WN_LdidPreg(type, preg) );
+    preg = AssignExpr( block, wn, type );
+  }
+  // t3 = t2 ^ (t1 >>  8);
+  if (bitsize > 8) {
+    wn = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 8) );
+    wn = WN_Bxor( type, wn, WN_LdidPreg(type, preg) );
+    preg = AssignExpr( block, wn, type );
+  }
+  // t4 = t3 ^ (t1 >>  4);
+  wn = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 4) );
+  wn = WN_Bxor( type, wn, WN_LdidPreg(type, preg) );
+
+  // return (0x6996 >> (t4 & 0xf)) & 1;
+  wn = WN_Band( type, wn, WN_Intconst(MTYPE_I4, 15) );
+  wn = WN_Ashr( MTYPE_I4, WN_Intconst(MTYPE_I4, 0x6996), wn );
+  wn = WN_Band( MTYPE_I4, wn, WN_Intconst(MTYPE_I4, 1) );
+  return wn;
+}
+
+
+/* ====================================================================
+ * Popcount - Count the number of "1" bits in an integer.  Here's the
+ * 64-bit algorithm:
+ *   t1 = x - ((x >> 1) & 0x5555555555555555);
+ *   t2 = (t1 & 0x3333333333333333) + ((t1 >> 2) & 0x3333333333333333);
+ *   t3 = (t2 + (t2 >> 4)) & 0x0f0f0f0f0f0f0f0f;
+ *   t4 = t3 + (t3 >> 8);
+ *   t5 = t4 + (t4 >> 16);
+ *   t6 = t5 + (t5 >> 32);
+ *   return t6 & 0x000000ff;
+ * ==================================================================== */
+
+static WN *em_popcount(WN *block, WN *wn, INT bitsize)
+{
+  if ( bitsize == 0 ) {
+    Fail_FmtAssertion("em_popcount: expected nonzero bitsize");
+  }
+  TYPE_ID type = WN_rtype(wn);
+
+  // t1 = x - ((x >> 1) & 0x5555555555555555);
+  PREG_NUM preg = AssignExpr( block, wn, type );
+  UINT64 mask = 0x5555555555555555ULL >> (64 - bitsize);
+  WN *wn1 = WN_Intconst(type, mask);
+  wn = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 1) );
+  wn = WN_Band( type, wn, wn1 );
+  wn = WN_Sub( type, WN_LdidPreg(type, preg), wn );
+
+  // t2 = (t1 & 0x3333333333333333) + ((t1 >> 2) & 0x3333333333333333);
+  preg = AssignExpr( block, wn, type );
+  mask = 0x3333333333333333ULL >> (64 - bitsize);
+  wn1 = WN_Intconst(type, mask);
+  PREG_NUM preg1 = AssignExpr( block, wn1, type );
+  wn = WN_Band( type, WN_LdidPreg(type, preg), WN_LdidPreg(type, preg1) );
+  wn1 = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 2) );
+  wn1 = WN_Band( type, wn1, WN_LdidPreg(type, preg1) );
+  wn = WN_Add( type, wn, wn1 );
+
+  // t3 = (t2 + (t2 >> 4)) & 0x0f0f0f0f0f0f0f0f;
+  preg = AssignExpr( block, wn, type );
+  mask = 0x0f0f0f0f0f0f0f0fULL >> (64 - bitsize);
+  wn1 = WN_Intconst(type, mask);
+  wn = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 4) );
+  wn = WN_Add( type, WN_LdidPreg(type, preg), wn );
+  wn = WN_Band( type, wn, wn1 );
+
+  if (bitsize > 8) {
+    // t4 = t3 + (t3 >> 8);
+    preg = AssignExpr( block, wn, type );
+    wn = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 8) );
+    wn = WN_Add( type, WN_LdidPreg(type, preg), wn );
+  }
+
+  if (bitsize > 16) {
+    // t5 = t4 + (t4 >> 16);
+    preg = AssignExpr( block, wn, type );
+    wn = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 16) );
+    wn = WN_Add( type, WN_LdidPreg(type, preg), wn );
+  }
+
+  if (bitsize > 32) {
+    // t6 = t5 + (t5 >> 32);
+    preg = AssignExpr( block, wn, type );
+    wn = WN_Ashr( type, WN_LdidPreg(type, preg), WN_Intconst(MTYPE_I4, 32) );
+    wn = WN_Add( type, WN_LdidPreg(type, preg), wn );
+  }
+
+  if (bitsize > 8) {
+    // return t6 & 0x000000ff;
+    // wn = WN_Band( type, wn, WN_Intconst(MTYPE_I4, 0xff) );
+    wn = WN_CreateCvtl( OPC_U4CVTL, 8, wn );
+  }
+
+  return wn;
+}
+
+/* ====================================================================
  *
  *  WN *em_bset(WN *block, WN *n, WN *i)
  *
@@ -3975,7 +4115,7 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
 
   case OPR_LDID:
     if (WN_class(tree) == CLASS_PREG)
-      break;
+	break;
     return WN_Lda(Pointer_type, WN_load_offset(tree), WN_st(tree));
 
   case OPR_STID:
@@ -3984,8 +4124,8 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
   case OPR_ARRAY:
   case OPR_LDA:
     return tree;
-  } // end of switch (WN_operator(tree))
-  {
+  }
+    {
       TYPE_ID	type = WN_rtype(tree);
       ST  *st = Gen_Temp_Symbol( MTYPE_To_TY(type), "complex-temp-expr");
       WN  *stid;
@@ -3998,7 +4138,7 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
       WN_INSERT_BlockLast(block, stid);
 
       return WN_Lda(Pointer_type, WN_store_offset(stid), st);
-  }
+    }
 }
 
 /* ====================================================================
@@ -4289,6 +4429,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
   {
     TYPE_ID	rtype =  WN_rtype(tree);
     TY_IDX ty = Make_Function_Type( MTYPE_To_TY(rtype));
+
 #ifdef TARG_X8664
     // The return type is set up correctly in Make_Function_Type (above).
     // (-m32 expects that the return type be setup correctly).
@@ -4391,12 +4532,9 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 	}
       }
 
+#if defined(TARG_X8664) && !defined(OSP_OPT)
     // Rename memset to the PathScale optimized memset.
-    }
-// comment these code since the copyright of libpscrt*.*.
-//
-#if 0 
-    else if (WN_intrinsic(tree) == INTRN_MEMSET &&
+    } else if (WN_intrinsic(tree) == INTRN_MEMSET &&
 	       OPT_Fast_Stdlib &&
 	       Is_Target_64bit()) {
       if (Is_Target_EM64T() || Is_Target_Core())
@@ -4412,13 +4550,13 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_em64t");
       else
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_opteron");
-    } 
 #endif
-    else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    } else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
     	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
                Is_Target_32bit()) {
       st = Gen_Intrinsic_Function(ty, "__popcountsi2");
-#ifdef TARG_X8664
+#if defined(TARG_X8664) && !defined(OSP_OPT)
+
     } else if (WN_intrinsic(tree) == INTRN_PARITY &&
     	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
                Is_Target_32bit()) {
@@ -4427,6 +4565,28 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     } else {
       st = Gen_Intrinsic_Function(ty, function);
     }
+#elif defined(TARG_MIPS) && !defined(TARG_SL)
+
+#if 0  // Using __popcountsi2 fails at link-time on cross-compiler.
+    ST *st = NULL;
+    if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
+      st = Gen_Intrinsic_Function(ty, "__popcountsi2");
+    } else
+      st = Gen_Intrinsic_Function(ty, function);
+#else
+    if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
+      // Zero extend U4 to U8
+      // args[0] = WN_Cvt(MTYPE_U4, MTYPE_U8, args[0]);
+      // Using __popcountsi2 fails at link-time on cross-compiler.
+      WN *wn_cvt = WN_Cvt( MTYPE_U4, MTYPE_U8, WN_kid0( args[0] ) );
+      args[0] = WN_CreateParm( MTYPE_U8, wn_cvt,
+			       MTYPE_To_TY( MTYPE_U8 ), WN_PARM_BY_VALUE );
+    }
+    ST *st = Gen_Intrinsic_Function(ty, function);
+#endif
+
 #else
     ST	*st = Gen_Intrinsic_Function(ty, function);
 #endif // KEY
@@ -4439,7 +4599,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     Set_intrinsic_flags (st, tree);
     Annotate_Weak_Runtime ( st, function );
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     if (! Is_Target_64bit()) { // leave any complex type as is
       call = WN_Create(OPR_CALL, rtype, MTYPE_V, argC);
       WN_st_idx(call) = ST_st_idx(st);
@@ -4697,6 +4857,28 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     function=	em_shftc(block, by_value(tree, 0), by_value(tree, 1), by_value(tree, 2));
     return return_conversion(id, rtype, function);
 
+  case INTRN_I4POPPAR:
+  case INTRN_I8POPPAR:
+  case INTRN_PARITY:
+    function=	em_parity(block, by_value(tree, 0));
+    return return_conversion(id, rtype, function);
+
+  case INTRN_I1POPCNT:
+  case INTRN_I2POPCNT:
+  case INTRN_I4POPCNT:
+  case INTRN_I8POPCNT:
+  case INTRN_POPCOUNT:
+    {
+      INT bitsize = MTYPE_size_reg(WN_rtype(by_value(tree, 0)));
+      switch (id) {
+      case INTRN_I1POPCNT:  bitsize = 8;   break;
+      case INTRN_I2POPCNT:  bitsize = 16;  break;
+      case INTRN_I4POPCNT:  bitsize = 32;  break;
+      case INTRN_I8POPCNT:  bitsize = 64;  break;
+      }
+      function = em_popcount(block, by_value(tree, 0), bitsize);
+    }
+    return return_conversion(id, rtype, function);
 
   case INTRN_CLGE:
   case INTRN_CLGT:
@@ -4716,7 +4898,6 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
   case INTRN_SUBSTRINGEXPR:
   case INTRN_CONCATEXPR:
   case INTRN_CASSIGNSTMT:
-
 
   case INTRN_F4EXP:
   case INTRN_F8EXP:
@@ -4914,7 +5095,7 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     break;
 
   case INTRN_MEMSET:
-#ifndef KEY	// Don't emulate memset; call PathScale memset instead.
+#if !defined(KEY) || defined(TARG_SL)	// Don't emulate memset; call PathScale memset instead.
     if (CG_mem_intrinsics)
     {
       return em_memset(block, tree, WN_arg(tree, 0), WN_arg(tree, 1), WN_arg(tree, 2));
@@ -4951,7 +5132,7 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     break;
 #endif
 
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_SL)
   case INTRN_F4CBRT:
   case INTRN_F8CBRT:
     break;

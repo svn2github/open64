@@ -1,9 +1,3 @@
-
-/* 
-   Copyright (C) 2001-2004 Tensilica, Inc.  All Rights Reserved.
-   Revised to support Tensilica processors and to improve overall performance
- */
-
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -115,14 +109,14 @@
 #ifndef opt_goto_INCLUDED
 #define opt_goto_INCLUDED "opt_goto.h"
 
-/** $Revision$
-*** $Date$
-*** $Author$
-*** $Source$
+/** $Revision: 1.2 $
+*** $Date: 02/11/07 23:41:38-00:00 $
+*** $Author: fchow@keyresearch.com $
+*** $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.opt_goto.h $
 **/
 
 #ifdef _KEEP_RCS_ID
-static char *opt_goto_rcs_id = opt_goto_INCLUDED" $Revision$";
+static char *opt_goto_rcs_id = opt_goto_INCLUDED" $Revision: 1.2 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "wn.h"

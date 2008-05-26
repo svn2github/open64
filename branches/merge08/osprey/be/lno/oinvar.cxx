@@ -266,6 +266,19 @@ Is_Very_Expensive_Expression(const WN* wn)
 	  );
 }
 
+#ifdef KEY
+static BOOL Operands_All_Invariant(WN *wn)
+{
+ WN *do_loop = Enclosing_Do_Loop(wn);
+ for (INT i = 0; i < WN_kid_count(wn); i++){
+  WN *kid = WN_kid(wn,i);
+  if(!WN_operator(kid)==OPR_LDID || 
+    !Is_Loop_Invariant_Exp(kid, do_loop)) 
+   return FALSE;
+ }
+ return TRUE;
+}
+#endif
 
 // Count the number of ILOADs and bytes actually moved
 // Special handling is needed for complex types:
@@ -315,7 +328,15 @@ Expr_Should_Always_Be_Hoisted(WN* wn,
     (*num_bytes) += bytes;
   }
 
+//bug 14132 : Even though an expression is very expensive, if all
+//its operands are invariant to the loop, the optimizer will hoist
+//the expression outside the loop. And thus beyond the consideration.
+#ifdef KEY
+  else if (Is_Very_Expensive_Expression(wn) && 
+                !Operands_All_Invariant(wn)){ 
+#else
   else if (Is_Very_Expensive_Expression(wn)) {
+#endif
     return TRUE;
   }
 

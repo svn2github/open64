@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: iface_scn.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/iface_scn.cxx,v $
+ * $Revision: 1.10 $
+ * $Date: 05/12/05 08:59:08-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.iface_scn.cxx $
  *
  * Revision history:
  *  15-Jun-94 - Original version
@@ -63,14 +63,9 @@
 #include <stdio.h>
 #endif
 #include <bstring.h>
-#ifdef TARG_IA64
-#include <elf_stuff.h>
-#include <libelf/libelf.h>
-#else
 #include "elf_stuff.h"
-#include "libelf/libelf.h"
-#endif
 #include <elfaccess.h>
+#include "libelf/libelf.h"
 #include <stdlib.h>
 #include <cmplrs/elf_interfaces.h>
 

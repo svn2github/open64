@@ -129,6 +129,9 @@ private:
   Elf64_Word _global_offset;
   Elf64_Word _common_offset, _common_shape_offset;
   Elf64_Word _struct_access_offset;
+#ifdef KEY
+  Elf64_Word _ty_info_offset;
+#endif
 
   // array section flow sensitive analysis information
   Elf64_Word _scalar_node_offset, _cfg_node_offset, _regions_array_offset;
@@ -144,6 +147,9 @@ private:
   mINT32 _value_size, _expr_size, _phi_size, _chi_size, _global_size;
   mINT32 _common_size, _common_shape_size, _global_stid_size;
   mINT32 _struct_access_size;
+#ifdef KEY
+  mINT32 _ty_info_size;
+#endif
 
   // array section flow sensitive analysis information
   mINT32 _scalar_node_size, _cfg_node_size, _regions_array_size; 
@@ -159,6 +165,9 @@ private:
   mINT32 _chi_entry_size, _global_entry_size;
   mINT32 _common_entry_size, _common_shape_entry_size, _global_stid_entry_size;
   mUINT32 _struct_access_entry_size;
+#ifdef KEY
+  mUINT32 _ty_info_entry_size;
+#endif
    // array section flow sensitive analysis information
   mINT32 _scalar_node_entry_size, _cfg_node_entry_size;
   mINT32 _regions_array_entry_size; 
@@ -191,12 +200,12 @@ public:
   void Set_chi_offset(Elf64_Word s) { _chi_offset = s;};
   void Set_global_offset(Elf64_Word s) { _global_offset = s;};
   void Set_common_offset(Elf64_Word s) { _common_offset = s;};
-  void Set_common_shape_offset(Elf64_Word s) { _common_shape_offset =
-						 s;};
-  void Set_global_stid_offset(Elf64_Word s) { _global_stid_offset =
-						 s;};
-  void Set_struct_access_offset(Elf64_Word s) { _struct_access_offset =
-						 s;};
+  void Set_common_shape_offset(Elf64_Word s) { _common_shape_offset = s;};
+  void Set_global_stid_offset(Elf64_Word s) { _global_stid_offset = s;};
+  void Set_struct_access_offset(Elf64_Word s) { _struct_access_offset =	 s;};
+#ifdef KEY
+  void Set_ty_info_offset(Elf64_Word s) { _ty_info_offset = s;};
+#endif
 
 
   void Set_opt_level(mUINT8 opt_level) { _opt_level = opt_level;};
@@ -233,11 +242,13 @@ public:
   void Set_global_size(mINT32 s) { _global_size = s;};
   void Set_common_size(mINT32 s) { _common_size = s;};
   void Set_common_shape_size(mINT32 s) { _common_shape_size =
-						 s;};
+s;};
   void Set_global_stid_size(mINT32 s) { _global_stid_size =
-						 s;};
-  void Set_struct_access_size(mINT32 s) { _struct_access_size =
-						 s;};
+s;};
+  void Set_struct_access_size(mINT32 s) { _struct_access_size = s;};
+#ifdef KEY
+  void Set_ty_info_size(mINT32 s) { _ty_info_size = s;};
+#endif
 
   // array section flow sensitive analysis information
   void Set_scalar_node_size(mINT32 s) { _scalar_node_size = s;};
@@ -272,7 +283,9 @@ public:
     _global_stid_entry_size = s;};
   void Set_struct_access_entry_size(mINT32 s) {
     _struct_access_entry_size = s;};
-    
+#ifdef KEY
+  void Set_ty_info_entry_size(mINT32 s) { _ty_info_entry_size = s;};
+#endif   
 
   void Set_scalar_node_entry_size(mINT32 s) { _scalar_node_entry_size = s;};
   void Set_cfg_node_entry_size(mINT32 s) {_cfg_node_entry_size = s;};
@@ -308,6 +321,9 @@ public:
   Elf64_Word Get_common_shape_offset() const { return _common_shape_offset;};
   Elf64_Word Get_global_stid_offset() const { return _global_stid_offset;};
   Elf64_Word Get_struct_access_offset() const { return _struct_access_offset;};
+#ifdef KEY
+  Elf64_Word Get_ty_info_offset() const    { return _ty_info_offset;};
+#endif
 
   mUINT8  Get_opt_level() const { return _opt_level;};
 
@@ -349,6 +365,9 @@ public:
   mINT32 Get_common_shape_size() const	{ return _common_shape_size;};
   mINT32 Get_global_stid_size() const	{ return _global_stid_size;};
   mINT32 Get_struct_access_size() const	{ return _struct_access_size;};
+#ifdef KEY
+  mINT32 Get_ty_info_size() const          { return _ty_info_size;};
+#endif
   
   // array section flow sensitive analysis information
   mINT32 Get_scalar_node_size()  const { return _scalar_node_size; };
@@ -378,7 +397,10 @@ public:
   mINT32 Get_common_entry_size() { return _common_entry_size;};
   mINT32 Get_common_shape_entry_size() { return _common_shape_entry_size;};
   mINT32 Get_struct_access_entry_size() { return _struct_access_entry_size;};
-  
+#ifdef KEY
+  mINT32 Get_ty_info_entry_size() { return _ty_info_entry_size;};
+#endif
+    
   mINT32 Get_scalar_node_entry_size() const  { 
     return _scalar_node_entry_size ;};
   mINT32 Get_cfg_node_entry_size() const  { return _cfg_node_entry_size ;};
@@ -820,19 +842,12 @@ class SUMMARY_CALLSITE
 #define IPL_CALL_MUST_INLINE	0x08
 #define IPL_CALL_NO_INLINE	0x10
 
-#ifndef PATHSCALE_MERGE_ZHC
 #ifdef KEY
-#define IPL_ICALL_SLOT        0x20  
-#endif
+#define IPL_ICALL_TARGET        0x20  
 #endif
 
 #define IPL_IN_CASE_CLAUSE      0x40
-
-#ifdef KEY
-#define IPL_ICALL_TARGET        0x80
-#endif
-
-#define IPL_IS_VIRTUAL_CALL     0x100
+#define IPL_IS_VIRTUAL_CALL     0x80
     
 private:
 
@@ -915,19 +930,13 @@ public:
     void Reset_func_ptr ()              { _state &= ~IPL_FUNC_PTR; }
 
 #ifdef KEY
-    void Set_icall_target () { _state |= IPL_ICALL_TARGET; }
-    void Reset_icall_target () { _state &= ~IPL_ICALL_TARGET; }
-    BOOL Is_icall_target () const { return (_state & IPL_ICALL_TARGET); }
-#endif
-
-#ifdef KEY
-    void Set_icall_slot ()		{ _state |= IPL_ICALL_SLOT; }
-    void Reset_icall_slot ()		{ _state &= ~IPL_ICALL_SLOT; }
-    BOOL Is_icall_slot () const		{ return (_state & IPL_ICALL_SLOT); }
-#endif
+    void Set_icall_target ()		{ _state |= IPL_ICALL_TARGET; }
+    void Reset_icall_target ()		{ _state &= ~IPL_ICALL_TARGET; }
+    BOOL Is_icall_target () const	{ return (_state & IPL_ICALL_TARGET); }
 
     void Set_probability (float p)	{ _probability = p; }
     float Get_probability () const	{ return _probability; }
+#endif
 
     BOOL Is_in_case_clause (void) const	{ return (_state & IPL_IN_CASE_CLAUSE); }
     void Set_in_case_clause (void)	{ _state |= IPL_IN_CASE_CLAUSE; }
@@ -2514,12 +2523,15 @@ public:
     mUINT32 Get_hot_fld_id(mUINT32 hot_num)const	{return _u.hot_fld[hot_num].field_id;}
 
     void Set_flatten_flds(mUINT32 flatten_flds) {_flatten_flds=flatten_flds;}
-    mUINT32 Get_flatten_flds()const {return _flatten_flds;};
+    mUINT32 Get_flatten_flds() const { return _flatten_flds;};
     void  Inc_fld_count(mUINT32 fld_id, mUINT64 add_count)
+#ifdef KEY // bug 5372
+    	{_u.flds[fld_id-1].count+=add_count;};
+#else
     	{_u.flds[fld_id].count+=add_count;};
-
-	char* Get_ty_name (void) const  	{TY& ty=Ty_tab[_ty];
-		return Index_To_Str(ty.name_idx);}
+#endif
+    char* Get_ty_name (void) const { TY& ty=Ty_tab[_ty];
+		 return Index_To_Str(ty.name_idx); }
 
 
     void Set_hot_fld (void) // get hottness sorting, put  to hot_fld[], dealloc flds[]
@@ -2557,11 +2569,7 @@ public:
 	    Set_ty(ty_index); 
 	    Set_flatten_flds(flatten_flds);
 	    _u.flds= (STRUCT_ACCESS*)MEM_POOL_Alloc_P(_mem,
-#ifdef KEY		// Field IDs are 1, ..., flatten_flds.  Bug 5372.
-			sizeof(STRUCT_ACCESS)*(flatten_flds + 1),
-#else
 			sizeof(STRUCT_ACCESS)*flatten_flds,
-#endif
 			TRUE,NULL);
 #ifndef KEY
 	    fprintf(stderr,"new summary: type%d, \n",ty_index);
@@ -2579,6 +2587,31 @@ public:
     void WB_Print(FILE* fp, INT fld_access_index);
 
 }; // class SUMMARY_STRUCT_ACCESS
+
+#ifdef KEY
+class SUMMARY_TY_INFO
+{
+  private:
+    TY_IDX _ty;
+    mUINT32 _flags;
+
+#define IPL_TY_NO_SPLIT 0x00000001
+
+  public:
+
+    void Set_ty (TY_IDX type)        { _ty = type; }
+    TY_IDX Get_ty (void) const       { return _ty; }
+
+    void Set_ty_no_split (void)      { _flags |= IPL_TY_NO_SPLIT; }
+    BOOL Is_ty_no_split (void) const { return _flags & IPL_TY_NO_SPLIT; }
+
+    void Init (void)                 { bzero (this, sizeof(SUMMARY_TY_INFO)); }
+    void Print_array(FILE *fp, INT32 size) const;
+    void Trace_array(INT32 size) const ;
+    void Print(FILE *f) const;
+    void Trace(void) const;
+};
+#endif
 
 extern SUMMARY_SYMBOL *Ipl_Summary_Symbol;
 extern BOOL IPA_Trace_Mod_Ref;          /* Trace log for Mod_Ref */

@@ -956,7 +956,7 @@ COPYPROP::Prop_const_init_scalar(CODEREP *x, AUX_ID var_aux_id)
   if (const_initialized) {
     TCON init_tcon;
     ST *st = psym->St();
-    if (ST_is_const_initialized_scalar(st, init_tcon))
+    if (ST_is_const_initialized_scalar(st, psym->St_ofst(), init_tcon))
       {
 	// if the ST's initialized value can be represented with a TCON
 	// first convert the init value to the type of the variable
@@ -1438,17 +1438,20 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
 	  if ( i > 0 )
 	    in_array = TRUE;
 	}
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
         if (opr != OPR_ASM_INPUT ||
             (x->Opnd(i)->Kind() != CK_VAR && x->Opnd(i)->Kind() != CK_IVAR) )
 	  expr = Copy_propagate_cr(x->Opnd(i), curbb, inside_cse, in_array);
         else {
-		  // OSP_384
-		  if(opr == OPR_ASM_INPUT)
-			x->Opnd(i)->Set_flag(CF_DONT_PROP);
+	  // OSP_384
+	  if(opr == OPR_ASM_INPUT)
+	    x->Opnd(i)->Set_flag(CF_DONT_PROP);
           expr = NULL;
-		}
+	}
 #else
+	// for NVISA, the usage of asm is an array of const val,
+	// then was passing arr[3] and was seeing the array node
+	// rather than the const val under the asm_input
 	expr = Copy_propagate_cr(x->Opnd(i), curbb, inside_cse, in_array);
 #endif
 	if (expr) {
