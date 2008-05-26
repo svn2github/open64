@@ -33,6 +33,13 @@
 
 */
 
+#ifndef BZERO
+#define BZERO bzero
+#endif
+#ifndef BCOPY
+#define BCOPY bcopy
+#endif
+
 #ifdef __linux__
 
 /* 
