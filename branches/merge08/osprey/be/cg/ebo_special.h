@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,10 +45,10 @@
  * =======================================================================
  *
  *  Module: ebo_special.h
- *  $Revision: 1.25 $
- *  $Date: 05/12/05 08:59:06-08:00 $
- *  $Author: bos@eng-24.pathscale.com $
- *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.ebo_special.h $
+ *  $Revision: 1.1.1.1 $
+ *  $Date: 2005/10/21 19:00:00 $
+ *  $Author: marcel $
+ *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/ebo_special.h,v $
  *
  *  Revision comments:
  *
@@ -142,7 +146,11 @@ INT EBO_Copy_Operand (OP *op);
 
 BOOL delete_duplicate_op (OP *op,
                           EBO_TN_INFO **opnd_tninfo,
-                          EBO_OP_INFO *opinfo);
+                          EBO_OP_INFO *opinfo
+#ifdef TARG_X8664
+                          , EBO_TN_INFO **actual_tninfo = NULL
+#endif
+			  );
 
 BOOL combine_adjacent_loads(OP *op,
                             EBO_TN_INFO **opnd_tninfo,
@@ -188,11 +196,10 @@ BOOL EBO_Merge_Memory_Addr( OP*, TN**, EBO_TN_INFO**, EBO_TN_INFO** );
 BOOL EBO_Load_Execution( OP*, TN**, EBO_TN_INFO** );
 BOOL EBO_Lea_Insertion( OP*, TN**, EBO_TN_INFO** );
 BOOL EBO_Fold_Load_Duplicate( OP*, TN**, EBO_TN_INFO** );
-BOOL Combine_L1_L2_Prefetches( OP*, TN**, EBO_TN_INFO** );
 void Lea_Insertion ();
 void Init_Load_Exec_Map( BB*, MEM_POOL* );
 BOOL Delete_Unwanted_Prefetches( OP* );
-
+BOOL EBO_Can_Eliminate_Zero_Opnd_OP(OP *);
 #endif /* TARG_X8664 */
 
 BOOL EBO_Can_Merge_Into_Offset (OP *op);
@@ -200,4 +207,5 @@ BOOL EBO_Can_Merge_Into_Offset (OP *op);
 #ifdef KEY
 void EBO_Special_Start( MEM_POOL* );
 void EBO_Special_Finish();
+BOOL Combine_L1_L2_Prefetches( OP*, TN**, EBO_TN_INFO** );
 #endif // KEY

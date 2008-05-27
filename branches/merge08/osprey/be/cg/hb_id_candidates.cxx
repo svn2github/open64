@@ -37,6 +37,7 @@
 */
 
 
+#include <stack>
 #include <queue>
 #include "defs.h"
 #include "config.h"
@@ -634,7 +635,11 @@ Check_Region(BB**                 orig_dom,
       if (!BB_SET_MemberP(BB_dom_set(pdom), dom)) {
 	for (dom = Find_Immediate_Dominator(dom);
 	     dom && !BB_SET_MemberP(BB_dom_set(pdom), dom);
+#ifdef TARG_IA64
+	     dom = Find_Immediate_Dominator(dom));
+#else
 	     dom = Find_Immediate_Dominator(pdom));
+#endif
       }
       if (dom && !BB_SET_MemberP(BB_pdom_set(dom), pdom)) {
 	for (pdom = Find_Immediate_Postdominator(pdom);
@@ -813,6 +818,9 @@ Attempt_Merge(HB_CAND_TREE*        new_region,
     //
     //  See if the fall-through successor to our exit block is the entry to a hammock
     //
+#ifdef TARG_IA64
+    Remove_Explicit_Branch(hb_exit);
+#endif
     neighbor = BB_Fall_Thru_Successor(hb_exit);
     if (!neighbor) return FALSE;
     // If we allow this in, we can get some horrendously bad hyperblocks (too many paths)

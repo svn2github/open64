@@ -158,6 +158,9 @@ Fixup_Arcs(HB* hb, BB* old_bb, BB* new_bb, BB_MAP duplicate, BB** fall_thru,
       // Need to make the appropriate arcs from the duplicated block
       // to this one.
       //
+#ifdef TARG_IA64
+      Remove_Explicit_Branch(pred);
+#endif
       if (BB_Fall_Thru_Successor(pred) == old_bb) {
 	Link_Pred_Succ_with_Prob(dup, new_bb, BBLIST_prob(blsucc));
       } else if (BB_kind(dup) == BBKIND_LOGIF) {
@@ -170,6 +173,9 @@ Fixup_Arcs(HB* hb, BB* old_bb, BB* new_bb, BB_MAP duplicate, BB** fall_thru,
       continue;
     } else {
       new_freq += BB_freq(pred) * BBLIST_prob(blsucc);
+#ifdef TARG_IA64
+      Remove_Explicit_Branch(pred);
+#endif
       if (BB_Fall_Thru_Successor(pred) == old_bb) {
 	Change_Succ(pred, old_bb, new_bb);
       } else {
@@ -187,6 +193,9 @@ Fixup_Arcs(HB* hb, BB* old_bb, BB* new_bb, BB_MAP duplicate, BB** fall_thru,
   FOR_ALL_BB_SUCCS(old_bb, bl) {
     BB* succ = BBLIST_item(bl);
     if (!HB_Contains_Block(hb, succ) || succ == HB_Entry(hb)) {
+#ifdef TARG_IA64
+      Remove_Explicit_Branch(old_bb);
+#endif
       if (BB_Fall_Thru_Successor(old_bb) == succ) {
 	//
 	// We insert a block here because it makes it easier if
@@ -246,9 +255,6 @@ Rename_Locals(OP* op, hTN_MAP dup_tn_map)
   }
 }
 
-#if !defined(TARG_IA64) && !defined(TARG_SL)
-static
-#endif
 /////////////////////////////////////
 BB*
 Copy_BB_For_Tail_Duplication(HB* hb, BB* old_bb)
@@ -352,6 +358,9 @@ Tail_Duplicate(HB* hb, BB* side_entrance, BB_MAP unduplicated,
   //
   FOR_ALL_BB_PREDS(side_entrance, bl) {
     BB* pred = BBLIST_item(bl);
+#ifdef TARG_IA64
+    Remove_Explicit_Branch(pred);
+#endif
     if (side_entrance == BB_Fall_Thru_Successor(pred)) {
       BB* fall_dup = (BB*) BB_MAP_Get(duplicate, pred);
       if (fall_dup) {
@@ -427,11 +436,17 @@ HB_Tail_Duplicate(HB* hb, BB_MAP duplicate,
   BB* last_duplicated;
   for (bb = HB_Entry(hb); bb && HB_Contains_Block(hb, bb);
        last_duplicated = bb, bb = BB_next(bb));
+#ifdef TARG_IA64
+  Remove_Explicit_Branch(bb);
+#endif
   if (bb) {
     //
     // bb only NULL if it terminates in the last block in the PU.
     //
     for (; bb && BB_Fall_Thru_Successor(bb); bb = BB_next(bb));
+#ifdef TARG_IA64
+    Remove_Explicit_Branch(bb);
+#endif
     last_duplicated = bb;
   }
 

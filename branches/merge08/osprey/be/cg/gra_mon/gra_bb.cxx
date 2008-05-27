@@ -1,4 +1,8 @@
 /*
+ * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -46,10 +50,10 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.16 $
-//  $Date: 05/12/05 08:59:09-08:00 $
-//  $Author: bos@eng-24.pathscale.com $
-//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_bb.cxx $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_bb.cxx,v $
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -57,7 +61,7 @@
 #pragma hdrstop
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_bb.cxx $ $Revision: 1.16 $";
+static char *rcs_id = "$Source: be/cg/gra_mon/SCCS/s.gra_bb.cxx $ $Revision: 1.15 $";
 #endif
 
 #include "defs.h"
@@ -120,15 +124,27 @@ GRA_BB::Add_LUNIT( LUNIT*  lunit)
 // Add <reg> to the set of registers used in the given <gbb> and <rc>.
 void
 GRA_BB::Make_Register_Used( ISA_REGISTER_CLASS  rc, REGISTER reg,
-			    LRANGE* lrange )
+			    LRANGE* lrange, BOOL reclaim )
 {
   region-> Make_Register_Used(rc,reg);
-  loop->Make_Register_Used(rc, reg);
+  loop->Make_Register_Used(rc, reg, reclaim);
   registers_used[rc] = REGISTER_SET_Union1(registers_used[rc],reg);
 
 #ifdef KEY
+  // Record that REG is owned by LRANGE.
+  if (GRA_reclaim_register)
+    Set_LRANGE_Owner(rc, reg, lrange);
+
   if (! GRA_optimize_boundary)
     return;
+
+  // If reclaiming a register, reset its boundary usage info.
+  if (reclaim) {
+    Usage_Start_Index_Set(rc, reg, 0);
+    Usage_End_Index_Set(rc, reg, 0);
+    Usage_Live_In_Clear(rc, reg);
+    Usage_Live_Out_Clear(rc, reg);
+  }
 
   const mUINT16 max_OP_index = 0xffff;
 
@@ -435,6 +451,7 @@ GRA_BB::Make_Register_Used( ISA_REGISTER_CLASS  rc, REGISTER reg,
 #endif
 }
 
+
 /////////////////////////////////////
 REGISTER_SET
 GRA_BB::Registers_Used( ISA_REGISTER_CLASS  rc)
@@ -450,6 +467,26 @@ GRA_BB::Registers_Used( ISA_REGISTER_CLASS  rc)
       return used;
   }
 }
+
+#ifdef KEY
+/////////////////////////////////////
+// Add <reg> to the set of registers referenced in the given <gbb> and <rc>.
+void
+GRA_BB::Make_Register_Referenced (ISA_REGISTER_CLASS rc, REGISTER reg,
+				  LRANGE* lrange )
+{
+  registers_referenced[rc] = REGISTER_SET_Union1(registers_referenced[rc],reg);
+}
+
+/////////////////////////////////////
+REGISTER_SET
+GRA_BB::Registers_Referenced( ISA_REGISTER_CLASS rc)
+{
+  FmtAssert(region == gra_region_mgr.Complement_Region(),
+	    ("Registers_Referenced: lrange type not implemented"));
+  return registers_referenced[rc];
+}
+#endif
 
 /////////////////////////////////////
 // Check if <lrange> in the set of LRANGEs to be spilled above <gbb>.
@@ -544,6 +581,10 @@ GBB_MGR::Initialize(void)
   map = BB_MAP_Create();
   blocks_with_calls = BB_SET_Create_Empty(PU_BB_Count + 2,GRA_pool);
   blocks_with_rot_reg_clob = BB_SET_Create_Empty(PU_BB_Count + 2,GRA_pool);
+#ifdef TARG_X8664
+  blocks_with_x87_OP = BB_SET_Create_Empty(PU_BB_Count + 2,GRA_pool);
+  blocks_with_mmx_OP = BB_SET_Create_Empty(PU_BB_Count + 2,GRA_pool);
+#endif
 }
 
 
@@ -594,6 +635,11 @@ GBB_MGR::Create(BB* bb, GRA_REGION* region)
 	gbb->usage_end_index[rc][i] = 0;
       }
     }
+    if (GRA_reclaim_register) {
+      for (int i = 0; i < REGISTER_MAX+1; i++) {
+	gbb->lrange_owner[rc][i] = NULL;
+      }
+    }
 #endif
   }
 
@@ -623,12 +669,19 @@ GBB_MGR::Create(BB* bb, GRA_REGION* region)
     gra_savexmms_op = BB_last_op(bb);
   }
 
-  // Count the number of OPs in the BB.
   mUINT16 OPs_count = 0;
   for (OP *op = BB_first_op(bb); op != NULL; op = OP_next(op)) {
-    OPs_count++;
+    OPs_count++;		// Count the number of OPs in the BB.
+    if (OP_x87(op))
+      gbb->x87_OP_Set();
+    else if (OP_mmx(op))
+      gbb->mmx_OP_Set();
   }
   gbb->OPs_count = OPs_count;
+  if (gbb->x87_OP())
+    blocks_with_x87_OP = BB_SET_Union1D(blocks_with_x87_OP, bb, GRA_pool);
+  if (gbb->mmx_OP())
+    blocks_with_mmx_OP = BB_SET_Union1D(blocks_with_mmx_OP, bb, GRA_pool);
 #endif
 
   return gbb;
@@ -834,9 +887,6 @@ GRA_BB::Is_Region_Block(BOOL swp_too)
 {
   RID* rid = Region()->Rid();
   if (rid && rid != Current_Rid &&
-#if defined(TARG_SL) && defined(TARG_SL2)
-      (RID_type(rid) != RID_TYPE_hot) &&
-#endif
       (RID_type(rid) != RID_TYPE_swp || swp_too == TRUE)) {
     return TRUE;
   }

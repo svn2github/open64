@@ -54,6 +54,7 @@
 #define cg_swp_options_INCLUDED "cg_swp_options.h"
 
 #include "cg_flags.h"
+#include "cg_swp.h"
 
 struct SWP_OPTIONS {
 
@@ -62,6 +63,9 @@ struct SWP_OPTIONS {
   INT32 Sched_Direction;
   INT32 Heuristics;
   INT32 Opt_Level;
+#ifdef TARG_IA64
+  BOOL  Enable_Do_Loop;
+#endif
   BOOL  Enable_While_Loop;
   BOOL  Enable_Bundling;
   BOOL  Enable_Post_Incr;
@@ -69,6 +73,10 @@ struct SWP_OPTIONS {
   INT32 Max_Unroll_Times;
   INT32 Min_Unroll_Times_Set;
   INT32 Max_Unroll_Times_Set;
+#ifdef TARG_IA64
+  INT32 Load_Cache_Miss_Ratio;
+  INT32 Load_Cache_Miss_Latency;
+#endif
   INT32 Critical_Threshold;
   BOOL  Prep_Only;
   BOOL  Min_Retry; 
@@ -76,6 +84,12 @@ struct SWP_OPTIONS {
   BOOL  Implicit_Prefetch_Set;
   BOOL  Predicate_Promotion;
   BOOL  Enable_BRP;
+#ifdef TARG_IA64
+  INT32 FB_Prob1;	// percentage of lower bound of feedback prob
+  INT32 FB_Prob2;	// combined with frequency
+  INT32 FB_Freq;	// lower bound of feedback freqency
+#endif
+  INT32 OPS_Limit;
 
   // Options not accessible from command line
   //  -  some are basically compile-time constants;
@@ -120,6 +134,10 @@ struct SWP_OPTIONS {
     //  
     Opt_Level = 2;
 
+#ifdef TARG_IA64
+    // Enable SWP of do-loop
+    Enable_Do_Loop = TRUE;
+#endif  
     // Enable SWP of while-loop
     //  - will be disabled in PU_Configure() if the architecture
     //    does not support while-loop SWP.
@@ -151,6 +169,11 @@ struct SWP_OPTIONS {
     //   difficult to schedule.  Therefore they are given priority to schedule.
     Grainy_Resources_Length = 10;
 
+#ifdef TARG_IA64
+    // Adjust Load_Latency for cache missed load
+    Load_Cache_Miss_Ratio = 100;
+    Load_Cache_Miss_Latency = 20;  // should be proc dependent!
+#endif
     // default max unrolling == 8
     Min_Unroll_Times = 1;
     Max_Unroll_Times = (CG_opt_level > 2) ? 8 : 4;  
@@ -183,6 +206,20 @@ struct SWP_OPTIONS {
 
     // Generation of branch predict instructions (brp.loop.imp)
     Enable_BRP = TRUE;
+
+#ifdef TARG_IA64
+    // Percentage of lower bound of feedback prob
+    FB_Prob1 = 10; 	// prob = 0.1
+
+    // Same as FB_Prob1, but used in combination with Freq
+    FB_Prob2 = 50;	// prob = 0.5
+
+    // Lower bound of feedback frequency
+    FB_Freq = 100000;
+#endif
+
+    // Max number of OPs which should be SWPed
+    OPS_Limit = SWP_OPS_LIMIT;
   }
 
   // PU Configure:

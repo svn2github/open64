@@ -66,17 +66,17 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.13 $
-//  $Date: 05/12/05 08:59:09-08:00 $
-//  $Author: bos@eng-24.pathscale.com $
-//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra.h $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra.h,v $
 
 #ifndef GRA_INCLUDED
 #define GRA_INCLUDED
 #ifndef GRA_RCS_ID
 #define GRA_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra.h $ $Revision: 1.13 $";
+static char *gra_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra.h,v $ $Revision: 1.1.1.1 $";
 #endif
 #endif
 
@@ -84,6 +84,10 @@ static char *gra_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra
 #include "register.h"
 #include "bb.h"
 
+#ifdef TARG_IA64
+extern void GRA_Fat_Point_Estimate(void);
+extern BOOL Check_Self_Recursive(void);
+#endif
 extern void GRA_Allocate_Global_Registers( BOOL is_region );
 extern void GRA_Initialize(void);
 extern BOOL GRA_Spill_Around_Save_TN_Copies(void);
@@ -112,6 +116,7 @@ extern INT GRA_non_preference_tn_id;	// controlled by -GRA:non_preference_tn
 extern BOOL GRA_optimize_placement;	// controlled by -GRA:optimize_placement
 #ifdef KEY
 extern BOOL GRA_optimize_boundary;	// controlled by -GRA:optimize_boundary
+extern BOOL GRA_reclaim_register;	// controlled by -GRA:reclaim
 extern BOOL GRA_prioritize_by_density;	// controlled by -GRA:prioritize_by_density
 #endif
 
@@ -132,5 +137,21 @@ static inline INT GRA_LOCAL_FORCED_MAX( ISA_REGISTER_CLASS rc )
 #define GRA_LOCAL_FORCED_MAX(rc)   GRA_local_forced_max
 #endif // TARG_X8664
 
+#ifdef TARG_IA64
+typedef struct Init_Use_Only_GTN
+{
+  INT TN_Number;
+  INT Used_In_BB;
+  INT Used_Time;
+  Init_Use_Only_GTN *next;
+} INIT_USE_ONLY_GTN ;
+
+extern INIT_USE_ONLY_GTN* GTN_USE_ONLY;
+void Init_GTN_LIST(void );
+INIT_USE_ONLY_GTN* Build_Use_Only_GTN(MEM_POOL* pool);
+extern BOOL Search_Used_Only_Once_GTN(TN *find_tn,BB* def_bb);
+extern INIT_USE_ONLY_GTN* Search_GTN_In_List (TN *find_tn);
+extern void Build_GTN_In_List (TN *tn,BB* bb);
+#endif
 
 #endif

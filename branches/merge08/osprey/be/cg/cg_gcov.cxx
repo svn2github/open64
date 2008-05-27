@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
+ */
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -26,10 +29,10 @@
  * ====================================================================
  *
  * Module: cg_gcov.cxx
- * $Revision: 1.43 $
- * $Date: 05/12/05 08:59:03-08:00 $
- * $Author: bos@eng-24.pathscale.com $
- * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cg_gcov.cxx $
+ * $Revision: 1.42 $
+ * $Date: 05/07/11 18:45:05-07:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: be/cg/SCCS/s.cg_gcov.cxx $
  *
  * Description:
  *
@@ -61,12 +64,8 @@
 #include "unistd.h"
 
 #ifdef TARG_MIPS
-#if defined(TARG_SL)
-static BOOL inline Is_Target_32bit (void) { return TRUE; }
-#else
 static BOOL inline Is_Target_64bit (void) { return TRUE; }
 static BOOL inline Is_Target_32bit (void) { return FALSE; }
-#endif
 #endif // TARG_MIPS
 
 MEM_POOL name_pool, *name_pool_ptr = NULL;
@@ -408,6 +407,7 @@ CG_End_Final()
   strcpy (da_filename, cwd);
   strcat (da_filename, "/");
   strcat (da_filename, Src_File_Name);
+  INT i;
   for (i = da_filename_len-1; i>0; i--)
     if (da_filename[i] == '.')
       break;
@@ -913,7 +913,7 @@ CG_Gcov_Generation ()
       || gcov_write_string (bbg_file, name,
                              strlen (name))
       || gcov_write_unsigned (bbg_file,
-                            compute_checksum())
+                            chksum)
       || gcov_write_length (bbg_file, offset))
     goto bbg_error;
   /* Basic block flags */
@@ -1326,11 +1326,19 @@ CG_Instrument_Arcs()
     ld_result_tn = Build_TN_Of_Mtype(rtype);
     Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
     ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
+#if defined(TARG_MIPS) || defined(TARG_X8664)
     Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#else
+    Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
+#endif
     const_tn = Gen_Literal_TN(1,4);
     result_tn = Build_TN_Of_Mtype(rtype);
     Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
+#if defined(TARG_MIPS) || defined(TARG_X8664)
     Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#else
+    Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
+#endif
     Gcov_BB_Prepend_Ops(REGION_First_BB,  &new_ops);
   }
   count++;
@@ -1368,12 +1376,19 @@ CG_Instrument_Arcs()
 	ld_result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
 	ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
+#if defined(TARG_MIPS) || defined(TARG_X8664)
 	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+#else
+	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
+#endif
 	const_tn = Gen_Literal_TN(1,4);
 	result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
+#if defined(TARG_MIPS) || defined(TARG_X8664)
 	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
-
+#else
+	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
+#endif
         if (BB_Is_Unique_Instr_Predecessor(bb_succ, bb))
 	{
 	  Gcov_BB_Prepend_Ops(bb_succ, &new_ops);
@@ -1404,9 +1419,12 @@ CG_Instrument_Arcs()
 	  tgt_label = Gen_Label_For_BB( bb_succ );
 #ifdef TARG_X8664
 	  Build_OP( TOP_jmp, Gen_Label_TN(tgt_label, 0), &new_ops);
-#else
+#elif TARG_MIPS
 	  // mips
 	  Build_OP( TOP_j, Gen_Label_TN(tgt_label, 0), &new_ops);
+#else
+          // ia64
+          Build_OP (TOP_br, Gen_Enum_TN(ECV_ph_few), Gen_Enum_TN(ECV_dh), Gen_Label_TN(tgt_label, 0), &new_ops);
 #endif
 	  FmtAssert(TN_is_label( tgt_tn ), ("should be branch target label"));
 	}

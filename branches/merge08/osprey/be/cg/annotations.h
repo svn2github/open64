@@ -42,10 +42,10 @@
  * =======================================================================
  *
  *  Module: annotations.h
- *  $Revision: 1.9 $
- *  $Date: 05/12/05 08:59:02-08:00 $
- *  $Author: bos@eng-24.pathscale.com $
- *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.annotations.h $
+ *  $Revision: 1.1.1.1 $
+ *  $Date: 2005/10/21 19:00:00 $
+ *  $Author: marcel $
+ *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/annotations.h,v $
  *
  *  Description:
  *  ============
@@ -221,8 +221,9 @@ struct ROTATING_KERNEL_INFO {
   struct ti_res_count *res_counts;
   REGISTER_SET live_in[ISA_REGISTER_CLASS_MAX+1];
   REGISTER_SET kill[ISA_REGISTER_CLASS_MAX+1];
-  vector<struct tn *> copyin;
-  vector<struct tn *> copyout;
+  std::vector<struct tn *> copyin;
+  std::vector<struct tn *> copyout;
+  std::vector<struct tn *> localdef;
 };
 
 #define ROTATING_KERNEL_INFO_succeeded(x)     ((x)->succeeded)
@@ -239,6 +240,7 @@ struct ROTATING_KERNEL_INFO {
 #define ROTATING_KERNEL_INFO_res_counts(x)    ((x)->res_counts)
 #define ROTATING_KERNEL_INFO_copyin(x)        ((x)->copyin)
 #define ROTATING_KERNEL_INFO_copyout(x)       ((x)->copyout)
+#define ROTATING_KERNEL_INFO_localdef(x)      ((x)->localdef)
 
 
 typedef struct asminfo {

@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: variants.cxx
- * $Revision: 1.2 $
- * $Date: 02/11/07 23:41:28-00:00 $
- * $Author: fchow@keyresearch.com $
- * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.variants.cxx $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/variants.cxx,v $
  *
  * Description:
  *
@@ -51,7 +51,7 @@
  */
 
 #ifdef _KEEP_RCS_ID
-static const char rcs_id[] = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.variants.cxx $ $Revision: 1.2 $";
+static const char rcs_id[] = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
@@ -141,6 +141,15 @@ Negate_BR_Variant(VARIANT variant)
   case V_BR_DLT:
   case V_BR_DLE:
 
+#ifdef TARG_IA64
+  case V_BR_XEQ:
+  case V_BR_XNE:
+  case V_BR_XGT:
+  case V_BR_XGE:
+  case V_BR_XLT:
+  case V_BR_XLE:
+#endif
+
   case V_BR_QEQ:
   case V_BR_QNE:
   case V_BR_QGT:
@@ -225,6 +234,15 @@ Invert_BR_Variant(VARIANT variant)
   case V_BR_DGE: variant = V_BR_DLE; break;
   case V_BR_DLT: variant = V_BR_DGT; break;
   case V_BR_DLE: variant = V_BR_DGE; break;
+
+#ifdef TARG_IA64
+  case V_BR_XEQ: variant = V_BR_XEQ; break;
+  case V_BR_XNE: variant = V_BR_XNE; break;
+  case V_BR_XGT: variant = V_BR_XLT; break;
+  case V_BR_XGE: variant = V_BR_XLE; break;
+  case V_BR_XLT: variant = V_BR_XGT; break;
+  case V_BR_XLE: variant = V_BR_XGE; break;
+#endif
 
   case V_BR_QEQ: variant = V_BR_QEQ; break;
   case V_BR_QNE: variant = V_BR_QNE; break;
@@ -353,6 +371,15 @@ BR_Variant_Name(VARIANT variant)
   case V_BR_DGE:     return is_false ? "!DGE"     : "DGE";
   case V_BR_DLT:     return is_false ? "!DLT"     : "DLT";
   case V_BR_DLE:     return is_false ? "!DLE"     : "DLE";
+
+#ifdef TARG_IA64
+  case V_BR_XEQ:     return is_false ? "!XEQ"     : "XEQ";
+  case V_BR_XNE:     return is_false ? "!XNE"     : "XNE";
+  case V_BR_XGT:     return is_false ? "!XGT"     : "XGT";
+  case V_BR_XGE:     return is_false ? "!XGE"     : "XGE";
+  case V_BR_XLT:     return is_false ? "!XLT"     : "XLT";
+  case V_BR_XLE:     return is_false ? "!XLE"     : "XLE";
+#endif
 
   case V_BR_QEQ:     return is_false ? "!QEQ"     : "QEQ";
   case V_BR_QNE:     return is_false ? "!QNE"     : "QNE";

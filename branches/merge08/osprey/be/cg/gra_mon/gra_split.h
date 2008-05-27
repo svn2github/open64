@@ -1,4 +1,8 @@
 /*
+ * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -63,10 +67,10 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.2 $
-//  $Date: 02/11/07 23:41:30-00:00 $
-//  $Author: fchow@keyresearch.com $
-//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_split.h $
+//  $Revision$
+//  $Date$
+//  $Author$
+//  $Source$
 
 
 #ifndef GRA_SPLIT_INCLUDED
@@ -75,12 +79,27 @@
 #ifndef GRA_SPLIT_RCS_ID
 #define GRA_SPLIT_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_split_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_split.h $ $Revision: 1.2 $";
+static char *gra_split_rcs_id = "$Source$ $Revision$";
 #endif
 #endif
 
 extern BOOL
 LRANGE_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
-                              LRANGE**           alloc_lrange );
+                              LRANGE**           alloc_lrange
+#ifdef KEY
+                              , BOOL reclaim = FALSE
+#endif
+	      );
+
+#ifdef KEY
+extern void LRANGE_Split_Reclaimed_BBs (LRANGE *lrange, REGISTER reg);
+extern BOOL Has_Live_In_Successor (GRA_BB *gbb, LRANGE *lrange);
+#endif
+
+#ifdef TARG_X8664
+extern BOOL
+LRANGE_Split_Mixed_x87_MMX(LRANGE* lrange, LRANGE_CLIST_ITER* iter,
+			   LRANGE** alloc_lrange);
+#endif
 
 #endif

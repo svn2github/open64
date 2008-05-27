@@ -1,4 +1,8 @@
 /*
+ * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -47,10 +51,10 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.6 $
-//  $Date: 05/12/05 08:59:10-08:00 $
-//  $Author: bos@eng-24.pathscale.com $
-//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_trace.cxx $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_trace.cxx,v $
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -214,6 +218,38 @@ GRA_Trace_Split_Sub_Priority(GRA_BB* gbb, BOOL is_store)
 	    BB_id(gbb->Bb()));
   }
 }
+
+#ifdef KEY
+/////////////////////////////////////
+void
+GRA_Trace_Split_Reclaim_Add_Priority(GRA_BB* gbb, BOOL is_store, float priority)
+/////////////////////////////////////
+//  See interface description.
+/////////////////////////////////////
+{
+  if (trace_split_priority) {
+    fprintf(TFile, "<gra> Adding %f to priority for reclaim %s in BB:%d \n",
+	    priority,
+	    is_store ? "spill" : "restore",
+	    BB_id(gbb->Bb()));
+  }
+}
+
+/////////////////////////////////////
+void
+GRA_Trace_Split_Reclaim_Sub_Priority(GRA_BB* gbb, BOOL is_store, float priority)
+/////////////////////////////////////
+//  See interface description.
+/////////////////////////////////////
+{
+  if (trace_split_priority) {
+    fprintf(TFile, "<gra> Subtracting %f from priority for reclaim %s in BB:%d \n",
+	    priority,
+	    is_store ? "spill" : "restore",
+	    BB_id(gbb->Bb()));
+  }
+}
+#endif
 
 /////////////////////////////////////
 void
@@ -680,6 +716,17 @@ GRA_Trace_LRANGE_Choose(LRANGE* lrange, REGISTER_SET allowed)
   if ( trace_color && lrange->Type() != LRANGE_TYPE_LOCAL) {
     fprintf(TFile, "<gra> choose from allowed ");
     REGISTER_SET_Print(allowed, TFile);
+    fprintf(TFile, " for GTN%d\n", TN_number(lrange->Tn()));
+  }
+}
+
+/////////////////////////////////////
+void
+GRA_Trace_LRANGE_Choose_Reclaimable(LRANGE* lrange, REGISTER_SET reclaimable)
+{
+  if ( trace_color && lrange->Type() != LRANGE_TYPE_LOCAL) {
+    fprintf(TFile, "<gra> choose from reclaimable ");
+    REGISTER_SET_Print(reclaimable, TFile);
     fprintf(TFile, " for GTN%d\n", TN_number(lrange->Tn()));
   }
 }

@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: cflow.h
- * $Revision: 1.2 $
- * $Date: 02/11/07 23:41:20-00:00 $
- * $Author: fchow@keyresearch.com $
- * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cflow.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cflow.h,v $
  *
  * Revision history:
  *  23-Jan-92 - Original Version
@@ -83,6 +83,9 @@
  *   BOOL CFLOW_Trace_Dom
  *	Enable tracing of BB dominator set calculation.
  *
+ *   BOOL CFLOW_Trace_Empty_BB_Elim
+ *     Enable tracing of Eliminating empty BB  
+ *      
  * Constants:
  *
  *   INT CFLOW_UNREACHABLE
@@ -131,7 +134,9 @@ extern BOOL CFLOW_Trace_Clone;
 extern BOOL CFLOW_Trace_Freq_Order;
 extern BOOL CFLOW_Trace_Freq;
 extern BOOL CFLOW_Trace_Dom;
-
+#ifdef TARG_IA64
+extern BOOL CFLOW_Trace_Empty_BB_Elim;
+#endif
 /* "flags" for CFLOW_Optimize:
  */
 #define CFLOW_UNREACHABLE		(0x00000001)
@@ -143,18 +148,20 @@ extern BOOL CFLOW_Trace_Dom;
 #define CFLOW_OPT_ALL_BR_TO_BCOND	(0x00000040)
 #define CFLOW_FILL_DELAY_SLOTS		(0x00000080)
 #define CFLOW_IN_CGPREP			(0x00000100)
-#if defined(TARG_SL) && defined (TARG_SL2)
-#define CFLOW_COLD_REGION			(0x00000200)
-#define CFLOW_HOT_REGION			(0x00000400)
-#define CFLOW_ALL_OPTS \
-	(CFLOW_UNREACHABLE|CFLOW_BRANCH|CFLOW_MERGE|CFLOW_REORDER\
-	|CFLOW_FREQ_ORDER|CFLOW_CLONE|CFLOW_COLD_REGION|CFLOW_HOT_REGION)
-#else
 #define CFLOW_ALL_OPTS \
 	(CFLOW_UNREACHABLE|CFLOW_BRANCH|CFLOW_MERGE|CFLOW_REORDER\
 	|CFLOW_FREQ_ORDER|CFLOW_CLONE)
-#endif
+
 extern void CFLOW_Optimize(INT32 flags, const char *phase_name);
+
+#ifdef TARG_IA64
+extern void CFLOW_Delete_Empty_BB(void);
+#endif
+
 extern void CFLOW_Initialize(void);
+
+#ifdef TARG_MIPS
+extern void CFLOW_Fixup_Long_Branches(void);
+#endif
 
 #endif /* cflow_INCLUDED */

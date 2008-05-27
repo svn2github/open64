@@ -36,7 +36,7 @@
 
 */
 
-
+#include <vector>
 #include <queue>
 #include "defs.h"
 #include "config.h"
@@ -59,6 +59,10 @@
 #include "gtn_set.h"
 #include "findloops.h"
 #include "pqs_cg.h"
+
+#ifdef TARG_IA64
+#include "if_conv.h"
+#endif
 
 #include "hb.h"
 #include "hb_trace.h"
@@ -141,6 +145,9 @@ Calculate_Control_Dependences(HB* hb, BB_MAP control_dependences,
     FOR_ALL_BB_SUCCS(bb,bl) {
       BB* bb_dep;
       BB* bb_succ = BBLIST_item(bl);
+#ifdef TARG_IA64
+      Remove_Explicit_Branch(bb);
+#endif
       BOOL true_edge = (BB_Fall_Thru_Successor(bb) != bb_succ);
       //
       // bb_to_add is set to (pdom(bb_succ) - pdom(bb)) & HB_Blocks. 
@@ -221,6 +228,9 @@ Reset_Freq_Data_For_BB(BB *bb, BB_MAP freq_map)
 {
    BBLIST *bl;
    FREQ_DATA *bb_freq_data = (FREQ_DATA *) BB_MAP_Get(freq_map,bb);
+#ifdef TARG_IA64
+   Remove_Explicit_Branch(bb);
+#endif
    bb_freq_data->fall_thru = BB_Fall_Thru_Successor(bb);
    if (bb_freq_data->fall_thru) {
       bb_freq_data->branch_prob = 
@@ -522,7 +532,7 @@ Merge_Blocks(HB*                  hb,
 
 // want to AND together controlling predicate to existing qualifying predicate
 // such that op is executed iff ptn1 and ptn2 are both true.
-static void
+void
 AND_Predicate_To_OP (OP *op, TN *ptn1, TN *ptn2, 
 	BB *bb_insert_point, OP *op_insert_point, BB_SET *hb_blocks)
 {
@@ -812,7 +822,7 @@ Predicate_Read_Write( OPS *ops, OP *op, TN *tn_predicate )
 }
 #endif
 /////////////////////////////////////
-static void
+void
 Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
 /////////////////////////////////////
 //
@@ -979,7 +989,22 @@ Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
       if (TN_is_true_pred(OP_opnd(op, OP_PREDICATE_OPND))) {
 	CGTARG_Predicate_OP(bb, op, pred_tn);
 #ifdef TARG_IA64
-	if (OP_icmp(op)) {
+	if (OP_icmp(op)
+	|| OP_code(op) == TOP_tbit_nz
+	|| OP_code(op) == TOP_tbit_z
+	|| OP_code(op) == TOP_fcmp_eq
+        || OP_code(op) == TOP_fcmp_ge
+        || OP_code(op) == TOP_fcmp_gt
+        || OP_code(op) == TOP_fcmp_le
+        || OP_code(op) == TOP_fcmp_lt
+        || OP_code(op) == TOP_fcmp_neq
+        || OP_code(op) == TOP_fcmp_nge
+        || OP_code(op) == TOP_fcmp_ngt
+        || OP_code(op) == TOP_fcmp_nle
+        || OP_code(op) == TOP_fcmp_nlt
+        || OP_code(op) == TOP_fcmp_ord
+        || OP_code(op) == TOP_fcmp_unord) 
+        {
 		// if had a default, non-unconditional compare,
 		// then when change from true_pred to pred_tn,
 		// should also switch to unc form of cmp.
@@ -988,7 +1013,11 @@ Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
 			DevWarn("predicate, so change opcode to %s", TOP_Name(top));
 			OP_Change_Opcode(op, top);
 		}
-	}
+	} 
+
+        
+	if (Is_Para_Comp_May_Def(op)) 
+	     continue;
 #endif
 	// Locally predicate-aware GRA_LIVE does a better, safer job of this
 	//
@@ -1010,6 +1039,7 @@ Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
 	    }
 	  }
 	}
+	
 	if (all_local && OP_cond_def(op)) {
 	  Set_OP_cond_def_kind(op,OP_ALWAYS_UNC_DEF);
 	}
@@ -1104,6 +1134,9 @@ Classify_BB(BB *bb, HB *hb)
     result |= NO_MERGE;
   }
   
+#ifdef TARG_IA64
+  Remove_Explicit_Branch(bb);
+#endif
   fall_thru = BB_Fall_Thru_Successor(bb);
   other_succ = NULL;
 
@@ -1184,8 +1217,8 @@ Classify_BB(BB *bb, HB *hb)
 
 static BOOL
 Order_And_Classify_Blocks(HB* hb, 
-			  vector<BB *> &block_order,
-			  vector<INT>  &block_class)
+			  std::vector<BB *> &block_order,
+			  std::vector<INT>  &block_class)
 {
   std::queue<BB *>  blocks_to_do;
   BB * bb;
@@ -1292,7 +1325,7 @@ Check_Block_Frequencies(BB_SET* bbs, char *label)
 // Set up the frequency map for the blocks in the hyperblock.
 //
 static void
-Compute_Block_Frequencies(vector<BB *> &block_order, BB_MAP freq_map)
+Compute_Block_Frequencies(std::vector<BB *> &block_order, BB_MAP freq_map)
 {
   INT idx;
   FREQ_DATA *bb_freq_data;
@@ -1378,8 +1411,8 @@ BOOL Okay_To_Predicate_BB (BB *bb, BB *prev_bb)
 static BB *
 Remove_Branches(HB*                  hb, 
 		BB_MAP               predicate_tns, 
-		vector<BB *>         &block_order,
-		vector<INT>          &block_class,
+		std::vector<BB *>         &block_order,
+		std::vector<INT>          &block_class,
 		std::list<HB_CAND_TREE*>& candidate_regions)
 {
    BB * bb;
@@ -1631,7 +1664,8 @@ Remove_Branches(HB*                  hb,
 	 prev_bb = bb;
        } else {
 	 Merge_Blocks(hb,prev_bb,bb,freq_map,last_block,candidate_regions);
-#ifdef KEY
+#ifndef TARG_IA64
+//#ifdef KEY
 	 if (merge_failed) {
 	   printf("MERGE FAILED\n\n\n");
 	   Unlink_Pred_Succ(prev_bb, bb);
@@ -1663,7 +1697,7 @@ Remove_Branches(HB*                  hb,
        }
        fall_thru_goto = NULL;
      } else {
-#ifdef KEY
+#ifndef TARG_IA64
        if (prev_bb == bb) 
 	 // only if the prev_bb changed we need to reset 
 	 // prev_bb_unmergeable
@@ -1711,8 +1745,8 @@ struct equiv_classes {
 struct control_dep_data {
   TN* true_tn;
   TN* false_tn;
-  vector <TN*> true_or_tns;
-  vector <TN*> false_or_tns;
+  std::vector <TN*> true_or_tns;
+  std::vector <TN*> false_or_tns;
 
   control_dep_data() {
     true_tn = NULL;
@@ -1795,7 +1829,8 @@ Setup_True_False_Predicates(BB *bb, control_dep_data *bb_cdep_data)
 }
 
 
-#ifdef KEY
+#ifndef TARG_IA64
+//#ifdef KEY
 static BOOL multiple_dependencies;
 #endif
 /////////////////////////////////////
@@ -1813,8 +1848,8 @@ Insert_Predicates(HB* hb, BB_MAP control_dependences, BB_MAP true_edges,
 {
   BB* bb;
   BB* bb_cd;
-  vector <equiv_classes *> eclass;
-  vector <equiv_classes *>::iterator ec_iter; 
+  std::vector <equiv_classes *> eclass;
+  std::vector <equiv_classes *>::iterator ec_iter; 
   equiv_classes *ec;
 
   control_dep_data *bb_cdep_data;
@@ -1852,7 +1887,7 @@ Insert_Predicates(HB* hb, BB_MAP control_dependences, BB_MAP true_edges,
     if (!ec) {
       ec = TYPE_MEM_POOL_ALLOC(equiv_classes, &MEM_local_pool);
       ec->control_dependences = cds;
-#ifdef KEY
+#ifndef TARG_IA64 // #ifdef key
       if (BB_SET_Size(cds) > 1) {
 	// we do not deal with multiple dependencies
 	multiple_dependencies = TRUE;
@@ -1932,7 +1967,8 @@ Insert_Predicates(HB* hb, BB_MAP control_dependences, BB_MAP true_edges,
       // Single dependence, set up the TRUE and FALSE tns for the block.
       bb_cd = BB_SET_Choose(cds);
       bb_cdep_data = (control_dep_data*) BB_MAP_Get(control_dep_info, bb_cd);
-#ifdef KEY
+#ifndef TARG_IA64
+//#ifdef KEY
       // More than one equivalence class may have the same bb_cd
       // So, choose already existing pred_tn instead of creating new ones.
       if (!bb_cdep_data->true_tn && !bb_cdep_data->false_tn)
@@ -2151,15 +2187,15 @@ HB_If_Convert(HB* hb, std::list<HB_CAND_TREE*>& candidate_regions)
   
   Order_And_Classify_Blocks(hb,block_order,block_class);
   Calculate_Control_Dependences(hb, control_dependences, true_edges);
-#ifdef KEY
+#ifndef TARG_IA64
     multiple_dependencies = FALSE;    
 #endif
   Insert_Predicates(hb, control_dependences, true_edges, predicate_tns);
-#ifdef KEY
+#ifndef TARG_IA64
   if (!multiple_dependencies)
 #endif
   Remove_Branches(hb, predicate_tns, block_order, block_class, candidate_regions);
-#ifdef KEY
+#ifndef TARG_IA64
   else
     // If hb_formation did not succeed then,no need of hb_sched phase.
     IGLS_Enable_HB_Scheduling = 0;
@@ -2232,8 +2268,8 @@ Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
 //
 /////////////////////////////////////
 {
-  vector<BB *>         block_order;
-  vector<INT>          block_class;
+  std::vector<BB *>         block_order;
+  std::vector<INT>          block_class;
   BOOL one_bb;
   BOOL ok_to_convert;
   BOOL all_blocks_ok;
@@ -2323,15 +2359,15 @@ Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
       HB_Trace_If_Convert_Blocks(hb);
     }
     Calculate_Control_Dependences(hb, control_dependences, true_edges);
-#ifdef KEY
+#ifndef TARG_IA64
     multiple_dependencies = FALSE;
 #endif
     Insert_Predicates(hb, control_dependences, true_edges, predicate_tns);
-#ifdef KEY
+#ifndef TARG_IA64
     if (!multiple_dependencies)
 #endif
     fall_thru_block = Remove_Branches(hb, predicate_tns, block_order, block_class, candidate_regions);
-#ifdef KEY
+#ifndef TARG_IA64 
     else {
       // If hb_formation did not succeed then,no need of hb_sched phase.
       IGLS_Enable_HB_Scheduling = 0;

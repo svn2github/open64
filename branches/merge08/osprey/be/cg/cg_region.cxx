@@ -60,9 +60,6 @@
 #include "region_whirl_templates.h"	// REGION_search_block
 #include "strtab.h"		// Save_Str
 #include "targ_sim.h"
-#if defined(TARG_SL) && defined(TARG_SL2)
-#include "fb_whirl.h"
-#endif
 
 /* =======================================================================
  *
@@ -467,7 +464,7 @@ REGION_Entry_PREG_Whirl( RID *rid, WN *entry_whirl, TN_LIST *inlist,
     if (CG_localize_tns) {
       PREG_LIST *prl;
       // used to skip the remaining pregs for quad, complex quad
-      slist<PREG_NUM> skip_list;
+      __gnu_cxx::slist<PREG_NUM> skip_list;
 #ifdef Is_True_On
       verify_pregs_list(rid, RID_pregs_in(rid));
 #endif
@@ -479,8 +476,8 @@ REGION_Entry_PREG_Whirl( RID *rid, WN *entry_whirl, TN_LIST *inlist,
 	// for quad/complex quad, skip the remaining pregs
 	// once we have seen the first one
 	if (skip_list.size()) {
-	  slist<PREG_NUM>::iterator skip_search =
-	    find(skip_list.begin(), skip_list.end(), pr);
+	  __gnu_cxx::slist<PREG_NUM>::iterator skip_search =
+	    std::find(skip_list.begin(), skip_list.end(), pr);
 	  if (skip_search != skip_list.end()) { // found it, skip it
 	    Is_Trace(trace, (TFile, "REGION_Entry_PREG_Whirl(CG_localize_tns)"
 			", skipping PREG %d\n\tbecause of (complex) quad\n",
@@ -560,7 +557,7 @@ REGION_Entry_PREG_Whirl( RID *rid, WN *entry_whirl, TN_LIST *inlist,
       // the PREG_To_TN_Array is out of date and Gen_quad_preg uses it, update
       Update_preg_to_tn_array(op, TOP_begin_pregtn);
       // used to skip the remaining pregs for quad, complex quad
-      slist<PREG_NUM> skip_list;
+      __gnu_cxx::slist<PREG_NUM> skip_list;
       // find TOP_begin_pregtn, and build glue from that
       // have to iterate by hand since removing ops while iterating
       while (op != NULL) {
@@ -570,8 +567,8 @@ REGION_Entry_PREG_Whirl( RID *rid, WN *entry_whirl, TN_LIST *inlist,
 	  // for quad/complex quad, skip the remaining pregs
 	  // once we have seen the first one
 	  if (skip_list.size()) {
-	    slist<PREG_NUM>::iterator skip_search =
-	      find(skip_list.begin(), skip_list.end(), pr);
+	    __gnu_cxx::slist<PREG_NUM>::iterator skip_search =
+	      std::find(skip_list.begin(), skip_list.end(), pr);
 	    if (skip_search != skip_list.end()) { // found it, skip it
 	      Is_Trace(trace, (TFile, "REGION_Entry_PREG_Whirl, skipping "
 			       "PREG %d\n\tbecause of (complex) quad\n", pr));
@@ -685,15 +682,6 @@ REGION_Exit_Whirl_Labels( WN *exit_whirl, BB *exit_bb, LABEL_IDX external_label,
   /* new exit for region */
   new_label = Gen_Temp_Label();
   label_wn = WN_CreateLabel( new_label, 0, NULL );
-  
-#if defined(TARG_SL) && defined(TARG_SL2) 
-  if(Cur_PU_Feedback) {
-    FB_FREQ out_rgn=Cur_PU_Feedback->Query(rid->rwn,  FB_EDGE_CALL_OUTGOING);
-    FB_Info_Invoke fb_inv(out_rgn);
-    Cur_PU_Feedback->Annot_invoke(label_wn, fb_inv);
-  }
-#endif  
-  
   WN_INSERT_BlockFirst( exit_whirl, label_wn );
 
   /* Reuse old exit label to keep external interface the same.
@@ -717,15 +705,6 @@ REGION_Exit_Whirl_Labels( WN *exit_whirl, BB *exit_bb, LABEL_IDX external_label,
     goto_wn = WN_CreateRegionExit(external_label);
   else
     goto_wn = WN_CreateGoto(external_label);
-  
-#if defined(TARG_SL) && defined(TARG_SL2) 
-  if(Cur_PU_Feedback) {
-    FB_FREQ out_rgn=Cur_PU_Feedback->Query(rid->rwn,  FB_EDGE_CALL_OUTGOING);
-    FB_Info_Invoke fb_inv(out_rgn);
-    Cur_PU_Feedback->Annot_invoke(goto_wn, fb_inv);
-  }
-#endif
-
   WN_INSERT_BlockLast(exit_whirl, goto_wn);
 
   new_target = Gen_Label_TN( new_label, 0 );
@@ -790,7 +769,7 @@ REGION_Exit_PREG_Whirl( RID *rid, INT exit_num, WN *exit_whirl,
     if (CG_localize_tns) {
       PREG_LIST *prl;
       // used to skip the remaining pregs for quad, complex quad
-      slist<PREG_NUM> skip_list;
+      __gnu_cxx::slist<PREG_NUM> skip_list;
 #ifdef Is_True_On
       verify_pregs_list(rid, RID_pregs_out_i(rid, exit_num));
 #endif
@@ -802,8 +781,8 @@ REGION_Exit_PREG_Whirl( RID *rid, INT exit_num, WN *exit_whirl,
 	// for quad/complex quad, skip the remaining pregs
 	// once we have seen the first one
 	if (skip_list.size()) {
-	  slist<PREG_NUM>::iterator skip_search =
-	    find(skip_list.begin(), skip_list.end(), pr);
+	  __gnu_cxx::slist<PREG_NUM>::iterator skip_search =
+	    std::find(skip_list.begin(), skip_list.end(), pr);
 	  if (skip_search != skip_list.end()) { // found it, skip it
 	    Is_Trace(trace, (TFile, "REGION_Exit_PREG_Whirl(CG_localize_tns)"
 			", skipping PREG %d\n\tbecause of (complex) quad\n",
@@ -881,7 +860,7 @@ REGION_Exit_PREG_Whirl( RID *rid, INT exit_num, WN *exit_whirl,
       // the PREG_To_TN_Array is out of date and Gen_quad_preg uses it, update
       Update_preg_to_tn_array(op, TOP_end_pregtn);
       // used to skip the remaining pregs for quad, complex quad
-      slist<PREG_NUM> skip_list;
+      __gnu_cxx::slist<PREG_NUM> skip_list;
       // find TOP_end_pregtn, and build glue from that
       // have to iterate by hand since removing ops while iterating
       while (op != NULL) {
@@ -893,8 +872,8 @@ REGION_Exit_PREG_Whirl( RID *rid, INT exit_num, WN *exit_whirl,
 	  // for quad/complex quad, skip the remaining pregs
 	  // once we have seen the first one
 	  if (skip_list.size()) {
-	    slist<PREG_NUM>::iterator skip_search =
-	      find(skip_list.begin(), skip_list.end(), pr);
+	    __gnu_cxx::slist<PREG_NUM>::iterator skip_search =
+	      std::find(skip_list.begin(), skip_list.end(), pr);
 	    if (skip_search != skip_list.end()) { // found it, skip it
 	      Is_Trace(trace, (TFile, "REGION_Exit_PREG_Whirl, skipping "
 			       "PREG %d\n\tbecause of (complex) quad\n", pr));

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -36,10 +40,10 @@
 
 */
 
-//  $Revision: 1.16 $
-//  $Date: 05/12/05 08:59:10-08:00 $
-//  $Author: bos@eng-24.pathscale.com $
-//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_lrange.h $ 
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_lrange.h,v $ 
 // Description: GRA Live Ranges & Coloring Lists
   
   
@@ -48,7 +52,7 @@
 #ifndef GRA_LRANGE_RCS_ID  
 #define GRA_LRANGE_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_lrange_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_lrange.h $ $Revision: 1.16 $";
+static char *gra_lrange_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_lrange.h,v $ $Revision: 1.1.1.1 $";
 #endif
 #endif
 
@@ -148,15 +152,9 @@ enum LR_FLAG {
   LRANGE_FLAGS_no_appearance = 0x4000, // should not be assigned register
 #ifdef TARG_X8664
   LRANGE_FLAGS_spans_savexmms = 0x8000, // spans the savexmms pseudo-op
+  LRANGE_FLAGS_spans_x87_OP = 0x10000,	// spans x87 OP
+  LRANGE_FLAGS_spans_mmx_OP = 0x20000,	// spans MMX OP
 #endif
-
-#ifdef TARG_SL2 //minor_reg_alloc
-/* add a flag to indicate if the liverange spans different regions, here region means 
-  * different rid in basic block. For minor thread, bb in parallel region has different rid
-  * with bb in non pallel region. 
-  */ 
-  LRANGE_FLAGS_spans_multiregions = 0x8000, 
-#endif 
 };
 
 // These represent a value that can be given a register by GRA.  They
@@ -190,7 +188,7 @@ private:
   mREGISTER           orig_reg;         // Original register before coloring
                                         //   if there was one (eg for regions)
   LRANGE_TYPE         type:8;
-  LR_FLAG             flags:16;
+  LR_FLAG             flags:24;
   union {
     struct lrange_complement_specific {
       TN*       tn;             // Corresponding to the LRANGE
@@ -309,13 +307,14 @@ public:
 #ifdef TARG_X8664
   BOOL Spans_Savexmms(void)	{ return flags & LRANGE_FLAGS_spans_savexmms; }
   void Spans_Savexmms_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_savexmms); }
+
+  BOOL Spans_x87_OP(void)	{ return flags & LRANGE_FLAGS_spans_x87_OP; }
+  void Spans_x87_OP_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_x87_OP); }
+  void Spans_x87_OP_Reset(void)	{ flags = (LR_FLAG)(flags&~LRANGE_FLAGS_spans_x87_OP); }
+  BOOL Spans_mmx_OP(void)	{ return flags & LRANGE_FLAGS_spans_mmx_OP; }
+  void Spans_mmx_OP_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_mmx_OP); }
+  void Spans_mmx_OP_Reset(void)	{ flags = (LR_FLAG)(flags&~LRANGE_FLAGS_spans_mmx_OP); }
 #endif
-
-
-#ifdef TARG_SL2 //minor_reg_alloc
-  BOOL Spans_Multiregions(void)	{ return flags & LRANGE_FLAGS_spans_multiregions; }
-  void Spans_Multiregions_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_multiregions); }
-#endif 
 
   void Wire_Register(REGISTER r){ flags = (LR_FLAG)(flags|LRANGE_FLAGS_has_wired_register);
 				  reg = r; }
@@ -359,11 +358,14 @@ public:
   void Add_LUNIT( LUNIT* lunit );
   void Add_Lunit(  LUNIT* lunit );
   REGISTER_SET Allowed_Registers(GRA_REGION* region);
+#ifdef KEY
+  REGISTER_SET Reclaimable_Registers(GRA_REGION* region);
+#endif
   BOOL Interferes( LRANGE* lr1 );
   void Region_Interference( LRANGE* lrange1,
 			    GRA_REGION* region );
   void Remove_Neighbor(LRANGE* neighbor, GRA_REGION* region );
-  void Allocate_Register( REGISTER reg );
+  void Allocate_Register( REGISTER reg, BOOL reclaim = FALSE );
   INT32 Neighbor_Count(void);
   void Calculate_Priority(void);
   BOOL Find_LUNIT_For_GBB( const GRA_BB* gbb, LUNIT** lunitp );
@@ -379,6 +381,19 @@ public:
   void Update_Boundary_BBs(void);
 #endif
 };
+
+#ifdef TARG_IA64
+//Inserted by ORC for Experiments.
+struct BUFFERED_LRANGE {
+    LRANGE *lrange;
+    INT abi_property;
+    ISA_REGISTER_CLASS reg_class;
+    INT lunits_number;
+    float density;
+    BUFFERED_LRANGE *next,*prev;
+};
+//End of Insertion.
+#endif
 
 // manages the allocation and usage of all LRANGE nodes
 class LRANGE_MGR {

@@ -34,10 +34,10 @@
 
 //  Spill functions for GRA
 
-//  $Revision: 1.2 $
-//  $Date: 02/11/07 23:41:30-00:00 $
-//  $Author: fchow@keyresearch.com $
-//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_spill.h $
+//  $Revision$
+//  $Date$
+//  $Author$
+//  $Source$
 
 
 #ifndef GRA_SPILL_INCLUDED
@@ -46,7 +46,7 @@
 #ifndef GRA_SPILL_RCS_ID
 #define GRA_SPILL_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_spill_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_spill.h $ $Revision: 1.2 $";
+static char *gra_spill_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_spill.h,v $ $Revision: 1.1.1.1 $";
 #endif
 #endif
 
@@ -57,7 +57,9 @@ extern void GRA_Note_Spill( LRANGE* lrange );
 extern void GRA_Spill(void);
 
 extern void GRA_Remove_Predicates_Save_Restore(void);
-
+#ifdef TARG_IA64
+extern void Gen_UNAT_Spills_Entry_And_Exit_BB(void);
+#endif
 extern float priority_count;
 
 #endif

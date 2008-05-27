@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: findloops.h
- * $Revision: 1.2 $
- * $Date: 02/11/07 23:41:24-00:00 $
- * $Author: fchow@keyresearch.com $
- * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.findloops.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/findloops.h,v $
  *
  * Description:
  *
@@ -129,7 +129,6 @@
 #define	FINDLOOPS_INCLUDED
 
 #include "bb_set.h"	/* to get definition of BB_SET */
-#include "cg_vector.h"
 
 struct LOOP_DESCR {
   LOOP_DESCR *next;
@@ -139,13 +138,6 @@ struct LOOP_DESCR {
   INT         nestlevel;
   MEM_POOL   *mem_pool;
   INT         num_exits;
-#ifdef TARG_SL
-  INT         lc_index;  /* loop count index, it's useful
-                         * only when Can_Zero_Delay(loop)
-                         * is true
-                         */
-  VECTOR      children; /* children in the loop tree */
-#endif
   mINT32      flags;
 };
 
@@ -165,26 +157,8 @@ struct LOOP_DESCR {
 #define		LOOP_DESCR_Exit_Loop		0x004
 #define		LOOP_DESCR_Call_Loop		0x008
 
-/* flag to annotate the Zero_Delay_Loop Optimizations */
-#ifdef TARG_SL
-#define         LOOP_DESCR_Can_Zero_Delay       0x010
-#define         LOOP_DESCR_MVTC_Optimized       0x020
-#endif 
-
 /* high-level macros
  */
-
-#ifdef TARG_SL
-#define		Can_Zero_Delay(loop)	\
-			(LOOP_DESCR_flags(loop) & LOOP_DESCR_Can_Zero_Delay)
-#define		Set_Can_Zero_Delay(loop)	\
-			(LOOP_DESCR_flags(loop) |= LOOP_DESCR_Can_Zero_Delay)
-#define         MVTC_Optimized(loop) \
-                        (LOOP_DESCR_flags(loop) & LOOP_DESCR_MVTC_Optimized)
-#define         Set_MVTC_Optimized(loop) \
-                        (LOOP_DESCR_flags(loop) |= LOOP_DESCR_MVTC_Optimized)
-#endif
-
 #define		Is_Inner_Loop(loop)	\
 			(LOOP_DESCR_flags(loop) & LOOP_DESCR_Inner_Loop)
 #define		Set_Inner_Loop(loop)	\
@@ -209,14 +183,6 @@ struct LOOP_DESCR {
 			(LOOP_DESCR_flags(loop) |= LOOP_DESCR_Call_Loop)
 #define		Reset_Call_Loop(loop) 	\
 			(LOOP_DESCR_flags(loop) &= ~LOOP_DESCR_Call_Loop)
-
-#if defined(TARG_SL)
-extern void LOOP_DESCR_Create_Loop_Tree( MEM_POOL* pool );
-extern void LOOP_DESCR_Dump_Loop_Brief( LOOP_DESCR* loop );
-extern void LOOP_DESCR_Dump_Loop( INT indent, LOOP_DESCR* cloop );
-extern void LOOP_DESCR_Dump_Loop_Tree( void );
-extern VECTOR loop_tree_roots;
-#endif
 
 extern void LOOP_DESCR_Init_For_PU(void);
 extern LOOP_DESCR * LOOP_DESCR_Detect_Loops (MEM_POOL *pool);

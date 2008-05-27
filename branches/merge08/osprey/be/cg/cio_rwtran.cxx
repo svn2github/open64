@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -42,10 +46,10 @@
 // =======================================================================
 //
 //  Module: cio_rwtran.cxx
-//  $Revision: 1.30 $
-//  $Date: 06/01/11 10:12:17-08:00 $
-//  $Author: tkong@hyalite.keyresearch $
-//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cio_rwtran.cxx $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cio_rwtran.cxx,v $
 //
 //  Description:
 //  ============
@@ -169,6 +173,7 @@ static const char rcs_id[] = "";
 #include "gra_live.h"
 #include "data_layout.h"
 
+#include <vector>
 #include <map>
 #include "cxx_memory.h"
 
@@ -308,7 +313,7 @@ INT32 CIO_rw_max_omega         = 8;
 // ======================================================================
 
 
-typedef pair< OP *, UINT8 > OP_OMEGA;
+typedef std::pair< OP *, UINT8 > OP_OMEGA;
 
 struct OP_OMEGA_less_prolog  // omega increasing
 {
@@ -375,7 +380,7 @@ private:
   // end (...,2,1,0).  The range OP* is the corresponding OPs that will
   // be inserted into the prolog or epilog.
 
-  typedef pair< OP_OMEGA, OP * >                      op_copy_pair;
+  typedef std::pair< const OP_OMEGA, OP * >           op_copy_pair;
   typedef std::map< OP_OMEGA, OP *, OP_OMEGA_less_prolog,
 	       mempool_allocator< op_copy_pair > >    op_copy_map_prolog;
   typedef std::map< OP_OMEGA, OP *, OP_OMEGA_less_epilog,
@@ -1206,9 +1211,9 @@ CIO_RWTRAN::Copy_Ops_To_Prolog()
     fprintf( TFile, "<cio> Copy_Ops_To_Prolog copying:\n" );
   }
 
-  typedef pair< TN *, UINT8 >                      TN_OMEGA;
-  typedef pair< TN_OMEGA, TN * >                   tn_copy_pair;
-  typedef map< TN_OMEGA, TN *, less< TN_OMEGA >,
+  typedef std::pair< TN *, UINT8 >                      TN_OMEGA;
+  typedef std::pair< TN_OMEGA, TN * >                   tn_copy_pair;
+  typedef std:map< TN_OMEGA, TN *, less< TN_OMEGA >,
     mempool_allocator< tn_copy_pair > >            tn_copy_map;
 
   tn_copy_map tn_prolog_map;
@@ -1793,6 +1798,16 @@ CIO_RWTRAN::Read_CICSE_Candidate_Op( OP *op )
     return FALSE;
 #endif /* TARG_X8664 */
 
+#ifdef TARG_MIPS
+  // Avoid backpatching OPs that define fcc.  Backpatches may require copies
+  // and there is no MIPS instruction to copy between fcc registers.  Bug
+  // 12428.
+  if (OP_results(op) &&
+      TN_register_class(OP_result(op, 0)) == ISA_REGISTER_CLASS_fcc) {
+    return FALSE;
+  }
+#endif
+
   if ( OP_has_implicit_interactions( op ) ||
        OP_opnds( op ) > OP_MAX_FIXED_OPNDS )
     return FALSE;
@@ -2091,6 +2106,11 @@ CIO_RWTRAN::Replace_Tn( BB *body, TN *tn_old, TN *tn_new, UINT8 omega_change )
     }
   }
 
+#ifdef KEY
+  // Update any occurances in the prolog backpatch list.  Bug 11749.
+  CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_prolog,
+				     tn_old, tn_new, omega_change );
+#else
   // Delete all prolog backpatches for tn_old;
   // Calling procedure must guarantee that tn_new has appropriate backpatches
   CG_LOOP_BACKPATCH *bp, *bp_next = NULL;
@@ -2099,7 +2119,8 @@ CIO_RWTRAN::Replace_Tn( BB *body, TN *tn_old, TN *tn_new, UINT8 omega_change )
     bp_next = CG_LOOP_Backpatch_Next( bp );
     CG_LOOP_Backpatch_Delete( CG_LOOP_prolog, bp );
   }
-  
+#endif  
+
   // Update any occurances in the epilog backpatch list
   CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_epilog,
 				     tn_old, tn_new, omega_change );
@@ -2521,6 +2542,11 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	  INT opnd;
 	  for ( opnd = OP_opnds( entry2.op ) - 1; opnd >= 0; --opnd )
 	    if ( entry1.opnd_source[opnd] != entry2.opnd_source[opnd] ||
+#ifdef OSP_OPT
+		 //Bug fix for OSP_239
+		 //TODO: This bug fix could be refined
+		 (entry1.opnd_source[opnd] > index1 && entry1.opnd_source[opnd] < index2) ||
+#endif
 		 entry1.opnd_result[opnd] != entry2.opnd_result[opnd] )
 	      break;
 	  // Add code to handle ADD and other commutative OPs

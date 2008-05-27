@@ -1,4 +1,8 @@
 /*
+ * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -46,10 +50,10 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.18 $
-//  $Date: 05/12/05 08:59:10-08:00 $
-//  $Author: bos@eng-24.pathscale.com $
-//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_color.cxx $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_color.cxx,v $
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -57,10 +61,11 @@
 #pragma hdrstop
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_color.cxx $ $Revision: 1.18 $";
+static char *rcs_id = "$Source: be/cg/gra_mon/SCCS/s.gra_color.cxx $ $Revision: 1.17 $";
 #endif
 
 #include <limits.h>
+#include <float.h>
 #include "defs.h"
 #include "errors.h"
 #include "tracing.h"
@@ -77,12 +82,20 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon
 #include "gra_grant.h"
 #include "gra_spill.h"
 #include "gra_interfere.h"
-#ifdef TARG_SL2 //minor_reg_alloc
-#include "gra_para_region.h"
-#endif 
+
+#ifdef TARG_IA64
+#include "op.h"
+#include "calls.h"
+#include "ipfec_options.h"
+#endif
+
 #ifdef TARG_X8664
 #include "targ_sim.h"
 #include "whirl2ops.h"
+#endif
+
+#ifdef KEY
+BOOL GRA_reclaim_register = FALSE;
 #endif
 
 INT32 GRA_local_forced_max = DEFAULT_FORCED_LOCAL_MAX;
@@ -110,6 +123,47 @@ static MEM_POOL prq_pool;
 static GRA_REGION *GRA_current_region;  // The current region for which we are 
 					// allocating registers.
 
+#ifdef TARG_IA64
+static BB_SET* pred_bb_set;//for remove save/restore pr
+extern char *Cur_PU_Name;
+extern BOOL fat_self_recursive;
+extern BOOL gra_self_recursive;
+extern INT32 rse_budget;
+INT32 first_callee_next;
+INT32 first_caller_next;
+BOOL high_freq;
+struct reg_feedback {
+    char _func_name[120];
+    INT32 _stacked_callee_used;
+    INT32 _stacked_caller_used;
+    float _cost[96];
+    reg_feedback() : _stacked_callee_used(0),
+             _stacked_caller_used(0)
+    {
+        for (INT32 i = 0; i < 96; i++) {
+            _cost[i] = 0;
+        }
+    }
+};
+
+struct reg_feedback reg_fb;
+static BOOL have_open_output_file = FALSE;
+static FILE *fout;
+static BOOL have_open_input_file = FALSE;
+static FILE *fin;
+
+
+BOOL can_use_stacked_reg;
+
+//Inserted by ORC.
+INT   abi_property;
+ISA_REGISTER_CLASS reg_class;
+INT   lunits_number;
+float density;
+BOOL  need_buffer;
+INT32 current_lrange;
+//End.
+#endif
 
 // Use to iterate over the members of a LRNAGE's preference class
 // that have already been allocated a register in their
@@ -121,7 +175,6 @@ public:
 
   void Init(LRANGE *lrange)	{ GRA_PREF_LRANGE_ITER::Init(lrange->Pref()); }
 };
-
 
 //  Choosing registers ...
 //////////////////////////////////////////////////////////////////////////
@@ -144,6 +197,20 @@ public:
 //
 //////////////////////////////////////////////////////////////////////////
 
+#ifdef TARG_IA64
+static void
+Update_Reg_Cost(LRANGE *lr,INT32 reg)
+{
+    INT32 k = reg - 32;
+    if (lr->Rc() == ISA_REGISTER_CLASS_integer) {
+        if ((reg > first_callee_next)
+            && (reg <= first_caller_next)) {
+            lr->Calculate_Priority();
+            reg_fb._cost[k] = reg_fb._cost[k] + lr->Priority();
+        }
+    }
+}
+#endif
 
 /////////////////////////////////////
 static void
@@ -162,11 +229,6 @@ Initialize(void)
     MEM_POOL_Initialize(&prq_pool,"GRA LRANGE priority queue",FALSE);
   }
 
-#ifdef TARG_SL2 //minor_reg_alloc
-  gra_para_region_mgr.Build_Map_For_Pair_Region();
-  gra_para_region_mgr.Pre_Reserve_Registers_For_Minor();
-#endif 
-
   FOR_ALL_ISA_REGISTER_CLASS( rc ) {
     non_prefrenced_regs[rc] = REGISTER_CLASS_allocatable(rc);
     
@@ -174,50 +236,14 @@ Initialize(void)
 
     regs_used[rc] = REGISTER_SET_EMPTY_SET;
   }
-}
-
-#ifdef TARG_SL2 //minor_reg_alloc
-void 
-Get_Rid_For_Lrange(LRANGE* lrange,  vector <RID*> * rid_vec )
-{
-
-     LRANGE_LIVE_GBB_ITER live_gbb_iter;
-     BB* bb;
-     if(lrange->Type()== LRANGE_TYPE_REGION) { //region for major thread;
-	  return; 
-     }
-     if(lrange->Type() ==LRANGE_TYPE_LOCAL) {
-         bb = lrange->Gbb()->Bb();
-         RID* rid =  BB_rid(bb);
-         if(rid ) { // don't split register for major fork 
-           if(RID_TYPE_major(rid)) 
-		  return;
-	    else { // for minor fork 
-		 rid_vec->push_back(rid);
-		 return;
-	    }		
-	  }
-     }
-     else { //complement region 
-       Is_True((lrange->Type()==LRANGE_TYPE_COMPLEMENT), ("unknown region type")); 
-	LRANGE_LUNIT_ITER lunit_iter;
-       for (lunit_iter.Init(lrange); ! lunit_iter.Done(); lunit_iter.Step()) 
-       {
-           LUNIT* lunit = lunit_iter.Current();
-           GRA_BB* gbb = lunit->Gbb();
-	    bb = gbb->Bb();
-	    if(BB_rid(bb) && (find(rid_vec->begin(), rid_vec->end(), BB_rid(bb)) == rid_vec->end())) {
-	    	rid_vec->push_back(BB_rid(bb));
-	   }		
-       }
-     }
-     return;
-}
+#ifdef TARG_IA64  
+  pred_bb_set = BB_SET_Create_Empty(PU_BB_Count+2, GRA_pool);
 #endif
+}
 
 /////////////////////////////////////
 static void
-Update_Register_Info( LRANGE* lrange, REGISTER reg )
+Update_Register_Info( LRANGE* lrange, REGISTER reg, BOOL reclaim = FALSE )
 /////////////////////////////////////
 //
 //  Update some information assiciated primarily with the register and used
@@ -227,7 +253,10 @@ Update_Register_Info( LRANGE* lrange, REGISTER reg )
 {
   ISA_REGISTER_CLASS rc = lrange->Rc();
 
-  lrange->Allocate_Register(reg);
+  lrange->Allocate_Register(reg, reclaim);
+#ifdef TARG_IA64
+  Update_Reg_Cost(lrange,reg);
+#endif
 
   if ( lrange->Has_Preference() ) {
     non_prefrenced_regs[rc] =
@@ -240,27 +269,32 @@ Update_Register_Info( LRANGE* lrange, REGISTER reg )
 #ifdef HAS_STACKED_REGISTERS
        || REGISTER_Is_Stacked_Local(rc, reg)
 #endif
-	)) 
+#ifdef TARG_IA64
+	)) {
+#else
+      ))
+#endif
       callee_saves_used[rc] = REGISTER_SET_Union1(callee_saves_used[rc],reg);
+#ifdef TARG_IA64
+      if(GRA_optimize_restore_pr && Is_Predicate_REGISTER_CLASS(rc)) {
+        if(lrange->Type() == LRANGE_TYPE_LOCAL)
+          pred_bb_set = BB_SET_Union1(pred_bb_set, lrange->Gbb()->Bb(), GRA_pool);
+        else if(lrange->Type() == LRANGE_TYPE_COMPLEMENT)
+          pred_bb_set = BB_SET_Union(pred_bb_set, lrange->Live_BB_Set(), GRA_pool);
+        else {
+          GRA_REGION* gra_region = lrange->Region();
+          GRA_BB* g_bb = gra_region->First_Gbb();
+          for(BB* live_bb = g_bb->Bb();g_bb != gra_region->Last_Gbb(); g_bb = g_bb->Region_Next())
+          {
+            pred_bb_set = BB_SET_Union1(pred_bb_set, live_bb, GRA_pool);
+            live_bb = g_bb->Bb();
+          }
+          pred_bb_set = BB_SET_Union1(pred_bb_set, g_bb->Bb(), GRA_pool);
+       	}
+      }
+    }
+#endif
   }
-
-#ifdef TARG_SL2 //minor_reg_alloc
-//  if( !lrange->Spans_Multiregions()) {
-     vector< RID* > rid_vec;
-     vector<RID* >::iterator iter; 
-     Get_Rid_For_Lrange(lrange, &rid_vec);
-   for(iter = rid_vec.begin(); iter != rid_vec.end(); iter++) {
-   	RID* rid = *iter; 
-     if(rid && RID_TYPE_minor(rid)) {
-	 RID * pair_rid =  gra_para_region_mgr.Get_Pair_Rid(rid);
-	 Is_True((pair_rid), ("pair_rid is NULL"));
-	 GRA_PARA_REGION* pair_region = gra_para_region_mgr.Get(pair_rid);
-	 pair_region->Add_One_Exclude_Register(rc,  reg);
-     }	 
-   }
-//  }
-#endif 
-  
 }
 
 /////////////////////////////////////
@@ -341,7 +375,11 @@ Choose_Best_Register(REGISTER* reg, ISA_REGISTER_CLASS rc,
 
 /////////////////////////////////////
 static BOOL
-Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region )
+Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region
+#ifdef KEY
+		   , BOOL reclaim = FALSE
+#endif
+		 )
 /////////////////////////////////////
 //
 //  If one of the registers used by a member of <lrange>'s preference class is
@@ -355,7 +393,12 @@ Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region )
     LRANGE* p_lrange = iter.Current();
 
     if ( REGISTER_SET_MemberP(allowed,p_lrange->Reg()) ) {
-      Update_Register_Info(lrange, p_lrange->Reg());
+#ifdef KEY
+      if (reclaim) {
+	LRANGE_Split_Reclaimed_BBs(lrange, p_lrange->Reg());
+      }
+#endif
+      Update_Register_Info(lrange, p_lrange->Reg(), reclaim);
       GRA_Trace_Preference_Attempt(lrange, p_lrange, region, TRUE);
       return TRUE;
     }
@@ -367,7 +410,11 @@ Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region )
 
 /////////////////////////////////////
 static BOOL
-Choose_Avoiding_Neighbor_Preferences( LRANGE* lrange, REGISTER_SET allowed )
+Choose_Avoiding_Neighbor_Preferences( LRANGE* lrange, REGISTER_SET allowed
+#ifdef KEY
+				      , BOOL reclaim = FALSE
+#endif
+				    )
 /////////////////////////////////////
 //
 //  Try to find a register for <lrange> in the <allowed> set that is preferred
@@ -412,7 +459,12 @@ Choose_Avoiding_Neighbor_Preferences( LRANGE* lrange, REGISTER_SET allowed )
   if (Choose_Best_Register(&reg, rc, allowed,
 			   REGISTER_Has_Stacked_Registers(rc),
 			   !(lrange->Spans_A_Call() || lrange->Spans_Infreq_Call()))) {
-    Update_Register_Info(lrange,reg);
+#ifdef KEY
+    if (reclaim) {
+      LRANGE_Split_Reclaimed_BBs(lrange, reg);
+    }
+#endif
+    Update_Register_Info(lrange, reg, reclaim);
     return TRUE;
   }
 
@@ -449,13 +501,28 @@ Allocate_Stacked_Register(LRANGE* lrange)
     Update_Register_Info(lrange, reg);
     return TRUE;
   }
+
+#ifdef TARG_IA64
+  if (abi_property == ABI_PROPERTY_caller)
+    reg = REGISTER_Request_Stacked_Register(ABI_PROPERTY_callee,
+                                            lrange->Rc());
+
+  if (reg != REGISTER_UNDEFINED) {
+    Update_Register_Info(lrange, reg);
+  return TRUE;
+}
+#endif // TARG_IA64
 #endif
   return FALSE;
 }
 
 /////////////////////////////////////
 static BOOL
-Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed )
+Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed
+#ifdef KEY
+			  , BOOL reclaim = FALSE
+#endif
+			)
 /////////////////////////////////////
 //
 //  See if there is a register in 'allowed' that is not yet the preference of
@@ -471,7 +538,12 @@ Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed )
   if ( Choose_Best_Register(&reg,rc,allowed,
 			    REGISTER_Has_Stacked_Registers(rc),
 			    (lrange->Spans_A_Call() || lrange->Spans_Infreq_Call())) ) {
-    Update_Register_Info(lrange,reg);
+#ifdef KEY
+    if (reclaim) {
+      LRANGE_Split_Reclaimed_BBs(lrange, reg);
+    }
+#endif
+    Update_Register_Info(lrange, reg, reclaim);
     return TRUE;
   }
   return FALSE;
@@ -479,7 +551,11 @@ Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed )
 
 /////////////////////////////////////
 static BOOL
-Choose_Anything( LRANGE* lrange, REGISTER_SET allowed )
+Choose_Anything( LRANGE* lrange, REGISTER_SET allowed
+#ifdef KEY
+		 , BOOL reclaim = FALSE
+	       )
+#endif
 /////////////////////////////////////
 //
 //  Take any register from the 'allowed' set for 'lrange'.  Return TRUE if
@@ -493,13 +569,21 @@ Choose_Anything( LRANGE* lrange, REGISTER_SET allowed )
 
   if ( Choose_Best_Register(&reg,rc,allowed, has_stacked,
 			    !(lrange->Spans_A_Call() || lrange->Spans_Infreq_Call())) ) {
-    Update_Register_Info(lrange,reg);
+#ifdef KEY
+    if (reclaim) {
+      LRANGE_Split_Reclaimed_BBs(lrange, reg);
+    }
+#endif
+    Update_Register_Info(lrange, reg, reclaim);
     return TRUE;
   }
 
   //
   // If stacked registers are available, try to get a new one.
   //
+#ifdef KEY
+  if (!reclaim)
+#endif
   if (has_stacked && Allocate_Stacked_Register(lrange)) {
     return TRUE;
   }
@@ -509,7 +593,12 @@ Choose_Anything( LRANGE* lrange, REGISTER_SET allowed )
   // could have been used to satisfy a preference).
   //
   if (Choose_Best_Register(&reg,rc,allowed, FALSE, FALSE)) {
-    Update_Register_Info(lrange,reg);
+#ifdef KEY
+    if (reclaim) {
+      LRANGE_Split_Reclaimed_BBs(lrange, reg);
+    }
+#endif
+    Update_Register_Info(lrange, reg, reclaim);
     return TRUE;
   }
 
@@ -526,31 +615,39 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
 /////////////////////////////////////
 {
   REGISTER_SET allowed = lrange->Allowed_Registers(GRA_current_region);
-
-#ifdef TARG_SL2 //minor_reg_alloc
-//  if(!lrange->Spans_Multiregions()) 
-//  {
-     vector< RID*> rid_vec; 
-     vector< RID* >::iterator iter; 
-     Get_Rid_For_Lrange(lrange, &rid_vec);
-  for(iter=rid_vec.begin(); iter !=rid_vec.end(); iter++ ) {	 
-     RID* rid = *iter;
-     if(rid && RID_TYPE_minor(rid)) {	 
-	 GRA_PARA_REGION* region = gra_para_region_mgr.Get(rid);
-	 REGISTER_SET exclude_set =  region->Registers_Exclude(lrange->Rc());
-       allowed = REGISTER_SET_Difference(allowed, exclude_set);
-     }	 
-  }
-// }
-#endif 
-
+#ifdef TARG_IA64
+  if (lrange->Type() == LRANGE_TYPE_COMPLEMENT) 
+      current_lrange = TN_number(lrange->Original_TN());
+  else 
+      current_lrange = 0;
+#endif
   if ( lrange->Has_Wired_Register() ) {
-    DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
-               ("LRANGE not allowed its wired register"));
+// Disable it for the time being
+//    DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
+//               ("LRANGE not allowed its wired register"));
     Update_Register_Info(lrange, lrange->Reg());
     return TRUE;
   }
-#ifdef KEY
+#ifdef TARG_IA64  
+  //Inserted by ORC.
+  can_use_stacked_reg = TRUE;
+  need_buffer = FALSE;
+  if ((fat_self_recursive) && (lrange->Type() == LRANGE_TYPE_COMPLEMENT)) {
+      LRANGE_LUNIT_ITER iter;
+      INT32 spill_num = 0;
+      density = 0;
+      for (iter.Init(lrange); ! iter.Done(); iter.Step()) {
+          spill_num++;
+          density += iter.Current()->Gbb()->Freq();
+      }
+     
+      //For all live ranges in a fat self recursive function,we refuse
+      //stacked registers using at first.
+      can_use_stacked_reg = FALSE;
+      lunits_number = spill_num;
+  }
+  //End.
+#else
   GRA_Trace_LRANGE_Choose(lrange, allowed);
 #endif
 #ifdef HAS_STACKED_REGISTERS
@@ -672,7 +769,7 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
   //
   if (GRA_LOCAL_FORCED_MAX(rc) == DEFAULT_FORCED_LOCAL_MAX) {
     INT rc_size = (REGISTER_CLASS_last_register(rc) - REGISTER_MIN) + 1;
-#ifdef KEY
+#ifndef TARG_IA64
     rc_local_forced_max = GRA_LOCAL_FORCED_MAX(rc);
 #else
     rc_local_forced_max = Min(GRA_LOCAL_FORCED_MAX(rc), rc_size/8);
@@ -710,6 +807,8 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
 	   reg != REGISTER_UNDEFINED;
 	   reg = REGISTER_SET_Choose_Next(special_regs, reg)) {
 	gbb->Make_Register_Used(ISA_REGISTER_CLASS_integer, reg);
+	if (GRA_reclaim_register)
+	  gbb->Make_Register_Referenced(ISA_REGISTER_CLASS_integer, reg);
 	GRA_GRANT_Local_Register(gbb, ISA_REGISTER_CLASS_integer, reg);
 	regs_to_grant--;
       }
@@ -721,16 +820,6 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
     ) {
       REGISTER reg;
       REGISTER_SET allowed = REGISTER_CLASS_allocatable(rc);
-
-#ifdef TARG_SL2 //minor_reg_alloc
-      BB* bb = gbb->Bb();
-     if(BB_rid(bb) && RID_TYPE_minor(BB_rid(bb))) {
-     	 GRA_PARA_REGION* region = gra_para_region_mgr.Get(BB_rid(bb));
-	 REGISTER_SET exclude_set =  region->Registers_Exclude(rc);
-        allowed = REGISTER_SET_Difference(allowed,  exclude_set);
-     }
-#endif 
-
 #ifdef HAS_STACKED_REGISTERS
       if (REGISTER_Has_Stacked_Registers(rc)) {
 	allowed = REGISTER_SET_Difference(allowed, REGISTER_CLASS_stacked(rc));
@@ -739,7 +828,7 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
 #endif
       allowed = REGISTER_SET_Difference(allowed,
                                 gbb->Registers_Used(rc));
-#ifdef KEY  // this is needed to avoid insufficient regs granted to LRA
+#ifndef TARG_IA64  // this is needed to avoid insufficient regs granted to LRA
       allowed = REGISTER_SET_Difference(allowed, 
 	      			REGISTER_CLASS_function_value(rc));
 #endif
@@ -766,16 +855,11 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
           || Choose_Best_Register(&reg,rc,allowed,FALSE,FALSE)
       ) {
         gbb->Make_Register_Used(rc,reg);
+#ifdef KEY
+	if (GRA_reclaim_register)
+	  gbb->Make_Register_Referenced(rc, reg);
+#endif
         GRA_GRANT_Local_Register(gbb,rc,reg);
-#ifdef TARG_SL2 //minor_reg_alloc
-        if(BB_rid(gbb->Bb()) && RID_TYPE_minor(BB_rid(gbb->Bb()))) {
-		RID* rid = BB_rid(gbb->Bb());
-		RID* pair_rid = gra_para_region_mgr.Get_Pair_Rid(rid);
-		GRA_PARA_REGION * pair_region = 
-			gra_para_region_mgr.Get(pair_rid);
-		pair_region->Add_One_Exclude_Register(rc,  reg);
-       }			
-#endif 
       }
       else {
 #ifdef TARG_X8664
@@ -789,6 +873,56 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
     }
   }
 }
+
+#ifdef KEY
+//  Reclaim registers ...
+//////////////////////////////////////////////////////////////////////////
+//
+//  Choose a register from the reclaimable register set.  A register is
+//  reclaimable for a LRANGE X if, throughout X's BBs, the register is
+//  allocated to another LRANGE Y but is not referenced by Y (used or defined).
+//  Choose_Reclaimable_Register works just like Choose_Register, except that
+//  Choose_Reclaimable_Register searches for register candidates over the
+//  reclaimable registers instead of the unused registers.
+//
+//////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////
+static BOOL
+Choose_Reclaimable_Register (LRANGE *lrange, GRA_REGION *region)
+/////////////////////////////////////
+//
+// Reclaim a register for the given 'lrange'.  Return TRUE if successful.
+//
+/////////////////////////////////////
+{
+  // Don't reclaim a register for local lranges.
+  if (lrange->Type() == LRANGE_TYPE_LOCAL)
+    return FALSE;
+
+  REGISTER_SET reclaimable = lrange->Reclaimable_Registers(GRA_current_region);
+
+  // Choose_Register should have taken care of LRANGEs with wired registers.
+  Is_True(!lrange->Has_Wired_Register(),
+	  ("Choose_Reclaimable_Register: LRANGE has wired register"));
+
+  GRA_Trace_LRANGE_Choose_Reclaimable(lrange, reclaimable);
+
+  if (REGISTER_SET_EmptyP(reclaimable)) {
+    return FALSE;
+  }      
+
+  if (Choose_Preference(lrange, reclaimable, region, TRUE))
+    return TRUE;
+  else if (Choose_Avoiding_Neighbor_Preferences(lrange, reclaimable, TRUE))
+    return TRUE;
+  else if (Choose_Noones_Preference(lrange, reclaimable, TRUE))
+    return TRUE;
+  else
+    return Choose_Anything(lrange, reclaimable, TRUE);
+}
+#endif
 
 //  Simplification
 //////////////////////////////////////////////////////////////////////////
@@ -1117,45 +1251,75 @@ Must_Split( LRANGE* lrange )
 }
 
 
-#ifdef TARG_SL2 
-// #pragma sl2 sl2_major_section 
-// {
-//     #pragma sl2 sl2_minor_sections
-//     {
-//          #pragma sl2 sl2_minor_section 
-//          {
-//                  .......
-//          }
-//          #pragma sl2 sl2_minor_section 
-//          {
-//                  ......
-//          }
-//     }
-// }
-// in Seperate compilation framework, we first compile major section and then the whole PU,
-// if there is a minor section under major section, we not only need to set register allocation 
-// for major section also to minor section, otherwise it will reallocate register for minor section 
-// previously allocated in seperate compilation phase, it will cause assertion.  Following segment 
-// need to be removed after major section is implemented with transparent region. 
-//
-void 
-Set_Children_GRA_Colored (RID * rid) 
+#ifdef TARG_IA64
+/////////////////////////////////////
+static void 
+GRA_Optimize_Restore_Regs(BB* exit, BB_SET* call_set, BB_SET* pr_set, BB_SET* lc_set)
+////////////////////////////////////
+// optimize the path on exit.
+// optimize save/restore of b0/ar.pfs if call_set isn't null
+// optimize save/restore of pr if pr_set isn't null, which
+// should be calculated outside
+// optimize save/restore of ar.lc if lc_set isn't null
+////////////////////////////////////
 {
-    RID* kid; 
-
-    if(rid == NULL) return; //func_entry rid
-    
-    RID_was_gra_Set(rid);
-    RID_has_reg_alloc_Set(rid);
-
-    for(kid = RID_first_kid(rid); kid != NULL; kid = RID_next(kid))
-    {
-        Set_Children_GRA_Colored(kid); 
+  Is_True(exit, ("NULL exit BB to optimize!"));
+  BB_SET* parent_bbs = Find_BB_Parents(exit);
+  BB_SET* ref_set = NULL;
+  OP* op;
+  if(call_set) {
+    ref_set = BB_SET_Intersection(call_set, parent_bbs, GRA_pool);
+    if(BB_SET_EmptyP(ref_set)) {
+      Is_True(exit, ("exit BB in GRA should not be NULL!"));
+      BOOL found_pfs = FALSE;
+      BOOL found_b0 = FALSE;
+      for (op = BB_last_op(exit); op; op = OP_prev(op)) {
+      	OP* tmp_op = NULL;
+        if(!found_pfs && OP_restore_ar_pfs(op)) {
+          tmp_op = BB_prev(op);
+          BB_Remove_Op(exit, op);
+          found_pfs = TRUE;
+          op = tmp_op;
+        }
+        if (!found_b0 && OP_restore_b0(op)) {
+          tmp_op = BB_prev(op);
+          BB_Remove_Op(exit, op);
+          found_b0 = TRUE;
+          op = tmp_op;
+        }
+        if(found_pfs && found_b0) break;
+        if(!op) break;
+      }
     }
-    return; 
+  }
+  
+  if(pr_set) {
+    ref_set = BB_SET_Intersection(pr_set, parent_bbs, GRA_pool);
+    if(BB_SET_EmptyP(ref_set)) {
+      for (op = BB_last_op(exit); op; op = OP_prev(op)) {
+        if (OP_restore_predicates(op)) {
+          BB_Remove_Op(exit, op);
+          break;
+        }
+      }
+    }
+  }
+  
+  if(lc_set) {
+    ref_set = BB_SET_Intersection(lc_set, parent_bbs, GRA_pool);
+    if(BB_SET_EmptyP(ref_set)) {
+      Is_True(exit, ("exit BB in GRA should not be NULL!"));
+      for (op = BB_last_op(exit); op; op = OP_prev(op)) {
+        if (OP_def_ar_lc(op)) {
+          BB_Remove_Op(exit, op);
+          break;
+        }
+      }
+    }
+  }
+  
 }
-#endif 
-
+#endif
 
 /////////////////////////////////////
 static void
@@ -1168,17 +1332,47 @@ GRA_Color_Complement( GRA_REGION* region )
   LRANGE_CLIST        cl;     // Coloring list
   LRANGE_CLIST_ITER   iter;   // Iterator over above
   char buff[100];
-
+  
   priority_count = 0.0;
-
+ 
   GRA_Trace_Color(0,"Coloring complement region...");
   GRA_current_region = gra_region_mgr.Complement_Region();
 
   GRA_GRANT_Initialize();
 
   FOR_ALL_ISA_REGISTER_CLASS_IN_REVERSE( rc ) {
+#ifdef TARG_IA64
+    BUFFERED_LRANGE     *first,*last; //Inserted by Liu Yang for Experiments.
+
+    //Inserted by ORC for Experiments.
+    first = (BUFFERED_LRANGE *) malloc(sizeof(BUFFERED_LRANGE));
+    last = (BUFFERED_LRANGE *) malloc(sizeof(BUFFERED_LRANGE));
+    first->lunits_number = 10000;
+    first->density = 900000000.0;
+    last->lunits_number  = -10000;
+    last->density = -1000.0;
+    last->next = NULL;
+    last->prev = first;
+    first->prev = NULL;
+    first->next = last;
+    //End of Insertion.
+    if (rc == ISA_REGISTER_CLASS_integer) {
+        first_callee_next = Get_Stacked_Callee_Next();
+        first_caller_next = Get_Stacked_Caller_Next();
+        for (INT32 i = 32; i <= first_callee_next; i++) {
+            INT32 k = i - 32;
+            reg_fb._cost[k] = FLT_MAX;
+        }
+
+        for (INT32 i = first_caller_next+1; i <= 128;i++) {
+            INT32 k = i - 32;
+            reg_fb._cost[k] = FLT_MAX;
+        }
+    }
+#endif
     BOOL forced_locals = FALSE;
 
+    
     if ( region->Lrange_Count(rc) == 0 ) {
       Force_Color_Some_Locals(region,rc);
       continue;
@@ -1191,21 +1385,103 @@ GRA_Color_Complement( GRA_REGION* region )
     for (iter.Init(&cl); ! iter.Done(); iter.Step()) {
       LRANGE* split_alloc_lr;
       LRANGE* lr = iter.Current();
-
+      
       if ( ! (forced_locals || lr->Has_Wired_Register()) ) {
         forced_locals = TRUE;
         Force_Color_Some_Locals(region,rc);
       }
-
+      
       GRA_Trace_Color_LRANGE("Coloring",lr);
       GRA_Trace_Complement_LRANGE_Neighbors(lr, region);
 
+#ifdef TARG_IA64
+      //Inserted by Liu Yang for Experiments.
+      //Here we should compute every live range's total 
+      //def frequency and use frequency.We will count those
+      //TNs which are Rematerializable first.
+      double total_def = 0.0;
+      double total_use = 0.0;
+      BOOL   should_spill = FALSE;
+      if ((CG_PU_Has_Feedback) && (lr->Type() == LRANGE_TYPE_COMPLEMENT)) {
+          TN* tn_cur = lr->Tn();
+          if (TN_is_rematerializable(tn_cur)) {
+              LRANGE_LUNIT_ITER iter;
+              for (iter.Init(lr); ! iter.Done(); iter.Step()) {
+                  LUNIT* unit = iter.Current(); 
+                  double freq   = unit->Gbb()->Freq();
+                  if ((unit->Has_Exposed_Use()) && (!unit->Has_Def())) {
+                      total_use += freq;
+                  } else if (unit->Has_Def() && !unit->Has_Use()) {
+                      total_def += freq;
+                  } 
+              }
+              
+              if (total_def > total_use*2) { 
+                  should_spill = TRUE;
+              }
+          }
+      } 
+      //End of Insertion.
+      
+      if (should_spill) {
+          GRA_Note_Spill(lr);
+          continue;
+      }
+#endif
       // 
       // can't spill wired registers under any circumstances.  the only
       // way we're going to get here is if the frequency on the block is
       // hosed.  we'll definitely get bad code if we've got these kind
       // of bogus frequencies, but its better than incorrect code.
       //
+#ifdef KEY
+      if (lr->Priority() < 0.0F && !lr->Has_Wired_Register() && !Must_Split(lr)
+	  || lr->No_Appearance()) {
+        GRA_Note_Spill(lr);
+      } else if (lr->Spans_Infreq_Call() &&
+                 (!lr->Tn_Is_Save_Reg() ||
+                  !REGISTER_SET_MemberP(REGISTER_CLASS_callee_saves(lr->Rc()),TN_save_reg(lr->Tn()))) &&
+		 LRANGE_Split(lr, &iter, &split_alloc_lr)) {
+	BOOL did_choose = Choose_Register(split_alloc_lr, region);
+	FmtAssert(did_choose,("Failed to choose a register for a split across infreq call of %s",
+			      split_alloc_lr->Format(buff)));
+	priority_count += split_alloc_lr->Priority();
+      } else if (Choose_Register(lr, region)) {
+	priority_count += lr->Priority();
+      } else if (lr->Tn_Is_Save_Reg()) {  // bug 3552: never split saved-TNs
+	GRA_Note_Spill(lr);
+      } else if (LRANGE_Split(lr, &iter, &split_alloc_lr) &&
+		 (split_alloc_lr->Priority() >= 0.0F ||
+		  Must_Split(split_alloc_lr))) {
+	BOOL did_choose = Choose_Register(split_alloc_lr, region);
+	FmtAssert(did_choose,("Failed to choose a register for a split of %s",
+			      split_alloc_lr->Format(buff)));
+	priority_count += split_alloc_lr->Priority();
+      }
+#if 0
+      // Allocate a reclaimable register to the lrange.  Skip this step because
+      // finding a reclaimable register over the entire lrange is unlikely to
+      // be successful due to high register pressure.  The code is fully
+      // implemented but requires more testing.
+      else if (GRA_reclaim_register &&
+	       Choose_Reclaimable_Register(split_alloc_lr, region)) {
+	priority_count += lr->Priority();
+      }
+#endif
+      // Split lrange to fit in a reclaimable register.
+      else if (GRA_reclaim_register &&
+	       LRANGE_Split(lr, &iter, &split_alloc_lr, TRUE) &&
+	       (split_alloc_lr->Priority() >= 0.0F ||
+		Must_Split(split_alloc_lr))) {
+	BOOL did_choose = Choose_Reclaimable_Register(split_alloc_lr, region);
+	FmtAssert(did_choose,
+		  ("Failed to choose a reclaimable register for a split of %s",
+		   split_alloc_lr->Format(buff)));
+	priority_count += split_alloc_lr->Priority();
+      } else {
+	GRA_Note_Spill(split_alloc_lr);
+      }
+#else	// KEY
       if (lr->Priority() < 0.0F && !lr->Has_Wired_Register() && !Must_Split(lr)
 	  || lr->No_Appearance()) {
         GRA_Note_Spill(lr);
@@ -1218,15 +1494,36 @@ GRA_Color_Complement( GRA_REGION* region )
 			      split_alloc_lr->Format(buff)));
 	priority_count += split_alloc_lr->Priority();
       } else if (!Choose_Register(lr, region)) {
-#ifdef KEY // bug 3552: never split saved-TNs
-	if (lr->Tn_Is_Save_Reg())
-          GRA_Note_Spill(lr);
-	else
-#endif
         if (!LRANGE_Split(lr,&iter,&split_alloc_lr) ||
 	    (split_alloc_lr->Priority() < 0.0F &&
 	     !Must_Split(split_alloc_lr))) {
-          GRA_Note_Spill(split_alloc_lr);
+#ifdef TARG_IA64
+          if (need_buffer) {
+              BUFFERED_LRANGE *buffered_lrange = (BUFFERED_LRANGE *) malloc(sizeof(BUFFERED_LRANGE));
+              buffered_lrange->abi_property  = abi_property;
+              buffered_lrange->reg_class     = reg_class;
+              buffered_lrange->lunits_number = lunits_number;
+              buffered_lrange->density       = density;
+              buffered_lrange->lrange        = split_alloc_lr;
+              for (BUFFERED_LRANGE *begin = first;
+                   begin != NULL;begin = begin->next) {
+                   //Will use lunits number to order the live ranges
+                   //which want stacked registers first.
+                   if (buffered_lrange->lunits_number
+                      >= begin->lunits_number) {
+                      buffered_lrange->prev = begin->prev;
+                      buffered_lrange->next = begin;
+                      begin->prev->next = buffered_lrange;
+                      begin->prev = buffered_lrange;
+                      break;
+                    }
+               }
+          } else { 
+              GRA_Note_Spill(split_alloc_lr);
+          } 
+#else
+	  GRA_Note_Spill(split_alloc_lr);
+#endif // TARG_IA64
         } else {
           BOOL did_choose = Choose_Register(split_alloc_lr, region);
 	  FmtAssert(did_choose,("Failed to choose a register for a split of %s",
@@ -1236,25 +1533,128 @@ GRA_Color_Complement( GRA_REGION* region )
       } else {
 	priority_count += lr->Priority();
       }
+#endif	// KEY
     }
+
+#ifdef TARG_IA64
+    if (FALSE) {
+    if (rc == ISA_REGISTER_CLASS_integer) {
+        INT32 stacked_callee_next = Get_Stacked_Callee_Next();
+        INT32 stacked_caller_next = Get_Stacked_Caller_Next();
+        strcpy(reg_fb._func_name,Cur_PU_Name);
+        reg_fb._stacked_caller_used = Get_Stacked_Caller_Used();
+        reg_fb._stacked_callee_used = Get_Stacked_Callee_Used();
+        printf("FUNCTION NAME %s\n",reg_fb._func_name);
+        for (INT32 i = 0; i < 96; i++) {
+            printf("COST OF REG %d IS %f \n",i,reg_fb._cost[i]);
+        }
+        if (!have_open_output_file) {
+            fout =  fopen("struc_feedback","a");
+            have_open_output_file = TRUE;
+        }
+
+        fwrite(&reg_fb,1,sizeof(struct reg_feedback),fout);
+    }
+    }
+
+    BOOL temp = can_use_stacked_reg;
+    can_use_stacked_reg = TRUE; 
+    INT32 size = 0;
+    for (BUFFERED_LRANGE *begin = first;
+       begin != NULL;begin = begin->next) {
+       size++;
+       //TODO::For fat_self_recursive function,spill all live range with density
+       //zero.
+       if ((begin->lunits_number > 0)  && (begin->lunits_number < 1000) && (size < 26))  {
+            if ((fat_self_recursive) && (begin->density == 0.0)) {
+                GRA_Note_Spill(begin->lrange);
+            } else {  
+                REGISTER reg = REGISTER_Request_Stacked_Register(
+                               begin->abi_property,begin->lrange->Rc());
+                if (reg != REGISTER_UNDEFINED) {
+                    Update_Register_Info(begin->lrange, reg);
+                } else { 
+                    DevWarn("Did not get a register!");
+                    GRA_Note_Spill(begin->lrange);
+                }
+           } 
+       } else if ((begin->lunits_number > -1) && (begin->lunits_number < 100)) {
+            GRA_Note_Spill(begin->lrange); 
+       }     
+    }
+    can_use_stacked_reg = temp;
+#endif // TARG_IA64   
     GRA_Trace_Memory("Complement coloring loop");
     GRA_Trace_Regs_Stats(rc, REGISTER_CLASS_allocatable(rc), regs_used[rc]);
 
     if (! forced_locals)        // Haven't done this yet if every lrange wired
       Force_Color_Some_Locals(region,rc);
 
-    if (Is_Predicate_REGISTER_CLASS(rc) &&
-	REGISTER_SET_EmptyP(callee_saves_used[rc]))
-      GRA_Remove_Predicates_Save_Restore();  // because they're always generated
+#ifdef TARG_IA64
+    if (Is_Predicate_REGISTER_CLASS(rc)) {
+      if(REGISTER_SET_EmptyP(callee_saves_used[rc])) {
+        GRA_optimize_restore_pr = FALSE;
+        GRA_Remove_Predicates_Save_Restore();  // because they're always generated
+      }
+    }
+#else
+if (Is_Predicate_REGISTER_CLASS(rc) &&
+    REGISTER_SET_EmptyP(callee_saves_used[rc]))
+  GRA_Remove_Predicates_Save_Restore();  // because they're always generated
+#endif
   }
 
   gra_region_mgr.Complement_Region()->Set_GRA_Colored();
+}
 
-#ifdef TARG_SL2 
-  Set_Children_GRA_Colored(gra_region_mgr.Complement_Region()->Rid()); 
-#endif 
+#ifdef TARG_IA64
+/////////////////////////////////////
+void
+GRA_Optimize_Restore()
+/////////////////////////////////////
+// optimize restore of pr, ar.lc, b0, ar.pfs
+/////////////////////////////////////
+{
+  GRA_optimize_restore_ar_lc = GRA_optimize_restore_ar_lc && !CG_localize_tns && LC_Used_In_PU && LC_TN;
+  if(GRA_optimize_restore_pr) {
+    BB_LIST *elist;
+    for (elist = Exit_BB_Head; elist; elist = BB_LIST_rest(elist)) {
+      GRA_Optimize_Restore_Regs(BB_LIST_first(elist), NULL, pred_bb_set, NULL);
+    }
+  }
+  if(GRA_optimize_restore_b0_ar_pfs) {
+    BB_LIST *elist;
+    BB* bb;
+    BB_SET* call_bb_set = BB_SET_Create_Empty(PU_BB_Count+2, GRA_pool);
+    for(bb = REGION_First_BB; bb; bb = BB_next(bb)) {
+      if(BB_exit(bb)) continue;
+      if(BB_call_op(bb)) call_bb_set = BB_SET_Union1(call_bb_set, bb, GRA_pool);
+    }
+    for (elist = Exit_BB_Head; elist; elist = BB_LIST_rest(elist)) {
+      GRA_Optimize_Restore_Regs(BB_LIST_first(elist), call_bb_set, NULL, NULL);
+    }
+  }
+  if(GRA_optimize_restore_ar_lc) {
+    BB_LIST *elist;
+    BB* bb;
+    OP* op;
+    BB_SET* lc_bb_set = BB_SET_Create_Empty(PU_BB_Count+2, GRA_pool);
+    for(bb = REGION_First_BB; bb; bb = BB_next(bb)) {
+      if(BB_exit(bb)) continue;
+      FOR_ALL_BB_OPs(bb, op) {
+        if(OP_def_ar_lc(op)) {
+  	  lc_bb_set = BB_SET_Union1(lc_bb_set, bb, GRA_pool);
+  	  break;
+        }
+      }
+    }
+    for (elist = Exit_BB_Head; elist; elist = BB_LIST_rest(elist)) {
+      GRA_Optimize_Restore_Regs(BB_LIST_first(elist), NULL, NULL, lc_bb_set);
+    }
+  }
 
 }
+#endif
 
 /////////////////////////////////////
 void
@@ -1275,4 +1675,5 @@ GRA_Color(void)
   GRA_Trace_Memory("Gra_Color_Prev_Allocate_Region()");
 
   GRA_Color_Complement(gra_region_mgr.Complement_Region());
+
 }

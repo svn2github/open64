@@ -39,6 +39,7 @@
 
 
 #define USE_STANDARD_TYPES
+#include <vector>
 #include "defs.h"
 #include "cg.h"
 #include "cg_swp.h"
@@ -92,7 +93,7 @@ void SWP_OPTIONS::PU_Configure()
   if (!Implicit_Prefetch_Set) {
     // Not all processors implement implicit prefetch -- disable
     // by default on those processors
-#if !defined(TARG_MIPS) || !defined(TARG_SL)
+#ifndef TARG_MIPS
     if (Is_Target_Itanium()) Implicit_Prefetch = FALSE;
 #endif
   }
@@ -101,9 +102,14 @@ void SWP_OPTIONS::PU_Configure()
 
 void SWP_OP::Print(FILE *fp) const {
   if (op) 
+#ifdef TARG_IA64
+    fprintf(fp, "[%d] %s scale=%g cycle=%d mod=%d slot=%d trials=%d dir=%s\n",
+	    Index(), placed?"placed":"not-placed", scale, cycle, modulo_cycle, 
+#else
     fprintf(fp, "[%d](%s) %s scale=%g cycle=%d mod=%d slot=%d trials=%d dir=%s\n",
 	    Index(), TOP_Name(OP_code(op)),
-	    placed?"placed":"not-placed", scale, cycle, modulo_cycle, 
+	    placed?"placed":"not-placed", scale, cycle, modulo_cycle,
+#endif
 	    slot, trials,
 	    (direction==SWP_TOP_DOWN) ? "top_down" : 
 	    ((direction==SWP_BOTTOM_UP) ? "bottom_up" : "unknown"));
@@ -140,7 +146,11 @@ SWP_OP_vector::SWP_OP_vector(BB *body, BOOL doloop, MEM_POOL *pool)
   OP *op;
   INT max_idx = 0;
   FOR_ALL_BB_OPs(body, op) {
+#ifdef TARG_IA64
+    max_idx = MAX(max_idx, OP_map_idx(op));
+#else
     max_idx = std::max(max_idx, OP_map_idx(op));
+#endif
   }
   swp_map_tbl_max = max_idx + 1;
   swp_map_tbl = TYPE_MEM_POOL_ALLOC_N(INT, pool, swp_map_tbl_max);
@@ -204,7 +214,8 @@ SWP_OP_vector::SWP_OP_vector(BB *body, BOOL doloop, MEM_POOL *pool)
   // Identify loop invariants!
   tn_invariants = TN_SET_Difference(tn_uses, tn_defs, pool);
   tn_non_rotating = TN_SET_UnionD(tn_non_rotating, tn_invariants, pool);
-#ifdef KEY
+#ifndef TARG_IA64
+  //#ifdef KEY
   FOR_ALL_BB_OPs(body, op) {
     for (INT j = 0; j < OP_opnds(op); j++) {
       TN *tn = OP_opnd(op, j);
@@ -340,8 +351,32 @@ SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace)
   if (op_count == 0) 
     return SWP_LOOP_EMPTY;     // don't bother to swp empty loops
 
-  if (total_op_count + SWP_OPS_OVERHEAD > SWP_OPS_LIMIT)
+  if (total_op_count + SWP_OPS_OVERHEAD > SWP_Options.OPS_Limit)
     return SWP_LOOP_LIMIT;
+
+#ifdef TARG_IA64
+  // Disable SWP loops with low feedback trip count
+  if (CG_PU_Has_Feedback)
+  {
+    BBLIST *bb_succs = BB_succs(body);
+    if (BBlist_Len(bb_succs) > 1 && BB_freq_fb_based(body)) {
+      BBLIST *succ;
+      FOR_ALL_BBLIST_ITEMS(bb_succs,succ) {
+	if (BB_id(body) == BB_id(BBLIST_item(succ))) {
+	  if ((BBLIST_prob(succ) >= 0 && BBLIST_prob(succ) <= 1.0) &&	//test validation first
+	      (BBLIST_prob(succ) <= SWP_Options.FB_Prob1/100.0 || 
+               BBLIST_prob(succ) <= SWP_Options.FB_Prob2/100.0 && 
+	       BB_freq(body) < SWP_Options.FB_Freq && BB_freq(body) > 0)) {
+            if (trace) {
+              fprintf(TFile, "SWP: skip optimization due to feedback low trip count.\n");
+            }
+            return SWP_LOW_TRIP_COUNT;
+          }
+        }
+      }
+    }    
+  }
+#endif
     
   return SWP_OK;
 }
@@ -351,7 +386,7 @@ SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace)
 static void
 Prune_Regout_Deps(BB *body, TN_SET *non_rotating)
 {
-  vector<ARC*> arcs_to_delete;
+  std::vector<ARC*> arcs_to_delete;
   OP *op;
   FOR_ALL_BB_OPs(body, op) {
     if (_CG_DEP_op_info(op)) {
@@ -433,9 +468,14 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
   double max_ii_alpha = SWP_Options.Max_II_Alpha;
   double max_ii_beta  =  SWP_Options.Max_II_Beta;
   double ii_incr_alpha =  SWP_Options.II_Incr_Alpha;
+#ifdef TARG_IA64
+  double ii_incr_beta =  1.0 + (SWP_Options.II_Incr_Beta - 1.0) / MAX(1,SWP_Options.Opt_Level);
+  INT sched_budget = SWP_Options.Budget * MAX(1,SWP_Options.Opt_Level);
+#else
   double ii_incr_beta =  1.0 + (SWP_Options.II_Incr_Beta - 1.0) /
     std::max(1,SWP_Options.Opt_Level);
   INT sched_budget = SWP_Options.Budget * std::max(1,SWP_Options.Opt_Level);
+#endif
 
   {
     Start_Timer(T_SWpipe_CU);
@@ -640,6 +680,11 @@ Emit_SWP_Note(BB *bb, FILE *file)
     case SWP_LOOP_LIMIT:
       failure_msg = "loop is too big";
       break;
+#ifdef TARG_IA64
+    case SWP_LOW_TRIP_COUNT:
+      failure_msg = "loop has low trip count";
+      break;
+#endif
     default:
       Is_True(FALSE, ("unknown SWP RETURN CODE."));
     }

@@ -37,10 +37,10 @@
  * =======================================================================
  *
  *  Module: bb_map.c
- *  $Revision: 1.2 $
- *  $Date: 02/11/07 23:41:20-00:00 $
- *  $Author: fchow@keyresearch.com $
- *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.bb_map.cxx $
+ *  $Revision: 1.1.1.1 $
+ *  $Date: 2005/10/21 19:00:00 $
+ *  $Author: marcel $
+ *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/bb_map.cxx,v $
  *
  *  Revision comments:
  *
@@ -57,7 +57,7 @@
 
 #ifdef _KEEP_RCS_ID
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.bb_map.cxx $ $Revision: 1.2 $";
+static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/bb_map.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"

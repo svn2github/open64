@@ -1,6 +1,6 @@
-# -*- Makefile -*-
 #
-#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of version 2 of the GNU General Public License as
@@ -80,6 +80,12 @@ endif
 #----------------------------------------------------------------------
 HOSTDEFS += -Dsgi
 HOSTDEFS += -DBACK_END -DMONGOOSE_BE
+HOSTDEFS += -D__STDC_LIMIT_MACROS
+
+ifeq ($(BUILD_TARGET), X8664)
+HOSTDEFS += -DCG_PATHSCALE_MERGE
+endif
+
 ifeq ($(BUILD_OS), IRIX)
 HOSTDEFS += -D_LIBELF_XTND_64
 endif
@@ -98,6 +104,10 @@ endif
 
 ifeq ($(BUILD_PCH), USE_PCH)
 HOSTDEFS += -DUSE_PCH
+endif
+
+ifeq ($(BUILD_VARIANT), MEM_STATS)
+HOSTDEFS += -DMEM_STATS
 endif
 
 ifeq ($(BUILD_TARGET), IA64)
@@ -142,11 +152,11 @@ TARG_LIBUNWIND = $(TARGDIR)/libunwindP
 BE_DIR 			= $(BUILD_TOT)/be
 BE_BE_DIR		= $(BE_DIR)/be
 BE_CG_DIR 		= $(BE_DIR)/cg
-BE_CG_REGION_DIR	= $(BE_DIR)/cg/region
-BE_CG_GSCHED_DIR	= $(BE_DIR)/cg/sched
 BE_CG_GRA_DIR		= $(BE_CG_DIR)/gra_mon
 BE_CG_TARG_DIR		= $(BE_CG_DIR)/$(BUILD_TARGET_DIR)
 BE_COM_DIR 		= $(BE_DIR)/com
+BE_ORC_ICT_DIR	= $(BE_CG_DIR)/orc_ict
+BE_ORC_INTEL_DIR	= $(BE_CG_DIR)/orc_intel
 BE_REGION_DIR 		= $(BE_DIR)/region
 BE_PROMPF_DIR		= $(BE_DIR)/prompf_anl
 BE_OPT_DIR              = $(BE_DIR)/opt
@@ -166,10 +176,9 @@ SRC_DIRS = \
   $(BE_CG_GRA_DIR)	\
   $(BE_CG_TARG_DIR)	\
   $(COMMON_COM_DIR)	\
-  $(COMMON_COM_TARG_DIR)\
-  $(COMMON_UTIL_DIR)	\
-  $(BE_CG_REGION_DIR)	\
-  $(BE_CG_GSCHED_DIR)
+  $(COMMON_COM_TARG_DIR) \
+  $(COMMON_UTIL_DIR)    \
+  $(COMMON_TARG_INFO_ACCESS_DIR) 
 
 ifndef TARG_BE
 TARG_BE = $(TARGDIR)/be
@@ -179,6 +188,8 @@ HEADER_DIRS = \
   $(SRC_DIRS)		\
   $(COMMON_STL_DIR)	\
   $(BE_COM_DIR)		\
+  $(BE_ORC_ICT_DIR)	\
+  $(BE_ORC_INTEL_DIR)	\
   $(BE_REGION_DIR)	\
   $(BE_PROMPF_DIR)	\
   $(BE_OPT_DIR)		\
@@ -187,7 +198,6 @@ HEADER_DIRS = \
   $(TARG_BE)		\
   $(LIBDWARF_DIR)	\
   $(BUILD_TOT)/include	\
-  $(BUILD_TOT)/linux/include \
   $(BUILD_TOT)/libdwarf/libdwarf
 
 ifeq ($(BUILD_OS), LINUX)
@@ -209,6 +219,7 @@ SETGEN  = $(COMMON_UTIL_DIR)/gen_x_set		\
 	  $(COMMON_UTIL_DIR)/x_set_func.td	\
           $(COMMON_UTIL_DIR)/x_set_interface
 
+
 DERIVED_SRCS = \
 	bb_list.cxx \
 	gra_bb_list.cxx \
@@ -218,7 +229,7 @@ DERIVED_SRCS = \
 	tn_list.cxx \
 	void_list.cxx \
 	cg_loop_scc_prop.cxx \
-	tn_prop.cxx
+	tn_prop.cxx \
 
 # remove all derived files with make clobber.
 LDIRT = $(DERIVED_INCS) $(DERIVED_INCS:.h=.c) $(DERIVED_INCS:.h=.cxx) *.pch
@@ -238,7 +249,7 @@ COMMON_COM_TARG_CXX_SRCS =	\
   targ_em_dwarf.cxx     \
 
 COMMON_UTIL_SRCS =	\
-  bitset.c	\
+  bitset.c
 
 CG_C_SRCS = \
   $(COMMON_UTIL_SRCS)
@@ -261,9 +272,10 @@ BE_CG_GRA_CXX_SRCS =		\
   gra_spill.cxx			\
   lrange_set.cxx		\
   gra_split.cxx			\
-  gra_trace.cxx			\
-  gra_para_region.cxx
+  gra_trace.cxx
 
+
+  
 CG_GRA_PCH_CXX_SRCS= $(BE_CG_GRA_CXX_SRCS)
 
 BE_CG_TARG_CXX_SRCS =	\
@@ -281,7 +293,7 @@ BE_CG_TARG_CXX_SRCS =	\
   expand.cxx		\
   pqs_cg.cxx            \
   pqs.cxx		\
-  register_targ.cxx
+  register_targ.cxx     
 
 ifeq ($(BUILD_TARGET), IA64)
   BE_CG_TARG_CXX_SRCS += float_rf.cxx
@@ -292,15 +304,10 @@ ifeq ($(BUILD_TARGET), IA32)
   BE_CG_TARG_CXX_SRCS += exp_longlong.cxx
 endif
 
-ifeq ($(BUILD_TARGET), MIPS)
-  BE_CG_TARG_CXX_SRCS += cg_sas.cxx
-  BE_CG_TARG_CXX_SRCS += disp_instr.cxx
-  BE_CG_TARG_CXX_SRCS += exp_slintrn.cxx
-endif
-
 ifeq ($(BUILD_TARGET), X8664)
   BE_CG_TARG_CXX_SRCS += cg_sched.cxx
   BE_CG_TARG_CXX_SRCS += cg_convert_x87.cxx
+  BE_CG_TARG_CXX_SRCS += cg_misc.cxx
 endif
 
 CG_CXX_PCH_SRCS = 	\
@@ -313,43 +320,13 @@ CG_CXX_PCH_SRCS = 	\
   lra.cxx		\
   op_map.cxx		\
   oputil.cxx		\
-  tn_map.cxx		\
+  tn_map.cxx            \
   tnutil.cxx
-
-CG_REGION_SRCS = \
-    global_cycles_finder.cxx \
-    interval_processor.cxx \
-    region_bb_util.cxx      \
-    region.cxx              \
-    region_map.cxx          \
-    region_update.cxx       \
-    region_verify.cxx       \
-    scc_finder.cxx          \
-    vt_region.cxx	\
-    profile_util.cxx    \
-    ipfec_options.cxx   \
-    db_dump.cxx
-    
-CG_GLOBAL_SCHED_SRCS =  \
-    dag.cxx				\
-	sched_cand.cxx		\
-	sched_cflow.cxx 	\
-	sched_dflow.cxx		\
-	sched_dump.cxx		\
-	sched_heur.cxx		\
-	sched_rgn_info.cxx	\
-	sched_seq.cxx		\
-	sched_spec_itf.cxx	\
-	scheduler.cxx		\
-	sched_util.cxx		\
-    cggrp_microsched.cxx
 
 CG_CXX_SRCS = 		\
   $(COMMON_COM_CXX_SRCS)\
   $(COMMON_COM_TARG_CXX_SRCS)\
   $(BE_CG_TARG_CXX_SRCS)\
-  $(CG_REGION_SRCS) \
-  $(CG_GLOBAL_SCHED_SRCS) \
   annotations.cxx	\
   bb_map.cxx		\
   bblist.cxx		\
@@ -375,18 +352,15 @@ CG_CXX_SRCS = 		\
   cgdriver.cxx		\
   cgdwarf.cxx		\
   cgemit.cxx		\
-  cgexp.cxx		\
   ebo.cxx		\
+  cgexp.cxx		\
   cgprep.cxx		\
   cio_rwtran.cxx        \
   comment.cxx		\
   dominate.cxx		\
   findloops.cxx		\
   freq.cxx		\
-  loop_dce.cxx		\
-  loop_rce.cxx		\
   gcm.cxx		\
-  gcm_licm.cxx		\
   hb_sched.cxx		\
   hb_hazards.cxx        \
   iface_scn.cxx		\
@@ -408,8 +382,7 @@ CG_CXX_SRCS = 		\
   hb_tail_duplication.cxx\
   hb_block_select.cxx	\
   hb_cflow.cxx          \
-  cxx_memory.cxx	\
-  cg_gcov.cxx		\
+  cg_gcov.cxx           \
   $(DERIVED_SRCS)
 
 ifeq ($(BUILD_PCH), USE_PCH)
@@ -420,23 +393,33 @@ CG_CXX_SRCS += $(CG_CXX_PCH_SRCS)
 CG_CXX_SRCS += $(CG_GRA_PCH_CXX_SRCS)
 endif
 
+# add New target macro define by llx 2002-7-18
+ifeq ($(ORC_TARG), KAPI)
+HOSTDEFS +=-DIPFEC_Enable_New_Targ
+endif
+# We will change this later to build different DSOs.
+
 CG_C_OBJS = $(CG_C_SRCS:.c=.o)
 
 CG_CXX_OBJS = $(CG_CXX_SRCS:.cxx=.o)
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
-#ifneq ($(BUILD_COMPILER), EDG)
-#LCOPTS += -fwritable-strings
-#endif
+LCOPTS += $(STD_COMPILE_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 
+ifneq ($(BUILD_ARCH), MIPS64)
+ifeq ($(shell test -e /usr/include/valgrind/valgrind.h && echo y || echo n), y)
+HEADER_DIRS += /usr/include/valgrind
+else
+LCOPTS += -DNO_VALGRIND
+endif
+else
+LCOPTS += -DNO_VALGRIND
+endif
+
 LC++OPTS += $(STD_COMPILE_OPTS) $(PCH_OPTS)
-#ifneq ($(BUILD_COMPILER), EDG)
-#LC++OPTS += -fwritable-strings
-#endif
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(addprefix -I, $(HEADER_DIRS))
 LASOPTS = $(STD_COMPILE_OPTS)
@@ -475,6 +458,7 @@ ifdef LINK_DSO
 TARGETS = debug-cg
 else
 TARGETS = cg.so
+CG_LIBRARY = libcg.a
 endif
 
 #----------------------------------------------------------------------
@@ -490,7 +474,7 @@ endif
 # while building cg.so . This is needed by the linker on linux.
 # So, arbitrarily pick one of the target .so's to define TARGET_SO.
 ifeq ($(BUILD_TARGET), MIPS)
-TARGET_SO = 
+TARGET_SO = r10000.so
 endif
 ifeq ($(BUILD_TARGET), IA64)
 TARGET_SO = itanium.so
@@ -508,16 +492,10 @@ else
  ifeq ($(BUILD_TARGET), IA64)
 LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
  endif
- ifeq ($(BUILD_TARGET), X8664)
-LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
- endif
- ifeq ($(BUILD_TARGET), MIPS)
-LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
- endif
 LLDLIBS += $(TARG_LIBDWARF)/libdwarf.a \
 	$(TARG_LIBELFUTIL)/libelfutil.a \
 	$(TARG_LIBELF)/libelf.a \
-	$(TARG_TARG_INFO)/libtarginfo.a $(TARG_LIBUNWIND)/libunwindP.a \
+	$(TARG_TARG_INFO)/libtarginfo.a \
 	-lm -lc
 endif
 
@@ -529,25 +507,18 @@ default: first derived_files $(TARGETS) last
 #----------------------------------------------------------------------
 first:
 ifeq ($(BUILD_OS), LINUX)
-	$(call submake,$(TARG_LIBELF))
-	$(call submake,$(TARG_LIBELFUTIL))
-	$(call submake,$(TARG_LIBDWARF))
+	cd $(TARG_LIBELF) && $(MAKE)
+	cd $(TARG_LIBELFUTIL) && $(MAKE)
+	cd $(TARG_LIBDWARF) && $(MAKE)
  ifeq ($(BUILD_TARGET), IA64)
-	$(call submake,$(TARG_LIBUNWIND))
- endif
- ifeq ($(BUILD_TARGET), MIPS)
-	$(call submake,$(TARG_LIBUNWIND))
- endif
- ifeq ($(BUILD_TARGET), X8664)
-	$(call submake,$(TARG_LIBUNWIND))
+	cd $(TARG_LIBUNWIND) && $(MAKE)
  endif
 endif
 ## verify that be.so is up to date
-	$(call submake,$(TARG_BE))
+	cd $(TARG_BE) && $(MAKE)
 ifeq ($(BUILD_OS), LINUX)
-	if ! test -a be.so; then ln -sf $(TARG_BE)/be.so .; fi
-	if ! test -a be; then ln -sf $(TARG_BE)/be .; fi
-	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE)/be.so .; fi
+	if ! test -e $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
 endif
 ifeq ($(BUILD_PCH), USE_PCH)
 ## build pch files first so that we can use precompiled headers
@@ -603,14 +574,14 @@ cg_gra_pch_files: $(CG_GRA_PCH_OBJS) cg_gra_pch.pch
 cg.so:  $(CG_CXX_OBJS) $(CG_C_OBJS) $(CG_PCH_OBJS) $(CG_GRA_PCH_OBJS)\
 	$(BE_CG_DIR)/Exported $(TARG_BE)/be.so \
 	$(BE_BE_DIR)/so_locations
-	$(link.c++f) $(UNRESOLVED_FLAGS) $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
+	$(C++F) $(UNRESOLVED_FLAGS) $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
 	$(CG_C_OBJS) $(CG_CXX_OBJS) $(CG_PCH_OBJS) $(CG_GRA_PCH_OBJS)\
 	-o $@ $(TARG_BE)/be.so $(LLDLIBS)
 
 else
  ifeq ($(BUILD_OS), LINUX)
 # dso's must be in same directory
-LINK_DSOS = be.so $(TARGET_SO)
+LINK_DSOS = be.so 
 ifeq ($(BUILD_HOST), IA64)
 ifeq ($(BUILD_COMPILER), SGI)
 STD_DSO_LOADOPTS += -Wl,-relax
@@ -621,8 +592,8 @@ LINK_DSOS = $(TARG_BE)/be.so
  endif
 cg.so:  $(CG_CXX_OBJS) $(CG_C_OBJS) $(BE_CG_DIR)/Exported $(TARG_BE)/be.so \
 		$(BE_BE_DIR)/so_locations
-	$(link.c++f) $(UNRESOLVED_FLAGS) $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
-		$(CG_C_OBJS) $(CG_CXX_OBJS) -v \
+	$(C++F) $(UNRESOLVED_FLAGS) $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
+		$(CG_C_OBJS) $(CG_CXX_OBJS) \
 		-o $@ $(LINK_DSOS) $(LLDLIBS)
 
 endif
@@ -720,6 +691,18 @@ gtn_set.h : gtn_set.td
 gtn_set.td : $(SETGEN) $(BE_CG_DIR)/gen_gtn_set
 	csh -f $(BE_CG_DIR)/gen_gtn_set $(COMMON_UTIL_DIR) $(GEN_X_SET_OPTS)
 
+#--------------------------------------------------------------------------
+cggrp_ptn_table.cxx : ptn_table_gen
+	 $(RUN) ./ptn_table_gen
+
+
+#----------------------------------------------------------------------
+# Begin to set new target file generator;
+
+
+  
+#--------------------------------------------------------------------------
+
 # here's the target that gets made recursively
 derived_files : $(DERIVED_SRCS) $(DERIVED_INCS)
 
@@ -733,11 +716,12 @@ include $(COMMONRULES)
 #----------------------------------------------------------------------
 
 .cxx.pch:
-	$(c++f) -c $(.IMPSRC)
+	$(C++F) -c $(.IMPSRC)
 
-ifneq ($(BUILD_SUBTARGET), SL)
+gra_lrange.o: OPTIMIZER += -ffloat-store
+
 ifeq (gcc,$(firstword $(CCNAME)))
 # work around gcc bug optimizing this file on ia32
 cg_loop.o: OPTIMIZER = -O0
 endif
-endif
+

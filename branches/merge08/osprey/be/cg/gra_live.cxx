@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -41,10 +45,10 @@
  * =======================================================================
  *
  *  Module: gra_live.c
- *  $Revision: 1.12 $
- *  $Date: 05/12/05 08:59:07-08:00 $
- *  $Author: bos@eng-24.pathscale.com $
- *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.gra_live.cxx $
+ *  $Revision: 1.1.1.1 $
+ *  $Date: 2005/10/21 19:00:00 $
+ *  $Author: marcel $
+ *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_live.cxx,v $
  *
  *  Description:
  *  ============
@@ -89,6 +93,12 @@
 #include "reg_live.h"
 #include "cg_loop.h"
 #include "pqs_cg.h"
+#include "cgtarget.h"
+#include "eh_region.h"
+
+#ifdef TARG_IA64
+extern TN *Caller_GP_TN;  // OSP_426, always mark Caller_GP_TN global
+#endif
 
 static BB_LIST *region_entry_list;
 static BB_SET  *region_exit_set;
@@ -195,7 +205,7 @@ typedef struct {
  * =======================================================================
  */
 
-
+ 
 /* =======================================================================
  *
  *  TN_BB_LIST_MAP_Create
@@ -594,6 +604,18 @@ Compute_Force_TNs(void)
 
     Force_Live_Add(SAVE_tn(Return_Address_Reg));
   }
+#ifdef TARG_MIPS
+  else if (SAVE_tn(Return_Address_Reg) != NULL) {
+    Force_Live_Add(SAVE_tn(Return_Address_Reg));
+  }
+#endif
+
+#ifndef TARG_X8664
+  // OSP_426, always mark Caller_GP_TN global
+  if (Caller_GP_TN != NULL) {
+    Force_Live_Add(Caller_GP_TN);
+  }
+#endif
 }
 
 
@@ -1132,6 +1154,38 @@ Region_Boundary_Fixup(void)
 }
 
 
+#ifdef TARG_MIPS
+/* =======================================================================
+ *
+ *  Handler_Boundary_Fixup
+ *
+ *  For exception handler entries to the PU, mark the callee-save registers
+ *  defreach_in at the entry BB.
+ *
+ * =======================================================================
+ */
+static void
+Handler_Boundary_Fixup(void)
+{
+  BB *bb;
+
+  for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    if (BB_handler(bb)) {
+      if (SAVE_tn(Return_Address_Reg) != NULL) {
+	BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb),
+					     SAVE_tn(Return_Address_Reg),
+					     &liveness_pool);
+      }
+      if (Caller_GP_TN != NULL) {
+	BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb),
+					     Caller_GP_TN,
+					     &liveness_pool);
+      }
+    }
+  }
+}
+#endif
+
 
 /* =======================================================================
  *
@@ -1190,11 +1244,66 @@ Live_Init(
   BB_live_in(bb)      = GTN_SET_CopyD(BB_live_in(bb),
                                       BB_live_use(bb),
                                       &liveness_pool);
-
+#ifdef TARG_IA64
+#ifdef OSP_OPT
+  /* if current PU haven't landing pad at all, 
+   * needn't to added the corresponding defreach and live info
+   */
+  if (PU_has_exc_scopes(Get_Current_PU()) && !PU_Need_Not_Create_LSDA ()) {
+#else
+  if (PU_has_exc_scopes(Get_Current_PU())) {
+#endif
+    extern TN *Caller_GP_TN;
+    extern TN *Caller_FP_TN;
+    extern TN *Caller_Pfs_TN;
+    extern TN *ra_intsave_tn;
+    if (BB_handler(bb)) {
+      BB_defreach_in(bb) = GTN_SET_CopyD(BB_defreach_in(bb), force_live_gtns, &liveness_pool);
+      if (Caller_GP_TN) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_GP_TN, &liveness_pool);
+        GTN_UNIVERSE_Add_TN(Caller_GP_TN);
+      }
+      if (ra_intsave_tn) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), ra_intsave_tn, &liveness_pool);
+        GTN_UNIVERSE_Add_TN(ra_intsave_tn);
+      }
+      if (Caller_FP_TN) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_FP_TN, &liveness_pool);
+        GTN_UNIVERSE_Add_TN(Caller_FP_TN);
+      }
+      if (Caller_Pfs_TN) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_Pfs_TN, &liveness_pool);
+        GTN_UNIVERSE_Add_TN(Caller_Pfs_TN);
+      }
+    }
+  
+    if (BB_Has_Exc_Label(bb) || (!BB_exit(bb) && !BB_succs(bb))) {
+      BB_live_out(bb) = GTN_SET_CopyD(BB_live_out(bb), force_live_gtns, &liveness_pool);
+      if (Caller_GP_TN) {
+          BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_GP_TN, &liveness_pool);
+          GTN_UNIVERSE_Add_TN(Caller_GP_TN);
+      }
+      if (ra_intsave_tn) {
+          BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), ra_intsave_tn, &liveness_pool);
+          GTN_UNIVERSE_Add_TN(ra_intsave_tn);
+      }
+      if (Caller_FP_TN) {
+          BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_FP_TN, &liveness_pool);
+          GTN_UNIVERSE_Add_TN(Caller_FP_TN);
+      }
+      if (Caller_Pfs_TN) {
+          BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_Pfs_TN, &liveness_pool);
+          GTN_UNIVERSE_Add_TN(Caller_Pfs_TN);
+      }      
+    }
+  }
+#endif
+  
   // We are no longer computing BB_defreach_gen. Make a quick pass 
   // through the bb and initialize the defreach_out set with the
   // the GTNs defined in the block.
   BB_defreach_out(bb)  = GTN_SET_ClearD(BB_defreach_out(bb));
+
   OP *op;
   INT i;
   FOR_ALL_BB_OPs_FWD (bb, op) {
@@ -1221,7 +1330,38 @@ Live_Init(
       TN *tn = ROTATING_KERNEL_INFO_copyout(info)[i];
       BB_defreach_out(bb) = GTN_SET_Union1D(BB_defreach_out(bb), tn, &liveness_pool);
     }
+#ifdef TARG_IA64
+    for (i = 0; i < ROTATING_KERNEL_INFO_localdef(info).size(); i++) {
+      TN *tn = ROTATING_KERNEL_INFO_localdef(info)[i];
+      BB_defreach_out(bb) = GTN_SET_Union1D(BB_defreach_out(bb), tn, &liveness_pool);
+    }
+#endif
   }
+#ifdef TARG_IA64
+  // If BB is ended by function call, add the return value to the defreach-out set.
+  if (BB_call (bb)) {
+     ANNOTATION* annot = ANNOT_Get(BB_annotations(bb),ANNOT_CALLINFO);
+     WN *call_wn = CALLINFO_call_wn(ANNOT_callinfo(annot));
+     ST *call_st = (WN_operator(call_wn) != OPR_ICALL) ? WN_st(call_wn) : NULL;
+     TY_IDX call_ty = (call_st != NULL) ? ST_pu_type(call_st) : WN_ty(call_wn);
+
+     RETURN_INFO return_info = Get_Return_Info (TY_ret_type(call_ty), No_Simulated
+                                    #ifdef TARG_X8664
+                                     ,call_st ? PU_ff2c_abi(Pu_Table[ST_pu(call_st)]) : FALSE
+                                    #endif
+                                    );
+
+     for (i = 0; i < RETURN_INFO_count(return_info); i++) {
+        PREG_NUM rt_preg = RETURN_INFO_preg (return_info, i);
+        TYPE_ID rt_mtype = RETURN_INFO_mtype (return_info, i);
+        Is_True (Preg_Is_Dedicated(rt_preg),
+                 ("return value PREG (%d) is not dedicated", (INT)rt_preg));
+        TN* tn = PREG_To_TN (MTYPE_TO_PREG_array[rt_mtype], rt_preg);
+        GTN_UNIVERSE_Add_TN(tn);
+        BB_defreach_out(bb) = GTN_SET_Union1D (BB_defreach_out(bb), tn, &liveness_pool);
+     }
+  }
+#endif
 }
 
 
@@ -1246,6 +1386,7 @@ GRA_LIVE_Local_Live_Propagate(
                                  BB_live_out(bb),
                                  &liveness_pool);
 
+  
   BB_live_in(bb) = GTN_SET_UnionD(GTN_SET_DifferenceD(BB_live_in(bb),
                                                       BB_live_def(bb)),
                                   BB_live_use(bb),
@@ -1463,6 +1604,11 @@ GRA_LIVE_Region_Compute_Global_Live_Info(void)
                                            Do_Nothing);
 
   Region_Boundary_Fixup();
+
+#ifdef TARG_MIPS
+  Handler_Boundary_Fixup();	// Bug 12703
+#endif
+
   /* We'll keep iterating so long as either the defreach or live
    * calculation changes anything.  I suppose sometimes this will mean
    * that we calculate liveness or defreachness after it has reached the
@@ -2188,6 +2334,12 @@ GRA_LIVE_Compute_Local_Info(
       TN *tn = ROTATING_KERNEL_INFO_copyout(info)[i];
       tmp_live_def = TN_SET_Union1D(tmp_live_def,tn,&gra_live_local_pool);
     }
+#ifdef TARG_IA64
+    for (i = 0; i < ROTATING_KERNEL_INFO_localdef(info).size(); i++) {
+      TN *tn = ROTATING_KERNEL_INFO_localdef(info)[i];
+      tmp_live_def = TN_SET_Union1D(tmp_live_def,tn,&gra_live_local_pool);
+    }
+#endif
   }
 
   GRA_LIVE_Init_BB_End(bb);
@@ -2239,7 +2391,11 @@ Rename_TN_In_Range (TN *tn, OP *op1, OP *op2)
   OP *op = op1;
   INT i;
   
+#ifdef TARG_IA64
+  if (Get_Trace(TP_CGPREP, 0x8))
+#else
   if (Get_Trace(TP_FIND_GLOB, 0x8))
+#endif
     fprintf (TFile, "<Rename_TNs> TN%d renamed to TN%d in BB:%d\n",
 	     TN_number(tn), TN_number(new_tn), BB_id(OP_bb(op1)));
   
@@ -2313,6 +2469,19 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
         // rename tn to new_tn between last_def and op.
         Rename_TN_In_Range (tn, last_def, op);
       }
+#ifdef TARG_IA64
+      else if (tn == Caller_GP_TN) {
+        // OSP_426, Don't rename the caller GP TN, keep it global
+      }
+#endif
+#ifdef TARG_MIPS
+      else if (PU_Has_Exc_Handler &&
+	       (tn == Caller_GP_TN ||
+	        tn == SAVE_tn(Return_Address_Reg))) {
+	// Don't rename the caller GP TN and the saved return address TN.  They
+	// should remain global.
+      }
+#endif
       else if (TN_is_global_reg(tn) &&
 	       !TN_is_const_reg(tn) &&
 	       !GTN_SET_MemberP(BB_live_out(bb), tn)) {
@@ -2333,6 +2502,16 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
 	  // TN doesn't exist in live-sets for any BB.
 
 	  // ONLY need to check for defreach_in and defreach_out sets. 
+#ifdef TARG_IA64
+          BB *cur_bb;
+          for (cur_bb = bb; cur_bb != NULL; cur_bb = BB_next(cur_bb)) {
+            if (GTN_SET_MemberP(BB_defreach_in(cur_bb), tn))
+              GRA_LIVE_Remove_Defreach_In_GTN(cur_bb, tn);
+
+            if (GTN_SET_MemberP(BB_defreach_out(cur_bb), tn))
+              GRA_LIVE_Remove_Defreach_Out_GTN(cur_bb, tn);
+          }
+#else // TARG_IA64
           defreach_tn = tn;
 #ifndef KEY
 	  // Purify_pools (trace) on exposes the MEM_POOL bug. The bug is that
@@ -2352,6 +2531,7 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
 	  // function. The bug was not exposed.
           MEM_POOL_Pop(&gra_live_pool);
 #endif
+#endif // TARG_IA64
 	  Reset_TN_is_global_reg (tn);
 
 	}
