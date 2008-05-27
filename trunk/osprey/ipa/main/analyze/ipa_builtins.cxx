@@ -374,7 +374,8 @@ IPA_Rename_Builtins (IPA_NODE *node)
   // Use the node's mempool for wn creation.
   IPA_NODE_CONTEXT context(node);
 
-  for (WN_ITER* wni = WN_WALK_SCFIter(node->Whirl_Tree(FALSE)); 
+  WN_ITER* wni;
+  for (wni = WN_WALK_SCFIter(node->Whirl_Tree(FALSE)); 
        wni != NULL;
        wni = WN_WALK_SCFNext(wni)) {
 
@@ -437,6 +438,7 @@ IPA_Rename_Builtins (IPA_NODE *node)
 	    WN_EXTRACT_FromBlock(block, old_wn);
 	  }
 	}
+        if (wni) WN_WALK_Abort(wni);
       }
     }
   }
