@@ -7117,6 +7117,11 @@ WGEN_Expand_Expr (gs_t exp,
           if (gs_decl_inline (func)) {
             wgen_invoke_inliner = TRUE;
           }
+          PU& pu_ent = Pu_Table[ST_pu(st)];
+          // this_volatile flag in gcc means that the function will not return
+          if (gs_tree_this_volatile(func)) {
+            Set_PU_has_attr_noreturn (pu_ent);
+          }
         }
 
         i = 0;
