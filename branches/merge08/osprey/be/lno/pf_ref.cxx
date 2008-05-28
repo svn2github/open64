@@ -2582,7 +2582,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
 #endif
 
 
-#if !(defined(TARG_X9664) || defined(TARG_IA64)) //bug 10953
+#if !(defined(TARG_X8664) || defined(TARG_IA64)) //bug 10953
    WN* pfnode = LWN_CreatePrefetch (offset, flag, arraynode);
 #else //bug 10953
    WN* pfnode=NULL;

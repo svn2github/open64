@@ -254,7 +254,7 @@ DST_get_context(tree intree)
 	    // this incomplete type and the new type will have a new entry
 	    // in the DST table. To mimic whatever Gcc does, we are 
 	    // required to pass a valid DST index here.
-	    if (l_dst_idx == DST_INVALID_IDX)
+	    if (DST_ARE_EQUAL(l_dst_idx,DST_INVALID_IDX))
 	        l_dst_idx.byte_idx = l_dst_idx.block_idx = 0;
 #endif
 	    return l_dst_idx;
@@ -966,7 +966,7 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_name(var_st),
 			     type,    
 			     0,  
-			     (void*)(INTPTR) ST_st_idx(var_st), 
+			     ST_st_idx(var_st), 
 			     DST_INVALID_IDX,        
 			     FALSE,                  // is_declaration
 			     ST_sclass(var_st) == SCLASS_AUTO,
@@ -995,7 +995,7 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_name(var_st),
 			     type,    
 			     0,  
-			     (void*)(INTPTR) ST_st_idx(var_st), 
+			     ST_st_idx(var_st), 
 			     DST_INVALID_IDX,        
 			     FALSE,                  // is_declaration
 			     ST_sclass(var_st) == SCLASS_AUTO,
@@ -1809,7 +1809,7 @@ DST_Create_var(ST *var_st, tree decl)
         ST_name(var_st),
         type,    // user typed type name here (typedef type perhaps).
 	0,  // offset (fortran uses non zero )
-        (void*)(INTPTR) ST_st_idx(var_st), // underlying type here, not typedef.
+        ST_st_idx(var_st), // underlying type here, not typedef.
         DST_INVALID_IDX,        // abstract origin
         FALSE,                  // is_declaration
 #ifndef KEY
@@ -1883,7 +1883,7 @@ DST_enter_param_vars(tree fndecl,tree parameter_list)
 		src,
 		name,
 		type_idx,
-		(void* )(INTPTR)ST_st_idx(st), // so backend can get location
+		ST_st_idx(st), // so backend can get location
 		DST_INVALID_IDX, // not inlined
 		DST_INVALID_IDX, // only applies to C++ (value)
 		FALSE, // true if C++ optional param
@@ -1963,7 +1963,7 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
         ST_name(func_st),
         ret_dst,        	// return type
         DST_INVALID_IDX,        // Index to alias for weak is set later
-        (void*)(INTPTR) ST_st_idx(func_st),  // index to fe routine for st_idx
+        ST_st_idx(func_st),  // index to fe routine for st_idx
         DW_INL_not_inlined,     // applies to C++
         DW_VIRTUALITY_none,     // applies to C++
         0,                      // vtable_elem_location
