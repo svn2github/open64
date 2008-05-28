@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -12,7 +16,7 @@
 
   This program is distributed in the hope that it would be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 
   Further, this software is distributed without any warranty that it is
   free of the rightful claim of any third person regarding infringement 
@@ -41,10 +45,10 @@
  * ====================================================================
  *
  * Module: op.h
- * $Revision: 1.21 $
- * $Date: 06/03/14 14:38:58-08:00 $
- * $Author: tkong@hyalite.keyresearch $
- * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.op.h $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/op.h,v $
  *
  * CGIR operation structure (OP) and utility routines.
  *
@@ -320,9 +324,6 @@ struct bb;
 #define OP_MAX_FIXED_OPNDS	ISA_OPERAND_max_operands
 #define OP_MAX_FIXED_RESULTS	ISA_OPERAND_max_results
 
-/* HD - To use TN_LIST, and tn.h is not included yet  */
-struct TN_LIST;
-
 /* Define the OP structure: */
 typedef struct op OP;
 typedef struct op {
@@ -333,7 +334,7 @@ typedef struct op {
   struct bb	*unroll_bb;	/* BB just after unrolling */
   mUINT32	flags;		/* attributes associated with OP */
   mUINT16  	order;		/* relative order in BB */
-  mINT16        variant;        /* Opcode variant */
+  mINT16  	variant;	/* Opcode variant */
   mUINT16	map_idx;	/* index used by OP_MAPs; unique in BB */
   mUINT16	orig_idx;	/* index of orig op before unrolling */
 #ifdef TARG_IA64
@@ -342,11 +343,6 @@ typedef struct op {
   mINT16	scycle;		/* Start cycle */
   mTOP		opr;		/* Opcode. topcode.h */
   mUINT8	unrolling;	/* which unrolled replication (if any) */
-#if defined(TARG_SL)
-  TN_LIST       *extra_result;  /* HD - For sl2, I need an extra list 
-                                 * of resutl/operand TNs */
-  TN_LIST       *extra_operand;
-#endif
   mUINT8	results;	/* Number of results */
   mUINT8	opnds;		/* Number of operands */
 #ifdef TARG_IA64
@@ -379,11 +375,14 @@ typedef struct op {
  * OP_opnd_offset and OP_result_offset give the offset into the
  * array to the start of the operands and results. 
  * NOTE: the offset is NOT constant for all OPs!!!
+ * NOTE: Add_Hidden_Operands() and Remove_Hidden_Operands() also 
+ *   assume that results are placed right after source operands.  
+ *   If the layout is changed, these two functions need to be changed
+ *   too.
  */
 
 #define OP_opnd_offset(o)	(0)
 #define OP_result_offset(o)	OP_opnds(o)
-
 /* Define the access functions: */
 #define OP_srcpos(o)	((o)->srcpos)
 #ifdef KEY
@@ -417,11 +416,6 @@ typedef struct op {
 #define OP_code(o)	((TOP)(o)->opr)
 #define OP_result(o,n)	((struct tn *)(o)->res_opnd[(n)+OP_result_offset(o)])
 #define OP_opnd(o,n)	((struct tn *)(o)->res_opnd[(n)+OP_opnd_offset(o)])
-
-#if defined(TARG_SL)
-#define OP_extra_rslt(o)  ((TN_LIST*)(o)->extra_result)
-#define OP_extra_opnd(o) ((TN_LIST*)(o)->extra_operand)
-#endif 
 
 /* Mutators: */
 #define Set_OP_orig_idx(op,idx) ((op)->orig_idx = (idx))
@@ -474,69 +468,45 @@ enum OP_COND_DEF_KIND {
 
 /* Define the flag masks. */
 
-#define OP_MASK_GLUE	      0x00000001 /* Is OP region "glue"? */
-#define OP_MASK_NO_ALIAS      0x00000002 /* Is OP Memop that can't be aliased */
-#define OP_MASK_COPY	      0x00000004 /* Is OP a COPY? */
-#define OP_MASK_FLAG1	      0x00000008 /* temporary flag for local use */
-#define OP_MASK_VOLATILE      0x00000010 /* Is OP a volatile Memop? */
-#define OP_MASK_HOISTED       0x00000020 /* Is there a WN map attatched to a hoisted OP */
-#define OP_MASK_END_GROUP     0x00000040 /* Is OP end of an instruction group */
-#define OP_MASK_M_UNIT	      0x00000080 /* Is OP assigned to M unit */
-#define OP_MASK_TAIL_CALL     0x00000100 /* Is OP a tail call? */
-#define OP_MASK_BUNDLED	      0x00000200 /* Is OP bundled? */
-#define OP_MASK_SPECULATIVE   0x00000400 /* Is OP a speculative live-range op? */
+#define OP_MASK_GLUE	  0x00000001 /* Is OP region "glue"? */
+#define OP_MASK_NO_ALIAS  0x00000002 /* Is OP Memop that can't be aliased */
+#define OP_MASK_COPY	  0x00000004 /* Is OP a COPY? */
+#define OP_MASK_FLAG1	  0x00000008 /* temporary flag for local use */
+#define OP_MASK_VOLATILE  0x00000010 /* Is OP a volatile Memop? */
+#define OP_MASK_HOISTED   0x00000020 /* Is there a WN map attatched to a hoisted OP */
+#define OP_MASK_END_GROUP 0x00000040 /* Is OP end of an instruction group */
+#define OP_MASK_M_UNIT	  0x00000080 /* Is OP assigned to M unit */
+#define OP_MASK_TAIL_CALL 0x00000100 /* Is OP a tail call? */
+#define OP_MASK_BUNDLED	  0x00000200 /* Is OP bundled? */
+#define OP_MASK_SPECULATIVE  0x00000400 /* Is OP a speculative live-range op? */
+#ifdef KEY
+/* Is this OP the first OP following the PRAGMA_PREAMBLE_END ? */
+#define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END 0x00000800
+#endif
+/* comment out the OP_MAKS_COND_DEF, so 0x00000800 and 0x00001000 is usable */
 /* OP_MAKS_COND_DEF  0x00001800  -- See enum defined above  */
-#define OP_MASK_NO_CI_ALIAS   0x00002000 /* no cross-iteration alias */
-#define OP_MASK_NO_MOVE_BEFORE_GRA \
-                              0x00004000 /* do not move this op before GRA */
-#define OP_MASK_TAG 	      0x00008000 /* OP has tag */
-#define OP_MASK_SPADJ_PLUS    0x00010000 /* Is OP de-alloca spadjust (plus)? */
-#define OP_MASK_SPADJ_MINUS   0x00020000 /* Is OP alloca spadjust (minus)? */
+#define OP_MASK_NO_CI_ALIAS  0x00002000 /* no cross-iteration alias */
+#define OP_MASK_NO_MOVE_BEFORE_GRA 0x00004000 /* do not move this op before GRA */
+#define OP_MASK_TAG 	  0x00008000 /* OP has tag */
+#define OP_MASK_SPADJ_PLUS  0x00010000 /* Is OP de-alloca spadjust (plus)? */
+#define OP_MASK_SPADJ_MINUS 0x00020000 /* Is OP alloca spadjust (minus)? */
 #ifdef TARG_IA64
-#define OP_MASK_START_BD      0x00040000 /* Is OP start of a bundle */
-#define OP_MASK_SAFE_LOAD     0x00080000 /* Is OP safe load */
-#define OP_MASK_SCHEDULED     0x00100000 /* Has OP been scheduled */
-#define OP_MASK_CNTL_SPEC     0x00200000 /* Is OP control speculated? */ 
-#define OP_MASK_DATA_SPEC     0x00400000 /* Is OP data speculated? */
-#define OP_MASK_PREFETCHED    0x00800000 /* Has OP been prefetched? */
-#define OP_MASK_IF_CONVERTED  0x01000000 /* Is OP if-converted? */
-#define OP_MASK_RENAMED	      0x02000000 /* Is OP renamed by GLOS */
-#define OP_MASK_SPILL_RESTORE 0x04000000 /* Is OP a spill or restore  */
+#define OP_MASK_START_BD    0x00040000 /* Is OP start of a bundle */
+#define OP_MASK_SAFE_LOAD   0x00080000 /* Is OP safe load */
+#define OP_MASK_SCHEDULED   0x00100000 /* Has OP been scheduled */
+#define OP_MASK_CNTL_SPEC   0x00200000 /* Is OP control speculated? */ 
+#define OP_MASK_DATA_SPEC   0x00400000 /* Is OP data speculated? */
+#define OP_MASK_PREFETCHED   0x00800000 /* Has OP been prefetched? */
+#define OP_MASK_IF_CONVERTED 0x01000000 /*Is OP if-converted? */
+#define OP_MASK_RENAMED	0x02000000 /*Is OP renamed by GLOS */
+#define OP_MASK_SPILL_RESTORE 0x04000000 /*Is OP a spill or restore  */
 #define OP_MASK_LD_GOT_ENT    0x08000000 /* load GOT entry */ 
 #endif
-#define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END  \
-                              0x10000000 /* first OP following PRAGMA_PREAMBLE_END? */
 #ifdef TARG_X8664
-#define OP_MASK_MEMORY_HI     0x00040000 /* Is OP load/store the high 32-bit? */
-#define OP_MASK_COMPUTES_GOT  0x00100000 /* Does OP compute GOT ? */
-#define OP_MASK_PREFIX_LOCK   0x01000000
+#define OP_MASK_MEMORY_HI   0x00040000 /* Is OP load/store the high 32-bit? */
+#define OP_MASK_COMPUTES_GOT  0x00080000  /* Does OP compute GOT ? */
+#define OP_MASK_PREFIX_LOCK   0x00100000
 #endif
-#if defined(TARG_IA64) || defined(TARG_SL)
-# define OP_renamed(op)		(OP_flags(op) & OP_MASK_RENAMED)
-# define Set_OP_renamed(o)	(OP_flags(o) |= OP_MASK_RENAMED)
-# define Reset_OP_renamed(o)	(OP_flags(o) &= ~OP_MASK_RENAMED)
- 
-#if defined(TARG_SL) 
-#define OP_MASK_RENAMED       0x00100000  /* Is OP renamed during global sched */
-#define OP_MASK_BC2_OP        0x00200000  /* Is OP renamed during global sched */
-#define OP_MASK_C2_BR_OP      0x00400000
-#define OP_MASK_16bit_OP      0x00400000  /* Is OP rechanged as 16-bit OP*/
-#define OP_MASK_PAIRED_OP     0x00800000  /* Is OP paired: 2 continus 16-bit OP */ 
-#define OP_bc2_op(op)		(OP_flags(op) & OP_MASK_BC2_OP)
-#define Set_OP_bc2_op(o)	(OP_flags(o) |= OP_MASK_BC2_OP)
-#define Reset_OP_bc2_op(o)	(OP_flags(o) &= ~OP_MASK_BC2_OP)
-#define OP_16bit_op(op)        (OP_flags(op) & OP_MASK_16bit_OP)
-#define Set_OP_16bit_op(o)     (OP_flags(o) |= OP_MASK_16bit_OP)
-#define Reset_OP_16bit_op(o)   (OP_flags(o) &= ~OP_MASK_16bit_OP)
-#define OP_Paired_op(op)       (OP_flags(op) & OP_MASK_PAIRED_OP)
-#define Set_OP_Paired_op(o)    (OP_flags(o) |= OP_MASK_PAIRED_OP)
-#define Reset_OP_Paired_op(o)  (OP_flags(o) &= ~OP_MASK_PAIRED_OP)
-# define OP_c2_br_op(op)		(OP_flags(op) & OP_MASK_C2_BR_OP)
-# define Set_OP_c2_br_op(o)	(OP_flags(o) |= OP_MASK_C2_BR_OP)
-# define Reset_OP_c2_br_op(o)	(OP_flags(o) &= ~OP_MASK_C2_BR_OP)
-#endif //TARG_SL
-#endif 
-
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
 # define Set_OP_glue(o)		(OP_flags(o) |= OP_MASK_GLUE)
@@ -615,6 +585,9 @@ enum OP_COND_DEF_KIND {
 # define OP_if_converted(o)			(OP_flags(o) & OP_MASK_IF_CONVERTED)
 # define Set_OP_if_converted(o)		(OP_flags(o) |= OP_MASK_IF_CONVERTED)
 # define Reset_OP_if_converted(o)	(OP_flags(o) &= ~OP_MASK_IF_CONVERTED)
+# define OP_renamed(op)			(OP_flags(op) & OP_MASK_RENAMED)
+# define Set_OP_renamed(o)		(OP_flags(o) |= OP_MASK_RENAMED)
+# define Reset_OP_renamed(o)	(OP_flags(o) &= ~OP_MASK_RENAMED)
 # define OP_spill_restore(op)			(OP_flags(op) & OP_MASK_SPILL_RESTORE)
 # define Set_OP_spill_restore(o)		(OP_flags(o) |= OP_MASK_SPILL_RESTORE)
 # define Reset_OP_spill_restore(o)	(OP_flags(o) &= ~OP_MASK_SPILL_RESTORE)
@@ -624,9 +597,9 @@ enum OP_COND_DEF_KIND {
 #endif
 
 #ifdef TARG_X8664
-# define OP_memory_hi(o)	(OP_flags(o) & OP_MASK_MEMORY_HI)
-# define Set_OP_memory_hi(o)	(OP_flags(o) |= OP_MASK_MEMORY_HI)
-# define Reset_OP_memory_hi(o)	(OP_flags(o) &= ~OP_MASK_MEMORY_HI)
+# define OP_memory_hi(o)(OP_flags(o) & OP_MASK_MEMORY_HI)
+# define Set_OP_memory_hi(o)(OP_flags(o) |= OP_MASK_MEMORY_HI)
+# define Reset_OP_memory_hi(o)(OP_flags(o) &= ~OP_MASK_MEMORY_HI)
 # define OP_first_after_preamble_end(o) (OP_flags(o) & OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
 # define Set_OP_first_after_preamble_end(o) (OP_flags(o) |= OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
 # define Reset_OP_first_after_preamble_end(o) (OP_flags(o) &= ~OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
@@ -636,32 +609,29 @@ enum OP_COND_DEF_KIND {
 # define OP_prefix_lock(o)        (OP_flags(o) & OP_MASK_PREFIX_LOCK)
 #endif // TARG_X8664
 
+#ifdef KEY
 # define OP_first_after_preamble_end(o) (OP_flags(o) & OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
 # define Set_OP_first_after_preamble_end(o) (OP_flags(o) |= OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
 # define Reset_OP_first_after_preamble_end(o) (OP_flags(o) &= ~OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
+#endif // KEY
+
 extern BOOL OP_cond_def(const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);
-#if defined(TARG_IA64) || defined(TARG_SL)
-extern BOOL OP_def_return_value (OP*);
-#endif
 #ifdef TARG_IA64
 extern BOOL OP_xfer(OP*);           // After RBG, chk should be taken as xfer.
 
 extern BOOL OP_restore_b0(OP*);
 extern BOOL OP_restore_ar_pfs(OP*);
 extern BOOL OP_def_ar_lc(OP*);
+extern BOOL OP_def_return_value(OP*);
 extern BOOL OP_use_return_value(OP*); 
 #endif
-
 /* Convenience access macros for properties of the OP */
 /* TODO: define all the macros for OP properties. */
 #define OP_noop(o)		(TOP_is_noop(OP_code(o)))
 #define OP_load(o)		(TOP_is_load(OP_code(o)))
 #define OP_store(o)		(TOP_is_store(OP_code(o)))
-#define OP_prefetch(o)	(TOP_is_prefetch(OP_code(o)))
-#if defined(TARG_SL)        
-#define OP_alu(o)              (TOP_is_alu_instr(OP_code(o)))
-#endif
+#define OP_prefetch(o)		(TOP_is_prefetch(OP_code(o)))
 #ifdef TARG_X8664
 #define OP_load_exe(o)		(TOP_is_load_exe(OP_code(o)))
 #define OP_load_exe_store(o)	(TOP_is_load_exe_store(OP_code(o)))
@@ -671,7 +641,7 @@ extern BOOL OP_use_return_value(OP*);
 #endif
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
-#if defined(TARG_X8664) || defined(TARG_SL)
+#ifndef TARG_IA64
 #define OP_xfer(o)		(TOP_is_xfer(OP_code(o)))
 #endif
 #define OP_cond(o)		(TOP_is_cond(OP_code(o)))
@@ -727,30 +697,13 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_mmx(o)		(TOP_is_mmx(OP_code(o)))
 #endif
 
-#if defined(TARG_SL) //fork_joint
-#define OP_fork(o)              (TOP_is_fork_instr(OP_code(o)))
-#define OP_vbuf_load(o)         (TOP_is_c2_v_load(OP_code(o)))
-#define OP_sbuf_load(o)         (TOP_is_c2_s_load(OP_code(o)))
-#define OP_vbuf_store(o)        (TOP_is_c2_v_store(OP_code(o)))
-#define OP_sbuf_store(o)        (TOP_is_c2_s_store(OP_code(o)))
-#define OP_has_bypass(o)        (TOP_is_c2_has_bypass(OP_code(o)))
-#define OP_c2_load(o)           (TOP_is_c2_load(OP_code(o)))
-#define OP_c2_store(o)          (TOP_is_c2_store(OP_code(o)))
-
-#define OP_c3_load(o)	        (TOP_is_c3_load(OP_code(o)))
-#define OP_c3_store(o)          (TOP_is_c3_store(OP_code(o)))
-
-#endif 
-
 #define OP_operand_info(o)	(ISA_OPERAND_Info(OP_code(o)))
 #define OP_has_hazard(o)	(ISA_HAZARD_TOP_Has_Hazard(OP_code(o)))
 #define OP_immediate_opnd(o)	(TOP_Immediate_Operand(OP_code(o),NULL))
 #define OP_has_immediate(o)	(OP_immediate_opnd(o) >= 0)
 #define OP_inst_words(o)	(ISA_PACK_Inst_Words(OP_code(o)))
 #define OP_find_opnd_use(o,u)	(TOP_Find_Operand_Use(OP_code(o),(u)))
-#ifdef TARG_SL
-#define OP_no_peephole(o)       (TOP_is_npeep(OP_code(o)))
-#endif
+
 #ifdef TARG_IA64
 // bug fix for OSP_87 and OSP_88
 #define OP_asm(o)              (OP_code(o)==TOP_asm)
@@ -999,7 +952,7 @@ inline ISA_OPERAND_USE OP_opnd_use(OP *op, INT opnd)
 #define TOP_fixed_opnds(o)	(ISA_OPERAND_INFO_Operands(ISA_OPERAND_Info(o)))
 #define OP_fixed_results(o)	(TOP_fixed_results(OP_code(o)))
 #define OP_fixed_opnds(o)	(TOP_fixed_opnds(OP_code(o)))
-
+
 /* ---------------------------------------------------------------------
  *			       OPS stuff
  * ---------------------------------------------------------------------
@@ -1080,7 +1033,7 @@ void OPS_Append_Ops(OPS *ops, OPS *insert_ops);
 void OPS_Prepend_Ops(OPS *ops, OPS *insert_ops);
 void OPS_Insert_Op(OPS *ops, OP *point, OP *op, BOOL before);
 void OPS_Insert_Ops(OPS *ops, OP *point, OPS *insert_ops, BOOL before);
-
+
 /* ====================================================================
  *
  * Utility routines which manipulate OPs.
@@ -1169,43 +1122,7 @@ inline void Build_OP(TOP opc, struct tn *t1, struct tn *t2, struct tn *t3,
 {
   OPS_Append_Op(ops, Mk_OP(opc, t1, t2, t3, t4, t5, t6, t7, t8, t9));
 }
-#if defined(TARG_SL)
-inline void Build_OP(TOP opc, struct tn *t1, struct tn *t2, struct tn *t3, 
-			      struct tn *t4, struct tn *t5, struct tn *t6, 
-			      struct tn *t7, struct tn *t8, struct tn *t9, struct tn *t10,
-			      OPS *ops)
-{
-  OPS_Append_Op(ops, Mk_OP(opc, t1, t2, t3, t4, t5, t6, t7, t8, t9,t10));
-}
 
-inline void Build_OP(TOP opc, struct tn *t1, struct tn *t2, struct tn *t3,
-                              struct tn *t4, struct tn *t5, struct tn *t6,
-                              struct tn *t7, struct tn *t8, struct tn *t9, 
-		              struct tn *t10, struct tn *t11,
-                              OPS *ops)
-{
-  OPS_Append_Op(ops, Mk_OP(opc, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11));
-}
-
-inline void Build_OP(TOP opc, struct tn *t1, struct tn *t2, struct tn *t3,
-                              struct tn *t4, struct tn *t5, struct tn *t6,
-                              struct tn *t7, struct tn *t8, struct tn *t9,
-                              struct tn *t10, struct tn *t11, struct tn *t12,
-                              OPS *ops)
-{
-  OPS_Append_Op(ops, Mk_OP(opc, t1, t2, t3, t4, t5, t6, t7, t8, t9,t10,t11, t12));
-}
-
-inline void Build_OP(TOP opc, struct tn *t1, struct tn *t2, struct tn *t3,
-                              struct tn *t4, struct tn *t5, struct tn *t6,
-                              struct tn *t7, struct tn *t8, struct tn *t9,
-                              struct tn *t10, struct tn *t11, struct tn *t12,
-                              struct tn *t13,
-                              OPS *ops)
-{
-  OPS_Append_Op(ops, Mk_OP(opc, t1, t2, t3, t4, t5, t6, t7, t8, t9,t10,t11, t12, t13));
-}
-#endif
 /* Determine if the op defines/references the given TN result/operand. */
 extern BOOL OP_Defs_TN(const OP *op, const struct tn *res);
 extern BOOL OP_Refs_TN(const OP *op, const struct tn *opnd);
@@ -1416,9 +1333,6 @@ BOOL OP_Is_Copy_To_Save_TN (const OP*);
 /*  Is <op> a copy to a callee-saves register from its save-TN?  */
 BOOL OP_Is_Copy_From_Save_TN (const OP* );
 
-
-
 #include "op_targ.h"
 
 #endif /* op_INCLUDED */
-

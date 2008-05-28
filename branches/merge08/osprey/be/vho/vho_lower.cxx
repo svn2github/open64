@@ -190,7 +190,7 @@ TYPE_ID Promoted_Mtype [MTYPE_LAST + 1] = {
   MTYPE_C4,       /* MTYPE_C4 */
   MTYPE_C8,       /* MTYPE_C8 */
   MTYPE_CQ,       /* MTYPE_CQ */
-  MTYPE_V,        /* MTYPE_V */
+  MTYPE_V         /* MTYPE_V */
 #if defined(TARG_IA64)
   MTYPE_UNKNOWN,  /* MTYPE_BS */
   MTYPE_UNKNOWN,  /* MTYPE_A4 */

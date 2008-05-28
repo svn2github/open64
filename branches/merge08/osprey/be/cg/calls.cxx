@@ -1641,7 +1641,7 @@ Generate_Exit (
     }
   }
 
-#ifdef TARG_X8664
+#ifdef TARG_IA64
   /* not sure whether it is architecture independent. */
   /* restore callee-saved registers allocated to local user variables */
   for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {

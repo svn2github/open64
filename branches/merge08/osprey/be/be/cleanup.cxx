@@ -59,7 +59,6 @@
 #include <sys/types.h>              /* for off_t */
 #endif /* _SYS_TYPES_H */
 
-#include "bstring.h"
 #include "defs.h"
 #include "glob.h"		    /* for Src_File_Name, etc. */
 #include "erglob.h"		    /* for EC_Src_Close, etc. */

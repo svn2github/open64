@@ -692,12 +692,12 @@ put_subprogram(DST_flag flag,
     if (DST_IS_NULL(DST_SUBPROGRAM_def_type(attr)) &&
 	(Dwarf_Language == DW_LANG_Fortran77 ||
 	 Dwarf_Language == DW_LANG_Fortran90) &&
-	Current_Top_Level_Idx != DST_INVALID_IDX) {
+	!DST_ARE_EQUAL(Current_Top_Level_Idx,DST_INVALID_IDX)) {
       DST_INFO_IDX child_idx;
       for (child_idx = DST_first_child (Current_Top_Level_Idx);
 	   !DST_IS_NULL(child_idx); 
 	   child_idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(child_idx))) {
-	if (child_idx != DST_INVALID_IDX) {
+	if ( !DST_ARE_EQUAL(child_idx,DST_INVALID_IDX) ) {
 	  DST_INFO *child_info = DST_INFO_IDX_TO_PTR (child_idx);
 	  if (child_info && 
 	      DST_INFO_tag(child_info) == DW_TAG_variable) {
@@ -706,7 +706,7 @@ put_subprogram(DST_flag flag,
 	      DST_ATTR_IDX_TO_PTR(child_attr_idx, DST_VARIABLE);
 	    if (child_attr) {
 	      DST_STR_IDX child_str_idx = DST_VARIABLE_def_name(child_attr);
-	      if (child_str_idx != DST_INVALID_IDX) {
+	      if ( !DST_ARE_EQUAL(child_str_idx,DST_INVALID_IDX) ) {
 		ST *pu_st = Get_ST_From_DST(DST_SUBPROGRAM_def_st(attr));
 		char *pu_name = ST_name(pu_st);
 		char *variable_name = DST_STR_IDX_TO_PTR(child_str_idx);
