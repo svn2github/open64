@@ -854,7 +854,7 @@ static void Delete_MP_Region (WN* do_wn,
            ("Delete_MP_Region: must be called with an MP do-loop"));
 
 #ifdef KEY
-  WN * region=do_wn;
+  WN * region=LWN_Get_Parent(LWN_Get_Parent(region));
   if (PU_cxx_lang(Get_Current_PU()) && Is_Eh_Or_Try_Region(region))
     region=LWN_Get_Parent(LWN_Get_Parent(region));
 #endif
