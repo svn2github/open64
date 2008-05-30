@@ -90,6 +90,7 @@ LINUX_SYS_HFILES = \
 
 INCLUDE_HFILES = \
 	compact_reloc.h \
+	defalias.h \
 	dwarf.h \
 	elf_abi.h \
 	elf_mips.h \
