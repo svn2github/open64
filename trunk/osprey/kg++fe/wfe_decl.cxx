@@ -2312,10 +2312,16 @@ Gen_Assign_Of_Init_Val (
 	// rather than directy copy assignment,
 	// so need special code.
 	UINT size = TY_size(ty);
+        // OSP, string size > ty_size, only init ty_size
+        // Replace TREE_STRING_LENGTH with load_size
+        // Althrough C++ prohibit str_lenth longer than ty_size,
+        //  we still change the code here. ( consistent with C part )
+        UINT load_size = ( size > TREE_STRING_LENGTH(init) ) ?
+                           TREE_STRING_LENGTH(init) : size;
 	TY_IDX ptr_ty = Make_Pointer_Type(ty);
 	WN *load_wn = WN_CreateMload (0, ptr_ty, init_wn,
 #ifdef KEY // bug 3188
-			      WN_Intconst(MTYPE_I4, TREE_STRING_LENGTH(init)));
+			      WN_Intconst(MTYPE_I4, load_size));
 #else
 				      WN_Intconst(MTYPE_I4, size));
 #endif
@@ -2329,13 +2335,13 @@ Gen_Assign_Of_Init_Val (
 				 load_wn,
 				 addr_wn,
 #ifdef KEY // bug 3188
-                              WN_Intconst(MTYPE_I4, TREE_STRING_LENGTH(init))),
+                              WN_Intconst(MTYPE_I4, load_size)),
 #else
 				 WN_Intconst(MTYPE_I4,size)),
 #endif
 		Get_Srcpos());
 #ifdef KEY // bug 3247
-	if (size - TREE_STRING_LENGTH(init)) {
+	if (size - load_size > 0) {
 	  load_wn = WN_Intconst(MTYPE_U4, 0);
 #ifdef NEW_INITIALIZER
           addr_wn = target;
@@ -2343,10 +2349,10 @@ Gen_Assign_Of_Init_Val (
 	  addr_wn = WN_Lda(Pointer_Mtype, 0, st);
 #endif
 	  WFE_Stmt_Append(
-		  WN_CreateMstore (offset+TREE_STRING_LENGTH(init), ptr_ty,
+		  WN_CreateMstore (offset+load_size, ptr_ty,
 				   load_wn,
 				   addr_wn,
-			   WN_Intconst(MTYPE_I4,size-TREE_STRING_LENGTH(init))),
+			   WN_Intconst(MTYPE_I4,size-load_size)),
 		  Get_Srcpos());
 	}
 #endif

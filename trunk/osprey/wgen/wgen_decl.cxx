@@ -2633,10 +2633,14 @@ gs_t init, UINT offset, UINT array_elem_offset,
 	// rather than directy copy assignment,
 	// so need special code.
 	UINT size = TY_size(ty);
+        // OSP, string size > ty_size, only init ty_size
+        // Replace gs_tree_string_length with load_size
+        UINT load_size = ( size > gs_tree_string_length(init) ) ?
+                         gs_tree_string_length(init) : size;
 	TY_IDX ptr_ty = Make_Pointer_Type(ty);
 	WN *load_wn = WN_CreateMload (0, ptr_ty, init_wn,
 #ifdef KEY // bug 3188
-			      WN_Intconst(MTYPE_I4, gs_tree_string_length(init)));
+			      WN_Intconst(MTYPE_I4, load_size));
 #else
 				      WN_Intconst(MTYPE_I4, size));
 #endif
@@ -2651,13 +2655,13 @@ gs_t init, UINT offset, UINT array_elem_offset,
 				 load_wn,
 				 addr_wn,
 #ifdef KEY // bug 3188
-                              WN_Intconst(MTYPE_I4, gs_tree_string_length(init))),
+                              WN_Intconst(MTYPE_I4, load_size)),
 #else
 				 WN_Intconst(MTYPE_I4,size)),
 #endif
 		Get_Srcpos());
 #ifdef KEY // bug 3247
-	if (size - gs_tree_string_length(init)) {
+	if (size - load_size > 0) {
 	  load_wn = WN_Intconst(MTYPE_U4, 0);
 #ifdef NEW_INITIALIZER
           addr_wn = target;
@@ -2665,10 +2669,10 @@ gs_t init, UINT offset, UINT array_elem_offset,
 	  addr_wn = WN_Lda(Pointer_Mtype, 0, st);
 #endif
 	  WGEN_Stmt_Append(
-		  WN_CreateMstore (offset+gs_tree_string_length(init), ptr_ty,
+		  WN_CreateMstore (offset+load_size, ptr_ty,
 				   load_wn,
 				   addr_wn,
-			   WN_Intconst(MTYPE_I4,size-gs_tree_string_length(init))),
+			   WN_Intconst(MTYPE_I4,size-load_size)),
 		  Get_Srcpos());
 	}
 #endif
