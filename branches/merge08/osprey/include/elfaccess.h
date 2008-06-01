@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: elfaccess.h
- * $Revision: 1.1 $
- * $Date: 2005/07/27 02:22:17 $
- * $Author: kevinlo $
- * $Source: /depot/CVSROOT/javi/src/sw/cmplr/include/elfaccess.h,v $
+ * $Revision$
+ * $Date$
+ * $Author$
+ * $Source$
  *
  * Revision history:
  *  03-Jun-93 - Original Version

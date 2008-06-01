@@ -35,7 +35,7 @@
 
 #ifndef __OBJLIST_H
 #define __OBJLIST_H
-/* $Header: /depot/CVSROOT/javi/src/sw/cmplr/include/objlist.h,v 1.1 2005/07/27 02:22:18 kevinlo Exp $ */
+/* $Header$ */
 
 typedef struct {
         Elf32_Word      oi_magic; /* to distinguish from old obj struct */

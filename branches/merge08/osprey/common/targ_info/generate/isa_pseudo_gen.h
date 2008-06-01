@@ -111,16 +111,16 @@
 //
 /////////////////////////////////////
 
-//  $Revision: 1.1 $
-//  $Date: 2005/07/27 02:18:06 $
-//  $Author: kevinlo $
-//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/isa_pseudo_gen.h,v $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_pseudo_gen.h,v $
 
 #ifndef isa_pseudo_gen_INCLUDED
 #define isa_pseudo_gen_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static const char isa_pseudo_gen_rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/isa_pseudo_gen.h,v $ $Revision: 1.1 $";
+static const char isa_pseudo_gen_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_pseudo_gen.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifdef __cplusplus

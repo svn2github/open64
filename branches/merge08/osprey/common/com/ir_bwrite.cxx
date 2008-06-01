@@ -787,6 +787,7 @@ WN_write_dst (DST_TYPE dst, Output_File *fl)
 
 } /* WN_write_dst */
 
+#if defined (TARG_SL)
 void 
 WN_write_isr_cg(vector<mINT32>& cg, Output_File *fl)
 {
@@ -813,7 +814,7 @@ WN_write_isr_cg(vector<mINT32>& cg, Output_File *fl)
     cur_section->shdr.sh_size = fl->file_size - cur_section->shdr.sh_offset;
     cur_section->shdr.sh_addralign = sizeof(mINT32);
 }
-
+#endif
 
 #ifdef BACK_END
 

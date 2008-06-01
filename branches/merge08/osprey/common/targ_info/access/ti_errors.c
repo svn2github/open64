@@ -35,7 +35,7 @@
 
 #ifdef _KEEP_RCS_ID
 static const char source_file[] = __FILE__;
-static const char rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_errors.c,v $ $Revision: 1.1 $";
+static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_errors.c,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "ti_errors.h"

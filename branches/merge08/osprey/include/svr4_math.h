@@ -34,7 +34,7 @@
 
 
 
-/* $Header: /depot/CVSROOT/javi/src/sw/cmplr/include/svr4_math.h,v 1.1 2005/07/27 02:22:18 kevinlo Exp $ */
+/* $Header$ */
 
 #ifndef __SVR4_MATH_H__
 #define __SVR4_MATH_H__

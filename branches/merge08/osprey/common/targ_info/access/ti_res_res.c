@@ -34,7 +34,7 @@
 
 
 static const char source_file[] = __FILE__;
-static const char rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_res_res.c,v $ $Revision: 1.1 $";
+static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_res_res.c,v $ $Revision: 1.1.1.1 $";
 
 #include <alloca.h>
 #include <limits.h>
@@ -188,40 +188,7 @@ static void Check_Reserve_Loop_Control(
   }
 }
 
-#if defined(TARG_SL2)
-static void Check_Reserve_Loop_Control_For_Alternative_Res(
-  TI_RES_RES *res,
-  TOP         opcode, 
-  INT         cycle,
-  SI_RR      *rr,
-  INT        *length1, 
-  INT        *length2,
-  INT        *cycle_mod_ii
-)
-{
-  INT32 rr_length;
-  INT32 length = TI_RES_RES_length(res);
 
-  if ( TI_RES_RES_cyclic(res) ) {
-    *rr = TSI_II_Resource_Requirement(opcode,length);
-  }
-  else {
-    *rr = TSI_Alternative_Resource_Requirement(opcode);
-  }
-  *cycle_mod_ii = Cycle_Mod_II(cycle,length);
-
-  rr_length = SI_RR_Length(*rr);
-  if ( *cycle_mod_ii + rr_length <= length ) {
-    *length1 = rr_length;
-    *length2 = 0;
-  }
-  else {
-    *length1 = length - *cycle_mod_ii;
-    *length2 = rr_length - *length1;
-  }
-}
-
-#endif 
 /* ====================================================================
  *
  *  TI_RES_RES_Set_BB_Cycle_Count
@@ -375,38 +342,7 @@ BOOL TI_RES_RES_Resources_Available(
   return TRUE;
 }
 
-#if defined(TARG_SL2)
-BOOL TI_RES_RES_Alternative_Resources_Available(
-  TI_RES_RES  *res,
-  TOP          opcode,
-  INT          cycle
-)
-{
-  INT     cycle_mod_ii;
-  INT     length1;
-  INT     length2;
-  INT     i;
-  SI_RR   rr;
-  SI_RRW *rrtab = TI_RES_RES_rrtab(res);
 
-  Check_Reserve_Loop_Control_For_Alternative_Res(res,opcode,cycle,
-			     &rr,&length1,&length2,&cycle_mod_ii);
-
-  for ( i = 0; i < length1; ++i ) {
-    SI_RRW reserved = SI_RRW_Reserve(rrtab[cycle_mod_ii+i],
-                                     SI_RR_Cycle_RRW(rr,i));
-    if ( SI_RRW_Has_Overuse(reserved) ) return FALSE;
-  }
-
-  for ( i = 0; i < length2; ++i ) {
-    SI_RRW reserved = SI_RRW_Reserve(rrtab[i],SI_RR_Cycle_RRW(rr,i+length1));
-    if ( SI_RRW_Has_Overuse(reserved) ) return FALSE;
-  }
-
-  return TRUE;
-}
-
-#endif 
 /* ====================================================================
  *
  *  TI_RES_RES_Reserve_Resources
@@ -441,33 +377,7 @@ void TI_RES_RES_Reserve_Resources(
   }
 }
 
-#if defined(TARG_SL2)
-void TI_RES_RES_Reserve_Alternative_Resources(
-  TI_RES_RES  *res,
-  TOP          opcode,
-  INT          cycle
-)
-{
-  INT     cycle_mod_ii;
-  INT     length1;
-  INT     length2;
-  INT     i;
-  SI_RR   rr;
-  SI_RRW *rrtab = TI_RES_RES_rrtab(res);
 
-  Check_Reserve_Loop_Control_For_Alternative_Res(res,opcode,cycle,
-			     &rr,&length1,&length2,&cycle_mod_ii);
-
-  for ( i = 0; i < length1; ++i ) {
-    rrtab[cycle_mod_ii+i]
-      = SI_RRW_Reserve(rrtab[cycle_mod_ii+i],SI_RR_Cycle_RRW(rr,i));
-  }
-
-  for ( i = 0; i < length2; ++i ) {
-    rrtab[i] = SI_RRW_Reserve(rrtab[i],SI_RR_Cycle_RRW(rr,i+length1));
-  }
-}
-#endif
 /* ====================================================================
  *
  *  TI_RES_RES_Unreserve_Resources

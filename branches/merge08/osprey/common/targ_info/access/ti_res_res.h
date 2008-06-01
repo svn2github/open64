@@ -37,10 +37,10 @@
  * ====================================================================
  *
  *  Module: ti_res_res.h
- *  $Revision: 1.1 $
- *  $Date: 2005/07/27 02:17:55 $
- *  $Author: kevinlo $
- *  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_res_res.h,v $
+ *  $Revision: 1.1.1.1 $
+ *  $Date: 2005/10/21 19:00:00 $
+ *  $Author: marcel $
+ *  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_res_res.h,v $
  *
  *  Synopsis:
  *
@@ -202,7 +202,7 @@ extern "C" {
 #endif
 
 #ifdef _KEEP_RCS_ID
-static const char ti_res_res_rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_res_res.h,v $ $Revision: 1.1 $";
+static const char ti_res_res_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_res_res.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 typedef struct ti_res_res TI_RES_RES;
@@ -228,28 +228,11 @@ extern BOOL TI_RES_RES_Resources_Available(
   INT          cycle
 );
 
-#if defined(TARG_SL2)
-extern BOOL TI_RES_RES_Alternative_Resources_Available(
-  TI_RES_RES  *res,
-  TOP          opcode,
-  INT          cycle
-);
-#endif
-
-
 extern void TI_RES_RES_Reserve_Resources(
   TI_RES_RES  *res,
   TOP          opcode,
   INT          cycle
 );
-
-#if defined(TARG_SL2)
-extern void TI_RES_RES_Reserve_Alternative_Resources(
-  TI_RES_RES  *res,
-  TOP          opcode,
-  INT          cycle
-);
-#endif 
 
 extern void TI_RES_RES_Unreserve_Resources(
   TI_RES_RES  *res,

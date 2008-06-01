@@ -46,9 +46,9 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.1 $
-//  $Date: 2005/07/27 02:18:06 $
-//  $Author: kevinlo $
-//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/isa_gen.h,v $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_gen.h,v $
 
 extern void ISA_Create (const char *isa_name, ...);

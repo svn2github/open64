@@ -378,6 +378,8 @@ main()
 		     TOP_lock_and64,
 		     TOP_lock_or32,
 		     TOP_lock_or64,
+		     TOP_lock_xadd32,
+		     TOP_lock_xadd64,
 		     TOP_lock_xor32,
 		     TOP_lock_xor64,
 		     TOP_lock_sub32,
@@ -1064,11 +1066,13 @@ main()
 		     TOP_lock_adc32,
 		     TOP_lock_and32,
 		     TOP_lock_or32,
+		     TOP_lock_xadd32,
 		     TOP_lock_xor32,
 		     TOP_lock_sub32,
 		     TOP_lock_add64,
 		     TOP_lock_and64,
 		     TOP_lock_or64,
+		     TOP_lock_xadd64,
 		     TOP_lock_xor64,
 		     TOP_lock_sub64,
                      TOP_UNDEFINED);
@@ -1080,11 +1084,13 @@ main()
 		     TOP_lock_adc32,
 		     TOP_lock_and32,
 		     TOP_lock_or32,
+		     TOP_lock_xadd32,
 		     TOP_lock_xor32,
 		     TOP_lock_sub32,
 		     TOP_lock_add64,
 		     TOP_lock_and64,
 		     TOP_lock_or64,
+		     TOP_lock_xadd64,
 		     TOP_lock_xor64,
 		     TOP_lock_sub64,
                      TOP_UNDEFINED);
@@ -2133,6 +2139,7 @@ main()
 		     TOP_storenti128,
 		     TOP_storelpd,
 		     TOP_pshufw64v16,
+                     TOP_pmovmskb128,
                      TOP_UNDEFINED);
 
   /* ===== FP add operator ====== */
@@ -3059,6 +3066,7 @@ main()
 		     TOP_pextrw,
 		     TOP_pinsrw,
 		     TOP_pmovmskb,
+                     TOP_pmovmskb128,
 		     TOP_movi32_2m,
 		     TOP_movi64_2m,
 		     TOP_movm_2i32,

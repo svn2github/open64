@@ -45,10 +45,10 @@
 //
 /////////////////////////////////////
 //
-//  $Revision: 1.1 $
-//  $Date: 2005/07/27 02:18:06 $
-//  $Author: kevinlo $
-//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/isa_operands_gen.cxx,v $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_operands_gen.cxx,v $
 
 typedef struct operand_value_type *OPERAND_VALUE_TYPE;
 
@@ -925,26 +925,6 @@ void ISA_Operands_End(void)
 		 "    if (this_use == use) return i;\n"
 		 "  }\n"
 		 "  return -1;\n"
-		 "}\n");
-
-  fprintf(hfile, "\nextern INT TOP_Find_Operand_Uses(TOP topcode, INT *out, "
-		 "ISA_OPERAND_USE use);\n");
-  fprintf(efile, "TOP_Find_Operand_Uses\n");
-  fprintf(cfile, "\nINT TOP_Find_Operand_Uses(TOP topcode, INT *out, ISA_OPERAND_USE use)\n"
-		 "{\n"
-		 "  INT i;\n"
-		 "  INT j = 0;\n"
-		 "  const ISA_OPERAND_INFO *oinfo = ISA_OPERAND_Info(topcode);\n"
-		 "  INT opnds = ISA_OPERAND_INFO_Operands(oinfo);\n"
-		 "  for (i = 0; i < opnds; ++i) {\n"
-		 "    ISA_OPERAND_USE this_use = ISA_OPERAND_INFO_Use(oinfo, i);\n"
-		 "    if (this_use == use){ \n"
-		 "      *(out+j)=i; \n"
-		 "      j++; \n"
-		 "    } \n"
-		 "  }\n"
-		 "  *(out+j) = -1;\n"
-		 "  return j;\n"
 		 "}\n");
 
   fprintf(hfile, "\nextern void TOP_Operand_Uses(TOP topcode, "

@@ -2522,6 +2522,7 @@ main()
 		     TOP_lock_adc32,
 		     TOP_lock_and32,
 		     TOP_lock_or32,
+		     TOP_lock_xadd32,
 		     TOP_lock_xor32,
 		     TOP_lock_sub32,
 		     TOP_UNDEFINED);
@@ -2533,6 +2534,7 @@ main()
 		     TOP_lock_add64,
 		     TOP_lock_and64,
 		     TOP_lock_or64,
+		     TOP_lock_xadd64,
 		     TOP_lock_xor64,
 		     TOP_lock_sub64,
 		     TOP_UNDEFINED);
@@ -2610,6 +2612,12 @@ main()
                     TOP_UNDEFINED);
   Result(0, int32);
   Operand(0, mmx, opnd1);
+
+  Instruction_Group("xmm packed move",
+                    TOP_pmovmskb128,
+                    TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, fp128, opnd1);
 
   Instruction_Group("packed word modification",
 		    TOP_pextrw,

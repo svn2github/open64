@@ -37,10 +37,8 @@
 #ifndef __SYS_UNWINDP_H
 #define __SYS_UNWINDP_H
 
-#if defined(__ia64) 
+#if defined(__ia64) || defined(__MIPS_AND_IA64_ELF_H)
 #include <sys/ia64/unwindP.h>
-#elif defined(__MIPS_AND_IA64_ELF_H) || defined(MONGOOSE_BE)
-#include <sys/mips/unwindP.h>
 #endif
 
 #endif

@@ -37,7 +37,7 @@
 #define __FP_CLASS_H__
 
 #ifndef __GNUC__
-#ident "$Revision: 1.1 $"
+#ident "$Revision$"
 #endif
 
 #ifdef __cplusplus
@@ -45,7 +45,7 @@ extern "C" {
 #endif
 /* | All Rights Reserved.                            | */
 /* --------------------------------------------------- */
-/* $Revision: 1.1 $ */
+/* $Revision$ */
 
 
 

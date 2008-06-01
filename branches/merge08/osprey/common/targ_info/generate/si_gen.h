@@ -210,10 +210,10 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.1 $
-//  $Date: 2005/07/27 02:18:06 $
-//  $Author: kevinlo $
-//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/si_gen.h,v $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/si_gen.h,v $
 
 
 #ifndef SI_GEN_INCLUDED
@@ -236,9 +236,6 @@ extern void Store_Available_Time( int time );
 extern void Load_Access_Time( int time );
 extern void Last_Issue_Cycle( int time );
 extern void Resource_Requirement( RESOURCE resource, int time );
-#if defined(TARG_SL2)
-extern void Alternative_Resource_Requirement(RESOURCE resource, int time); 
-#endif
 extern void Valid_Issue_Slot( ISSUE_SLOT slot );
 extern void Write_Write_Interlock();
 extern void Machine_Done( char* filename );

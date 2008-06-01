@@ -35,8 +35,8 @@
 
 /*
    dwarf_addr_finder.h
-   $Source: /depot/CVSROOT/javi/src/sw/cmplr/include/cmplrs/dwarf_addr_finder.h,v $
-   $Date: 2005/07/27 02:22:36 $
+   $Source$
+   $Date$
 
    Defines user interface.
 

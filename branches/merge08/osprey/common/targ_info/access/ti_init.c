@@ -1,4 +1,11 @@
 /*
+ * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ */
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,7 +42,7 @@
 
 #ifdef _KEEP_RCS_ID
 static const char source_file[] = __FILE__;
-static const char rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_init.c,v $ $Revision: 1.1 $";
+static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_init.c,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <alloca.h>
@@ -66,11 +73,10 @@ const char * sanity_check_targ_so_name_p;
  *
  * ====================================================================
  */
-#if defined(TARG_IA64) || defined(TARG_SL)
 void
-TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath, char *version)
+#ifdef TARG_IA64
+TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath, char* version)
 #else
-void
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath)
 #endif
 {
@@ -79,21 +85,19 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
   if ( !initialized ) {
     INT                i;
     const char        *targ_name     = PROCESSOR_Name(tproc);
-#if defined(TARG_IA64) || defined(TARG_SL)
+#ifdef TARG_IA64
     INT                targ_name_len = strlen(targ_name) + strlen(version);
 #else
     INT                targ_name_len = strlen(targ_name);
 #endif
-    char              *targ_so_name  = alloca(targ_name_len + sizeof(".so") + 1);
-    
+    char              *targ_so_name  = alloca(targ_name_len + strlen(".so") + 1);
+
     for (i = 0; i < targ_name_len; i++) {
       targ_so_name[i] = tolower(targ_name[i]);
     }
-
-#if defined(TARG_IA64) || defined(TARG_SL)
+#ifdef TARG_IA64
     if (strlen(version) > 0)  strcat(targ_so_name, version);
 #endif
-    
     strcpy(targ_so_name + targ_name_len, ".so");
 
     load_so(targ_so_name, tpath, FALSE /*verbose*/);
@@ -105,6 +109,14 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
     ABI_PROPERTIES_Initialize();
     ISA_HAZARD_Initialize();
     ISA_REGISTER_Initialize();
+
+#if 0
+    // For bug 13044, sanity check that we have loaded the proper information.
+    // This cannot be used for target "core" because we use core.so which
+    // actually loads in em64t.so. TODO: fix this sanity check scenario.
+    FmtAssert (!strcmp(targ_so_name, sanity_check_targ_so_name),
+     ("TI_Initialize did not load proper information from %s", targ_so_name));
+#endif
 
     initialized = TRUE;
   }

@@ -44,10 +44,10 @@
 //
 /////////////////////////////////////
 //
-//  $Revision: 1.1 $
-//  $Date: 2005/07/27 02:18:06 $
-//  $Author: kevinlo $
-//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/isa_subset_gen.cxx,v $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_subset_gen.cxx,v $
 
 
 #include <stddef.h>
@@ -137,28 +137,6 @@ ISA_SUBSET ISA_Subset_Create( ISA_SUBSET parent, const char* name )
   subsets.push_front(result);
 
   return result;
-}
-
-/////////////////////////////////////
-void Instruction( ISA_SUBSET subset, TOP opcode )
-/////////////////////////////////////
-//  See interface description.
-/////////////////////////////////////
-{
-  int byte_index = ((unsigned int) opcode) / 8; //8 bites
-  int bit_index = ((unsigned int) opcode) % 8;
-
-
-  for ( ISA_SUBSET ss = subset; ss != NULL; ss = ss->superset )
-    ss->members[byte_index] |= (1 << bit_index);
-
-  if ( opcode_subset[opcode] != NULL ) {
-    fprintf(stderr,"### attempting to add %s to ISA subset %s but "
-	    "already in %s\n",
-    TOP_Name(opcode), subset->name, opcode_subset[opcode]->name);
-    exit(EXIT_FAILURE);
-  }
-  opcode_subset[opcode] = subset;
 }
 
 /////////////////////////////////////

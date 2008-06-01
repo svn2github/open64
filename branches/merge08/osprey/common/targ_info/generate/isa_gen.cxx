@@ -41,10 +41,10 @@
 //    
 /////////////////////////////////////
 //
-//  $Revision: 1.1 $
-//  $Date: 2005/07/27 02:18:06 $
-//  $Author: kevinlo $
-//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/isa_gen.cxx,v $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_gen.cxx,v $
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,71 +88,6 @@ static const char * const interface[] = {
   NULL
 };
 
-typedef struct map_tag{
-		char *source;
-		char *dest;
-}Map;
-
-static char * Map_Op(Map *map, unsigned int size, char * str)
-{
-	unsigned int i;
-	for(i=0;i<size;++i)
-		if(!strcmp(map[i].source,str))
-			return map[i].dest;
-	if(i>=size)
-		return str;
-}
-
-Map instr_map[]={
-  //{"addu", "add"},
-			{"add.i", "addiu"},
-			{"and.i", "andi"},
-			{"br.eq", "beq"},
-			{"br.gez", "bgez"},
-			{"br.gtz", "bgtz"},
-			{"br.lez", "blez"},
-			{"br.ltz", "bltz"},
-			{"br.ne", "bne"},
-			{"extrb", "extrbs"},
-			{"extrbu", "extrbu"},
-			{"jp", "j"},
-			{"jp.lnk", "jal"},
-			{"jr.lnk", "jalr"},
-			{"ldb", "lb"},
-			{"ldub", "lbu"},
-			//{"ldc", "lcache"},
-                        //{"ld.c", "nop"},
-			{"ldh", "lh"},
-			{"lduh", "lhu"},
-			{"ld.lnk", "ll"},
-			{"ldw", "lw"},
-			{"movf.hi", "mfhi"},
-			{"movf.lo", "mflo"},
-			{"mvup.i", "lui"},
-			{"or.i", "ori"},
-			{"shll.i", "sll"},
-			{"shll", "sllv"},
-			{"setlt", "slt"},
-			{"setlt.i", "slti"},
-			{"setltu.i", "sltiu"},
-			{"setltu", "sltu"},
-			{"shra.i", "sra"},
-			{"shra", "srav"},
-			{"shrl.i", "srl"},
-			{"shrl", "srlv"},
-			{"stb", "sb"},
-			//{"st.c", "scache"},
-			{"sth", "sh"},
-			{"stw", "sw"},
-			//{"sub", "subu"},
-			{"xor.i", "xori"},
-	};
-
-char * NewInstr_To_OldInstr(char *str)
-{
-//	return Map_Op(instr_map,37,str);
-      return Map_Op(instr_map,sizeof(instr_map)/sizeof(Map),str);
-}
 
 /////////////////////////////////////
 static char* Dot_To_Line(const char* str)
@@ -176,6 +111,7 @@ static char* Dot_To_Line(const char* str)
 
   return result;
 }
+
 
 /////////////////////////////////////
 void ISA_Create (const char *isa_name, ...)
@@ -201,11 +137,7 @@ void ISA_Create (const char *isa_name, ...)
   va_start(ap,isa_name);
   while ((instruction_name = va_arg (ap, char *)) != NULL) {
     fprintf(hfile,"%s\n  TOP_%s",is_first ? "" : ",",
-#ifdef TARG_SL
-                                 Dot_To_Line(NewInstr_To_OldInstr(instruction_name)));
-#else
                                  Dot_To_Line(instruction_name));
-#endif
     fprintf(cfile,"%s\n  \"%s\"",is_first ? "" : ",",
                                  instruction_name);
     if ( is_first )

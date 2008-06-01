@@ -136,10 +136,6 @@ ifeq ($(BUILD_TARGET), MIPS)
 SYS_DIRS = \
 	ia64
 endif
-ifeq ($(BUILD_TARGET), SL)
-SYS_DIRS = \
-        sl
-endif
 ifeq ($(BUILD_TARGET), X8664)
 SYS_DIRS = \
 	ia64
@@ -153,11 +149,7 @@ LIBELF_HFILES = \
 
 LIBELF_DIRS = libelf
 
-ifeq ($(BUILD_TARGET), IA64)
 default: pathscale_defs.h
-else
-default:
-endif
 	@: Make directories in case they do not exist.
 	@for d in sys cmplrs libelf; do \
 	    if [ ! -d $$d ]; then \
@@ -199,17 +191,6 @@ endif
 	      ln -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
 	    fi; \
 	done
-	@for h in $(LIBELF_DIRS); do \
-	    if ! test -a $$h; then \
-		mkdir $$h; \
-	    fi; \
-	done
-	@for h in $(LIBELF_HFILES); do \
-	    if ! test -a libelf/$$h; then \
-	      ln -sf $(BUILD_TOT)/../libelf/lib/$$h libelf/$$h; \
-	    fi; \
-	done
-
 
 pathscale_defs.h: $(BUILD_TOT)/../defs.mk 
 	echo '#ifndef __pathscale_defs_h' > $@
@@ -230,5 +211,4 @@ pathscale_defs.h: $(BUILD_TOT)/../defs.mk
 clean:
 
 clobber:
-	@rm -rf *.h *.sg $(CMPLR_DIRS) $(LIBELF_DIRS) ia64 stl
-	@cd sys; rm -rf *.h $(SYS_DIRS)
+	@rm -rf *.h *.sg $(CMPLR_DIRS) $(LIBELF_DIRS) ia64 stl sys

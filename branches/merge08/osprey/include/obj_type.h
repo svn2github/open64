@@ -33,7 +33,7 @@
 */
 
 
-/* $Header: /depot/CVSROOT/javi/src/sw/cmplr/include/obj_type.h,v 1.1 2005/07/27 02:22:18 kevinlo Exp $ */
+/* $Header$ */
 
 #ifndef __OBJ_TYPE_H__
 #define __OBJ_TYPE_H__

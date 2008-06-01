@@ -1,8 +1,4 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -82,10 +78,10 @@
 //
 /////////////////////////////////////
 //
-//  $Revision: 1.1 $
-//  $Date: 2005/07/27 02:18:05 $
-//  $Author: kevinlo $
-//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/generate/abi_properties_gen.h,v $
+//  $Revision: 1.1.1.1 $
+//  $Date: 2005/10/21 19:00:00 $
+//  $Author: marcel $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/abi_properties_gen.h,v $
 
 #include "targ_isa_registers.h"
 

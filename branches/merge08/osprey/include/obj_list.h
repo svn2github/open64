@@ -33,7 +33,7 @@
 */
 
 
-/* $Header: /depot/CVSROOT/javi/src/sw/cmplr/include/obj_list.h,v 1.1 2005/07/27 02:22:18 kevinlo Exp $ */
+/* $Header$ */
 
 #ifndef __OBJ_LIST_H__
 #define __OBJ_LIST_H__

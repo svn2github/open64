@@ -38,7 +38,7 @@
 /*
     xlate.h
 
-    $Revision: 1.1 $
+    $Revision$
 
     Address translation table.
 

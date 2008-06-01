@@ -121,9 +121,6 @@ typedef const struct {
   mINT32 last_issue_cycle;
   mINT32 store_available_time;
   SI_RR rr;
-#if defined(TARG_SL)
-  SI_RR alter_rr; 
-#endif
   const SI_RESOURCE_ID_SET *resources_used;
   mUINT32 ii_info_size;
   const SI_RR *ii_rr;

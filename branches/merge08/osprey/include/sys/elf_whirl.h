@@ -36,7 +36,7 @@
 #ifndef __SYS_ELF_WHIRL_H__
 #define __SYS_ELF_WHIRL_H__
 
-/* $Header: /depot/CVSROOT/javi/src/sw/cmplr/include/sys/elf_whirl.h,v 1.1 2005/07/27 02:22:36 kevinlo Exp $ */
+/* $Header$ */
 
 /* Elf extension for WHIRL object files */
 
@@ -62,7 +62,6 @@
 #define WT_IPA_SUMMARY	0x6	    /* IPA summary information */
 #define WT_DST		0x7	    /* WHIRL Debug Symbol Table */
 #define WT_LOCALMAP	0x8	    /* IPAA local map */
-#define WT_CALLGRAPH    0x9	/* Interrupt Service Routine register allocation info */ 
 
 /*
  * Special WHIRL section names.
@@ -75,6 +74,5 @@
 #define MIPS_WHIRL_SUMMARY	".WHIRL.summary"
 #define MIPS_WHIRL_DST		".WHIRL.dst"
 #define MIPS_WHIRL_LOCALMAP	".WHIRL.localmap"
-#define MIPS_WHIRL_CALLGRAPH ".WHIRL.callgraph"
 
 #endif /* __SYS_ELF_WHIRL_H__ */

@@ -37,10 +37,10 @@
  * ====================================================================
  *
  *  Module: ti_init.h
- *  $Revision: 1.1 $
- *  $Date: 2005/07/27 02:17:55 $
- *  $Author: kevinlo $
- *  $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_init.h,v $
+ *  $Revision: 1.1.1.1 $
+ *  $Date: 2005/10/21 19:00:00 $
+ *  $Author: marcel $
+ *  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_init.h,v $
  *
  *  Synopsis:
  *
@@ -64,7 +64,7 @@
 #define ti_init_INCLUDED
 
 #ifdef _KEEP_RCS_ID
-static const char ti_init_rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/targ_info/access/ti_init.h,v $ $Revision: 1.1 $";
+static const char ti_init_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/access/ti_init.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "targ_abi_properties.h"
@@ -75,9 +75,9 @@ static const char ti_init_rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/
 extern "C" {
 #endif
 
-#if defined(TARG_IA64) || defined(TARG_SL)
+#ifdef TARG_IA64
 extern void
-TI_Initialize (ABI_PROPERTIES_ABI, ISA_SUBSET, PROCESSOR, char *tpath, char *version);
+TI_Initialize (ABI_PROPERTIES_ABI, ISA_SUBSET, PROCESSOR, char *tpath, char* version);
 #else
 extern void
 TI_Initialize (ABI_PROPERTIES_ABI, ISA_SUBSET, PROCESSOR, char *tpath);
