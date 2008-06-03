@@ -248,7 +248,7 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
   case OPR_LDID:
   case OPR_ILOAD:
     {
-      TY_IDX ty = WN_ty(wn_expr);
+      TY_IDX ty = WN_object_ty(wn_expr);
       if (TY_kind(ty) == KIND_POINTER) {
 	Simplify_Pointer(wn_expr, ai);
       } else {
@@ -2353,6 +2353,9 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_PREFETCH:
   case OPR_RETURN:
   case OPR_RETURN_VAL:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     Enter_occ_tab(wn, 0);
     break;
 
@@ -3164,6 +3167,9 @@ OPT_STAB::Generate_mu_and_chi_list(WN *wn, BB_NODE *bb)
     
   case OPR_RETURN: 
   case OPR_RETURN_VAL: 
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     Generate_exit_mu(wn);
     break;
   
