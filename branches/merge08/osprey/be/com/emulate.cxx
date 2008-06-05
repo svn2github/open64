@@ -4134,7 +4134,7 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
       /*
        *  store value to an addressible temporary, and take the address of that
        */
-      stid = WN_Stid (type, 0, st, ST_type(st), tree);
+      stid = WN_Stid (type, 0, st, ST_type(st), WN_COPY_Tree(tree));
       WN_INSERT_BlockLast(block, stid);
 
       return WN_Lda(Pointer_type, WN_store_offset(stid), st);
@@ -4238,6 +4238,7 @@ static WN *process_concatexpr(WN *block, WN *tree)
     count = WN_Intconst(Integer_type, nsrc);
     /* pointer to srcN	*/
     srcNp = make_pointer_to_node(block, count);	
+    WN_Delete(count);
   }
 
   
