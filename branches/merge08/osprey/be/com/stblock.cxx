@@ -597,6 +597,64 @@ BOOL ST_is_uplevelTemp(const ST *st)
 
   return FALSE;
 }
+#ifdef KEY // for supporting label being jumped to from a nested function
+	   // function containing a label being jumped to from a nested 
+	   // function needs to have save locations for its FP and SP
+
+ST *
+Create_FPSave_Symbol (void)
+{
+  return Gen_Temp_Symbol(MTYPE_To_TY(Pointer_type), "__fpsave_sym");
+}
+
+struct is_fpsave_sym
+{
+    BOOL operator () (UINT32, const ST *st) const {
+	return (strncmp (ST_name (st), "__fpsave_sym", 12) == 0);
+    }
+};
+
+ST *
+Find_FPSave_Symbol (SYMTAB_IDX stab)
+{
+    if (!PU_has_nonlocal_goto_label(Get_Scope_PU (stab)))
+	return NULL;
+
+    ST_IDX st_idx = For_all_until (St_Table, stab, is_fpsave_sym ());
+
+    if (st_idx == 0)
+	return NULL;
+    else
+	return &St_Table[st_idx];
+} // Find_FPSave_Symbol
+
+ST *
+Create_SPSave_Symbol (void)
+{
+  return Gen_Temp_Symbol(MTYPE_To_TY(Pointer_type), "__spsave_sym");
+}
+
+struct is_spsave_sym
+{
+    BOOL operator () (UINT32, const ST *st) const {
+	return (strncmp (ST_name (st), "__spsave_sym", 12) == 0);
+    }
+};
+
+ST *
+Find_SPSave_Symbol (SYMTAB_IDX stab)
+{
+    if (!PU_has_nonlocal_goto_label(Get_Scope_PU (stab)))
+	return NULL;
+
+    ST_IDX st_idx = For_all_until (St_Table, stab, is_spsave_sym ());
+
+    if (st_idx == 0)
+	return NULL;
+    else
+	return &St_Table[st_idx];
+} // Find_SPSave_Symbol
+#endif
 
 
 /* ====================================================================

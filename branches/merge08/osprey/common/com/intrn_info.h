@@ -112,9 +112,9 @@ typedef struct intrn_info_t {
  mBOOL		is_actual;
   mBOOL		is_cg_intrinsic;
  INTRN_RETKIND	return_kind;
- char		*c_name;
- char		*specific_name; // deprecated, but leave in struct for now
- char		*runtime_name;
+ const char    *c_name;
+ const char    *specific_name; // deprecated, but leave in struct for now
+ const char    *runtime_name;
 } intrn_info_t;
 
 extern const intrn_info_t intrn_info[INTRINSIC_LAST+1];
@@ -154,16 +154,21 @@ inline INTRN_RETKIND INTRN_return_kind (const INTRINSIC i)
   return intrn_info[i].return_kind;
 }
 
-inline char * INTRN_c_name (const INTRINSIC i)
+inline const char * INTRN_c_name (const INTRINSIC i)
 {
   return intrn_info[i].c_name;
 }
 
-inline char * INTRN_rt_name (const INTRINSIC i)
+inline const char * INTRN_specific_name (const INTRINSIC i)
+{
+  return intrn_info[i].specific_name;
+}
+
+inline const char * INTRN_rt_name (const INTRINSIC i)
 {
   return intrn_info[i].runtime_name;
 }
-inline char * INTRINSIC_name (const INTRINSIC i)
+inline const char * INTRINSIC_name (const INTRINSIC i)
 {
   if (INTRN_c_name(i))
 	return INTRN_c_name(i);

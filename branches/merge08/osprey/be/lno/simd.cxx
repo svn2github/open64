@@ -584,7 +584,7 @@ static BOOL Identify_Messy_Array_Subscript (WN* array, WN* loop,
 }
 
 // two names for diagnostics
-static char *non_unit_stride;
+static const char *non_unit_stride;
 static char *non_vect_op;
 
 // If not possible to determine, we will do runtime checking
@@ -2749,7 +2749,7 @@ static BOOL Simd_Pre_Analysis(WN *innerloop, char *verbose_msg)
    }
 
    if(!Simd_Benefit(WN_do_body(innerloop))){
-      sprintf(verbose_msg, "Loop has no aligned loads/stores.");
+      sprintf(verbose_msg, "Vectorization is not likely to be beneficial (try -LNO:simd=2 to vectorize it).");
       return FALSE;
     }   
    return TRUE;

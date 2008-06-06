@@ -51,7 +51,7 @@
 **/
 
 #define mat_textra_CXX      "mat_textra.cxx"
-static char *rcs_id =   mat_textra_CXX "$Revision: 1.6 $";
+const static char *rcs_id =   mat_textra_CXX "$Revision: 1.6 $";
 
 
 #define __STDC_LIMIT_MACROS

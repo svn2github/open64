@@ -103,7 +103,7 @@ struct rstate {
     RESOURCES cur;	/* The latest absolute information */
     RESOURCES del;	/* The accumulated delta information */
     struct rstate *dad;	/* The parent structure in hierarchy */
-    char *name;		/* The resource record name */
+    const char *name;	/* The resource record name */
 };
 
 static void Clear_Resource ( RESOURCES *r );
@@ -382,7 +382,7 @@ Resource_Init ( void )
 
 RSTATE *
 Resource_Alloc (
-    char *rname,
+    const char *rname,
     RSTATE *parent
 )
 {
@@ -477,7 +477,7 @@ Get_Time (
  * ====================================================================
  */
 
-char *
+const char *
 Get_Timer_Name (
     RSTATE *r
 )

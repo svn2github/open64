@@ -56,8 +56,8 @@
  * =======================================================================
  */
 
-static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/util/x_list.c,v $ $Revision: 1.1 $";
+static const char *source_file = __FILE__;
+static const char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/util/x_list.c,v $ $Revision: 1.1 $";
 
 #define _X_first_(x)    ((x)->first)
 #define _X_rest_(x)     ((x)->rest)

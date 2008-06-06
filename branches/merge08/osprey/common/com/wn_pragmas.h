@@ -499,7 +499,7 @@ enum {
 typedef struct wn_pragma_desc {
   WN_PRAGMA_USERS users;	/* The components that use this pragma */
   WN_PRAGMA_SCOPE scope;	/* Pragma scope */
-  char	*name;			/* Pragma name */
+  const char	 *name;		/* Pragma name */
 } WN_PRAGMA_DESC;
 
 extern WN_PRAGMA_DESC WN_pragmas[];

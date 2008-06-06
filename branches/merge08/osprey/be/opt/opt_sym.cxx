@@ -131,7 +131,7 @@
 extern "C" {
 #include "targ_const.h"
 #include "stdlib.h"
-char *Targ_Print( char *fmt, TCON cvalue );
+char *Targ_Print( const char *fmt, TCON cvalue );
 }
 
 #ifdef Is_True_On
@@ -193,6 +193,9 @@ OPT_STAB::OPT_STAB(MEM_POOL *pool) : aux_stab(pool),
 
   // The following are initialized in Create:
   _has_exc_handler = FALSE;
+#ifdef KEY
+  _has_nonlocal_goto_target = FALSE;
+#endif
 
   _ac_2_vsym_map.Init ();
   _pt_sum.Set_opt_stab (this);  
@@ -472,6 +475,10 @@ OPT_STAB::Count_syms(WN *wn)
 
   if (WN_operator(wn) == OPR_REGION && REGION_is_EH(wn))
     _has_exc_handler = TRUE;
+#ifdef KEY
+  if (PU_has_nonlocal_goto_label(Get_Current_PU()))
+    _has_nonlocal_goto_target = TRUE;
+#endif
 
   // any regions in the whirl are black boxes, ignore
   if (WN_operator(wn) == OPR_REGION) {
@@ -538,7 +545,7 @@ OPT_STAB::Count_syms(WN *wn)
 // ====================================================================
 
 
-char *
+const char *
 AUX_STAB_ENTRY::St_name(void)
 {
   if (st) { 
@@ -1133,11 +1140,12 @@ OPT_STAB::Create_vsym(EXPR_KIND k)
 
 
 AUX_ID
-OPT_STAB::Create_preg(MTYPE preg_ty, char *name, WN *home_wn)
+OPT_STAB::Create_preg(MTYPE preg_ty, const char *name, WN *home_wn)
 {
   ST *st;
 #ifdef KEY // bug 1523: preopt in ipl cannot use pregs due to exception handling
-  if (Has_exc_handler() && Phase() == PREOPT_IPA0_PHASE)
+  if ((Has_exc_handler()  || Has_nonlocal_goto_target())
+      && Phase() == PREOPT_IPA0_PHASE)
     st = Gen_Temp_Symbol(MTYPE_To_TY(preg_ty), name);
   else
 #endif
@@ -1208,7 +1216,7 @@ AUX_STAB_ENTRY::Change_to_new_preg(OPT_STAB *opt_stab, CODEMAP *htable)
   if (preg_ty == 0) return;
 
   // Turn the variable into a PREG
-  char * name = St_name();
+  const char * name = St_name();
   Set_st(MTYPE_To_PREG(preg_ty));
   Set_stype(VT_NO_LDA_SCALAR);
 #ifdef TARG_NVISA

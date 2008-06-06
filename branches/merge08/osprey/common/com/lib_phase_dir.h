@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -51,57 +51,114 @@
 #define lib_phase_dir_INCLUDED
 
 #include <stamp.h>
+#if defined(TARG_IA64) || defined(TARG_X8664)
+#include "pathscale_defs.h"
+#endif
 
+#if 0
 #include "pathscale_defs.h"
 
-#if defined(linux) && (defined(TARG_IA64) || defined(TARG_X8664))
-    #if CROSS_COMPILATION && defined(TARG_IA64)
+
+#define NAMEPREFIX	""
+#define BINPATH		PSC_INSTALL_PREFIX "/bin"
+#define ALTBINPATH	BINPATH
+#define LIBPATH		PSC_INSTALL_PREFIX "/lib"
+#define ALTLIBPATH	LIBPATH
+#define PHASEPATH	PSC_INSTALL_PREFIX "/lib"
+#define GNUPHASEPATH	PSC_INSTALL_PREFIX "/lib/gcc-lib/" PSC_TARGET "/" PSC_GCC_VERSION
+#endif
+
+#ifndef CROSS_COMPILATION
+#if defined(TARG_PR) || defined(TARG_MIPS) || defined(TARG_X8664_SOCC)
+#define CROSS_COMPILATION
+#endif
+#endif
+
+#ifdef TARG_IA64
+  #define OPEN64_TARGET "ia64-orc-linux"
+  #define VERSION "2.1"
+  #define OPEN64_PHASE_PATH ""
+  #define OPEN64_CMPLR_NAME_PREFIX "or"
+  #define OPEN64_TARGET_NAME "ia64"  // for lang_defs.c
+#elif defined(TARG_IA32)
+  #define OPEN64_TARGET ""
+  #define VERSION ""
+  #define OPEN64_PHASE_PATH "ia32-sgi-linux/bin"
+  #define OPEN64_CMPLR_NAME_PREFIX "sgi"
+  #define OPEN64_TARGET_NAME "ia32"
+#elif defined(TARG_PR)
+  #define OPEN64_TARGET "pr-linux/bin"
+  #define VERSION ""
+  #define OPEN64_PHASE_PATH "usr/pr-linux/bin"
+  #define OPEN64_CMPLR_NAME_PREFIX "pr"
+  #define OPEN64_TARGET_NAME "pr"
+#elif defined(TARG_X8664_SOCC)
+  #define OPEN64_TARGET "socc-linux/bin"
+  #define VERSION ""
+  #define OPEN64_PHASE_PATH "usr/socc-linux/bin"
+  #define OPEN64_CMPLR_NAME_PREFIX "so"
+  #define OPEN64_TARGET_NAME "so"
+#elif defined(TARG_MIPS)
+#if defined(TARG_SL)
+  #define OPEN64_TARGET ""
+  #define VERSION ""
+  #define OPEN64_PHASE_PATH "/usr/bin"
+  #define OPEN64_CMPLR_NAME_PREFIX ""
+  #define OPEN64_TARGET_NAME "sl"
+#else
+  #define OPEN64_TARGET "mips-linux"
+  #define VERSION ""
+  #define OPEN64_PHASE_PATH "/usr/mips-linux/bin"
+  #define OPEN64_CMPLR_NAME_PREFIX "mips"
+  #define OPEN64_TARGET_NAME "mips"
+#endif
+#endif
+  #define OPEN64_VERSION OPEN64_CMPLR_NAME_PREFIX VERSION
+  #define OPEN64_GCC_VERSION "3.2"
+  #define OPEN64_INSTALL_PREFIX "/"
+
+
+#if defined(linux) 
+
+    #ifdef CROSS_COMPILATION
 	    #define NAMEPREFIX	""
-	    #define INTERPOSE   "/ia64-open64-linux"
+	    #define INTERPOSE   OPEN64_TARGET
     #else
 	    #define NAMEPREFIX	""
 	    #define INTERPOSE   ""
     #endif 
 
-    #define BINPATH		INTERPOSE "/bin"
+    #define BINPATH		"/usr/" INTERPOSE "/bin"
 
     #ifdef CROSS_COMPILATION
-        #define ALTBINPATH  INTERPOSE "/altbin"
+        #define ALTBINPATH  "/usr/" INTERPOSE "/altbin"
     #else
         #define ALTBINPATH  BINPATH
     #endif 
 
-    #if defined(TARG_IA64)
-    #define LIBPATH	INTERPOSE "/lib/gcc-lib/ia64-open64-linux/" OPEN64_FULL_VERSION
-    #else
-    #define LIBPATH     INTERPOSE "/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION
-    #endif
-
-    #define ALTLIBPATH	"/usr" INTERPOSE "/lib"
-
-    #define PHASEPATH	    LIBPATH
-    #define GNUPHASEPATH    LIBPATH
-
-#elif defined(linux) && defined(TARG_IA32)
-
-    #define NAMEPREFIX	 ""
-    #define BINPATH		 "/bin"
-    #define ALTBINPATH   BINPATH
-    #define LIBPATH		 "/lib"
-    #define ALTLIBPATH	 LIBPATH
-    #define PHASEPATH	 "/ia32-sgi-linux/bin"
-    #define GNUPHASEPATH "/lib"
+#if !defined(TARG_SL)
+    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/" OPEN64_TARGET VERSION
+#else
+    #define LIBPATH	"/usr/" INTERPOSE "/lib"
+#endif
+    #define ALTLIBPATH	"/usr/" INTERPOSE "/lib"
+  #ifdef TARG_IA64
+    #define PHASEPATH       LIBPATH
+  #else
+    #define PHASEPATH	    OPEN64_PHASE_PATH
+  #endif
+    #define GNUPHASEPATH	LIBPATH
 
 #else
-#define NAMEPREFIX	""
-#ifdef PSC_TO_OPEN64
-#define BINPATH		OPEN64_INSTALL_PREFIX "/bin"
-#define ALTBINPATH	BINPATH
-#define LIBPATH		OPEN64_INSTALL_PREFIX "/lib"
-#define ALTLIBPATH	LIBPATH
-#define PHASEPATH	OPEN64_INSTALL_PREFIX "/lib"
-#define GNUPHASEPATH	OPEN64_INSTALL_PREFIX "/lib/gcc-lib/" OPEN64_TARGET "/" OPEN64_GCC_VERSION
-#endif
+
+    #define NAMEPREFIX	""
+    #define BINPATH		"/usr/bin"
+    #define ALTBINPATH   BINPATH
+    #define LIBPATH		"/usr/lib"
+    #define ALTLIBPATH	LIBPATH
+    #define PHASEPATH	"/usr/lib32/cmplrs"
+    #define GNUPHASEPATH	PHASEPATH
+
 #endif
 
 #endif /* lib_phase_dir_INCLUDED */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,10 +41,10 @@
  * ====================================================================
  *
  * Module: targ_const.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/targ_em_const.cxx,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:18:11 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/targ_em_const.cxx,v $
  *
  * Revision history:
  *  10-Feb-95 - Original Version
@@ -55,7 +59,7 @@
  * ====================================================================
  */
 
-#include <elf_stuff.h>
+#include <elf.h>
 #include <ctype.h>
 
 #define USE_STANDARD_TYPES 1 
@@ -315,44 +319,15 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 	break;
 	}
 
-      case MTYPE_F10: {
+      case MTYPE_FQ: {
         char *p = (char *) & TCON_R16(tc);
         fprintf ( fl, "\t%s\t\"", AS_STRING );
         for (INT i = 0; i < sizeof(TCON_R16(tc)); i++)
-          fprintf ( fl, "\\x%02x", *(p+i) );
-        fprintf(fl, "\"\t%s long double %#Lg\n", ASM_CMNT, TCON_R16(tc) );
-        --rc;
-        break;
-        }
-
-      case MTYPE_FQ: {
-        char *p = (char *) & TCON_R8(tc);
-        fprintf ( fl, "\t%s\t\"", AS_STRING );
-        for (INT i = 0; i < 2 * sizeof(TCON_R8(tc)); i++)
 	  fprintf ( fl, "\\x%02x", *(p+i) );
-	fprintf(fl, "\"\t%s quad %#g,%#g\n", ASM_CMNT,
-	  *(&TCON_R8(tc)+0), *(&TCON_R8(tc)+1) );
+	fprintf(fl, "\"\t%s quad %#lg\n", ASM_CMNT, TCON_R16(tc) );
 	--rc;
 	break;
 	}
-
-      case MTYPE_C10: {
-	INT i;
-	char *p = (char *) &TCON_R16(tc);
-	fprintf(fl, "\t%s\t\"", AS_STRING);
-	for (i = 0; i < sizeof(TCON_R16(tc)); i++)
-		fprintf(fl, "\\x%02x", *(p + i));
-	fprintf(fl, "\"\t%s complex long double real part %#Lg\n",
-	    ASM_CMNT, TCON_R16(tc));
-	p = (char *) &TCON_IR16(tc);
-	fprintf(fl, "\t%s\t\"", AS_STRING);
-	for (i = 0; i < sizeof(TCON_IR16(tc)); i++)
-		fprintf(fl, "\\x%02x", *(p + i));
-	fprintf(fl, "\"\t%s complex long double imag part %#Lg\n",
-	    ASM_CMNT, TCON_IR16(tc));
-	--rc;
-	break;
-      }
 
       case MTYPE_CQ: {
 	INT i;
@@ -360,13 +335,13 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
         fprintf ( fl, "\t%s\t\"", AS_STRING );
         for (i = 0; i < sizeof(TCON_R16(tc)); i++)
 	  fprintf ( fl, "\\x%02x", *(p+i) );
-	fprintf(fl, "\"\t%s complex quad real part %#Lg\n", ASM_CMNT, TCON_R16(tc) );
+	fprintf(fl, "\"\t%s complex quad real part %#lg\n", ASM_CMNT, TCON_R16(tc) );
 
         p = (char *) & TCON_IR16(tc);
         fprintf ( fl, "\t%s\t\"", AS_STRING );
         for (i = 0; i < sizeof(TCON_IR16(tc)); i++)
 	  fprintf ( fl, "\\x%02x", *(p+i) );
-	fprintf(fl, "\"\t%s complex quad imag part %#Lg\n", ASM_CMNT, TCON_IR16(tc) );
+	fprintf(fl, "\"\t%s complex quad imag part %#lg\n", ASM_CMNT, TCON_IR16(tc) );
 	--rc;
 	break;
 	}
@@ -473,23 +448,6 @@ Em_Targ_Emit_Const (void *scn,	    /* Section to which to write */
 	    double value = TCON_R8(tc);
 	    Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
 	    value = TCON_IR8(tc);
-	    Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
-	}
-	break;
-
-    case MTYPE_F10:
-        for (count = 0; count < rc; count++) {
-            long double value = TCON_R16(tc);
-            Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
-        }
-        break;
-
-    case MTYPE_C10:
-	for (count = 0; count < rc; count++) {
-	    long double value;
-	    value = TCON_R16(tc);
-	    Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
-	    value = TCON_IR16(tc);
 	    Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
 	}
 	break;

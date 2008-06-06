@@ -1052,7 +1052,7 @@ void POINTS_TO::Print(FILE *fp) const
 
   // print attributes
   fprintf(fp, "attr=");
-  char *pr_separator = "";
+  const char *pr_separator = "";
   if (Not_addr_saved()) {
     fprintf(fp, "%snot_addr_saved", pr_separator);
     pr_separator = "|";

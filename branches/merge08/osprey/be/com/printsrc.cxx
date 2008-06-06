@@ -123,7 +123,7 @@ static void Gen_File_Table(void)
   {
     file = DST_FILE_IDX_TO_PTR (idx);
     if (DST_IS_NULL(DST_FILE_NAME_name(file))) {
-      name = "NULLNAME";
+      name = const_cast<char*>("NULLNAME");
     }
     else {
       name = DST_STR_IDX_TO_PTR (DST_FILE_NAME_name(file));

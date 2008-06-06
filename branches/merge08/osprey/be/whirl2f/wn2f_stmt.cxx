@@ -909,7 +909,7 @@ WN2F_Translate_DoLoop_Bound(TOKEN_BUFFER   tokens,
    TOKEN_BUFFER opnd1_expr;
    UINT         op_idx;
    BOOL         is_intrinsic;
-   char        *intrname;
+   const char  *intrname;
    char         opname;
    
    WN2F_translate(bound_expr, bound->opnd0, context);

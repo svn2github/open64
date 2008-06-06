@@ -75,7 +75,7 @@ extern void WB_IPA_Terminate()
   WB_Terminate(&wb_ipa); 
 } 
 
-extern void s_ipa_debug(char init_buffer[])
+extern void s_ipa_debug(const char init_buffer[])
 { 
   wb_ipa.Sdebug(init_buffer); 
 } 

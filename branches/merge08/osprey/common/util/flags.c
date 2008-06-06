@@ -542,7 +542,7 @@ Initialize_Option_Group ( OPTION_GROUP *ogroup )
  */
 
 void
-Set_Option_Internal ( OPTION_GROUP *ogroup, char *name )
+Set_Option_Internal ( OPTION_GROUP *ogroup, const char *name )
 {
   if ( name == NULL ) {
     Set_OGA_internal ( OGROUP_aux (ogroup) );
@@ -739,8 +739,8 @@ Process_Command_Line_Group (char *flag, OPTION_GROUP *opt_groups)
        && ODESC_kind(odesc) != OVK_OLD_COUNT;
 	  odesc++)
     {
-      char *abbrev = ODESC_abbrev(odesc);
-      char *name = ODESC_name(odesc);
+      const char *abbrev = ODESC_abbrev(odesc);
+      const char *name = ODESC_name(odesc);
       Is_True ( abbrev == NULL
 	     || strncmp(abbrev, name, strlen(abbrev)) == 0,
 		( "Option group (%s) configuration error: "
@@ -1046,7 +1046,7 @@ Modified_Option ( OPTION_DESC *odesc )
  */
 
 void
-Print_Option_Group ( FILE *tf, OPTION_GROUP *og, char *prefix,
+Print_Option_Group ( FILE *tf, OPTION_GROUP *og, const char *prefix,
 		     BOOL internal, BOOL full, BOOL update )
 {
   OPTION_DESC *desc = OGROUP_options(og);
@@ -1252,7 +1252,7 @@ Trace_Command_Line_Group ( FILE *tf, OPTION_GROUP *og )
  */
 
 void
-Print_Option_Groups ( FILE *tf, OPTION_GROUP *og, char *prefix,
+Print_Option_Groups ( FILE *tf, OPTION_GROUP *og, const char *prefix,
 		      BOOL internal, BOOL full, BOOL update )
 {
   while ( OGROUP_name(og) != NULL ) {
@@ -1281,7 +1281,7 @@ Trace_Option_Groups ( FILE *tf, OPTION_GROUP *og, BOOL full )
  */
 
 OPTION_GROUP *
-Get_Command_Line_Group ( OPTION_GROUP *og, char *name )
+Get_Command_Line_Group ( OPTION_GROUP *og, const char *name )
 {
   INT32 i;
 

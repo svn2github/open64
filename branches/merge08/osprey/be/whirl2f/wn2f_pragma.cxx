@@ -203,7 +203,7 @@ Append_Reduction_Operator(TOKEN_BUFFER tokens,OPERATOR op)
    * appends a symbol representing an OMP reduction operator.
    */
 
-  char * p;
+  const char * p;
 
   switch(op) 
     {

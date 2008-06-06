@@ -274,7 +274,7 @@ Read_Member_Name (struct ar_hdr *header, void* handle, MEM_POOL* m)
     if (header->ar_name[0] == '/') {
 	int str_offset = atoi (header->ar_name + 1);
 	if (p->str_table == 0)
-	    return "";
+	    return const_cast<char *>("");
 
 	name = (char *) p->str_table + sizeof(struct ar_hdr) + str_offset;
     } else {

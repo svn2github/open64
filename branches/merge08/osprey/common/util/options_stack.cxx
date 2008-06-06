@@ -128,8 +128,8 @@ OPTIONS_STACK::str2argv(char *str, char ***argv, MEM_POOL *pool)
 
   // allocate array and fill in command and filename
   *argv = CXX_NEW_ARRAY(char *, argc, pool);
-  (*argv)[0] = ""; // command
-  (*argv)[argc-1] = ""; // filename
+  (*argv)[0] =  const_cast<char*>(""); // command
+  (*argv)[argc-1] = const_cast<char*>(""); // filename
 
   // fill in options
   INT32 pos = 0;

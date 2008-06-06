@@ -62,7 +62,7 @@ extern "C" {
  * Load dso of given name in given path.
  * If verbose and non-standard path, then print path on stderr.
  */
-extern void load_so (char *soname, char *path, BOOL verbose);
+extern void load_so (const char *soname, char *path, BOOL verbose);
 
 #ifdef __cplusplus
 }

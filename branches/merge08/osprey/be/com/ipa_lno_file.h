@@ -104,7 +104,7 @@ public:
   IPA_LNO_READ_FILE(MEM_POOL* pool) 
     { ifl = NULL; _extra_ivars.Set_Mem_Pool(pool); }; 
   Input_File* ifl; 
-  INT Open_Read_File(char *file_name); 
+  INT Open_Read_File(const char *file_name); 
   void* Section_Address(Elf64_Word info);
   INT Section_Size(Elf64_Word info);
   void Close_Read_File(); 
@@ -138,7 +138,7 @@ public:
 
 class IPA_LNO_WRITE_FILE { 
 private: 
-  Section* Create_Or_Get_Section(Elf64_Word sh_info, char *name); 
+  Section* Create_Or_Get_Section(Elf64_Word sh_info, const char *name); 
   void Create_Sections();
   INT Create_Temp_File(); 
   Elf64_Off Create_String_Table_Section(Elf64_Shdr *strtab_sec);
@@ -149,7 +149,7 @@ public:
   Output_File* ofl;
   IPA_LNO_WRITE_FILE() {ofl = NULL;};
   void Open_Write_File(char *file_name); 
-  void Write_Section(Elf64_Word sh_info, char* name, void* buf, INT size);
+  void Write_Section(Elf64_Word sh_info, const char* name, void* buf, INT size);
   INT Close_Write_File(); 
 };
 

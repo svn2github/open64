@@ -219,8 +219,6 @@ WN2C_Skip_Stmt(const WN *stmt)
 
 /* Forward declaration of functions to translate WHIRL to C.
 */
-static STATUS WN2C_lda_label(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
-static STATUS WN2C_agoto(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
 static STATUS WN2C_ignore(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
 static STATUS WN2C_unsupported(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);
 static STATUS WN2C_binaryop(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context);

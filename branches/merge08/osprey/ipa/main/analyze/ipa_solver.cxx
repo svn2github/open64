@@ -667,7 +667,7 @@ DF_PRINT::Trans ( IN_T *in, OUT_T *out, void *vertex_user )
 // ====================================================================
 
 void
-Trace_Callgraph ( IPA_CALL_GRAPH &cg, DF_DIRECTION dir, char *msg )
+Trace_Callgraph ( IPA_CALL_GRAPH &cg, DF_DIRECTION dir, const char *msg )
 {
   // Push the local memory pool:
   MEM_POOL_Push ( MEM_local_pool_ptr );

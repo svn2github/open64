@@ -361,7 +361,7 @@ extern mUINT32 Targ_String_Length ( TCON cvalue );
  * is a static string which gets recycled after 8 calls, so it must
  * be used immediately or copied:
  */
-extern char *Targ_Print ( char *fmt, TCON cvalue );
+extern char *Targ_Print (const char *fmt, TCON cvalue );
 
 /* Format the given string as a printable string, by replacing special
  * characters by the C source codes, e.g. "\n" for newline, "\003" for

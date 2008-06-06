@@ -37,7 +37,9 @@
 */
 
 
+#if ! defined(BUILD_OS_DARWIN)
 #include <elf.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include <errno.h>		    /* for sys_errlist */
 #include <sys/stat.h>
 #include <sys/elf_whirl.h>
@@ -101,7 +103,7 @@ size_of_each_pu (PU_Info *pu_tree, BOOL verbose)
 }
 
 static void 
-print_size (char *name, INT size)
+print_size (const char *name, INT size)
 {
 	if (size == 0) return;
 	printf("%7s:\t%7d\n", name, size);
@@ -203,6 +205,6 @@ main (INT argc, char *argv[])
  */
 void Signal_Cleanup (INT sig) { }
 
-char * Host_Format_Parm (INT kind, MEM_PTR parm) { return NULL; }
+const char * Host_Format_Parm (INT kind, MEM_PTR parm) { return NULL; }
 
 INT8 Debug_Level = 0;

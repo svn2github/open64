@@ -141,7 +141,7 @@ static void Ir_Lno_Signal_Handler(int sig,
 //-----------------------------------------------------------------------
 
 Section* IPA_LNO_WRITE_FILE::Create_Or_Get_Section(Elf64_Word sh_info,
-                                                   char *name)
+                                                   const char *name)
 {
   register INT i;
   Elf64_Word type = SHT_MIPS_IPALNO;
@@ -209,7 +209,7 @@ void IPA_LNO_WRITE_FILE::Create_Sections()
 
 INT IPA_LNO_WRITE_FILE::Create_Temp_File()
 {
-  register char *tmpdir;
+  register const char *tmpdir;
   register char *path;
   register int fd;
 
@@ -307,7 +307,7 @@ void IPA_LNO_WRITE_FILE::Open_Write_File(char *file_name)
 //-----------------------------------------------------------------------
 
 void IPA_LNO_WRITE_FILE::Write_Section(Elf64_Word sh_info,
-                                       char* name,
+                                       const char* name,
 				       void* buf, 
 				       INT size)
 {
@@ -668,7 +668,7 @@ INT IPA_LNO_READ_FILE::Check_Input()
 //     in the section header information. 
 //-----------------------------------------------------------------------
 
-INT IPA_LNO_READ_FILE::Open_Read_File(char input_file[]) 
+INT IPA_LNO_READ_FILE::Open_Read_File(const char input_file[]) 
 {
   int fd;
   INT st;

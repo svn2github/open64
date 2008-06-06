@@ -189,7 +189,11 @@ CYG_Instrument_Block( WN *block, WN *wn_first )
     OPERATOR opr = WN_operator(wn);
     if (! OPERATOR_is_leaf(opr)) CYG_Traverse( wn );
 
-    if ( opr == OPR_RETURN || opr == OPR_RETURN_VAL ) {
+    if ( opr == OPR_RETURN || opr == OPR_RETURN_VAL 
+#ifdef KEY
+  	 || opr ==  OPR_GOTO_OUTER_BLOCK
+#endif
+       ) {
       if ( Do_cyg_instrument_p( Get_Current_PU_ST() ) ) {
 	Generate_cyg_profile_func( TRUE, Get_Current_PU_ST(),
 				   LABEL_IDX_ZERO, wn, block );
@@ -276,7 +280,11 @@ CYG_Instrument_Driver( WN *wn_pu )
        WN_operator(wn_body) == OPR_BLOCK &&
        ( ( wn_last = WN_last(wn_body) ) == NULL ||
 	 ( WN_operator(wn_last) != OPR_RETURN &&
-	   WN_operator(wn_last) != OPR_RETURN_VAL ) ) ) {
+	   WN_operator(wn_last) != OPR_RETURN_VAL  
+#ifdef KEY
+  	   && WN_operator(wn_last) != OPR_GOTO_OUTER_BLOCK
+#endif
+	 ) ) ) {
     wn_return = WN_CreateReturn();
     WN_INSERT_BlockLast( wn_body, wn_return );
     if ( wn_last ) {

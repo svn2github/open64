@@ -73,15 +73,15 @@ static char *tlog_rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/uti
 */
 
 extern void Generate_Tlog(
-  char*		phase_name,	/* e.g. "IPA", "LNO" */
-  char* 	trans_name,	/* e.g. "scalar_renaming" */
+  const char*	phase_name,	/* e.g. "IPA", "LNO" */
+  const char* 	trans_name,	/* e.g. "scalar_renaming" */
   SRCPOS	srcpos, 	/* source position where this */
 				/* transformation occurs */
-  char*		keyword,	/* one word to distinguish this */
+  const char*   keyword,	/* one word to distinguish this */
 				/* transformation. can be null pointer */
-  char*		input_string,
-  char*		output_string,
-  char*		aux_info_string
+  const char*	input_string,
+  const char*	output_string,
+  const char*	aux_info_string
 );
 #ifdef __cplusplus
 }

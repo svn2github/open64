@@ -651,7 +651,7 @@
 ***	  If 'wn_array' has an OPR_ARRAY ancestor with a Too_Messy sub-
 ***	  script, return the WN* of that ancestor.  Otherwise, return NULL.
 ***
-***	void Replace_Index_Variable(WN* loop, WN* cp_loop, char prefix[])
+***	void Replace_Index_Variable(WN* loop, WN* cp_loop, const char prefix[])
 ***
 ***	  Create a new index variable for the loop 'cp_loop' so that
 ***	  its index variable is not the same as that of 'loop'.  Give the new
@@ -881,7 +881,7 @@ extern void Permutation(INT order, INT nloops, INT permutation[]);
 extern INT WN_Whirl_Linenum(WN* wn); 
 extern void Constant_Propogate(WN *stid, INT64 const_val);
 extern WN* Messy_Subscript(WN* wn_array);
-extern void Replace_Index_Variable(WN* loop, WN* cp_loop, char prefix[]);
+extern void Replace_Index_Variable(WN* loop, WN* cp_loop, const char prefix[]);
 extern WN* Enclosing_Proper_Do_Loop(WN* wn_ref);
 extern void Create_Single_Region(WN* wn_single, WN* wn_end); 
 

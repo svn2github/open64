@@ -2037,8 +2037,8 @@ PU::Print (FILE *f) const
 #ifdef KEY
     fprintf (f, ", flags 0x%016llx,\n"
 	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d,\n"
-	     "\tEH Info (eh_info) %d\n",
-	     flags, lexical_level, src_lang, target_idx, (INT32)eh_info); 
+	     "\tMisc. Info (misc) %d\n",
+	     flags, lexical_level, src_lang, target_idx, (INT32)misc); 
 #else
     fprintf (f, ", flags 0x%016llx,\n"
 	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d\n",
@@ -2717,7 +2717,7 @@ Initialize_Special_Global_Symbols ()
 #endif // KEY
     Void_Type = MTYPE_To_TY (MTYPE_V);
 
-#if !defined(TARG_IA64) && !defined(TARG_SL)
+#ifdef KEY
     Spill_Int32_Type   = MTYPE_To_TY (Spill_Int32_Mtype);
     Spill_Float32_Type = MTYPE_To_TY (Spill_Float32_Mtype);
 #endif

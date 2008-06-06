@@ -212,6 +212,7 @@ SKIPLIST *DDB_Skip_List = NULL;                 /* for delete dead branch */
 #endif
 
 /***** Miscellaneous -OPT: group options *****/
+char *Ofast = NULL;		/* -OPT:Ofast platform name */
 BOOL OPT_Pad_Common = FALSE;	/* Do internal common block padding? */
 BOOL OPT_Reorg_Common = FALSE;	/* Do common block reorganization (split)? */
 BOOL OPT_Reorg_Common_Set = FALSE;	/* ... option seen? */
@@ -302,7 +303,7 @@ static BOOL OPT_Funsafe_Math_Optimizations_Set = FALSE;
 BOOL    OPT_Float_Via_Int = FALSE; // when on, perform FP copies using int regs
 
 UINT32 OPT_Malloc_Alg = 0;	/* select malloc algorithm */
-static BOOL OPT_Malloc_Alg_Set = FALSE; 
+BOOL OPT_Malloc_Alg_Set = FALSE; 
 BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
 BOOL Early_Goto_Conversion_Set = FALSE;
 #endif	// KEY
@@ -437,7 +438,7 @@ static OPTION_DESC Options_OPT[] = {
     "perform floating-point memory copies using integer registers" },
 
   { OVK_UINT32, OV_VISIBLE,     TRUE,   "malloc_algorithm", "malloc_alg",
-    0, 0, 1, &OPT_Malloc_Alg, &OPT_Malloc_Alg_Set,
+    0, 0, 3, &OPT_Malloc_Alg, &OPT_Malloc_Alg_Set,
     "Use alternate malloc algorithm" },
 
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",

@@ -751,7 +751,7 @@ public:
     void Trace ( INT32 i ) const;
     void Print_array ( FILE *fp, INT32 size ) const;
     void Trace_array ( INT32 size ) const;
-    void WB_Print(FILE* fp, INT procedure_index, char* name, 
+    void WB_Print(FILE* fp, INT procedure_index, const char* name, 
       INT fancy_level);
 
 }; // class SUMMARY_PROCEDURE
@@ -990,7 +990,7 @@ public:
     void Trace ( void ) const;
     void Print_array ( FILE *fp, INT32 size ) const;
     void Trace_array ( INT32 size ) const;
-    void WB_Print(FILE* fp, INT callsite_index, char* name, char* func_name);
+    void WB_Print(FILE* fp, INT callsite_index, const char* name, const char* func_name);
     
 }; // class SUMMARY_CALLSITE
 
@@ -1061,7 +1061,7 @@ public:
     void Trace ( void ) const;
     void Print_array ( FILE *fp, INT32 size ) const;
     void Trace_array ( INT32 size ) const;
-    void WB_Print(FILE* fp, INT formal_index, char* name, char* func_name);
+    void WB_Print(FILE* fp, INT formal_index, const char* name, const char* func_name);
 
 }; // class SUMMARY_FORMAL
 
@@ -1115,7 +1115,7 @@ public:
   void Trace ( INT32 id ) const;
   void Print_array ( FILE* fp, INT32 size ) const;
   void Trace_array ( INT32 size ) const;
-  void WB_Print(FILE* fp, INT stid_index, char* name, char* func_name);
+  void WB_Print(FILE* fp, INT stid_index, const char* name, const char* func_name);
 
 }; // class SUMMARY_STID
 
@@ -1186,14 +1186,14 @@ public:
     }
 
     // return the name of a IPA_PASS_TYPE
-    char *Pass_type_name (void) const;
+    const char *Pass_type_name (void) const;
 
     void Print (FILE *f, INT32 position) const;
 
     void Print_array (FILE *f, INT32 size) const;
 
     void Trace (INT32 id) const		{ Print (TFile, id); }
-    void WB_Print(FILE* fp, INT actual_index, char* name, char* func_name);
+    void WB_Print(FILE* fp, INT actual_index, const char* name, const char* func_name);
 
 }; // SUMMARY_ACTUAL 
 
@@ -1312,7 +1312,7 @@ private:
     /* private member functions */
 
     // return the name of a IPA_CONST_TYPE
-    char *Const_type_name (void) const;
+    const char *Const_type_name (void) const;
 
 public:
 
@@ -1595,7 +1595,7 @@ public:
     void Print (FILE *f) const;
 
     void Print_array (FILE *f, INT32 size) const;
-    void WB_Print(FILE* fp, INT chi_index, char* name, char* func_name);
+    void WB_Print(FILE* fp, INT chi_index, const char* name, const char* func_name);
 
 }; // SUMMARY_CHI
 
@@ -1891,7 +1891,7 @@ public:
 
     void Print (FILE *f) const;
     void Print_array (FILE *f, INT32 size) const;
-    void WB_Print(FILE* fp, INT stmt_index, char* name, char* func_name);
+    void WB_Print(FILE* fp, INT stmt_index, const char* name, const char* func_name);
     
 }; // SUMMARY_STMT
 
@@ -2186,11 +2186,11 @@ public:
 
     
     // Tracing:
-    char * Get_Name ( void ) const;
+    const char * Get_Name ( void ) const;
     void Print ( FILE *fp , INT id = -1, char* symbol_name = NULL, 
       char* function_name = NULL) const;
-    void WB_Print(FILE* fp, INT symbol_index, BOOL is_list, char* name,
-      char* func_name, INT fancy_level);
+    void WB_Print(FILE* fp, INT symbol_index, BOOL is_list, const char* name,
+      const char* func_name, INT fancy_level);
     void Trace ( void ) const;
     void Print_array ( FILE *fp, INT32 size, 
       DYN_ARRAY<char*>* symbol_names = NULL, 

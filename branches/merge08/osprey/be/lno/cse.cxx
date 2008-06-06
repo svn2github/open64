@@ -118,8 +118,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-static char *source_file = __FILE__;
-static char *rcs_id = "$Source: be/lno/SCCS/s.cse.cxx $ $Revision: 1.13 $";
+static const char *source_file = __FILE__;
+static const char *rcs_id = "$Source: be/lno/SCCS/s.cse.cxx $ $Revision: 1.13 $";
 
 #include <sys/types.h>
 #include "lnopt_main.h"

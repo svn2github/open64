@@ -653,7 +653,7 @@ extern BOOL Strings_Not_Gprelative;	/* don't make strings gp-relative */
 #define DEF_SDATA_ELT_SIZE	8
 extern BOOL Varargs_Prototypes;	/* Varargs have prototypes for FP? */
 extern BOOL Gen_Profile;
-extern char *Gen_Profile_Name;
+extern const char *Gen_Profile_Name;
 extern BOOL Call_Mcount;	/* generate a call to mcount in pu entry */
 extern BOOL GP_Is_Preserved;	/* GP is neither caller or callee-save */
 extern BOOL Constant_GP;	/* GP never changes */
@@ -872,7 +872,7 @@ extern BOOL Process_Trace_Option ( char *option );
 /***** List options to the given file *****/
 extern void List_Compile_Options (
   FILE *file,		/* File to which to write */
-  char *pfx,		/* Prefix output with this string */
+  const char *pfx,	/* Prefix output with this string */
   BOOL internal,	/* Internal or user listing? */
   BOOL full_list,	/* Groups (user)?  All options (internal)? */
   BOOL update );	/* Reset option changed/modified flags? */

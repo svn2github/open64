@@ -2149,7 +2149,11 @@ COPYPROP::Copy_propagate(BB_NODE *bb)
       Set_past_ret_reg_def();
     else if (stmt->Opr() == OPR_RETURN || 
 	     stmt->Opr() == OPR_RETURN_VAL ||
-	     stmt->Opr() == OPR_REGION)
+	     stmt->Opr() == OPR_REGION
+#ifdef KEY
+  	     || stmt->Opr() == OPR_GOTO_OUTER_BLOCK
+#endif
+	    )
       Reset_past_ret_reg_def();
 
     if (stmt->Has_chi() || OPERATOR_is_store(stmt->Opr()))

@@ -348,7 +348,7 @@ extern void
 
 /* the preamble to put out for comments eg: CSGI$ start 1 */
 
-extern  char * sgi_comment_str ;
+extern  const char * sgi_comment_str ;
 
    /* -------- Facilities to effect a WN to Fortran translation --------- */
    /* ------------------------------------------------------------------- */

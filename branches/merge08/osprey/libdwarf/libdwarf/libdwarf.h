@@ -1,8 +1,4 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -49,7 +45,7 @@ extern "C" {
 #endif
 /*
 	libdwarf.h  
-	$Revision: 1.8 $ $Date: 05/08/26 23:50:11-07:00 $
+	$Revision: 1.2 $ $Date: 05/12/05 08:59:58-08:00 $
 
 	For libdwarf producers and consumers
 
@@ -172,10 +168,10 @@ enum Dwarf_Rel_Type {
 #ifdef KEY /* Bug 3507 */
 		dwarf_drt_module,               /* module name */
 		dwarf_drt_imported_declaration, /* imported declaration */
-	   /* Bug 9534 */
+		 /* Bug 9534 */
 		dwarf_drt_cie_begin,            /* EH cie begin marker */
-		dwarf_drt_fde_begin,            /* EH fde begin marker */
-#endif
+		dwarf_drt_fde_begin,            /* EH fde begin marker */    
+#endif /* KEY Bug 3507 */
 		dwarf_drt_cie_label, /* simple string */
 		dwarf_drt_data_reloc_by_str_id, /* drd_symbol_index==str_idx */
 		dwarf_drt_first_of_length_pair_create_second,
@@ -1341,7 +1337,7 @@ Dwarf_P_Attribute dwarf_add_AT_location_expr(Dwarf_P_Debug /*dbg*/,
 Dwarf_P_Attribute dwarf_add_AT_string(Dwarf_P_Debug /*dbg*/, 
     Dwarf_P_Die 	/*ownerdie*/, 
     Dwarf_Half 		/*attr*/, 
-    char* 		/*string*/, 
+    const char* 	/*string*/, 
     Dwarf_Error* 	/*error*/);
 
 Dwarf_P_Attribute dwarf_add_AT_flag(Dwarf_P_Debug /*dbg*/, 
@@ -1373,11 +1369,11 @@ Dwarf_P_Attribute dwarf_add_AT_name(Dwarf_P_Die	/*die*/,
 
 /* Producer line creation functions (.debug_line) */
 Dwarf_Unsigned dwarf_add_directory_decl(Dwarf_P_Debug /*dbg*/, 
-    char* 		/*name*/, 
+    const char* 	/*name*/, 
     Dwarf_Error*	/*error*/);
 
 Dwarf_Unsigned dwarf_add_file_decl(Dwarf_P_Debug /*dbg*/, 
-    char* 		/*name*/,
+    const char* 	/*name*/,
     Dwarf_Unsigned 	/*dir_index*/, 
     Dwarf_Unsigned 	/*time_last_modified*/, 
     Dwarf_Unsigned 	/*length*/, 
@@ -1403,7 +1399,7 @@ Dwarf_Unsigned dwarf_lne_end_sequence(Dwarf_P_Debug /*dbg*/,
 
 /* Producer .debug_frame functions */
 Dwarf_Unsigned dwarf_add_frame_cie(Dwarf_P_Debug /*dbg*/, 
-    char* 		/*augmenter*/, 
+    const char* 	/*augmenter*/, 
     Dwarf_Small 	/*code_alignent_factor*/, 
     Dwarf_Small 	/*data_alignment_factor*/, 
     Dwarf_Small 	/*return_address_reg*/, 

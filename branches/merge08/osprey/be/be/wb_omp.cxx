@@ -88,7 +88,7 @@ extern void WB_OMP_Terminate()
   WB_Terminate(&wb_omp); 
 } 
 
-extern void s_omp_debug(char init_buffer[])
+extern void s_omp_debug(const char init_buffer[])
 { 
   wb_omp.Sdebug(init_buffer); 
 } 

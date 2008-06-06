@@ -1171,7 +1171,7 @@ WN2F_ios_cr(TOKEN_BUFFER tokens, WN *wn, WN2F_CONTEXT context)
    /* Craylibs IO - write/read The kids should be an IOS, with kids of IO_ITEMS */
 
    INT  iol_kid;
-   char * p ;
+   const char * p ;
 
    ASSERT_WARN(WN_IOSTMT(wn) == IOS_CR_FWF || 
 	       WN_IOSTMT(wn) == IOS_CR_FWU || 

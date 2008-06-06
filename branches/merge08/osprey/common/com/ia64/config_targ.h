@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,10 +47,10 @@ extern "C" {
  * ====================================================================
  *
  * Module: config_targ.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_targ.h,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:18:11 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/config_targ.h,v $
  *
  * Revision history:
  *  15-Jun-91 - Original Version
@@ -80,7 +84,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *config_targ_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_targ.h,v $ $Revision: 1.1.1.1 $";
+static char *config_targ_rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/config_targ.h,v $ $Revision: 1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "mtypes.h"
@@ -119,8 +123,7 @@ extern TARGET_ABI Target_ABI;
  */
 typedef enum {
   TARGET_UNDEF,		/* Undefined */
-  TARGET_ITANIUM,	/* Intel Itanium */
-  TARGET_ITANIUM2	/* Intel Itanium */
+  TARGET_ITANIUM	/* Intel Itanium */
 } TARGET_PROCESSOR;
 
 extern TARGET_PROCESSOR Target;		/* -Tc */
@@ -128,9 +131,7 @@ extern TARGET_PROCESSOR Target;		/* -Tc */
 /* return the target name for <target> */
 extern char *Targ_Name (TARGET_PROCESSOR target);
 
-#define Is_Target_Itanium()	(Target==TARGET_ITANIUM || Target == TARGET_ITANIUM2)
-#define Is_Target_32bit() 	(FALSE)
-#define Is_Target_64bit() 	(TRUE)
+#define Is_Target_Itanium()	(Target==TARGET_ITANIUM)
 
 
 /* ========== */

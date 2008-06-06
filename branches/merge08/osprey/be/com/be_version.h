@@ -62,7 +62,7 @@
 #define BE_VERSION "1.01"           /* define current be version */
 
 #ifdef __cplusplus
-extern "C" char *Get_BE_Version(void);	/* version of be and be.so */
+extern "C" const char *Get_BE_Version(void);	/* version of be and be.so */
 #else
-extern char *Get_BE_Version(void);	/* version of be and be.so */
+extern const char *Get_BE_Version(void);	/* version of be and be.so */
 #endif

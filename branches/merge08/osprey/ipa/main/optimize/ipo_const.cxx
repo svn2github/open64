@@ -777,6 +777,9 @@ Replace_Icall (TREE_ITER& iter, const WN* icall, ST* actual)
     for (INT i = 0; i < WN_kid_count (icall) - 1; ++i) {
 	WN_kid (call, i) = WN_kid (icall, i);
     }
+#ifdef KEY // bug 1050
+    WN_call_flag(call) = WN_call_flag(icall);
+#endif
     iter.Replace (call);
 } // Replace_Icall
 

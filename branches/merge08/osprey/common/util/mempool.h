@@ -475,7 +475,7 @@ typedef struct mem_pure_stack MEM_PURE_STACK;
  */
 typedef struct mem_pool MEM_POOL;
 struct mem_pool {
-  char            *name;            /* Name of the pool for
+  const char      *name;            /* Name of the pool for
                                      * debugging only.
                                      */
   MEM_POOL_BLOCKS *blocks;          /* Current top of allocation
@@ -607,7 +607,7 @@ extern void
 MEM_POOL_Initialize_P
 (
   MEM_POOL     *pool,
-  char         *name,
+  const char   *name,
   BOOL          bz
   MEM_STAT_ARGS(line,file)
 );
@@ -767,7 +767,7 @@ class CXX_MEM_POOL {
 public:
   MEM_POOL *operator()() { return &mem_pool; }
 
-  CXX_MEM_POOL(char *name, BOOL do_bzero) {
+  CXX_MEM_POOL(const char *name, BOOL do_bzero) {
     mem_pool.magic_num = 0;		/* force it to be uninitialized */
     MEM_POOL_Initialize(&mem_pool, name, do_bzero);
     MEM_POOL_Push(&mem_pool);
@@ -790,7 +790,7 @@ private:
 
 public:
 
-    MEM_POOL_Constructor (MEM_POOL* p, char* name, BOOL zero) : pool (p) {
+    MEM_POOL_Constructor (MEM_POOL* p, const char* name, BOOL zero) : pool (p) {
 	MEM_POOL_Initialize (pool, name, zero);
 	MEM_POOL_Push (pool);
     }

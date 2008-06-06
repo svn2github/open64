@@ -89,7 +89,7 @@ extern void WB_F90_Lower_Terminate()
   WB_Terminate(&wb_f90_lower); 
 } 
 
-extern void s_f90_lower_debug(char init_buffer[])
+extern void s_f90_lower_debug(const char init_buffer[])
 { 
   wb_f90_lower.Sdebug(init_buffer); 
 } 

@@ -184,7 +184,7 @@ Opt_tlog_trace( void )
   return Get_Trace ( TP_PTRACE1, TP_PTRACE1_OPT );
 }
 
-static char *tlog_phase = NULL;
+static const char *tlog_phase = NULL;
 
 static void Opt_tlog2( char *keyword, INT64 srcpos, char *msg )
 {
@@ -216,7 +216,7 @@ Set_tlog_phase(const INT32 phase)
 const INT32    PHASE_STRLEN = 72;
 const INT32    MAX_SUBPHASES = 200;
 static char    phase_name[PHASE_STRLEN];
-static char   *phases[MAX_SUBPHASES];
+static const   char   *phases[MAX_SUBPHASES];
 static INT32   times[MAX_SUBPHASES];
 static INT32   reps[MAX_SUBPHASES];
 static INT32   cum_times[MAX_SUBPHASES];
@@ -232,7 +232,7 @@ static void   *prev_mem   = NULL;
 //    It collected the time spent in each optimizer phase.
 //    It changes the global phase name for better error reporting.
 //
-INT Set_opt_phase(INT32 *phase_id, char *subphase)
+INT Set_opt_phase(INT32 *phase_id, const char *subphase)
 {
   INT32  curr_time;
   void  *curr_mem;

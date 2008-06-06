@@ -238,12 +238,12 @@ Process_IPA_Options ( INT argc, char **argv )
 
     /* Get IPAA summary file name if required: */
     if ( IPA_Enable_Simple_Alias && Ipa_File_Name == NULL ) {
-	Ipa_File_Name = concat_names ( outfilename, ".ipaa" );
+	Ipa_File_Name = concat_names ( outfilename, (const string)".ipaa" );
     }
 
     /* Set up for tracing -- file, timers, etc.: */
     if ( Tracing_Enabled ) {
-	char * cmd_file_name = concat_names ( outfilename, ".ipa.t" );
+	char * cmd_file_name = concat_names ( outfilename, (const string)".ipa.t" );
 
 	Set_Trace_File ( cmd_file_name );
 
@@ -265,7 +265,7 @@ Process_IPA_Options ( INT argc, char **argv )
 	 Get_Trace ( TP_PTRACE1, TP_PTRACE1_IPALNO)) {
 	if ( Tlog_File_Name == NULL ) {
 	    /* Replace source file extension to get trace file: */
-	    Tlog_File_Name =  concat_names ( outfilename, ".tlog" );
+	    Tlog_File_Name =  concat_names ( outfilename, (const string)".tlog" );
 	}
 	if ( (Tlog_File = fopen ( Tlog_File_Name, "w" ) ) == NULL ) {
 	    ErrMsg ( EC_Tlog_Open, Tlog_File_Name, errno );

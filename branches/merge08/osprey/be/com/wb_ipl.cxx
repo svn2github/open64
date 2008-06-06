@@ -124,7 +124,7 @@ extern void WB_IPL_Restore()
   WB_Set_Phase(WB_Save_Phase);
 }
 
-extern void s_ipl_debug(char init_buffer[])
+extern void s_ipl_debug(const char init_buffer[])
 { 
   wb_ipl.Sdebug(init_buffer); 
 } 

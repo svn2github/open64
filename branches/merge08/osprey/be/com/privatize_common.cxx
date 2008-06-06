@@ -583,8 +583,8 @@ Rename_Threadprivate_COMMON(WN* pu, WN* parent, WN *wn, RENAMING_STACK *stack, R
                                   WN_rtype(wn), 
                                   WN_desc(wn)),
                    ofst,
-                   Be_Type_Tbl(TY_mtype(ST_type(st))),
-                   Make_Pointer_Type(Be_Type_Tbl(TY_mtype(ST_type(st))),FALSE),
+                   ST_type(st),
+                   Make_Pointer_Type(ST_type(st),FALSE),
                    WN_CreateLdid(
                      OPCODE_make_op(OPR_LDID,
                                     TY_mtype(ST_type(new_st)),
@@ -601,7 +601,7 @@ Rename_Threadprivate_COMMON(WN* pu, WN* parent, WN *wn, RENAMING_STACK *stack, R
         new_wn = WN_CreateIstore(
                    OPCODE_make_op(OPR_ISTORE,WN_rtype(wn),WN_desc(wn)),
                    ofst,
-                   Make_Pointer_Type(Be_Type_Tbl(TY_mtype(ST_type(st))),FALSE),
+                   Make_Pointer_Type(ST_type(st),FALSE),
                    WN_COPY_Tree(WN_kid(wn,0)),
                    WN_CreateLdid(
                      OPCODE_make_op(OPR_LDID,

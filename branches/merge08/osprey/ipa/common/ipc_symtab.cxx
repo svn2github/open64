@@ -266,7 +266,7 @@ static void
 check_revision (const char *base, UINT64 sh_size, const char* file_name)
 {
     const char* eob;
-    static char *revision = WHIRL_REVISION;
+    static const char *revision = WHIRL_REVISION;
     int len = strlen (revision);
     
     const char* p = base;

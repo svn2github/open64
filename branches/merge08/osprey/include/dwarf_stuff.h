@@ -97,7 +97,7 @@ Dwarf_P_Attribute dwf_add_AT_complex_const(Dwarf_P_Debug /*dbg*/,
     Dwarf_Unsigned 	/*size*/);
 
 Dwarf_Unsigned dwf_add_frame_cie(Dwarf_P_Debug /*dbg*/,
-    char*               /*augmenter*/,
+    const char*         /*augmenter*/,
     Dwarf_Small         /*code_alignent_factor*/,
     Dwarf_Small         /*data_alignment_factor*/,
     Dwarf_Small         /*return_address_reg*/,
@@ -111,7 +111,7 @@ Dwarf_Unsigned dwf_add_frame_cie(Dwarf_P_Debug /*dbg*/,
     Dwarf_Error*        /*error*/);
 
 Dwarf_Unsigned dwf_add_ehframe_cie(Dwarf_P_Debug /*dbg*/, 
-    char* 		/*augmenter*/, 
+    const char* 	/*augmenter*/, 
     Dwarf_Small 	/*code_alignent_factor*/, 
     Dwarf_Small 	/*data_alignment_factor*/, 
     Dwarf_Small 	/*return_address_reg*/, 

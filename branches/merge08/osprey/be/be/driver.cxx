@@ -526,7 +526,7 @@ load_components (INT argc, char **argv)
       Whirl2f_loaded = TRUE;
       if (Run_prompf)
 	W2F_Set_Prompf_Emission(&Prompf_Id_Map);
-      W2F_Process_Command_Line(phase_argc, phase_argv, argc, argv);
+      W2F_Process_Command_Line(phase_argc, (const char**)phase_argv, argc, (const char**)argv);
     }
 } /* load_components */
 
@@ -1913,7 +1913,11 @@ Preorder_Process_PUs (PU_Info *current_pu)
         Pu_Table [ST_pu (St_Table [PU_Info_proc_sym (current_pu)])];
 
     // C++ PU having exception regions, or with -g
-    if ((PU_cxx_lang (func) && PU_has_region (func)) || Debug_Level > 0)
+    if ((PU_cxx_lang (func) && PU_has_region (func)) || Debug_Level > 0
+#ifdef KEY
+        || PU_has_goto_outer_block(func)
+#endif
+       )
       Force_Frame_Pointer = true;
     else
       Force_Frame_Pointer = false;

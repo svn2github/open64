@@ -32,15 +32,11 @@
 
 */
 
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
 
-#include <elf_stuff.h>
+#include <elf.h>
 #include "sections.h"
 
-#ifndef SHF_IA_64_SHORT	
 #define SHF_IA_64_SHORT	SHF_MIPS_GPREL
-#endif
 #define INST_BYTES 16
 
 SECTION Sections[_SEC_INDEX_MAX] = {
@@ -60,39 +56,10 @@ SECTION Sections[_SEC_INDEX_MAX] = {
      0|SHF_WRITE|SHF_IA_64_SHORT|SHF_ALLOC,
 	SHT_PROGBITS, 0, 
      INT32_MAX, MIPS_SDATA, 0},
-#ifdef KEY
-  // Create a new section _SEC_LDATA_MIPS_LOCAL which is the same as the
-  // non-KEY _SEC_LDATA so that we can allocate OpenMP thread-private symbols
-  // to it, in order to preserve the old OpenMP thread-private behavior.  This
-  // frees up _SEC_LDATA to mean ELF_TDATA for thread-local storage (TLS).
-  // Bug 12619.
-  {_SEC_LDATA_MIPS_LOCAL,	NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_LOCAL,
-	SHT_PROGBITS, 0, 
-     INT64_MAX, ".MIPS.ldata", 0},
-  {_SEC_LDATA,	NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_TLS,
-	SHT_PROGBITS, 0, 
-     INT64_MAX, ELF_TDATA, 0},
-#else
   {_SEC_LDATA,	NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_LOCAL,
 	SHT_PROGBITS, 0, 
      INT64_MAX, ".MIPS.ldata", 0},
-#endif
-#if 0
-#ifndef linux
-  {_SEC_LDATA,	NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_LOCAL,
-	SHT_PROGBITS, 0, 
-     INT64_MAX, ".MIPS.ldata", 0},
-#else
-  {_SEC_LDATA,  NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_TLS,
-        SHT_PROGBITS, 0,
-     INT64_MAX, ".tdata", 0},
-#endif
-#endif
   {_SEC_RDATA,	NULL,
      0|SHF_ALLOC,
 	SHT_PROGBITS, 0, 
@@ -129,9 +96,9 @@ SECTION Sections[_SEC_INDEX_MAX] = {
 #else
   // There is no MIPS_LBSS section on Linux, but we need a space holder
   {_SEC_LBSS,   NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_TLS,
-        SHT_NOBITS, 0,
-     INT64_MAX, ".tbss", 0},
+     0,
+        0, 0,
+     0, ".unknown", 0},
 #endif
   {_SEC_GOT,	NULL,
      0|SHF_IA_64_SHORT|SHF_ALLOC,
@@ -151,16 +118,6 @@ SECTION Sections[_SEC_INDEX_MAX] = {
 	SHT_PROGBITS, 0, 
      INT64_MAX, MIPS_EH_REGION_SUPP, 0},
 #else
-#ifdef KEY
-  {_SEC_EH_REGION,      NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
-        SHT_PROGBITS, 0,
-     INT64_MAX, ".except_table", 0},
-  {_SEC_EH_REGION_SUPP, NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
-        SHT_PROGBITS, 0,
-     INT64_MAX, ".except_table_supp", 0},
-#else
   // It's not yet clear what to do about the EH_REGION sections on Linux
   {_SEC_EH_REGION,      NULL,
      0,
@@ -170,7 +127,6 @@ SECTION Sections[_SEC_INDEX_MAX] = {
      0,
         0, 0,
      0, ".unknown", 0},
-#endif /* KEY */
 #endif
   {_SEC_DISTR_ARRAY,  NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
@@ -214,8 +170,3 @@ SEC_is_nobits (SECTION_IDX sec)
 	return (SEC_type(sec) & SHT_NOBITS);
 }
 
-extern BOOL
-SEC_is_tls (SECTION_IDX sec)
-{
-	return (SEC_flags(sec) & SHF_TLS);
-}

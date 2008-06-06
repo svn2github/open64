@@ -70,8 +70,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.lno_split.cxx $ $Revision: 1.6 $";
+const static char *source_file = __FILE__;
+const static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.lno_split.cxx $ $Revision: 1.6 $";
 
 #include <sys/types.h>
 #include "lnopt_main.h"
@@ -522,7 +522,7 @@ extern WN *Split_Using_Preg(WN *statement, WN *split_point,
   OPCODE split_opcode = WN_opcode(split_point);
   TYPE_ID type = OPCODE_rtype(split_opcode);
   ST *preg_st = MTYPE_To_PREG(type);
-  char *orig_name;
+  const char *orig_name;
   if (OPCODE_operator(store_opcode) == OPR_STID) {
     orig_name = ST_name(WN_st(statement));
   } else if ((WN_operator(WN_kid1(statement)) == OPR_ARRAY) &&

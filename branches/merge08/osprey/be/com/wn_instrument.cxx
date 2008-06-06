@@ -486,7 +486,7 @@ Gen_Call_Shell( const char *name, TYPE_ID rtype, INT32 argc )
 
 
 WN *
-Gen_Call( char *name, TYPE_ID rtype = MTYPE_V )
+Gen_Call( const char *name, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 0 );
   return call;
@@ -502,7 +502,7 @@ Gen_Param( WN *arg, UINT32 flag )
 
 
 WN *
-Gen_Call( char *name, WN *arg1, TYPE_ID rtype = MTYPE_V )
+Gen_Call( const char *name, WN *arg1, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 1 );
   WN_actual( call, 0 ) = Gen_Param( arg1, WN_PARM_BY_VALUE );
@@ -521,7 +521,7 @@ Gen_Call( const char *name, WN *arg1, WN *arg2, TYPE_ID rtype = MTYPE_V )
 
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, TYPE_ID rtype = MTYPE_V )
+Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 3 );
   WN_actual( call, 0 ) = Gen_Param( arg1, WN_PARM_BY_VALUE );
@@ -532,7 +532,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, TYPE_ID rtype = MTYPE_V )
 
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
+Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 	  TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 4 );
@@ -545,7 +545,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
+Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 	  WN *arg5, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 5 );
@@ -559,7 +559,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
+Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 	  WN *arg5, WN *arg6, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 6 );
@@ -577,7 +577,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 
 
 WN *
-Gen_Call_ref3( char *name, WN *arg1, WN *arg2, WN *arg3, 
+Gen_Call_ref3( const char *name, WN *arg1, WN *arg2, WN *arg3, 
 	       TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 3 );
@@ -589,7 +589,7 @@ Gen_Call_ref3( char *name, WN *arg1, WN *arg2, WN *arg3,
 
 
 WN *
-Gen_Call_ref35( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
+Gen_Call_ref35( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 		WN *arg5, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 5 );
@@ -2335,7 +2335,7 @@ Set_Instrumentation_File_Name( char *fname )
     // Instrumentation_File_Name = fname;
   } else {
     DevWarn( "Instrumenter Warning: Invalid instrumentation file name." );
-    Instrumentation_File_Name = "";
+    Instrumentation_File_Name = const_cast<char*>("");
   }
 }
 

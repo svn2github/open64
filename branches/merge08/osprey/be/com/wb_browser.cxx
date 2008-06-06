@@ -90,7 +90,7 @@ extern void (*Print_DO_LOOP_INFO_BASE_p)(FILE *fp, DO_LOOP_INFO_BASE *b);
 #pragma weak WB_BROWSER_Summary_p
 
 
-static char *operator_table[OPERATOR_LAST + 1] =
+static const char *operator_table[OPERATOR_LAST + 1] =
 {
   "UNKNOWN",
   "ABS",
@@ -1943,7 +1943,7 @@ void WB_BROWSER::Initialize_Keymap(char ch)
 //   in the compiler where you want to see the loops.
 //-----------------------------------------------------------------------
 
-void WB_BROWSER::Sdebug(char init_buffer[])
+void WB_BROWSER::Sdebug(const char init_buffer[])
 {
   char ch;
   BOOL reload;

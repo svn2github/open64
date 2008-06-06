@@ -321,6 +321,9 @@ BOOL WN_has_mu( const WN *wn, const REGION_LEVEL region_level )
     case OPR_FORWARD_BARRIER:
     case OPR_BACKWARD_BARRIER:
     case OPR_REGION_EXIT:
+#ifdef KEY
+    case OPR_GOTO_OUTER_BLOCK:
+#endif
       return TRUE;
     case OPR_REGION:	// this can be a black-box or MP region
     {

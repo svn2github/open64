@@ -63,7 +63,7 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
 static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.al_loop.cxx $ $Revision: 1.5 $";

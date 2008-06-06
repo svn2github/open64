@@ -74,7 +74,7 @@ extern void IR_Srcpos_Filename (SRCPOS srcpos,         /* in */
 /* for debugging */
 struct ALIAS_MANAGER;    /* forward declaration */
 
-extern void Check_for_IR_Dump(INT phase, WN *pu, char *phase_name);
+extern void Check_for_IR_Dump(INT phase, WN *pu, const char *phase_name);
 
 extern void dump_wn(WN *wn);
 extern void dump_tree(WN *wn);

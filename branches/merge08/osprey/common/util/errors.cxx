@@ -127,7 +127,7 @@ INT Min_Error_Severity = ES_ADVISORY;	/* report advisory msgs or worse */
 INT Conformance_Level  = ES_IGNORE;	/* ignore conformance error */
 
 /* Compiler error location: */
-static char *Compiler_File = NULL;	/* errors.c internal use only */
+static const char *Compiler_File = NULL;/* errors.c internal use only */
 static INT   Compiler_Line = 0;		/* errors.c internal use only */
 
 /* Error file support: */
@@ -168,7 +168,7 @@ static BOOL Had_Compiler_Error = FALSE;
 typedef struct {
     INT  level;		/* Severity level */
     char symbol[5];	/* Symbol used to prefix messages */
-    char *name;		/* Name used in message headers */
+    const char *name;	/* Name used in message headers */
 } SEVERITY_DESCRIPTOR;
 
 static SEVERITY_DESCRIPTOR Severities[] = {
@@ -208,7 +208,7 @@ static bool do_traceback = false;
 #define Phase_List(n)	(Phases[n].descriptors)
 #define Phase_Name(n)	(Phases[n].name)
 
-#if !defined(linux) && !defined(__APPLE__)
+#if !defined(linux) && !defined(__APPLE__) && !defined(BUILD_OS_DARWIN)
 extern char *sys_siglist[];
 #endif
 
@@ -671,8 +671,14 @@ Init_Crash_Report (void)
 {
   if (Crash_File != NULL)
     return TRUE;
-  
+
+#if defined(VENDOR_OSP)  
   char *name = getenv("OPEN64_CRASH_REPORT");
+#elif defined(VENDOR_SL)
+  char *name = getenv("SL_CRASH_REPORT");
+#else
+  char *name = getenv("PSC_CRASH_REPORT");
+#endif
 
   if (name == NULL)
     return FALSE;
@@ -778,7 +784,7 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
   /* Formatting buffer: */
   INT loc;
   static char buf[BUFLEN_NONUSER];
-  char *result;
+  const char *result;
   INT kind;
 
   INT pnum;
@@ -958,7 +964,7 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
 # define BUFLEN_USER 512
   INT loc;
   static char buf[BUFLEN_USER];
-  char *result;
+  const char *result;
   INT kind;
 
   INT pnum;
@@ -1205,7 +1211,7 @@ ErrMsgSrcpos ( INT ecode, SRCPOS srcpos, ... )
  */
 
 void Abort_Compiler_Location (
-  char * file_name,
+  const char * file_name,
   INT    line_number )
 {
   Compiler_File = file_name;

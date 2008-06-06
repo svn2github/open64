@@ -191,7 +191,7 @@ static void exec_smake(char* cmdfile_name);
     	This is here because the gnu basename() doesn't strip
 	off multiple slashes.
     */
-static char*ipa_basename(char *name){
+const static char*ipa_basename(char *name){
     char *bname = basename(name);
     
     while (*bname == '/')
@@ -295,7 +295,7 @@ ipa_compile_init ()
   if (command_map == 0)
     ErrMsg (EC_No_Mem, "ipa_compile_init");
 
-  char* toolroot = getenv("TOOLROOT");
+  const char* toolroot = getenv("TOOLROOT");
 
 #if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
 
@@ -304,6 +304,8 @@ ipa_compile_init ()
 #if defined(VENDOR_PSC)
 #include "pathscale_defs.h"
   static char* tmp_cc_name_base = PSC_INSTALL_PREFIX "/bin/" PSC_NAME_PREFIX "cc";
+#elif defined(VENDOR_OSP)
+  static char* tmp_cc_name_base = "/usr/ia64-sgi-linux/bin/sgicc";
 #else
   static char* tmp_cc_name_base;
 #endif
@@ -352,7 +354,7 @@ ipa_compile_init ()
 	      if (s) {
 		  // Invoke the C/C++/Fortran compiler depending on the source
 		  // language.  Bug 8620.
-		  char *compiler_name_suffix;
+		  const char *compiler_name_suffix;
 		  if (!strcmp(IPA_lang, "F77") ||
 		      !strcmp(IPA_lang, "F90")) {
 		    compiler_name_suffix = "f95";
@@ -400,7 +402,7 @@ ipa_compile_init ()
   (*command_map)["cord"] = cord_name_base;
 
   if (toolroot) {
-      static char* new_cc_name_base = concat_names(toolroot, tmp_cc_name_base);
+      static char* new_cc_name_base = concat_names((const string)toolroot, tmp_cc_name_base);
       if (file_exists(new_cc_name_base))
 	  (*command_map)["cc"] = new_cc_name_base;
       else 
@@ -416,7 +418,7 @@ ipa_compile_init ()
   static const char* smake_name = 0;
   {
     if (toolroot != 0) {
-      const char* tmp = concat_names(toolroot, smake_base);
+      const char* tmp = concat_names((const string)toolroot, smake_base);
       if (file_exists(tmp))
         smake_name = tmp;
     }
@@ -600,7 +602,8 @@ ipacom_process_symtab (char* symtab_file)
 
   char* toolroot = getenv("TOOLROOT");
 
-  sprintf(buf, "%s -c %s %s -o %s %s -TENV:emit_global_data=%s %s",
+  sprintf(buf, "%s%s -c %s %s -o %s %s -TENV:emit_global_data=%s %s",
+	    (toolroot != 0) ? toolroot : "",
             (*command_map)["cc"],
             abi(),
             input_symtab_name,
@@ -1031,7 +1034,7 @@ void ipacom_doit (const char* ipaa_filename)
 	    link_line->front(),
 	    tmpdir, symlinksdir, link_cmdfile_name);
 #endif // TARG_SL
-    fprintf(makefile, "\trm -rf %s\n", symlinksdir);
+    fprintf(makefile, "\trm -r %s\n", symlinksdir);
 #else
     fprintf(makefile, "\t%s -from %s\n",
             link_line->front(),
@@ -1040,9 +1043,9 @@ void ipacom_doit (const char* ipaa_filename)
 
     //For ProMP we need to run a Perl script after doing the final link.
     if (ProMP_Listing) {
-      char* toolroot = getenv("TOOLROOT");
-      static char* script_base = "/usr/lib32/cmplrs/pfa_reshuffle";
-      const char* script_name = toolroot ? concat_names(toolroot, script_base)
+      const char* toolroot = getenv("TOOLROOT");
+      static const char* script_base = "/usr/lib32/cmplrs/pfa_reshuffle";
+      const const char* script_name = toolroot ? concat_names((const string)toolroot, script_base)
                                          : script_base;
       struct stat dummy;
       if (stat("/bin/perl5", &dummy) == 0 && stat(script_name, &dummy) == 0) {
@@ -1110,7 +1113,7 @@ void ipacom_doit (const char* ipaa_filename)
 #if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
 
     if (IPA_Enable_Cord) {
-    	char * obj_listfile_name = create_tmp_file("obj_file_list");
+    	const char * obj_listfile_name = create_tmp_file((const string)"obj_file_list");
     	FILE* listfile = fopen(obj_listfile_name, "w");
 	print_obj_listfiles(tmpdir, listfile);
         fclose(listfile);
@@ -1598,11 +1601,11 @@ static void exec_smake (char* sh_cmdfile_name)
 #endif
 
   // Call the shell.
-  char* sh_name = "/bin/sh";
+  const char* sh_name = "/bin/sh";
 
   const int argc = 2;
   char* argv[argc+1];
-  argv[0] = sh_name;
+  argv[0] = const_cast<char*>sh_name;
   argv[1] = sh_cmdfile_name;
   argv[2] = 0;
   

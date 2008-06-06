@@ -953,6 +953,9 @@ BITWISE_DCE::Find_and_mark_return_live(BB_NODE *bb)
   FOR_ALL_NODE_REVERSE(stmt, stmt_iter, Init()) {
     if (stmt->Opr() == OPR_RETURN || 
 	stmt->Opr() == OPR_RETURN_VAL ||
+#ifdef KEY
+  	stmt->Opr() ==  OPR_GOTO_OUTER_BLOCK ||
+#endif
 	stmt->Opr() == OPR_REGION_EXIT) {
       return_found = TRUE;
       Mark_stmt_live(stmt);

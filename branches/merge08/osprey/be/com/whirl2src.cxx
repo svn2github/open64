@@ -72,9 +72,8 @@ Whirl2C_Init (WN* func_nd)
     if (W2C_Process_Command_Line == NULL) {
       /* load and initialize whirl2c */
       extern char *W2C_Path;
-      char* str;
+      const char* const str = "";
       load_so("whirl2c.so", W2C_Path, Show_Progress);
-      str = "";
       W2C_Process_Command_Line(0, &str, 0, &str);
       W2C_Init ();
     }
@@ -101,7 +100,7 @@ Whirl2F_Init (WN* func_nd)
     if (W2F_Process_Command_Line == NULL) {
       /* load and initialize whirl2f */
       extern char *W2F_Path;
-      char* str;
+      const char* str;
       str = "";
       load_so("whirl2f.so", W2F_Path, Show_Progress);
       W2F_Process_Command_Line(0, &str, 0, &str);

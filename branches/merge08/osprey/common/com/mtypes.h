@@ -187,7 +187,7 @@ typedef struct type_desc {
   mBOOL		signed_type;	/* Signed numeric type? */
   mBOOL		float_type;	/* Floating point type? */
   mCLASS_INDEX	dummy4;		/* remove when incompatible change */
-  char		*name;		/* Print name */
+  const char   *name;		/* Print name */
   mUINT8        type_class_bits;/* The classification bits used by the simplifier */
   mUINT8        type_order;	/* The order of types (I8 > I4 for example) */
   mCLASS_INDEX	complement;	/* complementary signed partner (ex. U1 -> I1) */
@@ -284,7 +284,7 @@ extern MTYPE_MASK Machine_Types_Available;
  *
  */
 
-extern char    *Mtype_Name ( TYPE_ID );
+extern const char *Mtype_Name ( TYPE_ID );
 extern TYPE_ID	Mtype_AlignmentClass( INT32 , mUINT8 );
 extern TYPE_ID	Mtype_Promote_to_A4A8( TYPE_ID );
 extern TYPE_ID	Mtype_TransferSign( TYPE_ID, TYPE_ID );

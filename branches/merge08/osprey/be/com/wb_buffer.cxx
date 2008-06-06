@@ -74,7 +74,7 @@ void WB_BUFFER::Load_Buffer()
 //   input from 'stdin'.
 //-----------------------------------------------------------------------
 
-void WB_BUFFER::Load_Buffer(char s[])
+void WB_BUFFER::Load_Buffer(const char s[])
 {
   INT i;
   for (i = 0; s[i] != '\0'; i++) {

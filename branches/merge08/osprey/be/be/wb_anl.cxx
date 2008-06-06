@@ -79,7 +79,7 @@ extern void WB_ANL_Terminate()
   WB_Terminate(&wb_anl); 
 } 
 
-extern void s_anl_debug(char init_buffer[])
+extern void s_anl_debug(const char init_buffer[])
 { 
   wb_anl.Sdebug(init_buffer); 
 } 

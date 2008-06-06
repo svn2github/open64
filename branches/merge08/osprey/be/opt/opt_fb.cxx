@@ -878,6 +878,9 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
 
       case OPR_RETURN:
       case OPR_RETURN_VAL:
+#ifdef KEY
+      case OPR_GOTO_OUTER_BLOCK:
+#endif
 	break;
 
       case OPR_TRUEBR:
@@ -1127,6 +1130,9 @@ OPT_FEEDBACK::Emit_feedback( WN *wn, BB_NODE *bb ) const
 
   case OPR_RETURN:
   case OPR_RETURN_VAL:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     {
       // Use node.freq_total_in as a guess
       FB_FREQ freq_guess = node.freq_total_in;
@@ -2129,7 +2135,7 @@ void dV_view_fb_opt_cfg( const OPT_FEEDBACK& cfg,
 {
   const char *trace_fname = getenv( "DV_TRACE_FILE" );
   FILE       *trace_fp    = NULL;
-  char       *func_name   = "<unknown func>";
+  const char       *func_name   = "<unknown func>";
   char        title[100];
 
   if ( ! DaVinci::enabled( true ) ) return;

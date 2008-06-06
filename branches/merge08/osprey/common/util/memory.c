@@ -963,8 +963,8 @@ MEM_Tracing_Enable(void)
 
 
 #if Is_True_On
-char *special_address = NULL;
-char *special_address_owner = "NOBODY";
+const char *special_address = NULL;
+const char *special_address_owner = "NOBODY";
 #endif
 
 /* ====================================================================
@@ -1902,7 +1902,7 @@ void
 MEM_POOL_Initialize_P
 (
   MEM_POOL     *pool,
-  char         *name,
+  const char   *name,
   BOOL          bzero
   MEM_STAT_ARGS(line,file)
 )

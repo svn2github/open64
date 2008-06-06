@@ -123,6 +123,7 @@ COMMON_COM_CXX_SRC =	\
 	wn_util.cxx	\
 	wutil.cxx	\
 	xstats.cxx	\
+	intrn_info.cxx
 
 
 COMMON_COM_TARG_CXX_SRCS =	\

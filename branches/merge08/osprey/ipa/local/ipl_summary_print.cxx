@@ -338,7 +338,7 @@ SUMMARY_FORMAL::Trace_array ( INT32 size ) const
 }
 
 
-char *
+const char *
 SUMMARY_ACTUAL::Pass_type_name (void) const
 {
     switch (Get_pass_type()) {
@@ -396,7 +396,7 @@ SUMMARY_ACTUAL::Print_array (FILE *f, INT32 size) const
 
 
 
-char *
+const char *
 SUMMARY_VALUE::Const_type_name (void) const
 {
     switch (Get_const_type()) {
@@ -515,7 +515,7 @@ SUMMARY_VALUE::Print_const_value (FILE *f, const SUMMARY_SYMBOL* symbol) const
 void
 SUMMARY_VALUE::Print (FILE *f, INT32 id) const
 {
-    char *p;
+    const char *p;
     
     fprintf (f, "VALUE[%d] : ", id);
     p = Const_type_name ();
@@ -808,7 +808,7 @@ SUMMARY_CONTROL_DEPENDENCE::Print_array (FILE *f, INT32 size) const
 // ====================================================================
 // ====================================================================
 
-char *
+const char *
 SUMMARY_SYMBOL::Get_Name ( void ) const
 {
     // Sort out impossible situations:
@@ -921,7 +921,7 @@ SUMMARY_SYMBOL::Print(FILE *fp,
       cc += sprintf(Modref_Buf+cc, " CDREF-PREG-ONLY");
   }
   if (Is_addr_saved() || Is_addr_f90_target() || Is_addr_passed()) {
-      char *sep = "";
+      const char *sep = "";
       fputs (" ADDR_TAKEN_AND_", fp );
       cc += sprintf( Modref_Buf+cc, " ADDR_TAKEN_AND_ ");
       if (Is_addr_saved()) {

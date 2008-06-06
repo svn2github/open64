@@ -315,7 +315,7 @@ Report_Delta_Time (
   FILE *file,
   INT Timer_ID )
 {
-  char *name;
+  const char *name;
   TIME_INFO *utime, *stime, *etime;
   RSTATE *r = Timer(Timer_ID);
   INT mem;

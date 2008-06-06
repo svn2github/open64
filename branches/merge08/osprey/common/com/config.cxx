@@ -824,10 +824,10 @@ OPTION_GROUP Common_Option_Groups[] = {
   { "LNO",	':', '=', Options_LNO, NULL,
     "Options to control loop nest optimization" },
 #endif /* BACK_END */
-#if defined(BACK_END) || defined(QIKKI_BE)
+#if defined(BACK_END) 
   { "PHASE",	':', '=', Options_PHASE, NULL,
     "Options to control phase invocation and locations" },
-#endif /* defined(BACK_END) || defined(QIKKI_BE) */
+#endif // BACK_END
   { "TARG",	':', '=', Options_TARG, NULL,
     "Options to specify the target machine characteristics" },
   { "TENV",	':', '=', Options_TENV, NULL,
@@ -844,7 +844,7 @@ OPTION_GROUP Common_Option_Groups[] = {
        "Options to control program region extraction process" },
   { "PROMP", ':', '=', Options_PROMP, NULL,
        "Options to control listing mp transformations" },
-  { NULL }		/* List terminator -- must be last */
+  { NULL },		/* List terminator -- must be last */
 };
 
 /* ====================================================================
@@ -919,7 +919,7 @@ BOOL Force_Mem_Formals = FALSE;	/* Always force formals to memory? */
 BOOL Kernel_Code = FALSE;	/* Compiling OS kernel? */
 BOOL Varargs_Prototypes = TRUE;	/* Varargs have prototypes for FP? */
 BOOL Gen_Profile = FALSE;	/* Generate a profile call for each user call */
-char *Gen_Profile_Name = "__profile_call"; 
+const char *Gen_Profile_Name = "__profile_call"; 
 BOOL Call_Mcount = FALSE;	/* generate a call to mcount in pu entry */
 BOOL GP_Is_Preserved = FALSE;	/* GP is neither caller or callee-save */
 
@@ -1071,6 +1071,95 @@ Configure_Platform ( char *platform_name )
   }
 }
 
+
+/* ====================================================================
+ *
+ * Configure_Ofast
+ *
+ * Configure option defaults which depend on -Ofast (the baseline SPEC
+ * optimizaiton option).  These currently include:
+ *
+ *   -OPT:Olimit=0 -- no limit on optimization region size.
+ *   -OPT:roundoff=3 -- do any mathematically valid rearrangement.
+ *   -OPT:div_split=ON -- allow splitting a/b => a*recip(b).
+ *   -OPT:speculative_null_ptr_deref=ON -- allow speculation past the null
+ *				   	   ptr test. assumes page zero as 
+ *					   readable.
+ *   -OPT:alias=typed -- pointers to different types don't alias.
+ *   -WOPT:copy_ops=OFF -- don't copy-propagate operations that the IVR
+ *		can't handle (OFF by default now, but just in case...).
+ *   -WOPT:estr_fb_injury=ON -- SSAPRE strength reduction uses
+ *                              feedback frequency rather than loop
+ *                              nesting to decide whether each IV
+ *                              update should be viewed as injury or
+ *                              kill.
+ *
+ * This must be done before abi/isa/processor configuration.
+ *
+ * ====================================================================
+ */
+
+static void
+Configure_Ofast ( void )
+{
+  /* We assume that the driver has defaulted Opt_Level properly. */
+  /* First set the options that are common to all targets: */
+  if ( ! Olimit_Set ) {
+#ifdef KEY
+// bug 2679
+// With -OPT:Olimit=0, we assign MAX_OLIMIT to it, do the same here.
+    Olimit = MAX_OLIMIT;
+#else
+    Olimit = 0;
+#endif
+    Olimit_Set = TRUE;
+  }
+  if ( ! Roundoff_Set ) {
+#ifndef KEY
+    Roundoff_Level = ROUNDOFF_ANY;
+#else
+    Roundoff_Level = ROUNDOFF_ASSOC;
+#endif
+    Roundoff_Set = TRUE;
+  }
+
+  if ( ! Div_Split_Set ) {
+    Div_Split_Allowed = TRUE;
+    Div_Split_Set = TRUE;
+  }
+
+#ifdef TARG_X8664
+  if( !OPT_Malloc_Alg_Set) {
+      OPT_Malloc_Alg = 1;      
+  }
+#endif
+
+/* #645549: There exists an OS bug which gets triggered by NULL ptr
+   speculation. Disable NULL ptr speculation for Ofast (base flags).
+   They will however continue to be turned ON for SPEC peak flags.
+
+  if ( ! GCM_Eager_Null_Ptr_Deref_Set ) {
+    GCM_Eager_Null_Ptr_Deref = TRUE;
+    GCM_Eager_Null_Ptr_Deref_Set = TRUE;
+  }
+*/
+  if ( ! Alias_Pointer_Types_Set ) {
+    Alias_Pointer_Types = TRUE;
+    Alias_Pointer_Types_Set = TRUE;
+  }
+  if ( ! WOPT_Enable_Copy_Prop_Bad_Ops_Set ) {
+    WOPT_Enable_Copy_Prop_Bad_Ops = FALSE;
+    WOPT_Enable_Copy_Prop_Bad_Ops_Set = TRUE;
+  }
+  if ( ! WOPT_Enable_Estr_FB_Injury_Set ) {
+    WOPT_Enable_Estr_FB_Injury = TRUE;
+    WOPT_Enable_Estr_FB_Injury_Set = TRUE;
+  }
+
+  /* Get platform and its associated options: */
+  Configure_Platform ( Ofast );
+}
+
 
 /* ====================================================================
  *
@@ -1718,7 +1807,7 @@ struct skiplist {
  */
 
 static void
-Print_Skiplist ( FILE *tf, SKIPLIST *skip, char *lab )
+Print_Skiplist ( FILE *tf, SKIPLIST *skip, const char *lab )
 {
   INT32 i;
 
@@ -2063,7 +2152,7 @@ Process_Trace_Option ( char *option )
 void
 List_Compile_Options (
   FILE *f,
-  char *pfx,
+  const char *pfx,
   BOOL internal,
   BOOL full,
   BOOL update )

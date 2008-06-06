@@ -69,7 +69,7 @@ extern BOOL Write_ALIAS_CLASS_Map;
 
 
 typedef struct section {
-    char *name;			    /* section name */
+    const char *name;		    /* section name */
     Elf64_Shdr shdr;		    /* Elf section */
 } Section;
 

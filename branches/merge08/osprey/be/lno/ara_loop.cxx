@@ -3535,6 +3535,10 @@ ARA_LOOP_INFO::Generate_Parallel_Pragma()
 
   // Adjust Suggested_Parallel for convexity considerations. 
   DO_LOOP_INFO* dli = Get_Do_Loop_Info(_loop); 
+#ifdef KEY //bug 14284 : don't parallelize if contains calls to nested functions
+  if(!dli || dli->Has_Nested_Calls)
+    return;
+#endif
   if (dli->Suggested_Parallel && _peel_value == -1) {
     dli->Suggested_Parallel = FALSE; 
     if (Get_Trace(TP_LNOPT2, TT_LNO_PARALLEL_DEBUG))

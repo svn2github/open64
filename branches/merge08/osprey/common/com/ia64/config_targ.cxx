@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_targ.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_targ.cxx,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:18:11 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/config_targ.cxx,v $
  *
  *
  * Description:
@@ -311,7 +315,6 @@ Targ_Name ( TARGET_PROCESSOR b)
 
   switch ( b ) {
     case TARGET_ITANIUM: return "Itanium";
-    case TARGET_ITANIUM2: return "Itanium2";
     default:
       r = bnb[bnb_used].name;
       bnb_used = (bnb_used + 1) % 4;
@@ -332,13 +335,6 @@ Targ_Name ( TARGET_PROCESSOR b)
 void
 Preconfigure_Target ( void )
 {
-#if defined(linux)
-  Target_Byte_Sex = LITTLE_ENDIAN;
-#else
-  Target_Byte_Sex = BIG_ENDIAN;
-#endif
-  Same_Byte_Sex = ( Target_Byte_Sex == Host_Byte_Sex );
-
   return;
 }
 
@@ -372,11 +368,11 @@ Prepare_Target ( void )
     if ( strcmp ( ABI_Name, "i32" ) == 0 ) {
       Target_ABI = ABI_I32;
       isa_default = TARGET_ISA_I1;
-      targ_default = TARGET_ITANIUM2;
+      targ_default = TARGET_ITANIUM;
     } else if ( strcmp ( ABI_Name, "i64" ) == 0 ) {
       Target_ABI = ABI_I64;
       isa_default = TARGET_ISA_I1;
-      targ_default = TARGET_ITANIUM2;
+      targ_default = TARGET_ITANIUM;
     } else {
       ErrMsg ( EC_Inv_TARG, "abi", ABI_Name );
     }
@@ -388,7 +384,7 @@ Prepare_Target ( void )
 
     if ( strcasecmp ( ISA_Name, "intel1" ) == 0 ) {
       isa = TARGET_ISA_I1;
-      targ_default = TARGET_ITANIUM2;
+      targ_default = TARGET_ITANIUM;
     } else
     {
       ErrMsg ( EC_Inv_TARG, "isa", ISA_Name );
@@ -417,8 +413,6 @@ Prepare_Target ( void )
 
     if ( strcasecmp ( Processor_Name, "itanium" ) == 0 ) {
       targ = TARGET_ITANIUM;
-    } else if (strcasecmp (Processor_Name, "itanium2")) {
-      targ = TARGET_ITANIUM2;
     } else {
       ErrMsg ( EC_Inv_TARG, "processor", Processor_Name );
       targ = TARGET_UNDEF;
@@ -441,20 +435,13 @@ Prepare_Target ( void )
 	Target_ISA = TARGET_ISA_I1;
 	Target = TARGET_ITANIUM;
 	break;
-
-    case TARGET_ITANIUM2:
-	Target_ABI = ABI_I64;
-	Target_ISA = TARGET_ISA_I1;
-	Target = TARGET_ITANIUM2;
-	break;
-
     case TARGET_UNDEF:
       Target = targ_default;
       if ( Target == TARGET_UNDEF ) {
 	/* Default everything: */
 	Target_ABI = ABI_I64;
 	Target_ISA = TARGET_ISA_I1;
-	Target = TARGET_ITANIUM2;
+	Target = TARGET_ITANIUM;
       }
       break;
   }
@@ -518,7 +505,6 @@ Configure_Target ( void )
   /* Set up the target register set: */
   switch ( Target_ISA ) {
     case TARGET_ITANIUM:
-    case TARGET_ITANIUM2:
       Spill_Int_Mtype = MTYPE_I8;
       Spill_Float_Mtype = MTYPE_F16;
       Max_Int_Mtype = Def_Int_Mtype = MTYPE_I8;

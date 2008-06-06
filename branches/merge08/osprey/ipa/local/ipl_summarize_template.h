@@ -567,7 +567,7 @@ hash_of_full_path_name (int index)
     if (cwd == NULL)
     {
       // can't get path, we will see if it fails because of this. 
-      cwd = ".";
+      cwd = const_cast<char*>(".");
     }
   }
   else malloced = true;
@@ -953,10 +953,11 @@ void
 SUMMARIZE<program>::Process_eh_globals (void)
 {
     if (!(PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) || 
-    	!Get_Current_PU().eh_info)
+    	!PU_misc_info (Get_Current_PU()))
     	return;
 
-    INITV_IDX i = INITV_next (INITV_next (INITO_val (Get_Current_PU().eh_info)));
+    INITV_IDX i = INITV_next (INITV_next (INITO_val (PU_misc_info (Get_Current_PU()))));
+
     INITO_IDX idx = TCON_uval (INITV_tc_val(i));
     if (idx)	// typeinfo
     {
@@ -1269,6 +1270,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     BOOL Has_local_pragma = FALSE;
 #ifdef KEY
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback;
+#if defined(VENDOR_PSC)
+    Do_reorder = FALSE;
+#endif
     LABEL_WN_MAP label_use_map;     
     UINT64 PU_invoke_count = 0;
     vector<INT> icall_site;
@@ -2621,14 +2625,6 @@ SUMMARIZE<program>::Process_actual (WN* w)
           actual->Set_ty(parm_ty);
           if (OPERATOR_has_sym(opr)) {
             actual->Set_symbol_index(Get_symbol_index(WN_st(kid))); 
-#ifdef KEY
-          // bug 6229: Process any constant string instead of 
-          // treating it as an indirect ref.
-          ST * actual_st = WN_st (kid);
-          if (opr == OPR_LDA && ST_class (actual_st) == CLASS_CONST &&
-              TY_kind (ST_type (actual_st)) == KIND_ARRAY)
-            w = WN_kid0(w);
-#endif
           }
         }
       }

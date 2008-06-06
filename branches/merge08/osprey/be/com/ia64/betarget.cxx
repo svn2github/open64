@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: betarget.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/ia64/betarget.cxx,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:13:48 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/com/ia64/betarget.cxx,v $
  *
  * Description:
  *
@@ -90,22 +90,19 @@ OPCODE_To_TOP (OPCODE opcode)
       else                  return TOP_UNDEFINED;
 
     case OPR_NEG:
-      if (rtype == MTYPE_F4 || rtype == MTYPE_F8 || rtype == MTYPE_F10)
-	return TOP_fneg;
-      else
-      	return TOP_UNDEFINED;
+           if (rtype == MTYPE_F4 
+	    || rtype == MTYPE_F8) return TOP_fneg;
+      else                        return TOP_UNDEFINED;
 
     case OPR_ABS:
-      if (rtype == MTYPE_F4 || rtype == MTYPE_F8 || rtype == MTYPE_F10)
-	return TOP_fabs;
-      else
-	return TOP_UNDEFINED;
+           if (rtype == MTYPE_F4 
+	    || rtype == MTYPE_F8) return TOP_fabs;
+      else                        return TOP_UNDEFINED;
 
     case OPR_PAREN:
-      if (rtype == MTYPE_F4 || rtype == MTYPE_F8 || rtype == MTYPE_F10)
-	return TOP_nop;
-      else
-	return TOP_UNDEFINED;
+           if (rtype == MTYPE_F4) return TOP_nop;
+      else if (rtype == MTYPE_F8) return TOP_nop;
+      else                        return TOP_UNDEFINED;
 
     case OPR_PARM:
       return TOP_nop;
@@ -198,13 +195,11 @@ Multiply_Limit( BOOL is_64bit, INT64 val)
   if (is_64bit)	{ /* 64-bit multiply */
     switch( Target ) {
     case TARGET_ITANIUM:	limit = 14; break;
-    case TARGET_ITANIUM2:	limit = 14; break;
     default:		limit = 14; break;
     }
   } else { /* 32-bit multiply */
     switch( Target ) {
     case TARGET_ITANIUM:	limit = 14; break;
-    case TARGET_ITANIUM2:	limit = 14; break;
     default:		limit = 14; break;
     }
   }
@@ -218,13 +213,11 @@ Divide_Limit ( BOOL is_64bit)
   if (is_64bit)	{ /* 64-bit divide */
     switch( Target ) {
     case TARGET_ITANIUM:	limit = 50; break;
-    case TARGET_ITANIUM2:	limit = 50; break;
     default:		limit = 50; break;
     }
   } else { /* 32-bit divide */
     switch( Target ) {
     case TARGET_ITANIUM:	limit = 50; break;
-    case TARGET_ITANIUM2:	limit = 50; break;
     default:		limit = 50; break;
     }
   }
@@ -311,7 +304,6 @@ INT Copy_Quantum_Ratio(void)
   // I don't think it still needs work
   switch(Target) {
   case TARGET_ITANIUM:	ratio=	4; break;
-  case TARGET_ITANIUM2:	ratio=	4; break;
   default:		ratio=	4; break;
   }
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,10 +41,10 @@
  * ====================================================================
  *
  * Module: targ_const_private.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/targ_const_private.h,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:18:11 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/targ_const_private.h,v $
  *
  * Revision history:
  *  10-Feb-95 - Original Version
@@ -67,7 +71,6 @@
 #define TCON_iv1(c)	((c).cmplxval.ival.v1)
 #define TCON_iv2(c)	((c).cmplxval.ival.v2)
 #define TCON_iv3(c)	((c).cmplxval.ival.v3)
-#define TCON_word0(c)	((c).vals.word0)
 #define TCON_u0(c)	((c).vals.uval.u0)
 #define TCON_u1(c)	((c).vals.uval.u1)
 #define TCON_u2(c)	((c).vals.uval.u2)

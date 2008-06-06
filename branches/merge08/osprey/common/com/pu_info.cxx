@@ -434,7 +434,7 @@ Restore_Local_Symtab (PU_Info *pu)
 #ifdef Is_True_On
 /* Names of subsections for fdump_PU_Info_state()
  */
-static char *PU_Info_subsect_name[WT_SUBSECTIONS] = {
+const static char *PU_Info_subsect_name[WT_SUBSECTIONS] = {
   "WT_SYMTAB",
   "WT_TREE",
   "WT_DEPGRAPH",

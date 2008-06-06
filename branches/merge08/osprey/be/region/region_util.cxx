@@ -1161,7 +1161,7 @@ Dump_preg_list(FILE *FD, PREG_LIST *plist)
 }
 
 static void
-Dump_points_to_list(FILE *FD, POINTS_TO_SET *ptset, char *str)
+Dump_points_to_list(FILE *FD, POINTS_TO_SET *ptset, const char *str)
 {
   fprintf(FD,"  %s\n",str);
   if (ptset == NULL)

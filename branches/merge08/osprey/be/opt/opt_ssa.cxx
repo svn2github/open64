@@ -1337,7 +1337,11 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
       MU_NODE *mnode;
 
       stmt->Set_mu_list( opt_stab->Get_stmt_mu_list(wn) );
-      if (stmt->Opr() == OPR_RETURN || stmt->Opr() == OPR_RETURN_VAL)
+      if (stmt->Opr() == OPR_RETURN || stmt->Opr() == OPR_RETURN_VAL
+#ifdef KEY
+	  || stmt->Opr() == OPR_GOTO_OUTER_BLOCK
+#endif
+	 )
 	stmt->Mu_list()->Delete_def_at_entry_mus(opt_stab);
       FOR_ALL_NODE( mnode, mu_iter, Init(stmt->Mu_list()) ) {
 	if (mnode->Opnd() != 0) {
@@ -1424,6 +1428,9 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
       copyprop->Set_past_ret_reg_def();
     else if (stmt->Opr() == OPR_RETURN || 
 	     stmt->Opr() == OPR_RETURN_VAL ||
+#ifdef KEY
+  	     stmt->Opr() ==  OPR_GOTO_OUTER_BLOCK ||
+#endif
 	     stmt->Opr() == OPR_REGION)
       copyprop->Reset_past_ret_reg_def();
 

@@ -44,7 +44,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-extern char *Whirl_Revision;
+extern const char *Whirl_Revision;
 
 /* This variable is used by IPAA to pass its local map information
  * to ir_bwrite.c, and by ir_bread.c to pass it to WOPT:

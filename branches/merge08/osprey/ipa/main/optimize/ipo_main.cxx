@@ -883,7 +883,7 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 extern void WN_free_input (void *handle, off_t mapped_size);
 
 static inline void
-Delete_Proc (IPA_NODE *node)
+Delete_Proc (const IPA_NODE *node)
 {
     Set_ST_is_not_used (node->Func_ST ());
     Delete_Function_In_File (node->File_Header(), node->Proc_Info_Index ());

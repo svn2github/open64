@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -60,10 +64,13 @@
 
 static mDED_PREG_NUM Input_Base_Preg = 32;
 static mDED_PREG_NUM Output_Base_Preg = 127;
-static mDED_PREG_NUM Fp_Param_Base_Preg = 136;
+
 #define I0 (Int_Preg_Min_Offset - 1)
 #define F0 Float_Preg_Min_Offset
 
+#ifndef _LP64
+static
+#endif /* _LP64 */
 SIM SIM_Info[] = {
 	/* flags */
 	/* int args, flt args, dbl args */
@@ -119,12 +126,6 @@ Is_Int_Output_Preg (PREG_NUM preg)
 {
 	return (preg <= Output_Base_Preg 
 	     && preg > (Output_Base_Preg - MAX_NUMBER_OF_REGISTER_PARAMETERS));
-}
-extern BOOL
-Is_Fp_Output_Preg (PREG_NUM preg)
-{
-        return preg >= Fp_Param_Base_Preg &&
-               preg < (Fp_Param_Base_Preg + MAX_NUMBER_OF_REGISTER_PARAMETERS);
 }
 
 /* return whether preg is an input preg */
@@ -349,7 +350,6 @@ Is_Simulated_Type (TYPE_ID mtype)
 	case MTYPE_FQ: return TRUE;
 	case MTYPE_C4: return TRUE;
 	case MTYPE_C8: return TRUE;
-	case MTYPE_C10: return TRUE;
 	case MTYPE_CQ: return TRUE;
 	default:	return FALSE;
 	}
@@ -434,7 +434,6 @@ Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level)
 
     case MTYPE_F4:
     case MTYPE_F8:
-    case MTYPE_F10:
 
       info.count = 1;
       info.mtype [0] = mtype;
@@ -463,7 +462,6 @@ Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level)
 
     case MTYPE_C4:
     case MTYPE_C8:
-    case MTYPE_C10:
 
       if (level == Use_Simulated) {
 
@@ -502,8 +500,6 @@ Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level)
       if (SIM_INFO.max_struct_result != 0) {
 
         UINT64 size = TY_size(Ty_Table[rtype]);
-
-        if (size == 0) info.return_via_first_arg = FALSE;
 
         if (size > 0 && 8 * size <= 2 * SIM_INFO.max_struct_result) {
 
@@ -559,14 +555,10 @@ Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level)
               case MTYPE_F10:
               case MTYPE_C8:
               case MTYPE_C10:
-		// bug fix for OSP_257
-		// bug fix for OSP_387
-		if ( hfa_mtype == MTYPE_F8 || hfa_mtype == MTYPE_C8)
-			n = TY_size (rtype) / TY_size (Be_Type_Tbl (MTYPE_F8));
-		else
-			n = TY_size (rtype) / TY_size (Be_Type_Tbl (MTYPE_F10));
-		// The elements of the HFA are placed in successive fp regs.
-		step = 1;
+
+                n = TY_size (rtype) / TY_size (Be_Type_Tbl (hfa_mtype));
+                step = TY_size (Be_Type_Tbl (hfa_mtype)) /
+                       TY_size (Be_Type_Tbl (MTYPE_F8));
                 info.count = n;
 
                 for (i = 0; i < n; i++) {
@@ -759,22 +751,7 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	    ploc.vararg_reg = Get_Current_Preg_Num (SIM_INFO.int_args);
 	}
 	break;
-
-    case MTYPE_F10:
-	++Current_Float_Param_Num;
-	if (Current_Param_Num > Last_Fixed_Param && !SIM_varargs_floats) {
-		/* varargs causes float args to be int regs */
-		ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-		++Last_Fixed_Param;
-	} else {
-		ploc.reg = Get_Current_Float_Preg_Num (SIM_INFO.flt_args);
-		ploc.vararg_reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-	}
-	// OSP_249, long double parameter
-	// Increase Current_Param_Num twice for long double will occupy 2 slots
-	++Current_Param_Num;
-	break;
-
+	
     case MTYPE_FQ:
         ++Current_Float_Param_Num;
 	if (Current_Param_Num > Last_Fixed_Param && !SIM_varargs_floats) {
@@ -793,7 +770,6 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	
     case MTYPE_C4:
     case MTYPE_C8:
-    case MTYPE_C10:
     case MTYPE_CQ:
         ++Current_Float_Param_Num;
 	ploc.reg = Get_Current_Float_Preg_Num (SIM_INFO.flt_args);
@@ -874,7 +850,6 @@ static PSTRUCT pstruct;
 static void
 Setup_Struct_Parameter_Locations (TY_IDX struct_ty)
 {
-    PSTRUCT_hfa_mtype = MTYPE_V;
     PSTRUCT_struct = ! TY_is_union (struct_ty);
     PSTRUCT_first_call = TRUE;
     PSTRUCT_hfa = Struct_Is_HFA (struct_ty, No_Simulated, PSTRUCT_hfa_mtype);

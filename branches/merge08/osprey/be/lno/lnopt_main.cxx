@@ -1287,6 +1287,9 @@ void DO_LOOP_INFO::Print(FILE *fp, INT indentation)
   buf[i] = '\0';
 
   if (Has_Calls) fprintf(fp,"%sIt has calls \n", buf);
+#ifdef KEY //bug 14284
+  if (Has_Nested_Calls) fprintf(fp,"%sIt has calls to nested functions \n", buf);
+#endif
   if (Has_Unsummarized_Calls) fprintf(fp,"%sIt has unsummarized calls \n", buf);
   if (Has_Unsummarized_Call_Cost) 
 	fprintf(fp,"%sIt has unsummarized call cost \n", buf);
@@ -1633,6 +1636,20 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
   if (LNO_Run_hoistif==TRUE && !Skip_HoistIf)
     HoistIf_Phase(func_nd);
 #endif /* KEY */
+//Sicortex bug 5073: Do an additional pass of array substutution. We need
+//to rebuild reduction manager because reduction arrays may be replaced.
+#ifdef KEY
+#ifdef TARG_MIPS
+Array_Substitution(func_nd);
+if(red_manager){
+  red_manager->Erase(func_nd);
+  red_manager->Build(func_nd, TRUE, FALSE);//scalar
+  if (Roundoff_Level >= ROUNDOFF_ASSOC) //array
+   red_manager->Build(func_nd,FALSE,TRUE,Array_Dependence_Graph);
+ }
+#endif
+#endif
+
   void Vintrinsic_Fission_Phase(WN* func_nd);
 #ifndef KEY
   if (LNO_Run_Vintr==TRUE)
@@ -1668,6 +1685,9 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
     UB = ub;
     Step = step;
     Has_Calls = has_calls;
+#ifdef KEY //bug 14284
+    Has_Nested_Calls = dli->Has_Nested_Calls;
+#endif    
     Has_Unsummarized_Calls = has_unsummarized_calls;
     Has_Unsummarized_Call_Cost = has_unsummarized_call_cost;
     Has_Threadprivate = FALSE; 

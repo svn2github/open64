@@ -73,7 +73,7 @@ UINT32 comma_list_byte_count = 0;
 #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
 #endif /* KEY */
 
-static char* concat_names(char* a , char* b)
+static char* concat_names(const char* a , const char* b)
 {
     char * buf;
     buf = (char *)malloc(strlen(a)+strlen(b)+1);
@@ -94,9 +94,9 @@ static bool file_exists(const char* path)
 }
 
 
-static char* get_linker_name(int argc, char** argv)
+static const char* get_linker_name(int argc, char** argv)
 {
-    char * toolroot = getenv("TOOLROOT");
+    const char * toolroot = getenv("TOOLROOT");
     if (!toolroot) { toolroot = "" ; }
 
     char* linker_name;

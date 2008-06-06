@@ -192,7 +192,7 @@ typedef enum
 typedef struct EM_ROUTINES
 {
   EMULATION	id;
-  char		*functionName;
+  const char   *functionName;
   INT32		functionAttributes;
   COERCE	runtimeArg0coercion;
 } EM_ROUTINES,  *EM_ROUTINESp;
@@ -493,7 +493,7 @@ INT32 intrinsic_parameter_type_size = sizeof(intrinsic_parameter_type) /
 *			 Exported Functions
 * ====================================================================
 */
-extern char * INTR_intrinsic_name(WN *tree);
+extern const char * INTR_intrinsic_name(WN *tree);
 
 extern WN * make_pointer_to_node(WN *block, WN *tree);
 
@@ -3721,12 +3721,9 @@ static WN *em_memcpy(WN *block, WN *tree, WN *dst, WN *src, WN *size)
   {
 #ifdef KEY
     // bugs 3510, 3924
-    BOOL aliased = lower_is_aliased(src, dst, WN_const_val(size));
-    if (CG_memcpy_cannot_overlap) // TRUE
-      if (!aliased || // extra condition to guard against perf. regression
-        // For memcpy, we don't want to convert if size > 4
-        ((Is_Integer_Constant(size) && WN_const_val(size) <= 4) ||
-	(!Is_Integer_Constant(size) && CG_memmove_nonconst)))
+    if ( CG_memcpy_cannot_overlap ||  // TRUE
+	 ( Is_Integer_Constant(size) &&
+	   ! lower_is_aliased(src, dst, WN_const_val(size)) ) )
 #else
     if (CG_memcpy_cannot_overlap ||
 	!lower_is_aliased(src, dst, WN_const_val(size)))
@@ -3967,7 +3964,7 @@ static TYPE_ID INTR_parameter_type(WN *tree, INT32 arg)
  *
  * ==================================================================== */
 
-extern char * INTR_intrinsic_name(WN *tree)
+extern const char * INTR_intrinsic_name(WN *tree)
 {
   if (OPCODE_is_intrinsic(WN_opcode(tree)))
   {
@@ -4134,7 +4131,7 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
       /*
        *  store value to an addressible temporary, and take the address of that
        */
-      stid = WN_Stid (type, 0, st, ST_type(st), WN_COPY_Tree(tree));
+      stid = WN_Stid (type, 0, st, ST_type(st), tree);
       WN_INSERT_BlockLast(block, stid);
 
       return WN_Lda(Pointer_type, WN_store_offset(stid), st);
@@ -4238,7 +4235,6 @@ static WN *process_concatexpr(WN *block, WN *tree)
     count = WN_Intconst(Integer_type, nsrc);
     /* pointer to srcN	*/
     srcNp = make_pointer_to_node(block, count);	
-    WN_Delete(count);
   }
 
   
@@ -4280,16 +4276,16 @@ static WN *process_concatexpr(WN *block, WN *tree)
  * ====================================================================
  */
 
-static char *Weak_Runtimes[] = {
+static const char *Weak_Runtimes[] = {
   "__C_runtime_error",
 
   NULL		/* List must be null-terminated */
 };
 
 static void
-Annotate_Weak_Runtime ( ST *func, char *name )
+Annotate_Weak_Runtime ( ST *func, const char *name )
 {
-  char **weak_rt = Weak_Runtimes;
+  const char **weak_rt = Weak_Runtimes;
 
   while ( *weak_rt != NULL ) {
     if ( strcmp ( *weak_rt, name ) == 0 ) {
@@ -4314,7 +4310,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
   INT16	n;
   INT16	argC = 0;
   WN	*args[MAX_INTRINSIC_ARGS];
-  char	*function = INTR_intrinsic_name(tree);
+  const char	*function = INTR_intrinsic_name(tree);
   BOOL   byvalue = FALSE;
   BOOL   parmMod= FALSE;
 

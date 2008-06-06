@@ -730,9 +730,9 @@ typedef struct {
     FIOSTRUCT  last;
     INT16      size32;
     INT16      size64;
-    char       *name;
-    char       *name_ptr;
-    char       *name_local;
+    const char       *name;
+    const char       *name_ptr;
+    const char       *name_local;
 } FIOSTRUCTID_INFO;
 
 typedef struct {
@@ -741,7 +741,7 @@ typedef struct {
     INT16        offset64;
     INT16        type64;
     FIOSTRUCTID  iostruct;
-    char         *name;
+    const char  *name;
 } FIOSTRUCT_INFO;
 
 static ST * Make_IoRuntime_ST ( FIOOPER );
@@ -778,7 +778,7 @@ INT32 mp_io;
 
 /*  This table contains the external names of all I/O runtime routines.  */
 
-static char * fio_names [FIOOPER_LAST + 1] = {
+static const char * fio_names [FIOOPER_LAST + 1] = {
     "",			/* FIOOPER_NONE */
     "s_rsfe64",		/* FIO_EXT_READ_FORMAT_start */
     "s_rsue64",		/* FIO_EXT_READ_UNFORMAT_start */
@@ -1967,7 +1967,7 @@ Get_ARB_WN(const ARB_HANDLE arb, arb_enum whattoget)
 
 
 static TY_IDX
-Make_Simple_Array_Type (char *name, INT32 n_elems, TY_IDX elem_ty)
+Make_Simple_Array_Type (const char *name, INT32 n_elems, TY_IDX elem_ty)
 {
     TY_IDX ty_idx;
     TY& ty = New_TY (ty_idx);
@@ -2854,7 +2854,7 @@ static void Gen_Impld_Io_Calls ( WN * block, FIOFORMATTYPE form,
   char impld_name[48];
   ST *tmp_st;
   static ST * impld_fio_sts [FIOFORMATTYPE_LAST + 1];
-  static char *impld_fio_names [ FIOFORMATTYPE_LAST + 1] =
+  static const char *impld_fio_names [ FIOFORMATTYPE_LAST + 1] =
 	{ "", "do_fio64", "do_uio64", "do_Lio64" };
   INT32	nkids;
   TY_IDX aty;

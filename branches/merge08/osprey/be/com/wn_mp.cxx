@@ -658,7 +658,7 @@ static BOOL critical_lock_not_init = TRUE; /* for uninitialized critical lock */
 
 /*  This table contains the external names of all MP runtime routines.  */
 
-static char *mpr_names [MPRUNTIME_LAST + 1] = {
+static const char *mpr_names [MPRUNTIME_LAST + 1] = {
   "",				/* MPRUNTIME_NONE */
   "__mp_setup",			/* MPR_SETUP */
   "__mp_cleanup",		/* MPR_CLEANUP */
@@ -2015,7 +2015,7 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
       typesize = TY_size(ST_type(st));
     }
 
-    char *int_name1, *int_name2, *int_name3;
+    const char *int_name1, *int_name2, *int_name3;
     DST_INFO_IDX *int_idx_p;
 
     switch (typesize) {
@@ -2306,7 +2306,7 @@ to accept a value as the function's formal parameter.
 So, this function just allocate a temp var in current scope.
 */
 static void 
-Create_Temp( TYPE_ID mtype, char *name, ST **st )
+Create_Temp( TYPE_ID mtype, const char *name, ST **st )
 {
   ST *new_st;
   new_st = New_ST (CURRENT_SYMTAB);
@@ -2856,7 +2856,7 @@ is inheriting pu_recursive OK?
     handling.  */
 
 static void 
-Create_Preg_or_Temp ( TYPE_ID mtype, char *name, ST **st,
+Create_Preg_or_Temp ( TYPE_ID mtype, const char *name, ST **st,
 				  WN_OFFSET *ofst )
 {
   ST *new_st;
@@ -3325,7 +3325,7 @@ Translate_Label ( LABEL_IDX plabel_idx )
   if (mpt == MPP_ORPHANED_SINGLE || mpt == MPP_ORPHANED_PDO)
     return plabel_idx;
 
-  LABEL_IDX clabel_idx = label_info_table[plabel_idx];
+  LABEL_IDX clabel_idx = label_info_table[LABEL_IDX_index(plabel_idx)];
 
   if (clabel_idx == LABEL_IDX_ZERO) {
       // remove when symtab-setting stuff gets cleaned up--DRK
@@ -3343,8 +3343,8 @@ Translate_Label ( LABEL_IDX plabel_idx )
 
     LABEL &clabel = New_LABEL(csymtab, clabel_idx);
     LABEL_Init(clabel, Save_Str(labelname),
-               LABEL_kind((*Scope_tab[psymtab].label_tab)[plabel_idx]));
-    label_info_table[plabel_idx] = clabel_idx;
+               LABEL_kind((*Scope_tab[psymtab].label_tab)[LABEL_IDX_index(plabel_idx)]));
+    label_info_table[LABEL_IDX_index(plabel_idx)] = clabel_idx;
   }
   
   return clabel_idx;
@@ -6870,7 +6870,7 @@ ST_Has_Dope_Vector(ST *st)
    Gen_Restore_Stack_Pointer(). */
 
 static WN *
-Gen_Save_Stack_Pointer(char *st_basename, WN **sp_save_stid)
+Gen_Save_Stack_Pointer(const char *st_basename, WN **sp_save_stid)
 {
   char *newstname;
   static INT count = 0;
@@ -11402,12 +11402,14 @@ Process_Parallel_Do ( void )
                                    &non_pod_finalization_nodes );
 
 #ifdef KEY
-  if (LANG_Enable_CXX_Openmp && PU_Info_pu(ppuinfo).eh_info)
+  if (LANG_Enable_CXX_Openmp && PU_misc_info(PU_Info_pu(ppuinfo)) &&
+      PU_src_lang(PU_Info_pu(ppuinfo)) == PU_CXX_LANG)
   { // C++: This code has not yet been tested.
     Is_True (parallel_proc, ("Parallel block unavailable"));
     PU_IDX pu_idx = ST_pu(parallel_proc);
     PU &pu = Pu_Table[pu_idx];
-    pu.eh_info = Process_PU_Exc_Info(PU_Info_pu(ppuinfo).eh_info, var_table);
+    Set_PU_misc_info (pu,
+        Process_PU_Exc_Info(PU_misc_info (PU_Info_pu(ppuinfo)), var_table));
   }
 
   // If chunk uses a private variable (e.g. threadprivate variable), fix it
@@ -11658,13 +11660,13 @@ Process_Parallel_Region ( void )
   stmt_block = Walk_and_Localize ( stmt_block, var_table, &lps, TRUE , 
                                    &non_pod_finalization_nodes );
 #ifdef KEY
-  if (LANG_Enable_CXX_Openmp && PU_Info_pu(ppuinfo).eh_info)
+  if (LANG_Enable_CXX_Openmp && PU_Info_pu(ppuinfo).misc)
   { // C++
     Is_True (parallel_proc, ("Parallel block unavailable"));
     PU_IDX pu_idx = ST_pu(parallel_proc);
     PU &pu = Pu_Table[pu_idx];
     // Update typeinfo data present in PU.
-    pu.eh_info = Process_PU_Exc_Info(PU_Info_pu(ppuinfo).eh_info, var_table);
+    pu.misc = Process_PU_Exc_Info(PU_Info_pu(ppuinfo).misc, var_table);
   }
 #endif
   /* Transform contents of parallel region */

@@ -2683,6 +2683,7 @@ BB_NODE*
 CFG::Process_entry( WN *wn, END_BLOCK *ends_bb )
 {
   BB_NODE *retv;
+  BB_NODE *last_bb = _current_bb;
   // entry must be the only thing in the block, and cannot have
   // predecessors
   if ( _current_bb->Firststmt() != NULL || 
@@ -2757,6 +2758,11 @@ CFG::Process_entry( WN *wn, END_BLOCK *ends_bb )
   }
   else/* if (opr == OPR_ALTENTRY || opr == OPR_LABEL)*/ {
     if ( ends_bb ) *ends_bb = END_NOT;
+#ifdef KEY
+    if (opr == OPR_LABEL && 
+        LABEL_target_of_goto_outer_block(WN_label_number(wn)))
+      Connect_predsucc(last_bb, _current_bb);
+#endif
   }
   return retv;
 }
@@ -2970,6 +2976,9 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
 
   case OPR_RETURN:
   case OPR_RETURN_VAL:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     {
     Append_wn_in(_current_bb, wn);
     _current_bb->Set_hasujp();
@@ -2988,7 +2997,11 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
   case OPR_LABEL:
     {
       // Look up the _label_map to see if it's forward declared by goto
-      if (WN_Label_Is_Handler_Begin(wn)) {
+      if (WN_Label_Is_Handler_Begin(wn)
+#ifdef KEY
+	  || LABEL_target_of_goto_outer_block(WN_label_number(wn))
+#endif
+	 ) {
 	// make sure we haven't already seen a goto to this label
 	// because we are not inserting the real label.
 	FmtAssert( Get_bb_from_label( WN_label_number(wn) ) == NULL,
@@ -5366,7 +5379,12 @@ CFG::Find_entry_bb(void)
     BB_LIST_ITER bb_succ_iter;
     FOR_ALL_ELEM( succ, bb_succ_iter, Init(entry_bb->Succ()) ) {
       if ( succ->Kind() == BB_ENTRY && succ->Entrywn() &&
-	  !WN_Label_Is_Handler_Begin(succ->Entrywn()) ) {
+#ifndef KEY
+	  !WN_Label_Is_Handler_Begin(succ->Entrywn()) 
+#else
+	  WN_operator(succ->Entrywn()) != OPR_LABEL
+#endif
+	   ) {
         // look for the real entry, and not an alternate one
         if ( WN_opcode(succ->Entrywn()) == OPC_FUNC_ENTRY)
           entry_bb = succ;

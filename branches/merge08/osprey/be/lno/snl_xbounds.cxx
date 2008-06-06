@@ -62,7 +62,7 @@
 #pragma hdrstop
 
 #define snl_nest_CXX      "snl_nest.cxx"
-static char *rcs_id =   snl_nest_CXX "$Revision: 1.5 $";
+const static char *rcs_id =   snl_nest_CXX "$Revision: 1.5 $";
 
 #include <sys/types.h>
 #include "snl.h"

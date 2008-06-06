@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,10 +41,10 @@
  * ====================================================================
  *
  * Module: config_platform.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_platform.c,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:18:11 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/config_platform.c,v $
  *
  * Revision history:
  *  11-May-96 - Original Version
@@ -65,7 +69,7 @@
 static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_platform.c,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/config_platform.c,v $ $Revision: 1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <string.h>

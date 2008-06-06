@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,10 +41,10 @@
  * ====================================================================
  *
  * Module: em_elf.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/targ_em_elf.cxx,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:18:11 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/targ_em_elf.cxx,v $
  *
  * Description:
  *
@@ -57,9 +61,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <bstring.h>
-#include <elf_stuff.h>
+#include <elf.h>
 #include <elfaccess.h>
-#include <libelf/libelf.h>
+#include <libelf.h>
 #include <stamp.h>
 #include <alloca.h>
 #include <cmplrs/leb128.h>

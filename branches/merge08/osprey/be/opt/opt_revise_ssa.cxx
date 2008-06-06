@@ -800,7 +800,11 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
     default: ;
     }
   }
-  else if (opr == OPR_RETURN) {
+  else if (opr == OPR_RETURN
+#ifdef KEY
+    	   || opr == OPR_GOTO_OUTER_BLOCK
+#endif
+    	  ) {
     if (! _opt_stab->Aux_stab_entry(i)->Points_to()->Local() ||
 	_opt_stab->Local_static(i))
       need_mu = TRUE;

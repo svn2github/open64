@@ -241,7 +241,7 @@ MTYPE_MASK Machine_Types_Available = 0x1fdffe;
  * ====================================================================
  */
 
-char *
+const char *
 Mtype_Name (TYPE_ID b)
 {
   static char buf[32];

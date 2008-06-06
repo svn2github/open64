@@ -190,7 +190,7 @@ TYPE_ID Promoted_Mtype [MTYPE_LAST + 1] = {
   MTYPE_C4,       /* MTYPE_C4 */
   MTYPE_C8,       /* MTYPE_C8 */
   MTYPE_CQ,       /* MTYPE_CQ */
-  MTYPE_V,        /* MTYPE_V */
+  MTYPE_V         /* MTYPE_V */
 #if defined(TARG_IA64)
   MTYPE_UNKNOWN,  /* MTYPE_BS */
   MTYPE_UNKNOWN,  /* MTYPE_A4 */
@@ -4979,6 +4979,9 @@ vho_lower_stmt ( WN * wn, WN * block )
       break;
 
     case OPR_RETURN:
+#ifdef KEY
+    case OPR_GOTO_OUTER_BLOCK:
+#endif
 
       wn = vho_lower_return ( wn, block );
       break;
@@ -5543,6 +5546,9 @@ vho_lower_check_labels ( WN * wn )
       break;
 
     case OPR_RETURN:
+#ifdef KEY
+    case OPR_GOTO_OUTER_BLOCK:
+#endif
 
       break;
 
@@ -5942,7 +5948,9 @@ vho_lower_rename_labels_defined ( WN * wn )
       break;
 
     case OPR_RETURN:
-
+#ifdef KEY
+    case OPR_GOTO_OUTER_BLOCK:
+#endif
       break;
 
     case OPR_LABEL:
@@ -7883,6 +7891,8 @@ WN * VHO_Lower_Driver (PU_Info* pu_info,
       wn = WN_Lower(wn, LOWER_TREEHEIGHT | LOWER_INLINE_INTRINSIC, NULL,
 		    "Intrinsic lowering");
    }
+   else wn = WN_Lower(wn, LOWER_FAST_EXP, NULL,
+		      "Fast exponents lowering");
 
    return (wn);
 }

@@ -54,7 +54,7 @@
 
 #include "be_version.h"
 
-char *Get_BE_Version()
+const char *Get_BE_Version()
 {
   return BE_VERSION;
 }

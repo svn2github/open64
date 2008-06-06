@@ -89,7 +89,7 @@ FILE* STDOUT = stdout;
 // FUNCTION: Dump the array sections to the file 'fp'.
 //-----------------------------------------------------------------------
 
-static void Print_Array_Sections(char buffer[])
+static void Print_Array_Sections(const char buffer[])
 {
   CG_BROWSER cgb_print;
   CGB_Initialize(&cgb_print, IPA_Call_Graph);

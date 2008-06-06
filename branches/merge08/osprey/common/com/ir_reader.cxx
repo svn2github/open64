@@ -94,7 +94,7 @@
 #include "stab.h"
 #include "const.h"
 #include "targ_const.h"
-extern char * Targ_Print ( char *fmt, TCON c );
+extern char * Targ_Print (const char *fmt, TCON c );
 #include "targ_sim.h"
 #include "strtab.h"
 #include "irbdata.h"
@@ -157,7 +157,7 @@ enum OPC_EXTENDED {
 };
 
 typedef struct {
-  char *pr_name;
+  const char *pr_name;
   INT  n_kids;
   INT  flags;
 } IR_OPCODE_TABLE;
@@ -199,7 +199,7 @@ typedef struct {
   char *args[IR_MAX_ARGS+1];
 } TOKEN;
 
-static void ir_error(char *s);
+static void ir_error(const char *s);
 static INT ir_get_expr_list(void);
 static WN * ir_get_expr(void);
 static WN * ir_get_stmt(void);
@@ -209,12 +209,12 @@ static void ir_match_token(OPERATOR opr);
 static void ir_expect_token(OPERATOR opc);
 static TOKEN *ir_next_token(void);
 static void ir_get_token(TOKEN *token);
-static BOOL ir_insert_hash(char *s, IR_OPCODE_TABLE *irt);
+static BOOL ir_insert_hash(const char *s, IR_OPCODE_TABLE *irt);
 static INT ir_lookup(char *s);
 static void ir_build_hashtable(void);
 static void ir_put_wn(WN * wn, INT indent);
 static void ir_put_expr(WN * wn, INT indent);
-static void ir_put_marker(char *str, INT indent);
+static void ir_put_marker(const char *str, INT indent);
 static void ir_put_stmt(WN * wn, INT indent);
 static void WN_TREE_put_stmt(WN *, INT); // fwd declaration
 
@@ -422,7 +422,7 @@ extern void IR_close_output(void)
 
 #define ir_chk_kids(m,n)   {if (m != n) ir_error("wrong number of kids"); }
 
-static void ir_error(char *s)
+static void ir_error(const char *s)
 {
   fprintf(stderr, "Error parsing ascii IR at line %d: %s.\n", ir_line, s);
   exit(RC_INTERNAL_ERROR);
@@ -707,9 +707,9 @@ print_source (SRCPOS srcpos)
 /*
  *  Find a new entry from the string in the operator table.
  */
-static BOOL ir_insert_hash(char *s, IR_OPCODE_TABLE *opcode_entry)
+static BOOL ir_insert_hash(const char *s, IR_OPCODE_TABLE *opcode_entry)
 {
-  char *p;
+  const char *p;
   UINT sum = 0;
   INT i;
 
@@ -756,7 +756,7 @@ static INT ir_lookup(char *s)
 /*
  *  Enter opcode into the IR table.
  */
-static void enter_opcode_table(char *name, OPCODE opc, INT opr)
+static void enter_opcode_table(const char *name, OPCODE opc, INT opr)
 {
     ir_opcode_table[opc].pr_name = name;
     if (!ir_insert_hash(ir_opcode_table[opc].pr_name, &ir_opcode_table[opc])) {
@@ -767,7 +767,7 @@ static void enter_opcode_table(char *name, OPCODE opc, INT opr)
 
 
 static inline
-void enter_opcode_table (char *name, OPC_EXTENDED opc, INT opr)
+void enter_opcode_table (const char *name, OPC_EXTENDED opc, INT opr)
 {
     enter_opcode_table (name, (OPCODE) opc, opr);
 }
@@ -1258,7 +1258,7 @@ static void ir_put_expr(WN * wn, INT indent)
 /*
  *  Write out a marker at the indentation level.
  */
-static void ir_put_marker(char *str, INT indent)
+static void ir_put_marker(const char *str, INT indent)
 {
   fprintf(ir_ofile, "%*s%s\n", indent, "", str);
 }
@@ -2064,7 +2064,7 @@ extern void fdump_dep_tree( FILE *f, WN *wn, struct ALIAS_MANAGER *alias)
 }
 #endif /* BACK_END */
 
-extern void Check_for_IR_Dump(INT phase, WN *pu, char *phase_name)
+extern void Check_for_IR_Dump(INT phase, WN *pu, const char *phase_name)
 {
     BOOL dump_ir;
     BOOL dump_symtab;

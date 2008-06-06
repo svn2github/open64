@@ -83,7 +83,7 @@ static void fusion_verbose_info(
   SRCPOS	srcpos1,
   SRCPOS	srcpos2,
   UINT32	fusion_level,
-  char*		message)
+  const char*	message)
 {
   printf("#### Fusion(%d+%d:%d): %s\n",
     Srcpos_To_Line(srcpos1),
@@ -96,7 +96,7 @@ static void fusion_analysis_info(
   SRCPOS	srcpos1,
   SRCPOS	srcpos2,
   UINT32	fusion_level,
-  char*		message)
+  const char*	message)
 {
 
   if (success)
@@ -115,7 +115,7 @@ static void fusion_tlog_info(
   WN*		loop1,
   WN*		loop2,
   UINT32	fusion_level,
-  char*		message)
+  const char*	message)
 {
   char in_string[30];
   char out_string[30];

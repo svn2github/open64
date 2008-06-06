@@ -2001,7 +2001,7 @@ static BOOL format_rhs_atomic_stmt (WN * store)
  * Allocate and return a SYMBOL* for a local variable of type mtype.
  *
  **********************************************************************/
-static ST * Create_Local_Symbol (char* name, TYPE_ID mtype) 
+static ST * Create_Local_Symbol (const char* name, TYPE_ID mtype) 
 {
   ST* st         = New_ST(CURRENT_SYMTAB);
   ST_Init (st,

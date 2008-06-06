@@ -469,7 +469,7 @@ DEBUG_Configure ( void )
   OPTION_LIST *ol = Current_DEBUG->woff;
 
 #ifdef FRONT_F90
-    extern void add_cray_args ( char * );
+    extern void add_cray_args (const char * );
     extern void Cray_Woff ( char * );
 #endif /* FRONT_F90 */
 

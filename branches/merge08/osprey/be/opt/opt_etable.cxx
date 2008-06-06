@@ -675,7 +675,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 #endif
 	  // Set the home location for the preg
 	  AUX_ID aux_id = exp->Aux_id();
-	  char  *aux_name = htable->Sym()->Aux_stab_entry(aux_id)->St_name();
+	  const char *aux_name = htable->Sym()->Aux_stab_entry(aux_id)->St_name();
 	  wk->Set_preg(htable->Sym()->Create_preg(dtyp, aux_name, home_wn));
 	  
 	  // Note that the call to Create_preg() may realloc the AUX_STAB_ENTRY

@@ -1989,7 +1989,7 @@ WN *WN_CreateAsm_Input (char   *constraint_string,
   return wn;
 }
 
-WN *WN_CreateComment (char *s)
+WN *WN_CreateComment (const char *s)
 {
   WN *wn;
   wn = WN_Create(OPC_COMMENT,0);
@@ -2988,7 +2988,7 @@ WN *WN_Istorex(TYPE_ID desc, TY_IDX ty, WN *value, WN *base, WN *index)
   return WN_CreateIstorex(OPR_ISTOREX, MTYPE_V, desc, ty, value, base, index);
 }
 
-WN *WN_LdaString(char *str, WN_OFFSET ldaOffset, INT32 len)
+WN *WN_LdaString(const char *str, WN_OFFSET ldaOffset, INT32 len)
 {
   TCON	tc;
   ST	*st;

@@ -173,7 +173,7 @@ public:
   void Set_replace_label(WN *replace)	{ _replace = replace; }
   void Set_split_label(WN *split)	{ _split = split; }
   void Set_next(RGN_LABEL *next)	{ _next = next; }
-  void Print(char *str);
+  void Print(const char *str);
 };
 
 // For label aliases, only need to know the label number so this is used
@@ -809,7 +809,7 @@ start:
 }
 
 void
-RGN_LABEL::Print(char *str)
+RGN_LABEL::Print(const char *str)
 {
   fprintf(TFile,"\t%s:   ",str);
   fdump_wn(TFile,Label());

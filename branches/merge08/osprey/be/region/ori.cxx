@@ -195,7 +195,7 @@ Initialize_ORI (void)
 }
 
 static void
-Check_Dump (WN *tree, char *msg)
+Check_Dump (WN *tree, const char *msg)
 {
 	if (Get_Trace(TKIND_IR, TP_ORI)) {
 		fputs(DBar, TFile);

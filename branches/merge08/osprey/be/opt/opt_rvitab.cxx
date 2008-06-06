@@ -514,7 +514,7 @@ RVI_NODE::St( void ) const
 // The name of this variable
 // ====================================================================
 
-char *
+const char *
 RVI_NODE::Name( void ) const
 {
   ST *st = NULL;

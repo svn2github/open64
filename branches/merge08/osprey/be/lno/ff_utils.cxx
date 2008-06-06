@@ -359,7 +359,11 @@ extern INT Map_Stmt_To_Level_Graph(WN* wn, ARRAY_DIRECTED_GRAPH16 *sdg) {
   OPCODE opcode = WN_opcode(wn);
   if (OPCODE_is_expression(opcode))
     return 1;
-  if (opcode==OPC_LABEL || opcode==OPC_RETURN || opcode==OPC_GOTO)
+  if (opcode==OPC_LABEL || opcode==OPC_RETURN || opcode==OPC_GOTO
+#ifdef KEY
+      || opcode==OPC_GOTO_OUTER_BLOCK
+#endif
+     )
     return 1;
 
   VINDEX16 v=sdg->Get_Vertex(wn);

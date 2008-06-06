@@ -1184,7 +1184,7 @@ static F90_LOWER_AUX_DATA * F90_Lower_Copy_Aux_Data(F90_LOWER_AUX_DATA * adata)
  *================================================================
  */
 
-static char * create_tempname(char * name)
+static char * create_tempname(const char * name)
 {
    static char buf[64];
    num_temps += 1;
@@ -1195,7 +1195,7 @@ static char * create_tempname(char * name)
 //================================================================
 // Utility routine to create an ST* for the many temp symbols generated
 //================================================================
-static ST * new_temp_st(char * name)
+static ST * new_temp_st(const char * name)
 {
    ST * st;
    st = New_ST();
@@ -2185,8 +2185,8 @@ static void F90_Lower_Init_Dep_Info(DEP_INFO *d, INT ndim)
 
 static void print_dep_info(DEP_INFO *d)
 {
-   static char * summ[4] = {"UNK","IND","===","REM"};
-   static char * dirr[5] = {"/","+","-","0","?"};
+   static const char * summ[4] = {"UNK","IND","===","REM"};
+   static const char * dirr[5] = {"/","+","-","0","?"};
    INT i;
    
    fprintf(TFile,"%s ",summ[d->summary]);
@@ -2357,7 +2357,7 @@ INT f90_fdump(INT f)
    return (0);
 }
 
-static char * f90_depsum_name(DEP_SUMMARY d)
+static const char * f90_depsum_name(DEP_SUMMARY d)
 {
    switch (d) {
     case DEP_UNKNOWN: return ("UNKNOWN"); 
@@ -5755,7 +5755,7 @@ static BOOL F90_Generate_Loops(WN *stmt, WN *block)
 #define SET_P_MAP(x,t) WN_MAP_Set(f90_parent_map,(x),(void *) (t))
 #define GET_P_MAP(x) ((WN *) WN_MAP_Get(f90_parent_map,(x)))
 
-static void check_for_duplicates(WN *pu,char *str)
+static void check_for_duplicates(WN *pu, const char *str)
 {
    /* Set up a parent map */
    static WN_MAP f90_parent_map;

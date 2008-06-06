@@ -475,6 +475,9 @@ FEEDBACK::Same_in_out( const WN *wn ) {
   switch ( opr ) {
   case OPR_FUNC_ENTRY: case OPR_ALTENTRY:
   case OPR_RETURN: case OPR_RETURN_VAL:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     return false;
 
   fb_opr_cases_call:
@@ -978,7 +981,11 @@ FEEDBACK::Query_total_out( const WN *wn ) const
     // else fall through
 
   fb_opr_cases_invoke:
-    if ( opr == OPR_RETURN || opr == OPR_RETURN_VAL )
+    if ( opr == OPR_RETURN || opr == OPR_RETURN_VAL
+#ifdef KEY
+  	 || opr == OPR_GOTO_OUTER_BLOCK
+#endif
+       )
       freq     = FB_FREQ_ZERO;
     else {
       fb_index = Get_index_invoke( wn );

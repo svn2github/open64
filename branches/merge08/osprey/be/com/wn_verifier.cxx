@@ -1079,10 +1079,10 @@ BOOL WN_Tree_Has_Duplicate_Labels(WN *pu_wn, MEM_POOL *tmp_pool)
 
     if (WN_operator(wn) == OPR_LABEL) {
       LABEL_IDX lab = WN_label_number(wn);
-      Is_True(lab > 0, ("WN_verifier: found label with number 0"));
-      Is_True(lab <= LABEL_Table_Size(CURRENT_SYMTAB),
+      Is_True(LABEL_IDX_index(lab) > 0, ("WN_verifier: found label with number 0"));
+      Is_True(LABEL_IDX_index(lab)<=LABEL_Table_Size(LABEL_IDX_level(lab)),
               ("WN_verifier: label %d greater than last label %d",
-               (INT) lab, LABEL_Table_Size(CURRENT_SYMTAB)));
+               (INT) lab, LABEL_Table_Size(LABEL_IDX_level(lab))));
       WN *dup_lab_wn = labels_found.Find(lab);
 
       if (dup_lab_wn){
@@ -1158,14 +1158,14 @@ WN_Rename_Duplicate_Labels(WN *orig_wn, WN *copied_wn, WN *pu_wn,
       Is_True(!lab_map.Find(lab_idx),
               ("duplicate label %d in orig_wn", (INT) lab_idx));
 
-      LABEL &new_lab = New_LABEL(CURRENT_SYMTAB, new_lab_idx);
+      LABEL &new_lab = New_LABEL(LABEL_IDX_level(lab_idx), new_lab_idx);
       char* Cur_PU_Name = ST_name(PU_Info_proc_sym(Current_PU_Info));
       INT strsize = strlen(User_Label_Number_Format) + 64 + strlen(Cur_PU_Name);
       char * labelname = (char*) calloc(strsize, 1);
-      sprintf(labelname, User_Label_Number_Format, (INT) CURRENT_SYMTAB,
+      sprintf(labelname, User_Label_Number_Format, (INT)LABEL_IDX_level(new_lab_idx),
               (INT) new_lab_idx, Cur_PU_Name);
       LABEL_Init(new_lab, Save_Str(labelname),
-                 LABEL_kind((*Scope_tab[CURRENT_SYMTAB].label_tab)[lab_idx]));
+                 LABEL_kind((*Scope_tab[LABEL_IDX_level(new_lab_idx)].label_tab)[LABEL_IDX_index(lab_idx)]));
 
       lab_map.Enter(lab_idx, new_lab_idx);  // add mapping from old to new
     }

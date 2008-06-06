@@ -457,7 +457,7 @@ DST_mk_constant_decl(USRCPOS      decl,  /* Source location */
 /* Creates a DW_TAG_basetype entry.
 */
 extern DST_INFO_IDX 
-DST_mk_basetype(char            *name,      /* Name of type */
+DST_mk_basetype(const char      *name,      /* Name of type */
 		DST_ATE_encoding encoding,  /* How to encode/interpret data */
 		DST_size_t       byte_size);/* Size of object */
 

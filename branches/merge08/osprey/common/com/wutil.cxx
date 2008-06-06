@@ -56,7 +56,7 @@
 //#if defined(USE_OLD_INTRN_METHOD)
 static const struct {
   INTRINSIC   opcode;
-  char      * name;
+  const char *name;
 } intrinsic_name_table [] = {
   INTRINSIC_NONE,	"NONE",
   INTRN_I4EXPEXPR,	"I4EXPEXPR",
@@ -1366,7 +1366,7 @@ struct ioitem_name_table_t ioitem_name_table [] = {
 
 //#if defined(USE_OLD_INTRN_METHOD)
 
-char *
+const char *
 get_intrinsic_name ( INTRINSIC opcode )
 {
   static INT32 init_intrinsic = FALSE;
@@ -1389,7 +1389,7 @@ get_intrinsic_name ( INTRINSIC opcode )
 }
 //#endif
 
-char *
+const char *
 get_iostatement_name ( IOSTATEMENT opcode )
 {
   static INT32 init_iostatement = FALSE;
@@ -1411,7 +1411,7 @@ get_iostatement_name ( IOSTATEMENT opcode )
   return iostatement_name_table [opcode].name;
 }
 
-char *
+const char *
 get_ioitem_name ( IOITEM opcode )
 {
   static INT32 init_ioitem = FALSE;
@@ -1433,7 +1433,7 @@ get_ioitem_name ( IOITEM opcode )
   return ioitem_name_table [opcode].name;
 }
 
-char *
+const char *
 get_iolibrary_name( IOLIB lib)
 {
   switch (lib) {

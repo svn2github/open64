@@ -1162,8 +1162,10 @@ Synch_Pu_With_Pu (PU& merged_pu, const PU& original_pu)
 
     merged_pu.src_lang |= original_pu.src_lang;
 #ifdef KEY
-    if (!merged_pu.eh_info)
-    	merged_pu.eh_info = original_pu.eh_info; // EH information
+    if (!merged_pu.misc)
+    	merged_pu.misc = original_pu.misc; // EH/C nested function information
+
+    merged_pu.unused = original_pu.unused;
 #endif
 } // Synch_Pu_With_Pu
 

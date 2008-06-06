@@ -96,7 +96,7 @@ struct WB_COMMAND {
   char _command; 
   WB_REQUIRED_PIECES _required_fields; 
   WB_COMMAND* _subcommand; 
-  char* _text; 
+  const char* _text; 
 }; 
 
 class WB_BROWSER {
@@ -138,7 +138,7 @@ protected:
   char Command(INT i) { return (_command_list)[i]._command; }
   WB_REQUIRED_PIECES Required_Fields(INT i) 
     { return (_command_list)[i]._required_fields; }
-  char* Command_Text(INT i) { return (_command_list)[i]._text; }
+  const char* Command_Text(INT i) { return (_command_list)[i]._text; }
   WB_COMMAND* Subcommand(INT i) {return (_command_list)[i]._subcommand;};
   void Set_Subcommand(char ch);
   void Reset_Subcommand();
@@ -277,7 +277,7 @@ public:
     { _array_summary = array_summary; }
   void Set_Sanity_Check_Level(INT sanity_check_level) 
     { _sanity_check_level = sanity_check_level; }
-  void Sdebug(char init_buffer[]);
+  void Sdebug(const char init_buffer[]);
   void Debug(); 
 }; 
 

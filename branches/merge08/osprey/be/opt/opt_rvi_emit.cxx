@@ -111,6 +111,15 @@ RVI_EMIT::Emit_bb( BB_NODE *bb )
       // statement in the block, so just add it before any others
       bb->Prepend_wn_after_labels( bb->Entrywn() );
     }
+#ifdef KEY
+    else if ( fopc == OPC_LABEL &&
+	      LABEL_target_of_goto_outer_block(WN_label_number(bb->Entrywn())))
+    {
+      // this is label being jumped to from a nested function, and it becomes a
+      // real statement in the block, so just add it before any others
+      bb->Prepend_wn_after_labels( bb->Entrywn() );
+    }
+#endif
   }
 
   WN *first = bb->Firststmt();

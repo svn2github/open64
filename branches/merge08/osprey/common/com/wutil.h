@@ -57,10 +57,10 @@ extern "C" {
  * ====================================================================
  * ====================================================================
  */
-char * get_intrinsic_name ( INTRINSIC opcode );
-char *get_iostatement_name(IOSTATEMENT opcode);
-char *get_ioitem_name(IOITEM opcode);
-char *get_iolibrary_name(IOLIB opcode);
+const char * get_intrinsic_name ( INTRINSIC opcode );
+const char *get_iostatement_name(IOSTATEMENT opcode);
+const char *get_ioitem_name(IOITEM opcode);
+const char *get_iolibrary_name(IOLIB opcode);
 
 #define IOSTATEMENT_name(op) get_iostatement_name(op)
 #define IOITEM_name(op) get_ioitem_name(op)

@@ -78,7 +78,7 @@ extern void WB_LWR_Terminate()
   WB_Terminate(&wb_lwr); 
 } 
 
-extern void s_lwr_debug(char init_buffer[])
+extern void s_lwr_debug(const char init_buffer[])
 { 
   wb_lwr.Sdebug(init_buffer); 
 } 

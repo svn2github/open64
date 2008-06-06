@@ -350,7 +350,7 @@ template <class DATA, class ACTION>
 static void
 Add_Symbols(char *args, DATA data, ACTION perform_action
 #ifdef KEY
-, char * opt
+, const char * opt
 #endif
 )
 {
@@ -399,7 +399,7 @@ Add_Symbols(char *args, DATA data, ACTION perform_action
  */
 
 static void
-Process_Option_File ( char *file_name , char *type_name)
+Process_Option_File ( const char *file_name , const char *type_name)
 {
   INT fd;
   struct stat stat_buf;

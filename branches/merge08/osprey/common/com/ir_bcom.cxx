@@ -108,7 +108,7 @@ INT max_ac_internal_nodes;
 #define __ALIGNOF(x) __alignof__(x)
 #endif // __GNUC__
 
-char *Whirl_Revision = WHIRL_REVISION;
+const char *Whirl_Revision = WHIRL_REVISION;
 
 /* This variable is used by IPAA to pass its local map information
  * to ir_bwrite.c, and by ir_bread.c to pass it to WOPT:

@@ -434,6 +434,17 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
         messy = TRUE;
   }
 
+//bug 14291: It is aggressive to prefetch for a field of a Large structure, where the structure
+//is the array element. The case is similar to prefetch for non-continuous array, we can not
+//make sure whether the prefetched cache line will ever be used.
+#ifdef KEY
+ if(LNO_Run_Prefetch < AGGRESSIVE_PREFETCH &&
+    WN_element_size(wn_array) > 16 && 
+    WN_element_size(wn_array)%64 != 0){ //64 should be the cache line size in byte.
+     messy = TRUE;
+  }
+#endif
+
   if (LNO_Prefetch_Indirect && messy) {
     BOOL is_indirect = FALSE;
     for (INT kid=0; !is_indirect && kid<WN_kid_count(wn_array); kid++) {

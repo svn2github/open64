@@ -138,8 +138,8 @@ static WN*  Get_Array_Dim_Size (TY& array_ty,
 
 static ST* Create_Local_ST (char *name, TY_IDX ty);
 
-static ST* Declare_Func_N_Arg (char* ty_name, 
-                               char* st_name, 
+static ST* Declare_Func_N_Arg (const char* ty_name, 
+                               const char* st_name, 
                                TY_IDX ret_ty, 
                                INT nargs, 
                                TY_IDX ty_array[]);
@@ -665,8 +665,8 @@ Create_Local_ST(char *name, TY_IDX ty)
 // ===================================================================
 
 static ST* 
-Declare_Func_N_Arg (char* ty_name, 
-                    char* st_name, 
+Declare_Func_N_Arg (const char* ty_name, 
+                    const char* st_name, 
                     TY_IDX ret_ty, 
                     INT nargs, 
                     TY_IDX ty_array[])

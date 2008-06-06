@@ -58,7 +58,7 @@
 #pragma hdrstop
 
 #define vs_textra_CXX      "vs_textra.cxx"
-static char *rcs_id =   vs_textra_CXX "$Revision: 1.6 $";
+const static char *rcs_id =   vs_textra_CXX "$Revision: 1.6 $";
 
 
 #include <sys/types.h>

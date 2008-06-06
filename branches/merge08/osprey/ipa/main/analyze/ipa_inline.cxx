@@ -1415,7 +1415,7 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	   IPA_NODE *callee, const IPA_CALL_GRAPH *cg)
 {
     BOOL result = TRUE;
-    char *reason = 0;
+    const char *reason = 0;
 
 #ifdef KEY
     if (cg->Graph()->Is_Recursive_Edge (ed->Edge_Index ())) {
@@ -1676,6 +1676,15 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
             ed->Set_reason_id (37);
     }
 #endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#ifdef KEY
+    else if (PU_is_nested_func(caller->Get_PU()) ||
+             PU_is_nested_func(callee->Get_PU()) ||
+             PU_uplevel(callee->Get_PU())) {
+            result = FALSE;
+            reason = "not inlining nested functions";
+            ed->Set_reason_id (38);
+    } 
+#endif
     // The following else-if must be last
     else if (!IPA_Enable_Lang) {
 	if ((callee->Summary_Proc()->Get_lang() == LANG_F77) || 

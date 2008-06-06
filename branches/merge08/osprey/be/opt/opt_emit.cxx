@@ -1338,7 +1338,11 @@ EMITTER::Gen_wn(BB_NODE *first_bb, BB_NODE *last_bb)
 	}
 	else if ( entry_opc == OPC_ALTENTRY ||
 		  (entry_opc == OPC_LABEL && 
-		   WN_Label_Is_Handler_Begin(bb->Entrywn())) )
+		   (WN_Label_Is_Handler_Begin(bb->Entrywn())
+#ifdef KEY
+		   || LABEL_target_of_goto_outer_block(WN_label_number(bb->Entrywn()))
+#endif
+		   )) )
 	{
 	  BOOL skip_curbb = Raise_altentry( bb );
 	  // Connect all WN nodes in the merged bb to the end of 'bb'

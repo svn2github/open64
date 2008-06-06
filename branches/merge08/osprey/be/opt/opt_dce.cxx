@@ -342,6 +342,9 @@ class DCE {
 		    case OPR_RETURN:
 		    case OPR_RETURN_VAL:
 		    case OPR_TRUEBR:
+#ifdef KEY
+		    case OPR_GOTO_OUTER_BLOCK:
+#endif
 		      return TRUE;
 		    default:
 		      return FALSE;
@@ -2264,6 +2267,9 @@ DCE::Required_stmt( const STMTREP *stmt ) const
   case OPR_RETURN_VAL:
   case OPR_REGION_EXIT:
   case OPR_OPT_CHI: // entry chi is required, pv 454154
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     return TRUE;
 
   case OPR_CALL:

@@ -587,7 +587,7 @@
 ***	)
 ***		Return  lda of type rtype of sym
 ***
-***	WN *WN_LdaString(char *str,
+***	WN *WN_LdaString(const char *str,
 ***		WN_OFFSET ldaOffset,
 ***		INT32 len
 ***	)
@@ -1022,7 +1022,7 @@ WN_CreateRcomma (OPCODE opc, WN *value, WN *block) {
 			  OPCODE_desc(opc), value, block);
 }
 
-extern WN *WN_CreateComment (char *s);	/* create comment node */
+extern WN *WN_CreateComment (const char *s);	/* create comment node */
 extern STR_IDX WN_GetComment (const WN *wn);  /* get string idx from comment node */
 
 extern WN *WN_CreateAsm_Stmt (INT16 kid_count, char *asm_string);
@@ -1174,7 +1174,7 @@ extern WN *WN_Lda(TYPE_ID rtype,
 		  UINT field_id = 0);
 
 
-extern WN *WN_LdaString(char *str,
+extern WN *WN_LdaString(const char *str,
 			WN_OFFSET ldaOffset,
 			INT32 len);
 

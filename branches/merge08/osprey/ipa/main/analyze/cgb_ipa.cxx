@@ -80,7 +80,7 @@ extern void CGB_IPA_Terminate()
   CGB_Terminate(&cgb_ipa); 
 } 
 
-extern void s_cg_ipa_debug(char init_buffer[])
+extern void s_cg_ipa_debug(const char init_buffer[])
 { 
   cgb_ipa.Sdebug(init_buffer); 
 } 

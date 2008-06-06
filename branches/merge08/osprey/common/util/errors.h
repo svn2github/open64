@@ -401,7 +401,7 @@ extern "C" {
 #endif
 
 extern void Abort_Compiler_Location (
-  char* file_name,
+  const char* file_name,
   INT line_number
 );
 #pragma mips_frequency_hint NEVER Abort_Compiler_Location

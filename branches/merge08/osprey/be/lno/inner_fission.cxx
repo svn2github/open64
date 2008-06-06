@@ -138,7 +138,7 @@ static ACCESS_VECTOR Dummy_Access_Vector;
 
 static void inner_fission_verbose_info(
   SRCPOS        srcpos,
-  char*         message)
+  const char*   message)
 {
   printf("#### Inner Fission(%d): %s\n", Srcpos_To_Line(srcpos), message);
 }

@@ -71,7 +71,7 @@ typedef enum { INFO, FAIL, SUCCEED } INFO_TYPE;
 static void outer_fusion_verbose_info(
   SRCPOS        srcpos1,
   SRCPOS        srcpos2,
-  char*         message)
+  const char*   message)
 {
   
   printf("#### Outer Fusion(%d+%d): %s\n",
@@ -86,7 +86,7 @@ static void outer_fusion_analysis_info(
   SRCPOS        srcpos2,
   UINT32	snl_level1,
   UINT32	snl_level2,
-  char*         message)
+  const char*   message)
 {
   
   switch (info_type) {
@@ -113,7 +113,7 @@ static void outer_fusion_tlog_info(
   SRCPOS        srcpos2,
   UINT32	snl_level1,
   UINT32	snl_level2,
-  char*         message)
+  const char*   message)
 {
   
   char tmp_string[300];

@@ -353,7 +353,8 @@ DST_IDX DST_mk_compile_unit(DST_TYPE dst,
   // Always put a new compile unit in a new block.
   Is_True(( DST_ARE_EQUAL(prev, DST_INVALID_IDX) && !DST_has_compile_unit(dst)) ||
           ( !DST_ARE_EQUAL(prev, DST_INVALID_IDX) && DST_has_compile_unit(dst)),
-          ("Must create first compile unit once and only once"));                  
+          ("Must create first compile unit once and only once"));                 if (DST_IS_NULL(prev)) 
+    DST_new_block(dst, p, DST_file_scope_block, sizeof(DST_INFO));
 
   DST_IDX info_idx = DST_allocate(dst, p, sizeof(DST_INFO),
                                   DST_default_align, DST_file_scope_block);

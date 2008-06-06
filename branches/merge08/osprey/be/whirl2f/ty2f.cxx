@@ -128,7 +128,7 @@ TY2F_Append_Array_Bnd_Ph(TOKEN_BUFFER decl_tokens,
 			 BOOL         purple_assumed_size)
 {
    char ptr_string[128];
-   char * p = "%s";
+   const char * p = "%s";
 
    if (purple_assumed_size)
    {

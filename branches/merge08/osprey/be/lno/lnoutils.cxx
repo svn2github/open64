@@ -1532,6 +1532,9 @@ void Print_Def_Use(WN *wn, FILE *fp)
       case OPR_ISTORE:
       case OPR_IO:
       case OPR_RETURN:
+#ifdef KEY
+      case OPR_GOTO_OUTER_BLOCK:
+#endif
       case OPR_CALL:
       case OPR_ICALL:
       case OPR_INTRINSIC_CALL:
@@ -3012,6 +3015,7 @@ static void Du_Sanity_Check_r(
         opr==OPR_IO || OPCODE_is_call(opc) || opr==OPR_INTRINSIC_OP
 #ifdef KEY
         || opr==OPR_PURE_CALL_OP
+        || opr==OPR_GOTO_OUTER_BLOCK
 #endif
 	)
       h_table->Enter(wn,1);
@@ -3362,6 +3366,9 @@ BOOL Is_Loop_Invariant_Use(WN* wn,
   case OPR_ISTORE:
   case OPR_IO:
   case OPR_RETURN:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
   case OPR_CALL:
   case OPR_ICALL:
   case OPR_INTRINSIC_CALL:
@@ -4932,7 +4939,7 @@ extern WN* Messy_Subscript(WN* wn_array)
 
 extern void Replace_Index_Variable(WN* loop,
                                    WN* cp_loop,
-                                   char prefix[])
+                                   const char prefix[])
 {
   const INT  bufsz=128;
   char       buf[bufsz];

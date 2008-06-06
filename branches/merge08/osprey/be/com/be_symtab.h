@@ -525,7 +525,7 @@ extern BE_PREG_TAB Be_preg_tab;
 // home location with each register.
 
 static inline PREG_NUM
-Create_Preg(TYPE_ID mtype, char *name, WN *home)
+Create_Preg(TYPE_ID mtype,const char *name, WN *home)
 {
   PREG_NUM retval = Create_Preg(mtype, name);
   Be_preg_tab[retval - Last_Dedicated_Preg_Offset].Set_home_location(home);

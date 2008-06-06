@@ -70,7 +70,7 @@ typedef enum {
 } BE_PHASES;
 
 typedef struct {
-    char *group_name;		    /* option group name */
+    const char *group_name;	    /* option group name */
     INT group_name_length;	    /* string length of group_name */
     BE_PHASES phase;		    /* the phase where this group belongs */
 } PHASE_SPECIFIC_OPTION_GROUP;

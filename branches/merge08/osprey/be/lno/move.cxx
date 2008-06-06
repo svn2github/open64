@@ -176,7 +176,11 @@ static BOOL Possibly_Used_Outside_Program_Unit(WN* wn_stid)
   const DU_NODE* node1 = NULL;
   for (node1 = iter.First(); !iter.Is_Empty(); node1 = iter.Next()) {
     WN* wn_use = node1->Wn();
-    if (WN_opcode(wn_use) == OPC_RETURN)
+    if (WN_opcode(wn_use) == OPC_RETURN
+#ifdef KEY
+  	|| WN_opcode(wn_use) == OPC_GOTO_OUTER_BLOCK
+#endif
+       )
       return TRUE; 
   }
   return FALSE; 

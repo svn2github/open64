@@ -291,8 +291,8 @@ public:
 };
 
 struct MENU_INFO {
-  char      *id;                // id from/to DaVinci.
-  char      *label;             // displayed by DaVinci.
+  const char *id;               // id from/to DaVinci.
+  const char *label;            // displayed by DaVinci.
   bool       initially_active;  // active on startup ?
   INT        n_subitems;        // 0 => this is a leaf item.
   MENU_INFO *subitems;          // NULL => this is leaf item.
@@ -451,7 +451,7 @@ private:
 			     INT *n_nodes, NODE_ID **node_ids);
 
   void Emit_Menu(INT n_items, const MENU_INFO *items);
-  void Emit_Attr(const NODE_TYPE& nt, char **comma);
+  void Emit_Attr(const NODE_TYPE& nt, const char **comma);
   void Emit_Attr(const EDGE_TYPE& et);
 
   void   Menu_Basic_Do( const char *label );

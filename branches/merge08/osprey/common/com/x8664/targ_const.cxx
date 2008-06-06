@@ -4066,7 +4066,7 @@ Host_To_Targ_Complex_4 ( TYPE_ID ty, float real, float imag )
 
 
 TCON
-Host_To_Targ_String ( TYPE_ID ty, char *v, UINT32 l )
+Host_To_Targ_String ( TYPE_ID ty, const char *v, UINT32 l )
 {
   static TCON c;
   BOOL add_null = FALSE;	/* whether to add a NULL in strtab */

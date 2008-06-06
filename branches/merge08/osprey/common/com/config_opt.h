@@ -188,6 +188,7 @@ extern BOOL OPT_Funsafe_Math_Optimizations;
 
 extern BOOL OPT_Float_Via_Int;
 extern UINT32 OPT_Malloc_Alg;
+extern BOOL OPT_Malloc_Alg_Set;
 extern BOOL Early_Goto_Conversion;
 extern BOOL Early_Goto_Conversion_Set;
 extern INT32 OPT_Madd_Height;

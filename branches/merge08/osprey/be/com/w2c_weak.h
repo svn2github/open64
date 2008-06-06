@@ -52,8 +52,8 @@ extern void (*W2C_Outfile_Fini_p)(BOOL emit_global_decls);
 extern void (*W2C_Outfile_Init_p)(BOOL emit_global_decls);
 extern void (*W2C_Outfile_Translate_Pu_p)(WN *pu, BOOL emit_global_decls);
 extern void (*W2C_Pop_PU_p)(void);
-extern void (*W2C_Process_Command_Line_p)(INT phase_argc, char * const
-  phase_argv[], INT argc, char * const argv[]);
+extern void (*W2C_Process_Command_Line_p)(INT phase_argc, const char * const
+  phase_argv[], INT argc, const char * const argv[]);
 extern void (*W2C_Push_PU_p)(const WN *pu, WN *body_part_of_interest);
 extern void (*W2C_Set_Frequency_Map_p)(WN_MAP frequency_map);
 extern void (*W2C_Set_Prompf_Emission_p)(const WN_MAP *construct_map);

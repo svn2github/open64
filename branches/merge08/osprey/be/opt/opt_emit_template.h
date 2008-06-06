@@ -1250,6 +1250,9 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
   
   case OPR_RETURN:
   case OPR_PRAGMA:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     rwn = WN_COPY_Tree_With_Map(srep->Orig_wn());
     if (OPCODE_has_aux(srep->Op()))
       WN_st_idx(rwn) = ST_st_idx(emitter->Opt_stab()->St(WN_aux(rwn)));

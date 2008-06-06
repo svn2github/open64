@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,10 +47,10 @@ extern "C" {
  * ====================================================================
  *
  * Module: config_asm.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_asm.h,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:18:11 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/config_asm.h,v $
  *
  * Revision history:
  *  17-Jun-91 - Original Version
@@ -65,7 +69,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *config_asm_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_asm.h,v $ $Revision: 1.1.1.1 $";
+static char *config_asm_rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/config_asm.h,v $ $Revision: 1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #define Label_Name_Separator "_"
@@ -188,8 +192,6 @@ static char *config_asm_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/com
 #define AS_WORD		"data4"
 #define AS_WORD_UNALIGNED "data4.ua" 
 #define AS_IDENT	"#ident" /* Make this ASM_CMNT_START if no ident */
-// bug fix for OSP_155
-#define AS_HIDDEN	".hidden"
 
 /* The directive for emitting an address depends on the target pointer
  * size.  The following is defined and initialized in config_targ.c:
@@ -201,8 +203,6 @@ extern char *AS_ADDRESS_UNALIGNED;
 #define AS_GPREL	"@gprel"
 #define AS_LTOFF	"@ltoff"
 #define AS_FPTR		"@fptr"
-// for function descriptor which equals to @fptr + gp
-#define AS_IPLT		"@iplt"		
 #define AS_GP_REL	((char *)0)
 #define AS_NEGATE	((char *)0)
 
@@ -224,8 +224,8 @@ extern char *AS_ADDRESS_UNALIGNED;
 #define ASM_DIR_ALIGN(p, s)             fprintf(Asm_File, "\t%s %d\n", AS_ALIGN,STB_align(s));
 
 /* gas .skip fills with zeroes */
-#define ASM_DIR_ZERO(fl, l)	fprintf(fl, "\t%s %lld\n", AS_SPACE, (INT64)l) 
-#define ASM_DIR_SKIP(fl, l) 	fprintf(fl, "\t%s %lld\n", AS_SPACE, (INT64)l)
+#define ASM_DIR_ZERO(fl, l)	fprintf(fl, "\t%s %d\n", AS_SPACE, l) 
+#define ASM_DIR_SKIP(fl, l) 	fprintf(fl, "\t%s %d\n", AS_SPACE, l)
   
 #ifdef __cplusplus
 }

@@ -110,7 +110,7 @@ char *Fe_Version = NULL;
 /*add by cbq */
 int pu_number = 0;
 int bb_number = 0;
-char *Output_h_File_Name = "cycle_output.h";        /* Cycle_Counting Output.h file */
+const char *Output_h_File_Name = "cycle_output.h";        /* Cycle_Counting Output.h file */
 FILE *Output_h_File = NULL;           /* Cycle counting output.h file */
 FILE *Call_graph_file = NULL; 	      /* Call graph file */
 char * pu_string[1000]; 

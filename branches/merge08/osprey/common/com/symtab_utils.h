@@ -393,7 +393,8 @@ Make_arb_iter (ARB_HANDLE arb)
 inline LABEL_ITER
 Make_label_iter (LABEL_IDX label_idx)
 {
-    return LABEL_ITER (Scope_tab[CURRENT_SYMTAB].label_tab, label_idx);
+    return LABEL_ITER (Scope_tab[LABEL_IDX_level (label_idx)].label_tab, 
+		       LABEL_IDX_index (label_idx));
 }
 
 inline PREG_ITER

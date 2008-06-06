@@ -381,11 +381,30 @@ typedef mUINT32 IDTYPE;
 #define MAX(a,b)	((a>=b)?a:b)
 #define MIN(a,b)	((a<=b)?a:b)
 
-inline INT Max(INT i, INT j)
+#ifdef KEY
+#ifdef Is_True_On
+static
+#else
+static __inline__ /* GNU 4.2 does not support non-static C99 inline functions. */
+#endif
+#else
+inline
+#endif
+INT Max(INT i, INT j)
 {
   return MAX(i,j);
 }
-inline INT Min(INT i, INT j)
+
+#ifdef KEY
+#ifdef Is_True_On
+static
+#else
+static __inline__ /* GNU 4.2 does not support non-static C99 inline functions. */
+#endif
+#else
+inline
+#endif
+INT Min(INT i, INT j)
 {
   return MIN(i,j);
 }

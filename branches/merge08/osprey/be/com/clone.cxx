@@ -196,11 +196,18 @@ IPO_CLONE::Fix_ST (WN* cloned_wn, WN* wn)
 
   if (st == NULL) {
     // label opcodes don't always have a valid st
+    INT lab_level, lab_index;
     if (OPCODE_has_label(op)) {
-      WN_label_number(cloned_wn) += _sym->Get_cloned_label_last_idx();
+      lab_level = _sym->Get_cloned_level();
+      lab_index = LABEL_IDX_index(WN_label_number(cloned_wn));
+      lab_index += _sym->Get_cloned_label_last_idx();
+      WN_label_number(cloned_wn) = make_LABEL_IDX(lab_index, lab_level);
     }
     if (OPCODE_has_last_label(op)) {
-      WN_last_label(cloned_wn) += _sym->Get_cloned_label_last_idx();
+      lab_level = _sym->Get_cloned_level();
+      lab_index = LABEL_IDX_index(WN_last_label(cloned_wn));
+      lab_index += _sym->Get_cloned_label_last_idx();
+      WN_last_label(cloned_wn) = make_LABEL_IDX(lab_index, lab_level);
     }
     return;
   }
@@ -1046,15 +1053,23 @@ IPO_SYMTAB::Clone_INITVs_For_EH (INITV_IDX inov, INITO_IDX ino)
 		  break;
 	      }
 	  }
-	  Set_INITV_lab1 (cloned_iv, 
-		INITV_lab1(iv)+Get_cloned_label_last_idx());
+	  INT lab_level = LABEL_IDX_level(INITV_lab1(iv));
+	  INT lab_index = LABEL_IDX_index(INITV_lab1(iv)) + 
+	  		  Get_cloned_label_last_idx();
+	  Set_INITV_lab1 (cloned_iv, make_LABEL_IDX(lab_index, lab_level));
+
 	  Set_INITV_st2 (cloned_iv, ST_st_idx(cloned_st));
 	} 
 	break;
 
     case INITVKIND_LABEL:
-	Set_INITV_lab (cloned_iv, INITV_lab(iv)+Get_cloned_label_last_idx());
+       {
+	INT lab_level = LABEL_IDX_level(INITV_lab(iv));
+	INT lab_index = LABEL_IDX_index(INITV_lab(iv)) + 
+			Get_cloned_label_last_idx();
+	Set_INITV_lab (cloned_iv, make_LABEL_IDX(lab_index, lab_level));
 	break;
+       }
     
     case INITVKIND_BLOCK:
         Set_INITV_blk(cloned_iv, Clone_INITVs_For_EH (INITV_blk(iv), ino));

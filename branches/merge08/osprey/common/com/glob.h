@@ -114,7 +114,7 @@ extern PU_KIND Cur_PU_Kind;
 /* the var used to create output.h */
 extern int pu_number;
 extern int bb_number;
-extern char *Output_h_File_Name;      /* Cycle_Counting Output.h file */
+extern const char *Output_h_File_Name;/* Cycle_Counting Output.h file */
 extern FILE *Output_h_File;           /* Cycle counting output.h file */
 extern FILE *Call_graph_file;	      /* Call graph file */
 extern char * pu_string[1000]; 

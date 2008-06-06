@@ -202,7 +202,7 @@ static ST* Lookup_Variable(char *nm, SYMTAB *stab);
 #endif
 static ST* Create_Global_Variable (char* nm, TYPE_ID type, ST* array_st,
                                    INT32 i);
-static ST* Create_Local_Variable (char* nm, TYPE_ID type, ST* array_st,
+static ST* Create_Local_Variable (const char* nm, TYPE_ID type, ST* array_st,
                                    INT32 i);
 static ST* New_DART (ST* array_st);
 static ST* Create_Common_Block (ST* array_st, INT numdim);
@@ -618,7 +618,7 @@ static ST* Lookup_Variable(char *nm, SYMTAB *stab)
  * Create a global ST for Jennifer's variables.
  *
  ***********************************************************************/
-static ST* Create_Global_Variable (char* nm, TYPE_ID type, ST* array_st,
+static ST* Create_Global_Variable (const char* nm, TYPE_ID type, ST* array_st,
                                    INT32 i) {
   char *name;
   if (ST_base(array_st) != array_st && ST_isCommon(array_st)) {
@@ -660,7 +660,7 @@ static ST* Create_Global_Variable (char* nm, TYPE_ID type, ST* array_st,
  * Create a local ST for Jennifer's variables.
  *
  ***********************************************************************/
-static ST* Create_Local_Variable (char* nm, TYPE_ID type, ST* array_st,
+static ST* Create_Local_Variable (const char* nm, TYPE_ID type, ST* array_st,
                                   INT32 i) {
   char *name;
   if (ST_base(array_st) != array_st) {

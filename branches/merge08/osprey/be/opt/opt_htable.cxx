@@ -3683,6 +3683,9 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
   case OPR_DO_WHILE:
   case OPR_IF:
   case OPR_RETURN:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     // skip these cases
     break;
 
@@ -4281,6 +4284,9 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
   case OPR_RETURN_VAL:
   case OPR_PRAGMA:
   case OPR_XPRAGMA:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     copy_wn = WN_CopyNode(Wn());
     WN_set_map_id(copy_wn, WN_map_id(Wn()));
     Set_orig_wn(copy_wn);
@@ -4494,7 +4500,11 @@ STMTREP::Points_to(OPT_STAB *opt_stab) const
       OPERATOR_is_scalar_istore (opr) ||
       opr == OPR_ILOADX  || opr == OPR_ISTOREX)
     return Lhs()->Points_to(opt_stab);
-  else if ( opr == OPR_RETURN || opr == OPR_RETURN_VAL)
+  else if ( opr == OPR_RETURN || opr == OPR_RETURN_VAL
+#ifdef KEY
+  	    || opr == OPR_GOTO_OUTER_BLOCK
+#endif
+    	  )
     return opt_stab->Points_to_globals();
   else
     return NULL;

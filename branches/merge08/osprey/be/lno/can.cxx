@@ -79,8 +79,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-static char *source_file = __FILE__;
-static char *rcs_id = "$Source: ../../be/lno/SCCS/s.can.cxx $ $Revision: 1.25 $";
+static const char *source_file = __FILE__;
+static const char *rcs_id = "$Source: ../../be/lno/SCCS/s.can.cxx $ $Revision: 1.25 $";
 
 #include "call_info.h"
 #include "lnopt_main.h"
@@ -509,6 +509,17 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
     for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
       dlistack->Bottom_nth(i)->Has_Calls = TRUE;
     }
+#ifdef KEY //bug 14284 : determine whether loop has calls to nested functions
+    ST *st = WN_has_sym(wn) ? WN_st(wn) : NULL;
+    if(st != NULL) { //bug 14288 -- assume nested function always has ST
+      PU &pu = Pu_Table[ST_pu(st)];
+      if(PU_is_nested_func(pu)){
+	for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
+	  dlistack->Bottom_nth(i)->Has_Nested_Calls = TRUE;
+	}
+      }
+    }
+#endif    
   } else if (OPCODE_operator(opcode) == OPR_ALLOCA ||
              OPCODE_operator(opcode) == OPR_DEALLOCA) {
 

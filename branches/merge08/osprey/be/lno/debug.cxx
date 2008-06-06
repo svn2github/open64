@@ -131,7 +131,7 @@ const INT fancy_min = 2;
 const INT fancy_max = 3; 
 static VOID_FUNC_PTR last_fp;
 
-static char *operator_table[OPERATOR_LAST + 1] = 
+static const char *operator_table[OPERATOR_LAST + 1] = 
 {
   "UNKNOWN", 
   "ABS",
@@ -429,7 +429,7 @@ extern const char* WB_Whirl_Symbol_Type(WN* wn)
 struct WB_CHAR_FUNCPTR { 
   char ch;
   BOOL context_independent; 
-  char* message;  
+  const char* message;  
   VOID_FUNC_PTR fp; 
 };  
 
@@ -542,7 +542,7 @@ static WB_CHAR_FUNCPTR Command_List[] =
 //-----------------------------------------------------------------------
 
 struct WB_STRING_VOIDFUNCPTR { 
-  char* type;
+  const char* type;
   VOID_FUNC_PTR fp; 
 };  
 
@@ -597,7 +597,7 @@ static WB_STRING_VOIDFUNCPTR Type_List[] =
 //-----------------------------------------------------------------------
 
 struct WB_STRING_BOOLFUNCPTR { 
-  char* type;
+  const char* type;
   BOOL_FUNC_PTR fp; 
 };  
 
@@ -3957,8 +3957,8 @@ static BOOL WBTR_SNL_INV_Limited_SE_And_Dist()
 //-----------------------------------------------------------------------
 
 struct WB_STRING_REASON {
-  char *type; 
-  char *reason_string;
+  const char *type; 
+  const char *reason_string;
   SNL_INV_CACHE_BLOCK_REASON reason; 
 };
 
@@ -3982,7 +3982,7 @@ static BOOL WBTR_Loop_Tiling()
   BOOL legality_check = TRUE; 
   WN* wn_loop = NULL; 
   INT tile_size = 0;
-  char* prefix = NULL; 
+  const char* prefix = NULL; 
   INT transform_number = -1; 
   SYMBOL* sym_pid = NULL;
   SNL_INV_CACHE_BLOCK_REASON reason = SNL_INV_UNDEFINED; 
@@ -4166,7 +4166,7 @@ static void Initialize_Keymap() {
 //   in the compiler where you want to see the loops.   
 //-----------------------------------------------------------------------
 
-extern void s_lno_debug(char init_buffer[]) 
+extern void s_lno_debug(const char init_buffer[]) 
 {
   char ch;
   VOID_FUNC_PTR fp;

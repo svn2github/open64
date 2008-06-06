@@ -156,7 +156,7 @@ typedef struct {
   SF_SEGMENT	seg;	/* Which segment */
   ST           *block;  /* Which ST block */
   mINT64	maxsize;/* Maximum allocated size */
-  char	       *name;	/* For tracing */
+  const char   *name;	/* For tracing */
 } SF_SEG_DESC;
 
 #define	SFSEG_seg(s)	((s)->seg)
@@ -583,7 +583,7 @@ Create_Local_Block( STACK_DIR dir, STR_IDX name )
 }
 
 static ST *
-Create_Base_Reg (char *name, STACK_DIR dir)
+Create_Base_Reg (const char *name, STACK_DIR dir)
 {
   ST *new_blk = Create_Local_Block(dir, Save_Str(name));
   Set_STB_root_base(new_blk);
@@ -2294,7 +2294,7 @@ Process_Stack_Variable ( ST *st )
 }
 
 static void
-Trace_Stack_Segments( char *msg, ST *SP_baseST, ST *FP_baseST )
+Trace_Stack_Segments(const char *msg, ST *SP_baseST, ST *FP_baseST )
 {
   SF_SEGMENT s;
 

@@ -41,18 +41,18 @@
 #include "glob.h"	/* for Tlog_File */
 #include "errors.h"	/* for FmtAssert */
 
-static char* dummy_word="(null)";
+static const char* dummy_word="(null)";
 
 /* see interface in tlog.h */
 
 extern void Generate_Tlog(
-  char*		phase_name,
-  char* 	trans_name,
-  SRCPOS	srcpos,
-  char*		keyword,
-  char*		input_string,
-  char*		output_string,
-  char*		aux_info_string
+  const char*		phase_name,
+  const char* 	        trans_name,
+  SRCPOS	        srcpos,
+  const char*		keyword,
+  const char*		input_string,
+  const char*		output_string,
+  const char*		aux_info_string
 )
 {
   if (Tlog_File==NULL)

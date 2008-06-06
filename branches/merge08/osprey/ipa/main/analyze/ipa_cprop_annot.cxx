@@ -2308,7 +2308,7 @@ Update_annot_with_callee_mod (IPA_NODE* callee, GLOBAL_ANNOT* gannot)
 {
   IPAA_NODE_INFO* modref_info = callee->Mod_Ref_Info();
   for (UINT32 i = 0; i < GLOBAL_ANNOT::Size; ++i) {
-    char* is_mod = "is NOT";
+    const char* is_mod = "is NOT";
     ST_IDX common_st = GLOBAL_ANNOT::Common_ST[i];
     if (modref_info->Is_def_elmt(ST_IDX_index(common_st))) {
       gannot->Set_Bottom(i);

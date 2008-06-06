@@ -86,7 +86,7 @@ static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/be/whirl2f/wn2f
 extern WN_MAP *W2F_Construct_Map;   /* Defined in w2f_driver.c */
 extern BOOL    W2F_Prompf_Emission; /* Defined in w2f_driver.c */
 
-char * sgi_comment_str = "CSGI$ " ;
+const char * sgi_comment_str = "CSGI$ " ;
 
 static BOOL  PU_Need_End_Contains = FALSE;  // f90 needs CONTAINS/END around nested procs.
 static BOOL  PU_Dangling_Contains = FALSE;  // f90 have done CONTAINS, need END...
@@ -1265,7 +1265,7 @@ WN2F_End_Routine_Strings(TOKEN_BUFFER tokens, INT32 func_id)
     }
     else {
 
-      char * p ;
+      const char * p ;
 
       if (PU_is_mainpu(pu)) 
 	p = "END";

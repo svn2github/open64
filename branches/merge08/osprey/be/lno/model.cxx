@@ -326,8 +326,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-static char *source_file = __FILE__;
-static char *rcs_id = "$Source: ../../be/lno/SCCS/s.model.cxx $ $Revision: 1.21 $";
+const static char *source_file = __FILE__;
+const static char *rcs_id = "$Source: ../../be/lno/SCCS/s.model.cxx $ $Revision: 1.21 $";
 
 #include <sys/types.h>
 #include <alloca.h>

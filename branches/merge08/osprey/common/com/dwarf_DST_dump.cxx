@@ -836,7 +836,7 @@ DST_put_array_type(DST_flag flag, DST_ARRAY_TYPE *attr)
 static void
 DST_put_subrange_type(DST_flag flag, DST_SUBRANGE_TYPE *attr)
 {
-   char * p;
+   const char * p;
    DST_put_string(":subrange_type:");
    if (DST_IS_lb_cval(flag)) 
    	DST_put_INT32_attribute(" lower", 

@@ -247,8 +247,8 @@ extern FILE *W2F_File[W2F_NUM_FILES];
 
   /* Note that we also export some utilities from W2CF_symtab.h */
 extern BOOL W2F_Should_Emit_Nested_PUs(void);
-extern void W2F_Process_Command_Line(INT phase_argc, char *phase_argv[],
-				     INT argc, char *argv[]);
+  extern void W2F_Process_Command_Line(INT phase_argc,const char *phase_argv[],
+				     INT argc, const char *argv[]);
 extern void W2F_Init(void);
 extern void W2F_Fini(void);
 extern void W2F_Push_PU(WN *pu, WN *body_part_of_interest);

@@ -225,7 +225,7 @@ ir_bwrite_signal_handler (int sig, int err_num)
 #define DEFAULT_NUM_OF_SECTIONS 8	
 
 static Section *
-get_section (Elf64_Word sh_info, char *name, Output_File *fl)
+get_section (Elf64_Word sh_info, const char *name, Output_File *fl)
 {
     register INT i;
 
@@ -385,7 +385,7 @@ write_output (UINT64 e_shoff, const typename ELF::Elf_Shdr& strtab_sec,
 static int
 create_temp_file (Output_File *fl)
 {
-    register char *tmpdir;
+    register const char *tmpdir;
     register char *path;
     register int fd;
 
@@ -545,7 +545,7 @@ WN_write_PU_Infos (PU_Info *pu_list, Output_File *fl)
 void
 WN_write_tree (PU_Info *pu, WN_MAP off_map, Output_File *fl)
 {
-    static char *scn_name = "tree";
+    static const char *scn_name = "tree";
     UINT padding;
     Elf64_Word this_tree;
     WN *tree;
@@ -787,7 +787,6 @@ WN_write_dst (DST_TYPE dst, Output_File *fl)
 
 } /* WN_write_dst */
 
-#if defined (TARG_SL)
 void 
 WN_write_isr_cg(vector<mINT32>& cg, Output_File *fl)
 {
@@ -814,7 +813,7 @@ WN_write_isr_cg(vector<mINT32>& cg, Output_File *fl)
     cur_section->shdr.sh_size = fl->file_size - cur_section->shdr.sh_offset;
     cur_section->shdr.sh_addralign = sizeof(mINT32);
 }
-#endif
+
 
 #ifdef BACK_END
 

@@ -53,7 +53,7 @@
 #pragma hdrstop
 
 #define snl_test_CXX      "snl_test.cxx"
-static char *rcs_id =   snl_test_CXX "$Revision: 1.9 $";
+const static char *rcs_id =   snl_test_CXX "$Revision: 1.9 $";
 
 #include <sys/types.h>
 #include <alloca.h>
@@ -1495,7 +1495,8 @@ static void SNL_Transform(WN* wn,
     nloops_g = ni.Nloops_General();
     nloops_i = ni.Nloops_Invariant();
     if (LNO_Analysis || LNO_Tlog) {
-      char* message;
+      const char* message;
+      char* scalar_message = NULL;
       char  buf[32];           // enough space for its use
       switch (ni.Problem(ni.Depth_Inner() - nloops).Problem) {
        case SNL_LOOP_PROBLEM_NONE:
@@ -1507,9 +1508,9 @@ static void SNL_Transform(WN* wn,
 	break;
        case SNL_LOOP_PROBLEM_SCALAR: {
          SYMBOL var = ni.Problem(ni.Depth_Inner() - nloops).Var;
-         char* name = var.Name();
-         message = (char*) alloca(strlen(name) + 25);
-         sprintf(message, "%s unexpandable scalar", name);
+         const char* name = var.Name();
+         scalar_message = (char*) alloca(strlen(name) + 25);
+         sprintf(scalar_message, "%s unexpandable scalar", name);
         }
 	break;
        case SNL_LOOP_PROBLEM_LOOP: {
@@ -1530,6 +1531,7 @@ static void SNL_Transform(WN* wn,
         message = NULL;
 	Is_True(0, ("Missing excuse"));
       }
+      if (scalar_message) message = scalar_message;
       if (message) {
         if (LNO_Analysis)
           fprintf(LNO_Analysis,

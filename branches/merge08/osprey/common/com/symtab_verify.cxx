@@ -561,8 +561,10 @@ void INITO::Verify(UINT level) const
   Is_True(ST_IDX_index (st_idx) > 0 &&
 	  ST_IDX_index (st_idx) < ST_Table_Size (ST_IDX_level (st_idx)),
 	  ("Invalid st_idx for INITO"));
+#ifndef KEY // no longer true because INITO is used to link up nested functions
   Is_True(ST_is_initialized (St_Table[st_idx]),
 	   ("ST_IS_INITIALIZED not set"));
+#endif
   Is_True(0 <  val && val < INITV_Table_Size(),
            ("Invalid field for INITO: val"));
   Is_True(level == ST_IDX_level(st_idx),
@@ -1013,11 +1015,11 @@ void PU::Verify(UINT) const
 	   ("Invalid TY_IDX in PU::prototype"));
 
 #ifdef KEY
-// We are using 'eh_info' to store ST_IDXs of 2 special variables for
+// We are using 'misc' to store ST_IDXs of 2 special variables for
 // C++ exception handling.
   if (!(src_lang & PU_CXX_LANG))
 #endif // !KEY
-  Is_True (eh_info == 0, ("eh_info fields must be zero"));
+  Is_True (misc == 0, ("eh_info/misc fields must be zero"));
 
   // Verify flags
   static char msg[] = "Invalid PU flags: (%s)";

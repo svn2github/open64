@@ -800,6 +800,9 @@ FB_CFG::Walk_WN_statement( WN *wn )
 
   case OPR_RETURN:
   case OPR_RETURN_VAL:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     {
       FB_FREQ freq_default =
 	Cur_PU_Feedback->Query( wn, FB_EDGE_INCOMING );
@@ -2044,7 +2047,7 @@ void dV_view_fb_cfg( const FB_CFG& cfg, WN *root_wn, const char *caller )
 {
   const char *trace_fname = getenv( "DV_TRACE_FILE" );
   FILE       *trace_fp    = NULL;
-  char       *func_name   = "<unknown func>";
+  const char *func_name   = "<unknown func>";
   char        title[100];
 
   if ( ! DaVinci::enabled( true ) ) return;

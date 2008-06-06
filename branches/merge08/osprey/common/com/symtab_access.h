@@ -702,6 +702,11 @@ PU_lexical_level (const PU& pu)		{ return pu.lexical_level; }
 inline void
 Set_PU_lexical_level (PU& pu, SYMTAB_IDX l) { pu.lexical_level = l; }
 
+inline INITO_IDX
+PU_misc_info (const PU& pu)		{ return pu.misc; }
+inline void
+Set_PU_misc_info (PU& pu, INITO_IDX i)	{ pu.misc = i; }
+
 inline TY_IDX 
 PU_base_class (const PU& pu) { return pu.base_class; } 
 inline void 
@@ -1049,6 +1054,16 @@ inline BOOL
 PU_need_trampoline (const PU& pu)	{ return (pu.flags & PU_NEED_TRAMPOLINE) != 0; }
 inline void
 Set_PU_need_trampoline (PU& pu)		{ pu.flags |= PU_NEED_TRAMPOLINE; }
+
+inline BOOL
+PU_has_nonlocal_goto_label (const PU& pu) { return (pu.flags & PU_HAS_NONLOCAL_GOTO_LABEL) != 0; }
+inline void
+Set_PU_has_nonlocal_goto_label (PU& pu)	{ pu.flags |= PU_HAS_NONLOCAL_GOTO_LABEL; }
+
+inline BOOL
+PU_has_goto_outer_block (const PU& pu) { return (pu.flags & PU_HAS_GOTO_OUTER_BLOCK) != 0; }
+inline void
+Set_PU_has_goto_outer_block (PU& pu)	{ pu.flags |= PU_HAS_GOTO_OUTER_BLOCK; }
 #endif
 
 #ifdef TARG_X8664

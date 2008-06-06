@@ -305,7 +305,7 @@ Em_Add_Displacement_To_Scn (
    and return the index.
 */
 static Elf64_Word
-String_To_Index (pSCNINFO strinfo, char *scn_name)
+String_To_Index (pSCNINFO strinfo, const char *scn_name)
 {
     Elf64_Word i;
     char *buf;
@@ -343,7 +343,7 @@ print_elf_error (void)
 */
 static Elf_Scn *
 Create_New_Section (
-    char 	*scn_name,
+    const char *scn_name,
     Elf64_Word 	scn_type,
     Elf64_Xword	scn_flags,
     Elf64_Xword scn_entsize)
@@ -1326,7 +1326,7 @@ Em_End_File (void)
 
 
 pSCNINFO Em_New_Section (
-    char 	*scnname,
+    const char *scnname,
     Elf64_Word 	scntype,
     Elf64_Xword	scnflags,
     Elf64_Xword scnentsize,

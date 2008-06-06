@@ -100,7 +100,7 @@ typedef struct {
   UINT32	etype;		/* elf type */
   UINT32	entsize;	/* elf entsize */
   INT64		max_sec_size;	/* Maximum size of this section */
-  char	       *name;		/* Print name */
+  const char   *name;		/* Print name */
   INT32         pad_size;       /* size to pad, neg ==> post pad */
 } SECTION;
 

@@ -41,7 +41,9 @@
 #include <stdio.h>		    /* for stderr */
 #include <libgen.h>		    /* for basename() */
 #include <sys/stat.h>
+#if ! defined(BUILD_OS_DARWIN)
 #include <elf.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "mempool.h"
 #include "wn.h"			    /* for ir_reader.h */
@@ -316,7 +318,7 @@ ir_all (char *input_file, char *output_file)
     Close_Output_Info ();
     Free_Input_Info ();
 
-} /* ir_sel */
+} /* ir_all */
 
 static void
 usage (char *progname)
@@ -341,10 +343,11 @@ usage (char *progname)
     fprintf (stderr, "\t-sym <.G file> is the same as -global_local\n");
   } else if (sel) {
     fprintf (stderr, "Usage: %s <function> <Binary IR input> [<Binary IR output>]\n", progname);
+
   } else if (all) {
     fprintf (stderr, "Usage: %s <Binary IR input> [<Binary IR output>]\n", progname);
-
   }
+
   exit (1);
 }
 
@@ -472,7 +475,7 @@ main (INT argc, char *argv[])
 void
 Signal_Cleanup (INT sig) { }
 
-char *
+const char *
 Host_Format_Parm (INT kind, MEM_PTR parm)
 {
     fprintf (stderr, "Internal: Host_Format_Parm () not implemented\n");
