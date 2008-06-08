@@ -10539,10 +10539,6 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
     }
 #endif
-    else
-    {
-      ploc = Get_Output_Parameter_Location( MTYPE_To_TY(parmType));
-    }
   }
 
 #ifdef TARG_X8664
