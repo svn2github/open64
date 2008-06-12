@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -35,11 +35,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <elf_stuff.h>
-#include <elfaccess.h>
-#include <libelf/libelf.h>
+#include <libelf.h>
 #include <sys/unwindP.h>
-#include <list>
+#include <list.h>
 
 #include "defs.h"
 #include "erglob.h"
@@ -107,8 +105,8 @@ typedef struct unwind_elem {
 } UNWIND_ELEM;
 
 // use list not slist cause append to end
-static std::list < UNWIND_ELEM > ue_list;
-static std::list < UNWIND_ELEM >::iterator ue_iter;
+static list < UNWIND_ELEM > ue_list;
+static list < UNWIND_ELEM >::iterator ue_iter;
 static UINT last_when;
 static BOOL simple_unwind = FALSE;
 static BOOL has_asm = FALSE;
@@ -351,7 +349,7 @@ Analyze_OP_For_Unwind_Info (OP *op, UINT when, BB *bb)
   TOP opc = OP_code(op);
 
   FmtAssert(!OP_simulated(op) || opc== TOP_asm, 
-	("Found a simulated OP: %s",TOP_Name(opc)));
+	("found a simulated OP"));
   if (opc == TOP_asm) {
 	has_asm = TRUE;
   }
@@ -575,7 +573,7 @@ Find_Unwind_Info (void)
   TN_MAP_Delete (tn_def_op);
 }
 
-
+
 
 // enum of all preserved regs (PR) that can be saved/restored
 typedef enum {
@@ -811,7 +809,7 @@ Propagate_Save_Restore_State (PR_BITSET *entry_state,
 
   while (changed) {
 	++count;
-	if (count > 150) {	// to avoid infinite loops
+	if (count > 100) {	// to avoid infinite loops
 		DevWarn("infinite loop in propagating unwind info");
 		break;
 	}
@@ -854,10 +852,10 @@ Propagate_Save_Restore_State (PR_BITSET *entry_state,
 }
 
 static UNWIND_ELEM
-Find_Prev_Save_UE_For_BB (std::list < UNWIND_ELEM > prev_ue, BB *bb, UINT level)
+Find_Prev_Save_UE_For_BB (list < UNWIND_ELEM > prev_ue, BB *bb, UINT level)
 {
   BBLIST *blst;
-  std::list < UNWIND_ELEM >::iterator prev_iter;
+  list < UNWIND_ELEM >::iterator prev_iter;
   FOR_ALL_BB_PREDS (bb, blst) {
 	// find ue in nbb that does a save
   	for (prev_iter = prev_ue.begin(); prev_iter != prev_ue.end(); ++prev_iter) {
@@ -881,15 +879,15 @@ Find_Prev_Save_UE_For_BB (std::list < UNWIND_ELEM > prev_ue, BB *bb, UINT level)
 
 // overload some routines to add unwind elements
 static void
-Add_UE (std::list < UNWIND_ELEM > prev_ue, PR_TYPE p, UINT when, BB *bb)
+Add_UE (list < UNWIND_ELEM > prev_ue, PR_TYPE p, UINT when, BB *bb)
 {
-  std::list < UNWIND_ELEM >::iterator prev_iter;
+  list < UNWIND_ELEM >::iterator prev_iter;
   UNWIND_ELEM ue;
   ue.kind = UE_UNDEFINED;
   UINT num_found = 0;
   for (prev_iter = prev_ue.begin(); prev_iter != prev_ue.end(); ++prev_iter) {
 	// look for save
-	if (prev_iter->kind == UE_SAVE_GR || prev_iter->kind == UE_SAVE_SP || prev_iter->kind == UE_SAVE_PSP) {
+	if (prev_iter->kind == UE_SAVE_GR || prev_iter->kind == UE_SAVE_SP | prev_iter->kind == UE_SAVE_PSP) {
 		ue = *prev_iter;
 		++num_found;
 	}
@@ -1004,7 +1002,7 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 
   PR_TYPE p;
   // keep list of ue's for each pr.
-  std::list < UNWIND_ELEM > pr_last_info[PR_LAST];
+  list < UNWIND_ELEM > pr_last_info[PR_LAST];
   for (ue_iter = ue_list.begin(); ue_iter != ue_list.end(); ++ue_iter) {
 		p = CR_To_PR (ue_iter->rc_reg);
 		// put last ue for bb on list
@@ -1022,14 +1020,7 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
   INT bbid;
   UINT lwhen = 0;
   ue_iter = ue_list.begin();
-  // bug fix for OSP_226
-  //
-  bool label_state = FALSE;
-  bool copy_state = FALSE;
   for (BB *bb = REGION_First_BB; bb; bb = BB_next(bb)) {
-	if (label_state && BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
-	  copy_state = TRUE;
-	}
 	if (BB_unreachable(bb)) {
 		lwhen += Get_BB_When_Length(bb); 
 		continue;
@@ -1047,12 +1038,10 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 	}
 	// in case have exit that follows exit,
 	// first copy previous label then do new label.
-	// if (label_state && BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
-	if (copy_state) {
+	if (BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
 		// in bb that follows exit, so copy above label
 		Add_UE (UE_COPY, last_label, lwhen, bb);
 		current_state = entry_state[BB_id(BB_prev(bb))];
-		label_state = FALSE;
 	}
 	if (BB_exit(bb) && BB_next(bb) != NULL) {
 		// if have an exit that is followed by another bb
@@ -1063,9 +1052,6 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 			// comes after create_frame.
 			while (ue_iter != ue_list.end() && ue_iter->bb == bb) {
 				if (ue_iter->kind == UE_CREATE_FRAME) {
-					// bug fix for OSP_226
-					//
-					label_state = TRUE;
 					++ue_iter;
 					Add_UE (UE_LABEL, ++last_label, 
 						ue_iter->when, bb);
@@ -1074,18 +1060,13 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 				++ue_iter;
 			}
 		}
-		else {  
-			// bug fix for OSP_226
-			//
-			label_state = TRUE;
+		else {
 			Add_UE (UE_LABEL, ++last_label, lwhen, bb);
 		}
 	}
 
 	// add implicit changes upon entry
-	// co-design of entry generation, see cflow.cxx::generate_entry
-	// if (current_state != entry_state[bbid]) {
- 	if (0) { 
+	if (current_state != entry_state[bbid]) {
   		for (p = PR_FIRST; p < PR_LAST; INCR(p)) {
 			// ignore implicit sp changes,
 			// as label/copy should handle those.
@@ -1147,7 +1128,7 @@ Is_Unwind_Simple (void)
 static void
 Insert_Epilogs (void)
 {
-  std::list < UNWIND_ELEM >::iterator prev_ue;
+  list < UNWIND_ELEM >::iterator prev_ue;
   UNWIND_ELEM ue;
   for (ue_iter = ue_list.begin(); ue_iter != ue_list.end(); ++ue_iter) {
     switch (ue_iter->kind) {
@@ -1176,7 +1157,7 @@ Insert_Epilogs (void)
 static void
 Compute_Region_Sizes (void)
 {
-  std::list < UNWIND_ELEM >::iterator current_ue = ue_list.end();
+  list < UNWIND_ELEM >::iterator current_ue = ue_list.end();
   for (ue_iter = ue_list.begin(); ue_iter != ue_list.end(); ++ue_iter) {
     switch (ue_iter->kind) {
     case UE_CREATE_FRAME:
@@ -1241,7 +1222,7 @@ Finalize_Unwind_Info(void)
 {
   ue_list.clear();
 }
-
+
 
 // some regs have special unwind record descriptors,
 // while others use general spill mechanism.
@@ -1301,16 +1282,9 @@ Emit_Unwind_Directives_For_OP(OP *op, FILE *f)
       proc_region = EPILOGUE_BODY_UREGION;
       break;
     case UE_DESTROY_FRAME:
-      /* when -foptimize-regions, temp close the error: 
-       * Epilogue count of 4294967296 exceeds number of nested prologues (0)
-       * please refer to psABI
-       */
-      if (Omit_UE_DESTROY_FRAME)
-	break;
-      else
       fprintf(f, "%s\t.restore %s\n", 
-		   prefix,
-		   UE_Register_Name(TN_register_class(SP_TN), TN_register(SP_TN)));
+		 prefix,
+		 UE_Register_Name(TN_register_class(SP_TN), TN_register(SP_TN)));
       break;
     case UE_LABEL:
       fprintf(f, "%s\t.body\n", prefix);
@@ -1393,7 +1367,7 @@ Emit_Unwind_Directives_For_OP(OP *op, FILE *f)
 
   next_when += OP_Real_Inst_Words(op);
 }
-
+
 
 
 static void
@@ -1611,14 +1585,15 @@ unwind_dump2asm (char *unwind_table_ptr,
 	// dump section in 8-byte chunks
 	fprintf(Asm_File, ".Lunwind_info_%d:\n", Current_PU_Count());
 	for (i = last_info_size; i < unwind_info_size; i+=8) {
-		fprintf(Asm_File, "\t%s %#llx\n", AS_DWORD, (UINT64)*(__uint64_t *)(unwind_info_ptr+i));
+		fprintf(Asm_File, "\t%s %#llx\n", AS_DWORD, *(__uint64_t *)(unwind_info_ptr+i));
 	}
 	fprintf(Asm_File, "\t%s %s\n", AS_SECTION, IA64_UNWIND);
 	// should always be 3 double-words
 	i = last_table_size;
 	fprintf(Asm_File, "\t%s @segrel(%s#)\n", AS_DWORD, Cur_PU_Name);
 	i+=8;
-	fprintf(Asm_File, "\t%s @segrel(%s#+%p)\n", AS_DWORD, Cur_PU_Name, arg);
+	fprintf(Asm_File, "\t%s @segrel(%s#+%#llx)\n", AS_DWORD, Cur_PU_Name, 
+		(__uint64_t)(arg));
 	fprintf(Asm_File, "\t%s @segrel(.Lunwind_info_%d)\n", AS_DWORD, Current_PU_Count());
 	last_info_size = unwind_info_size;
 	last_table_size = unwind_table_size;
@@ -1657,12 +1632,12 @@ Build_Fde_For_Proc (Dwarf_P_Debug dw_dbg, BB *firstbb,
   else if ( ! simple_unwind)
 	DevWarn("no unwind info cause PU is too complicated");
   if (simple_unwind) {
-	unwind_process (unwind_dump2asm, (void*)(INTPTR)(high_pc-low_pc));
+	unwind_process (unwind_dump2asm, (void*)(high_pc-low_pc));
   }
   return NULL;	// no fde when generate unwind stuff
 }
-
-#include <elf_stuff.h>
+
+#include <elf.h>
 #include <elfaccess.h>
 
 void
@@ -1674,7 +1649,7 @@ Check_Dwarf_Rel(const Elf32_Rel &current_reloc)
 }
 
 void
-Check_Dwarf_Rel(const Elf64_AltRel &current_reloc)
+Check_Dwarf_Rel(const Elf64_Rel &current_reloc)
 {
   FmtAssert(REL64_type(current_reloc) == R_IA_64_DIR64MSB,
 	    ("Unimplemented 64-bit relocation type %d",
@@ -1682,7 +1657,7 @@ Check_Dwarf_Rel(const Elf64_AltRel &current_reloc)
 }
 
 void
-Check_Dwarf_Rela(const Elf64_AltRela &current_reloc)
+Check_Dwarf_Rela(const Elf64_Rela &current_reloc)
 {
   FmtAssert(FALSE,
 	    ("Unimplemented 64-bit relocation type %d",
@@ -1708,7 +1683,6 @@ static char *drop_these[] = {
 	".debug_funcnames",
      // we don't use debug_frame in IA-64.
 	".debug_frame",
-	".eh_frame", /* it has a problem unfortunately -- shuxin yang */
 	0
 };
 // return TRUE if we want to emit the section (IA-64).

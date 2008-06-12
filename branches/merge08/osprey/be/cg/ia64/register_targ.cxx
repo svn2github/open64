@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -49,7 +49,6 @@
 #include "targ_sim.h"
 #include "op.h"
 #include "cg_flags.h"
-#include "ipfec_options.h"
 
 #include "targ_isa_registers.h"
 #include "targ_abi_properties.h"
@@ -68,7 +67,6 @@
 #define LAST_ROTATING_INTEGER_REG (127+REGISTER_MIN)
 #define LAST_ROTATING_FLOAT_REG (127+REGISTER_MIN)
 #define LAST_ROTATING_PREDICATE_REG (63+REGISTER_MIN)
-#define MAX_NUM_OF_OUTPUT_REGISTERS 8
 
 
 static INT stacked_callee_next;
@@ -79,16 +77,6 @@ static INT num_rotating;
 static REGISTER_SET stacked_callee_used;
 REGISTER_SET stacked_caller_used;
 static INT stacked_minimum_output;
-
-extern BOOL fat_self_recursive;
-extern BOOL can_use_stacked_reg;
-
-//Inserted by ORC
-extern INT abi_property;
-extern ISA_REGISTER_CLASS reg_class;
-extern BOOL need_buffer;
-extern INT32 current_lrange;
-//End of Insertion
 
 
 /////////////////////////////////////
@@ -134,18 +122,18 @@ void REGISTER_Request_Stacked_Rotating_Register()
   // Should choose a better balance between callee/caller saved registers!
   
   const INT max_callee = 96 - 8;  // 8 registers required by ABI as output registers?
-  INT n_callee = MIN(max_callee, num_rotating);
-  INT n_caller = MAX(0, num_rotating - max_callee);
+  INT n_callee = min(max_callee, num_rotating);
+  INT n_caller = max(0, num_rotating - max_callee);
   REGISTER r;
 
-  stacked_callee_next = MAX(stacked_callee_next, (INT) (FIRST_INPUT_REG - 1 + n_callee));
+  stacked_callee_next = max(stacked_callee_next, (INT) (FIRST_INPUT_REG - 1 + n_callee));
   for (r = FIRST_ROTATING_INTEGER_REG; 
        r <= stacked_callee_next;
        r++) {
     stacked_callee_used = REGISTER_SET_Union1(stacked_callee_used, r);
   }
 
-  stacked_caller_next = MIN(stacked_caller_next, (INT) (FIRST_OUTPUT_REG - n_caller));
+  stacked_caller_next = min(stacked_caller_next, (INT) (FIRST_OUTPUT_REG - n_caller));
   num_caller = FIRST_OUTPUT_REG - stacked_caller_next;
   for (r = FIRST_OUTPUT_REG;
        r > stacked_caller_next;
@@ -165,24 +153,6 @@ void REGISTER_Request_Stacked_Rotating_Register()
   }
 }
 
-INT32 Get_Stacked_Callee_Used() {
-    INT32 stacked_callee_used = stacked_callee_next - 32;
-    return stacked_callee_used;
-}
- 
-INT32 Get_Stacked_Caller_Used() {
-    INT32 stacked_caller_used = 128 - stacked_caller_next;
-    return stacked_caller_used;
-}
- 
-INT32 Get_Stacked_Callee_Next() {
-    return stacked_callee_next;
-}
- 
-INT32 Get_Stacked_Caller_Next() {
-    return stacked_caller_next;
-}
- 
 /////////////////////////////////////
 REGISTER REGISTER_Request_Stacked_Register(INT has_abi_property,
 					   ISA_REGISTER_CLASS rclass)
@@ -192,21 +162,10 @@ REGISTER REGISTER_Request_Stacked_Register(INT has_abi_property,
 //
 /////////////////////////////////////
 {
-  need_buffer = FALSE;
   if (!REGISTER_Has_Stacked_Registers(rclass)) return REGISTER_UNDEFINED;
 
   if (stacked_callee_next >= stacked_caller_next) return REGISTER_UNDEFINED;
-  INT32 cut_num = IPFEC_Stacked_Cut_Num;
-  if (fat_self_recursive) {
-    if (!can_use_stacked_reg) {
-        abi_property = has_abi_property;
-        reg_class    = rclass;
-        need_buffer  = TRUE;
-        return REGISTER_UNDEFINED;
-    }
-    if ((stacked_callee_next + cut_num) >= stacked_caller_next)
-       return REGISTER_UNDEFINED;
-  }
+  
   // callee saved are allocated from the front, caller from the
   // rear.  The two pointers meet when the stack is used up.  The
   // caller saved (i.e. output) registers will be renamed at code
@@ -222,17 +181,12 @@ REGISTER REGISTER_Request_Stacked_Register(INT has_abi_property,
       stacked_callee_used = REGISTER_SET_Union1(stacked_callee_used, 
 					        result_reg);
     }
-  } else if ((has_abi_property == ABI_PROPERTY_caller ||
-	     has_abi_property == ABI_PROPERTY_stacked) && num_caller < MAX_NUM_OF_OUTPUT_REGISTERS) {
+  } else if (has_abi_property == ABI_PROPERTY_caller ||
+	     has_abi_property == ABI_PROPERTY_stacked) {
     result_reg = stacked_caller_next--;
     stacked_caller_used =
       REGISTER_SET_Union1(stacked_caller_used, result_reg);
     num_caller++;
-  }
-  else
-    return REGISTER_UNDEFINED;
-  if (fat_self_recursive) { 
-      DevWarn(" STACKED REGISTER %d ALLOCATED TO TN %d\n",result_reg,current_lrange);
   }
   return result_reg;
 }
@@ -570,7 +524,7 @@ void REGISTER_Reserve_Rotating_Registers(ISA_REGISTER_CLASS rclass, INT n)
 //
 /////////////////////////////////////
 {
-  num_rotating = MAX(num_rotating, n);
+  num_rotating = max(num_rotating, n);
   // roundup to next multiple of 8
   if ((num_rotating & 7) != 0) {
     num_rotating &= ~7;
@@ -682,6 +636,4 @@ void Init_Mtype_RegClass_Map(void)
   map[MTYPE_F8] = ISA_REGISTER_CLASS_float;
   map[MTYPE_F10] = ISA_REGISTER_CLASS_float;
   map[MTYPE_F16] = ISA_REGISTER_CLASS_UNDEFINED;
-  // bug fix for OSP_87
-  map[MTYPE_A8] = ISA_REGISTER_CLASS_branch;
 }

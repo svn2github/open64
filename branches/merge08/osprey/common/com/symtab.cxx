@@ -2717,7 +2717,7 @@ Initialize_Special_Global_Symbols ()
 #endif // KEY
     Void_Type = MTYPE_To_TY (MTYPE_V);
 
-#ifdef KEY
+#if defined(TARG_X8664) || defined(TARG_MIPS)
     Spill_Int32_Type   = MTYPE_To_TY (Spill_Int32_Mtype);
     Spill_Float32_Type = MTYPE_To_TY (Spill_Float32_Mtype);
 #endif

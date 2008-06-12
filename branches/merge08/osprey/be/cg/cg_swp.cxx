@@ -93,7 +93,7 @@ void SWP_OPTIONS::PU_Configure()
   if (!Implicit_Prefetch_Set) {
     // Not all processors implement implicit prefetch -- disable
     // by default on those processors
-#ifndef TARG_MIPS
+#if !defined(TARG_MIPS) || !defined(TARG_SL)
     if (Is_Target_Itanium()) Implicit_Prefetch = FALSE;
 #endif
   }
@@ -386,7 +386,7 @@ SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace)
 static void
 Prune_Regout_Deps(BB *body, TN_SET *non_rotating)
 {
-  std::vector<ARC*> arcs_to_delete;
+  vector<ARC*> arcs_to_delete;
   OP *op;
   FOR_ALL_BB_OPs(body, op) {
     if (_CG_DEP_op_info(op)) {

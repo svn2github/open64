@@ -1,9 +1,5 @@
 /*
- *  Copyright (C) 2006, 2007.  QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -45,10 +41,10 @@
  * =======================================================================
  *
  *  Module: ebo_special.cxx
- *  $Revision: 1.245 $
- *  $Date: 05/11/30 16:23:38-08:00 $
- *  $Author: tkong@hyalite.keyresearch $
- *  $Source: be/cg/x8664/SCCS/s.ebo_special.cxx $
+ *  $Revision: 1.1 $
+ *  $Date: 2005/07/27 02:13:22 $
+ *  $Author: kevinlo $
+ *  $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/x8664/ebo_special.cxx,v $
  *
  *  Revision comments:
  *
@@ -109,9 +105,6 @@ static const char source_file[] = __FILE__;
 #include "ebo_info.h"
 #include "ebo_special.h"
 #include "ebo_util.h"
-#include "cgtarget.h"
-
-#include "config_lno.h"
 
 extern BOOL TN_live_out_of( TN*, BB* );
 
@@ -135,30 +128,12 @@ static INT32 fixed_branch_cost, taken_branch_cost;
 static BOOL Convert_Imm_And( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 static BOOL Convert_Imm_Mul( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 static BOOL Convert_Imm_Or( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
-static BOOL Convert_Imm_Add( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 static BOOL Convert_Imm_Xor( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
-static BOOL Convert_Imm_Cmp( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
-
-enum ADDR_MODE { REG_MODE = 0,     /* reg                      */
-		 BASE_MODE,	   /* offset(base)             */
-		 BASE_INDEX_MODE,  /* offset(base,index,scale) */
-		 INDEX_MODE,       /* offset(,index,scale)     */
-		 N32_MODE,         /* offset                   */
-		 UNDEFINED_MODE	   /* end marker               */
-	       };
-
-static void Init_Addr_Modes();
-static TOP Get_Top_For_Addr_Mode (TOP, ADDR_MODE);
-
-static OP *Compose_Mem_Op_And_Copy_Info (OP *op, TN *index, TN *offset,
-					 TN *scale, TN *base,
-					 EBO_TN_INFO **load_actual_tninfo);
 
 /* Initialize and finalize ebo special routines. */
 void
 EBO_Special_Start (MEM_POOL *pool)
 {
-#if 0
   st_initv_map = CXX_NEW(ST_TO_INITV_MAP(31, pool), pool);
   st_initv_map_inited = FALSE;
   work_gtn_set = GTN_SET_Create_Empty(Last_TN + 1, pool);
@@ -169,9 +144,6 @@ EBO_Special_Start (MEM_POOL *pool)
   double ddummy;
   CGTARG_Compute_Branch_Parameters(&idummy, &fixed_branch_cost,
 				   &taken_branch_cost, &ddummy);
-#endif
-
-  Init_Addr_Modes();
 }
 
 void
@@ -184,25 +156,6 @@ EBO_Special_Finish (void)
   work_pool = NULL;
 }
 
-// Return TRUE if a predessor OP's operand is available at OP.  The predecessor
-// defines the TN identified by TNINFO.  PRED_OPND_IDX tells which predecessor
-// operand.
-static BOOL
-Pred_Opnd_Avail (OP *op, EBO_TN_INFO *tninfo, int pred_opnd_idx,
-		 EBO_TN_INFO **pred_tninfo_p = NULL)
-{
-  EBO_OP_INFO *pred_opinfo;
-  EBO_TN_INFO *pred_tninfo;
-
-  pred_opinfo = locate_opinfo_entry(tninfo);
-  if (pred_opinfo == NULL)
-    return FALSE;
-  pred_tninfo = pred_opinfo->actual_opnd[pred_opnd_idx];
-  if (pred_tninfo_p != NULL)
-    *pred_tninfo_p = pred_tninfo;
-  return EBO_tn_available(OP_bb(op), pred_tninfo);
-}
-
 
 /*
  * Identify OP's that contain a constant and operate in a way that
@@ -211,9 +164,6 @@ Pred_Opnd_Avail (OP *op, EBO_TN_INFO *tninfo, int pred_opnd_idx,
  */
 BOOL EBO_Can_Merge_Into_Offset (OP *op)
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_CAN_MERGE_INTO_OFFSET)) return FALSE;
-#endif
   TOP top = OP_code(op);
   
   if( !OP_iadd( op ) && !OP_isub( op ) )
@@ -299,9 +249,6 @@ EBO_OPS_omega (OPS *ops)
 
 BOOL Combine_L1_L2_Prefetches( OP* op, TN** opnd_tn, EBO_TN_INFO** opnd_tninfo )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_COMBINE_L1_L2_PREFETCH)) return FALSE;
-#endif
   if( !OP_prefetch( op ) )
     return FALSE;
 
@@ -384,14 +331,11 @@ BOOL Combine_L1_L2_Prefetches( OP* op, TN** opnd_tn, EBO_TN_INFO** opnd_tninfo )
     OP* new_op = Dup_OP( op );
     Set_OP_opnd( new_op, 0 , Gen_Enum_TN( ECV_pfhint_L1_L2_load ) );
 
-    //Bug 13609 : keep prefetchnta suggested by LNO
-    BOOL nt = (OP_code(op)==TOP_prefetchnta);
-    TOP  new_top = nt?TOP_prefetchnta:TOP_prefetcht0;
-   
-    if( OP_find_opnd_use( op, OU_base ) < 0 )
-      new_top = nt?TOP_prefetchntaxx:TOP_prefetcht0xx;
-    else if( OP_find_opnd_use( op, OU_index ) >= 0 )
-      new_top = nt?TOP_prefetchntax:TOP_prefetcht0x;
+    TOP new_top = TOP_prefetcht0;
+    if( TOP_Find_Operand_Use( OP_code(op), OU_base ) < 0 )
+      new_top = TOP_prefetcht0xx;
+    else if( TOP_Find_Operand_Use( OP_code(op), OU_index ) >= 0 )
+      new_top = TOP_prefetcht0x;
 
     OP_Change_Opcode( new_op, new_top );
 
@@ -404,11 +348,10 @@ BOOL Combine_L1_L2_Prefetches( OP* op, TN** opnd_tn, EBO_TN_INFO** opnd_tninfo )
     }
 
     Copy_WN_For_Memory_OP( new_op, op);
-    if ( OP_volatile( op ) )
-      Set_OP_volatile( new_op );
     OP_srcpos( new_op ) = OP_srcpos( op );
 
     if( EBO_in_loop ){
+      FmtAssert( false, ("Combine_L1_L2_Prefetches: NYI") );
       EBO_Copy_OP_omega( new_op, op );
     }
 
@@ -533,20 +476,16 @@ static void Get_Size_Ext_Info( TOP top, SIZE_EXT_INFO* info )
   case TOP_movswq:  SET_SIZE_EXT_INFO( info, 2, 8, true );   break;
   case TOP_movzwq:  SET_SIZE_EXT_INFO( info, 2, 8, false );  break;
   case TOP_movslq:  SET_SIZE_EXT_INFO( info, 4, 8, true );   break;
-  case TOP_movzlq:  SET_SIZE_EXT_INFO( info, 4, 8, false );  break;
 
   case TOP_ld32_n32:
   case TOP_ld32:
   case TOP_ldx32:
   case TOP_ldxx32:
-  case TOP_ld32_abs:
     SET_SIZE_EXT_INFO( info, 4, 4, false );
     break;
   case TOP_ld64:
   case TOP_ldx64:
   case TOP_ldxx64:
-  case TOP_ld64_abs:
-  case TOP_ld64_off:
     SET_SIZE_EXT_INFO( info, 8, 8, false );
     break;
   case TOP_ld8_32_n32:
@@ -561,9 +500,6 @@ static void Get_Size_Ext_Info( TOP top, SIZE_EXT_INFO* info )
   case TOP_ldxxu8_32:
     SET_SIZE_EXT_INFO( info, 1, 4, false );
     break;
-  case TOP_ld8_abs:
-    SET_SIZE_EXT_INFO( info, 1, 1, false );
-    break;
   case TOP_ld16_32_n32:
   case TOP_ld16_32:
   case TOP_ldx16_32:
@@ -576,37 +512,29 @@ static void Get_Size_Ext_Info( TOP top, SIZE_EXT_INFO* info )
   case TOP_ldxxu16_32:
     SET_SIZE_EXT_INFO( info, 2, 4, false );
     break;
-  case TOP_ld16_abs:
-    SET_SIZE_EXT_INFO( info, 2, 2, false );
-    break;
   case TOP_ld8_64:
   case TOP_ldx8_64:
   case TOP_ldxx8_64:
-  case TOP_ld8_64_off:
     SET_SIZE_EXT_INFO( info, 1, 8, true );
     break;
   case TOP_ldu8_64:
   case TOP_ldxu8_64:
   case TOP_ldxxu8_64:
-  case TOP_ldu8_64_off:
     SET_SIZE_EXT_INFO( info, 1, 8, false );
     break;
   case TOP_ld16_64:
   case TOP_ldx16_64:
   case TOP_ldxx16_64:
-  case TOP_ld16_64_off:
     SET_SIZE_EXT_INFO( info, 2, 8, true );
     break;
   case TOP_ldu16_64:
   case TOP_ldxu16_64:
   case TOP_ldxxu16_64:
-  case TOP_ldu16_64_off:
     SET_SIZE_EXT_INFO( info, 2, 8, false );
     break;
   case TOP_ld32_64:
   case TOP_ldx32_64:
   case TOP_ldxx32_64:
-  case TOP_ld32_64_off:
     SET_SIZE_EXT_INFO( info, 4, 8, true );
     break;
 
@@ -625,17 +553,15 @@ delete_subset_mem_op(OP *op,
                      INT64 offset_pred,
                      INT64 offset_succ)
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_DELETE_SUBSET_MEM_OP)) return FALSE;
-#endif
   OP *pred_op = opinfo->in_op;
   BB *bb = OP_bb(op);
   INT opcount = OP_opnds(op);
   TN *pred_result = OP_store(pred_op) 
-    ? OP_opnd(pred_op, OP_find_opnd_use(pred_op, OU_storeval))
+    ? OP_opnd(pred_op, TOP_Find_Operand_Use(OP_code(pred_op),
+					    OU_storeval)) 
     : OP_result(pred_op,0);
   TN *succ_result = OP_store(op)
-    ? OP_opnd(op, OP_find_opnd_use(op,OU_storeval))
+    ? OP_opnd(op, TOP_Find_Operand_Use(OP_code(op),OU_storeval))
     : OP_result(op,0);
   BOOL succ_is_subset = FALSE;
   INT byte_offset;
@@ -696,6 +622,7 @@ delete_subset_mem_op(OP *op,
   if( size_succ == 1 &&
       EBO_in_peep ){
     const REGISTER reg = TN_register(pred_result);
+    FmtAssert( reg != REGISTER_UNDEFINED, ("NYI") );
     const REGISTER_SET regs =
       REGISTER_CLASS_eight_bit_regs(TN_register_class(pred_result));
     if( !REGISTER_SET_MemberP( regs, reg ) )
@@ -805,9 +732,9 @@ delete_reload_across_dependency (OP *op,
   OP *intervening_op = intervening_opinfo->in_op;
   TOP pred_opcode = OP_code(pred_op);
   TOP intervening_opcode = OP_code(intervening_op);
-  INT pred_base_idx = OP_find_opnd_use(pred_op, OU_base);
+  INT pred_base_idx = TOP_Find_Operand_Use(pred_opcode, OU_base);
   INT intervening_base_idx =  
-    OP_find_opnd_use(intervening_op, OU_base);
+    TOP_Find_Operand_Use(intervening_opcode, OU_base);
   INT size_pred;
   INT size_succ;
   INT size_intervening;
@@ -858,10 +785,11 @@ delete_reload_across_dependency (OP *op,
 
  /* Capture the values in the preceeding memory OPs. */
   pred_result = OP_store(pred_op) ? 
-    OP_opnd(pred_op, OP_find_opnd_use(pred_op, OU_storeval))
+    OP_opnd(pred_op, TOP_Find_Operand_Use(pred_opcode, OU_storeval))
     : OP_result(pred_op,0);
   intervening_result = OP_opnd(intervening_op,
-                               OP_find_opnd_use(intervening_op,OU_storeval));
+                               TOP_Find_Operand_Use(intervening_opcode, 
+						    OU_storeval));
 
   if ((TN_register_class(intervening_result) != 
        TN_register_class(pred_result)) ||
@@ -878,7 +806,7 @@ delete_reload_across_dependency (OP *op,
   if (TNs_Are_Equivalent( pred_result, intervening_result)) {
     /* It doesn't matter if the addresses are the same or different
        because the value will always be the same! Just Copy the value. */
-    Is_True( false, ("delete_reload_across_dependency: NYI (1)"));
+    FmtAssert( false, ("delete_reload_across_dependency: NYI (1)"));
     return TRUE;
   }
 
@@ -908,154 +836,6 @@ delete_reload_across_dependency (OP *op,
   return TRUE;
 }
 
-// Optimize store-load sequence.  STORE_OPINFO specifies the store.  LOAD_OP is
-// the load, with LOAD_ACTUAL_TNINFO and LOAD_OPND_TNINFO describing the actual
-// and optimal operands, respectively.  Both the store and the load access the
-// same memory location.
-static BOOL
-Special_Store_Load_Sequence (OP *load_op,
-			     EBO_TN_INFO **load_actual_tninfo,
-			     EBO_TN_INFO **load_opnd_tninfo,
-			     EBO_OP_INFO *store_opinfo)
-{
-  Is_True(OP_store(store_opinfo->in_op) && OP_load(load_op),
-	  ("Special_Store_Load_Sequence: not store-load sequence"));
-
-  INT storeval_idx = OP_find_opnd_use(store_opinfo->in_op, OU_storeval);
-  Is_True(storeval_idx >= 0,
-	  ("Special_Store_Load_Sequence: invalid storeval index"));
-  TN *storeval_tn = OP_opnd(store_opinfo->in_op, storeval_idx);
-
-  // Replace:			; bug 7602
-  //   xmm     = load mem1	; first_load_op
-  //   mem2    = store xmm	; store_op
-  //   int_reg = load mem2	; load_op
-  // with:
-  //   xmm     = load mem1
-  //   mem2    = store xmm
-  //   int_reg = load mem1	; change to load from mem1
-  if (TN_register_class(OP_result(load_op,0)) == ISA_REGISTER_CLASS_integer &&
-      TN_register_class(storeval_tn) == ISA_REGISTER_CLASS_float &&
-      TN_size(OP_result(load_op, 0)) == TN_size(storeval_tn)) {	// bug 11321
-    OP *store_op = store_opinfo->in_op;
-    EBO_TN_INFO *storeval_tninfo = store_opinfo->actual_opnd[storeval_idx];
-    if (storeval_tninfo != NULL &&
-    	storeval_tninfo->in_op != NULL &&
-	OP_load(storeval_tninfo->in_op)) {
-      INT i;
-      OP *first_load_op = storeval_tninfo->in_op;
-      EBO_OP_INFO *first_load_opinfo = storeval_tninfo->in_opinfo;
-      Is_True(first_load_opinfo != NULL,
-	      ("Special_Store_Load_Sequence: opinfo NULL"));
-
-      // Get first_load_op's base/index/offset/scale.  See if its base/index
-      // TNs are available at load_op.
-      TN *base_tn = NULL;
-      TN *index_tn = NULL;
-      TN *offset_tn = NULL;
-      TN *scale_tn = NULL;
-
-      INT base_idx = TOP_Find_Operand_Use(OP_code(first_load_op), OU_base);
-      INT index_idx = TOP_Find_Operand_Use(OP_code(first_load_op), OU_index);
-      INT offset_idx = TOP_Find_Operand_Use(OP_code(first_load_op),OU_offset);
-      INT scale_idx = TOP_Find_Operand_Use(OP_code(first_load_op), OU_scale);
-
-      EBO_TN_INFO *base_tninfo = NULL, *index_tninfo = NULL;
-
-      if (base_idx >= 0) {	// base
-	base_tn = OP_opnd(first_load_op, base_idx);
-	base_tninfo = first_load_opinfo->actual_opnd[base_idx];
-	if (base_tninfo == NULL ||
-	    !EBO_tn_available(OP_bb(load_op), base_tninfo))
-	  return FALSE;
-      }
-      if (index_idx >= 0) {	// index
-	index_tn = OP_opnd(first_load_op, index_idx);
-	index_tninfo = first_load_opinfo->actual_opnd[index_idx];
-	if (index_tninfo == NULL ||
-	    !EBO_tn_available(OP_bb(load_op), index_tninfo))
-	  return FALSE;
-      }
-      offset_tn = offset_idx >= 0 ? OP_opnd(first_load_op, offset_idx) : NULL;
-      scale_tn = scale_idx >= 0 ? OP_opnd(first_load_op, scale_idx) : NULL;
-
-      // Check for aliased stores to mem1 occuring after first_load_op.
-      EBO_OP_INFO *opinfo = EBO_opinfo_table[first_load_opinfo->hash_index];
-      Is_True(opinfo != NULL,
-	      ("Special_Store_Load_Sequence: OP hash table empty"));
-      for ( ; opinfo != first_load_opinfo; opinfo = opinfo->same) {
-	if (opinfo->in_op &&	// opinfo->in_op is NULL if OP is deleted
-	    OP_store(opinfo->in_op) &&
-	    opinfo->in_op != store_op) {
-	  return FALSE;		// Potential alias store.
-	}
-      }
-
-      // If load_op already loads from mem1, then don't replace load_op with
-      // another copy of itself.
-      {
-	INT load_op_base_idx = TOP_Find_Operand_Use(OP_code(first_load_op),
-						    OU_base);
-	INT load_op_index_idx = TOP_Find_Operand_Use(OP_code(first_load_op),
-						     OU_index);
-	INT load_op_offset_idx = TOP_Find_Operand_Use(OP_code(first_load_op),
-						      OU_offset);
-	INT load_op_scale_idx = TOP_Find_Operand_Use(OP_code(first_load_op),
-						     OU_scale);
-	TN *load_op_base_tn = load_op_base_idx >= 0 ?
-				OP_opnd(load_op, base_idx) : NULL;
-	TN *load_op_index_tn = load_op_index_idx >= 0 ?
-				 OP_opnd(load_op, index_idx) : NULL;
-	TN *load_op_offset_tn = load_op_offset_idx >= 0 ?
-				  OP_opnd(load_op, offset_idx) : NULL;
-	TN *load_op_scale_tn = load_op_scale_idx >= 0 ?
-				 OP_opnd(load_op, scale_idx) : NULL;
-
-	if (load_op_base_tn == base_tn &&
-	    load_op_index_tn == index_tn &&
-	    (load_op_offset_tn == offset_tn ||
-	     (TN_has_value(load_op_offset_tn) && TN_has_value(offset_tn) &&
-	      TN_value(load_op_offset_tn) == TN_value(offset_tn))) &&
-	    (load_op_scale_tn == scale_tn ||
-	     (TN_has_value(load_op_scale_tn) && TN_has_value(scale_tn) &&
-	      TN_value(load_op_scale_tn) == TN_value(scale_tn)))) {
-	  return FALSE;
-	}
-      }
-
-      // OK to change from load mem1 to load mem2.
-      OP *new_op = Compose_Mem_Op_And_Copy_Info(load_op, index_tn, offset_tn,
-						scale_tn, base_tn,
-						load_actual_tninfo);
-
-      BB_Insert_Op_After(OP_bb(load_op), load_op, new_op);
-
-      // Increment the reference counts for first_load_op's base/index TNs.
-      if (base_tninfo != NULL)
-	inc_ref_count(base_tninfo);
-      if (index_tninfo != NULL)
-	inc_ref_count(index_tninfo);
-
-      // Decrement the reference counts for load_op's base/index TNs.
-      INT idx;
-      idx = TOP_Find_Operand_Use(OP_code(load_op), OU_base);
-      if (idx >= 0 &&
-	  load_actual_tninfo[idx] != NULL) {
-	dec_ref_count(load_actual_tninfo[idx]);
-      }
-
-      idx = TOP_Find_Operand_Use(OP_code(load_op), OU_index);
-      if (idx >= 0 &&
-	  load_actual_tninfo[idx] != NULL) {
-	dec_ref_count(load_actual_tninfo[idx]);
-      }
-
-      return TRUE;
-    }
-  }
-  return FALSE;
-}
-
 
 /* 
  * delete_memory_op
@@ -1067,13 +847,9 @@ Special_Store_Load_Sequence (OP *load_op,
 static
 BOOL
 delete_memory_op (OP *op,
-                  EBO_TN_INFO **actual_tninfo,
                   EBO_TN_INFO **opnd_tninfo,
 		  EBO_OP_INFO *opinfo)
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_DELETE_MEMORY_OP)) return FALSE;
-#endif
   OPS ops = OPS_EMPTY;
   INT size_pred;
   INT size_succ;
@@ -1233,7 +1009,8 @@ delete_memory_op (OP *op,
       return FALSE;
     }
 
-    INT storeval_idx = OP_find_opnd_use(opinfo->in_op,OU_storeval);
+    INT storeval_idx = TOP_Find_Operand_Use(OP_code(opinfo->in_op),OU_storeval);
+    /* The increment must be preserved. */
     if (storeval_idx < 0)
     {
       if (EBO_Trace_Optimization)
@@ -1257,9 +1034,6 @@ delete_memory_op (OP *op,
     if (TN_register_class(OP_result(op,0)) !=
 	TN_register_class(storeval_tn))
     {
-      if (Special_Store_Load_Sequence(op, actual_tninfo, opnd_tninfo, opinfo))
-        return TRUE;
-
       if (EBO_Trace_Data_Flow)
 	fprintf(TFile,"%sRegclass mismatch for Store - Load combination\n",
 		EBO_trace_pfx);
@@ -1276,15 +1050,6 @@ delete_memory_op (OP *op,
 	fprintf(TFile,"%sShouldn't move dedicated register references across blocks.\n",
 		EBO_trace_pfx);
       
-      return FALSE;
-    }
-
-    if (TN_is_dedicated(storeval_tn) && 
-	(TN_register(storeval_tn) == RCX || TN_register(storeval_tn) == RDX)) 
-    { // bug 3842
-      if (EBO_Trace_Data_Flow)
-	fprintf(TFile,"%sShould not move special dedicated registers RCX and RDX.\n",
-		EBO_trace_pfx);
       return FALSE;
     }
 
@@ -1355,16 +1120,6 @@ delete_memory_op (OP *op,
      Load - Store
   */
   else {
-    if( EBO_Trace_Optimization ){
-      fprintf( TFile, "Load - Store combination is not optimized\n" );
-    }
-#if 0
-    if( OP_load( opinfo->in_op ) &&
-	OP_prev(op) == opinfo->in_op &&
-	OP_result( opinfo->in_op, 0 ) == OP_opnd( op, 0 ) ){
-      return TRUE;
-    }
-#endif
     return FALSE;
   }
 
@@ -1382,12 +1137,8 @@ delete_memory_op (OP *op,
 BOOL
 delete_duplicate_op (OP *op,
 		     EBO_TN_INFO **opnd_tninfo,
-		     EBO_OP_INFO *opinfo,
-		     EBO_TN_INFO **actual_tninfo)
+		     EBO_OP_INFO *opinfo)
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_DELETE_DUPLICATE_OP)) return FALSE;
-#endif
   INT resnum;
   OPS ops = OPS_EMPTY;
 
@@ -1412,7 +1163,7 @@ delete_duplicate_op (OP *op,
 
   if (OP_memory(op))
   {
-    return delete_memory_op (op, actual_tninfo, opnd_tninfo, opinfo);
+    return delete_memory_op (op, opnd_tninfo, opinfo);
   }
   else
   {
@@ -1457,52 +1208,18 @@ delete_duplicate_op (OP *op,
 }
 
 
-/* Return the opcode for <op> that can take <imm_val>
-   as its <opnd>th operand.
-*/
-static TOP TOP_with_Imm_Opnd( OP* op, int opnd, INT64 imm_val )
-{
-  const TOP top = OP_code(op);
-  const ISA_OPERAND_INFO* oinfo = ISA_OPERAND_Info(top);
-  const ISA_OPERAND_VALTYP* vtype = ISA_OPERAND_INFO_Operand(oinfo, 1);
-    
-  if( ISA_OPERAND_VALTYP_Is_Literal(vtype) )
-    return TOP_UNDEFINED;
-
-  //const ISA_LIT_CLASS lc = ISA_OPERAND_VALTYP_Literal_Class(vtype);
-  if( !ISA_LC_Value_In_Class( imm_val, LC_simm32 ) )
-    return TOP_UNDEFINED;
-
-  return CGTARG_Immed_To_Reg( top );
-}
-
 
 /* Attempt to convert an add of 'tn' + 'imm_val' into an addi. Return
    TRUE if we succeed, FALSE otherwise. */
 static BOOL
 Convert_Imm_Add (OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo)
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_CONVERT_IMM_ADD)) return FALSE;
-#endif
   OP *new_op = NULL;
   TOP new_opcode;
   BOOL is_64bit = (TN_size(tnr) == 8);
   if (imm_val == 0) {
-    if( Is_Target_32bit() ){
-      for( OP* next_op = OP_next(op); next_op != NULL; next_op = OP_next( next_op ) ){
-	if( OP_reads_rflags( next_op ) ){
-	  return FALSE;
-	}
-
-	if( TOP_is_change_rflags( OP_code(next_op) ) )
-	  break;
-      }
-    }
-
     new_opcode = is_64bit ? TOP_mov64 : TOP_mov32;
     new_op = Mk_OP(new_opcode, tnr, tn);
-
   } else if (ISA_LC_Value_In_Class ( imm_val, LC_simm32)) {
     if ( OP_code(op) == TOP_addi32 || OP_code(op) == TOP_addi64 ||
 	 OP_code(op) == TOP_lea32 || OP_code(op) == TOP_lea64 )
@@ -1570,9 +1287,6 @@ Constant_Operand0 (OP *op,
                    TN **opnd_tn,
                    EBO_TN_INFO **opnd_tninfo)
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_CONSTANT_OPERAND0)) return FALSE;
-#endif
   TOP opcode = OP_code(op);
   INT o0_idx = 0;
   INT o1_idx = (OP_opnds(op) > 1) ? 1 : -1;  
@@ -1631,25 +1345,9 @@ Constant_Operand0 (OP *op,
 */
 static BOOL Convert_Imm_And( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_CONVERT_IMM_AND)) return FALSE;
-#endif
   TOP new_top = TOP_UNDEFINED;
-  OPS ops = OPS_EMPTY;
-
-  /* First, handle special cases. */
 
   if( imm_val == 0xff ){
-    // Under m32, not all general purpose registers are byte-addressable.
-    if (Is_Target_32bit() &&
-	EBO_in_peep) {
-      const REGISTER reg = TN_register(tn);
-      const REGISTER_SET regs =
-	      REGISTER_CLASS_eight_bit_regs(TN_register_class(tn));
-      if (!REGISTER_SET_MemberP(regs, reg))
-        return FALSE;
-    }
-
     new_top = TN_size(tnr) == 8 ? TOP_movzbq : TOP_movzbl;
 
   } else if( imm_val == 0xffff ){
@@ -1657,25 +1355,13 @@ static BOOL Convert_Imm_And( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
     
   } else if( imm_val == 0xffffffff && TN_size(tnr) != 8){
     new_top = TOP_mov32;
-  }
 
-  if( new_top != TOP_UNDEFINED ){
-    Build_OP( new_top, tnr, tn, &ops );
-    BB_Insert_Ops_After( OP_bb(op), op, &ops );
-
-    return TRUE;
-  }
-
-  /* Second, convert the opcode to carry the <imm_val>. */
-
-  new_top = TOP_with_Imm_Opnd( op, 1, imm_val );
-
-  if( new_top == TOP_UNDEFINED )
+  } else {
     return FALSE;
+  }
 
-  Build_OP( new_top, tnr, tn,
-	    Gen_Literal_TN(imm_val,4),
-	    &ops );
+  OPS ops = OPS_EMPTY;
+  Build_OP( new_top, tnr, tn, &ops );
   BB_Insert_Ops_After( OP_bb(op), op, &ops );
 
   return TRUE;
@@ -1684,24 +1370,16 @@ static BOOL Convert_Imm_And( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
   
 static BOOL Convert_Imm_Or( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_CONVERT_IMM_OR)) return FALSE;
-#endif
+  TOP new_top = TOP_UNDEFINED;
   OPS ops = OPS_EMPTY;
 
   if( imm_val == 0x0 ){
     Exp_COPY( tnr, tn, &ops );
-    BB_Insert_Ops_After( OP_bb(op), op, &ops );
-    return TRUE;
+
+  } else {
+    return FALSE;
   }
 
-  const TOP new_top = TOP_with_Imm_Opnd( op, 1, imm_val );
-  if( new_top == TOP_UNDEFINED )
-    return FALSE;
-
-  Build_OP( new_top, tnr, tn,
-	    Gen_Literal_TN(imm_val,4),
-	    &ops );
   BB_Insert_Ops_After( OP_bb(op), op, &ops );
 
   return TRUE;
@@ -1710,51 +1388,18 @@ static BOOL Convert_Imm_Or( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO 
   
 static BOOL Convert_Imm_Xor( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_CONVERT_IMM_XOR)) return FALSE;
-#endif
+  TOP new_top = TOP_UNDEFINED;
   OPS ops = OPS_EMPTY;
 
   if( imm_val == 0x0 ){
     Exp_COPY( tnr, tn, &ops );
-    BB_Insert_Ops_After( OP_bb(op), op, &ops );
-    return TRUE;
-  }
 
-  if( imm_val == -1 ){
+  } else if( imm_val == -1 ){
     Build_OP( TN_size(tnr) == 4 ? TOP_not32 : TOP_not64, tnr, tn, &ops );
-    BB_Insert_Ops_After( OP_bb(op), op, &ops );
-    return TRUE;
+
+  } else {
+    return FALSE;
   }
-
-  const TOP new_top = TOP_with_Imm_Opnd( op, 1, imm_val );
-
-  if( new_top == TOP_UNDEFINED )
-    return FALSE;
-
-  Build_OP( new_top, tnr, tn,
-	    Gen_Literal_TN(imm_val,4),
-	    &ops );
-
-  BB_Insert_Ops_After( OP_bb(op), op, &ops );
-
-  return TRUE;
-}
-
-
-static BOOL Convert_Imm_Cmp( OP* op, TN *tnr, TN *tn, INT64 imm_val,
-			     EBO_TN_INFO *tninfo )
-{
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_CONVERT_IMM_CMP)) return FALSE;
-#endif
-  const TOP new_top = TOP_with_Imm_Opnd( op, 1, imm_val );
-
-  if( new_top == TOP_UNDEFINED )
-    return FALSE;
-
-  OPS ops = OPS_EMPTY;
-  Build_OP( new_top, tnr, tn, Gen_Literal_TN(imm_val,4), &ops );
 
   BB_Insert_Ops_After( OP_bb(op), op, &ops );
 
@@ -1767,11 +1412,6 @@ static BOOL Convert_Imm_Cmp( OP* op, TN *tnr, TN *tn, INT64 imm_val,
 */
 static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_CONVERT_IMM_MUL)) return FALSE;
-#endif
-  TN* tnr1 = ( OP_results(op) == 2 ) ? OP_result( op, 1 ) : NULL;
-
   OP *new_op = NULL;
   const BOOL is_64bit = (TN_size(tnr) == 8);
   const TYPE_ID mtype = is_64bit ? MTYPE_I8 : MTYPE_I4;
@@ -1780,57 +1420,17 @@ static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
 
   if( imm_val == 0 ){
     Exp_Immediate( tnr, Gen_Literal_TN(0,4), false, &ops );
-    if( tnr1 != NULL ){
-      Exp_Immediate( tnr1, Gen_Literal_TN(0,4), false, &ops );
-    }
     BB_Insert_Ops_After( OP_bb(op), op, &ops );
     return TRUE;
-  }
 
-  if( imm_val == 1 ){
+  } else if( imm_val == 1 ){
     Exp_COPY( tnr, tn, &ops );
-    if( tnr1 != NULL ){
-      Exp_Immediate( tnr1, Gen_Literal_TN(0,4), false, &ops );
-    }
     BB_Insert_Ops_After( OP_bb(op), op, &ops );
     return TRUE;
   }
 
-  if( tnr1 != NULL )
+  if( ( val & ( val - 1 ) ) != 0 )
     return FALSE;
-
-  bool need_an_add = false;
-
-  if( val >= 2 &&
-      ( (val-1) & (val-2) ) == 0 ){
-    val--;
-    need_an_add = true;
-  }
-
-  /* Check whether it can carry an imm opnd. */
-
-  if( ( val & ( val - 1 ) ) != 0 ){
-    const TOP new_top = TOP_with_Imm_Opnd( op, 1, imm_val );
-
-    if( new_top == TOP_UNDEFINED )
-      return FALSE;
-
-    Build_OP( new_top, tnr, tn,
-	      Gen_Literal_TN(imm_val,4),
-	      &ops );
-    BB_Insert_Ops_After( OP_bb(op), op, &ops );
-
-    return TRUE;
-  }
-
-  if( TNs_Are_Equivalent(tnr, tn ) && need_an_add ){
-    if( TN_register(tn) != REGISTER_UNDEFINED )
-      return FALSE;
-
-    TN* tmp = Build_TN_Like( tn );
-    Exp_COPY( tmp, tn, &ops );
-    tn = tmp;
-  }
 
   int power = 0;
   while( val != 1 ){
@@ -1839,11 +1439,6 @@ static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
   }
 
   Expand_Shift( tnr, tn, Gen_Literal_TN( power, 4 ), mtype, shift_left, &ops );
-
-  if( need_an_add ){
-    Expand_Add( tnr, tnr, tn, mtype, &ops );
-  }
-
   if( imm_val < 0 )
     Expand_Neg( tnr, tnr, mtype, &ops );
 
@@ -1861,9 +1456,6 @@ Constant_Operand1 (OP *op,
                    TN **opnd_tn,
                    EBO_TN_INFO **opnd_tninfo)
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_CONSTANT_OPERAND1)) return FALSE;
-#endif
   BB *bb = OP_bb(op);
   TOP opcode = OP_code(op);
   INT o0_idx = 0;
@@ -1895,8 +1487,8 @@ Constant_Operand1 (OP *op,
 
   /* Don't treat a memory opnd as a regular opnd. */
   if( o1_idx > 0 &&
-      ( OP_find_opnd_use( op, OU_base ) == o1_idx ||
-	OP_find_opnd_use( op, OU_index ) == o1_idx ) ){
+      ( TOP_Find_Operand_Use( OP_code(op), OU_base ) == o1_idx ||
+	TOP_Find_Operand_Use( OP_code(op), OU_index ) == o1_idx ) ){
     return FALSE;
   }
 
@@ -1926,9 +1518,6 @@ Constant_Operand1 (OP *op,
 
   if( OP_imul( op ) )
     return Convert_Imm_Mul( op, tnr, tn0, imm_val, opnd_tninfo[o0_idx] );
-
-  if( OP_icmp( op ) )
-    return Convert_Imm_Cmp( op, tnr, tn0, imm_val, opnd_tninfo[o0_idx] );
 
   /*****************************************************************/
   /* Now, look for sequences ending in 'op' that can be optimized. */
@@ -1983,13 +1572,6 @@ Constant_Operand1 (OP *op,
 BOOL
 Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_RESOLVE_CONDITIONAL_BRANCH)) return FALSE;
-#endif
-  if( TOP_is_ijump( OP_code(op) ) )
-    return FALSE;
-
-  Is_True( false, ("Resolve_Conditional_Branch: NYI") );
   return FALSE;
 }
 
@@ -2007,9 +1589,6 @@ Fold_Constant_Expression (OP *op,
                           TN **opnd_tn,
                           EBO_TN_INFO **opnd_tninfo)
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_FOLD_CONSTANT_EXPRESSION)) return FALSE;
-#endif
   TOP opcode = OP_code(op);
   TN *tnr = OP_result(op,0);
 
@@ -2169,13 +1748,6 @@ Fold_Constant_Expression (OP *op,
 	   opcode == TOP_sari32 || opcode == TOP_sari64)
   {
     result_val = tn0_val >> tn1_uval;
-
-    // Set the most significant bits according to the sign bit.  Bug 9150.
-    if ((opcode == TOP_sar32 ||
-	 opcode == TOP_sari32) &&
-	(tn0_val & 0x80000000)) {
-      result_val |= (~0 << (31 - tn1_uval)) & 0xffffffff;
-    }
     goto Constant_Created;
   }
   else if (opcode == TOP_shr32 || opcode == TOP_shri32)
@@ -2200,11 +1772,11 @@ Fold_Constant_Expression (OP *op,
 
   if (result_sym != NULL)
   {
-    /* Don't consider using an offset that does not fit in the LC_simm32 class.
-     */
-    if( !ISA_LC_Value_In_Class(result_val, LC_simm32) )
-      return FALSE;
-
+    /* For offset cannot fit in 32-bit will be truncated by linker, so for the
+       time being, don't generate a LARGE offset until linker fixes its problem.
+    */
+    FmtAssert(ISA_LC_Value_In_Class(result_val, LC_simm32),
+	      ("Fold_Constant_Expression: NYI") );
     tnc = Gen_Symbol_TN(result_sym, result_val, result_relocs);
   }
   else
@@ -2242,8 +1814,11 @@ Fold_Constant_Expression (OP *op,
 }
 
 
+#define SWAP_TN(a, b) (_tn_swap_tmp = a, a = b, b = _tn_swap_tmp)
+#define SWAP_TNINFO(a, b) (_tninfo_swap_tmp = a, a = b, b = _tninfo_swap_tmp)
 static TN *_tn_swap_tmp;
 static EBO_TN_INFO *_tninfo_swap_tmp;
+
 
 /* If 'sll_opinfo' is an immediate logical left shift, return its
    EBO_OP_INFO and the immediate shift value in 'shift' (if 'shift' is
@@ -2524,12 +2099,6 @@ static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo
 
 static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
 {
-  struct SIZE_EXT_INFO op_size_ext_info;
-  struct SIZE_EXT_INFO pred_size_ext_info;
-
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_MOVE_EXT_IS_REPLACED)) return FALSE;
-#endif
   OP* pred = tninfo == NULL ? NULL : tninfo->in_op;
 
   if( pred == NULL )
@@ -2542,30 +2111,12 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
     return FALSE;
   }
 
-  // Delete OP if it zero-extends a value that is already zero-extended.  For
-  // example:
-  //    x = movzbl ...	# zero-extend 8->32
-  //  ... = movzbq x	# zero-extend 8->64
-  // movzbq can be deleted because movzbl implicitly zero-extends to 64-bit.
-  if (TOP_is_move_ext(OP_code(op)) &&
-      (TOP_is_move_ext(pred_top) || TOP_is_load_ext(pred_top))) {
-    Get_Size_Ext_Info(pred_top, &pred_size_ext_info );
-    Get_Size_Ext_Info(OP_code(op), &op_size_ext_info );
-    if (op_size_ext_info.dest_size >= pred_size_ext_info.dest_size &&
-	op_size_ext_info.src_size >= pred_size_ext_info.src_size &&
-	op_size_ext_info.sign_ext == FALSE &&
-	pred_size_ext_info.sign_ext == FALSE) {
-      // OK to delete OP.  Do this by inserting a copy after OP to copy OP's
-      // src to OP's result.  This will make OP dead and be removed.
-      OPS ops = OPS_EMPTY;
-      Exp_COPY(OP_result(op, 0), OP_opnd(op, 0), &ops);
-      BB_Insert_Ops(OP_bb(op), op, &ops, FALSE);
-    }
-  }
-
   if( TOP_is_load( pred_top ) &&
-      OP_find_opnd_use( pred, OU_index ) >= 0 )
+      TOP_Find_Operand_Use( pred_top, OU_index ) >= 0 )
     return FALSE;
+
+  struct SIZE_EXT_INFO op_size_ext_info;
+  struct SIZE_EXT_INFO pred_size_ext_info;
 
   Get_Size_Ext_Info( pred_top, &pred_size_ext_info );
   Get_Size_Ext_Info( OP_code(op), &op_size_ext_info );
@@ -2599,13 +2150,9 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
     const bool sign_ext =
       ( op_size_ext_info.src_size <= pred_size_ext_info.src_size ) ?
       op_size_ext_info.sign_ext : pred_size_ext_info.sign_ext;
-    // bug 6871 - choose the min size to sign-extend or zero-extend.
-    const INT size = 
-      ( op_size_ext_info.src_size <= pred_size_ext_info.src_size ) ?
-      op_size_ext_info.src_size : pred_size_ext_info.src_size;
 
     Expand_Convert_Length( OP_result( op, 0 ), OP_opnd( pred, 0 ),
-			   Gen_Literal_TN( 8*size, 4 ),
+			   Gen_Literal_TN( 8*pred_size_ext_info.src_size, 4 ),
 			   mtype,
 			   sign_ext,
 			   &ops );
@@ -2623,7 +2170,7 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
     if( !TNs_Are_Equivalent( OP_result(op,0), OP_opnd(op,0) ) )
       return FALSE;
 
-    if( OP_find_opnd_use( pred, OU_index ) >= 0 )
+    if( TOP_Find_Operand_Use( pred_top, OU_index ) >= 0 )
       return FALSE;
 
     /* Make sure the result of <pred> is used only once. */
@@ -2660,7 +2207,7 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
       }
     }
 
-    Is_True( new_top != TOP_UNDEFINED, ("move_ext_is_replaced: NYI (3)") );
+    FmtAssert( new_top != TOP_UNDEFINED, ("move_ext_is_replaced: NYI (3)") );
 
     new_op = Mk_OP( new_top,
 		    OP_result( op, 0 ),
@@ -2679,8 +2226,6 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
   Set_OP_unroll_bb( new_op, OP_unroll_bb(op) );
 	
   Copy_WN_For_Memory_OP( new_op, pred );
-  if ( OP_volatile( pred ) )
-    Set_OP_volatile( new_op );
   OP_srcpos( new_op ) = OP_srcpos( op );
   BB_Insert_Op_After( OP_bb(op), op, new_op );
 
@@ -2698,82 +2243,6 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
   return TRUE;
 }
 
-BOOL Delete_Unwanted_Prefetches ( OP* op )
-{
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_DELETE_UNWANTED_PREFETCHES)) return FALSE;
-#endif
-  WN *mem_wn = Get_WN_From_Memory_OP(op);
-  TN* base;
-
-  OP *incr = NULL;
-  OP *as_opnd = NULL;
-  OP *as_result = NULL;
-  OP *load_store = NULL;
-  BB* bb = OP_bb( op );
-  OP *next = BB_first_op( bb );
-
-  INT prefetch_offset = WN_offset(mem_wn);
-
-#ifdef KEY
-  // bug 10953: LNO tells me this prefetch must be kept
-  if(PF_GET_KEEP_ANYWAY(WN_prefetch_flag(mem_wn)))
-   return FALSE;
-#endif  
-  if (OP_find_opnd_use( op, OU_base ) >= 0)
-    base = OP_opnd( op, OP_find_opnd_use( op, OU_base ));
-  else
-    return FALSE; // Can not analyze further; make safe assumption.
-   
-  while (next && !incr) {
-    
-    if ((OP_code(next) == TOP_addi32 || OP_code(next) == TOP_addi64)) {
-      if (OP_results(next) != 0 && OP_result(next, 0) == base && 
-	  OP_opnd(next, 0) == base)
-	incr = next;
-      else if (OP_results(next) != 0 && OP_result(next, 0) == base)
-	as_result = next;
-      else if (OP_opnd(next, 0) == base)
-	as_opnd = next;
-    }
-    
-    next = OP_next(next);
-  }
-  
-  if (!incr) {
-    if (!as_result && !as_opnd)
-      return TRUE;
-    else if (as_result)
-      incr = as_result;
-    else 
-      incr = as_opnd;
-  }
-  
-  INT delta_base = TN_value(OP_opnd(incr, 1));
-
-  next = BB_first_op( bb );
-  while (next && !load_store) {
-    if ((OP_memory(next) || OP_load_exe(next)) &&
-	OP_find_opnd_use( next, OU_base ) >= 0 &&
-	base == OP_opnd( next, OP_find_opnd_use( next, OU_base ))) {
-      INT load_store_offset = 
-	TN_value(OP_opnd( next, OP_find_opnd_use( next, OU_offset )));
-      INT prefetch_ahead = LNO_Prefetch_Ahead;
-      INT Cache_Line_Size = 64 /* bytes */;
-      INT leeway = 3; // some ops may be moved around by EBO and scheduler.
-      if ((delta_base - prefetch_offset +load_store_offset) < 
-	  (Cache_Line_Size*(prefetch_ahead+ leeway)))
-	load_store = next;
-    }
-    
-    next = OP_next(next);
-  }
-  
-  if (!load_store)
-    return TRUE;
-
-  return FALSE;
-}
 
 /*
  * Look at an expression and it's inputs to identify special sequences
@@ -2781,9 +2250,6 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
  */
 BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
 {  
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_SPECIAL_SEQUENCE)) return FALSE;
-#endif
   const TOP top = OP_code( op );
 
   if( top == TOP_lea64  ||
@@ -2931,137 +2397,6 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
       op->opr = TOP_movapd;
   }
 
-  else if( top == TOP_jne || top == TOP_je ) {
-    /* For
-     *    sete
-     *    test32/test64
-     *    jne/je
-     * Transform to :
-     *    je/jne (inverted branch).
-     */
-    const EBO_TN_INFO* tninfo = opnd_tninfo[0];
-    OP* test_op = tninfo == NULL ? NULL : tninfo->in_op;
-    if ( test_op && 
-	 ( OP_code( test_op ) == TOP_test32 ||
-	   OP_code( test_op ) == TOP_test64 ) &&
-	 TNs_Are_Equivalent( OP_opnd(test_op, 0), OP_opnd(test_op, 1) ) ) {
-      const EBO_TN_INFO* test_tninfo = get_tn_info( OP_opnd(test_op, 0 ));
-      OP* set_op = test_tninfo == NULL ? NULL : test_tninfo->in_op;
-      if ( set_op && OP_code( set_op ) == TOP_sete &&
-	   !TN_live_out_of( OP_result(set_op,0), OP_bb(test_op) ) ){
-	// Skip transform if rflag is redefined between set_op and test_op.
-	BOOL skip = FALSE;
-	if (OP_bb(set_op) != OP_bb(test_op))
-	  skip = TRUE;		// Assume redefined if cross BB.
-	else {
-	  OP* next;
-	  for (next = OP_next(set_op); next != test_op; next = OP_next(next)) {
-	    if (!next ||	// test_op doesn't follow set_op
-		TOP_is_change_rflags(OP_code(next))) {
-	      skip = TRUE;
-	      break;
-	    }
-	  }
-	}
-	// Delete test_op and change the branch.
-	if (!skip) {
-	  OP_Change_To_Noop( test_op );
-	  op->opr = ( top == TOP_jne ) ? TOP_je : TOP_jne;
-	}
-      }
-    }
-
-    OP* alu_op = tninfo == NULL ? NULL : tninfo->in_op;
-
-    if( test_is_replaced( alu_op, op, tninfo ) )
-      return TRUE;
-  }
-
-  else if (!EBO_in_peep &&
-	   top == TOP_shri64) {
-    // Replace shift-left/shift-right with shift-right/move.  Look for
-    // bit-field extraction of form:
-    //   t = x << a
-    //   y = t >> b
-    // The field size is 64-b.  If the field size is 8, 16, or 32, then replace
-    // the sequence with:
-    //   t = x >> (b-a)
-    //   y = movz t	; movzbq, movzwq, movzlq depending on field size
-    // movz is perferred over the second shift because sometimes we have to mov
-    // into a special register anyway, such as rax for returning y (bug 8594).
-    //
-    // There's no advantage in doing this optimization after register
-    // allocation.
-    const EBO_TN_INFO* tninfo = opnd_tninfo[0];
-    OP* alu_op = tninfo == NULL ? NULL : tninfo->in_op;
-
-    if (alu_op &&
-	OP_code(alu_op) == TOP_shli64) {
-      TN *left = OP_opnd(alu_op, 1);	// left shift amount
-      TN *right = OP_opnd(op, 1);	// right shift amount
-      Is_True(TN_Is_Constant(left) && TN_has_value(left) &&
-	      TN_Is_Constant(right) && TN_has_value(right),
-	      ("Special_Sequence: unexpected shift opnds"));
-      int new_right_shift_val = TN_value(right) - TN_value(left);
-      if (new_right_shift_val < 0)
-	return FALSE;
-      if (!Pred_Opnd_Avail(op, opnd_tninfo[0], 0))
-	return FALSE;
-
-      TOP mov_opcode;
-      int field_size = 64 - TN_value(right);
-      if (field_size == 8) {
-	mov_opcode = TOP_movzbq;
-      } else if (field_size == 16) {
-	mov_opcode = TOP_movzwq;
-      } else if (field_size == 32) {
-	mov_opcode = TOP_movzlq;
-      } else {
-        return FALSE;
-      }
-      OP *new_shift, *new_move;
-      TN *tmp_tn = Dup_TN(OP_result(alu_op, 0));
-      new_shift = Mk_OP(TOP_shri64, tmp_tn, OP_opnd(alu_op, 0),
-			Gen_Literal_TN(new_right_shift_val, TN_size(right)));
-      BB_Insert_Op_After(OP_bb(op), op, new_shift);
-      new_move = Mk_OP(mov_opcode, OP_result(op, 0), tmp_tn);
-      BB_Insert_Op_After(OP_bb(op), new_shift, new_move);
-      return TRUE;
-    }
-  }
-
-  else if (top == TOP_shli32 ||
-	   top == TOP_shli64) {
-    // Replace:
-    //   movzbl			; zero-extend
-    //   shift-left 31		; shift left 31 bits
-    // with:
-    //   shift-left 31
-    // The shift-left makes the zero-extend obsolete by shifting over the
-    // zero-extended field.
-    const EBO_TN_INFO* tninfo = opnd_tninfo[0];
-    TN *left = OP_opnd(op, 1);	// shift amount
-    Is_True(TN_Is_Constant(left) && TN_has_value(left),
-	    ("Special_Sequence: shift amount not integer constant"));
-    int left_shift_amount = TN_value(left);
-    OP* alu_op = tninfo == NULL ? NULL : tninfo->in_op;
-    EBO_TN_INFO *alu_opnd0_tninfo = NULL;
-
-    if (alu_op &&
-	((OP_code(alu_op) == TOP_movzbl && left_shift_amount >= 31) ||
-	 (OP_code(alu_op) == TOP_movzwl && left_shift_amount >= 31) ||
-	 (OP_code(alu_op) == TOP_movzbq && left_shift_amount >= 63) ||
-	 (OP_code(alu_op) == TOP_movzwq && left_shift_amount >= 63) ||
-	 (OP_code(alu_op) == TOP_movzlq && left_shift_amount >= 63)) &&
-	Pred_Opnd_Avail(op, opnd_tninfo[0], 0, &alu_opnd0_tninfo)) {
-      Set_OP_opnd(op, 0, OP_opnd(alu_op, 0));
-      dec_ref_count(opnd_tninfo[0]);
-      inc_ref_count(alu_opnd0_tninfo);
-      opnd_tninfo[0] = alu_opnd0_tninfo;
-      return FALSE;
-    }
-  }
-
   return FALSE;
 }
 
@@ -3075,9 +2410,6 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
  */
 void Redundancy_Elimination()
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_REDUNDANCY_ELIMINATION)) return;
-#endif
   for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next( bb ) ){
     if( BB_rid(bb) && (RID_level(BB_rid(bb)) >= RL_CGSCHED) ){
       // don't change bb's which have already been through CG
@@ -3283,207 +2615,158 @@ void Redundancy_Elimination()
 }
 
 
-static inline TN* OP_opnd_use( OP* op, ISA_OPERAND_USE use )
-{
-  const int indx = OP_find_opnd_use( op, use );
-  return ( indx >= 0 ) ? OP_opnd( op, indx ) : NULL;
-}
-
-
-/* return <ofst> = <ofst1> + <ofst2> * <scale>
- */
-static TN* Compose_Addr_offset( TN* ofst1, TN* ofst2, TN* scale )
-{
-  if( ofst1 == NULL )
-    ofst1 = Gen_Literal_TN( 0, 4 );
-
-  if( ofst2 == NULL )
-    ofst2 = Gen_Literal_TN( 0, 4 );
-
-  if( scale == NULL )
-    scale = Gen_Literal_TN( 1, 4 );
-
-  // Cannot handle two symbols.
-  if( TN_is_symbol(ofst1) &&
-      TN_is_symbol(ofst2) ){
-    return NULL;
-  }
-
-  if( TN_is_symbol(ofst1) ){
-    ST* sym = TN_var(ofst1);
-    const INT64 ofst = TN_value(ofst2) * TN_value(scale) + TN_offset(ofst1);
-
-    return Gen_Symbol_TN( sym, ofst, TN_RELOC_NONE );
-  }
-
-  if( TN_is_symbol(ofst2) ){
-    if( TN_value(scale) != 1 )
-      return NULL;
-
-    ST* sym = TN_var(ofst2);
-    const INT64 ofst = TN_value(ofst1) + TN_offset(ofst2);
-
-    return Gen_Symbol_TN( sym, ofst, TN_RELOC_NONE );
-  }
-
-  const INT64 value = TN_value(ofst1) + TN_value(ofst2) * TN_value(scale);
-
-  if( !ISA_LC_Value_In_Class( value, LC_simm32 ) )
-    return NULL;
-
-  return Gen_Literal_TN( value, 4 );
-}
-
-#define IS_VALID_SCALE(s)  ( (s)==1 || (s)==2 || (s)==4 || (s)==8 )
-
 static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
 			  ISA_OPERAND_USE replace_opnd,
 			  TN** opnd_tn,
 			  TN** index, TN** offset, TN** scale, TN** base )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_COMPOSE_ADDR)) return FALSE;
-#endif
-  /* address = ofst + base + index * scale */
-  struct ADDRESS_COMPONENT {
-    TN* index;
-    TN* base;
-    TN* offset;
-    TN* scale;
-  } a, b;
-
-  bzero( &a, sizeof(a) );
-  a.scale = Gen_Literal_TN( 1, 4 );
-
-  /* First, extract the address components from a previous op that
-     compute the address. The components are stored into <a>.
-  */
-
-  OP* addr_op = pt_tninfo->in_op;
+  const OP* addr_op = pt_tninfo->in_op;
   const TOP top = OP_code( addr_op );
 
+  *index = *offset = *scale = *base = NULL;
+
   switch( top ){
-  case TOP_lea32:
-  case TOP_lea64:
-    a.base   = OP_opnd_use( addr_op, OU_base );
-    a.offset = OP_opnd_use( addr_op, OU_offset );
+  case TOP_leaxx32:
+    *index  = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_index ) );
+    *offset = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_offset ) );
+    *scale  = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_scale ) );
+
+    if( TN_value(*scale) == 1 ){
+      *base = *index;
+      *index = *scale = NULL;
+    }
     break;
 
-  case TOP_leaxx32:
-  case TOP_leaxx64:
-    a.index  = OP_opnd_use( addr_op, OU_index );
-    a.offset = OP_opnd_use( addr_op, OU_offset );
-    a.scale  = OP_opnd_use( addr_op, OU_scale );
+  case TOP_leax32:
+    *index  = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_index ) );
+    *offset = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_offset ) );
+    *scale  = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_scale ) );
+    *base   = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_base ) );
+    break;
 
-    if( TN_value(a.scale) == 1 ){
-      a.base = a.index;
-      a.index = a.scale = NULL;
+  case TOP_lea32:
+    *base   = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_base ) );
+    *offset = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_offset ) );
+    break;
+
+  case TOP_leaxx64:
+    *index  = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_index ) );
+    *offset = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_offset ) );
+    *scale  = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_scale ) );
+
+    if( TN_value(*scale) == 1 ){
+      *base = *index;
+      *index = *scale = NULL;
     }
 
     break;
 
-  case TOP_leax32:
   case TOP_leax64:
-    a.index  = OP_opnd_use( addr_op, OU_index );
-    a.offset = OP_opnd_use( addr_op, OU_offset );
-    a.scale  = OP_opnd_use( addr_op, OU_scale );
-    a.base   = OP_opnd_use( addr_op, OU_base );
+    *index  = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_index ) );
+    *offset = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_offset ) );
+    *scale  = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_scale ) );
+    *base   = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_base ) );
     break;
 
-  case TOP_shli32:
-    if( Is_Target_64bit() )
-      return FALSE;
-    // fall thru
   case TOP_shli64:
     {
       TN* tn = OP_opnd( addr_op, 1 );
       const INT64 val = TN_value(tn);
       if( val < 0 || val > 3 )
 	return FALSE;
-
-      a.scale = Gen_Literal_TN( 1 << val, 4 );
-      a.offset = Gen_Literal_TN( 0, 4 );
-      a.index = OP_opnd( addr_op, 0 );
+      *scale = Gen_Literal_TN( 1 << val, 4 );
+      *offset = Gen_Literal_TN( 0, 4 );
+      *index = OP_opnd( addr_op, 0 );
     }
     break;
 
-  case TOP_add32:
-    if( Is_Target_64bit() )
-      return FALSE;
-    // fall thru
+  case TOP_lea64:
+    *base   = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_base ) );
+    *offset = OP_opnd( addr_op, TOP_Find_Operand_Use( top, OU_offset ) );
+    break;
+
   case TOP_add64:
-    a.base = OP_opnd( addr_op, 0 );
-    a.index = OP_opnd( addr_op, 1 );
-    a.offset = Gen_Literal_TN( 0, 4 );
-    a.scale = Gen_Literal_TN( 1, 4 );
+    *base = OP_opnd( addr_op, 0 );
+    *index = OP_opnd( addr_op, 1 );
+    *offset = Gen_Literal_TN( 0, 4 );
+    *scale = Gen_Literal_TN( 1, 4 );
     break;
 
-  case TOP_addi32:
-    if( Is_Target_64bit() )
-      return FALSE;
-    // fall thru
   case TOP_addi64:
-    a.base = OP_opnd( addr_op, 0 );
-    a.offset = OP_opnd( addr_op, 1 );
+    *base = OP_opnd( addr_op, 0 );
+    *offset = OP_opnd( addr_op, 1 );
     break;
 
-  case TOP_mov32:
-    if( Is_Target_64bit() )
-      return FALSE;
-    // fall thru
   case TOP_mov64:
     {
       TN* opnd = OP_opnd( addr_op, 0 );
-      a.offset = Gen_Literal_TN( 0, 4 );
-      a.base = opnd;
+      *offset = Gen_Literal_TN( 0, 4 );
+      if( replace_opnd == OU_base )
+	*base = opnd;
+      else
+	*index = opnd;
     }
     break;
 
   case TOP_ldc32:
   case TOP_ldc64:
-    a.offset = OP_opnd( addr_op, 0 );
+    *offset = OP_opnd( addr_op, 0 );
     break;
 
   default:
+    //FmtAssert( false, ("NYI") );
     return FALSE;
   }
 
-  const int op_offset_idx = OP_find_opnd_use( mem_op, OU_offset );
+  const int op_offset_idx = TOP_Find_Operand_Use( OP_code(mem_op), OU_offset );
   TN* op_offset_tn = opnd_tn[op_offset_idx];
+  INT64 immed_offset = 0;
 
-  // Replace a.index with a symbol from a previous ldc64 op.
-  if( a.index != NULL &&
-      TN_value( a.scale ) == 1 ){
-    const EBO_TN_INFO* tninfo = get_tn_info( a.index );
-    if( tninfo != NULL        &&
-	tninfo->in_op != NULL &&
-	tninfo->sequence_num < pt_tninfo->sequence_num &&
-	( OP_code(tninfo->in_op) == TOP_ldc64 ||
-	  OP_code(tninfo->in_op) == TOP_ldc32 ) ){
-      TN* offset = Compose_Addr_offset( a.offset,
-					OP_opnd( tninfo->in_op, 0 ),
-					NULL );
-      if( offset != NULL ){
-	a.offset = offset;
-	a.index  = NULL;
+  if( *offset == NULL || TN_has_value(*offset) ){
+    // Replace index with a symbol from a previous ldc64 op.
+    if( *scale != NULL && TN_value( *scale ) == 1 ){
+      EBO_TN_INFO* tninfo = get_tn_info( *index );
+      if( tninfo != NULL        &&
+	  tninfo->in_op != NULL &&
+	  tninfo->sequence_num < pt_tninfo->sequence_num &&
+	  OP_code(tninfo->in_op) == TOP_ldc64 ){
+	OP* op = tninfo->in_op;
+	if( !TN_is_symbol( op_offset_tn ) ||
+	    !TN_is_symbol( OP_opnd( op, 0 ) ) ){
+	  if( *offset != NULL ){
+	    immed_offset += TN_value( *offset );
+	  }
+
+	  *offset = OP_opnd( op, 0 );
+	  *scale = *index = NULL;
+	}
       }
     }
-  }
 
-  // Replace a.base with a symbol from a previous ldc64 op.
-  if( a.base != NULL ){
-    const EBO_TN_INFO* tninfo = get_tn_info( a.base );
-    if( tninfo != NULL        &&
-	tninfo->in_op != NULL &&
-	tninfo->sequence_num < pt_tninfo->sequence_num &&
-	( OP_code(tninfo->in_op) == TOP_ldc64 ||
-	  OP_code(tninfo->in_op) == TOP_ldc32 ) ){
-      TN* offset = Compose_Addr_offset( a.offset,
-					OP_opnd( tninfo->in_op, 0 ),
-					NULL );
-      if( offset != NULL ){
-	a.offset = offset;
-	a.base = NULL;
+    // Replace base with a symbol from a previous ldc64 op.
+    if( ( *offset == NULL || TN_has_value(*offset) ) &&
+	( *base != NULL ) ){
+      EBO_TN_INFO* tninfo = get_tn_info( *base );
+      if( tninfo != NULL        &&
+	  tninfo->in_op != NULL &&
+	  tninfo->sequence_num < pt_tninfo->sequence_num &&
+	  OP_code(tninfo->in_op) == TOP_ldc64 ){
+	OP* op = tninfo->in_op;
+
+	if( !TN_is_symbol( op_offset_tn ) ||
+	    !TN_is_symbol( OP_opnd( op, 0 ) ) ){
+
+	  *base = NULL;
+	  if( *offset != NULL ){
+	    immed_offset += TN_value( *offset );
+	  }
+	  *offset = OP_opnd( op, 0 );
+
+	  if( *scale != NULL && TN_value(*scale) == 1 ){
+	    *base = *index;
+	    *scale = *index = NULL;
+	  }
+	}
       }
     }
   }
@@ -3496,434 +2779,207 @@ static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
       }
     }
 
-    if( a.index != NULL ){
-      const REGISTER reg = TN_register( a.index );
+    if( *index != NULL ){
+      const REGISTER reg = TN_register( *index );
       if( reg == RAX || reg == RCX || reg == RDX )
 	return FALSE;
     }
 
-    if( a.base != NULL ){
-      const REGISTER reg = TN_register( a.base );
+    if( *base != NULL ){
+      const REGISTER reg = TN_register( *base );
       if( reg == RAX || reg == RCX || reg == RDX )
 	return FALSE;
     }
   }
 
   /* Check <index> and <base> will not be re-defined between
-     <addr_op> and <mem_op>, inclusive.
+     <addr_op> and <op>, inclusive.
   */
 
-  if( a.base != NULL ){
-    EBO_TN_INFO* tninfo = get_tn_info( a.base );
+  if( *base != NULL ){
+    EBO_TN_INFO* tninfo = get_tn_info( *base );
     if( tninfo != NULL && tninfo->sequence_num >= pt_tninfo->sequence_num ){
       return FALSE;
     }
   }
   
-  if( a.index != NULL ){
-    EBO_TN_INFO* tninfo = get_tn_info( a.index );
+  if( *index != NULL ){
+    EBO_TN_INFO* tninfo = get_tn_info( *index );
     if( tninfo != NULL && tninfo->sequence_num >= pt_tninfo->sequence_num ){
       return FALSE;
     }
   }
 
-  /* Second, extract the address components from <mem_op>, and deposit them
-     to <b>.
-  */
-
-  b.scale  = OP_opnd_use( mem_op, OU_scale );
-  b.base   = OP_opnd_use( mem_op, OU_base );
-  b.index  = OP_opnd_use( mem_op, OU_index );
-  b.offset = OP_opnd_use( mem_op, OU_offset );
-
-  if( b.scale == NULL )
-    b.scale = Gen_Literal_TN( 1, 4 );
-
-  /* Now, make up the final address components from <a> and <b>.
+  /* Check whether <mem_op> also brings its own index and base.
    */
 
-  *index = *offset = *base = *scale = NULL;
+  const int scale_indx = TOP_Find_Operand_Use( OP_code(mem_op), OU_scale );
 
   if( replace_opnd == OU_base ){
-    // offset = b.offset + a.offset
-    *offset = Compose_Addr_offset( b.offset, a.offset, NULL );
-
-    // base = a.base
-    *base = a.base;
-
-    // index * scale = a.index * a.scale + b.index * b.scale
-    if( a.index == NULL &&
-	b.index == NULL ){
-      *index = *scale = NULL;
-
-    } else if( a.index == NULL ){
-      *index = b.index;
-      *scale = b.scale;
-
-    } else if( b.index == NULL ){
-      *index = a.index;
-      *scale = a.scale;
-      
-    } else {
-      if( TNs_Are_Equivalent( a.index, b.index ) ){
-	*index = a.index;
-	*scale = Gen_Literal_TN( TN_value(a.scale) + TN_value(b.scale), 4 );
+    int indx = TOP_Find_Operand_Use( OP_code(mem_op), OU_index );
+    if( indx >= 0 ){
+      if( *index == NULL ){
+	*index = OP_opnd( mem_op, indx );
 
       } else {
+	// See whether we can swap the base and index of <mem_op>.
 	if( *base != NULL )
 	  return FALSE;
-	if( TN_value(b.scale) == 1 ){
-	  *base = b.index;
-	  *index = a.index;
-	  *scale = a.scale;
 
-	} else if( TN_value(a.scale) == 1 ){
-	  *base = a.index;
-	  *index = b.index;
-	  *scale = b.scale;
-
-	} else
+	const INT64 scale_val = TN_value( OP_opnd( mem_op, scale_indx ) );
+	if( scale_val != 1 )
 	  return FALSE;
+	
+	*base = OP_opnd( mem_op, indx );
       }
     }
+  }
 
-  } else if( replace_opnd == OU_index ){
-    // offset = b.offset + a.offset * b.scale
-    *offset = Compose_Addr_offset( b.offset, a.offset, b.scale );
+  if( scale_indx >= 0 ){
+    TN* tn = OP_opnd( mem_op, scale_indx );
+    if( *scale == NULL ){
+      *scale = tn;
 
-    // index * scale = a.index * a.scale * b.scale
-    *index = a.index;
-    *scale = Gen_Literal_TN( TN_value(a.scale) * TN_value(b.scale), 4 );
-
-    // base = b.base + a.base * b.scale
-    if( b.base == NULL &&
-	a.base == NULL ){
-      *base = NULL;
-
-    } else if( b.base == NULL ){
-      *base = a.base;
-
-      if( TN_value(b.scale) != 1 ){
-	if( *index == NULL ){
-	  *scale = b.scale;
-	  *index = *base;
-	  *base  = NULL;
-
-	} else {
-	  if( !TNs_Are_Equivalent( *index, a.base ) )
-	    return FALSE;
-	  *base = NULL;
-	  *scale = Gen_Literal_TN( TN_value(*scale) + TN_value(b.scale), 4 );
-	}
-      }
-
-    } else if( a.base == NULL ){
-      *base = b.base;
+    } else if( replace_opnd != OU_index &&
+	       TN_value( tn ) != 1 ){
+      return FALSE;
 
     } else {
-      if( *index == NULL ){
-	*index = a.base;
-	*scale = b.scale;
-	*base  = b.base;
+      const INT64 scale_val = TN_value( tn ) * TN_value( *scale );
+      if( scale_val != 1 && scale_val != 2 &&
+	  scale_val != 4 && scale_val != 8 )
+	return FALSE;
 
-      } else {
-	if( !TNs_Are_Equivalent( b.base, a.base ) ) {
-	  // Bug 3724 - If a.base and a.index are identical, 
-	  // then we could still fold a.base into b.index
-	  // and adjust the scale.
-	  if ( !TNs_Are_Equivalent ( a.base, a.index ) )
-	    return FALSE;
-	  else {
-	    *index = b.base;
-	  }
-	}
-
-	if( TN_value(*scale) != 1 )
-	  return FALSE;
-
-	*scale = Gen_Literal_TN( TN_value(b.scale) + 1, 4 );
-	*base = *index;
-	*index = a.base;
+      if( TN_value( *scale ) != scale_val ){
+	*scale = Gen_Literal_TN( scale_val, 4 );
       }
     }
-
-  } else {
-    return FALSE;
   }
 
-  /* Filter out any invalid combination. */
+  if( replace_opnd == OU_index ){
+    int indx = TOP_Find_Operand_Use( OP_code(mem_op), OU_base );
+    if( indx >= 0 ){
+      TN* tn = OP_opnd( mem_op, indx );
+      if( *base == NULL )
+	*base = tn;
+      else if( *index == NULL ){
+	if( *scale != NULL &&
+	    TN_value( *scale ) != 1 )
+	  return FALSE;
+	*index = tn;
+      } else
+	return FALSE;
 
-  if( *offset == NULL ||
-      !ISA_LC_Value_In_Class( TN_value(*offset), LC_simm32 ) )
-    return FALSE;
-
-  if( *scale != NULL && !IS_VALID_SCALE( TN_value(*scale) ) ){
-    if( *base != NULL ||
-	TN_value(*scale) > 8 )
-      return FALSE;
-
-    *base = *index;
-    *scale = Gen_Literal_TN( TN_value(*scale) - 1, 4 );
-
-    if( !IS_VALID_SCALE( TN_value(*scale) ) )
-      return FALSE;
+    } else if( *base != NULL ){
+      if( *scale != NULL && TN_value(*scale) != 1 )
+	return FALSE;
+    }
   }
 
-  /* Make sure the index is not %rsp. */
+  INT64 adjust_offset = TN_is_symbol(*offset) ?
+    TN_offset(*offset) : TN_value(*offset);
+
+  if( *index == NULL &&
+      *scale != NULL ){
+    if( top != TOP_ldc32 && top != TOP_ldc64 )
+      return FALSE;
+
+    if( TN_is_symbol( *offset ) ){
+      FmtAssert( TN_value(*scale) == 1, ("Compose_Addr: NYI (1)") );
+
+    } else {
+      adjust_offset = TN_value(*scale) * TN_value(*offset);
+    }
+
+    *scale = NULL;
+  }
+
+  /* Make sure the index is not %rsp.
+   */
 
   if( *index != NULL &&
       TN_register(*index) == RSP ){
     if( TN_value( *scale ) != 1 )
       return FALSE;
 
-    TN* tmp_tn = *index;
-    *index = *base;
-    *base = tmp_tn;
+    SWAP_TN( *index, *base );
   }
 
-  if( *index == NULL ){
-    if( *scale != NULL && TN_value(*scale) > 1 )
+  /* Compose the <offset>. */
+
+  ST* immed_sym = TN_is_symbol(op_offset_tn) ? TN_var(op_offset_tn) : NULL;
+
+  TN* adjust_tn = NULL;
+  ST* adjust_sym = NULL;
+
+  immed_offset +=
+    TN_is_symbol(op_offset_tn) ? TN_offset(op_offset_tn) : TN_value(op_offset_tn);
+
+  if( TN_is_symbol(*offset) ){
+    if( immed_sym != NULL )
       return FALSE;
-      
-    *scale = NULL;
+    adjust_sym = TN_var(*offset);
+    adjust_tn = *offset;
+
+  } else {
+    adjust_sym = immed_sym;
+    adjust_tn = op_offset_tn;
   }
 
-  if( *base == NULL  &&
-      *index != NULL &&
-      TN_value(*scale) == 1 ){
-    *base = *index;
-    *index = *scale = NULL;
+  adjust_offset += immed_offset;
+
+  if( !TOP_Can_Have_Immediate( adjust_offset, OP_code(mem_op)) ){
+    if (EBO_Trace_Optimization) {
+      #pragma mips_frequency_hint NEVER
+      fprintf( TFile,
+	       "%sin BB:%d combined addr expressions do not fit in the offset field\n",
+	       EBO_trace_pfx, BB_id(OP_bb(mem_op)) );
+      Print_OP_No_SrcLine( mem_op );
+    }
+
+    return FALSE;
+  }
+
+  /* Create a combined TN and upated the op and other data structures. */
+  if( adjust_sym != NULL ){
+    //*offset = Gen_Symbol_TN( adjust_sym, adjust_offset, TN_relocs(adjust_tn) );
+    *offset = Gen_Symbol_TN( adjust_sym, adjust_offset, TN_RELOC_NONE );
+
+  } else {
+    *offset = Gen_Literal_TN( adjust_offset, TN_size(adjust_tn) );
   }
 
   return TRUE;
 }
 
 
-// Group together opcodes that perform the same function but with different
-// address modes.
-typedef struct {
-  TOP reg_mode;
-  TOP base_mode;
-  TOP base_index_mode;
-  TOP index_mode;
-  TOP n32_mode;
-} Addr_Mode_Group;
+static TOP Mem_Op_Table[TOP_count+1][3];
 
-// Map an opcode to its address-modes group.
-static Addr_Mode_Group *Top_To_Addr_Mode_Group[TOP_count+1];
-
-// List all address mode groups.  Each group gives the opcodes for OPs that
-// perform the same function but with different address modes.  Entries can be
-// listed in any order.  No duplicates allowed.  The table doesn't have to be
-// complete; it may list only those OPs that EBO can do something about.
-static Addr_Mode_Group Addr_Mode_Group_Table[] = {
-  // REG_MODE	BASE_MODE	BASE_INDEX_MODE	INDEX_MODE     N32_MODE (offset)
-
-  // Load and stores.
-  {TOP_UNDEFINED, TOP_store8,	TOP_storex8,	TOP_storexx8,	TOP_store8_n32},
-  {TOP_UNDEFINED, TOP_store16,	TOP_storex16,	TOP_storexx16, TOP_store16_n32},
-  {TOP_UNDEFINED, TOP_store32,	TOP_storex32,	TOP_storexx32, TOP_store32_n32},
-  {TOP_UNDEFINED, TOP_store64,	TOP_storex64,	TOP_storexx64, TOP_store64_off},
-  {TOP_UNDEFINED, TOP_stss,	TOP_stssx,	TOP_stssxx,	TOP_stss_n32},
-  {TOP_UNDEFINED, TOP_stsd,	TOP_stsdx,	TOP_stsdxx,	TOP_stsd_n32},
-  {TOP_UNDEFINED, TOP_stntss,   TOP_stntssx,    TOP_stntssxx,   TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_stntsd,   TOP_stntsdx,    TOP_stntsdxx,   TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_stdqa,	TOP_stdqax,	TOP_stdqaxx,	TOP_stdqa_n32},
-  {TOP_UNDEFINED, TOP_stntpd,	TOP_stntpdx,	TOP_stntpdxx,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_stdqu,	TOP_stdqux,	TOP_stdquxx,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_fmovsldupx, TOP_fmovsldupxx, TOP_fmovsldupxxx, TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_fmovshdupx, TOP_fmovshdupxx, TOP_fmovshdupxxx, TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_fmovddupx,  TOP_fmovddupxx,  TOP_fmovddupxxx, TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_ldss,	TOP_ldssx,	TOP_ldssxx,	TOP_ldss_n32},
-  {TOP_UNDEFINED, TOP_ldsd,	TOP_ldsdx,	TOP_ldsdxx,	TOP_ldsd_n32},
-  {TOP_UNDEFINED, TOP_lddqa,	TOP_lddqax,	TOP_lddqaxx,	TOP_lddqa_n32},
-  {TOP_UNDEFINED, TOP_lddqu,	TOP_lddqux,	TOP_lddquxx,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_ldlps,	TOP_ldlpsx,	TOP_ldlpsxx,	TOP_ldlps_n32},
-  {TOP_UNDEFINED, TOP_ldlpd,	TOP_ldlpdx,	TOP_ldlpdxx,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_ldaps,	TOP_ldapsx,	TOP_ldapsxx,	TOP_ldaps_n32},
-  {TOP_UNDEFINED, TOP_ldapd,	TOP_ldapdx,	TOP_ldapdxx,	TOP_ldapd_n32},
-  {TOP_UNDEFINED, TOP_stlps,	TOP_stlpsx,	TOP_stlpsxx,	TOP_stlps_n32},
-  {TOP_UNDEFINED, TOP_stlpd,	TOP_stlpdx,	TOP_stlpdxx,	TOP_stlpd_n32},
-  {TOP_UNDEFINED, TOP_staps,	TOP_stapsx,	TOP_stapsxx,	TOP_staps_n32},
-  {TOP_UNDEFINED, TOP_stapd,	TOP_stapdx,	TOP_stapdxx,	TOP_stapd_n32},
-  {TOP_UNDEFINED, TOP_ldhps,	TOP_ldhpsx,	TOP_ldhpsxx,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_ldhpd,	TOP_ldhpdx,	TOP_ldhpdxx,	TOP_ldhpd_n32},
-  {TOP_UNDEFINED, TOP_sthps,	TOP_sthpsx,	TOP_sthpsxx,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_sthpd,	TOP_sthpdx,	TOP_sthpdxx,	TOP_sthpd_n32},
-  {TOP_UNDEFINED, TOP_ld8_64,	TOP_ldx8_64,	TOP_ldxx8_64,	TOP_ld8_64_off},
-  {TOP_UNDEFINED, TOP_ldu8_64,	TOP_ldxu8_64,	TOP_ldxxu8_64, TOP_ldu8_64_off},
-  {TOP_UNDEFINED, TOP_ld16_64,	TOP_ldx16_64,	TOP_ldxx16_64, TOP_ld16_64_off},
-  {TOP_UNDEFINED, TOP_ldu16_64,	TOP_ldxu16_64,	TOP_ldxxu16_64,	TOP_ldu16_64_off},
-  {TOP_UNDEFINED, TOP_ld8_32,	TOP_ldx8_32,	TOP_ldxx8_32,  TOP_ld8_32_n32},
-  {TOP_UNDEFINED, TOP_ldu8_32,	TOP_ldxu8_32,	TOP_ldxxu8_32, TOP_ldu8_32_n32},
-  {TOP_UNDEFINED, TOP_ld16_32,	TOP_ldx16_32,	TOP_ldxx16_32, TOP_ld16_32_n32},
-  {TOP_UNDEFINED, TOP_ldu16_32,	TOP_ldxu16_32,	TOP_ldxxu16_32, TOP_ldu16_32_n32},
-  {TOP_UNDEFINED, TOP_ld32,	TOP_ldx32,	TOP_ldxx32,	TOP_ld32_n32},
-  {TOP_UNDEFINED, TOP_ld32_64,	TOP_ldx32_64,	TOP_ldxx32_64, TOP_ld32_64_off},
-  {TOP_UNDEFINED, TOP_ld64,	TOP_ldx64,	TOP_ldxx64,	TOP_ld64_off},
-  {TOP_UNDEFINED, TOP_prefetch,	TOP_prefetchx,	TOP_prefetchxx,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_prefetchw,  TOP_prefetchwx,  TOP_prefetchwxx, TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_prefetcht0, TOP_prefetcht0x, TOP_prefetcht0xx, TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_prefetcht1, TOP_prefetcht1x, TOP_prefetcht1xx, TOP_UNDEFINED},
-
-  // LEA
-  {TOP_UNDEFINED, TOP_lea32,	TOP_leax32,	TOP_leaxx32,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_lea64,	TOP_leax64,	TOP_leaxx64,	TOP_UNDEFINED},
-
-  // Load-execute.
-
-  {TOP_add32,	TOP_addx32,	TOP_addxx32,	TOP_addxxx32,	TOP_UNDEFINED},
-  {TOP_add64,	TOP_addx64,	TOP_addxx64,	TOP_addxxx64,	TOP_UNDEFINED},
-  {TOP_addss,	TOP_addxss,	TOP_addxxss,	TOP_addxxxss,	TOP_UNDEFINED},
-  {TOP_addsd,	TOP_addxsd,	TOP_addxxsd,	TOP_addxxxsd,	TOP_UNDEFINED},	
-  {TOP_add128v8,  TOP_addx128v8,  TOP_addxx128v8,  TOP_addxxx128v8, TOP_UNDEFINED},
-  {TOP_add128v16, TOP_addx128v16, TOP_addxx128v16, TOP_addxxx128v16, TOP_UNDEFINED},
-  {TOP_add128v32, TOP_addx128v32, TOP_addxx128v32, TOP_addxxx128v32, TOP_UNDEFINED},
-  {TOP_add128v64, TOP_addx128v64, TOP_addxx128v64, TOP_addxxx128v64, TOP_UNDEFINED},
-  {TOP_fadd128v32,	TOP_faddx128v32,	TOP_faddxx128v32,	TOP_faddxxx128v32,	TOP_UNDEFINED},
-  {TOP_fadd128v64,	TOP_faddx128v64,	TOP_faddxx128v64,	TOP_faddxxx128v64,	TOP_UNDEFINED},
-  {TOP_fhadd128v32,	TOP_fhaddx128v32,	TOP_fhaddxx128v32,	TOP_fhaddxxx128v32,	TOP_UNDEFINED},
-  {TOP_fhadd128v64,	TOP_fhaddx128v64,	TOP_fhaddxx128v64,	TOP_fhaddxxx128v64,	TOP_UNDEFINED},
-  {TOP_faddsub128v32,	TOP_faddsubx128v32,	TOP_faddsubxx128v32,	TOP_faddsubxxx128v32,	TOP_UNDEFINED},
-  {TOP_faddsub128v64,	TOP_faddsubx128v64,	TOP_faddsubxx128v64,	TOP_faddsubxxx128v64,	TOP_UNDEFINED},
-  {TOP_fhsub128v32,	TOP_fhsubx128v32,	TOP_fhsubxx128v32,	TOP_fhsubxxx128v32,	TOP_UNDEFINED},
-  {TOP_fhsub128v64,	TOP_fhsubx128v64,	TOP_fhsubxx128v64,	TOP_fhsubxxx128v64,	TOP_UNDEFINED},
-
-  {TOP_sub32,	TOP_subx32,	TOP_subxx32,	TOP_subxxx32,	TOP_UNDEFINED},
-  {TOP_sub64,	TOP_subx64,	TOP_subxx64,	TOP_subxxx64,	TOP_UNDEFINED},
-  {TOP_subss,	TOP_subxss,	TOP_subxxss,	TOP_subxxxss,	TOP_UNDEFINED},
-  {TOP_subsd,	TOP_subxsd,	TOP_subxxsd,	TOP_subxxxsd,	TOP_UNDEFINED},
-  {TOP_sub128v8,	TOP_subx128v8,	TOP_subxx128v8,	TOP_subxxx128v8,	TOP_UNDEFINED},
-  {TOP_sub128v16,	TOP_subx128v16,	TOP_subxx128v16,	TOP_subxxx128v16,	TOP_UNDEFINED},
-  {TOP_sub128v32,	TOP_subx128v32,	TOP_subxx128v32,	TOP_subxxx128v32,	TOP_UNDEFINED},
-  {TOP_sub128v64,	TOP_subx128v64,	TOP_subxx128v64,	TOP_subxxx128v64,	TOP_UNDEFINED},
-  {TOP_fsub128v32,	TOP_fsubx128v32, TOP_fsubxx128v32,	TOP_fsubxxx128v32,	TOP_UNDEFINED},
-  {TOP_fsub128v64,	TOP_fsubx128v64, TOP_fsubxx128v64,	TOP_fsubxxx128v64,	TOP_UNDEFINED},
-
-  {TOP_mulss,	TOP_mulxss,	TOP_mulxxss,	TOP_mulxxxss,	TOP_UNDEFINED},
-  {TOP_mulsd,	TOP_mulxsd,	TOP_mulxxsd,	TOP_mulxxxsd,	TOP_UNDEFINED},
-  {TOP_fmul128v32, TOP_fmulx128v32, TOP_fmulxx128v32, TOP_fmulxxx128v32,	TOP_UNDEFINED},
-  {TOP_fmul128v64, TOP_fmulx128v64, TOP_fmulxx128v64, TOP_fmulxxx128v64,	TOP_UNDEFINED},
-  {TOP_cmpgt128v8, TOP_cmpgtx128v8, TOP_cmpgtxx128v8, TOP_cmpgtxxx128v8,	TOP_UNDEFINED},
-  {TOP_cmpgt128v16,	TOP_cmpgtx128v16,	TOP_cmpgtxx128v16,	TOP_cmpgtxxx128v16,	TOP_UNDEFINED},
-  {TOP_cmpgt128v32,	TOP_cmpgtx128v32,	TOP_cmpgtxx128v32,	TOP_cmpgtxxx128v32,	TOP_UNDEFINED},
-  {TOP_cmpeq128v8,	TOP_cmpeqx128v8,	TOP_cmpeqxx128v8,	TOP_cmpeqxxx128v8,	TOP_UNDEFINED},
-  {TOP_cmpeq128v16,	TOP_cmpeqx128v16,	TOP_cmpeqxx128v16,	TOP_cmpeqxxx128v16,	TOP_UNDEFINED},
-  {TOP_cmpeq128v32,	TOP_cmpeqx128v32,	TOP_cmpeqxx128v32,	TOP_cmpeqxxx128v32,	TOP_UNDEFINED},
-  {TOP_max128v8,	TOP_maxx128v8,	TOP_maxxx128v8,	TOP_maxxxx128v8,	TOP_UNDEFINED},
-  {TOP_max128v16,	TOP_maxx128v16,	TOP_maxxx128v16, TOP_maxxxx128v16,	TOP_UNDEFINED},
-  {TOP_min128v8,	TOP_minx128v8,	TOP_minxx128v8,	TOP_minxxx128v8,	TOP_UNDEFINED},
-  {TOP_min128v16,	TOP_minx128v16,	TOP_minxx128v16, TOP_minxxx128v16,	TOP_UNDEFINED},
-  {TOP_divss,	TOP_divxss,	TOP_divxxss,	TOP_divxxxss,	TOP_UNDEFINED},
-  {TOP_divsd,	TOP_divxsd,	TOP_divxxsd,	TOP_divxxxsd,	TOP_UNDEFINED},
-  {TOP_fdiv128v32,	TOP_fdivx128v32,	TOP_fdivxx128v32,	TOP_fdivxxx128v32,	TOP_UNDEFINED},
-  {TOP_fdiv128v64,	TOP_fdivx128v64,	TOP_fdivxx128v64,	TOP_fdivxxx128v64,	TOP_UNDEFINED},
-
-  {TOP_and8,	TOP_andx8,	TOP_andxx8,	TOP_andxxx8,	TOP_UNDEFINED},
-  {TOP_and16,	TOP_andx16,	TOP_andxx16,	TOP_andxxx16,	TOP_UNDEFINED},
-  {TOP_and32,	TOP_andx32,	TOP_andxx32,	TOP_andxxx32,	TOP_UNDEFINED},
-  {TOP_and64,	TOP_andx64,	TOP_andxx64,	TOP_andxxx64,	TOP_UNDEFINED},
-  {TOP_and128v8,	TOP_andx128v8,	TOP_andxx128v8,	TOP_andxxx128v8,	TOP_UNDEFINED},
-  {TOP_and128v16,	TOP_andx128v16,	TOP_andxx128v16,	TOP_andxxx128v16,	TOP_UNDEFINED},
-  {TOP_and128v32,	TOP_andx128v32,	TOP_andxx128v32,	TOP_andxxx128v32,	TOP_UNDEFINED },
-  {TOP_and128v64,	TOP_andx128v64,	TOP_andxx128v64,	TOP_andxxx128v64,	TOP_UNDEFINED},
-  {TOP_fand128v32,	TOP_fandx128v32,	TOP_fandxx128v32,	TOP_fandxxx128v32,	TOP_UNDEFINED},
-  {TOP_fand128v64,	TOP_fandx128v64,	TOP_fandxx128v64,	TOP_fandxxx128v64,	TOP_UNDEFINED},
-  // andps/andpd share the same load-execute OPs as fand128v32/fand128v64.
-  // Must put andps/andpd after fand128v32/fand128v64 so that the load-execute
-  // OPs will have fand128v32/fand128v64 as the base mode.
-  {TOP_andps,	TOP_fandx128v32,	TOP_fandxx128v32,	TOP_fandxxx128v32,	TOP_UNDEFINED},
-  {TOP_andpd,	TOP_fandx128v64,	TOP_fandxx128v64,	TOP_fandxxx128v64,	TOP_UNDEFINED},
-
-  {TOP_or8,	TOP_orx8,	TOP_orxx8,	TOP_orxxx8,	TOP_UNDEFINED},
-  {TOP_or16,	TOP_orx16,	TOP_orxx16,	TOP_orxxx16,	TOP_UNDEFINED},
-  {TOP_or32,	TOP_orx32,	TOP_orxx32,	TOP_orxxx32,	TOP_UNDEFINED},
-  {TOP_or64,	TOP_orx64,	TOP_orxx64,	TOP_orxxx64,	TOP_UNDEFINED},
-  {TOP_or128v8,	TOP_orx128v8,	TOP_orxx128v8,	TOP_orxxx128v8,	TOP_UNDEFINED},
-  {TOP_or128v16,	TOP_orx128v16,	TOP_orxx128v16,	TOP_orxxx128v16,	TOP_UNDEFINED},
-  {TOP_or128v32,	TOP_orx128v32,	TOP_orxx128v32,	TOP_orxxx128v32,	TOP_UNDEFINED},
-  {TOP_or128v64,	TOP_orx128v64,	TOP_orxx128v64,	TOP_orxxx128v64,	TOP_UNDEFINED},
-  {TOP_for128v32,	TOP_forx128v32,	TOP_forxx128v32,	TOP_forxxx128v32,	TOP_UNDEFINED},
-  {TOP_for128v64,	TOP_forx128v64,	TOP_forxx128v64,	TOP_forxxx128v64,	TOP_UNDEFINED},
-  // orps/orpd share the same load-execute OPs as for128v32/for128v64.  Must
-  // put orps/orpd after for128v32/for128v64 so that the load-execute OPs will
-  // have for128v32/for128v64 as the base mode.
-  {TOP_orps,	TOP_forx128v32,	TOP_forxx128v32,	TOP_forxxx128v32,	TOP_UNDEFINED},
-  {TOP_orpd,	TOP_forx128v64,	TOP_forxx128v64,	TOP_forxxx128v64,	TOP_UNDEFINED},
-
-  {TOP_xor8,	TOP_xorx8,	TOP_xorxx8,	TOP_xorxxx8,	TOP_UNDEFINED},
-  {TOP_xor16,	TOP_xorx16,	TOP_xorxx16,	TOP_xorxxx16,	TOP_UNDEFINED},
-  {TOP_xor32,	TOP_xorx32,	TOP_xorxx32,	TOP_xorxxx32,	TOP_UNDEFINED},
-  {TOP_xor64,	TOP_xorx64,	TOP_xorxx64,	TOP_xorxxx64,	TOP_UNDEFINED},
-  {TOP_xor128v8,	TOP_xorx128v8,	TOP_xorxx128v8,	TOP_xorxxx128v8,	TOP_UNDEFINED},
-  {TOP_xor128v16,	TOP_xorx128v16,	TOP_xorxx128v16,	TOP_xorxxx128v16,	TOP_UNDEFINED},
-  {TOP_xor128v32,	TOP_xorx128v32,	TOP_xorxx128v32,	TOP_xorxxx128v32,	TOP_UNDEFINED},
-  {TOP_xor128v64,	TOP_xorx128v64,	TOP_xorxx128v64,	TOP_xorxxx128v64,	TOP_UNDEFINED},
-  {TOP_fxor128v32,	TOP_fxorx128v32,	TOP_fxorxx128v32,	TOP_fxorxxx128v32,	TOP_UNDEFINED},
-  {TOP_fxor128v64,	TOP_fxorx128v64,	TOP_fxorxx128v64,	TOP_fxorxxx128v64,	TOP_UNDEFINED},
-  // xorps/xorpd share the same load-execute OPs as fxor128v32/fxor128v64.
-  // Must put xorps/xorpd after fxor128v32/fxor128v64 so that the load-execute
-  // OPs will have fxor128v32/fxor128v64 as the base mode.
-  {TOP_xorps,	TOP_fxorx128v32,	TOP_fxorxx128v32,	TOP_fxorxxx128v32,	TOP_UNDEFINED},
-  {TOP_xorpd,	TOP_fxorx128v64,	TOP_fxorxx128v64,	TOP_fxorxxx128v64,	TOP_UNDEFINED},
-
-  {TOP_fmax128v32,	TOP_fmaxx128v32,	TOP_fmaxxx128v32,	TOP_fmaxxxx128v32,	TOP_UNDEFINED},
-  {TOP_fmax128v64,	TOP_fmaxx128v64,	TOP_fmaxxx128v64,	TOP_fmaxxxx128v64,	TOP_UNDEFINED},
-  {TOP_fmin128v32,	TOP_fminx128v32,	TOP_fminxx128v32,	TOP_fminxxx128v32,	TOP_UNDEFINED},
-  {TOP_fmin128v64,	TOP_fminx128v64,	TOP_fminxx128v64,	TOP_fminxxx128v64,	TOP_UNDEFINED},
-
-  {TOP_cmp8,	TOP_cmpx8,	TOP_cmpxx8,	TOP_cmpxxx8,	TOP_UNDEFINED},
-  {TOP_cmp16,	TOP_cmpx16,	TOP_cmpxx16,	TOP_cmpxxx16,	TOP_UNDEFINED},
-  {TOP_cmp32,	TOP_cmpx32,	TOP_cmpxx32,	TOP_cmpxxx32,	TOP_UNDEFINED},
-  {TOP_cmp64,	TOP_cmpx64,	TOP_cmpxx64,	TOP_cmpxxx64,	TOP_UNDEFINED},
-
-  {TOP_cmpi8,	TOP_cmpxi8,	TOP_cmpxxi8,	TOP_cmpxxxi8,	TOP_UNDEFINED},
-  {TOP_cmpi16,	TOP_cmpxi16,	TOP_cmpxxi16,	TOP_cmpxxxi16,	TOP_UNDEFINED},
-  {TOP_cmpi32,	TOP_cmpxi32,	TOP_cmpxxi32,	TOP_cmpxxxi32,	TOP_UNDEFINED},
-  {TOP_cmpi64,	TOP_cmpxi64,	TOP_cmpxxi64,	TOP_cmpxxxi64,	TOP_UNDEFINED},
-
-  {TOP_test32,	TOP_testx32,	TOP_testxx32,	TOP_testxxx32,	TOP_UNDEFINED},
-  {TOP_test64,	TOP_testx64,	TOP_testxx64,	TOP_testxxx64,	TOP_UNDEFINED},
-  {TOP_comiss,	TOP_comixss,	TOP_comixxss,	TOP_comixxxss,	TOP_UNDEFINED},
-  {TOP_comisd,	TOP_comixsd,	TOP_comixxsd,	TOP_comixxxsd,	TOP_UNDEFINED},
-
-  {TOP_icall,	TOP_icallx,	TOP_icallxx,	TOP_icallxxx,	TOP_UNDEFINED},
-  {TOP_ijmp,	TOP_ijmpx,	TOP_ijmpxx,	TOP_ijmpxxx,	TOP_UNDEFINED},
-
-  {TOP_cvtsd2ss,	TOP_cvtsd2ss_x,	TOP_cvtsd2ss_xx,	TOP_cvtsd2ss_xxx,	TOP_UNDEFINED},
-  {TOP_cvtsi2ss,	TOP_cvtsi2ss_x,	TOP_cvtsi2ss_xx,	TOP_cvtsi2ss_xxx,	TOP_UNDEFINED},
-  {TOP_cvtsi2ssq,	TOP_cvtsi2ssq_x,	TOP_cvtsi2ssq_xx,	TOP_cvtsi2ssq_xxx,	TOP_UNDEFINED},
-  {TOP_cvtsi2sd,	TOP_cvtsi2sd_x,	TOP_cvtsi2sd_xx,	TOP_cvtsi2sd_xxx,	TOP_UNDEFINED},
-  {TOP_cvtsi2sdq,	TOP_cvtsi2sdq_x,	TOP_cvtsi2sdq_xx,	TOP_cvtsi2sdq_xxx,	TOP_UNDEFINED},
-
-  {TOP_cvtdq2pd,	TOP_cvtdq2pd_x,	TOP_cvtdq2pd_xx,	TOP_cvtdq2pd_xxx,	TOP_UNDEFINED},
-  {TOP_cvtdq2ps,	TOP_cvtdq2ps_x,	TOP_cvtdq2ps_xx,	TOP_cvtdq2ps_xxx,	TOP_UNDEFINED},
- {TOP_cvtps2pd,		TOP_cvtps2pd_x,	TOP_cvtps2pd_xx,	TOP_cvtps2pd_xxx,	TOP_UNDEFINED},
-  {TOP_cvtpd2ps,	TOP_cvtpd2ps_x,	TOP_cvtpd2ps_xx,	TOP_cvtpd2ps_xxx,	TOP_UNDEFINED},
-  {TOP_cvttps2dq,	TOP_cvttps2dq_x,	TOP_cvttps2dq_xx,	TOP_cvttps2dq_xxx,	TOP_UNDEFINED},
-  {TOP_cvttpd2dq,	TOP_cvttpd2dq_x,	TOP_cvttpd2dq_xx,	TOP_cvttpd2dq_xxx,	TOP_UNDEFINED}
+enum ADDR_MODE { BASE_MODE = 0,    /* offset(base)             */
+		 BASE_INDEX_MODE,  /* offset(base,index,scale) */
+		 INDEX_MODE,       /* offset(,index,scale)     */
+		 N32_MODE          /* offset                   */
 };
 
-// Associate an address mode group to an opcode.
-static void
-Add_Addr_Mode_Group (TOP top, Addr_Mode_Group *address_mode_group)
-{
-  if (top == TOP_UNDEFINED)
-    return;
+#define SET_MEM_OP_TABLE(o,a,b,c)                                     \
+do {                                                                  \
+   FmtAssert( Mem_Op_Table[o][BASE_MODE] == TOP_UNDEFINED,            \
+              ("SET_MEM_OP_TABLE: NYI") );                            \
+   Mem_Op_Table[o][BASE_MODE] = a;                                    \
+   Mem_Op_Table[o][BASE_INDEX_MODE] = b;                              \
+   Mem_Op_Table[o][INDEX_MODE] = c;                                   \
+} while(0)
 
-  // Don't redefine the address group for TOP if it is already defined.  This
-  // is so that if TOP appears in multiple groups, we use only the first group,
-  // which is assumed to be the most authoritative for TOP.
-  if (Top_To_Addr_Mode_Group[top] == NULL)
-    Top_To_Addr_Mode_Group[top] = address_mode_group;
-}
+#define INIT_MEM_OP_TABLE_ENTRY(o)                    \
+do {                                                  \
+   Mem_Op_Table[o][BASE_MODE] = TOP_UNDEFINED;        \
+   Mem_Op_Table[o][BASE_INDEX_MODE] = TOP_UNDEFINED;  \
+   Mem_Op_Table[o][INDEX_MODE] = TOP_UNDEFINED;       \
+} while(0)
 
-// Build the Top_To_Addr_Modes table.
-static void
-Init_Addr_Modes()
+
+static void Init_Mem_Op_Table()
 {
-  int i;
-  ADDR_MODE mode;
   static bool table_is_initialized = false;
 
   if( table_is_initialized )
@@ -3931,61 +2987,287 @@ Init_Addr_Modes()
 
   table_is_initialized = true;
 
-  for (i = 0; i < TOP_UNDEFINED; i++) {
-    Top_To_Addr_Mode_Group[i] = NULL;
+  for( int i = 0; i <= TOP_count; i++ ){
+    INIT_MEM_OP_TABLE_ENTRY( i );
   }
 
-  // Make sure the code below is in sync with the number of address modes.
-  // Currently the last mode is N32_Mode.
-  ADDR_MODE last_mode = N32_MODE;
-  ADDR_MODE undefined_mode = UNDEFINED_MODE;
-  FmtAssert(1 + (int)last_mode == (int) undefined_mode,
-	    ("Init_Addr_Modes: some address modes not handled"));
+  // For EBO_Merge_Memory_Addr.
+
+  SET_MEM_OP_TABLE( TOP_store8,  TOP_store8, TOP_storex8, TOP_storexx8 );
+  SET_MEM_OP_TABLE( TOP_storex8, TOP_store8, TOP_storex8, TOP_storexx8 );
+  SET_MEM_OP_TABLE( TOP_storexx8,TOP_store8, TOP_storex8, TOP_storexx8 );
+
+  SET_MEM_OP_TABLE( TOP_store16,  TOP_store16, TOP_storex16, TOP_storexx16 );
+  SET_MEM_OP_TABLE( TOP_storex16, TOP_store16, TOP_storex16, TOP_storexx16 );
+  SET_MEM_OP_TABLE( TOP_storexx16,TOP_store16, TOP_storex16, TOP_storexx16 );
+
+  SET_MEM_OP_TABLE( TOP_store32,  TOP_store32, TOP_storex32, TOP_storexx32 );
+  SET_MEM_OP_TABLE( TOP_storex32, TOP_store32, TOP_storex32, TOP_storexx32 );
+  SET_MEM_OP_TABLE( TOP_storexx32,TOP_store32, TOP_storex32, TOP_storexx32 );
   
-  UINT table_size = sizeof(Addr_Mode_Group_Table) / sizeof(Addr_Mode_Group);
-  for (i = 0; i < table_size; i++) {
-    Addr_Mode_Group *group = &Addr_Mode_Group_Table[i];
+  SET_MEM_OP_TABLE( TOP_store64,  TOP_store64, TOP_storex64, TOP_storexx64 );
+  SET_MEM_OP_TABLE( TOP_storex64, TOP_store64, TOP_storex64, TOP_storexx64 );
+  SET_MEM_OP_TABLE( TOP_storexx64,TOP_store64, TOP_storex64, TOP_storexx64 );
 
-    Add_Addr_Mode_Group(group->reg_mode, group);
-    Add_Addr_Mode_Group(group->base_mode, group);
-    Add_Addr_Mode_Group(group->base_index_mode, group);
-    Add_Addr_Mode_Group(group->index_mode, group);
-    Add_Addr_Mode_Group(group->n32_mode, group);
-  }
+  SET_MEM_OP_TABLE( TOP_stss,     TOP_stss,    TOP_stssx,    TOP_stssxx );
+  SET_MEM_OP_TABLE( TOP_stssx,    TOP_stss,    TOP_stssx,    TOP_stssxx );
+  SET_MEM_OP_TABLE( TOP_stssxx,   TOP_stss,    TOP_stssx,    TOP_stssxx );
+
+  SET_MEM_OP_TABLE( TOP_stsd,     TOP_stsd,    TOP_stsdx,    TOP_stsdxx );
+  SET_MEM_OP_TABLE( TOP_stsdx,    TOP_stsd,    TOP_stsdx,    TOP_stsdxx );
+  SET_MEM_OP_TABLE( TOP_stsdxx,   TOP_stsd,    TOP_stsdx,    TOP_stsdxx );
+
+  SET_MEM_OP_TABLE( TOP_stdqa,     TOP_stdqa,    TOP_stdqax,    TOP_stdqaxx );
+  SET_MEM_OP_TABLE( TOP_stdqax,    TOP_stdqa,    TOP_stdqax,    TOP_stdqaxx );
+  SET_MEM_OP_TABLE( TOP_stdqaxx,   TOP_stdqa,    TOP_stdqax,    TOP_stdqaxx );
+
+  SET_MEM_OP_TABLE( TOP_stntpd,     TOP_stntpd,    TOP_stntpdx,    TOP_stntpdxx );
+  SET_MEM_OP_TABLE( TOP_stntpdx,    TOP_stntpd,    TOP_stntpdx,    TOP_stntpdxx );
+  SET_MEM_OP_TABLE( TOP_stntpdxx,   TOP_stntpd,    TOP_stntpdx,    TOP_stntpdxx );
+
+  SET_MEM_OP_TABLE( TOP_stdqu,     TOP_stdqu,    TOP_stdqux,    TOP_stdquxx );
+  SET_MEM_OP_TABLE( TOP_stdqux,    TOP_stdqu,    TOP_stdqux,    TOP_stdquxx );
+  SET_MEM_OP_TABLE( TOP_stdquxx,   TOP_stdqu,    TOP_stdqux,    TOP_stdquxx );
+
+  SET_MEM_OP_TABLE( TOP_ldss,     TOP_ldss,    TOP_ldssx,    TOP_ldssxx );
+  SET_MEM_OP_TABLE( TOP_ldssx,    TOP_ldss,    TOP_ldssx,    TOP_ldssxx );
+  SET_MEM_OP_TABLE( TOP_ldssxx,   TOP_ldss,    TOP_ldssx,    TOP_ldssxx );
+
+  SET_MEM_OP_TABLE( TOP_ldsd,     TOP_ldsd,    TOP_ldsdx,    TOP_ldsdxx );
+  SET_MEM_OP_TABLE( TOP_ldsdx,    TOP_ldsd,    TOP_ldsdx,    TOP_ldsdxx );
+  SET_MEM_OP_TABLE( TOP_ldsdxx,   TOP_ldsd,    TOP_ldsdx,    TOP_ldsdxx );
+
+  SET_MEM_OP_TABLE( TOP_lddqa,     TOP_lddqa,    TOP_lddqax,    TOP_lddqaxx );
+  SET_MEM_OP_TABLE( TOP_lddqax,    TOP_lddqa,    TOP_lddqax,    TOP_lddqaxx );
+  SET_MEM_OP_TABLE( TOP_lddqaxx,   TOP_lddqa,    TOP_lddqax,    TOP_lddqaxx );
+
+  SET_MEM_OP_TABLE( TOP_lddqu,     TOP_lddqu,    TOP_lddqux,    TOP_lddquxx );
+  SET_MEM_OP_TABLE( TOP_lddqux,    TOP_lddqu,    TOP_lddqux,    TOP_lddquxx );
+  SET_MEM_OP_TABLE( TOP_lddquxx,   TOP_lddqu,    TOP_lddqux,    TOP_lddquxx );
+
+  SET_MEM_OP_TABLE( TOP_ldlps,     TOP_ldlps,    TOP_ldlpsx,    TOP_ldlpsxx );
+  SET_MEM_OP_TABLE( TOP_ldlpsx,    TOP_ldlps,    TOP_ldlpsx,    TOP_ldlpsxx );
+  SET_MEM_OP_TABLE( TOP_ldlpsxx,   TOP_ldlps,    TOP_ldlpsx,    TOP_ldlpsxx );
+
+  SET_MEM_OP_TABLE( TOP_ldlpd,     TOP_ldlpd,    TOP_ldlpdx,    TOP_ldlpdxx );
+  SET_MEM_OP_TABLE( TOP_ldlpdx,    TOP_ldlpd,    TOP_ldlpdx,    TOP_ldlpdxx );
+  SET_MEM_OP_TABLE( TOP_ldlpdxx,   TOP_ldlpd,    TOP_ldlpdx,    TOP_ldlpdxx );
+
+  SET_MEM_OP_TABLE( TOP_ldaps,     TOP_ldaps,    TOP_ldapsx,    TOP_ldapsxx );
+  SET_MEM_OP_TABLE( TOP_ldapsx,    TOP_ldaps,    TOP_ldapsx,    TOP_ldapsxx );
+  SET_MEM_OP_TABLE( TOP_ldapsxx,   TOP_ldaps,    TOP_ldapsx,    TOP_ldapsxx );
+
+  SET_MEM_OP_TABLE( TOP_ldapd,     TOP_ldapd,    TOP_ldapdx,    TOP_ldapdxx );
+  SET_MEM_OP_TABLE( TOP_ldapdx,    TOP_ldapd,    TOP_ldapdx,    TOP_ldapdxx );
+  SET_MEM_OP_TABLE( TOP_ldapdxx,   TOP_ldapd,    TOP_ldapdx,    TOP_ldapdxx );
+
+  SET_MEM_OP_TABLE( TOP_stlps,     TOP_stlps,    TOP_stlpsx,    TOP_stlpsxx );
+  SET_MEM_OP_TABLE( TOP_stlpsx,    TOP_stlps,    TOP_stlpsx,    TOP_stlpsxx );
+  SET_MEM_OP_TABLE( TOP_stlpsxx,   TOP_stlps,    TOP_stlpsx,    TOP_stlpsxx );
+
+  SET_MEM_OP_TABLE( TOP_stlpd,     TOP_stlpd,    TOP_stlpdx,    TOP_stlpdxx );
+  SET_MEM_OP_TABLE( TOP_stlpdx,    TOP_stlpd,    TOP_stlpdx,    TOP_stlpdxx );
+  SET_MEM_OP_TABLE( TOP_stlpdxx,   TOP_stlpd,    TOP_stlpdx,    TOP_stlpdxx );
+
+  SET_MEM_OP_TABLE( TOP_staps,     TOP_staps,    TOP_stapsx,    TOP_stapsxx );
+  SET_MEM_OP_TABLE( TOP_stapsx,    TOP_staps,    TOP_stapsx,    TOP_stapsxx );
+  SET_MEM_OP_TABLE( TOP_stapsxx,   TOP_staps,    TOP_stapsx,    TOP_stapsxx );
+
+  SET_MEM_OP_TABLE( TOP_stapd,     TOP_stapd,    TOP_stapdx,    TOP_stapdxx );
+  SET_MEM_OP_TABLE( TOP_stapdx,    TOP_stapd,    TOP_stapdx,    TOP_stapdxx );
+  SET_MEM_OP_TABLE( TOP_stapdxx,   TOP_stapd,    TOP_stapdx,    TOP_stapdxx );
+
+  SET_MEM_OP_TABLE( TOP_ldhps,     TOP_ldhps,    TOP_ldhpsx,    TOP_ldhpsxx );
+  SET_MEM_OP_TABLE( TOP_ldhpsx,    TOP_ldhps,    TOP_ldhpsx,    TOP_ldhpsxx );
+  SET_MEM_OP_TABLE( TOP_ldhpsxx,   TOP_ldhps,    TOP_ldhpsx,    TOP_ldhpsxx );
+
+  SET_MEM_OP_TABLE( TOP_ldhpd,     TOP_ldhpd,    TOP_ldhpdx,    TOP_ldhpdxx );
+  SET_MEM_OP_TABLE( TOP_ldhpdx,    TOP_ldhpd,    TOP_ldhpdx,    TOP_ldhpdxx );
+  SET_MEM_OP_TABLE( TOP_ldhpdxx,   TOP_ldhpd,    TOP_ldhpdx,    TOP_ldhpdxx );
+
+  SET_MEM_OP_TABLE( TOP_sthps,     TOP_sthps,    TOP_sthpsx,    TOP_sthpsxx );
+  SET_MEM_OP_TABLE( TOP_sthpsx,    TOP_sthps,    TOP_sthpsx,    TOP_sthpsxx );
+  SET_MEM_OP_TABLE( TOP_sthpsxx,   TOP_sthps,    TOP_sthpsx,    TOP_sthpsxx );
+
+  SET_MEM_OP_TABLE( TOP_sthpd,     TOP_sthpd,    TOP_sthpdx,    TOP_sthpdxx );
+  SET_MEM_OP_TABLE( TOP_sthpdx,    TOP_sthpd,    TOP_sthpdx,    TOP_sthpdxx );
+  SET_MEM_OP_TABLE( TOP_sthpdxx,   TOP_sthpd,    TOP_sthpdx,    TOP_sthpdxx );
+
+  SET_MEM_OP_TABLE( TOP_ld8_64,   TOP_ld8_64,  TOP_ldx8_64,  TOP_ldxx8_64 );
+  SET_MEM_OP_TABLE( TOP_ldx8_64,  TOP_ld8_64,  TOP_ldx8_64,  TOP_ldxx8_64 );
+  SET_MEM_OP_TABLE( TOP_ldxx8_64, TOP_ld8_64,  TOP_ldx8_64,  TOP_ldxx8_64 );
+
+  SET_MEM_OP_TABLE( TOP_ldu8_64,   TOP_ldu8_64, TOP_ldxu8_64, TOP_ldxxu8_64 );
+  SET_MEM_OP_TABLE( TOP_ldxu8_64,  TOP_ldu8_64, TOP_ldxu8_64, TOP_ldxxu8_64 );
+  SET_MEM_OP_TABLE( TOP_ldxxu8_64, TOP_ldu8_64, TOP_ldxu8_64, TOP_ldxxu8_64 );
+
+  SET_MEM_OP_TABLE( TOP_ld16_64,   TOP_ld16_64,  TOP_ldx16_64,  TOP_ldxx16_64 );
+  SET_MEM_OP_TABLE( TOP_ldx16_64,  TOP_ld16_64,  TOP_ldx16_64,  TOP_ldxx16_64 );
+  SET_MEM_OP_TABLE( TOP_ldxx16_64, TOP_ld16_64,  TOP_ldx16_64,  TOP_ldxx16_64 );
+
+  SET_MEM_OP_TABLE( TOP_ldu16_64,   TOP_ldu16_64, TOP_ldxu16_64, TOP_ldxxu16_64 );
+  SET_MEM_OP_TABLE( TOP_ldxu16_64,  TOP_ldu16_64, TOP_ldxu16_64, TOP_ldxxu16_64 );
+  SET_MEM_OP_TABLE( TOP_ldxxu16_64, TOP_ldu16_64, TOP_ldxu16_64, TOP_ldxxu16_64 );
+
+  SET_MEM_OP_TABLE( TOP_ld8_32,   TOP_ld8_32,  TOP_ldx8_32,  TOP_ldxx8_32 );
+  SET_MEM_OP_TABLE( TOP_ldx8_32,  TOP_ld8_32,  TOP_ldx8_32,  TOP_ldxx8_32 );
+  SET_MEM_OP_TABLE( TOP_ldxx8_32, TOP_ld8_32,  TOP_ldx8_32,  TOP_ldxx8_32 );
+
+  SET_MEM_OP_TABLE( TOP_ldu8_32,   TOP_ldu8_32, TOP_ldxu8_32, TOP_ldxxu8_32 );
+  SET_MEM_OP_TABLE( TOP_ldxu8_32,  TOP_ldu8_32, TOP_ldxu8_32, TOP_ldxxu8_32 );
+  SET_MEM_OP_TABLE( TOP_ldxxu8_32, TOP_ldu8_32, TOP_ldxu8_32, TOP_ldxxu8_32 );
+
+  SET_MEM_OP_TABLE( TOP_ld16_32,   TOP_ld16_32,  TOP_ldx16_32,  TOP_ldxx16_32 );
+  SET_MEM_OP_TABLE( TOP_ldx16_32,  TOP_ld16_32,  TOP_ldx16_32,  TOP_ldxx16_32 );
+  SET_MEM_OP_TABLE( TOP_ldxx16_32, TOP_ld16_32,  TOP_ldx16_32,  TOP_ldxx16_32 );
+
+  SET_MEM_OP_TABLE( TOP_ldu16_32,   TOP_ldu16_32, TOP_ldxu16_32, TOP_ldxxu16_32 );
+  SET_MEM_OP_TABLE( TOP_ldxu16_32,  TOP_ldu16_32, TOP_ldxu16_32, TOP_ldxxu16_32 );
+  SET_MEM_OP_TABLE( TOP_ldxxu16_32, TOP_ldu16_32, TOP_ldxu16_32, TOP_ldxxu16_32 );
+
+  SET_MEM_OP_TABLE( TOP_ld32,     TOP_ld32,    TOP_ldx32,    TOP_ldxx32 );
+  SET_MEM_OP_TABLE( TOP_ldx32,    TOP_ld32,    TOP_ldx32,    TOP_ldxx32 );
+  SET_MEM_OP_TABLE( TOP_ldxx32,   TOP_ld32,    TOP_ldx32,    TOP_ldxx32 );
+
+  SET_MEM_OP_TABLE( TOP_ld32_64,     TOP_ld32_64,    TOP_ldx32_64,    TOP_ldxx32_64 );
+  SET_MEM_OP_TABLE( TOP_ldx32_64,    TOP_ld32_64,    TOP_ldx32_64,    TOP_ldxx32_64 );
+  SET_MEM_OP_TABLE( TOP_ldxx32_64,   TOP_ld32_64,    TOP_ldx32_64,    TOP_ldxx32_64 );
+
+  SET_MEM_OP_TABLE( TOP_ld64,     TOP_ld64,    TOP_ldx64,    TOP_ldxx64 );
+  SET_MEM_OP_TABLE( TOP_ldx64,    TOP_ld64,    TOP_ldx64,    TOP_ldxx64 );
+  SET_MEM_OP_TABLE( TOP_ldxx64,   TOP_ld64,    TOP_ldx64,    TOP_ldxx64 );
+
+  SET_MEM_OP_TABLE( TOP_lea32,    TOP_lea32,    TOP_leax32,    TOP_leaxx32 );
+  SET_MEM_OP_TABLE( TOP_leax32,   TOP_lea32,    TOP_leax32,    TOP_leaxx32 );
+  SET_MEM_OP_TABLE( TOP_leaxx32,  TOP_lea32,    TOP_leax32,    TOP_leaxx32 );
+
+  SET_MEM_OP_TABLE( TOP_lea64,    TOP_lea64,    TOP_leax64,    TOP_leaxx64 );
+  SET_MEM_OP_TABLE( TOP_leax64,   TOP_lea64,    TOP_leax64,    TOP_leaxx64 );
+  SET_MEM_OP_TABLE( TOP_leaxx64,  TOP_lea64,    TOP_leax64,    TOP_leaxx64 );
+
+  SET_MEM_OP_TABLE( TOP_prefetch,   TOP_prefetch,  TOP_prefetchx,   TOP_prefetchxx );
+  SET_MEM_OP_TABLE( TOP_prefetchx,  TOP_prefetch,  TOP_prefetchx,   TOP_prefetchxx );
+  SET_MEM_OP_TABLE( TOP_prefetchxx, TOP_prefetch,  TOP_prefetchx,   TOP_prefetchxx );
+
+  SET_MEM_OP_TABLE( TOP_prefetchw,  TOP_prefetchw, TOP_prefetchwx, TOP_prefetchwxx );
+  SET_MEM_OP_TABLE( TOP_prefetchwx, TOP_prefetchw, TOP_prefetchwx, TOP_prefetchwxx );
+  SET_MEM_OP_TABLE( TOP_prefetchwxx,TOP_prefetchw, TOP_prefetchwx, TOP_prefetchwxx );
+
+  SET_MEM_OP_TABLE( TOP_prefetcht0,  TOP_prefetcht0,TOP_prefetcht0x,TOP_prefetcht0xx );
+  SET_MEM_OP_TABLE( TOP_prefetcht0x, TOP_prefetcht0,TOP_prefetcht0x,TOP_prefetcht0xx );
+  SET_MEM_OP_TABLE( TOP_prefetcht0xx,TOP_prefetcht0,TOP_prefetcht0x,TOP_prefetcht0xx );
+
+  SET_MEM_OP_TABLE( TOP_prefetcht1,  TOP_prefetcht1,TOP_prefetcht1x,TOP_prefetcht1xx );
+  SET_MEM_OP_TABLE( TOP_prefetcht1x, TOP_prefetcht1,TOP_prefetcht1x,TOP_prefetcht1xx );
+  SET_MEM_OP_TABLE( TOP_prefetcht1xx,TOP_prefetcht1,TOP_prefetcht1x,TOP_prefetcht1xx );
+
+  // For EBO_Load_Execution.
+
+  SET_MEM_OP_TABLE( TOP_add32,   TOP_addx32,   TOP_addxx32,   TOP_addxxx32 );
+  SET_MEM_OP_TABLE( TOP_add64,   TOP_addx64,   TOP_addxx64,   TOP_addxxx64 );
+  SET_MEM_OP_TABLE( TOP_addss,   TOP_addxss,   TOP_addxxss,   TOP_addxxxss );
+  SET_MEM_OP_TABLE( TOP_addsd,   TOP_addxsd,   TOP_addxxsd,   TOP_addxxxsd );
+  SET_MEM_OP_TABLE( TOP_add128v8,   TOP_addx128v8,   TOP_addxx128v8,   TOP_addxxx128v8 );
+  SET_MEM_OP_TABLE( TOP_add128v16,   TOP_addx128v16,   TOP_addxx128v16,   TOP_addxxx128v16 );
+  SET_MEM_OP_TABLE( TOP_add128v32,   TOP_addx128v32,   TOP_addxx128v32,   TOP_addxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_add128v64,   TOP_addx128v64,   TOP_addxx128v64,   TOP_addxxx128v64 );
+  SET_MEM_OP_TABLE( TOP_fadd128v32,   TOP_faddx128v32,   TOP_faddxx128v32,   TOP_faddxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_fadd128v64,   TOP_faddx128v64,   TOP_faddxx128v64,   TOP_faddxxx128v64 );
+
+  SET_MEM_OP_TABLE( TOP_sub32,   TOP_subx32,   TOP_subxx32,   TOP_subxxx32 );
+  SET_MEM_OP_TABLE( TOP_sub64,   TOP_subx64,   TOP_subxx64,   TOP_subxxx64 );
+  SET_MEM_OP_TABLE( TOP_subss,   TOP_subxss,   TOP_subxxss,   TOP_subxxxss );
+  SET_MEM_OP_TABLE( TOP_subsd,   TOP_subxsd,   TOP_subxxsd,   TOP_subxxxsd );
+  SET_MEM_OP_TABLE( TOP_sub128v8,   TOP_subx128v8,   TOP_subxx128v8,   TOP_subxxx128v8 );
+  SET_MEM_OP_TABLE( TOP_sub128v16,   TOP_subx128v16,   TOP_subxx128v16,   TOP_subxxx128v16 );
+  SET_MEM_OP_TABLE( TOP_sub128v32,   TOP_subx128v32,   TOP_subxx128v32,   TOP_subxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_sub128v64,   TOP_subx128v64,   TOP_subxx128v64,   TOP_subxxx128v64 );
+  SET_MEM_OP_TABLE( TOP_fsub128v32,   TOP_fsubx128v32,   TOP_fsubxx128v32,   TOP_fsubxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_fsub128v64,   TOP_fsubx128v64,   TOP_fsubxx128v64,   TOP_fsubxxx128v64 );
+
+  SET_MEM_OP_TABLE( TOP_mulss,   TOP_mulxss,   TOP_mulxxss,   TOP_mulxxxss );
+  SET_MEM_OP_TABLE( TOP_mulsd,   TOP_mulxsd,   TOP_mulxxsd,   TOP_mulxxxsd );
+  SET_MEM_OP_TABLE( TOP_fmul128v32,   TOP_fmulx128v32,   TOP_fmulxx128v32,   TOP_fmulxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_fmul128v64,   TOP_fmulx128v64,   TOP_fmulxx128v64,   TOP_fmulxxx128v64 );
+  SET_MEM_OP_TABLE( TOP_divss,   TOP_divxss,   TOP_divxxss,   TOP_divxxxss );
+  SET_MEM_OP_TABLE( TOP_divsd,   TOP_divxsd,   TOP_divxxsd,   TOP_divxxxsd );
+  SET_MEM_OP_TABLE( TOP_fdiv128v32,   TOP_fdivx128v32,   TOP_fdivxx128v32,   TOP_fdivxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_fdiv128v64,   TOP_fdivx128v64,   TOP_fdivxx128v64,   TOP_fdivxxx128v64 );
+
+  SET_MEM_OP_TABLE( TOP_and8,    TOP_andx8,    TOP_andxx8,    TOP_andxxx8  );
+  SET_MEM_OP_TABLE( TOP_and16,   TOP_andx16,   TOP_andxx16,   TOP_andxxx16 );
+  SET_MEM_OP_TABLE( TOP_and32,   TOP_andx32,   TOP_andxx32,   TOP_andxxx32 );
+  SET_MEM_OP_TABLE( TOP_and64,   TOP_andx64,   TOP_andxx64,   TOP_andxxx64 );
+  SET_MEM_OP_TABLE( TOP_and128v8,   TOP_andx128v8,   TOP_andxx128v8,   TOP_andxxx128v8 );
+  SET_MEM_OP_TABLE( TOP_and128v16,   TOP_andx128v16,   TOP_andxx128v16,   TOP_andxxx128v16 );
+  SET_MEM_OP_TABLE( TOP_and128v32,   TOP_andx128v32,   TOP_andxx128v32,   TOP_andxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_and128v64,   TOP_andx128v64,   TOP_andxx128v64,   TOP_andxxx128v64 );
+  SET_MEM_OP_TABLE( TOP_fand128v32,   TOP_fandx128v32,   TOP_fandxx128v32,   TOP_fandxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_fand128v64,   TOP_fandx128v64,   TOP_fandxx128v64,   TOP_fandxxx128v64 );
+
+  SET_MEM_OP_TABLE( TOP_or8,    TOP_orx8,    TOP_orxx8,    TOP_orxxx8  );
+  SET_MEM_OP_TABLE( TOP_or16,   TOP_orx16,   TOP_orxx16,   TOP_orxxx16 );
+  SET_MEM_OP_TABLE( TOP_or32,   TOP_orx32,   TOP_orxx32,   TOP_orxxx32 );
+  SET_MEM_OP_TABLE( TOP_or64,   TOP_orx64,   TOP_orxx64,   TOP_orxxx64 );
+  SET_MEM_OP_TABLE( TOP_or128v8,   TOP_orx128v8,   TOP_orxx128v8,   TOP_orxxx128v8 );
+  SET_MEM_OP_TABLE( TOP_or128v16,   TOP_orx128v16,   TOP_orxx128v16,   TOP_orxxx128v16 );
+  SET_MEM_OP_TABLE( TOP_or128v32,   TOP_orx128v32,   TOP_orxx128v32,   TOP_orxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_or128v64,   TOP_orx128v64,   TOP_orxx128v64,   TOP_orxxx128v64 );
+  SET_MEM_OP_TABLE( TOP_for128v32,   TOP_forx128v32,   TOP_forxx128v32,   TOP_forxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_for128v64,   TOP_forx128v64,   TOP_forxx128v64,   TOP_forxxx128v64 );
+
+  SET_MEM_OP_TABLE( TOP_xor8,    TOP_xorx8,    TOP_xorxx8,    TOP_xorxxx8  );
+  SET_MEM_OP_TABLE( TOP_xor16,   TOP_xorx16,   TOP_xorxx16,   TOP_xorxxx16 );
+  SET_MEM_OP_TABLE( TOP_xor32,   TOP_xorx32,   TOP_xorxx32,   TOP_xorxxx32 );
+  SET_MEM_OP_TABLE( TOP_xor64,   TOP_xorx64,   TOP_xorxx64,   TOP_xorxxx64 );
+  SET_MEM_OP_TABLE( TOP_xor128v8,   TOP_xorx128v8,   TOP_xorxx128v8,   TOP_xorxxx128v8 );
+  SET_MEM_OP_TABLE( TOP_xor128v16,   TOP_xorx128v16,   TOP_xorxx128v16,   TOP_xorxxx128v16 );
+  SET_MEM_OP_TABLE( TOP_xor128v32,   TOP_xorx128v32,   TOP_xorxx128v32,   TOP_xorxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_xor128v64,   TOP_xorx128v64,   TOP_xorxx128v64,   TOP_xorxxx128v64 );
+  SET_MEM_OP_TABLE( TOP_fxor128v32,   TOP_fxorx128v32,   TOP_fxorxx128v32,   TOP_fxorxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_fxor128v64,   TOP_fxorx128v64,   TOP_fxorxx128v64,   TOP_fxorxxx128v64 );
+
+  SET_MEM_OP_TABLE( TOP_fmax128v32,   TOP_fmaxx128v32,   TOP_fmaxxx128v32,   TOP_fmaxxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_fmax128v64,   TOP_fmaxx128v64,   TOP_fmaxxx128v64,   TOP_fmaxxxx128v64 );
+  SET_MEM_OP_TABLE( TOP_fmin128v32,   TOP_fminx128v32,   TOP_fminxx128v32,   TOP_fminxxx128v32 );
+  SET_MEM_OP_TABLE( TOP_fmin128v64,   TOP_fminx128v64,   TOP_fminxx128v64,   TOP_fminxxx128v64 );
+
+  SET_MEM_OP_TABLE( TOP_cmp8,    TOP_cmpx8,    TOP_cmpxx8,    TOP_cmpxxx8  );
+  SET_MEM_OP_TABLE( TOP_cmp16,   TOP_cmpx16,   TOP_cmpxx16,   TOP_cmpxxx16 );
+  SET_MEM_OP_TABLE( TOP_cmp32,   TOP_cmpx32,   TOP_cmpxx32,   TOP_cmpxxx32 );
+  SET_MEM_OP_TABLE( TOP_cmp64,   TOP_cmpx64,   TOP_cmpxx64,   TOP_cmpxxx64 );
+
+  SET_MEM_OP_TABLE( TOP_cmpi8,    TOP_cmpxi8,    TOP_cmpxxi8,    TOP_cmpxxxi8  );
+  SET_MEM_OP_TABLE( TOP_cmpi16,   TOP_cmpxi16,   TOP_cmpxxi16,   TOP_cmpxxxi16 );
+  SET_MEM_OP_TABLE( TOP_cmpi32,   TOP_cmpxi32,   TOP_cmpxxi32,   TOP_cmpxxxi32 );
+  SET_MEM_OP_TABLE( TOP_cmpi64,   TOP_cmpxi64,   TOP_cmpxxi64,   TOP_cmpxxxi64 );
+
+  SET_MEM_OP_TABLE( TOP_test32,   TOP_testx32,   TOP_testxx32,   TOP_testxxx32 );
+  SET_MEM_OP_TABLE( TOP_test64,   TOP_testx64,   TOP_testxx64,   TOP_testxxx64 );
+  SET_MEM_OP_TABLE( TOP_comiss,   TOP_comixss,   TOP_comixxss,   TOP_comixxxss );
+  SET_MEM_OP_TABLE( TOP_comisd,   TOP_comixsd,   TOP_comixxsd,   TOP_comixxxsd );
+
+  SET_MEM_OP_TABLE( TOP_icall,   TOP_icallx,    TOP_icallxx,   TOP_icallxxx );
+  SET_MEM_OP_TABLE( TOP_ijmp,    TOP_ijmpx,     TOP_ijmpxx,    TOP_ijmpxxx );
 }
 
-static TOP
-Get_Top_For_Addr_Mode (TOP top, ADDR_MODE mode)
-{
-  Addr_Mode_Group *group = Top_To_Addr_Mode_Group[top];
-  if (group != NULL) {
-    switch (mode) {
-      case BASE_MODE:		return group->base_mode;
-      case BASE_INDEX_MODE:	return group->base_index_mode;
-      case INDEX_MODE:		return group->index_mode;
-      case N32_MODE:		return group->n32_mode;
-    }
-    FmtAssert(FALSE, ("Get_Top_For_Addr_Mode: address mode not handled"));
-  }
-  return TOP_UNDEFINED;
-}
 
-static OP *
-Compose_Mem_Op( OP* op, TN* index, TN* offset, TN* scale, TN* base )
+static OP* Compose_Mem_Op( OP* op, TN* index, TN* offset, TN* scale, TN* base )
 {
-  Is_True( offset != NULL, ("Compose_Mem_Op: offset is NULL") );
+  FmtAssert( offset != NULL, ("Compose_Mem_Op: NYI (1)") );
+  FmtAssert( ( scale == NULL && index == NULL ) ||
+	     ( scale != NULL && index != NULL ), ("Compose_Mem_Op: NYI (2)") );
+
+  ADDR_MODE mode = BASE_MODE;
+
+  if( index != NULL )
+    mode = base == NULL ? INDEX_MODE : BASE_INDEX_MODE;
+
+  const TOP new_top = Mem_Op_Table[OP_code(op)][mode];
+
+  FmtAssert( new_top != TOP_UNDEFINED, ("Compose_Mem_Op: NYI (3)") );
 
   OP* new_op = NULL;
-  ADDR_MODE mode = N32_MODE;
-
-  if (index != NULL)
-    mode = base == NULL ? INDEX_MODE : BASE_INDEX_MODE;
-  else if (base != NULL)
-    mode = BASE_MODE;
-
-  const TOP new_top = Get_Top_For_Addr_Mode(OP_code(op), mode);
-
-  FmtAssert( new_top != TOP_UNDEFINED, ("Compose_Mem_Op: unknown top") );
 
   if( TOP_is_prefetch( new_top ) ){
     if( mode == INDEX_MODE )
@@ -3997,63 +3279,22 @@ Compose_Mem_Op( OP* op, TN* index, TN* offset, TN* scale, TN* base )
     TN* storeval = NULL;
 
     if( TOP_is_store(new_top) ){
-      storeval = OP_opnd( op, OP_find_opnd_use( op, OU_storeval ) );
+      storeval = OP_opnd( op, TOP_Find_Operand_Use( OP_code(op), OU_storeval ) );
     } else {
       storeval = OP_result( op, 0 );
     }
 
     if( new_top == TOP_leax64 ){
-      Is_True(mode != N32_MODE, ("Compose_Mem_Op: unexpected address mode"));
       if( mode == INDEX_MODE )
 	new_op = Mk_OP( new_top, storeval, index, scale, offset );
       else
 	new_op = Mk_OP( new_top, storeval, base, index, scale, offset );
+ 
     } else {
-      if (mode == N32_MODE)
-	new_op = Mk_OP( new_top, storeval, offset );
-      else if (mode == INDEX_MODE)
+      if( mode == INDEX_MODE )
 	new_op = Mk_OP( new_top, storeval, index, scale, offset );
       else
 	new_op = Mk_OP( new_top, storeval, base, offset, index, scale );    
-    }
-  }
-
-  return new_op;
-}
-
-
-// Compose a memory OP that looks like OP but with the address mode specified
-// by OFFSET/BASE/INDEX/SCALE.  Copy OP's info to the new OP.
-static OP *
-Compose_Mem_Op_And_Copy_Info(OP* op, TN* index_tn, TN* offset_tn, TN* scale_tn,
-			     TN* base_tn, EBO_TN_INFO **actual_tninfo)
-{
-  OP *new_op = Compose_Mem_Op(op, index_tn, offset_tn, scale_tn, base_tn);
-
-  Copy_WN_For_Memory_OP(new_op, op);
-  if (OP_volatile(op)) // Bug 4245 - copy "volatile" flag
-    Set_OP_volatile(new_op);
-  OP_srcpos(new_op) = OP_srcpos(op);
-
-  Set_OP_unrolling(new_op, OP_unrolling(op));
-  Set_OP_orig_idx(new_op, OP_map_idx(op));
-  Set_OP_unroll_bb(new_op, OP_unroll_bb(op));
-
-  if (EBO_in_loop) {
-    CG_LOOP_Init_Op(new_op);
-    const INT op_base_idx = OP_find_opnd_use(op, OU_base);
-    EBO_TN_INFO *base_tninfo = op_base_idx >= 0 ?
-				 actual_tninfo[op_base_idx] : NULL;
-    if (base_tninfo != NULL && base_tninfo->omega != 0) {
-      Set_OP_omega(new_op, OP_find_opnd_use(new_op, OU_base),
-		   base_tninfo->omega);
-    }
-
-    if (index_tn != NULL) {
-      EBO_TN_INFO *tninfo = get_tn_info(index_tn);
-      if (tninfo != NULL && tninfo->omega != 0) {
-	Set_OP_omega(new_op, OP_find_opnd_use(new_op, OU_index), tninfo->omega);
-      }
     }
   }
 
@@ -4066,18 +3307,13 @@ BOOL EBO_Merge_Memory_Addr( OP* op,
 			    EBO_TN_INFO** opnd_tninfo,
 			    EBO_TN_INFO** actual_tninfo )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_MERGE_MEMORY_ADDR)) return FALSE;
-#endif
-  if( EBO_in_peep ){
+  Init_Mem_Op_Table();
+
+  if( Mem_Op_Table[OP_code(op)][0] == TOP_UNDEFINED ){
     return FALSE;
   }
 
-  if (Get_Top_For_Addr_Mode(OP_code(op), BASE_MODE) == TOP_UNDEFINED) {
-    return FALSE;
-  }
-
-  const INT op_base_idx = OP_find_opnd_use( op, OU_base );
+  const INT op_base_idx = TOP_Find_Operand_Use( OP_code(op),OU_base );
   EBO_TN_INFO* base_tninfo = op_base_idx >= 0 ? actual_tninfo[op_base_idx] : NULL;
   OP* addr_op = (base_tninfo != NULL) ? base_tninfo->in_op : NULL;
   bool pass = false;
@@ -4086,15 +3322,15 @@ BOOL EBO_Merge_Memory_Addr( OP* op,
   TN* scale_tn  = NULL;
   TN* base_tn   = NULL;
 
-  // First, try to subsume the base.
+  // First, try to subsum the base.
   if( addr_op != NULL && !OP_load(addr_op) && !OP_simulated(addr_op) ){
     pass = Compose_Addr( op, base_tninfo, OU_base, opnd_tn,
 			 &index_tn, &offset_tn, &scale_tn, &base_tn );
   }
 
-  // Otherwise, try to subsume the index.
+  // Otherwise, try to subsum the index.
   if( !pass ){
-    const INT op_index_idx = OP_find_opnd_use( op, OU_index );
+    const INT op_index_idx = TOP_Find_Operand_Use( OP_code(op),OU_index );
     if( op_index_idx < 0 )
       return FALSE;
 
@@ -4112,16 +3348,45 @@ BOOL EBO_Merge_Memory_Addr( OP* op,
       return FALSE;
   }
 
-  // TODO: support N32_MODE for -m32
-  if( base_tn == NULL && index_tn == NULL )
+  if( base_tn == NULL  &&
+      index_tn != NULL &&
+      TN_value( scale_tn ) == 1 ){
+    base_tn = index_tn;
+    index_tn = scale_tn = NULL;
+  }
+
+  if( index_tn == NULL && base_tn == NULL )
     return FALSE;
 
   TN* rip = Rip_TN();
   if ( index_tn == rip || base_tn == rip )
     return FALSE;
 
-  OP* new_op = Compose_Mem_Op_And_Copy_Info(op, index_tn, offset_tn, scale_tn,
-					    base_tn, actual_tninfo);
+  OP* new_op = Compose_Mem_Op( op, index_tn, offset_tn, scale_tn, base_tn );
+
+  Copy_WN_For_Memory_OP( new_op, op );
+  OP_srcpos( new_op ) = OP_srcpos( op );
+
+  Set_OP_unrolling( new_op, OP_unrolling(op) );
+  Set_OP_orig_idx( new_op, OP_map_idx(op) );
+  Set_OP_unroll_bb( new_op, OP_unroll_bb(op) );
+
+  if( EBO_in_loop ){
+    CG_LOOP_Init_Op( new_op );
+
+    if( base_tninfo != NULL && base_tninfo->omega != 0 ){
+      Set_OP_omega( new_op, TOP_Find_Operand_Use( OP_code(new_op), OU_base ),
+		    base_tninfo->omega );
+    }
+
+    if( index_tn != NULL ){
+      EBO_TN_INFO* tninfo = get_tn_info( index_tn );
+      if( tninfo != NULL && tninfo->omega != 0 ){
+	Set_OP_omega( new_op, TOP_Find_Operand_Use( OP_code(new_op), OU_index ),
+		      tninfo->omega );
+      }
+    }
+  }
 
   BB_Insert_Op_After( OP_bb(op), op, new_op);
 
@@ -4141,102 +3406,6 @@ BOOL EBO_Merge_Memory_Addr( OP* op,
   return TRUE;
 }
 
-
-/* return TRUE if <ex_op> is safe to perform an 8-bit or 16-bit operation;
-   the original <ex_op> performs a 32-bit or 64-bit operation.
- */
-static BOOL Check_loadbw_execute( int ld_bytes, OP* ex_op )
-{
-  if( !CG_loadbw_execute ||
-      ld_bytes > 2       ||
-      OP_opnds( ex_op ) != 2 )
-    return FALSE;
-
-  if( TN_size(OP_result(ex_op,0)) == ld_bytes )
-    return TRUE;
-
-  /* Check all the opnds of <ex_op> to make sure it is safe for
-     <ex_op> to perform 8-bit or 16-bit operation.  (bug#131)
-  */
-
-  OP* ld_op[] = { NULL, NULL };
-
-  for( int i = 0; i < OP_opnds( ex_op ); i++ ){
-    TN* opnd = OP_opnd( ex_op, i );
-    if( TN_is_register( opnd ) ){
-      const EBO_TN_INFO* opnd_info = get_tn_info( opnd );
-      if( opnd_info == NULL ||
-	  opnd_info->in_op == NULL )
-	return FALSE;
-
-      OP* pred_op = opnd_info->in_op;
-
-      if( OP_icmp(ex_op) &&
-	  ( TOP_is_load_ext(OP_code(pred_op)) ||
-	    TOP_is_move_ext(OP_code(pred_op)) ) ){
-	/* If the opnd is coming from a zero-extension operation,
-	   then don't consider using a shorter format for <ex_op>, because
-	   we don't know the run-time msb value of this opnd, and we do not
-	   have unsigned cmp. (bug#2197)
-	 */
-	struct SIZE_EXT_INFO pred_size_ext_info;
-	Get_Size_Ext_Info( OP_code(pred_op), &pred_size_ext_info );
-	if (!pred_size_ext_info.sign_ext) {
-	  // If the consumer of rsp cares only about equality/inequality, then
-	  // it is ok to use 8-bit cmp.
-	  OP *op;
-	  for (op = OP_next(ex_op); op != NULL; op = OP_next(op)) {
-	    TOP top = OP_code(op);
-	    if (OP_reads_rflags(op) &&
-		top != TOP_je &&
-		top != TOP_jne &&
-		top != TOP_sete &&
-		top != TOP_setne &&
-		top != TOP_cmove &&
-		top != TOP_cmovne) {
-	      return FALSE;
-	    }
-	    if (TOP_is_change_rflags(top))
-	      break;
-	  }
-	}
-      }
-
-      if( OP_load( pred_op ) ){
-	if( CGTARG_Mem_Ref_Bytes( pred_op ) != ld_bytes )
-	  return FALSE;
-	ld_op[i] = pred_op;	
-      }
-
-    } else if( TN_has_value( opnd ) ){
-      const INT64 value = TN_value( opnd );
-      if( ( ld_bytes == 1 &&
-	    !ISA_LC_Value_In_Class(value, LC_simm8) ) ||
-	  ( ld_bytes == 2 &&
-	    !ISA_LC_Value_In_Class(value, LC_simm16) ) )
-	return FALSE;
-    }
-  }
-
-  /* If both opnds are coming from load operations, make sure they have the same
-     signness.
-   */
-  if( ld_op[0] != NULL &&
-      ld_op[1] != NULL ){
-    struct SIZE_EXT_INFO info0;
-    struct SIZE_EXT_INFO info1;
-
-    Get_Size_Ext_Info( OP_code(ld_op[0]), &info0 );
-    Get_Size_Ext_Info( OP_code(ld_op[1]), &info1 );
-
-    if( info0.sign_ext != info1.sign_ext )
-      return FALSE;
-  }
-
-  return TRUE;
-}
-
-
 // What is the load-execute instruction corresponding to 
 // load "op" and execute "ex_op"
 static TOP Load_Execute_Format( OP* ld_op, OP* ex_op, ADDR_MODE mode )
@@ -4244,48 +3413,59 @@ static TOP Load_Execute_Format( OP* ld_op, OP* ex_op, ADDR_MODE mode )
   TOP new_top = OP_code( ex_op );
   const int ld_bytes = CGTARG_Mem_Ref_Bytes( ld_op );
 
-  if( Check_loadbw_execute( ld_bytes, ex_op ) ){
+  if( CG_loadbw_execute &&
+      ld_bytes <= 2     &&
+      OP_opnds( ex_op ) == 2 ){
+    /* Bug:131
+       Make sure opnd0 and opnd1 have the same size before performing
+       loadbw_execute.
+    */
+    EBO_TN_INFO* opnd_info = get_tn_info( OP_opnd(ex_op,0) );
+    if( opnd_info != NULL           &&
+	opnd_info->in_op != NULL    &&
+	OP_result_size(opnd_info->in_op,0) == ld_bytes * 8 ){
 
-    switch( OP_code(ex_op) ){
-    case TOP_cmp32: 
-      if( ld_bytes == 1 )
-	new_top = TOP_cmp8;
-      else if( ld_bytes == 2 )
-	new_top = TOP_cmp16;
-      break;
+      switch( OP_code(ex_op) ){
+      case TOP_cmp32: 
+	if( ld_bytes == 1 )
+	  new_top = TOP_cmp8;
+	else if( ld_bytes == 2 )
+	  new_top = TOP_cmp16;
+	break;
 
-    case TOP_cmpi32:
-      if( ld_bytes == 1 )
-	new_top = TOP_cmpi8;
-      else if( ld_bytes == 2 )
-	new_top = TOP_cmpi16;
-      break;
-      
-    case TOP_xor32:
-      if( ld_bytes == 1 )
-	new_top = TOP_xor8;
-      else if( ld_bytes == 2 )
-	new_top = TOP_xor16;
-      break;
+      case TOP_cmpi32:
+	if( ld_bytes == 1 )
+	  new_top = TOP_cmpi8;
+	else if( ld_bytes == 2 )
+	  new_top = TOP_cmpi16;
+	break;
 
-    case TOP_and32: 
-      if( ld_bytes == 1 )
-	new_top = TOP_and8;
-      else if( ld_bytes == 2 )
-	new_top = TOP_and16;
-      break;
+      case TOP_xor32: 
+	if( ld_bytes == 1 )
+	  new_top = TOP_xor8;
+	else if( ld_bytes == 2 )
+	  new_top = TOP_xor16;
+	break;
+
+      case TOP_and32: 
+	if( ld_bytes == 1 )
+	  new_top = TOP_and8;
+	else if( ld_bytes == 2 )
+	  new_top = TOP_and16;
+	break;
 	
-    case TOP_or32: 
-      if( ld_bytes == 1 )
-	new_top = TOP_or8;
-      else if( ld_bytes == 2 )
-	new_top = TOP_or16;
-      break;
+      case TOP_or32: 
+	if( ld_bytes == 1 )
+	  new_top = TOP_or8;
+	else if( ld_bytes == 2 )
+	  new_top = TOP_or16;
+	break;
+      }
     }
   }
 
-  new_top = Get_Top_For_Addr_Mode(new_top, mode);
-  Is_True( new_top != TOP_UNDEFINED, ("Load_Execute_Format: NYI (1)") );
+  new_top = Mem_Op_Table[new_top][mode];
+  FmtAssert( new_top != TOP_UNDEFINED, ("Load_Execute_Format: NYI (1)") );
   OP* fake_new_op = Mk_OP( new_top, NULL, NULL, NULL, NULL, NULL, NULL );
   
   if( CGTARG_Mem_Ref_Bytes( fake_new_op ) > ld_bytes )
@@ -4310,9 +3490,6 @@ static TOP Load_Execute_Format( OP* ld_op, OP* ex_op, ADDR_MODE mode )
 
 static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_TEST_IS_REPLACED)) return FALSE;
-#endif
   if( alu_op == NULL ||
       OP_bb( alu_op ) != OP_bb( test_op ) )
     return FALSE;
@@ -4326,11 +3503,6 @@ static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo
       !TOP_is_ixor( top ) &&
       !TOP_is_iand( top ) ){
 
-    // The conversion from test -> cmpi was intended to facilitate address 
-    // folding and bug 5517 has proved that it is detrimental to performance.
-    if (CG_use_test)
-      return FALSE;
-
     /* Change a cmp to test if the opnds are from a load, so that more folding
        could happen later.
     */
@@ -4343,13 +3515,11 @@ static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo
       Set_OP_unroll_bb( new_op, OP_unroll_bb(test_op) );
       
       Copy_WN_For_Memory_OP( new_op, test_op );
-      if ( OP_volatile( test_op ) )
-        Set_OP_volatile( new_op );
       OP_srcpos( new_op ) = OP_srcpos( test_op );
       BB_Insert_Op_After( OP_bb(test_op), test_op, new_op );
 
       return TRUE;
-    } 
+    }
 
     return FALSE;
   }
@@ -4386,6 +3556,7 @@ static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo
     if( EBO_in_loop )
       return FALSE;
 
+    Init_Mem_Op_Table();
     OP* next = OP_next( alu_op );
     while( next != test_op ){
       const TOP top = OP_code(next);
@@ -4430,7 +3601,7 @@ static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo
     }
 
   } else if( OP_isub( alu_op ) ){
-    Is_True( TN_is_register(src2), ("test_is_replaced: NYI (1)") );
+    FmtAssert( TN_is_register(src2), ("test_is_replaced: NYI (1)") );
     new_op = Mk_OP( top == TOP_test64 ? TOP_cmp64 : TOP_cmp32,
 		    Rflags_TN(), src1, src2 );
   }
@@ -4443,8 +3614,6 @@ static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo
     Set_OP_unroll_bb( new_op, OP_unroll_bb(test_op) );
       
     Copy_WN_For_Memory_OP( new_op, test_op );
-    if ( OP_volatile( test_op ) )
-      Set_OP_volatile( new_op );
     OP_srcpos( new_op ) = OP_srcpos( test_op );
     BB_Insert_Op_After( OP_bb(test_op), test_op, new_op );
       
@@ -4475,8 +3644,8 @@ void Update_op_must_not_be_moved( OP* store_op, EBO_TN_INFO** opnd_tninfo )
   if( OP_has_implicit_interactions(store_op) || OP_unalign_mem(store_op) )
     return;
 
-  Is_True( OP_store(store_op),
-	   ("Update_op_must_not_be_moved: must be a store operation") );
+  FmtAssert(OP_store(store_op),
+	    ("Update_op_must_not_be_moved: must be a store operation") );
 
   const INT hash_value = EBO_hash_op( store_op, opnd_tninfo );
   EBO_OP_INFO* opinfo = EBO_opinfo_table[hash_value];
@@ -4484,7 +3653,6 @@ void Update_op_must_not_be_moved( OP* store_op, EBO_TN_INFO** opnd_tninfo )
   while( opinfo != NULL ){
     OP* load_op = opinfo->in_op;
     if( !opinfo->op_must_not_be_moved &&
-	load_op != NULL &&
 	OP_load( load_op ) ){
       WN* pred_wn = OP_hoisted(load_op)  ? NULL : Get_WN_From_Memory_OP(load_op);
       WN* succ_wn = OP_hoisted(store_op) ? NULL : Get_WN_From_Memory_OP(store_op);
@@ -4512,33 +3680,22 @@ static hTN_MAP32 _load_exec_map = NULL;
 void Init_Load_Exec_Map( BB* bb, MEM_POOL* pool )
 {
   _load_exec_map = hTN_MAP32_Create( pool );
-  // Map each register to the TN that was last defined into the register.
-  TN *last_TN[ISA_REGISTER_CLASS_MAX+1][REGISTER_MAX+1];
 
-  if (EBO_in_peep) {
-    memset(last_TN, 0,
-	   sizeof(TN*) * (ISA_REGISTER_CLASS_MAX + 1) * (REGISTER_MAX + 1));
-  }
+  Init_Mem_Op_Table();
 
   OP* op = NULL;
   FOR_ALL_BB_OPs_FWD( bb, op ){
     if( OP_load( op ) ){
       TN* tn = OP_result( op, 0 );
 
-      // If a load op writes to <tn> which is live out of <bb>, then there is
-      // no need to perform load_exe on this load op.  (Before register
-      // allocation case.)
-      if (!EBO_in_peep &&
-	  TN_live_out_of(tn, bb)) {
+      /* If a load op writes to <tn> which is live out of <bb>, then there is no
+	 need to perform load_exe on this load op.
+      */
+      if( TN_live_out_of( tn, bb ) ){
 	hTN_MAP32_Set( _load_exec_map, tn, CG_load_execute + 2 );
 
       } else {
 	const INT32 uses = hTN_MAP32_Get( _load_exec_map, tn ) - 1;
-	// If TN is loaded more than once in BB, and if an earlier load has
-	// more than CG_load_execute number of uses, then don't reset the
-	// number of uses.  This will disable load-execution for all loads of
-	// the TN.  (A limitation of the current code is that it cannot track
-	// separate loads of the same TN separately.)
 	if( uses  <= CG_load_execute ){
 	  hTN_MAP32_Set( _load_exec_map, tn, 1 );
 	}
@@ -4554,37 +3711,12 @@ void Init_Load_Exec_Map( BB* bb, MEM_POOL* pool )
 	}
       }
     }
-
-    // Record which registers are used by the OP's result TNs.
-    if (EBO_in_peep) {
-      for (int i = 0; i < OP_results(op); i++) {
-	TN *tn = OP_result(op, i);
-	last_TN[TN_register_class(tn)][TN_register(tn)] = tn;
-      }
-    }
-  }
-
-  // Disable load-execution for live-out TNs.  (After register allocation
-  // case.)
-  if (EBO_in_peep) {
-    ISA_REGISTER_CLASS cl;
-    FOR_ALL_ISA_REGISTER_CLASS(cl) {
-      for (REGISTER reg = 0; reg <= REGISTER_MAX; reg++) {
-	if (last_TN[cl][reg] &&
-	    REG_LIVE_Outof_BB(cl, reg, bb)) {
-	  hTN_MAP32_Set(_load_exec_map, last_TN[cl][reg], CG_load_execute + 2);
-	}
-      }
-    }
   }
 }
 
 
 BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_LOAD_EXECUTION)) return FALSE;
-#endif
   const TOP top = OP_code(alu_op);
 
   if( top == TOP_xor64 ||
@@ -4594,9 +3726,8 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
       top == TOP_test64 )
     return FALSE;
 
-  if (TOP_is_load_exe(top) ||		// Skip if TOP is already load-execute.
-      Get_Top_For_Addr_Mode(top, BASE_MODE) == TOP_UNDEFINED ||
-      !TOP_is_load_exe(Get_Top_For_Addr_Mode(top, BASE_MODE)))
+  if( Mem_Op_Table[top][BASE_MODE] == TOP_UNDEFINED ||
+      !TOP_is_load_exe( Mem_Op_Table[top][BASE_MODE] ) )
     return FALSE;
 
   if( OP_opnds(alu_op) == 2               &&
@@ -4611,7 +3742,7 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
     if( TN_is_register( OP_opnd( alu_op, i ) ) ){
       tninfo = actual_tninfo[i];
       opnd0_indx = OP_opnds(alu_op) - 1 - i;
-      Is_True( opnd0_indx >= 0, ("NYI") );
+      FmtAssert( opnd0_indx >= 0, ("NYI") );
       break;
     }
   }
@@ -4662,12 +3793,16 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
     return FALSE;
   }
 
+  const INT32 load_uses = hTN_MAP32_Get( _load_exec_map, OP_result(ld_op,0) ) - 1;
+  if( load_uses > CG_load_execute )
+    return FALSE;
+
   /* Check <index> and <base> will not be re-defined between
      <ld_op> and <alu_op>, inclusive.
   */
 
-  const int index_reg = OP_find_opnd_use( ld_op, OU_index );
-  const int base_reg  = OP_find_opnd_use( ld_op, OU_base );
+  const int index_reg = TOP_Find_Operand_Use( OP_code(ld_op), OU_index );
+  const int base_reg  = TOP_Find_Operand_Use( OP_code(ld_op), OU_base );
 
   ADDR_MODE mode = BASE_MODE;
 
@@ -4678,8 +3813,8 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
     mode = base_reg < 0 ? INDEX_MODE : BASE_INDEX_MODE;
 
   if( mode == N32_MODE ){
-    // We need to add one more addressing mode for m32.
-    //DevWarn( "Support me!!!" );
+    // We need to add one more addressing mode for n32.
+    DevWarn( "Relax me later!!!" );
     return FALSE;
   }
 
@@ -4699,59 +3834,17 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
     }
   }
 
-  /* Make sure the value from <ld_op> will be not over-written by
-     any store located between <ld_op> and <alu_op>. (bug#2680)
-  */
-
-  {
-    const INT hash_value = EBO_hash_op( ld_op, NULL );
-    EBO_OP_INFO* opinfo = EBO_opinfo_table[hash_value];
-
-    while( opinfo != NULL ){
-      OP* pred_op = opinfo->in_op;
-
-      if( pred_op == ld_op )
-	break;
-
-      /* It is quite expensive to check the aliasing info here. */
-      if(
-#ifdef KEY
-         pred_op &&	// Bug 7596
-#endif
-	 OP_store( pred_op ) )
-	return FALSE;
-
-      opinfo = opinfo->same;
-    }
-  }
-
   const TOP new_top = Load_Execute_Format( ld_op, alu_op, mode );
 
   if( new_top == TOP_UNDEFINED )
     return FALSE;
 
-  const INT32 load_uses = hTN_MAP32_Get( _load_exec_map, OP_result(ld_op,0) ) - 1;
-
-  /* It is always profitable to perform load execution if the new latency is shorter.
-   */
-  if( ( load_uses > CG_load_execute ) &&
-      ( CGTARG_Latency(top) < CGTARG_Latency(new_top) ) ){
-    return FALSE;
-  }
-
-  // If load is volatile, replace with exactly one load-exe OP, in order to
-  // maintain the same number of memory accesses.
-  if (OP_volatile(ld_op) &&
-      load_uses != 1) {
-    return FALSE;
-  }
-
-  TN* offset = OP_opnd( ld_op, OP_find_opnd_use( ld_op, OU_offset ) );
+  TN* offset = OP_opnd( ld_op, TOP_Find_Operand_Use( OP_code(ld_op), OU_offset ) );
   TN* base   = base_reg >= 0 ? OP_opnd( ld_op, base_reg ) : NULL;
   TN* index  = index_reg >= 0 ? OP_opnd( ld_op, index_reg ) : NULL;
   TN* result = OP_has_result( alu_op ) ? OP_result( alu_op, 0 ) : NULL;
   TN* scale  = index_reg >= 0 ?
-    OP_opnd( ld_op, OP_find_opnd_use( ld_op, OU_scale ) ) : NULL;
+    OP_opnd( ld_op, TOP_Find_Operand_Use( OP_code(ld_op), OU_scale ) ) : NULL;
 
   TN* opnd1 = NULL;
   TN* opnd0 = OP_opnd( alu_op, opnd0_indx );
@@ -4766,63 +3859,41 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 
   if( mode == BASE_MODE ){
     // base + offset
-    if( OP_opnds(alu_op) == 1 ){
-      if( result == NULL )
-	new_op = Mk_OP( new_top, base, offset );
-      else
-	new_op = Mk_OP( new_top, result, base, offset );
-    } else if( opnd1 != NULL )
+    if( TOP_is_ijump( top ) )
+      new_op = Mk_OP( new_top, base, offset );
+    else if( opnd1 != NULL )
       new_op = Mk_OP( new_top, result, base, offset, opnd1 );
     else
       new_op = Mk_OP( new_top, result, opnd0, base, offset );
 
   } else if( mode == BASE_INDEX_MODE ){
     // offset + base + index * scale
-    if( OP_opnds(alu_op) == 1 ){
-      if( result == NULL )
-	new_op = Mk_OP( new_top, base, index, scale, offset );
-      else
-	new_op = Mk_OP( new_top, result, base, index, scale, offset );
-      
-    } else if( opnd1 != NULL )
+    if( TOP_is_ijump( top ) )
+      new_op = Mk_OP( new_top, base, index, scale, offset );
+    else if( opnd1 != NULL )
       new_op = Mk_OP( new_top, result, base, index, scale, offset, opnd1 );
     else
       new_op = Mk_OP( new_top, result, opnd0, base, index, scale, offset );
 
   } else {
     // offset + index * scale
-    if( OP_opnds(alu_op) == 1 ){
-      if( result == NULL )
-	new_op = Mk_OP( new_top, index, scale, offset );
-      else
-	new_op = Mk_OP( new_top, result, index, scale, offset );
-    } else if( opnd1 != NULL )
+    if( TOP_is_ijump( top ) )
+      new_op = Mk_OP( new_top, index, scale, offset );
+    else if( opnd1 != NULL )
       new_op = Mk_OP( new_top, result, index, scale, offset, opnd1 );
     else
       new_op = Mk_OP( new_top, result, opnd0, index, scale, offset );
   }
 
-  Is_True( !EBO_in_loop, ("EBO_Load_Execution: NYI (1)") );
+  FmtAssert( !EBO_in_loop, ("EBO_Load_Execution: NYI (1)") );
 
   Set_OP_unrolling( new_op, OP_unrolling(alu_op) );
   Set_OP_orig_idx( new_op, OP_map_idx(alu_op) );
   Set_OP_unroll_bb( new_op, OP_unroll_bb(alu_op) );
 
   Copy_WN_For_Memory_OP( new_op, ld_op );
-  if (OP_volatile(ld_op)) {
-    Reset_OP_volatile(ld_op);	// allow OP to be deleted
-    Set_OP_volatile(new_op);
-  }
   OP_srcpos( new_op ) = OP_srcpos( alu_op );
   BB_Insert_Op_After( bb, alu_op, new_op );
-
-  // If folding a restore of a spilled value, mark the spill store as needed
-  // even if all the restores are deleted.
-  ST *spill_loc = CGSPILL_OP_Spill_Location(ld_op);
-  if (spill_loc != (ST *)0) {		// It's a spill OP.
-    SPILL_SYM_INFO &info = CGSPILL_Get_Spill_Sym_Info(spill_loc);
-    info.Set_Used_By_Load_Exe();
-  }
 
   if( EBO_Trace_Data_Flow ){
     #pragma mips_frequency_hint NEVER
@@ -4849,7 +3920,7 @@ Get_Power_Of_2 (INT val)
     pow2mask <<= 1;
   }
 
-  FmtAssert(FALSE, ("Get_Power_Of_2 unexpected value (%d)", val));
+  FmtAssert(FALSE, ("Get_Power_Of_2 unexpected value"));
   /* NOTREACHED */
 }
 
@@ -4862,50 +3933,49 @@ Check_No_Use_Between (OP* from, OP* to, TN* result)
   for (OP* op = from->next; op && op != to; op = op->next) {
     for (INT i = 0; i < OP_opnds(op); i ++) {
       TN* opnd = OP_opnd(op, i);
-      if (TN_is_register(opnd)) {
-	if (TNs_Are_Equivalent(result, opnd))
-	  return FALSE;
-
-	// Account for fp uses when testing for sp uses.  We may need to adjust
-	// the sp before using the fp in order to make the fp access legal.
-	// Bug 11209.
-	if (result == SP_TN &&
-	    TNs_Are_Equivalent(FP_TN, opnd))
-	  return FALSE;
-      }
+      if (TN_is_register(opnd) &&
+	  TNs_Are_Equivalent(result, opnd))
+	return FALSE;
     }
   }
 
   return TRUE;
 }
 
-static BOOL
-alu_op_defines_rflags_used (OP* alu_op, OP* op)
+BOOL
+Check_No_Redef_Between (OP* from, OP* to, TN* opnd)
 {
-  // Bug 2040 - if alu_op changes rflags and there is an operaton between
-  // op and alu_op that reads the rflags, then we can not delete alu_op.
-  if (TOP_is_change_rflags( OP_code(alu_op) )) {
-    BOOL rflags_read = FALSE;
-    for( OP* next_op = OP_next(alu_op); next_op != NULL && next_op != op; 
-	 next_op = OP_next( next_op ) ){
-      if( OP_reads_rflags( next_op ) )
-	rflags_read = TRUE;
-      if( TOP_is_change_rflags( OP_code(next_op) ) )
-	break;
+  if (!TN_is_register(opnd))
+    return FALSE;
+
+  for (OP* op = to->prev; op && op != from; op = op->prev) {
+    for (INT i = 0; i < OP_opnds(op); i ++) {
+      TN* tmp_opnd = OP_opnd(op, i);
+      if (TN_is_register(tmp_opnd) &&
+	  TNs_Are_Equivalent(tmp_opnd, opnd)) {
+	EBO_TN_INFO *src0_info, *src1_info;
+	src0_info = get_tn_info( tmp_opnd );
+	src1_info = get_tn_info( opnd );
+	if (!src0_info || !src1_info)
+	  return FALSE;
+	if (src0_info->sequence_num != src1_info->sequence_num)
+	  return FALSE;
+      }
     }
-    if (rflags_read)
-      return TRUE; 
+    for (INT i = 0; i < OP_results(op); i ++) {
+      TN* tmp_res = OP_result(op, i);
+      if (TN_is_register(tmp_res) &&
+	  TNs_Are_Equivalent(tmp_res, opnd))
+	return FALSE;
+    }
   }
 
-  return FALSE;
+  return TRUE;
 }
 
 BOOL
 EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 {
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_LEA_INSERTION)) return FALSE;
-#endif
   TOP code = OP_code (op);
   OP* new_op = NULL;
   INT64 offset, offset_tmp;
@@ -4961,9 +4031,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 			  OP_result(op, 0), OP_opnd(op, 0),
 			  Gen_Literal_TN(val, 4));
 	
-	if (alu_op_defines_rflags_used(alu_op, op))
-	  return FALSE;
-
 	OP_srcpos( new_op ) = OP_srcpos( op );
 	if( EBO_Trace_Data_Flow ){
 	  fprintf( TFile, "Lea_Insertion merges " );
@@ -4973,7 +4040,7 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	  fprintf( TFile, "with " );
 	  Print_OP_No_SrcLine(new_op);
 	}
-	dec_ref_count(actual_tninfo[1]);
+	BB_Remove_Op(OP_bb(alu_op), alu_op);	  
 	break;
       }
       if (TN_is_register(OP_opnd(op, 0)) &&
@@ -5001,9 +4068,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 			  OP_result(op, 0), OP_opnd(op, 1), 
 			  Gen_Literal_TN(val, 4));
 
-	  if (alu_op_defines_rflags_used(alu_op, op))
-	    return FALSE;
-
 	  OP_srcpos( new_op ) = OP_srcpos( op );
 	  if( EBO_Trace_Data_Flow ){
 	    fprintf( TFile, "Lea_Insertion merges " );
@@ -5013,7 +4077,7 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	    fprintf( TFile, "with " );
 	    Print_OP_No_SrcLine(new_op);
 	  }
-	  dec_ref_count(actual_tninfo[0]);
+	  BB_Remove_Op(OP_bb(alu_op), alu_op);	  
 	}
       }
       break;
@@ -5036,7 +4100,10 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	    TNs_Are_Equivalent(OP_opnd(alu_op, 0),OP_opnd(op, 1)) &&
 	    TNs_Are_Equivalent(OP_opnd(alu_op, 0),OP_opnd(alu_op, 1)) &&
 	    Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0)) &&
-	    Pred_Opnd_Avail(op, actual_tninfo[0], 0)) {
+	    // Bug 129: tninfo sequence number is no good after Register
+	    // allocation. Another TN could be assigned the same register
+	    // and be defined/re-defined between op and alu_op.
+	    Check_No_Redef_Between(alu_op, op, OP_opnd(alu_op, 0))) {
 	  new_op = Mk_OP ((code == TOP_add32)?TOP_leax32:TOP_leax64, 
 			  OP_result(op, 0), OP_opnd(alu_op, 0), 
 			  OP_opnd(alu_op, 1), 
@@ -5047,9 +4114,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 		!TOP_is_change_rflags( OP_code(op) )) ||
 	       (!TOP_is_change_rflags( OP_code(new_op) ) &&
 		TOP_is_change_rflags( OP_code(op) ))))
-	    return FALSE;
-
-	  if (alu_op_defines_rflags_used(alu_op, op))
 	    return FALSE;
 
 	  OP_srcpos( new_op ) = OP_srcpos( op );
@@ -5085,7 +4149,7 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	      break;
 	    
 	    // There should be no redefinitions of alu_op's first opnd.
-	    if (!Pred_Opnd_Avail(op, actual_tninfo[1], 0))
+	    if (!Check_No_Redef_Between(alu_op, op, OP_opnd(alu_op, 0)))
 	      break;
 
 	    new_op = Mk_OP ((code == TOP_add32)?TOP_leax32:TOP_leax64, 
@@ -5098,9 +4162,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 		  !TOP_is_change_rflags( OP_code(op) )) ||
 		 (!TOP_is_change_rflags( OP_code(new_op) ) &&
 		  TOP_is_change_rflags( OP_code(op) ))))
-	      return FALSE;
-
-	    if (alu_op_defines_rflags_used(alu_op, op))
 	      return FALSE;
 
 	    OP_srcpos( new_op ) = OP_srcpos( op );
@@ -5153,9 +4214,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 		!TOP_is_change_rflags( OP_code(op) )) ||
 	       (!TOP_is_change_rflags( OP_code(new_op) ) &&
 		TOP_is_change_rflags( OP_code(op) ))))
-	    return FALSE;
-
-	  if (alu_op_defines_rflags_used(alu_op, op))
 	    return FALSE;
 
 	  OP_srcpos( new_op ) = OP_srcpos( op );
@@ -5284,9 +4342,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 		  TOP_is_change_rflags( OP_code(op) ))))
 	      return FALSE;
 
-	    if (alu_op_defines_rflags_used(alu_op, op))
-	      return FALSE;
-
 	    OP_srcpos( new_op ) = OP_srcpos( op );
 	    if( EBO_Trace_Data_Flow ){
 	      fprintf( TFile, "Lea_Insertion merges " );
@@ -5296,7 +4351,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	      fprintf( TFile, "with " );
 	      Print_OP_No_SrcLine(new_op);
 	    }
-
 	    BB_Remove_Op(OP_bb(alu_op), alu_op);
 	  }
 	}
@@ -5412,7 +4466,7 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	  // There should be no other uses of result of alu_op
 	  Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0)) &&
 	  // There should be no redefinitions of alu_op's first opnd.
-	  Pred_Opnd_Avail(op, actual_tninfo[0], 0) &&
+	  Check_No_Redef_Between(alu_op, op, OP_opnd(alu_op, 0)) &&
 	  // The following scenario occurs when LRA removes a copy op between
 	  // a local TN and a GTN, after register allocation, and later EBO
 	  // deletes the assignment to the local TN. 
@@ -5464,10 +4518,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	  new_op = Mk_OP ((code == TOP_lea32)?TOP_lea32:TOP_lea64,
 			  OP_result(op, 0), OP_opnd(alu_op, 0), 
 			  ofst_tn ? ofst_tn : Gen_Literal_TN(new_offset, 4));
-	  
-	  if (alu_op_defines_rflags_used(alu_op, op))
-	    return FALSE;
-
 	  OP_srcpos( new_op ) = OP_srcpos( op );
 	  if( EBO_Trace_Data_Flow ){
 	    fprintf( TFile, "Lea_Insertion merges " );
@@ -5551,12 +4601,10 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	      !is_live_tn(op->next, OP_result(alu_op, 0))) ||
 	     (op->next == NULL && 
 	      !GTN_SET_MemberP(BB_live_out(OP_bb(op)), OP_result(alu_op, 0)))) &&
-	    Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0)) &&
-	    Pred_Opnd_Avail(op, actual_tninfo[0], 0)) {
+	    Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0))) {
 	  EBO_TN_INFO *src0_info, *src1_info;
 	  src0_info = get_tn_info( OP_opnd(op, 1));
 	  src1_info = get_tn_info( OP_opnd(alu_op, 0));
-
 	  if (src0_info && src1_info &&
 	      src0_info->sequence_num <= src1_info->sequence_num) {
 	    new_op = Mk_OP ((code == TOP_leax32)?TOP_leax32:TOP_leax64, 
@@ -5569,9 +4617,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 		  !TOP_is_change_rflags( OP_code(op) )) ||
 		 (!TOP_is_change_rflags( OP_code(new_op) ) &&
 		  TOP_is_change_rflags( OP_code(op) ))))
-	      return FALSE;
-
-	    if (alu_op_defines_rflags_used(alu_op, op))
 	      return FALSE;
 
 	    OP_srcpos( new_op ) = OP_srcpos( op );
@@ -5609,10 +4654,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 			  OP_result(op, 0), OP_opnd(op, 1), 
 			  OP_opnd(alu_op, 0), OP_opnd(alu_op, 1),
 			  Gen_Literal_TN(0, 4));
-
-	  if (alu_op_defines_rflags_used(alu_op, op))
-	    return FALSE;
-
 	  OP_srcpos( new_op ) = OP_srcpos( op );
 	  if( EBO_Trace_Data_Flow ){
 	    fprintf( TFile, "Lea_Insertion merges " );
@@ -5645,32 +4686,35 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 		!is_live_tn(op->next, OP_result(alu_op, 0))) ||
 	       (op->next == NULL && 
 		!GTN_SET_MemberP(BB_live_out(OP_bb(op)), OP_result(alu_op, 0)))) &&
-	      Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0)) &&
-	      Pred_Opnd_Avail(op, actual_tninfo[1], 0)) {
-	    new_op = Mk_OP ((code == TOP_leax32)?TOP_leax32:TOP_leax64, 
-			    OP_result(op, 0), OP_opnd(op, 0), 
-			    OP_opnd(alu_op, 1), 
-			    Gen_Literal_TN(2, 4), Gen_Literal_TN(0, 4));	  
-	    if (rflags_read && 
-		((TOP_is_change_rflags( OP_code(new_op) ) &&
-		  !TOP_is_change_rflags( OP_code(op) )) ||
-		 (!TOP_is_change_rflags( OP_code(new_op) ) &&
-		  TOP_is_change_rflags( OP_code(op) ))))
-	      return FALSE;
+	      Check_No_Use_Between(alu_op, op, OP_result(alu_op, 0))) {
+	    EBO_TN_INFO *src0_info, *src1_info;
+	    src0_info = get_tn_info( OP_opnd(op, 0));
+	    src1_info = get_tn_info( OP_opnd(alu_op, 0));
+	    if (src0_info && src1_info &&
+		src0_info->sequence_num <= src1_info->sequence_num) {
+	      new_op = Mk_OP ((code == TOP_leax32)?TOP_leax32:TOP_leax64, 
+			      OP_result(op, 0), OP_opnd(alu_op, 0), 
+			      OP_opnd(alu_op, 1), 
+			      Gen_Literal_TN(2, 4), Gen_Literal_TN(0, 4));	  
 
-	    if (alu_op_defines_rflags_used(alu_op, op))
-	      return FALSE;
+	      if (rflags_read && 
+		  ((TOP_is_change_rflags( OP_code(new_op) ) &&
+		    !TOP_is_change_rflags( OP_code(op) )) ||
+		   (!TOP_is_change_rflags( OP_code(new_op) ) &&
+		    TOP_is_change_rflags( OP_code(op) ))))
+		return FALSE;
 
-	    OP_srcpos( new_op ) = OP_srcpos( op );
-	    if( EBO_Trace_Data_Flow ){
-	      fprintf( TFile, "Lea_Insertion merges " );
-	      Print_OP_No_SrcLine(op);
-	      fprintf( TFile, "and " );
-	      Print_OP_No_SrcLine(alu_op);
-	      fprintf( TFile, "with " );
-	      Print_OP_No_SrcLine(new_op);
+	      OP_srcpos( new_op ) = OP_srcpos( op );
+	      if( EBO_Trace_Data_Flow ){
+		fprintf( TFile, "Lea_Insertion merges " );
+		Print_OP_No_SrcLine(op);
+		fprintf( TFile, "and " );
+		Print_OP_No_SrcLine(alu_op);
+		fprintf( TFile, "with " );
+		Print_OP_No_SrcLine(new_op);
+	      }
+	      BB_Remove_Op(OP_bb(alu_op), alu_op);
 	    }
-	    BB_Remove_Op(OP_bb(alu_op), alu_op);
 	  } else if (CG_fold_shiftadd && alu_op && alu_op->bb == op->bb && 
 		     ((OP_code(alu_op) == TOP_leaxx64 && 
 		       code == TOP_leax64) ||
@@ -5695,10 +4739,6 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 			    OP_result(op, 0), OP_opnd(op, 0), 
 			    OP_opnd(alu_op, 0), OP_opnd(alu_op, 1), 
 			    Gen_Literal_TN(0, 4));	  	    
-	    
-	    if (alu_op_defines_rflags_used(alu_op, op))
-	      return FALSE;
-
 	    OP_srcpos( new_op ) = OP_srcpos( op );
 	    if( EBO_Trace_Data_Flow ){
 	      fprintf( TFile, "Lea_Insertion merges " );
@@ -5798,169 +4838,5 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
     return TRUE;
   }
   
-  return FALSE;
-}
-
-BOOL
-EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
-{
-#if Is_True_On
-  if (!(EBO_Opt_Mask & EBO_FOLD_LOAD_DUPLICATE)) return FALSE;
-#endif
-
-  if (OP_code(op) != TOP_fmovddup)
-    return FALSE;
-
-  OP* shuf_op = actual_tninfo[0]->in_op;
-  if (!shuf_op || shuf_op->bb != op->bb || 
-      (OP_code(shuf_op) != TOP_shufpd && 
-       OP_code(shuf_op) != TOP_ldhpd &&
-       OP_code(shuf_op) != TOP_ldapd))
-    return FALSE;
-
-  if (!TOP_is_load(OP_code(shuf_op)) &&
-      (TN_live_out_of(OP_result(shuf_op, 0), OP_bb(shuf_op)) ||
-       ((op->next != NULL &&
-	 is_live_tn(op->next, OP_result(shuf_op, 0))) ||
-	(op->next == NULL && 
-	 GTN_SET_MemberP(BB_live_out(OP_bb(op)), 
-			 OP_result(shuf_op, 0)))) ||
-       !Check_No_Use_Between(shuf_op, op, OP_result(shuf_op, 0))))
-    return FALSE;
-
-  // result of shuf_op should not be redefined between shuf_op and op
-  EBO_TN_INFO *src0_info, *src1_info;
-  src0_info = get_tn_info( OP_opnd(op, 0));
-  src1_info = get_tn_info( OP_result(shuf_op, 0));
-  if (src0_info->sequence_num > src1_info->sequence_num)
-    return FALSE;
-    
-  if (!TOP_is_load(OP_code(shuf_op)) &&
-      (!TN_is_register(OP_opnd(shuf_op, 0)) ||
-       !TN_is_register(OP_opnd(shuf_op, 1)) ||
-       !TNs_Are_Equivalent(OP_opnd(shuf_op, 0), OP_opnd(shuf_op, 1)) ||
-       TN_is_symbol(OP_opnd(shuf_op, 2)) ||
-       TN_value(OP_opnd(shuf_op, 2)) != 1))
-    return FALSE;
-
-  if (TOP_is_load(OP_code(shuf_op))) /* op uses result of a load */
-    shuf_op = op;
-
-  EBO_TN_INFO *loaded_tn_info = get_tn_info( OP_opnd(shuf_op, 0) );
-  OP* load = loaded_tn_info->in_op;
-  if (!load || load->bb != shuf_op->bb || !TOP_is_load(OP_code(load)))
-    return FALSE;
-
-  EBO_TN_INFO *src_info = get_tn_info( OP_result(load, 0) );
-  if (loaded_tn_info->sequence_num > src_info->sequence_num)
-    return FALSE;
-  
-  OP* new_op = NULL;
-  INT base_loc = OP_find_opnd_use( load, OU_base );
-  INT offset_loc = OP_find_opnd_use( load, OU_offset );
-  INT index_loc = OP_find_opnd_use( load, OU_index );
-  INT scale_loc = OP_find_opnd_use( load, OU_scale );
-  
-  TN *base   = NULL;
-  TN *offset   = NULL;
-  TN *index   = NULL;
-  TN *scale   = NULL;
-  if (base_loc >= 0) 
-    base = OP_opnd( load, OP_find_opnd_use( load, OU_base ) );
-  if (offset_loc >= 0) 
-    offset = OP_opnd( load, OP_find_opnd_use( load, OU_offset ) );
-  if (index_loc >= 0) 
-    index = OP_opnd( load, OP_find_opnd_use( load, OU_index ) );
-  if (scale_loc >= 0) 
-    scale = OP_opnd( load, OP_find_opnd_use( load, OU_scale ) );
-  
-  if (!offset || TN_is_symbol(offset))
-    return FALSE;
-  
-  // base and index, if defined, should not be re-defined between
-  // load and op.
-  if (base_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, base_loc))
-    return FALSE;
-  if (index_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, index_loc))
-    return FALSE;
-  
-  if (base && offset && index && scale)
-    new_op = Mk_OP (TOP_fmovddupxx, 
-		    OP_result(op, 0), 
-		    OP_opnd(load, 0), 
-		    OP_opnd(load, 1), 
-		    OP_opnd(load, 2), 
-		    OP_opnd(load, 3));
-  else if (base && offset)
-    new_op = Mk_OP (TOP_fmovddupx, 
-		    OP_result(op, 0), 
-		    OP_opnd(load, 0), 
-		    OP_opnd(load, 1));
-  else if (index && scale && offset)
-    new_op = Mk_OP (TOP_fmovddupxxx, 
-		    OP_result(op, 0), 
-		    OP_opnd(load, 0), 
-		    OP_opnd(load, 1), 
-		    OP_opnd(load, 2));
-  
-  if ( op == shuf_op /* op uses result of a load */ &&
-       TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
-    INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
-    INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
-    Set_OP_opnd( new_op, offset_loc, 
-		 Gen_Literal_TN( offset_value - 8, 
-				 TN_size( OP_opnd( new_op, offset_loc ) ) ) );    
-  }
-  else if ( !TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
-    INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
-    INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
-    Set_OP_opnd( new_op, offset_loc, 
-		 Gen_Literal_TN( offset_value + 8, 
-				 TN_size( OP_opnd( new_op, offset_loc ) ) ) );
-  }
-
-  if (new_op) {
-    if (shuf_op != op) {
-      if( EBO_Trace_Data_Flow ){
-	fprintf( TFile, "Fold_Load_Duplicate merges " );
-	Print_OP_No_SrcLine(op);
-	fprintf( TFile, "and " );
-	Print_OP_No_SrcLine(shuf_op);
-	fprintf( TFile, "Fold_Load_Duplicate inserts " );
-	Print_OP_No_SrcLine(new_op);
-      }
-      OP_srcpos( new_op ) = OP_srcpos( op );
-      BB_Remove_Op(OP_bb(shuf_op), shuf_op);
-      BB_Insert_Op_After(OP_bb(op), op, new_op);
-    } else {
-      if( EBO_Trace_Data_Flow ){
-	fprintf( TFile, "Fold_Load_Duplicate removes " );
-	Print_OP_No_SrcLine(op);
-	fprintf( TFile, "Fold_Load_Duplicate inserts " );
-	Print_OP_No_SrcLine(new_op);
-      }
-      OP_srcpos( new_op ) = OP_srcpos( op );
-      BB_Insert_Op_After(OP_bb(op), op, new_op);
-    }    
-    return TRUE;
-  }
-
-  return FALSE;
-}
-
-// Return TRUE if OP has no operands but can be eliminated if it is a
-// duplicate.
-BOOL
-EBO_Can_Eliminate_Zero_Opnd_OP (OP *op)
-{
-  switch (OP_code(op)) {
-    case TOP_zero32:
-    case TOP_zero64:
-    case TOP_xzero32:
-    case TOP_xzero64:
-    case TOP_xzero128v32:
-    case TOP_xzero128v64:
-      return TRUE;
-  }
   return FALSE;
 }

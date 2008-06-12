@@ -1,8 +1,4 @@
 /*
- * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
- */
-
-/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -40,10 +36,10 @@
 
 */
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_lrange.h,v $ 
+//  $Revision: 1.16 $
+//  $Date: 05/12/05 08:59:10-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_lrange.h $ 
 // Description: GRA Live Ranges & Coloring Lists
   
   
@@ -52,7 +48,7 @@
 #ifndef GRA_LRANGE_RCS_ID  
 #define GRA_LRANGE_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_lrange_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_lrange.h,v $ $Revision: 1.1.1.1 $";
+static char *gra_lrange_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_lrange.h $ $Revision: 1.16 $";
 #endif
 #endif
 
@@ -146,14 +142,20 @@ enum LR_FLAG {
   LRANGE_FLAGS_spans_rot_reg_clob = 0x400, // Live across rotating reg clobber
 					   // relevant to its class (cannot be 
 					   // assigned rotating reg)
-  LRANGE_FLAGS_spans_a_setjmp = 0x800, // Live across a setjmp
+  LRANGE_FLAGS_spans_a_setjmp = 0x800,  // Live across a setjmp
   LRANGE_FLAGS_tn_is_save_reg = 0x1000, // its TN marked TN_is_save_reg
-  LRANGE_FLAGS_cannot_split = 0x2000,  // meaning evident
-  LRANGE_FLAGS_no_appearance = 0x4000, // should not be assigned register
+  LRANGE_FLAGS_cannot_split =   0x2000, // meaning evident
+  LRANGE_FLAGS_no_appearance =  0x4000, // should not be assigned register
 #ifdef TARG_X8664
-  LRANGE_FLAGS_spans_savexmms = 0x8000, // spans the savexmms pseudo-op
-  LRANGE_FLAGS_spans_x87_OP = 0x10000,	// spans x87 OP
-  LRANGE_FLAGS_spans_mmx_OP = 0x20000,	// spans MMX OP
+  LRANGE_FLAGS_spans_savexmms = 0x8000,   // spans the savexmms pseudo-op
+  LRANGE_FLAGS_spans_x87_OP =   0x10000,  // spans x87 OP
+  LRANGE_FLAGS_spans_mmx_OP =   0x20000,  // spans MMX OP
+#elif defined(TARG_SL) //minor_reg_alloc
+/* add a flag to indicate if the liverange spans different regions, here region means 
+  * different rid in basic block. For minor thread, bb in parallel region has different rid
+  * with bb in non pallel region. 
+  */ 
+  LRANGE_FLAGS_spans_multiregions = 0x8000, 
 #endif
 };
 
@@ -307,7 +309,6 @@ public:
 #ifdef TARG_X8664
   BOOL Spans_Savexmms(void)	{ return flags & LRANGE_FLAGS_spans_savexmms; }
   void Spans_Savexmms_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_savexmms); }
-
   BOOL Spans_x87_OP(void)	{ return flags & LRANGE_FLAGS_spans_x87_OP; }
   void Spans_x87_OP_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_x87_OP); }
   void Spans_x87_OP_Reset(void)	{ flags = (LR_FLAG)(flags&~LRANGE_FLAGS_spans_x87_OP); }
@@ -315,6 +316,12 @@ public:
   void Spans_mmx_OP_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_mmx_OP); }
   void Spans_mmx_OP_Reset(void)	{ flags = (LR_FLAG)(flags&~LRANGE_FLAGS_spans_mmx_OP); }
 #endif
+
+
+#ifdef TARG_SL //minor_reg_alloc
+  BOOL Spans_Multiregions(void)	{ return flags & LRANGE_FLAGS_spans_multiregions; }
+  void Spans_Multiregions_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_multiregions); }
+#endif 
 
   void Wire_Register(REGISTER r){ flags = (LR_FLAG)(flags|LRANGE_FLAGS_has_wired_register);
 				  reg = r; }
@@ -392,7 +399,6 @@ struct BUFFERED_LRANGE {
     float density;
     BUFFERED_LRANGE *next,*prev;
 };
-//End of Insertion.
 #endif
 
 // manages the allocation and usage of all LRANGE nodes

@@ -48,6 +48,9 @@
 #include "wn.h"
 #include "dwarf_DST_mem.h"
 #include "symtab.h"
+#if defined(TARG_SL)
+#include "register.h"
+#endif
 
 /* type stubs - can't include appropriate files since
  * this file is included by be/com/driver.c ...
@@ -61,24 +64,22 @@ extern BOOL GRA_optimize_restore_pr;
 extern BOOL GRA_optimize_restore_b0_ar_pfs;
 extern BOOL GRA_optimize_restore_ar_lc;
 extern BOOL EBO_data_spec;
+extern BOOL edge_done;
 #endif
 #ifdef KEY
 extern BOOL PU_Has_Exc_Handler;
+extern BOOL PU_Has_Nonlocal_Goto_Target;
 #endif
 
-
-#ifdef TARG_IA64
-extern BOOL CG_PU_Has_Feedback;
-#endif
 #ifdef TARG_X8664
 extern BOOL PU_References_GOT; // for -m32 -fpic
 #endif
 
-
-#ifdef TARG_IA64
-extern BOOL edge_done;
-#endif
 extern BOOL CG_PU_Has_Feedback;
+
+#if defined(TARG_IA64) || defined(TARG_SL)
+extern BOOL RGN_Formed;
+#endif
 
 /* WOPT alias manager */
 extern struct ALIAS_MANAGER *Alias_Manager;
@@ -115,10 +116,10 @@ extern void Trace_IR (
   INT phase,		/* Phase after which to print */
   const char *pname,	/* Print name of phase */
 #ifdef TARG_IA64
-  struct bb *bb,		/* BB to print, or NULL */
+  struct bb *bb,	/* BB to print, or NULL */
   BOOL after = TRUE
 #else
-  struct bb *bb         /* BB to print, or NULL */
+  struct bb *bb		/* BB to print, or NULL */
 #endif
 );
 
@@ -127,7 +128,6 @@ extern void Check_for_Dump (
   INT phase,	/* Phase after which to print */
   struct bb *bb	/* BB to print, or NULL */
 );
-
 
 /* Overloaded version of standard Get_Trace with additional bb
  * parameter. If bb parameter is non-NULL and BBs were explicitly 
@@ -141,8 +141,11 @@ extern MEM_POOL MEM_local_region_pool;
 extern MEM_POOL MEM_local_region_nz_pool;
 
 extern RID *Current_Rid;
-#ifdef TARG_IA64
-/* indicate whether region is already been formed. */
-extern BOOL RGN_Formed;
+
+#if defined(TARG_SL)
+extern void CG_Dump_Cur_Region();
+extern REGISTER_SET caller_saved_regs_used[ISA_REGISTER_CLASS_MAX+1];
+extern void IPISR_Insert_Spills();
 #endif
+
 #endif /* cg_INCLUDED */

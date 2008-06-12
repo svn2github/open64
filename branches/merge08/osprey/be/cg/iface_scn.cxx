@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: iface_scn.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/iface_scn.cxx,v $
+ * $Revision: 1.10 $
+ * $Date: 05/12/05 08:59:08-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.iface_scn.cxx $
  *
  * Revision history:
  *  15-Jun-94 - Original version
@@ -57,6 +57,7 @@
  * ====================================================================
  */
 
+#if ! defined(BUILD_OS_DARWIN)
 
 #if defined(__GNUC__)
 #include <sys/types.h>
@@ -1373,4 +1374,11 @@ Interface_Scn_Add_Call( ST *call_sym, WN *call_wn)
   }
 }
 
+#else /* ! defined(BUILD_OS_DARWIN) */
+#include "wn.h"
+extern void Interface_Scn_Begin_File( void ) {}
+extern void Interface_Scn_End_File( void ) {}
+extern void Interface_Scn_Add_Def( ST *, WN *) {}
+extern void Interface_Scn_Add_Call( ST *, WN *) {}
+#endif /* ! defined(BUILD_OS_DARWIN) */
 

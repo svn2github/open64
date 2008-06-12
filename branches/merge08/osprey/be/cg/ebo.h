@@ -41,10 +41,10 @@
  * =======================================================================
  *
  *  Module: ebo.h
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/ebo.h,v $
+ *  $Revision: 1.7 $
+ *  $Date: 05/12/05 08:59:06-08:00 $
+ *  $Author: bos@eng-24.pathscale.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.ebo.h $
  *
  *  Revision comments:
  *
@@ -131,6 +131,10 @@ void EBO_Process_Region(RID *rid);
 
 void EBO_Post_Process_Region(RID *rid);
 
+#ifdef KEY
+void EBO_Post_Process_Region_2(RID *rid);
+#endif
+
 void EBO_Finalize(void);
 
 #ifdef TARG_IA64
@@ -139,6 +143,8 @@ extern BOOL OP_ld_st_unat(OP *op);
 extern INT32 EBO_Opt_Level_Default;
 extern INT32 EBO_Opt_Level;
 #ifdef KEY
+extern BOOL EBO_can_delete_branch_delay_OP;
+extern BOOL EBO_no_liveness_info_available;
 extern INT32 EBO_Opt_Mask;
 #define EBO_CAN_MERGE_INTO_OFFSET 	0x1
 #define EBO_COMBINE_L1_L2_PREFETCH  	0x2

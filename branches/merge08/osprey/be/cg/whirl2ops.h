@@ -106,7 +106,9 @@ inline WN *Get_WN_From_Memory_OP( const OP *op )
 }
 
 extern OP_MAP OP_Asm_Map;
+#if defined(TARG_IA64)
 extern OP_MAP OP_Ld_GOT_2_Sym_Map;
+#endif
 
 /* Information about the predicate under which conditional memory OPs
  * are executed.  Note that this is not currently maintained to adjust
@@ -148,6 +150,8 @@ extern INT total_bb_insts;
 extern BB *Cur_BB;
 extern void Process_New_OPs(void);
 extern BB_MAP outer_label_map;
+#endif
+#if defined(TARG_X8664) || defined(TARG_SL)
 extern BOOL W2OPS_Pragma_Preamble_End_Seen (void);
 #endif
 

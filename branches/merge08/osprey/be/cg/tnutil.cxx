@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: tnutil.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/tnutil.cxx,v $
+ * $Revision: 1.20 $
+ * $Date: 05/12/05 08:59:09-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.tnutil.cxx $
  *
  * Description:
  *
@@ -55,6 +55,7 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -86,7 +87,10 @@
 #include "targ_isa_enums.h"
 #include "stblock.h"
 #include "data_layout.h"	// for FP/SP
-
+#if defined(TARG_SL)
+#include <map>
+using std::map;
+#endif
 
 #define DEFAULT_RCLASS_SIZE(rc)	\
 	(REGISTER_bit_size(rc, REGISTER_CLASS_last_register(rc))/8)
@@ -104,18 +108,52 @@ TN *SP_TN = NULL;
 TN *FP_TN = NULL;
 TN *Ep_TN = NULL;
 TN *GP_TN = NULL;
-
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
 TN *TP_TN = NULL;
 #endif
-
 TN *Zero_TN = NULL;
 TN *Pfs_TN = NULL;
 TN *True_TN = NULL;
 TN *FZero_TN = NULL;
 TN *FOne_TN = NULL;
 TN *LC_TN = NULL;
+#if defined(TARG_SL)
+TN *TMP1_TN = NULL;
+TN *TMP2_TN = NULL;
+TN *JA_TN = NULL;
+TN *LC0_TN = NULL;
+TN *LC1_TN = NULL;
+TN *LC2_TN = NULL;
+TN *LC3_TN = NULL;
+TN *HI_TN = NULL;
+TN *Acc0_TN = NULL;
+TN *Acc1_TN = NULL;
+TN *Acc2_TN = NULL;
+TN *Acc3_TN = NULL;
+TN *Addr0_TN = NULL;
+TN *Addr1_TN = NULL;
+TN *Addr2_TN = NULL;
+TN *Addr3_TN = NULL;
+TN *Addr4_TN = NULL;
+TN *Addr5_TN = NULL;
+TN *Addr6_TN = NULL;
+TN *Addr7_TN = NULL;
+TN *Addrsize0_TN = NULL;
+TN *Addrsize1_TN = NULL;
+TN *Addrsize2_TN = NULL;
+TN *Addrsize3_TN = NULL;
+TN *Addrsize4_TN = NULL;
+TN *Addrsize5_TN = NULL;
+TN *Addrsize6_TN = NULL;
+TN *Addrsize7_TN = NULL;
 
+INT32 AccPregN = -1;
+INT32 AddPregN = -1;
+std::map<INT32, TN*> var2acc;
+std::map<INT32, TN*> var2addr;
+int ACCreg[4]= {0,0,0,0};
+int Addreg[8]= {0,0,0,0,0,0,0,0};
+#endif
 /* The register TNs are in a table named TNvec, indexed by their TN
  * numbers in the range 1..Last_TN.  The first part of the table, the
  * range 1..Last_Dedicated_TN, consists of TNs for various dedicated
@@ -351,6 +389,16 @@ static TN *i1_ded_tns[REGISTER_MAX + 1];
 static TN *i2_ded_tns[REGISTER_MAX + 1];
 static TN *i4_ded_tns[REGISTER_MAX + 1];
 #endif // KEY
+#if defined(TARG_SL)
+static TN *a4_ded_tns[REGISTER_MAX +1];
+#endif
+#if defined(TARG_SL2)
+TN* C2_ACC_TN = NULL;
+TN* C2_ACC_CTRL_TN = NULL;
+TN* C2_MVSEL_TN = NULL;
+TN* C2_VLCS_TN = NULL;
+TN* C2_MOVPAT_TN = NULL;
+#endif
 
 /* ====================================================================
  *
@@ -364,7 +412,11 @@ static TN *
 Create_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg)
 {
   INT size = REGISTER_bit_size(rclass, reg) / 8;
+#ifndef TARG_SL
   BOOL is_float = rclass == ISA_REGISTER_CLASS_float;
+#else
+  BOOL is_float = FALSE;
+#endif
 
 #ifdef TARG_X8664
   is_float |= ( rclass == ISA_REGISTER_CLASS_x87 );
@@ -423,7 +475,48 @@ Init_Dedicated_TNs (void)
   FZero_TN = ded_tns[REGISTER_CLASS_fzero][REGISTER_fzero];
   FOne_TN = ded_tns[REGISTER_CLASS_fone][REGISTER_fone];
   LC_TN = ded_tns[REGISTER_CLASS_lc][REGISTER_lc];
-  
+#if defined(TARG_SL)
+  TMP1_TN = ded_tns[REGISTER_CLASS_k0][REGISTER_k0];
+  TMP2_TN = ded_tns[REGISTER_CLASS_k1][REGISTER_k1];  
+  JA_TN = ded_tns[REGISTER_CLASS_ja][REGISTER_ja];
+  LC0_TN = ded_tns[REGISTER_CLASS_lc0][REGISTER_lc0];
+  LC1_TN = ded_tns[REGISTER_CLASS_lc1][REGISTER_lc1];
+  LC2_TN = ded_tns[REGISTER_CLASS_lc2][REGISTER_lc2];
+  LC3_TN = ded_tns[REGISTER_CLASS_lc3][REGISTER_lc3];
+  HI_TN = ded_tns[REGISTER_CLASS_hi][REGISTER_hi];
+  Acc0_TN = ded_tns[REGISTER_CLASS_acc0][REGISTER_acc0];
+  Acc1_TN = ded_tns[REGISTER_CLASS_acc1][REGISTER_acc1];
+  Acc2_TN = ded_tns[REGISTER_CLASS_acc2][REGISTER_acc2];
+  Acc3_TN = ded_tns[REGISTER_CLASS_acc3][REGISTER_acc3];
+  Addr0_TN = ded_tns[REGISTER_CLASS_add0][REGISTER_add0];
+  Addr1_TN = ded_tns[REGISTER_CLASS_add1][REGISTER_add1];
+  Addr2_TN = ded_tns[REGISTER_CLASS_add2][REGISTER_add2];
+  Addr3_TN = ded_tns[REGISTER_CLASS_add3][REGISTER_add3];
+  Addr4_TN = ded_tns[REGISTER_CLASS_add4][REGISTER_add4];
+  Addr5_TN = ded_tns[REGISTER_CLASS_add5][REGISTER_add5];
+  Addr6_TN = ded_tns[REGISTER_CLASS_add6][REGISTER_add6];
+  Addr7_TN = ded_tns[REGISTER_CLASS_add7][REGISTER_add7];
+  Addrsize0_TN = ded_tns[REGISTER_CLASS_addsize0][REGISTER_addsize0];
+  Addrsize1_TN = ded_tns[REGISTER_CLASS_addsize1][REGISTER_addsize1];
+  Addrsize2_TN = ded_tns[REGISTER_CLASS_addsize2][REGISTER_addsize2];
+  Addrsize3_TN = ded_tns[REGISTER_CLASS_addsize3][REGISTER_addsize3];
+  Addrsize4_TN = ded_tns[REGISTER_CLASS_addsize4][REGISTER_addsize4];
+  Addrsize5_TN = ded_tns[REGISTER_CLASS_addsize5][REGISTER_addsize5];
+  Addrsize6_TN = ded_tns[REGISTER_CLASS_addsize6][REGISTER_addsize6];
+  Addrsize7_TN = ded_tns[REGISTER_CLASS_addsize7][REGISTER_addsize7];
+#endif
+#if defined(TARG_SL)
+  C2_ACC_TN = ded_tns[REGISTER_CLASS_c2acc][REGISTER_c2acc];
+  C2_ACC_CTRL_TN = ded_tns[REGISTER_CLASS_c2acc_ctrl][REGISTER_c2acc_ctrl]; 
+  C2_MVSEL_TN = ded_tns[REGISTER_CLASS_c2mvsel][REGISTER_c2mvsel]; 
+  C2_VLCS_TN = ded_tns[REGISTER_CLASS_c2vlcs][REGISTER_c2vlcs]; 
+  C2_MOVPAT_TN = ded_tns[REGISTER_CLASS_c2movpat][REGISTER_c2movpat]; 
+#endif
+
+#if defined(TARG_PR)
+    LC_TN = ded_tns[REGISTER_CLASS_lc][REGISTER_lc];
+    RA_TN = ded_tns[REGISTER_CLASS_ra][REGISTER_ra];
+#endif
 #if defined(KEY) && !defined(TARG_X8664)
   /* allocate gp tn.  this may use a caller saved register, so
    * we don't use the one allocated for $gp above.
@@ -431,61 +524,58 @@ Init_Dedicated_TNs (void)
   GP_TN = Create_Dedicated_TN (REGISTER_CLASS_gp, REGISTER_gp);
   tnum++;
 #endif
-
 #ifdef TARG_IA64  
   TP_TN = Create_Dedicated_TN (REGISTER_CLASS_tp, REGISTER_tp);
   tnum++;
 #endif
-  
-#ifdef TARG_IA64
+
+
     for (reg = REGISTER_MIN; 
 	 reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
 	 reg++
     ) {
 	++tnum;
-	f4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
-	Set_TN_size(f4_ded_tns[reg], 4);
-  }
-  for (reg = REGISTER_MIN; 
-       reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
-       reg++) {
+        f4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
+  	Set_TN_size(f4_ded_tns[reg], 4);
+#if defined(TARG_IA64)
 	++tnum;
 	f10_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
 	Set_TN_size(f10_ded_tns[reg], 16);
-  }
-#else // TARG_IA64
-  for (reg = REGISTER_MIN; 
-       reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
-        reg++
-       ) {
-    ++tnum;
-    f4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
-    Set_TN_size(f4_ded_tns[reg], 4);
-#ifdef KEY
-    ++tnum;
-    v16_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
-    Set_TN_size(v16_ded_tns[reg], 16);
-#endif
-  }
-#ifdef KEY
-  for (reg = REGISTER_MIN; 
-       reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_integer);
-        reg++
-       ) {
-    ++tnum;
-    i1_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
-    Set_TN_size(i1_ded_tns[reg], 1);
-    ++tnum;
-    i2_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
-    Set_TN_size(i2_ded_tns[reg], 2);
-    ++tnum;
-    i4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
-    Set_TN_size(i4_ded_tns[reg], 4);
-  }
-#endif // KEY
 
-#endif // TARG_IA64
-  Last_Dedicated_TN = tnum;
+#endif
+#ifdef KEY
+        v16_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
+  	Set_TN_size(v16_ded_tns[reg], 16);
+#endif
+    }
+
+#ifdef KEY
+    for (reg = REGISTER_MIN; 
+	 reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_integer);
+	 reg++
+    ) {
+	++tnum;
+        i1_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
+  	Set_TN_size(i1_ded_tns[reg], 1);
+	++tnum;
+        i2_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
+  	Set_TN_size(i2_ded_tns[reg], 2);
+	++tnum;
+        i4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
+  	Set_TN_size(i4_ded_tns[reg], 4);
+    }
+#endif // KEY
+#if defined(TARG_SL)	 
+    for (reg = REGISTER_MIN; 
+	 reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_accum);
+	 reg++
+    ) {
+	++tnum;
+        a4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_accum, reg);
+  	Set_TN_size(a4_ded_tns[reg], 4);
+    }
+#endif
+    Last_Dedicated_TN = tnum;
 }
 
 
@@ -500,15 +590,8 @@ Init_Dedicated_TNs (void)
 TN *
 Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
 {
-#ifdef TARG_IA64
-  if (rclass == ISA_REGISTER_CLASS_float) {
-    if (size == 4)
-      return f4_ded_tns[reg];
-    if (size == 16)
-      return f10_ded_tns[reg];
-  }
-#else
 #ifdef KEY
+#if !defined(TARG_SL)
   // check for F4 tns and 16-byte vector tns
   if (rclass == ISA_REGISTER_CLASS_float
 	&& size != DEFAULT_RCLASS_SIZE(rclass) )
@@ -518,6 +601,7 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
 	  case 16: return v16_ded_tns[reg];
 	}
   }
+#endif
 #else
   // check for F4 tns; someday may have to check for F10 tns too
   if (rclass == ISA_REGISTER_CLASS_float && size == 4
@@ -539,8 +623,13 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
 	}
   }
 #endif // KEY
-
-#endif // TARG_IA64
+#if defined(TARG_SL)
+ if (rclass == ISA_REGISTER_CLASS_accum && (size ==4)
+ 	&& size != DEFAULT_RCLASS_SIZE(rclass))
+  {
+         return  a4_ded_tns[reg];
+  }
+#endif
   return ded_tns[rclass][reg];
 }
  
@@ -564,7 +653,9 @@ Gen_Register_TN (ISA_REGISTER_CLASS rclass, INT size)
   	TNvec(Last_TN) = tn;
   	if ( size > 16 ) ErrMsg ( EC_TN_Size, size );
   	Set_TN_size(tn, size);
+#if !defined(TARG_SL)
   	if ( rclass == ISA_REGISTER_CLASS_float)  Set_TN_is_float(tn);
+#endif
 #ifdef TARG_X8664
   	if ( rclass == ISA_REGISTER_CLASS_x87)  Set_TN_is_float(tn);
 #endif
@@ -599,12 +690,14 @@ Gen_Typed_Register_TN (TYPE_ID mtype, INT size)
   	//if ( size > 16 ) ErrMsg ( EC_TN_Size, size );
   	Set_TN_size(tn, size);
 
+#if !defined(TARG_SL)
   	if ( rclass == ISA_REGISTER_CLASS_float
 #ifdef TARG_X8664
 	     || rclass == ISA_REGISTER_CLASS_x87
 #endif
            )
 	  Set_TN_is_float(tn);
+#endif // TARG_SL
     	Set_TN_register_class(tn, rclass);
   }
 
@@ -795,11 +888,10 @@ Gen_Adjusted_TN ( TN *tn, INT64 adjust )
  * ====================================================================
  */
 
-#ifdef TARG_IA64
-char *
-#else 
-static char *
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static
 #endif
+char *
 sPrint_TN ( TN *tn, BOOL verbose, char *buf )
 {
   char *result = buf;
@@ -915,7 +1007,7 @@ sPrint_TN ( TN *tn, BOOL verbose, char *buf )
  */
 
 void
-fPrint_TN ( FILE *f, char *fmt, TN *tn)
+fPrint_TN ( FILE *f, const char *fmt, TN *tn)
 {
   char buf[1024];
   char *s = sPrint_TN (tn, FALSE, buf);
@@ -1105,7 +1197,7 @@ Find_TN_with_Matching_Register( TN *tn0, TN_LIST *list )
 }
 
 //TODO: probably want to move this generic routine elsewhere.
-BOOL
+inline BOOL
 Is_OP_Cond(OP *op)
 {
   // Conditional moves or predicated instructions have this property.

@@ -91,5 +91,8 @@ extern void CGEMIT_Weak_Alias (ST *sym, ST *strongsym);
 extern void CGEMIT_Alias (ST *sym, ST *strongsym);
 
 extern INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f );
-
 extern void CGEMIT_Setup_Ctrl_Register( FILE* f );
+
+#ifdef TARG_SL
+extern void CGEMIT_Prn_Used_Callersaved_In_Asm (void);
+#endif

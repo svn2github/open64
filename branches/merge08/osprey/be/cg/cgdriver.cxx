@@ -60,10 +60,14 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
-#include <elf_stuff.h>
 #include <errno.h>
+#include <elf_stuff.h>
+#if ! defined(BUILD_OS_DARWIN)
+#include <elf.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include <sys/elf_whirl.h>	    /* for WHIRL_REVISION */
 #include <ctype.h>
 #include "defs.h"
@@ -371,7 +375,7 @@ static OPTION_DESC Options_GRA[] = {
     0, 0, 0,	&GRA_spill_count_factor_string, NULL,
     "Factor by which count of spills affects the priority of a split.  Only valid under OPT:space [Default 0.5]"
   },    
-#ifdef CG_PATHSCALE_MERGE
+#ifdef KEY
   { OVK_BOOL,   OV_INTERNAL, TRUE,"exclude_saved_regs", "",
     0, 0, 0,	&GRA_exclude_callee_saved_regs, NULL,
     "If true, callee-saved registers are never used to allocate to variables by GRA"
@@ -588,6 +592,27 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL,	OV_INTERNAL, TRUE, "cloop", "",
     0, 0, 0,	&CG_LOOP_cloop, NULL },
 #endif
+#if defined(TARG_SL)
+  { OVK_BOOL,	OV_INTERNAL, FALSE, "zero_delay_loop", "zero_delay_loop",
+    0, 0, 0,	&CG_enable_zero_delay_loop, NULL },
+  { OVK_INT32, OV_INTERNAL, TRUE, "zdl_enabled_level", "",
+    INT32_MAX, 0, INT32_MAX, &CG_zdl_enabled_level, NULL },
+  { OVK_INT32, OV_INTERNAL, TRUE, "zdl_skip_e", "",
+    INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_e, NULL },
+  { OVK_INT32, OV_INTERNAL, TRUE, "zdl_skip_a", "",
+    INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_a, NULL },
+  { OVK_INT32, OV_INTERNAL, TRUE, "zdl_skip_b", "",
+    INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_b, NULL },
+  /* For SL2, I need a options to tell what application I'm comping.
+   * So I can get the right LUT file
+   */
+  { OVK_NAME,	OV_INTERNAL, TRUE,"app_name", "",
+    0, 0, 0, &App_Name, NULL },
+
+  { OVK_NAME,	OV_INTERNAL, TRUE,"cand_pattern", "",
+    0, 0, 0, &Cand_List_Pattern, NULL },
+
+#endif
 
   // CG Unrolling options - see also OPT:unroll_times_max:unroll_size.
 
@@ -745,6 +770,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CGSPILL_Enable_Force_Rematerialization, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"lra_reorder", "",
     0, 0, 0, &LRA_do_reorder, NULL },
+#if defined(TARG_SL)
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"check_reg_alloc", "",
+    0, 0, 0, &Enable_Checking_Register_Allocation, NULL },
+#endif 
 #ifdef TARG_X8664
   { OVK_BOOL,	OV_INTERNAL, FALSE, "prefer_legacy_regs", "",
     0, 0, 0, &LRA_prefer_legacy_regs, NULL },
@@ -831,12 +860,124 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &IGLS_Enable_POST_HB_Scheduling, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"hb_scheduler", "hb_sched",
     0, 0, 0, &IGLS_Enable_HB_Scheduling, NULL },
+#if defined(TARG_SL)
+  { OVK_INT32,	OV_INTERNAL, TRUE, "local_sched_pu_skip_before", "local_sched_pu_skip_b",
+    -1, 0, INT32_MAX, &CG_local_sched_pu_skip_before, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "local_sched_pu_skip_after", "local_sched_pu_skip_a",
+    -1, 0, INT32_MAX, &CG_local_sched_pu_skip_after, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "local_sched_pu_skip_equal", "local_sched_pu_skip_e",
+    -1, 0, INT32_MAX, &CG_local_sched_pu_skip_equal, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "local_sched_bb_skip_before", "local_sched_bb_skip_b",
+    -1, 0, INT32_MAX, &CG_local_sched_bb_skip_before, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "local_sched_bb_skip_after", "local_sched_bb_skip_a",
+    -1, 0, INT32_MAX, &CG_local_sched_bb_skip_after, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "local_sched_bb_skip_equal", "local_sched_bb_skip_e",
+    -1, 0, INT32_MAX, &CG_local_sched_bb_skip_equal, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "local_sched_op_skip_after", "local_sched_op_skip_a",
+    -1, 0, INT32_MAX, &CG_local_sched_op_skip_after, NULL }, 
+  { OVK_INT32, OV_INTERNAL, TRUE, "bb_sched_op_max", "bb_sched_op_max",
+    0, 0, INT32_MAX, &CG_bb_sched_op_num_max, NULL },
+  /* The following nine are for GCM binary search */
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_skip_before", "gcm_skip_b",
+    -1, 0, INT32_MAX, &CG_GCM_skip_before, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_skip_after", "gcm_skip_a",
+    -1, 0, INT32_MAX, &CG_GCM_skip_after, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_skip_equal", "gcm_skip_e",
+    -1, 0, INT32_MAX, &CG_GCM_skip_equal, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_loop_skip_before", "gcm_loop_skip_b",
+    -1, 0, INT32_MAX, &CG_GCM_loop_skip_before, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_loop_skip_after", "gcm_loop_skip_a",
+    -1, 0, INT32_MAX, &CG_GCM_loop_skip_after, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_loop_skip_equal", "gcm_loop_skip_e",
+    -1, 0, INT32_MAX, &CG_GCM_loop_skip_equal, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_op_skip_before", "gcm_op_skip_b",
+    -1, 0, INT32_MAX, &CG_GCM_op_skip_before, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_op_skip_after", "gcm_op_skip_a",
+    -1, 0, INT32_MAX, &CG_GCM_op_skip_after, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_op_skip_equal", "gcm_op_skip_e",
+    -1, 0, INT32_MAX, &CG_GCM_op_skip_equal, NULL }, 
+
+  // binary search options for LICM in GCM
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_licm_loop_skip_before", "gcm_licm_loop_skip_b",
+    -1, 0, INT32_MAX, &CG_GCM_LICM_loop_skip_before, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_licm_loop_skip_after", "gcm_licm_loop_skip_a",
+    -1, 0, INT32_MAX, &CG_GCM_LICM_loop_skip_after, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_licm_loop_skip_equal", "gcm_licm_loop_skip_e",
+    -1, 0, INT32_MAX, &CG_GCM_LICM_loop_skip_equal, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_licm_op_skip_before", "gcm_licm_op_skip_b",
+    -1, 0, INT32_MAX, &CG_GCM_LICM_op_skip_before, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_licm_op_skip_after", "gcm_licm_op_skip_a",
+    -1, 0, INT32_MAX, &CG_GCM_LICM_op_skip_after, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "gcm_licm_op_skip_equal", "gcm_licm_op_skip_e",
+    -1, 0, INT32_MAX, &CG_GCM_LICM_op_skip_equal, NULL }, 
+
+  // binary search options for DCE in GCM
+  { OVK_INT32,	OV_INTERNAL, TRUE, "loop_dce_loop_skip_before", "loop_dce_loop_skip_b",
+    -1, 0, INT32_MAX, &CG_LOOP_DCE_loop_skip_before, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "loop_dce_loop_skip_after", "loop_dce_loop_skip_a",
+    -1, 0, INT32_MAX, &CG_LOOP_DCE_loop_skip_after, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "loop_dce_loop_skip_equal", "loop_dce_loop_skip_e",
+    -1, 0, INT32_MAX, &CG_LOOP_DCE_loop_skip_equal, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "loop_dce_op_skip_before", "loop_dce_op_skip_b",
+    -1, 0, INT32_MAX, &CG_LOOP_DCE_op_skip_before, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "loop_dce_op_skip_after", "loop_dce_op_skip_a",
+    -1, 0, INT32_MAX, &CG_LOOP_DCE_op_skip_after, NULL }, 
+  { OVK_INT32,	OV_INTERNAL, TRUE, "loop_dce_op_skip_equal", "loop_dce_op_skip_e",
+    -1, 0, INT32_MAX, &CG_LOOP_DCE_op_skip_equal, NULL }, 
+
+  /* The following are for controlling GCM */
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "gcm_enable_critical_edge_motion", "gcm_enable_critical_edge_motion",
+    1, 0, 0, &CG_GCM_enable_critical_edge_motion, NULL }, 
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "gcm_enable_mvtc_optimization", "gcm_enable_mvtc_opt",
+    1, 0, 0, &CG_GCM_enable_mvtc_optimization, NULL }, 
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "gcm_enable_reduce_loop_count", "gcm_enable_reduce_loop_count",
+    1, 0, 0, &CG_GCM_enable_reduce_loop_count, NULL }, 
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "gcm_enable_break_dependence", "gcm_enable_break_dep",
+    0, 0, 0, &CG_GCM_enable_break_dependence, NULL }, 
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "gcm_licm", "",
+    1, 0, 0, &CG_GCM_enable_licm, NULL},
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "gcm_dce", "",
+    1, 0, 0, &CG_GCM_enable_dce, NULL},
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "gcm_rce", "",
+    1, 0, 0, &CG_GCM_enable_rce, NULL},
+
+  // Turns of all region scheduling
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"all_rgn_scheduler", "all_rgn_sched",
+    0, 0, 0, &RGN_Enable_All_Scheduling, NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"rgn_schedule", "rgn_sched",
+    0, 0, 0, &CG_Enable_Regional_Global_Sched , NULL }, 
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"rgn_local_schedule", "rgn_local_sched",
+    0, 0, 0, &CG_Enable_Regional_Local_Sched , NULL }, 
+#endif
 #ifdef KEY
   { OVK_BOOL, OV_INTERNAL, TRUE, "local_fwd_scheduler", "local_fwd_sched",
     0, 0, 0, &LOCS_Fwd_Scheduling, &LOCS_Fwd_Scheduling_set },
   { OVK_UINT32,	OV_INTERNAL, TRUE,"local_sched_algorithm", "local_sched_alg",
     0, 0, 2, &LOCS_Scheduling_Algorithm, &LOCS_Scheduling_Algorithm_set,
     "Select basic block instruction scheduling algorithm" },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"locs_best", "",
+    0, 0, 0, &LOCS_Best, &LOCS_Best_set,
+    "Select best schedule produced by different scheduling heuristics" },
+  { OVK_BOOL, OV_INTERNAL, TRUE, "locs_shallow_depth", "",
+    0, 0, 0, &LOCS_Shallow_Depth, &LOCS_Shallow_Depth_set },
+  { OVK_BOOL, OV_INTERNAL, TRUE, "locs_balance_ready_types", "",
+    0, 0, 0, &LOCS_Balance_Ready_Types, &LOCS_Balance_Ready_Types_set,
+    "Enable heuristic to balance the number of int and fp OPs in the ready vector" },
+  { OVK_UINT32,	OV_INTERNAL, TRUE,"locs_balance_ready_int", "",
+    0, 0, 100, &LOCS_Balance_Ready_Int, &LOCS_Balance_Ready_Int_set,
+    "The ready vector should contain no more than this percentage of int OPs" },
+  { OVK_UINT32,	OV_INTERNAL, TRUE,"locs_balance_ready_fp", "",
+    0, 0, 100, &LOCS_Balance_Ready_Fp, &LOCS_Balance_Ready_Fp_set,
+    "The ready vector should contain no more than this percentage of fp OPs" },
+  { OVK_BOOL, OV_INTERNAL, TRUE, "locs_balance_unsched_types", "",
+    0, 0, 0, &LOCS_Balance_Unsched_Types, &LOCS_Balance_Unsched_Types_set,
+    "Enable heuristic to balance the number of unscheduled int and fp OPs" },
+  { OVK_UINT32,	OV_INTERNAL, TRUE,"locs_balance_unsched_int", "",
+    0, 0, 100, &LOCS_Balance_Unsched_Int, &LOCS_Balance_Unsched_Int_set,
+    "The unsched OPs should contain no more than this percentage of int OPs" },
+  { OVK_UINT32,	OV_INTERNAL, TRUE,"locs_balance_unsched_fp", "",
+    0, 0, 100, &LOCS_Balance_Unsched_Fp, &LOCS_Balance_Unsched_Fp_set,
+    "The unsched OPs should contain no more than this percentage of fp OPs" },
 #endif
 
   // Turns of all scheduling (LOCS, HBS, GCM) for triaging.
@@ -1014,13 +1155,53 @@ static OPTION_DESC Options_CG[] = {
 #endif
 
 #ifdef TARG_X8664
-  // x87:
+  // x87
   { OVK_BOOL,	OV_INTERNAL, TRUE, "x87_store", "",
     0, 0, 0, &CG_x87_store, NULL,
     "Store x87 floating point variables to memory after each computation, in order to reduce the variable's precision from 80 bits to 32/64 bits.  Default off."
   },
 #endif
-
+#if defined(TARG_SL)
+  { OVK_BOOL ,  OV_INTERNAL, TRUE, "instr16","",
+     0, 0, 0,	  &CG_Gen_16bit, NULL},
+  { OVK_BOOL ,  OV_INTERNAL, TRUE, "br16","",
+     0, 0, 0,	  &CG_Enable_br16, NULL},
+  { OVK_INT32,  OV_INTERNAL, TRUE,  "pre_size", "",
+     0, 0, 100,    &CG_localsch_pre_size,   NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE,  "dsp_thread", "",
+     0, 0, 0,        &CG_dsp_thread, NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE, "qw_aligned", "",
+     0, 0, 0,        &CG_check_quadword, NULL},
+  { OVK_BOOL ,  OV_INTERNAL, TRUE, "rep_unpair16","",
+     0, 0, 0,	  &CG_rep_unpaired16, NULL},    
+  { OVK_BOOL ,  OV_INTERNAL, TRUE, "ignore_mem_alias", "", 
+     0, 0, 0,     &CG_ignore_mem_alias, NULL}, 
+  {OVK_BOOL ,  OV_INTERNAL, TRUE, "stack_layout","",
+     0, 0, 0,	  &CG_stack_layout, NULL},
+  { OVK_INT32,   OV_INTERNAL, TRUE,  "isr", "", 
+     0, 0, 3,     &CG_ISR,  NULL},
+  { OVK_INT32,  OV_INTERNAL, TRUE, "max_accreg", "",
+     0, 0, 4,     &CG_Max_Accreg, NULL},
+  { OVK_INT32,  OV_INTERNAL, TRUE, "max_addreg", "",
+     0, 0, 8,     &CG_Max_Addreg, NULL},
+  { OVK_INT32,  OV_INTERNAL, TRUE, "max_loopreg", "",
+     0, 0, 4,     &CG_zdl_enabled_level, NULL},
+  { OVK_BOOL,  OV_INTERNAL, TRUE, "round_spreg", "",
+     0, 0, 0,     &CG_round_spreg, NULL},
+  { OVK_BOOL,  OV_INTERNAL, TRUE, "check_packed", "",
+     0, 0, 0,     &CG_check_packed, NULL},
+  { OVK_BOOL,   OV_INTERNAL, TRUE,  "sl2", "",
+     0, 0, 0,        &CG_sl2, NULL },
+// sl2 specific peephole optimization 
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"combine_condmv", "combine_condmv",
+    0, 0, 0, &CG_SL2_enable_combine_condmv, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"sl2peephole", "sl2peep",
+    0, 0, 0, &CG_SL2_enable_peephole, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"sl2_macro", "sl2_macro",
+    0, 0, 0, &CG_Enable_Macro_Instr_Combine, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"exp_v1buf", "exp_v1buf",
+    0, 0, 0, &CG_SL2_enable_v1buf_expansion, NULL },
+#endif
   // Misc:
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "gra_live_predicate_aware", "",
     0,0,0,      &GRA_LIVE_Predicate_Aware, NULL,
@@ -1512,7 +1693,12 @@ OPTION_GROUP Cg_Option_Groups[] = {
 
 extern INT prefetch_ahead;
 INT _prefetch_ahead = 2;
+#if defined(BUILD_OS_DARWIN)
+/* Apparently not referenced elsewhere; Mach-O can't do aliases */
+#define prefetch_ahead (_prefetch_ahead)
+#else /* defined(BUILD_OS_DARWIN) */
 #pragma weak prefetch_ahead = _prefetch_ahead
+#endif /* defined(BUILD_OS_DARWIN) */
 
 /* =======================================================================
  *
@@ -2009,6 +2195,17 @@ Prepare_Source (void)
      * We want them to be created in the current directory, so we
      * strip off the filename only from Src_File_Name for use:
      */
+#if defined(TARG_SL)
+    /* In kernel building, we may generate several object files from
+     * single .c file, the good way to name the related files should be
+     * according to the object file in the original user command. But the
+     * original object file is not transferred to the 'be', so I can use
+     * Irb_File_Name instead, which comes from the original object file
+     */
+    if( Irb_File_Name )
+      fname = Last_Pathname_Component ( Irb_File_Name );
+    else
+#endif
     fname = Last_Pathname_Component ( Src_File_Name );
 
     /* If we're producing information for CITE, we need an assembly
@@ -2243,7 +2440,7 @@ CG_Init (void)
     /* this has to be done after LNO has been loaded to grep
      * prefetch_ahead fromn LNO */
     Configure_prefetch_ahead();
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_SL)
     if (flag_test_coverage || profile_arcs)
       CG_Init_Gcov();
 

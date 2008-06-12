@@ -58,10 +58,6 @@
 
 INT32       CG_LOOP_min_ii;
 INT32       CG_LOOP_res_min_ii;
-#ifdef TARG_IA64
-INT32       CG_LOOP_rec_min_ii_with_dspec; /* Rec MII ignoring violable mem-dep */  
-#endif
-
 INT32       CG_LOOP_rec_min_ii;
 
 static INT trace_mii = -1;
@@ -754,11 +750,7 @@ Maximize_Min_II(
   }
 
   CG_LOOP_min_ii = mii;
-#ifdef TARG_IA64
-  CG_LOOP_rec_min_ii = Max(CG_LOOP_rec_min_ii, scc_mii);
-#else
   CG_LOOP_rec_min_ii = scc_mii;
-#endif
   Set_CG_LOOP_SCC_rec_mii(scc,scc_mii);
 }
 

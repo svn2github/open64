@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: register.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/register.cxx,v $
+ * $Revision: 1.17 $
+ * $Date: 06/03/20 17:31:47-08:00 $
+ * $Author: gautam@jacinth.keyresearch $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.register.cxx $
  *
  * Revision history:
  *  17-May-93 - Original Version
@@ -108,11 +108,6 @@ CLASS_REG_PAIR      CLASS_REG_PAIR_zero;
 CLASS_REG_PAIR      CLASS_REG_PAIR_ep;
 CLASS_REG_PAIR      CLASS_REG_PAIR_gp;
 CLASS_REG_PAIR      CLASS_REG_PAIR_sp;
-
-#ifdef TARG_IA64
-CLASS_REG_PAIR      CLASS_REG_PAIR_tp;
-#endif
-
 CLASS_REG_PAIR      CLASS_REG_PAIR_fp;
 CLASS_REG_PAIR      CLASS_REG_PAIR_ra;
 CLASS_REG_PAIR      CLASS_REG_PAIR_v0;
@@ -125,6 +120,45 @@ CLASS_REG_PAIR      CLASS_REG_PAIR_fzero;
 CLASS_REG_PAIR      CLASS_REG_PAIR_fone;
 #ifdef TARG_X8664
 CLASS_REG_PAIR      CLASS_REG_PAIR_f0;
+#endif
+#ifdef TARG_IA64
+CLASS_REG_PAIR      CLASS_REG_PAIR_tp;
+#endif
+#if defined(TARG_SL)
+CLASS_REG_PAIR      CLASS_REG_PAIR_k0;
+CLASS_REG_PAIR      CLASS_REG_PAIR_k1;
+CLASS_REG_PAIR      CLASS_REG_PAIR_ja;
+CLASS_REG_PAIR      CLASS_REG_PAIR_lc0;
+CLASS_REG_PAIR      CLASS_REG_PAIR_lc1;
+CLASS_REG_PAIR      CLASS_REG_PAIR_lc2;
+CLASS_REG_PAIR      CLASS_REG_PAIR_lc3;
+CLASS_REG_PAIR      CLASS_REG_PAIR_hi;
+CLASS_REG_PAIR      CLASS_REG_PAIR_acc0;
+CLASS_REG_PAIR      CLASS_REG_PAIR_acc1;
+CLASS_REG_PAIR      CLASS_REG_PAIR_acc2;
+CLASS_REG_PAIR      CLASS_REG_PAIR_acc3;
+CLASS_REG_PAIR      CLASS_REG_PAIR_add0;
+CLASS_REG_PAIR      CLASS_REG_PAIR_add1;
+CLASS_REG_PAIR      CLASS_REG_PAIR_add2;
+CLASS_REG_PAIR      CLASS_REG_PAIR_add3;
+CLASS_REG_PAIR      CLASS_REG_PAIR_add4;
+CLASS_REG_PAIR      CLASS_REG_PAIR_add5;
+CLASS_REG_PAIR      CLASS_REG_PAIR_add6;
+CLASS_REG_PAIR      CLASS_REG_PAIR_add7;
+CLASS_REG_PAIR      CLASS_REG_PAIR_addsize0;
+CLASS_REG_PAIR      CLASS_REG_PAIR_addsize1;
+CLASS_REG_PAIR      CLASS_REG_PAIR_addsize2;
+CLASS_REG_PAIR      CLASS_REG_PAIR_addsize3;
+CLASS_REG_PAIR      CLASS_REG_PAIR_addsize4;
+CLASS_REG_PAIR      CLASS_REG_PAIR_addsize5;
+CLASS_REG_PAIR      CLASS_REG_PAIR_addsize6;
+CLASS_REG_PAIR      CLASS_REG_PAIR_addsize7;
+
+CLASS_REG_PAIR      CLASS_REG_PAIR_c2acc;
+CLASS_REG_PAIR      CLASS_REG_PAIR_c2acc_ctrl;
+CLASS_REG_PAIR      CLASS_REG_PAIR_c2mvsel;
+CLASS_REG_PAIR      CLASS_REG_PAIR_c2vlcs;
+CLASS_REG_PAIR      CLASS_REG_PAIR_c2movpat;
 #endif
 
 const CLASS_REG_PAIR CLASS_REG_PAIR_undef =
@@ -145,8 +179,8 @@ enum {
 static mUINT8 reg_alloc_status[ISA_REGISTER_CLASS_MAX + 1][REGISTER_MAX + 1];
 
 // list of registers that should not be allocated, both globally and locally.
-static std::vector< std::pair< ISA_REGISTER_CLASS, REGISTER> > dont_allocate_these_registers;
-static std::vector< std::pair< ISA_REGISTER_CLASS, REGISTER> > dont_allocate_these_registers_in_pu;
+static vector< pair< ISA_REGISTER_CLASS, REGISTER> > dont_allocate_these_registers;
+static vector< pair< ISA_REGISTER_CLASS, REGISTER> > dont_allocate_these_registers_in_pu;
 
 
 /* ====================================================================
@@ -201,7 +235,7 @@ REGISTER_SET_Range(UINT low, UINT high)
   return set;
 #endif /* ISA_REGISTER_MAX < 64 */
 }
-
+
 /* ====================================================================
  * ====================================================================
  *
@@ -332,7 +366,7 @@ Initialize_Register_Class(
         if ( ABI_PROPERTY_Is_ret_addr(rclass, isa_reg) )
           shrink_wrap = REGISTER_SET_Union1(shrink_wrap, reg);
 #endif
-#if !defined(TARG_MIPS) && !defined(TARG_X8664)
+#if !defined(TARG_MIPS) && !defined(TARG_X8664) && !defined(TARG_SL)
         if ( ABI_PROPERTY_Is_stacked(rclass, isa_reg) )
           stacked = REGISTER_SET_Union1(stacked, reg);
 #endif
@@ -394,7 +428,144 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_zero, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_zero, rclass);
     }
-#endif
+#ifdef TARG_SL
+    else if ( ABI_PROPERTY_Is_tmp1(rclass, isa_reg) ) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_k0, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_k0, rclass);
+    }
+    else if ( ABI_PROPERTY_Is_tmp2(rclass, isa_reg) ) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_k1, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_k1, rclass);
+    } 
+    //ja reg
+    else if ( ABI_PROPERTY_Is_jump_addr(rclass, isa_reg) ) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_ja, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_ja, rclass);
+    }
+    // lc register
+    else if (ABI_PROPERTY_Is_loopcount0(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_lc0, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_lc0, rclass);  
+    }
+    else if (ABI_PROPERTY_Is_loopcount1(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_lc1, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_lc1, rclass);  
+    }
+    else if (ABI_PROPERTY_Is_loopcount2(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_lc2, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_lc2, rclass);  
+    }
+    else if (ABI_PROPERTY_Is_loopcount3(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_lc3, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_lc3, rclass);  
+    }
+    else if (ABI_PROPERTY_Is_hi_reg(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_hi, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_hi, rclass);  
+    }
+    else if (ABI_PROPERTY_Is_acc0(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_acc0, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_acc0, rclass);
+    }
+    else if (ABI_PROPERTY_Is_acc1(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_acc1, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_acc1, rclass);
+    }
+    else if (ABI_PROPERTY_Is_acc2(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_acc2, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_acc2, rclass);
+    }	
+    else if (ABI_PROPERTY_Is_acc3(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_acc3, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_acc3, rclass);
+    }
+    else if (ABI_PROPERTY_Is_add0(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_add0, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_add0, rclass);
+    }
+    else if (ABI_PROPERTY_Is_add1(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_add1, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_add1, rclass);
+    }
+    else if (ABI_PROPERTY_Is_add2(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_add2, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_add2, rclass);
+    }
+    else if (ABI_PROPERTY_Is_add3(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_add3, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_add3, rclass);
+    }
+    else if (ABI_PROPERTY_Is_add4(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_add4, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_add4, rclass);
+    }
+    else if (ABI_PROPERTY_Is_add5(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_add5, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_add5, rclass);
+    }
+    else if (ABI_PROPERTY_Is_add6(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_add6, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_add6, rclass);
+    }
+    else if (ABI_PROPERTY_Is_add7(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_add7, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_add7, rclass);
+    }
+    else if (ABI_PROPERTY_Is_addrsize0(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_addsize0, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_addsize0, rclass);
+    }
+    else if (ABI_PROPERTY_Is_addrsize1(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_addsize1, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_addsize1, rclass);
+    }
+    else if (ABI_PROPERTY_Is_addrsize2(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_addsize2, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_addsize2, rclass);
+    }
+    else if (ABI_PROPERTY_Is_addrsize3(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_addsize3, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_addsize3, rclass);
+    }
+    else if (ABI_PROPERTY_Is_addrsize4(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_addsize4, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_addsize4, rclass);
+    }
+    else if (ABI_PROPERTY_Is_addrsize5(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_addsize5, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_addsize5, rclass);
+    }
+    else if (ABI_PROPERTY_Is_addrsize6(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_addsize6, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_addsize6, rclass);
+    }
+    else if (ABI_PROPERTY_Is_addrsize7(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_addsize7, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_addsize7, rclass);
+    }
+    else if (ABI_PROPERTY_Is_c2acc(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2acc, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2acc, rclass);  
+    }
+    else if (ABI_PROPERTY_Is_c2acc_ctrl(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2acc_ctrl, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2acc_ctrl, rclass);  
+    }
+    else if (ABI_PROPERTY_Is_c2mvsel(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2mvsel, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2mvsel, rclass);  
+    }
+    else if (ABI_PROPERTY_Is_c2vlcs(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2vlcs, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2vlcs, rclass);  
+    }
+    else if (ABI_PROPERTY_Is_c2movpat(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2movpat, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2movpat, rclass);  
+    }
+#endif // TARG_SL
+
+#endif // TARG_MIPS
 #ifdef TARG_IA64
     else if ( ABI_PROPERTY_Is_prev_funcstate(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_pfs, reg);
@@ -595,7 +766,7 @@ REGISTER_Pu_Begin(void)
   }
 
   // now check for any registers that user doesn't want allocated
-  std::vector< std::pair< ISA_REGISTER_CLASS, REGISTER > >::iterator r;
+  vector< pair< ISA_REGISTER_CLASS, REGISTER > >::iterator r;
   for (r = dont_allocate_these_registers.begin(); 
 	r != dont_allocate_these_registers.end(); 
 	++r)
@@ -1170,16 +1341,18 @@ Set_Register_Never_Allocatable (char *regname)
 	case 'r':
 		rclass = ISA_REGISTER_CLASS_integer;
 		break;
+#if !defined(TARG_SL)
 	case 'f':
 		rclass = ISA_REGISTER_CLASS_float;
 		break;
+#endif
 	default:
 		FmtAssert(FALSE, ("unexpected reg letter %c", regname[0]));
 	}
 	reg = REGISTER_MIN + atoi(regname+1);
 	FmtAssert(reg <= REGISTER_CLASS_last_register(rclass),
 		("%s is not a valid register", regname));
-	dont_allocate_these_registers.push_back( std::make_pair( rclass, reg ));
+	dont_allocate_these_registers.push_back( pair< ISA_REGISTER_CLASS, REGISTER>( rclass, reg ));
 }
 
 // user wants given register to not be allocatable in file.
@@ -1189,6 +1362,6 @@ Set_Register_Never_Allocatable (PREG_NUM preg)
 	ISA_REGISTER_CLASS rclass;
 	REGISTER reg;
 	CGTARG_Preg_Register_And_Class(preg, &rclass, &reg);
-	dont_allocate_these_registers.push_back( std::make_pair( rclass, reg ));
+	dont_allocate_these_registers.push_back( pair< ISA_REGISTER_CLASS, REGISTER>( rclass, reg ));
 }
 

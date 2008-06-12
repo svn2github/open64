@@ -1245,14 +1245,10 @@ Live_Init(
                                       BB_live_use(bb),
                                       &liveness_pool);
 #ifdef TARG_IA64
-#ifdef OSP_OPT
   /* if current PU haven't landing pad at all, 
    * needn't to added the corresponding defreach and live info
    */
   if (PU_has_exc_scopes(Get_Current_PU()) && !PU_Need_Not_Create_LSDA ()) {
-#else
-  if (PU_has_exc_scopes(Get_Current_PU())) {
-#endif
     extern TN *Caller_GP_TN;
     extern TN *Caller_FP_TN;
     extern TN *Caller_Pfs_TN;

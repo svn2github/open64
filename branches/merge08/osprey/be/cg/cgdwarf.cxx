@@ -169,6 +169,34 @@ hash_map<PU_IDX, Dwarf_Unsigned> PU_IDX_To_CGD_SYMTAB_OFFSET;
 static DST_INFO_IDX Current_Top_Level_Idx = DST_INVALID_IDX;
 #endif
 
+#if defined(BUILD_OS_DARWIN)
+/* Darwin asm doesn't like subtraction of labels when one of the labels occurs
+ * at the end of a section; assigning the difference to a temp symbol fixes
+ * the problem */
+static void
+emit_difference(FILE *asm_file, const char *reloc_name, const char *sym1,
+  const char *sym2) {
+#define DIFF_SYMS ".DIFF.%s.%s"
+  fprintf(asm_file, "\t.set " DIFF_SYMS ", %s - %s\n", sym1, sym2, sym1, sym2);
+  fprintf(asm_file, "\t%s\t" DIFF_SYMS "\n", reloc_name, sym1, sym2);
+}
+
+/*
+ * Generate section header and label for "debug_line" section, but only once
+ * asm_file		Assembly output file
+ * section_name		Name of debug_line section
+ */
+static void
+gen_debug_line_section_header(FILE *asm_file, const char *section_name) {
+  static int done;
+  if (!done) {
+    done = 1;
+    fprintf(asm_file, "\n\t%s %s\n%s:\n", AS_SECTION,
+      map_section_name(section_name), section_name);
+  }
+}
+#endif /* defined(BUILD_OS_DARWIN) */
+
 Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
 				     Dwarf_Unsigned         index,
 				     Dwarf_Unsigned         pu_base_sym_idx,
@@ -227,10 +255,15 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
 
   if (Trace_Dwarf) {
     fprintf(TFile,
+#if defined(BUILD_OS_DARWIN)
+	    "New CGD_Symtab entry: %lu --> (CGD_%s,%llu)\n",
+	    (long unsigned int) (CGD_Symtab.size() - 1),
+#else /* defined(BUILD_OS_DARWIN) */
 	    "New CGD_Symtab entry: %u --> (CGD_%s,%llu)\n",
 	    (UINT32)(CGD_Symtab.size() - 1),
 	    (type == CGD_LABIDX ? "LABIDX" : "ELFSYM"),
 	    (UINT64)index);
+#endif
   }
   Dwarf_Unsigned handle = CGD_Symtab.size() - 1;
   if (type == CGD_LABIDX) {
@@ -584,7 +617,26 @@ static void
 put_compile_unit(DST_COMPILE_UNIT *attr, Dwarf_P_Die die)
 {
    put_name (DST_COMPILE_UNIT_name(attr), die, pb_none);
+#ifdef TARG_SL
+   /* NOTE! Wenbo/2007-04-26: If the DT_AT_name of a compile unit is a 
+      full path name, we need not emit the DW_AT_comp_dir(follow GCC).
+      Because it has no use if a full path is assigned to file, and 
+      this can save some space. GDB expect this too. 
+      This change is placed here in back-end because we do not want to
+      change front-end much and maybe easier to manage. */
+   char *name;
+   if (DST_IS_NULL(DST_COMPILE_UNIT_name(attr)))
+     name = NULL;
+   else
+     name = DST_STR_IDX_TO_PTR (DST_COMPILE_UNIT_name(attr));
+   if ((name != NULL) && (name[0] == '/'))
+     /* Do nothing. */
+     ;
+   else
+     put_string (DST_COMPILE_UNIT_comp_dir(attr), DW_AT_comp_dir, die);
+#else
    put_string (DST_COMPILE_UNIT_comp_dir(attr), DW_AT_comp_dir, die);
+#endif
    if (DEBUG_Optimize_Space && Debug_Level == 0)
 	// don't emit producer string if not debug and want to save space
 	dwarf_add_AT_string (dw_dbg, die, DW_AT_producer, "", &dw_error);
@@ -692,12 +744,12 @@ put_subprogram(DST_flag flag,
     if (DST_IS_NULL(DST_SUBPROGRAM_def_type(attr)) &&
 	(Dwarf_Language == DW_LANG_Fortran77 ||
 	 Dwarf_Language == DW_LANG_Fortran90) &&
-	!DST_ARE_EQUAL(Current_Top_Level_Idx,DST_INVALID_IDX)) {
+	!DST_IS_NULL(Current_Top_Level_Idx)) {
       DST_INFO_IDX child_idx;
       for (child_idx = DST_first_child (Current_Top_Level_Idx);
 	   !DST_IS_NULL(child_idx); 
 	   child_idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(child_idx))) {
-	if ( !DST_ARE_EQUAL(child_idx,DST_INVALID_IDX) ) {
+	if (!DST_IS_NULL(child_idx)) {
 	  DST_INFO *child_info = DST_INFO_IDX_TO_PTR (child_idx);
 	  if (child_info && 
 	      DST_INFO_tag(child_info) == DW_TAG_variable) {
@@ -706,7 +758,7 @@ put_subprogram(DST_flag flag,
 	      DST_ATTR_IDX_TO_PTR(child_attr_idx, DST_VARIABLE);
 	    if (child_attr) {
 	      DST_STR_IDX child_str_idx = DST_VARIABLE_def_name(child_attr);
-	      if ( !DST_ARE_EQUAL(child_str_idx,DST_INVALID_IDX) ) {
+	      if (!DST_IS_NULL(child_str_idx)) {
 		ST *pu_st = Get_ST_From_DST(DST_SUBPROGRAM_def_st(attr));
 		char *pu_name = ST_name(pu_st);
 		char *variable_name = DST_STR_IDX_TO_PTR(child_str_idx);
@@ -2525,12 +2577,12 @@ void Cg_Dwarf_Finish (pSCNINFO text_scninfo)
 }
 
 typedef struct {
-  char *path_name;
+  const char *path_name;
   BOOL already_processed;
 } include_info;
   
 typedef struct {
-  char *filename;
+  const char *filename;
   INT incl_index;
   FILE *fileptr;
   INT max_line_printed;
@@ -2549,7 +2601,7 @@ void Cg_Dwarf_Gen_Asm_File_Table (void)
   DST_IDX idx;
   DST_INCLUDE_DIR *incl;
   DST_FILE_NAME *file;
-  char *name;
+  const char *name;
   INT incl_table_size;
   INT file_table_size;
   INT new_size;
@@ -2684,16 +2736,28 @@ Print_Directives_For_All_Files(void) {
   DST_IDX idx;
   DST_FILE_NAME *file;
   INT count = 1;
+#if ! defined(BUILD_OS_DARWIN)
   for (idx = DST_get_file_names(); 
        !DST_IS_NULL(idx);
        idx = DST_FILE_NAME_next(file)) {
     file = DST_FILE_IDX_TO_PTR(idx);
+#ifdef TARG_SL
+    /* NOTE! Wenbo/2007-04-26: If the index of directory where "file" lives
+       is "0", that means "file" is in compile directory and compiled with no
+       path prefix specified. So we should print the filename only without 
+       directory name(due to dwarf2 spec 6.2.4.11). */
+    if (file_table[count].incl_index == 0)
+      fprintf(Asm_File, "\t%s\t%d\t\"%s\"\n", AS_FILE, count, 
+	      file_table[count].filename);
+    else 
+#endif
     fprintf(Asm_File, "\t%s\t%d\t\"%s/%s\"\n", AS_FILE, count, 
 	    incl_table[file_table[count].incl_index].path_name, 
 	    file_table[count].filename);
     count++;
   }
   fputc ('\n', Asm_File);
+#endif /* defined(BUILD_OS_DARWIN) */
 }
 #endif
 
@@ -2724,6 +2788,11 @@ print_source (SRCPOS srcpos)
     cur_file_index = USRCPOS_filenum(usrcpos);
     cur_file = &file_table[cur_file_index];
     /* open the new file. */
+#ifdef TARG_SL
+    if (cur_file->incl_index == 0)
+      sprintf (srcfile, "%s",cur_file->filename);
+    else
+#endif
     sprintf (srcfile, "%s/%s", incl_table[cur_file->incl_index].path_name,
 				cur_file->filename);
     cur_file->fileptr = fopen (srcfile, "r");
@@ -2797,7 +2866,11 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
   // because libdwarf expects addresses to be aligned with instructions,
   // so ignore such cases.
   if ((code_address % INST_BYTES) != 0) {
+#if defined(BUILD_OS_DARWIN)
+        return;
+#else /* defined(BUILD_OS_DARWIN) */
   	if (Object_Code) return;
+#endif /* defined(BUILD_OS_DARWIN) */
   }
 #endif
 
@@ -2811,18 +2884,34 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 	INT file_idx = USRCPOS_filenum(usrcpos);
 	INT include_idx;
 	// file change
-	if ( ! file_table[file_idx].already_processed) {
+	if (
+#ifdef TARG_SL
+	    (include_idx != 0) && 
+#endif		
+	    ! file_table[file_idx].already_processed) {
+
 		// new file
 		include_idx = file_table[file_idx].incl_index;
 		if ( ! incl_table[include_idx].already_processed) {
 			// new include
-			if (Object_Code) {
+#if defined(BUILD_OS_DARWIN)
+			/* Mach-O assembler doesn't emit Dwarf for .file */
+			if (1)
+#else /* defined(BUILD_OS_DARWIN) */
+			if (Object_Code) 
+#endif
+			{
 			    Em_Dwarf_Add_Include (include_idx, 
 				incl_table[include_idx].path_name);
 			}
 			incl_table[include_idx].already_processed = TRUE;
 		}
+#if defined(BUILD_OS_DARWIN)
+		/* Mach-O assembler doesn't emit Dwarf for .file directive */
+		if (1) {
+#else /* defined(BUILD_OS_DARWIN) */
 		if (Object_Code) {
+#endif /* defined(BUILD_OS_DARWIN) */
     		    Em_Dwarf_Add_File (file_idx, 
 			file_table[file_idx].filename,
 			include_idx,
@@ -2847,6 +2936,13 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 	// whatever the spelling.
   	if (Assembly) {
 		include_idx = file_table[file_idx].incl_index;
+#ifdef TARG_SL
+	      if (include_idx == 0)
+                CGEMIT_Prn_File_Dir_In_Asm(usrcpos,
+			NULL,
+			file_table[file_idx].filename);
+	      else
+#endif			  		
                 CGEMIT_Prn_File_Dir_In_Asm(usrcpos,
 			incl_table[include_idx].path_name,
 			file_table[file_idx].filename);
@@ -2856,7 +2952,12 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
   }
 
   // now do line number:
+#if defined(BUILD_OS_DARWIN)
+  /* Mach-O assembler doesn't emit Dwarf for .line directive */
+  if (1) {
+#else /* defined(BUILD_OS_DARWIN) */
   if (Object_Code) {
+#endif /* defined(BUILD_OS_DARWIN) */
     Em_Dwarf_Add_Line_Entry (code_address, srcpos);
   }
   if (Assembly) {
@@ -3372,7 +3473,7 @@ Cg_Dwarf_Output_Asm_Bytes_Elf_Relocs (FILE          *asm_file,
       if (ofst != 0) {
 	fprintf(asm_file, " + 0x%llx", (unsigned long long)ofst);
       }
-      fprintf(asm_file, "\n");
+      fputc ('\n', asm_file);
       cur_byte += current_reloc_size;
     }
   } while (cur_byte != ( buffer) + bufsize);
@@ -3487,7 +3588,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       // don't want to affect other sections, although they may also need
       // to be updated under fPIC
       bool gen_pic = ((Gen_PIC_Call_Shared || Gen_PIC_Shared) &&
-      		       !strcmp (section_name, ".eh_frame"));
+      		       !strcmp (section_name, EH_FRAME_SECTNAME));
 #endif
       switch (reloc_buffer[k].drd_type) {
       case dwarf_drt_none:
@@ -3512,12 +3613,18 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	break;
 #ifdef KEY
       case dwarf_drt_cie_label: // bug 2463
+#if defined(BUILD_OS_DARWIN)
+	/* GCC sets this to 0, so we do likewise */
+        fprintf(asm_file, "\t%s\t0", reloc_name);
+#else /* defined(BUILD_OS_DARWIN) */
         fprintf(asm_file, "\t%s\t%s", reloc_name, ".LCIE");
+#endif /* defined(BUILD_OS_DARWIN) */
 	++k; // skip the DEBUG_FRAME label that is there just as a place-holder
 	break;
 #ifdef KEY /* Bug 3507 */
       case dwarf_drt_module:
 	{
+#if ! defined(BUILD_OS_DARWIN)
 	  // Get the module name and lowercase it.
 	  char *module_name = 
 	    (char *)vsp.vsp_buffers[0]->sc_buffer+vsp.vsp_curbufpos+1;
@@ -3528,6 +3635,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	  module_name_l[length] = '\0';
 	  fprintf(asm_file, "\t.globl __dm_%s\n__dm_%s:\n", 
 		  module_name_l, module_name_l);
+#endif /* ! defined(BUILD_OS_DARWIN) */
 	  k+=2; // skip the DEBUG_INFO label place-holder
 	  // do not move the cur_byte because this data is not present in 
 	  // vsp_bytes.
@@ -3540,11 +3648,16 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	    (char *)vsp.vsp_buffers[0]->sc_buffer+
 	    vsp.vsp_curbufpos-(reloc_buffer[k].drd_length+1);
 	  reloc_name = 
+#if defined(BUILD_OS_DARWIN)
+	    /* .4byte not supported on gas v1.38 */
+	    (Use_32_Bit_Pointers ? ".word" : ".dword");
+#else
 #ifdef TARG_MIPS
 	    CG_emit_non_gas_syntax ? 
 	    (Use_32_Bit_Pointers ? ".word" : ".dword") :
 #endif
-	    Use_32_Bit_Pointers ? ".4byte" : ".quad";
+	    AS_ADDRESS; // bug 12573
+#endif /* defined(BUILD_OS_DARWIN) */
 	  fprintf(asm_file, "\t.weak __dm_%s\n\t%s\t__dm_%s\n", module_name,
 	    reloc_name, module_name);
 	  k+=2; // skip the DEBUG_INFO label place-holder
@@ -3576,8 +3689,17 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	// bug 2729
 	fprintf(asm_file, "\t%s\t.LFDE%d - .LEHCIE", reloc_name, this_count);
 #else
+#if defined(BUILD_OS_DARWIN)
+	/* Mach-O assembler is picky about using label expressions as args
+	 * of a directive like .word */
+	const char *diff = "DIFF.DRT_DATA_RELOC";
+	fprintf(asm_file, "\t.set %s, %s - .LEHCIE\n"
+	  "%s\t%s\n",
+	  diff, dwarf_begin, reloc_name, diff);
+#else /* defined(BUILD_OS_DARWIN) */
 	// bug 2729
 	fprintf(asm_file, "\t%s\t%s - .LEHCIE", reloc_name, dwarf_begin);
+#endif /* defined(BUILD_OS_DARWIN) */
 #endif
 	++k;
 	}
@@ -3589,9 +3711,15 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 		 dwarf_drt_second_of_length_pair),
 		("unpaired first_of_length_pair"));
 	// need unaligned AS_ADDRESS for dwarf, so add .ua
+#if defined(BUILD_OS_DARWIN)
+	emit_difference(asm_file, reloc_name,
+	  Cg_Dwarf_Name_From_Handle(reloc_buffer[k + 1].drd_symbol_index),
+	  Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
+#else /* defined(BUILD_OS_DARWIN) */
 	fprintf(asm_file, "\t%s\t%s - %s", reloc_name,
 		Cg_Dwarf_Name_From_Handle(reloc_buffer[k + 1].drd_symbol_index),
 		Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
+#endif /* defined(BUILD_OS_DARWIN) */
 	++k;
 	break;
       case dwarf_drt_second_of_length_pair:
@@ -3601,7 +3729,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       // CIE begin
       case dwarf_drt_cie_begin:
         {
-	  Is_True (!strcmp (section_name, ".eh_frame"),
+	  Is_True (!strcmp (section_name, EH_FRAME_SECTNAME),
 	           ("This is valid only for EH_FRAME section"));
 
 	  static int cie_count = 0;
@@ -3616,8 +3744,12 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	  strcpy (dwarf_begin, ".LEHCIE_begin");
 	  strcpy (dwarf_end, ".LEHCIE_end");
 	  // Compute length of CIE
+#if defined(BUILD_OS_DARWIN)
+	  emit_difference(asm_file, reloc_name, dwarf_end, dwarf_begin);
+#else /* defined(BUILD_OS_DARWIN) */
 	  fprintf (asm_file, "\t%s\t%s - %s\n", reloc_name,
 	           dwarf_end, dwarf_begin);
+#endif /* defined(BUILD_OS_DARWIN) */
 	  // CIE begin label
 	  fprintf (asm_file, "%s:", dwarf_begin);
 	}
@@ -3625,11 +3757,15 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       // FDE begin
       case dwarf_drt_fde_begin:
         {
-	  Is_True (!strcmp (section_name, ".eh_frame"),
+	  Is_True (!strcmp (section_name, EH_FRAME_SECTNAME),
 	           ("This is valid only for EH_FRAME section"));
 
 	  // End previous frame/cie
+#if defined(BUILD_OS_DARWIN)
+	  fprintf (asm_file, "\t%s %d\n", AS_ALIGN, logtwo(alignment));
+#else /* defined(BUILD_OS_DARWIN) */
 	  fprintf (asm_file, "\t%s %d\n", AS_ALIGN, alignment);
+#endif /* defined(BUILD_OS_DARWIN) */
 	  fprintf (asm_file, "%s:\n", dwarf_end);
 
 	  // Begin current frame
@@ -3642,7 +3778,11 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	  sprintf (dwarf_begin, ".LFDE%d_begin", this_count);
 	  sprintf (dwarf_end, ".LFDE%d_end", this_count);
 	  // Compute length of FDE
+#if defined(BUILD_OS_DARWIN)
+	  emit_difference(asm_file, reloc_name, dwarf_end, dwarf_begin);
+#else /* defined(BUILD_OS_DARWIN) */
 	  fprintf (asm_file, "\t%s\t%s - %s\n", reloc_name, dwarf_end, dwarf_begin);
+#endif /* defined(BUILD_OS_DARWIN) */
 	  // FDE begin label
 	  fprintf (asm_file, "%s:", dwarf_begin);
 	}
@@ -3669,7 +3809,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 #ifdef TARG_X8664
       // Bug 5357 - we emit 0x0 for the CIE_ID for eh_frame (in accordance with
       // g++). The following code will skip that 4byte if that is the case.
-      if (ofst == 0 && cur_byte == 4 && strcmp(section_name, ".eh_frame") == 0) 
+      if (ofst == 0 && cur_byte == 4 && strcmp(section_name, EH_FRAME_SECTNAME) == 0) 
 	fprintf(asm_file, "\t%s 0x%llx", reloc_name, (unsigned long long)ofst);
 #endif
       if (ofst != 0) {
@@ -3680,16 +3820,20 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 #endif // KEY
 	 fprintf(asm_file, " + 0x%llx", (unsigned long long)ofst);
       }
-      fprintf(asm_file, "\n");
+      fputc ('\n', asm_file);
       cur_byte += current_reloc_size;
     }
     ++k;
   }
 
 #ifdef KEY
-  if (!strcmp (section_name, ".eh_frame")){
+  if (!strcmp (section_name, EH_FRAME_SECTNAME)){
     // End preceding frame/cie
+#if defined(BUILD_OS_DARWIN)
+    fprintf (asm_file, "\t%s %d\n", AS_ALIGN, logtwo(alignment));
+#else /* defined(BUILD_OS_DARWIN) */
     fprintf (asm_file, "\t%s %d\n", AS_ALIGN, alignment);
+#endif /* defined(BUILD_OS_DARWIN) */
     if (strcmp (dwarf_end, ""))
       fprintf (asm_file, "%s:\n", dwarf_end);
   }
@@ -3990,8 +4134,12 @@ Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs (FILE *asm_file,
     // we will just match Gcc's output.
     // The .debug_line will be generated from the .loc directives by the 
     // assembler. - bug 2779 (why did it get exposed now?)
-    else if (strcmp(section_name, ".debug_line") == 0)
-      fputs("\n\t.section .debug_line, \"\"\n", asm_file);
+    else if (strcmp(section_name, DEBUG_LINE_SECTNAME) == 0)
+#if defined(BUILD_OS_DARWIN)
+      gen_debug_line_section_header(asm_file, section_name);
+#else /* defined(BUILD_OS_DARWIN) */
+      fputs("\n\t.section " DEBUG_LINE_SECTNAME ", \"\"\n", asm_file);
+#endif /* defined(BUILD_OS_DARWIN) */
 #endif
     for(int i = 0; i < scn_count; ++i) {
 	scn_buffers[i]->sc_output = TRUE;
@@ -4026,8 +4174,12 @@ Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs (FILE *asm_file,
       // we will just match Gcc's output.
       // The .debug_line will be generated from the .loc directives by the 
       // assembler. - bug 2779 (why did it get exposed now?)
-      else if (strcmp(section_name, ".debug_line") == 0)
-	fputs("\n\t.section .debug_line, \"\"\n", asm_file);
+      else if (strcmp(section_name, DEBUG_LINE_SECTNAME) == 0)
+#if defined(BUILD_OS_DARWIN)
+	gen_debug_line_section_header(asm_file, section_name);
+#else /* defined(BUILD_OS_DARWIN) */
+	fputs("\n\t.section " DEBUG_LINE_SECTNAME ", \"\"\n", asm_file);
+#endif /* defined(BUILD_OS_DARWIN) */
 #endif
     }
   }

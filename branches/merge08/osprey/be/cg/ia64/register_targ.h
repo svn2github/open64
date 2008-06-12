@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -185,10 +185,6 @@ extern void REGISTER_Unallocate_Stacked_Register (
 extern BOOL REGISTER_Is_Allocatable_Stacked_Register (
    ISA_REGISTER_CLASS rclass, REGISTER reg);
 
-extern INT32 Get_Stacked_Callee_Used();
-extern INT32 Get_Stacked_Caller_Used();
- 
-
 extern REGISTER_SET REGISTER_Get_Stacked_Avail_Set(INT has_abi_property,
 						   ISA_REGISTER_CLASS rclass);
 extern BOOL REGISTER_Is_Stacked_Output(ISA_REGISTER_CLASS rclass, REGISTER reg);
@@ -207,9 +203,6 @@ extern void REGISTER_Set_Stacked_Output_Minimum(ISA_REGISTER_CLASS rclass,
 						INT num);
 
 extern char * REGISTER_Stacked_Output_Name (REGISTER reg);
-
-extern INT Get_Stacked_Callee_Next();
-extern INT Get_Stacked_Caller_Next();
 
 extern REGISTER REGISTER_First_Rotating_Registers(ISA_REGISTER_CLASS rclass);
 extern REGISTER REGISTER_Last_Rotating_Registers(ISA_REGISTER_CLASS rclass);

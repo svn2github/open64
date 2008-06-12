@@ -505,12 +505,12 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
     }
     return;
   } else if (messy) {
-#ifdef KEY //bug 10953: for cases may not be "messy"
+#if defined(TARG_X8664) || defined(TARG_IA64) //bug 10953: for cases may not be "messy"
      if(!Simple_Invariant_Stride_Access(wn_array, _code)){
 #endif
     _num_bad++;
     return;
-#ifdef KEY //bug 10953
+#if defined(TARG_X8664) || defined(TARG_IA64) //bug 10953
    }
 #endif
   }

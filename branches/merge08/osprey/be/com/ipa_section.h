@@ -1089,7 +1089,7 @@ public:
 
   void Print(FILE *fp = stderr);
   void Print_file(FILE* fp = stderr);
-  void WB_Print(FILE* fp, INT region_index, char* name, char* func_name);
+  void WB_Print(FILE* fp, INT region_index, const char* name, const char* func_name);
 };
 
 typedef DYN_ARRAY<REGION_ARRAYS> ARRAY_OF_REGION_ARRAYS;
@@ -1165,7 +1165,7 @@ public:
 
   void Print_file(FILE *fp = stderr);
   void Print(FILE *fp = stderr) { Print_file(fp); };
-  void WB_Print(FILE* fp, INT scalar_index, char* name, char* func_name);
+  void WB_Print(FILE* fp, INT scalar_index, const char* name, const char* func_name);
 };
 
 typedef DYN_ARRAY<SCALAR_INFO> INT_ARRAY;

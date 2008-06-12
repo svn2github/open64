@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
- */
-
-/*
- *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
- */
-
-/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -52,10 +44,10 @@
  * ====================================================================
  *
  * Module: calls.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/calls.h,v $
+ * $Revision: 1.12 $
+ * $Date: 05/12/05 08:59:03-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.calls.h $
  *
  * Revision history:
  *  03-Oct-91 - Original Version
@@ -154,6 +146,7 @@ extern void Cycle_Count_Initialize ( ST *pu, BOOL is_region );
 /* Instrument code to call _mcount */
 extern void Instru_Call_Mcount(void );
 #endif
+
 /* Tail calls: */
 extern void Optimize_Tail_Calls( ST* pu );
 
@@ -179,7 +172,6 @@ extern struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n);
 // The location on the stack that corresponds to the nth TN on the stack.
 extern ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n);
 #endif
-
 #ifdef TARG_MIPS
 extern TN *Caller_GP_TN;
 #endif

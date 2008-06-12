@@ -86,7 +86,7 @@ void Ipl_tlog2(const char *keyword, INT64 srcpos, const char *msg )
 }
 
 static void 
-Ipl_tlog( const char *keyword, INT64 srcpos, const const char *fmt, va_list vp)
+Ipl_tlog( const char *keyword, INT64 srcpos, const char *fmt, va_list vp)
 {
   char msg_buf[MAX_WARN_LEN];
   INT32 len;

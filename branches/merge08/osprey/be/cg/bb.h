@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,10 +41,10 @@
  * ====================================================================
  *
  * Module: bb.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/bb.h,v $
+ * $Revision: 1.7 $
+ * $Date: 05/12/05 08:59:02-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.bb.h $
  *
  * Description:
  *
@@ -107,10 +103,6 @@
  *
  *   void Negate_Logif_BB(BB *bb)
  *	Negate the sense of the final branch in the given LOGIF <bb>.
- *
- *   void Add_Goto_Op(BB *bb, BB *target_bb)
- *     Make <bb> goto <target_bb>. <bb> may not already have a brance
- *     instruction.
  *
  *   void Add_Goto(BB *bb, BB *target_bb)
  *     Make <bb> goto <target_bb>.  <bb> may not already have a branch
@@ -269,9 +261,6 @@
  *     If <bb> has a unique successor/predecessor/source, and it IS NOT <bb>,
  *     return it.  Otherwise return NULL.
  *
- *   void Remove_Explicit_Branch (BB *bb);
- *     Remove useless explicit branch to BB_next(bb).
- *
  *   BB *BB_Fall_Thru_Successor( BB *bb );
  *   BB *BB_Fall_Thru_Predecessor( BB *bb );
  *     Return the fall through control flow successor/predecessor of <bb>, 
@@ -415,10 +404,6 @@
  *	(ANNOT_info); not its contents. The return value is the
  *	count of the annotations copied.
  *
- *   INT BB_Copy_All_Annotations (BB* to_bb, BB* from_bb)
- *      This function does what its name suggests. The return value is 
- *      the count of the annotations copied.
- * 
  *   BOOL BB_Is_Cold(BB *bb)
  *	Return a boolean to indicate if a BB is part of a cold region
  *	or not.
@@ -442,7 +427,7 @@
 #ifndef	bb_INCLUDED
 #define	bb_INCLUDED
 
-#include <vector>		/* to get STL vector */
+#include <vector>
 #include "mempool_allocator.h"  /* to get mempool allocator */
 
 #include "region_util.h" 	/* to get the definition of RID. */
@@ -477,7 +462,11 @@ typedef	struct bb {
   struct bblist *succs;		/* list	of successor BBs	  */
   OPS		ops;		/* list of OPs			  */
   mBB_NUM	id;		/* trace identification	number	  */
+#if defined(TARG_IA64)
+  UINT64	flags;	        /* flags			  */
+#else
   UINT32	flags;	        /* flags			  */
+#endif
   UINT16	nest_level;	/* loop	nesting	level		  */
   mUINT16	next_op_map_idx; /* next OP_map_idx to be assigned in BB  */
   mUINT16	unrollings;	/* (cached) number of unrollings */
@@ -489,9 +478,13 @@ typedef	struct bb {
   struct annotation *annotations; /* annotations attached to bb   */
 #ifdef KEY
   struct bb     *aux;
+#endif 
+#if defined(TARG_IA64) || defined(TARG_SL)
+  INT		bb_cycle; 
+#if !defined(TARG_SL)
+  mBB_NUM       id_before_profile;  /* old trace number before any profile process*/
 #endif
-  INT           bb_cycle;
-  mBB_NUM       id_before_profile;  /* old trace number before any profile process*/ 
+#endif
 } BB;
 
 #ifndef	CAN_USE_BB
@@ -523,7 +516,9 @@ typedef	struct bb {
 
 /* rvalue field accessors */
 #define	BB_id(b)	(CAN_USE_BB(b)->id+0)
+#if defined(TARG_IA64)
 #define BB_id_before_profile(b) (CAN_USE_BB(b)->id_before_profile+0)
+#endif
 #define	BB_first_op(b)	(CAN_USE_BB(b)->ops.first+0)
 #define	BB_last_op(b)	(CAN_USE_BB(b)->ops.last+0)
 #define BB_unrollings(b) (CAN_USE_BB(b)->unrollings+0)
@@ -561,24 +556,68 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_ROTATING_KERNEL 0x10000 /* BB uses rotating registers */
 #define BBM_MOD_ROTATING_REGISTERS 0x20000 /* BB modifies all rotating registers */
 #define BBM_MOD_PRED_ROTATING_REGISTERS 0x40000 /* BB modifies predicate rotating registers */
-#define BBM_ASM			0x80000 /* BB has asm */
-#define BBM_PREDICATE_PROMOTE	0x100000 /* Predicate promotion phase has been
+#define BBM_ASM			0x00080000 /* BB has asm */
+#define BBM_PREDICATE_PROMOTE	0x00100000 /* Predicate promotion phase has been
 					    invoked for the BB. */
-#define BBM_POST_LABEL          0x200000 /* BB has a post-label, i.e. a 
+#define BBM_POST_LABEL          0x00200000 /* BB has a post-label, i.e. a 
 					    label at the end of the BB, rather
 					    than at the beginning */
-#ifdef TARG_IA64
-#define BBM_RECOVERY            0x00400000 /* BB is a recovery block */
-#define BBM_CHK_SPLIT           0x00800000 /* BB splitted from another because of chk insertion */
-#define BBM_EMITTED             0x01000000 /* BB has been emitted */
-#define BBM_PROFILE_SPLITTED    0x02000000 /* BB is bb splitted from old bb by profile */
-#define BBM_PROFILE_CHANGED     0x04000000 /* BB is changed by profile*/
-#define BBM_PROFILE_ADDED       0x08000000 /* BB is new bb added by profile*/
-#define BBM_CHK_SPLIT_HEAD      0x10000000 /* BB splitted from another because of chk insertion */
-#define BBM_PARTIAL_BUNDLE      0x20000000 /* BB partial bundle for across boundary*/
-#define BBM_EDGE_SPLITTING      0X40000000 /* BB is used to split critical edge */
-#define BBM_CHK_SPLIT_TAIL      0x80000000 /* BB is splited tail *///bug fix for OSP_212
+#ifdef KEY
+#define BBM_NON_LOCAL_LABEL     0x00400000 /* BB has a non-local label */
 #endif
+#if defined(TARG_IA64) || defined(TARG_SL)
+#define BBM_EDGE_SPLITTING	0x00800000 /* BB is used for edge splitting */
+
+#ifdef TARG_IA64
+#define BBM_RECOVERY            0x01000000 /* BB is a recovery block */
+#define BBM_CHK_SPLIT           0x02000000 /* BB splitted from another because of chk insertion */
+#define BBM_EMITTED             0x04000000 /* BB has been emitted */
+#define BBM_PROFILE_SPLITTED    0x08000000 /* BB is bb splitted from old bb by profile */
+#define BBM_PROFILE_CHANGED     0x10000000 /* BB is changed by profile*/
+#define BBM_PROFILE_ADDED       0x20000000 /* BB is new bb added by profile*/
+#define BBM_CHK_SPLIT_HEAD      0x40000000 /* BB splitted from another because of chk insertion */
+#define BBM_PARTIAL_BUNDLE      0x80000000 /* BB partial bundle for across boundary*/
+#define BBM_CHK_SPLIT_TAIL     0x200000000 /* BB is splited tail *///bug fix for OSP_212
+#elif defined(TARG_SL)
+#define BBM_ZDL_PROLOG          0x01000000 
+#define BBM_ZDL_BODY            0x02000000        
+#define BBM_ZDL_EPILOG          0x04000000        
+#define BBM_SCHEDULED_SIZE      0x08000000          
+#define BBM_FREQ_UNBALANCED	0x10000000
+#define BBM_LOCAL_FLAG2         0x20000000
+#endif // TARG_SL
+
+#define BB_edge_splitting(x)  	(BB_flag(x) &= BBM_EDGE_SPLITTING)
+#define Set_BB_edge_splitting(x)(BB_flag(x) |= BBM_EDGE_SPLITTING)
+#endif
+
+#if defined (TARG_SL)
+/* BB is the prolog of  zero-delay-loop, so it  only contains 
+ * add.i/mvtc/loop three instructios, LIS may add nops.
+ */
+#define BB_zdl_prolog(x)        (BB_flag(x) & BBM_ZDL_PROLOG)
+#define Set_BB_zdl_prolog(x)    (BB_flag(x) |= BBM_ZDL_PROLOG)
+
+/* BB is the body of zero-delay-loop, so if it has branch inside,
+ * it should be deleted ( i delay this to keep cfg not complain)
+ */
+#define BB_zdl_body(x)          (BB_flag(x) & BBM_ZDL_BODY)
+#define Set_BB_zdl_body(x)      (BB_flag(x) |= BBM_ZDL_BODY)
+
+/* BB is the epilog of zero-delay-loop, so it is a target of 
+ * loop instruction , this BB cannot be deleted, although it is
+ * not a 'branch' target.
+ */
+#define BB_zdl_epilog(x)          (BB_flag(x) & BBM_ZDL_EPILOG)
+#define Set_BB_zdl_epilog(x)      (BB_flag(x) |= BBM_ZDL_EPILOG)
+
+#define BB_freq_unbalanced(x)			(BB_flag(x) & BBM_FREQ_UNBALANCED)
+#define Set_BB_freq_unbalanced(x)		(BB_flag(x) |= BBM_FREQ_UNBALANCED)
+
+#define BB_local_flag2(bb)		(BB_flag(bb) & BBM_LOCAL_FLAG2)
+#define Set_BB_local_flag2(bb)		(BB_flag(bb) |= BBM_LOCAL_FLAG2)
+#define Reset_BB_local_flag2(bb) (BB_flag(bb) &= ~BBM_LOCAL_FLAG2)
+#endif // TARG_SL
 
 #define	BB_entry(x)		(BB_flag(x) & BBM_ENTRY)
 #define BB_handler(bb)		(BB_flag(bb) & BBM_HANDLER)
@@ -602,22 +641,14 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_asm(bb) 		(BB_flag(bb) & BBM_ASM)
 #define BB_predicate_promote(bb) (BB_flag(bb) & BBM_PREDICATE_PROMOTE)
 #define	BB_has_post_label(x)		(BB_flag(x) & BBM_POST_LABEL)
-
-#ifdef TARG_IA64
-#define BB_recovery(x)          (BB_flag(x) & BBM_RECOVERY)
-#define BB_chk_split(x)         (BB_flag(x) & BBM_CHK_SPLIT)
-#define BB_chk_split_head(x)    (BB_flag(x) & BBM_CHK_SPLIT_HEAD)
-#define BB_emitted(x)           (BB_flag(x) & BBM_EMITTED)
-#define BB_profile_splitted(x)    (BB_flag(x) & BBM_PROFILE_SPLITTED)
-#define BB_profile_changed(x)    (BB_flag(x) & BBM_PROFILE_CHANGED)
-#define BB_profile_added(x)    (BB_flag(x) & BBM_PROFILE_ADDED)
-#define BB_partial_bundle(x)	(BB_flag(x) & BBM_PARTIAL_BUNDLE)
-#define BB_edge_splitting(x)    (BB_flag(x) & BBM_EDGE_SPLITTING)      
-#define BB_chk_split_tail(x)    (BB_flag(x) & BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#ifdef KEY
+#define	BB_has_non_local_label(x)	(BB_flag(x) & BBM_NON_LOCAL_LABEL)
 #endif
-
-/* #endif */
-
+#if defined(TARG_SL)
+#define BB_SCHED_SIZE(bb)       (BB_flag(bb) & BBM_SCHEDULED_SIZE)
+#define Set_BB_sched_size(bb)   (BB_flag(bb) |= BBM_SCHEDULED_SIZE)
+#define Reset_BB_sched_size(bb) (BB_flag(bb) &= ~BBM_SCHEDULED_SIZE)
+#endif
 
 #define	Set_BB_entry(x)		(BB_flag(x) |= BBM_ENTRY)
 #define Set_BB_handler(bb)	(BB_flag(bb) |= BBM_HANDLER)
@@ -627,36 +658,23 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define	Set_BB_has_pragma(x)	(BB_flag(x) |= BBM_PRAGMA)
 #define	Set_BB_has_note(x)	(BB_flag(x) |= BBM_NOTE)
 #define	Set_BB_unreachable(x)	(BB_flag(x) |= BBM_UNREACHABLE)
-#define	Set_BB_unrolled_fully(x) (BB_flag(x) |= BBM_UNROLLED_FULLY)
+#define	Set_BB_unrolled_fully(x)(BB_flag(x) |= BBM_UNROLLED_FULLY)
 #define	Set_BB_innermost(x)	(BB_flag(x) |= BBM_INNERMOST)
 #define Set_BB_scheduled(bb)	(BB_flag(bb) |= BBM_SCHEDULED)
 #define Set_BB_reg_alloc(bb)	(BB_flag(bb) |= BBM_REG_ALLOC)
 #define Set_BB_local_flag1(bb)	(BB_flag(bb) |= BBM_LOCAL_FLAG1)
-#define Set_BB_freq_fb_based(bb) (BB_flag(bb) |= BBM_FREQ_FB)
+#define Set_BB_freq_fb_based(bb)(BB_flag(bb) |= BBM_FREQ_FB)
 #define Set_BB_gra_spill(bb)	(BB_flag(bb) |= BBM_GRA_SPILL)
-#define Set_BB_scheduled_hbs(bb) (BB_flag(bb) |= BBM_SCHEDULED_HBS)
+#define Set_BB_scheduled_hbs(bb)(BB_flag(bb) |= BBM_SCHEDULED_HBS)
 #define Set_BB_rotating_kernel(bb) (BB_flag(bb) |= BBM_ROTATING_KERNEL)
 #define Set_BB_mod_rotating_registers(bb) (BB_flag(bb) |= BBM_MOD_ROTATING_REGISTERS)
 #define Set_BB_mod_pred_rotating_registers(bb) (BB_flag(bb) |= BBM_MOD_PRED_ROTATING_REGISTERS)
 #define Set_BB_asm(bb) 		(BB_flag(bb) |= BBM_ASM)
 #define Set_BB_predicate_promote(bb) 	(BB_flag(bb) |= BBM_PREDICATE_PROMOTE)
 #define	Set_BB_has_post_label(x)	(BB_flag(x) |= BBM_POST_LABEL)
-
-#ifdef TARG_IA64
-#define Set_BB_recovery(x)          (BB_flag(x) |= BBM_RECOVERY)
-#define Set_BB_chk_split(x)         (BB_flag(x) |= BBM_CHK_SPLIT)
-#define Set_BB_chk_split_head(x)    (BB_flag(x) |= BBM_CHK_SPLIT_HEAD)
-#define Set_BB_emitted(x)           (BB_flag(x) |= BBM_EMITTED)
-#define Set_BB_profile_splitted(x)    (BB_flag(x) |= BBM_PROFILE_SPLITTED)
-#define Set_BB_profile_changed(x)    (BB_flag(x) |= BBM_PROFILE_CHANGED)
-#define Set_BB_profile_added(x)    (BB_flag(x) |= BBM_PROFILE_ADDED)
-#define Set_BB_partial_bundle(x)    (BB_flag(x) |= BBM_PARTIAL_BUNDLE)
-#define Set_BB_edge_splitting(x)    (BB_flag(x) |= BBM_EDGE_SPLITTING)
-#define Set_BB_chk_split_tail(x)    (BB_flag(x) |= BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#ifdef KEY
+#define	Set_BB_has_non_local_label(x)	(BB_flag(x) |= BBM_NON_LOCAL_LABEL)
 #endif
-
-/* #endif */
-
 
 #define	Reset_BB_entry(x)	(BB_flag(x) &= ~BBM_ENTRY)
 #define Reset_BB_handler(bb) 	(BB_flag(bb) &= ~BBM_HANDLER)
@@ -681,24 +699,12 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_predicate_promote(bb) 	(BB_flag(bb) &= ~BBM_PREDICATE_PROMOTE)
 #define	Reset_BB_has_post_label(x)	(BB_flag(x) &= ~BBM_POST_LABEL)
 
-#ifdef TARG_IA64
-#define Reset_BB_recovery(x)          (BB_flag(x) &= ~BBM_RECOVERY)
-#define Reset_BB_chk_split(x)         (BB_flag(x) &= ~BBM_CHK_SPLIT)
-#define Reset_BB_chk_split_head(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_HEAD)
-#define Reset_BB_emitted(x)           (BB_flag(x) &= ~BBM_EMITTED)
-#define Reset_BB_profile_splitted(x)    (BB_flag(x) &= ~BBM_PROFILE_SPLITTED)
-#define Reset_BB_profile_changed(x)    (BB_flag(x) &= ~BBM_PROFILE_CHANGED)
-#define Resset_BB_profile_added(x)    (BB_flag(x) &= ~BBM_PROFILE_ADDED)
-#define Reset_BB_partial_bundle(x)    (BB_flag(x) &= ~BBM_PARTIAL_BUNDLE)
-#define Reset_BB_edge_splitting(x)    (BB_flag(x) &= ~BBM_EDGE_SPLITTING)
-#define Reset_BB_chk_split_tail(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#ifdef KEY
+#define	Reset_BB_has_non_local_label(x)	(BB_flag(x) &= ~BBM_NON_LOCAL_LABEL)
 #endif
-
-/* #endif */
-
 #define BB_tail_call(bb)	(   (BB_flag(bb) & (BBM_CALL | BBM_EXIT)) \
 				 == (BBM_CALL | BBM_EXIT))
-
+
 /* ====================================================================
  *
  * BBKIND -- Basic Block kinds.
@@ -719,6 +725,10 @@ typedef	enum {
   BBKIND_TAIL_CALL,	/* Tail call */
 #ifdef TARG_IA64
   BBKIND_CHK,       /* end with check */
+#endif
+#if defined(TARG_SL)
+  BBKIND_ZDL_BODY, 
+  BBKIND_FORK,
 #endif
   BBKIND_LAST		/* > last legal value */
 } BBKIND;
@@ -751,21 +761,31 @@ typedef	struct bblist {
     BB		  *item;	/* The BB list element       */
     struct bblist *next;	/* The next list component   */
     float	   prob;	/* probability for this edge */
-    float          freq;        /* frequency for this edge   */
+#if defined(TARG_IA64) || defined(TARG_SL)
+    float	   freq;	/* frequency for this edge */    
+#endif
     mUINT16        flags;       /* flags                     */
 } BBLIST;
 
 #define	BBLIST_item(b)	((b)->item)
 #define	BBLIST_next(b)	((b)->next)
 #define BBLIST_prob(b)	((b)->prob) /*** Only valid for succ edges ***/
-#define BBLIST_freq(b)  ((b)->freq) /*** Only valid for succ edges ***/
 #define BBLIST_flags(b) ((b)->flags)
+#if defined(TARG_IA64) || defined(TARG_SL)
+#define BBLIST_freq(b)	((b)->freq) /*** Only valid for succ edges ***/
+#endif
 
 #define BLM_PROB_FB     0x0001 /* bblist::prob based on Feedback. */
 
 #ifdef KEY
 #define BLM_ON_TREE     0x0002 /* bblist::edge on the spanning tree */
+#endif
+
+#if defined(TARG_SL)
 #define BLM_PROB_HINT   0x0004 /* bblist::prob based on user hint. */
+#define BBLIST_prob_hint_based(b)       (BBLIST_flags(b) & BLM_PROB_HINT)
+#define Set_BBLIST_prob_hint_based(b)   (BBLIST_flags(b) |= BLM_PROB_HINT)
+#define Reset_BBLIST_prob_hint_based(b) (BBLIST_flags(b) &= ~BLM_PROB_HINT)
 #endif
 
 #define BBLIST_prob_fb_based(b)       (BBLIST_flags(b) & BLM_PROB_FB)
@@ -776,10 +796,6 @@ typedef	struct bblist {
 #define BBLIST_on_tree(b)       (BBLIST_flags(b) & BLM_ON_TREE)
 #define Set_BBLIST_on_tree(b)   (BBLIST_flags(b) |= BLM_ON_TREE)
 #define Reset_BBLIST_on_tree(b) (BBLIST_flags(b) &= ~BLM_ON_TREE)
-
-#define BBLIST_prob_hint_based(b)       (BBLIST_flags(b) & BLM_PROB_HINT)
-#define Set_BBLIST_prob_hint_based(b)   (BBLIST_flags(b) |= BLM_PROB_HINT)
-#define Reset_BBLIST_prob_hint_based(b) (BBLIST_flags(b) &= ~BLM_PROB_HINT)
 #endif
 
 /* Macros for stepping through BBlists. */
@@ -921,7 +937,7 @@ extern BB **BB_Vec;		/* mapping from bb idx to BB in each PU */
 
 struct BB_REGION {
   typedef mempool_allocator<BB*> allocator_type;
-  typedef std::vector<BB*, allocator_type> bb_vector;
+  typedef vector<BB*, allocator_type> bb_vector;
   allocator_type data_allocator;
   bb_vector entries;   
   bb_vector exits;  
@@ -950,7 +966,7 @@ struct BB_REGION {
 
 extern BB_SET *BB_REGION_to_BB_SET(BB_SET *bbs, const BB_REGION& r,
 				   MEM_POOL *pool);
-extern void BB_REGION_to_Vector (std::vector<BB*>& c, const BB_REGION& r);
+extern void BB_REGION_to_Vector (vector<BB*>& c, const BB_REGION& r);
 
 /* =======================================================================
  *
@@ -1064,24 +1080,29 @@ extern	void  Free_BB_Memory ( void );
 
 /* Link up the pred and succ basic blocks. */
 extern void Link_Pred_Succ (BB *pred, BB *succ);
+#if defined (KEY)
 extern void Link_Pred_Succ_with_Prob(BB *pred, BB *succ, float prob, 
 				     BOOL via_feedback = FALSE,
-				     BOOL set_prob = FALSE
-#ifdef KEY
-				     , BOOL via_hint = FALSE
+				     BOOL set_prob = FALSE,
+				     BOOL via_hint =FALSE);
+#else
+extern void Link_Pred_Succ_with_Prob(BB *pred, BB *succ, float prob, 
+				     BOOL via_feedback = FALSE,
+				     BOOL set_prob = FALSE);
 #endif
-                     , BOOL incr_prob = TRUE
-				     );
 extern BBLIST *BBlist_Add_BB(BBLIST **lst, BB *bb);
 extern void BBlist_Delete_BB(BBLIST **lst, BB *bb);
+#if defined(KEY)
 extern BBLIST *BBlist_Add_BB_with_Prob(BBLIST **lst, BB *bb, float prob,
 				       BOOL via_feedback = FALSE,
-				       BOOL set_prob     = FALSE
-#ifdef KEY
-				       , BOOL via_hint = FALSE
+				       BOOL set_prob     = FALSE,
+				       BOOL via_hint = FALSE);
+
+#else
+extern BBLIST *BBlist_Add_BB_with_Prob(BBLIST **lst, BB *bb, float prob,
+				       BOOL via_feedback = FALSE,
+				       BOOL set_prob     = FALSE);
 #endif
-                       , BOOL incr_prob = TRUE
-				       );
 
 /* Unlink the pred and succ basic blocks. */
 extern void Unlink_Pred_Succ (BB *pred, BB *succ);
@@ -1130,6 +1151,7 @@ extern void BB_REGION_Initialize(void);
 
 /* Return the op for the terminating branch of a given BB */
 extern struct op *BB_branch_op (BB *);
+
 #ifdef TARG_IA64
 /* Return the last non nop op of a branch bb */
 extern OP* Last_Non_Nop_op (BB *); 
@@ -1139,11 +1161,11 @@ extern OP* BB_Last_chk_op(BB *);
 /* Return the terminating xfer OP in a given BB */
 extern struct op* BB_xfer_op( BB *bb );
 
-/* Return the call op in a given BB */
-extern struct op* BB_call_op(BB* bb);
-
 /* Return the last OP which isn't a copy/xfer OP in a given BB */
 extern struct op* BB_copy_xfer_op( BB *bb );
+
+/* Return the call op in a given BB */
+extern struct op* BB_call_op(BB* bb);
 
 /* Return the op that that does the entry/exit SP adjustment in BB */
 extern struct op *BB_entry_sp_adj_op (BB *bb);
@@ -1176,8 +1198,7 @@ extern void BB_Mark_Unreachable_Blocks (void);
 extern void BB_Transfer_Exitinfo(BB* from, BB* to);
 extern void BB_Transfer_Entryinfo(BB* from, BB* to);
 extern void BB_Transfer_Callinfo(BB* from, BB* to);
-extern void BB_Transfer_Asminfo(BB* from, BB* to);
-
+extern void BB_Transfer_Asminfo (BB *from, BB *to);
 
 /* Print the given BB or BBLIST: */
 extern void Print_BB_Header ( BB *bp,
@@ -1217,7 +1238,9 @@ void BB_Append_Ops(BB *bb, OPS *ops);
 void BB_Prepend_Ops(BB *bb, OPS *ops);
 void BB_Insert_Op(BB *bb, OP *point, OP *op, BOOL before);
 void BB_Insert_Ops(BB *bb, OP *point, OPS *ops, BOOL before);
+
 void BB_Insert_Noops(OP *op, INT num, BOOL before);
+
 void BB_Move_Op(BB *to_bb, OP *point, BB *from_bb, OP *op, BOOL before);
 void BB_Move_Op_Before(BB *to_bb, OP *point, BB *from_bb, OP *op);
 void BB_Move_Op_After(BB *to_bb, OP *point, BB *from_bb, OP *op);
@@ -1254,7 +1277,9 @@ struct bb_map *BB_Depth_First_Map(struct bs *region, BB *entry);
 struct bb_map *BB_Topological_Map(struct bs *region, BB *entry);
 
 BOOL BB_Is_Cold(BB *bb);
-
+#if defined(TARG_SL)
+BOOL BB_Is_Hot(BB* bb);
+#endif
 ST *Gen_ST_For_BB(BB *bb);
 ST *BB_st(BB *bb);
 
@@ -1282,6 +1307,3 @@ void draw_flow_graph(void);
 void verify_flow_graph(void);
 
 #endif /* bb_INCLUDED */
-
-
-

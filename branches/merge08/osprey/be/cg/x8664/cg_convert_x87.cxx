@@ -1,9 +1,5 @@
 /*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -79,11 +75,8 @@ typedef struct _Stack {
 } Stack;
 
 static int new_bbs = 0;
-static BB_MAP bb_stack_info_map;
-
 static BB_MAP dfs_map;
-
-#define BB_NOT_REACHABLE(b)   ( BB_MAP32_Get( dfs_map, (b) ) == 0 )
+static BB_MAP bb_stack_info_map;
 
 static inline Stack* Get_Stack_Info( BB* bb )
 {
@@ -100,17 +93,12 @@ static inline Stack* Get_Stack_Info( BB* bb )
 static bool OP_refs_x87( OP* op )
 {
   // An x87 operation will access x87-stack definitely.
-  if( TOP_is_x87(OP_code(op)) )
+  if( TOP_is_uses_stack(OP_code(op)) )
     return true;
 
   // The return value could be stored in %st0
   if( OP_call( op ) ){
     const ANNOTATION* ant = ANNOT_Get( BB_annotations(OP_bb(op)), ANNOT_CALLINFO );
-    if( ant == NULL ){
-      FmtAssert( TN_is_label( OP_opnd( op, 0 ) ), ("call has no annotations") );
-      return FALSE;
-    }
-
     const CALLINFO* call_info = ANNOT_callinfo(ant);
     const ST* call_st = CALLINFO_call_st(call_info);
     const WN* call_wn = CALLINFO_call_wn(call_info);
@@ -124,7 +112,7 @@ static bool OP_refs_x87( OP* op )
 
       if( MTYPE_is_quad( type ) ||
 	  ( MTYPE_is_float( type ) &&
-	    Is_Target_32bit() ) ){
+	    !Is_Target_SSE2() ) ){
 	return TRUE;
       }
     }
@@ -170,19 +158,14 @@ extern BB_MAP BBs_Map;
 static OP_stinfo* Get_OP_stinfo( OP* op )
 {
   BB_OP_MAP op_map = (BB_OP_MAP)BB_MAP_Get( BBs_Map, OP_bb(op) );
-  // <op> coule belong to an unreachable BB.
-  return op_map == NULL ? NULL : (OP_stinfo*)BB_OP_MAP_Get( op_map, op );
+  return (OP_stinfo*)BB_OP_MAP_Get( op_map, op );
 }
 
 
 // Reture the %st register belongs to <op>.
 int Get_OP_stack_reg( OP* op, int opnd )
 {
-  const OP_stinfo* stinfo = Get_OP_stinfo( op );
-  if( stinfo == NULL ){
-    return FIRST_STACK_REG - 1;
-  }
-
+  OP_stinfo* stinfo = Get_OP_stinfo( op );
   const int st = opnd < 0 ? stinfo->result_st[0] - 1 : stinfo->opnd_st[opnd] - 1;
   FmtAssert( st >= 0 && st < X87_STACK_SIZE, ("Invalie stack register.") );
 
@@ -373,9 +356,6 @@ static void Print_Stack( Stack* stack )
 */
 static void Expand_Fxch( Stack* stack, OP* op, TN* dest )
 {
-  Is_True(TN_register_class(dest) == ISA_REGISTER_CLASS_x87,
-	  ("Expand_Fxch: invalid register class"));
-
   const int st_idx = Get_Stack_Index( stack, TN_register(dest) );
   FmtAssert( st_idx >= 0, ("NYI") );
   
@@ -667,15 +647,11 @@ static bool Compensate_Stack( BB* pred, BB* bb, bool is_back_edge )
  */
 static void Adjust_Input_Stack( BB* bb, bool consider_back_edge )
 {
+  BBLIST* prev_lst = NULL;
   BBLIST* bblst = BB_preds( bb );
 
   while( bblst != NULL ){
     BB* pbb = BBLIST_item( bblst );
-
-    if( BB_NOT_REACHABLE( pbb ) ){
-      bblst = BBLIST_next( bblst );
-      continue;      
-    }
 
     const bool is_back_edge = Is_Back_Edge( pbb, bb );
 
@@ -707,6 +683,7 @@ static void Adjust_Input_Stack( BB* bb, bool consider_back_edge )
       bblst = BB_preds( bb );
 
     } else {
+      prev_lst = bblst;
       bblst = BBLIST_next( bblst );
     }
   }
@@ -767,7 +744,7 @@ static void Repair_Call_BB( BB* bb )
     const TYPE_ID type = RETURN_INFO_mtype( return_info, i );
     if( MTYPE_is_quad( type ) ||
 	( MTYPE_is_float( type ) &&
-	  Is_Target_32bit() ) ){
+	  !Is_Target_SSE2() ) ){
       const PREG_NUM retpreg = RETURN_INFO_preg (return_info, i);
       ISA_REGISTER_CLASS cl;
 
@@ -823,16 +800,9 @@ static void Repair_Call_BB( BB* bb )
  */
 static void Initialize_Stack( BB* bb )
 {
-  /* Repair an entry bb or a call bb whenever necessary by introducing
-     fake load and store to balance the x87 stack.
-     Some of the problems are caused by control flow optimizations,
-     and some of them are caused by the front-end that x87 fails to handle.
-     (bug#2469)
-   */
-  {
+  if( Opt_Level > 1 ){
     if( BB_preds( bb ) == NULL )
       Repair_Entry_BB( bb );
-
     if( BB_call( bb ) )
       Repair_Call_BB( bb );
   }
@@ -851,9 +821,6 @@ static void Initialize_Stack( BB* bb )
     FOR_ALL_BB_PREDS( bb, bblst ){
       BB* pbb = BBLIST_item(bblst);
 
-      if( BB_NOT_REACHABLE( pbb ) )
-	continue;
-
       if( Is_Back_Edge( pbb, bb ) )
 	continue;
 
@@ -865,16 +832,8 @@ static void Initialize_Stack( BB* bb )
     }
   }
 
-  /* TODO:
-     For the current basic block, the reference input stack is coming
-     from the first predecessor. A better choice is to pick the predecessor
-     that contributes the highest edge probability.
-  */
   FOR_ALL_BB_PREDS( bb, bblst ){
     BB* pbb = BBLIST_item(bblst);
-
-    if( BB_NOT_REACHABLE( pbb ) )
-      continue;
 
     if( !Is_Back_Edge( pbb, bb ) ){
       pred = pbb;
@@ -1053,7 +1012,7 @@ static void Convert_Regs( BB* bb )
 
 	if( MTYPE_is_quad( type ) ||
 	    ( MTYPE_is_float( type ) &&
-	      Is_Target_32bit() ) ){
+	      !Is_Target_SSE2() ) ){
 	  if( !REGISTER_SET_MemberP( stack->live_out, reg ) )
 	    stack->live_out = REGISTER_SET_Union1( stack->live_out, reg );
 	  stack->reg[++stack->top] = reg--;
@@ -1066,10 +1025,11 @@ static void Convert_Regs( BB* bb )
     }
 
     // a PUSH
-    if( OP_load( op ) ||
-	top == TOP_fldz ){
+    if( OP_load( op ) ){
       const REGISTER reg = TN_register( OP_result(op,0) );
-      FmtAssert( Get_Stack_Index( stack, reg ) < 0, ("NYI") );
+      if( Get_Stack_Index( stack, reg ) >= 0 ){
+	FmtAssert( false, ("NYI") );
+      }
       
       stack->reg[++stack->top] = reg;
       FmtAssert( stack->top < X87_STACK_SIZE, ("x87 stack overflows.") );
@@ -1087,7 +1047,7 @@ static void Convert_Regs( BB* bb )
 
     // a POP
     if( OP_store( op ) ){
-      const int idx = OP_find_opnd_use( op, OU_storeval );
+      const int idx = TOP_Find_Operand_Use( OP_code(op),OU_storeval );
       TN* opnd = OP_opnd( op, idx );
 
       if( stack->reg[stack->top] != TN_register(opnd) ){
@@ -1114,15 +1074,16 @@ static void Convert_Regs( BB* bb )
 
 	  if( stack->top + 1 >= X87_STACK_SIZE ){
 	    // load it back from stack
-	    TN* storeval = OP_opnd( op, OP_find_opnd_use( op, OU_storeval ) );
-	    const int base_indx = OP_find_opnd_use( op, OU_base );
-	    TN* base = ( base_indx >= 0 ) ? OP_opnd( op, base_indx ) : NULL;
-	    TN* offset = OP_opnd( op, OP_find_opnd_use( op, OU_offset ) );
+	    FmtAssert( OP_code(op) == TOP_fstpt, ("NYI") );
+	    TN* storeval = OP_opnd( op,
+				    TOP_Find_Operand_Use( OP_code(op), OU_storeval ) );
+	    TN* base = OP_opnd( op,
+				TOP_Find_Operand_Use( OP_code(op), OU_base ) );
+	    TN* offset = OP_opnd( op,
+				  TOP_Find_Operand_Use( OP_code(op), OU_offset ) );
 	    TN* dest = Build_TN_Like( storeval );
 	    Set_TN_register( dest, TN_register( storeval ) );
-	    OP* load_op = ( base != NULL )
-	      ? Mk_OP( TOP_fldt, dest, base, offset )
-	      : Mk_OP( TOP_fldt_n32, dest, offset );
+	    OP* load_op = Mk_OP( TOP_fldt, dest, base, offset );
 
 	    BB_Insert_Op_After( bb, op, load_op );
 	    Create_OP_stinfo( load_op );
@@ -1239,9 +1200,7 @@ static void Convert_Regs( BB* bb )
       Alloc_Stack_Reg( stack, op, 0, st_idx0 );
 
       if( Is_Opnd_Last_Use( stack, op, opnd0 ) ){
-	if( !TNs_Are_Equivalent( result, opnd0 ) ||
-	    Is_Result_Last_Use( stack, op, result ) )
-	  Pop_Stack( stack, st_idx0, op, false );
+	Pop_Stack( stack, st_idx0, op, false );
       }
 
       continue;
@@ -1338,9 +1297,7 @@ static void Convert_Regs( BB* bb )
     if( top == TOP_fchs    ||
 	top == TOP_fabs    ||
 	top == TOP_frndint ||
-	top == TOP_fsqrt   ||
-	top == TOP_fcos    ||
-	top == TOP_fsin ){
+	top == TOP_fsqrt ){
       TN* opnd0 = OP_opnd( op, 0 );
       const int st_idx0 = Get_Stack_Index( stack, TN_register(opnd0) );
 
@@ -1583,10 +1540,8 @@ void Convert_x87_Regs( MEM_POOL* _mem_pool )
   }
 
 #if 0
-  /* TODO:
-     Turn it on to see whether cflow can optimize the final pu a bit.
-  */
   if( CG_opt_level > 0 && CFLOW_opt_after_cgprep && new_bbs > 5 ){
+    // Insert_Compensate_BB screws cflow up. Fix it later.
     CFLOW_Optimize( CFLOW_BRANCH | CFLOW_MERGE | CFLOW_FREQ_ORDER,
 		    "CFLOW (from cg_convert_x87)" );
   }

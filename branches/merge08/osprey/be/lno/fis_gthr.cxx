@@ -1493,7 +1493,7 @@ Perform_Gather_Scatter(
 
   CXX_DELETE(cond_scc, &PHASE25_default_pool);
   CXX_DELETE(new_scc, &PHASE25_default_pool);
-  CXX_DELETE(other_scc, &PHASE25_ default_pool);
+  CXX_DELETE(other_scc, &PHASE25_default_pool);
   CXX_DELETE_ARRAY(queue, &PHASE25_default_pool);
   CXX_DELETE_ARRAY(exposed_use, &PHASE25_default_pool);
   CXX_DELETE_ARRAY(exposed_site, &PHASE25_default_pool);

@@ -1,8 +1,4 @@
 /*
- * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -70,7 +66,7 @@ inline BOOL Enable_Idiv_In_FPU_For_Target(void)
 
 inline BOOL Target_Has_Cmoves(void)
 {
-  return TRUE;
+  return FALSE;
 }
 
 inline BOOL Enable_Spec_Idiv_For_Target(void)
@@ -90,7 +86,7 @@ inline BOOL Enable_LOH_For_Target(void)
 
 inline BOOL Enable_Fill_Delay_Slots_For_Target(void)
 {
-  if (Is_Target_x86_64())
+  if (Is_Target_Opteron())
     return TRUE;
   else
     // SGI assembler does not accept something like 

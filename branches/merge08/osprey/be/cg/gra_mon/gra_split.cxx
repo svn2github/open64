@@ -1,8 +1,4 @@
 /*
- * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -89,14 +85,14 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_split.cxx,v $
+//  $Revision: 1.19 $
+//  $Date: 05/12/05 08:59:10-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_split.cxx $
 
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_split.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_split.cxx $ $Revision: 1.19 $";
 #endif
 
 #ifdef USE_PCH
@@ -104,7 +100,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #endif // USE_PCH
 #pragma hdrstop
 
-#include <float.h>
 #include <math.h>
 #if 1 // workaround at PathScale for build problem
 #include <float.h>      // FLT_MAX
@@ -134,7 +129,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_region.h"
 #include "gra_trace.h"
 #include "gra_interfere.h"
-
+#ifdef TARG_SL //minor_reg_alloc
+#include "gra_para_region.h"
+#endif 
 // Generate a priority queue type for GRA_BBs
 TYPE_PRQ(GRA_BB,GBBPRQ)
 
@@ -312,7 +309,7 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 #endif
 
 #ifdef KEY
-  // In the context of this function, USED means not available.  For register
+   // In the context of this function, USED means not available.  For register
   // reclaiming, a register is not available if it is not reclaimable.
   if (reclaim) {
     REGISTER_SET reclaimable =
@@ -320,7 +317,7 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
     used = REGISTER_SET_Difference(REGISTER_CLASS_allocatable(rc), reclaimable);
   }
 
-  if (GRA_optimize_boundary &&
+ if (GRA_optimize_boundary &&
       !reclaim) {
     REGISTER reg;
     if (! lrange->Contains_Internal_BB(gbb)) {
@@ -378,9 +375,21 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 	      ("Regs_Used: reclaiming not yet supported for rotating regs"));
 #endif
     used = REGISTER_SET_Union(used, REGISTER_CLASS_rotating(rc));
-  } else if (BB_mod_pred_rotating_registers(gbb->Bb()) &&
+  }
+  else if (BB_mod_pred_rotating_registers(gbb->Bb()) &&
 	   Is_Predicate_REGISTER_CLASS(rc))
     used = REGISTER_SET_Union(used, REGISTER_CLASS_rotating(rc));
+
+#ifdef TARG_SL   //minor_reg_alloc
+/* exclude registers used in parallel region */ 
+   if(BB_rid(gbb->Bb()) && RID_TYPE_minor(BB_rid(gbb->Bb()))) {
+   	  RID* rid = BB_rid(gbb->Bb());
+	  GRA_PARA_REGION* region = gra_para_region_mgr.Get(rid);
+	  Is_True((region),  ("para region is NULL"));
+	  REGISTER_SET exclude_set = region->Registers_Exclude(rc);
+	  used = REGISTER_SET_Union(used,  exclude_set);
+   }
+#endif 
 
   return used;
 }
@@ -877,6 +886,7 @@ Add_To_Colorable_Neighborhood( GRA_BB* gbb, BOOL reclaim )
 
   Calculate_Interim_Split_Priority(gbb, spills_needed, restores_needed,
 				   reclaim);
+
 }
 
 /////////////////////////////////////
@@ -957,7 +967,7 @@ Avoid_Unit_Spill(GRA_BB* gbb, REGISTER_SET allowed_regs,
 				      gloop->Registers_Referenced(rc));
 	}
 #endif
-	*loop_allowed = REGISTER_SET_Difference(*loop_allowed, unavailable);
+	*loop_allowed = REGISTER_SET_Difference(*loop_allowed, unavailable); 
       }
       if (REGISTER_SET_EmptyP(*loop_allowed)) {
 	return(TRUE);
@@ -1062,9 +1072,9 @@ Identify_Max_Colorable_Neighborhood( LUNIT* lunit, BOOL reclaim )
     REGISTER_SET    regs_used = Regs_Used(tn,gbb,rc, split_lrange, reclaim);
     REGISTER_SET    loop_allowed = REGISTER_SET_EMPTY_SET;
 
-    if (REGISTER_SET_EmptyP(REGISTER_SET_Difference(allowed_regs,regs_used)) ||
+    if ( REGISTER_SET_EmptyP(REGISTER_SET_Difference(allowed_regs,regs_used)) ||
 	Avoid_Unit_Spill(gbb, allowed_regs, regs_used, &loop_allowed, rc,
-			 lunit->Gbb()->Loop(), reclaim)) {
+			 lunit->Gbb()->Loop(), reclaim) ) {
       border_gbb_list_head = border_gbb_list_head->Split_List_Push(gbb);
       GRA_Trace_Split(1,"BB:%d in deferred border",BB_id(gbb->Bb()));
     }
@@ -2120,7 +2130,7 @@ Compare_Priorities(float p1, float p2)
 static BOOL
 LRANGE_Do_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
 		LRANGE**           alloc_lrange_p,
-		BOOL reclaim)
+		BOOL reclaim )
 /////////////////////////////////////
 //  See interface description for LRANGE_Split.
 /////////////////////////////////////
@@ -2143,12 +2153,15 @@ LRANGE_Do_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
     return FALSE;
 
 #ifdef TARG_IA64
-
   if (fat_self_recursive) return FALSE;
   GRA_Trace_Color_LRANGE("Splitting",lrange);
 #endif
+
 #ifdef KEY // don't split the saved-TNs if PU has any handler entry point
   if (lrange->Tn_Is_Save_Reg() && GRA_pu_has_handler)
+    return FALSE;
+
+  if (PU_Has_Nonlocal_Goto_Target)
     return FALSE;
 #endif
 

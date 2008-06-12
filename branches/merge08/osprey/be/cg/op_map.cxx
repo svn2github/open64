@@ -41,10 +41,10 @@
  * =======================================================================
  *
  *  Module: op_map.c
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/op_map.cxx,v $
+ *  $Revision: 1.6 $
+ *  $Date: 05/12/05 08:59:08-08:00 $
+ *  $Author: bos@eng-24.pathscale.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.op_map.cxx $
  *
  *  Revision comments:
  *
@@ -66,7 +66,7 @@
 
 #ifdef _KEEP_RCS_ID
 static const char *source_file = __FILE__;
-static const char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/op_map.cxx,v $ $Revision: 1.1.1.1 $";
+static const char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.op_map.cxx $ $Revision: 1.6 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
@@ -528,6 +528,7 @@ BB_OP_MAP BB_OP_MAP_Create_Kind(BB *bb, MEM_POOL *pool, _OP_MAP_KIND kind)
 #else
   INT32 nelem = BB_next_op_map_idx(bb);
 #endif
+
 
   new_map->bb = bb;
   new_map->kind = kind;

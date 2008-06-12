@@ -168,6 +168,10 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_ISTORE:
   case OPR_STID:
 	if ( V_align_all(variant) != 0 ) {
+#if defined(TARG_SL)
+          if (CG_check_packed)
+  	    Is_True(0, ("SL does not handle unaligned store"));
+#endif
 		Expand_Misaligned_Store (desc, op1, op2, op3, variant, ops);
 	}
 	else {
@@ -307,7 +311,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_CVT:
 	Is_True(rtype != MTYPE_B, ("conversion to bool unsupported"));
 	if (MTYPE_is_float(rtype) && MTYPE_is_float(desc)) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
 		Expand_Float_To_Float (result, op1, rtype, desc, ops);
 #else
 		Expand_Float_To_Float (result, op1, rtype, ops);
@@ -380,7 +384,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Float_To_Float_Floorf( result, op1, rtype, desc, ops );
       break;
     }	
-#elif defined (TARG_MIPS)
+#elif defined (TARG_MIPS) && !defined(TARG_SL)
         if (MTYPE_is_float (rtype)) {
 	  Expand_Float_To_Float_Floor (result, op1, rtype, desc, ops);
 	  break;

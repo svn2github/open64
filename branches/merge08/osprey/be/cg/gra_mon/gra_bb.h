@@ -1,8 +1,4 @@
 /*
- * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
- */
-
-/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -40,10 +36,10 @@
 
 */
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_bb.h,v $
+//  $Revision: 1.13 $
+//  $Date: 05/12/05 08:59:09-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_bb.h $
 
 //  Description:
 //
@@ -70,7 +66,7 @@
 #ifndef GRA_BB_RCS_ID
 #define GRA_BB_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_bb_rcs_id = "$Source: ../../be/cg/gra_mon/SCCS/s.gra_bb.h $ $Revision: 1.12 $";
+static char *gra_bb_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_bb.h $ $Revision: 1.13 $";
 #endif
 #endif
 
@@ -241,7 +237,6 @@ private:
     //   segment 3:	live-out
     // We treat segments 2 and 3 as one segment, resulting in the "disjoint"
     // case.
-
   // ------------ Support register reclaiming. ------------
   LRANGE*	lrange_owner[ISA_REGISTER_CLASS_MAX+1][REGISTER_MAX+1];
     // The lrange owner of the register in this <gbb>.  In the case of a
@@ -316,7 +311,6 @@ public:
   BOOL mmx_OP(void)		{ return flags & GRA_BB_FLAGS_mmx_OP; }
   void mmx_OP_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_mmx_OP; }
 #endif
-
 #ifdef KEY
   // Return TRUE if BB has OPs the clobber the register class RC.
   BOOL Clobbers_Reg_Class(ISA_REGISTER_CLASS rc) {
@@ -424,6 +418,7 @@ class GBB_MGR {
   BB_SET *blocks_with_x87_OP; // BB_SET containing those bb's that have x87 OPs.
   BB_SET *blocks_with_mmx_OP; // BB_SET containing those bb's that have MMX OPs.
 #endif
+
 public:
   GBB_MGR(void) {};
   ~GBB_MGR(void) {};

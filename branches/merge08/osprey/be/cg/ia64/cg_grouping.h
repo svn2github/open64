@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -38,10 +38,10 @@
 // ====================================================================
 //
 //  Module: cg_grouping.h
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/ia64/cg_grouping.h,v $
+//  $Revision: 1.1 $
+//  $Date: 2005/07/27 02:13:45 $
+//  $Author: kevinlo $
+//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/ia64/cg_grouping.h,v $
 //
 //  Synopsis:
 //
@@ -74,7 +74,6 @@
 #include "mempool_allocator.h"
 #include "ti_si.h"
 #include "topcode.h"
-#include "targ_issue_port.h"
 
 typedef mempool_allocator<INT32>           INT32_MEMALLOC;
 typedef std::vector<INT32, INT32_MEMALLOC> INT32_VECTOR;
@@ -89,9 +88,6 @@ private:
   SI_RESOURCE_ID         _mi_unit_id; // integer_or_memory (ALU insts)
   SI_RESOURCE_ID         _m_unit_id;  // memory
   SI_RESOURCE_ID         _m0_unit_id; // memory0
-  SI_RESOURCE_ID         _m2_unit_id; // memory2
-  SI_RESOURCE_ID         _m_ld_unit_id; // memory for ld M0 M1 in McKiney
-  SI_RESOURCE_ID         _m_st_unit_id; // memory for st M2 M3 in McKiney
   SI_RESOURCE_ID         _i_unit_id;  // integer
   SI_RESOURCE_ID         _i0_unit_id; // integer0
   SI_RESOURCE_ID         _f_unit_id;  // floating-point
@@ -160,12 +156,6 @@ private:
 	_m0_unit_id = res_id;
       else if (strcmp("memory", name) == 0)
 	_m_unit_id = res_id;
-      else if (strcmp("memory_ld", name) == 0)
-        _m_ld_unit_id = res_id; 
-      else if (strcmp("memory_st", name) == 0)
-        _m_st_unit_id = res_id;
-      else if (strcmp("memory2", name) == 0)
-        _m2_unit_id = res_id;
       else
 	unknown_resource = TRUE;
       break;
@@ -208,16 +198,16 @@ public:
     // For slot 1:
     //
     _no_of_preferences[1] = 4;
-    _bundling_preference[1][0] = ISA_EXEC_PROPERTY_I_Unit;
-    _bundling_preference[1][1] = ISA_EXEC_PROPERTY_F_Unit;
+    _bundling_preference[1][0] = ISA_EXEC_PROPERTY_F_Unit;
+    _bundling_preference[1][1] = ISA_EXEC_PROPERTY_I_Unit;
     _bundling_preference[1][2] = ISA_EXEC_PROPERTY_M_Unit;
     _bundling_preference[1][3] = ISA_EXEC_PROPERTY_B_Unit;
 
     // For slot 2:
     //
     _no_of_preferences[2] = 5;
-    _bundling_preference[2][0] = ISA_EXEC_PROPERTY_I_Unit;
-    _bundling_preference[2][1] = ISA_EXEC_PROPERTY_F_Unit;
+    _bundling_preference[2][0] = ISA_EXEC_PROPERTY_F_Unit;
+    _bundling_preference[2][1] = ISA_EXEC_PROPERTY_I_Unit;
     _bundling_preference[2][2] = ISA_EXEC_PROPERTY_I2_Unit;
     _bundling_preference[2][3] = ISA_EXEC_PROPERTY_B_Unit;
     _bundling_preference[2][4] = ISA_EXEC_PROPERTY_B2_Unit;
@@ -250,7 +240,7 @@ public:
   }
 
   INT num_slots(TOP top) const {return ISA_PACK_Inst_Words(top);}
-  INT max_slots_per_group() const {return ISA_MAX_SLOTS * ISA_MAX_ISSUE_BUNDLES; /* Itanium(TM) */}
+  INT max_slots_per_group() const {return ISA_MAX_SLOTS * 2; /* Itanium(TM) */}
 
   INT bundling_order(TOP top) const
   {

@@ -73,15 +73,15 @@ EETARG_Restore_Pfs (TN *saved_pfs, OPS *ops)
 	Build_OP (TOP_mov_t_ar_r_i, Pfs_TN, True_TN, saved_pfs, ops);
 }
 
+
 void
-EETARG_Call_Mcount(BB *bb)
+EETARG_Fixup_Entry_Code (BB *bb)
 {
 	if (Call_Mcount) {
 		// insert call of mcount at very beginning.
 		// to avoid it confusing our analysis of code,
 		// use asm string.
 		// add space for mcount info:
-		
 		char data_name[20];
 		sprintf(data_name, "mcount_data_%d", Current_PU_Count());
 		ST *data_st = New_ST (GLOBAL_SYMTAB);
@@ -115,20 +115,14 @@ EETARG_Call_Mcount(BB *bb)
 		TN* opnd[10];
 		OP* asm_op = Mk_VarOP(TOP_asm, 0, 0, result, opnd);
 		Set_OP_volatile(asm_op);
-		
 		ASM_OP_ANNOT* asm_info = TYPE_PU_ALLOC(ASM_OP_ANNOT);
 		bzero(asm_info, sizeof(ASM_OP_ANNOT));
 		WN *asm_wn = WN_CreateAsm_Stmt (0, asm_string);
 		ASM_OP_wn(asm_info) = asm_wn;
 		OP_MAP_Set(OP_Asm_Map, asm_op, asm_info);
 		BB_Prepend_Op (bb, asm_op);
-
 	}
-}
 
-void
-EETARG_Fixup_Entry_Code (BB *bb)
-{
         // find alloc and replace values
 	OP *op;
 	INT num_output;
@@ -142,7 +136,7 @@ EETARG_Fixup_Entry_Code (BB *bb)
 			ISA_REGISTER_CLASS_integer);
 		num_rotating = REGISTER_Number_Stacked_Rotating(
 			ISA_REGISTER_CLASS_integer);
-		num_output = MAX(num_output, num_rotating - num_local);
+		num_output = max(num_output, num_rotating - num_local);
 		if (num_local + num_output + num_rotating == 0) {
 			BB_Remove_Op (bb, op);
 		}

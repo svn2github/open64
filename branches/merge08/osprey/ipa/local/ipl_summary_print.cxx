@@ -371,7 +371,7 @@ SUMMARY_ACTUAL::Print (FILE *f, INT32 id) const
 
     fprintf (f, " ty_idx = 0x%x, ", Get_ty());
 
-    char *p = Pass_type_name ();
+    const char *p = Pass_type_name ();
     if (p)
 	fprintf (f, " %s, ", p);
     else

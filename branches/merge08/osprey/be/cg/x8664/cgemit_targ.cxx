@@ -1,13 +1,5 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
- */
-
-/*
- *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,10 +40,10 @@
 /* ====================================================================
  *
  * Module: cgemit_targ.c
- * $Revision: 1.173 $
- * $Date: 05/11/30 16:49:43-08:00 $
- * $Author: gautam@jacinth.keyresearch $
- * $Source: be/cg/x8664/SCCS/s.cgemit_targ.cxx $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:13:22 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/x8664/cgemit_targ.cxx,v $
  *
  * Description:
  *
@@ -64,11 +56,10 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include "elf_stuff.h"
+#include <elf.h>
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
-#include "config_TARG.h"
 #include "targ_const.h"
 #include "targ_const_private.h"
 #include "vstring.h"
@@ -78,7 +69,6 @@
 #include "tn.h"
 #include "cgemit.h"
 #include "cgemit_targ.h"
-#include "cgtarget.h"
 #include "data_layout.h"
 #include "bb.h"
 #include "op.h"
@@ -87,10 +77,7 @@
 #include "glob.h"
 #include "sections.h"
 #include "targ_isa_print.h"
-#include "config_debug.h"
 
-// Holds name of function used to retrieve the Instruction Pointer.
-extern const char * ip_calc_funcname;
 
 static ST *current_pu = NULL;
 
@@ -246,29 +233,12 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
       }
     }
     if (! CG_emit_non_gas_syntax) {
-      if ((scn_flags & SHF_WRITE) &&
-          !(scn_name && !strncmp(scn_name,".gnu.linkonce.r.",16)))
-        *p++ = 'w';
+      if (scn_flags & SHF_WRITE) *p++ = 'w';
       if (scn_flags & SHF_ALLOC) *p++ = 'a';
       if (scn_flags & SHF_EXECINSTR) *p++ = 'x';
-#ifdef KEY
-      if (scn_flags & SHF_TLS) *p++ = 'T';
-#endif
       *p = '\0'; // null terminate the string.
       fprintf (asm_file, ", \"%s\"", scn_flags_string);
-      if (scn_type == SHT_PROGBITS)
-        fprintf (asm_file, ",@progbits");
-      else if (scn_type == SHT_NOBITS)
-        fprintf (asm_file, ",@nobits");
     }
-#ifdef TARG_X8664
-    if (strcmp(scn_name, ".debug_frame") == 0) // bug 2463
-      fprintf(asm_file, "\n.LCIE:");
-
-    // Generate a label at the start of the .eh_frame CIE
-    if (!strcmp (scn_name, ".eh_frame")) // bug 2729
-      fprintf (asm_file, "\n.LEHCIE:");
-#endif
   }
 
   fprintf (asm_file, "\n");
@@ -328,10 +298,6 @@ CGEMIT_Use_Base_ST_For_Reloc (INT reloc, ST *st)
 	// example: see gcc.c-torture/execute/func-ptr-1.c
 	else if (ST_sclass(st) == SCLASS_TEXT)
 	        return FALSE;
-#ifdef KEY
-	else if (ST_is_thread_local(st))
-	        return FALSE;
-#endif
 	else 
 		return ST_is_export_local(st);
 }
@@ -373,42 +339,15 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 	case TN_RELOC_LOW16:
         	*buf = vstr_concat (*buf, "%lo");
 		break;
-	case TN_RELOC_X8664_64:
-	  break;
 	case TN_RELOC_X8664_PC32:
 	  *buf = vstr_concat (*buf, "$");
 	  break;
-	case TN_RELOC_IA32_GOT:
-	  *buf = vstr_concat (*buf, ST_name(st));
-	  *buf = vstr_concat (*buf, "@GOT");
-	  return 0;
+	case TN_RELOC_X8664_64:
+	  FmtAssert(FALSE, ("Handle this case"));
+	  break;
 	case TN_RELOC_X8664_GOTPCREL:
 	  *buf = vstr_concat (*buf, ST_name(st));
 	  *buf = vstr_concat (*buf, "@GOTPCREL");
-	  return 0;
-	case TN_RELOC_IA32_GLOBAL_OFFSET_TABLE:
-	  {
-	    char* str = NULL;
-	    if (Is_Target_EM64T() ||
-		Is_Target_Core())
-	      asprintf( &str, "$_GLOBAL_OFFSET_TABLE_+[.-%s]", ST_name(st) );
-	    else
-	      asprintf( &str, "$_GLOBAL_OFFSET_TABLE_" );
-	    *buf = vstr_concat( *buf, str );
-	    free( str );
-	  }
-	  return 0;
-	case TN_RELOC_X8664_TPOFF32_seg_reg:
-	  *buf = vstr_concat(*buf, Is_Target_32bit() ? "%gs:" : "%fs:");
-	  // fall through
-	case TN_RELOC_X8664_TPOFF32:
-	  *buf = vstr_concat(*buf, ST_name(st));
-	  *buf = vstr_concat(*buf, Is_Target_32bit() ? "@NTPOFF" : "@TPOFF");
-	  return 0;
-	case TN_RELOC_X8664_GOTTPOFF:
-	  *buf = vstr_concat(*buf, ST_name(st));
-	  *buf = vstr_concat(*buf,
-			     Is_Target_32bit() ? "@INDNTPOFF" : "@GOTTPOFF");
 	  return 0;
     	default:
 		#pragma mips_frequency_hint NEVER
@@ -494,18 +433,8 @@ STACK_FP_Fixup_PU()
 void
 CGEMIT_Weak_Alias (ST *sym, ST *strongsym) 
 {
-  fprintf ( Asm_File, "\t%s\t%s\n", AS_WEAK, ST_name(sym));
-  fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
-  if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
-    // modelled after EMT_Write_Qualified_Name (bug 6899)
-    if (ST_level(strongsym) == GLOBAL_SYMTAB)
-      fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
-    else
-      fprintf ( Asm_File, "%s%d%s%d", Label_Name_Separator, 
-		ST_pu(Get_Current_PU_ST()),
-      		Label_Name_Separator, ST_index(strongsym));
-  }
-  fprintf ( Asm_File, "\n");
+        fprintf ( Asm_File, "\t%s\t%s\n", AS_WEAK, ST_name(sym));
+        fprintf ( Asm_File, "\t%s = %s\n", ST_name(sym), ST_name(strongsym));
 }
 
 void CGEMIT_Write_Literal_TCON(ST *lit_st, TCON tcon)
@@ -596,7 +525,6 @@ static void Init_OP_Name()
 
   // Only put in the name which is different from isa.cxx.
 
-  OP_Name[TOP_reti]  = "ret";
   OP_Name[TOP_comixsd]  = "comisd";
   OP_Name[TOP_comixxsd] = "comisd";
   OP_Name[TOP_comixxxsd]= "comisd";
@@ -622,7 +550,6 @@ static void Init_OP_Name()
   OP_Name[TOP_addx128v8] = "paddb";
   OP_Name[TOP_addxx128v8] = "paddb";
   OP_Name[TOP_addxxx128v8] = "paddb";
-  OP_Name[TOP_mul128v16] = "pmullw";
   OP_Name[TOP_add128v16] = "paddw";
   OP_Name[TOP_addx128v16] = "paddw";
   OP_Name[TOP_addxx128v16] = "paddw";
@@ -643,42 +570,6 @@ static void Init_OP_Name()
   OP_Name[TOP_faddx128v64] = "addpd";
   OP_Name[TOP_faddxx128v64] = "addpd";
   OP_Name[TOP_faddxxx128v64] = "addpd";
-  OP_Name[TOP_faddsub128v32] = "addsubps";
-  OP_Name[TOP_faddsubx128v32] = "addsubps";
-  OP_Name[TOP_faddsubxx128v32] = "addsubps";
-  OP_Name[TOP_faddsubxxx128v32] = "addsubps";
-  OP_Name[TOP_faddsub128v64] = "addsubpd";
-  OP_Name[TOP_faddsubx128v64] = "addsubpd";
-  OP_Name[TOP_faddsubxx128v64] = "addsubpd";
-  OP_Name[TOP_faddsubxxx128v64] = "addsubpd";
-  OP_Name[TOP_fhadd128v32] = "haddps";
-  OP_Name[TOP_fhaddx128v32] = "haddps";
-  OP_Name[TOP_fhaddxx128v32] = "haddps";
-  OP_Name[TOP_fhaddxxx128v32] = "haddps";
-  OP_Name[TOP_fhadd128v64] = "haddpd";
-  OP_Name[TOP_fhaddx128v64] = "haddpd";
-  OP_Name[TOP_fhaddxx128v64] = "haddpd";
-  OP_Name[TOP_fhaddxxx128v64] = "haddpd";
-  OP_Name[TOP_fsub128v32] = "hsubps";
-  OP_Name[TOP_fsubx128v32] = "hsubps";
-  OP_Name[TOP_fsubxx128v32] = "hsubps";
-  OP_Name[TOP_fsubxxx128v32] = "hsubps";
-  OP_Name[TOP_fsub128v64] = "hsubpd";
-  OP_Name[TOP_fsubx128v64] = "hsubpd";
-  OP_Name[TOP_fsubxx128v64] = "hsubpd";
-  OP_Name[TOP_fsubxxx128v64] = "hsubpd";
-  OP_Name[TOP_fmovsldup] = "movsldup";
-  OP_Name[TOP_fmovshdup] = "movshdup";
-  OP_Name[TOP_fmovddup] = "movddup";
-  OP_Name[TOP_fmovsldupx] = "movsldup";
-  OP_Name[TOP_fmovshdupx] = "movshdup";
-  OP_Name[TOP_fmovddupx] = "movddup";
-  OP_Name[TOP_fmovsldupxx] = "movsldup";
-  OP_Name[TOP_fmovshdupxx] = "movshdup";
-  OP_Name[TOP_fmovddupxx] = "movddup";
-  OP_Name[TOP_fmovsldupxxx] = "movsldup";
-  OP_Name[TOP_fmovshdupxxx] = "movshdup";
-  OP_Name[TOP_fmovddupxxx] = "movddup";
   OP_Name[TOP_addi32] = "addl";
   OP_Name[TOP_adci32] = "adcl";
   OP_Name[TOP_addi64] = "addq";
@@ -803,46 +694,6 @@ static void Init_OP_Name()
   OP_Name[TOP_fsqrt128v64] = "sqrtpd";
   OP_Name[TOP_frcp128v32] = "rcpps";
   OP_Name[TOP_subus128v16] = "psubusw";
-  OP_Name[TOP_cmpgt128v8] = "pcmpgtb";
-  OP_Name[TOP_cmpgt128v16] = "pcmpgtw";
-  OP_Name[TOP_cmpgt128v32] = "pcmpgtd";
-  OP_Name[TOP_cmpeq128v8] = "pcmpeqb";
-  OP_Name[TOP_cmpeq128v16] = "pcmpeqw";
-  OP_Name[TOP_cmpeq128v32] = "pcmpeqd";
-  OP_Name[TOP_cmpgtx128v8] = "pcmpgtb";
-  OP_Name[TOP_cmpgtx128v16] = "pcmpgtw";
-  OP_Name[TOP_cmpgtx128v32] = "pcmpgtd";
-  OP_Name[TOP_cmpeqx128v8] = "pcmpeqb";
-  OP_Name[TOP_cmpeqx128v16] = "pcmpeqw";
-  OP_Name[TOP_cmpeqx128v32] = "pcmpeqd";
-  OP_Name[TOP_cmpgtxx128v8] = "pcmpgtb";
-  OP_Name[TOP_cmpgtxx128v16] = "pcmpgtw";
-  OP_Name[TOP_cmpgtxx128v32] = "pcmpgtd";
-  OP_Name[TOP_cmpeqxx128v8] = "pcmpeqb";
-  OP_Name[TOP_cmpeqxx128v16] = "pcmpeqw";
-  OP_Name[TOP_cmpeqxx128v32] = "pcmpeqd";
-  OP_Name[TOP_cmpgtxxx128v8] = "pcmpgtb";
-  OP_Name[TOP_cmpgtxxx128v16] = "pcmpgtw";
-  OP_Name[TOP_cmpgtxxx128v32] = "pcmpgtd";
-  OP_Name[TOP_cmpeqxxx128v8] = "pcmpeqb";
-  OP_Name[TOP_cmpeqxxx128v16] = "pcmpeqw";
-  OP_Name[TOP_cmpeqxxx128v32] = "pcmpeqd";
-  OP_Name[TOP_max128v8] = "pmaxub";
-  OP_Name[TOP_max128v16] = "pmaxsw";
-  OP_Name[TOP_maxx128v8] = "pmaxub";
-  OP_Name[TOP_maxx128v16] = "pmaxsw";
-  OP_Name[TOP_maxxx128v8] = "pmaxub";
-  OP_Name[TOP_maxxx128v16] = "pmaxsw";
-  OP_Name[TOP_maxxxx128v8] = "pmaxub";
-  OP_Name[TOP_maxxxx128v16] = "pmaxsw";
-  OP_Name[TOP_min128v8] = "pmaxub";
-  OP_Name[TOP_min128v16] = "pmaxsw";
-  OP_Name[TOP_minx128v8] = "pmaxub";
-  OP_Name[TOP_minx128v16] = "pmaxsw";
-  OP_Name[TOP_minxx128v8] = "pmaxub";
-  OP_Name[TOP_minxx128v16] = "pmaxsw";
-  OP_Name[TOP_minxxx128v8] = "pmaxub";
-  OP_Name[TOP_minxxx128v16] = "pmaxsw";
   OP_Name[TOP_icall]    = "call";
   OP_Name[TOP_icallx]   = "call";
   OP_Name[TOP_icallxx]  = "call";
@@ -929,8 +780,6 @@ static void Init_OP_Name()
   OP_Name[TOP_prefetcht0xx]= "prefetcht0";
   OP_Name[TOP_prefetcht1x] = "prefetcht1";
   OP_Name[TOP_prefetcht1xx]= "prefetcht1";
-  OP_Name[TOP_prefetchntax] = "prefetchnta";
-  OP_Name[TOP_prefetchntaxx]= "prefetchnta";
   if (CG_use_prefetchnta) {
     OP_Name[TOP_prefetcht0] = "prefetchnta";
     OP_Name[TOP_prefetcht0x] = "prefetchnta";
@@ -954,38 +803,30 @@ static void Init_OP_Name()
   OP_Name[TOP_ld16_32_n32]   = "movswl";
   OP_Name[TOP_ldu16_32_n32]  = "movzwl";
 
-  OP_Name[TOP_ld8_64]		= "movsbq";
-  OP_Name[TOP_ldx8_64]		= "movsbq";
-  OP_Name[TOP_ldxx8_64]		= "movsbq";
-  OP_Name[TOP_ld8_64_off]	= "movsbq";
-  OP_Name[TOP_ldu8_64]		= "movzbq";
-  OP_Name[TOP_ldxu8_64]		= "movzbq";
-  OP_Name[TOP_ldxxu8_64]	= "movzbq";
-  OP_Name[TOP_ldu8_64_off]	= "movzbq";
-  OP_Name[TOP_ld16_64]		= "movswq";
-  OP_Name[TOP_ldx16_64]		= "movswq";
-  OP_Name[TOP_ldxx16_64]	= "movswq";
-  OP_Name[TOP_ld16_64_off]	= "movswq";
-  OP_Name[TOP_ldu16_64]		= "movzwq";
-  OP_Name[TOP_ldxu16_64]	= "movzwq";
-  OP_Name[TOP_ldxxu16_64]	= "movzwq";
-  OP_Name[TOP_ldu16_64_off]	= "movzwq";
-  OP_Name[TOP_ld32_64_off]	= "movslq";
+  OP_Name[TOP_ld8_64]   = "movsbq";
+  OP_Name[TOP_ldx8_64]  = "movsbq";
+  OP_Name[TOP_ldxx8_64] = "movsbq";
+  OP_Name[TOP_ldu8_64]   = "movzbq";
+  OP_Name[TOP_ldxu8_64]  = "movzbq";
+  OP_Name[TOP_ldxxu8_64] = "movzbq";
+  OP_Name[TOP_ld16_64]   = "movswq";
+  OP_Name[TOP_ldx16_64]  = "movswq";
+  OP_Name[TOP_ldxx16_64] = "movswq";
+  OP_Name[TOP_ldu16_64]   = "movzwq";
+  OP_Name[TOP_ldxu16_64]  = "movzwq";
+  OP_Name[TOP_ldxxu16_64] = "movzwq";
 
   OP_Name[TOP_ld32]  = "movl";
   OP_Name[TOP_ldx32] = "movl";
   OP_Name[TOP_ldxx32]= "movl";
   OP_Name[TOP_ld32_n32]  = "movl";
   OP_Name[TOP_ld64]  = "movq";
-  OP_Name[TOP_ld64_off]  = "movq";
   OP_Name[TOP_ldx64] = "movq";
   OP_Name[TOP_ldxx64]= "movq";
   OP_Name[TOP_zero32] = "xorl";
   OP_Name[TOP_zero64] = "xorq";
   OP_Name[TOP_xzero32] = "xorps";
   OP_Name[TOP_xzero64] = "xorpd";
-  OP_Name[TOP_xzero128v32] = "xorps";
-  OP_Name[TOP_xzero128v64] = "xorpd";
   OP_Name[TOP_inc8] = "incb";
   OP_Name[TOP_inc16] = "incw";
   OP_Name[TOP_inc32] = "incl";
@@ -1001,8 +842,6 @@ static void Init_OP_Name()
   OP_Name[TOP_ldxx32_64] = "movslq";
   OP_Name[TOP_mov32] = "movl";
   OP_Name[TOP_mov64] = "movq";
-
-  OP_Name[TOP_movzlq] = "movl";
 
   OP_Name[TOP_fstps_n32] = "fstps";
   OP_Name[TOP_fstpl_n32] = "fstpl";
@@ -1023,7 +862,6 @@ static void Init_OP_Name()
   OP_Name[TOP_imul32] = "imull";
   OP_Name[TOP_imul64] = "imulq";
   OP_Name[TOP_imulx64] = "imulq";
-  OP_Name[TOP_imulx32] = "imull";
   OP_Name[TOP_mul32] = "mull";
   OP_Name[TOP_mulx64] = "mulq";
   OP_Name[TOP_mulxss] = "mulss";
@@ -1054,22 +892,6 @@ static void Init_OP_Name()
   OP_Name[TOP_orxxx64] = "orq";
   OP_Name[TOP_ori32] = "orl";
   OP_Name[TOP_ori64] = "orq";
-  OP_Name[TOP_ror8] = "rorb";
-  OP_Name[TOP_ror16] = "rorw";
-  OP_Name[TOP_ror32] = "rorl";
-  OP_Name[TOP_ror64] = "rorq";
-  OP_Name[TOP_rori8] = "rorb";
-  OP_Name[TOP_rori16] = "rorw";
-  OP_Name[TOP_rori32] = "rorl";
-  OP_Name[TOP_rori64] = "rorq";
-  OP_Name[TOP_rol8] = "rolb";
-  OP_Name[TOP_rol16] = "rolw";
-  OP_Name[TOP_rol32] = "roll";
-  OP_Name[TOP_rol64] = "rolq";
-  OP_Name[TOP_roli8] = "rolb";
-  OP_Name[TOP_roli16] = "rolw";
-  OP_Name[TOP_roli32] = "roll";
-  OP_Name[TOP_roli64] = "rolq";
   OP_Name[TOP_store8]   = "movb";
   OP_Name[TOP_storex8]  = "movb";
   OP_Name[TOP_storexx8] = "movb";
@@ -1083,7 +905,6 @@ static void Init_OP_Name()
   OP_Name[TOP_storexx32]= "movl";
   OP_Name[TOP_store32_n32]  = "movl";
   OP_Name[TOP_store64]  = "movq";
-  OP_Name[TOP_store64_off]  = "movq";
   OP_Name[TOP_storex64] = "movq";
   OP_Name[TOP_storexx64]= "movq";
   OP_Name[TOP_storenti32]  = "movnti";
@@ -1175,79 +996,51 @@ static void Init_OP_Name()
   OP_Name[TOP_ldssx]  = "movss";
   OP_Name[TOP_ldssxx] = "movss";
   OP_Name[TOP_lddqa] = "movdqa";
-  OP_Name[TOP_lddqa_n32] = "movdqa";
   OP_Name[TOP_stdqa] = "movdqa";
-  OP_Name[TOP_stdqa_n32] = "movdqa";
   OP_Name[TOP_stntpd]= "movntpd";
   OP_Name[TOP_stntps]= "movntps";
-  if ( !Is_Target_SSE3() || ! CG_use_lddqu) {
-    OP_Name[TOP_lddqu] = "movdqu";
-    OP_Name[TOP_lddqu_n32] = "movdqu";
-  }
-  else
-    OP_Name[TOP_lddqu_n32] = "lddqu";
+  OP_Name[TOP_lddqu] = "movdqu";
   OP_Name[TOP_stdqu] = "movdqu";
-  OP_Name[TOP_stdqu_n32] = "movdqu";
   OP_Name[TOP_ldlps] = "movlps";
-  OP_Name[TOP_ldlps_n32] = "movlps";
   OP_Name[TOP_stlps] = "movlps";
-  OP_Name[TOP_stlps_n32] = "movlps";
-  OP_Name[TOP_ldlpd] = "movsd";
-  OP_Name[TOP_ldlpd_n32] = "movsd";
-  OP_Name[TOP_stlpd] = "movsd";
-  OP_Name[TOP_stlpd_n32] = "movsd";
-  OP_Name[TOP_ldlpsx] = "movlps";
-  OP_Name[TOP_stlpsx] = "movlps";
-  OP_Name[TOP_ldlpdx] = "movsd";
-  OP_Name[TOP_stlpdx] = "movsd";
-  OP_Name[TOP_ldlpsxx] = "movlps";
-  OP_Name[TOP_stlpsxx] = "movlps";
-  OP_Name[TOP_ldlpdxx] = "movsd";
-  OP_Name[TOP_stlpdxx] = "movsd";
   OP_Name[TOP_ldhps] = "movhps";
-  OP_Name[TOP_ldhps_n32] = "movhps";
   OP_Name[TOP_sthps] = "movhps";
-  OP_Name[TOP_sthps_n32] = "movhps";
+  OP_Name[TOP_ldlpd] = "movlpd";
+  OP_Name[TOP_stlpd] = "movlpd";
   OP_Name[TOP_ldhpd] = "movhpd";
-  OP_Name[TOP_ldhpd_n32] = "movhpd";
   OP_Name[TOP_sthpd] = "movhpd";
-  OP_Name[TOP_sthpd_n32] = "movhpd";
   OP_Name[TOP_lddqax] = "movdqa";
   OP_Name[TOP_stdqax] = "movdqa";
   OP_Name[TOP_stntpdx]= "movntpd";
   OP_Name[TOP_stntpsx]= "movntps";
-  if ( !Is_Target_SSE3() || ! CG_use_lddqu)
-    OP_Name[TOP_lddqux] = "movdqu";
-  else
-    OP_Name[TOP_lddqux] = "lddqu";
+  OP_Name[TOP_lddqux] = "movdqu";
   OP_Name[TOP_stdqux] = "movdqu";
+  OP_Name[TOP_ldlpsx] = "movlps";
+  OP_Name[TOP_stlpsx] = "movlps";
   OP_Name[TOP_ldhpsx] = "movhps";
   OP_Name[TOP_sthpsx] = "movhps";
+  OP_Name[TOP_ldlpdx] = "movlpd";
+  OP_Name[TOP_stlpdx] = "movlpd";
   OP_Name[TOP_ldhpdx] = "movhpd";
   OP_Name[TOP_sthpdx] = "movhpd";
   OP_Name[TOP_lddqaxx] = "movdqa";
   OP_Name[TOP_stdqaxx] = "movdqa";
   OP_Name[TOP_stntpdxx]= "movntpd";
   OP_Name[TOP_stntpsxx]= "movntps";
-  if ( !Is_Target_SSE3() || ! CG_use_lddqu)
-    OP_Name[TOP_lddquxx] = "movdqu";
-  else
-    OP_Name[TOP_lddquxx] = "lddqu";
+  OP_Name[TOP_lddquxx] = "movdqu";
   OP_Name[TOP_stdquxx] = "movdqu";
+  OP_Name[TOP_ldlpsxx] = "movlps";
+  OP_Name[TOP_stlpsxx] = "movlps";
   OP_Name[TOP_ldhpsxx] = "movhps";
   OP_Name[TOP_sthpsxx] = "movhps";
+  OP_Name[TOP_ldlpdxx] = "movlpd";
+  OP_Name[TOP_stlpdxx] = "movlpd";
   OP_Name[TOP_ldhpdxx] = "movhpd";
   OP_Name[TOP_sthpdxx] = "movhpd";
   OP_Name[TOP_staps] = "movaps";
-  OP_Name[TOP_staps_n32] = "movaps";
   OP_Name[TOP_stapd] = "movapd";
-  OP_Name[TOP_stapd_n32] = "movapd";
-  OP_Name[TOP_stupd] = "movupd";
-  OP_Name[TOP_stups] = "movups";
   OP_Name[TOP_ldaps] = "movaps";
-  OP_Name[TOP_ldaps_n32] = "movaps";
   OP_Name[TOP_ldapd] = "movapd";
-  OP_Name[TOP_ldapd_n32] = "movapd";
   OP_Name[TOP_stapsx] = "movaps";
   OP_Name[TOP_stapdx] = "movapd";
   OP_Name[TOP_ldapsx] = "movaps";
@@ -1256,100 +1049,27 @@ static void Init_OP_Name()
   OP_Name[TOP_stapdxx] = "movapd";
   OP_Name[TOP_ldapsxx] = "movaps";
   OP_Name[TOP_ldapdxx] = "movapd";
-  OP_Name[TOP_ldupd] = "movupd";
-  OP_Name[TOP_ldupd_n32] = "movupd";
-  OP_Name[TOP_ldups] = "movups";
-  OP_Name[TOP_ldups_n32] = "movups";
   OP_Name[TOP_movss] = "movaps";
   OP_Name[TOP_movdq] = "movdqa";
   OP_Name[TOP_movg2x] = "movd";
-  OP_Name[TOP_movg2x64] = "movd";
   OP_Name[TOP_movx2g] = "movd";
-  OP_Name[TOP_movx2g64] = "movd";
   OP_Name[TOP_stss_n32]   = "movss";
   OP_Name[TOP_stss]   = "movss";
   OP_Name[TOP_stssx]  = "movss";
   OP_Name[TOP_stssxx] = "movss";
-
-  //SSSE4 instructions 
-  OP_Name[TOP_stntss]   = "movntss";
-  OP_Name[TOP_stntssx]  = "movntss";
-  OP_Name[TOP_stntssxx] = "movntss";
-  OP_Name[TOP_stntsd]   = "movntsd";
-  OP_Name[TOP_stntsdx]  = "movntsd";
-  OP_Name[TOP_stntsdxx] = "movntsd";
-  
   OP_Name[TOP_fmov] = "fld";
-  OP_Name[TOP_ld8_abs]  = "movabsb";
-  OP_Name[TOP_ld16_abs] = "movabsw";
-  OP_Name[TOP_ld32_abs] = "movabsl";
-  OP_Name[TOP_ld64_abs] = "movabsq";
-  OP_Name[TOP_store8_abs]  = "movabsb";
-  OP_Name[TOP_store16_abs] = "movabsw";
-  OP_Name[TOP_store32_abs] = "movabsl";
-  OP_Name[TOP_store64_abs] = "movabsq";
-
-  OP_Name[TOP_ld32_gs_seg_off]	= "movl";
-  OP_Name[TOP_ld64_fs_seg_off]	= "movq";
-
-  OP_Name[TOP_cvtsd2ss_x]   = "cvtsd2ss";
-  OP_Name[TOP_cvtsd2ss_xx]  = "cvtsd2ss";
-  OP_Name[TOP_cvtsd2ss_xxx] = "cvtsd2ss";
-  OP_Name[TOP_cvtsi2sd_x]   = "cvtsi2sd";
-  OP_Name[TOP_cvtsi2sd_xx]  = "cvtsi2sd";
-  OP_Name[TOP_cvtsi2sd_xxx] = "cvtsi2sd";
-  OP_Name[TOP_cvtsi2ss_x]   = "cvtsi2ss";
-  OP_Name[TOP_cvtsi2ss_xx]  = "cvtsi2ss";
-  OP_Name[TOP_cvtsi2ss_xxx] = "cvtsi2ss";
-  OP_Name[TOP_cvtsi2sdq_x]  = "cvtsi2sdq";
-  OP_Name[TOP_cvtsi2sdq_xx] = "cvtsi2sdq";
-  OP_Name[TOP_cvtsi2sdq_xxx]= "cvtsi2sdq";
-  OP_Name[TOP_cvtsi2ssq_x]  = "cvtsi2ssq";
-  OP_Name[TOP_cvtsi2ssq_xx] = "cvtsi2ssq";
-  OP_Name[TOP_cvtsi2ssq_xxx]= "cvtsi2ssq";
-  
-  OP_Name[TOP_cvtdq2pd_x] = "cvtdq2pd";
-  OP_Name[TOP_cvtdq2ps_x] = "cvtdq2ps";
-  OP_Name[TOP_cvtps2pd_x] = "cvtps2pd";
-  OP_Name[TOP_cvtpd2ps_x] = "cvtpd2ps";
-  OP_Name[TOP_cvttps2dq_x] = "cvttps2dq";
-  OP_Name[TOP_cvttpd2dq_x] = "cvttpd2dq";
-  OP_Name[TOP_cvtdq2pd_xx] = "cvtdq2pd";
-  OP_Name[TOP_cvtdq2ps_xx] = "cvtdq2ps";
-  OP_Name[TOP_cvtps2pd_xx] = "cvtps2pd";
-  OP_Name[TOP_cvtpd2ps_xx] = "cvtpd2ps";
-  OP_Name[TOP_cvttps2dq_xx] = "cvttps2dq";
-  OP_Name[TOP_cvttpd2dq_xx] = "cvttpd2dq";
-  OP_Name[TOP_cvtdq2pd_xxx] = "cvtdq2pd";
-  OP_Name[TOP_cvtdq2ps_xxx] = "cvtdq2ps";
-  OP_Name[TOP_cvtps2pd_xxx] = "cvtps2pd";
-  OP_Name[TOP_cvtpd2ps_xxx] = "cvtpd2ps";
-  OP_Name[TOP_cvttps2dq_xxx] = "cvttps2dq";
-  OP_Name[TOP_cvttpd2dq_xxx] = "cvttpd2dq";
-//**********************************************************
-// For barcelona (bug 13108)
-// (1) "movlpd reg, mem"  ==> "movsd reg, mem"
-// (2) "movsd reg, reg"   ==> "movapd reg, reg"
-// NOTE: there are regardless of CG_use_movlpd TRUE or FALSE
-//***********************************************************
-  if (CG_use_movlpd &&
-      !Is_Target_Pentium4() &&
-      !Is_Target_EM64T() &&
-      !Is_Target_Core() &&
-      !Is_Target_Barcelona()){// bug 10295
-    // Use movlpd only for loads.  Bug 5809.
+  if (CG_use_movlpd) {
     OP_Name[TOP_ldsd] = "movlpd";
     OP_Name[TOP_ldsd_n32] = "movlpd";
-    OP_Name[TOP_stsdx]  = "movsd";
-    OP_Name[TOP_stsdxx] = "movsd";
-    OP_Name[TOP_movsd] = "movsd"; 
+    OP_Name[TOP_stsdx]  = "movlpd";
+    OP_Name[TOP_stsdxx] = "movlpd";
+    OP_Name[TOP_movsd] = "movapd";
     OP_Name[TOP_ldsdx]  = "movlpd";
     OP_Name[TOP_ldsdxx] = "movlpd";
-    OP_Name[TOP_stsd] = "movsd";
-    OP_Name[TOP_stsd_n32] = "movsd";
-    OP_Name[TOP_storelpd] = "movlpd";
+    OP_Name[TOP_stsd] = "movlpd";
+    OP_Name[TOP_stsd_n32] = "movlpd";
   }
-  else{
+  else {
     OP_Name[TOP_ldsd] = "movsd";
     OP_Name[TOP_ldsd_n32] = "movsd";
     OP_Name[TOP_stsdx]  = "movsd";
@@ -1358,89 +1078,14 @@ static void Init_OP_Name()
     OP_Name[TOP_ldsdxx] = "movsd";
     OP_Name[TOP_stsd] = "movsd";
     OP_Name[TOP_stsd_n32] = "movsd";
-    OP_Name[TOP_storelpd] = "movsd";
-    if (Is_Target_Barcelona() ||
-	Is_Target_EM64T()     || // em64t
-	Is_Target_Core()) {	 // use movapd for woodcrest for bug 11548
-      OP_Name[TOP_movsd] = "movapd";  
-    }
   }
 
-  OP_Name[TOP_lock_add32] = "addl";
-  OP_Name[TOP_lock_adc32] = "adcl";
-  OP_Name[TOP_lock_add64] = "addq";
-
-  OP_Name[TOP_lock_cmpxchg32] = "cmpxchgl";
-  OP_Name[TOP_lock_cmpxchg64] = "cmpxchgq";
-
-  OP_Name[TOP_lock_and32] = "andl";
-  OP_Name[TOP_lock_and64] = "andq";
-
-  OP_Name[TOP_lock_or32] = "orl";
-  OP_Name[TOP_lock_or64] = "orq";
-
-  OP_Name[TOP_lock_xadd32] = "xaddl";
-  OP_Name[TOP_lock_xadd64] = "xaddq";
-
-  OP_Name[TOP_lock_xor32] = "xorl";
-  OP_Name[TOP_lock_xor64] = "xorq";
-
-  OP_Name[TOP_lock_sub32] = "subl";
-  OP_Name[TOP_lock_sub64] = "subq";
-
-  OP_Name[TOP_bsf32] = "bsfl";
-  OP_Name[TOP_bsf64] = "bsfq";
-  OP_Name[TOP_bsr32] = "bsrl";
-  OP_Name[TOP_bsr64] = "bsrq";
-
-  OP_Name[TOP_ld64_2m] = "movq";
-  OP_Name[TOP_ld64_2m_n32] = "movq";
-  OP_Name[TOP_store64_fm] = "movq";
-  OP_Name[TOP_store64_fm_n32] = "movq";
-  OP_Name[TOP_storent64_fm] = "movntq";
-  OP_Name[TOP_ld64_2sse] = "movq";
-  OP_Name[TOP_ld64_2sse_n32] = "movq";
-  OP_Name[TOP_store64_fsse] = "movq";
-  OP_Name[TOP_store64_fsse_n32] = "movq";
-  OP_Name[TOP_mov64_m] = "movq";
-  OP_Name[TOP_add64v8] = "paddb";
-  OP_Name[TOP_add64v16] = "paddw";
-  OP_Name[TOP_add64v32] = "paddd";
-  OP_Name[TOP_sub64v8] = "psubb";
-  OP_Name[TOP_sub64v16] = "psubw";
-  OP_Name[TOP_sub64v32] = "psubd";
-  OP_Name[TOP_punpckl64v8] = "punpcklbw",
-  OP_Name[TOP_punpckl64v16] = "punpcklwd",
-  OP_Name[TOP_punpckl64v32] = "punpckldq";
-  OP_Name[TOP_max64v8] = "pmaxub";
-  OP_Name[TOP_max64v16] = "pmaxsw";
-  OP_Name[TOP_min64v8] = "pminub";
-  OP_Name[TOP_min64v16] = "pminsw";
-  OP_Name[TOP_movi32_2m] = "movd";
-  OP_Name[TOP_movi64_2m] = "movd";
-  OP_Name[TOP_movm_2i32] = "movd";
-  OP_Name[TOP_movm_2i64] = "movd";
-  OP_Name[TOP_pmovmskb128] = "pmovmskb";
-  OP_Name[TOP_psrlq128v64] = "psrlq";
-  OP_Name[TOP_storenti128] = "movntdq";
-  OP_Name[TOP_pshufw64v16] = "pshufw";
-  OP_Name[TOP_psllw_mmx] = "psllw";
-  OP_Name[TOP_pslld_mmx] = "pslld";
-  OP_Name[TOP_psrlw_mmx] = "psrlw";
-  OP_Name[TOP_psrld_mmx] = "psrld";
-  OP_Name[TOP_psraw_mmx] = "psraw";
-  OP_Name[TOP_psrad_mmx] = "psrad";
-  OP_Name[TOP_pand_mmx] = "pand";
-  OP_Name[TOP_pandn_mmx] = "pandn";
-  OP_Name[TOP_por_mmx] = "por";
-  OP_Name[TOP_pxor_mmx] = "pxor";
   return;
 }
 
 
 /* bug#1592 */
-// bug 3699
-#define NAME_LEN 8192
+#define NAME_LEN 1024
 
 enum OPND_REG { BYTE_REG = 0, WORD_REG, DWORD_REG, QWORD_REG, SSE2_REG };
 
@@ -1472,9 +1117,8 @@ static enum OPND_REG Get_Opnd_Reg( TOP topcode, int opnd )
      Also, don't count on TN_size().
    */
   if( Is_Target_32bit()           &&
-      ( ( TOP_is_cond_move( topcode ) &&
-	  !TOP_is_flop( topcode ) ) ||
-	TOP_is_ijump( topcode ) ) ) {
+      TOP_is_cond_move( topcode ) &&
+      !TOP_is_flop( topcode ) ){
     num_bits = 32;
   }
 
@@ -1501,41 +1145,14 @@ static void Str_Prepend( char* str, char c )
   str[0] = c;
 }
 
-static const char* int_reg_names[4][16] = {
-  /* BYTE_REG: low 8-bit */
-  { "%al", "%bl", "%bpl", "%spl", "%dil", "%sil", "%dl", "%cl",
-    "%r8b",  "%r9b",  "%r10b", "%r11b", "%r12b", "%r13b", "%r14b", "%r15b" },
-  /* WORD_REG: 16-bit */
-  { "%ax", "%bx", "%bp", "%sp", "%di", "%si", "%dx", "%cx",
-    "%r8w",  "%r9w",  "%r10w", "%r11w", "%r12w", "%r13w", "%r14w", "%r15w" },
-  /* DWORD_REG: 32-bit */
-  { "%eax", "%ebx", "%ebp", "%esp", "%edi", "%esi", "%edx", "%ecx",
-    "%r8d",  "%r9d",  "%r10d", "%r11d", "%r12d", "%r13d", "%r14d", "%r15d" },
-  /* QWORD_REG: 64-bit */
-  { "%rax", "%rbx", "%rbp", "%rsp", "%rdi", "%rsi", "%rdx", "%rcx",
-    "%r8",  "%r9",  "%r10", "%r11", "%r12", "%r13", "%r14", "%r15" },
-};
 
 static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
 {
   const TOP topcode = OP_code( op );
 
   if( TOP_is_ijump( topcode ) &&
-      ( opnd == OP_find_opnd_use(op,OU_target) ||
-	opnd == OP_find_opnd_use(op,OU_offset) ) ){
-    if ( Is_Target_32bit() ) { // Bug 4666
-      const enum OPND_REG opnd_reg = Get_Opnd_Reg( topcode, opnd );
-      const ISA_REGISTER_CLASS rc = ISA_REGISTER_CLASS_integer;
-      
-      for( REGISTER reg = REGISTER_MIN; 
-	   reg <= REGISTER_CLASS_last_register( rc ); reg++ ){
-	const char* n = REGISTER_name( rc, reg );
-	if( strcmp( n, name ) == 0 ){
-	  strcpy( name, int_reg_names[opnd_reg][reg-REGISTER_MIN] );
-	  break;
-	}
-      }      
-    }
+      ( opnd == TOP_Find_Operand_Use(topcode,OU_target) ||
+	opnd == TOP_Find_Operand_Use(topcode,OU_offset) ) ){
     Str_Prepend( name, '*' );
     return;
   }
@@ -1551,7 +1168,6 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
     // Bug 578
     // Add a reference to the PLT under -fPIC compilation.
     if ( Gen_PIC_Shared &&  
-	 !TN_is_label( OP_opnd(op,0) ) &&
 	 ( topcode == TOP_call || 
 	   // tail-call optimization 
 	   ( topcode == TOP_jmp && !TN_is_label( OP_opnd( op, 0))))) {
@@ -1560,15 +1176,11 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
         strcat( name, "@PLT" );
     }
 
-    if (name[0] != '$' &&   /* A '$' has been added by CGEMIT_Relocs_In_Asm() */
-	(opnd != OP_find_opnd_use(op,OU_offset) &&
-	 opnd != OP_find_opnd_use(op,OU_scale)  &&
-	 opnd != OP_find_opnd_use(op,OU_target)) &&
-	// Constant is not 32-bit ABI thread-local symbol offset.
-	(!(Is_Target_32bit() &&
-	   (TN_relocs(OP_opnd(op, opnd)) == TN_RELOC_X8664_TPOFF32 ||
-	    TN_relocs(OP_opnd(op, opnd)) == TN_RELOC_X8664_GOTTPOFF)))) {
-      Str_Prepend(name, '$');
+    if( name[0] != '$' &&   /* A '$' has been added by CGEMIT_Relocs_In_Asm() */
+	( opnd != TOP_Find_Operand_Use(topcode,OU_offset) &&
+	  opnd != TOP_Find_Operand_Use(topcode,OU_scale)  &&
+	  opnd != TOP_Find_Operand_Use(topcode,OU_target) ) ){
+      Str_Prepend( name, '$' );
     }
 
     // Bug 506
@@ -1591,6 +1203,21 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
     return;
 
   if( ISA_OPERAND_VALTYP_Register_Class(vtype) == ISA_REGISTER_CLASS_integer ){
+    static const char* int_reg_names[4][16] = {
+      /* BYTE_REG: low 8-bit */
+      { "%al", "%bl", "%bpl", "%spl", "%dil", "%sil", "%dl", "%cl",
+	"%r8b",  "%r9b",  "%r10b", "%r11b", "%r12b", "%r13b", "%r14b", "%r15b" },
+      /* WORD_REG: 16-bit */
+      { "%ax", "%bx", "%bp", "%sp", "%di", "%si", "%dx", "%cx",
+	"%r8w",  "%r9w",  "%r10w", "%r11w", "%r12w", "%r13w", "%r14w", "%r15w" },
+      /* DWORD_REG: 32-bit */
+      { "%eax", "%ebx", "%ebp", "%esp", "%edi", "%esi", "%edx", "%ecx",
+	"%r8d",  "%r9d",  "%r10d", "%r11d", "%r12d", "%r13d", "%r14d", "%r15d" },
+      /* QWORD_REG: 64-bit */
+      { "%rax", "%rbx", "%rbp", "%rsp", "%rdi", "%rsi", "%rdx", "%rcx",
+	"%r8",  "%r9",  "%r10", "%r11", "%r12", "%r13", "%r14", "%r15" },
+    };
+
     const enum OPND_REG opnd_reg = Get_Opnd_Reg( topcode, opnd );
     const ISA_REGISTER_CLASS rc = ISA_REGISTER_CLASS_integer;
 
@@ -1611,16 +1238,6 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
 }
 
 
-// Return x86 segment prefix override.
-static const char *
-Segment_Prefix (OP *op)
-{
-  if (CGTARG_Is_Thread_Local_Memory_OP(op)) {
-    return Is_Target_32bit() ? "%gs:" : "%fs:";
-  }
-  return "";
-}
-
 INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f )
 {
   Init_OP_Name();
@@ -1637,12 +1254,7 @@ INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f
      Collect all the opnds and result info. */
 
   const char* p = OP_Name[topcode] == NULL ? TOP_Name(topcode) : OP_Name[topcode];
-
-  if( OP_prefix_lock( op ) )
-    sprintf( op_name, "lock %s", p );
-  else
-    strcpy( op_name, p );
-
+  strcpy( op_name, p );
 
   INT i = 0, opnd_i = 0, result_i = 0;
 
@@ -1657,32 +1269,20 @@ INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f
     case ISA_PRINT_COMP_opnd+3:
     case ISA_PRINT_COMP_opnd+4:
     case ISA_PRINT_COMP_opnd+5:
-      Is_True(10 + strlen(opnd[comp - ISA_PRINT_COMP_opnd])
-	        < sizeof(opnd_name[opnd_i]),
-	      ("buffer size is too small") );
-      strcpy(opnd_name[opnd_i], opnd[comp - ISA_PRINT_COMP_opnd]);
-      Adjust_Opnd_Name(op, comp - ISA_PRINT_COMP_opnd, opnd_name[opnd_i]);
+      Is_True( 10+strlen(opnd[comp - ISA_PRINT_COMP_opnd]) < sizeof(opnd_name[opnd_i]),
+	       ("buffer size is too small") );
+      strcpy( opnd_name[opnd_i], opnd[comp - ISA_PRINT_COMP_opnd] );
+      Adjust_Opnd_Name( op, comp - ISA_PRINT_COMP_opnd, opnd_name[opnd_i] );
       opnd_i++;
       break;
 
     case ISA_PRINT_COMP_result:
     case ISA_PRINT_COMP_result+1:
-      Is_True(10 + strlen(result[comp - ISA_PRINT_COMP_result])
-	        < sizeof(result_name[result_i]),
-	      ("buffer size is too small"));
-      strcpy(result_name[result_i], result[comp - ISA_PRINT_COMP_result]);
-      Adjust_Opnd_Name(op, -1, result_name[result_i]);
+      Is_True( 10+strlen(result[comp - ISA_PRINT_COMP_result]) < sizeof(result_name[result_i]),
+	       ("buffer size is too small") );
+      strcpy( result_name[result_i], result[comp - ISA_PRINT_COMP_result] );
+      Adjust_Opnd_Name( op, -1, result_name[result_i] );
       result_i++;
-      break;
-
-    case ISA_PRINT_COMP_segment:
-      {
-	const char *segment_prefix = Segment_Prefix(op);
-	Is_True(10 + strlen(segment_prefix) < sizeof(opnd_name[opnd_i]),
-		("buffer size is too small"));
-	strcpy(opnd_name[opnd_i], segment_prefix);
-	opnd_i++;
-      }
       break;
 
     case ISA_PRINT_COMP_name:
@@ -1690,8 +1290,8 @@ INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f
       break;
 
     default:
-      FmtAssert(false, ("Unhandled listing component %d for %s",
-			comp, TOP_Name(topcode)));
+      FmtAssert( false, ("Unhandled listing component %d for %s",
+			 comp, TOP_Name(topcode)) );
     }
 
     i++;
@@ -1721,44 +1321,7 @@ INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f
 
 void CGEMIT_Setup_Ctrl_Register( FILE* f )
 {
-  // Set x87 precision (32/64/80-bit).  Bug 4327.
-  int x87_mask;
-  switch (Target_x87_precision()) {
-    case 32:  x87_mask = 0; break;	// single precision
-    case 64:  x87_mask = 0x200; break;	// double precision
-    case 80:  x87_mask = 0x300; break;	// double-extended precision
-    default:  FmtAssert(FALSE,
-			("CGEMIT_Setup_Ctrl_Register: invalid x87 precision"));
-  }
-  // If trapuv, turn on exception for invalid operands.
-  unsigned int x86_cntrl_mask = DEBUG_Trap_Uv ? 0xfcfe : 0xfcff;
-  if( Is_Target_64bit() ){
-    fprintf( f, "\taddq    $-8,%%rsp\n"             );
-    fprintf( f, "\tfnstcw  (%%rsp)\n"               );
-    fprintf( f, "\tandw    $0x%x,(%%rsp)\n", x86_cntrl_mask);
-    fprintf( f, "\torw     $%d,(%%rsp)\n", x87_mask );
-    fprintf( f, "\tfldcw   (%%rsp)\n"               );
-    fprintf( f, "\taddq    $8,%%rsp\n"              );
-  } else {
-    fprintf( f, "\taddl    $-4,%%esp\n"             );
-    fprintf( f, "\tfnstcw  (%%esp)\n"               );
-    fprintf( f, "\tandw    $0x%x,(%%esp)\n", x86_cntrl_mask);
-    fprintf( f, "\torw     $%d,(%%esp)\n", x87_mask );
-    fprintf( f, "\tfldcw   (%%esp)\n"               );
-    fprintf( f, "\taddl    $4,%%esp\n"              );
-  }
-
-  BOOL is_MAIN__ = !strcmp(Cur_PU_Name, "MAIN__");
-
-  if (IEEE_Arithmetic <= IEEE_ACCURATE &&
-      !is_MAIN__ &&
-      SIMD_IMask &&
-      SIMD_DMask &&
-      SIMD_ZMask &&
-      SIMD_OMask &&
-      SIMD_UMask &&
-      SIMD_PMask &&
-      !DEBUG_Trap_Uv)
+  if (IEEE_Arithmetic <= IEEE_ACCURATE)
     return;
 
   /* The following sequence of code is used to turn off
@@ -1766,70 +1329,21 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
    */
 
   const int mask = 32768 ;
-  const int simd_imask = 0xff7f; // bit 7 : f f 0111 f
-  const int simd_dmask = 0xfeff; // bit 8 : f 1110 f f
-  const int simd_zmask = 0xfdff; // bit 9 : f 1101 f f
-  const int simd_omask = 0xfbff; // bit 10: f 1011 f f
-  const int simd_umask = 0xf7ff; // bit 11: f 0111 f f
-  const int simd_pmask = 0xefff; // bit 12: 1110 f f f
-  // bits 16..31 are 0, and must remain 0
 
   if( Is_Target_64bit() ){
     fprintf( f, "\t%s\n", "addq    $-8,%rsp"      );
     fprintf( f, "\t%s\n", "stmxcsr (%rsp)"        );
-    if (IEEE_Arithmetic > IEEE_ACCURATE)
-      fprintf( f, "\torq $%d, (%%rsp)\n", mask);
-    else if (is_MAIN__)				// bug 8926
-      fprintf( f, "\tandq $%d, (%%rsp)\n", ~mask);
-    if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_imask );
-    if ( !SIMD_DMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_dmask );
-    if ( !SIMD_ZMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_zmask );
-    if ( !SIMD_OMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_omask );
-    if ( !SIMD_UMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_umask );
-    if ( !SIMD_PMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_pmask );
+    fprintf( f, "\torq $%d, (%%rsp)\n", mask);
     fprintf( f, "\t%s\n", "ldmxcsr (%rsp)"        );
     fprintf( f, "\t%s\n", "addq    $8,%rsp"       );
 
   } else {
     fprintf( f, "\t%s\n", "addl    $-8,%esp"      );
     fprintf( f, "\t%s\n", "stmxcsr (%esp)"        );
-    if (IEEE_Arithmetic > IEEE_ACCURATE)
-      fprintf( f, "\torl $%d, (%%esp)\n", mask);
-    else if (is_MAIN__)				// bug 8926
-      fprintf( f, "\tandl $%d, (%%esp)\n", ~mask);
-    if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_imask );
-    if ( !SIMD_DMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_dmask );
-    if ( !SIMD_ZMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_zmask );
-    if ( !SIMD_OMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_omask );
-    if ( !SIMD_UMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_umask );
-    if ( !SIMD_PMask)
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_pmask );
+    fprintf( f, "\torl $%d, (%%esp)\n", mask);
     fprintf( f, "\t%s\n", "ldmxcsr (%esp)"        );
     fprintf( f, "\t%s\n", "addl    $8,%esp"       );
   }
 
   return;
-}
-
-// Emits function used to retrieve the Instruction Pointer (bug 9675)
-void CGEMIT_Setup_IP_Calc (void)
-{
-  fprintf (Asm_File, "\n\t.section .gnu.linkonce.t.%s,\"ax\",@progbits\n", ip_calc_funcname);
-  fprintf (Asm_File, "\t.globl %s\n", ip_calc_funcname);
-  fprintf (Asm_File, "\t.hidden %s\n", ip_calc_funcname);
-  fprintf (Asm_File, "\t.type %s, @function\n", ip_calc_funcname);
-  fprintf (Asm_File, "%s:\n", ip_calc_funcname);
-  fprintf (Asm_File, "\tmovl (%%esp),%%ebx\n");
-  fprintf (Asm_File, "\tret\n");
 }

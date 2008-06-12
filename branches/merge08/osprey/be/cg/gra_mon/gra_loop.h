@@ -57,7 +57,7 @@ friend class GRA_LOOP_MGR;
   INT          nest_level; 	// nesting level of the loop
   BB*	       loop_head; 	// bb at head of loop
 #ifdef KEY
-  LOOP_DESCR   *loop_descr;	// the LOOP_DESCR for this loop
+  LOOP_DESCR  *loop_descr;	// the LOOP_DESCR for this loop
 #endif
 
   void Registers_Used_Init(ISA_REGISTER_CLASS rc) 
@@ -89,7 +89,6 @@ public:
   // non-inlined member functions
   void Make_Register_Used(ISA_REGISTER_CLASS rc, REGISTER reg,
 			  BOOL reclaim = FALSE);
-
 #ifdef KEY
   REGISTER_SET Registers_Referenced(ISA_REGISTER_CLASS rc);
 #endif

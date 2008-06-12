@@ -570,8 +570,8 @@ void SCALAR_INFO::WB_Print(FILE* fp,
 
 void REGION_ARRAYS::WB_Print(FILE* fp,
                              INT region_index,
-			     char* name,
-			     char* func_name)
+			     const char* name,
+			     const char* func_name)
 { 
   if (func_name == NULL || func_name[0] == '\0')
     fprintf(fp, "REGION[%d]: SYMBOL[%d] \"%s\" ", region_index,

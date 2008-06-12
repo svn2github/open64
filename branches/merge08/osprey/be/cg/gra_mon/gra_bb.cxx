@@ -50,10 +50,10 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_bb.cxx,v $
+//  $Revision: 1.15 $
+//  $Date: 05/06/01 16:54:32-07:00 $
+//  $Author: tkong@hyalite.keyresearch $
+//  $Source: be/cg/gra_mon/SCCS/s.gra_bb.cxx $
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -887,6 +887,9 @@ GRA_BB::Is_Region_Block(BOOL swp_too)
 {
   RID* rid = Region()->Rid();
   if (rid && rid != Current_Rid &&
+#if defined(TARG_SL)
+      (RID_type(rid) != RID_TYPE_hot) &&
+#endif
       (RID_type(rid) != RID_TYPE_swp || swp_too == TRUE)) {
     return TRUE;
   }

@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,10 +41,10 @@
  * =======================================================================
  *
  *  Module: ebo_special.h
- *  $Revision: 1.1.1.1 $
- *  $Date: 2005/10/21 19:00:00 $
- *  $Author: marcel $
- *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/ebo_special.h,v $
+ *  $Revision: 1.25 $
+ *  $Date: 05/12/05 08:59:06-08:00 $
+ *  $Author: bos@eng-24.pathscale.com $
+ *  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.ebo_special.h $
  *
  *  Revision comments:
  *

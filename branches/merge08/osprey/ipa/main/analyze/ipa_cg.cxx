@@ -351,7 +351,7 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
         SUMMARY_SYMBOL* sym_array = IPA_get_symbol_file_array(node->File_Header(), sym_size);
         FmtAssert (sym_array != NULL, ("Missing SUMMARY_SYMBOL section"));
                                                                                 
-        INITV_IDX tinfo = INITV_next (INITV_next (INITO_val (PU_misc_info (node->Get_PU())));
+        INITV_IDX tinfo = INITV_next (INITV_next (INITO_val (PU_misc_info (node->Get_PU()))));
         INITO_IDX inito = TCON_uval (INITV_tc_val (tinfo));
         if (inito)
         {

@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: cgexp.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cgexp.h,v $
+ * $Revision: 1.26 $
+ * $Date: 06/01/04 18:49:38-08:00 $
+ * $Author: tkong@hyalite.keyresearch $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cgexp.h $
  *
  * Description:
  * ------------
@@ -108,8 +108,13 @@ extern void Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3,
 /* Generate code to load the address of 'sym'+'ofst' into 'tgt_tn'. 
  * The 'call_opr' parameter indicates whether the LDA is for a call.
  */
+#if defined(TARG_SL)
+extern void Exp_Lda (
+  TYPE_ID mtype, TN *tgt_tn, ST *sym, INT64 ofst, OPERATOR call_opr, OPS *ops,  BOOL is_internal_mem_ofst = FALSE);
+#else 
 extern void Exp_Lda (
   TYPE_ID mtype, TN *tgt_tn, ST *sym, INT64 ofst, OPERATOR call_opr, OPS *ops);
+#endif
 
 /* Generate code to load memory location 'sym'+'ofst' into 'tgt_tn',
  * with rtype & desc explicitly given
@@ -133,7 +138,7 @@ extern void Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops);
 #if defined(TARG_X8664) || defined(TARG_MIPS)
 /* Generate a copy from 'src_tn' to 'tgt_tn' with zero/sign extension. */
 extern void Exp_COPY_Ext (TOP opcode, TN *tgt_tn, TN *src_tn, OPS *ops); 
-#endif /* TARG_X8664 or TARG_MIPS */
+#endif /* TARG_X8664 or TARG_MIPS  */
 
 /* Given a simulated <op>, expand it into the sequence of instructions
  * that must be generated. The <pc_value> is the PC location of the 
@@ -156,6 +161,14 @@ extern TN * Exp_Intrinsic_Call (
   INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops, 
   LABEL_IDX *label, OPS *loop_ops);
 
+#if defined(TARG_SL)
+/* Expansion of co-processor instructions */
+extern TN * Exp_SL_Intrinsic_Call (INTRINSIC id, WN *intrncall, OPS *ops,
+				     LABEL_IDX *label, OPS *loop_ops, TN* result = NULL);
+TN* 
+Build_SL_Intrinsic_OP( INTRINSIC id, WN* intrncall, OPS *ops, TN* result =NULL);
+#endif
+
 #ifdef TARG_X8664
 /* Expansion of INTRN_SAVEXMMS into TOP_savexmms pseudo instruction */
 extern void Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label, 
@@ -163,7 +176,7 @@ extern void Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label,
 
 extern void Exp_Landingpadentry_Intrinsic (ST *dest1, ST *dest2, OPS* ops);
 
-extern TN*  Exp_Fetch_and_Add( TN*, TN*, TYPE_ID, OPS* );
+extern void Exp_Fetch_and_Add( TN*, TN*, TYPE_ID, OPS* );
 extern void Exp_Fetch_and_And( TN*, TN*, TYPE_ID, OPS* );
 extern void Exp_Fetch_and_Or( TN*, TN*, TYPE_ID, OPS* );
 extern void Exp_Fetch_and_Xor( TN*, TN*, TYPE_ID, OPS* );
@@ -176,7 +189,7 @@ extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op
 #else 
 
 /* expand intrinsic op */
-extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, OPS *ops);
+extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TYPE_ID mtype, OPS *ops);
 #endif // TARG_X8664
 
 /* Expand TN(const) into a sequence of ops (used in prolog)
@@ -213,6 +226,20 @@ extern void Exp_Select_And_Condition (
         OPCODE select, TN *result, TN *true_tn, TN *false_tn,
         OPCODE compare, TN *cmp_kid1, TN *cmp_kid2, VARIANT variant, OPS *ops);
 
+#if defined(TARG_SL)
+extern BOOL Exp_Opt_Select_And_Condition (WN * select, TN * result, TN * true_tn,
+        TN * false_tn, TN * cmp_kid1, TN * cmp_kid2, OPS * ops);
+extern void Exp_2inst_MC_Zero (TOP mc_op, TN* dest_tn, TN* true_tn, TN* false_tn, 
+        TN* cond_tn, int unsignedflag, OPS* ops );
+extern void Build_MC_OP (TOP mc_op, TN *result, TN *rs1, TN *rs2, int unsignedflag,
+        OPS *ops, OP_COND_DEF_KIND kind);
+#endif
+
+#if defined(TARG_SL)
+extern LABEL_IDX Exp_Select_Part1(
+        OPCODE select, TN *result, TN *true_tn, TN *false_tn,
+        OPCODE compare, TN *cmp_kid1, TN *cmp_kid2, OPS *ops);
+#endif
 
 /*
  * By default, when we expand multi-instruction sequences, we use a new
@@ -248,15 +275,14 @@ extern void Exp_Extract_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset,
 extern void Exp_Deposit_Bits (TYPE_ID rtype, TYPE_ID desc, 
 			      UINT bit_offset, UINT bit_size, 
 			      TN *tgt_tn, TN *src1_tn, TN *src2_tn, OPS *ops);
+
 #ifdef TARG_X8664
 /* generate instructions to set a bit field to all 1's */
 extern void Exp_Set_Bits (TYPE_ID rtype, TYPE_ID desc,
 			      UINT bit_offset, UINT bit_size, 
 			      TN *tgt_tn, TN *src1_tn, OPS *ops);
-#endif
 
 /* expand return instruction */
-#ifdef TARG_X8664
 extern void Exp_Return (TN *return_address, int sp_adjust, OPS *ops);
 #else
 extern void Exp_Return (TN *return_address, OPS *ops);
@@ -325,6 +351,12 @@ extern void Exp_Pred_Compare(TN *dest, TN *cdest, TN *src1, TN *src2,
  * True if target can, false if should use target-independent logic.
  */
 extern BOOL Target_Has_Immediate_Operand (WN *parent, WN *expr);
+
+#if defined(TARG_SL) 
+extern TN * Expand_Expr (WN *expr, WN *parent, TN *result, INTRINSIC intrn_id = INTRINSIC_INVALID);
+#else 
+extern TN * Expand_Expr (WN *expr, WN *parent, TN *result);
+#endif 
 
 #ifdef TARG_X8664
 extern void CG_Set_Is_Stack_Used();

@@ -2586,7 +2586,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
 #endif
 
 
-#if !(defined(TARG_X9664) || defined(TARG_IA64)) //bug 10953
+#if !(defined(TARG_X8664) || defined(TARG_IA64)) //bug 10953
    WN* pfnode = LWN_CreatePrefetch (offset, flag, arraynode);
 #else //bug 10953
    WN* pfnode=NULL;
@@ -3515,8 +3515,10 @@ static BOOL Pseudo_Temporal_Locality(WN *array)
   //and stride(non-constant) may varies between executions
   //of the loop(NOT different iters!!!)
   //TODO: ...
+#if (defined(TARG_X8664) || defined(TARG_IA64)) //bug 10953
   if(Simple_Invariant_Stride_Access(array, loop))
     return TRUE;
+#endif
 
   return FALSE;
 }
