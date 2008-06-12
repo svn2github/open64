@@ -6315,21 +6315,13 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 	    {
 	      arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
-#ifdef TARG_IA64
-	      if (MTYPE_is_integral(ret_mtype)) {
-		  wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
-	      }
-	      else {
-                  wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F8, arg_wn);
-	          wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
-	      }
-#elif TARG_MIPS  // bug 12594: call library function for floor
+#if defined TARG_MIPS  // bug 12594: call library function for floor
               iopc = INTRN_FLOOR;
               intrinsic_op = TRUE;
 #else	      
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
+              whirl_generated = TRUE;
 #endif
-	      whirl_generated = TRUE;
 	      break;
             }
 
@@ -6339,22 +6331,14 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 	    {
 	      arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
-#ifdef TARG_IA64
-              if (MTYPE_is_integral(ret_mtype)) {
-		  wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
-	      }
-	      else {
-	          wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F4, arg_wn);
-		  wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
-	      }
-#elif TARG_MIPS  // bug 12594: call library function for floor
+#if defined TARG_MIPS  // bug 12594: call library function for floor
               iopc = INTRN_FLOORF;
               intrinsic_op = TRUE;
 #else
 	      
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+              whirl_generated = TRUE;
 #endif
-	      whirl_generated = TRUE;
 	      break;
             }
 
@@ -6365,13 +6349,7 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
               arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
 #ifdef TARG_IA64
-              if (MTYPE_is_integral(ret_mtype)) {
-		  wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
-	      }
-              else {
-		  wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F10, arg_wn);
-		  wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
-	      }
+	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
 #else	      
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
 #endif

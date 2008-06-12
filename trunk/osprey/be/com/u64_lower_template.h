@@ -415,9 +415,13 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
     if (! MTYPE_is_integral(res) || res == MTYPE_B)
       return U64_LOWER_form_node(new_nd, tree);
     // fall thru
-  case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
+  case OPR_RND: case OPR_TRUNC: case OPR_CEIL:
     U64_LOWER_set_rtype(new_nd, Mtype_TransferSize(MTYPE_A8, res));
     maxsize = 64;
+
+    // OSP, do not change rtype of FLOOR into A8
+    // fall thru 
+  case OPR_FLOOR:
     return U64_LOWER_form_node(new_nd, tree);
 
   // binary ops
