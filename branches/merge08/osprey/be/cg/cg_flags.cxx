@@ -59,6 +59,7 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
+#include "config_targ.h"
 #include "cg_flags.h"
 #include "cgtarget.h"
 
@@ -479,3 +480,20 @@ BOOL CG_Enable_Cycle_Count = FALSE;
 BOOL Cycle_PU_Enable = FALSE;  
 BOOL Cycle_BB_Enable = FALSE;  
 const char *Cycle_String = "";
+
+#ifdef TARG_NVISA
+// treat auto stack variables as statics put in local space
+BOOL CGEXP_auto_as_static = TRUE;
+BOOL CGEXP_gen_ccodes = TRUE;
+
+BOOL CG_vector_loadstore = TRUE;	// emit vector loads and stores
+
+BOOL CG_rematerialize_grf = TRUE;
+
+BOOL CG_remove_typeconv = FALSE; // type conversion removal optimization
+
+BOOL CG_optimize_copies = FALSE; // leave off as OCG seems to handle this now
+
+BOOL CG_use_16bit_ops = TRUE;    // try to replace 32bit ops with 16bit ops
+BOOL CG_skip_local_16bit = FALSE;
+#endif

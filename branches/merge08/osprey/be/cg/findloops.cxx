@@ -343,8 +343,10 @@ LOOP_DESCR_Detect_Loops (MEM_POOL *pool)
 	continue;
       }
 
+#ifndef TARG_NVISA
       if (CFLOW_Trace_Freq)
         fprintf (TFile, "BACK EDGE from %d to %d\n", BB_id(bb), BB_id(succ));
+#endif
 
       newloop = TYPE_L_ALLOC (LOOP_DESCR);
       loop_set = BB_SET_Create_Empty (PU_BB_Count + 2, pool);
@@ -594,6 +596,7 @@ LOOP_DESCR_Can_Retarget_Loop_Entrances(LOOP_DESCR *loop)
   return TRUE;
 }
 
+#ifndef TARG_NVISA
 /* ====================================================================
  * See "findloops.h" for interface description.
  * ====================================================================
@@ -616,6 +619,7 @@ LOOP_DESCR_Estimate_Cycles(LOOP_DESCR *loop)
 
   return avg_cycles;
 }
+#endif
 
 /* ====================================================================
  * See "findloops.h" for interface description.

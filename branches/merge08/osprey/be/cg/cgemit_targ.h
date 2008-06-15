@@ -96,3 +96,14 @@ extern void CGEMIT_Setup_Ctrl_Register( FILE* f );
 #ifdef TARG_SL
 extern void CGEMIT_Prn_Used_Callersaved_In_Asm (void);
 #endif
+#ifdef TARG_NVISA
+// emit any global declarations (e.g. regs) at top of file
+extern void CGEMIT_Global_Decls (void);
+// emit prototype and info about registers used
+extern void CGEMIT_Function_Definition (ST *);
+// emit call instruction with parameters
+extern void CGEMIT_Call (OP *);
+// emit info about variable memory
+extern void CGEMIT_Print_Variable (ST *);
+extern void CGEMIT_Print_Initialized_Variable (ST *, INITO *);
+#endif

@@ -80,6 +80,9 @@ extern void Expand_Float_Greater_Equal (TN *dest, TN *src1, TN *src2, VARIANT va
 extern void Expand_Float_Equal (TN *dest, TN *src1, TN *src2, VARIANT variant, TYPE_ID mtype, OPS *ops);
 extern void Expand_Float_Not_Equal (TN *dest, TN *src1, TN *src2, VARIANT variant, TYPE_ID mtype, OPS *ops);
 extern void Expand_Convert_Length (TN *dest, TN *src, TN *length, TYPE_ID mtype, BOOL signed_extension, OPS *ops);
+#ifdef TARG_NVISA
+extern void Expand_Convert (TN *result, TYPE_ID rtype, TN *src, TYPE_ID stype, OPS *ops);
+#endif
 #if defined(TARG_X8664) || defined(TARG_MIPS)
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 #else
@@ -176,3 +179,7 @@ extern void Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
 extern void Expand_Float_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Float_Recip (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
+#ifdef TARG_NVISA
+extern INT Mtype_Index (TYPE_ID mtype);
+extern void Exp_Ldst_Init(void);
+#endif

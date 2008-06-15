@@ -236,7 +236,15 @@ struct tn {
   } u1;
   /* offset 8 */
   mUINT16	flags;		/* Attribute flags */
+#ifdef TARG_NVISA
+  /* nvisa doesn't use relocs, needs space info, so overlap space and relocs */
+  union {
+    mUINT8	relocs;		/* Relocation flags (for symbol TNs) */
+    mUINT8	space;		/* memory space associated with tn */
+  } urs;
+#else
   mUINT8	relocs;		/* Relocation flags (for symbol TNs) */
+#endif
   mUINT8	size;		/* Size of the TN in bytes (must be <= 16) */
   /* offset 12 */
   union {
@@ -248,6 +256,9 @@ struct tn {
       WN        *home;		/* Whirl home if rematerializable */
     } u3;
   } u2;
+#ifdef TARG_NVISA
+  mBOOL from_shared_load;
+#endif
 };
 
 
@@ -274,6 +285,22 @@ struct tn {
 #ifdef TARG_IA64
 #define TN_TAKE_NAT         0X4000  /* TN (gr,fpr) may take NaT bit */
 #endif
+
+#ifdef TARG_NVISA
+#define TN_BOOLEAN	0x4000	/* TN is boolean value */
+/* overlap ONE_DEF with unused GRA_CANNOT_SPLIT */
+#define TN_ONE_DEF	0x2000	/* TN has single definition */
+#define TN_MEMORY_SPACE	0x8000	/* TN has memory space */
+
+/* flag memory space associated with tn */
+#define TN_GLOBAL_SPACE 0x1 
+#define TN_SHARED_SPACE 0x2
+#define TN_CONST_SPACE 0x4
+#define TN_LOCAL_SPACE 0x8
+#define TN_PARAM_SPACE 0x10
+#define TN_TEXTURE_SPACE 0x20
+#endif
+
 #if defined(TARG_SL)
 #define TN_V1BUF_ADDR       0x4000  /* the tn is v1buf address in iload/istore*/
 #endif
@@ -384,8 +411,13 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 	return (TN*)t;
 }
 
+#ifdef TARG_NVISA
+#define     TN_relocs(t)	(CAN_USE_TN(t)->urs.relocs)
+#define Set_TN_relocs(t,x)	(CAN_USE_TN(t)->urs.relocs = (x))
+#else
 #define     TN_relocs(t)	(CAN_USE_TN(t)->relocs)
 #define Set_TN_relocs(t,x)	(CAN_USE_TN(t)->relocs = (x))
+#endif // TARG_NVISA
 #define     TN_size(t)		(CAN_USE_TN(t)->size+0)
 #define Set_TN_size(t,x)	(CAN_USE_TN(t)->size = (x))
 #define     TN_number(t)	(CAN_USE_REG_TN(t)->u1.reg_tn.number+0)
@@ -474,6 +506,37 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define        TN_is_take_nat(r)   (TN_flags(r) &   TN_TAKE_NAT)
 #define    Set_TN_is_take_nat(r)   (TN_flags(r) |=  TN_TAKE_NAT)
 #define  Reset_TN_is_take_nat(r)   (TN_flags(r) &= ~TN_TAKE_NAT) 
+#endif
+
+#ifdef TARG_NVISA
+#define      TN_is_boolean(r)  	(TN_flags(r) &   TN_BOOLEAN)
+#define  Set_TN_is_boolean(r)  	(TN_flags(r) |=  TN_BOOLEAN)
+#define Reset_TN_is_boolean(r) 	(TN_flags(r) &= ~TN_BOOLEAN)
+
+#define	     TN_has_one_def(r)	TN_is_gra_cannot_split(r)
+#define	 Set_TN_has_one_def(r)	Set_TN_is_gra_cannot_split(r)
+#define	Reset_TN_has_one_def(r)	Reset_TN_is_gra_cannot_split(r)
+#define      TN_has_memory_space(r)  (TN_flags(r) &   TN_MEMORY_SPACE)
+#define  Set_TN_has_memory_space(r)  (TN_flags(r) |=  TN_MEMORY_SPACE)
+#define Reset_TN_has_memory_space(r) (TN_flags(r) &= ~TN_MEMORY_SPACE)
+#define     TN_memory_space(t)		(CAN_USE_TN(t)->urs.space)
+#define Set_TN_memory_space(t,x)	(Set_TN_has_memory_space(t), CAN_USE_TN(t)->urs.space = (x))
+#define     TN_in_global_mem(t)	  (TN_memory_space(t) & TN_GLOBAL_SPACE)
+#define Set_TN_in_global_mem(t)	  (Set_TN_memory_space(t,TN_GLOBAL_SPACE))
+#define     TN_in_shared_mem(t)	  (TN_memory_space(t) & TN_SHARED_SPACE)
+#define Set_TN_in_shared_mem(t)	  (Set_TN_memory_space(t,TN_SHARED_SPACE))
+#define     TN_in_const_mem(t)	  (TN_memory_space(t) & TN_CONST_SPACE)
+#define Set_TN_in_const_mem(t)	  (Set_TN_memory_space(t,TN_CONST_SPACE))
+#define     TN_in_local_mem(t)	  (TN_memory_space(t) & TN_LOCAL_SPACE)
+#define Set_TN_in_local_mem(t)	  (Set_TN_memory_space(t,TN_LOCAL_SPACE))
+#define     TN_in_param_mem(t)	  (TN_memory_space(t) & TN_PARAM_SPACE)
+#define Set_TN_in_param_mem(t)	  (Set_TN_memory_space(t,TN_PARAM_SPACE))
+#define     TN_in_texture_mem(t)  (TN_memory_space(t) & TN_TEXTURE_SPACE)
+#define Set_TN_in_texture_mem(t)  (Set_TN_memory_space(t,TN_TEXTURE_SPACE))
+
+#define TN_from_shared_load(r) (CAN_USE_TN(r)->from_shared_load)
+#define Set_TN_from_shared_load(r) (CAN_USE_TN(r)->from_shared_load = TRUE)
+#define Reset_TN_from_shared_load(r) (CAN_USE_TN(r)->from_shared_load = FALSE)
 #endif
 
 #ifdef TARG_X8664

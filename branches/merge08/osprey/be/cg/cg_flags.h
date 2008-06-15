@@ -834,5 +834,20 @@ extern const char *Cycle_String;
 // temporary flags for controlling algorithm selection for fdiv, sqrt, etc
 extern const char *CGEXP_fdiv_algorithm;
 extern const char *CGEXP_sqrt_algorithm;
+#ifdef TARG_NVISA
+// treat auto stack variables as statics put in local space
+extern BOOL CGEXP_auto_as_static;
+// generate condition codes
+extern BOOL CGEXP_gen_ccodes;
+
+extern BOOL CG_vector_loadstore;	// create vector loads/stores
+
+extern BOOL CG_rematerialize_grf; // rematerialize GRF (shared memory) loads
+extern BOOL CG_remove_typeconv;   // type conversion removal optimization
+extern BOOL CG_optimize_copies;   // optimize copies that have later src use
+extern BOOL CG_use_16bit_ops;	  // try to replace 32bit ops with 16bit ops
+extern BOOL CG_skip_local_16bit;  // to skip individual 16bit optimizations
+
+#endif
 
 #endif /* cg_flags_INCLUDED */

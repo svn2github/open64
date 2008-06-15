@@ -230,7 +230,7 @@ hTN_MAP_Create(MEM_POOL *pool)
   hTN_MAP new_map;
 
   new_map = TYPE_MEM_POOL_ALLOC(struct htn_map, pool);
-  bzero(new_map, sizeof(struct htn_map));
+  BZERO(new_map, sizeof(struct htn_map));
   hTN_MAP_pool(new_map) = pool;
   return new_map;
 }
@@ -241,7 +241,7 @@ hTN_MAP32_Create(MEM_POOL *pool)
   hTN_MAP32 new_map;
 
   new_map = TYPE_MEM_POOL_ALLOC(struct htn_map32, pool);
-  bzero(new_map, sizeof(struct htn_map32));
+  BZERO(new_map, sizeof(struct htn_map32));
   hTN_MAP_pool(new_map) = pool;
   return new_map;
 }
@@ -252,7 +252,7 @@ hTN_MAP64_Create(MEM_POOL *pool)
   hTN_MAP64 new_map;
 
   new_map = TYPE_MEM_POOL_ALLOC(struct htn_map64, pool);
-  bzero(new_map, sizeof(struct htn_map64));
+  BZERO(new_map, sizeof(struct htn_map64));
   hTN_MAP_pool(new_map) = pool;
   return new_map;
 }
@@ -439,7 +439,7 @@ hTN_MAPf_Create(MEM_POOL *pool)
   hTN_MAPf new_map;
 
   new_map = TYPE_MEM_POOL_ALLOC(struct htn_mapf, pool);
-  bzero(new_map, sizeof(struct htn_mapf));
+  BZERO(new_map, sizeof(struct htn_mapf));
   hTN_MAP_pool(new_map) = pool;
   return new_map;
 }

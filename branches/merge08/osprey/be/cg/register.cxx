@@ -336,11 +336,8 @@ Initialize_Register_Class(
 
     if ( is_allocatable ) {
       allocatable = REGISTER_SET_Union1(allocatable,reg);
-#ifdef TARG_X8664
-      if( FALSE ){
-#else
+#ifdef ABI_PROPERTY_global_ptr
       if ( ABI_PROPERTY_Is_global_ptr(rclass, isa_reg) ) {
-#endif
         if ( GP_Is_Preserved ) {
           /* neither caller nor callee saved (always preserved). */
         } else if ( Is_Caller_Save_GP ) {
@@ -351,7 +348,10 @@ Initialize_Register_Class(
           callee = REGISTER_SET_Union1(callee, reg);
         }
       }
-      else {
+      else 
+#endif
+	{
+#ifdef ABI_PROPERTY_callee	// has calling convention
         if ( ABI_PROPERTY_Is_callee(rclass, isa_reg) ) {
           callee = REGISTER_SET_Union1(callee, reg);
           shrink_wrap = REGISTER_SET_Union1(shrink_wrap, reg);
@@ -362,11 +362,13 @@ Initialize_Register_Class(
           func_argument = REGISTER_SET_Union1(func_argument, reg);
         if ( ABI_PROPERTY_Is_func_val(rclass, isa_reg) )
           func_value = REGISTER_SET_Union1(func_value, reg);
+#endif
 #if defined(TARG_MIPS) || defined(TARG_IA64)
         if ( ABI_PROPERTY_Is_ret_addr(rclass, isa_reg) )
           shrink_wrap = REGISTER_SET_Union1(shrink_wrap, reg);
 #endif
-#if !defined(TARG_MIPS) && !defined(TARG_X8664) && !defined(TARG_SL)
+// #if !defined(TARG_MIPS) && !defined(TARG_X8664) && !defined(TARG_SL)
+#ifdef ABI_PROPERTY_stacked
         if ( ABI_PROPERTY_Is_stacked(rclass, isa_reg) )
           stacked = REGISTER_SET_Union1(stacked, reg);
 #endif

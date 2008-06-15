@@ -83,6 +83,13 @@
 
 BOOL Trace_Exp = FALSE;	/* General code expansion trace */
 
+#ifdef TARG_NVISA
+// fp ops are same as int ops
+static BOOL Separate_FP_Expansion = FALSE;
+#else
+// fp ops go thru different path from int ops
+static BOOL Separate_FP_Expansion = TRUE;
+#endif
 
 /* ====================================================================
  *
@@ -118,19 +125,23 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Lda_Label (result, op1, ops);
 	break;
   case OPR_INTCONST:
+#ifdef TARG_NVISA
+	Expand_Mtype_Immediate (result, op1, rtype, ops);
+#else
 	Expand_Immediate (result, op1, TRUE /* is_signed */, ops);
+#endif
 	break;
   case OPR_CONST:
 	Expand_Const (result, op1, rtype, ops);
 	break;
   case OPR_ADD:
-	if (MTYPE_is_float(rtype))
+	if (MTYPE_is_float(rtype) && Separate_FP_Expansion)
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
 		Expand_Add (result, op1, op2, rtype, ops);
 	break;
   case OPR_SUB:
-	if (MTYPE_is_float(rtype))
+	if (MTYPE_is_float(rtype) && Separate_FP_Expansion)
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
 		Expand_Sub (result, op1, op2, rtype, ops);
@@ -189,7 +200,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #ifdef TARG_X8664
 	if (MTYPE_is_float(rtype) || MTYPE_is_mmx_vector(rtype))
 #else
-	if (MTYPE_is_float(rtype))
+	if (MTYPE_is_float(rtype) && Separate_FP_Expansion)
 #endif
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
@@ -343,6 +354,10 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   		// zero-extend when enlarging an unsigned value, or 
   		//   converting to smaller unsigned vlaue (e.g U4I8CVT)
 		// else sign-extend.
+#ifdef TARG_NVISA
+		// have to change register size, so not an in-place truncation
+		Expand_Convert (result, rtype, op1, desc, ops);
+#else
 		Expand_Convert_Length ( result, op1, op2, 
 			rtype, 
 			(MTYPE_is_signed(desc)
@@ -353,6 +368,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		|| (MTYPE_bit_size(desc) > MTYPE_bit_size(rtype) ) ),
 		     ops);
 #endif
+#endif // TARG_NVISA
 	}
 	break;
 #ifdef TARG_X8664

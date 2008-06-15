@@ -58,6 +58,9 @@
 #include <math.h>
 #include "defs.h"
 #include "config.h"
+#if defined(TARG_NVISA)
+#include "config_targ_opt.h"
+#endif
 #include "config_TARG.h"
 #include "mempool.h"
 #include "bb.h"

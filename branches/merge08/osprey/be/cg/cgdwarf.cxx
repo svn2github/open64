@@ -71,6 +71,7 @@
 #ifdef KEY /* Bug 3507 */
 #include <ctype.h>
 #endif /* KEY Bug 3507 */
+#include <alloca.h>
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
@@ -109,6 +110,7 @@
 #include <strings.h>
 #include <string.h>
 #endif
+#include "be_symtab.h"
 
 BOOL Trace_Dwarf;
 
@@ -908,6 +910,18 @@ put_location (
 #ifdef TARG_IA64
   if (ST_is_not_used(base_st)) return;	/* For fixing undefined refernece bug, Added By: Mike Murphy, 22 Apr 2001 */
 #endif
+#ifdef TARG_NVISA
+    // Don't emit location if static local and not accessed;
+    // this avoids emitting unused cudart arrays.
+    // Because constant memory arrays can come from users and be used on host,
+    // only ignore internal __cuda* symbols.
+    // This check is copied from cgemit.
+    if ((ST_sclass(st) == SCLASS_FSTATIC || ST_sclass(st) == SCLASS_PSTATIC)
+      && (ST_export(st) == EXPORT_LOCAL || ST_export(st) == EXPORT_LOCAL_INTERNAL)
+      && ! BE_ST_referenced(st)
+      && strncmp(ST_name(st), "__cuda", 6) == 0)
+        return;
+#endif
 
   deref = FALSE;
   if (DST_IS_deref(flag))  /* f90 formals, dope, etc */
@@ -934,6 +948,16 @@ put_location (
     case SCLASS_FORMAL:
 	if (base_st != SP_Sym && base_st != FP_Sym) {
                 //printf ("[1] base_offset: %lld, ofst: %lld, offs: %d\n", base_ofst, ST_ofst(st), offs) ;
+#ifdef TARG_NVISA
+		// treat it like a common because no sections to base it on
+      		dwarf_add_expr_addr_b (expr, offs,
+			     Cg_Dwarf_Symtab_Entry(CGD_ELFSYM,
+						   EMT_Put_Elf_Symbol(st)),
+			     &dw_error);
+      		if (Trace_Dwarf) {
+			fprintf (TFile,"LocExpr: symbol = %s, offset = %d\n", ST_name(st), offs);
+      		}
+#else
 		dwarf_add_expr_addr_b (expr,
 #ifdef KEY
 			           base_ofst + offs,               // need to add base offset because if the symbols has
@@ -952,6 +976,7 @@ put_location (
 			      ST_name(base_st), ST_ofst(st) + offs);
 #endif
 		}
+#endif // NVISA
 		break;
 	}
 	/* else fall through to the case of stack variables. */
@@ -984,12 +1009,15 @@ put_location (
     case SCLASS_UGLOBAL:
     case SCLASS_FSTATIC:
     case SCLASS_PSTATIC:
+#ifdef TARG_NVISA
+      if (FALSE) {	// no sections in nvisa, so objects emitted by name
+#else
       if (base_st != NULL) {
-         //printf ("[2] %s (%s): real base_ofst: %llx, calc base_offset: %lld, ofst: %lld, offs: %d, base_st: %p, st: %p\n", ST_name(st), ST_name(base_st), ST_ofst(base_st), base_ofst, ST_ofst(st), offs, base_st, st) ;
+#endif
 	dwarf_add_expr_addr_b (expr,
 #ifdef KEY      
-			           base_ofst + offs,               // need to add base offset because if the symbols has
-                                                                    // a base, the offset is not necessarily set
+			       base_ofst + offs,  // need to add base offset because if the symbols has
+                                                  // a base, the offset is not necessarily set
 #else
 			       ST_ofst(st) + offs, 
 #endif
@@ -1058,6 +1086,20 @@ put_location (
     }
   }
   dwarf_add_AT_location_expr (dw_dbg, die, loc_attr, expr, &dw_error);
+#ifdef TARG_NVISA
+  // add memory space info
+  {
+    INT space;
+    if (ST_sclass(st) == SCLASS_FORMAL) space = DW_ADDR_param_space;
+    else if (ST_in_global_mem(st)) space = DW_ADDR_global_space;
+    else if (ST_in_shared_mem(st)) space = DW_ADDR_shared_space;
+    else if (ST_in_local_mem(st)) space = DW_ADDR_local_space;
+    else if (ST_in_constant_mem(st)) space = DW_ADDR_const_space;
+    else if (ST_in_texture_mem(st)) space = DW_ADDR_tex_space;
+    else space = DW_ADDR_none;
+    dwarf_add_AT_unsigned_const (dw_dbg, die, DW_AT_address_class, space, &dw_error);
+  }
+#endif
   return;
 }
 
@@ -2362,6 +2404,7 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
   /* setup the frame_base attribute. */
   expr = dwarf_new_expr (dw_dbg, &dw_error);
 #ifndef TARG_X8664
+#ifndef TARG_NVISA /* no stack frames yet */
   if (Current_PU_Stack_Model != SMODEL_SMALL)
     dwarf_add_expr_gen (expr, DW_OP_bregx,
 	REGISTER_machine_id (TN_register_class(FP_TN), TN_register(FP_TN)),
@@ -2370,6 +2413,7 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
     dwarf_add_expr_gen (expr, DW_OP_bregx,
 	REGISTER_machine_id (TN_register_class(SP_TN), TN_register(SP_TN)),
 	Frame_Len, &dw_error);
+#endif
 #else
   // seems that gdb 5.x doesn't like bregx for AT_frame_base.
   if (Current_PU_Stack_Model != SMODEL_SMALL)
@@ -2741,7 +2785,15 @@ Print_Directives_For_All_Files(void) {
        !DST_IS_NULL(idx);
        idx = DST_FILE_NAME_next(file)) {
     file = DST_FILE_IDX_TO_PTR(idx);
-#ifdef TARG_SL
+#ifdef TARG_NVISA
+    // if no path to start with, want non-path name in .file directive
+    if (strcmp(incl_table[file_table[count].incl_index].path_name, ".") == 0) {
+      fprintf(Asm_File, "\t%s\t%d\t\"%s\"\n", AS_FILE, count, 
+	    file_table[count].filename);
+      count++;
+      continue;
+    }
+#elif defined(TARG_SL)
     /* NOTE! Wenbo/2007-04-26: If the index of directory where "file" lives
        is "0", that means "file" is in compile directory and compiled with no
        path prefix specified. So we should print the filename only without 
@@ -3738,8 +3790,8 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	  // multiple CIEs not supported
 	  FmtAssert (cie_count == 1, ("Multiple CIEs not supported"));
 
-	  bzero (dwarf_begin, buflen);
-	  bzero (dwarf_end, buflen);
+	  BZERO (dwarf_begin, buflen);
+	  BZERO (dwarf_end, buflen);
 	  // CIE begin and end labels
 	  strcpy (dwarf_begin, ".LEHCIE_begin");
 	  strcpy (dwarf_end, ".LEHCIE_end");
@@ -3771,8 +3823,8 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	  // Begin current frame
 	  static int count = 1;
 	  int this_count = count++;
-	  bzero (dwarf_begin, buflen);
-	  bzero (dwarf_end, buflen);
+	  BZERO (dwarf_begin, buflen);
+	  BZERO (dwarf_end, buflen);
 
 	  // FDE begin and end labels
 	  sprintf (dwarf_begin, ".LFDE%d_begin", this_count);

@@ -75,8 +75,10 @@
 #include "dominate.h"
 #include "findloops.h"
 #include "cg_vector.h"
+#ifndef TARG_NVISA
 #include "gtn_universe.h"
 #include "gtn_set.h"
+#endif
 #include "data_layout.h"
 
 #include "reg_live.h"
@@ -277,6 +279,7 @@ static void Compute_PU_Regs (REGSET livein, REGSET liveout)
     // Add all the formal parameters to the livein set.
     Compute_Parameter_Regs (ST_pu_type(pu_st), 
 	PU_Info_tree_ptr(Current_PU_Info), livein);
+#ifndef TARG_NVISA
     // add sp, gp, ep, ra to the livein set.
     livein[REGISTER_CLASS_sp] = 
 	REGISTER_SET_Union1 (livein[REGISTER_CLASS_sp], REGISTER_sp);
@@ -291,6 +294,7 @@ static void Compute_PU_Regs (REGSET livein, REGSET liveout)
       livein[rc] = REGISTER_SET_Union (livein[rc], 
 					REGISTER_CLASS_callee_saves(rc));
     }
+#endif
     // If current procedure is a nested function, add the static-link 
     // register to the livein set for the procedure.
     if (PU_is_nested_func(Pu_Table[ST_pu(pu_st)])) {

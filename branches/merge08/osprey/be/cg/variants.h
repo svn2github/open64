@@ -334,6 +334,26 @@ extern const char *BR_Variant_Name(VARIANT variant);
 #define Set_V_pf_flags(v,f)		((v) = ((v) & ~V_PF_FLAGS) | ((VARIANT)(f) << 32))
 #define Reset_V_pf_flags(v)		((v) &= ~V_PF_FLAGS)
 
+#ifdef TARG_NVISA
+/* memory space flags */
+#define V_GLOBAL_MEM		0x00010000
+#define V_SHARED_MEM		0x00020000
+#define V_LOCAL_MEM		0x00040000
+#define V_CONST_MEM		0x00080000
+#define V_PARAM_MEM		0x00100000
+#define V_MEM_SPACE		0x001f0000	/* Mask for memory space */
+#define V_global_mem(v)		((v) & V_GLOBAL_MEM)
+#define Set_V_global_mem(v)	((v) |= V_GLOBAL_MEM)
+#define V_shared_mem(v)		((v) & V_SHARED_MEM)
+#define Set_V_shared_mem(v)	((v) |= V_SHARED_MEM)
+#define V_local_mem(v)		((v) & V_LOCAL_MEM)
+#define Set_V_local_mem(v)	((v) |= V_LOCAL_MEM)
+#define V_const_mem(v)		((v) & V_CONST_MEM)
+#define Set_V_const_mem(v)	((v) |= V_CONST_MEM)
+#define V_param_mem(v)		((v) & V_PARAM_MEM)
+#define Set_V_param_mem(v)	((v) |= V_PARAM_MEM)
+#define V_memory_space(v)	((v) & V_MEM_SPACE)
+#endif
 
 /* ====================================================================
  *

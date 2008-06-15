@@ -224,7 +224,7 @@ static HASH_ENTRY *free_entries;		/* list of free entries */
 
 static void init_hash_tables(void)
 {
-  bzero(free_tables, sizeof(free_tables));
+  BZERO(free_tables, sizeof(free_tables));
   free_entries = NULL;
 }
 
@@ -250,7 +250,7 @@ static HASH_TABLE *hash_table_create(UINT8 length_log2)
     tbl->gen += 1;
     if (tbl->gen == 0) {
       DevWarn("(Performance) OP_MAP generation overflow - zeroing");
-      bzero(tbl->bucket_gens, sizeof(mUINT32) * (1 << length_log2));
+      BZERO(tbl->bucket_gens, sizeof(mUINT32) * (1 << length_log2));
       tbl->gen = 1;
     }
   } else {
@@ -551,7 +551,7 @@ BB_OP_MAP BB_OP_MAP_Create_Kind(BB *bb, MEM_POOL *pool, _OP_MAP_KIND kind)
   }
 
   new_map->themap.ptr = (void **) MEM_POOL_Alloc(pool, size);
-  if (!MEM_POOL_Zeroed(pool)) bzero(new_map->themap.ptr, size);
+  if (!MEM_POOL_Zeroed(pool)) BZERO(new_map->themap.ptr, size);
 
   return new_map;
 }
@@ -592,7 +592,7 @@ void BB_OP_MAP_Extend_Map(BB_OP_MAP map, OP *op)
 				    old_nelem * elem_size,
 				    new_nelem * elem_size);
     if (!MEM_POOL_Zeroed(map->pool)) {
-      bzero((char *)map->themap.ptr + (old_nelem * elem_size),
+      BZERO((char *)map->themap.ptr + (old_nelem * elem_size),
 	    elem_size * (new_nelem - old_nelem));
     }
 
