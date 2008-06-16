@@ -236,7 +236,7 @@ identify_schedtype(char *text)
 } 
 
 
-void add_cray_args(char *arg)
+void add_cray_args(const char *arg)
 {
    /* Add a string to the Cray args */
 

@@ -6656,7 +6656,7 @@ WFE_Expand_Expr (tree exp,
     {
       if (key_exceptions)
       {
-	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
+	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().misc)));
       	wn = WN_Ldid (Pointer_Mtype, 0, exc_ptr_st, Get_TY(TREE_TYPE(exp)));
       }
       else

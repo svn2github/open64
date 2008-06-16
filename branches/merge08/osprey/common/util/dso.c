@@ -72,7 +72,7 @@ load_so (const char *soname, char *path, BOOL verbose)
 #if ! (defined(linux) || defined(BUILD_OS_DARWIN))
     if (sgidladd (full_path, RTLD_LAZY) == NULL)
 #else
-    if (dlopen (full_path, RTLD_NOW | RTLD_GLOBAL) == NULL)
+    if (dlopen (full_path, RTLD_LAZY | RTLD_GLOBAL) == NULL)
 #endif
     {
 	fprintf (stderr, "Error loading %s: %s\n", full_path, dlerror());

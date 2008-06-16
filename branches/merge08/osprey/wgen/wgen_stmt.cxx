@@ -595,7 +595,7 @@ Get_typeinfo_ST (void)
 ST_IDX
 Get_exception_pointer_symbol (void)
 {
-  ST_IDX st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
+  ST_IDX st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().misc)));
 #ifdef FE_GNU_4_2_0
   WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, &St_Table[st], TRUE);
 #endif
@@ -607,7 +607,7 @@ Get_exception_pointer_symbol (void)
 ST_IDX
 Get_exception_filter_symbol (void)
 {
-  ST_IDX st = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().eh_info))));
+  ST_IDX st = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().misc))));
 #ifdef FE_GNU_4_2_0
   WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, &St_Table[st], TRUE);
 #endif
@@ -659,7 +659,7 @@ Do_EH_Tables (void)
 			// Store the inito_idx in the PU
 			// 1. exc_ptr 2. filter : Set 3rd entry with inito_idx
 			INITV_IDX index = INITV_next (INITV_next (INITO_val (
-			               (INITO_IDX) Get_Current_PU().eh_info)));
+			               (INITO_IDX) Get_Current_PU().misc)));
 			// INITV_Set_VAL resets the next field, so back it up
 			// and set it again.
 			INITV_IDX bkup = INITV_next (index);
@@ -695,7 +695,7 @@ Do_EH_Tables (void)
 		ST * eh_spec = Get_eh_spec_ST ();
 		id = New_INITO (ST_st_idx(eh_spec), start);
 		INITV_IDX index = INITV_next (INITV_next (INITV_next (
-			INITO_val ((INITO_IDX) Get_Current_PU().eh_info))));
+			INITO_val ((INITO_IDX) Get_Current_PU().misc))));
 		// INITV_Set_VAL resets the next field, so back it up
 		// and set it again.
 		INITV_IDX bkup = INITV_next (index);

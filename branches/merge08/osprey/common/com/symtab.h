@@ -482,6 +482,7 @@ New_LABEL (SYMTAB_IDX scope, LABEL_IDX& label_idx)
     Set_LABEL_name_idx (label, 0);
     Set_LABEL_KIND (label, LKIND_DEFAULT);
     label.flags = 0;
+    label_idx = make_LABEL_IDX(label_idx, scope);
     return label;
 }
 

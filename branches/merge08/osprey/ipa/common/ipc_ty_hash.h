@@ -145,6 +145,8 @@ TY_is_incomplete_struct (const TY &ty) {
            TY_size(ty) == 0 && ty.Fld() == 0;
 }
 
+extern void
+Insert_Recursive_Type (TY_IDX ty_idx);
 
 inline BOOL
 TY_is_incomplete_struct (TY_IDX tyi) {

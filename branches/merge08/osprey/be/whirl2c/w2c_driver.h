@@ -271,8 +271,8 @@ extern FILE *W2C_File[W2C_NUM_FILES];
   /* Note that we also export some utilities from W2CF_symtab.h */
 
 extern BOOL W2C_Should_Emit_Nested_PUs(void);
-extern void W2C_Process_Command_Line(INT phase_argc, char * const phase_argv[],
-				     INT argc, char * const argv[]);
+extern void W2C_Process_Command_Line(INT phase_argc, const char* const phase_argv[],
+				     INT argc, const char* const argv[]);
 extern void W2C_Init(void);
 extern void W2C_Fini(void);
 extern void W2C_Push_PU(const WN *pu, WN *body_part_of_interest);

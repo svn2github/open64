@@ -1873,16 +1873,6 @@ INITO_TABLE::operator() (SYMTAB_IDX level, UINT32 index) {
 }
 #endif
 
-inline LABEL&
-LABEL_TABLE::operator[] (LABEL_IDX idx) {
-    return Scope_tab[CURRENT_SYMTAB].label_tab->Entry (idx);
-}
-
-inline LABEL&
-LABEL_TABLE::operator() (SYMTAB_IDX level, LABEL_IDX idx) {
-    return Scope_tab[level].label_tab->Entry (idx);
-}
-
 inline PREG&
 PREG_TABLE::operator[] (PREG_IDX idx) {
     return Scope_tab[CURRENT_SYMTAB].preg_tab->Entry (idx);

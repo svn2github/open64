@@ -470,7 +470,7 @@ extern "C" {
 
 extern void msg(int, int, ...);
 
-extern string concat_names(string, string);
+extern char* concat_names(const char*, const char*);
 
 extern EXTSYM *
 slookup_mext(char *);

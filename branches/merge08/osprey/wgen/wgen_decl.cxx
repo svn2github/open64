@@ -969,7 +969,7 @@ Setup_Entry_For_EH (void)
     INITV_Set_VAL (Initv_Table[eh_spec], Enter_tcon (Host_To_Targ (MTYPE_U4,
                                 0)), 1);
     Set_INITV_next (tinfo, eh_spec);
-    Get_Current_PU().eh_info = New_INITO (ST_st_idx (etable), exc_ptr_iv);
+    Get_Current_PU().misc = New_INITO (ST_st_idx (etable), exc_ptr_iv);
 }
 
 

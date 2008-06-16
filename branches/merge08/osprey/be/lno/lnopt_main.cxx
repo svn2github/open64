@@ -1685,9 +1685,6 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
     UB = ub;
     Step = step;
     Has_Calls = has_calls;
-#ifdef KEY //bug 14284
-    Has_Nested_Calls = dli->Has_Nested_Calls;
-#endif    
     Has_Unsummarized_Calls = has_unsummarized_calls;
     Has_Unsummarized_Call_Cost = has_unsummarized_call_cost;
     Has_Threadprivate = FALSE; 
@@ -1783,6 +1780,9 @@ DO_LOOP_INFO::DO_LOOP_INFO(DO_LOOP_INFO *dli, MEM_POOL *pool) {
     if (dli->UB) UB = CXX_NEW(ACCESS_ARRAY(dli->UB,pool),pool);
     if (dli->Step) Step = CXX_NEW(ACCESS_VECTOR(dli->Step,pool),pool);
     Has_Calls = dli->Has_Calls;
+#ifdef KEY //bug 14284
+    Has_Nested_Calls = dli->Has_Nested_Calls;
+#endif    
     Has_Unsummarized_Calls = dli->Has_Unsummarized_Calls;
     Has_Unsummarized_Call_Cost = dli->Has_Unsummarized_Call_Cost;
     Has_Threadprivate = dli->Has_Threadprivate; 

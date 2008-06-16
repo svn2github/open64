@@ -1191,7 +1191,7 @@ Insert_Allocated_Ty (TY& ty, TY_IDX ty_idx)
 
 
 // insert a TY into the recursive type hash table
-static void
+void
 Insert_Recursive_Type (TY_IDX ty_idx)
 {
     const TY& ty = Ty_Table[ty_idx];
