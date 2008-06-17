@@ -1348,8 +1348,9 @@ typedef enum {
   INTRN_INSERTQ         ,
   INTRN_PADDD128        ,  
   INTRN_PADDW128        ,
+  INTRN_PMOVMSKB128     ,
     
-  #define INTRINSIC_LAST_TMP  LAST_COMMON_ID+239
+  #define INTRINSIC_LAST_TMP  (LAST_COMMON_ID+240)
 #elif defined(TARG_SL)
 
   INTRN_SL_INTRN_BGN,

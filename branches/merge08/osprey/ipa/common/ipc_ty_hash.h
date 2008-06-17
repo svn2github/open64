@@ -158,6 +158,9 @@ TY_IDX_without_attribute(TY_IDX tyi) {
     return tyi & (~TY_ALIGN);
 }
 
+void
+Insert_Recursive_Type (TY_IDX ty_idx);
+
 // below 2 functions should be removed when old type merge is removed.
 
 void

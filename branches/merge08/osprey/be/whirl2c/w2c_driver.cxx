@@ -630,8 +630,8 @@ W2C_Should_Emit_Nested_PUs(void)
 
 
 void
-W2C_Process_Command_Line (INT phase_argc, char * const phase_argv[],
-			  INT argc, char * const argv[])
+W2C_Process_Command_Line (INT phase_argc, const char * const phase_argv[],
+			  INT argc, const char * const argv[])
 {
     /* Get the program name
      */

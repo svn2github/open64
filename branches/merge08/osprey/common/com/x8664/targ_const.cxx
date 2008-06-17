@@ -2971,7 +2971,7 @@ Targ_Hexfptoc(const TYPE_ID ty, const char * const str)
  */
 
 char *
-Targ_Print ( char *fmt, TCON c )
+Targ_Print ( const char *fmt, TCON c )
 {
    INT slen,i;
    char *bytes;

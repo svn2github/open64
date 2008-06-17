@@ -80,6 +80,12 @@
   #define OPEN64_PHASE_PATH ""
   #define OPEN64_CMPLR_NAME_PREFIX "or"
   #define OPEN64_TARGET_NAME "ia64"  // for lang_defs.c
+#elif defined(TARG_X8664)
+  #define OPEN64_TARGET "x86_64-linux"
+  #define VERSION ""
+  #define OPEN64_PHASE_PATH "x8664-linux/bin"
+  #define OPEN64_CMPLR_NAME_PREFIX "open"
+  #define OPEN64_TARGET_NAME "x8664"
 #elif defined(TARG_IA32)
   #define OPEN64_TARGET ""
   #define VERSION ""
