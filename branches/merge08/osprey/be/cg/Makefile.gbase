@@ -412,6 +412,10 @@ CG_CXX_SRCS = 		\
   cg_gcov.cxx		\
   $(DERIVED_SRCS)
 
+ifeq ($(BUILD_SUBTARGET), SL)
+  CG_CXX_SRCS += cg_isr.cxx
+endif
+
 ifeq ($(BUILD_PCH), USE_PCH)
 CG_PCH_OBJS = $(CG_CXX_PCH_SRCS:.cxx=.o)
 CG_GRA_PCH_OBJS = $(CG_GRA_PCH_CXX_SRCS:.cxx=.o)

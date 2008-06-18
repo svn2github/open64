@@ -1084,7 +1084,8 @@ extern void Link_Pred_Succ (BB *pred, BB *succ);
 extern void Link_Pred_Succ_with_Prob(BB *pred, BB *succ, float prob, 
 				     BOOL via_feedback = FALSE,
 				     BOOL set_prob = FALSE,
-				     BOOL via_hint =FALSE);
+				     BOOL via_hint =FALSE, 
+				     BOOL incr_prob=TRUE);
 #else
 extern void Link_Pred_Succ_with_Prob(BB *pred, BB *succ, float prob, 
 				     BOOL via_feedback = FALSE,

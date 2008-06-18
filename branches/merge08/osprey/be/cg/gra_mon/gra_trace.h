@@ -256,7 +256,7 @@ void GRA_Trace_Split_Reclaim_Add_Priority(GRA_BB* gbb, BOOL is_store,
 void GRA_Trace_Split_Reclaim_Sub_Priority(GRA_BB* gbb, BOOL is_store,
 					  float priority);
 #endif
-void GRA_Trace_Split_Priority_On(char* msg);
+void GRA_Trace_Split_Priority_On(const char* msg);
 void GRA_Trace_Split_Priority_Off();
 void GRA_Trace_Preference_Conflict(LRANGE* lrange0,
 				   LRANGE* lrange1,

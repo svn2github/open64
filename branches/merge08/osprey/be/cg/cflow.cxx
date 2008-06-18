@@ -431,7 +431,7 @@ Print_BB_Info(BB *bb)
  * ====================================================================
  */
 void
-Print_Cflow_Graph(char *banner)
+Print_Cflow_Graph(const char *banner)
 {
   BB *bb;
 
@@ -748,7 +748,7 @@ Alloc_BB_Like(BB *model)
   }
   deleted_bbs = BB_next(new_bb);
   id = BB_id(new_bb);
-  bzero(new_bb, sizeof(*new_bb));
+  BZERO(new_bb, sizeof(*new_bb));
   new_bb->id = id;
   if (model) BB_rid(new_bb) = BB_rid(model);
   return new_bb;
@@ -5007,7 +5007,7 @@ Init_Edges(EDGE *edges)
    * for given BB.
    */
   bb_preds = (EDGE **)alloca((PU_BB_Count + 2) * sizeof(EDGE *));
-  bzero(bb_preds, (PU_BB_Count + 2) * sizeof(EDGE *));
+  BZERO(bb_preds, (PU_BB_Count + 2) * sizeof(EDGE *));
 
   /* Visit all the BBs and create and initialize the edges.
    * On this pass the weighting only accounts for things we can
@@ -6609,7 +6609,7 @@ Estimate_BB_Length(BB *bb)
   if (!CG_localize_tns && (BB_exit(bb) || BB_entry(bb))) {
     INT callees_needed[ISA_REGISTER_CLASS_MAX + 1];
     OP *op;
-    bcopy(callee_saves, callees_needed, sizeof(callee_saves));
+    BCOPY(callee_saves, callees_needed, sizeof(callee_saves));
     FOR_ALL_BB_OPs(bb, op) {
       ISA_REGISTER_CLASS rc;
       TN *tn;
@@ -6650,7 +6650,7 @@ Create_Sched_Est(BB *bb, MEM_POOL *pool)
   if (!CG_localize_tns && (BB_entry(bb) || BB_exit(bb))) {
     INT callees_needed[ISA_REGISTER_CLASS_MAX + 1];
     OP *op;
-    bcopy(callee_saves, callees_needed, sizeof(callee_saves));
+    BCOPY(callee_saves, callees_needed, sizeof(callee_saves));
     FOR_ALL_BB_OPs(bb, op) {
       ISA_REGISTER_CLASS rc;
       TN *tn;
@@ -7170,7 +7170,7 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
 	    (current_flags & CFLOW_OPT_ALL_BR_TO_BCOND) ? "enabled" : "disabled");
     fprintf(TFile, "  fill delay slots:\t\t%s\n",
 	    (current_flags & CFLOW_FILL_DELAY_SLOTS) ? "enabled" : "disabled");
-#if defined (TARG_SL) && defined(TARG_SL2)
+#if defined (TARG_SL)
     fprintf(TFile, "  cold region:\t\t%s\n",
 	    (current_flags & CFLOW_COLD_REGION) ? "enabled" : "disabled");
 #endif

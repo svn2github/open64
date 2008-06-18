@@ -246,6 +246,7 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 #define TP_A_CANA	73	/* ACA "Ipfec cache analysis and opt" */
 
 #define TP_EH		74	/* EH "Enable trace infos of EH range and EH entry" */
+#define TP_IPISR        75  /* Interprocedural interrupt service routine RA*/
 	
 /* WARNING: TP_LAST must be at least as large as the largest phase
  * number above, and TP_COUNT must be at least one larger.

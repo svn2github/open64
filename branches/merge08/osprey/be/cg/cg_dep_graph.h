@@ -741,7 +741,6 @@ BOOL CG_DEP_Can_OP_Move_Across_Call(OP *cur_op, OP *call_op, BOOL forw, BOOL Ign
 #if defined(TARG_IA64) || defined(TARG_SL)
 extern BOOL OP_has_subset_predicate(const void *value1, const void *value2);
 extern BOOL OP_has_disjoint_predicate(const OP *value1, const OP *value2);
-extern BOOL OP_has_disjoint_predicate(OP *value1, OP *value2);
 
 #if !defined(TARG_SL)
 inline BOOL TN_is_predicate (TN * tn) 

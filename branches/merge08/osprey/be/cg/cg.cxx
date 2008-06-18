@@ -134,6 +134,10 @@
 #ifdef KEY
 #include "cg_gcov.h"
 #endif
+#ifdef TARG_NVISA
+#include "dominate.h"
+#include "vector_loadstore.h"
+#endif
 #if defined(TARG_SL)
 #include "region.h"
 #include "region_update.h"
@@ -161,9 +165,11 @@ BOOL EBO_data_spec;
 // Control assemly output on file number
 typedef mempool_allocator<INT> INT_ALLOC;
 typedef std::vector<INT, INT_ALLOC>  INT_CONTAINER;
-
+#endif
+#if defined(TARG_IA64) || defined(TARG_SL)
 BOOL RGN_Formed = FALSE;
 #endif
+
 #ifdef KEY
 BOOL PU_Has_Exc_Handler;
 BOOL PU_Has_Nonlocal_Goto_Target;
@@ -321,11 +327,13 @@ CG_PU_Initialize (WN *wn_pu)
   REGION_MAP_Init();
 #endif
   OP_MAP_Init();
-  CGSPILL_Initialize_For_PU ();
   CFLOW_Initialize();
+#ifndef TARG_NVISA
+  CGSPILL_Initialize_For_PU ();
   CG_LOOP_Init();
   HB_Init();
   if (Enable_CG_Peephole) EBO_Init();
+#endif 
   Init_Label_Info();
 
 #ifdef EMULATE_LONGLONG
@@ -339,6 +347,7 @@ CG_PU_Initialize (WN *wn_pu)
   Init_Entry_Exit_Code (wn_pu);
   REGISTER_Reset_FP();  // in case $fp is used, must be after entry_exit init
 
+#ifndef TARG_NVISA
   /* Initialize global tn universe */
   GTN_UNIVERSE_Pu_Begin();
 
@@ -346,6 +355,7 @@ CG_PU_Initialize (WN *wn_pu)
     Get_Trace(TP_REGION, TT_REGION_BOUND_DEBUG );
 
   Init_gen_quad_preg(); // init statics to hold quad preg STs
+#endif
 
   /* data layout and lowering now happens earlier, in bedriver. */
   /* don't finalize stack frame until just before emit, after all spills. */
@@ -361,14 +371,16 @@ void
 CG_PU_Finalize(void)
 {
   TAG_Finish();
-  GTN_UNIVERSE_Pu_End ();
   OP_MAP_Finish();
+#ifndef TARG_NVISA
+  GTN_UNIVERSE_Pu_End ();
   CGSPILL_Finalize_For_PU();
   if (Enable_CG_Peephole) EBO_Finalize();
 
   if (PU_has_syscall_linkage(Get_Current_PU())) {
     Enable_SWP = Orig_Enable_SWP;
   }
+#endif
 
   /* TN_To_PREG_Map is allocated from MEM_pu_pool and so can't be popped
      but it can be put on the free list and cleared at the end of the PU */
@@ -396,10 +408,12 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
   MEM_POOL_Push (&MEM_local_region_pool);
   MEM_POOL_Push (&MEM_local_region_nz_pool);
   Init_CG_Expand ();
+#ifndef TARG_NVISA
   FREQ_Region_Initialize ();
   BB_REGION_Initialize ();
   LRA_Init();
   GRA_Initialize();
+#endif
   Init_TNs_For_REGION ();
   /*
    * Create Array to map PREGs into TNs
@@ -424,7 +438,9 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
 
   TN_CORRESPOND_Free(); /* remove correspondence between tns (ex. divrem) */
 
+#ifndef TARG_NVISA
   GTN_UNIVERSE_REGION_Begin();
+#endif
 
   Whirl2ops_Initialize(alias_mgr);
 
@@ -457,6 +473,7 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
 
   REGION_set_level(rid, RL_CGSCHED);
 
+#ifndef TARG_NVISA
   if (generate_glue_code) {
     /* region entry glue code */
     entry_fixup = CGRIN_entry_glue( cgrin );
@@ -480,6 +497,7 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
       WN_INSERT_BlockLast( result_after, exit_fixup );
     }
   }
+#endif
 
   Whirl2ops_Finalize();
 
@@ -727,6 +745,8 @@ CG_Generate_Code(
 
   Convert_WHIRL_To_OPs ( rwn );
 
+#ifndef TARG_NVISA
+
 #if defined(TARG_SL)
    Check_Minor_Region(); 
 #endif
@@ -791,6 +811,7 @@ CG_Generate_Code(
   }
 
   Optimize_Tail_Calls( Get_Current_PU_ST() );
+#endif // !TARG_NVISA
 
   Init_Callee_Saved_Regs_for_REGION( Get_Current_PU_ST(), region );
 #ifdef TARG_IA64
@@ -808,6 +829,8 @@ CG_Generate_Code(
 #endif
   Stop_Timer ( T_Expand_CU );
   Check_for_Dump ( TP_CGEXP, NULL );
+
+#ifndef TARG_NVISA	// nvisa just emits initial assembly
 
 #ifdef TARG_IA64
   if (IPFEC_Enable_Edge_Profile && can_invoke_profile_with_current_cg_opt_level )
@@ -1603,8 +1626,85 @@ CG_Generate_Code(
   Reuse_Temp_TNs = orig_reuse_temp_tns;		/* restore */
 
 #endif // TARG_IA64
+
+#else // TARG_NVISA
+
+  // Optimize control flow (first pass)
+  if (CG_opt_level > 0 && CFLOW_opt_before_cgprep) {
+    // Perform all the optimizations that make things more simple.
+    // Reordering doesn't have that property.
+    CFLOW_Optimize(  (CFLOW_ALL_OPTS|CFLOW_IN_CGPREP)
+		   & ~(CFLOW_FREQ_ORDER | CFLOW_REORDER),
+		   "CFLOW (first pass)");
+  }
+
+  if (CG_opt_level > 0) {
+    // dominators needed for unique_defs and detect_loops passes.
+    // as long as we don't change bb flow, we don't need to recompute this.
+    Calculate_Dominators();
+
+    // following optimizations work better when unique-def (one_def),
+    // so try to create unique defs when possible.
+    Set_Error_Phase("Create Unique Defs");
+    Create_Unique_Defs_For_TNs();
+    Check_for_Dump ( TP_EBO, NULL );
+
+    // by changing ops to 16bit before register allocation,
+    // we avoid wasting registers.
+    if (CG_use_16bit_ops) {
+      Set_Error_Phase("Use 16bit Ops");
+      Use_16bit_Ops();
+      Check_for_Dump ( TP_EBO, NULL );
+    }
+  }
+
+    // iterate thru code, assigning registers.
+    // also sets one_def property that following optimizations use
+    Set_Error_Phase ( "Register Allocation" );
+    Assign_Virtual_Registers();
+    Check_for_Dump (TP_ALLOC, NULL);
+
+  if (CG_opt_level > 0) {
+    // various nvisa-specific optimizations:
+    Start_Timer(T_EBO_CU);
+
+    // setup data structures for finding reaching defs
+    REG_LIVE_Analyze_Region();
+    (void) LOOP_DESCR_Detect_Loops (&MEM_local_pool);
+
+    if (CG_optimize_copies) {
+      // see if we can optimize away copies by avoiding later src uses
+      Set_Error_Phase("Optimize Copies");
+      Optimize_Copy_Usage();
+      Check_for_Dump ( TP_EBO, NULL );
+    }
+
+    if (CG_rematerialize_grf) {
+      // iterate thru code, see if can rematerialize GRF (shared memory)
+      // loads since they don't cost real memory and may save registers
+      // by reducing spill ranges.
+      Set_Error_Phase("Extended Block Optimizer - rematerialize");
+      Rematerialize_GRF();
+      Check_for_Dump ( TP_EBO, NULL );
+    }
+    REG_LIVE_Finish();
+    Free_Dominators_Memory();
+
+    if (CG_vector_loadstore) {
+      // do peephole-like vector load/store creation
+      Set_Error_Phase("Extended Block Optimizer - vectors");
+      Create_Vector_Load_Stores();
+      Check_for_Dump ( TP_EBO, NULL );
+    }
+    Stop_Timer ( T_EBO_CU );
+  }
+#endif // TARG_NVISA
   
   if (region) {
+#ifdef TARG_NVISA
+    FmtAssert(FALSE, ("regions not supported"));
+    return rwn;
+#else
     /*--------------------------------------------------------------------*/
     /* old region: rwn, rid_orig                      */
     /* new region: rwn_new, rid_new (encloses old region)         */
@@ -1671,10 +1771,12 @@ CG_Generate_Code(
 #endif
 
     return rwn_new;
+#endif // TARG_NVISA
   } /* if (region */
 
 #if defined(TARG_IA64)
   else { /* PU */
+#ifndef TARG_NVISA
     // dump EH entry info
     if (Get_Trace (TP_EH, 0x0001)) {
       Print_PU_EH_Entry(Get_Current_PU(), WN_st(rwn), TFile);
@@ -1692,6 +1794,7 @@ CG_Generate_Code(
     if (Get_Trace (TP_EH, 0x0008)) {
       EH_Dump_LSDA (TFile);
     }
+#endif // TARG_NVISA
 #else
   else { /* PU */
     if (PU_has_exc_scopes(Get_Current_PU())) {
@@ -1724,6 +1827,7 @@ CG_Generate_Code(
     Check_for_Dump (TP_EMIT, NULL);
     Stop_Timer ( T_Emit_CU );
 
+#ifndef TARG_NVISA
 #ifdef TARG_IA64
     if (ORC_Enable_Cache_Analysis) Cache_Analysis_End();
 #endif
@@ -1735,6 +1839,7 @@ CG_Generate_Code(
 
     GRA_LIVE_Finish_PU();
     PQSCG_term();
+#endif // TARG_NVISA
 
     /* List local symbols if desired: */
     if ( List_Symbols )
@@ -1893,6 +1998,15 @@ CG_Dump_Region(FILE *fd, WN *wn)
     }
   }
 }
+
+void 
+CG_Dump_Cur_Region()
+{
+  BB *bb;
+  for( bb=REGION_First_BB; bb; bb=BB_next(bb) ){
+    Print_BB( bb );
+  }
+} 
 
 /* just an externally-visible wrapper to cgemit function */
 extern void

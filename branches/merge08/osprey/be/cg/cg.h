@@ -147,5 +147,9 @@ extern void CG_Dump_Cur_Region();
 extern REGISTER_SET caller_saved_regs_used[ISA_REGISTER_CLASS_MAX+1];
 extern void IPISR_Insert_Spills();
 #endif
+#if defined(TARG_IA64) || defined(TARG_SL)
+/* indicate whether region is already been formed. */
+extern BOOL RGN_Formed;
+#endif
 
 #endif /* cg_INCLUDED */

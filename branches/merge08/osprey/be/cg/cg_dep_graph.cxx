@@ -287,7 +287,7 @@ BB * _cg_dep_bb; // exported to cg_dep_graph_update.h so it can
 
 static std::list<BB*> _cg_dep_bbs;
 static MEM_POOL dep_map_nz_pool;
-static MEM_POOL dep_nz_pool;
+       MEM_POOL dep_nz_pool;
 static BOOL include_assigned_registers;
 static BOOL cyclic;
 static BOOL include_memread_arcs;
@@ -528,6 +528,9 @@ static _CG_DEP_OP_INFO *free_op_info = NULL;
 /* See above for specification */
 #define init_op_info() (free_op_info = NULL)
 
+#if !defined(TARG_IA64) && !defined(TARG_SL)
+static
+#endif
 _CG_DEP_OP_INFO *new_op_info(void)
 /* See above for specification */
 {
@@ -4199,6 +4202,118 @@ static void Add_MEM_Arcs(BB *bb)
   mem_ops = NULL;
 }
 
+#if defined(TARG_SL)
+static void Add_Vbuf_MEM_Arcs(BB *bb)
+/* -----------------------------------------------------------------------
+ * Add memory arcs to the current dep graph.
+ * ----------------------------------------------------------------------- */
+{
+  OP *op;
+  UINT16 i;
+  UINT32 sp_defs = 0;
+
+  /* Count the memory OPs */
+  num_mem_ops = 0;
+  FOR_ALL_BB_OPs(bb, op) {
+    if (OP_vbuf_load(op) || OP_vbuf_store(op))
+      num_mem_ops++;
+  }
+
+  /* Return if there's nothing to do */
+  if (num_mem_ops < 1) return;
+
+
+  /* For an exit block, add an arc from every stack memory op to the
+   * SP adjustment op.
+   */
+  if (BB_exit(bb)) {
+    OP *exit_sp_adj = BB_exit_sp_adj_op(bb);
+#ifdef KEY
+    /* <exit_sp_adj> could reside in a different bb, say _epilog_bb
+       for bug#3241.
+     */
+    if (exit_sp_adj &&
+	OP_bb(exit_sp_adj) == bb)
+#endif // KEY
+      {
+	for (op = exit_sp_adj; op != NULL; op = OP_prev(op)) {
+	  maybe_add_exit_sp_adj_arc (op, exit_sp_adj);
+	}
+      }
+  }
+
+#ifdef KEY
+  // To fix the position of asm ops w.r.t. other operations, create 
+  // dependency with all other ops. 
+  // TODO: Need to find out if the better way is to create a new BB for 
+  // every asm. 
+  {
+    FOR_ALL_BB_OPs(bb, op) {
+      if (OP_code(op) == TOP_asm) {
+	OP *op_tmp;
+	BOOL tail = FALSE;
+
+	FOR_ALL_BB_OPs(bb, op_tmp) {
+	  if (op_tmp == op) {
+	    tail = TRUE;
+	    continue;
+	  }
+	  if (!tail) 
+	    new_arc_with_latency(CG_DEP_MEMOUT, op_tmp, op, 1, 0, 0,FALSE);
+	  else
+	    new_arc_with_latency(CG_DEP_MEMOUT, op, op_tmp, 1, 0, 0,FALSE);
+	}
+      }
+    }
+  }
+#endif
+  if (!cyclic && num_mem_ops == 1) return;
+
+  /* Initialize data structures used by add_mem_arcs_from */
+  MEM_POOL_Push(&MEM_local_pool);
+  mem_ops = TYPE_L_ALLOC_N(OP *, num_mem_ops);
+  i = 0;
+  FOR_ALL_BB_OPs(bb, op) {
+    if (OP_vbuf_load(op) || OP_vbuf_store(op)){
+      mem_ops[i++] = op;
+    }
+  }
+  if (CG_DEP_Mem_Arc_Pruning >= PRUNE_CYCLIC_0 ||
+      !cyclic && CG_DEP_Mem_Arc_Pruning >= PRUNE_NON_CYCLIC)
+    mem_op_lat_0 = TYPE_L_ALLOC_N(INT32 *, num_mem_ops);
+
+  /* Call add_mem_arcs_from, which does the real work */
+  for (i = 0; i < num_mem_ops; i++)
+    add_mem_arcs_from(i);
+
+  /* Workaround for PV 707179.  Also see code above dependent on
+   * CG_DEP_Add_Alloca_Arcs.
+   */
+  if (CG_DEP_Add_Alloca_Arcs) {
+    for (op = BB_first_op(bb); op && sp_defs > 0; op = OP_next(op)) {
+      if (op_defines_sp(op)) {
+	--sp_defs;
+	for (i = 0; i < num_mem_ops; i++) {
+	  if (CG_DEP_Alloca_Aliases(mem_ops[i])) {
+	    if (OP_Precedes(op, mem_ops[i]))
+	      new_arc(CG_DEP_MISC, op, mem_ops[i], 0, 0, FALSE);
+	    else
+	      new_arc(CG_DEP_MISC, mem_ops[i], op, 0, 0, FALSE);
+	  }
+	}
+      }
+    }
+  }
+
+  MEM_POOL_Pop(&MEM_local_pool);
+
+  /* This acts as a flag, so be sure to reset it. */
+  mem_op_lat_0 = NULL;
+
+  /* Make add_mem_arcs_from/to crash immediately when <mem_ops> not right */
+  mem_ops = NULL;
+}
+#endif 
 
 static void make_virtual_anti_or_output_arc(CG_DEP_KIND kind, OP *pred, 
 					    OP *succ, UINT8 opnd)
@@ -5357,7 +5472,7 @@ CG_DEP_Delete_Graph(void *item)
   
 }
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_SL)
 void 
 CG_DEP_Delete_DAG(void)
 /* -----------------------------------------------------------------------
@@ -5699,7 +5814,7 @@ CG_DEP_Compute_Region_Graph(std::list<BB*>    bb_region,
   }
 }
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_SL)
 OP* get_def_op(OP* op , CG_DEP_KIND kind, UINT8 opnd)
 // get the define op for <op> accroding to CG_DEP_REGIN arc .
 // ARC_LIST_rest only look for ops inside one BB.
@@ -5726,6 +5841,7 @@ OP* get_def_op(OP* op , CG_DEP_KIND kind, UINT8 opnd)
   if (nearest_op==NULL || nearest_op==op || OP_bb(nearest_op) != bb) return NULL;
   else {
     // If nearest_op is mov , then continue to find the previous def op
+#if defined(TARG_IA64)
     if (OP_code(nearest_op)==TOP_mov) {
       def_op = nearest_op;
       // Continue to find the pred nearest def of of def_op
@@ -5746,6 +5862,9 @@ OP* get_def_op(OP* op , CG_DEP_KIND kind, UINT8 opnd)
       
     }
     else return nearest_op; // Not mov , return def op
+#else 
+    return nearest_op;
+#endif // TARG_IA64
   }//else
   
   return NULL;
@@ -5878,8 +5997,6 @@ BOOL get_definite_alias_info(OP *pred_op, OP *succ_op)
   return FALSE;
 }
 
-extern
-
 void
 DAG_BUILDER::Build_Mem_Arcs(OP *op)
 {
@@ -5934,9 +6051,9 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
     if (get_mem_dep(pred, op, &definite, _cyclic ? &omega : NULL) ||
         (kind == CG_DEP_MEMREAD
 #if defined(TARG_IA64)
-	 && Cache_Has_Conflict(pred,op,kind))
+	 && Cache_Has_Conflict(pred,op,kind)
 #endif
-	) {
+	)) {
 
       // For OOO machine (eg. T5), non-definite memory dependences can be 
       // relaxed to edges with zero latency. The belief is that this can 
@@ -5969,7 +6086,11 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
          * So, we need futher checking. 
          */
 	// bug fix for OSP_88
-	if ((!OP_volatile (pred) || !OP_volatile(op)) && !OP_asm(pred)) {
+	if ((!OP_volatile (pred) || !OP_volatile(op))
+#if !defined(TARG_SL)
+	    && !OP_asm(pred)
+#endif
+	    ) {
 	  Set_ARC_is_dotted(arc, TRUE);
 	  _num_data_spec_arcs++;
         }
@@ -6077,12 +6198,14 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
       // current PQS implementation.
       
       if (!OP_has_disjoint_predicate(*ops_iter, op)) {
+#if defined(TARG_IA64)
             if(i == OP_PREDICATE_OPND) {
                 ARC *arc_ptr = new_arc(CG_DEP_CTLSPEC, *ops_iter, op, 0, i, FALSE);
                 Set_ARC_is_dotted (arc_ptr, TRUE);
-            } else {
+            } else 
+#else
                 ARC *arc_ptr = new_arc(CG_DEP_REGIN, *ops_iter, op, 0, i, FALSE);
-            }
+#endif
       }
     }// for
   }
@@ -6177,7 +6300,7 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
 
         BOOL tn_def_found = FALSE;
         
-          
+#if defined(TARG_IA64)          
         // the following has exchanged *ops_iter and op to each other
         TN * tn = OP_result(*ops_iter,j) ;
         if (TN_is_register(tn) && TN_register_class(tn) == 
@@ -6201,6 +6324,11 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
             adjust_reganti_latency (arc) ;
           }
         }// else
+#else
+        ARC * arc = new_arc(CG_DEP_REGANTI, op, *ops_iter, 0, (UINT8)i, FALSE);
+        OUT = TRUE;
+        adjust_reganti_latency (arc) ;
+#endif
       }// for(j = 0; j < OP_results(op); j++){
     }
   }

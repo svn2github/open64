@@ -101,7 +101,7 @@
 #include "xstats.h"
 #include "tracing.h"
 #include "cgir.h"
-#if !defined(SHARED_BUILD)
+#if defined(SHARED_BUILD)
 #include "import.h"
 #endif
 #include "opt_alias_interface.h"	/* for Print_alias_info */
@@ -1731,7 +1731,7 @@ static void r_assemble_list (
   fputc ('\t', Asm_File);
 #ifdef TARG_X8664
   lc = CGEMIT_Print_Inst( op, result, opnd, Asm_File );
-#elif defined(TARG_SL) || defined(TARG_IA64)
+#elif defined(TARG_IA64)
   lc = CGEMIT_Print_Inst( op, result, opnd, Asm_File );
 #else
   lc = TI_ASM_Print_Inst( OP_code(op), result, opnd, Asm_File );
@@ -2761,7 +2761,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
   }
 #endif // TARG_X8664
 
-#if !defined(TARG_IA64)
+#if !defined(TARG_IA64) && !defined(TARG_SL)
   // Bug 4204 - move the ctrl register setup after the preamble. This 
   // causes the debug information generated to let the debugger to stop
   // at the right spot for the main entry function. Otherwise, the parameters
@@ -4710,14 +4710,14 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   Init_Sanity_Checking_For_BB ();
 #endif
 
-#ifndef TARG_IA64
+#if !defined(TARG_IA64) && !defined(TARG_SL)
 // Assumption: REGION_First_BB is the first BB in the PU. If in future,
 // we start having multiple regions in a PU here, we need to change the 
 // following. 
 // In such a scenario, we should need to change many of the occurrences
 // of REGION_First_BB above.
   if( 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
      !CG_emit_unwind_info &&
 #endif
      Assembly && (REGION_First_BB == bb) &&

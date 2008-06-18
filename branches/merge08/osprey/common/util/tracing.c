@@ -215,6 +215,7 @@ static PDESC Phases[] = {
   { TP_EMIT,		"EMT",	"Code emission" },
 
   { TP_TEMP,		"TMP",	"Temporary use" },
+  { TP_IPISR,		"ISR",	"Interprocedural ISR register allocation" },
 
   /* This one must be last: */
   { TP_COUNT,		NULL,  NULL }
