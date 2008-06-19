@@ -1079,6 +1079,7 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 			  sec = _SEC_RDATA;
 			} else
 #endif
+#if defined(TARG_SL)
 			if (name != _SEC_BSS) {
 			  DevWarn("change user specified section symbol to be initialized");
 			  Set_ST_is_initialized(st);
@@ -1090,6 +1091,7 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 			  sec = _SEC_DATA;
 			}
 			else
+#endif
 			  sec = _SEC_BSS;
 			break;
 #ifdef KEY
