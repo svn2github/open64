@@ -1,8 +1,4 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,10 +37,10 @@
  * ====================================================================
  *
  * Module: config_elf_targ.cxx
- * $Revision: 1.1 $
- * $Date: 2005/07/27 02:18:11 $
- * $Author: kevinlo $
- * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/config_elf_targ.cxx,v $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_elf_targ.cxx,v $
  *
  * Description:
  *
@@ -54,7 +50,7 @@
  * ====================================================================
  */
 
-#include <elf.h>
+#include <elf_stuff.h>
 #include <sys/elf_whirl.h>
 #include "defs.h"
 #include "erglob.h"

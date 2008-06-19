@@ -716,6 +716,7 @@ Abort .DEFAULT:
 
 else
 
+include $(BUILD_TOT)/Makefile.cross
 include $(BUILD_BASE)/Makefile.gbase
 endif
 

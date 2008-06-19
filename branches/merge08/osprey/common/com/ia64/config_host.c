@@ -1,8 +1,4 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,7 +35,7 @@
 
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/ia64/config_host.c,v $ $Revision: 1.1 $";
+static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_host.c,v $ $Revision: 1.1.1.1 $";
 
 #include "defs.h"
 #include "config.h"

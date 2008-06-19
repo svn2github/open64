@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -51,13 +51,67 @@
 #define lib_phase_dir_INCLUDED
 
 #include <stamp.h>
-#if defined(TARG_IA64) || defined(TARG_X8664)
+
+#if defined(VENDOR_OSP)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #include "pathscale_defs.h"
+
+#if defined(linux) && (defined(TARG_IA64) || defined(TARG_X8664))
+    #if CROSS_COMPILATION && defined(TARG_IA64)
+	    #define NAMEPREFIX	""
+	    #define INTERPOSE   "/ia64-open64-linux"
+    #else
+	    #define NAMEPREFIX	""
+	    #define INTERPOSE   ""
+    #endif 
+
+    #define BINPATH		INTERPOSE "/bin"
+
+    #ifdef CROSS_COMPILATION
+        #define ALTBINPATH  INTERPOSE "/altbin"
+    #else
+        #define ALTBINPATH  BINPATH
+    #endif 
+
+    #if defined(TARG_IA64)
+    #define LIBPATH	INTERPOSE "/lib/gcc-lib/ia64-open64-linux/" OPEN64_FULL_VERSION
+    #else
+    #define LIBPATH     INTERPOSE "/lib/gcc-lib/x86_64-open64-linux/" OPEN64_FULL_VERSION
+    #endif
+
+    #define ALTLIBPATH	"/usr" INTERPOSE "/lib"
+
+    #define PHASEPATH	    LIBPATH
+    #define GNUPHASEPATH    LIBPATH
+
+#elif defined(linux) && defined(TARG_IA32)
+
+    #define NAMEPREFIX	 ""
+    #define BINPATH		 "/bin"
+    #define ALTBINPATH   BINPATH
+    #define LIBPATH		 "/lib"
+    #define ALTLIBPATH	 LIBPATH
+    #define PHASEPATH	 "/ia32-sgi-linux/bin"
+    #define GNUPHASEPATH "/lib"
+
+#else
+#define NAMEPREFIX	""
+#ifdef PSC_TO_OPEN64
+#define BINPATH		OPEN64_INSTALL_PREFIX "/bin"
+#define ALTBINPATH	BINPATH
+#define LIBPATH		OPEN64_INSTALL_PREFIX "/lib"
+#define ALTLIBPATH	LIBPATH
+#define PHASEPATH	OPEN64_INSTALL_PREFIX "/lib"
+#define GNUPHASEPATH	OPEN64_INSTALL_PREFIX "/lib/gcc-lib/" OPEN64_TARGET "/" OPEN64_GCC_VERSION
 #endif
+#endif
+
+#elif defined(VENDOR_SL)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if 0
 #include "pathscale_defs.h"
-
 
 #define NAMEPREFIX	""
 #define BINPATH		PSC_INSTALL_PREFIX "/bin"
@@ -166,5 +220,9 @@
     #define GNUPHASEPATH	PHASEPATH
 
 #endif
+
+
+#endif /* defined(VENDOR_XXX) */
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif /* lib_phase_dir_INCLUDED */
