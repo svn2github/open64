@@ -272,6 +272,10 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
     // Put label-specific fields in place
     CGD_Symtab[handle].label_info.pu_idx = pu;
     if (label_name == NULL) {
+#ifdef KEY
+      if (LABEL_IDX_level(index) == 0)
+	index = make_LABEL_IDX(index, CURRENT_SYMTAB);
+#endif
       CGD_Symtab[handle].label_info.name_idx = LABEL_name_idx(index);
       CGD_Symtab[handle].label_info.offset = Get_Label_Offset(index);
     }
@@ -2936,15 +2940,15 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 	INT file_idx = USRCPOS_filenum(usrcpos);
 	INT include_idx;
 	// file change
-	if (
-#ifdef TARG_SL
-	    (include_idx != 0) && 
-#endif		
-	    ! file_table[file_idx].already_processed) {
+	if (! file_table[file_idx].already_processed) {
 
 		// new file
 		include_idx = file_table[file_idx].incl_index;
-		if ( ! incl_table[include_idx].already_processed) {
+		if (
+#ifdef TARG_SL
+		    (include_idx != 0) && 
+#endif		
+		    ! incl_table[include_idx].already_processed) {
 			// new include
 #if defined(BUILD_OS_DARWIN)
 			/* Mach-O assembler doesn't emit Dwarf for .file */
