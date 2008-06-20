@@ -8116,7 +8116,7 @@ Setup_Text_Section_For_PU (ST *pu)
       end_previous_text_region(old_section, Em_Get_Section_Offset(old_section));
     }
     if (generate_dwarf) {
-#ifdef KEY  /* TARG_X8664 */
+#if !defined(TARG_SL)  /* TARG_X8664 */
       // Bug 2468 - use the appropriate labels for the debug_aranges
       LABEL_IDX Text_Label = LABEL_IDX_ZERO;
       Text_Label = Gen_Label_For_BB (REGION_First_BB);
@@ -9018,7 +9018,7 @@ Emit_Options (void)
 #if defined(VENDOR_OSP) 
     fputs ("\t.ident\t\"#Open64 Compiler Version " OPEN64_FULL_VERSION " :", Asm_File);
 #elif defined(VENDOR_SL)
-    fputs ("\t.ident\t\"#Simplight Compiler Version 1.0 :", Asm_File);
+    fputs ("#\t.ident\t\"#Simplight Compiler Version 1.0 :", Asm_File);
 #else
     fputs ("\t.ident\t\"#PathScale Compiler Version " PSC_FULL_VERSION " :", Asm_File);
 #endif
@@ -9363,7 +9363,7 @@ EMT_End_File( void )
     fprintf ( Asm_File, "\t%s\t.note.GNU-stack,\"", AS_SECTION);
     if (PU_has_trampoline)
       fprintf ( Asm_File, "x");
-    fprintf ( Asm_File, "\",@probits\n");
+    fprintf ( Asm_File, "\",@progbits\n");
 #endif /* defined(BUILD_OS_DARWIN) */
     Emit_Options ();
 #endif
