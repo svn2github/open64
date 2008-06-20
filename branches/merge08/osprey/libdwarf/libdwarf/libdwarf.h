@@ -45,7 +45,7 @@ extern "C" {
 #endif
 /*
 	libdwarf.h  
-	$Revision: 1.2 $ $Date: 05/12/05 08:59:58-08:00 $
+	$Revision: 1.9 $ $Date: 05/12/05 09:00:44-08:00 $
 
 	For libdwarf producers and consumers
 
@@ -168,10 +168,9 @@ enum Dwarf_Rel_Type {
 #ifdef KEY /* Bug 3507 */
 		dwarf_drt_module,               /* module name */
 		dwarf_drt_imported_declaration, /* imported declaration */
-		 /* Bug 9534 */
-		dwarf_drt_cie_begin,            /* EH cie begin marker */
-		dwarf_drt_fde_begin,            /* EH fde begin marker */    
 #endif /* KEY Bug 3507 */
+		dwarf_drt_cie_begin, /* simple string */
+		dwarf_drt_fde_begin,            /* EH fde begin marker */
 		dwarf_drt_cie_label, /* simple string */
 		dwarf_drt_data_reloc_by_str_id, /* drd_symbol_index==str_idx */
 		dwarf_drt_first_of_length_pair_create_second,
@@ -1461,15 +1460,6 @@ Dwarf_P_Fde dwarf_add_fde_inst(
     Dwarf_Unsigned 	/*val1*/, 
     Dwarf_Unsigned 	/*val2*/, 
     Dwarf_Error* 	/*error*/);
-
-#ifdef KEY
-Dwarf_P_Fde dwarf_add_fde_inst_with_signed_offset(
-    Dwarf_P_Fde         /*fde*/,
-    Dwarf_Small 	/*op*/, 
-    Dwarf_Unsigned 	/*val1*/, 
-    Dwarf_Signed 	/*val2*/, 
-    Dwarf_Error* 	/*error*/);
-#endif
 
 Dwarf_P_Fde dwarf_new_fde(Dwarf_P_Debug	/*dbg*/, Dwarf_Error* /*error*/);
 
