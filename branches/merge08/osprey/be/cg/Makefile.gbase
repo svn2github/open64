@@ -693,6 +693,11 @@ bb_set.h : bb_set.td
 bb_set.td : $(SETGEN) $(BE_CG_DIR)/gen_bb_set
 	csh -f $(BE_CG_DIR)/gen_bb_set $(COMMON_UTIL_DIR) $(GEN_X_SET_OPTS)
 
+DERIVED_INCS += opsch_set.h opsch_set.td
+opsch_set.h : opsch_set.td
+opsch_set.td : $(SETGEN) $(BE_CG_DIR)/gen_opsch_set
+	csh -f $(BE_CG_DIR)/gen_opsch_set $(COMMON_UTIL_DIR) $(GEN_X_SET_OPTS)
+
 DERIVED_INCS += lrange_set.h lrange_set.td
 lrange_set.h : lrange_set.td
 lrange_set.cxx : lrange_set.td
