@@ -80,7 +80,6 @@
 #include "w2op.h"
 #include "config_opt.h"         // for Delay_U64_Lowering
 
-#include "opt_sys.h"            // BZERO definition
 #include "opt_config.h"
 #include "opt_wn.h"
 #include "opt_util.h"

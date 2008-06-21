@@ -72,7 +72,6 @@
 
 #endif
 
-#include <opt_sys.h>
 
 class IPA_LNO_READ_FILE; 
 

@@ -64,7 +64,6 @@ static char *rcs_id =   opt_lftr2_CXX"$Revision: 1.6 $";
 
 #include "opt_lftr2.h"		// LFTR class
 #include "config_wopt.h"	// WOPT_Enable_LFTR2
-#include "opt_sys.h"		// BZERO
 #include "opt_fold.h"		// FOLD class
 #include "idx_32_set.h"
 

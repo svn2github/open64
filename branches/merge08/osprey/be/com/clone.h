@@ -80,7 +80,6 @@
 #include "symtab.h"                     // for Scope_tab
 #include "wn.h"			        // includes wn_map.h
 
-#include "opt_sys.h"                    // BZERO definition
 // ======================================================================
 // IPO_SYMTAB class: encapsulates LOCAL symbol table info
 // Under the new symtab design, the local symbol table contains info on

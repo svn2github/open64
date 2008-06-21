@@ -138,7 +138,6 @@
 #include "config_opt.h"
 #endif
 
-#include "opt_sys.h"  // For BZERO
 /*
 MP lowerer cleanup TODO by DRK:
 

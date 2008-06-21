@@ -175,7 +175,6 @@ static char *cxx_templatercs_id = cxx_template_INCLUDED"$Revision: 1.2 $";
 #include "mempool.h"
 #include "erglob.h"
 #include "errors.h"
-#include "opt_sys.h"    // for BZERO
 
 template <class T>
 class DYN_ARRAY {

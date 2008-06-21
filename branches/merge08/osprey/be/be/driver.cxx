@@ -155,7 +155,6 @@
 #include "isr.h"
 #endif
 
-#include "opt_sys.h"        // For BZERO
 extern ERROR_DESC EDESC_BE[], EDESC_CG[];
 
 #ifdef KEY
