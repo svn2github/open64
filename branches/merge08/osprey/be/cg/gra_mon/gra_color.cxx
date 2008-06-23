@@ -735,6 +735,11 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
   }
   //End.
 #else
+  if (lrange->Type() != LRANGE_TYPE_LOCAL) {
+  printf("TN_num %d\n", TN_number(lrange->Tn()));
+  if (TN_number(lrange->Tn()) == 420)
+    printf("Chooseing 420\n");
+  }
   GRA_Trace_LRANGE_Choose(lrange, allowed);
 #endif
 #ifdef HAS_STACKED_REGISTERS
@@ -1609,11 +1614,9 @@ GRA_Color_Complement( GRA_REGION* region )
 	priority_count += split_alloc_lr->Priority();
       } else if (Choose_Register(lr, region)) {
 	priority_count += lr->Priority();
-      } else if (!Choose_Register(lr, region)) {
-	if (lr->Tn_Is_Save_Reg())  // bug 3552: never split saved-TNs
+      } else if (lr->Tn_Is_Save_Reg()) { // bug 3552: never split saved-TNs
 	GRA_Note_Spill(lr);
-      } else 
-      if (LRANGE_Split(lr, &iter, &split_alloc_lr) &&
+      } else if (LRANGE_Split(lr, &iter, &split_alloc_lr) &&
 		 (split_alloc_lr->Priority() >= 0.0F ||
 		  Must_Split(split_alloc_lr))) {
 	BOOL did_choose = Choose_Register(split_alloc_lr, region);
