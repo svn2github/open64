@@ -753,6 +753,20 @@ extern "C" {
 
 #define DW_ADDR_none		0
 
+#if defined(TARG_NVISA)
+/* PTX memory spaces: */
+#define DW_ADDR_reg_space	1
+#define DW_ADDR_sreg_space	2
+#define DW_ADDR_const_space	3
+#define DW_ADDR_global_space	4
+#define DW_ADDR_local_space	5
+#define DW_ADDR_param_space	6
+#define DW_ADDR_shared_space	7
+#define DW_ADDR_surf_space	8
+#define DW_ADDR_tex_space	9
+#define DW_ADDR_code_space	10
+#endif
+
 #ifdef __cplusplus
 }
 #endif

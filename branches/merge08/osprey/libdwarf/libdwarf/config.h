@@ -72,6 +72,9 @@
 
 /* Define 1 if __uint32_t is in sgidefs.h. */
 /* #undef HAVE___UINT32_T_IN_SGIDEFS_H */
+#ifdef __MINGW32__
+#define HAVE___UINT32_T_IN_SGIDEFS_H 1
+#endif /* __MINGW32__ */
 
 /* Define 1 if sys/types.h defines __uint32_t. */
 #define HAVE___UINT32_T_IN_SYS_TYPES_H 1
@@ -81,6 +84,9 @@
 
 /* Define 1 if __uint64_t is in sgidefs.h. */
 /* #undef HAVE___UINT64_T_IN_SGIDEFS_H */
+#ifdef __MINGW32__
+#define HAVE___UINT64_T_IN_SGIDEFS_H 1
+#endif /* __MINGW32__ */
 
 /* Define 1 if sys/types.h defines __uint64_t. */
 #define HAVE___UINT64_T_IN_SYS_TYPES_H 1

@@ -71,7 +71,13 @@ struct Elf;
 typedef struct Elf* dwarf_elf_handle;
 #endif
 
-#if (_MIPS_SZLONG == 64)
+/* Defining different types for 32 vs 64bit builds means that
+ * we cannot use same formatting or casts across builds.
+ * Long long is just as efficient as long on 64bit machine,
+ * so just use long long everywhere.
+ */
+#if 0
+//#if (_MIPS_SZLONG == 64)
 /* Special case for MIPS, so -64 (LP64) build gets simple -long-.
    Non-MIPS LP64 or ILP64 environments should probably ensure
    _MIPS_SZLONG set to 64 everywhere this header is #included.

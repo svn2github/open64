@@ -134,7 +134,6 @@ dwarf_die_link(Dwarf_P_Die new_die,
     if (child != NULL) {
 	n_nulls++;
 
-	Dwarf_P_Die curdie = child;
 	new_die->di_child = child;
 	new_die->di_last_child = NULL;
 
