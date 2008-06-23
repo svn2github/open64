@@ -9,7 +9,9 @@
 /* #undef const */
 
 /* Define if you have a working `mmap' system call.  */
+#ifndef __MINGW32__
 #define HAVE_MMAP 1
+#endif /* __MINGW32__ */
 
 /* Define to `long' if <sys/types.h> doesn't define.  */
 /* #undef off_t */
@@ -30,7 +32,9 @@
 /* #undef HAVE_CATGETS */
 
 /* Define if you have the gettext function. */
+#if !defined(__CYGWIN__) && !defined(__MINGW32__) && !defined(__APPLE__)
 #define HAVE_GETTEXT 1
+#endif
 
 /* Define if you have the memset function.  */
 #define HAVE_MEMSET 1

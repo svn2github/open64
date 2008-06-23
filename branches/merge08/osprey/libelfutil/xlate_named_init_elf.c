@@ -428,7 +428,7 @@ xlate_named_init_elf(Elf * elf, const char *section_name,
    if(newtab == NULL) {
 	return XLATE_TB_STATUS_ALLOC_FAIL;
    }
-   bzero(newtab,sizeof(struct xlate_table_con_s));
+   BZERO(newtab,sizeof(struct xlate_table_con_s));
 
 
    newtab->xc_elf = elf;
@@ -485,7 +485,7 @@ xlate_finish(xlate_table_con tab)
    if(tab->xc_did_elf_begin ) {
 	elf_end(tab->xc_elf);
    }
-   bzero(tab,sizeof(*tab));
+   BZERO(tab,sizeof(*tab));
    free(tab);
    return retstatus;
 }
