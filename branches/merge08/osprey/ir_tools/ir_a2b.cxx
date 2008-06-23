@@ -39,7 +39,11 @@
 
 #include <errno.h>		    /* for sys_errlist */
 #include <stdio.h>		    /* for stderr */
+#ifdef __MINGW32__
+#include <WINDOWS.h>
+#else
 #include <libgen.h>		    /* for basename() */
+#endif /* __MINGW32__ */
 #include <sys/stat.h>
 #if ! defined(BUILD_OS_DARWIN)
 #include <elf.h>
@@ -325,10 +329,11 @@ usage (char *progname)
 {
   INT a2b, b2a, sel, all;
 
-  a2b = (strcmp (progname, "ir_a2b") == 0);
-  b2a = (strcmp (progname, "ir_b2a") == 0);
-  sel = (strcmp (progname, "ir_sel") == 0);
-  all = (strcmp (progname, "ir_all") == 0);
+  // programes on windows are suffixed with .exe, so ignore that part
+  a2b = (strncmp (progname, "ir_a2b",6) == 0);
+  b2a = (strncmp (progname, "ir_b2a",6) == 0);
+  sel = (strncmp (progname, "ir_sel",6) == 0);
+  all = (strncmp (progname, "ir_all",6) == 0);
   
   if (a2b) {
       fprintf (stderr, "New symbol table format not supported by ir_a2b (yet)\n");
@@ -368,14 +373,26 @@ main (INT argc, char *argv[])
     Set_Error_File(NULL);
     Set_Error_Line(ERROR_LINE_UNKNOWN);
     WHIRL_Mldid_Mstid_On = TRUE;
-
+#ifdef __MINGW32__
+    progname = argv[0] + strlen (argv[0]);
+    while (progname >= argv[0]) {
+	if (*progname == '/' || *progname == '\\') {
+	    progname++;
+	    break;
+	}
+	progname--;
+    }
+#else
     progname = basename (argv[0]);
+#endif /* __MINGW32__ */
+
     // weird linux bug with basename where it doesn't strip the leading /
     if (*progname == '/') ++progname;
-    a2b = (strcmp (progname, "ir_a2b") == 0);
-    b2a = (strcmp (progname, "ir_b2a") == 0);
-    sel = (strcmp (progname, "ir_sel") == 0);
-    all = (strcmp (progname, "ir_all") == 0);
+    // programes on windows are suffixed with .exe, so ignore that part
+    a2b = (strncmp (progname, "ir_a2b",6) == 0);
+    b2a = (strncmp (progname, "ir_b2a",6) == 0);
+    sel = (strncmp (progname, "ir_sel",6) == 0);
+    all = (strncmp (progname, "ir_all",6) == 0);
 
     if (a2b) {
 	usage (progname);

@@ -43,7 +43,9 @@
 #include <errno.h>		    /* for sys_errlist */
 #include <sys/stat.h>
 #include <sys/elf_whirl.h>
+#ifndef __MINGW32__
 #include <libgen.h>		    /* for basename() */
+#endif /* __MINGW32__ */
 #include <algorithm>
 
 #include "defs.h"
@@ -84,11 +86,12 @@ size_of_each_pu (PU_Info *pu_tree, BOOL verbose)
 	if (verbose)
 	    printf("%d\t%d\t%d\t%d\t%d\t%d\n",
 		i,
-		PU_Info_subsect_size(pu,WT_SYMTAB),
-		PU_Info_subsect_size(pu,WT_TREE),
-		PU_Info_subsect_size(pu,WT_DEPGRAPH),
-		PU_Info_subsect_size(pu,WT_PREFETCH),
-		PU_Info_subsect_size(pu,WT_FEEDBACK)
+		// cast to INT in case it is long (cygwin)
+		(INT)PU_Info_subsect_size(pu,WT_SYMTAB),
+		(INT)PU_Info_subsect_size(pu,WT_TREE),
+		(INT)PU_Info_subsect_size(pu,WT_DEPGRAPH),
+		(INT)PU_Info_subsect_size(pu,WT_PREFETCH),
+		(INT)PU_Info_subsect_size(pu,WT_FEEDBACK)
 	    );
 	sym_size += PU_Info_subsect_size(pu,WT_SYMTAB);
 	wn_size += PU_Info_subsect_size(pu,WT_TREE);
@@ -176,7 +179,20 @@ main (INT argc, char *argv[])
     Set_Error_File(NULL);
     Set_Error_Line(ERROR_LINE_UNKNOWN);
 
+#ifdef __MINGW32__
+    progname = strrchr(argv[0], '\\');
+    if (progname == NULL) {
+	progname = strrchr(argv[0], '/');
+    }
+    if (progname == NULL) {
+	progname = argv[0];
+    }
+    else {
+    	progname++;
+    }
+#else
     progname = basename (argv[0]);
+#endif /* __MINGW32__ */
 
     if (argc < 2)
 	usage(progname);

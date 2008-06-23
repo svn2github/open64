@@ -56,6 +56,9 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 TARGDEFS +=-D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), NVISA)
+TARGDEFS +=-D__MIPS_AND_IA64_ELF_H
+endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 # don't use is_true_on because ir_a2b doesn't have config info
@@ -76,7 +79,7 @@ COMMON_UTIL_DIR= $(BUILD_TOT)/common/util
 COMMON_COM_DIR= $(BUILD_TOT)/common/com
 COMMON_COM_TARG_DIR= $(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
 
-LDIRT = ir_a2b ir_sel
+LDIRT = $(TARGETS)
 
 LCINCS = -I$(BUILD_BASE) -I$(COMMON_COM_DIR) -I$(COMMON_COM_TARG_DIR) \
 	-I$(COMMON_UTIL_DIR) $(XINC) -I$(BUILD_TOT)/include
