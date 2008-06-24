@@ -687,7 +687,6 @@ Init_Section (ST *st)
 	}
 
 	em_scn[last_scn].sym = st;	/* save symbol for later reference */
-
 	/* assume st is CLASS_BLOCK */
 	scn_type = Get_Section_Elf_Type(STB_section_idx(st));
 	scn_flags = Get_Section_Elf_Flags(STB_section_idx(st));
@@ -6595,9 +6594,9 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
       }
 #endif
       else
-#endif // TARG_SL
 
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv));
+#endif // TARG_SL
       break;
 
     case INITVKIND_ONE:
