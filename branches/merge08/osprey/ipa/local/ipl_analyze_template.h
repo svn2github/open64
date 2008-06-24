@@ -73,6 +73,8 @@
 #endif // opt_mu_chi_INCLUDED
 
 extern "C" {
+#ifdef SHARED_BUILD
+ // is replaced in ipa build but not for inliner
  void _ZN10DU_MANAGER14CD_is_br_takenEj(void) __attribute__ ((weak));
  void _ZN10DU_MANAGER15CD_is_fall_thruEj(void) __attribute__((weak));
  void _ZNK7CODEREP12Def_at_entryEv(void) __attribute__((weak));
@@ -80,6 +82,7 @@ extern "C" {
  void _ZN10DU_MANAGER8DominateEjj(void) __attribute__((weak));
  void _ZN10DU_MANAGER6Get_cdEj(void) __attribute__((weak));
  void _ZN10DU_MANAGER13Get_last_stmtEj(void) __attribute__((weak));
+#endif
 
  void _ZN10DU_MANAGER14CD_is_br_takenEj(void) {}
  void _ZN10DU_MANAGER15CD_is_fall_thruEj(void) {}

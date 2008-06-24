@@ -125,7 +125,7 @@ public:
   INT Get_formal_count() const	{ return _formal_count;};
   void Set_formal_count(INT f)	{ _formal_count = f;};
 
-  void Init()			{ bzero (this, sizeof(ALT_ENTRY)); }
+  void Init()			{ BZERO (this, sizeof(ALT_ENTRY)); }
 }; // ALT_ENTRY
 
 
@@ -191,7 +191,7 @@ private:
 public:
 
     SUMMARY_DESC () {
-	bzero (this, sizeof(SUMMARY_DESC));
+	BZERO (this, sizeof(SUMMARY_DESC));
     }
 
     void Set_wn (WN *w)			{ _w = w; }
@@ -265,7 +265,7 @@ public:
     void Decr_call_count ()		{ --_call_count; }
     BOOL Is_Leaf_now () const           { return (_call_count == 0);}
     void Init (void) {
-      bzero (this, sizeof(SUMMARY_PROC_INFO));
+      BZERO (this, sizeof(SUMMARY_PROC_INFO));
       _call_count = 0;
     }
 

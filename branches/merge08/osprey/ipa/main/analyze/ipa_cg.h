@@ -1243,7 +1243,7 @@ public:
 	pool (m), edge_size (cg->Edge_Size()) {
 	UINT size = sizeof(EDGE) * edge_size;
 	data = (EDGE*) MEM_POOL_Alloc (pool, size);
-	bzero (data, size);
+	BZERO (data, size);
     }
 
     ~AUX_IPA_EDGE () { MEM_POOL_FREE (pool, data); }
@@ -1282,7 +1282,7 @@ public:
 	pool (m), node_size (cg->Node_Size()) {
 	UINT size = sizeof(NODE) * node_size;
 	data = (NODE*) MEM_POOL_Alloc (pool, size);
-	bzero (data, size);
+	BZERO (data, size);
     }
 
     ~AUX_IPA_NODE () { MEM_POOL_FREE (pool, data); }
@@ -1295,7 +1295,7 @@ public:
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
-	    bzero (((char *)data)+size, size);
+	    BZERO (((char *)data)+size, size);
         }
 #else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (node->Array_Index () < node_size, ("Subscript out of bound"));
@@ -1308,7 +1308,7 @@ public:
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
-	    bzero (data+size, size);
+	    BZERO (data+size, size);
         }
 #else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (node->Array_Index () < node_size, ("Subscript out of bound"));
@@ -1322,7 +1322,7 @@ public:
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
-	    bzero (data+size, size);
+	    BZERO (data+size, size);
         }
 #else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (n_idx < node_size, ("Subscript out of bound"));
@@ -1335,7 +1335,7 @@ public:
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
-	    bzero (data+size, size);
+	    BZERO (data+size, size);
 	}
 #else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (n_idx < node_size, ("Subscript out of bound"));

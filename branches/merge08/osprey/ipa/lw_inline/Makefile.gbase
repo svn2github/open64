@@ -126,7 +126,7 @@ HEADER_DIRS = \
   $(SRC_DIRS)		\
   $(COMMON_COM_TARG_DIR) \
   $(COMMON_UTIL_DIR)	\
-  $(TARGDIR)/be		\
+  $(TARG_BE_DIR)	\
   $(BE_VHO_DIR)		\
   $(BUILD_TOT)/include
 
@@ -220,9 +220,11 @@ GLDOPTS = $(STD_LOAD_OPTS) $(LD_QUICKSTART_INFO)
 
 TARGETS = lw_inline
 
-LDIRT = be.so ii_files
+LDIRT = be.so ii_files ${TARGETS}
 
+ifneq ($(BUILD_VARIANT), STATIC)
 LLDOPTS = -Wl,--export-dynamic
+endif
 LLDLIBS = 
 
 default: first $(TARGETS) last
@@ -252,9 +254,14 @@ else
  endif
 endif
 
+ifneq ($(BUILD_VARIANT), STATIC)
 lw_inline: $(IPA_OBJS) $(IPA_CXX_OBJS)
 	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 	$(link.c++f) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) be.so  $(LDFLAGS)
+else
+lw_inline: $(IPA_OBJS) $(IPA_CXX_OBJS) $(TARG_BE_DIR)/libbe.a
+	$(link.c++f) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) $(TARG_BE_DIR)/libbe.a $(LDFLAGS)
+endif
 
 #----------------------------------------------------------------------
 #  Include the usual commonrules

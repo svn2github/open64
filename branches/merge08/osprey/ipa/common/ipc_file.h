@@ -136,7 +136,7 @@ struct IP_FILE_HDR
     // constructor
 
     IP_FILE_HDR (const char *name, void *mmap_addr, off_t mmap_size) {
-	bzero (this, sizeof(IP_FILE_HDR));
+	BZERO (this, sizeof(IP_FILE_HDR));
 	file_name = name;
 	input_map_addr = mmap_addr;
 	MEM_POOL_Initialize (&mem_pool, const_cast<char *> (file_name),

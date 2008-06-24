@@ -161,7 +161,7 @@ public:
   void Set_step(ACCESS_VECTOR *step) { _step = step;};
   ACCESS_VECTOR* Get_step() const { return _step;};
 
-#ifdef KEY
+#if defined(KEY) && defined(SHARED_BUILD)
   void Print(FILE *fp, INT = 0) __attribute__((weak));
 #else
   void Print(FILE *fp, INT = 0);

@@ -245,7 +245,7 @@ public:
 
     SUMMARY_ENTRY_CACHE (MEM_POOL *m) {
 	mem = m;
-	bzero (table, sizeof(table));
+	BZERO (table, sizeof(table));
     }
 
     void Insert (SUMMARY_TYPE type, INT idx) {

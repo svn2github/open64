@@ -239,11 +239,11 @@ DST_IDX DST_mk_string(DST_TYPE dst_vptr, MEM_POOL* p, const char* s)
 DST_IDX DST_mk_include_dir(DST_TYPE dst, MEM_POOL* p, const char* path,
                            DST_IDX prev_idx)
 {
-  Is_True(DST_ARE_EQUAL(prev_idx, DST_INVALID_IDX) ||
-          !DST_ARE_EQUAL(DST_get_include_dirs(dst), DST_INVALID_IDX),
+  Is_True((DST_IS_NULL(prev_idx)) ||
+          (!DST_IS_NULL(DST_get_include_dirs(dst))),
           ("For first DST include dir, idx of prev node must be null"));
-  Is_True(!DST_ARE_EQUAL(prev_idx, DST_INVALID_IDX) ||
-          DST_ARE_EQUAL(DST_get_include_dirs(dst), DST_INVALID_IDX),
+  Is_True((!DST_IS_NULL(prev_idx)) ||
+          (DST_IS_NULL(DST_get_include_dirs(dst))),
           ("This is not the first DST include dir, but idx of prev is null"));
 
   DST_IDX idx = DST_allocate(dst, p,
@@ -253,7 +253,7 @@ DST_IDX DST_mk_include_dir(DST_TYPE dst, MEM_POOL* p, const char* path,
   DST_INCLUDE_DIR_path(dir) = DST_mk_string(dst, p, path);
   DST_INCLUDE_DIR_next(dir) = DST_INVALID_IDX;
 
-  if(!DST_ARE_EQUAL(prev_idx, DST_INVALID_IDX)) {
+  if(!DST_IS_NULL(prev_idx)) {
     DST_INCLUDE_DIR* prev = DST_get_include_dir(dst, prev_idx);
     DST_INCLUDE_DIR_next(prev) = idx;
   }
@@ -351,9 +351,7 @@ DST_IDX DST_mk_compile_unit(DST_TYPE dst,
           ("Must create first compile unit once and only once"));
 
   // Always put a new compile unit in a new block.
-  Is_True(( DST_ARE_EQUAL(prev, DST_INVALID_IDX) && !DST_has_compile_unit(dst)) ||
-          ( !DST_ARE_EQUAL(prev, DST_INVALID_IDX) && DST_has_compile_unit(dst)),
-          ("Must create first compile unit once and only once"));                 if (DST_IS_NULL(prev)) 
+  if (DST_IS_NULL(prev)) 
     DST_new_block(dst, p, DST_file_scope_block, sizeof(DST_INFO));
 
   DST_IDX info_idx = DST_allocate(dst, p, sizeof(DST_INFO),
@@ -529,8 +527,8 @@ DST_IDX DST_mk_memdef(DST_TYPE dst,
   DST_INFO* cu_info = DST_get_info(dst, cu_idx);
   DST_COMPILE_UNIT* cu = DST_get_compile_unit_attr(dst, cu_info);
 
-  Is_True( DST_ARE_EQUAL(prev, DST_INVALID_IDX) ==
-           DST_ARE_EQUAL(DST_COMPILE_UNIT_first_child(cu), DST_INVALID_IDX),
+  Is_True( DST_IS_NULL(prev) ==
+           DST_IS_NULL(DST_COMPILE_UNIT_first_child(cu)),
           ("Every subprogram except the first must have a previous node"));
   Is_True(DST_IS_memdef(flag), ("Not a memdef"));
 
@@ -578,7 +576,7 @@ DST_IDX DST_copy_subprogram(DST_TYPE src, DST_TYPE dest,
     Is_True(!DST_IS_NULL(name_idx),
             ("Subprogram declaration has no name"));
     const char* name = DST_IDX_to_string(src, name_idx);
-    const char* linkage_name = !DST_ARE_EQUAL(linkage_name_idx, DST_INVALID_IDX) ?
+    const char* linkage_name = !DST_IS_NULL(linkage_name_idx) ?
                                DST_IDX_to_string(src, linkage_name_idx) :
                                0;
 

@@ -450,11 +450,15 @@ typedef unsigned short	ELF_SECTION;
 #define MEMCMP(s1, s2, n) \
     memcmp((void *)(s1), (void *)(s2), (size_t)(n))
 
+#ifndef BZERO
 #define BZERO(b, len) \
     bzero((void *)(b), (int)(len))
+#endif
 
+#ifndef BCOPY
 #define BCOPY(src, dst, len) \
     bcopy((const void *)(src), (void *)(dst), (int)(len))    	       
+#endif
 
 #define PCREATEVE(path, argv, envp) \
     pcreateve((const char *)(path), (char *const *)(argv), \

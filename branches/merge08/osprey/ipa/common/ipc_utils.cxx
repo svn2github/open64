@@ -173,7 +173,7 @@ Digest_Archive (void* handle, MEM_POOL* m, INT64 file_size)
     p->hash_table = (struct archive_hash **)
 	MEM_POOL_Alloc (m, sizeof(struct archive_hash *) * p->size);
 
-    bzero ((char *)p->hash_table, sizeof(struct archive_hash *) * p->size);
+    BZERO ((char *)p->hash_table, sizeof(struct archive_hash *) * p->size);
 
     p->buckets = buckets = (struct archive_hash *)
 	MEM_POOL_Alloc (m, sizeof(struct archive_hash) * n_entries);

@@ -85,11 +85,15 @@ enum AUX_ST_FLAG
 extern "C" void
 Sync_symbol_attributes (ST_IDX st_idx, UINT32 sym_attr, BOOL is_weak,
 			UINT32 export_class);
+#ifdef SHARED_BUILD
 #pragma weak Sync_symbol_attributes
+#endif
 
 extern "C" void
 Linker_mark_not_gp_rel (ST_IDX st_idx);
+#ifdef SHARED_BUILD
 #pragma weak Linker_mark_not_gp_rel
+#endif
 
 #endif 
 

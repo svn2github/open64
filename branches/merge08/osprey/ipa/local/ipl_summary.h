@@ -181,7 +181,7 @@ private:
 public:
 
   SUMMARY_FILE_HEADER() {
-    bzero(this, sizeof(SUMMARY_FILE_HEADER));
+    BZERO(this, sizeof(SUMMARY_FILE_HEADER));
   };
 
   void Set_version_number(mINT32 i) { _version_number = i;};
@@ -729,7 +729,7 @@ public:
     /* operations */
 
     void Init (void) {
-	bzero (this, sizeof(SUMMARY_PROCEDURE));
+	BZERO (this, sizeof(SUMMARY_PROCEDURE));
 	_bb_count = MIN (PU_WN_BB_Cnt, UINT16_MAX);
 	_stmt_count = MIN (PU_WN_Stmt_Cnt, UINT16_MAX);
 
@@ -819,7 +819,7 @@ public:
 
     /* operations */
 
-    void Init () { bzero (this, sizeof(SUMMARY_FEEDBACK)); }
+    void Init () { BZERO (this, sizeof(SUMMARY_FEEDBACK)); }
 
     // Tracing
     void Print (FILE *f) const;
@@ -982,7 +982,7 @@ public:
 
 
     void Init () {
-	bzero (this, sizeof(SUMMARY_CALLSITE));
+	BZERO (this, sizeof(SUMMARY_CALLSITE));
     }
 	
     // Tracing:
@@ -1465,7 +1465,7 @@ public:
 
     /* operations */
     
-    void Init ()		{ bzero (this, sizeof(SUMMARY_VALUE)); }
+    void Init ()		{ BZERO (this, sizeof(SUMMARY_VALUE)); }
 
     // print the constant value in ascii form
     void Print_const_value (FILE *f, const SUMMARY_SYMBOL* symbol = NULL) const;
@@ -1529,7 +1529,7 @@ public:
     
     /* operations */
 
-    void Init ()		{ bzero (this, sizeof(SUMMARY_PHI)); }
+    void Init ()		{ BZERO (this, sizeof(SUMMARY_PHI)); }
 
     /* print functions */
 
@@ -1757,7 +1757,7 @@ public:
 
     /* operations */
 
-    void Init ()		{ bzero (this, sizeof(SUMMARY_EXPR)); }
+    void Init ()		{ BZERO (this, sizeof(SUMMARY_EXPR)); }
 
     void Print_node (FILE *f, INT kid = 0) const;
 
@@ -1885,7 +1885,7 @@ public:
 
     /* operations */
 
-    void Init ()	{ bzero (this, sizeof(SUMMARY_STMT)); }
+    void Init ()	{ BZERO (this, sizeof(SUMMARY_STMT)); }
 
     /* print functions */
 
@@ -1962,7 +1962,7 @@ public:
 
     /* operations */
 
-    void Init ()	{ bzero (this, sizeof(SUMMARY_CONTROL_DEPENDENCE)); }
+    void Init ()	{ BZERO (this, sizeof(SUMMARY_CONTROL_DEPENDENCE)); }
 
     /* print functions */
     
@@ -2182,7 +2182,7 @@ public:
 
     /* operations */
        
-    void Init ()		{ bzero (this, sizeof(SUMMARY_SYMBOL)); }
+    void Init ()		{ BZERO (this, sizeof(SUMMARY_SYMBOL)); }
 
     
     // Tracing:
@@ -2258,7 +2258,7 @@ public:
 
     /* operations */
 
-    void Init (void)		{ bzero (this, sizeof(SUMMARY_GLOBAL));}
+    void Init (void)		{ BZERO (this, sizeof(SUMMARY_GLOBAL));}
 
     // Tracing:
     void Print ( FILE *fp ) const;
@@ -2352,7 +2352,7 @@ public:
   INT16 Has_equivalences() const { return  _state & IPL_HAS_EQUIVALENCES;};
 
   /* operations */
-  void Init ()		{ bzero (this, sizeof(SUMMARY_COMMON)); }
+  void Init ()		{ BZERO (this, sizeof(SUMMARY_COMMON)); }
 
   void Print_array(FILE *fp, INT32 size) const;
   void Trace_array(INT32 size) const ;
@@ -2448,7 +2448,7 @@ public:
 
   /* operations */
   void Init ()	{ 
-    bzero(this, sizeof(SUMMARY_COMMON_SHAPE)); 
+    BZERO(this, sizeof(SUMMARY_COMMON_SHAPE)); 
     Set_symbol_index(-1); 
   }
 
@@ -2564,7 +2564,7 @@ public:
     /* operations */
 
     void Init (mUINT32 ty_index,mUINT32 flatten_flds,MEM_POOL * mem){ 
-	    bzero(this, sizeof(SUMMARY_STRUCT_ACCESS)); 
+	    BZERO(this, sizeof(SUMMARY_STRUCT_ACCESS)); 
 	    _mem=mem;
 	    Set_ty(ty_index); 
 	    Set_flatten_flds(flatten_flds);
@@ -2605,7 +2605,7 @@ class SUMMARY_TY_INFO
     void Set_ty_no_split (void)      { _flags |= IPL_TY_NO_SPLIT; }
     BOOL Is_ty_no_split (void) const { return _flags & IPL_TY_NO_SPLIT; }
 
-    void Init (void)                 { bzero (this, sizeof(SUMMARY_TY_INFO)); }
+    void Init (void)                 { BZERO (this, sizeof(SUMMARY_TY_INFO)); }
     void Print_array(FILE *fp, INT32 size) const;
     void Trace_array(INT32 size) const ;
     void Print(FILE *f) const;

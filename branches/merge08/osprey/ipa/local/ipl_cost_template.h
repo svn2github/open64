@@ -212,7 +212,7 @@ INT SUMMARIZE<program>::IPL_GEN_Value(WN* wn_value,
   SUMMARY_VALUE* svv = &(*sv)[sv_index];  
   SUMMARY_VALUE* svv_new = Get_value(value_index); 
   INT new_value_idx = _value.Lastidx();
-  bcopy(svv_new, svv, sizeof(SUMMARY_VALUE));
+  BCOPY(svv_new, svv, sizeof(SUMMARY_VALUE));
   if (new_value_idx > old_value_idx)  
     _value.Decidx();
   INT sx_index = sx->Newidx();

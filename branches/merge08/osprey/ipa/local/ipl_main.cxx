@@ -68,6 +68,9 @@
 #endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/elf_whirl.h>	    // for WHIRL revision number
 #include <sys/types.h>		    // for ir_bwrite.h
+#if defined(__MINGW32__)
+#include <WINDOWS.h>
+#endif
 #include "defs.h"
 
 #define BACK_END		    // needed by config.h

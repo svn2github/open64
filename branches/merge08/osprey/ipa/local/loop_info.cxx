@@ -75,7 +75,10 @@
 #include "ipl_summary.h"
 #include "ipl_summarize.h"
 
-#pragma weak Aliased 
+#ifdef SHARED_BUILD
+#pragma weak Aliased
+#endif
+ 
 mINT32
 SYSTEM_OF_EQUATIONS::_work[SOE_MAX_WORK_ROWS][SOE_MAX_WORK_COLS];
 mINT64 

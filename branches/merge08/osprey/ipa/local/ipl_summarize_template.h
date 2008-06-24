@@ -2491,7 +2491,7 @@ SUMMARIZE<program>::Process_formal (WN *w, INT num_formals, SUMMARY_PROCEDURE *p
 {
     for (INT i = 0; i < num_formals; i++) {
 	SUMMARY_FORMAL *formal = New_formal ();
-	bzero (formal, sizeof(SUMMARY_FORMAL));
+	BZERO (formal, sizeof(SUMMARY_FORMAL));
 	const ST* formal_st = WN_st (WN_formal (w, i));
 	INT sym_idx = Get_symbol_index (formal_st);
 	formal->Set_symbol_index (sym_idx);
@@ -2520,7 +2520,7 @@ SUMMARIZE<program>::Process_formal_alt (WN *w, INT kid_count)
 {
     for (INT i = 0; i < kid_count; i++) {
 	SUMMARY_FORMAL *formal = New_formal ();
-	bzero (formal, sizeof(SUMMARY_FORMAL));
+	BZERO (formal, sizeof(SUMMARY_FORMAL));
 	const ST* formal_st = WN_st(WN_kid(w, i));
 	INT sym_idx = Get_symbol_index (formal_st);
 	formal->Set_symbol_index (sym_idx);
@@ -2857,13 +2857,16 @@ SUMMARIZE<program>::Get_symbol_index (const ST *st)
     sym->Set_btype(TY_mtype(ST_type(st)));
   } 
 
-  if (TY_kind(ST_type(st)) == KIND_POINTER) { 
-    if (TY_kind(TY_pointed(ST_type(st))) == KIND_ARRAY)
-      sym->Set_array();
-  } else { 
-    if (TY_kind(ST_type(st)) == KIND_ARRAY)
-      sym->Set_array();
-  } 
+  if (ST_class(st) != CLASS_FUNC) { 
+  // It is invalid to take ST_type of a class_function.
+    if (TY_kind(ST_type(st)) == KIND_POINTER) { 
+      if (TY_kind(TY_pointed(ST_type(st))) == KIND_ARRAY)
+        sym->Set_array();
+    } else { 
+      if (TY_kind(ST_type(st)) == KIND_ARRAY)
+        sym->Set_array();
+    } 
+  }
 
   if (ST_is_f90_target (st))
       sym->Set_addr_f90_target ();

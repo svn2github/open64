@@ -155,8 +155,8 @@ Is_constant_global(const IPA_NODE* n,
 {
   // constant scalar variable discovered by CGI
   TCON tcon;
-  if (offset == 0 &&
-      ST_is_const_initialized_scalar(ST_ptr(base_st_idx), offset, tcon)) {
+  //see the definition of ST_is_const_initialized_scalar
+  if (ST_is_const_initialized_scalar(ST_ptr(base_st_idx), offset, tcon)) {
     return Targ_Is_Integral(tcon, val);
   }
 
