@@ -1820,6 +1820,9 @@ Initialize_BB_Info(void)
 	bbinfo->succs[1].offset = 0;
 	bbinfo->succs[1].prob = BBLIST_prob(fall_through_edge);
 
+#if defined(TARG_SL)
+	if(br == NULL)  continue;
+#endif
 	CGTARG_Branch_Info(br, &tfirst, &tcount);
 	FmtAssert(tcount == 1, ("unexpected number of branch targets"));
 	lab_tn = OP_opnd(br, tfirst);
