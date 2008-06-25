@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ *  Copyright (C) 2007, 2008. Pathscale, LLC. All Rights Reserved.
  */
 
 /*
@@ -142,6 +142,7 @@ typedef enum {
   TARGET_athlon,	/* AMD Athlon */
   TARGET_em64t,		/* Intel EM64T */
   TARGET_core,		/* Intel Core */
+  TARGET_wolfdale,	/* Intel Wolfdale */
   TARGET_anyx86,	/* Generic x86 processor */
   TARGET_pentium4,	/* Intel Pentium 4 */
   TARGET_xeon,		/* Intel Pentium 4 Xeon */
@@ -150,7 +151,7 @@ typedef enum {
 extern TARGET_PROCESSOR Target;		/* -Tc */
 
 /* return the target name for <target> */
-extern char *Targ_Name (TARGET_PROCESSOR target);
+extern const char *Targ_Name (TARGET_PROCESSOR target);
 
 // NOTE: for this definition, all processors are treated x86-64!
 #define Is_Target_x86_64()	(Target >= TARGET_opteron && Target <= TARGET_xeon)
@@ -163,6 +164,7 @@ extern char *Targ_Name (TARGET_PROCESSOR target);
 #define Is_Target_Pentium4()    (Target == TARGET_pentium4)
 #define Is_Target_EM64T()	(Target == TARGET_em64t)
 #define Is_Target_Core()	(Target == TARGET_core)
+#define Is_Target_Wolfdale()	(Target == TARGET_wolfdale)
 #define Is_Target_Anyx86()      (Target == TARGET_anyx86)
 #define Target_x87_precision()	(Target_x87_Precision+0)
 #define Is_Target_Barcelona()   (Target == TARGET_barcelona)

@@ -1496,6 +1496,58 @@ Clear_TY_has_prototype (TY_IDX tyi) {
 	Ty_Table[tyi].Clear_pu_flag (TY_HAS_PROTOTYPE);
 }
 
+#ifdef TARG_X8664
+inline BOOL
+TY_has_sseregister_parm (const TY& ty) {
+	return ty.Pu_flags () & TY_HAS_SSEREG_PARM;
+}
+inline void
+Set_TY_has_sseregister_parm (TY& ty) {
+	ty.Set_pu_flag (TY_HAS_SSEREG_PARM);
+}
+inline BOOL
+TY_has_sseregister_parm (const TY_IDX tyi) {
+	return TY_has_sseregister_parm(Ty_Table[tyi]);
+}
+inline void
+Set_TY_has_sseregister_parm (TY_IDX tyi) {
+	Set_TY_has_sseregister_parm(Ty_Table[tyi]);
+}
+
+inline INT
+TY_register_parm (const TY& ty)
+{
+	if ((ty.Pu_flags() & TY_HAS_1_REG_PARM) == 0 &&
+	    (ty.Pu_flags() & TY_HAS_2_REG_PARM) == 0)
+		return 0;
+	if ((ty.Pu_flags() & TY_HAS_1_REG_PARM) &&
+	    (ty.Pu_flags() & TY_HAS_2_REG_PARM))
+		return 3;
+	if (ty.Pu_flags() & TY_HAS_1_REG_PARM)
+		return 1;
+	if (ty.Pu_flags() & TY_HAS_2_REG_PARM)
+		return 2;
+}
+
+inline void
+Set_TY_register_parm (TY& ty, INT num)
+{
+	if (num == 0) return;
+	if (num == 1) ty.Set_pu_flag (TY_HAS_1_REG_PARM);
+	else if (num == 2) ty.Set_pu_flag (TY_HAS_2_REG_PARM);
+	else if (num == 3) ty.Set_pu_flag (TY_HAS_3_REG_PARM);
+}
+
+inline INT
+TY_register_parm (const TY_IDX tyi) {
+	return TY_register_parm (Ty_Table[tyi]);
+}
+
+inline void
+Set_TY_register_parm (TY_IDX tyi, INT num) {
+	Set_TY_register_parm (Ty_Table[tyi], num);
+}
+#endif
 
 //----------------------------------------------------------------------
 // access functions for FLD

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 PathScale, LLC.  All rights reserved.
+ * Copyright (C) 2007, 2008 PathScale, LLC.  All rights reserved.
  */
 /*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
@@ -98,7 +98,12 @@ SIM SIM_Info[] = {
     {RAX,RDX,RDX-RAX}, {ST0,ST1,1}, {ST0,ST1,1},
     MTYPE_I4, MTYPE_F8, MTYPE_F8,
     0, 0, -64/*TODO*/, 
+#if defined(BUILD_OS_DARWIN)
+    /* Structures <= 8 bytes return via registers */
+    0, 64, RCX, 0
+#else /* defined(BUILD_OS_DARWIN) */
     0, 0, RCX, 0
+#endif /* defined(BUILD_OS_DARWIN) */
   },
 
   { /* ABI_n64 */
@@ -283,7 +288,44 @@ INT Classify_Aggregate(const TY_IDX ty,
 			   MTYPE_name(TY_mtype(ty))));
     }
 }
+#if defined(BUILD_OS_DARWIN)
+/* Like Classify_Aggregate(), but for Darwin IA32. According to
+ * developer.apple.com, 4-byte structures are passed in EAX, 8-byte
+ * structures are passed in EAX plus EDX, and larger structures are
+ * passed by reference. However, I observe that the gcc provided by
+ * Apple passes a structure containing a single real or a single
+ * double using the X87 instead. */
+INT Classify_Aggregate32(const TY_IDX ty, 
+			  enum X86_64_PARM_CLASS classes[MAX_CLASSES])
+{
+  enum X86_64_PARM_CLASS subclasses[MAX_CLASSES];
 
+  if (TY_size(ty) > 8 || TY_size(ty) == 0 ||
+      TY_is_non_pod(ty) /* || TY_is_packed(ty) bug 11892 */)
+    return 0;
+
+  INT size_in_words = (TY_size(ty) + 3) / 4;
+  classes[0] = X86_64_INTEGER_CLASS;
+  classes[1] = X86_64_NO_CLASS;
+
+  FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty));
+  FLD_HANDLE fld(fld_iter);
+  TYPE_ID first_field_type = TY_mtype(FLD_type(fld));
+  if (size_in_words == 1 && first_field_type == MTYPE_F4) {
+    classes[0] = X86_64_X87_CLASS;
+  }
+  else if (size_in_words == 2) {
+    if (first_field_type == MTYPE_F8) {
+      size_in_words = 1;
+      classes[0] = X86_64_X87_CLASS;
+    }
+    else {
+      classes[1] = X86_64_INTEGER_CLASS;
+    }
+  }
+  return size_in_words;
+}
+#endif /* defined(BUILD_OS_DARWIN) */
 
 /* This routine figures out the mtypes of the return registers that are 
  * used for returning an object of the given type.
@@ -329,6 +371,8 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
   INT32 i; 
   INT64 size;
 
+  BOOL ssereg_parms_enabled = Is_Target_32bit() &&
+                   TY_has_sseregister_parm (PU_prototype (Get_Current_PU()));
   info.return_via_first_arg = FALSE;
 
   switch (mtype) {
@@ -384,7 +428,10 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
     case MTYPE_F8:
       info.count = 1;
       info.mtype [0] = mtype;
-      info.preg  [0] = PR_first_reg(SIM_INFO.flt_results);
+      if (ssereg_parms_enabled)
+        info.preg  [0] = XMM0;
+      else
+        info.preg  [0] = PR_first_reg(SIM_INFO.flt_results);
       break;
 
     case MTYPE_V16I1:
@@ -408,8 +455,14 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 	   value, the real part and the imaginary part are set aside in
 	   %eax and %edx, respectively.    (bug#2707)
 	 */
-	if( PU_c_lang(Get_Current_PU()) ||
-	    PU_cxx_lang(Get_Current_PU()) ){
+	if( 
+#if defined(BUILD_OS_DARWIN)
+	    1 /* Darwin -m32 returns Fortran SP complex in registers too */
+#else /* defined(BUILD_OS_DARWIN) */
+	    PU_c_lang(Get_Current_PU()) ||
+	    PU_cxx_lang(Get_Current_PU())
+#endif /* defined(BUILD_OS_DARWIN) */
+	    ){
 
 	  if( level == Use_Simulated ){
 	    info.count = 1;
@@ -515,15 +568,25 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 
       info.return_via_first_arg = TRUE;
 
+#if defined(BUILD_OS_DARWIN)
+      /* For Darwin, even -m32 returns small structures in registers */
+#else /* defined(BUILD_OS_DARWIN) */
       if (Is_Target_32bit())
 	break;
+#endif /* defined(BUILD_OS_DARWIN) */
 
       if (SIM_INFO.max_struct_result != 0) {
 
         if (size > 0 && 8 * size <= SIM_INFO.max_struct_result) {
 	    PREG_NUM next_float_return_num, next_int_return_num;
 	    enum X86_64_PARM_CLASS classes[MAX_CLASSES];
+#if defined(BUILD_OS_DARWIN)
+            INT n = Is_Target_32bit() ?
+	      Classify_Aggregate32(rtype, classes) :
+	      Classify_Aggregate(rtype, classes);
+#else /* defined(BUILD_OS_DARWIN) */
 	    INT n = Classify_Aggregate(rtype, classes);
+#endif /* defined(BUILD_OS_DARWIN) */
 	    if (n > 0) {
               info.return_via_first_arg = FALSE;
               info.count = n;
@@ -575,6 +638,10 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 
 static INT Current_Int_Param_Num = -1;		// count integer parameters only
 static INT Current_Float_Param_Num = -1;	// count float parameters only
+static INT Register_Parms = 0;
+static BOOL SSE_Register_Parms = FALSE;
+const INT SSE_Register_Parms_Allowed = 3;
+
 
 static PLOC
 Setup_Parameter_Locations (TY_IDX pu_type)
@@ -599,6 +666,12 @@ Setup_Parameter_Locations (TY_IDX pu_type)
     } else
 	Last_Fixed_Param = INT_MAX;
 
+    if (Is_Target_32bit()) {
+      // -m32 is enforced in front-end, use it here also to be more specific.
+      SSE_Register_Parms = TY_has_sseregister_parm (pu_type);
+      Register_Parms = TY_register_parm (pu_type);
+    }
+
     Current_Param_Num = -1;		// count all parameters
     Current_Int_Param_Num = -1;		// count integer parameters only
     Current_Float_Param_Num = -1;	// count float parameters only
@@ -611,6 +684,8 @@ static PLOC
 Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 {
     PLOC ploc;				// return location
+    mDED_PREG_NUM int_regs_array[] = {RAX, RDX, RCX};
+    mDED_PREG_NUM flt_regs_array[] = {XMM0, XMM1, XMM2};
 
     ploc.reg = 0;
     ploc.reg2 = 0;
@@ -652,9 +727,14 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
     case MTYPE_U8:
     case MTYPE_A8:
         ++Current_Int_Param_Num;
-	ploc.reg = PR_first_reg(SIM_INFO.int_args) + Current_Int_Param_Num;
-	if (ploc.reg > PR_last_reg(SIM_INFO.int_args)) 
-	  ploc.reg = 0;
+	if (Is_Target_32bit() && Current_Int_Param_Num < Register_Parms) {
+	  ploc.reg = int_regs_array[Current_Int_Param_Num];
+	}
+	else {
+	  ploc.reg = PR_first_reg(SIM_INFO.int_args) + Current_Int_Param_Num;
+	  if (ploc.reg > PR_last_reg(SIM_INFO.int_args)) 
+	    ploc.reg = 0;
+	}
 	break;
 	
     case MTYPE_V16I1:
@@ -670,12 +750,18 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
     case MTYPE_F4:
     case MTYPE_F8:
         ++Current_Float_Param_Num;
-	ploc.reg = PR_first_reg(SIM_INFO.flt_args) + Current_Float_Param_Num;
-	if (ploc.reg > PR_last_reg(SIM_INFO.flt_args)) {
-	  ploc.reg = 0;
-	  if( Is_Target_64bit() )
-	    rpad = MTYPE_RegisterSize(SIM_INFO.flt_type) - ploc.size;
-	}
+        if (Is_Target_32bit() && SSE_Register_Parms &&
+            Current_Float_Param_Num < SSE_Register_Parms_Allowed) {
+          ploc.reg = flt_regs_array[Current_Float_Param_Num];
+        }
+        else {
+	  ploc.reg = PR_first_reg(SIM_INFO.flt_args) + Current_Float_Param_Num;
+	  if (ploc.reg > PR_last_reg(SIM_INFO.flt_args)) {
+	    ploc.reg = 0;
+	    if( Is_Target_64bit() )
+	      rpad = MTYPE_RegisterSize(SIM_INFO.flt_type) - ploc.size;
+	  }
+        }
 	break;
 
     case MTYPE_M8I1:

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ *  Copyright (C) 2007, 2008.  Pathscale, LLC. All Rights Reserved.
  */
 
 /*
@@ -138,8 +138,8 @@ CLASS_INDEX	Comparison_Result_Mtype;
 /* The assembler directive for emitting an address depends on the target
  * pointer size.  The following is declared in config_asm.h:
  */
-char *AS_ADDRESS;
-char *AS_ADDRESS_UNALIGNED;
+const char *AS_ADDRESS;
+const char *AS_ADDRESS_UNALIGNED;
 
 /* Is the "char" type signed? */
 BOOL Char_Type_Is_Signed = FALSE;
@@ -296,7 +296,7 @@ static struct bnm {
 static INT16 bnb_used = 0;
 
 #ifndef MONGOOSE_BE
-char *
+const char *
 Abi_Name ( TARGET_ABI b)
 {
   char *r;
@@ -327,7 +327,7 @@ Isa_Name ( TARGET_ISA b)
   }
 }
 
-char *
+const char *
 Targ_Name ( TARGET_PROCESSOR b)
 {
   char *r;
@@ -338,6 +338,7 @@ Targ_Name ( TARGET_PROCESSOR b)
     case TARGET_athlon: return "Athlon";
     case TARGET_em64t: return "EM64T"; 
     case TARGET_core: return "Core"; 
+    case TARGET_wolfdale: return "Wolfdale"; 
     case TARGET_pentium4: return "Pentium4";
     case TARGET_xeon: return "Xeon";
     case TARGET_anyx86: return "Anyx86";
@@ -508,6 +509,11 @@ Prepare_Target ( void )
       if (!Target_SSE2_Set && !Target_SSE3_Set)
         Target_SSE3 = TRUE;
     }
+    else if ( strcasecmp ( Processor_Name, "wolfdale" ) == 0 ) {
+      targ = TARGET_wolfdale;
+      if (!Target_SSE2_Set && !Target_SSE3_Set)
+        Target_SSE3 = TRUE;
+    }
     else if ( strcasecmp ( Processor_Name, "anyx86" ) == 0 ) {
       targ = TARGET_anyx86;
     }
@@ -593,7 +599,7 @@ void
 Configure_Target ( void )
 {
 
-#if defined(linux)
+#if defined(linux) || defined(BUILD_OS_DARWIN)
   Target_Byte_Sex = LITTLE_ENDIAN;
 #else  
   Target_Byte_Sex = BIG_ENDIAN;
@@ -723,7 +729,7 @@ IPA_Configure_Target (void)
     Boolean_type2 = MTYPE_I4;
 
 #ifdef KEY // Tell IPA the target byte-order
-#if defined(linux)
+#if defined(linux) || defined(BUILD_OS_DARWIN)
   Target_Byte_Sex = LITTLE_ENDIAN;
 #else  
   Target_Byte_Sex = BIG_ENDIAN;

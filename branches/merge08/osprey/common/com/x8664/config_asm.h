@@ -66,6 +66,7 @@ extern "C" {
 static char *config_asm_rcs_id = "$Source$ $Revision$";
 #endif /* _KEEP_RCS_ID */
 
+#define LABEL_PREFIX ".L"
 #define Label_Name_Separator "_"
 
 /* to distinguish from register names: */
@@ -177,25 +178,35 @@ static char *config_asm_rcs_id = "$Source$ $Revision$";
 #define AS_SDATA	".sdata"
 #define AS_SECTION	".section"
 #define AS_SIZE         ".size"
+#if defined(BUILD_OS_DARWIN)
+#define AS_SPACE	".space"
+#define AS_STRING	".asciz"
+#else /* defined(BUILD_OS_DARWIN) */
 #define AS_SPACE	".skip"
 #define AS_STRING	".string"
+#endif /* defined(BUILD_OS_DARWIN) */
 #define AS_TEXT 	".text"
 #define AS_TYPE         ".type"
 #define AS_TYPE_FUNC	"@function"
 #define AS_TYPE_OBJECT	"@object"
 #define AS_WEAK		".weak"
+#if defined(BUILD_OS_DARWIN)
+#define AS_WORD		".long"
+#define AS_WORD_UNALIGNED ".long" 
+#else /* defined(BUILD_OS_DARWIN) */
 #define AS_WORD		".4byte"
 #define AS_WORD_UNALIGNED ".4byte" 
+#endif /* defined(BUILD_OS_DARWIN) */
 #define AS_IDENT	"#ident" /* Make this ASM_CMNT_START if no ident */
-#define AS_HIDDEN   ".hidden"
+#define AS_HIDDEN	".hidden"
 
 extern BOOL CG_emit_non_gas_syntax;
 
 /* The directive for emitting an address depends on the target pointer
  * size.  The following is defined and initialized in config_targ.c:
  */
-extern char *AS_ADDRESS;
-extern char *AS_ADDRESS_UNALIGNED;
+extern const char *AS_ADDRESS;
+extern const char *AS_ADDRESS_UNALIGNED;
 
 /* Defines for emission of special relocations */
 #define AS_GPREL	NULL
