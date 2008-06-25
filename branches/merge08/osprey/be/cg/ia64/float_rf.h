@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -36,10 +36,10 @@
  * ====================================================================
  *
  * Module: float_rf.h
- * $Revision: 1.1 $
- * $Date: 2005/07/27 02:13:44 $
- * $Author: kevinlo $
- * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/ia64/float_rf.h,v $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/ia64/float_rf.h,v $
  *
  * 82-bit register format floating point utilities interface.
  *
@@ -58,7 +58,13 @@
 #endif
 
 #ifdef linux
-#include <stdint.h>
+#ifndef __STDC_LIMIT_MACROS
+ #define __STDC_LIMIT_MACROS
+#endif
+#ifndef __STDC_LIMIT_MACROS
+ #define __STDC_LIMIT_MACROS
+ #include <stdint.h>
+#endif
 #else
 #include <inttypes.h>
 #endif
@@ -68,6 +74,9 @@
 #ifndef _STRUCTS_H_
 #define _STRUCTS_H_
 
+#ifndef __STDC_LIMIT_MACROS
+ #define __STDC_LIMIT_MACROS
+#endif
 #include <stdint.h>
 
 typedef	struct {

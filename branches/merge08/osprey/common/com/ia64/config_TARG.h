@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -40,11 +40,11 @@
 /* ====================================================================
  * ====================================================================
  *
- * Module: config_targ_opt.h
- * $Revision: 1.6 $
- * $Date: 04/12/21 14:57:24-08:00 $
- * $Author: bos@eng-25.internal.keyresearch.com $
- * $Source: /scratch/mee/Patch0002-taketwo/kpro64-pending/common/com/ia64/SCCS/s.config_targ_opt.h $
+ * Module: config_TARG.h
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_TARG.h,v $
  *
  * Revision history:
  *  11-Apr-96 - Original Version
@@ -69,12 +69,12 @@
  * ====================================================================
  */
 
-#ifndef config_targ_opt_INCLUDED
-#define config_targ_opt_INCLUDED
+#ifndef config_TARG_INCLUDED
+#define config_TARG_INCLUDED
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *config_targ_opt_h_rcs_id = "$Source: /scratch/mee/Patch0002-taketwo/kpro64-pending/common/com/ia64/SCCS/s.config_TARG.h $ $Revision: 1.6 $";
+static char *config_TARG_h_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_TARG.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifdef __cplusplus
@@ -125,4 +125,4 @@ extern BOOL Itanium_a0_step;	/* a0 version of itanium chip */
 }
 #endif /* __cplusplus */
     
-#endif /* config_targ_opt_INCLUDED */
+#endif /* config_TARG_INCLUDED */

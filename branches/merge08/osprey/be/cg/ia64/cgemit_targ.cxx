@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -36,10 +36,10 @@
 /* ====================================================================
  *
  * Module: cgemit_targ.c
- * $Revision: 1.1 $
- * $Date: 2005/07/27 02:13:44 $
- * $Author: kevinlo $
- * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/ia64/cgemit_targ.cxx,v $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/ia64/cgemit_targ.cxx,v $
  *
  * Description:
  *
@@ -50,7 +50,7 @@
  */
 
 
-#include <elf.h>
+#include <elf_stuff.h>
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
@@ -68,24 +68,18 @@
 #include "iface_scn.h"
 #include "cg_flags.h"
 #include "glob.h"
+#include "targ_isa_print.h"
 
-// file numbers in ST are 1 origin.
-// gas expects zero origin (as that is what dwarf2 uses).
-// There is a problem here: what if file 1 (ST numbering)
-// has no generated code? If 0 gets skipped will gas
-// work ok? Answer: file numbers ignored if file name
-// present: gas then checks/assigns by file name, numbering
-// starting at 0.  see gas/config/tc-ia64.c
 extern void
 CGEMIT_Prn_File_Dir_In_Asm(USRCPOS usrcpos,
                         const char *pathname,
                         const char *filename)
 {
-    if( !CG_emit_asm_dwarf) {
+    if( !CG_emit_asm_dwarf) 
       fprintf (Asm_File, "// "); //turn the rest into comment
-    }
+
     fprintf (Asm_File, "\t%s\t%d \"%s/%s\"\n",AS_FILE, 
-		USRCPOS_filenum(usrcpos)-1,
+		USRCPOS_filenum(usrcpos),
 		pathname,filename);
 }
 
@@ -96,7 +90,7 @@ CGEMIT_Prn_Line_Dir_In_Asm (USRCPOS usrcpos)
       fprintf (Asm_File, "// "); //turn the rest into comment
     }
     fprintf (Asm_File, "\t.loc\t%d\t%d\t%d\n", 
-		USRCPOS_filenum(usrcpos)-1,
+		USRCPOS_filenum(usrcpos),
 		USRCPOS_linenum(usrcpos),
 		USRCPOS_column(usrcpos));
 }
@@ -119,6 +113,7 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
   if (scn_flags & SHF_WRITE) *p++ = 'w';
   if (scn_flags & SHF_ALLOC) *p++ = 'a';
   if (scn_flags & SHF_EXECINSTR) *p++ = 'x';
+  if (scn_flags & SHF_TLS) *p++ = 'T';
   // short sections are only recognized by name, not by "s" qualifier
   // if (scn_flags & SHF_IRIX_GPREL) *p++ = 's';
   *p = '\0'; // null terminate the string.
@@ -184,10 +179,32 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 	case TN_RELOC_IA_LTOFF22:
         	*buf = vstr_concat (*buf, "@ltoff");
 		break;
+	case TN_RELOC_IA_LTOFF22X:
+        	*buf = vstr_concat (*buf, "@ltoffx");
+		break;
 	case TN_RELOC_IA_LTOFF_FPTR:
         	*buf = vstr_concat (*buf, "@ltoff(@fptr");
 		++paren;
 		break;
+	case TN_RELOC_IA_LTOFF_DTPMOD22:
+		*buf = vstr_concat (*buf, "@ltoff(@dtpmod");
+		++paren;
+		break;
+	case TN_RELOC_IA_LTOFF_DTPREL22:
+		*buf = vstr_concat (*buf, "@ltoff(@dtprel");
+		++paren;
+		break;
+	case TN_RELOC_IA_DTPREL22:
+		*buf = vstr_concat (*buf, "@dtprel");
+		break;
+	case TN_RELOC_IA_LTOFF_TPREL22:
+		*buf = vstr_concat (*buf, "@ltoff(@tprel");
+		++paren;
+		break;
+	case TN_RELOC_IA_TPREL22:
+		*buf = vstr_concat (*buf, "@tprel");
+		break;
+	
     	default:
 		#pragma mips_frequency_hint NEVER
     		FmtAssert (FALSE, ("relocs_asm: illegal reloc TN"));
@@ -314,11 +331,97 @@ void
 CGEMIT_Weak_Alias (ST *sym, ST *strongsym) 
 {
         fprintf ( Asm_File, "\t%s\t%s#\n", AS_WEAK, ST_name(sym));
-        fprintf ( Asm_File, "\t.set %s#, %s#\n", ST_name(sym), ST_name(strongsym));
+        // bug fix for OSP_145
+	CGEMIT_Alias(sym, strongsym);
 }
 
 void
 CGEMIT_Alias (ST *sym, ST *strongsym) 
 {
-        fprintf ( Asm_File, "\t.set %s#, %s#\n", ST_name(sym), ST_name(strongsym));
+        // bug fix for OSP_145
+	fprintf ( Asm_File, "\t.set %s#, ", ST_name(sym));
+	if ( ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
+		// file scope local symbol
+		if (ST_level(strongsym) == GLOBAL_SYMTAB)
+			fprintf (Asm_File, "%s%s%d#\n",
+			    ST_name(strongsym), Label_Name_Separator, ST_index(strongsym));
+		else
+			Is_True(0, ("Impossible alias to a PU scope variable"));
+	}
+	else // global export symbol
+		fprintf (Asm_File, "%s#\n", ST_name(strongsym));
+}
+
+INT CGEMIT_Print_Inst (OP* op, const char* result[], const char* opnd[], FILE* f ) {
+
+  INT i;
+  INT st;
+  INT comp;
+  TOP topcode = OP_code(op);
+  const char *arg[ISA_PRINT_COMP_MAX];
+  const char *Opnds[ISA_PRINT_COMP_MAX];
+  const char *Res[ISA_PRINT_COMP_MAX];
+
+  const ISA_PRINT_INFO *pinfo = ISA_PRINT_Info(topcode);
+
+  FmtAssert( pinfo != NULL, ("no ISA_PRINT_INFO for %s", TOP_Name(topcode)));
+
+  i = 0;
+  do {
+    comp = ISA_PRINT_INFO_Comp(pinfo, i);
+
+    switch (comp) {
+    case ISA_PRINT_COMP_name:
+      arg[i] = ISA_PRINT_AsmName(topcode);
+      break;
+
+    case ISA_PRINT_COMP_opnd:
+    case ISA_PRINT_COMP_opnd+1:
+    case ISA_PRINT_COMP_opnd+2:
+    case ISA_PRINT_COMP_opnd+3:
+    case ISA_PRINT_COMP_opnd+4:
+    case ISA_PRINT_COMP_opnd+5:
+      Opnds[comp-ISA_PRINT_COMP_opnd] = 
+      arg[i] = opnd[comp - ISA_PRINT_COMP_opnd];
+      break;
+
+    case ISA_PRINT_COMP_result:
+    case ISA_PRINT_COMP_result+1:
+      Res[comp-ISA_PRINT_COMP_result] = 
+      arg[i] = result[comp - ISA_PRINT_COMP_result];
+      break;
+
+    case ISA_PRINT_COMP_end:
+      break;
+
+    default:
+      FmtAssert (false, ("Unhandled listing component %d for %s", 
+                        comp, TOP_Name(topcode)));
+      break;
+    };
+    
+    i++;
+  } while (comp != ISA_PRINT_COMP_end);
+
+  // Intercept some special cases -- this render it easier to add some
+  // simulated instructions without changing the whole machine model 
+  // and CG. 
+  //
+  if (OP_load_GOT_entry(op) && topcode == TOP_ld8) {
+    extern OP_MAP OP_Ld_GOT_2_Sym_Map; 
+    ST* sym = (ST*)OP_MAP_Get (OP_Ld_GOT_2_Sym_Map, op);
+    if (sym) { 
+      st = fprintf (f, "%5s ld8.mov %s=[%s], %s%s", Opnds[0], 
+                       Res[0], Opnds[3], ST_name(sym), 
+		       Symbol_Name_Suffix);
+      return st;
+    }
+  }
+
+  st = fprintf (f, ISA_PRINT_INFO_Format(pinfo),
+		     arg[0], arg[1], arg[2], arg[3], 
+		     arg[4], arg[5], arg[6], arg[7],
+		     arg[8]);
+  FmtAssert( st != -1, ("fprintf failed: not enough disk space") );
+  return st;
 }

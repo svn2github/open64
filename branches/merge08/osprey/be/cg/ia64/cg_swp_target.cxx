@@ -37,16 +37,18 @@
  * =======================================================================
  *
  *  Module: cg_swp_target.cxx
- *  $Revision: 1.1 $
- *  $Date: 2005/07/27 02:13:44 $
- *  $Author: kevinlo $
- *  $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/ia64/cg_swp_target.cxx,v $
+ *  $Revision: 1.1.1.1 $
+ *  $Date: 2005/10/21 19:00:00 $
+ *  $Author: marcel $
+ *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/ia64/cg_swp_target.cxx,v $
  *
  * =======================================================================
  * ======================================================================= */
 
+#include <stdint.h>
+
 #define USE_STANDARD_TYPES
-#include <map.h>
+#include <map>
 #include "defs.h"
 #include "mempool.h"
 #include "tn.h"
@@ -67,6 +69,7 @@
 #include "cg_loop.h"
 #include "calls.h"
 #include "tag.h"
+#include "targ_issue_port.h" // To get PROCESSOR_Version
 
 /* ====================================================================
  *
@@ -89,7 +92,16 @@ void Gen_SWP_Branch(CG_LOOP &cl, bool is_doloop)
 
     // Generate br.ctop for doloop
 
-    Build_OP (TOP_br_ctop, 
+    if(PROCESSOR_Version == 2)
+      Build_OP (TOP_br_ctop, 
+	      ar_ec, LC_TN,
+	      Gen_Enum_TN(ECV_bwh_sptk),
+	      Gen_Enum_TN(ECV_ph_few),
+	      Gen_Enum_TN(ECV_dh),
+	      label_tn, 
+	      ar_ec, LC_TN, &ops);
+    else
+      Build_OP (TOP_br_ctop, 
 	      ar_ec, LC_TN,
 	      Gen_Enum_TN(ECV_bwh_dptk),
 	      Gen_Enum_TN(ECV_ph_few),
@@ -172,13 +184,23 @@ void Undo_SWP_Branch(CG_LOOP &cl, bool is_doloop)
 
     // Generate br.ctop for doloop
 
-    Build_OP (TOP_br_cloop, 
+    if(PROCESSOR_Version == 2)
+      Build_OP (TOP_br_cloop, 
+	      LC_TN,
+	      Gen_Enum_TN(ECV_bwh_sptk),
+	      Gen_Enum_TN(ECV_ph_few),
+	      Gen_Enum_TN(ECV_dh),
+	      label_tn, 
+	      LC_TN, &ops);
+    else
+      Build_OP (TOP_br_cloop, 
 	      LC_TN,
 	      Gen_Enum_TN(ECV_bwh_dptk),
 	      Gen_Enum_TN(ECV_ph_few),
 	      Gen_Enum_TN(ECV_dh),
 	      label_tn, 
 	      LC_TN, &ops);
+      
 
     Is_True(OP_code(br_op) == TOP_br_ctop,
 	    ("Undo_SWP_Branch: SWP doloop must use TOP_br_ctop."));
@@ -231,16 +253,29 @@ SWP_Loop_Init_Fini(bool is_doloop,
   
   TN *epilog_count = Gen_Literal_TN(stage_count, tn_size);
   
-  // workaround a Exp_COPY bug?
-  TN *tmp_tn = Gen_Register_TN (ISA_REGISTER_CLASS_integer, tn_size);
-  Exp_COPY(tmp_tn, epilog_count, prolog_ops);
-  Exp_COPY(ar_ec, tmp_tn, prolog_ops);
-
+  const ISA_OPERAND_INFO *oinfo;
+  oinfo = ISA_OPERAND_Info(TOP_mov_t_ar_i_i);
+  const ISA_OPERAND_VALTYP *vtype = ISA_OPERAND_INFO_Operand(oinfo, 1);
+  ISA_LIT_CLASS lc = ISA_OPERAND_VALTYP_Literal_Class(vtype);
+  if (ISA_LC_Value_In_Class(stage_count, lc)){
+	  Build_OP (TOP_mov_t_ar_i_i, ar_ec, True_TN, epilog_count, prolog_ops);
+  }
+  else{
+	  TN *tmp_tn = Gen_Register_TN (ISA_REGISTER_CLASS_integer, tn_size);
+	  Exp_COPY(tmp_tn, epilog_count, prolog_ops);
+	  Exp_COPY(ar_ec, tmp_tn, prolog_ops);
+  }
+  
   // Reset CFM.rrb pr
   Build_OP(TOP_clrrrb_pr, prolog_ops);
 
+  // TODO: set the clrrrb in epilog depends on the number 
+  //       of the alloc in current PU.
+  // In current, we don't need clrrrb in epilog because of
+  // single alloc in each PU!
+
   // Reset CFM.rrb 
-  Build_OP(TOP_clrrrb, epilog_ops);
+  //Build_OP(TOP_clrrrb, epilog_ops);
 
   // Initialize the rotating predicate registers
   //   mov pr.rot = 1 << 16 for doloop
@@ -317,7 +352,7 @@ void Remove_Invariant_Predicates(CG_LOOP& cl, bool trace)
   // transform each invariant predicate into a new variant predicate
   //  initialized in the prolog.
   //
-  map<TN*, TN*> tn_map;
+  std::map<TN*, TN*> tn_map;
   OPS prolog_ops = OPS_EMPTY;
   OPS body_ops = OPS_EMPTY;
   FOR_ALL_BB_OPs(body, op) {
@@ -410,7 +445,7 @@ void Hoist_MOVL(CG_LOOP& cl, bool trace)
   BB *body = cl.Loop_header();
   // collect all predicate definitions
   //
-  vector<OP*> movl_ops;
+  std::vector<OP*> movl_ops;
 
   OP *op;
   FOR_ALL_BB_OPs(body, op) {
@@ -424,6 +459,14 @@ void Hoist_MOVL(CG_LOOP& cl, bool trace)
     TN *new_tn = Dup_TN(tn);
     OPS ops = OPS_EMPTY;
     Exp_COPY(tn, new_tn, &ops);
+    // bug fix for OSP_190
+    // should set the predicate control operand for the 
+    // new added op with predicate oprand tn of previous op
+    if (OP_has_predicate(op)) {
+      TN *pre_opnd_tn = OP_opnd(op, OP_PREDICATE_OPND);
+      Set_OP_opnd(ops.first, OP_PREDICATE_OPND, pre_opnd_tn);  	 
+      Set_OP_opnd(ops.last, OP_PREDICATE_OPND, pre_opnd_tn);  	 
+    }
     BB_Insert_Ops(body, op, &ops, TRUE /*before*/);
     BB_Remove_Op(body, op);
     BB_Append_Op(prolog, op);
@@ -441,8 +484,8 @@ void Hoist_MOVL(CG_LOOP& cl, bool trace)
 // 
 struct TN_DU {
   typedef OP_VECTOR::index_type index_type;
-  vector<index_type> defs;
-  vector<index_type> uses;
+  std::vector<index_type> defs;
+  std::vector<index_type> uses;
 
   bool TN_is_invariant() const {
     return defs.size() == 0;
@@ -493,8 +536,8 @@ struct TN_DU {
 //
 struct TN_DU_MAP {
 
-  typedef map<TN *, TN_DU>::iterator iterator;
-  map<TN *, TN_DU> TN_DU_map;
+  typedef std::map<TN *, TN_DU>::iterator iterator;
+  std::map<TN *, TN_DU> TN_DU_map;
 
   iterator begin() {
     return TN_DU_map.begin();
@@ -1142,6 +1185,7 @@ Identify_and_delete_incr(BB *bb, OP *memop, INT base_opnd_num, BASE_UPDATE up)
 
   bool allow_imm = (up & IMM_BASE_UPDATE) != 0;
   bool allow_reg = (up & REG_BASE_UPDATE) != 0;
+  bool incr_kill = false;
 
   TN *pred_tn = OP_opnd(memop, OP_PREDICATE_OPND);
 
@@ -1168,14 +1212,37 @@ Identify_and_delete_incr(BB *bb, OP *memop, INT base_opnd_num, BASE_UPDATE up)
 	if ((OP_opnd(incr_op, 1) == base) &&
 	    (OP_omega(incr_op, 1) == OP_omega(memop, base_opnd_num)) &&
 	    TN_is_global_reg(OP_opnd(incr_op, 2))) {
-	  BB_Remove_Op(bb, incr_op);
-	  return OP_opnd(incr_op, 2);
+	  //OSP_383&377
+	  //for the following op:
+	  //op1,  GTN100 = ld  GTN1001
+	  //op2,  GTN1002 = ld GTN1003
+	  //op3   GTN1001 = add GTN1001 + GTN1002
+          //GTN1002 is killed between op1 and op3, so the transform is invalid.
+	  //we should find such kill and prevent such transformation.
+	  for(OP *def_op = OP_next(memop);!incr_kill && def_op!=incr_op;def_op=OP_next(def_op))
+	    {
+	      if (OP_Defs_TN(def_op, OP_opnd(incr_op, 2))) incr_kill = true;
+	    }
+	  if(!incr_kill){
+	    BB_Remove_Op(bb, incr_op);
+	    return OP_opnd(incr_op, 2);
+	  }
+	  else 
+	    return NULL;
 	}
 	else if ((OP_opnd(incr_op, 2) == base) &&
 		 (OP_omega(incr_op, 2) == OP_omega(memop, base_opnd_num)) &&
 		 TN_is_global_reg(OP_opnd(incr_op, 1))) {
-	  BB_Remove_Op(bb, incr_op);
-	  return OP_opnd(incr_op, 1);
+	  for(OP *def_op = OP_next(memop);!incr_kill && def_op!=incr_op;def_op=OP_next(def_op))
+	    {
+	      if (OP_Defs_TN(def_op, OP_opnd(incr_op, 1))) incr_kill = true;
+	    }
+	  if(!incr_kill){
+	    BB_Remove_Op(bb, incr_op);
+	    return OP_opnd(incr_op, 1);
+	  }
+	  else
+	    return NULL;
 	}
       }
     }
@@ -1619,7 +1686,7 @@ void Gen_Implicit_Prefetches(CG_LOOP& cl, bool trace)
   BB *body = cl.Loop_header();
   OP *next_op;
 
-  vector<OP*> prune_pref;
+  std::vector<OP*> prune_pref;
 
   // Now regenerate the prefetch by updating the prefetch hints
   for (OP *op = BB_first_op(body); op != NULL; op = next_op) {

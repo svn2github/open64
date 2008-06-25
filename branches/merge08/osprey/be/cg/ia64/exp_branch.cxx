@@ -123,16 +123,22 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 	case V_BR_U4NE:	cmp_i = TOP_cmp4_i_ne; cmp = TOP_cmp4_ne; break; 
 	case V_BR_FEQ:	/*FALLTHROUGH*/
 	case V_BR_DEQ:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_eq; break;
+	case V_BR_XEQ:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_eq; break;
 	case V_BR_FLT:	/*FALLTHROUGH*/
 	case V_BR_DLT:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_lt; break;
+	case V_BR_XLT:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_lt; break;
 	case V_BR_FLE:	/*FALLTHROUGH*/
 	case V_BR_DLE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_le; break;
+	case V_BR_XLE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_le; break;
 	case V_BR_FNE:	/*FALLTHROUGH*/
 	case V_BR_DNE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_neq; break;
+	case V_BR_XNE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_neq; break;
 	case V_BR_FGT:	/*FALLTHROUGH*/
 	case V_BR_DGT:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_gt; break;
+	case V_BR_XGT:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_gt; break;
 	case V_BR_FGE:	/*FALLTHROUGH*/
 	case V_BR_DGE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_ge; break;
+	case V_BR_XGE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_ge; break;
 	default:	cmp_i = TOP_UNDEFINED; cmp = TOP_UNDEFINED; break;
 	}
 
@@ -190,6 +196,25 @@ Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
       TN *p2 = Build_RCLASS_TN (ISA_REGISTER_CLASS_predicate);
       TN *tn = Build_TN_Of_Mtype (MTYPE_I8);
       TOP action = (cond == V_BR_PEQ) ? TOP_cmp_ne : TOP_cmp_eq;
+      //handle when the kids of BBNE/BBEQ are inconst
+      if(TN_is_constant(src1))
+	{
+	  if(TN_value(src1) == 1)
+	    src1 = True_TN;
+	  else  if(TN_value(src1) == 0)
+	    src1 = Zero_TN;
+	  else
+	    FmtAssert(TN_value(src1) == 1 || TN_value(src1) == 0, ("unexpect operands for V_BR_PEQ/V_BR_PNE"));
+	}
+      if(TN_is_constant(src2))
+        {
+          if(TN_value(src2) == 1)
+            src1 = True_TN;
+          else  if(TN_value(src2) == 0)
+            src2 = Zero_TN;
+          else
+            FmtAssert(TN_value(src2) == 1 || TN_value(src2) == 0, ("unexpect operands for V_BR_PEQ/V_BR_PNE"));
+        }
 
       // tn = (src1 == src2)
       Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN(1, 8), ops);
@@ -287,7 +312,12 @@ void Exp_Call (OPERATOR opr, TN *return_address, TN *target, OPS *ops)
       // target is at 0(target), gp at 8(target)
       OPCODE opc = OPCODE_make_op (OPR_LDID, Pointer_Mtype, Pointer_Mtype);
       TN *tmp1 = Build_TN_Of_Mtype (Pointer_Mtype);
-      Expand_Load (opc, GP_TN, target, Gen_Literal_TN(8, 4), V_NONE, ops);
+
+      // bug fix for OSP_144
+      // Do not change gp with -mconstant-gp
+      if (!Constant_GP)
+	Expand_Load (opc, GP_TN, target, Gen_Literal_TN(8, 4), V_NONE, ops);
+      
       Expand_Load (opc, tmp1, target, Gen_Literal_TN(0, 4), V_NONE, ops);
       target = tmp1;
     }

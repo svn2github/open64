@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -32,9 +32,10 @@
 
 */
 
+#include <stdint.h>
 
 #define USE_STANDARD_TYPES
-#include <vector.h>
+#include <vector>
 #include <list>
 #include "defs.h"
 #include "errors.h"
@@ -52,7 +53,8 @@
 #include "cgtarget.h"
 #include "ti_si.h"
 #include "cg_grouping.h"  // Defines INT32_VECTOR and CG_GROUPING
-
+#include "be_util.h"      // for current_pu_count
+#include "cggrp_microsched.h"
 
 static const INT SWP_INVALID_OP_IDX = -1024;
 
@@ -184,7 +186,6 @@ SWP_Reserve_Bundle_Slot(TI_BUNDLE             *bundle,
     
 } // SWP_Reserve_Bundle_Slot
 
-
 static void
 SWP_Init_Samecycle_Dep_Order(SWP_OP_vector &op_state, BOOL_MATRIX &dep_order)
 {
@@ -220,7 +221,6 @@ SWP_Init_Samecycle_Dep_Order(SWP_OP_vector &op_state, BOOL_MATRIX &dep_order)
     } // If not NULL
   } // For each op
 } // SWP_Init_Samecycle_Dep_Order
-
 
 static void
 SWP_Verify_Samecycle_Dep_Order(SWP_OP_vector &op_state)
@@ -279,7 +279,7 @@ SWP_Min_Slot_Count(SWP_OP_vector         &op_state,
 } // SWP_Min_Slot_Count
 
 
-static pair<bool, ISA_EXEC_UNIT_PROPERTY>
+static std::pair<bool, ISA_EXEC_UNIT_PROPERTY>
 SWP_Noop_Property(CG_GROUPING &grouping, 
 		  TI_BUNDLE   *bundle,
 		  INT32        slot_pos,
@@ -325,7 +325,7 @@ SWP_Noop_Property(CG_GROUPING &grouping,
     found_prop = TI_BUNDLE_Slot_Available(bundle, prop, slot_pos);
   }
 
-  return pair<bool, ISA_EXEC_UNIT_PROPERTY>(found_prop, prop);
+  return std::pair<bool, ISA_EXEC_UNIT_PROPERTY>(found_prop, prop);
 } // SWP_Noop_Property
 
 
@@ -385,7 +385,7 @@ SWP_Append_Noop(SWP_OP_vector &op_state,
     // a next operation (next_op_idx), so now we try to choose one based on
     // resource usage.
     //
-    const pair<bool, ISA_EXEC_UNIT_PROPERTY> prop = 
+    const std::pair<bool, ISA_EXEC_UNIT_PROPERTY> prop = 
       SWP_Noop_Property(grouping, bundle, slot_pos,
 			next_op_idx == SWP_INVALID_OP_IDX && slot_pos > 0);
 
@@ -759,6 +759,256 @@ SWP_Pack_A_Bundle(SWP_OP_vector &op_state,
 
 } // SWP_Pack_A_Bundle
 
+// The function object used in SWP_Pack_Into_New_Bundles returns TRUE 
+// when the schedule slot of OP[i] is smaller than that of OP[j].  
+struct Order_Bundled_OPs_By_slot {
+  const SWP_OP_vector& state;
+  bool operator()(INT i, INT j) { 
+    return state[i].slot < state[j].slot; 
+  }
+  Order_Bundled_OPs_By_slot(const SWP_OP_vector& op_state):state(op_state) {}
+};
+
+// use this stucture to backup the <prev> & <next> of each op
+struct OP_PARTIAL_BACKUP{
+   OP* prev;
+   OP* next;
+  BOOL valid;
+};
+
+void SWP_Delete_Noop(SWP_OP_vector &op_state, 
+                 std::vector<INT>    &exist_noops)
+{
+
+  for (INT i=0; i<exist_noops.size(); i++){
+     INT nop_idx = exist_noops[i];
+     //OSP_22
+     BB_Remove_Op(op_state[nop_idx].op->bb, op_state[nop_idx].op);
+     op_state[nop_idx].op = NULL;
+     op_state[nop_idx].is_noop = FALSE;
+  }
+}
+
+void SWP_Update_OP_slot(SWP_OP_vector &op_state, 
+                              OPS          *ops, 
+                      const INT  slot_yardstick,
+                     INT32         &prev_op_idx)
+{
+  OP* cur_op;
+  INT i = 0;
+  FOR_ALL_OPS_OPs(ops, cur_op) {
+    if (!OP_noop(cur_op))  // the noop maked in CGGRP_Bundle_SWP_OPS does not 
+                          // belong to op_state
+    {
+      INT idx = SWP_index(cur_op); 
+      op_state[idx].slot = slot_yardstick - (OPS_length(ops)-1-i);
+      OP_scycle(op_state[idx].op) = 0; // Will be set at swp emit time
+      Set_OP_bundled(cur_op);
+      // op_state[bundled_ops[i]].slot = slot_yardstick - (bundled_ops.size()-1-i);
+    }
+    else {
+
+      SWP_OP    swp_noop = op_state[prev_op_idx]; // Similar attributes
+
+      swp_noop.op = cur_op;
+      swp_noop.is_noop = true;
+      swp_noop.slot = slot_yardstick - (OPS_length(ops)-1-i);
+     
+      op_state.push_back(swp_noop);
+      OP_scycle(cur_op) = -1;   // Will be set at swp emit time
+  
+      Set_OP_bundled(cur_op);
+    }
+    i++;
+  }
+  
+  // Update the prev_op_idx
+  OP* last_op = OPS_last(ops);
+  if (!OP_noop(last_op)) 
+     prev_op_idx = SWP_index(last_op);
+  else 
+     prev_op_idx = op_state.size() - 1 ;   // last op must be the newly pushed noop
+
+}
+
+
+BOOL SWP_Slot_Helper(SWP_OP_vector &op_state,
+			  CG_GROUPING   &grouping, 
+			  BOOL_MATRIX   &dep_order,
+			  INT32         &prev_op_idx, 
+			  TI_BUNDLE     *bundle,
+			  INT32_LIST    &ops_list) 
+// This function try to insert the split ops(ops_list) into current 
+// cycle(op_state[prev_op_idx].modulo_cycle). If success, ops_list will 
+// become empty and all swp_op's <slot> will be modified according to
+// the new order; if fail, ops_list will be restore to the original value as
+// nothing has ever happened.
+{
+
+  std::vector<INT> bundled_ops, exist_noops;
+  INT slot_yardstick = op_state[prev_op_idx].slot;
+  INT32_LIST backup_ops_list = ops_list;
+
+  BOOL int_ld_exist=FALSE;
+  BOOL fload_ld_exist=FALSE;
+
+  // Initialize OP_Partial_Backup which is used to back up the <prev> and <next> 
+  // of SPLIT op's 
+
+  std::vector<OP_PARTIAL_BACKUP>  OP_Partial_Backup(op_state.size());
+  for (INT i=0; i<OP_Partial_Backup.size(); i++) {
+      OP_Partial_Backup[i].prev=OP_Partial_Backup[i].next=NULL;
+      OP_Partial_Backup[i].valid=FALSE;
+  }
+  for (INT32_LIST::iterator it = ops_list.begin(); 
+		     it != ops_list.end();
+		     ++it) {
+
+      OP_Partial_Backup[*it].prev = OP_prev(op_state[*it].op);
+      OP_Partial_Backup[*it].next = OP_next(op_state[*it].op);
+      OP_Partial_Backup[*it].valid =TRUE;
+
+      // Initialize the op's <scycle> , used in CYCLE_STATE::Add_OP() 
+      // when _cyclic is TRUE 
+      OP *op = op_state[*it].op;
+      OP_scycle(op) = op_state[*it].cycle;
+
+      // take note if integer load and float load exist simultaneously.    
+      if (OP_Is_Float_Mem(op)) fload_ld_exist=TRUE;
+      if (OP_load(op) && !OP_Is_Float_Mem(op)) int_ld_exist=TRUE;
+
+
+  }
+
+  // get and sort bundled-ops in current modulo_cycle;
+  // Backup <prev> and <next> of each op simultaneously.
+
+  INT low = op_state[prev_op_idx].slot - ISA_MAX_SLOTS * ISA_MAX_ISSUE_BUNDLES + 1 ;
+  INT high = op_state[prev_op_idx].slot ; 
+
+  for (INT i = 0; i < op_state.size(); i++) {
+    if ( low <= op_state[i].slot && op_state[i].slot <= high && 
+        op_state[i].op!=NULL &&
+        OP_bundled(op_state[i].op) ) {
+
+      // push back the bundled ops in current cycle
+      bundled_ops.push_back(i);
+
+      // Backup each op's <prev> and <next> into OP_Partial_Backup.
+
+      OP_Partial_Backup[i].prev = OP_prev(op_state[i].op);
+      OP_Partial_Backup[i].next = OP_next(op_state[i].op);
+      OP_Partial_Backup[i].valid = TRUE;
+    }
+  }
+
+  // sort the op in bundled_ops by their slots
+  std::sort(bundled_ops.begin(), bundled_ops.end(), Order_Bundled_OPs_By_slot(op_state));
+ 
+
+  // take note where there is a noop in bundled_ops.
+  for (INT i = 0; i < bundled_ops.size(); i++) {
+    INT idx = bundled_ops[i]; 
+     // take town the noops
+    if (op_state[idx].is_noop)
+        exist_noops.push_back(idx);
+
+    // take note if integer load and float load exist simultaneously.
+    OP* op = op_state[idx].op;
+    if (OP_Is_Float_Mem(op)) fload_ld_exist=TRUE;
+    if (OP_load(op) && !OP_Is_Float_Mem(op)) int_ld_exist=TRUE;
+
+  }
+
+  // we do not deal with the case where integer load and float load exist simultaneously.
+  if (int_ld_exist && fload_ld_exist) {
+    return FALSE;
+  }
+
+  // Initialize ops
+  OPS ops = OPS_EMPTY;
+  for (INT i = 0; i < bundled_ops.size(); i++) {
+  OP *op = op_state[bundled_ops[i]].op;
+  OP_scycle(op) = op_state[bundled_ops[i]].cycle;
+  OPS_Append_Op(&ops, op);
+  }
+
+  // try to fix the split ops, if success, ops_list will become empty;
+  // else ops_list will be restore to the original value
+  BOOL abandoned=FALSE;
+  INT split_op_idx;  // split_op is the index of SPLIT OP in op_state
+  OP* op;
+  while (!ops_list.empty() && abandoned==FALSE ) { 
+        split_op_idx = ops_list.front();
+        op = op_state[split_op_idx].op;
+
+      if (CGGRP_Bundle_OPS(&ops, op, 0, TRUE)==FALSE) {
+        abandoned=TRUE; 
+        break;
+      }
+      else { // success, op has already appended into ops, go on fixing the next split op
+        ops_list.erase(ops_list.begin());  
+        
+        // reset op'bb because it will insert some noop instructions;
+        OP *tmp; 
+        if (OP_bb(op))
+	  FOR_ALL_OPS_OPs(&ops, tmp)
+	    tmp->bb = OP_bb(op);
+      }
+  }
+
+  // If at least one split op abandoned, this means fixing failure, restore op_list as 
+  // nothing has ever happened.
+  if (abandoned) {
+ 
+    // Restore ops_list
+    ops_list = backup_ops_list; 
+
+    // Restore the <prev> & <next> of each op
+    for (INT i = 0; i < OP_Partial_Backup.size(); i++) { 
+        if (OP_Partial_Backup[i].valid) {
+          op_state[i].op->prev = OP_Partial_Backup[i].prev;
+          op_state[i].op->next = OP_Partial_Backup[i].next;
+        }
+    }
+
+    return FALSE;
+  }
+
+
+  // Only when all split ops were inserted, i.e. fixing success , should we update op_state
+  if (ops_list.empty()) {
+
+    SWP_Update_OP_slot(op_state, &ops, slot_yardstick, prev_op_idx);
+
+
+    // Restore the <prev> & <next> of each op
+    for (INT i = 0; i < OP_Partial_Backup.size(); i++) { 
+        if (OP_Partial_Backup[i].valid) {
+
+          op_state[i].op->prev = OP_Partial_Backup[i].prev;
+          op_state[i].op->next = OP_Partial_Backup[i].next;
+        }
+    }
+
+    //OSP_23
+    //New noop generated in SWP_Update_OP_slot should be inserted into BB
+    if(op_state.size() > OP_Partial_Backup.size()) {
+	  OP* new_noop = op_state[op_state.size()-1].op;
+	  BB_Insert_Op_After(OP_bb(new_noop), new_noop->prev, new_noop);
+    }
+
+    // invalidate replaced_noops in op_state
+    SWP_Delete_Noop(op_state, exist_noops);
+
+    return TRUE;
+  }
+
+
+  return FALSE;
+}
+
+
 
 static void
 SWP_Pack_Into_New_Bundles(SWP_OP_vector &op_state,
@@ -784,13 +1034,43 @@ SWP_Pack_Into_New_Bundles(SWP_OP_vector &op_state,
     if (!ops_list.empty() && grouping.new_bundle_will_break_cycle())
     {
       DevWarn("SWP: Bundling group will be split into 2 cycles!");
+
       if (Trace_Swp_Bundling) {
-	for (INT32_LIST::iterator it = ops_list.begin(); 
-	     it != ops_list.end();
-	     ++it) {
-	  fprintf(TFile, "OP%d %s ", *it, TOP_Name(OP_code(op_state[*it].op)));
-	}
+        for (INT32_LIST::iterator it = ops_list.begin(); 
+	        it != ops_list.end();
+	        ++it) {
+          OP* op = op_state[*it].op;
+          TOP top = OP_code(op);
+          fprintf(TFile, "PU%d|BB:%d|Freq:%f|Cycle%d|SPLIT_OP%d -- %s    (UNIT_Prop=%d)\n", 
+                  Current_PU_Count(), BB_id(OP_bb(op)), BB_freq(OP_bb(op)), 
+                  op_state[*it].modulo_cycle, 
+                  *it, TOP_Name(top), ISA_EXEC_Unit_Prop(top));
+        }
       }
+
+      /* begin the last try */
+
+      OP * op = op_state[ops_list.front()].op;
+      if (BB_freq(OP_bb(op))>20 && !OP_flop(op)) {
+
+        if ( SWP_Slot_Helper(op_state, grouping, dep_order,
+                               prev_op_idx, bundle, ops_list) ) {
+          DevWarn("SWP: Trying to fix split cycle......fixed!");
+          if (Trace_Swp_Bundling) {
+              fprintf(TFile, "SWP: Trying to fix split cycle......fixed!\n");
+          }
+        }
+        else {
+          DevWarn("SWP: Trying to fix split cycle......abandoned!");
+          if (Trace_Swp_Bundling) {
+              fprintf(TFile, "SWP: Trying to fix split cycle......abandoned!\n");
+          }
+        }
+
+      }
+  
+    /* end of the last try*/
+
       SWP_Insert_Stop_Bit(op_state, grouping, prev_op_idx, 
 			  bundle, TI_BUNDLE_slot_count(bundle) - 1);
 
@@ -885,6 +1165,12 @@ SWP_Bundle_Next_Cycle(SWP_OP_vector         &op_state,       // in/out
       fprintf(TFile, "OP%d %s (%d) ", *it, TOP_Name(OP_code(op_state[*it].op)),
 	      op_state[*it].cycle);
     fprintf(TFile, "\n");
+
+    // print each op for debug
+    fprintf(TFile,"\n");
+    for (it = opset; it != opset_end; ++it)
+    Print_OP_No_SrcLine(op_state[*it].op);  //for debug
+
   }
   
   // Place the ops into bundles using the order dictated by the above sorting 
@@ -899,8 +1185,9 @@ SWP_Bundle_Next_Cycle(SWP_OP_vector         &op_state,       // in/out
 				 num_remaining_slots);
   INT32_LIST  ops_list(opset, opset_end, INT32_LIST::allocator_type(mpool));
 
-  BOOL fillup_bundle = (num_remaining_slots > 0) &&
-       ((num_needed_slots - num_remaining_slots) > num_remaining_slots);
+  // For don't use compressed template, so fill it early to reduce
+  // overuse func-unit;
+  BOOL fillup_bundle = (num_remaining_slots > 0) ; 
 
   // if !fillup_bundle with nops,
   // Reserve resources for all ops that have no choice as to the
@@ -1069,6 +1356,7 @@ SWP_Bundle(SWP_OP_vector& op_state, bool trace)
   SWP_Verify_Samecycle_Dep_Order(op_state);
 
   MEM_POOL_Pop(&bundle_pool);
+  MEM_POOL_Delete(&bundle_pool);
 } // SWP_Bundle
 
 

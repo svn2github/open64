@@ -37,10 +37,10 @@
  * =======================================================================
  *
  *  Module: ebo_special.cxx
- *  $Revision: 1.1 $
- *  $Date: 2005/07/27 02:13:45 $
- *  $Author: kevinlo $
- *  $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/ia64/ebo_special.cxx,v $
+ *  $Revision: 1.1.1.1 $
+ *  $Date: 2005/10/21 19:00:00 $
+ *  $Author: marcel $
+ *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/ia64/ebo_special.cxx,v $
  *
  *  Revision comments:
  *
@@ -93,20 +93,48 @@ static const char source_file[] = __FILE__;
 #include "cg_spill.h"
 #include "cgexp_internals.h"
 #include "data_layout.h"
+#include "cxx_hash.h"
 
 #include "ebo.h"
 #include "ebo_info.h"
 #include "ebo_special.h"
 #include "ebo_util.h"
-
+#include "region_bb_util.h"
+#include "ipfec_options.h"
 /* Define a macro to strip off any bits outside of the left most 4 bytes. */
 #define TRUNC_32(val) (val & 0x00000000ffffffffll)
 
 /* Define a macro to sign-extend the least signficant 32 bits */
 #define SEXT_32(val) (((INT64)(val) << 32) >> 32)
 
+typedef HASH_TABLE<ST_IDX, INITV_IDX> ST_TO_INITV_MAP;
+static ST_TO_INITV_MAP *st_initv_map = NULL;
+static BOOL st_initv_map_inited = FALSE;
+static GTN_SET *work_gtn_set = NULL;
+static BS *work_defined_set = NULL;
+static MEM_POOL *work_pool = NULL;
+
 /* ===================================================================== */
 
+/* Initialize and finalize ebo special routines. */
+
+#if 0
+void
+EBO_Special_Start (MEM_POOL *pool)
+{
+  Init_Addr_Modes();
+}
+#endif
+
+void
+EBO_Special_Finish (void)
+{
+  st_initv_map = NULL;
+  st_initv_map_inited = FALSE;
+  work_gtn_set = NULL;
+  work_defined_set = NULL;
+  work_pool = NULL;
+}
 
 /*
  * Identify OP's that contain a constant and operate in a way that
@@ -671,6 +699,8 @@ condition_redundant(OP *elim_op,
       ((p_opcode == TOP_cmp4_i_ge_unc) && (e_opcode == TOP_cmp4_i_lt_unc))) {
     TN *pr0 = OP_result(prev_op,0);
     TN *pr1 = OP_result(prev_op,1);
+	EBO_TN_INFO *pr0_tninfo = prev_opinfo->actual_rslt[0];
+	EBO_TN_INFO *pr1_tninfo = prev_opinfo->actual_rslt[1];
     TN *er0 = OP_result(elim_op,0);
     TN *er1 = OP_result(elim_op,1);
     TN *prp = OP_opnd(prev_op,OP_PREDICATE_OPND);
@@ -679,6 +709,7 @@ condition_redundant(OP *elim_op,
     if (p_opcode != e_opcode) {
      /* We are dealing with complement compare instructions. */
       TN *save_tn = pr0;
+	  EBO_TN_INFO *save_tn_info = pr0_tninfo;
 
       if (((pr0 == True_TN) && (er0 == True_TN)) ||
           ((pr1 == True_TN) && (er1 == True_TN))) {
@@ -692,6 +723,15 @@ condition_redundant(OP *elim_op,
             if ((result_tninfo == NULL) ||
                 (result_tninfo->reference_count != 0)) goto can_not_combine_ops;
           }
+        }
+        if ( pr0 == True_TN ) {
+            if ( (TN_register_class(pr1) ==  TN_register_class(er1))
+              && (TN_register(pr1) ==  TN_register(er1)))
+              goto can_not_combine_ops;
+        } else {
+            if ( (TN_register_class(pr0) ==  TN_register_class(er0))
+              && (TN_register(pr0) ==  TN_register(er0)))
+              goto can_not_combine_ops;
         }
 
         OP *new_op = Dup_OP(elim_op);
@@ -717,6 +757,9 @@ condition_redundant(OP *elim_op,
       pr0 = pr1;
       pr1 = save_tn;
 
+	  save_tn_info = pr0_tninfo;
+	  pr0_tninfo = pr1_tninfo;
+	  pr1_tninfo = save_tn_info;
       if (EBO_Trace_Optimization) {
         #pragma mips_frequency_hint NEVER
         fprintf(TFile,"%sCompare instructions are complements.\n",EBO_trace_pfx);
@@ -763,18 +806,26 @@ condition_redundant(OP *elim_op,
       return TRUE;
     }
 
+    /* Originally, in the else branch a complement predicate copy of this form:
+      (p7) cmp.eq.unc p0,p11 = r0, r0
+      is created if the $pr0 is a True TN. 
+      The author wants this instruction to have p7||p11=true.
+      However, this is wrong.
+      If p7 is true, then according to the IA64 manual, p11 should false.
+      If p7 is false, then p0 and p11 are both false.
+    */
     if (er0 != True_TN) {
-      if (pr0 != True_TN) {
+      if (pr0 != True_TN && EBO_tn_available(OP_bb(elim_op), pr0_tninfo)) {
         EBO_Copy_Predicate (er0, pr0, &ops);
       } else {
-        EBO_Complement_Predicate (er0,pr1, &ops);
+        goto can_not_combine_ops;
       }
     } 
     if (er1 != True_TN) {
-      if (pr1 != True_TN) {
+      if (pr1 != True_TN && EBO_tn_available(OP_bb(elim_op), pr1_tninfo)) {
         EBO_Copy_Predicate (er1, pr1, &ops);
       } else {
-        EBO_Complement_Predicate (er1,pr0, &ops);
+        goto can_not_combine_ops;
       }
     }
 
@@ -838,8 +889,15 @@ combine_adjacent_loads(OP *op,
     Print_OP_No_SrcLine(pred_op);
   }
   
+  
   if (!OP_load(op) || !OP_load(pred_op) || (opcode != OP_code(pred_op)) ||
-      (OP_results(op) != 1) || (OP_results(pred_op) != 1) || (base_index < 0)) {
+      (OP_results(op) != 1) || (OP_results(pred_op) != 1) || (base_index < 0) ||
+      
+      /* ld.s, ld.a, ld.sa, ld.c and ld in recovery block must be saved */
+      
+      CGTARG_Is_OP_Speculative(op) || CGTARG_Is_OP_Speculative(pred_op) ||
+      CGTARG_Is_OP_Check_Load(op)  || CGTARG_Is_OP_Check_Load(pred_op)  ||
+      BB_recovery(OP_bb(op))       || BB_recovery(OP_bb(pred_op))) {
     return FALSE;
   }
 
@@ -1230,6 +1288,14 @@ delete_subset_mem_op(OP *op,
     return FALSE;
   }
 
+  /* ld.s, ld.a, ld.sa, ld.c and ld in recovery block must be saved */
+  if (CGTARG_Is_OP_Speculative(op) ||
+      CGTARG_Is_OP_Speculative(pred_op) ||
+      CGTARG_Is_OP_Check_Load(op)  ||
+      CGTARG_Is_OP_Check_Load(pred_op)  ||
+      BB_recovery(OP_bb(op))   || 
+      BB_recovery(OP_bb(pred_op)))    return FALSE;
+  
   byte_offset = offset_succ - offset_pred;
 
   if (OP_load(op) && OP_load(pred_op) &&
@@ -1391,6 +1457,14 @@ delete_reload_across_dependency (OP *op,
        ((OP_results(intervening_op) > 1) &&
         (intervening_inc_idx < 0))))) return FALSE;
 
+  /* ld.s, ld.a, ld.sa, ld.c and ld in recovery block must be saved */
+  if (CGTARG_Is_OP_Speculative(op) ||
+      CGTARG_Is_OP_Speculative(pred_op) ||
+      CGTARG_Is_OP_Check_Load(op)  ||
+      CGTARG_Is_OP_Check_Load(pred_op)  ||
+      BB_recovery(OP_bb(op))   || 
+      BB_recovery(OP_bb(pred_op)))    return FALSE;
+  
  /* Capture the values in the preceeding memory OPs. */
   pred_result = OP_store(pred_op) ? OP_opnd(pred_op,
                                             TOP_Find_Operand_Use(pred_opcode, OU_storeval))
@@ -1600,10 +1674,26 @@ delete_memory_op (OP *op,
   size_pred = CGTARG_Mem_Ref_Bytes(opinfo->in_op);
   size_succ = CGTARG_Mem_Ref_Bytes(op);
 
-  if (OP_load(op) && OP_load(opinfo->in_op)) {
    /* Replace the result tn of the second OP for:
           Load - Load,
+    */
+
+  /* ld.s, ld.a, ld.sa, ld.c and ld in recovery block must be saved */
+  if (CGTARG_Is_OP_Speculative(op) ||
+      CGTARG_Is_OP_Speculative(opinfo->in_op) ||
+      CGTARG_Is_OP_Check_Load(op)  ||
+      CGTARG_Is_OP_Check_Load(opinfo->in_op)  ||
+      BB_recovery(OP_bb(op))   ||
+      BB_recovery(OP_bb(opinfo->in_op)))    return FALSE;
+
+  /* ld.fill and st.spill access UNAT, they should not be safely deleted 
+   * because currently the EBO does not analyze the UNAT bit.
    */
+  if (CGTARG_Load_with_UNAT (op) || CGTARG_Store_With_UNAT (op)) {
+      return FALSE;
+  }
+
+  if (OP_load(op) && OP_load(opinfo->in_op)) {
     if (TOP_Find_Operand_Use(OP_code(op), OU_postincr) >= 0) {
      /* The increment must be preserved. */
       if (EBO_Trace_Data_Flow) {
@@ -1622,6 +1712,7 @@ delete_memory_op (OP *op,
         fprintf(TFile,"%sType mismatch for Load - Load combination\n",
                 EBO_trace_pfx);
       }
+      
       return FALSE;
     }
     if ((size_pred != size_succ) ||
@@ -2529,6 +2620,20 @@ if (EBO_Trace_Optimization) fprintf(TFile,"replace cmp with cmp_i\n");
 
      /* Scheduling may be better if we don't introduce dependencies. */
       if (!EBO_in_peep) use_increment = FALSE;
+      
+      /* Do not defined an upward-exposed-use var on a speculative train
+       */
+      if (OP_load (memory_op) && OP_speculative(memory_op)) {
+         use_increment = FALSE;
+      }
+
+      /* load is constantly on a critical path, if we expand an extra mov OP,
+       * the path will become even longer
+       */
+      if (use_increment && OP_load(memory_op) && 
+         !tn_registers_identical(tnr, tn1)) {
+         use_increment = FALSE; 
+      }
 
       if (use_increment &&
           (TOP_Find_Operand_Use(new_opcode, OU_postincr) >= 0)) {
@@ -3573,7 +3678,18 @@ Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
        OP_has_predicate(op) &&
       ((OP_opnd (op, OP_PREDICATE_OPND) == True_TN) ||
        TN_Is_Constant(opnd_tn[OP_PREDICATE_OPND]))) {
-
+      //A very weak fix added here,in order to avoid loop nodes
+      //been deleted from node;
+     if(IPFEC_Enable_Region_Formation && RGN_Formed) {
+        if((Home_Region(bb)->Region_Type() == LOOP) && 
+           ((Home_Region(branch_bb) != Home_Region(bb))||
+           (Home_Region(fall_bb) != Home_Region(bb)))) {
+               DevWarn("Give up resolve conditional branch in order to maintain region for BB %d.",BB_id(bb));
+         
+               return FALSE;
+        }
+    } 
+    
     if (EBO_Trace_Optimization) {
       #pragma mips_frequency_hint NEVER
       INT i;
@@ -3587,6 +3703,7 @@ Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
       fprintf(TFile,"\n");
     }
 
+      
     if (opnd_tn[OP_PREDICATE_OPND] == True_TN) {
      /* Branch IS taken - replace the conditional branch with a simple branch. */
       OPS ops = OPS_EMPTY;
@@ -3595,17 +3712,29 @@ Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
                         OP_opnd(op,TOP_Find_Operand_Use(OP_code(op),OU_target)), &ops);
       OP_srcpos(OPS_first(&ops)) = OP_srcpos(op);
       BB_Insert_Ops(OP_bb(op), op, &ops, FALSE);
-      Unlink_Pred_Succ (bb, fall_bb);
+
+      if(RGN_Formed && IPFEC_Enable_Region_Formation){
+        RGN_Unlink_Pred_Succ(bb,fall_bb);
+      } else {
+        Unlink_Pred_Succ (bb, fall_bb);
+      }  
+
       Change_Succ_Prob (bb, branch_bb, 1.0);
 
       return TRUE;;
     } else if (opnd_tn[OP_PREDICATE_OPND] == Zero_TN) {
-     /* Branch NOT taken - delete it and fall through. */
-      Unlink_Pred_Succ (bb, branch_bb);
+      /* Branch NOT taken - delete it and fall through. */
+      if(RGN_Formed && IPFEC_Enable_Region_Formation){
+        RGN_Unlink_Pred_Succ(bb,branch_bb);
+      } else {
+        Unlink_Pred_Succ (bb, branch_bb);
+      }
       Change_Succ_Prob (bb, fall_bb, 1.0);
+
       return TRUE;
     }
   }
+  
   return FALSE;
 }
 
@@ -4106,12 +4235,16 @@ Fold_Constant_Expression (OP *op,
     OPS ops = OPS_EMPTY;
     TN *result1 = (result_val == 0) ? OP_result(op,1) : OP_result(op,0);
     TN *result2 = (result_val == 0) ? OP_result(op,0) : OP_result(op,1);
-    Build_OP (TOP_Is_Unconditional_Compare(opcode) ? TOP_cmp_eq_unc : TOP_cmp_eq,
-              result1, True_TN, OP_opnd(op, OP_PREDICATE_OPND), Zero_TN, Zero_TN, &ops);
-    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
-    Build_OP (TOP_Is_Unconditional_Compare(opcode) ? TOP_cmp_eq_unc : TOP_cmp_eq,
-              True_TN, result2, OP_opnd(op, OP_PREDICATE_OPND), Zero_TN, Zero_TN, &ops);
-    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+    if (result1 != True_TN){
+      Build_OP (TOP_Is_Unconditional_Compare(opcode) ? TOP_cmp_eq_unc : TOP_cmp_eq,
+               result1, True_TN, OP_opnd(op, OP_PREDICATE_OPND), Zero_TN, Zero_TN, &ops);
+      OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+    }
+    if (result2 != True_TN){
+      Build_OP (TOP_Is_Unconditional_Compare(opcode) ? TOP_cmp_eq_unc : TOP_cmp_eq,
+               True_TN, result2, OP_opnd(op, OP_PREDICATE_OPND), Zero_TN, Zero_TN, &ops);
+      OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+    }
 
     if (EBO_Trace_Optimization) {
       #pragma mips_frequency_hint NEVER
@@ -4164,7 +4297,36 @@ Constant_Created:
 
   if (result_sym != NULL) {
     tnc = Gen_Symbol_TN(result_sym, result_val, result_relocs);
-  } else {
+  } 
+  else {
+    switch (TN_size(tnr)) {
+    	case 1:     
+    		FmtAssert (!((tn0_uval & 0x1111111111111110LL == 0x0000000000000010LL) && 
+			     (tn1_uval & 0x1111111111111110LL == 0x0000000000000010LL) && 
+			     (result_val & 0x0000000000000100LL)),
+			     ("1-byte literal 0x%016llx is out-of-range", result_val));
+	  	result_val &= 0x00000000000000ffLL;
+		break;
+    	case 2:     
+    		FmtAssert (!((tn0_uval & 0x1111111111111000LL == 0x0000000000001000LL) && 
+			     (tn1_uval & 0x1111111111111000LL == 0x0000000000001000LL) && 
+			     (result_val & 0x0000000000010000LL)),
+			     ("2-byte literal 0x%016llx is out-of-range", result_val));
+	  	result_val &= 0x000000000000ffffLL;
+		break;
+    	case 4:     
+    		FmtAssert (!((tn0_uval & 0x1111111110000000LL == 0x0000000010000000LL) && 
+			     (tn1_uval & 0x1111111110000000LL == 0x0000000010000000LL) && 
+			     (result_val & 0x0000000100000000LL)),
+			     ("4-byte literal 0x%016llx is out-of-range", result_val));
+	  	result_val &= 0x00000000ffffffffLL;
+		break;
+    	case 8: 
+		break;
+    	default:
+       		FmtAssert(false, ("Invalid literal tn size: %d", TN_size(tnr)));
+    } 
+  
     tnc = Gen_Literal_TN(result_val, TN_size(tnr));
   }
   Expand_Immediate (tnr, tnc, OP_result_is_signed(op,0), &ops);
@@ -4279,7 +4441,7 @@ INT EBO_Copy_Operand (OP *op)
   }
 
   if (((opcode == TOP_cmp_eq_unc) ||
-       (opcode == TOP_cmp_eq)) &&
+       (opcode == TOP_cmp_eq && OP_opnd(op,OP_PREDICATE_OPND) == True_TN)) &&
       (OP_opnd(op,1) == Zero_TN) &&
       (OP_opnd(op,2) == Zero_TN)) {
     return 0; /* The predicate value is the result. */
@@ -4883,6 +5045,13 @@ copy_rf_sequence (OP *op,
 
    /* Be sure there is no store between here and the original load. */
     if (l2_opinfo0->op_must_not_be_moved) return FALSE;
+    /*
+     *  Here we turn off the transformation: setf.sig--->ldf .
+     *  This is because ebo can not correctly handle some cases.
+     *  The bug is tough. We can not fix it in short time.
+     *  So, we turn off it.
+     */ 
+    return FALSE;
 
    /* Be sure all the operands are available. */
     for (i = OP_opnds(l2_op0); i >= 0; i--) {
@@ -5385,7 +5554,7 @@ sxt_sequence (OP *op,
       input_start = 0;
       input_length = 64;
       sxt_idx = 2;
-    } else if ((p_start <= result_start) &&
+    } else if ((p_start == result_start) &&
                ((result_start + result_length) <= (p_start + input_length))) {
      /* The result is contained within the input. */
       result_start = 0;
@@ -5457,7 +5626,7 @@ sxt_sequence (OP *op,
     } else if ((p_start <= result_start) &&
                ((result_start + result_length) <= (p_start + input_length))) {
      /* The result is contained within the input. */
-      result_start = 0;
+      result_start = result_start - p_start;  // OSP-170
     } else {
      /* There is some sort of overlap of fields. */
       return FALSE;
@@ -5793,12 +5962,16 @@ condition_optimization(OP *op,
 
    /* Replace the original operands with constants and allow
       it to be resolved by constant expression evaluation. */
-    Build_OP (opcode, r0, True_TN, prd, Zero_TN, Zero_TN, &ops);
-    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
-    if (OP_glue(op)) Set_OP_glue(OPS_first(&ops));
-    Build_OP (opcode, True_TN, r1, prd, Zero_TN, Zero_TN, &ops);
-    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
-    if (OP_glue(op)) Set_OP_glue(OPS_first(&ops));
+    if (r0 != True_TN) {
+      Build_OP (opcode, r0, True_TN, prd, Zero_TN, Zero_TN, &ops);
+      OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+      if (OP_glue(op)) Set_OP_glue(OPS_first(&ops));
+    }
+    if (r1 != True_TN) {
+      Build_OP (opcode, True_TN, r1, prd, Zero_TN, Zero_TN, &ops);
+      OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+      if (OP_glue(op)) Set_OP_glue(OPS_first(&ops));
+    }
     if (EBO_in_loop) EBO_OPS_omega (&ops, opnd_tninfo[OP_PREDICATE_OPND]);
     BB_Insert_Ops(OP_bb(op), op, &ops, FALSE);
 
@@ -5814,7 +5987,25 @@ condition_optimization(OP *op,
   EBO_Identify_Base_and_Offset ( &op2_tninfo, &op2, &op2_offset);
 
   if ((op1_tninfo == op2_tninfo) && (op1_tninfo != NULL) && (op1 != Zero_TN)) {
-
+    TOP opcode = OP_code(op);
+    if ( opcode == TOP_cmp_geu ||
+	 opcode == TOP_cmp_geu_unc ||
+	 opcode == TOP_cmp_ltu ||
+	 opcode == TOP_cmp_ltu_unc ||
+	 opcode == TOP_cmp_gtu ||
+	 opcode == TOP_cmp_gtu_unc ||
+	 opcode == TOP_cmp_leu ||
+	 opcode == TOP_cmp_leu_unc ||
+	 opcode == TOP_cmp_i_geu ||
+	 opcode == TOP_cmp_i_geu_unc ||
+	 opcode == TOP_cmp_i_ltu ||
+	 opcode == TOP_cmp_i_ltu_unc ||
+	 opcode == TOP_cmp_i_gtu ||
+	 opcode == TOP_cmp_i_gtu_unc ||
+	 opcode == TOP_cmp_i_leu ||
+	 opcode == TOP_cmp_i_leu_unc) {
+      return FALSE;
+    }
     if (EBO_Trace_Optimization) {
       #pragma mips_frequency_hint NEVER
       fprintf(TFile,"%sResolve compare symbolically by reducing to constants %lld : %lld.\n",

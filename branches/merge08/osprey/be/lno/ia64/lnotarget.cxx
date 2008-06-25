@@ -866,6 +866,13 @@ LNOTARGET_Cvt_Lat (OPCODE opcode)
       return LNOTARGET_Top_Latency(TOP_fnorm_d);
     case OPC_F4F8CVT:
       return LNOTARGET_Top_Latency(TOP_fnorm_s);
+    // These cvts should not return -1, return 0 can catch more opportunities.
+    // This will influence LNO model to perform different optimizations.
+    case OPC_U8I4CVT:
+    case OPC_U8U4CVT:
+    case OPC_I8I4CVT:
+    case OPC_I8U4CVT:
+      return LNOTARGET_Top_Latency(TOP_nop);// just follow the convention, can be return 0  
   }
   return -1;
 }

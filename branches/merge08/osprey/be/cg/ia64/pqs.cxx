@@ -101,7 +101,8 @@ enum truth_val {
 //================================================================
 
 
-void PQS_TN_SET::Print(FILE *f,BOOL newline)
+template<> void
+PQS_TN_SET::Print(FILE *f,BOOL newline)
 {
   PQS_TN_SET_TYPE::iterator p;
 
@@ -115,7 +116,8 @@ void PQS_TN_SET::Print(FILE *f,BOOL newline)
   if (newline) fprintf(f,"\n");
 }
 
-void PQS_TNI_SET::Print(FILE *f, BOOL newline)
+template<> void
+PQS_TNI_SET::Print(FILE *f, BOOL newline)
 {
   PQS_TNI_SET::set_iterator_type p;
   
@@ -784,7 +786,7 @@ PQS_MANAGER::PQS_is_disjoint_h (PQS_NODE_IDX tni1, PQS_NODE_IDX tni2, PQS_TN tn1
    }
 
    // Simple case, tni1 and tni2 are the same
-   if (tni1 == tni2) {
+   if ((tni1 == tni2)&&(tni1 != PQS_IDX_INVALID)) {
       same_tnis = never_true_together(tn1,tn2,tni1);
       if (same_tnis == PQS_TRUTH_ALWAYS) {
 	 return TRUE;

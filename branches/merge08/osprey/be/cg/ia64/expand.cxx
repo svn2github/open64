@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: expand.c
- * $Revision: 1.1 $
- * $Date: 2005/07/27 02:13:45 $
- * $Author: kevinlo $
- * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/ia64/expand.cxx,v $
+ * $Revision: 1.1.1.1 $
+ * $Date: 2005/10/21 19:00:00 $
+ * $Author: marcel $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/ia64/expand.cxx,v $
  *
  * Description:
  *
@@ -367,11 +367,7 @@ Expand_Shift (TN *result, TN *src1, TN *src2, TYPE_ID mtype, SHIFT_DIRECTION kin
 	if (val >= 1 && val <= 4) {
 	  Build_OP (TOP_shladd,result,True_TN,src1,Gen_Literal_TN (val, 4),Zero_TN,ops);
 	} else if (val > 4 && val <= 8 && !OPT_Space) {
-	  // Two shladds are better than one shift, because they can go in more
-	  // schedule slots
-	  TN *tmp = DUP_TN(src1);
-	  Build_OP (TOP_shladd,tmp,True_TN,src1,Gen_Literal_TN (val-4, 4),Zero_TN,ops);
-	  Build_OP (TOP_shladd,result,True_TN,tmp,Gen_Literal_TN (4, 4),Zero_TN,ops);
+	  Build_OP(TOP_shl_i,result,True_TN,src1,src2,ops);
 	} else {
 	  // We can use a dep.z for this case
 	  Build_OP (TOP_shl_i, result, True_TN, src1, src2, ops);
@@ -449,6 +445,11 @@ Expand_F_To_G (TN *gtn, TN *ftn, OPS *ops)
 static void shladd(TN *r, TN *x1, INT s, TN *x2, OPS *ops)
 {
   Build_OP (TOP_shladd,r,True_TN,x1,Gen_Literal_TN (s, 4),x2,ops);
+}
+
+static void shl(TN *r, TN *x1, INT s, OPS *ops)
+{
+  Build_OP (TOP_shl_i,r,True_TN,x1,Gen_Literal_TN (s, 4),ops);
 }
 
 
@@ -624,9 +625,7 @@ Expand_Small_Multiply(TN *r,  // result
      shladd(r,r1,1,r2,ops);
      break;
    case  32 :
-     ONE_TEMP;
-     Expand_Small_Multiply(r1,x,16,ops);
-     Expand_Small_Multiply(r,r1,2,ops);
+	 shl(r,x,5,ops);
      break;
    case  33 :
      ONE_TEMP;
@@ -1130,7 +1129,7 @@ Expand_Constant_Multiply (TN *result, TN *var_tn, TARG_INT constant, TYPE_ID mty
 }
 
 void
-Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
+Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode)
 {
   TOP new_opcode;
   INT64 constant;
@@ -1150,8 +1149,14 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     return;
   }
 
+#ifdef KEY
+  if (CGEXP_cvrt_int_mult_to_add_shift &&
+      (TN_has_value(src1) || TN_has_value(src2) ||
+       TN_is_rematerializable(src1) ||TN_is_rematerializable(src2))) {
+#else
   if (!Disable_Const_Mult_Opt && (TN_has_value(src1) || TN_has_value(src2) ||
-				  TN_is_rematerializable(src1) ||TN_is_rematerializable(src2))) {
+      TN_is_rematerializable(src1) ||TN_is_rematerializable(src2))) {
+#endif
     TN *var_tn;
     if ( TN_has_value(src1) || TN_is_rematerializable(src1) ) {
       constant = TN_has_value(src1) ? TN_value(src1) : WN_const_val(TN_home(src1));
@@ -1575,19 +1580,29 @@ Expand_Bool_Comparison (BOOL equals, TN *dest, TN *src1, TN *src2, OPS *ops)
     // return result of comparison in a predicate register
     TOP action = equals ? TOP_cmp_ne : TOP_cmp_eq;
     TN *p1 = dest;
-    TN *p2 = Get_Complement_TN(dest);
+    TN *p2 = Get_Complement_TN (dest);
     TN *tn = Build_TN_Of_Mtype (MTYPE_I4);
 
     // generate: tn = (src1 == src2)
-    Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN(1, 4), ops);
-    Build_OP (TOP_xor_i, tn, src1, Gen_Literal_TN(1, 4), tn, ops);
-    Build_OP (TOP_xor_i, tn, src2, Gen_Literal_TN(1, 4), tn, ops);
+    Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN (1, 4), ops);
+    Build_OP (TOP_xor_i, tn, src1, Gen_Literal_TN (1, 4), tn, ops);
+    Build_OP (TOP_xor_i, tn, src2, Gen_Literal_TN (1, 4), tn, ops);
 
     Build_OP (action, p1, p2, True_TN, tn, Zero_TN, ops);
-  } else {
-    Build_OP (TOP_mov_i, dest, True_TN, Gen_Literal_TN(equals, 4), ops);
-    Build_OP (TOP_xor_i, dest, src1, Gen_Literal_TN(1, 4), dest, ops);
-    Build_OP (TOP_xor_i, dest, src2, Gen_Literal_TN(1, 4), dest, ops);
+  } 
+  else if (TN_is_dedicated (dest)) {
+    TN *tn = Build_TN_Of_Mtype (MTYPE_I4);
+    
+    Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN (equals, 4), ops);
+    Build_OP (TOP_xor_i, tn, src1, Gen_Literal_TN (1, 4), tn, ops);
+    Build_OP (TOP_xor_i, tn, src2, Gen_Literal_TN (1, 4), tn, ops);
+    
+    Build_OP (TOP_mov, dest, True_TN, tn, ops); 
+  }
+  else {
+    Build_OP (TOP_mov_i, dest, True_TN, Gen_Literal_TN (equals, 4), ops);
+    Build_OP (TOP_xor_i, dest, src1, Gen_Literal_TN (1, 4), dest, ops);
+    Build_OP (TOP_xor_i, dest, src2, Gen_Literal_TN (1, 4), dest, ops);
   }
 }
 
@@ -1845,7 +1860,18 @@ Expand_Select (
   if (TN_register_class(cond_tn) == ISA_REGISTER_CLASS_predicate) {
     TOP tmove, fmove;
     TN *p1 = cond_tn;
-    TN *p2 = Get_Complement_TN(cond_tn);
+
+    // Get_Complement_TN()  can't be used if p1 is not dedicated register.
+//    FmtAssert(ops->length!=0, ("The whole op sequence should be passed in."));
+    TN *p2;
+    if ((ops->length!=0) && (OP_result(OPS_last(ops), 0)==p1)) {
+      p2 = OP_result(OPS_last(ops), 1); // the predicate conversion of boolean exppression gurantees this.
+    }
+    else 
+    	{
+      p2 = Get_Complement_TN(cond_tn);
+    }
+
     if (is_float) {
       tmove = TOP_mov_f;
       fmove = TOP_mov_f;
@@ -3125,7 +3151,6 @@ Init_CG_Expand (void)
   Trace_Exp = Get_Trace (TP_CGEXP, 1);
   /* whirl2ops uses -ttexp:2 */
   Trace_Exp2 = Get_Trace (TP_CGEXP, 4);
-  Disable_Const_Mult_Opt = Get_Trace (TP_CGEXP, 32);
   /* calls.c use -ttexp:64 */
 
   if (Initialized) return;
@@ -3198,7 +3223,7 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops)
 }
 
 void
-Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * /* op1 */, OPS *ops)
+Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * op1, OPS *ops)
 {
   switch (id) {
   case INTRN_GETF_EXP:
@@ -3233,6 +3258,43 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * /* op1 */, OPS *ops)
       Build_OP (TOP_xor, t2, True_TN, t1, op0, ops);
       Build_OP (TOP_mov, result, p1, Zero_TN, ops);
       Build_OP (TOP_popcnt, result, p2, t2, ops);
+    }
+    break;
+  case INTRN_ISLESSGREATER:
+    // This is the final place to expand this intrinsic
+    // If Expand it in FE can get more optimization opportunity,
+    // please handle it in FE.
+    Expand_Float_Compares(TOP_fcmp_neq, result, op0, op1, ops); 
+    break;
+  case INTRN_ISUNORDERED:
+    Expand_Float_Compares(TOP_fcmp_unord, result, op0, op1, ops);
+    break;
+  case INTRN_CLZ32:
+    // expand the intrinsic __builtin_clz, which Returns the number of leading 0-bits in X, 
+    // starting at the most significant bit position.
+    //
+    {
+      TN* t1 = Build_TN_Of_Mtype (MTYPE_F8);
+      TN* t2 = Build_TN_Of_Mtype (MTYPE_F8);
+      TN* t3 = Build_TN_Of_Mtype (MTYPE_I4);
+      Build_OP (TOP_setf_sig, t1, True_TN, op0, ops);
+      Build_OP (TOP_fcvt_xuf, t2, True_TN, Gen_Enum_TN(ECV_sf_s0), t1, ops);
+      Build_OP (TOP_getf_exp, t3, True_TN, t2, ops);
+      Build_OP (TOP_mov_i, result, True_TN, Gen_Literal_TN(65598, 4), ops);
+      Build_OP (TOP_sub, result, True_TN, result, t3, ops);
+      Build_OP (TOP_adds, result, True_TN, Gen_Literal_TN(-32, 4), result, ops);
+    }
+    break;
+  case INTRN_CTZ:
+    // Bug fix for OSP_433
+    // expand the intrinsic __builtin_ctzl, which returns the bit index of the least significant bit
+    //
+    {
+      TN* tn1 = Build_TN_Of_Mtype (MTYPE_I8);
+      Build_OP (TOP_adds, tn1, True_TN, Gen_Literal_TN(-1, 8), op0, ops);
+      Build_OP (TOP_andcm_i, op0, True_TN, Gen_Literal_TN(-1, 8), op0, ops);
+      Build_OP (TOP_and, op0, True_TN, op0, tn1, ops);
+      Build_OP (TOP_popcnt, result, True_TN, op0, ops);
     }
     break;
   default:
@@ -3819,25 +3881,30 @@ void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
     return;
   }
 
-  if (   MTYPE_is_float(mtype)
-      && mtype == TCON_ty(tc)
-      && (mtype == MTYPE_F4 || mtype == MTYPE_F8))
-  {
-    double val = Targ_To_Host_Float(tc);
-    if (val == 1.0) {
-      // copy 1
-      Build_OP (TOP_mov_f, dest, True_TN, FOne_TN, ops);
-      return;
-    } else if (val == -1.0) {
-      // negate 1
-      Build_OP (TOP_fneg, dest, True_TN, FOne_TN, ops);
-      return;
-    } else if (val == 2.0) {
-      // 1 + 1
-      TOP fadd = (mtype == MTYPE_F4) ? TOP_fadd_s : TOP_fadd_d;
-      Build_OP (fadd, dest, True_TN, Gen_Enum_TN(ECV_sf_s0), FOne_TN, FOne_TN, ops);
-      return;
-    } else if (CGEXP_float_consts_from_ints) {
+  if (MTYPE_is_float(mtype) && mtype == TCON_ty(tc)) {
+    if (mtype == MTYPE_F4 || mtype == MTYPE_F8 || mtype == MTYPE_F10) {
+      double val = Targ_To_Host_Float(tc);
+      if (val == 1.0) {
+	// copy 1
+	Build_OP (TOP_mov_f, dest, True_TN, FOne_TN, ops);
+	return;
+      }
+      if (val == -1.0) {
+	// negate 1
+	Build_OP (TOP_fneg, dest, True_TN, FOne_TN, ops);
+	return;
+      }
+      if (val == 2.0) {
+	// 1 + 1
+	TOP fadd = (mtype == MTYPE_F4) ? TOP_fadd_s :
+		(mtype == MTYPE_F8) ? TOP_fadd_d : TOP_fadd;
+	Build_OP (fadd, dest, True_TN, Gen_Enum_TN(ECV_sf_s0), FOne_TN,
+		FOne_TN, ops);
+	return;
+      }
+    }
+    if (CGEXP_float_consts_from_ints &&
+	(mtype == MTYPE_F4 || mtype == MTYPE_F8)) {
       TN *tn = Build_TN_Of_Mtype (MTYPE_I8);
       INT64 fimm = (mtype == MTYPE_F4) ? TCON_uval(tc) : TCON_k0(tc);
       if (Targ_Is_Power_Of_Two(tc)) {
@@ -3856,14 +3923,16 @@ void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
 	Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN(sign_exp, 4), ops);
 	CGSPILL_Attach_Intconst_Remat (tn, sign_exp);
 	Build_OP (TOP_setf_exp, dest, True_TN, tn, ops);
-      } else {
+	return;
+      }
+      if (mtype == MTYPE_F4 || mtype == MTYPE_F8) {
 	// arbitrary floating constant
 	TOP setf = (mtype == MTYPE_F4) ? TOP_setf_s : TOP_setf_d;
 	Build_OP (TOP_movl, tn, True_TN, Gen_Literal_TN(fimm, 8), ops);
 	CGSPILL_Attach_Intconst_Remat (tn, fimm);
 	Build_OP (setf, dest, True_TN, tn, ops);
+	return;
       }
-      return;
     }
   }
 

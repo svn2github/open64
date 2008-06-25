@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -63,7 +63,7 @@ typedef mempool_allocator<PQS_NODE_IDX> PQS_NODE_IDX_ALLOCATOR;
 typedef alloc PQS_NODE_IDX_ALLOCATOR;
 #endif
 
-typedef vector<PQS_NODE_IDX,PQS_NODE_IDX_ALLOCATOR> PQS_NODE_IDX_VECTOR;
+typedef std::vector<PQS_NODE_IDX,PQS_NODE_IDX_ALLOCATOR> PQS_NODE_IDX_VECTOR;
 
 
 /*================================================================
@@ -72,7 +72,7 @@ typedef vector<PQS_NODE_IDX,PQS_NODE_IDX_ALLOCATOR> PQS_NODE_IDX_VECTOR;
 */
 
 // Pairs of index and TN.
-typedef pair<PQS_NODE_IDX,PQS_TN> PQS_TNI;
+typedef std::pair<PQS_NODE_IDX,PQS_TN> PQS_TNI;
 #define PQS_TNI_TN(x) ((x).second)
 #define PQS_TNI_IDX(x) ((x).first)
 
@@ -155,7 +155,7 @@ typedef mempool_allocator<PQS_NODE> PQS_NODE_ALLOCATOR;
 #else
 typedef alloc PQS_NODE_ALLOCATOR;
 #endif
-typedef vector <PQS_NODE,PQS_NODE_ALLOCATOR> PQS_NODE_VECTOR;
+typedef std::vector <PQS_NODE,PQS_NODE_ALLOCATOR> PQS_NODE_VECTOR;
 
 class PQS_MANAGER {
 private:
