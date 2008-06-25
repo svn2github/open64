@@ -147,6 +147,8 @@ BE_CG_GSCHED_DIR	= $(BE_DIR)/cg/sched
 BE_CG_GRA_DIR		= $(BE_CG_DIR)/gra_mon
 BE_CG_TARG_DIR		= $(BE_CG_DIR)/$(BUILD_TARGET_DIR)
 BE_COM_DIR 		= $(BE_DIR)/com
+BE_ORC_ICT_DIR	= $(BE_CG_DIR)/orc_ict
+BE_ORC_INTEL_DIR	= $(BE_CG_DIR)/orc_intel
 BE_REGION_DIR 		= $(BE_DIR)/region
 BE_PROMPF_DIR		= $(BE_DIR)/prompf_anl
 BE_OPT_DIR              = $(BE_DIR)/opt
@@ -179,6 +181,8 @@ HEADER_DIRS = \
   $(SRC_DIRS)		\
   $(COMMON_STL_DIR)	\
   $(BE_COM_DIR)		\
+  $(BE_ORC_ICT_DIR)	\
+  $(BE_ORC_INTEL_DIR)	\
   $(BE_REGION_DIR)	\
   $(BE_PROMPF_DIR)	\
   $(BE_OPT_DIR)		\
