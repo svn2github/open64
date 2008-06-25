@@ -735,11 +735,6 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
   }
   //End.
 #else
-  if (lrange->Type() != LRANGE_TYPE_LOCAL) {
-  printf("TN_num %d\n", TN_number(lrange->Tn()));
-  if (TN_number(lrange->Tn()) == 420)
-    printf("Chooseing 420\n");
-  }
   GRA_Trace_LRANGE_Choose(lrange, allowed);
 #endif
 #ifdef HAS_STACKED_REGISTERS
