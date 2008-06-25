@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007. Pathscale, LLC.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -966,19 +966,31 @@ main()
 		    TOP_ld16_abs,
 		    TOP_ld32_abs,
 		    TOP_ld64_abs,
+		    TOP_lock_add8,
+		    TOP_lock_add16,
 		    TOP_lock_add32,
 		    TOP_lock_adc32,
 		    TOP_lock_add64,
+		    TOP_lock_and8,
+		    TOP_lock_and16,
 		    TOP_lock_and32,
 		    TOP_lock_and64,
+		    TOP_lock_or8,
+		    TOP_lock_or16,
 		    TOP_lock_or32,
 		    TOP_lock_or64,
-		    TOP_lock_xadd32,
-		    TOP_lock_xadd64,
+		    TOP_lock_xor8,
+		    TOP_lock_xor16,
 		    TOP_lock_xor32,
 		    TOP_lock_xor64,
+		    TOP_lock_sub8,
+		    TOP_lock_sub16,
 		    TOP_lock_sub32,
 		    TOP_lock_sub64,
+		    TOP_lock_xadd8,
+		    TOP_lock_xadd16,
+		    TOP_lock_xadd32,
+		    TOP_lock_xadd64,
 		    TOP_cvtsd2ss_x,
 		    TOP_cvtsd2ss_xx,
 		    TOP_cvtsd2ss_xxx,
@@ -1030,6 +1042,8 @@ main()
 		    TOP_fmovsldupxxx,
 		    TOP_fmovshdupxxx,
 		    TOP_fmovddupxxx,
+		    TOP_lock_cmpxchg8,
+		    TOP_lock_cmpxchg16,
 		    TOP_lock_cmpxchg32,
 		    TOP_lock_cmpxchg64,
 		    TOP_bsf32,
@@ -1089,7 +1103,7 @@ main()
 		    TOP_pextrw,
 		    TOP_pinsrw,
 		    TOP_pmovmskb,
-                    TOP_pmovmskb128,
+		    TOP_pmovmskb128,
 		    TOP_cmpeqps,
 		    TOP_cmpltps,
 		    TOP_cmpleps,
@@ -1119,6 +1133,8 @@ main()
 		    TOP_movmskpd,
 		    TOP_maskmovdqu,
 		    TOP_maskmovq,
+                    TOP_extrq,
+                    TOP_insertq,
 		    TOP_UNDEFINED);
 
   ISA_Subset_End();

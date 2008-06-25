@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007. Pathscale, LLC.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -991,9 +991,15 @@ main()
 		    TOP_ld64_abs,	0x000000ff,
 		    TOP_ld32_gs_seg_off,	0x000000ff,
 		    TOP_ld64_fs_seg_off,	0x000000ff,
+		    TOP_lock_add8,      0x000000ff,
+		    TOP_lock_add16,     0x000000ff,
 		    TOP_lock_add32,     0x000000ff,
 		    TOP_lock_adc32,     0x000000ff,
 		    TOP_lock_add64,     0x000000ff,
+		    TOP_lock_xadd8,     0x000000ff,
+		    TOP_lock_xadd16,    0x000000ff,
+		    TOP_lock_xadd32,    0x000000ff,
+		    TOP_lock_xadd64,    0x000000ff,
 		    TOP_cvtsd2ss_x,	0x000000ff,
 		    TOP_cvtsd2ss_xx,	0x000000ff,
 		    TOP_cvtsd2ss_xxx,	0x000000ff,
@@ -1009,16 +1015,24 @@ main()
 		    TOP_cvtsi2ssq_x,	0x000000ff,
 		    TOP_cvtsi2ssq_xx,	0x000000ff,
 		    TOP_cvtsi2ssq_xxx,	0x000000ff,
+		    TOP_lock_cmpxchg8,  0x000000ff,
+		    TOP_lock_cmpxchg16, 0x000000ff,
 		    TOP_lock_cmpxchg32, 0x000000ff,
 		    TOP_lock_cmpxchg64, 0x000000ff,
+		    TOP_lock_and8,  0x000000ff,
+		    TOP_lock_and16, 0x000000ff,
 		    TOP_lock_and32, 0x000000ff,
 		    TOP_lock_and64, 0x000000ff,
+		    TOP_lock_or8,  0x000000ff,
+		    TOP_lock_or16, 0x000000ff,
 		    TOP_lock_or32, 0x000000ff,
 		    TOP_lock_or64, 0x000000ff,
-		    TOP_lock_xadd32, 0x000000ff,
-		    TOP_lock_xadd64, 0x000000ff,
+		    TOP_lock_xor8,  0x000000ff,
+		    TOP_lock_xor16, 0x000000ff,
 		    TOP_lock_xor32, 0x000000ff,
 		    TOP_lock_xor64, 0x000000ff,
+		    TOP_lock_sub8,  0x000000ff,
+		    TOP_lock_sub16, 0x000000ff,
 		    TOP_lock_sub32, 0x000000ff,
 		    TOP_lock_sub64, 0x000000ff,
 		    TOP_bsf32, 0x000000ff,
@@ -1078,7 +1092,7 @@ main()
 		    TOP_pextrw, 0x000000ff,
 		    TOP_pinsrw, 0x000000ff,
 		    TOP_pmovmskb, 0x000000ff,
-                    TOP_pmovmskb128, 0x000000ff,
+		    TOP_pmovmskb128, 0x000000ff,
 		    TOP_cmpeqps, 0x000000ff,
 		    TOP_cmpltps, 0x000000ff,
 		    TOP_cmpleps, 0x000000ff,
@@ -1106,6 +1120,8 @@ main()
 		    TOP_movmskpd, 0x000000ff,
 		    TOP_maskmovdqu, 0x000000ff,
 		    TOP_maskmovq, 0x000000ff,
+                    TOP_extrq,   0x000000ff,
+                    TOP_insertq,   0x000000ff,
 		    TOP_UNDEFINED);
 
   ISA_Pack_End();

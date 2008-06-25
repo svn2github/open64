@@ -157,12 +157,13 @@ SO_TARGETS = \
 	itanium.so
 endif
 ifeq ($(BUILD_TARGET), X8664)
-LDIRT += opteron_si_gen barcelona_si_gen em64t_si_gen
+LDIRT += opteron_si_gen barcelona_si_gen em64t_si_gen core_si_gen wolfdale_si_gen
 SO_TARGETS = \
 	opteron.so \
         barcelona.so \
 	em64t.so \
-	core.so
+	core.so \
+	wolfdale.so
 endif
 ifeq ($(BUILD_TARGET), IA32)
 LDIRT += pentium_si_gen
@@ -947,11 +948,39 @@ em64t_si_gen: si_gen.a em64t_si.o topcode.o
 em64t_si.o: em64t_si.cxx targ_isa_subset.h topcode.h si_gen.h
 	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/em64t_si.cxx
 
-## em64t ##
+## core ##
 
-# core.so is the same as em64t.so until real targ info is defined for Core.
-core.so: em64t.so
-	ln -s em64t.so core.so
+core.so: core.o init.o
+	$(cxx) $(CFLAGS) $(STD_DSO_LOADOPTS) core.o init.o -o core.so $(DARWIN_UNDEFINED)
+
+core.o: core.c ti_si_types.h
+	$(cc) $(CFLAGS) -c core.c
+
+core.c: core_si_gen
+	$(SETPATH) $(RUN) ./core_si_gen
+
+core_si_gen: si_gen.a core_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) core_si.o topcode.o si_gen.a -o core_si_gen
+
+core_si.o: core_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/core_si.cxx
+
+## wolfdale ##
+
+wolfdale.so: wolfdale.o init.o
+	$(cxx) $(CFLAGS) $(STD_DSO_LOADOPTS) wolfdale.o init.o -o wolfdale.so $(DARWIN_UNDEFINED)
+
+wolfdale.o: wolfdale.c ti_si_types.h
+	$(cc) $(CFLAGS) -c wolfdale.c
+
+wolfdale.c: wolfdale_si_gen
+	$(SETPATH) $(RUN) ./wolfdale_si_gen
+
+wolfdale_si_gen: si_gen.a wolfdale_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) wolfdale_si.o topcode.o si_gen.a -o wolfdale_si_gen
+
+wolfdale_si.o: wolfdale_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/wolfdale_si.cxx
 
 endif
 

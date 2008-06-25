@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
  */
 
@@ -1011,7 +1015,7 @@ main ()
 	      "pextrw",
 	      "pinsrw",
 	      "pmovmskb",
-              "pmovmskb128",
+	      "pmovmskb128",
 	      "movi32_2m",
 	      "movi64_2m",
 	      "movm_2i32",
@@ -1021,6 +1025,8 @@ main ()
 	      "movmskpd",
 	      "maskmovdqu",
 	      "maskmovq",
+              "extrq",
+              "insertq",
 
               /* Fence instructions. */
 	      "mfence",
@@ -1151,12 +1157,28 @@ main ()
 	      "lock_and64",
 	      "lock_or32",
 	      "lock_or64",
-	      "lock_xadd32",
-	      "lock_xadd64",
 	      "lock_xor32",
 	      "lock_xor64",
 	      "lock_sub32",
 	      "lock_sub64",
+
+	      /* more lock instructions */
+	      "lock_add8",
+	      "lock_add16",
+	      "lock_cmpxchg8",
+	      "lock_cmpxchg16",
+	      "lock_and8",
+	      "lock_and16",
+	      "lock_or8",
+	      "lock_or16",
+	      "lock_xor8",
+	      "lock_xor16",
+	      "lock_sub8",
+	      "lock_sub16",
+	      "lock_xadd8",
+	      "lock_xadd16",
+	      "lock_xadd32",
+	      "lock_xadd64",
 
 	      /* miscellaneous */
 	      "bsf32",

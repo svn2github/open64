@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ *  Copyright (C) 2007, 2008.  Pathscale, LLC. All Rights Reserved.
  */
 
 /*
@@ -92,6 +92,7 @@ main()
                    PROCESSOR_barcelona,
 		   PROCESSOR_em64t,
 		   PROCESSOR_core,
+		   PROCESSOR_wolfdale,
 		   PROCESSOR_UNDEFINED);
 
   /* Can the current target issue multiple instructions per cycle?
@@ -102,6 +103,7 @@ main()
                    PROCESSOR_barcelona,
 		   PROCESSOR_em64t,
 		   PROCESSOR_core,
+		   PROCESSOR_wolfdale,
 		   PROCESSOR_UNDEFINED);
 
   /* Does the target execute insts as sequence of bundles, or require 

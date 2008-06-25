@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
+ *  Copyright (C) 2007, 2008.  Pathscale, LLC. All Rights Reserved.
  */
 
 /*
@@ -55,6 +55,7 @@ main ()
                "barcelona",
 	       "em64t",
 	       "core",
+	       "wolfdale",
 	       NULL );
 }
 
