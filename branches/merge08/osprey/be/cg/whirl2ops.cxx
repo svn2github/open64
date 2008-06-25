@@ -859,7 +859,7 @@ Start_New_Basic_Block (void)
   * tell which region or parallel body the BB belongs to. 
   */
      if(RID_TYPE_minor(current_region)) {
-       if(RID_parent(current_region) && RID_TYPE_sl2_enclosing_region(RID_parent(current_region))) {
+       if(RID_parent(current_region) && RID_TYPE_minor(RID_parent(current_region))) {
           BB_rid(bb) = current_region;
        }
        else {
@@ -2216,6 +2216,11 @@ Handle_ILOAD (WN *iload, TN *result, OPCODE opcode)
   }
   else {
     TN *kid0_tn = Expand_Expr (kid0, iload, NULL); 
+#if defined(TARG_SL)
+    // this is used to direct instr selection 
+    if (CG_sl2 && CG_SL2_enable_v1buf_expansion && WN_is_internal_mem_ofst(iload)) 
+      Set_TN_is_v1buf_addr(kid0_tn); 
+#endif
     TN *offset_tn = Gen_Literal_TN (WN_offset(iload), 4);
 #ifdef TARG_NVISA
     TY_IDX addr_ty = WN_load_addr_ty(iload);
@@ -2663,6 +2668,11 @@ Handle_ISTORE (WN *istore, OPCODE opcode)
     }
 #endif
     Last_Mem_OP = OPS_last(&New_OPs);
+#if defined(TARG_SL)
+    // this is used to direct instr selection 
+    if(CG_sl2 && CG_SL2_enable_v1buf_expansion && WN_is_internal_mem_ofst(istore)) 
+      Set_TN_is_v1buf_addr(kid1_tn); 
+#endif 
     Exp_OP3v (
 	opcode, 
 	NULL, 
@@ -3315,15 +3325,10 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
   INTRN_RETKIND rkind = INTRN_return_kind(id);
   INT numkids = WN_kid_count(expr);
 #if defined(TARG_SL)
-#ifndef fork_joint  
-/* INTRN_C2_THREAD_MAJOR has no operand  */
-  if(id == INTRN_C2_THREAD_MAJOR || 
-     id == INTRN_C2_THREAD_MINOR || 
-     ((id >= INTRN_C3_INTRINSIC_BEGIN) && (id <= INTRN_C3_INTRINSIC_END)))  {
+  if((id >= INTRN_C3_INTRINSIC_BEGIN) && (id <= INTRN_C3_INTRINSIC_END))  {
      Exp_SL_Intrinsic_Call(id, expr, &New_OPs, NULL, NULL, result);
      return result;  
   } 
-#endif 
 #endif
 
   TN *kid0 = Expand_Expr(WN_kid0(expr), expr, NULL);
@@ -3363,10 +3368,6 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
   FmtAssert(numkids <= 3, ("unexpected number of kids in intrinsic_op"));
 #else
   TN *kid1 = (numkids == 2) ? Expand_Expr(WN_kid1(expr), expr, NULL) : NULL;
-#if defined(TARG_SL)
-  if(id != INTRN_OP_C2_SCOND_BR && id != INTRN_OP_C2_SCOND_BR_R &&
-     id != INTRN_VBUF_OFFSET && id != INTRN_SBUF_OFFSET) 
-#endif
   FmtAssert(numkids <= 2, ("unexpected number of kids in intrinsic_op"));
 #endif
 
@@ -3375,28 +3376,12 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
   }
 
 #ifdef KEY
-#if defined(TARG_SL)
-  if(id == INTRN_OP_C2_SCOND_BR
-  || id == INTRN_OP_C2_SCOND_BR_R ) 
-  {
-        result = Exp_SL_Intrinsic_Call(id, expr, &New_OPs, NULL, NULL);
-  }
-  else if(id == INTRN_VBUF_OFFSET
-           || id == INTRN_SBUF_OFFSET) {
-       Exp_SL_Intrinsic_Call(id, expr, &New_OPs, NULL, NULL, result);
-  }
-  else {
-    const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
-    Exp_Intrinsic_Op (id, result, kid0, kid1, mtype, &New_OPs);
-  }
-#else // TARG_SL
   const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
 #ifdef TARG_X8664
   Exp_Intrinsic_Op (id, result, kid0, kid1, kid2, mtype, &New_OPs);
 #else
   Exp_Intrinsic_Op (id, result, kid0, kid1, mtype, &New_OPs);
 #endif // TARG_X8664
-#endif // TARG_SL
 #else
   Exp_Intrinsic_Op (id, result, kid0, kid1, &New_OPs);
 #endif // KEY
@@ -3834,6 +3819,228 @@ Get_WN_Label (WN *wn, BOOL *is_non_local_label = NULL)
   }
   return label;
 }
+
+#if defined(TARG_SL)
+
+#define IS_POWER_OF_2(x) (((x)!=0) && ((x) & ((x)-1))==0)
+
+BOOL
+Is_Shft_Operation(WN* expr)
+{
+  switch(WN_operator(expr))
+  {
+    case OPR_SHL:
+    case OPR_ASHR:
+    case OPR_LSHR:
+      return TRUE; 
+    default:
+      return FALSE; 
+  }
+}
+
+void 
+Replace_Multiply_With_Shift(WN* expr)
+{
+  Is_True(WN_operator_is(expr, OPR_MPY),  
+    ("incorrect operator in replace multiply with shift")); 
+  WN* kid0 = WN_kid0(expr); 
+  WN* kid1 = WN_kid1(expr); 
+
+  if(Get_Trace(TP_CGEXP,  4096)){
+    fprintf(TFile, 
+       "======before replace multiply with shift======\n"); 
+    fdump_tree(TFile, expr);
+  }
+  
+  if(WN_operator_is(kid0, OPR_INTCONST) && 
+     IS_POWER_OF_2(WN_const_val(kid0))) {
+    WN_set_operator(expr, OPR_SHL); 
+    WN_kid1(expr) = kid0; 
+    INT const_val = WN_const_val(kid0); 
+    INT shft_amnt = 0; 
+    INT tmp = const_val; 
+    while(1)
+    {
+      if(tmp == 0 || tmp & 0x1)
+        break;
+      else {
+        shft_amnt++; 
+        tmp = const_val >> shft_amnt; 
+      }
+    }
+    WN_kid0(expr) = WN_CreateIntconst(OPC_I4INTCONST,  shft_amnt); 
+  }
+  else { //kid1 is constant 
+    WN_set_operator(expr, OPR_SHL); 
+    INT const_val = WN_const_val(kid1); 
+    INT shft_amnt = 0; 
+    INT tmp = const_val; 
+    while(1)
+    {
+      if(tmp == 0 || tmp & 0x1)
+        break;
+      else {
+        shft_amnt++; 
+        tmp = const_val >> shft_amnt; 
+      }
+    }
+    WN_kid1(expr) = WN_CreateIntconst(OPC_I4INTCONST,  shft_amnt); 
+  }
+
+  if(Get_Trace(TP_CGEXP,  4096)){
+    fprintf(TFile, 
+       "======after replace multiply with shift======\n"); 
+    fdump_tree(TFile, expr);
+  }
+  return; 
+}
+
+BOOL
+Has_Shift_Operation(WN* expr)
+{
+  WN* kid0 = WN_kid0(expr); 
+  WN* kid1 = WN_kid1(expr); 
+
+  BOOL kid0_has_shft =  Is_Shft_Operation(kid0); 
+  
+  BOOL kid1_has_shft = Is_Shft_Operation(kid1); 
+
+
+  if(WN_operator_is(expr, OPR_BIOR)) { 
+    if(kid0_has_shft && !WN_operator_is(WN_kid1(kid0), OPR_INTCONST))
+      return FALSE;
+    else if(kid1_has_shft && !WN_operator_is(WN_kid1(kid1), OPR_INTCONST))
+      return FALSE;  
+  }
+  
+  //  a = (b<<5) -c;  
+  // 
+  //   I4I4LDID 0 <1,32,b> T<4,.predef_I4,4>
+  //   I4INTCONST 5 (0x5)
+  //  I4SHL
+  //  I4I4LDID 0 <1,33,c> T<4,.predef_I4,4>
+  // I4SUB
+  if(kid0_has_shft &&
+     WN_operator(WN_kid0(kid0))!= OPR_INTCONST &&
+     WN_operator(kid1) !=OPR_INTCONST)
+    return TRUE; 
+
+  // be careful, we don't support following shift sub
+  //  a =  b - (c << 5); 
+  else if(kid1_has_shft && 
+     !WN_operator_is(WN_kid0(kid1), OPR_INTCONST) && 
+     !WN_operator_is(expr, OPR_SUB) &&
+     WN_operator(kid0) != OPR_INTCONST)
+    return TRUE;
+
+  // multiply with a constant also can be converted to a shift + alu, 
+  // this is useful for address calculation of array
+  if(WN_operator_is(kid0, OPR_MPY) && !WN_operator_is(kid1, OPR_INTCONST)){
+    if(WN_operator_is(WN_kid0(kid0), OPR_INTCONST) && 
+      IS_POWER_OF_2(WN_const_val(WN_kid0(kid0)))) {
+
+      Replace_Multiply_With_Shift(kid0); 
+      return TRUE; 
+    }
+    else if(WN_operator_is(WN_kid1(kid0), OPR_INTCONST) && 
+      IS_POWER_OF_2(WN_const_val(WN_kid1(kid0)))) {
+
+      Replace_Multiply_With_Shift(kid0);   
+      return TRUE; 
+    }
+  }
+  else if(WN_operator_is(kid1, OPR_MPY) && 
+    !WN_operator_is(kid0, OPR_INTCONST) && 
+    !WN_operator_is(expr, OPR_SUB)){
+ 
+    if(WN_operator_is(WN_kid0(kid1), OPR_INTCONST) && 
+      IS_POWER_OF_2(WN_const_val(WN_kid0(kid1)))){
+
+      Replace_Multiply_With_Shift(kid1); 
+      return TRUE;
+    }      
+    else if(WN_operator_is(WN_kid1(kid1), OPR_INTCONST) && 
+      IS_POWER_OF_2(WN_const_val(WN_kid1(kid1)))){
+
+      Replace_Multiply_With_Shift(kid1);   
+      return TRUE; 
+    }
+  }
+  if((kid0_has_shft || kid1_has_shft) && 
+    Get_Trace(TP_CGEXP, 2048)){
+    fprintf(TFile, 
+     "expr can't be converted to c2.sh\n"); 
+    fdump_tree(TFile,  expr);
+  }
+
+  return FALSE; 
+}
+
+static TN* 
+Handle_Shift_Operation(WN* expr, TN* result) 
+{
+  
+  WN* kid0 = WN_kid0(expr); 
+  WN* kid1 = WN_kid1(expr); 
+  TN* shft_value; 
+  TN* opnd0; 
+  TN* opnd1; 
+  // normalize expression to guarantee the kid0 to be shift operation 
+  if(!Is_Shft_Operation(kid0) && Is_Shft_Operation(kid1)) {
+    WN_kid1(expr) = kid0; 
+    WN_kid0(expr) = kid1; 
+    kid0 = kid1; 
+    kid1 = WN_kid1(expr); 
+  }
+
+  opnd0 = Expand_Expr(WN_kid0(kid0), kid0,  NULL); 
+  opnd1 = Expand_Expr(kid1, expr, NULL);
+  shft_value = Expand_Expr(WN_kid1(kid0), kid0, NULL); 
+  
+  if(result == NULL) 
+    result = Allocate_Result_TN(expr, NULL); 
+
+  BOOL shft_left = (WN_operator(kid0) == OPR_SHL) ? TRUE : FALSE; 
+  BOOL shft_arith = (WN_operator(kid0) == OPR_ASHR) ? TRUE : FALSE; 
+  BOOL shft_imm = (WN_operator(WN_kid1(kid0)) == OPR_INTCONST) ? TRUE : FALSE;
+  TOP opcode; 
+  switch(WN_operator(expr))
+  {
+  #if 0
+    case OPR_ADD:
+      if(shft_imm) 
+        opcode = shft_left ? TOP_c2_shadd_l_i : 
+                 (shft_arith ? TOP_c2_shadd_ra_i : TOP_c2_shadd_rl_i); 
+      else 
+        opcode = shft_left ? TOP_c2_shadd_l : 
+                 (shft_arith ? TOP_c2_shadd_ra : TOP_c2_shadd_rl); 
+      break;
+    case OPR_SUB:
+      if(shft_imm) 
+        opcode = shft_left ? TOP_c2_shsub_l_i : 
+                 (shft_arith ? TOP_c2_shsub_ra_i : TOP_c2_shsub_rl_i); 
+       else 
+        opcode = shft_left ? TOP_c2_shsub_l : 
+                 (shft_arith ? TOP_c2_shsub_ra : TOP_c2_shsub_rl); 
+       break;
+    case OPR_BIOR:
+        if(shft_imm) 
+          opcode = shft_left ? TOP_c2_shor_l_i : 
+            (shft_arith ? TOP_c2_shor_ra_i : TOP_c2_shor_rl_i); 
+        else  
+          opcode = shft_left ? TOP_c2_shor_l : 
+            (shft_arith ? TOP_c2_shor_ra : TOP_c2_shor_rl); 
+        break; 
+#endif
+    default:
+      Fail_FmtAssertion("unexpected operator in shift+alu combination"); 
+  }
+
+  Build_OP(opcode,  result,  opnd0,  shft_value, opnd1, &New_OPs); 
+  
+  return result; 
+}
+#endif
 
 
 /* Expand a WHIRL expression into a sequence of OPs. Return the result
@@ -4359,6 +4566,17 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
     }
   }
 #endif // TARG_SL
+
+#if defined(TARG_SL)
+  case OPR_ADD:
+  case OPR_SUB:
+  case OPR_BIOR:
+    if(CG_sl2 &&  CG_opt_level > 1 && 
+      CG_SL2_enable_peephole &&  
+      Has_Shift_Operation(expr)) {
+      return Handle_Shift_Operation(expr, result); 
+    }
+#endif 
 
   default:
     for (i = 0; i < num_opnds; i++) {
@@ -6131,9 +6349,6 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   INT i;
   LABEL_IDX label = LABEL_IDX_ZERO;
   OPS loop_ops;
-#ifdef KEY
-  OP *last_op_from_intrn_call = NULL;
-#endif
 
 #if !defined(TARG_SL)
   FmtAssert(WN_num_actuals(intrncall) <= max_intrinsic_opnds,
@@ -6389,7 +6604,7 @@ convert_stmt_list_to_OPs(WN *stmt)
       if ( RID_level( rid ) < RL_CG ) { /* the region is still WHIRL */
 	region_stack_push( rid );
 
-#ifdef TARG_SL2 //fork_joint 
+#ifdef TARG_SL //fork_joint 
 /* generate cg region info for region which don't need seperate compilation and included in 
   * function entry node. So the cg region info is NULL. We need create such information for 
   * our fork region just as Convert_WHIRL_To_OPs does. 
@@ -6400,13 +6615,8 @@ convert_stmt_list_to_OPs(WN *stmt)
       RID_cginfo( rid ) = cgrin;
       RID_level( rid ) = RL_CG-1;
       CGRIN_entry( cgrin ) = Cur_BB;
-      if(RID_TYPE_sl2_enclosing_region(rid)) {
-	   BB_rid( Cur_BB ) = rid;
-      	}
-      else {
-/* first mp region for sections need has func_entry as rid */ 	  	
-         BB_rid( Cur_BB ) = NULL;
-      }	  
+      BB_rid( Cur_BB ) = rid;
+      BB_rid( Cur_BB ) = NULL;
     }
 #endif 
 

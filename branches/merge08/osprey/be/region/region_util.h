@@ -139,11 +139,9 @@ typedef enum {
   RID_TYPE_rpi	      = 0x20,  /* it's a RPI region			     */
   RID_TYPE_cold       = 0x40,  /* it's a cold region (transparent)	     */
   RID_TYPE_swp	      = 0x80,  /* it's a SWP loop (transparent)		     */
-#ifdef TARG_SL //fork_joint
+#ifdef TARG_SL2 //fork_joint
   RID_TYPE_major  = 0x100, /* region type for major region */
   RID_TYPE_minor = 0x200,  /* region type for minor region*/
-  RID_TYPE_sl2_enclosing_region = 0x400, /* region type for region enclosing minor or major region */ 
-  RID_TYPE_hot = 0x800, /* region type for generating hot region*/
 #endif 
   RID_TYPE_eh	        = 0x3f000, /* EH region mask (all EH are transparent)*/
   RID_TYPE_try	        = 0x01000, /* it's a try-block			     */
@@ -357,7 +355,7 @@ typedef struct region_id {
 #define RID_TYPE_swp_Reset(r)        (RID_type(r) = \
 				     (RID_TYPE)(RID_type(r) & ~RID_TYPE_swp))
 
-#ifdef TARG_SL //fork_joint
+#ifdef TARG_SL2 //fork_joint
 #define RID_TYPE_major(r)     (RID_type(r) & RID_TYPE_major)
 #define RID_TYPE_major_Set(r)         (RID_type(r) = \
 				     (RID_TYPE)(RID_type(r) | RID_TYPE_major))
@@ -368,17 +366,6 @@ typedef struct region_id {
 				     (RID_TYPE)(RID_type(r) | RID_TYPE_minor))
 #define RID_TYPE_minor_Reset(r)       (RID_type(r) = \
 				     (RID_TYPE)(RID_type(r) & ~RID_TYPE_minor))
-#define RID_TYPE_sl2_enclosing_region(r)     (RID_type(r) & RID_TYPE_sl2_enclosing_region)
-#define RID_TYPE_sl2_enclosing_region_Set(r)         (RID_type(r) = \
-				     (RID_TYPE)(RID_type(r) | RID_TYPE_sl2_enclosing_region))
-#define RID_TYPE_sl2_enclosing_region_Reset(r)       (RID_type(r) = \
-				     (RID_TYPE)(RID_type(r) & ~RID_TYPE_sl2_enclosing_region))
-				     
-#define RID_TYPE_hot(r)             (RID_type(r) & RID_TYPE_hot)
-#define RID_TYPE_hot_Set(r)         (RID_type(r) = \
-				     (RID_TYPE)(RID_type(r) | RID_TYPE_hot))
-#define RID_TYPE_hot_Reset(r)       (RID_type(r) = \
-				     (RID_TYPE)(RID_type(r) & ~RID_TYPE_hot))
 #endif 
 				     
 
@@ -422,22 +409,13 @@ typedef struct region_id {
 				     (RID_TYPE)(RID_type(r) & ~RID_TYPE_guard))
 
 /* transparent regions (no boundary): PU, EH, MP, SWP, cold */
-#ifdef TARG_SL
 #define RID_TYPE_transparent(r) (   RID_TYPE_func_entry(r) \
 				 || RID_TYPE_mp(r) \
 				 || RID_TYPE_eh(r) \
 				 || RID_TYPE_swp(r) \
-				 || RID_TYPE_cold(r) \
-				 || RID_TYPE_hot(r))
-#else
-#define RID_TYPE_transparent(r) (   RID_TYPE_func_entry(r) \
-				 || RID_TYPE_mp(r) \
-				 || RID_TYPE_eh(r) \
-				 || RID_TYPE_swp(r) \
-				 || RID_TYPE_cold(r) )
-#endif
+				 || RID_TYPE_cold(r))
 
-#if defined(TARG_SL)
+#if defined(TARG_SL2)
 #define RID_TYPE_sl2_para(r)   ( RID_TYPE_major(r) \
 	                     || RID_TYPE_minor(r))
 #endif
@@ -580,6 +558,11 @@ extern BOOL REGION_is_EH(WN *);
 
 /* tell if a region is an MP region based on WHIRL pragmas */
 extern BOOL REGION_is_mp(WN *);
+
+#if defined(TARG_SL2)
+/* tell if a region is an SL2 region based on WHIRL kind */
+extern BOOL REGION_is_sl2_para(WN*); 
+#endif
 
 /* tell if a region is an EH region based on WHIRL kind */
 extern BOOL REGION_is_EH(WN *);

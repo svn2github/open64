@@ -625,6 +625,10 @@ enum LOOP_FLAGS {
 
 enum MP_TY { MP_REGION, MP_DOACROSS = 0x40, MP_PDO = 0x80};
 
+#if defined(TARG_SL) //PARA_EXTENSION
+enum SL2_PARA_TY { SL2_PARA_REGION};
+#endif
+
 class BB_LOOP : public SLIST_NODE{
 private:
                                  // next point to its sibling
@@ -984,7 +988,10 @@ enum BB_FLAG {
   BB_VN_PROCESSED = 0x200,  // block has been processed by SSA's Value_number()
   BB_MP_REGION = 0x400, // block is inside a MP region
   BB_TLBS_PROCESSING = 0x800, // being processed by Compute_true_loop_body_set
-  BB_REGIONEND = 0x1000 // is (or was) the Region_end() of an BB_REGION
+  BB_REGIONEND = 0x1000, // is (or was) the Region_end() of an BB_REGION
+#if defined(TARG_SL) //PARA_EXTENSION
+  BB_SL2_PARA_REGION = 0x2000, // block is inside a SL2 parallel region
+#endif
 };
 
 #define BB_VISIT    (BB_DFORDER)
@@ -1262,6 +1269,14 @@ public:
   BOOL         MP_region(void)   const  { return (_flags & BB_MP_REGION);}
   void         Set_MP_region(void)      { _flags=(BB_FLAG)(_flags|BB_MP_REGION);}
   void         Reset_MP_region(void)    { _flags=(BB_FLAG)(_flags&~BB_MP_REGION);}
+#if defined(TARG_SL) //PARA_EXTENSION
+  BOOL         SL2_para_region(void) const    { return (_flags & BB_SL2_PARA_REGION);}
+  void         Set_SL2_para_region(void)      { _flags=(BB_FLAG)(_flags|BB_SL2_PARA_REGION);}
+  void         Reset_SL2_para_region(void)    { _flags=(BB_FLAG)(_flags&~BB_SL2_PARA_REGION);}
+  BOOL         Parallel_Region(void)    { return (SL2_para_region() || MP_region()); }
+#else 
+  BOOL         Parallel_Region(void)    { return  MP_region(); }
+#endif  
   BOOL         TLBS_processing(void) const { return (_flags & BB_TLBS_PROCESSING);}
   void         Set_TLBS_processing(void) { _flags=(BB_FLAG)(_flags|BB_TLBS_PROCESSING);}
   void         Reset_TLBS_processing(void)    { _flags=(BB_FLAG)(_flags&~BB_TLBS_PROCESSING);}
@@ -1621,6 +1636,11 @@ public:
   BOOL         Clonable(BOOL           allow_loop_cloning, 
 			const BVECTOR *cr_vol_map = NULL);
   INT32        Code_size_est(void) const;
+#if defined(TARG_SL)
+  // if predecessors of current bb are from different region, this function  
+  // is used to set expression phi not downsafe to prevent code motion 
+  BOOL  Preds_or_succs_from_different_region(BOOL is_pred = TRUE); 
+#endif
 }; // end BB_NODE class
 
 
@@ -1659,7 +1679,7 @@ public:
     _region_line_num(linenum),
     _orig_wn(orig_wn)
   {
-    _region_num_exits = RID_num_exits(_rid); //PPP is this needed?
+    _region_num_exits = RID_num_exits(_rid); // PPP is this needed?
 
     // need to copy the WHIRL nodes for the pragmas and exits
     // we never use the same whirl that came in (mmapped)

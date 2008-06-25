@@ -951,6 +951,9 @@ CG_Generate_Code(
 		   "CFLOW (first pass)");
     if (frequency_verify && CG_PU_Has_Feedback)
       FREQ_Verify("CFLOW (first pass)");
+#if defined(TARG_SL)
+    Check_for_Dump_ALL ( TP_CGEXP, NULL,"CFLOW 1" );
+#endif
   }
 
 #ifdef TARG_IA64
@@ -1169,6 +1172,9 @@ CG_Generate_Code(
 		   "CFLOW (second pass)");
 #else
       CFLOW_Optimize(CFLOW_ALL_OPTS, "CFLOW (second pass)");
+#endif
+#if defined(TARG_SL)
+      Check_for_Dump_ALL ( TP_CGEXP, NULL,"CFLOW 1" );
 #endif
       if (frequency_verify)
         FREQ_Verify("CFLOW (second pass)");

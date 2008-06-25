@@ -1140,9 +1140,16 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
   // MP and EH regions are single exit and so do not add a
   // region_exit, it would be redundant.
   wtmp2 = WN_last(WN_region_body(wtmp));
+#if defined(TARG_SL)
+  // sl2 parallel regions are single exit and so do not add a region_exit
+  if (wtmp2 && !RID_TYPE_sl2_para(rid) && !RID_TYPE_mp(rid) && !RID_TYPE_eh(rid) && 
+      WN_opcode(wtmp2) != OPC_GOTO && WN_opcode(wtmp2) != OPC_RETURN &&
+      WN_opcode(wtmp2) != OPC_REGION_EXIT) {
+#else 
   if (wtmp2 && !RID_TYPE_mp(rid) && !RID_TYPE_eh(rid) && 
       WN_opcode(wtmp2) != OPC_GOTO && WN_opcode(wtmp2) != OPC_RETURN &&
       WN_opcode(wtmp2) != OPC_REGION_EXIT) {
+#endif
     // insert fall-through (adds to region exit block also)
     WN *wtmp3 = REGION_add_exit(block, WN_next(wtmp), wtmp);
     RID_num_exits(rid)++;
@@ -1151,8 +1158,8 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
   }
 
   // these next two lines can be removed after 7.2 (see PV 457243)
-#ifdef TARG_SL2 //add_type_for_minor  //PARA_EXTENSION
-  if (!RID_TYPE_eh(rid) && !RID_TYPE_mp(rid) && !RID_TYPE_sl2_enclosing_region(rid) && !RID_TYPE_sl2_para(rid)) 
+#ifdef TARG_SL //add_type_for_minor  //PARA_EXTENSION
+  if (!RID_TYPE_eh(rid) && !RID_TYPE_mp(rid) && !RID_TYPE_sl2_para(rid)) 
 #else 
   if (!RID_TYPE_eh(rid) && !RID_TYPE_mp(rid)) 
 #endif   	
@@ -1160,7 +1167,7 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
 
   // if region requires bounds, better tell root rid (propagates up to PU)
   if (!RID_TYPE_transparent(rid) || RID_contains_bounds(rid))
-#ifdef TARG_SL2 //fork_joint
+#ifdef TARG_SL //fork_joint
   {
        /* if region requires bounds we need propagate the flag up to PU, when rid is not 
          * region 0 (PU) 

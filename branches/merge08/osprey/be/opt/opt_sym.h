@@ -980,6 +980,11 @@ private:
 
   // Misc 
   BOOL     Its_ret_val_of_malloc (VER_ID ver);
+#if defined(TARG_SL)
+  void     Generate_call_mu_chi_by_intrninfo(WN *wn, MU_LIST *mu, CHI_LIST *chi);
+  void     Refine_intrn_alias_info(WN *intrn);
+  void     Refine_intrn_mu_chi_list(WN *intrn);
+#endif
 
   // ------------------------------------------------------------------
 
@@ -1282,7 +1287,10 @@ public:
 
   //  Determine the base symbol using the use-def chain.
   void     Analyze_Base_Flow_Sensitive(POINTS_TO *, WN *);
-
+#if defined (TARG_SL)
+  void     Analyze_Base_Flow_Free_for_Intrn(POINTS_TO *pt, WN *wn);
+  void     Analyze_Base_Flow_Sensitive_for_Intrn(POINTS_TO *pt, WN *wn);
+#endif
   //  Update the default vsym after flow sensitive analysis.
   void     Update_iload_vsym(OCC_TAB_ENTRY *);
   void     Update_istore_vsym(OCC_TAB_ENTRY *);

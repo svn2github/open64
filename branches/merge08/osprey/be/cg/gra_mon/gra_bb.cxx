@@ -887,9 +887,6 @@ GRA_BB::Is_Region_Block(BOOL swp_too)
 {
   RID* rid = Region()->Rid();
   if (rid && rid != Current_Rid &&
-#if defined(TARG_SL)
-      (RID_type(rid) != RID_TYPE_hot) &&
-#endif
       (RID_type(rid) != RID_TYPE_swp || swp_too == TRUE)) {
     return TRUE;
   }

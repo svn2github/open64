@@ -568,6 +568,13 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
         if (Ilod_ty() != cr->Ilod_ty())
           return FALSE;
 
+#if defined(TARG_SL)
+	// for intrinsics with memory indirection, we don't want to cse them
+	// since they don't point to the same place
+        if ((cr->Offset() & WN_PARM_DEREFERENCE) || 
+	    (Offset() & WN_PARM_DEREFERENCE))
+          return FALSE;
+#endif
 	// must have matching mu lists as well
         if (cr->Ivar_mu_node() && Ivar_mu_node()) 
           return Match_mu_and_mu(cr->Ivar_mu_node(), 0, NULL);
@@ -3189,6 +3196,11 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 		    WN_desc(wn), WN_ty(wn), WN_field_id(wn),
 		    base_ccr.Scale(), (CODEREP *)(INTPTR) WN_load_addr_ty(wn),
 		    lbase, NULL, opt_stab);
+#if defined(TARG_SL)
+    // vbuf stuff, it is really a relative offset from vbuf base
+    if (WN_is_internal_mem_ofst(wn))
+      retv->Set_flag(CF_INTERNAL_MEM_OFFSET);
+#endif 
     Is_True(retv->Kind()==CK_IVAR || (retv->Kind()==CK_OP
 				      && (retv->Opr()==OPR_CVT ||
 					  retv->Opr()==OPR_CVTL)),
@@ -3690,10 +3702,6 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
 
   case OPR_GOTO:
   case OPR_REGION_EXIT:
-#ifdef    TARG_SL2 //fork_joint
-  case OPR_SL2_FORK_MAJOR:
-  case OPR_SL2_FORK_MINOR:  	
-#endif 
     Set_label_number(WN_label_number(Wn()));
     break;
 

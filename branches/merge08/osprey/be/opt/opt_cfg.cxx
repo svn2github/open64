@@ -105,6 +105,10 @@ CFG::CFG(MEM_POOL *pool, MEM_POOL *lpool)
        _agoto_succ_vec(pool),
        _mp_rid(pool),
        _mp_type(pool),
+#if defined(TARG_SL) //PARA_EXTENSION
+       _sl2_para_rid(pool),
+       _sl2_para_type(pool),
+#endif
        _bb_region(pool)
 {
   _mem_pool = pool;
@@ -2628,6 +2632,13 @@ CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
     Push_mp_rid(rid);
   }
 
+#if defined(TARG_SL)
+  if (REGION_is_sl2_para(wn)) {
+    Push_sl2_para_type(SL2_PARA_REGION);
+    Push_sl2_para_rid(rid);
+  }
+#endif
+
   // create a block to hold the first statement
   BB_NODE *first_body_bb = New_bb( TRUE/*connect*/ );
 
@@ -2641,6 +2652,15 @@ CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
     Pop_mp_type();
     Pop_mp_rid();
   }
+#if defined(TARG_SL)
+  if (REGION_is_sl2_para(wn)) {
+    // add an empty region exit block for MP regions
+    if (_current_bb->Kind() != BB_REGIONEXIT)
+      (void) New_bb(TRUE, BB_REGIONEXIT);
+    Pop_sl2_para_type();
+    Pop_sl2_para_rid();
+  }
+#endif 
   Pop_bb_region();
 
   // remember the last block in the region
@@ -3371,6 +3391,56 @@ CFG::Ident_mp_regions(void)
   }  
 }
 
+#if defined(TARG_SL) //PARA_EXTENSION
+// ====================================================================
+// Go through all BBs, and identify the bb is inside an SL2 parallel region
+// Only do this for SL2 parallel regions. This routine will fail on a normal
+// region because multiple exits don't fit a stack model.
+// ====================================================================
+void
+CFG::Ident_sl2_para_regions(void)
+{
+  CFG_ITER cfg_iter(this);
+  BB_NODE *bb;
+  BB_REGION *bb_region;
+
+  Clear_sl2_para_type();
+  Clear_sl2_para_rid();
+  Clear_bb_region();
+
+  // assuming all sl2 parallel region has single entry and exit bb
+  FOR_ALL_NODE( bb, cfg_iter, Init() ) {
+    if (bb->Kind() == BB_REGIONSTART) {
+      bb_region = bb->Regioninfo();
+      Is_True(bb_region != NULL, ("CFG::Ident_sl2_parallel_regions, no regioninfo"));
+      if (RID_TYPE_sl2_para(bb_region->Rid())) {
+       Push_sl2_para_type(SL2_PARA_REGION);
+	Push_sl2_para_rid(bb_region->Rid());
+	Push_bb_region(bb_region);
+      }
+    }
+      
+    if (! NULL_sl2_para_type()) { // stack not empty
+      bb->Set_SL2_para_region();
+      bb->Set_rid_id(RID_id(Top_sl2_para_rid()));
+    }
+
+    // an SL2 parallel region has a BB_REGIONEXIT even though it has no OPC_REGION_EXIT
+    if (bb->Kind() == BB_REGIONEXIT) {
+      bb_region = bb->Regioninfo();
+      Is_True(bb_region != NULL, ("CFG::Ident_sl2_parallel_regions, no regioninfo"));
+      if (RID_TYPE_sl2_para(bb_region->Rid())) 
+      {
+	  Pop_sl2_para_type();
+	  Pop_sl2_para_rid();
+	  Pop_bb_region();
+      }
+    }
+  }  
+}
+
+#endif
+
 // ====================================================================
 // Creates the CFG for a function node or other high-level node
 // ====================================================================
@@ -3420,6 +3490,10 @@ CFG::Create(WN *func_wn, BOOL lower_fully, BOOL calls_break,
   Process_multi_entryexit( TRUE/*is_whirl*/ );
 
   Ident_mp_regions();
+
+#if defined(TARG_SL) //PARA_EXTENSION
+  Ident_sl2_para_regions();
+#endif
 
   if ( Get_Trace(TP_GLOBOPT, CFG_VERF_FLAG)) {
     fprintf(TFile, "%sDump after CFG construction %s%d\n%s", DBar,

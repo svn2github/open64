@@ -70,7 +70,7 @@
 /* this next header should be after the external declarations in the others */
 #include "pragma_weak.h"	/* weak pragmas for Valid_alias...	*/
 
-#if defined(TARG_SL) && defined(TARG_SL2)
+#if defined(TARG_SL)
 #include "fb_whirl.h"
 #endif
 
@@ -217,7 +217,7 @@ BOOL REGION_has_black_regions(RID *rid)
 	  ("REGION_has_black_regions, called on a transparent region"));
 
   /* 7.3 specific assertion */
-#ifdef TARG_SL2 //region_type_for_major
+#ifdef TARG_SL //region_type_for_major
   Is_True(RID_TYPE_func_entry(rid) || RID_TYPE_olimit(rid) || RID_TYPE_major(rid) || 
 #else 
   Is_True(RID_TYPE_func_entry(rid) || RID_TYPE_olimit(rid) ||
@@ -1086,15 +1086,11 @@ char *RID_type_str(RID_TYPE type)
     strcat(buff," COLD");
   if (type & RID_TYPE_swp)
     strcat(buff," SWP");
-#ifdef TARG_SL2 //fork_joint
+#ifdef TARG_SL //fork_joint
   if (type & RID_TYPE_major)
     strcat(buff," SL2_MAJOR");
   if(type & RID_TYPE_minor)
     strcat(buff, "SL2_MINOR");
-  if(type & RID_TYPE_sl2_enclosing_region)
-    strcat(buff, "SL2_ENCLOSING_REGION"); 
-  if(type & RID_TYPE_hot)
-    strcat(buff, " HOT");
 #endif
   if (type & RID_TYPE_try)
     strcat(buff," TRY");
@@ -1453,7 +1449,7 @@ REGION_CS_Next(REGION_CS_ITER *iter)
   RID_TYPE type = REGION_CS_ITER_type(iter);
   RID *parent = (me != NULL) ? RID_parent(me) : NULL;
   Is_True(type & RID_TYPE_loop || type & RID_TYPE_pragma ||
-#ifdef TARG_SL2 //region_type_for_major
+#ifdef TARG_SL //region_type_for_major
 	  type & RID_TYPE_olimit || type & RID_TYPE_func_entry || type & RID_TYPE_major || 
 #else 
 	  type & RID_TYPE_olimit || type & RID_TYPE_func_entry ||
@@ -1511,12 +1507,6 @@ void REGION_CS_NoEarlierSub_Next(REGION_CS_ITER *iter)
     if (REGION_CS_ITER_kid(iter) != NULL) { // if is is NULL we are done
       RID *rid;
       rid = REGION_CS_ITER_kid(iter);
-
-#ifndef TARG_SL2  // fork_joint
-     if( RID_TYPE_olimit(rid)) {
-          RID_type(rid) = RID_TYPE_mp;
-     }
-#endif 
 
       Is_True(RID_type(rid) != RID_TYPE_undefined,
 	      ("REGION_CS_NoEarlierSub_Next, undefined RID type"));
@@ -1618,7 +1608,7 @@ WN *REGION_remove_and_mark(WN *pu, REGION_CS_ITER *iter)
 
   // create a new region node and move kids over
   new_rwn = WN_CopyNode(rwn);
-#if defined(TARG_SL) && defined(TARG_SL2)
+#if defined(TARG_SL)
   WN_CopyMap(new_rwn,WN_MAP_FEEDBACK,rwn);
 #endif
   WN_region_exits(new_rwn) = WN_region_exits(rwn);
@@ -1802,6 +1792,23 @@ BOOL REGION_is_mp(WN * wn)
   return WN_region_kind(wn) == REGION_KIND_MP;
 }
 
+#if defined(TARG_SL)
+/* REGION_KIND_MP is not a mask */
+BOOL REGION_is_sl2_para(WN * wn)
+{
+  if (WN_region_kind(wn) == REGION_KIND_MAJOR || 
+       WN_region_kind(wn) == REGION_KIND_MINOR) {
+
+    RID *rid = REGION_get_rid(wn);
+    if (rid) /* rid may not be set yet */
+      Is_True(RID_TYPE_sl2_para(rid),
+	      ("REGION_is_sl2_para, region type/kind inconsistency"));
+  }
+  return (WN_region_kind(wn) == REGION_KIND_MAJOR || 
+               WN_region_kind(wn) == REGION_KIND_MINOR);
+}
+#endif 
+
 REGION_KIND REGION_type_to_kind(RID *rid)
 {
   Is_True(rid != NULL, ("REGION_type_to_kind, NULL RID"));
@@ -1822,15 +1829,11 @@ REGION_KIND REGION_type_to_kind(RID *rid)
     return REGION_KIND_COLD;
   if (RID_type(rid) & RID_TYPE_swp)
     return REGION_KIND_SWP;
-#ifdef TARG_SL2 //fork_joint
+#ifdef TARG_SL //fork_joint
   if (RID_type(rid) & RID_TYPE_major)
     return REGION_KIND_MAJOR;
   if(RID_type(rid)  & RID_TYPE_minor)
     return REGION_KIND_MINOR;
-  if(RID_type(rid) & RID_TYPE_sl2_enclosing_region)
-    return REGION_KIND_SL2_ENCLOSING_REGION; 
-  if (RID_type(rid) & RID_TYPE_hot)
-    return REGION_KIND_HOT;  
 #endif 
   if (RID_type(rid) & RID_TYPE_try)
     return REGION_KIND_TRY;
@@ -1902,20 +1905,13 @@ void REGION_kind_to_type(WN *wn, RID *rid)
       case REGION_KIND_SWP:
 	RID_TYPE_swp_Set(rid);
 	break;
-
-#ifdef TARG_SL2 //fork_joint
+#ifdef TARG_SL //fork_joint
       case REGION_KIND_MINOR:
 	RID_TYPE_minor_Set(rid);
 	break;
 	case REGION_KIND_MAJOR:
 	RID_TYPE_major_Set(rid);
 	break;
-      case REGION_KIND_SL2_ENCLOSING_REGION:
-        RID_TYPE_sl2_enclosing_region_Set(rid);
-        break;
-      case REGION_KIND_HOT:
-	RID_TYPE_hot_Set(rid);
-	break;	
 #endif 
 	
       default:

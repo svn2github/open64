@@ -3078,19 +3078,6 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 		cr->Set_omitted();
 #endif
 	      
-#ifdef TARG_SL2
-	  } else if(opr == OPR_INTRINSIC_OP && 
-		  	(cr->Intrinsic() == INTRN_OP_C2_SCOND_BR ||
-                       cr->Intrinsic() == INTRN_OP_C2_SCOND_BR_R)) {
-            cr->Set_omitted();
-
-#ifndef fork_joint
-         } else if(opr == OPR_INTRINSIC_OP && 
-		 	(cr->Intrinsic() == INTRN_C2_THREAD_MAJOR || 
-		 	cr->Intrinsic() == INTRN_C2_THREAD_MINOR)) {
-             cr->Set_omitted();
-#endif 
-#endif //TARG_SL2
 	      } else if (!urgent) {
 		Is_Trace(Tracing(),
 			 (TFile,"====== ETABLE::Bottom_up_cr, Append coderep:\n"));
@@ -4218,6 +4205,11 @@ ETABLE::Append_real_occurrence(CODEREP *cr, STMTREP *stmt, INT stmt_kid_num,
   if (is_istore)
     occurs->Set_occurs_as_lvalue();
 
+#if defined(TARG_SL) //PARA_EXTENSION
+  if( stmt && stmt->Bb() && stmt->Bb()->SL2_para_region())
+    occurs->Set_occ_in_para_region(); 
+#endif
+
   // call the WORKLST append
   worklist->Append_occurrence(occurs);
 }
@@ -4271,6 +4263,12 @@ ETABLE::Insert_real_occurrence(CODEREP *cr, STMTREP *stmt, INT stmt_kid_num,
   occurs->Set_enclose_stmt(stmt);
   occurs->Set_stmt_kid_num(stmt_kid_num);
   occurs->Set_rehash_cost(depth);
+
+#if defined(TARG_SL) //PARA_EXTENSION
+  if( stmt && stmt->Bb() && stmt->Bb()->SL2_para_region())
+    occurs->Set_occ_in_para_region(); 
+#endif 
+
   cr->Set_e_num(worklist->E_num());
   if (is_istore)
     occurs->Set_occurs_as_lvalue();

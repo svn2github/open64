@@ -208,7 +208,10 @@ private:
   STACK<MP_TY> _mp_type;        // the mp region type
   STACK<RID *> _mp_rid;         // the rid of the region
   STACK<BB_REGION *> _bb_region;// the BB_REGION of the parent (not just mp)
-
+#if defined(TARG_SL) //PARA_EXTENSION
+  STACK<SL2_PARA_TY> _sl2_para_type;  // the sl2_para region type
+  STACK<RID *> _sl2_para_rid;   // the rid of the region
+#endif
   RID	      *_rid;		// RID pointer
   REGION_LEVEL _rgn_level;	// context for cfg: preopt/mainopt/rvi
   BOOL         _has_regions;	// does the cfg have region nodes?
@@ -367,6 +370,9 @@ private:
   void         Screen_out_false_loopnest(BB_LOOP *loop, BB_LOOP *sibling);
 
   void         Ident_mp_regions(void);
+#if defined(TARG_SL) //PARA_EXTENSION
+  void         Ident_sl2_para_regions(void);
+#endif
 
   // functions about loop multiversioning 
   BB_NODE*     LMV_clone_block (const BB_NODE* src, LMV_CFG_ADAPTOR*);
@@ -451,7 +457,7 @@ public:
   BB_LOOP     *Loops(void)          const{ return _loops; }
   BOOL         Loops_valid()        const{ return _loops_valid; }
   void         Set_loops(BB_LOOP *l)     { _loops = l; }
-  void         Set_loops_valid(BOOL b) { _loops_valid = b; }
+  void         Set_loops_valid(BOOL b)   { _loops_valid = b; }
   void         Set_exc(EXC *exc)         { _exc = exc; }
   EXC         *Exc(void)            const{ return _exc; }
 
@@ -510,6 +516,23 @@ public:
   BOOL         Inside_mp_do(void)        { return !NULL_mp_type() &&
                                              Top_mp_type() != MP_REGION;
                                          }
+#if defined(TARG_SL) //PARA_EXTENSION
+  // Assuming the SL2 parallel region has only one entry one exit
+  void      Push_sl2_para_type(SL2_PARA_TY t)     { _sl2_para_type.Push(t);}
+  void      Push_sl2_para_rid(RID *rid)  { _sl2_para_rid.Push(rid); }
+  SL2_PARA_TY   Pop_sl2_para_type(void)  { return _sl2_para_type.Pop(); }
+  RID       *Pop_sl2_para_rid(void)      { return _sl2_para_rid.Pop(); }
+  SL2_PARA_TY   Top_sl2_para_type(void) const   { return _sl2_para_type.Top(); }
+  RID       *Top_sl2_para_rid(void) const    { return _sl2_para_rid.Top(); }
+  BOOL    NULL_sl2_para_type(void) const  { return _sl2_para_type.Is_Empty(); }
+  void      Clear_sl2_para_type(void)       { _sl2_para_type.Clear(); }
+  void      Clear_sl2_para_rid(void)        { _sl2_para_rid.Clear(); }
+
+  BOOL    Inside_sl2_para_do(void)        { return !NULL_sl2_para_type() &&
+                                             Top_sl2_para_type() != SL2_PARA_REGION;
+                                         }
+
+#endif
 
   // return the RID tree for this PU or RID for just the region
   RID         *Rid(void) const	 	 { return _rid; }

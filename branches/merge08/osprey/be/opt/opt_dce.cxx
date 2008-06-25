@@ -492,6 +492,8 @@ DCE::Repair_Injured_AuxIntrnOP() const {
 	    Mark_statement_live(stmt);
 	  };
      	  break; 	
+          case CK_CONST:
+            break; // do nothing	
 	  default:
 	    Is_True (0, ("Repair_Injured_AuxIntrnOP::slave intrinsic op(c3_ptr): first parameter is unsupported kind coderep"));	
         } // end switch
@@ -1193,52 +1195,9 @@ DCE::Check_conditional_branches_pred( CFG *cfg ) const
 //   evalcond + eval -- is the context
 //   They determine if origcond can be simplified
 // ====================================================================
-
-COND_EVAL
-Helper_Eval_redundant_cond_br( CODEREP *origcond, CODEREP *evalcond )
-{
-  if (origcond->Kind() == CK_OP && OPERATOR_is_compare(origcond->Opr())) 
-  {
-    CODEREP *kid0 = origcond->Opnd(0);
-    CODEREP *kid1 = origcond->Opnd(0);
-    if(kid0->Non_leaf()) {
-      if(kid0->Opr()==OPR_INTRINSIC_OP 
-#ifdef TARG_SL2
-          && (kid0->Intrinsic()==INTRN_OP_C2_SCOND_BR ||
-                   kid0->Intrinsic()==INTRN_OP_C2_SCOND_BR_R)
-#ifndef fork_joint
-           && (kid0 ->Intrinsic() == INTRN_C2_THREAD_MAJOR || 
-                 kid0 ->Intrinsic() == INTRN_C2_THREAD_MINOR) 
-#endif 
-
-#endif //TARG_SL2
-         )
-        return EVAL_UNKNOWN;
-    
-    } 
-    else if(kid1->Non_leaf()) {
-      if(kid1->Opr()==OPR_INTRINSIC_OP 
-#ifdef TARG_SL2
-             && (kid1->Intrinsic()==INTRN_OP_C2_SCOND_BR ||
-                   kid1->Intrinsic()==INTRN_OP_C2_SCOND_BR_R)
-#ifndef fork_joint
-             && (kid1 ->Intrinsic() == INTRN_C2_THREAD_MAJOR ||
-                   kid1 ->Intrinsic() == INTRN_C2_THREAD_MINOR)
-#endif 
-#endif 
-	 )
-      return EVAL_UNKNOWN;
-    }
-  }
-}
-
 COND_EVAL
 Eval_redundant_cond_br( CODEREP *origcond, CODEREP *evalcond, COND_EVAL eval ) 
 {
-#if defined(TARG_SL)
-  if (Helper_Eval_redundant_cond_br(origcond, evalcond) == EVAL_UNKNOWN)
-    return EVAL_UNKNOWN;
-#endif
 
   // exact match means the evalcond and origcond evaluate the same way
   if ( origcond == evalcond ) {

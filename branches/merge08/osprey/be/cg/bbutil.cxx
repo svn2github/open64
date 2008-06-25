@@ -2546,6 +2546,11 @@ void Change_Succ(BB *pred, BB *old_succ, BB *new_succ)
   BBLIST_item(succs) = new_succ;
   if (FREQ_Frequencies_Computed()) {
     adjust = BB_freq(pred) * BBLIST_prob(succs);
+#if !defined(TARG_SL)   // embedded systems uses int for feedback
+    if ((BB_freq(pred) == 0) && (BBLIST_prob(succs) >= 0) && 
+	!(adjust == adjust)) /* the result of NaN compare will always be false */
+	adjust = 0;
+#endif
   } else if (BB_freq_fb_based(pred)) {
     /* Guess that P(succ) is same for all succs */
     adjust = BB_freq(pred) / BBlist_Len(BB_succs(pred));
@@ -2714,29 +2719,6 @@ BOOL BB_Is_Cold(BB *bb)
   return FALSE;
 }
 
-#if defined(TARG_SL)
-/* =======================================================================
- *
- *  BB_Is_Hot
- *
- *  See interface description.
- *
- * =======================================================================
- */
-BOOL BB_Is_Hot(BB *bb)
-{
-  RID *r;
-
-  /* We are part of a cold region if <bb>'s containing region is "cold"
-   * or one of it's ancestors is.
-   */
-  for (r = BB_rid(bb); r; r = RID_parent(r)) {
-    if (RID_type(r) == RID_TYPE_hot) return TRUE;
-  }
-  return FALSE;
-}
-
-#endif
 
 /* =======================================================================
  *

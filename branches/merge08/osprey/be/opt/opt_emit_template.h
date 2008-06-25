@@ -569,7 +569,12 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       }
 #endif
       wn = WN_CreateParm(exp->Dtyp(), wn, exp->Ilod_ty(), exp->Offset());
+#if defined(TARG_SL)
+      // avoid cse of implicit aliases stuff, mostly in sl specific intrinsics
+      if (WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn)) {
+#else
       if (WN_Parm_By_Reference(wn)) {
+#endif
 	POINTS_TO *pt = exp->Points_to(emitter->Opt_stab());
 	Is_True(pt != NULL, ("Reference parameter has NULL POINTS_TO."));
 	emitter->Alias_Mgr()->Gen_alias_id(wn, pt);
@@ -738,6 +743,13 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
     Warn_todo("Gen_exp_wn: CODEKIND is not implemented yet");
     break;
   }
+
+#if defined(TARG_SL)
+  // set flag for vbuf offset wn node. 
+  if (exp->Is_flag_set(CF_INTERNAL_MEM_OFFSET)) {
+    WN_Set_is_internal_mem_ofst(wn);
+  }
+#endif 
 
   // connect up this cr and the resulting wn for def-use
   if ( emitter->Wn_to_cr_map() && connect_cr_to_wn )
@@ -1131,6 +1143,11 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       WN_store_offset(rwn) = lhs->Offset();
       WN_set_ty(rwn, lhs->Ilod_base_ty());
       WN_set_field_id(rwn, lhs->I_field_id());
+#if defined(TARG_SL)
+      // support vbuf istore automatic expansion 
+      if(srep->SL2_internal_mem_ofst())
+        WN_Set_is_internal_mem_ofst(rwn); 
+#endif 
 #ifdef TARG_X8664 // bug 6910
       if (emitter->Htable()->Phase() != MAINOPT_PHASE &&
 	  WN_operator(rhs_wn) == OPR_INTCONST &&

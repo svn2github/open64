@@ -114,7 +114,8 @@ base_action_tbl[MAX_BASE_KIND][MAX_BASE_KIND] = {
   {  NO_INFO, NO_INFO,	  NO_INFO,   NO_INFO}, // UNKNOWN
 };
   
-static ST* Get_ST_base(ST* st)
+#if defined(TARG_SL)
+ST* POINTS_TO::Get_ST_base(ST* st) const
 {
     if(st==NULL)
         return NULL;
@@ -128,6 +129,7 @@ static ST* Get_ST_base(ST* st)
       return st_base;
     }
 }
+#endif
 
 
 //  TRUE:  base are the same
