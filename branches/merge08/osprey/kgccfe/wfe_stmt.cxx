@@ -38,7 +38,8 @@
 
 */
 
-
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "defs.h"
 #include "glob.h"
 #include "config.h"
@@ -227,9 +228,11 @@ WFE_Expand_Start_Loop_Continue_Elsewhere (int exitflag, struct nesting *whichloo
     loop_info_stack [loop_info_i].continue_info = CONTINUE_HERE_ELSEWHERE;
   else
     Fail_FmtAssertion ("WFE_Expand_Start_Loop_Continue_Elsewhere: unexpected state"); 
+#ifndef TARG_NVISA // only create label if needed
   LABEL_IDX continue_label_idx;
   New_LABEL (CURRENT_SYMTAB, continue_label_idx);
   loop_info_stack [loop_info_i].continue_label_idx = continue_label_idx;
+#endif
 } /* WFE_Expand_Start_Loop_Continue_Elsewhere */
 
 void
@@ -244,6 +247,12 @@ WFE_Expand_Loop_Continue_Here (void)
     loop_info_stack [loop_info_i].continue_info = CONTINUE_ELSEWHERE_HERE;
   else
     Fail_FmtAssertion ("WFE_Expand_Loop_Continue_Here: unexpected state"); 
+
+#ifdef TARG_NVISA
+  // only emit label if continue stmt
+  // Otherwise we have unnecessary label that stops unrolling of for loops.
+  if (loop_info_stack [loop_info_i].continue_label_idx)
+#endif
   WFE_Stmt_Append (
     WN_CreateLabel ((ST_IDX) 0,
                     loop_info_stack [loop_info_i].continue_label_idx,
@@ -993,7 +1002,7 @@ address_of (const WN *wn)
  * operands that are passed by address.
  */
 
-static PREG_NUM asm_neg_preg = -2;
+PREG_NUM asm_neg_preg = -2;
 
 void
 Wfe_Expand_Asm_Operands (tree  string,
@@ -1263,6 +1272,7 @@ Wfe_Expand_Asm_Operands (tree  string,
 	}
       }
 
+#ifndef TARG_NVISA // ptx f is for 32bit float
 #ifdef PATHSCALE_MERGE
       // bug fix for OSP_141
       // When considering the related ASM statement as following:
@@ -1277,6 +1287,7 @@ Wfe_Expand_Asm_Operands (tree  string,
 	  input_rvalue = WN_CreateExp1(OPR_CVT, MTYPE_F8, WN_rtype(input_rvalue), input_rvalue);
 	}
       }
+#endif
 #endif
 #ifdef KEY
       // Get the new operand numbers from map.
@@ -1341,7 +1352,14 @@ Wfe_Expand_Asm_Operands (tree  string,
 	  TY_IDX hi_ty_idx = Get_TY(TREE_TYPE(output)); 
 	  // TYPE_ID rtype = Widen_Mtype(TY_mtype(hi_ty_idx));
 	  TYPE_ID rtype = TY_mtype(hi_ty_idx);
+#ifdef TARG_NVISA
+          // we allow 32bit floats
+	  if (rtype == MTYPE_U4 || rtype == MTYPE_I4) {
+	    Set_TY_mtype(hi_ty_idx, MTYPE_F4); 
+	  }
+#else
 	  Is_True(MTYPE_bit_size(rtype) >= 64, ("bit size must equal or greater than 64"));
+#endif
 	  if (rtype == MTYPE_U8 || rtype == MTYPE_I8) {
 	    Set_TY_mtype(hi_ty_idx, MTYPE_F8); 
 	  }
@@ -1394,7 +1412,15 @@ Wfe_Expand_Asm_Operands (tree  string,
 	// bug fix for OSP_141
 	// 
 	if (strchr (constraint_string, 'f') != NULL) {
+#ifdef TARG_NVISA
+          // can have 32bit floats
+          if (MTYPE_bit_size(desc) == 32)
+            desc = MTYPE_F4;
+          else
+            desc = MTYPE_F8;
+#else
 	  Is_True(MTYPE_bit_size(desc) >= 64, ("bit size must equal or greater than 64"));
+#endif
 	  desc = MTYPE_F8;
 	}
 #endif
@@ -1588,6 +1614,22 @@ WFE_Expand_Pragma (tree exp)
         break;
 
       WN * wn = WN_CreatePragma (WN_PRAGMA_MIPS_FREQUENCY_HINT, (ST*)NULL, freq_hint, 0);
+      WFE_Stmt_Append (wn, Get_Srcpos());
+      break;
+    }
+    case unroll_dir:
+    { // pragma unroll N
+      UINT32 num;
+      exp = (tree) exp->omp.omp_clause_list;
+      if (exp) {
+        FmtAssert(TREE_CODE(exp) == INTEGER_CST, ("unroll arg not an integer constant?"));
+        num = Get_Integer_Value(exp);
+      }
+      else {
+        // no N given, so use max N
+        num = UINT32_MAX;
+      }
+      WN * wn = WN_CreatePragma (WN_PRAGMA_UNROLL, (ST*)NULL, num, 0);
       WFE_Stmt_Append (wn, Get_Srcpos());
       break;
     }

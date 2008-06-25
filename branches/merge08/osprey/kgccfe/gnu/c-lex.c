@@ -723,8 +723,8 @@ c_lex (value)
 #ifdef KEY
   if (last_token_omp_hash && tok->type == CPP_NAME)
   {
-    last_token_omp_hash = FALSE;
     tree name = HT_IDENT_TO_GCC_IDENT (HT_NODE (tok->val.node));
+    last_token_omp_hash = FALSE;
     if (TREE_CODE (name) == IDENTIFIER_NODE &&
         !strcmp (IDENTIFIER_POINTER (name), "pragma"))
     {

@@ -76,7 +76,8 @@ extern WN * WFE_Expand_Expr (tree exp,
 			     TY_IDX component_ty_idx = 0,
 			     INT64 component_offset = 0,
 			     UINT32 field_id = 0,
-			     bool is_bit_field = FALSE); 
+			     bool is_bit_field = FALSE,
+			     bool expect_boolean = FALSE); 
 
 extern WN  *WFE_Rcomma_Block;
 extern int  WFE_Disable_Rcomma;

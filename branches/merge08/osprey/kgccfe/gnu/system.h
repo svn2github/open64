@@ -158,6 +158,10 @@ extern int errno;
 # include <unistd.h>
 #endif
 
+#ifdef __MINGW32__
+extern size_t getpagesize(void);
+#endif /* __MINGW32__ */
+
 #ifdef HAVE_SYS_PARAM_H
 # include <sys/param.h>
 /* We use this identifier later and it appears in some vendor param.h's.  */

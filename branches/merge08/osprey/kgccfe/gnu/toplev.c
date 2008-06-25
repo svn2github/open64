@@ -1809,7 +1809,11 @@ static void
 crash_signal (signo)
      int signo;
 {
+#ifdef __MINGW32__
+  internal_error ("%s", "caught");
+#else
   internal_error ("%s", strsignal (signo));
+#endif /* __MINGW32__ */
 }
 
 /* Strip off a legitimate source ending from the input string NAME of
@@ -4594,6 +4598,12 @@ independent_decode_option (argc, argv)
 	return 0;
       break;
 
+#ifdef SGI_MONGOOSE
+    case 't':
+	/* trace flags handled by sgi processing */
+	break;
+#endif
+
     case 'v':
       if (!strcmp (arg, "version"))
 	version_flag = 1;
@@ -5156,7 +5166,9 @@ parse_options_and_default_flags (argc, argv)
 
   if (optimize >= 3)
     {
+#ifndef TARG_NVISA // rely on open64 inliner
       flag_inline_functions = 1;
+#endif
       flag_rename_registers = 1;
     }
 

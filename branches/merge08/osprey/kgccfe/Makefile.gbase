@@ -81,6 +81,9 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
 HOSTDEFS += -DTARGET_NAME=\"mips-sgi-irix6\"
 endif
+ifeq ($(BUILD_TARGET), NVISA)
+HOSTDEFS += -DTARGET_NAME=\"nvisa\"
+endif
 
 HOSTDEFS += -DLONGLONG
 HOSTDEFS += -DFRONT_END
@@ -110,9 +113,8 @@ HOSTDEFS += -DDEBUG=0
 HOSTDEFS += -DCHECKING=0 
 endif
 
-ifeq ($(BUILD_OS), LINUX)
+# always define this now 
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
-endif
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -144,6 +146,10 @@ GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
 endif
 ifeq ($(BUILD_TARGET), MIPS)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
+endif
+ifeq ($(BUILD_TARGET), NVISA)
+GNU_TARG_DIR = $(GNU_DIR)/i386
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
 endif
 
 TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
@@ -269,7 +275,6 @@ LC++INCS = $(addprefix -I, $(INC_DIRS))
 # setup stuff to build shared or non-shared
 GLDOPTS = $(STD_LOAD_OPTS)
 
-LDIRT =
 
 #+----------------------------------------------------------------------
 #  Extra Rules
@@ -282,15 +287,22 @@ LDIRT =
 #------------------------------------------------------------
 TARGETS = gfec
 
+LDIRT = $(TARGETS)
 #----------------------------------------------------------------------
 #  Variables describing additional sources, objects, and libraries
 #----------------------------------------------------------------------
 COMUTIL_OBJS = $(TARG_COMUTIL_DIR)/libcomutil.a
+ifneq ($(BUILD_TARGET), NVISA)
+# Don't need libcmplrs anymore. 
+# Not sure whether other TARGET need this.
 CMPLRS_OBJS  = $(TARG_CMPLRS_DIR)/libcmplrs.a
+endif
 LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
 GNU_OBJS = $(TARG_GNU_DIR)/libgfec.a
 
+ifneq ($(BUILD_TYPE), NONSHARED)
 LLDOPTS = -Wl,--export-dynamic
+endif
 LLDLIBS = $(GNU_OBJS) $(COMUTIL_OBJS) $(LIBIBERTY_OBJS)
 LLDLIBS += -lm $(CMPLRS_OBJS)
 
@@ -302,7 +314,9 @@ default: first $(TARGETS) last
 #----------------------------------------------------------------------
 first:
 	$(call submake,$(TARG_GNU_DIR))
+ifneq ($(BUILD_TARGET), NVISA)
 	$(call submake,$(TARG_CMPLRS_DIR))
+endif
 	$(call submake,$(TARG_COMUTIL_DIR))
 
 #----------------------------------------------------------------------

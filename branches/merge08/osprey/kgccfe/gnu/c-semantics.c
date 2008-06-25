@@ -908,6 +908,7 @@ process_omp_stmt (tree t)
       break;
     case options_dir:
     case exec_freq_dir:
+    case unroll_dir:
       WFE_Expand_Pragma (t);
       break;
 

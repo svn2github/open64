@@ -118,8 +118,12 @@ extern FILE *tree_dump_file; //for debugging only
 
 static BOOL dst_initialized = FALSE;
 
+#ifdef __MINGW32__
+static char  cwd_buffer[MAXPATHLEN];
+#else
 #define MAX_CWD_CHARS (256 - (MAXHOSTNAMELEN+1))
 static char  cwd_buffer[MAX_CWD_CHARS+MAXHOSTNAMELEN+1];
+#endif
 static char *current_working_dir = &cwd_buffer[0];
 static char *current_host_dir = &cwd_buffer[0];
 
@@ -254,7 +258,7 @@ DST_get_context(tree intree)
 	    // this incomplete type and the new type will have a new entry
 	    // in the DST table. To mimic whatever Gcc does, we are 
 	    // required to pass a valid DST index here.
-	    if (DST_ARE_EQUAL(l_dst_idx,DST_INVALID_IDX))
+	    if (DST_IS_NULL(l_dst_idx))
 	        l_dst_idx.byte_idx = l_dst_idx.block_idx = 0;
 #endif
 	    return l_dst_idx;
@@ -1373,7 +1377,11 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		  // not created yet, so create
 		  dst_idx = DST_mk_reference_type(
 		       	inner_dst,    // type ptd to
+#ifdef TARG_NVISA
+                        DW_ADDR_global_space, // default to global space
+#else
 			DW_ADDR_none, // no address class
+#endif
 			tsize);
                                 
                   DST_append_child(current_scope_idx,dst_idx);
@@ -1409,7 +1417,13 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		  cp_to_dst_from_tree(&inner_dst,&inner);
 		  dst_idx = DST_mk_pointer_type(
 		       	inner_dst,    // type ptd to
+#ifdef TARG_NVISA
+                        // we can't always know at this time what space
+                        // will be referred to, but default to global.
+                        DW_ADDR_global_space, // default to global space
+#else
 			DW_ADDR_none, // no address class
+#endif
 			tsize);
                                 
                   DST_append_child(current_scope_idx,dst_idx);
@@ -1994,7 +2008,8 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
     // For function declarations like 
     //   foo (i) int i; { ... }
     // isprotyped will be false but, we still want to generate DST info. 
-    if (fndecl) {
+    // However, void argument lists may occur, so ignore those.
+    if (fndecl && DECL_ARGUMENTS(fndecl)) {
 #endif /* KEY */
        tree parms = DECL_ARGUMENTS(fndecl);
        if(!parms) {
@@ -2051,6 +2066,7 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
       int host_name_length = 0;
       
       current_host_dir = &cwd_buffer[0];
+#ifndef __MINGW32__
       if (gethostname(current_host_dir, MAXHOSTNAMELEN) == 0)
       {
 	 /* Host name is ok */
@@ -2064,6 +2080,7 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
 	 }
       }
       current_host_dir[host_name_length++] = ':';  /* Prefix cwd with ':' */
+#endif /* !__MINGW32__ */
       current_working_dir = &cwd_buffer[host_name_length];
    }
    else /* No debugging */
@@ -2123,11 +2140,19 @@ WFE_Set_Line_And_File (UINT line, const char *file)
 	char buf[256];
 	if (file_name == file) {
 		// no path
+#ifdef TARG_NVISA
+                dir = ".";
+#else
 		dir = current_working_dir;
+#endif
 	}
 	else if (strncmp(file, "./", 2) == 0) {
 		// current dir
+#ifdef TARG_NVISA
+                dir = ".";
+#else
 		dir = current_working_dir;
+#endif
 	}
 	else {
 		// copy specified path

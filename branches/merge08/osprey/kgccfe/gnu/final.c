@@ -3140,7 +3140,20 @@ alter_cond (cond)
 
 /* Report inconsistency between the assembler template and the operands.
    In an `asm', it's the user's fault; otherwise, the compiler's fault.  */
-
+#ifdef __MINGW32__
+void
+output_operand_lossage (msgid)
+     const char *msgid;
+{
+  if (this_is_asm_operands)
+    error_for_asm (this_is_asm_operands, "invalid `asm': %s", _(msgid));
+  else
+    {
+      error ("output_operand: %s", _(msgid));
+      abort ();
+    }
+}
+#else
 void
 output_operand_lossage VPARAMS ((const char *msgid, ...))
 {
@@ -3163,6 +3176,7 @@ output_operand_lossage VPARAMS ((const char *msgid, ...))
   free (new_message);
   VA_CLOSE (ap);
 }
+#endif /* __MINGW32__ */
 
 /* Output of assembler code from a template, and its subroutines.  */
 

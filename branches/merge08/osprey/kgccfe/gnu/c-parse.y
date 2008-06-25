@@ -159,6 +159,7 @@ do {									\
 %token ELLIPSIS
 
 %token PRAGMA_OPTIONS PRAGMA_EXEC_FREQ FREQ_NEVER FREQ_INIT FREQ_FREQUENT
+%token PRAGMA_UNROLL
 
 %token PRIVATE COPYPRIVATE FIRSTPRIVATE LASTPRIVATE SHARED DEFAULT NONE
 %token REDUCTION COPYIN DYNAMIC GUIDED RUNTIME ORDERED SCHEDULE
@@ -265,6 +266,7 @@ do {									\
 
 %type <ttype> options_directive pragma_directives exec_freq_directive
 %type <ttype> exec_freq_directive_ignore
+%type <ttype> unroll_directive
 
 %type <ttype> freq_hint
 
@@ -2343,6 +2345,7 @@ pragma_directives:
         {}
         | options_directive
 	| exec_freq_directive
+	| unroll_directive
         ;
                                                                                 
 options_directive:
@@ -2369,6 +2372,13 @@ freq_hint:
         FREQ_NEVER { $$ = build_string (6, "never"); }
 	| FREQ_INIT { $$ = build_string (5, "init"); }
 	| FREQ_FREQUENT { $$ = build_string (9, "frequent"); }
+	;
+
+unroll_directive:
+	PRAGMA_UNROLL '\n'
+	{ add_stmt (build_omp_stmt (unroll_dir, NULL)); $$ = NULL; }
+	| PRAGMA_UNROLL CONSTANT '\n'
+	{ add_stmt (build_omp_stmt (unroll_dir, $2)); $$ = NULL; }
 	;
 
 structured_block:
@@ -3603,7 +3613,10 @@ check_omp_string (char * s, bool * status)
 {
   *status = true;
 
-  if (!strcmp (s, "\n"))
+  /* Windows systems use \r\n not \n, so check for that
+   * but return \n since that is what grammar is checking for.
+   */
+  if (!strcmp (s, "\n") || !strcmp(s,"\r"))
   {
     in_omp_pragma = seen_omp_paren = FALSE;
     return '\n';
@@ -3619,6 +3632,8 @@ check_omp_string (char * s, bool * status)
     return FREQ_FREQUENT;
   if (!strcmp (s, "options") && !seen_omp_paren)
     return PRAGMA_OPTIONS;
+  if (!strcmp (s, "unroll") && !seen_omp_paren)
+    return PRAGMA_UNROLL;
   if (!strcmp (s, "private") && !seen_omp_paren)
     return PRIVATE;
   if (!strcmp (s, "parallel") && !seen_omp_paren)
@@ -3753,10 +3768,12 @@ _yylex ()
 	  return yylexstring ();
 	else if (ret == IDENTIFIER && in_omp_pragma)
 	{
-          if (TREE_CODE (yylval.ttype) != IDENTIFIER_NODE) abort();
-	  char * omp_name = IDENTIFIER_POINTER (yylval.ttype);
+ 	  char *omp_name;
 	  bool valid = false;
-	  int code = check_omp_string (omp_name, &valid);
+	  int code;
+          if (TREE_CODE (yylval.ttype) != IDENTIFIER_NODE) abort();
+	  omp_name = IDENTIFIER_POINTER (yylval.ttype);
+	  code = check_omp_string (omp_name, &valid);
 	  if (valid) return code;
 	}
 	return ret;

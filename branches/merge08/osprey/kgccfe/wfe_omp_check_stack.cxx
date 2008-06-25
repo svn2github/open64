@@ -94,7 +94,7 @@ void extern WFE_CS_push( WFE_CHECK_KIND kind, int lnum,int fnum)
   }
   omp_check_sp++;
 
-  bzero (omp_check_sp, sizeof(CHECK_STMT));
+  BZERO (omp_check_sp, sizeof(CHECK_STMT));
 
   omp_check_sp->kind=kind;
   omp_check_sp->linenum=lnum;

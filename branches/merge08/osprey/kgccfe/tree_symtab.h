@@ -191,6 +191,10 @@ Get_ST (tree decl_tree)
 	if (ST_is_thread_private(st) && CURRENT_SYMTAB != GLOBAL_SYMTAB)
 		Set_PU_has_mp(Get_Current_PU());
 #endif
+	Is_True(ST_st_idx(st) != 0, ("st_idx is 0?"));
+	Is_True(ST_st_idx(st) != -1, ("st_idx is -1?"));
+	Is_True(ST_IDX_level(ST_st_idx(st)) != 0, ("st_level is 0?"));
+	Is_True(ST_IDX_index(ST_st_idx(st)) != 0, ("st_index is 0?"));
 	return st;
 }
 

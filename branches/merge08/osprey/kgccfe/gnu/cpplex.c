@@ -843,6 +843,7 @@ enum pragma_type
   INVALID,
   OMP,
   OPTIONS,
+  UNROLL,
   EXEC_FREQ
 };
 
@@ -856,10 +857,10 @@ _cpp_omp_token (cpp_reader * pfile)
 
   const unsigned char *c = buffer->cur;
   const unsigned char *rlimit = buffer->rlimit;
+  int len = 6; // strlen "pragma"
 
   while (*c == ' ' || *c == '\t') c++;
 
-  int len = 6; // strlen "pragma"
   if ((rlimit - c) < len || memcmp (c, "pragma", len))
     return NULL;
 
@@ -886,6 +887,12 @@ _cpp_omp_token (cpp_reader * pfile)
   {
      result = _cpp_lex_direct (pfile);
      current_pragma = EXEC_FREQ;
+  }
+  else if ((rlimit - c) >= strlen ("unroll") &&
+           !memcmp (c, "unroll", strlen ("unroll")))
+  {
+     result = _cpp_lex_direct (pfile);
+     current_pragma = UNROLL;
   }
 
   return result;
@@ -940,7 +947,10 @@ _cpp_lex_token (pfile)
       {
 	result = _cpp_lex_direct (pfile);
 #ifdef KEY
-	if (in_omp_pragma && *(pfile->buffer->cur-1) == '\n')
+	if (in_omp_pragma 
+          /* windows uses \r, linux uses \n */
+          && (*(pfile->buffer->cur-1) == '\n'
+           || *(pfile->buffer->cur-1) == '\r'))
 	  return result;
 #endif
       }
@@ -959,6 +969,7 @@ _cpp_lex_token (pfile)
 	    return omp_res;
 	  }
 	  else if (current_pragma == OPTIONS ||
+	           current_pragma == UNROLL ||
 	           current_pragma == EXEC_FREQ)
 	  {
 	    last_token_omp_hash = TRUE;
@@ -1098,7 +1109,7 @@ _cpp_lex_direct (pfile)
   result->col = CPP_BUF_COLUMN (buffer, buffer->cur);
 
 #ifdef KEY
-  if (in_omp_pragma && c == '\n')
+  if (in_omp_pragma && (c == '\n' || c == '\r'))
   {
 	  buffer->saved_flags = BOL;
 	  result->type = CPP_NAME;

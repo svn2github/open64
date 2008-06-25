@@ -1773,11 +1773,16 @@ asm_operand_ok (op, constraint)
 	  break;
 
 	case 's':
+#ifdef TARG_NVISA 	// have cg decide if constraint valid; 
+			// may be var that is resolved to constant.
+	  return 1;
+#else
 	  if (GET_CODE (op) == CONST_INT
 	      || (GET_CODE (op) == CONST_DOUBLE
 		  && GET_MODE (op) == VOIDmode))
 	    break;
 	  /* FALLTHRU */
+#endif
 
 	case 'i':
 	  if (CONSTANT_P (op)
@@ -1789,9 +1794,12 @@ asm_operand_ok (op, constraint)
 	  break;
 
 	case 'n':
+#ifndef TARG_NVISA 	// have cg decide if constraint valid; 
+			// may be var that is resolved to constant.
 	  if (GET_CODE (op) == CONST_INT
 	      || (GET_CODE (op) == CONST_DOUBLE
 		  && GET_MODE (op) == VOIDmode))
+#endif
 	    return 1;
 	  break;
 

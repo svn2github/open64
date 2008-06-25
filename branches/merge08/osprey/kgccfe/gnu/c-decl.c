@@ -63,6 +63,7 @@ extern ST * Create_ST_For_Tree (tree);
 // Bug 1566
 #include "wfe_stmt.h"
 #include "tree-inline.h"
+#include "wfe_dst.h"
 #endif /* SGI_MONGOOSE */
 
 /* In grokdeclarator, distinguish syntactic contexts of declarators.  */
@@ -6760,6 +6761,10 @@ c_expand_body (fndecl, nested_p, can_defer_p)
   input_filename = DECL_SOURCE_FILE (fndecl);
 
 #ifdef SGI_MONGOOSE
+  /* want to reset filename, else a directive at end of function
+   * will apply to body of function (since scan whole func first). */
+  WFE_Set_Line_And_File (lineno, input_filename);
+
 #if 0
   // Bug 1024 - provide a context for innerscope variables before creating
   // DST entry.

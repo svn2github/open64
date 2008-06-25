@@ -1274,7 +1274,12 @@ override_options ()
   if (TARGET_64BIT)
     {
       if (TARGET_ALIGN_DOUBLE)
+#ifdef TARG_NVISA
+	// we default to align-double, so undo it by a hack.
+	target_flags &= ~MASK_ALIGN_DOUBLE;
+#else
 	error ("-malign-double makes no sense in the 64bit mode");
+#endif
       if (TARGET_RTD)
 	error ("-mrtd calling convention not supported in the 64bit mode");
       /* Enable by default the SSE and MMX builtins.  */
@@ -7154,7 +7159,15 @@ print_operand (file, x, code)
 	    return;
 	  }
 	default:
+#ifdef __MINGW32__
+	    {
+	      char str[50];
+	      sprintf (str, "invalid operand code `%c'", code);
+	      output_operand_lossage (str);
+	    }
+#else
 	    output_operand_lossage ("invalid operand code `%c'", code);
+#endif /* __MINGW32__ */
 	}
     }
 

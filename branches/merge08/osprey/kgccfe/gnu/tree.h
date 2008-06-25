@@ -1897,6 +1897,18 @@ struct tree_type GTY(())
 #define DECL_WIDEN_RETVAL(NODE) (DECL_CHECK (NODE)->decl.widen_retval_flag)
 #endif /* SGI_MONGOOSE */
 
+#define DECL_CDECL(NODE)       (DECL_CHECK (NODE)->decl.is_cdecl)
+
+#ifdef TARG_NVISA
+#define DECL_GLOBAL(NODE)       (DECL_CHECK (NODE)->decl.is_global)
+#define DECL_SHARED(NODE)       (DECL_CHECK (NODE)->decl.is_shared)
+#define DECL_LOCAL(NODE)        (DECL_CHECK (NODE)->decl.is_local)
+#define DECL_CONSTANT(NODE)     (DECL_CHECK (NODE)->decl.is_constant)
+#define DECL_TEXTURE(NODE)      (DECL_CHECK (NODE)->decl.is_texture)
+#define DECL_THREAD_LIMIT(NODE) (DECL_CHECK (NODE)->decl.limit.thread_limit)
+#define DECL_BLOCK_LIMIT(NODE)  (DECL_CHECK (NODE)->decl.limit.block_limit)
+#endif /* TARG_NVISA */
+
 struct function;
 
 struct tree_decl GTY(())
@@ -1956,10 +1968,26 @@ struct tree_decl GTY(())
   unsigned syscall_linkage_flag : 1;    /* has syscall_linkage attribute */
   unsigned widen_retval_flag : 1;       /* widen return value attribute */
 #endif /* SGI_MONGOOSE */
+  unsigned is_cdecl: 1;			/* microsoft cdecl attribute */
+#ifdef TARG_NVISA
+  unsigned is_global : 1;
+  unsigned is_shared : 1;
+  unsigned is_local : 1;
+  unsigned is_constant : 1;
+  unsigned is_texture : 1;
+#endif /* TARG_NVISA */
 #ifdef KEY
   unsigned promote_static : 1;		// promote this static var to global
   unsigned always_inline_attrib : 1;
 #endif // KEY
+#ifdef TARG_NVISA
+    /* In a FUNCTION_DECL for, this is used for
+       the lauch_bounds if is_global is true.  */
+    struct tree_decl_u1_limits {
+      unsigned short thread_limit; 
+      unsigned short block_limit; 
+    } limit;
+#endif /* TARG_NVISA */
 
   union tree_decl_u1 {
     /* In a FUNCTION_DECL for which DECL_BUILT_IN holds, this is

@@ -793,6 +793,24 @@ static tree handle_syscall_linkage_attribute PARAMS ((tree *, tree, tree, int,
 static tree handle_widenretval_attribute     PARAMS ((tree *, tree, tree, int,
 						     bool *));
 #endif
+
+static tree handle_cdecl_attribute      PARAMS ((tree *, tree, tree, int,
+						 bool *));
+#ifdef TARG_NVISA
+static tree handle_global_attribute     PARAMS ((tree *, tree, tree, int,
+						 bool *));
+static tree handle_shared_attribute     PARAMS ((tree *, tree, tree, int,
+						 bool *));
+static tree handle_local_attribute      PARAMS ((tree *, tree, tree, int,
+						 bool *));
+static tree handle_constant_attribute   PARAMS ((tree *, tree, tree, int,
+						 bool *));
+static tree handle_texture_attribute    PARAMS ((tree *, tree, tree, int,
+						 bool *));
+static tree handle_launch_bounds_attribute   PARAMS ((tree *, tree, tree, int,
+						 bool *));
+#endif /* TARG_NVISA */
+
 static tree vector_size_helper PARAMS ((tree, tree));
 
 static void check_function_nonnull	PARAMS ((tree, tree));
@@ -891,6 +909,25 @@ const struct attribute_spec c_common_attribute_table[] =
   { "widenretval",            0, 0, true, false, false, 
                               handle_widenretval_attribute },
 #endif
+  { "cdecl",                 0, 0, false, false, false, 
+                              handle_cdecl_attribute },
+#ifdef TARG_NVISA
+  { "global",                 0, 0, false, false, false, 
+                              handle_global_attribute },
+  { "device",                 0, 0, false, false, false, 
+                              handle_global_attribute },
+  { "shared",                 0, 0, false, false, false, 
+                              handle_shared_attribute },
+  { "local",                  0, 0, false, false, false, 
+                              handle_local_attribute },
+  { "constant",               0, 0, false, false, false, 
+                              handle_constant_attribute },
+  { "texture",                0, 0, false, false, false, 
+                              handle_texture_attribute },
+  { "launch_bounds",          2, 2, false, false, false, 
+                              handle_launch_bounds_attribute },
+#endif /* TARG_NVISA */
+
   { NULL,                     0, 0, false, false, false, NULL }
 };
 
@@ -6483,6 +6520,110 @@ handle_widenretval_attribute (node, name, args, flags, no_add_attrs)
   DECL_WIDEN_RETVAL (decl) = 1;
 }
 #endif /* SGI_MONGOOSE */
+
+/* want to preserve cdecl info if invoking whirl2c */
+static tree
+handle_cdecl_attribute (node, name, args, flags, no_add_attrs)
+     tree *node;
+     tree name;
+     tree args;
+     int flags ATTRIBUTE_UNUSED;
+     bool *no_add_attrs;
+{
+  tree decl = *node;
+  if (TREE_CODE (decl) != FUNCTION_DECL)
+    {
+      error_with_decl (decl, "cdecl specified for non-function `%s'");
+      return NULL_TREE;
+    }
+  DECL_CDECL (decl) = 1;
+
+  return NULL_TREE;
+}
+
+#ifdef TARG_NVISA
+/* this code operates on generated code only, so there's no
+need for error checking whatsoever */
+static tree
+handle_global_attribute (node, name, args, flags, no_add_attrs)
+     tree *node;
+     tree name;
+     tree args;
+     int flags ATTRIBUTE_UNUSED;
+     bool *no_add_attrs;
+{
+  DECL_GLOBAL (*node) = 1;
+
+  return NULL_TREE;
+}
+
+static tree
+handle_shared_attribute (node, name, args, flags, no_add_attrs)
+     tree *node;
+     tree name;
+     tree args;
+     int flags ATTRIBUTE_UNUSED;
+     bool *no_add_attrs;
+{
+  DECL_SHARED (*node) = 1;
+
+  return NULL_TREE;
+}
+
+static tree
+handle_local_attribute (node, name, args, flags, no_add_attrs)
+     tree *node;
+     tree name;
+     tree args;
+     int flags ATTRIBUTE_UNUSED;
+     bool *no_add_attrs;
+{
+  DECL_LOCAL (*node) = 1;
+
+  return NULL_TREE;
+}
+
+static tree
+handle_constant_attribute (node, name, args, flags, no_add_attrs)
+     tree *node;
+     tree name;
+     tree args;
+     int flags ATTRIBUTE_UNUSED;
+     bool *no_add_attrs;
+{
+  DECL_CONSTANT (*node) = 1;
+
+  return NULL_TREE;
+}
+
+static tree
+handle_texture_attribute (node, name, args, flags, no_add_attrs)
+     tree *node;
+     tree name;
+     tree args;
+     int flags ATTRIBUTE_UNUSED;
+     bool *no_add_attrs;
+{
+  DECL_TEXTURE (*node) = 1;
+
+  return NULL_TREE;
+}
+
+static tree
+handle_launch_bounds_attribute (node, name, args, flags, no_add_attrs)
+     tree *node;
+     tree name;
+     tree args;
+     int flags ATTRIBUTE_UNUSED;
+     bool *no_add_attrs;
+{
+  DECL_THREAD_LIMIT (*node) = TREE_INT_CST_LOW (TREE_VALUE (args));
+  DECL_BLOCK_LIMIT (*node)  = TREE_INT_CST_LOW (TREE_VALUE (TREE_CHAIN (args)));
+
+  return NULL_TREE;
+}
+
+#endif /* TARG_NVISA */
 
 /* HACK.  GROSS.  This is absolutely disgusting.  I wish there was a
    better way.

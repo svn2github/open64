@@ -52,6 +52,7 @@ enum omp_tree_type
   ordered_cons_b,
   ordered_cons_e,
   options_dir,
+  unroll_dir,
   exec_freq_dir
 };
 
