@@ -1,5 +1,13 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +49,10 @@
  * ====================================================================
  *
  * Module: cgtarget.cxx
- * $Revision: 1.1 $
- * $Date: 2005/07/27 02:13:22 $
- * $Author: kevinlo $
- * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/x8664/cgtarget.cxx,v $
+ * $Revision: 1.140 $
+ * $Date: 05/09/01 11:48:02-07:00 $
+ * $Author: tkong@hyalite.keyresearch $
+ * $Source: be/cg/x8664/SCCS/s.cgtarget.cxx $
  *
  * Description:
  *
@@ -92,6 +100,7 @@
 #include "cgtarget.h"
 #include "calls.h"
 #include "cg_loop.h"
+#include "config_lno.h"  // for LNO_Prefetch_Ahead
 
 UINT32 CGTARG_branch_taken_penalty;
 BOOL CGTARG_branch_taken_penalty_overridden = FALSE;
@@ -118,10 +127,190 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
  * -----------------------------------------------------------------------
  */
 {
-  FmtAssert(OP_load(memop) || OP_load_exe(memop) || OP_store(memop),
-	    ("not a load or store"));
+  const TOP topcode = OP_code(memop);
 
-  TOP topcode = OP_code(memop);
+  if (TOP_is_vector_op(topcode)) {
+    switch (topcode) {
+      case TOP_stlps:
+      case TOP_stlpsx:
+      case TOP_stlpsxx:
+      case TOP_stlps_n32:
+      case TOP_stlpd:
+      case TOP_stlpdx:
+      case TOP_stlpdxx:
+      case TOP_stlpd_n32:
+      case TOP_ldlps:
+      case TOP_ldlpsx:
+      case TOP_ldlpsxx:
+      case TOP_ldlps_n32:
+      case TOP_ldlpd:
+      case TOP_ldlpdx:
+      case TOP_ldlpdxx:
+      case TOP_ldlpd_n32:
+      case TOP_sthps:
+      case TOP_sthpsx:
+      case TOP_sthpsxx:
+      case TOP_sthpd:
+      case TOP_sthpdx:
+      case TOP_sthpdxx:
+      case TOP_sthpd_n32:
+      case TOP_ldhps:
+      case TOP_ldhpsx:
+      case TOP_ldhpsxx:
+      case TOP_ldhpd:
+      case TOP_ldhpdx:
+      case TOP_ldhpdxx:
+      case TOP_ldhpd_n32:
+        return 8;
+      default:
+        return 16;
+    }
+  }
+
+  // For SSE OPs, get the number of memory bytes from the OP code instead of
+  // from the size of the SSE register used.  This is because isa_operands.cxx
+  // says 32-bit SSE OPs use fp64 registers even though only 4 bytes are
+  // referenced.
+  if (OP_flop(memop) &&
+      !TOP_is_x87(topcode)) {	// not x87
+    switch (topcode) {
+      case TOP_ldss:		// 32 bit
+      case TOP_ldss_n32:
+      case TOP_ldssx:
+      case TOP_ldssxx:
+      case TOP_stssxx:
+      case TOP_stss:
+      case TOP_stss_n32:
+      case TOP_stssx:
+      case TOP_stntss:
+      case TOP_stntssx:
+      case TOP_stntssxx:
+      case TOP_divxxxss:
+      case TOP_addxxxss:
+      case TOP_subxxxss:
+      case TOP_mulxxxss:
+      case TOP_comixss:
+      case TOP_comixxss:
+      case TOP_comixxxss:
+      case TOP_divxss:
+      case TOP_divxxss:
+      case TOP_addxss:
+      case TOP_subxss:
+      case TOP_mulxss:
+      case TOP_addxxss:
+      case TOP_subxxss:
+      case TOP_mulxxss:
+      case TOP_cvtsi2ss_x:
+      case TOP_cvtsi2ss_xx:
+      case TOP_cvtsi2ss_xxx:
+	return 4;
+
+      case TOP_ldsd:		// 64 bit
+      case TOP_ldsd_n32:
+      case TOP_ldsdx:
+      case TOP_ldsdxx:
+      case TOP_stsdxx:
+      case TOP_stsd:
+      case TOP_stsd_n32:
+      case TOP_stsdx:
+      case TOP_stntsd:
+      case TOP_stntsdx:
+      case TOP_stntsdxx:
+      case TOP_storelpd:
+      case TOP_divxxxsd:
+      case TOP_addxxxsd:
+      case TOP_subxxxsd:
+      case TOP_mulxxxsd:
+      case TOP_comixsd:
+      case TOP_comixxsd:
+      case TOP_comixxxsd:
+      case TOP_divxsd:
+      case TOP_divxxsd:
+      case TOP_addxsd:
+      case TOP_subxsd:
+      case TOP_mulxsd:
+      case TOP_addxxsd:
+      case TOP_subxxsd:
+      case TOP_mulxxsd:
+      case TOP_cvtsd2ss_x:
+      case TOP_cvtsd2ss_xx:
+      case TOP_cvtsd2ss_xxx:
+      case TOP_cvtsi2sd_x:
+      case TOP_cvtsi2sd_xx:
+      case TOP_cvtsi2sd_xxx:
+      case TOP_cvtsi2sdq_x:
+      case TOP_cvtsi2sdq_xx:
+      case TOP_cvtsi2sdq_xxx:
+      case TOP_cvtsi2ssq_x:
+      case TOP_cvtsi2ssq_xx:
+      case TOP_cvtsi2ssq_xxx:
+	return 8;
+
+      case TOP_lddqa:		// 128 bit
+      case TOP_lddqa_n32:
+      case TOP_lddqu:
+      case TOP_ldapd:
+      case TOP_ldapd_n32:
+      case TOP_ldaps:
+      case TOP_ldaps_n32:
+      case TOP_ldups:
+      case TOP_ldups_n32:
+      case TOP_ldupd:
+      case TOP_ldupd_n32:
+      case TOP_lddqax:
+      case TOP_lddqux:
+      case TOP_ldapdx:
+      case TOP_ldapsx:
+      case TOP_lddqaxx:
+      case TOP_lddquxx:
+      case TOP_ldapdxx:
+      case TOP_ldapsxx:
+      case TOP_fmovsldupx:
+      case TOP_fmovshdupx:
+      case TOP_fmovddupx:
+      case TOP_fmovsldupxx:
+      case TOP_fmovshdupxx:
+      case TOP_fmovddupxx:
+      case TOP_fmovsldupxxx:
+      case TOP_fmovshdupxxx:
+      case TOP_fmovddupxxx:
+      case TOP_stdqa:
+      case TOP_stdqa_n32:
+      case TOP_stntpd:
+      case TOP_stntps:
+      case TOP_stdqu:
+      case TOP_stdqax:
+      case TOP_stntpdx:
+      case TOP_stntpsx:
+      case TOP_stdqux:
+      case TOP_stdqaxx:
+      case TOP_stntpdxx:
+      case TOP_stntpsxx:
+      case TOP_stdquxx:
+      case TOP_staps:
+      case TOP_staps_n32:
+      case TOP_stapd:
+      case TOP_stapd_n32:
+      case TOP_stapsx:
+      case TOP_stapdx:
+      case TOP_stapsxx:
+      case TOP_stapdxx:
+      case TOP_storenti128:
+	return 16;
+
+      case TOP_store64_fm:	// Misc non-SSE, non-x87.
+      case TOP_store64_fm_n32:
+	break;
+
+      default:
+	FmtAssert(FALSE, ("CGTARG_Mem_Ref_Bytes: unknown SSE OP code"));
+    }
+  }
+
+  if( OP_store( memop ) ){
+    const int opnd = OP_find_opnd_use( memop, OU_storeval );
+    return OP_opnd_size( (OP*)memop, opnd ) / 8;
+  }
 
   switch (topcode){ 
   case TOP_xor8:
@@ -157,11 +346,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_ldu8_64:
   case TOP_ldxu8_64:
   case TOP_ldxxu8_64:
-  case TOP_store8:
-  case TOP_storex8:
-  case TOP_storexx8:
-  case TOP_store8_n32:
-      return 1;
+  case TOP_ld8_abs:
+  case TOP_lock_xadd8:
+    return 1;
       
   case TOP_xor16:
   case TOP_xorx16:
@@ -196,14 +383,10 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_ldu16_64:
   case TOP_ldxu16_64:
   case TOP_ldxxu16_64:
-  case TOP_store16:
-  case TOP_storex16:
-  case TOP_storexx16:
-  case TOP_store16_n32:
   case TOP_fldcw:
-  case TOP_fnstcw:
-  case TOP_fistps:
   case TOP_filds:
+  case TOP_ld16_abs:
+  case TOP_lock_xadd16:
     return 2;
 
   case TOP_xorx32:
@@ -231,21 +414,10 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_ld32_64:
   case TOP_ldx32_64:
   case TOP_ldxx32_64:
-  case TOP_store32_n32:
-  case TOP_store32:
-  case TOP_storex32:
-  case TOP_storexx32:
-  case TOP_storenti32:
-  case TOP_storentix32:
-  case TOP_storentixx32:
   case TOP_ldss:
-  case TOP_stss:
   case TOP_ldss_n32:
-  case TOP_stss_n32:
   case TOP_ldssx:
   case TOP_ldssxx:
-  case TOP_stssx:
-  case TOP_stssxx:
   case TOP_addx32:
   case TOP_subx32:
   case TOP_addxx32:
@@ -267,14 +439,25 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_comixss:
   case TOP_comixxss:
   case TOP_comixxxss:
-  case TOP_fistpl:
   case TOP_fildl:
-  case TOP_fstps:
-  case TOP_fstps_n32:
   case TOP_flds:
   case TOP_flds_n32:
+  case TOP_ld32_abs:
+  case TOP_cvtsi2sd_x:
+  case TOP_cvtsi2sd_xx:
+  case TOP_cvtsi2sd_xxx:
+  case TOP_cvtsi2ss_x:
+  case TOP_cvtsi2ss_xx:
+  case TOP_cvtsi2ss_xxx:
+  case TOP_lock_add32:
+  case TOP_lock_adc32:
+  case TOP_lock_and32:
+  case TOP_lock_or32:
+  case TOP_lock_xor32:
+  case TOP_lock_sub32:
+  case TOP_lock_xadd32:
     return 4;
-      
+
   case TOP_xorx64:
   case TOP_xorxx64:
   case TOP_xorxxx64:
@@ -296,20 +479,12 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_ld64:
   case TOP_ldx64:
   case TOP_ldxx64:
-  case TOP_store64:
-  case TOP_storex64:
-  case TOP_storexx64:
-  case TOP_storenti64:
-  case TOP_storentix64:
-  case TOP_storentixx64:
   case TOP_ldsd_n32:
-  case TOP_stsd_n32:
   case TOP_ldsd:
-  case TOP_stsd:
   case TOP_ldsdx:
   case TOP_ldsdxx:
-  case TOP_stsdx:
-  case TOP_stsdxx:
+  case TOP_ld64_2m:
+  case TOP_ld64_2m_n32:
   case TOP_addx64:
   case TOP_subx64:
   case TOP_addxx64:
@@ -337,71 +512,41 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_icallx:
   case TOP_icallxx:
   case TOP_icallxxx:
-  case TOP_fistpll:
   case TOP_fildll:
-  case TOP_fstpl:
-  case TOP_fstpl_n32:
   case TOP_fldl:
   case TOP_fldl_n32:
+  case TOP_ld64_abs:
+  case TOP_ld64_off:
+  case TOP_cvtsd2ss_x:
+  case TOP_cvtsd2ss_xx:
+  case TOP_cvtsd2ss_xxx:
+  case TOP_cvtsi2sdq_x:
+  case TOP_cvtsi2sdq_xx:
+  case TOP_cvtsi2sdq_xxx:
+  case TOP_cvtsi2ssq_x:
+  case TOP_cvtsi2ssq_xx:
+  case TOP_cvtsi2ssq_xxx:
+  case TOP_lock_add64:
+  case TOP_lock_and64:
+  case TOP_lock_or64:
+  case TOP_lock_xor64:
+  case TOP_lock_sub64:
+  case TOP_lock_xadd64:
+  case TOP_fmovsldupx:
+  case TOP_fmovshdupx:
+  case TOP_fmovddupx:
+  case TOP_fmovsldupxx:
+  case TOP_fmovshdupxx:
+  case TOP_fmovddupxx:
+  case TOP_fmovsldupxxx:
+  case TOP_fmovshdupxxx:
+  case TOP_fmovddupxxx:
     return 8;
 
-  case TOP_lddqa:
-  case TOP_stdqa:
-  case TOP_lddqu:
-  case TOP_stdqu:
-  case TOP_ldlpd:
-  case TOP_ldhpd:
-  case TOP_ldlps:
-  case TOP_ldhps:
-  case TOP_ldaps:
-  case TOP_ldapd:
-  case TOP_stlpd:
-  case TOP_sthpd:
-  case TOP_stlps:
-  case TOP_sthps:
-  case TOP_staps:
-  case TOP_stapd:
-  case TOP_lddqax:
-  case TOP_stdqax:
-  case TOP_lddqux:
-  case TOP_stdqux:
-  case TOP_ldlpdx:
-  case TOP_ldhpdx:
-  case TOP_ldlpsx:
-  case TOP_ldhpsx:
-  case TOP_ldapsx:
-  case TOP_ldapdx:
-  case TOP_stlpdx:
-  case TOP_sthpdx:
-  case TOP_stlpsx:
-  case TOP_sthpsx:
-  case TOP_stapsx:
-  case TOP_stapdx:
-  case TOP_lddqaxx:
-  case TOP_stdqaxx:
-  case TOP_lddquxx:
-  case TOP_stdquxx:
-  case TOP_ldlpdxx:
-  case TOP_ldhpdxx:
-  case TOP_ldlpsxx:
-  case TOP_ldhpsxx:
-  case TOP_ldapsxx:
-  case TOP_ldapdxx:
-  case TOP_stlpdxx:
-  case TOP_sthpdxx:
-  case TOP_stlpsxx:
-  case TOP_sthpsxx:
-  case TOP_stapsxx:
-  case TOP_stapdxx:
   case TOP_fldt:
   case TOP_fldt_n32:
-  case TOP_fstpt:
-  case TOP_fstpt_n32:
     return 16;
   }
-
-  if (TOP_is_vector_op(topcode))
-    return 16;
 
   FmtAssert( false, ("Unknown mem ref bytes: %s", TOP_Name(topcode)) );
   return 0;
@@ -691,7 +836,7 @@ CGTARG_Print_PRC_INFO(
   const char *suffix
 )
 {
-  char *s;
+  const char *s;
   INT madds_per_cycle[2];
   INT memrefs_per_cycle[2];
   INT flops_per_cycle[2];
@@ -926,7 +1071,10 @@ CGTARG_Can_Be_Speculative( OP *op )
   /* don't speculate volatile memory references. */
   if (OP_volatile(op)) return FALSE;
 
-  if (TOP_Can_Be_Speculative(OP_code(op))) return TRUE;
+  // TOP_Can_Be_Speculative is a test for OPs that _cannot_ be speculated.
+  // Don't assume OP can be speculated just because TOP_Can_Be_Speculative
+  // returns TRUE.  Bug 13958.
+  if (!TOP_Can_Be_Speculative(OP_code(op))) return FALSE;
 
   if (!OP_load(op)) return FALSE;
 
@@ -1237,7 +1385,7 @@ void CGTARG_Compute_Branch_Parameters(INT32 *mispredict, INT32 *fixed, INT32 *br
   *brtaken = 0;
   *factor = 0.0;
 
-  if (Is_Target_Opteron() )
+  if (Is_Target_x86_64() )
   {
     *mispredict= 7; *fixed= 1; *brtaken= 1; *factor = 1.0;
   }
@@ -1281,10 +1429,15 @@ BOOL CGTARG_Can_Change_To_Brlikely(OP *xfer_op, TOP *new_opcode)
  *
  * ====================================================================
  */
+INT32 CGTARG_Latency( TOP op )
+{
+  return ( TI_LATENCY_Result_Available_Cycle(op,0) -
+	   TI_LATENCY_Operand_Access_Cycle(op,0) );
+}
+
 BOOL CGTARG_Is_Long_Latency(TOP op)
 {
-  return (TI_LATENCY_Result_Available_Cycle(op, 0) -
-	  TI_LATENCY_Operand_Access_Cycle(op, 0)) > 2;
+  return ( CGTARG_Latency(op) > 2 );
 }
 
 /* ====================================================================
@@ -1310,6 +1463,40 @@ VARIANT CGTARG_Analyze_Branch(
     }
   }
 
+#ifdef TARG_X8664
+  // Expand_Ordered_Select_Compare can generate a compare followed by 2
+  // conditional branches.  The second branch, jnp, will not have a cmp_op in
+  // its BB.  Search for the cmp_op in the first BB.
+  if (cmp_op == NULL) {
+    Is_True(OP_code(br) == TOP_jnp,
+	    ("CGTARG_Analyze_Branch: unexpected branch OP code"));
+    BBLIST *edge;
+    BB *fall_thru_pred = BB_Fall_Thru_Predecessor(OP_bb(br));
+    int preds = 0;
+    // Search all the preds.  The cmp op may or may not be in the fall thru
+    // pred because cflow may have rearranged the BBs.
+    FOR_ALL_BB_PREDS(OP_bb(br), edge) {
+      BB *pred = BBLIST_item(edge);
+      preds++;
+      // Find the cmp op.
+      for (OP* op = BB_last_op(pred); op != NULL; op = OP_prev(op)) {
+	if (TOP_is_change_rflags(OP_code(op))) {
+	  Is_True(cmp_op == NULL,
+		  ("CGTARG_Analyze_Branch: found multiple cmp ops"));
+	  cmp_op = op;
+	  break;
+	}
+      }
+#if !defined(Is_True_On)
+      if (cmp_op != NULL)
+	break;
+#endif
+    }
+    Is_True(preds == 2,
+	    ("CGTARG_Analyze_Branch: unexpected number of pred BBs"));
+  }
+#endif
+
   FmtAssert( cmp_op != NULL, ("compare op is missing") );
 
   if( OP_icmp( cmp_op ) ){
@@ -1324,6 +1511,8 @@ VARIANT CGTARG_Analyze_Branch(
 	OP_code(cmp_op) == TOP_testi64 ){
       if( *tn1 == *tn2 )
 	*tn2 = Gen_Literal_TN( 0, 4 );
+      else
+	return V_BR_NONE;
     }
   } else {
     /* The test operation has been removed by ebo. */
@@ -1368,9 +1557,18 @@ VARIANT CGTARG_Analyze_Branch(
     return OP_flop(cmp_op) ? V_BR_DNE : ( is_64bit ? V_BR_U8NE : V_BR_U4NE );
 
   case TOP_jp:
+  case TOP_jnp:
     // TOP_jp is used to force IEEE comparisons for TOP_jne and TOP_je.
     // So we cannot decide here.
     return V_BR_NONE;
+
+  case TOP_js:
+    Is_True(!OP_flop(cmp_op), ("CGTARG_Analyze_Branch: unexpected conditional branch %s for floating point\n", TOP_Name(OP_code(br))));
+    return ( is_64bit ? V_BR_I8LT0 : V_BR_I4LT0 );
+    
+  case TOP_jns:
+    Is_True(!OP_flop(cmp_op), ("CGTARG_Analyze_Branch: unexpected conditional branch %s for floating point\n", TOP_Name(OP_code(br))));
+    return ( is_64bit ? V_BR_I8GE0 : V_BR_I4GE0 );
     
   default:
     FmtAssert( false, ("unexpected conditional branch %s\n", TOP_Name(OP_code(br))) );
@@ -1517,6 +1715,12 @@ void CGTARG_Initialize(void)
      CGTARG_Invert_Table[b] = a;  \
    } while( 0 )
 
+#define Set_Immed_To_Reg_Table(a,b)    \
+   do {                                \
+     CGTARG_Immed_To_Reg_Table[a] = b; \
+     CGTARG_Immed_To_Reg_Table[b] = a; \
+   } while( 0 )
+
   INT32 i;
 
   /* Init all table entries to TOP_UNDEFINED.
@@ -1561,16 +1765,18 @@ void CGTARG_Initialize(void)
 
   /* Init table for CGTARG_Immed_To_Reg:
    */
-  CGTARG_Immed_To_Reg_Table[TOP_addi32] = TOP_add32;
-  CGTARG_Immed_To_Reg_Table[TOP_addi64] = TOP_add64;
-  CGTARG_Immed_To_Reg_Table[TOP_andi32] = TOP_and32;
-  CGTARG_Immed_To_Reg_Table[TOP_andi64] = TOP_and64;
-  CGTARG_Immed_To_Reg_Table[TOP_ori32]  = TOP_or32;
-  CGTARG_Immed_To_Reg_Table[TOP_ori64]  = TOP_or64;
-  CGTARG_Immed_To_Reg_Table[TOP_xori32] = TOP_xor32;
-  CGTARG_Immed_To_Reg_Table[TOP_xori64] = TOP_xor64;
-  CGTARG_Immed_To_Reg_Table[TOP_cmpi32] = TOP_cmp32;
-  CGTARG_Immed_To_Reg_Table[TOP_cmpi64] = TOP_cmp64;
+  Set_Immed_To_Reg_Table( TOP_addi32, TOP_add32 );
+  Set_Immed_To_Reg_Table( TOP_addi64, TOP_add64 );
+  Set_Immed_To_Reg_Table( TOP_andi32, TOP_and32 );
+  Set_Immed_To_Reg_Table( TOP_andi64, TOP_and64 );
+  Set_Immed_To_Reg_Table( TOP_ori32,  TOP_or32  );
+  Set_Immed_To_Reg_Table( TOP_ori64,  TOP_or64  );
+  Set_Immed_To_Reg_Table( TOP_xori32, TOP_xor32 );
+  Set_Immed_To_Reg_Table( TOP_xori64, TOP_xor64 );
+  Set_Immed_To_Reg_Table( TOP_cmpi32, TOP_cmp32 );
+  Set_Immed_To_Reg_Table( TOP_cmpi64, TOP_cmp64 );
+  Set_Immed_To_Reg_Table( TOP_imuli32,TOP_imul32 );
+  Set_Immed_To_Reg_Table( TOP_imuli64,TOP_imul64 );
 
 
   /* Init table for CGTARG_Inter_RegClass_Copy_Table:
@@ -1590,6 +1796,7 @@ void CGTARG_Initialize(void)
 				  [TRUE]  = TOP_UNDEFINED;
 
 #undef Set_Inv_Table
+#undef Set_Immed_To_Reg_Table
 
   return;
 }
@@ -1683,6 +1890,7 @@ INT CGTARG_Copy_Operand(OP *op)
       break;
     }
 
+  case TOP_movabsq:
   case TOP_ldc32:
   case TOP_ldc64:
     {
@@ -1700,6 +1908,11 @@ INT CGTARG_Copy_Operand(OP *op)
   case TOP_movapd:
   case TOP_movaps:
   case TOP_fmov:
+  case TOP_mov64_m:
+  case TOP_movm_2i32:
+  case TOP_movm_2i64:
+  case TOP_movi32_2m:
+  case TOP_movi64_2m:
     return 0;
 
   case TOP_mov32:
@@ -1732,6 +1945,11 @@ INT CGTARG_Copy_Operand(OP *op)
 	opr == TOP_movsd || opr == TOP_movss ||
 	opr == TOP_fmov )
       return 0;
+  }
+
+  if( OP_cond_move( op ) &&
+      TNs_Are_Equivalent( OP_result(op,0), OP_opnd(op,0) ) ){
+    return 0;
   }
 
   return -1;
@@ -1862,6 +2080,22 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 {
   FmtAssert( OP_bb(pred_op) == OP_bb(succ_op), ("NYI") );
 
+  /* Do not change the relative order for operations that store callee-saved
+     registers for exception handling code. Refer to bug#1928 for detail.
+     (bug#2205)
+  */
+
+  if( PU_Has_Exc_Handler ){
+    /* Don't bother to scan thru <Saved_Callee_Saved_Regs> one-by-one to save
+       us some compilation time.
+    */
+    if( BB_entry( OP_bb(pred_op) ) &&
+	OP_store( pred_op )        &&
+	OP_store( succ_op )        &&
+	TN_is_save_reg( OP_opnd(pred_op,0) ) )
+      return TRUE;
+  }
+
   /* If exists a dependence between <pred_op> and <succ_op>, then we can return
      to avoid generating superfluous MISC arcs.
   */
@@ -1921,15 +2155,28 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
     }
   }
 
-  /* Return TRUE if <pred_op> and <succ_op> are connected with x87 control-word.
+  /* Return TRUE if <pred_op> and <succ_op> are connected with x87
+     control-word.  Also return TRUE if one op changes the x87 control-word and
+     the other op is an x87 arithmetic instruction.
    */
   {
-    if( TOP_is_change_x87_cw( OP_code(pred_op) ) &&
-	TOP_is_read_x87_cw( OP_code(succ_op) ) )
+    if (TOP_is_change_x87_cw(OP_code(pred_op)) &&
+	(TOP_is_read_x87_cw(OP_code(succ_op)) ||
+	 TOP_is_x87(OP_code(succ_op))))
       return TRUE;
 
-    if( TOP_is_read_x87_cw( OP_code(pred_op) ) &&
-	TOP_is_change_x87_cw( OP_code(succ_op) ) )
+    if ((TOP_is_read_x87_cw(OP_code(pred_op)) ||
+	 TOP_is_x87(OP_code(pred_op))) &&
+	TOP_is_change_x87_cw(OP_code(succ_op)))
+      return TRUE;
+  }
+
+  /* Dependence exists between emms and x87/MMX OP.  Bug 11800. */
+  {
+    BOOL pred_is_x87_mmx = (OP_x87(pred_op) || OP_mmx(pred_op)) ? TRUE : FALSE;
+    BOOL succ_is_x87_mmx = (OP_x87(succ_op) || OP_mmx(succ_op)) ? TRUE : FALSE;
+    if ((OP_code(pred_op) == TOP_emms && succ_is_x87_mmx) ||
+	(OP_code(succ_op) == TOP_emms && pred_is_x87_mmx))
       return TRUE;
   }
 
@@ -1983,14 +2230,22 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 	if( OP_Writes_Dedicated_TN( pred_op, tmp_tn ) )
 	  return TRUE;
 
-	/* Bug#352
-	   For an operation like shift, its opnd will be re-defined at
-	   function Preallocate_Single_Register_Subclasses().
-	   Thus, an implicit WAR is imposed here.
-	*/
-	if( !TN_is_dedicated( OP_opnd(succ_op,i) ) &&
-	    OP_Reads_Dedicated_TN( pred_op, tmp_tn ) )
-	  return TRUE;
+	// For an operation like shift whose operand requires a specific
+	// dedicated register R, Preallocate_Single_Register_Subclasses() will
+	// insert a move to copy the original operand into R and replace the
+	// operand with R.  Thus, an implicit WAR exists between PRED_OP and
+	// SUCC_OP.  Bug 352.
+	if (OP_Reads_Dedicated_TN(pred_op, tmp_tn)) {
+	  // SUCC_OP's operand is not yet a dedicated register.  A copy will be
+	  // inserted.
+	  if (!TN_is_dedicated(OP_opnd(succ_op, i)))
+	    return TRUE;
+
+	  // SUCC_OP's operand is not the correct dedicated register.  A copy
+	  // will be inserted.  Bug 11781.
+	  else if (TN_register(OP_opnd(succ_op, i)) != TN_register(tmp_tn))
+	    return TRUE;
+	}
       }
     }
 
@@ -2013,6 +2268,12 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
       return TRUE;
 
     if (OP_code(succ_op) == TOP_leave)
+      return TRUE;
+
+    /* Under -fpic -m32, do not re-schedule operations that compute GOT.
+     */
+    if( OP_computes_got( pred_op ) ||
+	OP_computes_got( succ_op ) )
       return TRUE;
   }
 
@@ -2045,6 +2306,26 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 void
 CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT *latency)
 {
+  // Add latency between pointer load and pointer use.
+  if (CG_ptr_load_use_latency != 0 &&
+      kind == CG_DEP_REGIN &&
+      (OP_load(pred_op) ||
+       // Load-execute computes pointer, treat it like a pointer load.
+       OP_load_exe(pred_op)) &&
+      // Detect pointer use.
+      (OP_load(succ_op) ||
+       OP_store(succ_op) ||
+       OP_load_exe(succ_op) ||
+       OP_load_exe_store(succ_op))) {
+    int base_idx = OP_find_opnd_use(succ_op, OU_base);
+    int index_idx = OP_find_opnd_use(succ_op, OU_index);
+    if (opnd == base_idx ||
+	opnd == index_idx) {
+      *latency = MAX(*latency,
+		     TI_LATENCY_Result_Available_Cycle(OP_code(pred_op), 0)
+		       + CG_ptr_load_use_latency);
+    }
+  }
 }
 
 /* ====================================================================
@@ -2174,7 +2455,7 @@ CGTARG_Generate_Countdown_Loop ( TN *trip_count_tn,
   BOOL cmp_found = FALSE, incr_found = FALSE;
   INT opnd, result;
 
-  if (!CG_cloop)
+  if (!CG_LOOP_cloop)
     return;
 
   if (Loop_Countsdown_Xformed(tail))
@@ -2186,10 +2467,15 @@ CGTARG_Generate_Countdown_Loop ( TN *trip_count_tn,
   // Find the compare operation that sets the rflags preceding the 
   // branch instruction. Also, find the loop increment instruction.
   for ( op = branch->prev; op != NULL; op = op->prev ) {
-    if ( !cmp_found && 
-	( OP_code( op ) == TOP_cmp32 ||  OP_code( op ) == TOP_cmp64 ) ) {
-      cmp_found = TRUE;
-      cmp = op;
+    if (!cmp_found) {
+      // Quit if the comparion before the branch is actually a "test".  
+      if (OP_code(op) == TOP_test32 || OP_code(op) == TOP_test64)
+	return;
+
+      if (OP_code(op) == TOP_cmp32 || OP_code(op) == TOP_cmp64) {
+	cmp_found = TRUE;
+	cmp = op;
+      }
     }
 
     if ( !incr_found && cmp_found &&
@@ -2203,47 +2489,38 @@ CGTARG_Generate_Countdown_Loop ( TN *trip_count_tn,
 	 TN_value( OP_opnd ( op, 1 ) ) == 1 ) {
       incr_found = TRUE;
       incr = op;
-
-    } else if ( /* SAFETY CHECK */
-	       cmp_found && 
-	       ( OP_result( op, 0 ) == OP_opnd( cmp, 0 ) ||
-		 OP_result( op, 0 ) == OP_opnd( cmp, 1 ) ) ) {
-      incr_found = FALSE;
-      cmp_found = FALSE;
-      break;
-
-    } else if ( /* SAFETY CHECK */
-	       cmp_found &&
-	       TOP_is_store( OP_code( op ) ) && 
-	       ( OP_opnd( op, 0 ) == OP_opnd( cmp, 0 ) ||
-		 OP_opnd( op, 0 ) == OP_opnd( cmp, 1 ) ) ) {
-      // Make sure the operands to the cmp op is not one of those registers
-      // written out to memory every iteration of the loop.
-      incr_found = FALSE;
-      cmp_found = FALSE;
-      break;
-      
-    } else if ( /* SAFETY CHECK */
-	       incr_found ) {
-      TN* incr_result = OP_result ( incr, 0 );
-      for ( opnd = 0; opnd < OP_opnds( op ); opnd ++)
-	if ( OP_opnd ( op, opnd ) == incr_result ) {
-	  incr_found = FALSE;
-	  cmp_found = FALSE;
-	  break;
-	}
-      for ( result = 0; result < OP_results( op ); result ++)
-	if ( OP_result ( op, result ) == incr_result ) {
-	  incr_found = FALSE;
-	  cmp_found = FALSE;
-	  break;
-	}
-      if ( !incr_found && !cmp_found )
-	break;
     }
   }
-  if ( !incr_found || !cmp_found )
+
+  if (!incr_found || !cmp_found)
     return;
+
+  // Safety checks.  Note that OPs that define/use incr_result can appear
+  // anywhere before and after the incr OP.
+  TN *incr_result = OP_result(incr, 0);
+  for (op = branch->prev; op != NULL; op = op->prev) {
+    if (op == cmp || op == incr)
+      continue;
+
+    if (OP_result(op, 0 ) == OP_opnd(cmp, 0) ||
+	OP_result(op, 0 ) == OP_opnd(cmp, 1))
+      return;
+
+    // Make sure the operands to the cmp op is not one of those registers
+    // written out to memory every iteration of the loop.
+    if (TOP_is_store(OP_code(op)) &&
+	(OP_opnd(op, 0) == OP_opnd(cmp, 0) ||
+	 OP_opnd(op, 0) == OP_opnd(cmp, 1)))
+      return;
+      
+    for (opnd = 0; opnd < OP_opnds(op); opnd++)
+      if (OP_opnd(op, opnd) == incr_result)
+	return;
+
+    for (result = 0; result < OP_results(op); result++)
+      if (OP_result(op, result ) == incr_result)
+	return;
+  }
 
   // At this point, we know all we need to know to transform the
   // loop into a countdown loop.   
@@ -2294,12 +2571,97 @@ CGTARG_Generate_Countdown_Loop ( TN *trip_count_tn,
   return;  
 }
 
+STACK<OP*> Working_Set(Malloc_Mem_Pool);
+
+static inline TN* OP_opnd_use( OP* op, ISA_OPERAND_USE use )
+{
+  const int indx = OP_find_opnd_use( op, use );
+  return ( indx >= 0 ) ? OP_opnd( op, indx ) : NULL;
+}
+
+static TOP Movnti_Top(TOP old_top)
+{
+   switch(old_top){
+    case TOP_stapd:     return TOP_stntpd;   break;
+    case TOP_stapdx:    return TOP_stntpdx;  break;
+    case TOP_stapdxx:   return TOP_stntpdxx; break;
+    case TOP_staps:     return TOP_stntps;   break;
+    case TOP_stapsx:    return TOP_stntpsx;  break;
+    case TOP_stapsxx:   return TOP_stntpsxx; break;
+    case TOP_stdqa:     return TOP_stntpd;   break;
+    case TOP_stdqax:    return TOP_stntpdx;  break;
+    case TOP_stdqaxx:   return TOP_stntpdxx; break;
+
+    case TOP_store32:   return TOP_storenti32;   break;
+    case TOP_storex32:  return TOP_storentix32;  break;
+    case TOP_storexx32: return TOP_storentixx32; break;
+
+    case TOP_store64:   return TOP_storenti64;   break;
+    case TOP_storex64:  return TOP_storentix64;  break;
+    case TOP_storexx64: return TOP_storentixx64; break;
+
+    case TOP_stss:      return TOP_stntss; break;
+    case TOP_stssx:     return TOP_stntssx; break;
+    case TOP_stssxx:    return TOP_stntssxx; break;
+    case TOP_stsd:      return TOP_stntsd; break;
+    case TOP_stsdx:     return TOP_stntsdx; break;
+    case TOP_stsdxx:    return TOP_stntsdxx; break;
+    }
+   FmtAssert(FALSE,("Non-Temporal Store: not supported!"));
+   return TOP_UNDEFINED;
+}
+
+// Bug 3774 - Compute total working set size by counting
+// all disjoint source and destination bytes in the loop.
+BOOL Op_In_Working_Set ( OP* op )
+{
+  /* address = ofst + base + index * scale */
+  struct ADDRESS_COMPONENT {
+    TN* index;
+    TN* base;
+    TN* offset;
+    TN* scale;
+  } a, b;
+
+  bzero( &a, sizeof(a) );
+  a.scale  = OP_opnd_use( op, OU_scale );
+  a.base   = OP_opnd_use( op, OU_base );
+  a.index  = OP_opnd_use( op, OU_index );
+  a.offset = OP_opnd_use( op, OU_offset );
+  if (a.scale == NULL)
+    a.scale = Gen_Literal_TN( 1, 4 );
+
+  for (INT i = 0; i < Working_Set.Elements(); i++) {
+    OP* last = Working_Set.Top_nth(i);
+
+    bzero( &b, sizeof(b) );
+    b.scale  = OP_opnd_use( last, OU_scale );
+    b.base   = OP_opnd_use( last, OU_base );
+    b.index  = OP_opnd_use( last, OU_index );
+    b.offset = OP_opnd_use( last, OU_offset );    
+    if (b.scale == NULL)
+      b.scale = Gen_Literal_TN(1, 4);
+
+    if (((a.base && b.base && TNs_Are_Equivalent(b.base, a.base)) ||
+         (!a.base && !b.base)) &&
+	((a.index && b.index && TNs_Are_Equivalent(b.index, a.index)) ||
+	 (!a.index && !b.index)) && 	
+	TN_value(b.offset) == TN_value(a.offset) &&
+	TN_value(b.scale) == TN_value(a.scale))
+      return TRUE;
+  }
+  
+  Working_Set.Push(op);
+  return FALSE;
+}
 
 /* Convert temporal stores to non-temporal stores if the amount of data that
    <loop> will access is larger than the cache can provide.
  */
 void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 {
+  if(CG_movnti==0) return;
+
   UINT32 trip_count = 0;
   TN* trip_count_tn = CG_LOOP_Trip_Count(loop);
   BB* body = LOOP_DESCR_loophead(loop);
@@ -2318,15 +2680,16 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
   OP* op = NULL;
   INT64 size = 0;
 
+  Working_Set.Clear();
+
   /* First, estimate the totol size (in bytes) that this loop will
      bring to the cache.
   */
-
   FOR_ALL_BB_OPs_FWD( body, op ){
-    if( TOP_is_vector_op( OP_code(op) ) &&
-	OP_store( op )                  &&
-	!TOP_is_nt_store( OP_code(op) ) ){
-      size += CGTARG_Mem_Ref_Bytes( op );
+    if(((OP_store( op ) && !TOP_is_nt_store(OP_code(op))) || //stores
+	  OP_load(op) ) && //loads
+      !Op_In_Working_Set(op)){ //that were not in the working set
+      size += CGTARG_Mem_Ref_Bytes(op);
     }
   }
 
@@ -2336,7 +2699,9 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 
   if( size < cache_size )
     return;
-
+#if 0 //temporarily disable changeset of bug 11853 for bug 12036
+  BOOL dep_graph_computed = FALSE;
+#endif
   FOR_ALL_BB_OPs_FWD( body, op ){
     if( OP_prefetch( op ) ){
       /* Get rid of any prefetchw operation, because it "loads the prefetched
@@ -2347,39 +2712,129 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
       const ISA_ENUM_CLASS_VALUE pfhint = TN_enum( OP_opnd(op,0) );
       if( pfhint == ECV_pfhint_L1_store )
 	OP_Change_To_Noop( op );
+      
+      // Bug 5280 - prefetch ahead by 10 lines automatically if 
+      // stores are to be converted to non-temporal stores.
+      // Assumes cache line size is 64 bytes.
+      else if ( pfhint == ECV_pfhint_L1_L2_load && LNO_Prefetch_Ahead == 2 ) {
+	INT opnd_num = OP_find_opnd_use(op, OU_offset);
+	if (opnd_num >= 0 &&
+	    TN_has_value(OP_opnd(op, opnd_num))) {
+	  TN *tn = OP_opnd(op, opnd_num);
+	  Set_OP_opnd(op, opnd_num,
+		      Gen_Literal_TN(TN_value(tn) + 64*8, TN_size(tn)));
+	}
+      }
+
+      if ( pfhint == ECV_pfhint_L1_L2_load ) {
+	switch(OP_code(op)) {
+	case TOP_prefetcht0:   OP_Change_Opcode(op, TOP_prefetchnta); break;
+	case TOP_prefetcht0x:  OP_Change_Opcode(op, TOP_prefetchntax); break;
+	case TOP_prefetcht0xx: OP_Change_Opcode(op, TOP_prefetchntaxx); break;
+        case TOP_prefetchnta:
+        case TOP_prefetchntax:
+        case TOP_prefetchntaxx: break; //do nothing             
+	default: FmtAssert(FALSE, ("NYI"));
+	}
+      }	
+
       continue;
     }
 
-    /* Here we chang any store to a non-temporal store.
-     */
+    /* Change a store to a non-temporal store.
 
-    TOP new_top = TOP_UNDEFINED;
+       Perform the change only if the store doesn't involve a cache line that
+       is reused.  Detect reuse by looking for OPs that load the same memory
+       location.  It doesn't matter if the load is before or after the store,
+       since the load will involve the same cache line.  Bug 11853. */
+ /* temporarily disable this changeset for two reasons:
+  (1) we may need to consider load forwarding (even though there are reuses, no
+      cache line is required)
+  (2) this change provents performance tuning using -CG:movnti in some case 
+      (bug 12036)
+ */
+#if 0 
+    BOOL skip = FALSE;
+    if (TOP_is_vector_op(OP_code(op)) &&
+	((OP_store(op) &&
+	  !TOP_is_nt_store(OP_code(op))))) {
+      ARC_LIST *arcs;
+      if (dep_graph_computed == FALSE) {
+	CG_DEP_Compute_Graph(body, NO_ASSIGNED_REG_DEPS, NON_CYCLIC,
+			     INCLUDE_MEMREAD_ARCS, INCLUDE_MEMIN_ARCS,
+			     NO_CONTROL_ARCS, NULL );
+	dep_graph_computed = TRUE;
+      }
+      for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+	ARC *arc = ARC_LIST_first(arcs);
+	if (ARC_kind(arc) == CG_DEP_MEMIN ||
+	    ARC_kind(arc) == CG_DEP_MEMANTI) {
+	  skip = TRUE;
+	  break;
+	}
+      }
+      if (skip == TRUE)
+        continue;
 
-    switch( OP_code(op) ){
-    case TOP_stapd:   new_top = TOP_stntpd;   break;
-    case TOP_stapdx:  new_top = TOP_stntpdx;  break;
-    case TOP_stapdxx: new_top = TOP_stntpdxx; break;
-    case TOP_staps:   new_top = TOP_stntps;   break;
-    case TOP_stapsx:  new_top = TOP_stntpsx;  break;
-    case TOP_stapsxx: new_top = TOP_stntpsxx; break;
-    case TOP_stdqa:   new_top = TOP_stntpd;   break;
-    case TOP_stdqax:  new_top = TOP_stntpdx;  break;
-    case TOP_stdqaxx: new_top = TOP_stntpdxx; break;
-#if 0
-    case TOP_store32:   new_top = TOP_storenti32;   break;
-    case TOP_storex32:  new_top = TOP_storentix32;  break;
-    case TOP_storexx32: new_top = TOP_storentix32;  break;
-
-    case TOP_store64:   new_top = TOP_storenti64;   break;
-    case TOP_storex64:  new_top = TOP_storentix64;  break;
-    case TOP_storexx64: new_top = TOP_storentix64;  break;
+      for (arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+	ARC *arc = ARC_LIST_first(arcs);
+	if (ARC_kind(arc) == CG_DEP_MEMIN ||
+	    ARC_kind(arc) == CG_DEP_MEMANTI) {
+	  skip = TRUE;
+	  break;
+	}
+      }
+      if (skip == TRUE)
+        continue;
+    }
 #endif
-    }
-
-    if( new_top != TOP_UNDEFINED ){
+    TOP new_top = TOP_UNDEFINED;
+    switch( OP_code(op) ){
+    //SSE support
+    case TOP_staps:
+    case TOP_stapsx:
+    case TOP_stapsxx: {
+         new_top = Movnti_Top(OP_code(op));
+         break;
+       }
+    //SSE2 support
+    case TOP_stapd:
+    case TOP_stapdx:
+    case TOP_stapdxx:
+    case TOP_stdqa:
+    case TOP_stdqax:
+    case TOP_stdqaxx:
+    case TOP_store32:
+    case TOP_storex32:
+    case TOP_storexx32:
+    case TOP_store64:
+    case TOP_storex64:
+    case TOP_storexx64: {
+// Bug 14393 : TOP_is_vector_op restriction added
+         if(Is_Target_SSE2() && TOP_is_vector_op(OP_code(op)))
+	  new_top = Movnti_Top(OP_code(op));
+         break;
+       }
+    //SSE4a support
+    case TOP_stss:
+    case TOP_stssx:
+    case TOP_stssxx:
+    case TOP_stsd:
+    case TOP_stsdx:
+    case TOP_stsdxx: {
+         if(Is_Target_SSE4a())
+            new_top = Movnti_Top(OP_code(op));
+         break;
+       }
+    }//end switch
+    
+   if( new_top != TOP_UNDEFINED )
       OP_Change_Opcode( op, new_top );
-    }
   }
+#if 0 //temporarily disable the changeset of bug 11853 for bug 12036
+  if (dep_graph_computed == TRUE)
+    CG_DEP_Delete_Graph(body);
+#endif
 }
 
 
@@ -2422,6 +2877,16 @@ CGTARG_Init_Asm_Constraints (void)
   asm_constraint_index = 0;
 }
 
+#define CONST_OK_FOR_LETTER(VALUE, C)                           \
+  ((C) == 'I' ? (VALUE) >= 0 && (VALUE) <= 31                   \
+   : (C) == 'J' ? (VALUE) >= 0 && (VALUE) <= 63                 \
+   : (C) == 'K' ? (VALUE) >= -128 && (VALUE) <= 127             \
+   : (C) == 'L' ? (VALUE) == 0xff || (VALUE) == 0xffff          \
+   : (C) == 'M' ? (VALUE) >= 0 && (VALUE) <= 3                  \
+   : (C) == 'N' ? (VALUE) >= 0 && (VALUE) <= 255                \
+   : (C) == 'i' ? ((VALUE) >> 32) == 0 || ((VALUE) >> 32) == -1 \
+   : (C) == 'n' ? 1                                             \
+   : 0)
 
 // -----------------------------------------------------------------------
 // Given a constraint for an ASM parameter, and the load of the matching
@@ -2443,6 +2908,8 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   {
     constraint++;
   }
+
+  const char* initial_constraint = constraint;
   
   // TODO: we should really look at multiple specified constraints
   // and the load in order to select the best TN, but for now we
@@ -2465,7 +2932,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   
   // prefer register/memory over immediates; this isn't optimal, 
   // but we may not always be able to generate an immediate
-  static const char* immediates = "in";
+  static const char* immediates = "inIJKLMNO";
   // Bug 950
   // The '#' in a constraint is inconsequential or it is just a typo
   static const char* hash = "#";
@@ -2476,7 +2943,25 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       }
   }
 
+  // Bug 14409: In contrast to what the above comment says about
+  // preferring register to immediates, immediates should always be
+  // preferred if it is possible to generate one. Otherwise, if it
+  // is a constant, it is not easy to decode any type cast it may have,
+  // giving the possibility of a wrong register width.
+  // See if there is an immediate constraint.
+  const char * found_immediate = initial_constraint; // original constraint
+  while (!strchr(immediates, *found_immediate) && *(found_immediate+1)) 
+  {
+    found_immediate++;
+  }
+
+  // Is there an immediate constraint, and is the load a constant?
+  if (strchr(immediates, *found_immediate) &&
+      WN_operator(load) == OPR_INTCONST)
+    constraint = found_immediate; // generate an immediate
+
   TN* ret_tn;
+  BOOL first = FALSE, second = FALSE, third = FALSE, fourth = FALSE;
   
   // TODO: check that the operand satisifies immediate range constraint
   if (strchr(immediates, *constraint))
@@ -2486,17 +2971,38 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       // immediate could have been put in preg by wopt
       load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
     }
-    FmtAssert(load && WN_operator(load) == OPR_INTCONST, 
+    FmtAssert(load && (WN_operator(load) == OPR_INTCONST ||
+                       (WN_operator(load) == OPR_LDA &&
+                        ST_sym_class(WN_st(load)) == CLASS_CONST)),
               ("Cannot find immediate operand for ASM"));
-    ret_tn = Gen_Literal_TN(WN_const_val(load), 
-                            MTYPE_bit_size(WN_rtype(load))/8);
+    if (WN_operator(load) == OPR_INTCONST)
+    {
+      ret_tn = Gen_Literal_TN(WN_const_val(load), 
+                              MTYPE_bit_size(WN_rtype(load))/8);
+      // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
+      FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint), 
+       ("The value of immediate operand supplied is not within expected range."));
+    }
+    else
+    {
+      // Bug 14390: string constant with an immediate constraint
+      ST * base;
+      INT64 ofst;
+      // Allocate the string to the rodata section
+      Allocate_Object (WN_st(load));
+      Base_Symbol_And_Offset (WN_st(load), &base, &ofst);
+      ret_tn = Gen_Symbol_TN(base, ofst, 0);
+    }
   }
   // digit constraint means that we should reuse a previous operand
   else if (isdigit(*constraint))
   {
-    INT prev_index = *constraint - '0';
-    FmtAssert(asm_constraint_tn[prev_index], 
-              ("numeric matching constraint refers to NULL value"));
+    // TODO: make sure that frontend checks that string is number
+    INT prev_index = strtol(constraint, NULL, 10);
+    if (prev_index < 0 || prev_index >= asm_constraint_index ||
+        ! asm_constraint_tn[prev_index] ) {
+       FmtAssert( FALSE, ("invalid matching constraint reference") );
+    }
     ret_tn = asm_constraint_tn[prev_index];
   }
   else if (strchr("m", *constraint) || strchr("g", *constraint))
@@ -2512,6 +3018,8 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 	   (*constraint == 'd') || (*constraint == 'c') ||
 	   (*constraint == 'S') || (*constraint == 'D') || 
 	   (*constraint == 'A') || (*constraint == 'q') || 
+	   (*constraint == 'Q') || 
+	   (*constraint == 'Z') ||  // bug 14413: handle 'Z' similar to 'e'.
 	   (*constraint == 'e' && *(constraint+1) == 'r'))
   {
     TYPE_ID rtype;
@@ -2519,6 +3027,21 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
     if (load != NULL) {
       // Bugs 482, 505, 626, 1045
       rtype = (WN_desc(load) == MTYPE_V) ? WN_rtype(load) : WN_desc(load);
+      if (WN_operator(load) == OPR_CVTL) { // Bug 3223
+	switch (WN_cvtl_bits(load)) { 
+	// Don't care signed/unsigned but the width should be set right.
+	case 32: rtype = MTYPE_U4; break;
+	case 16: rtype = MTYPE_U2; break;
+	case 8:  rtype = MTYPE_U1; break;
+	default: FmtAssert(FALSE, ("NYI")); 
+	}
+      }
+      else if (WN_operator(load) == OPR_CVT /* bug 14419 */ ||
+               // CVT may have been folded into the load, but the rtype
+               // cannot always be taken, for example, in U4U2LDID.
+               (WN_operator(load) == OPR_LDID &&
+                WN_desc(load) == MTYPE_U4)) // bug 14427
+        rtype = WN_rtype(load);
     } else {
       /* We can't figure out what type the operand is, probably because the
 	 optimizer deleted the references to it, so return some default type */      
@@ -2548,6 +3071,15 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 				  MTYPE_byte_size(rtype));
     } else     
       ret_tn = Build_TN_Of_Mtype(rtype);
+
+    if (*constraint == 'q' || *constraint == 'Q') {
+      // For m64, although all 16 integer registers can be addressed as 8-bit
+      // registers, use only AX/BX/CX/DX for the 8-bit 'q' constraint.  An ASM,
+      // such as "%h1", may ask for the second least significant byte of the
+      // register to be the 8-bit register, for example "ah".  Only AX/BX/CX/DX
+      // allows this type of addressing.  Bug 9598.
+      *subclass = ISA_REGISTER_SUBCLASS_m32_8bit_regs;
+    }
   }
   else if (*constraint == 't' || *constraint == 'u')
   {
@@ -2568,12 +3100,23 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       mtype = WN_rtype(load);
     ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(mtype));
   }
+  else if (*constraint == 'X') // bug 11884
+  {
+    TYPE_ID mtype = MTYPE_I4;    
+    if (load)
+      mtype = WN_rtype(load);
+    ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(mtype));
+  }
   else if (*constraint == 'Y')
   {
     TYPE_ID mtype = MTYPE_F8;    
     if (load)
       mtype = WN_rtype(load);
     ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(mtype));
+  }
+  else if (*constraint == 'y')
+  {
+    ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_float));
   }
   else
   {
@@ -2587,7 +3130,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 }
 
 
-static char *
+static const char *
 Get_TN_Assembly_Name (TN *tn)
 {
   return "moo";
@@ -2595,7 +3138,7 @@ Get_TN_Assembly_Name (TN *tn)
 
 void
 CGTARG_TN_And_Name_For_Asm_Constraint (char *constraint, TYPE_ID mtype,
-	TYPE_ID desc, TN **tn, char **name)
+	TYPE_ID desc, TN **tn, const char **name)
 {
 	INT i;
 	if (*constraint == '=') {
@@ -2630,14 +3173,21 @@ CGTARG_TN_And_Name_For_Asm_Constraint (char *constraint, TYPE_ID mtype,
 	case '6':
 	case '7':
 	case '8':
-	case '9':
-		i = *constraint - '0';
-		FmtAssert(asm_constraint_tn[i], 
-		    ("numeric matching constraint refers to NULL value"));
+	case '9': {
+                i = strtol(constraint, NULL, 10);
+                if (i < 0 || i >= asm_constraint_index || ! asm_constraint_tn[i] ) {
+                    FmtAssert( FALSE, ("invalid matching constraint reference") );
+                }
+
+                *tn = asm_constraint_tn[i];
+                asm_constraint_tn[asm_constraint_index] = *tn;
+
+                *name = asm_constraint_name[i];
+                strcpy(asm_constraint_name[asm_constraint_index],*name);
+
 		++asm_constraint_index;
-		*tn = asm_constraint_tn[i];
-		*name = asm_constraint_name[i];
 		return;
+        }
 	case 'i':
 		// let caller figure out the name
 		*tn = NULL;
@@ -2657,6 +3207,7 @@ CGTARG_TN_And_Name_For_Asm_Constraint (char *constraint, TYPE_ID mtype,
 	    	sprintf(asm_constraint_name[asm_constraint_index], "%s", 
 			*name);
 	}
+
 	*name = asm_constraint_name[asm_constraint_index];
 	++asm_constraint_index;
 }
@@ -2716,6 +3267,82 @@ CGTARG_Modified_Asm_Opnd_Name(char modifier, TN* tn, char *tn_name)
   /*NOTREACHED*/
 }
 
+/* For the "m" constraint, there is no need to introduce op like
+           TN108 :- lea32 TN4(%rsp) (sym:size+0)
+   otherwise, all the registers will be used up pretty soon.
+   The fix here is to remove the op that computes the address,
+   and put the offset tn into opnd[num_opnds]. According this
+   offset tn, later phase in Modify_Asm_String will generate
+   the right offset and base info.   (bug#3111)
+*/
+TN* CGTARG_Process_Asm_m_constraint( WN* load, void** offset, OPS* ops )
+{
+  Is_True( load != NULL, ("Asm_m_constraint: load is NULL") );
+  TN* asm_opnd = NULL;
+
+  if( WN_operator(load) == OPR_LDA ){
+    OP* lda_op = OPS_last( ops );
+    asm_opnd = OP_iadd(lda_op) ? OP_opnd( lda_op, 1 ) : OP_opnd( lda_op, 0 );
+    OPS_Remove_Op( ops, lda_op );
+
+  } else if( WN_operator(load) == OPR_ADD ){
+    OP* add_op = OPS_last( ops );
+    TN* ofst_tn = OP_opnd( add_op, 1 );
+
+    if( !TN_is_constant(ofst_tn) )
+      return NULL;
+
+    *offset = (void*)Gen_Literal_TN( TN_value(ofst_tn), 4 );
+
+    asm_opnd = OP_opnd( add_op, 0 );
+    OPS_Remove_Op( ops, add_op );
+
+    /* Do some pattern matching to save one register by removing
+       duplicated load.
+    */
+
+    OP* ld_op = OPS_last(ops);
+    if( ld_op != NULL  &&
+	OP_load(ld_op) &&
+	OP_result(ld_op,0) == asm_opnd ){
+
+      for( OP* prev_ld = OP_prev(ld_op);
+	   prev_ld != NULL;
+	   prev_ld = OP_prev(prev_ld) ){
+
+	if( OP_store(prev_ld) )
+	  break;
+
+	if( OP_load(prev_ld) &&
+	    OP_opnds(prev_ld) == OP_opnds(ld_op) ){
+	  bool match = true;
+	  for( int i = 0; i < OP_opnds(ld_op); i++ ){
+	    if( OP_opnd(prev_ld,i) != OP_opnd(ld_op,i) ){
+	      match = false;
+	      break;
+	    }
+	  }
+
+	  if( match ){
+	    OPS_Remove_Op( ops, ld_op );
+	    asm_opnd = OP_result( prev_ld, 0 );
+	    break;
+	  }
+	}
+      }
+    }
+
+  } else if( WN_operator(load) == OPR_LDID ){
+    ;
+
+  } else {
+    DevWarn( "Asm_m_constraint: Unsupported opcode (%s)",
+	     OPCODE_name(WN_opcode(load)) );
+    return NULL;
+  }
+
+  return asm_opnd;
+}
 
 /* ====================================================================
  *
@@ -2868,19 +3495,40 @@ CGTARG_Check_OP_For_HB_Suitability(OP *op)
 
 TN* CGTARG_Gen_Dedicated_Subclass_TN( OP* op, int idx, BOOL is_result )
 {
-  TN* tn = is_result ? OP_result( op, idx ) : OP_opnd( op, idx );
-  if( TN_is_dedicated(tn) )
-    return tn;
-
   const ISA_REGISTER_SUBCLASS subclass = is_result ?
     OP_result_reg_subclass( op, idx ) : OP_opnd_reg_subclass( op, idx );
   const REGISTER_SET subclass_regs = REGISTER_SUBCLASS_members(subclass);
 
-  if( REGISTER_SET_Size(subclass_regs) != 1 )
-    return NULL;
+  if( REGISTER_SET_Size(subclass_regs) != 1 ){
+    TN* tn = is_result ? OP_result( op, idx ) : OP_opnd( op, idx );
+    return TN_is_dedicated(tn) ? tn : NULL;
+  }
 
   const REGISTER reg = REGISTER_SET_Choose(subclass_regs);
   const ISA_REGISTER_CLASS rc = REGISTER_SUBCLASS_register_class(subclass);
 
   return Build_Dedicated_TN( rc, reg, 0 );
+}
+
+
+// Return TRUE if OP accesses thread-local memory.
+BOOL
+CGTARG_Is_Thread_Local_Memory_OP (OP* op)
+{
+  TOP code = OP_code(op);
+
+  int base_opnd = TOP_Find_Operand_Use(code, OU_base);
+  if (base_opnd != -1 &&
+      TN_is_thread_seg_ptr(OP_opnd(op, base_opnd))) {
+    return TRUE;
+  }
+
+  int offset_opnd = TOP_Find_Operand_Use(code, OU_offset);
+  if (offset_opnd != -1 &&
+      (TN_relocs(OP_opnd(op, offset_opnd)) == TN_RELOC_X8664_TPOFF32 ||
+       TN_relocs(OP_opnd(op, offset_opnd)) == TN_RELOC_X8664_TPOFF32_seg_reg)) {
+    return TRUE;
+  }
+
+  return FALSE;
 }

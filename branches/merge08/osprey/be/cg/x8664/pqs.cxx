@@ -51,7 +51,6 @@ restrictions:
 
 ================================================================*/
 
-
 #ifndef PQSTEST
 #include "defs.h"
 #include "pqs_defs.h"
@@ -101,6 +100,7 @@ enum truth_val {
 //================================================================
 
 
+template<>
 void PQS_TN_SET::Print(FILE *f,BOOL newline)
 {
   PQS_TN_SET_TYPE::iterator p;
@@ -115,6 +115,7 @@ void PQS_TN_SET::Print(FILE *f,BOOL newline)
   if (newline) fprintf(f,"\n");
 }
 
+template<>
 void PQS_TNI_SET::Print(FILE *f, BOOL newline)
 {
   PQS_TNI_SET::set_iterator_type p;
@@ -1202,9 +1203,9 @@ PQS_MANAGER::Simplify_In_Set(PQS_NODE_IDX tni, PQS_TN tn, PQS_TNI_SET &tnis)
 //================================================================
 
 // Dumping routines
-static char * itype_name(PQS_ITYPE p)
+static const char * itype_name(PQS_ITYPE p)
 {
-   char *r;
+   const char *r;
    switch (p) {
     case PQS_ITYPE_INVALID: r = " PQS_ITYPE_INVALID"; break;
     case PQS_ITYPE_NOPREDICATES: r = " PQS_ITYPE_NOPREDICATES"; break;
@@ -1240,7 +1241,7 @@ void PQS_MANAGER::Print_idx(PQS_NODE_IDX p, FILE *f)
    _data[p].Print(f);
 }
 
-static char * get_nq_flag(TN *tn)
+static const char * get_nq_flag(TN *tn)
 {
   if (tn && PQS_TN_no_query(tn)) return ("*");
   return ("");

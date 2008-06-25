@@ -38,10 +38,10 @@
 // ====================================================================
 //
 //  Module: cg_grouping.h
-//  $Revision: 1.1 $
-//  $Date: 2005/07/27 02:13:22 $
-//  $Author: kevinlo $
-//  $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/x8664/cg_grouping.h,v $
+//  $Revision$
+//  $Date$
+//  $Author$
+//  $Source$
 //
 //  Synopsis:
 //

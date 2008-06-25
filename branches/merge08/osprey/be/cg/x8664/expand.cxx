@@ -1,5 +1,13 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC. All Rights Reserved.
+ */
+
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,10 +49,10 @@
  * ====================================================================
  *
  * Module: expand.c
- * $Revision: 1.1 $
- * $Date: 2005/07/27 02:13:22 $
- * $Author: kevinlo $
- * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/x8664/expand.cxx,v $
+ * $Revision: 1.363 $
+ * $Date: 05/12/01 12:16:40-08:00 $
+ * $Author: cfang@dunite.internal.keyresearch.com $
+ * $Source: be/cg/x8664/SCCS/s.expand.cxx $
  *
  * Description:
  *
@@ -59,7 +67,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "config.h"
@@ -88,13 +95,14 @@
 #include "targ_sim.h"   /* To generate stores of param registers in builtin_apply_args */
 #include "targ_const_private.h"
 #include "config_opt.h" /* For Force_IEEE_Comparisons */
+#include "intrn_info.h" // for INTRN_rt_name
+#ifdef KEY
+#include "ebo.h"
+#endif
 
 BOOL Reuse_Temp_TNs = FALSE;
 
 BOOL Trace_Exp2 = FALSE;      /* extra cgexp trace*/
-
-/* Disable conversion of constant integer multiplies into shift/adds:*/
-static BOOL Disable_Const_Mult_Opt = FALSE;
 
 /* Dup_TN won't dup a dedicated tn, but for our purposes we
  * can just re-use the dedicated tn.  Don't want to re-use a
@@ -105,8 +113,127 @@ static BOOL Disable_Const_Mult_Opt = FALSE;
  * but for now we can use other routine that create a real dup tn. */
 #define DUP_TN(tn)	Dup_TN_Even_If_Dedicated(tn)
 
+static BOOL Target_Support_Cmov()
+{
+  if (Is_Target_32bit() &&
+      (Target == TARGET_anyx86 ||
+       Target == TARGET_pentium4 ||
+       Target == TARGET_xeon ||
+       Target == TARGET_athlon) )
+    return FALSE;
+  else
+    return TRUE;
+}
 
 static TN_MAP _TN_Pair_table = NULL;
+
+static TN *Exp_Fetch_and_Add (TN *addr, TN *opnd1, TYPE_ID mtype, OPS *ops);
+
+void
+Expand_Cmov (TOP top, TN *result, TN *src, TN *rflags, OPS *ops, TN *result2,
+	     TN *src2)
+{
+  // OSP, laijx
+  if ( ! Target_Support_Cmov() ) {
+    // Processor doesn't support cmov.  Emit conditional branch followed by
+    // mov.
+
+    TN *tmp_result = result;
+    TN *tmp_result2 = result2;
+
+    if (TN_is_dedicated(result)) {
+      tmp_result = Build_TN_Like(result);
+    }
+    if (result2 != NULL &&
+	TN_is_dedicated(result2)) {
+      tmp_result2 = Build_TN_Like(result2);
+    }
+
+    // Determine the branch instruction from the cmov.
+    TOP br_top;
+    switch (top) {
+      case TOP_cmovb:	br_top = TOP_jae;	break;
+      case TOP_cmovae:	br_top = TOP_jb;	break;
+      case TOP_cmovp:	br_top = TOP_jnp;	break;
+      case TOP_cmovnp:	br_top = TOP_jp;	break;
+      case TOP_cmove:	br_top = TOP_jne;	break;
+      case TOP_cmovne:	br_top = TOP_je;	break;
+      case TOP_cmovbe:	br_top = TOP_ja;	break;
+      case TOP_cmova:	br_top = TOP_jbe;	break;
+      case TOP_cmovl:	br_top = TOP_jge;	break;
+      case TOP_cmovge:	br_top = TOP_jl;	break;
+      case TOP_cmovle:	br_top = TOP_jg;	break;
+      case TOP_cmovg:	br_top = TOP_jle;	break;
+      case TOP_cmovs:	br_top = TOP_jns;	break;
+      case TOP_cmovns:	br_top = TOP_js;	break;
+      case TOP_fcmovb:	br_top = TOP_jae;	break;
+      case TOP_fcmovbe:	br_top = TOP_ja;	break;
+      case TOP_fcmovnb:	br_top = TOP_jb;	break;
+      case TOP_fcmovnbe: br_top = TOP_jbe;	break;
+      case TOP_fcmove:	br_top = TOP_jne;	break;
+      case TOP_fcmovne:	br_top = TOP_je;	break;
+      case TOP_fcmovu:	br_top = TOP_jnp;	break;	// br if PF=0
+      case TOP_fcmovnu:	br_top = TOP_jp;	break;	// br if Pf=1
+      default:		FmtAssert(FALSE, ("Expand_Cmov: unexpected OP code"));
+    }
+    BB *bb_entry = Cur_BB;
+    BB *bb_then = Gen_And_Append_BB(bb_entry);
+    BB *bb_exit = Gen_And_Append_BB(bb_then);
+
+    const LABEL_IDX bb_exit_label = Gen_Label_For_BB(bb_exit);
+
+    BB_branch_wn(bb_entry) = WN_Create(OPC_TRUEBR, 1);
+    WN_kid0(BB_branch_wn(bb_entry)) = NULL;
+    WN_label_number(BB_branch_wn(bb_entry)) = bb_exit_label;
+
+    // Build bb_entry.
+    {
+      if (result != tmp_result) {
+	Exp_COPY(tmp_result, result, ops);
+      }
+      if (result2 != NULL &&
+	  result2 != tmp_result) {
+	Exp_COPY(tmp_result2, result2, ops);
+      }
+      Build_OP(br_top, rflags, Gen_Label_TN(bb_exit_label, 0), ops);
+      if (&New_OPs != ops)
+        OPS_Append_Ops(&New_OPs, ops);
+      Process_New_OPs();
+      BB_Append_Ops(bb_entry, &New_OPs);
+      OPS_Init(&New_OPs);
+      OPS_Init(ops);
+    }
+
+    // Build bb_then.
+    {
+      OPS *bb_then_ops = &New_OPs;
+      Exp_COPY(tmp_result, src, bb_then_ops);
+      if (result2 != NULL)
+        Exp_COPY(tmp_result2, src2, bb_then_ops);
+      total_bb_insts = 0;
+      Last_Processed_OP = NULL;
+      Process_New_OPs();
+      BB_Append_Ops(bb_then, bb_then_ops);
+      OPS_Init(bb_then_ops);
+    }
+
+    Cur_BB = bb_exit;
+
+    if (result != tmp_result)
+      Exp_COPY(result, tmp_result, ops);
+    if (result2 != tmp_result2)
+      Exp_COPY(result2, tmp_result2, ops);
+  } else {
+    // Processor supports cmov.
+    Build_OP(top, result, src, rflags, ops);
+    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+    if (result2 != NULL) {
+      Is_True(src2 != NULL, ("Expand_Cmov: invalid src2"));
+      Build_OP(top, result2, src2, rflags, ops);
+      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+    }
+  }
+}
 
 void Expand_Start()
 {
@@ -134,7 +261,7 @@ TN* Get_TN_Pair( TN* key )
 
 void Create_TN_Pair( TN* key, TN* pair )
 {
-  Is_True( Get_TN_Pair( key ) == NULL, ("Add_TN_Pair: NYI") );
+  Is_True( Get_TN_Pair( key ) == NULL, ("Add_TN_Pair: higher 32-bit is missing") );
   TN_MAP_Set( _TN_Pair_table, key, pair );    
 }
 
@@ -144,7 +271,7 @@ void Create_TN_Pair( TN* key, TN* pair )
  */
 TN* Create_TN_Pair( TN* key, TYPE_ID mtype )
 {
-  FmtAssert( TN_is_register(key), ("NYI") );
+  FmtAssert( TN_is_register(key), ("TN is not a register type") );
 
   if( mtype == MTYPE_I8 )
     mtype = MTYPE_I4;
@@ -180,21 +307,48 @@ void Expand_Finish()
   _TN_Pair_table = NULL;
 }
 
+static TN* Gen_Const_Symbol_TN( INT64 int_val,
+				double float_val,
+				TYPE_ID mtype,
+				TN_RELOCS relocs = TN_RELOC_NONE )
+{
+  FmtAssert( !MTYPE_is_quad(mtype), ("Quad const is not supported") );
+  FmtAssert( !MTYPE_is_vector(mtype), ("Vector const is not supported") );
+
+  const TCON tcon = MTYPE_is_integral(mtype)
+    ? Host_To_Targ( mtype, int_val ) : Host_To_Targ_Float( mtype, float_val );
+
+  ST* sym = New_Const_Sym( Enter_tcon(tcon),  Be_Type_Tbl( TCON_ty(tcon) ) );
+
+  ST* base_sym = NULL;
+  INT64 base_ofst = 0;
+
+  Allocate_Object(sym);
+  Base_Symbol_And_Offset_For_Addressing( sym, 0, &base_sym, &base_ofst );
+
+  return Gen_Symbol_TN( base_sym, base_ofst, relocs );
+}
+
 
 /*  <result> = <cmp_kid1> <compare> <cmp_kid2> ? <true_tn> : <false_tn>
  */
-static void Expand_Split_Select( TN* result, OPERATOR compare, TOP cmp_opcode,
+static void Expand_Split_Select( TN* dest, OPERATOR compare, TOP cmp_opcode,
 				 TN* cmp_kid1, TN* cmp_kid2, TYPE_ID cmp_type,
 				 TN* true_tn, TN* false_tn, TYPE_ID select_type,
 				 OPS* ops )
 {
-  FmtAssert( !TN_is_dedicated(result), ("NYI") );
+  TN* result = dest;
 
-  if( result == false_tn ){
-    TN* tmp = Build_TN_Like( false_tn );
-    Expand_Copy( tmp, false_tn, select_type, ops );
-    false_tn = tmp;
+  if( TN_is_dedicated(dest) ){
+    result = Build_TN_Like( dest );
+
+    if( Get_TN_Pair(dest) != NULL ){
+      TN* result_hi = Create_TN_Pair( result, MTYPE_I8 );
+      Build_OP( TOP_ldc32, result_hi, Gen_Literal_TN(0,4), ops );
+    }
   }
+
+  FmtAssert( result != false_tn, ("result and false_tn are identical") );
 
   Expand_Copy( result, true_tn, select_type, ops );
 
@@ -204,7 +358,7 @@ static void Expand_Split_Select( TN* result, OPERATOR compare, TOP cmp_opcode,
   case TOP_test64:  cmp_opcode = TOP_test32;  break;
   case TOP_testi64: cmp_opcode = TOP_testi32; break;
   default:
-    FmtAssert( false, ("NYI") );
+    FmtAssert( false, ("Expand_Split_Select: Unknown compare opcode") );
   }
 
   TN* cmp_kid1_hi = Get_TN_Pair( cmp_kid1 );
@@ -221,6 +375,19 @@ static void Expand_Split_Select( TN* result, OPERATOR compare, TOP cmp_opcode,
 	       TN_number(cmp_kid2) );
       cmp_kid2_hi = Build_TN_Like( cmp_kid2 );
       Build_OP( TOP_ldc32, cmp_kid2_hi, Gen_Literal_TN(0,4), ops );    
+    }
+  }
+
+  if( cmp_kid1_hi == NULL ){
+    if( TN_has_value(cmp_kid1) ){
+      const INT64 val = TN_value(cmp_kid1);
+      cmp_kid1_hi = Gen_Literal_TN( val >> 32, 4 );
+
+    } else {
+      DevWarn( "The higher 32-bit of TN%d is treated as 0\n",
+	       TN_number(cmp_kid1) );
+      cmp_kid1_hi = Build_TN_Like( cmp_kid1 );
+      Build_OP( TOP_ldc32, cmp_kid1_hi, Gen_Literal_TN(0,4), ops );    
     }
   }
 
@@ -330,19 +497,36 @@ static void Expand_Split_Select( TN* result, OPERATOR compare, TOP cmp_opcode,
   }
 
   Cur_BB = bb_exit;
+
+  if( result != dest ){
+    Expand_Copy( dest, result, select_type, ops );
+  }
 }
 
 
 static void  Expand_Split_Int_Cmp( TOP cmp_opcode, TN* src1_lo, TN* src2_lo,
-				   TOP set_opcode, TN* result, OPS* ops )
+				   TOP set_opcode, TN* result,
+				   TYPE_ID mtype,  OPS* ops )
 {
-  FmtAssert( ( result != src1_lo ) && ( result != src2_lo ), ("NYI") );
   TN* tmp_result = result;
 
   if( TN_is_dedicated( result ) ){
     tmp_result = Build_TN_Like( result );
   }
-  Build_OP( TOP_ldc32, tmp_result, Gen_Literal_TN(1,4), ops );
+
+  if( tmp_result == src1_lo ){
+    TN* tmp = Build_TN_Like(src1_lo);
+    Expand_Copy( tmp, src1_lo, mtype, ops );
+    src1_lo = tmp;
+  }
+
+  if( tmp_result == src2_lo ){
+    TN* tmp = Build_TN_Like(src2_lo);
+    Expand_Copy( tmp, src2_lo, mtype, ops );
+    src2_lo = tmp;
+  }
+
+  Exp_Immediate( tmp_result, Gen_Literal_TN(1,4), FALSE, ops );
 
   switch( cmp_opcode ){
   case TOP_cmp64:   cmp_opcode = TOP_cmp32;   break;
@@ -350,16 +534,30 @@ static void  Expand_Split_Int_Cmp( TOP cmp_opcode, TN* src1_lo, TN* src2_lo,
   case TOP_test64:  cmp_opcode = TOP_test32;  break;
   case TOP_testi64: cmp_opcode = TOP_testi32; break;
   default:
-    FmtAssert( false, ("NYI") );
+    FmtAssert( false, ("Expand_Split_Int_Cmp: Unknown compare opcode") );
   }
 
   TN* src1_hi = Get_TN_Pair( src1_lo );
   TN* src2_hi = Get_TN_Pair( src2_lo );
   TN* rflags = Rflags_TN();
 
+  if( src1_hi == NULL ){
+    if( TN_has_value(src1_lo) ){
+      const INT64 val = TN_value( src1_lo ) >> 32;
+      src1_hi = Gen_Literal_TN( val, 4 );
+
+    } else {
+      DevWarn( "The higher 32-bit of TN%d is treated as 0\n",
+	       TN_number(src1_lo) );
+      src1_hi = Build_TN_Like( src1_lo );
+      Build_OP( TOP_ldc32, src1_hi, Gen_Literal_TN(0,4), ops );    
+    }
+  }
+
   if( src2_hi == NULL ){
     if( TN_has_value(src2_lo) ){
-      src2_hi = Gen_Literal_TN( 0, 4 );
+      const INT64 val = TN_value( src2_lo ) >> 32;
+      src2_hi = Gen_Literal_TN( val, 4 );
 
     } else {
       DevWarn( "The higher 32-bit of TN%d is treated as 0\n",
@@ -535,7 +733,8 @@ static void Expand_Split_Cvtl( TYPE_ID mtype, TOP top, TN* result, TN* src, OPS*
     break;
 
   default:
-    FmtAssert( false, ("NYI") );
+    FmtAssert( FALSE,
+	       ("Expand_Split_Cvtl: Unsupported operation (%s)", TOP_Name(top)) );
   }
 }
 
@@ -547,50 +746,51 @@ void Expand_Split_UOP( OPERATOR opr, TYPE_ID mtype,
 		       TN* result, TN* src,
 		       OPS* ops )
 {
-  TN* result_h = Create_TN_Pair( result, mtype );
-  TN* src_h = Get_TN_Pair(src);
   TOP top = TOP_UNDEFINED;
+  TN* result_h = Create_TN_Pair( result, mtype );
+  TN* src_h = TN_has_value(src) ? NULL : Get_TN_Pair(src);
+
+  if( TN_has_value(src) ){
+    if( MTYPE_signed( mtype ) ){
+      const INT64 val = TN_value( src );
+      src   = Gen_Literal_TN( ( val << 32 ) >> 32, 4 );
+      src_h = Gen_Literal_TN( ( val >> 32 ), 4 );
+    } else {
+      const UINT64 val = TN_value( src );
+      src   = Gen_Literal_TN( ( val << 32 ) >> 32, 4 );
+      src_h = Gen_Literal_TN( ( val >> 32 ), 4 );
+    }
+  }
+
+  if ( src_h == NULL && opr != OPR_INTCONST ) {
+    DevWarn( "The higher 32-bit of TN%d is treated as 0\n",
+	     TN_number(src) );
+    src_h = Build_TN_Like( src );
+    Build_OP( TOP_ldc32, src_h, Gen_Literal_TN(0,4), ops );
+  }
 
   switch( opr ){
   case OPR_BNOT:
-    {
-      top = TOP_not32;
-    }
+    top = TOP_not32;
     break;
   case OPR_INTCONST:
-    {
-      if( MTYPE_signed( mtype ) ){
-	const INT64 val = TN_value( src );
-	src   = Gen_Literal_TN( ( val << 32 ) >> 32, 4 );
-	src_h = Gen_Literal_TN( ( val >> 32 ), 4 );
-      } else {
-	const UINT64 val = TN_value( src );
-	src   = Gen_Literal_TN( ( val << 32 ) >> 32, 4 );
-	src_h = Gen_Literal_TN( ( val >> 32 ), 4 );
-      }
-
-      top = TOP_ldc32;
-    }
+    top = TOP_ldc32;
     break;
   case OPR_NEG:
     {
       Build_OP( TOP_neg32, result, src, ops );
-
       TN* tmp_src = Build_TN_Like( src );
       Build_OP( TOP_adci32, tmp_src, src_h, Gen_Literal_TN(0,4), ops );
-
+      Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
       Build_OP( TOP_neg32, result_h, tmp_src, ops );
-
       return;
     }
     break;
   case OPR_LDA:
-    {
-      top = TOP_mov32;
-    }
+    top = TOP_mov32;
     break;
   default:
-    FmtAssert( false, ("NYI") );
+    FmtAssert( FALSE, ("Expand_Split_UOP: unknown operator") );
   }
 
   Build_OP( top, result,   src,   ops );
@@ -615,7 +815,12 @@ static void Expand_Split_BOP( OPERATOR opr, TYPE_ID mtype,
     src2_h = Gen_Literal_TN( val >> 32, 4 );
   }
 
-  FmtAssert( src2_h != NULL, ("NYI") );
+  if( src2_h == NULL ){
+    DevWarn( "The higher 32-bit of TN%d is treated as 0\n",
+	     TN_number(src2) );
+    src2_h  = Build_TN_Like( src2 );
+    Build_OP( TOP_ldc32, src2_h, Gen_Literal_TN(0,4), ops );    
+  }
 
   TOP top = TOP_UNDEFINED, top_h = TOP_UNDEFINED;
 
@@ -644,7 +849,7 @@ static void Expand_Split_BOP( OPERATOR opr, TYPE_ID mtype,
     top_h = top = TN_has_value(src2) ? TOP_ori32 : TOP_or32;
     break;
   default:
-    FmtAssert( false, ("NYI") );
+    FmtAssert( false, ("Expand_Split_BOP: Unknown operator") );
   }
 
   Build_OP( top,   result,   src1,   src2,   ops );
@@ -692,7 +897,15 @@ static void Expand_Split_Shift( SHIFT_DIRECTION shift_dir,
   TN* src_hi = Get_TN_Pair( src_lo );
 
   if( src_hi == NULL ){
-    DevWarn( "The higher 32-bit of TN%d is treated as 0\n", TN_number(src_lo) );
+    if( TN_has_value( src_lo ) ){
+      const INT64 val = TN_value(src_lo);
+      src_hi = Gen_Literal_TN( val >> 32, 4 );
+
+    } else {
+      DevWarn( "The higher 32-bit of TN%d is treated as 0\n", TN_number(src_lo) );
+      src_hi = Build_TN_Like( src_lo );
+      Build_OP( TOP_ldc32, src_hi, Gen_Literal_TN(0,4), ops );
+    }
   }
 
   // Handle case where <shift> has value.
@@ -753,6 +966,10 @@ static void Expand_Split_Shift( SHIFT_DIRECTION shift_dir,
       tmp_result_hi = Create_TN_Pair( tmp_result, MTYPE_I8 );
     }
 
+    // Under m32, the x86 shift instruction can shift at most 31 bits (the
+    // upper bits of the shift count are ignored).  Construct 64-bit shift from
+    // 32-bit shifts.
+
     BB* bb_entry = Cur_BB;
     BB* bb_then = Gen_And_Append_BB( bb_entry );  // for shift_cnt > 31
 
@@ -767,8 +984,8 @@ static void Expand_Split_Shift( SHIFT_DIRECTION shift_dir,
     {
       switch( shift_dir ){
       case shift_left:
-	Build_OP( TOP_shl32,  tmp_result,    src_lo, shift, ops );
 	Build_OP( TOP_shld32, tmp_result_hi, src_hi, src_lo, shift, ops );
+	Build_OP( TOP_shl32,  tmp_result,    src_lo, shift, ops );
 	break;
 
       case shift_aright:
@@ -782,13 +999,14 @@ static void Expand_Split_Shift( SHIFT_DIRECTION shift_dir,
 	break;
       }
 
-      Exp_OP3v( OPC_TRUEBR,
-		NULL,
-		Gen_Label_TN( bb_exit_label, 0 ),
-		shift,
-		Gen_Literal_TN(32,4),
-		V_BR_U4LT,
-		ops );
+      // Go to the then block if the shift count is in the range [32,63].  If
+      // it is < 32, the shrd/shr combo already produces the correct result.
+      // If it is > 63, it is treated as modulo 64.  This means go to the then
+      // block only if (32 & shift count) is 1.  Bug 9687.
+
+      TN *rflags = Rflags_TN();
+      Build_OP(TOP_testi32, rflags, shift, Gen_Literal_TN(32, 4), ops);
+      Build_OP(TOP_je, rflags, Gen_Label_TN(bb_exit_label, 0), ops);
 
       if( &New_OPs != ops )
 	OPS_Append_Ops( &New_OPs, ops );
@@ -834,12 +1052,18 @@ static void Expand_Split_Shift( SHIFT_DIRECTION shift_dir,
 }
 
 
-static void Expand_Split_Abs( TN* result, TN* src, TYPE_ID mtype, OPS* ops )
+static void Expand_Split_Abs( TN* dest, TN* src, TYPE_ID mtype, OPS* ops )
 {
-  TN* result_hi = Create_TN_Pair( result, mtype );
+  TN* result = dest;
+
+  if( TN_is_dedicated(dest) ){
+    result = Build_TN_Like( dest );
+  }
+
   TN* src_hi = Get_TN_Pair( src );
 
-  FmtAssert( src_hi != NULL, ("NYI") );
+  FmtAssert( src_hi != NULL,
+	     ("Expand_Split_Abs: the higher 32-bit of source is NULL") );
 
   BB* bb_entry = Cur_BB;
   BB* bb_then = Gen_And_Append_BB( bb_entry );
@@ -884,6 +1108,49 @@ static void Expand_Split_Abs( TN* result, TN* src, TYPE_ID mtype, OPS* ops )
   }
 
   Cur_BB = bb_exit;
+
+  if( result != dest ){
+    Expand_Split_UOP( OPR_LDA, MTYPE_I8, dest, result, ops );
+  }
+}
+
+
+// If safezero is TRUE, then be careful to map 0 --> MTYPE_bit_size(mtype).
+static void
+Expand_Split_Leading_Zeros( TN* dest, TN* src, TYPE_ID mtype,
+			    BOOL safezero, OPS* ops )
+{
+  // TN1 :- ldc32 (0x7f)
+  // TN2 :- bsr32 TN_src_low ;
+  // TN2 :- cmove TN1 (%rflags)
+  // TN3 :- xori32 TN2 (0x20)
+  // TN4 :- bsr32 TN_src_high;
+  // TN4 :- cmove TN3 (%rflags)
+  // TN5 :- xori32 TN4 (0x1f)
+  if ( mtype != MTYPE_I8 && mtype != MTYPE_U8 )
+    Fail_FmtAssertion("Expand_Split_Leading_Zeros: unexpected mtype");
+  if ( TN_has_value(src) ) {  // I don't think this will ever happen.
+    src = Expand_Immediate_Into_Register( src, TRUE, ops );
+  }
+  TN *src_hi = Get_TN_Pair(src);
+  FmtAssert( src_hi != NULL, ("Expand_Split_Leading_Zeros: the "
+			      "higher 32-bit of source is NULL") );
+  TN *tmp1, *rflags = Rflags_TN();
+  if (safezero) {
+    tmp1 = Build_TN_Of_Mtype( MTYPE_I4 );
+    Exp_Immediate( tmp1, Gen_Literal_TN(127, 4), TRUE, ops );
+  }
+  TN *tmp2 = Build_TN_Of_Mtype( MTYPE_I4 );
+  Build_OP( TOP_bsr32, tmp2, src, ops );
+  if (safezero) {
+    Expand_Cmov( TOP_cmove, tmp2, tmp1, rflags, ops );
+  }
+  TN *tmp3 = Build_TN_Of_Mtype( MTYPE_I4 );
+  Expand_Binary_Xor( tmp3, tmp2, Gen_Literal_TN(32, 4), MTYPE_I4, ops );
+  TN *tmp4 = Build_TN_Of_Mtype( MTYPE_I4 );
+  Build_OP( TOP_bsr32, tmp4, src_hi, ops );
+  Expand_Cmov( TOP_cmove, tmp4, tmp3, rflags, ops );
+  Expand_Binary_Xor( dest, tmp4, Gen_Literal_TN(31, 4), MTYPE_I4, ops );
 }
 
 
@@ -905,6 +1172,7 @@ Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
   } else {
     if( OP_NEED_PAIR( mtype ) ){
       Expand_Split_UOP( OPR_LDA, mtype, result, src, ops );
+      Set_OP_copy( OP_prev(OPS_last(ops)) );
 
     } else {
       Build_OP( MTYPE_is_size_double(mtype) ? TOP_mov64: TOP_mov32, 
@@ -950,7 +1218,7 @@ void Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype,
 
   if( val != 8 && val != 16  && val != 32 ){
     // Bug046
-    if( signed_extension ){
+    if( signed_extension || val >= 32 ){
       TN* tmp1 = Build_TN_Like( dest );
       TN* tmp2 = Build_TN_Like( dest );
       const int shift_amt = is_64bit ? 64 - val : 32 - val;
@@ -959,8 +1227,10 @@ void Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype,
         Build_OP( TOP_andi32, tmp1, src, Gen_Literal_TN((1<<val)-1, 4), ops );
       else {
 	TN* tmp3 = Build_TN_Like( dest );
-	Exp_Immediate( tmp3, Gen_Literal_TN ((1<<val)-1, 8), FALSE, ops );
-	Build_OP( TOP_and64, tmp1, src, tmp3, ops );
+	if( Is_Target_32bit() && is_64bit && Get_TN_Pair(tmp3) == 0 )
+	  (void *) Create_TN_Pair( tmp3, mtype );
+	Exp_Immediate( tmp3, Gen_Literal_TN ((1LL<<val)-1LL, 8), FALSE, ops );
+	Expand_Binary_And(tmp1, src, tmp3, mtype, ops);
       }
       Expand_Shift( tmp2, tmp1, Gen_Literal_TN( shift_amt, 4 ),
 		    mtype, shift_left, ops );
@@ -998,18 +1268,21 @@ void Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype,
 	  /* Fix bug#1363.
 	     We are doing the OPC_U8U4CVT here.
 	   */
-	  Expand_Copy( dest, src, MTYPE_U4, ops );
+	  Build_OP( TOP_movzlq, dest, src, ops);
 	}
         return;
       }
     }
     else if( MTYPE_bit_size(mtype) == 32 ){
-      Expand_Copy( dest, src, mtype, ops );
+      // Bug 4117 - use a move here without setting the copy bits 
+      // (that is, don't call Expand_Copy).
+      Build_OP( TOP_mov32, dest, src, ops);
       return;
     }
   }
 
-  FmtAssert( new_opcode != TOP_UNDEFINED, ("NYI") );
+  FmtAssert( new_opcode != TOP_UNDEFINED,
+	     ("Expand_Convert_Length: new opcode is undefined") );
 
   if( OP_NEED_PAIR(mtype) )
     Expand_Split_Cvtl( mtype, new_opcode, dest, src, ops );
@@ -1034,6 +1307,9 @@ static void Exp_Immediate (TN *dest, TN *src, OPS *ops)
 
   if( Is_Target_32bit()     &&
       /* TN_is_dedicated(dest) && */
+#ifdef KEY // bug 14228
+      ! (TN_is_symbol(src) && ST_sym_class(TN_var(src)) == CLASS_NAME) &&
+#endif
       Get_TN_Pair(dest) != NULL ){
     Expand_Split_UOP( OPR_INTCONST, MTYPE_I8, dest, src, ops );
     
@@ -1106,7 +1382,10 @@ Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   is_vector_type = (mtype == MTYPE_V16I1 || 
 		    mtype == MTYPE_V16I2 ||
 		    mtype == MTYPE_V16I4 ||
-		    mtype == MTYPE_V16I8);
+		    mtype == MTYPE_V16I8 ||
+		    mtype == MTYPE_M8I1 ||
+		    mtype == MTYPE_M8I2 ||
+		    mtype == MTYPE_M8I4);
   if (TN_is_constant(src1) && !is_vector_type) {
     if (TN_has_value(src1)) {
       val = TN_value(src1);
@@ -1129,15 +1408,9 @@ Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 	Build_OP (TOP_ori32, tmp, tmp, Gen_Literal_TN(val & 0xffff, 4), ops);
 	Build_OP (is_64bit ? TOP_add64 : TOP_add32, result, tmp, src2, ops);
       } else {
-	TCON tcon = Host_To_Targ (MTYPE_I8, val);
-	ST *sym = New_Const_Sym (Enter_tcon (tcon), Be_Type_Tbl(TCON_ty(tcon)));
-	Allocate_Object(sym);
-	if (Use_32_Bit_Pointers)
-	  Build_OP(TOP_ld32, tmp, GP_TN,
-		   Gen_Symbol_TN(sym, 0, TN_RELOC_GOT_DISP), ops);
-	else
-	  Build_OP(TOP_ld64, tmp, GP_TN,
-		   Gen_Symbol_TN(sym, 0, TN_RELOC_GOT_DISP), ops);
+	TN* const_tn = Gen_Const_Symbol_TN( val, 0.0, MTYPE_I8, TN_RELOC_GOT_DISP );
+	Build_OP( Use_32_Bit_Pointers ? TOP_ld32 : TOP_ld64,
+		  tmp, GP_TN, const_tn, ops );
 	Build_OP(TOP_ld32, tmp, tmp, Gen_Literal_TN(0, 4), ops);
 	Build_OP (is_64bit ? TOP_add64 : TOP_add32, result, tmp, src2, ops);
       }       
@@ -1155,10 +1428,15 @@ Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       }
 
     } else {
-      FmtAssert( !OP_NEED_PAIR(mtype), ("NYI") );
-      src1 = Expand_Immediate_Into_Register (src1, is_64bit, ops);
-      new_opcode = is_64bit ? TOP_add64 : TOP_add32;
-      Build_OP (new_opcode, result, src2, src1, ops);
+      src1 = Expand_Immediate_Into_Register( src1, is_64bit, ops );
+
+      if( OP_NEED_PAIR(mtype) ){
+	Expand_Split_BOP( OPR_ADD, mtype, result, src2, src1, ops );	
+
+      } else {
+	new_opcode = is_64bit ? TOP_add64 : TOP_add32;
+	Build_OP (new_opcode, result, src2, src1, ops);
+      }
     }
   } else if (TN_is_constant(src2) && !is_vector_type) {
     // switch order of src so immediate is first
@@ -1177,6 +1455,29 @@ Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     case MTYPE_V16I8:
       Build_OP (TOP_add128v64, result, src1, src2, ops);
       break;
+    case MTYPE_V8I1:
+      Build_OP (TOP_add128v8, result, src1, src2, ops);
+      break;
+    case MTYPE_V8I2:
+      Build_OP (TOP_add128v16, result, src1, src2, ops);
+      break;
+    case MTYPE_V8I4:
+      Build_OP (TOP_add128v32, result, src1, src2, ops);
+      break;
+    case MTYPE_M8I1:
+      Build_OP (TOP_add64v8, result, src1, src2, ops);
+      break;
+    case MTYPE_M8I2:
+      Build_OP (TOP_add64v16, result, src1, src2, ops);
+      break;
+    case MTYPE_M8I4:
+      Build_OP (TOP_add64v32, result, src1, src2, ops);
+      break;
+    case MTYPE_V8F4:
+      Build_OP (TOP_fadd128v32, result, src1, src2, ops);
+      break;
+    case MTYPE_M8F4:
+      Fail_FmtAssertion ("Expand_Add: NYI");
     default:
       if( OP_NEED_PAIR(mtype) ){
 	Expand_Split_BOP( OPR_ADD, mtype, result, src1, src2, ops );
@@ -1200,7 +1501,10 @@ Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   is_vector_type = (mtype == MTYPE_V16I1 || 
 		    mtype == MTYPE_V16I2 ||
 		    mtype == MTYPE_V16I4 ||
-		    mtype == MTYPE_V16I8);
+		    mtype == MTYPE_V16I8 ||
+		    mtype == MTYPE_M8I1 ||
+		    mtype == MTYPE_M8I2 ||
+		    mtype == MTYPE_M8I4);
 
   if (TN_is_constant(src2) && !is_vector_type) {
     if (TN_has_value(src2)) {
@@ -1229,10 +1533,15 @@ Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       }
 
     } else {
-      FmtAssert( !OP_NEED_PAIR(mtype), ("NYI") );      
-      src2 = Expand_Immediate_Into_Register (src2, is_64bit, ops);
-      new_opcode = is_64bit ? TOP_sub64 : TOP_sub32;
-      Build_OP (new_opcode, result, src1, src2, ops);
+      src2 = Expand_Immediate_Into_Register( src2, is_64bit, ops );
+
+      if( OP_NEED_PAIR(mtype) ){
+	Expand_Split_BOP( OPR_SUB, mtype, result, src1, src2, ops );
+
+      } else {
+	new_opcode = is_64bit ? TOP_sub64 : TOP_sub32;
+	Build_OP (new_opcode, result, src1, src2, ops);
+      }
     }
   }
   else if (TN_is_constant(src1) && !is_vector_type) {
@@ -1259,6 +1568,26 @@ Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     case MTYPE_V16I8:
       Build_OP (TOP_sub128v64, result, src1, src2, ops);
       break;
+    case MTYPE_V8I1:
+      Build_OP (TOP_sub128v8, result, src1, src2, ops);
+      break;
+    case MTYPE_V8I2:
+      Build_OP (TOP_sub128v16, result, src1, src2, ops);
+      break;
+    case MTYPE_V8I4:
+      Build_OP (TOP_sub128v32, result, src1, src2, ops);
+      break;
+    case MTYPE_M8I1:
+      Build_OP (TOP_sub64v8, result, src1, src2, ops);
+      break;
+    case MTYPE_M8I2:
+      Build_OP (TOP_sub64v16, result, src1, src2, ops);
+      break;
+    case MTYPE_M8I4:
+      Build_OP (TOP_sub64v32, result, src1, src2, ops);
+      break;
+    case MTYPE_M8F4:
+      Fail_FmtAssertion ("Expand_Sub: NYI");
     default:
       if( OP_NEED_PAIR(mtype) ){
 	Expand_Split_BOP( OPR_SUB, mtype, result, src1, src2, ops );
@@ -1284,7 +1613,8 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
 
   if (mtype == MTYPE_V16F4 || mtype == MTYPE_V16F8 ||
       mtype == MTYPE_V16I1 || mtype == MTYPE_V16I2 ||
-      mtype == MTYPE_V16I4 || mtype == MTYPE_V16I8) {    
+      mtype == MTYPE_V16I4 || mtype == MTYPE_V16I8 ||
+      mtype == MTYPE_V16C8) {
     switch (mtype) {
     case MTYPE_V16F4: {
       TCON then = Host_To_Targ (MTYPE_I4, 0x80000000);
@@ -1297,6 +1627,7 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       Build_OP(is_64bit ? TOP_xorpd: TOP_xorps, result, src, tmp, ops);
       break;
     }
+    case MTYPE_V16C8:
     case MTYPE_V16F8: {
       TCON then = Host_To_Targ (MTYPE_I8, 0x8000000000000000ULL);
       TCON now  = Create_Simd_Const (MTYPE_V16F8, then);
@@ -1308,8 +1639,30 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       Build_OP(is_64bit ? TOP_xorpd: TOP_xorps, result, src, tmp, ops);
       break;
     }
+#ifdef KEY
+    //Bug 5701 13347: Vectorize Neg of Integers
+    case MTYPE_V16I1:
+    case MTYPE_V16I2:
+    case MTYPE_V16I4:
+    case MTYPE_V16I8:{
+      TYPE_ID host_type;
+      if(mtype==MTYPE_V16I1) host_type = MTYPE_I1;
+      else if(mtype==MTYPE_V16I2) host_type = MTYPE_I2;
+           else if(mtype==MTYPE_V16I4) host_type = MTYPE_I4;
+                else host_type = MTYPE_I8;
+      TCON then = Host_To_Targ (host_type, 0x0);
+      TCON now  = Create_Simd_Const (mtype, then);
+      ST *sym = New_Const_Sym (Enter_tcon (now), Be_Type_Tbl(TCON_ty(now)));
+      Allocate_Object(sym);
+      TN *sym_tn = Gen_Symbol_TN(sym, 0, 0);
+      TN *tmp = Build_TN_Like(result);
+      Exp_Load(mtype, mtype, tmp, TN_var(sym_tn), TN_offset(sym_tn), ops, 0);
+      Expand_Sub (result, tmp, src, mtype, ops);
+      break;
+    }
+#endif
     default:
-      FmtAssert(FALSE, ("NYI"));
+      FmtAssert(FALSE, ("Expand_Neg: unknown mtype"));
       break;
     }
 
@@ -1361,7 +1714,7 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       Build_OP(is_64bit ? TOP_ldsd : TOP_ldss, tmp, Rip_TN(),
 	       Gen_Symbol_TN(base_sym, base_ofst, TN_RELOC_NONE), ops);
     } else {
-      Build_OP(is_64bit ? TOP_ldsd_n32 : TOP_ldss_n32, tmp, Rip_TN(),
+      Build_OP(is_64bit ? TOP_ldsd_n32 : TOP_ldss_n32, tmp,
 	       Gen_Symbol_TN(base_sym, base_ofst, TN_RELOC_NONE), ops);
     }
 
@@ -1388,13 +1741,34 @@ Expand_Abs (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
 
     } else {
       Expand_Neg (dest, src, mtype, ops);
-      Build_OP (TOP_cmovs, dest, src, Rflags_TN(), ops);
-      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+      Expand_Cmov (TOP_cmovs, dest, src, Rflags_TN(), ops);
     }
 
   } else if( MTYPE_is_quad( mtype ) ||
 	     !Is_Target_SSE2() ){
     Build_OP( TOP_fabs, dest, src, ops );
+
+  } else if ( MTYPE_is_vector( mtype ) ) {
+    FmtAssert( mtype == MTYPE_V16F4 || mtype == MTYPE_V16F8, ("NYI") );
+    if ( mtype == MTYPE_V16F4 ) {
+      TCON then = Host_To_Targ (MTYPE_I4, 0x7FFFFFFF);
+      TCON now  = Create_Simd_Const (MTYPE_V16F4, then);
+      ST *sym = New_Const_Sym (Enter_tcon (now), Be_Type_Tbl(TCON_ty(now)));
+      Allocate_Object(sym);
+      TN *sym_tn = Gen_Symbol_TN(sym, 0, 0);
+      TN *tmp = Build_TN_Like(dest);
+      Exp_Load(mtype, mtype, tmp, TN_var(sym_tn), TN_offset(sym_tn), ops, 0);
+      Build_OP(TOP_andps, dest, src, tmp, ops);      
+    } else {
+      TCON then = Host_To_Targ (MTYPE_I8, 0x7FFFFFFFFFFFFFFFULL);
+      TCON now  = Create_Simd_Const (MTYPE_V16F8, then);
+      ST *sym = New_Const_Sym (Enter_tcon (now), Be_Type_Tbl(TCON_ty(now)));
+      Allocate_Object(sym);
+      TN *sym_tn = Gen_Symbol_TN(sym, 0, 0);
+      TN *tmp = Build_TN_Like(dest);
+      Exp_Load(mtype, mtype, tmp, TN_var(sym_tn), TN_offset(sym_tn), ops, 0);
+      Build_OP(TOP_andpd, dest, src, tmp, ops);
+    }
 
   } else {
     TCON tcon = is_double ? Host_To_Targ (MTYPE_I8, 0x7FFFFFFFFFFFFFFFULL) :
@@ -1475,6 +1849,82 @@ Expand_Shift (TN *result, TN *src1, TN *src2, TYPE_ID mtype, SHIFT_DIRECTION kin
     Build_OP(top, result, src1, src2, ops);
 }
 
+void
+Expand_Rrotate (TN *result, TN *src1, TN *src2, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
+{
+  WN *tree;
+  TOP top;  
+  const BOOL value_size = MTYPE_bit_size(desc);
+  const BOOL is_64bit = MTYPE_is_size_double(rtype);
+
+  if (TN_is_constant(src1))
+    src1 = Expand_Immediate_Into_Register(src1, is_64bit, ops);
+  if (TN_has_value(src2)) {
+    const UINT64 bits_to_rotate = TN_value(src2);
+    UINT bitmask; // only the lowest log2(value_size) bits of bits_to_rotate 
+    		  // are used 
+    switch (value_size) {
+    case 8: top = TOP_rori8; bitmask = 0x7; break;
+    case 16: top = TOP_rori16; bitmask = 0xf; break;
+    case 32: top = TOP_rori32; bitmask = 0x1f; break;
+    case 64: top = TOP_rori64; bitmask = 0x3f; break;
+    }
+
+    src2 = Gen_Literal_TN( bits_to_rotate & bitmask, 4 );
+
+  } else {
+    switch (value_size) {
+    case 8: top = TOP_ror8; break;
+    case 16: top = TOP_ror16; break;
+    case 32: top = TOP_ror32; break;
+    case 64: top = TOP_ror64; break;
+    }
+  }
+
+  if( OP_NEED_PAIR( rtype ) )
+    FmtAssert(FALSE,("RROTATE of simulated 64-bit integer NYI"));
+  else
+    Build_OP(top, result, src1, src2, ops);
+}
+
+void
+Expand_Left_Rotate (TN *result, TN *src1, TN *src2, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
+{
+  WN *tree;
+  TOP top;  
+  const BOOL value_size = MTYPE_bit_size(desc);
+  const BOOL is_64bit = MTYPE_is_size_double(rtype);
+
+  if (TN_is_constant(src1))
+    src1 = Expand_Immediate_Into_Register(src1, is_64bit, ops);
+  if (TN_has_value(src2)) {
+    const UINT64 bits_to_rotate = TN_value(src2);
+    UINT bitmask; // only the lowest log2(value_size) bits of bits_to_rotate 
+    		  // are used 
+    switch (value_size) {
+    case 8: top = TOP_roli8; bitmask = 0x7; break;
+    case 16: top = TOP_roli16; bitmask = 0xf; break;
+    case 32: top = TOP_roli32; bitmask = 0x1f; break;
+    case 64: top = TOP_roli64; bitmask = 0x3f; break;
+    }
+
+    src2 = Gen_Literal_TN( bits_to_rotate & bitmask, 4 );
+
+  } else {
+    switch (value_size) {
+    case 8: top = TOP_rol8; break;
+    case 16: top = TOP_rol16; break;
+    case 32: top = TOP_rol32; break;
+    case 64: top = TOP_rol64; break;
+    }
+  }
+
+  if( OP_NEED_PAIR( rtype ) )
+    FmtAssert(FALSE,("Left-rotate of simulated 64-bit integer NYI"));
+  else
+    Build_OP(top, result, src1, src2, ops);
+}
+
 inline void
 Expand_G_To_F (TN *ftn, TN *gtn, OPS *ops)
 {
@@ -1494,7 +1944,7 @@ static BOOL
 Expand_Constant_Multiply (TN *result, TN *var_tn, TARG_INT constant, TYPE_ID mtype, OPS *ops)
 {
   if( OP_NEED_PAIR(mtype) ){
-    DevWarn( "Expand_Constant_Multiply: NYI\n" );
+    DevWarn( "Expand_Constant_Multiply: SUPPORT ME !!!" );
     return FALSE;
   }
 
@@ -1687,7 +2137,13 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   const BOOL is_64bit = MTYPE_is_size_double(mtype);
 
   FmtAssert( !TN_has_value(src1), ("UNIMPLEMENTED") );
-  FmtAssert( MTYPE_is_integral(mtype), ("Should be handled in Expand_Flop") );
+  FmtAssert( MTYPE_is_integral(mtype) && !MTYPE_is_mmx_vector(mtype),
+             ("Should be handled in Expand_Flop") );
+
+  if ( mtype == MTYPE_V16I2 ) {
+    Expand_Flop(OPC_V16I2MPY, result, src1, src2, NULL, ops);
+    return;
+  }
 
   if( TN_has_value(src2) ){
     INT64 val = TN_value( src2 );
@@ -1703,7 +2159,8 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
       return;
 
-    } else if (Can_Do_Fast_Multiply (mtype, val)) {
+    } else if (CGEXP_cvrt_int_mult_to_add_shift &&
+	       Can_Do_Fast_Multiply (mtype, val)) {
       if (Expand_Constant_Multiply (result, src1, val, mtype, ops)) {
 	/* able to convert multiply into shifts/adds/subs */
 	return;
@@ -1764,8 +2221,13 @@ void Expand_Logical_Not (TN *dest, TN *src, VARIANT variant, OPS *ops)
 {
   /* dest = (src == 0) ? 1 : 0 */
   const BOOL is_64bit = (TN_size(src) == 8 );
-  Build_OP( is_64bit ? TOP_xori64 : TOP_xori32, dest, src, 
-		  Gen_Literal_TN(1, is_64bit ? 8 : 4), ops );
+  TN *rflags = Rflags_TN();
+  // Perform "test" before clearing dest, since dest could be the same as src.
+  // Use "move 0" instead of xor to clear dest in order to preserve rflag.
+  Build_OP(is_64bit ? TOP_test64 : TOP_test32, rflags, src, src, ops);
+  Build_OP(TOP_ldc32, dest, Gen_Literal_TN(0, 4), ops);
+  Build_OP(TOP_sete, dest, rflags, ops);
+  Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
 }
 
 void Expand_Logical_And (TN *dest, TN *src1, TN *src2, VARIANT variant, OPS *ops)
@@ -1797,7 +2259,8 @@ void Expand_Binary_And (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   if (TN_is_constant(src1)) {
     FmtAssert(TN_has_value(src1),("unexpected constant in Expand_Binary_And"));
     INT64 val = TN_value(src1);
-    if (val == -1) {
+    if (val == -1 ||
+        !is_64bit && (val << 32 >> 32) == -1) {
       Expand_Copy (dest, src2, mtype, ops);
       return;
     }
@@ -1822,7 +2285,7 @@ void Expand_Binary_And (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       return;
     }
 
-    if (ISA_LC_Value_In_Class ( val, LC_simm32)) 
+    if (!is_64bit || ISA_LC_Value_In_Class ( val, LC_simm32)) 
       new_opcode = is_64bit ? TOP_andi64 : TOP_andi32;
     else {
       src1 = Expand_Immediate_Into_Register(src1, is_64bit, ops);
@@ -1872,7 +2335,7 @@ void Expand_Binary_Or (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       return;
     }
 
-    if (ISA_LC_Value_In_Class ( val, LC_simm32)) 
+    if (!is_64bit || ISA_LC_Value_In_Class ( val, LC_simm32)) 
       new_opcode = is_64bit ? TOP_ori64 : TOP_ori32;
     else {
       src1 = Expand_Immediate_Into_Register(src1, is_64bit, ops);
@@ -1921,7 +2384,7 @@ void Expand_Binary_Xor (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       return;
     }
 
-    if (ISA_LC_Value_In_Class ( val, LC_simm32)) 
+    if (!is_64bit || ISA_LC_Value_In_Class ( val, LC_simm32)) 
       new_opcode = is_64bit ? TOP_xori64 : TOP_xori32;
     else {
       src1 = Expand_Immediate_Into_Register(src1, is_64bit, ops);
@@ -1963,6 +2426,87 @@ void Expand_Binary_Nor (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 }
 
 
+
+static void  Expand_Int_Cmp_With_Branch( TOP cmp_opcode, TN* src1, TN* src2,
+					 TOP set_opcode, TN* result, OPS* ops )
+{
+  BB* bb_entry = Cur_BB;
+  BB* bb_then  = Gen_And_Append_BB( bb_entry );  // for condition is satisfied
+  BB* bb_exit  = Gen_And_Append_BB( bb_then );
+  const LABEL_IDX bb_exit_label = Gen_Label_For_BB( bb_exit );
+  TN* tmp_result = result;
+
+  if( TN_is_dedicated(result) ){
+    tmp_result = Build_TN_Like( result );
+  }
+
+  if( src1 == tmp_result ){
+    TN* tmp = Build_TN_Like( src1 );
+    Exp_COPY( tmp, src1, ops );
+    src1 = tmp;
+  }
+
+  if( src2 == tmp_result ){
+    TN* tmp = Build_TN_Like( src2 );
+    Exp_COPY( tmp, src2, ops );
+    src2 = tmp;
+  }
+
+  BB_branch_wn(bb_entry) = WN_Create(OPC_TRUEBR,1);
+  WN_kid0(BB_branch_wn(bb_entry)) = NULL;
+  WN_label_number(BB_branch_wn(bb_entry)) = bb_exit_label;
+
+  // Build bb_entry
+  {
+    TN* rflags = Rflags_TN();
+    Build_OP( TOP_zero32, tmp_result, ops );
+    Build_OP( cmp_opcode, rflags, src1, src2, ops );
+
+    TOP jmp = TOP_UNDEFINED;
+
+    switch( set_opcode ){
+    case TOP_setg:  jmp = TOP_jle; break;
+    case TOP_setge: jmp = TOP_jl;  break;
+    case TOP_seta:  jmp = TOP_jbe; break;
+    case TOP_setae: jmp = TOP_jb;  break;
+    case TOP_setl:  jmp = TOP_jge; break;
+    case TOP_setle: jmp = TOP_jg;  break;
+    case TOP_setb:  jmp = TOP_jae; break;
+    case TOP_setbe: jmp = TOP_ja;  break;
+    case TOP_sete:  jmp = TOP_jne; break;
+    case TOP_setne: jmp = TOP_je;  break;
+    }
+
+    Build_OP( jmp, rflags, Gen_Label_TN( bb_exit_label, 0 ), ops );
+
+    if( &New_OPs != ops )
+      OPS_Append_Ops( &New_OPs, ops );
+    Process_New_OPs();
+    BB_Append_Ops( bb_entry, &New_OPs );
+    OPS_Init( &New_OPs );
+    OPS_Init( ops );
+  }
+
+  // Build bb_then here.
+  {
+    OPS* bb_then_ops = &New_OPs;
+    Exp_Immediate( tmp_result, Gen_Literal_TN(1,0), FALSE, bb_then_ops );
+
+    total_bb_insts = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    BB_Append_Ops( bb_then, bb_then_ops );
+    OPS_Init( bb_then_ops );
+  }
+
+  Cur_BB = bb_exit;
+
+  if( result != tmp_result ){
+    Exp_COPY( result, tmp_result, ops );
+  }
+}
+
+
 static void Expand_Int_Cmp( TN* dest, TN* src1, TN* src2,
 			    TYPE_ID mtype, TOP set_opcode, OPS* ops )
 {
@@ -1996,12 +2540,7 @@ static void Expand_Int_Cmp( TN* dest, TN* src1, TN* src2,
     if( TN_value( src2 ) == 0 ){
       cmp_opcode = is_64bit ? TOP_test64 : TOP_test32;
       src2 = src1;
-    } else if( !is_64bit ||
-	       ( val <= INT32_MAX ) ){
-      /* TODO:
-	 Even <is_64bit> is true, we can still combine them if sign-extension
-	 does not change the value of <val>.
-       */
+    } else if( ISA_LC_Value_In_Class( val, LC_simm32 ) ){
       cmp_opcode = is_64bit ? TOP_cmpi64 : TOP_cmpi32;
     } else {
       src2 = Expand_Immediate_Into_Register (src2, is_64bit, ops);
@@ -2009,7 +2548,10 @@ static void Expand_Int_Cmp( TN* dest, TN* src1, TN* src2,
   }
 
   if( OP_NEED_PAIR( mtype ) ){
-    Expand_Split_Int_Cmp( cmp_opcode, src1, src2, set_opcode, dest, ops );
+    Expand_Split_Int_Cmp( cmp_opcode, src1, src2, set_opcode, dest, mtype, ops );
+
+  } else if( !CG_use_setcc ){
+    Expand_Int_Cmp_With_Branch( cmp_opcode, src1, src2, set_opcode, dest, ops );
 
   } else {
     TN* tmp_tn = Build_TN_Of_Mtype(MTYPE_U1);  
@@ -2106,68 +2648,22 @@ typedef enum {
 } ROUND_MODE;
 
 
-static void Expand_Long_Double_To_Int( TN* dest, TN* src, TYPE_ID imtype, OPS* ops )
+static void Expand_SSE3_Long_Double_To_Int( TN* dest, TN* src,
+					    TYPE_ID imtype, OPS* ops )
 {
-  // Allocate space to store the x87 control-word.
-  const TY_IDX ty = MTYPE_To_TY( MTYPE_U2 );
-  TN* x87_cw_tn = X87_cw_TN();
-  ST* st = Gen_Temp_Symbol( ty, "x87_cw" );
-  Allocate_Temp_To_Memory( st );
-
-  ST* base_sym = NULL;
-  INT64 base_ofst = 0;
-
-  Base_Symbol_And_Offset_For_Addressing( st, 0, &base_sym, &base_ofst );
-  FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym, ("NYI") );
-
-  TN* base_tn = base_sym == SP_Sym ? SP_TN : FP_TN;
-  TN* ofst_tn = Gen_Literal_TN( base_ofst, 4 );
-
-  // store the x87 control-word.
-  Build_OP( TOP_fnstcw, x87_cw_tn, base_tn, ofst_tn, ops );
-  Set_OP_volatile( OPS_last(ops) );
-
-  // load the value into a 32-bit int register.
-  TN* x87_cw = Gen_Register_TN( ISA_REGISTER_CLASS_integer, 4 );
-  Exp_Load( MTYPE_U4, TY_mtype(ty), x87_cw, st, 0, ops, 0 );
-
-  // perform an or to mask out that bit.
-  TN* new_x87_cw = Build_TN_Like( x87_cw );
-  Expand_Binary_Or( new_x87_cw, x87_cw, Gen_Literal_TN(3072,4), MTYPE_U4, ops );
-
-  // store new_x87_cw back to a new memory location.
-  ST* st_new = Gen_Temp_Symbol( ty, "x87_cw_new" );
-  Allocate_Temp_To_Memory( st_new );
-  ST* base_sym_new = NULL;
-  INT64 base_ofst_new = 0;
-
-  Base_Symbol_And_Offset_For_Addressing( st_new, 0, &base_sym_new, &base_ofst_new );
-
-  TN* base_tn_new = base_sym_new == SP_Sym ? SP_TN : FP_TN;
-  TN* ofst_tn_new = Gen_Literal_TN( base_ofst_new, 4 );
-
-  Exp_Store( TY_mtype(ty), new_x87_cw, st_new, 0, ops, 0 );
-
-  // load the new x87_cw
-  Build_OP( TOP_fldcw, x87_cw_tn, base_tn_new, ofst_tn_new, ops );
-  Set_OP_volatile( OPS_last(ops) );
-
-  // do the real convertion work here.
   TOP top = TOP_UNDEFINED;
   TY_IDX mem_ty = MTYPE_To_TY( imtype );
+
   switch( imtype ){
-  case MTYPE_I2:    top = TOP_fistps;   break;
-  case MTYPE_I4:    top = TOP_fistpl;   break;
+  case MTYPE_I2:  top = TOP_fisttps;   break;
+  case MTYPE_I4:  top = TOP_fisttpl;   break;
   case MTYPE_U4:
-    /* bug#658
-       We need bigger space for TOP_fistpll.
-     */
     mem_ty = MTYPE_To_TY( MTYPE_U8 );
     /* fall thru */
   case MTYPE_U8:
-  case MTYPE_I8:    top = TOP_fistpll;  break;
+  case MTYPE_I8:  top = TOP_fisttpll;  break;
   default:
-    FmtAssert( false, ("NYI") );
+    FmtAssert( false, ("Expand_SSE3_Long_Double_To_Int: unknown imtype") );
   }
 
   ST* mem_loc = Gen_Temp_Symbol( mem_ty, "x87_2_int" );
@@ -2175,15 +2671,134 @@ static void Expand_Long_Double_To_Int( TN* dest, TN* src, TYPE_ID imtype, OPS* o
   ST* mem_base_sym = NULL;
   INT64 mem_base_ofst = 0;
 
-  Base_Symbol_And_Offset_For_Addressing( mem_loc, 0, &mem_base_sym, &mem_base_ofst );
+  Base_Symbol_And_Offset_For_Addressing(mem_loc, 0, &mem_base_sym,
+					&mem_base_ofst);
   TN* mem_base_tn = mem_base_sym == SP_Sym ? SP_TN : FP_TN;
   TN* mem_ofst_tn = Gen_Literal_TN( mem_base_ofst, 4 );
 
   Build_OP( top, src, mem_base_tn, mem_ofst_tn, ops );
 
-  // load the original x87_cw
-  Build_OP( TOP_fldcw, x87_cw_tn, base_tn, ofst_tn, ops );
-  Set_OP_volatile( OPS_last(ops) );
+  CGTARG_Load_From_Memory( dest, mem_loc, ops );
+
+  if( Trace_Exp ){
+    Print_OPS( ops );
+  }
+
+  return;
+}
+
+
+static void
+Expand_Long_Double_To_Int(TN* dest, TN* src, TYPE_ID imtype, OPS* ops)
+{
+  TN* x87_cw_tn = NULL;
+  TN* base_tn = NULL;
+  TN* base_tn_new = NULL;
+  TN* ofst_tn = NULL;
+  TN* ofst_tn_new = NULL;
+
+  // If not using SSE3 "fistt", we must emit code to set the rounding mode to
+  // truncation before emitting "fist".
+
+  if (!Is_Target_SSE3()) {
+    x87_cw_tn = X87_cw_TN();
+
+    // Allocate space to store the x87 control-word.
+    const TY_IDX ty = MTYPE_To_TY( MTYPE_U2 );
+    ST* st = Gen_Temp_Symbol( ty, "x87_cw" );
+    Allocate_Temp_To_Memory( st );
+
+    ST* base_sym = NULL;
+    INT64 base_ofst = 0;
+
+    Base_Symbol_And_Offset_For_Addressing( st, 0, &base_sym, &base_ofst );
+    FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym,
+	       ("Expand_Long_Double_To_Int: base symbol is at stack") );
+
+    base_tn = base_sym == SP_Sym ? SP_TN : FP_TN;
+    ofst_tn = Gen_Literal_TN( base_ofst, 4 );
+
+    // store the x87 control-word.
+    Build_OP( TOP_fnstcw, x87_cw_tn, base_tn, ofst_tn, ops );
+    Set_OP_volatile( OPS_last(ops) );
+
+    // load the value into a 32-bit int register.
+    TN* x87_cw = Gen_Register_TN( ISA_REGISTER_CLASS_integer, 4 );
+    Exp_Load( MTYPE_U4, TY_mtype(ty), x87_cw, st, 0, ops, 0 );
+
+    // perform an or to mask out that bit.
+    TN* new_x87_cw = Build_TN_Like( x87_cw );
+    Expand_Binary_Or(new_x87_cw, x87_cw, Gen_Literal_TN(3072,4), MTYPE_U4, ops);
+
+    // store new_x87_cw back to a new memory location.
+    ST* st_new = Gen_Temp_Symbol( ty, "x87_cw_new" );
+    Allocate_Temp_To_Memory( st_new );
+    ST* base_sym_new = NULL;
+    INT64 base_ofst_new = 0;
+
+    Base_Symbol_And_Offset_For_Addressing(st_new, 0, &base_sym_new,
+					  &base_ofst_new);
+
+    base_tn_new = base_sym_new == SP_Sym ? SP_TN : FP_TN;
+    ofst_tn_new = Gen_Literal_TN( base_ofst_new, 4 );
+
+    Exp_Store( TY_mtype(ty), new_x87_cw, st_new, 0, ops, 0 );
+
+    // load the new x87_cw
+    Build_OP( TOP_fldcw, x87_cw_tn, base_tn_new, ofst_tn_new, ops );
+    Set_OP_volatile( OPS_last(ops) );
+  }
+
+  // do the real convertion work here.
+  TOP top = TOP_UNDEFINED;
+  TY_IDX mem_ty = MTYPE_To_TY( imtype );
+
+  if (Is_Target_SSE3()) {
+    switch( imtype ){
+      case MTYPE_I2:  top = TOP_fisttps;   break;
+      case MTYPE_I4:  top = TOP_fisttpl;   break;
+      case MTYPE_U4:
+	mem_ty = MTYPE_To_TY( MTYPE_U8 );
+	/* fall thru */
+      case MTYPE_U8:
+      case MTYPE_I8:  top = TOP_fisttpll;  break;
+      default:
+	FmtAssert( false, ("Expand_Long_Double_To_Int: unknown imtype") );
+    }
+  } else {	// not SSE3
+    switch (imtype) {
+      case MTYPE_I2:    top = TOP_fistps;   break;
+      case MTYPE_I4:    top = TOP_fistpl;   break;
+      case MTYPE_U4:
+	/* bug#658
+	   We need bigger space for TOP_fistpll.
+	 */
+	mem_ty = MTYPE_To_TY( MTYPE_U8 );
+	/* fall thru */
+      case MTYPE_U8:
+      case MTYPE_I8:    top = TOP_fistpll;  break;
+      default:
+	FmtAssert( false, ("Expand_Long_Double_To_Int: unknown imtype") );
+    }
+  }
+
+  ST* mem_loc = Gen_Temp_Symbol( mem_ty, "x87_2_int" );
+  Allocate_Temp_To_Memory( mem_loc );
+  ST* mem_base_sym = NULL;
+  INT64 mem_base_ofst = 0;
+
+  Base_Symbol_And_Offset_For_Addressing(mem_loc, 0, &mem_base_sym,
+					&mem_base_ofst);
+  TN* mem_base_tn = mem_base_sym == SP_Sym ? SP_TN : FP_TN;
+  TN* mem_ofst_tn = Gen_Literal_TN( mem_base_ofst, 4 );
+
+  Build_OP( top, src, mem_base_tn, mem_ofst_tn, ops );
+
+  // restore the original x87_cw
+  if (!Is_Target_SSE3()) {
+    Build_OP( TOP_fldcw, x87_cw_tn, base_tn, ofst_tn, ops );
+    Set_OP_volatile( OPS_last(ops) );
+  }
 
   // More work to do for a unsigned long -> long double conversion.
 
@@ -2204,7 +2819,7 @@ static void Expand_Long_Double_To_Int( TN* dest, TN* src, TYPE_ID imtype, OPS* o
     TCON_u2( tcon ) = 0x403e;
     TCON_u3( tcon ) = 0x0;      
 
-    ST* tcon_sym = New_Const_Sym( Enter_tcon(tcon),  Be_Type_Tbl( TCON_ty(tcon) ) );
+    ST* tcon_sym = New_Const_Sym(Enter_tcon(tcon), Be_Type_Tbl(TCON_ty(tcon)));
     ST* tcon_base_sym = NULL;
     INT64 tcon_base_ofst = 0;
 
@@ -2243,15 +2858,19 @@ static void Expand_Long_Double_To_Int( TN* dest, TN* src, TYPE_ID imtype, OPS* o
       Build_OP( TOP_fsub, tmp, src, max_value_tn, bb_then_ops );
 
       // load the new x87_cw
-      Build_OP( TOP_fldcw, x87_cw_tn, base_tn_new, ofst_tn_new, bb_then_ops );
-      Set_OP_volatile( OPS_last(bb_then_ops) );
+      if (!Is_Target_SSE3()) {
+	Build_OP( TOP_fldcw, x87_cw_tn, base_tn_new, ofst_tn_new, bb_then_ops );
+	Set_OP_volatile( OPS_last(bb_then_ops) );
+      }
 
       // convert again.
       Build_OP( TOP_fistpll, tmp, mem_base_tn, mem_ofst_tn, bb_then_ops );
 
-      // load the original x87_cw
-      Build_OP( TOP_fldcw, x87_cw_tn, base_tn, ofst_tn, bb_then_ops );
-      Set_OP_volatile( OPS_last(bb_then_ops) );
+      // restore the original x87_cw
+      if (!Is_Target_SSE3()) {
+	Build_OP( TOP_fldcw, x87_cw_tn, base_tn, ofst_tn, bb_then_ops );
+	Set_OP_volatile( OPS_last(bb_then_ops) );
+      }
 
       TN* tmp_dest = Build_TN_Like( dest );
       CGTARG_Load_From_Memory( tmp_dest, mem_loc, bb_then_ops );
@@ -2283,6 +2902,87 @@ static void Expand_Long_Double_To_Int( TN* dest, TN* src, TYPE_ID imtype, OPS* o
 }
 
 
+static void Expand_Float_To_Long_m32( TN* dest,
+				      TN* src,
+				      TYPE_ID imtype,
+				      TYPE_ID fmtype,
+				      OPS* ops )
+{
+  FmtAssert( TN_register_class(src) == ISA_REGISTER_CLASS_float,
+	     ("Expand_Float_To_Long_m32: source is not a xmm register") );
+
+  TN* x87_src = Build_TN_Of_Mtype( MTYPE_FQ );
+  Expand_Float_To_Float( x87_src, src, MTYPE_FQ, fmtype, ops );
+  Expand_Long_Double_To_Int( dest, x87_src, imtype, ops );  
+}
+
+
+static TN* Generate_Cmp_Ctrl_TN( OPERATOR compare )
+{
+  int imm8 = 0;
+
+  switch( compare ){
+  case OPR_EQ: imm8 = 0; break;
+  case OPR_LT: imm8 = 1; break;
+  case OPR_LE: imm8 = 2; break;
+  case OPR_NE: imm8 = 4; break;
+  case OPR_GE: imm8 = 5; break;
+  case OPR_GT: imm8 = 6; break;
+  default:
+    FmtAssert( FALSE, ("Unknown opcode") );
+  }
+
+  return Gen_Literal_TN( imm8, 4 );
+}
+
+
+static void Expand_Unsigned_Float_To_Int_m32( TN* result,
+					      TN* src,
+					      TYPE_ID fmtype,
+					      OPS* ops )
+{
+  TN* dest = result;
+
+  if( TN_is_dedicated(result) ){
+    dest = Build_TN_Like(result);
+  }
+
+  const BOOL is_double = MTYPE_is_size_double(fmtype);
+  TN* fp_const = Build_TN_Like( src );
+
+  Build_OP( TOP_ldsd_n32, fp_const,
+	    Gen_Const_Symbol_TN( 0, 0x80000000, fmtype ),
+	    ops );
+
+  TN* fp_tmp_tn = Build_TN_Like( src );
+  TN* ctrl = Generate_Cmp_Ctrl_TN( OPR_LE );
+  Build_OP( is_double ? TOP_cmpsd : TOP_cmpss,
+	    fp_tmp_tn, fp_const, src, ctrl, ops );
+  Build_OP( is_double ? TOP_andpd : TOP_andps, fp_tmp_tn,
+	    fp_tmp_tn, fp_const, ops );
+  Build_OP( is_double ? TOP_subsd : TOP_subss, fp_tmp_tn,
+	    src, fp_tmp_tn, ops );
+
+  TN* int_tmp_tn = Build_TN_Of_Mtype( MTYPE_U4 );
+  Exp_Immediate( int_tmp_tn, Gen_Literal_TN(0,4), ops );
+
+  TN* sign_mask = Build_TN_Of_Mtype( MTYPE_U4 );
+  Exp_Immediate( sign_mask, Gen_Literal_TN(0x80000000,4), ops );
+
+  TN* rflags = Rflags_TN();
+  Build_OP( is_double ? TOP_comisd : TOP_comiss,
+	    rflags, fp_const, src, ops );
+  Expand_Cmov( TOP_cmovbe, int_tmp_tn, sign_mask, rflags, ops );
+
+  Build_OP( is_double ? TOP_cvttsd2si : TOP_cvttss2si, dest, fp_tmp_tn, ops );
+  Build_OP( TOP_add32, dest, dest, int_tmp_tn, ops );
+
+  if( result != dest ){
+    Exp_COPY( result, dest, ops );
+  }
+}
+
+
 static void
 Expand_Float_To_Int (ROUND_MODE rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
 {
@@ -2293,15 +2993,30 @@ Expand_Float_To_Int (ROUND_MODE rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID f
     Expand_Long_Double_To_Int( dest, src, imtype, ops );
     return;
 
+  } else if( MTYPE_bit_size(imtype) == 64 &&
+	     Is_Target_32bit() ){
+    Expand_Float_To_Long_m32( dest, src, imtype, fmtype, ops );
+    return;
+
   } else if( fmtype == MTYPE_F4 ){ 
     if( MTYPE_bit_size(imtype) == 64 ){
       if( MTYPE_is_signed(imtype) )
 	top = TOP_cvttss2siq;
       else {
-	DevWarn("U8F4TRUNC implemented as I8F4TRUNC");
-	top = TOP_cvttss2siq;	
+	/* For "float" to "unsigned long long" conversion, operation
+	   cvttss2siq will lose some accuracy.  (bug#2867)
+	*/
+	Expand_Float_To_Long_m32( dest, src, imtype, fmtype, ops );
+	return;
       }	
+
     } else if( MTYPE_bit_size(imtype) == 32 ){
+      if( Is_Target_32bit() &&
+	  MTYPE_is_unsigned(imtype) ){
+	Expand_Unsigned_Float_To_Int_m32( dest, src, fmtype, ops );
+	return;
+      }
+
       top = MTYPE_is_signed(imtype) ? TOP_cvttss2si : TOP_cvttss2siq;
     }
 
@@ -2310,16 +3025,40 @@ Expand_Float_To_Int (ROUND_MODE rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID f
       if( MTYPE_is_signed(imtype) )
 	top = TOP_cvttsd2siq;
       else {
-	DevWarn("U8F4TRUNC implemented as I8F8TRUNC");
-	top = TOP_cvttsd2siq;	
+	/* For "double" to "unsigned long long" conversion, operation
+	   cvttsd2siq will lose some accuracy.  (bug#2867)
+	*/
+	Expand_Float_To_Long_m32( dest, src, imtype, fmtype, ops );
+	return;
       }
+
     } else if( MTYPE_bit_size(imtype) == 32 ){
+      if( Is_Target_32bit() &&
+	  MTYPE_is_unsigned(imtype) ){
+	Expand_Unsigned_Float_To_Int_m32( dest, src, fmtype, ops );
+	return;
+      }
+
       top = MTYPE_is_signed(imtype) ? TOP_cvttsd2si : TOP_cvttsd2siq;
     }
   }
 
+  else if ( fmtype == MTYPE_V16F4 ) {
+    if (imtype == MTYPE_V16I4)
+      top = TOP_cvttps2dq;
+    else if (imtype == MTYPE_V16I8)
+      top = TOP_movdq;	// bug 12731
+    else
+      FmtAssert(FALSE, ("Expand_Float_To_Int: NYI"));
+  }
 
-  FmtAssert( top != TOP_UNDEFINED, ("NYI") );
+  else if ( fmtype == MTYPE_V16F8 ) {
+    // Workaround for bug 3082, not supposed to generate correct code
+    top = TOP_cvttpd2dq;
+  }
+
+  FmtAssert( top != TOP_UNDEFINED,
+	     ("Expand_Float_To_Int: undefined opcode") );
 
   Build_OP( top, dest, src, ops );  
 }
@@ -2342,21 +3081,102 @@ Expand_Float_To_Int_Trunc (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OP
   Expand_Float_To_Int (ROUND_CHOP, dest, src, imtype, fmtype, ops);
 }
 
-
-static TN* Gen_Int_Symbol_TN( INT64 int_val, TYPE_ID mtype  )
+void
+Expand_Float_To_Int_Tas (TN *dest, TN *src, TYPE_ID imtype, OPS *ops)
 {
-  TCON tcon = Host_To_Targ( mtype, int_val );
-  ST* sym = New_Const_Sym( Enter_tcon(tcon),  Be_Type_Tbl( TCON_ty(tcon) ) );
+  Is_True( Is_Target_32bit(), ("Expand_Float_To_Int_Tas should not be invoked under -m64") );
+  // Allocate space to store the floating point value
+  const TY_IDX ty = MTYPE_To_TY( imtype );
+  ST* st = Gen_Temp_Symbol( ty, "float_2_int" );
+  Allocate_Temp_To_Memory( st );
 
   ST* base_sym = NULL;
   INT64 base_ofst = 0;
 
-  Allocate_Object(sym);
-  Base_Symbol_And_Offset_For_Addressing( sym, 0, &base_sym, &base_ofst );
+  Base_Symbol_And_Offset_For_Addressing( st, 0, &base_sym, &base_ofst );
+  FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym,
+	     ("Expand_Float_To_Int_Tas: base symbol is on stack") );
 
-  return Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE );
+  TN* base_tn = base_sym == SP_Sym ? SP_TN : FP_TN;
+  TN* ofst_tn = Gen_Literal_TN( base_ofst, 4 );
+
+  if (MTYPE_byte_size(imtype) == 4) {
+    // store the float value to memory
+    Build_OP(Is_Target_SSE2() ? TOP_stss : TOP_fstps, src, base_tn, ofst_tn, ops );
+    // load the value into an int register.
+    Build_OP(TOP_ld32, dest, base_tn, ofst_tn, ops );
+  }
+  else {
+    // store the float value to memory
+    Build_OP(Is_Target_SSE2() ? TOP_stsd : TOP_fstpl, src, base_tn, ofst_tn, ops );
+    // load the value into an int register.
+    Expand_Load(OPCODE_make_op(OPR_LDID, imtype, imtype), dest, base_tn, ofst_tn, ops);
+  }
+} 
+
+void
+Expand_Int_To_Float_Tas (TN *dest, TN *src, TYPE_ID fmtype, OPS *ops)
+{
+  Is_True( Is_Target_32bit(), ("Expand_Int_To_Float_Tas should not be invoked under -m64") );
+  // Allocate space to store the integer point value
+  const TY_IDX ty = MTYPE_To_TY( fmtype );
+  ST* st = Gen_Temp_Symbol( ty, "int_2_float" );
+  Allocate_Temp_To_Memory( st );
+
+  ST* base_sym = NULL;
+  INT64 base_ofst = 0;
+
+  Base_Symbol_And_Offset_For_Addressing( st, 0, &base_sym, &base_ofst );
+  FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym,
+	     ("Expand_Float_To_Int_Tas: base symbol is on stack") );
+
+  TN* base_tn = base_sym == SP_Sym ? SP_TN : FP_TN;
+  TN* ofst_tn = Gen_Literal_TN( base_ofst, 4 );
+
+  if (MTYPE_byte_size(fmtype) == 4) {
+    // store the int value to memory
+    Build_OP(TOP_store32, src, base_tn, ofst_tn, ops );
+    // load the value into a float register.
+    Build_OP(Is_Target_SSE2() ? TOP_ldss : TOP_flds, dest, base_tn, ofst_tn, ops );
+  }
+  else {
+    // store the int value to memory
+    Expand_Store(MTYPE_U8, src, base_tn, ofst_tn, ops );
+    // load the value into a float register.
+    Build_OP(Is_Target_SSE2() ? TOP_ldsd : TOP_fldl, dest, base_tn, ofst_tn, ops );
+  }
+} 
+
+void
+Expand_Int_To_Vect_Tas (TN *dest, TN *src, TYPE_ID vectype, OPS *ops)
+{
+  FmtAssert(MTYPE_byte_size(vectype) == 8,
+  	    ("Expand_Int_To_Vect_Tas: 16-byte vector type not handled"));
+  FmtAssert(TN_register_class(src) == ISA_REGISTER_CLASS_integer,
+  	    ("Expand_Int_To_Vect_Tas: source operand not integer"));
+
+  // Allocate space to store the integer value
+  const TY_IDX ty = MTYPE_To_TY( vectype );
+  ST* st = Gen_Temp_Symbol( ty, "int_2_vect" );
+  Allocate_Temp_To_Memory( st );
+
+  ST* base_sym = NULL;
+  INT64 base_ofst = 0;
+
+  Base_Symbol_And_Offset_For_Addressing( st, 0, &base_sym, &base_ofst );
+  FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym,
+	     ("Expand_Float_To_Int_Tas: base symbol is on stack") );
+
+  TN* base_tn = base_sym == SP_Sym ? SP_TN : FP_TN;
+  TN* ofst_tn = Gen_Literal_TN( base_ofst, 4 );
+
+  // store the int value to memory
+  Expand_Store(MTYPE_U8, src, base_tn, ofst_tn, ops);
+
+  // load the value into the vector register
+  Expand_Load(OPCODE_make_op(OPR_LDID,vectype,vectype), dest, base_tn, ofst_tn,
+  	      ops);
 }
-
 
 static void Expand_non_SSE2_Float_Floor( TN* dest, TN* src, OPS* ops )
 {
@@ -2423,8 +3243,10 @@ void Expand_Float_To_Float_Floorl( TN* dest, TN* src,
 void Expand_Float_To_Float_Floorf( TN* dest, TN* src,
 				   TYPE_ID rtype, TYPE_ID desc, OPS* ops )
 {
-  FmtAssert( rtype == MTYPE_F4, ("NYI") );
-  FmtAssert( rtype == desc, ("NYI") );
+  FmtAssert( rtype == MTYPE_F4,
+	     ("Expand_Float_To_Float_Floorf: rtype is not float") );
+  FmtAssert( rtype == desc,
+	     ("Expand_Float_To_Float_Floorf: rtype and desc are different") );
 
   if( dest == src ){
     TN* tmp = Build_TN_Like( src );
@@ -2440,15 +3262,15 @@ void Expand_Float_To_Float_Floorf( TN* dest, TN* src,
   /* First, generate all the necessary values. */
 
   TN* sign_mask = Build_TN_Like( dest );
-  Expand_Const( sign_mask, Gen_Int_Symbol_TN( 0x80000000, MTYPE_I4 ),
+  Expand_Const( sign_mask, Gen_Const_Symbol_TN( 0x80000000, 0.0, MTYPE_I4 ),
 		rtype, ops );
 
   TN* mi6_val = Build_TN_Like( dest );
-  Expand_Const( mi6_val, Gen_Int_Symbol_TN( 0x4b000000, MTYPE_I4 ),
+  Expand_Const( mi6_val, Gen_Const_Symbol_TN( 0x4b000000, 0.0, MTYPE_I4 ),
 		rtype, ops );
 
   TN* one_point_zero = Build_TN_Like( dest );
-  Expand_Const( one_point_zero, Gen_Int_Symbol_TN( 0x3f800000, MTYPE_I4 ),
+  Expand_Const( one_point_zero, Gen_Const_Symbol_TN( 0x3f800000, 0.0, MTYPE_I4 ),
 		rtype, ops );
 
   /* Execute the floor algorithm. */
@@ -2466,7 +3288,8 @@ void Expand_Float_To_Float_Floorf( TN* dest, TN* src,
   Build_OP( TOP_addss, tmp1,    src,       mi6_tn,  ops );
   Build_OP( TOP_subss, result1, tmp1,      mi6_tn,  ops );
   Build_OP( TOP_subss, diff_tn, result1,   src,     ops );
-  Build_OP( TOP_cmpss, ones_or_zeros, diff_tn, sign_mask, Gen_Literal_TN(6,4), ops );
+  TN* ctrl = Generate_Cmp_Ctrl_TN( OPR_GT );
+  Build_OP( TOP_cmpss, ones_or_zeros, diff_tn, sign_mask, ctrl, ops );
   Build_OP( TOP_andps, fraction_tn, ones_or_zeros, one_point_zero, ops );
   Build_OP( TOP_subss, dest,    result1,   fraction_tn, ops );
 }
@@ -2475,8 +3298,10 @@ void Expand_Float_To_Float_Floorf( TN* dest, TN* src,
 void Expand_Float_To_Float_Floor( TN* dest, TN* src,
 				  TYPE_ID rtype, TYPE_ID desc, OPS* ops )
 {
-  FmtAssert( rtype == MTYPE_F8, ("NYI") );
-  FmtAssert( rtype == desc, ("NYI") );
+  FmtAssert( rtype == MTYPE_F8,
+	     ("Expand_Float_To_Float_Floor: rtype is not double") );	     
+  FmtAssert( rtype == desc,
+	     ("Expand_Float_To_Float_Floor: rtype and desc are different") );
 
   if( dest == src ){
     TN* tmp = Build_TN_Like( src );
@@ -2492,21 +3317,27 @@ void Expand_Float_To_Float_Floor( TN* dest, TN* src,
   /* First, generate all the necessary values. */
 
   TN* sign_mask = Build_TN_Like( dest );
-  Expand_Const( sign_mask, Gen_Int_Symbol_TN( 0x8000000000000000ULL, MTYPE_I8 ),
+  Expand_Const( sign_mask,
+		Gen_Const_Symbol_TN( 0x8000000000000000ULL, 0.0, MTYPE_I8 ),
 		rtype, ops );
 
   TN* mi6_val = Build_TN_Like( dest );
-  Expand_Const( mi6_val, Gen_Int_Symbol_TN( 0x4330000000000000ULL, MTYPE_I8 ),
+  Expand_Const( mi6_val,
+		Gen_Const_Symbol_TN( 0x4330000000000000ULL, 0.0, MTYPE_I8 ),
 		rtype, ops );
 
   TN* one_point_zero = Build_TN_Like( dest );
-  Expand_Const( one_point_zero, Gen_Int_Symbol_TN( 0x3ff0000000000000ULL, MTYPE_I8 ),
+  Expand_Const( one_point_zero,
+		Gen_Const_Symbol_TN( 0x3ff0000000000000ULL, 0.0, MTYPE_I8 ),
 		rtype, ops );
 
   /* Execute the floor algorithm. */
 
   TN* sign_tn = Build_TN_Like( dest );
   TN* mi6_tn = Build_TN_Like( dest );
+  TN* xor_tn = Build_TN_Like( dest );
+  TN* lt_tn = Build_TN_Like( dest );
+  TN* and_tn = Build_TN_Like( dest );
   TN* tmp1 = Build_TN_Like( dest );
   TN* result1 = Build_TN_Like( dest );
   TN* diff_tn = Build_TN_Like( dest );
@@ -2514,11 +3345,16 @@ void Expand_Float_To_Float_Floor( TN* dest, TN* src,
   TN* fraction_tn = Build_TN_Like( dest );
 
   Build_OP( TOP_andpd, sign_tn, sign_mask, src,     ops );
-  Build_OP( TOP_orpd,  mi6_tn,  mi6_val,   sign_tn, ops );
+  Build_OP( TOP_xorpd, xor_tn,  src, sign_tn, ops );
+  TN* ctrl_lt = Generate_Cmp_Ctrl_TN( OPR_LT );
+  Build_OP( TOP_cmpsd, lt_tn, xor_tn, mi6_val, ctrl_lt, ops );
+  Build_OP( TOP_andpd, and_tn, lt_tn, mi6_val, ops );
+  Build_OP( TOP_orpd, mi6_tn, and_tn, sign_tn, ops );
   Build_OP( TOP_addsd, tmp1,    src,       mi6_tn,  ops );
   Build_OP( TOP_subsd, result1, tmp1,      mi6_tn,  ops );
   Build_OP( TOP_subsd, diff_tn, result1,   src,     ops );
-  Build_OP( TOP_cmpsd, ones_or_zeros, diff_tn, sign_mask, Gen_Literal_TN(6,4), ops );
+  TN* ctrl = Generate_Cmp_Ctrl_TN( OPR_GT );
+  Build_OP( TOP_cmpsd, ones_or_zeros, diff_tn, sign_mask, ctrl, ops );
   Build_OP( TOP_andpd, fraction_tn, ones_or_zeros, one_point_zero, ops );
   Build_OP( TOP_subsd, dest,    result1,   fraction_tn, ops );
 }
@@ -2527,56 +3363,79 @@ void Expand_Float_To_Float_Floor( TN* dest, TN* src,
 void
 Expand_Float_To_Int_Floor (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
 {
-  TN* rflags = Rflags_TN();
   TN* dest1 = Build_TN_Like( dest );
-  TN* tmp = Build_TN_Like( dest );
-  Exp_Immediate( tmp, 
-		 Gen_Literal_TN (0, MTYPE_is_size_double(imtype) ? 8: 4), 
-		 FALSE, ops );
-
-  Expand_Float_To_Int (ROUND_NEG_INF, dest, src, imtype, fmtype, ops);
-
-  Expand_Sub( dest1, dest, Gen_Literal_TN( 1, 4 ), imtype, ops );
-  
-  Build_OP ( MTYPE_is_size_double(imtype) ? TOP_cmp64 : TOP_cmp32, 
-	     rflags, dest, tmp, ops);
-  Build_OP( TOP_cmovl, dest, dest1, rflags, ops );
-  Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
-
-}
-
-
-void
-Expand_Float_To_Int_Ceil (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
-{
-  //Expand_Float_To_Int (ROUND_PLUS_INF, dest, src, imtype, fmtype, ops);
-  TN* dest1 = Build_TN_Like( dest );
-  TN* src1  = Build_TN_Like( src );
   const BOOL is_double = MTYPE_is_size_double(fmtype);
   TN* rflags = Rflags_TN();
 
-  TN* tmp = Build_TN_Like( dest );
-  Exp_Immediate( tmp, 
-		 Gen_Literal_TN (0, MTYPE_is_size_double(imtype) ? 8: 4), 
-		 FALSE, ops );
-
   Expand_Float_To_Int( ROUND_NEG_INF, dest, src, imtype, fmtype, ops );
-  Expand_Int_To_Float( src1, dest, imtype, fmtype, ops );
-  
-  Expand_Add( dest1, dest, Gen_Literal_TN( 1, 4 ), imtype, ops );
-  
-  Build_OP ( MTYPE_is_size_double(imtype) ? TOP_cmp64 : TOP_cmp32, 
-	     rflags, dest, tmp, ops);
-  Build_OP( TOP_cmovl, dest1, dest, rflags, ops );
-  Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+  Expand_Sub( dest1, dest, Gen_Literal_TN( 1, 4 ), imtype, ops );
 
+  TN* src1  = Build_TN_Like( src );
+  if( Is_Target_SSE2() )
+    Build_OP( is_double ? TOP_xorpd : TOP_xorps, src1, src, src, ops );
+  else
+    Build_OP( TOP_fldz, src1, ops );
+
+  // Compare <src> with 0.0
+  Build_OP( ( MTYPE_is_quad( imtype ) || !Is_Target_SSE2() )
+	    ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss ),
+	    rflags, src, src1, ops );
+  
+  Expand_Cmov( TOP_cmova, dest1, dest, rflags, ops );
+
+  Expand_Int_To_Float( src1, dest, imtype, fmtype, ops );
+
+  // Compare <src> with itself at the integer side.
   Build_OP( ( MTYPE_is_quad( imtype ) || !Is_Target_SSE2() )
 	    ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss ),
 	    rflags, src, src1, ops );
 
-  Build_OP( TOP_cmovne, dest, dest1, rflags, ops );
-  Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+  Expand_Cmov( TOP_cmovne, dest, dest1, rflags, ops );
 }
+
+
+void
+Expand_Float_To_Int_Ceil (TN *result, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
+{
+  TN* dest = result;
+
+  if( TN_is_dedicated(result) ){
+    dest = Build_TN_Like( result );
+  }
+
+  TN* dest1 = Build_TN_Like( dest );
+  const BOOL is_double = MTYPE_is_size_double(fmtype);
+  TN* rflags = Rflags_TN();
+
+  Expand_Float_To_Int( ROUND_NEG_INF, dest, src, imtype, fmtype, ops );
+  Expand_Add( dest1, dest, Gen_Literal_TN( 1, 4 ), imtype, ops );
+
+  TN* src1  = Build_TN_Like( src );
+  if( Is_Target_SSE2() )
+    Build_OP( is_double ? TOP_xorpd : TOP_xorps, src1, src, src, ops );
+  else
+    Build_OP( TOP_fldz, src1, ops );
+
+  // Compare <src> with 0.0
+  Build_OP( ( MTYPE_is_quad( imtype ) || !Is_Target_SSE2() )
+	    ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss ),
+	    rflags, src, src1, ops );
+  
+  Expand_Cmov( TOP_cmovbe, dest1, dest, rflags, ops );
+
+  Expand_Int_To_Float( src1, dest, imtype, fmtype, ops );
+
+  // Compare <src> with itself at the integer side.
+  Build_OP( ( MTYPE_is_quad( imtype ) || !Is_Target_SSE2() )
+	    ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss ),
+	    rflags, src, src1, ops );
+
+  Expand_Cmov( TOP_cmovne, dest, dest1, rflags, ops );
+
+  if( dest != result )
+    Exp_COPY( result, dest, ops );
+}
+
 
 void
 Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
@@ -2584,8 +3443,19 @@ Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
   if( Is_Target_SSE2()        &&
       !MTYPE_is_quad( rtype ) &&
       !MTYPE_is_quad( desc ) ){
-    Build_OP( (rtype == MTYPE_F8) ? TOP_cvtss2sd : TOP_cvtsd2ss,
-	      dest, src, ops );
+    if (!MTYPE_is_vector(rtype)){
+#ifdef KEY //bug 14346: fp-fp scalar conversion for barcelona is special
+     if(Is_Target_Barcelona())
+      Build_OP( (rtype == MTYPE_F8) ? TOP_cvtps2pd : TOP_cvtpd2ps,
+		dest, src, ops );
+     else
+#endif
+      Build_OP( (rtype == MTYPE_F8) ? TOP_cvtss2sd : TOP_cvtsd2ss,
+                dest, src, ops );
+    }
+    else
+      Build_OP( (rtype == MTYPE_V16F8) ? TOP_cvtps2pd : TOP_cvtpd2ps,
+		dest, src, ops );	
     return;
   }
 
@@ -2597,27 +3467,28 @@ Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
   INT64 base_ofst = 0;
 
   Base_Symbol_And_Offset_For_Addressing( st, 0, &base_sym, &base_ofst );
-  FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym, ("NYI") );
+  FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym,
+	     ("Expand_Float_To_Float: base symbol is not at stack") );
 
   TN* base_tn = base_sym == SP_Sym ? SP_TN : FP_TN;
   TN* ofst_tn = Gen_Literal_TN( base_ofst, 4 );
 
-  // long double -> float/double
   if( MTYPE_is_quad( desc ) ){
-    Build_OP( rtype == MTYPE_F8 ? TOP_fstpl : TOP_fstps,
-	      src, base_tn, ofst_tn, ops );
-    
+    // long double -> float/double
+    CGTARG_Store_To_Memory( src, st, ops );
     CGTARG_Load_From_Memory( dest, st, ops );
     
   } else if( MTYPE_is_quad( rtype ) ){
     // float/double -> long double
     CGTARG_Store_To_Memory( src, st, ops );
+    CGTARG_Load_From_Memory( dest, st, ops );
 
-    Build_OP( desc == MTYPE_F8 ? TOP_fldl : TOP_flds,
-	      dest, base_tn, ofst_tn, ops );
   } else {
-    FmtAssert( TN_register_class(dest) == ISA_REGISTER_CLASS_x87, ("NYI") );
-    FmtAssert( TN_register_class(src)  == ISA_REGISTER_CLASS_x87, ("NYI") );
+    // long double -> long double
+    FmtAssert( TN_register_class(dest) == ISA_REGISTER_CLASS_x87,
+	       ("Expand_Float_To_Float: dest is not x87 register") );
+    FmtAssert( TN_register_class(src)  == ISA_REGISTER_CLASS_x87,
+	       ("Expand_Float_To_Float: source is not x87 register") );
 
     Build_OP( rtype == MTYPE_F8 ? TOP_fstpl : TOP_fstps,
 	      src, base_tn, ofst_tn, ops );
@@ -2625,6 +3496,72 @@ Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
     Build_OP( rtype == MTYPE_F8 ? TOP_fldl : TOP_flds,
 	      dest, base_tn, ofst_tn, ops );
   }
+}
+
+
+static void Expand_Unsigned_Int_To_Float_m32( TN* dest,
+					      TN* src,
+					      TYPE_ID fmtype,
+					      OPS* ops )
+{
+  BB* bb_entry = Cur_BB;
+  BB* bb_then  = Gen_And_Append_BB( bb_entry );  // for case MSB == 1
+  TN* tmp_dest = Build_TN_Like( dest );
+  const BOOL is_double = MTYPE_is_size_double(fmtype);
+
+  BB* bb_exit  = Gen_And_Append_BB( bb_then );
+  const LABEL_IDX bb_exit_label = Gen_Label_For_BB( bb_exit );
+
+  BB_branch_wn(bb_entry) = WN_Create(OPC_TRUEBR,1);
+  WN_kid0(BB_branch_wn(bb_entry)) = NULL;
+  WN_label_number(BB_branch_wn(bb_entry)) = bb_exit_label;
+
+  // Build bb_entry
+  {
+    Build_OP( is_double ? TOP_cvtsi2sd : TOP_cvtsi2ss, tmp_dest, src, ops );
+
+    Exp_OP3v( OPC_TRUEBR,
+	      NULL,
+	      Gen_Label_TN( bb_exit_label, 0 ),
+	      src,
+	      Gen_Literal_TN(0,4),
+	      V_BR_I4GE,
+	      ops );
+
+    if( &New_OPs != ops )
+      OPS_Append_Ops( &New_OPs, ops );
+    Process_New_OPs();
+    BB_Append_Ops( bb_entry, &New_OPs );
+    OPS_Init( &New_OPs );
+    OPS_Init( ops );
+  }
+
+  // Build bb_then here.
+  {
+    OPS* bb_then_ops = &New_OPs;
+
+    TCON tcon = Host_To_Targ_Float( fmtype, 0x100000000LL );
+    ST* sym = New_Const_Sym( Enter_tcon (tcon), Be_Type_Tbl( TCON_ty(tcon) ) );
+    Allocate_Object( sym );
+    ST* base_sym = NULL;
+    INT64 base_ofst = 0;
+    TN* tmp_c = Build_TN_Of_Mtype( fmtype );
+
+    Base_Symbol_And_Offset_For_Addressing( sym, 0, &base_sym, &base_ofst );
+    Build_OP( is_double ? TOP_ldsd_n32 : TOP_ldss_n32, tmp_c,
+	      Gen_Symbol_TN(base_sym, base_ofst, TN_RELOC_NONE), bb_then_ops );
+    Expand_Flop( is_double ? OPC_F8ADD : OPC_F4ADD,
+		 tmp_dest, tmp_dest, tmp_c, NULL, bb_then_ops );
+
+    total_bb_insts = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    BB_Append_Ops( bb_then, bb_then_ops );
+    OPS_Init( bb_then_ops );
+  }
+
+  Cur_BB = bb_exit;
+  Build_OP( is_double ? TOP_movsd : TOP_movss, dest, tmp_dest, ops );
 }
 
 
@@ -2640,7 +3577,11 @@ static void Expand_Unsigned_Long_To_Float( TN* dest, TN* src, TYPE_ID mtype, OPS
      dedicated reg. for return value, and it must be at a exit bb;
      otherwise, ebo will eliminate many of the useful ops.
   */
-  TN* tmp_dest = Build_TN_Like( dest );
+  TN* tmp_dest = dest;
+
+  if( TN_is_dedicated(dest) ){
+    tmp_dest = Build_TN_Like( dest );
+  }
 
   //BB* bb_exit  = Start_New_Basic_Block();
   BB* bb_exit  = Gen_And_Append_BB( bb_else );
@@ -2695,8 +3636,10 @@ static void Expand_Unsigned_Long_To_Float( TN* dest, TN* src, TYPE_ID mtype, OPS
     Build_OP( TOP_shri64, tmp1, src, Gen_Literal_TN( 1, 4 ), bb_else_ops );
     Build_OP( TOP_andi32, tmp2, src, Gen_Literal_TN( 1, 4 ), bb_else_ops );
     Build_OP( TOP_or64, tmp3, tmp1, tmp2, bb_else_ops );
-    Build_OP( is_64bit ? TOP_cvtsi2sdq : TOP_cvtsi2ssq, dest1, tmp3, bb_else_ops );
-    Build_OP( is_64bit ? TOP_addsd : TOP_addss, tmp_dest, dest1, dest1, bb_else_ops );
+    Build_OP( is_64bit ? TOP_cvtsi2sdq : TOP_cvtsi2ssq,
+	      dest1, tmp3, bb_else_ops );
+    Build_OP( is_64bit ? TOP_addsd : TOP_addss,
+	      tmp_dest, dest1, dest1, bb_else_ops );
 
     total_bb_insts = 0;
     Last_Processed_OP = NULL;
@@ -2705,18 +3648,36 @@ static void Expand_Unsigned_Long_To_Float( TN* dest, TN* src, TYPE_ID mtype, OPS
     OPS_Init( bb_else_ops );
   }
 
+  if( tmp_dest != dest ){
+    Build_OP( mtype == MTYPE_F8 ? TOP_movsd : TOP_movss, dest, tmp_dest, ops );
+  }
+
   Cur_BB = bb_exit;
-  Build_OP( mtype == MTYPE_F8 ? TOP_movsd : TOP_movss, dest, tmp_dest, ops );
 }
 
 
-static void Expand_Int_To_Long_Double( TN* dest, TN* src, TYPE_ID imtype, OPS* ops )
+static void Expand_Int_To_Long_Double( TN* result, TN* src,
+				       TYPE_ID imtype, TYPE_ID fmtype,
+				       OPS* ops )
 {
+  TN* dest = result;
+
+  if( TN_is_dedicated(result) ){
+    dest = Build_TN_Like( result );
+  }
+
   if( imtype == MTYPE_U4 ){
     imtype = MTYPE_I8;
-    TN* tmp = Build_TN_Of_Mtype( imtype );
-    Build_OP( TOP_mov32, tmp, src, ops );
-    src = tmp;
+    if (Is_Target_32bit()) {
+      // Create the high 32 bits and rely on the fact that Expand_Split_Store
+      // will automatically store the high part of the pair.  Bug 5688.
+      TN *src_h = Create_TN_Pair(src, MTYPE_I8);
+      Build_OP(TOP_ldc32, src_h, Gen_Literal_TN(0, 4), ops);
+    } else {
+      TN* tmp = Build_TN_Of_Mtype( imtype );
+      Build_OP( TOP_mov32, tmp, src, ops );
+      src = tmp;
+    }
   }
 
   TY_IDX ty = MTYPE_To_TY( imtype );
@@ -2727,7 +3688,8 @@ static void Expand_Int_To_Long_Double( TN* dest, TN* src, TYPE_ID imtype, OPS* o
   INT64 base_ofst = 0;
 
   Base_Symbol_And_Offset_For_Addressing( st, 0, &base_sym, &base_ofst );
-  FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym, ("NYI") );
+  FmtAssert( base_sym == SP_Sym || base_sym == FP_Sym,
+	     ("Expand_Int_To_Long_Double: base symbol is not at stack") );
 
   TN* base_tn = base_sym == SP_Sym ? SP_TN : FP_TN;
   TN* ofst_tn = Gen_Literal_TN( base_ofst, 4 );
@@ -2742,7 +3704,7 @@ static void Expand_Int_To_Long_Double( TN* dest, TN* src, TYPE_ID imtype, OPS* o
   case MTYPE_U8:
   case MTYPE_I8:   top = TOP_fildll;  break;
   default:
-    FmtAssert( false, ("NYI") );
+    FmtAssert( false, ("Expand_Int_To_Long_Double: Unknown imtype") );
   }
 
   Build_OP( top, dest, base_tn, ofst_tn, ops );
@@ -2771,16 +3733,20 @@ static void Expand_Int_To_Long_Double( TN* dest, TN* src, TYPE_ID imtype, OPS* o
 
       ops = &New_OPs;
 
+      TN* src_hi = OP_NEED_PAIR(imtype) ? Get_TN_Pair(src) : src;
+      const VARIANT variant = TN_size(src_hi) > 4 ? V_BR_I8GE : V_BR_I4GE;
+
       Exp_OP3v( OPC_TRUEBR,
 		NULL,
 		Gen_Label_TN( bb_exit_label, 0 ),
-		src,
+		src_hi,
 		Gen_Literal_TN(0,4),
-		V_BR_I8GE,
+		variant,
 		ops );
 
       if( bb_entry != Cur_BB ){
-	FmtAssert( OPS_length( ops ) == 0, ("NYI") );
+	FmtAssert( OPS_length( ops ) == 0,
+		   ("Expand_Int_To_Long_Double: ops is not empty") );
 	bb_entry = Cur_BB;
       }
 
@@ -2823,6 +3789,30 @@ static void Expand_Int_To_Long_Double( TN* dest, TN* src, TYPE_ID imtype, OPS* o
 
     Cur_BB = bb_exit;
   }
+
+  if( result != dest ){
+    Exp_COPY( result, dest, ops );
+  }
+}
+
+
+static void Expand_Long_To_Float_m32( TN* dest,
+				      TN* src,
+				      TYPE_ID imtype,
+				      TYPE_ID fmtype,
+				      OPS* ops )
+{
+  FmtAssert( TN_register_class(dest) == ISA_REGISTER_CLASS_float,
+	     ("Expand_Long_To_Float_m32: dest is not float register") );
+  /* TODO:
+     Get rid of useless loads and stores. (A simple long long to float
+     conversion can expose the awkwardness.)
+  */
+
+  TN* x87_dest = Build_TN_Of_Mtype( MTYPE_FQ );
+  Expand_Int_To_Long_Double( x87_dest, src, imtype, MTYPE_FQ, ops );
+  // Now, convert <x87_dest> to <dest>.
+  Expand_Float_To_Float( dest, x87_dest, fmtype, MTYPE_FQ, ops );
 }
 
 
@@ -2831,51 +3821,136 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
 {
   TOP top = TOP_UNDEFINED;
 
-  if( MTYPE_is_quad( fmtype ) ||
-      !Is_Target_SSE2() ){
-    Expand_Int_To_Long_Double( dest, src, imtype, ops );
+  if( MTYPE_is_quad( fmtype ) ){
+    Expand_Int_To_Long_Double( dest, src, imtype, fmtype, ops );
     return;
+  }
 
-  } else if( fmtype == MTYPE_F4 ){ 
+  /* Without the support of sse2 registers, the conversion from
+     U8 to float need to be handled well to preserve the accuracy.
+     (bug#2600)
+  */
+  if( !Is_Target_SSE2() ){
+    TN* x87_dest =
+      ( imtype == MTYPE_U8 ) ? Build_TN_Of_Mtype( MTYPE_FQ ) : dest;
+    Expand_Int_To_Long_Double( x87_dest, src, imtype, MTYPE_FQ, ops );
+
+    // Now, convert <x87_dest> to <dest>, if necessary.
+    if( x87_dest != dest )
+      Expand_Float_To_Float( dest, x87_dest, fmtype, MTYPE_FQ, ops );
+
+    return;
+  }
+
+  if( fmtype == MTYPE_F4 ){ 
     if( MTYPE_bit_size(imtype) == 64 ){
-      if( MTYPE_is_signed(imtype) )
+
+      if( MTYPE_is_signed(imtype) ){
+	if( Is_Target_32bit() ){
+	  Expand_Long_To_Float_m32( dest, src, imtype, fmtype, ops );
+	  return;
+	}
+
 	top = TOP_cvtsi2ssq;
-      else {
-	Expand_Unsigned_Long_To_Float( dest, src, fmtype, ops );
+
+      } else {
+	if( Is_Target_32bit() ){
+	  Expand_Long_To_Float_m32( dest, src, imtype, fmtype, ops );
+	} else {
+	  Expand_Unsigned_Long_To_Float( dest, src, fmtype, ops );
+	}
+
 	return;
       }
+
     } else if( MTYPE_bit_size(imtype) == 32 ){
       if( MTYPE_is_signed(imtype) )
-	top = TOP_cvtsi2ss;
+#ifdef KEY //cvt signed integer to single precision scalar
+       if(Is_Target_Barcelona()){
+         TN *tmp_dest = Build_TN_Like(dest);
+         Build_OP(TOP_movg2x, tmp_dest, src, ops);
+         src = tmp_dest;
+	 top = TOP_cvtdq2ps;
+       }
+       else
+#endif 
+        top = TOP_cvtsi2ss;
+
       else {
-	TN *tmp = Build_TN_Of_Mtype(MTYPE_I8);
+	if( Is_Target_32bit() ){
+	  Expand_Unsigned_Int_To_Float_m32( dest, src, fmtype, ops );
+	  return;
+	}
+
+        TN *tmp = Build_TN_Of_Mtype(MTYPE_I8);      
 	Build_OP(TOP_mov32, tmp, src, ops);
 	src = tmp;
-	top = TOP_cvtsi2ssq;
+        top = TOP_cvtsi2ssq;       
       }
     }
 
   } else if (fmtype == MTYPE_F8) {
     if( MTYPE_bit_size(imtype) == 64 ){
-      if( MTYPE_is_signed(imtype) )
+      if( MTYPE_is_signed(imtype) ){
+	if( Is_Target_32bit() ){
+	  Expand_Long_To_Float_m32( dest, src, imtype, fmtype, ops );
+	  return;
+	}
+
 	top = TOP_cvtsi2sdq;
-      else {
-	Expand_Unsigned_Long_To_Float( dest, src, fmtype, ops );
+
+      } else {
+	if( Is_Target_32bit() ){
+	  Expand_Long_To_Float_m32( dest, src, imtype, fmtype, ops );
+	} else {
+	  Expand_Unsigned_Long_To_Float( dest, src, fmtype, ops );
+	}
+
 	return;
       }
-    } else if( MTYPE_bit_size(imtype) == 32 ){
-      if( MTYPE_is_signed(imtype) )
-	top = TOP_cvtsi2sd;
-      else {
+
+    } else {
+      FmtAssert( MTYPE_bit_size(imtype) == 32,
+		 ("Expand_Int_To_Float: size of imtype is not 32-bit-long") );
+
+      if( MTYPE_is_signed(imtype) ){
+#ifdef KEY
+        if(Is_Target_Barcelona()){
+         TN *tmp_dest = Build_TN_Like(dest);
+         Build_OP(TOP_movg2x, tmp_dest, src, ops); 
+         src = tmp_dest;
+         top = TOP_cvtdq2pd;
+        }else
+#endif
+         top = TOP_cvtsi2sd;
+
+      } else {
+	if( Is_Target_32bit() ){
+	  Expand_Unsigned_Int_To_Float_m32( dest, src, fmtype, ops );
+	  return;
+	}
+
 	TN *tmp = Build_TN_Of_Mtype(MTYPE_I8);
 	Build_OP(TOP_mov32, tmp, src, ops);
 	src = tmp;
-	top = TOP_cvtsi2sdq;
+        top = TOP_cvtsi2sdq;
       }
     }
+
+  } else if (fmtype == MTYPE_V16F8) {
+    // imtype == V16I8: bug 3082 workaround
+    if (imtype == MTYPE_V16I4 || imtype == MTYPE_V8I4 || imtype == MTYPE_V16I8)
+      top = TOP_cvtdq2pd;
+    else if (imtype == MTYPE_U8 || imtype == MTYPE_I8)
+      top = TOP_cvtsi2sdq; // bug 3082 workaround, others should not reach here
+  } else if (fmtype == MTYPE_V16F4) {
+    if (imtype == MTYPE_V16I4)
+      top = TOP_cvtdq2ps;    
+    else if (imtype == MTYPE_U8 || imtype == MTYPE_I8)
+      top = TOP_cvtsi2sdq; // bug 3082 workaround, others should not reach here
   }
 
-  FmtAssert( top != TOP_UNDEFINED, ("NYI") );
+  FmtAssert( top != TOP_UNDEFINED, ("Expand_Int_To_Float: Undefined opcode") );
 
   Build_OP( top, dest, src, ops );
 }
@@ -2893,7 +3968,7 @@ Optimize_Select (
 	BOOL is_float,
 	OPS *ops)
 {
-  FmtAssert( false, ("NYI") );
+  ErrMsg( EC_Unimplemented, "Optimize_Select: NYI" );
   return FALSE;
 }
 
@@ -2908,7 +3983,7 @@ static void Expand_Compare_And_Select ( TOP cmp,
 					BOOL is_float,
 					OPS *ops)
 {
-  FmtAssert(FALSE,("Unimplemented"));
+  ErrMsg( EC_Unimplemented, "Expand_Compare_And_Select: NYI" );
 }
 
 void
@@ -2921,8 +3996,8 @@ Expand_Select (
   BOOL float_cond,
   OPS *ops)
 {
-  FmtAssert(TN_register_class(cond_tn) == ISA_REGISTER_CLASS_integer,
-	    ("Handle this case in Expand_Select"));
+  Is_True( TN_register_class(cond_tn) == ISA_REGISTER_CLASS_integer,
+	   ("Handle this case in Expand_Select") );
   const BOOL non_sse2_fp = MTYPE_is_quad(mtype) ||
     ( MTYPE_is_float(mtype) && !Is_Target_SSE2() );
 
@@ -2938,7 +4013,15 @@ Expand_Select (
     true_tn = tmp;
   }
 
-  if( non_sse2_fp || !MTYPE_is_float(mtype) ){
+  if( dest_tn == cond_tn ){ // bug 13180
+    TN* tmp = Build_TN_Like( cond_tn );
+    Expand_Copy( tmp, cond_tn, mtype, ops );
+    cond_tn = tmp;
+  }
+
+  if (non_sse2_fp ||
+      (TN_register_class(dest_tn) == ISA_REGISTER_CLASS_integer)) {
+
     // First, assign <true_tn> to <dest_tn>.
     Expand_Copy( dest_tn, true_tn, mtype, ops );
     
@@ -2948,13 +4031,20 @@ Expand_Select (
 	      p, cond_tn, cond_tn, ops );
     
     // Now, use the rflags to conditionally move if <cond_tn> is 0
-    Build_OP( non_sse2_fp ? TOP_fcmove : TOP_cmove,
-	      dest_tn, false_tn, p, ops );
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
-
-  } else if( MTYPE_is_float(mtype) ){
-    TN *tmp1 = Build_TN_Like(cond_tn);
-    TN *tmp2 = Build_TN_Like(cond_tn);
+    TN *dest_tn_hi = NULL;
+    TN *false_tn_hi = NULL;
+    if (OP_NEED_PAIR(mtype)) {
+      TN *true_tn_hi = Get_TN_Pair(true_tn);
+      dest_tn_hi = Get_TN_Pair(dest_tn);
+      false_tn_hi = Get_TN_Pair(false_tn);
+#if 0 // bug 11709: not needed because last Expand_Copy includes the hi part
+      Expand_Copy(dest_tn_hi, true_tn_hi, mtype, ops );
+#endif
+    }
+    Expand_Cmov(non_sse2_fp ? TOP_fcmove : TOP_cmove, dest_tn, false_tn, p,
+		ops, dest_tn_hi, false_tn_hi);
+  } else if (TN_register_class(dest_tn) == ISA_REGISTER_CLASS_float) {
+    // SSE2 floats, intergral vectors
     TN *tmp3 = Build_TN_Like(dest_tn);
     TN *tmp4 = Build_TN_Like(dest_tn);
     TN *tmp5 = Build_TN_Like(dest_tn);
@@ -2963,6 +4053,9 @@ Expand_Select (
     BOOL is_double = (TN_size(dest_tn) == 8); 
     TYPE_ID imtype = is_double ? MTYPE_I8 :MTYPE_I4;
     TYPE_ID fmtype = is_double ? MTYPE_F8 :MTYPE_F4;
+
+    TN* tmp1 = Build_TN_Of_Mtype( imtype );
+    TN* tmp2 = Build_TN_Of_Mtype( imtype );
 
     Expand_Shift (tmp1, cond_tn, Gen_Literal_TN(is_double?63:31, 4), 
 		  is_double?MTYPE_I8:MTYPE_I4, shift_left, ops);
@@ -2994,11 +4087,25 @@ Expand_Select (
 void
 Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {
-  FmtAssert( !TN_has_value( src1 ), ("src1 has value") );
+  Is_True( !TN_has_value( src1 ), ("Expand_Min: src1 has value") );
 
-  if( MTYPE_is_float(mtype) &&
-      Is_Target_SSE2()      &&
-      !MTYPE_is_quad( mtype ) ){
+  if( OP_NEED_PAIR(mtype) ){
+    if( dest == src2 ){
+      TN* tmp = Build_TN_Like( src2 );
+      Expand_Copy( tmp, src2, mtype, ops );
+      src2 = tmp;
+    }
+
+    Expand_Split_Select( dest,
+			 OPR_LE,
+			 TN_has_value(src2) ? TOP_cmpi64 : TOP_cmp64,
+			 src1, src2, mtype,  /* cmp kids       */
+			 src1, src2, mtype,  /* true and false */
+			 ops );
+
+  } else if( MTYPE_is_float(mtype) &&
+	     Is_Target_SSE2()      &&
+	     !MTYPE_is_quad( mtype ) ){
     switch(mtype) {
     case MTYPE_V16F4:
       Build_OP( TOP_fmin128v32, dest, src1, src2, ops );      
@@ -3011,6 +4118,40 @@ Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 		dest, src1, src2, ops );
       break;
     }
+
+  } else if ( MTYPE_is_vector(mtype) ) { // Integer MIN      
+      TN *tmp1 = Build_TN_Like(src1); 
+      TN *tmp2 = Build_TN_Like(src1); 
+      TN *tmp3 = Build_TN_Like(src1); 
+      TN *tmp4 = Build_TN_Like(src1); 
+      TN *tmp5 = Build_TN_Like(src1); 
+      TN *tmp6 = Build_TN_Like(src1); 
+      Build_OP( TOP_movdq, tmp1, src1, ops );
+      Build_OP( TOP_movdq, tmp2, tmp1, ops );
+      Build_OP( TOP_movdq, tmp3, src2, ops );
+      switch(mtype){
+        case MTYPE_V16I1: //added for bug 5695, refer to 8676
+            Build_OP( TOP_xor128v8, tmp4, tmp1, tmp3, ops );
+            Build_OP( TOP_cmpgt128v8, tmp5, tmp3, tmp2, ops );
+            Build_OP( TOP_and128v8, tmp6, tmp5, tmp4, ops );
+            Build_OP( TOP_xor128v8, dest, tmp6, tmp3, ops );
+            break;
+        case MTYPE_V16I2: //added for bug 5695, refer to 8676
+            Build_OP( TOP_xor128v16, tmp4, tmp1, tmp3, ops );
+            Build_OP( TOP_cmpgt128v16, tmp5, tmp3, tmp2, ops );
+            Build_OP( TOP_and128v16, tmp6, tmp5, tmp4, ops );
+            Build_OP( TOP_xor128v16, dest, tmp6, tmp3, ops );
+            break;
+        case MTYPE_V16I4: /// original one
+            Build_OP( TOP_xor128v32, tmp4, tmp1, tmp3, ops );
+            Build_OP( TOP_cmpgt128v32, tmp5, tmp3, tmp2, ops );
+            Build_OP( TOP_and128v32, tmp6, tmp5, tmp4, ops );
+            Build_OP( TOP_xor128v32, dest, tmp6, tmp3, ops );
+            break;
+         default:
+            FmtAssert(FALSE, ("NYI"));
+            break;
+      }//end switch
   } else {
     const BOOL is_64bit = MTYPE_is_size_double(mtype);
 
@@ -3033,23 +4174,57 @@ Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       src2 = tmp;
     }
 
+    // OSP, laijx
+    // If is return reg and target does not support cmov,
+    // The MIN will be expand to multiple BBs
+    // Store the return of MIN(which is also the return of the func)
+    //      to a temp reg, then copy the temp reg to return reg
+    TN* orig_dest = NULL;
+    if( ! Target_Support_Cmov() &&
+         TN_is_dedicated(dest) &&
+         REGISTER_SET_MemberP(
+           REGISTER_CLASS_function_value(TN_register_class(dest)),
+             TN_register(dest) ) ) {
+      orig_dest = dest;
+      dest = Dup_TN_Even_If_Dedicated(orig_dest);
+    }
+
     if( dest != src2 )
       Build_OP( mov_opcode, dest, src2, ops );
 
     Build_OP( cmp_opcode, rflags, src1, src2, ops );
-    Build_OP( cmov_opcode, dest, src1, rflags, ops );
-    Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
+    Expand_Cmov( cmov_opcode, dest, src1, rflags, ops );
+
+    // OSP, laijx
+    if( orig_dest != NULL ) {
+      Expand_Copy( orig_dest, dest, mtype, ops );
+    }
+  
   }
 }
 
 void
 Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {     
-  FmtAssert( !TN_has_value( src1 ), ("src1 has value") );
+  Is_True( !TN_has_value( src1 ), ("Expand_Max: src1 has value") );
 
-  if( MTYPE_is_float(mtype) &&
-      Is_Target_SSE2()      &&
-      !MTYPE_is_quad(mtype) ){
+  if( OP_NEED_PAIR(mtype) ){
+    if( dest == src2 ){
+      TN* tmp = Build_TN_Like( src2 );
+      Expand_Copy( tmp, src2, mtype, ops );
+      src2 = tmp;
+    }
+
+    Expand_Split_Select( dest,
+			 OPR_GE,
+			 TN_has_value(src2) ? TOP_cmpi64 : TOP_cmp64,
+			 src1, src2, mtype,  /* cmp kids       */
+			 src1, src2, mtype,  /* true and false */
+			 ops );
+
+  } else if( MTYPE_is_float(mtype) &&
+	     Is_Target_SSE2()      &&
+	     !MTYPE_is_quad(mtype) ){
     switch(mtype) {
     case MTYPE_V16F4:
       Build_OP( TOP_fmax128v32, dest, src1, src2, ops );      
@@ -3062,6 +4237,40 @@ Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 		dest, src1, src2, ops );
       break;
     }
+
+  } else if ( MTYPE_is_vector(mtype) ) { // Integer MAX
+      TN *tmp1 = Build_TN_Like(src1); 
+      TN *tmp2 = Build_TN_Like(src1); 
+      TN *tmp3 = Build_TN_Like(src1); 
+      TN *tmp4 = Build_TN_Like(src1); 
+      TN *tmp5 = Build_TN_Like(src1); 
+      TN *tmp6 = Build_TN_Like(src1); 
+      Build_OP( TOP_movdq, tmp1, src1, ops );
+      Build_OP( TOP_movdq, tmp2, tmp1, ops );
+      Build_OP( TOP_movdq, tmp3, src2, ops );
+      switch(mtype){
+        case MTYPE_V16I1: /// added for bug 8676
+            Build_OP( TOP_xor128v8, tmp4, tmp1, tmp3, ops );
+            Build_OP( TOP_cmpgt128v8, tmp5, tmp2, tmp3, ops );
+            Build_OP( TOP_and128v8, tmp6, tmp5, tmp4, ops );
+            Build_OP( TOP_xor128v8, dest, tmp6, tmp3, ops );
+            break;
+        case MTYPE_V16I2: /// added for bug 8676
+	    Build_OP( TOP_xor128v16, tmp4, tmp1, tmp3, ops );
+            Build_OP( TOP_cmpgt128v16, tmp5, tmp2, tmp3, ops );
+            Build_OP( TOP_and128v16, tmp6, tmp5, tmp4, ops );
+            Build_OP( TOP_xor128v16, dest, tmp6, tmp3, ops );
+            break;
+        case MTYPE_V16I4: /// original one
+	    Build_OP( TOP_xor128v32, tmp4, tmp1, tmp3, ops );
+	    Build_OP( TOP_cmpgt128v32, tmp5, tmp2, tmp3, ops );
+	    Build_OP( TOP_and128v32, tmp6, tmp5, tmp4, ops );
+	    Build_OP( TOP_xor128v32, dest, tmp6, tmp3, ops );
+            break;
+         default:
+            FmtAssert(FALSE, ("NYI"));
+            break;
+      }//end switch
   } else {
     const BOOL is_64bit = MTYPE_is_size_double(mtype);
     TN* rflags = Rflags_TN();
@@ -3081,40 +4290,101 @@ Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       src2 = tmp;
     }
 
+    // OSP, laijx
+    // If is return reg and target does not support cmov,
+    // The MAX will be expand to multiple BBs
+    // Store the return of MAX(which is also the return of the func)
+    //      to a temp reg, then copy the temp reg to return reg
+    TN* orig_dest = NULL;
+    if( ! Target_Support_Cmov() &&
+         TN_is_dedicated(dest) &&
+         REGISTER_SET_MemberP(
+           REGISTER_CLASS_function_value(TN_register_class(dest)),
+             TN_register(dest) ) ) {
+      orig_dest = dest;
+      dest = Dup_TN_Even_If_Dedicated(orig_dest);
+    }
+
     if( dest != src2 ){
       Expand_Copy( dest, src2, mtype, ops );
     }
 
     Build_OP( cmp_opcode, rflags, src1, src2, ops );
-    Build_OP( cmov_opcode, dest, src1, rflags, ops );
-    Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
+    Expand_Cmov( cmov_opcode, dest, src1, rflags, ops );
+
+    // OSP, laijx
+    if( orig_dest != NULL ) {
+      Expand_Copy( orig_dest, dest, mtype, ops );
+    }
+  
   }
 }
 
 void
-Expand_MinMax (TN *dest, TN *dest2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
+Expand_MinMax (TN *dest_min, TN *dest_max,
+	       TN *src1, TN *src2,
+	       TYPE_ID mtype, OPS *ops)
 { 
-  FmtAssert( !TN_has_value( src1 ), ("src1 has value") );
+  Is_True( !TN_has_value( src1 ), ("Expand_MinMax: src1 has value") );
 
-  if( MTYPE_is_float(mtype) &&
-      Is_Target_SSE2()      &&
-      !MTYPE_is_quad(mtype) ){
+  if( dest_min == src1 || dest_max == src1 ){
+    TN* tmp = Build_TN_Like( src1 );
+    Expand_Copy( tmp, src1, mtype, ops );
+    src1 = tmp;
+  }
+
+  if( dest_min == src2 || dest_max == src2 ){
+    TN* tmp = Build_TN_Like( src2 );
+    Expand_Copy( tmp, src2, mtype, ops );
+    src2 = tmp;
+  }
+
+  if( OP_NEED_PAIR(mtype) ){
+    Expand_Min( dest_min, src1, src2, mtype, ops );
+    Expand_Max( dest_max, src1, src2, mtype, ops );
+
+  } else if( MTYPE_is_float(mtype) &&
+	     Is_Target_SSE2()      &&
+	     !MTYPE_is_quad(mtype) ){
     switch(mtype) {
     case MTYPE_V16F4:
-      Build_OP( TOP_fmin128v32, dest, src1, src2, ops );      
-      Build_OP( TOP_fmax128v32, dest2, src1, src2, ops );      
+      Build_OP( TOP_fmin128v32, dest_min, src1, src2, ops );      
+      Build_OP( TOP_fmax128v32, dest_max, src1, src2, ops );      
       break;
     case MTYPE_V16F8:
-      Build_OP( TOP_fmin128v64, dest, src1, src2, ops );      
-      Build_OP( TOP_fmax128v64, dest2, src1, src2, ops );      
+      Build_OP( TOP_fmin128v64, dest_min, src1, src2, ops );      
+      Build_OP( TOP_fmax128v64, dest_max, src1, src2, ops );      
       break;
     default:
       Build_OP( mtype == MTYPE_F8 ? TOP_minsd : TOP_minss, 
-		dest, src1, src2, ops );
+		dest_min, src1, src2, ops );
       Build_OP( mtype == MTYPE_F8 ? TOP_maxsd : TOP_maxss, 
-		dest2, src1, src2, ops );
+		dest_max, src1, src2, ops );
       break;
     }
+
+  } else if ( MTYPE_is_vector(mtype) ) { // Integer MINMAX
+    if (mtype == MTYPE_V16I4) {
+      TN *tmp1 = Build_TN_Like(src1); 
+      TN *tmp2 = Build_TN_Like(src1); 
+      TN *tmp3 = Build_TN_Like(src1); 
+      TN *tmp4 = Build_TN_Like(src1); 
+      TN *tmp5 = Build_TN_Like(src1); 
+      TN *tmp6 = Build_TN_Like(src1); 
+      TN *tmp7 = Build_TN_Like(src1); 
+      
+      Build_OP( TOP_movdq, tmp1, src1, ops );
+      Build_OP( TOP_movdq, tmp2, tmp1, ops );
+      Build_OP( TOP_movdq, tmp3, tmp1, ops );      
+      Build_OP( TOP_movdq, tmp4, src2, ops );
+      Build_OP( TOP_cmpgt128v32, tmp5, tmp2, tmp4, ops );
+      Build_OP( TOP_xor128v32, tmp6, tmp3, tmp4, ops );
+      Build_OP( TOP_and128v32, tmp7, tmp5, tmp6, ops );
+      Build_OP( TOP_xor128v32, dest_max, tmp4, tmp7, ops );
+      Build_OP( TOP_xor128v32, dest_min, tmp1, tmp7, ops );
+    } else
+      FmtAssert(FALSE, ("NYI"));
+
   } else {
     const BOOL is_64bit = MTYPE_is_size_double(mtype);
 
@@ -3129,29 +4399,13 @@ Expand_MinMax (TN *dest, TN *dest2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       mov_opcode = is_64bit ? TOP_ldc64 : TOP_ldc32;
     }
 
-    if( dest == src1 ){
-      TN* tmp = Build_TN_Like( src1 );
-      Expand_Copy( tmp, src1, mtype, ops );
-      src1 = tmp;
-    }
-
-    if( dest2 == src2 ){
-      TN* tmp = Build_TN_Like( src2 );
-      Expand_Copy( tmp, src2, mtype, ops );
-      src2 = tmp;
-    }
-
-    Build_OP( mov_opcode, dest, src2, ops );
-    Build_OP( mov_opcode, dest2, src1, ops );
+    Build_OP( mov_opcode, dest_min, src2, ops );
+    Build_OP( mov_opcode, dest_max, src1, ops );
     Build_OP( cmp_opcode, rflags, src1, src2, ops );
 
     const TOP cmov_opcode = MTYPE_is_float(mtype)
       ? TOP_fcmovb : ( MTYPE_is_signed(mtype) ? TOP_cmovl : TOP_cmovb );
-    Build_OP( cmov_opcode, dest, src1, rflags, ops );
-    Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
-
-    Build_OP( cmov_opcode, dest2, src2, rflags, ops );
-    Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
+    Expand_Cmov( cmov_opcode, dest_min, src1, rflags, ops, dest_max, src2 );
   }
 }
 
@@ -3169,23 +4423,35 @@ Check_Select_Expansion (OPCODE compare)
 static void 
 Expand_Ordered_Select_Compare ( OPS* ops, TOP cond_move )
 {
-  FmtAssert(OPS_length(ops) == 3, ("NYI"));
+  FmtAssert(OPS_length(ops) == 3 || OPS_length(ops) == 5,
+	    ("Expand_Ordered_Select_Compare: wrong ops length"));
 
   if ( cond_move == TOP_cmova || cond_move == TOP_cmovae )
     // We are as good before. 
     return;
 
+  if( TOP_is_x87( cond_move ) ){
+    DevWarn( "Expand_Ordered_Select_Compare: %s is not supported yet.\n",
+            TOP_Name(cond_move) );
+    return;
+  }
+
   // Collect the compare and select operands from ops
   TN *cmp_kid1, *cmp_kid2, *true_tn, *false_tn, *result, *tmp;
+  TN *result_hi = NULL;
+  TN *true_tn_hi = NULL;
+  TN *false_tn_hi = NULL;
   OP* init_op = OPS_first ( ops );
   OP* cmp_op  = init_op->next;
   OP* cmov_op = OPS_last ( ops );
   TOP cmp_opcode = OP_code ( cmp_op );
+  BOOL need_pair = FALSE;
 
-  if( TOP_is_uses_stack( cmp_opcode ) ){
-    DevWarn( "Expand_Ordered_Select_Compare: %s is not supported yet.\n",
-	     TOP_Name(cmp_opcode) );
-    return;
+  if (OPS_length(ops) == 5) {
+    need_pair = TRUE;
+    cmp_op  = init_op->next->next;
+    cmov_op = cmp_op->next;
+    cmp_opcode = OP_code ( cmp_op );
   }
 
   TOP init_opcode = OP_code ( init_op );
@@ -3198,9 +4464,7 @@ Expand_Ordered_Select_Compare ( OPS* ops, TOP cond_move )
   cmp_kid2 = OP_opnd(cmp_op, 1);
   result   = OP_result(init_op, 0);
   
-  OPS_Remove_Op(ops, init_op);
-  OPS_Remove_Op(ops, cmp_op);
-  OPS_Remove_Op(ops, cmov_op);
+  OPS_Remove_All(ops);
 
   switch (cond_move) {
   case TOP_cmove: 
@@ -3216,19 +4480,166 @@ Expand_Ordered_Select_Compare ( OPS* ops, TOP cond_move )
   case TOP_cmovb:  new_cond_move = TOP_cmova; break;
   case TOP_cmovbe: new_cond_move = TOP_cmovae; break;
   default:
-    FmtAssert( FALSE, ("NYI") );
+    FmtAssert( FALSE,
+	       ("Expand_Ordered_Select_Compare: unsupported opcode (%s)",
+		TOP_Name(cond_move)) );
   }
+
+  if (need_pair) {
+    result_hi = Get_TN_Pair( result );
+    true_tn_hi = Get_TN_Pair( true_tn );
+    false_tn_hi = Get_TN_Pair( false_tn );
+  }
+
   Build_OP ( init_opcode, result, false_tn, ops );
+  if (need_pair)
+    Build_OP ( init_opcode, result_hi, false_tn_hi, ops );
   Build_OP ( cmp_opcode, rflags, cmp_kid2, cmp_kid1, ops );
-  Build_OP ( new_cond_move, result, true_tn, rflags, ops );
-  Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
+  Expand_Cmov(new_cond_move, result, true_tn, rflags, ops, result_hi,
+	      true_tn_hi);
   if ( new_cond_move == TOP_cmovne ) {
-    Build_OP ( TOP_cmovp, result, true_tn, rflags, ops );
-    Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
+    Expand_Cmov(TOP_cmovp, result, true_tn, rflags, ops, result_hi, true_tn_hi);
   }    
 
   return;
 }
+
+
+/*  <result> = <cmp_kid1> <compare> <cmp_kid2> ? <true_tn> : <false_tn>
+ */
+static void Expand_non_SSE2_Float_Select( TN* dest, VARIANT variant,
+					  TN* cmp_kid1, TN* cmp_kid2,
+					  TN* true_tn, TN* false_tn, TYPE_ID select_type,
+					  OPS* ops )
+{
+  TN* result = dest;
+
+  if( TN_is_dedicated(dest) ){
+    result = Build_TN_Like( dest );
+  }
+
+  Expand_Copy( result, true_tn, select_type, ops );
+
+  BB* bb_entry  = Cur_BB;
+  BB* bb_then = Gen_And_Append_BB( bb_entry );
+  BB* bb_exit = Gen_And_Append_BB( bb_then );
+
+  const LABEL_IDX bb_exit_label = Gen_Label_For_BB( bb_exit );
+
+  BB_branch_wn(bb_entry) = WN_Create(OPC_TRUEBR,1);
+  WN_kid0(BB_branch_wn(bb_entry)) = NULL;
+  WN_label_number(BB_branch_wn(bb_entry)) = bb_exit_label;
+
+  // build bb_entry
+  {
+    Exp_OP3v( OPC_TRUEBR,
+	      NULL,
+	      Gen_Label_TN( bb_exit_label, 0 ),
+	      cmp_kid1,
+	      cmp_kid2,
+	      variant,
+	      ops );
+
+    if( &New_OPs != ops )
+      OPS_Append_Ops( &New_OPs, ops );
+    Process_New_OPs();
+    BB_Append_Ops( bb_entry, &New_OPs );
+    OPS_Init( &New_OPs );
+    OPS_Init( ops );    
+  }
+
+  // Build bb_then here if <cmp_kid1> <compare> <cmp_kid2> is FALSE.
+  {
+    OPS* bb_then_ops = &New_OPs;
+    Expand_Copy( result, false_tn, select_type, bb_then_ops );
+
+    total_bb_insts = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    BB_Append_Ops( bb_then, bb_then_ops );
+    OPS_Init( bb_then_ops );    
+  }
+
+  Cur_BB = bb_exit;
+
+  if( result != dest ){
+    Expand_Copy( dest, result, select_type, ops );
+  }
+}
+
+//implemented to handle storing vectorized floating-point comparison
+//to a preg for bug 11088
+extern void 
+Exp_Stid_And_VComp(
+        OPCODE stid, TN *result, TN *cmp_kid1, TN *cmp_kid2,
+        OPCODE compare, OPS *ops)
+{
+  OPS new_ops = OPS_EMPTY;
+  const TYPE_ID desc = OPCODE_desc(compare);
+  const TYPE_ID rtype =OPCODE_rtype(compare);
+  const TYPE_ID stid_desc = OPCODE_desc(stid);
+  
+  FmtAssert(MTYPE_is_integral(rtype) && MTYPE_is_float(desc)
+            && MTYPE_is_vector(rtype) && MTYPE_is_vector(desc),
+            ("Exp_Stid_And_VComp: comparison type not handled")); 
+
+  FmtAssert( stid_desc==MTYPE_V16I4 || stid_desc==MTYPE_V16I8,
+                 ("Exp_Stid_And_VComp: store type not handled"));
+
+  const OPERATOR compare_opr = OPCODE_operator(compare);
+  TN* ctrl = Generate_Cmp_Ctrl_TN( compare_opr );  
+
+  Build_OP( (stid_desc == MTYPE_V16I8 ) ? TOP_cmppd : TOP_cmpps,
+               result, cmp_kid1, cmp_kid2, ctrl, ops);
+
+}
+
+//implemented to handle select with vectorized ldid as condition
+//for bug 11088
+extern void
+Exp_Select_And_VLdid(
+        OPCODE select, TN *result, TN *true_tn, TN *false_tn,
+        OPCODE compare, TN *vldid,  OPS *ops)
+{
+  OPS new_ops = OPS_EMPTY;
+  const TYPE_ID select_type = OPCODE_rtype(select);
+  FmtAssert( select_type == MTYPE_V16F4 || select_type == MTYPE_V16F8,
+                 ("Exp_Select_And_VLdid: select type not handled"));
+
+  BOOL is_rsize_double = (select_type == MTYPE_V16F8) ? TRUE : FALSE;
+
+   if( result == true_tn ){
+    TN* tmp = Build_TN_Like( true_tn );
+    Expand_Copy( tmp, true_tn, select_type, ops );
+    true_tn = tmp;
+  }
+
+  if( result == false_tn ){
+    TN* tmp = Build_TN_Like( false_tn );
+    Expand_Copy( tmp, false_tn, select_type, ops );
+    false_tn = tmp;
+  }
+
+  if( result == vldid ){
+    TN* tmp = Build_TN_Like(vldid);
+    Expand_Copy( tmp, vldid, select_type, ops );
+    vldid = tmp;
+  }
+ 
+  TN* tmp1 = Build_TN_Like(result);
+  TN* tmp2 = Build_TN_Like(result);
+
+  Build_OP( is_rsize_double ? TOP_andpd : TOP_andps, tmp1, true_tn, vldid, &new_ops );
+  Build_OP( is_rsize_double ? TOP_andnpd : TOP_andnps, tmp2, vldid, false_tn, &new_ops );
+  Build_OP( is_rsize_double ? TOP_orpd : TOP_orps, result, tmp2, tmp1, &new_ops );
+
+  if( Trace_Exp ){
+     Print_OPS( &new_ops );
+  }
+
+  OPS_Append_Ops(ops, &new_ops);
+}
+
 
 extern void 
 Exp_Select_And_Condition (
@@ -3256,8 +4667,8 @@ Exp_Select_And_Condition (
   OPS new_ops = OPS_EMPTY;
   const TYPE_ID desc = OPCODE_desc(compare);
   const TYPE_ID select_type = OPCODE_rtype(select);
-  const BOOL is_rsize_double = MTYPE_is_size_double(select_type);
-  const BOOL is_ssize_double = MTYPE_is_size_double(desc);
+  BOOL is_rsize_double = MTYPE_is_size_double(select_type);
+  BOOL is_ssize_double = MTYPE_is_size_double(desc);
   const OPERATOR compare_opr = OPCODE_operator(compare);
 
   /* Fix bug#1325
@@ -3289,6 +4700,15 @@ Exp_Select_And_Condition (
   }
 
   if( MTYPE_is_float(select_type) &&
+      !Is_Target_SSE2()           &&
+      !MTYPE_is_float(desc)       &&
+      MTYPE_is_signed(desc) ){
+    Expand_non_SSE2_Float_Select( result, variant,
+				  cmp_kid1, cmp_kid2,
+				  true_tn, false_tn, select_type,
+				  &new_ops );
+
+  } else if( MTYPE_is_float(select_type) &&
       Is_Target_SSE2()            &&
       !MTYPE_is_quad(select_type) ){
     /* For case where <result>, <true_tn> and <false_tn> are fp type.
@@ -3310,7 +4730,8 @@ Exp_Select_And_Condition (
       TN* cmp1 = Build_TN_Of_Mtype(select_type);
       TN* cmp2 = Build_TN_Of_Mtype(select_type);
 
-      FmtAssert( !TN_has_value( cmp_kid1 ), ("NYI") );
+      FmtAssert( !TN_has_value( cmp_kid1 ),
+		 ("Exp_Select_And_Condition: cmp kid1 does not have value") );
       Expand_Int_To_Float( cmp1, cmp_kid1, desc, select_type, &new_ops );
       cmp_kid1 = cmp1;
 
@@ -3319,7 +4740,10 @@ Exp_Select_And_Condition (
 	if( TN_size( cmp_kid2 ) == 4 )
 	  val = (INT32)val;
 
-	TCON tcon = Host_To_Targ_Float( is_rsize_double ? MTYPE_F8 : MTYPE_F4, val );
+	// Bug 5084 - The following should expand val as an integer and not 
+	// a float because we are going to convert this int back to float.
+	//TCON tcon = Host_To_Targ_Float( is_rsize_double ? MTYPE_F8 : MTYPE_F4, val );
+	TCON tcon = Host_To_Targ( is_rsize_double ? MTYPE_I8 : MTYPE_I4, val );
 	ST* sym = New_Const_Sym( Enter_tcon(tcon),  Be_Type_Tbl( TCON_ty(tcon) ) );
 	TN* tmp = Build_TN_Of_Mtype(desc);
 
@@ -3336,29 +4760,95 @@ Exp_Select_And_Condition (
 
       Expand_Int_To_Float( cmp2, cmp_kid2, desc, select_type, &new_ops );
       cmp_kid2 = cmp2;
-    }
 
-    int imm8 = 0;
-
-    switch( compare_opr ){
-    case OPR_EQ: imm8 = 0; break;
-    case OPR_LT: imm8 = 1; break;
-    case OPR_LE: imm8 = 2; break;
-    case OPR_NE: imm8 = 4; break;
-    case OPR_GE: imm8 = 5; break;
-    case OPR_GT: imm8 = 6; break;
-    default:
-      FmtAssert(FALSE, ("Unknown opcode"));
+      // The comparison between integers is changed to a comparison between
+      // float/doubles, depending on the select's result type.  Update
+      // is_ssize_double to reflect the new comparison's operand type.
+      is_ssize_double = MTYPE_is_size_double(select_type);
     }
 
     TN* tmp1 = Build_TN_Like( cmp_kid1 );
     TN* tmp2 = Build_TN_Like( result );
     TN* tmp3 = Build_TN_Like( result );
-    TN* ctrl = Gen_Literal_TN( imm8, 4 );
+    TN* ctrl = Generate_Cmp_Ctrl_TN( compare_opr );
+    BOOL zero_tn = FALSE;
 
-    Build_OP( ( is_ssize_double || is_rsize_double ) ? TOP_cmpsd : TOP_cmpss,
-	      tmp1, cmp_kid1, cmp_kid2, ctrl, &new_ops );
+    // Bug 2297 - optimize the case where true_tn is 0.0
+    // TODO_1.2 : false_tn could also be 0.0 in which case we have to reverse 
+    // the compare and set a flag and fall thru. This is not not relevant to
+    // this bug.
+    if ( TN_is_rematerializable( true_tn ) ) {
+      WN* home = TN_home(true_tn);
+      if (WN_operator(home) == OPR_CONST) {
+	ST* st = WN_st(home);
+	TCON tcon = STC_val(st);
+	TYPE_ID ty = TCON_ty(tcon);
+	if (((ty == MTYPE_F4 || ty == MTYPE_V16F4) &&
+	     TCON_R4(tcon) == 0.0) ||
+	    ((ty == MTYPE_F8 || ty == MTYPE_V16F8) &&
+	     TCON_R8(tcon) == 0.0))
+	  zero_tn = TRUE;
+      }
+    }
 
+    if (zero_tn) {
+      OPERATOR rev_cmp_opr = compare_opr;
+
+      switch( compare_opr ){
+      case OPR_EQ: rev_cmp_opr = OPR_NE; break;
+      case OPR_LT: rev_cmp_opr = OPR_GE; break;
+      case OPR_LE: rev_cmp_opr = OPR_GT; break;
+      case OPR_NE: rev_cmp_opr = OPR_EQ; break;
+      case OPR_GE: rev_cmp_opr = OPR_LT; break;
+      case OPR_GT: rev_cmp_opr = OPR_LE; break;
+      }
+
+      ctrl = Generate_Cmp_Ctrl_TN( rev_cmp_opr );
+
+      if ( MTYPE_is_vector ( select_type ) ) {
+	Build_OP( ( select_type == MTYPE_V16F8 ) ? TOP_cmppd : TOP_cmpps,
+		  tmp1, cmp_kid1, cmp_kid2, ctrl, &new_ops );
+	is_rsize_double = (select_type == MTYPE_V16F8) ? TRUE : FALSE;
+      } else {
+	Build_OP(is_ssize_double ? TOP_cmpsd : TOP_cmpss,
+		 tmp1, cmp_kid1, cmp_kid2, ctrl, &new_ops );
+        if (!is_ssize_double && is_rsize_double) {
+	  // cmpss sets the low-order 32 bits.  Extend these 32 bits to 64
+	  // bits.  Do this by replicating them across the entire 128-bit xmm
+	  // register.  Bug 9497.
+	  TN* cmp_64bit_result = Build_TN_Like(result);
+	  Build_OP(TOP_pshufd, cmp_64bit_result, tmp1, Gen_Literal_TN(0, 4),
+		   &new_ops);
+	  tmp1 = cmp_64bit_result;
+	}
+      }
+      Build_OP( is_rsize_double ? TOP_andpd : TOP_andps, result, 
+      		false_tn, tmp1, &new_ops );
+    
+      if( Trace_Exp ){
+	Print_OPS( &new_ops );
+      }     
+      OPS_Append_Ops(ops, &new_ops);      
+      return;
+    }
+
+    if ( MTYPE_is_vector ( select_type ) ) {
+      Build_OP( ( select_type == MTYPE_V16F8 ) ? TOP_cmppd : TOP_cmpps,
+		tmp1, cmp_kid1, cmp_kid2, ctrl, &new_ops );
+      is_rsize_double = (select_type == MTYPE_V16F8) ? TRUE : FALSE;
+    } else {
+      Build_OP(is_ssize_double ? TOP_cmpsd : TOP_cmpss,
+	       tmp1, cmp_kid1, cmp_kid2, ctrl, &new_ops );
+      if (!is_ssize_double && is_rsize_double) {
+	// cmpss sets the low-order 32 bits.  Extend these 32 bits to 64 bits.
+	// Do this by replicating them across the entire 128-bit xmm register.
+	// Bug 9497.
+	TN* cmp_64bit_result = Build_TN_Like(result);
+	Build_OP(TOP_pshufd, cmp_64bit_result, tmp1, Gen_Literal_TN(0, 4),
+		 &new_ops);
+	tmp1 = cmp_64bit_result;
+      }
+    }
     Build_OP( is_rsize_double ? TOP_andpd : TOP_andps, tmp2, true_tn, tmp1, &new_ops );
 
     Build_OP( is_rsize_double ? TOP_andnpd : TOP_andnps, tmp3, tmp1, false_tn, &new_ops );
@@ -3421,7 +4911,8 @@ Exp_Select_And_Condition (
 	( Force_IEEE_Comparisons && 
 	  TOP_is_flop( cmp_opcode ))) {
       // Fix bug091.
-      FmtAssert( result != true_tn, ("NYI") );
+      FmtAssert( result != true_tn,
+		 ("Exp_Select_And_Condition: result and true_tn are identical") );
       Expand_Copy( result, false_tn, select_type, &new_ops );
     }
 
@@ -3449,15 +4940,31 @@ Exp_Select_And_Condition (
     } else {
       Build_OP( cmp_opcode, rflags, cmp_kid1, cmp_kid2, &new_ops );
 
-      FmtAssert( result != true_tn, ("NYI") );
-      Build_OP( cmov_top, result, true_tn, rflags, &new_ops );
-      Set_OP_cond_def_kind( OPS_last(&new_ops), OP_ALWAYS_COND_DEF );
+      TN* result_hi = NULL;
+      TN* true_tn_hi = NULL;
+      if (OP_NEED_PAIR(select_type)) {
+	result_hi = Get_TN_Pair(result);
+	true_tn_hi = Get_TN_Pair(true_tn);
+      }
 
-      // To avoid cluttering we will do a post-process on new_ops incase
-      // we need to cover unordered FP comparisons.
-      if ( Force_IEEE_Comparisons    &&
-	   TOP_is_flop( cmp_opcode ) )
+      // Ugly hack to preserve the interaface to Expand_Ordered_Select_Compare,
+      // which parses a straight line code involving cmov.  Expand_Cmov, which
+      // was added later, breaks this interface by introducing basic blocks.
+      // Bug 8087.
+      if (Force_IEEE_Comparisons && TOP_is_flop(cmp_opcode)) {
+	Build_OP(cmov_top, result, true_tn, rflags, &new_ops);
+	Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF);
+	if (result_hi != NULL) {
+	  Build_OP(cmov_top, result_hi, true_tn_hi, rflags, &new_ops);
+	  Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF);
+	}
+	// To avoid cluttering we will do a post-process on new_ops incase we
+	// need to cover unordered FP comparisons.
 	Expand_Ordered_Select_Compare ( &new_ops, cmov_top );
+      } else {
+	Expand_Cmov(cmov_top, result, true_tn, rflags, &new_ops,
+		    result_hi, true_tn_hi);
+      }
     }
   }
 
@@ -3574,11 +5081,76 @@ Expand_Intel_Min_Lat_Sqrt (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
 }
 
 
+static void 
+Expand_Fast_Sqrt (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
+{
+  FmtAssert( mtype == MTYPE_F4 || mtype == MTYPE_V16F4 , ("NYI"));
+  
+  TN* tmp0 = Build_TN_Like(result);
+  TN* tmp1 = Build_TN_Like(result);
+  TN* tmp2 = Build_TN_Like(result);
+  TN* tmp3 = Build_TN_Like(result);
+  TN* tmp4 = Build_TN_Like(result);
+  TN* tmp5 = Build_TN_Like(result);
+  TN* tmp6 = Build_TN_Like(result);
+  TN* tmp7 = Build_TN_Like(result);
+  TN* const0 = Build_TN_Like(result);
+  TN* const1 = Build_TN_Like(result);
+  
+  if ( mtype == MTYPE_F4 ) {
+    Build_OP( TOP_xzero32, tmp0, ops);
+    Build_OP( TOP_cmpneqss, tmp1, tmp0, src, ops );
+    Build_OP( TOP_rsqrtss, tmp2, src, ops );
+    Build_OP( TOP_fand128v32, tmp3, tmp2, tmp1, ops );
+    Build_OP( TOP_mulss, tmp4, tmp3, src, ops );
+    Build_OP( TOP_mulss, tmp5, tmp4, tmp3, ops );
+    Expand_Const( const0, Gen_Const_Symbol_TN( 0x40400000, 0.0, MTYPE_I4 ),
+		  mtype, ops );
+    Build_OP( TOP_subss, tmp6, tmp5, const0, ops );
+    Build_OP( TOP_mulss, tmp7, tmp6, tmp4, ops );
+    Expand_Const( const1, Gen_Const_Symbol_TN( 0xbf000000, 0.0, MTYPE_I4 ),
+		  mtype, ops );
+    Build_OP( TOP_mulss, result, tmp7, const1, ops );    
+
+  } else { // mtype == MTYPE_V16F4
+    Build_OP( TOP_xzero128v32, tmp0, ops);
+    Build_OP( TOP_cmpneqps, tmp1, tmp0, src, ops );
+    Build_OP( TOP_frsqrt128v32, tmp2, src, ops );
+    Build_OP( TOP_fand128v32, tmp3, tmp2, tmp1, ops );
+    Build_OP( TOP_fmul128v32, tmp4, tmp3, src, ops );
+    Build_OP( TOP_fmul128v32, tmp5, tmp4, tmp3, ops );
+    TCON then0 = Host_To_Targ (MTYPE_I4, 0x40400000);
+    TCON now0  = Create_Simd_Const (MTYPE_V16F4, then0);
+    ST *sym0 = New_Const_Sym (Enter_tcon (now0), Be_Type_Tbl(TCON_ty(now0)));
+    Allocate_Object(sym0);
+    TN *sym_tn0 = Gen_Symbol_TN(sym0, 0, 0);
+    Exp_Load(mtype, mtype, const0, TN_var(sym_tn0), TN_offset(sym_tn0), ops, 0);
+    Build_OP( TOP_fsub128v32, tmp6, tmp5, const0, ops );
+    Build_OP( TOP_fmul128v32, tmp7, tmp6, tmp4, ops );
+    TCON then1 = Host_To_Targ (MTYPE_I4, 0xbf000000);
+    TCON now1  = Create_Simd_Const (MTYPE_V16F4, then1);
+    ST *sym1 = New_Const_Sym (Enter_tcon (now1), Be_Type_Tbl(TCON_ty(now1)));
+    Allocate_Object(sym1);
+    TN *sym_tn1 = Gen_Symbol_TN(sym1, 0, 0);
+    Exp_Load(mtype, mtype, const1, TN_var(sym_tn1), TN_offset(sym_tn1), ops, 0);
+    Build_OP( TOP_fmul128v32, result, tmp7, const1, ops );        
+  }
+
+  return;
+}
+
 void
 Expand_Sqrt (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
 {
   FmtAssert( MTYPE_is_float(mtype),
 	    ("Unimplemented sqrt for integer src/dest") );
+
+  if ( Fast_Sqrt_Allowed && (mtype == MTYPE_F4 || mtype == MTYPE_V16F4) &&
+       Is_Target_SSE2() ) {
+    Expand_Fast_Sqrt(result, src, mtype, ops );
+    return;
+  }
+    
 
   switch(mtype) {
   case MTYPE_V16F4:
@@ -3638,7 +5210,9 @@ Expand_Float_Compares(TOP set_opcode,
       Build_OP (TOP_or8, dest_tmp2, dest_tmp, dest_tmp1, ops );
       dest_tmp = dest_tmp2;
     } else
-      FmtAssert ( FALSE, ("NYI"));
+      FmtAssert ( FALSE,
+		  ("Expand_Float_Compares: Unsupported opcode (%s)",
+		   TOP_Name(set_opcode)) );
   } else 
     Build_OP( set_opcode, dest_tmp, rflags, ops);
 
@@ -3708,7 +5282,7 @@ Expand_Recip_Sqrt (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
    *	(p2) fnma.d.s1	f6=f5,f3,f4	# z = 0.5 - 0.5*x*y*y
    *	(p2) fma.d.s0   f2=f2,f6,f2	# result = y + y*z
    */
-  FmtAssert( false, ("NYI") );
+  ErrMsg( EC_Unimplemented, "Expand_Recip_Sqrt: NYI" );
 }
 
 
@@ -3717,22 +5291,59 @@ static void Expand_Recip( TN* result, TN* src2, TYPE_ID mtype, OPS* ops )
 {
   const BOOL is_double = MTYPE_is_size_double(mtype);
 
-  if( ( Recip_Allowed ||
-        ( Div_Split_Allowed && mtype == MTYPE_V16F4 ) ) &&
-      Is_Target_SSE2() ){
-    if ( mtype == MTYPE_V16F4 ) {
-      Build_OP( TOP_frcp128v32, result, src2, ops);
-      return;
-    } else if ( !MTYPE_is_quad(mtype) && !is_double ) {
-      Build_OP( TOP_rcpss, result, src2, ops );
-      return;
-    }
-  }
+  if( Recip_Allowed && Is_Target_SSE2() && mtype == MTYPE_V16F4 ) {
+    TN *tmp1 = Build_TN_Like(result);
+    TN *tmp2 = Build_TN_Like(result);
+    TN *tmp3 = Build_TN_Like(result);
+    TN *tmp4 = Build_TN_Like(result);
+    Build_OP( TOP_frcp128v32, tmp1, src2, ops );
+    // Bug 7218 - add a Newton-Raphson iteration to recip computation.
+    Build_OP( TOP_fmul128v32, tmp2, src2, tmp1, ops );
+    Build_OP( TOP_fmul128v32, tmp3, tmp2, tmp1, ops );
+    Build_OP( TOP_fadd128v32, tmp4, tmp1, tmp1, ops );
+#if 1
+    Build_OP( TOP_fsub128v32, result, tmp4, tmp3, ops );      
+#else
+    // multiply result by 1.0
+    TN *tmp5 = Build_TN_Like(result);
+    TN *tmp6 = Build_TN_Like(result);
+    Build_OP( TOP_fsub128v32, tmp5, tmp4, tmp3, ops );
+    
+    // Create vector {1.0, 1.0, 1.0, 1.0}
+    TCON tcon;
+    ST *sym;
+    tcon = Create_Simd_Const ( MTYPE_V16F4,  
+			       Host_To_Targ_Float_4 ( MTYPE_F4, 1.0 ) );
+    sym = New_Const_Sym( Enter_tcon(tcon),  Be_Type_Tbl( TCON_ty(tcon) ) );
+    ST* base_sym = NULL;
+    INT64 base_ofst = 0;      
+    Allocate_Object(sym);
+    Base_Symbol_And_Offset_For_Addressing( sym, 0, &base_sym, &base_ofst );
+    
+    Expand_Const( tmp6, Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ), 
+		  mtype, ops );
+    
+    Build_OP( TOP_fmul128v32, result, tmp5, tmp6, ops );      
+#endif
+    return;
+  } 
     
   TN* src1 = Build_TN_Like( src2 );
-  TCON tcon = MTYPE_is_quad(mtype)
-    ? Host_To_Targ_Quad( 1.0 ) : Host_To_Targ_Float( mtype, 1.0 );
-  ST* sym = New_Const_Sym( Enter_tcon(tcon),  Be_Type_Tbl( TCON_ty(tcon) ) );
+
+  TCON tcon;
+  ST* sym;
+
+  if (mtype == MTYPE_V16F4)
+    tcon = Create_Simd_Const ( MTYPE_V16F4,  
+			       Host_To_Targ_Float_4 ( MTYPE_F4, 1.0 ) );
+  else if (mtype == MTYPE_V16F8)
+    tcon = Create_Simd_Const ( MTYPE_V16F8,
+                               Host_To_Targ_Float_4 ( MTYPE_F8, 1.0 ) );
+  else
+    tcon = MTYPE_is_quad(mtype)
+      ? Host_To_Targ_Quad( 1.0 ) : Host_To_Targ_Float( mtype, 1.0 );
+
+  sym = New_Const_Sym( Enter_tcon(tcon),  Be_Type_Tbl( TCON_ty(tcon) ) );
 
   ST* base_sym = NULL;
   INT64 base_ofst = 0;
@@ -3740,13 +5351,135 @@ static void Expand_Recip( TN* result, TN* src2, TYPE_ID mtype, OPS* ops )
   Allocate_Object(sym);
   Base_Symbol_And_Offset_For_Addressing( sym, 0, &base_sym, &base_ofst );
 
-  Expand_Const( src1, Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ), mtype, ops );
+  Expand_Const( src1, Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ), 
+		mtype, ops );
 
   const BOOL non_sse2_fp = MTYPE_is_quad(mtype) || !Is_Target_SSE2();
-  Build_OP( non_sse2_fp ? TOP_fdiv : ( is_double ? TOP_divsd : TOP_divss ),
-	    result, src1, src2, ops );
+  if (mtype == MTYPE_V16F4)    
+    Build_OP( TOP_fdiv128v32, result, src1, src2, ops );
+  else if (mtype == MTYPE_V16F8)
+    Build_OP( TOP_fdiv128v64, result, src1, src2, ops );
+  else
+    Build_OP( non_sse2_fp ? TOP_fdiv : ( is_double ? TOP_divsd : TOP_divss ),
+	      result, src1, src2, ops );
 }
 
+static void Expand_Complex_Multiply( OPCODE opcode, TN *result, 
+				     TN *src1, TN *src2, OPS *ops )
+{
+  FmtAssert(opcode == OPC_V16C4MPY || opcode == OPC_V16C8MPY, ("NYI"));
+
+  if (opcode == OPC_V16C4MPY) {
+    TN* tmp1 = Build_TN_Like(src1);
+    TN* tmp2 = Build_TN_Like(src1);
+    TN* tmp3 = Build_TN_Like(src1);
+    TN* tmp4 = Build_TN_Like(src1);
+    TN* tmp5 = Build_TN_Like(src1);
+    
+    Build_OP(TOP_fmovsldup, tmp1, src2, ops);
+    Build_OP(TOP_fmul128v32, tmp2, tmp1, src1, ops);
+    Build_OP(TOP_fmovshdup,tmp3, src2, ops);
+    Build_OP(TOP_shufps, tmp4, src1, src1, Gen_Literal_TN(177, 1), ops);
+    Build_OP(TOP_fmul128v32, tmp5, tmp3, tmp4, ops);
+    Build_OP(TOP_faddsub128v32, result, tmp2, tmp5, ops);
+
+  } else { // OPC_V16C8MPY
+    // The WN simplifier always orders a multiply between an iload and a ldid 
+    // as 'iload * ldid' and so we need to commute the operation to make sure 
+    // address folding opportunity is exposed to EBO.
+    TN* src1_t = src2;
+    TN* src2_t = src1;
+    if (!Enable_Cfold_Aggressive) {
+      src1_t = src1;
+      src2_t = src2;
+    }
+    TN* tmp1 = Build_TN_Like(src1);
+    TN* tmp2 = Build_TN_Like(src1);
+    TN* tmp3 = Build_TN_Like(src1);
+    TN* tmp4 = Build_TN_Like(src1);
+    TN* tmp5 = Build_TN_Like(src1);
+    TN* tmp6 = Build_TN_Like(src1);
+    
+    Build_OP(TOP_fmovddup, tmp1, src2_t, ops);
+    Build_OP(TOP_fmul128v64, tmp2, src1_t, tmp1, ops);
+    Build_OP(TOP_shufpd, tmp3, src1_t, src1_t, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_shufpd, tmp4, src2_t, src2_t, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_fmovddup, tmp5, tmp4, ops);
+    Build_OP(TOP_fmul128v64, tmp6, tmp3, tmp5, ops);
+    Build_OP(TOP_faddsub128v64, result, tmp2, tmp6, ops);
+  }
+  return;
+}
+
+static void Expand_Complex_Divide( OPCODE opcode, TN *result, 
+				     TN *src1, TN *src2, OPS *ops )
+{
+  FmtAssert(opcode == OPC_V16C4DIV, ("NYI"));
+  
+  if (opcode == OPC_V16C4DIV) {
+    TN* tmp1 = Build_TN_Like(src1);
+    TN* tmp2 = Build_TN_Like(src1);
+    TN* tmp3 = Build_TN_Like(src1);
+    TN* tmp4 = Build_TN_Like(src1);
+    TN* tmp5 = Build_TN_Like(src1);
+    TN* tmp6 = Build_TN_Like(src1);
+    TN* tmp7 = Build_TN_Like(src1);
+    TN* tmp8 = Build_TN_Like(src1);
+    TN* tmp9 = Build_TN_Like(src1);
+    TN* tmp10 = Build_TN_Like(src1);
+    TN* tmp11 = Build_TN_Like(src1);
+    TN* tmp12 = Build_TN_Like(src1);
+    TN* tmp13 = Build_TN_Like(src1);
+    TN* tmp14 = Build_TN_Like(src1);
+    TN* tmp15 = result;
+    TN* tmp16 = Build_TN_Like(src1);
+    TN* tmp17 = Build_TN_Like(src1);
+    TN* tmp18 = Build_TN_Like(src1);
+    TN* tmp19 = Build_TN_Like(src1);
+    TN* tmp20 = Build_TN_Like(src1);
+    TN* tmp21 = Build_TN_Like(src1);
+    TN* tmp22 = Build_TN_Like(src1);
+    TN* tmp23 = Build_TN_Like(src1);
+    TN* tmp24 = Build_TN_Like(src1);
+    TN* tmp25 = Build_TN_Like(src1);
+    TN* tmp26 = Build_TN_Like(src1);
+    TN* tmp27 = Build_TN_Like(src1);
+    TN* tmp28 = Build_TN_Like(src1);
+    
+    Build_OP(TOP_cvtps2pd, tmp1, src1, ops);
+    Build_OP(TOP_cvtps2pd, tmp2, src2, ops);
+    Build_OP(TOP_fmul128v64, tmp3, tmp2, tmp2, ops);
+    Build_OP(TOP_fmovddup, tmp4, tmp2, ops);
+    Build_OP(TOP_unpckhpd, tmp5, tmp2, tmp2, ops);
+    Build_OP(TOP_fmul128v64, tmp6, tmp5, tmp1, ops);
+    Build_OP(TOP_shufpd, tmp7, tmp1, tmp1, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_fmul128v64, tmp8, tmp7, tmp4, ops);
+    Build_OP(TOP_fhadd128v64, tmp9, tmp3, tmp3, ops);
+    Build_OP(TOP_shufps, tmp10, src1, src1, Gen_Literal_TN(238, 1), ops);
+    Build_OP(TOP_cvtps2pd, tmp11, tmp10, ops);
+    Build_OP(TOP_faddsub128v64, tmp12, tmp8, tmp6, ops);
+    Build_OP(TOP_shufpd, tmp13, tmp12, tmp12, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_fdiv128v64, tmp14, tmp13, tmp9, ops);
+    Build_OP(TOP_cvtpd2ps, tmp15, tmp14, ops);
+    Build_OP(TOP_shufps, tmp16, src2, src2, Gen_Literal_TN(238, 1), ops);
+    Build_OP(TOP_cvtps2pd, tmp17, tmp16, ops);
+    Build_OP(TOP_fmul128v64, tmp18, tmp17, tmp17, ops);
+    Build_OP(TOP_fmovddup, tmp19, tmp17, ops);
+    Build_OP(TOP_unpckhpd, tmp20, tmp17, tmp17, ops);
+    Build_OP(TOP_fmul128v64, tmp21, tmp20, tmp11, ops);
+    Build_OP(TOP_shufpd, tmp22, tmp11, tmp11, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_fmul128v64, tmp23, tmp22, tmp19, ops);
+    Build_OP(TOP_fhadd128v64, tmp24, tmp18, tmp18, ops);
+    Build_OP(TOP_faddsub128v64, tmp25, tmp23, tmp21, ops);
+    Build_OP(TOP_shufpd, tmp26, tmp25, tmp25, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_fdiv128v64, tmp27, tmp26, tmp24, ops);
+    Build_OP(TOP_cvtpd2ps, tmp28, tmp27, ops);
+    Build_OP(TOP_movlhps, result, tmp28, ops);
+    Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
+  }
+
+  return;
+}
 
 void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *ops )
 {
@@ -3767,10 +5500,15 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     opc = TOP_fadd;
     break;
   case OPC_V16F4ADD:
+  case OPC_V16C4ADD:
     opc = TOP_fadd128v32;
     break;
   case OPC_V16F8ADD:
+  case OPC_V16C8ADD:
     opc = TOP_fadd128v64;
+    break;
+  case OPC_V8F4ADD:
+    opc = TOP_fadd128v32;
     break;
   case OPC_F4SUB:
     if( Is_Target_SSE2() ){
@@ -3786,9 +5524,11 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     opc = TOP_fsub;
     break;
   case OPC_V16F4SUB:
+  case OPC_V16C4SUB:
     opc = TOP_fsub128v32;
     break;
   case OPC_V16F8SUB:
+  case OPC_V16C8SUB:
     opc = TOP_fsub128v64;
     break;
   case OPC_F4MPY:
@@ -3810,6 +5550,12 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
   case OPC_V16F8MPY:
     opc = TOP_fmul128v64;
     break;
+  case OPC_V16I2MPY:
+    opc = TOP_mul128v16;
+    break;
+  case OPC_M8I2MPY:
+    opc = TOP_pmullw;
+    break;
   case OPC_F4MADD:	// (src2 * src3) + src1
   case OPC_F4NMADD:	// -((src2 * src3) + src1)
   case OPC_F4MSUB:	// (src2 * src3) - src1
@@ -3818,7 +5564,8 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
   case OPC_F8NMADD:	// -((src2 * src3) + src1)
   case OPC_F8MSUB:	// (src2 * src3) - src1
   case OPC_F8NMSUB:	// -((src2 * src3) - src1)
-    FmtAssert( false, ("NYI") );
+    FmtAssert( false,
+	       ("Expand_Flop: Unsupported opcode (%s)", OPCODE_name(opcode)) );
     break;
   case OPC_F4DIV:
     if( Is_Target_SSE2() ){
@@ -3843,14 +5590,26 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
   case OPC_F8RECIP:
   case OPC_FQRECIP:
   case OPC_V16F4RECIP:
+  case OPC_V16F8RECIP:
     Expand_Recip( result, src1, OPCODE_rtype(opcode), ops );
     return;
   case OPC_F4RSQRT:
+  case OPC_F4ATOMIC_RSQRT:	// bug 6123
     opc = TOP_rsqrtss;
     break;
   case OPC_V16F4RSQRT:
+  case OPC_V16F4ATOMIC_RSQRT:	// bug 6123
     opc = TOP_frsqrt128v32;
     break;
+
+  case OPC_V16C4MPY:
+  case OPC_V16C8MPY:
+    Expand_Complex_Multiply(opcode, result, src1, src2, ops);
+    return;
+
+  case OPC_V16C4DIV:
+    Expand_Complex_Divide(opcode, result, src1, src2, ops);
+    return;
 
   default:
     #pragma mips_frequency_hint NEVER
@@ -3866,6 +5625,10 @@ Expand_Replicate (OPCODE op, TN *result, TN *op1, OPS *ops)
   TN* tmp = Build_TN_Like(result);
 
   switch (op) {
+  case OPC_V16C4F8REPLICA:
+    Expand_Copy(result, op1, MTYPE_C4, ops);
+    Build_OP(TOP_shufps, result, result, op1, Gen_Literal_TN(68, 4), ops);
+    break;
   case OPC_V16I8I8REPLICA:
   {
     TY_IDX ty = MTYPE_To_TY( MTYPE_I8 );
@@ -3898,9 +5661,390 @@ Expand_Replicate (OPCODE op, TN *result, TN *op1, OPS *ops)
     Build_OP(TOP_unpcklps, result, result, op1, ops);
     Build_OP(TOP_unpcklps, result, result, result, ops);
     break;
+  case OPC_V16I2I2REPLICA:     
+  {
+    TN* tmp_a = Build_TN_Like(result);
+    Build_OP(TOP_movg2x, tmp, op1, ops);
+    Build_OP(TOP_punpcklwd, tmp_a, tmp, tmp, ops);
+    Build_OP(TOP_pshufd, result, tmp_a, Gen_Literal_TN(0, 1), ops);
+    break;
+  }
+  case OPC_V16I1I1REPLICA:
+  {
+    TN* tmp_a = Build_TN_Like(result);
+    TN* tmp_b = Build_TN_Like(result);
+    Build_OP(TOP_movg2x, tmp, op1, ops);
+    Build_OP(TOP_punpcklbw, tmp_a, tmp, tmp, ops);
+    Build_OP(TOP_punpcklbw, tmp_b, tmp_a, tmp_a, ops);
+    Build_OP(TOP_pshufd, result, tmp_b, Gen_Literal_TN(0, 1), ops);
+    break;
+  }
   default:
     FmtAssert(FALSE, ("Handle this case"));
     break;
+  }
+  return;
+}
+
+void
+Expand_Reduce_Add (OPCODE op, TN *result, TN *op1, OPS *ops)
+{
+  switch (op) {
+  case OPC_F8V16F8REDUCE_ADD: 
+  {
+    TN* tmp = Build_TN_Like(op1);
+    Build_OP(TOP_movapd, tmp, op1, ops);
+    if ( Is_Target_SSE3() ) {
+      Build_OP(TOP_fhadd128v64, result, tmp, tmp, ops);
+    } else {
+      TN* tmp_a = Build_TN_Like(op1);
+      Build_OP(TOP_unpckhpd, tmp_a, tmp, op1, ops);
+      Build_OP(TOP_addsd, result, tmp, tmp_a, ops);
+    }
+    break;
+  }
+  case OPC_F4V16F4REDUCE_ADD: 
+  {
+    TN* tmp = Build_TN_Like(op1);
+    Build_OP(TOP_movaps, tmp, op1, ops);
+    if ( Is_Target_SSE3() ) {
+      Build_OP(TOP_fhadd128v32, tmp, op1, op1, ops);
+      Build_OP(TOP_fhadd128v32, result, tmp, tmp, ops);
+    } else {
+      TN* tmp_a = Build_TN_Like(op1);
+      TN* tmp_b = Build_TN_Like(op1);
+      TN* tmp_c = Build_TN_Like(op1);
+      TN* tmp_d = Build_TN_Like(op1);
+      Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+      Build_OP(TOP_fadd128v32, tmp_b, tmp, tmp_a, ops);
+      Build_OP(TOP_movaps, tmp_c, tmp_b, ops);
+      Build_OP(TOP_shufps, tmp_d, tmp_c, tmp_c, Gen_Literal_TN(1, 1), ops);
+      Build_OP(TOP_addss, result, tmp_b, tmp_d, ops);
+    }
+    break;
+  }
+  case OPC_I4V16I1REDUCE_ADD:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    TN* tmp_b = Build_TN_Like(op1);
+    TN* tmp_c = Build_TN_Like(op1);
+    TN* tmp_d = Build_TN_Like(op1);
+    TN* tmp_e = Build_TN_Like(op1);
+    TN* tmp_f = Build_TN_Like(op1);
+    TN* tmp_g = Build_TN_Like(op1);
+    TN* tmp_h = Build_TN_Like(op1);
+    TN* tmp_i = Build_TN_Like(op1);
+    TN* tmp_j = Build_TN_Like(op1);
+    TN* tmp_k = Build_TN_Like(op1);
+    Build_OP(TOP_movdq, tmp, op1, ops);
+    Build_OP(TOP_psrldq, tmp_a, tmp, Gen_Literal_TN(8, 1), ops);
+    Build_OP(TOP_add128v8, tmp_b, tmp, tmp_a, ops);
+    Build_OP(TOP_movdq, tmp_c, tmp_b, ops);
+    Build_OP(TOP_psrldq, tmp_d, tmp_c, Gen_Literal_TN(4, 1), ops);
+    Build_OP(TOP_add128v8, tmp_e, tmp_c, tmp_d, ops);
+    Build_OP(TOP_movdq, tmp_f, tmp_e, ops);
+    Build_OP(TOP_psrldq, tmp_g, tmp_f, Gen_Literal_TN(2, 1), ops);
+    Build_OP(TOP_add128v8, tmp_h, tmp_f, tmp_g, ops);
+    Build_OP(TOP_movdq, tmp_i, tmp_h, ops);
+    Build_OP(TOP_psrldq, tmp_j, tmp_i, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_add128v8, tmp_k, tmp_i, tmp_j, ops);
+    Build_OP(TOP_movx2g, result, tmp_k, ops);
+    break;
+  }
+  case OPC_I4V16I2REDUCE_ADD:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    TN* tmp_b = Build_TN_Like(op1);
+    TN* tmp_c = Build_TN_Like(op1);
+    TN* tmp_d = Build_TN_Like(op1);
+    TN* tmp_e = Build_TN_Like(op1);
+    TN* tmp_f = Build_TN_Like(op1);
+    TN* tmp_g = Build_TN_Like(op1);
+    TN* tmp_h = Build_TN_Like(op1);
+    TN* tmp_i = Build_TN_Like(op1);
+    TN* tmp_j = Build_TN_Like(op1);
+    TN* tmp_k = Build_TN_Like(op1);
+    Build_OP(TOP_movdq, tmp, op1, ops);
+    Build_OP(TOP_psrldq, tmp_a, tmp, Gen_Literal_TN(8, 1), ops);
+    Build_OP(TOP_add128v16, tmp_b, tmp, tmp_a, ops);
+    Build_OP(TOP_movdq, tmp_c, tmp_b, ops);
+    Build_OP(TOP_psrldq, tmp_d, tmp_c, Gen_Literal_TN(4, 1), ops);
+    Build_OP(TOP_add128v16, tmp_e, tmp_c, tmp_d, ops);
+    Build_OP(TOP_movdq, tmp_f, tmp_e, ops);
+    Build_OP(TOP_psrldq, tmp_g, tmp_f, Gen_Literal_TN(2, 1), ops);
+    Build_OP(TOP_add128v16, tmp_h, tmp_f, tmp_g, ops);
+    Build_OP(TOP_movx2g, result, tmp_h, ops);
+    break;
+  }
+  case OPC_I4V16I4REDUCE_ADD:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    TN* tmp_b = Build_TN_Like(op1);
+    TN* tmp_c = Build_TN_Like(op1);
+    TN* tmp_d = Build_TN_Like(op1);
+    TN* tmp_e = Build_TN_Like(op1);
+    Build_OP(TOP_movdq, tmp, op1, ops);
+    Build_OP(TOP_psrldq, tmp_a, tmp, Gen_Literal_TN(8, 1), ops);
+    Build_OP(TOP_add128v32, tmp_b, tmp, tmp_a, ops);
+    Build_OP(TOP_movdq, tmp_c, tmp_b, ops);
+    Build_OP(TOP_psrldq, tmp_d, tmp_c, Gen_Literal_TN(4, 1), ops);
+    Build_OP(TOP_add128v32, tmp_e, tmp_c, tmp_d, ops);
+    Build_OP(TOP_movx2g, result, tmp_e, ops);
+    break;
+  }
+  case OPC_I8V16I8REDUCE_ADD:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    TN* tmp_b = Build_TN_Like(op1);
+    Build_OP(TOP_movdq, tmp, op1, ops);
+    Build_OP(TOP_psrldq, tmp_a, tmp, Gen_Literal_TN(8, 1), ops);
+    Build_OP(TOP_add128v64, tmp_b, tmp, tmp_a, ops);
+    if (Is_Target_64bit())
+      Build_OP(TOP_movx2g64, result, tmp_b, ops);
+    else {
+      TN* result_hi = Create_TN_Pair(result, MTYPE_I8);      
+      TN *tmp_c = Build_TN_Like(op1);
+      Build_OP(TOP_movx2g, result, tmp_b, ops);      
+      Build_OP(TOP_psrlq128v64, tmp_c, tmp_b, Gen_Literal_TN(32, 4), ops);
+      Build_OP(TOP_movx2g, result_hi, tmp_c, ops);      
+    }
+    break;
+  }
+  default:
+    FmtAssert(FALSE, ("Expand_Reduce_Add: Unsupported opcode (%s)", OPCODE_name(op)));
+  }
+  return;
+}
+
+void
+Expand_Reduce_Mpy (OPCODE op, TN *result, TN *op1, OPS *ops)
+{
+  switch (op) {
+  case OPC_F8V16F8REDUCE_MPY: 
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    Build_OP(TOP_movapd, tmp, op1, ops);
+    Build_OP(TOP_unpckhpd, tmp_a, tmp, tmp, ops);
+    Build_OP(TOP_mulsd, result, tmp_a, tmp, ops);
+    break;
+  }
+  case OPC_F4V16F4REDUCE_MPY:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    TN* tmp_b = Build_TN_Like(op1);
+    TN* tmp_c = Build_TN_Like(op1);
+    TN* tmp_d = Build_TN_Like(op1);
+    Build_OP(TOP_movaps, tmp, op1, ops);
+    Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+    Build_OP(TOP_fmul128v32, tmp_b, tmp, tmp_a, ops);
+    Build_OP(TOP_movaps, tmp_c, tmp_b, ops);
+    Build_OP(TOP_shufps, tmp_d, tmp_c, tmp_c, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_mulss, result, tmp_b, tmp_d, ops);
+    break;
+  }
+  case OPC_I4V16I2REDUCE_MPY:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    TN* tmp_b = Build_TN_Like(op1);
+    TN* tmp_c = Build_TN_Like(op1);
+    TN* tmp_d = Build_TN_Like(op1);
+    TN* tmp_e = Build_TN_Like(op1);
+    TN* tmp_f = Build_TN_Like(op1);
+    TN* tmp_g = Build_TN_Like(op1);
+    TN* tmp_h = Build_TN_Like(op1);
+    Build_OP(TOP_movdq, tmp, op1, ops);
+    Build_OP(TOP_psrldq, tmp_a, tmp, Gen_Literal_TN(8, 1), ops); 
+    Build_OP(TOP_mul128v16, tmp_b, tmp, tmp_a, ops);
+    Build_OP(TOP_movdq, tmp_c, tmp_b, ops);
+    Build_OP(TOP_psrldq, tmp_d, tmp_c, Gen_Literal_TN(4, 1), ops);
+    Build_OP(TOP_mul128v16, tmp_e, tmp_c, tmp_d, ops);
+    Build_OP(TOP_movdq, tmp_f, tmp_e, ops);
+    Build_OP(TOP_psrldq, tmp_g, tmp_f, Gen_Literal_TN(2, 1), ops);
+    Build_OP(TOP_mul128v16, tmp_h, tmp_f, tmp_g, ops); 
+    Build_OP(TOP_movx2g, result, tmp_h, ops);
+    break;
+  }
+  default:
+    FmtAssert( FALSE,
+	      ("Expand_Reduce_Mpy: Unsupported opcode (%s)", OPCODE_name(op) ) );
+  }
+  return;
+}
+
+void
+Expand_Reduce_Max (OPCODE op, TN *result, TN *op1, OPS *ops)
+{
+  switch(op) {
+  case OPC_F8V16F8REDUCE_MAX:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    Build_OP(TOP_movapd, tmp, op1, ops);
+    Build_OP(TOP_unpckhpd, tmp_a, tmp, tmp, ops);
+    Build_OP(TOP_maxsd, result, tmp_a, tmp, ops);
+    break;
+  }
+  case OPC_F4V16F4REDUCE_MAX:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    TN* tmp_b = Build_TN_Like(op1);
+    TN* tmp_c = Build_TN_Like(op1);
+    TN* tmp_d = Build_TN_Like(op1);
+    Build_OP(TOP_movaps, tmp, op1, ops);
+    Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+    Build_OP(TOP_fmax128v32, tmp_b, tmp, tmp_a, ops);
+    Build_OP(TOP_movaps, tmp_c, tmp_b, ops);
+    Build_OP(TOP_shufps, tmp_d, tmp_c, tmp_c, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_maxss, result, tmp_c, tmp_d, ops);
+    break;
+  }
+  case OPC_I4V16I4REDUCE_MAX:
+  {
+    TN* tmp1 = Build_TN_Like(op1);
+    TN* tmp2 = Build_TN_Like(op1);
+    TN* tmp3 = Build_TN_Like(op1);
+    TN* tmp4 = Build_TN_Like(op1);
+    TN* tmp5 = Build_TN_Like(op1);
+    TN* tmp6 = Build_TN_Like(op1);
+    TN* tmp7 = Build_TN_Like(op1);
+    TN* tmp8 = Build_TN_Like(op1);
+    TN* tmp9 = Build_TN_Like(op1);
+    TN* tmp10 = Build_TN_Like(op1);
+    TN* tmp11 = Build_TN_Like(op1);
+    TN* tmp12 = Build_TN_Like(op1);
+    TN* tmp13 = Build_TN_Like(op1);
+    TN* tmp14 = Build_TN_Like(op1);
+    Build_OP(TOP_movdq, tmp1, op1, ops);
+    Build_OP(TOP_movdq, tmp2, op1, ops);
+    Build_OP(TOP_psrldq, tmp3, tmp1, Gen_Literal_TN(8, 1), ops);
+    Build_OP(TOP_xor128v32, tmp4, op1, tmp3, ops);
+    Build_OP(TOP_cmpgt128v32, tmp5, tmp2, tmp3, ops);
+    Build_OP(TOP_and128v32, tmp6, tmp5, tmp4, ops);
+    Build_OP(TOP_xor128v32, tmp7, tmp6, tmp3, ops);
+    Build_OP(TOP_movdq, tmp8, tmp7, ops);
+    Build_OP(TOP_movdq, tmp9, tmp7, ops);
+    Build_OP(TOP_psrldq, tmp10, tmp8, Gen_Literal_TN(4, 1), ops);
+    Build_OP(TOP_xor128v32, tmp11, tmp7, tmp10, ops);
+    Build_OP(TOP_cmpgt128v32, tmp12, tmp9, tmp10, ops);
+    Build_OP(TOP_and128v32, tmp13, tmp12, tmp11, ops);
+    Build_OP(TOP_xor128v32, tmp14, tmp13, tmp10, ops);
+    Build_OP(TOP_movx2g, result, tmp14, ops);
+    break;
+  }
+  default: 
+    FmtAssert( FALSE,
+	       ("Expand_Reduce_Max: Unsupported opcode (%s)", OPCODE_name(op) ) );
+  }
+  return;
+}
+
+void
+Expand_Reduce_Min (OPCODE op, TN *result, TN *op1, OPS *ops)
+{
+  switch(op) {
+  case OPC_F8V16F8REDUCE_MIN:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    Build_OP(TOP_movapd, tmp, op1, ops);
+    Build_OP(TOP_unpckhpd, tmp_a, tmp, tmp, ops);
+    Build_OP(TOP_minsd, result, tmp_a, tmp, ops);
+    break;
+  }
+  case OPC_F4V16F4REDUCE_MIN:
+  {
+    TN* tmp = Build_TN_Like(op1);
+    TN* tmp_a = Build_TN_Like(op1);
+    TN* tmp_b = Build_TN_Like(op1);
+    TN* tmp_c = Build_TN_Like(op1);
+    TN* tmp_d = Build_TN_Like(op1);
+    Build_OP(TOP_movaps, tmp, op1, ops);
+    Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+    Build_OP(TOP_fmin128v32, tmp_b, tmp, tmp_a, ops);
+    Build_OP(TOP_movaps, tmp_c, tmp_b, ops);
+    Build_OP(TOP_shufps, tmp_d, tmp_c, tmp_c, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_minss, result, tmp_c, tmp_d, ops);
+    break;
+  }
+  case OPC_I4V16I4REDUCE_MIN:
+  {    
+    TN* tmp1 = Build_TN_Like(op1);
+    TN* tmp2 = Build_TN_Like(op1);
+    TN* tmp3 = Build_TN_Like(op1);
+    TN* tmp4 = Build_TN_Like(op1);
+    TN* tmp5 = Build_TN_Like(op1);
+    TN* tmp6 = Build_TN_Like(op1);
+    TN* tmp7 = Build_TN_Like(op1);
+    TN* tmp8 = Build_TN_Like(op1);
+    TN* tmp9 = Build_TN_Like(op1);
+    TN* tmp10 = Build_TN_Like(op1);
+    TN* tmp11 = Build_TN_Like(op1);
+    TN* tmp12 = Build_TN_Like(op1);
+    TN* tmp13 = Build_TN_Like(op1);
+    TN* tmp14 = Build_TN_Like(op1);
+    Build_OP(TOP_movdq, tmp1, op1, ops);
+    Build_OP(TOP_movdq, tmp2, op1, ops);
+    Build_OP(TOP_psrldq, tmp3, tmp1, Gen_Literal_TN(8, 1), ops);
+    Build_OP(TOP_cmpgt128v32, tmp4, tmp2, tmp3, ops);   
+    Build_OP(TOP_xor128v32, tmp5, tmp3, op1, ops);
+    Build_OP(TOP_and128v32, tmp6, tmp5, tmp4, ops);
+    Build_OP(TOP_xor128v32, tmp7, tmp6, op1, ops);
+    Build_OP(TOP_movdq, tmp8, tmp7, ops);
+    Build_OP(TOP_movdq, tmp9, tmp7, ops);
+    Build_OP(TOP_psrldq, tmp10, tmp8, Gen_Literal_TN(4, 1), ops);
+    Build_OP(TOP_cmpgt128v32, tmp11, tmp9, tmp10, ops);    
+    Build_OP(TOP_xor128v32, tmp12, tmp7, tmp10, ops);
+    Build_OP(TOP_and128v32, tmp13, tmp12, tmp11, ops);
+    Build_OP(TOP_xor128v32, tmp14, tmp13, tmp7, ops);
+    Build_OP(TOP_movx2g, result, tmp14, ops);
+    break;
+  }
+  default: 
+    FmtAssert( FALSE,
+	       ("Expand_Reduce_Min: Unsupported opcode (%s)", OPCODE_name(op) ) );
+  }
+  return;
+}
+
+void
+Expand_Shuffle (OPCODE opc, TN* result, TN* op1, VARIANT variant, OPS *ops)
+{
+  FmtAssert(variant == V_SHUFFLE_REVERSE, ("NYI"));
+  switch(opc) {
+  case OPC_V16C8V16C8SHUFFLE:
+    Build_OP(TOP_shufpd, result, op1, op1, Gen_Literal_TN(0x1, 1), ops);
+    break;    
+  case OPC_V16F4V16F4SHUFFLE:
+  case OPC_V16I4V16I4SHUFFLE:
+    Build_OP(TOP_pshufd, result, op1, Gen_Literal_TN(0x1B, 1), ops);
+    break;
+  case OPC_V16I8V16I8SHUFFLE:
+  case OPC_V16F8V16F8SHUFFLE:
+    Build_OP(TOP_movhlps, result, op1, ops);
+    Build_OP(TOP_movlhps, result, op1, ops);
+    Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
+    break;    
+  case OPC_V16I2V16I2SHUFFLE:
+    {
+      TN* tmp1 = Build_TN_Like(result);
+      TN* tmp2 = Build_TN_Like(result);
+      Build_OP(TOP_movhlps, tmp1, op1, ops);
+      Build_OP(TOP_movlhps, tmp1, op1, ops);
+      Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
+      Build_OP(TOP_pshuflw, tmp2, tmp1, Gen_Literal_TN(0x1B, 1), ops);
+      Build_OP(TOP_pshufhw, result, tmp2, Gen_Literal_TN(0x1B, 1), ops);
+      break;
+    }
+  default:
+    FmtAssert(FALSE, ("NYI"));
   }
   return;
 }
@@ -3914,7 +6058,6 @@ Init_CG_Expand (void)
   Trace_Exp = Get_Trace (TP_CGEXP, 1);
   /* whirl2ops uses -ttexp:2 */
   Trace_Exp2 = Get_Trace (TP_CGEXP, 4);
-  Disable_Const_Mult_Opt = Get_Trace (TP_CGEXP, 32);
   
   if (Initialized) return;
   Initialized = TRUE;
@@ -3938,54 +6081,89 @@ Exp_COPY_Ext (TOP opcode, TN *tgt_tn, TN *src_tn, OPS *ops)
   case TOP_ldxx8_32:
   case TOP_ld8_32_n32:
   case TOP_ld8_32:
+  case TOP_movsbl:
     new_op = TOP_movsbl;
     break;
   case TOP_ldu8_32_n32:
   case TOP_ldu8_32:
   case TOP_ldxu8_32:
   case TOP_ldxxu8_32:
+  case TOP_movzbl:
     new_op = TOP_movzbl;
     break;
   case TOP_ld16_32_n32:
   case TOP_ld16_32:
   case TOP_ldx16_32:
   case TOP_ldxx16_32:
+  case TOP_movswl:
     new_op = TOP_movswl;
     break;
   case TOP_ldu16_32_n32:
   case TOP_ldu16_32:
   case TOP_ldxu16_32:
   case TOP_ldxxu16_32:
+  case TOP_movzwl:
     new_op = TOP_movzwl;
     break;
   case TOP_ld8_64:
   case TOP_ldx8_64:
   case TOP_ldxx8_64:
+  case TOP_ld8_64_off:
+  case TOP_movsbq:
     new_op = TOP_movsbq;
     break;
   case TOP_ldu8_64:
   case TOP_ldxu8_64:
   case TOP_ldxxu8_64:
+  case TOP_ldu8_64_off:
+  case TOP_movzbq:
     new_op = TOP_movzbq;
     break;
   case TOP_ld16_64:
   case TOP_ldx16_64:
   case TOP_ldxx16_64:
+  case TOP_ld16_64_off:
+  case TOP_movswq:
     new_op = TOP_movswq;
     break;
   case TOP_ldu16_64:
   case TOP_ldxu16_64:
   case TOP_ldxxu16_64:
+  case TOP_ldu16_64_off:
+  case TOP_movzwq:
     new_op = TOP_movzwq;
     break;
   case TOP_ld32_64:
   case TOP_ldx32_64:
   case TOP_ldxx32_64:
+  case TOP_ld32_64_off:
+  case TOP_movslq:
     new_op = TOP_movslq;
+    break;
+  case TOP_ld32_n32:
+  case TOP_mov32:
+    new_op = TOP_mov32;
+    break;
+  case TOP_fmovsldup:
+  case TOP_fmovsldupx:
+  case TOP_fmovsldupxx:
+  case TOP_fmovsldupxxx:
+    new_op = TOP_fmovsldup;
+    break;
+  case TOP_fmovshdup:
+  case TOP_fmovshdupx:
+  case TOP_fmovshdupxx:
+  case TOP_fmovshdupxxx:
+    new_op = TOP_fmovshdup;
+    break;
+  case TOP_fmovddupx:
+  case TOP_fmovddupxx:
+  case TOP_fmovddupxxx:
+    new_op = TOP_fmovddup;
     break;
 
   default:
-    FmtAssert( FALSE, ("NYI") );
+    FmtAssert( FALSE, ("Exp_COPY_Ext: Unsupported opcode (%s)", TOP_Name(opcode)) );
   }
   Build_OP( new_op, tgt_tn, src_tn, ops );
   // TODO: Are the extensions copies?
@@ -3998,11 +6176,19 @@ Exp_COPY_Ext (TOP opcode, TN *tgt_tn, TN *src_tn, OPS *ops)
  * Generate a register transfer copy from 'src_tn' to 'tgt_tn'. 
  * ======================================================================*/
 void 
-Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops)
+Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
 {
-  // src_tn and tgt_tn have to be of same size; we will use src_tn to derive
-  // move type.
-  const BOOL is_64bit = (TN_size(src_tn) == 8);
+  // Warning: Don't return NOP even if src_tn == tgt_tn.  EBO expects a real
+  // move OP in order to track the usage info of src_tn.
+
+  // In m64, src_tn and tgt_tn can have different sizes.  If the sizes differ,
+  // use 64-bit copy.  (See example in bug 14429.)
+  // 
+  // In m32, EBO can copy from 8-byte TN to 4-byte TN.  This means a 4-byte
+  // copy where the src is a 4-byte hi/lo part of a 8-byte value (bug 14418).
+  const BOOL is_64bit = Is_Target_64bit() ?
+			  (TN_size(src_tn) == 8) :
+			  (TN_size(src_tn) == 8 && TN_size(tgt_tn) == 8);
   const BOOL is_128bit = (TN_size(src_tn) == 16);
 
   if( TN_is_constant(src_tn) ){
@@ -4018,6 +6204,25 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops)
       Build_OP( is_64bit ? TOP_mov64 : TOP_mov32, tgt_tn, src_tn, ops );
       Set_OP_copy (OPS_last(ops));
 
+      // Copy the hi part of a TN pair.  Bug 8755.
+      if (copy_pair) {
+	TN *hi_src_tn = NULL;
+	TN *hi_tgt_tn = NULL;
+	if (!TN_is_dedicated(src_tn) &&
+	    (hi_src_tn = Get_TN_Pair(src_tn)) != NULL) {
+	  hi_tgt_tn = Get_TN_Pair(tgt_tn);
+	} else if (!TN_is_dedicated(tgt_tn) &&
+		   (hi_tgt_tn = Get_TN_Pair(tgt_tn)) != NULL) {
+	  hi_src_tn = Get_TN_Pair(src_tn);
+	}
+	if (hi_src_tn != NULL ||
+	    hi_tgt_tn != NULL) {
+	  Is_True((hi_tgt_tn != NULL) && (hi_src_tn != NULL),
+		  ("Exp_COPY: src or target TN pair missing"));
+	  Build_OP(is_64bit ? TOP_mov64 : TOP_mov32, hi_tgt_tn, hi_src_tn, ops);
+	  Set_OP_copy (OPS_last(ops));
+	}
+      }
     } else if (tgt_rc == src_rc && tgt_rc == ISA_REGISTER_CLASS_float) {
       /* dedicated TNs always have size 8, so need to check both TNs */
       Build_OP(is_128bit ? TOP_movdq: (is_64bit ? TOP_movsd : TOP_movss), 
@@ -4026,6 +6231,10 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops)
 
     } else if( tgt_rc == src_rc && tgt_rc == ISA_REGISTER_CLASS_x87 ){
       Build_OP( TOP_fmov, tgt_tn, src_tn, ops );
+      Set_OP_copy (OPS_last(ops));
+
+    } else if( tgt_rc == src_rc && tgt_rc == ISA_REGISTER_CLASS_mmx ){
+      Build_OP( TOP_mov64_m, tgt_tn, src_tn, ops );
       Set_OP_copy (OPS_last(ops));
 
     } else if( tgt_rc == ISA_REGISTER_CLASS_x87 &&
@@ -4049,6 +6258,18 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops)
 				 TN_size(src_tn) == 8 ? MTYPE_F8 : MTYPE_F4,
 				 ops );
 
+    } else if( src_rc == ISA_REGISTER_CLASS_integer &&
+	       tgt_rc == ISA_REGISTER_CLASS_mmx) {
+      // mov int64 to mmx
+      Build_OP (TOP_movi64_2m, tgt_tn, src_tn, ops);
+    } else if( src_rc == ISA_REGISTER_CLASS_float &&
+	       tgt_rc == ISA_REGISTER_CLASS_mmx) {
+      // mov sse to mmx
+      Build_OP (TOP_movdq2q, tgt_tn, src_tn, ops);
+    } else if( src_rc == ISA_REGISTER_CLASS_mmx &&
+	       tgt_rc == ISA_REGISTER_CLASS_float) {
+      // mov mmx to sse
+      Build_OP (TOP_movq2dq, tgt_tn, src_tn, ops);
     } else {
       /* dedicated TNs always have size 8, so need to check both TNs */
       FmtAssert( FALSE, ("UNIMPLEMENTED") );
@@ -4081,17 +6302,181 @@ Generate_Temp_Apply_Arg ( )
   Allocate_Object(tmp_apply_arg);
 }
 
+
+static void Expand_INTRN_ANINT( TN* result, TN* src, TYPE_ID mtype, OPS* ops )
+{
+  FmtAssert( mtype == MTYPE_F8, ("Expand_INTRN_ANINT: not double type") );
+
+  if( Fast_ANINT_Allowed ){
+    const double rnd_const = 6755399441055744.0;  /* 0.75d0 * 2d0**53  */
+    TN* con_tn = Build_TN_Of_Mtype( mtype );
+    Expand_Const( con_tn,
+		  Gen_Const_Symbol_TN( 0, rnd_const, mtype ),
+		  mtype, ops );
+
+    Build_OP( TOP_addsd, result, src, con_tn, ops );
+    Build_OP( TOP_subsd, result, result, con_tn, ops );
+
+  } else {
+
+    /* Prepapre all the required data. */
+
+    TN* tmp0 = Build_TN_Like( result );
+    TN* tmp4 = Build_TN_Like( result );
+    TN* tmp7 = Build_TN_Like( result );
+    TN* tmp2 = Build_TN_Like( result );
+    TN* tmp6 = Build_TN_Like( result );
+    TN* tmp3 = Build_TN_Like( result );
+
+    TN* sign_mask = Build_TN_Of_Mtype( mtype );
+    Expand_Const( sign_mask,
+		  Gen_Const_Symbol_TN( 0x8000000000000000ULL, 0.0, MTYPE_I8 ),
+		  mtype, ops );
+    TN* two_exp_52 = Build_TN_Of_Mtype( mtype );
+    Expand_Const( two_exp_52,
+		  Gen_Const_Symbol_TN( 0, 4503599627370496.0, mtype ),
+		  mtype, ops );
+
+    TN* point_5 = Build_TN_Of_Mtype( mtype );
+    Expand_Const( point_5,
+		  Gen_Const_Symbol_TN( 0, 0.5, mtype ),
+		  mtype, ops );
+
+    TN* neg_point_5 = Build_TN_Of_Mtype( mtype );
+    Expand_Const( neg_point_5,
+		  Gen_Const_Symbol_TN( 0, -0.5, mtype ),
+		  mtype, ops );
+
+    /* Emit the algorithm. */
+
+    Build_OP( TOP_andpd, tmp0, sign_mask, src, ops );
+    Build_OP( TOP_xorpd, tmp4, tmp0, src, ops );
+    Build_OP( TOP_addsd, tmp7, tmp4, two_exp_52, ops );
+    Build_OP( TOP_subsd, tmp7, tmp7, two_exp_52, ops );
+    Build_OP( TOP_addsd, tmp2, point_5, point_5, ops );
+    Build_OP( TOP_subsd, tmp6, tmp7, tmp4, ops );
+    Build_OP( TOP_cmpsd, tmp3,
+	      tmp6, neg_point_5, Generate_Cmp_Ctrl_TN(OPR_LE), ops );
+    Build_OP( TOP_andpd, tmp3, tmp3, tmp2, ops );
+    Build_OP( TOP_cmpsd, tmp6,
+	      tmp6, point_5, Generate_Cmp_Ctrl_TN(OPR_GT), ops );
+    Build_OP( TOP_andpd, tmp6, tmp6, tmp2, ops );
+    Build_OP( TOP_subsd, result, tmp7, tmp6, ops );
+    Build_OP( TOP_addsd, result, result, tmp3, ops );
+    Build_OP( TOP_orpd,  result, result, tmp0, ops );
+  }
+}
+
+static void
+Expand_Count_Trailing_Zeros  (TN *result, TN *op, TYPE_ID mtype, OPS *ops)
+{
+  TOP top = TOP_UNDEFINED;
+  switch (mtype)
+  {
+    case MTYPE_I4:
+    case MTYPE_U4:
+      top = TOP_bsf32;
+      break;
+
+    case MTYPE_I8:
+    case MTYPE_U8:
+      top = TOP_bsf64;
+      break;
+    default:
+      Fail_FmtAssertion ("Expand_Count_Trailing_Zeros: unexpected mtype");
+  }
+  Build_OP (top, result, op, ops);
+  return;
+}
+
+// If safezero is TRUE, then be careful to map 0 --> MTYPE_bit_size(mtype).
+static void
+Expand_Count_Leading_Zeros (TN *result, TN *op, TYPE_ID mtype,
+			    BOOL safezero, OPS *ops)
+{
+  // TN1 :- ldc32 (0x3f)
+  // TN2 :- bsr32 TN_src;
+  // TN2 :- cmove TN1 (%rflags)
+  // TN3 :- xori32 TN2 (0x1f)
+  if ( mtype != MTYPE_I1 && mtype != MTYPE_U1 &&
+       mtype != MTYPE_I2 && mtype != MTYPE_U2 &&
+       mtype != MTYPE_I4 && mtype != MTYPE_U4 &&
+       mtype != MTYPE_I8 && mtype != MTYPE_U8 )
+    Fail_FmtAssertion("Expand_Count_Leading_Zeros: unexpected mtype");
+
+  // Bug 14167: Don't use bsr64 on 32-bit target
+  if ( (mtype == MTYPE_I8 || mtype == MTYPE_U8) && Is_Target_32bit() ) {
+    Expand_Split_Leading_Zeros( result, op, mtype, safezero, ops );
+    return;
+  }
+
+  INT bitsize = MTYPE_bit_size(mtype);
+  TN *tmp1 = op;
+  if (bitsize < 32) {
+    tmp1 = Build_TN_Of_Mtype( MTYPE_I4 );
+    Expand_Binary_And( tmp1, op, Gen_Literal_TN( (1 << bitsize) - 1, 4 ),
+		       MTYPE_I4, ops );
+  }
+  TN *tmp3, *rflags = Rflags_TN();
+  if (safezero) {
+    tmp3 = Build_TN_Of_Mtype( MTYPE_I4 );
+    Exp_Immediate( tmp3, Gen_Literal_TN(2 * bitsize - 1, 4), ops );
+  }
+  TN *tmp2 = Build_TN_Of_Mtype( MTYPE_I4 );
+  Build_OP( bitsize == 64 ? TOP_bsr64 : TOP_bsr32, tmp2, tmp1, ops );
+  if (safezero) {
+    Expand_Cmov( TOP_cmove, tmp2, tmp3, rflags, ops );
+  }
+  Expand_Binary_Xor( result, tmp2, Gen_Literal_TN(bitsize - 1, 4),
+		     MTYPE_I4, ops );
+}
+
 void
-Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TYPE_ID mtype, OPS *ops)
+Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID mtype, OPS *ops)
 {
   TN* rflags = Rflags_TN();
-  TN *result_tmp = Build_TN_Like(result);
+  TN *result_tmp = Build_TN_Of_Mtype( MTYPE_U1 );
   const BOOL is_double = MTYPE_is_size_double(mtype);
   const TOP cmp_opcode = ( MTYPE_is_quad(mtype) || !Is_Target_SSE2() )
     ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss );
 
+  if (INTRN_return_kind(id) == IRETURN_M8I1 ||
+      INTRN_return_kind(id) == IRETURN_M8I2 ||
+      INTRN_return_kind(id) == IRETURN_M8I4) { // convert operands to MMX TNs
+    if (TN_register_class(op0) != ISA_REGISTER_CLASS_mmx) {
+      TN *tmp0 = Build_TN_Like(result);
+      Exp_COPY( tmp0, op0, ops );
+      op0 = tmp0;
+    }
+    if (id != INTRN_PSHUFW && id != INTRN_PSHUFD &&
+	TN_register_class(op1) != ISA_REGISTER_CLASS_mmx) {
+      TN *tmp1 = Build_TN_Like(result);
+      Exp_COPY( tmp1, op1, ops );
+      op1 = tmp1;
+    }
+  }
   switch ( id ) {
-  default: FmtAssert( FALSE, ("NYI") ); 
+  default: FmtAssert( FALSE,
+		      ("Exp_Intrinsic_Op: unsupported intrinsic (%s)",
+		       INTRN_rt_name(id)) );
+    // Note: Frontend generates INTRN_CLZ/INTRN_CTZ64 for library calls,
+    // and INTRN_CLZ32/INTRN_CTZ for clz/dclz/ctz/dctz instruction.
+    // (Reasons related to x86.)  mtype is the rtype from op0.
+  case INTRN_CTZ:
+    Expand_Count_Trailing_Zeros (result, op0, mtype, ops);
+    break;
+  case INTRN_I1LEADZ:
+  case INTRN_I2LEADZ:
+  case INTRN_I4LEADZ:
+  case INTRN_I8LEADZ:
+  case INTRN_CLZ32:
+    if ( id == INTRN_I1LEADZ ) mtype = MTYPE_I1;
+    if ( id == INTRN_I2LEADZ ) mtype = MTYPE_I2;
+    Expand_Count_Leading_Zeros (result, op0, mtype, id != INTRN_CLZ32, ops);
+    break;
+  case INTRN_F8ANINT:
+    Expand_INTRN_ANINT( result, op0, mtype, ops );
+    break;
   case INTRN_SUBSU2:
     {
       TN* tmp1 = Build_TN_Like(result);
@@ -4101,28 +6486,86 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TYPE_ID mtype, OPS
       Build_OP( TOP_sub32, tmp2, tmp1, op1, ops );
       Exp_Immediate( result, Gen_Literal_TN (0, 4), FALSE, ops );
       Build_OP( TOP_cmpi32, rflags, tmp2, Gen_Literal_TN(0, 4), ops );
-      Build_OP( TOP_cmovg, result, tmp2, rflags, ops );
-      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+      Expand_Cmov( TOP_cmovg, result, tmp2, rflags, ops );
       break;
     }
   case INTRN_SUBSV16I2:
     Build_OP( TOP_subus128v16, result, op0, op1, ops );
     break;
+//****************************************************************************
+// Bug 9140: generate code for vector F8SIGN and F4SIGN
+// algoeirhm: sign(x,y) = abs(x) | sign(y)
+//            (1) remove sign bit of x
+//            (2) extract sign bit of y
+//            (3) bitwise OR of the above result
+//****************************************************************************
+  case INTRN_SIGNV16F8:
+     {  
+      // remove sign bit of x  
+      TCON thenx = Host_To_Targ (MTYPE_I8, 0x7FFFFFFFFFFFFFFFULL);
+      TCON nowx  = Create_Simd_Const (MTYPE_V16F8, thenx);
+      ST *symx = New_Const_Sym (Enter_tcon (nowx), Be_Type_Tbl(TCON_ty(nowx)));
+      Allocate_Object(symx);
+      TN *sym_tnx = Gen_Symbol_TN(symx, 0, 0);
+      TN *tmpx = Build_TN_Like(op0);
+      Exp_Load(mtype, mtype, tmpx, TN_var(sym_tnx), TN_offset(sym_tnx), ops, 0);
+      Build_OP(TOP_andpd, tmpx, tmpx, op0, ops);
+
+      // extract sign bit of y
+      TCON then = Host_To_Targ (MTYPE_I8, 0x8000000000000000ULL);
+      TCON now  = Create_Simd_Const (MTYPE_V16F8, then);
+      ST *sym = New_Const_Sym (Enter_tcon (now), Be_Type_Tbl(TCON_ty(now)));
+      Allocate_Object(sym);
+      TN *sym_tn = Gen_Symbol_TN(sym, 0, 0);
+      TN *tmpy = Build_TN_Like(op1);
+      Exp_Load(mtype, mtype, tmpy, TN_var(sym_tn), TN_offset(sym_tn), ops, 0);
+      Build_OP(TOP_andpd, tmpy, tmpy, op1, ops);
+
+      // bitwise OR to get result
+      Build_OP(TOP_orpd, result, tmpx, tmpy, ops);
+     } 
+    break;
+  case INTRN_SIGNV16F4:
+    {
+      // remove sign bit of x
+      TCON thenx = Host_To_Targ (MTYPE_I4, 0x7FFFFFFF);
+      TCON nowx  = Create_Simd_Const (MTYPE_V16F4, thenx);
+      ST *symx = New_Const_Sym (Enter_tcon (nowx), Be_Type_Tbl(TCON_ty(nowx)));
+      Allocate_Object(symx);
+      TN *sym_tnx = Gen_Symbol_TN(symx, 0, 0);
+      TN *tmpx = Build_TN_Like(op0);
+      Exp_Load(mtype, mtype, tmpx, TN_var(sym_tnx), TN_offset(sym_tnx), ops, 0);
+      Build_OP(TOP_andps, tmpx, tmpx, op0, ops);
+
+      // extract sign bit of y
+      TCON then = Host_To_Targ (MTYPE_I4, 0x80000000);
+      TCON now  = Create_Simd_Const (MTYPE_V16F4, then);
+      ST *sym = New_Const_Sym (Enter_tcon (now), Be_Type_Tbl(TCON_ty(now)));
+      Allocate_Object(sym);
+      TN *sym_tn = Gen_Symbol_TN(sym, 0, 0);
+      TN *tmpy = Build_TN_Like(op1);
+      Exp_Load(mtype, mtype, tmpy, TN_var(sym_tn), TN_offset(sym_tn), ops, 0);
+      Build_OP(TOP_andps, tmpy, tmpy, op1, ops);
+      
+      // bitwise OR to get result
+      Build_OP(TOP_orps, result, tmpx, tmpy, ops);
+    }
+   break;
   case INTRN_ISGREATER:
     Build_OP( cmp_opcode, rflags, op1, op0, ops );
-    Build_OP( TOP_seta, result_tmp, rflags, ops );
+    Build_OP( TOP_setb, result_tmp, rflags, ops );
     break;
   case INTRN_ISGREATEREQUAL:
     Build_OP( cmp_opcode, rflags, op1, op0, ops );
-    Build_OP( TOP_setae, result_tmp, rflags, ops );
+    Build_OP( TOP_setbe, result_tmp, rflags, ops );
     break;
   case INTRN_ISLESS:
     Build_OP( cmp_opcode, rflags, op0, op1, ops );
-    Build_OP( TOP_seta, result_tmp, rflags, ops );
+    Build_OP( TOP_setb, result_tmp, rflags, ops );
     break;
   case INTRN_ISLESSEQUAL:
     Build_OP( cmp_opcode, rflags, op0, op1, ops );
-    Build_OP( TOP_setae, result_tmp, rflags, ops );
+    Build_OP( TOP_setbe, result_tmp, rflags, ops );
     break;
   case INTRN_ISLESSGREATER:
     Build_OP( cmp_opcode, rflags, op1, op0, ops );
@@ -4132,9 +6575,677 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TYPE_ID mtype, OPS
     Build_OP( cmp_opcode, rflags, op1, op0, ops );
     Build_OP( TOP_setp, result_tmp, rflags, ops );
     break;
+  case INTRN_ISORDERED:
+    Build_OP( cmp_opcode, rflags, op1, op0, ops );
+    Build_OP( TOP_setnp, result_tmp, rflags, ops );
+    break;
+  case INTRN_V16C8MPY_ADDSUB:
+    {      
+      TN* tmp1 = Build_TN_Like(result);
+      TN* tmp2 = Build_TN_Like(result);
+      TN* tmp3 = Build_TN_Like(result);
+      TN* tmp4 = Build_TN_Like(result);
+      TN* tmp5 = Build_TN_Like(result);
+      Build_OP(TOP_fmovddup, tmp1, op2, ops);
+      Build_OP(TOP_shufpd, tmp2, op2, op2, Gen_Literal_TN(1, 1), ops);
+      Build_OP(TOP_fmovddup, tmp3, tmp2, ops);
+      Build_OP(TOP_fmul128v64, tmp4, op0, tmp1, ops);
+      Build_OP(TOP_fmul128v64, tmp5, op1, tmp3, ops);
+      Build_OP(TOP_faddsub128v64, result, tmp4, tmp5, ops);
+      break;
+    }
+  case INTRN_V16C8CONJG:
+    {
+      TCON real = Host_To_Targ (MTYPE_I8, 0x0ULL);
+      TCON imag = Host_To_Targ (MTYPE_I8, 0x8000000000000000ULL);
+      TCON now = Make_Complex (MTYPE_V16C8, real, imag);
+      ST *sym = New_Const_Sym (Enter_tcon (now), Be_Type_Tbl(TCON_ty(now)));
+      Allocate_Object(sym);
+      TN *sym_tn = Gen_Symbol_TN(sym, 0, 0);
+      TN *tmp = Build_TN_Like(result);
+      Exp_Load(mtype, mtype, tmp, TN_var(sym_tn), TN_offset(sym_tn), ops, 0);
+      Build_OP(TOP_fxor128v64, result, op0, tmp, ops);
+      break;
+    }
+  case INTRN_PADDSB:
+    Build_OP( TOP_paddsb, result, op0, op1, ops );
+    break;
+  case INTRN_PADDSW:
+    Build_OP( TOP_paddsw, result, op0, op1, ops );
+    break;
+  case INTRN_PSUBSB:
+    Build_OP( TOP_psubsb, result, op0, op1, ops );
+    break;
+  case INTRN_PSUBSW:
+    Build_OP( TOP_psubsw, result, op0, op1, ops );
+    break;
+  case INTRN_PADDUSB:
+    Build_OP( TOP_paddusb, result, op0, op1, ops );
+    break;
+  case INTRN_PADDD128:
+    Build_OP( TOP_add128v32, result, op0, op1, ops );
+    break;
+  case INTRN_PADDW128:
+    Build_OP( TOP_add128v16, result, op0, op1, ops );
+    break;
+  case INTRN_PADDUSW:
+    Build_OP( TOP_paddusw, result, op0, op1, ops );
+    break;
+  case INTRN_PSUBUSB:
+    Build_OP( TOP_psubusb, result, op0, op1, ops );
+    break;
+  case INTRN_PSUBUSW:
+    Build_OP( TOP_psubusw, result, op0, op1, ops );
+    break;
+  case INTRN_PMULLW:
+    Build_OP( TOP_pmullw, result, op0, op1, ops );
+    break;
+  case INTRN_PMULHW:
+    Build_OP( TOP_pmulhw, result, op0, op1, ops );
+    break;
+  case INTRN_PCMPEQB:
+    Build_OP( TOP_pcmpeqb, result, op0, op1, ops );
+    break;
+  case INTRN_PCMPEQW:
+    Build_OP( TOP_pcmpeqw, result, op0, op1, ops );
+    break;
+  case INTRN_PCMPEQD:
+    Build_OP( TOP_pcmpeqd, result, op0, op1, ops );
+    break;
+  case INTRN_PCMPGTB:
+    Build_OP( TOP_pcmpgtb, result, op0, op1, ops );
+    break;
+  case INTRN_PCMPGTW:
+    Build_OP( TOP_pcmpgtw, result, op0, op1, ops );
+    break;
+  case INTRN_PCMPGTD:
+    Build_OP( TOP_pcmpgtd, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKHBW:
+    Build_OP( TOP_punpckhbw, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKHWD:
+    Build_OP( TOP_punpckhwd, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKHDQ:
+    Build_OP( TOP_punpckhdq, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKLBW:
+    Build_OP( TOP_punpckl64v8, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKLWD:
+    Build_OP( TOP_punpckl64v16, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKLDQ:
+    Build_OP( TOP_punpckl64v32, result, op0, op1, ops );
+    break;
+  case INTRN_PACKSSWB:
+    Build_OP( TOP_packsswb, result, op0, op1, ops );
+    break;
+  case INTRN_PACKSSDW:
+    Build_OP( TOP_packssdw, result, op0, op1, ops );
+    break;
+  case INTRN_PACKUSWB:
+    Build_OP( TOP_packuswb, result, op0, op1, ops );
+    break;
+  case INTRN_PMULHUW:
+    Build_OP( TOP_pmulhuw, result, op0, op1, ops );
+    break;
+  case INTRN_PAVGB:
+    Build_OP( TOP_pavgb, result, op0, op1, ops );
+    break;
+  case INTRN_PAVGW:
+    Build_OP( TOP_pavgw, result, op0, op1, ops );
+    break;
+  case INTRN_PSADBW:
+    Build_OP( TOP_psadbw, result, op0, op1, ops );
+    break;
+  case INTRN_PMAXUB:
+    Build_OP( TOP_max64v8, result, op0, op1, ops );
+    break;
+  case INTRN_PMAXSW:
+    Build_OP( TOP_max64v16, result, op0, op1, ops );
+    break;
+  case INTRN_PMINUB:
+    Build_OP( TOP_min64v8, result, op0, op1, ops );
+    break;
+  case INTRN_PMINSW:
+    Build_OP( TOP_min64v16, result, op0, op1, ops );
+    break;
+  case INTRN_PEXTRW0:
+    Is_True (op1 == NULL, ("Imm operand should be null"));
+    op1 = Gen_Literal_TN (0, 4);
+    Build_OP( TOP_pextrw, result, op0, op1, ops );
+    break;
+  case INTRN_PEXTRW1:
+    Is_True (op1 == NULL, ("Imm operand should be null"));
+    op1 = Gen_Literal_TN (1, 4);
+    Build_OP( TOP_pextrw, result, op0, op1, ops );
+    break;
+  case INTRN_PEXTRW2:
+    Is_True (op1 == NULL, ("Imm operand should be null"));
+    op1 = Gen_Literal_TN (2, 4);
+    Build_OP( TOP_pextrw, result, op0, op1, ops );
+    break;
+  case INTRN_PEXTRW3:
+    Is_True (op1 == NULL, ("Imm operand should be null"));
+    op1 = Gen_Literal_TN (3, 4);
+    Build_OP( TOP_pextrw, result, op0, op1, ops );
+    break;
+  case INTRN_PINSRW0:
+    Is_True (op2 == NULL, ("Imm operand should be null"));
+    op2 = Gen_Literal_TN (0, 4);
+    Build_OP( TOP_pinsrw, result, op1, op2, ops );
+    break;
+  case INTRN_PINSRW1:
+    Is_True (op2 == NULL, ("Imm operand should be null"));
+    op2 = Gen_Literal_TN (1, 4);
+    Build_OP( TOP_pinsrw, result, op1, op2, ops );
+    break;
+  case INTRN_PINSRW2:
+    Is_True (op2 == NULL, ("Imm operand should be null"));
+    op2 = Gen_Literal_TN (2, 4);
+    Build_OP( TOP_pinsrw, result, op1, op2, ops );
+    break;
+  case INTRN_PINSRW3:
+    Is_True (op2 == NULL, ("Imm operand should be null"));
+    op2 = Gen_Literal_TN (3, 4);
+    Build_OP( TOP_pinsrw, result, op1, op2, ops );
+    break;
+  case INTRN_PMOVMSKB:
+    Build_OP( TOP_pmovmskb, result, op0, ops );
+    break;
+  case INTRN_PMOVMSKB128:
+    Build_OP( TOP_pmovmskb128, result, op0, ops );
+    break;
+  case INTRN_COMIEQSS:
+    Build_OP( TOP_comiss, rflags, op0, op1, ops );
+    Build_OP( TOP_sete, result, rflags, ops);
+    break;
+  case INTRN_COMILTSS:
+    Build_OP( TOP_comiss, rflags, op0, op1, ops );
+    Build_OP( TOP_setb, result, rflags, ops);
+    break;
+  case INTRN_COMILESS:
+    Build_OP( TOP_comiss, rflags, op0, op1, ops );
+    Build_OP( TOP_setbe, result, rflags, ops);
+    break;
+  case INTRN_COMIGTSS:
+    Build_OP( TOP_comiss, rflags, op0, op1, ops );
+    Build_OP( TOP_seta, result, rflags, ops);
+    break;
+  case INTRN_COMIGESS:
+    Build_OP( TOP_comiss, rflags, op0, op1, ops );
+    Build_OP( TOP_setae, result, rflags, ops);
+    break;
+  case INTRN_COMINEQSS:
+    Build_OP( TOP_comiss, rflags, op0, op1, ops );
+    Build_OP( TOP_setne, result, rflags, ops);
+    break;
+  case INTRN_COMIEQSD:
+    Build_OP( TOP_comisd, rflags, op0, op1, ops );
+    Build_OP( TOP_sete, result, rflags, ops);
+    break;
+  case INTRN_COMILTSD:
+    Build_OP( TOP_comisd, rflags, op0, op1, ops );
+    Build_OP( TOP_setb, result, rflags, ops);
+    break;
+  case INTRN_COMILESD:
+    Build_OP( TOP_comisd, rflags, op0, op1, ops );
+    Build_OP( TOP_setbe, result, rflags, ops);
+    break;
+  case INTRN_COMIGTSD:
+    Build_OP( TOP_comisd, rflags, op0, op1, ops );
+    Build_OP( TOP_seta, result, rflags, ops);
+    break;
+  case INTRN_COMIGESD:
+    Build_OP( TOP_comisd, rflags, op0, op1, ops );
+    Build_OP( TOP_setae, result, rflags, ops);
+    break;
+  case INTRN_COMINEQSD:
+    Build_OP( TOP_comisd, rflags, op0, op1, ops );
+    Build_OP( TOP_setne, result, rflags, ops);
+    break;
+  case INTRN_ADDPS:
+    Build_OP( TOP_fadd128v32, result, op0, op1, ops );
+    break;
+  case INTRN_SUBPS:
+    Build_OP( TOP_fsub128v32, result, op0, op1, ops );
+    break;
+  case INTRN_MULPS:
+    Build_OP( TOP_fmul128v32, result, op0, op1, ops );
+    break;
+  case INTRN_DIVPS:
+    Build_OP( TOP_fdiv128v32, result, op0, op1, ops );
+    break;
+  case INTRN_ADDSS:
+    Build_OP( TOP_addss, result, op0, op1, ops );
+    break;
+  case INTRN_SUBSS:
+    Build_OP( TOP_subss, result, op0, op1, ops );
+    break;
+  case INTRN_MULSS:
+    Build_OP( TOP_mulss, result, op0, op1, ops );
+    break;
+  case INTRN_DIVSS:
+    Build_OP( TOP_divss, result, op0, op1, ops );
+    break;
+  case INTRN_CMPEQPS:
+    Build_OP( TOP_cmpeqps, result, op0, op1, ops );
+    break;
+  case INTRN_CMPLTPS:
+    Build_OP( TOP_cmpltps, result, op0, op1, ops );
+    break;
+  case INTRN_CMPLEPS:
+    Build_OP( TOP_cmpleps, result, op0, op1, ops );
+    break;
+  case INTRN_CMPGTPS:
+    Build_OP( TOP_cmpltps, result, op1, op0, ops );
+    break;
+  case INTRN_CMPGEPS:
+    Build_OP( TOP_cmpleps, result, op1, op0, ops );
+    break;
+  case INTRN_CMPUNORDPS:
+    Build_OP( TOP_cmpunordps, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNEQPS:
+    Build_OP( TOP_cmpneqps, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNLTPS:
+    Build_OP( TOP_cmpnltps, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNLEPS:
+    Build_OP( TOP_cmpnleps, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNGTPS:
+    Build_OP( TOP_cmpnltps, result, op1, op0, ops );
+    break;
+  case INTRN_CMPNGEPS:
+    Build_OP( TOP_cmpnleps, result, op1, op0, ops );
+    break;
+  case INTRN_CMPORDPS:
+    Build_OP( TOP_cmpordps, result, op0, op1, ops );
+    break;
+  case INTRN_CMPEQSS:
+    Build_OP( TOP_cmpeqss, result, op0, op1, ops );
+    break;
+  case INTRN_CMPLTSS:
+    Build_OP( TOP_cmpltss, result, op0, op1, ops );
+    break;
+  case INTRN_CMPLESS:
+    Build_OP( TOP_cmpless, result, op0, op1, ops );
+    break;
+  case INTRN_CMPUNORDSS:
+    Build_OP( TOP_cmpunordss, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNEQSS:
+    Build_OP( TOP_cmpneqss, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNLTSS:
+    Build_OP( TOP_cmpnltss, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNLESS:
+    Build_OP( TOP_cmpnless, result, op0, op1, ops );
+    break;
+  case INTRN_CMPORDSS:
+    Build_OP( TOP_cmpordss, result, op0, op1, ops );
+    break;
+  case INTRN_MAXPS:
+    Build_OP( TOP_fmax128v32, result, op0, op1, ops );
+    break;
+  case INTRN_MAXSS:
+    Build_OP( TOP_maxss, result, op0, op1, ops );
+    break;
+  case INTRN_MINPS:
+    Build_OP( TOP_fmin128v32, result, op0, op1, ops );
+    break;
+  case INTRN_MINSS:
+    Build_OP( TOP_minss, result, op0, op1, ops );
+    break;
+  case INTRN_ANDPS:
+    Build_OP( TOP_fand128v32, result, op0, op1, ops );
+    break;
+  case INTRN_ANDNPS:
+    Build_OP( TOP_andnps, result, op0, op1, ops );
+    break;
+  case INTRN_ORPS:
+    Build_OP( TOP_for128v32, result, op0, op1, ops );
+    break;
+  case INTRN_XORPS:
+    Build_OP( TOP_fxor128v32, result, op0, op1, ops );
+    break;
+  case INTRN_MOVSS:
+    Build_OP( TOP_movss, result, op0, op1, ops );
+    break;
+  case INTRN_MOVSD:
+    Build_OP( TOP_movsd, result, op0, op1, ops );
+    break;
+  case INTRN_MOVHLPS:
+    Build_OP( TOP_movhlps, result, op0, op1, ops );
+    break;
+  case INTRN_MOVLHPS:
+    Build_OP( TOP_movlhps, result, op0, op1, ops );
+    break;
+  case INTRN_UNPCKHPS:
+    Build_OP( TOP_unpckhps, result, op0, op1, ops );
+    break;
+  case INTRN_UNPCKLPS:
+    Build_OP( TOP_unpcklps, result, op0, op1, ops );
+    break;
+  case INTRN_RCPPS:
+    Build_OP( TOP_frcp128v32, result, op0, ops );
+    break;
+  case INTRN_RSQRTPS:
+    Build_OP( TOP_frsqrt128v32, result, op0, ops );
+    break;
+  case INTRN_SQRTPS:
+    Build_OP( TOP_fsqrt128v32, result, op0, ops );
+    break;
+  case INTRN_RCPSS:
+    Build_OP( TOP_rcpss, result, op0, ops );
+    break;
+  case INTRN_RSQRTSS:
+    Build_OP( TOP_rsqrtss, result, op0, ops );
+    break;
+  case INTRN_SQRTSS:
+    Build_OP( TOP_sqrtss, result, op0, ops );
+    break;
+  case INTRN_SHUFPS:
+    Build_OP( TOP_shufps, result, op0, op1, op2, ops );
+    break;
+  case INTRN_LOADAPS:
+    Build_OP( TOP_ldaps, result, op0, Gen_Literal_TN(0,4), ops );
+    break;
+  case INTRN_PSLLDQ:
+    Build_OP( TOP_pslldq, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLDQ:
+    Build_OP( TOP_psrldq, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLW:
+    Build_OP( TOP_psllw, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLD:
+    Build_OP( TOP_pslld, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLQ:
+    Build_OP( TOP_psllq, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLW:
+    Build_OP( TOP_psrlw, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLD:
+    Build_OP( TOP_psrld, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLQ:
+    Build_OP( TOP_psrlq, result, op0, op1, ops );
+    break;
+  case INTRN_PSRAW:
+    Build_OP( TOP_psraw, result, op0, op1, ops );
+    break;
+  case INTRN_PSRAD:
+    Build_OP( TOP_psrad, result, op0, op1, ops );
+    break;
+  case INTRN_LOADD:
+    Build_OP( TOP_movg2x64, result, op0, ops );
+    break;
+  case INTRN_PSHUFD:
+    Build_OP( TOP_pshufd, result, op0, op1, ops );
+    break;
+  case INTRN_LOADSS:
+    Build_OP( TOP_ldss, result, op0, Gen_Literal_TN (0,4), ops );
+    break;
+  case INTRN_SHUFPD:
+    Build_OP( TOP_shufpd, result, op0, op1, op2, ops );
+    break;
+  case INTRN_XORPD:
+    Build_OP( TOP_fxor128v64, result, op0, op1, ops );
+    break;
+  case INTRN_ANDPD:
+    Build_OP( TOP_fand128v64, result, op0, op1, ops );
+    break;
+  case INTRN_ORPD:
+    Build_OP( TOP_for128v64, result, op0, op1, ops );
+    break;
+  case INTRN_LOADLPD:
+    Build_OP( TOP_ldsd, result, op1, Gen_Literal_TN (0,4), ops );
+    break;
+  case INTRN_LOADHPD:
+    Build_OP( TOP_ldhpd, result, op1, Gen_Literal_TN (0,4), ops );
+    break;
+  case INTRN_UNPCKLPD:
+    Build_OP( TOP_unpcklpd, result, op0, op1, ops );
+    break;
+  case INTRN_UNPCKHPD:
+    Build_OP( TOP_unpckhpd, result, op0, op1, ops );
+    break;
+  case INTRN_PSHUFW:
+    Build_OP( TOP_pshufw64v16, result, op0, op1, ops );
+    break;
+  case INTRN_LOADDQA:
+    Build_OP( TOP_lddqa, result, op0, Gen_Literal_TN (0,4), ops );
+    break;
+  case INTRN_LOADDQU:
+    Build_OP( TOP_lddqu, result, op0, Gen_Literal_TN (0,4), ops );
+    break;
+
+  case INTRN_COSL:
+    Build_OP( TOP_fcos, result, op0, ops );
+    break;
+  case INTRN_SINL:
+    Build_OP( TOP_fsin, result, op0, ops );
+    break;
+  case INTRN_VEC_INIT_V2SI:
+    {
+      TN* tmp0 = Build_TN_Like(result);
+      TN* tmp1 = Build_TN_Like(result);
+      Build_OP( TOP_movg2x, tmp0, op0, ops );
+      Build_OP( TOP_movg2x, tmp1, op1, ops );
+      Build_OP( TOP_punpckldq, result, tmp0, tmp1, ops );
+      break;
+    }
+  case INTRN_VEC_EXT_V2SI:
+    if (Is_Target_64bit())
+      Build_OP( TOP_movx2g64, result, op0, ops );
+    else Expand_Float_To_Int_Tas(result, op0, MTYPE_I8, ops);
+    break;
+  case INTRN_PMADDWD:
+    Build_OP( TOP_pmaddwd, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLW_MMX:
+    Build_OP( TOP_psllw_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLD_MMX:
+    Build_OP( TOP_pslld_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLW_MMX:
+    Build_OP( TOP_psrlw_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLD_MMX:
+    Build_OP( TOP_psrld_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRAW_MMX:
+    Build_OP( TOP_psraw_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRAD_MMX:
+    Build_OP( TOP_psrad_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PAND_MMX:
+    Build_OP( TOP_pand_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PANDN_MMX:
+    Build_OP( TOP_pandn_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_POR_MMX:
+    Build_OP( TOP_por_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PXOR_MMX:
+    Build_OP( TOP_pxor_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_CVTPI2PS:
+    if (TN_register_class(op0) != ISA_REGISTER_CLASS_mmx) {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
+      Exp_COPY( tmp0, op0, ops );
+      op0 = tmp0;
+    }
+    Build_OP( TOP_cvtpi2ps, result, op0, ops );
+    break;
+  case INTRN_CVTPS2PI: {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
+      Build_OP( TOP_cvtps2pi, tmp0, op0, ops );
+      // mov mmx to sse
+      Build_OP (TOP_movq2dq, result, tmp0, ops);
+      break;
+    }
+  case INTRN_CVTTPS2PI: {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
+      Build_OP( TOP_cvttps2pi, tmp0, op0, ops );
+      // mov mmx to sse
+      Build_OP (TOP_movq2dq, result, tmp0, ops);
+      break;
+    }
+  case INTRN_CVTPI2PD:
+    if (TN_register_class(op0) != ISA_REGISTER_CLASS_mmx) {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
+      Exp_COPY( tmp0, op0, ops );
+      op0 = tmp0;
+    }
+    Build_OP( TOP_cvtpi2pd, result, op0, ops );
+    break;
+  case INTRN_CVTPD2PI: {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
+      Build_OP( TOP_cvtpd2pi, tmp0, op0, ops );
+      // mov mmx to sse
+      Build_OP (TOP_movq2dq, result, tmp0, ops);
+      break;
+    }
+  case INTRN_CVTTPD2PI: {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
+      Build_OP( TOP_cvttpd2pi, tmp0, op0, ops );
+      // mov mmx to sse
+      Build_OP (TOP_movq2dq, result, tmp0, ops);
+      break;
+    }
+  case INTRN_CVTSI2SS:
+    if (TN_register_class(op0) != ISA_REGISTER_CLASS_integer) {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_integer);
+      Build_OP( TOP_movx2g, tmp0, op0, ops );
+      op0 = tmp0;
+    }
+    Build_OP( TOP_cvtsi2ss, result, op0, ops );
+    break;
+  case INTRN_CVTSI642SS:
+    if (TN_register_class(op0) != ISA_REGISTER_CLASS_integer) {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_integer);
+      Build_OP( TOP_movx2g64, tmp0, op0, ops );
+      op0 = tmp0;
+    }
+    Build_OP( TOP_cvtsi2ssq, result, op0, ops );
+    break;
+  case INTRN_CVTSS2SI:
+    Build_OP( TOP_cvtss2si, result, op0, ops );
+    break;
+  case INTRN_CVTSS2SI64:
+    Build_OP( TOP_cvtss2siq, result, op0, ops );
+    break;
+  case INTRN_CVTTSS2SI:
+    Build_OP( TOP_cvttss2si, result, op0, ops );
+    break;
+  case INTRN_CVTTSS2SI64:
+    Build_OP( TOP_cvttss2siq, result, op0, ops );
+    break;
+  case INTRN_CVTSI2SD:
+    if (TN_register_class(op0) != ISA_REGISTER_CLASS_integer) {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_integer);
+      Build_OP( TOP_movx2g, tmp0, op0, ops );
+      op0 = tmp0;
+    }
+    Build_OP( TOP_cvtsi2sd, result, op0, ops );
+    break;
+  case INTRN_CVTSI642SD:
+    if (TN_register_class(op0) != ISA_REGISTER_CLASS_integer) {
+      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_integer);
+      Build_OP( TOP_movx2g64, tmp0, op0, ops );
+      op0 = tmp0;
+    }
+    Build_OP( TOP_cvtsi2sdq, result, op0, ops );
+    break;
+  case INTRN_CVTSD2SI:
+    Build_OP( TOP_cvtsd2si, result, op0, ops );
+    break;
+  case INTRN_CVTSD2SI64:
+    Build_OP( TOP_cvtsd2siq, result, op0, ops );
+    break;
+  case INTRN_CVTTSD2SI:
+    Build_OP( TOP_cvttsd2si, result, op0, ops );
+    break;
+  case INTRN_CVTTSD2SI64:
+    Build_OP( TOP_cvttsd2siq, result, op0, ops );
+    break;
+  case INTRN_CVTDQ2PS:
+    Build_OP( TOP_cvtdq2ps, result, op0, ops );
+    break;
+  case INTRN_CVTPS2DQ:
+    Build_OP( TOP_cvtps2dq, result, op0, ops );
+    break;
+  case INTRN_CVTTPS2DQ:
+    Build_OP( TOP_cvttps2dq, result, op0, ops );
+    break;
+  case INTRN_CVTDQ2PD:
+    Build_OP( TOP_cvtdq2pd, result, op0, ops );
+    break;
+  case INTRN_CVTPD2DQ:
+    Build_OP( TOP_cvtpd2dq, result, op0, ops );
+    break;
+  case INTRN_CVTTPD2DQ:
+    Build_OP( TOP_cvttpd2dq, result, op0, ops );
+    break;
+  case INTRN_CVTPD2PS:
+    Build_OP( TOP_cvtpd2ps, result, op0, ops );
+    break;
+  case INTRN_CVTPS2PD:
+    Build_OP( TOP_cvtps2pd, result, op0, ops );
+    break;
+  case INTRN_CVTSD2SS:
+    Build_OP( TOP_cvtsd2ss, result, op0, ops );
+    break;
+  case INTRN_CVTSS2SD:
+    Build_OP( TOP_cvtss2sd, result, op0, ops );
+    break;
+  case INTRN_LOADUPS:
+    Build_OP( TOP_ldups, result, op0, Gen_Literal_TN (0,4), ops );
+    break;
+  case INTRN_LOADUPD:
+    Build_OP( TOP_ldupd, result, op0, Gen_Literal_TN (0,4), ops );
+    break;
+  case INTRN_LOADHPS:
+    Build_OP( TOP_ldhps, result, op1, Gen_Literal_TN (0,4), ops );
+    break;
+  case INTRN_LOADLPS:
+    Build_OP( TOP_ldlps, result, op1, Gen_Literal_TN (0,4), ops );
+    break;
+  case INTRN_MOVMSKPS:
+    Build_OP( TOP_movmskps, result, op0, ops );
+    break;
+  case INTRN_MOVMSKPD:
+    Build_OP( TOP_movmskpd, result, op0, ops );
+    break;
+  case INTRN_PSHUFLW:
+    Build_OP( TOP_pshuflw, result, op0, op1, ops);
+    break;
+  case INTRN_PSHUFHW:
+    Build_OP( TOP_pshufhw, result, op0, op1, ops);
+    break;
+   case INTRN_EXTRQ:
+    Build_OP( TOP_extrq, result, op0, op1, ops );
+    break;
+   case INTRN_INSERTQ:
+    Build_OP(TOP_insertq, result, op0, op1, ops );
+    break;
   }
+
   if (id <= INTRN_ISUNORDERED && id >= INTRN_ISGREATER )
-    Build_OP( TN_size(result) == 4 ? TOP_mov32 : TOP_mov64, 
+    Build_OP( TN_size(result) == 4 ? TOP_movzbl : TOP_movzbq,
     	      result, result_tmp, ops);
   return;
 }
@@ -4154,7 +7265,7 @@ Expand_TOP_intrncall (
   BOOL get_sequence_length,
   INT pc_value)
 {
-  FmtAssert(FALSE, ("Expand_TOP_intrncall NYI"));
+  ErrMsg( EC_Unimplemented, "Expand_TOP_intrncall: NYI" );
   return 0;
 }
 
@@ -4229,11 +7340,126 @@ Intrinsic_Returns_New_Value (INTRINSIC id)
 // then ops is for first bb and ops2 is for bb after the label.
 // Otherwise only ops is filled in.
 TN *
-Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops, 
-	LABEL_IDX *label, OPS *loop_ops)
+Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2,
+                    OPS *ops, LABEL_IDX *label, OPS *loop_ops)
 {
-  FmtAssert( FALSE, ("UNIMPLEMENTED") );
-  return NULL;
+  TN *result = NULL;
+  TYPE_ID mtype;
+
+  switch (id) {
+  case INTRN_SYNCHRONIZE:
+    if (Is_Target_SSE2())
+      Build_OP (TOP_mfence, ops);    // memory fence
+    // else generate nothing since pre-SSE2 CPUs do not do aggressive reordering
+    break;
+  case INTRN_EMMS:
+    Build_OP (TOP_emms, ops);
+    break;
+  case INTRN_STOREAPS:
+    Build_OP (TOP_staps, op1, op0, Gen_Literal_TN (0, 4), ops);
+    break;
+  case INTRN_MOVNTDQ:
+    Build_OP (TOP_storenti128, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+  case INTRN_MOVNTPS:
+    Build_OP (TOP_stntps, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+  case INTRN_SSE_ZERO:
+    result = Build_TN_Of_Mtype (MTYPE_V16F4);
+    Build_OP (TOP_xzero128v32, result, ops);
+    break;
+  case INTRN_CLRTI:
+    result = Build_TN_Of_Mtype (MTYPE_V16F4);
+    Build_OP (TOP_xzero128v64, result, ops);
+    break;
+  case INTRN_STORELPD:
+    Build_OP (TOP_storelpd, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+  case INTRN_STOREHPD:
+    Build_OP (TOP_sthpd, op1, op0, Gen_Literal_TN (0, 4), ops);
+    break;
+  case INTRN_LFENCE:
+    Build_OP (TOP_lfence, ops);
+    break;
+  case INTRN_MFENCE:
+    Build_OP (TOP_mfence, ops);
+    break;
+  case INTRN_SFENCE:
+    Build_OP (TOP_sfence, ops);
+    break;
+  case INTRN_STOREDQA:
+    Build_OP( TOP_stdqa, op1, op0, Gen_Literal_TN (0, 4), ops );
+    break;
+  case INTRN_STOREDQU:
+    Build_OP( TOP_stdqu, op1, op0, Gen_Literal_TN (0, 4), ops );
+    break;
+  case INTRN_STOREUPS:
+    Build_OP( TOP_stups, op1, op0, Gen_Literal_TN (0, 4), ops );
+    break;
+  case INTRN_STOREUPD:
+    Build_OP( TOP_stupd, op1, op0, Gen_Literal_TN (0, 4), ops );
+    break;
+  case INTRN_STOREHPS:
+    Build_OP( TOP_sthps, op1, op0, Gen_Literal_TN (0, 4), ops );
+    break;
+  case INTRN_STORELPS:
+    Build_OP( TOP_stlps, op1, op0, Gen_Literal_TN (0, 4), ops );
+    break;
+  case INTRN_MOVNTPD:
+    Build_OP (TOP_stntpd, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+  case INTRN_MOVNTI:
+    Build_OP (TOP_storenti32, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+  case INTRN_MOVNTQ:
+    if (TN_register_class(op1) != ISA_REGISTER_CLASS_mmx) {
+      TN *tmp1 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
+      Exp_COPY( tmp1, op1, ops );
+      op1 = tmp1;
+    }
+    Build_OP (TOP_storent64_fm, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+  case INTRN_MASKMOVDQU:
+    Build_OP (TOP_maskmovdqu, op1, op0, ops);
+    break;
+  case INTRN_MASKMOVQ:
+    Build_OP (TOP_maskmovq, op1, op0, ops);
+    break;
+ //SSE4A instrinsics
+  case INTRN_MOVNTSS:
+    Build_OP (TOP_stntss, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+  case INTRN_MOVNTSD:
+    Build_OP (TOP_stntsd, op1, op0, Gen_Literal_TN (0,4), ops);
+    break;
+  
+  // FETCH_AND_...
+
+  case INTRN_FETCH_AND_ADD_I4:
+  case INTRN_FETCH_AND_ADD_I8:
+    mtype = (id == INTRN_FETCH_AND_ADD_I4) ?  MTYPE_I4 : MTYPE_I8;
+    result = Exp_Fetch_and_Add(op0, op1, mtype, ops);
+    break;
+
+  case INTRN_FETCH_AND_SUB_I4:
+  case INTRN_FETCH_AND_SUB_I8:
+    {
+      TN *neg_tn = Build_TN_Like(op1);
+      if (id == INTRN_FETCH_AND_SUB_I4) {
+	mtype = MTYPE_I4;
+	Build_OP(TOP_neg32, neg_tn, op1, ops);
+      } else {
+	mtype = MTYPE_I8;
+	Build_OP(TOP_neg64, neg_tn, op1, ops);
+      }
+      result = Exp_Fetch_and_Add(op0, neg_tn, mtype, ops);
+    }
+    break;
+
+  default:  
+    FmtAssert(FALSE, ("Exp_Intrinsic_Call: unimplemented"));
+  }
+  return result;
 }
 
 /* Expansion of INTRN_SAVEXMMS into TOP_savexmms pseudo instruction */
@@ -4254,8 +7480,8 @@ Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label, OPS *ops)
       ("Exp_savexmms_Intrinsic: unexpected addresses in SAVE_XMMS intrinsic"));
   TN *base_tn = (base_sym == SP_Sym) ? SP_TN : FP_TN;
   if (base_sym == WN_st(lda))
-    ofst_tn = Gen_Literal_TN(base_ofst, 4);
-  else ofst_tn = Gen_Symbol_TN(WN_st(lda), WN_lda_offset(lda), 0);
+    ofst_tn = Gen_Literal_TN(base_ofst-1, 4);
+  else ofst_tn = Gen_Symbol_TN(WN_st(lda), WN_lda_offset(lda)-1, 0);
   *label = Gen_Temp_Label();
   TN *r11_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, R11, 8);
   Build_OP(TOP_savexmms, rax_tn, tn1, base_tn, ofst_tn, Gen_Label_TN(*label, 0),
@@ -4280,15 +7506,15 @@ void Exp_Simulated_Op(const OP *op, OPS *ops, INT pc_value)
       FmtAssert(BB_last_op(OP_bb(op)) == op, 
 	    ("Exp_Simulated_Op: savexmms must be last instruction in the BB"));
       TN *rax_tn = OP_opnd(op, 0);
+      Build_OP(TOP_andi64, rax_tn, rax_tn, Gen_Literal_TN(0xff,4), ops);
       INT64 num_xmms = TN_value(OP_opnd(op, 1));
       TN *r11_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, R11, 8);
       Build_OP(TOP_leaxx64, r11_tn, rax_tn, Gen_Literal_TN(4, 4), 
 	       Gen_Literal_TN(4*(num_xmms-8), 4), ops);
       Build_OP(TOP_neg64, r11_tn, r11_tn, ops);
       if ( Gen_PIC_Shared ) {
-	TN* r10_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, R10, 8);
-	Build_OP ( TOP_lea64, r10_tn, Rip_TN(), OP_opnd( op, 4 ), ops );
-	Build_OP ( TOP_leax64, r11_tn, r11_tn, r10_tn, 
+	Build_OP ( TOP_lea64, rax_tn, Rip_TN(), OP_opnd( op, 4 ), ops );
+	Build_OP ( TOP_leax64, r11_tn, r11_tn, rax_tn, 
 		   Gen_Literal_TN( 1, 4 ), 
 		   Gen_Literal_TN( 0, 4 ), ops );
       } else {
@@ -4299,7 +7525,7 @@ void Exp_Simulated_Op(const OP *op, OPS *ops, INT pc_value)
       Build_OP(TOP_ijmp, r11_tn, ops);
       for (INT i = 1; i <= num_xmms; i++) {
         Build_OP(TOP_staps, PREG_To_TN(Int_Preg, XMM0+(8-i)), 
-	         rax_tn, Gen_Literal_TN(16 * (num_xmms-i), 4), ops);
+	         rax_tn, Gen_Literal_TN(16 * (num_xmms-i) + 1, 4), ops);
       }
       break;
     }
@@ -4405,17 +7631,38 @@ void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
   FmtAssert( TN_is_symbol(src), ("Expand_Const: src not a symbol TN") );
   if (CG_use_xortozero && 
       ST_class(TN_var(src)) == CLASS_CONST) {
+
     TCON tcon = STC_val(TN_var(src));
-    if (TCON_ty(tcon) == MTYPE_F4 && TCON_fval(tcon) == 0.0) {
-      FmtAssert(TCON_ty(tcon) == mtype, 
+
+    // Must use Targ_Is_Zero to check for positive zero.  Bug 9734.
+    if (TCON_ty(tcon) == MTYPE_F4 && Targ_Is_Zero(tcon)) {
+      FmtAssert(TCON_ty(tcon) == mtype || mtype == MTYPE_V16F4, 
 		("Expand_Const: inconsistent mtypes"));
-      Build_OP(TOP_xzero32, dest, ops);
+      if ( Is_Target_SSE2() )
+	Build_OP( mtype == MTYPE_V16F4?TOP_xzero128v32:TOP_xzero32, dest, ops);
+      else
+	Build_OP( TOP_fldz, dest, ops);
       return;
     }
-    if (TCON_ty(tcon) == MTYPE_F8 && TCON_dval(tcon) == 0.0) {
-      FmtAssert(TCON_ty(tcon) == mtype, 
+    if (TCON_ty(tcon) == MTYPE_F8 && Targ_Is_Zero(tcon)) {
+      FmtAssert(TCON_ty(tcon) == mtype || mtype == MTYPE_V16F8, 
 		("Expand_Const: inconsistent mtypes"));
-      Build_OP(TOP_xzero64, dest, ops);
+      if ( Is_Target_SSE2() )
+	Build_OP( mtype == MTYPE_V16F8?TOP_xzero128v64:TOP_xzero64, dest, ops);
+      else
+	Build_OP( TOP_fldz, dest, ops);
+      return;
+    }
+    if (TCON_ty(tcon) == MTYPE_V16F4 && Targ_Is_Zero(tcon)) {
+      FmtAssert(TCON_ty(tcon) == mtype && Is_Target_SSE2(),
+		("Expand_Const: inconsistent mtypes"));
+      Build_OP( TOP_xzero128v32, dest, ops);
+      return;
+    }
+    if (TCON_ty(tcon) == MTYPE_V16F8 && Targ_Is_Zero(tcon)) {
+      FmtAssert(TCON_ty(tcon) == mtype && Is_Target_SSE2(),
+		("Expand_Const: inconsistent mtypes"));
+      Build_OP( TOP_xzero128v64, dest, ops);
       return;
     }
   }
@@ -4462,6 +7709,18 @@ Target_Has_Immediate_Operand (WN *parent, WN *expr)
 void 
 Exp_Spadjust (TN *dest, TN *size, VARIANT variant, OPS *ops)
 {
+  // A temp register is needed if the adjustment size can't fit in the
+  // immediate field of an add instruction.  spadjust is converted into add
+  // after register allocation, at which time there are no more registers.  So
+  // create a temp TN now.  Bug 9051.
+  if (TN_is_constant(size) &&
+      TN_has_value(size) &&
+      !CGTARG_Can_Fit_Immediate_In_Add_Instruction(TN_value(size))) {
+    TN *temp = Build_TN_Of_Mtype(MTYPE_I8);
+    Exp_Immediate(temp, size, TRUE, ops);
+    size = temp;
+  }
+
   Build_OP (TOP_spadjust, dest, SP_TN, size, ops);
   OP_variant(OPS_last(ops)) = variant;
 }
@@ -4500,4 +7759,325 @@ Exp_Landingpadentry_Intrinsic (ST *result1, ST *result2, OPS *ops)
 
   TN *tn2 = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, RDX, size);
   Exp_Store (mtype, tn2, result2, 0, ops, 0);
+}
+
+TN* Gen_Second_Immd_Op( TN *src2, OPS* ops )
+{
+  TN* src2_h = TN_has_value(src2) ? NULL : Get_TN_Pair(src2);
+
+  if( TN_has_value(src2) ){
+    const INT64 val = TN_value(src2);
+    src2_h = Gen_Literal_TN( val >> 32, 4 );
+  }
+
+  if( src2_h == NULL ){
+    DevWarn( "The higher 32-bit of TN%d is treated as 0\n",
+	     TN_number(src2) );
+    src2_h  = Build_TN_Like( src2 );
+    Build_OP( TOP_ldc32, src2_h, Gen_Literal_TN(0,4), ops );    
+  }
+  return src2_h;
+}
+
+/* Expand FETCH_AND_ADD intrinsic into the following format
+      lock (addr) = (addr) + opnd1
+ */
+static
+TN *Exp_Fetch_and_Add (TN *addr, TN *opnd1, TYPE_ID mtype, OPS *ops )
+{
+  TOP top = TOP_UNDEFINED;
+  TN *result_tn = Build_TN_Like(opnd1);
+
+  switch (mtype) {
+    case MTYPE_I1:
+    case MTYPE_U1:
+      top = TOP_lock_xadd8;
+      break;
+
+    case MTYPE_I2:
+    case MTYPE_U2:
+      top = TOP_lock_xadd16;
+      break;
+
+    case MTYPE_I4:
+    case MTYPE_U4:
+      top = TOP_lock_xadd32;
+      break;
+
+    case MTYPE_I8:
+    case MTYPE_U8:
+      top = TOP_lock_xadd64;
+      break;
+
+    default:
+      FmtAssert(FALSE, ("Exp_Fetch_and_Add: unsupported mtype"));
+  }
+
+  if (Is_Target_32bit() && top == TOP_lock_xadd64)
+    FmtAssert(FALSE, ("Exp_Fetch_and_Add: 64-bit fetch-and-add NYI under m32"));
+  else
+    Build_OP(top, result_tn, opnd1, addr, Gen_Literal_TN(0,4), ops );
+
+  return result_tn;
+}
+
+TN* Exp_Compare_and_Swap( TN* addr, TN* opnd1, TN* opnd2, TYPE_ID mtype, OPS* ops )
+{
+  TN* rflags = Rflags_TN();
+
+  TOP top = TOP_UNDEFINED;
+
+  switch( mtype ){
+  case MTYPE_I1:
+  case MTYPE_U1:
+    top = TOP_lock_cmpxchg8;
+    break;
+
+  case MTYPE_I2:
+  case MTYPE_U2:
+    top = TOP_lock_cmpxchg16;
+    break;
+
+  case MTYPE_I4:
+  case MTYPE_U4:
+    top = TOP_lock_cmpxchg32;
+    break;
+
+  case MTYPE_I8:
+  case MTYPE_U8:
+    top = TOP_lock_cmpxchg64;
+    break;
+
+  default:
+    FmtAssert( FALSE,
+	       ("Exp_Compare_and_Swap: support me now") );
+  }
+
+  TN* result;
+  const BOOL is_64bit = (top == TOP_lock_cmpxchg64);
+  result = Build_TN_Of_Mtype ( is_64bit ? MTYPE_I8: MTYPE_I4);
+  Build_OP( top, rflags, opnd1, opnd2, addr, Gen_Literal_TN(0,4), ops );
+  if (is_64bit)
+    Build_OP(TOP_ldc64, result, Gen_Literal_TN(0,8), ops);
+  else
+    Build_OP(TOP_ldc32, result, Gen_Literal_TN(0,4), ops);
+  Build_OP( TOP_sete, result, rflags, ops );
+  Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+  return result;
+}
+
+// Expand FETCH_AND_AND intrinsic into the following format
+//        lock (addr) = (addr) & opnd1
+void Exp_Fetch_and_And( TN* addr, TN* opnd1, TYPE_ID mtype, OPS* ops )
+{
+  TOP top = TOP_UNDEFINED;
+
+  switch( mtype ){
+  case MTYPE_I1:
+  case MTYPE_U1:
+    top = TOP_lock_and8;
+    break;
+
+  case MTYPE_I2:
+  case MTYPE_U2:
+    top = TOP_lock_and16;
+    break;
+
+  case MTYPE_I4:
+  case MTYPE_U4:
+    top = TOP_lock_and32;
+    break;
+
+  case MTYPE_I8:
+  case MTYPE_U8:
+    top = TOP_lock_and64;
+    break;
+
+  default:
+    FmtAssert( FALSE,
+	       ("Exp_Fetch_and_And: support me now") );
+  }
+  Build_OP( top, opnd1, addr, Gen_Literal_TN(0,4), ops );
+}
+
+// Expand FETCH_AND_OR intrinsic into the following format
+//        lock (addr) = (addr) | opnd1
+void Exp_Fetch_and_Or( TN* addr, TN* opnd1, TYPE_ID mtype, OPS* ops )
+{
+  TOP top = TOP_UNDEFINED;
+
+  switch( mtype ){
+  case MTYPE_I1:
+  case MTYPE_U1:
+    top = TOP_lock_or8;
+    break;
+
+  case MTYPE_I2:
+  case MTYPE_U2:
+    top = TOP_lock_or16;
+    break;
+
+  case MTYPE_I4:
+  case MTYPE_U4:
+    top = TOP_lock_or32;
+    break;
+
+  case MTYPE_I8:
+  case MTYPE_U8:
+    top = TOP_lock_or64;
+    break;
+
+  default:
+    FmtAssert( FALSE,
+               ("Exp_Fetch_and_Or: support me now") );
+  }
+  Build_OP( top, opnd1, addr, Gen_Literal_TN(0,4), ops );
+}
+
+// Expand FETCH_AND_XOR intrinsic into the following format
+//        lock (addr) = (addr) ^ opnd1
+void Exp_Fetch_and_Xor( TN* addr, TN* opnd1, TYPE_ID mtype, OPS* ops )
+{
+  TOP top = TOP_UNDEFINED;
+
+  switch( mtype ){
+  case MTYPE_I1:
+  case MTYPE_U1:
+    top = TOP_lock_xor8;
+    break;
+
+  case MTYPE_I2:
+  case MTYPE_U2:
+    top = TOP_lock_xor16;
+    break;
+
+  case MTYPE_I4:
+  case MTYPE_U4:
+    top = TOP_lock_xor32;
+    break;
+
+  case MTYPE_I8:
+  case MTYPE_U8:
+    top = TOP_lock_xor64;
+    break;
+
+  default:
+    FmtAssert( FALSE,
+               ("Exp_Fetch_and_Xor: support me now") );
+  }
+  Build_OP( top, opnd1, addr, Gen_Literal_TN(0,4), ops );
+}
+
+// Expand FETCH_AND_SUB intrinsic into the following format
+//        lock (addr) = (addr) - opnd1
+void Exp_Fetch_and_Sub( TN* addr, TN* opnd1, TYPE_ID mtype, OPS* ops )
+{
+  TOP top = TOP_UNDEFINED;
+
+  switch( mtype ){
+  case MTYPE_I1:
+  case MTYPE_U1:
+    top = TOP_lock_sub8;
+    break;
+
+  case MTYPE_I2:
+  case MTYPE_U2:
+    top = TOP_lock_sub16;
+    break;
+
+  case MTYPE_I4:
+  case MTYPE_U4:
+    top = TOP_lock_sub32;
+    break;
+
+  case MTYPE_I8:
+  case MTYPE_U8:
+    top = TOP_lock_sub64;
+    break;
+
+  default:
+    FmtAssert( FALSE,
+               ("Exp_Fetch_and_Sub: support me now") );
+  }
+  Build_OP( top, opnd1, addr, Gen_Literal_TN(0,4), ops );
+}
+
+// Allocate a temp stack location for SRC and store SRC into it.  Return the
+// base TN and the offset TN of the memory location.
+static void
+Store_To_Temp_Stack(TYPE_ID desc, TN *src, const char *sym_name, TN **mem_base_tn,
+		    TN **mem_ofst_tn, OPS *ops)
+{
+  TY_IDX mem_ty = MTYPE_To_TY(desc);
+  ST* mem_loc = Gen_Temp_Symbol(mem_ty, sym_name);
+  Allocate_Temp_To_Memory(mem_loc);
+  ST* mem_base_sym = NULL;
+  INT64 mem_base_ofst = 0;
+
+  Base_Symbol_And_Offset_For_Addressing(mem_loc, 0, &mem_base_sym,
+					&mem_base_ofst);
+  *mem_base_tn = mem_base_sym == SP_Sym ? SP_TN : FP_TN;
+  *mem_ofst_tn = Gen_Literal_TN(mem_base_ofst, 4);
+  Expand_Store(desc, src, *mem_base_tn, *mem_ofst_tn, ops);
+}
+
+// This function attempts to handle a range of to/from vector conversions,
+// exposed by bug 3082 and friends.
+void Expand_Conv_To_Vector (TN * dest, TN * src, TYPE_ID desc, TYPE_ID rtype,
+                           OPS *ops)
+{
+  Is_True (MTYPE_is_vector (rtype), ("Expand_Conv_To_Vector, NYI"));
+
+  if (!MTYPE_is_vector (desc))
+  {
+    if (MTYPE_is_mmx_vector (rtype))
+    {
+      if (desc == MTYPE_I8 || desc == MTYPE_U8) {
+        // mov int64 to mmx
+	if (Is_Target_64bit()) {
+	  Build_OP (TOP_movi64_2m, dest, src, ops);
+	} else {
+	  // Move the 64-bit value via memory because there is no 64-bit int
+	  // register.
+	  TN *base_tn, *ofst_tn;
+	  Store_To_Temp_Stack(desc, src, "int64_2_mmx", &base_tn, &ofst_tn,
+			      ops);
+	  Build_OP(TOP_ld64_2m, dest, base_tn, ofst_tn, ops);
+	}
+      } else
+        Fail_FmtAssertion ("Expand_Conv_To_Vector: NYI");
+    }
+    else {
+      if (Is_Target_64bit())
+	Build_OP(MTYPE_byte_size(desc) == 32 ? TOP_movg2x : TOP_movg2x64, 
+		 dest, src, ops);
+      else Expand_Int_To_Vect_Tas(dest, src, rtype, ops);
+    }
+  }
+  else if (MTYPE_is_mmx_vector(desc) && ! MTYPE_is_mmx_vector(rtype))
+    Build_OP (TOP_movq2dq, dest, src, ops);
+  else if (! MTYPE_is_mmx_vector(desc) && MTYPE_is_mmx_vector(rtype))
+    Build_OP (TOP_movdq2q, dest, src, ops);
+  else // desc, rtype: vector
+    Build_OP (TOP_movdq, dest, src, ops);
+}
+
+
+// This function handles from vector to non-vector types
+void Expand_Conv_From_Vector(TN * dest, TN * src, TYPE_ID desc, TYPE_ID rtype,
+                             OPS *ops)
+{
+  Is_True(MTYPE_is_vector(desc), ("Expand_Conv_From_Vector, NYI"));
+  Is_True(MTYPE_byte_size(desc) == MTYPE_byte_size(rtype), 
+  	  ("Expand_Conv_From_Vector, can only handle conversion among types with same size"));
+  if (MTYPE_is_mmx_vector(desc)) {
+    if (MTYPE_byte_size(rtype) == 8)
+      Build_OP (TOP_movm_2i64, dest, src, ops);
+    else Build_OP (TOP_movm_2i32, dest, src, ops);
+  }
+  else {
+    if (MTYPE_byte_size(rtype) == 8)
+      Build_OP (TOP_movx2g64, dest, src, ops);
+    else Build_OP (TOP_movx2g, dest, src, ops);
+  }
 }

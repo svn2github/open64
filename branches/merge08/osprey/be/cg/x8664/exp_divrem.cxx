@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,7 +43,6 @@
 
 /* CGEXP routines for expanding divide and rem */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <signal.h>
 #include "defs.h"
@@ -56,6 +59,7 @@
 #include "op.h"
 #include "cgexp.h"
 #include "cgexp_internals.h"
+#include "whirl2ops.h"
 
 #define RESET_COND_DEF_LAST(ops) Set_OP_cond_def_kind(OPS_last(ops),OP_ALWAYS_UNC_DEF)
 
@@ -242,7 +246,7 @@ static UINT64 determine_pseudo_inverse (
 }
 
 
-UINT log2 (UINT i)
+static UINT log2 (UINT i)
 {
   UINT t = 0;
   i = i >> 1;
@@ -297,8 +301,10 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
       UINT d = labs((UINT)denom_val);
       UINT l = log2(d);
       INT64 e = denom_val;
-      UINT s, m, a;
+      UINT s, a;
+      UINT64 m;
       UINT64 m_low, m_high, j, k;
+      UINT shift_amt = 31;
 
       j = (((UINT64)(0x80000000)) % ((UINT64)(d)));
       k = (((UINT64)(1)) << (32 + l)) / ((UINT64)(0X80000000 - j));
@@ -314,21 +320,36 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
       s = l;
       a = (m_high >> 31) ? 1: 0;
 
+      if (is_double) {
+	m |= (m -1)<<32;
+	shift_amt = 63;
+      }
+
       if (a) {
 	TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), 
-			      MTYPE_I8, TRUE, ops);
+	if (!is_double)
+	  Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), 
+				MTYPE_I8, TRUE, ops);
+	else
+	  Expand_Copy( tmp1_tn, numer_tn, mtype, ops);
 	mult_tn = Build_TN_Of_Mtype(MTYPE_I8);
 	d_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Immediate (d_tn, Gen_Literal_TN ((INT)m, 8), is_signed, ops);
-	Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
-	shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
-		     MTYPE_I8, shift_lright, ops);
+	Expand_Immediate (d_tn, 
+			  Gen_Literal_TN (!is_double ? (INT)m : m, 8), 
+			  is_signed, ops);
+	if (!is_double) {
+	  Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
+	  shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
+	  Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
+		       MTYPE_I8, shift_lright, ops);
+	} else {
+	  Expand_High_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
+	  shift_tn = mult_tn;
+        }
 	TN* tmp2_tn = Build_TN_Of_Mtype(mtype);
 	Expand_Add(tmp2_tn, shift_tn, numer_tn, mtype, ops);
 	TN* tmp3_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Shift(tmp3_tn, numer_tn, Gen_Literal_TN(31, 4), 
+	Expand_Shift(tmp3_tn, numer_tn, Gen_Literal_TN(shift_amt, 4), 
 		mtype, shift_aright, ops);
 	TN* tmp4_tn = Build_TN_Like(result);
 	Expand_Shift(tmp4_tn, tmp2_tn, Gen_Literal_TN(s, 4),
@@ -340,48 +361,53 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 	else
 	  Expand_Sub(result, tmp3_tn, tmp4_tn, mtype, ops);
          
-      } else if( false && Is_Target_32bit() ){
-	FmtAssert( mtype == MTYPE_I4, ("NYI") );
+      } else if( Is_Target_32bit() ){
+	TN* eax_tn = Build_TN_Of_Mtype(mtype);
+	Expand_Immediate( eax_tn, Gen_Literal_TN(m,4), is_signed, ops );
 
-	TN* tmp1_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Copy( tmp1_tn, numer_tn, mtype, ops );
+	TN* edx_tn = Build_TN_Like( result );
+	Build_OP( TOP_imulx32, eax_tn, edx_tn, eax_tn, numer_tn, ops );
 
-	mult_tn = Build_TN_Of_Mtype(mtype);
-	d_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Immediate (d_tn, Gen_Literal_TN (m, 4), is_signed, ops);
-	Expand_High_Multiply( mult_tn, tmp1_tn, d_tn, mtype, ops );
-    
-	TN* tmp2_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Shift( tmp2_tn, numer_tn, Gen_Literal_TN(31, 4), 
+	Expand_Copy( eax_tn, numer_tn, mtype, ops );
+
+	if( s ){
+	  Expand_Shift( edx_tn, edx_tn, Gen_Literal_TN(s, 4), 
+			mtype, shift_aright, ops);
+	}
+
+	Expand_Shift( eax_tn, eax_tn, Gen_Literal_TN(shift_amt, 4), 
 		      mtype, shift_lright, ops);
 
-	Expand_Copy( tmp1_tn, mult_tn, mtype, ops );
-	if (s) 
-	  Expand_Shift(tmp1_tn, shift_tn, Gen_Literal_TN(s, 4), 
-		       mtype, shift_aright, ops);
-	else
-	  Expand_Copy(tmp1_tn, shift_tn, mtype, ops);
+	Expand_Add( edx_tn, edx_tn, eax_tn, mtype, ops );
 
-	if( e < 0 ) 
-	  // Bug 1214
-	  Expand_Sub(result, tmp2_tn, tmp1_tn, mtype, ops);
-	else
-	  Expand_Sub(result, tmp1_tn, tmp2_tn, mtype, ops);
+	if( e < 0 ){
+	  Expand_Neg( edx_tn, edx_tn, mtype, ops );
+	}
+
+	Expand_Copy( result, edx_tn, mtype, ops );
 
       } else {	
 	TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), 
+	if (!is_double)
+	  Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), 
 			      MTYPE_I8, TRUE, ops);
+	else
+	  Expand_Copy( tmp1_tn, numer_tn, mtype, ops);
 	TN* tmp2_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Shift(tmp2_tn, numer_tn, Gen_Literal_TN(31, 4), 
+	Expand_Shift(tmp2_tn, numer_tn, Gen_Literal_TN(shift_amt, 4), 
 		     mtype, shift_aright, ops);
 	mult_tn = Build_TN_Of_Mtype(MTYPE_I8);
 	d_tn = Build_TN_Of_Mtype(MTYPE_I8);
 	Expand_Immediate (d_tn, Gen_Literal_TN (m, 8), is_signed, ops);
-	Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
-	shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
-		     MTYPE_I8, shift_lright, ops);
+	if (!is_double) {
+	  Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
+	  shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
+	  Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
+		       MTYPE_I8, shift_lright, ops);
+	} else {
+	  Expand_High_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
+	  shift_tn = mult_tn;
+	}
 	TN* tmp3_tn = Build_TN_Like(result);
 	if (s) 
 	  Expand_Shift(tmp3_tn, shift_tn, Gen_Literal_TN(s, 4), 
@@ -500,8 +526,7 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
     TN *neg_tn = Build_TN_Of_Mtype (mtype);
     p1 = Rflags_TN();
     Expand_Neg (neg_tn, numer_tn, mtype, ops);
-    Build_OP (TOP_cmovs, neg_tn, numer_tn, p1, ops);
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+    Expand_Cmov (TOP_cmovs, neg_tn, numer_tn, p1, ops);
 
     /* Generate a multiply upper:
      */
@@ -534,10 +559,9 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
     Build_OP(is_double?TOP_test64:TOP_test32, p1, 
 	     numer_tn, numer_tn, ops);
     if (denom_val > 0)
-      Build_OP (TOP_cmovge, result, shift_tn, p1, ops);
+      Expand_Cmov (TOP_cmovge, result, shift_tn, p1, ops);
     else
-      Build_OP (TOP_cmovl, result, shift_tn, p1, ops);
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+      Expand_Cmov (TOP_cmovl, result, shift_tn, p1, ops);
   } /* end Signed */
 
   else { /* Unsigned */
@@ -624,6 +648,94 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
  *	f=	x & MASK(n)		x>=0
  *	f=	-(-x & MASK(n))		x<0
  */
+
+static void Expand_Fast_Power_Of_2_Rem( TN* result, TN* src1, INT64 src2_val,
+					TYPE_ID mtype, OPS* ops )
+{
+  FmtAssert( !TN_is_dedicated(result), ("NYI") );
+
+  const BOOL is_64bit = MTYPE_is_size_double(mtype);
+  BB* bb_entry = Cur_BB;
+  BB* bb_then  = Gen_And_Append_BB( bb_entry );  // for case <src1> < 0
+  BB* bb_else  = Gen_And_Append_BB( bb_then );   // for case <src1> >= 0
+  const LABEL_IDX bb_else_label = Gen_Label_For_BB( bb_else );
+
+  BB* bb_exit  = Gen_And_Append_BB( bb_else );
+  const LABEL_IDX bb_exit_label = Gen_Label_For_BB( bb_exit );
+
+  BB_branch_wn(bb_then) = WN_Create(OPC_GOTO,0);
+  WN_label_number(BB_branch_wn(bb_then)) = bb_exit_label;
+
+  BB_branch_wn(bb_entry) = WN_Create(OPC_TRUEBR,1);
+  WN_kid0(BB_branch_wn(bb_entry)) = NULL;
+  WN_label_number(BB_branch_wn(bb_entry)) = bb_else_label;
+
+  // Build bb_entry
+  {
+    Exp_OP3v( OPC_TRUEBR,
+	      NULL,
+	      Gen_Label_TN( bb_else_label, 0 ),
+	      src1,
+	      Gen_Literal_TN(0,4),
+	      V_BR_I4GE,
+	      ops );
+
+    if( &New_OPs != ops )
+      OPS_Append_Ops( &New_OPs, ops );
+    Process_New_OPs();
+    BB_Append_Ops( bb_entry, &New_OPs );
+    OPS_Init( &New_OPs );
+    OPS_Init( ops );
+  }
+
+  // Build bb_then here.
+  {
+    OPS* bb_then_ops = &New_OPs;
+
+    TN *t1 = Build_TN_Of_Mtype(mtype);
+    INT64 absdvsr = src2_val < 0 ? -src2_val : src2_val;
+    BOOL is_double = MTYPE_is_size_double(mtype);
+    TN *t2 = Build_TN_Of_Mtype(mtype);
+    TN *t3 = Build_TN_Of_Mtype(mtype);
+    TN *t4 = Build_TN_Of_Mtype(mtype);
+    TN *t5 = Build_TN_Of_Mtype(mtype);
+    Expand_Shift(t1, src1, Gen_Literal_TN(is_double?63:31, 4), mtype, 
+		 shift_aright, bb_then_ops);
+    Expand_Immediate (t2, Gen_Literal_TN (absdvsr - 1, is_double?8:4), 
+		      FALSE, bb_then_ops);
+    Expand_Binary_And( t3, t1, t2, mtype, bb_then_ops );
+    Expand_Add( t4, t3, src1, mtype, bb_then_ops );
+    Expand_Binary_And( t5, t4, t2, mtype, bb_then_ops );
+    Expand_Sub( result, t5, t3, mtype, bb_then_ops );
+
+    Build_OP( TOP_jmp, Gen_Label_TN( bb_exit_label, 0 ), bb_then_ops );
+
+    total_bb_insts = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    BB_Append_Ops( bb_then, bb_then_ops );
+    OPS_Init( bb_then_ops );
+  }
+
+  // Build bb_else here.
+  {
+    OPS* bb_else_ops = &New_OPs;
+
+    FmtAssert( ISA_LC_Value_In_Class( src2_val, LC_simm32 ), ("NYI") );
+    Expand_Binary_And( result, src1, Gen_Literal_TN(src2_val-1,4),
+		       mtype, bb_else_ops );    
+
+    total_bb_insts = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    BB_Append_Ops( bb_else, bb_else_ops );
+    OPS_Init( bb_else_ops );
+  }
+
+  Cur_BB = bb_exit;
+}
+
+
 static void 
 Expand_Power_Of_2_Rem (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS *ops)
 {
@@ -633,22 +745,29 @@ Expand_Power_Of_2_Rem (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS 
   TN *con = Gen_Literal_TN(nMask, is_double ? 8 : 4);
 
   if (MTYPE_is_signed(mtype)) {
-    TN *t1 = Build_TN_Of_Mtype(mtype);
-    INT64 absdvsr = src2_val < 0 ? -src2_val : src2_val;
-    BOOL is_double = MTYPE_is_size_double(mtype);
-    TN *t2 = Build_TN_Of_Mtype(mtype);
-    TN *t3 = Build_TN_Of_Mtype(mtype);
-    TN *t4 = Build_TN_Of_Mtype(mtype);
-    TN *t5 = Build_TN_Of_Mtype(mtype);
-    Expand_Shift(t1, src1, Gen_Literal_TN(is_double?63:31, 4), mtype, 
-		    shift_aright, ops);
-    Expand_Immediate (t2, Gen_Literal_TN (absdvsr - 1, is_double?8:4), 
-		    FALSE, ops);
-    Expand_Binary_And( t3, t1, t2, mtype, ops );
-    Expand_Add( t4, t3, src1, mtype, ops );
-    Expand_Binary_And( t5, t4, t2, mtype, ops );
-    Expand_Sub( result, t5, t3, mtype, ops );
+    /* Avoid generating multi-BBs under -m32, which does not have too many
+       registers.
+    */
+    if( CG_use_setcc || Is_Target_32bit() || src2_val < 0 ){
+      TN *t1 = Build_TN_Of_Mtype(mtype);
+      INT64 absdvsr = src2_val < 0 ? -src2_val : src2_val;
+      BOOL is_double = MTYPE_is_size_double(mtype);
+      TN *t2 = Build_TN_Of_Mtype(mtype);
+      TN *t3 = Build_TN_Of_Mtype(mtype);
+      TN *t4 = Build_TN_Of_Mtype(mtype);
+      TN *t5 = Build_TN_Of_Mtype(mtype);
+      Expand_Shift(t1, src1, Gen_Literal_TN(is_double?63:31, 4), mtype, 
+		   shift_aright, ops);
+      Expand_Immediate (t2, Gen_Literal_TN (absdvsr - 1, is_double?8:4), 
+			FALSE, ops);
+      Expand_Binary_And( t3, t1, t2, mtype, ops );
+      Expand_Add( t4, t3, src1, mtype, ops );
+      Expand_Binary_And( t5, t4, t2, mtype, ops );
+      Expand_Sub( result, t5, t3, mtype, ops );
 
+    } else {
+      Expand_Fast_Power_Of_2_Rem( result, src1, src2_val, mtype, ops );
+    }
   } else {
     Expand_Binary_And(result, src1, con, mtype, ops);
   }
@@ -699,6 +818,30 @@ Expand_Power_Of_2_Mod (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS 
  *
  *****************************************************************************/
 
+// Extend DIVIDEND_LO to DIVIDEND_HI/DIVIDEND_LO in preparation for division.
+// The result occupies rdx/rax.
+static void
+Extend_Dividend (TN **dividend_lo, TN **dividend_hi, TYPE_ID mtype,
+		 BOOL is_double, OPS *ops)
+{
+  *dividend_hi = Build_TN_Like(*dividend_lo);
+  if (MTYPE_is_signed(mtype)){
+    // Sign extend rAX to rDX with cltd/cqto.
+    //
+    // Must create new TN instead of reusing the same DIVIDEND_LO TN as src and
+    // result.  This is because DIVIDEND_LO may be read-only in WHIRL.  In
+    // general, CG cannot redefine TNs representing read-only WHIRL symbols,
+    // because other parts of CG assume these TNs are read-only.  For example,
+    // GRA assumes these TNs don't require spilling.  Bug 12283.
+    TN *new_dividend_lo = Build_TN_Like(*dividend_lo);
+    Build_OP(is_double ? TOP_cqto : TOP_cltd, new_dividend_lo, *dividend_hi,
+	     *dividend_lo, ops);
+    *dividend_lo = new_dividend_lo;
+  } else {
+    Build_OP(TOP_ldc32, *dividend_hi, Gen_Literal_TN(0, 4), ops);
+  }
+}
+
 TN *
 Expand_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {
@@ -736,13 +879,8 @@ Expand_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   default: FmtAssert (FALSE, ("Handle this")); break;
   }
   TN *result1 = Build_TN_Like(result);
-  TN *src3 = Build_TN_Like(src1);
-  if (MTYPE_is_signed(mtype)){
-    // Have to sign extend rAX to rDX with cltd/cqto.
-    Build_OP( is_double ? TOP_cqto : TOP_cltd, src1, src3, src1, ops );
-  } else 
-    Build_OP(TOP_ldc32, src3, Gen_Literal_TN(0, 4), ops);
-
+  TN *src3;
+  Extend_Dividend(&src1, &src3, mtype, is_double, ops);
   FmtAssert( !OP_NEED_PAIR(mtype), ("NYI") );
   Build_OP(top, result, result1, src1, src3, src2, ops);
 }
@@ -812,30 +950,16 @@ Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   default: FmtAssert (FALSE, ("Handle this")); break;
   }
   TN *result1 = Build_TN_Like(result);
-  TN *src3 = Build_TN_Like(src1);
-  if (MTYPE_is_signed(mtype)){
-    // Have to sign extend rAX to rDX with cltd/cqto.
-    Build_OP( is_double ? TOP_cqto : TOP_cltd, src1, src3, src1, ops );
-  } else 
-    Build_OP(TOP_ldc32, src3, Gen_Literal_TN(0, 4), ops);
+  TN *src3;
+  Extend_Dividend(&src1, &src3, mtype, is_double, ops);
   Build_OP(top, result1, result, src1, src3, src2, ops);
 }
 
 
-/*	Expand mod(x,y) as follows:
- *		t1=	rem(x,y)
- *		t2=	xor(t1,y)
- *		t3,t4=	cmp.lt(t2,0)
- *	  if t3 r=	t1+y
- *	  if t4 r=	t1
- */
+/* Expand mod. */
 void 
 Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {
-  TN *tmp1;
-  TN *tmp2;
-  TN *tmp3;
-  TN *p1;
   TOP opc;
   BOOL is_double = MTYPE_is_size_double(mtype);
 
@@ -852,38 +976,46 @@ Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     if (src2_val == 0) // Division by Zero!
       FmtAssert (FALSE, ("Division by zero detected.\n"));
 
-  /* Calculate remainder 
-   */
-  tmp1 = Build_TN_Like(result);
-  Expand_Rem(tmp1, src1, src2, mtype, ops);
+  // Calculate remainder.
+  TN *remainder = result;
+  Expand_Rem(remainder, src1, src2, mtype, ops);
 
-  /* Are signs different? 
-   */
-  tmp2 = Build_TN_Like(result);
-  Build_OP(is_double?TOP_xor64:TOP_xor32, tmp2, tmp1, src2, ops);
+  // p1 = (dividend and divisor have different signs) ? 1 : 0
+  // divisor_or_zero = p1 ? divisor : 0
+  // remainder_plus_divisor = remainder + divisor_or_zero
+  // result = (remainder == 0) ? remainder : remainder + divisor_or_zero
 
-  p1 = Rflags_TN();
-  Build_OP(is_double?TOP_test64:TOP_test32, p1, tmp2, tmp2, ops);
+  // Generate p1.
+  TN *p1 = Rflags_TN();
+  TN *src1_xor_src2 = Build_TN_Like(result);
+  Build_OP(is_double ? TOP_xor64 : TOP_xor32, src1_xor_src2, src1, src2, ops);
+  Build_OP(is_double ? TOP_test64 : TOP_test32, p1,
+	   src1_xor_src2, src1_xor_src2, ops);
 
-  /* result = divisor + remainder if p1
-   * result = remainder if ~p1
-   */
-  tmp3 = Build_TN_Like(result);
-  Build_OP(is_double?TOP_ldc64:TOP_ldc32, 
-	   tmp3, Gen_Literal_TN(0, is_double?8:4), p1, ops);
-  Build_OP(TOP_cmovl, tmp3, src2, p1, ops);
-  Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
-  Build_OP(is_double?TOP_add64:TOP_add32, result, tmp1, tmp3, ops);
+  // Generate divisor_or_zero.
+  TN *divisor_or_zero = Build_TN_Like(result);
+  Build_OP(is_double ? TOP_ldc64 : TOP_ldc32, 
+	   divisor_or_zero, Gen_Literal_TN(0, is_double ? 8 : 4), ops);
+  Expand_Cmov(TOP_cmovl, divisor_or_zero, src2, p1, ops);
+
+  // Generate remainder_plus_divisor (actually remainder + divisor_or_zero).
+  TN *remainder_plus_divisor = Build_TN_Like(result);
+  Build_OP(is_double ? TOP_add64 : TOP_add32,
+	   remainder_plus_divisor, remainder, divisor_or_zero, ops);
+
+  // Generate result by adjusting the remainder.
+  TN *p2 = Rflags_TN();
+  Build_OP(TOP_test32, p2, remainder, remainder, ops);	// remainder zero?
+  Expand_Cmov(TOP_cmovne, remainder, remainder_plus_divisor, p2, ops);
+
+  // Since we defined remainder as the same TN as the result, remainder is now
+  // the result.
 }
 
 
 void 
 Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {
-  if( OP_NEED_PAIR(mtype) ){
-    FmtAssert( false, ("Expand_DivRem: NYI") );
-  }
-
   BOOL is_double = MTYPE_is_size_double(mtype);
 
   /* Usually we expect whirl operators to be folded where possible.
@@ -914,11 +1046,10 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
 	INT tn_size = MTYPE_is_size_double(mtype) ? 8 : 4;
 	src2 = Expand_Immediate_Into_Register(Gen_Literal_TN(src2_val, tn_size), 
 					      is_double, ops);
-	src1 = Expand_Immediate_Into_Register(Gen_Literal_TN(src1_val, tn_size), 
+	src1 = Expand_Immediate_Into_Register(Gen_Literal_TN(src1_val, tn_size),
 					      is_double, ops);
-	TN *src3 = Build_TN_Like(src1);
-	// Have to sign extend rAX to rDX with cltd/cqto.
-	Build_OP( is_double ? TOP_cqto : TOP_cltd, src1, src3, src1, ops );
+	TN *src3;
+	Extend_Dividend(&src1, &src3, mtype, is_double, ops);
 	Build_OP(is_double ? TOP_idiv64 : TOP_idiv32, 
 		 result, result2, src1, src3, src2, ops);	
 	return;
@@ -964,11 +1095,13 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
       } else {
 	TN *t1 = Build_TN_Like(result);
 	Expand_Multiply(t1, result, src2, mtype, ops);
-	Build_OP(is_double?TOP_sub64:TOP_sub32, result2, src1, t1, ops);
+	Expand_Sub( result2, src1, t1, mtype, ops );
       }
       return;
     }
   }
+
+  FmtAssert( !OP_NEED_PAIR(mtype), ("Expand_DivRem: DIVREM should not be 64-bit") );
 
   TOP top;
   FmtAssert(!TN_is_constant(src1),
@@ -984,11 +1117,7 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
   case MTYPE_U8: top = TOP_div64; break;
   default: FmtAssert (FALSE, ("Handle this")); break;
   }
-  TN *src3 = Build_TN_Like(src1);
-  if (MTYPE_is_signed(mtype)){
-    // Have to sign extend rAX to rDX with cltd/cqto.
-    Build_OP( is_double ? TOP_cqto : TOP_cltd, src1, src3, src1, ops );
-  } else 
-    Build_OP(TOP_ldc32, src3, Gen_Literal_TN(0, 4), ops);
+  TN *src3;
+  Extend_Dividend(&src1, &src3, mtype, is_double, ops);
   Build_OP(top, result, result2, src1, src3, src2, ops);
 }
