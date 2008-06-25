@@ -168,6 +168,9 @@ BOOL FREQ_enable = TRUE;
 BOOL FREQ_view_cfg = FALSE;
 const char *FREQ_frequent_never_ratio = "1000.0";
 const char *FREQ_eh_freq = "0.1";
+#ifdef KEY
+const char *FREQ_non_local_targ_freq = "0.1";
+#endif
 
 BOOL CG_enable_rename = TRUE;
 BOOL CG_enable_prefetch = FALSE;
@@ -341,6 +344,12 @@ BOOL CG_sl2 = FALSE;
 #ifdef TARG_X8664
 BOOL LRA_prefer_legacy_regs = FALSE;
 #endif
+#ifdef KEY
+BOOL LRA_prefer_lru_reg = TRUE;		// bug 14303
+BOOL LRA_prefer_lru_reg_Set = FALSE;
+INT32 LRA_inflate_reg_request = 0;
+INT32 LRA_inflate_reg_request_Set = FALSE;
+#endif
 
 BOOL GRA_use_old_conflict = FALSE;
 BOOL GRA_shrink_wrap      = TRUE;
@@ -410,7 +419,7 @@ INT   HB_min_blocks = 2;
 BOOL  GRA_LIVE_Predicate_Aware = FALSE;
 
 /* Recurrence Breaking flags */
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_MIPS)
 BOOL CG_LOOP_fix_recurrences = TRUE;
 #else
 // Disable fix recurrence because CG_DEF_Op_Opnd_Changed
@@ -431,6 +440,11 @@ BOOL CG_LOOP_interleave_posti_specified = FALSE;
 BOOL CG_LOOP_reassociate = TRUE;
 BOOL CG_LOOP_reassociate_specified = FALSE;
 INT32 CG_LOOP_recurrence_min_omega = 0;
+#ifdef TARG_IA64
+INT32 CG_LOOP_recurrence_max_omega = 16;  // ia64
+#else
+INT32 CG_LOOP_recurrence_max_omega = 4;   // mips
+#endif
 #ifdef KEY
 BOOL LOCS_Best = FALSE;
 BOOL LOCS_Best_set = FALSE;
@@ -438,6 +452,8 @@ BOOL LOCS_Fwd_Scheduling = FALSE;
 BOOL LOCS_Fwd_Scheduling_set = FALSE;
 UINT32 LOCS_Scheduling_Algorithm = 0;
 BOOL LOCS_Scheduling_Algorithm_set = FALSE;
+BOOL LOCS_Reduce_Prefetch = FALSE;
+BOOL LOCS_Reduce_Prefetch_set = FALSE;
 BOOL LOCS_Shallow_Depth = FALSE;
 BOOL LOCS_Shallow_Depth_set = FALSE;
 BOOL LOCS_Balance_Ready_Types = FALSE;

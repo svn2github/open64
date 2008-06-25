@@ -2673,35 +2673,27 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
   _sched_vector = VECTOR_Init (BB_length(bb), &_hb_pool);
 
 #ifdef KEY
-  _scheduled_opschs = (_hbs_type & HBS_BALANCE_UNSCHED_TYPES) ?
-			OPSCH_SET_Create_Empty(BB_length(bb), &_hb_pool) : NULL;
+  _scheduled_opschs = NULL;
+  if (HBS_Balance_Unsched_Types() ||
+      HBS_Drop_Unsched_Prefetches()) {
+    _scheduled_opschs = OPSCH_SET_Create_Empty(BB_length(bb), &_hb_pool);
+  }
 #endif
 
   std::list<BB*> blocks;
   blocks.push_back(bb);
 
-#if 0 // following code is obsolete, 
-      // left here for ref until Osprey 4.3 release 
-      // (should delet this by then)
-#if defined(TARG_X8664) || defined(TARG_SL)
+#if defined (TARG_X8664)
+  Is_True(scheduling_algorithm == 0 || scheduling_algorithm == 1,
+    	  ("Schedule_Block: illegal scheduling_algorithm"));
+  Init_RFlag_Table( blocks, scheduling_algorithm);
+#elif defined (TARG_SL)
   const BOOL org_LOCS_Fwd_Scheduling = LOCS_Fwd_Scheduling;
-  if( _hbs_type & HBS_MINIMIZE_REGS ||
-      // If scheduling for pre/post-register allocation,
-      // LOCS_Scheduling_Algorithm will always be 0 or 1.  If scheduling for
-      // some other purpose (such as GCM), it can take on other values.  In
-      // that case, just set it to 0.
-      LOCS_Scheduling_Algorithm > 1 ){
+  if( _hbs_type & HBS_MINIMIZE_REGS ){
     LOCS_Fwd_Scheduling = FALSE;
   }
   Init_RFlag_Table( blocks, LOCS_Fwd_Scheduling );
-#endif
-#else
-  Is_True(scheduling_algorithm == 0 || scheduling_algorithm == 1,
-	  ("Schedule_Block: illegal scheduling_algorithm"));
-  Init_RFlag_Table( blocks, scheduling_algorithm);
-#endif // 0
-
-#ifdef TARG_IA64
+#elif defined (TARG_IA64)
   Init_RFlag_Table (blocks, TRUE);
 #else
   Init_RFlag_Table (blocks, FALSE);
@@ -2799,7 +2791,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 
   // Insert the scheduled list of instructions into the bb.
   Put_Sched_Vector_Into_BB (bb, bbsch, priority_fn->Is_Fwd_Schedule() );
-#ifdef TARG_X8664
+#if defined (TARG_SL)
   LOCS_Fwd_Scheduling = org_LOCS_Fwd_Scheduling;
 #endif
 }

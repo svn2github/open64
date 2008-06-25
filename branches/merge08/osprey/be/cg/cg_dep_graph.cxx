@@ -2134,9 +2134,11 @@ static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
   SAME_ADDR_RESULT res = DONT_KNOW;
   INT64 diff0, diff1;
 
+#if defined (TARG_SL)
   if (CG_ignore_mem_alias)
     return DONT_KNOW;
-
+#endif
+  
 #ifndef TARG_X8664
   /* Unaligned mem ops can be tricky and aren't very common.
    * Rely on WOPT/LNO analysis of these (in their original form,

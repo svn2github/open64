@@ -1326,7 +1326,9 @@ Finalize_BB(BB *bp)
       Is_True(BB_Find_Succ(bp, succ_bb),
 	      ("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
       Is_True(   !freqs_computed
-		 || BB_freq_unbalanced(bp) 
+#if defined(TARG_SL)
+		 || BB_freq_unbalanced(bp)
+#endif
 		 || (BBLIST_prob(BB_Find_Succ(bp, succ_bb)) == 1.0),
 		 ("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
 

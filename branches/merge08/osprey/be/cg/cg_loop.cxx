@@ -126,6 +126,7 @@
 #include <stdarg.h>
 #include <set>
 #include <vector>
+#include <list>
 #include <utility>
 
 #include "defs.h"
@@ -133,7 +134,6 @@
 #include "errors.h"
 #include "mempool.h"
 #include "cg_flags.h"
-#include "ipfec_options.h"
 #include "cgir.h"
 #include "tracing.h"
 #include "config_asm.h"
@@ -6321,7 +6321,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
       cg_loop.EBO_Before_Unrolling();  
 
       if (SWP_Options.Predicate_Promotion) {
-        list<BB*> bbl;
+        std::list<BB*> bbl;
 	bbl.push_front(cg_loop.Loop_header());
 	CG_DEP_Prune_Dependence_Arcs(bbl, TRUE, trace_loop_opt);
 	if (trace_loop_opt) 

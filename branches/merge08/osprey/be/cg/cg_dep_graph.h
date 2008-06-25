@@ -738,16 +738,14 @@ BOOL CG_DEP_Call_Aliases(OP *call_op, OP *op, BOOL read, BOOL write);
 
 BOOL CG_DEP_Can_OP_Move_Across_Call(OP *cur_op, OP *call_op, BOOL forw, BOOL Ignore_TN_Dep);
 
-#if defined(TARG_IA64) || defined(TARG_SL)
 extern BOOL OP_has_subset_predicate(const void *value1, const void *value2);
 extern BOOL OP_has_disjoint_predicate(const OP *value1, const OP *value2);
 
-#if !defined(TARG_SL)
+#if defined(TARG_IA64)
 inline BOOL TN_is_predicate (TN * tn) 
 {
   return TN_is_register(tn) && TN_register_class(tn) == ISA_REGISTER_CLASS_predicate; 
 }
-#endif
 #endif
 
 extern void CG_DEP_Detach_Arc(ARC *arc);

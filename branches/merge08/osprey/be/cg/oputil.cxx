@@ -1023,10 +1023,10 @@ void Print_OP_No_SrcLine(const OP *op)
   fprintf (TFile, "[%3d] ", OP_map_idx(op));
   fprintf (TFile, "[%4d] ", Srcpos_To_Line(OP_srcpos(op)));
 #elif defined(TARG_X8664) 
-  fprintf (TFile, "[%4d,%2d] ", Srcpos_To_Line(OP_srcpos(op)), OP_scycle(o#else
+  fprintf (TFile, "[%4d,%2d] ", Srcpos_To_Line(OP_srcpos(op)), OP_scycle(op) );
+#else
   fprintf (TFile, "[%4d] ", Srcpos_To_Line(OP_srcpos(op)));
 #endif
-  fprintf (TFile, "[%4d] ", Srcpos_To_Line(OP_srcpos(op)));
   if (OP_has_tag(op)) {
 	LABEL_IDX tag = Get_OP_Tag(op);
 	fprintf (TFile, "<tag %s>: ", LABEL_name(tag));

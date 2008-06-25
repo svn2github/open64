@@ -1361,7 +1361,9 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
     if (OP_prev(before_point) != NULL && OP_xfer(OP_prev(before_point))) {
 	before_point = OP_prev(before_point);
     }
-  } else if( BB_zdl_body(bb) ) {
+  }
+#if defined (TARG_SL)
+  else if( BB_zdl_body(bb) ) {
     orig_last_op = BB_last_op(bb);
     Is_True( OP_has_tag(orig_last_op), ("the last op of zdl body has no tag") );
     Is_True( !OP_xfer(orig_last_op) && 
@@ -1370,7 +1372,9 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
              ("bad opcode of a tagged op, in zdl") );
     after_tagged_op = TRUE;
     tag_idx = Get_OP_Tag( orig_last_op );
-  } else {
+  }
+#endif
+  else {
     OP *last_op;
 
     if (PROC_has_branch_delay_slot())

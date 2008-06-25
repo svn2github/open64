@@ -692,6 +692,12 @@ extern BOOL CG_Enable_Macro_Instr_Combine;
 #ifdef TARG_X8664
 extern BOOL LRA_prefer_legacy_regs;
 #endif
+#ifdef KEY
+extern BOOL LRA_prefer_lru_reg;
+extern BOOL LRA_prefer_lru_reg_Set;
+extern INT32 LRA_inflate_reg_request;
+extern BOOL LRA_inflate_reg_request_Set;
+#endif
 
 extern BOOL GRA_use_old_conflict;
 extern BOOL GRA_shrink_wrap;
@@ -771,6 +777,7 @@ extern BOOL CG_LOOP_reassociate;
 extern BOOL CG_LOOP_reassociate_specified;
 extern INT32 CG_LOOP_recurrence_min_omega;
 #ifdef KEY
+extern INT32 CG_LOOP_recurrence_max_omega;
 extern BOOL LOCS_Best;
 extern BOOL LOCS_Best_set;
 extern BOOL  LOCS_Fwd_Scheduling;
@@ -797,6 +804,8 @@ extern UINT32 LOCS_Balance_Unsched_Int;
 extern BOOL LOCS_Balance_Unsched_Int_set;
 extern UINT32 LOCS_Balance_Unsched_Fp;
 extern BOOL LOCS_Balance_Unsched_Fp_set;
+extern BOOL LOCS_Reduce_Prefetch;
+extern BOOL LOCS_Reduce_Prefetch_set;
 #endif
 #ifdef TARG_X8664
 extern INT32 CG_sse_load_execute;
@@ -817,7 +826,7 @@ extern BOOL CG_fold_shiftadd;
 extern BOOL CG_use_prefetchnta;
 extern BOOL CG_idivbyconst_opt;
 extern BOOL CG_fold_constimul;
-extern BOOL CG_cloop;
+extern BOOL CG_LOOP_cloop;
 extern BOOL CG_use_lddqu;
 extern BOOL CG_push_pop_int_saved_regs;
 extern BOOL CG_push_pop_int_saved_regs_Set;

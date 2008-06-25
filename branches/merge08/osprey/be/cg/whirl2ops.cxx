@@ -4653,7 +4653,6 @@ BOOL Has_External_Fallthru( BB *bb )
   }
 }
 
-#if defined (TARG_SL)
 // Takes a BB. If the branch condition had a __builtin_expect, then
 // return the user-expected probability the branch would be taken.
 // Return -1 if unable to compute a probability.
@@ -4696,8 +4695,6 @@ static float get_branch_confidence (BB * bb)
  if (confidence) return 0.90;
  else return 0.10;
 }
-
-#endif
 
 /* Build the control flow graph for the code generator. */
 static void Build_CFG(void)
@@ -6134,6 +6131,9 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   INT i;
   LABEL_IDX label = LABEL_IDX_ZERO;
   OPS loop_ops;
+#ifdef KEY
+  OP *last_op_from_intrn_call = NULL;
+#endif
 
 #if !defined(TARG_SL)
   FmtAssert(WN_num_actuals(intrncall) <= max_intrinsic_opnds,
@@ -6157,6 +6157,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
     }
     break;
 
+#if 0 // removed from PSC 3.2
   case INTRN_FETCH_AND_ADD_I4:
   case INTRN_FETCH_AND_ADD_I8:
     {
@@ -6168,6 +6169,8 @@ Handle_INTRINSIC_CALL (WN *intrncall)
       return next_stmt;
     }
     break;
+#endif
+
   case INTRN_FETCH_AND_AND_I4:
   case INTRN_FETCH_AND_AND_I8:
     {
@@ -6198,6 +6201,8 @@ Handle_INTRINSIC_CALL (WN *intrncall)
       return next_stmt;
     }
     break;
+
+#if 0 // removed from PSC 3.2
   case INTRN_FETCH_AND_SUB_I4:
   case INTRN_FETCH_AND_SUB_I8:
     {
@@ -6213,6 +6218,8 @@ Handle_INTRINSIC_CALL (WN *intrncall)
 #endif
     }
     break;
+#endif
+
   case INTRN_COMPARE_AND_SWAP_I4:
   case INTRN_COMPARE_AND_SWAP_I8:
     {
@@ -6272,6 +6279,10 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   result = Exp_Intrinsic_Call (id, 
 	opnd_tn[0], opnd_tn[1], opnd_tn[2], &New_OPs, &label, &loop_ops);
 
+#ifdef KEY
+  last_op_from_intrn_call = OPS_last(&New_OPs);
+#endif
+
   if (OPS_first(&loop_ops) != NULL && label != LABEL_IDX_ZERO) {
 	BB *bb = Start_New_Basic_Block ();
 	BB_Add_Annotation (bb, ANNOT_LABEL, (void *)(INTPTR)label);
@@ -6305,7 +6316,13 @@ Handle_INTRINSIC_CALL (WN *intrncall)
     Expand_Statement (next_stmt);
     next_stmt = WN_next(next_stmt);
     FOR_ALL_OPS_OPs_REV (&New_OPs, op) {
+#ifdef KEY
+      if (op == last_op_from_intrn_call)	// bug 14415
+  	break;
+#else
       if (OP_code(op) == TOP_intrncall) break;
+#endif
+
 #if defined(TARG_SL)
       if (SL_Intrinsic_Has_ReturnP(OP_code(op)))
             break;

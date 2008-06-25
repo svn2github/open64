@@ -407,10 +407,9 @@ GRA_Allocate_Global_Registers( BOOL is_region )
   GRA_GRANT_Unused_Caller_Saved();
 
 
-#ifndef TARG_SL2 //minor_reg_alloc
+#if defined (TARG_SL) //minor_reg_alloc
   gra_para_region_mgr.Set_Region_LRA_Budget();
 #endif 
-
 
   lrange_sub_mgr.Finalize();
   lrange_mgr.Finalize();

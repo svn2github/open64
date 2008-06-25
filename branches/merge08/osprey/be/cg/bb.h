@@ -776,27 +776,20 @@ typedef	struct bblist {
 #endif
 
 #define BLM_PROB_FB     0x0001 /* bblist::prob based on Feedback. */
-
-#ifdef KEY
 #define BLM_ON_TREE     0x0002 /* bblist::edge on the spanning tree */
-#endif
-
-#if defined(TARG_SL)
 #define BLM_PROB_HINT   0x0004 /* bblist::prob based on user hint. */
+
 #define BBLIST_prob_hint_based(b)       (BBLIST_flags(b) & BLM_PROB_HINT)
 #define Set_BBLIST_prob_hint_based(b)   (BBLIST_flags(b) |= BLM_PROB_HINT)
 #define Reset_BBLIST_prob_hint_based(b) (BBLIST_flags(b) &= ~BLM_PROB_HINT)
-#endif
 
 #define BBLIST_prob_fb_based(b)       (BBLIST_flags(b) & BLM_PROB_FB)
 #define Set_BBLIST_prob_fb_based(b)   (BBLIST_flags(b) |= BLM_PROB_FB)
 #define Reset_BBLIST_prob_fb_based(b) (BBLIST_flags(b) &= ~BLM_PROB_FB)
 
-#ifdef KEY
 #define BBLIST_on_tree(b)       (BBLIST_flags(b) & BLM_ON_TREE)
 #define Set_BBLIST_on_tree(b)   (BBLIST_flags(b) |= BLM_ON_TREE)
 #define Reset_BBLIST_on_tree(b) (BBLIST_flags(b) &= ~BLM_ON_TREE)
-#endif
 
 /* Macros for stepping through BBlists. */
 #define FOR_ALL_BBLIST_ITEMS(list,item) \

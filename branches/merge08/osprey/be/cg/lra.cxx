@@ -5349,7 +5349,7 @@ Preallocate_Single_Register_Subclasses (BB* bb)
         }
 #else
 #ifdef TARG_X8664
-      Set_TN_preallocated (new_tn);
+      Set_TN_is_preallocated (new_tn);
       Set_OP_opnd( op, i, new_tn );
 #endif /* TARG_X8664 */
       OPS pre_ops = OPS_EMPTY;
@@ -5492,7 +5492,7 @@ Preallocate_Single_Register_Subclasses (BB* bb)
       TN* new_tn = Build_TN_Like(old_tn);
       LRA_TN_Allocate_Register(new_tn, reg);
 #ifdef TARG_X8664
-      Set_TN_preallocated (new_tn);
+      Set_TN_is_preallocated (new_tn);
 #endif /* TARG_X8664 */
       INT j;    
       for (j = 0; j < OP_results(op); j++) {

@@ -99,6 +99,7 @@
 #include "op.h"
 #endif
 
+#if defined (TARG_SL)
 /* This is for binary search, to determine a PU should be skipped
  * by GCM
  */
@@ -143,6 +144,7 @@ static bool GCM_Should_Skip( int puid )
       return false;
   }
 }
+#endif
 
 #ifdef KEY
 static void

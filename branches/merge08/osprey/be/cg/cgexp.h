@@ -176,11 +176,9 @@ extern void Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label,
 
 extern void Exp_Landingpadentry_Intrinsic (ST *dest1, ST *dest2, OPS* ops);
 
-extern void Exp_Fetch_and_Add( TN*, TN*, TYPE_ID, OPS* );
 extern void Exp_Fetch_and_And( TN*, TN*, TYPE_ID, OPS* );
 extern void Exp_Fetch_and_Or( TN*, TN*, TYPE_ID, OPS* );
 extern void Exp_Fetch_and_Xor( TN*, TN*, TYPE_ID, OPS* );
-extern void Exp_Fetch_and_Sub( TN*, TN*, TYPE_ID, OPS* );
 extern TN*  Exp_Compare_and_Swap( TN*, TN*, TN*, TYPE_ID, OPS* );
 
 /* expand intrinsic op */
@@ -354,8 +352,6 @@ extern BOOL Target_Has_Immediate_Operand (WN *parent, WN *expr);
 
 #if defined(TARG_SL) 
 extern TN * Expand_Expr (WN *expr, WN *parent, TN *result, INTRINSIC intrn_id = INTRINSIC_INVALID);
-#else 
-extern TN * Expand_Expr (WN *expr, WN *parent, TN *result);
 #endif 
 
 #ifdef TARG_X8664

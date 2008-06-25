@@ -3312,7 +3312,7 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
     // Handle x86 style asm operand constraints after all regular constraints.
     // This avoids replacing same register names multiple times.
     char x86pattern[5];
-    char *tmp_name;
+    const char *tmp_name;
     REGISTER reg;
     BOOL is_reg = TN_is_register(tn);
 
@@ -5333,10 +5333,12 @@ Fixup_Long_Branches (INT32 *hot_size, INT32 *cold_size)
 	}
       }
       cur_pc = PC_Incr_N(cur_pc, num_inst_words);
+#if defined(TARG_SL)
       if (trace_pc) {
         fprintf(TFile, "third: %10d\t", cur_pc);
         Print_OP(op);
       }
+#endif
     }
     cur_pcs[isect] = cur_pc;
     num_bbs++;
@@ -7727,6 +7729,7 @@ Process_Bss_Data (SYMTAB_IDX stab)
 		// IPA probably realigned a FSTATIC variable destined for 
 		// this EXTERN variable 
 		// Get the alignment from the ST_type
+		fprintf( Asm_File, "\t%s\t%d\n", AS_ALIGN,
 #if defined(BUILD_OS_DARWIN)
 			logtwo(TY_align( ST_type ( sym ) ))
 #else

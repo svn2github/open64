@@ -67,6 +67,7 @@
 #include <elf_stuff.h>
 #include <elfaccess.h>
 #include <libelf/libelf.h>
+#include <libdwarf/libdwarf.h>
 #include <vector>
 #ifdef KEY /* Bug 3507 */
 #include <ctype.h>

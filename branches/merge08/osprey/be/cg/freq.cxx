@@ -223,14 +223,11 @@ typedef struct edge {
 #define Set_EDGE_fb_propagated(e)   (EDGE_flags(e) |= EF_FB_PROPAGATED)
 #define Reset_EDGE_fb_propagated(e) (EDGE_flags(e) &= ~EF_FB_PROPAGATED)
 
-#if defined(TARG_SL)
 /* Indicate if this edge probability is based on user hint, through
   pragma or builtins. */
 #define EDGE_prob_hint_based(e)   (EDGE_flags(e) & EF_PROB_HINT_BASED)
 #define Set_EDGE_prob_hint_based(e)   (EDGE_flags(e) |= EF_PROB_HINT_BASED)
 #define Reset_EDGE_prob_hint_based(e) (EDGE_flags(e) &= ~EF_PROB_HINT_BASED)
-
-#endif
 
 /* Since we don't ever need to modify the CFG, we simply preallocate
  * a vector for chains of successor and predecessor edges, both indexed

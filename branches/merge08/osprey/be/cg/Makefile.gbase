@@ -261,8 +261,11 @@ BE_CG_GRA_CXX_SRCS =		\
   gra_spill.cxx			\
   lrange_set.cxx		\
   gra_split.cxx			\
-  gra_trace.cxx			\
-  gra_para_region.cxx
+  gra_trace.cxx			
+
+ifeq ($(BUILD_SUBTARGET), SL)
+  BE_CG_GRA_CXX_SRCS += gra_para_region.cxx
+endif
 
 CG_GRA_PCH_CXX_SRCS= $(BE_CG_GRA_CXX_SRCS)
 
@@ -348,8 +351,6 @@ CG_CXX_SRCS = 		\
   $(COMMON_COM_CXX_SRCS)\
   $(COMMON_COM_TARG_CXX_SRCS)\
   $(BE_CG_TARG_CXX_SRCS)\
-  $(CG_REGION_SRCS) \
-  $(CG_GLOBAL_SCHED_SRCS) \
   annotations.cxx	\
   bb_map.cxx		\
   bblist.cxx		\
@@ -383,10 +384,7 @@ CG_CXX_SRCS = 		\
   dominate.cxx		\
   findloops.cxx		\
   freq.cxx		\
-  loop_dce.cxx		\
-  loop_rce.cxx		\
   gcm.cxx		\
-  gcm_licm.cxx		\
   hb_sched.cxx		\
   hb_hazards.cxx        \
   iface_scn.cxx		\
@@ -413,7 +411,12 @@ CG_CXX_SRCS = 		\
   $(DERIVED_SRCS)
 
 ifeq ($(BUILD_SUBTARGET), SL)
-  CG_CXX_SRCS += cg_isr.cxx
+  CG_CXX_SRCS += $(CG_REGION_SRCS)  \
+                 $(CG_GLOBAL_SCHED_SRCS) \
+                 loop_dce.cxx \
+                 loop_rce.cxx \
+                 gcm_licm.cxx \
+                 cg_isr.cxx
 endif
 
 ifeq ($(BUILD_PCH), USE_PCH)

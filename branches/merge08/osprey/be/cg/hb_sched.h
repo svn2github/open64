@@ -83,6 +83,7 @@
 #ifdef KEY
 #define HBS_BALANCE_READY_TYPES		0x4000
 #define HBS_BALANCE_UNSCHED_TYPES	0x8000
+#define HBS_DROP_UNSCHED_PREFETCHES	0x10000
 #endif
 
 typedef UINT16 HBS_TYPE;
@@ -521,6 +522,8 @@ private:
   void Adjust_Ldst_Offsets (BOOL is_fwd);
   void Update_Least_Constrained (OPSCH *, BOOL);
   void DFS_Update_Least_Constrained (OPSCH *, BOOL);
+  void Drop_Remaining_Prefetches (BB *);
+
   // One set operations.
   void Clear_One_Set(void)		{ _one_set_counter++; }
   BOOL One_Set_MemberP(OPSCH *opsch)
@@ -561,6 +564,7 @@ public:
 #ifdef KEY
   void Set_hbs_balance_ready_types(void) { _hbs_type = (HBS_TYPE) (_hbs_type | HBS_BALANCE_READY_TYPES); }
   void Set_hbs_balance_unsched_types(void) { _hbs_type = (HBS_TYPE) (_hbs_type | HBS_BALANCE_UNSCHED_TYPES); }
+  void Set_hbs_drop_unsched_prefetches(void) { _hbs_type = (HBS_TYPE) (_hbs_type | HBS_DROP_UNSCHED_PREFETCHES); }
 #endif
 
   // Member access functions:
@@ -574,6 +578,7 @@ public:
 #ifdef KEY
   BOOL HBS_Balance_Ready_Types(void) const { return _hbs_type & HBS_BALANCE_READY_TYPES; }
   BOOL HBS_Balance_Unsched_Types(void) const { return _hbs_type & HBS_BALANCE_UNSCHED_TYPES; }
+  BOOL HBS_Drop_Unsched_Prefetches(void) const { return _hbs_type & HBS_DROP_UNSCHED_PREFETCHES; }
 #endif
   BOOL HBS_From_GCM(void) const { return _hbs_type & HBS_FROM_GCM; }
   BOOL HBS_From_CGPREP(void) const { return _hbs_type & HBS_FROM_CGPREP; }

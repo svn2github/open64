@@ -1187,8 +1187,8 @@ Can_Mem_Op_Be_Moved(OP *mem_op, BB *cur_bb, BB *src_bb, BB *dest_bb,
 		    mINT32 motion_type
 #if defined(TARG_SL)
 , mUINT32 *cur_spec_type
-		    )
 #endif
+                   )
 {
 
   if ((Cur_Gcm_Type & GCM_AFTER_GRA) && !GCM_POST_Spec_Loads) 
@@ -1301,6 +1301,9 @@ Can_Mem_Op_Be_Moved(OP *mem_op, BB *cur_bb, BB *src_bb, BB *dest_bb,
 	  CG_DEP_Mem_Ops_Alias(cur_op, mem_op, &definite)) {
 #if !defined(TARG_SL)
 	return FALSE;
+      }
+    }
+  }
 #else
         // #676123; first, if there exists an alias and <cur_bb> is not equal
         // to <dest_bb>, then there is nothing much other safety tests can do.
@@ -2620,6 +2623,7 @@ Is_OP_Move_Better(OP *cur_op, OP *best_op, mINT32 motion_type)
   return FALSE;
 }
 
+#if defined(TARG_SL)
 static BOOL
 Enough_Circ_Loop_Trip_Count (LOOP_DESCR* l) {
 
@@ -2638,6 +2642,7 @@ Enough_Circ_Loop_Trip_Count (LOOP_DESCR* l) {
 
     return TRUE;
 }
+#endif
 
 // ======================================================================
 // Determine_Motion_Type
@@ -2662,8 +2667,10 @@ Determine_Motion_Type(LOOP_DESCR *loop, BB *bb, BBSCH *bbsch)
       // Circular scheduling for fully unrolled-loops doesn't make sense.
       (LOOP_DESCR_loophead(loop) == bb) && !BB_unrolled_fully(bb) &&
 
+#if defined(TARG_SL)
       // Circular scheduling for small trip count doesn't make sense
       Enough_Circ_Loop_Trip_Count(loop) &&
+#endif
 
       // Circular scheduling requires a new prolog, make sure we can add one.
       LOOP_DESCR_Can_Retarget_Loop_Entrances(loop) &&
@@ -3254,9 +3261,11 @@ static void Add_Fail_TNs(OP* cur_op,
 static OP *
 OP_To_Move (BB *bb, BB *tgt_bb, BB_SET **pred_bbs, mINT32 motion_type, mUINT8 *spec_type)
 {
+#if defined(TARG_SL)
   // No need for code motion, if barriered.
   if( barriered )
     return NULL;
+#endif
 
   OP *cur_op;
   OP *best_op = NULL;
@@ -3323,20 +3332,23 @@ OP_To_Move (BB *bb, BB *tgt_bb, BB_SET **pred_bbs, mINT32 motion_type, mUINT8 *s
       continue;
     }
 
-#ifdef KEY // bug 4850
     if (CGTARG_Is_OP_Barrier(cur_op)) {
+#if defined(TARG_SL)
       if( Trace_GCM ){
         fprintf(TFile, "skipped for it is a barrier \n");
       }
       // If got a barrier, no more code motion. So return NULL now.
       barriered = TRUE;
       return NULL;
+#else // TARG_IA64, TARG_X8664, TARG_NVISA
+      continue;
+#endif
     }
+
 #ifdef TARG_X8664
     // Don't move x87/MMX OPs in order to perserve their ordering relative to
     // EMMS OPs.
     if (OP_x87(cur_op) || OP_mmx(cur_op)) continue;
-#endif
 #endif
 
     // All real OPs and some dummy OPs which have real operands/results.
@@ -4755,6 +4767,7 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
           op_id++;
 	} // OP_To_Move...
 	L_Free();
+      }
 #if defined(TARG_SL)
         /* Do the breaking dependency, only needs for load's in circ-sched */
         if( CG_GCM_enable_break_dependence && moved_loads )
@@ -5374,7 +5387,9 @@ void GCM_Schedule_Region (HBS_TYPE hbs_type)
    * processed. These correspond to inner loops.
    */
   BB_SET_ClearD(processed_bbs);
+#if defined (TARG_SL)
   postprocessed_loops.clear();
+#endif
   loop_id=0;
   for (cloop = loop_list; cloop != NULL; cloop = LOOP_DESCR_next(cloop))
   {
@@ -5404,7 +5419,6 @@ void GCM_Schedule_Region (HBS_TYPE hbs_type)
     GCM_Loop_Prolog = NULL;
 #if defined(TARG_SL)
     if( !GCM_Skip_Loop_Binary_Search(loop_id) ) 
-#endif
     {
       num_moves += GCM_For_Loop (cloop, processed_bbs, hbs_type);
       if (Trace_GCM) 
@@ -5413,7 +5427,7 @@ void GCM_Schedule_Region (HBS_TYPE hbs_type)
       if (Trace_GCM) 
         fprintf(TFile, ".. Loop:%d, is skipped by GCM\n", loop_id );
     }
-
+#endif
     processed_bbs = BB_SET_UnionD (processed_bbs, LOOP_DESCR_bbset(cloop), 
 				   &loop_descr_pool); 
     loop_id++;
@@ -5444,7 +5458,7 @@ void GCM_Schedule_Region (HBS_TYPE hbs_type)
   Check_for_Dump (TP_GCM, NULL);
 }
 
-
+#if defined (TARG_SL)
 // This is for binary search, to determine a loop should be skipped
 // by GCM
 static bool GCM_Skip_Loop_Binary_Search( int loop_id )
@@ -5982,3 +5996,4 @@ static void GCM_Merge_Small_BBs( LOOP_DESCR *loop, MEM_POOL *pool )
 
   GRA_LIVE_Init(NULL);
 }
+#endif // TARG_SL
