@@ -363,22 +363,28 @@ dwarf_add_fde_inst(Dwarf_P_Fde fde,
     }
 
     switch (op) {
-
-#ifdef TARG_X8664
+#if defined TARG_X8664
+    	// This does not seem specific to x8664, but I will leave it for now.
+ 	// The previous code here apparently assumed the labels for this "op"
+	// need to be encoded in 4 bytes --- that is not the case. This "op"
+	// limits to 4 bytes whatever follows it. And whatever follows it is
+	// the subtraction between the 2 labels, i.e., each label may need
+	// more number of bytes.
+	// Use Dwarf_Unsigned for each label (bugs 4071, 4490, 9729), also
+	// affects code in pro_section.c and dwf_section.c.
 	case DW_CFA_advance_loc4:
-	    // We will use 2 half-words to copy the labels; cg will later
-	    // fix the relocatable symbols.
-	    dh = val1;
-	    ptr = (char *) _dwarf_p_get_alloc(NULL, 4);
-	    if (ptr == NULL) {
-	      _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
-	      return((Dwarf_P_Fde)DW_DLV_BADADDR);
-	    }
-	    memcpy((void *)ptr, (const void *)&dh,2);
-	    dh = val2;
-	    memcpy((void *)ptr+2, (const void *)&dh,2);
-	    nbytes = 4;
-	    break;
+	    du = val1;
+    	    ptr = (char *) _dwarf_p_get_alloc(NULL, 2 * sizeof(Dwarf_Unsigned));
+    	    if (ptr == NULL) {
+    	      _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
+      	      return((Dwarf_P_Fde)DW_DLV_BADADDR);
+    	    }
+    	    memcpy((void *)ptr, (const void *)&du, sizeof(Dwarf_Unsigned));
+  	    du = val2;
+    	    memcpy((void *)ptr + sizeof(Dwarf_Unsigned), (const void *)&du,
+                       sizeof(Dwarf_Unsigned));
+      	    nbytes = 4;
+    	    break;
 #endif // TARG_X8664
     case DW_CFA_advance_loc:
 	if (val1 <= 0x3f) {
