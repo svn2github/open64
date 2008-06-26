@@ -2010,14 +2010,6 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
   type_filter_map.clear();
 }
 
-// Temporary workaround
-struct SET_NOT_USED {
-  SET_NOT_USED() {}
-  void operator()(EH_RANGE& r) {
-      Set_ST_is_not_used(INITO_st(r.ereg_supp));
-  }
-};
-
 #else
 /* The first implementation, not conform to the C++ ABI.
    NO call site table, type table, action table, .etc. 
@@ -2198,6 +2190,14 @@ EH_Dump_LSDA (FILE *fp)
   }
   fprintf (fp, "\n");
 }
+
+// Temporary workaround
+struct SET_NOT_USED {
+  SET_NOT_USED() {}
+  void operator()(EH_RANGE& r) {
+      Set_ST_is_not_used(INITO_st(r.ereg_supp));
+  }
+};
 
 void 
 EH_Write_Range_Table(WN * wn)

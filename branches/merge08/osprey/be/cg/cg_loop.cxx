@@ -6052,7 +6052,7 @@ Do_Loop_Perform_SWP_or_Unroll (BOOL perform_swp, CG_LOOP& cg_loop,
       cg_loop.EBO_Before_Unrolling();
 
       if (SWP_Options.Predicate_Promotion) {
-        list<BB*> bbl;
+        std::list<BB*> bbl;
         bbl.push_front(cg_loop.Loop_header());
         CG_DEP_Prune_Dependence_Arcs(bbl, TRUE, trace_loop_opt);
         if (trace_loop_opt)

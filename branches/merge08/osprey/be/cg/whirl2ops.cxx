@@ -5826,7 +5826,7 @@ Handle_ASM (const WN* asm_wn)
     }
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
-#ifndef KEY
+#if defined(TARG_IA64)
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
 #else
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 
@@ -5891,7 +5891,7 @@ Handle_ASM (const WN* asm_wn)
     }
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
-#ifndef KEY
+#if defined(TARG_IA64)
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
 #else
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 
@@ -6164,7 +6164,6 @@ static void Expand_Statement (WN *stmt)
   LOOPINFO *info = NULL;
   TN *trip_tn;
   OPCODE opc = WN_opcode(stmt);
-
   PU_WN_Cnt++;
 
   switch (opc) {
@@ -6349,6 +6348,10 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   INT i;
   LABEL_IDX label = LABEL_IDX_ZERO;
   OPS loop_ops;
+
+#ifdef KEY
+  OP *last_op_from_intrn_call = NULL;
+#endif
 
 #if !defined(TARG_SL)
   FmtAssert(WN_num_actuals(intrncall) <= max_intrinsic_opnds,
@@ -6547,7 +6550,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
 
 	if (   TN_is_dedicated(otn)
 	    && (TN_register_and_class(otn) == CLASS_AND_REG_v0
-#if defined(TARG_X8664) || defined(TARG_IA64)
+#if defined(TARG_X8664)
 	        ||
 	        TN_register_and_class(otn) == CLASS_AND_REG_f0
 #endif

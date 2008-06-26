@@ -190,7 +190,7 @@ static BOOL Trace_Move_GRA_Spills;      /* -Wb,-tt54:0x10 */
 typedef struct live_range {
   TN *tn;               /* the live range tn */
   mINT16 first_def;     /* instruction number for first def in live range. */
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
   mINT16 first_unc_def; /* instruction number for the first unconditional def */
 #endif
   mINT16 last_use;      /* instruction number for last use in live range. */
@@ -205,6 +205,7 @@ typedef struct live_range {
 
 #define LR_tn(lr)               ((lr)->tn)
 #define LR_first_def(lr)        ((lr)->first_def)
+#define LR_first_unc_def(lr)    ((lr)->first_unc_def)
 #define LR_last_use(lr)         ((lr)->last_use)
 #define LR_exposed_use(lr)      ((lr)->exposed_use)
 #define LR_def_cnt(lr)          ((lr)->def_cnt)
@@ -923,7 +924,7 @@ Setup_Live_Ranges (BB *bb, BOOL in_lra, MEM_POOL *pool)
       if (LR_def_cnt(clr) == 0) {
         LR_first_def(clr) = opnum;
       }
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       if (LR_first_unc_def(clr) == 0 && !OP_cond_def(op)) {
 	LR_first_unc_def(clr) = opnum;
       }

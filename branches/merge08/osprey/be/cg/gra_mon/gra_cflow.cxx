@@ -65,6 +65,11 @@
 #include "gra_grant.h"
 
 #include "gra_cflow.h"
+#ifdef TARG_IA64
+#include "ipfec_options.h"
+#include "region_bb_util.h"
+#include "cg.h"
+#endif
 
 #include "freq.h"
 

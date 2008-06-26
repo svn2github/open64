@@ -2195,7 +2195,7 @@ HB_If_Convert(HB* hb, std::list<HB_CAND_TREE*>& candidate_regions)
     IGLS_Enable_HB_Scheduling = 0;
 #else
   Insert_Predicates(hb, control_dependences, true_edges, predicate_tns);
-  Remove_Branches(hb, predicate_tns, block_order, block_class, candidate_regio
+  Remove_Branches(hb, predicate_tns, block_order, block_class, candidate_regions);
 #endif
 
   BB_MAP_Delete(true_edges);

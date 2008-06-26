@@ -6205,9 +6205,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
                 ARC *arc_ptr = new_arc(CG_DEP_CTLSPEC, *ops_iter, op, 0, i, FALSE);
                 Set_ARC_is_dotted (arc_ptr, TRUE);
             } else 
-#else
-                ARC *arc_ptr = new_arc(CG_DEP_REGIN, *ops_iter, op, 0, i, FALSE);
 #endif
+                ARC *arc_ptr = new_arc(CG_DEP_REGIN, *ops_iter, op, 0, i, FALSE);
       }
     }// for
   }

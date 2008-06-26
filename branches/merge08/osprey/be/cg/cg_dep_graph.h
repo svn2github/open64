@@ -470,10 +470,6 @@ typedef enum cg_dep_kind {
   CG_DEP_NUM_KIND	/* Number (count) of defined CG_DEP_KINDs */
 } CG_DEP_KIND;
 
-#ifdef TARG_IA64
-enum { PRUNE_NONE, PRUNE_NON_CYCLIC, PRUNE_NON_CYCLIC_WITH_REG,
-       PRUNE_CYCLIC_0, PRUNE_CYCLIC_1 };
-#endif
 
 /* In addition to the essential ARC attributes (pred, succ, latency,
  * kind, opnd), this implementation of ARCs keeps two "next" pointers:

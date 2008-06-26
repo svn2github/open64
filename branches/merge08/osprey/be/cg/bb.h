@@ -688,6 +688,18 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define	Set_BB_has_non_local_label(x)	(BB_flag(x) |= BBM_NON_LOCAL_LABEL)
 #endif
 
+#ifdef TARG_IA64
+#define Set_BB_recovery(x)          (BB_flag(x) |= BBM_RECOVERY)
+#define Set_BB_chk_split(x)         (BB_flag(x) |= BBM_CHK_SPLIT)
+#define Set_BB_chk_split_head(x)    (BB_flag(x) |= BBM_CHK_SPLIT_HEAD)
+#define Set_BB_emitted(x)           (BB_flag(x) |= BBM_EMITTED)
+#define Set_BB_profile_splitted(x)    (BB_flag(x) |= BBM_PROFILE_SPLITTED)
+#define Set_BB_profile_changed(x)    (BB_flag(x) |= BBM_PROFILE_CHANGED)
+#define Set_BB_profile_added(x)    (BB_flag(x) |= BBM_PROFILE_ADDED)
+#define Set_BB_partial_bundle(x)    (BB_flag(x) |= BBM_PARTIAL_BUNDLE)
+#define Set_BB_edge_splitting(x)    (BB_flag(x) |= BBM_EDGE_SPLITTING)
+#define Set_BB_chk_split_tail(x)    (BB_flag(x) |= BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#endif
 #define	Reset_BB_entry(x)	(BB_flag(x) &= ~BBM_ENTRY)
 #define Reset_BB_handler(bb) 	(BB_flag(bb) &= ~BBM_HANDLER)
 #define	Reset_BB_exit(x)	(BB_flag(x) &= ~BBM_EXIT)

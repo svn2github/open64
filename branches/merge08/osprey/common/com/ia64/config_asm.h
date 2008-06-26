@@ -68,6 +68,8 @@ extern "C" {
 static char *config_asm_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_asm.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#define LABEL_PREFIX ".L"
+
 #define Label_Name_Separator "_"
 
 /* to distinguish from register names: */

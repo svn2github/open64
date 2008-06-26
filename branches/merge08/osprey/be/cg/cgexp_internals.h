@@ -54,7 +54,11 @@ extern void Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 extern void Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
 extern void Expand_Aux_Sign (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops);
 extern void Expand_Abs (TN *result, TN *x, TYPE_ID mtype, OPS *ops);
+#ifdef TARG_IA64
+extern void Expand_Multiply (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops, OPCODE opcode);
+#else
 extern void Expand_Multiply (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops);
+#endif
 extern void Expand_High_Multiply (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops);
 extern void Expand_Sqrt (TN *result, TN *x, TYPE_ID mtype, OPS *ops);
 extern void Expand_Binary_Complement (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);

@@ -362,7 +362,7 @@ Tail_Duplicate(HB* hb, BB* side_entrance, BB_MAP unduplicated,
   FOR_ALL_BB_PREDS(side_entrance, bl) {
     BB* pred = BBLIST_item(bl);
 #ifdef TARG_IA64
-      Remove_Explicit_Branch(old_bb);
+    Remove_Explicit_Branch(pred);
 #endif
     if (side_entrance == BB_Fall_Thru_Successor(pred)) {
       BB* fall_dup = (BB*) BB_MAP_Get(duplicate, pred);
@@ -440,7 +440,7 @@ HB_Tail_Duplicate(HB* hb, BB_MAP duplicate,
   for (bb = HB_Entry(hb); bb && HB_Contains_Block(hb, bb);
        last_duplicated = bb, bb = BB_next(bb));
 #ifdef TARG_IA64
-      Remove_Explicit_Branch(old_bb);
+  Remove_Explicit_Branch(bb);
 #endif
   if (bb) {
     //
