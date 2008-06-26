@@ -538,7 +538,7 @@ default: first derived_files $(TARGETS) last
 #  The commands in this section are done BEFORE any other target is
 #  built.
 #----------------------------------------------------------------------
-first:
+first: derived_files
 ifeq ($(BUILD_OS), LINUX)
 	$(call submake,$(TARG_LIBELF))
 	$(call submake,$(TARG_LIBELFUTIL))

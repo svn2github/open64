@@ -190,6 +190,7 @@ HEADER_DIRS = \
   $(TARGDIR)/include	\
   $(COMMON_UTIL_DIR)	\
   $(TARG_BE)		\
+  $(TARG_CG)		\
   $(BE_CG_DIR)          \
   $(BE_CG_TARG_DIR)          \
   $(BE_ORC_ICT_DIR)	\

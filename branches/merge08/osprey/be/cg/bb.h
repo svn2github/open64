@@ -569,15 +569,16 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_EDGE_SPLITTING	0x00800000 /* BB is used for edge splitting */
 
 #ifdef TARG_IA64
-#define BBM_RECOVERY            0x01000000 /* BB is a recovery block */
-#define BBM_CHK_SPLIT           0x02000000 /* BB splitted from another because of chk insertion */
-#define BBM_EMITTED             0x04000000 /* BB has been emitted */
-#define BBM_PROFILE_SPLITTED    0x08000000 /* BB is bb splitted from old bb by profile */
-#define BBM_PROFILE_CHANGED     0x10000000 /* BB is changed by profile*/
-#define BBM_PROFILE_ADDED       0x20000000 /* BB is new bb added by profile*/
-#define BBM_CHK_SPLIT_HEAD      0x40000000 /* BB splitted from another because of chk insertion */
-#define BBM_PARTIAL_BUNDLE      0x80000000 /* BB partial bundle for across boundary*/
-#define BBM_CHK_SPLIT_TAIL     0x200000000 /* BB is splited tail *///bug fix for OSP_212
+#define BBM_RECOVERY            0x00400000 /* BB is a recovery block */
+#define BBM_CHK_SPLIT           0x00800000 /* BB splitted from another because of chk insertion */
+#define BBM_EMITTED             0x01000000 /* BB has been emitted */
+#define BBM_PROFILE_SPLITTED    0x02000000 /* BB is bb splitted from old bb by profile */
+#define BBM_PROFILE_CHANGED     0x04000000 /* BB is changed by profile*/
+#define BBM_PROFILE_ADDED       0x08000000 /* BB is new bb added by profile*/
+#define BBM_CHK_SPLIT_HEAD      0x10000000 /* BB splitted from another because of chk insertion */
+#define BBM_PARTIAL_BUNDLE      0x20000000 /* BB partial bundle for across boundary*/
+#define BBM_EDGE_SPLITTING      0X40000000 /* BB is used to split critical edge */
+#define BBM_CHK_SPLIT_TAIL      0x80000000 /* BB is splited tail *///bug fix for OSP_212
 #elif defined(TARG_SL)
 #define BBM_ZDL_PROLOG          0x01000000 
 #define BBM_ZDL_BODY            0x02000000        
@@ -723,12 +724,24 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_predicate_promote(bb) 	(BB_flag(bb) &= ~BBM_PREDICATE_PROMOTE)
 #define	Reset_BB_has_post_label(x)	(BB_flag(x) &= ~BBM_POST_LABEL)
 
+#ifdef TARG_IA64
+#define Reset_BB_recovery(x)          (BB_flag(x) &= ~BBM_RECOVERY)
+#define Reset_BB_chk_split(x)         (BB_flag(x) &= ~BBM_CHK_SPLIT)
+#define Reset_BB_chk_split_head(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_HEAD)
+#define Reset_BB_emitted(x)           (BB_flag(x) &= ~BBM_EMITTED)
+#define Reset_BB_profile_splitted(x)    (BB_flag(x) &= ~BBM_PROFILE_SPLITTED)
+#define Reset_BB_profile_changed(x)    (BB_flag(x) &= ~BBM_PROFILE_CHANGED)
+#define Resset_BB_profile_added(x)    (BB_flag(x) &= ~BBM_PROFILE_ADDED)
+#define Reset_BB_partial_bundle(x)    (BB_flag(x) &= ~BBM_PARTIAL_BUNDLE)
+#define Reset_BB_edge_splitting(x)    (BB_flag(x) &= ~BBM_EDGE_SPLITTING)
+#define Reset_BB_chk_split_tail(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#endif
 #ifdef KEY
 #define	Reset_BB_has_non_local_label(x)	(BB_flag(x) &= ~BBM_NON_LOCAL_LABEL)
 #endif
 #define BB_tail_call(bb)	(   (BB_flag(bb) & (BBM_CALL | BBM_EXIT)) \
 				 == (BBM_CALL | BBM_EXIT))
-
+
 /* ====================================================================
  *
  * BBKIND -- Basic Block kinds.
