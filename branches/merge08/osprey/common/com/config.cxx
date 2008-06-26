@@ -107,11 +107,7 @@ static INT32 Ignore_Int;
 /* The following contains the phase-specific option groups and their
  * associated variable definitions:
  */
-#if defined(TARG_NVISA)
 #include "config_targ_opt.cxx"
-#else
-#include "config_TARG.cxx"
-#endif
 #include "config_debug.cxx"
 #include "config_ipa.cxx"
 #include "config_list.cxx"
