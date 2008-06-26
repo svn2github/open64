@@ -40,11 +40,11 @@
 /* ====================================================================
  * ====================================================================
  *
- * Module: config_TARG.h
+ * Module: config_targ_opt.h
  * $Revision: 1.1.1.1 $
  * $Date: 2005/10/21 19:00:00 $
  * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_TARG.h,v $
+ * $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_targ_opt.h,v $
  *
  * Revision history:
  *  11-Apr-96 - Original Version
@@ -69,12 +69,16 @@
  * ====================================================================
  */
 
-#ifndef config_TARG_INCLUDED
-#define config_TARG_INCLUDED
+/* This file was named as config_TARG.h.
+ * Change it into config_targ_opt.h because windows can not distiguish
+ * between "config_targ.h" and "config_TARG.h". */
+
+#ifndef config_targ_opt_INCLUDED
+#define config_targ_opt_INCLUDED
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *config_TARG_h_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_TARG.h,v $ $Revision: 1.1.1.1 $";
+static char *config_targ_opt_h_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_targ_opt.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifdef __cplusplus
@@ -125,4 +129,4 @@ extern BOOL Itanium_a0_step;	/* a0 version of itanium chip */
 }
 #endif /* __cplusplus */
     
-#endif /* config_TARG_INCLUDED */
+#endif /* config_targ_opt_INCLUDED */

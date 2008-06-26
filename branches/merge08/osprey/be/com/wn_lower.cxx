@@ -72,10 +72,7 @@
 #include "config_asm.h"
 #include "config_debug.h"
 #include "config_opt.h"
-#if !defined(TARG_SL)
 #include "config_targ_opt.h"
-#endif
-#include "config_TARG.h"
 #include "errors.h"
 #include "erglob.h"
 #include "tracing.h"

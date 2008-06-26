@@ -70,7 +70,7 @@
 #include "op_list.h"
 #include "cg_loop.h"
 #include "config.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "cg.h"
 #include "tracing.h"
 #include "timing.h"

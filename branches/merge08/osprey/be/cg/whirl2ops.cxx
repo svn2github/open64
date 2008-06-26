@@ -71,7 +71,7 @@
 #include "erglob.h"
 #include "tracing.h"
 #include "config.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "topcode.h"
 #include "targ_isa_lits.h"
 #include "intrn_info.h"

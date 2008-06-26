@@ -85,7 +85,7 @@
 #include "defs.h"
 #include "config.h"
 #include "config_asm.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "config_debug.h"
 #include "targ_const.h"
 #include "strtab.h"

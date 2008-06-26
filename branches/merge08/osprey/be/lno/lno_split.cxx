@@ -79,7 +79,7 @@ const static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.
 #include "model.h"
 #include "lnoutils.h"
 #include "lwn_util.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "config_targ.h"
 #include "config_opt.h"
 #include "opt_du.h"

@@ -44,7 +44,7 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Source: common/com/x8664/SCCS/s.config_TARG.cxx $
+ * $Source: common/com/x8664/SCCS/s.config_targ_opt.cxx $
  *
  * Revision history:
  *  26-Feb-97 - Original Version, extracted from config.c.
@@ -52,14 +52,14 @@
  * Description:
  *
  * Configure the -TARG group (included in config.c).
- * See config_TARG.h for usage conventions.
+ * See config_targ_opt.h for usage conventions.
  * See config_targ.* for more general target configuration support.
  *
  * NOTE:  There is an approximate distinction between -TARG option
  * group flags and their configuration (in this file), and more generic
  * target configuration (in config_targ.c).  Note that the related
  * header file config_targ.h is included in config.h, and hence in most
- * source files, whereas config_TARG.h is only included directly, so
+ * source files, whereas config_targ_opt.h is only included directly, so
  * putting new -TARG option-related variables in here is to be
  * preferred to putting them in config_targ.[hc].
  *
@@ -70,7 +70,7 @@
 /* This file is included in config.c, so it doesn't need its own set of
  * standard includes -- only the following:
  */
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 
 /* ====================================================================
  * List of global variables that are set by the -TARG option group

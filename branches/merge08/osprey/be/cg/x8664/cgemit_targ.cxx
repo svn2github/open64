@@ -70,7 +70,7 @@
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "targ_const.h"
 #include "targ_const_private.h"
 #include "vstring.h"

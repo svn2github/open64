@@ -63,7 +63,7 @@
 #include <math.h>
 #include "defs.h"
 #include "config.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "config_asm.h"
 #include "mempool.h"
 #include "bb.h"

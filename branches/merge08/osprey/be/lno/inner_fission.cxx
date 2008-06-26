@@ -75,7 +75,7 @@ static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.inner_
 #include <sys/types.h>
 #include <stdlib.h>
 #include "defs.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "wn.h"
 #include "wn_map.h"
 #include "model.h"

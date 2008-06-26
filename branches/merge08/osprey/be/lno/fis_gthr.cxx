@@ -95,7 +95,7 @@ static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.fis_gt
 #include "inner_fission.h"
 
 #include "targ_sim.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "config_targ.h"
 #include "cxx_template.h"
 #include "cxx_hash.h"
