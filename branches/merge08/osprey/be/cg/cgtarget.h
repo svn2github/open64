@@ -854,7 +854,7 @@ inline BOOL CGTARG_Use_Load_Latency(OP *pred_op, TN *tn)
 #endif
 }
 
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
 /* return TRUE iff op is load with UNAT bit (IA64)*/
 extern BOOL CGTARG_Load_with_UNAT (OP* op); 
 
