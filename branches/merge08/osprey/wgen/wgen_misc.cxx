@@ -61,7 +61,7 @@ extern "C" {
 #include "config_opt.h"	// for Div_Split_Allowed
 #include "config_debug.h"
 #include "config_list.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "controls.h"
 #include "erglob.h"
 #include "erlib.h"
