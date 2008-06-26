@@ -85,6 +85,16 @@ LINUX_HFILES = \
 	sgidefs.h \
 	standards.h
 
+ifeq ($(BUILD_OS), CYGWIN)
+LINUX_HFILES += elf.h
+endif
+ifeq ($(BUILD_OS), MINGW)
+LINUX_HFILES += elf.h
+endif
+ifeq ($(BUILD_OS), DARWIN)
+LINUX_HFILES += elf.h malloc.h
+endif
+
 LINUX_SYS_HFILES = \
 	syssgi.h
 
@@ -105,6 +115,13 @@ INCLUDE_HFILES = \
 	rld_interface.h \
 	stamp.h \
 	svr4_math.h
+
+ifeq ($(BUILD_OS), MINGW)
+INCLUDE_HFILES += \
+	translatetypes.h \
+	alloca.h \
+	ar.h
+endif
 
 CMPLR_HFILES = \
 	cif_c.h \
@@ -163,7 +180,7 @@ default: pathscale_defs.h
 	done
 	@for h in $(LINUX_SYS_HFILES); do \
 	    if ! test -a $$h; then \
-	      ln -sf $(BUILD_TOT)/linux/include/sys/$$h sys/$$h; \
+	      ln -sf $(BUILD_TOT)/../linux/include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(INCLUDE_HFILES); do \
@@ -208,7 +225,5 @@ pathscale_defs.h: $(BUILD_TOT)/../defs.mk
 	echo '#define OPEN64_PATCH_LEVEL "${OPEN64_PATCH_LEVEL}"' >> $@ 
 	echo "#endif" >> $@
 
-clean:
-
-clobber:
+clean clobber:
 	@rm -rf *.h *.sg $(CMPLR_DIRS) $(LIBELF_DIRS) ia64 stl sys
