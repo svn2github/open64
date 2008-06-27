@@ -116,6 +116,7 @@ INT32 WOPT_Enable_Const_PRE_Limit = 0;
 #ifdef TARG_NVISA
 BOOL  WOPT_Enable_Const_Var_PRE = TRUE;
 BOOL  WOPT_Enable_Const_Op_PRE = TRUE;
+INT32 WOPT_Const_PRE_Float_Size = 128; /* float Consts >= this Size are const PRE candidates */
 #endif
 BOOL  WOPT_Enable_Copy_Propagate = TRUE;
 BOOL  WOPT_Enable_Copy_Prop_Bad_Ops = FALSE;  /* copy prop ops that strength-reduction can't handle */
@@ -341,6 +342,7 @@ BOOL WOPT_Enable_Estr_Outer_Loop = TRUE;  // strength reduce outer loops
 BOOL WOPT_Enable_Estr_Const_Opnds = TRUE; // strength reduce ops with const kids
 BOOL WOPT_Enable_Estr_Used_Once = TRUE;   // strength reduce ops used only once
 BOOL WOPT_Enable_Estr_Early_Exit = FALSE; // strength reduce early exit loops
+BOOL WOPT_Enable_Aggressive_Iload_CSE = TRUE; // ignore potential iload vsym aliasing
 #endif
 
 /* ====================================================================
@@ -416,6 +418,8 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,    &WOPT_Enable_Const_Var_PRE, NULL },
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "const_op_pre",           "",
     0, 0, 0,    &WOPT_Enable_Const_Op_PRE, NULL },
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "const_pre_float_size",	"const_pre_float_size",
+    INT32_MAX, 0, INT32_MAX,	&WOPT_Const_PRE_Float_Size, NULL },
 #endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "divrem",		"divrem",
     0, 0, 0,	&WOPT_Enable_DIVREM, NULL },
@@ -776,6 +780,8 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,    &WOPT_Enable_Estr_Used_Once, NULL },
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "estr_early_exit",        "",
     0, 0, 0,    &WOPT_Enable_Estr_Early_Exit, NULL },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "aggr_iload_cse",        "",
+    0, 0, 0,    &WOPT_Enable_Aggressive_Iload_CSE, NULL },
 #endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };

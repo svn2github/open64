@@ -218,7 +218,12 @@ BOOL OPT_Reorg_Common = FALSE;	/* Do common block reorganization (split)? */
 BOOL OPT_Reorg_Common_Set = FALSE;	/* ... option seen? */
 BOOL OPT_Unroll_Analysis = TRUE;	/* Enable unroll limitations? */
 BOOL OPT_Unroll_Analysis_Set = FALSE;	/* ... option seen? */
+#if defined(TARG_NVISA)
+BOOL OPT_Lower_Speculate = TRUE;	/* speculate CAND/CIOR */
+#else
 BOOL OPT_Lower_Speculate = FALSE;	/* speculate CAND/CIOR */
+#endif
+BOOL OPT_Lower_Speculate_Set = FALSE;	/* ... option seen? */
 BOOL OPT_Lower_Treeheight = FALSE;	/* reassociate commutative ops */
 static BOOL OPT_Lower_Treeheight_Set = FALSE;
 BOOL OPT_Inline_Divide = TRUE;		/* inline divide sequences */
@@ -641,7 +646,7 @@ static OPTION_DESC Options_OPT[] = {
     "Bias optimizations to minimize code space" },
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "speculate",		"",
-    0, 0, 0,	&OPT_Lower_Speculate, NULL,
+    0, 0, 0,	&OPT_Lower_Speculate, &OPT_Lower_Speculate_Set,
     "Allow speculation for CAND/COR operators" },
 
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "speculative_null_ptr_deref","",
@@ -683,7 +688,7 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, INT32_MAX, &OPT_unroll_size, &OPT_unroll_size_overridden,
     "Maximum size of loops to be unrolled" },
 
-  { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll_times_max",	"unroll",
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll_times_max",	"unroll_times",
     0, 0, INT32_MAX, &OPT_unroll_times, &OPT_unroll_times_overridden,
     "Maximum number of times to unroll loops" },
 

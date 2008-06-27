@@ -123,6 +123,7 @@ extern INT32 WOPT_Enable_Const_PRE_Limit;
 #ifdef TARG_NVISA
 extern BOOL WOPT_Enable_Const_Var_PRE;  /* lpre of const_vars */
 extern BOOL WOPT_Enable_Const_Op_PRE;   /* epre of ops with const{var} kids */
+extern INT32 WOPT_Const_PRE_Float_Size; /* lpre of consts starting at this size */
 #endif
 extern BOOL WOPT_Enable_Copy_Propagate;
 extern BOOL WOPT_Enable_Copy_Prop_Bad_Ops;
@@ -326,6 +327,7 @@ extern BOOL WOPT_Enable_Estr_Outer_Loop;  // strength reduce outer loops
 extern BOOL WOPT_Enable_Estr_Const_Opnds; // strength reduce ops with const kids
 extern BOOL WOPT_Enable_Estr_Used_Once;   // strength reduce ops used only once
 extern BOOL WOPT_Enable_Estr_Early_Exit;  // strength reduce early exit loops
+extern BOOL WOPT_Enable_Aggressive_Iload_CSE; // ignore potential iload vsym aliasing
 #endif
 
 extern BOOL WOPT_Enable_STR_Short;  // whether to assume 16bit IV can cross 16

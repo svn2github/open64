@@ -866,7 +866,11 @@ BOOL Scalar_Formal_Ref = TRUE;		/* for fortran scalar formal refs */
 BOOL Non_Scalar_Formal_Ref = FALSE;	/* for fortran non_scalar formal refs */
 
 BOOL CG_mem_intrinsics = TRUE;		/* for memory intrinsic expansion */
+#ifdef TARG_NVISA
+INT32 CG_memmove_inst_count = 128;	/* for intrinsic expansion of bzero etc */
+#else
 INT32 CG_memmove_inst_count = 16;	/* for intrinsic expansion of bzero etc */
+#endif
 BOOL CG_memmove_inst_count_overridden = FALSE;
 BOOL CG_bcopy_cannot_overlap = FALSE;	/* for intrinsic expansion of bcopy */
 #ifdef KEY
@@ -1396,8 +1400,13 @@ Configure_Source ( char	*filename )
     LANG_Copy_Inout = TRUE;
   }
 
+#ifdef TARG_NVISA
+  /* Turn on -VHO:struct_opt by default at all levels: */
+  if ( ! VHO_Struct_Opt_Set) {
+#else
   /* Turn on -VHO:struct_opt by default at -O1: */
   if ( ! VHO_Struct_Opt_Set && Opt_Level >= 1 ) {
+#endif
     VHO_Struct_Opt = TRUE;
   }
   /* Turn on -VHO:cselect_opt by default at -O1: */
@@ -1591,9 +1600,11 @@ Configure_Source ( char	*filename )
      Allow_wrap_around_opt = Simp_Unsafe_Relops;
   }
 #endif
+#if !defined(TARG_NVISA) // NVISA needs to avoid overflow arithmetic
   if (!Simp_Unsafe_Relops_Set && Opt_Level > 2) {
      Simp_Unsafe_Relops = TRUE;
   }
+#endif
   
   Enable_GDSE	 = ((Opt_Level > 1) &&
 		    (!Get_Trace(TP_GLOBOPT, 4096))
@@ -1885,6 +1896,7 @@ Build_Skiplist ( OPTION_LIST *olist )
 	ol != NULL;
 	++count, ol = OLIST_next(ol) )
   {
+#if 0
     if ( !strncmp ( "skip_a", OLIST_opt(ol), 6 ) ||
 	 !strncmp ( "region_skip_a", OLIST_opt(ol), 13 ) ||
 	 !strncmp ( "goto_skip_a", OLIST_opt(ol), 11 ) 
@@ -1900,6 +1912,12 @@ Build_Skiplist ( OPTION_LIST *olist )
 	     || !strncmp ( "ddb_skip_b", OLIST_opt(ol), 10 )
 #endif
 		) {
+#endif
+    // ignore goto/region/ddb prefix of skip name
+    char *opt_name = strstr(OLIST_opt(ol), "skip");
+    if ( !strncmp ( "skip_a", opt_name, 6 )) {
+      Set_SKIPLIST_kind ( sl, count, SK_AFTER );
+    } else if ( !strncmp ( "skip_b", opt_name, 6 )) {
       Set_SKIPLIST_kind ( sl, count, SK_BEFORE );
     } else {
       Set_SKIPLIST_kind ( sl, count, SK_EQUAL );
