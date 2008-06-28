@@ -6596,9 +6596,8 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
       }
 #endif
       else
-
-      scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv));
 #endif // TARG_SL
+      scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv));
       break;
 
     case INITVKIND_ONE:
