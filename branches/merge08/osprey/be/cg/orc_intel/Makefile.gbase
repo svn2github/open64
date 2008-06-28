@@ -192,7 +192,6 @@ HEADER_DIRS = \
   $(TARGDIR)/include	\
   $(COMMON_UTIL_DIR)	\
   $(TARG_BE)		\
-  $(TARG_CG)		\
   $(BE_CG_DIR)          \
   $(BE_CG_TARG_DIR)	\
   $(BE_ORC_INTEL_DIR)	\
@@ -201,7 +200,8 @@ HEADER_DIRS = \
   $(TARG_ORC_INTEL)	\
   $(TARG_ORC_ICT)	\
   $(TARG_TARG_INFO)	\
-  $(BE_PROMPF_DIR)
+  $(BE_PROMPF_DIR)	\
+  $(TARG_CG)		\
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.

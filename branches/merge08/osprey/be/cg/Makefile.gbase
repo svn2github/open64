@@ -621,7 +621,7 @@ cg.so:  $(CG_CXX_OBJS) $(CG_C_OBJS) $(CG_PCH_OBJS) $(CG_GRA_PCH_OBJS)\
 else
  ifeq ($(BUILD_OS), LINUX)
 # dso's must be in same directory
-LINK_DSOS = be.so $(TARGET_SO)
+LINK_DSOS = be.so
 ifeq ($(BUILD_HOST), IA64)
 ifeq ($(BUILD_COMPILER), SGI)
 STD_DSO_LOADOPTS += -Wl,-relax
