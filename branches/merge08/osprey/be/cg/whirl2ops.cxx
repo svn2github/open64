@@ -4873,7 +4873,7 @@ BOOL Has_External_Fallthru( BB *bb )
   }
 }
 
-#if defined (TARG_SL)
+#ifdef KEY
 // Takes a BB. If the branch condition had a __builtin_expect, then
 // return the user-expected probability the branch would be taken.
 // Return -1 if unable to compute a probability.
