@@ -1525,25 +1525,6 @@ BOOL CFG::Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL em
 #if defined(TARG_X8664) || defined(TARG_SL)
   if (MTYPE_is_float(dsctyp))
     return TRUE;
-  
-#if defined(TARG_SL2)
-  if((WN_operator(if_test) == OPR_EQ || 
-      WN_operator(if_test) == OPR_NE)  
-     && WN_operator(WN_kid0(if_test)) == OPR_INTRINSIC_OP 
-     && (WN_intrinsic(WN_kid0(if_test)) == INTRN_OP_C2_SCOND_BR ||
-	 WN_intrinsic(WN_kid0(if_test)) == INTRN_OP_C2_SCOND_BR_R))
-    return TRUE;
-  
-#ifndef fork_joint // mark if-else implementation for fork-joint
-  if((WN_operator(if_test) == OPR_EQ || 
-      WN_operator(if_test) == OPR_NE)  
-     && WN_operator(WN_kid0(if_test)) == OPR_INTRINSIC_OP 
-     &&  (WN_intrinsic(WN_kid0(if_test)) == INTRN_C2_THREAD_MAJOR ||
-	  WN_intrinsic(WN_kid0(if_test))  == INTRN_C2_THREAD_MINOR))
-    return TRUE;
-#endif 
-#endif //TARG_SL
- 
 #endif /* TARG_X8664 */
   return FALSE;
 }

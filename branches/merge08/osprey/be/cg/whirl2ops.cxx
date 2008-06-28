@@ -187,6 +187,8 @@ static OP *Last_Mem_OP;
 OP_MAP OP_to_WN_map;
 static OP_MAP predicate_map = NULL;
 static WN_MAP WN_to_OP_map;
+// map between load (GOT entry) and the associated symbol
+OP_MAP OP_Ld_GOT_2_Sym_Map; 
 
 OP_MAP OP_Asm_Map;
 
@@ -4871,6 +4873,7 @@ BOOL Has_External_Fallthru( BB *bb )
   }
 }
 
+#if defined (TARG_SL)
 // Takes a BB. If the branch condition had a __builtin_expect, then
 // return the user-expected probability the branch would be taken.
 // Return -1 if unable to compute a probability.
@@ -4913,6 +4916,8 @@ static float get_branch_confidence (BB * bb)
  if (confidence) return 0.90;
  else return 0.10;
 }
+
+#endif
 
 /* Build the control flow graph for the code generator. */
 static void Build_CFG(void)
@@ -6037,7 +6042,6 @@ static SRCPOS get_loop_srcpos(WN *body_label)
  */ 
 BOOL SL_Intrinsic_Has_ReturnP(TOP opcode) {
     switch (opcode) {
-#ifdef TARG_SL2
       case  TOP_c2_mvgr_r2g_h_u:
       case  TOP_c2_mvgr_r2g_h:
       case  TOP_c2_mvgr_r2g_w:
@@ -6066,9 +6070,10 @@ BOOL SL_Intrinsic_Has_ReturnP(TOP opcode) {
       case  TOP_c2_ldi_s_w:
       case  TOP_c2_sad:
       case  TOP_c2_satd:
-      case  TOP_c2_mvsel:
-      /* add new opcode, op_mode=0 or 2, of mvsel */
-      case  TOP_c2_mvsel_zero_two:
+      case  TOP_c2_mvsel_mode0:
+      case  TOP_c2_mvsel_mode1:        
+      case  TOP_c2_mvsel_mode2:
+      case  TOP_c2_mvsel_mode345:        
       case  TOP_c2_bcst_q:
       case  TOP_c2_bcst_i:
       case  TOP_c2_vlcs_wb:
@@ -6109,7 +6114,6 @@ BOOL SL_Intrinsic_Has_ReturnP(TOP opcode) {
       case TOP_c2_scond_r_w_wb_le_i:
       case TOP_c2_scond_r_w_wb_gt_i:
       case TOP_c2_scond_r_w_wb_ge_i:
-	  	
       case  TOP_c2_scond_eq:
       case  TOP_c2_scond_lt:
       case  TOP_c2_scond_le:
@@ -6138,14 +6142,13 @@ BOOL SL_Intrinsic_Has_ReturnP(TOP opcode) {
       case  TOP_c2_bxtr_s_m:
       case  TOP_c2_sum4_g:
       case  TOP_c2_sum4_sw:
+      case  TOP_c2_sum4_saddr:
       case  TOP_c2_med:
       case  TOP_c2_gsums:
-      case  TOP_c2_sum3_saddr:
       case  TOP_c3_mvtacc:
       case  TOP_c3_mvtadd:	 
       case  TOP_c3_mvfacc:
       case  TOP_c3_mvfadd:	  	 
-#endif 
         return TRUE;
       default:
         return FALSE;
@@ -6618,7 +6621,6 @@ convert_stmt_list_to_OPs(WN *stmt)
       RID_cginfo( rid ) = cgrin;
       RID_level( rid ) = RL_CG-1;
       CGRIN_entry( cgrin ) = Cur_BB;
-      BB_rid( Cur_BB ) = rid;
       BB_rid( Cur_BB ) = NULL;
     }
 #endif 

@@ -413,9 +413,9 @@ static TN *i4_ded_tns[REGISTER_MAX + 1];
 #if defined(TARG_SL)
 static TN *a4_ded_tns[REGISTER_MAX +1];
 #endif
-#if defined(TARG_SL2)
+#if defined(TARG_SL)
 TN* C2_ACC_TN = NULL;
-TN* C2_ACC_CTRL_TN = NULL;
+TN* C2_COND_TN = NULL;
 TN* C2_MVSEL_TN = NULL;
 TN* C2_VLCS_TN = NULL;
 TN* C2_MOVPAT_TN = NULL;
@@ -535,7 +535,7 @@ Init_Dedicated_TNs (void)
 #endif
 #if defined(TARG_SL)
   C2_ACC_TN = ded_tns[REGISTER_CLASS_c2acc][REGISTER_c2acc];
-  C2_ACC_CTRL_TN = ded_tns[REGISTER_CLASS_c2acc_ctrl][REGISTER_c2acc_ctrl]; 
+  C2_COND_TN = ded_tns[REGISTER_CLASS_c2cond][REGISTER_c2cond];
   C2_MVSEL_TN = ded_tns[REGISTER_CLASS_c2mvsel][REGISTER_c2mvsel]; 
   C2_VLCS_TN = ded_tns[REGISTER_CLASS_c2vlcs][REGISTER_c2vlcs]; 
   C2_MOVPAT_TN = ded_tns[REGISTER_CLASS_c2movpat][REGISTER_c2movpat]; 

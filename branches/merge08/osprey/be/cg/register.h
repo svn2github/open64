@@ -1076,10 +1076,10 @@ extern CLASS_REG_PAIR         CLASS_REG_PAIR_c2acc;
 #define REGISTER_CLASS_c2acc CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2acc)
 #define CLASS_AND_REG_c2acc  CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_c2acc)
 
-extern CLASS_REG_PAIR         CLASS_REG_PAIR_c2acc_ctrl;
-#define REGISTER_c2acc_ctrl       CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2acc_ctrl)
-#define REGISTER_CLASS_c2acc_ctrl CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2acc_ctrl)
-#define CLASS_AND_REG_c2acc_ctrl  CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_c2acc_ctrl)
+extern CLASS_REG_PAIR         CLASS_REG_PAIR_c2cond;
+#define REGISTER_c2cond       CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2cond)
+#define REGISTER_CLASS_c2cond CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2cond)
+#define CLASS_AND_REG_c2cond  CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_c2cond)
 
 extern CLASS_REG_PAIR         CLASS_REG_PAIR_c2mvsel;
 #define REGISTER_c2mvsel       CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2mvsel)

@@ -155,7 +155,7 @@ CLASS_REG_PAIR      CLASS_REG_PAIR_addsize6;
 CLASS_REG_PAIR      CLASS_REG_PAIR_addsize7;
 
 CLASS_REG_PAIR      CLASS_REG_PAIR_c2acc;
-CLASS_REG_PAIR      CLASS_REG_PAIR_c2acc_ctrl;
+CLASS_REG_PAIR      CLASS_REG_PAIR_c2cond;
 CLASS_REG_PAIR      CLASS_REG_PAIR_c2mvsel;
 CLASS_REG_PAIR      CLASS_REG_PAIR_c2vlcs;
 CLASS_REG_PAIR      CLASS_REG_PAIR_c2movpat;
@@ -549,9 +549,9 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2acc, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2acc, rclass);  
     }
-    else if (ABI_PROPERTY_Is_c2acc_ctrl(rclass, isa_reg)) {
-      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2acc_ctrl, reg);
-      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2acc_ctrl, rclass);  
+    else if (ABI_PROPERTY_Is_c2cond(rclass, isa_reg)) {
+      Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2cond, reg);
+      Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2cond, rclass);  
     }
     else if (ABI_PROPERTY_Is_c2mvsel(rclass, isa_reg)) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2mvsel, reg);
