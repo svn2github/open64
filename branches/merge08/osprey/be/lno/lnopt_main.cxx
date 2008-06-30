@@ -437,7 +437,7 @@ static BOOL Has_Negative_Offset_Preg(WN *tree)
 } 
 #endif
 
-static void
+void
 Fully_Unroll_Short_Loops(WN* wn)
 {
   WN* first;
