@@ -51,9 +51,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/param.h>
+#if !defined(_WIN32)
 #include <sys/utsname.h>
-#include <sys/time.h>
 #include <sys/resource.h>
+#endif
+#include <sys/time.h>
 #include "pathscale_defs.h"
 
 #include "phases.h"
@@ -124,7 +126,9 @@ static boolean string_md = FALSE;
 static boolean string_mmd = FALSE;
 extern string_list_t *feedback_files;
 
+#if 0
 extern boolean is_replacement_combo (int);
+#endif
 static void convert_saved_command_line_into_string(void);
 static char *make_ii_file_name(char *objname);
 static char *make_rii_file_name(char *objname);
@@ -398,10 +402,15 @@ char *driver_basename(char *const s)
     } else {
 	p = strcpy(t, s);
 	p += strlen(p);
-        while( p != t  &&  *--p == '/' )        /* skip trailing /s */
+        while( p != t  && is_dir_separator(*--p) )	/* skip trailing /s */
 	    *p = '\0';
+
         while( p != t ) {
-	    if( *--p == '/' )
+#if defined(__CYGWIN__) || defined(_WIN32)
+            if ( p == t + 1 && t[1] == ':' )
+                return ++p;
+#endif
+            if(  is_dir_separator(*--p) )
 		return  ++p;
 	}
 	return p;
@@ -419,17 +428,30 @@ char *dirname(char *const s)
     } else {
 	p = strcpy(t, s);
 	p += strlen(p);
-        while( p != t  &&  *--p == '/' )        /* skip trailing /s */
+        while( p != t  && is_dir_separator(*--p) )	/* skip trailing /s */
 	    ;
 
-        if ( p == t && *p == '/' )
+#if defined(__CYGWIN__) || defined(_WIN32)
+        if ( p == t + 1 && t[1] == ':' ) {
+            t[2] = 0;
+            return t;
+        }
+#endif
+        if ( p == t &&  is_dir_separator(*p) )
 	    return strcpy(t, "/");
 
         while( p != t ) {
-	    if( *--p == '/' ) {
-		if ( p == t )
-		    return strcpy(t, "/");
-		while ( *p == '/' )
+#if defined(__CYGWIN__) || defined(_WIN32)
+            if ( p == t + 1 && *p == ':' ) {
+                t[2] = '.';
+                t[3] = 0;
+                return t;
+            }
+#endif
+            if(  is_dir_separator(*--p) ) {
+                if ( p == t )
+                    return strcpy(t, "/");
+                while ( is_dir_separator (*p) )
 		    p--;
 		*++p = '\0';
 		return  t;
@@ -587,12 +609,15 @@ boolean platform_is_64bit(void)
 	static boolean _64bit;
 
 	if (!_64bit_set) {
+#if defined(_WIN32)
+                _64bit = FALSE;
+#else
 		struct utsname u;
 
 		uname(&u);
 
 		_64bit = strcmp(u.machine, "x86_64") == 0;
-		
+#endif		
 		_64bit_set = TRUE;
 	}
 
@@ -1144,11 +1169,13 @@ add_file_args (string_list_t *args, phases_t index)
 	case P_spin_cc1:
 	case P_spin_cc1plus:
 		{
+#if !defined(_WIN32)
 		  struct utsname uts;
 		  uname(&uts);
 		  if (strstr(uts.machine, "x86_64") == NULL) {
 		    add_string(args, "-fi386-host");		// bug 10532
 		  }
+#endif
 		}
 		if (gnu_exceptions == FALSE) {			// bug 11732
 		  add_string(args, "-fno-gnu-exceptions");
@@ -1245,7 +1272,8 @@ add_file_args (string_list_t *args, phases_t index)
 		    sprintf(buf, "-fB,%s",
 			    construct_name(the_file,"B"));
 		add_string (args, buf);
-		sprintf (buf, "-fI,%s", construct_name(the_file,"I"));
+		sprintf (buf, "-fI,%s", 
+			construct_name(the_file,get_suffix_string(S_I)) );
 		add_string (args, buf);
 		if (dashdash_flag)
 		  add_string(args,"--");
@@ -1309,6 +1337,9 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 		break; 
 	case P_be:
+#if defined(TARG_NVISA)
+	case P_bec:
+#endif
 		add_language_option ( args );
 		add_targ_options ( args );
 
@@ -1329,7 +1360,7 @@ add_file_args (string_list_t *args, phases_t index)
 		switch (source_kind) {
 		case S_B:
 		    if (post_fe_phase () == P_inline) {
-			temp = construct_name(the_file,"I");
+			temp = construct_name(the_file,get_suffix_string(S_I));
 			break;
 		    }
 		    /* fall through */
@@ -1340,7 +1371,7 @@ add_file_args (string_list_t *args, phases_t index)
 		    break;
 		default:
 		    if (post_fe_phase () == P_inline)
-			temp = construct_name(the_file,"I");
+			temp = construct_name(the_file,get_suffix_string(S_I));
 		    else
 			temp = construct_name(the_file,"B");
 		    break;
@@ -1369,14 +1400,32 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, buf);
 		}
 
+#ifdef TARG_NVISA
+		if (last_phase == P_bec && outfile != NULL) {
+		  /* outfile == w2c.c name */
+		  if (get_suffix(outfile) == NULL) {
+		    /* outfile should end in .c */
+		    error ("outfile (%s) should end in .c", outfile);
+		    return;
+		  }
+		  sprintf(buf, "-fc,%s", outfile);
+		  add_string(args, buf);
+		}
+#endif
+
 		if (skip_as != TRUE || last_phase == P_be || keep_flag) {
 			/* create .s file */
 			add_string(args, "-s");
 			current_phase = P_be;
 			if (last_phase == P_be && outfile != NULL)
 				input_source = outfile;
-			else
+			else {
+#ifdef TARG_NVISA
+				input_source = construct_name(the_file,"ptx");
+#else
 				input_source = construct_name(the_file,"s");
+#endif
+			}
 			if (last_phase == P_be || keep_flag) {
 			  sprintf(buf, "-fs,%s", input_source);
 			} else {
@@ -1424,6 +1473,7 @@ add_file_args (string_list_t *args, phases_t index)
 		if (show_but_not_run)
 			add_string(args, "-###");
 		{
+		  int len;
 #ifdef TARG_X8664
 		  if( abi == ABI_N32 )
 		    add_string(args, "-m32");
@@ -1436,7 +1486,7 @@ add_file_args (string_list_t *args, phases_t index)
 
 		  // Add input source to args.  Append .s to input source if
 		  // it doesn't already end in .s.
-		  int len = strlen(input_source);
+		  len = strlen(input_source);
 		  if (input_source[len - 1] != 's' ||
 		      input_source[len - 2] != '.') {
 		    sprintf(buf, "%s.s", input_source);
@@ -1972,6 +2022,8 @@ postprocess_ld_args (string_list_t *args)
 static phases_t phase_order[MAX_PHASE_ORDER];
 static int phase_order_index = 0;
 
+static phases_t be_phase = P_be;
+
 static void
 add_phase (phases_t p)
 {
@@ -2004,12 +2056,12 @@ post_fe_phase (void)
     // given on the command line; otherwise it is set to the inline request
     // from the front-end.  Bug 11325
     else if (run_inline != UNDEFINED)
-      return run_inline == TRUE ? P_inline : P_be;
+      return run_inline == TRUE ? P_inline : be_phase;
 #endif
     else if (inline_t == TRUE || inline_t == UNDEFINED)
 	return P_inline;
     else
-	return P_be;
+	return be_phase;
 } /* post_fe_phase */
     
 /* If -INLINE:%s option was seen, pass it to ld if ipa run, or inline if
@@ -2039,6 +2091,12 @@ determine_phase_order (void)
 	phases_t link_phase;
 	phase_order[0] = P_NONE;
 	phase_order_index = 0;
+
+#ifdef TARG_NVISA
+        if (option_was_seen(O_multicore)) {
+	  be_phase = P_bec;
+	}
+#endif
  
 	/* determine which cpp to use */
 	if (source_lang == L_CC) {
@@ -2129,7 +2187,8 @@ determine_phase_order (void)
 	else
 		link_phase = P_ld;
 
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA) /* nvisa doesn't use spin yet */
+
 	phases_t c_fe = (gnu_major_version == 4) ? P_spin_cc1 : P_c_gfe;
 	phases_t cplus_fe = (gnu_major_version == 4) ? P_spin_cc1plus : P_cplus_gfe;
 #else
@@ -2214,7 +2273,7 @@ determine_phase_order (void)
 	case S_I:
 	case S_N:
 	case S_O:
-		next_phase = P_be;
+		next_phase = be_phase;
 		break;
 	case S_o:
 		next_phase = link_phase;
@@ -2263,7 +2322,7 @@ determine_phase_order (void)
 			break;
 		case P_inline:
 			add_phase (next_phase);
-			next_phase = P_be;
+			next_phase = be_phase;
 			break;
 		case P_ipl:
 			add_phase(next_phase);
@@ -2287,6 +2346,12 @@ determine_phase_order (void)
 			}
 			else next_phase = asm_phase;
 			break;
+#if defined(TARG_NVISA)
+		case P_bec:
+			add_phase(next_phase);
+			next_phase = P_NONE;
+			break;
+#endif
 		case P_as:
 		case P_gas:
 			add_phase(next_phase);
@@ -2322,6 +2387,19 @@ determine_phase_order (void)
 	}
 }
 
+#ifdef _WIN32
+#define EXE ".exe"
+#define DSO ".dll"
+#else
+#ifdef __CYGWIN__
+#define EXE ""
+#define DSO ".dll"
+#else /* linux */
+#define EXE ""
+#define DSO ".so"
+#endif
+#endif
+
 static void
 check_existence_of_phases (void)
 {
@@ -2347,7 +2425,7 @@ check_existence_of_phases (void)
 	    /* check if be phase exists, to warn about wrong toolroot */
 	case P_ipl:
 	    if (!file_exists (concat_strings (get_phase_dir(phase_order[i]),
-					      "/ipl.so")))
+					      "/ipl"DSO)))
 		give_warning = TRUE;
 
 	    /* fall through */
@@ -2355,7 +2433,11 @@ check_existence_of_phases (void)
 	case P_be:
 
 	    if (!file_exists (concat_strings (get_phase_dir(phase_order[i]),
-					      "/be.so")))
+#ifndef SHARED_BUILD
+                                            "/be"EXE)))
+#else
+                                            "/be"DSO)))
+#endif
 		give_warning = TRUE;
 
 	    if (!file_exists(get_full_phase_name(phase_order[i])))
@@ -2435,6 +2517,14 @@ find_toolroot(char *program_name, char *toolroot)
 	FILE* fp;
 	int tail;
 
+#ifdef _WIN32
+        if (is_absolute_file_name(program_name)) {
+	    strcpy (toolroot, directory_path (program_name));
+        }
+	else {
+		return NULL;
+	}
+#else
 	if(strchr(program_name, '/') == NULL) {
 		/* find arg0 in $PATH by cmd "which" */
 		sprintf(buf, "dirname \"`which %s`\"", program_name);
@@ -2450,6 +2540,7 @@ find_toolroot(char *program_name, char *toolroot)
 		strcat(toolroot, buf);
 	}
 	pclose(fp);
+#endif
 
 	tail = strlen(toolroot);
 	if(toolroot[tail - 1] == '\n') {
@@ -2497,6 +2588,8 @@ init_phase_info (void)
 	}
 
 	global_toolroot = getenv("TOOLROOT");
+
+#ifndef TARG_NVISA /* already used program name in set_executable_dir */
 	if (global_toolroot == NULL) {
 		global_toolroot = (char *)malloc(PATH_BUF_LEN);
 		if(find_toolroot(orig_program_name, global_toolroot) == NULL) {
@@ -2504,10 +2597,16 @@ init_phase_info (void)
 			global_toolroot = NULL;
 		}
 	}
+#endif
 
 	if (global_toolroot != NULL) {
 		/* add toolroot as prefix to phase dirs */
+#ifdef TARG_NVISA
+		/* only prefix open64 phases, as gcc tools have separate path */
+                prefix_all_phase_dirs(OPEN64_PHASE_MASK, global_toolroot);
+#else
                 prefix_all_phase_dirs(PHASE_MASK, global_toolroot);
+#endif
 	} 
 
 #ifdef TARG_IA64
@@ -2525,6 +2624,7 @@ init_phase_info (void)
 void
 init_phase_names (void)
 {
+#if !defined(_WIN32)
   char *prefix, *cmd, *x;
   char path[MAXPATHLEN];
   int i, j, len, rval;
@@ -2584,6 +2684,7 @@ init_phase_names (void)
       set_phase_name (i, concat_strings(prefix, phase_name));
     }
   }
+#endif
 }
 
 // Change the front-end names to reflect the GNU version.
@@ -2677,6 +2778,7 @@ run_ld (void)
 	}
 #endif
 	if (ipa == TRUE) {
+	    char *str;
 	    ldpath = get_phase_dir (ldphase);
 	    ldpath = concat_strings (ldpath, "/ipa.so");
 	    if (!file_exists (ldpath)) {
@@ -2685,7 +2787,7 @@ run_ld (void)
 	    }
 	    // Tell ipa_link about the LD_LIBRARY_PATH that was in effect
 	    // before the compiler was run.
-	    char *str = "-INTERNAL:old_ld_lib_path=";
+	    str = "-INTERNAL:old_ld_lib_path=";
 	    if (old_ld_library_path)
 	      str = concat_strings (str, old_ld_library_path);
 	    add_string(args, str);
@@ -2795,6 +2897,9 @@ run_pixie (void)
  else
    temp = string_copy("a.out");
  if (fb_xdir != NULL) {
+#if defined(_WIN32)
+   internal_error("cannot run pixie on windows");
+#else
    pixie_file = concat_strings(fb_xdir,  "/");
    pixie_file = concat_strings(pixie_file, drop_path(temp));
    link_status = symlink(pixie_file, temp);
@@ -2808,6 +2913,7 @@ run_pixie (void)
           perror(program_name);
       }
    }
+#endif
  }
 }
 
@@ -2819,6 +2925,9 @@ run_prof (void)
  char *bin_dot_pixie, *bin_plain;
  boolean delete_link = TRUE;
 
+#ifdef _WIN32
+ internal_error("cannot run prof on windows");
+#else
  if (prof_file != NULL) {
     bin_plain = string_copy (prof_file);
     bin_dot_pixie = concat_strings(prof_file, ".x.pixie");
@@ -2851,7 +2960,7 @@ run_prof (void)
       perror(program_name);
     }
  }
-				
+#endif				
 }
 
 void
@@ -2916,6 +3025,7 @@ run_compiler (int argc, char *argv[])
 			    cmd_line_updated = TRUE;
 			}
 			add_file_args (args, phase_order[i]);
+			if (has_current_errors()) break;
 			run_phase (phase_order[i],
 				   get_full_phase_name(phase_order[i]), args);
                         /* undefine the environment variable
@@ -3551,6 +3661,7 @@ do_f90_common_args(string_list_t *args)
 static void
 set_stack_size()
 {
+#if !defined(_WIN32) && !defined(__CYGWIN__)
   struct rlimit rl;
   rlim_t max_stack;
 
@@ -3575,6 +3686,7 @@ set_stack_size()
     warning("cannot change stack size limit");
     return;
   }
+#endif
 }
 
 
@@ -3582,8 +3694,14 @@ set_stack_size()
 int
 get_gcc_major_version()
 {
+#ifdef __MINGW32__
+  /* cannot rely on accessing system,
+   * so just use what we were built with */
+  return __GNUC__;
+#else
   int v[4];
   get_gcc_version(v, 4);
   return v[0];
+#endif
 }
 #endif

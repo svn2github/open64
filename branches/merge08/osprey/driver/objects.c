@@ -336,8 +336,9 @@ int prof_lib_exists(const char *lib)
 
 void add_library(string_list_t *list, const char *lib)
 {
+    struct prof_lib *l;
     if (option_was_seen(O_profile)) {
-	for (struct prof_lib *l = prof_libs; l->name; l++) {
+	for (l = prof_libs; l->name; l++) {
 	    if (strcmp(l->name, lib) != 0)
 		continue;
 	    if (!l->always && !prof_lib_exists(lib))
@@ -546,6 +547,7 @@ add_library_options (void)
 		break;
 #endif
 	case ABI_I64:
+	case ABI_W64:
 		break;
 	case ABI_IA32:
  		break;
@@ -640,6 +642,12 @@ finalize_maybe_linker_options (boolean is_linker)
   }
 }
 
+
+#if defined(TARG_NVISA)
+// ignore ipa elf issues
+static int check_for_whirl (char *name) { return FALSE; }
+#else
+
 // Check for ELF files containing WHIRL objects.  Code taken from
 // ../cygnus/bfd/ipa_cmdline.c.
 
@@ -712,3 +720,4 @@ check_for_whirl(char *name)
     return FALSE;
     
 }
+#endif //TARG_NVISA

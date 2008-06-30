@@ -71,3 +71,18 @@ extern char *get_executable_dir (void);
 
 /* Copy content of file to stdout. */
 extern void dump_file_to_stdout (char *filename);
+
+/* Platform-specific macros for checking filenames */
+#if defined(__CYGWIN__) || defined(_WIN32)
+#define is_dir_separator(x)      ({ char ds = (x); ds == '/' || ds == '\\'; })
+#define is_absolute_file_name(x) ({ const char *fn = (x); \
+                                    is_dir_separator(fn[0]) || fn[1] == ':'; })
+#else /* !__CYGWIN__ && !_WIN32 */
+#define is_dir_separator(x)      ((x) == '/')
+#define is_absolute_file_name(x) (is_dir_separator((x)[0]))
+#endif /* !__CYGWIN__ && !_WIN32 */
+
+#ifdef __MINGW32__
+#define realpath(N,R) _fullpath((R),(N),_MAX_PATH)
+#endif
+

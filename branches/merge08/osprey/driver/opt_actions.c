@@ -46,7 +46,9 @@
 
 #include <string.h>
 #include <stdlib.h>
+#if !defined(_WIN32)
 #include <sys/utsname.h>
+#endif
 #include <unistd.h>
 #include "cmplrs/rcodes.h"
 #include "opt_actions.h"
@@ -84,7 +86,12 @@ int malloc_algorithm = UNDEFINED;
 boolean dashdash_flag = FALSE;
 boolean read_stdin = FALSE;
 boolean xpg_flag = FALSE;
+#if defined(TARG_NVISA)
+// default to modified O3 (supports unrolling)
+int default_olevel = 3;
+#else
 int default_olevel = 2;
+#endif
 static int default_isa = UNDEFINED;
 static int default_proc = UNDEFINED;
 int instrumentation_invoked = UNDEFINED;
@@ -503,6 +510,12 @@ Process_Targ_Group ( char *targ_args )
 	    toggle ( &abi, ABI_64 );
 	  }
 #endif
+#if defined(TARG_NVISA)
+	  if ( strncasecmp ( cp+4, "w64", 3 ) == 0 ) {
+	    add_option_seen ( O_w64 );
+	    toggle ( &abi, ABI_W64 );
+	  }
+#endif
 	}
 	break;
 
@@ -664,6 +677,14 @@ Check_Target ( void )
 	  add_option_seen (O_m64);
 	else
 	  add_option_seen (O_m32);
+#elif TARG_NVISA
+	abi = get_platform_abi();
+	if (abi == ABI_64)
+	  add_option_seen (O_m64);
+	else if (abi == ABI_W64)
+	  add_option_seen (O_w64);
+	else
+	  add_option_seen (O_m32);
 #else
 	warning("abi should have been specified by driverwrap");
   	/* If nothing is defined, default to -n32 */
@@ -748,6 +769,13 @@ Check_Target ( void )
       case ABI_64:
 	  opt_val = ISA_X8664;
 	  toggle ( &isa, opt_val );
+	break;
+#elif TARG_NVISA
+      case ABI_N32:
+      case ABI_64:
+      case ABI_W64:
+	opt_val = ISA_COMPUTE_10;
+	toggle ( &isa, opt_val );
 	break;
 #endif
       case ABI_I32:
@@ -878,7 +906,7 @@ toggle_inline_normal(void)
 
 /* toggle inline for "=on" */
 
-static void
+void
 toggle_inline_on(void)
 {
   if (inline_t == FALSE) {
@@ -1043,6 +1071,14 @@ static void
 check_output_name (char *name)
 {
 	if (name == NULL) return;
+#if defined(TARG_NVISA)
+	/* final output is assembly file, so allow overwriting that */
+	if (get_source_kind(name) == S_s) 
+          return;
+	/* final output of -multicore is C file, so allow overwriting that */
+	if (option_was_seen(O_multicore) && get_source_kind(name) == S_c) 
+          return;
+#endif
 	if (get_source_kind(name) != S_o && file_exists(name)) {
 		warning("%s %s will overwrite a file that has a source-file suffix", option_name, name);
 	}
@@ -1060,7 +1096,8 @@ check_convert_name(char *name)
 	  "little-endian",
 	  "native"
 	  };
-	for (int i = 0; i < ((sizeof legal_names) / (sizeof *legal_names));
+	int i;
+	for (i = 0; i < ((sizeof legal_names) / (sizeof *legal_names));
 	  i += 1) {
 	  if (0 == strcmp(name, legal_names[i])) {
 	    return;
@@ -1423,7 +1460,7 @@ print_magic_path(const char *base, const char *fname)
       goto good;
     
     if (ends_with(base, "/lib64")) {
-      asprintf(&path, "%.*s/%s", (int)(strlen(base) - 2), base, fname);
+      asprintf(&path, "%.*s/%s", (int)strlen(base) - 2, base, fname);
 
       if (file_exists(path))
 	goto good;
@@ -1505,7 +1542,8 @@ print_file_path (char *fname, int exe)
   argv[1] = m32 ? "-m32" : "-m64";
   asprintf(&argv[2], "-print-%s-name=%s", exe ? "prog" : "file", fname);
   argv[3] = NULL;
-  execvp(argv[0], argv);
+  /* MINGW doesn't support execvp, everyone supports execlp */
+  execlp(argv[0], argv[1], argv[2], NULL);
   fprintf(stderr, "could not execute %s: %m\n", argv[0]);
   exit(1);
 }
@@ -1517,7 +1555,8 @@ print_multi_lib ()
   argv[0] = "gcc";
   asprintf(&argv[1], "-print-multi-lib");
   argv[2] = NULL;
-  execvp(argv[0], argv);
+  /* MINGW doesn't support execvp, everyone supports execlp */
+  execlp(argv[0], argv[1], NULL);
   fprintf(stderr, "could not execute %s: %m\n", argv[0]);
   exit(1);
 }
@@ -1588,6 +1627,12 @@ char *target_cpu = NULL;
 static int
 get_platform_abi()
 {
+#ifdef _WIN32
+#ifdef WIN64
+  return ABI_W64;
+#endif
+#endif
+
   struct utsname u;
 
   uname(&u);

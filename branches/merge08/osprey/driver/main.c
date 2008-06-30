@@ -82,9 +82,14 @@ boolean show_copyright;
 boolean dump_version;
 boolean show_search_path;
 boolean show_defaults;
+boolean print_help = FALSE;
 
-extern void check_for_combos(void);
+#if 0
+// obsolete, see comments in DESIGN_DOC
+//extern void check_for_combos(void);
 extern boolean is_replacement_combo(int);
+#endif
+
 extern void toggle_implicits(void);
 extern void set_defaults(void);
 extern void add_special_options (void);
@@ -362,6 +367,20 @@ main (int argc, char *argv[])
  #endif
     }
 
+#if defined(TARG_NVISA)
+	if (show_version) {
+	    /* Echo information about the compiler version */
+	    fprintf(stderr, "NVIDIA (R) CUDA Open64 Compiler\n");
+	    fprintf(stderr, "%s\n", cset_id);
+	    fprintf(stderr, "Built on %s\n", build_date);
+	}
+	if (show_copyright) {
+	    fprintf(stderr, "Portions Copyright (c) 2005-2008 NVIDIA Corporation\n");
+	    fprintf(stderr, "Portions Copyright (c) 2002-2005 PathScale, Inc.\n");
+	    fprintf(stderr, "Portions Copyright (c) 2000-2001 Silicon Graphics, Inc.\n");
+	    fprintf(stderr, "All Rights Reserved.\n");
+	}
+#else
         if (show_version) {
             fprintf(stderr, "Open64 Compiler Suite: "
             "Version %s\n", compiler_version);
@@ -397,6 +416,7 @@ main (int argc, char *argv[])
 #endif
 	}
 #endif
+#endif //TARG_NVISA
 	if (show_search_path) {
 		print_search_path();
 	}
@@ -409,8 +429,7 @@ main (int argc, char *argv[])
 		no_args();
 	}
 	
-	if (option_was_seen(O_help) || option_was_seen(O__help) ||
-	    help_pattern != NULL)
+	if (print_help || help_pattern != NULL)
 	{
 		print_help_msg();
 	}
@@ -428,10 +447,10 @@ main (int argc, char *argv[])
 #endif
 				source_lang = L_cpp;
 			} else {
+				char *obj_name;
 				source_kind = get_source_kind(source_file);
 				source_lang = invoked_lang;
-				char *obj_name =
-				  get_object_file(
+				obj_name = get_object_file(
 				    fix_name_by_lang(source_file));
 				add_object (O_object, obj_name);
 			}
@@ -455,8 +474,11 @@ main (int argc, char *argv[])
 		}
 	}
 
+#if 0
 	/* check for certain combinations of options */
-	check_for_combos();
+	check_for_combos(); //obsolete, see comments in DESIGN_DOC
+#endif
+
 	if ((option_was_seen(O_fpic) ||
 	     option_was_seen(O_fPIC))
 	     && mem_model == M_MEDIUM) {
@@ -703,6 +725,8 @@ static void set_executable_dir (void) {
   /* Try to find where the compiler is located in the
      filesystem, and relocate the phase and library
      directories based on where the executable is found. */
+  /* Note that if have a symbolic link to driver,
+   * it may operate on directory containing driver not cc. */
   dir = get_executable_dir ();
   if (dir == NULL) return;	
 
@@ -720,6 +744,9 @@ static void set_executable_dir (void) {
   ldir = drop_path (dir);
   if (strcmp (ldir, "bin") == 0) {
     char *basedir = directory_path (dir);
+#if defined(TARG_NVISA)
+    substitute_phase_dirs ("/lib", basedir, "/lib/");
+#endif
 #ifdef PSC_TO_OPEN64
     substitute_phase_dirs ("/lib", basedir, "/lib/" OPEN64_FULL_VERSION);
     substitute_phase_dirs ("/lib/" OPEN64_NAME_PREFIX "cc-lib",
@@ -888,6 +915,8 @@ dump_args (char *msg)
 	printf("dump args %s: ", msg);
 	FOREACH_OPTION_SEEN(i) {
 		if (i == O_Unrecognized) continue;
+#if 0
+		// obsolete, see comments in DESIGN_DOC
 		/* there are some combos that result in a warning 
 		 * and replacing one of the args; in that case the
 		 * option name looks like "arg1 arg2" but the implied
@@ -898,8 +927,8 @@ dump_args (char *msg)
 				printf(" %s", get_current_implied_name());
 			}
 		} else {
-			printf(" %s", get_option_name(i));
-		}
+#endif
+		printf(" %s", get_option_name(i));
 	}
 	printf("\n");
 }
@@ -954,8 +983,14 @@ void set_explicit_lang(const char *flag, const char *lang)
 	for (x = explicit_langs; x->name != NULL; x++) {
 		if (strcmp(lang, x->name) == 0) {
 			ignore_suffix = x->lang != S_NONE;
-			source_kind = default_source_kind = x->kind;
-			source_lang = x->lang;
+			if (x->kind == S_NONE) {
+				ignore_suffix = FALSE;
+				default_source_kind = S_NONE;
+			} else {
+				ignore_suffix = TRUE;
+				source_kind = default_source_kind = x->kind;
+				source_lang = x->lang;
+			}
 			break;
 		}
 	}
@@ -1254,6 +1289,7 @@ append_default_options (int *argc, char *(*argv[]))
     int new_argc = *argc + default_options_count + 1;
     char **new_argv = malloc(new_argc * sizeof(char*));
     int i, index;
+    string_item_t *p;
 
     // Copy command line options to new argv;
     for (index = 0; index < *argc; index++) {
@@ -1264,7 +1300,6 @@ append_default_options (int *argc, char *(*argv[]))
     new_argv[index++] = "-default_options";
 
     // Copy default options to new argv.
-    string_item_t *p;
     for (p = default_options_list->head; p != NULL; p = p->next) {
       new_argv[index++] = p->name;
     }
@@ -1309,13 +1344,22 @@ append_open64_env_flags (int *argc, char *(*argv[]), char *env_var)
   }
 
   /* We only want to do this substitution once. */
+#if defined(__MINGW32__)
+  // no unsetenv on mingw, but can get same effect with putenv("name=")
+  {
+    string tmp = concat_strings(env_var, "=");
+    putenv (tmp);
+  }
+#else
   unsetenv (env_var);
+#endif
 }
 
 static FILE *
 read_gcc_output(char *cmdline)
 {
-	char *gcc_path = get_full_phase_name(P_ld);
+	/* P_ld may not be gcc, bug gcpp should be */
+	char *gcc_path = get_full_phase_name(P_gcpp);
 	char *gcc_cmd = NULL;
 	FILE *fp = NULL;
 
@@ -1409,6 +1453,11 @@ get_gcc_version(int *v, int nv)
 	static int patch;
 
 	if (version[0] == '\0') {
+#if defined(__MINGW32__)
+		/* cannot rely on accessing system,
+		 * so just use what we were built with */
+		sprintf(version, "%d.%d", __GNUC__, __GNUC_MINOR__);
+#else
 		FILE *fp = read_gcc_output("-dumpversion");
 		char *c;
 		fread(version, 1, sizeof(version) - 1, fp);
@@ -1419,6 +1468,7 @@ get_gcc_version(int *v, int nv)
 		if ((c = strchr(version, '\n'))) {
 			*c = '\0';
 		}
+#endif
 	}
 
 	if (v) {

@@ -40,13 +40,11 @@ set dir = $1
 set file = $2
 shift
 shift
-/lib/cpp -traditional -P $* $dir/$file > tmp.options.cpp
-awk -f $dir/sort_options.awk tmp.options.cpp
+cpp -traditional -P $* $dir/$file > tmp.options.cpp
+awk -f $dir/sort_options.awk tmp.options.cpp > tmp.options
 # note that some linux versions of sort are broken,
 # so we actually re-sort within table for safety.
 sort -r tmp.options > tmp.options.sort
 echo "%%% OPTIONS"
 cat tmp.options.sort
-echo "%%% COMBINATIONS"
-cat tmp.options.combo
 rm -f tmp.options*

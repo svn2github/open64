@@ -103,6 +103,23 @@ ifeq ($(BUILD_VARIANT), NUE)
 LCDEFS += -DNUE
 endif
 
+ifeq ($(BUILD_VARIANT), NO_LICENSE)
+LCDEFS += -DNO_LICENSE
+endif
+
+ifeq ($(BUILD_ABI), W64BIT)
+LCDEFS += -DWIN64
+endif
+
+ifeq ($(BUILD_OS), MINGW)
+# have to pass -Wno-format because mingw requires %I64 for printf of long long,
+# but Wformat complains because it is non-ansi.  sigh.
+LCDEFS += -Wno-format
+
+# link with libiberty so get asprintf
+LDFLAGS += $(BUILD_AREA)/libiberty/libiberty.a
+endif
+
 # don't want to use common/com/defs.h
 LCINCS	= -I. -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com
 
@@ -139,7 +156,6 @@ HFILES= \
 	$(GEN_HFILES)
 
 GEN_CFILES = \
-	check_combos.c \
 	implicits.c
 
 SHARED_CFILES = \
@@ -184,6 +200,10 @@ first:
 ifeq ($(BUILD_OS), LINUX)
 	$(call submake,$(BUILD_AREA)/include)
 endif
+ifeq ($(BUILD_OS), MINGW)
+	$(call submake,$(BUILD_AREA)/include)
+	$(call submake,$(BUILD_AREA)/libiberty)
+endif
 
 last: make_deps
 
@@ -193,7 +213,8 @@ install: default
  ifndef NOSYSGEN
 	$(STD_INSTALL) -F /usr/cpu/sysgen/root/usr/bin -src driver cc
  endif
-endif
+
+else
 
 ifeq ($(BUILD_TARGET), MIPS)
 install: default 
@@ -213,6 +234,7 @@ install: default
 	ln -s $(STD_MONGOOSE_LINUX_LOC)/driver $(STD_MONGOOSE_LINUX_LOC)/sgif90
 endif
 
+endif
 
 include $(COMMONRULES)
 
@@ -227,23 +249,42 @@ generated : OPTIONS.P table
 table : table.o $(SHARED_OBJECTS)
 	$(link.ccf) -o $@ table.o $(SHARED_OBJECTS) $(LDFLAGS)
 
+ifeq ($(BUILD_COMPILER), GNU)
+OPTIONS.P : OPTIONS
+	$(CC) -E -P $(LCDEFS) $(STD_COMPILE_OPTS) -x c $(BUILD_BASE)/OPTIONS > OPTIONS.P
+else
 # invoke shell script in source tree, but put output here
 OPTIONS.P : $(OPTIONS_SRC)
 	$(BUILD_BASE)/sort_options.csh $(BUILD_BASE) OPTIONS $(LCDEFS) > OPTIONS.P
+endif
 
 driver: $(OBJECTS)
 	$(link.ccf) -o $@ $(OBJECTS) $(LDFLAGS)
 
+ifeq ($(BUILD_TARGET), NVISA)
+hg_csetid := $(GPGPU_COMPILER_TOOLS_VERSION)
+hg_root := unknown
+hg_date := $(shell date +'%Y-%m-%d')
+else
+hg_csetid := $(shell hg parents --template {node} || echo unknown)
 hg_root := $(shell hg root 2>/dev/null || echo unknown)
+hg_date := $(shell date +'%Y-%m-%d %H:%M:%S %z')
+endif
+ifneq ($(BUILD_OS), CYGWIN)
+hg_hostname := $(shell hostname -f)
+else
+# -f not accepted on cygwin
+hg_hostname := $(shell hostname)
+endif
 
 version_hg.c:
 	@echo 'GEN    $@'
 	@echo '#include "version.h"' > $@
-	@echo 'const char *const cset_id = "$(shell hg parents --template "{node}" || echo unknown)";' >> $@
+	@echo 'const char *const cset_id = "$(hg_csetid)";' >> $@
 	@echo 'const char *const build_root = "$(hg_root)";' >> $@
-	@echo 'const char *const build_host = "$(shell hostname -f)";' >> $@
+	@echo 'const char *const build_host = "$(hg_hostname)";' >> $@
 	@echo 'const char *const build_user = "$(shell id -un)";' >> $@
-	@echo 'const char *const build_date = "$(shell date +'%Y-%m-%d %H:%M:%S %z')";' >> $@
+	@echo 'const char *const build_date = "$(hg_date)";' >> $@
 
 .PHONY: version_hg.c
 

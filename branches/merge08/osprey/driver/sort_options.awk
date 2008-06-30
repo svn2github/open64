@@ -37,47 +37,14 @@
 #
 
 # sort the options list so the read_options can group things properly
-BEGIN {
-	options = 0
-	optfile = "tmp.options"
-	comfile = "tmp.options.combo"
-	print "" > optfile
-	print "" > comfile
-}
 {
-if ($1 == "%%%" && $2 == "OPTIONS") {
-	options = 1;
-	next;
-} else if ($1 == "%%%" && $2 == "COMBINATIONS") {
-	options = 0;
-	next;
-}
-if (options) {
 	# combine -name lines with help msg, onto one line,
 	# so sorting is easier.
 	# add | character between implies and help msg.
 	firstchar = substr($1,1,1);
-	lastchar = substr($1, length($1), 1);
 	if (firstchar == "-" || firstchar == "I")
-		printf "%s | ", $0 >> optfile;
-
-	# KEY:  Support double-quoting the option name.
-	else if (firstchar == "\"" &&
-		 lastchar == "\"" &&
-		 NF > 1) {		# number of fields
-		# Print out first record without double quotes.
-		printf "%s", substr($1, 2, length($1) - 2) >> optfile;
-
-		# Print out rest of records.
-		for (i = 2; i <= NF; i++) {
-		 	printf " %s", $i >> optfile;
-		}
-		printf " | " >> optfile;
-	}
-
+		printf "%s | ", $0
 	else if (firstchar == "\"")
-		printf "%s\n", $0 >> optfile;
-} else {
-	print $0 >> comfile;
+		printf "%s\n", $0
 }
-}
+

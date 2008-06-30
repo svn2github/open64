@@ -92,12 +92,15 @@ extern int first_option (void);
 extern int next_option (void);
 extern boolean no_more_options (void);
 
+#if 0
+//obsolete, see comments in DESIGN_DOC
 /* iterate through options in option-combination-list */
 #define FOREACH_OPTION_IN_COMBO(i,c)	\
 	for (i = first_combo_item(c); !no_more_combo_items(c); i = next_combo_item(c))
 extern int first_combo_item (int combo_flag);
 extern int next_combo_item (int combo_flag);
 extern boolean no_more_combo_items (int combo_flag);
+#endif
 
 /* iterate through implied options for a particular option */
 #define FOREACH_IMPLIED_OPTION(i,o)	\
