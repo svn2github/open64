@@ -92,6 +92,7 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
 #endif
     char              *targ_so_name  = alloca(targ_name_len + strlen(".so") + 1);
 
+#ifndef TARG_NVISA /* no scheduling info for NVISA */
     for (i = 0; i < targ_name_len; i++) {
       targ_so_name[i] = tolower(targ_name[i]);
     }
@@ -101,6 +102,7 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
     strcpy(targ_so_name + targ_name_len, ".so");
 
     load_so(targ_so_name, tpath, FALSE /*verbose*/);
+#endif
 
     ISA_SUBSET_Value = tisa;
     PROCESSOR_Value = tproc;

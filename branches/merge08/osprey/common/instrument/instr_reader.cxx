@@ -61,13 +61,14 @@
 #include "instr_reader.h"
 #include "instr_memory.h"
 
-template <class _Key> struct hash { };
-template <> struct hash<UINT64> {
+//rename the structure from hash to ihash to avoid conflict with system hash.  
+template <class _Key> struct ihash { };
+template <> struct ihash<UINT64> {
   size_t operator()(const UINT64 x)const{return (size_t)x;}
 };
 
-typedef hash_map<UINT64, char*, hash<UINT64> > ADDRESS_NAME_MAP;
-typedef hash_map<UINT64, INT32, hash<UINT64> > ADDRESS_PUSIZE_MAP;
+typedef hash_map<UINT64, char*, ihash<UINT64> > ADDRESS_NAME_MAP;
+typedef hash_map<UINT64, INT32, ihash<UINT64> > ADDRESS_PUSIZE_MAP;
 
 extern ADDRESS_NAME_MAP PU_Addr_Name_Map;
 extern ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;

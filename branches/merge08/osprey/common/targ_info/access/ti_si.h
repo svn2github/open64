@@ -495,10 +495,14 @@ extern const SI_RRW * SI_RRW_overuse_mask_p;
 #else
 
 extern const SI_RRW SI_RRW_initializer;
+#ifdef SHARED_BUILD
 #pragma weak SI_RRW_initializer
+#endif
 
 extern const SI_RRW SI_RRW_overuse_mask;
+#ifdef SHARED_BUILD
 #pragma weak SI_RRW_overuse_mask
+#endif
 
 #endif
 
@@ -551,10 +555,14 @@ extern SI_ISSUE_SLOT * const * SI_issue_slots_p;
 #else
 
 extern const INT SI_issue_slot_count;
+#ifdef SHARED_BUILD
 #pragma weak SI_issue_slot_count
+#endif
 
 extern SI_ISSUE_SLOT* const SI_issue_slots[];
+#ifdef SHARED_BUILD
 #pragma weak SI_issue_slots
+#endif
 
 #endif
 
@@ -619,7 +627,9 @@ extern SI * const * SI_top_si_p;
 #else
 
 extern SI* const SI_top_si[];
+#ifdef SHARED_BUILD
 #pragma weak SI_top_si
+#endif
 
 #endif
 
@@ -730,10 +740,14 @@ extern SI * const * SI_ID_si_p;
 #else
 
 extern const INT SI_ID_count;
+#ifdef SHARED_BUILD
 #pragma weak SI_ID_count
+#endif
 
 extern SI* const SI_ID_si[];
+#ifdef SHARED_BUILD
 #pragma weak SI_ID_si
+#endif
 
 #endif
 

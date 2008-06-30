@@ -60,6 +60,7 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 
 #include "ti_errors.h"
 #include "ti_asm.h"
+#include "bstring.h"
 
 /* ====================================================================
  *
@@ -83,8 +84,8 @@ INT TI_ASM_Pack_Inst(
   INT64 bopnd[ISA_OPERAND_max_operands];
   INT64 bresult[ISA_OPERAND_max_results];
 
-  bcopy(opnd, bopnd, sizeof(bopnd));
-  bcopy(result, bresult, sizeof(bresult));
+  BCOPY(opnd, bopnd, sizeof(bopnd));
+  BCOPY(result, bresult, sizeof(bresult));
 
   topcode = ISA_PSEUDO_Translate(topcode, 
 				 bresult, 
@@ -177,29 +178,22 @@ INT TI_ASM_Print_Inst(
   do {
     comp = ISA_PRINT_INFO_Comp(pinfo, i);
 
-    switch (comp) {
-    case ISA_PRINT_COMP_name:
+    /* different targets may have different number of opnds,
+     * so rather than do switch-case ISA_PRINT_COMP_opnd+n,
+     * just do if-check that comp is in opnd or result range. */
+    if (comp == ISA_PRINT_COMP_name) {
       arg[i] = ISA_PRINT_AsmName(topcode);
-      break;
-
-    case ISA_PRINT_COMP_opnd:
-    case ISA_PRINT_COMP_opnd+1:
-    case ISA_PRINT_COMP_opnd+2:
-    case ISA_PRINT_COMP_opnd+3:
-    case ISA_PRINT_COMP_opnd+4:
-    case ISA_PRINT_COMP_opnd+5:
+    }
+    else if (comp >= ISA_PRINT_COMP_opnd && comp < ISA_PRINT_COMP_result) {
       arg[i] = opnd[comp - ISA_PRINT_COMP_opnd];
-      break;
-
-    case ISA_PRINT_COMP_result:
-    case ISA_PRINT_COMP_result+1:
+    }
+    else if (comp >= ISA_PRINT_COMP_result && comp <= ISA_PRINT_COMP_MAX) {
       arg[i] = result[comp - ISA_PRINT_COMP_result];
-      break;
-
-    case ISA_PRINT_COMP_end:
-      break;
-
-    default:
+    }
+    else if (comp == ISA_PRINT_COMP_end) {
+      ; /* ignore */
+    }
+    else {
       #pragma mips_frequency_hint NEVER
       sprintf(TI_errmsg, "Unhandled listing component %d for %s",
 			 comp, TOP_Name(topcode));
@@ -303,41 +297,31 @@ INT TI_ASM_DisAsm_Inst(
   i = 0;
   do {
     comp = ISA_PRINT_INFO_Comp(pinfo, i);
-    switch (comp) {
-    case ISA_PRINT_COMP_name:
-      arg[i] = ISA_PRINT_AsmName(topcode);
-      break;
 
-    case ISA_PRINT_COMP_opnd:
-    case ISA_PRINT_COMP_opnd+1:
-    case ISA_PRINT_COMP_opnd+2:
-    case ISA_PRINT_COMP_opnd+3:
-    case ISA_PRINT_COMP_opnd+4:
-    case ISA_PRINT_COMP_opnd+5:
-      {
+    /* different targets may have different number of opnds,
+     * so rather than do switch-case ISA_PRINT_COMP_opnd+n,
+     * just do if-check that comp is in opnd or result range. */
+    if (comp == ISA_PRINT_COMP_name) {
+      arg[i] = ISA_PRINT_AsmName(topcode);
+    }
+    else if (comp >= ISA_PRINT_COMP_opnd && comp < ISA_PRINT_COMP_result) {
 	INT n = comp - ISA_PRINT_COMP_opnd;
 	const ISA_OPERAND_VALTYP *vtype = ISA_OPERAND_INFO_Operand(oinfo, n);
 	ISA_OPERAND_USE use = ISA_OPERAND_INFO_Use(oinfo, n);
 	arg[i] = buf + cursor;
 	cursor += Format_Operand(buf + cursor, pc, vtype, use, opnd[n], flags);
-      }
-      break;
-
-    case ISA_PRINT_COMP_result:
-    case ISA_PRINT_COMP_result+1:
-      {
+    }
+    else if (comp >= ISA_PRINT_COMP_result && comp <= ISA_PRINT_COMP_MAX) {
 	INT n = comp - ISA_PRINT_COMP_result;
 	const ISA_OPERAND_VALTYP *vtype = ISA_OPERAND_INFO_Result(oinfo, n);
 	arg[i] = buf + cursor;
 	cursor += Format_Operand(buf + cursor, 0, vtype, OU_UNDEFINED, 
 				 result[n], flags);
-      }
-      break;
-
-    case ISA_PRINT_COMP_end:
-      break;
-
-    default:
+    }
+    else if (comp == ISA_PRINT_COMP_end) {
+      ; /* ignore */
+    }
+    else {
       assert(0);
     /*NOTREACHED*/
     }
@@ -604,8 +588,8 @@ TOP TI_ASM_Unpack_Inst(
 
   /* Unpack the raw operands and results.
    */
-  bzero(result, sizeof(*result) * ISA_OPERAND_max_results);
-  bzero(opnd, sizeof(*opnd) * ISA_OPERAND_max_operands);
+  BZERO(result, sizeof(*result) * ISA_OPERAND_max_results);
+  BZERO(opnd, sizeof(*opnd) * ISA_OPERAND_max_operands);
   pinfo = ISA_PACK_Info(topcode);
   words = ISA_PACK_Inst_Words(topcode);
   for (j = 0; j < words; ++j) {
