@@ -69,6 +69,7 @@
 #include "config_targ.h"
 #include <ext/hash_map>
 #include <math.h>
+using __gnu_cxx::hash_map;
 
 namespace {
     // unnamed namespace for function objects used for removing duplicated
@@ -126,7 +127,7 @@ namespace {
 } // unnamed namespace
 		
 
-typedef __gnu_cxx::hash_map<TCON_IDX, ST *, tcon_hash, eq_tcon> TCON_MERGE;
+typedef hash_map<TCON_IDX, ST *, tcon_hash, eq_tcon> TCON_MERGE;
 
 ST *
 New_Const_Sym (TCON_IDX tcon, TY_IDX ty)
