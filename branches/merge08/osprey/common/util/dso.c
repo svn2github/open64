@@ -69,7 +69,7 @@ load_so (const char *soname, char *path, BOOL verbose)
         full_path = (char *)soname;
     }
   
-#if ! (defined(linux) || defined(BUILD_OS_DARWIN))
+#if defined(IRIX)
     if (sgidladd (full_path, RTLD_LAZY) == NULL)
 #else
     if (dlopen (full_path, RTLD_LAZY | RTLD_GLOBAL) == NULL)

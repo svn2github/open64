@@ -66,7 +66,7 @@ LCDEFS += $(HOSTDEFS) $(TARGDEFS) $(VGDEF)
 LCXXOPTS = $(STD_COMPILE_OPTS)
 LCXXDEFS += $(HOSTDEFS) $(TARGDEFS)
 
-LCINCS = -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
+LCINCS = -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR) $(VGINC)
 LCXXINCS = -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
 
 #ifneq ($(BUILD_COMPILER), EDG)
@@ -93,6 +93,19 @@ endif
 
 CFILES	= \
 	bitset.c \
+	file_util.c \
+	flags.c \
+	linklist.c \
+	memory.c \
+	priority_queue.c \
+	resource.c \
+	mstack.c \
+	tracing.c \
+	util.c \
+	vstring.c
+
+ifneq ($(BUILD_TARGET), NVISA)
+CFILES  += \
 	c_a_to_q.c \
 	c_q_add.c \
 	c_q_div.c \
@@ -103,18 +116,9 @@ CFILES	= \
 	c_q_sub.c \
 	c_q_to_a.c \
 	c_qtenscale.c \
-	file_util.c \
-	flags.c \
-	linklist.c \
-	memory.c \
-	priority_queue.c \
 	quadsim.c \
-	resource.c \
-	mstack.c \
-	tracing.c \
-	util.c \
-	vstring.c \
 	$(CFIL)
+endif
 
 HFILES	= \
 	libcomutil.h \
@@ -152,9 +156,7 @@ endif
 endif
 
 first:
-ifeq ($(BUILD_OS), LINUX)
 	$(call submake,$(BUILD_AREA)/include)
-endif
 
 last: make_libdeps
 

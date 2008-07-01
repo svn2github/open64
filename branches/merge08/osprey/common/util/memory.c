@@ -259,7 +259,7 @@ struct mem_stat {
                                  * allocated from this site (maximum
                                  * value of current.)
                                  */
-  size_t max_s;                 /* Maximum memory ever allocated
+  INT32 max_s;                 /* Maximum memory ever allocated
                                  * from this site in a single call to
                                  * malloc
                                  */
@@ -1141,7 +1141,8 @@ MEM_POOL_Alloc_P
   }
 
   Is_True (MEM_POOL_magic_num(pool) == MAGIC_NUM,
-           ("Alloc from un-initialized MEM_POOL %s\n", MEM_POOL_name(pool)));
+           ("Alloc from un-initialized MEM_POOL %s (%p) from %s line %d\n", 
+		MEM_POOL_name(pool), pool, file, line));
 
 #ifdef JUST_USE_MALLOC
   return calloc(1,size);
@@ -1925,16 +1926,26 @@ MEM_POOL_Initialize_P
   if (pool == Default_Mem_Pool) pool = The_Default_Mem_Pool;
   if (pool == Malloc_Mem_Pool) return;
   MEM_POOL_name(pool) = name;
-  MEM_POOL_bz(pool) = bzero;
   MEM_POOL_blocks(pool) = NULL;
-  MEM_POOL_frozen(pool) = FALSE;
   MEM_POOL_pure_stack(pool) = NULL;
 
   /* Don't allow duplicate initializations */
-  Is_True (MEM_POOL_magic_num(pool) != MAGIC_NUM,
-           ("Initialization of an already initialized pool: %s\n",
-            MEM_POOL_name(pool)));
+  /* It is theoretically possible that magic_num would be set
+   * by random uninitialized memory;
+   * reduce possibility by checking that boolean fields (which are bytes
+   * holding either 0 or 1 when set) are not also random */
+  /* This check is really just to help developers catch internal problems,
+   * can still be legal, so change from Assert to DevWarn. */
+  if (MEM_POOL_magic_num(pool) == MAGIC_NUM
+    && (MEM_POOL_bz(pool) & 0xe) == 0
+    && (MEM_POOL_frozen(pool) & 0xe) == 0)
+  {
+    DevWarn("Initialization of a potentially already initialized pool: %s (%p) from %s line %d",
+      MEM_POOL_name(pool), pool, file, line);
+  }
   MEM_POOL_magic_num(pool) = MAGIC_NUM;
+  MEM_POOL_bz(pool) = bzero;
+  MEM_POOL_frozen(pool) = FALSE;
 
   if (purify_pools_trace_x)
     printf ("MEM_POOL_Initialize %s 0x%p\n", MEM_POOL_name(pool), pool);

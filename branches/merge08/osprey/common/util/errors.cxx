@@ -79,7 +79,7 @@ extern "C" char *strsignal (int __sig);
 #endif
 #include <ctype.h>
 
-#if !( defined(linux) || defined(BUILD_OS_DARWIN))
+#if defined(IRIX) 
 #define _LANGUAGE_C			/* work around system header bug */
 extern "C" {
 #include <sys/fpu.h>			/* we don't have a C++ sys/fpu.h */
@@ -340,13 +340,13 @@ Handle_Signals ( void )
     setup_signal_handler (SIGILL);
     setup_signal_handler (SIGIOT);
     setup_signal_handler (SIGABRT);
-#if !(defined(linux) || defined(BUILD_OS_DARWIN))
+#if defined(IRIX)
     setup_signal_handler (SIGEMT);
 #endif
     setup_signal_handler (SIGFPE);
     setup_signal_handler (SIGSEGV);
     setup_signal_handler (SIGTERM);
-#if !(defined(linux) || defined(BUILD_OS_DARWIN))
+#if defined(IRIX)
     syssgi(SGI_SET_FP_PRECISE, 1);
     set_fpc_csr(get_fpc_csr() & ~FPCSR_FLUSH_ZERO);
     syssgi(SGI_SET_FP_PRESERVE, 1);
@@ -771,7 +771,16 @@ Emit_Message (
 
 static void
 ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
+#ifdef TARG_NVISA
+/* NVIDIA-specific: The format of error and warning messages below has been
+   changed so that they are parsable by the Visual Studio IDE (and, presumably,
+   Emacs).  We now print the full path of the offending file, immediately
+   followed by a line number in parentheses.
+*/
+                        const char *file, const char *dname, va_list vp )
+#else
                         const char *file, va_list vp )
+#endif
 {
   INT dlevel = ED_severity(edesc);	/* Declared severity */
   INT mlevel = dlevel;			/* Mapped severity */
@@ -782,7 +791,7 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
   INTPS mparm[MAX_ERR_PARMS];
 
   /* Formatting buffer: */
-  INT loc;
+  INT loc = 0;
   static char buf[BUFLEN_NONUSER];
   const char *result;
   INT kind;
@@ -804,6 +813,16 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
 
   /* Prepare header line: */
   if ( ! ED_continuation(edesc) ) {
+#ifdef TARG_NVISA
+    if (dname && *dname) {
+      loc += sprintf (&hmsg[0], "%s/", dname);
+    }  
+    loc += sprintf ( &hmsg[loc], "%s(%d): ", file && *file? file: "<input>", line);
+    loc += sprintf ( &hmsg[loc], "%s%s%s", SEV_symbol(mlevel),
+		    ED_unknown(edesc) ? "Unknown Compiler " :
+			(ED_compiler(edesc) ? "Compiler " : ""),
+		    SEV_name(mlevel) );
+#else   
     loc = sprintf ( &hmsg[0], "%s%s%s", SEV_symbol(mlevel),
 		    ED_unknown(edesc) ? "Unknown Compiler " :
 			(ED_compiler(edesc) ? "Compiler " : ""),
@@ -814,6 +833,7 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
     if ( file != NULL && *file != 0 ) {
       loc += sprintf ( &hmsg[loc], " in file %s", file );
     }
+#endif  /* TARG_NVISA */
 #ifndef METAKAP
     if ( Cur_PU_Name != NULL ) {
       INT n = snprintf ( &hmsg[loc], 300, " (user routine '%s')", Cur_PU_Name );
@@ -952,7 +972,11 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
 
 static void
 ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
+#ifdef TARG_NVISA
+                    const char *file, const char *dname, va_list vp )
+#else
                     const char *file, va_list vp )
+#endif
 {
   INT dlevel = ED_severity(edesc);	/* Declared severity */
   INT mlevel = dlevel;			/* Mapped severity */
@@ -962,7 +986,7 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
 
   /* Formatting buffer: */
 # define BUFLEN_USER 512
-  INT loc;
+  INT loc = 0;
   static char buf[BUFLEN_USER];
   const char *result;
   INT kind;
@@ -984,6 +1008,12 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
 
   /* Prepare header line: */
   if ( ! ED_continuation(edesc) ) {
+#ifdef TARG_NVISA
+    if (dname && *dname) {
+      loc += sprintf (&hmsg[0], "%s/", dname);
+    }  
+    loc += sprintf ( &hmsg[loc], "%s(%d): ", file && *file? file: "<input>", line);
+#else    
     if ( file != NULL && *file != 0 && line != ERROR_LINE_UNKNOWN ) {
       loc = sprintf ( &hmsg[0], "\"%s\", line %d: ", file, line );
     }
@@ -996,6 +1026,7 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
     else {
       loc = 0;
     }
+#endif  /* TARG_NVISA */    
     sprintf ( &hmsg[loc], "%s%s: ",
 	      ED_unknown(edesc) ? "unknown compiler "
 			        : (ED_compiler(edesc) ? "compiler " : ""),
@@ -1129,15 +1160,36 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
 }
 
 static void
+#ifdef TARG_NVISA
+ErrMsg_Report ( INT ecode, INT line, const char *file, const char *dname, va_list vp )
+#else
 ErrMsg_Report ( INT ecode, INT line, const char *file, va_list vp )
+#endif
 {
   ERROR_DESC *edesc = Find_Error_Desc (ecode);
 
   if ( ED_user(edesc) )
+#ifdef TARG_NVISA
+    ErrMsg_Report_User ( edesc, ecode, line, file, dname, vp );
+#else  
     ErrMsg_Report_User ( edesc, ecode, line, file, vp );
+#endif
   else
+#ifdef TARG_NVISA
+    ErrMsg_Report_Nonuser ( edesc, ecode, line, file, dname, vp );
+#else  
     ErrMsg_Report_Nonuser ( edesc, ecode, line, file, vp );
+#endif
 }
+
+#ifdef TARG_NVISA
+static void
+ErrMsg_Report ( INT ecode, INT line, const char *file, va_list vp )
+{
+  ErrMsg_Report (ecode, line, file, NULL, vp);
+}
+#endif  /* TARG_NVISA */
+
 
 /* ====================================================================
  *
@@ -1185,7 +1237,11 @@ ErrMsgSrcpos ( INT ecode, SRCPOS srcpos, ... )
   va_start ( vp, srcpos );
 
   IR_Srcpos_Filename(srcpos, &fname, &dname);
+#ifdef TARG_NVISA  
+  ErrMsg_Report ( ecode, line, fname, dname, vp );
+#else  
   ErrMsg_Report ( ecode, line, fname, vp );
+#endif
   va_end ( vp );
 }
 #endif
@@ -1467,7 +1523,6 @@ DevWarn( const char *fmt, ... )
 {
   va_list args;
 
-  va_start ( args, fmt );
 
   const char *phase_name = (Current_Phase != NULL) ? Current_Phase : "unknown phase";
 
@@ -1502,7 +1557,6 @@ DevWarn( const char *fmt, ... )
     va_end(args);
   }
 
-  va_end(args);
 }
 
 /* ====================================================================
