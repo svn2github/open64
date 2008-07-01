@@ -210,7 +210,7 @@ void ISA_Properties_End(void)
 	flag_value |= (1ULL << property->bit_position);
       }
     }
-    fprintf (cfile, "  0x%0*llx%s, /* %s:", int_size / 4,
+    fprintf (cfile, "  0x%0*" LL_FORMAT "x%s, /* %s:", int_size / 4,
 					    flag_value, 
 					    int_suffix,
 					    TOP_Name((TOP)code));
@@ -226,7 +226,7 @@ void ISA_Properties_End(void)
     ISA_PROPERTY property = *isi;
     int bit_position = property->bit_position;
     if (bit_position >= 0) {
-      fprintf (hfile, "#define PROP_%-16s 0x%llx%s\n", 
+      fprintf (hfile, "#define PROP_%-16s 0x%0" LL_FORMAT "x%s\n",
 		      property->name, 
 		      (1ULL << bit_position),
 		      int_suffix);

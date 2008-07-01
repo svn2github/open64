@@ -64,13 +64,14 @@
 #include "targ_isa_properties.h"
 #include "gen_util.h"
 #include "isa_print_gen.h"
+#include "targ_isa_operands.h"
 
 /* The maximum number of operands and results used by ANY target.
  * (It would be better to get the max operands and results from the
  * generated targ_isa_operands.h file -- Ken)
  */
-#define MAX_OPNDS 6
-#define MAX_RESULTS 2
+#define MAX_OPNDS ISA_OPERAND_max_operands
+#define MAX_RESULTS ISA_OPERAND_max_results
 
 typedef enum {
 	END	= 0,			// end of list marker

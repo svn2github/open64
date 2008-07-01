@@ -103,6 +103,16 @@ static char* Dot_To_Line(const char* str)
   for (s = str, r = result; *s != 0; ++s, ++r) {
     if (*s == '.')
       *r = '_';
+#if defined(TARG_NVISA)
+    else if (*s == '<')
+      *r = '_';
+    else if (*s == '>') {
+      if (*(s+1) == '<') 
+        --r; // two enums in row, only do one _
+      else
+        *r = '_';
+    }
+#endif
     else
       *r = *s;
   }

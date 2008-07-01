@@ -42,10 +42,12 @@
 #
 #  Verify that BUILD_TYPE is "SHARED" only.
 #
+ifneq ($(BUILD_TARGET), NVISA)
 ifneq ($(BUILD_TYPE), SHARED)
 default:
 	@echo Error: Only BUILD_TYPE = SHARED is supported - $(BUILD_TYPE).
 	@exit 1
+endif
 endif
 
 #----------------------------------------------------------------------
@@ -78,7 +80,8 @@ TARGDEFS =
 
 CURRENT_DIR		= .
 COMMON_DIR		= $(BUILD_TOT)/common
-COMMON_COM_DIR		= $(COMMON_DIR)/com $(COMMON_DIR)/util
+COMMON_COM_DIR		= $(COMMON_DIR)/com
+COMMON_UTIL_DIR 	= $(COMMON_DIR)/util
 TARGINFO_DIR		= $(BUILD_BASE)
 TARGINFO_ACCESS_DIR	= $(TARGINFO_DIR)/access
 TARGINFO_GENERATE_DIR 	= $(TARGINFO_DIR)/generate
@@ -98,7 +101,8 @@ SRC_DIRS = \
   $(TARGINFO_ISA_DIR)		\
   $(TARGINFO_PROC_DIR)		\
   $(TARGINFO_ABI_DIR)           \
-  $(COMMON_COM_DIR)
+  $(COMMON_COM_DIR)		\
+  $(COMMON_UTIL_DIR)
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
@@ -183,8 +187,12 @@ endif
 TARGINFO_ACCESS_SRCS = \
 	ti_asm.c		\
 	ti_bundle.c		\
-	ti_latency.c		\
 	ti_errors.c 
+
+ifneq ($(BUILD_TARGET), NVISA)
+TARGINFO_ACCESS_SRCS += \
+	ti_latency.c
+endif
 
 TARGINFO_DSO_ACCESS_SRCS = \
         ti_res.c           \
@@ -526,7 +534,7 @@ isa_operands_gen.o: isa_operands_gen.cxx isa_operands_gen.h \
 
 isa_operands.o: isa_operands.cxx isa_operands_gen.h targ_isa_registers.h \
 	targ_isa_enums.h targ_isa_lits.h topcode.h
-	$(cxx) $(CXXFLAGS) -c -I$(COMMON_COM_DIR) \
+	$(cxx) $(CXXFLAGS) -c -I$(COMMON_COM_DIR) -I$(COMMON_UTIL_DIR) \
 	$(TARGINFO_ISA_DIR)/isa_operands.cxx
 
 
@@ -1003,7 +1011,13 @@ pentium_si.o: pentium_si.cxx targ_isa_subset.h topcode.h si_gen.h
 endif
 
 libtarginfo.a: $(LIBTARGINFO_OBJS)
+ifeq ($(BUILD_OS), DARWIN)
+	ld -o $(@:.a=.o) -r $^
+	$(ar) cr $@ $(@:.a=.o)
+# necessary to force symbol resolution...
+else
 	$(ar) cru $@ $^
+endif
 
 
 exports: default

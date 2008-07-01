@@ -71,7 +71,7 @@
 #include "targ_isa_properties.h"
 #include "targ_isa_subset.h"
 #include "targ_isa_operands.h"
-
+#include "gen_util.h"
 #include "si_gen.h"
 
 static ISA_SUBSET machine_isa;
@@ -308,9 +308,9 @@ void RES_WORD::Output_All(FILE* fd)
   else {
     // Important special case.  We don't need a vector of resource words at all
     // and can just use a scalar.
-    fprintf(fd,"const SI_RRW SI_RRW_initializer = 0x%llx;\n",
+    fprintf(fd,"const SI_RRW SI_RRW_initializer = 0x%" LL_FORMAT "x;\n",
                res_words.front()->initializer);
-    fprintf(fd,"const SI_RRW SI_RRW_overuse_mask = 0x%llx;\n",
+    fprintf(fd,"const SI_RRW SI_RRW_overuse_mask = 0x%" LL_FORMAT "x;\n",
                res_words.front()->overuse_mask);
   }
 }
@@ -708,7 +708,7 @@ void RES_REQ::Output(FILE* fd)
              max_res_cycle + 1);
 
   for ( i = 0; i <= max_res_cycle; ++i )
-    fprintf(fd,",\n  0x%llx",res_vec[i]);
+    fprintf(fd,",\n  0x%" LL_FORMAT "x",res_vec[i]);
 
   fprintf(fd,"\n};\n");
 
@@ -723,7 +723,7 @@ void RES_REQ::Output(FILE* fd)
   bool is_first = true;
   for ( i = 0; i <= max_res_cycle; ++i ) {
     Maybe_Print_Comma(fd,is_first);
-    fprintf(fd,"\n  0x%llx",res_used_set[i]);
+    fprintf(fd,"\n  0x%" LL_FORMAT "x",res_used_set[i]);
   }
 
   fprintf(fd,"\n};\n");
@@ -1212,12 +1212,12 @@ void INSTRUCTION_GROUP::Output(FILE* fd)
              ii_res_id_set_gname.Gname());
   fprintf(fd,"  {{");
   for ( i = 0; i < sizeof(bad_iis) / sizeof(bad_iis[0]); ++i ) {
-    fprintf(fd, "0x%llx", bad_iis[i]);
+    fprintf(fd, "0x%" LL_FORMAT "x", bad_iis[i]);
     if ( i < sizeof(bad_iis) / sizeof(bad_iis[0]) - 1 ) fprintf(fd, ",");
   }
   fprintf(fd, "}}    , /* Bad IIs */\n");
   fprintf(fd,"  %-15d, /* valid issue slots vec size */\n",
-             valid_islots.size());
+             (unsigned int) valid_islots.size());
   fprintf(fd,"  %-15s, /* valid issue slots vec */\n",
              islot_vec_gname.Gname());
   fprintf(fd,"  %-15d, /* resource count vec size */\n",
