@@ -93,7 +93,7 @@
 
 // Read table from .B file
 extern "C" void *
-IPAA_CALLSITES_Read ( char *base, Elf64_Word size )
+IPAA_CALLSITES_Read ( char *base, UINT32 size )
 {
   IPAA_CALLSITES *cs = (IPAA_CALLSITES *)base;
   cs->_mpool = NULL;
@@ -134,7 +134,7 @@ IPAA_CALLSITES_Write ( void *callsites, Output_File *fl )
 }
 
 extern "C" void *
-IPAA_LOCAL_MAP_Read ( char *base, Elf64_Word size )
+IPAA_LOCAL_MAP_Read ( char *base, UINT32 size )
 {
   IPAA_LOCAL_MAP *lm = (IPAA_LOCAL_MAP *)base;
   lm->_mpool = NULL;

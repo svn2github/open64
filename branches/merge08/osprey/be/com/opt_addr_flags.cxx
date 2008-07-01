@@ -90,6 +90,9 @@ Set_addr_saved_expr(WN *wn, BOOL warn)
 #ifdef TARG_NVISA
   // If accessing larger area than symbol,
   // must be a cast, and requires accessing memory location.
+  // Also requires memory location if casting to a different struct
+  // since offsets may not match (could be okay if all field offsets 
+  // were same, but that case is rare so we'll be conservative).
   // Other targets can handle this because var symbols have memory location,
   // but we try to map remaining vars to registers later in cgexp.
   // So need to mark that this symbol cannot be put in a reg;
@@ -101,7 +104,28 @@ Set_addr_saved_expr(WN *wn, BOOL warn)
     if (ST_class(st) == CLASS_VAR && !ST_addr_saved(st)
       && !TY_has_union(ST_type(st)))
     {
-      if (MTYPE_byte_size(OPCODE_desc(opc))
+      TY_IDX op_ty_idx = WN_ty(wn);
+      TY_IDX ld_ty_idx = ST_type(st);
+
+      // If we are reading field of structure, use field type
+      if (Is_Structure_Type(ld_ty_idx) && 
+          (WN_field_id(wn) != 0)) {
+        UINT cur_field_id = 0;
+        FLD_HANDLE fld = FLD_get_to_field(ld_ty_idx, 
+                                          WN_field_id(wn),
+                                          cur_field_id);
+        if (!fld.Is_Null())
+          ld_ty_idx = FLD_type(fld);
+      }
+
+      if (Is_Structure_Type(ld_ty_idx)
+          && Is_Structure_Type(op_ty_idx)
+          && ! TY_are_equivalent(ld_ty_idx, op_ty_idx))
+      {
+        DevWarn("set addr_saved on ldid that accesses different struct");
+        Set_ST_addr_saved(st);
+      }
+      else if (MTYPE_byte_size(OPCODE_desc(opc))
         > MTYPE_byte_size(Mtype_For_Type_Offset(ST_type(st),WN_offset(wn))))
       {
         DevWarn("set addr_saved on ldid that accesses larger area");
@@ -189,7 +213,28 @@ Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved)
     if (ST_class(st) == CLASS_VAR && !ST_addr_saved(st)
       && !TY_has_union(ST_type(st)))
     {
-      if (MTYPE_byte_size(OPCODE_desc(opc))
+      TY_IDX op_ty_idx = WN_ty(wn);
+      TY_IDX st_ty_idx = ST_type(st);
+
+      // If we are writing field of structure, use field type
+      if (Is_Structure_Type(st_ty_idx) && 
+          (WN_field_id(wn) != 0)) {
+        UINT cur_field_id = 0;
+        FLD_HANDLE fld = FLD_get_to_field(st_ty_idx, 
+                                          WN_field_id(wn),
+                                          cur_field_id);
+        if (!fld.Is_Null())
+          st_ty_idx = FLD_type(fld);
+      }
+
+      if (Is_Structure_Type(st_ty_idx)
+          && Is_Structure_Type(op_ty_idx)
+          && ! TY_are_equivalent(st_ty_idx, op_ty_idx))
+      {
+        DevWarn("set addr_saved on stid that accesses different struct");
+        Set_ST_addr_saved(st);
+      }
+      else if (MTYPE_byte_size(OPCODE_desc(opc))
         > MTYPE_byte_size(Mtype_For_Type_Offset(ST_type(st),WN_offset(wn))))
       {
         DevWarn("set addr_saved on stid that accesses larger area");
@@ -224,10 +269,10 @@ Recompute_addr_saved_stmt(WN *wn)
     // the RHS expr of any store is kid0
     // Any idea on how to assert?
     Set_addr_saved_expr(WN_kid0(wn), TRUE);
-  }
-  if (OPCODE_operator(opc) == OPR_ISTORE) {
-    // can be address on lhs too
-    Set_addr_saved_expr(WN_kid1(wn), TRUE);
+    if (OPCODE_operator(opc) == OPR_ISTORE) {
+      // can be address on lhs too
+      Set_addr_saved_expr(WN_kid1(wn), TRUE);
+    }
   }
   else if (OPCODE_operator(opc) == OPR_ASM_STMT) {
     // need to search input nodes

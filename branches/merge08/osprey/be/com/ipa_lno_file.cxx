@@ -40,7 +40,11 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <sys/types.h>
+#ifdef __MINGW32__
+#include <WINDOWS.h>
+#else
 #include <sys/mman.h>
+#endif
 #include <sys/stat.h>
 #include <unistd.h>
 #if defined(BUILD_OS_DARWIN)
@@ -118,16 +122,22 @@ static void Ir_Lno_Signal_Handler(int sig,
 
   // Otherwise, handle this as a normal SIGSEGV or SIGBUS
   switch (sig) {
+#ifndef __MINGW32__
   case SIGBUS:
     old_handler = old_sigbus;
     break;
+#endif /* __MINGW32__ */
   case SIGSEGV:
     old_handler = old_sigsegv;
     break;
   }
   if (old_handler == SIG_DFL) {
     // Resignal - will get default handler
+#ifdef __MINGW32__
+    raise(sig);
+#else
     kill(getpid(), sig);
+#endif /* __MINGW32__ */
   } else if (old_handler != SIG_IGN) {
     // Call old handler  
     (*old_handler)(sig);
@@ -218,9 +228,20 @@ INT IPA_LNO_WRITE_FILE::Create_Temp_File()
   path = (char *) malloc(strlen(tmpdir) + strlen(DEFAULT_TEMPLATE) + 1);
   if (path == 0)
     return -1;
+#ifdef __MINGW32__
+  {
+    int mode = O_RDWR | O_CREAT | O_EXCL ;
+    do {
+      strcpy (path, tmpdir);
+      strcat (path, DEFAULT_TEMPLATE);
+      mktemp( path );
+    } while( (fd = open(path, mode)) < 0 );
+  }
+#else
   strcpy(path, tmpdir);
   strcat(path, DEFAULT_TEMPLATE);
   fd = mkstemp (path);
+#endif /* __MINGW32__ */
   if (fd != -1)
     unlink (path);
   ofl->file_name = path;
@@ -241,6 +262,7 @@ INT IPA_LNO_WRITE_FILE::Create_Temp_File()
 
 void IPA_LNO_WRITE_FILE::Open_Write_File(char *file_name)
 {
+#ifndef __MINGW32__
   // Replace the existing signal handlers for SIGSEV and SIGBUS with 
   // Ir_Lno_Signal_Handler()
 
@@ -251,6 +273,7 @@ void IPA_LNO_WRITE_FILE::Open_Write_File(char *file_name)
   if (old_sigbus == 0)
     old_sigbus = signal (SIGBUS, reinterpret_cast<void (*)(int)>
       (Ir_Lno_Signal_Handler)); 
+#endif /* __MINGW32__ */
 
   // Create a file descriptor for the output file 
   ofl = (Output_File *) malloc(sizeof(Output_File));
@@ -478,7 +501,9 @@ void IPA_LNO_WRITE_FILE::Write_Cleanup()
     free(ofl->section_list);
   ofl->num_of_section = 0;
   ofl->section_list = NULL;
+#ifndef __MINGW32__ 
   munmap((void *) ofl->map_addr, (size_t) ofl->mapped_size);
+#endif /* __MINGW32__ */
   ofl->map_addr = NULL;
   ofl->file_size = 0;
 } 
@@ -687,12 +712,30 @@ INT IPA_LNO_READ_FILE::Open_Read_File(const char input_file[])
   if (fstat(fd, &stat_buf) != 0)
     return IPALNO_READER_ERROR;
 
+#ifdef __MINGW32__
+  map_addr = NULL;
+  HANDLE map_addr_handle = NULL;
+  map_addr_handle =
+    CreateFileMapping((HANDLE) _get_osfhandle(fd), NULL,
+		      PAGE_READWRITE, 0, stat_buf.st_size, input_file);
+  if (map_addr_handle)
+    map_addr = (char *)MapViewOfFileEx(map_addr_handle,
+				       FILE_MAP_COPY,
+				       0, 0, stat_buf.st_size, 0);
+
+  if (map_addr == NULL) {
+    close(fd);
+    return IPALNO_READER_ERROR;
+  }
+
+#else
   map_addr = (char *) mmap(0, stat_buf.st_size, PROT_READ|PROT_WRITE,
     MAP_PRIVATE, fd, 0);
   if (map_addr == MAP_FAILED) {
     close (fd);
     return IPALNO_READER_ERROR;
   }
+#endif /* __MING32 __ */
 
   // If everything is fine, store information about the file 
   ifl = (Input_File *) malloc(sizeof(Input_File));
@@ -701,7 +744,9 @@ INT IPA_LNO_READ_FILE::Open_Read_File(const char input_file[])
 
   close(fd);
   if ((st = Check_Input()) < 0) {
+#ifndef __MINGW32__
     munmap(map_addr, stat_buf.st_size);
+#endif /* __MINGW__ */
     return st;
   }
   return IPALNO_SUCCESS; 
@@ -775,8 +820,10 @@ INT IPA_LNO_READ_FILE::Section_Size(Elf64_Word info)
 
 void IPA_LNO_READ_FILE::Close_Read_File()
 { 
+#ifndef __MINGW32__
   if (ifl != NULL)  
     munmap(ifl->mapped_address, ifl->mapped_size); 
+#endif /* __MINGW32__ */
 } 
 
 //-----------------------------------------------------------------------

@@ -62,9 +62,11 @@
 #include "targ_sim.h"
 
 #ifndef BUILD_SKIP_PROMPF
+#ifdef SHARED_BUILD
 #pragma weak New_Construct_Id 
 #pragma weak Get_Next_Construct_Id
 #pragma weak Anl_File_Path
+#endif //SHARED_BUILD
 #else
 extern "C" INT64 Get_Next_Construct_Id() 
 {

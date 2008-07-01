@@ -50,7 +50,7 @@
 // without finding and fixing those references.
 #endif /* KEY Mac port */
 
-#if defined(__linux__) || defined(BUILD_OS_DARWIN)
+#if !defined(IRIX)
 
 // Work around the "undefined weak symbol" bug in Linux.
 //
@@ -278,4 +278,4 @@ void (*W2F_Translate_Stid_Lhs_p)(char *strbuf, UINT bufsize,
 void (*W2F_Translate_Wn_p)(FILE *outfile, WN *wn);
 void (*W2F_Translate_Wn_Str_p)(char *strbuf, UINT bufsize, WN *wn);
 
-#endif // __linux__
+#endif // !IRIX

@@ -242,9 +242,28 @@ ST_is_const_initialized_scalar(const ST *st, INT64 offset, TCON &tcon_copy)
 	return FALSE;
 
     /* make sure we have a value */
-    INITV &inov = Initv_Table[INITO_val(inito_idx)];
+    INITV_IDX inv;
+    if (Is_Simple_Type(ty)) {
+      inv = INITO_val(inito_idx);
+    } 
+    else { // array element
+      INITV_IDX binv = INITO_val(inito_idx);
+      INT inv_offset = 0;
+      INT increment = TY_size(TY_etype(ty));
+      mtype = TY_mtype(TY_etype(ty));
+      if (INITV_kind(binv) == INITVKIND_BLOCK) {
+        FOREACH_INITV (INITV_blk(binv), inv) {
+          if (inv_offset == offset) {
+            break;
+          }
+          inv_offset += increment;
+        }
+        FmtAssert(inv_offset == offset, ("did not find array element"));
+      }
+      else return FALSE;
+    }
 
-    switch (INITV_kind(inov)) {
+    switch (INITV_kind(inv)) {
     case INITVKIND_ZERO:
       tcon_copy = Host_To_Targ(mtype, 0L);
       return TRUE;
@@ -252,7 +271,7 @@ ST_is_const_initialized_scalar(const ST *st, INT64 offset, TCON &tcon_copy)
       tcon_copy = Host_To_Targ(mtype, 1L);
       return TRUE;
     case  INITVKIND_VAL:
-      tcon_copy = Tcon_Table[INITV_tc(inov)];
+      tcon_copy = INITV_tc_val(inv);
       return TRUE;
     }
     return FALSE;
@@ -339,6 +358,23 @@ Find_Lda (WN *tree)
 	    return tree;
 	  }
 	}
+        else if (ST_sclass(WN_st(tree)) == SCLASS_FSTATIC
+	  && ST_in_constant_mem(WN_st(tree)))
+        {
+	  TY_IDX ty = WN_ty(tree);
+	  if (TY_kind(ty) == KIND_STRUCT) {
+	      UINT cur_field_id = 0;
+	      FLD_HANDLE fld = FLD_get_to_field (
+		ty, WN_field_id(tree), cur_field_id);
+	      if ( ! fld.Is_Null())
+		ty = FLD_type(fld);
+	  }
+	  if (TY_kind(ty) == KIND_POINTER) {
+	    // not an lda, but is ldid of constant pointer,
+	    // which must point to global.
+	    return tree;
+	  }
+        }
 	return NULL;
   case OPR_ADD:
   case OPR_SUB:

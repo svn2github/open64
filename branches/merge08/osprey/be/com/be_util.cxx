@@ -118,10 +118,12 @@ extern BOOL Wn_Is_Intconst(WN *ldid, INT64 *val)
 /* official builds will link with identfile that defines _Release_ID */
 extern const char *__Release_ID;
 const char *Default_Release_ID = "none";
+#if defined(SHARED_BUILD)
 #if defined(BUILD_OS_DARWIN)
 #pragma weak __Release_ID
 const char *__Release_ID = "none";
 #else /* defined(BUILD_OS_DARWIN) */
 #pragma weak __Release_ID = Default_Release_ID
 #endif /* defined(BUILD_OS_DARWIN) */
+#endif
 

@@ -2097,12 +2097,14 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
 			FALSE);		/* is_artificial */
 
   (void)DST_append_child( parent_dst, dst );
+#if 0
   info = DST_INFO_IDX_TO_PTR( dst );
   assoc = &DST_VARIABLE_def_st(
 		DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_VARIABLE));
   pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(st);
   DST_SET_assoc_idx(DST_INFO_flag(info));
   DST_RESET_assoc_fe(DST_INFO_flag(info));
+#endif
 }
 
 
@@ -2233,12 +2235,14 @@ Create_New_DST ( DST_INFO_IDX dst, ST *st , BOOL append_to_nested )
   if (append_to_nested)
     (void)DST_append_child( nested_dst, new_dst );
   info = DST_INFO_IDX_TO_PTR( new_dst );
+#if 0
   iattr = DST_INFO_attributes(info);
   assoc = &DST_VARIABLE_def_st(
 		DST_ATTR_IDX_TO_PTR(iattr, DST_VARIABLE));
   pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(st);
   DST_SET_assoc_idx(DST_INFO_flag(info));
   DST_RESET_assoc_fe(DST_INFO_flag(info));
+#endif
 }
 
 
@@ -2267,12 +2271,14 @@ Create_Func_DST ( char * st_name )
 			FALSE			/* external */
 			);
   (void)DST_append_child( dst, nested_dst );
+#if 0
   info = DST_INFO_IDX_TO_PTR( nested_dst );
   assoc = &DST_SUBPROGRAM_def_st(
 		DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_SUBPROGRAM));
   pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(parallel_proc);
   DST_SET_assoc_idx(DST_INFO_flag(info));
   DST_RESET_assoc_fe(DST_INFO_flag(info));
+#endif
 }
 
 

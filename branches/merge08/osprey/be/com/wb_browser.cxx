@@ -82,12 +82,13 @@ extern void (*WB_BROWSER_Summary_p)(FILE *fp, WB_BROWSER *wb);
 #define WB_BROWSER_Summary (*WB_BROWSER_Summary_p)
 extern void (*Print_DO_LOOP_INFO_BASE_p)(FILE *fp, DO_LOOP_INFO_BASE *b);
 #define Print_DO_LOOP_INFO_BASE (*Print_DO_LOOP_INFO_BASE_p)
-#endif
+#else
 #pragma weak Print_ACCESS_ARRAY
 #pragma weak Print_IF_INFO
 #pragma weak Print_DO_LOOP_INFO_BASE
 #pragma weak WB_BROWSER_Summary
 #pragma weak WB_BROWSER_Summary_p
+#endif
 
 
 static const char *operator_table[OPERATOR_LAST + 1] =

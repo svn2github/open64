@@ -813,13 +813,8 @@ static LABEL_IDX NewLabel(void)
 
   // create label name
   char *name = (char *) alloca (strlen(".L..") + 8 + 8 + 1);
-#if defined(TARG_SL)
   sprintf(name, "%s%s%d%s%d", LABEL_PREFIX, Label_Name_Separator, 
 	Current_PU_Count(), Label_Name_Separator, label);
-#else
-  sprintf(name, ".L%s%d%s%d", Label_Name_Separator, 
-	Current_PU_Count(), Label_Name_Separator, label);
-#endif
   LABEL_Init (lab, Save_Str(name), LKIND_DEFAULT);
   return label;
 }
@@ -4352,7 +4347,7 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
 
     case MTYPE_I8:
     case MTYPE_U8:
-      WN_st_idx(tree) = ST_st_idx(MTYPE_To_PREG(mtype));
+      WN_st_idx(tree) = ST_st_idx(Int64_Preg);
       WN_load_offset(tree) = First_Int_Preg_Return_Offset;
 #ifdef TARG_NVISA
       // int64 are separate register class, so use unique preg num
@@ -6981,7 +6976,9 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
 
 #ifdef TARG_NVISA
-    if (Action(LOWER_TO_CG) && WN_class(tree) == CLASS_PREG) {
+    if ( Action (LOWER_TO_CG)
+    &&   (WN_class(tree) == CLASS_PREG)
+    &&   (! Preg_Is_Dedicated (WN_store_offset (tree))))
       // we need to track what memory is being accessed when storing
       // an lda into a preg.  So if kid has an lda, put that in preg table.
       WN *lda = Find_Lda (WN_kid0(tree));
@@ -7407,7 +7404,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     } 
   }
 #endif
-#endif // TARG_NVISA
+#endif // !TARG_NVISA
   /* Lower kids if not done already. */
   if (! kids_lowered)
   {
@@ -9794,8 +9791,7 @@ static WN *lower_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
   return wn;
 }
 
-
-#ifdef linux
+#if defined(linux) || defined(__CYGWIN__) || defined(__MINGW32__)
 /* Note no sincos() on Darwin */
 /* ====================================================================
  *
@@ -9899,7 +9895,7 @@ static WN *lower_intrinsic_op(WN *block, WN *tree, LOWER_ACTIONS actions)
   Is_True(OPCODE_is_intrinsic(op),
 	  ("expression is not intrinsic"));
 
-#ifdef linux
+#if !defined(IRIX)
   switch (id) {
   case INTRN_F4CIS:
   case INTRN_F8CIS:
@@ -10171,11 +10167,7 @@ static WN *lower_actual(WN *block, WN *actual, TYPE_ID parmType, INT32 reg)
     }
     else
 #endif
-    if (Preg_Offset_Is_Int(reg)) 
-	regST = Int_Preg;
-    else
-    	// keep float size in preg
-	regST=	MTYPE_To_PREG(parmType);
+    regST = Standard_Preg_For_Mtype(parmType);
 
     TYPE_ID type = TY_mtype(ST_type(regST));
 
@@ -11007,7 +10999,7 @@ static WN *lower_assert(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 	/* __C_runtime_error ( BRK_RANGE, PU_name, line_no, fmt, ...);
 	 */
-#if ! (defined(linux) || defined(BUILD_OS_DARWIN))
+#if defined(IRIX)
 	kids[0] = WN_Intconst ( MTYPE_I4, BRK_RANGE );
 #else
 	fprintf(stderr, "Don't know how to do BRK_RANGE\n");
@@ -11032,7 +11024,7 @@ static WN *lower_assert(WN *block, WN *tree, LOWER_ACTIONS actions)
 	trap = WN_Create_Intrinsic ( OPC_VINTRINSIC_CALL,
 				     INTRN_RT_ERR, 4, kids );
       } else {
-#if ! (defined(linux) || defined(BUILD_OS_DARWIN))
+#if defined(IRIX)
 	trap = WN_CreateTrap ( BRK_RANGE );
 #else   
 	fprintf(stderr, "Don't know how to do BRK_RANGE\n");
@@ -11652,7 +11644,7 @@ static WN *lower_intrinsic_call(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (returnValueUnused && INTRN_has_no_side_effects(id))
     {
       DevWarn("lower_intrinsic_call(): function %s is void or unused and has"
-	      " no_side_effects. It will be removed", get_intrinsic_name(id));
+	      " no_side_effects. It will be removed", INTRINSIC_name(id));
 
       return newBlock;
     }
@@ -11958,7 +11950,7 @@ static WN *lower_speculate(WN *block, WN *tree, LOWER_ACTIONS actions)
 /* ====================================================================
  *
  * WN *lower_conditional(WN *block, WN *tree, BOOL branchType,
- *                       LOWER_ACTIONS actions)
+ *               LOWER_ACTIONS actions)
  *
  * lower CAND/CIOR to scf
  *

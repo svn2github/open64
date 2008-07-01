@@ -66,7 +66,6 @@
 #include <elf.h>
 #endif /* defined(BUILD_OS_DARWIN) */
 #include <cmplrs/rcodes.h>
-#include <sys/resource.h>
 #ifndef __MINGW32__
 #include <sys/resource.h>
 #endif /* __MINGW32__ */

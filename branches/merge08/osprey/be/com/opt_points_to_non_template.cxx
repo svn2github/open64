@@ -56,6 +56,7 @@
 #include "opt_sym.h"
 #include "opt_util.h"
 
+#ifdef SHARED_BUILD
 #if defined(__linux__) || defined(BUILD_OS_DARWIN)
 #ifdef SHARED_BUILD
 extern AUX_ID (*WN_aux_p) (const WN*);
@@ -66,6 +67,7 @@ extern AUX_ID WN_aux (const WN*);
 #else
 #pragma weak WN_aux__GPC2WN
 #endif // __linux__
+#endif // SHARED_BUILD
 
 
 // ************************************************************************

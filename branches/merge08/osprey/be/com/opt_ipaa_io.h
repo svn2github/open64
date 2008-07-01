@@ -65,7 +65,7 @@ static char *opt_ipaa_io_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/b
 
 extern "C" {
   // Read table from .B file
-  void *IPAA_LOCAL_MAP_Read ( char *base, Elf64_Word size );
+  void *IPAA_LOCAL_MAP_Read ( char *base, UINT32 size );
 
   // Write the table to the .B file
   void IPAA_LOCAL_MAP_Write ( void *localmap, struct output_file *fl );

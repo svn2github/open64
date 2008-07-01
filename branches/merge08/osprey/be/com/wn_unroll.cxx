@@ -30,7 +30,6 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "config.h"
@@ -141,6 +140,26 @@ public:
 	if (_step_amt > 0)
 	  _trips = WN_Sub(_rtype, _end, WN_COPY_Tree_With_Map(_start));
 	else _trips = WN_Sub(_rtype, WN_COPY_Tree_With_Map(_start), _end);
+        // if not already adjusted for LE/GE, and has remainder, then adjust
+        // e.g. for (i = 0; i < 5; i+=2) has 5/2+1 trips
+        if (! (WN_operator(_end_cond) == OPR_LE || 
+	       WN_operator(_end_cond) == OPR_GE))
+        {
+          WN *tmp = WN_Binary(OPR_MOD, _rtype, WN_COPY_Tree_With_Map(_trips), 
+                            WN_Intconst(_rtype, _abs_step_amt));
+          tmp = WN_Select(_rtype, WN_EQ(_rtype, tmp, WN_Intconst(_rtype, 0)), 
+                        WN_Intconst(_rtype, 0),
+                        WN_Intconst(_rtype, 1));
+          // trips should be number of trips actually needed, so divide by step
+          _trips = WN_Div(_rtype, _trips, WN_Intconst(_rtype, _abs_step_amt));
+          _trips = WN_Add(_rtype, _trips, tmp);
+        }
+        else {
+          // trips should be number of trips actually needed, so divide by step
+          _trips = WN_Div(_rtype, _trips, WN_Intconst(_rtype, _abs_step_amt));
+        }
+
+
       }
 
       if (WN_kid_count(doloop) == 6)
@@ -241,7 +260,7 @@ WN_UNROLL::Analyze_body_expr(WN *tree)
       Analyze_body_expr(WN_kid(tree,i)); 
     return;
 
-  default: Is_True(FALSE,("unexpected operator"));
+  default: Is_True(FALSE,("unexpected operator %s", OPERATOR_name(opr)));
   }
 
   return;
@@ -500,6 +519,10 @@ WN_UNROLL::Unroll(INT unroll_times)
   INT i;
   WN *stmt, *new_stmt;
 
+#if defined(TARG_NVISA)
+  DevWarn("wn_unroll loop%d %d times", loop_count, unroll_times);
+#endif
+
   // change _orig_wn to a BLOCK node
   WN_set_operator(_orig_wn, OPR_BLOCK);
   WN_set_rtype(_orig_wn, MTYPE_V);
@@ -517,11 +540,10 @@ WN_UNROLL::Unroll(INT unroll_times)
     const_trips = WN_const_val(_trips);
   WN *unrolled_end_cond;
   if (const_trips) 
-    unrolled_trips = WN_Intconst(_rtype, const_trips / 
-    				 (unroll_times * _abs_step_amt) * 
-				 (unroll_times * _abs_step_amt));
+    unrolled_trips = WN_Intconst(_rtype, (const_trips / unroll_times ) *
+                                 (unroll_times * _abs_step_amt));
   else {
-    unrolled_trips = WN_Div(_rtype, _trips, WN_Intconst(_rtype, unroll_times*_abs_step_amt));
+    unrolled_trips = WN_Div(_rtype, _trips, WN_Intconst(_rtype, unroll_times));
     unrolled_trips = WN_Mpy(_rtype, unrolled_trips, WN_Intconst(_rtype, unroll_times*_abs_step_amt));
   }
   unrolled_end_cond = WN_Relational(_step_amt > 0 ? OPR_LT : OPR_GT, _rtype, 
@@ -551,6 +573,19 @@ WN_UNROLL::Unroll(INT unroll_times)
     if (WN_kid1(_loop_info))
       WN_kid1(_loop_info) = WN_Div(_rtype, WN_kid1(_loop_info),
 					   WN_Intconst(_rtype, unroll_times));
+
+    if (const_trips && (const_trips % unroll_times == 0)
+      && WN_operator(WN_kid1(_loop_info)) == OPR_INTCONST
+      && WN_const_val(WN_kid1(_loop_info)) == 1)
+    {
+      // only 1 iteration of loop (fully unrolled), 
+      // so remove loop structure to enable more optimization
+      DevWarn("only 1 iteration of loop, so remove");
+      WN_INSERT_BlockLast(_orig_wn, unrolled_init_stmt);
+      WN_INSERT_BlockLast(_orig_wn, unrolled_body);
+      WN_INSERT_BlockLast(_orig_wn, unrolled_incr_stmt);
+      return;
+    }
   }
   WN *unrolled_do_loop = WN_CreateDO(WN_CopyNode(_indx_var), unrolled_init_stmt,
 				     unrolled_end_cond, unrolled_incr_stmt, 
@@ -559,15 +594,15 @@ WN_UNROLL::Unroll(INT unroll_times)
 
   WN_INSERT_BlockLast(_orig_wn, unrolled_do_loop);
 
-  if (const_trips && (const_trips % (unroll_times*_abs_step_amt) == 0))
+  if (const_trips && (const_trips % unroll_times == 0))
     return;
 
   // form remainder loop
   if (const_trips)
     WN_kid0(_init_stmt) = WN_Binary(_step_amt > 0 ? OPR_ADD : OPR_SUB, _rtype, 
     	WN_COPY_Tree(_start),
-    	WN_Intconst(_rtype, const_trips / (unroll_times * _abs_step_amt) * 
-				(unroll_times * _abs_step_amt)));
+        WN_Intconst(_rtype, (const_trips / unroll_times) *
+                                (unroll_times * _abs_step_amt)));
   else WN_kid0(_init_stmt) = WN_CopyNode(WN_kid0(_end_cond));
   WN *loop_info = WN_CreateLoopInfo(WN_CopyNode(WN_kid0(_end_cond)),
   				    NULL, unroll_times-1, 
@@ -613,6 +648,10 @@ WN_UNROLL_loop(WN *doloop)
     if (WN_Loop_Unimportant_Misc(wn_unroll.Loop_info()))
       return;
   }
+  UINT unroll_times = 0;
+  UINT max_unroll_size;
+  USRCPOS srcpos;
+  USRCPOS_srcpos(srcpos)  = WN_Get_Linenum(doloop);
 
 #ifdef TARG_NVISA
   ++loop_count;
@@ -678,9 +717,6 @@ DevWarn("unrolled size would be %d * %d", wn_unroll.Node_count(), unroll_times);
   wn_unroll.Analyze_body_stmt(WN_kid(doloop, 4));
   if (WOPT_Enable_WN_Unroll < 2 && wn_unroll.If_count() == 0)
     return; // CG will unroll it
-  USRCPOS srcpos;
-  USRCPOS_srcpos(srcpos)  = WN_Get_Linenum(doloop);
-  INT unroll_times = 0;
   if (wn_unroll.Istore_count() == 0) {
     if (wn_unroll.Node_count() < 40)
       unroll_times = 8;

@@ -43,6 +43,10 @@
 #endif 
 #endif /* ! defined(BUILD_OS_DARWIN) */
 
+#ifdef __MINGW32__
+#include <WINDOWS.h>
+#endif /* __MINGW32__ */
+
 #ifndef pu_info_INCLUDED
 #include "pu_info.h"
 #endif 

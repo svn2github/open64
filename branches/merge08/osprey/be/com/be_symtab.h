@@ -508,7 +508,11 @@ private:
   WN *lda;
 #endif
 public:
+#ifdef TARG_NVISA
+  BE_PREG(void) : home_location(NULL), lda(NULL)  { }
+#else
   BE_PREG(void) : home_location(NULL)   { }
+#endif
   void  Set_home_location(WN *wn)       { home_location = wn; }
   WN   *Home_location(void) const       { return home_location; }
 #ifdef TARG_NVISA

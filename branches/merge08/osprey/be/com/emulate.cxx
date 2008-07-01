@@ -61,6 +61,7 @@
 #include "config_targ_opt.h"
 #include "errors.h"
 #include "erglob.h"
+#include "erbe.h"
 #include "tracing.h"
 #include "stab.h"
 #include "data_layout.h"
@@ -3526,8 +3527,25 @@ static BOOL check_size(WN *size, WN *src, WN *dst)
 
     INT64 n = WN_const_val(size);
 
+    /* Here we have increased the size (CG_memmove_inst_count) allowed
+     * for inline memset. NVISA expects inline, not a call.
+     * Future : we need to make this loop above some threshold. 
+     */
     if (n <= CG_memmove_inst_count)
       return TRUE;
+#ifdef TARG_NVISA 
+    else
+    {
+        /* NVISA expects memset to gen inline code. If too large
+         * emit an error
+         */
+        mUINT64 srcpos = WN_Get_Linenum (src);
+        if (srcpos)
+            ErrMsgSrcpos (EC_Memset_Too_Large, srcpos, n);
+        else
+            ErrMsg (EC_Memset_Too_Large, n);
+    }
+#endif
 
     srcTY = aux_compute_alignment(src);
 
@@ -5092,7 +5110,7 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     break;
 
   case INTRN_MEMSET:
-#if !defined(KEY) || defined(TARG_SL)	// Don't emulate memset; call PathScale memset instead.
+#if !defined(KEY) || defined(TARG_SL) || defined(TARG_NVISA)	// Don't emulate memset; call PathScale memset instead.
     if (CG_mem_intrinsics)
     {
       return em_memset(block, tree, WN_arg(tree, 0), WN_arg(tree, 1), WN_arg(tree, 2));

@@ -67,8 +67,8 @@ extern void
 Whirl2C_Init (WN* func_nd) 
 {
   w2src_func_nd = func_nd;
-#ifndef BUILD_SKIP_WHIRL2C
   if (!init_whirl2c) {
+#ifndef BUILD_SKIP_WHIRL2C
     if (W2C_Process_Command_Line == NULL) {
       /* load and initialize whirl2c */
       extern char *W2C_Path;
