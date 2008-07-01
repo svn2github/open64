@@ -188,10 +188,12 @@ EBO_hash_op (OP *op,
     //	   TN_spill is different from TN_var.  Bug 13223.
     if (hash_value != EBO_SPILL_MEM_HASH) {
       const INT n = TOP_Find_Operand_Use(OP_code(op), OU_offset);
-      TN *tn = OP_opnd(op, n);
-      if (TN_is_symbol(tn) &&
-	  CGSPILL_Is_Spill_Location(TN_var(tn))) {
-	hash_value = EBO_SPILL_MEM_HASH;
+      if (n >= 0) {
+        TN *tn = OP_opnd(op, n);
+        if (TN_is_symbol(tn) &&
+  	    CGSPILL_Is_Spill_Location(TN_var(tn))) {
+	  hash_value = EBO_SPILL_MEM_HASH;
+        }
       }
     }
 #else
