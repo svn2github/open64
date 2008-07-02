@@ -969,7 +969,7 @@ ARC *new_arc_with_latency(CG_DEP_KIND kind, OP *pred, OP *succ,
 }
 
 // See above for specification.
-inline ARC *new_arc(CG_DEP_KIND kind, OP *pred, OP *succ, UINT8 omega,
+ARC *new_arc(CG_DEP_KIND kind, OP *pred, OP *succ, UINT8 omega,
 		    UINT8 opnd, BOOL is_definite)
 {
   INT16 latency = (CG_DEP_Adjust_OOO_Latency && PROC_is_out_of_order() &&

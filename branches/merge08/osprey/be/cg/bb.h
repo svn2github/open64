@@ -1125,12 +1125,14 @@ extern void BBlist_Delete_BB(BBLIST **lst, BB *bb);
 extern BBLIST *BBlist_Add_BB_with_Prob(BBLIST **lst, BB *bb, float prob,
 				       BOOL via_feedback = FALSE,
 				       BOOL set_prob     = FALSE,
-				       BOOL via_hint = FALSE);
+				       BOOL via_hint = FALSE,
+				       BOOL incr_prob = TRUE);
 
 #else
 extern BBLIST *BBlist_Add_BB_with_Prob(BBLIST **lst, BB *bb, float prob,
 				       BOOL via_feedback = FALSE,
-				       BOOL set_prob     = FALSE);
+				       BOOL set_prob     = FALSE,
+				       BOOL incr_prob = TRUE);
 #endif
 
 /* Unlink the pred and succ basic blocks. */

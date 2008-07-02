@@ -1471,7 +1471,6 @@ void OP_Base_Offset_TNs(OP *memop, TN **base_tn, TN **offset_tn)
 }
 
 
-#ifdef TARG_SL 
 /* Is <op> a copy from a callee-saves register into its save-TN?
  */
 BOOL
@@ -1511,7 +1510,6 @@ OP_Is_Copy_From_Save_TN( const OP* op )
 
   return FALSE;
 }
-#endif 
 
 
 #ifdef TARG_IA64
@@ -1697,3 +1695,4 @@ BOOL OP_def_return_value(OP* op)
 }        
 
 #endif
+

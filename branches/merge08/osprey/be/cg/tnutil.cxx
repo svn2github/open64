@@ -1262,7 +1262,7 @@ Find_TN_with_Matching_Register( TN *tn0, TN_LIST *list )
 }
 
 //TODO: probably want to move this generic routine elsewhere.
-inline BOOL
+BOOL
 Is_OP_Cond(OP *op)
 {
   // Conditional moves or predicated instructions have this property.

@@ -822,7 +822,7 @@ Predicate_Read_Write( OPS *ops, OP *op, TN *tn_predicate )
 }
 #endif
 /////////////////////////////////////
-static void
+void
 Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
 /////////////////////////////////////
 //
