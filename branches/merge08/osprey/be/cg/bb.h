@@ -565,8 +565,6 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #ifdef KEY
 #define BBM_NON_LOCAL_LABEL     0x00400000 /* BB has a non-local label */
 #endif
-#if defined(TARG_IA64) || defined(TARG_SL)
-#define BBM_EDGE_SPLITTING	0x00800000 /* BB is used for edge splitting */
 
 #ifdef TARG_IA64
 #define BBM_RECOVERY            0x00400000 /* BB is a recovery block */
@@ -586,11 +584,11 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_SCHEDULED_SIZE      0x08000000          
 #define BBM_FREQ_UNBALANCED	0x10000000
 #define BBM_LOCAL_FLAG2         0x20000000
-#endif // TARG_SL
-
+#define BBM_EDGE_SPLITTING	0x00800000 /* BB is used for edge splitting */
 #define BB_edge_splitting(x)  	(BB_flag(x) &= BBM_EDGE_SPLITTING)
 #define Set_BB_edge_splitting(x)(BB_flag(x) |= BBM_EDGE_SPLITTING)
-#endif
+#endif // TARG_SL
+
 
 #if defined (TARG_SL)
 /* BB is the prolog of  zero-delay-loop, so it  only contains 
