@@ -98,10 +98,8 @@ typedef enum INTRN_RETKIND {
 #define NOT_ACTUAL	FALSE
 #define CGINTRINSIC	TRUE
 #define NOT_CGINTRINSIC	FALSE
-#if defined(TARG_SL)
 #define NOT_SLAVE       CGINTRINSIC
 #define SLAVE           NOT_CGINTRINSIC
-#endif
 
 // the info we store for each intrinsic
 typedef struct intrn_info_t {
@@ -111,6 +109,7 @@ typedef struct intrn_info_t {
  mBOOL		never_returns;
  mBOOL		is_actual;
   mBOOL		is_cg_intrinsic;
+ mBOOL          slave;
  INTRN_RETKIND	return_kind;
  const char    *c_name;
  const char    *specific_name; // deprecated, but leave in struct for now
@@ -179,6 +178,14 @@ inline const char * INTRINSIC_name (const INTRINSIC i)
 }
 
 #if defined(TARG_SL)
+inline BOOL INTRN_is_sl (const INTRINSIC i)
+{
+  if(i>=INTRN_SL_INTRN_BGN && i<=INTRN_SL_INTRN_END) 
+    return TRUE;
+  else 
+    return FALSE;
+}
+
 inline BOOL INTRN_is_slave (const INTRINSIC i)
 {
   if (i == INTRN_C3_PTR)
@@ -194,60 +201,157 @@ inline BOOL INTRN_copy_addr(const INTRINSIC i)
   return FALSE;
 }
 
-typedef struct {
-  INTRINSIC id;
-  INT32 addr_id;
-  INT32 sw_id;
-  INT32 macro_id;
-  INT32 size_id;
-  INT32 size_coeff;
-  INT32 size_stride;
-  BOOL maybe_strided;
-} C2_LS_ATTR; 
+#define SL_MAX_MEMOP_COUNT 2
 
-#define C2_LS_LAST 14
-static C2_LS_ATTR c2_ls_attr_tab[C2_LS_LAST] = {
-  INTRN_C2_LD_V, 1,2,3,5,16,0,FALSE,
-  INTRN_C2_LD_G, 0,-1,-1,3,1,0,FALSE,
-  INTRN_C2_LD_V2G, 0,-1,-1,2,1,16,TRUE,
-  INTRN_C2_LD_V_IMM, 4,-1,1,3,16,0,FALSE,
-  INTRN_C2_LD_C_IMM, 1,-1,-1,-1,1,0,FALSE,
-  INTRN_C2_LD_G_IMM, 2,-1,-1,1,1,0,FALSE,
-  INTRN_C2_LD_V2G_IMM, 2,-1,-1,1,1,16,TRUE,
-  INTRN_C2_ST_V, 1,-1,2,3,16,0,FALSE,
-  INTRN_C2_ST_G, 1,-1,-1,3,1,0,FALSE,
-  INTRN_C2_ST_G2V, 1,-1,-1,2,1,16,TRUE,
-  INTRN_C2_ST_V_IMM, 3,-1,2,1,16,0,FALSE,
-  INTRN_C2_ST_C_IMM, 1,-1,-1,-1,1,0,FALSE,
-  INTRN_C2_ST_G_IMM, 2,-1,-1,1,1,0,FALSE,
-  INTRN_C2_ST_G2V_IMM, 2,-1,-1,1,1,16,TRUE,
+typedef struct  {
+  INTRINSIC id;
+  BOOL specific; //whether the intrinsic by defination specify the memory operation
+  BOOL like_store;
+  INT32 memop_count; //the count of memory operation carried by the intrinsic
+  INT32 addr_id[SL_MAX_MEMOP_COUNT];  //the parameter ids which carry addresses accessed by the intrinsic
+  struct{
+    INT32 sw_id; //the parameter id which carry the search window mode specification for sl2 intrinsic
+    INT32 macro_id; //the parameter id which carry the macro mode specification for sl2 intrinsic
+    INT32 size_id;  //the parameter id which carry the size info for sl2 intrinsic
+    INT32 size_coeff;  //the size coeff for sl2 intrinsic
+    INT32 size_stride;  //the mem operation stride for sl2 intrinsic
+    BOOL maybe_strided;  //whether the mem operation is stried for sl2 intrinsic
+  }  mem_spec;
+} sl_intrn_meminfo_t; 
+
+#define INVALID_PID -1
+#define SL_INTRN_MEMINFO_LAST 48
+static sl_intrn_meminfo_t sl_intrn_meminfo_tab[SL_INTRN_MEMINFO_LAST] = {
+  //c3 intrinsics
+  INTRN_C3_MAC_A,	FALSE, FALSE, 2, {2, 4}, {0} ,
+  INTRN_C3_MACN_A,	FALSE, FALSE, 2, {2, 4}, {0},	
+  INTRN_C3_MAC_AR, 	FALSE, FALSE, 1, {3, INVALID_PID}, {0},
+  INTRN_C3_MACN_AR, 	FALSE, FALSE, 1, {3, INVALID_PID}, {0},
+  INTRN_C3_MULA_AR, 	FALSE, FALSE, 1, {3, INVALID_PID}, {0},
+  INTRN_C3_DMAC_A, 	FALSE, FALSE, 2, {2, 4}, {0},
+  INTRN_C3_DMACN_A, 	FALSE, FALSE, 2, {2, 4}, {0},
+  INTRN_C3_SAADDH_A, 	FALSE, FALSE, 2, {0, 2}, {0},
+  INTRN_C3_SASUBH_A, 	FALSE, FALSE, 2, {0, 2}, {0},
+  INTRN_C3_MULA_A, 	FALSE, FALSE, 2, {2, 4}, {0},
+  INTRN_C3_SAMULH_A, 	FALSE, FALSE, 2, {0, 2}, {0},
+  INTRN_C3_DMULT_A, 	FALSE, FALSE, 2, {2, 4}, {0},
+  INTRN_C3_DMULTN_A, 	FALSE, FALSE, 2, {2, 4}, {0},
+  INTRN_C3_SAADD_A, 	FALSE, FALSE, 2, {0, 2}, {0},
+  INTRN_C3_SAADDHA_A, 	FALSE, FALSE, 1, {2, INVALID_PID}, {0},
+  INTRN_C3_SASUB_A, 	FALSE, FALSE, 2, {0, 2}, {0},
+  INTRN_C3_LOAD, 	FALSE, FALSE, 1, {0, INVALID_PID}, {0},
+  INTRN_C3_STORE, 	FALSE, TRUE,  1, {1, INVALID_PID}, {0},
+  INTRN_C3_FFTLD, 	FALSE, FALSE, 1, {0, INVALID_PID}, {0},
+  INTRN_C3_FFTST, 	FALSE, TRUE,  1, {1, INVALID_PID}, {0},
+  INTRN_SET_CIRCBUF, 	FALSE, FALSE, 2, {3, 4}, {0},
+  INTRN_RESET_CIRCBUF, 	FALSE, FALSE, 2, {3, 4}, {0},
+  // new C3 intrinsics
+  INTRN_C3DMAC_A, 	FALSE, FALSE, 2, {2, 4}, {0},
+  INTRN_C3DMULA_A, 	FALSE, FALSE, 1, {2, INVALID_PID}, {0},
+  INTRN_C3LD, 		FALSE, FALSE, 1, {0, INVALID_PID}, {0},
+  INTRN_C3ST, 		FALSE, TRUE,  1, {1, INVALID_PID}, {0},
+  INTRN_C3MAC_A, 	FALSE, FALSE, 2, {2, 4}, {0},
+  INTRN_C3MAC_AR, 	FALSE, FALSE, 1, {3, INVALID_PID}, {0},
+  INTRN_C3MULA_A, 	FALSE, FALSE, 1, {2, 4}, {0},
+  INTRN_C3MULA_AR, 	FALSE, FALSE, 1, {3, INVALID_PID}, {0},
+  INTRN_C3SAADD_A, 	FALSE, FALSE, 2, {0, 2}, {0},
+  INTRN_C3SAADDH_A, 	FALSE, FALSE, 2, {0, 2}, {0},
+  INTRN_C3SADDA_A, 	FALSE, FALSE, 1, {2, INVALID_PID}, {0},
+  INTRN_C3SAMULH_A, 	FALSE, FALSE, 2, {0, 2}, {0},
+  //c2 intrinsics
+  INTRN_C2_LD_V, 	TRUE, FALSE, 1, {1, INVALID_PID}, {2, 3, 5, 16, 0, FALSE},
+  INTRN_C2_LD_G,	TRUE, FALSE, 1, {0, INVALID_PID}, {INVALID_PID, INVALID_PID, 3, 1, 0, FALSE},
+  INTRN_C2_LD_V2G, 	TRUE, FALSE, 1, {0, INVALID_PID}, {INVALID_PID, INVALID_PID, 2, 1, 16, TRUE},
+  INTRN_C2_LD_V_IMM, 	TRUE, FALSE, 1, {4, INVALID_PID}, {INVALID_PID, 1, 3, 16, 0, FALSE},
+  INTRN_C2_LD_C_IMM, 	TRUE, FALSE, 1, {1, INVALID_PID}, {INVALID_PID, INVALID_PID, INVALID_PID, 1, 0, FALSE},
+  INTRN_C2_LD_G_IMM, 	TRUE, FALSE, 1, {2, INVALID_PID}, {INVALID_PID, INVALID_PID, 1, 1, 0, FALSE},
+  INTRN_C2_LD_V2G_IMM,	TRUE, FALSE, 1, {2, INVALID_PID}, {INVALID_PID, INVALID_PID, 1, 1, 16, TRUE},
+  INTRN_C2_ST_V, 	TRUE, TRUE,  1, {1, INVALID_PID}, {INVALID_PID, 2, 3, 16, 0, FALSE},
+  INTRN_C2_ST_G, 	TRUE, TRUE,  1, {1, INVALID_PID}, {INVALID_PID, INVALID_PID, 3, 1, 0, FALSE},
+  INTRN_C2_ST_G2V, 	TRUE, TRUE,  1, {1, INVALID_PID}, {INVALID_PID, INVALID_PID, 2, 1, 16, TRUE},
+  INTRN_C2_ST_V_IMM, 	TRUE, TRUE,  1, {3, INVALID_PID}, {INVALID_PID, 2, 1, 16, 0, FALSE},
+  INTRN_C2_ST_C_IMM, 	TRUE, TRUE,  1, {1, INVALID_PID}, {INVALID_PID, INVALID_PID, INVALID_PID, 1, 0, FALSE},
+  INTRN_C2_ST_G_IMM, 	TRUE, TRUE,  1, {2, INVALID_PID}, {INVALID_PID, INVALID_PID, 1, 1, 0, FALSE},
+  INTRN_C2_ST_G2V_IMM, 	TRUE, TRUE,  1, {2, INVALID_PID}, {INVALID_PID, INVALID_PID, 1, 1, 16, TRUE},
 };
 
-inline BOOL INTRN_has_memop(INTRINSIC intrn)
+
+inline INT32 INTRN_vbuf_linesize()
 {
-  for(INT i=0;i<C2_LS_LAST;i++) {
-    if(c2_ls_attr_tab[i].id==intrn)
+  return 16;
+}
+
+inline INT32 INTRN_vbuf_sw_crossline_size()
+{
+  return 28;
+}
+
+inline INT32 INTRN_vbuf_sw_crossline_hintbofs()
+{
+  return 4;
+}
+
+inline INT32 INTRN_vbuf_sw_crossline_hinthrd()
+{
+  return 3;
+}
+
+inline INT32 INTRN_get_max_scalar_size()
+{
+  return 4;
+}
+
+inline BOOL INTRN_carry_memop(INTRINSIC intrn)
+{
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn)
       return TRUE;
   }
   return FALSE;
 }
 
-inline INT32 INTRN_get_addr_parm(INTRINSIC intrn, INT i)
-{
-  for(INT i=0;i<C2_LS_LAST;i++) {
-    if(c2_ls_attr_tab[i].id==intrn)
-      return c2_ls_attr_tab[i].addr_id;
+inline BOOL INTRN_like_store(INTRINSIC intrn) {
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn && sl_intrn_meminfo_tab[i].like_store==TRUE)
+      return TRUE;
   }
-  return -1;
+  return FALSE;
+}
+
+inline BOOL INTRN_specify_memop(INTRINSIC intrn)
+{
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn && sl_intrn_meminfo_tab[i].specific==TRUE)
+      return TRUE;
+  }
+  return FALSE;
+}
+
+inline INT32 INTRN_get_memop_count(INTRINSIC intrn) 
+{
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn)
+      return sl_intrn_meminfo_tab[i].memop_count;
+  }
+  return 0;
+}
+
+inline INT32 INTRN_get_addr_parm(INTRINSIC intrn, INT id)
+{
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn)
+      return sl_intrn_meminfo_tab[i].addr_id[id];
+  }
+  return INVALID_PID;
 }
 
 inline INT32 INTRN_get_size_parm(INTRINSIC intrn)
 {
-  for(INT i=0;i<C2_LS_LAST;i++) {
-    if(c2_ls_attr_tab[i].id==intrn)
-      return c2_ls_attr_tab[i].size_id;
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn)
+      return sl_intrn_meminfo_tab[i].mem_spec.size_id;
   }
-  return -1;
+  return INVALID_PID;
 }
 
 inline INT32 INTRN_get_size(INT i)
@@ -263,45 +367,45 @@ inline INT32 INTRN_get_size(INT i)
 
 inline INT32 INTRN_get_size_coeff(INTRINSIC intrn)
 {
-  for(INT i=0;i<C2_LS_LAST;i++) {
-    if(c2_ls_attr_tab[i].id==intrn)
-      return c2_ls_attr_tab[i].size_coeff;
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn)
+      return sl_intrn_meminfo_tab[i].mem_spec.size_coeff;
   }
   return -1;
 }
 
 inline INT32 INTRN_get_size_stride(INTRINSIC intrn)
 {
-  for(INT i=0;i<C2_LS_LAST;i++) {
-    if(c2_ls_attr_tab[i].id==intrn)
-      return c2_ls_attr_tab[i].size_stride;
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn)
+      return sl_intrn_meminfo_tab[i].mem_spec.size_stride;
   }
   return -1;
 }
 
 inline INT32 INTRN_get_macro_parm(INTRINSIC intrn)
 {
-  for(INT i=0;i<C2_LS_LAST;i++) {
-    if(c2_ls_attr_tab[i].id==intrn)
-      return c2_ls_attr_tab[i].macro_id;
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn)
+      return sl_intrn_meminfo_tab[i].mem_spec.macro_id;
   }
-  return -1;
+  return INVALID_PID;
 }
 
 inline INT32 INTRN_get_sw_parm(INTRINSIC intrn)
 {
-  for(INT i=0;i<C2_LS_LAST;i++) {
-    if(c2_ls_attr_tab[i].id==intrn)
-      return c2_ls_attr_tab[i].sw_id;
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn)
+      return sl_intrn_meminfo_tab[i].mem_spec.sw_id;
   }
-  return -1;
+  return INVALID_PID;
 }
 
 inline BOOL INTRN_maybe_stride(INTRINSIC intrn)
 {
-  for(INT i=0;i<C2_LS_LAST;i++) {
-    if(c2_ls_attr_tab[i].id==intrn)
-      return c2_ls_attr_tab[i].maybe_strided;
+  for(INT i=0;i<SL_INTRN_MEMINFO_LAST;i++) {
+    if(sl_intrn_meminfo_tab[i].id==intrn)
+      return sl_intrn_meminfo_tab[i].mem_spec.maybe_strided;
   }
   return FALSE;
 }
