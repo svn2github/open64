@@ -959,7 +959,7 @@ em64t_si.o: em64t_si.cxx targ_isa_subset.h topcode.h si_gen.h
 ## core ##
 
 core.so: core.o init.o
-	$(cxx) $(CFLAGS) $(STD_DSO_LOADOPTS) core.o init.o -o core.so $(DARWIN_UNDEFINED)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) core.o init.o -o core.so
 
 core.o: core.c ti_si_types.h
 	$(cc) $(CFLAGS) -c core.c
@@ -976,7 +976,7 @@ core_si.o: core_si.cxx targ_isa_subset.h topcode.h si_gen.h
 ## wolfdale ##
 
 wolfdale.so: wolfdale.o init.o
-	$(cxx) $(CFLAGS) $(STD_DSO_LOADOPTS) wolfdale.o init.o -o wolfdale.so $(DARWIN_UNDEFINED)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) wolfdale.o init.o -o wolfdale.so
 
 wolfdale.o: wolfdale.c ti_si_types.h
 	$(cc) $(CFLAGS) -c wolfdale.c
@@ -995,7 +995,7 @@ endif
 ifeq ($(BUILD_TARGET), IA32)
 
 pentium.so: pentium.o
-	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) pentium.o -o pentium.so
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) pentium.o -o pentium.so
 
 pentium.o: pentium.c ti_si.h
 	$(cc) $(CFLAGS) -c pentium.c
