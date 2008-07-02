@@ -585,7 +585,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_FREQ_UNBALANCED	0x10000000
 #define BBM_LOCAL_FLAG2         0x20000000
 #define BBM_EDGE_SPLITTING	0x00800000 /* BB is used for edge splitting */
-#define BB_edge_splitting(x)  	(BB_flag(x) &= BBM_EDGE_SPLITTING)
+#define BB_edge_splitting(x)  	(BB_flag(x) & BBM_EDGE_SPLITTING)
 #define Set_BB_edge_splitting(x)(BB_flag(x) |= BBM_EDGE_SPLITTING)
 #endif // TARG_SL
 
