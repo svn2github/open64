@@ -2722,7 +2722,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
     cycle_fn = CXX_NEW( Bkwd_Cycle_Sel(), &_hb_pool );
   }
 #else // TARG_X8664 || TARG_SL || TARG_MIPS
-#ifdef TARG_IA64
+#ifndef TARG_IA64
   if( LOCS_Scheduling_Algorithm == 1 ){
     priority_fn = CXX_NEW( List_Based_Fwd(bb, this, _hbs_type, &_hb_pool),
                            &_hb_pool );
@@ -2734,10 +2734,10 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
     cycle_fn = CXX_NEW( Bkwd_Cycle_Sel(), &_hb_pool );
   }
 #else
-  // Do backward scheduling and cycle selector.
+  // Do forward scheduling and cycle selector.
   priority_fn = 
-    CXX_NEW(List_Based_Bkwd(bb, this, _hbs_type, &_hb_pool), &_hb_pool);
-  cycle_fn = CXX_NEW(Bkwd_Cycle_Sel(), &_hb_pool);
+    CXX_NEW(List_Based_Fwd(bb, this, _hbs_type, &_hb_pool), &_hb_pool);
+  cycle_fn = CXX_NEW(Fwd_Cycle_Sel(), &_hb_pool);
 #endif
 #endif
 
