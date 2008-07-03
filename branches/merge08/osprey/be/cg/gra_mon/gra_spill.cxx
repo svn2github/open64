@@ -2745,8 +2745,10 @@ GRA_Remove_Predicates_Save_Restore(void)
 	break;
       }
     }
+#if !defined( _delete_but_not_fully_tested_yet) && defined(TARG_IA64)
     Is_True(found || Exit_BB_Head == NULL, 
 	    ("cannot find predicate register save at entry.\n"));
+#endif
     // if PU has no exit, dead store elimination earlier has removed it already
   }
 
@@ -2761,6 +2763,8 @@ GRA_Remove_Predicates_Save_Restore(void)
 	break;
       }
     }
+#if !defined(_delete_but_not_fully_tested_yet) && defined(TARG_IA64)
     Is_True(found, ("cannot find predicate register restore at exit.\n"));
+#endif
   }
 }
