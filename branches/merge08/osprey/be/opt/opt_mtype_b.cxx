@@ -183,6 +183,25 @@ OPT_MTYPE_B::Do_mtype_b_cr(CODEREP *cr)
     }
     return NULL;
   case CK_OP:
+#if defined(TARG_NVISA)
+    // Here nodes in the graph are shared. A node may have many parents
+    // This was causing traversal to get exponentially worse as levels
+    // were added. We now mark ISOP nodes (the greatest offenders) as visited
+    // and cache any change they may propagate up to parents.
+    // If visited it must have been via a different path.
+    // return the cached node (new_cr) to new parent on the path.
+      
+    if (cr->Is_isop_flag_set(ISOP_MTYPE_B_CR_VISITED))
+    {        
+        CODEREP *cached_cr = cr->Get_ISOP_mtype_b_cache();        
+        return (cached_cr); 
+    }
+    else
+    {
+        cr->Set_isop_flag(ISOP_MTYPE_B_CR_VISITED);
+        cr->Set_ISOP_mtype_b_cache(NULL);
+    }
+#endif
     need_rehash = FALSE;
     new_cr->Copy(*cr);
     new_cr->Set_usecnt(0);
@@ -217,7 +236,14 @@ OPT_MTYPE_B::Do_mtype_b_cr(CODEREP *cr)
 	  cr->DecUsecnt();
 	  if (opr == OPR_NE && new_cr->Opnd(1)->Const_val() == 0 ||
 	      opr == OPR_EQ && new_cr->Opnd(1)->Const_val() == 1)
+	  {
+#if defined(TARG_NVISA)
+            //Cache return value for other parents not on this path
+            return (cr->Set_ISOP_mtype_b_cache(new_cr->Opnd(0))); // delete the NE or EQ
+#else
 	    return new_cr->Opnd(0);	// delete the NE or EQ
+#endif
+	  }
 	  else if (opr == OPR_EQ && new_cr->Opnd(1)->Const_val() == 0 ||
 		   opr == OPR_NE && new_cr->Opnd(1)->Const_val() == 1) {
 	    new_cr->Set_opr(OPR_LNOT);
@@ -226,7 +252,11 @@ OPT_MTYPE_B::Do_mtype_b_cr(CODEREP *cr)
 	  }
 	  else {
 	    cr->DecUsecnt_rec();
+#if defined(TARG_NVISA)
+	    return (cr->Set_ISOP_mtype_b_cache (_htable->Add_const(cr->Dtyp(), opr == OPR_EQ ? 0 : 1)));
+#else
 	    return _htable->Add_const(cr->Dtyp(), opr == OPR_EQ ? 0 : 1);
+#endif
 	  }
 	}
       }
@@ -239,8 +269,14 @@ OPT_MTYPE_B::Do_mtype_b_cr(CODEREP *cr)
 	else {
 	  cr->DecUsecnt();
 	  if (opr == OPR_NE && new_cr->Opnd(0)->Const_val() == 0 ||
-	      opr == OPR_EQ && new_cr->Opnd(0)->Const_val() == 1)
-	    return new_cr->Opnd(1);	// delete the NE or EQ
+	      opr == OPR_EQ && new_cr->Opnd(0)->Const_val() == 1) 
+	  {
+#if defined(TARG_NVISA)
+            return (cr->Set_ISOP_mtype_b_cache(new_cr->Opnd(1))); // delete the NE or EQ
+#else
+            return new_cr->Opnd(1);     // delete the NE or EQ
+#endif
+	  }
 	  else if (opr == OPR_EQ && new_cr->Opnd(0)->Const_val() == 0 ||
 		   opr == OPR_NE && new_cr->Opnd(0)->Const_val() == 1) {
 	    new_cr->Set_opr(OPR_LNOT);
@@ -250,7 +286,11 @@ OPT_MTYPE_B::Do_mtype_b_cr(CODEREP *cr)
 	  }
 	  else {
 	    cr->DecUsecnt_rec();
+#if defined(TARG_NVISA)
+	    return (cr->Set_ISOP_mtype_b_cache (_htable->Add_const(MTYPE_B, opr == OPR_EQ ? 0 : 1)));
+#else
 	    return _htable->Add_const(MTYPE_B, opr == OPR_EQ ? 0 : 1);
+#endif
 	  }
 	}
       }
@@ -268,7 +308,14 @@ OPT_MTYPE_B::Do_mtype_b_cr(CODEREP *cr)
 
     if (need_rehash) {
       cr->DecUsecnt();
+#if defined(TARG_NVISA)
+      //Cache return value for other parents not on this path
+      Is_True(cr->Kind() == CK_OP,
+      ("OPT_MTYPE_B::Do_mtype_b_cr: Expecting CK_OP - mtypeb cache not valid otherwise"));
+      return (cr->Set_ISOP_mtype_b_cache (_htable->Rehash(new_cr)));
+#else
       return _htable->Rehash(new_cr);
+#endif
     }
     return NULL;
   }

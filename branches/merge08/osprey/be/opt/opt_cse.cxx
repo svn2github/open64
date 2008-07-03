@@ -178,6 +178,10 @@ ETABLE::Generate_stid_to_preg( CODEREP *lhs, CODEREP *rhs, MTYPE rhs_type,
   savestmt->Set_linenum( linenum );
   savestmt->Set_live_stmt();
 
+  if (WOPT_Enable_Verbose && Tracing()) {
+    fprintf(TFile, "generate_stid_to_preg:\n");
+    savestmt->Print(TFile);
+  }
   return savestmt;
 }
 

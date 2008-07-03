@@ -462,6 +462,7 @@ EXP_OCCURS::Bb(void) const
 
 // =====================================================================
 // Create a new WN to represent the home of a LPRE PREG
+// Returns NULL if home too complicated.
 // =====================================================================
 WN *
 CODEREP::Rvi_home_wn( OPT_STAB *opt_stab ) const
@@ -724,12 +725,8 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 }
 
 
-#ifndef TARG_NVISA
 CODEREP	*
 ETABLE::New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable, CODEREP *rhs)
-#else
-ETABLE::New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable)
-#endif
 {
    // Simplified version of EXP_OCCURS::Get_temp_cr(), which creates a
    // temporary of exactly the type specified, updates the htable, but
@@ -3055,6 +3052,46 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	    }
 	    else Check_lftr_non_candidate(stmt, kid, cr->Op());
 	  }
+#ifdef TARG_NVISA
+	  // check if all the kids are const (used below)
+	  BOOL all_kids_are_const = TRUE;
+	  switch (cr->Opr()) {
+	  case OPR_ADD:
+	  case OPR_SUB:
+	  case OPR_MPY:
+	  case OPR_DIV:
+	  case OPR_MOD:
+	  case OPR_REM:
+	  case OPR_SHL:
+	  case OPR_LSHR:
+	  case OPR_ASHR:
+	  case OPR_BAND:
+	  case OPR_BIOR:
+	  case OPR_BXOR:
+	  case OPR_BNOR:
+	  case OPR_BNOT:
+	  case OPR_NEG:
+		break;
+	  default:
+		all_kids_are_const = FALSE;
+		break;
+	  }
+	  for (i=0; i<cr->Kid_count(); i++)	{ 
+	    kid = cr->Opnd(i);
+  	    switch (kid->Kind()) {
+	    case CK_CONST: 
+		break;
+	    case CK_VAR:
+		if ( ! ST_is_const_var( Opt_stab()->St(kid->Aux_id())))
+			all_kids_are_const = FALSE;
+		break;
+	    default:
+		// TODO: handle depth > 1 
+		all_kids_are_const = FALSE;
+		break;
+	    }
+	  }
+#endif
 
 	  if (cr->Exp_has_e_num()) {
 	    if (all_kids_are_terminal) {
@@ -3077,7 +3114,13 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 			  opr == OPR_GT || opr == OPR_GE)) {
 		cr->Set_omitted();
 #endif
-	      
+#ifdef TARG_NVISA
+	      // if all kids are const or const_var, and op is arith, then omit
+	      } else if (!WOPT_Enable_Const_Op_PRE && all_kids_are_const) {
+		Is_Trace(Tracing(),
+			 (TFile,"omit from epre cause all kids are const\n"));
+		cr->Set_omitted();
+#endif
 	      } else if (!urgent) {
 		Is_Trace(Tracing(),
 			 (TFile,"====== ETABLE::Bottom_up_cr, Append coderep:\n"));
@@ -4146,6 +4189,11 @@ void
 EXP_WORKLST::Adjust_combined_types(CODEREP *cr)
 {
   Is_True(Exp()->Is_integral_load_store(), ("EXP_WORKLST::Adjust_combined_types: wrong cr"));
+#if defined(TARG_NVISA)
+  if ( (cr->Kind() == CK_VAR) && 
+       (MTYPE_size_min(cr->Dsctyp()) != MTYPE_size_min(Exp()->Dsctyp())))
+    Set_has_unequal_sizes();
+#endif
   Is_True(MTYPE_size_min(cr->Dsctyp()) == MTYPE_size_min(Exp()->Dsctyp()),
 	  ("EXP_WORKLST::Adjust_combined_types: mismatch Dsc types"));
 

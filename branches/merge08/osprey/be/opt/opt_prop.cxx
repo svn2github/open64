@@ -949,9 +949,13 @@ COPYPROP::Prop_const_init_scalar(CODEREP *x, AUX_ID var_aux_id)
   // is this variable a constant initialized scalar?
   BOOL const_initialized = 
     psym->Is_flag_const_init() &&
+#if defined(TARG_NVISA)
+    !psym->Is_volatile();
+#else
     !psym->Is_volatile() &&
     psym->St_ofst() == 0;  // a limitation for matching INITV or TCON
                            // should make it smarter to look into block of INITV.
+#endif
 
   if (const_initialized) {
     TCON init_tcon;

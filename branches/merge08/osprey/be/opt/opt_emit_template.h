@@ -388,6 +388,18 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
             }
           } 
           else{
+#ifdef TARG_NVISA
+            // Preserve initial types lest we lose alignment info
+            // (e.g. if U4U2LDID becomes I4I4LDID)
+            // This can happen if copyprop U4U2 into original I4I4).
+            // But make sure rtypes are compatible.
+            if (Mtype_TransferSign(WN_rtype(WN_kid(wn,i)), 
+                                   exp->Asm_input_rtype()) 
+               == WN_rtype(WN_kid(wn,i)))
+            {
+              continue; // skip following code
+            }
+#endif //TARG_NVISA
             WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
 	    // bug 13104
             if (! MTYPE_is_float(exp->Asm_input_rtype()) &&

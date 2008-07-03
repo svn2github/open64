@@ -214,7 +214,11 @@ public:
 
 
 enum OPT_VAR_TYPE {
+#ifdef __MINGW32__
+  VT_UNKNOWN_HACK  = 0,        // illegal value for error detection
+#else
   VT_UNKNOWN       = 0,        // illegal value for error detection
+#endif /* __MINGW32__ */
   VT_OTHER         = 0x1,      // a symbol (not scalar, not virtual)
   VT_NO_LDA_SCALAR = 0x2,      // scalar, not virtual
   VT_LDA_SCALAR    = 0x3,      // scalar,     lda-based virtual

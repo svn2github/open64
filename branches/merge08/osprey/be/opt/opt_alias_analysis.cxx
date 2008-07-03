@@ -2817,12 +2817,19 @@ OPT_STAB::Generate_asm_mu_chi(WN *wn, MU_LIST *mu, CHI_LIST *chi)
 	}
       }
     }
+
+#if defined(TARG_NVISA)
+    // we control what is in asm statements that we create,
+    // so mark them as okay if no clobbers and non-volatile
+    if (!asm_clobbers_mem && !WN_Asm_Volatile(wn))
+      continue;
+#endif
 #else
     if (!asm_clobbers_mem)   // non-volatile asm cannot modify memory
       continue;
     
     how |= Rule()->Aliased_with_Asm(wn, aux_stab[idx].Points_to());
-#endif
+#endif //KEY
 
 label_how:
     if (how & READ) {

@@ -290,6 +290,15 @@ ESSA::Ilod_modified_phi_result(const BB_NODE *phi_bb, const CODEREP *cr) const
     if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
 #ifdef KEY // bug 7814
+#ifdef TARG_NVISA
+// bug 7814 is for a fortran program that was too aggressive in optimizing.
+// But for nvidia's bug 417551, this is a safe optimization that helps perf.
+// The root problem seems to be a weakness of alias analysis, as taking
+// the address of a temp is blocking the optimization.
+// Until we find a non-working program or come up with a better workaround,
+// put this check under a flag.
+    if ( ! WOPT_Enable_Aggressive_Iload_CSE)
+#endif
     if (vsym->Aux_id() == Opt_stab()->Default_vsym())
       return TRUE;
 #endif
@@ -377,6 +386,7 @@ ESSA::Ilod_modified_real_occ_phi_opnd(const BB_NODE *def_bb, const CODEREP *cr,
     if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
 #ifdef KEY // bug 7814
+    // NVISA:  this instance of the check so far seems to not cause a problem
     if (vsym->Aux_id() == Opt_stab()->Default_vsym())
       return TRUE;
 #endif

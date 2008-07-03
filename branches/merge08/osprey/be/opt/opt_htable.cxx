@@ -2136,6 +2136,21 @@ CODEMAP::Canon_mpy(WN       *wn,
     if (retv == NULL) { // either not folded or Fold_Expr has not rehashed
       retv = Hash_Op(cr);
     }
+#if defined(TARG_NVISA)
+    else if (retv->Kind() == CK_CONST) { 
+      // If after Folding we got a simple integer constant, this is same
+      // as if (ccr->Tree() == NULL && kid1.Tree() == NULL) above
+      // both trees are essentially null and the constant can be 
+      // represented as just the additive part
+      // Looks like there is no hashing implication
+      // const_val has to be less than 32 bits to do this
+      INT64 val = retv->Const_val();
+      if (val == (INT32) val) {
+        ccr->Set_scale((INT32) val);
+        retv = NULL;
+      }
+    }
+#endif
   }
   else {
     retv = Hash_Op(cr);
@@ -2156,6 +2171,13 @@ CODEMAP::Canon_cvt(WN       *wn,
   const OPCODE op = WN_opcode(wn);
   WN   *kid = WN_kid(wn, 0);
   BOOL  propagated = Add_expr(kid, opt_stab, stmt, ccr, copyprop);
+#if defined(TARG_NVISA)
+  if (ccr->Tree() == NULL) {
+    // There is only a constant value in ccr
+    return propagated;
+  }
+#endif
+
 #ifdef TARG_MIPS
   // U8I4CVT and I8I4CVT are nops so return kid, MIPS III and above
   // since U8I4CVT is required to preserve the type of its type for
@@ -2575,7 +2597,7 @@ CODEREP::Var_type_conversion(CODEMAP *htable, MTYPE to_dtyp,
 	    ("CODEREP::Var_type_conversion: inconsistent sign_extd flag"));
 #endif
 
-#ifdef TARG_X8664 // bug 1561
+#if defined(TARG_X8664) || defined(TARG_NVISA) // bug 1561
     if (MTYPE_byte_size(to_dtyp) == 4 && MTYPE_byte_size(to_dsctyp) == 4) {
     } 
     else
@@ -5080,16 +5102,22 @@ STMTREP::Print_node(FILE *fp) const
   case OPR_STBITS:
   case OPR_STID:
     fprintf(fp, ">");	// mark line visually as htable dump
+#if defined(TARG_NVISA)
+    fprintf(fp, "%s %s", OPERATOR_name(_opr), MTYPE_name(Lhs()->Dsctyp()));
+    fprintf(fp, " sym%dv%d", Lhs()->Aux_id(), Lhs()->Version());
+#else
     fprintf(fp, "%s %s %s sym%dv%d", OPERATOR_name(_opr),
 	    MTYPE_name(Lhs()->Dtyp()), MTYPE_name(Lhs()->Dsctyp()),
 	    Lhs()->Aux_id(), Lhs()->Version());
+#endif
     fprintf(fp, " %d", Lhs()->Offset());
     fprintf(fp, " <u=%d cr%d>", Lhs()->Usecnt(), Lhs()->Coderep_id());
     break;
   case OPR_ISTORE:
   case OPR_ISTBITS:
     fprintf(fp, ">");	// mark line visually as htable dump
-    fprintf(fp, "%s %d ", OPERATOR_name(_opr), Lhs()->Offset());
+    fprintf(fp, "%s %s", OPERATOR_name(_opr), MTYPE_name(Lhs()->Dsctyp()));
+    fprintf(fp, " %d", Lhs()->Offset());
     fprintf(fp, " <u=%d cr%d>", Lhs()->Usecnt(), Lhs()->Coderep_id());
     break;
   case OPR_ISTOREX:

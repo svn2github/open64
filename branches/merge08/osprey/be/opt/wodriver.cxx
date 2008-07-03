@@ -119,6 +119,7 @@ wopt_main (INT wopt_argc, char **wopt_argv, INT be_argc, char **be_argv)
 		&Get_BE_Version != NULL ? Get_BE_Version() : "undef", BE_VERSION));
   /* Construct a skip list from the -WOPT:skip_* options: */
   WOPT_Skip_List = Build_Skiplist ( WOPT_Skip );
+  WOPT_Unroll_Skip_List = Build_Skiplist ( WOPT_Unroll_Skip );
 #if 0
   extern INT32 WOPT_Unroll_Skip;
   WOPT_Unroll_Skip_List = Build_Skiplist ( WOPT_Unroll_Skip );

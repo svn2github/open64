@@ -8,7 +8,7 @@
 #include "opt_sym.h"          //OPT_STAB
 #include "opt_mu_chi.h"
 #include "opt_htable.h"       //CODEREP && STMTREP
-#include "error.h"            //Is_True DevWarn
+#include "errors.h"            //Is_True DevWarn
 #include "defs.h"             //IDTYPE
 #include "vector"		//vector
 #include "map"		//map

@@ -635,9 +635,12 @@ OPT_REVISE_SSA::Update_phis(BB_NODE *bb)
       TY_IDX ty = TY_IDX_ZERO;
       ST *st = _opt_stab->St(i);
       if (st != NULL) ty = ST_type(st);
+#if defined(TARG_NVISA)
       // Original code used mclass to get rtype,
       // but have since added mtype to sym, 
       // and mtype is more accurate than mclass (preserves sign
+      rtype = sym->Mtype();
+#else
       if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
          rtype = sym->Mtype();
       else {
@@ -648,6 +651,7 @@ OPT_REVISE_SSA::Update_phis(BB_NODE *bb)
 	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
 #endif
       }
+#endif //TARG_NVISA
       MTYPE desc = rtype;
 #ifdef KEY // promote to register type size
       if (i != _opt_stab->Default_vsym() && 
@@ -697,6 +701,9 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	TY_IDX ty = TY_IDX_ZERO;
 	ST *st = _opt_stab->St(i);
 	if (st != NULL) ty = ST_type(st);
+#if defined(TARG_NVISA)
+      rtype = sym->Mtype();
+#else
 	if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
 	    rtype = sym->Mtype();
 	else {
@@ -707,6 +714,7 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	      rtype = Mtype_TransferSign(MTYPE_U4, rtype);
 #endif
         }
+#endif
 	MTYPE desc = rtype;
 #ifdef KEY // promote to register type size
 	if (i != _opt_stab->Default_vsym() && 
@@ -734,6 +742,9 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	TY_IDX ty = TY_IDX_ZERO;
 	ST *st = _opt_stab->St(i);
 	if (st != NULL) ty = ST_type(st);
+#if defined(TARG_NVISA)
+        rtype = sym->Mtype();
+#else
 	if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
 	    rtype = sym->Mtype();
 	else {
@@ -744,6 +755,7 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	      rtype = Mtype_TransferSign(MTYPE_U4, rtype);
 #endif
         }
+#endif
 	MTYPE desc = rtype;
 #ifdef KEY // promote to register type size
 	if (i != _opt_stab->Default_vsym() && 
@@ -859,6 +871,9 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
     if (st != NULL) ty = ST_type(st);
     
     MTYPE rtype;
+#if defined(TARG_NVISA)
+      rtype = sym->Mtype();
+#else
     if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
         rtype = sym->Mtype();
     else {
@@ -869,6 +884,7 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
 	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
 #endif
     }
+#endif
     MTYPE desc = rtype;
 #ifdef KEY // promote to register type size
     if (i != _opt_stab->Default_vsym() && 
@@ -1360,7 +1376,6 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     if (x->Is_var_volatile()) 
       return NULL;
 #endif
-    x->Set_dtyp(cr->Dtyp());
     x->Set_dsctyp(cr->Dsctyp());
     x->Set_lod_ty(TY_pointed(cr->Ilod_base_ty()));
     x->Set_field_id(cr->I_field_id());

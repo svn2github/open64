@@ -361,7 +361,7 @@ extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 				 struct ALIAS_MANAGER *alias_mgr,
 				 EMITTER *emitter);
-#if defined(__linux__) || defined(STATIC_BUILD) || defined(BUILD_OS_DARWIN)
+#if defined(__linux__) || defined(BUILD_OS_DARWIN) || !defined(SHARED_BUILD)
 extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 						  ALIAS_MANAGER*, void*);
 #define Perform_Procedure_Summary_Phase (*Perform_Procedure_Summary_Phase_p)
@@ -640,6 +640,17 @@ private:
 	WOPT_Enable_Zero_Version = FALSE;
 
       break; // end MAINOPT_PHASE
+
+#ifdef TARG_NVISA
+    case PREOPT_CMC_PHASE:
+      WOPT_Enable_Goto = TRUE;
+      WOPT_Enable_Call_Zero_Version = FALSE;
+      WOPT_Enable_Zero_Version = FALSE;
+      WOPT_Enable_DU_Full = TRUE;
+      WOPT_Enable_Copy_Propagate = TRUE;
+      break;
+#endif
+
     case PREOPT_LNO_PHASE: 
       if (Run_autopar && Current_LNO->IPA_Enabled
 #ifdef KEY // bug 6383
@@ -739,6 +750,14 @@ private:
       WOPT_Enable_LNO_Copy_Propagate  = _lno_copy;
       WOPT_Enable_Zero_Version   = _zero_version;
       break;
+#ifdef TARG_NVISA
+    case PREOPT_CMC_PHASE:
+      WOPT_Enable_Goto = _goto;
+      WOPT_Enable_Call_Zero_Version = _call_zero_version;
+      WOPT_Enable_Zero_Version = _zero_version;
+      WOPT_Enable_DU_Full = _du_full;
+      break;
+#endif
     case PREOPT_LNO_PHASE:
       if (Run_autopar && Current_LNO->IPA_Enabled) { 
         WOPT_Enable_Call_Zero_Version = _call_zero_version;
@@ -1180,7 +1199,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
  
     wn_tree = WN_Lower(wn_orig, actions, alias_mgr, "Pre_Opt");
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
     BOOL target_64bit = Is_Target_64bit();
 #elif defined(TARG_SL)
     BOOL target_64bit = FALSE;
@@ -1261,7 +1280,12 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
   // goto conversion
   if (WOPT_Enable_Goto &&
-      (phase == PREOPT_LNO_PHASE || phase == PREOPT_PHASE)) {
+      (phase == PREOPT_LNO_PHASE 
+       || phase == PREOPT_PHASE
+#ifdef TARG_NVISA
+       || phase == PREOPT_CMC_PHASE
+#endif
+       )) {
 #ifdef KEY
     // goto_skip_equal, goto_skip_before, goto_skip_after PU count specified
     if ( Query_Skiplist ( Goto_Skip_List, Current_PU_Count() ) ) {
@@ -1459,6 +1483,12 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   Is_True(comp_unit->Verify_IR(comp_unit->Cfg(), comp_unit->Htable(), 1),
 	  ("Verify CFG wrong after Htable"));
 
+#ifdef TARG_NVISA
+  // want to do partial preopt for unrolling, but not full preopt
+  // (need to create cfg for unroller, and codemap for emitter).
+  if (phase == MAINOPT_PHASE || phase == PREOPT_CMC_PHASE) {
+#endif
+
   // Do some redundancy elimination phases early, to expose second order
   // effects and deal with them in the subsequent phases (e.g. CVTLs).
   //
@@ -1627,10 +1657,14 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
      wovp.Do_wovp();
   }
 
+#ifdef TARG_NVISA
+  } // MAINOPT_PHASE
+#endif
+
   // If this is the optimizer phase, we have more work to do
   WN *opt_wn;
   if ( phase == MAINOPT_PHASE ) {
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_NVISA)
     if (WHIRL_Mtype_B_On)
       comp_unit->Introduce_mtype_bool();
 #endif

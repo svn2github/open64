@@ -1389,8 +1389,9 @@ public:
     EWF_HAS_LDA          = 0x80,// the expression contains LDA node
     EWF_LR_SHRINK_CAND   = 0x100,// live range shrinking candidate (LPRE only)
     EWF_IVC_CAND         = 0x200,// induction variable coalescing candidate
-    EWF_NO_LFTR          = 0x400 // no LFTR for this expression (hack
+    EWF_NO_LFTR          = 0x400,// no LFTR for this expression (hack
                                  // around 665964)
+    EWF_SIZE_DIFFERENT   = 0x800 // loads have different size in LPRE
   };
 
   enum EXP_PREG_VALUE {
@@ -1603,6 +1604,12 @@ public:
   // variable is a live range shrinking candidate (LPRE only)
   BOOL            LR_shrink_cand(void) const { return _flags & EWF_LR_SHRINK_CAND;}
   void            Set_LR_shrink_cand( void ) { _flags |= EWF_LR_SHRINK_CAND; }
+
+  // variable has loads of different sizes
+  BOOL            Has_unequal_sizes(void) const { 
+    return _flags & EWF_SIZE_DIFFERENT;}
+  void            Set_has_unequal_sizes(void) { 
+    _flags |= EWF_SIZE_DIFFERENT; }
 
   // variable is an induction variable coalesing candidate (VNFRE only)
   BOOL            Ivc_cand(void) const { return _flags & EWF_IVC_CAND;}

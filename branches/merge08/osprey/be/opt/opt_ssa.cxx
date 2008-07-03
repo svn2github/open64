@@ -864,6 +864,14 @@ SSA::Create_CODEMAP(void)
     extern BOOL Simp_Canonicalize;
     BOOL save_simp_canon = Simp_Canonicalize;
     COPYPROP copyprop(_htable, _opt_stab, _cfg, loc_pool);
+#ifdef TARG_NVISA
+    // in first pass, only want to handle loops, not do optimization
+    // (which may cause performance issues because propagates into loop,
+    // emits whirl, then does mainopt which may not hoist if originates
+    // in loop, unless aggcm which we have turned off).
+    if (Htable()->Phase() == PREOPT_PHASE)
+      copyprop.Set_disabled();
+#endif
 
     //Simp_Canonicalize = FALSE;
     Value_number(_htable, _opt_stab, _cfg->Entry_bb(), &copyprop, _cfg->Exc());
@@ -884,6 +892,10 @@ SSA::Create_CODEMAP(void)
 	      _htable->Num_iloadfolds(), _htable->Num_istorefolds() );
     Opt_tlog( "INPUTPROP", 0, "%d copy propagations",
 	      Htable()->Num_inputprops() );
+#ifdef TARG_NVISA
+    if (Htable()->Phase() == PREOPT_PHASE)
+      copyprop.Reset_disabled();
+#endif
     Simp_Canonicalize = save_simp_canon;
   }
   

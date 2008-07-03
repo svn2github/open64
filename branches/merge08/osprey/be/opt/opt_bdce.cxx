@@ -1340,6 +1340,7 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
 			 x ? x : 
 #endif
 			 cr->Opnd(0))) {
+        if (Tracing()) fprintf(TFile, "delete cvtl (cr%d)\n", cr->Coderep_id());
 	// delete the node
 	cr->DecUsecnt();
 	if (need_rehash)
@@ -1390,7 +1391,7 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
         }
 #endif
       }
-#endif
+#endif /* !TARG_IA32 && !TARG_NVISA */
     }
 #ifdef TARG_X8664
     else if (! Is_Target_64bit() && MTYPE_size_min(cr->Dtyp()) == 64 &&

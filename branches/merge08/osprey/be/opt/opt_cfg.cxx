@@ -1258,17 +1258,13 @@ CFG::Is_simple_expr(WN *wn) {
     }
   }	// Fall through if not exactly one operand is mult.
 
-#if defined(TARG_NVISA)
+  if (opr == OPR_ADD || opr == OPR_SUB || opr == OPR_NEG ||
+      opr == OPR_SHL || opr == OPR_ASHR || opr == OPR_LSHR ||
+#ifdef TARG_NVISA
       // mpy is usually fast on nvisa
-  if (opr == OPR_ADD || opr == OPR_SUB || opr == OPR_NEG ||
-      opr == OPR_SHL || opr == OPR_ASHR || opr == OPR_LSHR ||
-      opr == OPR_BAND || opr == OPR_BIOR || opr == OPR_BNOR || opr == OPR_BXOR ||
-      opr == OPR_MPY)
-#else
-  if (opr == OPR_ADD || opr == OPR_SUB || opr == OPR_NEG ||
-      opr == OPR_SHL || opr == OPR_ASHR || opr == OPR_LSHR ||
-      opr == OPR_BAND || opr == OPR_BIOR || opr == OPR_BNOR || opr == OPR_BXOR)
+      opr == OPR_MPY ||
 #endif
+      opr == OPR_BAND || opr == OPR_BIOR || opr == OPR_BNOR || opr == OPR_BXOR)
   { INT kid0ans, kid1ans;
     kid0ans = Is_simple_expr(WN_kid0(wn));
     if (kid0ans == 0)

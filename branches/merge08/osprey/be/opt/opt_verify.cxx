@@ -787,6 +787,29 @@ Def_before_use(const CODEREP *cr, const BB_NODE *use_bb)
     return TRUE;
   case CK_OP:
     {
+#if defined(TARG_NVISA)
+        /* If this node has been visited and has the same BB
+         * return true. If there was a use before the def it would
+         * have been flaged on the first traversal.
+         * This limits but not eliminates redundant calls.
+         */
+        if (cr->Is_isop_flag_set(ISOP_DEF_BEFORE_VISITED)
+        &&  use_bb == cr->Get_ISOP_def_before_use_cache())
+        {
+            // Would have already warned
+            return TRUE;
+        }
+        else
+        {
+            /* Set the visited flag and cache the BB.
+             * We cache the BB as this functions makes decisions based
+             * in it. Therefore, only paths with the same BB  as the last
+             * can be eliminated.
+             */
+            cr->Set_isop_flag(ISOP_DEF_BEFORE_VISITED);
+            cr->Set_ISOP_def_before_use_cache(use_bb);
+        }
+#endif
       for (INT j = 0; j < cr->Kid_count(); j++)
 	if (!Def_before_use(cr->Opnd(j), use_bb)) {
 	  DevWarn("Def_before_use: inserted use before def (Opnd(%d))", j);
@@ -968,6 +991,19 @@ Verify_version_expr(CODEREP *expr, OPT_STAB *opt_stab, BB_NODE *bb, INT32 linenu
     
   case CK_OP:
     {
+#if defined(TARG_NVISA)
+        /* Here if the node has been visited we simply return
+         *  as any corrective action should have been taken previously.
+         *  otherwise we set visited and continue.
+         *  Note: If ever this function OR a called function conditionally
+         *  depends on anything other then the CR (expr) we can not simply
+         *  return and must cache the information per path see Def_before_use
+         */
+        if (expr->Is_isop_flag_set(ISOP_VERIFY_EXPR_VISITED))
+            return;
+        else
+            expr->Set_isop_flag (ISOP_VERIFY_EXPR_VISITED);
+#endif
       for (INT32 i = 0; i < expr->Kid_count(); i++) {
 	Verify_version_expr(expr->Opnd(i), opt_stab, bb, linenum); 
       }

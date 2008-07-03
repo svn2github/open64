@@ -553,7 +553,7 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_C10:	return OPC_C10C10LDID;
 #endif
     case MTYPE_CQ:	return OPC_CQCQLDID;
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(VECTOR_MTYPES)
     case MTYPE_V16I1:	return OPC_V16I1V16I1LDID;
     case MTYPE_V16I2:	return OPC_V16I2V16I2LDID;
     case MTYPE_V16I4:	return OPC_V16I4V16I4LDID;
@@ -595,7 +595,7 @@ Ldid_from_mtype( MTYPE mtype )
 extern MTYPE
 Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(VECTOR_MTYPES)
   if ( mtype_class & MTYPE_CLASS_VECTOR ) {
     if ( ( mtype_class & MTYPE_CLASS_SVECTOR ) == MTYPE_CLASS_SVECTOR ) {
       if ( mtype_class & MTYPE_CLASS_INTEGER ) {
@@ -694,7 +694,7 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
 extern OPCODE 
 Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(VECTOR_MTYPES)
   if ( mtype_class & MTYPE_CLASS_VECTOR ) {
     if ( ( mtype_class & MTYPE_CLASS_SVECTOR ) == MTYPE_CLASS_SVECTOR ) {
       if ( mtype_class & MTYPE_CLASS_INTEGER ) {
@@ -793,7 +793,7 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 extern OPCODE 
 Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(VECTOR_MTYPES)
   if ( mtype_class & MTYPE_CLASS_VECTOR ) {
     if ( ( mtype_class & MTYPE_CLASS_SVECTOR ) == MTYPE_CLASS_SVECTOR ) {
       if ( mtype_class & MTYPE_CLASS_INTEGER ) {
@@ -1387,7 +1387,7 @@ Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
      ldidop = OPCODE_make_op(OPR_LDID, sym->Mtype(), sym->Mtype());
      stidop = OPCODE_make_op(OPR_STID, MTYPE_V, sym->Mtype());
   } else {
-#ifdef TARG_X8664 
+#if defined(TARG_X8664) || defined(VECTOR_MTYPES)
     TYPE_ID type = sym->Mtype();
     INT bytes = sym->Byte_size();
     switch (type) {
@@ -1582,6 +1582,23 @@ BOOL Is_hi_sign_extended(MTYPE result_ty, MTYPE desc_ty)
 {
   Is_True(MTYPE_is_integral(result_ty),
           ("Is_hi_sign_extended: handles integral type only"));
+#ifdef TARG_NVISA
+  // This routine is trying to deal with the case of having a 32bit value
+  // in a 64bit register, so need to make sure the upper 32bits are properly
+  // sign extended.  This is for architectures that use 64bit registers for
+  // all values.  For PTX we have separate registers for 32 and 64bit 
+  // values, with explicit converts between them, so don't need to implicitly 
+  // sign-extend 32bit.  In fact, doing so causes problems because
+  // the convert is not just a sign-extension, is a move, and we want 
+  // sizes to match (e.g. multifunc was generating I8I4CVT(U8U4LDID),
+  // where U8 LDID puts value in b64 reg, whereas I8I4CVT moves from b32 
+  // to b64).  An alternative would be to allow sign-extension within
+  // b64 registers, thus keeping values in the larger regs, but that
+  // wastes register space.
+  if (MTYPE_size_min(desc_ty) == MTYPE_size_min(MTYPE_I4)
+   && MTYPE_size_min(result_ty) == MTYPE_size_min(MTYPE_I4))
+    return FALSE; // both sizes are 32bit, no need to sign-extend.
+#endif
 #ifndef TARG_X8664
   if (MTYPE_size_min(desc_ty) < MTYPE_size_min(result_ty) &&
       (MTYPE_size_min(result_ty) == MTYPE_size_min(MTYPE_I4) ||

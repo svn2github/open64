@@ -106,6 +106,7 @@ static char *rcs_id = 	opt_emit_CXX"$Revision: 1.13 $";
 #include "opt_emit_template.h"
 
 extern WN_MAP Prompf_Id_Map;
+static INT cur_loop_depth = 0;
 
 
 inline WN *
@@ -520,7 +521,7 @@ Build_new_loop_info( WN *do_loop, WN *old_info )
   }
   else {
     est_trips = 0;
-    depth = 0;
+    depth = cur_loop_depth;
     lflags = 0;
   }
 
@@ -726,6 +727,8 @@ Raise_doloop_stmt(EMITTER *emitter, BB_NODE **bb)
   FmtAssert(bb_body == bb_start->Loopbody(), ("Wrong body"));
   FmtAssert(bb_step == bb_start->Loopstep(), ("Wrong step"));
   FmtAssert(bb_merge == bb_start->Loopmerge(), ("Wrong merge"));
+
+  ++cur_loop_depth;
   
   // generate code for the initialization block
   bb_start->Gen_wn(emitter);
@@ -852,6 +855,7 @@ Raise_doloop_stmt(EMITTER *emitter, BB_NODE **bb)
   // set *bb to merge_bb, so we advance to it
   *bb = bb_merge;
 
+  --cur_loop_depth;
   return rwn;
 }
 
@@ -1020,6 +1024,8 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
   if ( goto_end != NULL)
     loopback->Remove_stmtrep( goto_end );
 
+  ++cur_loop_depth;
+
   // generate code for the body of the loop
   WN *block_body = Create_block(emitter, loopbody, loopback);
   WN_Set_Linenum(block_body, header->Linenum());
@@ -1089,6 +1095,9 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
 
   if (WOPT_Enable_Add_Do_Loop_Info)
     WN_set_do_loop_info(rwn, Build_new_loop_info(rwn, NULL));
+
+  --cur_loop_depth;
+
   return rwn;
 }
 

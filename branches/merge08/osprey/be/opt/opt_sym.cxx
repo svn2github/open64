@@ -2129,8 +2129,7 @@ OPT_STAB::Make_st_group(void)
 	UINT64 size = sorted[i]->Bit_size() == 0 ?
 	  sorted[i]->Byte_size() * 8 : sorted[i]->Bit_size();
         if (ofst < hi) {
-           // Merge
-#if defined(linux) || defined(BUILD_OS_DARWIN)
+#if !defined(IRIX)
 //         hi = (( hi > ofst + size ) ?  hi : ofst + size ) ;
            if (hi < ofst + size)
              hi = ofst + size;
