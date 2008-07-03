@@ -1279,6 +1279,9 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
        stmt->Set_fork_stmt_flags(TRUE);
     else if(WN_is_compgoto_for_minor(wn)) 
 	stmt -> Set_minor_fork_stmt_flags(TRUE);
+    // mark istore for vbuf automatic expansion 
+    if (WN_operator(wn) == OPR_ISTORE && WN_is_internal_mem_ofst(wn))
+      stmt->Set_SL2_internal_mem_ofst(TRUE); 
 #endif 
 
     stmt->Enter_rhs(htable, opt_stab, copyprop, exc);

@@ -102,6 +102,11 @@ BOOL  WOPT_Enable_Disambiguate_Heap_Obj = TRUE;
 BOOL  WOPT_Enable_Alias_Class_Fortran_Rule = TRUE;
 BOOL  WOPT_Enable_Alias_Qualifer = TRUE;
 BOOL  WOPT_Enable_Alias_Ragnarok_Unnamed = TRUE;
+#if defined(TARG_SL)
+BOOL  WOPT_Enable_Alias_Intrn = TRUE;
+BOOL WOPT_Enable_Local_Clsc = TRUE;  /* make local non-overlap live range */
+                                     /* vars to be the same variable */
+#endif
 BOOL  WOPT_Enable_Avoid_Rehash = FALSE; /* SSAPRE to minimize rehashing */
 BOOL  WOPT_Enable_Bitwise_DCE = TRUE;
 BOOL  WOPT_Enable_CSE_FP_comparison = TRUE;
@@ -387,6 +392,10 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,    &WOPT_Enable_Disambiguate_Heap_Obj, NULL },
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "ac_fortran", "",
     0, 0, 0,    &WOPT_Enable_Alias_Class_Fortran_Rule, NULL },
+#if defined(TARG_SL)
+  { OVK_BOOL,   OV_VISIBLE,	TRUE, "alias_intrn", "alias_intrn",
+    0, 0, 0,    &WOPT_Enable_Alias_Intrn, NULL },
+#endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "avoid_rehash",		"",
     0, 0, 0,	&WOPT_Enable_Avoid_Rehash, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "bdce",		"bdce",
@@ -584,6 +593,10 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 4096,	&WOPT_Enable_Rsv_Bits, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "rvi_enable",		"rvi",
     0, 0, 0,	&WOPT_Enable_RVI, NULL },
+#if defined(TARG_SL)
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "local_clsc",	"",
+    0, 0, 0,	&WOPT_Enable_Local_Clsc, NULL },
+#endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "rvi1",			"",
     0, 0, 0,	&WOPT_Enable_RVI1, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "rvi2",			"",

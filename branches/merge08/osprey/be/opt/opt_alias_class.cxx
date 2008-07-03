@@ -1113,6 +1113,9 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
   // PARM, since we want our return value to describe all the
   // information available to the callee.
   else if (OPCODE_is_load(opc) ||
+#if defined (TARG_SL)
+ 	   (opr == OPR_PARM && WN_Parm_Dereference(expr)) ||
+#endif
 	   Is_fortran_reference_parm(expr)) {
     FmtAssert(OPERATOR_is_scalar_iload (opr) ||
 	      opr == OPR_MLOAD ||
@@ -1419,6 +1422,10 @@ ALIAS_CLASSIFICATION::Handle_assignment(WN *const stmt)
   // representative.
   TY_IDX rhs_obj_ty = WN_object_ty (rhs);
   AC_PTR_OBJ_PAIR rhs_class = Classify_deref_of_expr(rhs, 
+#if defined(TARG_SL)
+  // used to decide if p = 0xhardaddr is a pointer (embedded)
+			         TY_kind(WN_object_ty(stmt))==KIND_POINTER ||
+#endif
                                  TY_kind(rhs_obj_ty) == KIND_POINTER);
 
   lhs_class.
@@ -1887,6 +1894,59 @@ ALIAS_CLASSIFICATION::Handle_call(WN *call_wn)
   }
 
   WN   *parm_wn;
+
+#if defined(TARG_SL)
+  if (WN_operator(call_wn)==OPR_INTRINSIC_CALL && 
+      INTRN_copy_addr(WN_intrinsic(call_wn))) {
+    // some intrinsic_call exist just for easy code generation, 
+    // its works like copying the pointer in parameter to lhs
+    if (WN_kid_count(call_wn)>1)
+      DevWarn("Handle_call: intrinsic_call which copy addr has more than 1 parms");
+    WN *rhs = WN_kid0(WN_kid0(call_wn));
+    TY_IDX rhs_obj_ty = WN_object_ty (rhs);
+    AC_PTR_OBJ_PAIR rhs_class = Classify_deref_of_expr(rhs, 
+        					TRUE);
+
+    //deal with lhs_class like handle_assignment
+    WN* stmt = WN_next(call_wn);
+    if (stmt != NULL && Stmt_stores_return_value(stmt)) {
+      AC_PTR_OBJ_PAIR lhs_class = Classify_lhs_of_store(stmt);
+  
+      ALIAS_CLASS_MEMBER *lhs_ref_member =
+                             lhs_class.Ref_class()->Representative();
+
+      // Note that the following line can change things about the
+      // lhs_class, and that afterward we have to recompute the
+      // AC_PTR_OBJ_PAIR for the lhs_class from the lhs._ref_class
+      // representative.
+
+      lhs_class.Set_ref_class(lhs_ref_member->Alias_class());
+      lhs_class.Set_obj_class(lhs_ref_member->Alias_class()->Class_pointed_to());
+
+      Is_True(lhs_class.Ref_class()->Class_pointed_to() == 
+             	      lhs_class.Obj_class(),
+	          ("ALIAS_CLASSIFICATION::Handle_call:"
+  	  	   "dealing with intrinsic_copy_addr, RHS classification changed LHS points-to relation"));
+
+      if (rhs_class.Ref_class() != NULL && 
+          Assignment_may_xfer_pointer (stmt)) {
+        // Conditional join
+        Merge_conditional(lhs_class, rhs_class);
+      }
+
+      stmt = WN_next(stmt);  
+      FmtAssert(!(stmt != NULL && Stmt_stores_return_value(stmt)), 
+                 ("Handle_call: multiple stmt store return value after call"));
+    }
+
+    //dump trace and return	
+    if (WOPT_Enable_Verbose && Tracing()) {
+      printf(TFile, "  after handling call:\n");
+      Print(TFile);
+    }
+    return stmt;  
+  }
+#endif
 
   for (UINT i = 0; i < n_parms; ++i) {
     parm_wn = WN_kid(call_wn, i);

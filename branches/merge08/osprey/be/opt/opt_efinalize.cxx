@@ -564,7 +564,11 @@ EXP_WORKLST::Determine_inserts_saves_deletions(CODEMAP         *htable,
 		if (LR_shrink_cand())
 		  Check_restore_sunk_lvalue_def(e_ver_tab, opnd);
 		EXP_OCCURS *def = e_ver_tab->Avail_def(opnd->E_version());
-		if (def->Occurs_as_lvalue() && def->Sunk_lvalue()) {
+		if (def->Occurs_as_lvalue() && def->Sunk_lvalue()
+#if defined(TARG_SL) //PARA_EXTENSION
+                  && !occ_bb->SL2_para_region()
+#endif
+		    ) {             
 		  // this phi operand is first use before which the sunk def 
 		  // is to be inserted later
 		  occ->Set_sunk_lvalue();

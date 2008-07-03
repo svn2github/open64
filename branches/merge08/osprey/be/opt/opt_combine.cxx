@@ -272,7 +272,13 @@ Combine_rem_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
   const MTYPE rtype = OPCODE_rtype(old_wn_opc);
   const MTYPE desc  = OPCODE_desc(old_wn_opc);
 
+#if defined (TARG_SL)
+  if ( WOPT_Enable_DIVREM && MTYPE_is_integral(rtype) &&
+       ! (WN_operator_is(WN_kid1(old_wn), OPR_INTCONST) && 
+       Can_Do_Fast_Remainder(MTYPE_I4, WN_const_val(WN_kid1(old_wn))))) {
+#else
   if ( WOPT_Enable_DIVREM && MTYPE_is_integral(rtype) ) {
+#endif
     // Transform:  REM        REMPART
     //             a b  =>    DIVREM
     //                        a    b

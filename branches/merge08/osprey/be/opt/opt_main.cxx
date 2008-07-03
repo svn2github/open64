@@ -356,6 +356,9 @@
 #include "opt_misc.h"
 #include "opt_lmv.h"
 #include "opt_lmv_helper.h"
+#if defined(TARG_SL)
+#include "opt_lclsc.h"
+#endif
 
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
@@ -1808,6 +1811,19 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
         SET_OPT_PHASE("Bitwise DCE");
         comp_unit->Do_bitwise_dce(TRUE /* copy propatage on */);
       }
+
+#if defined(TARG_SL)
+      SET_OPT_PHASE("LOCAL_CLSC");
+      if (WOPT_Enable_Local_Clsc && (!WOPT_Enable_RVI1)) {
+        LOCAL_CLSC lclsc(comp_unit->Cfg(), comp_unit->Opt_stab());
+        lclsc.Do_local_clsc();
+        if (Get_Trace(TP_GLOBOPT, CR_DUMP_FLAG)) {
+	  fprintf(TFile,"%sAfter lclsc\n%s", DBar, DBar);
+          comp_unit->Htable()->Print(TFile);
+	  comp_unit->Cfg()->Print(TFile);
+        }
+      }
+#endif
 
       if (WOPT_Enable_RVI) {
 	// Hacky invocation of new PRE RVI hooks for testing. TODO:

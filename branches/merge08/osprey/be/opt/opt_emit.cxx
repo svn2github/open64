@@ -1385,18 +1385,13 @@ EMITTER::Gen_wn(BB_NODE *first_bb, BB_NODE *last_bb)
       BB_REGION *bb_region = bb->Regioninfo();
       // we want to emit MP and EH regions
       // also emit any transparent region when Preopt is called from IPA or LNO
-#ifdef TARG_SL2 //region_type_for_major
       if (RID_TYPE_mp(bb_region->Rid()) || RID_TYPE_eh(bb_region->Rid()) ||
 	  // kludge for 7.2, see pv 457243
-	  RID_TYPE_olimit(bb_region->Rid()) ||
-	  RID_TYPE_major(bb_region->Rid()) ||  RID_TYPE_minor(bb_region->Rid()) ||
+	  RID_TYPE_olimit(bb_region->Rid()) || 
+#if defined(TARG_SL) //region_type_for_major
+	  RID_TYPE_sl2_para(bb_region->Rid()) ||
+#endif 	  
 	  RID_TYPE_pragma(bb_region->Rid())) {
-#else
-      if (RID_TYPE_mp(bb_region->Rid()) || RID_TYPE_eh(bb_region->Rid()) ||
-	  // kludge for 7.2, see pv 457243
-	  RID_TYPE_olimit(bb_region->Rid()) ||
-	  RID_TYPE_pragma(bb_region->Rid())) {
-#endif
 
 	Is_True(bb_region->Region_start() == bb,
 		("EMITTER::Gen_wn, regioninfo is incorrect"));

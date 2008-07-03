@@ -340,7 +340,11 @@ BOOL WN_has_mu( const WN *wn, const REGION_LEVEL region_level )
 	return TRUE;
     }
     case OPR_PARM:
+#if defined(TARG_SL)
+      return (WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn));
+#else
       return (WN_Parm_By_Reference(wn));
+#endif
     default:
       return FALSE;
   }

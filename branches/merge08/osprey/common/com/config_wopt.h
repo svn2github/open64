@@ -103,6 +103,10 @@ extern BOOL WOPT_Enable_Alias_Classification;
 extern BOOL WOPT_Enable_Aggressive_Alias_Classification;
 extern BOOL  WOPT_Enable_Disambiguate_Heap_Obj;
 extern BOOL WOPT_Enable_Alias_Class_Fortran_Rule;
+#if defined(TARG_SL)
+extern BOOL WOPT_Enable_Alias_Intrn;
+extern BOOL WOPT_Enable_Local_Clsc;
+#endif
 extern BOOL WOPT_Enable_Avoid_Rehash;	/* SSAPRE to try to minimize rehashing*/
 extern BOOL WOPT_Enable_Backedge_Placement; /* BB on critical backedge */
 extern BOOL WOPT_Enable_Bitwise_DCE;

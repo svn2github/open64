@@ -80,6 +80,7 @@
 #include "w2op.h"
 #include "config_opt.h"         // for Delay_U64_Lowering
 
+#include "opt_sys.h"            // BZERO definition
 #include "opt_config.h"
 #include "opt_wn.h"
 #include "opt_util.h"
@@ -3659,6 +3660,14 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     }
     else {
       retv = Hash_Op(cr, do_canonicalization);
+    }
+
+    if (retv->Kind() == CK_CONST) {
+      // for cse of upper 16 bits of const addr
+      retv->DecUsecnt();
+      ccr->Set_tree(NULL);
+      ccr->Set_scale(retv->Const_val());
+      return TRUE;
     }
 
     ccr->Set_tree(retv);

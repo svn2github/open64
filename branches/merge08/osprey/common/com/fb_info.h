@@ -91,6 +91,11 @@ using Instr::vector;
 
 // data structures shared by both the instrumentation runtime and the back
 // end. 
+#if defined(TARG_SL)
+typedef INT32 FB_NUM_TYPE;
+#else
+typedef INT64 FB_NUM_TYPE;
+#endif
 
 struct FB_Info_Invoke {
 
@@ -102,9 +107,7 @@ struct FB_Info_Invoke {
   FB_Info_Invoke() :
     freq_invoke( FB_FREQ_UNINIT ) {}
 
-#if defined(TARG_SL)
-  FB_FREQ& Access_Freq_Invoke() { return freq_invoke; };
-#endif
+  FB_FREQ& Get_Freq_Invoke() { return freq_invoke; };
 
   void Print( FILE *fp ) const {
     fprintf( fp, "FB---> invoke = " );
@@ -121,40 +124,20 @@ struct FB_Info_Invoke {
 // use vector later, like FB_Info_Switch.
 #define TNV 10
 struct FB_Info_Value {
-#if defined(TARG_SL)
-  INT32   num_values;   // how many valid entries in the value array
-#else
-  INT64   num_values;   // how many valid entries in the value array
-#endif  
+  FB_NUM_TYPE num_values;   // how many valid entries in the value array
 
   FB_FREQ exe_counter;  // how many times this inst is executed
 
-#if defined(TARG_SL)
-  INT32   value[TNV];   // the top TNV profiled values
-#else
-  INT64   value[TNV];   // the top TNV profiled values
-#endif  
+  FB_NUM_TYPE value[TNV];   // the top TNV profiled values
 
   FB_FREQ freq[TNV];    // the corresponding freq for each value
 
-#if defined(TARG_SL)
-  FB_FREQ& Access_Exe_Counter(){ return exe_counter;}
-  FB_FREQ* Access_Freq(){return freq;}
+  FB_FREQ& Get_Exe_Counter(){ return exe_counter;}
+  FB_FREQ* Get_Freq(){return freq;}
 
-#endif
-
-
-#if defined(TARG_SL) && defined(__SL__) 
   FB_Info_Value() : num_values(0), exe_counter(0) {}
-#else
-  FB_Info_Value() : num_values(0), exe_counter(0.0) {}
-#endif
 
-#if defined(TARG_SL)
-  FB_Info_Value( const INT32 num, const INT32 e, const INT32* v, const INT32* f ) {
-#else
-  FB_Info_Value( const INT64 num, const INT64 e, const INT64* v, const INT64* f ) {
-#endif  
+  FB_Info_Value( const INT32 num, const INT32 e, const INT32* v, const FB_NUM_TYPE* f ) {
 
     num_values = MIN( TNV, num );
     exe_counter = e;
@@ -183,31 +166,17 @@ struct FB_Info_Value_FP_Bin {
   FB_FREQ uopnd0;       // how many times was operand 0 == 1.0
   FB_FREQ uopnd1;       // how many times was operand 1 == 1.0
 
-#if defined(TARG_SL) && defined(__SL__) 
   FB_Info_Value_FP_Bin() : exe_counter(0), zopnd0(0), zopnd1(0),
                            uopnd0(0), uopnd1(0) {}
 
-  FB_Info_Value_FP_Bin( const INT32 e, const INT32 z0, const INT32 z1,
-  			const INT32 u0, const INT32 u1 ) {
+  FB_Info_Value_FP_Bin( const FB_NUM_TYPE e, const FB_NUM_TYPE z0, const FB_NUM_TYPE z1,
+  			const FB_NUM_TYPE u0, const FB_NUM_TYPE u1 ) {
     exe_counter = e;
     zopnd0 = z0;
     zopnd1 = z1;
     uopnd0 = u0;
     uopnd1 = u1;
   }
-#else
-  FB_Info_Value_FP_Bin() : exe_counter(0.0), zopnd0(0.0), zopnd1(0.0),
-                           uopnd0(0.0), uopnd1(0.0) {}
-
-  FB_Info_Value_FP_Bin( const INT64 e, const INT64 z0, const INT64 z1,
-  			const INT64 u0, const INT64 u1 ) {
-    exe_counter = e;
-    zopnd0 = z0;
-    zopnd1 = z1;
-    uopnd0 = u0;
-    uopnd1 = u1;
-  }
-#endif
 
   FB_FREQ Total() const {    return exe_counter;   }
 
@@ -228,10 +197,8 @@ struct FB_Info_Branch {
   FB_FREQ freq_not_taken; // number of times branch not taken
                           // (else clause for IF, Kid1 for CSELECT)
 
-#if defined (TARG_SL)
-  FB_FREQ& Access_Freq_Taken(){ return freq_taken;}
-  FB_FREQ& Access_Freq_Not_Taken(){ return freq_not_taken;}
-#endif
+  FB_FREQ& Get_Freq_Taken(){ return freq_taken;}
+  FB_FREQ& Get_Freq_Not_Taken(){ return freq_not_taken;}
 
   FB_Info_Branch( FB_FREQ taken, FB_FREQ not_taken )
     : freq_taken(     taken ),
@@ -301,12 +268,12 @@ struct FB_Info_Loop {
   FB_FREQ freq_iterate;
 
 #if defined (TARG_SL)
-  FB_FREQ& Access_Freq_Zero() {return freq_zero;}
-  FB_FREQ& Access_Freq_Positive() {return freq_positive;}
-  FB_FREQ& Access_Freq_Out() {return freq_out;}
-  FB_FREQ& Access_Freq_Back() {return freq_back;}
-  FB_FREQ& Access_Freq_Exit() {return freq_exit;}
-  FB_FREQ& Access_Freq_Iterate() {return freq_iterate;}  
+  FB_FREQ& Get_Freq_Zero() {return freq_zero;}
+  FB_FREQ& Get_Freq_Positive() {return freq_positive;}
+  FB_FREQ& Get_Freq_Out() {return freq_out;}
+  FB_FREQ& Get_Freq_Back() {return freq_back;}
+  FB_FREQ& Get_Freq_Exit() {return freq_exit;}
+  FB_FREQ& Get_Freq_Iterate() {return freq_iterate;}  
 #endif
 
   FB_Info_Loop( FB_FREQ zero, FB_FREQ positive, FB_FREQ out, FB_FREQ back,
@@ -373,9 +340,7 @@ struct FB_Info_Loop {
     freq_iterate.Print_simple( fp );
   }
 
-#if defined(TARG_SL) && defined(__SL__) 
-
-#else
+#if !( defined(TARG_SL) && defined(__SL__) )
   FB_FREQ Total() const {
     return ( freq_exit + freq_iterate );
   }
@@ -398,9 +363,9 @@ struct FB_Info_Circuit {
   FB_FREQ freq_neither;
 
 #if defined(TARG_SL)
-  FB_FREQ& Access_Freq_Left(){return freq_left;}
-  FB_FREQ& Access_Freq_Right(){return freq_right;}
-  FB_FREQ& Access_Freq_Neither(){return freq_neither;}
+  FB_FREQ& Get_Freq_Left(){return freq_left;}
+  FB_FREQ& Get_Freq_Right(){return freq_right;}
+  FB_FREQ& Get_Freq_Neither(){return freq_neither;}
 #endif
 
   FB_Info_Circuit( FB_FREQ left, FB_FREQ right, FB_FREQ neither )
@@ -445,8 +410,8 @@ struct FB_Info_Call {
 			//   consistent feedback file alignment in IA32/64
 
 #if defined(TARG_SL)
-  FB_FREQ&  Access_Freq_Entry(){return freq_entry;}
-  FB_FREQ&  Access_Freq_Exit(){return freq_exit;}
+  FB_FREQ&  Get_Freq_Entry(){return freq_entry;}
+  FB_FREQ&  Get_Freq_Exit(){return freq_exit;}
 #endif
 
   FB_Info_Call( FB_FREQ entry, FB_FREQ exit, BOOL same = FALSE )

@@ -1643,12 +1643,11 @@ static void r_assemble_list (
 
   Emit_Unwind_Directives_For_OP(op, Asm_File);
 
-#ifdef GAS_TAGS_WORKED
 // un-ifdef this when gas can handle tags inside explicit bundle
   if (OP_has_tag(op)) {
 	fprintf(Asm_File, "%s:\n", LABEL_name(Get_OP_Tag(op)));
   }
-#endif
+
   for (i = 0; i < OP_opnds(op); i++) {
     INT start = vstr_len(buf);	// start of operand string
     TN *t = OP_opnd(op,i);
@@ -6416,7 +6415,7 @@ Write_Symdiff (
   INT32	repeat,		/* Repeat count */
   INT size              /* 2 or 4 bytes */
 #ifdef TARG_IA64
-  , bool beh = false)	
+  , bool beh = false
 #else
 #ifdef KEY
   , bool etable = 0

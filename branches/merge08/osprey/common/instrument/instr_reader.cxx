@@ -76,9 +76,7 @@ extern ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
 static char* ERR_POS = "Error in positioning within %s";
 static char* ERR_READ = "Error in reading from %s";
 
-#if defined(TARG_SL)
 static char* ERR_WRITE = "Error in writing to %s";
-#endif
 
 #ifndef _BUILD_INSTR
 
@@ -620,14 +618,15 @@ Get_Str_Table(FILE *fp, char *fname, Fb_Hdr& fb_hdr, char *str_table)
 #define FREQ_FP_OFFSET 3.0
 #define RESET_FREQ_FP_OFFSET(x)  (x - FREQ_FP_OFFSET)
 
+typedef UINT32 FREQ_INSTR_VALUE_TYPE;
+typedef float FREQ_OPT_VALUE_TYPE;
+
 void
 cast_invoke_freq(FB_Info_Invoke*  fb_ink, ULONG num_inv_items)
 {
   for(INT i=0;i<num_inv_items;i++) {
-
-//    fb_ink->freq_invoke._value= (float)(*((UINT32*)(&(fb_ink->freq_invoke._value))))  - FREQ_FP_OFFSET;
-    float value=(float)(*((UINT32*)(&(fb_ink->Access_Freq_Invoke().Access_Value()))));
-    fb_ink->Access_Freq_Invoke().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    FREQ_OPT_VALUE_TYPE value=(FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_ink->Get_Freq_Invoke().Get_Value()))));
+    fb_ink->Get_Freq_Invoke().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
     fb_ink++;
   }
 
@@ -638,15 +637,12 @@ void
 cast_branch_freq(FB_Info_Branch* fb_bra, ULONG num_bra_items)
 {
   for(INT i=0;i<num_bra_items;i++) {
+    FREQ_OPT_VALUE_TYPE value;
+    value= (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_bra->Get_Freq_Taken().Get_Value()))));
+    fb_bra->Get_Freq_Taken().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
 
-//    fb_bra->freq_taken._value=(float)(*((UINT32*)(&(fb_bra->freq_taken._value)))) - FREQ_FP_OFFSET;
-    float value;
-    value= (float)(*((UINT32*)(&(fb_bra->Access_Freq_Taken().Access_Value()))));
-    fb_bra->Access_Freq_Taken().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
-
-//    fb_bra->freq_not_taken._value=(float)(*((UINT32*)(&(fb_bra->freq_not_taken._value)))) - FREQ_FP_OFFSET;
-    value = (float)(*((UINT32*)(&(fb_bra->Access_Freq_Not_Taken().Access_Value()))));    
-    fb_bra->Access_Freq_Not_Taken().Set_Value(RESET_FREQ_FP_OFFSET( value ) );  
+    value = (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_bra->Get_Freq_Not_Taken().Get_Value()))));    
+    fb_bra->Get_Freq_Not_Taken().Set_Value(RESET_FREQ_FP_OFFSET( value ) );  
     fb_bra++;
   }
   
@@ -657,9 +653,7 @@ void
 cast_freq (FB_FREQ*  fb, ULONG num_fb_items)
 {
   for(INT i=0;i<num_fb_items;i++) {
-
-//    fb->_value=(float)(*((UINT32*)(&(fb->_value)))) - FREQ_FP_OFFSET;
-    float value=(float)(*((UINT32*)(&(fb->Access_Value()))));
+    FREQ_OPT_VALUE_TYPE value=(FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb->Get_Value()))));
     fb->Set_Value(RESET_FREQ_FP_OFFSET( value ) );
     fb++;
   }
@@ -672,30 +666,24 @@ cast_loop_freq(FB_Info_Loop*  fb_loop, ULONG num_loop_items)
 {
 
   for(INT i=0;i<num_loop_items;i++) {
-//    fb_loop->freq_zero._value=(float)(*((UINT32*)(&(fb_loop->freq_zero._value)))) - FREQ_FP_OFFSET;
-    float value;
-    value= (float)(*((UINT32*)(&(fb_loop->Access_Freq_Zero().Access_Value()))));
-    fb_loop->Access_Freq_Zero().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    FREQ_OPT_VALUE_TYPE value;
+    value= (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_loop->Get_Freq_Zero().Get_Value()))));
+    fb_loop->Get_Freq_Zero().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
 
-//    fb_loop->freq_positive._value=(float)(*((UINT32*)(&(fb_loop->freq_positive._value)))) - FREQ_FP_OFFSET;
-    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Positive().Access_Value()))));
-    fb_loop->Access_Freq_Positive().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   
+    value = (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_loop->Get_Freq_Positive().Get_Value()))));
+    fb_loop->Get_Freq_Positive().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   
 
-//    fb_loop->freq_out._value=(float)(*((UINT32*)(&(fb_loop->freq_out._value)))) - FREQ_FP_OFFSET;
-    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Out().Access_Value()))));
-    fb_loop->Access_Freq_Out().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
+    value = (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_loop->Get_Freq_Out().Get_Value()))));
+    fb_loop->Get_Freq_Out().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
 
-//    fb_loop->freq_back._value=(float)(*((UINT32*)(&(fb_loop->freq_back._value)))) - FREQ_FP_OFFSET;
-    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Back().Access_Value()))));
-    fb_loop->Access_Freq_Back().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
+    value = (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_loop->Get_Freq_Back().Get_Value()))));
+    fb_loop->Get_Freq_Back().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
 
-//    fb_loop->freq_exit._value=(float)(*((UINT32*)(&(fb_loop->freq_exit._value)))) - FREQ_FP_OFFSET;
-    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Exit().Access_Value()))));
-    fb_loop->Access_Freq_Exit().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
+    value = (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_loop->Get_Freq_Exit().Get_Value()))));
+    fb_loop->Get_Freq_Exit().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
 
-//    fb_loop->freq_iterate._value=(float)(*((UINT32*)(&(fb_loop->freq_iterate._value)))) - FREQ_FP_OFFSET;
-    value = (float)(*((UINT32*)(&(fb_loop->Access_Freq_Iterate().Access_Value()))));
-    fb_loop->Access_Freq_Iterate().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
+    value = (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_loop->Get_Freq_Iterate().Get_Value()))));
+    fb_loop->Get_Freq_Iterate().Set_Value(RESET_FREQ_FP_OFFSET( value ) );   	
 
 
     fb_loop++;
@@ -710,18 +698,15 @@ cast_scircuit_freq(FB_Info_Circuit* fb_cir, ULONG num_cir_items)
 {
 
   for(INT i=0;i<num_cir_items;i++) {
-//    fb_cir->freq_left._value=(float)(*((UINT32*)(&(fb_cir->freq_left._value)))) - FREQ_FP_OFFSET;
-    float value;
-    value= (float)(*((UINT32*)(&( fb_cir->Access_Freq_Left().Access_Value())))) ;
-    fb_cir->Access_Freq_Left().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    FREQ_OPT_VALUE_TYPE value;
+    value= (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&( fb_cir->Get_Freq_Left().Get_Value())))) ;
+    fb_cir->Get_Freq_Left().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
 
-//    fb_cir->freq_right._value=(float)(*((UINT32*)(&(fb_cir->freq_right._value)))) - FREQ_FP_OFFSET;
-    value= (float)(*((UINT32*)(&( fb_cir->Access_Freq_Right().Access_Value())))) ;
-    fb_cir->Access_Freq_Right().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    value= (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&( fb_cir->Get_Freq_Right().Get_Value())))) ;
+    fb_cir->Get_Freq_Right().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
 
-//    fb_cir->freq_neither._value=(float)(*((UINT32*)(&(fb_cir->freq_neither._value)))) - FREQ_FP_OFFSET;
-    value= (float)(*((UINT32*)(&( fb_cir->Access_Freq_Neither().Access_Value())))) ;
-    fb_cir->Access_Freq_Neither().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    value= (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&( fb_cir->Get_Freq_Neither().Get_Value())))) ;
+    fb_cir->Get_Freq_Neither().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
 
     fb_cir++;
   }
@@ -733,14 +718,12 @@ void
 cast_call_freq(FB_Info_Call* fb_call, ULONG num_call_items)
 {
   for(INT i=0;i<num_call_items;i++) {
-//    fb_call->freq_entry._value=(float)(*((UINT32*)(&(fb_call->freq_entry._value)))) - FREQ_FP_OFFSET;
-    float value;
-    value= (float)(*((UINT32*)(&( fb_call->Access_Freq_Entry().Access_Value()))))  ;
-    fb_call->Access_Freq_Entry().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    FREQ_OPT_VALUE_TYPE value;
+    value= (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&( fb_call->Get_Freq_Entry().Get_Value()))))  ;
+    fb_call->Get_Freq_Entry().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
 	
-//    fb_call->freq_exit._value=(float)(*((UINT32*)(&(fb_call->freq_exit._value)))) - FREQ_FP_OFFSET;
-    value= (float)(*((UINT32*)(&( fb_call->Access_Freq_Exit().Access_Value()))))  ;
-    fb_call->Access_Freq_Exit().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    value= (FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&( fb_call->Get_Freq_Exit().Get_Value()))))  ;
+    fb_call->Get_Freq_Exit().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
 
     fb_call++;
   }
@@ -754,15 +737,13 @@ void
 cast_value_freq(FB_Info_Value* fb_val, ULONG num_val_Items)
 {
   for(INT i=0;i <num_val_Items;i++) {
-//    fb_val->exe_counter._value = (float)(*((UINT32*)(&(fb_val->exe_counter._value)))) - FREQ_FP_OFFSET;
-    float value;
-    value=(float)(*((UINT32*)(&(fb_val->Access_Exe_Counter().Access_Value()))));
-    fb_val->Access_Exe_Counter().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+    FREQ_OPT_VALUE_TYPE value;
+    value=(FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&(fb_val->Get_Exe_Counter().Get_Value()))));
+    fb_val->Get_Exe_Counter().Set_Value(RESET_FREQ_FP_OFFSET( value ) );
 	
     for(INT j=0;j<TNV;j++) {
-//      fb_val->freq[j]._value= (float)(*((UINT32*)(&(fb_val->freq[j]._value)))) - FREQ_FP_OFFSET;
-      value=(float)(*((UINT32*)(&((fb_val->Access_Freq())[j].Access_Value()))));
-      ((fb_val->Access_Freq())[j]).Set_Value(RESET_FREQ_FP_OFFSET( value ) );
+      value=(FREQ_OPT_VALUE_TYPE)(*((FREQ_INSTR_VALUE_TYPE*)(&((fb_val->Get_Freq())[j].Get_Value()))));
+      ((fb_val->Get_Freq())[j]).Set_Value(RESET_FREQ_FP_OFFSET( value ) );
 
     }
     fb_val++;

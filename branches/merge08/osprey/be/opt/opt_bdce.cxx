@@ -110,6 +110,7 @@
 #include "cxx_memory.h"
 #include "config_targ.h" // needed for Pointer_type
 
+#include "opt_sys.h"            // BZERO definition
 #include "opt_defs.h"
 #include "opt_cfg.h"
 #include "opt_ssa.h"
@@ -1060,6 +1061,20 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
 #ifdef TARG_SL 
        if ((sign_xtd == opnd->Is_sign_extd()) && (from_bit >=  MTYPE_size_min(opnd->Dsctyp()))) {
           return TRUE; 
+       } else if (opnd->Defstmt() && 
+                  (opnd->Defstmt()->Opr() == OPR_INTRINSIC_CALL)) {
+          // c3_save_acc(acc, shr): if shr == 16, delete cvtl
+          CODEREP *rhs = opnd->Defstmt()->Rhs();
+          if (rhs && (rhs->Intrinsic() == INTRN_C3_SAVE_ACC)) {
+             CODEREP *shr = rhs->Opnd(1);
+             if ((shr->Kind() == CK_IVAR) && (shr->Ilod_base() != NULL)) {
+                if ((shr->Ilod_base()->Kind() == CK_CONST) && 
+                    (shr->Ilod_base()->Const_val() == 16)) {
+	           return TRUE;
+	        }
+	     }
+	     return FALSE;
+	  }
        }
 #endif
       return FALSE;
@@ -1178,6 +1193,13 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
 	  kopnd = opnd->Opnd(1);
 	else return FALSE;
 	UINT64 uval64 = kopnd->Const_val();
+	if (sign_xtd) {
+	  //     I4I4LDID 0 <2,1,a>
+	  //     LDC I4 15 <u=4095 cr10> flags:0x0 b=-1
+	  //   I4BAND <u=0 cr13> isop_flags:0xc040 flags:0x1 b=-1
+	  // I4CVTL 8 <u=2 cr14> isop_flags:0xc040 flags:0x1 b=E38
+	  return uval64 < ((0x1ll << from_bit) - 1);
+	} else
 	return uval64 <= ((0x1ll << from_bit) - 1);
       }
 #endif

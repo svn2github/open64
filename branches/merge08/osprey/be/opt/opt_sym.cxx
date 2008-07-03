@@ -365,8 +365,11 @@ static void Collect_addr_passed_for_PU(WN *wn)
 
   // Fix 625656:
   //  Catch the cases not covered by addr_saved in be/com/opt_addr_flags.cxx.
-  if (WN_operator(wn) == OPR_PARM && 
-      (WN_Parm_By_Reference(wn) || WN_Parm_Passed_Not_Saved(wn))) 
+  if (WN_operator(wn) == OPR_PARM && (
+#if defined(TARG_SL)
+      WN_Parm_Dereference(wn) ||
+#endif
+      WN_Parm_By_Reference(wn) || WN_Parm_Passed_Not_Saved(wn))) 
     Collect_addr_passed(WN_kid0(wn));
   //
   // Fix 642145:
@@ -2129,7 +2132,7 @@ OPT_STAB::Make_st_group(void)
 	UINT64 size = sorted[i]->Bit_size() == 0 ?
 	  sorted[i]->Byte_size() * 8 : sorted[i]->Bit_size();
         if (ofst < hi) {
-#if !defined(IRIX)
+#if defined(linux) || defined(BUILD_OS_DARWIN)
 //         hi = (( hi > ofst + size ) ?  hi : ofst + size ) ;
            if (hi < ofst + size)
              hi = ofst + size;

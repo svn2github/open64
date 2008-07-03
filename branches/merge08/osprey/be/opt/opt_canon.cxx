@@ -145,8 +145,9 @@ CANON_CR::Trim_to_16bits(WN *wn, CODEMAP *htable)
   if (Tree() == NULL) {
     // iload of a constant cannot be canonicalized. Very likely
     // doing some memory mapped I/O.
-    Set_tree(htable->Add_const(typ, Scale()));
-    Set_scale(0);
+    multiple32K = ((Scale() + 0x8000) >> 16) << 16;
+    Set_tree(htable->Add_const(typ, multiple32K));
+    Set_scale(Scale()-multiple32K);
     return;
   }
   

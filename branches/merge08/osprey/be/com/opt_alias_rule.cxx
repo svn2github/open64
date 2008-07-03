@@ -784,7 +784,7 @@ BOOL ALIAS_RULE::Aliased_Disjoint(const POINTS_TO *mem1, const POINTS_TO *mem2) 
 
 //  Same location
 //
-BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *mem1, const POINTS_TO *mem2)
+BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *mem1, const POINTS_TO *mem2) const
 {
   if (mem1->Same_base(mem2) &&
       mem1->Ofst_kind() == OFST_IS_FIXED &&
