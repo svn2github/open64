@@ -6415,7 +6415,7 @@ Write_Symdiff (
   INT32	repeat,		/* Repeat count */
   INT size              /* 2 or 4 bytes */
 #ifdef TARG_IA64
-  , bool beh = false
+  , bool beh = false)
 #else
 #ifdef KEY
   , bool etable = 0
