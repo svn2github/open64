@@ -78,10 +78,6 @@
 #ifdef TARG_IA64
 #include "ipfec_options.h"
 #include "cgexp_internals.h"
-#ifdef _delete_but_not_fully_tested_yet
-#undef _delete_but_not_fully_tested_yet
-#endif
-#define _delete_but_not_fully_tested_yet
 #endif
 #ifdef KEY
 #include "calls.h"	  // for Saved_Callee_Saved_Regs
@@ -2745,7 +2741,8 @@ GRA_Remove_Predicates_Save_Restore(void)
 	break;
       }
     }
-#if !defined( _delete_but_not_fully_tested_yet) && defined(TARG_IA64)
+// entry code is not generated for handler entry on IA64, in Generated_Entry()
+#if !defined(TARG_IA64)
     Is_True(found || Exit_BB_Head == NULL, 
 	    ("cannot find predicate register save at entry.\n"));
 #endif
@@ -2763,7 +2760,8 @@ GRA_Remove_Predicates_Save_Restore(void)
 	break;
       }
     }
-#if !defined(_delete_but_not_fully_tested_yet) && defined(TARG_IA64)
+// entry code is not generated for handler entry on IA64, in Generated_Entry()
+#if !defined(TARG_IA64)
     Is_True(found, ("cannot find predicate register restore at exit.\n"));
 #endif
   }
