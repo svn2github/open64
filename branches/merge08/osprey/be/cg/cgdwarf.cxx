@@ -965,8 +965,9 @@ put_location (
 #else
 		dwarf_add_expr_addr_b (expr,
 #ifdef KEY
-			           base_ofst + offs,               // need to add base offset because if the symbols has
-                                                                    // a base, the offset is not necessarily set
+			           // need to add base offset because if the symbol
+                                   // has a base, the offset is not necessarily set
+			           base_ofst + offs, 
 #else
 				       ST_ofst(st) + offs,
 #endif
@@ -1021,8 +1022,9 @@ put_location (
 #endif
 	dwarf_add_expr_addr_b (expr,
 #ifdef KEY      
-			       base_ofst + offs,  // need to add base offset because if the symbols has
-                                                  // a base, the offset is not necessarily set
+	               	       // need to add base offset because if the symbol
+			       // has a base, the offset is not necessarily set
+			       base_ofst + offs,
 #else
 			       ST_ofst(st) + offs, 
 #endif
@@ -2976,7 +2978,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 			file_table[file_idx].file_size);
 		}
 		file_table[file_idx].already_processed = TRUE;
-#ifndef linux
+#if defined(IRIX)
 		// for irix, only need .file when new file,
 		// as subsequent .locs use file number.
 		if (Assembly) {

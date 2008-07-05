@@ -604,16 +604,19 @@ struct tn;
  */
 
 typedef UINT   REGISTER;
-typedef mUINT8 mREGISTER;
+//typedef mUINT8 mREGISTER;
+// Use mUINT16 now because some architecture, e.g. NVISA, can have a large amount 
+// of registers.
+typedef mUINT16 mREGISTER;
 
-/* define 16-bit structure to hold both the class and register number,
-   and a union with an mUINT16 so that we can efficiently compare
+/* define 32-bit structure to hold both the class and register number,
+   and a union with an mUINT32 so that we can efficiently compare
    register class-number pairs */
 typedef union class_reg_pair {
-  mUINT16	class_n_reg;
+  mUINT32	class_n_reg;
   struct class_reg_struct {
     mREGISTER 	        reg;
-    mISA_REGISTER_CLASS rclass;
+    mISA_REGISTER_CLASS rclass; 
     } class_reg;
 } CLASS_REG_PAIR;
 
@@ -723,10 +726,12 @@ extern const REGISTER_SET REGISTER_SET_EMPTY_SET;
  * not really exported.  See below for exported access macros.
  */
 typedef struct {
-  mUINT8            reg_machine_id[REGISTER_MAX + 1];
+  mUINT16           reg_machine_id[REGISTER_MAX + 1];
   mUINT8            reg_bit_size[REGISTER_MAX + 1];
   mBOOL             reg_allocatable[REGISTER_MAX + 1];
+#if !defined(TARG_NVISA)
   const char       *reg_name[REGISTER_MAX + 1];
+#endif
 
   mBOOL             can_store;
   mBOOL		    multiple_save;
@@ -802,8 +807,19 @@ REGISTER_CLASS_info[ISA_REGISTER_CLASS_MAX + 1];
                                 (REGISTER_CLASS_reg_machine_id(rclass)[reg])
 #define REGISTER_allocatable(rclass,reg)			\
 				(REGISTER_CLASS_reg_allocatable(rclass)[reg])
+#if defined(TARG_NVISA)
+/* Because the isa reg_name may not be permanent (when many regs),
+ * we have to copy or use it immediately.
+ * Rather than alloc space to copy it to the local info struct, 
+ * change this to just invoke the isa routine directly
+ * (why bother with two copies of the same data?). */
+#define REGISTER_name(rclass,reg)				\
+	(ISA_REGISTER_CLASS_INFO_Reg_Name(ISA_REGISTER_CLASS_Info(rclass), \
+	 reg - REGISTER_MIN))
+#else
 #define REGISTER_name(rclass,reg)				\
 				(REGISTER_CLASS_reg_name(rclass)[reg])
+#endif
 #define REGISTER_bit_size(rclass,reg)				\
 				(REGISTER_CLASS_reg_bit_size(rclass)[reg])
 

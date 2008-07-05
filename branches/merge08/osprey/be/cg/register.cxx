@@ -391,16 +391,22 @@ Initialize_Register_Class(
     REGISTER_bit_size(rclass, reg) = bit_size;
     REGISTER_machine_id(rclass, reg) = isa_reg;
     REGISTER_allocatable(rclass, reg) = is_allocatable;
+#if !defined(TARG_NVISA) //
     REGISTER_name(rclass, reg) = ISA_REGISTER_CLASS_INFO_Reg_Name(icinfo, isa_reg);
+#endif
 
+#ifdef ABI_PROPERTY_frame_ptr
     if ( ABI_PROPERTY_Is_frame_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_fp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_fp, rclass);
     }
+#endif
+#ifdef ABI_PROPERTY_static_link
     else if ( ABI_PROPERTY_Is_static_link(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_static_link, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_static_link, rclass);
     }
+#endif
 #if defined(TARG_MIPS) || defined(TARG_IA64)
     else if ( ABI_PROPERTY_Is_global_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_gp, reg);
@@ -417,10 +423,12 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_tp, rclass);
     }
 #endif
+#ifdef ABI_PROPERTY_stack_ptr
     else if ( ABI_PROPERTY_Is_stack_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_sp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_sp, rclass);
     }
+#endif
 #if defined(TARG_MIPS) || defined(TARG_IA64)
     else if ( ABI_PROPERTY_Is_entry_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_ep, reg);

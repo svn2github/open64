@@ -131,8 +131,8 @@ BB_MAP BB_MAP_create_kind(_BB_MAP_KIND kind)
       if (result->gen == 0) {
 	/* Generation count overflow.  Should be extremely rare. */
 	DevWarn("(Performance) BB_MAP gen overflow - zeroing.");
-	bzero(result->value_gens, sizeof(mUINT32) * result->length);
-	bzero(result->values.ptr, sizeof_kind(kind) * result->length);
+	BZERO(result->value_gens, sizeof(mUINT32) * result->length);
+	BZERO(result->values.ptr, sizeof_kind(kind) * result->length);
       }
       return result;
     }

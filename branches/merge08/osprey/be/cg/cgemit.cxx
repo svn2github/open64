@@ -216,23 +216,28 @@ extern BOOL PU_has_trampoline;  // defined in wn_lower.cxx
  * ====================================================================
  */
 
-#if defined(TARG_IA64) || defined(linux) || defined(BUILD_OS_DARWIN)
+#if defined(TARG_IA64)
 BOOL CG_emit_asm_dwarf    = TRUE;
 BOOL CG_emit_unwind_info  = TRUE;
-#ifdef TARG_IA64
 BOOL CG_emit_unwind_directives = TRUE;
-#else
-BOOL CG_emit_unwind_info_Set = FALSE;
-BOOL CG_emit_unwind_directives = FALSE;
-#endif
-#else  // Covers NVISA here
+#elif defined(TARG_NVISA)
 BOOL CG_emit_asm_dwarf    = FALSE;
 BOOL CG_emit_unwind_info  = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
+#else
+BOOL CG_emit_asm_dwarf    = TRUE;
+BOOL CG_emit_unwind_info  = TRUE;
+BOOL CG_emit_unwind_info_Set = FALSE;
+BOOL CG_emit_unwind_directives = FALSE;
 #endif
+
 #ifdef KEY
 BOOL CG_emit_non_gas_syntax = FALSE;
+#ifdef TARG_NVISA
+BOOL CG_inhibit_size_directive = TRUE;
+#else
 BOOL CG_inhibit_size_directive = FALSE;
+#endif
 #endif
 
 #ifndef TARG_NVISA
@@ -716,7 +721,7 @@ Init_Section (ST *st)
 	}
 
 	if (Assembly) {
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_NVISA)
 	  CGEMIT_Prn_Scn_In_Asm(st, cur_section);
 #else
 	  CGEMIT_Prn_Scn_In_Asm(st, scn_type, scn_flags, scn_entsize, cur_section);
@@ -951,7 +956,7 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
 	EMT_Write_Qualified_Name(pfile, st);
 	fputc ('\n', pfile);
     }
-#if defined(TARG_X8664) && ! defined(BUILD_OS_DARWIN)
+#if (defined(TARG_X8664) || defined(TARG_NVISA)) && !defined(BUILD_OS_DARWIN)
 	// Bug 1275 and 4351
 	// Always emit the function type
 	if (ST_class(st) == CLASS_FUNC) {
@@ -1918,6 +1923,9 @@ static void Verify_Operand(
       INT64 imm = TN_value(tn);
 
       if ((TFile != stdout) && !ISA_LC_Value_In_Class(imm, lc)) {
+#if defined(TARG_NVISA)
+	DevWarn("literal doesn't fit");
+#endif
         Print_OP_No_SrcLine (op);
       }
 #ifdef TARG_X8664
@@ -2163,11 +2171,11 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 	  }
 #ifdef TARG_IA64
 	  if (!ISA_LC_Value_In_Class(val, LC_i16)) {
-#elif TARG_X8664
+#elif defined(TARG_X8664)
 	  if (!ISA_LC_Value_In_Class(val, LC_simm32)) {
 #elif defined(TARG_SL)
 	  if (!ISA_LC_Value_In_Class(val, LC_simm16)) {
-#else
+#elif defined(TARG_NVISA)
 	  if (FALSE) {
 #endif
 		/* 
@@ -2187,12 +2195,14 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 #ifdef TARG_IA64
 	    FmtAssert (ISA_LC_Value_In_Class(val, LC_i16),
 		("immediate value %lld too large for GPREL relocation", val));
-#elif TARG_X8664
+#elif defined(TARG_X8664)
 	    FmtAssert (ISA_LC_Value_In_Class(val, LC_simm32),
 		("immediate value %lld too large for GPREL relocation", val));
-#else
+#elif defined(TARG_SL)
 	    FmtAssert (ISA_LC_Value_In_Class(val, LC_simm16),
 		("immediate value %lld too large for GPREL relocation", val));
+#elif defined(TARG_NVISA)
+	    //Do nothing
 #endif
 	    Em_Add_New_Rel (EMT_Put_Elf_Symbol (st), R_MIPS_GPREL, PC,
 			  PU_section);
@@ -2387,7 +2397,7 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
 #else
 #define Init_Sanity_Checking_For_BB()
 #define Perform_Sanity_Checks_For_OP(op, check_def)
-#endif
+#endif // Is_True_On && !defined(TARG_NVISA)
 
 #ifdef KEY
 //********************************************************
@@ -2821,7 +2831,7 @@ if (Get_Trace ( TP_EMIT,0x100 )) {
     Last_Label = LABEL_IDX_ZERO;
   }
   else {
-#ifndef TARG_X8664 
+#if !defined(TARG_X8664) && !defined(TARG_NVISA)
     // Bug 2468 - can not update offset/PC for x86 target (variable length)
     Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, words);
 #endif
@@ -3989,6 +3999,7 @@ Assemble_Bundles(BB *bb)
     }
     last = slot_op[ISA_MAX_SLOTS-1];
 #endif
+#ifdef ISA_PRINT_BEGIN_BUNDLE
     /* Bundle prefix
      */
 
@@ -3998,6 +4009,7 @@ Assemble_Bundles(BB *bb)
       fprintf(Asm_File, begin_bundle, ISA_EXEC_AsmName(ibundle));
       fputc ('\n', Asm_File);
     }
+#endif
 
     /* Assemble the bundle.
      */
@@ -4032,9 +4044,11 @@ Assemble_Bundles(BB *bb)
 
       Em_Add_Bytes_To_Scn (PU_section, (char *)&bundle, INST_BYTES, INST_BYTES);
     }
+#ifdef ISA_PRINT_END_BUNDLE
     if (Assembly && EMIT_explicit_bundles) {
       fprintf(Asm_File, " %s", ISA_PRINT_END_BUNDLE);
     }
+#endif
   }
   if (Assembly) {
     fputc ('\n', Asm_File);
@@ -4612,7 +4626,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
       if (emit_label)
         fprintf ( Asm_File, "%s:\n", LABEL_name(lab)); 
 #else
-      fprintf ( Asm_File, "%s:\t%s 0x%llx\n", 
+      fprintf ( Asm_File, "%s:\t%s 0x%" LL_FORMAT "x\n", 
 			  LABEL_name(lab), ASM_CMNT, Get_Label_Offset(lab) );
 #endif
     }
@@ -4651,7 +4665,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 #ifdef TARG_IA64
       // fprintf ( Asm_File, "%s:\t%s 0x%llx\n", ST_name(st), ASM_CMNT, ST_ofst(st));
 #else
-      fprintf ( Asm_File, "%s:\t%s 0x%llx\n", ST_name(st), ASM_CMNT, ST_ofst(st));
+      fprintf ( Asm_File, "%s:\t%s 0x%" LL_FORMAT "x\n", ST_name(st), ASM_CMNT, ST_ofst(st));
 #endif
     }
     Is_True (ST_ofst(st) == PC, ("st %s offset %lld doesn't match PC %d", 
@@ -6201,7 +6215,7 @@ Write_Symbol (
     #pragma mips_frequency_hint NEVER
     Trace_Init_Loc (scn_idx, scn_ofst, repeat);
     fprintf ( TFile, "SYM " );
-    fprintf ( TFile, "%s %+lld\n", ST_name(sym), sym_ofst );
+    fprintf ( TFile, "%s %+lld\n", ST_name(sym), (INT64) sym_ofst );
   }
 
   /* make sure is allocated */
@@ -6283,11 +6297,11 @@ Write_Symbol (
       else if (ST_class(sym) == CLASS_FUNC && fptr && ! Get_Trace(TP_EMIT,0x2000)) {
 	fprintf (Asm_File, " %s(", fptr);
 	EMT_Write_Qualified_Name (Asm_File, sym);
-	fprintf (Asm_File, " %+lld)\n", sym_ofst);
+	fprintf (Asm_File, " %+lld)\n", (INT64) sym_ofst);
       }
       else {
 	EMT_Write_Qualified_Name (Asm_File, sym);
-	fprintf (Asm_File, " %+lld\n", sym_ofst);
+	fprintf (Asm_File, " %+lld\n", (INT64) sym_ofst);
       }
       if (ST_class(sym) == CLASS_FUNC
 #if defined(BUILD_OS_DARWIN)
@@ -7403,11 +7417,11 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
         ST_sclass(st) == SCLASS_DISTR_ARRAY) {
       continue;
     }
+#ifdef TARG_NVISA
     // ignore if already processed
     if (st_processed[ST_index(st)]) {
       continue;
     }
-#ifdef TARG_NVISA
     /* don't emit initialization if static local and not accessed;
      * this avoids emitting unused cudart arrays.
      * Because constant memory arrays can come from users and be used on host,
@@ -7493,8 +7507,9 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
     ST* base;
     ST* st = *st_iter;
     ST_INITO_MAP::iterator st_inito_entry = st_inito_map.find(ST_st_idx(st));
-
+#ifdef TARG_NVISA
     st_processed[ST_index(st)] = TRUE;
+#endif
 
     if (st_inito_entry != st_inito_map.end()) {
       INITO* ino = (*st_inito_entry).second;
@@ -8037,11 +8052,13 @@ Setup_Text_Section_For_PU (ST *pu)
     Is_True(i == text_PC, ("Setup_Text_Section_For_PU: PC doesn't match"));
     text_PC = i;
   }
+#ifndef TARG_NVISA  // nvisa doesn't have standard text section
 #if defined(BUILD_OS_DARWIN)
   emit_section_directive(text_base);
 #else
   if (Assembly) fprintf (Asm_File, "\t%s %s\n", AS_SECTION, ST_name(text_base));
 #endif /* defined(BUILD_OS_DARWIN) */
+#endif
 
 #ifdef TEMPORARY_STABS_FOR_GDB
   // This is an ugly hack to enable basic debugging for IA-32 target
@@ -8078,7 +8095,7 @@ Setup_Text_Section_For_PU (ST *pu)
     text_PC = text_PC + (i * INST_BYTES);
   }
 
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) && !defined(TARG_NVISA)
   // hack for supporting dwarf generation in assembly (suneel)
   Last_Label = Gen_Label_For_BB (REGION_First_BB);
 
@@ -8461,9 +8478,10 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   fprintf(Asm_File, "//PU cycle count: %f\n", pu_cycle_count);
 #endif
 
-#ifdef TARG_X8664 
+#if defined(TARG_X8664) || defined(TARG_NVISA)
   // Emit Last_Label at the end of the PU to guide Dwarf DW_AT_high_pc
   fprintf( Asm_File, "%s:\n", LABEL_name(Last_Label));
+#if defined(TARG_X8664)
   Label_Last_BB_PU_Entry[pu_entries] = Last_Label;
 #if ! defined(BUILD_OS_DARWIN)
   // Mach-O as 1.38 doesn't support .size
@@ -8471,6 +8489,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   fprintf( Asm_File, "\t.size %s, %s-%s\n", 
 	   ST_name(pu), LABEL_name(Last_Label), ST_name(pu));
 #endif /* defined(BUILD_OS_DARWIN) */
+#endif /* TARG_X8664 */
 #endif
   /* Revert back to the text section to end the PU. */
   Setup_Text_Section_For_BB(REGION_First_BB);
@@ -8489,6 +8508,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #ifdef TARG_NVISA
       fprintf ( Asm_File, "\t} %s %s\n", ASM_CMNT, ST_name(pu));
 #endif
+#ifdef AS_END
   const char *end = AS_END;
   if (Assembly) {
 #ifdef TARG_MIPS
@@ -8509,6 +8529,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
       fputc ( '\n', Asm_File);
     }
   }
+#endif // AS_END
   
 #ifndef TARG_NVISA
   /* Emit the initialized data associated with this PU. */
@@ -8760,6 +8781,7 @@ static char ism_name[40];
 static void
 Get_Ism_Name (void)
 {
+#if defined(IRIX)
 	char *s = strchr(__Release_ID, ':');
 	char *p;
 	if (s == NULL) {
@@ -8776,6 +8798,9 @@ Get_Ism_Name (void)
 	p = strchr(s, ' ');
 	strncpy (ism_name, s, p-s);
 	ism_name[p-s] = '\0';
+#else
+	ism_name[0] = '\0';
+#endif
 }
 
 

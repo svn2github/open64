@@ -321,7 +321,7 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
   ISA_REGISTER_CLASS cl;
   TN *stn;
 
-#ifndef TARG_X8664  // x86_64 does not use GP
+#ifdef ABI_PROPERTY_global_ptr
   Setup_GP_TN_For_PU( pu );
 #endif
 
@@ -469,8 +469,7 @@ vararg_st8_2_st8_spill (BB * bb) {
 }
 #endif
 
-
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
 struct Save_user_allocated_saved_regs
 {
   OPS *ops;
@@ -560,6 +559,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
 
     EETARG_Save_Pfs (Caller_Pfs_TN, &ops);	// alloc
 
+#ifdef ABI_PROPERTY_stack_ptr
 #ifdef TARG_X8664
     /* Initialize the frame pointer if required: */
     if ( Gen_Frame_Pointer && PUSH_FRAME_POINTER_ON_STACK ) {
@@ -609,8 +609,9 @@ Generate_Entry (BB *bb, BOOL gra_run )
       Exp_Spadjust (FP_TN, Frame_Len_TN, V_NONE, &ops);
     }
     ENTRYINFO_sp_adj(ent_info) = OPS_last(&ops);
+#endif //ABI_PROPERTY_stack_ptr
 
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
     // bug 4583: save callee-saved registers that may get clobbered 
     // by inline asm
     for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
@@ -668,6 +669,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
    */
   if (NULL != RA_TN) {
     if ( PU_has_return_address(Get_Current_PU()) ) {
+#ifndef TARG_NVISA
       // This is broken for IA-32.  On IA-32, the return address is always
       // at a constant offset from the frame pointer, specifically it is
       // accessible as 4(%ebp), but it is never in a register.  Nor
@@ -696,6 +698,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
       } else {
 	CGSPILL_Store_To_Memory (RA_TN, ra_sv_sym, &ops, CGSPILL_LCL, bb);
       }
+#endif // ! TARG_NVISA
     }
 #ifdef TARG_IA64
     else if (PU_Has_Calls || IPFEC_Enable_Edge_Profile){
@@ -753,7 +756,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
   if ( gra_run ) 
     EETARG_Save_Extra_Callee_Tns (&ops);
 
-#ifndef TARG_X8664  // x86_64 does not use GP
+#ifndef ABI_PROPERTY_global_ptr  // x86_64 does not use GP
   /* Save the old GP and setup a new GP if required */
   if (GP_Setup_Code == need_code) {
 
@@ -1613,6 +1616,7 @@ Generate_Exit (
 
   if (NULL != RA_TN) {
     if ( PU_has_return_address(Get_Current_PU()) ) {
+#ifndef TARG_NVISA
       /* If the return address builtin is required, restore RA_TN from the 
        * memory location for __return_address. 
        */
@@ -1628,6 +1632,7 @@ Generate_Exit (
       }
       CGSPILL_Load_From_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb_epi);
       Exp_COPY (RA_TN, ra_sv_tn, &ops);
+#endif
     }
 #ifdef TARG_IA64
     else if( PU_Has_Calls || IPFEC_Enable_Edge_Profile) {
@@ -1692,6 +1697,7 @@ Generate_Exit (
   	EETARG_Restore_Pfs (Caller_Pfs_TN, &ops);
   }
 
+#ifdef ABI_PROPERTY_stack_ptr
   /* Restore the stack pointer.
    */
   if ( Gen_Frame_Pointer && !PUSH_FRAME_POINTER_ON_STACK ) {
@@ -1728,6 +1734,7 @@ Generate_Exit (
     Exp_COPY (FP_TN, Caller_FP_TN, &ops);
     Set_OP_no_move_before_gra(OPS_last(&ops));
   }
+#endif
 
   /* Generate the return instruction, unless is this a tail call
    * block, in which case the xfer instruction is already there.
@@ -1879,6 +1886,10 @@ Adjust_GP_Entry(BB *bb)
 	 * so now need to add in gp setup. */
   	/* Save the old GP and setup a new GP */
 	/* Create a symbolic expression for ep-gp */
+#ifdef TARG_NVISA
+	FmtAssert(FALSE, ("NYI"));
+	return;
+#endif
 	ST *st = ENTRYINFO_name(	/* The entry's symtab entry */
 		ANNOT_entryinfo(ANNOT_Get(BB_annotations(bb),ANNOT_ENTRYINFO)));
 	TN *got_disp_tn = Gen_Register_TN (
@@ -1918,6 +1929,10 @@ Adjust_GP_Exit (BB *bb)
   if (GP_Setup_Code == need_code) {
 	/* added gp reference after usual gp setup time,
 	 * so now need to add in gp setup. */
+#ifdef TARG_NVISA
+	FmtAssert(FALSE, ("NYI"));
+	return;
+#endif
 	ST *mem_loc = CGSPILL_Get_TN_Spill_Location (GP_TN, CGSPILL_LCL);
 	OPS ops = OPS_EMPTY;
 

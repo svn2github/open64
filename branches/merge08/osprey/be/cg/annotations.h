@@ -163,7 +163,7 @@ typedef struct annotation {
 #define ANNOT_loopinfo(a)	((LOOPINFO *)ANNOT_info(a))
 #define ANNOT_switch(a)		((ST *)ANNOT_info(a))
 #define ANNOT_rotating_kernel(a)   ((ROTATING_KERNEL_INFO*)ANNOT_info(a))
-#define ANNOT_asminfo(a)	((ASMINFO *)ANNOT_info(a))
+#define ANNOT_asminfo(a)	((OP*)ANNOT_info(a))
 
 
 typedef struct loopinfo {
@@ -242,7 +242,7 @@ struct ROTATING_KERNEL_INFO {
 #define ROTATING_KERNEL_INFO_copyout(x)       ((x)->copyout)
 #define ROTATING_KERNEL_INFO_localdef(x)      ((x)->localdef)
 
-
+#if 0
 typedef struct asminfo {
   REGISTER_SET livein[ISA_REGISTER_CLASS_MAX+1];
   REGISTER_SET liveout[ISA_REGISTER_CLASS_MAX+1];
@@ -252,7 +252,7 @@ typedef struct asminfo {
 #define ASMINFO_livein(x)	((x)->livein)
 #define ASMINFO_liveout(x)	((x)->liveout)
 #define ASMINFO_kill(x)		((x)->kill)
-
+#endif
 
 extern ANNOTATION *ANNOT_Add (
   ANNOTATION *annot_list, 
@@ -269,6 +269,10 @@ extern ANNOTATION *ANNOT_Get (ANNOTATION *annot_list, ANNOTATION_KIND kind);
 #define ANNOT_First(list,kind)	(ANNOT_Get (list, kind))
 #define ANNOT_Next(list,kind)	(ANNOT_Get (ANNOT_next(list), kind))
 
+/***********************************************************************/
+// ASM_OP_ANNOT is an annotation on an OP rather than a BB.
+// ANNOT_asminfo on a bb can get you to the asm op,
+// then use ASM_OP_* to access these fields.
 
 #define ASM_OP_size	50
 

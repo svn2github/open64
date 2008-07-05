@@ -62,6 +62,7 @@
 #include "tn.h"
 #include "tn_set.h"
 #include "op.h"
+#include "bb.h"
 
 // #define for SWP INTERNAL USE only
 //
@@ -74,7 +75,6 @@
 // Forward references
 class LOOP_DESCR;
 class CG_LOOP;
-struct bb;
 class ROTATING_KEREL_INFO;
 
 
@@ -349,7 +349,7 @@ public:
   const SWP_OP& operator[](INT i) const { return v[i]; }
   void Verify() const;
   void Print(FILE *fp) const;
-  SWP_OP_vector(struct bb *body, BOOL doloop, MEM_POOL *pool);
+  SWP_OP_vector(BB *body, BOOL doloop, MEM_POOL *pool);
 };
 
 

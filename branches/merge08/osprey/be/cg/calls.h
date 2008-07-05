@@ -78,12 +78,9 @@
 #ifdef KEY
 #include "bb.h"
 #endif
+#include "tn.h"
 
 /* ================================================================= */
-
-/* Incomplete types to keep ANSI happy: */
-struct bb;
-struct op;
 
 /* frame length */
 extern INT64 Frame_Len;
@@ -98,8 +95,8 @@ extern void Set_Frame_Len (INT64 val);		// sets spadjust TN values
  * the return-address register the same way.
  */
 typedef struct save_reg {
-  struct tn 	*ded_tn; /* the dedicated TN for the callee-saved register */
-  struct tn	*sv_tn;	 /* the save-tn for the callee-saved register */
+  TN 	*ded_tn; /* the dedicated TN for the callee-saved register */
+  TN	*sv_tn;	 /* the save-tn for the callee-saved register */
 } SAVE_REG;
 
 /* Define the access macros, including indirect TN access: */
@@ -158,7 +155,7 @@ extern INT Push_Pop_Int_Saved_Regs (void);
 #ifdef KEY
 // The following are interfaces into calls.cxx Callee saved registers stack
 typedef struct save_reg_loc {
-  struct tn 	*ded_tn; /* the dedicated TN for the callee-saved register */
+  TN	 	*ded_tn; /* the dedicated TN for the callee-saved register */
   ST 		*temp;   /* the save location */
   BOOL		user_allocated; /* true if allocated by user via asm */
 } SAVE_REG_LOC;
@@ -168,7 +165,7 @@ extern BOOL Is_Unique_Callee_Saved_Reg (TN *);
 // Number of callee saved registers
 extern INT Cgdwarf_Num_Callee_Saved_Regs (void);
 // Nth callee saved register dedicated TN
-extern struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n);
+extern TN* Cgdwarf_Nth_Callee_Saved_Reg (INT n);
 // The location on the stack that corresponds to the nth TN on the stack.
 extern ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n);
 #endif

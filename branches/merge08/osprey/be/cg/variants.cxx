@@ -156,6 +156,10 @@ Negate_BR_Variant(VARIANT variant)
   case V_BR_QGE:
   case V_BR_QLT:
   case V_BR_QLE:
+  case V_BR_FOR:
+  case V_BR_DOR:
+  case V_BR_DUO:
+  case V_BR_FUO:
     // changing the variant will effect the comparison if NaNs are
     // involved, so just flip the sense.
     is_false = !is_false;

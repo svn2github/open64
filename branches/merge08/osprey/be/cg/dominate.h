@@ -47,6 +47,10 @@
  * Definitions for basic block (BB) dominator/post-dominator information
  * generation and maintenence.
  *
+ * Definitions:
+ *   BB A dominates B iff all paths from the entry to B intersects A. 
+ *   BB A post-dominates B iff all paths from B to the exit intersects A.
+ *
  * Constants:
  *
  * Utilities:

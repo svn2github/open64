@@ -595,7 +595,7 @@ Init_Dedicated_TNs (void)
   	Set_TN_size(i4_ded_tns[reg], 4);
     }
 #endif // KEY
-#endif // NVISA
+#endif // ! NVISA
 
 #if defined(TARG_SL)	 
     for (reg = REGISTER_MIN; 
@@ -663,7 +663,7 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
          return  a4_ded_tns[reg];
   }
 #endif
-#endif // NVISA
+#endif // ! NVISA
   return ded_tns[rclass][reg];
 }
  

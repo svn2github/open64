@@ -905,6 +905,10 @@ inline TN * Gen_Literal_TN_Ex ( INT64 val )
 // normally literals are hashed and reused; this creates unique TN
 extern TN *Gen_Unique_Literal_TN (INT64 ivalue, INT size);
 
+inline TN *Gen_Literal_TN_Of_Mtype (INT64 val, TYPE_ID mtype) 
+{
+	return Gen_Literal_TN (val, MTYPE_is_size_double(mtype) ? 8 : 4);
+}
 extern TN *Gen_Enum_TN (ISA_ENUM_CLASS_VALUE ecv);
 
 extern  TN *Gen_Symbol_TN ( ST *s, INT64 offset, INT32 relocs);

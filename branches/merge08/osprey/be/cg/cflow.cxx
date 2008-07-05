@@ -2207,6 +2207,19 @@ Redundant_Logif(BB *pred, BB *succ, BOOL *pnegated)
       && (pred_cmp != BB_branch_op(pred) || succ_cmp != BB_branch_op(succ))
   ) return FALSE;
 
+#ifdef TARG_NVISA
+  // can have differing cmp, same variant (P_TRUE),
+  // and both are branch_op cause couldn't find real source of compare.
+  // Check for one being negate of the other.
+  if (pred_cmp != succ_cmp) {
+    DevWarn("differing cmp ops");
+    if (OP_code(pred_cmp) == TOP_bra_p && OP_code(succ_cmp) == TOP_bra_np)
+      negated = TRUE;
+    else if (OP_code(pred_cmp) == TOP_bra_np && OP_code(succ_cmp) == TOP_bra_p)
+      negated = TRUE;
+  }
+#endif
+
 #ifdef KEY
   /* A BBINFO_condval could be re-defined by an op which is scheduled
      at the delay slot. */

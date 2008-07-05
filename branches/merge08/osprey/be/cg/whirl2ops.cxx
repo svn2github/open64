@@ -55,7 +55,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <alloca.h>
 #include <ctype.h>
 #include <vector>
@@ -1081,7 +1080,7 @@ Preg_Is_Rematerializable(PREG_NUM preg, BOOL *gra_homeable)
      */
     if (GRA_home == TRUE && !Disallowed_Homeable(sym) &&
 	ST_class(sym) == CLASS_VAR) {
-#if !defined(TARG_X8664) && !defined(TARG_IA32) // skip test of GPREL for CISC's
+#if !defined(TARG_X8664) && !defined(TARG_IA32) && !defined(TARG_NVISA) // skip test of GPREL for CISC's
       if (ST_gprel(basesym) ||
 	  (ST_is_split_common(basesym) && ST_gprel(ST_full(basesym)))
 	  || ST_on_stack(sym)) 
@@ -1125,8 +1124,12 @@ static void Realloc_Preg_To_TN_Arrays (PREG_NUM preg_num)
 }
 
 /* function exported externally for use in LRA. */
+/* Original function declaration is 
+ *   PREG_To_TN (ST *preg_st, PREG_NUM preg_num).
+ * which always uses ST_type or ST_size of preg_st, 
+ * and ST_size is just TY_size(ST_type()). */
 TN *
-PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
+PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
 {
   TN *tn;
 
@@ -1186,7 +1189,7 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
 		}
 	}
 #endif
-      	tn = Build_Dedicated_TN(rclass, reg, ST_size(preg_st));
+      	tn = Build_Dedicated_TN(rclass, reg, TY_size(preg_ty));
 
 #ifdef TARG_X8664
 	if( reg == First_Int_Preg_Return_Offset &&
@@ -1195,7 +1198,7 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
 					      &rclass, &reg) ){
 	    FmtAssert( FALSE, ("NYI") );
 	  }
-	  TN* pair = Build_Dedicated_TN( rclass, reg, ST_size(preg_st) );
+	  TN* pair = Build_Dedicated_TN( rclass, reg, TY_size(preg_ty) );
 	  Create_TN_Pair( tn, pair );
 	}
 #endif
@@ -1210,7 +1213,7 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
           if (CGTARG_Preg_Register_And_Class(Last_Int_Preg_Return_Offset,
                                              &rclass, &reg)) {
             TN *pair = Build_Dedicated_TN(rclass, reg,
-                                          ST_size(preg_st));
+                                          TY_size(preg_ty));
             
             Add_TN_Pair (tn, pair);
           } else {
@@ -1225,7 +1228,7 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
     else
     {
       /* create a TN for this PREG. */
-      TYPE_ID mtype = TY_mtype(ST_type(preg_st));
+      TYPE_ID mtype = TY_mtype(preg_ty);
 #ifdef TARG_X8664
       /* bug#512
 	 MTYPE_C4 is returned in one SSE register. (check wn_lower.cxx)
@@ -1302,30 +1305,30 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
         }
     }
     PREG_To_TN_Array[preg_num] = tn;
-    PREG_To_TN_Mtype[preg_num] = TY_mtype(ST_type(preg_st));
+    PREG_To_TN_Mtype[preg_num] = TY_mtype(preg_ty);
   }
   if ( TN_is_dedicated( tn ) ) {
     dedicated_seen = TRUE;
     // For dedicated FP registers, it is important that we use
     // a TN of the right size. So we create a new one if the
     // size of tn does not match the size of preg_st.
-    if (TN_is_float(tn) && TN_size(tn) != ST_size(preg_st)) {
+    if (TN_is_float(tn) && TN_size(tn) != TY_size(preg_ty)) {
       tn = Build_Dedicated_TN (TN_register_class(tn),
                                TN_register(tn),
-                               ST_size(preg_st));
+                               TY_size(preg_ty));
     }
 #ifdef KEY
     // Do the same for integer class; we have separate set of dedicated TNs
     // of size 4 bytes
     if (!TN_is_float(tn) &&
-	TN_size(tn) != ST_size(preg_st)
+	TN_size(tn) != TY_size(preg_ty)
 #ifdef TARG_X8664
 	&& Is_Target_64bit()
 #endif // TARG_X8664
        ) {
       tn = Build_Dedicated_TN (TN_register_class(tn),
                                TN_register(tn),
-                               ST_size(preg_st));
+                               TY_size(preg_ty));
     }
 #endif
   }
@@ -1333,6 +1336,11 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
   return tn;
 }
 
+TN *
+PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
+{
+  return PREG_To_TN (ST_type(preg_st), preg_num);
+}
 
 /* Return the physical PREG assigned to the <tn>. */
 PREG_NUM
@@ -1447,6 +1455,7 @@ Add_PregTNs_To_BB (PREG_LIST *prl0, BB *bb, BOOL prepend)
 
 #ifdef TARG_NVISA
   FmtAssert(FALSE, ("NYI"));
+  return;
 #endif
   for ( prl = prl0; prl; prl = PREG_LIST_rest( prl ) ) {
     pr = PREG_LIST_first( prl );
@@ -1754,7 +1763,9 @@ static VARIANT Memop_Variant(WN *memop)
 #ifdef KEY
   /* If volatile, set the flag.
    */
+#ifndef TARG_NVISA // want to know volatile even if no other variant
   if (variant)
+#endif
     if (WN_Is_Volatile_Mem(memop)) Set_V_volatile(variant);
 #endif
   return variant;
@@ -2237,10 +2248,20 @@ Handle_ILOAD (WN *iload, TN *result, OPCODE opcode)
 	// which must be pointer to global memory
 	Set_V_global_mem(variant);
       }
+      else if (WN_operator(lda) == OPR_LDID 
+	&& ST_sclass(WN_st(lda)) == SCLASS_FSTATIC
+        && ST_in_constant_mem(WN_st(lda)) )
+      {
+	// must be ldid of constant pointer,
+	// which must be pointer to global memory
+	Set_V_global_mem(variant);
+      }
       else {
 	// if iload of lda, then really same as simple ldid
 	if (ST_in_global_mem(WN_st(lda)))
 	    Set_V_global_mem(variant);
+	else if (ST_sclass(WN_st(lda)) == SCLASS_FORMAL)
+	    Set_V_param_mem(variant);
 	else if (ST_in_shared_mem(WN_st(lda)))
 	    Set_V_shared_mem(variant);
 	else if (ST_in_constant_mem(WN_st(lda)))
@@ -2646,9 +2667,19 @@ Handle_ISTORE (WN *istore, OPCODE opcode)
 	// which must be pointer to global memory
 	Set_V_global_mem(variant);
       }
+      else if (WN_operator(lda) == OPR_LDID 
+	&& ST_sclass(WN_st(lda)) == SCLASS_FSTATIC
+        && ST_in_constant_mem(WN_st(lda)) )
+      {
+	// must be ldid of constant pointer,
+	// which must be pointer to global memory
+	Set_V_global_mem(variant);
+      }
       else {
 	if (ST_in_global_mem(WN_st(lda)))
 	    Set_V_global_mem(variant);
+	else if (ST_sclass(WN_st(lda)) == SCLASS_FORMAL)
+	    Set_V_param_mem(variant);
 	else if (ST_in_shared_mem(WN_st(lda)))
 	    Set_V_shared_mem(variant);
 	else if (ST_in_constant_mem(WN_st(lda)))
@@ -5410,13 +5441,8 @@ Handle_CONDBR (WN *branch)
         operand1 = NULL;
         variant = V_BR_P_TRUE;
         if (invert) {
-#ifdef TARG_NVISA
-	  // use !p
-	  Set_V_false_br(variant);
-#else
-	  PREG_NUM preg2_num = WN_load_offset(condition) + 1;
-	  operand0 = PREG_To_TN_Array[preg2_num];
-#endif
+  	PREG_NUM preg2_num = WN_load_offset(condition) + 1;
+  	operand0 = PREG_To_TN_Array[preg2_num];
         }
       } else {
         operand1 = Zero_TN;
@@ -5433,8 +5459,13 @@ Handle_CONDBR (WN *branch)
       operand1 = NULL;
       variant = V_BR_P_TRUE;
       if (invert) {
+#ifdef TARG_NVISA
+      // use !p
+      Set_V_false_br(variant);
+#else
 	PREG_NUM preg2_num = WN_load_offset(condition) + 1;
 	operand0 = PREG_To_TN_Array[preg2_num];
+#endif
       }
     } else {
 #if !defined(TARG_IA32) && !defined(TARG_X8664) && !defined(TARG_NVISA)
@@ -5459,8 +5490,8 @@ Handle_CONDBR (WN *branch)
       Is_True(FALSE, ("Handle_CONDBR: unexpected size"));
     }
 #endif
-    }
   }
+}
 #endif // TARG_IA64
   target_tn = Gen_Label_TN (Get_WN_Label (branch), 0);
   Exp_OP3v (WN_opcode(branch), NULL, target_tn, operand0, operand1, 
@@ -5969,7 +6000,7 @@ Handle_ASM (const WN* asm_wn)
   OP_MAP_Set(OP_Asm_Map, asm_op, asm_info);
 
 #ifdef KEY
-  BB_Add_Annotation( Cur_BB, ANNOT_ASMINFO, asm_info );
+  BB_Add_Annotation( Cur_BB, ANNOT_ASMINFO, asm_op);
 
   /* Terminate the basic block */
   Start_New_Basic_Block ();
@@ -6497,6 +6528,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   // or multiple exp_ calls for the different parts).
 
   OPS_Init(&loop_ops);
+  current_srcpos = WN_Get_Linenum (intrncall);
   result = Exp_Intrinsic_Call (id, 
 	opnd_tn[0], opnd_tn[1], opnd_tn[2], &New_OPs, &label, &loop_ops);
 

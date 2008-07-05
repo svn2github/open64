@@ -50,7 +50,7 @@ extern void CGEMIT_Relocs_In_Object (
 // add events and relocs as needed for call.
 extern void CGEMIT_Add_Call_Information (
 	OP *op, BB *bb, INT32 PC, pSCNINFO PU_section);
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_NVISA)
 extern void
 CGEMIT_Prn_Scn_In_Asm (ST *st, ST *cur_section);
 extern void CGEMIT_Change_Origin_In_Asm (ST *st, INT64 offset);

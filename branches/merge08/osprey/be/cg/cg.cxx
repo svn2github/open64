@@ -1655,6 +1655,18 @@ CG_Generate_Code(
     Create_Unique_Defs_For_TNs();
     Check_for_Dump ( TP_EBO, NULL );
 
+    // Do vector optimization before 16bit optimization
+    // because 16bit opt may hinder vectors
+    // if only some fields are converted to 16bit.
+    // 16bit opt may ignore vectors, but coalescing 
+    // is more important than 16bit opt if we have to choose.
+    if (CG_vector_loadstore) {
+      // do peephole-like vector load/store creation
+      Set_Error_Phase("Extended Block Optimizer - vectors");
+      Create_Vector_Load_Stores();
+      Check_for_Dump ( TP_EBO, NULL );
+    }
+
     // by changing ops to 16bit before register allocation,
     // we avoid wasting registers.
     if (CG_use_16bit_ops) {
@@ -1696,12 +1708,6 @@ CG_Generate_Code(
     REG_LIVE_Finish();
     Free_Dominators_Memory();
 
-    if (CG_vector_loadstore) {
-      // do peephole-like vector load/store creation
-      Set_Error_Phase("Extended Block Optimizer - vectors");
-      Create_Vector_Load_Stores();
-      Check_for_Dump ( TP_EBO, NULL );
-    }
     Stop_Timer ( T_EBO_CU );
   }
 #endif // TARG_NVISA
@@ -1806,7 +1812,7 @@ CG_Generate_Code(
     if (PU_has_exc_scopes(Get_Current_PU())) {
       EH_Write_Range_Table(rwn);
     }
-#endif
+#endif //TARG_IA64 This is not a good merge compared to the code in trunk
 
 #if defined(TARG_SL)
      Collect_Simd_Register_Usage();

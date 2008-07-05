@@ -1043,6 +1043,11 @@ inline void OPS_Remove_Op(OPS *ops, OP *op)
 {
   OP **prevp = OP_next(op) ? &OP_next(op)->prev : &ops->last;
   OP **nextp = OP_prev(op) ? &OP_prev(op)->next : &ops->first;
+
+#if defined(TARG_NVISA)
+  FmtAssert(OP_prev(op) || OP_next(op) || ops->first == op, 
+	("OPS_Remove_Op: op not in ops"));
+#endif
   
   *prevp = OP_prev(op);
   *nextp = OP_next(op);

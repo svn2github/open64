@@ -77,6 +77,7 @@ extern TN *Get_Complement_TN(TN *tn);
  * been allocated for the PREG, this routine does that.
  */
 extern TN * PREG_To_TN (ST *preg_st, PREG_NUM preg_num);
+extern TN * PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num);
 
 extern void PREG_To_TN_Clear (void);
 
@@ -153,6 +154,10 @@ extern BB_MAP outer_label_map;
 #endif
 #if defined(TARG_X8664) || defined(TARG_SL)
 extern BOOL W2OPS_Pragma_Preamble_End_Seen (void);
+#endif
+
+#ifdef TARG_NVISA
+extern SRCPOS current_srcpos;
 #endif
 
 /* For new call inserted during whirl to ops, 

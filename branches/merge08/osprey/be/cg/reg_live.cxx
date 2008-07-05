@@ -328,6 +328,7 @@ static void Compute_PU_Regs (REGSET livein, REGSET liveout)
     }
 
     // add sp to list of liveout registers.
+    if (REGISTER_sp != REGISTER_UNDEFINED)
     liveout[REGISTER_CLASS_sp] = 
 	REGISTER_SET_Union1 (liveout[REGISTER_CLASS_sp], REGISTER_sp);
   }
@@ -374,6 +375,7 @@ Compute_Call_Regs (BB *bb, REGSET livein, REGSET liveout, REGSET kill)
       livein[REGISTER_CLASS_gp] = 
 	REGISTER_SET_Union1 (livein[REGISTER_CLASS_gp], REGISTER_gp);
     }
+    if (REGISTER_sp != REGISTER_UNDEFINED)
     livein[REGISTER_CLASS_sp] = 
 		REGISTER_SET_Union1 (livein[REGISTER_CLASS_sp], REGISTER_sp);
 
@@ -416,13 +418,13 @@ Compute_Asm_Regs (BB *bb, REGSET livein, REGSET liveout, REGSET kill)
 {
   ANNOTATION *ant = ANNOT_Get (BB_annotations(bb), ANNOT_ASMINFO);
   Is_True(ant, ("ASMINFO annotation info not present"));
-  ASMINFO *info = ANNOT_asminfo(ant);
+  OP *asm_op = ANNOT_asminfo(ant);
+  Is_True(asm_op, ("ASMINFO op not present"));
+  ASM_OP_ANNOT* asm_info = (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, asm_op);
   ISA_REGISTER_CLASS rc;
 
   FOR_ALL_ISA_REGISTER_CLASS(rc) {
-    if (livein)  livein[rc] = ASMINFO_livein(info)[rc];
-    if (liveout) liveout[rc] = ASMINFO_liveout(info)[rc];
-    if (kill)    kill[rc] = ASMINFO_kill(info)[rc];
+    if (kill)    kill[rc] = ASM_OP_clobber_set(asm_info)[rc];
   }
 }
 
@@ -614,6 +616,7 @@ void REG_LIVE_Analyze_Region(void)
   }
 }
 
+#ifndef TARG_NVISA
 /* =======================================================================
  *
  *  REG_LIVE_Prolog_Temps
@@ -781,6 +784,7 @@ REG_LIVE_Epilog_Temps(
     }
   }
 }
+#endif // ! TARG_NVISA
 
 // Returns true if there is an implicit use of <cl,reg> out of <bb>.
 // The implicit uses are for function call parameters and return registers.

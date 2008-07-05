@@ -83,6 +83,7 @@
 #include "erlib.h"
 #include "errors.h"
 #include "erauxdesc.h"
+#include "ercg.h"
 #include "file_util.h"
 #include "glob.h"
 #include "timing.h"
@@ -190,6 +191,10 @@ static BOOL CFLOW_Enable_Clone_overridden = FALSE;
 #ifdef TARG_X8664
 BOOL cg_load_execute_overridden = FALSE;
 #endif
+#ifdef TARG_NVISA
+static BOOL CG_use_16bit_ops_overridden = FALSE;
+static BOOL CG_rematerialize_grf_overridden= FALSE;
+#endif
 
 /* Keep	a copy of the command line options for assembly	output:	*/
 static char *option_string;
@@ -198,6 +203,7 @@ static char *option_string;
 extern BOOL SWP_KNOB_fatpoint;
 #endif
 
+#if !defined(TARG_NVISA)
 /* Software pipelining options: */
 static OPTION_DESC Options_CG_SWP[] = {
 
@@ -409,6 +415,7 @@ static OPTION_DESC Options_GRA[] = {
 #endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };
+#endif // ! TARG_NVISA
 
 static OPTION_DESC Options_CG[] = {
 
@@ -434,6 +441,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, INT32_MAX, &CG_local_skip_after, NULL }, 
   { OVK_INT32,	OV_INTERNAL, TRUE, "local_skip_equal", "local_skip_e",
     0, 0, INT32_MAX, &CG_local_skip_equal, NULL }, 
+#ifdef TARG_NVISA
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_16bit", "",
+    0, 0, 0,	&CG_skip_local_16bit, NULL },
+#else
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_hbf", "",
     0, 0, 0,	&CG_skip_local_hbf, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_loop", "",
@@ -444,10 +455,27 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_skip_local_ebo, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_sched", "",
     0, 0, 0,	&CG_skip_local_sched, NULL },
-  { OVK_INT32,	OV_INTERNAL, TRUE, "optimization_level", "",
+#endif //TARG_NVISA
+  { OVK_INT32,	OV_INTERNAL, TRUE, "optimization_level", "opt",
     0, 0, MAX_OPT_LEVEL,
                 &CG_opt_level, &cg_opt_level_overridden },
 
+#ifdef TARG_NVISA
+  { OVK_BOOL,   OV_INTERNAL, TRUE, "optimize_copies", "",
+    0, 0, 0,    &CG_optimize_copies, NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE, "remove_typeconv", "",
+    0, 0, 0,    &CG_remove_typeconv, NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE, "rematerialize_grf", "",
+    0, 0, 0,    &CG_rematerialize_grf, &CG_rematerialize_grf_overridden},
+  { OVK_BOOL,   OV_INTERNAL, TRUE, "use_16bit_ops", "",
+    0, 0, 0,    &CG_use_16bit_ops, &CG_use_16bit_ops_overridden},
+  { OVK_BOOL,   OV_INTERNAL, TRUE, "vector_loadstore", "",
+    0, 0, 0,    &CG_vector_loadstore, NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"cflow", NULL,
+    0, 0, 0, &CFLOW_Enable, NULL },
+#endif
+
+#if !defined(TARG_NVISA)
   // EBO options:
   { OVK_BOOL,	OV_INTERNAL, TRUE, "peephole_optimize", "",
     0, 0, 0,	&Enable_CG_Peephole, &Enable_CG_Peephole_overridden },
@@ -656,8 +684,6 @@ static OPTION_DESC Options_CG[] = {
 #endif
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow", NULL,
     0, 0, 0, &CFLOW_Enable, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow", NULL,
-    0, 0, 0, &CFLOW_Enable, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_unreachable", "",
     0, 0, 0, &CFLOW_Enable_Unreachable, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_branch", "",
@@ -704,6 +730,7 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &FREQ_frequent_never_ratio, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "freq_view_cfg", "",
     0, 0, 0, &FREQ_view_cfg, NULL },
+#endif // ! TARG_NVISA
 
   // Whirl2ops / Expander options.
 
@@ -746,6 +773,12 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CGEXP_sthint_L1, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"sthint_L2", "",
     0, 0, 0, &CGEXP_sthint_L2, NULL },
+#ifdef TARG_NVISA
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"auto_as_static", "",
+    0, 0, 0, &CGEXP_auto_as_static, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"gen_ccodes", "",
+    0, 0, 0, &CGEXP_gen_ccodes, NULL },
+#endif
 
   { OVK_BOOL,	OV_INTERNAL, TRUE, "localize", "localize",
     0, 0, 0, &CG_localize_tns, &CG_localize_tns_Set},
@@ -762,6 +795,7 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL,	OV_INTERNAL, TRUE, "localize_using_stacked_regs", "localize_using_stack",
     0, 0, 0, &LOCALIZE_using_stacked_regs, NULL },
 
+#if !defined(TARG_NVISA)
   // Local Register Allocation (LRA) options.
 
   { OVK_BOOL,	OV_INTERNAL, TRUE,"rematerialize", "remat",
@@ -1070,7 +1104,7 @@ static OPTION_DESC Options_CG[] = {
   },
   { OVK_INT32,	OV_INTERNAL, TRUE, "loop_force_ifc", "",
     0, 0, 2,    &CG_LOOP_force_ifc, NULL },
-
+#endif // ! TARG_NVISA
 
   // Emit options
   { OVK_INT32,	OV_INTERNAL, TRUE,"longbranch_limit", "",
@@ -1214,6 +1248,7 @@ static OPTION_DESC Options_CG[] = {
   { OVK_INT32,	OV_INTERNAL, TRUE,"branch_taken_penalty", "",
     0, 0, INT32_MAX, &CGTARG_branch_taken_penalty,
     &CGTARG_branch_taken_penalty_overridden },
+#if !defined(TARG_NVISA)
   { OVK_BOOL,   OV_INTERNAL, TRUE, "sched_est_calc_dep_graph", "",
     0, 0, 0,    &CG_SCHED_EST_calc_dep_graph, NULL },
   { OVK_BOOL,   OV_INTERNAL, TRUE, "sched_est_use_locs", "",
@@ -1233,6 +1268,7 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL,	OV_INTERNAL, TRUE,"reverse_if_conversion", "",
     0, 0, 0,	&CG_enable_reverse_if_conversion,
 	       	&CG_enable_reverse_if_conversion_overridden },
+#endif // ! TARG_NVISA
   { OVK_INT32,	OV_INTERNAL, TRUE,"body_ins_count_max", "",
     0, 0, INT32_MAX, &CG_maxinss, &CG_maxinss_overridden },
   { OVK_INT32,	OV_INTERNAL, TRUE,"body_blocks_count_max", "",
@@ -1678,9 +1714,11 @@ static OPTION_DESC Options_SKIP[] = {
 #endif
 
 OPTION_GROUP Cg_Option_Groups[] = {
-  { "SWP", ':', '=', Options_CG_SWP },
   { "CG", ':', '=', Options_CG },
+#if !defined(TARG_NVISA)
+  { "SWP", ':', '=', Options_CG_SWP },
   { "GRA", ':', '=', Options_GRA },
+#endif
 #ifdef TARG_IA64
   { "IPFEC", ':', '=', Options_IPFEC },
   { "CYCLE", ':', '=', Options_CYCLE }, 
@@ -1693,7 +1731,7 @@ OPTION_GROUP Cg_Option_Groups[] = {
 
 extern INT prefetch_ahead;
 INT _prefetch_ahead = 2;
-#if defined(BUILD_OS_DARWIN)
+#if defined(BUILD_OS_DARWIN) || !defined(SHARED_BUILD)
 /* Apparently not referenced elsewhere; Mach-O can't do aliases */
 #define prefetch_ahead (_prefetch_ahead)
 #else /* defined(BUILD_OS_DARWIN) */
@@ -1868,8 +1906,9 @@ Configure_CG_Options(void)
     if (Is_Target_EM64T() || Is_Target_Core())
       OPT_unroll_size = 256;
     else 
-#endif
+#elif !defined(TARG_NVISA)
       OPT_unroll_size = 128;
+#endif
   
   if ( OPT_Unroll_Analysis_Set )
   {
@@ -2009,6 +2048,17 @@ Configure_CG_Options(void)
     if (!clone_min_incr_overridden) CFLOW_clone_min_incr = 1;
     if (!clone_max_incr_overridden) CFLOW_clone_max_incr = 3;
   }
+
+#ifdef TARG_NVISA
+    CG_localize_tns = TRUE;
+    Enable_SWP = FALSE;
+#ifdef FUTURE_SUPPORT
+    if (!CG_use_16bit_ops_overridden)
+      CG_use_16bit_ops = (Target_ISA < TARGET_ISA_compute_20);
+    if (!CG_rematerialize_grf_overridden)
+      CG_rematerialize_grf = (Target_ISA < TARGET_ISA_compute_20);
+#endif
+#endif
 
   Configure_Prefetch();
 #ifdef TARG_X8664
@@ -2237,7 +2287,8 @@ Prepare_Source (void)
 
     /* Prepare relocatable object file name: */
     if ( Obj_File_Name == NULL ) {
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA) 
+	// nvisa doesn't need tempnam, which will cause gcc complaint
 	/* bug 2025
 	   Always create the object file in /tmp, since the current dir might
 	   not be writable.
@@ -2378,8 +2429,10 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
 		   ("WHIRL revision mismatch between be.so (%s) and cg.so (%s)",
 		    Whirl_Revision, WHIRL_REVISION));
 
+#if !defined(TARG_NVISA) // also set by bedriver, so redundant?
     Set_Error_Descriptor (EP_BE, EDESC_BE);
     Set_Error_Descriptor (EP_CG, EDESC_CG);
+#endif
 
 #ifdef KEY
     be_command_line_args = be_argv;
@@ -2440,7 +2493,7 @@ CG_Init (void)
     /* this has to be done after LNO has been loaded to grep
      * prefetch_ahead fromn LNO */
     Configure_prefetch_ahead();
-#if defined(KEY) && !defined(TARG_SL)
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_NVISA)
     if (flag_test_coverage || profile_arcs)
       CG_Init_Gcov();
 
@@ -2465,7 +2518,7 @@ extern void CG_End_Final();
 void
 CG_Fini (void)
 {
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
     extern BOOL profile_arcs;
     if (profile_arcs)
         CG_End_Final();
