@@ -448,7 +448,7 @@ void OP_MAP_Delete(OP_MAP map)
 #ifdef TARG_IA64
 BOOL OP_MAP_Is_Delete(OP_MAP map)
 {
-   return map->kind == _DELETED;
+   return map->kind == OP_MAP_DELETED;
 }
 #endif
 
