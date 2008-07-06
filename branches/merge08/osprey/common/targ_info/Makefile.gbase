@@ -634,7 +634,8 @@ isa_print_gen: gen_util.o isa_print_gen.o isa_print.o \
 	$(cxx) $(CXXLDFLAGS) isa_print.o isa_print_gen.o gen_util.o \
 	    topcode.o targ_isa_properties.o -o isa_print_gen
 
-isa_print_gen.o: isa_print_gen.cxx isa_print_gen.h topcode.h targ_isa_properties.h
+isa_print_gen.o: isa_print_gen.cxx isa_print_gen.h topcode.h \
+	         targ_isa_properties.h targ_isa_operands.h
 	$(cxx) $(CXXFLAGS) -c $(TARGINFO_GENERATE_DIR)/isa_print_gen.cxx
 
 isa_print.o: isa_print.cxx isa_print_gen.h topcode.h

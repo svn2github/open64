@@ -55,7 +55,7 @@
 #                      (and almost always the source files)
 #     BUILD_ROOTS    = specifies which ROOT & TOOLROOT to use
 #     BUILD_ABI      = specifies ABI to build for (32BIT/N32BIT/64BIT/
-#                      I32BIT/I64BIT)
+#                      I32BIT/I64BIT/W64BIT)
 #     BUILD_ARCH     = specifies machine architecture for build 
 #			(MIPS1/MIPS2/MIPS3/MIPS4/IA32/IA64)
 #     BUILD_TYPE     = specifies type of build (SHARED/NONSHARED)
@@ -175,7 +175,9 @@ ifdef BUILD_ABI
  ifneq ($(BUILD_ABI), 64BIT)
  ifneq ($(BUILD_ABI), I32BIT)
  ifneq ($(BUILD_ABI), I64BIT)
+ ifneq ($(BUILD_ABI), W64BIT)
    ABORT_BUILD = BUILD_ABI has bad value - $(BUILD_ABI)!
+ endif
  endif
  endif
  endif
@@ -251,7 +253,9 @@ ifdef BUILD_TARGET
  ifneq ($(BUILD_TARGET), IA32)
  ifneq ($(BUILD_TARGET), IA64)
  ifneq ($(BUILD_TARGET), X8664)
+ ifneq ($(BUILD_TARGET), NVISA)
    ABORT_BUILD = BUILD_TARGET has bad value - $(BUILD_TARGET)!
+ endif
  endif
  endif
  endif
@@ -271,6 +275,9 @@ BUILD_TARGET_DIR = ia64
 endif
 ifeq ($(BUILD_TARGET), X8664)
 BUILD_TARGET_DIR = x8664
+endif
+ifeq ($(BUILD_TARGET), NVISA)
+BUILD_TARGET_DIR = NVISA
 endif
 
 #
@@ -348,7 +355,13 @@ ifndef BUILD_OS
   BUILD_OS = LINUX
 endif
 ifneq ($(BUILD_OS), LINUX)
+ifneq ($(BUILD_OS), MINGW)
+ifneq ($(BUILD_OS), CYGWIN)
+ifneq ($(BUILD_OS), DARWIN)
   ABORT_BUILD = BUILD_OS has bad value - $(BUILD_OS)!
+endif
+endif
+endif
 endif
 
 ifndef BUILD_HOST
@@ -404,6 +417,11 @@ ifndef ABORT_BUILD
  ifeq ($(BUILD_ABI), I64BIT)
  ifneq ($(BUILD_ARCH), IA64)
   ABORT_BUILD = BUILD_ABI=I64BIT requires BUILD_ARCH=IA64
+ endif
+ endif
+ ifeq ($(BUILD_ABI), W64BIT)
+ ifneq ($(BUILD_ARCH), IA32)
+  ABORT_BUILD = BUILD_ABI=W64BIT requires BUILD_ARCH=IA32
  endif
  endif
 endif
@@ -467,8 +485,14 @@ STD_C_OPTS = -std=gnu99 -D_GNU_SOURCE
 ERROR_ON_WARNINGS = #-Werror
 # Many files use INTn_MAX/INTn_MIN
 STD_COMPILE_OPTS += -D__STDC_LIMIT_MACROS
-STD_COMPILE_OPTS += -DKEY -DOSP_OPT -DSHARED_BUILD -DPATHSCALE_MERGE -DPSC_TO_OPEN64 $(LOCAL_CFLAGS) $(ERROR_ON_WARNINGS)
-
+STD_COMPILE_OPTS += -DKEY -DOSP_OPT -DPATHSCALE_MERGE -DPSC_TO_OPEN64 $(LOCAL_CFLAGS) $(ERROR_ON_WARNINGS)
+ifneq ($(BUILD_TARGET), NVISA)
+STD_COMPILE_OPTS += -DSHARED_BUILD
+else
+ifeq ($(BUILD_TYPE), SHARED)
+STD_COMPILE_OPTS += -DSHARED_BUILD
+endif
+endif
 
 #
 #  Assign STD_C++_OPTS here

@@ -464,7 +464,7 @@ I-fini%s		;		CC	ld	"-fini %s"
 -m64	toggle(&abi,ABI_64);	ALL	be	"-TARG:abi=n64"
 	"Compile for 64-bit ABI"
 #endif
-#ifdef NVISA
+#ifdef TARG_NVISA
 -m32    toggle(&abi,ABI_N32);   ALL     be      "-TARG:abi=n32"
         "Compile for 32-bit ABI"
 -m64    toggle(&abi,ABI_64);    ALL     be      "-TARG:abi=n64"
@@ -2190,7 +2190,7 @@ I-u%s		;		Cc	ld	"-u %s"
 %	nothing.
 -dummy	;		ALL	NONE	""
 	""
-#ifdef NVISA
+#ifdef TARG_NVISA
 -multicore	;	Cc	NONE	"-PHASE:clist -CLIST:=ON"
 	""
 -comic	;		Cc	NONE	"-multicore -PHASE:clist -CLIST:=ON"

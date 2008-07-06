@@ -37,6 +37,6 @@
 #
 
 BUILD_AREA     = ../..
-BUILD_BASE     = ../../../gccfe/gnu
+BUILD_BASE     = ../../../kgccfe/gnu
 include $(BUILD_AREA)/Makefile.platform
 

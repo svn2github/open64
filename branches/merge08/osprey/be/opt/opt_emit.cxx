@@ -106,7 +106,12 @@ static char *rcs_id = 	opt_emit_CXX"$Revision: 1.13 $";
 #include "opt_emit_template.h"
 
 extern WN_MAP Prompf_Id_Map;
+#if defined(TARG_NVISA)
+// To get better loop depth comments in the ptx file
+// Require better implement because opt is not supposed
+// to use global statics
 static INT cur_loop_depth = 0;
+#endif
 
 
 inline WN *
@@ -521,7 +526,11 @@ Build_new_loop_info( WN *do_loop, WN *old_info )
   }
   else {
     est_trips = 0;
+#if defined(TARG_NVISA)
     depth = cur_loop_depth;
+#else
+    depth = 0;
+#endif
     lflags = 0;
   }
 
@@ -728,7 +737,9 @@ Raise_doloop_stmt(EMITTER *emitter, BB_NODE **bb)
   FmtAssert(bb_step == bb_start->Loopstep(), ("Wrong step"));
   FmtAssert(bb_merge == bb_start->Loopmerge(), ("Wrong merge"));
 
+#if defined(TARG_NVISA)
   ++cur_loop_depth;
+#endif
   
   // generate code for the initialization block
   bb_start->Gen_wn(emitter);
@@ -855,7 +866,9 @@ Raise_doloop_stmt(EMITTER *emitter, BB_NODE **bb)
   // set *bb to merge_bb, so we advance to it
   *bb = bb_merge;
 
+#if defined(TARG_NVISA)
   --cur_loop_depth;
+#endif
   return rwn;
 }
 
@@ -1024,7 +1037,9 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
   if ( goto_end != NULL)
     loopback->Remove_stmtrep( goto_end );
 
+#if defined(TARG_NVISA)
   ++cur_loop_depth;
+#endif
 
   // generate code for the body of the loop
   WN *block_body = Create_block(emitter, loopbody, loopback);
@@ -1096,7 +1111,9 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
   if (WOPT_Enable_Add_Do_Loop_Info)
     WN_set_do_loop_info(rwn, Build_new_loop_info(rwn, NULL));
 
+#if defined(TARG_NVISA)
   --cur_loop_depth;
+#endif
 
   return rwn;
 }

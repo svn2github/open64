@@ -58,7 +58,7 @@ LIBRARY_SUBDIRS = \
 #
 TOOL_SUBDIRS = \
         driver \
-        gccfe \
+        kgccfe \
         ir_tools \
 	be \
 	cg \
