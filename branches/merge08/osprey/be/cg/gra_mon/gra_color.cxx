@@ -705,12 +705,14 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
 #endif 
 
   if ( lrange->Has_Wired_Register() ) {
-#ifdef KEY
-    if (! PU_Has_Nonlocal_Goto_Target)
-#endif
 #if defined(TARG_IA64)
-    DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
-               ("LRANGE not allowed its wired register"));
+#ifdef KEY
+//Comment out the assertion temporarily.
+//See Bug 443 for detail
+//    if (! PU_Has_Nonlocal_Goto_Target)
+#endif
+//      DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
+//      	 ("LRANGE not allowed its wired register"));
 #endif
     Update_Register_Info(lrange, lrange->Reg());
     return TRUE;
