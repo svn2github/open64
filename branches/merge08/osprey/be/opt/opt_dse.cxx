@@ -432,7 +432,6 @@ DSE::Required_stmt( const WN *wn ) const
 void 
 DSE::Set_Required_VSE( VER_STAB_ENTRY *vse, BOOL real_use, WN *ref_wn ) const
 {
-  if ( vse->Real_use() ) return;
   if (real_use)
     vse->Set_Real_use();
 
@@ -765,21 +764,7 @@ DSE::Set_Required_WN( WN *wn ) const
        WN_map_id(wn), OPERATOR_name(opr) );
   }
 
-  if ( WN_has_ver(wn) ) {
-    VER_STAB_ENTRY *sym = Opt_stab()->Ver_stab_entry(WN_ver(wn));
-    Set_Required_VSE( sym, TRUE, wn );
-  }
-
-  // do not dive into "black-boxes" and just rely on the mu/chi lists
-  // any region node that made it this far (past CFG) is black to wopt
-  if (opr != OPR_BLOCK && ! OPERATOR_is_black_box(opr) && opr != OPR_REGION) {
-    // because all of the kids in this tree are used by a real whirl
-    // node, their uses are real
-    for ( INT32 kidnum = 0; kidnum < WN_kid_count(wn); kidnum++ ) {
-      Set_Required_WN( WN_kid(wn,kidnum) );
-    }
-  }
-
+ 
   // don't make the chi operands required, because the chi may be dead
   
   // make the vsym corresponding to ISTOREs required and real use
