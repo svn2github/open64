@@ -10167,7 +10167,16 @@ static WN *lower_actual(WN *block, WN *actual, TYPE_ID parmType, INT32 reg)
     }
     else
 #endif
+
+#if defined(TARG_NVISA)
     regST = Standard_Preg_For_Mtype(parmType);
+#else
+    if (Preg_Offset_Is_Int(reg)) 
+	regST = Int_Preg;
+    else
+    	// keep float size in preg
+    	regST=	MTYPE_To_PREG(parmType);
+#endif
 
     TYPE_ID type = TY_mtype(ST_type(regST));
 
