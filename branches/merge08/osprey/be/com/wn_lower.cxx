@@ -6979,6 +6979,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     if ( Action (LOWER_TO_CG)
     &&   (WN_class(tree) == CLASS_PREG)
     &&   (! Preg_Is_Dedicated (WN_store_offset (tree))))
+    {
       // we need to track what memory is being accessed when storing
       // an lda into a preg.  So if kid has an lda, put that in preg table.
       WN *lda = Find_Lda (WN_kid0(tree));
@@ -13655,7 +13656,7 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
   return block;
 }
 
-
+#ifdef LOW_LANDING_PAD
 // Figure out if we need anything similar for non-X8664
 static WN *lower_landing_pad_entry(WN *tree)
 {
@@ -13703,7 +13704,7 @@ static WN *lower_landing_pad_entry(WN *tree)
   WN_INSERT_BlockLast (block, filter_stid);
   return block;
 }
-
+#endif // LOW_LANDING_PAD
 
 
 /* ====================================================================

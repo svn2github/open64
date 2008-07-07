@@ -122,12 +122,24 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), NVISA)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 HOSTDEFS += -DIs_True_On
 endif
 ifeq ($(BUILD_PCH), USE_PCH)
 HOSTDEFS += -DUSE_PCH 
+endif
+
+ifeq ($(BUILD_TARGET), NVISA)
+HOSTDEFS += -DBUILD_SKIP_LNO -DBUILD_SKIP_PURPLE -DBUILD_SKIP_PROMPF -DBUILD_SKIP_WHIRL2C -DBUILD_SKIP_WHIRL2F
+BUILD_SKIP_LNO = TRUE
+BUILD_SKIP_PURPLE = TRUE
+BUILD_SKIP_PROMPF = TRUE
+BUILD_SKIP_WHIRL2C = TRUE
+BUILD_SKIP_WHIRL2F = TRUE
 endif
 
 TARG_INFO_INC_DIR = $(TARG_TARG_INFO_DIR)
@@ -383,7 +395,6 @@ endif
 COMMON_UTIL_SRCS =	\
   $(COMMON_UTIL_QUAD_SRCS)	\
   bitset.c		\
-  dso.c			\
   file_util.c		\
   flags.c		\
   memory.c		\
@@ -393,6 +404,9 @@ COMMON_UTIL_SRCS =	\
   tracing.c		\
   util.c		\
   vstring.c
+ifneq ($(BUILD_TYPE), NONSHARED)
+COMMON_UTIL_SRCS +=  dso.c	
+endif
 
 ifdef LOCAL_COMMON_UTIL_SRCS
 COMMON_UTIL_SRCS += $(LOCAL_COMMON_UTIL_SRCS)
@@ -412,9 +426,6 @@ BE_COM_CXX_SRCS = \
   cxx_base.cxx		\
   cxx_graph.cxx		\
   cxx_hash_util.cxx	\
-  ipa_lno_file.cxx 	\
-  ipa_lno_summary.cxx 	\
-  ipa_lno_util.cxx	\
   mfmc_misc.cxx		\
   mfmc_query.cxx	\
   mfmc_setup.cxx	\
@@ -429,6 +440,13 @@ BE_COM_CXX_SRCS = \
   wn_instrument.cxx \
   tls.cxx               \
   be_memop_annot.cxx
+
+ifneq ($(BUILD_SKIP_LNO), TRUE)
+BE_COM_CXX_SRCS += \
+  ipa_lno_file.cxx      \
+  ipa_lno_summary.cxx   \
+  ipa_lno_util.cxx  
+endif
 
 BE_COM_PCH_CXX_SRCS = \
   be_symtab.cxx		\
@@ -523,6 +541,7 @@ BE_DRIVER_CXX_SRCS = \
   driver.cxx	        \
   driver_util.cxx	\
   iter.cxx
+#  iter.cxx
 
 BE_DRIVER_C_SRCS = \
   phase.c        \
@@ -582,7 +601,9 @@ BE_DSO_OPTS += $(LOCAL_BE_LIBS)
 LDFLAGS += $(LOCAL_BE_LIBS)
 endif
 
+ifneq ($(BUILD_TYPE), NONSHARED)
 LDFLAGS += -Wl,--allow-shlib-undefined
+endif
 
 ifeq ($(BUILD_VARIANT), MEM_STATS)
 BE_DSO_OPTS +=  -lmalloc
@@ -596,7 +617,11 @@ endif
 ifeq ($(BUILD_VARIANT), BEDRIVER)
 TARGETS = be
 else
+ifneq ($(BUILD_TYPE), NONSHARED)
 TARGETS = be.so be
+else
+TARGETS = libbe.a
+endif
 endif
 
 #----------------------------------------------------------------------
@@ -605,7 +630,9 @@ endif
 TARG_LIBIBERTY_DIR = $(TARGDIR)/libiberty
 LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
 
+ifneq ($(BUILD_TYPE), NONSHARED)
 LLDOPTS = -Wl,--export-dynamic
+endif
 LLDLIBS = 
 LLDLIBS += $(LIBIBERTY_OBJS)
 
@@ -685,6 +712,9 @@ preg_list.cxx : preg_list.h
 preg_list.h : $(COMMON_UTIL_DIR)/gen_x_list.csh                   \
 $(BE_COM_DIR)/gen_preg_list.csh
 	csh -f	$(BE_COM_DIR)/gen_preg_list.csh $(COMMON_UTIL_DIR)
+#preg_list.h : $(COMMON_UTIL_DIR)/gen_x_list.csh
+#       $(CSH) $(COMMON_UTIL_DIR)/gen_x_list.csh \
+#       PREG_NUM PREG preg_list.h
 
 # here's the target that gets made recursively
 derived_files : $(DERIVED_SRCS) $(DERIVED_INCS)
@@ -720,6 +750,16 @@ common_com_pch_files: $(COMMON_COM_PCH_OBJS) common_com_pch.pch
 be_com_pch_files: 	  $(BE_COM_PCH_OBJS) be_com_pch.pch
 endif
 
+ifeq ($(BUILD_TYPE), NONSHARED)
+LLDLIBS = $(TARG_WOPT_DIR)/libwopt.a $(TARG_CG_DIR)/libcg.a \
+	$(TARG_BE_DIR)/libbe.a $(TARGDIR)/libdwarf/libdwarf.a \
+	$(TARGDIR)/libelfutil/libelfutil.a $(TARGDIR)/libelf/libelf.a \
+	$(TARG_TARG_INFO_DIR)/libtarginfo.a $(LIBIBERTY_OBJS)
+
+be:  $(BE_DRIVER_OBJS) $(LLDLIBS)
+	$(link.c++f) -o be $(BE_DRIVER_OBJS) $(LDFLAGS) -lm
+
+else
 be:  $(BE_DRIVER_OBJS) $(LINK_DSO)
 	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 	if ! test -a cg.so; then ln -sf $(TARG_CG_DIR)/cg.so .; fi
@@ -736,6 +776,7 @@ ifeq ($(BUILD_TARGET), IA32)
 endif
 	$(link.c++f) -o be $(BE_DRIVER_OBJS)	\
 		$(LDFLAGS) be.so  $(LINK_DSO_OPTS) $(LINK_DSO) -ldl
+endif
 
 #so_locations : $(BE_BE_DIR)/so_locations
 .PHONY: so_locations
@@ -763,6 +804,9 @@ be.so:	$(BE_C_OBJS) $(BE_CXX_OBJS) $(BE_AS_OBJS) $(BE_BE_DIR)/so_locations \
 		$(TARG_INFO_LIB_DIR)/libtarginfo.a $(LINK_TARGET_SO) \
 		-o $@ $(BE_DSO_OPTS)
 endif
+
+libbe.a : $(BE_C_OBJS) $(BE_CXX_OBJS)
+	$(ar) cru $@ $^
 
 #----------------------------------------------------------------------
 #  Include the usual commonrules

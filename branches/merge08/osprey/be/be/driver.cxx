@@ -168,7 +168,7 @@ extern void CYG_Instrument_Driver(WN *);
 extern void Initialize_Targ_Info(void);
 
 // symbols defined in cg.so
-#if defined(__linux__) || defined(BUILD_OS_DARWIN)
+#if defined(__linux__) || defined(BUILD_OS_DARWIN) || defined(__CYGWIN__) || defined(__MINGW32__)
 #if !defined(BUILD_FAST_BIN)
 extern void (*CG_Process_Command_Line_p) (INT, char **, INT, char **);
 #define CG_Process_Command_Line (*CG_Process_Command_Line_p)
@@ -202,7 +202,7 @@ extern void CG_PU_Initialize (WN*);
 extern void CG_PU_Finalize ();
 extern WN* CG_Generate_Code (WN*, ALIAS_MANAGER*, DST_IDX, BOOL);
 extern void EH_Generate_Range_List (WN *);
-#endif
+#endif //BUILD_FAST_BIN
 
 #else
 
@@ -236,21 +236,10 @@ extern INT *SI_ID_count_p;
 #define SI_ID_count (*SI_ID_count_p)
 extern SI *(*SI_ID_si_p)[];
 #define SI_ID_si (*SI_ID_si_p)
-#else
-
-#pragma weak CG_Process_Command_Line
-#pragma weak CG_Init
-#pragma weak CG_Fini
-#pragma weak CG_PU_Finalize
-#pragma weak CG_PU_Initialize
-#pragma weak CG_Generate_Code
-#pragma weak EH_Generate_Range_List
-
-
-#endif // __linux__
+#endif // TARG_SL
 
 // symbols defined in wopt.so
-#if defined(__linux__) || defined(BUILD_OS_DARWIN)
+#if defined(__linux__) || defined(BUILD_OS_DARWIN)|| defined(__CYGWIN__) || defined(__MINGW32__)
 
 #if !defined(BUILD_FAST_BIN)
 extern void (*wopt_main_p) (INT argc, char **argv, INT, char **);
@@ -305,6 +294,7 @@ extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
 #endif // __linux__
 
 // symbols defined in lno.so
+#ifndef BUILD_SKIP_LNO
 #if defined(__linux__) || defined(BUILD_OS_DARWIN)
 
 extern void (*lno_main_p) (INT, char**, INT, char**);
@@ -362,18 +352,22 @@ extern void (*Preprocess_struct_access_p)(void);
 #pragma weak Perform_Procedure_Summary_Phase
 
 #endif // __linux__
+#endif // !BUILD_SKIP_LNO
 
 #include "w2c_weak.h"
 #include "w2f_weak.h"
 
 #if ! defined(BUILD_OS_DARWIN)
+#ifndef BUILD_SKIP_PURPLE
 #pragma weak Prp_Process_Command_Line
 #pragma weak Prp_Needs_Whirl2c
 #pragma weak Prp_Needs_Whirl2f
 #pragma weak Prp_Init
 #pragma weak Prp_Instrument_And_EmitSrc
 #pragma weak Prp_Fini
+#endif // !BUILD_SKIP_PURPLE
 
+#ifndef BUILD_SKIP_PROMPF
 #pragma weak Anl_Cleanup
 #pragma weak Anl_Process_Command_Line
 #pragma weak Anl_Needs_Whirl2c
@@ -382,7 +376,41 @@ extern void (*Preprocess_struct_access_p)(void);
 #pragma weak Anl_Init_Map
 #pragma weak Anl_Static_Analysis
 #pragma weak Anl_Fini
+#endif // !BUILD_SKIP_PROMPF
 #endif /* ! defined(BUILD_OS_DARWIN) */
+
+#ifdef BUILD_SKIP_LNO
+#define Lno_Init() Fail_FmtAssertion("lno not built")
+#define Lno_Fini() Fail_FmtAssertion("lno not built")
+#define lno_main(a,b,c,d) Fail_FmtAssertion("lno not built")
+#define Perform_Loop_Nest_Optimization(a,b,c,d) NULL
+#define Ipl_Init() Fail_FmtAssertion("lno not built")
+#define Ipl_Fini() Fail_FmtAssertion("lno not built")
+#define ipl_main(a,b) Fail_FmtAssertion("lno not built")
+#define Perform_Procedure_Summary_Phase(a,b,c,d) Fail_FmtAssertion("lno not built")
+#define Preprocess_struct_access() Fail_FmtAssertion("lno not built")
+#define Ipl_Extra_Output(a) Fail_FmtAssertion("lno not built")
+#endif // BUILD_SKIP_LNO
+
+#ifdef BUILD_SKIP_PURPLE
+#define Prp_Process_Command_Line(a,b,c,d) Fail_FmtAssertion("purple not built")
+#define Prp_Needs_Whirl2c() FALSE
+#define Prp_Needs_Whirl2f() FALSE
+#define Prp_Init() Fail_FmtAssertion("purple not built")
+#define Prp_Instrument_And_EmitSrc(a) Fail_FmtAssertion("purple not built")
+#define Prp_Fini() Fail_FmtAssertion("purple not built")
+#endif // BUILD_SKIP_PURPLE
+
+#ifdef BUILD_SKIP_PROMPF
+#define Anl_Process_Command_Line(a,b,c,d) Fail_FmtAssertion("prompf not built")
+#define Anl_Needs_Whirl2c() FALSE
+#define Anl_Needs_Whirl2f() FALSE
+#define Anl_Init() Fail_FmtAssertion("prompf not built")
+#define Anl_Fini() Fail_FmtAssertion("prompf not built")
+#define Anl_Init_Map(a) WN_MAP_UNDEFINED
+#define Anl_Static_Analysis(a,b) Fail_FmtAssertion("prompf not built")
+#define Prompf_Emit_Whirl_to_Source(a,b) Fail_FmtAssertion("prompf not built")
+#endif // BUILD_SKIP_PROMPF
 
 #ifndef __GNUC__
 #pragma weak Prompf_Emit_Whirl_to_Source__GP7pu_infoP2WN
@@ -2415,6 +2443,11 @@ main (INT argc, char **argv)
   if ( ecount > 0 ) {
     Terminate(Had_Internal_Error() ? RC_INTERNAL_ERROR : RC_NORECOVER_USER_ERROR) ;
   }
+
+  if (local_wcount && warnings_are_errors) {
+    Terminate(RC_USER_ERROR);
+  }
+
   /* Close and delete files as necessary: */
   Cleanup_Files ( TRUE, FALSE );
   exit ( RC_OKAY );

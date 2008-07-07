@@ -70,7 +70,7 @@
 #include "wn.h"			    /* for ir_bread.h */
 #include "pu_info.h"		    /* for ir_bread.h */
 #include "ir_bread.h"		    /* Free_Input_Info () */
-#ifdef BUILD_PROMPF
+#ifndef BUILD_SKIP_PROMPF
 #include "anl_driver.h"		    /* Prompf related */
 #endif
 #include "w2c_driver.h"		    /* Whirl2c related */
@@ -91,7 +91,7 @@ BOOL Whirl2c_loaded = FALSE;
 #include "w2f_weak.h"
 
 #if !(defined(__linux__) || defined(BUILD_OS_DARWIN))
-#ifdef BUILD_PROMPF
+#ifndef BUILD_SKIP_PROMPF
 #pragma weak Anl_Cleanup
 #endif
 #endif
@@ -161,8 +161,10 @@ Cleanup_Files (BOOL report,         /* Report errors during cleanup? */
     if (Whirl2f_loaded)
        W2F_Cleanup();
 #if !(defined( __linux__) || defined(BUILD_OS_DARWIN))
+#ifndef BUILD_SKIP_PROMPF
     if (Prompf_anl_loaded)
        Anl_Cleanup();
+#endif
 #endif
 
     /* Close trace file: */

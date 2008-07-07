@@ -95,7 +95,7 @@
 #include "dra_export.h"
 #include "be_symtab.h"
 
-#if !defined(BUILD_OS_DARWIN) || !defined(BUILD_SKIP_PROMPF)
+#if !defined(BUILD_OS_DARWIN) && !defined(BUILD_SKIP_PROMPF)
 #pragma weak Anl_File_Path
 #pragma weak New_Construct_Id
 #endif /* ! defined(BUILD_OS_DARWIN) */
