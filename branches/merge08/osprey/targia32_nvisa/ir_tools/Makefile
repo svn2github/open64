@@ -38,5 +38,6 @@
 
 BUILD_AREA     = ..
 BUILD_BASE     = ../../ir_tools
+BUILD_VARIANT  = DEFAULT
 include $(BUILD_AREA)/Makefile.platform
 

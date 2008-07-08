@@ -38,5 +38,6 @@
 
 BUILD_AREA     = ..
 BUILD_BASE     = $(BUILD_AREA)/../common/targ_info
+BUILD_VARIANT  = DEFAULT
 include $(BUILD_AREA)/Makefile.platform
 

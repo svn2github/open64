@@ -58,7 +58,7 @@ LIBRARY_SUBDIRS = \
 #
 TOOL_SUBDIRS = \
         driver \
-        kgccfe \
+        gccfe \
         ir_tools \
 	be \
 	cg \
@@ -96,6 +96,6 @@ install:
 	mkdir -p lib
 	cp -u driver/driver bin/nvopencc
 	cp -u gccfe/gfec lib
-	cp -u lw_inline/inline lib
+	cp -u lw_inline/lw_inline lib
 	cp -u be_driver/be lib
 	#cp -u bec/bec lib
