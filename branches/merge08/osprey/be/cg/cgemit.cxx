@@ -1648,10 +1648,12 @@ static void r_assemble_list (
 
   Emit_Unwind_Directives_For_OP(op, Asm_File);
 
+#ifdef GAS_TAGS_WORKED
 // un-ifdef this when gas can handle tags inside explicit bundle
   if (OP_has_tag(op)) {
 	fprintf(Asm_File, "%s:\n", LABEL_name(Get_OP_Tag(op)));
   }
+#endif
 
   for (i = 0; i < OP_opnds(op); i++) {
     INT start = vstr_len(buf);	// start of operand string

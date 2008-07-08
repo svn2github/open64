@@ -756,7 +756,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
   if ( gra_run ) 
     EETARG_Save_Extra_Callee_Tns (&ops);
 
-#ifndef ABI_PROPERTY_global_ptr  // x86_64 does not use GP
+#ifdef ABI_PROPERTY_global_ptr  // x86_64 does not use GP
   /* Save the old GP and setup a new GP if required */
   if (GP_Setup_Code == need_code) {
 
