@@ -208,7 +208,7 @@ Remove_Extension ( name )
   char *new;
   INT16 len, i;
   /* Allocate a new name string: */
-  len = strlen(name);
+  len = strlen(name) + 1;
   new = (char *) malloc ( len );
   strcpy ( new, name );
   for ( i=len-1; i>=0; i-- ) {
