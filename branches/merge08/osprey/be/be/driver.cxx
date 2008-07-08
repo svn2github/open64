@@ -410,8 +410,8 @@ extern void (*Preprocess_struct_access_p)(void);
 #define Anl_Init_Map(a) WN_MAP_UNDEFINED
 #define Anl_Static_Analysis(a,b) Fail_FmtAssertion("prompf not built")
 #define Prompf_Emit_Whirl_to_Source(a,b) Fail_FmtAssertion("prompf not built")
-#endif // BUILD_SKIP_PROMPF
 
+#else
 #ifndef __GNUC__
 #pragma weak Prompf_Emit_Whirl_to_Source__GP7pu_infoP2WN
 #elif (__GNUC__ == 2)
@@ -421,6 +421,7 @@ extern void (*Preprocess_struct_access_p)(void);
 #endif
 
 extern void Prompf_Emit_Whirl_to_Source(PU_Info* current_pu, WN* func_nd);
+#endif // BUILD_SKIP_PROMPF
 
 static INT ecount = 0;
 static BOOL need_wopt_output = FALSE;

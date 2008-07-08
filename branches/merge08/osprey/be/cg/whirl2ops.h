@@ -156,10 +156,6 @@ extern BB_MAP outer_label_map;
 extern BOOL W2OPS_Pragma_Preamble_End_Seen (void);
 #endif
 
-#ifdef TARG_NVISA
-extern SRCPOS current_srcpos;
-#endif
-
 /* For new call inserted during whirl to ops, 
  * we need to finish current BB and start new bb
  * The original ops will be append to original BB,

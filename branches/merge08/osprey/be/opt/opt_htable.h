@@ -1251,7 +1251,7 @@ public:
    * BB_NODE that reached "this" node thus limiting redundant calls.
    */
 
-  CODEREP*  Set_ISOP_mtype_b_cache (CODEREP* CR)
+  CODEREP*  Set_ISOP_mtype_b_cache (const CODEREP* CR)
   {
       u2.isop.node_cache = (void *)CR;
       return  (CODEREP*) u2.isop.node_cache;
@@ -1260,7 +1260,7 @@ public:
   CODEREP*  Get_ISOP_mtype_b_cache () const 
   { return (CODEREP*) u2.isop.node_cache; }
 
-  BB_NODE*  Set_ISOP_def_before_use_cache (BB_NODE* CR)
+  BB_NODE*  Set_ISOP_def_before_use_cache (const BB_NODE* CR)
   {
       u2.isop.node_cache =(void*)CR;
       return   (BB_NODE*)u2.isop.node_cache;

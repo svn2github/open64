@@ -3365,12 +3365,12 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
 #endif
 
   TN *kid0 = Expand_Expr(WN_kid0(expr), expr, NULL);
+  TN * kid1 = NULL, * kid2 = NULL;
 #ifdef TARG_X8664
   INT imm_kidno = 0;
   // Get any immediate operand in intrinsic.
   TN * imm_kid = Handle_Imm_Op (expr, &imm_kidno);
 
-  TN * kid1 = NULL, * kid2 = NULL;
 
   if (imm_kid)
   {
@@ -3400,7 +3400,7 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
   
   FmtAssert(numkids <= 3, ("unexpected number of kids in intrinsic_op"));
 #else
-  TN *kid1 = (numkids == 2) ? Expand_Expr(WN_kid1(expr), expr, NULL) : NULL;
+  kid1 = (numkids == 2) ? Expand_Expr(WN_kid1(expr), expr, NULL) : NULL;
   FmtAssert(numkids <= 2, ("unexpected number of kids in intrinsic_op"));
 #endif
 
@@ -3410,7 +3410,7 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
 
 #ifdef KEY
   const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
   Exp_Intrinsic_Op (id, result, kid0, kid1, kid2, mtype, &New_OPs);
 #else
   Exp_Intrinsic_Op (id, result, kid0, kid1, mtype, &New_OPs);

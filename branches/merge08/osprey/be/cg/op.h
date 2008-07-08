@@ -673,7 +673,7 @@ extern BOOL OP_use_return_value(OP*);
 #endif
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
-#if defined(TARG_X8664) || defined(TARG_SL)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA)
 #define OP_xfer(o)		(TOP_is_xfer(OP_code(o)))
 #endif
 #define OP_cond(o)		(TOP_is_cond(OP_code(o)))

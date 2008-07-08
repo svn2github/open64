@@ -149,6 +149,7 @@
 #include "cgemit_targ.h"
 #include "cg_swp.h"
 #include "tag.h"
+#include "be_symtab.h"
 
 #ifdef TARG_IA64
 #include "targ_issue_port.h"
@@ -7428,7 +7429,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
      * this avoids emitting unused cudart arrays.
      * Because constant memory arrays can come from users and be used on host,
      * only ignore internal __cuda* symbols.
-    /* Note that this may get emitted in pass for later PU */
+     * Note that this may get emitted in pass for later PU */
     if ((ST_sclass(st) == SCLASS_FSTATIC || ST_sclass(st) == SCLASS_PSTATIC)
       && (ST_export(st) == EXPORT_LOCAL || ST_export(st) == EXPORT_LOCAL_INTERNAL)
       && ! BE_ST_referenced(st) 
@@ -8355,8 +8356,8 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #endif
     Print_Label (Asm_File, pu, 0);
     CGEMIT_Gen_Asm_Frame (Frame_Len);
-  }
 #endif // NVISA
+  }
 
   if (Assembly) {
     if (cur_section != PU_base) {

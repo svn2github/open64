@@ -754,7 +754,11 @@ COMP_UNIT::Verify_CODEMAP(void)
 // Check that the given coderep's Defbb() dominates the bb where the
 // coderep is used.
 BOOL
+#if defined(TARG_NVISA)
+Def_before_use(CODEREP *cr, const BB_NODE *use_bb)
+#else
 Def_before_use(const CODEREP *cr, const BB_NODE *use_bb)
+#endif
 {
   // Defbb() is not set for zero versions since their points of
   // definition are unknown.

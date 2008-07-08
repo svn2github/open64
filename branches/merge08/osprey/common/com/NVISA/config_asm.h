@@ -191,6 +191,7 @@ static char *config_asm_rcs_id = "$Source: /scratch/mee/Patch0002-taketwo/kpro64
 #define AS_WORD		"//DWARF .4byte"
 #define AS_WORD_UNALIGNED "//DWARF .4byte" 
 #define AS_IDENT	"//ident" /* Make this ASM_CMNT_START if no ident */
+#define AS_HIDDEN       "//.hidden"
 
 extern BOOL CG_emit_non_gas_syntax;
 

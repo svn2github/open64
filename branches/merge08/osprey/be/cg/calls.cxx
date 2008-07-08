@@ -833,12 +833,13 @@ Generate_Entry (BB *bb, BOOL gra_run )
 #ifdef TARG_X8664
   if( Is_Target_32bit() && Gen_PIC_Shared ){
     EETARG_Generate_PIC_Entry_Code( bb, &ops );
+  }
 #endif
 #ifdef TARG_IA64
   if (TY_is_varargs(Ty_Table[PU_prototype(Get_Current_PU())])) {
     vararg_st8_2_st8_spill (bb);
-#endif
   }
+#endif
 
   /* Merge the new operations into the beginning of the entry BB: */
   BB_Prepend_Ops(bb, &ops);

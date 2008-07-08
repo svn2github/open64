@@ -48,6 +48,7 @@ extern "C" {
 
 #if defined(TARG_NVISA)
 /* NVISA:  ptx version */
+#include "pathscale_defs.h"
 #define	MS_STAMP 1
 #define	LS_STAMP 2
 #define INCLUDE_STAMP "1.2"
