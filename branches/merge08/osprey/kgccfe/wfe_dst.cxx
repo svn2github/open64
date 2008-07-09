@@ -1988,7 +1988,10 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
 #endif
         ! ST_is_export_local(func_st) );  // is_external
     // producer routines thinks we will set pc to fe ptr initially
+#if !defined(TARG_NVISA)
+    // Removing this should also be OK for other TARG.
     DST_RESET_assoc_fe (DST_INFO_flag(DST_INFO_IDX_TO_PTR(dst)));
+#endif
     DST_append_child (current_scope_idx, dst);
 
 
