@@ -3839,7 +3839,7 @@ Spill_Live_Range (
                    TN_number(prev_tn), TN_number(new_tn));
         }
         CGSPILL_Insert_Ops_Before(bb, op, &copy_ops);
-#ifdef KEY
+#ifdef !defined (TARG_IA64)
 	resnum = 0;
 #else
         resnum = TN_Resnum_In_OP (op, spill_tn);
