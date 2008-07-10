@@ -2520,7 +2520,6 @@ Compute_Livethrough_Set (BB *bb)
     livethrough[cl] = REGISTER_SET_Difference (
                                     REGISTER_CLASS_allocatable(cl),
                                     avail_set[cl]);
-  }
     /* Force LRA not to use any registers neither granted by GRA nor used
      * by GRA (LRA may spill a GRA used register and reuse it sometimes).
      */
@@ -2533,6 +2532,7 @@ Compute_Livethrough_Set (BB *bb)
       }
     }
 #endif
+  }
 
 #ifdef TARG_SL // minor_reg_alloc
     /* exclude register as a spilling candidate */ 
