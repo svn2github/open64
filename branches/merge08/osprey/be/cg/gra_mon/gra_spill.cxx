@@ -601,7 +601,8 @@ LRANGE_Restore_Above( LRANGE* lrange, GRA_BB* gbb )
   (void) lrange->Find_LUNIT_For_GBB(gbb, &lunit);
 
 #ifdef KEY
-  if (GRA_optimize_boundary) {
+  if (GRA_optimize_boundary ||
+      gbb->Clobbers_Reg_Class(lrange->Rc())) {
     // Always restore before the first use.  If no such use, restore at the
     // bottom of the BB.
     TN_Restore_Above(tn,st,gbb,TRUE);

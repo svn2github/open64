@@ -116,8 +116,11 @@ extern INT GRA_non_preference_tn_id;	// controlled by -GRA:non_preference_tn
 extern BOOL GRA_optimize_placement;	// controlled by -GRA:optimize_placement
 #ifdef KEY
 extern BOOL GRA_optimize_boundary;	// controlled by -GRA:optimize_boundary
+extern BOOL GRA_optimize_boundary_set;
 extern BOOL GRA_reclaim_register;	// controlled by -GRA:reclaim
+extern BOOL GRA_reclaim_register_set;
 extern BOOL GRA_prioritize_by_density;	// controlled by -GRA:prioritize_by_density
+extern BOOL GRA_prioritize_by_density_set;
 #endif
 
 #ifdef TARG_X8664

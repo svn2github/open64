@@ -89,10 +89,12 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon
 #ifdef KEY
 // If TRUE, allow reuse of registers at live range boundary basic blocks.
 BOOL GRA_optimize_boundary = FALSE;
+BOOL GRA_optimize_boundary_set = FALSE;
 
 // If TRUE, prioritize live ranges by reference density.  If FALSE, prioritize
 // by the number of references in the live range.
 BOOL GRA_prioritize_by_density = FALSE;
+BOOL GRA_prioritize_by_density_set = FALSE;
 #endif
 
 LRANGE_MGR lrange_mgr;

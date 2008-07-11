@@ -92,6 +92,7 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon
 
 #ifdef KEY
 BOOL GRA_reclaim_register = FALSE;
+BOOL GRA_reclaim_register_set = FALSE;
 #endif
 
 INT32 GRA_local_forced_max = DEFAULT_FORCED_LOCAL_MAX;
@@ -713,6 +714,11 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
 #endif
 //      DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
 //      	 ("LRANGE not allowed its wired register"));
+#endif
+#if defined(TARG_X8664)
+    if (! PU_Has_Nonlocal_Goto_Target)
+      DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
+               ("LRANGE not allowed its wired register"));
 #endif
     Update_Register_Info(lrange, lrange->Reg());
     return TRUE;
