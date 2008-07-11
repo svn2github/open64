@@ -639,7 +639,8 @@ public:
   void      Set_asm_input_rtype(MTYPE dt)   { u2.isop._asm_input_dtyp = dt; }
   MTYPE     Asm_input_dsctype(void) const   { return u2.isop._asm_input_dsctyp; }
   MTYPE     Set_asm_input_dsctype(MTYPE dt) {  u2.isop._asm_input_dsctyp = dt; }
-#endif  
+#endif
+#if defined(TARG_SL) || defined(TARG_NVISA)
   void	    Set_dtyp_const_val(MTYPE dt, INT64 v) { 
 					Is_True(Kind() == CK_CONST,
 					    ("CODEREP::Set_dtyp_const_val, illegal kind"));
@@ -659,7 +660,15 @@ public:
 #else
 					u2.isconst.const_val = v; }
 #endif // TARG_SL
-
+#else
+  // TARG_IA64, TARG_X8664
+  void	    Set_dtyp_const_val(MTYPE dt, UINT64 v) { Is_True(Kind() == CK_CONST,
+		    ("CODEREP::Set_dtyp_const_val, illegal kind"));
+					if (v == (v << 32) >> 32)
+						_dtyp = MTYPE_U4;
+					else _dtyp = MTYPE_I8;
+					u2.isconst.const_val = v; }
+#endif
   void      Set_dtyp_strictly(MTYPE dt) { _dtyp = dt; }
   MTYPE     Dsctyp(void) const        { return dsctyp; }
   void      Set_dsctyp(const MTYPE t) { dsctyp = t; }
