@@ -151,6 +151,15 @@ static REGISTER_SET exclude_set[ISA_REGISTER_CLASS_MAX+1];
 // This is used to simulate a round-robin allocation of registers.
 static REGISTER last_assigned_reg[ISA_REGISTER_CLASS_MAX+1];
 
+#ifdef KEY
+// Data structure to keep track of the OP number that a register was last
+// freed.  Supports the least-recently-used method of register assignment.
+typedef struct {
+  INT reg[REGISTER_MAX+1];
+} LAST_FREED;
+static LAST_FREED last_freed[ISA_REGISTER_CLASS_MAX+1];
+#endif
+
 /* Array of the OPs in the basic block being processed. */
 static VECTOR Insts_Vector;
 #define OP_VECTOR_element(v,i)  ((OP *)VECTOR_element(v,i))
@@ -190,7 +199,7 @@ static BOOL Trace_Move_GRA_Spills;      /* -Wb,-tt54:0x10 */
 typedef struct live_range {
   TN *tn;               /* the live range tn */
   mINT16 first_def;     /* instruction number for first def in live range. */
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64)
   mINT16 first_unc_def; /* instruction number for the first unconditional def */
 #endif
   mINT16 last_use;      /* instruction number for last use in live range. */
@@ -205,7 +214,9 @@ typedef struct live_range {
 
 #define LR_tn(lr)               ((lr)->tn)
 #define LR_first_def(lr)        ((lr)->first_def)
+#if defined(TARG_IA64)
 #define LR_first_unc_def(lr)    ((lr)->first_unc_def)
+#endif
 #define LR_last_use(lr)         ((lr)->last_use)
 #define LR_exposed_use(lr)      ((lr)->exposed_use)
 #define LR_def_cnt(lr)          ((lr)->def_cnt)
@@ -807,8 +818,17 @@ Mark_Use (TN *tn, OP *op, INT opnum, BB *bb, BOOL in_lra,
   }
 #ifdef TARG_X8664
   // If the TN is used as a byte, must allocate to a byte-accessible register.
-  if ((is_result && OP_result_size(op, res_opnd_idx) == 8) ||
-      (!is_result && OP_opnd_size(op, res_opnd_idx) == 8)) {
+  if (OP_code(op) == TOP_asm) {
+    ASM_OP_ANNOT* asm_info = (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, op);
+    ISA_REGISTER_SUBCLASS subclass =
+      is_result ? ASM_OP_result_subclass(asm_info)[res_opnd_idx] :
+		  ASM_OP_opnd_subclass(asm_info)[res_opnd_idx];
+    if (subclass == ISA_REGISTER_SUBCLASS_m32_8bit_regs) {
+      Set_LR_byteable(clr);
+    }
+  } else if (Is_Target_32bit() &&
+	     ((is_result && OP_result_size(op, res_opnd_idx) == 8) ||
+	      (!is_result && OP_opnd_size(op, res_opnd_idx) == 8))) {
     Set_LR_byteable(clr);
   }
 #endif
@@ -924,7 +944,7 @@ Setup_Live_Ranges (BB *bb, BOOL in_lra, MEM_POOL *pool)
       if (LR_def_cnt(clr) == 0) {
         LR_first_def(clr) = opnum;
       }
-#if defined(TARG_IA64) || defined(TARG_X8664)
+#if defined(TARG_IA64)
       if (LR_first_unc_def(clr) == 0 && !OP_cond_def(op)) {
 	LR_first_unc_def(clr) = opnum;
       }
@@ -953,8 +973,17 @@ Setup_Live_Ranges (BB *bb, BOOL in_lra, MEM_POOL *pool)
       }
 #ifdef TARG_X8664
       // If the result is a byte, must allocate to a byte-accessible register.
-      if (OP_result_size(op, resnum) == 8)
+      if (OP_code(op) == TOP_asm) {
+	ASM_OP_ANNOT* asm_info = (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, op);
+	ISA_REGISTER_SUBCLASS subclass =
+	  ASM_OP_result_subclass(asm_info)[resnum];
+	if (subclass == ISA_REGISTER_SUBCLASS_m32_8bit_regs) {
+	  Set_LR_byteable(clr);
+	}
+      } else if (Is_Target_32bit() &&
+		 OP_result_size(op, resnum) == 8) {
 	Set_LR_byteable(clr);
+      }
 #endif
     }
   }
@@ -1201,9 +1230,16 @@ Init_Avail_Regs (void)
   ISA_REGISTER_CLASS cl;
 
   bzero(avail_regs, sizeof(avail_regs));
+#ifdef KEY
+  bzero(last_freed, sizeof(last_freed));
+#endif
+
   FOR_ALL_ISA_REGISTER_CLASS(cl) {
     FOR_ALL_REGISTER_SET_members (avail_set[cl], reg) {
       avail_regs[cl].reg[reg] = TRUE;
+#ifdef KEY
+      last_freed[cl].reg[reg] = INT_MAX;
+#endif
     }
   }
 }
@@ -1246,6 +1282,8 @@ Add_Avail_Reg (ISA_REGISTER_CLASS regclass, REGISTER reg, INT cur_op)
     last_assigned_reg[regclass] = reg;
   }
 #endif
+  // Keep track of when the reg was last assigned.
+  last_freed[regclass].reg[reg] = cur_op;
 #endif
 }
 
@@ -1437,6 +1475,30 @@ Get_Avail_Reg (ISA_REGISTER_CLASS regclass,
 {
   REGISTER next_reg = last_assigned_reg[regclass] + 1;
   REGISTER reg;
+
+#ifdef KEY
+  // Find the least-recently-used register.
+  //
+  // For x86-64, handle least-recently-used before legacy-regs because
+  // least-recently-used should produce better code.
+  if (LRA_prefer_lru_reg) {
+    REGISTER lru_reg = REGISTER_UNDEFINED;
+    INT lru_opnum;
+    for (reg = REGISTER_MIN; reg <= REGISTER_MAX; reg++) {
+      if (Is_Reg_Available(regclass, usable_regs, reg, lr) &&
+	  reg != skip_reg) {
+	if (lru_reg == REGISTER_UNDEFINED ||
+	    lru_opnum < last_freed[regclass].reg[reg]) {
+	  lru_reg = reg;
+	  lru_opnum = last_freed[regclass].reg[reg];
+	}
+      }
+    }
+    if (lru_reg != REGISTER_UNDEFINED) {
+      return lru_reg;
+    }
+  } else
+#endif
 
 #ifdef TARG_X8664
   if (LRA_prefer_legacy_regs) {
@@ -2171,16 +2233,10 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 #endif
 
 #ifdef TARG_X8664
-    if( Is_Target_32bit() ){
-      const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(regclass);
-
-      if (LR_byteable(clr)) {
-	must_use = REGISTER_SET_Intersection( must_use, regs );
-
-      } else if( OP_code(op) != TOP_asm &&
-		 OP_opnd_size( op, opndnum ) == 8 ){
-	must_use = REGISTER_SET_Intersection( must_use, regs );
-      }
+    if (LR_byteable(clr)) {
+      const REGISTER_SET regs =
+	REGISTER_SUBCLASS_members(ISA_REGISTER_SUBCLASS_m32_8bit_regs);
+      must_use = REGISTER_SET_Intersection(must_use, regs);
     }
 
     /* When the register of a GTN is preallocated for a later div-like op,
@@ -3531,6 +3587,10 @@ Spill_Live_Range (
   OP *reloadable_def = NULL;
   INT last_def;
   INT last_opnum;
+
+#ifdef KEY
+  last_def = 0;		// Bug 14315, uninitialized variable.
+#endif
 
   if (Do_LRA_Trace(Trace_LRA_Spill)) {
     fprintf (TFile, "LRA_SPILL>> spill lr at OP:%d", spill_opnum);
@@ -4925,19 +4985,28 @@ Adjust_one_eight_bit_reg( BB* bb, OP* op, int opnd_idx, BOOL is_opnd )
 {
   TN* opnd = is_opnd ? OP_opnd( op, opnd_idx ) : OP_result( op, opnd_idx );
 
-  if( OP_code(op) == TOP_asm ){
-    if( !TN_is_register(opnd) ||
-	TN_size(opnd) != 1 )
-      return;
-    
-  } else {
-    if( is_opnd ){
-      if( !TN_is_register( opnd ) ||
-	  OP_opnd_size( op, opnd_idx ) != 8 )
-	return;
+  if (!TN_is_register(opnd))
+    return;
 
+  if (OP_code(op) == TOP_asm) {
+    ASM_OP_ANNOT* asm_info = (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, op);
+    ISA_REGISTER_SUBCLASS subclass =
+      is_opnd ? ASM_OP_opnd_subclass(asm_info)[opnd_idx] :
+		ASM_OP_result_subclass(asm_info)[opnd_idx];
+    if (subclass == ISA_REGISTER_SUBCLASS_m32_8bit_regs) {
+      // Need a m32 byteable register, for both 32 and 64-bit target.
+    } else if (Is_Target_64bit() ||
+	       TN_size(opnd) != 1) {
+      return;
+    }
+  } else {
+    if (Is_Target_64bit())	// All integer registers are byteable under m64.
+      return;
+    if (is_opnd) {
+      if (OP_opnd_size(op, opnd_idx) != 8)
+	return;
     } else {
-      if( OP_result_size( op, opnd_idx ) != 8 )
+      if (OP_result_size(op, opnd_idx) != 8)
 	return;
     }
   }
@@ -4946,7 +5015,8 @@ Adjust_one_eight_bit_reg( BB* bb, OP* op, int opnd_idx, BOOL is_opnd )
   const REGISTER reg = LRA_TN_register( opnd );
 
   if( reg != REGISTER_UNDEFINED ){
-    const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(cl);
+    const REGISTER_SET regs =
+      REGISTER_SUBCLASS_members(ISA_REGISTER_SUBCLASS_m32_8bit_regs);
     if( REGISTER_SET_MemberP( regs, reg ) )
       return;
 
@@ -4958,7 +5028,10 @@ Adjust_one_eight_bit_reg( BB* bb, OP* op, int opnd_idx, BOOL is_opnd )
   // Insert a mov here.
 
   OPS ops = OPS_EMPTY;
-  TN* result = Gen_Register_TN( cl, 1 );
+  // Although RESULT must be assigned a byteble register, it does not mean the
+  // size of RESULT is 1-byte.  An ASM can have a 'q' constraint for an operand
+  // that is greater than 1-byte.  Bug 14468.
+  TN* result = Gen_Register_TN(cl, TN_size(opnd));
 
   if( is_opnd ){
     Exp_COPY( result, opnd, &ops );
@@ -4969,7 +5042,8 @@ Adjust_one_eight_bit_reg( BB* bb, OP* op, int opnd_idx, BOOL is_opnd )
   } else {
     // Do sign/zero extend instead of regular copy.  Needed for "sete" which
     // doesn't clear the upper bits.  Bug 5621.
-    Exp_COPY_Ext(TOP_movzbl, opnd, result, &ops );
+    Exp_COPY_Ext(TN_size(result) == 2 ? TOP_movzwl : TOP_movzbl,
+		 opnd, result, &ops );
     OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
     BB_Insert_Ops_After( bb, op, &ops );
     Set_OP_result( op, opnd_idx, result );
@@ -4990,15 +5064,13 @@ Adjust_eight_bit_regs (BB* bb)
      addressed for -m32.
   */
 
-  if( Is_Target_32bit() ){
-    FOR_ALL_BB_OPs( bb, op ){
-      for( int i = 0; i < OP_opnds( op ); i++ ){
-	Adjust_one_eight_bit_reg( bb, op, i, TRUE );
-      }
+  FOR_ALL_BB_OPs( bb, op ){
+    for( int i = 0; i < OP_opnds( op ); i++ ){
+      Adjust_one_eight_bit_reg( bb, op, i, TRUE );
+    }
 
-      for( int i = 0; i < OP_results( op ); i++ ){
-	Adjust_one_eight_bit_reg( bb, op, i, FALSE );
-      }
+    for( int i = 0; i < OP_results( op ); i++ ){
+      Adjust_one_eight_bit_reg( bb, op, i, FALSE );
     }
   }
 }
@@ -5168,7 +5240,10 @@ static void Verify_TARG_X86_Op_For_BB( BB* bb )
 	    OP_opnd_size( op, i ) == 8 ){
 	  const ISA_REGISTER_CLASS cl = TN_register_class( opnd );
 	  const REGISTER reg = LRA_TN_register( opnd );
-	  const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(cl);
+	  const REGISTER_SET regs =
+		 REGISTER_SUBCLASS_members(ISA_REGISTER_SUBCLASS_m32_8bit_regs);
+	  FmtAssert(cl == ISA_REGISTER_CLASS_integer,
+		    ("Verify_TARG_X86_Op_For_BB: 8-bit value not allocated to integer register"));
 	  FmtAssert(REGISTER_SET_MemberP(regs, reg),
 		    ("Verify_TARG_X86_Op_For_BB: 8-bit value not allocated to byte-accessible register"));
 	}
@@ -5291,6 +5366,14 @@ Preallocate_Single_Register_Subclasses (BB* bb)
   // preallocation.  On the x86, these are ALU OPs that change the rflags.
   OP *last_preallocation_op = NULL;
   FOR_ALL_BB_OPs_REV (bb, op) {
+    // Don't insert copies after the SP adjust OP at the end of the BB.  LRA
+    // calls CGSPILL_Append_Ops to spill around the BB, and CGSPILL_Append_Ops
+    // relies on the SP ajust to mark the end of the BB.  Bug 14363.
+    if ((BB_exit(bb) &&
+	 OP_code(op) == TOP_spadjust) ||
+	OP_code(op) == TOP_asm) {	// the ASM at the end of the BB
+      continue;
+    }
     if (TOP_is_change_rflags(OP_code(op))) {
       last_preallocation_op = op;
       break;
@@ -5435,9 +5518,14 @@ Preallocate_Single_Register_Subclasses (BB* bb)
 	  // Find parameter and function return registers.  They should have
 	  // one definition and one non-exposed-use (live-out counts as one
 	  // use).
+	  //
+	  // For ASM BBs, the parameter to the ASM has two non-exposed-use's
+	  // (appearance in ASM opnd, and live-out).  Bug 14432.
+	  int non_exposed_use_cnt = LR_use_cnt(ded_lr) - LR_exposed_use(ded_lr);
 	  if (LR_last_use(ded_lr) > orig_bb_length &&
 	      LR_def_cnt(ded_lr) == 1 &&
-	      (LR_use_cnt(ded_lr) - LR_exposed_use(ded_lr)) == 1) {
+	      ((!BB_asm(bb) && non_exposed_use_cnt == 1) ||
+	       ( BB_asm(bb) && non_exposed_use_cnt == 2))) {
 	    TN *new_tn = Build_TN_Like(tn);
 	    Set_OP_result(op, i, new_tn);
 	    // Copy back to the dedicated TN.
@@ -5859,6 +5947,15 @@ LRA_Register_Request (BB *bb,  ISA_REGISTER_CLASS cl)
       regs_needed = min_regs;
       Reg_Request (bb, cl) = min_regs;
     }
+#ifdef KEY
+    // Inflate register request to reduce constraints on instruction
+    // scheduling.
+    if (BB_innermost(bb) &&
+	BB_length(bb) > 20) {
+      // LRA_inflate_reg_request is a percentage.
+      regs_needed += (int)(regs_needed * LRA_inflate_reg_request * 0.01 + 0.5);
+    }
+#endif
   }
   else {
     /* TODO: tune this based on register class and length of basic block */ 
