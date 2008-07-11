@@ -510,6 +510,9 @@ enum OP_COND_DEF_KIND {
 #endif
 #define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END  \
                               0x10000000 /* first OP following PRAGMA_PREAMBLE_END? */
+#define OP_MASK_PREFETCH_DELETED \
+                              0x20000000 /* prefetch deleted by scheduler */
+
 #ifdef TARG_X8664
 #define OP_MASK_MEMORY_HI     0x00040000 /* Is OP load/store the high 32-bit? */
 #define OP_MASK_COMPUTES_GOT  0x00100000 /* Does OP compute GOT ? */
@@ -640,6 +643,10 @@ enum OP_COND_DEF_KIND {
 # define OP_first_after_preamble_end(o) (OP_flags(o) & OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
 # define Set_OP_first_after_preamble_end(o) (OP_flags(o) |= OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
 # define Reset_OP_first_after_preamble_end(o) (OP_flags(o) &= ~OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
+
+# define OP_prefetch_deleted(o) (OP_flags(o) & OP_MASK_PREFETCH_DELETED)
+# define Set_OP_prefetch_deleted(o) (OP_flags(o) |= OP_MASK_PREFETCH_DELETED)
+# define Reset_OP_prefetch_deleted(o) (OP_flags(o) &= ~OP_MASK_PREFETCH_DELETED)
 
 extern BOOL OP_cond_def(const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);

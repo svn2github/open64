@@ -393,6 +393,7 @@ CGSPILL_Reset_Local_Spills (void)
 #ifdef TARG_X8664
   LOCAL_SPILLS_Reset(&lra_sse2_spills);
   LOCAL_SPILLS_Reset(&lra_x87_spills);
+  LOCAL_SPILLS_Reset(&lra_mmx_spills);
 #endif /* TARG_X8664 */
 
 #ifdef KEY

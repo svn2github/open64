@@ -86,7 +86,11 @@
 #define HBS_DROP_UNSCHED_PREFETCHES	0x10000
 #endif
 
+#ifdef KEY
+typedef UINT32 HBS_TYPE;
+#else
 typedef UINT16 HBS_TYPE;
+#endif
 
 // Accessors:
 #define OP_VECTOR_element(v,i)	((OP *)VECTOR_element(v,i))
