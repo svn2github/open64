@@ -137,7 +137,7 @@ struct FB_Info_Value {
 
   FB_Info_Value() : num_values(0), exe_counter(0) {}
 
-  FB_Info_Value( const INT32 num, const INT32 e, const INT32* v, const FB_NUM_TYPE* f ) {
+  FB_Info_Value( const FB_NUM_TYPE num, const FB_NUM_TYPE e, const FB_NUM_TYPE* v, const FB_NUM_TYPE* f ) {
 
     num_values = MIN( TNV, num );
     exe_counter = e;
