@@ -602,8 +602,12 @@ ipacom_process_symtab (char* symtab_file)
 
   char* toolroot = getenv("TOOLROOT");
 
+#if defined(VENDOR_OSP)
+  sprintf(buf, "%s -c %s %s -o %s %s -TENV:emit_global_data=%s %s",
+#else
   sprintf(buf, "%s%s -c %s %s -o %s %s -TENV:emit_global_data=%s %s",
 	    (toolroot != 0) ? toolroot : "",
+#endif
             (*command_map)["cc"],
             abi(),
             input_symtab_name,
