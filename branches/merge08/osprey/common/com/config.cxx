@@ -1622,7 +1622,7 @@ Configure_Source ( char	*filename )
     if (!Fast_trunc_Set)
       Fast_trunc_Allowed = Roundoff_Level >= ROUNDOFF_SIMPLE;
 
-#if defined(TARG_X8664) || defined(TARG_NVISA)
+#if defined(TARG_X8664)
     if ( ! CIS_Set )
       CIS_Allowed |= Roundoff_Level >= ROUNDOFF_SIMPLE;
 #endif

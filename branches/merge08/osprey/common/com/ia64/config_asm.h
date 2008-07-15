@@ -79,6 +79,7 @@ static char *config_asm_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/com
  * from the BB id and the PU name:
  */
 #define BB_Label_Format	".BB%d_%s"
+#define END_Label_Format ".LDWend_%s"
 
 /* The following sprintf format is used to create a basic block label
  * from a user label name and the PU name:

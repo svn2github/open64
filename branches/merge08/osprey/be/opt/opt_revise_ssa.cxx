@@ -1213,9 +1213,11 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	   ) {
 
           TY_IDX stbits_tyidx = Void_Type;
+#if !defined(TARG_NVISA)
 	  if (opr == OPR_STBITS) {
 	    stbits_tyidx = MTYPE_To_TY(lhs->Dsctyp());
 	  }
+#endif
 	  // Add a new chi node for the old STBITS lhs symbol (pv 805267)
 	  if (stmt->Chi_list() == NULL)
 	    stmt->Set_chi_list(CXX_NEW(CHI_LIST, _htable->Mem_pool()));

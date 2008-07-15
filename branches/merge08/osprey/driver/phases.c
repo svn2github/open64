@@ -793,7 +793,7 @@ add_file_args (string_list_t *args, phases_t index)
 	case P_gcpp_plus:
 		if (show_but_not_run)
 			add_string(args, "-###");
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 ){
 		  add_string(args, "-m32");
 		}
@@ -1202,7 +1202,7 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 		if (quiet_flag) 
 			add_string(args, "-quiet");
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
 #elif defined(TARG_MIPS)
@@ -1474,7 +1474,7 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, "-###");
 		{
 		  int len;
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
 		  if( abi == ABI_N32 )
 		    add_string(args, "-m32");
 #elif defined(TARG_MIPS)
@@ -1537,7 +1537,7 @@ add_file_args (string_list_t *args, phases_t index)
 		append_libraries_to_list (args);
 		if (show_but_not_run)
 			add_string(args, "-###");
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
 #elif defined(TARG_MIPS)
@@ -1557,7 +1557,7 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 	case P_collect:
 	case P_ipa_link:
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 ) {
 		  add_string(args, "-m32");
 		  add_string(args, "-m");

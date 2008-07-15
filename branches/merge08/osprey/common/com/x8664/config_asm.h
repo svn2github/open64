@@ -77,6 +77,7 @@ static char *config_asm_rcs_id = "$Source$ $Revision$";
  * Add prefix .L so that gdb does not print out the labels.
  */
 #define BB_Label_Format	".LBB%d_%s"
+#define END_Label_Format ".LDWend_%s"
 
 /* The following sprintf format is used to create a basic block label
  * from a user label name and the PU name:

@@ -755,7 +755,7 @@ LLDLIBS = $(TARG_WOPT_DIR)/libwopt.a $(TARG_CG_DIR)/libcg.a \
 	$(TARG_TARG_INFO_DIR)/libtarginfo.a $(LIBIBERTY_OBJS)
 
 be:  $(BE_DRIVER_OBJS) $(LLDLIBS)
-	$(link.c++f) -o be -Wl,--start-group $(BE_DRIVER_OBJS) $(LDFLAGS) -Wl,--end-group -lm
+	$(link.c++f) -o be $(BE_DRIVER_OBJS) $(LDFLAGS) -lm
 
 else
 be:  $(BE_DRIVER_OBJS) $(LINK_DSO)

@@ -168,6 +168,7 @@ extern void CYG_Instrument_Driver(WN *);
 extern void Initialize_Targ_Info(void);
 
 // symbols defined in cg.so
+#if defined(SHARED_BUILD)
 #if defined(__linux__) || defined(BUILD_OS_DARWIN) || defined(__CYGWIN__) || defined(__MINGW32__)
 #if !defined(BUILD_FAST_BIN)
 extern void (*CG_Process_Command_Line_p) (INT, char **, INT, char **);
@@ -216,6 +217,7 @@ extern void EH_Generate_Range_List (WN *);
 #pragma weak EH_Dump_INITOs
 
 #endif // __linux__
+#endif // SHARED_BUILD
 
 #ifdef TARG_SL
 extern INT *SI_resource_count_p;
@@ -239,6 +241,7 @@ extern SI *(*SI_ID_si_p)[];
 #endif // TARG_SL
 
 // symbols defined in wopt.so
+#if defined(SHARED_BUILD)
 #if defined(__linux__) || defined(BUILD_OS_DARWIN)|| defined(__CYGWIN__) || defined(__MINGW32__)
 
 #if !defined(BUILD_FAST_BIN)
@@ -292,6 +295,7 @@ extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
 #pragma weak Verify_alias
 
 #endif // __linux__
+#endif // SHARED_BUILD
 
 // symbols defined in lno.so
 #ifndef BUILD_SKIP_LNO

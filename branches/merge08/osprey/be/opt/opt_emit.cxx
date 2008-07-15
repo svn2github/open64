@@ -1597,6 +1597,7 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
 	  Opt_stab()->Last_preg(),
 	  ("EMITTER:Emit, incorrect last preg number"));
 
+#if !defined(TARG_NVISA)
   {
     BOOL tr = _trace || Get_Trace (TP_GLOBOPT, ALIAS_DUMP_FLAG);
     if (Opt_stab()->Phase() == PREOPT_LNO_PHASE) {
@@ -1608,6 +1609,7 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
     }
     WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Set_active_mgr();  
   }
+#endif
 
   Verify(_opt_func);
   

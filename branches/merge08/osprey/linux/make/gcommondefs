@@ -140,7 +140,7 @@ ifeq ($(BUILD_COMPILER), GNU)
         endif
       endif
     endif
-    #include $(ROOT_DIR)/build/Platform.mk
+    include $(ROOT_DIR)/build/Platform.mk
  
     CCNAME  = $(GCC_BIN)gcc
     C++NAME = $(GCC_BIN)g++

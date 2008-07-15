@@ -2738,8 +2738,13 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 #endif
       case OPR_RND:
       case OPR_TRUNC:
+#ifdef FLOAT_ROUNDING_OPCODES
+        // [RTYPE] : f,i [DESC] : f
+        valid = Is_MTYPE_f_i [rtype] && Is_MTYPE_f [desc];
+#else
         // [RTYPE] : i [DESC] : f
         valid = Is_MTYPE_i [rtype] && Is_MTYPE_f [desc];
+#endif
         break;
 
       case OPR_COMMA:
@@ -2866,16 +2871,20 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       case OPR_NMADD:
       case OPR_NMSUB:
 #ifdef INT_MADD_OPCODES
+        // [RTYPE] : f,i [DESC] : V
         valid = Is_MTYPE_f_i [rtype] && desc == MTYPE_V;
-	break;
 #else
+        // [RTYPE] : f [DESC] : V
+        valid = Is_MTYPE_f [rtype] && desc == MTYPE_V;
+#endif //INT_MADD_OPCODES
+	break;
+
       case OPR_ILOADX:
       case OPR_FIRSTPART:
       case OPR_SECONDPART:
         // [RTYPE] : f [DESC] : V
         valid = Is_MTYPE_f [rtype] && desc == MTYPE_V;
         break;
-#endif
 
       case OPR_INTCONST:
         // [RTYPE] : i,p [DESC] : V

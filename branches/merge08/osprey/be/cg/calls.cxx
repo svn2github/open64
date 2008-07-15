@@ -1678,7 +1678,7 @@ Generate_Exit (
     }
   }
 
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
   /* restore callee-saved registers allocated to local user variables */
   for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
     SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);

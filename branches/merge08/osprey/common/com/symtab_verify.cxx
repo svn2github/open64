@@ -354,6 +354,10 @@ ST_Verify_Flags (const ST &s)
 
   if (ST_is_temp_var (s))
     Is_True(ST_sclass(s) == SCLASS_AUTO ||
+#if defined(TARG_NVISA)
+	    // may treat auto as pstatic
+            ST_sclass(s) == SCLASS_PSTATIC ||
+#endif
             ST_sclass(s) == SCLASS_FORMAL ||
             ST_sclass(s) == SCLASS_FORMAL_REF,
             (msg, "Storage class", Sclass_Name(ST_sclass(s)), 
@@ -364,8 +368,10 @@ ST_Verify_Flags (const ST &s)
             (msg, "Class", Class_Name(ST_sym_class(s)), "ST_IS_CONST_VAR")); 
 
     Is_True(ST_sclass(s) != SCLASS_AUTO   &&
-    /* okay to have const formal in nvisa */
+#if !defined(TARG_NVISA)
+            /* okay to have const formal in nvisa */
             ST_sclass(s) != SCLASS_FORMAL &&
+#endif
             ST_sclass(s) != SCLASS_FORMAL_REF,
             (msg, "Storage class", Sclass_Name(ST_sclass(s)), 
 	     "ST_IS_CONST_VAR")); 

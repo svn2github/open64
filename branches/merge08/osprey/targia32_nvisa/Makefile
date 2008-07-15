@@ -96,6 +96,7 @@ install:
 	mkdir -p lib
 	cp -u driver/driver bin/nvopencc
 	cp -u gccfe/gfec lib
-	cp -u lw_inline/lw_inline lib
+	cp -u lw_inline/lw_inline lib/inline
 	cp -u be_driver/be lib
+	cp -u ir_tools/ir_b2a bin
 	#cp -u bec/bec lib

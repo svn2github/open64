@@ -877,7 +877,7 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 #else /* defined(BUILD_OS_DARWIN) */
 	fputs(ST_name(st), f);
 #endif /* defined(BUILD_OS_DARWIN) */
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
 // This name is already unique, don't change it.
 	if (!strncmp (ST_name(st), ".range_table.", strlen(".range_table.")))
 		return;
@@ -2779,7 +2779,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
   }
 #endif // TARG_X8664
 
-#if !defined(TARG_IA64) && !defined(TARG_SL)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA)
   // Bug 4204 - move the ctrl register setup after the preamble. This 
   // causes the debug information generated to let the debugger to stop
   // at the right spot for the main entry function. Otherwise, the parameters
@@ -3181,7 +3181,7 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
     // so hack this case and just print low 32bits
     sprintf(buf, "%d",(INT)TN_value(tn));
 #else
-    sprintf(buf, "$%lld",TN_value(tn));
+    sprintf(buf, "%lld",TN_value(tn));
 #endif
 #else
     sprintf(buf, "$%lld",TN_value(tn));
@@ -4757,7 +4757,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   Init_Sanity_Checking_For_BB ();
 #endif
 
-#if !defined(TARG_IA64) && !defined(TARG_SL)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA)
 // Assumption: REGION_First_BB is the first BB in the PU. If in future,
 // we start having multiple regions in a PU here, we need to change the 
 // following. 
@@ -8208,7 +8208,7 @@ Setup_Text_Section_For_PU (ST *pu)
     char *buf;
     LABEL *label;
     buf = (char *)alloca(strlen(Cur_PU_Name) + /* EXTRA_NAME_LEN */ 32);
-    sprintf(buf, ".LDWend_%s", Cur_PU_Name);
+    sprintf(buf, END_Label_Format, Cur_PU_Name);
     label = &New_LABEL(CURRENT_SYMTAB, Last_Label);
     LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
   }
@@ -8370,6 +8370,9 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 
   // emit global bss first so .org is correct
   Process_Bss_Data (GLOBAL_SYMTAB);
+#if defined(TARG_NVISA)
+  Process_Initos_And_Literals (GLOBAL_SYMTAB);
+#endif
 #ifndef TARG_IA64
   if (LNO_Run_Simd)
     Simd_Align = FALSE;

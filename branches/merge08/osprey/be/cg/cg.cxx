@@ -1809,7 +1809,6 @@ CG_Generate_Code(
 
 #if defined(TARG_IA64)
   else { /* PU */
-#ifndef TARG_NVISA
     // dump EH entry info
     if (Get_Trace (TP_EH, 0x0001)) {
       Print_PU_EH_Entry(Get_Current_PU(), WN_st(rwn), TFile);
@@ -1827,12 +1826,13 @@ CG_Generate_Code(
     if (Get_Trace (TP_EH, 0x0008)) {
       EH_Dump_LSDA (TFile);
     }
-#endif // TARG_NVISA
 #else
   else { /* PU */
+#if !defined(TARG_NVISA)
     if (PU_has_exc_scopes(Get_Current_PU())) {
       EH_Write_Range_Table(rwn);
     }
+#endif
 #endif //TARG_IA64 This is not a good merge compared to the code in trunk
 
 #if defined(TARG_SL)

@@ -3399,6 +3399,12 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
   }
   
   FmtAssert(numkids <= 3, ("unexpected number of kids in intrinsic_op"));
+#elif defined(TARG_NVISA)
+  kid1 = (numkids >= 2) ? Expand_Expr(WN_kid1(expr), expr, NULL) : NULL;
+  if (numkids == 3) {
+      kid2 = Expand_Expr(WN_kid2(expr), expr, NULL);
+  }
+  FmtAssert(numkids <= 3, ("unexpected number of kids in intrinsic_op"));
 #else
   kid1 = (numkids == 2) ? Expand_Expr(WN_kid1(expr), expr, NULL) : NULL;
   FmtAssert(numkids <= 2, ("unexpected number of kids in intrinsic_op"));
@@ -3831,12 +3837,12 @@ Get_WN_Label (WN *wn, BOOL *is_non_local_label = NULL)
 #endif
 	}
 	else {
-		label_prefix = ".Lt";
+		label_prefix = LABEL_PREFIX "t";
 	}
   }
   else if (isdigit(LABEL_name(label)[0])) {
 	// prefix with .L so .s file will be legal,
-	label_prefix = ".L";
+	label_prefix = LABEL_PREFIX;
   }
   if (label_prefix != NULL) {
 	// create label name:  prefix<name>.<pu-number>.<label-index>

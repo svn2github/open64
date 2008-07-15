@@ -82,7 +82,9 @@
 #include "erglob.h"
 #include "erlib.h"
 #include "errors.h"
+#if !defined(TARG_NVISA)
 #include "erauxdesc.h"
+#endif
 #include "ercg.h"
 #include "file_util.h"
 #include "glob.h"
