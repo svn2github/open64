@@ -419,6 +419,7 @@ extern BOOL LANG_Symtab_Verify_Set;
 extern BOOL LANG_Formal_Deref_Unsafe;
 extern BOOL LANG_Math_Errno;
 extern BOOL LANG_Enable_CXX_Openmp;
+extern BOOL LANG_Enable_Global_Asm;
 #endif
 
 extern BOOL WHIRL_Mtype_A_On;
@@ -621,10 +622,13 @@ extern INT32 iolist_reuse_limit;
 
 /***** Misaligned memory reference control *****/
 extern INT32 Aggregate_Alignment; /* This alignment for aggregate layout */
+extern BOOL Aggregate_Alignment_Set;
+extern INT32 Aggregate_UnrollFactor;	/* When lowering aggregate copy into */
 
 extern BOOL Align_Object;	/* Try to improve the alignment of objects */
 extern BOOL Align_Padding;	/* Pad objects to their natural alignment */
 extern BOOL UseAlignedCopyForStructs;	/* always use aligned copy */
+extern BOOL UnweaveCopyForStructs;      /* clump loads before stores */
 
 /***** Miscellaneous code generation options *****/
 extern BOOL Gen_PIC_Call_Shared; /* CPIC */
@@ -774,6 +778,9 @@ extern BOOL SIMD_ZMask;
 extern BOOL SIMD_OMask;
 extern BOOL SIMD_UMask;
 extern BOOL SIMD_PMask;
+
+extern BOOL Use_Sse_Reg_Parm;
+extern INT32 Use_Reg_Parm;
 #endif
 /* put each function in its own text section */
 extern BOOL Section_For_Each_Function;
@@ -788,6 +795,9 @@ extern INT32 Ipa_Ident_Number;
 /* Tell ipa_link about the LD_LIBRARY_PATH that was in effect before the
    compiler was run. */
 extern char *IPA_old_ld_library_path;
+
+/* Tell ipa_link which compiler to invoke. */
+extern char *IPA_cc_name;
 
 /* Tell ipa_link about the source language. */
 extern char *IPA_lang;

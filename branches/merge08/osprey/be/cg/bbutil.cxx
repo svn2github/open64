@@ -2944,7 +2944,7 @@ static void Split_BB(BB *bb)
   //
   bb_prev = bb;
   BB *bb_tmp, *bb_stop = BB_next(last_bb);
-  for (BB* bb_tmp = BB_next(bb); bb_tmp != bb_stop; bb_tmp = BB_next(bb_tmp))
+  for (bb_tmp = BB_next(bb); bb_tmp != bb_stop; bb_tmp = BB_next(bb_tmp))
   {
     Target_Simple_Fall_Through_BB(bb_prev, bb_tmp);
     bb_prev = bb_tmp;

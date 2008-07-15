@@ -121,6 +121,20 @@ EBO_tn_available(BB *bb,
   if (!EBO_in_peep &&
       ((bb != tn_bb) &&
        has_assigned_reg(tn))) return FALSE;
+
+#ifdef KEY
+  // Don't extend the live-range of homeable GTNs.  If the live-range is
+  // extended and GRA spills in the extended region, the spill could overwrite
+  // a store in the extended region that stores to the home location.
+  // Bug 14294.
+  if (Opt_Level >= 2 &&		// Global TN's aren't supported at low levels
+      TN_is_global_reg(tn) &&	// of optimization.
+      TN_is_gra_homeable(tn) &&
+      !GRA_LIVE_TN_Live_Into_BB(tn, bb)) {
+    return FALSE;
+  }
+#endif
+
   return TRUE;
 }
 

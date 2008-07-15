@@ -651,7 +651,7 @@ Emit_SWP_Note(BB *bb, FILE *file)
   } else {
     sprintf( prefix, "%s<swpf> ", ASM_CMNT_LINE );
     fprintf(file, "%s\n", prefix);
-    char *failure_msg;
+    const char *failure_msg;
     switch (ROTATING_KERNEL_INFO_failure_code(info)) {
     case SWP_PREP_ONLY:
       failure_msg = "disable by -SWP:prep_only";

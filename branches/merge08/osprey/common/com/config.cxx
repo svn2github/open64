@@ -153,9 +153,17 @@ INT8 Debug_Level = DEF_DEBUG_LEVEL;     /* -gn: debug level */
 
 /***** Alignment (misaligned memory reference) control *****/
 BOOL	UseAlignedCopyForStructs = FALSE;	/* control aggregrate copy */
+#ifdef TARG_MIPS
+BOOL	UnweaveCopyForStructs = TRUE; 	/* clump loads then stores for copy */
+INT32	Aggregate_UnrollFactor = 8;	/* Unroll aggregate copy loop */
+#else
+BOOL	UnweaveCopyForStructs = FALSE;	/* clump loads then stores for copy */
+INT32	Aggregate_UnrollFactor = 1;	/* Unroll aggregate copy loop */
+#endif
 INT32	MinStructCopyLoopSize =    16;		/* 0 = always expand */
 INT32	MinStructCopyMemIntrSize=  0;		/* generate bcopy */
 INT32	Aggregate_Alignment = -1;		/* This alignment for aggregate layout */
+BOOL	Aggregate_Alignment_Set = FALSE;
 
 INT32 iolist_reuse_limit = 100;
 
@@ -279,6 +287,9 @@ BOOL LANG_IEEE_Minus_Zero_Set = FALSE;
 
 BOOL LANG_Enable_CXX_Openmp = FALSE;
 BOOL LANG_Enable_CXX_Openmp_Set = FALSE;
+
+BOOL LANG_Enable_Global_Asm = FALSE;
+BOOL LANG_Enable_Global_Asm_Set = FALSE;
 # endif /* KEY Bug 3405 */
 
 BOOL LANG_Pch;
@@ -383,6 +394,10 @@ BOOL SIMD_ZMask = TRUE;
 BOOL SIMD_OMask = TRUE;
 BOOL SIMD_UMask = TRUE;
 BOOL SIMD_PMask = TRUE;
+/* -msseregparm */
+BOOL Use_Sse_Reg_Parm = FALSE;
+/* -mregparm= */
+INT32 Use_Reg_Parm = 0;
 #endif
 BOOL Force_GP_Prolog;	/* force usage of gp prolog */
 char *IPA_Object_Name = NULL;   /* distinguish symbols in different .so files */
@@ -396,6 +411,9 @@ INT32 Ipa_Ident_Number = 0;
 // Tell ipa_link to set LD_LIBRARY_PATH to this before running the shell cmds.
 char *IPA_old_ld_library_path = NULL;
 
+// Tell ipa_link which compiler to invoke.
+char *IPA_cc_name = NULL;
+
 // Tell ipa_link about the source language.
 char *IPA_lang = NULL;
 #endif
@@ -405,10 +423,14 @@ BOOL Indexed_Loads_Allowed = FALSE;
 /* Target environment options: */
 static OPTION_DESC Options_TENV[] = {
   { OVK_INT32,	OV_VISIBLE,	FALSE, "align_aggregates",	"align_ag",
-    -1, 0, 16,	&Aggregate_Alignment, NULL,
+    -1, 0, 16,	&Aggregate_Alignment, &Aggregate_Alignment_Set,
     "Minimum alignment to use for aggregates (structs/arrays)" },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "aligned_copy",		NULL,
     0, 0, 0,	&UseAlignedCopyForStructs, NULL },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "unweave_copy",		NULL,
+    0, 0, 0,	&UnweaveCopyForStructs, NULL },
+  { OVK_INT32,	OV_INTERNAL,	FALSE, "aggregate_unroll_factor", "aggregate_unroll",
+    4, 0, 1024,	&Aggregate_UnrollFactor, NULL },
   { OVK_BOOL,   OV_SHY,		FALSE, "call_mcount",		NULL,
     0, 0, 0,    &Call_Mcount, NULL },
   { OVK_BOOL,   OV_SHY,		FALSE, "constant_gp",		NULL,
@@ -468,6 +490,12 @@ static OPTION_DESC Options_TENV[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_pmask",		NULL,
     0, 0, 0,	&SIMD_PMask, NULL,
     "Unmask SIMD precision exception" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "msseregparm",		NULL,
+    0, 0, 0,	&Use_Sse_Reg_Parm, NULL,
+    "Use sse register parameters at -m32" },
+  { OVK_INT32,	OV_INTERNAL,	FALSE, "mregparm",		NULL,
+    0, 0, 3,	&Use_Reg_Parm, NULL,
+    "Use (up to 3) register parameters at -m32" },
 #endif
   { OVK_BOOL,	OV_VISIBLE,	FALSE, "local_names",		"",
     0, 0, 0,	&PIC_Local_Names, NULL },
@@ -744,6 +772,9 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_INTERNAL,    TRUE, "cxx_openmp",             "",
       0, 0, 0,  &LANG_Enable_CXX_Openmp,        &LANG_Enable_CXX_Openmp_Set,
       "C++: Enable OpenMP processing." },
+    { OVK_BOOL, OV_INTERNAL,	TRUE, "global_asm",		"",
+      0, 0, 0,	&LANG_Enable_Global_Asm,	&LANG_Enable_Global_Asm_Set,
+      "Handle global scope ASMs fully." },
 #endif /* KEY */
 
     { OVK_COUNT }		    /* List terminator -- must be last */
@@ -794,6 +825,8 @@ static OPTION_DESC Options_INTERNAL[] = {
 #ifdef KEY
     { OVK_NAME, OV_INTERNAL,	FALSE, "old_ld_lib_path",	"",
       0, 0, 0,	&IPA_old_ld_library_path,	NULL },
+    { OVK_NAME, OV_INTERNAL,	FALSE, "cc_name",		"",
+      0, 0, 0,	&IPA_cc_name,	NULL },
     { OVK_NAME, OV_INTERNAL,	FALSE, "lang",			"",
       0, 0, 0,	&IPA_lang,	NULL },
 #endif
@@ -1212,7 +1245,10 @@ Configure (void)
     Configure_Platform ( Platform_Name );
   }
 
-
+  /* First, if -OPT:Ofast (a.k.a. SPEC) is set, configure defaults: */
+  if ( Ofast != NULL ) {
+    Configure_Ofast ();
+  }
 
   /* Perform host-specific and target-specific configuration: */
   Configure_Host ();
@@ -1259,6 +1295,8 @@ Configure (void)
   // Bug 1039 - align aggregates to 16-byte for all optimization levels
   // OSP: Some cases may failed on i386(-march=anyx86) due to the alignment
   // bug 13998 - do this even under -mno-sse2
+  if ( ! Aggregate_Alignment_Set &&
+       ! LANG_Enable_Global_Asm )
     Aggregate_Alignment = 16;
   if ( !Vcast_Complex_Set && Opt_Level > 1 )
     Vcast_Complex = TRUE;

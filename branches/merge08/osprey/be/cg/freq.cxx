@@ -435,7 +435,7 @@ Trace_Frequencies(void)
 
   for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
     INT n;
-    char *s;
+    const char *s;
     EDGE *edge;
 
     /* Predecessors...
@@ -658,6 +658,7 @@ BOOL WN_Is_Pointer(WN *wn)
     /*FALLTHROUGH*/
 
   case OPR_ILOAD:
+  case OPR_ILOADX:
     {
       TY_IDX ty = WN_ty(wn);
       if (TY_kind(ty) == KIND_POINTER) return TRUE;
@@ -1837,9 +1838,9 @@ Compute_Branch_Probabilities(void)
 	EDGE_prob(edge) = 1.0 / n_succs;
       }
     }
-#if defined(TARG_SL)
     else if (EDGE_prob_hint_based(BB_succ_edges(bb)) ||
             EDGE_prob_hint_based(EDGE_next_succ(BB_succ_edges(bb)))) {
+#if defined(TARG_SL)
       /* 2-way branch */
       // builtin-expect handling (should not be target dependent)
       EDGE *edge1 = BB_succ_edges(bb);
@@ -1852,7 +1853,7 @@ Compute_Branch_Probabilities(void)
           EDGE_prob(edge2) = 1-EDGE_prob(edge1);
           Set_EDGE_prob_hint_based(edge2);
       }
-
+#endif
       if (CFLOW_Trace_Freq) {
         #pragma mips_frequency_hint NEVER
         EDGE *edge1 = BB_succ_edges(bb);
@@ -1867,7 +1868,6 @@ Compute_Branch_Probabilities(void)
                       EDGE_prob(edge1), EDGE_prob(edge2));
       }
     }
-#endif
     else {
 
       /* 2-way branch
@@ -3422,7 +3422,7 @@ FREQ_Verify(const char *caller)
   BB     *bb, *succ;
   BBLIST *lst;
   float total_prob;
-  char *s;
+  const char *s;
 
   fprintf(TFile,"%s<freq> Freq_Verify after %s\n%s", DBar, caller, DBar);
 

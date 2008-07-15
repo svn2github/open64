@@ -92,7 +92,6 @@ static OPCODE Ldid_Opcode [MTYPE_LAST + 1] = {
 #else
   OPC_UNKNOWN,    /* MTYPE_F10 */
 #endif
-  OPC_UNKNOWN,    /* MTYPE_F10 */
   OPC_UNKNOWN,    /* MTYPE_F16 */
   OPC_UNKNOWN,    /* MTYPE_STR */
   OPC_FQFQLDID,   /* MTYPE_FQ */

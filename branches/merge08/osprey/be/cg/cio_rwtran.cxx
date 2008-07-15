@@ -392,10 +392,10 @@ private:
 	       mempool_allocator< op_copy_pair > >    op_copy_map_prolog;
   typedef std::map< OP_OMEGA, OP *, OP_OMEGA_less_epilog,
 	       mempool_allocator< op_copy_pair > >    op_copy_map_epilog;
+#endif /* defined(BUILD_OS_DARWIN) */
 
   op_copy_map_prolog                                  _op_prolog_map;
   op_copy_map_epilog                                  _op_epilog_map;
-#endif /* defined(BUILD_OS_DARWIN) */
 
   // Mark_Op_For_Prolog( op, omega ) inserts a new OP into _op_prolog_map
   // duplicating the action of op during the omega'th execution of the

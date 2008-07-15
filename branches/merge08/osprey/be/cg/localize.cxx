@@ -722,6 +722,10 @@ Get_Local_TN_For_Global (TN *global_tn, TN_MAP spill_tns, BB *bb, BOOL reuse)
 			global_tn, CGSPILL_LCL));
 		tninfo->callee_save = FALSE;
 		preg = (PREG_NUM)(INTPTR) TN_MAP_Get( TN_To_PREG_Map, global_tn );
+#ifdef KEY
+		Is_True(preg >= 0, ("Get_Local_TN_For_Global: "
+				    "negative index to PREG_To_TN_Array"));
+#endif
 		if (preg) PREG_To_TN_Array[preg] = local_tn;
 	}
 	tninfo->local_tn = local_tn;

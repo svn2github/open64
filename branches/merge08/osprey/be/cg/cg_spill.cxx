@@ -332,7 +332,7 @@ Gen_Spill_Symbol (TY_IDX ty, const char *root)
  * =======================================================================
  */
 static ST *
-LOCAL_SPILLS_Get_Spill_Location (LOCAL_SPILLS *slc, char *root)
+LOCAL_SPILLS_Get_Spill_Location (LOCAL_SPILLS *slc, const char *root)
 {
   ST *result;
 

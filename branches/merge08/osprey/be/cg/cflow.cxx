@@ -303,16 +303,25 @@ void Print_Cflow_Graph(const char *banner);
  *
  * ====================================================================
  */
-static inline OP* BB_savexmms_op( BB *bb )
+static inline OP* 
+BB_savexmms_op( BB *bb )
 {
   OP* op = BB_last_op(bb);
   return ( (op != NULL) && (OP_code(op) == TOP_savexmms) ) ? op : NULL;
 }
 
-static inline bool BB_computes_got( BB* bb )
+static inline bool
+BB_first_OP_computes_got (BB* bb)
 {
-  OP* op = BB_first_op(bb);
-  return ( (op != NULL) && OP_computes_got(op) );
+  OP *first_op = BB_first_op(bb);
+  return ((first_op != NULL) && OP_computes_got(first_op));
+}
+
+static inline bool
+BB_last_OP_computes_got (BB* bb)
+{
+  OP *last_op = BB_last_op(bb);
+  return ((last_op != NULL) && OP_computes_got(last_op));
 }
 #endif
 
@@ -3994,6 +4003,11 @@ Can_Append_Succ(
   if( BB_savexmms_op(b) != NULL ){
     return FALSE;
   }
+
+  if (BB_last_OP_computes_got(b) ||		// bug 14452
+      BB_first_OP_computes_got(suc)) {
+    return FALSE;
+  }
 #endif
 
   /* Reject if suc is an entry point.
@@ -4591,7 +4605,8 @@ Merge_Blocks ( BOOL in_cgprep )
 	  break;
 	}
 
-	if( BB_computes_got(b) ){
+	if (BB_first_OP_computes_got(b) ||
+	    BB_last_OP_computes_got(b)) {	// bug 14452
 	  break;
 	}
 #endif

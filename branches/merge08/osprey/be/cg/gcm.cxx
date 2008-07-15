@@ -453,6 +453,22 @@ OP_Offset_Within_Limit(OP *mem_op1, OP *mem_op2, INT lower_bound,
         (LOOP_DESCR_nestlevel((loop)) == 0 && \
         BB_length((bb)) >= (Split_BB_Length/2 - 60))
 
+#ifdef TARG_X8664
+// =======================================================================
+// Return TRUE if GCM should not change BB because it contains OPs involved
+// in GOT computation.
+// =======================================================================
+static BOOL
+Avoid_GOT_BB (BB *bb)
+{
+  OP *first_op = BB_first_op(bb);
+  OP *last_op = BB_last_op(bb);
+
+  return (((first_op != NULL) && OP_computes_got(first_op)) ||
+	  ((last_op != NULL) && OP_computes_got(last_op)));
+}
+#endif
+
 // =======================================================================
 // Check_If_Ignore_BB
 // Placeholder for all compile speed heuristics. If any of heuristics 
@@ -485,6 +501,12 @@ Check_If_Ignore_BB(BB *bb, LOOP_DESCR *loop)
     if (BB_scheduled(bb) && !BB_scheduled_hbs(bb))
       return TRUE;
   }
+#endif
+
+#ifdef TARG_X8664
+  // Don't mess with GOT computation.  Bug 14452.
+  if (Avoid_GOT_BB(bb))
+    return TRUE;
 #endif
 
   return FALSE;
@@ -579,6 +601,14 @@ Similar_Ptr_Addrs_Match (OP *pred_op, OP *succ_op)
 
   INT pred_base_num = TOP_Find_Operand_Use(OP_code(pred_op), OU_base);
   INT succ_base_num = TOP_Find_Operand_Use(OP_code(succ_op),  OU_base);
+
+#ifdef KEY
+  // Don't know anything about the addresses.  Assume they match.  Bug 14376.
+  if (pred_base_num < 0 ||
+      succ_base_num < 0) {
+    return TRUE;
+  }
+#endif
 
   TN *pred_base_tn = OP_opnd(pred_op, pred_base_num); 
   TN *succ_base_tn = OP_opnd(succ_op, succ_base_num);
@@ -2201,6 +2231,28 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 	 }
        }
 
+#ifdef KEY
+       // Accumulate all clobbers, which are treated like defs.  SiCortex 5044.
+       ASM_OP_ANNOT *asm_info = (OP_code(op) == TOP_asm) ?
+		      (ASM_OP_ANNOT *) OP_MAP_Get(OP_Asm_Map, op) : NULL;
+       if (asm_info) {
+	 ISA_REGISTER_CLASS cl;
+	 FOR_ALL_ISA_REGISTER_CLASS(cl) {
+	   REGISTER_SET clobbers = ASM_OP_clobber_set(asm_info)[cl];
+	   if (Ignore_TN_Dep) {
+	     mid_reg_defs[cl] = REGISTER_SET_Union(mid_reg_defs[cl], clobbers);
+	   } else {
+	     REGISTER reg;
+	     FOR_ALL_REGISTER_SET_members(clobbers, reg) {
+	       TN *ded_tn = Build_Dedicated_TN(cl, reg, 0);
+	       mid_gtn_defs = GTN_SET_Union1D(mid_gtn_defs, ded_tn,
+					      &MEM_local_pool);
+	     }
+	   }
+	 }
+       }
+#endif
+
        // accumulate all the mid_uses
        for (i = 0; i < OP_opnds(op); ++i) {
 	 TN *opnd_tn = OP_opnd(op,i);
@@ -2718,6 +2770,12 @@ Determine_Candidate_Blocks(BB *bb, LOOP_DESCR *loop, mINT32 motion_type,
     cand_bb = (BB *)VECTOR_element(*priority_vector, i);
 
     if (cand_bb == bb) continue;
+
+#ifdef TARG_X8664
+    // Don't mess with GOT computation.  Bug 14452.
+    if (Avoid_GOT_BB(cand_bb))
+      continue;
+#endif
 
     if (BB_scheduled(cand_bb) && !BB_scheduled_hbs(cand_bb)) continue;
 
@@ -4728,6 +4786,7 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
 #endif
 	    num_moves++;
 	    Run_Cflow_GCM |= Is_BB_Empty(bb);
+	    Reset_OP_visited(cand_op);
 	    Reset_BB_scheduled(bb);
 	    Reset_BB_scheduled(cand_bb);
             /* the functionality of Reset_OP_visited is to let further scheduling.

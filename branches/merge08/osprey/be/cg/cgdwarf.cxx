@@ -264,9 +264,9 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
 #else /* defined(BUILD_OS_DARWIN) */
 	    "New CGD_Symtab entry: %u --> (CGD_%s,%llu)\n",
 	    (UINT32)(CGD_Symtab.size() - 1),
+#endif /* defined(BUILD_OS_DARWIN) */
 	    (type == CGD_LABIDX ? "LABIDX" : "ELFSYM"),
 	    (UINT64)index);
-#endif
   }
   Dwarf_Unsigned handle = CGD_Symtab.size() - 1;
   if (type == CGD_LABIDX) {

@@ -5211,6 +5211,7 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   switch (opcode) {
 // >> WHIRL 0.30: replaced OPC_T1{EQ,NE,GT,GE,LT,LE} by OPC_BT1, OPC_I4T1 variants
 // TODO WHIRL 0.30: get rid of OPC_I4T1 variants
+  case OPC_U4I8EQ:
   case OPC_BI8EQ: case OPC_I4I8EQ: variant = V_BR_I8EQ; break;
 #ifdef KEY
   case OPC_I8I4EQ: case OPC_U8I4EQ:

@@ -176,7 +176,6 @@ static BOOL Enable_CG_Peephole_overridden = FALSE;
 static BOOL EBO_Opt_Level_overridden = FALSE;
 static BOOL Integer_Divide_By_Constant_overridden = FALSE;
 static BOOL Integer_Divide_Use_Float_overridden = FALSE;
-static BOOL CG_DEP_Mem_Arc_Pruning_overridden = FALSE;
 #ifdef TARG_IA64
 static BOOL CGPREP_fold_expanded_daddiu_overridden = FALSE;
 static BOOL CG_LOOP_create_loop_prologs_overridden = FALSE;
@@ -184,6 +183,7 @@ static BOOL CG_LOOP_create_loop_prologs_overridden = FALSE;
 #ifdef KEY
 static BOOL Integer_Multiply_By_Constant_overridden = FALSE;
 #endif
+static BOOL CG_DEP_Mem_Arc_Pruning_overridden = FALSE;
 static BOOL clone_incr_overridden = FALSE;
 static BOOL clone_min_incr_overridden = FALSE;
 static BOOL clone_max_incr_overridden = FALSE;
@@ -395,15 +395,15 @@ static OPTION_DESC Options_GRA[] = {
     "If true, floating-point callee-saved registers are never used to allocate to variables by GRA"
   },    
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "optimize_boundary", "",
-    0,0,0,      &GRA_optimize_boundary, NULL,
+    0,0,0,      &GRA_optimize_boundary, &GRA_optimize_boundary_set,
     "Enable/disable reuse of registers in live range boundary basic blocks [Default FALSE]."
   },
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "prioritize_by_density", "",
-    0,0,0,      &GRA_prioritize_by_density, NULL,
+    0,0,0,      &GRA_prioritize_by_density, &GRA_prioritize_by_density_set,
     "Enable/disable prioritizing live ranges by reference density [Default FALSE]."
   },
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "reclaim", "",
-    0,0,0,      &GRA_reclaim_register, NULL,
+    0,0,0,      &GRA_reclaim_register, &GRA_reclaim_register_set,
     "Enable/disable reclaiming of registers after they have been allocated [Default FALSE]."
   },
 #endif // KEY
@@ -613,6 +613,8 @@ static OPTION_DESC Options_CG[] = {
   { OVK_INT32, OV_INTERNAL, TRUE, "recurrence_min_omega", "",
     0, 0, INT32_MAX, &CG_LOOP_recurrence_min_omega, NULL },
 #ifdef KEY
+  { OVK_INT32, OV_INTERNAL, TRUE, "recurrence_max_omega", "",
+    0, 0, 16, &CG_LOOP_recurrence_max_omega, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "loop_limit", "",
     INT32_MAX, 0, INT32_MAX, &CG_Enable_Loop_Opt_Limit, NULL },
 #endif
@@ -643,6 +645,12 @@ static OPTION_DESC Options_CG[] = {
 #endif
 
   // CG Unrolling options - see also OPT:unroll_times_max:unroll_size.
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_non_trip_countable", "unroll_non_trip",
+    0, 0, 0, &CG_LOOP_unroll_non_trip_countable, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_fully", "unroll_full",
+    0, 0, 0, &CG_LOOP_unroll_fully, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_remainder_fully", "unroll_remainder_full",
+    0, 0, 0, &CG_LOOP_unroll_remainder_fully, NULL },
 
   // Cross Iteration Loop Optimization options.
 
@@ -726,6 +734,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &FREQ_enable, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"eh_freq", "",
     0, 0, 0, &FREQ_eh_freq, NULL },
+#ifdef KEY
+  { OVK_NAME,	OV_INTERNAL, TRUE,"non_local_targ_freq", "",
+    0, 0, 0, &FREQ_non_local_targ_freq, NULL },
+#endif
   { OVK_NAME,	OV_INTERNAL, TRUE,"freq_frequent_never_ratio", "",
     0, 0, 0, &FREQ_frequent_never_ratio, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "freq_view_cfg", "",
@@ -813,6 +825,11 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &LRA_prefer_legacy_regs, NULL },
 #endif
 #ifdef KEY
+  { OVK_INT32,	OV_INTERNAL, TRUE, "inflate_reg_request", "inflate_reg",
+    0, 0, 100, &LRA_inflate_reg_request, &LRA_inflate_reg_request_Set,
+    "Inflate LRA register request by this percentage for innermost loops [Default 0]"},
+  { OVK_BOOL,	OV_INTERNAL, FALSE, "prefer_lru_reg", "",
+    1, 0, 0, &LRA_prefer_lru_reg, &LRA_prefer_lru_reg_Set },
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "min_spill_loc_size", "",
     0,0,0,      &CG_min_spill_loc_size, NULL,
     "Turn on/off minimize spill location size [Default FALSE]"
@@ -1012,6 +1029,9 @@ static OPTION_DESC Options_CG[] = {
   { OVK_UINT32,	OV_INTERNAL, TRUE,"locs_balance_unsched_fp", "",
     0, 0, 100, &LOCS_Balance_Unsched_Fp, &LOCS_Balance_Unsched_Fp_set,
     "The unsched OPs should contain no more than this percentage of fp OPs" },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "locs_reduce_prefetch", "",
+    0, 0, 0, &LOCS_Reduce_Prefetch, &LOCS_Reduce_Prefetch_set,
+    "Delete prefetches that cannot be scheduled in an unused issue slot" },
 #endif
 
   // Turns of all scheduling (LOCS, HBS, GCM) for triaging.
@@ -2063,7 +2083,8 @@ Configure_CG_Options(void)
   Configure_Prefetch();
 #ifdef TARG_X8664
   if ((Target == TARGET_em64t ||
-       Target == TARGET_core) &&
+       Target == TARGET_core ||
+       Target == TARGET_wolfdale) &&
       ! CG_use_xortozero_Set) {
     CG_use_xortozero = TRUE;
   }
@@ -2151,7 +2172,7 @@ Build_Option_String (INT argc, char **argv)
 	    }
 	
     } else {			    /* no options specified */
-	option_string = "none";
+	option_string = const_cast<char*>("none");
     }
 } /* end: Build_Option_String */
 

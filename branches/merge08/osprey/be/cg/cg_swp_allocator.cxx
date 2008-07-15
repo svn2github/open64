@@ -725,9 +725,18 @@ SWP_ALLOCATOR::_print_status(FILE *outf)
   case NEED_MORE_REGS:
     fprintf(outf, 
 	    "Need more registers; "
+#if defined(BUILD_OS_DARWIN)
+	    "gave up after allocating %d (of %ld) lifetimes.\n"
+	    "The last allocation ran the register count up to %d\n", 
+	    _num_allocated_lifetimes,
+	    (long) _lifetime.size(),
+#else /* defined(BUILD_OS_DARWIN) */
 	    "gave up after allocating %d (of %d) lifetimes.\n"
 	    "The last allocation ran the register count up to %d\n", 
-	    _num_allocated_lifetimes, (INT)_lifetime.size(), (long)num_allocated_regs());
+	    _num_allocated_lifetimes,
+	    _lifetime.size(),
+#endif /* defined(BUILD_OS_DARWIN) */
+	    num_allocated_regs());
     break;
 
   default:

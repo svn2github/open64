@@ -69,6 +69,7 @@ extern BOOL edge_done;
 #ifdef KEY
 extern BOOL PU_Has_Exc_Handler;
 extern BOOL PU_Has_Nonlocal_Goto_Target;
+extern BOOL CG_file_scope_asm_seen;
 #endif
 
 #ifdef TARG_X8664

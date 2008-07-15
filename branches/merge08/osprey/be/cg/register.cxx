@@ -275,9 +275,9 @@ Initialize_Register_Class(
   REGISTER_SET       shrink_wrap    = REGISTER_SET_EMPTY_SET;
   REGISTER_SET	     stacked        = REGISTER_SET_EMPTY_SET;
   REGISTER_SET	     rotating       = REGISTER_SET_EMPTY_SET;
-#ifdef TARG_X8664
-  REGISTER_SET	     eight_bit_regs = REGISTER_SET_EMPTY_SET;
-#endif
+//#ifdef TARG_X8664
+//  REGISTER_SET	     eight_bit_regs = REGISTER_SET_EMPTY_SET;
+//#endif
 
   /* Verify we have a valid rclass and that the type used to implement 
    * a register set is large enough.
@@ -619,9 +619,9 @@ Initialize_Register_Class(
 	= ISA_REGISTER_CLASS_INFO_Can_Store(icinfo);
   REGISTER_CLASS_multiple_save(rclass)
 	= ISA_REGISTER_CLASS_INFO_Multiple_Save(icinfo);
-#ifdef TARG_X8664
-  REGISTER_CLASS_eight_bit_regs(rclass)    = eight_bit_regs;
-#endif
+//#ifdef TARG_X8664
+//  REGISTER_CLASS_eight_bit_regs(rclass)    = eight_bit_regs;
+//#endif
 
   /* There are multiple integer return regs -- v0 is the lowest
    * of the set.
@@ -1155,7 +1155,7 @@ REGISTER_SET_Print_Name(
 )
 {
   REGISTER i;
-  char    *sep = "";
+  const char    *sep = "";
 
   fprintf(f, "[");
   for ( i = REGISTER_SET_Choose(regset);

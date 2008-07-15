@@ -147,6 +147,31 @@ static bool GCM_Should_Skip( int puid )
 #endif
 
 #ifdef KEY
+// Delete prefetches that are dropped by the scheduler.
+static void
+Delete_Unscheduled_Prefetches (BB *bb)
+{
+  OP *op, *next_op;
+  int offset = -1;
+
+  for (op = BB_first_op(bb); op != NULL; op = next_op) {
+    next_op = OP_next(op);
+    if (OP_prefetch_deleted(op)) {
+      FmtAssert(OP_prefetch(op),
+		("Delete_Unscheduled_Prefetches: OP not a prefetch"));
+      BB_Remove_Op(bb, op);
+    } else {
+      // The new cycle 0 is at the first non-deleted instruction.
+      if (offset == -1) {
+	offset = OP_scycle(op);
+      }
+
+      // Adjust scycle to account for the deleted cycles.
+      OP_scycle(op) = OP_scycle(op) - offset;
+    }
+  }
+}
+
 static void
 Run_One_Sched (HB_Schedule *Sched, BOOL is_fwd, BB *bb, HBS_TYPE hbs_type,
 	       const char *name, INT32 *best_cycles, const char **best_name)
@@ -200,8 +225,11 @@ Run_Sched (HB_Schedule *Sched, BB *bb, HBS_TYPE hbs_type, INT32 max_sched)
 
       // forward scheduling
 
-      Run_One_Sched(Sched, 1, bb, base_hbs_type, "forward",
-		    &best_cycles, &best_name);
+      Run_One_Sched(Sched, 1, bb, base_hbs_type 
+#if defined (KEY)
+                    & ~HBS_DROP_UNSCHED_PREFETCHES
+#endif
+		    , "forward", &best_cycles, &best_name);
     }
 
   } else if (LOCS_Scheduling_Algorithm == 2) {
@@ -224,6 +252,12 @@ Run_Sched (HB_Schedule *Sched, BB *bb, HBS_TYPE hbs_type, INT32 max_sched)
     Sched->Init(bb, hbs_type, max_sched, NULL, NULL);
     Sched->Schedule_BB(bb, NULL, LOCS_Scheduling_Algorithm);
   }
+
+#ifdef KEY
+  // Delete prefetches that didn't fit into idle issue slots.
+  if (hbs_type & HBS_DROP_UNSCHED_PREFETCHES)
+    Delete_Unscheduled_Prefetches(bb);
+#endif
 
   if (Trace_HB &&
       best_name != NULL) {
@@ -291,7 +325,7 @@ IGLS_Schedule_Region (BOOL before_regalloc)
   HB_Schedule *Sched = NULL;
   CG_THR      *thr = NULL;
 
-  Set_Error_Phase ("Hyberlock Scheduler");
+  Set_Error_Phase ("Hyperlock Scheduler");
   Start_Timer (T_Sched_CU);
   Trace_HB = Get_Trace (TP_SCHED, 1);
   should_we_schedule = IGLS_Enable_All_Scheduling;
@@ -448,6 +482,12 @@ IGLS_Schedule_Region (BOOL before_regalloc)
     // TODO: Invoke data-speculation phase before register allocation,
     // requires GRA spill support, and conditionally invoke the phase
     // after register allocation.
+
+#ifdef KEY
+    // Drop prefetches that can't be scheduled into an unused issue slot.
+    if (LOCS_Reduce_Prefetch)
+      hbs_type |= HBS_DROP_UNSCHED_PREFETCHES;
+#endif
 
     if (should_we_do_thr) {
       Stop_Timer (T_Sched_CU);

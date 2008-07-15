@@ -2329,9 +2329,11 @@ Find_BB_TNs (BB *bb)
 	    TN_is_register(tn_replace) &&
 	    TN_register(tn_replace) != REGISTER_UNDEFINED &&
 	    OP_opnd_size( op, opndnum ) == 8 ){
-	  const ISA_REGISTER_CLASS cl = TN_register_class( tn );
-	  const REGISTER reg = TN_register( tn_replace );
-	  const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(cl);
+	  const REGISTER reg = TN_register(tn_replace);
+	  const REGISTER_SET regs =
+		 REGISTER_SUBCLASS_members(ISA_REGISTER_SUBCLASS_m32_8bit_regs);
+	  Is_True(TN_register_class(tn) == ISA_REGISTER_CLASS_integer,
+		  ("Find_BB_TNs: TN not integer register class"));
 
 	  if( !REGISTER_SET_MemberP( regs, reg ) )
 	    tn_replace = NULL;
@@ -3694,8 +3696,6 @@ EBO_Post_Process_Region_2 ( RID *rid )
 #if defined(TARG_MIPS) && !defined(TARG_SL)
   EBO_can_delete_branch_delay_OP = TRUE;
 #endif
-  EBO_no_liveness_info_available = FALSE;
-  EBO_optimize_single_BB = FALSE;
 
   EBO_can_delete_branch_delay_OP = FALSE;
   EBO_no_liveness_info_available = TRUE;

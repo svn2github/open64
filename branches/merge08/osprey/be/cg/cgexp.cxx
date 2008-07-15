@@ -116,6 +116,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Branch (op1, op2, op3, variant, ops);
 	break;
   case OPR_GOTO:
+  case OPR_GOTO_OUTER_BLOCK:
 	Expand_Branch (op1, op2, op3, V_BR_ALWAYS, ops);
 	break;
   case OPR_LDA:
@@ -163,6 +164,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Rrotate (result, op1, op2, rtype, desc, ops);
 	break;
 #endif
+  case OPR_ILOADX:
   case OPR_ILOAD:
   case OPR_LDID:
 	if ( V_align_all(variant) != 0 ) {
@@ -176,6 +178,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #endif
 	}
 	break;
+  case OPR_ISTOREX:
   case OPR_ISTORE:
   case OPR_STID:
 	if ( V_align_all(variant) != 0 ) {

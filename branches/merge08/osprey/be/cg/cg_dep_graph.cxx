@@ -287,6 +287,9 @@ BB * _cg_dep_bb; // exported to cg_dep_graph_update.h so it can
 
 static std::list<BB*> _cg_dep_bbs;
 static MEM_POOL dep_map_nz_pool;
+#if ! defined (TARG_IA64)
+static
+#endif
        MEM_POOL dep_nz_pool;
 static BOOL include_assigned_registers;
 static BOOL cyclic;
@@ -1867,7 +1870,12 @@ static BOOL symbolic_addr_subtract(OP *pred_op, OP *succ_op, SAME_ADDR_RESULT *r
           (ST_sclass(pred_initial_sym) != SCLASS_UNKNOWN) && (ST_sclass(
 succ_initial_sym) != SCLASS_UNKNOWN)) {
         if ((pred_sym != succ_sym) ||
-            (ST_sclass(pred_initial_sym) != ST_sclass(succ_initial_sym))) {
+            (ST_sclass(pred_initial_sym) != ST_sclass(succ_initial_sym)
+#ifdef KEY   // Bug 14319.
+	     && ST_sclass(pred_initial_sym) != SCLASS_EXTERN
+	     && ST_sclass(succ_initial_sym) != SCLASS_EXTERN
+#endif
+	    )) {
          /* Different base symbols imply different locations. */
           *res = DISTINCT;
           return TRUE;  
@@ -2582,7 +2590,7 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
   BOOL lex_neg = !OP_Precedes(pred_op, succ_op);
 #endif
   SAME_ADDR_RESULT cg_result = DONT_KNOW;
-  char *info_src = "";
+  const char *info_src = "";
   UINT8 min_omega = 0;
   BOOL memread = OP_Load(pred_op) && OP_Load(succ_op);
 
@@ -4023,10 +4031,12 @@ static STACKREF_KIND Memory_OP_References_Stack(OP *op)
       switch (WN_operator(wn)) {
       case OPR_ILOAD:
       case OPR_ILDBITS:
+      case OPR_ILOADX:
 	lda = WN_kid0(wn);
 	break;
       case OPR_ISTORE:
       case OPR_ISTBITS:
+      case OPR_ISTOREX:
 	lda = WN_kid1(wn);
 	break;
 #ifdef KEY

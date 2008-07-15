@@ -173,6 +173,7 @@ BOOL RGN_Formed = FALSE;
 #ifdef KEY
 BOOL PU_Has_Exc_Handler;
 BOOL PU_Has_Nonlocal_Goto_Target;
+BOOL CG_file_scope_asm_seen = FALSE;
 #endif
 
 BOOL gra_pre_create = TRUE;
@@ -232,11 +233,15 @@ CG_PU_Initialize (WN *wn_pu)
   GRA_optimize_restore_ar_lc = TRUE;
   EBO_data_spec=FALSE;
 #endif
-#ifdef TARG_X8664
+
+#ifdef KEY
   PU_Has_Exc_Handler = FALSE;
+  PU_Has_Nonlocal_Goto_Target = PU_has_nonlocal_goto_label(Get_Current_PU());
+#endif
+
+#ifdef TARG_X8664
   if (! cg_load_execute_overridden) {
-    if ((Is_Target_EM64T() ||	// bug 10233
-	 Is_Target_Core()) &&
+    if ((Is_Target_EM64T() || Is_Target_Core() || Is_Target_Wolfdale()) &&
          PU_src_lang(Get_Current_PU()) != PU_C_LANG) {   // bug 10233
       CG_load_execute = 0;
     } else if (! Is_Target_32bit() &&
@@ -272,6 +277,12 @@ CG_PU_Initialize (WN *wn_pu)
     }
   }
 
+  if (PU_cxx_lang(Get_Current_PU()) && Is_Target_64bit()) {// C++ & m64
+    if (!GRA_prioritize_by_density_set)		// bug 14357
+      GRA_prioritize_by_density = TRUE;
+    if (!GRA_optimize_boundary_set)		// bug 14357
+      GRA_optimize_boundary = TRUE;
+  }
 #endif
 
   Regcopies_Translated = FALSE;
@@ -328,7 +339,7 @@ CG_PU_Initialize (WN *wn_pu)
 #endif
   OP_MAP_Init();
   CFLOW_Initialize();
-#ifndef TARG_NVISA
+#if !defined (TARG_NVISA)
   CGSPILL_Initialize_For_PU ();
   CG_LOOP_Init();
   HB_Init();
@@ -735,6 +746,16 @@ CG_Generate_Code(
     FmtAssert(Assembly && !Object_Code,
 	      ("Cannot produce non-assembly output with file-scope asm"));
     fprintf(Asm_File, "\n%s\n", ST_name(WN_st(rwn)));
+#ifdef KEY
+    // Bug 14460: If the program has file-scope asm, it may have directly
+    // used the .section attribute to allocate objects. As a result the 
+    // compiler does not know the correct origin of objects to be allocated
+    // after it. In this scenario, don't emit .org. Also emit a
+    // proper .align based on the alignment of the symbol instead of
+    // .align 0.
+    if (LANG_Enable_Global_Asm)
+      CG_file_scope_asm_seen = TRUE;
+#endif
     return rwn;
   }
 
