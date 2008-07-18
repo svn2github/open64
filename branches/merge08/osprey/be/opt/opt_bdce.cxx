@@ -392,6 +392,10 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
           Mark_tree_bits_live(cr->Mload_size(), 
 			      Bits_in_coderep_result(cr->Mload_size()),
 			      stmt_visit);
+        else if (cr->Opr() == OPR_ILOADX)
+          Mark_tree_bits_live(cr->Index(), 
+			      Bits_in_coderep_result(cr->Index()),
+			      stmt_visit);
         MU_NODE *mnode = cr->Ivar_mu_node();
         if (mnode && ! mnode->OPND()->Is_flag_set(CF_IS_ZERO_VERSION))
 	  Mark_entire_var_live(mnode->OPND(), stmt_visit);
@@ -772,10 +776,16 @@ BITWISE_DCE::Mark_stmt_live(STMTREP *stmt)
   }
   else {
     switch (opr) {
+    case OPR_ISTOREX:
     case OPR_MSTORE:
-      Mark_tree_bits_live(stmt->Lhs()->Mstore_size(), 
+      if (opr == OPR_MSTORE)
+        Mark_tree_bits_live(stmt->Lhs()->Mstore_size(), 
 			  Bits_in_coderep_result(stmt->Lhs()->Mstore_size()),
 			  _copy_propagate /*stmt_visit*/ );
+      else
+	Mark_tree_bits_live(stmt->Lhs()->Index(), 
+			    Bits_in_coderep_result(stmt->Lhs()->Index()),
+			    _copy_propagate /*stmt_visit*/ );
       // fall thru
     case OPR_ISTORE:
       Mark_tree_bits_live(stmt->Lhs()->Istr_base(), Bits_in_type(Pointer_type),
@@ -1324,6 +1334,8 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
     x = Delete_cvtls(cr->Ilod_base(), use_stmt);
     if (cr->Opr() == OPR_MLOAD)
       x2 = Delete_cvtls(cr->Mload_size(), use_stmt);
+    else if (cr->Opr() == OPR_ILOADX)
+      x2 = Delete_cvtls(cr->Index(), use_stmt);
     else x2 = NULL;
     if (x || x2) {  // need rehash
       new_cr->Copy(*cr);	

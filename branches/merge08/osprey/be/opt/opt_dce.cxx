@@ -2703,11 +2703,17 @@ DCE::Mark_coderep_live( CODEREP *cr ) const
 	
       case CK_IVAR:
 	// handle the base
-	Mark_coderep_live( cr->Ilod_base() );
+	if ( cr->Istr_base() != NULL ) 
+	  Mark_coderep_live( cr->Istr_base() );
+	else
+          Mark_coderep_live( cr->Ilod_base() );
 	
 	// Is there a size also?
 	if ( cr->Opr() == OPR_MLOAD ) {
 	  Mark_coderep_live( cr->Mload_size() );
+	}
+	else if ( cr->Opr() == OPR_ILOADX ) {
+	  Mark_coderep_live( cr->Index() );
 	}
 
 	if ( cr->Opr() == OPR_PARM ) {
@@ -3160,6 +3166,8 @@ DCE::Propagate_return_vsym_cr( CODEREP *cr ) const
 
 	if ( cr->Opr() == OPR_MLOAD )
 	  Propagate_return_vsym_cr( cr->Mload_size() );
+	else if ( cr->Opr() == OPR_ILOADX )
+	  Propagate_return_vsym_cr( cr->Index() );
 
 	MU_NODE *mu = cr->Ivar_mu_node();
 	if ( mu && mu->OPND()->Aux_id() == Return_vsym() ) {

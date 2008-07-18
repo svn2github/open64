@@ -601,11 +601,18 @@ void SSU::Traverse_cr_rw(CODEREP *cr,
 
   case CK_IVAR:
     {
+#ifdef KEY
+      Traverse_cr_rw( ! is_store ? 
+#else
       Traverse_cr_rw( cr->Ilod_base() ? 
+#endif
 		     cr->Ilod_base() : cr->Istr_base(), bb, FALSE);
       if ( cr->Opr() == OPR_MLOAD ) {
 	Traverse_cr_rw( cr->Mload_size() ? 
 		       cr->Mload_size() : cr->Mstore_size(), bb, FALSE);
+      }
+      if ( cr->Opr() == OPR_ILOADX ) {
+	Traverse_cr_rw( cr->Index(), bb, FALSE);
       }
       if ( cr->Ivar_mu_node() != NULL ) {
 	MU_LIST mu_list( cr->Ivar_mu_node() );

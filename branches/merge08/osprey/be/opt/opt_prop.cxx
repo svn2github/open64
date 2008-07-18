@@ -434,10 +434,33 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
        ))
       return NOT_PROPAGATABLE;
 
+#ifdef KEY
+    if (icopy_phase) {
+      if (x->Is_isop_flag_set(ISOP_ICOPY_VISITED)) {
+	*height = 1;	// don't really know the height, so return 1
+        return (PROPAGATABILITY) (0x3 & x->Propagatability()); // to prevent sign extension
+      }
+      else {
+	x->Set_isop_flag(ISOP_ICOPY_VISITED);
+        Add_visited_node(x);
+      }
+    }
+    else {
+      if (x->Is_isop_flag_set(ISOP_COPY_VISITED)) {
+	*height = 1;	// don't really know the height, so return 1
+        return (PROPAGATABILITY) (0x3 & x->Propagatability()); // to prevent sign extension
+      }
+      else {
+	x->Set_isop_flag(ISOP_COPY_VISITED);
+        Add_visited_node(x);
+      }
+    }
+#else
     if (icopy_phase && !x->Is_isop_flag_set(ISOP_ICOPY_VISITED)) {
       x->Set_isop_flag(ISOP_ICOPY_VISITED);
       Add_visited_node(x);
     }
+#endif
 
     // determine if there are ops that we are not allowed to propagate 
     // into an array subscript
@@ -1385,6 +1408,8 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
     if (x->Opr() == OPR_MLOAD)
       expr2 = Copy_propagate_cr(x->Mload_size(), curbb, 
 				inside_cse, in_array);
+    else if (x->Opr() == OPR_ILOADX)
+      expr2 = Copy_propagate_cr(x->Index(), curbb, inside_cse, in_array);
     else
       expr2 = NULL;
     if (expr || expr2) { // need rehash
@@ -1399,7 +1424,7 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
 	cr->Set_mload_size(expr2);
       cr->Set_ivar_occ(x->Ivar_occ());
       x->DecUsecnt();
-      if (x->Opr() == OPR_MLOAD) {
+      if (x->Opr() == OPR_MLOAD || x->Opr() == OPR_ILOADX) {
 	expr = Htable()->Rehash(cr);
       } else {
 	expr = ftmp.Fold_Expr(cr);     

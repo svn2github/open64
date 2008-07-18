@@ -1580,8 +1580,14 @@ EXP_WORKLST::Is_the_same_as(const CODEREP *cr)
     if (Are_different(lcr, gcr))
       return FALSE;
 
-    if (cr->Offset() != Exp()->Offset())
-      return FALSE;	// offset not the same
+    if (cr->Opr() == OPR_ILOADX) {
+      if (Are_different(cr->Index(), Exp()->Index()))
+	return FALSE;
+    }
+    else {
+      if (cr->Offset() != Exp()->Offset())
+	return FALSE;	// offset not the same
+    }
     if (Get_mtype_class(cr->Dtyp()) != Get_mtype_class(Exp()->Dtyp()))
       return FALSE;	// type class not the same
     if (MTYPE_size_min(cr->Dsctyp()) != MTYPE_size_min(Exp()->Dsctyp()))
@@ -2994,6 +3000,9 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	    Bottom_up_cr(stmt, stmt_kid_num, cr->Mstore_size(), FALSE, urgent,
 			 depth+1, cr->Op(), FALSE);
 	}
+	if ( ivar_opr == OPR_ILOADX)
+	  Bottom_up_cr(stmt, stmt_kid_num, cr->Index(), FALSE, urgent,
+		       depth+1, cr->Op(), FALSE);
       }
       break;
     case CK_OP:		// non-terminal
@@ -3525,6 +3534,16 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
       }
       else cr->Set_mload_size(x->Mload_size());
     }
+    else if (x->Opr() == OPR_ILOADX) {
+      // process the index expression
+      expr = Recursive_rehash_and_replace(x->Index(), occur, repl,
+					  FALSE, depth+1, x->Op());
+      if (expr) {
+        need_rehash = TRUE;
+        cr->Set_index(expr);
+      }
+      else cr->Set_index(x->Index());
+    }
     if (!need_rehash)
       return NULL;
     x->DecUsecnt();
@@ -3921,6 +3940,8 @@ ETABLE::No_replace(EXP_OCCURS *occur, BOOL dont_rehash)
     x->Ilod_base()->IncUsecnt();
     if (x->Opr() == OPR_MLOAD)
       x->Mload_size()->IncUsecnt();
+    else if (x->Opr() == OPR_ILOADX)
+      x->Index()->IncUsecnt();
   }
   else { // CK_OP
     for (INT32 i = 0; i < x->Kid_count(); i++)
@@ -4075,6 +4096,10 @@ ETABLE::Find_1st_order_exprs_with_temp(STMTREP *stmt, INT stmt_kid_num,
 	  else
 	    Find_1st_order_exprs_with_temp(stmt, stmt_kid_num, cr->Mstore_size(),
 					 tempcr, FALSE, depth+1);
+	}
+	else if ( ivar_opr == OPR_ILOADX) {
+	  Find_1st_order_exprs_with_temp(stmt, stmt_kid_num, cr->Index(),
+				       tempcr, FALSE, depth+1);
 	}
       }
       break;
@@ -5134,9 +5159,14 @@ XTABLE::Lexically_identical(CODEREP *cr1, CODEREP *cr2) const
     CODEREP *base2 = cr2->Ilod_base() ? cr2->Ilod_base() : cr2->Istr_base();
     if (! Opnd_lex_identical(base1, base2)) 
       return FALSE;
-    if (cr1->Opr() == OPR_MLOAD)
+    if (cr1->Opr() == OPR_MLOAD) {
       if (! Opnd_lex_identical(cr1->Mload_size(), cr2->Mload_size())) 
 	return FALSE;
+    }
+    else if (cr1->Opr() == OPR_ILOADX) {
+      if (! Opnd_lex_identical(cr1->Index(), cr2->Index())) 
+	return FALSE;
+    }
   }
   else { // CK_OP
     if (cr1->Kid_count() != cr2->Kid_count()) return FALSE;
@@ -5206,6 +5236,9 @@ XTABLE::Is_compound(CODEREP *cr) const
   if (cr->Kind() == CK_IVAR) {  // cannot be PARM node
     if (cr->Opr() == OPR_MLOAD)
       return TRUE;
+    if (cr->Opr() == OPR_ILOADX)
+      if (! cr->Index()->Is_non_volatile_terminal(_opt_stab))
+	return TRUE;
     CODEREP *base = cr->Ilod_base() ? cr->Ilod_base() : cr->Istr_base();
     if (! base->Is_non_volatile_terminal(_opt_stab))
       return TRUE;
@@ -5286,6 +5319,8 @@ XTABLE::Bottom_up_cr(CODEREP *cr)
     else Bottom_up_cr(cr->Istr_base());
     if (ivar_opr == OPR_MLOAD)
       Bottom_up_cr(cr->Mload_size());
+    else if (ivar_opr == OPR_ILOADX)
+      Bottom_up_cr(cr->Index());
     Add_nonterm(cr);
     return;
     }

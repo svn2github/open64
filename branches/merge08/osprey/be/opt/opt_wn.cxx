@@ -275,6 +275,7 @@ BOOL OPERATOR_has_chi( OPERATOR opr )
 {
   switch ( opr ) {
   case OPR_ISTORE:
+  case OPR_ISTOREX:
   case OPR_ISTBITS:
   case OPR_MSTORE:
   case OPR_STID:
@@ -311,6 +312,7 @@ BOOL WN_has_mu( const WN *wn, const REGION_LEVEL region_level )
 #endif
     case OPR_ILOAD:
     case OPR_ILDBITS:
+    case OPR_ILOADX:
     case OPR_MLOAD:
     case OPR_CALL:
     case OPR_ICALL:
@@ -359,6 +361,7 @@ BOOL OPERATOR_has_mu( OPERATOR opr )
 #endif
     case OPR_ILOAD:
     case OPR_ILDBITS:
+    case OPR_ILOADX:
     case OPR_MLOAD:
     case OPR_CALL:
     case OPR_ICALL:

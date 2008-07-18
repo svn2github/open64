@@ -174,6 +174,15 @@ OPT_MTYPE_B::Do_mtype_b_cr(CODEREP *cr)
 	        ("OPT_MTYPE_B::Do_mtype_b_cr: mload size cannot be MTYPE_B"));
       }
     }
+    else if (cr->Opr() == OPR_ILOADX) {
+      x = Do_mtype_b_cr(cr->Index());
+      if (x) {
+	need_rehash = TRUE;
+        new_cr->Set_index(x);
+        Is_True(x->Dtyp() != MTYPE_B,
+	        ("OPT_MTYPE_B::Do_mtype_b_cr: mload size cannot be MTYPE_B"));
+      }
+    }
     if (need_rehash) { 
       new_cr->Set_istr_base(NULL);
       new_cr->Set_usecnt(0);

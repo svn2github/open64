@@ -432,6 +432,7 @@ DSE::Required_stmt( const WN *wn ) const
 void 
 DSE::Set_Required_VSE( VER_STAB_ENTRY *vse, BOOL real_use, WN *ref_wn ) const
 {
+  if ( vse->Real_use() ) return;
   if (real_use)
     vse->Set_Real_use();
 
@@ -1412,7 +1413,14 @@ void DSE::Update_MU_list_for_call(BB_NODE *bb) const
 
     // Process Calls
     if ( opr == OPR_CALL || opr == OPR_ICALL ) {
+#ifdef KEY
+      if (_opt_stab->Has_exc_handler())
+#endif
       Add_EH_exposed_use(wn);
+#ifdef KEY
+      else if (_opt_stab->Has_nonlocal_goto_target())
+	Add_entry_exposed_uses(wn);
+#endif
     }
 
     // Process Lhs

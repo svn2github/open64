@@ -915,16 +915,15 @@ void OPT_STAB::Analyze_Base_Flow_Free(POINTS_TO *pt, WN *wn)
   case OPR_ILDBITS:
   case OPR_ILOAD:
   case OPR_MLOAD:
+  case OPR_ILOADX:
     Simplify_Pointer(WN_kid0(wn), pt);
     break;
   case OPR_ISTORE:
   case OPR_ISTBITS:
   case OPR_MSTORE:
+  case OPR_ISTOREX:
     Simplify_Pointer(WN_kid1(wn), pt);
     break;
-  case OPR_ILOADX:
-  case OPR_ISTOREX:
-    FmtAssert ( FALSE, ("ILOADX/ISTOREX not handled.") );
   }
   pt->Shift_ofst(WN_offset(wn));
   pt->Lower_to_base(wn);
@@ -1038,7 +1037,7 @@ void OPT_STAB::Analyze_Base_Flow_Sensitive(POINTS_TO *pt, WN *wn)
     break;
   case OPR_ILOADX:
   case OPR_ISTOREX:
-    FmtAssert ( FALSE, ("ILOADX/ISTOREX not handled.") );
+    break;
   }
   CHECK_POINTS_TO(pt);
 }
@@ -2259,6 +2258,7 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_ILOAD:
   case OPR_ILDBITS:
   case OPR_MLOAD:
+  case OPR_ILOADX:
 #ifdef KEY
     if (WOPT_Enable_New_Vsym_Allocation) {
       POINTS_TO pt;
@@ -2296,6 +2296,7 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_ISTORE:
   case OPR_ISTBITS:
   case OPR_MSTORE:
+  case OPR_ISTOREX:
 #ifdef KEY
     if (WOPT_Enable_New_Vsym_Allocation) {
       POINTS_TO pt;
@@ -3102,6 +3103,7 @@ OPT_STAB::Generate_mu_and_chi_list(WN *wn, BB_NODE *bb)
   case OPR_ILDBITS:
   case OPR_ILOAD:
   case OPR_MLOAD:
+  case OPR_ILOADX:
     occ = Get_occ(wn);
     Is_True(!WOPT_Enable_Alias_Classification ||
 	    REGION_has_black_regions(g_comp_unit->Rid()) ||
@@ -3124,6 +3126,7 @@ OPT_STAB::Generate_mu_and_chi_list(WN *wn, BB_NODE *bb)
   case OPR_ISTORE:    // ST that are addr_taken are affected
   case OPR_ISTBITS:
   case OPR_MSTORE:
+  case OPR_ISTOREX:
     occ = Get_occ(wn);
     Is_True(!WOPT_Enable_Alias_Classification ||
 	    REGION_has_black_regions(g_comp_unit->Rid()) ||

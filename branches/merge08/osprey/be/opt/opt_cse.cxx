@@ -1725,6 +1725,8 @@ EXP_WORKLST::Generate_save_reload(ETABLE *etable)
 	x->Ilod_base()->IncUsecnt();
 	if (x->Opr() == OPR_MLOAD)
 	  x->Mload_size()->IncUsecnt();
+	else if (x->Opr() == OPR_ILOADX)
+	  x->Index()->IncUsecnt();
 	break;
       default: // CK_OP
 	for (INT32 i = 0; i < x->Kid_count(); i++)

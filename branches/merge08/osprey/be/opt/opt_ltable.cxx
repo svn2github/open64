@@ -217,6 +217,10 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 			cr->Mload_size() : cr->Mstore_size(),
 			FALSE, ( depth + 1 ), cr, 1);
     }
+    else if (cr->Opr() == OPR_ILOADX) {
+      LPRE_bottom_up_cr(stmt, stmt_kid_num, cr->Index(),
+			FALSE, ( depth + 1 ), cr, 1);
+    }
     break;
 
   case CK_OP:		// non-terminal
@@ -676,6 +680,7 @@ CODEREP::Is_rvi_lda_candidate( const CODEREP *parent, INT whichkid, const OPT_ST
 
   switch ( par_opr ) {
   case OPR_ILOAD:
+  case OPR_ILOADX:
   case OPR_MLOAD:
   case OPR_ILDBITS:
     // include OPR_ISTORE, OPR_MSTORE

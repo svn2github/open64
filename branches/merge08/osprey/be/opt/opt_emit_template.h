@@ -1057,7 +1057,8 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	  WN_set_rtype(rhs_wn, MTYPE_B);
 	}
 #ifdef KEY
-	if (OPERATOR_is_load(WN_operator(rhs_wn))) {
+	if (OPERATOR_is_load(WN_operator(rhs_wn)) && 
+	    lhs->Dsctyp() != MTYPE_BS /* bug 14453 */) {
 	  if (MTYPE_byte_size(WN_rtype(rhs_wn)) < 
 	    			MTYPE_byte_size(lhs->Dsctyp())) { // bug 5224
 	    Is_True(MTYPE_is_integral(WN_rtype(rhs_wn)),
@@ -1123,7 +1124,8 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 #endif
 	   || rhs_cr->Opr() == OPR_CVTL ) &&
 	  MTYPE_is_integral( rhs_cr->Dtyp() ) && 
-	  MTYPE_is_integral( lhs->Dsctyp() )
+	  MTYPE_is_integral( lhs->Dsctyp() ) &&
+	  lhs->Dsctyp() != MTYPE_BS /* bug 14453 */
 	  ) {
 	MTYPE actual_type;
 	if (rhs_cr->Opr() == OPR_CVTL)
@@ -1163,13 +1165,15 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 #ifdef TARG_X8664 // bug 6910
       if (emitter->Htable()->Phase() != MAINOPT_PHASE &&
 	  WN_operator(rhs_wn) == OPR_INTCONST &&
-	  MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(lhs->Dsctyp()))
+	  MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(lhs->Dsctyp()) &&
+	  lhs->Dsctyp() != MTYPE_BS /* bug 14453 */)
 	WN_set_rtype(rhs_wn, Mtype_TransferSize(lhs->Dsctyp(), WN_rtype(rhs_wn)));
 #endif
 #ifdef TARG_X8664
       if (Is_Target_32bit() && MTYPE_byte_size(WN_rtype(rhs_wn)) == 8 &&
 	  WN_operator(rhs_wn) == OPR_INTCONST && 
-	  MTYPE_byte_size(lhs->Dsctyp()) < 8)
+	  MTYPE_byte_size(lhs->Dsctyp()) < 8 &&
+	  lhs->Dsctyp() != MTYPE_BS /* bug 14453 */)
 	WN_set_rtype(rhs_wn, Mtype_TransferSize(MTYPE_I4, WN_rtype(rhs_wn)));
 #endif
       emitter->Alias_Mgr()->

@@ -550,6 +550,8 @@ CODEREP::Verify_CODEMAP(CODEMAP *htable, OPT_STAB *opt_stab, BOOL allow_zero_ver
       Ilod_base()->Verify_CODEMAP(htable, opt_stab, FALSE);
       if (Opr() == OPR_MLOAD)
 	Mload_size()->Verify_CODEMAP(htable, opt_stab, FALSE);
+      if (Opr() == OPR_ILOADX)
+	Index()->Verify_CODEMAP(htable, opt_stab, FALSE);
       MU_NODE *mnode = Ivar_mu_node();
       if (mnode)
 	FmtAssert(mnode->Aux_id() != opt_stab->Return_vsym(),
@@ -979,6 +981,8 @@ Verify_version_expr(CODEREP *expr, OPT_STAB *opt_stab, BB_NODE *bb, INT32 linenu
       Verify_version_expr(expr->Istr_base(), opt_stab, bb, linenum);
     if (expr->Opr() == OPR_MLOAD)
       Verify_version_expr(expr->Mload_size(), opt_stab, bb, linenum); 
+    if (expr->Opr() == OPR_ILOADX)
+      Verify_version_expr(expr->Index(), opt_stab, bb, linenum); 
     if (! WOPT_Enable_VN_Full) {
       MU_NODE *mnode = expr->Ivar_mu_node();
       if (mnode)

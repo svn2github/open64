@@ -139,6 +139,7 @@ CODEREP::Is_ivar_volatile( void ) const
 
   case OPR_ILOAD:
   case OPR_ILDBITS:
+  case OPR_ILOADX:
     {
       if ( TY_is_volatile(Ilod_ty()) )
 	return TRUE;
@@ -619,6 +620,11 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
 	      I_bit_size() != cr->I_bit_size())
 	    return FALSE;
 	}
+
+	if (ivar_opr == OPR_ILOADX) {
+	  if (cr->Index() != Index())
+	    return FALSE;
+	}
       }
 
       if (Ilod_base() == NULL) {  // *this is a definition
@@ -732,6 +738,10 @@ CODEREP::Contains( const CODEREP *cr ) const
       CODEREP *num_byte = Mload_size();
       if (num_byte->Contains(cr)) return TRUE;
     }
+    else if (Opr() == OPR_ILOADX) {
+      CODEREP *index = Index();
+      if (index->Contains(cr)) return TRUE;
+    }
     return FALSE;
   case CK_LDA:
   case CK_VAR:
@@ -758,6 +768,10 @@ CODEREP::Contains_image( const CODEREP *cr ) const
     if (Opr() == OPR_MLOAD) {
       CODEREP *num_byte = Mload_size();
       if (num_byte->Contains_image(cr)) return TRUE;
+    }
+    else if (Opr() == OPR_ILOADX) {
+      CODEREP *index = Index();
+      if (index->Contains_image(cr)) return TRUE;
     }
     return FALSE;
   case CK_LDA:
@@ -961,11 +975,14 @@ CODEREP::Print_str(BOOL name_format) const
     break;
   case CK_IVAR:
     if (name_format) {
-      if (Opr() == OPR_ILOADX ||
-	  Opr() == OPR_MLOAD ||
+      if (Opr() == OPR_MLOAD ||
 	  Opr() == OPR_PARM) {
 	sprintf(buf,"%s %d ty=%x ", OPCODE_name(Op()),
                 Offset(), Ilod_ty());
+      }
+      else if (Opr() == OPR_ILOADX) {
+	sprintf(buf,"%s%s%s ty=%x ",
+		MTYPE_name(Dtyp()), MTYPE_name(Dsctyp()), "ILOADX", Ilod_ty());
       }
       else
 	sprintf(buf,"%s%s%s %d ty=%x ",
@@ -1214,6 +1231,10 @@ CODEREP::DecUsecnt_rec(void)
       CODEREP *num_byte = Mload_size();
       num_byte->DecUsecnt_rec();
     }
+    else if (Opr() == OPR_ILOADX) {
+      CODEREP *index = Index();
+      index->DecUsecnt_rec();
+    }
     return;
   case CK_OP:
     if (Usecnt()) return;
@@ -1253,6 +1274,8 @@ CODEREP::IncUsecnt_rec(void)
     Ilod_base()->DecUsecnt_rec();
     if (Opr() == OPR_MLOAD)
       Mload_size()->DecUsecnt_rec(); // the kid for the size
+    else if (Opr() == OPR_ILOADX)
+      Index()->DecUsecnt_rec(); // the kid for the size
     return;
   case CK_OP:
     if (Usecnt() <= 1) return;
@@ -3160,7 +3183,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
       return FALSE;
     }
   }
-  else if (OPERATOR_is_scalar_iload (oper)) {
+  else if (OPERATOR_is_scalar_iload (oper) && oper != OPR_ILOADX) {
     CANON_CR base_ccr;
     Add_expr(WN_kid(wn, 0), opt_stab, stmt, &base_ccr, copyprop);
     base_ccr.Set_scale(base_ccr.Scale() + WN_offset(wn));
@@ -3954,6 +3977,8 @@ STMTREP::Same_lhs(const STMTREP *stmt) const
 	  (Lhs()->Offset() == stmt->Lhs()->Offset())) {
 	if (Opr() == OPR_MLOAD) 
 	  return Lhs()->Mload_size() == stmt->Lhs()->Mload_size();
+	else if (Opr() == OPR_ILOADX) 
+	  return Lhs()->Index() == stmt->Lhs()->Index();
 	else
 	  return TRUE;
       }
@@ -4600,6 +4625,10 @@ CODEREP::References_var( AUX_ID var )
 	return TRUE;
       if (Opr() == OPR_MLOAD) {
 	if ( Mload_size()->References_var(var) )
+	  return TRUE;
+      }
+      else if (Opr() == OPR_ILOADX) {
+	if ( Index()->References_var(var) )
 	  return TRUE;
       }
       if (Ivar_mu_node() != NULL && Ivar_mu_node()->Aux_id() == var)
@@ -5644,6 +5673,8 @@ BOOL CODEREP::Has_volatile_content(void) const
     return Is_var_volatile();
   case CK_IVAR:
     if (Opr() == OPR_MLOAD && Mload_size()->Has_volatile_content())
+      return TRUE;
+    if (Opr() == OPR_ILOADX && Index()->Has_volatile_content())
       return TRUE;
     if (Ilod_base()->Has_volatile_content())
       return TRUE;

@@ -437,6 +437,11 @@ ESSA::Ilod_modified_real_occ_real_occ(const BB_NODE *def_bb,
     STMTREP *sr = vsym->Defstmt();
     if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
+#ifdef KEY // bug 7814
+    if (vsym->Aux_id() == Opt_stab()->Default_vsym())
+      return TRUE;
+#endif
+
     if (Rule()->Aliased_Memop(sr->Lhs()->Points_to(Opt_stab()),
 			      use_cr->Points_to(Opt_stab()), 
 			      sr->Lhs()->Kind() == CK_VAR ? sr->Lhs()->Lod_ty() : sr->Lhs()->Ilod_ty(),

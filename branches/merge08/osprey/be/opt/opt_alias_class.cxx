@@ -1119,6 +1119,7 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
 	   Is_fortran_reference_parm(expr)) {
     FmtAssert(OPERATOR_is_scalar_iload (opr) ||
 	      opr == OPR_MLOAD ||
+	      opr == OPR_ILOADX ||
 	      opr == OPR_PARM,
 	      ("ALIAS_CLASSIFICATION: Indirect load: unexpected opcode"));
 

@@ -291,6 +291,8 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
     Find_scalars_from_lowering_bitfld_cr(cr->Ilod_base());
     if (cr->Opr() == OPR_MLOAD)
       Find_scalars_from_lowering_bitfld_cr(cr->Mload_size());
+    if (cr->Opr() == OPR_ILOADX)
+      Find_scalars_from_lowering_bitfld_cr(cr->Index());
     if (cr->Opr() == OPR_ILDBITS) {
       cr->Set_scalar_ivar_occ(Get_new_occ(cr, FALSE));
       _has_bitfield = TRUE;
@@ -431,6 +433,10 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
     Find_scalars_from_lda_iloads(cr->Ilod_base());
     if (cr->Opr() == OPR_MLOAD) {
       Find_scalars_from_lda_iloads(cr->Mload_size());
+      return;
+    }
+    else if (cr->Opr() == OPR_ILOADX) {
+      Find_scalars_from_lda_iloads(cr->Index());
       return;
     }
     if (cr->Ilod_base()->Kind() != CK_LDA || 
@@ -1075,6 +1081,11 @@ OPT_REVISE_SSA::Form_extract(CODEREP *cr)
       if (x2)
         cr->Set_mload_size(x2);
     }
+    else if (cr->Opr() == OPR_ILOADX) {
+      x2 = Form_extract(cr->Index());
+      if (x2)
+        cr->Set_index(x2);
+    }
     else x2 = NULL;
     if (cr->Opr() != OPR_ILDBITS) {
       if (x || x2) { // need rehash
@@ -1344,6 +1355,11 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
       if (x2)
         cr->Set_mload_size(x2);
     }
+    else if (cr->Opr() == OPR_ILOADX) {
+      x2 = Fold_lda_iloads(cr->Index());
+      if (x2)
+        cr->Set_index(x2);
+    }
     else x2 = NULL;
     if (x || x2) { // need rehash
       new_cr->Copy(*cr);	
@@ -1360,6 +1376,7 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     if (cr->Ilod_base()->Kind() != CK_LDA || 
 	cr->Is_ivar_volatile() ||
 	cr->Opr() == OPR_PARM || 
+	cr->Opr() == OPR_ILOADX || 
 	cr->Opr() == OPR_MLOAD)
       return NULL;
 #ifdef KEY
