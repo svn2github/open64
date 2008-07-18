@@ -57,6 +57,21 @@ extern "C" {
  * ==============================================================
  */
 
+#if defined(BUILD_OS_DARWIN)
+/* Linux expects to declare these as weak symbols but never define them.
+ * Mach-O linker doesn't permit that. */
+#define Anl_Process_Command_Line(a, b, c, d) assert(!"Anl_Process_Command_Line")
+#define Anl_Needs_Whirl2c() 0
+#define Anl_Needs_Whirl2f() 0
+#define Anl_Init() assert(!"Anl_Init")
+#define	Anl_Init_Map(a) 0
+#define Anl_Static_Analysis(a, b) assert(!"Anl_Static_Analysis")
+#define Get_Next_Construct_Id() 0L
+#define New_Construct_Id() 0L
+#define Anl_Fini() assert(!"Anl_Fini")
+#define Anl_Cleanup() assert(!"Anl_Cleanup")
+#define Anl_File_Path() 0
+#else /* defined(BUILD_OS_DARWIN) */
 void        Anl_Process_Command_Line (INT phase_argc, char *phase_argv[],
 				      INT argc, char *argv[]);
 BOOL        Anl_Needs_Whirl2c(void);
@@ -69,6 +84,7 @@ INT64       New_Construct_Id(void);
 const char *Anl_File_Path(void);
 void        Anl_Fini(void);
 void        Anl_Cleanup(void);
+#endif
 
 #ifdef __cplusplus
 }

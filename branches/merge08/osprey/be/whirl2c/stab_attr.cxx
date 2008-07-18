@@ -144,7 +144,7 @@ static const char *const Ftn_Reserved_Ty_Name[] =
 
 static const char *const Ftn_Reserved_St_Name[] =
 {
-   "TO DO"
+   "TO DO",
    "TO DO MORE"  // Workaround for bug 13289 during bootstrap.
 }; /* Ftn_Reserved_St_Names */
 
