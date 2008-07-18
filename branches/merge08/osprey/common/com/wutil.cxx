@@ -1019,6 +1019,7 @@ static const struct {
   INTRN_INSERTQ,                "INTRN_INSERTQ",
   INTRN_PADDD128,               "INTRN_PADDD128",
   INTRN_PADDW128,               "INTRN_PADDW128",
+  INTRN_V16F4LOG10,             "INTRN_V16F4LOG10",
 #endif
 #if defined(TARG_SL)
   INTRN_VBUF_OFFSET,            "INTRN_VBUF_OFFSET",
