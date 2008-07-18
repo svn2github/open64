@@ -231,9 +231,9 @@ enum PT_ATTR {
                                       // moved past stack pointer updates
   PT_ATTR_EXTENDED        = 0x400000, // used by alias manager to represent
                                       // a consecutive array of POINTS_TO
-  PT_ATTR_THIS_PTR        = 0x800000  // indirect access of "this" pointer
+  PT_ATTR_THIS_PTR        = 0x800000,  // indirect access of "this" pointer
 #ifdef KEY
-  ,PT_ATTR_FIELD          = 0x800000  // is a field in a struct
+  PT_ATTR_FIELD          = 0x1000000,  // is a field in a struct
 #endif
 
   // 24 of 32 bits used

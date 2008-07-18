@@ -1088,7 +1088,7 @@ static WN *em_sign(WN *block, WN *x, WN *y)
   WN		*abs, *select;
 
 #ifdef KEY // bug 9660
-  if (! MTYPE_signed(type) && ! MTYPE_signed(type))
+  if (MTYPE_is_integral(type) && ! MTYPE_signed(type))
     type = Mtype_TransferSign(MTYPE_I4, type);
 #endif
 #ifdef KEY // bug 12052
@@ -3575,7 +3575,7 @@ static BOOL check_size(WN *size, WN *src, WN *dst)
 }
 
 
-static void aux_memory_msg(char *msg, WN *tree, WN *mstore)
+static void aux_memory_msg(const char *msg, WN *tree, WN *mstore)
 {
 #if 0
   char	buff[120];
@@ -4139,8 +4139,8 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
   case OPR_ARRAY:
   case OPR_LDA:
     return tree;
-  }
-    {
+
+  default: 
       TYPE_ID	type = WN_rtype(tree);
       ST  *st = Gen_Temp_Symbol( MTYPE_To_TY(type), "complex-temp-expr");
       WN  *stid;
@@ -4153,7 +4153,7 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
       WN_INSERT_BlockLast(block, stid);
 
       return WN_Lda(Pointer_type, WN_store_offset(stid), st);
-    }
+  }
 }
 
 /* ====================================================================
@@ -4472,7 +4472,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
        (Bug 4680)	
     */
     if( Is_Target_64bit() &&
-        !Is_Target_EM64T() &&
+        // !Is_Target_EM64T() &&
 	!Is_Target_Anyx86() &&
 	OPT_Fast_Math &&
 	( WN_intrinsic(tree) == INTRN_F8COS ||
@@ -4552,7 +4552,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     } else if (WN_intrinsic(tree) == INTRN_MEMSET &&
 	       OPT_Fast_Stdlib &&
 	       Is_Target_64bit()) {
-      if (Is_Target_EM64T() || Is_Target_Core())
+      if (Is_Target_EM64T() || Is_Target_Core() || Is_Target_Wolfdale())
 	st = Gen_Intrinsic_Function(ty, "memset.pathscale.em64t");
       else
 	st = Gen_Intrinsic_Function(ty, "memset.pathscale.opteron");
@@ -4561,7 +4561,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     } else if (WN_intrinsic(tree) == INTRN_MEMCPY &&
 	       OPT_Fast_Stdlib &&
 	       Is_Target_64bit()) {
-      if (Is_Target_EM64T() || Is_Target_Core())
+      if (Is_Target_EM64T() || Is_Target_Core() || Is_Target_Wolfdale())
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_em64t");
       else
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_opteron");

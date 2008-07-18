@@ -113,7 +113,7 @@ SECTION Sections[_SEC_INDEX_MAX] = {
      0|SHF_WRITE|SHF_IA_64_SHORT|SHF_ALLOC,
 	SHT_NOBITS, 0, 
      INT64_MAX, MIPS_SBSS, 0},
-#ifndef linux
+#if ! (defined(linux) || defined(BUILD_OS_DARWIN))
   {_SEC_LBSS,	NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_LOCAL,
 	SHT_NOBITS, 0, 
@@ -132,7 +132,7 @@ SECTION Sections[_SEC_INDEX_MAX] = {
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
 	SHT_PROGBITS, 0, 
      INT64_MAX, "__cplinit", 0},
-#ifndef linux
+#if ! (defined(linux) || defined(BUILD_OS_DARWIN))
   {_SEC_EH_REGION,	NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
 	SHT_PROGBITS, 0, 

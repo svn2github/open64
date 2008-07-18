@@ -4798,6 +4798,7 @@ static void lower_bit_field_id(WN *wn)
   }
   WN_load_offset(wn) = WN_load_offset(wn) + ofst; 
 
+  TYPE_ID mtype;
   if ((bsize & 7) == 0 && 		   // field size multiple of bytes
 #ifdef KEY // bug 11076
       bsize &&				   // field size non-zero
@@ -4811,7 +4812,8 @@ static void lower_bit_field_id(WN *wn)
       ) {
     // bit-field operation not needed; leave operator as previous one
     WN_set_field_id(wn, 0);
-    WN_set_desc(wn, Mtype_AlignmentClass(bsize >> 3, MTYPE_type_class(rtype)));
+    mtype = Mtype_AlignmentClass(bsize >> 3, MTYPE_type_class(rtype));
+    WN_set_desc(wn, mtype);
     WN_load_offset(wn) = WN_load_offset(wn) + (bofst >> 3);
   }
   else { // generate lowered-to bit-field operator
@@ -4828,8 +4830,7 @@ static void lower_bit_field_id(WN *wn)
     WN_set_operator(wn, new_opr);
 
 #ifdef KEY
-    const TYPE_ID mtype =
-      Mtype_AlignmentClass(bytes_accessed, MTYPE_type_class(rtype));
+    mtype = Mtype_AlignmentClass(bytes_accessed, MTYPE_type_class(rtype));
     Is_True( mtype != MTYPE_UNKNOWN, ("Unknown mtype encountered.") );
     WN_set_desc(wn, mtype);
 #else
@@ -4841,6 +4842,18 @@ static void lower_bit_field_id(WN *wn)
       WN_set_rtype(wn, WN_desc(wn));
     WN_set_bit_offset_size(wn, bofst, bsize);
   }
+
+#ifdef KEY
+  // fix the TYs
+  if (MTYPE_byte_size(mtype) > MTYPE_byte_size(TY_mtype(fld_ty_idx)))
+    fld_ty_idx = MTYPE_To_TY(mtype);
+  WN_set_ty (wn, (opr == OPR_ISTORE ?
+		  Make_Pointer_Type (fld_ty_idx, FALSE) :
+		  fld_ty_idx));
+//#ifdef KEY // bug 12394
+  if (new_opr == OPR_ILDBITS)
+    WN_set_load_addr_ty(wn, Make_Pointer_Type(fld_ty_idx));
+#endif
 }
 
 static void lower_trapuv_alloca (WN *block, WN *tree, LOWER_ACTIONS actions
@@ -5129,8 +5142,8 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
 
 #ifdef KEY
-    if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P  &&
-         Action (LOWER_TO_CG)) {
+    if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P
+         /* && Action (LOWER_TO_CG) */ ) {
       WN * old = tree;
       WN * parm = WN_kid0 (WN_kid0 (old)); // child of OPR_PARM
 
@@ -5145,9 +5158,10 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
         kids_lowered = TRUE;
         break;
       }
-      if ( Action (LOWER_TO_CG) ) {
+      else if ( Action (LOWER_TO_CG) ) {
 	// Still not constant, replace it by false
 	tree = WN_Intconst (MTYPE_I4, 0);
+        WN_copy_linenum (old, tree);
 	WN_Delete (old);
 	kids_lowered = TRUE;
         break;
@@ -12117,6 +12131,7 @@ static WN *lower_branch_condition(BOOL branchType, LABEL_IDX label, WN *cond,
 	*branch = WN_Truebr(label, cond);
       else
 	*branch = WN_Falsebr(label, cond);
+      WN_Set_Linenum(*branch, current_srcpos);  // Bug 1268
       WN_INSERT_BlockLast(condBlock, *branch);
     }
   }
@@ -13237,7 +13252,7 @@ static void generate_trampoline_symbol(ST *st) {
     nested_func_trampoline_map.Push(
 	NESTED_FUNC_TRAMPOLINE_PAIR(ST_st_idx(st), ST_st_idx(tramp_st)));
   }
-};
+}
 
 /* ====================================================================
  *
@@ -15065,7 +15080,7 @@ static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 #ifdef KEY // bug 11360
       if (Action(LOWER_CALL))
-	lower_call(return_block, wn_intrinsic, actions);
+	wn_intrinsic = lower_call(return_block, wn_intrinsic, actions);
 #endif
       WN_INSERT_BlockLast(return_block, wn_intrinsic);
       return  return_block;
@@ -15265,7 +15280,7 @@ static WN *Lower_STID_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 #ifdef KEY // bug 11360
       if (Action(LOWER_CALL))
-	lower_call(return_block, wn_intrinsic, actions);
+	wn_intrinsic = lower_call(return_block, wn_intrinsic, actions);
 #endif
       WN_INSERT_BlockLast(return_block, wn_intrinsic);
       return  return_block;
@@ -15733,7 +15748,7 @@ static WN *Memset_MD_Array(WN *block, WN *tree, LOWER_ACTIONS actions)
      WN_Delete(current_wn);
 #ifdef KEY // bug 11360
      if (Action(LOWER_CALL))
-       lower_call(return_block, call, actions);
+       call = lower_call(return_block, call, actions);
 #endif
      WN_INSERT_BlockLast(return_block, call);
   }
@@ -15963,7 +15978,7 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
              WN_Delete(stmt);
 #ifdef KEY // bug 11360
 	     if (Action(LOWER_CALL))
-	       lower_call(return_block, call, actions);
+	       call = lower_call(return_block, call, actions);
 #endif
              WN_INSERT_BlockLast(return_block, call);
           }
@@ -16119,7 +16134,7 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
       if (wn_intrinsic) {
 #ifdef KEY // bug 11360
 	 if (Action(LOWER_CALL))
-	   lower_call(return_block, wn_intrinsic, actions);
+	   wn_intrinsic = lower_call(return_block, wn_intrinsic, actions);
 #endif
          WN_INSERT_BlockLast(return_block, wn_intrinsic);
          WN_Delete(stmt); // Delete the statement that is transformed

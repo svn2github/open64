@@ -2176,11 +2176,11 @@ Initialize_Stack_Frame (WN *PU_tree)
 	       SCLASS_FORMAL,
 	       EXPORT_LOCAL,
 	       MTYPE_To_TY(Pointer_Mtype));
-      Add_Object_To_Frame_Segment (ra_st, SFSEG_UPFORMAL, TRUE);
-      upformal_size += MTYPE_byte_size(Pointer_Mtype);
 #ifdef KEY 
     }
 #endif
+    Add_Object_To_Frame_Segment (ra_st, SFSEG_UPFORMAL, TRUE);
+    upformal_size += MTYPE_byte_size(Pointer_Mtype);
   }
 
   if (Trace_Frame) {
@@ -2523,6 +2523,9 @@ Allocate_Temp_To_Memory ( ST *st )
   Is_True(ST_sclass(st) == SCLASS_AUTO, ("Allocate_Temp_To_Memory expect stack var"));
   Set_ST_is_temp_var(st);
   Process_Stack_Variable ( st );
+#ifdef TARG_X8664
+  (*CG_Set_Is_Stack_Used_p)();
+#endif
 }
 
 

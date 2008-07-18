@@ -227,6 +227,7 @@ WN_UNROLL::Analyze_body_expr(WN *tree)
 
   // binary
   case OPR_MLOAD:
+  case OPR_ILOADX:
   case OPR_MPY: case OPR_HIGHMPY:
   case OPR_DIV: 
   case OPR_MOD: case OPR_REM:
@@ -290,6 +291,7 @@ WN_UNROLL::Analyze_body_stmt(WN *tree)
     return;
 
   case OPR_MSTORE:
+  case OPR_ISTOREX:
     Analyze_body_expr(WN_kid2(tree));
     // fall-thru
 
@@ -797,6 +799,7 @@ WN_UNROLL_suitable(WN *tree)
   case OPR_ASSERT:
   case OPR_XPRAGMA:
   case OPR_ISTORE:
+  case OPR_ISTOREX:
   case OPR_STID:
   case OPR_ISTBITS:
   case OPR_STBITS:

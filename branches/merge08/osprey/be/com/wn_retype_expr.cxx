@@ -229,6 +229,9 @@ BOOL Only_32bit_opnds(WN *tree)
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
   case OPR_BNOT:
   case OPR_TAS: 
+#ifdef TARG_X8664
+  case OPR_ATOMIC_RSQRT:
+#endif
     return MTYPE_byte_size(rtype) <= 4;
 
   case OPR_PAREN:
