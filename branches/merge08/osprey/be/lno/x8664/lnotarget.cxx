@@ -72,6 +72,7 @@ LNOTARGET_Whirl_To_Top (WN* wn)
   case OPC_F8DIV:
     return TOP_divsd;
   case OPC_F4RSQRT:
+  case OPC_F4ATOMIC_RSQRT:
     return TOP_sqrtss;
   case OPC_F8RSQRT:
     return TOP_sqrtsd;
@@ -124,7 +125,11 @@ LNOTARGET_Whirl_To_Top (WN* wn)
     // expand into several ops
     return TOP_UNDEFINED;
   default:
-    FmtAssert(FALSE, ("Handle this case"));
+    // bug 10320: handle TAS to avoid assertion failure
+    if(OPCODE_operator(opcode) == OPR_TAS)
+      break;
+    else
+      FmtAssert(FALSE, ("Handle this case"));
   }
   return WHIRL_To_TOP(wn);
 }

@@ -249,14 +249,10 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
       return FALSE;
   // BUG 5701: vectorize NEG for integers
   case OPR_NEG:
-    if (rtype == MTYPE_F4 || rtype == MTYPE_F8 || 
-#ifdef TARG_X8664
-	((rtype == MTYPE_C4 || rtype == MTYPE_C8) && Is_Target_SSE3()) ||
-#endif
-	rtype == MTYPE_I4 || rtype == MTYPE_I8)
-      return TRUE;
-    else
+    if (rtype == MTYPE_C4)//why C4 is not good?
       return FALSE;
+    else
+      return TRUE;
   case OPR_ADD:
   case OPR_SUB:
     return TRUE;
@@ -750,7 +746,10 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
   //Bug 13853: V16F8RECIP will be transformed to vector division in code generation
   //           And this has been observed good or no harm to intel platforms and
   //           Barcelona
-  if(!Is_Target_EM64T() && !Is_Target_Core() && !Is_Target_Barcelona() &&
+  if(!Is_Target_EM64T() && 
+     !Is_Target_Core() && 
+     !Is_Target_Wolfdale() &&
+     !Is_Target_Barcelona() &&
      WN_operator(wn) == OPR_RECIP && WN_rtype(wn) == MTYPE_F8
      && WN_operator(parent) == OPR_MPY)
    return FALSE; 
@@ -1390,7 +1389,9 @@ BOOL Is_Vectorizable_Intrinsic (WN *wn)
   case INTRN_F8EXP:
   case INTRN_F4LOG:
   case INTRN_F8LOG:
+  case INTRN_F4SIN:
   case INTRN_F8SIN:
+  case INTRN_F4COS:
   case INTRN_F8COS:
   case INTRN_F4EXPEXPR:
   case INTRN_F8EXPEXPR:
@@ -1400,6 +1401,7 @@ BOOL Is_Vectorizable_Intrinsic (WN *wn)
 #endif
   case INTRN_F8SINH:
   case INTRN_F8COSH:
+  case INTRN_F4LOG10:
   case INTRN_F8LOG10:
     return TRUE;
   default:
@@ -4107,14 +4109,26 @@ static void Simd_Vectorize_Intrinsics(WN *simd_op)
           WN_intrinsic(simd_op) = INTRN_V16F8LOG;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
           break;
+        case INTRN_F4LOG10:
+          WN_intrinsic(simd_op) = INTRN_V16F4LOG10;
+          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
+          break;
         case INTRN_F8LOG10:
           WN_intrinsic(simd_op) = INTRN_V16F8LOG10;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
+          break;
+        case INTRN_F4SIN:
+          WN_intrinsic(simd_op) = INTRN_V16F4SIN;
+          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
           break;
         case INTRN_F8SIN:
           WN_intrinsic(simd_op) = INTRN_V16F8SIN;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
           break;
+        case INTRN_F4COS:
+          WN_intrinsic(simd_op) = INTRN_V16F4COS;
+          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
+          break;        
         case INTRN_F8COS:
           WN_intrinsic(simd_op) = INTRN_V16F8COS;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);

@@ -1205,7 +1205,7 @@ char* SYMBOL::Name(char* buf, INT bufsz) const
       }
     }
     else
-      name = "$nobase";
+      name = const_cast<char*>("$nobase");
 
     goalname = 
       (char*) alloca(strlen(name) + strlen(true_name) + 30 + max_woff_len);
@@ -1983,6 +1983,20 @@ void ACCESS_VECTOR::Add(WN *wn, DOLOOP_STACK *stack,INT8 sign)
 #endif
 }
 
+#ifdef KEY
+//whether or not it is used for array addresses calculation.
+static BOOL WN_Under_Array(WN *wn)
+{
+    WN* parent = LWN_Get_Parent(wn);
+    while(parent && WN_operator(parent) != OPR_DO_LOOP) {
+      if (WN_operator(parent) == OPR_ARRAY)
+        return TRUE;
+      parent = LWN_Get_Parent(parent);
+    }
+  return FALSE;
+}
+#endif
+
 // Add coeff*(expression represented by wn) to this vector
 void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
 				BOOL allow_nonlin)
@@ -2095,7 +2109,21 @@ void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
 	     WN_opcode(WN_kid0(wn)) == OPC_U8CVTL &&
 	     WN_cvtl_bits(WN_kid0(wn)) == 32) {
     Add_Sum(WN_kid0(WN_kid0(wn)),coeff,stack,allow_nonlin);  
-  }  
+  } 
+//BUG 14400: don't abruptly consider access vector Too_Messy for shifts
+//BUG 14495: limit this only for building access vectors for arrays
+  else if (WN_operator(wn) == OPR_SHL && WN_Under_Array(wn)){
+    if (WN_operator(WN_kid(wn,1)) == OPR_INTCONST) {
+      Add_Sum(WN_kid(wn,0),coeff<<WN_const_val(WN_kid(wn,1)),stack,
+                                                        allow_nonlin);
+    }else Too_Messy = TRUE;
+  } 
+  else if (WN_operator(wn) == OPR_ASHR && WN_Under_Array(wn)){
+    if (WN_operator(WN_kid(wn,1)) == OPR_INTCONST) {
+      Add_Sum(WN_kid(wn,0),coeff>>WN_const_val(WN_kid(wn,1)),stack,
+                                                        allow_nonlin);
+    }else Too_Messy = TRUE;
+  }
 #endif
   else {
     Too_Messy = TRUE;

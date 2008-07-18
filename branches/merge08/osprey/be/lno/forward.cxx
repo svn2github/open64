@@ -613,6 +613,18 @@ static BOOL FS_Worthwhile(WN* wn_orig,
     }
     if (!substitution_candidate) 
       return FALSE;
+
+#ifdef KEY
+//bug 14352: Forward substitution requires the "use" is under the subtree
+//of LWN_Get_Parent(wn_orig)). Otherwise, it is not legal to substitute
+//"use" with the right-hand side of wn_orig.
+    WN *tmp=NULL;
+    for(tmp = use; tmp!=NULL; tmp=LWN_Get_Parent(tmp))
+     if(tmp == LWN_Get_Parent(wn_orig))
+        break;
+    if(!tmp) return FALSE;
+#endif
+
     if (FS_Is_Inside_If(use, LWN_Get_Parent(wn_orig)))
        return FALSE;
     WN *wn;
