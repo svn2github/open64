@@ -60,8 +60,7 @@ static void Get_IPA_Object_Name(){
   while (*bname == '/')
     bname++;
 
-  char *tmp_name;
-  IPA_Object_Name = (char *) malloc (strlen(bname) + 1);
+  IPA_Object_Name = (char *) alloca (strlen(bname) + 1);
 
   int i;
   for(i=0; bname[i] != '\0'; i++) {
@@ -101,7 +100,7 @@ Create_Unique_Name (const char* name)
     } while (i > 0);
 
     *p = 0;
-    printf("Newname %s\n",new_name);
+
     return Save_Str(new_name);
 
 } // Create_Unique_Name

@@ -482,7 +482,7 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
           ("Full pathname for cc not set up"));
 
   if (argc > 0) {
-#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
+#if defined(TARG_X8664) || (defined(TARG_MIPS) && !defined(TARG_SL))
 
     argv.push_back((*command_map)["cc"]);
 #else
@@ -507,14 +507,14 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
         strcat(buf, command);
 
         if (!file_exists(buf)) {
-	   bzero(buf, strlen(buf));
+	   BZERO(buf, strlen(buf));
 	   strcpy(buf, toolroot);
 	   strcat(buf, BINPATH "/");
            strcat(buf, command);
 	}
 
         if (!file_exists(buf)) {
-	   bzero(buf, strlen(buf));
+	   BZERO(buf, strlen(buf));
 	   strcpy(buf, toolroot);
            strcat(buf, ALTBINPATH "/");
 	}
