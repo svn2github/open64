@@ -208,7 +208,7 @@ enum CR_FLAG {
   CF_IS_ZERO_VERSION= 0x80,// is a zero version
   CF_FOLDED_LDID   = 0x100,// is folded from (ILOAD(LDA)) 
   CF_MADEUP_TYPE   = 0x200,// the type is made up by SSA
-#ifdef TARG_SL2
+#ifdef TARG_SL
   // offset relative to internal memory (vbuf & sbuf)  and used as parameter 
   // in intrinisc_vbuf_offset and intrinsic_sbuf_offset
   CF_INTERNAL_MEM_OFFSET = 0x400, 
@@ -313,7 +313,7 @@ private:
   CODEKIND  kind:7;                  // code kind
   MTYPE     _dtyp:6;                 // data type
   MTYPE     dsctyp:6;                // descriptor type for various opcode
-#ifdef TARG_SL2 
+#ifdef TARG_SL
   UINT32    usecnt:12;               // number of times this node's
                                      // expression appears.
                                      // not used for ISCONST and ISLDA
@@ -715,6 +715,10 @@ public:
   void      Set_elm_siz(INT64 siz)    { u1.elm_siz = siz; }
   INTRINSIC Intrinsic(void) const     { return u1.nonarr.u11.intrinsic; }
   void      Set_intrinsic(INTRINSIC i) { u1.nonarr.u11.intrinsic = i; }
+#if defined(TARG_SL)
+  BOOL      Is_C3_Intrinsic()         { ((u1.nonarr.u11.intrinsic >= INTRN_C3_INTRINSIC_BEGIN) &&
+			                (u1.nonarr.u11.intrinsic <= INTRN_C3_INTRINSIC_END)); };
+#endif
 #ifdef KEY
   ST_IDX    Call_op_aux_id(void) const { return u1.nonarr.u11.call_op_aux_id; }
   void      Set_call_op_aux_id(ST_IDX i) { u1.nonarr.u11.call_op_aux_id = i; }
@@ -1865,8 +1869,9 @@ private:
   UINT32      _asm_stmt_flags:3;  // the ASM_STMT flags
 #ifdef TARG_SL //fork_joint
  BOOL       _sl2_compgoto_para : 1; //used to mark if the stmt is a compgoto for sl2 major fork. 
- BOOL       _sl2_compgoto_for_minor: 1; // used to mark if the stmt is a compgoto for sl2 minor fork. 
- UINT        _unused : 3;      // allocate new flag bits from here.
+ BOOL       _sl2_compgoto_for_minor : 1; // used to mark if the stmt is a compgoto for sl2 minor fork. 
+ BOOL       _sl2_internal_mem_ofst : 1; // mark if the stmt is an istore
+ UINT       _unused : 2;      // allocate new flag bits from here.
 #else  
   UINT        _unused : 5;      // allocate new flag bits from here.
 #endif
@@ -1898,6 +1903,9 @@ private:
 				  // analysis is done, we will emit
 				  // the stmt unchanged.
 				  _proj_op_uses = 2;
+#if defined(TARG_SL)
+				  _sl2_internal_mem_ofst = 0;
+#endif
 				}
 
   STMTREP (const STMTREP&);
@@ -2156,10 +2164,12 @@ public:
 
 #ifdef TARG_SL //fork_joint
   // we need passing fork compgoto flag from whirl node to stmtrep 
-  BOOL      Fork_stmt_flags(void) const   { return _sl2_compgoto_para; }
-  void       Set_fork_stmt_flags(BOOL f)  { _sl2_compgoto_para = f; }
-  BOOL      Minor_fork_stmt_flags(void)  const  { return _sl2_compgoto_for_minor; } 
-  void        Set_minor_fork_stmt_flags(BOOL f) { _sl2_compgoto_for_minor = f; } 
+  BOOL      Fork_stmt_flags(void) const       { return _sl2_compgoto_para; }
+  void      Set_fork_stmt_flags(BOOL f)       { _sl2_compgoto_para = f; }
+  BOOL      Minor_fork_stmt_flags(void) const { return _sl2_compgoto_for_minor; } 
+  void      Set_minor_fork_stmt_flags(BOOL f) { _sl2_compgoto_for_minor = f; } 
+  BOOL      SL2_internal_mem_ofst(void) const { return _sl2_internal_mem_ofst; }
+  void      Set_SL2_internal_mem_ofst(BOOL f) { _sl2_internal_mem_ofst = f; }
 #endif 
 
   // for the ASM_STMT flags

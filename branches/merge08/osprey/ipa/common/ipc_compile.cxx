@@ -482,7 +482,7 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
           ("Full pathname for cc not set up"));
 
   if (argc > 0) {
-#if defined(TARG_X8664) || (defined(TARG_MIPS) && !defined(TARG_SL))
+#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
 
     argv.push_back((*command_map)["cc"]);
 #else
@@ -602,7 +602,7 @@ ipacom_process_symtab (char* symtab_file)
 
   char* toolroot = getenv("TOOLROOT");
 
-#if defined(VENDOR_OSP)
+#if defined(VENDOR_OSP) || defined(VENDOR_SL)
   sprintf(buf, "%s -c %s %s -o %s %s -TENV:emit_global_data=%s %s",
 #else
   sprintf(buf, "%s%s -c %s %s -o %s %s -TENV:emit_global_data=%s %s",
