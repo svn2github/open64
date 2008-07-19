@@ -208,7 +208,7 @@ enum CR_FLAG {
   CF_IS_ZERO_VERSION= 0x80,// is a zero version
   CF_FOLDED_LDID   = 0x100,// is folded from (ILOAD(LDA)) 
   CF_MADEUP_TYPE   = 0x200,// the type is made up by SSA
-#ifdef TARG_SL2
+#ifdef TARG_SL
   // offset relative to internal memory (vbuf & sbuf)  and used as parameter 
   // in intrinisc_vbuf_offset and intrinsic_sbuf_offset
   CF_INTERNAL_MEM_OFFSET = 0x400, 
@@ -245,6 +245,7 @@ enum ISOP_FLAG {
   ISOP_VERIFY_EXPR_VISITED = 0x40000, // has been visited during verify_version_expr
   ISOP_DEF_BEFORE_VISITED = 0x80000,  // has been visited during Def_before_use     // at most 22 bits for this enumeration, due to size of isop_flags field
 #endif
+  // at most 22 bits for this enumeration, due to size of isop_flags field
 };
 
 enum ISVAR_FLAG {
@@ -313,7 +314,7 @@ private:
   CODEKIND  kind:7;                  // code kind
   MTYPE     _dtyp:6;                 // data type
   MTYPE     dsctyp:6;                // descriptor type for various opcode
-#ifdef TARG_SL2 
+#ifdef TARG_SL 
   UINT32    usecnt:12;               // number of times this node's
                                      // expression appears.
                                      // not used for ISCONST and ISLDA
@@ -372,7 +373,7 @@ private:
 	PHI_NODE *phi;               // the phi node that define this cr
       } def;
       mUINT16   _isvar_flags;        // flags specific to CK_VAR
-      mUINT16  fieldid;		     // field id (also used as bit ofst/size)
+      mUINT16   fieldid;	     // field id (also used as bit ofst/size)
       STMTREP  *defstmt;             // statement that defines this var
       TY_IDX    ty;                  // LOD type  
     } isvar;
@@ -383,12 +384,12 @@ private:
       mUINT16   afieldid;	     // field id of the LDA
     } islda;
     union {                          // ISCONST ISRCONST
-      ST        *const_id;            // symbolic constant or constant, ISRCONST
+      ST       *const_id;            // symbolic constant or constant, ISRCONST
 #if defined(TARG_SL)
       struct {
-        INT64    const_val;           // constant value, ISCONST
-        mUINT16  _isconst_flags; 
-      }isconst_val; 
+        INT64   const_val;           // constant value, ISCONST
+        mUINT16 _isconst_flags; 
+      } isconst_val; 
 #else 
       INT64     const_val;           // constant value, ISCONST
 #endif
@@ -639,7 +640,7 @@ public:
   void      Set_asm_input_rtype(MTYPE dt)   { u2.isop._asm_input_dtyp = dt; }
   MTYPE     Asm_input_dsctype(void) const   { return u2.isop._asm_input_dsctyp; }
   MTYPE     Set_asm_input_dsctype(MTYPE dt) {  u2.isop._asm_input_dsctyp = dt; }
-#endif
+#endif  
 #if defined(TARG_SL) || defined(TARG_NVISA)
   void	    Set_dtyp_const_val(MTYPE dt, INT64 v) { 
 					Is_True(Kind() == CK_CONST,
@@ -715,6 +716,10 @@ public:
   void      Set_elm_siz(INT64 siz)    { u1.elm_siz = siz; }
   INTRINSIC Intrinsic(void) const     { return u1.nonarr.u11.intrinsic; }
   void      Set_intrinsic(INTRINSIC i) { u1.nonarr.u11.intrinsic = i; }
+#if defined(TARG_SL)
+  BOOL      Is_C3_Intrinsic()         { ((u1.nonarr.u11.intrinsic >= INTRN_C3_INTRINSIC_BEGIN) && 
+                                         (u1.nonarr.u11.intrinsic <= INTRN_C3_INTRINSIC_END));};
+#endif
 #ifdef KEY
   ST_IDX    Call_op_aux_id(void) const { return u1.nonarr.u11.call_op_aux_id; }
   void      Set_call_op_aux_id(ST_IDX i) { u1.nonarr.u11.call_op_aux_id = i; }
@@ -1550,7 +1555,8 @@ public:
   CODEREP    *Hash_Lda(CODEREP *cr)
     { Is_True(cr->Kind() == CK_LDA,("CODEMAP::Hash_Lda, wrong kind"));
 #ifdef TARG_SL
-      IDX_32 hash_idx = Hash_lda(cr->Lda_base_st(),(IDTYPE)(cr->Offset() + cr->Is_flag_set(CF_INTERNAL_MEM_OFFSET)));
+      IDX_32 hash_idx = Hash_lda(cr->Lda_base_st(),
+				 (IDTYPE)(cr->Offset()+cr->Is_flag_set(CF_INTERNAL_MEM_OFFSET)));
 #else 
       IDX_32 hash_idx = Hash_lda(cr->Lda_base_st(),(IDTYPE)cr->Offset());
 #endif
@@ -1860,18 +1866,20 @@ private:
 				 // projectible operation on the RHS
 				 // of STID.
 #ifdef KEY
-  UINT32      _str_red_num: 4;  // for IV update stmts, # of induction exprs
-  				// injured by it during EPRE
-  UINT32      _asm_stmt_flags:3;  // the ASM_STMT flags
+  UINT32      _str_red_num : 4;    // for IV update stmts, # of induction exprs
+  				   // injured by it during EPRE
+  UINT32      _asm_stmt_flags : 3; // the ASM_STMT flags
 #ifdef TARG_SL //fork_joint
- BOOL       _sl2_compgoto_para : 1; //used to mark if the stmt is a compgoto for sl2 major fork. 
- BOOL       _sl2_compgoto_for_minor: 1; // used to mark if the stmt is a compgoto for sl2 minor fork. 
- UINT        _unused : 3;      // allocate new flag bits from here.
+  BOOL        _sl2_compgoto_para : 1;  // compgoto for sl2 major fork. 
+  BOOL        _sl2_compgoto_minor : 1; // compgoto for sl2 minor fork. 
+  BOOL       _sl2_internal_mem_ofst:1; // mark if the stmt is an istore
+                                       // for v1buf automatic expansion  
+  UINT         _unused : 2;      // allocate new flag bits from here.
 #else  
   UINT        _unused : 5;      // allocate new flag bits from here.
 #endif
 #else
-  UINT        _unused : 12;      // allocate new flag bits from here.
+  UINT        _unused : 12;     // allocate new flag bits from here.
 #endif
 
   // initializer to be called by all constructors
@@ -1898,6 +1906,9 @@ private:
 				  // analysis is done, we will emit
 				  // the stmt unchanged.
 				  _proj_op_uses = 2;
+#if defined(TARG_SL)
+				  _sl2_internal_mem_ofst = 0;
+#endif
 				}
 
   STMTREP (const STMTREP&);
@@ -2154,12 +2165,14 @@ public:
   UINT32     Str_red_num(void) const	{ return _str_red_num; }
   void	     Inc_str_red_num(void)	{ _str_red_num++; }
 
-#ifdef TARG_SL //fork_joint
-  // we need passing fork compgoto flag from whirl node to stmtrep 
-  BOOL      Fork_stmt_flags(void) const   { return _sl2_compgoto_para; }
-  void       Set_fork_stmt_flags(BOOL f)  { _sl2_compgoto_para = f; }
-  BOOL      Minor_fork_stmt_flags(void)  const  { return _sl2_compgoto_for_minor; } 
-  void        Set_minor_fork_stmt_flags(BOOL f) { _sl2_compgoto_for_minor = f; } 
+#ifdef TARG_SL 
+  // we need to pass fork compgoto flag from whirl node to stmtrep 
+  BOOL       Fork_stmt_flags(void) const       { return _sl2_compgoto_para; }
+  void       Set_fork_stmt_flags(BOOL f)       { _sl2_compgoto_para = f; }
+  BOOL       Minor_fork_stmt_flags(void) const { return _sl2_compgoto_minor; } 
+  void       Set_minor_fork_stmt_flags(BOOL f) { _sl2_compgoto_minor = f; } 
+  BOOL       SL2_internal_mem_ofst(void) const { return _sl2_internal_mem_ofst; } 
+  void       Set_SL2_internal_mem_ofst(BOOL f) { _sl2_internal_mem_ofst = f; }
 #endif 
 
   // for the ASM_STMT flags
