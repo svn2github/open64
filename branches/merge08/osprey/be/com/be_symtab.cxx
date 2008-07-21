@@ -193,9 +193,7 @@ ST_is_const_initialized_scalar(const ST *st, INT64 offset, TCON &tcon_copy)
 
     // exclude all non-scalars
     if (!Is_Simple_Type(ty)) {
-      if (offset != 0) {
 	return FALSE;
-      }
     }
     // if array then element must be scalar
     else if (TY_kind(ty) == KIND_ARRAY) {
