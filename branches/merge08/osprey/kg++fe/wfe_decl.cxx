@@ -1683,6 +1683,7 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 // KEY is already defined above, but this is just to keep what we had earlier
   int     buffer [4];
 #endif // KEY
+  INT32    rbuf_w[4]; // this is needed when long is 64-bit
   switch (size) {
     case 4:
       REAL_VALUE_TO_TARGET_SINGLE (real, t1);
@@ -1691,14 +1692,26 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
     case 8:
       REAL_VALUE_TO_TARGET_DOUBLE (real, buffer);
       WFE_Convert_To_Host_Order(buffer);
-      tc = Host_To_Targ_Float (MTYPE_F8, *(double *) &buffer);
+#if (SIZEOF_LONG != 4)
+      for (int i = 0; i < 4; i++)
+	rbuf_w[i] = buffer[i];
+      tc = Host_To_Targ_Float (MTYPE_F8, *(double *) rbuf_w);
+#else
+      tc = Host_To_Targ_Float (MTYPE_F8, *(double *) buffer);
+#endif
       break;
 #ifdef KEY
     case 12:
     case 16:
       REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, buffer);
       WFE_Convert_To_Host_Order(buffer);
-      tc = Host_To_Targ_Quad (*(long double *) &buffer);
+#if (SIZEOF_LONG != 4)
+      for (int i = 0; i < 4; i++)
+	rbuf_w[i] = buffer[i];
+      tc = Host_To_Targ_Quad (*(long double *) rbuf_w);
+#else
+      tc = Host_To_Targ_Quad (*(long double *) buffer);
+#endif
       break;
 #endif
     default:
