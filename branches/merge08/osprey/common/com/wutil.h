@@ -62,6 +62,7 @@ const char *get_iostatement_name(IOSTATEMENT opcode);
 const char *get_ioitem_name(IOITEM opcode);
 const char *get_iolibrary_name(IOLIB opcode);
 
+#define INTRINSIC_name(op) get_intrinsic_name(op)
 #define IOSTATEMENT_name(op) get_iostatement_name(op)
 #define IOITEM_name(op) get_ioitem_name(op)
 

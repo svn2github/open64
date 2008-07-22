@@ -269,7 +269,11 @@ BOOL IPA_Consult_Inliner_For_Icall_Opt = TRUE; // Check inlining heuristics
 UINT32 IPA_Icall_Min_Freq = DEFAULT_ICALL_MIN_FREQ; // Min freq for icall opt
                                                     // used in IPL.
 BOOL IPA_Enable_Source_PU_Order = FALSE;
+#ifdef TARG_X8664
+UINT32 IPA_Enable_Struct_Opt = 1;
+#else
 UINT32 IPA_Enable_Struct_Opt = 0;
+#endif
 UINT32 IPA_Update_Struct = 0;		/* temporary, should be removed */
 #else
 BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
@@ -596,8 +600,13 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "devirtualization", "",
       0, 0, 0,              &IPA_Enable_Devirtualization, NULL,
       "Use devirtualization phase"},
+#ifdef TARG_X8664
+    { OVK_UINT32, OV_INTERNAL,	FALSE, "optimize_struct",	"",
+	  1, 0, UINT32_MAX, &IPA_Enable_Struct_Opt, NULL,
+#else
     { OVK_UINT32, OV_INTERNAL,	FALSE, "optimize_struct",	"",
 	  0, 0, UINT32_MAX, &IPA_Enable_Struct_Opt, NULL,
+#endif
 	  "Enable IPA struct optimizations"},
     /* The following option is temporary, and should be removed soon */
     { OVK_UINT32, OV_INTERNAL,	FALSE, "update_struct",	"",

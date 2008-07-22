@@ -611,6 +611,15 @@ Gen_Intrinsic_Function(TY_IDX  ty, const char   *function_name)
     ST_Init (st, Save_Str(function_name), CLASS_FUNC, SCLASS_EXTERN,
              EXPORT_PREEMPTIBLE, (TY_IDX) pu_idx);
 
+#ifdef TARG_X8664
+    if (Is_Target_32bit()) {
+      if (Use_Sse_Reg_Parm)
+        Set_TY_has_sseregister_parm (ty);
+      if (Use_Reg_Parm)
+        Set_TY_register_parm (ty, Use_Reg_Parm);
+    }
+#endif
+
     INTRINSIC_LIST_add(st);
   }
   return st;
@@ -1750,6 +1759,11 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (TY_return_to_param(ty_idx))	fprintf (f, " return_to_param");
 	    if (TY_is_varargs(ty_idx))		fprintf (f, " varargs");
 	    if (TY_has_prototype(ty_idx))	fprintf (f, " prototype");
+#ifdef TARG_X8664
+	    if (TY_has_sseregister_parm(ty_idx)) fprintf (f, " sseregisterparm");
+	    INT register_parms = TY_register_parm(ty_idx);
+	    if (register_parms) fprintf (f, " %d-registerparm", register_parms);
+#endif
 	    fprintf (f, "\n");
 	}
     }

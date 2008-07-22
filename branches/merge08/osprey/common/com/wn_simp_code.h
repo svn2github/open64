@@ -6136,13 +6136,33 @@ simpnode SIMPNODE_SimplifyIntrinsic(OPCODE opc, UINT32 intrinsic, INT32 n, simpn
 	    SIMP_DELETE(k[i]);
 	 }
       }
+#ifdef KEY /* bug 14470 */
+      /* Handling CONSTANT_P is trivial, so handle it separately. */
+      else if (intrinsic == INTRN_CONSTANT_P) {
+	 /* constant argument */
+	 r = SIMP_INTCONST(MTYPE_U4, 1);
+	 SHOW_TREE(opc,k[0],NULL,r);
+	 SIMP_DELETE(k[0]);
+      }
+#endif /* KEY */
    }
-#if defined(KEY) && defined(WN_SIMP_WORKING_ON_WHIRL)
+#ifdef KEY
+#ifdef WN_SIMP_WORKING_ON_WHIRL
    else if (OPT_Enable_Simp_Fold)
    {
       r = SIMPNODE_FoldIntrinsic (opc, intrinsic, n, k);
    }
-#endif // KEY && WN_SIMP_WORKING_ON_WHIRL
+#else
+   else if (intrinsic == INTRN_CONSTANT_P) {
+      /* bug 14470: argument not a constant, we are called from wopt
+         constant-folding, assume that no later phase will be able
+         to prove it constant */
+      r = SIMP_INTCONST(MTYPE_U4, 0);
+      SHOW_TREE(opc,k[0],NULL,r);
+      SIMP_DELETE(k[0]);
+   }
+#endif /* WN_SIMP_WORKING_ON_WHIRL */
+#endif /* KEY */
    return (r);
 }
 

@@ -1923,6 +1923,15 @@ INITO_TABLE::operator() (SYMTAB_IDX level, UINT32 index) {
     Is_True (Scope_tab[level].inito_tab != NULL, ("Uninitialized INITO_TAB"));
     return Scope_tab[level].inito_tab->Entry (index);
 }
+inline LABEL&
+LABEL_TABLE::operator[] (LABEL_IDX idx) {
+    return Scope_tab[CURRENT_SYMTAB].label_tab->Entry (idx);
+}
+
+inline LABEL&
+LABEL_TABLE::operator() (SYMTAB_IDX level, LABEL_IDX idx) {
+    return Scope_tab[level].label_tab->Entry (idx);
+}
 #endif
 
 inline PREG&

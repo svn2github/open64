@@ -86,6 +86,11 @@
      if (fseek(_fd, _position, whence) != 0) \
            profile_error(_error_message, _error_arg);
 
+#if defined(BUILD_OS_DARWIN)
+/* fcntl TIOCFLUSH defines FREAD to set a bit that clears the input queue;
+ * we don't need that */
+#undef FREAD
+#endif /* defined(BUILD_OS_DARWIN) */
 #define FREAD(_buffer, _size, _nitems, _fp, _error_message, _error_arg) \
         if (fread((void *)_buffer, _size, _nitems, _fp) != _nitems) \
            profile_error(_error_message, _error_arg);
