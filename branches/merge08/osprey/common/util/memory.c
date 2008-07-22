@@ -57,6 +57,21 @@
 #ifndef NO_VALGRIND
 #include <memcheck.h>
 
+#ifdef VALGRIND_MAKE_MEM_NOACCESS
+#define VALGRIND_MAKE_NOACCESS(ptr, size) \
+         VALGRIND_MAKE_MEM_NOACCESS(ptr, size)
+#endif
+
+#ifdef VALGRIND_MAKE_MEM_DEFINED
+#define VALGRIND_MAKE_READABLE(ptr, size) \
+         VALGRIND_MAKE_MEM_DEFINED(ptr, size)
+#endif
+
+#ifdef VALGRIND_MAKE_MEM_UNDEFINED
+#define VALGRIND_MAKE_WRITABLE(ptr, size) \
+         VALGRIND_MAKE_MEM_UNDEFINED(ptr, size)
+#endif
+          
 /*
  * Check to see if we have an old version of Valgrind without mempool
  * support.  Disable Valgrind support if this is the case.
