@@ -566,17 +566,19 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_NON_LOCAL_LABEL     0x00400000 /* BB has a non-local label */
 #endif
 
+#if defined(TARG_IA64) || defined(TARG_SL)
+#define BBM_EDGE_SPLITTING      0x00800000 /* BB is used for edge splitting */
+
 #ifdef TARG_IA64
-#define BBM_RECOVERY            0x00400000 /* BB is a recovery block */
-#define BBM_CHK_SPLIT           0x00800000 /* BB splitted from another because of chk insertion */
-#define BBM_EMITTED             0x01000000 /* BB has been emitted */
-#define BBM_PROFILE_SPLITTED    0x02000000 /* BB is bb splitted from old bb by profile */
-#define BBM_PROFILE_CHANGED     0x04000000 /* BB is changed by profile*/
-#define BBM_PROFILE_ADDED       0x08000000 /* BB is new bb added by profile*/
-#define BBM_CHK_SPLIT_HEAD      0x10000000 /* BB splitted from another because of chk insertion */
-#define BBM_PARTIAL_BUNDLE      0x20000000 /* BB partial bundle for across boundary*/
-#define BBM_EDGE_SPLITTING      0X40000000 /* BB is used to split critical edge */
-#define BBM_CHK_SPLIT_TAIL      0x80000000 /* BB is splited tail *///bug fix for OSP_212
+#define BBM_RECOVERY            0x01000000 /* BB is a recovery block */
+#define BBM_CHK_SPLIT           0x02000000 /* BB splitted from another because of chk insertion */
+#define BBM_EMITTED             0x04000000 /* BB has been emitted */
+#define BBM_PROFILE_SPLITTED    0x08000000 /* BB is bb splitted from old bb by profile */
+#define BBM_PROFILE_CHANGED     0x10000000 /* BB is changed by profile*/
+#define BBM_PROFILE_ADDED       0x20000000 /* BB is new bb added by profile*/
+#define BBM_CHK_SPLIT_HEAD      0x40000000 /* BB splitted from another because of chk insertion */
+#define BBM_PARTIAL_BUNDLE      0x80000000 /* BB partial bundle for across boundary*/
+#define BBM_CHK_SPLIT_TAIL     0x200000000 /* BB is splited tail *///bug fix for OSP_212
 #elif defined(TARG_SL)
 #define BBM_ZDL_PROLOG          0x01000000 
 #define BBM_ZDL_BODY            0x02000000        
@@ -584,10 +586,12 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_SCHEDULED_SIZE      0x08000000          
 #define BBM_FREQ_UNBALANCED	0x10000000
 #define BBM_LOCAL_FLAG2         0x20000000
-#define BBM_EDGE_SPLITTING	0x00800000 /* BB is used for edge splitting */
-#define BB_edge_splitting(x)  	(BB_flag(x) & BBM_EDGE_SPLITTING)
-#define Set_BB_edge_splitting(x)(BB_flag(x) |= BBM_EDGE_SPLITTING)
 #endif // TARG_SL
+
+#define BB_edge_splitting(x)  	      (BB_flag(x) & BBM_EDGE_SPLITTING)
+#define Set_BB_edge_splitting(x)      (BB_flag(x) |= BBM_EDGE_SPLITTING)
+#define Reset_BB_edge_splitting(x)    (BB_flag(x) &= ~BBM_EDGE_SPLITTING)
+#endif // TARG_IA64 || TARG_SL
 
 
 #if defined (TARG_SL)
@@ -657,7 +661,6 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_profile_changed(x)    (BB_flag(x) & BBM_PROFILE_CHANGED)
 #define BB_profile_added(x)    (BB_flag(x) & BBM_PROFILE_ADDED)
 #define BB_partial_bundle(x)	(BB_flag(x) & BBM_PARTIAL_BUNDLE)
-#define BB_edge_splitting(x)    (BB_flag(x) & BBM_EDGE_SPLITTING)      
 #define BB_chk_split_tail(x)    (BB_flag(x) & BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
 #endif
 
@@ -696,7 +699,6 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_profile_changed(x)    (BB_flag(x) |= BBM_PROFILE_CHANGED)
 #define Set_BB_profile_added(x)    (BB_flag(x) |= BBM_PROFILE_ADDED)
 #define Set_BB_partial_bundle(x)    (BB_flag(x) |= BBM_PARTIAL_BUNDLE)
-#define Set_BB_edge_splitting(x)    (BB_flag(x) |= BBM_EDGE_SPLITTING)
 #define Set_BB_chk_split_tail(x)    (BB_flag(x) |= BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
 #endif
 #define	Reset_BB_entry(x)	(BB_flag(x) &= ~BBM_ENTRY)
@@ -731,7 +733,6 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_profile_changed(x)    (BB_flag(x) &= ~BBM_PROFILE_CHANGED)
 #define Resset_BB_profile_added(x)    (BB_flag(x) &= ~BBM_PROFILE_ADDED)
 #define Reset_BB_partial_bundle(x)    (BB_flag(x) &= ~BBM_PARTIAL_BUNDLE)
-#define Reset_BB_edge_splitting(x)    (BB_flag(x) &= ~BBM_EDGE_SPLITTING)
 #define Reset_BB_chk_split_tail(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
 #endif
 #ifdef KEY
