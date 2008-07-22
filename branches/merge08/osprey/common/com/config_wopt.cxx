@@ -192,7 +192,11 @@ INT32 WOPT_Enable_Load_PRE_Limit = -1;
 BOOL  WOPT_Enable_Loopinvarexp_Str_Reduction = TRUE;
 BOOL  WOPT_Enable_Lower_Short_Circuit = FALSE;
 BOOL  WOPT_Enable_Lower_Short_Circuit_Set = FALSE;
+#if defined(TARG_SL)
+BOOL  WOPT_Enable_MINMAX = FALSE; /* disallow minmax opcode */
+#else
 BOOL  WOPT_Enable_MINMAX = TRUE; /* allow minmax opcode */
+#endif
 BOOL  WOPT_Enable_Min_Type = TRUE; 
 BOOL  WOPT_Enable_Move_Intrinsicop = TRUE;
 BOOL  WOPT_Enable_MP_varref = TRUE;

@@ -192,10 +192,10 @@ enum ST_FLAGS_EXT
     ST_IN_V1BUF = 0x100,                // ST is vector1 variable
     ST_IN_V2BUF = 0x200,                // ST is vector2 variable 
     ST_IN_V4BUF = 0x400,                // ST is vector4 variable 
-    ST_IN_SDRAM = 0x200,                // ST is sdram variable 
-    ST_IN_SBUF =  0x800,                // ST is explcitly declared sbuf so 
-    ST_IS_VBUF_OFFSET = 0x1000,  // represent this symbol means offset instead of a absolute address
-    ST_IS_SBUF_OFFSET = 0x2000,  // same as above and will be deleted for we don't have sbuf in the future.
+    ST_IN_SDRAM = 0x800,                // ST is sdram variable 
+    ST_IN_SBUF =  0x1000,                // ST is explcitly declared sbuf so 
+    ST_IS_VBUF_OFFSET = 0x2000,  // represent this symbol means offset instead of a absolute address
+    ST_IS_SBUF_OFFSET = 0x4000,  // same as above and will be deleted for we don't have sbuf in the future.
 #endif     
 }; // ST_FLAGS_EXT
 #endif
