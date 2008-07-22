@@ -1309,7 +1309,14 @@ Enter_Original_St(const IPC_GLOBAL_TABS& original_tabs,
     } else {
 	Set_ST_name_idx(new_st, (*New_Symstr_Idx)[ST_name_idx(original_st)]);
 
-	if (ST_sym_class(original_st) == CLASS_FUNC) {
+	if (ST_sym_class(original_st) == CLASS_FUNC
+#ifdef KEY
+	    // Bug 14465: Merge the PU for a dummy function representing
+	    // a global-scope ASM, so that merged symbol table entries
+	    // get the updated PU idx.
+	    || ST_sym_class(original_st) == CLASS_NAME
+#endif
+	   ) {
 	    PU_IDX new_pu_idx = 
 		Merge_Global_Pu (ST_pu(original_st), original_tabs);
 

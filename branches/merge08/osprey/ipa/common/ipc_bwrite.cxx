@@ -647,6 +647,46 @@ void output_queue::push(PU_Info* pu) {
           
 }
 
+#ifdef KEY
+// Return the number of '\n' in pu_name.
+static int
+count_new_lines (const char * pu_name)
+{
+  int count = 0;
+
+  for (char c = *pu_name; c != '\0'; c = *(++pu_name))
+    if (c == '\n')
+      count++;
+
+  return count;
+}
+
+
+// BUF has '\n' characters, COUNT is the count of this PU_NAME.
+// After each new-line character, insert "## " so that each new
+// line starts with a comment character.
+static void
+fill_in_buffer (char * buf, int count, const char * pu_name)
+{
+  sprintf(buf, " %d: ", count);
+  buf = strchr(buf, '\0');
+
+  while (*pu_name != '\0')
+  {
+    *buf = *pu_name;
+    if (*pu_name == '\n')
+    {
+      *(++buf) = '#';
+      *(++buf) = '#';
+      *(++buf) = ' ';
+    }
+    buf++;
+    pu_name++;
+  }
+  *buf = '\0';
+}
+#endif
+
 size_t
 output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
 {
@@ -661,13 +701,29 @@ output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
     
     char* buf = 0;
     const size_t pu_len = strlen(pu_name);
-    if (pu_len + padding < bufsize)
+#ifdef KEY
+    // Bug 14465: Count new-lines.
+    int num_new_lines = count_new_lines(pu_name);
+    const int total_len = pu_len + padding + num_new_lines * 5;
+#else
+    const int total_len = pu_len + padding;
+#endif
+
+    if (total_len < bufsize)
       buf = static_buf;
     else {
-      buf = static_cast<char*>(malloc(pu_len + padding));
+      buf = static_cast<char*>(malloc(total_len));
       if (!buf)
         ErrMsg (EC_No_Mem, "pu_tree_add_comment"); 
     }
+
+#ifdef KEY
+    // Bug 14465: Update buffer with makefile comments in
+    // multiple names.
+    if (num_new_lines)
+      fill_in_buffer (buf, count++, pu_name);
+    else
+#endif
 
     sprintf(buf, " %lu: %s", (unsigned long)(count++), pu_name);
     ipacom_add_comment(index, buf);
@@ -829,6 +885,10 @@ extern "C" void IP_WRITE_pu (IP_FILE_HDR *s , INT pindex)
 	       CURRENT_SYMTAB,
 	       GLOBAL_SYMTAB + 1));
 
+#ifdef KEY
+      // Bug 14465: dummy function for global-scope ASM?
+      if (ST_class(St_Table[PU_Info_proc_sym(pu)]) != CLASS_NAME)
+#endif
       Ip_alias_class->Classify_memops(PU_Info_tree_ptr(pu));
 
       // Classify the initialized data after seeing the code so we get
