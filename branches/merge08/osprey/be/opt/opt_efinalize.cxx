@@ -576,6 +576,11 @@ EXP_WORKLST::Determine_inserts_saves_deletions(CODEMAP         *htable,
 		  phi->Set_opnd(opnd_num, occ); // Phi opnd pts to phi-pred nd
 		}
 		else {
+#if defined(TARG_SL) //PARA_EXTENSION
+                  if(occ_bb->SL2_para_region() && def->Sunk_lvalue())
+                    if(occ_bb->SL2_para_region() && def->Sunk_lvalue())
+#endif
+
 		  e_ver_tab->Note_version_use(opnd->E_version());
   
 		  phi->Set_opnd(opnd_num,
