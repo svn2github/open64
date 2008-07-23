@@ -115,6 +115,12 @@
 #  Temporarily, allow no BUILD_COMPILER, which defaults to GNU.
 #
 
+ifeq ($(BUILD_OS), LINUX)
+BUILD_OS_LINUX_OR_DARWIN=TRUE
+endif
+ifeq ($(BUILD_OS), DARWIN)
+BUILD_OS_LINUX_OR_DARWIN=TRUE
+endif
 ifndef BUILD_COMPILER
   BUILD_COMPILER = GNU
 endif
@@ -130,8 +136,8 @@ endif
 #  Verify that BUILD_AREA is defined if doing a build on Linux.
 #
 ifndef BUILD_AREA
-ifeq ($(BUILD_OS), LINUX)
-  ABORT_BUILD = BUILD_AREA must be defined when BUILD_OS is LINUX!
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
+  ABORT_BUILD = BUILD_AREA must be defined when BUILD_OS is LINUX or DARWIN!
 endif
 endif
 
@@ -353,6 +359,7 @@ endif
 
 ifndef BUILD_OS
   BUILD_OS = LINUX
+  BUILD_OS_LINUX_OR_DARWIN=TRUE
 endif
 ifneq ($(BUILD_OS), LINUX)
 ifneq ($(BUILD_OS), MINGW)
@@ -566,7 +573,7 @@ endif
 #  BUILD_ABI.
 #
 
-ifeq ($(BUILD_OS), LINUX)
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
    STD_DSO_LOADOPTS = $(LDOPTS_I32) $(LDDSOOPTS_I32)
 else
 ifeq ($(BUILD_ABI), 64BIT)
