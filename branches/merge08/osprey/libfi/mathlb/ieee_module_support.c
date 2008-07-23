@@ -96,12 +96,6 @@ typedef struct {
   int4 value;
   } ieee_class;
 
-# if defined(TARG_IA32)
-#  define FESETENV __f90_fesetenv
-#  define FEGETENV __f90_fegetenv
-#  define FENV_T our_fenv_t
-#  define IS_SSE2_PRESENT() (!__SSE2_off)
-
 /*
  * 1. In most if not all Linux distros the -m32 fegetenv() and fesetenv()
  * functions fail to read and set bits in the MXCSR register, which affect the
@@ -149,10 +143,22 @@ typedef struct {
  * for all of the fenv.h functions.
  */
 
+# if defined(TARG_IA32) || defined(TARG_X8664)
+#  define FESETENV __f90_fesetenv
+#  define FEGETENV __f90_fegetenv
+#  define FENV_T our_fenv_t
+
+#  if defined(TARG_IA32) /* Definitions for IA32 -m32 */
+#  define IS_SSE2_PRESENT() (!__SSE2_off)
+
 /* If command line disables SSE2, front end will emit a strong definition
  * for this along with the main program */
 #pragma weak __SSE2_off
 int __SSE2_off = 0;
+
+#  elif defined(TARG_X8664) /* Definitions for X8664 -m64 */
+#   define IS_SSE2_PRESENT() (1)
+#  endif
 
 typedef struct {
   unsigned short int __control_word;
@@ -170,6 +176,23 @@ typedef struct {
   unsigned short int __unused5;
   unsigned int __mxcsr;
   } our_fenv_t;
+
+static int __f90_fegetenv(FENV_T *envp) {
+  fegetenv((fenv_t *) envp);
+  if (IS_SSE2_PRESENT()) {
+    unsigned int temp;
+    __asm__("stmxcsr %0" : "=m" (*&temp));
+    envp->__mxcsr = temp;
+    }
+  }
+
+static int __f90_fesetenv(const FENV_T *envp) {
+  fesetenv((fenv_t *) envp);
+  if (IS_SSE2_PRESENT()) {
+    unsigned int temp = envp->__mxcsr;
+    __asm__("ldmxcsr %0" : : "m" (*&temp));
+    }
+  }
 
 int
 feclearexcept(int excepts)
@@ -208,34 +231,56 @@ feclearexcept(int excepts)
   return 0;
 }
 
-static int __f90_fegetenv(FENV_T *envp) {
-  fegetenv((fenv_t *) envp);
-  if (IS_SSE2_PRESENT()) {
-    unsigned int temp;
-    __asm__("stmxcsr %0" : "=m" (*&temp));
-    envp->__mxcsr = temp;
-    }
-  }
-
-static int __f90_fesetenv(const FENV_T *envp) {
-  fesetenv((fenv_t *) envp);
-  if (IS_SSE2_PRESENT()) {
-    unsigned int temp = envp->__mxcsr;
-    __asm__("ldmxcsr %0" : : "m" (*&temp));
-    }
-  }
-# elif defined(TARG_X8664)
-   /* Definitions for X8664 -m64 */
-#  define IS_SSE2_PRESENT() (1)
-#  define FENV_T fenv_t
-#  define FESETENV fesetenv
-#  define FEGETENV fegetenv
 #else /* defined(TARG_whatever) */
    /* Definitions for non-X86 architectures */
 #  define FENV_T fenv_t
 #  define FESETENV fesetenv
 #  define FEGETENV fegetenv
 #endif /* defined(TARG_whatever) */
+
+#if defined(BUILD_OS_DARWIN)
+/* Environment doesn't provide these functions */
+
+int
+feenableexcept(int excepts) {
+  excepts &= FE_ALL_EXCEPT;
+
+  unsigned short int prev_excepts;
+  __asm__("fstcw %0" : "=m" (*&prev_excepts));
+  int save = prev_excepts;
+  prev_excepts &= ~excepts;
+  __asm__("fldcw %0" : : "m" (*&prev_excepts));
+
+  if (IS_SSE2_PRESENT()) {
+    unsigned int prev_mxcsr_excepts;
+    __asm__("stmxcsr %0" : "=m" (*&prev_mxcsr_excepts));
+    prev_mxcsr_excepts &= ~(excepts << 7);
+    __asm__("ldmxcsr %0" : : "m" (*&prev_mxcsr_excepts));
+  }
+
+  return (~save) & FE_ALL_EXCEPT;
+}
+
+int
+fedisableexcept(int excepts) {
+  excepts &= FE_ALL_EXCEPT;
+
+  unsigned short int prev_excepts;
+  __asm__("fstcw %0" : "=m" (*&prev_excepts));
+  int save = prev_excepts;
+  prev_excepts |= excepts;
+  __asm__("fldcw %0" : : "m" (*&prev_excepts));
+
+  if (IS_SSE2_PRESENT()) {
+    unsigned int prev_mxcsr_excepts;
+    __asm__("stmxcsr %0" : "=m" (*&prev_mxcsr_excepts));
+    prev_mxcsr_excepts |= (excepts << 7);
+    __asm__("ldmxcsr %0" : : "m" (*&prev_mxcsr_excepts));
+  }
+
+  return (~save) & FE_ALL_EXCEPT;
+}
+#endif /* defined(BUILD_OS_DARWIN) */
 
 ieee_class _Ieee_class_4_(float *f) {
   ieee_class result;
