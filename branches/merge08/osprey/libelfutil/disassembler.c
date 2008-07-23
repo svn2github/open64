@@ -51,7 +51,11 @@
 #include <disassembler.h>
 #include <string.h>
 #include "libelf.h"
+#if defined(BUILD_OS_DARWIN)
+#include "darwin_elf.h"
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 
 extern int dis_asm(char *, unsigned long long int);
 
@@ -285,6 +289,7 @@ static char *cop2func_name[64] = {
 #pragma weak fp_register_name = __fp_register_name32
 #pragma weak disassembler = __disassembler32
 #pragma weak disassembler32 = __disassembler32
+#elif defined(BUILD_OS_DARWIN)
 #else
 #pragma weak disasm64 = __disasm64
 #pragma weak dis_init64 = __dis_init64

@@ -62,6 +62,7 @@
 #ifdef _LIBELF_XTND_EXPANDED_DATA
 #pragma weak xlate_pro_init_xtnd = _xlate_pro_init_xtnd
 #pragma weak xlate_pro_finish_xtnd = _xlate_pro_finish_xtnd
+#elif defined(BUILD_OS_DARWIN)
 #else
 #pragma weak xlate_pro_init = _xlate_pro_init
 #pragma weak xlate_pro_finish = _xlate_pro_finish

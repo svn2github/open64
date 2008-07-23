@@ -54,6 +54,7 @@
 
 #ifdef _LIBELF_XTND_EXPANDED_DATA
 #pragma weak xlate_pro_disk_next_block_xtnd = _xlate_pro_disk_next_block_xtnd
+#elif defined(BUILD_OS_DARWIN)
 #else
 #pragma weak xlate_pro_disk_next_block = _xlate_pro_disk_next_block
 #endif
