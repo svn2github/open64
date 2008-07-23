@@ -130,6 +130,11 @@ C         External (FORN) storage length, in bits.
       INTENT (OUT) NATIVECH
       OPTIONAL NATIVECH
 
+#if defined(BUILD_OS_DARWIN) && defined(__GNUC__)
+      /* GNU Fortran rejects $ in ids. We just want it to compile, not work */
+      MIPS2IA = 0
+      END
+#else /* defined(BUILD_OS_DARWIN) && defined(__GNUC__) */
 C         Optional parameter specifying NATIVE character variable if
 C         it is of type CHARACTER (TYPE = 6).  This parameter is
 C         ignored if TYPE is not 6 (CHARACTER).
@@ -153,6 +158,7 @@ C
       PARAMETER        (WORDSZB = 6)   !  Log (base 2) of WORDSZ
 
       INTEGER           IINC, MINC
+/* KEY bug 13352: __mips does not imply little-endian */
 #if ! defined(_MIPSEL)
       PARAMETER        (IINC = 1)
 #else
@@ -1322,3 +1328,4 @@ C
      5          O'        213',   ! Logical:  64-, 32-, 16- and 8-bit
      6          O'        001'/   ! Character:  8-bit
       END BLOCK DATA MIPS2IA_INIT
+#endif /* defined(BUILD_OS_DARWIN) && defined(__GNUC__) */
