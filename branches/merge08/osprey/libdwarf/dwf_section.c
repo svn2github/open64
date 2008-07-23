@@ -110,7 +110,7 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	char buff1[ENCODE_SPACE_NEEDED];
 	char buff2[ENCODE_SPACE_NEEDED];
 	char buff3[ENCODE_SPACE_NEEDED];
-	char *augmentation;
+	const char *augmentation;
 	char *augmented_al;
 	long augmented_fields_length;
 	int  a_bytes;

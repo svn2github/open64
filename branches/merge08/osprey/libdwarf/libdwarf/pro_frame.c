@@ -575,6 +575,65 @@ dwarf_add_fde_inst(Dwarf_P_Fde fde,
     return fde;
 }
 
+#ifdef KEY
+/* Similar to dwarf_add_fde_inst, except that the offset denoted by VAL2
+   is signed.
+*/
+Dwarf_P_Fde
+dwarf_add_fde_inst_with_signed_offset(Dwarf_P_Fde fde,
+                                      Dwarf_Small op,
+                                      Dwarf_Unsigned val1,
+                                      Dwarf_Signed val2, Dwarf_Error * error)
+{
+    Dwarf_P_Frame_Pgm curinst;
+    int nbytes, nbytes1, nbytes2;
+    char *ptr;
+    int res;
+    char buff1[ENCODE_SPACE_NEEDED];
+    char buff2[ENCODE_SPACE_NEEDED];
+
+
+    nbytes = 0;
+    ptr = NULL;
+    curinst = (Dwarf_P_Frame_Pgm)
+        _dwarf_p_get_alloc(NULL, sizeof(struct Dwarf_P_Frame_Pgm_s));
+    if (curinst == NULL) {
+        _dwarf_p_error(NULL, error, DW_DLE_FPGM_ALLOC);
+        return ((Dwarf_P_Fde) DW_DLV_BADADDR);
+    }
+
+    if (op == DW_CFA_offset_extended_sf)
+    {
+      res = _dwarf_pro_encode_leb128_nm(val1, &nbytes1,
+                                        buff1, sizeof(buff1));
+      if (res != DW_DLV_OK) {
+        _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
+        return ((Dwarf_P_Fde) DW_DLV_BADADDR);
+      }
+      res = _dwarf_pro_encode_signed_leb128_nm(val2, &nbytes2,
+                                               buff2, sizeof(buff2));
+      if (res != DW_DLV_OK) {
+        _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
+        return ((Dwarf_P_Fde) DW_DLV_BADADDR);
+      }
+      ptr = (char *) _dwarf_p_get_alloc(NULL, nbytes1 + nbytes2);
+      if (ptr == NULL) {
+        _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
+        return ((Dwarf_P_Fde) DW_DLV_BADADDR);
+      }
+      memcpy(ptr, buff1, nbytes1);
+      memcpy(ptr + nbytes1, buff2, nbytes2);
+      nbytes = nbytes1 + nbytes2;
+    }
+    curinst->dfp_opcode = op;
+    curinst->dfp_args = ptr;
+    curinst->dfp_nbytes = nbytes;
+    curinst->dfp_next = NULL;
+
+    _dwarf_pro_add_to_fde(fde, curinst);
+    return fde;
+}
+#endif
 
 /*------------------------------------------------------------------------
 	instructions are added to fde in the form of a linked

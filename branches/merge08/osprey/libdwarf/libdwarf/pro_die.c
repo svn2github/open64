@@ -134,6 +134,7 @@ dwarf_die_link(Dwarf_P_Die new_die,
     if (child != NULL) {
 	n_nulls++;
 
+	Dwarf_P_Die curdie = child;
 	new_die->di_child = child;
 	new_die->di_last_child = NULL;
 
@@ -145,10 +146,10 @@ dwarf_die_link(Dwarf_P_Die new_die,
 	child->di_parent = new_die;
     }
     if (left != NULL) {
-	Dwarf_P_Die prtdie = left->di_parent;
 	n_nulls++;
 	new_die->di_left = left;
 
+	Dwarf_P_Die prtdie = left->di_parent;
 
 	if (left->di_right) {
             /* already a right sibl, lets insert */
