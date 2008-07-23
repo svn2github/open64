@@ -97,7 +97,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include "make_depend.h"
+#include "cmplrs/make_depend.h"
 
 /*
  *	Debugging macros
