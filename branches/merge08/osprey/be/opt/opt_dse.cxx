@@ -432,7 +432,9 @@ DSE::Required_stmt( const WN *wn ) const
 void 
 DSE::Set_Required_VSE( VER_STAB_ENTRY *vse, BOOL real_use, WN *ref_wn ) const
 {
-  if ( vse->Real_use() ) return;
+  // This line exists in PSC3.2. But it causes problems in OSP
+  //if ( vse->Real_use() ) return;
+
   if (real_use)
     vse->Set_Real_use();
 
