@@ -298,8 +298,8 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 
   if (!is_double && CG_idivbyconst_opt) {
     if (is_signed) {
-      UINT d = labs((UINT)denom_val);
-      UINT l = log2(d);
+      UINT64 d = labs((UINT64)denom_val);
+      UINT l = log2((UINT)d);
       INT64 e = denom_val;
       UINT s, a;
       UINT64 m;
