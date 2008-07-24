@@ -312,6 +312,7 @@ set_phase_dir (mask_t mask, char *path)
 	for (i = P_NONE; i < P_LAST; i++) {
 		if ((phase_info[i].mask & mask) != 0) {
 			phase_info[i].dir = string_copy(path);
+			phase_info[i].find_dir_by_path = FALSE;
 			if (i == P_ld)
 			  ldpath_for_pixie = string_copy(path);
 		}
