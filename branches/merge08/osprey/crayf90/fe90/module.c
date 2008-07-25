@@ -72,7 +72,7 @@ static char USMID[] = "\n@(#)5.0_pl/sources/module.c	5.17	09/30/99 15:47:54\n";
 
 # include <errno.h>
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX)) && defined(_MODULE_TO_DOT_o)
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)) && defined(_MODULE_TO_DOT_o)
 # include <fcntl.h>
 # include <libelf.h>
 # include <sys/elf.h>
@@ -266,7 +266,7 @@ static	boolean	search_for_duplicate_attrs;
 
 extern	char	compiler_gen_date[];
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 # pragma inline set_mod_link_tbl_for_typ
 # pragma inline set_mod_link_tbl_for_cn
 # pragma inline set_mod_link_tbl_for_ir
@@ -1253,6 +1253,14 @@ static	void  set_mod_link_tbl_for_attr(int	attr_idx)
          ML_NP_KEEP_ME(SB_NAME_IDX(sb_idx))	= TRUE;
          ML_NP_IDX(SB_NAME_IDX(sb_idx))		= SB_NAME_IDX(sb_idx);
          ML_NP_LEN(SB_NAME_IDX(sb_idx))		= SB_NAME_LEN(sb_idx);
+#ifdef KEY /* Bug 14150 */
+	 int sb_ext_name_idx = SB_EXT_NAME_IDX(sb_idx);
+	 if (sb_ext_name_idx) {
+	   ML_NP_KEEP_ME(sb_ext_name_idx) = TRUE;
+	   ML_NP_IDX(sb_ext_name_idx) = sb_ext_name_idx;
+	   ML_NP_LEN(sb_ext_name_idx) = SB_EXT_NAME_LEN(sb_idx);
+	 }
+#endif /* KEY Bug 14150 */
 
          if (SB_FIRST_ATTR_IDX(sb_idx) != NULL_IDX) {
             KEEP_ATTR(SB_FIRST_ATTR_IDX(sb_idx));
@@ -2989,6 +2997,12 @@ static void  compress_tbls(int		al_idx,
    for (mod_idx = 1; mod_idx <= sb_idx; mod_idx++) {
       SB_NAME_IDX(mod_idx)		= ML_NP_IDX(SB_NAME_IDX(mod_idx));
       SB_MODULE_IDX(mod_idx)		= ML_AT_IDX(SB_MODULE_IDX(mod_idx));
+#ifdef KEY /* Bug 14150 */
+      int sb_ext_name_idx = SB_EXT_NAME_IDX(mod_idx);
+      if (sb_ext_name_idx) {
+	SB_EXT_NAME_IDX(mod_idx)	= ML_NP_IDX(sb_ext_name_idx);
+      }
+#endif /* KEY Bug 14150 */
 
       if (SB_FIRST_ATTR_IDX(mod_idx) != NULL_IDX) {
          SB_FIRST_ATTR_IDX(mod_idx) = ML_AT_IDX(SB_FIRST_ATTR_IDX(mod_idx));
@@ -3024,6 +3038,12 @@ static void  compress_tbls(int		al_idx,
 
    for (mod_idx = start_idx; mod_idx <= sb_idx; mod_idx++) {
       SB_NAME_IDX(mod_idx)		= ML_NP_IDX(SB_NAME_IDX(mod_idx));
+#ifdef KEY /* Bug 14150 */
+      int sb_ext_name_idx = SB_EXT_NAME_IDX(mod_idx);
+      if (sb_ext_name_idx) {
+	SB_EXT_NAME_IDX(mod_idx)	= ML_NP_IDX(sb_ext_name_idx);
+      }
+#endif /* KEY Bug 14150 */
       SB_MODULE_IDX(mod_idx)		= ML_AT_IDX(SB_MODULE_IDX(mod_idx));
 
       if (SB_FIRST_ATTR_IDX(mod_idx) != NULL_IDX) {
@@ -6675,6 +6695,12 @@ static	boolean  read_in_module_tbl(int		 fp_file_idx,
 
    for (idx = stor_blk_tbl_idx+1; idx <= end_sb_idx; idx++) {
       SB_NAME_IDX(idx)		= old_name_pool_idx + SB_NAME_IDX(idx);
+#ifdef KEY /* Bug 14150 */
+      int ext_name_idx = SB_EXT_NAME_IDX(idx);
+      SB_EXT_NAME_IDX(idx)	= ext_name_idx ?
+        (old_name_pool_idx + ext_name_idx) :
+	0;
+#endif /* KEY Bug 14150 */
       SB_HAS_RENAMES(idx)	= FALSE;
       SB_DEF_LINE(idx)		= AT_DEF_LINE(module_attr_idx);
       SB_DEF_COLUMN(idx)	= AT_DEF_COLUMN(module_attr_idx);
@@ -10210,7 +10236,7 @@ static	void	find_files_in_directory(int	dir_idx)
                okay = TRUE;
             }
 
-# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
             else if (EQUAL_STRS(suffix, ".a")) {
                okay = TRUE;
             }

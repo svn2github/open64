@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -820,7 +820,7 @@ void    assign_stmt_semantics (void)
    int			loc_idx;
    int			msg_num;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    int			tmp_idx;
 # endif
 
@@ -881,7 +881,7 @@ void    assign_stmt_semantics (void)
                       ATL_CLASS(label_idx) == Lbl_Format) {
                      IR_OPR(ir_idx)         = Asg_Opr;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
                      if (storage_bit_size_tbl[asg_var_desc.linear_type] !=
                             storage_bit_size_tbl[SA_INTEGER_DEFAULT_TYPE]) {
@@ -5586,7 +5586,7 @@ void stop_pause_stmt_semantics (void)
    }
    else {  /* no stop code exits - pass a blank */
       
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
       /* send a zero length string on irix */
 
       CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
@@ -7080,7 +7080,7 @@ static  int calculate_iteration_count(int	do_sh_idx,
 
          /* Convert the iteration count to integer.                           */
 
-# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 # ifdef _TARGET_OS_UNICOS
 
 # ifdef _DEBUG
@@ -7179,7 +7179,7 @@ static  int calculate_iteration_count(int	do_sh_idx,
          }
 
 
-# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 # ifdef _TARGET_OS_UNICOS
 # ifdef _DEBUG
    
@@ -7246,7 +7246,7 @@ static  int calculate_iteration_count(int	do_sh_idx,
       }
 
 
-# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 # ifdef _TARGET_OS_UNICOS
 
       /* Now that the iteration count has been converted to integer, if       */
@@ -8012,7 +8012,7 @@ int	create_alloc_descriptor(int	count,
 
    TRACE (Func_Entry, "create_alloc_descriptor", NULL);
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    type_idx = SA_INTEGER_DEFAULT_TYPE;
 # else
    type_idx = CG_INTEGER_DEFAULT_TYPE;
@@ -8033,7 +8033,7 @@ int	create_alloc_descriptor(int	count,
 
    the_constant			= 1 + count;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    /* the version/count item is always 64 bits */
    if (TYP_LINEAR(type_idx) == Integer_4) {
       the_constant++;
@@ -8100,7 +8100,7 @@ int	create_alloc_descriptor(int	count,
    SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx)) = asg_idx;
    SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    if (TYP_LINEAR(type_idx) == Integer_4) {
       NTR_IR_TBL(asg_idx);
       IR_OPR(asg_idx) = Asg_Opr;
@@ -8300,7 +8300,7 @@ void	set_directives_on_label(int	label_attr)
       ATL_PATTERN(label_attr)	= TRUE;
    }
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    if (cdir_switches.notask_region) {
       ATL_NOTASK(label_attr)	= TRUE;
    }
@@ -8911,7 +8911,7 @@ static boolean check_stat_variable(int          ir_idx,
    int                  stat_line;
 
 # if defined(_TARGET_OS_MAX) || defined(_TARGET_OS_SOLARIS) || \
-     (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+     (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    int                  asg_idx;
    int                  tmp_idx;
 # endif
@@ -8967,7 +8967,7 @@ static boolean check_stat_variable(int          ir_idx,
          find_opnd_line_and_column(&opnd, &line, &col);
 
 # if defined(_TARGET_OS_MAX) || defined(_TARGET_OS_SOLARIS) || \
-     (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+     (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 # ifdef _TARGET_OS_MAX
          if (exp_desc.linear_type == Integer_1 ||
              exp_desc.linear_type == Integer_2 ||
@@ -9192,7 +9192,7 @@ void set_up_allocate_as_call(int                ir_idx,
    list_idx = IR_IDX_L(ir_idx);
    the_constant = 2;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    if (TYP_LINEAR(ATD_TYPE_IDX(tmp_array_idx)) == Integer_4) {
       the_constant++;
    }

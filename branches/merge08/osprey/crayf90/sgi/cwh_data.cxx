@@ -55,7 +55,7 @@
   *====================================================================
  */
 
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
 static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/crayf90/sgi/SCCS/s.cwh_data.cxx $ $Revision: 1.7 $";
@@ -395,7 +395,7 @@ b_and_o get_base_and_offset(WN *wn)
       r.base = WN_st(wn);
       r.offset = WN_offset(wn);
 
-# ifdef linux
+# if (defined(linux) || defined(BUILD_OS_DARWIN))
       /* Check for based as a symbol in common */
       while (ST_base(r.base) != r.base) {
          r.offset += ST_ofst(r.base);

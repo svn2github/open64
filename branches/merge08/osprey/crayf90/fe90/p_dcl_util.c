@@ -691,7 +691,7 @@ static	void	parse_kind_selector(void)
       }
 # endif
 
-# if defined(_TARGET_OS_LINUX)
+# if defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)
       if ((TYP_TYPE(ATD_TYPE_IDX(AT_WORK_IDX)) == Complex ||
            TYP_TYPE(ATD_TYPE_IDX(AT_WORK_IDX)) == Real) &&
           TYP_DCL_VALUE(ATD_TYPE_IDX(AT_WORK_IDX)) == 16) {
@@ -959,7 +959,7 @@ parse_non_char_kind_selector(boolean double_precision) {
 
 # ifdef _TARGET_OS_MAX /* Msg was issued when DOUBLE PRECISION was parsed.*/
 	       linear_type = Real_8;
-# elif defined(_TARGET_OS_LINUX)
+# elif defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)
 	       PRINTMSG(TOKEN_LINE(token), 541, Error, 
 			TOKEN_COLUMN(token));
 # else
@@ -994,7 +994,7 @@ parse_non_char_kind_selector(boolean double_precision) {
 			TOKEN_COLUMN(token),
 			type_str, num, type_str, 8);
 	       linear_type = Real_8;
-# elif defined(_TARGET_OS_LINUX)
+# elif defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)
 	       PRINTMSG(TOKEN_LINE(token), 541, Error, 
 			TOKEN_COLUMN(token));
 # else
@@ -1034,7 +1034,7 @@ parse_non_char_kind_selector(boolean double_precision) {
 		     TOKEN_COLUMN(token),
 		     type_str, num, type_str, 16);
 	    linear_type = Complex_8;
-# elif defined(_TARGET_OS_LINUX)
+# elif defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)
 	       PRINTMSG(TOKEN_LINE(token), 541, Error, 
 			TOKEN_COLUMN(token));
 # else
@@ -1109,6 +1109,9 @@ parse_non_char_kind_selector(boolean double_precision) {
    else { /* Cannot search - because of IMPLICIT calls */
       parse_err_flush(Find_None, "scalar-int-literal-constant");
    }
+   /* 0th entry of type_tbl is guaranteed to be initialized (see p_driver.c)
+    * so error doesn't cause crash later on (SiCortex bug 4840) */ 
+   return NULL_IDX;
 }
 #endif /* KEY Bug 8422 */
 
@@ -1959,6 +1962,121 @@ boolean merge_automatic(boolean		chk_semantics,
 
 }  /* merge_automatic */
 
+#ifdef KEY /* Bug 14150 */
+/******************************************************************************\
+|*									      *|
+|* Description:								      *|
+|*	Add the BIND attribute to an attr. Imitating the (bad) example of     *|
+|*      merge_intent(), the binding label comes from a global variable.       *|
+|*	Note that common (sb_idx) is handled elsewhere, not here.             *|
+|*									      *|
+|* Input parameters:							      *|
+|*	chk_semantics -> TRUE if semantic checking needs to be done.  If this *|
+|*	                 is FALSE, just add the attribute to the attr.        *|
+|*	line     -> The line number of the object to add the attribute to     *|
+|*	column   -> The line number of the object to add the attribute to     *|
+|*	attr_idx -> Attr index to add the BIND attribute to.                  *|
+|*									      *|
+|* Output parameters:							      *|
+|*	NONE								      *|
+|*									      *|
+|* Returns:								      *|
+|*	TRUE if successful merge.					      *|
+|*									      *|
+\******************************************************************************/
+
+boolean merge_bind(boolean		chk_semantics,
+	                int		line,
+		        int		column,
+			int		attr_idx)
+
+{
+   boolean fnd_err  = FALSE;
+   TRACE (Func_Entry, "merge_bind", NULL);
+
+   if (chk_semantics) {
+     fnd_err = fnd_semantic_err(Obj_Bind, line, column, attr_idx, TRUE);
+   }
+   else if (!fnd_err && AT_BIND_ATTR(attr_idx)) {
+     /* Make this an error, not warning, because it's not a legacy feature, and
+      * binding labels might not match if we allow redundant "bind" */
+     PRINTMSG(line, 1259, Error, column, AT_OBJ_NAME_PTR(attr_idx),
+       AT_DEF_LINE(attr_idx), "BIND");
+  }
+
+  if (!fnd_err) {
+    if (ATD_TYPE_IDX(attr_idx) == NULL_IDX) {
+      SET_IMPL_TYPE(attr_idx);
+    }
+    set_binding_label(AT_Tbl_Idx, attr_idx, &new_binding_label);
+  }
+
+  TRACE (Func_Exit, "merge_bind", NULL);
+  return !fnd_err;
+}  /* merge_bind */
+
+/******************************************************************************\
+|*									      *|
+|* Description:								      *|
+|*	Add the VALUE attribute to an attr                                    *|
+|*									      *|
+|* Input parameters:							      *|
+|*	chk_semantics -> TRUE if semantic checking needs to be done.  If this *|
+|*	                 is FALSE, just add the attribute to the attr.        *|
+|*	line     -> The line number of the object to add the attribute to     *|
+|*	column   -> The line number of the object to add the attribute to     *|
+|*	attr_idx -> Attr index to add the VALUE attribute to.                 *|
+|*									      *|
+|* Output parameters:							      *|
+|*	NONE								      *|
+|*									      *|
+|* Returns:								      *|
+|*	TRUE if successful merge.					      *|
+|*									      *|
+\******************************************************************************/
+
+boolean merge_value(boolean		chk_semantics,
+	                int		line,
+		        int		column,
+			int		attr_idx)
+
+{
+   boolean fnd_err  = FALSE;
+   TRACE (Func_Entry, "merge_value", NULL);
+
+   if (chk_semantics) {
+     fnd_err = fnd_semantic_err(Obj_Value, line, column, attr_idx, TRUE);
+     if (!fnd_err) {
+       if (ATD_CLASS(attr_idx) == Dummy_Argument && ATD_VALUE_ATTR(attr_idx)) {
+	 /* Make this error, not warning, because it's not a legacy feature */
+	 PRINTMSG(line, 1259, Error, column, AT_OBJ_NAME_PTR(attr_idx),
+	   AT_DEF_LINE(attr_idx), "VALUE");
+	 fnd_err = TRUE;
+       }
+       else if (ATD_INTENT(attr_idx) == Intent_Out ||
+         ATD_INTENT(attr_idx) == Intent_Inout) {
+	 PRINTMSG(line, 550, Error, column, AT_OBJ_NAME_PTR(attr_idx),
+	   "VALUE", "INTENT(OUT)", AT_DEF_LINE(attr_idx));
+	 fnd_err = TRUE;
+       }
+     }
+   }
+   else {
+      SET_IMPL_TYPE(attr_idx);
+   }
+
+  if (!fnd_err) {
+     /* Imitate merge_intent(). attr_semantics() detects use of "intent" or
+      * "value" on non-dummy */
+     ATD_CLASS(attr_idx) = Dummy_Argument;
+     ATD_VALUE_ATTR(attr_idx) = TRUE;
+  }
+
+  TRACE (Func_Exit, "merge_value", NULL);
+  return !fnd_err;
+}  /* merge_value */
+#endif /* KEY Bug 14150 */
+
 
 /******************************************************************************\
 |*									      *|
@@ -2345,6 +2463,17 @@ boolean merge_external(boolean	chk_semantics,
    }
    else {
 
+#ifdef KEY /* Bug 14150 */
+      /* fnd_semantic_err() detects addition of bind to external, not vice
+       * versa */
+      if ((!(AT_OBJ_CLASS(attr_idx) == Data_Obj && 
+	ATD_CLASS(attr_idx) == Dummy_Argument)) &&
+	AT_BIND_ATTR(attr_idx)) {
+	PRINTMSG(line, 550, Error, column, AT_OBJ_NAME_PTR(attr_idx), "BIND",
+	  "EXTERNAL", AT_DEF_LINE(attr_idx));
+	chk_err = TRUE;
+      }
+  #endif /* KEY Bug 14150 */
       if (AT_OBJ_CLASS(attr_idx) == Data_Obj) {
 
          /* By passing Pgm_Unknown, chg_data_obj_to_pgm_unit will decide */
@@ -2438,6 +2567,20 @@ boolean merge_intent(boolean		chk_semantics,
 
       if (!fnd_err) {
 
+#ifdef KEY /* Bug 14110, 14150 */
+         if (new_intent == Intent_In) {
+	   if (ATD_VOLATILE(attr_idx)) {
+	     PRINTMSG(line, 550, Error, column, AT_OBJ_NAME_PTR(attr_idx),
+	       "VOLATILE", "INTENT(IN)", AT_DEF_LINE(attr_idx));
+	   }
+	 }
+	 else {
+	   if (ATD_VALUE_ATTR(attr_idx)) {
+	     PRINTMSG(line, 550, Error, column, AT_OBJ_NAME_PTR(attr_idx),
+	       "VALUE", "INTENT(OUT)", AT_DEF_LINE(attr_idx));
+	   }
+	 }
+#endif /* KEY Bug 14110, 14150 */
          if (ATD_INTENT(attr_idx) != Intent_Unseen) {
 
             if (ATD_INTENT(attr_idx) == new_intent) {
@@ -3030,7 +3173,7 @@ boolean	parse_int_spec_expr(long		*len_idx,
    expr_mode_type	save_expr_mode	= expr_mode;
    int			type_idx;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX)) || defined(_TARGET_OS_DARWIN)
    int			cvrt_idx;
    int			new_type;
 # endif
@@ -3122,7 +3265,7 @@ boolean	parse_int_spec_expr(long		*len_idx,
       *len_idx          = (long) OPND_IDX(len_opnd);
       *field_type       = CN_Tbl_Idx;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX)) || defined(_TARGET_OS_DARWIN)
 
       if (!parsing_kind_selector) {
          new_type	= NULL_IDX;
@@ -3186,7 +3329,7 @@ boolean	parse_int_spec_expr(long		*len_idx,
    }
    else {
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX)) || defined(_TARGET_OS_DARWIN)
       new_type	= NULL_IDX;
 
       if (!parsing_kind_selector) { 
@@ -4134,6 +4277,13 @@ boolean merge_volatile(boolean	chk_semantics,
    if (chk_semantics) {
       fnd_err = fnd_semantic_err(Obj_Volatile, line, column, attr_idx, TRUE);
 
+#ifdef KEY /* Bug 14110 */
+      if (AT_OBJ_CLASS(attr_idx) == Data_Obj &&
+	 ATD_INTENT(attr_idx) == Intent_In) {
+	 PRINTMSG(line, 550, Error, column, AT_OBJ_NAME_PTR(attr_idx),
+	    "INTENT(IN)", "VOLATILE", AT_DEF_LINE(attr_idx));
+      }
+#endif /* KEY Bug 14110 */
       if (!fnd_err && ATD_VOLATILE(attr_idx)) {
 #ifdef KEY /* Bug 5040 */
          PRINTMSG(line, 1259, ansi_or_warning(), column,
@@ -4157,3 +4307,99 @@ boolean merge_volatile(boolean	chk_semantics,
    return(!fnd_err);
 
 }  /* merge_volatile */
+#ifdef KEY /* Bug 14150 */
+/*
+ *	BNF is
+ *		( C )
+ *	or
+ *	      	( C [, NAME = scalar-char-initialization-expr ] )
+ *
+ *  result	If null on input, then we don't allow the optional clause.
+ *		Otherwise, we set TOKEN_LINE(*result) and TOKEN_COLUMN(*result).
+ *		We set BIND_SPECIFIES_NAME(*result) to indicate whether the
+ *		optional clause is present, and if so, we set TOKEN_STR(*result)
+ *		and TOKEN_LEN(*result). Note that the presence of the optional
+ *		clause is semantically different than its absence, even if the
+ *		string is empty.
+ *
+ *  returns	1 if parsed ok, 0 if erroneous
+ */
+int
+parse_language_binding_spec(token_type *result) {
+  int ok = 1;
+  if (result) {
+    TOKEN_LEN(*result) = 0;
+    TOKEN_LINE(*result) = LA_CH_LINE;
+    TOKEN_COLUMN(*result) = LA_CH_COLUMN;
+    SET_BIND_SPECIFIES_NAME(*result, FALSE);
+  }
+
+  if (LA_CH_VALUE != LPAREN) {
+    parse_err_flush(Find_EOS, "(");
+    return 0;
+  }
+  NEXT_LA_CH; /* Consume left paren */
+  if (LA_CH_VALUE != 'C' && LA_CH_VALUE != 'c') {
+    parse_err_flush(Find_EOS, "C");
+    return 0;
+  }
+  NEXT_LA_CH; /* Consume 'c' */
+  if (result) {
+    if (LA_CH_VALUE == COMMA) {
+      NEXT_LA_CH; /* Consume comma */
+      if (!matched_specific_token(Tok_Kwd_Name, Tok_Class_Keyword)) {
+	parse_err_flush(Find_Rparen, "NAME");
+	if (LA_CH_VALUE == RPAREN) {
+	  NEXT_LA_CH;
+	}
+	return 0;
+      }
+      if (LA_CH_VALUE != EQUAL) {
+	parse_err_flush(Find_Rparen, "=");
+	if (LA_CH_VALUE == RPAREN) {
+	  NEXT_LA_CH;
+	}
+	return 0;
+      }
+      NEXT_LA_CH; /* Consume equal */
+      opnd_type opnd;
+      check_type_conversion = FALSE; /* TRUE causes exp_desc to be wrong */
+      target_type_idx = 0;
+      target_char_len_idx = 0;
+      expr_arg_type exp_desc = init_exp_desc;
+      exp_desc.rank = 0;
+      expr_mode_type save_expr_mode = expr_mode;
+      expr_mode = Initialization_Expr;
+      xref_state = CIF_Symbol_Reference;
+      comp_gen_expr = TRUE;
+      if (parse_expr(&opnd) && expr_semantics(&opnd, &exp_desc)) {
+	TOKEN_LINE(*result) = opnd.line_num;
+	TOKEN_COLUMN(*result) = opnd.col_num;
+        if (exp_desc.type != Character ||
+	  exp_desc.linear_type != Short_Char_Const ||
+	  !exp_desc.constant || exp_desc.rank) {
+	  PRINTMSG(opnd.line_num, 1690, Error, opnd.col_num);
+	  ok = 0;
+	  }
+	else {
+	  int len = CN_INT_TO_C(exp_desc.char_len.idx);
+	  /* Sigh. CN table doesn't null terminate. */
+	  memcpy(TOKEN_STR(*result), (char *) &CN_CONST(opnd.idx), len);
+	  TOKEN_LEN(*result) = len;
+	  SET_BIND_SPECIFIES_NAME(*result, TRUE);
+	}
+      }
+    expr_mode = save_expr_mode;
+    }
+  }
+  if (LA_CH_VALUE != RPAREN) {
+    parse_err_flush(Find_Rparen, ")");
+    if (LA_CH_VALUE == RPAREN) {
+      NEXT_LA_CH; /* Consume right paren */
+      return 0;
+    }
+  }
+  NEXT_LA_CH; /* Consume right paren */
+  return ok;
+}
+#endif /* KEY Bug 14150 */

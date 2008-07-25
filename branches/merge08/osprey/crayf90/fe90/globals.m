@@ -290,7 +290,7 @@
 /*   that is, COMPLEX(4) should be aligned on a 4 byte boundary and	      */
 /*   COMPLEX(8) should be aligned on an 8 byte boundary.                      */
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX)) 
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)) 
 
 # define DALIGN_TEST_CONDITION(TYPE_IDX)				      \
 				TYP_LINEAR(TYPE_IDX) == Integer_8 ||          \
@@ -420,7 +420,7 @@
 # define REWIND_LIB_ENTRY		"_REWF"
 # define REWIND_NAME_LEN		5
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 # define PAUSE_LIB_ENTRY		"_F90_PAUSE"
 # define PAUSE_NAME_LEN			10
 
@@ -494,6 +494,11 @@
 #   define IEEE_SAVE_SIZE			4
 # endif /* defined(TARG_whatever) */
 #endif /* _LINUX_LINUX */
+#ifdef _DARWIN_DARWIN
+/* -m32 gives 16, but for now we double it in case -m64 is larger or we have
+ * to use our own structure anyway */
+#  define IEEE_SAVE_SIZE			32
+#endif /* _DARWIN_DARWIN */
 
 #if !defined(IEEE_SAVE_SIZE)
 # error "Need IEEE_SAVE_SIZE"
@@ -555,7 +560,7 @@
 
 # define RC_OKAY                 0    /* Compiler executed successfully.      */
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 
 # define RC_INTERNAL_ERROR       1    /* The compiler error terminated.       */
 # define RC_USER_ERROR           2    /* The program contains at least one    */
@@ -977,10 +982,11 @@
         }
 
 
-#ifdef KEY /* Bug 5089 */
+#ifdef KEY /* Bug 5089, 14150 */
 # define FUNCTION_MUST_BE_SUBROUTINE(FCN_IDX,RSLT_IDX)                         \
    (TYP_TYPE(ATD_TYPE_IDX(RSLT_IDX)) == Character     ||                       \
-    TYP_TYPE(ATD_TYPE_IDX(RSLT_IDX)) == Structure     ||                       \
+    (TYP_TYPE(ATD_TYPE_IDX(RSLT_IDX)) == Structure                             \
+      && ! c_ptr_abi_trouble(TYP_IDX(ATD_TYPE_IDX(RSLT_IDX)))) ||              \
     ATD_ARRAY_IDX(RSLT_IDX) != NULL_IDX ||                                     \
     ATD_IM_A_DOPE(RSLT_IDX) ||						       \
     special_case_fcn_to_sub(FCN_IDX))

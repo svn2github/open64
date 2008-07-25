@@ -328,7 +328,23 @@ void parse_common_stmt (void)
             ATD_STOR_BLK_IDX(attr_idx)	= sb_idx;
             SET_IMPL_TYPE(attr_idx);
          }
-         else if (!fnd_semantic_err(Obj_Common_Obj,line,column,attr_idx,TRUE)) {
+#ifdef KEY /* Bug 14150 */
+         else {
+	  int save_stor_blk_idx = 0;
+	  /* We need to set this so fnd_semantic_err() can report the
+	   * special-case error of "equivalence" involving a common block
+	   * object when the common block (rather than the object) has the
+	   * "bind" attribute. Set it only if safe, and revert in case of
+	   * error. */
+	  if (AT_OBJ_CLASS(attr_idx) == Data_Obj) {
+	   save_stor_blk_idx = ATD_STOR_BLK_IDX(attr_idx);
+	   ATD_STOR_BLK_IDX(attr_idx) = sb_idx;
+	  }
+	  if (!fnd_semantic_err(Obj_Common_Obj,line,column,attr_idx,TRUE))
+#else /* KEY Bug 14150 */
+         else if (!fnd_semantic_err(Obj_Common_Obj,line,column,attr_idx,TRUE))
+#endif /* KEY Bug 14150 */
+	  {
 
             if (AT_REFERENCED(attr_idx) == Char_Rslt_Bound_Ref) {
                AT_ATTR_LINK(attr_idx)	= NULL_IDX;
@@ -351,6 +367,13 @@ void parse_common_stmt (void)
                SB_AUXILIARY(sb_idx)	= TRUE;
             }
          }
+#ifdef KEY /* Bug 14150 */
+	  /* fnd_semantic_err() found error, so revert */
+	  else if (save_stor_blk_idx) {
+	    ATD_STOR_BLK_IDX(attr_idx) = save_stor_blk_idx;
+	  }
+	 }
+#endif /* KEY Bug 14150 */
 
          if (AT_OBJ_CLASS(attr_idx) == Data_Obj) {
             ATD_SEEN_OUTSIDE_IMP_DO(attr_idx) = TRUE;
@@ -496,6 +519,10 @@ void parse_contains_stmt (void)
 
 
    TRACE (Func_Entry, "parse_contains_stmt", NULL);
+
+#ifdef KEY /* Bug 14110 */
+   revisit_volatile();
+#endif /* KEY Bug 14110 */
 
    do_cmic_blk_checks();
 
@@ -1149,7 +1176,13 @@ static void parse_cpnt_dcl_stmt()
       }
 
       if (!AT_DCL_ERR(attr_idx)) {
+#ifdef KEY /* Bug 14150 */
+         assign_bind_c_offset(attr_idx,
+	   AT_OBJ_CLASS(CURR_BLK_NAME) == Derived_Type &&
+	     AT_BIND_ATTR(CURR_BLK_NAME)); /* Assign offsets to components */
+#else /* KEY Bug 14150 */
          assign_offset(attr_idx);	/* Assign offsets to components */
+#endif /* KEY Bug 14150 */
       }
       else {
          ATD_CPNT_OFFSET_IDX(attr_idx)	= CN_INTEGER_ZERO_IDX;
@@ -1480,6 +1513,9 @@ static void parse_derived_type_stmt()
    boolean	 err;
    int		 name_idx;
    char		*str;
+#ifdef KEY /* Bug 14150 */
+   int		 found_bind = 0;
+#endif /* KEY Bug 14150 */
 
 
    TRACE (Func_Entry, "parse_derived_type_stmt", NULL);
@@ -1505,8 +1541,23 @@ static void parse_derived_type_stmt()
             parse_err_flush(Find_None, "::");
          }
       }
+#ifdef KEY /* Bug 14150 */
+      else if (matched_specific_token(Tok_Kwd_Bind, Tok_Class_Keyword)) {
+	 parse_language_binding_spec(0);
+	 found_bind = 1;
+         if (!matched_specific_token(Tok_Punct_Colon_Colon, Tok_Class_Punct)) {
+            parse_err_flush(Find_None, "::");
+         }
+      }
+#endif /* KEY Bug 14150 */
       else {
-         parse_err_flush(Find_None, "PUBLIC or PRIVATE");
+         parse_err_flush(Find_None, 
+#ifdef KEY /* Bug 14150 */
+            "BIND, PUBLIC, or PRIVATE"
+#else /* KEY Bug 14150 */
+	    "PUBLIC or PRIVATE"
+#endif /* KEY Bug 14150 */
+	    );
          /* Bypass ::, just in case it's there */
          matched_specific_token(Tok_Punct_Colon_Colon, Tok_Class_Punct);
       }
@@ -1619,6 +1670,12 @@ static void parse_derived_type_stmt()
          ATT_SCP_IDX(dt_idx)		= curr_scp_idx;
       }
 
+#ifdef KEY /* Bug 14150 */
+      if (found_bind) {
+        AT_BIND_ATTR(dt_idx) = 1;
+      }
+#endif /* KEY Bug 14150 */
+
       if (CURR_BLK != Interface_Body_Blk) {
 
          /* Interface_Body_Blk stuff is counted during interface collapse. */
@@ -1668,6 +1725,25 @@ static void parse_derived_type_stmt()
       PUSH_BLK_STK(Derived_Type_Blk);
       curr_stmt_category	= Declaration_Stmt_Cat;
    }
+#ifdef KEY /* Bug 14150 */
+   /* Even before the 14150 enhancement, a source error (like "type ::" with no
+    * id) could make us arrive here with dt_idx == NULL_IDX, which would cause
+    * subsequent references to ATT_* in parse_cpnt_dcl_stmt() to die in
+    * _DEBUG mode. */
+   if (dt_idx == NULL_IDX) {
+#define NO_ID "<NO NAME>"
+     TOKEN_LEN(token) = (sizeof NO_ID) - 1;
+     CREATE_ID(TOKEN_ID(token), NO_ID, TOKEN_LEN(token));
+     dt_idx = srch_sym_tbl(TOKEN_STR(token), TOKEN_LEN(token), &name_idx);
+     if (dt_idx == NULL_IDX) {
+       dt_idx				= ntr_sym_tbl(&token, name_idx);
+       AT_OBJ_CLASS(dt_idx)		= Derived_Type;
+       ATT_STRUCT_BIT_LEN_FLD(dt_idx)	= CN_Tbl_Idx;
+       ATT_STRUCT_BIT_LEN_IDX(dt_idx)	= CN_INTEGER_ZERO_IDX;
+       ATT_SCP_IDX(dt_idx)		= curr_scp_idx;
+     }
+   }
+#endif /* KEY Bug 14150 */
 
    CURR_BLK_NO_EXEC		= TRUE;
    CURR_BLK_NAME		= dt_idx;
@@ -2576,62 +2652,6 @@ void parse_interface_stmt (void)
 
 
 #ifdef KEY /* Bug 10572 */
-/*
- *	BNF is    , BIND ( C [, NAME = scalar-char-initialization-expr ] )
- *
- *  result	if null on input, then don't allow optional clause; otherwise,
- *		on output this gives the scalar-char-initialization-expr, or
- *		NO_Tbl_Idx and NULL_IDX if the clause is omitted
- */
-void
-parse_language_binding_spec(opnd_type *result) {
-  if (result) {
-    OPND_FLD(*result) = NO_Tbl_Idx;
-    OPND_IDX(*result) = NULL_IDX;
-  }
-
-  if (LA_CH_VALUE != COMMA) {
-    parse_err_flush(Find_EOS, ",");
-    return;
-  }
-  NEXT_LA_CH; /* Consume comma */
-  if (!matched_specific_token(Tok_Kwd_Bind, Tok_Class_Keyword)) {
-    parse_err_flush(Find_EOS, "BIND");
-    return;
-  }
-  if (LA_CH_VALUE != LPAREN) {
-    parse_err_flush(Find_EOS, "(");
-    return;
-  }
-  NEXT_LA_CH; /* Consume left paren */
-  if (LA_CH_VALUE != 'C' && LA_CH_VALUE != 'c') {
-    parse_err_flush(Find_EOS, "C");
-    return;
-  }
-  NEXT_LA_CH; /* Consume 'c' */
-  if (result) {
-    if (LA_CH_VALUE == COMMA) {
-      NEXT_LA_CH; /* Consume comma */
-      if (!matched_specific_token(Tok_Kwd_Name, Tok_Class_Keyword)) {
-	parse_err_flush(Find_EOS, "NAME");
-	return;
-      }
-      if (LA_CH_VALUE != EQUAL) {
-	parse_err_flush(Find_EOS, "=");
-	return;
-      }
-      NEXT_LA_CH; /* Consume equal */
-      if (!parse_expr(result)) {
-        /* No action needed */
-      }
-    }
-  }
-  if (LA_CH_VALUE != RPAREN) {
-    parse_err_flush(Find_EOS, ")");
-    return;
-  }
-  NEXT_LA_CH; /* Consume right paren */
-}
 
 /*
  *	BNF is    ENUM, BIND(C)
@@ -2656,7 +2676,17 @@ parse_enum_stmt() {
    BLK_ENUM_EMPTY(blk_stk_idx) = TRUE;
    BLK_ENUM_COUNTER(blk_stk_idx) = 0;
 
-   parse_language_binding_spec((opnd_type *) 0);
+   if (LA_CH_VALUE != COMMA) {
+     parse_err_flush(Find_EOS, ",");
+     return;
+   }
+   NEXT_LA_CH; /* Consume comma */
+
+   if (!matched_specific_token(Tok_Kwd_Bind, Tok_Class_Keyword)) {
+     parse_err_flush(Find_EOS, "BIND");
+     return;
+   }
+   parse_language_binding_spec(0);
 
    if (LA_CH_VALUE != EOS) {
      parse_err_flush(Find_EOS, EOS_STR);
@@ -3762,6 +3792,9 @@ void parse_type_dcl_stmt (void)
 
    AT_DCL_ERR(AT_WORK_IDX) = SH_ERR_FLG(curr_stmt_sh_idx);
 
+#ifdef KEY /* Bug 14150 */
+   int count_entities = 0;
+#endif /* KEY Bug 14150 */
    do {
       if (!MATCHED_TOKEN_CLASS(Tok_Class_Id)) {
          found_end = !parse_err_flush(Find_Comma, "object-name");
@@ -3833,6 +3866,17 @@ void parse_type_dcl_stmt (void)
 
       if (attr_list & (1 << External_Attr)) {
          merge_external(!new_attr, id_line, id_column, attr_idx);
+      }
+
+      /* Merge in binding label for each entity, because in the general case
+       * it will omit "name=x" and depend on the name of the entity  */
+      if (attr_list & (1 << Bind_Attr)) {
+	merge_bind(TRUE, id_line, id_column, attr_idx);
+	count_entities += 1;
+	/* Nonempty name= precludes multiple entities in one statement */
+	if ((BIND_SPECIFIES_NAME(new_binding_label)) && count_entities == 2) {
+	  PRINTMSG(id_line, 1689, Error, id_column);
+	}
       }
 
 #ifdef KEY /* Bug 8260 */
@@ -4006,6 +4050,14 @@ void parse_type_dcl_stmt (void)
 
          if (attr_list & (1 << Automatic_Attr)) {
             merge_automatic(TRUE, id_line, id_column, attr_idx);
+         }
+#if 0 && defined(KEY) /* Bug 14150 */
+         if (attr_list & (1 << Bind_Attr)) {
+            merge_bind(TRUE, id_line, id_column, attr_idx);
+         }
+#endif /* KEY Bug 14150 */
+         if (attr_list & (1 << Value_Attr)) {
+            merge_value(TRUE, id_line, id_column, attr_idx);
          }
 
          if (attr_list & (1 << Public_Attr)) {
@@ -4921,7 +4973,11 @@ static long parse_attr_spec(int		*array_idx,
       NEXT_LA_CH;
                
       if (!MATCHED_TOKEN_CLASS(Tok_Class_Keyword)) {
-         parse_err_flush(Find_Comma, "ALLOCATABLE, DIMENSION, EXTERNAL, "
+         parse_err_flush(Find_Comma, "ALLOCATABLE, "
+#ifdef KEY /* Bug 14150 */
+	                 "BIND, "
+#endif /* KEY Bug 14150 */
+	                 "DIMENSION, EXTERNAL, "
                          "INTENT, INTRINSIC, OPTIONAL, PARAMETER, POINTER, "
                          "PRIVATE, PUBLIC, SAVE or TARGET");
          continue;
@@ -5158,8 +5214,13 @@ static long parse_attr_spec(int		*array_idx,
                issue_attr_blk_err("VOLATILE");
             }
             else {
-               PRINTMSG(TOKEN_LINE(token), 1254, Ansi, TOKEN_COLUMN(token),
-                        "VOLATILE");
+               PRINTMSG(TOKEN_LINE(token),
+#ifdef KEY /* Bug 14110 */
+	         1685,
+#else /* KEY Bug 14110 */
+	         1254,
+#endif /* KEY Bug 14110 */
+		 Ansi, TOKEN_COLUMN(token), "VOLATILE");
                err_in_list	= err_attrs[Volatile_Attr] & attr_list;
                attr_list	= attr_list | (1 << Volatile_Attr);
 
@@ -5193,6 +5254,54 @@ static long parse_attr_spec(int		*array_idx,
             ATD_INTENT(AT_WORK_IDX)	= new_intent;
             break;
 
+#ifdef KEY /* Bug 14150 */
+	 case Tok_Kwd_Bind:
+            if (STMT_CANT_BE_IN_BLK(Bind_Stmt, CURR_BLK)) {
+               issue_attr_blk_err("BIND");
+               parse_err_flush(Find_Comma, NULL);
+               continue;
+            }
+            err_in_list	= err_attrs[Bind_Attr] & attr_list;
+            attr_list	= attr_list | (1 << Bind_Attr);
+
+            if (err_in_list) {
+               issue_attr_err(Bind_Attr, err_in_list);
+            }
+
+	    if (parse_language_binding_spec(&new_binding_label)) {
+#if 1
+              /* parse_attrs() will merge in the binding label */
+#else
+	      /* Set OBJ_CLASS and CLASS just to avoid sytb_var_error */
+	      AT_OBJ_CLASS(AT_WORK_IDX) = Data_Obj;
+	      ATD_CLASS(AT_WORK_IDX) = Variable;
+	      set_binding_label(AT_Tbl_Idx, AT_WORK_IDX, &new_binding_label);
+#endif
+	    }
+	    break;
+
+         case Tok_Kwd_Value:
+
+            if (STMT_CANT_BE_IN_BLK(Value_Stmt, CURR_BLK)) {
+               issue_attr_blk_err("VALUE");
+               parse_err_flush(Find_Comma, NULL);
+               continue;
+            }
+            err_in_list	= err_attrs[Value_Attr] & attr_list;
+            attr_list	= attr_list | (1 << Value_Attr);
+
+            if (err_in_list) {
+               issue_attr_err(Value_Attr, err_in_list);
+            }
+
+	    else {
+	       /* Set OBJ_CLASS just to avoid sytb_var_error() */
+	       AT_OBJ_CLASS(AT_WORK_IDX) = Data_Obj;
+	       ATD_CLASS(AT_WORK_IDX) = Dummy_Argument;
+	       ATD_VALUE_ATTR(AT_WORK_IDX)	= TRUE;
+	    }
+            break;
+#endif /* KEY Bug 14150 */
 
          case Tok_Kwd_Dimension:
             err_in_list	= err_attrs[Dimension_Attr] & attr_list;
@@ -7017,3 +7126,49 @@ EXIT:
    return(ok);
 
 }  /* parse_initializer */
+
+#ifdef KEY /* Bug 14110 */
+static char **surprise_ids;
+static unsigned surprise_ids_cnt;
+static unsigned surprise_ids_limit;
+
+/*
+ * id		Identifier which appears in "volatile" statement without
+ *		having previously created an attribute in the current scope
+ */
+void surprise_volatile(char *id) {
+  if (surprise_ids_cnt >= surprise_ids_limit) {
+    surprise_ids = surprise_ids_limit ?
+      realloc(surprise_ids, surprise_ids_limit *= 2) :
+      malloc(10 * sizeof(char *));
+  }
+  surprise_ids[surprise_ids_cnt++] = strdup(id);
+}
+
+/*
+ * For each identifier which appeared in a "volatile" statement without
+ * having previously created an attribute in the current scope, if there's
+ * now a local or host-associated attribute, set the "volatile" bit on that
+ * attribute. Otherwise, create an attribute in the current scope.
+ */
+void
+revisit_volatile() {
+  for (int i = 0; i < surprise_ids_cnt; i += 1) {
+    int name_idx;
+    token_type tmp = initial_token;
+    memcpy(TOKEN_STR(tmp), surprise_ids[i], strlen(surprise_ids[i]));
+    int attr_idx = srch_sym_tbl(TOKEN_STR(tmp), TOKEN_LEN(tmp), &name_idx);
+    if (!attr_idx) {
+      attr_idx = srch_host_sym_tbl(TOKEN_STR(tmp), TOKEN_LEN(tmp), &name_idx,
+        0);
+    }
+    if (!attr_idx) {
+      attr_idx = ntr_sym_tbl(&tmp, name_idx);
+      SET_IMPL_TYPE(attr_idx);
+    }
+    merge_volatile(TRUE, 1, 1, attr_idx);
+    free(surprise_ids[i]);
+  }
+  surprise_ids_cnt = 0;
+}
+#endif /* KEY Bug 14110 */

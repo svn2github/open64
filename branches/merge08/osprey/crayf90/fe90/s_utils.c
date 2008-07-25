@@ -134,7 +134,7 @@ boolean resolve_ext_opr(opnd_type 	*opnd,
    int		col;
    int		darg_idx;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    int		false_list_idx 		= NULL_IDX;
 # endif
 
@@ -671,7 +671,7 @@ boolean resolve_ext_opr(opnd_type 	*opnd,
              (cmd_line_flags.runtime_argument ||
              cmd_line_flags.runtime_arg_call)) {
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
             list1_idx = IR_IDX_R(ir_idx);
             list2_idx = NULL_IDX;
 
@@ -731,7 +731,7 @@ boolean resolve_ext_opr(opnd_type 	*opnd,
                (IR_LIST_CNT_R(ir_idx))++;
             }
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
             if (false_list_idx != NULL_IDX) {
                IL_NEXT_LIST_IDX(list2_idx) = false_list_idx;
                list1_idx = false_list_idx;
@@ -2939,7 +2939,7 @@ void gen_entry_dope_code(int	 attr_idx)
    }
    else if (ATD_IN_COMMON(attr_idx)) {
 
-# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
       func = gen_common_dv_init;
       opr = Init_Opr;
 # else
@@ -2964,7 +2964,7 @@ void gen_entry_dope_code(int	 attr_idx)
       goto EXIT;
    }
 
-# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
    if (ATP_PGM_UNIT(SCP_ATTR_IDX(curr_scp_idx)) == Module &&
        ATD_IN_COMMON(attr_idx)) {
@@ -5471,7 +5471,7 @@ void    short_circuit_branch(void)
             if (IR_SHORT_CIRCUIT_L(log_idx)) {
                left_is_worse = TRUE;
             }
-# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
             else {
                left_is_worse = FALSE;
             }
@@ -7127,7 +7127,7 @@ boolean	gen_internal_dope_vector(int_dope_type		*dope_vec,
 
    dope_vec->unused_1 = 0;
 
-# if defined(_TARGET64) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET64) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    /*************\
    |* UNUSED 2  *|
    \*************/
@@ -7142,7 +7142,7 @@ boolean	gen_internal_dope_vector(int_dope_type		*dope_vec,
 
    dope_vec->num_dims = exp_desc->rank;
 
-# if defined(_TARGET64) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET64) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 # ifndef _TYPE_CODE_64_BIT
    /*************\
    |* UNUSED 3  *|
@@ -8431,7 +8431,7 @@ int gen_static_integer_array_tmp(int	size,
 
    TRACE (Func_Entry, "gen_static_integer_array_tmp", NULL);
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    type_idx = SA_INTEGER_DEFAULT_TYPE;
 # else
    type_idx = CG_INTEGER_DEFAULT_TYPE;
@@ -9065,7 +9065,7 @@ int	set_up_logical_constant(long_type	*the_constant,
 
 /* BRIANJ KAYKAY - Should this use arith? */
 
-# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    if (TYP_LINEAR(type_idx) == Logical_8) {
 # if defined(_HOST_LITTLE_ENDIAN) && defined(_TARGET_LITTLE_ENDIAN)
       *(long long *)the_constant = value;
@@ -10953,7 +10953,19 @@ static void reshape_reference_subscripts(opnd_type *result_opnd)
 \******************************************************************************/
 
 boolean check_for_legal_define(opnd_type	*top_opnd)
+#ifdef KEY /* Bug 14150 */
+{
+  return check_for_legal_assignment_define(top_opnd, FALSE);
+}
 
+/*
+ * top_opnd		Top operand of operation which defines lvalue
+ * pointer_assign	True if assignment is "=>" not "=" or other defining
+ *			operation
+ */
+boolean check_for_legal_assignment_define(opnd_type *top_opnd,
+  boolean pointer_assign)
+#endif /* KEY Bug 14150 */
 {
    int		attr_idx;
    int		col;
@@ -10987,6 +10999,10 @@ boolean check_for_legal_define(opnd_type	*top_opnd)
          ok = FALSE;
       }
       else if (ATD_CLASS(attr_idx) == Dummy_Argument   &&
+#ifdef KEY /* Bug 14150 */
+	       /* "l = expr" is ok, "l => expr" is not */
+               ((!ATD_POINTER(attr_idx)) || pointer_assign) &&
+#endif /* KEY Bug 14150 */
                ATD_INTENT(attr_idx) == Intent_In) {
          PRINTMSG(line, 890, Error, col,
                   AT_OBJ_NAME_PTR(attr_idx));
@@ -11788,7 +11804,7 @@ void runtime_ptr_chk_driver(void)
 void gen_copyin_bounds_stmt(int	attr_idx)
 
 {
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    int		col;
    int		ir_idx;
    int		line;

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -63,7 +63,7 @@
  * ====================================================================
  */
 /*REFERENCED*/
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
@@ -80,7 +80,11 @@ static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_pdgcs.cxx $ $Revision: 1.
 #include "stab.h"
 #include "strtab.h"
 #include "wn.h" 
+#if defined(BUILD_OS_DARWIN)
+#include "darwin_elf.h"
+#else /* defined(BUILD_OS_DARWIN) */
 #include "elf.h"
+#endif /* defined(BUILD_OS_DARWIN) */
 #include "pu_info.h"
 #include <sys/types.h>
 #include "ir_reader.h"
@@ -644,7 +648,7 @@ basename ( char * const s )
 } /* basename */
 #endif
 
-static char *
+static const char *
 dirname ( char * const s )
 {
   char * p;
@@ -741,7 +745,7 @@ update_rii_file ( void )
   FILE * f_rii_file;
   FILE * f_old_rii_file;
   FILE * f_cmd_file;
-  char * rii_dir_name;
+  const char * rii_dir_name;
   char * new_rii_file_name;
   int    ch;
 

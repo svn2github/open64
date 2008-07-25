@@ -851,7 +851,7 @@ boolean	create_runtime_array_constructor(opnd_type	*top_opnd,
 
       the_constant = 2;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
       if (TYP_LINEAR(ATD_TYPE_IDX(allocate_tmp_idx)) == Integer_4) {
          the_constant++;
       }
@@ -1301,7 +1301,7 @@ boolean	create_runtime_array_constructor(opnd_type	*top_opnd,
       IL_FLD(list_idx) = CN_Tbl_Idx;
       the_constant     = 2L;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
       if (TYP_LINEAR(ATD_TYPE_IDX(allocate_tmp_idx)) == Integer_4) {
          the_constant++;
       }

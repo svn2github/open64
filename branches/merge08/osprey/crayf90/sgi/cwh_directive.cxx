@@ -102,7 +102,7 @@
  * ====================================================================
  */
 
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 
 /* sgi includes */
 

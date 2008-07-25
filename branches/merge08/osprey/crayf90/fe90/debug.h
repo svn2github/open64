@@ -372,6 +372,12 @@ char		*intrin_str[]		= {
 				"Cvmgp_Intrinsic",
 				"Cvmgt_Intrinsic",
 				"Cvmgz_Intrinsic",
+#ifdef KEY /* Bug 14150 */
+				"C_F_Pointer_Intrinsic",
+				"C_F_Procpointer_Intrinsic",
+				"C_Funloc_Intrinsic",
+				"C_Loc_Iso_Intrinsic",
+#endif /* KEY Bug 14150 */
 				"C_Loc_Intrinsic",
 				"Dabs_Intrinsic",
 				"Dacos_Intrinsic",
@@ -512,6 +518,9 @@ char		*intrin_str[]		= {
 				"Ifix_Intrinsic",
 				"Iiabs_Intrinsic",
 				"Iiand_Intrinsic",
+#ifdef KEY /* Enum value itself predates KEY, but this string was missing */
+				"Iibchng_Intrinsic",
+#endif
 				"Iibclr_Intrinsic",
 				"Iibits_Intrinsic",
 				"Iibset_Intrinsic",
@@ -555,6 +564,9 @@ char		*intrin_str[]		= {
 				"Jdate_Intrinsic",
 				"Jiabs_Intrinsic",
 				"Jiand_Intrinsic",
+#ifdef KEY /* Enum value itself predates KEY, but this string was missing */
+				"Jibchng_Intrinsic",
+#endif
 				"Jibclr_Intrinsic",
 				"Jibits_Intrinsic",
 				"Jibset_Intrinsic",
@@ -577,6 +589,9 @@ char		*intrin_str[]		= {
 				"Jnot_Intrinsic",
 				"Kiabs_Intrinsic",
 				"Kiand_Intrinsic",
+#ifdef KEY /* Enum value itself predates KEY, but this string was missing */
+				"Kibchng_Intrinsic",
+#endif
 				"Kibclr_Intrinsic",
 				"Kibits_Intrinsic",
 				"Kibset_Intrinsic",
@@ -606,7 +621,9 @@ char		*intrin_str[]		= {
 				"Len_Intrinsic",
 				"Length_Intrinsic",
 				"Len_Trim_Intrinsic",
+#ifndef KEY	/* Remove duplicate string entry */
 				"Length_Intrinsic",
+#endif
 				"Lge_Intrinsic",
 				"Lgt_Intrinsic",
 				"Lle_Intrinsic",
@@ -819,6 +836,7 @@ char		*intrin_str[]		= {
 #endif /* KEY Bug 1683 */
 #ifdef KEY /* Bug 5089 */
 				"True_Intrinsic",
+				"Support_Uflow_Intrinsic",
 #endif /* KEY Bug 5089 */
 #ifdef KEY /* F2003 */
 				"Newline_Intrinsic"
@@ -1554,6 +1572,9 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Type",		/* Tok_Kwd_Type		*/
 			"Tok_Kwd_Use",		/* Tok_Kwd_Use		*/
 			"Tok_Kwd_Undefined",	/* Tok_Kwd_Undefined	*/
+#ifdef KEY /* Bug 14150 */
+			"Tok_Kwd_Value",	/* Tok_Kwd_Value	*/
+#endif /* KEY Bug 14150 */
 			"Tok_Kwd_Volatile",	/* Tok_Kwd_Volatile	*/
 			"Tok_Kwd_Where",	/* Tok_Kwd_Where	*/
 			"Tok_Kwd_While",	/* Tok_Kwd_While	*/

@@ -523,7 +523,11 @@ enum    language        {Pdgcs_Ansi_C = 1,      Pdgcs_Fortran_77,
 #ifdef KEY /* Bug 10572 */
 						   "ENUM",
 						   "END ENUMERATOR",
-						   "ENUMERATOR"
+						   "ENUMERATOR",
+#endif /* KEY Bug 10572 */
+#ifdef KEY /* Bug 14150 */
+						   "BIND",
+						   "VALUE"
 #endif /* KEY Bug 10572 */
 						  };
 

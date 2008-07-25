@@ -794,7 +794,7 @@ void gen_default_init_code(int	 attr_idx)
       operator = Init_Opr;
 
 # if 0
-# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
       func = gen_common_dv_init;
 # else
       func = gen_static_dv_whole_def;

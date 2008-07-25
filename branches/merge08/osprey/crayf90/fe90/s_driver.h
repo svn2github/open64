@@ -1,4 +1,11 @@
 /*
+ * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
+ */
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -228,8 +235,12 @@
 #ifdef KEY /* Bug 10572 */
                           no_semantics_routine,        /* Enum_Stmt           */
                           no_semantics_routine,        /* End_Enum_Stmt       */
-                          no_semantics_routine         /* Enumerator_Stmt     */
+                          no_semantics_routine,        /* Enumerator_Stmt     */
 #endif /* KEY Bug 10572 */
+#ifdef KEY /* Bug 14150 */
+                          no_semantics_routine,         /* Bind_Stmt          */
+                          no_semantics_routine          /* Value_Stmt         */
+#endif /* KEY Bug 14150 */
 			};
 
 /*********************************************************\

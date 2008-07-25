@@ -75,7 +75,7 @@
  * ====================================================================
  */
 /*REFERENCED*/
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
 static char *rcs_id = "$Source: ../../../crayf90/sgi/SCCS/s.cwh_stab.cxx $ $Revision: 1.10 $";
@@ -467,7 +467,7 @@ fei_proc_def(char         *name_string,
 /*ARGSUSED*/
 INTPTR
 fei_proc_imp(INT32 lineno,
-	     char          *name_string,
+	     const char     *name_string,
 	     INT32          unused1,
 	     INT32          unused2,
 	     INT32          Sclass_arg,
@@ -960,6 +960,9 @@ fei_object(char * name_string,
   /* into ptr TY of FUNCTION returning  ty  */
      
   if ((sym_class == Dummy_Procedure) || 
+#ifdef KEY /* Bug 14150 */
+      test_flag(flag_bits, FEI_OBJECT_PASS_BY_VALUE) ||
+#endif /* KEY Bug 14150 */
       (sym_class == Hosted_Dummy_Procedure))  {
 
     Set_ST_is_value_parm(st);
@@ -1667,7 +1670,7 @@ cwh_stab_const(ST *st)
  ====================================================
 */
 extern ST *
-cwh_stab_address_temp_ST(char * name, TY_IDX  ty , BOOL uniq)
+cwh_stab_address_temp_ST(const char * name, TY_IDX  ty , BOOL uniq)
 {
   ST * st ;
 
@@ -1698,7 +1701,7 @@ cwh_stab_address_temp_ST(char * name, TY_IDX  ty , BOOL uniq)
  * ================================================================
  */
 extern ST *
-cwh_stab_temp_ST(TY_IDX ty,char * name)
+cwh_stab_temp_ST(TY_IDX ty, const char * name)
 {
   ST * st; 
 
@@ -1924,7 +1927,7 @@ static void
 cwh_stab_adjust_name(ST * st)
 {
   char *p;
-  char *s;
+  const char *s;
   char  c;
   INT32 n;
 
@@ -2976,6 +2979,11 @@ cwh_stab_emit_list(LIST ** lp, enum list_name list, void (*fp) (ST *, enum list_
       i = I_next(i);
     }
 
+#ifdef KEY /* Sicortex bug 5277 */
+//    if (list == l_COMLIST) {
+//      get_consistent_common_alignment();
+//    }
+#endif /* KEY Sicortex bug 5277 */
     cwh_auxst_free_list(lp);
   }
 }
@@ -3015,6 +3023,28 @@ cwh_stab_mk_flds(ST * blk, enum list_name list)
     cwh_types_mk_element(blk,I_element(el));
     i ++ ;
   }
+#ifdef KEY /* Sicortex bug 5277 */
+// When there are multiple instances of common, the FE emits multiple common
+// symbols with the same name, but possibly different alignments, and the
+// back end normally picks the biggest alignment. But when a nested
+// procedure host associates a common block from its parent, and the nested
+// procedure doesn't refer to any elements of the common block which
+// require stringent alignment, the FE creates a less-aligned instance of
+// the common block, and the BE doesn't force greater alignment. One fix is
+// to use a name-to-alignment hash table at this spot to remember the max
+// alignment seen for each name, and to walk over Commons_Already_Seen
+// at another spot (see "get_consistent_common_alignment" elsewhere),
+// retrieving the max alignment from the hash table and correcting the ST's.
+// But a simpler approach is just to align to 16 bytes: that's what X8664
+// does for SSE reasons anyway, and for Sicortex hardware it can only
+// improve DMA performance.
+// set_consistent_common_alignment(ST_name(blk), TY_align(ST_type(blk)));
+   if (list == l_COMLIST) {
+     TY_IDX ty = ST_type(blk);
+     Set_TY_align(ty, 16);
+     Set_ST_type(blk, ty);
+   }
+#endif /* KEY Sicortex bug 5277 */
 
   DevAssert((i == nf), (" can't count"));
 }
@@ -3094,7 +3124,7 @@ cwh_stab_seen_common_element(ST *c, INT64 offset, char* name)
  ====================================================
 */
 extern ST *
-cwh_stab_mk_fn_0args(char *name, ST_EXPORT eclass,SYMTAB_IDX level,TY_IDX rty)
+cwh_stab_mk_fn_0args(const char *name, ST_EXPORT eclass,SYMTAB_IDX level,TY_IDX rty)
 {
   ST    * st ;
   PU_IDX  pu ;

@@ -1,4 +1,11 @@
 /*
+ * Copyright (C) 2007, 2008. PathScale, LLC. All Rights Reserved.
+ */
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -377,6 +384,10 @@ extern	boolean	merge_pointer (boolean, int, int, int);
 extern	boolean	merge_save (boolean, int, int, int);
 extern	boolean	merge_target (boolean, int, int, int);
 extern	boolean	merge_volatile (boolean, int, int, int);
+#ifdef KEY /* Bug 14150 */
+extern  boolean merge_bind(boolean, int, int, int);
+extern  boolean merge_value(boolean, int, int, int);
+#endif /* KEY Bug 14150 */
 extern	int	move_blk_to_end(int);
 extern  boolean next_arg_is_kwd_equal (void);
 extern  boolean next_id_is_imp_control (void);
@@ -399,6 +410,10 @@ extern  boolean stmt_has_double_colon (void);
 extern  boolean stmt_is_DATA_stmt (void);
 extern  boolean stmt_is_DO_stmt (void);
 extern  boolean stmt_is_save_stmt(int, int);
+#ifdef KEY /* Bug 14110 */
+extern void surprise_volatile(char *);
+extern void revisit_volatile();
+#endif /* KEY Bug 14110 */
 
 /*********************\
 |* statement parsers *|
@@ -450,6 +465,10 @@ extern	void parse_enum_stmt (void);
 extern	void parse_enumerator_stmt (void);
 extern	boolean	parse_int_spec_expr(long *, fld_type *, boolean, boolean);
 #endif /* KEY Bug 10572 */
+#ifdef KEY /* Bug 14150 */
+extern	void parse_bind_stmt (void);
+extern	void parse_value_stmt (void);
+#endif /* KEY Bug 14150 */
 extern	void parse_inquire_stmt (void);
 extern	void parse_intent_stmt (void);
 extern	void parse_interface_stmt (void);
@@ -503,6 +522,10 @@ extern  int		parse_non_char_kind_selector(boolean);
 #endif /* KEY Bug 8422 */
 extern	boolean		parse_type_spec (boolean);
 extern	void		parse_typed_function_stmt (void);
+#ifdef KEY /* Bug 14150 */
+extern int		parse_language_binding_spec(token_type *result);
+extern void		set_binding_label(fld_type, int, token_type *);
+#endif /* KEY Bug 14150 */
 
 /*******************************\
 |* globally accessible objects *|
@@ -531,6 +554,13 @@ extern	token_type		 label_token;		/* defed in p_driver.h*/
 extern	token_type		 main_token;  		/* defed in p_driver.h*/
 
 extern	intent_type		 new_intent;		/* defed in p_driver.h*/
+#ifdef KEY /* Bug 14150 */
+/* Overload token error field of new_binding_label to indicate whether "bind"
+ * includes optional name= clause */
+#  define BIND_SPECIFIES_NAME(nbl) (!TOKEN_ERR(nbl))
+#  define SET_BIND_SPECIFIES_NAME(nbl,val) (TOKEN_ERR(nbl) = !(val))
+extern token_type		 new_binding_label;	/* def'd in p_driver.h*/
+#endif /* KEY Bug 14150 */
 
 extern	char			*obj_str[];		/* defed in p_driver.h*/
 extern	int			 stmt_construct_idx;	/* defed in p_driver.h*/

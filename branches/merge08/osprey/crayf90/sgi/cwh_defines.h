@@ -215,7 +215,12 @@ extern MEM_POOL *FE_Mempool;
 #define RESULT_SIZE 16
 #endif
 #ifdef TARG_IA32
+#if defined(BUILD_OS_DARWIN)
+/* Darwin -m32 returns small structures via registers */
+#define RESULT_SIZE 8
+#else /* defined(BUILD_OS_DARWIN) */
 #define RESULT_SIZE 0
+#endif /* defined(BUILD_OS_DARWIN) */
 #endif
 #ifdef TARG_IA64 
 #define RESULT_SIZE 64

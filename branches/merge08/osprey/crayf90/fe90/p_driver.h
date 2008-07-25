@@ -1,4 +1,11 @@
 /*
+ * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
+ */
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -122,6 +129,12 @@ static	int			 blk_err_msgs[]		= {
 
 	token_type		 main_token;
 	intent_type		 new_intent;
+#ifdef KEY /* Bug 14150 */
+	/* Pass "x" from parse of "bind(c, name=x)" to merge_bind(),
+	 * imitating the bad example of "intent(x)" and "new_intent" by
+	 * using a global variable. */
+	token_type		 new_binding_label;
+#endif /* KEY Bug 14150 */
 
 	int			 stmt_construct_idx;
 
@@ -134,7 +147,12 @@ static	int			 blk_err_msgs[]		= {
                         "CHARACTER*(*)",           "explicit-shape DIMENSION",
                         "assumed-size DIMENSION",  "deferred-shape DIMENSION",
                         "assumed-shape DIMENSION", "co-array DIMENSION",
-			"ALLOCATABLE",		   "PARAMETER",
+			"ALLOCATABLE",
+#ifdef KEY /* Bug 14150 */
+			"BIND",
+			"VALUE",
+#endif /* KEY Bug 14150 */
+			"PARAMETER",
                         "INTENT",                  "OPTIONAL",
                         "PRIVATE",                 "PUBLIC",
                         "TARGET",                  "EQUIVALENCE",
@@ -203,7 +221,7 @@ static stmt_type_type		token_to_stmt_type [] = {
 				Automatic_Stmt,       /* Tok_Kwd_Automatic    */
 				Backspace_Stmt,	      /* Tok_Kwd_Backspace    */
 #ifdef KEY /* Bug 10572 */
-				Assignment_Stmt,      /* Tok_Kwd_Bind         */
+				Bind_Stmt,	      /* Tok_Kwd_Bind         */
 #endif /* KEY Bug 10572 */
 				Blockdata_Stmt,       /* Tok_Kwd_Block	      */
 				Buffer_Stmt,	      /* Tok_Kwd_Buffer	      */
@@ -302,6 +320,9 @@ static stmt_type_type		token_to_stmt_type [] = {
 				Type_Decl_Stmt,	      /* Tok_Kwd_Type	      */
 				Use_Stmt,	      /* Tok_Kwd_Use	      */
 				Assignment_Stmt,      /* Tok_Kwd_Undefined    */
+#ifdef KEY /* Bug 14150 */
+				Value_Stmt,           /* Tok_Kwd_Value        */
+#endif /* KEY Bug 14150 */
 				Volatile_Stmt,        /* Tok_Kwd_Volatile     */
 				Where_Cstrct_Stmt,    /* Tok_Kwd_Where	      */
 				Assignment_Stmt,      /* Tok_Kwd_While	      */
@@ -476,8 +497,12 @@ void		(*stmt_parsers[]) () = {
 #ifdef KEY /* Bug 10572 */
 				parse_enum_stmt,	/* Enum_Stmt */
 				parse_end_stmt,		/* End_Enum_Stmt */
-				parse_enumerator_stmt	/* Enumerator_Stmt */
+				parse_enumerator_stmt,	/* Enumerator_Stmt */
 #endif /* KEY Bug 10572 */
+#ifdef KEY /* Bug 14150 */
+				parse_bind_stmt,	/* Bind_Stmt */
+				parse_value_stmt	/* Value_Stmt */
+#endif /* KEY Bug 14150 */
 				};
 
 
@@ -5472,8 +5497,103 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Workshare_Blk) |
                                 (ONE << Open_Mp_Parallel_Workshare_Blk) |
                                 (ONE << Contains_Blk) |
-				(ONE << Derived_Type_Blk))
+				(ONE << Derived_Type_Blk)),
 #endif /* KEY Bug 10572 */
+#ifdef KEY /* Bug 14150 */
+
+			/*****  Bind_Stmt  *****/
+
+			       ((ONE << Unknown_Blk) |
+				(ONE << Internal_Blk) |
+				(ONE << Forall_Blk) |
+				(ONE << If_Blk) |
+				(ONE << If_Then_Blk) |
+				(ONE << If_Else_If_Blk) |
+				(ONE << If_Else_Blk) |
+				(ONE << Do_Blk) |
+				(ONE << Select_Blk) |
+				(ONE << Case_Blk) |
+				(ONE << Where_Then_Blk) |
+				(ONE << Where_Else_Blk) |
+				(ONE << Where_Else_Mask_Blk) |
+                                (ONE << Parallel_Blk) |
+				(ONE << SGI_Parallel_Blk) |
+                                (ONE << Doall_Blk) |
+				(ONE << Wait_Blk) |
+				(ONE << SGI_Doacross_Blk) |
+				(ONE << SGI_Parallel_Do_Blk) |
+                                (ONE << Do_Parallel_Blk) |
+				(ONE << SGI_Pdo_Blk) |
+                                (ONE << Guard_Blk) |
+				(ONE << SGI_Critical_Section_Blk) |
+                                (ONE << Parallel_Case_Blk) |
+				(ONE << SGI_Psection_Blk) |
+				(ONE << SGI_Section_Blk) |
+				(ONE << SGI_Single_Process_Blk) |
+                                (ONE << Open_Mp_Parallel_Blk) |
+                                (ONE << Open_Mp_Do_Blk) |
+                                (ONE << Open_Mp_Parallel_Sections_Blk) |
+                                (ONE << Open_Mp_Sections_Blk) |
+                                (ONE << Open_Mp_Section_Blk) |
+                                (ONE << Open_Mp_Single_Blk) |
+                                (ONE << Open_Mp_Parallel_Do_Blk) |
+                                (ONE << Open_Mp_Master_Blk) |
+                                (ONE << Open_Mp_Critical_Blk) |
+                                (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
+				(ONE << Contains_Blk) |
+				(ONE << Interface_Blk) |    
+				(ONE << Enum_Blk)),
+
+			/*****  Value_Stmt  *****/
+			       ((ONE << Unknown_Blk) |
+				(ONE << Blockdata_Blk) |
+				(ONE << Module_Blk) |
+				(ONE << Program_Blk) |
+				(ONE << Forall_Blk) |
+				(ONE << If_Blk) |
+				(ONE << If_Then_Blk) |
+				(ONE << If_Else_If_Blk) |
+				(ONE << If_Else_Blk) |
+				(ONE << Do_Blk) |
+				(ONE << Select_Blk) |
+				(ONE << Case_Blk) |
+				(ONE << Where_Then_Blk) |
+				(ONE << Where_Else_Blk) |
+				(ONE << Where_Else_Mask_Blk) |
+                                (ONE << Parallel_Blk) |
+				(ONE << SGI_Parallel_Blk) |
+                                (ONE << Doall_Blk) |
+				(ONE << Wait_Blk) |
+				(ONE << SGI_Doacross_Blk) |
+				(ONE << SGI_Parallel_Do_Blk) |
+                                (ONE << Do_Parallel_Blk) |
+				(ONE << SGI_Pdo_Blk) |
+                                (ONE << Guard_Blk) |
+				(ONE << SGI_Critical_Section_Blk) |
+                                (ONE << Parallel_Case_Blk) |
+				(ONE << SGI_Psection_Blk) |
+				(ONE << SGI_Section_Blk) |
+				(ONE << SGI_Single_Process_Blk) |
+                                (ONE << Open_Mp_Parallel_Blk) |
+                                (ONE << Open_Mp_Do_Blk) |
+                                (ONE << Open_Mp_Parallel_Sections_Blk) |
+                                (ONE << Open_Mp_Sections_Blk) |
+                                (ONE << Open_Mp_Section_Blk) |
+                                (ONE << Open_Mp_Single_Blk) |
+                                (ONE << Open_Mp_Parallel_Do_Blk) |
+                                (ONE << Open_Mp_Master_Blk) |
+                                (ONE << Open_Mp_Critical_Blk) |
+                                (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
+				(ONE << Contains_Blk) |
+				(ONE << Interface_Blk) |
+				(ONE << Derived_Type_Blk) | 
+				(ONE << Enum_Blk)),
+
+#endif /* KEY Bug 14150 */
 
 				};
 # undef ONE
@@ -5644,8 +5764,13 @@ stmt_category_type	stmt_top_cat [] = {
 #ifdef KEY /* Bug 10572 */
 				Declaration_Stmt_Cat,	/* Enum_Stmt          */
 				Declaration_Stmt_Cat,	/* End_Enum_Stmt      */
-				Declaration_Stmt_Cat};	/* Enumerator_Stmt    */
+				Declaration_Stmt_Cat,	/* Enumerator_Stmt    */
 #endif /* KEY Bug 10572 */
+#ifdef KEY /* Bug 14150 */
+				Declaration_Stmt_Cat,	/* Bind_Stmt	      */
+				Declaration_Stmt_Cat	/* Value_Stmt	      */
+#endif /* KEY Bug 14150 */
+				};
 
 
 boolean		first_time_tbl_alloc = TRUE;

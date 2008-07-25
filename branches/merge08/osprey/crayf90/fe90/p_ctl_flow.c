@@ -2055,7 +2055,7 @@ CHECK_FOR_VARIABLE:
          process_blockable_dir();
 # endif
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
          check_mp_dir_nesting();
 # endif
 
@@ -4085,6 +4085,9 @@ PARSE_LOGICAL_IF:
       switch (stmt_type) {
          case Allocatable_Stmt:
          case Automatic_Stmt:
+#ifdef KEY /* Bug 14150 */
+         case Bind_Stmt:
+#endif /* KEY Bug 14150 */
          case Common_Stmt:
          case Contains_Stmt:
          case Cpnt_Decl_Stmt:
@@ -4130,6 +4133,9 @@ PARSE_LOGICAL_IF:
          case Pure_Stmt:
          case Recursive_Stmt:
          case Subroutine_Stmt:
+#ifdef KEY /* Bug 14150 */
+	 case Value_Stmt:
+#endif /* KEY Bug 14150 */
 
             PRINTMSG(stmt_start_line, 365, Error, stmt_start_col);
             parse_err_flush(Find_EOS, NULL);
@@ -5920,7 +5926,7 @@ static void process_interchange_dir(void)
 
 }  /* process_interchange_dir */
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
 /******************************************************************************\
 |*									      *|
