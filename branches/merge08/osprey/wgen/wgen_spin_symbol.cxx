@@ -57,11 +57,7 @@
 extern "C"{
 #include "gspin-wgen-interface.h"
 }
-#if defined(BUILD_OS_DARWIN)
-#include <limits.h>
-#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
-#endif /* defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "errors.h"
 
@@ -186,14 +182,6 @@ Get_Name (gs_t node)
 		return ((char *) gs_identifier_pointer (node));
 	else if (gs_tree_code (node) == GS_TYPE_DECL)
 		// If type has a typedef-name, the TYPE_NAME is a TYPE_DECL.
-#ifdef FE_GNU_4_2_0 // bug 14137
-		if (gs_decl_name(node) == NULL) {
-		  ++anon_num;
-		  sprintf(buf, ".anonymous.%d", anon_num);
-		  return buf;
-		}
-		else
-#endif
 		return ((char *) gs_identifier_pointer (gs_decl_name (node)));
 	else
 		FmtAssert(FALSE, ("Get_Name unexpected tree"));
@@ -326,7 +314,7 @@ is_empty_base_class (gs_t type_tree)
 }
 
 // look up the attribute given by attr_name in the attribute list
-gs_t 
+bool 
 lookup_attribute(char *attr_name, gs_t attr_list)
 {
   gs_t nd;
@@ -334,10 +322,11 @@ lookup_attribute(char *attr_name, gs_t attr_list)
     Is_True(gs_tree_code(nd) == GS_TREE_LIST,
 	    ("lookup_attributes: TREE_LIST node not found")); 
     gs_t attr = gs_tree_purpose(nd);
-    if (is_attribute(attr_name, attr))
-      return nd;
+    if (gs_tree_code(attr) == GS_IDENTIFIER_NODE &&
+        strcmp(attr_name, (char *)gs_identifier_pointer(attr)) == 0)
+      return TRUE;
   }
-  return NULL;
+  return FALSE;
 }
 
 // idx is non-zero only for RECORD and UNION, when there is forward declaration
@@ -469,7 +458,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			mtype = MTYPE_complement(mtype);
 		}
 #ifdef KEY
-		if (lookup_attribute("may_alias",gs_type_attributes(type_tree)))
+		if (lookup_attribute("__may_alias__",gs_type_attributes(type_tree)))
 		{
 		  // bug 9975: Handle may_alias attribute, we need to create
 		  // a new type to which we can attach the flag.
@@ -493,26 +482,12 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		idx = MTYPE_To_TY (mtype);	// use predefined type
 		break;
 	case GS_ENUMERAL_TYPE:
-#ifdef KEY
-		switch (tsize) {
-		  case 1: // bug 14445
-		        mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U1 :
-		                                               MTYPE_I1);
-		        break;
-		  case 2: // bug 14445
-		        mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U2 :
-		                                               MTYPE_I2);
-		        break;
-		  case 8: // bug 500
-		        mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U8 :
-		                                               MTYPE_I8);
-		        break;
-		  default:
-		        mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U4 :
-		                                               MTYPE_I4);
-		}
-#else
 		mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U4 : MTYPE_I4);
+#ifdef KEY
+		/* bug#500 */
+		if( tsize == 8 ){
+		  mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U8 : MTYPE_I8);
+		}
 #endif
 		idx = MTYPE_To_TY (mtype);	// use predefined type
 		break;
@@ -1237,28 +1212,6 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		}
 		else
 			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
-#ifdef TARG_X8664
-		if (!TARGET_64BIT && !TY_is_varargs(idx))
-		{
-		  // Ignore m{sse}regparm and corresponding attributes at -m64.
-		  if (SSE_Reg_Parm ||
-		      lookup_attribute("sseregparm",
-		                       gs_type_attributes(type_tree)))
-		    Set_TY_has_sseregister_parm (idx);
-		  if (gs_t attr = lookup_attribute("regparm",
-		      gs_type_attributes(type_tree)))
-		  {
-		    gs_t value = gs_tree_value (attr);
-		    Is_True (gs_tree_code(value) == GS_TREE_LIST,
-		             ("Expected TREE_LIST"));
-		    value = gs_tree_value (value);
-		    if (gs_tree_code(value) == GS_INTEGER_CST)
-		      Set_TY_register_parm (idx, gs_get_integer_value (value));
-		  }
-		  else if (Reg_Parm_Count)
-		    Set_TY_register_parm (idx, Reg_Parm_Count);
-		}
-#endif
 		} // end FUNCTION_TYPE scope
 		break;
 #ifdef TARG_X8664
@@ -1551,11 +1504,7 @@ Create_ST_For_Tree (gs_t decl_node)
 
         PU_Init (pu, func_ty_idx, level);
 
-#ifdef KEY
-        st = New_ST (level - 1);
-#else
         st = New_ST (GLOBAL_SYMTAB);
-#endif
 
         // Fix bug # 34, 3356
 // gcc sometimes adds a '*' and itself handles it this way while outputing
@@ -1643,9 +1592,7 @@ Create_ST_For_Tree (gs_t decl_node)
 	      else if (gs_tree_static(decl_node)) {
 #ifdef KEY
 // bugs 340, 3717
-		if (flag_no_common || !gs_decl_common (decl_node) ||
-		    (!lang_cplus /* bug 14187 */ &&
-		     gs_decl_section_name (decl_node) /* bug 14181 */))
+		if (flag_no_common || !gs_decl_common (decl_node))
 #else
 		if (flag_no_common)
 #endif
@@ -1968,7 +1915,7 @@ Create_ST_For_Tree (gs_t decl_node)
   }
 #endif
 
-  if (gs_decl_section_name (decl_node)) {
+  if (lang_cplus && gs_decl_section_name (decl_node)) {
     DevWarn ("section %s specified for %s",
              gs_tree_string_pointer (gs_decl_section_name (decl_node)),
              ST_name (st));
@@ -1978,7 +1925,7 @@ Create_ST_For_Tree (gs_t decl_node)
     ST_ATTR&    st_attr = New_ST_ATTR (level, st_attr_idx);
     ST_ATTR_Init (st_attr, ST_st_idx (st), ST_ATTR_SECTION_NAME,
                   Save_Str (gs_tree_string_pointer (gs_decl_section_name (decl_node))));
-    if (!lang_cplus) // bug 14187
+    if (strncmp(gs_tree_string_pointer (gs_decl_section_name (decl_node)), ".gnu.linkonce.", 14))
       Set_ST_has_named_section (st);
   }
 
@@ -2180,26 +2127,23 @@ get_DECL_ST(gs_t t) {
     return st_map[t_index];
   }
 
-  // The ST is not in the non-PU-specific map.  Look in the PU-specific maps.
-  INT scope = Current_scope;
-  do {
-    // If Scope_tab[scope].st is NULL, then the function ST has not
-    // been set yet, and there is no PU-specific map.
-    if (Scope_tab[scope].st != NULL) {
-      // See if there is a PU-specific map.
-      PU *pu = &Get_Scope_PU(scope);
-      hash_map<PU*, hash_map<gs_t, ST*, ptrhash>*, ptrhash>::iterator pu_map_it =
-	pu_map.find(pu);
-      if (pu_map_it != pu_map.end()) {
-	// There is a PU-specific map.  Get the ST from the map.
-	hash_map<gs_t, ST*, ptrhash> *st_map2 = pu_map[pu];
-	if ((*st_map2)[t_index])
-	  return (*st_map2)[t_index];
-      }
-    }
-    scope--;
-  } while (scope > 1);
-  return null_ST;
+  // The ST is not in the non-PU-specific map.  Look in the PU-specific map.
+
+  // If Scope_tab[Current_scope].st is NULL, then the function ST has not
+  // been set yet, and there is no PU-specific map.
+  if (Scope_tab[Current_scope].st == NULL)
+    return null_ST;
+
+  // See if there is a PU-specific map.
+  PU *pu = &Get_Current_PU();	// needs Scope_tab[Current_scope].st
+  hash_map<PU*, hash_map<gs_t, ST*, ptrhash>*, ptrhash>::iterator pu_map_it =
+    pu_map.find(pu);
+  if (pu_map_it == pu_map.end())
+    return null_ST;
+
+  // There is a PU-specific map.  Get the ST from the map.
+  hash_map<gs_t, ST*, ptrhash> *st_map = pu_map[pu];
+  return (*st_map)[t_index];
 }
 
 BOOL&

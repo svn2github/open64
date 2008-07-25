@@ -77,8 +77,6 @@ extern
 #endif
 void WGEN_Expand_Stmt (gs_t stmt, WN* target_wn = NULL);
 
-extern void WGEN_Expand_Label (gs_t label);
-
 #ifdef KEY
 extern LABEL_IDX WGEN_unusable_label_idx;
 extern LABEL_IDX WGEN_last_label_idx;

@@ -52,18 +52,10 @@ extern "C" {
 #include "gspin-wgen-interface.h"
 }
 
-#if defined(BUILD_OS_DARWIN)
-#include <limits.h>
-#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
-#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h>
 #include <errno.h>
-#if defined(BUILD_OS_DARWIN)
-#include <darwin_elf.h>
-#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
-#endif /* defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "config.h"
 #include "config_opt.h"	// for Div_Split_Allowed
@@ -99,10 +91,6 @@ extern "C" {
 
 int  WGEN_Keep_Zero_Length_Structs = TRUE;
 PU_Info *PU_Tree_Root = NULL;
-#ifdef TARG_X8664
-int Reg_Parm_Count = 0;
-BOOL SSE_Reg_Parm = FALSE;
-#endif
 
 extern void Initialize_IRB (void);	/* In lieu of irbutil.h */
 

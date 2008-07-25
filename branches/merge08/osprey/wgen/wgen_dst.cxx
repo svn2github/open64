@@ -85,11 +85,7 @@ extern "C"{
 #include "gspin-wgen-interface.h"
 }
 
-#if defined(BUILD_OS_DARWIN)
-#include <limits.h>
-#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
-#endif /* defined(BUILD_OS_DARWIN) */
 
 #include "defs.h"
 #include "glob.h"
@@ -126,16 +122,10 @@ extern FILE *tree_dump_file; //for debugging only
 static BOOL dst_initialized = FALSE;
 
 
-#ifdef KEY
-static char *cwd_buffer = NULL;
-static char *current_working_dir = NULL;
-static char *current_host_dir = NULL;
-#else
 #define MAX_CWD_CHARS (256 - (MAXHOSTNAMELEN+1))
 static char  cwd_buffer[MAX_CWD_CHARS+MAXHOSTNAMELEN+1];
 static char *current_working_dir = &cwd_buffer[0];
 static char *current_host_dir = &cwd_buffer[0];
-#endif
 
 
 // A file-global current scope is not useful, as with gcc we see
@@ -2919,12 +2909,6 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
 	  char *copts[]) /* The array of option strings passed to fec(c) */
 {
    char         *src_path, *comp_info;
-#ifdef KEY
-   char         *cur_dir = Get_Current_Working_Directory();
-
-   current_working_dir = current_host_dir = cwd_buffer =
-                      (char *) malloc (strlen(cur_dir) + MAXHOSTNAMELEN + 10);
-#endif
 
    dst_initialized = TRUE;
 
@@ -2974,11 +2958,7 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
       current_host_dir = NULL;
       current_working_dir = &cwd_buffer[0];
    }
-#ifdef KEY
-   strcpy(current_working_dir, cur_dir);
-#else
    strcpy(current_working_dir, Get_Current_Working_Directory());
-#endif
    if (current_working_dir == NULL) {
       perror("getcwd");
       exit(2);

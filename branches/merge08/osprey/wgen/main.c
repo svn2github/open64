@@ -241,13 +241,6 @@ Process_Cc1_Command_Line(gs_t arg_list)
 	      else if (!strcmp( cp, "64" )) {
 		TARGET_64BIT = TRUE;
 	      }
-	      else if (!strncmp( cp, "regparm=", 8 )) {
-	        cp += 8;
-	        Reg_Parm_Count = Get_Numeric_Flag (&cp, 0, 3, 0, argv ); 
-	      }
-	      else if (!strcmp( cp, "sseregparm" )) {
-	        SSE_Reg_Parm = TRUE;
-	      }
 #else
 	      // 11953: MIPS expects -mabi=n32 or -mabi=64
 	      if (!strcmp( cp, "abi=n32" )) {

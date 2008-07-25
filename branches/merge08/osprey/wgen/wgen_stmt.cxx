@@ -595,7 +595,7 @@ Get_typeinfo_ST (void)
 ST_IDX
 Get_exception_pointer_symbol (void)
 {
-  ST_IDX st = TCON_uval (INITV_tc_val (INITO_val (PU_misc_info(Get_Current_PU()))));
+  ST_IDX st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().misc)));
 #ifdef FE_GNU_4_2_0
   WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, &St_Table[st], TRUE);
 #endif
@@ -607,7 +607,7 @@ Get_exception_pointer_symbol (void)
 ST_IDX
 Get_exception_filter_symbol (void)
 {
-  ST_IDX st = TCON_uval (INITV_tc_val (INITV_next (INITO_val (PU_misc_info(Get_Current_PU())))));
+  ST_IDX st = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().misc))));
 #ifdef FE_GNU_4_2_0
   WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, &St_Table[st], TRUE);
 #endif
@@ -659,7 +659,7 @@ Do_EH_Tables (void)
 			// Store the inito_idx in the PU
 			// 1. exc_ptr 2. filter : Set 3rd entry with inito_idx
 			INITV_IDX index = INITV_next (INITV_next (INITO_val (
-			               PU_misc_info (Get_Current_PU()))));
+			               (INITO_IDX) Get_Current_PU().misc)));
 			// INITV_Set_VAL resets the next field, so back it up
 			// and set it again.
 			INITV_IDX bkup = INITV_next (index);
@@ -695,7 +695,7 @@ Do_EH_Tables (void)
 		ST * eh_spec = Get_eh_spec_ST ();
 		id = New_INITO (ST_st_idx(eh_spec), start);
 		INITV_IDX index = INITV_next (INITV_next (INITV_next (
-			INITO_val (PU_misc_info(Get_Current_PU())))));
+			INITO_val ((INITO_IDX) Get_Current_PU().misc))));
 		// INITV_Set_VAL resets the next field, so back it up
 		// and set it again.
 		INITV_IDX bkup = INITV_next (index);
@@ -1047,7 +1047,7 @@ static void
 WGEN_Declare_Nonlocal_Label (gs_t label)
 {
   WGEN_Get_LABEL (label, FALSE);
-} /* WGEN_Declare_Nonlocal_Label */
+} /* WGEN_Expand_Label */
 
 
 /* Generate WHIRL for an asm statement with arguments.
@@ -1693,7 +1693,7 @@ WGEN_Check_Undefined_Labels (void)
     LABEL_IDX  label_idx  = undefined_labels_stack [undefined_labels_i].label_idx;
     SYMTAB_IDX symtab_idx = undefined_labels_stack [undefined_labels_i].symtab_idx;
 //  fprintf (stderr, "WGEN_Check_Undefined_Labels: %d idx = %8x [%d]\n", i, label_idx, symtab_idx);
-    if (LABEL_IDX_level(label_idx) < CURRENT_SYMTAB)
+    if (symtab_idx < CURRENT_SYMTAB)
       break;
     FmtAssert (undefined_labels_stack [undefined_labels_i].defined,
                ("label not defined within current function scope"));
@@ -2076,13 +2076,8 @@ WGEN_Expand_Goto (gs_t label)	// KEY VERSION
   vector<gs_t>::reverse_iterator ci, li;
   LABEL_IDX label_idx = WGEN_Get_LABEL (label, FALSE);
   if ((CURRENT_SYMTAB > GLOBAL_SYMTAB + 1) &&
-      (LABEL_IDX_level(label_idx) < CURRENT_SYMTAB)) {
-    wn = WN_CreateGotoOuterBlock (label_idx, LABEL_IDX_level(label_idx));
-    Set_LABEL_target_of_goto_outer_block(label_idx);
-    PU &target_pu = Get_Scope_PU(LABEL_IDX_level(label_idx));
-    Set_PU_has_nonlocal_goto_label(target_pu);
-    Set_PU_has_goto_outer_block (Get_Current_PU ());
-  }
+      (DECL_SYMTAB_IDX(label) < CURRENT_SYMTAB))
+    wn = WN_CreateGotoOuterBlock (label_idx, DECL_SYMTAB_IDX(label));
   else {
     gs_t scope = LABEL_SCOPE(label);
     if (scope != NULL && scope_cleanup_i != -1) {
@@ -2563,6 +2558,7 @@ Mark_Scopes_And_Labels (gs_t stmt)
 	  Push_Scope(stmt);
 	  new_scope = TRUE;
 	}
+
 #ifdef FE_GNU_4_2_0
         for (int i=0; i < gs_length(stmt_list); i++)
           Mark_Scopes_And_Labels(gs_index(stmt_list, i));
@@ -2571,6 +2567,7 @@ Mark_Scopes_And_Labels (gs_t stmt)
 	for (list = stmt_list; gs_code(list)!=EMPTY; list = gs_operand(list,1))
 	  Mark_Scopes_And_Labels(gs_operand(list,0));
 #endif
+
 	if (new_scope) // End scope
 	  --scope_i;
       }
@@ -2721,17 +2718,6 @@ WGEN_Expand_Start_Case (gs_t selector)
   WN *switch_block = WN_CreateBlock ();
   WN *index;
   index = WGEN_Expand_Expr_With_Sequence_Point (selector, index_mtype);
-
-#ifdef KEY
-  // The switch index may be needed more than once if it contains case
-  // range. As it may have side-effects like a function call, save the
-  // index into a temporary, and used the saved value.
-  ST *save_expr_st = Gen_Temp_Symbol (MTYPE_TO_TY_array[index_mtype], "_switch_index");
-  WN *stid = WN_Stid (index_mtype, 0, save_expr_st, MTYPE_TO_TY_array[index_mtype], index);
-  WGEN_Stmt_Append(stid, Get_Srcpos());
-  index = WN_Ldid(index_mtype, 0, save_expr_st, MTYPE_TO_TY_array[index_mtype]);
-#endif
-
   WGEN_Stmt_Push (switch_block, wgen_stmk_switch, Get_Srcpos());
   if (++switch_info_i == switch_info_max) {
     switch_info_max   = ENLARGE(switch_info_max);
@@ -2744,42 +2730,6 @@ WGEN_Expand_Start_Case (gs_t selector)
   WGEN_Record_Loop_Switch (GS_SWITCH_STMT);
 } /* WGEN_Expand_Start_Case */
 
-#ifdef KEY
-// Bug 14138: case ranges can be very long, so individual case statements
-// should not be generated for each value in the range, neither should
-// jump tables be generated in the back-end.
-//
-// switch (index)
-//   case low ... high: goto L;
-//
-// Generate:
-// if (index >= low && index <= high)
-//   goto L
-//
-// Return the IF statement.
-static WN *
-WGEN_Expand_Case_Range (WN * index, INT64 low, INT64 high, LABEL_IDX label)
-{
-  const TYPE_ID mtype = WN_rtype (index);
-  WN * wn_ldid1 = WN_COPY_Tree (index);
-  WN * wn_ldid2 = WN_COPY_Tree (index);
-  WN * goto_wn = WN_CreateGoto (label);
-  WN_next (goto_wn) = WN_prev (goto_wn) = NULL;
-                                                                                
-  WN * if_then = WN_CreateBlock ();
-  WN_first (if_then) = WN_last (if_then) = goto_wn;
-                                                                                
-  WN * if_else = WN_CreateBlock ();
-  WN * cond = WN_CAND (WN_GE (mtype,
-                              wn_ldid1,
-                              WN_Intconst (mtype, low)),
-                       WN_LE (mtype,
-                              wn_ldid2,
-                              WN_Intconst (mtype, high)));
-  return WN_CreateIf (cond, if_then, if_else);
-}
-#endif
-
 static void
 WGEN_Expand_End_Case (void)
 {
@@ -2791,9 +2741,6 @@ WGEN_Expand_End_Case (void)
   WN    *case_entry;
   WN    *def_goto;
   WN    *wn;
-#ifdef KEY
-  WN    *case_range;
-#endif
   LABEL_IDX exit_label_idx;
 
   n = case_info_i - switch_info_stack [switch_info_i].start_case_index + 1;
@@ -2806,30 +2753,11 @@ WGEN_Expand_End_Case (void)
   else
     def_goto = WN_CreateGoto (exit_label_idx);
   case_block = WN_CreateBlock ();
-#ifdef KEY
-  case_range = WN_CreateBlock ();
-#endif
   for (i = switch_info_stack [switch_info_i].start_case_index;
        i <= case_info_i;
        i++) {
     INT64     case_value;
     LABEL_IDX case_label_idx = case_info_stack [i].case_label_idx;
-#ifdef KEY
-    INT64 low = case_info_stack[i].case_lower_bound_value;
-    INT64 high = case_info_stack[i].case_upper_bound_value;
-    if (low < high) {
-      WN * case_range_cond = 
-          WGEN_Expand_Case_Range (switch_info_stack[switch_info_i].index,
-                                  low,
-                                  high,
-                                  case_label_idx);
-      WN_INSERT_BlockLast (case_range, case_range_cond);
-    }
-    else {
-      case_entry = WN_CreateCasegoto (low, case_label_idx);
-      WN_INSERT_BlockLast (case_block, case_entry);
-    }
-#else
     for (case_value  = case_info_stack [i].case_lower_bound_value;
          case_value <= case_info_stack [i].case_upper_bound_value;
          case_value++) {
@@ -2840,7 +2768,6 @@ WGEN_Expand_End_Case (void)
 	break;
 #endif
     }
-#endif
   }
   switch_wn = WN_CreateSwitch (n,
                                switch_info_stack [switch_info_i].index,
@@ -2849,8 +2776,6 @@ WGEN_Expand_End_Case (void)
                                exit_label_idx);
   switch_block = WGEN_Stmt_Pop (wgen_stmk_switch);
 #ifdef KEY
-  // Append any IF statements for case range in switch.
-  WGEN_Stmt_Append (case_range, Get_Srcpos());
   WN_INSERT_BlockFirst (switch_block, switch_wn);
   wn = WN_CreateLabel ((ST_IDX) 0, exit_label_idx, 0, NULL);
   WN_INSERT_BlockLast (switch_block, wn);
