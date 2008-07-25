@@ -777,6 +777,8 @@ I-xall		;	FTN	ffe	self
         "Put uninitialized or runtime-initialized global variables into the common segment, for options compatibility only, ignored by Open64"
 -felide-constructors    ;       CC      cfe     self
         "for options compatibility only, ignored by Open64"
+-fno-elide-constructors	;	CC	cfe	self
+	"Do not perform an optimization that can avoid calling the copy constructor"
 -fno-implement-inlines  ;       CC      cfe     self
         "Do not emit out-of-line copies of inline functions controlled by `#pragma implementation', for options compatibility only, ignored by Open64"
 -ffor-scope	;	CC	cfe	self
