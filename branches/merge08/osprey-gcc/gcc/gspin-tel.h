@@ -39,6 +39,11 @@ extern gs_t gs_build_pointer_type(gs_t node);
 extern gs_t gs_build_target_expr(gs_t k0, gs_t k1, gs_t k2, gs_t k3);
 extern gs_t gs_c_common_truthvalue_conversion(gs_t node);
 extern gs_t gs_strip_nops(gs_t node);
+#ifdef FE_GNU_4_2_0
+extern gs_t gs_build_2(gs_tree_code_class_t code_class,
+                       gs_code_t code, gs_t k0, gs_t k1);
+#endif
+
 
 /*  Define kid positions */
 
@@ -171,6 +176,9 @@ extern gs_t gs_strip_nops(gs_t node);
 #  define GS_TYPE_LANG_SPECIFIC		38
 #  define GS_POINTER_TYPE_P             39
 #  define GS_AGGREGATE_VALUE_P          40
+#  define GS_TYPE_BIG_ENDIAN            41
+#  define GS_TYPE_LITTLE_ENDIAN         42
+#  define GS_TYPE_EXPLICIT_ENDIAN       43
 
 // flags specific to GS_TCC_EXPRESSION, GS_TCC_COMPARISON, GS_TCC_UNARY,
 // GS_TCC_BINARY, GS_TCC_REFERENCE, GS_TCC_STATEMENT:
@@ -704,6 +712,9 @@ GS_LOOKUP_FLAG (GS_FLAGS, gs_type_volatile, GS_TYPE_VOLATILE)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_type_lang_specific, GS_TYPE_LANG_SPECIFIC)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_pointer_type_p, GS_POINTER_TYPE_P)
 GS_LOOKUP_FLAG (GS_FLAGS, gs_aggregate_value_p, GS_AGGREGATE_VALUE_P)
+GS_LOOKUP_FLAG (GS_FLAGS, gs_type_big_endian, GS_TYPE_BIG_ENDIAN)
+GS_LOOKUP_FLAG (GS_FLAGS, gs_type_little_endian, GS_TYPE_LITTLE_ENDIAN)
+GS_LOOKUP_FLAG (GS_FLAGS, gs_type_explicit_endian, GS_TYPE_EXPLICIT_ENDIAN)
   // gs_type_ref_can_alias_all reuses the GS_TREE_STATIC flag
 GS_LOOKUP_FLAG (GS_FLAGS, gs_type_ref_can_alias_all, GS_TREE_STATIC)
 GS_UPDATE_FLAG (GS_FLAGS, gs_set_type_ref_can_alias_all, GS_TREE_STATIC)
