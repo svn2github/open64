@@ -1529,7 +1529,7 @@ fei_label_addr(INTPTR lbl_idx)
   WN *wn;
   INT32 *assign_id;
 
-  assign_id = cwh_auxst_assign_id(CURRENT_SYMTAB, cast_to_LB(lbl_idx));
+  assign_id = cwh_auxst_assign_id(CURRENT_SYMTAB, LABEL_IDX_index((LABEL_IDX)lbl_idx));
 
   if (*assign_id == -1)
      *assign_id = cwh_assign_label_id++;

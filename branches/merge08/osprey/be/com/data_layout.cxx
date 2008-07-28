@@ -953,6 +953,10 @@ Get_Section_ST(SECTION_IDX sec, UINT align, ST_SCLASS sclass)
 #if defined(TARG_X8664) || defined(TARG_SL)  // bug 9795
     if (sec == _SEC_DATA && align != 0)
       align = MAX(align, 16);
+#if defined(TARG_SL)
+    if (((sec == _SEC_SDATA) || (sec == _SEC_DATA)) && (align < 4))
+      align = 4;
+#endif
 #endif
     ST *new_blk = New_ST_Block (Save_Str(SEC_name(sec)), 
 	TRUE/*is_global*/, sclass, align, 0);
