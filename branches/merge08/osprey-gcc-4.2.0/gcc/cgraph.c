@@ -924,10 +924,19 @@ cgraph_varpool_reset_queue (void)
 void
 cgraph_varpool_mark_needed_node (struct cgraph_varpool_node *node)
 {
+#ifdef KEY
+  tree decl = node->decl;
+#endif
+
   if (!node->needed && node->finalized
       && !TREE_ASM_WRITTEN (node->decl))
     cgraph_varpool_enqueue_needed_node (node);
   node->needed = 1;
+
+#ifdef KEY /* bug 14091 */
+  if (gspin_invoked(decl) && TREE_CODE(decl) == VAR_DECL)
+    gs_set_flag_value (decl, GS_DECL_NEEDED, 1);
+#endif
 }
 
 /* Determine if variable DECL is needed.  That is, visible to something

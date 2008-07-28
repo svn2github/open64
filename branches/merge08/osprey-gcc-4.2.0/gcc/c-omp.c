@@ -402,10 +402,32 @@ c_split_parallel_clauses (tree clauses, tree *par_clauses, tree *ws_clauses)
 
       switch (OMP_CLAUSE_CODE (clauses))
 	{
+	case OMP_CLAUSE_LASTPRIVATE:
+#ifdef KEY
+	  /* Lastprivate should belong to work-sharing constructs. For C,
+	     we leave it with the parallel construct, as wgen will combine
+	     the parallel and work-sharing constructs into one. For C++,
+	     wgen will generate parallel and work-sharing constructs
+	     separately. So move lastprivate to work-sharing, and add
+	     a "shared" clause for it to the parallel construct. This is
+	     required in case there is a default(none) clause. See bug
+	     13727. */
+	  if (flag_spin_file && lang_cplus())
+	  {
+	    tree add_clause;
+	    OMP_CLAUSE_CHAIN (clauses) = *ws_clauses;
+	    *ws_clauses = clauses;
+
+	    add_clause = build_omp_clause (OMP_CLAUSE_SHARED);
+	    OMP_CLAUSE_DECL (add_clause) = OMP_CLAUSE_DECL (clauses);
+	    OMP_CLAUSE_CHAIN (add_clause) = *par_clauses;
+	    *par_clauses = add_clause;
+	    break;
+	  }
+#endif
 	case OMP_CLAUSE_PRIVATE:
 	case OMP_CLAUSE_SHARED:
 	case OMP_CLAUSE_FIRSTPRIVATE:
-	case OMP_CLAUSE_LASTPRIVATE:
 	case OMP_CLAUSE_REDUCTION:
 	case OMP_CLAUSE_COPYIN:
 	case OMP_CLAUSE_IF:

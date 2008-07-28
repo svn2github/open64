@@ -4710,6 +4710,7 @@ extern void gspin_init_global_trees_list (void);
 extern int gspin_invoked (tree t);
 extern void gs_set_flag_value (tree t, unsigned int flag, bool value);
 extern void gs_set_program_flag_value (unsigned int flag, bool value);
+extern bool lang_cplus (void);
 #endif
 
 #endif  /* GCC_TREE_H  */

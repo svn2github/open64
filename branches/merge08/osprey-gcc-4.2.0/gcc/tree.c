@@ -9174,6 +9174,12 @@ ix86_builtins2gsbi_ts (enum ix86_builtins code)
     case IX86_BUILTIN_VEC_EXT_V4HI: return GSBI_IX86_BUILTIN_VEC_EXT_V4HI;
     case IX86_BUILTIN_VEC_SET_V8HI: return GSBI_IX86_BUILTIN_VEC_SET_V8HI;
     case IX86_BUILTIN_VEC_SET_V4HI: return GSBI_IX86_BUILTIN_VEC_SET_V4HI;
+    case IX86_BUILTIN_MOVNTSS: return GSBI_IX86_BUILTIN_MOVNTSS;
+    case IX86_BUILTIN_MOVNTSD: return GSBI_IX86_BUILTIN_MOVNTSD;
+    case IX86_BUILTIN_EXTRQI: return GSBI_IX86_BUILTIN_EXTRQI;
+    case IX86_BUILTIN_EXTRQ: return GSBI_IX86_BUILTIN_EXTRQ;
+    case IX86_BUILTIN_INSERTQI: return GSBI_IX86_BUILTIN_INSERTQI;
+    case IX86_BUILTIN_INSERTQ: return GSBI_IX86_BUILTIN_INSERTQ;
     case IX86_BUILTIN_MAX: return GSBI_IX86_BUILTIN_MAX;
   }
   gcc_assert (0);
@@ -9572,6 +9578,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         gs_operand((gs_t)GS_NODE(t), GS_TYPE_SIZE) == NULL)
       goto REVISIT;
 
+    /* bug 14420 */
+    if (tcode == RECORD_TYPE &&
+        TYPE_FIELDS(t) &&
+        gs_operand((gs_t)GS_NODE(t), GS_TYPE_FIELDS) == NULL)
+      goto REVISIT;
+
     if (tcode == RECORD_TYPE &&
         CLASS_TYPE_P(t) &&
         CLASSTYPE_TYPEINFO_VAR(t) &&
@@ -9615,6 +9627,14 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     }
     gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASSEMBLER_NAME,
 		   gs_x_1(DECL_ASSEMBLER_NAME(t), seq_num));
+#ifdef FE_GNU_4_2_0
+    // Bug 5737: For C++ (triggered by C++ OpenMP bug), also traverse the
+    // chain node. Otherwise, if TYPE_METHODS initially has a function
+    // without a function body (like a maybe_in_charge_constructor), its
+    // TREE_CHAIN would be empty, thus causing other methods to go missing.
+    gs_set_operand((gs_t) GS_NODE(t), GS_TREE_CHAIN,
+	           gs_x_1(TREE_CHAIN(t), seq_num));
+#endif
     _gs_bv(flags, GS_DECL_ASSEMBLER_NAME_SET_P, DECL_ASSEMBLER_NAME_SET_P(t));
     // Bug 11224: Also update some flags. Even if the decl is not defined
     // in this translation unit, it needs to have the proper flags so that
@@ -9663,7 +9683,9 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
   GS_ASSERT(!(TREE_CODE(t) == FUNCTION_DECL &&
 	      FULLY_TRANSLATED_TO_GS(t)) || translate_this_func_decl,
 	    ("gs_x_1: cannot re-translate a fully translated FUNCTION_DECL"));
-  FULLY_TRANSLATED_TO_GS(t) = 1;
+  if (!CR() || TREE_CODE(t) != FUNCTION_DECL || 
+      !DECL_BUILT_IN(t) || DECL_SAVED_TREE(t)) // bug 14254
+    FULLY_TRANSLATED_TO_GS(t) = 1;
 
   // Add common tree fields: TREE_TYPE, TREE_CHAIN, common flags.  Note that
   // some flags are defined/valid only for certain conditions.
@@ -9754,7 +9776,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       } else {
         if (gs_bv(flags, GS_DECL_COMMON) == 0) /* bug 10324 */
           _gs_bv (flags, GS_DECL_EXTERNAL, DECL_EXTERNAL (t));
-        else if (! DECL_EXTERNAL(t) && gs_bv(flags, GS_DECL_EXTERNAL)) //bug 10324
+	/* bugs 10324, 14446 */
+        if (! DECL_EXTERNAL(t) && gs_bv(flags, GS_DECL_EXTERNAL))
           _gs_bv_reset (flags, GS_DECL_EXTERNAL);
       }
       if (DECL_WEAK(t) && 
@@ -9800,7 +9823,11 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	    _gs_bv (flags, GS_DECL_DECLARED_INLINE_P, DECL_DECLARED_INLINE_P (t));
 	    _gs_bv (flags, GS_DECL_BUILT_IN, DECL_BUILT_IN (t));
 	    _gs_bv (flags, GS_DECL_NO_STATIC_CHAIN, DECL_NO_STATIC_CHAIN (t));
-	    _gs_bv (flags, GS_DECL_THUNK_P, DECL_THUNK_P (t));
+	    /* Set this flag only for C++, because for C it may not always
+	     * be initialized to 0. This flag may also be moved to
+	     * cp_decl_flags. */
+	    if (CPR())
+	      _gs_bv (flags, GS_DECL_THUNK_P, DECL_THUNK_P (t));
 
 	    /* KEY: By default for C++, each function is not "needed" and not
 	     * "reachable" in GNU call graph terminology. That means wgen
@@ -9838,6 +9865,19 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		     gs_x_1(DECL_VALUE_EXPR(t), seq_num));
 	  _gs_bv (flags, GS_DECL_IN_TEXT_SECTION, DECL_IN_TEXT_SECTION (t));
 	  _gs_bv (flags, GS_DECL_THREAD_LOCAL, DECL_THREAD_LOCAL_P (t));
+	  if (TREE_STATIC(t)) {
+	    struct cgraph_varpool_node * var_node = cgraph_varpool_node (t);
+	    _gs_bv (flags, GS_DECL_NEEDED, var_node->needed);
+	  }
+
+	  if (DECL_REGISTER(t) && 
+	      (DECL_HARD_REGISTER(t) || DECL_ASSEMBLER_NAME_SET_P(t))) {
+	    char *reg_name = IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(t));
+	    int reg_number = decode_reg_name(reg_name+1);
+	    gs_t asmreg = __gs(IB_INT);
+	    _gs_n(asmreg, reg_number);
+	    gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASMREG, asmreg);
+	  }
 	  break;
 
 	case PARM_DECL:
@@ -9983,7 +10023,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
          || (TREE_CODE (t) == VAR_DECL
             && (TREE_STATIC (t)
                 || DECL_EXTERNAL (t)
-                || TREE_PUBLIC (t)))) {
+                || TREE_PUBLIC (t)
+		|| DECL_REGISTER(t) && DECL_HARD_REGISTER(t)))) {
         gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASSEMBLER_NAME,
 		   gs_x_1(DECL_ASSEMBLER_NAME(t), seq_num));
       }
@@ -10027,6 +10068,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		     DECL_CONSTRUCTOR_P (t) && (*p_copy_fn_p) (t) > 0);
 	      _gs_bv(cp_decl_flags, GS_DECL_EXTERN_C_P,
 		     DECL_EXTERN_C_P(t));
+#ifdef FE_GNU_4_2_0
+	      _gs_bv(cp_decl_flags, GS_DECL_CONSTRUCTOR_P,
+		     DECL_CONSTRUCTOR_P(t));
+	      _gs_bv(cp_decl_flags, GS_DECL_ASSIGNMENT_OPERATOR_P,
+		     DECL_ASSIGNMENT_OPERATOR_P(t));
+#endif
 
 	      gs_set_operand((gs_t) GS_NODE(t), GS_DECL_NAMED_RETURN_OBJECT,
 			   gs_x_1(DECL_NAMED_RETURN_OBJECT(t), seq_num));
@@ -10090,6 +10137,14 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		   DECL_TEMPLATE_SPECIALIZATION(t));
             _gs_bv(cp_decl_flags, GS_DECL_COMPLETE_CONSTRUCTOR_P,
                    DECL_COMPLETE_CONSTRUCTOR_P(t));
+#ifdef FE_GNU_4_2_0
+            _gs_bv(cp_decl_flags, GS_DECL_COMPLETE_DESTRUCTOR_P,
+                   DECL_COMPLETE_DESTRUCTOR_P(t));
+            _gs_bv(cp_decl_flags, GS_DECL_HAS_IN_CHARGE_PARM_P,
+                   DECL_HAS_IN_CHARGE_PARM_P(t));
+            _gs_bv(cp_decl_flags, GS_DECL_HAS_VTT_PARM_P,
+                   DECL_HAS_VTT_PARM_P(t));
+#endif
             _gs_bv(cp_decl_flags, GS_DECL_REALLY_EXTERN, DECL_REALLY_EXTERN(t));
             if (! DECL_REALLY_EXTERN(t) &&
                 gs_bv(cp_decl_flags, GS_DECL_REALLY_EXTERN))
@@ -10308,6 +10363,14 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		   CLASSTYPE_INTERFACE_ONLY(t));
 	    _gs_bv(cp_type_flags, GS_CLASSTYPE_TEMPLATE_SPECIALIZATION,
 		   CLASSTYPE_TEMPLATE_SPECIALIZATION(t));
+#ifdef FE_GNU_4_2_0
+	    _gs_bv(cp_type_flags, GS_CLASSTYPE_NON_POD_P,
+		   CLASSTYPE_NON_POD_P(t));
+	    _gs_bv(cp_type_flags, GS_TYPE_HAS_DEFAULT_CONSTRUCTOR,
+		   TYPE_HAS_DEFAULT_CONSTRUCTOR(t));
+	    _gs_bv(cp_type_flags, GS_TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR,
+	           TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR(t));
+#endif
 	  }
 
 	  switch (TREE_CODE(t)) {
@@ -11522,5 +11585,11 @@ dump_statement_list (tree t)
       }
     }
   }
+}
+
+bool
+lang_cplus (void)
+{
+  return CPR();
 }
 #endif

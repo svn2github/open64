@@ -56,6 +56,10 @@ extern "C" {
 #endif
 
 extern int  WGEN_Keep_Zero_Length_Structs;
+#ifdef TARG_X8664
+extern int Reg_Parm_Count;
+extern BOOL SSE_Reg_Parm;
+#endif
 
 extern void WGEN_Init (INT argc, char **arrgv, char **envp);
 extern void WGEN_Finish (void);

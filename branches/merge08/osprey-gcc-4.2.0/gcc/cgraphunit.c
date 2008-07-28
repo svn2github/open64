@@ -171,7 +171,7 @@ static void cgraph_expand_all_functions (void);
 static void cgraph_mark_functions_to_output (void);
 static void cgraph_expand_function (struct cgraph_node *);
 static tree record_reference (tree *, int *, void *);
-static void cgraph_output_pending_asms (void);
+void cgraph_output_pending_asms (void);
 static void cgraph_increase_alignment (void);
 
 /* Lists all assembled variables to be sent to debugger output later on.  */
@@ -927,7 +927,7 @@ cgraph_varpool_output_debug_info (void)
 
 /* Output all asm statements we have stored up to be output.  */
 
-static void
+void
 cgraph_output_pending_asms (void)
 {
   struct cgraph_asm_node *can;

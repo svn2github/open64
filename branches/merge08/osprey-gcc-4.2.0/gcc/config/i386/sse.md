@@ -3948,3 +3948,88 @@
 ;; zero extended to 64bit, we only need to set up 32bit registers.
   "monitor"
   [(set_attr "length" "3")])
+
+
+(define_insn "sse4a_vmmovntv2df"
+  [(set (match_operand:DF 0 "memory_operand" "=m")
+        (unspec:DF [(vec_select:DF
+                      (match_operand:V2DF 1 "register_operand" "x")
+                      (parallel [(const_int 0)]))]
+                   UNSPEC_MOVNT))]
+  "TARGET_SSE4A"
+  "movntsd\t{%1, %0|%0, %1}"
+  [(set_attr "type" "ssemov")
+   (set_attr "mode" "DF")])
+
+(define_insn "sse4a_movntdf"
+  [(set (match_operand:DF 0 "memory_operand" "=m")
+        (unspec:DF [(match_operand:DF 1 "register_operand" "x")]
+                   UNSPEC_MOVNT))]
+  "TARGET_SSE4A"
+  "movntsd\t{%1, %0|%0, %1}"
+  [(set_attr "type" "ssemov")
+   (set_attr "mode" "DF")])
+
+(define_insn "sse4a_vmmovntv4sf"
+  [(set (match_operand:SF 0 "memory_operand" "=m")
+       (unspec:SF [(vec_select:SF
+                     (match_operand:V4SF 1 "register_operand" "x")
+                     (parallel [(const_int 0)]))]
+                  UNSPEC_MOVNT))]
+  "TARGET_SSE4A"
+  "movntss\t{%1, %0|%0, %1}"
+  [(set_attr "type" "ssemov")
+   (set_attr "mode" "SF")])
+
+(define_insn "sse4a_movntsf"
+  [(set (match_operand:SF 0 "memory_operand" "=m")
+       (unspec:SF [(match_operand:SF 1 "register_operand" "x")]
+                  UNSPEC_MOVNT))]
+  "TARGET_SSE4A"
+  "movntss\t{%1, %0|%0, %1}"
+  [(set_attr "type" "ssemov")
+   (set_attr "mode" "SF")])
+
+(define_insn "sse4a_extrqi"
+  [(set (match_operand:V2DI 0 "register_operand" "=x")
+        (unspec:V2DI [(match_operand:V2DI 1 "register_operand" "0")
+                      (match_operand 2 "const_int_operand" "")
+                      (match_operand 3 "const_int_operand" "")]
+                     UNSPEC_EXTRQI))]
+  "TARGET_SSE4A"
+  "extrq\t{%3, %2, %0|%0, %2, %3}"
+  [(set_attr "type" "sse")
+   (set_attr "mode" "TI")])
+
+(define_insn "sse4a_extrq"
+  [(set (match_operand:V2DI 0 "register_operand" "=x")
+        (unspec:V2DI [(match_operand:V2DI 1 "register_operand" "0")
+                      (match_operand:V16QI 2 "register_operand" "x")]
+                     UNSPEC_EXTRQ))]
+  "TARGET_SSE4A"
+  "extrq\t{%2, %0|%0, %2}"
+  [(set_attr "type" "sse")
+   (set_attr "mode" "TI")])
+
+(define_insn "sse4a_insertqi"
+  [(set (match_operand:V2DI 0 "register_operand" "=x")
+        (unspec:V2DI [(match_operand:V2DI 1 "register_operand" "0")
+                     (match_operand:V2DI 2 "register_operand" "x")
+                      (match_operand 3 "const_int_operand" "")
+                      (match_operand 4 "const_int_operand" "")]
+                     UNSPEC_INSERTQI))]
+  "TARGET_SSE4A"
+  "insertq\t{%4, %3, %2, %0|%0, %2, %3, %4}"
+  [(set_attr "type" "sseins")
+   (set_attr "mode" "TI")])
+
+(define_insn "sse4a_insertq"
+  [(set (match_operand:V2DI 0 "register_operand" "=x")
+        (unspec:V2DI [(match_operand:V2DI 1 "register_operand" "0")
+                     (match_operand:V2DI 2 "register_operand" "x")]
+                    UNSPEC_INSERTQ))]
+  "TARGET_SSE4A"
+  "insertq\t{%2, %0|%0, %2}"
+  [(set_attr "type" "sseins")
+   (set_attr "mode" "TI")])
+
