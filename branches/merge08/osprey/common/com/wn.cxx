@@ -1371,6 +1371,18 @@ WN_CreateStid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
     }
 
 #endif /* (defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) && !defined(FRONT_END_MFEF77) */
+#ifdef TARG_NVISA
+    if ((MTYPE_byte_size(desc) == 8 && MTYPE_byte_size(WN_rtype(value)) == 4)
+     || (MTYPE_byte_size(desc) == 4 && MTYPE_byte_size(WN_rtype(value)) == 8))
+    {
+        // Rather than create I8STID(I4*),
+        // create I8STID(I8I4CVT(I4*).
+        // We need explicit conversion
+        // because we use different registers for the two sizes,
+        DevWarn("insert cvt of stid, %d %d", desc, WN_rtype(value));
+        value = WN_Cvt(WN_rtype(value), desc, value);
+    }
+#endif
 
     wn = WN_Create(opc,1);
     WN_kid0(wn) = value;

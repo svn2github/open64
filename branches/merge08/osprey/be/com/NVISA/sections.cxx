@@ -103,11 +103,10 @@ SECTION Sections[_SEC_INDEX_MAX] = {
 	SHT_NOBITS, 0, 
      INT64_MAX, MIPS_LBSS, 0},
 #else
-  // There is no MIPS_LBSS section on Linux, but we need a space holder
   {_SEC_LBSS,   NULL,
-     0,
-        0, 0,
-     0, ".unknown", 0},
+     0|SHF_WRITE|SHF_ALLOC|SHF_TLS,
+        SHT_NOBITS, 0,
+     INT64_MAX, ELF_TBSS, 0},
 #endif
   {_SEC_GOT,	NULL,
      0|SHF_IA_64_SHORT|SHF_ALLOC,

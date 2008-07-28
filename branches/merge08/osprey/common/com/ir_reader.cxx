@@ -113,6 +113,9 @@ extern char * Targ_Print (const char *fmt, TCON c );
 #include "wintrinsic.h"
 #include "wn_pragmas.h"
 #include "wutil.h"
+#if defined(TARG_NVISA)
+#include "intrn_info.h"
+#endif
 #ifdef BACK_END
 #include "intrn_info.h"
 #include "region_util.h"
@@ -987,7 +990,7 @@ static void ir_put_wn(WN * wn, INT indent)
 	    Is_True(OPCODE_operator(opcode) == OPR_INTRINSIC_OP ||
 		    OPCODE_operator(opcode) == OPR_INTRINSIC_CALL,
 		    ("ir_put_wn, expected an intrinsic"));
-#if defined(BACK_END)
+#if defined(BACK_END) || defined(TARG_NVISA)
 	    fprintf(ir_ofile, " <%d,%s>", WN_intrinsic(wn),
 		    INTRINSIC_name((INTRINSIC) WN_intrinsic(wn)));
 #endif

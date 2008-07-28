@@ -1832,6 +1832,8 @@ ST::Print (FILE *f, BOOL verbose) const
                 fprintf (f, " st_used_as_initialization");
             if (flags_ext & ST_IS_THREAD_LOCAL)
                 fprintf (f, " thread_local");
+	}
+#endif
 #ifdef TARG_NVISA
 	    if (memory_space == MEMORY_GLOBAL)
 		fprintf (f, " __global__");
@@ -1846,8 +1848,6 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (memory_space == MEMORY_PARAM)
                 fprintf (f, " __param__");
 #endif /* TARG_NVISA */
-	}
-#endif
 
 	switch (export_class) {
 

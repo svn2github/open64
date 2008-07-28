@@ -232,6 +232,10 @@ COMMON_COM_CXX_SRCS =	\
   wutil.cxx		\
   xstats.cxx
 
+ifeq ($(BUILD_TARGET), NVISA)
+COMMON_COM_CXX_SRCS += intrn_info.cxx
+endif
+
 COMMON_COM_TARG_SRCS =	\
   config_host.c		\
   config_platform.c
