@@ -118,6 +118,8 @@
 /* Define if you have the dup2 function.  */
 #define HAVE_DUP2 1
 
+#if ! defined(BUILD_OS_DARWIN)
+
 /* Define if you have the feof_unlocked function.  */
 #define HAVE_FEOF_UNLOCKED 1
 
@@ -136,7 +138,9 @@
 
 /* Define if you have the fwrite_unlocked function.  */
 #define HAVE_FWRITE_UNLOCKED 1
+
 #endif /* __MINGW32__ */
+#endif /* ! defined(BUILD_OS_DARWIN) */
 
 /* Define if you have the getcwd function.  */
 #define HAVE_GETCWD 1

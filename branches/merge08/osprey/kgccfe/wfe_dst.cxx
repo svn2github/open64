@@ -73,7 +73,9 @@
 static char *rcs_id = "$Source: kgccfe/SCCS/s.wfe_dst.cxx $ $Revision: 1.49 $";
 #endif /* _KEEP_RCS_ID */
 
+#if ! defined(BUILD_OS_DARWIN)
 #include <values.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 
 #include "defs.h"
 #include "glob.h"
@@ -222,24 +224,14 @@ DST_get_context(tree intree)
     tree ltree = intree;
     struct mongoose_gcc_DST_IDX l_tree_idx;
     DST_INFO_IDX l_dst_idx;
-//#ifdef KEY
-//    BOOL continue_looping = TRUE;
-//    
-//    while(ltree && continue_looping) {
-//      continue_looping = FALSE;
-//#else
-    while(ltree) {
-//#endif /* KEY */
+
+    while (ltree) {
 	switch(TREE_CODE(ltree)) {
 	case BLOCK:
 	    // unclear when this will happen, as yet
 	    // FIX
             DevWarn("Unhandled BLOCK scope of decl/var");
 
-//#ifdef KEY
-//	    ltree = NULL;
-//#endif /* KEY */
-//	    break;
             return comp_unit_idx;
 	case FUNCTION_DECL:
 	    // This is a normal case!

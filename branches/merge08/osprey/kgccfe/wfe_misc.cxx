@@ -47,9 +47,15 @@
 #ifdef __MINGW32__
 #include "WINDOWS.h"
 #endif /* __MINGW32__ */
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h>
+#if ! defined(BUILD_OS_DARWIN)
 #include <elf.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "config.h"
 #include "config_debug.h"

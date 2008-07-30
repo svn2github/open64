@@ -470,6 +470,11 @@ Recognize built-in functions
 fbuiltin-
 C ObjC C++ ObjC++ Joined
 
+; KEY bug 11660
+fc-omit-external
+C Undocumented
+Do not output certain types of external functions.
+
 fcheck-new
 C++ ObjC++
 Check the return value of new

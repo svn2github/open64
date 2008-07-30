@@ -51,7 +51,11 @@
 
 /* translate gnu decl trees to symtab references */
 
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "errors.h"
 #include "gnu_config.h"

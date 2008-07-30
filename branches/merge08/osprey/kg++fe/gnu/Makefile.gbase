@@ -507,6 +507,9 @@ parse.c: parse.y
 	@echo 'BISON: Expect 33 shift/reduce, 58 reduce/reduce conflicts'
 	$(bison) -d -o $@ $<
 	@grep '#define YYEMPTY' $@ >> $(@:.c=.h)
+parse.h: parse.c
+
+lex.o pt.o spew.o: parse.h
 
 #ifdef X8664_OR_MIPS -- disable for x86-64
 ifdef MIPS

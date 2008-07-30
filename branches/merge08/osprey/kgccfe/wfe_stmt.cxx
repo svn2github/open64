@@ -370,6 +370,17 @@ WFE_Expand_Start_Case (int exit_flag, tree expr, tree type, char *printname)
   TYPE_ID index_mtype = Mtype_comparison (TY_mtype (Get_TY (TREE_TYPE (expr))));
   WN *switch_block    = WN_CreateBlock ();
   WN *index           = WFE_Expand_Expr_With_Sequence_Point (expr, index_mtype);
+
+#ifdef KEY
+  // The switch index may be needed more than once if it contains case
+  // range. As it may have side-effects like a function call, save the
+  // index into a temporary, and used the saved value.
+  ST *save_expr_st = Gen_Temp_Symbol (MTYPE_TO_TY_array[index_mtype], "_switch_index");
+  WN *stid = WN_Stid (index_mtype, 0, save_expr_st, MTYPE_TO_TY_array[index_mtype], index);
+  WFE_Stmt_Append(stid, Get_Srcpos());
+  index = WN_Ldid(index_mtype, 0, save_expr_st, MTYPE_TO_TY_array[index_mtype]);
+#endif
+
   WFE_Stmt_Push (switch_block, wfe_stmk_switch, Get_Srcpos());
   if (++switch_info_i == switch_info_max) {
 
@@ -459,6 +470,7 @@ static WN* WN_CreateIfForCaseGotoRange(
   return WN_CreateIf(cond, then_blk, else_blk);
 } /* WN_CreateIfForCaseGotoRange */
 #endif
+
 void
 WFE_Expand_End_Case (tree orig_index)
 {

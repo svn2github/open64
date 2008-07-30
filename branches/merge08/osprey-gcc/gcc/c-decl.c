@@ -6592,6 +6592,9 @@ finish_function (void)
         }
       else
         {
+#ifdef KEY /* bug 11761 */
+          error ("Nested functions not supported");
+#endif
           /* Register this function with cgraph just far enough to get it
             added to our parent's nested function list.  Handy, since the
             C front end doesn't have such a list.  */

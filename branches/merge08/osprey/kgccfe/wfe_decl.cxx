@@ -51,9 +51,15 @@
 
 // translate gnu decl trees to whirl
 
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h>
+#if ! defined(BUILD_OS_DARWIN)
 #include <elf.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "errors.h"
 #include "erfe.h"
@@ -327,8 +333,8 @@ WFE_Start_Function (tree fndecl)
         DECL_ST2 (fndecl) = func_st;
 #ifdef KEY // bugs 2178, 2152
 	extern_inline = TRUE;
+	eclass = EXPORT_PREEMPTIBLE; // bug 14367
 #endif // KEY
-        eclass = EXPORT_LOCAL;
       }
       else {
         // encountered second definition, the earlier one was extern inline
@@ -446,7 +452,10 @@ WFE_Start_Function (tree fndecl)
 #endif
 #endif
 
-#ifdef TARG_NVISA
+#if !defined(TARG_NVISA)
+    if (lookup_attribute("used", DECL_ATTRIBUTES (fndecl)))  // bug 3697
+      Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
+#else
     // TREE_USED means a reference somewhere, not attribute "used"
     // so instead do below check of attribute.
     if (lookup_attribute("global", DECL_ATTRIBUTES (fndecl)) != NULL)
@@ -1408,10 +1417,14 @@ Gen_Assign_Of_Init_Val (ST *st, tree init, UINT offset, UINT array_elem_offset,
 	// rather than directy copy assignment,
 	// so need special code.
 	UINT size = TY_size(ty);
+	// OSP, string size > ty_size, only init ty_size
+	// Replace TREE_STRING_LENGTH with load_size
+	UINT load_size = ( size > TREE_STRING_LENGTH(init) ) ?
+	  				TREE_STRING_LENGTH(init) : size;
 	TY_IDX ptr_ty = Make_Pointer_Type(ty);
 	WN *load_wn = WN_CreateMload (0, ptr_ty, init_wn,
 #ifdef KEY // bug 3188
-			      WN_Intconst(MTYPE_I4, TREE_STRING_LENGTH(init)));
+			      WN_Intconst(MTYPE_I4, load_size));
 #else
 				      WN_Intconst(MTYPE_I4, size));
 #endif
@@ -1421,20 +1434,20 @@ Gen_Assign_Of_Init_Val (ST *st, tree init, UINT offset, UINT array_elem_offset,
 				 load_wn,
 				 addr_wn,
 #ifdef KEY // bug 3188
-			       WN_Intconst(MTYPE_I4, TREE_STRING_LENGTH(init))),
+			       WN_Intconst(MTYPE_I4, load_size)),
 #else
 				 WN_Intconst(MTYPE_I4,size)),
 #endif
 		Get_Srcpos());
 #ifdef KEY // bug 3247
-	if (size - TREE_STRING_LENGTH(init)) {
+	if (size - load_size > 0) {
 	  load_wn = WN_Intconst(MTYPE_U4, 0);
 	  addr_wn = WN_Lda(Pointer_Mtype, 0, st);
 	  WFE_Stmt_Append(
-		  WN_CreateMstore (offset+TREE_STRING_LENGTH(init), ptr_ty,
+		  WN_CreateMstore (offset+load_size, ptr_ty,
 				   load_wn,
 				   addr_wn,
-			   WN_Intconst(MTYPE_I4,size-TREE_STRING_LENGTH(init))),
+			   WN_Intconst(MTYPE_I4,size-load_size)),
 		  Get_Srcpos());
 	}
 #endif
@@ -1708,12 +1721,24 @@ Traverse_Aggregate_Struct (
   tree       init;
   TY_IDX     fld_ty;
 
+#ifdef KEY
+  if (CONSTRUCTOR_ELTS(init_list))
+    ++field_id; // compute field_id for current field
+#endif
   for (init = CONSTRUCTOR_ELTS(init_list);
        init;
        init = TREE_CHAIN(init)) {
     // loop through each initializer specified
 
+#ifdef KEY
+    // Bug 14422: Do the first increment outside the loop. Then advance
+    // the field_id at the tail end of the loop before moving on to next
+    // field, taking into account any fields inside current struct field.
+    // The update at the tail end is done only if there is an iteration
+    // left.
+#else
     ++field_id; // compute field_id for current field
+#endif
 
     // if the initialization is not for the current field,
     // advance the fields till we find it
@@ -1810,6 +1835,14 @@ Traverse_Aggregate_Struct (
       }
     }
 
+#ifdef KEY
+    // Bug 14422:
+    // Count current field before moving to next field. The current field
+    // may be of struct type, in which case its fields need to be counted.
+    // We increment the field-id here instead of at the start of the loop.
+    if (TREE_CHAIN(init)) // only if there is an iteration left
+      field_id = Advance_Field_Id(fld, field_id);
+#endif
     // advance ot next field
     current_offset = current_offset_base + emitted_bytes;
     field = TREE_CHAIN(field);

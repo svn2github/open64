@@ -667,8 +667,10 @@ cxx_init (filename)
 
   return filename;
 }
-
-inline void
+#ifndef KEY
+inline /* GNU 4.2 does not support non-static C99 inline functions. */
+#endif
+void
 yyprint (file, yychar, yylval)
      FILE *file;
      int yychar;

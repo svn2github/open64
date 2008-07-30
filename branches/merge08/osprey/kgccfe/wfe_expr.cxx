@@ -49,7 +49,11 @@
 */
 
 
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "glob.h"
 #include "config.h"
@@ -2467,6 +2471,9 @@ WFE_target_builtins (tree exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case IX86_BUILTIN_PADDW:
     case IX86_BUILTIN_PADDD:
     case IX86_BUILTIN_ADDPD:
+    case IX86_BUILTIN_PADDB128:
+    case IX86_BUILTIN_PADDW128:
+    case IX86_BUILTIN_PADDD128:
       wn = WN_Add (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
@@ -2474,6 +2481,9 @@ WFE_target_builtins (tree exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case IX86_BUILTIN_PSUBW:
     case IX86_BUILTIN_PSUBD:
     case IX86_BUILTIN_SUBPD:
+    case IX86_BUILTIN_PSUBB128:
+    case IX86_BUILTIN_PSUBW128:
+    case IX86_BUILTIN_PSUBD128:
       wn = WN_Sub (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
@@ -3832,17 +3842,10 @@ WFE_Expand_Expr (tree exp,
 	  TYPE_ID rtype = Widen_Mtype(TY_mtype(ty_idx));
 	  TYPE_ID desc = TY_mtype(ty_idx);
 	  if (WN_operator(wn) == OPR_ILOAD) {
-#ifdef PATHSCALE_MERGE
             wn = WN_CreateIload(OPR_ILOAD, rtype, desc,
 			        WN_offset(wn) + ofst + component_offset, ty_idx,
 			        WN_load_addr_ty(wn), WN_kid0(wn),
 			        WN_field_id(wn)+field_id + DECL_FIELD_ID(arg1));
-#else
-            wn = WN_CreateIload(OPR_ILOAD, rtype, desc,
-			        ofst + component_offset, ty_idx,
-			        Make_Pointer_Type (ty_idx, FALSE), WN_kid0(wn),
-			        field_id + DECL_FIELD_ID(arg1));
-#endif
 	  } 
 	  else if (WN_operator(wn) == OPR_LDID) {
 	    WN_set_rtype(wn, rtype);
@@ -3854,11 +3857,7 @@ WFE_Expand_Expr (tree exp,
 	    if (TY_kind(ty_idx) != KIND_STRUCT)
  	      WN_set_field_id (wn, 0);	
 	    else
-#ifdef PATHSCALE_MERGE
 	      WN_set_field_id(wn, WN_field_id(wn)+field_id + DECL_FIELD_ID(arg1));
-#else
-	      WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
-#endif
 	  } 
 	}
 	// bug 6122

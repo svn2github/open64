@@ -42,7 +42,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #endif
 
 #include "libgcc2.h"
-
 #ifdef DECLARE_LIBRARY_RENAMES
   DECLARE_LIBRARY_RENAMES
 #endif

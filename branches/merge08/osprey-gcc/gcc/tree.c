@@ -7928,6 +7928,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         gs_operand((gs_t)GS_NODE(t), GS_TYPE_SIZE) == NULL)
       goto REVISIT;
 
+    /* bug 14420 */
+    if (tcode == RECORD_TYPE &&
+        TYPE_FIELDS(t) &&
+        gs_operand((gs_t)GS_NODE(t), GS_TYPE_FIELDS) == NULL)
+      goto REVISIT;
+
     if (tcode == RECORD_TYPE &&
         CLASS_TYPE_P(t) &&
         CLASSTYPE_TYPEINFO_VAR(t) &&
@@ -8141,7 +8147,11 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	    _gs_bv (flags, GS_DECL_DECLARED_INLINE_P, DECL_DECLARED_INLINE_P (t));
 	    _gs_bv (flags, GS_DECL_BUILT_IN, DECL_BUILT_IN (t));
 	    _gs_bv (flags, GS_DECL_NO_STATIC_CHAIN, DECL_NO_STATIC_CHAIN (t));
-	    _gs_bv (flags, GS_DECL_THUNK_P, DECL_THUNK_P (t));
+	    /* Set this flag only for C++, because for C it may not always
+	     * be initialized to 0. This flag may also be moved to
+	     * cp_decl_flags. */
+	    if (CPR())
+	      _gs_bv (flags, GS_DECL_THUNK_P, DECL_THUNK_P (t));
 
 	    /* KEY: By default for C++, each function is not "needed" and not
 	     * "reachable" in GNU call graph terminology. That means wgen

@@ -2702,6 +2702,9 @@ WFE_target_builtins (tree exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case IX86_BUILTIN_PADDW:
     case IX86_BUILTIN_PADDD:
     case IX86_BUILTIN_ADDPD:
+    case IX86_BUILTIN_PADDB128:
+    case IX86_BUILTIN_PADDW128:
+    case IX86_BUILTIN_PADDD128:
       wn = WN_Add (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
@@ -2709,6 +2712,9 @@ WFE_target_builtins (tree exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case IX86_BUILTIN_PSUBW:
     case IX86_BUILTIN_PSUBD:
     case IX86_BUILTIN_SUBPD:
+    case IX86_BUILTIN_PSUBB128:
+    case IX86_BUILTIN_PSUBW128:
+    case IX86_BUILTIN_PSUBD128:
       wn = WN_Sub (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
@@ -3690,6 +3696,14 @@ WFE_Expand_Expr (tree exp,
 
 	Is_True(! is_bit_field || field_id <= MAX_FIELD_ID,
 		("WFE_Expand_Expr: field id for bit-field exceeds limit"));
+
+#ifdef TARG_X8664
+        // The source may have different types of casting between same-sized
+        // vector types, and between same-sized vector-nonvector types.
+        if (MTYPE_is_vector (rtype) || MTYPE_is_vector (desc))
+          desc = rtype;
+#endif
+
 	wn = WN_CreateLdid (OPR_LDID, rtype,
 			    is_bit_field ? MTYPE_BS : desc,
 			    ST_ofst(st)+component_offset+xtra_BE_ofst+preg_num, st,
@@ -6656,7 +6670,7 @@ WFE_Expand_Expr (tree exp,
     {
       if (key_exceptions)
       {
-	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().misc)));
+	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (PU_misc_info (Get_Current_PU()))));
       	wn = WN_Ldid (Pointer_Mtype, 0, exc_ptr_st, Get_TY(TREE_TYPE(exp)));
       }
       else

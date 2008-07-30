@@ -606,7 +606,7 @@ Do_EH_Tables (void)
 			// Store the inito_idx in the PU
 			// 1. exc_ptr 2. filter : Set 3rd entry with inito_idx
 			INITV_IDX index = INITV_next (INITV_next (INITO_val (
-			               (INITO_IDX) Get_Current_PU().misc)));
+			               PU_misc_info (Get_Current_PU()))));
 			// INITV_Set_VAL resets the next field, so back it up
 			// and set it again.
 			INITV_IDX bkup = INITV_next (index);
@@ -642,7 +642,7 @@ Do_EH_Tables (void)
 		ST * eh_spec = Get_eh_spec_ST ();
 		id = New_INITO (ST_st_idx(eh_spec), start);
 		INITV_IDX index = INITV_next (INITV_next (INITV_next (
-			INITO_val ((INITO_IDX) Get_Current_PU().misc))));
+			INITO_val (PU_misc_info (Get_Current_PU())))));
 		// INITV_Set_VAL resets the next field, so back it up
 		// and set it again.
 		INITV_IDX bkup = INITV_next (index);
@@ -3554,7 +3554,7 @@ static void Generate_filter_cmp (int filter, LABEL_IDX goto_idx);
 static WN *
 Generate_cxa_call_unexpected (void)
 {
-  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().misc)));
+  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (PU_misc_info (Get_Current_PU()))));
   ST exc_st = St_Table[exc_ptr_param];
   WN* parm_node = WN_Ldid (Pointer_Mtype, 0, &exc_st, ST_type (exc_st));
 
@@ -3577,7 +3577,7 @@ Generate_cxa_call_unexpected (void)
 static void
 Generate_unwind_resume (void)
 {
-  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().misc)));
+  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (PU_misc_info (Get_Current_PU()))));
   ST exc_st = St_Table[exc_ptr_param];
   WN* parm_node = WN_Ldid (Pointer_Mtype, 0, &exc_st, ST_type (exc_st));
 
@@ -3631,7 +3631,7 @@ Generate_unwind_resume (void)
 static void
 Generate_filter_cmp (int filter, LABEL_IDX goto_idx)
 {
-  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().misc))));
+  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (PU_misc_info (Get_Current_PU())))));
   const TYPE_ID mtype = TARGET_64BIT ? MTYPE_U8 : MTYPE_U4;
   
   WN * wn_ldid = WN_Ldid (mtype, 0, &St_Table[filter_param],

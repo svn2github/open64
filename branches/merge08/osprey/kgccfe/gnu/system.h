@@ -320,7 +320,9 @@ extern char *strstr PARAMS ((const char *, const char *));
 #endif
 
 #ifdef HAVE_MALLOC_H
+#if ! defined(BUILD_OS_DARWIN)
 #include <malloc.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #endif
 
 #if defined (HAVE_DECL_MALLOC) && !HAVE_DECL_MALLOC
