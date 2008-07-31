@@ -274,6 +274,9 @@ Setup_GP_TN_For_PU( ST *pu)
    * have enough information to perform this optimization if regions
    * are present.
    */
+#ifdef TARG_MIPS
+  reg = REGISTER_gp;
+#else
   if ( Use_Scratch_GP(GP_Setup_Code == need_code) ) {
     REGISTER_SET caller_saves;
     REGISTER_SET func_val;
@@ -301,6 +304,7 @@ Setup_GP_TN_For_PU( ST *pu)
     /* use gp */
     reg = REGISTER_gp;
   }
+#endif
   REGISTER_Set_Allocatable(REGISTER_CLASS_gp, reg, FALSE);
   Set_TN_register(GP_TN, reg);
 }

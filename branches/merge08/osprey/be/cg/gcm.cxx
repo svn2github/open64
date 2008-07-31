@@ -3750,6 +3750,8 @@ static BOOL Append_Op_To_BB(OP *cand_op, BB *cand_bb, BB *src_bb,
     limit_op = BB_loop_op(cand_bb);
   else
     limit_op = BB_xfer_op(cand_bb);
+#else
+    limit_op = BB_xfer_op(cand_bb);
 #endif
 
 #ifdef TARG_X8664
