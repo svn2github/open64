@@ -922,7 +922,7 @@ inline BOOL ALIAS_RESULT_positive(ALIAS_RESULT result)
 // Creates a new arc of type <kind> from node <pred> to node <succ> with
 // <latency> and <omega> set. <opnd> is the operand number and <is_definite>
 // tells if the dependence is a definite type.
-#if !(defined(TARG_IA64) || defined(TARG_SL)) || defined(TARG_MIPS))
+#if !(defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS))
 static
 #endif
 ARC *new_arc_with_latency(CG_DEP_KIND kind, OP *pred, OP *succ,
@@ -2565,7 +2565,7 @@ static void Aliased_By_WOPT( WN *pred_wn, WN *succ_wn,
 #endif // TARG_SL
 
 
-#if !(defined(TARG_IA64) || defined(TARG_SL)) || defined(TARG_MIPS))
+#if !(defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS))
 static 
 #endif
 BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
@@ -5484,7 +5484,7 @@ CG_DEP_Delete_Graph(void *item)
   
 }
 
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS))
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 void 
 CG_DEP_Delete_DAG(void)
 /* -----------------------------------------------------------------------
@@ -5826,7 +5826,7 @@ CG_DEP_Compute_Region_Graph(std::list<BB*>    bb_region,
   }
 }
 
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS))
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 OP* get_def_op(OP* op , CG_DEP_KIND kind, UINT8 opnd)
 // get the define op for <op> accroding to CG_DEP_REGIN arc .
 // ARC_LIST_rest only look for ops inside one BB.
