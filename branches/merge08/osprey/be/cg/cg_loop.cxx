@@ -191,7 +191,7 @@
 #include "profile_util.h"
 #endif
 
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 #include "region.h"
 #include "region_bb_util.h"
 #endif
@@ -6150,7 +6150,7 @@ Do_Loop_Perform_SWP_or_Unroll (BOOL perform_swp, CG_LOOP& cg_loop,
 
 // Perform loop optimizations for one loop
 //
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup,
                       void **par_rgn=NULL,
                       void *rgn_loop_update=NULL)
@@ -7299,7 +7299,7 @@ void CG_LOOP_zero_delay_loop_gen()
 // Perform loop optimizations for all inner loops
 // in the PU.
 //
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 void Perform_Loop_Optimizations(void *rgn_loop_update)
 #else
 void Perform_Loop_Optimizations()

@@ -93,7 +93,7 @@ void SWP_OPTIONS::PU_Configure()
   if (!Implicit_Prefetch_Set) {
     // Not all processors implement implicit prefetch -- disable
     // by default on those processors
-#if !defined(TARG_MIPS) || !defined(TARG_SL)
+#if !defined(TARG_MIPS) && !defined(TARG_SL) 
     if (Is_Target_Itanium()) Implicit_Prefetch = FALSE;
 #endif
   }

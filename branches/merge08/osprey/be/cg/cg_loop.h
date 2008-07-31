@@ -676,7 +676,7 @@ struct OP_VECTOR {
 
 extern CG_LOOP *Current_CG_LOOP;
 
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL)  || defined(TARG_MIPS)
 extern void Perform_Loop_Optimizations(void *rgn_loop_update=NULL);
 
 extern BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, SWP_FIXUP_VECTOR& fixup, 

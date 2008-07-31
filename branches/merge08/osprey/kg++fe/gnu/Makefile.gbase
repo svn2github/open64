@@ -92,6 +92,10 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
 HOSTDEFS += -DTARGET_NAME=\"key-linux\"
 endif
+ifeq ($(BUILD_TARGET), SL)
+HOSTDEFS += -DTARGET_NAME=\"sl-linux\"
+endif
+
 
 HOSTDEFS += -DLONGLONG
 HOSTDEFS += -DFRONT_END
@@ -126,6 +130,10 @@ HOSTDEFS += -DGPLUSPLUS_FE
 ifeq ($(BUILD_TARGET), IA64)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), SL)
+TARGDEFS += -DTARG_SL
+endif
+
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -155,6 +163,9 @@ GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
 endif
 ifeq ($(BUILD_TARGET), MIPS)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
+endif
+ifeq ($(BUILD_TARGET), SL)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/sl
 endif
 
 GNU_CP_DIR		= $(BUILD_BASE)/cp
@@ -343,6 +354,10 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
   GNU_SRCS += mips.c
 endif
+ifeq ($(BUILD_TARGET), SL)
+  GNU_SRCS += mips.c
+endif
+
 
 # Move lex.c down to after parse.c since it needs the generated parse.h
 GNU_CP_UNIQ_SRCS =	\
@@ -499,6 +514,12 @@ TM_FILE = MIPS/mips.h MIPS/mips.c MIPS/mips.md MIPS/linux.h
 MD_FILE = MIPS/mips.md
 X8664_OR_MIPS = 1
 endif
+ifeq ($(BUILD_TARGET), SL)
+TM_FILE = SL/mips.h SL/mips.c SL/mips.md SL/linux.h
+MD_FILE = SL/mips.md
+X8664_OR_MIPS = 1
+endif
+
 
 include $(BUILD_TOT)/kgccfe/gnu/frobnicate-version.mk
 

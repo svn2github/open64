@@ -653,7 +653,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
       RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
   } else {
       Unlink_Pred_Succ(bb, old_succ);
-#ifdef KEY
+#if defined(KEY) && defined(TARG_SL)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0, !prob_acced);
 #else
@@ -664,7 +664,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
   return TRUE;
 #else
   Unlink_Pred_Succ(bb, old_succ);
-#ifdef KEY
+#if defined(KEY) && defined(TARG_SL)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0);
 #else
@@ -7948,11 +7948,13 @@ CFLOW_Fixup_Long_Branches()
       INT64 disp = (INT64) targ_position - (INT64) branch_position;
       disp *= 4;
       // 14212: Hardware workaround will inflate code.
+#if defined(TARG_SL) || !defined(TARG_MIPS)
       if (CG_hw_round > 0 || CG_hw_stall > 0) {
 	disp = (INT64) (disp * 1.2);
       } else {
 	disp = (INT64) (disp * 1.1);
       }
+#endif
 
       if (!CGTARG_Can_Fit_Displacement_In_Branch_Instruction(disp)) {
         if (bb_kind == BBKIND_GOTO) {

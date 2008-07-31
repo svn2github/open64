@@ -147,7 +147,11 @@ void ISA_Create (const char *isa_name, ...)
   va_start(ap,isa_name);
   while ((instruction_name = va_arg (ap, char *)) != NULL) {
     fprintf(hfile,"%s\n  TOP_%s",is_first ? "" : ",",
+#if defined(TARG_SL) || defined(TARG_MIPS)
+                                 Dot_To_Line(NewInstr_To_OldInstr(instruction_name)));
+#else
                                  Dot_To_Line(instruction_name));
+#endif
     fprintf(cfile,"%s\n  \"%s\"",is_first ? "" : ",",
                                  instruction_name);
     if ( is_first )

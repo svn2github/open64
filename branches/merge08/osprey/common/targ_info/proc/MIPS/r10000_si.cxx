@@ -125,6 +125,16 @@ main (int argc, char *argv[])
                     TOP_c3_mvtacc,
                     TOP_c3_mvtadd,
                     TOP_c3_mvtadds,
+                    // new c3 
+                    TOP_C3_bitr,
+                    TOP_C3_mvfs,
+                    TOP_C3_mvts,
+                    TOP_C3_mvtacc,
+                    TOP_C3_mvtaddr,
+                    TOP_C3_mvtadds,
+                    TOP_C3_mvfacc,
+                    TOP_C3_mvfaddr,
+                    TOP_C3_mvfadds,
                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(1);
@@ -163,7 +173,6 @@ main (int argc, char *argv[])
                     TOP_c3_mula_i,
                     TOP_c3_mulaci,
                     TOP_c3_mulacr,
-                    TOP_c3_mulad,
                     TOP_c3_mulan,
                     TOP_c3_revb,
                     TOP_c3_round,
@@ -180,6 +189,60 @@ main (int argc, char *argv[])
                     TOP_c3_sasubh_a,
                     TOP_c3_sasubs,
                     TOP_c3_sasubsh,
+                    // new c3 
+                    TOP_C3_aadda,
+                    TOP_C3_nega,
+                    TOP_C3_cs,
+                    TOP_C3_dadd,
+                    TOP_C3_dmac,
+                    TOP_C3_dmacn,
+                    TOP_C3_dmac_a,
+                    TOP_C3_dmacn_a,
+                    TOP_C3_dmula,
+                    TOP_C3_dmulan,
+                    TOP_C3_dmula_a,
+                    TOP_C3_dmulan_a,
+                    TOP_C3_dshll_i,
+                    TOP_C3_dshrl_i,
+                    TOP_C3_dsub,
+                    TOP_C3_lead,
+                    TOP_C3_mac,
+                    TOP_C3_macn,
+                    TOP_C3_mac_a,
+                    TOP_C3_macn_a,
+                    TOP_C3_mac_ar,
+                    TOP_C3_macn_ar,
+                    TOP_C3_mac_i,
+                    TOP_C3_macn_i,
+                    TOP_C3_mula,
+                    TOP_C3_mulan,
+                    TOP_C3_mula_a,
+                    TOP_C3_mula_ar,
+                    TOP_C3_mula_i,
+                    TOP_C3_muls,
+                    TOP_C3_mulus,
+                    TOP_C3_revb,
+                    TOP_C3_round,
+                    TOP_C3_saadd_a,
+                    TOP_C3_saaddh_a,
+                    TOP_C3_saadds,
+                    TOP_C3_saaddsh,
+                    TOP_C3_sadda,
+                    TOP_C3_sadda_a,
+                    TOP_C3_samulh_a,
+                    TOP_C3_samulsh,
+                    TOP_C3_sasub_a,
+                    TOP_C3_sasubh_a,
+                    TOP_C3_sasubs,
+                    TOP_C3_sasubsh,
+                    TOP_C3_shav,
+                    TOP_C3_shlafa_i,
+                    TOP_C3_shlata_i,
+                    TOP_C3_shla_i,
+                    TOP_C3_shrafa_i,
+                    TOP_C3_shrata_i,
+                    TOP_C3_shra_i,
+                    TOP_C3_subc,
                     TOP_UNDEFINED);
  Any_Operand_Access_Time(0);
  Any_Result_Available_Time(2);
@@ -189,6 +252,9 @@ main (int argc, char *argv[])
  Instruction_Group("c3-load",
                     TOP_c3_ld,
                     TOP_c3_fftld,
+                    // new c3 
+                    TOP_C3_fftld,
+                    TOP_C3_ld,
                     TOP_UNDEFINED);
  Any_Operand_Access_Time(0);
  Any_Result_Available_Time(2);
@@ -200,6 +266,9 @@ main (int argc, char *argv[])
  Instruction_Group("c3-store",
                    TOP_c3_st,
                    TOP_c3_fftst,
+                   // new c3 
+                   TOP_C3_fftst,
+                   TOP_C3_st,
                    TOP_UNDEFINED);
  Any_Operand_Access_Time(0);
  Resource_Requirement(res_issue, 0);
@@ -211,6 +280,8 @@ main (int argc, char *argv[])
                     TOP_c3_trback,
                     TOP_c3_viterbi,
                     TOP_c3_fft,
+                    // new c3
+                    TOP_C3_ffe,
                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(14);
@@ -352,7 +423,9 @@ main (int argc, char *argv[])
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(1);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0); 
+#endif
   Resource_Requirement(res_integer, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -364,7 +437,9 @@ main (int argc, char *argv[])
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(7);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0); 
+#endif
   Resource_Requirement(res_integer, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -376,7 +451,9 @@ main (int argc, char *argv[])
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(67);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0); 
+#endif
   Resource_Requirement(res_integer, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -408,7 +485,9 @@ main (int argc, char *argv[])
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
   Resource_Requirement(res_issue, 0);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0); 
+#endif
   Resource_Requirement(res_memory, 0);
   Load_Access_Time(1);
 
@@ -434,7 +513,9 @@ main (int argc, char *argv[])
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Resource_Requirement(res_issue, 0);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0); 
+#endif
   Resource_Requirement(res_memory, 0);
   Store_Available_Time(1);
 
@@ -464,7 +545,9 @@ main (int argc, char *argv[])
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(1);
   Resource_Requirement(res_issue, 0);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0); 
+#endif
   Resource_Requirement(res_integer, 0);
   Resource_Requirement(res_branch, 0);
 
@@ -566,10 +649,6 @@ main (int argc, char *argv[])
 #ifdef TARG_SL2
 
   Instruction_Group("sl2_mem",
-      TOP_c2_ld_s2s_ga_p,
-      TOP_c2_ld_s2s_ga,
-      TOP_c2_ld_s2s_sa_p,
-      TOP_c2_ld_s2s_sa,
       TOP_c2_ld_s_h_u_p,
       TOP_c2_ld_s_h_u,
       TOP_c2_ld_s_h_p,
@@ -663,9 +742,7 @@ main (int argc, char *argv[])
       TOP_c2_mvgr_r2g_h_u_i,
       TOP_c2_mvgr_r2g_h_i,
       TOP_c2_mvgr_r2g_w_i,
-      TOP_c2_mvgr_r2s,         
       TOP_c2_mvgc_c2g,
-      TOP_c2_mvgr_s2g,
       TOP_c2_mvgr_g2r_ba_lh,
       TOP_c2_mvgr_g2r_ba_hh,
       TOP_c2_mvgr_g2r_ba_w,
@@ -682,7 +759,6 @@ main (int argc, char *argv[])
       TOP_c2_mvgr_g2r_b4_i,
       TOP_c2_mvgr_g2r_b4,      
       TOP_c2_mvgc_g2c,
-      TOP_c2_mvgr_g2s,
       TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
@@ -693,9 +769,12 @@ main (int argc, char *argv[])
       TOP_c2_vadds_h,
       TOP_c2_vadds_w,
       TOP_c2_vadds_p,
-      TOP_c2_vadds_h_c,
-      TOP_c2_vadds_w_c,
-      TOP_c2_vadds_p_c,
+      TOP_c2_vadds_h_mode6,
+      TOP_c2_vadds_h_mode2,
+      TOP_c2_vadds_w_mode6,
+      TOP_c2_vadds_w_mode2,
+      TOP_c2_vadds_p_mode6,
+      TOP_c2_vadds_p_mode2,
       TOP_c2_vsubs_h,
       TOP_c2_vsubs_h_sm,
       TOP_c2_vsubs_h_abs,
@@ -714,7 +793,6 @@ main (int argc, char *argv[])
       TOP_c2_vsubs_p_abs_sm,
       TOP_c2_vabs_p,
       TOP_c2_vabs_p_sm,
-      TOP_c2_vabs_acc,
       TOP_c2_vneg_h,
       TOP_c2_vneg_w,
       TOP_c2_vneg_p,
@@ -819,7 +897,6 @@ main (int argc, char *argv[])
       TOP_c2_vcmov_h_t,
       TOP_c2_vcmov_w_f,
       TOP_c2_vcmov_w_t,
-      TOP_c2_mmul_s123,
       TOP_c2_mmul_h,
       TOP_c2_mmul_w,
       TOP_c2_vcopy, 
@@ -921,6 +998,18 @@ main (int argc, char *argv[])
       TOP_c2_scond_le_i,
       TOP_c2_scond_gt_i,
       TOP_c2_scond_ge_i,
+      TOP_c2_shadd_l,
+      TOP_c2_shadd_rl,
+      TOP_c2_shadd_ra,
+      TOP_c2_shsub_l,
+      TOP_c2_shsub_rl, 
+      TOP_c2_shsub_ra, 
+      TOP_c2_shadd_l_i,
+      TOP_c2_shadd_rl_i,
+      TOP_c2_shadd_ra_i,
+      TOP_c2_shsub_l_i,
+      TOP_c2_shsub_rl_i, 
+      TOP_c2_shsub_ra_i, 
       TOP_UNDEFINED);
   Any_Operand_Access_Time(0); 
   Any_Result_Available_Time(1);
@@ -960,8 +1049,6 @@ main (int argc, char *argv[])
 
   Instruction_Group("sl2_mult", 
       TOP_c2_muls,
-      TOP_c2_muls_r_h,
-      TOP_c2_muls_r_w,
       TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(1);
@@ -1004,6 +1091,7 @@ main (int argc, char *argv[])
       TOP_c2_bop_and,
       TOP_c2_bop_or,
       TOP_c2_bop_xor,
+      TOP_c2_bop_andxor,
       TOP_c2_bop_ls_i,
       TOP_c2_bop_rs_i  ,
       TOP_c2_bop_and_i,
@@ -1015,6 +1103,14 @@ main (int argc, char *argv[])
       TOP_c2_bxtr_s_l ,
       TOP_c2_bxtr_u_m,
       TOP_c2_bxtr_s_m,
+      TOP_c2_bxtrr48,
+      TOP_c2_bxtrr48_i,
+      TOP_c2_shor_l,
+      TOP_c2_shor_rl,
+      TOP_c2_shor_ra,
+      TOP_c2_shor_l_i,
+      TOP_c2_shor_rl_i,
+      TOP_c2_shor_ra_i,
       TOP_UNDEFINED);
  Any_Operand_Access_Time(0);
  Any_Result_Available_Time(1);
@@ -1022,8 +1118,6 @@ main (int argc, char *argv[])
  Resource_Requirement(res_sl2_bit, 0);
 
  Instruction_Group("sl2_br", 
-      TOP_c2_br_f,
-      TOP_c2_br_t ,
       TOP_c2_fork_m,
       TOP_c2_fork_n ,
       TOP_c2_joint,
@@ -1192,9 +1286,10 @@ for(i = 3; i < 7; i++) {
  }
 
  Instruction_Group("sl2_mvsel", 
-      TOP_c2_mvsel,
-      /* Add mvsel with opmode=0 or 2 */
-      TOP_c2_mvsel_zero_two,
+      TOP_c2_mvsel_mode0,
+      TOP_c2_mvsel_mode1,
+      TOP_c2_mvsel_mode2,
+      TOP_c2_mvsel_mode345,
       TOP_UNDEFINED);
  Any_Operand_Access_Time(0);
  Any_Result_Available_Time(2);
@@ -1236,14 +1331,11 @@ for(i = 3; i < 7; i++) {
   Instruction_Group("SL2",
       TOP_c2_min,
       TOP_c2_max,
+      TOP_c2_sum4_saddr, 
       TOP_c2_clzob_zd, 
-      TOP_c2_clzob_za, 
       TOP_c2_clzob_od, 
-      TOP_c2_clzob_oa, 
       TOP_c2_clzob_zd_i, 
-      TOP_c2_clzob_za_i, 
       TOP_c2_clzob_od_i, 
-      TOP_c2_clzob_oa_i, 
       TOP_c2_thctrl_lock,
       TOP_c2_thctrl_unlock,
       TOP_c2_thctrl_deact,
@@ -1251,11 +1343,7 @@ for(i = 3; i < 7; i++) {
       TOP_c2_thctrl_mode4, 
       TOP_c2_thctrl_mode5,
       TOP_c2_thctrl_mode6,
-      TOP_c2_sum3_saddr, 
-#ifndef fork_joint
-      TOP_c2_thread_major, 
-      TOP_c2_thread_minor, 
-#endif 
+      TOP_c2_thctrl_mode7,
              TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(1);
@@ -1348,7 +1436,9 @@ for(i = 3; i < 7; i++) {
 		    TOP_sync,
 		    TOP_UNDEFINED);
   Resource_Requirement(res_issue, 0);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0);   
+#endif
   Resource_Requirement(res_memory, 0);
 
   Instruction_Group("prefetch",
@@ -1357,7 +1447,9 @@ for(i = 3; i < 7; i++) {
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Resource_Requirement(res_issue, 0);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0);   
+#endif
   Resource_Requirement(res_memory, 0);
 
   Instruction_Group("nop",
@@ -1365,7 +1457,9 @@ for(i = 3; i < 7; i++) {
 		    TOP_break,
 		    TOP_UNDEFINED);
   Resource_Requirement(res_issue, 0);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0);   
+#endif
   Resource_Requirement(res_integer, 0);
 
   Instruction_Group("dummy",
@@ -1384,7 +1478,9 @@ for(i = 3; i < 7; i++) {
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(1);
   Resource_Requirement(res_issue, 0);
+#ifdef TARG_SL
   Resource_Requirement(res_integer_or_memory, 0);   
+#endif
   Resource_Requirement(res_integer, 0);
 
   Machine_Done("r10000.c");

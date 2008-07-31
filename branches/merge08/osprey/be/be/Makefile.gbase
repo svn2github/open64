@@ -119,6 +119,9 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), SL)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
 ifeq ($(BUILD_TARGET), X8664)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
@@ -265,6 +268,10 @@ BE_BE_CXX_SRCS = 	\
 ifeq ($(BUILD_TARGET), MIPS)
   BE_BE_CXX_SRCS +=  isr.cxx
 endif
+ifeq ($(BUILD_TARGET), SL)
+  BE_BE_CXX_SRCS +=  isr.cxx
+endif
+
 
 BE_BE_TARG_CXX_SRCS =	\
   fill_align_targ.cxx	\
@@ -343,16 +350,23 @@ COMMON_COM_TARG_CXX_SRCS =	\
   targ_const.cxx	\
   targ_sim.cxx
 
+COMMON_TARG_INFO_ACCESS_SRCS= \
+  ti_init.c
+
 ifeq ($(BUILD_TARGET), MIPS)
 COMMON_TARG_INFO_ACCESS_SRCS=\
-  ti_init.c		\
   ti_res.c		\
   ti_res_count.c	\
   ti_res_res.c
-else
-COMMON_TARG_INFO_ACCESS_SRCS=\
-  ti_init.c		
 endif
+
+ifeq ($(BUILD_TARGET), SL)
+COMMON_TARG_INFO_ACCESS_SRCS=\
+  ti_res.c              \
+  ti_res_count.c        \
+  ti_res_res.c
+endif
+
 
 ifeq ($(BUILD_TARGET), X8664)
 COMMON_UTIL_QUAD_SRCS = \
@@ -368,25 +382,44 @@ COMMON_UTIL_QUAD_SRCS = \
   c_qwmultu.c		\
   quadsim.c
 else
-ifneq ($(BUILD_TARGET), MIPS)
-COMMON_UTIL_QUAD_SRCS = 
-else
-ifeq ($(BUILD_OS), LINUX)
-COMMON_UTIL_QUAD_SRCS =
-else
-COMMON_UTIL_QUAD_SRCS = \
-  c_q_add.c		\
-  c_q_div.c		\
-  c_q_mul.c		\
-  c_q_neg.c		\
-  c_q_rel.c		\
-  c_q_sqrt.c		\
-  c_q_sub.c		\
-  c_q_to_a.c		\
-  c_qtenscale.c		\
-  quadsim.c
-endif
-endif
+  ifeq ($(BUILD_TARGET), MIPS)
+    ifeq ($(BUILD_OS), LINUX)
+      COMMON_UTIL_QUAD_SRCS =
+    else
+      COMMON_UTIL_QUAD_SRCS = \
+        c_q_add.c             \
+        c_q_div.c             \
+        c_q_mul.c             \
+        c_q_neg.c             \
+        c_q_rel.c             \
+        c_q_sqrt.c            \
+        c_q_sub.c             \
+        c_q_to_a.c            \
+        c_qtenscale.c         \
+        quadsim.c
+    endif
+  else
+    ifeq ($(BUILD_TARGET), SL)
+      ifeq ($(BUILD_OS), LINUX)
+        COMMON_UTIL_QUAD_SRCS =
+      else
+        COMMON_UTIL_QUAD_SRCS = \
+          c_q_add.c             \
+          c_q_div.c             \
+          c_q_mul.c             \
+          c_q_neg.c             \
+          c_q_rel.c             \
+          c_q_sqrt.c            \
+          c_q_sub.c             \
+          c_q_to_a.c            \
+          c_qtenscale.c         \
+          quadsim.c
+      endif
+    else
+      COMMON_UTIL_QUAD_SRCS =
+    endif
+  endif
+
 endif
 
 COMMON_UTIL_SRCS =	\
@@ -526,7 +559,12 @@ ifeq ($(BUILD_TARGET), MIPS)
 COMMON_UTIL_TARG_AS_SRCS = \
   c_qwmultu.s
 else
+ifeq ($(BUILD_TARGET), SL)
+COMMON_UTIL_TARG_AS_SRCS = \
+  c_qwmultu.s
+else
 COMMON_UTIL_TARG_AS_SRCS =
+endif
 endif
 
 BE_AS_OBJS = $(COMMON_UTIL_TARG_AS_SRCS:.s=.o)
@@ -637,7 +675,7 @@ LLDLIBS += $(LIBIBERTY_OBJS)
 # while building cg.so . This is needed by the linker on linux.
 # So, arbitrarily pick one of the target .so's to define TARGET_SO.
 ifeq ($(BUILD_TARGET), MIPS)
-TARGET_SO = 
+TARGET_SO = r10000.so
 endif
 ifeq ($(BUILD_TARGET), IA64)
 TARGET_SO = itanium.so

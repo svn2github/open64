@@ -325,7 +325,7 @@ ipa_compile_init ()
 
       my_cc[retval] = '\0';	// readlink doesn't append NULL
 
-#ifndef TARG_SL
+#if !defined(TARG_SL) && !defined(TARG_MIPS)
       if (looks_like (my_cc, OPEN64_NAME_PREFIX "cc") ||
 	  looks_like (my_cc, OPEN64_NAME_PREFIX "CC") ||
 	  looks_like (my_cc, OPEN64_NAME_PREFIX "f90")) {
@@ -371,7 +371,7 @@ ipa_compile_init ()
 #elif defined(VENDOR_SL)
 		  strcpy(++s, SLCC_NAME_PREFIX);
 		  s += strlen(SLCC_NAME_PREFIX);
-#else
+#elif !defined(TARG_MIPS)
 		  strcpy(++s, "bin/" OPEN64_NAME_PREFIX);
 		  s += strlen("bin/" OPEN64_NAME_PREFIX);
 #endif

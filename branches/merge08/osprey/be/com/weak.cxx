@@ -97,7 +97,7 @@
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
 #include "ir_bwrite.h"
-#ifdef TARG_SL
+#if defined(TARG_SL)  || defined(TARG_MIPS)
 #include "topcode.h"
 #include "ti_si.h"
 #endif
@@ -173,7 +173,7 @@ void (*CG_PU_Finalize_p) ();
 void (*CG_Change_Elf_Symbol_To_Undefined_p) (ST*);
 WN* (*CG_Generate_Code_p) (WN*, ALIAS_MANAGER*, DST_IDX, BOOL);
 void (*CG_Dump_Region_p) (FILE*, WN*);
-#ifdef TARG_SL
+#if defined(TARG_SL)  || defined(TARG_MIPS)
 INT *SI_resource_count_p;
 SI_RESOURCE  *(*SI_resources_p)[];
 SI *(*SI_top_si_p)[];

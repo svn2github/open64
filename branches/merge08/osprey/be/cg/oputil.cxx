@@ -1678,7 +1678,7 @@ TN_Resnum_In_OP (OP* op, struct tn *tn, BOOL match_assigned_reg)
 }
 #endif
 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_MIPS)
 #include "targ_sim.h"
 BOOL OP_def_return_value(OP* op)
 {

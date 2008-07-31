@@ -166,7 +166,7 @@ BOOL EBO_data_spec;
 typedef mempool_allocator<INT> INT_ALLOC;
 typedef std::vector<INT, INT_ALLOC>  INT_CONTAINER;
 #endif
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 BOOL RGN_Formed = FALSE;
 #endif
 
@@ -203,7 +203,7 @@ extern BOOL gra_self_recursive;
 extern BOOL fat_self_recursive;
 #endif
 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_MIPS)
 REGISTER_SET caller_saved_regs_used[ISA_REGISTER_CLASS_MAX+1];
 #endif
 
@@ -221,7 +221,7 @@ CG_PU_Initialize (WN *wn_pu)
   PU_Has_Calls = FALSE;
   PU_References_GP = FALSE;
 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_MIPS)
   ISA_REGISTER_CLASS rc;
   FOR_ALL_ISA_REGISTER_CLASS(rc)
     caller_saved_regs_used[rc] = REGISTER_SET_EMPTY_SET;

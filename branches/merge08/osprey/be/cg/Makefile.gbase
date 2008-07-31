@@ -109,6 +109,9 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), SL)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
 ifeq ($(BUILD_TARGET), X8664)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
@@ -308,6 +311,11 @@ endif
 
 ifeq ($(BUILD_TARGET), MIPS)
   BE_CG_TARG_CXX_SRCS += cg_sas.cxx
+#  BE_CG_TARG_CXX_SRCS += disp_instr.cxx
+#  BE_CG_TARG_CXX_SRCS += exp_slintrn.cxx
+endif
+ifeq ($(BUILD_TARGET), SL)
+  BE_CG_TARG_CXX_SRCS += cg_sas.cxx
   BE_CG_TARG_CXX_SRCS += disp_instr.cxx
   BE_CG_TARG_CXX_SRCS += exp_slintrn.cxx
 endif
@@ -421,7 +429,7 @@ CG_CXX_SRCS = 		\
   cg_gcov.cxx		\
   $(DERIVED_SRCS)
 
-ifeq ($(BUILD_SUBTARGET), SL)
+ifeq ($(BUILD_TARGET), SL)
   CG_CXX_SRCS += $(CG_REGION_SRCS)  \
                  $(CG_GLOBAL_SCHED_SRCS) \
                  loop_dce.cxx \
@@ -521,6 +529,10 @@ LASINCS = $(addprefix -I, $(HEADER_DIRS))
 ifeq ($(BUILD_TARGET), MIPS)
 GLDOPTS = $(STD_LOAD_OPTS)
 endif
+ifeq ($(BUILD_TARGET), SL)
+GLDOPTS = $(STD_LOAD_OPTS)
+endif
+
 
 ifeq ($(BUILD_COMPILER), EDG)
 #DSOSTARTOPT = -update_registry $(TARG_BE)/so_locations
@@ -590,6 +602,9 @@ LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
 LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
  endif
  ifeq ($(BUILD_TARGET), MIPS)
+LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
+ endif
+ ifeq ($(BUILD_TARGET), SL)
 LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
  endif
 LLDLIBS += $(TARG_LIBDWARF)/libdwarf.a \
@@ -825,7 +840,7 @@ include $(COMMONRULES)
 .cxx.pch:
 	$(c++f) -c $(.IMPSRC)
 
-ifneq ($(BUILD_SUBTARGET), SL)
+ifneq ($(BUILD_TARGET), SL)
 ifeq (gcc,$(firstword $(CCNAME)))
 # work around gcc bug optimizing this file on ia32
 cg_loop.o: OPTIMIZER = -O0

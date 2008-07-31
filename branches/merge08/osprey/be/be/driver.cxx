@@ -148,7 +148,7 @@
 #include "goto_conv.h"
 #endif
 #include "be_memop_annot.h"
-#ifdef TARG_SL
+#if defined(TARG_SL)  || defined(TARG_MIPS)
 #include <dlfcn.h>
 #include "topcode.h"
 #include "ti_si.h"
@@ -219,7 +219,7 @@ extern void EH_Generate_Range_List (WN *);
 #endif // __linux__
 #endif // SHARED_BUILD
 
-#ifdef TARG_SL
+#if defined(TARG_SL)  || defined(TARG_MIPS)
 extern INT *SI_resource_count_p;
 #define SI_resource_count (*SI_resource_count_p)
 extern SI_RESOURCE* (*SI_resources_p)[];
@@ -2153,6 +2153,31 @@ void init_ti_target(void *handle) {
 }
 #endif
 
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+// load target.so and initialize weak variable in target.so
+void init_ti_target(void *handle) {
+  char *soname;
+  soname = (char*)alloca( strlen("r10000.so")+1 );
+  strncpy( soname, "r10000.so", strlen("r10000.so")+1 );
+  handle = dlopen(soname, RTLD_LAZY);
+  if (!handle) {
+    fprintf (stderr, "Error loading %s: %s\n", soname, dlerror());
+    exit (RC_SYSTEM_ERROR);
+  }
+  SI_resource_count_p = (INT *)dlsym(handle, "SI_resource_count");
+  SI_resources_p = (SI_RESOURCE *(*)[])dlsym(handle, "SI_resources");
+  SI_top_si_p = (SI *(*)[])dlsym(handle, "SI_top_si");
+  SI_RRW_initializer_p = (SI_RRW *)dlsym(handle, "SI_RRW_initializer");
+  SI_RRW_overuse_mask_p = (SI_RRW *)dlsym(handle, "SI_RRW_overuse_mask");
+  SI_issue_slot_count_p = (INT *)dlsym(handle, "SI_issue_slot_count");
+  SI_issue_slots_p = (SI_ISSUE_SLOT *(*)[])dlsym(handle, "SI_issue_slots");
+  SI_ID_count_p = (INT *)dlsym(handle, "SI_ID_count");
+  SI_ID_si_p = (SI *(*)[])dlsym(handle, "SI_ID_si");
+  return;
+}
+
+#endif
+
 // Provide a place to stop after components are loaded
 extern "C" {
   void be_debug(void) {}
@@ -2163,7 +2188,7 @@ main (INT argc, char **argv)
 {
   INT local_ecount, local_wcount;
   PU_Info *pu_tree;
-#ifdef TARG_SL
+#if defined(TARG_SL)   || defined(TARG_MIPS)
   void *handle;
 #endif  
 #ifdef __MINGW32__
@@ -2204,7 +2229,7 @@ main (INT argc, char **argv)
   }
 
   Init_Operator_To_Opcode_Table();
-#ifdef TARG_SL
+#if defined(TARG_SL)   || defined(TARG_MIPS)
   init_ti_target(handle);
 #endif
   /* decide which phase to call */

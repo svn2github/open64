@@ -256,6 +256,15 @@ endif
 endif
 endif
 
+ifeq ($(BUILD_TARGET), SL)
+ifeq ($(BUILD_TYPE), SHARED)
+ifndef NOSYSGEN
+        $(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) -F /usr/cpu/sysgen/root$(STD_MONGOOSE_LOC) inline
+endif
+endif
+endif
+
+
 inline: $(IPA_OBJS) $(IPA_CXX_OBJS)
 	$(C++F) -show -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) $(TARG_BE_DIR)/be.so $(LDFLAGS)
 	if [ ! -l be.so ]; then ln -sf $(TARG_BE_DIR)/be.so .; fi

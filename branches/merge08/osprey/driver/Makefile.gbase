@@ -53,6 +53,12 @@ LCDEFS += -DMIPS
 # Need to change OPEN64_PRODNAME to denote a MIPS product.
 #LCDEFS += -DOPEN64_PRODNAME='"Compiler"'
 endif
+ifeq ($(BUILD_TARGET), SL)
+LCDEFS += -DMIPS
+# Need to change OPEN64_PRODNAME to denote a MIPS product.
+#LCDEFS += -DOPEN64_PRODNAME='"Compiler"'
+endif
+
 
 ifeq ($(BUILD_TARGET), X8664)
 LCDEFS += -DX8664
@@ -225,6 +231,14 @@ install: default
 	$(STD_INSTALL) -lns driver -F /usr/lib f90
 
 else # IA32 or IA64
+ifeq ($(BUILD_TARGET), MIPS)
+install: default
+        $(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) -F $(STD_MONGOOSE_LOC) driver
+        $(STD_INSTALL) -lns driver -F $(STD_MONGOOSE_LOC) $(LANGS)
+        # assume that 3.19 installed driverwrap, but need new f90
+        $(STD_INSTALL) -lns ../lib/driverwrap -F /usr/bin f90
+        $(STD_INSTALL) -lns driver -F /usr/lib f90
+else
 install: default
 	$(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) -D driver $(STD_MONGOOSE_LINUX_LOC)/driver
 	rm -f $(STD_MONGOOSE_LINUX_LOC)/sgicc  $(STD_MONGOOSE_LINUX_LOC)/sgiCC
@@ -232,6 +246,7 @@ install: default
 	ln -s $(STD_MONGOOSE_LINUX_LOC)/driver $(STD_MONGOOSE_LINUX_LOC)/sgicc
 	ln -s $(STD_MONGOOSE_LINUX_LOC)/driver $(STD_MONGOOSE_LINUX_LOC)/sgiCC
 	ln -s $(STD_MONGOOSE_LINUX_LOC)/driver $(STD_MONGOOSE_LINUX_LOC)/sgif90
+endif
 endif
 
 endif

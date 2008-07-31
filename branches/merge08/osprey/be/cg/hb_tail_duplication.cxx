@@ -255,7 +255,7 @@ Rename_Locals(OP* op, hTN_MAP dup_tn_map)
   }
 }
 
-#if !defined(TARG_IA64) && !defined(TARG_SL)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_MIPS)
 static
 #endif
 /////////////////////////////////////

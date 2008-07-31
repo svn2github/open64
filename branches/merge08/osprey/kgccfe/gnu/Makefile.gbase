@@ -83,6 +83,9 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
 HOSTDEFS += -DTARGET_NAME=\"key-linux\"
 endif
+ifeq ($(BUILD_TARGET), SL)
+HOSTDEFS += -DTARGET_NAME=\"sl-linux\"
+endif
 ifeq ($(BUILD_TARGET), NVISA)
 HOSTDEFS += -DTARGET_NAME=\"nvisa\"
 endif
@@ -145,6 +148,9 @@ GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
 endif
 ifeq ($(BUILD_TARGET), MIPS)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
+endif
+ifeq ($(BUILD_TARGET), SL)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/sl
 endif
 ifeq ($(BUILD_TARGET), NVISA)
 GNU_TARG_DIR = $(GNU_DIR)/i386
@@ -341,6 +347,9 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
   GNU_SRCS += mips.c
 endif
+ifeq ($(BUILD_TARGET), SL)
+  GNU_SRCS += mips.c
+endif
 ifeq ($(BUILD_TARGET), NVISA)
   GNU_SRCS += i386.c
 endif
@@ -424,6 +433,7 @@ ifeq ($(BUILD_TARGET), __disable__)
   insn-emit.c insn-recog.c insn-extract.c insn-output.c insn-peep.c \
   insn-attr.h insn-attrtab.c
 
+ifeq ($(BUILD_TARGET), MIPS)
 TM_FILE = MIPS/mips.h MIPS/mips.c MIPS/mips.md MIPS/linux.h
 BUILD_XM_FILE = 
 HOST_XM_FILE = 
@@ -445,6 +455,31 @@ HOST_ERRORS = $(HOST_PREFIX)errors.o
 MD_FILE = MIPS/mips.md
 PREMADE_ATTRTAB_MD = Makefile  # Guaranteed not to cmp equal to md.
 PREMADE_ATTRTAB = 
+else 
+ifeq ($(BUILD_TARGET), SL)
+TM_FILE = SL/mips.h SL/mips.c SL/mips.md SL/linux.h
+BUILD_XM_FILE =
+HOST_XM_FILE =
+
+CONFIG_H = $(HOST_XM_FILE) $(TM_FILE)
+RTL_H = rtl.h rtl.def machmode.h machmode.def
+TREE_H = tree.h real.h tree.def machmode.h machmode.def
+BYTECODE_H = bytecode.h bc-emit.h bc-optab.h
+BASIC_BLOCK_H = basic-block.h bitmap.h
+
+HOST_PREFIX =
+
+HOST_RTL = $(HOST_PREFIX)rtl.o $(HOST_PREFIX)bitmap.o \
+                $(HOST_PREFIX)read-rtl.o $(HOST_PREFIX)ggc-none.o \
+                gensupport.o
+HOST_PRINT = $(HOST_PREFIX)print-rtl.o
+HOST_ERRORS = $(HOST_PREFIX)errors.o
+
+MD_FILE = SL/mips.md
+PREMADE_ATTRTAB_MD = Makefile  # Guaranteed not to cmp equal to md.
+PREMADE_ATTRTAB =
+endif
+endif
 
 HOST_CFLAGS = $(CFLAGS)
 ALL_CFLAGS = $(CFLAGS)

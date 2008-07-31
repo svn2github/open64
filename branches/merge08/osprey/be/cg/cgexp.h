@@ -352,6 +352,8 @@ extern BOOL Target_Has_Immediate_Operand (WN *parent, WN *expr);
 
 #if defined(TARG_SL) 
 extern TN * Expand_Expr (WN *expr, WN *parent, TN *result, INTRINSIC intrn_id = INTRINSIC_INVALID);
+#elif defined(TARG_IA64)
+extern TN * Expand_Expr (WN *expr, WN *parent, TN *result);
 #endif 
 
 #ifdef TARG_X8664

@@ -518,11 +518,14 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_COMPUTES_GOT  0x00100000 /* Does OP compute GOT ? */
 #define OP_MASK_PREFIX_LOCK   0x01000000
 #endif
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 # define OP_renamed(op)		(OP_flags(op) & OP_MASK_RENAMED)
 # define Set_OP_renamed(o)	(OP_flags(o) |= OP_MASK_RENAMED)
 # define Reset_OP_renamed(o)	(OP_flags(o) &= ~OP_MASK_RENAMED)
  
+#if defined (TARG_MIPS) && !defined(TARG_SL)
+#define OP_MASK_RENAMED       0x00100000  /* Is OP renamed during global sched */
+#endif
 #if defined(TARG_SL) 
 #define OP_MASK_RENAMED       0x00100000  /* Is OP renamed during global sched */
 #define OP_MASK_BC2_OP        0x00200000  /* Is OP renamed during global sched */
@@ -650,7 +653,7 @@ enum OP_COND_DEF_KIND {
 
 extern BOOL OP_cond_def(const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 extern BOOL OP_def_return_value (OP*);
 #endif
 #ifdef TARG_IA64
@@ -680,7 +683,7 @@ extern BOOL OP_use_return_value(OP*);
 #endif
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA) || defined(TARG_MIPS)
 #define OP_xfer(o)		(TOP_is_xfer(OP_code(o)))
 #endif
 #define OP_cond(o)		(TOP_is_cond(OP_code(o)))

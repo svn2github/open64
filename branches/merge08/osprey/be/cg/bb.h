@@ -479,7 +479,7 @@ typedef	struct bb {
 #ifdef KEY
   struct bb     *aux;
 #endif 
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
   INT		bb_cycle; 
 #if !defined(TARG_SL)
   mBB_NUM       id_before_profile;  /* old trace number before any profile process*/
@@ -566,7 +566,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_NON_LOCAL_LABEL     0x00400000 /* BB has a non-local label */
 #endif
 
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 #define BBM_EDGE_SPLITTING      0x00800000 /* BB is used for edge splitting */
 
 #ifdef TARG_IA64
@@ -797,7 +797,7 @@ typedef	struct bblist {
     BB		  *item;	/* The BB list element       */
     struct bblist *next;	/* The next list component   */
     float	   prob;	/* probability for this edge */
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
     float	   freq;	/* frequency for this edge */    
 #endif
     mUINT16        flags;       /* flags                     */
@@ -807,7 +807,7 @@ typedef	struct bblist {
 #define	BBLIST_next(b)	((b)->next)
 #define BBLIST_prob(b)	((b)->prob) /*** Only valid for succ edges ***/
 #define BBLIST_flags(b) ((b)->flags)
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 #define BBLIST_freq(b)	((b)->freq) /*** Only valid for succ edges ***/
 #endif
 

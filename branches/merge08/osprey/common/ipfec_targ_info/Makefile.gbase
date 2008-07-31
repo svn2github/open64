@@ -94,6 +94,11 @@ TARGINFO_MSCHED_DIR	= $(TARGINFO_DIR)/msched
 ifeq ($(BUILD_TARGET), MIPS)
 BUILD_TARGET_DIR = mips
 endif
+
+ifeq ($(BUILD_TARGET), SL)
+BUILD_TARGET_DIR = SL
+endif
+
 OLD_TARGINFO_ISA_DIR 	= $(OLD_TARGINFO_DIR)/isa/$(BUILD_TARGET_DIR)
 OLD_TARGINFO_ABI_DIR 	= $(OLD_TARGINFO_DIR)/abi/$(BUILD_TARGET_DIR)
 TARGINFO_PROC_DIR 	= $(OLD_TARGINFO_DIR)/proc/$(BUILD_TARGET_DIR)
@@ -174,6 +179,16 @@ SO_TARGETS = \
 	r5000.so	\
 	r4000.so
 endif
+ifeq ($(BUILD_TARGET), SL)
+LDIRT += r10000_si_gen r8000_si_gen r5000_si_gen r4000_si_gen
+SO_TARGETS = \
+        r10000.so       \
+        r8000.so        \
+        r5000.so        \
+        r4000.so
+endif
+
+
 ifeq ($(BUILD_TARGET), IA64)
 LDIRT += itanium_si_gen
 SO_TARGETS = \
@@ -672,6 +687,80 @@ r4000_si.o: r4000_si.cxx targ_isa_subset.h topcode.h si_gen.h
 
 endif
 
+ifeq ($(BUILD_TARGET), SL)
+## r10000 ##
+
+r10000.so: r10000.o $(SI_EXPORT_LIST)
+	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               r10000.o -o r10000.so
+
+r10000.o: r10000.c ti_si.h
+	$(CC) $(CFLAGS) -c r10000.c
+
+r10000.c: r10000_si_gen
+	$(RUN) ./r10000_si_gen
+
+r10000_si_gen: si_gen.so r10000_si.o topcode.o
+	$(CXX) $(CXXLDFLAGS) r10000_si.o topcode.o si_gen.so -o r10000_si_gen
+
+r10000_si.o: r10000_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(CXX) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/r10000_si.cxx
+
+## r8000 ##
+
+r8000.so: r8000.o $(SI_EXPORT_LIST)	
+	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               r8000.o -o r8000.so
+
+r8000.o: r8000.c ti_si.h
+	$(CC) $(CFLAGS) -c r8000.c
+
+r8000.c: r8000_si_gen
+	$(RUN) ./r8000_si_gen
+
+r8000_si_gen: si_gen.so r8000_si.o topcode.o
+	$(CXX) $(CXXLDFLAGS) r8000_si.o topcode.o si_gen.so -o r8000_si_gen
+
+r8000_si.o: r8000_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(CXX) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/r8000_si.cxx
+
+
+## r5000 ##
+
+r5000.so: r5000.o $(SI_EXPORT_LIST)
+	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               r5000.o -o r5000.so
+
+r5000.o: r5000.c ti_si.h
+	$(CC) $(CFLAGS) -c r5000.c
+
+r5000.c: r5000_si_gen
+	$(RUN) ./r5000_si_gen
+
+r5000_si_gen: si_gen.so r5000_si.o topcode.o
+	$(CXX) $(CXXLDFLAGS) r5000_si.o topcode.o si_gen.so -o r5000_si_gen
+
+r5000_si.o: r5000_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(CXX) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/r5000_si.cxx
+## r4000 ##
+
+r4000.so: r4000.o $(SI_EXPORT_LIST)
+	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               r4000.o -o r4000.so
+
+r4000.o: r4000.c ti_si.h
+	$(CC) $(CFLAGS) -c r4000.c
+
+r4000.c: r4000_si_gen
+	$(RUN) ./r4000_si_gen
+
+r4000_si_gen: si_gen.so r4000_si.o topcode.o	
+	$(CXX) $(CXXLDFLAGS) r4000_si.o topcode.o si_gen.so -o r4000_si_gen
+
+r4000_si.o: r4000_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(CXX) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/r4000_si.cxx
+
+endif
 
 
 ifeq ($(BUILD_TARGET), IA64)

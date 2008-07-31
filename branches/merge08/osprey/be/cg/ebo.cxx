@@ -1166,7 +1166,7 @@ find_duplicate_mem_op (BB *bb,
     fprintf(TFile,"%sEnter find_duplicate_mem_op\n",EBO_trace_pfx);
   }
 
-#if !defined(TARG_IA64) && !defined(TARG_SL)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_MIPS)
   // Take OP_prefetch into account.
   if( OP_prefetch(op) ){
     return Combine_L1_L2_Prefetches( op, opnd_tn, opnd_tninfo );

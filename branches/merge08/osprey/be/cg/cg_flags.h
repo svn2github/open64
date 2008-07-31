@@ -619,7 +619,7 @@ extern BOOL IGLS_Enable_PRE_HB_Scheduling;
 extern BOOL IGLS_Enable_POST_HB_Scheduling;
 extern BOOL IGLS_Enable_HB_Scheduling;
 extern BOOL IGLS_Enable_All_Scheduling;
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 extern BOOL RGN_Enable_All_Scheduling;
 extern BOOL CG_Enable_Regional_Global_Sched;
 extern BOOL CG_Enable_Regional_Local_Sched;

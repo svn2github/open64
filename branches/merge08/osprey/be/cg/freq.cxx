@@ -334,10 +334,15 @@ Initialize_Freq_Edges(void)
       EDGE_succ(edge) = succ;
       BB_succ_edges(bb) = edge;
 
-     if (BBLIST_prob(slst) != 0.0 &&
-         BBLIST_prob_hint_based(slst)) {
+     if (BBLIST_prob(slst) != 0.0 
+#ifdef TARG_SL
+	 	&& BBLIST_prob_hint_based(slst)
+#endif	 	
+	 	) {
        EDGE_prob(edge) = BBLIST_prob(slst);
+#ifdef TARG_SL
        Set_EDGE_prob_hint_based(edge);
+#endif
      }
 
       FOR_ALL_BB_PREDS(succ, plst) {

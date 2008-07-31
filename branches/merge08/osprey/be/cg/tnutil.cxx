@@ -945,7 +945,7 @@ Gen_Adjusted_TN ( TN *tn, INT64 adjust )
  * ====================================================================
  */
 
-#if !defined(TARG_IA64) && !defined(TARG_SL)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_MIPS)
 static
 #endif
 char *

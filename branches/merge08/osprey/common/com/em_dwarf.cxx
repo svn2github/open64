@@ -371,7 +371,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 				 cie_init_byte_len,
 				 &dw_error);
 
-#if defined(KEY) && !defined(TARG_SL) 
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_MIPS)
   // Generate a CIE for .eh_frame only if it is C++ or if -DEBUG:eh_frame=on
   if (is_cplus || DEBUG_Emit_Ehframe)
     eh_cie_index = dwf_add_ehframe_cie (dw_dbg, augmenter,

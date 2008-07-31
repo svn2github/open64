@@ -194,5 +194,7 @@ extern INT32 GCM_BB_Limit;
 extern void GCM_Schedule_Region (HBS_TYPE locs_type);
 
 extern void GCM_Fill_Branch_Delay_Slots (void);
+#ifdef TARG_SL
 extern BB* Loop_Is_Zdl( LOOP_DESCR *loop );
+#endif
 #endif /* gcm_INCLUDED */

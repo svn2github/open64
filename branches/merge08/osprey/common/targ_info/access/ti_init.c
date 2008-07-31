@@ -74,7 +74,7 @@ const char * sanity_check_targ_so_name_p;
  * ====================================================================
  */
 void
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath, char* version)
 #else
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath)
@@ -85,7 +85,7 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
   if ( !initialized ) {
     INT                i;
     const char        *targ_name     = PROCESSOR_Name(tproc);
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
     INT                targ_name_len = strlen(targ_name) + strlen(version);
 #else
     INT                targ_name_len = strlen(targ_name);
@@ -96,7 +96,7 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
     for (i = 0; i < targ_name_len; i++) {
       targ_so_name[i] = tolower(targ_name[i]);
     }
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
     if (strlen(version) > 0)  strcat(targ_so_name, version);
 #endif
     strcpy(targ_so_name + targ_name_len, ".so");

@@ -256,11 +256,13 @@ endif
 
 ifdef BUILD_TARGET
  ifneq ($(BUILD_TARGET), MIPS)
+ ifneq ($(BUILD_TARGET), SL)
  ifneq ($(BUILD_TARGET), IA32)
  ifneq ($(BUILD_TARGET), IA64)
  ifneq ($(BUILD_TARGET), X8664)
  ifneq ($(BUILD_TARGET), NVISA)
    ABORT_BUILD = BUILD_TARGET has bad value - $(BUILD_TARGET)!
+ endif
  endif
  endif
  endif
@@ -272,6 +274,9 @@ endif
 
 ifeq ($(BUILD_TARGET), MIPS)
 BUILD_TARGET_DIR = mips
+endif
+ifeq ($(BUILD_TARGET), SL)
+BUILD_TARGET_DIR = sl
 endif
 ifeq ($(BUILD_TARGET), IA32)
 BUILD_TARGET_DIR = ia32
@@ -434,6 +439,43 @@ ifndef ABORT_BUILD
 endif
 endif
 
+ifeq ($(BUILD_TARGET), SL)
+ifndef ABORT_BUILD
+ ifeq ($(BUILD_ABI), N32BIT)
+ ifneq ($(BUILD_ARCH), MIPS3)
+ ifneq ($(BUILD_ARCH), MIPS4)
+ ifneq ($(BUILD_ARCH), MIPS64)
+   ABORT_BUILD = N32BIT requires MIPS3 or MIPS4 or MIPS64!
+ endif
+ endif
+ endif
+ endif
+ ifeq ($(BUILD_ABI), 64BIT)
+ ifneq ($(BUILD_ARCH), MIPS3)
+ ifneq ($(BUILD_ARCH), MIPS4)
+   ABORT_BUILD = 64BIT requires MIPS3 or MIPS4!
+ endif
+ endif
+ endif
+ ifeq ($(BUILD_ABI), I32BIT)
+ ifneq ($(BUILD_ARCH), IA32)
+  ABORT_BUILD = BUILD_ABI=I32BIT requires BUILD_ARCH=IA32
+ endif
+ endif
+ ifeq ($(BUILD_ABI), I64BIT)
+ ifneq ($(BUILD_ARCH), IA64)
+  ABORT_BUILD = BUILD_ABI=I64BIT requires BUILD_ARCH=IA64
+ endif
+ endif
+ ifeq ($(BUILD_ABI), W64BIT)
+ ifneq ($(BUILD_ARCH), IA32)
+  ABORT_BUILD = BUILD_ABI=W64BIT requires BUILD_ARCH=IA32
+ endif
+ endif
+endif
+endif
+
+
 #
 #  Compute STD_COMPILE_OPTS as a usable set of compile options which reflect
 #  BUILD_COMPILER, BUILD_TYPE, BUILD_ARCH, BUILD_ABI.
@@ -485,6 +527,7 @@ STD_COMPILE_OPTS += -DTARG_$(BUILD_TARGET)
 ifeq ($(BUILD_TARGET), IA32)
 STD_COMPILE_OPTS += -DEMULATE_LONGLONG
 endif
+
 
 include ${BUILD_TOT}/../defs.mk
 

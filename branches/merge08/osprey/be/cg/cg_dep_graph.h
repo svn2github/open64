@@ -746,7 +746,7 @@ inline BOOL TN_is_predicate (TN * tn)
 
 extern void CG_DEP_Detach_Arc(ARC *arc);
 
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 extern ARC *new_arc(CG_DEP_KIND kind, OP *pred, OP *succ, UINT8 omega,
 		    UINT8 opnd, BOOL is_definite);
 #endif

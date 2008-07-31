@@ -325,7 +325,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_CVT:
 	Is_True(rtype != MTYPE_B, ("conversion to bool unsupported"));
 	if (MTYPE_is_float(rtype) && MTYPE_is_float(desc)) {
-#if defined(TARG_X8664) || defined(TARG_SL)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS)
 		Expand_Float_To_Float (result, op1, rtype, desc, ops);
 #else
 		Expand_Float_To_Float (result, op1, rtype, ops);

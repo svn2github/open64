@@ -238,6 +238,9 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
 TARGET_SO = r10000.so
 endif
+ifeq ($(BUILD_TARGET), SL)
+TARGET_SO = r10000.so
+endif
 ifeq ($(BUILD_TARGET), IA64)
 TARGET_SO = itanium.so
 endif

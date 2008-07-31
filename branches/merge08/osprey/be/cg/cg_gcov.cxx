@@ -64,7 +64,7 @@
 #if defined(TARG_SL)
 static BOOL inline Is_Target_32bit (void) { return TRUE; }
 #else
-static BOOL inline Is_Target_64bit (void) { return TRUE; }
+//static BOOL inline Is_Target_64bit (void) { return TRUE; }
 static BOOL inline Is_Target_32bit (void) { return FALSE; }
 #endif
 #endif // TARG_MIPS

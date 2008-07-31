@@ -150,6 +150,9 @@
 #include "cg_swp.h"
 #include "tag.h"
 #include "be_symtab.h"
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+#include "MIPS/cg_sas.h"
+#endif
 
 #ifdef TARG_IA64
 #include "targ_issue_port.h"
@@ -2779,7 +2782,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
   }
 #endif // TARG_X8664
 
-#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_MIPS)
   // Bug 4204 - move the ctrl register setup after the preamble. This 
   // causes the debug information generated to let the debugger to stop
   // at the right spot for the main entry function. Otherwise, the parameters
@@ -3553,8 +3556,10 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
           else
             words += general_macro_string[i].expand_num;
           p = p + strlen(general_macro_string[i].str);
+#ifdef TARG_SL
           if (trace_pc)
             fprintf(TFile, "%s\n", general_macro_string[i].str);
+#endif
           flag == 1;
         }
       }
@@ -3573,15 +3578,19 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
         digit[j] = '\0';
         j = atoi(digit);
         if (((j) &~ 0x7fff) == 0 || (((j) &~ 0x7fff) == ~ 0x7fff) || (j >= 0 && j < 65536)) {
+#ifdef TARG_SL
           if (trace_pc)
             fprintf(TFile, "one instruction li: digit  %d\n", j);
+#endif
           if (emit_phase)
             PC = PC_Incr_N(PC, 2);
           else
             words += 2;
         } else {
+#ifdef TARG_SL
           if (trace_pc)
             fprintf(TFile, "two instruction li :digit  %d\n", j);
+#endif
           if (emit_phase)
             PC = PC_Incr_N(PC, 4);
           else
@@ -3596,8 +3605,10 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
           const char *opname = TOP_Name((topcode)j);
           len = strlen(opname);
           if (!strncmp(opname, instr, len))  {
+#ifdef TARG_SL
             if (trace_pc)
               fprintf(TFile, "asm: \t %d  %s\n", PC, instr);
+#endif
             p = p+len;
             // continue to next instruction
             while (*p && (*p != '\n') && (*p != ';')) {
@@ -4757,7 +4768,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   Init_Sanity_Checking_For_BB ();
 #endif
 
-#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_MIPS)
 // Assumption: REGION_First_BB is the first BB in the PU. If in future,
 // we start having multiple regions in a PU here, we need to change the 
 // following. 
@@ -6016,7 +6027,7 @@ Write_TCON (
     INT32 scn_ofst32 = (INT32)scn_ofst;
     FmtAssert(scn_ofst32 == scn_ofst, ("section offset exceeds 32 bits: 0x%llx",
 				       (INT64)scn_ofst));
-#if !defined(TARG_IA64) && !defined(TARG_SL)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_MIPS)
     if (etable)
         Targ_Emit_EH_Const ( Asm_File, *tcon, add_null, repeat, scn_ofst32, format );
     else
@@ -9142,10 +9153,17 @@ Emit_Options (void)
     fputs ("\t.ident\t\"#Open64 Compiler Version " OPEN64_FULL_VERSION " :", Asm_File);
 #elif defined(VENDOR_SL)
     fputs ("#\t.ident\t\"#Simplight Compiler Version 1.0 :", Asm_File);
+#elif defined(TARG_MIPS)
+    fputs ("#\t.ident\t\"#PathScale Compiler Version " PSC_FULL_VERSION " :", Asm_File);
 #else
     fputs ("\t.ident\t\"#PathScale Compiler Version " PSC_FULL_VERSION " :", Asm_File);
 #endif
+
+#if defined(TARG_MIPS)
+    fprintf (Asm_File, "# %s compiled with : ", Src_File_Name);
+#else
     fprintf (Asm_File, " %s compiled with : ", Src_File_Name);
+#endif
     // 0th is 'be', (be_command_line_argc-1)th is filename
     for (INT cmds=1; cmds < be_command_line_argc-1; ++cmds)
     {

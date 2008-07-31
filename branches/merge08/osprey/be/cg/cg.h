@@ -48,7 +48,7 @@
 #include "wn.h"
 #include "dwarf_DST_mem.h"
 #include "symtab.h"
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_MIPS)
 #include "register.h"
 #endif
 
@@ -78,7 +78,7 @@ extern BOOL PU_References_GOT; // for -m32 -fpic
 
 extern BOOL CG_PU_Has_Feedback;
 
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 extern BOOL RGN_Formed;
 #endif
 
@@ -143,12 +143,12 @@ extern MEM_POOL MEM_local_region_nz_pool;
 
 extern RID *Current_Rid;
 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_MIPS)
 extern void CG_Dump_Cur_Region();
 extern REGISTER_SET caller_saved_regs_used[ISA_REGISTER_CLASS_MAX+1];
 extern void IPISR_Insert_Spills();
 #endif
-#if defined(TARG_IA64) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 /* indicate whether region is already been formed. */
 extern BOOL RGN_Formed;
 #endif
