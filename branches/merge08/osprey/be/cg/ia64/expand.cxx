@@ -1695,7 +1695,59 @@ Expand_Float_To_Int_Trunc (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OP
 void
 Expand_Float_To_Int_Floor (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
 {
+    Is_True ( MTYPE_is_float(fmtype), ("fmtype is not floating-point"));
+    // OSP, Expand_Float_To_Int does not support the src larger than 2^64
+    if ( MTYPE_is_integral(imtype) ) {
         Expand_Float_To_Int (ROUND_NEG_INF, dest, src, imtype, fmtype, ops);
+    }
+    else {
+        // new implementation for fp
+        TN* expmask = Build_TN_Of_Mtype(MTYPE_I4);
+        Build_OP(TOP_mov_i, expmask, True_TN, Gen_Literal_TN(0x1FFFF, 4), ops);
+
+        TN* sigwidth = Build_TN_Of_Mtype(MTYPE_I4);
+        switch(fmtype) {
+            default:
+                FmtAssert(FALSE, ("Invalid fmtype in ..."));
+            case MTYPE_F4:
+                // single precision, 23 bits significand
+                Build_OP(TOP_mov_i, sigwidth, True_TN, Gen_Literal_TN(0x10016, 4), ops);
+                break;
+            case MTYPE_F8:
+                // double precision, 52 bits significand
+                Build_OP(TOP_mov_i, sigwidth, True_TN, Gen_Literal_TN(0x10033, 4), ops);
+                break;
+            case MTYPE_F10:
+                // double extended, 63 bits fraction
+                Build_OP(TOP_mov_i, sigwidth, True_TN, Gen_Literal_TN(0x1003E, 4), ops);
+                break;
+        }
+
+        TN* exp = Build_TN_Of_Mtype(MTYPE_I4);
+        Build_OP (TOP_getf_exp, exp, True_TN, src, ops);
+
+        TN* trunc_val = Build_RCLASS_TN(ISA_REGISTER_CLASS_float);
+        Build_OP (TOP_fcvt_fx_trunc, trunc_val, True_TN, 
+                  Gen_Enum_TN(ECV_sf_s1), src, ops);
+
+        Build_OP (TOP_fmerge_s, dest, True_TN, 
+                  src, src, ops);
+
+        Build_OP (TOP_fcvt_xf, trunc_val, True_TN, trunc_val, ops);
+        Build_OP (TOP_and, exp, True_TN, expmask, exp, ops);
+
+        TN *p1 = Build_RCLASS_TN (ISA_REGISTER_CLASS_predicate);
+        TN *p2 = Build_RCLASS_TN (ISA_REGISTER_CLASS_predicate);
+     
+        //TN* dest_fp = Build_RCLASS_TN(ISA_REGISTER_CLASS_float);
+        Build_OP (TOP_cmp_geu_unc, True_TN, p1, True_TN, exp, sigwidth, ops);
+        Build_OP (TOP_fcmp_nlt_unc, p2, p1, p1, 
+                  Gen_Enum_TN(ECV_sf_s1), src, trunc_val, ops);
+        Build_OP (TOP_fsub_d, dest, p1, 
+                  Gen_Enum_TN(ECV_sf_s1), trunc_val, FOne_TN, ops);
+        Build_OP (TOP_fmerge_s, dest, p2, src, trunc_val, ops);
+        //Build_OP (TOP_getf_sig, dest, True_TN, dest_fp, ops);
+    }
 }
 
 void

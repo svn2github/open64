@@ -976,6 +976,12 @@ void ipacom_doit (const char* ipaa_filename)
         fputs(" \n", cmdfile);
         continue;
       }
+      if (strncmp(*i, "-soname=", 8) == 0) {
+        fputs("-Wl,", cmdfile);
+        fputs(*i, cmdfile);
+        fputs(" \n", cmdfile);
+        continue;
+      }
       fputs(*i, cmdfile);
       fputs(" \n", cmdfile);
     }

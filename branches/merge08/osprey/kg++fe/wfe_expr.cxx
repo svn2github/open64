@@ -5492,14 +5492,6 @@ WFE_Expand_Expr (tree exp,
 #if defined TARG_MIPS
 	      iopc = INTRN_FLOOR;
 	      intrinsic_op = TRUE;
-#elif defined TARG_IA64
-	      if (MTYPE_is_integral(ret_mtype))
-                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
-              else{
-                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F8, arg_wn);
-                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
-              }
-              whirl_generated = TRUE;
 #else
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
               whirl_generated = TRUE;
@@ -5511,14 +5503,6 @@ WFE_Expand_Expr (tree exp,
 #if defined TARG_MIPS
 	      iopc = INTRN_FLOORF;
 	      intrinsic_op = TRUE;
-#elif defined TARG_IA64
-	      if (MTYPE_is_integral(ret_mtype))
-                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
-              else{
-                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F4, arg_wn);
-                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
-              }
-              whirl_generated = TRUE;
 #else
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
               whirl_generated = TRUE;
@@ -5529,16 +5513,7 @@ WFE_Expand_Expr (tree exp,
             case BUILT_IN_FLOORL:
               arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
 #ifdef TARG_IA64
-	      if (MTYPE_is_integral(ret_mtype))
-                // bug fix for OSP_201
-		// 
-		wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
-	      else{
-		// bug fix for OSP_201
-		//
-		wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F10, arg_wn);
-		wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
-	      }
+	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
 #else
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
 #endif // TARG_IA64	      

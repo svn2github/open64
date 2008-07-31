@@ -2798,11 +2798,16 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
 
         if (WN_operator(stmt) == OPR_CALL && WOPT_Enable_Noreturn_Attr_Opt) {
           if (PU_has_attr_noreturn(Pu_Table[ST_pu(WN_st(stmt))])) {
-            // ignore the rest statements
+            // Insert OPC_RETURN after the call, so the rest statements
+            // will be ignored
             if (!nextstmt || 
                 (WN_operator(nextstmt) != OPR_RETURN && 
                  WN_operator(nextstmt) != OPR_RETURN_VAL)) {
-              nextstmt = WN_Create (OPC_RETURN, 0); 
+                WN *nextstmt_save = nextstmt;
+                nextstmt = WN_Create (OPC_RETURN, 0);
+                WN_next(nextstmt) = nextstmt_save;
+		if (nextstmt_save)
+                  WN_prev(nextstmt_save) = nextstmt;
             }
           }
         }

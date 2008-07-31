@@ -1887,6 +1887,21 @@ find_duplicate_op (BB *bb,
           hash_op_matches = FALSE;
           break;
         }
+        // OSP
+        // if the result of op or pred_op is homeable, disable the replacement.
+        // fix a bug in bootstrap on IA32.
+        if ( TN_is_gra_homeable( OP_result(op, resnum) ) ||
+             TN_is_gra_homeable( OP_result(pred_op, resnum) ) ) {
+          if (EBO_Trace_Hash_Search) {
+            #pragma mips_frequency_hint NEVER
+            fprintf(TFile,"%sExpression match found, but the result value is homable\n\t");
+            Print_OP_No_SrcLine(pred_op);
+            fprintf(TFile, "\t");
+            Print_OP_No_SrcLine(op);
+          }
+          hash_op_matches = FALSE;
+          break;
+        }
       }
 
     }

@@ -383,6 +383,7 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
 
   case OPR_CVT:
     if (! MTYPE_is_integral(res)) { 
+      hob_to_do = MTYPE_is_signed(desc) ? HOB_sign_xtd : HOB_zero_xtd;
       U64_LOWER_insert_cvtl_for_kid(new_nd, hob_to_do, 0, maxsize, hob_state);
       maxsize = 0; 
       if (MTYPE_is_integral(desc))
@@ -414,9 +415,13 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
     if (! MTYPE_is_integral(res) || res == MTYPE_B)
       return U64_LOWER_form_node(new_nd, tree);
     // fall thru
-  case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
+  case OPR_RND: case OPR_TRUNC: case OPR_CEIL:
     U64_LOWER_set_rtype(new_nd, Mtype_TransferSize(MTYPE_A8, res));
     maxsize = 64;
+
+    // OSP, do not change rtype of FLOOR into A8
+    // fall thru 
+  case OPR_FLOOR:
     return U64_LOWER_form_node(new_nd, tree);
 
   // binary ops

@@ -1969,6 +1969,10 @@ Create_ST_For_Tree (gs_t decl_node)
 #endif
 
   if (gs_decl_section_name (decl_node)) {
+    if (strncmp(gs_tree_string_pointer (gs_decl_section_name (decl_node)), 
+                ".gnu.linkonce.",
+                14) != 0 ) {
+      // OSP. only handle non-.gnu.linkonce.* section name
     DevWarn ("section %s specified for %s",
              gs_tree_string_pointer (gs_decl_section_name (decl_node)),
              ST_name (st));
@@ -1980,6 +1984,13 @@ Create_ST_For_Tree (gs_t decl_node)
                   Save_Str (gs_tree_string_pointer (gs_decl_section_name (decl_node))));
     if (!lang_cplus) // bug 14187
       Set_ST_has_named_section (st);
+    }
+    else {
+      // OSP. Ignore .gnu.linkonce.* section name
+      DevWarn ("Ignore section %s specified for %s",
+               gs_tree_string_pointer (gs_decl_section_name (decl_node)),
+               ST_name (st));
+    }
   }
 
 #if defined(KEY) && defined(TARG_IA64)

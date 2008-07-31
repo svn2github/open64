@@ -49,24 +49,6 @@ requirements:
       above, we recommend that you to install GCC 3.4.6.
       Open64 has been tested and successfully compiled with GCC 3.3.x and 3.4.x.
 
-    * IFC (Intel Fortran Compiler)
-      To compile and use the Open64 Fortran compiler, you need to install the 
-      Intel Fortran Compiler. A free version for noncommercial use is available
-      from Intel.
-      (http://www3.intel.com/cd/software/products/asmo-na/eng/download/download/index.htm)
-      
-      Depending on the path where you have installed IFC, you may have to adapt
-      the Open64 Makefile. Please go to open64/kpro64/linux/make/gcommondefs and
-      check the defines for F90 and F90_RTLIBS and adjust them if necessary. 
-      Please also add the path to the IFC libraries to your library path.
-        
-        export LD_LIBRARY_PATH=/path/to/IFC/lib:$LD_LIBRARY_PATH
-
-      To build the Fortran Compiler, another environment INTEL_COMPILER_FC_HOME
-      is also needed. Please set it to the home directory of the IFC.
-
-        export INTEL_COMPILER_FC_HOME=/path/to/IFC
-
 
 Obtaining the Source Code
 -------------------------
@@ -81,11 +63,14 @@ There are two ways:
       (http://www.open64.net/download.html)
 
       You have to obtain the source code and the prebuild libraries/binaries!
+      NOTE:we put the prebuild package into the source code release,so you don't
+      need to download it seperately, but if you obtain the code frm svn repository
+      you have to download it and put them into trunk/, see the svn sections below.
+          
 
       Extract the source code and the prebuild binaries/libraries
         
-        tar xzf open64-4.0.tar.gz
-        tar xzf open64-4.0-prebuild.tar.gz
+        tar xzf open64-4.2.tar.gz
 
     * Obtain the Source Code from our Subversion Repository
       You can also obtain the latest version of our source code from the sub-
@@ -96,13 +81,23 @@ There are two ways:
 
       This will copy the latest code to the directory open64.
 
+      then checkout the latest prebuild package:
+        svn checkout  https://svn.open64.net/svnroot/open64/branches/open64-prebuild/ prebuild
+      then copy the bin/ and lib/ directory into the trunk, such as:
+        cp -r prebuild/lib  open64/
+        cp -r prebuld/bin  open64/
+ 
       You can also surf through our subversion repository online.
       (http://svn.open64.net)
 
       You also need to obtain the prebuild libraries/binaries and extract them 
       to the root directory of the Open64 source code.
 
-
+    NOTE:prebuild libraries/binaries contains two parts
+          --prebuilt libraries, such as libmv.a, libopenmp.a,etc so you don't need to build them explicitly.
+          --a prebuild FORTRAN FE, since the FORTRAN FE source file contain some FORTRAN file, so if you don't have 
+            a FORTRAN compiler in your PATH, you can't build the FORTRAN FE by default, see the Compiler section if you
+            want to build a FORTRAN FE.
 Compiling
 ---------
 
@@ -115,6 +110,32 @@ command:
 
   gmake all BUILD_OPTIMIZE=DEBUG
 
+NOTE:
+  1. Building the FORTRAN FE.
+    If you don't have FORTRAN compiler in your PATH, you will meet the following 
+    waring during your building process:
+    "Warning: The FORTRAN Front End is not build!..........."
+    you can build the FORTRAN  FE following  any  of the  way below:
+    a. download an open64 compiler binary, and install them, put into the PATH, then 
+       "make V=1"   to build the FE.
+    b. make sure the prebuild package had been put into the trunk/
+       ls trunk/bin
+       ls trunk/lib
+       then install the compiler just built with the prebuild FE.
+       make sure the "openf90" is in your PATH now:
+       "which openf90"
+       finally rebuild the compiler again with:
+       "make V=1"  
+    
+  2. some tips on Ubuntu machines
+  If you are building the compiler on Ubuntu machine, you need to install the following
+  tools first:
+  awk, csh, bash, gmake, flex and bison, On some Ubuntu distributions, you need to
+  change the symbol link '/bin/sh' to '/bin/bash' to make the scripts work.
+  If you met the following error:
+  ##./table INTERNAL ERROR: Unexpected line: Abort
+  ##sh: line 1: 27052 Segmentation fault      ./table <OPTIONS.P
+  you need to make sure the awk is linked to mawk on your ubuntu machine
 
 Environment Variables
 ---------------------
