@@ -3076,17 +3076,6 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
             // and the kid1 is a constant, pull the constant out.
             OPERATOR opr = retv->Opr();
             CODEREP *retv_op = retv;
-            // may have CVT of ADD/SUB, so look under the CVT;
-            // but then need to move cvt to non-const operand.
-            // but only do this if integer cvt and op under cvt
-            if (opr == OPR_CVT
-              && MTYPE_is_integral(retv->Dtyp())
-              && MTYPE_is_integral(retv->Dsctyp())
-              && retv->Opnd(0)->Kind() == CK_OP)
-            {
-              retv_op = retv->Opnd(0);
-              opr = retv_op->Opr();
-            }
             if (WOPT_Enable_CRSIMP &&
                 (opr == OPR_ADD || opr == OPR_SUB) &&
                 retv_op->Get_opnd(1)->Kind() == CK_CONST) {
