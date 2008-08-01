@@ -6793,8 +6793,6 @@ finish_function (void)
   if (DECL_INITIAL (fndecl) && DECL_INITIAL (fndecl) != error_mark_node
       && !undef_nested_function)
     {
-      if (!decl_function_context (fndecl))
-	{
 #ifdef KEY
 	  // Translate to spin before calling c_genericize, which lowers the
 	  // tree and destroys high-level program info useful for program
@@ -6802,6 +6800,8 @@ finish_function (void)
 	  if (flag_spin_file)
 	    gspin (fndecl);
 #endif
+      if (!decl_function_context (fndecl))
+	{
 	  c_genericize (fndecl);
 	  c_gimple_diagnostics_recursively (fndecl);
 

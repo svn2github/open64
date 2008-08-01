@@ -1022,10 +1022,12 @@ void PU::Verify(UINT) const
 
 #ifdef KEY
 // We are using 'misc' to store ST_IDXs of 2 special variables for
-// C++ exception handling.
-  if (!(src_lang & PU_CXX_LANG))
-#endif // !KEY
-  Is_True (misc == 0, ("eh_info/misc fields must be zero"));
+// C++ exception handling, or for C nested functions.
+  if (!(src_lang & PU_CXX_LANG) && !(src_lang & PU_C_LANG))
+    Is_True (misc == 0, ("misc fields must be zero"));
+#endif // KEY
+
+  Is_True (unused == 0, ("unused fields must be zero"));
 
   // Verify flags
   static char msg[] = "Invalid PU flags: (%s)";

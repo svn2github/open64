@@ -1238,10 +1238,6 @@ WGEN_Start_Function(gs_t fndecl)
     /* create the map table for the next PU */
     (void)WN_MAP_TAB_Create(&Map_Mem_Pool);
 
-#ifdef KEY
-    if (CURRENT_SYMTAB > 1)
-      ErrMsg (EC_Unimplemented_Feature, "Nested functions");
-#endif
     New_Scope (CURRENT_SYMTAB + 1, Malloc_Mem_Pool, TRUE);
 
     if (gs_decl_source_file (fndecl)) {
