@@ -447,7 +447,7 @@ static OPTION_DESC Options_OPT[] = {
     "Use alternate malloc algorithm" },
 
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",
-    0, 0, 0,    &Early_Goto_Conversion, &OPT_Malloc_Alg_Set,
+    0, 0, 0,    &Early_Goto_Conversion, &Early_Goto_Conversion_Set,
     "Do GOTO conversion before VHO" },
 #endif
 
@@ -556,6 +556,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "nary",			"nary",
     0, 0, 0,	&Enable_NaryExpr,	&Enable_NaryExpr_Set,
     "Allow N-ary tree height reduction of MADDs" },
+
+  { OVK_NAME,	OV_SHY,		FALSE, "Ofast",			"Ofast",
+    0, 0, 0,	&Ofast,		NULL,
+    "Tailor options for performance on current target" },
 
   { OVK_INT32,	OV_VISIBLE,	FALSE, "Olimit",		"Ol",
     DEFAULT_OLIMIT, 0, MAX_OLIMIT,	&Olimit,	&Olimit_Set,
