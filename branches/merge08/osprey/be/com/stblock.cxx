@@ -70,6 +70,7 @@
 #include <sys/resource.h>
 #endif /* __MINGW32__ */
 #include "defs.h"
+#include "config_asm.h"
 #include "erglob.h"
 #include "erbe.h"
 #include "config.h"
@@ -496,7 +497,9 @@ Create_Slink_Symbol (void)
 struct is_slink_sym
 {
     BOOL operator () (UINT32, const ST *st) const {
-	return (strncmp (ST_name (st), "__slink_sym", 11) == 0);
+	return (strncmp (ST_name (st), 
+			 Temp_Symbol_Prefix "__slink_sym", 
+			 sizeof(Temp_Symbol_Prefix "__slink_sym") - 1 ) == 0);
     }
 };
 
@@ -616,7 +619,9 @@ Create_FPSave_Symbol (void)
 struct is_fpsave_sym
 {
     BOOL operator () (UINT32, const ST *st) const {
-	return (strncmp (ST_name (st), "__fpsave_sym", 12) == 0);
+	return (strncmp (ST_name (st), 
+			 Temp_Symbol_Prefix "__fpsave_sym", 
+			 sizeof(Temp_Symbol_Prefix "__fpsave_sym") - 1) == 0);
     }
 };
 
@@ -643,7 +648,9 @@ Create_SPSave_Symbol (void)
 struct is_spsave_sym
 {
     BOOL operator () (UINT32, const ST *st) const {
-	return (strncmp (ST_name (st), "__spsave_sym", 12) == 0);
+	return (strncmp (ST_name (st), 
+			 Temp_Symbol_Prefix "__spsave_sym",
+			 sizeof(Temp_Symbol_Prefix "__spsave_sym") - 1 ) == 0);
     }
 };
 

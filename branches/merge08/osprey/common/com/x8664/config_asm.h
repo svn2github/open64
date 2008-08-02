@@ -68,6 +68,7 @@ static char *config_asm_rcs_id = "$Source$ $Revision$";
 
 #define LABEL_PREFIX ".L"
 #define Label_Name_Separator "_"
+#define Temp_Symbol_Prefix Label_Name_Separator "temp" Label_Name_Separator
 
 /* to distinguish from register names: */
 #define Symbol_Name_Suffix ""

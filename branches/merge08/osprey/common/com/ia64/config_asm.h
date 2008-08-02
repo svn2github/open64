@@ -72,6 +72,8 @@ static char *config_asm_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/com
 
 #define Label_Name_Separator "_"
 
+#define Temp_Symbol_Prefix Label_Name_Separator "temp" Label_Name_Separator
+
 /* to distinguish from register names: */
 #define Symbol_Name_Suffix "#"
 

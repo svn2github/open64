@@ -62,6 +62,7 @@
 #include "pu_info.h"            // PU_Info
 
 #include "defs.h"               // Standard definitions
+#include "config_asm.h"         // Temp_Symbol_Prefix
 #include "wn.h"                 // WN
 #include "wn_map.h"             // Current_Map_Tab
 #include "wn_util.h"            // WN_INSERT_BlockAfter
@@ -1168,7 +1169,7 @@ Find_Insertion_Point (WN *pu_wn,
       if (!TY_AR_const_ubnd(arg_ty, num_dims-1-dim) &&
           TY_AR_ubnd_val(arg_ty, num_dims-1-dim) &&
           strcmp(ST_name(TY_AR_ubnd_var(arg_ty, num_dims-1-dim)),
-                 "__vla_bound") == 0) {
+                 Temp_Symbol_Prefix "__vla_bound") == 0) {
 
         ST* vlabound_st = ONST(WN_st(TY_AR_ubnd_tree(arg_ty, dim)),
                                &(St_Table[TY_AR_ubnd_var(arg_ty, num_dims-1-dim)]));
