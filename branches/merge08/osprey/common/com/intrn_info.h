@@ -116,7 +116,7 @@ typedef struct intrn_info_t {
  const char    *runtime_name;
 } intrn_info_t;
 
-extern const intrn_info_t intrn_info[INTRINSIC_LAST+1];
+extern const intrn_info_t intrn_info[];
 
 inline BOOL INTRN_by_value (const INTRINSIC i)
 {
