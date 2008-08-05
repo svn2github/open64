@@ -4339,15 +4339,35 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
   TY_IDX   ty_idx  = WN_ty(tree);
   TY&      ty      = Ty_Table[ty_idx];
   TYPE_ID  mtype   = TY_mtype (ty);
+#ifdef TARG_X8664
+  BOOL sseregparm  = FALSE; // sseregparm attribute on called function?
+#endif
 
   Is_True((WN_operator(tree) == OPR_LDID),
 	  ("expected LDID node, not %s", OPCODE_name(WN_opcode(tree))));
+
+#ifdef TARG_X8664
+  if (Is_Target_32bit())
+  {
+    // Determine if the called function has the "sseregparm" attribute
+    WN * call = WN_last(block);
+    if (call && WN_operator(call) == OPR_CALL)
+    {
+      TY_IDX pu_ty = PU_prototype(Pu_Table[ST_pu(WN_st(call))]);
+      sseregparm = TY_has_sseregister_parm (pu_ty);
+    }
+  }
+#endif
 
   switch (mtype) {
 
     case MTYPE_I8:
     case MTYPE_U8:
+#if defined(TARG_X8664)
+      WN_st_idx(tree) = ST_st_idx(MTYPE_To_PREG(mtype));
+#else
       WN_st_idx(tree) = ST_st_idx(Int64_Preg);
+#endif
       WN_load_offset(tree) = First_Int_Preg_Return_Offset;
 #ifdef TARG_NVISA
       // int64 are separate register class, so use unique preg num
@@ -4397,8 +4417,8 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
 	WN_set_ty(tree, MTYPE_To_TY(MTYPE_F8));
       }
 
-      if( Is_Target_32bit() && ! MTYPE_is_complex(mtype) ||
-	  MTYPE_is_quad(mtype) ){
+      if( Is_Target_32bit() && ! sseregparm && ! MTYPE_is_complex(mtype) ||
+    	      MTYPE_is_quad(mtype) ){
 	WN_st_idx(tree) = ST_st_idx( MTYPE_To_PREG(mtype) );
 	WN_load_offset(tree) = First_X87_Preg_Return_Offset;
       }
@@ -4758,13 +4778,6 @@ static void lower_bit_field_id(WN *wn)
   Is_True(! fld.Is_Null(),
 	  ("invalid bit-field ID for %s", OPERATOR_name(opr)));
   TY_IDX fld_ty_idx = FLD_type(fld);
-  WN_set_ty (wn, (opr == OPR_ISTORE ?
-		  Make_Pointer_Type (fld_ty_idx, FALSE) :
-		  fld_ty_idx));
-#ifdef KEY // bug 12394
-  if (new_opr == OPR_ILDBITS)
-    WN_set_load_addr_ty(wn, Make_Pointer_Type(WN_ty(wn)));
-#endif
   
   Is_True(FLD_is_bit_field(fld),
 	  ("non-bit-field associated with bit-field access for  %s", OPERATOR_name(opr)));
@@ -4843,14 +4856,13 @@ static void lower_bit_field_id(WN *wn)
     WN_set_bit_offset_size(wn, bofst, bsize);
   }
 
-#ifdef KEY
   // fix the TYs
   if (MTYPE_byte_size(mtype) > MTYPE_byte_size(TY_mtype(fld_ty_idx)))
     fld_ty_idx = MTYPE_To_TY(mtype);
   WN_set_ty (wn, (opr == OPR_ISTORE ?
 		  Make_Pointer_Type (fld_ty_idx, FALSE) :
 		  fld_ty_idx));
-//#ifdef KEY // bug 12394
+#ifdef KEY // bug 12394
   if (new_opr == OPR_ILDBITS)
     WN_set_load_addr_ty(wn, Make_Pointer_Type(fld_ty_idx));
 #endif
@@ -7677,80 +7689,55 @@ struct_memop_type (TYPE_ID mtype, TY_IDX struct_type)
 
 static void
 copy_aggregate(WN *block, TY_IDX srcAlign, TY_IDX dstAlign, INT32 offset,
-	       INT32 size, TYPE_ID quantum, ST *preg, PREG_NUM srcPreg,
+	       INT32 size, TYPE_ID quantum, PREG_NUM srcPreg,
 	       PREG_NUM dstPreg, WN *origLoad, WN *origStore,
 	       INT32 copy_alignment, LOWER_ACTIONS actions)
 {
-  INT32	stride = MTYPE_RegisterSize(quantum);
-  INT32	nMoves = size / stride;
+  BOOL unweave = UnweaveCopyForStructs;
+  WN *storeBlock = unweave ? WN_CreateBlock() : block;
 
-  if (size <= 0)
-    return;
+  while (size > 0) {
 
-  if (nMoves>0)
-  {
-   /*
-    *  generate  unrolled load/store
-    */
-    while(nMoves--)
-    {
-     /*
-      *  semantics are similar to the following:
-      *      (quantum) *(dst + offset) =   (quantum) *(src + offset);
-      *		or
-      *      (quantum) *(dst + offset) =   srcPreg;
-      */
-      WN 	*value, *addr, *store;
+    INT32 stride = MTYPE_RegisterSize(quantum);
 
-      if (srcAlign)
-      {
-	value = WN_IloadLdid(quantum, offset,
-			     struct_memop_type (quantum, srcAlign),
-			     preg, srcPreg);  
+    for ( ; size >= stride; size -= stride, offset += stride) {
+      // Generate unrolled load/store with semantics similar to:
+      //   (quantum) *(dst + offset) = (quantum) *(src + offset);
+      //         or
+      //   (quantum) *(dst + offset) = srcPreg;
+      WN *wn_value, *wn_addr, *wn_store;
 
-	lower_copy_maps(origLoad, value, actions);
-      }
-      else
-      {
-	value = WN_LdidPreg(quantum, srcPreg);
+      rename_preg("mstore_tmp", NULL);
+      if (! srcAlign) {
+	wn_value = WN_LdidPreg(quantum, srcPreg);
+      } else {
+	TY_IDX ty_src = struct_memop_type(quantum, srcAlign);
+	wn_value = WN_LdidPreg(Pointer_type, srcPreg);
+	wn_value = WN_Iload(quantum, offset, ty_src, wn_value);
+	lower_copy_maps(origLoad, wn_value, actions);
+	if (unweave) {
+	  PREG_NUM preg = AssignExpr(block, wn_value, quantum);
+	  wn_value = WN_LdidPreg(quantum, preg);
+	}
       }
 
-      addr = WN_LdidPreg(Pointer_type, dstPreg);
+      wn_addr = WN_LdidPreg(Pointer_type, dstPreg);
+      TY_IDX ty_dst = struct_memop_type(quantum, dstAlign);
+      wn_store = WN_Istore(quantum, offset,
+			   Make_Pointer_Type(ty_dst), wn_addr, wn_value);
+      lower_copy_maps(origStore, wn_store, actions);
+      WN_Set_Linenum(wn_store, current_srcpos);  // Bug 1268
+      WN_INSERT_BlockLast(storeBlock, wn_store);
+    }
 
-      store = WN_Istore(quantum,
-			offset,
-			Make_Pointer_Type (struct_memop_type (quantum,
-							      dstAlign)),
-			addr,
-			value);
-      lower_copy_maps(origStore, store, actions);
-
-      WN_Set_Linenum(store, current_srcpos);  // Bug 1268
-      WN_INSERT_BlockLast(block, store);
-
-      offset  += stride;
-      size -= stride;
+    // If there is a residue we must recompute a new, smaller quantum
+    // and generate a copy for that.
+    if (size > 0) {
+      quantum = compute_next_copy_quantum(quantum, copy_alignment);
     }
   }
-  if (size > 0)
-  {
-   /*
-    *  If there is a residue we must recompute a new quantum
-    *  and generate a copy for that.
-    */
-    quantum = compute_next_copy_quantum(quantum, copy_alignment);
 
-    copy_aggregate(block,
-		   srcAlign, dstAlign,
-		   offset,
-		   size,
-		   quantum,
-		   preg,
-		   srcPreg, dstPreg,
-		   origLoad, origStore,
-		   copy_alignment,
-		   actions);
-  }
+  if (unweave) WN_INSERT_BlockLast(block, storeBlock);
 }
 
 
@@ -7760,63 +7747,35 @@ copy_aggregate(WN *block, TY_IDX srcAlign, TY_IDX dstAlign, INT32 offset,
  * copy_aggregate_loop_n
  *
  * ==================================================================== */
-#if 1
+
 static void
 copy_element_and_increment(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
-			   TYPE_ID quantum,
+			   INT32 offset, INT32 size, TYPE_ID quantum,
 			   PREG_NUM srcPreg, PREG_NUM dstPreg,
 			   WN *origLoad, WN *origStore,
-			   LOWER_ACTIONS actions)
+			   INT32 copy_alignment, LOWER_ACTIONS actions)
 {
-  WN 	*addr, *wn;
-  TY_IDX ty, ty_pt;
+  // Generate unrolled load/stores to perform copy
+  copy_aggregate(block, srcAlign, dstAlign, offset, size, quantum,
+		 srcPreg, dstPreg, origLoad, origStore,
+		 copy_alignment, actions);
 
-  // (quantum) *(dst) = (quantum) *(src);  OR
-  // (quantum) *(dst) = srcPreg;
-
-  if (srcAlign) {
-    // LOAD:  ... = (quantum) *(src);
-    ty = struct_memop_type(quantum, srcAlign);
-#ifdef KEY // bug 12394
-    ty_pt = Make_Pointer_Type(ty);
-#else
-    ty_pt = Make_Pointer_Type(srcAlign);
-#endif
-    addr = WN_LdidPreg(Pointer_type, srcPreg);
-    wn = WN_CreateIload(OPR_ILOAD, Mtype_comparison(quantum),
-			 quantum, 0, ty, ty_pt, addr);
-    lower_copy_maps(origLoad, wn, actions);
-  }
-  else {
-    // LOAD:  ... = srcPreg;
-    wn = WN_LdidPreg(quantum, srcPreg);
-  }
-
-  // STORE: (quantum) *(dst) = ...
-  ty = struct_memop_type(quantum, dstAlign);
-  ty_pt = Make_Pointer_Type(ty);
-  addr = WN_LdidPreg(Pointer_type, dstPreg);
-  wn = WN_Istore(quantum, 0, ty_pt, addr, wn);
-  lower_copy_maps(origStore, wn, actions);
-  WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
-  WN_INSERT_BlockLast(block, wn);
-
-  // Increment: src += stride;
-  INT32 stride = MTYPE_RegisterSize(quantum);
+  // Increment: src += size;
+  WN *wn;
   ST *pointerPreg = MTYPE_To_PREG(Pointer_type);
   if (srcAlign) {
     wn = WN_Add(Pointer_type,
 		WN_LdidPreg(Pointer_type, srcPreg),
-		WN_Intconst(Integer_type, stride));
+		WN_Intconst(Integer_type, size));
     wn = WN_StidIntoPreg(Pointer_type, srcPreg, pointerPreg, wn);
     WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
     WN_INSERT_BlockLast(block, wn);
   }
 
-  // Increment: dst += stride
+  // Increment: dst += size;
   wn = WN_Add(Pointer_type,
 	      WN_LdidPreg(Pointer_type, dstPreg),
-	      WN_Intconst(Integer_type, stride));
+	      WN_Intconst(Integer_type, size));
   wn = WN_StidIntoPreg(Pointer_type, dstPreg, pointerPreg, wn);
   WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
   WN_INSERT_BlockLast(block, wn);
@@ -7838,21 +7797,23 @@ copy_aggregate_loop_const(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 			  INT32 copy_alignment, LOWER_ACTIONS actions)
 {
   // Generate the following loop:
-  //   n = nMoves;
   //   src = srcInit + offset;
   //   dst = dstInit + offset;
-  //   do {
+  //   for (n = nMoves; n > 0; --n) {
   //     (quantum) *(dst) = (quantum) *(src);
-  //     n--;
-  //   } while (n > 0);
-  //
-  // Try generating a DO loop instead of a WHILE loop
+  //     (quantum) *(dst + stride) = (quantum) *(src + stride);
+  //     ...
+  //     (quantum) *(dst + (k-1)* stride) = (quantum) *(src + (k-1)* stride);
+  //     src += bigstride;
+  //     dst += bigstride;
+  //   }
 
   WN *wn;
   ST   *intPreg = MTYPE_To_PREG(Integer_type);
   INT32 stride  = MTYPE_RegisterSize(quantum);
-  INT64 nMoves  = size / stride;
-  INT64 residue = size - ( nMoves * stride );
+  INT32 bigstride = Aggregate_UnrollFactor * stride;
+  INT64 nMoves  = size / bigstride;
+  INT64 residue = size - ( nMoves * bigstride );
   PREG_NUM srcPreg, dstPreg;
 
   // Bail out if there is nothing to move and no residue
@@ -7900,11 +7861,12 @@ copy_aggregate_loop_const(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 		  WN_LdidPreg(Integer_type, n),
 		  WN_Zerocon(Integer_type) );
 
-    // (quantum) *(dst) = (quantum) *(src);  OR  (quantum) *(dst) = src;
-    // then increment src and dst:  srcPreg += stride;  dstPreg += stride;
-    copy_element_and_increment( body, srcAlign, dstAlign, quantum,
+    // Generate body of loop
+    copy_element_and_increment( body, srcAlign, dstAlign, 0 /*offset*/,
+				bigstride, quantum,
 				srcPreg, dstPreg, origLoad, origStore,
-				actions );
+				copy_alignment, actions );
+
     doLoop = WN_CreateDO( WN_CreateIdname(n, intPreg),
 			  start, test, incr, body, NULL );
     WN_Set_Linenum(doLoop, current_srcpos);  // Bug 1268
@@ -7913,261 +7875,18 @@ copy_aggregate_loop_const(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
       Cur_PU_Feedback->FB_lower_mstore_to_loop( origStore, doLoop, nMoves );
   }
 
-  // If there is a residue we must recompute a new quantum and
-  // generate a copy for that.  Example for residue of size 7:
-  //
+  // Generate code to copy any residue.  Example for residue of size 7:
   //	(int) *(dst) = (int) *(src);
-  //	dst += 4;  src += 4;
-  //	(short) *(dst) = (short) *(src);
-  //	dst += 2;  src += 2;
-  //	(short) *(dst) = (short) *(src);
-  //	dst += 1;  src += 1;
-
-  if (residue) {
-    WN *residue_block =  WN_CreateBlock();
-    while (residue > 0) {
-      quantum = compute_next_copy_quantum( quantum, copy_alignment );
-      while (residue >= MTYPE_alignment(quantum)) {
-	copy_element_and_increment( residue_block, srcAlign, dstAlign,
-				    quantum, srcPreg, dstPreg,
-				    origLoad, origStore, actions );
-	residue -= MTYPE_alignment(quantum);
-      }
-    }
+  //	(short) *(dst + 4) = (short) *(src + 4);
+  //	(char) *(dst + 6) = (char) *(src + 6);
+  if (residue > 0) {
+    WN *residue_block = WN_CreateBlock();
+    copy_aggregate(residue_block, srcAlign, dstAlign, 0 /*offset*/,
+		   residue /*size*/, quantum, srcPreg, dstPreg,
+		   origLoad, origStore, copy_alignment, actions);
     WN_INSERT_BlockLast(block, residue_block);
   }
 }
-
-#else // 1
-// left here for ref. Should be deleted the next release after 4.2
-static void
-copy_element_and_increment(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
-			   TYPE_ID quantum,
-			   PREG_NUM srcPreg, PREG_NUM dstPreg,
-			   WN *origLoad, WN *origStore,
-			   LOWER_ACTIONS actions)
-{
- /*
-  *   (quantum) *(dst + offset) =   (quantum) *(src + offset);
-  *		or
-  *   (quantum) *(dst + offset) =   srcPreg;
-  *    		
-  *  and increment offset
-  *
-  *		offset		+=  stride;
-  */
-  INT32  stride = MTYPE_RegisterSize(quantum);
-  WN 	*value, *addr, *store, *add, *inc;
-  ST	*intPreg = MTYPE_To_PREG(Integer_type);
-  TY_IDX sptrType;
-  TY_IDX dptrType;
-  WN *offset_wn;
-
-  if (srcAlign)
-  {
-    offset_wn = WN_LdidPreg(Integer_type, offsetN);
-#ifdef TARG_NVISA
-    // insert convert if 64bit pointer and 32bit offset:
-    if (Pointer_type != Integer_type)
-      offset_wn = WN_Cvt(Integer_type, Pointer_type, offset_wn);
-#endif
-    addr = WN_Add(Pointer_type,
-		  WN_LdidPreg(Pointer_type, srcPreg),
-		  offset_wn);
-#ifdef KEY // bug 12394
-    sptrType = Make_Pointer_Type (struct_memop_type(quantum, srcAlign));
-#else
-    sptrType = Make_Pointer_Type(srcAlign), 
-#endif
-    value = WN_CreateIload (OPR_ILOAD, Mtype_comparison(quantum), quantum,
-			    0, struct_memop_type (quantum, srcAlign),
-			    sptrType, addr);
-
-    lower_copy_maps(origLoad, value, actions);
-  }
-  else
-  {
-    value = WN_LdidPreg(quantum, srcPreg);
-  }
-
-  // need separate copy of ldid for each use
-  offset_wn = WN_LdidPreg(Integer_type, offsetN);
-#ifdef TARG_NVISA
-  // insert convert if 64bit pointer and 32bit offset:
-  if (Pointer_type != Integer_type)
-    offset_wn = WN_Cvt(Integer_type, Pointer_type, offset_wn);
-#endif
-  addr = WN_Add(Pointer_type,
-		WN_LdidPreg(Pointer_type, dstPreg),
-		offset_wn);
-  store = WN_Istore(quantum,
-		    0,
-		    Make_Pointer_Type(struct_memop_type (quantum, dstAlign)),
-		    addr,
-		    value);
-
-  lower_copy_maps(origStore, store, actions);
-
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(origStore, store);
-#endif
-  WN_INSERT_BlockLast(block, store);
-
-  /*
-   *  offset += stride
-   */
-
-  add  = WN_Add(Integer_type,
- 		WN_LdidPreg(Integer_type, offsetN),
-  		WN_Intconst(Integer_type, stride));
-  inc = WN_StidIntoPreg(Integer_type, offsetN, intPreg, add);
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(origStore, inc);
-#endif
-  WN_INSERT_BlockLast(block, inc);
-}
-
-
-/* ====================================================================
- *
- * Auxillary routine to copy aggregrate loop 
- *
- *	The size must be an integer constant
- *
- * ==================================================================== */
-static void
-copy_aggregate_loop_const(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
-			  INT32 offset, INT32 size, TYPE_ID quantum,
-			  PREG_NUM srcPreg, PREG_NUM dstPreg, WN *origLoad,
-			  WN *origStore, INT32 copy_alignment,
-			  LOWER_ACTIONS actions)
-{
- /*
-  *  generate the following
-  *    n = nMoves;
-  *    index = 0;
-  *    do
-  *    {
-  *	(quantum) *(dst + offset) =   (quantum) *(src + offset);
-  *	       n--;
-  *    } while(n>0);
-  *
-  * Try generating a DO loop instead of a WHILE loop
-  *
-  *	(TBD)	we should really build an array expression 
-  *		dst[offset] = src[offset]
-  */
-  PREG_NUM		offsetN;
-  ST		*intPreg = MTYPE_To_PREG(Integer_type);
-  INT32		stride   = MTYPE_RegisterSize(quantum);
-  INT64		nMoves   = size  / stride;
-  INT64		residue  = size - ( nMoves * stride );
-
-  /*
-   *  Bail out if there is nothing to move and no residue
-   */
-  if ((nMoves <= 0) && residue == 0)
-    return;
-
-  offsetN = AssignExpr(block, WN_Intconst(Integer_type, offset), Integer_type);
-
- /*
-  *	create loop count variable, traditionally called n
-  * 	offset is most likely zero
-  */
-  if (nMoves > 0)
-  {
-    PREG_NUM	n;
-    WN	 	*body;
-    WN          *incr;
-    WN          *start;
-    WN          *test;
-    WN	        *doLoop;
-
-    n = Create_Preg(Integer_type,"mstore_loopcount");
-    body= WN_CreateBlock();
-    start = WN_StidIntoPreg( Integer_type, n, intPreg,
-			     WN_Intconst(Integer_type, nMoves));
-    incr  = WN_StidIntoPreg( Integer_type, n, intPreg,
-			     WN_Sub(Integer_type,
-				    WN_LdidPreg(Integer_type, n),
-				    WN_Intconst(Integer_type, 1)));
-    test = WN_GT(Integer_type,
-		 WN_LdidPreg(Integer_type, n),
-		 WN_Zerocon(Integer_type));
-    
-   /*
-    *   (quantum) *(dst + offset) =   (quantum) *(src + offset);
-    *		or
-    *   (quantum) *(dst + offset) =   srcPreg;
-    *   and increment offset
-    *			offset    +=  stride;
-    */
-    copy_element_and_increment(body,
-			       srcAlign, dstAlign,
-			       offsetN,
-			       quantum,
-			       srcPreg, dstPreg,
-			       origLoad, origStore,
-			       actions);
-    doLoop = WN_CreateDO(WN_CreateIdname(n, intPreg),
-			 start, test, incr, body, NULL);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(origStore, doLoop);
-#endif
-    WN_INSERT_BlockLast(block, doLoop);
-    if ( Cur_PU_Feedback && (origStore != NULL) )
-      Cur_PU_Feedback->FB_lower_mstore_to_loop( origStore, doLoop, nMoves );
-  }
-
- /*
-  *  If there is a residue we must recompute a new quantum
-  *  and generate a copy for that.
-  *
-  *	if (residue > 0)
-  *	{
-  *	    if (residue >= 4)
-  *	    {
-  *  		(int) *(dst + offset) =   (int) *(src + offset);
-  *		offset  += 4;
-  *		residue -= 4;
-  *	    }
-  *	    if (residue >= 2)
-  *	    {
-  *  		 (short) *(dst + offset) =   (short) *(src + offset);
-  *		offset  += 2;
-  *		residue -= 2;
-  *	    }
-  *	    etc.
-  *	}
-  */
-  if (residue)
-  {
-    WN	  *residue_block=  WN_CreateBlock();
-
-    while(residue>0)
-    {
-      quantum = compute_next_copy_quantum(quantum, copy_alignment);
-
-      while (residue >= MTYPE_alignment(quantum))
-      {
-	copy_element_and_increment(residue_block, srcAlign, dstAlign,
-				   offsetN, quantum, srcPreg, dstPreg,
-				   origLoad, origStore, actions);
-	residue -= MTYPE_alignment(quantum);
-      }
-    }
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(origStore, residue_block);
-#endif
-    WN_INSERT_BlockLast(block, residue_block);
-  }
-}
-#endif // 1
 
 
 /* ====================================================================
@@ -8256,9 +7975,10 @@ copy_aggregate_loop_n(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 
   // (quantum) *(dst) = (quantum) *(src);  OR  (quantum) *(dst) = src;
   // then increment src and dst:  srcPreg += stride;  dstPreg += stride;
-  copy_element_and_increment( body, srcAlign, dstAlign, quantum,
-			      srcPreg, dstPreg, origLoad, origStore,
-			      actions);
+  copy_element_and_increment( body, srcAlign, dstAlign, 0 /*offset*/,
+			      stride, quantum, srcPreg, dstPreg,
+			      origLoad, origStore,
+			      copy_alignment, actions);
 
   doLoop = WN_CreateDO( WN_CreateIdname(n, intPreg),
 			start, test, incr, body, NULL );
@@ -8300,9 +8020,11 @@ copy_aggregate_loop_n(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 
     // (quantum) *(dst) = (quantum) *(src);  OR  (quantum) *(dst) = src;
     // then increment src and dst:  srcPreg += stride;  dstPreg += stride;
+    INT32 stride = MTYPE_RegisterSize(quantum);
     copy_element_and_increment( block_residue, srcAlign, dstAlign,
-				quantum, srcPreg, dstPreg,
-				origLoad, origStore, actions );
+				0 /*offset*/, stride, quantum,
+				srcPreg, dstPreg, origLoad, origStore,
+				copy_alignment, actions );
 
     // residue -= stride
     wn = WN_Sub( Integer_type,
@@ -8354,7 +8076,7 @@ copy_aggregate_loop_n(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 
 static void
 copy_aggregate_loop(WN *block, TY_IDX srcTY, TY_IDX dstTY, INT32 offset,
-		    WN *size, TYPE_ID quantum, ST *preg, PREG_NUM srcPreg,
+		    WN *size, TYPE_ID quantum, PREG_NUM srcPreg,
 		    PREG_NUM dstPreg, WN *origLoad, WN *origStore,
 		    INT32 copy_alignment, LOWER_ACTIONS actions)
 {
@@ -8362,29 +8084,17 @@ copy_aggregate_loop(WN *block, TY_IDX srcTY, TY_IDX dstTY, INT32 offset,
   {
     if (WN_const_val(size)>0)
     {
-      copy_aggregate_loop_const(block,
-				srcTY, dstTY,
-				offset,
-				WN_const_val(size),
-				quantum,
-				srcPreg, dstPreg,
-				origLoad, origStore,
-				copy_alignment,
-				actions);
+      copy_aggregate_loop_const(block, srcTY, dstTY, offset,
+				WN_const_val(size), quantum,
+				srcPreg, dstPreg, origLoad, origStore,
+				copy_alignment, actions);
     }
   }
   else
   {
-    copy_aggregate_loop_n(block,
-			  srcTY, dstTY,
-			  offset,
-			  size,
-			  quantum,
-			  srcPreg,
-			  dstPreg,
-			  origLoad, origStore,
-			  copy_alignment,
-			  actions);
+    copy_aggregate_loop_n(block, srcTY, dstTY, offset, size, quantum,
+			  srcPreg, dstPreg, origLoad, origStore,
+			  copy_alignment, actions);
   }
 }
 
@@ -8915,58 +8625,37 @@ static WN *lower_mstore(WN * /*block*/, WN *mstore, LOWER_ACTIONS actions)
 
       case MSTORE_loop:
 #ifdef KEY // if the source and dest overlap, use smaller quantum
-        if (((WN_operator(expr) == OPR_LDA || WN_operator(expr) == OPR_ILDA)) &&
-	     WN_operator(expr) == WN_operator(addr) && 
-	     WN_st_idx(expr) == WN_st_idx(addr)) {
-	  if (abs(WN_lda_offset(expr) - WN_lda_offset(addr)) < MTYPE_byte_size(quantum) &&
-	      (WN_lda_offset(expr) - WN_lda_offset(addr)) != 0)
-  	    quantum = Mtype_AlignmentClass(abs(WN_lda_offset(expr) - WN_lda_offset(addr)), 
-	    				   MTYPE_CLASS_UNSIGNED_INTEGER);
+        if ((WN_operator(expr) == OPR_LDA || WN_operator(expr) == OPR_ILDA) &&
+	    WN_operator(expr) == WN_operator(addr) && 
+	    WN_st_idx(expr) == WN_st_idx(addr)) {
+	  WN_OFFSET diff = abs(WN_lda_offset(expr) - WN_lda_offset(addr));
+	  if (diff < MTYPE_byte_size(quantum) && diff != 0)
+  	    quantum = Mtype_AlignmentClass(diff, MTYPE_CLASS_UNSIGNED_INTEGER);
 	}
 #endif
         srcPreg = AssignExpr(newblock, expr, WN_rtype(expr));
         dstPreg = AssignExpr(newblock, addr, Pointer_type);
-	copy_aggregate_loop(newblock,
-			    srcTY,
-			    dstTY,
-			    0,
-			    size,
-			    quantum,
-			    preg,
-			    srcPreg,
-			    dstPreg,
-			    load,
-			    mstore,
-			    copy_alignment,
-			    actions);
+	copy_aggregate_loop(newblock, srcTY, dstTY, 0, size, quantum,
+			    srcPreg, dstPreg, load, mstore,
+			    copy_alignment, actions);
 	break;
 
       case MSTORE_aggregate:
 #ifdef KEY // if the source and dest overlap, use smaller quantum
-        if (((WN_operator(expr) == OPR_LDA || WN_operator(expr) == OPR_ILDA)) &&
-	     WN_operator(expr) == WN_operator(addr) && 
-	     WN_st_idx(expr) == WN_st_idx(addr)) {
-	  if (abs(WN_lda_offset(expr) - WN_lda_offset(addr)) < MTYPE_byte_size(quantum) &&
-	      (WN_lda_offset(expr) - WN_lda_offset(addr)) != 0)
-  	    quantum = Mtype_AlignmentClass(abs(WN_lda_offset(expr) - WN_lda_offset(addr)), 
-	    				   MTYPE_CLASS_UNSIGNED_INTEGER);
+        if (! UnweaveCopyForStructs &&
+	    (WN_operator(expr) == OPR_LDA || WN_operator(expr) == OPR_ILDA) &&
+	    WN_operator(expr) == WN_operator(addr) &&
+	    WN_st_idx(expr) == WN_st_idx(addr)) {
+	  WN_OFFSET diff = abs(WN_lda_offset(expr) - WN_lda_offset(addr));
+	  if (diff < MTYPE_byte_size(quantum) && diff != 0)
+  	    quantum = Mtype_AlignmentClass(diff, MTYPE_CLASS_UNSIGNED_INTEGER);
 	}
 #endif
         srcPreg = AssignExpr(newblock, expr, WN_rtype(expr));
         dstPreg = AssignExpr(newblock, addr, Pointer_type);
-	copy_aggregate(newblock,
-		       srcTY,
-		       dstTY,
-		       0,
-      		       WN_const_val(size),
-		       quantum,
-		       preg,
-		       srcPreg,
-		       dstPreg,
-		       load,
-		       mstore,
-		       copy_alignment,
-		       actions);
+	copy_aggregate(newblock, srcTY, dstTY, 0, WN_const_val(size),
+		       quantum, srcPreg, dstPreg, load, mstore,
+		       copy_alignment, actions);
 	break;
       }
     }
@@ -9415,36 +9104,16 @@ static void lower_mload_actual (WN *block, WN *mload, PLOC ploc,
 	{
 	  con = WN_Intconst(Integer_type, todo);
 
-	  copy_aggregate_loop(block,
-			      srcTY,
-			      dstTY,
-			      mloadOffset,
-			      con,
-			      quantum,
-			      preg,
-			      addrN,
-			      dstPreg,
-			      mload,
-			      NULL,
-			      copy_alignment,
-			      actions);
+	  copy_aggregate_loop(block, srcTY, dstTY, mloadOffset, con,
+			      quantum, addrN, dstPreg, mload, NULL,
+			      copy_alignment, actions);
 	  WN_Delete(con);
 	}
 	else
 	{
-	  copy_aggregate(block,
-			 srcTY,
-			 dstTY,
-			 mloadOffset,
-			 todo,
-			 quantum,
-			 preg,
-			 addrN,
-			 dstPreg,
-			 mload,
-			 NULL,
-			 copy_alignment,
-			 actions);
+	  copy_aggregate(block, srcTY, dstTY, mloadOffset, todo,
+			 quantum, addrN, dstPreg, mload, NULL,
+			 copy_alignment, actions);
 	}
       }
       return;
@@ -15309,8 +14978,8 @@ static int Find_Nums_Induction(WN *exp, WN *ind)
 }
 static WN * Locate_Ind_Path(WN *exp, WN *ind, int &numMpy)
 {
-   int save_num, num;
-   WN *wn;
+   int save_num;
+   WN *wn = NULL;
    WN *tmp;
    if (exp == NULL) return NULL;
    if (WN_operator(exp) == OPR_LDID && WN_same_id(exp,ind)) {
@@ -15327,8 +14996,8 @@ static WN * Locate_Ind_Path(WN *exp, WN *ind, int &numMpy)
 
    save_num = numMpy;
    for (int i=0; i< WN_kid_count(exp); i++) {
-          num = save_num;
-          tmp = Locate_Ind_Path(WN_kid(exp,i), ind, num);
+          numMpy = save_num;
+          tmp = Locate_Ind_Path(WN_kid(exp,i), ind, numMpy);
 	  if (tmp)
 	    wn = tmp;
    }
