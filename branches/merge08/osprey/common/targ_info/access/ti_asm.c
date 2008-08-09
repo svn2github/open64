@@ -205,7 +205,11 @@ INT TI_ASM_Print_Inst(
   st = fprintf (f, ISA_PRINT_INFO_Format(pinfo),
 		     arg[0], arg[1], arg[2], arg[3], 
 		     arg[4], arg[5], arg[6], arg[7],
-		     arg[8]);
+		     arg[8]
+#ifdef TARG_SL
+		     , arg[9]
+#endif
+		);
   if (st == -1) {
 	sprintf(TI_errmsg, "fprintf failed:  not enough disk space");
 	return TI_RC_ERROR;

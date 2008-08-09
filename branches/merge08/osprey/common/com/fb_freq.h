@@ -201,7 +201,7 @@ public:
 
   FB_FREQ()
     : _type( FB_FREQ_TYPE_UNINIT ),
-      _value( (float) FB_FREQ_TYPE_UNINIT ) {}
+      _value( (FREQ_VALUE_TYPE) FB_FREQ_TYPE_UNINIT ) {}
 
   FB_FREQ( float value, bool exact )
     : _type( exact ? FB_FREQ_TYPE_EXACT : FB_FREQ_TYPE_GUESS ),

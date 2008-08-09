@@ -153,8 +153,13 @@ BE_CG_GSCHED_DIR	= $(BE_DIR)/cg/sched
 BE_CG_GRA_DIR		= $(BE_CG_DIR)/gra_mon
 BE_CG_TARG_DIR		= $(BE_CG_DIR)/$(BUILD_TARGET_DIR)
 BE_COM_DIR 		= $(BE_DIR)/com
-BE_ORC_ICT_DIR	= $(BE_CG_DIR)/orc_ict
+ifneq ($(BUILD_TARGET), SL)
+BE_ORC_ICT_DIR		= 
+BE_ORC_INTEL_DIR	= 
+else
+BE_ORC_ICT_DIR		= $(BE_CG_DIR)/orc_ict
 BE_ORC_INTEL_DIR	= $(BE_CG_DIR)/orc_intel
+endif
 BE_REGION_DIR 		= $(BE_DIR)/region
 BE_PROMPF_DIR		= $(BE_DIR)/prompf_anl
 BE_OPT_DIR              = $(BE_DIR)/opt
@@ -277,7 +282,7 @@ BE_CG_GRA_CXX_SRCS =		\
   gra_split.cxx			\
   gra_trace.cxx			
 
-ifeq ($(BUILD_SUBTARGET), SL)
+ifeq ($(BUILD_TARGET), SL)
   BE_CG_GRA_CXX_SRCS += gra_para_region.cxx
 endif
 
@@ -318,6 +323,10 @@ ifeq ($(BUILD_TARGET), SL)
   BE_CG_TARG_CXX_SRCS += cg_sas.cxx
   BE_CG_TARG_CXX_SRCS += disp_instr.cxx
   BE_CG_TARG_CXX_SRCS += exp_slintrn.cxx
+  BE_CG_TARG_CXX_SRCS += cg_isr.cxx
+  BE_CG_TARG_CXX_SRCS += loop_dce.cxx
+  BE_CG_TARG_CXX_SRCS += loop_rce.cxx
+  BE_CG_TARG_CXX_SRCS += gcm_licm.cxx
 endif
 
 ifeq ($(BUILD_TARGET), X8664)
@@ -430,12 +439,8 @@ CG_CXX_SRCS = 		\
   $(DERIVED_SRCS)
 
 ifeq ($(BUILD_TARGET), SL)
-  CG_CXX_SRCS += $(CG_REGION_SRCS)  \
-                 $(CG_GLOBAL_SCHED_SRCS) \
-                 loop_dce.cxx \
-                 loop_rce.cxx \
-                 gcm_licm.cxx \
-                 cg_isr.cxx
+  CG_CXX_SRCS += $(CG_REGION_SRCS)  
+  CG_CXX_SRCS += $(CG_GLOBAL_SCHED_SRCS) 
 endif
 
 ifeq ($(BUILD_PCH), USE_PCH)

@@ -1397,6 +1397,9 @@ Wfe_Expand_Asm_Operands (tree  string,
 
 	WN *output_rvalue_wn = WFE_Lhs_Of_Modify_Expr (MODIFY_EXPR,
 						       output,
+#ifdef TARG_SL
+                                                       NULL,
+#endif
 						       plus_modifier,
 						       (TY_IDX) 0, // component type
 						       (INT64) 0,  // component offset
@@ -1518,6 +1521,9 @@ WFE_Null_ST_References (tree* node)
     if(DECL_ST (*node)==NULL)
          return 0;
 #endif
+#if defined(TARG_SL)
+    if (DECL_ST (*node)) {
+#endif
     ST_SCLASS sc = ST_sclass (DECL_ST (*node));
 
     // Don't null out global symbols
@@ -1528,6 +1534,9 @@ WFE_Null_ST_References (tree* node)
          sc != SCLASS_COMMON )
       DECL_ST(*node) = NULL;
   }
+#if defined(TARG_SL)
+   }
+#endif
 
   return 0;
 }
@@ -1648,3 +1657,28 @@ WFE_Expand_Pragma (tree exp)
   }
 }
 #endif
+
+void
+WFE_Expand_Freq_Hint (tree exp) {
+
+   tree hint_opnd = TREE_OPERAND(exp, 0);
+   Is_True (TREE_CODE (hint_opnd) == STRING_CST, 
+            ("the first operand of FREQ_HINT_STMT should be STRING_CST"));
+
+   MIPS_FREQUENCY_HINT hint_id;
+   char* const hint_name = TREE_STRING_POINTER (hint_opnd);
+
+   if (!strcmp (hint_name, "never")) {
+     hint_id = FREQUENCY_HINT_NEVER;
+   } else if (!strcmp (hint_name, "init")) {
+     hint_id = FREQUENCY_HINT_INIT;
+   } else if (!strcmp (hint_name, "frequent")) {
+     hint_id = FREQUENCY_HINT_FREQUENT;
+   } else {
+     Is_True (FALSE, ("unrecognized frequency hint '%s'", hint_name));
+   }
+
+   WN* wn = WN_CreatePragma (WN_PRAGMA_MIPS_FREQUENCY_HINT, (ST*)NULL, hint_id, 0);
+   WFE_Stmt_Append (wn, Get_Srcpos());
+}
+

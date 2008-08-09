@@ -354,14 +354,16 @@ COMMON_TARG_INFO_ACCESS_SRCS= \
   ti_init.c
 
 ifeq ($(BUILD_TARGET), MIPS)
-COMMON_TARG_INFO_ACCESS_SRCS=\
+COMMON_TARG_INFO_ACCESS_SRCS = \
+  ti_init.c		\
   ti_res.c		\
   ti_res_count.c	\
   ti_res_res.c
 endif
 
 ifeq ($(BUILD_TARGET), SL)
-COMMON_TARG_INFO_ACCESS_SRCS=\
+COMMON_TARG_INFO_ACCESS_SRCS = \
+  ti_init.c		\
   ti_res.c              \
   ti_res_count.c        \
   ti_res_res.c

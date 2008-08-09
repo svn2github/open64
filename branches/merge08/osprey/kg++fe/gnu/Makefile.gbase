@@ -515,7 +515,7 @@ MD_FILE = MIPS/mips.md
 X8664_OR_MIPS = 1
 endif
 ifeq ($(BUILD_TARGET), SL)
-TM_FILE = SL/mips.h SL/mips.c SL/mips.md SL/linux.h
+TM_FILE = SL/sl.h SL/mips.c SL/mips.md SL/linux.h
 MD_FILE = SL/mips.md
 X8664_OR_MIPS = 1
 endif

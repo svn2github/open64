@@ -633,11 +633,6 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
     }
     else {
       wn = WN_CreateLda(OPR_LDA, exp->Dtyp(), MTYPE_V, exp->Offset(), exp->Lda_ty(), exp->Lda_base_st(), exp->Afield_id());
-#ifdef TARG_SL
-      if(exp->Is_flag_set(CF_INTERNAL_MEM_OFFSET)) {
-          WN_Set_is_internal_mem_ofst(wn);
-      }
-#endif 
       // Generate a small amount of alias information for LDA nodes as
       // well, since LNO may use the LDA's as handles on symbols that it
       // wants to equivalence. In that situation, it may need to

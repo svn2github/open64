@@ -148,6 +148,9 @@ typedef enum{
     LD_IPA_KEEP_TEMPS, 
     LD_IPA_ISA,
     LD_IPA_XXXX, 
+#ifdef TARG_SL
+    LD_IPA_IPISR,
+#endif
     MAX_LD_IPA
 }ld_ipa_option_enum;
 

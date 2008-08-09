@@ -1502,6 +1502,12 @@ BOOL
 ALIAS_CLASSIFICATION::Callee_changes_no_points_to(const WN *const call_wn,
 						  const WN *const parm_wn)
 {
+#if defined(TARG_SL)
+  if(WN_operator(call_wn) == OPR_INTRINSIC_CALL) {
+    if(INTRN_has_no_side_effects(WN_intrinsic(call_wn)))
+      return TRUE;
+  }
+#endif
   if (WN_Call_Never_Return(call_wn)) {
     return TRUE;
   }
@@ -1940,9 +1946,9 @@ ALIAS_CLASSIFICATION::Handle_call(WN *call_wn)
                  ("Handle_call: multiple stmt store return value after call"));
     }
 
-    //dump trace and return	
+    // dump trace and return	
     if (WOPT_Enable_Verbose && Tracing()) {
-      printf(TFile, "  after handling call:\n");
+      fprintf(TFile, "  after handling call:\n");
       Print(TFile);
     }
     return stmt;  
@@ -2139,6 +2145,9 @@ ALIAS_CLASSIFICATION::Finalize_ac_map_wn(WN *wn)
   }
   else if (OPCODE_is_load(opc) ||
 	   OPCODE_is_store(opc) ||
+#if defined (TARG_SL)
+	   (opr==OPR_PARM && WN_Parm_Dereference(wn)) ||
+#endif
 	   Is_fortran_reference_parm(wn) ||
 	   ((opr == OPR_LDA || opr == OPR_LDMA) &&
 	    Is_LDA_of_variable(wn))) {

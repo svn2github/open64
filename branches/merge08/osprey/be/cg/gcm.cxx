@@ -4698,7 +4698,6 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
 	  Reset_OP_moved(cand_op);
 	  Reset_BB_SCHEDULE(bbsch);
 	  Reset_BB_SCHEDULE(cand_bbsch);
-
 	  Set_OP_visited(cand_op);
 
 	  INT targ_alignment = (Align_Instructions) ? Align_Instructions:
@@ -4788,7 +4787,9 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
 #endif
 	    num_moves++;
 	    Run_Cflow_GCM |= Is_BB_Empty(bb);
+#if !defined(TARG_SL)
 	    Reset_OP_visited(cand_op);
+#endif
 	    Reset_BB_scheduled(bb);
 	    Reset_BB_scheduled(cand_bb);
             /* the functionality of Reset_OP_visited is to let further scheduling.
@@ -4828,8 +4829,10 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
           op_id++;
 	} // OP_To_Move...
 	L_Free();
-      }
-#if defined(TARG_SL)
+
+#if !defined(TARG_SL)
+      } // for cand_bb
+#else
         /* Do the breaking dependency, only needs for load's in circ-sched */
         if( CG_GCM_enable_break_dependence && moved_loads )
           Break_Dependency( moved_loads, cand_bb );

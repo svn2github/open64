@@ -125,6 +125,33 @@ Get_Name (tree node)
 	return buf;
 }
 
+#ifdef TARG_SL
+/* this function only return signed mtype and the function MTYPE_complement will do 
+ * conversion from signed type to unsigned type if current type is unsigned type */
+TYPE_ID
+Get_Mtype_For_Integer_Type(tree type_tree, INT64 tsize) 
+{
+     TYPE_ID mtype;
+     switch(tsize) {
+       case 1:
+         mtype = MTYPE_I1;
+         break;
+       case 2:
+         mtype = MTYPE_I2;
+         break;
+       case 4: 
+         mtype = MTYPE_I4;
+         break;
+       case 8:
+         DevWarn("8 byte types being used");
+         mtype = MTYPE_I8;
+         break;
+    }
+    return mtype;
+}
+#endif 
+
+
 #ifdef KEY
 extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
 
@@ -316,10 +343,37 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	case BOOLEAN_TYPE:
 	case INTEGER_TYPE:
 		switch (tsize) {
-		case 1:  mtype = MTYPE_I1; break;
-		case 2:  mtype = MTYPE_I2; break;
-		case 4:  mtype = MTYPE_I4; break;
-		case 8:  mtype = MTYPE_I8; break;
+		case 1: 
+#ifdef TARG_SL		
+		  mtype = Get_Mtype_For_Integer_Type(type_tree, tsize); 
+#else  
+		  mtype = MTYPE_I1;
+#endif 
+		  break;
+		case 2: 
+#ifdef TARG_SL 
+                  mtype = Get_Mtype_For_Integer_Type(type_tree, tsize); 
+#else 
+	     	  mtype = MTYPE_I2; 
+#endif 
+		  break;
+
+		case 4: 
+#ifdef TARG_SL 
+                  mtype = Get_Mtype_For_Integer_Type(type_tree, tsize); 
+#else 
+                  mtype = MTYPE_I4; 
+#endif 
+                  break;
+
+		case 8: 
+#ifdef TARG_SL 
+		  mtype = Get_Mtype_For_Integer_Type(type_tree, tsize); 
+#else 
+		  mtype = MTYPE_I8; 
+#endif 
+		  break;
+
 #if !defined(TARG_X8664) && !defined(TARG_IA64) && !defined(TARG_MIPS)
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
@@ -1216,6 +1270,22 @@ Create_ST_For_Tree (tree decl_node)
   if (DECL_SYSCALL_LINKAGE (decl_node)) {
 	Set_PU_has_syscall_linkage (Pu_Table [ST_pu(st)]);
   }
+
+#if defined(TARG_SL)
+  if(DECL_SL_MODEL_NAME(decl_node)) {
+    if(TREE_CODE(decl_node) == VAR_DECL && 
+       TREE_CODE(DECL_SL_MODEL_NAME(decl_node)) == STRING_CST) 
+    {
+      if(!strcmp(TREE_STRING_POINTER(DECL_SL_MODEL_NAME(decl_node)), "small"))
+        Set_ST_gprel(st); 
+      else if(!strcmp(TREE_STRING_POINTER(DECL_SL_MODEL_NAME(decl_node)), "large"))
+        Set_ST_not_gprel(st); 
+      else 
+        Fail_FmtAssertion("incorrect model type for sl data model"); 
+    }
+  }
+#endif 
+
   if(Debug_Level >= 2) {
 #ifdef KEY
     // Bug 559
@@ -1249,5 +1319,75 @@ Create_ST_For_Tree (tree decl_node)
      DECL_DST_IDX(decl_node) = dst;
 #endif
   }
+
+/* NOTES:
+ * Following code is temporarily used since mtype isn't 
+ * ready for now. After mtype handling has been finished we will
+ * use new normal method to handle section assignment. */
+
+/* Description:
+ * Set ST Flags for variant internal buffer type 
+ * VBUF is only to be file scope variable and gp-relative
+ * SBUF need to decide if SBUF is explicitly declared. If 
+ * declared the flag Set_ST_in_sbuf need to be set to indicate 
+ * the variable will be processed by CP2. */
+#ifdef TARG_SL 
+	const char* section_name;
+	int has_assigned_section = 0;
+	if(DECL_VBUF(decl_node)) // || DECL_SBUF(decl_node))
+	{
+           if(DECL_V1BUF(decl_node) && TREE_CODE(decl_node) != FUNCTION_DECL 
+            && !POINTER_TYPE_P(TREE_TYPE(decl_node))) 
+          { 
+             Set_ST_in_v1buf(st);
+             Set_ST_gprel(st);
+          }	 
+          else if(DECL_V2BUF(decl_node) && TREE_CODE(decl_node) != FUNCTION_DECL 
+            && !POINTER_TYPE_P(TREE_TYPE(decl_node)))
+          {
+            Set_ST_in_v2buf(st);
+       	    Set_ST_gprel(st);
+
+            TY_IDX st_ty_idx=ST_type(st);
+            Set_TY_size (st_ty_idx, TY_size(st_ty_idx)*2);
+
+          }
+          else if(DECL_V4BUF(decl_node) && TREE_CODE(decl_node) != FUNCTION_DECL 
+            && !POINTER_TYPE_P(TREE_TYPE(decl_node))) 
+          {
+            Set_ST_in_v4buf(st);       
+            Set_ST_gprel(st);
+
+            TY_IDX st_ty_idx=ST_type(st);
+            Set_TY_size (st_ty_idx, TY_size(st_ty_idx)*4);
+
+          }
+	}
+	else if(DECL_SBUF(decl_node) && TREE_CODE(decl_node) != FUNCTION_DECL 
+		&& !POINTER_TYPE_P(TREE_TYPE(decl_node))) {
+	  if(TREE_CODE(TREE_TYPE(decl_node)) == ARRAY_TYPE)
+	  {
+	     tree element_type = TREE_TYPE(decl_node); 
+	     while(TREE_CODE(element_type) == ARRAY_TYPE)
+	       element_type = TREE_TYPE(element_type); 
+
+	     if(!POINTER_TYPE_P(element_type))
+	     {
+                Set_ST_in_sbuf(st);
+ 	        Set_ST_gprel(st); 
+	     }
+	  }
+	  else 
+	  {
+	     Set_ST_in_sbuf(st);
+ 	     Set_ST_gprel(st); 
+	  }
+	}
+	else if(DECL_SDRAM(decl_node) && TREE_CODE(decl_node) != FUNCTION_DECL 
+          && !POINTER_TYPE_P(TREE_TYPE(decl_node))) {
+              Set_ST_in_sdram(st);
+	}
+#endif  // TARG_SL
+
   return st;
 }

@@ -1359,7 +1359,70 @@ void WFE_expand_start_section ()
        WFE_CS_push(wfe_omp_section,SRCPOS_linenum(srcpos), SRCPOS_filenum(srcpos));
       
      
+};
+
+#ifdef TARG_SL2 //fork_joint
+void WFE_expand_start_sl2_sections (BOOL is_minor_thread)
+{
+       /* create a region on current block */
+       
+      WN * region = WFE_region(is_minor_thread ? REGION_KIND_MINOR : REGION_KIND_MAJOR);
+
+       WN *wn, *expr;
+       WN_list *wn_list;
+       ST *st;
+       ST_list *st_list;
+       
+//////////////// OPENMP CHECK STACK /////////////
+       SRCPOS srcpos = Get_Srcpos();
+	  
+       wn = WN_CreatePragma(is_minor_thread ? WN_PRAGMA_SL2_MINOR_PSECTION_BEGIN : WN_PRAGMA_SL2_MAJOR_PSECTION_BEGIN, 
+       	                     (ST_IDX) NULL, 
+       	                     0, 
+       	                     0);   
+       	                     
+       WN_set_pragma_omp(wn);
+       WFE_Stmt_Append (wn, Get_Srcpos());
+
+
+       /////required?///////
+       Set_PU_has_mp (Get_Current_PU ());
+//       Set_PU_uplevel (Get_Current_PU ());
+
+       // Add all other pragmas/xpragmas¡­¡­.
+       WFE_Stmt_Pop (wfe_stmk_region_pragmas);
+
 }
+
+
+void WFE_expand_start_sl2_section (BOOL is_minor_thread)
+{
+
+       WN *wn;
+
+      wn = WN_CreatePragma(WN_PRAGMA_SL2_SECTION,  
+       	                     (ST_IDX) NULL, 
+       	                     0, 
+       	                     0); 
+       WN_set_pragma_omp(wn);
+
+       WFE_Stmt_Append (wn, Get_Srcpos());     
+};
+
+void WFE_expand_end_sl2_section ( )
+{
+       WFE_Stmt_Pop (wfe_stmk_scope);
+};
+
+
+
+void WFE_expand_end_sl2_sections ( )
+{
+    WFE_Stmt_Pop (wfe_stmk_scope);
+};
+
+#endif 
+
 
 void WFE_check_section ( )
 {

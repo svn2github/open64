@@ -1203,25 +1203,38 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
 	  kopnd = opnd->Opnd(1);
 	else return FALSE;
 	UINT64 uval64 = kopnd->Const_val();
-	if (sign_xtd) {
-	  //     I4I4LDID 0 <2,1,a>
-	  //     LDC I4 15 <u=4095 cr10> flags:0x0 b=-1
-	  //   I4BAND <u=0 cr13> isop_flags:0xc040 flags:0x1 b=-1
-	  // I4CVTL 8 <u=2 cr14> isop_flags:0xc040 flags:0x1 b=E38
-	  return uval64 < ((0x1ll << from_bit) - 1);
-	} else
 	return uval64 <= ((0x1ll << from_bit) - 1);
       }
 #endif
+    case OPR_ASHR:
+      //       I4I4LDID 0 <2,1,a>
+      //       I4INTCONST 24 (0x18)
+      //     I4ASHR
+      //   I4CVTL 8  <- reduntant CVTL
+      if (opnd->Opnd(1)->Kind() == CK_CONST) {
+        if (from_bit >= (MTYPE_size_min(dtyp) - opnd->Opnd(1)->Const_val())) {
+          return (MTYPE_signed(dtyp) == sign_xtd);
+        }
+      }
+      return FALSE;
+    case OPR_EXTRACT_BITS:
+      //     U4U4LDID 72 <1,4,.preg_U4>
+      //   U4EXTRACT_BITS <bofst:27 bsize:4>
+      // U4CVTL 8
+      if (opnd->Op_bit_size() <= from_bit) {
+        if (MTYPE_signed(dtyp) == sign_xtd)
+          return TRUE;
+        if (opnd->Op_bit_size() < from_bit)
+          return ! MTYPE_signed(dtyp);
+      }
+      return FALSE;
 #ifdef TARG_SL
     case OPR_INTRINSIC_OP:
-      if (from_bit == 16 && to_bit == 32) {
-        return TRUE;
+      //  if INTRINSIC_OP type is I2, the computation based on 16 bit register and the CVTL could be deleted 
+      if ((from_bit == 16) && (to_bit == 32)) {
+        return (MTYPE_signed(dtyp) == sign_xtd);
       }
-    case OPR_ASHR:
-      if (from_bit >= MTYPE_size_min(opnd->Dsctyp())) {
-        return TRUE;
-      }
+      return FALSE;  
 #endif
 
     default: ;

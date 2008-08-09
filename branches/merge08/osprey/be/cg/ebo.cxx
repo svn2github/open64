@@ -1722,6 +1722,18 @@ do_next:
 }
 
 
+static BOOL
+OP_can_change(OP* op)
+{
+#if defined(TARG_SL)
+  if ((OP_code(op) == TOP_C3_mvtacc) 
+      || (OP_code(op) == TOP_c3_mvtacc)
+      || (OP_code(op) == TOP_c3_mvfacc)
+      || (OP_code(op) == TOP_C3_mvfacc))
+    return FALSE;
+#endif
+  return TRUE;
+}
 
 
 /* 
@@ -1824,6 +1836,7 @@ find_duplicate_op (BB *bb,
        */
                       && OP_bb(pred_op) != NULL
 #endif
+                      && OP_can_change(op) 
                       && (OP_results(op) == OP_results(pred_op))
 		      && (OP_opnds(op) == OP_opnds(pred_op))
 		      && (OP_results(op) == 2 || OP_code(op) == OP_code(pred_op));
@@ -3376,7 +3389,9 @@ EBO_Add_BB_to_EB (BB * bb)
     fprintf(TFile,"%sEBO optimization at BB:%d\n",EBO_trace_pfx,BB_id(bb));
   }
 
+#if !defined(TARG_SL)
   EBO_Remove_Unused_Ops(bb, normal_conditions);
+#endif
 
  /* Remove information about TN's and OP's in this block. */
   backup_tninfo_list(save_last_tninfo);
@@ -3441,6 +3456,8 @@ EBO_Process ( BB *first_bb )
   if (EBO_in_peep) // Can do this once after all transformations
     Redundancy_Elimination();
 #endif
+
+#if !defined(TARG_SL)
   for (bb = first_bb; bb != NULL; bb = BB_next(bb)) {
     RID *bbrid;
     if (( bbrid = BB_rid( bb )) &&
@@ -3456,6 +3473,7 @@ EBO_Process ( BB *first_bb )
       if (EBO_in_loop) break;
     }
   }
+#endif
 
  /* Clear the bb flag, in case some other phase uses it. */
   clear_bb_flag (first_bb);

@@ -643,6 +643,12 @@ extern "C" {
 #define DW_CFA_GNU_args_size     0x2e /* GNU */
 #define DW_CFA_GNU_negative_offset_extended  0x2f /* GNU */
 
+#if defined(TARG_SL)
+#define DW_CFA_SL_gpr_reginfo    0x3c   /* SL */
+#define DW_CFA_SL_cr_reginfo     0x3d   /* SL */
+#define DW_CFA_SL_sr_reginfo     0x3e   /* SL */
+#endif
+
 #define DW_CFA_high_user         0x3f
 
 

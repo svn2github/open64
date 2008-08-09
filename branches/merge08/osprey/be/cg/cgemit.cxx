@@ -1646,7 +1646,7 @@ static void r_assemble_list (
 
   Emit_Unwind_Directives_For_OP(op, Asm_File);
 
-#ifdef GAS_TAGS_WORKED
+#if defined(GAS_TAGS_WORKED) || defined(TARG_SL)
 // un-ifdef this when gas can handle tags inside explicit bundle
   if (OP_has_tag(op)) {
 	fprintf(Asm_File, "%s:\n", LABEL_name(Get_OP_Tag(op)));
@@ -6655,8 +6655,8 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
       }
 #endif
       else
-#endif // TARG_SL
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv));
+#endif // TARG_SL
       break;
 
     case INITVKIND_ONE:
@@ -7607,7 +7607,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
       Write_INITO (ino, STB_scninfo_idx(base), ofst);
 #else
       CGEMIT_Print_Initialized_Variable (st, ino);	
-#endif
+#endif // EMIT_DATA_SECTIONS
     }
 
     else {
@@ -9149,12 +9149,10 @@ Emit_Options (void)
     return;
 #endif
 
-#if defined(VENDOR_OSP) 
-    fputs ("\t.ident\t\"#Open64 Compiler Version " OPEN64_FULL_VERSION " :", Asm_File);
-#elif defined(VENDOR_SL)
+#if defined(VENDOR_SL) 
     fputs ("#\t.ident\t\"#Simplight Compiler Version 1.0 :", Asm_File);
-#elif defined(TARG_MIPS)
-    fputs ("#\t.ident\t\"#PathScale Compiler Version " PSC_FULL_VERSION " :", Asm_File);
+#elif defined(VENDOR_OSP)
+    fputs ("\t.ident\t\"#Open64 Compiler Version " OPEN64_FULL_VERSION " :", Asm_File);
 #else
     fputs ("\t.ident\t\"#PathScale Compiler Version " PSC_FULL_VERSION " :", Asm_File);
 #endif

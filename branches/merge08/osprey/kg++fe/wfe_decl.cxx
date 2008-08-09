@@ -2927,7 +2927,12 @@ Add_Inito_For_Tree (tree init, ST *st)
   case INTEGER_CST:
 	UINT64 val;
 	val = Get_Integer_Value (init);
-	if (val == 0) {
+#ifdef TARG_SL
+// we don't put vbuf variable, which is initialized with zero, into bss section
+	if (val == 0 && !ST_in_vbuf(st) && !ST_in_sbuf(st)) {
+#else 	
+	if (val == 0 ) {
+#endif 		
 		Set_ST_init_value_zero(st);
 		if (ST_sclass(st) == SCLASS_DGLOBAL)
 			Set_ST_sclass(st, SCLASS_UGLOBAL);

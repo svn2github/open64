@@ -239,6 +239,17 @@ typedef unsigned char Elf64_Byte;
 #define MIPS_CONTENT		".MIPS.content"
 #define MIPS_WHIRL              ".WHIRL"	/* Mips uses this name       */
 
+#if defined(TARG_SL)
+/* this name is what assembler need and will be replaced with above one */
+#define MIPS_SSDATA              ".sbuf"
+
+
+#define MIPS_VSDATA              ".vbuf"
+#define MIPS_VS1DATA             ".vs1data"
+#define MIPS_VS2DATA             ".vs2data"
+#define MIPS_VS4DATA             ".vs4data"   
+#endif 
+
 /*
  * special section names
  *

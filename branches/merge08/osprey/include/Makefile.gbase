@@ -151,7 +151,11 @@ SYS_DIRS = \
 endif
 ifeq ($(BUILD_TARGET), MIPS)
 SYS_DIRS = \
-	ia64
+	mips
+endif
+ifeq ($(BUILD_TARGET), SL)
+SYS_DIRS = \
+        sl
 endif
 ifeq ($(BUILD_TARGET), X8664)
 SYS_DIRS = \
@@ -208,6 +212,19 @@ default: pathscale_defs.h
 	      ln -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
 	    fi; \
 	done
+
+ifeq ($(BUILD_TARGET), SL)
+	@for h in $(LIBELF_DIRS); do \
+	    if ! test -a $$h; then \
+		mkdir $$h; \
+	    fi; \
+	done
+	@for h in $(LIBELF_HFILES); do \
+	    if ! test -a libelf/$$h; then \
+	      ln -sf $(BUILD_TOT)/../libelf/lib/$$h libelf/$$h; \
+	    fi; \
+	done
+endif
 
 pathscale_defs.h: $(BUILD_TOT)/../defs.mk 
 	echo '#ifndef __pathscale_defs_h' > $@

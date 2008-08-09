@@ -811,6 +811,12 @@ static tree handle_launch_bounds_attribute   PARAMS ((tree *, tree, tree, int,
 						 bool *));
 #endif /* TARG_NVISA */
 
+#if defined(TARG_SL)
+static tree handle_sl_model_attribute PARAMS ((tree *, tree, tree, int,
+						     bool *));
+#endif 
+
+
 static tree vector_size_helper PARAMS ((tree, tree));
 
 static void check_function_nonnull	PARAMS ((tree, tree));
@@ -908,6 +914,10 @@ const struct attribute_spec c_common_attribute_table[] =
                               handle_syscall_linkage_attribute },
   { "widenretval",            0, 0, true, false, false, 
                               handle_widenretval_attribute },
+#endif
+#if defined(TARG_SL) 
+  {"sl_model",               1, 1, true, false, false, 
+                             handle_sl_model_attribute }, 
 #endif
   { "cdecl",                 0, 0, false, false, false, 
                               handle_cdecl_attribute },
@@ -3264,6 +3274,13 @@ c_common_nodes_and_builtins ()
 #define DEF_FUNCTION_TYPE_2(NAME, RETURN, ARG1, ARG2) NAME,
 #define DEF_FUNCTION_TYPE_3(NAME, RETURN, ARG1, ARG2, ARG3) NAME,
 #define DEF_FUNCTION_TYPE_4(NAME, RETURN, ARG1, ARG2, ARG3, ARG4) NAME,
+#if defined(TARG_SL)
+#define DEF_FUNCTION_TYPE_5(NAME, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5) NAME,
+#define DEF_FUNCTION_TYPE_6(NAME, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6) NAME,
+#define DEF_FUNCTION_TYPE_7(NAME, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) NAME,
+#define DEF_FUNCTION_TYPE_8(NAME, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) NAME,
+#define DEF_FUNCTION_TYPE_9(NAME, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9) NAME,
+#endif // TARG_SL
 #define DEF_FUNCTION_TYPE_VAR_0(NAME, RETURN) NAME,
 #define DEF_FUNCTION_TYPE_VAR_1(NAME, RETURN, ARG1) NAME,
 #define DEF_FUNCTION_TYPE_VAR_2(NAME, RETURN, ARG1, ARG2) NAME,
@@ -3276,6 +3293,13 @@ c_common_nodes_and_builtins ()
 #undef DEF_FUNCTION_TYPE_2
 #undef DEF_FUNCTION_TYPE_3
 #undef DEF_FUNCTION_TYPE_4
+#if defined(TARG_SL)
+#undef DEF_FUNCTION_TYPE_5
+#undef DEF_FUNCTION_TYPE_6
+#undef DEF_FUNCTION_TYPE_7
+#undef DEF_FUNCTION_TYPE_8
+#undef DEF_FUNCTION_TYPE_9
+#endif // TARG_SL
 #undef DEF_FUNCTION_TYPE_VAR_0
 #undef DEF_FUNCTION_TYPE_VAR_1
 #undef DEF_FUNCTION_TYPE_VAR_2
@@ -3578,6 +3602,107 @@ c_common_nodes_and_builtins ()
 			      tree_cons (NULL_TREE,			\
 					 builtin_types[(int) ARG4],	\
 					 void_list_node)))));
+#if defined(TARG_SL)
+#define DEF_FUNCTION_TYPE_5(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5)\
+  builtin_types[(int) ENUM]						\
+    = build_function_type						\
+      (builtin_types[(int) RETURN],					\
+       tree_cons (NULL_TREE,						\
+	 builtin_types[(int) ARG1],			            	\
+	 tree_cons (NULL_TREE,					        \
+	   builtin_types[(int) ARG2],			                \
+	   tree_cons(NULL_TREE,				                \
+	     builtin_types[(int) ARG3],	 	                        \
+             tree_cons (NULL_TREE,			                \
+	       builtin_types[(int) ARG4],	                        \
+               tree_cons (NULL_TREE,		                \
+	           builtin_types[(int) ARG5],	                        \
+					 void_list_node))))));
+
+
+
+#define DEF_FUNCTION_TYPE_6(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6)\
+  builtin_types[(int) ENUM]						\
+    = build_function_type						\
+      (builtin_types[(int) RETURN],					\
+       tree_cons (NULL_TREE,						\
+	 builtin_types[(int) ARG1],			            	\
+	 tree_cons (NULL_TREE,					        \
+	   builtin_types[(int) ARG2],			                \
+	   tree_cons(NULL_TREE,				                \
+	     builtin_types[(int) ARG3],	 	                        \
+             tree_cons (NULL_TREE,			                \
+	       builtin_types[(int) ARG4],	                        \
+               tree_cons (NULL_TREE,			                \
+	         builtin_types[(int) ARG5],	                        \
+                   tree_cons (NULL_TREE,		                \
+	           builtin_types[(int) ARG6],	                        \
+					 void_list_node)))))));
+#define DEF_FUNCTION_TYPE_7(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7)\
+  builtin_types[(int) ENUM]						\
+    = build_function_type						\
+      (builtin_types[(int) RETURN],					\
+       tree_cons (NULL_TREE,						\
+	 builtin_types[(int) ARG1],			            	\
+	 tree_cons (NULL_TREE,					        \
+	   builtin_types[(int) ARG2],			                \
+	   tree_cons(NULL_TREE,				                \
+	     builtin_types[(int) ARG3],	 	                        \
+             tree_cons (NULL_TREE,			                \
+	       builtin_types[(int) ARG4],	                        \
+               tree_cons (NULL_TREE,			                \
+	         builtin_types[(int) ARG5],	                        \
+                 tree_cons (NULL_TREE,			                \
+	           builtin_types[(int) ARG6],	                        \
+                   tree_cons (NULL_TREE,		                \
+	             builtin_types[(int) ARG7],	                        \
+					 void_list_node))))))));
+#define DEF_FUNCTION_TYPE_8(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8)\
+  builtin_types[(int) ENUM]						\
+    = build_function_type						\
+      (builtin_types[(int) RETURN],					\
+       tree_cons (NULL_TREE,						\
+	 builtin_types[(int) ARG1],			            	\
+	 tree_cons (NULL_TREE,					        \
+	   builtin_types[(int) ARG2],			                \
+	   tree_cons(NULL_TREE,				                \
+	     builtin_types[(int) ARG3],	 	                        \
+             tree_cons (NULL_TREE,			                \
+	       builtin_types[(int) ARG4],	                        \
+               tree_cons (NULL_TREE,			                \
+	         builtin_types[(int) ARG5],	                        \
+                 tree_cons (NULL_TREE,			                \
+	           builtin_types[(int) ARG6],	                        \
+                   tree_cons (NULL_TREE,			                \
+	           builtin_types[(int) ARG7],	                        \
+                   tree_cons (NULL_TREE,		                \
+	             builtin_types[(int) ARG8],	                        \
+					 void_list_node)))))))));
+#define DEF_FUNCTION_TYPE_9(ENUM, RETURN, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9)\
+  builtin_types[(int) ENUM]						\
+    = build_function_type						\
+      (builtin_types[(int) RETURN],					\
+       tree_cons (NULL_TREE,						\
+	 builtin_types[(int) ARG1],			            	\
+	 tree_cons (NULL_TREE,					        \
+	   builtin_types[(int) ARG2],			                \
+	   tree_cons(NULL_TREE,				                \
+	     builtin_types[(int) ARG3],	 	                        \
+             tree_cons (NULL_TREE,			                \
+	       builtin_types[(int) ARG4],	                        \
+               tree_cons (NULL_TREE,			                \
+	         builtin_types[(int) ARG5],	                        \
+                 tree_cons (NULL_TREE,			                \
+	           builtin_types[(int) ARG6],	                        \
+                   tree_cons (NULL_TREE,			                \
+	           builtin_types[(int) ARG7],	                        \
+                   tree_cons (NULL_TREE,			                \
+	           builtin_types[(int) ARG8],	                        \
+                   tree_cons (NULL_TREE,		                \
+	             builtin_types[(int) ARG9],	                        \
+					 void_list_node))))))))));
+				
+#endif // TARG_SL
 #define DEF_FUNCTION_TYPE_VAR_0(ENUM, RETURN)				\
   builtin_types[(int) ENUM]						\
     = build_function_type (builtin_types[(int) RETURN], NULL_TREE);
@@ -3619,6 +3744,13 @@ c_common_nodes_and_builtins ()
 #undef DEF_FUNCTION_TYPE_2
 #undef DEF_FUNCTION_TYPE_3
 #undef DEF_FUNCTION_TYPE_4
+#if defined(TARG_SL)
+#undef DEF_FUNCTION_TYPE_5
+#undef DEF_FUNCTION_TYPE_6
+#undef DEF_FUNCTION_TYPE_7
+#undef DEF_FUNCTION_TYPE_8
+#undef DEF_FUNCTION_TYPE_9
+#endif // TARG_SL
 #undef DEF_FUNCTION_TYPE_VAR_0
 #undef DEF_FUNCTION_TYPE_VAR_1
 #undef DEF_FUNCTION_TYPE_VAR_2
@@ -6624,6 +6756,36 @@ handle_launch_bounds_attribute (node, name, args, flags, no_add_attrs)
 }
 
 #endif /* TARG_NVISA */
+
+#if defined(TARG_SL)
+static tree
+handle_sl_model_attribute (node, name, args, flags, no_add_attrs)
+     tree *node;
+     tree name;
+     tree args;
+     int flags ATTRIBUTE_UNUSED;
+     bool *no_add_attrs;
+{
+
+  tree decl = *node;
+
+  if ((TREE_CODE (decl) == VAR_DECL)
+     && TREE_CODE (TREE_VALUE (args)) == STRING_CST)
+  {
+    DECL_SL_MODEL_NAME (decl) = TREE_VALUE (args);
+  }
+  else
+  {
+    error_with_decl (*node,
+      "sl model attribute not allowed for `%s'");
+    *no_add_attrs = true;
+  }
+  
+  return NULL_TREE;
+}
+#endif 
+
+
 
 /* HACK.  GROSS.  This is absolutely disgusting.  I wish there was a
    better way.

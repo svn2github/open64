@@ -287,9 +287,6 @@ BB * _cg_dep_bb; // exported to cg_dep_graph_update.h so it can
 
 static std::list<BB*> _cg_dep_bbs;
 static MEM_POOL dep_map_nz_pool;
-#if ! defined (TARG_IA64)
-static
-#endif
        MEM_POOL dep_nz_pool;
 static BOOL include_assigned_registers;
 static BOOL cyclic;
@@ -2514,7 +2511,7 @@ static void Aliased_By_WOPT( WN *pred_wn, WN *succ_wn,
                              OP *pred_op, OP *succ_op,
                              SAME_ADDR_RESULT cg_result,
                              UINT8 *omega,
-                             char *info_src,
+                             const char *info_src,
                              BOOL *verify_mem_res ,
                              BOOL *definite )
 {

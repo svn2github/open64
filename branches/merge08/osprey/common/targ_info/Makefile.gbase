@@ -156,14 +156,14 @@ SO_TARGETS = \
 #	r4000.so
 endif
 ifeq ($(BUILD_TARGET), SL)
-LDIRT += r10000_si_gen sb1_si_gen # r8000_si_gen r5000_si_gen r4000_si_gen
+LDIRT += r10000_si_gen sb1_si_gen sl1_pcore_gen sl1_dsp_gen sl2_pcore_gen sl2_mcore_gen # r8000_si_gen r5000_si_gen r4000_si_gen
 SO_TARGETS = \
-      r10000.so       \
-      sl1_pcore.so    \
-      sl1_dsp.so     \
-      sl2_pcore.so    \
-      sl2_mcore.so    \
-      sb1.so
+       r10000.so       \
+       sl1_pcore.so    \
+       sl1_dsp.so     \
+       sl2_pcore.so    \
+       sl2_mcore.so    \
+       sb1.so
 #       r8000.so        \
 #       r5000.so        \
 #       r4000.so
@@ -266,7 +266,11 @@ LLDLIBS =
 
 ifeq ($(BUILD_ARCH), MIPS64)
 ifeq ($(BUILD_HOST), IA32)
+ifeq ($(BUILD_TARGET), SL)
+COPYSOURCEDIR = ../../targia32_sl1/targ_info
+else
 COPYSOURCEDIR = ../../targia32_mips/targ_info
+endif
 else
 COPYSOURCEDIR = FALSE
 endif
@@ -896,24 +900,6 @@ sb1_si.o: sb1_si.cxx targ_isa_subset.h topcode.h si_gen.h
 
 endif
 
-ifeq ($(BUILD_TARGET), IA64)
-
-itanium.so: itanium.o $(TARGINFO_DSO_ACCESS_OBJS)
-	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) itanium.o -shared -o itanium.so
-
-itanium.o: itanium.c ti_si.h
-	$(cc) $(CFLAGS) -c itanium.c
-
-itanium.c: itanium_si_gen
-	$(SETPATH) $(RUN) ./itanium_si_gen
-
-itanium_si_gen: si_gen.a itanium_si.o topcode.o
-	$(cxx) $(CXXLDFLAGS) itanium_si.o topcode.o si_gen.a -o itanium_si_gen
-
-itanium_si.o: itanium_si.cxx targ_isa_subset.h topcode.h si_gen.h
-	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/itanium_si.cxx
-
-endif
 
 ####For SL ####
 ifeq   ($(BUILD_TARGET), SL)
@@ -1002,6 +988,7 @@ endif
 r4000_si_gen: si_gen.so r4000_si.o topcode.o
 	$(cxx) $(CXXLDFLAGS) r4000_si.o topcode.o si_gen.so -o r4000_si_gen
 
+
 r4000_si.o: r4000_si.cxx targ_isa_subset.h topcode.h si_gen.h
 	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/r4000_si.cxx
 ## sb1 ##
@@ -1086,6 +1073,7 @@ sl2_pcore.so: sl2_pcore.o $(SI_EXPORT_LIST)
 
 sl2_pcore.o: sl2_pcore.c ti_si.h
 	$(cc) $(CFLAGS) -c sl2_pcore.c
+
 ifeq ($(COPYSOURCEDIR), FALSE)
 sl2_pcore.c: sl2_pcore_gen
 	$(run) ./sl2_pcore_gen
@@ -1127,7 +1115,24 @@ sl2_mcore_si.o: sl2_mcore_si.cxx targ_isa_subset.h topcode.h si_gen.h
 endif
 
 
+ifeq ($(BUILD_TARGET), IA64)
 
+itanium.so: itanium.o $(TARGINFO_DSO_ACCESS_OBJS)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) itanium.o -shared -o itanium.so
+
+itanium.o: itanium.c ti_si.h
+	$(cc) $(CFLAGS) -c itanium.c
+
+itanium.c: itanium_si_gen
+	$(SETPATH) $(RUN) ./itanium_si_gen
+
+itanium_si_gen: si_gen.a itanium_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) itanium_si.o topcode.o si_gen.a -o itanium_si_gen
+
+itanium_si.o: itanium_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/itanium_si.cxx
+
+endif
 
 ifeq ($(BUILD_TARGET), X8664)
 

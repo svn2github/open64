@@ -39,9 +39,13 @@
 */
 
 
+#ifdef TARG_SL
+#include "gnu/SL/config.h"
+#else 
 #ifdef TARG_MIPS
-#include "gnu/mips/config.h"
+#include "gnu/MIPS/config.h"
 #endif /* TARG_MIPS */
+#endif
 #ifdef TARG_IA64
 #include "gnu/ia64/config.h"
 #endif /* TARG_IA64 */

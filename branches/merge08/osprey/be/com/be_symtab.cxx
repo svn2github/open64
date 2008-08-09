@@ -271,7 +271,7 @@ ST_is_const_initialized_scalar(const ST *st, INT64 offset, TCON &tcon_copy)
       tcon_copy = Host_To_Targ(mtype, 1L);
       return TRUE;
     case  INITVKIND_VAL:
-      tcon_copy = INITV_tc_val(inv);
+      tcon_copy = Tcon_Table[INITV_tc(Initv_Table[inv])];
       return TRUE;
     }
     return FALSE;

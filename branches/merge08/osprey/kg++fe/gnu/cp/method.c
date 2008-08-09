@@ -1160,5 +1160,7 @@ skip_artificial_parms_for (fn, list)
 }
 #ifdef TARG_IA64
 #else
+#if !defined(TARG_SL) && !defined(TARG_MIPS)
 #include "gt-cp-method.h"
+#endif
 #endif

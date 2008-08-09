@@ -956,7 +956,12 @@ static void ir_put_wn(WN * wn, INT indent)
 #endif /* BACK_END */
       fprintf(ir_ofile, " (kind=%d)",WN_region_kind(wn));
       break;
-
+#if defined(TARG_SL)
+    case OPR_LDA:
+    case OPR_ISTORE:
+      fprintf(ir_ofile, "im:%d", WN_is_internal_mem_ofst(wn)); 
+      break; 
+#endif
     case OPR_LDBITS:
     case OPR_ILDBITS:
     case OPR_STBITS:

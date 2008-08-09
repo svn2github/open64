@@ -51,6 +51,7 @@ extern "C" {
 #include "ir_reader.h"
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
+#include "wfe_pragma.h"
 #include "wfe_decl.h"
 #include "tree_symtab.h"
 #include "targ_sim.h"
@@ -1521,6 +1522,9 @@ Wfe_Expand_Asm_Operands (tree  string,
 
 	WN *output_rvalue_wn = WFE_Lhs_Of_Modify_Expr (MODIFY_EXPR,
 						       TREE_VALUE (tail),
+#ifdef TARG_SL
+                                                       NULL,
+#endif
 						       plus_modifier,
 						       (TY_IDX) 0, // component type
 						       (INT64) 0,  // component offset
@@ -3846,6 +3850,25 @@ WFE_Expand_Omp (tree stmt)
     case exec_freq_dir:
       WFE_Expand_Pragma (stmt);
       break;
+
+#ifdef TARG_SL  // fork_joint
+    case sl2_sections_cons_b:
+    case sl2_minor_sections_cons_b:		
+      expand_start_sl2_sections (stmt->omp.choice == sl2_minor_sections_cons_b);
+      break;
+    case sl2_sections_cons_e:
+      expand_end_sl2_sections ();
+      break;
+    case sl2_section_cons_b:
+    case sl2_minor_section_cons_b:		
+      expand_start_sl2_section (stmt->omp.choice == sl2_minor_section_cons_b);
+      break;
+    case sl2_section_cons_e:
+    case sl2_minor_section_cons_e:		
+      expand_end_sl2_section ();
+      break;
+#endif 
+
                                                                                 
     default:
       Fail_FmtAssertion ("Unexpected stmt node");

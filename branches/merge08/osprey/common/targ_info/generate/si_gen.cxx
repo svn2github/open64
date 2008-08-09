@@ -923,6 +923,9 @@ public:
   void Set_Last_Issue_Cycle( int time );
   void Set_Store_Available_Time( int time );
   void Add_Resource_Requirement(const RES* res, int cycle);
+#if defined(TARG_SL)
+  void Add_Alternative_Resource_Requirement(const RES*res, int cycle); 
+#endif 
   void Add_Valid_ISLOT(ISLOT* islot);
   void Set_Write_Write_Interlock();
 
@@ -937,6 +940,9 @@ private:
   GNAME gname;                          // Variable name in generated    
   char* const name;                     // User supplied name for documentation
   RES_REQ res_requirement;              // Required to issue
+#if defined(TARG_SL)
+  RES_REQ alternative_res_requirement;  // alternative resource if res_requirement can not be satisified. 
+#endif
 
   std::list<ISLOT*> valid_islots;            // If there are any issue slots at all
   GNAME islot_vec_gname;                // Variable name of above in generated
@@ -1043,6 +1049,18 @@ void INSTRUCTION_GROUP::Add_Resource_Requirement(const RES* res, int cycle)
     fprintf(stderr,"###    %s at cycle %d.\n",res->Name(),cycle);
   }
 }
+
+#if defined(TARG_SL)
+void INSTRUCTION_GROUP::Add_Alternative_Resource_Requirement(const RES* res, int cycle)
+{
+  if (! alternative_res_requirement.Add_Resource(res,cycle)) {
+    fprintf(stderr,"### ERROR: Impossible resource request for "
+                    "instruction group %s.\n",
+                    name);
+    fprintf(stderr,"###    %s at cycle %d.\n",res->Name(),cycle);
+  }
+}
+#endif
 
 void INSTRUCTION_GROUP::Add_Valid_ISLOT(ISLOT* islot)
 {
@@ -1182,6 +1200,10 @@ void INSTRUCTION_GROUP::Output(FILE* fd)
   fprintf(fd,"\n/* Instruction group %s */\n",name);
   res_requirement.Output(fd);
   res_requirement.Compute_Output_Resource_Count_Vec(fd);
+#if defined(TARG_SL)
+  alternative_res_requirement.Output(fd); 
+  alternative_res_requirement.Compute_Output_Resource_Count_Vec(fd);
+#endif
   Output_II_Info(fd);
   Output_Latency_Info(fd);
   Output_Issue_Slot_Info(fd);
@@ -1202,6 +1224,10 @@ void INSTRUCTION_GROUP::Output(FILE* fd)
              store_available_time);
   fprintf(fd,"  %-15s, /* resource requirement */\n",
              res_requirement.Gname());
+#if defined(TARG_SL)
+  fprintf(fd, "  %-15s, /* alternative resource requirement*/ \n", 
+             alternative_res_requirement.Gname()); 
+#endif
   fprintf(fd,"  %-15s, /* res id used set vec */\n",
              res_requirement.Res_Id_Set_Gname());
   fprintf(fd,"  %-15d, /* II info size */\n",
@@ -1430,6 +1456,13 @@ void Resource_Requirement( RESOURCE resource, int time )
 {
   current_instruction_group->Add_Resource_Requirement(resource,time);
 }
+
+#if defined(TARG_SL)
+void Alternative_Resource_Requirement( RESOURCE resource, int time )
+{
+  current_instruction_group->Add_Alternative_Resource_Requirement(resource,time);
+}
+#endif 
 
 void Valid_Issue_Slot( ISSUE_SLOT slot )
 {

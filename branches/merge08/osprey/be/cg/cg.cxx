@@ -1600,7 +1600,6 @@ CG_Generate_Code(
       Check_for_Dump_ALL ( TP_CGEXP, NULL, "Post LIS" );
     }
   }
-  IGLS_Schedule_Region (FALSE /* after register allocation */);
 
   if (CG_Enable_Macro_Instr_Combine && CG_opt_level > 1)
     Move_Macro_Insn_Together(); 

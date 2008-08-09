@@ -1446,7 +1446,7 @@ Generate_Unique_Exit(void)
 
   /* Generate the unique exits.
    */
-  bzero(rtn_tns, sizeof(rtn_tns));
+  BZERO(rtn_tns, sizeof(rtn_tns));
   unique_exit_bb = NULL;
   for ( elist = Exit_BB_Head; elist; elist = BB_LIST_rest(elist) ) {
     BB *bb = BB_LIST_first(elist);
@@ -1656,6 +1656,7 @@ Generate_Exit (
 	// this, but it doesn't and is easy to just copy to int reg
 	// by hand and then let gra use stacked reg.
 	Exp_COPY (RA_TN, ra_intsave_tn, &ops );
+	Set_OP_no_move_before_gra(OPS_last(&ops));
       }
 #if defined(TARG_SL) 
       else if (CG_opt_level <= 1) {
@@ -1664,8 +1665,8 @@ Generate_Exit (
 #endif
         /* Copy back the return address register from the save_tn. */
       	Exp_COPY ( RA_TN, SAVE_tn(Return_Address_Reg), &ops );
+	Set_OP_no_move_before_gra(OPS_last(&ops));
       }
-      Set_OP_no_move_before_gra(OPS_last(&ops));
     }
   }
 

@@ -698,6 +698,13 @@ inline SI_RR TSI_Resource_Requirement( TOP top )
   return SI_top_si[(INT) top]->rr;
 }
 
+#if defined(TARG_SL)
+inline SI_RR TSI_Alternative_Resource_Requirement( TOP top )
+{
+  return SI_top_si[(INT) top]->alter_rr;
+}
+#endif 
+
 inline SI_BAD_II_SET TSI_Bad_IIs( TOP top )
 {
   return SI_top_si[(INT) top]->bad_iis;

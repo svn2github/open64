@@ -76,6 +76,9 @@ extern "C" {
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/toplev.h"
+#if defined(TARG_SL) || defined(TARG_MIPS)
+#include "function.h"
+#endif
 #include "c-pragma.h"
 }
 #if defined(TARG_IA32) || defined(TARG_X8664)
@@ -1468,6 +1471,14 @@ Gen_Assign_Of_Init_Val (ST *st, tree init, UINT offset, UINT array_elem_offset,
 	else
 #endif
 	WFE_Stmt_Append(wn, Get_Srcpos());
+#ifdef TARG_SL
+       BOOL WN_Need_Append_Intrinsic(WN *rhs);
+       if(WN_kid0(wn) && WN_Need_Append_Intrinsic(WN_kid0(wn))) {
+          extern void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src);
+          WN *ldid_wn = WN_Ldid(mtype, ST_ofst(st)+offset, st, ty, field_id);
+          WFE_Stmt_Append_Extend_Intrinsic(wn, ldid_wn, Get_Srcpos());
+       }
+#endif        
 	if (! is_bit_field) 
 	  bytes += TY_size(ty);
 	else {
@@ -2042,7 +2053,12 @@ Add_Inito_For_Tree (tree init, tree decl, ST *st)
         // NVISA doesn't have global section initialized to zero,
         // so want explict inito for it.
 	// if section-attribute, keep as dglobal inito
+#ifdef TARG_SL
+// we don't put vbuf variable, which is initialized with zero, into bss section
+	if (val == 0 && ! DECL_SECTION_NAME (decl) && !DECL_VBUF(decl) && !DECL_SBUF(decl)) {
+#else 	
 	if (val == 0 && ! DECL_SECTION_NAME (decl)) {
+#endif 		
 		Set_ST_init_value_zero(st);
 		if (ST_sclass(st) == SCLASS_DGLOBAL)
 			Set_ST_sclass(st, SCLASS_UGLOBAL);

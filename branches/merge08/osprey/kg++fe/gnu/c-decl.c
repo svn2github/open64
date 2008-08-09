@@ -3011,6 +3011,7 @@ start_decl (declarator, declspecs, initialized, attributes)
    * So put all function declarations at the top level */
   tem = (TREE_CODE(decl)==FUNCTION_DECL)?pushdecl_top_level(decl):pushdecl(decl);
 
+
   /* For a local variable, define the RTL now.  */
   if (current_binding_level != global_binding_level
       /* But not if this is a duplicate decl
@@ -3581,6 +3582,15 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
   int explicit_int = 0;
   int explicit_char = 0;
   int defaulted_int = 0;
+#if defined(TARG_SL)
+  int sbufp = 0;
+  int sdramp = 0;
+  int v1bufp = 0;
+  int v2bufp = 0;
+  int v4bufp = 0;
+  int vbuf_type = 0;
+  int internal_mem = 0;
+#endif // TARG_SL
   tree typedef_decl = 0;
   const char *name;
   tree typedef_type = 0;
@@ -3684,6 +3694,26 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 	  enum rid i = C_RID_CODE (id);
 	  if ((int) i <= (int) RID_LAST_MODIFIER)
 	    {
+#if defined(TARG_SL)
+	      // if type char isn't declared explicitly we set default type 
+	      // as char instead of original int type.
+ 
+           {
+             switch(i) {
+	       case RID_V1BUF:
+	       case RID_V2BUF:
+	       case RID_V4BUF:  
+	         vbuf_type = 1;
+		      // fall through
+	       case RID_SBUF:
+	       case RID_SDRAM:
+	         internal_mem = i;
+	         break;
+	       default:
+	         break;
+	     }
+	  }
+#endif // TARG_SL
 	      if (i == RID_LONG && (specbits & (1 << (int) RID_LONG)))
 		{
 		  if (longlong)
@@ -3787,9 +3817,19 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 			 name);
 	}
 
+#if defined(TARG_SL)
+      /* vbuf type default set to char */
+      if( vbuf_type ) {
+	type = char_type_node;
+      }
+      else {
+#endif // TARG_SL
       defaulted_int = 1;
       type = integer_type_node;
     }
+#if defined(TARG_SL)
+     }
+#endif 
 
   /* Now process the modifiers that were specified
      and check for invalid combinations.  */
@@ -3875,7 +3915,15 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 	  && !(specbits & 1 << (int) RID_SIGNED)))
     {
       if (longlong)
+#if defined(TARG_SL)
+/* SL don't support type long long, for bringup os easily, 
+ * compiler just mapping signed long long to signed long and
+ * unsigned long long to unsigned long 
+ */
+    	type = long_unsigned_type_node;     
+#else
 	type = long_long_unsigned_type_node;
+#endif
       else if (specbits & 1 << (int) RID_LONG)
 	type = long_unsigned_type_node;
       else if (specbits & 1 << (int) RID_SHORT)
@@ -3891,7 +3939,15 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 	   && type == char_type_node)
     type = signed_char_type_node;
   else if (longlong)
+#if defined(TARG_SL)
+/* SL don't support type long long, for bringup os easily, 
+ * compiler just mapping signed long long to signed long and
+ * unsigned long long to unsigned long 
+ */
+    type = long_integer_type_node;
+#else
     type = long_long_integer_type_node;
+#endif
   else if (specbits & 1 << (int) RID_LONG)
     type = long_integer_type_node;
   else if (specbits & 1 << (int) RID_SHORT)
@@ -3944,6 +4000,13 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
   restrictp = !! (specbits & 1 << (int) RID_RESTRICT) + TYPE_RESTRICT (type);
   volatilep = !! (specbits & 1 << (int) RID_VOLATILE) + TYPE_VOLATILE (type);
   inlinep = !! (specbits & (1 << (int) RID_INLINE));
+#if defined(TARG_SL)
+  sbufp = !!  (specbits & (1 << (int) RID_SBUF));
+  sdramp =!!  (specbits & (1 << (int) RID_SDRAM));
+  v1bufp = !!  (specbits & (1 << (int) RID_V1BUF));
+  v2bufp = !!  (specbits & (1 << (int) RID_V2BUF));
+  v4bufp = !!  (specbits & (1 << (int) RID_V4BUF));
+#endif // TARG_SL
   if (constp > 1 && ! flag_isoc99)
     pedwarn ("duplicate `const'");
   if (restrictp > 1 && ! flag_isoc99)
@@ -3954,7 +4017,15 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
     type = TYPE_MAIN_VARIANT (type);
   type_quals = ((constp ? TYPE_QUAL_CONST : 0)
 		| (restrictp ? TYPE_QUAL_RESTRICT : 0)
-		| (volatilep ? TYPE_QUAL_VOLATILE : 0));
+		| (volatilep ? TYPE_QUAL_VOLATILE : 0)
+#if defined(TARG_SL)
+                | (sbufp ? TYPE_QUAL_SBUF : 0)
+		| (sdramp ? TYPE_QUAL_SDRAM : 0)
+		| (v1bufp ? TYPE_QUAL_V1BUF : 0)
+		| (v2bufp ? TYPE_QUAL_V2BUF : 0)
+		| (v4bufp ? TYPE_QUAL_V4BUF : 0)
+#endif // TARG_SL
+		);
 
   /* Warn if two storage classes are given. Default to `auto'.  */
 
@@ -4630,6 +4701,28 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 	    type_quals = TYPE_UNQUALIFIED;
 #endif
 	  }
+#if defined(TARG_SL)
+     else if(internal_mem && TREE_CODE(declarator) == IDENTIFIER_NODE )
+     {
+        
+      switch(internal_mem) {
+	       case RID_V1BUF:
+            type = c_build_qualified_type(type, TYPE_QUAL_V1BUF);
+            break;
+	       case RID_V2BUF:
+	        type = c_build_qualified_type(type, TYPE_QUAL_V2BUF);
+	        break;
+	       case RID_V4BUF:  
+	        type = c_build_qualified_type(type, TYPE_QUAL_V4BUF);
+	         break;
+	       case RID_SBUF:
+	        type = c_build_qualified_type(type, TYPE_QUAL_SBUF);
+	        break;
+	      case RID_SDRAM:
+	        type = c_build_qualified_type(type, TYPE_QUAL_SDRAM);      
+      }
+     } 
+#endif // TARG_SL
 	decl = build_decl (FIELD_DECL, declarator, type);
 	DECL_NONADDRESSABLE_P (decl) = bitfield;
 
@@ -4781,6 +4874,29 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 
     if (specbits & (1 << (int) RID_REGISTER))
       DECL_REGISTER (decl) = 1;
+
+#if defined(TARG_SL)
+    /* Internal Buffer Extension */
+    tree tmp_type_node;
+    if (specbits & (1 << (int) RID_SDRAM))
+      DECL_SDRAM (decl) = 1;
+    if (specbits & (1 << (int) RID_SBUF))
+      DECL_SBUF (decl) = 1;
+    
+    if (specbits & (1 << (int) RID_V1BUF))
+      { 
+      	DECL_V1BUF (decl) = 1;  
+      }
+    if (specbits & (1 << (int) RID_V2BUF))
+     {
+      DECL_V2BUF (decl) = 1;
+     }
+    if (specbits & (1 << (int) RID_V4BUF))
+    {
+      DECL_V4BUF (decl) = 1;
+    }
+
+#endif // TARG_SL
 
     /* Record constancy and volatility.  */
     c_apply_type_quals_to_decl (type_quals, decl);
