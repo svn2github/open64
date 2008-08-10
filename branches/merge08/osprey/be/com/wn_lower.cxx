@@ -10227,8 +10227,7 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
   INT sse_args = 0;	/* count number of parameters passed in SSE regs */
 #endif
 
-  PLOC ploc1;
-  ploc1 = Setup_Output_Parameter_Locations(call_ty);
+  ploc = Setup_Output_Parameter_Locations(call_ty);
   for (i = 0; i < num_actuals; i++)
   {
    /*
@@ -10256,9 +10255,9 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
       * already processed
       */
 #ifdef TARG_X8664
-      if (Preg_Offset_Is_Float(PLOC_reg(ploc1))) 
+      if (Preg_Offset_Is_Float(PLOC_reg(ploc))) 
         sse_args++;
-      if (Preg_Offset_Is_Float(PLOC_reg2(ploc1))) 
+      if (Preg_Offset_Is_Float(PLOC_reg2(ploc))) 
 	sse_args++;
 #endif
       continue;

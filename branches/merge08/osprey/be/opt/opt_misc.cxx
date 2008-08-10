@@ -62,7 +62,6 @@ Analyze_pu_noreturn_attr (OPT_STAB* stab, PU* pu, ST* pu_st) {
   // satisify the "noreturn" semantic 
   Set_PU_has_attr_noreturn (*pu);
  
-  fprintf (stderr, "%s satisfy noreturn semantic\n", ST_name(pu_st));
 }
 
 // Analyze_pu_attr() conducts following things
