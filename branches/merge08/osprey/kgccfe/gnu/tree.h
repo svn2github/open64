@@ -789,7 +789,7 @@ struct tree_real_cst GTY(())
 #else
 // Have to pass back a char * and not a const char *
 #define TREE_STRING_POINTER(NODE) \
-	((char *)STRING_CST_CHECK (NODE)->string.pointer)
+	(STRING_CST_CHECK (NODE)->string.pointer)
 #endif /* SGI_MONGOOSE */
 #ifdef SGI_MONGOOSE
 #define TREE_STRING_ST(NODE) (STRING_CST_CHECK (NODE)->string.st)

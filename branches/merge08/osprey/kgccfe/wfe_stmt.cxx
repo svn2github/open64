@@ -1666,7 +1666,7 @@ WFE_Expand_Freq_Hint (tree exp) {
             ("the first operand of FREQ_HINT_STMT should be STRING_CST"));
 
    MIPS_FREQUENCY_HINT hint_id;
-   char* const hint_name = TREE_STRING_POINTER (hint_opnd);
+   const char* hint_name = TREE_STRING_POINTER (hint_opnd);
 
    if (!strcmp (hint_name, "never")) {
      hint_id = FREQUENCY_HINT_NEVER;
