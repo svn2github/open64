@@ -148,17 +148,19 @@ TARG_LIBUNWIND = $(TARGDIR)/libunwindP
 BE_DIR 			= $(BUILD_TOT)/be
 BE_BE_DIR		= $(BE_DIR)/be
 BE_CG_DIR 		= $(BE_DIR)/cg
-BE_CG_REGION_DIR	= $(BE_DIR)/cg/region
-BE_CG_GSCHED_DIR	= $(BE_DIR)/cg/sched
 BE_CG_GRA_DIR		= $(BE_CG_DIR)/gra_mon
 BE_CG_TARG_DIR		= $(BE_CG_DIR)/$(BUILD_TARGET_DIR)
 BE_COM_DIR 		= $(BE_DIR)/com
 ifneq ($(BUILD_TARGET), SL)
-BE_ORC_ICT_DIR		= 
-BE_ORC_INTEL_DIR	= 
-else
 BE_ORC_ICT_DIR		= $(BE_CG_DIR)/orc_ict
 BE_ORC_INTEL_DIR	= $(BE_CG_DIR)/orc_intel
+BE_CG_REGION_DIR        =
+BE_CG_GSCHED_DIR	=
+else
+BE_ORC_ICT_DIR          =
+BE_ORC_INTEL_DIR        =
+BE_CG_REGION_DIR	= $(BE_DIR)/cg/region
+BE_CG_GSCHED_DIR	= $(BE_DIR)/cg/sched
 endif
 BE_REGION_DIR 		= $(BE_DIR)/region
 BE_PROMPF_DIR		= $(BE_DIR)/prompf_anl
