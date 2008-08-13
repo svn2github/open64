@@ -1168,12 +1168,9 @@ Find_Insertion_Point (WN *pu_wn,
       //
       if (!TY_AR_const_ubnd(arg_ty, num_dims-1-dim) &&
           TY_AR_ubnd_val(arg_ty, num_dims-1-dim) &&
-          strcmp(ST_name(TY_AR_ubnd_var(arg_ty, num_dims-1-dim)),
-#if defined(TARG_SL) || defined(TARG_MIPS)
-                 "__vla_bound") == 0) {
-#else
-                 Temp_Symbol_Prefix "__vla_bound") == 0) {
-#endif
+          strncmp(ST_name(TY_AR_ubnd_var(arg_ty, num_dims-1-dim)),
+                  Temp_Symbol_Prefix "__vla_bound",
+		  sizeof (Temp_Symbol_Prefix "__vla_bound") - 1 ) == 0) {
 
         ST* vlabound_st = ONST(WN_st(TY_AR_ubnd_tree(arg_ty, dim)),
                                &(St_Table[TY_AR_ubnd_var(arg_ty, num_dims-1-dim)]));

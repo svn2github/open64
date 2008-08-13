@@ -2320,7 +2320,7 @@ Gen_Temp_Named_Symbol (TY_IDX ty, const char *rootname,
   ST *st = New_ST(CURRENT_SYMTAB);
   STR_IDX str_idx = Save_Str2i(
     // put _temp first so don't need knowledge of legal prefix in Gen_Temp call
-    (Label_Name_Separator "temp" Label_Name_Separator), 
+    (Temp_Symbol_Prefix), 
     rootname, Temp_Index++);
   ST_Init(st, str_idx, sym_class, storage_class, EXPORT_LOCAL, ty);
   return st;
