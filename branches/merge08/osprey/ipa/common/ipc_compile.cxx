@@ -1155,7 +1155,7 @@ void ipacom_doit (const char* ipaa_filename)
 #endif
 	       tmpdir_macro, symtab_command_line, 
 	       Get_Annotation_Filename_With_Path (),
-	       symtab_extra_args);
+	       symtab_extra_args, proper_name((const string)ipa_basename(outfilename)));
     } else {
              fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off -TENV:object_name=_%s\n\n",
                      tmpdir_macro, symtab_command_line, symtab_extra_args, proper_name((const string)ipa_basename(outfilename)));
