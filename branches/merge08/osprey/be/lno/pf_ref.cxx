@@ -133,6 +133,8 @@
 
 #define CACHE_LINE_SIZE 128
 
+#include "defs.h"
+#include "config_asm.h"         // Temp_Symbol_Prefix
 #include "prefetch.h"
 #include "access_vector.h"
 #include "pf_ref.h"
@@ -2500,7 +2502,9 @@ if(LNO_Run_Prefetch > SOME_PREFETCH &&
 if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
    Get_Dim() == 1 && confidence >=2 &&
    WN_operator(WN_array_base(arraynode))==OPR_LDID &&
-   strncmp(SYMBOL(WN_array_base(arraynode)).Name(),"_misym_temp_",12)==0){
+   strncmp(SYMBOL(WN_array_base(arraynode)).Name(),
+           Temp_Symbol_Prefix "_misym",
+           sizeof(Temp_Symbol_Prefix "_misym") - 1)==0){
    PF_SET_KEEP_ANYWAY(flag);
    WN *loop = Enclosing_Do_Loop(parent_ref);
    if(loop && Good_Loop_To_Adjust_Offset(loop,ref)){

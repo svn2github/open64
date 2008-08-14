@@ -56,6 +56,7 @@ static char *rcs_id = "$Source: be/lno/SCCS/s.simd.cxx $ $Revision: 1.244 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
+#include "config_asm.h"         // Temp_Symbol_Prefix
 #include "glob.h"
 #include "wn.h"
 #include "wn_map.h"
@@ -3505,7 +3506,9 @@ static INT Simd_Align_Analysis(INT init_align, WN *load_store,
         // If base address was a memory invariant hoisted out of the loop,
         // it is not possible to know the base alignment without looking at
         // ud chain.
-        if (strncmp(ST_name(base_st), "_misym_temp_", 12) == 0)
+        if (strncmp(ST_name(base_st), 
+                    Temp_Symbol_Prefix "_misym",
+                    sizeof(Temp_Symbol_Prefix "_misym") - 1) == 0)
            alignment = -2;
 
         if (WN_num_dim(array0) >= 2 &&
