@@ -649,10 +649,12 @@ BOOL
 DSE::Same_memloc( WN* store1, WN* store2) const
 {
   FmtAssert(OPERATOR_is_scalar_istore(WN_operator(store1)) ||
-                     OPERATOR_is_scalar_store (WN_operator(store1)), 
+                     OPERATOR_is_scalar_store (WN_operator(store1)) ||
+                     WN_operator(store1) == OPR_MSTORE, 
                     ("DSE::Same_memloc: store1 is not istore"));
   FmtAssert(OPERATOR_is_scalar_istore(WN_operator(store2)) ||
-                     OPERATOR_is_scalar_store (WN_operator(store2)), 
+                     OPERATOR_is_scalar_store (WN_operator(store2)) ||
+                     WN_operator(store2) == OPR_MSTORE, 
                     ("DSE::Same_memloc: store2 is not istore"));
   
   OCC_TAB_ENTRY *occ1 = Opt_stab()->Get_occ(store1);
@@ -703,7 +705,8 @@ DSE::Set_Required_CHI( CHI_NODE *chi, BOOL *chi_is_live ) const
 
   *chi_is_live = TRUE;
   if (OPERATOR_is_scalar_istore(WN_operator(chiwn)) || 
-      OPERATOR_is_scalar_store(WN_operator(chiwn))) {
+      OPERATOR_is_scalar_store(WN_operator(chiwn)) ||
+      WN_operator(chiwn) == OPR_MSTORE) {
     WN *last_st = Last_store(vaux);
     if( last_st != NULL && chiwn != last_st )  {
       if( Same_memloc(chiwn, last_st) ) {
@@ -725,7 +728,8 @@ DSE::Set_Required_CHI( CHI_NODE *chi, BOOL *chi_is_live ) const
   }
 
   if (OPERATOR_is_scalar_istore(WN_operator(chiwn)) || 
-      OPERATOR_is_scalar_store(WN_operator(chiwn))) {
+      OPERATOR_is_scalar_store(WN_operator(chiwn)) ||
+      WN_operator(chiwn) == OPR_MSTORE) {
     if(*chi_is_live)
       Set_last_store(vaux, chiwn);
   }
