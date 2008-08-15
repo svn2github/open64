@@ -98,16 +98,19 @@ endif
 LINUX_SYS_HFILES = \
 	syssgi.h
 
+LIBDWARF_HFILES = \
+	dwarf.h \
+	libdwarf.h 
+
 INCLUDE_HFILES = \
 	compact_reloc.h \
 	defalias.h \
-	dwarf.h \
+	dwarf_stuff.h \
 	elf_abi.h \
 	elf_mips.h \
 	elfaccess.h \
 	fp_class.h \
 	isam.h \
-	libdwarf.h \
 	libXlate.h \
 	objlist.h  \
 	obj_list.h  \
@@ -174,57 +177,54 @@ default: pathscale_defs.h
 	@: Make directories in case they do not exist.
 	@for d in sys cmplrs libelf; do \
 	    if [ ! -d $$d ]; then \
-		mkdir $$d && echo Making $$d; \
+		$(MKDIR) $$d && echo Making $$d; \
 	    fi; \
 	done	
 	@for h in $(LINUX_HFILES); do \
 	    if ! test -a $$h; then \
-	      ln -sf $(BUILD_TOT)/linux/include/$$h $$h; \
+	      $(LN) -sf $(BUILD_TOT)/linux/include/$$h $$h; \
 	    fi; \
 	done
 	@for h in $(LINUX_SYS_HFILES); do \
 	    if ! test -a $$h; then \
-	      ln -sf $(BUILD_TOT)/../linux/include/sys/$$h sys/$$h; \
+	      $(LN) -sf $(BUILD_TOT)/../linux/include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(INCLUDE_HFILES); do \
 	    if ! test -a $$h; then \
-	      ln -sf $(BUILD_TOT)/include/$$h $$h; \
+	      $(LN) -sf $(BUILD_TOT)/include/$$h $$h; \
+	    fi; \
+	done
+	@for h in $(LIBDWARF_HFILES); do \
+	    if ! test -a $$h; then \
+	      $(LN) -sf $(BUILD_TOT)/libdwarf/libdwarf/$$h $$h; \
 	    fi; \
 	done
 	@for h in $(CMPLR_DIRS); do \
 	    if ! test -a $$h; then \
-	      mkdir $$h; \
+	      $(MKDIR) $$h; \
 	    fi; \
 	done
 	@for h in $(CMPLR_HFILES); do \
 	    if ! test -a cmplrs/$$h; then \
-	      ln -sf $(BUILD_TOT)/../include/cmplrs/$$h cmplrs/$$h; \
+	      $(LN) -sf $(BUILD_TOT)/../include/cmplrs/$$h cmplrs/$$h; \
 	    fi; \
 	done
 	@for h in $(SYS_HFILES); do \
 	    if ! test -a sys/$$h; then \
-	      ln -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
+	      $(LN) -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(SYS_DIRS); do \
 	    if ! test -a sys/$$h; then \
-	      ln -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
-	    fi; \
-	done
-
-ifeq ($(BUILD_TARGET), SL)
-	@for h in $(LIBELF_DIRS); do \
-	    if ! test -a $$h; then \
-		mkdir $$h; \
+	      $(LN) -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(LIBELF_HFILES); do \
-	    if ! test -a libelf/$$h; then \
-	      ln -sf $(BUILD_TOT)/../libelf/lib/$$h libelf/$$h; \
+	    if ! test -a $$h; then \
+	      $(LN) -sf $(BUILD_TOT)/../libelf/lib/$$h libelf/$$h; \
 	    fi; \
 	done
-endif
 
 pathscale_defs.h: $(BUILD_TOT)/../defs.mk 
 	echo '#ifndef __pathscale_defs_h' > $@
