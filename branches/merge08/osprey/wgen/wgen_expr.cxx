@@ -4214,31 +4214,11 @@ WGEN_Expand_Expr (gs_t exp,
 	else {
 	  gs_t stmt_list = gs_statement_list_elts(body);
 	  gs_t list;
-#ifdef FE_GNU_4_2_0
-          int stmt_count = gs_length(stmt_list); 
-          for (int i=0; i<stmt_count; i++) {
-            gs_t stmt = gs_index(stmt_list, i);
-            if (i == stmt_count -1 /* last stmt */ &&
-                gs_tree_code_class(stmt) != GS_TCC_STATEMENT)
-              wn = WGEN_Expand_Expr (stmt);
-            else
-              WGEN_Expand_Stmt(stmt);
-          }
-#else
 	  for (list = stmt_list; gs_code(list) != EMPTY; 
 	       list = gs_operand(list, 1)) {
 	    gs_t stmt = gs_operand(list, 0);
-#ifdef KEY
-	    // Bug 12698: If the last statement is a decl node, return it.
-	    if (gs_code (gs_operand(list, 1)) == EMPTY /* last stmt ? */ &&
-	        (gs_tree_code (stmt) == GS_VAR_DECL ||
-	         gs_tree_code (stmt) == GS_PARM_DECL))
-	      wn = WGEN_Expand_Expr (stmt);
-	    else
-#endif
-	      WGEN_Expand_Stmt(stmt);
+	    WGEN_Expand_Stmt(stmt);
 	  }
-#endif
 	}
 	Unregister_Cleanup(); // KEY bug 11188
       }
