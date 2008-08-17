@@ -1243,6 +1243,17 @@ struct eq_oper
 // Map from label number to label usage information
 typedef hash_map<INT, label_wn, __gnu_cxx::hash<INT>, eq_oper> LABEL_WN_MAP;
 #endif
+  
+// This structure is used to save the basic information of ICALL
+struct ICALL_INFO {
+    WN* w2;
+    INT loopnest;
+    float probability;
+  
+    ICALL_INFO() { }
+    ICALL_INFO(WN *w2, INT loopnest, float probability) : w2(w2), loopnest(loopnest), probability(probability) { }
+};
+typedef std::vector<ICALL_INFO> ICALL_INFO_LIST;
 
 //-----------------------------------------------------------
 // summary procedure node
@@ -1424,6 +1435,10 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
     BOOL found = FALSE;
 
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    ICALL_INFO_LIST icall_list;
+#endif
+
     // walk the tree
     for (WN_TREE_ITER<PRE_ORDER, WN*> iter (w); iter.Wn () != NULL; ++iter) {
 
@@ -1580,7 +1595,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
             // This ifdef is redundant, but just for clarity.
             if (Cur_PU_Feedback && WN_operator(w2) == OPR_ICALL)
-              Process_icall (proc, w2, loopnest, probability);
+	      icall_list.push_back(ICALL_INFO(w2, loopnest, probability));
 #endif
 #endif // KEY
 
@@ -1968,6 +1983,16 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	}
 
     }
+    
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    if (Cur_PU_Feedback) {
+      // Since Process_icall will insert dummy calls in the SUMMARY_CALLSITE array, 
+      // we must call that after traversing the WN tree and inserted SUMMARY_CALLSITE
+      // entries for the normal calls, or the callsite_idx and WN will mismatch during IPO.
+      for (ICALL_INFO_LIST::const_iterator iter = icall_list.begin(); iter != icall_list.end(); ++iter)
+	Process_icall(proc, iter->w2, iter->loopnest, iter->probability);
+    }
+#endif
 
 #ifdef KEY
     {
