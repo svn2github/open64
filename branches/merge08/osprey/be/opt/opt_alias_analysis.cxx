@@ -171,6 +171,9 @@ void OPT_STAB::Analyze_Range(WN *wn_arr, POINTS_TO *pt)
     // Negative element size signifies non-contiguous array. There are
     // no address bounds implicit in a non-contiguous array access, so
     // we can't do anything. (bug 708002)
+    pt->Set_byte_ofst(0);
+    pt->Set_byte_size(0);
+    pt->Set_ofst_kind( OFST_IS_UNKNOWN );
     return;
   }
 
