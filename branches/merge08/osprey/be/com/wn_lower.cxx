@@ -300,11 +300,12 @@ static char *current_preg_name;
 static UINT16 loop_nest_depth;
 static BOOL contains_a_loop;
 static struct ALIAS_MANAGER *alias_manager;
-#define PARITY_MAP_ARRAY_SIZE 32
-static WN_MAP parity_map_array[PARITY_MAP_ARRAY_SIZE];
-static WN_MAP lowering_parity_map = 0;
+#define NESTED_MAP_ARRAY_SIZE 32
+static WN_MAP parity_map_array[NESTED_MAP_ARRAY_SIZE];
+static WN_MAP derivation_map_array[NESTED_MAP_ARRAY_SIZE];
+static WN_MAP lowering_parity_map = WN_MAP_UNDEFINED;
 static WN_MAP wn_derivation_map = WN_MAP_UNDEFINED; 
-static INT32 parity_map_index = -1;
+static INT32 nested_map_index = -1;
 static LOWER_ACTIONS lowering_actions= 0;
 static BOOL save_Div_Split_Allowed ;
 static INT cur_memlib_idx        = 0;
@@ -1489,7 +1490,7 @@ PARITY WN_parity(WN *tree)
   {
     INT32	map;
 
-    Is_True((lowering_parity_map != 0), ("parity map not initialized"));
+    Is_True((lowering_parity_map != WN_MAP_UNDEFINED), ("parity map not initialized"));
 #ifdef KEY
     // Node may be deleted in which case the corresponding vertex and the 
     // associated edges should be deleted in the dependence graph but there
@@ -14120,18 +14121,17 @@ void Lower_Init(void)
     *  create map for marking parity
     */
    lowering_parity_map = WN_MAP32_Create(MEM_pu_pool_ptr);
-   if (wn_derivation_map != WN_MAP_UNDEFINED)
-     WN_MAP_Delete(wn_derivation_map);
    wn_derivation_map = WN_MAP_Create (MEM_pu_pool_ptr);
 
    lowering_actions = 0;
    current_state = current_state_NULL;
 
    // save parity_map in an array becuse it may change in nested PUs
-   parity_map_index++;
-   FmtAssert(0 <= parity_map_index && parity_map_index < PARITY_MAP_ARRAY_SIZE,
+   nested_map_index++;
+   FmtAssert(0 <= nested_map_index && nested_map_index < NESTED_MAP_ARRAY_SIZE,
              ("Lower_Init: Index into parity map array is out of range"));
-   parity_map_array[parity_map_index] = lowering_parity_map;
+   parity_map_array[nested_map_index] = lowering_parity_map;
+   derivation_map_array[nested_map_index] = wn_derivation_map;
 }
 
 void Lowering_Finalize(void)
@@ -14139,36 +14139,21 @@ void Lowering_Finalize(void)
   /* free lowering_parity_map */
   WN_MAP_Delete(lowering_parity_map);
 
-  if (wn_derivation_map != WN_MAP_UNDEFINED) {
-    // Lowering_Finalize() can be called in a row without intervening 
-    // Lower_Init(). This will happens when a PU has child PUs as we 
-    // can see from the following piece of code excerpted from 
-    // Preorder_Process_PUs ().
-    // 
-    // Preorder_Process_PUs () { 
-    //  ...
-    //   pu = Preprocess_PU(current_pu); // call WN_Init();
-    //  
-    //   for (PU_Info *child = PU_Info_child(current_pu);
-    //     child != NULL;
-    //     child = PU_Info_next(child)) {
-    //     Preorder_Process_PUs(child);
-    //   }
-    // }
-    // Postprocess_PU (current_pu); // call Lowering_Finialize().
-    // 
-    WN_MAP_Delete(wn_derivation_map);
-    wn_derivation_map = WN_MAP_UNDEFINED;
-  }
+  /* free wn_derivation_map */
+  WN_MAP_Delete(wn_derivation_map);
   
-  parity_map_index--;
-  if (parity_map_index >= 0) {
+  nested_map_index--;
+  if (nested_map_index >= 0) {
     // if there is a saved parity map, then restore it
-    lowering_parity_map = parity_map_array[parity_map_index];
+    lowering_parity_map = parity_map_array[nested_map_index];
+    // restore wn_derivation_map
+    wn_derivation_map = derivation_map_array[nested_map_index];
   }
   else {
     // otherwise, set it to undefined
     lowering_parity_map = WN_MAP_UNDEFINED;
+    // set wn_derivation_map to undefined
+    wn_derivation_map = WN_MAP_UNDEFINED;
   }
 }
 
