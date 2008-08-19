@@ -163,7 +163,7 @@ typedef struct annotation {
 #define ANNOT_loopinfo(a)	((LOOPINFO *)ANNOT_info(a))
 #define ANNOT_switch(a)		((ST *)ANNOT_info(a))
 #define ANNOT_rotating_kernel(a)   ((ROTATING_KERNEL_INFO*)ANNOT_info(a))
-#define ANNOT_asminfo(a)	((OP*)ANNOT_info(a))
+#define ANNOT_asminfo(a)	((ASMINFO *)ANNOT_info(a))
 
 
 typedef struct loopinfo {
@@ -242,7 +242,7 @@ struct ROTATING_KERNEL_INFO {
 #define ROTATING_KERNEL_INFO_copyout(x)       ((x)->copyout)
 #define ROTATING_KERNEL_INFO_localdef(x)      ((x)->localdef)
 
-#if 0
+#ifdef KEY 
 typedef struct asminfo {
   REGISTER_SET livein[ISA_REGISTER_CLASS_MAX+1];
   REGISTER_SET liveout[ISA_REGISTER_CLASS_MAX+1];

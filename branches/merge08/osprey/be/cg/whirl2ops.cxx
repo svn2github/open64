@@ -6007,7 +6007,47 @@ Handle_ASM (const WN* asm_wn)
   OP_MAP_Set(OP_Asm_Map, asm_op, asm_info);
 
 #ifdef KEY
-  BB_Add_Annotation( Cur_BB, ANNOT_ASMINFO, asm_op);
+  // Create ASM BB annotation.  Bug 14636.
+  {
+    int i;
+    ISA_REGISTER_CLASS rc;
+
+    ASMINFO *asm_bb_info = TYPE_PU_ALLOC(ASMINFO);
+    bzero(asm_bb_info, sizeof(ASMINFO));
+
+    FOR_ALL_ISA_REGISTER_CLASS(rc) {
+      ASMINFO_livein(asm_bb_info)[rc] = REGISTER_SET_EMPTY_SET;
+      ASMINFO_liveout(asm_bb_info)[rc] = REGISTER_SET_EMPTY_SET;
+      // Initialize kill to clobber, then add results to kill.
+      ASMINFO_kill(asm_bb_info)[rc] = ASM_OP_clobber_set(asm_info)[rc];
+    }
+
+    for (i = 0; i < OP_opnds(asm_op); i++) {
+      TN *tn = OP_opnd(asm_op, i);
+      if (TN_is_register(tn)) {
+	REGISTER reg = TN_register(tn);
+	if (reg != REGISTER_UNDEFINED) {
+	    rc = TN_register_class(tn);
+	      ASMINFO_livein(asm_bb_info)[rc] =
+		    REGISTER_SET_Union1(ASMINFO_livein(asm_bb_info)[rc], reg);
+	      }
+      }
+    }
+
+    for (i = 0; i < OP_results(asm_op); i++) {
+      TN *tn = OP_result(asm_op, i);
+      REGISTER reg = TN_register(tn);
+      if (reg != REGISTER_UNDEFINED) {
+	rc = TN_register_class(tn);
+	ASMINFO_liveout(asm_bb_info)[rc] =
+	    REGISTER_SET_Union1(ASMINFO_liveout(asm_bb_info)[rc], reg);
+	ASMINFO_kill(asm_bb_info)[rc] =
+	    REGISTER_SET_Union1(ASMINFO_kill(asm_bb_info)[rc], reg);
+      }
+    }
+
+    BB_Add_Annotation(Cur_BB, ANNOT_ASMINFO, asm_bb_info);
+  }
 
   /* Terminate the basic block */
   Start_New_Basic_Block ();

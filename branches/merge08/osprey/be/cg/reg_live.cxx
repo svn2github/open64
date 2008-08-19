@@ -418,13 +418,13 @@ Compute_Asm_Regs (BB *bb, REGSET livein, REGSET liveout, REGSET kill)
 {
   ANNOTATION *ant = ANNOT_Get (BB_annotations(bb), ANNOT_ASMINFO);
   Is_True(ant, ("ASMINFO annotation info not present"));
-  OP *asm_op = ANNOT_asminfo(ant);
-  Is_True(asm_op, ("ASMINFO op not present"));
-  ASM_OP_ANNOT* asm_info = (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, asm_op);
+  ASMINFO *info = ANNOT_asminfo(ant);
   ISA_REGISTER_CLASS rc;
 
   FOR_ALL_ISA_REGISTER_CLASS(rc) {
-    if (kill)    kill[rc] = ASM_OP_clobber_set(asm_info)[rc];
+    if (livein)  livein[rc] = ASMINFO_livein(info)[rc];
+    if (liveout) liveout[rc] = ASMINFO_liveout(info)[rc];
+    if (kill)    kill[rc] = ASMINFO_kill(info)[rc];
   }
 }
 
