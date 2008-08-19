@@ -287,9 +287,7 @@ struct operator_from_tree_t {
 #ifdef KEY
   OMP_MARKER_STMT,         "omp_marker_stmt",         'e', 0,  OPERATOR_UNKNOWN,
 #endif // KEY
-#ifdef TARG_SL
   FREQ_HINT_STMT,               "freq_hint_stmt",              'e', 1,   OPERATOR_UNKNOWN,   
-#endif 
   LAST_C_TREE_CODE,        "last_c_tree_code",          0, 0,  OPERATOR_UNKNOWN,
 
 #ifdef GPLUSPLUS_FE
