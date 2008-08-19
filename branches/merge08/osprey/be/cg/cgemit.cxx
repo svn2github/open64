@@ -6643,7 +6643,8 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
           }
         }
      }
-#elif !defined(TARG_IA64)
+#else
+#if !defined(TARG_IA64)
       if (!emit_typeinfo)
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv),
 				etable, format);
@@ -6655,6 +6656,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
       }
 #endif
       else
+#endif // TARG_IA64
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv));
 #endif // TARG_SL
       break;
