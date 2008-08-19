@@ -607,8 +607,14 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
 	    return FALSE;
 	  if (TY_kind(cr_addr_ty) != KIND_POINTER)
 	    return FALSE;
+#if 0
+	  // These code below cause some problems in some Fortran Cases and 416.gamess
+	  //   at -O3 with SIMD Opt. Some SIMD tys have the same type but diff align
+	  // With these code, the two cr will be different, which may cayse problems
+	  //   in EPRE or CG
 	  if (Ilod_ty() != cr->Ilod_ty())
 	    return FALSE;
+#endif
 	  if (TY_align_exp(TY_pointed(ivar_addr_ty)) !=
 	      TY_align_exp(TY_pointed(cr_addr_ty)))
 	    return FALSE;

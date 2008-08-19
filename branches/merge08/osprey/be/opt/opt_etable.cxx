@@ -3353,8 +3353,7 @@ private:
       // replacements here without conversion.
       //
       if (x->Dtyp() != TCON_ty(_tcon) &&
-	  x->Dtyp() != MTYPE_M &&
-	  ! MTYPE_is_vector(x->Dtyp()) )
+	  x->Dtyp() != MTYPE_M )
 	 tcon_idx = Enter_tcon(Targ_Conv(x->Dtyp(), _tcon));
       else
 	 tcon_idx = Enter_tcon(_tcon);
