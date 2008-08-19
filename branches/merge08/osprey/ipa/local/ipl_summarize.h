@@ -337,7 +337,7 @@ private:
     GLOBAL_HASH_TABLE *Global_hash_table;
 
     //for reordering
-    typedef hash_map<mUINT32,SUMMARY_STRUCT_ACCESS*> TY_TO_ACCESS_MAP;
+    typedef hash_map<mUINT32, mUINT32> TY_TO_ACCESS_MAP;
     TY_TO_ACCESS_MAP *Ty_to_access_map;// mapping ty_index to SUMMARY_STRUCT_ACCESS
 
 #ifdef KEY
@@ -480,11 +480,10 @@ private:
 	INT new_idx = _inline_attr.Newidx ();
 	return &(_inline_attr[new_idx]);
     }
-    SUMMARY_STRUCT_ACCESS* New_struct_access(mUINT32 ty_index, mUINT32 flatten_flds){
-	INT new_idx = _struct_access.Newidx ();
+    mUINT32 New_struct_access(mUINT32 ty_index, mUINT32 flatten_flds){
+	mUINT32 new_idx = _struct_access.Newidx ();
 	_struct_access[new_idx].Init (ty_index,flatten_flds,&reorder_ipl_pool);
-	return &(_struct_access[new_idx]);
-
+	return new_idx;
     }
 
 #ifdef KEY

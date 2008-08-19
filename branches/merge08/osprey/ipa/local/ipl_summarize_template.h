@@ -3066,6 +3066,7 @@ SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
     TY_TO_FLDNUM_MAP::const_iterator iter;
     TY_TO_ACCESS_MAP::const_iterator iter1;
     PTR_TO_TY_VECTOR::iterator ptr_iter;
+    mUINT32 cur_summary_idx = UINT32_MAX;
     SUMMARY_STRUCT_ACCESS * cur_summary;
     BOOL is_pointer=FALSE;
     fld_id=WN_field_id(wn);//inc field access count
@@ -3086,7 +3087,7 @@ SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
     //    return;
     iter1=Ty_to_access_map->find(struct_index);
     if (iter1!=Ty_to_access_map->end ()){// found summary
-        cur_summary=iter1->second;
+        cur_summary_idx=iter1->second;
     }
     else {
         iter=local_cands->find(struct_index);
@@ -3104,26 +3105,32 @@ SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
             ("the wn's ty_idx operated must be STRUCT"));
         iter1=Ty_to_access_map->find(struct_index);
         if (iter1!=Ty_to_access_map->end ())
-            cur_summary=iter1->second;
+            cur_summary_idx=iter1->second;
         else{//not found summary
-            cur_summary=New_struct_access(struct_index,flatten_flds);
+            cur_summary_idx=New_struct_access(struct_index,flatten_flds);
 #ifdef KEY
-            Ty_to_access_map->insert(std::make_pair(struct_index,cur_summary));
+            Ty_to_access_map->insert(std::make_pair(struct_index,cur_summary_idx));
 #else
-            Ty_to_access_map->insert(make_pair(struct_index,cur_summary));
+            Ty_to_access_map->insert(make_pair(struct_index,cur_summary_idx));
 #endif // KEY
             for(ptr_iter=Ptr_to_ty_vector->begin();
                 ptr_iter!=Ptr_to_ty_vector->end();
                 ptr_iter++){
                 if(ptr_iter->pt_index==struct_index)
 #ifdef KEY
-                    Ty_to_access_map->insert(std::make_pair(ptr_iter->ty_index,cur_summary));
+                    Ty_to_access_map->insert(std::make_pair(ptr_iter->ty_index,cur_summary_idx));
 #else
-                    Ty_to_access_map->insert(make_pair(ptr_iter->ty_index,cur_summary));
+                    Ty_to_access_map->insert(make_pair(ptr_iter->ty_index,cur_summary_idx));
 #endif // KEY
             }// fill in all such pointer_tys
         }
     }
+
+    Is_True(cur_summary_idx != UINT32_MAX,
+            ("cur_summary_idx is not initialized."));
+    cur_summary = Get_struct_access(cur_summary_idx);
+    Is_True(cur_summary != NULL,
+            ("cur_summary is NULL"));
 
 #ifdef KEY
     Is_True(fld_id <= cur_summary->Get_flatten_flds(),
