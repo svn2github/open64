@@ -1714,7 +1714,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
       if (WOPT_Enable_DCE) {
 	SET_OPT_PHASE("Dead Code Elimination 2");
-	comp_unit->Do_dead_code_elim(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,
+	comp_unit->Do_dead_code_elim(FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
 				     NULL);
 
 	if ( comp_unit->Cfg()->Feedback() )
