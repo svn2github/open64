@@ -1899,7 +1899,12 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       }
       break;
     case OPC_F10SQRT:
-      *folded = FALSE;
+      if (TCON_R16(c0) >= 0) {
+        TCON_R16(c0) = sqrtl(TCON_R16(c0));
+      } else {
+        *folded = FALSE;
+      }
+      break;
 
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQSQRT:
