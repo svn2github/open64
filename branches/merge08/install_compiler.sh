@@ -274,21 +274,29 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
     if [ "$ARCH" = "ia64" ] ; then
         for i in libgcc.a libstdc++.a libstdc++.so; do 
             F=`gcc --print-file-name $i`
-            [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
+            if [ ! -z "$F" ] && [ -e "$F" ]; then
+              INSTALL_DATA_SUB $F ${PHASEPATH}/$i
+            fi
         done
     fi
     if [ "$ARCH" = "i386" ] ; then
         for i in libgcc.a libstdc++.a libstdc++.so; do
 	    F=`gcc --print-file-name $i`
-	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
+            if [ ! -z "$F" ] && [ -e "$F" ]; then
+              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
+            fi
 	done
     fi
     if [ "$ARCH" = "x86_64" ] ; then
         for i in libgcc.a libstdc++.a libstdc++.so; do
 	    F=`gcc -m32 --print-file-name $i`
-	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
+	    if [ ! -z "$F" ] && [ -e "$F" ]; then
+              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
+            fi
 	    F=`gcc -m64 --print-file-name $i`
-	    [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
+	    if [ ! -z "$F" ] && [ -e "$F" ]; then
+              INSTALL_DATA_SUB $F ${PHASEPATH}/$i
+            fi
 	done
     fi
     return 0
@@ -329,22 +337,30 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
 
     if [ "$ARCH" = "ia64" ] ; then
         for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do 
-            f=`gcc --print-file-name=$i`
-            [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/$i
+            F=`gcc --print-file-name=$i`
+            if [ ! -z "F" ] && [ -e "$F" ]; then
+              INSTALL_DATA_SUB $f ${PHASEPATH}/$i
+            fi
         done
     fi
     if [ "$ARCH" = "i386" ] ; then
         for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
-	    f=`gcc --print-file-name=$i`
-	    [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
+	    F=`gcc --print-file-name=$i`
+            if [ ! -z "F" ] && [ -e "$F" ]; then
+              INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
+            fi
 	done
     fi
     if [ "$ARCH" = "x86_64" ] ; then
         for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
-	    f=`gcc -m32 --print-file-name=$i`
-	    [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
-            f=`gcc -m64 --print-file-name=$i`
-	    [ "x$f" != "x" ] && [ -e $f ] && INSTALL_DATA_SUB $f ${PHASEPATH}/$i
+	    F=`gcc -m32 --print-file-name=$i`
+            if [ ! -z "F" ] && [ -e "$F" ]; then
+              INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
+            fi
+            F=`gcc -m64 --print-file-name=$i`
+            if [ ! -z "F" ] && [ -e "$F" ]; then
+              INSTALL_DATA_SUB $f ${PHASEPATH}/$i
+            fi
 	done
     fi
     return 0
