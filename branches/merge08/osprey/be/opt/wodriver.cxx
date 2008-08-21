@@ -105,7 +105,7 @@ extern char * Ipa_File_Name;
 void
 wopt_main (INT wopt_argc, char **wopt_argv, INT be_argc, char **be_argv)
 {
-  extern char *Whirl_Revision;
+  extern const char *Whirl_Revision;
 
   if (strcmp (Whirl_Revision, WHIRL_REVISION) != 0)
     FmtAssert (!DEBUG_Ir_Version_Check,
