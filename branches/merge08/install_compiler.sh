@@ -339,7 +339,7 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
         for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do 
             F=`gcc --print-file-name=$i`
             if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $f ${PHASEPATH}/$i
+              INSTALL_DATA_SUB $F ${PHASEPATH}/$i
             fi
         done
     fi
@@ -347,7 +347,7 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
         for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
 	    F=`gcc --print-file-name=$i`
             if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
+              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
             fi
 	done
     fi
@@ -355,11 +355,11 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
         for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
 	    F=`gcc -m32 --print-file-name=$i`
             if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $f ${PHASEPATH}/32/$i
+              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
             fi
             F=`gcc -m64 --print-file-name=$i`
             if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $f ${PHASEPATH}/$i
+              INSTALL_DATA_SUB $F ${PHASEPATH}/$i
             fi
 	done
     fi
