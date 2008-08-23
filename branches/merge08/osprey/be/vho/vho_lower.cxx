@@ -68,6 +68,7 @@
 #ifdef KEY
 #include "w2op.h"		// For OPCODE_Can_Be_Spculative
 #endif
+#include "config_clist.h"
 
 typedef enum {
   ADDRESS_USED,
@@ -81,6 +82,7 @@ typedef enum {
 #include "ir_reader.h"
 #include "config_vho.h"
 #include "targ_const.h"
+#include "erbe.h"
 
 #define DO_VHO_LOWERING 1
 #define IS_POWER_OF_2(x) (((x)!=0) && ((x) & ((x)-1))==0)
@@ -256,8 +258,10 @@ static BOOL VHO_In_MP_Region_Pragma = FALSE;
 
 /* Variables related to struct lowering */
 
- #if defined(TARG_X8664) || defined(TARG_IA64) 
+#if defined(TARG_X8664) || defined(TARG_IA64) 
 INT32  VHO_Struct_Limit = 8;               /* max # of fields/statements     */
+#elif defined(TARG_NVISA)
+INT32  VHO_Struct_Limit = 24;              /* max # of fields/statements     */
 #else
 INT32  VHO_Struct_Limit = 4;               /* max # of fields/statements     */
 #endif
@@ -267,6 +271,13 @@ static BOOL   VHO_Struct_Can_Be_Lowered;    /* FALSE if cannot be lowered    */
 static INT32  VHO_Struct_Nfields;           /* # of fields                   */
 static TY_IDX VHO_Struct_Fld_Table [255]; /* table containing fields         */
 static INT32 VHO_Struct_Offset_Table [255]; /* table containing fields offset */
+// We want to use field_ids when possible,
+// as that gives higher-level type info about the original struct
+// (e.g. if want to know alignment of original struct).
+// However, fields that are arrays have a single field id,
+// but may span multiple elements, so use element types in that case.
+static INT32 VHO_Struct_Field_Id_Table[255]; /* table containing field ids   */
+static BOOL VHO_Struct_Field_Is_Array_Table[255]; /* field is array? */
 static INT32  VHO_Struct_Last_Field_Offset; /* offset of last field          */
 static INT32  VHO_Struct_Last_Field_Size;   /* size of last field            */
 
@@ -1234,7 +1245,7 @@ VHO_Lower_Compgoto ( WN * wn )
 
 /* ============================================================================
  *
- * static void
+ * static UINT
  * VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
  *
  * Flatten a struct/union 'sty' starting as 'offset' into non overlapping
@@ -1249,81 +1260,68 @@ VHO_Lower_Compgoto ( WN * wn )
  * ============================================================================
  */
 
-static void
-VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
+static UINT
+VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
 {
   TY_IDX      fty_idx;
   WN_OFFSET   field_offset;
 
   if ( TY_fld(Ty_Table [sty_idx]).Is_Null () ) {
-
     VHO_Struct_Can_Be_Lowered = FALSE;
-    return;
+    return field_id;
   }
 
   FLD_ITER fld_iter = Make_fld_iter (TY_fld (Ty_Table[sty_idx]));
 
   while (VHO_Struct_Can_Be_Lowered) {
     FLD_HANDLE fld (fld_iter);
-
     if ( FLD_is_bit_field(fld) ) {
       VHO_Struct_Can_Be_Lowered = FALSE;
       break;
     }
-
     fty_idx = FLD_type(fld);
-
     switch ( TY_kind(Ty_Table [fty_idx]) ) {
 
       case KIND_SCALAR:
       case KIND_POINTER:
-
-
         field_offset = offset + FLD_ofst(fld);
-
         if ( VHO_Struct_Nfields ) {
-
-          if ( field_offset >=   VHO_Struct_Last_Field_Offset
-                               + VHO_Struct_Last_Field_Size ) {
-
+          if ( field_offset >= VHO_Struct_Last_Field_Offset
+                                 + VHO_Struct_Last_Field_Size ) {
             /* new field */
-
             VHO_Struct_Last_Field_Offset = field_offset;
             VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
+            VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = FALSE;
+            VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = ++field_id;
             VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset;
             VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = fty_idx;
           }
-
           else
           if ( field_offset == VHO_Struct_Last_Field_Offset ) {
-
             /* overlapping field with same start offset */
-
             if ( TY_size (Ty_Table [fty_idx]) > VHO_Struct_Last_Field_Size ) {
-
               /* overlapping field with larger size */
-
               VHO_Struct_Last_Field_Offset = field_offset;
               VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
+              VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = FALSE;
+              VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = ++field_id;
               VHO_Struct_Fld_Table [VHO_Struct_Nfields-1] = fty_idx;
               VHO_Struct_Offset_Table [VHO_Struct_Nfields-1] = field_offset; 
             }
           }
-
           else
-          if (   field_offset + TY_size (Ty_Table [fty_idx]) 
-               > VHO_Struct_Last_Field_Offset + VHO_Struct_Last_Field_Size ) {
-
+          if ( field_offset + TY_size (Ty_Table [fty_idx]) 
+                   > VHO_Struct_Last_Field_Offset + VHO_Struct_Last_Field_Size ) {
             VHO_Struct_Can_Be_Lowered = FALSE;
           }
         }
 
         else {
-
           /* new field */
-
           VHO_Struct_Last_Field_Offset = field_offset;
           VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
+          VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = FALSE;
+          VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = ++field_id;
           VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset; 
           VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = fty_idx;
         }
@@ -1333,9 +1331,17 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
 
         if ( TY_is_packed(Ty_Table[fty_idx] ))
           VHO_Struct_Can_Be_Lowered = FALSE;
-
-        else
-          VHO_Get_Field_List (offset + FLD_ofst (fld), fty_idx);
+        else {
+          // Structs are their own field id, 
+          // then each field in them gets new id.
+          // So increment field_id,
+          // but don't want whole struct in table, just each subfield.
+          ++field_id;
+      
+       	  // get new field id from sub-struct 
+          // so next field will have right value.
+          field_id = VHO_Get_Field_List (offset + FLD_ofst (fld), fty_idx, field_id);
+        }
         break;
 
       case KIND_ARRAY:
@@ -1344,30 +1350,45 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
 		  
         ety_idx = Ty_Table [fty_idx].Etype();
 #ifdef KEY // bug 5273: array element size can be zero
-	if (TY_size(Ty_Table[ety_idx]) == 0)
-	  array_elem_num = 0;
-	else {
+       if (TY_size(Ty_Table[ety_idx]) == 0)
+         array_elem_num = 0;
+       else {
 #endif
-        Is_True (TY_size(Ty_Table [fty_idx])%TY_size(Ty_Table [ety_idx]) == 0,
+         Is_True (TY_size(Ty_Table [fty_idx])%TY_size(Ty_Table [ety_idx]) == 0,
                        ("unexpected array type"));
-        array_elem_num = TY_size(Ty_Table [fty_idx])/TY_size(Ty_Table [ety_idx]);
+         array_elem_num = TY_size(Ty_Table [fty_idx])/TY_size(Ty_Table [ety_idx]);
 #ifdef KEY // bug 5273
-	}
+       }
 #endif
         // Is_True (VHO_Struct_Nfields + array_elem_num < 255,
         //            ("number of flattened fields exceeds limit");
         if (VHO_Struct_Nfields + array_elem_num >= 255) {
-           VHO_Struct_Can_Be_Lowered = FALSE;
-           break;
+          VHO_Struct_Can_Be_Lowered = FALSE;
+          break;
         }  
+	++field_id;	// keep same field_id for all array elements
         field_offset = offset + FLD_ofst(fld);
 
         if(VHO_Struct_Nfields) {
-          if ( field_offset >=   VHO_Struct_Last_Field_Offset
-                                 + VHO_Struct_Last_Field_Size ) { 
+          if ( field_offset >=  VHO_Struct_Last_Field_Offset
+                                  + VHO_Struct_Last_Field_Size ) { 
             for(int i=0; i<array_elem_num; i++) {
-              VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]);
-              VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+              if (TY_kind(ety_idx) == KIND_STRUCT) {
+                INT last_nfield = VHO_Struct_Nfields;
+                // array of structs; open up each field of struct
+                VHO_Get_Field_List (field_offset + i*TY_size(ety_idx), 
+                                    ety_idx, field_id);
+                for (INT j=last_nfield; j < VHO_Struct_Nfields; ++j) {
+                  VHO_Struct_Field_Is_Array_Table [j] = TRUE;
+                  VHO_Struct_Field_Id_Table [j] = field_id;
+                }
+              }
+              else {
+                VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = TRUE;
+                VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
+                VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]);
+                VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+              }
             }
             VHO_Struct_Last_Field_Offset = field_offset;
             VHO_Struct_Last_Field_Size   = TY_size(Ty_Table [fty_idx]); 
@@ -1375,21 +1396,49 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
             if ( TY_size (Ty_Table [fty_idx]) > VHO_Struct_Last_Field_Size ) {
               VHO_Struct_Nfields--;
               for(int i=0; i<array_elem_num; i++) {
-                VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]);
-                VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+                if (TY_kind(ety_idx) == KIND_STRUCT) {
+                  INT last_nfield = VHO_Struct_Nfields;
+                  // array of structs; open up each field of struct
+                  VHO_Get_Field_List (field_offset + i*TY_size(ety_idx), 
+                                      ety_idx, field_id);
+                  for (INT j=last_nfield; j < VHO_Struct_Nfields; ++j) {
+                    VHO_Struct_Field_Is_Array_Table [j] = TRUE;
+                    VHO_Struct_Field_Id_Table [j] = field_id;
+                  }
+                }
+                else {
+                  VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = TRUE;
+                  VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
+                  VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]);
+                  VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+                }
               }
               VHO_Struct_Last_Field_Offset = field_offset;
               VHO_Struct_Last_Field_Size   = TY_size(Ty_Table [fty_idx]); 
             } 
           } else if ( field_offset + TY_size (Ty_Table [fty_idx])
-                      > VHO_Struct_Last_Field_Offset + VHO_Struct_Last_Field_Size ) {
+                        > VHO_Struct_Last_Field_Offset + VHO_Struct_Last_Field_Size ) {
             VHO_Struct_Can_Be_Lowered = FALSE;
           }           
         }
         else {
           for(int i=0; i<array_elem_num; i++) {
-            VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]); 
-            VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+            if (TY_kind(ety_idx) == KIND_STRUCT) {
+              INT last_nfield = VHO_Struct_Nfields;
+              // array of structs; open up each field of struct
+              VHO_Get_Field_List (field_offset + i*TY_size(ety_idx), 
+                                  ety_idx, field_id);
+              for (INT j=last_nfield; j < VHO_Struct_Nfields; ++j) {
+                VHO_Struct_Field_Is_Array_Table [j] = TRUE;
+                VHO_Struct_Field_Id_Table [j] = field_id;
+              }
+            }
+            else {
+                VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = TRUE;
+                VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
+                VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]); 
+                VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+            }
           }
           VHO_Struct_Last_Field_Offset = field_offset;
           VHO_Struct_Last_Field_Size   = TY_size(Ty_Table [fty_idx]);
@@ -1407,6 +1456,7 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
     else
       ++fld_iter;
   }
+  return field_id;
    
 } /* VHO_Get_Field_List */
 
@@ -1504,12 +1554,11 @@ VHO_Lower_Mstore ( WN * wn )
   ptr_dst_ty_idx = WN_ty(wn);
   srcpos         = WN_Get_Linenum(wn);
 
-  if (    VHO_Struct_Opt
+  if ( VHO_Struct_Opt
        && WN_operator(size) == OPR_INTCONST 
        && WN_opcode(src_value) == OPC_MLOAD ) {
        /* need to handle WN_opcode(src_value) == OPC_MMLDID, 
           see VHO_Lower_Mstid function                        */
-
 
     bytes          = WN_const_val(size);
     src_address    = WN_kid0(src_value);
@@ -1524,8 +1573,11 @@ VHO_Lower_Mstore ( WN * wn )
        dst_ty_idx = get_field_type(dst_ty_idx, WN_field_id(wn));
     }
 
-    if (    TY_align(src_ty_idx) == TY_align(dst_ty_idx)
-         && TY_kind(src_ty_idx) == KIND_STRUCT
+    // Used to check for matching struct alignment,
+    // but we don't need alignment to match to copy fields
+    // (may have been related to unused VHO_Struct_Alignment variable).
+    // if (    TY_align(src_ty_idx) == TY_align(dst_ty_idx)
+    if (TY_kind(src_ty_idx) == KIND_STRUCT
          && TY_is_packed(Ty_Table[src_ty_idx]) == FALSE
          && TY_is_packed(Ty_Table[dst_ty_idx]) == FALSE
          && bytes / TY_align(src_ty_idx) <= VHO_Struct_Limit ) {
@@ -1535,8 +1587,7 @@ VHO_Lower_Mstore ( WN * wn )
 //    VHO_Struct_Alignment = TY_align(dst_ty_idx);
 
       /* Flatten out the structure into non overlapping fields */
-
-      VHO_Get_Field_List ( 0, src_ty_idx );
+      VHO_Get_Field_List ( 0, src_ty_idx, WN_field_id(src_value) );
 
 #ifdef VHO_DEBUG
       if ( VHO_Struct_Debug )
@@ -1602,7 +1653,6 @@ VHO_Lower_Mstore ( WN * wn )
           dst_st      = WN_st(dst_address);
           dst_offset += WN_offset(dst_address);
         }
-
         else  dst_st = NULL; 
 /*
         if (    WN_operator(dst_address) == OPR_ARRAY
@@ -1652,18 +1702,14 @@ VHO_Lower_Mstore ( WN * wn )
           WN     * dst;
 
           fty_idx = VHO_Struct_Fld_Table [i];
-
           if ( src_st ) {
-
             opc = OPCODE_make_op ( OPR_LDID,
                                    Promoted_Mtype [TY_mtype(fty_idx)],
                                    TY_mtype(fty_idx) );
             src = WN_CreateLdid ( opc, src_offset + VHO_Struct_Offset_Table[i],
                                   src_st, fty_idx );
           }
-
           else {
-
             opc = OPCODE_make_op ( OPR_ILOAD,
                                    Promoted_Mtype [TY_mtype(fty_idx)],
                                    TY_mtype(fty_idx) );
@@ -1671,47 +1717,75 @@ VHO_Lower_Mstore ( WN * wn )
                                    Make_Pointer_Type ( fty_idx, FALSE ),
                                    WN_COPY_Tree ( src_address ) );
           }
-
           if ( dst_st ) {
-
             opc = OPCODE_make_op ( OPR_STID, MTYPE_V, TY_mtype(fty_idx) ); 
             dst = WN_CreateStid ( opc, dst_offset + VHO_Struct_Offset_Table[i],
                                   dst_st, fty_idx, src );
           }
-
           else {
-
             opc = OPCODE_make_op ( OPR_ISTORE, MTYPE_V, TY_mtype(fty_idx) );
             dst = WN_CreateIstore ( opc, dst_offset + VHO_Struct_Offset_Table[i],
                                     Make_Pointer_Type ( fty_idx, FALSE ),
                                     src,
                                     WN_COPY_Tree ( dst_address ) );
           }
-
           WN_Set_Linenum(dst, srcpos);
-
           WN_INSERT_BlockAfter ( block, WN_last(block), dst );
           // field_offset += TY_size(fty_idx);
         }
-
         wn = block;
-
       }
     }
 
     else {
-
 #ifdef VHO_DEBUG
       if ( VHO_Struct_Debug )
         fprintf ( TFile, "VHO_Lower_Mstore : FALSE %d\n", (INT32) srcpos );
 #endif /* VHO_DEBUG */
-
     }
   }
-
   return wn;
 } /* VHO_Lower_Mstore */
 
+inline BOOL Is_Ldid_Or_Lda (WN *tree)
+{
+  return (WN_operator(tree) == OPR_LDID || WN_operator(tree) == OPR_LDA);
+}
+// 64bit code can have cvt above the multiply
+inline BOOL Is_Multiply_Or_Cvt_Multiply (WN *tree)
+{
+  return ((WN_operator(tree) == OPR_MPY)
+    || (WN_operator(tree) == OPR_CVT && WN_operator(WN_kid0(tree)) == OPR_MPY));
+}
+
+// share code for finding LDID under a MMILOAD
+static WN*
+Find_Ldid_Under_Iload (WN *iload_kid)
+{
+    if (Is_Ldid_Or_Lda(iload_kid)) {
+    return iload_kid;
+    }
+    else if (WN_operator(iload_kid) == OPR_ADD) { 
+      if (Is_Ldid_Or_Lda(WN_kid0(iload_kid))
+        && Is_Multiply_Or_Cvt_Multiply(WN_kid1(iload_kid)) )
+      {
+      // array index
+      return WN_kid0(iload_kid);
+      }
+      // check other kid
+      else if (Is_Ldid_Or_Lda(WN_kid1(iload_kid))
+        && Is_Multiply_Or_Cvt_Multiply(WN_kid0(iload_kid)) )
+      {
+      // array index
+      return WN_kid1(iload_kid);
+      }
+    }
+    else if (WN_operator(iload_kid) == OPR_ARRAY) {
+      // recurse on array index variant
+      return Find_Ldid_Under_Iload (WN_kid0(iload_kid));
+    }
+    return NULL;
+}
 
 static TY_IDX
 Is_MM_load(WN *src, WN *dst)
@@ -1756,8 +1830,12 @@ VHO_Lower_Mstid (WN * wn)
   TY_IDX      dst_ty_idx;
   ST        * dst_st;
   WN        * src_value;
+  WN        * src_iload_kid;
+  WN        * src_ldid;
   WN_OFFSET   src_offset;
   TY_IDX      src_ty_idx;
+  TY_IDX      orig_src_ty_idx;
+  TY_IDX      src_ptr_ty_idx;
   ST        * src_st;
   WN        * size;
   INT64       bytes;
@@ -1766,27 +1844,82 @@ VHO_Lower_Mstid (WN * wn)
   INT32       i;
   SRCPOS      srcpos;
   OPCODE      opc;
+  BOOL	      src_is_pointer = FALSE;
+  INT src_field_id = 0;
+  INT dst_field_id = 0;
 
   src_value   = WN_kid0(wn);
   dst_ty_idx  = WN_ty(wn);
   srcpos      = WN_Get_Linenum(wn);
 
-  if (WN_field_id(wn) != 0 || WN_field_id(src_value) != 0) {
-    /* otherwise, we need to lower them into iload/istore, maybe later */
-    return wn;
+  // field_ids complicate things, as they require generating 
+  // (struct-type, field_id) rather than a simple field type.
+  // We can handle field_ids by getting fty
+  // of struct subfields for appropriate mtype, but generating field_ids
+  // of original struct for the actual ldid/stid.
+  if (WN_field_id(wn) != 0) {
+      dst_field_id = WN_field_id(wn);
+      dst_ty_idx = get_field_type(dst_ty_idx, WN_field_id(wn));
   }
+  if (WN_opcode(src_value) == OPC_MMLDID) {
+      src_ldid = src_value;
+      src_ty_idx = WN_ty(src_ldid);
+  }
+  else if (WN_opcode(src_value) == OPC_MMILOAD)
+  {
+      // will replace MSTID(MMILOAD) with STID<field1>(ILOAD<field1>),etc
+      src_iload_kid = WN_kid0(src_value);
+      // is indirect load, so will be pointer type
+      src_is_pointer = TRUE;
+      src_ptr_ty_idx =  WN_load_addr_ty(src_value);
+
+      if (TY_kind(src_ptr_ty_idx) != KIND_POINTER) {
+          return wn;		  // doesn't fit pattern so ignore
+      }
+      src_ty_idx = TY_pointed(src_ptr_ty_idx);
+      src_ldid = Find_Ldid_Under_Iload (src_iload_kid);
+
+      if (src_ldid == NULL)
+          return wn;  // don't handle any other cases
+  }
+  else  
+  {
+      return wn;	// don't handle any other cases
+  }
+
+  // keep the original src_type
+  orig_src_ty_idx = src_ty_idx;
+  // we have a src_ty_idx type at src_field_id of orig_src_ty_idx
+  if (WN_field_id(src_value) != 0) {
+      src_field_id = WN_field_id(src_value);
+      src_ty_idx = get_field_type(src_ty_idx, src_field_id);
+  }
+  // iload of preg is okay cause iload takes the field offset
+  if ( ST_class(WN_st(wn)) == CLASS_PREG ||
+       (ST_class(WN_st(src_ldid)) == CLASS_PREG && !src_is_pointer)) {
+      /* screen out PREG for now, need to change them into extract sometime */
+      return wn;
+  }
+
   bytes = TY_size(dst_ty_idx);
 
-  src_ty_idx = Is_MM_load(src_value, wn);
-  if ((VHO_Struct_Opt && (bytes > 0)) && (src_ty_idx != (TY_IDX)0)) {
+#if defined(TARG_NVISA)
+  if ((VHO_Struct_Opt && (bytes > 0))) {
+#else
+  if ((VHO_Struct_Opt && (bytes > 0)) && (Is_MM_load(src_value, wn) != (TY_IDX)0)) {
     /* screen out PREG for now, need to change them into extract sometime */
+#endif
+
 #ifdef KEY
     VHO_Struct_Nfields = 0;
     VHO_Struct_Can_Be_Lowered = TRUE;
 #endif
     
-    if(   TY_align(src_ty_idx) == TY_align(dst_ty_idx)
-       && TY_kind(src_ty_idx) == KIND_STRUCT
+          // Used to check for matching struct alignment,
+          // but we don't need alignment to match to copy fields
+          // (may have been related to unused VHO_Struct_Alignment variable).
+          // if(   TY_align(src_ty_idx) == TY_align(dst_ty_idx)
+    if (TY_kind(src_ty_idx) == KIND_STRUCT
        && TY_is_packed(Ty_Table[src_ty_idx]) == FALSE
        && TY_is_packed(Ty_Table[dst_ty_idx]) == FALSE
        && bytes / TY_align(src_ty_idx) <= VHO_Struct_Limit) {
@@ -1797,10 +1930,12 @@ VHO_Lower_Mstid (WN * wn)
 #endif
       //  VHO_Struct_Alignment = TY_align(dst_ty_idx);
 
-      /* Flatten out the structure into non overlapping fields */
-    
-      VHO_Get_Field_List (0, src_ty_idx);
-
+      // Flatten out the structure into non overlapping fields 
+      // src_field_id is the starting point of type src_ty_idx
+      // inside the outer structure of type orig_src_ty_idx
+              
+      VHO_Get_Field_List (0, src_ty_idx, src_field_id);
+              
 #ifdef VHO_DEBUG
       if ( VHO_Struct_Debug)
         fprintf ( TFile, "VHO_Lower_Mstid : %s %d \n",
@@ -1812,10 +1947,9 @@ VHO_Lower_Mstid (WN * wn)
 
         block = WN_CreateBlock();
         WN_Set_Linenum (block, srcpos);
-
-        src_st = WN_st(src_value);
+        src_st = WN_st(src_ldid);
+        // preserve offset from original ldid/iload
         src_offset = WN_offset(src_value);
-
         dst_st = WN_st(wn);
         dst_offset = WN_store_offset(wn);
 
@@ -1828,23 +1962,60 @@ VHO_Lower_Mstid (WN * wn)
           WN      * dst;
 
           fty_idx = VHO_Struct_Fld_Table[i];
-
-          opc = OPCODE_make_op ( OPR_LDID,
-                                 Promoted_Mtype [TY_mtype(fty_idx)],
-                                 TY_mtype(fty_idx) );
-          src = WN_CreateLdid ( opc, src_offset + VHO_Struct_Offset_Table[i],
-                              src_st, fty_idx);
+          if (src_is_pointer) {
+              opc = OPCODE_make_op ( OPR_ILOAD,
+                                     Promoted_Mtype [TY_mtype(fty_idx)],
+                                     TY_mtype(fty_idx) );
+              if (VHO_Struct_Field_Is_Array_Table[i]) {
+                  src = WN_CreateIload ( opc, 
+                                         src_offset + VHO_Struct_Offset_Table[i], 
+                                         fty_idx,
+                                         Make_Pointer_Type ( fty_idx),
+                                         WN_COPY_Tree (src_iload_kid) );
+              } else {
+                  src = WN_CreateIload ( opc, 
+                                         src_offset + VHO_Struct_Offset_Table[i], 
+                                         orig_src_ty_idx, src_ptr_ty_idx,
+                                         WN_COPY_Tree (src_iload_kid), 
+                                         VHO_Struct_Field_Id_Table[i]);
+              }
+          } else {
+              opc = OPCODE_make_op ( OPR_LDID,
+                                     Promoted_Mtype [TY_mtype(fty_idx)],
+                                     TY_mtype(fty_idx) );
+              if (VHO_Struct_Field_Is_Array_Table[i]) {
+                  // each element uses same field_id,
+                  // so rather than create array refs, just do element copies
+                  src = WN_CreateLdid ( opc, 
+                                        src_offset + VHO_Struct_Offset_Table[i],
+                                        src_st, fty_idx);
+              } else {
+                  src = WN_CreateLdid ( opc, 
+                                        src_offset + VHO_Struct_Offset_Table[i],
+                                        src_st, WN_ty(src_ldid), 
+                                        VHO_Struct_Field_Id_Table[i]);
+              }
+          }
           opc = OPCODE_make_op ( OPR_STID, MTYPE_V, TY_mtype(fty_idx) );
-          dst = WN_CreateStid ( opc, dst_offset + VHO_Struct_Offset_Table[i], 
-                                dst_st, fty_idx, src);
+          if (VHO_Struct_Field_Is_Array_Table[i]) {
+              // each element uses same field_id,
+              // so rather than create array refs, just do element copies
+              dst = WN_CreateStid ( opc, 
+                                    dst_offset + VHO_Struct_Offset_Table[i], 
+                                    dst_st, fty_idx, src);
+          } else {
+              dst = WN_CreateStid ( opc, 
+                                    dst_offset + VHO_Struct_Offset_Table[i], 
+                                    dst_st, WN_ty(wn), src, 
+                                    dst_field_id - src_field_id + VHO_Struct_Field_Id_Table[i]);
+          }
           WN_Set_Linenum(dst, srcpos);
-        
           WN_INSERT_BlockAfter (block, WN_last(block), dst);
           // field_offset += TY_size(fty_idx);
-        } 
+        } //end for
         wn = block;
-      }
-    }
+      } // end if ( VHO_Struct_Can_Be_Lowered && VHO_Struct_Nfields) {
+    } // end TY_kind(src_ty_idx) == KIND_STRUCT
 #ifdef KEY
     if (VHO_Struct_Can_Be_Lowered && VHO_Struct_Nfields)
       ; // we already lowered the struct
@@ -1878,10 +2049,8 @@ VHO_Lower_Mstid (WN * wn)
     if ( VHO_Struct_Debug) 
      fprintf (TFile, "VHO_Lower_Mstid: FALSE %d\n", (INT32) scrpos);
 #endif /* VHO_DEBUG */
-
     }
   }
-
   return wn;
 } /* VHO_Lower_Mstid */
 
@@ -1903,6 +2072,7 @@ VHO_Lower_Mstid (WN * wn)
  *
  * ============================================================================
  */
+
 WN *
 VHO_Lower_Mistore ( WN * wn )
 {
@@ -1920,6 +2090,12 @@ VHO_Lower_Mistore ( WN * wn )
   INT32       i;
   SRCPOS      srcpos;
   OPCODE      opc;
+  INT src_field_id = 0;
+  INT dst_field_id = 0;
+  BOOL src_is_pointer = FALSE;
+  TY_IDX src_ptr_ty_idx;
+  WN *src_iload_kid;
+  WN *src_ldid;
 
   src_value      = WN_kid0(wn);
   WN *dst_address= WN_kid1(wn);
@@ -1936,45 +2112,62 @@ VHO_Lower_Mistore ( WN * wn )
     /* otherwise, we need to get to the subfields, or generate ILOAD, later */
     return wn;
   }
-  if (    VHO_Struct_Opt
-	  && bytes > 0 
-	  && WN_opcode(src_value) == OPC_MMLDID &&
-	  ST_class(WN_st(src_value)) != CLASS_PREG ) {
-    /* screen out PREG for now, need to change them into extract sometime */
-
-    src_ty_idx     = WN_ty(src_value);
-
-    if (    TY_align(src_ty_idx) == TY_align(dst_ty_idx)
-         && TY_kind(src_ty_idx) == KIND_STRUCT
-         && TY_is_packed(Ty_Table[src_ty_idx]) == FALSE
-         && TY_is_packed(Ty_Table[dst_ty_idx]) == FALSE
-         && bytes / TY_align(src_ty_idx) <= VHO_Struct_Limit ) {
+  if ( VHO_Struct_Opt
+	  && bytes > 0) {
+    if (WN_opcode(src_value) == OPC_MMLDID
+	  && ST_class(WN_st(src_value)) != CLASS_PREG ) {
+      /* screen out PREG for now, need to change them into extract sometime */
+      src_ty_idx     = WN_ty(src_value);
+      src_ldid = src_value;
+    }
+    else if (WN_opcode(src_value) == OPC_MMILOAD) {
+      // is indirect load, so will be pointer type
+      src_is_pointer = TRUE;
+      src_ptr_ty_idx =  WN_load_addr_ty(src_value);
+      if (TY_kind(src_ptr_ty_idx) != KIND_POINTER) {
+        return wn;      // doesn't fit pattern so ignore
+      }
+      src_ty_idx = TY_pointed(src_ptr_ty_idx);
+      src_iload_kid = WN_kid0(src_value);
+      src_ldid = Find_Ldid_Under_Iload (src_iload_kid);
+      if (src_ldid == NULL)
+        return wn;// don't handle other cases
+    }
+    else {
+      return wn; // don't handle other cases
+    }
+  
+    // Used to check for matching struct alignment,
+    // but we don't need alignment to match to copy fields
+    // (may have been related to unused VHO_Struct_Alignment variable).
+    // if (    TY_align(src_ty_idx) == TY_align(dst_ty_idx)
+    if (TY_kind(src_ty_idx) == KIND_STRUCT
+          && TY_is_packed(Ty_Table[src_ty_idx]) == FALSE
+          && TY_is_packed(Ty_Table[dst_ty_idx]) == FALSE
+          && bytes / TY_align(src_ty_idx) <= VHO_Struct_Limit ) {
 
       VHO_Struct_Nfields = 0;
       VHO_Struct_Can_Be_Lowered = TRUE;
       //    VHO_Struct_Alignment = TY_align(dst_ty_idx);
-
       /* Flatten out the structure into non overlapping fields */
-
-      VHO_Get_Field_List ( 0, src_ty_idx );
+      VHO_Get_Field_List ( 0, src_ty_idx, WN_field_id(src_value) );
 
 #ifdef VHO_DEBUG
       if ( VHO_Struct_Debug )
         fprintf ( TFile, "VHO_Lower_Mistore : %s %d\n",
-                  VHO_Struct_Can_Be_Lowered ? "TRUE" : "FALSE",
-                  (INT32) srcpos );
+                    VHO_Struct_Can_Be_Lowered ? "TRUE" : "FALSE",
+                    (INT32) srcpos );
 #endif /* VHO_DEBUG */
 
       if ( VHO_Struct_Can_Be_Lowered && VHO_Struct_Nfields ) {
 
         block = WN_CreateBlock ();
         WN_Set_Linenum ( block, srcpos );
+        src_st     = WN_st(src_ldid);
 
-	src_st     = WN_st(src_value);
+        // preserve offset from original ldid/iload
         src_offset = WN_offset(src_value);
-
         // field_offset = 0;
-
         for ( i = 0; i < VHO_Struct_Nfields; i++ ) {
 
           TY_IDX   fty_idx;
@@ -1983,15 +2176,53 @@ VHO_Lower_Mistore ( WN * wn )
 
           fty_idx = VHO_Struct_Fld_Table [i];
 
-	  opc = OPCODE_make_op ( OPR_LDID,
-				 Promoted_Mtype [TY_mtype(fty_idx)],
-				 TY_mtype(fty_idx) );
-	  src = WN_CreateLdid ( opc, src_offset + VHO_Struct_Offset_Table[i],
-				src_st, fty_idx );
-	  opc = OPCODE_make_op ( OPR_ISTORE, MTYPE_V, TY_mtype(fty_idx));
-	  dst = WN_CreateIstore ( opc, dst_offset + VHO_Struct_Offset_Table[i],
-				  Make_Pointer_Type( fty_idx, FALSE ),
-				  src, WN_COPY_Tree( dst_address ));
+          if (src_is_pointer) {
+            opc = OPCODE_make_op ( OPR_ILOAD,
+                                   Promoted_Mtype [TY_mtype(fty_idx)],
+                                   TY_mtype(fty_idx) );
+            if (VHO_Struct_Field_Is_Array_Table[i]) {
+              src = WN_CreateIload ( opc,
+                                     src_offset + VHO_Struct_Offset_Table[i],
+                                     fty_idx,
+                                     Make_Pointer_Type ( fty_idx),
+                                     WN_COPY_Tree (src_iload_kid) );
+            } else {
+              src = WN_CreateIload ( opc,
+                                     src_offset + VHO_Struct_Offset_Table[i],
+                                     src_ty_idx, src_ptr_ty_idx,
+                                     WN_COPY_Tree (src_iload_kid),
+                                     VHO_Struct_Field_Id_Table[i]);
+	    }
+          }
+          else {
+            opc = OPCODE_make_op ( OPR_LDID,
+                                   Promoted_Mtype [TY_mtype(fty_idx)],
+                                   TY_mtype(fty_idx) );
+            if (VHO_Struct_Field_Is_Array_Table[i]) {
+              // each element uses same field_id,
+              // so rather than create array refs, just do element copies
+              src = WN_CreateLdid ( opc, 
+                                    src_offset + VHO_Struct_Offset_Table[i],
+                                    src_st, fty_idx );
+            } else {
+              src = WN_CreateLdid ( opc, 
+                                    src_offset + VHO_Struct_Offset_Table[i],
+                                    src_st, src_ty_idx, VHO_Struct_Field_Id_Table[i]);
+            }
+          }
+          opc = OPCODE_make_op ( OPR_ISTORE, MTYPE_V, TY_mtype(fty_idx));
+          if (VHO_Struct_Field_Is_Array_Table[i]) {
+            dst = WN_CreateIstore ( opc, 
+                                    dst_offset + VHO_Struct_Offset_Table[i],
+                                    Make_Pointer_Type( fty_idx),
+                                    src, WN_COPY_Tree( dst_address ));
+          } else {
+            dst = WN_CreateIstore ( opc, 
+                                    dst_offset + VHO_Struct_Offset_Table[i],
+                                    ptr_dst_ty_idx,
+                                    src, WN_COPY_Tree( dst_address ), 
+                                    dst_field_id - src_field_id + VHO_Struct_Field_Id_Table[i]);
+          }
           WN_Set_Linenum(dst, srcpos);
 
           WN_INSERT_BlockAfter ( block, WN_last(block), dst );
@@ -2000,19 +2231,16 @@ VHO_Lower_Mistore ( WN * wn )
         wn = block;
       }
     }
-
     else {
-
 #ifdef VHO_DEBUG
       if ( VHO_Struct_Debug )
         fprintf ( TFile, "VHO_Lower_Mstid : FALSE %d\n", (INT32) srcpos );
 #endif /* VHO_DEBUG */
- 
     }
   }
 
   return wn;
-} /* VHO_Lower_Mstid */
+} /* VHO_Lower_Mistore */
 
 static void
 vho_lower_set_st_addr_info ( WN * wn, ADDRESS_INFO_TYPE code )
@@ -3410,6 +3638,59 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 */
           return wn;
         }
+#ifdef TARG_NVISA
+        // gcc converts x += (y == 0) into a cond of x+1 or x.
+        // Would be more efficient for us if generated straight line code
+        // of t = (y == 0); x += t;
+        // Rather than try to change what gcc generates,
+        // instead look for x and x+-1 in operands,
+        // then transform that back to above 2-stmt sequence.
+        if (WN_operator(rwn) == OPR_LDID
+              && WN_operator(lwn) == OPR_ADD
+              && WN_Simp_Compare_Trees ( WN_kid0(lwn), rwn ) == 0
+              && WN_operator(WN_kid1(lwn)) == OPR_INTCONST
+              && (WN_const_val(WN_kid1(lwn)) == 1
+              // either adding or subtracting the condition result
+              || WN_const_val(WN_kid1(lwn)) == -1))
+        {
+          DevWarn("transform cselect back to straightline code");
+          ST *st = Gen_Temp_Symbol (MTYPE_To_TY(WN_rtype(test)), "_cond");
+          wn = WN_Stid (WN_rtype(test), 0, st, ST_type(st),
+                        test, 0);
+          WN_Set_Linenum ( wn, VHO_Srcpos );
+          WN_INSERT_BlockLast ( block, wn );
+
+          WN *ldid = WN_Ldid (WN_rtype(test), 0, st, ST_type(st));
+          if (WN_rtype(test) != WN_rtype(rwn))
+            ldid = WN_Cvt(WN_rtype(test), WN_rtype(rwn), ldid);
+          if (WN_const_val(WN_kid1(lwn)) == 1)
+            wn = WN_Binary(OPR_ADD, WN_rtype(rwn), rwn, ldid);
+          else
+            wn = WN_Binary(OPR_SUB, WN_rtype(rwn), rwn, ldid);
+           return wn;
+         }
+        // similar to above, but check for cond ? x|1 : x; which is just x|cond
+        else if (WN_operator(rwn) == OPR_LDID
+                   && WN_operator(lwn) == OPR_BIOR
+                   && WN_Simp_Compare_Trees ( WN_kid0(lwn), rwn ) == 0
+                   && WN_operator(WN_kid1(lwn)) == OPR_INTCONST
+                   && WN_const_val(WN_kid1(lwn)) == 1)
+        {
+          DevWarn("transform cselect back to straightline code");
+          ST *st = Gen_Temp_Symbol (MTYPE_To_TY(WN_rtype(test)), "_cond");
+          wn = WN_Stid (WN_rtype(test), 0, st, ST_type(st),
+                        test, 0);
+          WN_Set_Linenum ( wn, VHO_Srcpos );
+          WN_INSERT_BlockLast ( block, wn );
+
+          WN *ldid = WN_Ldid (WN_rtype(test), 0, st, ST_type(st));
+          if (WN_rtype(test) != WN_rtype(rwn))
+            ldid = WN_Cvt(WN_rtype(test), WN_rtype(rwn), ldid);
+          wn = WN_Binary(OPR_BIOR, WN_rtype(rwn), rwn, ldid);
+          return wn;
+        }
+// could look for other patterns, but wait and see what shows up.
+ #endif
       }
     }
   }
@@ -3615,24 +3896,18 @@ vho_lower_combine_loads ( WN * wn )
   opcode = WN_opcode(wn);
 
   if ( opcode == OPC_U4ADD || opcode == OPC_U4BIOR ) {
-
     add_opc   = OPC_U4ADD;
     or_opc    = OPC_U4BIOR;
     shift_opc = OPC_U4SHL;
     size      = 4;
   }
-
-  else
-  if ( opcode == OPC_U8ADD || opcode == OPC_U8BIOR ) {
-
+  else if ( opcode == OPC_U8ADD || opcode == OPC_U8BIOR ) {
     add_opc   = OPC_U8ADD;
     or_opc    = OPC_U8BIOR;
     shift_opc = OPC_U8SHL;
     size      = 8;
   }
-
   else {
-
     record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
     return wn;
   }
@@ -3644,15 +3919,11 @@ vho_lower_combine_loads ( WN * wn )
   swn     = WN_kid1(wn);
 
   if ( WN_opcode(swn) != shift_opc ) {
-
     if ( WN_opcode(lwn) == shift_opc ) {
-
       swn = lwn;
       lwn = WN_kid1(wn);
     }
-
     else {
-
       combine = FALSE;
       record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
     }
@@ -3661,7 +3932,6 @@ vho_lower_combine_loads ( WN * wn )
   mtype = WN_desc(lwn);
 
   if ( !MTYPE_is_unsigned(mtype) ) {
-
     combine = FALSE;
     record_combine_loads_failure ((INT32) VHO_Srcpos,  __LINE__);
   }
@@ -3672,7 +3942,6 @@ vho_lower_combine_loads ( WN * wn )
   if (    combine
        && WN_operator(WN_kid1(swn)) == OPR_INTCONST
        && ( load_operator == OPR_LDID || load_operator == OPR_ILOAD ) ) {
-
     bytes  = TY_size(WN_ty(lwn));
     source = lwn;
     last_item_size = bytes;
@@ -3682,11 +3951,8 @@ vho_lower_combine_loads ( WN * wn )
       last_index = WN_kid_count(WN_kid0(lwn)) - 1;
 
     while ( swn ) {
-
       shift_bits = WN_const_val(WN_kid1(swn));
-
       if ( shift_bits == 0 || shift_bits % 8 ) {
-
         combine = FALSE;
         record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
         break;
@@ -3700,24 +3966,16 @@ vho_lower_combine_loads ( WN * wn )
 
       if ( wn_operator == OPR_LDID || wn_operator == OPR_ILOAD )
         swn = NULL;
-
-      else
-      if ( opcode == add_opc || opcode == or_opc ) {
-
+      else if ( opcode == add_opc || opcode == or_opc ) {
         swn = WN_kid1(lwn);
         lwn = WN_kid0(lwn);
-
         if ( WN_opcode(swn) != shift_opc ) {
-
           if ( WN_opcode(lwn) == shift_opc ) {
-
             twn = lwn;
             lwn = swn;
             swn = twn;
           }
-
           else {
-
             combine = FALSE;
             record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
             break;
@@ -3725,7 +3983,6 @@ vho_lower_combine_loads ( WN * wn )
         }
 
         if ( WN_operator(WN_kid1(swn)) != OPR_INTCONST ) {
-
           combine = FALSE;
           record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
           break;
@@ -3734,15 +3991,12 @@ vho_lower_combine_loads ( WN * wn )
         wn_operator = WN_operator(lwn);
 
         if ( wn_operator != OPR_LDID && wn_operator != OPR_ILOAD ) {
-
           combine = FALSE;
           record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
           break;
         }
       }
-
       else {
-
         combine = FALSE;
         record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
         break;
@@ -3751,7 +4005,6 @@ vho_lower_combine_loads ( WN * wn )
       item_size = TY_size(WN_ty(lwn));
 
       if ( item_size != shift_bytes ) {
-
         combine = FALSE;
         record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
         break;
@@ -3760,7 +4013,6 @@ vho_lower_combine_loads ( WN * wn )
       bytes += item_size;
 
       if ( bytes > size ) {
-
         combine = FALSE;
         record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
         break;
@@ -3770,7 +4022,6 @@ vho_lower_combine_loads ( WN * wn )
       wn_operator = OPCODE_operator(opcode);
 
       if ( wn_operator != load_operator ) {
-
         combine = FALSE;
         record_combine_loads_failure ((INT32) VHO_Srcpos,  __LINE__);
         break;
@@ -3779,77 +4030,56 @@ vho_lower_combine_loads ( WN * wn )
       mtype = OPCODE_desc(opcode);
 
       if ( !MTYPE_is_unsigned(mtype) ) {
-
         combine = FALSE;
         record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
         break;
       }
 
       if ( load_operator == OPR_LDID ) {
-
         if (    WN_st(source) != WN_st(lwn)
              && WN_offset(source) != WN_offset(lwn) + last_item_size ) {
-
           combine = FALSE;
           record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
           break;
         }
       }
-
-      else
-      if ( load_operator == OPR_ILOAD ) {
-
+      else if ( load_operator == OPR_ILOAD ) {
         awn1 = WN_kid0(source);
         awn2 = WN_kid0(lwn);
-
         if ( WN_load_offset(source) == WN_load_offset(lwn) + last_item_size ) {
-
           if ( WN_Simp_Compare_Trees ( awn1, awn2 ) ) {
-
             combine = FALSE;
             record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
             break;
           }
         }
-
-        else
-        if ( WN_load_offset(source) == WN_load_offset(lwn) ) {
-
+	else if ( WN_load_offset(source) == WN_load_offset(lwn) ) {
           if (    WN_operator(awn1) == OPR_ARRAY
                && WN_operator(WN_kid(awn1,last_index)) == OPR_INTCONST ) {
-
             WN_const_val(WN_kid(awn1,last_index)) -= 1;
 
             if ( WN_Simp_Compare_Trees ( awn1, awn2 ) ) {
-
               WN_const_val(WN_kid(awn1,last_index)) += 1;
               combine = FALSE;
               record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
               break;
             }
-
             else
               WN_const_val(WN_kid(awn1,last_index)) += 1;
           }
-
           else {
-
             combine = FALSE;
             record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
             break;
           }
         }
-
         else {
-
           combine = FALSE;
           record_combine_loads_failure ((INT32) VHO_Srcpos,  __LINE__);
           break;
         }
       }
-      
       else {
-
         combine = FALSE;
         record_combine_loads_failure ((INT32) VHO_Srcpos, __LINE__);
         break;
@@ -3861,49 +4091,40 @@ vho_lower_combine_loads ( WN * wn )
   }
 
   if ( combine && bytes == size ) {
-
     TY_IDX aty_idx;
     TY_IDX uty_idx;
     TY_IDX pty_idx;
 
     if ( size == 4 ) {
-
       aty_idx = Be_Type_Tbl(MTYPE_U4);
       uty_idx = vho_u4a1_ty_idx;
 
       if ( uty_idx == (TY_IDX) 0 ) {
-
         uty_idx = aty_idx;
         Set_TY_align (uty_idx, 1);
         pty_idx = Make_Pointer_Type ( uty_idx, TRUE );
 
         vho_u4a1_ty_idx = uty_idx;
       }
-
       else
         pty_idx = TY_pointer(uty_idx);
     }
-
     else {
-
       aty_idx = Be_Type_Tbl(MTYPE_U8);
       uty_idx = vho_u8a1_ty_idx;
 
       if ( uty_idx == (TY_IDX) 0 ) {
-
         uty_idx = aty_idx;
         Set_TY_align (uty_idx, 1);
         pty_idx = Make_Pointer_Type ( uty_idx, TRUE );
 
         vho_u8a1_ty_idx = uty_idx;
       }
-
       else
         pty_idx = TY_pointer(uty_idx);
     }
 
     if ( load_operator == OPR_LDID ) {
-
       lwn = WN_COPY_Tree(lwn);
       WN_DELETE_Tree(wn);
       wn = lwn;
@@ -3911,9 +4132,7 @@ vho_lower_combine_loads ( WN * wn )
       WN_set_opcode(wn,opcode);
       WN_set_ty(wn,uty_idx);
     }
-
     else {
-
       lwn = WN_COPY_Tree(lwn);
       WN_DELETE_Tree(wn);
       wn = lwn;
@@ -4272,7 +4491,16 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
       break;
 
     case OPR_LDID:
-
+#ifdef TARG_NVISA
+      // check for a load past the end of the struct
+      if (ST_class(WN_st(wn)) == CLASS_VAR) {
+        TY_IDX ty = ST_type(WN_st(wn));
+        if (TY_kind(ty) == KIND_STRUCT && WN_offset(wn) >= TY_size(ty)) 
+        {
+          ErrMsgSrcpos(EC_Load_Past_Struct, VHO_Srcpos);
+        }
+      }
+#endif
       break;
 
     case OPR_LDA:
@@ -4507,6 +4735,14 @@ static WN *
 vho_lower_call ( WN * wn, WN * block )
 {
   INT32 i;
+#ifdef TARG_NVISA
+  if ((!ST_is_export_local(WN_st(wn)) || ST_sclass(WN_st(wn)) == SCLASS_EXTERN)
+        && !CLIST_enabled) // okay if producing C
+  {
+    // We only support calls to locally defined functions
+    ErrMsgSrcpos(EC_No_Calls, WN_Get_Linenum(wn), ST_name(WN_st(wn)));
+  }
+#endif
 
   for ( i = 0; i < WN_kid_count(wn); i++ )
     WN_actual(wn,i) = vho_lower_expr ( WN_actual(wn,i), block, NULL );
@@ -5166,6 +5402,7 @@ vho_lower_stmt ( WN * wn, WN * block )
                                 TY_pointed(WN_ty(wn)), 
                                 WN_kid0(wn), 
                                 WN_field_id(wn));
+          WN_Set_Linenum(wn1, WN_Get_Linenum(wn));
 /*
           fprintf ( stderr, "ISTORE->STID old\n" );
           fdump_tree ( stderr, wn );
@@ -8134,8 +8371,10 @@ WN * VHO_Lower_Driver (PU_Info* pu_info,
       wn = WN_Lower(wn, LOWER_TREEHEIGHT | LOWER_INLINE_INTRINSIC, NULL,
 		    "Intrinsic lowering");
    }
+#ifndef TARG_NVISA // don't need this extra lowering
    else wn = WN_Lower(wn, LOWER_FAST_EXP, NULL,
 		      "Fast exponents lowering");
+#endif
 
    return (wn);
 }
