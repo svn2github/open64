@@ -54,6 +54,7 @@ BUILD_TARGET   = SL
 BUILD_COMPILER = GNU
 BUILD_OS       = LINUX
 #BUILD_SUBTARGET= SL
+BUILD_VENDOR = SL
 
 
 #  Include (optional) parameter override file

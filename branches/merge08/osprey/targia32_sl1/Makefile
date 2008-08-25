@@ -65,8 +65,8 @@ LIBRARY_SUBDIRS := \
 TOOL_SUBDIRS := \
 	be \
 	cg \
-	driver \
 	ipa \
+	driver \
 	ipl \
 	ir_tools \
 	lw_inline \
