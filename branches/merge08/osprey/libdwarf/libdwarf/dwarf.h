@@ -695,6 +695,10 @@ extern "C" {
 #define DW_FRAME_REG29	29 /* integer reg 29 */
 #define DW_FRAME_REG30	30 /* integer reg 30 */
 #define DW_FRAME_REG31	31 /* integer reg 31, aka ra */
+#if defined(TARG_SL)
+#define DW_FRAME_REG34  34 /* link address reg, aka ja */
+#define DW_FRAME_REG35  35 /* return address reg, aka ra */
+#endif
 	
 	/* MIPS1, 2 have only some of these 64-bit registers.
 	** MIPS1  save/restore takes 2 instructions per 64-bit reg, and
