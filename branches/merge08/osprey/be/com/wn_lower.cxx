@@ -8178,10 +8178,13 @@ static void copy_aggregate_memset(WN *block, TY_IDX dstTY, WN *src, WN *dst,
 			   dst,
 			   dstTY,
 			   WN_PARM_BY_VALUE);
-
-  parms[1]=  WN_CreateParm(WN_rtype(src),
+  /*the second parms of intrinsic memset is a int, if we use WN_rtype(src),
+    and the size of src is 8 byts, its higher part will be treated as the
+    third parameter and then get wrong reslut.
+  */
+  parms[1]=  WN_CreateParm(MTYPE_I4,
 			   src,
-			   MTYPE_To_TY(WN_rtype(src)),
+			   MTYPE_To_TY(MTYPE_I4),
 			   WN_PARM_BY_VALUE);
 
   parms[2]=  WN_CreateParm(WN_rtype(size),
@@ -14385,9 +14388,13 @@ static WN  *Transform_To_Memset(WN *dst, INT32 offset, TY_IDX dstTY, WN *src, WN
                            dstTY ? dstTY : MTYPE_To_TY(WN_rtype(dst)),
                            WN_PARM_BY_VALUE);
 
-  parms[1]=  WN_CreateParm(WN_rtype(src),
+  /*the second parms of intrinsic memset is a int, if we use WN_rtype(src),
+    and the size of src is 8 byts, its higher part will be treated as the 
+    third parameter and then get wrong reslut.
+  */
+  parms[1]=  WN_CreateParm(MTYPE_I4,
                            src,
-                           MTYPE_To_TY(WN_rtype(src)),
+                           MTYPE_To_TY(MTYPE_I4),
                            WN_PARM_BY_VALUE);
 
   parms[2]=  WN_CreateParm(WN_rtype(size),
