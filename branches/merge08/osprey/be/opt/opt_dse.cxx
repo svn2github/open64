@@ -664,8 +664,31 @@ DSE::Same_memloc( WN* store1, WN* store2) const
   POINTS_TO *pt2 = occ2->Points_to();
   FmtAssert(pt1 != NULL && pt2 != NULL, ("DSE::Same_memloc: points_to == NULL"));
 
-  if (Opt_stab()->Rule()->Same_location(store1, store2, pt1, pt2))
+  if (Opt_stab()->Rule()->Same_location(store1, store2, pt1, pt2)) {
+#if defined(TARG_NVISA)
+    //for dynamic array, we need to be more conservative
+    INT i;
+    TY_IDX ty;
+    ty = ST_type(pt1->Base()); 
+    if (TY_kind(ty) == KIND_ARRAY) {
+      for (i = 0; i < TY_AR_ndims(ty); i++) {
+        if ( !TY_AR_const_lbnd(ty, i) ||
+             !TY_AR_const_ubnd(ty, i) )
+          return FALSE;
+      }
+    }
+
+    ty = ST_type(pt2->Base());
+    if (TY_kind(ty) == KIND_ARRAY) {
+      for (i = 0; i < TY_AR_ndims(ty); i++) {
+        if ( !TY_AR_const_lbnd(ty, i) ||
+             !TY_AR_const_ubnd(ty, i) )
+          return FALSE;
+      }
+    }
+#endif
     return TRUE;
+  }
   else if (Mem_WN_equiv(store1, store2)) {
     if (WN_kid_count(store1)>1 && Mem_WN_equiv_rec(WN_kid1(store1), WN_kid1(store2))) 
       return TRUE;
