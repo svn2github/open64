@@ -509,7 +509,7 @@ public:
 	Set_dtyp_const_val(wt, (v << 32) >> 32);
 #else
       if (wt == MTYPE_I4) 
-	Set_dtyp_const_val(wt, ((INT64)v << 32) >> 32);
+	Set_dtyp_const_val(wt, (v << 32) >> 32);
       else if (wt == MTYPE_U4) 
 	Set_dtyp_const_val(wt, (UINT64) ((UINT64) v << 32) >> 32);
 #endif
@@ -670,14 +670,21 @@ public:
 					u2.isconst.const_val = v; }
 #endif // TARG_SL
 #else  // TARG_X8664 || TARG_IA64
-void Set_dtyp_const_val(MTYPE dt, UINT64 v) { 
-					Is_True(Kind() == CK_CONST,   
-					    ("CODEREP::Set_dtyp_const_val, illegal kind"));   
-					if (v == (v << 32) >> 32)   
-					  _dtyp = MTYPE_U4;   
-					else _dtyp = MTYPE_I8;   
-					u2.isconst.const_val = v; } 
-
+#ifndef TARG_X8664
+  void	    Set_dtyp_const_val(MTYPE dt, INT64 v) { Is_True(Kind() == CK_CONST,
+					    ("CODEREP::Set_dtyp_const_val, illegal kind"));
+					if (v == (v << 32) >> 32)
+					  _dtyp = MTYPE_I4;
+					else _dtyp = MTYPE_I8;
+					u2.isconst.const_val = v; }
+#else
+  void	    Set_dtyp_const_val(MTYPE dt, UINT64 v) { Is_True(Kind() == CK_CONST,
+					    ("CODEREP::Set_dtyp_const_val, illegal kind"));
+					if (v == (v << 32) >> 32)
+					  _dtyp = MTYPE_U4;
+					else _dtyp = MTYPE_I8;
+					u2.isconst.const_val = v; }
+#endif
 #endif // TARG_SL || TARG_NVISA
   void      Set_dtyp_strictly(MTYPE dt) { _dtyp = dt; }
   MTYPE     Dsctyp(void) const        { return dsctyp; }
