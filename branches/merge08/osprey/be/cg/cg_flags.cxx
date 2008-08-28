@@ -208,7 +208,11 @@ BOOL CG_tune_do_loop = TRUE;
 BOOL CG_enable_thr = FALSE;
 BOOL CG_cond_defs_allowed = FALSE;
 BOOL LOCS_Enable_Bundle_Formation = FALSE;
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+BOOL CG_tail_call = FALSE;
+#else
 BOOL CG_tail_call = TRUE;
+#endif
 BOOL GCM_Speculative_Loads = FALSE;
 BOOL GCM_Predicated_Loads = FALSE;
 #endif

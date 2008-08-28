@@ -2173,7 +2173,7 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 	  if (!ISA_LC_Value_In_Class(val, LC_i16)) {
 #elif defined(TARG_X8664)
 	  if (!ISA_LC_Value_In_Class(val, LC_simm32)) {
-#elif defined(TARG_SL)
+#elif defined(TARG_SL) || defined(TARG_MIPS)
 	  if (!ISA_LC_Value_In_Class(val, LC_simm16)) {
 #elif defined(TARG_NVISA)
 	  if (FALSE) {
@@ -2198,7 +2198,7 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 #elif defined(TARG_X8664)
 	    FmtAssert (ISA_LC_Value_In_Class(val, LC_simm32),
 		("immediate value %lld too large for GPREL relocation", val));
-#elif defined(TARG_SL)
+#elif defined(TARG_SL) || defined(TARG_MIPS)
 	    FmtAssert (ISA_LC_Value_In_Class(val, LC_simm16),
 		("immediate value %lld too large for GPREL relocation", val));
 #elif defined(TARG_NVISA)

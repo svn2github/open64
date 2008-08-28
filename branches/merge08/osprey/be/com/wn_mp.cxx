@@ -1003,11 +1003,18 @@ Get_Gtid(ST * gtid)
 The lock type of Intel RTL is an I4 array of size 8. But where to put it?
 Does every named lock need a different lock? Remained to be tested.
 */
+#ifdef TARG_MIPS
 #if defined(TARG_SL)
 BOOL Is_Target_32bit()
 {
   return TRUE;
 }
+#else
+BOOL Is_Target_32bit () 
+{ 
+  return (Target_ABI == ABI_N32); 
+ }
+#endif
 #endif
 
 static void 

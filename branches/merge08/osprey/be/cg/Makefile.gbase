@@ -151,11 +151,19 @@ BE_CG_DIR 		= $(BE_DIR)/cg
 BE_CG_GRA_DIR		= $(BE_CG_DIR)/gra_mon
 BE_CG_TARG_DIR		= $(BE_CG_DIR)/$(BUILD_TARGET_DIR)
 BE_COM_DIR 		= $(BE_DIR)/com
+
 ifneq ($(BUILD_TARGET), SL)
+ifneq ($(BUILD_TARGET), MIPS)
 BE_ORC_ICT_DIR		= $(BE_CG_DIR)/orc_ict
 BE_ORC_INTEL_DIR	= $(BE_CG_DIR)/orc_intel
 BE_CG_REGION_DIR        =
 BE_CG_GSCHED_DIR	=
+else
+BE_ORC_ICT_DIR          =
+BE_ORC_INTEL_DIR        =
+BE_CG_REGION_DIR        = $(BE_DIR)/cg/region
+BE_CG_GSCHED_DIR        = $(BE_DIR)/cg/sched
+endif
 else
 BE_ORC_ICT_DIR          =
 BE_ORC_INTEL_DIR        =
