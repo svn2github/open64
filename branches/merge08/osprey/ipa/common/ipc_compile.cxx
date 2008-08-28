@@ -482,10 +482,8 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
           ("Full pathname for cc not set up"));
 
   if (argc > 0) {
-#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
-
     argv.push_back((*command_map)["cc"]);
-#else
+#if 0
     // We do not get the commanf from TOOLROOT
     // the (*command_map)["cc"] has considered both the $TOOLROOT and $COMPILER_BIN and $PATH
     char* command = base_addr + args[0];
