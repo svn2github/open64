@@ -467,15 +467,15 @@ load_components (INT argc, char **argv)
     INT phase_argc;
     char **phase_argv;
 
-    if (Run_cg || Run_lno || Run_autopar) {
-      // initialize target-info before cg or lno
-      Initialize_Targ_Info();
-    }
-
     if (!(Run_lno || Run_wopt || Run_preopt || Run_cg || 
 	  Run_prompf || Run_purple || Run_w2c || Run_w2f 
           || Run_w2fc_early || Run_ipl))
       Run_cg = TRUE;		    /* if nothing is set, run CG */
+
+    if (Run_cg || Run_lno || Run_autopar) {
+      // initialize target-info before cg or lno
+      Initialize_Targ_Info();
+    }
 
     if (Run_ipl) {
       Run_lno = Run_wopt = Run_cg = Run_w2fc_early
