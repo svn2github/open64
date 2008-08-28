@@ -336,7 +336,11 @@ WFE_Start_Function (tree fndecl)
         DECL_ST2 (fndecl) = func_st;
 #ifdef KEY // bugs 2178, 2152
 	extern_inline = TRUE;
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+       eclass = EXPORT_LOCAL;
+#else       
 	eclass = EXPORT_PREEMPTIBLE; // bug 14367
+#endif	
 #endif // KEY
       }
       else {
