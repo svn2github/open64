@@ -3138,8 +3138,8 @@ Allocate_Object ( ST *st )
     else {
       STR_IDX name = Find_Section_Name_For_ST (st);
       Assign_ST_To_Named_Section (st, name);
-      return;
     }
+    return;
   }
   if (Has_Base_Block(st)) {
 	base_st = Base_Symbol(st);	/* allocate the base, not the leaf */
