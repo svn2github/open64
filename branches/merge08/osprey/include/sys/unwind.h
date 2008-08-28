@@ -41,6 +41,7 @@
 #if defined(TARG_SL)
 #include  <sys/sl/unwind.h>
 #elif defined(TARG_MIPS)
+#include <sys/mips/unwind.h>
 #else
 #include <sys/ia64/unwind.h>
 #endif

@@ -47,7 +47,7 @@
 
 #define VERSION_NUMBER 1
 
-#include <sys/ia64/unwind_ia64.h>
+#include <sys/mips/unwind_mips.h>
 
 #ifndef _LP64
 /* Structure modified to reflect IA64 sizes and alignment.  GMB */

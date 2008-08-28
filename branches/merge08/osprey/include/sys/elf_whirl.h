@@ -62,7 +62,7 @@
 #define WT_IPA_SUMMARY	0x6	    /* IPA summary information */
 #define WT_DST		0x7	    /* WHIRL Debug Symbol Table */
 #define WT_LOCALMAP	0x8	    /* IPAA local map */
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_MIPS)
 #define WT_CALLGRAPH    0x9	/* Interrupt Service Routine register allocation info */ 
 #endif
 
