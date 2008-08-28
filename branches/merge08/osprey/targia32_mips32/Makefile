@@ -48,15 +48,12 @@ INCLUDE_SUBDIRS := \
 #  Next, all of the libraries are built because the tools depend on them.
 #
 LIBRARY_SUBDIRS := \
-	arith \
-	libcif \
 	libcmplrs \
 	libcomutil \
 	libdwarf \
 	libelf \
 	libelfutil \
-	libunwindP \
-	libu 
+	libunwindP 
 
 
 #
@@ -68,19 +65,19 @@ LIBRARY_SUBDIRS := \
 TOOL_SUBDIRS := \
 	be \
 	cg \
-	driver \
-	crayf90 \
-	g++fe \
-	gccfe \
 	ipa \
+	driver \
 	ipl \
 	ir_tools \
-	lno \
 	lw_inline \
 	whirl2c \
 	whirl2f \
 	wopt \
-	be_driver 
+	be_driver \
+#	libinstr
+#	lno \
+#	gccfe \
+#       g++fe \
 #	crayf90 
 
 
