@@ -3414,14 +3414,16 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
     result = Allocate_Result_TN(expr, NULL);
   }
 
-#ifdef TARG_IA64
-  Exp_Intrinsic_Op (id, result, kid0, kid1, &New_OPs);
-#elif defined(TARG_X8664) || defined(TARG_NVISA)
+#ifdef KEY
   const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
+#if defined(TARG_X8664) || defined(TARG_NVISA)
   Exp_Intrinsic_Op (id, result, kid0, kid1, kid2, mtype, &New_OPs);
 #else
   Exp_Intrinsic_Op (id, result, kid0, kid1, mtype, &New_OPs);
-#endif
+#endif // TARG_X8664
+#else
+  Exp_Intrinsic_Op (id, result, kid0, kid1, &New_OPs);
+#endif // KEY
 
   return result;
 }
