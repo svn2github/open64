@@ -129,7 +129,7 @@ static const char *accum_reg_names[4] = {
 static const char *c2accum_reg_names[2] = { "", "$c2acc" };
 
 //SL2 acc registers
-static const char *c2acc_ctrl_reg_names[2] = { "", "$c2acc_ctrl" };
+static const char *c2cond_reg_names[2] = { "", "$c2cond" };
 
 //SL2 mvsel internal register
 static const char *c2mvsel_reg_names[2] = { "", "$c2mvsel" };
@@ -199,9 +199,11 @@ main (int argc, char** argv)
   ISA_REGISTER_CLASS rc_float_odd = ISA_Register_Class_Create("float_odd", 64, true, false);
   // bc2t 
   ISA_REGISTER_CLASS rc_copc = ISA_Register_Class_Create("copc", 1, false, false);
+#endif
   //SL control register
   ISA_REGISTER_CLASS rc_control = ISA_Register_Class_Create("control", 32, true, false);
 
+#ifdef TARG_SL
   // SL special registers
   ISA_REGISTER_CLASS rc_special = ISA_Register_Class_Create("special", 32, true, false);
 
@@ -221,7 +223,7 @@ main (int argc, char** argv)
   // SL2 acc registers
   ISA_REGISTER_CLASS rc_c2accum = ISA_Register_Class_Create("c2accum", 4, true, false);
   // SL2 acc ctrl registers
-  ISA_REGISTER_CLASS rc_c2acc_ctrl = ISA_Register_Class_Create("c2acc_ctrl", 4, true, false);
+  ISA_REGISTER_CLASS rc_c2cond = ISA_Register_Class_Create("c2cond", 4, true, false);
   // SL2 mvsel internal register
   ISA_REGISTER_CLASS rc_c2mvsel = ISA_Register_Class_Create("c2mvsel", 4, true, false);
   // SL2 vlcs internal register
@@ -255,7 +257,7 @@ main (int argc, char** argv)
 #endif
 #ifdef TARG_SL2
   ISA_Register_Set(rc_c2accum, 0, 1, "%u", c2accum_reg_names, All_ISA_Mask());
-  ISA_Register_Set(rc_c2acc_ctrl, 0, 1, "%u", c2acc_ctrl_reg_names, All_ISA_Mask());
+  ISA_Register_Set(rc_c2cond, 0, 1, "%u", c2cond_reg_names, All_ISA_Mask());
   ISA_Register_Set(rc_c2mvsel, 0, 1, "%u", c2mvsel_reg_names, All_ISA_Mask());
   ISA_Register_Set(rc_c2vlcs, 0, 1, "%u", c2vlcs_reg_names, All_ISA_Mask());
   ISA_Register_Set(rc_c2movpat, 0, 1, "%u", c2movpat_reg_names, All_ISA_Mask());

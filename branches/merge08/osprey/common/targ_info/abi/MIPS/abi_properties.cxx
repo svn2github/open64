@@ -276,4 +276,3 @@ main()
   ABI_Properties_End();
 }
 
-

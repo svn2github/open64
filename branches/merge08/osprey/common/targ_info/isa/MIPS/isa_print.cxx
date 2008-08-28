@@ -83,6 +83,13 @@ main()
 
   /*one result  | 5 operands*/
   ISA_PRINT_TYPE c3type1 =  ISA_Print_Type_Create("c3type1", "%s %s,%s,%s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Operand(3);
+  Operand(4);
   Instruction_Print_Group(c3type1,
   	        TOP_c3_mac_ar,  
                TOP_c3_macn_ar,
@@ -93,20 +100,17 @@ main()
                TOP_c3_saadd_a,
                TOP_c3_saaddh_a,
                TOP_UNDEFINED);
+
+  /*one result  | 3 operands*/
+  ISA_PRINT_TYPE c3type2 =  ISA_Print_Type_Create("c3type2", "%s %s,%s,%s,%s");
   Name();
   Result(0);
   Operand(0);
   Operand(1);
-  Operand(2);  
-  Operand(3);
-  Operand(4);
-
-  /*one result  | 3 operands*/
-
-  ISA_PRINT_TYPE c3type2 =  ISA_Print_Type_Create("c3type2", "%s %s,%s,%s,%s");
+  Operand(2);
   Instruction_Print_Group(c3type2,
-  	        TOP_c3_bitc,  
-               TOP_c3_bitr,
+                     TOP_c3_bitc,  
+                     TOP_c3_bitr,
   	             TOP_c3_dmula,
   	             TOP_c3_dmulan, 
   	             TOP_c3_mac,// same_res
@@ -117,7 +121,6 @@ main()
   	             TOP_c3_mula,
   	             TOP_c3_mulaci,
   	             TOP_c3_mulacr,
-  	             TOP_c3_mulad,
   	             TOP_c3_mulan, //same_res
   	             TOP_c3_dshll_i,
     	             TOP_c3_dshrl_i,
@@ -130,22 +133,9 @@ main()
   	            TOP_c3_sasubsh,
   	            TOP_c3_samulsh,
   	        TOP_UNDEFINED);
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(1);
-  Operand(2);
 
   /*one result  | 6 operands*/
   ISA_PRINT_TYPE c3type5=  ISA_Print_Type_Create("c3type5", "%s %s,%s,%s,%s,%s,%s,%s");
-  Instruction_Print_Group(c3type5,
-  	             TOP_c3_dmula_a,
-  	             TOP_c3_dmulan_a,
-  	             TOP_c3_mac_a,// same_res
-  	             TOP_c3_macn_a, //same_res
-  	             TOP_c3_mula_a,
-  	             TOP_c3_saddha_a,
-  	             TOP_UNDEFINED);
   Name();
   Result(0);
   Operand(0);
@@ -154,13 +144,17 @@ main()
   Operand(3);
   Operand(4);
   Operand(5);
+  Instruction_Print_Group(c3type5,
+  	             TOP_c3_dmula_a,
+  	             TOP_c3_dmulan_a,
+  	             TOP_c3_mac_a,// same_res
+  	             TOP_c3_macn_a, //same_res
+  	             TOP_c3_mula_a,
+  	             TOP_c3_saddha_a,
+  	             TOP_UNDEFINED);
 
   /*one result  | 7 operands*/
   ISA_PRINT_TYPE c3type6=  ISA_Print_Type_Create("c3type6", "%s %s,%s,%s,%s,%s,%s,%s,%s");
-  Instruction_Print_Group(c3type6,
-                         TOP_c3_dmac_a,// same_res
-                         TOP_c3_dmacn_a,// same_res
-                         TOP_UNDEFINED);
   Name();
   Result(0);
   Operand(0);
@@ -170,23 +164,31 @@ main()
   Operand(4);
   Operand(5);
   Operand(6);
+  Instruction_Print_Group(c3type6,
+                         TOP_c3_dmac_a,// same_res
+                         TOP_c3_dmacn_a,// same_res
+                         TOP_UNDEFINED);
  
   /*one result  | 4 operands*/
   ISA_PRINT_TYPE c3type7 =  ISA_Print_Type_Create("c3type7", "%s %s,%s,%s,%s,%s");
-  Instruction_Print_Group(c3type7,
-  	            TOP_c3_saddha,
-                    TOP_c3_dmac,  // same_res
-                    TOP_c3_dmacn,// same_res
-  	            TOP_UNDEFINED);
   Name();
   Result(0);
   Operand(0);
   Operand(1);
   Operand(2);
   Operand(3);
+  Instruction_Print_Group(c3type7,
+  	            TOP_c3_saddha,
+                    TOP_c3_dmac,  // same_res
+                    TOP_c3_dmacn,// same_res
+  	            TOP_UNDEFINED);
   
   /*one result  | 2 operands*/
   ISA_PRINT_TYPE c3type8 =  ISA_Print_Type_Create("c3type8", "%s %s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
   Instruction_Print_Group (c3type8,
   	            TOP_c3_lead,
   	            TOP_c3_revb,
@@ -194,81 +196,273 @@ main()
                     TOP_c3_dadd,
                     TOP_c3_dsub,
  	            TOP_UNDEFINED);
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(1);
 
   /*one result | two operand | no name()*/
   ISA_PRINT_TYPE c3type11 =  ISA_Print_Type_Create("c3type11", "c3.mvfs %s,%s,%s");
+  Result(0);
+  Operand(0);
+  Operand(1);
   Instruction_Print_Group(c3type11,
   	             TOP_c3_mvfacc,
   	             TOP_c3_mvfadd,
       	             TOP_c3_mvfadds,
   	             TOP_UNDEFINED);
-  Result(0);
-  Operand(0);
-  Operand(1);  
   
   /*one result | two operand | no name()*/
   ISA_PRINT_TYPE c3type12 =  ISA_Print_Type_Create("c3type12", "c3.mvts %s,%s,%s");
+  Result(0);
+  Operand(0);
+  Operand(1);  
   Instruction_Print_Group(c3type12,
      	             TOP_c3_mvtacc,
       	             TOP_c3_mvtadds,
       	             TOP_c3_mvtadd,
   	             TOP_UNDEFINED);
-  Result(0);
-  Operand(0);
-  Operand(1);  
 
   ISA_PRINT_TYPE c3type13 = ISA_Print_Type_Create("c3type13", "%s %s, %s,%s");
-  Instruction_Print_Group(c3type13,
-  	             TOP_c3_mvfs,
-  	             TOP_c3_mvts,
-  	             TOP_UNDEFINED);
   Name();
   Result(0);
   Operand(0);
   Operand(1);
+  Instruction_Print_Group(c3type13,
+  	             TOP_c3_mvfs,
+  	             TOP_c3_mvts,
+  	             TOP_UNDEFINED);
   
   /*one result  | 2 operand*/
   ISA_PRINT_TYPE c3type14 =  ISA_Print_Type_Create("c3type14", "%s %s,%s,%s");
-  Instruction_Print_Group(c3type14,
-  	             TOP_c3_round,
-  	             TOP_UNDEFINED);
   Name();
   Result(0); // same res
   Operand(0); // shl
   Operand(1); // mode
+  Instruction_Print_Group(c3type14,
+  	             TOP_c3_round,
+  	             TOP_UNDEFINED);
 
   /*no result | 5 operand*/
   ISA_PRINT_TYPE c3type22 =  ISA_Print_Type_Create("c3type22", "%s %s,%s,%s,%s,%s");
-  Instruction_Print_Group(c3type22,
-  	             TOP_c3_st,
-                     TOP_c3_fftst,
-  	             TOP_UNDEFINED);
   Name();
   Operand(0);
   Operand(1);
   Operand(3);
   Operand(4);
   Operand(5);
+  Instruction_Print_Group(c3type22,
+  	             TOP_c3_st,
+                     TOP_c3_fftst,
+  	             TOP_UNDEFINED);
   
   ISA_PRINT_TYPE c3ld = ISA_Print_Type_Create("c3ld", "%s %s,%s,%s,%s,%s");
-  Instruction_Print_Group(c3ld,
-                     TOP_c3_ld,
-                     TOP_c3_fftld,
-                     TOP_UNDEFINED);
   Name();
   Result(0);
   Operand(0);
   Operand(2);
   Operand(3);
   Operand(4);
+  Instruction_Print_Group(c3ld,
+                     TOP_c3_ld,
+                     TOP_c3_fftld,
+                     TOP_UNDEFINED);
 
+  // new c3 
+  ISA_PRINT_TYPE c3_1des_4opr =  ISA_Print_Type_Create("c3_1des_4opr", "%s %s,%s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Operand(3);
+  Instruction_Print_Group(c3_1des_4opr,
+                          TOP_C3_mac,
+                          TOP_C3_macn,
+                          TOP_C3_mula_ar,
+                          TOP_C3_saadd_a,
+                          TOP_C3_saaddh_a,
+                          TOP_C3_samulh_a,
+                          TOP_C3_sasub_a,
+                          TOP_C3_sasubh_a,
+                          TOP_C3_shlata_i,
+                          TOP_C3_shrata_i,
+                          TOP_C3_mac_i,
+                          TOP_C3_macn_i,
+                          TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c3_2des_2opr = ISA_Print_Type_Create("c3_2des_2opr", "%s %s,%s,%s");
+  Name();
+  Result(1);
+  Operand(0);
+  Operand(1);
+  Instruction_Print_Group(c3_2des_2opr,
+                          TOP_C3_subc,
+                          TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c3_2des_3opr = ISA_Print_Type_Create("c3_2des_3opr", "%s %s,%s,%s,%s");
+  Name();
+  Result(1);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Instruction_Print_Group(c3_2des_3opr,
+                          TOP_C3_muls,
+                          TOP_C3_mulus,
+                          TOP_UNDEFINED);
+   
+  ISA_PRINT_TYPE c3_1des_3opr = ISA_Print_Type_Create("c3_1des_3opr", "%s %s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Instruction_Print_Group(c3_1des_3opr,
+                          TOP_C3_aadda,
+                          TOP_C3_nega,
+                          TOP_C3_bitr,
+                          TOP_C3_cs,
+                          TOP_C3_dshll_i,
+                          TOP_C3_dshrl_i,
+                          TOP_C3_mula,
+                          TOP_C3_mulan,
+                          TOP_C3_mula_i,
+                          TOP_C3_round,
+                          TOP_C3_saadds,
+                          TOP_C3_saaddsh,
+                          TOP_C3_sasubsh,
+                          TOP_C3_samulsh,
+                          TOP_C3_sasubs,
+                          TOP_C3_shav,
+                          TOP_C3_shlafa_i,
+                          TOP_C3_shrafa_i,
+                          TOP_C3_shla_i,
+                          TOP_C3_shra_i,
+                          TOP_UNDEFINED);
+ 
+  ISA_PRINT_TYPE c3_1des_2opr = ISA_Print_Type_Create("c3_1des_2opr", "%s %s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Instruction_Print_Group(c3_1des_2opr,
+                          TOP_C3_dadd,
+                          TOP_C3_dsub,
+                          TOP_C3_revb,
+                          TOP_C3_mvfs,
+                          TOP_C3_mvts,
+                          TOP_UNDEFINED);
+
+
+  ISA_PRINT_TYPE c3_gfs = ISA_Print_Type_Create("c3_gfs", "C3.mvfs %s,%s,%s");
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Instruction_Print_Group(c3_gfs,
+                          TOP_C3_mvfacc,
+                          TOP_C3_mvfaddr,
+                          TOP_C3_mvfadds,
+                          TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c3_gts = ISA_Print_Type_Create("c3_gts", "C3.mvts %s,%s,%s");
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Instruction_Print_Group(c3_gts,
+                          TOP_C3_mvtacc,
+                          TOP_C3_mvtaddr,
+                          TOP_C3_mvtadds,
+                          TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c3_1des_6opr = ISA_Print_Type_Create("c3_1des_6opr", "%s %s,%s,%s,%s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Operand(3);
+  Operand(4);
+  Operand(5);
+  Instruction_Print_Group(c3_1des_6opr,
+                          TOP_C3_dmac,
+                          TOP_C3_dmacn,
+                          TOP_C3_dmula_a,
+                          TOP_C3_dmulan_a,
+                          TOP_C3_mac_a,
+                          TOP_C3_macn_a,
+                          TOP_C3_sadda,
+	                  TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c3_1des_7opr = ISA_Print_Type_Create("c3_1des_7opr", "%s %s,%s,%s,%s,%s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Operand(3);
+  Operand(4);
+  Operand(5);
+  Operand(6);
+  Instruction_Print_Group(c3_1des_7opr,
+                          TOP_C3_dmac_a,
+                          TOP_C3_dmacn_a,
+                          TOP_C3_sadda_a,
+                          TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c3_1des_5opr = ISA_Print_Type_Create("c3_1des_5opr", "%s %s,%s,%s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Operand(3);
+  Operand(4);
+  Instruction_Print_Group(c3_1des_5opr,
+                          TOP_C3_dmula,
+                          TOP_C3_dmulan,
+                          TOP_C3_mac_ar,
+                          TOP_C3_macn_ar,
+                          TOP_C3_mula_a,
+                          TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c3_0des_3opr =  ISA_Print_Type_Create("c3_0des_3opr", "%s %s,%s,%s");
+  Name();
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Instruction_Print_Group(c3_0des_3opr,
+                          TOP_C3_ffe,
+                          TOP_UNDEFINED);
+   
+  ISA_PRINT_TYPE c3_1des_3opr_1 = ISA_Print_Type_Create("c3_1des_3opr_1", "%s %s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(2);
+  Operand(3);
+  Instruction_Print_Group(c3_1des_3opr_1,
+                     TOP_C3_ld,
+                     TOP_C3_fftld,
+                     TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c3_0des_4opr =  ISA_Print_Type_Create("c3_0des_4opr", "%s %s,%s,%s,%s");
+  Name();
+  Operand(0);
+  Operand(1);
+  Operand(3);
+  Operand(4);
+  Instruction_Print_Group(c3_0des_4opr,
+                     TOP_C3_st,
+                     TOP_C3_fftst,
+                     TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c3_1des_1opr = ISA_Print_Type_Create("c3_1des_1opr", "%s %s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Instruction_Print_Group(c3_1des_1opr,
+                     TOP_C3_lead,
+                     TOP_UNDEFINED);
+  // end
   
   // core thread
-    ISA_PRINT_TYPE slad =  ISA_Print_Type_Create("slad", "add %s,%s,%s");
+  ISA_PRINT_TYPE slad =  ISA_Print_Type_Create("slad", "add %s,%s,%s");
   Result(0);
   Operand(0);
   Operand(1);
@@ -295,7 +489,6 @@ main()
                           TOP_mvtc16,
                           TOP_mvfc16,
                           TOP_mv16,
-                          TOP_mv16_i,
                           TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3muls =  ISA_Print_Type_Create("c3muls", "%s %s,%s,%s,%s");
@@ -333,6 +526,7 @@ main()
 	                  TOP_sub16_i,
 	                  TOP_xor16,
 	                  TOP_xor16_i,
+                          TOP_mv16_i,
 	                  TOP_UNDEFINED);
 
   //add temp
@@ -381,24 +575,25 @@ main()
                           TOP_lduh16_rs,
                           TOP_inv16,
 #ifdef TARG_SL2 
-                  TOP_c2_fork_m,
-                  TOP_c2_fork_n,
-                  TOP_c2_thctrl_act,
-                  TOP_c2_thctrl_mode4, 
-                  TOP_c2_thctrl_mode5,
-                  TOP_c2_thctrl_mode6,
+                          TOP_c2_fork_m,
+			  TOP_c2_fork_n,
+			  TOP_c2_thctrl_act,
+			  TOP_c2_thctrl_mode4, 
+			  TOP_c2_thctrl_mode5,
+			  TOP_c2_thctrl_mode6,
+			  TOP_c2_thctrl_mode7,
 #endif                           
-  	                  TOP_UNDEFINED);
-  
+			  TOP_UNDEFINED);
+
   /* no operand / no result*/
   ISA_PRINT_TYPE sixteenop2 = ISA_Print_Type_Create("sixteenop2", "%s" );
   Name();
   Instruction_Print_Group(sixteenop2,
-                          TOP_jr16,
-                          TOP_jr16_lnk,
- 	                  TOP_nop16,
-                          TOP_ret16,
- 	                  TOP_UNDEFINED);
+		  TOP_jr16,
+		  TOP_jr16_lnk,
+		  TOP_nop16,
+		  TOP_ret16,
+		  TOP_UNDEFINED);
 
   /* Two operand / no result  */
   ISA_PRINT_TYPE push16 =  ISA_Print_Type_Create("push16", "%s %s,%s");
@@ -406,7 +601,7 @@ main()
   Operand(0);              
   Operand(2);
   Instruction_Print_Group(push16,
-                          TOP_push16,
+		  TOP_push16,
                           TOP_UNDEFINED);
              
   /* One operand / one result */
@@ -430,6 +625,17 @@ main()
                           TOP_UNDEFINED);
 #endif
 
+#if defined(TARG_SL2)
+  ISA_PRINT_TYPE ropop2 =  ISA_Print_Type_Create("ropop", "%s %s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(2);
+  Instruction_Print_Group(ropop2,
+                          TOP_c2_mvgr_r2g_w,
+			  TOP_c2_mvgr_r2g_w_i,
+			  TOP_UNDEFINED);
+#endif  
 
   ISA_PRINT_TYPE ropop =  ISA_Print_Type_Create("ropop", "%s %s,%s,%s");
   Name();
@@ -561,194 +767,16 @@ main()
 			  TOP_movt_d,
 			  TOP_movz_s,
 			  TOP_movz_d,
-#ifdef TARG_SL2 
-      TOP_c2_vcmpr_h_eq,
-      TOP_c2_vcmpr_h_lt,
-      TOP_c2_vcmpr_h_le,
-      TOP_c2_vcmpr_h_gt,
-      TOP_c2_vcmpr_h_ge,
-      TOP_c2_vcmpr_w_eq,
-      TOP_c2_vcmpr_w_lt,
-      TOP_c2_vcmpr_w_le,
-      TOP_c2_vcmpr_w_gt,
-      TOP_c2_vcmpr_w_ge,
-      TOP_c2_vmov,
-      TOP_c2_vmul_h,
-      TOP_c2_vmul_w,
-      TOP_c2_vneg_h,
-      TOP_c2_vneg_w,
-      TOP_c2_vneg_p,
-      TOP_c2_vshr_p,
-      TOP_c2_vshr_h,
-      TOP_c2_vshr_w,
-      TOP_c2_vshl_p,
-      TOP_c2_vshl_h,
-      TOP_c2_vshl_w,
-      TOP_c2_vclp_a,
-      TOP_c2_vclp_s,
-      TOP_c2_vclp_2,
-      TOP_c2_vclp_n,
-      TOP_c2_vclg_h_lt_and,
-      TOP_c2_vclg_h_lt_or,
-      TOP_c2_vclg_h_le_and,
-      TOP_c2_vclg_h_le_or,
-      TOP_c2_vclg_h_eq_and,
-      TOP_c2_vclg_h_eq_or,
-      TOP_c2_vclg_h_ge_and,
-      TOP_c2_vclg_h_ge_or,
-      TOP_c2_vclg_h_gt_and,
-      TOP_c2_vclg_h_gt_or,
-      TOP_c2_vclg_h_and,
-      TOP_c2_vclg_h_or,
-      TOP_c2_vclg_h_le,
-      TOP_c2_vclg_h_lt,
-      TOP_c2_vclg_h_ge,
-      TOP_c2_vclg_h_gt,
-      TOP_c2_vclg_w_lt_and,
-      TOP_c2_vclg_w_lt_or,
-      TOP_c2_vclg_w_le_and,
-      TOP_c2_vclg_w_le_or,
-      TOP_c2_vclg_w_eq_and,
-      TOP_c2_vclg_w_eq_or,
-      TOP_c2_vclg_w_ge_and,
-      TOP_c2_vclg_w_ge_or,
-      TOP_c2_vclg_w_gt_and,
-      TOP_c2_vclg_w_gt_or,
-      TOP_c2_vclg_w_and,
-      TOP_c2_vclg_w_or,
-      TOP_c2_vclg_w_le ,
-      TOP_c2_vclg_w_lt ,
-      TOP_c2_vclg_w_ge,
-      TOP_c2_vclg_w_gt ,
-      TOP_c2_vclg_p_lt_and,
-      TOP_c2_vclg_p_lt_or,
-      TOP_c2_vclg_p_le_and,
-      TOP_c2_vclg_p_le_or,
-      TOP_c2_vclg_p_eq_and,
-      TOP_c2_vclg_p_eq_or,
-      TOP_c2_vclg_p_ge_and,
-      TOP_c2_vclg_p_ge_or,
-      TOP_c2_vclg_p_gt_and,
-      TOP_c2_vclg_p_gt_or,
-      TOP_c2_vclg_p_and,
-      TOP_c2_vclg_p_or,
-      TOP_c2_vclg_p_le,
-      TOP_c2_vclg_p_eq,
-      TOP_c2_vclg_p_ge,
-      TOP_c2_vclg_p_gt,
-      TOP_c2_vcmov_h_f,
-      TOP_c2_vcmov_h_t,
-      TOP_c2_vcmov_w_f,
-      TOP_c2_vcmov_w_t,
-      TOP_c2_vrnd_h,
-      TOP_c2_vrnd_w,
-      TOP_c2_mvgr_r2g_h_u,
-      TOP_c2_mvgr_r2g_h,
-      TOP_c2_mvgr_r2g_w,
-      TOP_c2_mvgr_r2g_h_u_i,
-      TOP_c2_mvgr_r2g_h_i,
-      TOP_c2_mvgr_r2g_w_i,
-      TOP_c2_mvgr_r2s,
-      TOP_c2_mvgr_g2r_lh,
-      TOP_c2_mvgr_g2r_hh,
-      TOP_c2_mvgr_g2r_w,
-      TOP_c2_mvgr_g2r_b4,
-      TOP_c2_mvgr_g2r_lh_i,
-      TOP_c2_mvgr_g2r_hh_i,
-      TOP_c2_mvgr_g2r_w_i,
-      TOP_c2_mvgr_g2r_b4_i,
-      TOP_c2_intra,
-      TOP_c2_intra_0_1_9_14_16,
-      TOP_c2_intra_2_3_8_10,
-      TOP_c2_intra_4,
-      TOP_c2_intra_5_11,
-      TOP_c2_intra_6,
-      TOP_c2_intra_7,
-      TOP_c2_intra_12_13, 
-      TOP_c2_intra_15_17,
-      TOP_c2_sub_g_abs_i,
-      TOP_c2_sub_g_abs,
-      TOP_c2_sub_r_abs_h_i,
-      TOP_c2_sub_r_abs_w_i,
-      TOP_c2_sub_r_abs_h,
-      TOP_c2_sub_r_abs_w,
-      TOP_c2_min,
-      TOP_c2_max,
-      TOP_c2_scond_eq,
-      TOP_c2_scond_lt,
-      TOP_c2_scond_le,
-      TOP_c2_scond_gt,
-      TOP_c2_scond_ge,
-      TOP_c2_scond_eq_i,
-      TOP_c2_scond_lt_i,
-      TOP_c2_scond_le_i,
-      TOP_c2_scond_gt_i,
-      TOP_c2_scond_ge_i,
-      TOP_c2_scond_r_h_wb_eq,
-      TOP_c2_scond_r_h_wb_lt,
-      TOP_c2_scond_r_h_wb_le,
-      TOP_c2_scond_r_h_wb_gt,
-      TOP_c2_scond_r_h_wb_ge,
-      TOP_c2_scond_r_wb_eq_i,
-      TOP_c2_scond_r_wb_lt_i,
-      TOP_c2_scond_r_wb_le_i,
-      TOP_c2_scond_r_wb_gt_i,
-      TOP_c2_scond_r_wb_ge_i,
-      TOP_c2_scond_r_w_wb_eq,
-      TOP_c2_scond_r_w_wb_lt,
-      TOP_c2_scond_r_w_wb_le,
-      TOP_c2_scond_r_w_wb_gt,
-      TOP_c2_scond_r_w_wb_ge,
-      TOP_c2_scond_r_w_wb_eq_i,
-      TOP_c2_scond_r_w_wb_lt_i,
-      TOP_c2_scond_r_w_wb_le_i,
-      TOP_c2_scond_r_w_wb_gt_i,
-      TOP_c2_scond_r_w_wb_ge_i,
-      TOP_c2_bop_ls,
-      TOP_c2_bop_rs,
-      TOP_c2_bop_and,
-      TOP_c2_bop_or,
-      TOP_c2_bop_xor,
-      TOP_c2_bop_ls_i,
-      TOP_c2_bop_rs_i  ,
-      TOP_c2_bop_and_i,
-      TOP_c2_bop_or_i  ,
-      TOP_c2_bop_xor_i,
-      TOP_c2_sum4_g,
-      TOP_c2_sum4_sw,
-      TOP_c2_vspel_mul_h,
-      TOP_c2_vspel_mul_w,
-      TOP_c2_clzob_zd, 
-      TOP_c2_clzob_za, 
-      TOP_c2_clzob_od, 
-      TOP_c2_clzob_oa, 
-      TOP_c2_clzob_zd_i, 
-      TOP_c2_clzob_za_i, 
-      TOP_c2_clzob_od_i, 
-      TOP_c2_clzob_oa_i, 
-      TOP_c2_wrap, 
-#endif //TARG_SL2
 			  TOP_UNDEFINED);
 
-#ifdef TARG_SL2
-  /* No result / one operand */
-  ISA_PRINT_TYPE op1 =  ISA_Print_Type_Create("op", "%s %s");
-  Name();
-  Operand(1);
-  Instruction_Print_Group(op1,
-                  TOP_c2_br_f,
-                  TOP_c2_br_t,
-     		  TOP_UNDEFINED);
-#endif 
-
-/* no result / no operand*/
+  /* no result / no operand*/
 #ifdef TARG_SL
   ISA_PRINT_TYPE sljr =  ISA_Print_Type_Create("op", "%s ");
   Name();
   Instruction_Print_Group(sljr,
-                  TOP_jr,
-                  TOP_jalr,
-                  TOP_UNDEFINED);
+		  TOP_jr,
+		  TOP_jalr,
+		  TOP_UNDEFINED);
 #endif
 
   /* No result / one operand */
@@ -756,15 +784,15 @@ main()
   Name();
   Operand(0);
   Instruction_Print_Group(op,
-			  TOP_j,
-			  TOP_jal,
+		  TOP_j,
+		  TOP_jal,
 #if !defined(TARG_SL)
-			  TOP_jalr,
-			  TOP_jr,
+		  TOP_jalr,
+		  TOP_jr,
 #endif
-			  TOP_mthi,
-			  TOP_mtlo,
-     		  TOP_UNDEFINED);
+		  TOP_mthi,
+		  TOP_mtlo,
+		  TOP_UNDEFINED);
 
   /* No result / two operands */
   ISA_PRINT_TYPE opop =  ISA_Print_Type_Create("opop", "%s %s,%s");
@@ -772,56 +800,22 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group(opop,
-			  TOP_mult,
-			  TOP_multu,
-			  TOP_dmult,
-			  TOP_dmultu,
-			  TOP_bgez,
-			  TOP_bgezal,
-			  TOP_bgtz,
-			  TOP_blez,
-			  TOP_bltz,
-			  TOP_bltzal,
-			  TOP_bc1f,
-			  TOP_bc1t,
-#ifdef TARG_SL2 
-      TOP_c2_sti_v_b,
-      TOP_c2_sti_v_h,
-      TOP_c2_sti_v_w,
-      TOP_c2_sti_v_m_b,
-      TOP_c2_sti_v_m_h,
-      TOP_c2_sti_v_m_w,
-      TOP_c2_sti_s_h,
-      TOP_c2_sti_s_w,
-      TOP_c2_sti_c,
-      TOP_c2_sum4_c,
-      TOP_c2_mov_c_i,
-      TOP_c2_sti_g2v_b,   
-      TOP_c2_sti_g2v_h,   
-      TOP_c2_sti_g2v_w,         
-      TOP_c2_scond_r_h_eq,
-      TOP_c2_scond_r_h_lt,
-      TOP_c2_scond_r_h_le,
-      TOP_c2_scond_r_h_gt,
-      TOP_c2_scond_r_h_ge,
-      TOP_c2_scond_r_h_eq_i,
-      TOP_c2_scond_r_h_lt_i,
-      TOP_c2_scond_r_h_le_i,
-      TOP_c2_scond_r_h_gt_i,
-      TOP_c2_scond_r_h_ge_i,
-      TOP_c2_scond_r_w_eq,
-      TOP_c2_scond_r_w_lt,
-      TOP_c2_scond_r_w_le,
-      TOP_c2_scond_r_w_gt,
-      TOP_c2_scond_r_w_ge,
-      TOP_c2_scond_r_w_eq_i,
-      TOP_c2_scond_r_w_lt_i,
-      TOP_c2_scond_r_w_le_i,
-      TOP_c2_scond_r_w_gt_i,
-      TOP_c2_scond_r_w_ge_i,
-      TOP_c2_mov_c,
-#endif //TARG_SL2
-			  TOP_UNDEFINED);
+		  TOP_mult,
+		  TOP_multu,
+		  TOP_dmult,
+		  TOP_dmultu,
+		  TOP_bgez,
+		  TOP_bgezal,
+		  TOP_bgtz,
+		  TOP_blez,
+		  TOP_bltz,
+		  TOP_bltzal,
+		  TOP_bc1f,
+		  TOP_bc1t,
+		  TOP_UNDEFINED);
+
+
+
 
   /* No result / two operands extra $0 operand for divide */
   ISA_PRINT_TYPE divide =  ISA_Print_Type_Create("divide", "%s $0,%s,%s");
@@ -829,28 +823,23 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group(divide,
-			  TOP_div,
-			  TOP_divu,
-			  TOP_ddiv,
-			  TOP_ddivu,
-			  TOP_UNDEFINED);
+		  TOP_div,
+		  TOP_divu,
+		  TOP_ddiv,
+		  TOP_ddivu,
+		  TOP_UNDEFINED);
 
   /* One result / no operand */
   ISA_PRINT_TYPE r =  ISA_Print_Type_Create("r", "%s %s");
   Name();
   Result(0);
   Instruction_Print_Group(r,
-			  TOP_mfhi,
-			  TOP_mflo,
+		  TOP_mfhi,
+		  TOP_mflo,
 #ifdef TARG_SL2
-                      TOP_c2_vabs_acc,
-                      TOP_c2_vlcs_wb,
+		  TOP_c2_vlcs_wb,
 #endif
-#ifndef fork_joint
-                      TOP_c2_thread_major,
-                      TOP_c2_thread_minor, 
-#endif 
-			  TOP_UNDEFINED);
+		  TOP_UNDEFINED);
 
   /* One result / one operand */
   ISA_PRINT_TYPE rop =  ISA_Print_Type_Create("rop", "%s %s,%s");
@@ -900,56 +889,81 @@ main()
 			  TOP_trunc_l_s,
 			  TOP_trunc_l_d,
 #ifdef TARG_SL2
-             TOP_c2_vclp,
-             TOP_c2_vclp_p,
-             TOP_c2_vabs_p,
-             TOP_c2_vabs_p_sm,
-             TOP_c2_vabs_h,
-             TOP_c2_vabs_h_sm,
-             TOP_c2_vabs_w,
-             TOP_c2_vabs_w_sm,
-             TOP_c2_vcopy, 
-             TOP_c2_mvgr_g2r_ba_lh,
-             TOP_c2_mvgr_g2r_ba_hh,
-             TOP_c2_mvgr_g2r_ba_w,
-             TOP_c2_mvgr_g2r_bh,
-             TOP_c2_mvgr_g2r_bh_u,
-             TOP_c2_mvgr_g2r_bv,
-             TOP_c2_mvgr_g2r_bv_u,
-
-             TOP_c2_mvgr_g2s,
-             TOP_c2_mvgr_s2g,
-             TOP_c2_mvgc_c2g,
-             TOP_c2_mvgc_g2c,
-             TOP_c2_ldi_s_h_u,
-             TOP_c2_ldi_s_h,
-             TOP_c2_ldi_s_w,
-             TOP_c2_ldi_c,
-             TOP_c2_ldi_v_b_u,
-             TOP_c2_ldi_v_b,
-             TOP_c2_ldi_v_h,
-             TOP_c2_ldi_v_w,
-             TOP_c2_ldi_v_m_b_u,
-             TOP_c2_ldi_v_m_b,
-             TOP_c2_ldi_v_m_h,
-             TOP_c2_ldi_v_m_w,
-             TOP_c2_bcst_q,
-             TOP_c2_bcst_i,
-             TOP_c2_vlcs_dc,
-             TOP_c2_vlcs_ac,
-             TOP_c2_mov_g,
-             TOP_c2_mov_r ,
-             TOP_c2_ldi_v2g_b_u, 
-             TOP_c2_ldi_v2g_b,   
-             TOP_c2_ldi_v2g_h_u, 
-             TOP_c2_ldi_v2g_h,   
-             TOP_c2_ldi_v2g_w,   
-             TOP_c2_lczero_z,
-             TOP_c2_lczero_nz_fw, 
-             TOP_c2_lczero_nz_bw,
+                          TOP_c2_vclp,
+			  TOP_c2_vclp_p,
+			  TOP_c2_vabs_p,
+			  TOP_c2_vabs_p_sm,
+			  TOP_c2_vabs_h,
+			  TOP_c2_vabs_h_sm,
+			  TOP_c2_vabs_w,
+			  TOP_c2_vabs_w_sm,
+			  TOP_c2_vcopy, 
+			  TOP_c2_mvgr_g2r_ba_lh,
+			  TOP_c2_mvgr_g2r_ba_hh,
+			  TOP_c2_mvgr_g2r_ba_w,
+			  TOP_c2_mvgr_g2r_bh,
+			  TOP_c2_mvgr_g2r_bh_u,
+			  TOP_c2_mvgr_g2r_bv,
+			  TOP_c2_mvgr_g2r_bv_u,
+			  TOP_c2_mvgc_c2g,
+			  TOP_c2_mvgc_g2c,
+			  TOP_c2_ldi_s_h_u,
+			  TOP_c2_ldi_s_h,
+			  TOP_c2_ldi_s_w,
+			  TOP_c2_ldi_c,
+			  TOP_c2_ldi_v_b_u,
+			  TOP_c2_ldi_v_b,
+			  TOP_c2_ldi_v_h,
+			  TOP_c2_ldi_v_w,
+			  TOP_c2_ldi_v_m_b_u,
+			  TOP_c2_ldi_v_m_b,
+			  TOP_c2_ldi_v_m_h,
+			  TOP_c2_ldi_v_m_w,
+			  TOP_c2_bcst_q,
+			  TOP_c2_bcst_i,
+			  TOP_c2_vlcs_dc,
+			  TOP_c2_vlcs_ac,
+			  TOP_c2_mov_g,
+			  TOP_c2_mov_r ,
+			  TOP_c2_ldi_v2g_b_u, 
+			  TOP_c2_ldi_v2g_b,   
+			  TOP_c2_ldi_v2g_h_u, 
+			  TOP_c2_ldi_v2g_h,   
+			  TOP_c2_ldi_v2g_w,   
+			  TOP_c2_lczero_z,
+			  TOP_c2_lczero_nz_fw, 
+			  TOP_c2_lczero_nz_bw,
 
 #endif //TARG_SL2
 			  TOP_UNDEFINED);
+
+#if defined(TARG_SL)
+  /* c2.load */
+  ISA_PRINT_TYPE c2ldv2g =  ISA_Print_Type_Create("c2ldv2g", "%s %s,%s(%s)");
+  Name();
+  Result(0);
+  Operand(1);
+  Operand(0);
+  Instruction_Print_Group(c2ldv2g,
+			  TOP_c2_ld_v2g_b_u,
+			  TOP_c2_ld_v2g_b,
+			  TOP_c2_ld_v2g_h_u, 
+			  TOP_c2_ld_v2g_h,   
+			  TOP_c2_ld_v2g_w,   
+			  TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE c2stg2v =  ISA_Print_Type_Create("c2stg2v", "%s %s,%s(%s)");
+  Name();
+  Operand(0);
+  Operand(2);
+  Operand(1);
+  Instruction_Print_Group(c2stg2v,
+			  TOP_c2_st_g2v_b, 
+			  TOP_c2_st_g2v_h, 
+			  TOP_c2_st_g2v_w, 
+			  TOP_UNDEFINED);
+#endif //TARG_SL 
+
 
   /* One operand / one result */
   ISA_PRINT_TYPE opr =  ISA_Print_Type_Create("opr", "%s %s,%s");
@@ -957,24 +971,24 @@ main()
   Operand(0);
   Result(0);
   Instruction_Print_Group(opr,
-			  TOP_mtc1,
-			  TOP_dmtc1,
-			  TOP_UNDEFINED);
+		  TOP_mtc1,
+		  TOP_dmtc1,
+		  TOP_UNDEFINED);
 #if defined(TARG_SL)
   /* One operand / one result */
   ISA_PRINT_TYPE oprfcc =  ISA_Print_Type_Create("oprfcc", "%s %s,$31");
   Name();
   Result(0);
   Instruction_Print_Group(oprfcc,
-			  TOP_cfc1,
-			  TOP_UNDEFINED);
+		  TOP_cfc1,
+		  TOP_UNDEFINED);
   /* One operand / one result */
   ISA_PRINT_TYPE opr2fcc =  ISA_Print_Type_Create("opr2fcc", "%s %s,$31");
   Name();
   Operand(0);
   Instruction_Print_Group(opr2fcc,
-			  TOP_ctc1,
-			  TOP_UNDEFINED);
+		  TOP_ctc1,
+		  TOP_UNDEFINED);
 #endif
 
   /* One result / three operands */
@@ -985,52 +999,62 @@ main()
   Operand(1);
   Operand(2);
   Instruction_Print_Group(ropopop,
-			  TOP_madd_s,
-			  TOP_madd_d,
-			  TOP_msub_s,
-			  TOP_msub_d,
-			  TOP_nmadd_s,
-			  TOP_nmadd_d,
-			  TOP_nmsub_s,
-			  TOP_nmsub_d,
+		  TOP_madd_s,
+		  TOP_madd_d,
+		  TOP_msub_s,
+		  TOP_msub_d,
+		  TOP_nmadd_s,
+		  TOP_nmadd_d,
+		  TOP_nmsub_s,
+		  TOP_nmsub_d,
 #ifdef TARG_SL2
-      TOP_c2_vspas,
-      TOP_c2_vspel_adds,
-      TOP_c2_vspel_mac_h,
-      TOP_c2_vspel_mac_w,
-      TOP_c2_mvsel,
-      TOP_c2_mvsel_zero_two,
-      TOP_c2_muls_r_h,
-      TOP_c2_muls_r_w,
-      TOP_c2_smads,
-      TOP_c2_cmov,
-      TOP_c2_clp,
-      TOP_c2_clp_i,
-      TOP_c2_chkrng,
-      TOP_c2_bxtr_u_l,
-      TOP_c2_bxtr_s_l,
-      TOP_c2_bxtr_u_m,
-      TOP_c2_bxtr_s_m,
-      TOP_c2_sum4_r,
-      TOP_c2_med,
-      TOP_c2_subs_g_i,
-      TOP_c2_subs_g,
-      TOP_c2_subs_r_h_i,
-      TOP_c2_subs_r_w_i,
-      TOP_c2_subs_r_h,
-      TOP_c2_subs_r_w,
-      TOP_c2_vsubs_w_abs,
-      TOP_c2_vsubs_w_abs_sm,
-      TOP_c2_vsubs_p_abs,
-      TOP_c2_vsubs_p_abs_sm,
-      TOP_c2_vsubs_h_abs,
-      TOP_c2_vsubs_h_abs_sm,
-      TOP_c2_mov_s_i,
-      TOP_c2_mov_s,
-      TOP_c2_sum3_saddr, 
-      TOP_c2_vmov_swin,
+		  TOP_c2_vspel_adds,
+		  TOP_c2_vspel_mac_h,
+		  TOP_c2_smads,
+		  TOP_c2_cmov,
+		  TOP_c2_clp,
+		  TOP_c2_clp_i,
+		  TOP_c2_chkrng,
+		  TOP_c2_bxtr_u_l,
+		  TOP_c2_bxtr_s_l,
+		  TOP_c2_bxtr_u_m,
+		  TOP_c2_bxtr_s_m,
+		  TOP_c2_bxtrr48,
+		  TOP_c2_bxtrr48_i,
+		  TOP_c2_sum4_r,
+		  TOP_c2_med,
+		  TOP_c2_subs_g_i,
+		  TOP_c2_subs_g,
+		  TOP_c2_subs_r_h_i,
+		  TOP_c2_subs_r_h,
+		  TOP_c2_vsubs_h_abs,
+		  TOP_c2_vsubs_h_abs_sm,
+		  TOP_c2_mov_s_i,
+		  TOP_c2_mov_s,
+		  TOP_c2_sum4_saddr, 
+		  TOP_c2_vmov_swin,
+                  TOP_c2_bdep_l,
+                  TOP_c2_bdep_m,
+                  TOP_c2_shor_l,
+                  TOP_c2_shor_rl,
+                  TOP_c2_shor_ra,
+                  TOP_c2_shadd_l,
+                  TOP_c2_shadd_rl,
+                  TOP_c2_shadd_ra,
+                  TOP_c2_shsub_l,
+                  TOP_c2_shsub_rl, 
+                  TOP_c2_shsub_ra, 
+                  TOP_c2_shor_l_i,
+                  TOP_c2_shor_rl_i,
+                  TOP_c2_shor_ra_i,
+                  TOP_c2_shadd_l_i,
+                  TOP_c2_shadd_rl_i,
+                  TOP_c2_shadd_ra_i,
+                  TOP_c2_shsub_l_i,
+                  TOP_c2_shsub_rl_i, 
+                  TOP_c2_shsub_ra_i, 
 #endif //TARG_SL2
-			  TOP_UNDEFINED);
+		  TOP_UNDEFINED);
 
 
 #ifdef TARG_SL2
@@ -1041,8 +1065,8 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group(rropop,
-      TOP_c2_sad, 
-      TOP_UNDEFINED);
+                          TOP_c2_sad, 
+			  TOP_UNDEFINED);
 
   ISA_PRINT_TYPE ropoprop =  ISA_Print_Type_Create("ropoprop", "%s %s,%s,%s,%s,%s");
   Name();
@@ -1052,13 +1076,43 @@ main()
   Operand(1);
   Operand(2);
   Instruction_Print_Group(ropoprop,
-      TOP_c2_satd, 
-      TOP_UNDEFINED);
-#endif //TARG_SL2
+                          TOP_c2_satd, 
+			  TOP_UNDEFINED);
 
 
+  ISA_PRINT_TYPE mvsel =  ISA_Print_Type_Create("mvsel", "c2.mvsel %s,%s,%s,%s");
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Instruction_Print_Group(mvsel,
+                          TOP_c2_mvsel_mode0,   
+			  TOP_c2_mvsel_mode1, 
+			  TOP_c2_mvsel_mode2,   
+			  TOP_c2_mvsel_mode345, 
+			  TOP_UNDEFINED);
 
+  ISA_PRINT_TYPE rop0op2op3 =  ISA_Print_Type_Create("rop0op2op3", "%s %s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(2);
+  Operand(3);
+  Instruction_Print_Group(rop0op2op3,
+                          TOP_c2_subs_r_w_i,
+			  TOP_c2_vspas,
+			  TOP_c2_vspel_mac_w,
+			  TOP_UNDEFINED);
 
+  ISA_PRINT_TYPE rop0op2op4 =  ISA_Print_Type_Create("rop0op2op3", "%s %s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(2);
+  Operand(4);
+  Instruction_Print_Group(rop0op2op3,
+                          TOP_c2_subs_r_w,
+			  TOP_UNDEFINED);
 
   ISA_PRINT_TYPE ropopopop =  ISA_Print_Type_Create("ropopopop", "%s %s,%s,%s,%s,%s");
   Name();
@@ -1068,33 +1122,72 @@ main()
   Operand(2);
   Operand(3);
   Instruction_Print_Group(ropopopop,
-#ifdef TARG_SL2
-      TOP_c2_vadds_h,
-      TOP_c2_vadds_w,
-      TOP_c2_vadds_p,
-      TOP_c2_vadds_h_c,
-      TOP_c2_vadds_w_c,
-      TOP_c2_vadds_p_c,
-      TOP_c2_vsubs_h,
-      TOP_c2_vsubs_h_sm,
-      TOP_c2_vsubs_w,
-      TOP_c2_vsubs_w_sm,
-      TOP_c2_mmul_h,
-      TOP_c2_mmul_w,
-      TOP_c2_gsums,
-      TOP_c2_vsubs_p,
-      TOP_c2_vsubs_p_sm,
-      TOP_c2_vsubs_h_abs,
-      TOP_c2_vsubs_h_abs_sm,
-      TOP_c2_vsubs_w_abs,	        
-      TOP_c2_vsubs_w_abs_sm,	        
-      TOP_c2_vsubs_p_abs,
-      TOP_c2_vsubs_p_abs_sm,
-      
-#endif //TARG_SL2
+                          TOP_c2_vadds_h,
+			  TOP_c2_vadds_h_mode6,
+			  TOP_c2_vadds_h_mode2,
+			  TOP_c2_vsubs_h,
+			  TOP_c2_vsubs_h_sm,
+			  TOP_c2_mmul_h,
+			  TOP_c2_gsums,
+			  TOP_c2_vsubs_h_abs,
+			  TOP_c2_vsubs_h_abs_sm,
 			  TOP_UNDEFINED);
 
-#ifdef TARG_SL2
+  ISA_PRINT_TYPE vadds_h =  ISA_Print_Type_Create("vadds_h", "c2.vadds.h %s,%s,%s,%s,%s");
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Operand(3);
+  Instruction_Print_Group(vadds_h,
+                         TOP_c2_vadds_h,
+			 TOP_c2_vadds_h_mode6,
+			 TOP_c2_vadds_h_mode2,
+			 TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE vadds_w =  ISA_Print_Type_Create("vadds_w", "c2.vadds.w %s,%s,%s,%s,%s");
+  Result(0);
+  Operand(0);
+  Operand(2);
+  Operand(4);
+  Operand(5);
+  Instruction_Print_Group(vadds_w,
+		        TOP_c2_vadds_w,
+			TOP_c2_vadds_w_mode6,
+			TOP_c2_vadds_w_mode2,
+			TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE vadds_p =  ISA_Print_Type_Create("vadds_p", "c2.vadds.p %s,%s,%s,%s,%s");
+  Result(0);
+  Operand(0);
+  Operand(2);
+  Operand(4);
+  Operand(5);
+  Instruction_Print_Group(vadds_p,
+                       TOP_c2_vadds_p,
+		       TOP_c2_vadds_p_mode6,
+		       TOP_c2_vadds_p_mode2,
+		       TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE rop0op2op4op5 =  ISA_Print_Type_Create("rop0op2op4op5", "%s %s,%s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(2);
+  Operand(4);
+  Operand(5);
+  Instruction_Print_Group(rop0op2op4op5,
+                       TOP_c2_vsubs_w,
+		       TOP_c2_vsubs_w_sm,
+		       TOP_c2_vsubs_p,
+		       TOP_c2_vsubs_p_sm,
+		       TOP_c2_vsubs_w_abs,	        
+		       TOP_c2_vsubs_w_abs_sm,	        
+		       TOP_c2_vsubs_p_abs,
+		       TOP_c2_vsubs_p_abs_sm,
+		       TOP_c2_mmul_w,
+		       TOP_UNDEFINED);
+
   ISA_PRINT_TYPE ropopopopop =  ISA_Print_Type_Create("ropopopop", "%s %s,%s,%s,%s,%s,%s");
   Name();
   Result(0);
@@ -1104,33 +1197,78 @@ main()
   Operand(3);
   Operand(4);
   Instruction_Print_Group(ropopopopop,
-     TOP_c2_mads,
-      TOP_c2_add_shl_g_i,
-      TOP_c2_add_shr_g_i,
-      TOP_c2_add_shl_g,
-      TOP_c2_add_shr_g,
-      TOP_c2_add_shl_r_h_i,
-      TOP_c2_add_shr_r_h_i,
-      TOP_c2_add_shl_r_w_i,
-      TOP_c2_add_shr_r_w_i,
-      TOP_c2_add_shl_r_h,
-      TOP_c2_add_shr_r_h,
-      TOP_c2_add_shl_r_w,
-      TOP_c2_add_shr_r_w,
-      TOP_UNDEFINED);
-  
+                          TOP_c2_mads,
+			  TOP_c2_add_shl_g_i,
+			  TOP_c2_add_shr_g_i,
+			  TOP_c2_add_shl_g,
+			  TOP_c2_add_shr_g,
+			  TOP_c2_add_shl_r_h_i,
+			  TOP_c2_add_shr_r_h_i,
+			  TOP_c2_add_shl_r_h,
+			  TOP_c2_add_shr_r_h,
+			  TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE rop0op2op3op4op5 =  ISA_Print_Type_Create("rop0op2op3op4op5", "%s %s,%s,%s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(2);
+  Operand(3);
+  Operand(4);
+  Operand(5);
+  Instruction_Print_Group(ropopopopop,
+		          TOP_c2_add_shl_r_w_i,
+			  TOP_c2_add_shr_r_w_i,
+			  TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE rop0op2op4op5op6 =  ISA_Print_Type_Create("rop0op2op4op5op6", "%s %s,%s,%s,%s,%s,%s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(2);
+  Operand(4);
+  Operand(5);
+  Operand(6);
+  Instruction_Print_Group(ropopopopop,
+                          TOP_c2_add_shl_r_w,
+			  TOP_c2_add_shr_r_w,
+			  TOP_UNDEFINED);
+
+
   ISA_PRINT_TYPE c2muls =  ISA_Print_Type_Create("c2muls", "c2.mul.s %s,%s,%s,%s,%s,%s");
   //Name();
-  Result(1);
+  Result(0);
   Operand(0);
   Operand(1);
   Operand(2);
   Operand(3);
   Operand(4);
   Instruction_Print_Group(c2muls,
-  	TOP_c2_muls,
-  	TOP_UNDEFINED);
-  
+                          TOP_c2_muls,
+			  TOP_UNDEFINED);
+
+  ISA_PRINT_TYPE load_no_off =  ISA_Print_Type_Create("load_no_off", "%s %s,(%s)");
+  Name();
+  Result(0);
+  Operand(0);
+  Instruction_Print_Group(load_no_off,
+                          TOP_c2_ld_v_b_u,
+			  TOP_c2_ld_v_b,
+			  TOP_c2_ld_v_h,
+			  TOP_c2_ld_v_w,
+			  TOP_c2_ld_v_sw,
+			  TOP_c2_ld_v_m_b_u,
+			  TOP_c2_ld_v_m_b,
+			  TOP_c2_ld_v_m_h,
+			  TOP_c2_ld_v_m_w,
+			  TOP_c2_ld_s_h_u_p,
+			  TOP_c2_ld_s_h_u,
+			  TOP_c2_ld_s_h_p,
+			  TOP_c2_ld_s_h,
+			  TOP_c2_ld_s_w_p,
+			  TOP_c2_ld_s_w,
+			  TOP_UNDEFINED);
+
 #endif //TARG_SL2
 
   /* No result / three operands */
@@ -1140,7 +1278,7 @@ main()
   Operand(1);
   Operand(2);
   Instruction_Print_Group(opopop,
-			  TOP_beq,
+		  TOP_beq,
 			  TOP_bne,
 			  TOP_teq,
 			  TOP_teqi,
@@ -1154,46 +1292,9 @@ main()
 			  TOP_tltu,
 			  TOP_tne,
 			  TOP_tnei,
-#ifdef TARG_SL2
-      TOP_c2_mmul_s123,
-#endif //TARG_SL2
 			  TOP_UNDEFINED);
 
 
-#ifdef TARG_SL
-  ISA_PRINT_TYPE load_no_off =  ISA_Print_Type_Create("load_no_off", "%s %s,(%s)");
-  Name();
-  Result(0);
-  Operand(0);
-  Instruction_Print_Group(load_no_off,
-#ifdef TARG_SL2
-             TOP_c2_ld_s2s_ga_p,
-             TOP_c2_ld_s2s_ga,
-             TOP_c2_ld_s2s_sa_p,
-             TOP_c2_ld_s2s_sa,
-             TOP_c2_ld_v_b_u,
-             TOP_c2_ld_v_b,
-             TOP_c2_ld_v_h,
-             TOP_c2_ld_v_w,
-             TOP_c2_ld_v_sw,
-             TOP_c2_ld_v_m_b_u,
-             TOP_c2_ld_v_m_b,
-             TOP_c2_ld_v_m_h,
-             TOP_c2_ld_v_m_w,
-             TOP_c2_ld_s_h_u_p,
-             TOP_c2_ld_s_h_u,
-             TOP_c2_ld_s_h_p,
-             TOP_c2_ld_s_h,
-             TOP_c2_ld_s_w_p,
-             TOP_c2_ld_s_w,
-             TOP_c2_ld_v2g_b_u,
-             TOP_c2_ld_v2g_b,
-             TOP_c2_ld_v2g_h_u, 
-             TOP_c2_ld_v2g_h,   
-             TOP_c2_ld_v2g_w,   
-#endif //TARG_SL2
-               TOP_UNDEFINED);
-#endif
   
   /* regular load */
   ISA_PRINT_TYPE load =  ISA_Print_Type_Create("load", "%s %s,%s(%s)");
@@ -1236,23 +1337,32 @@ main()
   Operand(1);
   Instruction_Print_Group(store_no_off,
 #ifdef TARG_SL2 
-             TOP_c2_st_v_b,
-             TOP_c2_st_v_h,
-             TOP_c2_st_v_w,
-             TOP_c2_st_v_m_b,
-             TOP_c2_st_v_m_h,
-             TOP_c2_st_v_m_w,
-             TOP_c2_st_s_h,
-             TOP_c2_st_s_h_p,
-             TOP_c2_st_s_w,
-             TOP_c2_st_s_w_p,
-             TOP_c2_st_g2v_b, 
-             TOP_c2_st_g2v_h, 
-             TOP_c2_st_g2v_w, 
+                         TOP_c2_st_v_b,
+			 TOP_c2_st_v_h,
+			 TOP_c2_st_v_w,
+			 TOP_c2_st_v_m_b,
+			 TOP_c2_st_v_m_h,
+			 TOP_c2_st_v_m_w,
+			 TOP_c2_st_s_h,
+			 TOP_c2_st_s_h_p,
+			 TOP_c2_st_s_w,
+			 TOP_c2_st_s_w_p,
 
 #endif //TARG_SL2
-      		  TOP_UNDEFINED);
+			 TOP_UNDEFINED);
 #endif
+
+  ISA_PRINT_TYPE store_pair_no_off =  ISA_Print_Type_Create("store_no_off", "%s %s,(%s)");
+  Name();
+  Operand(0);
+  Operand(2);
+  Instruction_Print_Group(store_pair_no_off,
+#ifdef TARG_SL2 
+		          TOP_c2_st_v_w,
+			  TOP_c2_st_v_m_w,
+#endif //TARG_SL2
+			  TOP_UNDEFINED);
+
 
   /* regular store */
   ISA_PRINT_TYPE store =  ISA_Print_Type_Create("store", "%s %s,%s(%s)");
@@ -1292,14 +1402,17 @@ main()
 			  TOP_cfc1,
 			  TOP_ctc1,
 #endif
-                       TOP_ret,
+
+#ifdef TARG_SL
+                       	  TOP_ret,
+#endif
 			  TOP_prefx,
 #ifdef TARG_SL2
-             TOP_c2_thctrl_lock,
-             TOP_c2_thctrl_unlock,
-             TOP_c2_thctrl_deact,
-             TOP_c2_joint,
-             TOP_c2_macro, 
+                         TOP_c2_thctrl_lock,
+			 TOP_c2_thctrl_unlock,
+			 TOP_c2_thctrl_deact,
+			 TOP_c2_joint,
+			 TOP_c2_macro, 
 #endif //TARG_SL2
 			  TOP_UNDEFINED);
 
@@ -1371,18 +1484,6 @@ main()
 			  TOP_depb,
 			  TOP_UNDEFINED);			  
 
-#ifdef TARG_SL2
-  /* Bdep  */
-  ISA_PRINT_TYPE bdep = ISA_Print_Type_Create("bdep", "%s %s,%s,%s");
-  Name();
-  Result(0);
-  Operand(1); //0 is hidden operand, = result
-  Operand(2);
-  Instruction_Print_Group(deposit_bit,
-                      TOP_c2_bdep_l,
-                      TOP_c2_bdep_m,
-			  TOP_UNDEFINED);			  
-#endif 
 #endif
   ISA_Print_End();
 }

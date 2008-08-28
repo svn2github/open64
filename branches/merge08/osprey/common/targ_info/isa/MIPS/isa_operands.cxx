@@ -74,7 +74,7 @@ main()
   pc26 = ISA_Lit_Opnd_Type_Create("pc26", 26, UNSIGNED, LC_pc26);
 
 #ifdef TARG_SL
-  OPERAND_VALUE_TYPE uimm4, simm5, pcrel5, simm10;
+  OPERAND_VALUE_TYPE uimm4, simm5, pcrel5, simm10, simm9, simm7;
   uimm1 = ISA_Lit_Opnd_Type_Create("uimm1", 1, UNSIGNED, LC_uimm1);  
   uimm2 = ISA_Lit_Opnd_Type_Create("uimm2", 2, UNSIGNED, LC_uimm2);
   uimm3 = ISA_Lit_Opnd_Type_Create("uimm3", 3, UNSIGNED, LC_uimm3);
@@ -95,7 +95,9 @@ main()
   uic1  = ISA_Lit_Opnd_Type_Create("uic1",  1, UNSIGNED, LC_uic1);
   uic3  = ISA_Lit_Opnd_Type_Create("uic3",  3, UNSIGNED, LC_uic3);     
   simm5 = ISA_Lit_Opnd_Type_Create("simm5", 5, SIGNED, LC_simm5);
+  simm7 = ISA_Lit_Opnd_Type_Create("simm7", 7, SIGNED, LC_simm7);
   pcrel5 = ISA_Lit_Opnd_Type_Create("pcrel5",  5,  UNSIGNED, LC_pc5);
+  simm9 = ISA_Lit_Opnd_Type_Create("simm9", 9, SIGNED, LC_simm9);
   simm10 = ISA_Lit_Opnd_Type_Create("simm10", 10, SIGNED, LC_simm10);
 #endif
   
@@ -182,8 +184,8 @@ main()
        ISA_Reg_Opnd_Type_Create("c2accreg", ISA_REGISTER_CLASS_c2accum,
                                  ISA_REGISTER_SUBCLASS_UNDEFINED,
                                  1, SIGNED, INVALID);
-  const OPERAND_VALUE_TYPE c2acc_ctrl_reg =
-       ISA_Reg_Opnd_Type_Create("c2acc_ctrl_reg", ISA_REGISTER_CLASS_c2acc_ctrl,
+  const OPERAND_VALUE_TYPE c2cond =
+       ISA_Reg_Opnd_Type_Create("c2cond", ISA_REGISTER_CLASS_c2cond,
                                  ISA_REGISTER_SUBCLASS_UNDEFINED,
                                  1, SIGNED, INVALID);
   const OPERAND_VALUE_TYPE c2mvselreg =
@@ -216,12 +218,15 @@ main()
 	  opnd2,	// second/right operand of an alu operator
 	  opnd3,	// 3rd operand of an alu operator
 #ifdef TARG_SL
-      opnd4,
-      opnd5,
-      opnd6,
-      opnd7,
-      opnd8,
-      opnd9,
+          opnd4,
+          opnd5,
+          opnd6,
+          opnd7,
+          opnd8,
+          opnd9,
+          ls_ctrl, 
+          lut_idx,
+          c2ofst,       // an offset(uimm5)  added to a base used in c2.ld/st
 #endif
 	  maddend,	// addend/subtrahend operand of a madd
 	  pos,			//ExDe Bit position
@@ -242,6 +247,9 @@ main()
   opnd7      = Create_Operand_Use("opnd7");
   opnd8      = Create_Operand_Use("opnd8");
   opnd9      = Create_Operand_Use("opnd9");
+  ls_ctrl     = Create_Operand_Use("ls_ctrl");
+  lut_idx     = Create_Operand_Use("lut_idx");
+  c2ofst     = Create_Operand_Use("c2ofst");
 #endif
   maddend    = Create_Operand_Use("maddend");
   pos        = Create_Operand_Use("pos");
@@ -249,7 +257,7 @@ main()
 
 #ifdef TARG_SL
    // dsp thread
-  Instruction_Group("c3type1",
+  Instruction_Group("c3_alu",
                TOP_c3_saadd_a,
                TOP_c3_saaddh_a,
                TOP_c3_sasub_a,
@@ -265,7 +273,7 @@ main()
   Operand(3, uimm3);
   Operand(4, uimm2);
 
-  Instruction_Group("c3type2",
+  Instruction_Group("c3_bitc",
   	        TOP_c3_bitc,  //same res
   	        TOP_UNDEFINED);
   Result(0, creg);
@@ -273,7 +281,7 @@ main()
   Operand(1, uimm5);
   Operand(2, uimm4);
 
-  Instruction_Group("c3type3",
+  Instruction_Group("c3_bitr",
   	             TOP_c3_bitr,
   	             TOP_UNDEFINED);
    Result(0, int64);
@@ -281,7 +289,7 @@ main()
   Operand(1, uimm5);
   Operand(2, uimm4);
 
-  Instruction_Group("c3type26",
+  Instruction_Group("c3_mac",
   	             TOP_c3_mac,// same_res
   	             TOP_c3_macn, // same_res
   	             TOP_c3_macd, //same_res
@@ -292,7 +300,7 @@ main()
   Operand(2, int64);
   Operand(3, accreg);
 
-  Instruction_Group("c3type27",
+  Instruction_Group("c3_dmac",
   	             TOP_c3_dmac,  // same_res
   	             TOP_c3_dmacn,// same_res
                      TOP_UNDEFINED);
@@ -305,13 +313,12 @@ main()
   Operand(4, accreg);
   Operand(5, accreg);
 
-  Instruction_Group("c3type4",
+  Instruction_Group("c3_maci",
  	             TOP_c3_macci, // same_res
   	             TOP_c3_maccr, //same_res
                     TOP_c3_mula,
   	             TOP_c3_mulaci,
   	             TOP_c3_mulacr,
-  	             TOP_c3_mulad,
   	             TOP_c3_mulan, 
   	             TOP_UNDEFINED);
   Result(0, accreg);
@@ -319,7 +326,7 @@ main()
   Operand(1, int64);
   Operand(2, int64);
 
-  Instruction_Group("c3type28",
+  Instruction_Group("c3_dmul",
                     TOP_c3_dmula,
                     TOP_c3_dmulan,
                     TOP_UNDEFINED);
@@ -329,7 +336,7 @@ main()
   Operand(1, int64);
   Operand(2, int64);
 
-  Instruction_Group("c3type29",
+  Instruction_Group("c3_dmac_a",
                     TOP_c3_dmac_a,// same_res
                     TOP_c3_dmacn_a,// same_res
                     TOP_UNDEFINED);
@@ -347,7 +354,7 @@ main()
   Operand(7, accreg);
   Operand(8, accreg);
  
-   Instruction_Group("c3type30",
+   Instruction_Group("c3_mac_a",
                     TOP_c3_mac_a,// same_res
                     TOP_c3_macn_a, //same_res
                     TOP_UNDEFINED);
@@ -362,7 +369,7 @@ main()
   Operand(5, uimm2);
   Operand(6, accreg);
  
-  Instruction_Group("c3type5",
+  Instruction_Group("c3_mula_a",
   	             TOP_c3_mula_a,
   	             TOP_UNDEFINED);
   Result(0, accreg);
@@ -375,7 +382,7 @@ main()
   Operand(4, uimm3);
   Operand(5, uimm2);
 
-    Instruction_Group("c3type31",
+    Instruction_Group("c3_dmul_a",
                      TOP_c3_dmula_a,
                      TOP_c3_dmulan_a,
                      TOP_UNDEFINED);
@@ -390,7 +397,7 @@ main()
   Operand(4, uimm3);
   Operand(5, uimm2);
 
-  Instruction_Group("c3type6",
+  Instruction_Group("c3_dshl_i",
   	            TOP_c3_dshll_i,
   	            TOP_c3_dshrl_i,
   	            TOP_UNDEFINED);
@@ -399,7 +406,7 @@ main()
   Operand(1, uimm5);
   Operand(2, uimm5);
   
-  Instruction_Group("c3type7",
+  Instruction_Group("c3 load",
                     TOP_c3_ld,
                     TOP_c3_fftld,
                     TOP_UNDEFINED);
@@ -411,14 +418,14 @@ main()
   Operand(3, uimm3);
   Operand(4, uimm2); 
   
-  Instruction_Group ("c3type8",
+  Instruction_Group ("c3_lead",
   	            TOP_c3_lead,
  	            TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, accreg);
   Operand(1, uimm2);
 
-  Instruction_Group("c3type9",
+  Instruction_Group("c3_mula_ar",
   	              TOP_c3_mula_ar,
   	              TOP_UNDEFINED);
   Result(0, accreg);
@@ -429,7 +436,7 @@ main()
   Operand(3, uimm3);
   Operand(4, uimm2);
 
-  Instruction_Group("c3type32",
+  Instruction_Group("c3_mac_ar",
   	              TOP_c3_mac_ar,  //same_res
   	              TOP_c3_macn_ar, //same_res
   	              TOP_UNDEFINED);
@@ -442,7 +449,7 @@ main()
   Operand(4, uimm2);
   Operand(5, accreg);
 
-  Instruction_Group("c3type33",
+  Instruction_Group("c3_mac_i",
                      TOP_c3_mac_i, //same_res
                      TOP_c3_macn_i, //same_res
                      TOP_UNDEFINED);
@@ -452,7 +459,7 @@ main()
   Operand(2, simm10);
   Operand(3, accreg);
   
-  Instruction_Group("c3type10",
+  Instruction_Group("c3_mula_i",
                      TOP_c3_mula_i,
                      TOP_UNDEFINED);
   Result(0,  accreg);
@@ -460,42 +467,42 @@ main()
   Operand(1, int64);
   Operand(2, simm10);
 
-  Instruction_Group("c3type11",
+  Instruction_Group("c3_mvfacc",
   	             TOP_c3_mvfacc,
   	             TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, accreg);
   Operand(1, uimm5);
 
-  Instruction_Group("c3type12",
+  Instruction_Group("c3_mvfaddreg",
   	             TOP_c3_mvfadd,
   	             TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, addreg);
   Operand(1, uimm5);
 	
-  Instruction_Group("c3type13",
+  Instruction_Group("c3_mvfaddsize",
   	             TOP_c3_mvfadds,
   	             TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, addsreg);
   Operand(1, uimm5);
   
-  Instruction_Group("c3type14",
+  Instruction_Group("c3_mvtacc",
   	             TOP_c3_mvtacc,
   	             TOP_UNDEFINED);
   Result(0, accreg);
   Operand(0, int64);
   Operand(1, uimm5);
   
-  Instruction_Group("c3type15",
+  Instruction_Group("c3_mvtaddreg",
   	             TOP_c3_mvtadd,
   	             TOP_UNDEFINED);
   Result(0, addreg);
   Operand(0, int64);
   Operand(1, uimm5);
   
-  Instruction_Group("c3type16",
+  Instruction_Group("c3_mvtadds",
   	             TOP_c3_mvtadds,
   	             TOP_UNDEFINED);
   Result(0, addsreg);
@@ -504,14 +511,14 @@ main()
   Operand(1, uimm5);
   Operand(2, addreg);
  
-  Instruction_Group("c3type17",
+  Instruction_Group("c3_revb",
   	             TOP_c3_revb,
   	             TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64);
   Operand(1, simm5);
 
-  Instruction_Group("c3type18",
+  Instruction_Group("c3_round",
   	             TOP_c3_round,
   	             TOP_UNDEFINED);
   Result(0, accreg); // same res
@@ -519,7 +526,7 @@ main()
   Operand(1, uimm2);
   Operand(2, accreg);
   
-  Instruction_Group("c3type19",
+  Instruction_Group("c3_saddha",
   	             TOP_c3_saddha,  //same res
   	             TOP_UNDEFINED);
   Result(0, accreg);
@@ -530,7 +537,7 @@ main()
   Operand(4, accreg);
 
 
-  Instruction_Group("c3type20",
+  Instruction_Group("c3_saddha_a",
   	             TOP_c3_saddha_a,  // same res
   	             TOP_UNDEFINED);
   Result(0, accreg);
@@ -543,7 +550,7 @@ main()
   Operand(5, uimm2);
   Operand(6, accreg);
 
-  Instruction_Group("c3type21",
+  Instruction_Group("c3_alu2",
   	            TOP_c3_saadds,
   	            TOP_c3_saaddsh,
   	            TOP_c3_sasubs,
@@ -555,7 +562,7 @@ main()
   Operand(1, int64);
   Operand(2, uimm5);
   
-  Instruction_Group("c3type22",
+  Instruction_Group("c3 store",
   	             TOP_c3_st,
   	             TOP_c3_fftst,
   	             TOP_UNDEFINED);
@@ -568,7 +575,7 @@ main()
   Operand(5, uimm2);
 
   
-  Instruction_Group("c3type23",
+  Instruction_Group("c3_dadd",
                     TOP_c3_dadd,
                     TOP_c3_dsub,
   	            TOP_c3_sashllh,
@@ -577,19 +584,443 @@ main()
   Operand(0, int64);
   Operand(1, int64);
 
-  Instruction_Group("c3type24",
+  Instruction_Group("c3_mvts",
   	            TOP_c3_mvts,
   	            TOP_UNDEFINED);
   Result(0, spereg);
   Operand(0, int64);
   Operand(1, uimm5);
 
-  Instruction_Group("c3type25",
+  Instruction_Group("c3_mvfs",
   	            TOP_c3_mvfs,
   	            TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, spereg);
   Operand(1, uimm5);
+
+  // new c3
+  Instruction_Group("C3-aadda",
+                    TOP_C3_aadda,
+                    TOP_UNDEFINED);
+  Result(0,accreg); // same res
+  Operand(0, uimm3);
+  Operand(1, accreg);
+  Operand(2, uimm1); 
+  Operand(3, accreg);
+
+  Instruction_Group("C3-nega",
+                    TOP_C3_nega,
+                    TOP_UNDEFINED);
+  Result(0,accreg); // same res
+  Operand(0, uimm3);
+  Operand(1, accreg);
+  Operand(2, uimm1);
+
+  Instruction_Group("C3-bitr",
+                    TOP_C3_bitr,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64);
+  Operand(1, uimm5);
+  Operand(2, uimm4);
+
+  Instruction_Group("C3-cs",
+                    TOP_C3_cs,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Result(1, spereg);
+  Operand(0, int64);
+  Operand(1, int64);
+  Operand(2, uimm2);
+  Operand(3, spereg);
+
+  Instruction_Group("C3-dadd",
+                    TOP_C3_dadd,
+                    TOP_C3_dsub,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64);
+  Operand(1, int64);
+  
+  Instruction_Group("C3-dmac",
+                    TOP_C3_dmac,
+                    TOP_C3_dmacn,
+                    TOP_UNDEFINED);
+  Result(0, accreg);  // same res
+  Result(1, accreg);
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, int64);
+  Operand(3, uimm2);
+  Operand(4, uimm1);
+  Operand(5, uimm1);
+  Operand(6, accreg);
+  Operand(7, accreg);
+
+  Instruction_Group("C3-dmac-a",
+                    TOP_C3_dmac_a,
+                    TOP_C3_dmacn_a,
+                    TOP_UNDEFINED);
+  Result(0, accreg);  // same res
+  Result(1, accreg);
+  Result(2, addreg);
+  Result(3, addreg);
+  Operand(0, uimm3);
+  Operand(1, addreg, base);
+  Operand(2, uimm3);
+  Operand(3, addreg, base);
+  Operand(4, uimm3);
+  Operand(5, uimm1);
+  Operand(6, uimm1);
+  Operand(7, accreg);
+  Operand(8, accreg);
+
+  Instruction_Group("C3-dmula",
+                    TOP_C3_dmula,
+                    TOP_C3_dmulan,
+                    TOP_UNDEFINED); 
+  Result(0, accreg);
+  Result(1, accreg);
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, int64);
+  Operand(3, uimm2);
+  Operand(4, uimm1);
+
+  Instruction_Group("C3-dmula-a",
+                    TOP_C3_dmula_a,
+                    TOP_C3_dmulan_a,
+                    TOP_UNDEFINED);
+  Result(0, accreg);
+  Result(1, accreg);
+  Result(2, addreg);
+  Result(3, addreg);
+  Operand(0, uimm3);
+  Operand(1, addreg, base);
+  Operand(2, uimm3);
+  Operand(3, addreg, base);
+  Operand(4, uimm3);
+  Operand(5, uimm1);
+ 
+  Instruction_Group("C3-dshll",
+                    TOP_C3_dshll_i,
+                    TOP_C3_dshrl_i,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64);
+  Operand(1, uimm5);
+  Operand(2, uimm5);
+
+  Instruction_Group("C3-fixfunc",
+                    TOP_C3_ffe,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0,int64,opnd1);
+  Operand(1,int64,opnd2);
+  Operand(2,uimm5,opnd3);
+
+  Instruction_Group("C3-fftld",
+                    TOP_C3_ld,
+                    TOP_C3_fftld,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Result(1, addreg);
+  Operand(0, addreg, base);
+  Operand(1, uimm1, offset); // skip
+  Operand(2, uimm3);
+  Operand(3, uimm3);
+
+  Instruction_Group("C3-fftst",
+                    TOP_C3_st,
+                    TOP_C3_fftst,
+                    TOP_UNDEFINED);
+  Result(0, addreg);
+  Operand(0, int64, storeval);
+  Operand(1, addreg, base);
+  Operand(2, uimm1, offset); // skip
+  Operand(3, uimm3);
+  Operand(4, uimm3);
+
+  Instruction_Group("C3-lead",
+                    TOP_C3_lead,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, accreg);
+
+  Instruction_Group("C3-mac",
+                    TOP_C3_mac,
+                    TOP_C3_macn,
+                    TOP_UNDEFINED);
+  Result(0, accreg); // same res
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, int64);
+  Operand(3, uimm1);
+  Operand(4, accreg);
+ 
+  Instruction_Group("C3-mac-a",
+                    TOP_C3_mac_a,
+                    TOP_C3_macn_a,
+                    TOP_UNDEFINED);
+  Result(0, accreg); // same res
+  Result(1, addreg);
+  Result(2, addreg);
+  Operand(0, uimm3);
+  Operand(1, addreg, base);
+  Operand(2, uimm3);
+  Operand(3, addreg, base);
+  Operand(4, uimm3);
+  Operand(5, uimm1);
+  Operand(6, accreg);
+ 
+
+  Instruction_Group("C3-mac-ar",
+                    TOP_C3_mac_ar,
+                    TOP_C3_macn_ar,
+                    TOP_UNDEFINED);
+  Result(0, accreg);  // same res
+  Result(1, addreg);
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, addreg, base);
+  Operand(3, uimm3);
+  Operand(4, uimm1);
+  Operand(5, accreg);
+ 
+  Instruction_Group("C3-mac-i",
+                    TOP_C3_mac_i, 
+                    TOP_C3_macn_i, 
+                    TOP_UNDEFINED);
+  Result(0,  accreg); // same res
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, simm9);
+  Operand(3, uimm1);
+  Operand(4, accreg);
+
+  Instruction_Group("C3-mula",
+                    TOP_C3_mula,
+                    TOP_C3_mulan,
+                    TOP_UNDEFINED);
+  Result(0, accreg);
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, int64);
+                             
+  Instruction_Group("C3-mula-a",
+                    TOP_C3_mula_a,
+                    TOP_UNDEFINED); 
+  Result(0, accreg);
+  Result(1, addreg);
+  Result(2, addreg);
+  Operand(0, uimm3);
+  Operand(1, addreg, base);
+  Operand(2, uimm3);
+  Operand(3, addreg, base);
+  Operand(4, uimm3);
+
+  Instruction_Group("C3-mula-ar",
+                    TOP_C3_mula_ar,
+                    TOP_UNDEFINED);
+  Result(0, accreg);
+  Result(1, addreg);
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, addreg, base);
+  Operand(3, uimm3);
+
+  Instruction_Group("C3-mula-i",
+                    TOP_C3_mula_i,
+                    TOP_UNDEFINED);
+  Result(0, accreg);
+  Operand(0, uimm3);
+  Operand(1, int64); 
+  Operand(2, simm9);
+
+  Instruction_Group("C3-muls",
+                    TOP_C3_muls,
+                    TOP_C3_mulus,
+                    TOP_UNDEFINED);
+  Result(0, spereg);
+  Result(1, int64);
+  Operand(0,int64,opnd1);
+  Operand(1, int64, opnd2);
+  Operand(2, uimm5, opnd3);
+ 
+  Instruction_Group("C3-revb",
+                    TOP_C3_revb,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64);
+  Operand(1, uimm5);
+
+  Instruction_Group("C3-round",
+                    TOP_C3_round,
+                    TOP_UNDEFINED);
+  Result(0, accreg); // same res
+  Operand(0, uimm3);
+  Operand(1, uimm2);
+  Operand(2, uimm1);
+  Operand(3, accreg);
+
+  Instruction_Group("C3-saadd-a",
+                    TOP_C3_saadd_a,
+                    TOP_C3_saaddh_a,
+                    TOP_C3_samulh_a,
+                    TOP_C3_sasub_a,
+                    TOP_C3_sasubh_a,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Result(1, addreg);
+  Result(2, addreg);
+  Operand(0, addreg, base);
+  Operand(1, uimm3);
+  Operand(2, addreg, base);
+  Operand(3, uimm3);
+  
+  Instruction_Group("C3-saadds",
+                    TOP_C3_saadds,
+                    TOP_C3_saaddsh,
+                    TOP_C3_samulsh,
+                    TOP_C3_sasubs,
+                    TOP_C3_sasubsh,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64);
+  Operand(1, int64);
+  Operand(2, uimm5);
+ 
+  Instruction_Group("C3-sadda",
+                    TOP_C3_sadda,
+                    TOP_UNDEFINED);
+  Result(0, accreg);  // same res
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, uimm4);
+  Operand(3, uimm2);
+  Operand(4, uimm1);
+  Operand(5, uimm1);
+  Operand(6, accreg);
+
+  Instruction_Group("C3-sadda-a",
+                    TOP_C3_sadda_a,
+                    TOP_UNDEFINED);
+  Result(0, accreg);  // same res
+  Result(1, addreg);
+  Operand(0, uimm3);
+  Operand(1, addreg);
+  Operand(2, uimm3);
+  Operand(3, uimm4);
+  Operand(4, uimm2);
+  Operand(5, uimm1);
+  Operand(6, uimm1);
+  Operand(7, accreg);
+
+  Instruction_Group("C3-shav",
+                    TOP_C3_shav,
+                    TOP_UNDEFINED);
+  Result(0, accreg); // same res
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, uimm1);
+  Operand(3, accreg);
+
+  Instruction_Group("C3-shlafa-i",
+                    TOP_C3_shlafa_i,
+                    TOP_C3_shrafa_i,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, accreg);
+  Operand(1, uimm3);
+  Operand(2, uimm5);
+  
+  Instruction_Group("C3-shlata-i",
+                    TOP_C3_shlata_i,
+                    TOP_C3_shrata_i,
+                    TOP_UNDEFINED);
+  Result(0, accreg);
+  Operand(0, uimm3);
+  Operand(1, int64);
+  Operand(2, uimm5);
+  Operand(3, uimm1);
+
+  Instruction_Group("C3-shra-i",
+                    TOP_C3_shla_i,
+                    TOP_C3_shra_i,
+                    TOP_UNDEFINED);
+  Result(0, accreg);
+  Operand(0, uimm3);
+  Operand(1, uimm5);
+  Operand(2, uimm1);
+    
+  Instruction_Group("C3-subc",
+                    TOP_C3_subc,
+                    TOP_UNDEFINED);
+  Result(0, spereg); //hi
+  Result(1, int64);  
+  Operand(0, int64);
+  Operand(1, int64);
+  Operand(2, spereg);
+
+  Instruction_Group("C3-mvts",
+                    TOP_C3_mvts,
+                    TOP_UNDEFINED);
+  Result(0, spereg);
+  Operand(0, int64);
+  Operand(1, uimm5);
+
+  Instruction_Group("C3-mvfs",
+                    TOP_C3_mvfs,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, spereg);
+  Operand(1, uimm5);
+
+  Instruction_Group("C3-mvfacc",
+                     TOP_C3_mvfacc,
+                     TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, accreg);
+  Operand(1, uimm5);
+
+  Instruction_Group("C3-mvfaddr",
+                     TOP_C3_mvfaddr,
+                     TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, addreg);
+  Operand(1, uimm5);
+
+  Instruction_Group("C3-mvfadds",
+                     TOP_C3_mvfadds,
+                     TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, addsreg);
+  Operand(1, uimm5);
+
+  Instruction_Group("C3-mvtacc",
+                     TOP_C3_mvtacc,
+                     TOP_UNDEFINED);
+  Result(0, accreg);
+  Operand(0, int64);
+  Operand(1, uimm5);
+
+  Instruction_Group("C3-mvtaddr",
+                     TOP_C3_mvtaddr,
+                     TOP_UNDEFINED);
+  Result(0, addreg);
+  Operand(0, int64);
+  Operand(1, uimm5);
+
+  
+  Instruction_Group("C3-mvtadds",
+                     TOP_C3_mvtadds,
+                     TOP_UNDEFINED);
+  Result(0, addsreg);
+  Result(1, addreg);
+  Operand(0, int64);
+  Operand(1, uimm5);
+  Operand(2, addreg);
+  // end new c3
 
   // core instruction
   Instruction_Group("zero-delay-loop",
@@ -632,16 +1063,15 @@ main()
 
    /*16-bit instr*/
   Instruction_Group("beq/bne",
-                   TOP_br16_eqz,
-                  TOP_br16_nez,
-                   TOP_UNDEFINED);
+                    TOP_br16_eqz,
+                    TOP_br16_nez,
+                    TOP_UNDEFINED);
   Operand(0, int64, opnd1);
   Operand(1, int64, opnd2);
   Operand(2, pcrel5, target);
    
   //case 1: one result , one operand
   Instruction_Group ("copy and abs",
-		     TOP_mv16,
 		     TOP_abs16,
 #ifdef TARG_SL2
 	            TOP_c2_bcst_q,
@@ -662,6 +1092,7 @@ main()
 		     TOP_shrl16,
 		     TOP_sub16,
 		     TOP_xor16,
+                     TOP_mv16,
                      TOP_c3_trback,
                      TOP_c3_viterbi,
                      TOP_c3_fft,
@@ -680,6 +1111,7 @@ main()
 		    TOP_and16_i,
                     TOP_or16_i,
                     TOP_xor16_i,
+                    TOP_mv16_i,
 		    TOP_UNDEFINED);
   Result(0,int64);
   Operand(0,int64,opnd1);
@@ -690,13 +1122,7 @@ main()
 		    TOP_UNDEFINED);
   Result(0,int64);
   Operand(0,int64,opnd1);
-  Operand(1,simm5,opnd2);
-	
-  Instruction_Group("with simm5",
-		    TOP_mv16_i,
-		    TOP_UNDEFINED);
-  Result(0,int64);
-  Operand(0,uimm5, opnd1);
+  Operand(1,simm7,opnd2);
   
   //case 4: no result  / one operand control register
   Instruction_Group("jump register16",
@@ -1279,17 +1705,23 @@ main()
 Instruction_Group ( " c2 mvgr immed access",
                  TOP_c2_mvgr_r2g_h_u_i,
                  TOP_c2_mvgr_r2g_h_i,
-                 TOP_c2_mvgr_r2g_w_i,
                  TOP_UNDEFINED);
 Result(0, int64);
 Operand(0, cop_vreg, opnd1);
 Operand(1, uimm4, opnd2);
 
+Instruction_Group ( " c2 mvgr word immed access",
+                 TOP_c2_mvgr_r2g_w_i,
+                 TOP_UNDEFINED);
+Result(0, int64);
+Operand(0, cop_vreg, opnd1);
+Operand(1, cop_vreg, opnd2);
+Operand(2, uimm4, opnd3);
+
+
 Instruction_Group( "c2 clzob",
                   TOP_c2_clzob_zd, 
-                  TOP_c2_clzob_za, 
                   TOP_c2_clzob_od, 
-                  TOP_c2_clzob_oa, 
                     TOP_UNDEFINED);
 Result(0, int64);
 Operand(0, int64, opnd1);
@@ -1303,76 +1735,59 @@ Instruction_Group( "c2 scond indirectly",
 	              TOP_c2_scond_ge,
                     TOP_UNDEFINED);
 Result(0, int64);
-Result(1, copc);
+Result(1, c2cond);
 Operand(0, int64, opnd1);
 Operand(1, int64, opnd2);
+
+
+Instruction_Group( "c2 mvgr word access",
+                 TOP_c2_mvgr_r2g_w,
+                 TOP_UNDEFINED);
+Result(0, int64);
+Operand(0, cop_vreg, opnd1);
+Operand(1, cop_vreg, opnd2);
+Operand(2, int64, opnd3);
+
 
 Instruction_Group( "c2 mvgr access",
                  TOP_c2_mvgr_r2g_h_u,
                  TOP_c2_mvgr_r2g_h,
-                 TOP_c2_mvgr_r2g_w,
                  TOP_UNDEFINED);
 Result(0, int64);
 Operand(0, cop_vreg, opnd1);
 Operand(1, int64, opnd2);
 
-Instruction_Group( "c2 mvgr g2s",
-                 TOP_c2_mvgr_g2s,
-                 TOP_UNDEFINED);
-Result(0, cop_sreg);
-Operand(0, int64, opnd1);
-
-
-Instruction_Group( "c2 mvgr s2g",
-                 TOP_c2_mvgr_s2g,
-                 TOP_UNDEFINED);
-Result(0, int64);
-Operand(0, cop_sreg, opnd1);
-
-
-Instruction_Group("ld.s2s.ga.p", 
-             TOP_c2_ld_s2s_ga_p,
-            TOP_UNDEFINED);
-  Result (0, cop_sreg);
-  Operand(0, int64, base);
-
-
-Instruction_Group("ld.s2s.ga", 
-             TOP_c2_ld_s2s_ga,
-             TOP_UNDEFINED);
-  Result(0, cop_sreg);
-  Operand(0, int64, base);
-
-
-Instruction_Group("ld.s2s.sa.p", 
-             TOP_c2_ld_s2s_sa_p,
-            TOP_UNDEFINED);
-  Result (0, cop_sreg);
-  Operand(0, cop_sreg, base);
-
-
-Instruction_Group("ld.s2s.sa", 
-             TOP_c2_ld_s2s_sa,
-             TOP_UNDEFINED);
-  Result(0, cop_sreg);
-  Operand(0, cop_sreg, base);
-
-
-Instruction_Group("mvgr gr2 ba",
+Instruction_Group("mvgr g2r.ba",
                  TOP_c2_mvgr_g2r_ba_lh,
                  TOP_c2_mvgr_g2r_ba_hh,
-                 TOP_c2_mvgr_g2r_ba_w,
                  TOP_UNDEFINED);
 Result(0, cop_vreg);
 Operand(0, int64, opnd1);
+
+Instruction_Group("mvgr g2r.ba.w",
+                 TOP_c2_mvgr_g2r_ba_w,
+                 TOP_UNDEFINED);
+Result(0, cop_vreg);
+Result(1, cop_vreg);
+Operand(0, int64, opnd1);
+
+
+
 
 Instruction_Group("mvgr g2r lh",
 	          TOP_c2_mvgr_g2r_lh,
 	          TOP_c2_mvgr_g2r_hh,
-	          TOP_c2_mvgr_g2r_w,
 	          TOP_c2_mvgr_g2r_b4,
 	          TOP_UNDEFINED);
 Result(0, cop_vreg);
+Operand(0, int64, opnd1);
+Operand(1, int64, opnd2);
+
+Instruction_Group("mvgr g2r word",
+	          TOP_c2_mvgr_g2r_w,
+	          TOP_UNDEFINED);
+Result(0, cop_vreg);
+Result(1, cop_vreg);
 Operand(0, int64, opnd1);
 Operand(1, int64, opnd2);
 
@@ -1380,12 +1795,20 @@ Operand(1, int64, opnd2);
 Instruction_Group("mvgr g2r lh imm",
                 TOP_c2_mvgr_g2r_lh_i,
                 TOP_c2_mvgr_g2r_hh_i,
-                TOP_c2_mvgr_g2r_w_i,
                 TOP_c2_mvgr_g2r_b4_i,
 	          TOP_UNDEFINED);
 Result(0, cop_vreg);
 Operand(0, int64, opnd1);
 Operand(1, uimm4, opnd2);
+
+Instruction_Group("mvgr g2r word imm",
+                TOP_c2_mvgr_g2r_w_i,
+	          TOP_UNDEFINED);
+Result(0, cop_vreg);
+Result(1, cop_vreg); 
+Operand(0, int64, opnd1);
+Operand(1, uimm4, opnd2);
+
 
 Instruction_Group("mvgr g2r b",
 	         TOP_c2_mvgr_g2r_bh,
@@ -1416,8 +1839,7 @@ Instruction_Group(" ld v_sw",
 Result(0, cop_vreg);
 Result(1, c2movpatreg);
 Operand(0, int64, base);
-Operand(1, cop_creg);
-Operand(2, cop_creg);
+Operand(1, cop_creg, ls_ctrl);
 
 Instruction_Group(" ld vbuf, word mode",
                 TOP_c2_ld_v_w,
@@ -1425,7 +1847,7 @@ Instruction_Group(" ld vbuf, word mode",
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, int64, base);
-Operand(1, cop_creg); 
+Operand(1, cop_creg, ls_ctrl); 
 
 
 Instruction_Group(" ld vbuf",
@@ -1435,11 +1857,19 @@ Instruction_Group(" ld vbuf",
 	         TOP_c2_ld_v_m_b_u,
 	         TOP_c2_ld_v_m_b,
 	         TOP_c2_ld_v_m_h,
-	         TOP_c2_ld_v_m_w,
 	         TOP_UNDEFINED);
 Result(0, cop_vreg);
 Operand(0, int64, base);
-Operand(1, cop_creg);
+Operand(1, cop_creg, ls_ctrl);
+
+Instruction_Group(" ld vbuf macro",
+	         TOP_c2_ld_v_m_w,
+	         TOP_UNDEFINED); 
+Result(0, cop_vreg);
+Result(1, cop_vreg);
+Operand(0, int64, base);
+Operand(1, cop_creg, ls_ctrl);
+
 
 Instruction_Group(" ld to gpr",
 	         TOP_c2_ld_s_h_u_p,
@@ -1448,46 +1878,66 @@ Instruction_Group(" ld to gpr",
 	         TOP_c2_ld_s_h,
 	         TOP_c2_ld_s_w_p,
 	         TOP_c2_ld_s_w,
- 	         TOP_c2_ld_v2g_b_u,
-                TOP_c2_ld_v2g_b,
-                TOP_c2_ld_v2g_h_u, 
-                TOP_c2_ld_v2g_h,   
-                TOP_c2_ld_v2g_w,   	         
 	         TOP_UNDEFINED);
 Result(0, int64);
 Operand(0, int64, base);
 
+Instruction_Group("c2.ldv2g",
+ 	         TOP_c2_ld_v2g_b_u,
+                 TOP_c2_ld_v2g_b,
+                 TOP_c2_ld_v2g_h_u, 
+                 TOP_c2_ld_v2g_h,   
+                 TOP_c2_ld_v2g_w,   	         
+	         TOP_UNDEFINED);
+Result(0, int64);
+Operand(0, int64, base);
+Operand(1, uimm5, c2ofst);
 
 Instruction_Group("store to simd register",
                TOP_c2_st_v_w,
                TOP_UNDEFINED);
 Operand(0, cop_vreg, storeval);
-Operand(1, int64, base);
-Operand(2, cop_creg);
-Operand(3, cop_vreg, storeval);
+Operand(1, cop_vreg, storeval);
+Operand(2, int64, base);
+Operand(3, cop_creg, ls_ctrl);
 
 Instruction_Group("store to simd register",
 	        TOP_c2_st_v_b,
 	        TOP_c2_st_v_h,
 	        TOP_c2_st_v_m_b,
 	        TOP_c2_st_v_m_h,
-	        TOP_c2_st_v_m_w,
 	        TOP_UNDEFINED);
 Operand(0, cop_vreg, storeval);
 Operand(1, int64, base);
-Operand(2, cop_creg);
+Operand(2, cop_creg, ls_ctrl);
+
+
+Instruction_Group("store to simd register",
+	        TOP_c2_st_v_m_w,
+	        TOP_UNDEFINED);
+Operand(0, cop_vreg, storeval);
+Operand(1, cop_vreg, storeval);
+Operand(2, int64, base);
+Operand(3, cop_creg, ls_ctrl);
+
 
 Instruction_Group("store to simd register",
 	        TOP_c2_st_s_h,
 	        TOP_c2_st_s_h_p,
 	        TOP_c2_st_s_w,
 	        TOP_c2_st_s_w_p,
-	        TOP_c2_st_g2v_b, 
-               TOP_c2_st_g2v_h, 
-               TOP_c2_st_g2v_w, 
 	        TOP_UNDEFINED);
 Operand(0, int64, storeval);
 Operand(1, int64, base);
+
+Instruction_Group("c2.st.g2v",
+	        TOP_c2_st_g2v_b, 
+                TOP_c2_st_g2v_h, 
+                TOP_c2_st_g2v_w, 
+	        TOP_UNDEFINED);
+Operand(0, int64, storeval);
+Operand(1, int64, base);
+Operand(2, uimm5, c2ofst); 
 
 Instruction_Group("ld from sbuf to gpr",
 	        TOP_c2_ldi_s_h_u,
@@ -1514,7 +1964,7 @@ Instruction_Group("ld from vbuf to simd reg",
                TOP_UNDEFINED);
 Result(0, cop_vreg);
 Operand(0, uimm11, offset);
-Operand(1, cop_creg);
+Operand(1, cop_creg, ls_ctrl);
 
 
 Instruction_Group("ld from vbuf to simd reg in word size",
@@ -1524,7 +1974,7 @@ Instruction_Group("ld from vbuf to simd reg in word size",
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, uimm11, offset);
-Operand(1, cop_creg);
+Operand(1, cop_creg, ls_ctrl);
 
 Instruction_Group("ld vbuf to simd reg",
               TOP_c2_ldi_v2g_b_u, 
@@ -1546,16 +1996,16 @@ Instruction_Group(" store to vbuf",
 	        TOP_UNDEFINED);
 Operand(0, cop_vreg, storeval);
 Operand(1, uimm11, offset);
-Operand(2, cop_creg);
+Operand(2, cop_creg, ls_ctrl);
 
 Instruction_Group(" store to vbuf in word size",
 	        TOP_c2_sti_v_w,
 	        TOP_c2_sti_v_m_w,
 	        TOP_UNDEFINED);
 Operand(0, cop_vreg, storeval);
-Operand(1, uimm11, offset);
-Operand(2, cop_creg);
-Operand(3, cop_vreg);
+Operand(1, cop_vreg, storeval);
+Operand(2, uimm11, offset);
+Operand(3, cop_creg, ls_ctrl);
 
 Instruction_Group(" store to vbuf",
                TOP_c2_sti_g2v_b,   
@@ -1596,13 +2046,14 @@ Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, uimm1, opnd3);
-Operand(3, uimm3, opnd4);
-Operand(4, cop_vreg);
-Operand(5, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
+Operand(4, uimm1, opnd5);
+Operand(5, uimm3, opnd6);
 
 Instruction_Group("simd add shift, one ctrl-reg",
-	        TOP_c2_vadds_h_c,
+	        TOP_c2_vadds_h_mode6,
+	        TOP_c2_vadds_h_mode2,
 	        TOP_UNDEFINED);
 Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
@@ -1612,17 +2063,19 @@ Operand(3, uimm3, opnd4);
 Operand(4, cop_creg);
 
 Instruction_Group("simd add shift word or pair mode, one ctrl-reg",
-	        TOP_c2_vadds_w_c,
-	        TOP_c2_vadds_p_c,
+	        TOP_c2_vadds_w_mode6,
+	        TOP_c2_vadds_w_mode2,
+	        TOP_c2_vadds_p_mode6,
+	        TOP_c2_vadds_p_mode2,
 	        TOP_UNDEFINED);
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, uimm1, opnd3);
-Operand(3, uimm3, opnd4);
-Operand(4, cop_vreg);
-Operand(5, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
+Operand(4, uimm1, opnd5);
+Operand(5, uimm3, opnd6);
 Operand(6, cop_creg);
 
 Instruction_Group("simd sub shft",
@@ -1668,11 +2121,11 @@ Instruction_Group("simd sub word shft",
 Result(0, cop_vreg);
 Result(1, cop_vreg);          /* a pseudo one: $rd1+1 */
 Operand(0, cop_vreg, opnd1);
-Operand(1, cop_vreg, opnd2);
-Operand(2, uimm1, opnd3);
-Operand(3, uimm2, opnd4);
-Operand(4, cop_vreg, opnd5);  /* a pseudo opnd : $rs1+1 */
-Operand(5, cop_vreg, opnd6);  /* a pseudo opnd : $rs2+1 */
+Operand(1, cop_vreg, opnd2);/* a pseudo opnd : $rs1+1 */
+Operand(2, cop_vreg, opnd3);  
+Operand(3, cop_vreg, opnd4);  /* a pseudo opnd : $rs2+1 */
+Operand(4, uimm1, opnd5);
+Operand(5, uimm2, opnd6);
 
 /* add the shift_mode&0x2 = 2 */
 Instruction_Group("simd sub word shft sm&0x2=2", 
@@ -1682,11 +2135,11 @@ Instruction_Group("simd sub word shft sm&0x2=2",
 Result(0, cop_vreg);
 Result(1, cop_vreg);          /* a pseudo one: $rd1+1 */
 Operand(0, cop_vreg, opnd1);
-Operand(1, cop_vreg, opnd2);
-Operand(2, uimm1, opnd3);
-Operand(3, uimm2, opnd4);
-Operand(4, cop_vreg, opnd5);  /* a pseudo opnd : $rs1+1 */
-Operand(5, cop_vreg, opnd6);  /* a pseudo opnd : $rs2+1 */
+Operand(1, cop_vreg, opnd2);  /* a pseudo opnd : $rs1+1 */
+Operand(2, cop_vreg, opnd3);  
+Operand(3, cop_vreg, opnd4);  /* a pseudo opnd : $rs2+1 */
+Operand(4, uimm1, opnd5);
+Operand(5, uimm2, opnd6);
 Operand(6, cop_creg);
 
 Instruction_Group("simd abs word", 
@@ -1714,11 +2167,11 @@ Instruction_Group("simd pairwise sub shft",
 Result(0, cop_vreg);
 Result(1, cop_vreg);          /* a pseudo one: $rd1+1 */
 Operand(0, cop_vreg, opnd1);
-Operand(1, cop_vreg, opnd2);
-Operand(2, uimm1, opnd3);
-Operand(3, uimm2, opnd4);
-Operand(4, cop_vreg, opnd5);  /* a pseudo opnd : $rs1+1 */
-Operand(5, cop_vreg, opnd6);  /* a pseudo opnd : $rs2+1 */
+Operand(1, cop_vreg, opnd2);  /* a pseudo opnd : $rs1+1 */
+Operand(2, cop_vreg, opnd5);  
+Operand(3, cop_vreg, opnd6);  /* a pseudo opnd : $rs2+1 */
+Operand(4, uimm1, opnd3);
+Operand(5, uimm2, opnd4);
 
 /* add the shift_mode&0x2 = 2 */
 Instruction_Group("simd pairwise sub shft and sm&0x2=2", 
@@ -1728,11 +2181,11 @@ Instruction_Group("simd pairwise sub shft and sm&0x2=2",
 Result(0, cop_vreg);
 Result(1, cop_vreg);          /* a pseudo one: $rd1+1 */
 Operand(0, cop_vreg, opnd1);
-Operand(1, cop_vreg, opnd2);
-Operand(2, uimm1, opnd3);
-Operand(3, uimm2, opnd4);
-Operand(4, cop_vreg, opnd5);  /* a pseudo opnd : $rs1+1 */
-Operand(5, cop_vreg, opnd6);  /* a pseudo opnd : $rs2+1 */
+Operand(1, cop_vreg, opnd2);  /* a pseudo opnd : $rs1+1 */
+Operand(2, cop_vreg, opnd3);  
+Operand(3, cop_vreg, opnd4);  /* a pseudo opnd : $rs2+1 */
+Operand(4, uimm1, opnd5);
+Operand(5, uimm2, opnd6);
 Operand(6, cop_creg);
 
 Instruction_Group("simd pairwise abs", 
@@ -1752,12 +2205,6 @@ Result(1, cop_vreg);          /* a pseudo one: $rd1+1 */
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);  /* a pseudo opnd : $rs2+1 */
 Operand(2, cop_creg);
-
-Instruction_Group("simd abs acc", 
-	        TOP_c2_vabs_acc,
-	        TOP_UNDEFINED);
-Result(0, cop_vreg);	
-
 
 Instruction_Group("simd mul", 
 	        TOP_c2_vmul_h,
@@ -1783,8 +2230,8 @@ Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_vreg);
-Operand(3, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
 
 Instruction_Group("  shft", 
 	          TOP_c2_vshr_h,
@@ -1803,8 +2250,9 @@ Instruction_Group("  shft pair mode or word mode",
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm4, opnd2);
-Operand(2, cop_vreg);
+Operand(1, cop_vreg, opnd2);
+Operand(2, uimm4, opnd3);
+
 
 
 Instruction_Group("simd clamp",
@@ -1839,7 +2287,7 @@ Instruction_Group(" simd vclp 2",
 Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_vreg);
+Operand(2, cop_vreg, opnd3);
 
 Instruction_Group(" comp and logic pair mode", 
 	           TOP_c2_vclg_p_lt_and,
@@ -1863,8 +2311,8 @@ Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_vreg);
-Operand(3, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
 
 Instruction_Group(" comp and logic word size mode", 
 	           TOP_c2_vclg_w_lt_and,
@@ -1879,6 +2327,15 @@ Instruction_Group(" comp and logic word size mode",
 	           TOP_c2_vclg_w_gt_or,
 	           TOP_c2_vclg_w_and,
 	           TOP_c2_vclg_w_or,
+                  TOP_UNDEFINED);
+Result(0, cop_vreg);
+Operand(0, cop_vreg, opnd1);
+Operand(1, cop_vreg, opnd2);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
+
+
+Instruction_Group(" comp and logic word size mode", 
 	           TOP_c2_vclg_w_le,
 	           TOP_c2_vclg_w_lt,
 	           TOP_c2_vclg_w_ge,
@@ -1887,8 +2344,10 @@ Instruction_Group(" comp and logic word size mode",
 Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_vreg);
-Operand(3, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+
+
+
 
 Instruction_Group(" comp and logic", 
 	           TOP_c2_vclg_h_lt_and,
@@ -1907,10 +2366,8 @@ Instruction_Group(" comp and logic",
 	           TOP_c2_vclg_h_lt,
 	           TOP_c2_vclg_h_ge,
 	           TOP_c2_vclg_h_gt,
-
                   TOP_c2_vcmov_h_f,
                   TOP_c2_vcmov_h_t,
-
                   TOP_c2_vcmpr_h_eq,
                   TOP_c2_vcmpr_h_lt,
                   TOP_c2_vcmpr_h_le, 
@@ -1931,8 +2388,8 @@ Instruction_Group(" vcmpr word size mode",
 Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_vreg);
-Operand(3, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
 
 Instruction_Group(" vcmov word size mode", 
                   TOP_c2_vcmov_w_f,
@@ -1966,8 +2423,9 @@ Instruction_Group(" simd round word size mode",
 	           TOP_UNDEFINED);
 Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm3, opnd2);
-Operand(2, cop_vreg);
+Operand(1, cop_vreg, opnd2);
+Operand(2, uimm3, opnd3);
+
 
 Instruction_Group(" simd spas",
 	           TOP_c2_vspas,
@@ -1975,16 +2433,17 @@ Instruction_Group(" simd spas",
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm5, opnd2);
-Operand(2, uimm2, opnd3);
-Operand(3, cop_vreg);
+Operand(1, cop_vreg, opnd2);
+Operand(2, uimm5, opnd3);
+Operand(3, uimm2, opnd4);
+
 
 Instruction_Group("simd spel",
       TOP_c2_vspel_mul_h,
       TOP_UNDEFINED);
 Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm9, opnd2);
+Operand(1, uimm9, lut_idx);
 
 Instruction_Group("simd spel adds",
       TOP_c2_vspel_adds,
@@ -1992,7 +2451,7 @@ Instruction_Group("simd spel adds",
 Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, uimm1, opnd2);
-Operand(2, uimm9, opnd3);
+Operand(2, uimm9, lut_idx);
 
 Instruction_Group("simd spel word mode",
       TOP_c2_vspel_mul_w,
@@ -2000,7 +2459,8 @@ Instruction_Group("simd spel word mode",
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm9, opnd2);
+Operand(1, cop_vreg, opnd2);
+Operand(2, uimm9, lut_idx);
 
 
 Instruction_Group( "spel mac",
@@ -2009,7 +2469,7 @@ Instruction_Group( "spel mac",
 Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, uimm3, opnd2);
-Operand(2, uimm9, opnd3);
+Operand(2, uimm9, lut_idx);
 
 Instruction_Group( "spel mac word mode",
      TOP_c2_vspel_mac_w,
@@ -2017,28 +2477,32 @@ Instruction_Group( "spel mac word mode",
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm3, opnd2);
-Operand(2, uimm9, opnd3);
-Operand(3, cop_vreg);
-
-
-
-Instruction_Group("mmul s123",
-	           TOP_c2_mmul_s123,
-	           TOP_UNDEFINED);
-Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, uimm5, opnd3);
+Operand(2, uimm3, opnd3);
+Operand(3, uimm9, lut_idx);
 
-Instruction_Group("mmul",
+
+Instruction_Group("mmul.h",
 	           TOP_c2_mmul_h,
-	           TOP_c2_mmul_w,
 	           TOP_UNDEFINED);
 Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
 Operand(2, uimm3, opnd3);
 Operand(3, uimm4, opnd4);
+
+Instruction_Group("mmul.w",
+	           TOP_c2_mmul_w,
+	           TOP_UNDEFINED);
+Result(0, cop_vreg);
+Result(1, cop_vreg);
+Operand(0, cop_vreg, opnd1);
+Operand(1, cop_vreg, opnd2);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
+Operand(4, uimm3, opnd5);
+Operand(5, uimm4, opnd6);
+
 
 Instruction_Group("vmov", 
 	           TOP_c2_vmov,
@@ -2060,21 +2524,20 @@ Operand(3, c2movpatreg);
 Instruction_Group("sad", 
 	            TOP_c2_sad, 
 	            TOP_UNDEFINED);
-Result(0, cop_vreg);
-Result(1, int64);
+Result(0, int64);
+Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
 
 Instruction_Group("satd", 
 	            TOP_c2_satd,
 	            TOP_UNDEFINED);
-Result(0, cop_vreg); 
-Result(1, int64);
-Result(2, cop_vreg);
+Result(0, int64);
+Result(1, cop_vreg); 
+Result(2, cop_vreg); 
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
 Operand(2, uimm3, opnd3);
-Operand(3, cop_vreg);
 
 
 Instruction_Group("intra",
@@ -2092,8 +2555,18 @@ Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, uimm5, opnd2);
 
-Instruction_Group("mvsel",
-	            TOP_c2_mvsel,
+Instruction_Group("mvsel mode0",
+	            TOP_c2_mvsel_mode0,
+	            TOP_UNDEFINED);
+Result(0, int64);
+Result(1, c2mvselreg);
+Operand(0, int64, opnd1);
+Operand(1, int64, opnd2);
+Operand(2, uimm3, opnd3);
+Operand(3, cop_creg, opnd4); 
+
+Instruction_Group("mvsel mode1",
+	            TOP_c2_mvsel_mode1,
 	            TOP_UNDEFINED);
 Result(0, int64);
 Result(1, c2mvselreg);
@@ -2102,17 +2575,28 @@ Operand(1, int64, opnd2);
 Operand(2, uimm3, opnd3);
 Operand(3, c2mvselreg);
 
-/* Add the opmode = 2 or 0, for mvsel */
-Instruction_Group("mvsel.zero.two",
-	            TOP_c2_mvsel_zero_two,
+
+Instruction_Group("mvsel mode2",
+	            TOP_c2_mvsel_mode2,
 	            TOP_UNDEFINED);
 Result(0, int64);
 Result(1, c2mvselreg);
 Operand(0, int64, opnd1);
 Operand(1, int64, opnd2);
 Operand(2, uimm3, opnd3);
+Operand(3, c2mvselreg, opnd5);
+Operand(4, cop_creg, opnd4); 
+
+
+Instruction_Group("mvsel mode345",
+	            TOP_c2_mvsel_mode345,
+	            TOP_UNDEFINED);
+Result(0, int64);
+Operand(0, int64, opnd1);
+Operand(1, int64, opnd2);
+Operand(2, uimm3, opnd3);
 Operand(3, c2mvselreg);
-Operand(4, cop_creg);
+
 
 Instruction_Group("c2.mov.g",
 	            TOP_c2_mov_g,
@@ -2187,12 +2671,12 @@ Instruction_Group("adds.r.w.i",
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm5, opnd2);
-Operand(2, uimm1, opnd3);
-Operand(3, uimm1, opnd4);
-Operand(4, uimm2, opnd5);
-Operand(5, cop_creg);
-Operand(6, cop_vreg);
+Operand(1, cop_vreg, opnd2); 
+Operand(2, uimm5, opnd2);
+Operand(3, uimm1, opnd3);
+Operand(4, uimm1, opnd4);
+Operand(5, uimm2, opnd5);
+Operand(6, cop_creg);
 
 Instruction_Group("adds.r.h",
                    TOP_c2_add_shl_r_h,
@@ -2215,12 +2699,12 @@ Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, uimm1, opnd3);
-Operand(3, uimm1, opnd4);
-Operand(4, uimm2, opnd5);
-Operand(5, cop_creg);
-Operand(6, cop_vreg);
-Operand(7, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
+Operand(4, uimm1, opnd3);
+Operand(5, uimm1, opnd4);
+Operand(6, uimm2, opnd5);
+Operand(7, cop_creg);
 
 Instruction_Group("sub.g.[abs].i",
 	            TOP_c2_sub_g_abs_i,
@@ -2256,6 +2740,7 @@ Instruction_Group("bop",
 	            TOP_c2_bop_and,
 	            TOP_c2_bop_or,
 	            TOP_c2_bop_xor,
+	            TOP_c2_bop_andxor,
 	            TOP_UNDEFINED);
 Result(0, int64);
 Operand(0, int64, opnd1);
@@ -2276,9 +2761,9 @@ Instruction_Group("sub.r.abs.w.i",
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm5, opnd2);
-Operand(2, cop_creg);
-Operand(3, cop_vreg);
+Operand(1, cop_vreg, opnd2);
+Operand(2, uimm5, opnd2);
+Operand(3, cop_creg);
 
 
 Instruction_Group("subs.r.h.i",
@@ -2297,10 +2782,11 @@ Instruction_Group("subs.r.w.i",
 Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm5, opnd2);
-Operand(2, uimm3, opnd3);
-Operand(3, cop_creg);
-Operand(4, cop_vreg);
+Operand(1, cop_vreg, opnd2);
+Operand(2, uimm5, opnd3);
+Operand(3, uimm3, opnd4);
+Operand(4, cop_creg);
+
 
 Instruction_Group("mov.s.i",
 	            TOP_c2_mov_s_i,
@@ -2336,9 +2822,9 @@ Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_creg);
-Operand(3, cop_vreg);
-Operand(4, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
+Operand(4, cop_creg, opnd5);
 
 Instruction_Group("subs.r.h",
 	            TOP_c2_subs_r_h,
@@ -2347,7 +2833,7 @@ Result(0, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
 Operand(2, uimm3, opnd3);
-Operand(3, cop_creg);
+Operand(3, cop_creg, opnd4);
 
 /* c2.sub.r.abs.w needs one more result, and two more sources */
 Instruction_Group("subs.r.w",
@@ -2357,30 +2843,21 @@ Result(0, cop_vreg);
 Result(1, cop_vreg);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, uimm3, opnd3);
-Operand(3, cop_creg);
-Operand(4, cop_vreg);
-Operand(5, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
+Operand(4, uimm3, opnd5);
+Operand(5, cop_creg, opnd6);
 
 Instruction_Group("c2.muls",
 	            TOP_c2_muls,
 	            TOP_UNDEFINED);
-Result(0, cop_creg);
-Result(1, int64);
+Result(0, int64);
+Result(1, cop_creg);
 Operand(0, int64, opnd1);
 Operand(1, int64, opnd2);
 Operand(2, uimm2, opnd3);
-Operand(3, int64, opnd4);
+Operand(3, int64,  opnd4);
 Operand(4, uimm1, opnd5);
-
-Instruction_Group("muls.r.h",
-	            TOP_c2_muls_r_h,
-	            TOP_c2_muls_r_w,
-	            TOP_UNDEFINED);
-Result(0, cop_vreg);
-Operand(0, cop_vreg, opnd1);
-Operand(1, cop_vreg, opnd2);
-Operand(2, uimm2, opnd3);
 
 Instruction_Group("c2.mads",
 	            TOP_c2_mads,
@@ -2401,12 +2878,39 @@ Instruction_Group(" c2.smads",
 	             TOP_c2_bxtr_s_m,	             
 	             TOP_c2_cmov,		             
 	             TOP_c2_clp,
-                    TOP_c2_sum3_saddr, 	             
 	             TOP_UNDEFINED);
 Result(0, int64);
 Operand(0, int64, opnd1);
 Operand(1, int64, opnd2);
 Operand(2, int64, opnd3);
+
+Instruction_Group(" c2.bxtrr48",
+	             TOP_c2_bxtrr48,	             
+	             TOP_UNDEFINED);
+Result(0, int64);
+Operand(0, cop_vreg, opnd1);
+Operand(1, int64, opnd2);
+Operand(2, int64, opnd3);
+
+Instruction_Group(" c2.bxtrr48.i",
+	             TOP_c2_bxtrr48_i,	             
+	             TOP_UNDEFINED);
+Result(0, int64);
+Operand(0, cop_vreg, opnd1);
+Operand(1, uimm5, opnd2);
+Operand(2, int64, opnd3);
+
+Instruction_Group(" c2.sum4.saddr",
+                    TOP_c2_sum4_saddr, 	
+	             TOP_UNDEFINED);
+Result(0, int64);
+Result(1, c2accreg);
+Operand(0, int64, opnd1);
+Operand(1, int64, opnd2);
+Operand(2, int64, opnd3);
+
+                    
+
 
 Instruction_Group(" c2.clp.i",
 	             TOP_c2_clp_i,
@@ -2464,15 +2968,13 @@ Instruction_Group("c2.scond.eq",
                  TOP_c2_scond_ge_i, 
                  TOP_UNDEFINED);
 Result(0, int64);
-Result(1, copc);
+Result(1, c2cond);
 Operand(0, int64, opnd1);
 Operand(1, uimm5, opnd2);
 
 Instruction_Group("c2.scond.eq",
                  TOP_c2_clzob_zd_i, 
-                 TOP_c2_clzob_za_i, 
                  TOP_c2_clzob_od_i, 
-                 TOP_c2_clzob_oa_i, 
                  TOP_UNDEFINED);
 Result(0, int64);
 Operand(0, int64, opnd1);
@@ -2485,10 +2987,10 @@ Instruction_Group("c2.scond.r.eq.i",
                     TOP_c2_scond_r_h_gt,
                     TOP_c2_scond_r_h_ge,
                     TOP_UNDEFINED);
-Result(0, copc);
+Result(0, c2cond);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_creg);
+Operand(2, cop_creg, opnd3); //read add_ctrl 
 
 /* word size and non-immed mode need two more source operands */
 Instruction_Group("c2.scond.r.w, word size mode",
@@ -2498,12 +3000,12 @@ Instruction_Group("c2.scond.r.w, word size mode",
                     TOP_c2_scond_r_w_gt,
                     TOP_c2_scond_r_w_ge,
                     TOP_UNDEFINED);
-Result(0, copc);
+Result(0, c2cond);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_creg);
-Operand(3, cop_vreg);
-Operand(4, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
+Operand(4, cop_creg, opnd5); //read add_ctrl 
 
 Instruction_Group("c2.scond.r.eq",
 	              TOP_c2_scond_r_h_eq_i,
@@ -2512,10 +3014,10 @@ Instruction_Group("c2.scond.r.eq",
 	              TOP_c2_scond_r_h_gt_i,
 	              TOP_c2_scond_r_h_ge_i,
 	              TOP_UNDEFINED);
-Result(0, copc);
+Result(0, c2cond);
 Operand(0, cop_vreg, opnd1);
 Operand(1, uimm5, opnd2);
-Operand(2, cop_creg);
+Operand(2, cop_creg, opnd3);
 
 /* word size and immed mode, needs one more rs1+1 operand */
 Instruction_Group("c2.scond.r.w immed",
@@ -2525,11 +3027,12 @@ Instruction_Group("c2.scond.r.w immed",
 	              TOP_c2_scond_r_w_gt_i,
 	              TOP_c2_scond_r_w_ge_i,
 	              TOP_UNDEFINED);
-Result(0, copc);
+Result(0, c2cond);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm5, opnd2);
-Operand(2, cop_creg);
-Operand(3, cop_vreg);
+Operand(1, cop_vreg, opnd2);
+Operand(2, uimm5, opnd3);
+Operand(3, cop_creg, opnd4); //read add_ctrl 
+
 
 
 Instruction_Group("c2.scond.rw.eq",
@@ -2540,10 +3043,10 @@ Instruction_Group("c2.scond.rw.eq",
 	              TOP_c2_scond_r_wb_ge_i,
 	              TOP_UNDEFINED);
 Result(0, int64);
-Result(1, copc);
+Result(1, c2cond);
 Operand(0, cop_vreg, opnd1);
 Operand(1, uimm5, opnd2);
-Operand(2, cop_creg);
+Operand(2, cop_creg, opnd3); //read add_ctrl
 
 /* word size and immed mode, needs one more rs1+1 operand */
 Instruction_Group("c2.scond.rw.eq i",
@@ -2554,13 +3057,14 @@ Instruction_Group("c2.scond.rw.eq i",
 	              TOP_c2_scond_r_w_wb_ge_i,
 	              TOP_UNDEFINED);
 Result(0, int64);
-Result(1, copc);
+Result(1, c2cond);
 Operand(0, cop_vreg, opnd1);
-Operand(1, uimm5, opnd2);
-Operand(2, cop_creg);
-Operand(3, cop_vreg);
+Operand(1, cop_vreg, opnd2);
+Operand(2, uimm5, opnd3);
+Operand(3, cop_creg, opnd4);
 
-Instruction_Group("c2.scond.rw.eq.i",
+
+Instruction_Group("c2.scond.rw.eq",
                      TOP_c2_scond_r_h_wb_eq,
 	              TOP_c2_scond_r_h_wb_lt,
 	              TOP_c2_scond_r_h_wb_le,
@@ -2568,10 +3072,10 @@ Instruction_Group("c2.scond.rw.eq.i",
 	              TOP_c2_scond_r_h_wb_ge,
 	              TOP_UNDEFINED);
 Result(0, int64);
-Result(1, copc);
+Result(1, c2cond);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_creg);
+Operand(2, cop_creg, opnd3); 
 
 /* word size and non-immed mode, needs two more source operands */
 Instruction_Group("c2.scond.rw.eq.i",
@@ -2582,12 +3086,12 @@ Instruction_Group("c2.scond.rw.eq.i",
 	              TOP_c2_scond_r_w_wb_ge,
 	              TOP_UNDEFINED);
 Result(0, int64);
-Result(1, copc);
+Result(1, c2cond);
 Operand(0, cop_vreg, opnd1);
 Operand(1, cop_vreg, opnd2);
-Operand(2, cop_creg);
-Operand(3, cop_vreg);
-Operand(4, cop_vreg);
+Operand(2, cop_vreg, opnd3);
+Operand(3, cop_vreg, opnd4);
+Operand(4, cop_creg, opnd5);
 
 Instruction_Group("c2.bop.ls.i",
 	             TOP_c2_bop_ls_i,
@@ -2619,13 +3123,6 @@ Operand(0, cop_vreg, opnd1);
 Operand(1, uimm4, opnd2);
 
 
-Instruction_Group("c2.mvgr.r2s",
-	             TOP_c2_mvgr_r2s,
-	             TOP_UNDEFINED);
-Result(0, cop_sreg);
-Operand(0, cop_vreg, opnd1);
-Operand(1, uimm4, opnd2);
-
 Instruction_Group("c2.sum4.r",
 	              TOP_c2_sum4_r,
 	              TOP_UNDEFINED);
@@ -2653,13 +3150,6 @@ Result(0, int64);
 Operand(0, int64, opnd1);
 Operand(1, int64, opnd2);
 
-Instruction_Group("sl2 branch",
-		    TOP_c2_br_f,
-		    TOP_c2_br_t,
-		    TOP_UNDEFINED);
-Operand(0, copc, opnd1);
-Operand(1, pcrel16, target);
-
 Instruction_Group("sl2 fork", 
 	           TOP_c2_fork_m,
 	           TOP_c2_fork_n,
@@ -2680,20 +3170,49 @@ Instruction_Group("c2.thctrl.act",
                    TOP_c2_thctrl_mode4, 
                    TOP_c2_thctrl_mode5,
                    TOP_c2_thctrl_mode6,
+                   TOP_c2_thctrl_mode7,
 	           TOP_UNDEFINED);
 Operand(0, uimm2, opnd1);
 
-#ifndef fork_joint
-Instruction_Group("thread", 
-                  TOP_c2_thread_major, 
-                  TOP_c2_thread_minor, 
-                  TOP_UNDEFINED);
-Result(0, cop_creg);
-#endif 
 
 Instruction_Group("macro op", 
                   TOP_c2_macro, 
                   TOP_UNDEFINED); 
+
+
+Instruction_Group("c2 shf alu immed",
+                  TOP_c2_shor_l_i,
+                  TOP_c2_shor_rl_i,
+                  TOP_c2_shor_ra_i,
+                  TOP_c2_shadd_l_i,
+                  TOP_c2_shadd_rl_i,
+                  TOP_c2_shadd_ra_i,
+                  TOP_c2_shsub_l_i,
+                  TOP_c2_shsub_rl_i, 
+                  TOP_c2_shsub_ra_i, 
+                  TOP_UNDEFINED); 
+Result(0, int64); 
+Operand(0, int64); 
+Operand(1, uimm5); 
+Operand(2, int64); 
+
+Instruction_Group("c2 shf alu op",
+                  TOP_c2_shor_l,
+                  TOP_c2_shor_rl,
+                  TOP_c2_shor_ra,
+                  TOP_c2_shadd_l,
+                  TOP_c2_shadd_rl,
+                  TOP_c2_shadd_ra,
+                  TOP_c2_shsub_l,
+                  TOP_c2_shsub_rl, 
+                  TOP_c2_shsub_ra, 
+                  TOP_UNDEFINED); 
+Result(0, int64); 
+Operand(0, int64); 
+Operand(1, int64); 
+Operand(2, int64); 
+
+
 #endif //TARG_SL2
 
   Instruction_Group("cvt in float registers",

@@ -70,7 +70,9 @@ main ()
   ISA_Create_Lit_Class("uic1",  UNSIGNED, UnsignedBitRange(1), LIT_RANGE_END);
   ISA_Create_Lit_Class("uic3",  UNSIGNED, UnsignedBitRange(3), LIT_RANGE_END);
   ISA_Create_Lit_Class("simm5", SIGNED,   SignedBitRange(5),   LIT_RANGE_END);
+  ISA_Create_Lit_Class("simm7", SIGNED,   SignedBitRange(7),   LIT_RANGE_END);
   ISA_Create_Lit_Class("pc5",   SIGNED,   SignedBitRange(5),   LIT_RANGE_END);
+  ISA_Create_Lit_Class("simm9", SIGNED, SignedBitRange(9), LIT_RANGE_END);
   ISA_Create_Lit_Class("simm10", SIGNED, SignedBitRange(10), LIT_RANGE_END);
 #endif  
 

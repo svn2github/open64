@@ -241,7 +241,7 @@ void PROC_Properties_End(void)
   for ( isi = properties.begin(); isi != properties.end(); ++isi ) {
     PROC_PROPERTY property = *isi;
     if (property->bit_position >= 0) {
-      fprintf (hfile, "#define PROP_%-16s = 0x%" LL_FORMAT "x%s,\n",
+      fprintf (hfile, "#define PROP_%-16s 0x%" LL_FORMAT "x%s\n",
 	       property->name, 
 	       (1ULL << property->bit_position),
 	       int_suffix);
