@@ -34,4 +34,4 @@ ln -s -f ../../osprey/targia32_x8664/libspin/libgspin.a libgspin.a
 cp -f ../../libspin/*.h ../gcc/
 
 # configure the osprey-gcc
-CC='gcc -m32 -DTARG_X8664' ../configure --prefix=/usr  --program-prefix=ekopath- --program-suffix=-4.0.2  --with-gnu-as            --with-gnu-ld            --enable-languages=c,c++ --disable-shared --disable-multilib --disable-libmudflap        --enable-threads=posix   --disable-checking       --with-system-zlib       --enable-__cxa_atexit --host=x86_64-redhat-linux
+CC='gcc -m32 -DTARG_X8664' ../configure --prefix=/usr  --program-prefix=ekopath- --program-suffix=-4.0.2  --with-gnu-as            --with-gnu-ld            --enable-languages=c,c++,java --disable-shared --disable-multilib --disable-libmudflap        --enable-threads=posix   --disable-checking       --with-system-zlib       --enable-__cxa_atexit --host=x86_64-redhat-linux
