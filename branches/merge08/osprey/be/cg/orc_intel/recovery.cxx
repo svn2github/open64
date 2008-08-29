@@ -633,13 +633,9 @@ Update_CFG()
 
         BOOL cut = TRUE;
         BB* bottom_bb = NULL; 
-        bottom_bb = RGN_Divide_BB(home_bb, chk_op);
-        if( bottom_bb == NULL ){
-            cut = FALSE;
-            bottom_bb = BB_next(home_bb);
-            Is_True(bottom_bb == BB_Unique_Successor(home_bb),("bottom_bb must be home_bb's unique succ!"));
-            Is_True(bottom_bb == BB_Fall_Thru_Successor(home_bb), ("bottom_bb must be home_bb's fall through!"));
-        } 
+        bottom_bb = RGN_Divide_BB(home_bb, chk_op, TRUE);
+        FmtAssert(bottom_bb != NULL,
+			("RGN_Divide_BB() returned NULL bottom_bb"));
 
         // Build corresponding edges.
 

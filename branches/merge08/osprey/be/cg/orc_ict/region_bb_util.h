@@ -190,6 +190,6 @@ extern void RGN_Unlink_Pred_Succ(BB *pred, BB *succ,
 
 
 extern GTN_SET *Region_Def_Reach_In(REGION *rgn, MEM_POOL *pool);
-extern BB *RGN_Divide_BB(BB *bb, OP *point);
+extern BB *RGN_Divide_BB(BB *bb, OP *point, BOOL force = FALSE);
 
 #endif
