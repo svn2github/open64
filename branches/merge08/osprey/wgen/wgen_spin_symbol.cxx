@@ -1876,7 +1876,7 @@ Create_ST_For_Tree (gs_t decl_node)
   // If VAR_DECL has a non-zero DECL_ASMREG, then DECL_ASMREG-1 is the register
   // number assigned by an "asm".
   if (gs_tree_code(decl_node) == GS_VAR_DECL && gs_decl_register(decl_node) &&
-      gs_decl_asmreg(decl_node) >= 0) {
+      gs_decl_asmreg(decl_node) != 0) {
     extern PREG_NUM Map_Reg_To_Preg []; // defined in common/com/arch/config_targ.cxx
     int reg = gs_decl_asmreg(decl_node);
     PREG_NUM preg = Map_Reg_To_Preg [reg];
