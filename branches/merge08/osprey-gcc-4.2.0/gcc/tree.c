@@ -7813,10 +7813,13 @@ empty_body_p (tree stmt)
 #include <ctype.h>
 #include "c-common.h" 
 
-enum language { C, CPP };
+enum language { C, CPP,JAVA};
 enum language language = C;
 #define CPR() (language == CPP)
 #define CR()  (language == C)
+#if defined(VENDOR_FUDAN)
+#define JAVAR() (language == JAVA)
+#endif
 
 // C++ Dummy Variables Section Begins.
 tree global_namespace; // CP_DECL_CONTEXT () references this variable in cp/name-lookup.c
@@ -9336,6 +9339,11 @@ gspin_init(void)
   if (strcmp ("GNU C++", lang_hooks.name) == 0) {
     language = CPP;
   }
+#if defined(VENDOR_FUDAN)
+  else if (strcmp ("GNU Java", lang_hooks.name) == 0) {
+          language = JAVA;
+  }
+#endif
   else if (strcmp ("GNU C", lang_hooks.name) == 0) {
     language = C;
   }
@@ -9414,6 +9422,7 @@ gspin_init_global_trees_list(void)
 
   global_trees_list = __gs (EMPTY);
   for (i = TI_MAX - 1; i >= TI_ERROR_MARK; i--) {
+#if !defined (VENDOR_FUDAN)
     GS_ASSERT((global_trees[i] != NULL) ||
               (
 #ifdef TARG_X8664
@@ -9422,6 +9431,7 @@ gspin_init_global_trees_list(void)
                (i == TI_VA_LIST_GPR_COUNTER_FIELD ||
                 i == TI_VA_LIST_FPR_COUNTER_FIELD)),
               ("gspin_init_global_trees_list: global_tree not initialized"));
+#endif
     global_trees_list = gs_cons (gs_x (global_trees [i]), global_trees_list);
   }
   gs_set_operand(program, GS_GLOBAL_TREES_LIST, global_trees_list);
@@ -9529,7 +9539,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // "translate_this_func_decl" set, it means this is the proper time
       // to expand this function, and it may now have a function body --
       // whatever is the state of the function_decl, we want to get it now.
-      if (CPR() && translate_this_func_decl)
+#if defined(VENDOR_FUDAN)
+    if ((CPR() || JAVAR())
+#else
+    if (CPR() 
+#endif
+ && translate_this_func_decl)
         goto REVISIT;
       else if (CR()) {
         // Don't re-translate the function if it was fully translated before.
@@ -9645,7 +9660,6 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     _gs_bv (flags, GS_DECL_WEAK, DECL_WEAK (t));
   }
 
-
   // See if the FUNCTION_DECL should be fully or partially translated.  For
   // bodyless functions such as printf, always translate them fully.  For C++,
   // a bodyless function will always have a null DECL_SAVED_TREE, even for the
@@ -9662,7 +9676,14 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     if (CR()) {				// C
       if (!DECL_BUILT_IN(t))
 	return GS_NODE(t);
-    } else {				// C++
+    }
+#if defined(VENDOR_FUDAN)
+    else if (JAVAR()){                //JAVA
+      if(DECL_SAVED_TREE(t))
+	return GS_NODE(t);
+    }
+#endif
+    else {				// C++
       if ( // not a bodyless function
 	  DECL_SAVED_TREE(t) ||
 	  (DECL_LANG_SPECIFIC(t) &&
@@ -9933,10 +9954,17 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // file
       if (gs_operand((gs_t) GS_NODE(t), GS_DECL_SOURCE_FILE) == NULL)
       {
+#if defined(VENDOR_FUDAN)
+        if (DECL_SOURCE_FILE (t) != NULL)
+        {
+#endif
         gs_t file = __gs (IB_STRING);
         _gs_s (file, (gs_string_t) DECL_SOURCE_FILE (t),
 	       1 + strlen (DECL_SOURCE_FILE (t)));
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_SOURCE_FILE, file);
+#if defined(VENDOR_FUDAN)
+        }
+#endif
       }
 
       // line

@@ -384,7 +384,6 @@ tree_lowering_passes (tree fn)
                                   NULL);
   }
 #endif
-
   tree_register_cfg_hooks ();
   bitmap_obstack_initialize (NULL);
   execute_pass_list (all_lowering_passes);
