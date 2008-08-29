@@ -9815,12 +9815,6 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
       _gs_bv (flags, GS_DECL_NONLOCAL, DECL_NONLOCAL (t));
 
-      if (TREE_CODE(t) != FUNCTION_DECL && DECL_REGISTER(t)) {
-	gs_t asmreg = __gs(IB_INT);
-	_gs_n(asmreg, DECL_ASMREG(t));
-	gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASMREG, asmreg);
-      }
-
       switch (TREE_CODE(t)) {
 	case TYPE_DECL:
 	  gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ORIGINAL_TYPE,
