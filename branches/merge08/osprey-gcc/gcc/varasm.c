@@ -71,6 +71,12 @@ extern void gspin_gxx_emits_asm (char *);
 extern int flag_spin_file;
 #endif
 
+
+#if defined(VENDOR_FUDAN)
+enum language { C, CPP, JAVA };
+extern enum language language;
+#endif
+
 /* The (assembler) name of the first globally-visible object output.  */
 extern GTY(()) const char *first_global_object_name;
 extern GTY(()) const char *weak_global_object_name;
@@ -1809,6 +1815,16 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
         TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (decl)))
       gs_set_flag_value (DECL_ASSEMBLER_NAME(decl),
                          GS_TREE_SYMBOL_REFERENCED, 1); // bug 11006
+
+#if defined(VENDOR_FUDAN)
+   if (language == JAVA) {
+     tree chain = TREE_CHAIN(decl);
+     TREE_CHAIN(decl) = NULL;
+     gspin_gxx_emits_decl (decl);
+     TREE_CHAIN(decl) = chain;
+     }
+   else
+#endif			 
     gspin_gxx_emits_decl (decl);
   }
 #endif
