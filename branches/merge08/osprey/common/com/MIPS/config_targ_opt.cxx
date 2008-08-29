@@ -37,7 +37,7 @@
 /* ====================================================================
  * ====================================================================
  *
- * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/MIPS/config_targ_opt.cxx,v $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/MIPS/config_TARG.cxx,v $
  *
  * Revision history:
  *  26-Feb-97 - Original Version, extracted from config.c.

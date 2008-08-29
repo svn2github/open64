@@ -40,7 +40,7 @@
  * $Revision: 1.1 $
  * $Date: 2005/07/27 02:18:02 $
  * $Author: kevinlo $
- * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/MIPS/config_targ_opt.h,v $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/MIPS/config_config_targ_optTARG.h,v $
  *
  * Revision history:
  *  11-Apr-96 - Original Version
@@ -65,12 +65,12 @@
  * ====================================================================
  */
 
-#ifndef config_targ_opt_INCLUDED
-#define config_targ_opt_INCLUDED
+#ifndef config_TARG_INCLUDED
+#define config_TARG_INCLUDED
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *config_targ_opt_h_rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/MIPS/config_targ_opt.h,v $ $Revision: 1.1 $";
+static char *config_TARG_h_rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/MIPS/config_targ_opt.h,v $ $Revision: 1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #ifdef __cplusplus
@@ -122,4 +122,4 @@ extern BOOL Itanium_a0_step;	/* a0 version of itanium chip */
 }
 #endif /* __cplusplus */
     
-#endif /* config_targ_opt_INCLUDED */
+#endif /* config_TARG_INCLUDED */

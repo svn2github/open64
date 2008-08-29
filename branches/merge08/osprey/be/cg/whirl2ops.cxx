@@ -3420,6 +3420,7 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
   const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
   Exp_Intrinsic_Op (id, result, kid0, kid1, kid2, mtype, &New_OPs);
 #else
+  const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
   Exp_Intrinsic_Op (id, result, kid0, kid1, mtype, &New_OPs);
 #endif
 

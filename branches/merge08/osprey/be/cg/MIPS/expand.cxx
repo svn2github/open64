@@ -169,12 +169,18 @@ Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype, BOOL si
 	    	Build_OP(signed_extension ? TOP_dsra : TOP_dsrl, dest, tmp, lit_tn, ops);
 	  	}
 	 	else {
-	 			if(Pointer_Size==8) {
-			  	TN *tmp = Build_TN_Of_Mtype(mtype);
+	          if(Pointer_Size==8) {
+		  	TN *tmp = Build_TN_Of_Mtype(mtype);
 		    	lit_tn = Gen_Literal_TN(32 - val, 4);
 		    	Build_OP(TOP_dsll32, tmp, src, lit_tn, ops);
 		    	Build_OP(signed_extension ? TOP_dsra32 : TOP_dsrl32, dest, tmp, lit_tn, ops);	    	
-	 			}
+	 	  }
+	         else{
+		  /*
+		  We need to copy the src_tn to dest, or the data dependence would be broken.
+		  */
+		      Exp_COPY(dest,src,ops);
+	         }
 	  	}
 	  }
 	  else {
