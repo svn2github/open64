@@ -262,9 +262,15 @@ Em_Dwarf_Add_File (
 #endif // KEY
 extern "C" void Assign_ST_To_Named_Section (ST *, STR_IDX);
 
+#if defined(VENDOR_FUDAN)
+Dwarf_P_Debug 
+Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace,DST_language dst_lang,
+                symbol_index_recorder record_symidx)
+#else
 Dwarf_P_Debug 
 Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 		symbol_index_recorder record_symidx)
+#endif
 {
   Dwarf_Unsigned flags;
   const char *augmenter;
@@ -295,7 +301,11 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 
   // Most of the following have been introduced at KEY, somehow the macro
   // got removed.
+#if defined(VENDOR_FUDAN)
+  if (dst_lang == DW_LANG_C_plus_plus)
+#else
   if (is_cplus)	/* may have eh info */
+#endif
   {
     	if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
 	    augmenter = PIC_DW_CIE_AUGMENTER_STRING_V0;
@@ -329,6 +339,42 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 	                                  ST_ATTR_section_name (st_attr));
 	}
   }
+#if defined(VENDOR_FUDAN)
+  else if (dst_lang == DW_LANG_Java)/* may have eh info */	
+  {
+   	if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
+	    augmenter = PIC_DW_CIE_AUGMENTER_STRING_V0;
+	else
+	    augmenter = DW_CIE_AUGMENTER_STRING_V0;
+	personality = Save_Str ("__gcj_personality_v0");	
+        if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
+        {
+            ST * pic_personality_st = New_ST (GLOBAL_SYMTAB);
+            STR_IDX name = Save_Str ("DW.ref.__gcj_personality_v0");
+            ST_Init(pic_personality_st, name, CLASS_VAR, SCLASS_DGLOBAL, EXPORT_HIDDEN, MTYPE_TO_TY_array[MTYPE_U8]);
+            Set_ST_is_weak_symbol (pic_personality_st);
+	    Set_ST_is_initialized (pic_personality_st);
+            ST_ATTR_IDX st_attr_idx;
+            ST_ATTR&    st_attr = New_ST_ATTR (GLOBAL_SYMTAB, st_attr_idx);
+            ST_ATTR_Init (st_attr, ST_st_idx (pic_personality_st), ST_ATTR_SECTION_NAME, Save_Str (".gnu.linkonce.d.DW.ref.__gcj_personality_v0"));	
+
+	    ST * personality_st = New_ST (GLOBAL_SYMTAB);
+	    ST_Init (personality_st, Save_Str("__gcj_personality_v0"), CLASS_VAR, SCLASS_EXTERN, EXPORT_PREEMPTIBLE, MTYPE_TO_TY_array[MTYPE_U8]);	
+	    INITV_IDX iv = New_INITV();
+	    INITV_Init_Symoff (iv, personality_st, 0, 1);
+	    New_INITO (ST_st_idx (pic_personality_st), iv);
+	    // bug 8315: With -ipa, if this file is not symtab.s (actually
+	    // control won't ever reach here for symtab.s, but better to
+	    // have the following explicit check.), this new ST won't be
+	    // assigned to its section, so do it here.
+	    // We also cannot move this symbol to symtab.s because that file
+	    // does not have language information.
+	    if (Read_Global_Data) // ipa && !symtab.I
+	      Assign_ST_To_Named_Section (pic_personality_st,
+	                                  ST_ATTR_section_name (st_attr));
+	}
+  }
+#endif
   else
     // Bug 7278 - implement "zR" CFA augmentation for non-C++ code.
     if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
@@ -373,7 +419,11 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 
 #if defined(KEY) && !defined(TARG_SL) && !defined(TARG_MIPS)
   // Generate a CIE for .eh_frame only if it is C++ or if -DEBUG:eh_frame=on
+#if defined(VENDOR_FUDAN)
+  if ((dst_lang == DW_LANG_C_plus_plus) || (dst_lang == DW_LANG_Java) || DEBUG_Emit_Ehframe)
+#else
   if (is_cplus || DEBUG_Emit_Ehframe)
+#endif
     eh_cie_index = dwf_add_ehframe_cie (dw_dbg, augmenter,
 		    1, data_alignment_factor,
 		    // In common/com/em_dwarf.cxx, we have 
@@ -395,11 +445,19 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
   return dw_dbg;
 }
 
-extern "C" Dwarf_P_Debug 
+extern "C" Dwarf_P_Debug
+#if defined(VENDOR_FUDAN)
+Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, DST_language dst_lang)
+{
+  return Em_Dwarf_Begin(is_64bit, dwarf_trace, dst_lang, NULL);
+}
+
+#else
 Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus)
 {
   return Em_Dwarf_Begin(is_64bit, dwarf_trace, is_cplus, NULL);
 }
+#endif
 
 static Dwarf_Signed section_count = DW_DLV_NOCOUNT;
 static Dwarf_Unsigned relocation_section_count = DW_DLV_NOCOUNT;

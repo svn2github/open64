@@ -181,6 +181,9 @@ extern void EETARG_Emit_IP_Calc_Func(void);
 #endif
 
 extern void Early_Terminate (INT status);
+#if defined(VENDOR_FUDAN)
+extern DST_language Dwarf_Language;
+#endif
 
 #define PAD_SIZE_LIMIT	2048	/* max size to be padded in a section */
 
@@ -6997,6 +7000,11 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
 #define LSDA_CS_END		"thu_LSDA_CS_End_"
 
   fprintf(Asm_File, ".%s%d:\n", LSDA_HANDLER_START, nRangeTable);
+#if defined(VENDOR_FUDAN)
+  if(Dwarf_Language == DW_LANG_Java)			
+    fprintf(Asm_File, "\t.personality\t__gcj_personality_v0#\n");  
+  if(Dwarf_Language == DW_LANG_C_plus_plus)
+#endif
   fprintf(Asm_File, "\t.personality\t__gxx_personality_v0#\n");
   fprintf(Asm_File, "\t.handlerdata\n");
   fprintf(Asm_File, "\t.align\t8\n");
@@ -7127,7 +7135,12 @@ static void
 Write_INITO (
   INITO* inop,		/* Constant to emit */
   INT scn_idx,		/* Section to emit it into */
-  Elf64_Xword scn_ofst)	/* Section offset to emit it at */
+  Elf64_Xword scn_ofst	/* Section offset to emit it at */
+#if defined(VENDOR_FUDAN)
+  ,
+  std::vector<std::string>* class_strs = NULL  /*generate .jc1 section for java*/
+#endif  
+  )
 {
   pSCNINFO scn = em_scn[scn_idx].scninfo;
   Elf64_Xword inito_ofst;
@@ -7167,6 +7180,12 @@ Write_INITO (
     sym = INITO_st(ino);
     if (Assembly) {
         char *name = ST_name(sym);
+#if defined(VENDOR_FUDAN)
+        if(strcmp(name + strlen(name) - 8, "6class$E") == 0)
+        {
+          class_strs->push_back(name);
+        }
+#endif
         if (name != NULL && *name != 0) {
 #if defined(TARG_SL) 
           if(ST_in_v2buf(sym))
@@ -7549,7 +7568,10 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
   // Print_ST_List(st_list, "SORTED BY OFFSET");
   stable_sort (st_list.begin(), st_list.end(), section_lt);
   // Print_ST_List(st_list, "SORTED BY SECTION");
-
+#if defined(VENDOR_FUDAN)
+  std::vector<std::string> class_strs;
+#endif
+  
   for (st_iter = st_list.begin(); st_iter != st_list.end(); ++st_iter) {
 
     INT64 ofst;
@@ -7606,7 +7628,11 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
 #elif ! defined (TARG_IA64)
       fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
 #endif
-      Write_INITO (ino, STB_scninfo_idx(base), ofst);
+      Write_INITO (ino, STB_scninfo_idx(base), ofst
+#if defined(VENDOR_FUDAN)
+        ,&class_strs /*recode the class name*/
+#endif
+        );
 #else
       CGEMIT_Print_Initialized_Variable (st, ino);	
 #endif // EMIT_DATA_SECTIONS
@@ -7653,6 +7679,28 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
 #endif
     }
   }
+#if defined(VENDOR_FUDAN)
+  { /*generate .jc1 section for java in .s file */
+    fprintf ( Asm_File, "\t.section\t.jcr,\"aw\",@progbits\n");
+    if (Is_Target_32bit()){
+      fprintf ( Asm_File, "\t.align 4\n");
+      for(int i = 0; i < class_strs.size(); i++) {
+ 	class_strs[i] = "\t.long\t" + class_strs[i] + "\n";
+  	fprintf(Asm_File, class_strs[i].c_str());
+	}
+      }
+    else if (Is_Target_64bit()) {
+      fprintf ( Asm_File, "\t.align 8\n");
+      for(int i = 0; i < class_strs.size(); i++) {
+	class_strs[i] = "\tdata8\t" + class_strs[i] + "\n";
+  	fprintf(Asm_File, class_strs[i].c_str());
+	}
+      }
+    else {
+      FmtAssert(FALSE, ("unhandled .jc1 section for this platform"));
+      }
+  }
+#endif
 }
 
 
@@ -8422,7 +8470,11 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #ifdef TARG_X8664
     if (CG_p2align) 
       fputs ("\t.p2align 4,,15\n", Asm_File);
-    else if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) {
+    else if (
+#if defined(VENDOR_FUDAN)
+             PU_src_lang (Get_Current_PU()) & PU_JAVA_LANG ||
+#endif
+             PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) {
       // g++ requires a minimum alignment because it uses the least significant
       // bit of function pointers to store the virtual bit.
       fputs ("\t.p2align 1,,\n", Asm_File);

@@ -362,7 +362,13 @@ ipa_compile_init ()
 		    compiler_name_suffix = "cc";
 		  } else if (!strcmp(IPA_lang, "CC")) {
 		    compiler_name_suffix = "CC";
-		  } else {
+		  } 
+#if defined(VENDOR_FUDAN)
+                  else if (!strcmp(IPA_lang, "java")) {  
+		    compiler_name_suffix = "java";
+		  }
+#endif
+                  else {
 		    Fail_FmtAssertion ("ipa: unknown language");
 		  }
 #if defined(VENDOR_PSC)

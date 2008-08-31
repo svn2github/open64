@@ -757,7 +757,11 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
         Reset_param_list (caller, callee, edge, cg);
     }
 
-    if (IPA_Enable_DCE && edge->Is_Deletable ())
+    if (IPA_Enable_DCE && edge->Is_Deletable ()
+#if defined(VENDOR_FUDAN)
+        && !(PU_src_lang(caller->Get_PU()) & PU_JAVA_LANG)
+#endif
+       )
 	action_taken = Delete_Call (caller, callee, edge, cg);
     else if (IPA_Enable_Inline && edge->Has_Inline_Attrib () &&
 		!callee->Has_Noinline_Attrib()) {

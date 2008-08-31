@@ -82,6 +82,9 @@
 #include "w2op.h"
 
 BOOL Trace_Exp = FALSE;	/* General code expansion trace */
+#if defined(VENDOR_FUDAN)
+extern void region_stack_eh_set_has_call(); /*thif fuction for handle java exception*/
+#endif
 
 #ifdef TARG_NVISA
 // fp ops are same as int ops
@@ -222,6 +225,10 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #else
 	Expand_Rem (result, op1, op2, rtype, ops);
 #endif
+#if defined(VENDOR_FUDAN)
+        if(Current_pu->src_lang == PU_JAVA_LANG) /*java asynchronize exception*/
+          region_stack_eh_set_has_call();
+#endif
 	break;
   case OPR_MOD:
 	if (MTYPE_is_signed(rtype))
@@ -237,12 +244,20 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #else
 	Expand_Rem (result, op1, op2, rtype, ops);
 #endif
+#if defined(VENDOR_FUDAN)
+        if(Current_pu->src_lang == PU_JAVA_LANG)
+	  region_stack_eh_set_has_call();	
+#endif
 	break;
   case OPR_DIV:
 	if (MTYPE_is_float(rtype))
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
 		Expand_Divide (result, op1, op2, rtype, ops);
+#if defined(VENDOR_FUDAN)
+        if(Current_pu->src_lang == PU_JAVA_LANG)
+          region_stack_eh_set_has_call();
+#endif
 	break;
   case OPR_DIVREM:
 #ifdef TARG_IA64

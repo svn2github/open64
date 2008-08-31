@@ -2308,7 +2308,12 @@ static void Delete_Unused_Labels (HASH_TABLE<INT32, WN*> *label_hash,
 
   while (iter.Step (&label, &wn)) {
 #ifdef KEY
-    if (!LABEL_addr_saved(label) && 
+    if (
+#if defined(VENDOR_FUDAN)
+        (PU_java_lang (Get_Current_PU()) || !LABEL_addr_saved(label)) &&
+#else
+        !LABEL_addr_saved(label) && 
+#endif
         LABEL_kind(Label_Table[label]) != LKIND_BEGIN_HANDLER) {
 #else
     if (!LABEL_addr_saved(label)) {

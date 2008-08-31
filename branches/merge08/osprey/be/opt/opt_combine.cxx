@@ -121,7 +121,10 @@ Combine_div_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
     }
   }
 
-  else if ( WOPT_Enable_DIVREM && MTYPE_is_integral(rtype)  && 
+  else if ( WOPT_Enable_DIVREM && MTYPE_is_integral(rtype)  &&
+#if defined(VENDOR_FUDAN) 
+            !PU_java_lang (Get_Current_PU()) &&
+#endif
 	    ! (WN_operator_is(WN_kid1(old_wn), OPR_INTCONST) && 
 	       Can_Do_Fast_Divide(MTYPE_I4, WN_const_val(WN_kid1(old_wn))))) {
     
@@ -274,10 +277,17 @@ Combine_rem_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
 
 #if defined (TARG_SL)
   if ( WOPT_Enable_DIVREM && MTYPE_is_integral(rtype) &&
+#if defined(VENDOR_FUDAN) 
+       !PU_java_lang (Get_Current_PU()) &&
+#endif
        ! (WN_operator_is(WN_kid1(old_wn), OPR_INTCONST) && 
        Can_Do_Fast_Remainder(MTYPE_I4, WN_const_val(WN_kid1(old_wn))))) {
 #else
-  if ( WOPT_Enable_DIVREM && MTYPE_is_integral(rtype) ) {
+  if ( WOPT_Enable_DIVREM && 
+#if defined(VENDOR_FUDAN) 
+       !PU_java_lang (Get_Current_PU()) &&
+#endif
+       MTYPE_is_integral(rtype) ) {
 #endif
     // Transform:  REM        REMPART
     //             a b  =>    DIVREM

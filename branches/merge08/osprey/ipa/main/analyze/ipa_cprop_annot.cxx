@@ -1512,6 +1512,13 @@ PU_is_dead (IPA_NODE *node, BOOL *updated)
 {
     IPA_EDGE *e;
     IPA_PRED_ITER pred_iter (node);
+#if defined(VENDOR_FUDAN)
+    char* mainstr=node->Name();
+    int length= strlen(mainstr);
+    /*the 36 is the length of "4mainEP6JArrayIPN4java4lang6StringEE"*/	
+    if(strcmp(mainstr + length - 36, "4mainEP6JArrayIPN4java4lang6StringEE") == 0)
+      return FALSE; 
+#endif
 
     if (node->Is_Externally_Callable () || 
         node->Summary_Proc()->Is_alt_entry () ||

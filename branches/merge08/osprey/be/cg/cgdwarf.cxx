@@ -120,7 +120,11 @@ static Dwarf_Error dw_error;
 static BOOL Disable_DST = FALSE;
 static DST_INFO_IDX cu_idx;
 static Elf64_Word cur_text_index;
+#if defined(VENDOR_FUDAN)
+DST_language Dwarf_Language;
+#else
 static DST_language Dwarf_Language;
+#endif
 //static INT Current_Tree_Level;
 
 /* used as array to hold pointers to enclosing procedure's DIEs */
@@ -2601,10 +2605,15 @@ Cg_Dwarf_Begin (BOOL is_64bit)
 			  Cg_Dwarf_Enter_Elfsym);
   else
 #endif
+#if defined(VENDOR_FUDAN)
+  dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf,
+                           Dwarf_Language,
+                          Cg_Dwarf_Enter_Elfsym);
+#else
   dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf, 
 			  (Dwarf_Language == DW_LANG_C_plus_plus),
 			  Cg_Dwarf_Enter_Elfsym);
-
+#endif
   /* Read in the compile unit entry */
   cu_die = get_ref_die (cu_idx);
   Set_Enclosing_Die (cu_die, GLOBAL_LEVEL);
