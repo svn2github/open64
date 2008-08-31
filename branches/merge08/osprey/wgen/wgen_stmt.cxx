@@ -53,6 +53,10 @@ extern "C"{
 #include "wgen_tracing.h"
 #include "targ_sim.h"
 #include <ctype.h>
+
+#if defined(VENDOR_FUDAN)
+#include "Try_Monitor.h"
+#endif
 //#include "tree_cmp.h"
 
 #include "wn.h"		// New_Region_Id()
@@ -93,13 +97,14 @@ static SWITCH_INFO *switch_info_stack;
 static INT32        switch_info_i;
 static INT32        switch_info_max;
 
+#if !defined(VENDOR_FUDAN)
 typedef struct break_continue_info_t {
   gs_code_t       tree_code;
   LABEL_IDX break_label_idx;
   LABEL_IDX continue_label_idx;
   gs_t	    scope;
 } BREAK_CONTINUE_INFO;
-
+#endif
 static BREAK_CONTINUE_INFO *break_continue_info_stack;
 static INT32		    break_continue_info_i;
 static INT32		    break_continue_info_max;
@@ -116,6 +121,7 @@ static INT32        undefined_labels_max;
 
 // cmp_idx: for a try_block, it is the label where the first compare
 //          for the handlers of this try-block should start.
+#if !defined(VENDOR_FUDAN)
 typedef struct scope_cleanup_info_t {
   gs_t		    stmt;
   LABEL_IDX	    label_idx;
@@ -127,7 +133,7 @@ typedef struct scope_cleanup_info_t {
     vector<ST*>	*	    alloca_sts_vector;
   } vla;
 } SCOPE_CLEANUP_INFO;
-
+#endif
 static SCOPE_CLEANUP_INFO *scope_cleanup_stack;
 static INT32	    	   scope_cleanup_i;
 static INT32	    	   scope_cleanup_max;
@@ -136,6 +142,7 @@ static gs_t	   *scope_stack;
 static INT32	    scope_i;
 static INT32	    scope_max;
 
+#if !defined(VENDOR_FUDAN)
 typedef struct temp_cleanup_info_t {
   gs_t		    expr;
   LABEL_IDX	    label_idx;
@@ -143,7 +150,7 @@ typedef struct temp_cleanup_info_t {
   bool		    cleanup_eh_only;
 #endif
 } TEMP_CLEANUP_INFO;
-
+#endif 
 static TEMP_CLEANUP_INFO *temp_cleanup_stack;
 static INT32	    	  temp_cleanup_i;
 static INT32	    	  temp_cleanup_max;
@@ -155,7 +162,12 @@ static INT32	    	  temp_cleanup_max;
 #include <list>
 #include <stack>
 typedef struct handler_info_t {
-  gs_t		    handler;
+#if defined(VENDOR_FUDAN)
+  gs_t              stmt;    //VENDOR_FUDAN         
+  std::list<LABEL_IDX>* catch_labels; //VENDOR_FUDAN
+#else
+  gs_t              handler;    
+#endif
   vector<gs_t>	    *cleanups;
   vector<SCOPE_CLEANUP_INFO> *scope;
   vector<TEMP_CLEANUP_INFO> *temp_cleanup;
@@ -189,10 +201,14 @@ static INT32	     handler_info_max;
 
 #ifdef KEY
 
+#if defined(VENDOR_FUDAN)
+bool processing_finally = false;
+#endif
 bool processing_handler = false;
 bool try_block_seen;
 typedef struct eh_cleanup_entry {
   gs_t		     tryhandler;	// just for comparison, at present
+  gs_t               finally;         //VENDOR_FUDAN
   vector<gs_t>	     *cleanups;	// emit
   LABEL_IDX	     pad;	// emit
   LABEL_IDX	     start;	// emit after pad and before cleanups
@@ -287,6 +303,52 @@ class HANDLER_ITER {
 
    BOOL Not_Empty (void) const { return Current() != NULL; }
 };
+
+#if defined(VENDOR_FUDAN)
+// Iterator for JAVA exception catches
+class CATCH_ITER {
+  gs_t handler;
+  INT index;
+  INT num_handlers;
+  vector<gs_t> catches;
+ 
+  private:
+   void push(gs_t cmpd)
+    {
+       if(gs_tree_code(cmpd) ==GS_COMPOUND_EXPR)
+         {
+            push(gs_tree_operand(cmpd, 0));
+            push(gs_tree_operand(cmpd, 1));
+         }
+       else
+         {
+            catches.push_back(cmpd);
+         }
+   }
+  public:
+   CATCH_ITER (gs_t h) : handler(h)
+   {
+        push(h);
+        num_handlers = catches.size();
+   }
+ 
+   void First (void) { index = 0; }
+   void Next (void) { index++; }
+   gs_t Current (void) const
+   {
+      if (index < num_handlers)
+     {
+         return catches[index];
+     }
+     else
+       return NULL;
+   }
+        int Size(void){ return num_handlers;}
+   BOOL Not_Empty (void) const { return Current() != NULL; }
+};
+
+Try_Monitor try_monitor; 
+#endif
 
 static INT32	    scope_number;
 
@@ -439,14 +501,49 @@ Register_Cleanup (gs_t t)
 }
 #endif
 
+//VENDOR_FUDAN rewrite this function for changing the struct of handler_info_t
 static void
-Push_Handler_Info (gs_t handler, vector<gs_t> *v, 
+#if defined(VENDOR_FUDAN)
+Push_Handler_Info ( int index, gs_t stmt, std::list<LABEL_IDX>* catch_labels, //VENDOR_FUDAN
+        /*gs_t handler,VENDOR_FUDAN modify the struct of handler_info_t*/ vector<gs_t> *v, 
 	vector<SCOPE_CLEANUP_INFO> *scope, vector<TEMP_CLEANUP_INFO> *temp, 
 	vector<BREAK_CONTINUE_INFO> *break_continue,
 	vector<ST_IDX> *handler_list, vector<ST_IDX> *eh_spec,
 	LABEL_IDX label_idx, bool outermost, LABEL_IDX cmp_idx[], 
 	LABEL_IDX goto_idx)
+#else
+Push_Handler_Info (gs_t handler, vector<gs_t> *v,
+        vector<SCOPE_CLEANUP_INFO> *scope, vector<TEMP_CLEANUP_INFO> *temp,
+        vector<BREAK_CONTINUE_INFO> *break_continue,
+        vector<ST_IDX> *handler_list, vector<ST_IDX> *eh_spec,
+        LABEL_IDX label_idx, bool outermost, LABEL_IDX cmp_idx[],
+        LABEL_IDX goto_idx)
+#endif
 {
+#if defined(VENDOR_FUDAN)
+  Try_Info ti;
+ 
+  ti.stmt  = stmt;                              
+  ti.catch_labels   = catch_labels;             
+  if(gs_tree_code(stmt) == GS_TRY_FINALLY_EXPR)
+        New_LABEL (CURRENT_SYMTAB, ti.finally_label);
+  else
+        ti.finally_label = 0;
+  ti.cleanups = v;
+  ti.scope = scope;
+  ti.temp_cleanup = temp;
+  ti.break_continue = break_continue;
+  ti.handler_list = handler_list;
+  ti.eh_spec = eh_spec;
+  ti.label_idx = label_idx;
+  ti.cmp_idx[0] = cmp_idx[0];
+  ti.cmp_idx[1] = cmp_idx[1];
+  New_LABEL (CURRENT_SYMTAB, ti.cleanups_idx);
+  ti.goto_idx = goto_idx;
+  ti.outermost = outermost;
+ 
+  try_monitor.Insert_Try(ti, index);
+#else
    if (++handler_info_i == handler_info_max) {
     handler_info_max = ENLARGE (handler_info_max);
     handler_info_stack =
@@ -467,10 +564,14 @@ Push_Handler_Info (gs_t handler, vector<gs_t> *v,
   New_LABEL (CURRENT_SYMTAB, handler_info_stack [handler_info_i].cleanups_idx);
   handler_info_stack [handler_info_i].goto_idx = goto_idx;
   handler_info_stack [handler_info_i].outermost = outermost;
+#endif
 }
 
+#if defined(VENDOR_FUDAN)
+static void WGEN_Expand_Handlers_Or_Cleanup (int index);
+#else
 static void WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO&);
-
+#endif
 // Called from WGEN_Finish_Function ().
 void
 Do_Handlers (INT cleanups)
@@ -487,7 +588,12 @@ Do_Handlers (INT cleanups)
 #endif
      ) processing_handler = true;
 #endif
+#if defined(VENDOR_FUDAN)
+  try_monitor.Set_Index_First();   
+  while (!try_monitor.Index_At_End()) {
+#else
   while (handler_info_i != -1) {
+#endif
 #ifndef KEY
     LABEL_IDX start_handlers;
     New_LABEL (CURRENT_SYMTAB, start_handlers);
@@ -495,7 +601,12 @@ Do_Handlers (INT cleanups)
     WGEN_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, start_handlers, 0, NULL),
 		     Get_Srcpos());
 #else
+#if defined(VENDOR_FUDAN)
+    Try_Info ti = try_monitor.Indexing_TI();
+    LABEL_IDX start_handlers = ti.cmp_idx[1];
+#else
     LABEL_IDX start_handlers = handler_info_stack[handler_info_i].cmp_idx[1];
+#endif
     // TODO: Check if we need to mark this label as LABEL_addr_saved
     // Set handler_begin if there is no other entry point for this try-block
     if (start_handlers)
@@ -507,20 +618,37 @@ Do_Handlers (INT cleanups)
 	WGEN_Stmt_Append (cmp_wn, Get_Srcpos());
     }
     WN * actual_cmp = WN_CreateLabel ((ST_IDX) 0, 
-	       handler_info_stack[handler_info_i].cmp_idx[0], 0, NULL);
+#if defined(VENDOR_FUDAN)
+               ti.cmp_idx[0],
+#else
+	       handler_info_stack[handler_info_i].cmp_idx[0], 
+#endif
+               0, NULL);
     WGEN_Stmt_Append (actual_cmp, Get_Srcpos());
-
+#if !defined(VENDOR_FUDAN)
     handler_stack.push (handler_info_stack[handler_info_i]);
+#endif //VENDOR_FUDAN
 #endif // !KEY
+#if defined(VENDOR_FUDAN)
+    WGEN_Expand_Handlers_Or_Cleanup (try_monitor.Current_Index());
+#else
     --handler_info_i;
     WGEN_Expand_Handlers_Or_Cleanup (handler_info_stack[handler_info_i+1]);
+#endif
 #ifdef KEY
+#if defined(VENDOR_FUDAN)
+    try_monitor.Set_Index_Next();
+#else
     handler_stack.pop();
+#endif
 #endif
   }
 #ifdef KEY
   processing_handler = false;
   Do_Cleanups_For_EH(cleanups);
+#if defined(VENDOR_FUDAN)
+  try_monitor.Clean_Up();
+#endif
   if (key_exceptions) 
     FmtAssert (cleanup_list_for_eh.size() == cleanups,
                ("EH Cleanup list not completely processed"));
@@ -904,12 +1032,21 @@ Do_Temp_Cleanups (gs_t t)
   if (key_exceptions && processing_handler && 
 	!cleanup_matches(temp_cleanup_stack[temp_cleanup_i+1].expr, t))
   {
+#if defined(VENDOR_FUDAN)
+    Try_Info ti = try_monitor.Indexing_TI();
+    if (ti.temp_cleanup)
+    {  
+      int n = ti.temp_cleanup->size()-1;
+      while (!cleanup_matches((*ti.temp_cleanup)[n].expr, t)) {
+        gs_t cleanup = (*ti.temp_cleanup) [n].expr;
+#else
     HANDLER_INFO hi = handler_stack.top();
     if (hi.temp_cleanup)
     {
       int n = hi.temp_cleanup->size()-1;
       while (!cleanup_matches((*hi.temp_cleanup)[n].expr, t)) {
 	gs_t cleanup = (*hi.temp_cleanup) [n].expr;
+#endif
 	Emit_Cleanup(cleanup);
 	--n;
       }
@@ -1788,25 +1925,43 @@ Cleanup_To_Scope_From_Handler(gs_t scope)
 
   FmtAssert (processing_handler, ("Invalid scope"));
 
+#if defined(VENDOR_FUDAN)
+  Try_Info ti = try_monitor.Indexing_TI();              //czw
+  FmtAssert (ti.scope, ("No scope information available"));
+  i = ti.scope->size()-1;
+#else
   HANDLER_INFO hi = handler_stack.top();
   FmtAssert (hi.scope, ("No scope information available"));
   i = hi.scope->size()-1;
+#endif
   j = -1;
   Is_True(i != -1, ("Cleanup_To_Scope_From_Handler: scope_cleanup_stack empty"));
-
+#if defined(VENDOR_FUDAN)
+  while ((*ti.scope)[i].stmt != scope) {
+    gs_t stmt = (*ti.scope)[i].stmt;
+#else
   while ((*hi.scope)[i].stmt != scope) {
     gs_t stmt = (*hi.scope)[i].stmt;
+#endif
     if (gs_tree_code(stmt) == GS_BIND_EXPR ||
         gs_tree_code(stmt) == GS_HANDLER)
 	j = i;
     --i;
   }
   if (j != -1) {
+#if defined(VENDOR_FUDAN)
+    i = ti.scope->size()-1;
+    while (i != j) {
+      if (gs_tree_code((*ti.scope)[i].stmt) == GS_CLEANUP_STMT &&
+                !(*ti.scope)[i].cleanup_eh_only)
+        WGEN_One_Stmt_Cleanup (gs_cleanup_expr((*ti.scope)[i].stmt));
+#else
     i = hi.scope->size()-1;
     while (i != j) {
       if (gs_tree_code((*hi.scope)[i].stmt) == GS_CLEANUP_STMT &&
 		!(*hi.scope)[i].cleanup_eh_only)
 	WGEN_One_Stmt_Cleanup (gs_cleanup_expr((*hi.scope)[i].stmt));
+#endif
       --i;
     }
   }
@@ -1862,6 +2017,17 @@ WGEN_Expand_Break (void)
   gs_t      scope;
   WN *      wn;
 
+#if defined(VENDOR_FUDAN)
+  Try_Info ti;
+  if (processing_handler)
+    ti = try_monitor.Indexing_TI(); 
+  if (i == -1)
+  {
+    FmtAssert (processing_handler && ti.break_continue, ("No break/continue info"));
+    label_idx = (*ti.break_continue)[ti.break_continue->size()-1].break_label_idx;
+    scope = (*ti.break_continue)[ti.break_continue->size()-1].scope;
+  }
+#else
   HANDLER_INFO hi;
   if (processing_handler)
     hi = handler_stack.top();
@@ -1871,6 +2037,7 @@ WGEN_Expand_Break (void)
     label_idx = (*hi.break_continue)[hi.break_continue->size()-1].break_label_idx;
     scope = (*hi.break_continue)[hi.break_continue->size()-1].scope;
   }
+#endif
   else
   {
     label_idx = break_continue_info_stack[i].break_label_idx;
@@ -1904,13 +2071,25 @@ WGEN_Expand_Continue (void)
   LABEL_IDX label_idx=0;
   gs_t      scope;
 
+#if defined(VENDOR_FUDAN)
+  Try_Info ti;
+#else
   HANDLER_INFO hi;
+#endif
   if (processing_handler)
+#if defined(VENDOR_FUDAN)
+    ti = try_monitor.Indexing_TI();
+#else
     hi = handler_stack.top();
+#endif
   if (i == -1) 
   {
     FmtAssert (processing_handler, ("WGEN_Expand_Continue: No break/continue info"));
+#if defined(VENDOR_FUDAN)
+    scope = (*ti.break_continue)[ti.break_continue->size()-1].scope;
+#else
     scope = (*hi.break_continue)[hi.break_continue->size()-1].scope;
+#endif
   }
   else scope = break_continue_info_stack [i].scope;
   WN *      wn;
@@ -1931,10 +2110,17 @@ WGEN_Expand_Continue (void)
 
   if (key_exceptions && processing_handler && !label_idx)
   { // have not yet found the enclosing loop
+#if defined(VENDOR_FUDAN)
+        INT32 j = ti.break_continue->size()-1;
+        while ((*ti.break_continue)[j].tree_code == GS_SWITCH_STMT) --j;
+        FmtAssert (j != -1, ("Error with 'continue' in handler"));
+        label_idx = (*ti.break_continue)[j].continue_label_idx;
+#else
 	INT32 j = hi.break_continue->size()-1;
 	while ((*hi.break_continue)[j].tree_code == GS_SWITCH_STMT) --j;
 	FmtAssert (j != -1, ("Error with 'continue' in handler"));
 	label_idx = (*hi.break_continue)[j].continue_label_idx;
+#endif
 	FmtAssert (label_idx,("WGEN_Expand_Continue: No label to goto"));
   }
 
@@ -2119,14 +2305,33 @@ WGEN_Expand_Goto (gs_t label)	// KEY VERSION
         Is_True(i != -1, ("WGEN_Expand_Goto: scope_cleanup_stack empty"));
         while ((i >= 0) && (scope_cleanup_stack [i].stmt != *ci))
         {
-           Maybe_Emit_Cleanup (i, FALSE);
+#if defined(VENDOR_FUDAN)
+          if(lang_cplus)
+#endif
+            Maybe_Emit_Cleanup (i, FALSE);
+#if defined(VENDOR_FUDAN)
+          if(lang_java)
+          {
+            int index = try_monitor.Find_Finally_Containing_This_Bind(scope_cleanup_stack [i].stmt);
+            if(index != -1)
+            {
+              gs_t t = try_monitor.Get_Indexed_Try(index).stmt;
+              try_monitor.Push_State(index, finally_branch);
+              WGEN_Expand_Stmt(gs_tree_operand(t, 1));
+              try_monitor.Pop_State();
+            }
+          }
+#endif
     	   --i;
         }
         if (i == -1)
         {
 #ifdef FE_GNU_4_2_0
-          FmtAssert (!enable_cxx_openmp,
-               ("Scopes should have resolved with enable_cxx_openmp==on"));
+          FmtAssert (!enable_cxx_openmp
+#if defined(VENDOR_FUDAN)
+                     || lang_java
+#endif
+               ,("Scopes should have resolved with enable_cxx_openmp==on"));
 #endif
           in_handler = true;
         }
@@ -2140,15 +2345,39 @@ WGEN_Expand_Goto (gs_t label)	// KEY VERSION
 // outside the handler.
   if (in_handler && processing_handler && key_exceptions)
   {
+#if defined(VENDOR_FUDAN)
+    Try_Info ti = try_monitor.Indexing_TI();
+    INT32 i = ti.scope->size()-1;
+#else
     HANDLER_INFO hi = handler_stack.top();
-
     INT32 i = hi.scope->size()-1;
+#endif
     Is_True(i != -1, ("WGEN_Expand_Goto: scope_cleanup_stack empty inside handler"));
+#if defined(VENDOR_FUDAN)
+    while ((i >= 0) && ((*ti.scope) [i].stmt != *ci))
+    {
+      if(lang_cplus)
+        Maybe_Emit_Cleanup (i, FALSE);
+      if(lang_java)
+      {
+        int index = try_monitor.Find_Finally_Containing_This_Bind((*ti.scope) [i].stmt);
+        if(index != -1)
+        {
+          gs_t t = try_monitor.Get_Indexed_Try(index).stmt;
+          try_monitor.Push_State(index, finally_branch);
+          WGEN_Expand_Stmt(gs_tree_operand(t, 1));
+          try_monitor.Pop_State();
+        }
+      }
+      --i;
+    }
+#else
     while ((i >= 0) && ((*hi.scope) [i].stmt != *ci))
     {
       Maybe_Emit_Cleanup (i, TRUE);
       --i;
     }
+#endif
   }
 
     wn = WN_CreateGoto ((ST_IDX) NULL, label_idx);
@@ -2294,6 +2523,10 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
     }
 #endif
 
+#if defined(VENDOR_FUDAN)
+  if(lang_cplus)
+  {
+#endif
     int i = scope_cleanup_i;
     while (i != -1) {
 #ifdef KEY
@@ -2304,16 +2537,47 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #endif
       --i;
     }
+#if defined(VENDOR_FUDAN)
+  }
+
+  if(lang_java)
+  {
+    for(int index = try_monitor.Get_Current_Try(); index != -1; index = try_monitor.Get_Parent(index))
+    {
+      gs_t t = try_monitor.Get_Indexed_Try(index).stmt;
+      if(gs_tree_code(t) == GS_TRY_FINALLY_EXPR)
+      {
+        try_monitor.Push_State(index, finally_branch);
+        WGEN_Expand_Stmt(gs_tree_operand(t, 1));
+        try_monitor.Pop_State();
+      }
+    }
+  }
+#endif
+
 #ifdef KEY
+#if defined(VENDOR_FUDAN)
+  if(lang_cplus)
+  {
+#endif 
     if (key_exceptions && processing_handler) {
+#if defined(VENDOR_FUDAN)
+        Try_Info ti = try_monitor.Indexing_TI();
+        FmtAssert (ti.scope, ("NULL scope"));
+        int j = ti.scope->size()-1;
+#else
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));
 	int j = hi.scope->size()-1;
+#endif
 	while (j != -1) {
 	    Maybe_Emit_Cleanup (j, TRUE);
 	    --j;
 	}
     }
+#if defined(VENDOR_FUDAN)
+  }
+#endif
 #endif
     wn = WN_CreateReturn ();
   }
@@ -2410,6 +2674,10 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
     }
 #endif
 
+#if defined(VENDOR_FUDAN)
+  if(lang_cplus)
+  {
+#endif
     int i = scope_cleanup_i;
     while (i != -1) {
 #ifdef KEY
@@ -2420,15 +2688,55 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #endif
       --i;
     }
+#if defined(VENDOR_FUDAN)
+  }
+  if(lang_java)
+  {
+    for(int index = try_monitor.Get_Current_Try(); index != -1; index = try_monitor.Get_Parent(index))
+    {
+      gs_t t = try_monitor.Get_Indexed_Try(index).stmt;
+      if(gs_tree_code(t) == GS_TRY_FINALLY_EXPR)
+      {
+        try_monitor.Push_State(index, finally_branch);
+        WGEN_Expand_Stmt(gs_tree_operand(t, 1));
+        try_monitor.Pop_State();
+      }
+    }
+  }
+#endif
 #ifdef KEY
     if (key_exceptions && processing_handler) {
+#if defined(VENDOR_FUDAN)
+      if(lang_cplus)
+      {
+        Try_Info ti = try_monitor.Indexing_TI();           
+        FmtAssert (ti.scope, ("NULL scope"));
+        int j = ti.scope->size()-1;
+#else
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));
 	int j = hi.scope->size()-1;
+#endif
 	while (j != -1) {
 	    Maybe_Emit_Cleanup (j, TRUE);
 	    --j;
 	}
+#if defined(VENDOR_FUDAN)
+      }
+      if(lang_java)
+      {
+        for(int index = try_monitor.Get_Current_Try(); index != -1; index = try_monitor.Get_Parent(index))
+        {
+          gs_t t = try_monitor.Get_Indexed_Try(index).stmt;
+          if(gs_tree_code(t) == GS_TRY_FINALLY_EXPR)
+          {
+            try_monitor.Push_State(index, finally_branch);
+            WGEN_Expand_Stmt(gs_tree_operand(t, 1));
+            try_monitor.Pop_State();
+          }
+        }
+      }      
+#endif
     }
 #endif
     WGEN_Stmt_Pop (wgen_stmk_temp_cleanup);
@@ -2679,6 +2987,24 @@ Mark_Scopes_And_Labels (gs_t stmt)
       }
       break;
     }
+#if defined(VENDOR_FUDAN)
+   case GS_TRY_CATCH_EXPR: 
+   {
+     Mark_Scopes_And_Labels (gs_tree_operand(stmt, 0));
+     CATCH_ITER iter (gs_tree_operand(stmt, 1));
+     for (iter.First(); iter.Not_Empty(); iter.Next()) {
+       gs_t handler = iter.Current();
+       Mark_Scopes_And_Labels (handler);
+     }
+     break;
+   }
+   case GS_CATCH_EXPR:
+     Mark_Scopes_And_Labels (gs_tree_operand(stmt, 1));
+     break;
+   case GS_LOOP_EXPR:
+     Mark_Scopes_And_Labels (gs_tree_operand(stmt, 0));
+     break;
+#endif
 
     case GS_WHILE_STMT:
 #ifdef KEY
@@ -2875,7 +3201,11 @@ WGEN_Expand_Switch (gs_t stmt)
 }
 
 #ifdef KEY
+#if defined(VENDOR_FUDAN)
+void
+#else
 static void
+#endif
 WGEN_Expand_Switch_Expr (gs_t switch_expr)
 {
   Is_True (gs_tree_code(switch_expr) == GS_SWITCH_EXPR,
@@ -2923,6 +3253,43 @@ WGEN_Expand_Switch_Expr (gs_t switch_expr)
 } /* WGEN_Expand_Switch_Expr */
 #endif
 
+//FUDAN rewrite this function
+#if defined(VENDOR_FUDAN)
+static void
+Set_Handler_Labels (gs_t stmt, std::list<LABEL_IDX>* catch_labels)
+{
+  if (gs_cleanup_p (stmt))
+    return;
+ 
+  if(lang_cplus)
+  {
+    gs_t handlers = gs_try_handlers(stmt);
+ 
+    HANDLER_ITER iter (handlers);
+ 
+    for (iter.First(); iter.Not_Empty(); iter.Next()) {
+      gs_t handler = iter.Current();
+      LABEL_IDX handler_label;
+      New_LABEL (CURRENT_SYMTAB, handler_label);
+      HANDLER_LABEL(handler) = handler_label;
+      catch_labels->push_back(handler_label);
+    }
+  }
+  if(lang_java)
+  {
+    gs_t catches = gs_tree_operand(stmt, 1);
+ 
+    CATCH_ITER iter (catches);
+ 
+    for (iter.First(); iter.Not_Empty(); iter.Next()) {
+      gs_t handler = iter.Current();
+      LABEL_IDX handler_label;
+      New_LABEL (CURRENT_SYMTAB, handler_label);
+      catch_labels->push_back(handler_label);
+     }
+  }
+}
+#else
 static void
 Set_Handler_Labels (gs_t stmt)
 {
@@ -2940,6 +3307,7 @@ Set_Handler_Labels (gs_t stmt)
     HANDLER_LABEL(handler) = handler_label;
   }
 }
+#endif
 
 INT
 Current_Handler_Count()
@@ -2966,6 +3334,13 @@ Current_Handler_Count()
         ++result;
       return result;
     }
+#if defined(VENDOR_FUDAN)
+    if (gs_tree_code(t) == GS_TRY_CATCH_EXPR)
+    {
+      CATCH_ITER iter(gs_tree_operand(t, 1));
+      return iter.Size();
+    }
+#endif
   }
 
   return 0;
@@ -3014,6 +3389,21 @@ Add_Handler_Info (WN * call_wn, INT i, INT num_handlers)
 			      HANDLER_LABEL (handler));
     return;
   }
+#if defined(VENDOR_FUDAN)
+  if (gs_tree_code(t) == GS_TRY_CATCH_EXPR) {
+    if(gs_tree_code(gs_tree_operand(t, 1)) == GS_CATCH_EXPR)
+      WN_kid (call_wn, i++) = WN_CreateHandlerInfo (0, HANDLER_LABEL (gs_tree_operand(t, 1)));
+    else
+    {
+      for(gs_t cmpd = gs_tree_operand(t, 1); gs_tree_code(cmpd) == GS_COMPOUND_EXPR; cmpd = gs_tree_operand(cmpd, 1))
+      {
+        WN_kid (call_wn, i++) = WN_CreateHandlerInfo (0, HANDLER_LABEL (gs_tree_operand(cmpd, 0)));
+      }
+      WN_kid (call_wn, i++) = WN_CreateHandlerInfo (0, HANDLER_LABEL (cmpd));
+    }
+    return;
+  }
+#endif
 
   WN_kid (call_wn, i++) =
     WN_CreateHandlerInfo (0, scope_cleanup_stack [j].label_idx);
@@ -3053,8 +3443,132 @@ Get_typeinfo_var (gs_t t)
     return ti_var;
 }
 
+#if defined(VENDOR_FUDAN)
+// Given a type tree, return the typeinfo var for the exception tables
+static gs_t
+Get_type_class (gs_t t) 
+{
+ //assert(NOP_EXPR)
+  gs_t addr = gs_tree_operand(t, 0);
+  //assert(ADDR_EXPR)
+  gs_t class_decl = gs_tree_operand(addr, 0);
+ 
+  FmtAssert (class_decl, ("Typeinfo of handler unavailable"));
+  if (gs_decl_assembler_name_set_p (class_decl) &&
+     gs_tree_not_emitted_by_gxx (class_decl) &&
+     !gs_tree_symbol_referenced (gs_decl_assembler_name (class_decl)))
+  {
+     // Add it to the vector so that we emit them later
+    gs_set_tree_not_emitted_by_gxx (class_decl, 0);
+    gs_set_tree_symbol_referenced (gs_decl_assembler_name (class_decl), 1);
+    gxx_emits_typeinfos (class_decl);
+    // bug 11006
+    // We could not have processed this before, so reset the flag.
+    // Ideally, if this decl is never referenced (as asserted by the
+    // above condition), then we shouldn't have got the chance to expand
+    // this before, i.e. expanded_decl shouldn't have been set. But
+    // in the new GNU 4 front-end, this decl comes as part of the
+    // global namespace, causing us to try to process the decl before
+    // this point, and fail. So we need to reset the flag for any such
+    // scenario.
+    expanded_decl (class_decl) = FALSE;
+  }
+  return class_decl;
+}
+#endif
+
 // Get the handlers for the current try block. Move up in scope and append any
 // more handlers that may be present, to INITV.
+
+#if defined(VENDOR_FUDAN)
+//FUDAN rewrite this function
+static INITV_IDX
+Create_handler_list ( )
+{
+  INITV_IDX type_st, prev_type_st=0, start=0;
+ 
+  for (int index = try_monitor.Get_Current_Try(); index != -1; index = try_monitor.Get_Parent(index))
+  {
+    gs_t t = try_monitor.Get_Indexed_Try(index).stmt;
+    if(lang_cplus) 
+    if (gs_cleanup_p(t))        continue;
+ 
+    gs_t h = 0, f = 0;
+    if(lang_cplus)
+      h = gs_try_handlers (t);
+    if(lang_java)
+    {
+      if(gs_tree_code(t) == GS_TRY_FINALLY_EXPR)
+      {
+        f = gs_tree_operand (t, 1);
+        t = gs_tree_operand (t, 0);
+      }
+      if(gs_tree_code(t) == GS_TRY_CATCH_EXPR)
+        h = gs_tree_operand (t, 1);
+    }
+    if (key_exceptions)
+    {
+      if(lang_cplus)
+      {
+        FmtAssert (h , ("Create_handler_list: Null handlers"));
+        HANDLER_ITER iter (h);
+        for (iter.First(); iter.Not_Empty(); iter.Next())
+        {
+          h = iter.Current();
+          type_st = New_INITV();
+          gs_t type = gs_handler_type(h);
+ 
+          ST_IDX st = 0;
+          if (type) st = ST_st_idx (Get_ST (Get_typeinfo_var(type)));
+          INITV_Set_VAL (Initv_Table[type_st], Enter_tcon (Host_To_Targ (MTYPE_U4, st)), 1);
+ 
+          if (prev_type_st) Set_INITV_next (prev_type_st, type_st);
+          else start = type_st;
+          prev_type_st = type_st;
+        }
+      }
+ 
+      if(lang_java) 
+      {
+        if(h)
+        {
+          CATCH_ITER iter (h);
+          for (iter.First(); iter.Not_Empty(); iter.Next())
+          {
+            h = iter.Current();
+            type_st = New_INITV();
+            gs_t type = gs_tree_operand (h, 0);
+ 
+            ST_IDX st = 0;
+            if (type) st = ST_st_idx (Get_ST (Get_type_class(type)));
+            INITV_Set_VAL (Initv_Table[type_st], Enter_tcon (Host_To_Targ (MTYPE_U4, st)), 1);
+ 
+            if (prev_type_st) Set_INITV_next (prev_type_st, type_st);
+            else start = type_st;
+            prev_type_st = type_st;
+          }
+        }
+        if(f)
+        {
+          type_st = New_INITV();
+          ST_IDX st = 0;
+          INITV_Set_VAL (Initv_Table[type_st], Enter_tcon (Host_To_Targ (MTYPE_U4, st)), 1);
+          if (prev_type_st) Set_INITV_next (prev_type_st, type_st);
+          else start = type_st;
+          prev_type_st = type_st;
+        }
+      }
+    }
+  }
+  if (processing_handler)
+  {
+    INITV_IDX next = lookup_handlers();
+    if (prev_type_st) Set_INITV_next (prev_type_st, next);
+    else start = next;
+  }
+  return start;
+}
+#else
 static INITV_IDX
 Create_handler_list (int scope_index)
 {
@@ -3062,6 +3576,7 @@ Create_handler_list (int scope_index)
 
   FmtAssert (gs_tree_code(scope_cleanup_stack[scope_index].stmt) == GS_TRY_BLOCK,
 			("EH Error"));
+
   for (int i=scope_index; i>=0; i--)
   {
     gs_t t = scope_cleanup_stack[i].stmt;
@@ -3096,7 +3611,7 @@ Create_handler_list (int scope_index)
   }
   return start;
 }
-
+#endif
 // This function is called when we are in the 'processing_handler' phase,
 // i.e. we are in a catch block. Check if this corresponding try-catch
 // block is inside a try block any number of levels up, and if any such
@@ -3118,8 +3633,13 @@ Create_handler_list (int scope_index)
 static INITV_IDX
 lookup_handlers (vector<gs_t> *cleanups)
 {
+#if defined(VENDOR_FUDAN)
+    Try_Info ti = try_monitor.Indexing_TI();
+    vector<ST_IDX> * h = ti.handler_list;
+#else
     HANDLER_INFO hi = handler_stack.top();
     vector<ST_IDX> * h = hi.handler_list;
+#endif
     INITV_IDX type_st, prev_type_st=0, start=0;
     for (vector<ST_IDX>::iterator i = h->begin(); i != h->end(); ++i)
     {
@@ -3138,19 +3658,31 @@ lookup_handlers (vector<gs_t> *cleanups)
     }
     if (cleanups)
     {
+#if defined(VENDOR_FUDAN)
+        vector<gs_t> * temp = ti.cleanups;
+#else
     	vector<gs_t> * temp = hi.cleanups;
+#endif
 	for (vector<gs_t>::iterator j = temp->begin(); j != temp->end(); ++j)
 	    cleanups->push_back (*j);
     }
     return start;
 }
 
+#if defined(VENDOR_FUDAN)
+LABEL_IDX
+New_eh_cleanup_entry (gs_t t, gs_t f, vector<gs_t> *v, LABEL_IDX goto_idx) 
+#else
 LABEL_IDX
 New_eh_cleanup_entry (gs_t t, vector<gs_t> *v, LABEL_IDX goto_idx)
+#endif
 {
   EH_CLEANUP_ENTRY e;
 
   e.tryhandler = t;
+#if defined(VENDOR_FUDAN)
+  e.finally= f;
+#endif
   e.cleanups = v;
   e.goto_idx = goto_idx;
   LABEL_IDX pad;
@@ -3221,16 +3753,21 @@ lookup_cleanups (INITV_IDX& iv)
   gs_t t=0;
   iv = 0;
   vector<gs_t> *cleanups = new vector<gs_t>();
-
-  if (scope_cleanup_i == -1) 
+#if defined(VENDOR_FUDAN)
+  LABEL_IDX goto_idx=0;
+ 
+  if(lang_cplus)
   {
+#endif
+    if (scope_cleanup_i == -1) 
+    {
 	iv = New_INITV();
 	INITV_Set_ZERO (Initv_Table[iv], MTYPE_U4, 1);
 	return 0;
-  }
-  gs_t temp_cleanup=0;
-  for (int i=temp_cleanup_i; i>=0; --i)
-  {
+    }
+    gs_t temp_cleanup=0;
+    for (int i=temp_cleanup_i; i>=0; --i)
+    {
 	TEMP_CLEANUP_INFO t = temp_cleanup_stack[i];
   	if (t.label_idx && t.cleanup_eh_only)
 	{
@@ -3238,9 +3775,11 @@ lookup_cleanups (INITV_IDX& iv)
 		temp_cleanup = temp_cleanup_stack[i].expr;
 		break;
   	}
-  }
-  int scope_index;
-  LABEL_IDX goto_idx=0;
+    }
+    int scope_index;
+#if !defined(VENDOR_FUDAN)
+    LABEL_IDX goto_idx=0;
+#endif
   for (scope_index=scope_cleanup_i; scope_index>=0; scope_index--)
   {
 	t = scope_cleanup_stack[scope_index].stmt;
@@ -3260,19 +3799,61 @@ lookup_cleanups (INITV_IDX& iv)
   }
   if (temp_cleanup)
   	cleanups->push_back (temp_cleanup);
+#if defined(VENDOR_FUDAN)
+  }
+  if(lang_java)
+  {
+    if (try_monitor.Get_Current_Try() == -1 && !try_monitor.In_Catch_With_Finally())
+    {
+      iv = New_INITV();
+      INITV_Set_ZERO (Initv_Table[iv], MTYPE_U4, 1);
+      return 0;
+    }
+  }
+
+  gs_t f=0;
+#endif
   gs_t h = 0;
+#if defined(VENDOR_FUDAN)
+  if (try_monitor.Get_Current_Try() != -1)   
+  {
+    gs_t t = try_monitor.Get_Indexed_Try(try_monitor.Get_Current_Try()).stmt;
+    if(lang_cplus)   
+      h = gs_try_handlers (t);
+    if(lang_java)
+    {
+      if(gs_tree_code(t) == GS_TRY_FINALLY_EXPR)
+      {
+        f = gs_tree_operand(t, 1);  
+        t = gs_tree_operand(t, 0);
+      }
+      if(gs_tree_code(t) == GS_TRY_CATCH_EXPR)
+        h = gs_tree_operand(t, 1);
+    }
+    iv = Create_handler_list ();
+    goto_idx = try_monitor.Get_Cmp_Label(try_monitor.Get_Current_Try());
+  }
+#else
   if (gs_tree_code(t) == GS_TRY_BLOCK && scope_index >= 0)
   {
-	h = gs_try_handlers (t);
+        h = gs_try_handlers (t);
 	iv = Create_handler_list (scope_index);
 	goto_idx = scope_cleanup_stack[scope_index].cmp_idx;
   }
+#endif
   else // no enclosing try block
   {
 	if (processing_handler)
 	{
 	    iv = lookup_handlers (cleanups);
+#if defined(VENDOR_FUDAN)
+            if(try_monitor.In_Catch_With_Finally())       
+              goto_idx = try_monitor.Get_Indexed_Try(try_monitor.Get_Current_State().index).finally_label;
+            else
+              goto_idx = try_monitor.Indexing_TI().goto_idx;
+#else
 	    goto_idx = handler_stack.top().goto_idx;
+#endif
 	}
 	else if (cleanups->empty() && eh_spec_vector.empty())
 	{
@@ -3293,7 +3874,11 @@ lookup_cleanups (INITV_IDX& iv)
   }
   if (processing_handler)
   {
+#if defined(VENDOR_FUDAN)
+ 	vector<ST_IDX> * eh_spec = try_monitor.Indexing_TI().eh_spec;
+#else
   	vector<ST_IDX> * eh_spec = handler_stack.top().eh_spec;
+#endif
 	FmtAssert (eh_spec, ("Invalid eh_spec inside handler"));
 	if (!eh_spec->empty())
 	{
@@ -3315,27 +3900,51 @@ lookup_cleanups (INITV_IDX& iv)
   }
   if (cleanup_list_for_eh.empty())
   {
+#if defined(VENDOR_FUDAN)
+	return New_eh_cleanup_entry (h, f, cleanups, goto_idx);
+#else
 	return New_eh_cleanup_entry (h, cleanups, goto_idx);
+#endif
   }
   else
   {
 	EH_CLEANUP_ENTRY e = cleanup_list_for_eh.back();
 
 	// check if we are not in any try-block
+#if defined(VENDOR_FUDAN)
+	if (h == 0 && f == 0 && e.tryhandler == 0 && e.finally == 0 && !processing_handler &&
+#else
 	if (h == 0 && e.tryhandler == 0 && !processing_handler &&
+#endif
 	    cleanups->size() != e.cleanups->size())
 	{
 		if (optimize_cleanups (cleanups, e.cleanups))
-		    return New_eh_cleanup_entry (h, cleanups, e.start);
+#if defined(VENDOR_FUDAN)
+                  return New_eh_cleanup_entry (h, f, cleanups, e.start);
+#else
+     	          return New_eh_cleanup_entry (h, cleanups, e.start);
+#endif
 	}
 
-	if ((h != e.tryhandler) || // different try block
-		(cleanups->size() != e.cleanups->size())) // # of cleanups doesn't match
+	if ((h != e.tryhandler)
+#if defined(VENDOR_FUDAN)
+           || (f != e.finally) 
+#endif
+           ||// different try block
+  	   (cleanups->size() != e.cleanups->size())) // # of cleanups doesn't match
+#if defined(VENDOR_FUDAN)
+		return New_eh_cleanup_entry (h, f, cleanups, goto_idx);
+#else
 	    	return New_eh_cleanup_entry (h, cleanups, goto_idx);
+#endif
 	// same tryblock, same # of cleanups
 	for (int j=0; j<cleanups->size(); ++j)
 	    if ((*cleanups)[j] != (*(e.cleanups))[j])
+#if defined(VENDOR_FUDAN)
+                return New_eh_cleanup_entry (h, f, cleanups, goto_idx);
+#else
 	    	return New_eh_cleanup_entry (h, cleanups, goto_idx);
+#endif
 	    return e.pad;
   }
 }
@@ -3346,6 +3955,10 @@ lookup_cleanups (INITV_IDX& iv)
 static void
 Get_handler_list (vector<ST_IDX> *handler_list)
 {
+#if defined(VENDOR_FUDAN)
+  if(lang_cplus)
+  {
+#endif
   FmtAssert (gs_tree_code(scope_cleanup_stack[scope_cleanup_i+1].stmt) == 
 		GS_TRY_BLOCK, ("EH Error"));
   for (int i=scope_cleanup_i; i>=0; i--)
@@ -3364,9 +3977,52 @@ Get_handler_list (vector<ST_IDX> *handler_list)
 	handler_list->push_back (st);
     }
   }
+#if defined(VENDOR_FUDAN)
+  }
+  if(lang_java)
+  {
+    for(int index = try_monitor.Get_Current_Try(); index != -1; index = try_monitor.Get_Parent(index))
+    {
+      gs_t t = try_monitor.Get_Indexed_Try(index).stmt;
+      if(gs_tree_code(t) == GS_TRY_CATCH_EXPR)
+      {
+        CATCH_ITER iter (gs_tree_operand(t, 1));
+        for (iter.First(); iter.Not_Empty(); iter.Next())
+        {
+          gs_t h = iter.Current();
+          gs_t type = gs_tree_operand(h, 0);
+          ST_IDX st = 0;      // catch-all
+          if (type)
+            st = ST_st_idx (Get_ST (Get_type_class(type)));  //czw
+          handler_list->push_back (st);
+        }
+      }
+      if(gs_tree_code(t) == GS_TRY_FINALLY_EXPR)
+      {
+        if(gs_tree_code(gs_tree_operand(t, 0)) == GS_TRY_CATCH_EXPR)
+        {
+          CATCH_ITER iter (gs_tree_operand(gs_tree_operand(t, 0), 1));
+          for (iter.First(); iter.Not_Empty(); iter.Next())
+          {
+            gs_t h = iter.Current();
+            gs_t type = gs_tree_operand(h, 0);
+            ST_IDX st = 0;    // catch-all
+            if (type)
+              st = ST_st_idx (Get_ST (Get_type_class(type)));  //czw
+            handler_list->push_back (st);
+          }
+        }
+      }
+    }
+  }
+#endif
   if (processing_handler)
   {
+#if defined(VENDOR_FUDAN)
+        Try_Info hi = try_monitor.Indexing_TI();
+#else
 	HANDLER_INFO hi = handler_stack.top();
+#endif
 	for (vector<ST_IDX>::iterator i = hi.handler_list->begin(); 
 		i != hi.handler_list->end(); ++i)
 	    handler_list->push_back (*i);
@@ -3378,9 +4034,18 @@ Get_handler_list (vector<ST_IDX> *handler_list)
 //      CLEANUPS the set of cleanups that need to be run
 //      GOTO_IDX the label to jump to
 // if exception is not caught by the handlers of the current try block.
+#if defined(VENDOR_FUDAN)
+static bool
+Get_Cleanup_Info (int index, vector<gs_t> *cleanups, LABEL_IDX *goto_idx)
+#else
 static bool
 Get_Cleanup_Info (vector<gs_t> *cleanups, LABEL_IDX *goto_idx)
+#endif
 {
+#if defined(VENDOR_FUDAN)
+  if(lang_cplus)
+  {
+#endif
   FmtAssert (gs_tree_code(scope_cleanup_stack[scope_cleanup_i+1].stmt)==GS_TRY_BLOCK,
 		("EH Processing Error"));
 
@@ -3398,6 +4063,7 @@ Get_Cleanup_Info (vector<gs_t> *cleanups, LABEL_IDX *goto_idx)
 		return false;
 	}
   }
+
   if (!processing_handler)
   {
 	*goto_idx = 0;
@@ -3414,6 +4080,18 @@ Get_Cleanup_Info (vector<gs_t> *cleanups, LABEL_IDX *goto_idx)
 	*goto_idx = hi.cleanups_idx;
 	return false;
   }
+#if defined(VENDOR_FUDAN)
+  } // end if(lang_cplus)
+
+  if(lang_java)
+  {
+    if(try_monitor.Get_Parent(index) != -1)
+      *goto_idx = try_monitor.Get_Cmp_Label(try_monitor.Get_Parent(index));
+    else
+      *goto_idx = 0;
+    return *goto_idx == 0;
+  }
+#endif
 }
 
 // Called at the start of processing a try block
@@ -3423,12 +4101,19 @@ Get_Scope_Info (void)
   vector<SCOPE_CLEANUP_INFO> *scope = new vector<SCOPE_CLEANUP_INFO>();
   if (processing_handler)
   {
+#if defined(VENDOR_FUDAN)
+    Try_Info hi = try_monitor.Indexing_TI();
+#else
     HANDLER_INFO hi = handler_stack.top();
+#endif
     if (hi.scope)
       for (vector<SCOPE_CLEANUP_INFO>::iterator i = hi.scope->begin();
 		i != hi.scope->end(); ++i)
 	scope->push_back (*i);
   }
+#if defined(VENDOR_FUDAN)
+  if(lang_cplus)  
+#endif
   FmtAssert (gs_tree_code(scope_cleanup_stack[scope_cleanup_i].stmt) 
 		== GS_TRY_BLOCK, ("Scope Error in Get_Scope_Info"));
   for (int i=0; i<scope_cleanup_i; ++i) // Don't include TRY_BLOCK
@@ -3482,12 +4167,19 @@ Get_Break_Continue_Info (void)
   check_for_loop_label ();
   if (processing_handler)
   {
+#if defined(VENDOR_FUDAN)
+    Try_Info hi = try_monitor.Indexing_TI();
+#else
     HANDLER_INFO hi = handler_stack.top();
+#endif
     if (hi.break_continue)
       for (vector<BREAK_CONTINUE_INFO>::iterator i = hi.break_continue->begin();
 		i != hi.break_continue->end(); ++i)
 	info->push_back (*i);
   }
+#if defined(VENDOR_FUDAN)
+  if(lang_cplus)
+#endif
   FmtAssert (gs_tree_code(scope_cleanup_stack[scope_cleanup_i].stmt) 
 		== GS_TRY_BLOCK, ("Scope Error in Get_Break_Continue_Info"));
   for (int i=0; i<=break_continue_info_i; ++i)
@@ -3521,7 +4213,11 @@ Get_eh_spec (vector<ST_IDX> *in)
 {
   vector<ST_IDX> * eh_spec;
   if (processing_handler)
+#if defined(VENDOR_FUDAN)
+      eh_spec = try_monitor.Indexing_TI().eh_spec;
+#else
       eh_spec = handler_stack.top().eh_spec;
+#endif
   else
       eh_spec = &eh_spec_vector;
   FmtAssert (eh_spec, ("Invalid eh_spec"));
@@ -3533,6 +4229,9 @@ Get_eh_spec (vector<ST_IDX> *in)
 static void
 WGEN_Expand_Try (gs_t stmt)
 {
+#if defined(VENDOR_FUDAN)
+  int index = try_monitor.Insert_Try(stmt);
+#endif
   LABEL_IDX end_label_idx;
   WN *      end_label_wn;
 
@@ -3554,9 +4253,17 @@ WGEN_Expand_Try (gs_t stmt)
 #endif
 
   /* Set start labels for each handler. */
+#if defined(VENDOR_FUDAN)
+  std::list<LABEL_IDX>* catch_labels = new std::list<LABEL_IDX>;  
+  Set_Handler_Labels(stmt, catch_labels);
+#else
   Set_Handler_Labels(stmt);
-
+#endif
   Push_Scope_Cleanup (stmt);
+
+#if defined(VENDOR_FUDAN)
+  try_monitor.Set_Cmp_Label(index, scope_cleanup_stack [scope_cleanup_i].cmp_idx);
+#endif
 
 #ifdef KEY
   vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();
@@ -3578,10 +4285,15 @@ WGEN_Expand_Try (gs_t stmt)
 #endif // KEY
 
   /* Generate code for the try-block. */
-
+#if defined(VENDOR_FUDAN)
+  try_monitor.Push_State(index, try_branch);
+#endif
   for (gs_t s = gs_try_stmts(stmt); s; s = gs_tree_chain(s))
     WGEN_Expand_Stmt(s);
   --scope_cleanup_i;
+#if defined(VENDOR_FUDAN)
+  try_monitor.Pop_State();
+#endif
 
 #ifdef KEY
   LABEL_IDX start = 0;
@@ -3644,7 +4356,12 @@ WGEN_Expand_Try (gs_t stmt)
   cmp_idxs[1] = start;
   LABEL_IDX goto_idx=0;
   bool outermost = 0;
-  if (key_exceptions) outermost = Get_Cleanup_Info (cleanups, &goto_idx);
+  if (key_exceptions) 
+#if defined(VENDOR_FUDAN)
+    outermost = Get_Cleanup_Info (index, cleanups, &goto_idx);
+#else
+    outermost = Get_Cleanup_Info (cleanups, &goto_idx);
+#endif
   vector<ST_IDX> *handler_list = new vector<ST_IDX>();
   vector<ST_IDX> * eh_spec_list = NULL;
   if (key_exceptions) 
@@ -3670,9 +4387,15 @@ WGEN_Expand_Try (gs_t stmt)
   /* Handler code will be generated later, at end of function. */
 
 #ifdef KEY
+#if defined(VENDOR_FUDAN)
+  Push_Handler_Info (index, stmt, 0, cleanups, scope_cleanup, temp_cleanup,
+        break_continue, handler_list, eh_spec_list, end_label_idx, outermost,
+        cmp_idxs, goto_idx);
+#else
   Push_Handler_Info (gs_try_handlers(stmt), cleanups, scope_cleanup, temp_cleanup,
 	break_continue, handler_list, eh_spec_list, end_label_idx, outermost, 
 	cmp_idxs, goto_idx);
+#endif // end VENDOR_FUDAN
 #else
   Push_Handler_Info (gs_try_handlers(stmt), end_label_idx);
 #endif // KEY
@@ -3687,6 +4410,256 @@ WGEN_Expand_Try (gs_t stmt)
   end_label_wn = WN_CreateLabel ((ST_IDX) 0, end_label_idx, 0, NULL);
   WGEN_Stmt_Append (end_label_wn, Get_Srcpos());
 } /* WGEN_Expand_Try */
+
+#if defined(VENDOR_FUDAN)
+void
+WGEN_Expand_Try_Catch (gs_t stmt)
+{
+  LABEL_IDX end_label_idx;
+  WN *      end_label_wn;
+ 
+  int index = try_monitor.Insert_Try(stmt);
+ 
+  /* Don't generate anything if there are no statements in the try-block.*/ 
+  if (gs_tree_operand(stmt, 0) == NULL)
+    return;
+ 
+  if (!try_block_seen)
+  {
+    if (manual_unwinding_needed())
+      Set_PU_needs_manual_unwinding (Get_Current_PU());
+    try_block_seen = true;
+  }
+
+  /* Set start labels for each handler. */
+  std::list<LABEL_IDX>* catch_labels = new std::list<LABEL_IDX>;   
+  Set_Handler_Labels(stmt, catch_labels);
+ 
+  //Push_Scope_Cleanup (stmt);
+  LABEL_IDX cmp_idx;
+  New_LABEL (CURRENT_SYMTAB, cmp_idx);
+  try_monitor.Set_Cmp_Label(index, cmp_idx);
+ 
+  vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();
+// FIXME: handle temp cleanups for return from handler.
+#if 0 
+  vector<TEMP_CLEANUP_INFO> *temp_cleanup = Get_Temp_Cleanup_Info ();
+#else
+  vector<TEMP_CLEANUP_INFO> *temp_cleanup = 0;
+#endif
+  vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
+  int handler_count=0;
+  WN * region_body;
+  if (key_exceptions)
+  {
+    region_body = WN_CreateBlock();
+    WGEN_Stmt_Push (region_body, wgen_stmk_region_body, Get_Srcpos());
+    handler_count = cleanup_list_for_eh.size();
+  }
+
+  /* Generate code for the try-block. */
+ 
+  try_monitor.Push_State(index, try_branch);
+  for (gs_t s = gs_tree_operand(stmt, 0); s; s = gs_tree_chain(s))
+    WGEN_Expand_Stmt(s);
+  try_monitor.Pop_State();
+ 
+  LABEL_IDX start = 0;
+  if (key_exceptions)
+  {
+    WGEN_Stmt_Pop (wgen_stmk_region_body);
+    WN * region_pragmas = WN_CreateBlock();
+    if (cleanup_list_for_eh.size() > handler_count)
+    {
+      std::list<EH_CLEANUP_ENTRY>::iterator iter = cleanup_list_for_eh.begin();
+      for (int incr=0; incr<handler_count; ++incr)
+        ++iter;
+      for (; iter != cleanup_list_for_eh.end(); ++iter)
+      {
+        EH_CLEANUP_ENTRY entry = *iter;
+        WN_INSERT_BlockLast (region_pragmas, WN_CreateGoto (entry.pad));
+      }
+    }
+    else 
+    {
+      New_LABEL (CURRENT_SYMTAB, start);
+      Set_LABEL_KIND (Label_Table[start], LKIND_BEGIN_HANDLER);
+      WN_INSERT_BlockLast (region_pragmas, WN_CreateGoto (start));
+    }
+ 
+    // insert the label to go to for an inlined callee
+    // This inito is not being used right now.
+    TY_IDX ty = MTYPE_TO_TY_array[MTYPE_U4];
+    ST * ereg = Gen_Temp_Named_Symbol (ty, "try_label", CLASS_VAR,
+                                SCLASS_EH_REGION_SUPP);
+    Set_ST_is_initialized (*ereg);
+    Set_ST_is_not_used (*ereg);
+    INITV_IDX try_label = New_INITV();
+    INITV_Init_Label (try_label, cmp_idx, 1);
+    INITO_IDX ereg_supp = New_INITO (ST_st_idx(ereg), try_label);
+    WGEN_Stmt_Append (WN_CreateRegion (REGION_KIND_TRY, region_body,
+        region_pragmas, WN_CreateBlock(), New_Region_Id(), ereg_supp),
+        Get_Srcpos());
+    Set_PU_has_region (Get_Current_PU());
+  }
+  vector<gs_t> *cleanups = new vector<gs_t>();
+  LABEL_IDX cmp_idxs[2];
+  cmp_idxs[0] = cmp_idx;  
+  cmp_idxs[1] = start;
+  LABEL_IDX goto_idx=0;
+  bool outermost = 0;
+  if (key_exceptions) outermost = Get_Cleanup_Info (index, cleanups, &goto_idx);
+  vector<ST_IDX> *handler_list = new vector<ST_IDX>();
+  vector<ST_IDX> * eh_spec_list = NULL;
+  if (key_exceptions)
+  {
+    Get_handler_list (handler_list);
+    eh_spec_list = new vector<ST_IDX>();
+    Get_eh_spec (eh_spec_list);
+  }
+ 
+  /* Generate a label for the handlers to branch back to. */
+ 
+  New_LABEL (CURRENT_SYMTAB, end_label_idx);
+ 
+  /* Handler code will be generated later, at end of function. */
+ 
+  Push_Handler_Info (index, stmt, catch_labels, cleanups, scope_cleanup, temp_cleanup, 
+        break_continue, handler_list, eh_spec_list, end_label_idx, outermost,
+        cmp_idxs, goto_idx);
+ 
+  /* Emit label after handlers. */
+  end_label_wn = WN_CreateLabel ((ST_IDX) 0, end_label_idx, 0, NULL);
+  WGEN_Stmt_Append (end_label_wn, Get_Srcpos());
+} /* WGEN_Expand_Try */
+ 
+void
+WGEN_Expand_Try_Finally (gs_t stmt) 
+{
+  LABEL_IDX end_label_idx;
+  WN *      end_label_wn;
+  gs_t try_part = gs_tree_operand(stmt, 0);
+  gs_t finally_part = gs_tree_operand(stmt, 1);
+ 
+  int index = try_monitor.Insert_Try(stmt);
+  /* Don't generate anything if there are no statements in the
+   * try-block.*/
+  if (try_part == NULL)
+    return;
+ 
+  if (!try_block_seen)
+  {
+    if (manual_unwinding_needed())
+      Set_PU_needs_manual_unwinding (Get_Current_PU());
+    try_block_seen = true;
+  }
+ 
+  /* Set start labels for each handler. */
+std::list<LABEL_IDX>* catch_labels = new std::list<LABEL_IDX>;
+if(gs_tree_code(try_part) == GS_TRY_CATCH_EXPR)
+  Set_Handler_Labels(try_part, catch_labels);
+ 
+  LABEL_IDX cmp_idx;
+  New_LABEL (CURRENT_SYMTAB, cmp_idx);
+  try_monitor.Set_Cmp_Label(index, cmp_idx);
+  LABEL_IDX finally_label;
+  New_LABEL (CURRENT_SYMTAB, finally_label);
+ 
+  vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();  
+// FIXME: handle temp cleanups for return from handler.
+#if 0 
+  vector<TEMP_CLEANUP_INFO> *temp_cleanup = Get_Temp_Cleanup_Info ();
+#else
+  vector<TEMP_CLEANUP_INFO> *temp_cleanup = 0;
+#endif
+  vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
+  int handler_count=0;
+  WN * region_body;
+  if (key_exceptions)
+  {
+    region_body = WN_CreateBlock();
+    WGEN_Stmt_Push (region_body, wgen_stmk_region_body, Get_Srcpos());
+    handler_count = cleanup_list_for_eh.size();
+  }
+ 
+  /* Generate code for the try-block. */
+  try_monitor.Push_State(index, try_branch);
+  if(gs_tree_code(try_part) == GS_TRY_CATCH_EXPR)
+    for (gs_t s = gs_tree_operand(try_part, 0); s; s = gs_tree_chain(s))
+      WGEN_Expand_Stmt(s);
+  else
+      WGEN_Expand_Stmt(try_part);
+  try_monitor.Pop_State();
+ 
+  LABEL_IDX start = 0;
+  if (key_exceptions)
+  {
+    WGEN_Stmt_Pop (wgen_stmk_region_body);
+    WN * region_pragmas = WN_CreateBlock();
+    if (cleanup_list_for_eh.size() > handler_count)
+    {
+      std::list<EH_CLEANUP_ENTRY>::iterator iter = cleanup_list_for_eh.begin();
+      for (int incr=0; incr<handler_count; ++incr)
+         ++iter;
+      for (; iter != cleanup_list_for_eh.end(); ++iter)
+      {
+        EH_CLEANUP_ENTRY entry = *iter;
+        WN_INSERT_BlockLast (region_pragmas, WN_CreateGoto (entry.pad));
+      }
+    }
+    else 
+    {
+      New_LABEL (CURRENT_SYMTAB, start);
+      Set_LABEL_KIND (Label_Table[start], LKIND_BEGIN_HANDLER);
+      WN_INSERT_BlockLast (region_pragmas, WN_CreateGoto (start));
+    }
+    // insert the label to go to for an inlined callee
+    // This inito is not being used right now.
+    TY_IDX ty = MTYPE_TO_TY_array[MTYPE_U4];
+    ST * ereg = Gen_Temp_Named_Symbol (ty, "try_label", CLASS_VAR,
+                                SCLASS_EH_REGION_SUPP);
+    Set_ST_is_initialized (*ereg);
+    Set_ST_is_not_used (*ereg);
+    INITV_IDX try_label = New_INITV();
+    INITV_Init_Label (try_label, cmp_idx, 1);
+    INITO_IDX ereg_supp = New_INITO (ST_st_idx(ereg), try_label);
+    WGEN_Stmt_Append (WN_CreateRegion (REGION_KIND_TRY, region_body,
+        region_pragmas, WN_CreateBlock(), New_Region_Id(), ereg_supp),
+        Get_Srcpos());
+    Set_PU_has_region (Get_Current_PU());
+  }
+  vector<gs_t> *cleanups = new vector<gs_t>();
+  LABEL_IDX cmp_idxs[2];
+  cmp_idxs[0] = cmp_idx;
+  cmp_idxs[1] = start;
+  LABEL_IDX goto_idx=0;
+  bool outermost = 0;
+  if (key_exceptions) outermost = Get_Cleanup_Info (index, cleanups, &goto_idx);
+  vector<ST_IDX> *handler_list = new vector<ST_IDX>();
+  vector<ST_IDX> * eh_spec_list = NULL;
+  if (key_exceptions)
+  {
+    Get_handler_list (handler_list);
+    eh_spec_list = new vector<ST_IDX>();
+    Get_eh_spec (eh_spec_list);
+  }
+ 
+  /* Generate a label for the handlers to branch back to. */
+  New_LABEL (CURRENT_SYMTAB, end_label_idx);
+ 
+  /* Handler code will be generated later, at end of function. */
+  Push_Handler_Info (index, stmt, catch_labels, cleanups, scope_cleanup, temp_cleanup, 
+        break_continue, handler_list, eh_spec_list, end_label_idx, outermost,
+        cmp_idxs, goto_idx);
+  /* Emit label after handlers. */
+  end_label_wn = WN_CreateLabel ((ST_IDX) 0, end_label_idx, 0, NULL);
+  WGEN_Stmt_Append (end_label_wn, Get_Srcpos());
+ 
+  try_monitor.Push_State(index, finally_branch);
+  WGEN_Expand_Stmt(finally_part);
+  try_monitor.Pop_State();
+} /* WGEN_Expand_Try */
+#endif //VENDOR_FUDAN
 
 #ifdef KEY
 static int
@@ -3923,25 +4896,60 @@ Generate_filter_cmp (int filter, LABEL_IDX goto_idx)
 // for a catch-all clause, pass a typeinfo of ZERO. This typeinfo needs
 // to be handled specially. Moreover, we must not pass 0 for any other
 // typeinfo.
+#if defined(VENDOR_FUDAN)
+static void
+WGEN_Expand_Handlers_Or_Cleanup (int index)
+#else
 static void
 WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
+#endif
 {
+#if defined(VENDOR_FUDAN)
+  Try_Info ti = try_monitor.Get_Indexed_Try(index);
+  gs_t stmt = ti.stmt;
+  gs_t try_part = 0, handlers = 0, finally = 0;
+  if(gs_tree_code(stmt) == GS_TRY_FINALLY_EXPR)
+  {
+    finally = gs_tree_operand(stmt, 1);
+    try_part = gs_tree_operand(stmt, 0);
+    if(gs_tree_code(try_part) == GS_TRY_CATCH_EXPR)
+      handlers = gs_tree_operand(try_part, 1);
+  }
+  if(gs_tree_code(stmt) == GS_TRY_CATCH_EXPR || gs_tree_code(stmt) == GS_TRY_BLOCK)
+    handlers = gs_tree_operand(stmt, 1);
+  std::list<LABEL_IDX>* catch_labels = ti.catch_labels;
+  vector<gs_t> *cleanups = ti.cleanups;
+  LABEL_IDX finally_label = ti.finally_label;
+  LABEL_IDX label_idx = ti.label_idx;
+  LABEL_IDX goto_idx = ti.goto_idx;
+  LABEL_IDX cleanups_idx = ti.cleanups_idx;
+  bool outermost = ti.outermost;
+#else
   gs_t t = handler_info.handler;
   vector<gs_t> *cleanups = handler_info.cleanups;
   LABEL_IDX label_idx = handler_info.label_idx;
   LABEL_IDX goto_idx = handler_info.goto_idx;
   LABEL_IDX cleanups_idx = handler_info.cleanups_idx;
   bool outermost = handler_info.outermost;
+#endif
 #ifndef KEY
   WGEN_Stmt_Append (
     WN_CreateLabel ((ST_IDX) 0, HANDLER_LABEL(t), 0, NULL),
     Get_Srcpos());
 #endif // !KEY
-  
-  if (gs_tree_code(t) == GS_HANDLER || gs_tree_code(t) == GS_STATEMENT_LIST) {
-
+#if defined(VENDOR_FUDAN)
+  if(lang_cplus) 
+  {
+    if (gs_tree_code(handlers) == GS_HANDLER || gs_tree_code(handlers) == GS_STATEMENT_LIST) {
+#else 
+    if (gs_tree_code(t) == GS_HANDLER || gs_tree_code(t) == GS_STATEMENT_LIST) {
+#endif
 #ifdef KEY
+#if defined(VENDOR_FUDAN)
+    HANDLER_ITER iter(handlers);
+#else
     HANDLER_ITER iter(t);
+#endif //VENDOR_FUDAN
     if (key_exceptions)
     {
       // Generate the compare statements with eh-filter.
@@ -4003,22 +5011,39 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 #endif // KEY
     // Now, emit the actual exception handler body's.
     for (iter.First(); iter.Not_Empty(); iter.Next()) {
+#if defined(VENDOR_FUDAN)
+      handlers = iter.Current();
+#else
       t = iter.Current();
+#endif
 #ifdef KEY
 // need a label in front of each handler, so that we can jump to the
 // proper label from 'cmp' above
   WGEN_Stmt_Append (
+#if defined(VENDOR_FUDAN)
+    WN_CreateLabel ((ST_IDX) 0, HANDLER_LABEL(handlers), 0, NULL), Get_Srcpos());
+#else
     WN_CreateLabel ((ST_IDX) 0, HANDLER_LABEL(t), 0, NULL), Get_Srcpos());
+#endif //VENDOR_FUDAN
 #endif
       // Bug 11006: For a catch-all handler, GNU4 does not have a bind_expr
       // statement (because there is no variable to bind to) which helps
       // us to track the scope. So use the handler statement to also
       // indicate a new scope.
+#if defined(VENDOR_FUDAN)
+      Push_Scope_Cleanup(handlers);
+      try_monitor.Push_State(index, catch_branch);
+      gs_t body = gs_handler_body(handlers);
+#else
       Push_Scope_Cleanup(t);
       gs_t body = gs_handler_body(t);
+#endif
       for (; body; body = gs_tree_chain(body))
 	WGEN_Expand_Stmt (body);
       // Bug 11006: pop handler scope.
+#if defined(VENDOR_FUDAN)
+      try_monitor.Pop_State();
+#endif
       Pop_Scope_And_Do_Cleanups();
       WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, label_idx),
 		       Get_Srcpos());
@@ -4033,7 +5058,106 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
       WFE_One_Stmt (t);
       Call_Rethrow();
 #endif
-  }    
+  }
+#if defined(VENDOR_FUDAN)
+  } // end of if(lang_cplus)
+
+  if(lang_java) 
+  {
+    if(handlers)
+    { 
+      if(gs_tree_code(handlers) == GS_CATCH_EXPR || gs_tree_code(handlers) == GS_COMPOUND_EXPR)
+      {
+        CATCH_ITER iter(handlers);
+        if (key_exceptions)
+        {
+          // Generate the compare statements with eh-filter.
+          for (iter.First(); iter.Not_Empty(); iter.Next())
+          {
+            gs_t t_copy = iter.Current();
+            gs_t type = gs_tree_operand(t_copy, 0);
+            ST_IDX  sym = 0;
+            if (type) sym = ST_st_idx (Get_ST (Get_type_class(type)));
+            TYPE_FILTER_ENTRY e;
+            e.st = sym;
+            e.filter = 0; // do not compare based on filter
+            vector<TYPE_FILTER_ENTRY>::iterator f =find(type_filter_vector.begin(), type_filter_vector.end(), e);
+            if (f == type_filter_vector.end())
+            {
+              e.filter = type_filter_vector.size()+1;
+              type_filter_vector.push_back (e);
+              if (e.st)
+                Generate_filter_cmp (e.filter, *catch_labels->begin());
+              else // catch-all, so do not compare filter
+                WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL,
+                                 *catch_labels->begin()), Get_Srcpos());
+            }
+            else
+            {
+              if (e.st)
+                Generate_filter_cmp ((*f).filter, *catch_labels->begin());
+              else // catch-all, so do not compare filter
+                WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL,
+                                  *catch_labels->begin()), Get_Srcpos());
+            }
+            catch_labels->push_back(*catch_labels->begin());
+            catch_labels->pop_front();
+          }
+ 
+          if(finally) //generate finally part
+          {
+            WGEN_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, finally_label, 0, NULL), Get_Srcpos());
+            try_monitor.Push_State(index, finally_branch);
+            WGEN_Expand_Stmt (finally);
+            try_monitor.Pop_State();
+          }
+           // generate a call to _Unwind_Resume(struct _Unwind_Exception *)
+          if (outermost)
+          {
+            FmtAssert (goto_idx == 0, ("Goto label should be 0"));
+            Generate_unwind_resume ();
+          }
+          else
+            WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, goto_idx), Get_Srcpos());
+        } // key_exceptions
+        // Now, emit the actual exception handler body's.
+        for (iter.First(); iter.Not_Empty(); iter.Next())
+        {
+          handlers = iter.Current();
+          // need a label in front of each handler, so that we can jump to the
+          // proper label from 'cmp' above
+          WGEN_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, *catch_labels->begin(), 0, NULL), Get_Srcpos());
+          catch_labels->pop_front();
+          //  For a catch-all handler, GNU4 does not have a bind_expr
+          // statement (because there is no variable to bind to) which helps
+          // us to track the scope. So use the handler statement to also
+          // indicate a new scope.
+          Push_Scope_Cleanup(handlers);
+          try_monitor.Push_State(index, catch_branch);
+          gs_t body = gs_tree_operand(handlers, 1);  
+          for (; body; body = gs_tree_chain(body))
+            WGEN_Expand_Stmt (body);
+          try_monitor.Pop_State();
+          Pop_Scope_And_Do_Cleanups();
+          WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, label_idx), Get_Srcpos());
+        }
+      }
+    }//end of handlees 
+    else
+    {
+      try_monitor.Push_State(index, finally_branch);
+      WGEN_Expand_Stmt (finally);
+      try_monitor.Pop_State();
+      if (outermost)
+      {
+        FmtAssert (goto_idx == 0, ("Goto label should be 0"));
+        Generate_unwind_resume ();
+      }
+      else
+        WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, goto_idx), Get_Srcpos());
+    }
+  }// end of lang_java
+#endif    
 }
 
 #ifdef FE_GNU_4_2_0

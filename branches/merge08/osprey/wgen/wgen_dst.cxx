@@ -1807,12 +1807,27 @@ Create_DST_type_For_Tree (gs_t type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		}
      case GS_CHAR_TYPE:
 		{
+#if defined(VENDOR_FUDAN)  
+// the char type in java is 16bits
+		if(lang_java)
+                {
+                 if (gs_decl_unsigned(type_tree)) {
+                  encoding = DW_ATE_unsigned;
+                   } else {
+                   encoding = DW_ATE_signed;
+                   }
+                }
+                else {
+#endif
 		// enter base type
 		if (gs_decl_unsigned(type_tree)) {
 		 encoding = DW_ATE_unsigned_char;
 		} else {
 		 encoding = DW_ATE_signed_char;
 		}
+#if defined(VENDOR_FUDAN)
+                }
+#endif
 		goto common_basetypes;
 		}
      case GS_ENUMERAL_TYPE:
@@ -3002,8 +3017,12 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
                                                    Src_File_Name;
       comp_unit_idx = DST_mk_compile_unit(Last_Pathname_Component(dump_base_name),
 					  current_host_dir,
-					  comp_info, 
+					  comp_info,
+#if defined(VENDOR_FUDAN)
+                                lang_cplus ? DW_LANG_C_plus_plus : (lang_java ? DW_LANG_Java : DW_LANG_C89),
+#else 
 				lang_cplus ? DW_LANG_C_plus_plus : DW_LANG_C89,
+#endif
 					  DW_ID_case_sensitive);
    }
 

@@ -884,6 +884,9 @@ GS_LOOKUP (gs_tree_int_cst_low, GS_TREE_INT_CST_LOW)
 GS_LOOKUP (gs_tree_int_cst_high, GS_TREE_INT_CST_HIGH)
 static inline gs_long_long_t gs_get_integer_value (gs_t t)
 {
+#if defined(VENDOR_FUDAN)
+  if( t == (gs_t) NULL ) return 0;
+#endif
   GS_ASSERT (t != (gs_t) NULL, (gs_string_t) "Got null node");
   return (gs_long_long_t) gs_ull (gs_tree_int_cst_low (t));
 }

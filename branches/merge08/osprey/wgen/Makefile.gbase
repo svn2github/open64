@@ -168,7 +168,8 @@ FE_CXX_SRCS =           \
     wgen_decl.cxx       \
     wgen_dst.cxx        \
     wgen_spin_symbol.cxx \
-    wgen_tracing.cxx
+    wgen_tracing.cxx     \
+    Try_Monitor.cxx 
 
 OPENMP_SRCS =           \
     omp_directive.cxx   \

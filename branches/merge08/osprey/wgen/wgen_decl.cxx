@@ -751,12 +751,17 @@ void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
 #endif
       else {
         gs_t body = gs_decl_saved_tree(decl);
-        if (body != NULL && 
+        if (body != NULL &&
+#if defined (VENDOR_FUDAN)
+             ((lang_cplus || lang_java) && !gs_decl_external(decl) ||   
+              !(lang_cplus || lang_java) && (!c_omit_external || !gs_decl_external(decl) || gs_decl_declared_inline_p(decl))) &&
+#else 
 	     (lang_cplus && !gs_decl_external(decl) ||
 	      !lang_cplus && (!c_omit_external || 
 			      !gs_decl_external(decl) || 
 			      gs_decl_declared_inline_p(decl) || 
 			      gs_decl_built_in(decl)/* bug 14254 */ )) &&
+#endif
 	     !gs_decl_maybe_in_charge_constructor_p(decl) &&
 	     !gs_decl_maybe_in_charge_destructor_p(decl)) {
 
@@ -849,7 +854,11 @@ void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
       // bug 7341: Generate types only on demand. But bug 10506 shows we
       // should process a type when it is part of a DECL_EXPR statement,
       // because it may have side-effects.
-      if (!can_skip || gs_tree_side_effects(decl))
+      if (!can_skip || gs_tree_side_effects(decl) 
+#if defined(VENDOR_FUDAN)
+        || lang_java
+#endif
+         )
 #endif
       {
         gs_t type = gs_tree_type(decl);
@@ -1282,7 +1291,11 @@ WGEN_Start_Function(gs_t fndecl)
     // bug 13385: There are some cases where C++ template functions marked
     // inline can still be externally accessible. Rely on GNU's "needed"
     // flag.
-    if (lang_cplus) {
+    if (lang_cplus 
+#if defined(VENDOR_FUDAN)
+        || lang_java
+#endif
+       ) {
       if (interface_only &&
 	  !gs_decl_needed (fndecl) && // bug 13385
 	  gs_decl_weak (fndecl) &&
@@ -1353,8 +1366,12 @@ WGEN_Start_Function(gs_t fndecl)
  
     Set_ST_sclass (func_st, SCLASS_TEXT);
     Set_PU_lexical_level (Pu_Table [ST_pu (func_st)], CURRENT_SYMTAB);
-    if (lang_cplus) 
+    if (lang_cplus)
       Set_PU_cxx_lang (Pu_Table [ST_pu (func_st)]);
+#if defined (VENDOR_FUDAN)
+    else if(lang_java)
+      Set_PU_java_lang (Pu_Table [ST_pu (func_st)]);
+#endif
     else Set_PU_c_lang (Pu_Table [ST_pu (func_st)]);
  
     if (gs_decl_declared_inline_p(fndecl))
@@ -1370,7 +1387,11 @@ WGEN_Start_Function(gs_t fndecl)
     // it may also delete the function.
     if (extern_inline)
     {
-	if (!lang_cplus)
+	if (!lang_cplus
+#if defined (VENDOR_FUDAN)          
+          && !lang_java
+#endif
+           )
 	  Set_PU_is_extern_inline (Pu_Table [ST_pu (func_st)]); //bugs 2178, 2152
 	if (Opt_Level > 0) // bug 2218
 	  Set_PU_must_inline (Pu_Table [ST_pu (func_st)]);
@@ -1790,7 +1811,11 @@ WGEN_Finish_Function (gs_t fndecl)
     }
 #endif
 
+#if defined (VENDOR_FUDAN)
+    if (lang_cplus || lang_java) {
+#else
     if (lang_cplus) {
+#endif
       // Add any handler code
       Do_Handlers ();
       // if (flag_exceptions)// check if exceptions are enabled
@@ -2186,7 +2211,12 @@ AGGINIT::WGEN_Add_Aggregate_Init_Address (gs_t init)
   case GS_VAR_DECL:
   case GS_FUNCTION_DECL:
 	{
-	st = Get_ST (init);
+#if defined(VENDOR_FUDAN)
+        if (gs_decl_alias_target(init)) 
+          st = WGEN_Assemble_Alias(init, gs_decl_alias_target(init));
+        else
+#endif
+	  st = Get_ST (init);
 	WGEN_Add_Aggregate_Init_Symbol (st);
 #ifdef KEY // bug 11308
 	if (gs_tree_code (init) == GS_VAR_DECL)
@@ -2937,9 +2967,17 @@ AGGINIT::Traverse_Aggregate_Array (
     // calls WFE_Add_Aggregate_Init_Padding appropriately.
     // We do not want to modify the Gnu front-end (c-typeck.c) and instead
     // hack it inside our front-end.
+#if defined(VENDOR_FUDAN)
+    INT lindex = 0, hindex = 0;
+#else
     INT lindex, hindex;
+#endif
     // wgen bug 10919: need to handle the new RANGE_EXPR for TREE_PURPOSE
     //  while preserving the fix for bug 2373
+#if defined(VENDOR_FUDAN)
+   if(element_index)
+   {
+#endif
     if (gs_tree_code(element_index) == GS_RANGE_EXPR) {
       lindex = gs_get_integer_value(gs_tree_operand(element_index,0));
       hindex = gs_get_integer_value(gs_tree_operand(element_index,1));
@@ -2957,7 +2995,9 @@ AGGINIT::Traverse_Aggregate_Array (
       current_offset += (lindex - emitted_bytes/esize)*esize;
       emitted_bytes += (lindex - emitted_bytes/esize)*esize;
     }	
-
+#if defined(VENDOR_FUDAN)
+    }
+#endif
     gs_t tree_value = gs_operand(curr_value_elem, 0);
     curr_value_elem = gs_operand(curr_value_elem, 1);
     if (gs_tree_code(tree_value) == GS_PTRMEM_CST)  {
@@ -3044,9 +3084,17 @@ AGGINIT::Traverse_Aggregate_Array (
     // calls WFE_Add_Aggregate_Init_Padding appropriately.
     // We do not want to modify the Gnu front-end (c-typeck.c) and instead
     // hack it inside our front-end.
+#if defined(VENDOR_FUDAN)
+    INT lindex=0, hindex=0;
+#else
     INT lindex, hindex;
+#endif
     // wgen bug 10919: need to handle the new RANGE_EXPR for TREE_PURPOSE
     //  while preserving the fix for bug 2373
+#if defined(VENDOR_FUDAN)
+   if(gs_tree_purpose(init))
+   {
+#endif
     if (gs_tree_code(gs_tree_purpose(init)) == GS_RANGE_EXPR) {
       lindex = gs_get_integer_value(gs_tree_operand(gs_tree_purpose(init),0));
       hindex = gs_get_integer_value(gs_tree_operand(gs_tree_purpose(init),1));
@@ -3064,7 +3112,9 @@ AGGINIT::Traverse_Aggregate_Array (
       current_offset += (lindex - emitted_bytes/esize)*esize;
       emitted_bytes += (lindex - emitted_bytes/esize)*esize;
     }	
-
+#if defined(VENDOR_FUDAN)
+   }
+#endif
     gs_t tree_value = gs_tree_value(init);
     if (gs_tree_code(tree_value) == GS_PTRMEM_CST)  {
       gs_t t = gs_expanded_ptrmem_cst(tree_value);
@@ -4261,6 +4311,9 @@ WGEN_Initialize_Decl (gs_t decl)
 #ifdef KEY
       && !lang_cplus
 #endif
+#if defined(VENDOR_FUDAN)
+      && !lang_java
+#endif
      ) {
   	// ignore initialization unless really used
 	// e.g. FUNCTION and PRETTY_FUNCTION
@@ -4453,19 +4506,36 @@ void WGEN_Process_Function_Decl (gs_t);
 void WGEN_Process_Namespace_Decl (gs_t);
 void WGEN_Process_Decl (gs_t);
 
+#if defined(VENDOR_FUDAN)
+ST*
+WGEN_Assemble_Alias (gs_t decl, gs_t target)
+#else
 BOOL
 WGEN_Assemble_Alias (gs_t decl, gs_t target)
+#endif
 {
   DevWarn ("__attribute alias encountered at line %d", lineno);
   gs_t base_decl = target;
   // Don't expand alias until the target is expanded, so that we can set st's
   // sclass to base_st's sclass.  This may take more than one iteration since
   // the target can be an alias to another target.  Bug 4393.
-  if (!expanded_decl(base_decl) && (lang_cplus || !finish_alias))
+  if (!expanded_decl(base_decl) && (lang_cplus
+#if defined(VENDOR_FUDAN)
+    || lang_java
+#endif
+    || !finish_alias))
   {
-    if (!lang_cplus) // KEY bug 12778
+    if (!lang_cplus
+#if defined(VENDOR_FUDAN)
+         && !lang_java
+#endif
+       ) // KEY bug 12778
       alias_vector.push_back (std::make_pair (decl, target));
+#if defined(VENDOR_FUDAN)
+    return 0;
+#else
     return FALSE; // bugs 12602, 12704
+#endif
   }
   expanded_decl(decl) = TRUE;
 
@@ -4487,7 +4557,11 @@ WGEN_Assemble_Alias (gs_t decl, gs_t target)
 #endif
   }
 #ifdef KEY
-  if (!lang_cplus)
+  if (!lang_cplus
+#if defined(VENDOR_FUDAN)
+    && !lang_java
+#endif
+     )
   {
     // bug 4981: symbol class of ST must match that of the target
     if (ST_sym_class (st) != ST_sym_class (base_st))
@@ -4497,8 +4571,11 @@ WGEN_Assemble_Alias (gs_t decl, gs_t target)
     if (ST_sym_class (base_st) == CLASS_FUNC)
       Set_PU_no_delete (Pu_Table [ST_pu (base_st)]);
   }
-
+#if defined(VENDOR_FUDAN)
+  return st;
+#else
   return TRUE;
+#endif
 #endif
 /*
   if (ST_is_initialized (base_st)) {
@@ -4921,6 +4998,95 @@ WGEN_Process_Namespace_Decl (gs_t namespace_decl)
   }
 #endif
 } /* WGEN_Process_Namespace_Decl */
+#if defined(VENDOR_FUDAN)
+extern "C"
+void
+WGEN_Expand_Emitted_Decl()
+{
+  gs_t list;
+  int changed;
+  do {
+    gs_t gxx_emitted_decls_list = gs_gxx_emitted_decls(program);
+    changed = 0;
+
+    for (list = gxx_emitted_decls_list; gs_code(list) != EMPTY;
+         list = gs_operand(list, 1)) {
+      gs_t decl = gs_operand(list, 0);
+      if (expanded_decl(decl) == TRUE)
+         continue;
+      if (gs_tree_code(decl) == GS_FUNCTION_DECL) {
+        if (gs_decl_thunk_p(decl))
+	    WGEN_Generate_Thunk(decl);
+        else if (gs_decl_alias_target(decl))	// Bug 4393.
+	    changed |= WGEN_Assemble_Alias(decl, gs_decl_alias_target(decl))?TRUE:FALSE;
+        else        
+	    changed |= WGEN_Expand_Function_Body(decl);
+	  // Bugs 4471, 3041, 3531, 3572, 4563.
+	  // In line with the non-debug compilation, delay the DST entry 
+	  // creation for member functions for debug compilation.
+	  // This avoids the following problem 
+	  // (as noted by Tim in tree_symtab.cxx)
+	  // Expanding the methods earlier "will cause error when the
+	  // methods are for a class B that appears as a field in an
+	  // enclosing class A.  When Get_TY is run for A, it will
+	  // call Get_TY for B in order to calculate A's field ID's.
+	  // (Need Get_TY to find B's TYPE_FIELD_IDS_USED.)  If
+	  // Get_TY uses the code below to expand B's methods, it
+	  // will lead to error because the expansion requires the
+	  // field ID's of the enclosing record (A), and these field
+	  // ID's are not yet defined".
+        if (Debug_Level > 0) {
+	  gs_t context = gs_decl_context(decl);
+	  if (context && gs_tree_code(context) == GS_RECORD_TYPE) {
+	      // member function
+	      // g++ seems to put the artificial ones in the output too 
+	      // for some reason. In particular, operator= is there.  We do 
+	      // want to omit the __base_ctor stuff though
+	    BOOL skip = FALSE;
+	    if (gs_identifier_ctor_or_dtor_p(gs_decl_name(decl)))
+	      skip = TRUE;
+	    else if (gs_decl_thunk_p(decl)) {
+		// Skip thunk to constructors and destructors.  Bug 6427.
+	      gs_t target_func = gs_thunk_target(decl);
+	      Is_True (gs_tree_code(target_func) == GS_FUNCTION_DECL,
+	         ("WGEN_Expand_Top_Level_Decl: invalid thunk decl"));
+	      skip =
+		  gs_identifier_ctor_or_dtor_p(gs_decl_name(target_func));
+	      }
+	    if (!skip) {
+	      	TY_IDX context_ty_idx = Get_TY(context);
+		// The type could have been newly created by the above Get_TY.
+		// If so, call add_deferred_DST_types to create the DST for it.
+		add_deferred_DST_types();
+		DST_INFO_IDX context_dst_idx = TYPE_DST_IDX(context);
+		DST_enter_member_function(context, context_dst_idx,
+					  context_ty_idx, decl);
+	      }
+	    }
+	  }
+        } else if (gs_tree_code(decl) == GS_VAR_DECL) {
+	  //WGEN_Process_Var_Decl (decl);
+	  WGEN_Expand_Decl(decl,true);
+        } else if (gs_tree_code(decl) == GS_NAMESPACE_DECL) {
+	  WGEN_Expand_Decl (decl, TRUE);
+        } else {
+	  FmtAssert(FALSE, ("WGEN_Expand_Top_Level_Decl: invalid node"));
+        }
+      }
+    } while (changed);	// Repeat until emitted all needed copy constructors.
+
+    // Emit any typeinfos that we have referenced
+    std::vector<gs_t>::iterator it;
+    for (it = emit_typeinfos.begin(); it != emit_typeinfos.end(); ++it) {
+    	gs_t decl = *it;
+	if (expanded_decl (decl))
+	    continue;
+	expanded_decl (decl) = TRUE;
+	FmtAssert (gs_tree_code(decl) == GS_VAR_DECL, ("Unexpected node in typeinfo"));
+	WGEN_Expand_Decl (decl, TRUE);
+	}    
+}
+#endif
 
 extern "C"
 void
@@ -4983,7 +5149,11 @@ WGEN_Expand_Top_Level_Decl (gs_t top_level_decl)
 	  if (gs_decl_thunk_p(decl))
 	    WGEN_Generate_Thunk(decl);
 	  else if (gs_decl_alias_target(decl))	// Bug 4393.
+#if defined(VENDOR_FUDAN)
+            changed |= WGEN_Assemble_Alias(decl, gs_decl_alias_target(decl)) ? TRUE : FALSE;
+#else
 	    changed |= WGEN_Assemble_Alias(decl, gs_decl_alias_target(decl));
+#endif
 	  else        
 	    changed |= WGEN_Expand_Function_Body(decl);
 	  // Bugs 4471, 3041, 3531, 3572, 4563.
