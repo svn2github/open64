@@ -117,12 +117,14 @@ GNU3_FE_COMPONENTS = \
 GNU4_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/wgen/wgen \
                 $(GNUFE_BUILD_DIR)/gcc/cc1 \
-                $(GNUFE_BUILD_DIR)/gcc/cc1plus
+                $(GNUFE_BUILD_DIR)/gcc/cc1plus \
+                $(GNUFE_BUILD_DIR)/gcc/jc1
 
 GNU42_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 \
                 $(GNUFE_BUILD_DIR)/gcc/cc142 \
-                $(GNUFE_BUILD_DIR)/gcc/cc1plus42
+                $(GNUFE_BUILD_DIR)/gcc/cc1plus42 \
+                $(GNUFE_BUILD_DIR)/gcc/jc142
 
 FORT_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
@@ -228,14 +230,14 @@ $(NATIVE_BUILD_DIR_LD)/Makefile:
 	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
 
 # GNU 4.0.2 based FE
-$(GNUFE_BUILD_DIR)/gcc/cc1 $(GNUFE_BUILD_DIR)/gcc/cc1plus cc1 cc1plus: $(GNUFE_BUILD_DIR)/Makefile Force
+$(GNUFE_BUILD_DIR)/gcc/cc1 $(GNUFE_BUILD_DIR)/gcc/cc1plus $(GNUFE_BUILD_DIR)/gcc/jc1 cc1 cc1plus jc1: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(SUBMAKE) -C $(GNUFE_BUILD_DIR)
 
 $(GNUFE_BUILD_DIR)/Makefile:
 	cd $(GNUFE_BUILD_DIR); ./CONFIGURE
 
 # GNU 4.2.0 based FE
-$(GNUFE42_BUILD_DIR)/gcc/cc142 $(GNUFE42_BUILD_DIR)/gcc/cc1plus42 cc142 cc1plus42: $(GNUFE42_BUILD_DIR)/Makefile Force
+$(GNUFE42_BUILD_DIR)/gcc/cc142 $(GNUFE42_BUILD_DIR)/gcc/cc1plus42 $(GNUFE42_BUILD_DIR)/gcc/jc142 cc142 cc1plus42 jc142: $(GNUFE42_BUILD_DIR)/Makefile Force
 	$(SUBMAKE) -C $(GNUFE42_BUILD_DIR)
 
 $(GNUFE42_BUILD_DIR)/Makefile:

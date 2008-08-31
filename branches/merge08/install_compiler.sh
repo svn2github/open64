@@ -160,10 +160,12 @@ INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openCC
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openjava
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/opencc-${VERSION}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openCC-${VERSION}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90-${VERSION}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openjava-${VERSION}
 
     INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
 
@@ -180,10 +182,13 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/wgen/wgen ${PHASEPATH}/wgen
     INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1 ${PHASEPATH}/cc1
     INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1plus ${PHASEPATH}/cc1plus
+    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/jc1 ${PHASEPATH}/jc1
+    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/jvgenmain ${PHASEPATH}/jvgenmain
     # GNU 4.2.0 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
     INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc142 ${PHASEPATH}/cc142
     INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc1plus42 ${PHASEPATH}/cc1plus42
+    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/jc142 ${PHASEPATH}/jc142
 
     if [ -f ${AREA}/crayf90/sgi/mfef95 ] ; then 
       INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
@@ -272,7 +277,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
     # is it necessary?
     if [ "$ARCH" = "ia64" ] ; then
-        for i in libgcc.a libstdc++.a libstdc++.so; do 
+        for i in libgcc.a libstdc++.a libstdc++.so libgcj.a libgcj.so; do 
             F=`gcc --print-file-name $i`
             if [ ! -z "$F" ] && [ -e "$F" ]; then
               INSTALL_DATA_SUB $F ${PHASEPATH}/$i
@@ -280,7 +285,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         done
     fi
     if [ "$ARCH" = "i386" ] ; then
-        for i in libgcc.a libstdc++.a libstdc++.so; do
+        for i in libgcc.a libstdc++.a libstdc++.so libgcj.a libgcj.so; do
 	    F=`gcc --print-file-name $i`
             if [ ! -z "$F" ] && [ -e "$F" ]; then
               INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
@@ -288,7 +293,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 	done
     fi
     if [ "$ARCH" = "x86_64" ] ; then
-        for i in libgcc.a libstdc++.a libstdc++.so; do
+        for i in libgcc.a libstdc++.a libstdc++.so  libgcj.a libgcj.so; do
 	    F=`gcc -m32 --print-file-name $i`
 	    if [ ! -z "$F" ] && [ -e "$F" ]; then
               INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
