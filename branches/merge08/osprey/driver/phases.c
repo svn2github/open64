@@ -272,6 +272,12 @@ copy_phase_options (string_list_t *phase_list, phases_t phase)
 		FOREACH_IMPLIED_OPTION(iflag, flag) {
 			boolean matches_phase = FALSE;
 
+#if defined(VENDOR_FUDAN)
+                       // disable -O* in jc1 and   in jvgenmain
+			if (!strncmp("-O", get_option_name(iflag),2)
+			     && (phase == P_spin_jc1 || phase == P_jvgenmain))
+			  continue;
+#endif
 			/* Only add if option is legal for phase and lang.
 			 * Make sure it matches both parent and implied lang.
 			 * Also, don't add object options. */
@@ -285,7 +291,11 @@ copy_phase_options (string_list_t *phase_list, phases_t phase)
 			if (gnu_major_version == 4 &&
 			    !strcmp("-OPT:", get_option_name(iflag))) {
 			  if (phase == P_spin_cc1 ||
-			      phase == P_spin_cc1plus)
+			      phase == P_spin_cc1plus
+#if defined(VENDOR_FUDAN)
+			      || phase == P_spin_jc1
+#endif
+			     )
 			    continue;
 			  else if (phase == P_wgen)
 			    matches_phase = TRUE;
@@ -344,6 +354,11 @@ add_language_option ( string_list_t *args )
     case L_CC:
 	add_string ( args, "-LANG:=cplus" );
 	break;
+#if defined(VENDOR_FUDAN)
+    case L_java:
+        add_string ( args, "-LANG:=java" );
+        break;
+#endif
   }
 }
 
@@ -738,6 +753,13 @@ add_file_args (string_list_t *args, phases_t index)
 	string_item_t *p;
 	char *count_file_name;
 	char *the_file = fix_name_by_phase(source_file, index);
+#if defined(VENDOR_FUDAN)
+        char *jvgenmain_class;
+        char *jvgenmain_file;
+        char *delim = ".";
+        char *class_name;
+        char *libpath;
+#endif
 
 	/* current_phase is used to say which file might be the last output 
 	 * file and thus might need a local name rather than a tmp name */
@@ -1164,7 +1186,21 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 
 		break;
-
+#if defined(VENDOR_FUDAN)
+        case P_spin_jc1: 
+                {
+                  int flag;
+                  int iflag;
+                  FOREACH_OPTION_SEEN(flag)
+                  {
+                    FOREACH_IMPLIED_OPTION(iflag, flag)
+                    {
+                      if (!strncmp("-O", get_option_name(iflag),2))
+                        add_string(args, "-O0");
+                    }
+                  }
+                }  //fall through
+#endif
 #ifdef KEY
 	case P_spin_cc1:
 	case P_spin_cc1plus:
@@ -1220,15 +1256,32 @@ add_file_args (string_list_t *args, phases_t index)
 #endif
 
 		if (!option_was_seen(O_fpreprocessed) &&
+#if defined(VENDOR_FUDAN)
+                    index !=P_spin_jc1 &&
+#endif
 		    !option_was_seen(O_fno_preprocessed)) {
 		  add_string(args, "-fpreprocessed");
 		}
-
+#if defined(VENDOR_FUDAN)
+                if (index ==P_spin_jc1)
+                {  
+                  add_string(args, "-fhash-synchronization");
+                  add_string(args, "-fno-use-divide-subroutine");
+                  add_string(args, "-fuse-boehm-gc");
+                  add_string(args, "-fnon-call-exceptions");
+                  add_string(args, "-fno-omit-frame-pointer");
+                  add_string(args, "-fkeep-inline-functions");
+                }
+                else
+                {
+#endif 
 		if( fbuiltin != 0 )
 		  add_string(args, "-fbuiltin" );
 		else
 		  add_string(args, "-fno-builtin" );
-
+#if defined(VENDOR_FUDAN)
+                }
+#endif
 		if( fmath_errno == 0 )
 		  add_string(args, "-fno-math-errno");
 
@@ -1248,7 +1301,11 @@ add_file_args (string_list_t *args, phases_t index)
 
 #ifdef KEY
 		if (index == P_spin_cc1 ||
-		    index == P_spin_cc1plus) {
+		    index == P_spin_cc1plus
+#if defined(VENDOR_FUDAN)
+                    || index==P_spin_jc1
+#endif
+                   ) {
 		  add_string(args, "-spinfile");
 		  add_string(args, construct_name(the_file, "spin"));
 		  break;
@@ -1442,6 +1499,9 @@ add_file_args (string_list_t *args, phases_t index)
 		        if (outfile != NULL
 					&& last_phase == current_phase
 	 				&& !multiple_source_files
+#if defined(VENDOR_FUDAN)
+                                        && !main_method 
+#endif
 #ifndef KEY	// -dsm no longer supported.  Bug 4406.
 					&& !(remember_last_phase == P_any_ld &&
 				         option_was_seen(O_dsm) )
@@ -1528,6 +1588,9 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 	case P_ld:
 	case P_ldplus:
+#if defined(VENDOR_FUDAN)
+        case P_gcj:
+#endif
 		/* For C/C++:
 		 * gcc invokes collect2 which invokes ld.
 		 * Because the path to collect2 varies, 
@@ -1866,6 +1929,9 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	    if (option_was_seen(O_pthread) ||
 		option_was_seen(O_mp) ||
 		option_was_seen(O_fopenmp) ||
+#if defined(VENDOR_FUDAN)
+                invoked_lang == L_java ||
+#endif
 		option_was_seen(O_apo)) {	// bug 6334
 		add_string(args, "-lpthread");
 	    }
@@ -1887,6 +1953,9 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
      * lib{stdc++,gcc,c,etc}.{so,a} are taken care by gcc/g++ itself.
      */
     if (shared != DSO_SHARED && shared != RELOCATABLE &&
+#if defined(VENDOR_FUDAN)
+        ld_phase != P_gcj &&
+#endif
         ld_phase != P_ld && ld_phase != P_ldplus) {
             if (invoked_lang == L_CC) {
             add_library(args, "stdc++");
@@ -1905,9 +1974,16 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		}
 		add_library (args, "gcc");
 		add_library (args, "c");
-		if (invoked_lang == L_CC && !option_was_seen(O_static))
+#if defined(VENDOR_FUDAN)
+                if(0) //FUDAN
+		{
+                if (invoked_lang == L_CC && !option_was_seen(O_static))
 			add_libgcc_s (args);
 		add_library(args, "gcc");
+                }
+                if (invoked_lang == L_java && !option_was_seen(O_static))
+                  add_library(args, "gcj");
+#endif
 	}
 #endif
 	if (shared != RELOCATABLE) {
@@ -1926,6 +2002,9 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	}
 #ifdef TARG_IA64
     if (shared != DSO_SHARED && shared != RELOCATABLE &&
+#if defined(VENDOR_FUDAN)
+        ld_phase != P_gcj &&
+#endif
         ld_phase != P_ld && ld_phase != P_ldplus) {
         add_string(args, find_crt_path("crtend.o"));
         add_string(args, find_crt_path("crtn.o"));
@@ -1956,7 +2035,11 @@ static void
 add_rpath_link_option (string_list_t *args) {
 
     phases_t ld_phase = determine_ld_phase (FALSE);
-    if (ld_phase == P_ld || ld_phase == P_ldplus) {
+    if (ld_phase == P_ld || ld_phase == P_ldplus
+#if defined(VENDOR_FUDAN)
+        || ld_phase != P_gcj
+#endif
+       ) {
         return; // gcc/g++ will take care
     }
 
@@ -2163,7 +2246,14 @@ determine_phase_order (void)
 	      cpp_phase = P_NONE;
 	   }
 #endif
-	} else if (source_lang == L_as
+	}
+#if defined(VENDOR_FUDAN)
+        else if (source_lang == L_java)
+        {
+          cpp_phase = P_spin_jc1;
+        }
+#endif
+        else if (source_lang == L_as
 		&& (abi == ABI_I32 || abi == ABI_I64 || abi == ABI_IA32))
 	{
 		cpp_phase = P_gcpp;	/* use ansi-style cpp */
@@ -2211,6 +2301,11 @@ determine_phase_order (void)
 		    next_phase = (source_lang == L_CC ? cplus_fe : c_fe);
 		}
 		break;
+#if defined(VENDOR_FUDAN)
+        case S_java:
+                next_phase = P_spin_jc1;
+                break;
+#endif
 	case S_i:
 	case S_ii:
 		if (source_lang == L_f77)
@@ -2303,6 +2398,9 @@ determine_phase_order (void)
 #ifdef KEY
 		case P_spin_cc1:
 		case P_spin_cc1plus:
+#if defined(VENDOR_FUDAN)
+                case P_spin_jc1:
+#endif
 			add_phase(next_phase);
 			next_phase = P_wgen;
 			break;
@@ -2367,6 +2465,9 @@ determine_phase_order (void)
 		case P_ld:
 		case P_ldplus:
 		case P_collect:
+#if defined(VENDOR_FUDAN)
+                case P_gcj:
+#endif
 		case P_ipa_link:
 			add_phase(next_phase);
                         if (cordflag==TRUE) {
@@ -2381,6 +2482,12 @@ determine_phase_order (void)
 			add_phase(P_NONE);
 			next_phase = P_NONE;
 			break;
+#if defined(VENDOR_FUDAN)
+                case P_jvgenmain:
+                        add_phase(next_phase);
+                        next_phase = P_NONE;
+                        break;
+#endif
 		case P_NONE:
 			break;
 		default:
@@ -2682,6 +2789,9 @@ init_phase_names (void)
   for (i = P_LAST-1; i >= (int) P_NONE; i--) {
     char *phase_name = get_phase_name(i);
     if (strcmp(phase_name, "gcc") == 0 ||
+#if defined(VENDOR_FUDAN)
+        strcmp(phase_name, "gcj") == 0 ||
+#endif
         strcmp(phase_name, "g++") == 0) {
       set_phase_name (i, concat_strings(prefix, phase_name));
     }
@@ -2699,8 +2809,11 @@ init_frontend_phase_names (int gnu_major_version, int gnu_minor_version)
       case 0:	// Default is 4.0.
         break;
       case 2:
-	set_phase_name(P_spin_cc1, "cc142");
-	set_phase_name(P_spin_cc1plus, "cc1plus42");
+        set_phase_name(P_spin_cc1, "cc142");
+        set_phase_name(P_spin_cc1plus, "cc1plus42");
+#if defined(VENDOR_FUDAN)
+        set_phase_name(P_spin_jc1, "jc142");
+#endif
 	set_phase_name(P_wgen, "wgen42");
 	break;
       default:
@@ -2753,6 +2866,29 @@ determine_ld_phase (boolean run_ipa) {
         return ldphase;
 }
 
+#if defined(VENDOR_FUDAN)
+void
+run_jvgenmain(void)
+{
+  string_list_t *args;
+  char *jvgenmain_class;
+  args = init_string_list();
+        
+  jvgenmain_class = (char *)malloc(sizeof(char) * (strlen(main_method) + 5));
+  strcpy(jvgenmain_class, main_method);
+  jvgenmain_class = strcat(jvgenmain_class, "main");
+ 
+  add_string(args, jvgenmain_class);
+ 
+  jvgenmain_class = strcat(jvgenmain_class, ".i");
+  generated_main_file = construct_name(jvgenmain_class, "i");
+ 
+  add_string(args, generated_main_file);
+ 
+  run_phase (P_jvgenmain, get_full_phase_name(P_jvgenmain), args);
+}
+#endif
+
 void
 run_ld (void)
 {
@@ -2766,6 +2902,11 @@ run_ld (void)
 	else if (invoked_lang == L_CC) {
 		ldphase = P_ldplus;
 	}
+#if defined(VENDOR_FUDAN)
+        else if (invoked_lang == L_java) {
+                ldphase = P_gcj;
+        }
+#endif
 	else {
 		ldphase = P_ld;
 	}
@@ -2812,6 +2953,9 @@ run_ld (void)
 	      case L_f90:	str = "F90";	break;
 	      case L_cc:	str = "C";	break;
 	      case L_CC:	str = "CC";	break;
+#if defined(VENDOR_FUDAN)
+	      case L_java:      str = "java";   break;
+#endif
 	      default:		internal_error("run_ld: unknown language\n");
 	    }
 	    add_string(args, concat_strings("-INTERNAL:lang=", str));
@@ -3020,6 +3164,9 @@ run_compiler (int argc, char *argv[])
 			    phase_order[i] != P_spin_cc1 &&
 			    phase_order[i] != P_spin_cc1plus &&
 			    phase_order[i] != P_wgen &&
+#endif
+#if defined(VENDOR_FUDAN)
+		  	    phase_order[i] != P_spin_jc1 &&
 #endif
 			    phase_order[i] < P_any_fe)
 			{

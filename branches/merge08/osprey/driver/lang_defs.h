@@ -58,6 +58,9 @@ typedef enum {
 	L_f90,
 	L_as,
 	L_ld,
+#if defined(VENDOR_FUDAN)
+	L_java,
+#endif
 	L_internal,	/* pseudo-language to mark internal options */
 	L_LAST
 } languages_t;
@@ -81,6 +84,9 @@ typedef enum {
 	S_N,
 	S_O,
 	S_o,
+#if defined(VENDOR_FUDAN)
+	S_java,
+#endif
 	S_LAST
 } source_kind_t;
 
@@ -120,6 +126,10 @@ typedef enum {
 	P_spin_cc1plus,	/* gnu gcc4 C++ fe */
 	P_wgen,		/* wgen */
 #endif
+#if defined(VENDOR_FUDAN)
+	P_spin_jc1,
+	P_jvgenmain,
+#endif
 	P_any_fe,	/* generic union of all fe's */
 	P_pseudo_f_fe,	/* not a real phase, just a placeholder 
 			 * for options for f_fe but not c_fe */
@@ -145,6 +155,9 @@ typedef enum {
 	P_collect,	/* gnu linker wrapper */
 	P_ld,		/* loader */
 	P_ldplus,	/* loader for c++ */
+#if defined(VENDOR_FUDAN)
+	P_gcj,
+#endif
 	P_any_ld,	/* generic union of all ld's */
 	P_cord,		/* cord */
 	P_pixie,	/* pixie */

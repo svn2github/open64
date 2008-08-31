@@ -408,7 +408,11 @@ add_object (int flag, char *arg)
 
 	       break;
 	case O_WlC:
-	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	       if (ld_phase == P_ld || ld_phase == P_ldplus
+#if defined(VENDOR_FUDAN)
+                   || ld_phase == P_gcj
+#endif
+                  ) {
 	         add_string(objects, concat_strings("-Wl,", arg));
 	       } else {
 	         /* the arg would look like "-F,arg1,arg2,argn", 
@@ -424,14 +428,22 @@ add_object (int flag, char *arg)
 	       }
 	       break;
 	case O__whole_archive:
-	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	       if (ld_phase == P_ld || ld_phase == P_ldplus
+#if defined(VENDOR_FUDAN)
+                   || ld_phase == P_gcj
+#endif
+                  ) {
 	         add_string(objects, "-Wl,-whole-archive");
 	       } else {
 	         add_string(objects, "-whole-archive");
 	       }
 	       break;
 	case O__no_whole_archive:
-	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	       if (ld_phase == P_ld || ld_phase == P_ldplus
+#if defined(VENDOR_FUDAN)
+                   || ld_phase == P_gcj
+#endif
+                  ) {
 	         add_string(objects, "-Wl,-no-whole-archive");
 	       } else {
 	         add_string(objects, "-no-whole-archive");

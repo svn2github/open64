@@ -105,7 +105,11 @@ static void my_execv(const char *name, char *const argv[])
     int len = strlen(name);
     int passthru = len > 4 && name[len - 4] == '/' &&
 	(strcmp(name + len - 3, "gcc") == 0 ||
-	 strcmp(name + len - 3, "g++") == 0);
+	 strcmp(name + len - 3, "g++") == 0
+#if defined(VENDOR_FUDAN)
+         || strcmp(name + len - 3, "gcj") == 0
+#endif
+        );
     
     if (show_but_not_run) {
 	int i;
@@ -623,6 +627,10 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				    phase == P_spin_cc1plus ||
 				    status == RC_GCC_INTERNAL_ERROR ||  //bug 9637
 #endif
+#if defined(VENDOR_FUDAN)
+                                    phase == P_gcj ||
+                                    phase == P_spin_jc1 ||
+#endif
 				    phase == P_gcpp || phase == P_gcpp_plus) {
 					if (phase == P_gas ||
 					    status == RC_GCC_INTERNAL_ERROR) {
@@ -643,6 +651,9 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				    || phase == P_wgen
 				    || phase == P_spin_cc1
 				    || phase == P_spin_cc1plus
+#endif
+#if defined(VENDOR_FUDAN)
+                                    || phase == P_spin_jc1
 #endif
 				   ) {
 					nomsg_error(RC_INTERNAL_ERROR);

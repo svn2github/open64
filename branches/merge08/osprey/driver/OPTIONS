@@ -108,6 +108,9 @@
 #define CC	C
 #define Cc	cc,CC
 #define f77	f
+#if defined(VENDOR_FUDAN)
+#define java    j
+#endif
 % f90 used in option name, so use F90 for define
 #define F90	F
 #define FTN	f77,F90
@@ -343,6 +346,23 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	     "Don't perform 'tree' specific vectorization; for options compatibility only, ignored by Open64"
 -directives-only ; ALL NONE ""
              "ignored by open64"
+
+#if defined(VENDOR_FUDAN)
+-fno-store-check  ;  java  f  "-fno-store-check"
+         ""
+-fno-bounds-check ;  java  f  "-fno-bounds-check"
+         ""
+-fjni ;   java  f  "-fjni"
+    "Option for java JNI call "
+ 
+-Wno-deprecated ;   java   f  "-Wno-deprecated"
+         ""
+ 
+-Wno-out-of-date ;  java  f  "-Wno-out-of-date"
+         ""
+-fclasspath=%s ;    java    f  "-fclasspath=%s"
+        ""
+#endif
 
 % Basic option groups:
 % See opt_actions.c::Process_Ofast if you change the -OPT: item.
@@ -676,6 +696,10 @@ I-object		;	ALL	ld	""
 % -noas says to skip the assembler phase
 -noas	toggle(&skip_as,TRUE);		ALL	NONE	""
 	""
+#if defined(VENDOR_FUDAN)
+-usejavaf       ;               j       NONE    "-INTERNAL:return_val=on -INTERNAL:mldid_mstid=on -INTERNAL:return_info=on"
+        ""
+#endif
 -usegfe		;		Cc	NONE	""
 	""
 -usef90		;		F90	NONE	""
@@ -2197,4 +2221,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -comic	;		Cc	NONE	"-multicore -PHASE:clist -CLIST:=ON"
 	""
+#endif
+#if defined(VENDOR_FUDAN)
+-main=%s        save_name(&main_method,optargs);        java    NONE    ""
+        ""
 #endif

@@ -114,7 +114,9 @@ set_defaults (void)
 #endif
 #endif
 	}
-
+#if defined(VENDOR_FUDAN)
+	prepend_option_seen(O_usejavaf);
+#endif
 	prepend_option_seen(O_usegfe);
 	prepend_option_seen(O_usef90);
 
@@ -286,6 +288,9 @@ add_special_options (void)
 #ifdef KEY
 		add_phase_for_option(O_traditional, P_spin_cc1);
 		add_phase_for_option(O_traditional, P_spin_cc1plus);
+#endif
+#if defined(VENDOR_FUDAN)
+                add_phase_for_option(O_traditional, P_spin_jc1);
 #endif
 	}
 

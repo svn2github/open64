@@ -84,6 +84,9 @@ static lang_info_t language_info[] = {
 	{'F',	0x00000010,	{"f90", OPEN64_NAME_PREFIX "f95"}},		/* f90/95 */
 	{'a',	0x00000020,	{"as", OPEN64_NAME_PREFIX "as","gas"}},		/* as */
 	{'l',	0x00000040,	{"ld", OPEN64_NAME_PREFIX "ld"}},		/* ld */
+#if defined(VENDOR_FUDAN)
+        {'j',   0x00000080, {"java", OPEN64_NAME_PREFIX "java"}},         /*java*/
+#endif
 	#endif
 	{'I',	0x80000000,	{"int"}},		/* Internal option */
 };
@@ -150,9 +153,13 @@ static phase_info_t phase_info[] = {
    {'f',  0x0000000000800000LL, "cc1plus",PHASEPATH,    TRUE , FALSE}, /* spin_cc1plus */
    {'w',  0x0000000001000000LL, "wgen",PHASEPATH,   TRUE , FALSE}, /* wgen      */
 #endif
+#if defined(VENDOR_FUDAN)
+   {'f',  0x0000000004000000LL, "jc1",   PHASEPATH,  TRUE,  FALSE},
+   {'f',  0x0000000008000000LL, "jvgenmain", PHASEPATH, TRUE, FALSE},
+#endif
    /* place-holder for generic fe, whose mask unites all fe's; */
    /* this is so -Wf will apply to whatever fe is being invoked. */
-   {'f',  0x0000000000ff0000LL,	"",	"",		FALSE, FALSE},	/* any_fe */
+   {'f',  0x0000000004ff0000LL,	"",	"",		FALSE, FALSE},	/* any_fe */
    {'F',  0x00000000000f0000LL,	"",	"",		FALSE, FALSE},	/* pseudo_f_fe */
    {'C',  0x0000000000f00000LL,	"",	"",		FALSE, FALSE},	/* pseudo_c_fe */
 
@@ -189,6 +196,9 @@ static phase_info_t phase_info[] = {
    {'l',  0x0000040000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ld */
    {'l',  0x0000080000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ldplus */
 #endif
+#if defined(VENDOR_FUDAN)
+   {'l',  0x0000800000000000LL, NAMEPREFIX "gcj", BINPATH, FALSE, TRUE}, /*p+gcj*/
+#endif
    {'l',  0x01000f0000000000LL,	"",	"",		TRUE, FALSE},	/* any_ld */
    {'c',  0x0000100000000000LL, "cord", BINPATH,	FALSE, FALSE},	/* cord */
    {'x',  0x0000200000000000LL, "pixie", BINPATH,   FALSE, FALSE}, /* pixie */
@@ -201,6 +211,7 @@ static phase_info_t phase_info[] = {
    {'L',  0x0040000000000000LL,	"lib",	LIBPATH,	FALSE, FALSE},	/* library */
    {'L',  0x0080000000000000LL,	"alib",	ALTLIBPATH,	FALSE, FALSE},	/* alt_library */
 };
+
 mask_t OPEN64_PHASE_MASK=
           0x0000f19fffffff90LL;
 mask_t PHASE_MASK=
@@ -249,6 +260,9 @@ static source_info_t source_info[] = {
 	{"O"},				/* O */
 #endif
 	{"o"},				/* o */
+#if defined(VENDOR_FUDAN)
+        {"java","class","jar"},        /* java */
+#endif
 };
 
 languages_t invoked_lang;
@@ -611,6 +625,9 @@ get_source_kind (char *src)
 			case L_f77: return S_f;
 			case L_f90: return S_f90;
 			case L_as: return S_s;
+#if defined(VENDOR_FUDAN)
+                        case L_java:  return S_java;
+#endif
 			}
 		}
 	}
@@ -673,6 +690,10 @@ get_source_lang (source_kind_t sk)
 		return L_f90;
 	case S_o:
 		return invoked_lang;
+#if defined(VENDOR_FUDAN)
+        case S_java:
+                return L_java;
+#endif
 	}
 	return L_NONE;
 }
