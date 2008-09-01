@@ -2938,6 +2938,12 @@ Expand_Sqrt (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
   static BOOL initialized;
   static void (*exp_sqrt)(TN *, TN *, TYPE_ID, OPS *) = Expand_SGI_Sqrt;
 
+  // SGI_Sqrt does not support F10
+  if (mtype == MTYPE_F10) {
+    Expand_Intel_F10_Sqrt(result, src, ops);
+    return;
+  }
+
   if (!initialized) {
     const char * const alg = CGEXP_sqrt_algorithm;
     if (strcasecmp(alg, "intel_max_thr") == 0) {
