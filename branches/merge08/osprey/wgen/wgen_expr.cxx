@@ -5552,6 +5552,8 @@ WGEN_Expand_Expr (gs_t exp,
     case GS_COND_EXPR:
       {
         TY_IDX ty_idx1, ty_idx2;
+        if (gs_tree_has_location(exp) == gs_true) // it would otherwise be -1
+          lineno = gs_expr_lineno(exp);
 	if (gs_tree_operand(exp, 1) != NULL &&
 	    gs_tree_type(gs_tree_operand(exp, 1)) != NULL)
 	  ty_idx1 = Get_TY (gs_tree_type(gs_tree_operand (exp, 1)));
@@ -5619,7 +5621,7 @@ WGEN_Expand_Expr (gs_t exp,
             }
           }
           // Generate IF statement.
-          WGEN_Stmt_Append (if_stmt, Get_Srcpos());
+          WGEN_Stmt_Append (if_stmt, if_stmt_srcpos);
 #else
 	  WGEN_Stmt_Append (if_stmt, Get_Srcpos());
 	  WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
