@@ -434,7 +434,10 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
        ))
       return NOT_PROPAGATABLE;
 
-#ifdef KEY
+#ifdef VENDOR_PSC
+    // These code comes from Pathscale 3.2
+    // They may cause compilation time out in 403.gcc on IA-64 and 64-bit compiler on x86_64
+    // Too aggressive copy propagation may increase the compilation time in later phases
     if (icopy_phase) {
       if (x->Is_isop_flag_set(ISOP_ICOPY_VISITED)) {
 	*height = 1;	// don't really know the height, so return 1
