@@ -2198,7 +2198,7 @@ static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
 
   diff0 = 0;
 	 /* for constant address */ 	
-  if( pred_base && succ_base && pred_offset && succ_offset ) {
+  if( pred_base && succ_base ) {
     if (addr_subtract(pred_op, succ_op, pred_base, succ_base, &diff0) &&
 	addr_subtract(pred_op, succ_op, pred_offset, succ_offset, &diff1)) {
       return analyze_overlap(pred_op, succ_op, diff0 + diff1);
