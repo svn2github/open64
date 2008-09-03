@@ -7181,7 +7181,8 @@ Write_INITO (
     if (Assembly) {
         char *name = ST_name(sym);
 #if defined(VENDOR_FUDAN)
-        if(strcmp(name + strlen(name) - 8, "6class$E") == 0)
+       //recode the name of java class for generationg .jcr section 
+        if(strcmp(name + strlen(name) - 8, "6class$E") == 0) /*"6class$E is the suffix of javaclass name"*/
         {
           class_strs->push_back(name);
         }
@@ -7680,27 +7681,24 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
     }
   }
 #if defined(VENDOR_FUDAN)
-  { /*generate .jc1 section for java in .s file */
+  { /*generate .jcr section for java in .s file */
     fprintf ( Asm_File, "\t.section\t.jcr,\"aw\",@progbits\n");
-    if (Is_Target_32bit()){
-      fprintf ( Asm_File, "\t.align 4\n");
-      for(int i = 0; i < class_strs.size(); i++) {
- 	class_strs[i] = "\t.long\t" + class_strs[i] + "\n";
-  	fprintf(Asm_File, class_strs[i].c_str());
-	}
-      }
-    else if (Is_Target_64bit()) {
-      fprintf ( Asm_File, "\t.align 8\n");
-      for(int i = 0; i < class_strs.size(); i++) {
-	class_strs[i] = "\tdata8\t" + class_strs[i] + "\n";
-  	fprintf(Asm_File, class_strs[i].c_str());
-	}
-      }
-    else {
-      FmtAssert(FALSE, ("unhandled .jc1 section for this platform"));
-      }
-  }
+#ifdef TARG_X8664
+    fprintf ( Asm_File, "\t.align 4\n");
+    for(int i = 0; i < class_strs.size(); i++) {
+      class_strs[i] = "\t.long\t" + class_strs[i] + "\n";
+      fprintf(Asm_File, class_strs[i].c_str());
+    }
+#elif TARG_IA64
+    fprintf ( Asm_File, "\t.align 8\n");
+    for(int i = 0; i < class_strs.size(); i++) {
+      class_strs[i] = "\tdata8\t" + class_strs[i] + "\n";
+      fprintf(Asm_File, class_strs[i].c_str());
+    }
 #endif
+  // if needed, we will generate jcr section for other platform. 
+  }
+#endif //VENDOR_FUDAN
 }
 
 
