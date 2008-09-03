@@ -649,6 +649,9 @@ ifeq ($(BUILD_OS), LINUX)
  ifeq ($(BUILD_TARGET), X8664)
 	$(call submake,$(TARG_LIBUNWIND))
  endif
+ ifeq ($(BUILD_TARGET), SL)
+	$(call submake,$(TARG_LIBUNWIND))
+ endif
 endif
 ## verify that be.so is up to date
 	$(call submake,$(TARG_BE))

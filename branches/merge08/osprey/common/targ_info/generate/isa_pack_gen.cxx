@@ -717,7 +717,11 @@ void ISA_Pack_End(void)
   fprintf(hfile, "\ninline INT ISA_PACK_Inst_Words(TOP topcode)\n"
 		 "{\n");
   if (inst_words == 1) {
+#if defined(TARG_SL)
+    fprintf(hfile, "  return TOP_is_dummy(topcode) ? 0 : (TOP_is_instr16(topcode) ? 1 : 2);\n"); // SL inst are by hword count
+#else
     fprintf(hfile, "  return TOP_is_dummy(topcode) ? 0 : 1;\n");
+#endif
   } else {
     fprintf(hfile, "  extern const mUINT8 ISA_PACK_inst_words[%d];\n"
 		   "  return ISA_PACK_inst_words[(INT)topcode];\n",
