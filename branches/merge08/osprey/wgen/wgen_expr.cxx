@@ -64,7 +64,7 @@ extern "C"{
 #include "wgen_omp_directives.h"
 #endif
 #if defined(VENDOR_FUDAN)
-#include "Try_Monitor.h"
+#include "try_monitor.h"
 #endif
 
 #define BITS_PER_UNIT 8
@@ -7879,7 +7879,7 @@ WGEN_Expand_Expr (gs_t exp,
           gs_t loop_exit = 0;
           bool  whiledo = findexit(body, loop_exit);
  
-          WN *loop_test = loop_exit ? WN_Relational (OPR_EQ, MTYPE_I4,  WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand(loop_exit, 0), Boolean_type), WN_Intconst (MTYPE_I4, 0)) : WN_Intconst (MTYPE_I4, 1);               //czw   NOT operation
+          WN *loop_test = loop_exit ? WN_Relational (OPR_EQ, MTYPE_I4,  WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand(loop_exit, 0), Boolean_type), WN_Intconst (MTYPE_I4, 0)) : WN_Intconst (MTYPE_I4, 1);
           WN *loop_body = WN_CreateBlock ();
           if (body)
           {

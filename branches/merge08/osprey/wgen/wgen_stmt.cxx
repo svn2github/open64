@@ -55,7 +55,7 @@ extern "C"{
 #include <ctype.h>
 
 #if defined(VENDOR_FUDAN)
-#include "Try_Monitor.h"
+#include "try_monitor.h"
 #endif
 //#include "tree_cmp.h"
 
@@ -589,8 +589,8 @@ Do_Handlers (INT cleanups)
      ) processing_handler = true;
 #endif
 #if defined(VENDOR_FUDAN)
-  try_monitor.Set_Index_First();   
-  while (!try_monitor.Index_At_End()) {
+  try_monitor.Set_Index_Last();   
+  while (!try_monitor.Empty()) {
 #else
   while (handler_info_i != -1) {
 #endif
@@ -637,7 +637,10 @@ Do_Handlers (INT cleanups)
 #endif
 #ifdef KEY
 #if defined(VENDOR_FUDAN)
-    try_monitor.Set_Index_Next();
+    try_monitor.Set_Index_Prev();	
+    try_monitor.PopBack();	
+    if(try_monitor.LastIsCurrent())
+        break;
 #else
     handler_stack.pop();
 #endif
@@ -647,7 +650,7 @@ Do_Handlers (INT cleanups)
   processing_handler = false;
   Do_Cleanups_For_EH(cleanups);
 #if defined(VENDOR_FUDAN)
-  try_monitor.Clean_Up();
+//  try_monitor.Clean_Up();	
 #endif
   if (key_exceptions) 
     FmtAssert (cleanup_list_for_eh.size() == cleanups,
@@ -1926,7 +1929,7 @@ Cleanup_To_Scope_From_Handler(gs_t scope)
   FmtAssert (processing_handler, ("Invalid scope"));
 
 #if defined(VENDOR_FUDAN)
-  Try_Info ti = try_monitor.Indexing_TI();              //czw
+  Try_Info ti = try_monitor.Indexing_TI(); 
   FmtAssert (ti.scope, ("No scope information available"));
   i = ti.scope->size()-1;
 #else
@@ -3993,7 +3996,7 @@ Get_handler_list (vector<ST_IDX> *handler_list)
           gs_t type = gs_tree_operand(h, 0);
           ST_IDX st = 0;      // catch-all
           if (type)
-            st = ST_st_idx (Get_ST (Get_type_class(type)));  //czw
+            st = ST_st_idx (Get_ST (Get_type_class(type)));  
           handler_list->push_back (st);
         }
       }
@@ -4008,7 +4011,7 @@ Get_handler_list (vector<ST_IDX> *handler_list)
             gs_t type = gs_tree_operand(h, 0);
             ST_IDX st = 0;    // catch-all
             if (type)
-              st = ST_st_idx (Get_ST (Get_type_class(type)));  //czw
+              st = ST_st_idx (Get_ST (Get_type_class(type)));  
             handler_list->push_back (st);
           }
         }
