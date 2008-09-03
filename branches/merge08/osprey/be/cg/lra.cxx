@@ -1476,7 +1476,7 @@ Get_Avail_Reg (ISA_REGISTER_CLASS regclass,
   REGISTER next_reg = last_assigned_reg[regclass] + 1;
   REGISTER reg;
 
-#ifdef KEY
+#if defined(TARG_X8664)
   // Find the least-recently-used register.
   //
   // For x86-64, handle least-recently-used before legacy-regs because
