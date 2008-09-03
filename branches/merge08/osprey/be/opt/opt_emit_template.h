@@ -1046,6 +1046,15 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 			    TY_IDX_index(MTYPE_To_TY (lhs->Dsctyp())));
 	  field_id = 0;
 	}
+
+	// Temporary fix for OSP_448, jianxin.lai@hp.com
+	// If both of the TY of lhs and rhs are the same MTYPE_M and field_id is not 0
+	// Reset it to 0
+	if (lhs->Dsctyp() == MTYPE_M &&
+            lhs->Lod_ty() == rhs_cr->Lod_ty() &&
+	    field_id != 0)
+          field_id = 0;
+
 	if (lhs->Dsctyp() == MTYPE_B && WN_rtype(rhs_wn) != MTYPE_B) {
 	  Is_True(WN_operator(rhs_wn) == OPR_INTCONST,
 	        ("Gen_stmt_wn: non-boolean value stored to boolean variable"));
