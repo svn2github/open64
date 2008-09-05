@@ -1048,11 +1048,11 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	}
 
 	// Temporary fix for OSP_448, jianxin.lai@hp.com
-	// If both of the TY of lhs and rhs are the same MTYPE_M and field_id is not 0
+	// If both of the TY of lhs and rhs are the same struct and field_id is not 0
 	// Reset it to 0
-	if (lhs->Dsctyp() == MTYPE_M &&
-            lhs->Lod_ty() == rhs_cr->Lod_ty() &&
-	    field_id != 0)
+	if (field_id != 0 &&
+            lhs->Dsctyp() == MTYPE_M &&
+            ty_idx == WN_ty(rhs_wn) )
           field_id = 0;
 
 	if (lhs->Dsctyp() == MTYPE_B && WN_rtype(rhs_wn) != MTYPE_B) {
