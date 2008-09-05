@@ -4056,7 +4056,6 @@ Handle_Shift_Operation(WN* expr, TN* result)
   TOP opcode; 
   switch(WN_operator(expr))
   {
-  #if 0
     case OPR_ADD:
       if(shft_imm) 
         opcode = shft_left ? TOP_c2_shadd_l_i : 
@@ -4081,7 +4080,6 @@ Handle_Shift_Operation(WN* expr, TN* result)
           opcode = shft_left ? TOP_c2_shor_l : 
             (shft_arith ? TOP_c2_shor_ra : TOP_c2_shor_rl); 
         break; 
-#endif
     default:
       Fail_FmtAssertion("unexpected operator in shift+alu combination"); 
   }

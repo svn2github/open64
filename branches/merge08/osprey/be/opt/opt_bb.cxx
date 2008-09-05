@@ -1072,6 +1072,33 @@ BB_NODE::Clonable(BOOL allow_loop_cloning, const BVECTOR *cr_vol_map)
   return TRUE;
 }
 
+#if defined(TARG_SL)
+BOOL
+BB_NODE::Preds_or_succs_from_different_region(BOOL pred)
+{
+  BB_LIST_ITER bb_iter;
+  BB_LIST* bb_list;
+  BB_NODE *bb;
+  vector <mUINT16 >rid_stack;
+
+  rid_stack.clear();
+
+  bb_list = (pred) ? this->Pred() : this->Succ();
+
+  FOR_ALL_ELEM(bb, bb_iter, Init(bb_list)) {
+    if(find(rid_stack.begin(), rid_stack.end(), bb->Rid_id()) == rid_stack.end())
+      rid_stack.push_back(bb->Rid_id());
+  }
+
+  if(rid_stack.size() > 1)
+    return TRUE;
+  else
+     return FALSE;
+
+}
+#endif
+
+
 
 // ====================================================================
 // Printing methods
