@@ -504,8 +504,6 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,    &Arc_Profile_Region, NULL},
   { OVK_INT32,  OV_INTERNAL, FALSE,  "cse_regs", "",
     0, INT32_MIN, INT32_MAX,    &CG_cse_regs, NULL},
-#endif
-#ifdef CG_PATHSCALE_MERGE
   { OVK_INT32,  OV_INTERNAL, FALSE,  "sse_cse_regs", "",
     0, INT32_MIN, INT32_MAX,    &CG_sse_cse_regs, NULL},
 #endif
