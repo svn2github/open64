@@ -93,11 +93,6 @@ typedef enum {
   ISA_COMPUTE_13 = 17
 } ISA;
 
-#if defined(VENDOR_FUDAN)
-extern char *main_method;
-extern char *generated_main_file;
-#endif
-
 extern boolean debug;		/* debugging turned on */
 
 extern boolean nostdinc;	/* no standard include directory */

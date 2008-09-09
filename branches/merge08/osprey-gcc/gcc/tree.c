@@ -6463,13 +6463,10 @@ lang_check_failed (const char* file, int line, const char* function)
 #include <ctype.h>
 #include "c-common.h" 
 
-enum language { C, CPP, JAVA };
+enum language { C, CPP };
 enum language language = C;
 #define CPR() (language == CPP)
 #define CR()  (language == C)
-#if defined(VENDOR_FUDAN)
-#define JAVAR() (language == JAVA)
-#endif
 
 // C++ Dummy Variables Section Begins.
 tree global_namespace; // CP_DECL_CONTEXT () references this variable in cp/name-lookup.c
@@ -7630,11 +7627,6 @@ static gs_t program   = (gs_t) NULL,
 // dot to insert new declaration tree
 static gs_t program_decls_dot = (gs_t) NULL;
 
-#if defined(VENDOR_FUDAN)
-struct obstack gspin_obstack;
-#endif
-
-
 void gspin_write (void) 
 {
   // Bug 10172: If errors have occurred, do not write out the .spin output file.
@@ -7700,11 +7692,6 @@ gspin_init(void)
   if (strcmp ("GNU C++", lang_hooks.name) == 0) {
     language = CPP;
   }
-#if defined(VENDOR_FUDAN)
-  else if (strcmp ("GNU Java", lang_hooks.name) == 0) {
-    language = JAVA;
-  }
-#endif
   else if (strcmp ("GNU C", lang_hooks.name) == 0) {
     language = C;
   }
@@ -7773,12 +7760,6 @@ gspin_init(void)
 
   if ((atexit (gspin_write)) != 0) 
     fprintf (stderr, "gspin_write registration with atexit (3) failed.\n");
-
-#if defined(VENDOR_FUDAN)
-   //for mangle-name
-  gcc_obstack_init (&gspin_obstack);
-#endif
-
 }
 
 // Add the global trees containing common types.
@@ -7789,10 +7770,8 @@ gspin_init_global_trees_list(void)
 
   global_trees_list = __gs (EMPTY);
   for (i = TI_MAX - 1; i >= TI_ERROR_MARK; i--) {
-#if !defined (VENDOR_FUDAN)
     GS_ASSERT(global_trees[i] != NULL,
 	      ("gspin_init_global_trees_list: global_tree not initialized"));
-#endif
     global_trees_list = gs_cons (gs_x (global_trees [i]), global_trees_list);
   }
   gs_set_operand(program, GS_GLOBAL_TREES_LIST, global_trees_list);
@@ -7900,12 +7879,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // "translate_this_func_decl" set, it means this is the proper time
       // to expand this function, and it may now have a function body --
       // whatever is the state of the function_decl, we want to get it now.
-#if defined(VENDOR_FUDAN)
-    if ((CPR() || JAVAR())
-#else
-    if (CPR() 
-#endif
-        && translate_this_func_decl)
+      if (CPR() && translate_this_func_decl)
         goto REVISIT;
       else if (CR()) {
         // Don't re-translate the function if it was fully translated before.
@@ -8011,20 +7985,6 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     _gs_bv (flags, GS_TREE_PUBLIC, TREE_PUBLIC (t));
     _gs_bv (flags, GS_DECL_WEAK, DECL_WEAK (t));
   }
-#if defined(VENDOR_FUDAN)
-   if (JAVAR() &&
-		TREE_CODE(t) == FUNCTION_DECL) {
-	  if (!DECL_ASSEMBLER_NAME_SET_P(t) &&
-	  DECL_CONTEXT (t) != NULL) {
-		SET_DECL_ASSEMBLER_NAME( t, lang_hooks.java_mangle_decl(&gspin_obstack, t) );
-	  }
-	  gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASSEMBLER_NAME,
-					 gs_x_1(DECL_ASSEMBLER_NAME(t), seq_num));
-	  _gs_bv(flags, GS_DECL_ASSEMBLER_NAME_SET_P, DECL_ASSEMBLER_NAME_SET_P(t));
-	  _gs_bv (flags, GS_TREE_PUBLIC, TREE_PUBLIC (t));
-	  _gs_bv (flags, GS_DECL_WEAK, DECL_WEAK (t));
-	}
-#endif
 
 
   // See if the FUNCTION_DECL should be fully or partially translated.  For
@@ -8043,14 +8003,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     if (CR()) {				// C
       if (!DECL_BUILT_IN(t))
 	return GS_NODE(t);
-    } 
-#if defined(VENDOR_FUDAN)
-    else if (JAVAR()){			 
-      if(DECL_SAVED_TREE(t))
-        return GS_NODE(t);
-    }
-#endif
-    else {				// C++
+    } else {				// C++
       if ( // not a bodyless function
 	  DECL_SAVED_TREE(t) ||
 	  (DECL_LANG_SPECIFIC(t) &&
@@ -8302,17 +8255,10 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // file
       if (gs_operand((gs_t) GS_NODE(t), GS_DECL_SOURCE_FILE) == NULL)
       {
-#if defined(VENDOR_FUDAN)
-	if (DECL_SOURCE_FILE (t) != NULL)
-	{
-#endif
         gs_t file = __gs (IB_STRING);
         _gs_s (file, (gs_string_t) DECL_SOURCE_FILE (t),
 	       1 + strlen (DECL_SOURCE_FILE (t)));
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_SOURCE_FILE, file);
-#if defined(VENDOR_FUDAN)
-        }
-#endif   
       }
 
       // line

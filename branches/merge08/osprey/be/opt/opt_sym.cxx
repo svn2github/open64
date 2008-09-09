@@ -1289,7 +1289,7 @@ AUX_STAB_ENTRY::Change_to_new_preg(OPT_STAB *opt_stab, CODEMAP *htable)
 	    cvt_kind = NOT_AT_ALL;
 	  else if (!Only_Unsigned_64_Bit_Ops && 
 		   was_formal &&
-		   ( Language == LANG_CPLUS || Language == LANG_ANSI_C) &&
+		   (Language == LANG_CPLUS || Language == LANG_ANSI_C) &&
 #ifdef KEY
 		   opt_stab->Is_prototyped_func() &&
 #endif

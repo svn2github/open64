@@ -63,16 +63,10 @@ extern "C"{
 #include "omp_types.h"
 #include "wgen_omp_directives.h"
 #endif
-#if defined(VENDOR_FUDAN)
-#include "try_monitor.h"
-#endif
 
 #define BITS_PER_UNIT 8
 
 extern void WGEN_Expand_Return(gs_t, gs_t);
-#if defined(VENDOR_FUDAN)
-extern void WGEN_Expand_Switch_Expr(gs_t);
-#endif
 
 LABEL_IDX loop_expr_exit_label = 0; // exit label for LOOP_EXPRs
 
@@ -642,9 +636,6 @@ INT32          wgen_save_expr_stack_max  = 0;
 #ifdef KEY
 INT32 wgen_save_expr_level;	// identify the current cleanup
 INT32 wgen_last_save_expr_level;	// the last cleanup level used
-#endif
-#if defined(VENDOR_FUDAN)
-extern Try_Monitor try_monitor;
 #endif
 
 static WN*
@@ -1907,29 +1898,7 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         wn = NULL;
     }
     break;
-#if defined(VENDOR_FUDAN)
-    case GS_COMPOUND_EXPR:
-    {
-      gs_t var = gs_tree_operand(lhs, 1);
-      while(gs_tree_code(var) != GS_VAR_DECL)
-        var = gs_tree_operand(var, 1);
- 
-      WGEN_Expand_Stmt(lhs);
-      wn = WGEN_Lhs_Of_Modify_Expr(assign_code,
-                       var,
-                       lhs_retval,
-                       need_result,
-                       component_ty_idx,
-                       component_offset,
-                       field_id,
-                       is_bit_field,
-                       rhs_wn,
-                       rhs_preg_num,
-                       is_realpart,
-                       is_imagpart);
-    }
-    break;
-#endif
+
 #ifdef KEY
   case GS_FILTER_EXPR:
     // TODO: Implement.
@@ -2352,11 +2321,7 @@ WGEN_Address_Of(gs_t arg0)
       if (code0 == GS_VAR_DECL) {
 	if (gs_decl_initial(arg0) &&
 	    (gs_decl_virtual_p(arg0) ||
-#if defined(VENDOR_FUDAN)
-              ((gs_decl_tinfo_p(arg0) || lang_java) &&
-#else
 	      (/* bug 279 */ gs_decl_tinfo_p(arg0) /* typeinfo ? */ &&
-#endif
 	        /* make sure it is not an NTBS name */
 	        gs_tree_code(gs_decl_initial(arg0)) != GS_STRING_CST)) &&
 	    !gs_decl_external(arg0)) {
@@ -4160,32 +4125,6 @@ get_wrapper_value (gs_t stmt)
 #endif // FE_GNU_4_2_0
 #endif // KEY
 
-#if defined(VENDOR_FUDAN)
-bool findexit(gs_t body, gs_t& exit_node)
-{
-  static gs_t first = 0;
-  if(gs_tree_code(body) == GS_COMPOUND_EXPR)
-  {
-    findexit(gs_tree_operand(body, 1), exit_node);
-    return findexit(gs_tree_operand(body, 0), exit_node);
-  }
-  if(gs_tree_code(body) == GS_BIND_EXPR)
-  {
-    if(first == 0)
-      first = body;
-  }
-  if(gs_tree_code(body) == GS_EXIT_EXPR)
-  {
-    if(first == 0)
-      first = body;
-    exit_node = body;
-  }
-  bool ret = first == 0? false: gs_tree_code(first) == GS_EXIT_EXPR;
-  first = 0;
-  return ret;
-}
-#endif
-
 WN * 
 WGEN_Expand_Expr (gs_t exp,
 		  bool need_result,
@@ -5032,17 +4971,6 @@ WGEN_Expand_Expr (gs_t exp,
 	}
 #endif
       }
-#if defined(VENDOR_FUDAN)
-      if (key_exceptions && lang_java && !(in_cleanup))
-      {
-        if (!inside_eh_region)
-        { // check that we are not already in a region
-          WN * region_body = WN_CreateBlock();
-          inside_eh_region = true;
-          WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
-        }
-      }
-#endif
       break;
 
     case GS_INDIRECT_REF:
@@ -5154,14 +5082,6 @@ WGEN_Expand_Expr (gs_t exp,
 	    wn = wn0;
 	}
       }
-#if defined(VENDOR_FUDAN)
-      if (key_exceptions &&  lang_java && !(in_cleanup) && !(inside_eh_region))
-      {
-        WN * region_body = WN_CreateBlock();
-        inside_eh_region = true;
-        WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
-      }
-#endif
       break;
 
     case GS_CONVERT_EXPR:
@@ -5386,16 +5306,9 @@ WGEN_Expand_Expr (gs_t exp,
       // The second operand of 'exp' should be run if the first throws an
       // exception.
       // wgen TODO: This cleanup should be treated as eh_only.
-#if defined(VENDOR_FUDAN)
-      if(lang_java) WGEN_Expand_Try_Catch(exp);
-      if(lang_cplus) {
-#endif
       Register_Cleanup (exp);
       wn = WGEN_Expand_Expr (gs_tree_operand (exp, 0), need_result);
       Unregister_Cleanup ();
-#if defined(VENDOR_FUDAN)
-      }
-#endif //VENDOR_FUDAN
 #endif
       break;
 
@@ -5445,17 +5358,6 @@ WGEN_Expand_Expr (gs_t exp,
           wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(etype), MTYPE_V,
                              TY_size (Get_TY(gs_tree_type(exp))) * 8, wn);
        }
-#if defined(VENDOR_FUDAN)
-        if (key_exceptions  && lang_java &&
-            (code == GS_TRUNC_DIV_EXPR || code == GS_TRUNC_MOD_EXPR || code == GS_RDIV_EXPR) &&
-            !(in_cleanup) && !(inside_eh_region))
-        {
-            // check that we are not already in a region
-          WN * region_body = WN_CreateBlock();
-          inside_eh_region = true;
-          WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
-        }
-#endif
        break;
 
     case GS_LROTATE_EXPR:
@@ -6222,15 +6124,6 @@ WGEN_Expand_Expr (gs_t exp,
 			    Make_Pointer_Type(elem_ty_idx, FALSE),
 			    wn0, field_id);
       }
-#if defined(VENDOR_FUDAN)
-      if (key_exceptions &&  lang_java && !(in_cleanup) && !(inside_eh_region))
-      {
-       // check that we are not already in a region
-        WN * region_body = WN_CreateBlock();
-        inside_eh_region = true;
-        WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
-      }
-#endif
       break;
 
     case GS_AGGR_INIT_EXPR:
@@ -7842,19 +7735,9 @@ WGEN_Expand_Expr (gs_t exp,
       wn = WN_Intconst(MTYPE_I4, 0);
       break;
 
-#if defined(VENDOR_FUDAN)
-    case GS_SWITCH_EXPR:
-      WGEN_Expand_Switch_Expr (exp);
-      break;
-#endif
-
     case GS_LOOP_EXPR:
       {
         DevWarn ("Encountered LOOP_EXPR at line %d\n", lineno);
-#if defined(VENDOR_FUDAN)
-        if(!lang_java)
-        {
-#endif
         LABEL_IDX saved_loop_expr_exit_label = loop_expr_exit_label;
         loop_expr_exit_label = 0;
         gs_t body = gs_loop_expr_body(exp);
@@ -7871,47 +7754,16 @@ WGEN_Expand_Expr (gs_t exp,
           WGEN_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, loop_expr_exit_label, 0, NULL),
                            Get_Srcpos ());
         loop_expr_exit_label = saved_loop_expr_exit_label;
-#if defined(VENDOR_FUDAN)
-        }//endif !lang_java
-        else
-        {
-          gs_t body = gs_loop_expr_body(exp);
-          gs_t loop_exit = 0;
-          bool  whiledo = findexit(body, loop_exit);
- 
-          WN *loop_test = loop_exit ? WN_Relational (OPR_EQ, MTYPE_I4,  WGEN_Expand_Expr_With_Sequence_Point (gs_tree_operand(loop_exit, 0), Boolean_type), WN_Intconst (MTYPE_I4, 0)) : WN_Intconst (MTYPE_I4, 1);
-          WN *loop_body = WN_CreateBlock ();
-          if (body)
-          {
-            WGEN_Stmt_Push (loop_body, wgen_stmk_while_body, Get_Srcpos());
-            wn = WGEN_Expand_Expr (body);
-            WGEN_Stmt_Pop (wgen_stmk_while_body);
-          }
-          WN *loop_stmt;
-          if(whiledo)
-            loop_stmt = WN_CreateWhileDo (loop_test, loop_body);
-          else
-            loop_stmt = WN_CreateDoWhile (loop_test, loop_body);
-          WGEN_Stmt_Append (loop_stmt, Get_Srcpos());
-        }
-#endif
       }
       break;
 
     case GS_EXIT_EXPR:
       {
         DevWarn ("Encountered EXIT_EXPR at line %d\n", lineno);
-#if defined(VENDOR_FUDAN)
-        if(!lang_java)
-        {
-#endif
 	WN *test = WGEN_Expand_Expr (gs_tree_operand(exp, 0));
         New_LABEL (CURRENT_SYMTAB, loop_expr_exit_label);
         WN *stmt = WN_CreateTruebr (loop_expr_exit_label, test);
         WGEN_Stmt_Append (stmt, Get_Srcpos ());
-#if defined(VENDOR_FUDAN)
-        }//endif !lang_java
-#endif
       }
       break;
 
@@ -8213,18 +8065,10 @@ WGEN_Expand_Expr (gs_t exp,
    case GS_TRY_FINALLY_EXPR:
      // The second operand is a cleanup to be executed on any exit from
      // evaluation of first operand.
-#if defined(VENDOR_FUDAN)
-     if(lang_java) WGEN_Expand_Try_Finally(exp);
-     if(lang_cplus)
-     {
-#endif
      Register_Cleanup (exp);
      WGEN_Expand_Expr (gs_tree_operand (exp,0), need_result);
      Unregister_Cleanup ();
      WGEN_Expand_Expr (gs_tree_operand (exp,1), need_result);
-#if defined(VENDOR_FUDAN)
-     }
-#endif
      break;
 
     case GS_FILTER_EXPR:
@@ -8268,9 +8112,7 @@ WGEN_Expand_Expr (gs_t exp,
       break;
 
 #ifdef FE_GNU_4_2_0
-#if !defined(VENDOR_FUDAN)
     case GS_SWITCH_EXPR:
-#endif
     case GS_CASE_LABEL_EXPR:
 
     // OpenMP TREE nodes

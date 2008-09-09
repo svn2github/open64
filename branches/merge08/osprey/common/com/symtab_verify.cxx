@@ -1023,11 +1023,7 @@ void PU::Verify(UINT) const
 #ifdef KEY
 // We are using 'misc' to store ST_IDXs of 2 special variables for
 // C++ exception handling, or for C nested functions.
-  if (!(src_lang & PU_CXX_LANG) && !(src_lang & PU_C_LANG)
-#if defined(VENDOR_FUDAN)
-      && !(src_lang & PU_JAVA_LANG)
-#endif
-)
+  if (!(src_lang & PU_CXX_LANG) && !(src_lang & PU_C_LANG))
     Is_True (misc == 0, ("misc fields must be zero"));
 #endif // KEY
 
@@ -1045,11 +1041,8 @@ void PU::Verify(UINT) const
     Fail_FmtAssertion (msg, "must_inline and no_inline");
 
   if ( PU_has_exc_scopes (*this))
-    Is_True( PU_cxx_lang (*this)
-#if defined(VENDOR_FUDAN)
-             || PU_java_lang (*this)
-#endif
-          ,(msg, "exception scopes can only be set for a C++ language pu"));
+    Is_True( PU_cxx_lang (*this),
+            (msg, "exception scopes can only be set for a C++ language pu"));
 
   Is_True (PU_lexical_level (*this) > 1,
 	   (msg, "Lexical level for pu should be > 1"));
@@ -1161,39 +1154,6 @@ void  Verify_LOCAL_SYMTAB (const SCOPE& scope, SYMTAB_IDX level)
 #endif // Is_True_On
 }
 
-#if defined(VENDOR_FUDAN)
-template <class T>
-struct  mycheck_op
-{
-  UINT level;
-  mycheck_op(UINT lev) : level(lev) { }
-  void operator () (UINT idx, T *entry)const ;
-};
- 
-template <class T>
-inline void
-mycheck_op<T>::operator () (UINT, T *entry) const {
-  ST* s = (ST *)entry;
-  char *myname = ST_name(*s);
-  if ( strncmp(myname,".L_ZN",4) == 0)
-  {
-    char *ptr = strstr(myname, "..");
-    if (ptr != NULL)
-    {
-      if (ST_sym_class(s) == CLASS_FUNC && ST_storage_class(*s)== SCLASS_EXTERN)
-      {
-        ST* base = s ;         
-        while ( ST_base(base) != base ) 
-          base = ST_base(base);
- 
-        if ( ST_storage_class(*s) != ST_storage_class(*base))
-          Set_ST_storage_class (*s, ST_storage_class(*base)) ;
-      }
-    }
-  }
-}
-#endif
-
 // ======================================================================
 //  Verify_GLOBAL_SYMTAB(): 
 // ======================================================================
@@ -1211,22 +1171,9 @@ void  Verify_GLOBAL_SYMTAB()
             ("PREG Table can only appear in LOCAL symtab"));
 
   // Verify TABLES: ST and INITO (LABEL, PREG, are empty)
-  if ( ST_Table_Size (GLOBAL_SYMTAB)) {
-#if defined(VENDOR_FUDAN)
-    PU_SRC_LANG_FLAGS lang_kind = PU_UNKNOWN_LANG;
-    for(int i = 0; i < PU_Table_Size(); i++)
-    {
-      if(PU_java_lang(Pu_Table[i]))
-      {
-        lang_kind = PU_JAVA_LANG ;
-        break ;
-      }
-    }
-    if(lang_kind == PU_JAVA_LANG)
-      For_all (St_Table, GLOBAL_SYMTAB, mycheck_op<ST>(GLOBAL_SYMTAB));
-#endif
+  if ( ST_Table_Size (GLOBAL_SYMTAB))
     For_all (St_Table, GLOBAL_SYMTAB, verify_op<ST>(GLOBAL_SYMTAB));
-  }
+
   if ( INITO_Table_Size (GLOBAL_SYMTAB))
     For_all (Inito_Table, GLOBAL_SYMTAB, verify_op<INITO>(GLOBAL_SYMTAB));
 

@@ -473,9 +473,6 @@ struct lang_hooks
   void (*cp_genericize) (tree fn);
   tree (*simplify_aggr_init_exprs_r) (tree *t, int *i, void *p);
 #endif
-#if defined(VENDOR_FUDAN)
-  tree (*java_mangle_decl)(struct obstack *obstack, tree decl);
-#endif
 
   /* Whenever you add entries here, make sure you adjust langhooks-def.h
      and langhooks.c accordingly.  */

@@ -57,9 +57,6 @@ int pstatic_as_global = 0;
 int key_exceptions = 0;
 BOOL opt_regions = 0;
 BOOL lang_cplus = FALSE;
-#if defined(VENDOR_FUDAN)
-BOOL lang_java = FALSE;
-#endif
 BOOL c_omit_external = TRUE;
 #ifdef FE_GNU_4_2_0
 BOOL enable_cxx_openmp = TRUE;
@@ -76,9 +73,7 @@ extern void WGEN_Expand_Decl(gs_t, BOOL);
 #ifdef KEY
 extern void WGEN_Alias_Finish(void);
 #endif
-#if defined(VENDOR_FUDAN)
-extern void WGEN_Expand_Emitted_Decl();
-#endif
+
 //*******************************************************
 // Process the command line arguments.
 //*******************************************************
@@ -165,22 +160,12 @@ Process_Cc1_Command_Line(gs_t arg_list)
   char *command = Last_Pathname_Component(argv);
 //printf("%s\n", command);
 #ifdef FE_GNU_4_2_0
-#if defined(VENDOR_FUDAN)
-  lang_java = !strcmp(command, "jc142");
-#endif
   lang_cplus = !strcmp(command, "cc1plus42");
 #else
-#if defined(VENDOR_FUDAN)
-  lang_java = !strcmp(command, "jc1");
-#endif
   lang_cplus = !strcmp(command, "cc1plus");
 #endif
 
-  if (lang_cplus 
-#if defined(VENDOR_FUDAN)
-      || lang_java
-#endif
-     )
+  if (lang_cplus)
     key_exceptions = 1;
 
   for (i = 1; i < argc; i++) {
@@ -357,18 +342,9 @@ main ( INT argc, char **argv, char **envp)
 	  WGEN_Expand_Defers();
 #endif
 	}
-#if defined(VENDOR_FUDAN)
-	if(lang_java)
-	{
-	 WGEN_Expand_Emitted_Decl();
-	}
-#endif
+
 #ifdef KEY
-	if (!lang_cplus
-#if defined(VENDOR_FUDAN)
-           && !lang_java
-#endif
-           )
+	if (!lang_cplus)
 	  WGEN_Alias_Finish();
 #endif
 	WGEN_Weak_Finish();
