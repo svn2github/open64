@@ -130,17 +130,37 @@ Expand_Power_Of_2_Divide (TN *result, TN *numer, INT64 dvsr, TYPE_ID mtype, OPS 
     Expand_Shift(result, numer, Gen_Literal_TN(n, 4), mtype, shift_lright, ops);
   } 
   else {
+#if 0  	
     if (TN_is_dedicated(result)) {
       tmp_result = Build_TN_Of_Mtype(mtype);
     }
     else
       tmp_result = result;
- 
+#endif	
+
+/*For MIPS3*/
     TN *t1 = Build_TN_Of_Mtype(mtype);
-    TN *t2 = dvsr < 0 ? Build_TN_Of_Mtype(mtype) : tmp_result;
+    TN *t2 = dvsr < 0 ? Build_TN_Of_Mtype(mtype) : result;
     INT64 absdvsr = dvsr < 0 ? -dvsr : dvsr;
     BOOL is_double = MTYPE_is_size_double(mtype);
+	
+    TN* mask_tn = Build_TN_Of_Mtype (mtype);
+    Expand_Shift(mask_tn, numer, Gen_Literal_TN(MTYPE_size_reg(mtype)-1, 4), mtype, shift_aright, ops);
 
+    TN* addend = Build_TN_Of_Mtype (mtype);
+    TN* absdvsr_tn = Build_TN_Of_Mtype (mtype);
+    Expand_Immediate(absdvsr_tn, Gen_Literal_TN(absdvsr-1, 8), TRUE, ops);
+    Build_OP (TOP_and, addend, mask_tn, absdvsr_tn, ops);
+    TN* temp = Build_TN_Like(result);
+    Expand_Add (temp, numer, addend, mtype, ops);
+
+    Expand_Shift(t2, temp, Gen_Literal_TN(n, 4), mtype, shift_aright, ops);
+	
+
+    if (dvsr < 0) Expand_Neg(result, t2, mtype, ops);
+
+/*The following code is for MIPS4, to be merged with MIPS3*/
+#if 0
 #if defined(TARG_SL)
     //  result = numer < 0 ? (numer + absdvsr - 1) : numer;
     Expand_Add (t1, Gen_Literal_TN(absdvsr-1, is_double ? 8 : 4), 
@@ -173,7 +193,8 @@ Expand_Power_Of_2_Divide (TN *result, TN *numer, INT64 dvsr, TYPE_ID mtype, OPS 
 #else 
     Build_OP(is_double ? TOP_dsra : TOP_sra, t2, t1, Gen_Literal_TN(n, 4), ops);
     if (dvsr < 0) Expand_Neg(result, t2, mtype, ops);
-#endif     
+#endif     	
+#endif
   }
 }
 
@@ -608,37 +629,7 @@ Expand_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     }
   }
 
-  if (Is_Target_Sb1()) {
-    if (MTYPE_is_size_double(mtype)) {
-      // Use floating point divide.
-      //src2 could be a constant and we did not succeed 
-      //Expand_Integer_Divide_By_Constant
-      TN *tmp = Build_TN_Of_Mtype (mtype);
-      UINT success = 1;
-      if (!CGEXP_cvrt_int_div_to_mult && const_src2 && TN_is_constant(src2)) {
-	success = 0;
-	tmp = Expand_Immediate_Into_Register (src2, mtype, ops);
-      }
-      TN *t1 = Build_TN_Of_Mtype(MTYPE_F8);
-      TN *t2 = Build_TN_Of_Mtype(MTYPE_F8);
-      TN *t3 = Build_TN_Of_Mtype(MTYPE_F8);
-      TN *t4 = Build_TN_Of_Mtype(MTYPE_F8);
-      TN *t5 = Build_TN_Of_Mtype(MTYPE_F8);
-      TN *t6 = Build_TN_Of_Mtype(MTYPE_F8);
-      Build_OP(TOP_dmtc1, t1, src1, ops);
-      Build_OP(TOP_dmtc1, t2, (success == 1)? src2: tmp, ops);
-      Build_OP(TOP_cvt_d_l, t3, t1, ops);
-      Build_OP(TOP_cvt_d_l, t4, t2, ops);
-      Build_OP(TOP_div_d, t5, t3, t4, ops);
-      Build_OP(TOP_trunc_l_d, t6, t5, ops);
-      Build_OP(TOP_dmfc1, result, t6, ops);
-      Build_OP(TOP_teq, (success == 1)? src2: tmp, 
-	       Zero_TN, Gen_Literal_TN(7, 4), ops);
-      return NULL;
-    }
-  }
-#if !defined(TARG_SL)
-  else if (MTYPE_signed(mtype) && !MTYPE_is_size_double(mtype)) {
+  if (MTYPE_signed(mtype) && !MTYPE_is_size_double(mtype)) {
     // R1000 (octane)
     //src2 could be a constant and we did not succeed 
     //Expand_Integer_Divide_By_Constant
@@ -666,7 +657,6 @@ Expand_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 	     Zero_TN, Gen_Literal_TN(7, 4), ops);
     return NULL;
   }
-#endif
 
   TOP top;
   FmtAssert(!TN_is_constant(src1),("Expand_Divide: unexpected constant operand"));

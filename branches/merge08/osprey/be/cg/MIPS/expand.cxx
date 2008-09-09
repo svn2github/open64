@@ -418,6 +418,30 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
 void
 Expand_Abs (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
 {
+/*For MIPS3 machine.*/
+  if (mtype == MTYPE_U4 || mtype == MTYPE_U8){
+         DevWarn("Try to get Abs value of an unsigned number!\n");
+         Expand_Copy(dest, src, mtype, ops);
+         return;
+  }
+
+  TN *tmp1, *tmp2;
+  tmp1 = Build_TN_Like(dest);
+  tmp2 = Build_TN_Like(dest);
+
+  if (mtype == MTYPE_I8) {
+         Build_OP(TOP_dsra32, tmp1, src, Gen_Literal_TN(31, 2), ops);
+         Build_OP(TOP_xor, tmp2,  src, tmp1, ops);
+         Build_OP(TOP_dsub, dest,  tmp2, tmp1, ops);
+  } else if (mtype == MTYPE_I4) {
+         Build_OP(TOP_sra, tmp1,  src, Gen_Literal_TN(31, 2), ops);
+         Build_OP(TOP_xor, tmp2,  src, tmp1, ops);
+         Build_OP(TOP_sub, dest,  tmp2, tmp1, ops);
+  } else {
+    Is_True(FALSE, ("Can not handle this ABS case!\n"));
+  }
+/*For MIPS4*/
+#if 0
   TN *p1 = Build_TN_Of_Mtype(MTYPE_I4);
   BOOL is_signed = MTYPE_is_signed(mtype);
   BOOL is_double = MTYPE_is_size_double(mtype);
@@ -433,6 +457,7 @@ Expand_Abs (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
     Build_OP(TOP_movn, dest, tmp, p1, ops);
   }
   Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_UNC_DEF);      
+#endif  
 }
 
 void
