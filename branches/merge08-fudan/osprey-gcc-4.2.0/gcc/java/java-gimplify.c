@@ -670,6 +670,16 @@ tree transform_statement(tree statement)
       if(TREE_OPERAND (statement, 0))
         TREE_OPERAND (statement, 0)  = transform_statement(TREE_OPERAND (statement, 0) );
       break;
+    case STATEMENT_LIST:
+    {
+      tree_stmt_iterator i  = tsi_start (statement);
+      while(!tsi_end_p (i))
+      {
+        i.ptr->stmt = transform_statement (tsi_stmt(i));                             
+        tsi_next (&i);
+      }    
+    }
+      break;
     default:
       if (TREE_CODE_CLASS (TREE_CODE (statement)) == tcc_binary
           || TREE_CODE_CLASS (TREE_CODE (statement)) == tcc_comparison)
