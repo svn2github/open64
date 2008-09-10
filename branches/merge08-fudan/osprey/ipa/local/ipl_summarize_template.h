@@ -952,7 +952,11 @@ template <PROGRAM program>
 void
 SUMMARIZE<program>::Process_eh_globals (void)
 {
-    if (!(PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) || 
+    if (
+#if defined(VENDOR_FUDAN)
+	!(PU_src_lang (Get_Current_PU()) & PU_JAVA_LANG) &&
+#endif
+	!(PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) || 
     	!PU_misc_info (Get_Current_PU()))
     	return;
 

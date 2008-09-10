@@ -257,6 +257,12 @@ Set_lang (SUMMARY_PROCEDURE *proc)
     case PU_F90_LANG:
 	proc->Set_lang (LANG_F90);
 	break;
+
+#if defined(VENDOR_FUDAN)
+    case PU_JAVA_LANG:
+ 	proc->Set_lang (LANG_JAVA);
+	break;
+#endif
     }
 } // Set_lang
 

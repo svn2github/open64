@@ -646,7 +646,11 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 	Set_cloned_label_last_idx((_cloned_scope_tab[_cloned_level].label_tab)->Size()-1);
 	Set_cloned_inito_last_idx((_cloned_scope_tab[_cloned_level].inito_tab)->Size()-1);
 #ifdef KEY
-	if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)
+	if (
+#if defined(VENDOR_FUDAN)
+	    PU_src_lang (Get_Current_PU()) & PU_JAVA_LANG ||
+#endif
+	    PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)
 	{
 #if 0
 	// For lang other than C++, the copy below won't be done anyway 

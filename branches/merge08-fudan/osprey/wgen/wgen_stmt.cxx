@@ -3834,7 +3834,10 @@ lookup_cleanups (INITV_IDX& iv)
         h = gs_tree_operand(t, 1);
     }
     iv = Create_handler_list ();
-    goto_idx = try_monitor.Get_Cmp_Label(try_monitor.Get_Current_Try());
+    if(gs_cleanup_p(t) && try_monitor.Get_Parent(try_monitor.Get_Current_Try()) != -1) 
+      goto_idx = try_monitor.Get_Cmp_Label(try_monitor.Get_Parent(try_monitor.Get_Current_Try()));
+    else
+      goto_idx = try_monitor.Get_Cmp_Label(try_monitor.Get_Current_Try());
   }
 #else
   if (gs_tree_code(t) == GS_TRY_BLOCK && scope_index >= 0)
