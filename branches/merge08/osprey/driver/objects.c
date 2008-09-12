@@ -361,13 +361,18 @@ add_object (int flag, char *arg)
 	switch (flag) {
 	case O_l:
 		/* when -lm, implicitly add extra math libraries */
-		if (strcmp(arg, "m") == 0 ||
-		    strcmp(arg, "mpath") == 0) {	// bug 5184
+		if (strcmp(arg, "m") == 0
+#ifndef VENDOR_OSP
+                    || strcmp(arg, "mpath") == 0
+#endif
+                 ) {	// bug 5184
+
 			/* add -lmv -lmblah */
-			add_library(lib_objects, "mv");
 			if (xpg_flag && invoked_lang == L_f77) {
-				add_library(lib_objects, "m" );
+				add_library(lib_objects, "mv");
+				add_library(lib_objects, "m");
 			} else {
+				add_library(objects, "mv");
 				add_library(objects, "m");
 			}
 			if (invoked_lang == L_CC) {
