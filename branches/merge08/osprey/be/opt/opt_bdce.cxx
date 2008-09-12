@@ -1208,11 +1208,17 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
 #endif
 #ifdef TARG_SL
     case OPR_ASHR:
-      if (from_bit >= MTYPE_size_min(opnd->Dsctyp())) {
-        return TRUE;
-      } else {
-	return FALSE;
-      }
+      //       I4I4LDID 0 <2,1,a>
+      //       I4INTCONST 24 (0x18)
+      //     I4ASHR
+      //   I4CVTL 8  <- reduntant CVTL
+      if (opnd->Opnd(1)->Kind() == CK_CONST) {
+        if (from_bit >= (MTYPE_size_min(dtyp) - opnd->Opnd(1)->Const_val())) {
+          return (MTYPE_signed(dtyp) == sign_xtd);
+        }
+       }
+      return FALSE;
+
 #endif
     case OPR_EXTRACT_BITS:
       //     U4U4LDID 72 <1,4,.preg_U4>
