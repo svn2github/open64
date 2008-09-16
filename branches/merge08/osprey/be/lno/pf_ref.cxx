@@ -2484,19 +2484,6 @@ if(LNO_Run_Prefetch > SOME_PREFETCH &&
   PF_SET_KEEP_ANYWAY(flag);
 }
  
-//------------------------------------------------------------------------
-//bug 5945: CG ebo will drop some prefetches according to address patterns
-//However, for dope vector, it is difficult for CG to figure out. We know
-//that the array access is contiguous though simd in LNO, so don't drop it
-//bug 11546 : CG ebo should not drop prefetches for vectorized loads or stores
-if(LNO_Run_Prefetch > SOME_PREFETCH && 
-      (WN_element_size(arraynode) < 0 ||
-      (Get_Dim()==1 &&( confidence ==3 || WN_element_size(arraynode) > 8))||
-      MTYPE_is_vector(WN_desc(parent_ref)) ||
-      MTYPE_is_vector(WN_rtype(parent_ref)))){
-   PF_SET_KEEP_ANYWAY(flag);
- }
-
 //bug 14144: It is difficult for CG to figure out the address patterns for
 //indirect array access even though the base is a constant array reference 
 if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
@@ -2543,7 +2530,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
 //(4) the array must be in good shape, and we only consider the largest dimensional
 //    arrays in a loop.
 //---------------------------------------------------------------------------
- if(LNO_Run_Stream_Prefetch > Get_Depth()&& //depth starts from 0 from outmost
+ if(LNO_Run_Stream_Prefetch  && //depth starts from 0 from outmost
     _refvecs.Elements() == 0 && //only one reference(leader) in this locality group
     spatial_in_loop          && //spatial locality not across loops
     WN_operator(parent_ref)==OPR_ILOAD){  //only consider load
