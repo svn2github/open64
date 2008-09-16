@@ -1925,7 +1925,8 @@ Configure_CG_Options(void)
 #if defined(KEY) && defined(TARG_X8664) //adjust unroll_size default for em64t and core
     if (Is_Target_EM64T() || Is_Target_Core())
       OPT_unroll_size = 256;
-    else 
+    else
+      OPT_unroll_size = 128; 
 #elif !defined(TARG_NVISA)
       OPT_unroll_size = 128;
 #endif
