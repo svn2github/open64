@@ -264,14 +264,8 @@ generated : OPTIONS.P table
 table : table.o $(SHARED_OBJECTS)
 	$(link.ccf) -o $@ table.o $(SHARED_OBJECTS) $(LDFLAGS)
 
-ifeq ($(BUILD_COMPILER), GNU)
 OPTIONS.P : OPTIONS
 	$(CC) -E -P $(LCDEFS) $(STD_COMPILE_OPTS) -x c $(BUILD_BASE)/OPTIONS > OPTIONS.P
-else
-# invoke shell script in source tree, but put output here
-OPTIONS.P : $(OPTIONS_SRC)
-	$(BUILD_BASE)/sort_options.csh $(BUILD_BASE) OPTIONS $(LCDEFS) > OPTIONS.P
-endif
 
 driver: $(OBJECTS)
 	$(link.ccf) -o $@ $(OBJECTS) $(LDFLAGS)
