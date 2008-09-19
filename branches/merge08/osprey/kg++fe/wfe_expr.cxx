@@ -2866,7 +2866,9 @@ WFE_Address_Of(tree arg0)
       if (WN_operator (wn) == OPR_LDID) {
         WN_set_operator (wn, OPR_LDA);
         WN_set_desc (wn, MTYPE_V);
-      }
+        WN_set_rtype(wn, Pointer_Mtype);
+        WN_set_ty (wn, Make_Pointer_Type(WN_ty(wn))); // bug 10098, bug 10352
+     }
       else
       if (WN_operator (wn) == OPR_ILOAD) {
         wn0 = WN_kid0 (wn);
