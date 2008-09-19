@@ -223,16 +223,15 @@ C++	= $(C++NAME) -D_SGI_SOURCE -D_LANGUAGE_C_PLUS_PLUS
 
 CC	= $(CCNAME) -D_SGI_SOURCE -D_LANGUAGE_C
 
-ifeq ($(BUILD_COMPILER), GNU)
- AS	+= -funsigned-char -D__GNU_BUG_WORKAROUND
- CC	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND
- C++	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND -D_NOTHREADS
+AS	+= -funsigned-char -D__GNU_BUG_WORKAROUND
+CC	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND
+C++	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND -D_NOTHREADS
 
- ifeq ($(BUILD_OS), MINGW)
+ifeq ($(BUILD_OS), MINGW)
   CC	+= -mno-cygwin
   C++	+= -mno-cygwin
- endif
- ifeq ($(BUILD_TARGET), NVISA)
+endif
+ifeq ($(BUILD_TARGET), NVISA)
 # FUTURE_SUPPORT is items that will not be enabled in current release
   CC	+= $(GCC_OPTS) -DFUTURE_SUPPORT
   C++	+= $(GXX_OPTS) -DFUTURE_SUPPORT
@@ -243,8 +242,7 @@ ifeq ($(BUILD_COMPILER), GNU)
    CC += -m64
    C++ += -m64
   endif
- endif
-endif # GNU
+endif
 
 C++C	= $(C++)
 CXX	= $(C++)
