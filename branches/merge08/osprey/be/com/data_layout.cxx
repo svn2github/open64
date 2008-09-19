@@ -829,6 +829,28 @@ Add_Object_To_Frame_Segment ( ST *sym, SF_SEGMENT seg, BOOL allocate )
     }
     ST_Block_Merge (SF_Block(seg), sym, lpad, rpad, SF_Maxsize(seg));
 
+#ifndef TARG_X8664
+    if (seg == SFSEG_FORMAL)
+    {
+      ST *formal = SF_Block(seg);
+
+     /* formal overlaps both formal and upformal area,
+      * so reset the blksizes of the segments.
+      */
+      if (STB_size(formal) > Formal_Save_Area_Size)
+      {
+	ST *upformal = SF_Block(SFSEG_UPFORMAL);
+
+	if (Trace_Frame)
+	  fprintf(TFile, "<lay> split formal between segs\n");
+
+	Initialize_Frame_Segment (SFSEG_UPFORMAL, ST_sclass(sym), INCREMENT);
+	Set_STB_size(upformal, 
+	    STB_size(upformal) + STB_size(formal) - Formal_Save_Area_Size);
+	Set_STB_size(formal, Formal_Save_Area_Size);
+      }
+    }
+#endif
   }
   else
   {
