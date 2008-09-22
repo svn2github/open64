@@ -680,6 +680,17 @@ tree transform_statement(tree statement)
       }    
     }
       break;
+    case TRUTH_ANDIF_EXPR:
+    case TRUTH_ORIF_EXPR:
+      if(TREE_OPERAND (statement, 0))
+        TREE_OPERAND (statement, 0)  = transform_statement(TREE_OPERAND (statement, 0) );
+      if(TREE_OPERAND (statement, 1))
+        TREE_OPERAND (statement, 1)  = transform_statement(TREE_OPERAND (statement, 1) );
+      break; 
+    case TRUTH_NOT_EXPR:
+      if(TREE_OPERAND (statement, 0))
+        TREE_OPERAND (statement, 0)  = transform_statement(TREE_OPERAND (statement, 0) );
+      break ;
     default:
       if (TREE_CODE_CLASS (TREE_CODE (statement)) == tcc_binary
           || TREE_CODE_CLASS (TREE_CODE (statement)) == tcc_comparison)
