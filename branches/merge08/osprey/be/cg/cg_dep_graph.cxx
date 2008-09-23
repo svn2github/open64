@@ -6155,7 +6155,7 @@ DAG_BUILDER::Build_Misc_Arcs(OP* op)
        ops_iter != _bb_ops_map[OP_bb(op)].end();
        ops_iter++) {
     if (CGTARG_Dependence_Required(*ops_iter, op)) {
-        new_arc_with_latency(CG_DEP_MISC, *ops_iter, op, 0, 0, 0, FALSE);
+        new_arc(CG_DEP_MISC, *ops_iter, op, 0, 0, FALSE);
     }
 
     /* Workaround for PV 707179.  Also see code above dependent on
