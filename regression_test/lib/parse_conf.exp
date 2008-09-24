@@ -14,172 +14,89 @@
 #           Home for the source of our compiler
 #################################################################
 
-load_lib test_utils.exp
-
-proc check_conf_var { val varname } {
-    if { $val == "" } {
-	puts "Error: Please set the vaiable $varname in test.conf";
-	exit 1;
-    }
-}
-
-proc check_conf_vars {} {
-    global update_compiler
-    global comp_home build install current_platform
-    global confdir
-
-    if { $update_compiler } {
-	check_conf_var $comp_home COMPILER;
-	check_conf_var $build BUILD;
-	check_conf_var $install INSTALL;
-    }
-    check_conf_var $current_platform CURRENT_PLATFORM;
-    
-    set fd [open "$confdir/mails.conf" r];
-    while { [gets $fd line] >= 0 } {
-	set line [string trim $line];
-	if { $line != "" } {
-	    return;
-	}
-    }
-    puts "Error: No e-mail address in mails.conf";
-    exit 1;
-}
-
 proc parse_conf { conf } {
-    global comp_home build install subconf evaluator
-    global cc cxx fc cflags cxxflags fflags sim
-    global validation_only whole_copy
-    global mail_sender
-    global update_compiler
-    global platforms current_platform
-    
-    # Check if given configuration file exists
-    set bFileExists [file exists $conf];
-    
-    if { $bFileExists == 0 } {
-	puts "Error: $conf file does not exist";
-	exit 1;
-    }
-    
-    set fConf [open $conf RDONLY];
-    while { [gets $fConf line] >=0} {
-	set line [string trim $line];
-	if { $line == "" || [string index $line 0] == "\#"} continue;
-	set pos [string first "=" $line];
-	if { $pos != -1 } {
-	    set var [string trim [string range $line 0 [expr $pos - 1]]];
-	    set val [string range $line [expr $pos + 1] [expr [string length $line] - 1]];
-	    switch $var {
-		COMPILER {set comp_home $val;}
-		BUILD { set build $val; }
-		INSTALL { set install $val; }
-		SUBCONF {
-		    set subconf [break_into_items $val];
-		}
-		EVALUATOR { set evaluator $val; }
-		VALIDATION_ONLY {
-		    set validation_only [bool_to_int $val];
-		}
-		WHOLE_COPY {
-		    set whole_copy [bool_to_int $val];
-		}
-		CC { set cc $val; }
-		CXX { set cxx $val; }
-		FC { set fc $val; }
-		CFLAGS { set cflags $val; }
-		CXXFLAGS { set cxxflags $val;}
-		FFLAGS { set fflags $val; }
-		SIM { set sim $val; }
-		MAIL_SENDER { set mail_sender $val; }
-		UPDATE_COMPILER {
-		    set update_compiler [bool_to_int $val];
-		}
-		PLATFORMS {
-		    set platforms $val;
-		}
-		CURRENT_PLATFORM {
-		    set current_platform $val;
-		}		
-		default {
-		    puts "Error: Bad variable in $conf: $var";
-		    exit 1;
-		}
-	    }
-	} else {
-	    puts "Error: Bad line in $conf file: $line";
-	    exit 1;
+	global cc cxx fc cflags cxxflags fflags sim comp_home sim_home lib_home
+	# Check if given configuration file exists
+	set bFileExists [file exists $conf];
+
+	if { $bFileExists == 0 } {
+		error "$conf file does not exist";
 	}
-    }
-}
 
-proc parse_sub_conf { conf } {
-    global cc cxx fc cflags cxxflags fflags sim confname
-    global confdir
-    
-    set filename "$confdir/$conf.conf";
-
-    # Check if given configuration file exists
-    set bFileExists [file exists $filename];
-    if { $bFileExists == 0 } {
-	error "$filename file does not exist";
-    }
-    
-    set confname $conf
-    set fConf [open $filename RDONLY];
-    while { [gets $fConf line] >=0} {
-	set line [string trim $line];
-	if { $line == "" || [string index $line 0] == "\#"} continue;
-	set pos [string first "=" $line];
-	if { $pos != -1 } {
-	    set var [string range $line 0 [expr $pos - 1]];
-	    set val [string range $line [expr $pos + 1] [expr [string length $line] - 1]];
-	    switch $var {
-		CC { set cc $val; }
-		CXX { set cxx $val; }
-		FC { set fc $val; }
-		CFLAGS { set cflags $val; }
-		CXXFLAGS { set cxxflags $val;}
-		FFLAGS { set fflags $val; }
-		SIM { set sim $val; }
-		NAME { set confname $val; }
-		default {
-		    puts "Error: Bad variable in $conf: $var";
-		    exit 1;
+	set fConf [open $conf RDONLY];
+	while { [gets $fConf line] >=0} {
+		set lst [split $line "="];
+		set var [lindex $lst 0];
+		set val [lindex $lst 1];
+		switch $var {
+			COMP_TARGET_ROOT { set sl1_toolchain $val; }
+			CC { set cc $val; }
+			CXX { set cxx $val; }
+			FC { set fc $val; }
+			CFLAGS { set cflags $val; }
+			CXXFLAGS { set cxxflags $val;}
+			FFLAGS { set fflags $val; }
+			COMPILER {set comp_home $val;}
+			SIMHOME { set sim_home  $val;}
+                        LIBHOME { set lib_home $val;}
+			SIM { set sim $val; }
+			default { }
 		}
-	    }
-	} else {
-	    puts "Error: Bad line in $conf file: $line";
-	    exit 1;
 	}
-    }
-
+        if { $comp_home != "" } {
+          if { $profilelibtarget == "" } {
+             set profilelibtarget "$comp_home/targia32_sl1/libinstr"
+          }
+        }
 }
 
 proc replace_conf_args { str } {
-    global cc cxx fc cflags cxxflags fflags
-    
-    regsub {\$cc} $str $cc str
-    regsub {\$cxx} $str $cxx str
-    regsub {\$fc} $str $fc str
-    regsub {\$cflags} $str $cflags str
-    regsub {\$cxxflags} $str $cxxflags str
-    regsub {\$fflags} $str $fflags str
-    
-    return $str
+	global cc cxx fc cflags cxxflags fflags
+
+	regsub {\$cc} $str $cc str
+	regsub {\$cxx} $str $cxx str
+	regsub {\$fc} $str $fc str
+	regsub {\$cflags} $str $cflags str
+	regsub {\$cxxflags} $str $cxxflags str
+	regsub {\$fflags} $str $fflags str
+
+	return $str
 }
 
 # Command to print current configurations
 # This command is used for debugging
 proc print_conf_vars {} { 
-    global comp_home build install subconf evaluator
-   
+    global cc cxx fc cflags cxxflags fflags sim comp_home sim_home lib_home
+#    note ""
     note "====================================================================="    
-    note "We Are Currently Testing Our Framework with following Configurations:"
+    note "****** Test Configurations ******"
     note "====================================================================="
-    note "The Compiler's source code directory:	$comp_home"; 
-    note "Command to build compiler: $build";
-    note "Command to install compiler: $install";
-    note "Sub configurations: $subconf";
-    note "Evaluator: $evaluator";
+    if { $cc != "" } { note "CC: $cc"; }
+    if { $cxx != "" } { note "CXX: $cxx"; }
+    if { $fc != "" } { note "FC: $fc"; }
+
+    regsub {[ \t]+} $cflags "" cflags; if { $cflags != "" } { note "CFLAGS: $cflags"; }
+    regsub {[ \t]+} $cxxflags "" cxxflags; if { $cxxflags != "" } { note "CXXFLAGS: $cxxflags"; }
+    regsub {[ \t]+} $fflags "" fflags; if { $fflags != "" } { note "FFLAGS: $fflags"; }
+    if { $sim != "" } { note "SIM: $fsim1"; }
+    if { $comp_home != "" } { note "The Compiler's source code directory:	$comp_home"; }
+    if { $sim_home != "" } { note "The Simulator's source code directory:$sim_home"; }
+    if { $lib_home != "" } { note "The Newlib's source code directory:   $lib_home"; }
+    note ""
+}
+proc print_this_conf_vars { testcasesuit } { 
+    global cc cxx fc cflags cxxflags fflags sim
+
+    note ""
+    note "====================================================================="    
+    note "We test \"$testcasesuit\" with following Configurations:"
+    note "====================================================================="
+    note "CC: $cc"; 
+    note "CXX: $cxx"; 
+    note "FC: $fc"; 
+    note "CFLAGS: $cflags"; 
+    note "CXXFLAGS: $cxxflags"; 
+    note "FFLAGS: $fflags"; 
+    note "SIM:  $sim";
+    note ""
 }

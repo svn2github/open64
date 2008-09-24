@@ -2,48 +2,33 @@
 ####################################################################################
 # Load required libraries
 ###################################################################################
+set libdir $testhome
+
 load_lib parse_conf.exp
-load_lib update_compiler.exp
-load_lib walk_subdirs.exp
-load_lib log_file.exp
 
-global testhome
+if {[info exists env(DEJAGNU)]} {
+} else {
+puts ""
+puts ""
+puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+puts "FATAL error: DEJAGNU is empty. We can't find site.exp to start test."
+puts "Please set DEJAGNU to point to 'site.exp' file for SL regression test."
+puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+puts ""
+puts ""
+exit;
+}
 
-note "The Osprey Testing framework started with: ";
-note "-------------------------------------------";
-note "Configuration: $confdir/$conf.conf";
-note "Current Date:  $date";
-note "Testing Home:  $testhome";
-note "Log DIR:       $logdir";
-note "Test Output DIR:$testoutput";
-
+verbose "The SL software testing framework started with: "
+verbose "_____________________________________________"
+verbose "Configuration: $confdir/$conf.conf"
+verbose "Current Date:  $date"
+verbose "Testing Home:  $testhome"
+verbose "Log DIR:       $logdir"
+verbose "Test Output DIR:$testoutput"
 
 # First, Parse the configuration
-parse_conf $confdir/test.conf
-check_conf_vars;
+parse_conf $confdir/$conf.conf
 
-# Log the result of configuration
+# Log and print out the result of configuration
 print_conf_vars
-
-# Then, if the source of the compiler is given, update the compiler
-generate_log_prologue;
-
-if { $update_compiler } {
-    set retcode [catch { update_compiler $check_in_log $compiler_build_log} upd_comp];
-    append_checkin_info;
-} else {
-    set retcode 0
-}
-cd $testhome;
-
-if { $retcode != 0 } {
-    # This happens when there is an error in building compiler
-    # or just no need to going becasue of no check in last night
-    # exec echo "$upd_comp" >> $compiler_build_log;
-
-    append_build_info;
-} else {
-    walk_all_dirs;
-}
-
-generate_log_epilogue;
