@@ -936,7 +936,7 @@ static inline void gs_set_decl_alias_target(gs_t t, gs_t val) {
 }
 static inline gs_int_t gs_decl_asmreg (gs_t t) {
   gs_t asmreg = gs_operand (t, GS_DECL_ASMREG);
-  return (asmreg != (gs_t) NULL) ? gs_n(asmreg) : 0;
+  return (asmreg != (gs_t) NULL) ? gs_n(asmreg) : -1;
 }
 
 extern gs_string_t gs_flag_name (gs_code_t constructor, gs_int_t attribute, gs_count_t flag, gs_tree_code_class_t tree_code_class);
