@@ -2889,7 +2889,7 @@ print_source (SRCPOS srcpos)
           text[strlen(text)+1] = '\0';
           text[strlen(text)] = '\n';
         }
-+#endif
+#endif
         fprintf (Asm_File, "%s%4d  %s", ASM_CMNT_LINE, i+1, text);
       }
     }
