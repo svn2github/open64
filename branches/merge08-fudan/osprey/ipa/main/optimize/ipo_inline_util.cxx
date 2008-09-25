@@ -288,7 +288,11 @@ void
 Get_enclosing_region (IPA_NODE * n, IPA_EDGE * e)
 {
     PU caller = Pu_Table[ST_pu(n->Func_ST())];
-    if (!(PU_src_lang (caller) & PU_CXX_LANG) || !PU_has_region (caller))
+    if (
+#if defined(VEND0R_FUDAN)
+	!(PU_src_lang (caller) & PU_JAVA_LANG) &&
+#endif
+	!(PU_src_lang (caller) & PU_CXX_LANG) || !PU_has_region (caller))
         return;
     // get caller scope
     SCOPE * old_scope = Scope_tab;

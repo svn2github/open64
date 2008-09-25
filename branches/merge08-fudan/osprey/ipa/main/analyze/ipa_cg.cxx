@@ -343,7 +343,11 @@ IPA_mark_commons_used_in_io (const IP_FILE_HDR& hdr)
 void
 IPA_update_ehinfo_in_pu (IPA_NODE *node)
 {
-	if (!(PU_src_lang (node->Get_PU()) & PU_CXX_LANG) ||
+	if (
+#if defined(VENDOR_FUDAN)
+	    !(PU_src_lang (node->Get_PU()) & PU_JAVA_LANG) &&
+#endif
+	    !(PU_src_lang (node->Get_PU()) & PU_CXX_LANG) ||
 	    !PU_misc_info (node->Get_PU()))
 	    return;
 
@@ -1110,7 +1114,11 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 #ifdef KEY
 		// If we have no WHIRL, we assume any C++ PU can throw
 		if (IPA_Enable_EH_Region_Removal &&
-		    (PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & 
+		    (
+#if defined(VENDOR_FUDAN)
+		     PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & PU_JAVA_LANG ||
+#endif
+		     PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & 
 		     PU_CXX_LANG))
 		    caller->Set_PU_Can_Throw ();
 

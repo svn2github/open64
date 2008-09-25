@@ -500,14 +500,22 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     if (!caller->EHinfo_Updated())
     {
       PU p = caller->Get_PU();
-      if ((PU_src_lang (p) & PU_CXX_LANG) && PU_has_region (p))
+      if ((
+#if defined(VENDOR_FUDAN)
+	    PU_src_lang (p) & PU_JAVA_LANG ||
+#endif
+	    PU_src_lang (p) & PU_CXX_LANG) && PU_has_region (p))
         Fixup_EHinfo_In_PU (caller);
       caller->Set_EHinfo_Updated();
     }
     if (!callee->EHinfo_Updated())
     {
       PU p = callee->Get_PU();
-      if ((PU_src_lang (p) & PU_CXX_LANG) && PU_has_region (p))
+      if ((
+#if defined(VENDOR_FUDAN)
+            PU_src_lang (p) & PU_JAVA_LANG ||
+#endif
+	    PU_src_lang (p) & PU_CXX_LANG) && PU_has_region (p))
       {
         IPA_NODE_CONTEXT temp_context (callee);
         Fixup_EHinfo_In_PU (callee);
@@ -637,7 +645,11 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
   IPA_NODE_CONTEXT context (node);	// switch to this node's context
 
 #ifdef KEY
-  if (PU_src_lang (node->Get_PU()) & PU_CXX_LANG)
+  if (
+#if defined(VENDOR_FUDAN)
+	PU_src_lang (node->Get_PU()) & PU_JAVA_LANG ||
+#endif
+	PU_src_lang (node->Get_PU()) & PU_CXX_LANG)
     IPA_update_ehinfo_in_pu (node);
 
   if (IPA_Enable_Icall_Opt && node->Has_Pending_Icalls()) {
@@ -1711,7 +1723,11 @@ IPA_Remove_Regions (IPA_NODE_VECTOR v, IPA_CALL_GRAPH * cg)
     {
       PU pu = Pu_Table[ST_pu((*node)->Func_ST())];
 
-      if (!(PU_src_lang (pu) & PU_CXX_LANG) || !PU_has_region (pu))
+      if (
+#if defined(VENDOR_FUDAN)
+          !(PU_src_lang (pu) & PU_JAVA_LANG) &&
+#endif
+	  !(PU_src_lang (pu) & PU_CXX_LANG) || !PU_has_region (pu))
       	continue;
 
       IPA_NODE_CONTEXT context (*node);	// switch to the node context
