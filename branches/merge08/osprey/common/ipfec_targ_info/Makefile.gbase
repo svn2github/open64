@@ -579,6 +579,36 @@ targ_bypass.cxx: targ_bypass.h
 targ_bypass.h:   ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
+## targ_cache_info.[ch] ##
+
+targ_cache_info.cxx: targ_cache_info.h
+targ_cache_info.h:   ipfec_targ_gen
+	$(RUN) ./ipfec_targ_gen
+
+## targ_issue_port_mck.[ch] ##
+
+targ_issue_port.cxx: targ_issue_port.h
+targ_issue_port.h:   ipfec_targ_gen
+	$(RUN) ./ipfec_targ_gen
+
+## targ_issue_port_mck.[ch] ##
+
+targ_issue_port_mck.cxx: targ_issue_port_mck.h
+targ_issue_port_mck.h:   ipfec_targ_gen
+	$(RUN) ./ipfec_targ_gen
+
+## targ_cache_info_mck.[ch] ##
+
+targ_cache_info_mck.cxx: targ_cache_info_mck.h
+targ_cache_info_mck.h:   ipfec_targ_gen
+	$(RUN) ./ipfec_targ_gen
+
+## targ_bypass_mck.[ch] ##
+
+targ_bypass_mck.cxx: targ_bypass_mck.h
+targ_bypass_mck.h:   ipfec_targ_gen
+	$(RUN) ./ipfec_targ_gen
+
 ## si_gen.so ##
 # Need the current working directory so that rld doesn't get confused later
 CWD := $(shell pwd)
