@@ -66,11 +66,12 @@ proc replace_conf_args { str } {
 # Command to print current configurations
 # This command is used for debugging
 proc print_conf_vars {} { 
-    global cc cxx fc cflags cxxflags fflags sim comp_home sim_home lib_home
+    global cc cxx fc cflags cxxflags fflags sim comp_home sim_home lib_home platform
 #    note ""
     note "====================================================================="    
     note "****** Test Configurations ******"
     note "====================================================================="
+    note "Machine type: $platform"
     if { $cc != "" } { note "CC: $cc"; }
     if { $cxx != "" } { note "CXX: $cxx"; }
     if { $fc != "" } { note "FC: $fc"; }

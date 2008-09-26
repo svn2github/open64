@@ -1,6 +1,5 @@
 #/usr/bin/expect -f
 load_lib test_multifile.exp
-#load_lib parse_timefile.exp
 
 # Do not use "load_lib test_utils.exp".
 # Cause it is provided by DejaGnu, does not support overloading.
@@ -42,7 +41,7 @@ proc TestOneDir { dirname } {
         cd $testhome/cases/cern/$dirname
         if { [file isdirectory $case] } {
 	    set exetime -1
-	    C_CLASS::TestMakefile $case test$case [file normalize $testoutput/cern/$dirname/$case] [file normalize $logdir/cern/$case] $summary CheckResultDistr
+	    C_CLASS::TestMakefile $case test$case [file normalize $testoutput/cern/$dirname/$case] $summary CheckResultDistr
 #	    set runtimes($case) $exetime
 	}
     }

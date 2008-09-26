@@ -20,5 +20,5 @@ void f(float radius, unsigned long n_hosts)
 }
 int main()
 {
-  return 1;
+  return 0;
 }

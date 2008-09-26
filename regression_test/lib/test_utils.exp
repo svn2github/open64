@@ -17,6 +17,17 @@ proc isASCIIFile {filename} {
     string is ascii $sample
 }
 
+proc IsPlatformCompatible { platforms } {
+    global platform
+    set platform_list [split $platforms ","];
+    foreach pf $platform_list {
+	if { [string match -nocase [string trim $pf] $platform] } {
+	    return 1;
+	}
+    }
+    return 0;
+}
+
 namespace eval C_CLASS {
     variable err_build 0 pass_build 0 err_run 0 pass_run 0 err_cmpr 0 pass_cmpr 0
 
@@ -247,10 +258,41 @@ namespace eval C_CLASS {
     }
 
     #
+    # Decide the file type and corresponding variables of a testcase
+    #
+    proc DecideSourceType { case_name ltype_n flagarg_n commentbeg_n flag_n } {
+	global cflags cxxflags fflags
+	upvar $ltype_n ltype
+	upvar $flagarg_n flagarg
+	upvar $commentbeg_n commentbeg
+	upvar $flag_n flag
+
+	if { [string match "*.c" $case_name] } {
+	    set ltype "CC"
+	    set flagarg "CFLAGS"
+	    set commentbeg "//"
+	    set flag $cflags
+	} elseif { [string match "*.cc" $case_name] || [string match "*.C" $case_name] || [string match "*.cpp" $case_name] || [string match "*.cxx" $case_name] } {
+	    set ltype "CXX"
+	    set flagarg "CXXFLAGS"
+	    set commentbeg "//"
+	    set flag $cxxflags
+	} elseif { [string match "*.f" $case_name] || [string match "*.f90" $case_name]} {
+	    set ltype "FC"
+	    set flagarg "FFLAGS"
+	    set commentbeg "!"
+	    set flag $fflags
+	} else {
+	    return 0;
+	}
+	return 1;
+    }
+
+    #
     # Procedure to test single case, invoked in procedure: 'TestSingleSource'.
     #
-    proc TestSingleCase { testcase simulator} {
-	global cc cxx fc cflags cxxflags fflags 
+    proc TestSingleCase { testcase simulator } {
+	global cc cxx fc cflags cxxflags fflags sim
 	global testoutput testhome logdir curdir subdir 
 	global C_CLASS::err_build C_CLASS::pass_build
 	global C_CLASS::err_run C_CLASS::pass_run
@@ -322,55 +364,57 @@ namespace eval C_CLASS {
 	set buildres 0
 	set runres 0
 	set cmpres 0
-	
+	set cmd ""
+
 	if {[file exist [file join $case_dir $basename.mk] ]} {
 	    set cmd "make -e BIN=[file join $target_dir $basename] BUILD_ROOT=$testhome -f [file join $case_dir $basename.mk]"
 	} else {
 	    set casefile [open $testcase RDONLY]
 	    set commandlist [list]
 	    set flags "" 
-	    set commentbeg "//"
+	    set gen_option ""
 
-	    if { [string match "*.C" $casename] || [string match "*.cc" $casename]
-		 || [string match "*.cpp" $casename] || [string match "*.cxx" $casename] } {
-		set case_cmplr $cxx
-		append flags " $cxxflags"
-	    } elseif { [string match "*.c" $casename] } {
-		set case_cmplr $cc
-		append flags " $cflags"
-	    } elseif { [regexp ".f\$" $casename] } {
-		set case_cmplr $fc
-		append flags " $fflags"
-	    }
-
-	    if {[info exists C_CLASS::cmpl_args]} {
-		append flags " $C_CLASS::cmpl_args"
-	    }	    
-
+	    # Decide the variables according to the source type
+	    DecideSourceType $casename ltype flagarg commentbeg flags
+	
 	    while { [gets $casefile line] >=0 } {
 		if { [string first $commentbeg $line] == 0 } {
 		    set line [string range $line [string length $commentbeg] [expr [string length $line] - 1]]
 		    set line [string trim $line]
 		    switch -glob $line {
-			CMD:* {}
+			CMD:* {
+			    regsub {CMD:} $line {} newcmd; #trim the start //CMD: string
+			    if { $cmd == "" } {
+				set cmd $newcmd
+			    } else {
+				set cmd "$cmd && $newcmd"
+			    }
+			}
 			NOEXEC* {
 			    set needexec 0
 			}
 			OBJ* {
 			    set needlink 0
 			    set needexec 0
-			    append flags " -c"
+			    set gen_option " -c"
 			    set target_file "$target_file.o"
 			}
 			ASM* {
 			    set needlink 0
 			    set needexec 0
-			    append flags " -S"
+			    set gen_option " -S"
 			    set target_file "$target_file.s"
 			}
 			FLAGS:* {
 			    regsub {FLAGS:} $line {} line; #trim to start //FLAGS: string
 			    append flags " [string trim $line]"
+			}
+			PLATFORM:* {
+			    regsub {PLATFORM:} $line {} line;
+			    if { ![IsPlatformCompatible $line] } {
+				close $casefile;
+				return;
+			    }
 			}
 		    }
 		} else {
@@ -379,12 +423,23 @@ namespace eval C_CLASS {
 	    }
 	    close $casefile
 
-	    if { [info exists build_command] } { 
-		global build_command
-		set cmd $build_command
-	    } else {
-		set cmd "$case_cmplr $testcase $flags -o $target_file"
+	    if { $cmd == "" } {
+		if { [info exists build_command] } { 
+		    global build_command
+		    set cmd $build_command
+		} else {
+		    set cmd "\$($ltype) $gen_option \$($flagarg) \$(SOURCE) -o \$(TARGET)"
+		}
 	    }
+	    regsub "\\\$\\\(SOURCE\\\)" $cmd $testcase cmd
+	    regsub "\\\$\\\(TARGET\\\)" $cmd $target_file cmd
+	    regsub "\\\$\\\(SIM\\\)" $cmd $sim cmd
+	    regsub "\\\$\\\(CC\\\)" $cmd $cc cmd
+	    regsub "\\\$\\\(CXX\\\)" $cmd $cxx cmd
+	    regsub "\\\$\\\(FC\\\)" $cmd $fc cmd
+	    regsub "\\\$\\\(CFLAGS\\\)" $cmd $flags cmd
+	    regsub "\\\$\\\(CXXFLAGS\\\)" $cmd $flags cmd
+	    regsub "\\\$\\\(FFLAGS\\\)" $cmd $flags cmd
 	}
 	# elf file required be in the directory where invoke fsim
 	cd $target_dir 
@@ -585,7 +640,7 @@ namespace eval TCL_CLASS {
 	puts $summary "</table><br />"
 	close $summary
     }
-    
+
     proc TestSingleSource { find_rule {pattern ""} { simulator $fsim1}} {
 	global curdir all_runtests
 	global TCL_CLASS::total_pass TCL_CLASS::total_fail

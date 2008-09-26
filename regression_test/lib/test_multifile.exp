@@ -1,5 +1,6 @@
 #!/usr/bin/expect -f 
 
+load_lib test_utils.exp
 
 ###############################################################################
 # Command to test a single case with multiple sources
@@ -26,14 +27,13 @@ proc PrintLines { info } {
 
 namespace eval C_CLASS {
 
-    proc TestMakefile { case caseexe case_out_dir log_out_dir summary checker } {
+    proc TestMakefile { case caseexe case_out_dir summary checker } {
 	global cc cxx fc cflags cxxflags fflags sim #Flags
 	global curdir
-	global err_compile err_link err_build pass_build #Counters
-	global err_runexit err_runout err_run pass_run   #Counters
+	global C_CLASS::err_compile C_CLASS::err_link C_CLASS::err_build C_CLASS::pass_build #Counters
+	global C_CLASS::err_runexit C_CLASS::err_runout C_CLASS::err_run C_CLASS::pass_run   #Counters
 	
 	system mkdir -p $case_out_dir
-	system mkdir -p $log_out_dir
 	system cp -rf $case/* $case_out_dir
 
 	#Parse and generate Makefile
@@ -73,7 +73,7 @@ namespace eval C_CLASS {
 		} elseif {[string equal [string index $line end] "\\"] || [string equal $targetfile ""]} {
 		    puts $makefileout $line
 		} else {
-		    puts $makefileout "$line >& $log_out_dir/$targetfile.ci || (echo \"!!!Message:$errormsg (Makefile:$lineno) !!!\" && exit 1)"
+		    puts $makefileout "$line >& $case_out_dir/$targetfile.ci || (echo \"!!!Message:$errormsg (Makefile:$lineno) !!!\" && exit 1)"
 		}
 	    } else {	#Parsing headers
 		set colonpos [string first ":" $line]
@@ -114,19 +114,18 @@ namespace eval C_CLASS {
 		set mpos2 [string first "!!!" $makeresult 11]
 		set makeresult [string range $makeresult 11 [expr $mpos2 - 1]]
 		set mpos3 [string first "]" $makeresult]
-		catch {exec cat $log_out_dir/[string range $makeresult 1 [expr $mpos3 - 1]].ci} cioutput
 		set buildres -1 
 	    }
 	} else {
 	    incr pass_build
 	    if { $execute == 1 } {
-		set rc [catch {exec ./$caseexe > $log_out_dir/$caseexe.run}]
+		set rc [catch {exec ./$caseexe > $case_out_dir/$caseexe.run}]
 		set runresult ""
 		if { $rc } {
 		    set runres -1
 		    incr err_run
 		} else {
-		    catch {exec cat $log_out_dir/$caseexe.run} runresult
+		    catch {exec cat $case_out_dir/$caseexe.run} runresult
 		    if { [expr [$checker $runresult] == 1]} {
 			incr pass_run
 		    } else {
@@ -134,7 +133,6 @@ namespace eval C_CLASS {
 			incr err_run
 		    }
 		}
-		PrintLines $runresult
 	    }
 	}
 

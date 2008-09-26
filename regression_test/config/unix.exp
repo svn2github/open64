@@ -19,13 +19,14 @@ puts ""
 exit;
 }
 
-verbose "The SL software testing framework started with: "
+verbose "The Osprey software testing framework started with: "
 verbose "_____________________________________________"
 verbose "Configuration: $confdir/$conf.conf"
 verbose "Current Date:  $date"
 verbose "Testing Home:  $testhome"
 verbose "Log DIR:       $logdir"
 verbose "Test Output DIR:$testoutput"
+verbose "Machine type:  $platform"
 
 # First, Parse the configuration
 parse_conf $confdir/$conf.conf

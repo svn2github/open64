@@ -62,43 +62,8 @@ set testoutput $testhome/output/$date
 set compiler_build_log $logdir/compiler-build.log
 set check_in_log       $logdir/checkin.log
 
-set sim_check_in_log $logdir/sim-checkin.log
-
 set lib_build_log    $logdir/lib-build.log
 set lib_check_in_log $logdir/lib-checkin.log
-
-set uclibc_build_log    $logdir/uclibc-build.log
-set uclibc_check_in_log $logdir/uclibc-checkin.log
-
-set uclibcxx_build_log    $logdir/uclibc++_build.log
-set uclibcxx_check_in_log $logdir/uclibc++_checkin.log
-
-set asld_build_log   $logdir/binutils-build.log
-set asld_check_in_log $logdir/binutils-checkin.log
-
-set sl2lib_build_log $logdir/sl2lib_build.log
-set sl2lib_check_in_log $logdir/sl2lib_checkin.log
-
-set nucleus_plus_build_log $logdir/nucleus_plus_build.log
-set nucleus_plus_check_in_log $logdir/nucleus_plus_check_in.log
-
-set nucleus_plus_spe_build_log $logdir/nucleus_plus_spe_build.log
-set nucleus_plus_spe_check_in_log $logdir/nucleus_plus_spe_check_in.log
-
-set slgdb_build_log $logdir/slgdb_build.log
-set slgdb_check_in_log $logdir/slgdb_checkin.log
-
-set sl1callpath_build_log $logdir/sl1callpath_build.log
-set sl2callpath_build_log $logdir/sl2callpath_build.log
-set slcallpath_check_in_log $logdir/slcallpath_checkin.log
-
-set profilelib_build_log $logdir/profilelib_build.log
-
-set soc_sl1_build_log $logdir/socsl1_build.log
-set soc_sl1_checkin_log $logdir/socsl1_checkin.log
-
-set objutil_build_log $logdir/objutil_build.log
-set objutil_checkin_log $logdir/objutil_checkin.log
 
 set cc  	{}
 set cxx 	{}
@@ -110,6 +75,7 @@ set sim         {}
 set comp_home 	{}
 set sim_home    {}
 set lib_home    {}
+set platform    [exec uname -m | sed -e s/i.86/i386/]
 #set maximum timeout 2 minutes
 set max_timeout 120
 
