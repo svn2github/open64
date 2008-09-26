@@ -622,48 +622,48 @@ Init_Dedicated_TNs (void)
 TN *
 Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
 {
-#ifndef TARG_NVISA
-#ifdef KEY
-#if !defined(TARG_SL)
+#if defined(TARG_IA64)
+  if (rclass == ISA_REGISTER_CLASS_float) {
+    if (size == 4)
+      return f4_ded_tns[reg];
+    if (size == 16)
+      return f10_ded_tns[reg];
+  }
+#elif defined(TARG_X8664) || defined(TARG_MIPS)
   // check for F4 tns and 16-byte vector tns
   if (rclass == ISA_REGISTER_CLASS_float
-	&& size != DEFAULT_RCLASS_SIZE(rclass) )
+      && size != DEFAULT_RCLASS_SIZE(rclass) )
   {
-        switch(size) {
-	  case 4:  return f4_ded_tns[reg];
-	  case 16: return v16_ded_tns[reg];
-	}
-  }
-#endif
-#else
-  // check for F4 tns; someday may have to check for F10 tns too
-  if (rclass == ISA_REGISTER_CLASS_float && size == 4
-	&& size != DEFAULT_RCLASS_SIZE(rclass) )
-  {
-	return f4_ded_tns[reg];
+    switch(size) {
+      case 4:  return f4_ded_tns[reg];
+#if defined(TARG_X8664) 
+      case 16: return v16_ded_tns[reg];
+#endif // TARG_X8664
+    }
   }
 #endif
 
-#ifdef KEY
+#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
   // check for I4 tns
   if (rclass == ISA_REGISTER_CLASS_integer
-	&& size != DEFAULT_RCLASS_SIZE(rclass) )
+      && size != DEFAULT_RCLASS_SIZE(rclass) )
   {
-        switch(size) {
-	  case 1: return i1_ded_tns[reg];
-	  case 2: return i2_ded_tns[reg];
-	  case 4: return i4_ded_tns[reg];
-	}
-  }
-#endif // KEY
-#if defined(TARG_SL)
- if (rclass == ISA_REGISTER_CLASS_accum && (size ==4)
- 	&& size != DEFAULT_RCLASS_SIZE(rclass))
-  {
-         return  a4_ded_tns[reg];
+    switch(size) {
+      case 1: return i1_ded_tns[reg];
+      case 2: return i2_ded_tns[reg];
+      case 4: return i4_ded_tns[reg];
+    }
   }
 #endif
-#endif // ! NVISA
+
+#if defined(TARG_SL)
+  if (rclass == ISA_REGISTER_CLASS_accum && (size ==4)
+      && size != DEFAULT_RCLASS_SIZE(rclass))
+  {
+    return  a4_ded_tns[reg];
+  }
+#endif // TARG_SL
+
   return ded_tns[rclass][reg];
 }
  
