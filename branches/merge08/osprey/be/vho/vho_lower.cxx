@@ -1285,6 +1285,8 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
       case KIND_SCALAR:
       case KIND_POINTER:
         field_offset = offset + FLD_ofst(fld);
+        // always increase the field_id for SCALAR and POINTER
+        ++field_id;
         if ( VHO_Struct_Nfields ) {
           if ( field_offset >= VHO_Struct_Last_Field_Offset
                                  + VHO_Struct_Last_Field_Size ) {
@@ -1292,7 +1294,7 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
             VHO_Struct_Last_Field_Offset = field_offset;
             VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
             VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = FALSE;
-            VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = ++field_id;
+            VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
             VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset;
             VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = fty_idx;
           }
@@ -1304,7 +1306,7 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
               VHO_Struct_Last_Field_Offset = field_offset;
               VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
               VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = FALSE;
-              VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = ++field_id;
+              VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
               VHO_Struct_Fld_Table [VHO_Struct_Nfields-1] = fty_idx;
               VHO_Struct_Offset_Table [VHO_Struct_Nfields-1] = field_offset; 
             }
@@ -1321,7 +1323,7 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
           VHO_Struct_Last_Field_Offset = field_offset;
           VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
           VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = FALSE;
-          VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = ++field_id;
+          VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
           VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset; 
           VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = fty_idx;
         }
@@ -2036,12 +2038,14 @@ VHO_Lower_Mstid (WN * wn)
 
       // bugs 9989, 10139
       INT field_id;
-      Is_True (WN_field_id(src_value) == 0,("Expected field-id zero"));
+      // We allow the field_id not zero, comment out the Is_True
+      //Is_True (WN_field_id(src_value) == 0,("Expected field-id zero"));
       if ((TY_kind(src_ty_idx) == KIND_STRUCT) &&
           (field_id /* assign */ = single_field_in_struct (src_ty_idx)))
         WN_set_field_id (src_value, field_id);
 
-      Is_True (WN_field_id(wn) == 0,("Expected field-id zero"));
+      // We allow the field_id not zero, comment out the Is_True
+      //Is_True (WN_field_id(wn) == 0,("Expected field-id zero"));
       if ((TY_kind(dst_ty_idx) == KIND_STRUCT) &&
           (field_id /* assign */ = single_field_in_struct (dst_ty_idx)))
         WN_set_field_id (wn, field_id);
