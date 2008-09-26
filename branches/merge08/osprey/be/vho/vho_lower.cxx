@@ -1903,10 +1903,6 @@ VHO_Lower_Mstid (WN * wn)
       return wn;
   }
 
-  // if type is union, disable lower it so far.
-  if (TY_is_union(src_ty_idx) || TY_is_union(dst_ty_idx) )
-      return wn;
-
   bytes = TY_size(dst_ty_idx);
 
 #if defined(TARG_NVISA)
