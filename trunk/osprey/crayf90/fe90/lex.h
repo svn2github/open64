@@ -264,6 +264,9 @@ static	kwd_type		kwd[] = {
 				"USE",		     Tok_Kwd_Use,
 
 				"VOLATILE",	     Tok_Kwd_Volatile,
+#ifdef KEY /* Bug 14150 */
+				"VALUE",	     Tok_Kwd_Value,
+#endif /* KEY Bug 14150 */
  
 				"WHERE",	     Tok_Kwd_Where,
 				"WHILE",	     Tok_Kwd_While,

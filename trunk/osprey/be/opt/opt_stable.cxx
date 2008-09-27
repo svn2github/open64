@@ -515,8 +515,11 @@ EXP_WORKLST::SPRE_perform_insert_delete(ETABLE *etable)
       if (rhs == NULL) {
         rhs = etable->Htable()->Ssa()->Get_zero_version_CR(
 					      Preg(), etable->Opt_stab(), 0);
-        Is_True(WOPT_Enable_Aggressive_Code_Motion,
-	    ("EXP_WORKLST::SPRE_perform_insert_delete: cannot find phi for preg %d at BB%d", Preg(), defbb->Id()));
+        // NVISA hits this cause aggcm off by default,
+	// fred doesn't remember why assertion is there, and code seems
+	// fine without it, so ifdef it out.
+        // Is_True(WOPT_Enable_Aggressive_Code_Motion,
+	//    ("EXP_WORKLST::SPRE_perform_insert_delete: cannot find phi for preg %d at BB%d", Preg(), defbb->Id()));
       }
     }
     else { // defined by STID

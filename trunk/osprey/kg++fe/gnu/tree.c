@@ -2802,6 +2802,13 @@ set_type_quals (type, type_quals)
   TYPE_READONLY (type) = (type_quals & TYPE_QUAL_CONST) != 0;
   TYPE_VOLATILE (type) = (type_quals & TYPE_QUAL_VOLATILE) != 0;
   TYPE_RESTRICT (type) = (type_quals & TYPE_QUAL_RESTRICT) != 0;
+#if defined(TARG_SL)
+  TYPE_SBUF(type) = (type_quals & TYPE_QUAL_SBUF) != 0;
+  TYPE_SDRAM(type) = (type_quals & TYPE_QUAL_SDRAM) != 0;
+  TYPE_V1BUF (type) = (type_quals & TYPE_QUAL_V1BUF) != 0;
+  TYPE_V2BUF (type) = (type_quals & TYPE_QUAL_V2BUF) != 0;
+  TYPE_V4BUF (type) = (type_quals & TYPE_QUAL_V4BUF) != 0;
+#endif // TARG_SL
 }
 
 /* Return a version of the TYPE, qualified as indicated by the
@@ -2826,6 +2833,38 @@ get_qualified_type (type, type_quals)
   return NULL_TREE;
 }
 
+#if defined(TARG_SL)
+bool Check_Vbuf_Type_Spec(type) 
+     tree type;
+{
+   	if(!type) error(" type tree is NULL\n"); 
+   	bool finished = 0;
+   	do {
+   	  switch(TREE_CODE(type)) {
+   		case POINTER_TYPE:
+   		case ARRAY_TYPE:
+   		case REFERENCE_TYPE:
+   		   type = TREE_TYPE(type);
+   		   break;
+   		default:
+   		   finished = 1;
+   	  }
+   	}while(!finished);
+   	if(TREE_CODE(type) != INTEGER_TYPE)
+   	    error("can't recognized this type");
+/* Directly compare type name with string "char" seems not a good way to 
+   Check if the keyword after vbuf is char. I change previous compare with
+   "char" to compare with TY_MODE "QImode". It need to further check to decide
+   if this solution is reasonable. */
+/*
+   	return (!strcmp(IDENTIFIER_POINTER(
+   	         DECL_NAME(TYPE_NAME(type))), "char"));
+*/       
+        return ( TYPE_MODE(type) == QImode);
+}
+#endif // TARG_SL 
+
+
 /* Like get_qualified_type, but creates the type if it does not
    exist.  This function never returns NULL_TREE.  */
 
@@ -2835,6 +2874,21 @@ build_qualified_type (type, type_quals)
      int type_quals;
 {
   tree t;
+
+#if defined(TARG_SL)
+  //check if the vector type has type char 
+   switch(type_quals) {
+     case TYPE_QUAL_V1BUF:
+     case TYPE_QUAL_V2BUF:
+     case TYPE_QUAL_V4BUF:
+        if(!Check_Vbuf_Type_Spec(type)) {
+          error( "vbuf type specifier isn't char");
+        }
+	break;
+   default:
+     break;
+   }
+#endif 
 
   /* See if we already have the appropriate qualified variant.  */
   t = get_qualified_type (type, type_quals);
@@ -4396,6 +4450,19 @@ default_flag_random_seed ()
     return;
 
   /* Get some more or less random data.  */
+#ifdef KEY	// bug 3099
+  {
+    int i;
+    value = 0;
+    if (main_input_filename) {
+      for (i = 0; i < strlen (main_input_filename); i++) {
+	value = (value << 1) ^ main_input_filename[i];
+      }
+    } else {
+      value = getpid ();
+    }
+  }
+#else
 #ifdef HAVE_GETTIMEOFDAY
  {
    struct timeval tv;
@@ -4406,6 +4473,7 @@ default_flag_random_seed ()
  }
 #else
   value = getpid ();
+#endif
 #endif
 
   /* This slightly overestimates the space required.  */
@@ -4815,6 +4883,10 @@ build_common_tree_nodes_2 (short_double)
   double_ptr_type_node = build_pointer_type (double_type_node);
   long_double_ptr_type_node = build_pointer_type (long_double_type_node);
   integer_ptr_type_node = build_pointer_type (integer_type_node);
+
+#if defined(TARG_SL) || defined(TARG_SL2)
+  short_ptr_type_node = build_pointer_type (short_integer_type_node);
+#endif
 
   complex_integer_type_node = make_node (COMPLEX_TYPE);
   TREE_TYPE (complex_integer_type_node) = integer_type_node;

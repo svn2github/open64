@@ -105,7 +105,6 @@ class SECTION_FILE_ANNOT;
 
 // Flags for IP_FILE_HDR
 #define FILE_HAS_NESTED_PU	0x00000001	// File contains nested PU
-#define FILE_INSIDE_ARCHIVE 0x00000002  // File is contained in archive
 
 struct IP_FILE_HDR
 {
@@ -137,11 +136,9 @@ struct IP_FILE_HDR
     // constructor
 
     IP_FILE_HDR (const char *name, void *mmap_addr, off_t mmap_size) {
-	bzero (this, sizeof(IP_FILE_HDR));
+	BZERO (this, sizeof(IP_FILE_HDR));
 	file_name = name;
 	input_map_addr = mmap_addr;
-        num_written = 0;
-        mapped_size = mmap_size;
 	MEM_POOL_Initialize (&mem_pool, const_cast<char *> (file_name),
 			     FALSE /* non-zero mempool */);
 	MEM_POOL_Push (&mem_pool);
@@ -349,16 +346,6 @@ Set_IP_FILE_HDR_section_annot (IP_FILE_HDR& hdr, SECTION_FILE_ANNOT* annot) {
 }
 
 inline BOOL
-IP_FILE_HDR_inside_archive (IP_FILE_HDR& hdr) {
-    return (hdr.flags & FILE_INSIDE_ARCHIVE);
-}
-
-inline void
-Set_IP_FILE_HDR_inside_Archive (IP_FILE_HDR& hdr) {
-    hdr.flags |= FILE_INSIDE_ARCHIVE;
-}
-
-inline BOOL
 IP_FILE_HDR_has_nested_pu (IP_FILE_HDR& hdr) {
     return (hdr.flags & FILE_HAS_NESTED_PU);
 }
@@ -373,7 +360,7 @@ extern IP_FILE_HDR_TABLE IP_File_header;
 
 
 extern IP_FILE_HDR &
-Setup_File_Header (const char *file_name, void *mmap_addr, off_t mmap_size);
+Setup_File_Header (const char *file_name, void *mmap_addr, off_t);
 
 // Reclaims all of the resources associated with hdr, by destroying
 // its mempool.  Precondition: all PUs have been processed.

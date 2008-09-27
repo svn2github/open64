@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
+ */
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -3375,8 +3378,13 @@ static boolean good_data_imp_do_expr(int          ir_idx)
 
       case Struct_Opr:
       case Subscript_Opr:
+#ifdef KEY /* Bug 14171 */
+	 /* Restriction was removed between F90 and F95 */
+  	 result = TRUE;
+#else /* KEY Bug 14171 */
          PRINTMSG(IR_LINE_NUM(ir_idx), 1081, Error, IR_COL_NUM(ir_idx));
          result = FALSE;
+#endif /* KEY Bug 14171 */
          break;
 
       default:

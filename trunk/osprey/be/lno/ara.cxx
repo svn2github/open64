@@ -65,7 +65,9 @@
 #include "parids.h"
 #include "cond.h"
 
+#if ! defined(BUILD_OS_DARWIN)
 #pragma weak Anl_File_Path
+#endif /* ! defined(BUILD_OS_DARWIN) */
 
 MEM_POOL ARA_memory_pool;
 static BOOL ara_mem_pool_initialized=FALSE;

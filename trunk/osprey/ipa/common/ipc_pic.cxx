@@ -41,8 +41,6 @@
 #include <stdint.h>
 #include <alloca.h>
 
-#include <libgen.h>                     // for basename()
-
 #include "linker.h" // for sharable
 #include "pass1.h"			// for used_gp_area
 #include "main.h"			// for max_gpa_size
@@ -53,6 +51,7 @@
 #include "ipc_symtab_merge.h"           // for AUX_ST
 #include "ipc_pic.h"
 #include "ld_ipa_interface.h"
+
 
 // set IPA_Object_Name to a legal variable name
 static void Get_IPA_Object_Name(){
@@ -76,8 +75,7 @@ STR_IDX
 Create_Unique_Name (const char* name)
 {
     static UINT32 g_count = 0;
-    
-    char *new_name = (char *) alloca (strlen (name) + strlen (IPA_Object_Name) + 10);
+    char *new_name = (char *)alloca (strlen (name)+strlen(IPA_Object_Name)+10);
 
     char *p = new_name;
     
@@ -94,7 +92,6 @@ Create_Unique_Name (const char* name)
 
     strcpy( p, IPA_Object_Name);
     p += strlen(IPA_Object_Name);
-
     UINT i = ++g_count;
 
     do {
@@ -242,7 +239,7 @@ Pic_optimization ()
 {
     INT f_call_shared = (ld_ipa_opt[LD_IPA_SHARABLE].flag == F_CALL_SHARED);
     INT hs_ignore = (ld_ipa_opt[LD_IPA_HIDES].flag == HS_IGNORE);
-    
+
     Get_IPA_Object_Name(); 
 
     PIC_OPT pic_opt (f_call_shared, hs_ignore);

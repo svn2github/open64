@@ -1,5 +1,9 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
+#
+#  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -96,7 +100,13 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), SL)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
 ifeq ($(BUILD_TARGET), X8664)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
+ifeq ($(BUILD_TARGET), NVISA)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
 
@@ -233,27 +243,39 @@ TARGETS = ipl.so
 
 LDIRT = be.so wopt.so be ipl ii_files
 
-default: first $(TARGETS) last
+#----------------------------------------------------------------------
+#  For parallel makes, makefile must satisfy:
+#  -> Submake for include/ finished before building any objects;
+#  -> All archive/library submakes finished before linking targets;
+#  -> All targets finished before make_deps or make_libdeps.
+#----------------------------------------------------------------------
+
+DEP_OBJECTS = $(IPA_OBJS) $(IPA_CXX_OBJS)
+
+default: make_deps
+make_deps: $(TARGETS)
+$(DEP_OBJECTS): $(BUILD_AREA)/be/preg_list.h
+.PHONY: default make_deps
 
 #----------------------------------------------------------------------
-#  The commands in this section are done BEFORE any other target is
-#  built.
+#  Library prerequisites are updated via submake
 #----------------------------------------------------------------------
-first:
-ifeq ($(BUILD_OS), LINUX)
-	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
-endif
-## verify that wopt.so is up to date
-	$(call submake,$(TARG_OPT_DIR))
+
+.PHONY: force
+force: ;
+
+$(TARG_OPT_DIR)/wopt.so: force
+	$(call submake,$(TARG_OPT_DIR),wopt.so)
+$(TARG_BE_DIR)/be.so: force
+	$(call submake,$(TARG_BE_DIR),be.so)
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is
 #  built.
 #----------------------------------------------------------------------
-last: make_deps
 
 install:: default
-ifeq ($(BUILD_OS), LINUX)
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
 	$(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) -D $(TARGETS) $(STD_MONGOOSE_LINUX_LOC)/$(TARGETS)
 else
 	$(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) -F $(STD_MONGOOSE_LOC) ipl.so
@@ -266,38 +288,35 @@ else
  endif
 endif
 
-ipl: $(IPA_OBJS) $(IPA_CXX_OBJS) $(IPA_DSOS)
-	$(link.c++f) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) $(IPA_DSOS) $(LDFLAGS)
-	if [ ! -l wopt.so ]; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
-	if [ ! -l be.so ]; then ln -sf $(TARG_BE_DIR)/be.so .; fi
-
-ifeq ($(BUILD_OS), LINUX)
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
 # dso's must be in same directory
-LINK_DSOS = be.so
+IPL_LINK_DSOS = be.so
 else
-LINK_DSOS = $(TARG_BE_DIR)/be.so
+IPL_LINK_DSOS = $(TARG_BE_DIR)/be.so
 endif
+
+# BUILD OF ipl IS BROKEN
+ipl: $(IPA_OBJS) $(IPA_CXX_OBJS) $(IPA_DSOS) \
+		$(TARG_OPT_DIR)/wopt.so $(TARG_BE_DIR)/be.so
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
+	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
+endif
+	$(link.c++f) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) $(IPA_DSOS) \
+	$(IPL_LINK_DSOS) $(LDFLAGS)
+	if ! test -a wopt.so; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
 
 ipl.so: $(IPA_OBJS) $(IPA_CXX_OBJS) $(LINK_DSOS) \
 		$(BE_BE_DIR)/so_locations $(IPA_LOCAL_DIR)/Exported
 	$(link.c++f) -o $@  $(STD_DSO_LOADOPTS) $(EXPORT_LIST)	\
-		$(IPA_OBJS) $(IPA_CXX_OBJS)			\
-		$(LINK_DSOS) $(LLDLIBS)
-	if ! test -a wopt.so; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
-	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
-	if ! test -a ipl ; then ln -sf ../be_driver/be ipl; fi
+		$(IPA_OBJS) $(IPA_CXX_OBJS) $(LINK_DSOS) $(LLDLIBS)
+	if ! test -a ipl ; then ln -sf ../be/be ipl; fi
 
 #----------------------------------------------------------------------
 #  Include the usual commonrules
 #----------------------------------------------------------------------
 include $(COMMONRULES)
+
 #----------------------------------------------------------------------
 #  Temporary workaround
 #----------------------------------------------------------------------
-ifeq ($(BUILD_COMPILER), OSP)
 ipl_summarize_util.o: OPTIMIZER += -CG:all_sched=0
-endif
-
-ifeq ($(BUILD_COMPILER), PSC)
-ipl_summarize_util.o: OPTIMIZER += -CG:all_sched=0
-endif

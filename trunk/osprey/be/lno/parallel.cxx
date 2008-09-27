@@ -166,7 +166,7 @@ static WN* Parallel_Loop(PARALLEL_INFO* parallel_info,
 static void ap_tlog_info(
   PARALLEL_INFO* parallel_info,
   DOLOOP_STACK* loop_stack,
-  char*         message)
+  const char* message)
 {
   char out_string[80];
   WN* wn_parallel = Parallel_Loop(parallel_info, loop_stack); 

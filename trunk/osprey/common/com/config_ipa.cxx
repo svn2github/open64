@@ -269,7 +269,11 @@ BOOL IPA_Consult_Inliner_For_Icall_Opt = TRUE; // Check inlining heuristics
 UINT32 IPA_Icall_Min_Freq = DEFAULT_ICALL_MIN_FREQ; // Min freq for icall opt
                                                     // used in IPL.
 BOOL IPA_Enable_Source_PU_Order = FALSE;
+#ifdef TARG_X8664
+UINT32 IPA_Enable_Struct_Opt = 1;
+#else
 UINT32 IPA_Enable_Struct_Opt = 0;
+#endif
 UINT32 IPA_Update_Struct = 0;		/* temporary, should be removed */
 #else
 BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
@@ -303,6 +307,13 @@ UINT32 IPA_Max_Output_File_Size = DEFAULT_OUTPUT_FILE_SIZE;
 
 /* percentage change of the max. output file size */
 INT32 IPA_Output_File_Size = 0;
+
+/* This flag is to use the old type merge phase. It should be removed when the old type merge is removed. */
+#if !defined(TARG_SL)
+BOOL IPA_Enable_Old_Type_Merge = FALSE;  
+#else
+BOOL IPA_Enable_Old_Type_Merge = TRUE;  //jczhang: Not enabled in SL
+#endif
 
 /* enable devirtualization */
 BOOL IPA_Enable_Devirtualization = FALSE;
@@ -583,11 +594,19 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "source_pu_order",  "",
       0, 0, 0,              &IPA_Enable_Source_PU_Order, NULL,
       "Maintain source-code PU ordering in IPA output"},
+    { OVK_BOOL, OV_INTERNAL,    FALSE, "ipa_enable_old_type_merge", "",
+      0, 0, 0,              &IPA_Enable_Old_Type_Merge, NULL,
+      "Use the old type merge phase in IPA"},
     { OVK_BOOL, OV_INTERNAL,    FALSE, "devirtualization", "",
       0, 0, 0,              &IPA_Enable_Devirtualization, NULL,
       "Use devirtualization phase"},
+#ifdef TARG_X8664
+    { OVK_UINT32, OV_INTERNAL,	FALSE, "optimize_struct",	"",
+	  1, 0, UINT32_MAX, &IPA_Enable_Struct_Opt, NULL,
+#else
     { OVK_UINT32, OV_INTERNAL,	FALSE, "optimize_struct",	"",
 	  0, 0, UINT32_MAX, &IPA_Enable_Struct_Opt, NULL,
+#endif
 	  "Enable IPA struct optimizations"},
     /* The following option is temporary, and should be removed soon */
     { OVK_UINT32, OV_INTERNAL,	FALSE, "update_struct",	"",

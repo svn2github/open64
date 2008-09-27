@@ -61,7 +61,7 @@ GRA_LOOP_MGR gra_loop_mgr;
 // set the register used bitset in the loop for a register.
 void
 GRA_LOOP::Make_Register_Used( ISA_REGISTER_CLASS rc, REGISTER reg,
-			      BOOL reclaim )
+			      BOOL reclaim  )
 {
 #ifdef KEY
   // Nothing to do for reclaiming, since REG was already marked used.
@@ -77,6 +77,7 @@ GRA_LOOP::Make_Register_Used( ISA_REGISTER_CLASS rc, REGISTER reg,
     li->registers_used[rc] = REGISTER_SET_Union1(li->registers_used[rc],reg);
   }
 }
+
 
 #ifdef KEY
 /////////////////////////////////////
@@ -111,7 +112,7 @@ GRA_LOOP_MGR::Create(LOOP_DESCR *ld)
 
   GRA_LOOP* gloop = TYPE_MEM_POOL_ALLOC(GRA_LOOP, GRA_pool);
 #ifdef KEY
-  bzero( gloop, sizeof(gloop[0]) );
+  BZERO( gloop, sizeof(gloop[0]) );
   gloop->Loop_Descr_Set(ld);
 #endif
   gloop->Nest_Level_Set(LOOP_DESCR_nestlevel(ld));

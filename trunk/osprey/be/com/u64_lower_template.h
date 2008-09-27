@@ -441,7 +441,6 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
       //   after CVTL is expand to extr instruction
       if( maxsize != 0 || maxsize1 != 0 ) 
 	  maxsize = MIN(MAX(maxsize, maxsize1) + 1, 64);
-
       // if both operands's high-order bits were already in designated state and
       // the operation's result cannot overflow the bit size, just return
       if (hob_state != HOB_none && hob_state == hob_state1 &&
@@ -477,6 +476,17 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
         U64_LOWER_set_rtype(new_nd, Mtype_TransferSize(MTYPE_A8, res));
 	maxsize = 64;
       }
+#ifdef TARG_IA64
+      //in ia64 use 32-bit MPY instead of 16-bit and 8-bit MPY
+      else { 
+	if (maxsize < 32) {
+          U64_LOWER_insert_cvtl_for_kid(new_nd, hob_to_do, 0, maxsize, hob_state);
+          U64_LOWER_insert_cvtl_for_kid(new_nd, hob_to_do1, 1, maxsize1, hob_state1);
+	}
+        U64_LOWER_set_rtype(new_nd, Mtype_TransferSize(MTYPE_A4, res));
+	maxsize = 32;
+      }
+#else
       else if (maxsize > 8) { // use 32-bit MPY
 	if (maxsize < 32) {
           U64_LOWER_insert_cvtl_for_kid(new_nd, hob_to_do, 0, maxsize, hob_state);
@@ -501,6 +511,7 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
         U64_LOWER_set_rtype(new_nd, Mtype_TransferSize(MTYPE_I1, res));
 	maxsize = 8;
       }
+#endif  //TARG_IA64
 
       if (MTYPE_bit_size(res) == 32 && maxsize > 32) 
 	maxsize = 32; // for [IU]4MPY, extra truncation at 32-bit boundary

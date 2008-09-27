@@ -132,7 +132,10 @@ typedef enum {
 	p_any_ipl,	/* either ipl or inline */
 
 	P_be,		/* composite optimizing back-end */
-
+#if defined(TARG_NVISA)
+	P_bec,		/* simple w2c back-end */
+	P_any_be,	/* generic union of all be's */
+#endif
 	P_as,		/* gnu assembler */
 	P_gas,		/* gnu assembler */
 	P_any_as,	/* generic union of all asm's */
@@ -178,6 +181,7 @@ extern languages_t get_language (char key);
 extern phases_t get_phase (char key);
 
 typedef long long mask_t;
+extern mask_t OPEN64_PHASE_MASK; /* mask for all open64 phases */
 extern mask_t PHASE_MASK;	/* mask for all phases */
 extern mask_t LIB_MASK;		/* mask for all libraries */
 /* get mask associated with language and phase */

@@ -60,7 +60,11 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include "cxx_memory.h"
 #include "defs.h"
 #include "symtab.h"
@@ -282,7 +286,7 @@ Read_PU_Infos (char *base, INT32 size, INT32 *p_num_PUs)
 
     pu_array = (PU_Info *)malloc(sizeof(PU_Info) * num_PUs);
 
-    bzero(pu_array, sizeof(PU_Info) * num_PUs);
+    BZERO(pu_array, sizeof(PU_Info) * num_PUs);
 
     for (n = 0, pu = pu_array; n < num_PUs; n++, pu++) {
 	/* initialize */
@@ -430,7 +434,7 @@ Restore_Local_Symtab (PU_Info *pu)
 #ifdef Is_True_On
 /* Names of subsections for fdump_PU_Info_state()
  */
-static char *PU_Info_subsect_name[WT_SUBSECTIONS] = {
+const static char *PU_Info_subsect_name[WT_SUBSECTIONS] = {
   "WT_SYMTAB",
   "WT_TREE",
   "WT_DEPGRAPH",

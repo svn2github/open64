@@ -64,6 +64,10 @@ static char USMID[] = "\n@(#)5.0_pl/sources/cmd_line.c	5.16	10/20/99 17:17:46\n"
 # include "tokens.h"
 # include "sytb.h"
 # include "cmd_line.h"
+#ifdef KEY /* F2003 */
+# include "defs.h"
+# include "config_targ.h"
+#endif /* KEY F2003 */
 
 /*****************************************************************\
 |* function prototypes of static functions declared in this file *|
@@ -399,9 +403,11 @@ void	process_cmd_line(int   argc, char *argv[])
    if (NULL_IDX == intrinsic_module_path_idx && nlspath && *nlspath) {
      char *path = strrchr(nlspath, ':');
      path = path ? (path + 1) : nlspath;
-     char *copy = malloc(strlen(path) + 1);
-     add_to_fp_table(dirname(strcpy(copy, path)), &intrinsic_module_path_idx,
-       'p');
+#    define DIR_M32 "/32"
+     char *copy = malloc(strlen(path) + sizeof DIR_M32);
+     add_to_fp_table(
+       strcat(dirname(strcpy(copy, path)), (Is_Target_32bit() ? "/32" : "")),
+       &intrinsic_module_path_idx, 'p');
      free(copy);
    }
 #endif /* KEY Bug 5089 */
@@ -426,7 +432,7 @@ void	process_cmd_line(int   argc, char *argv[])
                                  BASIC_RECS    | COMPILER_RECS;
       }
 
-#     if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#     if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
          if (dump_flags.cray_compatible) {
             cmd_line_flags.s_default64 = TRUE;
@@ -927,7 +933,7 @@ static void init_cmd_line (void)
    cmd_line_flags.s_doublecomplex16	= FALSE;		/*-s doublec  */
 
 # if defined(_TARGET_SV2) || \
-       ((defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) && defined(_TARGET_OS_UNICOS))
+       ((defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)) && defined(_TARGET_OS_UNICOS))
    cmd_line_flags.s_pointer8		= TRUE;			/*-s pointer8 */
 # else
    cmd_line_flags.s_pointer8		= FALSE;		/*-s pointer8 */
@@ -1336,7 +1342,7 @@ static void process_d_option (char *optargs)
          on_off_flags.abort_if_any_errors = FALSE;
          break;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
       case 'c':
          on_off_flags.pad_char_literals = FALSE;
          break;
@@ -1615,7 +1621,7 @@ static void process_e_option (char *optargs)
          on_off_flags.abort_if_any_errors = TRUE; 
          break;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
       case 'c':
          on_off_flags.pad_char_literals = TRUE;
          break;
@@ -6717,7 +6723,7 @@ static void set_system_module_path( void )
          strcpy(FP_NAME_PTR(file_path_tbl_idx), directory);
          save_file_path_tbl_idx	= file_path_tbl_idx;
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 
          if (is_directory(FP_NAME_PTR(file_path_tbl_idx))) {
 
@@ -6774,7 +6780,7 @@ static void set_system_module_path( void )
          FP_CLASS(file_path_tbl_idx)       	= Unknown_Fp;
          FP_SYSTEM_FILE(file_path_tbl_idx)	= TRUE;
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
          length = strlen(directory) + 1;
 # else
          length = strlen(directory) + strlen(MODULE_USE_SYSTEM_FILE) + 1;
@@ -6791,7 +6797,7 @@ static void set_system_module_path( void )
 
          strcpy(FP_NAME_PTR(file_path_tbl_idx), directory);
 
-# if ! (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if ! (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
          ptr = FP_NAME_PTR(file_path_tbl_idx) + strlen(directory);
          strcpy(ptr, "/");
          strcpy(++ptr, MODULE_USE_SYSTEM_FILE);
@@ -7073,4 +7079,47 @@ static void dump_options(void)
   return;
  }
 
+#ifdef KEY /* Bug 14150 */
+/*
+ * dt_attr_idx	AT_Tbl_Idx for a derived type
+ * return	True if this is an ISO_C_BINDING type which must be treated
+ *		as integer*4 when it is a function result type, so as to be
+ *		compatible with C functions returning "void *" under the
+ *		X8664 -m32 ABI, which normally passes even the smallest
+ *		derived-type result via the parameter list instead
+ */
+boolean
+c_ptr_abi_trouble(int dt_attr_idx) {
+#if defined(TARG_X8664)
+  /* No problem unless we're Intel -m32 and it's a derived type */
+  if (!(Target_ABI == ABI_n32 && AT_OBJ_CLASS(dt_attr_idx) == Derived_Type)) {
+    return FALSE;
+  }
+  /* When C_PTR or C_FUNPTR has arrived from an intrinsic module, p_driver.c
+   * has already marked it for special handling */
+  if (AT_IS_INTRIN(dt_attr_idx)) {
+    return TRUE;
+  }
+  /* When C_PTR or C_FUNPTR appears in the ISO_C_BINDING module itself,
+   * we need to handle it specially because p_driver never sees it. */
+  if (on_off_flags.intrinsic_module_gen) {
+    const char *name = AT_OBJ_NAME_PTR(dt_attr_idx);
+    if (0 == strcmp(name, "C_PTR") || 0 == strcmp(name, "C_FUNPTR")) {
+      AT_IS_INTRIN(dt_attr_idx) = TRUE;
+      return TRUE;
+    }
+  }
+#endif /* defined(TARG_X8664) */
+  return FALSE;
+}
+
+boolean
+is_x8664_n32() {
+#if defined(TARG_X8664)
+  return Target_ABI == ABI_n32;
+#else /* defined(TARG_X8664) */
+  return FALSE;
+#endif /* defined(TARG_X8664) */
+}
+#endif /* KEY Bug 14150 */
 

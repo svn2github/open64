@@ -75,6 +75,7 @@
 #include "pf_cg.h"
 
 #include "cxx_base.h"
+#include "erbe.h"
 
 #include "opt_base.h"
 #include "opt_bb.h"
@@ -159,6 +160,9 @@ class DCE {
                                          // analysis during dce 
 
     MOD_PHI_BB_CONTAINER *_mod_phis;     // NULL if !Htable()->Phi_hash_valid()
+#if defined(TARG_SL)
+    vector<STMTREP *> *_injured_aux_intrnop; // stacks used for store aux intrinsic op need repaired to live
+#endif
 
     // which phase of DCE is running
     enum {
@@ -338,6 +342,9 @@ class DCE {
 		    case OPR_RETURN:
 		    case OPR_RETURN_VAL:
 		    case OPR_TRUEBR:
+#ifdef KEY
+		    case OPR_GOTO_OUTER_BLOCK:
+#endif
 		      return TRUE;
 		    default:
 		      return FALSE;
@@ -417,6 +424,9 @@ public:
 				       cfg->Loc_pool()),
 	_retvsym_visited = BS_Create_Empty(Htable()->Coderep_id_cnt() + 1,
 					   cfg->Loc_pool());
+#if defined(TARG_SL)
+        _injured_aux_intrnop = CXX_NEW(vector<STMTREP *>, cfg->Loc_pool());
+#endif
       }
 
     ~DCE(void)
@@ -447,8 +457,56 @@ public:
     BOOL Unreachable_code_elim(void) const;
     BOOL Dead_store_elim(void) ;
     void Init_return_vsym( void );
+#if defined(TARG_SL)
+    void Append_Injured_AuxIntrnOp (STMTREP *stmt) const {
+       _injured_aux_intrnop->insert(_injured_aux_intrnop->begin(), (STMTREP *)stmt);
+    };
+    void Repair_Injured_AuxIntrnOP() const;
+#endif
     
 }; // end of class DCE
+
+#if defined(TARG_SL)
+void
+DCE::Repair_Injured_AuxIntrnOP() const {
+
+  for (INT32 i = 0; i < _injured_aux_intrnop->size(); i++) {
+    STMTREP *stmt = (*_injured_aux_intrnop)[i];
+    if (stmt->Live_stmt())
+      continue;
+    CODEREP *rhs = stmt->Rhs();
+    if (CR_Intrinsic_Op_Slave(rhs)) {
+      CODEREP *parm2cr = rhs->Opnd(0);	// first parameter
+      Is_True(parm2cr->Kind() == CK_IVAR, ("Repair_Injured_AuxIntrnOP::kid of intrinsic op must be parameter"));
+      CODEREP *op2cr = parm2cr->Ilod_base();
+      if (op2cr) {
+        switch (op2cr->Kind()) {
+          case CK_VAR: 
+          {
+            if(op2cr->Defstmt()->Live_stmt())	
+	      Mark_statement_live(stmt);	
+	  }
+	  break;	
+	  case CK_OP: 
+          {
+	    Mark_statement_live(stmt);
+	  };
+     	  break; 	
+          case CK_CONST:
+            break; // do nothing	
+	  default:
+	    Is_True (0, ("Repair_Injured_AuxIntrnOP::slave intrinsic op(c3_ptr): first parameter is unsupported kind coderep"));	
+        } // end switch
+      } else {
+        Is_True (0, ("Repair_Injured_AuxIntrnOP::slave intrinsic op(c3_ptr): first parameter is null"));
+      }
+    } else {
+      Is_True(0, ("Repair_Injured_AuxIntrnOP::rhs is not injure AuxIntrn"));
+    }
+  }
+  return;
+}
+#endif
 
 // ====================================================================
 // Keep this only until we figure it out, then re-inline it above
@@ -1137,7 +1195,6 @@ DCE::Check_conditional_branches_pred( CFG *cfg ) const
 //   evalcond + eval -- is the context
 //   They determine if origcond can be simplified
 // ====================================================================
-
 COND_EVAL
 Eval_redundant_cond_br( CODEREP *origcond, CODEREP *evalcond, COND_EVAL eval ) 
 {
@@ -1721,8 +1778,13 @@ DCE::Unreachable_code_elim( void ) const
 
       // Bug 13821: Don't delete unreachable blocks whose labels are
       // taken and passed to __cyg_instrument_entry/exit
+#if !defined(TARG_SL)
       if ( OPT_Cyg_Instrument > 0 && bb->Labnam() != 0 &&
 	   LABEL_addr_saved( bb->Labnam() ) ) {
+#else
+      if ( 0 && bb->Labnam() != 0 &&
+	   LABEL_addr_saved( bb->Labnam() ) ) {
+#endif
 	Keep_unreached_bb( bb );
 	// Restore LABEL deleted by Remove_unreached_statements
 	Check_for_label( bb );
@@ -1899,6 +1961,12 @@ DCE::Required_store( const STMTREP *stmt, OPERATOR oper ) const
   // store to a volatile location?
   if (lhs->Is_var_volatile())
     return ( TRUE );
+
+#if defined(TARG_SL)
+  if (CR_Intrinsic_Op_Slave(stmt->Rhs())) {
+    Append_Injured_AuxIntrnOp((STMTREP *)stmt);
+  }
+#endif
 
   // statement of form i = i are not required
   //  (even it stores a dedicated register)
@@ -2158,6 +2226,9 @@ DCE::Required_stmt( const STMTREP *stmt ) const
   case OPR_RETURN_VAL:
   case OPR_REGION_EXIT:
   case OPR_OPT_CHI: // entry chi is required, pv 454154
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     return TRUE;
 
   case OPR_CALL:
@@ -2632,11 +2703,17 @@ DCE::Mark_coderep_live( CODEREP *cr ) const
 	
       case CK_IVAR:
 	// handle the base
-	Mark_coderep_live( cr->Ilod_base() );
+	if ( cr->Istr_base() != NULL ) 
+	  Mark_coderep_live( cr->Istr_base() );
+	else
+          Mark_coderep_live( cr->Ilod_base() );
 	
 	// Is there a size also?
 	if ( cr->Opr() == OPR_MLOAD ) {
 	  Mark_coderep_live( cr->Mload_size() );
+	}
+	else if ( cr->Opr() == OPR_ILOADX ) {
+	  Mark_coderep_live( cr->Index() );
 	}
 
 	if ( cr->Opr() == OPR_PARM ) {
@@ -3089,6 +3166,8 @@ DCE::Propagate_return_vsym_cr( CODEREP *cr ) const
 
 	if ( cr->Opr() == OPR_MLOAD )
 	  Propagate_return_vsym_cr( cr->Mload_size() );
+	else if ( cr->Opr() == OPR_ILOADX )
+	  Propagate_return_vsym_cr( cr->Index() );
 
 	MU_NODE *mu = cr->Ivar_mu_node();
 	if ( mu && mu->OPND()->Aux_id() == Return_vsym() ) {
@@ -4359,6 +4438,9 @@ DCE::Find_required_statements( void ) const
     }
 
   } // end loop through blocks
+#ifdef TARG_SL
+  Repair_Injured_AuxIntrnOP();
+#endif
 
   // see if there are infinite loops that we need to keep around
   Mark_infinite_loops_live();
@@ -5027,8 +5109,7 @@ COMP_UNIT::Find_uninit_locals_for_entry(BB_NODE *bb)
       }
     }
 
-    fprintf(stderr, "Warning: variable %s in %s might be used uninitialized\n",
-	    output_var_name, output_pu_name);
+    ErrMsg(EC_Uninitialized, output_var_name, Cur_PU_Name);
     if (p != NULL && p != Cur_PU_Name)
       free(p);
     if (v != NULL && v != &Str_Table[sym->St()->u1.name_idx])

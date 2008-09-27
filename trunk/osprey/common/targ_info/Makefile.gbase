@@ -42,10 +42,12 @@
 #
 #  Verify that BUILD_TYPE is "SHARED" only.
 #
+ifneq ($(BUILD_TARGET), NVISA)
 ifneq ($(BUILD_TYPE), SHARED)
 default:
 	@echo Error: Only BUILD_TYPE = SHARED is supported - $(BUILD_TYPE).
 	@exit 1
+endif
 endif
 
 #----------------------------------------------------------------------
@@ -78,7 +80,8 @@ TARGDEFS =
 
 CURRENT_DIR		= .
 COMMON_DIR		= $(BUILD_TOT)/common
-COMMON_COM_DIR		= $(COMMON_DIR)/com $(COMMON_DIR)/util
+COMMON_COM_DIR		= $(COMMON_DIR)/com
+COMMON_UTIL_DIR 	= $(COMMON_DIR)/util
 TARGINFO_DIR		= $(BUILD_BASE)
 TARGINFO_ACCESS_DIR	= $(TARGINFO_DIR)/access
 TARGINFO_GENERATE_DIR 	= $(TARGINFO_DIR)/generate
@@ -98,7 +101,8 @@ SRC_DIRS = \
   $(TARGINFO_ISA_DIR)		\
   $(TARGINFO_PROC_DIR)		\
   $(TARGINFO_ABI_DIR)           \
-  $(COMMON_COM_DIR)
+  $(COMMON_COM_DIR)		\
+  $(COMMON_UTIL_DIR)
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
@@ -151,18 +155,33 @@ SO_TARGETS = \
 #	r5000.so	\
 #	r4000.so
 endif
+ifeq ($(BUILD_TARGET), SL)
+LDIRT += r10000_si_gen sb1_si_gen sl1_pcore_gen sl1_dsp_gen sl2_pcore_gen sl2_mcore_gen # r8000_si_gen r5000_si_gen r4000_si_gen
+SO_TARGETS = \
+       r10000.so       \
+       sl1_pcore.so    \
+       sl1_dsp.so     \
+       sl2_pcore.so    \
+       sl2_mcore.so    \
+       sb1.so
+#       r8000.so        \
+#       r5000.so        \
+#       r4000.so
+endif
+
 ifeq ($(BUILD_TARGET), IA64)
 LDIRT += itanium_si_gen
 SO_TARGETS = \
 	itanium.so
 endif
 ifeq ($(BUILD_TARGET), X8664)
-LDIRT += opteron_si_gen barcelona_si_gen em64t_si_gen
+LDIRT += opteron_si_gen barcelona_si_gen em64t_si_gen core_si_gen wolfdale_si_gen
 SO_TARGETS = \
 	opteron.so \
         barcelona.so \
 	em64t.so \
-	core.so
+	core.so \
+	wolfdale.so
 endif
 ifeq ($(BUILD_TARGET), IA32)
 LDIRT += pentium_si_gen
@@ -182,8 +201,12 @@ endif
 TARGINFO_ACCESS_SRCS = \
 	ti_asm.c		\
 	ti_bundle.c		\
-	ti_latency.c		\
 	ti_errors.c 
+
+ifneq ($(BUILD_TARGET), NVISA)
+TARGINFO_ACCESS_SRCS += \
+	ti_latency.c
+endif
 
 TARGINFO_DSO_ACCESS_SRCS = \
         ti_res.c           \
@@ -243,7 +266,11 @@ LLDLIBS =
 
 ifeq ($(BUILD_ARCH), MIPS64)
 ifeq ($(BUILD_HOST), IA32)
+ifeq ($(BUILD_TARGET), SL)
+COPYSOURCEDIR = ../../targia32_sl1/targ_info
+else
 COPYSOURCEDIR = ../../targia32_mips/targ_info
+endif
 else
 COPYSOURCEDIR = FALSE
 endif
@@ -525,7 +552,7 @@ isa_operands_gen.o: isa_operands_gen.cxx isa_operands_gen.h \
 
 isa_operands.o: isa_operands.cxx isa_operands_gen.h targ_isa_registers.h \
 	targ_isa_enums.h targ_isa_lits.h topcode.h
-	$(cxx) $(CXXFLAGS) -c -I$(COMMON_COM_DIR) \
+	$(cxx) $(CXXFLAGS) -c -I$(COMMON_COM_DIR) -I$(COMMON_UTIL_DIR) \
 	$(TARGINFO_ISA_DIR)/isa_operands.cxx
 
 
@@ -625,7 +652,8 @@ isa_print_gen: gen_util.o isa_print_gen.o isa_print.o \
 	$(cxx) $(CXXLDFLAGS) isa_print.o isa_print_gen.o gen_util.o \
 	    topcode.o targ_isa_properties.o -o isa_print_gen
 
-isa_print_gen.o: isa_print_gen.cxx isa_print_gen.h topcode.h targ_isa_properties.h
+isa_print_gen.o: isa_print_gen.cxx isa_print_gen.h topcode.h \
+	         targ_isa_properties.h targ_isa_operands.h
 	$(cxx) $(CXXFLAGS) -c $(TARGINFO_GENERATE_DIR)/isa_print_gen.cxx
 
 isa_print.o: isa_print.cxx isa_print_gen.h topcode.h
@@ -872,6 +900,221 @@ sb1_si.o: sb1_si.cxx targ_isa_subset.h topcode.h si_gen.h
 
 endif
 
+
+####For SL ####
+ifeq   ($(BUILD_TARGET), SL)
+## r10000 ##
+r10000.so: r10000.o $(SI_EXPORT_LIST)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               r10000.o -o r10000.so
+
+r10000.o: r10000.c ti_si.h topcode.h
+	$(cc) $(CFLAGS) -c r10000.c
+
+ifeq ($(COPYSOURCEDIR), FALSE)
+r10000.c: r10000_si_gen
+	$(run) ./r10000_si_gen
+else
+r10000.c: $(COPYSOURCEDIR)/r10000.c
+	cp $(COPYSOURCEDIR)/r10000.c .
+endif
+
+r10000_si_gen: si_gen.a r10000_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) r10000_si.o topcode.o si_gen.a -o r10000_si_gen
+
+r10000_si.o: r10000_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/r10000_si.cxx
+## r8000 ##
+
+r8000.so: r8000.o $(SI_EXPORT_LIST)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               r8000.o -o r8000.so
+
+r8000.o: r8000.c ti_si.h
+	$(cc) $(CFLAGS) -c r8000.c
+
+ifeq ($(COPYSOURCEDIR), FALSE)
+r8000.c: r8000_si_gen
+	$(run) ./r8000_si_gen
+else
+r8000.c: $(COPYSOURCEDIR)/r8000.c
+	cp $(COPYSOURCEDIR)/r8000.c .
+endif
+
+r8000_si_gen: si_gen.so r8000_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) r8000_si.o topcode.o si_gen.so -o r8000_si_gen
+
+r8000_si.o: r8000_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/r8000_si.cxx
+## r5000 ##
+
+r5000.so: r5000.o $(SI_EXPORT_LIST)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               r5000.o -o r5000.so
+
+r5000.o: r5000.c ti_si.h
+	$(cc) $(CFLAGS) -c r5000.c
+
+ifeq ($(COPYSOURCEDIR), FALSE)
+r5000.c: r5000_si_gen
+	$(run) ./r5000_si_gen
+else
+r5000.c: $(COPYSOURCEDIR)/r5000.c
+	cp $(COPYSOURCEDIR)/r5000.c .
+endif
+
+r5000_si_gen: si_gen.so r5000_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) r5000_si.o topcode.o si_gen.so -o r5000_si_gen
+
+r5000_si.o: r5000_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/r5000_si.cxx
+## r4000 ##
+
+r4000.so: r4000.o $(SI_EXPORT_LIST)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               r4000.o -o r4000.so
+
+r4000.o: r4000.c ti_si.h
+	$(cc) $(CFLAGS) -c r4000.c
+
+ifeq ($(COPYSOURCEDIR), FALSE)
+r4000.c: r4000_si_gen
+	$(run) ./r4000_si_gen
+else
+r4000.c: $(COPYSOURCEDIR)/r4000.c
+	cp $(COPYSOURCEDIR)/r4000.c .
+endif
+
+r4000_si_gen: si_gen.so r4000_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) r4000_si.o topcode.o si_gen.so -o r4000_si_gen
+
+
+r4000_si.o: r4000_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/r4000_si.cxx
+## sb1 ##
+
+sb1.so: sb1.o $(SI_EXPORT_LIST)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               sb1.o -o sb1.so
+
+sb1.o: sb1.c ti_si.h
+	$(cc) $(CFLAGS) -c sb1.c
+
+ifeq ($(COPYSOURCEDIR), FALSE)
+sb1.c: sb1_si_gen
+	$(run) ./sb1_si_gen
+else
+sb1.c: $(COPYSOURCEDIR)/sb1.c
+	cp $(COPYSOURCEDIR)/sb1.c .
+endif
+
+sb1_si_gen: si_gen.a sb1_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) sb1_si.o topcode.o si_gen.a -o sb1_si_gen
+
+sb1_si.o: sb1_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/sb1_si.cxx
+
+
+
+##sl1_pcore ##
+
+sl1_pcore.so: sl1_pcore.o $(SI_EXPORT_LIST)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               sl1_pcore.o -o sl1_pcore.so
+
+sl1_pcore.o: sl1_pcore.c ti_si.h
+	$(cc) $(CFLAGS) -c sl1_pcore.c
+
+ifeq ($(COPYSOURCEDIR), FALSE)
+sl1_pcore.c: sl1_pcore_gen
+	$(run) ./sl1_pcore_gen
+else
+sl1_pcore.c: $(COPYSOURCEDIR)/sl1_pcore.c
+	cp $(COPYSOURCEDIR)/sl1_pcore.c .
+endif
+
+sl1_pcore_gen: si_gen.a sl1_pcore_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) sl1_pcore_si.o topcode.o si_gen.a -o sl1_pcore_gen
+
+sl1_pcore_si.o: sl1_pcore_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/sl1_pcore_si.cxx
+
+
+
+##sl1_dsp ##
+
+sl1_dsp.so: sl1_dsp.o $(SI_EXPORT_LIST)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               sl1_dsp.o -o sl1_dsp.so
+
+sl1_dsp.o: sl1_dsp.c ti_si.h
+	$(cc) $(CFLAGS) -c sl1_dsp.c
+
+ifeq ($(COPYSOURCEDIR), FALSE)
+sl1_dsp.c: sl1_dsp_gen
+	$(run) ./sl1_dsp_gen
+else
+sl1_dsp.c: $(COPYSOURCEDIR)/sl1_dsp.c
+	cp $(COPYSOURCEDIR)/sl1_dsp.c .
+endif
+
+sl1_dsp_gen: si_gen.a sl1_dsp_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) sl1_dsp_si.o topcode.o si_gen.a -o sl1_dsp_gen
+
+sl1_dsp_si.o: sl1_dsp_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/sl1_dsp_si.cxx
+
+
+##sl2_pcore ##
+
+sl2_pcore.so: sl2_pcore.o $(SI_EXPORT_LIST)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               sl2_pcore.o -o sl2_pcore.so
+
+sl2_pcore.o: sl2_pcore.c ti_si.h
+	$(cc) $(CFLAGS) -c sl2_pcore.c
+
+ifeq ($(COPYSOURCEDIR), FALSE)
+sl2_pcore.c: sl2_pcore_gen
+	$(run) ./sl2_pcore_gen
+else
+sl2_pcore.c: $(COPYSOURCEDIR)/sl2_pcore.c
+	cp $(COPYSOURCEDIR)/sl2_pcore.c .
+endif
+
+sl2_pcore_gen: si_gen.a sl2_pcore_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) sl2_pcore_si.o topcode.o si_gen.a -o sl2_pcore_gen
+
+sl2_pcore_si.o: sl2_pcore_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/sl2_pcore_si.cxx
+
+
+##sl2_mcore ##
+
+sl2_mcore.so: sl2_mcore.o $(SI_EXPORT_LIST)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST)       \
+               sl2_mcore.o -o sl2_mcore.so
+
+sl2_mcore.o: sl2_mcore.c ti_si.h
+	$(cc) $(CFLAGS) -c sl2_mcore.c
+
+ifeq ($(COPYSOURCEDIR), FALSE)
+sl2_mcore.c: sl2_mcore_gen
+	$(run) ./sl2_mcore_gen
+else
+sl2_mcore.c: $(COPYSOURCEDIR)/sl2_mcore.c
+	cp $(COPYSOURCEDIR)/sl2_mcore.c .
+endif
+
+sl2_mcore_gen: si_gen.a sl2_mcore_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) sl2_mcore_si.o topcode.o si_gen.a -o sl2_mcore_gen
+
+sl2_mcore_si.o: sl2_mcore_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/sl2_mcore_si.cxx
+
+endif
+
+
 ifeq ($(BUILD_TARGET), IA64)
 
 itanium.so: itanium.o $(TARGINFO_DSO_ACCESS_OBJS)
@@ -947,18 +1190,46 @@ em64t_si_gen: si_gen.a em64t_si.o topcode.o
 em64t_si.o: em64t_si.cxx targ_isa_subset.h topcode.h si_gen.h
 	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/em64t_si.cxx
 
-## em64t ##
+## core ##
 
-# core.so is the same as em64t.so until real targ info is defined for Core.
-core.so: em64t.so
-	ln -s em64t.so core.so
+core.so: core.o init.o
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) core.o init.o -o core.so
+
+core.o: core.c ti_si_types.h
+	$(cc) $(CFLAGS) -c core.c
+
+core.c: core_si_gen
+	$(SETPATH) $(RUN) ./core_si_gen
+
+core_si_gen: si_gen.a core_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) core_si.o topcode.o si_gen.a -o core_si_gen
+
+core_si.o: core_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/core_si.cxx
+
+## wolfdale ##
+
+wolfdale.so: wolfdale.o init.o
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) wolfdale.o init.o -o wolfdale.so
+
+wolfdale.o: wolfdale.c ti_si_types.h
+	$(cc) $(CFLAGS) -c wolfdale.c
+
+wolfdale.c: wolfdale_si_gen
+	$(SETPATH) $(RUN) ./wolfdale_si_gen
+
+wolfdale_si_gen: si_gen.a wolfdale_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) wolfdale_si.o topcode.o si_gen.a -o wolfdale_si_gen
+
+wolfdale_si.o: wolfdale_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/wolfdale_si.cxx
 
 endif
 
 ifeq ($(BUILD_TARGET), IA32)
 
 pentium.so: pentium.o
-	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) pentium.o -o pentium.so
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) pentium.o -o pentium.so
 
 pentium.o: pentium.c ti_si.h
 	$(cc) $(CFLAGS) -c pentium.c
@@ -974,7 +1245,13 @@ pentium_si.o: pentium_si.cxx targ_isa_subset.h topcode.h si_gen.h
 endif
 
 libtarginfo.a: $(LIBTARGINFO_OBJS)
+ifeq ($(BUILD_OS), DARWIN)
+	ld -o $(@:.a=.o) -r $^
+	$(ar) cr $@ $(@:.a=.o)
+# necessary to force symbol resolution...
+else
 	$(ar) cru $@ $^
+endif
 
 
 exports: default

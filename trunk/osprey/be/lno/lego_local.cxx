@@ -72,8 +72,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.lego_local.cxx $";
+const static char *source_file = __FILE__;
+const static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.lego_local.cxx $";
 
 #include <sys/types.h>
 #include <alloca.h>

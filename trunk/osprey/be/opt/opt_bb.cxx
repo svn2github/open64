@@ -1072,6 +1072,33 @@ BB_NODE::Clonable(BOOL allow_loop_cloning, const BVECTOR *cr_vol_map)
   return TRUE;
 }
 
+#if defined(TARG_SL)
+BOOL
+BB_NODE::Preds_or_succs_from_different_region(BOOL pred)
+{
+  BB_LIST_ITER bb_iter;
+  BB_LIST* bb_list;
+  BB_NODE *bb;
+  vector <mUINT16 >rid_stack;
+
+  rid_stack.clear();
+
+  bb_list = (pred) ? this->Pred() : this->Succ();
+
+  FOR_ALL_ELEM(bb, bb_iter, Init(bb_list)) {
+    if(find(rid_stack.begin(), rid_stack.end(), bb->Rid_id()) == rid_stack.end())
+      rid_stack.push_back(bb->Rid_id());
+  }
+
+  if(rid_stack.size() > 1)
+    return TRUE;
+  else
+     return FALSE;
+
+}
+#endif
+
+
 
 // ====================================================================
 // Printing methods
@@ -1250,6 +1277,32 @@ BB_NODE::Print (FILE *fp) const
   //if (Iphi_list())
   //Iphi_list()->Print(fp);
   _stmtlist.Print(fp);
+}
+
+void
+BB_NODE::PrintVis (void) const
+{
+  BB_LIST_ITER bb_succ_iter(Succ());
+  BB_NODE *succ;
+  WN * wn;
+
+#ifdef TARG_NVISA
+  // mark the blocks with __synchthreads as red
+  STMT_ITER stmt_iter;
+  FOR_ALL_ELEM(wn, stmt_iter, Init(Firststmt(), Laststmt())) {
+    INTRINSIC id;
+    if (WN_operator(wn) == OPR_INTRINSIC_CALL) {
+      id = WN_intrinsic(wn);
+      if (id == INTRN_SYNCHRONIZE) {
+	fprintf(stdout, "BB%d[color=red]\n", Id());
+	break;
+      }
+    }
+  }
+#endif
+  FOR_ALL_ELEM(succ, bb_succ_iter, Init()) {
+    fprintf(stdout, "  BB%d -> BB%d\n", Id(), succ->Id());
+  }
 }
 
 void

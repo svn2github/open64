@@ -59,7 +59,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <assert.h>		// for assert()
 #include <cmplrs/host.h>        // for ipc_ld.h
 #define USE_STANDARD_TYPES      /* override unwanted defines in defs.h */

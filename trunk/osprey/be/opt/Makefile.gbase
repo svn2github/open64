@@ -190,6 +190,7 @@ BE_OPT_CXX_SRCS = \
   opt_htable.cxx	\
   opt_htable_emit.cxx	\
   opt_ivr.cxx		\
+  opt_lab.cxx		\
   opt_leaf_iter.cxx     \
   opt_lftr2.cxx         \
   opt_loop.cxx		\
@@ -228,6 +229,7 @@ BE_OPT_CXX_SRCS = \
   opt_revise_ssa.cxx	\
   wodriver.cxx          \
   init.cxx              \
+  opt_lclsc.cxx         \
   opt_misc.cxx          \
   opt_lmv.cxx           \
   opt_lmv_helper.cxx
@@ -294,7 +296,11 @@ EXPORT_LIST =
 ifdef LINK_DSO
 TARGETS = debug-wopt
 else
+ ifeq ($(BUILD_TYPE), NONSHARED)
+TARGETS = libwopt.a
+ else
 TARGETS = wopt.so
+ endif
 endif
 
 #----------------------------------------------------------------------
@@ -374,6 +380,8 @@ wopt.so: $(BACK_END_OBJS) $(BACK_END_CXX_OBJS) $(BE_OPT_DIR)/Exported \
 	 $(LINK_DSOS) $(LLDLIBS)
 endif
 
+libwopt.a: $(BACK_END_CXX_OBJS) $(BACK_END_OBJS)
+	$(ar) cru $@ $^
 
 #gcc -O2 has some problem when compile this file, we we use -O1 temporally
 ifeq ($(BUILD_COMPILER), GNU)
@@ -384,7 +392,7 @@ opt_wovp.o: opt_wovp.cxx
 endif
 endif
 
-LDIRT += be.so bedriver be wopt
+LDIRT += be.so bedriver be wopt $(TARGETS)
 
 ifdef LINK_DSO
 debug-wopt: wopt.so

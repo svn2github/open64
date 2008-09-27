@@ -40,7 +40,11 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <stdio.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/elf_whirl.h>
 #include <sys/types.h>
 #include <ctype.h>
@@ -54,7 +58,7 @@
 #include "cg_browser.h"
 #include "cgb.h"
 
-extern void s_cg_ipa_debug(char init_buffer[]);
+extern void s_cg_ipa_debug(const char init_buffer[]);
 
 static CGB_PHASE CGB_Current_Phase = CGBP_NONE; 
 
@@ -137,7 +141,7 @@ extern void CGB_Terminate(CG_BROWSER* cgb)
   cgb->Set_Ipa_Cg(NULL);
 }
 
-extern void cg_sdebug(char init_buffer[])
+extern "C" void cg_sdebug(const char init_buffer[])
 {
   switch (CGB_Current_Phase) {
   case CGBP_IPA:
@@ -149,7 +153,7 @@ extern void cg_sdebug(char init_buffer[])
   } 
 }
 
-extern void scgb(char init_buffer[])
+extern void scgb(const char init_buffer[])
 {
   cg_sdebug(init_buffer);
 } 

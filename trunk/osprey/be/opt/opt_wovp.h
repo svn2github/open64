@@ -32,6 +32,7 @@
 #include "opt_cfg.h"          //CFG
 #include "opt_sym.h"          //OPT_STAB
 #include "opt_htable.h"       //CODEREP && STMTREP
+#include "errors.h"            //Is_True DevWarn
 #include "defs.h"             //IDTYPE
 #include "vector"             //Vector
 

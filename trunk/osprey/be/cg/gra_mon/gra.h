@@ -66,17 +66,17 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra.h,v $
+//  $Revision: 1.13 $
+//  $Date: 05/12/05 08:59:09-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra.h $
 
 #ifndef GRA_INCLUDED
 #define GRA_INCLUDED
 #ifndef GRA_RCS_ID
 #define GRA_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra.h,v $ $Revision: 1.1.1.1 $";
+static char *gra_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra.h $ $Revision: 1.13 $";
 #endif
 #endif
 
@@ -116,8 +116,11 @@ extern INT GRA_non_preference_tn_id;	// controlled by -GRA:non_preference_tn
 extern BOOL GRA_optimize_placement;	// controlled by -GRA:optimize_placement
 #ifdef KEY
 extern BOOL GRA_optimize_boundary;	// controlled by -GRA:optimize_boundary
+extern BOOL GRA_optimize_boundary_set;
 extern BOOL GRA_reclaim_register;	// controlled by -GRA:reclaim
+extern BOOL GRA_reclaim_register_set;
 extern BOOL GRA_prioritize_by_density;	// controlled by -GRA:prioritize_by_density
+extern BOOL GRA_prioritize_by_density_set;
 #endif
 
 #ifdef TARG_X8664

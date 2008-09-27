@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007. Pathscale, LLC.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -1236,15 +1236,27 @@ main()
   Result(0, int64);
   Operand(0, fp64, opnd1);
 
+  Instruction_Group("shifts8",
+		    TOP_rori8,
+		    TOP_roli8,
+		    TOP_UNDEFINED);
+  Result(0, int8);
+  Operand(0, int8, opnd1);
+  Operand(1, uimm8, opnd2);
+
+  Instruction_Group("shifts16",
+		    TOP_rori16,
+		    TOP_roli16,
+		    TOP_UNDEFINED);
+  Result(0, int16);
+  Operand(0, int16, opnd1);
+  Operand(1, uimm8, opnd2);
+
   Instruction_Group("shifts32",
 		    TOP_sari32,
 		    TOP_shli32,
 		    TOP_shri32,
-		    TOP_rori8,
-		    TOP_rori16,
 		    TOP_rori32,
-		    TOP_roli8,
-		    TOP_roli16,
 		    TOP_roli32,
 		    TOP_UNDEFINED);
   Result(0, int32);
@@ -2517,12 +2529,33 @@ main()
 		    TOP_UNDEFINED);
   Result(0, fp128);
 
+  Instruction_Group( "int8 arithmetic lock",
+		     TOP_lock_add8,
+		     TOP_lock_and8,
+		     TOP_lock_or8,
+		     TOP_lock_xor8,
+		     TOP_lock_sub8,
+		     TOP_UNDEFINED);
+  Operand(0, int8, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group( "int16 arithmetic lock",
+		     TOP_lock_add16,
+		     TOP_lock_and16,
+		     TOP_lock_or16,
+		     TOP_lock_xor16,
+		     TOP_lock_sub16,
+		     TOP_UNDEFINED);
+  Operand(0, int16, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
   Instruction_Group( "int32 arithmetic lock",
 		     TOP_lock_add32,
 		     TOP_lock_adc32,
 		     TOP_lock_and32,
 		     TOP_lock_or32,
-		     TOP_lock_xadd32,
 		     TOP_lock_xor32,
 		     TOP_lock_sub32,
 		     TOP_UNDEFINED);
@@ -2534,13 +2567,30 @@ main()
 		     TOP_lock_add64,
 		     TOP_lock_and64,
 		     TOP_lock_or64,
-		     TOP_lock_xadd64,
 		     TOP_lock_xor64,
 		     TOP_lock_sub64,
 		     TOP_UNDEFINED);
   Operand(0, int64, opnd1);
   Operand(1, int64, base);
   Operand(2, simm32, offset);
+
+  Instruction_Group("int8 compare & exchange mem opnd lock",
+		    TOP_lock_cmpxchg8,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, eax, opnd1);
+  Operand(1, int8, opnd2);
+  Operand(2, int64, base);
+  Operand(3, simm32, offset);
+
+  Instruction_Group("int16 compare & exchange mem opnd lock",
+		    TOP_lock_cmpxchg16,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, eax, opnd1);
+  Operand(1, int16, opnd2);
+  Operand(2, int64, base);
+  Operand(3, simm32, offset);
 
   Instruction_Group("int32 compare & exchange mem opnd lock",
 		    TOP_lock_cmpxchg32,
@@ -2559,6 +2609,38 @@ main()
   Operand(1, int64, opnd2);
   Operand(2, int64, base);
   Operand(3, simm32, offset);
+
+  Instruction_Group("int8 exchange arithmetic lock",
+		    TOP_lock_xadd8,
+		    TOP_UNDEFINED);
+  Result(0, int8);
+  Operand(0, int8, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group("int16 exchange arithmetic lock",
+		    TOP_lock_xadd16,
+		    TOP_UNDEFINED);
+  Result(0, int16);
+  Operand(0, int16, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group("int32 exchange arithmetic lock",
+		    TOP_lock_xadd32,
+		    TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group("int64 exchange arithmetic lock",
+		    TOP_lock_xadd64,
+		    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
 
   Instruction_Group( "bsf32",
                      TOP_bsf32,
@@ -2613,7 +2695,7 @@ main()
   Result(0, int32);
   Operand(0, mmx, opnd1);
 
-  Instruction_Group("xmm packed move",
+  Instruction_Group("sse packed move",
                     TOP_pmovmskb128,
                     TOP_UNDEFINED);
   Result(0, int32);
@@ -2800,6 +2882,21 @@ main()
 		    TOP_UNDEFINED);
   Operand(0, fp128, opnd1);
   Operand(1, fp128, opnd2);
+
+  Instruction_Group("extract field xmm",
+                    TOP_extrq,
+                    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+
+  Instruction_Group("insert field xmm",
+                    TOP_insertq,
+                    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+
   
   ISA_Operands_End();
   return 0;

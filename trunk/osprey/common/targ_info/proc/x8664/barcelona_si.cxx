@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -318,19 +318,33 @@ int main (int argc, char *argv[])
 		     TOP_andxx8,
 		     TOP_andxx16,
 		     TOP_andxx64,
+		     TOP_lock_add8,
+		     TOP_lock_add16,
 		     TOP_lock_add32,
 		     TOP_lock_adc32,
 		     TOP_lock_add64,
+		     TOP_lock_and8,
+		     TOP_lock_and16,
 		     TOP_lock_and32,
 		     TOP_lock_and64,
+		     TOP_lock_or8,
+		     TOP_lock_or16,
 		     TOP_lock_or32,
 		     TOP_lock_or64,
-		     TOP_lock_xadd32,
-		     TOP_lock_xadd64,
+		     TOP_lock_xor8,
+		     TOP_lock_xor16,
 		     TOP_lock_xor32,
 		     TOP_lock_xor64,
+		     TOP_lock_sub8,
+		     TOP_lock_sub16,
 		     TOP_lock_sub32,
 		     TOP_lock_sub64,
+		     TOP_lock_xadd8,
+		     TOP_lock_xadd16,
+		     TOP_lock_xadd32,
+		     TOP_lock_xadd64,
+		     TOP_lock_cmpxchg8,
+		     TOP_lock_cmpxchg16,
 		     TOP_lock_cmpxchg32,
 		     TOP_lock_cmpxchg64,
 		     TOP_pextrw,
@@ -1041,7 +1055,7 @@ int main (int argc, char *argv[])
 		     TOP_cvttsd2si,
 		     TOP_cvttss2siq,
 		     TOP_cvttsd2siq,
-                     TOP_pmovmskb128,
+		     TOP_pmovmskb128,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2); //?
@@ -1851,6 +1865,21 @@ int main (int argc, char *argv[])
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(3);
+  Resource_Requirement(res_issue, 0);
+
+ Instruction_Group("SSE4A extract",
+                    TOP_extrq,
+                    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fmul, 0);
+
+  Instruction_Group("SSE4A insert",
+                    TOP_insertq,
+                    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group("dummy",

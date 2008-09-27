@@ -1309,6 +1309,39 @@ RVI::Get_bb_local_attributes( BB_NODE *bb )
 }
 
 // ====================================================================
+// this function is used to decide if nth parameter in following intrinsic function need 
+// to do RVI optimization. These parameter is address  expression and is offset from
+// internal buffer start address.
+// ====================================================================
+
+#if defined(TARG_SL)
+BOOL 
+RVI::Is_Intrncall_Nth_Parm_Need_RVI(INTRINSIC id,  INT nth_parm ) {
+  switch(id) {
+  case INTRN_C2_LD_C_IMM:
+  case INTRN_C2_ST_C_IMM:				
+    if(nth_parm == 1) return TRUE;
+    return FALSE;
+  case INTRN_C2_LD_V2G_IMM:
+  case INTRN_C2_ST_G2V_IMM:		
+  case INTRN_C2_LD_G_IMM:
+  case INTRN_C2_ST_G_IMM:			
+    if(nth_parm == 2) return TRUE;
+    return FALSE;
+  case INTRN_C2_ST_V_IMM:
+    if(nth_parm == 3) return TRUE;
+    return FALSE;
+  case INTRN_C2_LD_V_IMM:
+    if(nth_parm == 4) return TRUE;
+    return FALSE;
+  default:
+    return FALSE;
+  }
+  return FALSE;
+}
+#endif
+
+// ====================================================================
 // Gather local lda attributes for the wn assuming we've been processing
 // them in forward-statement order
 // Also assign bit positions for any candidate constants
@@ -1335,6 +1368,14 @@ RVI::Get_wn_local_lda_attributes( BB_NODE *bb, WN *wn, BOOL *check_lda )
     for ( INT ikid = 0; ikid < WN_kid_count(wn); ikid++ ) {
       BOOL is_lda;
 
+#ifdef TARG_SL
+      // the parameter one in the two intrinsic functions are used as offset relative to 
+      // vbuf start address. We don't want to these two parameter to be screening out
+      // since we need allocate special handling when expanding the intrinsic call 
+     if( (opr==OPR_INTRINSIC_CALL || opr == OPR_INTRINSIC_OP)  && 
+	 Is_Intrncall_Nth_Parm_Need_RVI(WN_intrinsic(wn), ikid)) 
+       continue; 
+#endif 
       Get_wn_local_lda_attributes( bb, WN_kid(wn,ikid), &is_lda );
 
       // if this kid was constant, need to do some more checks

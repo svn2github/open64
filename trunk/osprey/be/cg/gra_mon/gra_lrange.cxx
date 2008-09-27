@@ -1,8 +1,4 @@
 /*
- * Copyright 2006, 2007.  QLogic Corporation.  All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -49,10 +45,10 @@
 /////////////////////////////////////
 
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_lrange.cxx,v $
+//  $Revision: 1.24 $
+//  $Date: 05/12/05 08:59:10-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_lrange.cxx $
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -60,7 +56,7 @@
 #pragma hdrstop
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_lrange.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_lrange.cxx $ $Revision: 1.24 $";
 #endif
 
 #if defined(__GNUC__)
@@ -93,10 +89,12 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #ifdef KEY
 // If TRUE, allow reuse of registers at live range boundary basic blocks.
 BOOL GRA_optimize_boundary = FALSE;
+BOOL GRA_optimize_boundary_set = FALSE;
 
 // If TRUE, prioritize live ranges by reference density.  If FALSE, prioritize
 // by the number of references in the live range.
 BOOL GRA_prioritize_by_density = FALSE;
+BOOL GRA_prioritize_by_density_set = FALSE;
 #endif
 
 LRANGE_MGR lrange_mgr;
@@ -709,6 +707,13 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
     allowed = REGISTER_SET_Difference(allowed,
 				      REGISTER_CLASS_callee_saves(rc));
 
+#ifdef KEY
+  // if PU has label jumped to from nested func, disallow callee-saved registers
+  if (PU_Has_Nonlocal_Goto_Target)
+    allowed = REGISTER_SET_Difference(allowed,
+				      REGISTER_CLASS_callee_saves(rc));
+#endif
+
 #ifdef TARG_X8664
   // if the live range spans savexmms pseudo-op, disallow FP parm registers
   if (Spans_Savexmms() && rc == ISA_REGISTER_CLASS_float) {
@@ -847,7 +852,6 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
   }
 }
 
-
 #ifdef KEY
 /////////////////////////////////////
 // Return the set of registers that are reclaimable for <lrange>.  This means
@@ -951,6 +955,7 @@ LRANGE::Allocate_Register( REGISTER r, BOOL reclaim )
   case LRANGE_TYPE_LOCAL:
     GRA_GRANT_Local_Register(Gbb(),Rc(),r);
     Gbb()->Make_Register_Used((ISA_REGISTER_CLASS) Rc(), r, NULL, reclaim);
+
 #ifdef KEY
     // Update the referenced registers.
     if (GRA_reclaim_register) {

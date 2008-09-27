@@ -71,7 +71,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#ifndef __MINGW32__
 #include <sys/mman.h>
+#endif /* __MINGW32__ */
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -92,7 +94,7 @@
 #include "stab.h"
 #include "const.h"
 #include "targ_const.h"
-extern char * Targ_Print ( char *fmt, TCON c );
+extern char * Targ_Print (const char *fmt, TCON c );
 #include "targ_sim.h"
 #include "strtab.h"
 #include "irbdata.h"
@@ -111,7 +113,11 @@ extern char * Targ_Print ( char *fmt, TCON c );
 #include "wintrinsic.h"
 #include "wn_pragmas.h"
 #include "wutil.h"
+#if defined(TARG_NVISA)
+#include "intrn_info.h"
+#endif
 #ifdef BACK_END
+#include "intrn_info.h"
 #include "region_util.h"
 #include "dvector.h"
 #endif /* BACK_END */
@@ -154,7 +160,7 @@ enum OPC_EXTENDED {
 };
 
 typedef struct {
-  char *pr_name;
+  const char *pr_name;
   INT  n_kids;
   INT  flags;
 } IR_OPCODE_TABLE;
@@ -196,7 +202,7 @@ typedef struct {
   char *args[IR_MAX_ARGS+1];
 } TOKEN;
 
-static void ir_error(char *s);
+static void ir_error(const char *s);
 static INT ir_get_expr_list(void);
 static WN * ir_get_expr(void);
 static WN * ir_get_stmt(void);
@@ -206,12 +212,12 @@ static void ir_match_token(OPERATOR opr);
 static void ir_expect_token(OPERATOR opc);
 static TOKEN *ir_next_token(void);
 static void ir_get_token(TOKEN *token);
-static BOOL ir_insert_hash(char *s, IR_OPCODE_TABLE *irt);
+static BOOL ir_insert_hash(const char *s, IR_OPCODE_TABLE *irt);
 static INT ir_lookup(char *s);
 static void ir_build_hashtable(void);
 static void ir_put_wn(WN * wn, INT indent);
 static void ir_put_expr(WN * wn, INT indent);
-static void ir_put_marker(char *str, INT indent);
+static void ir_put_marker(const char *str, INT indent);
 static void ir_put_stmt(WN * wn, INT indent);
 static void WN_TREE_put_stmt(WN *, INT); // fwd declaration
 
@@ -229,7 +235,7 @@ extern void fdump_dep_tree(FILE *, const WN *, struct ALIAS_MANAGER *);
 
 /*  Suppress warning if not resolved at link-time. */
 /* CG_Dump_Region is defined in cg.so, only call if cg.so is loaded */
-#ifdef __linux__
+#if defined(__linux__) || defined(BUILD_OS_DARWIN) || !defined(SHARED_BUILD)
 extern void (*CG_Dump_Region_p) (FILE*, WN*);
 #define CG_Dump_Region (*CG_Dump_Region_p)
 #else
@@ -419,7 +425,7 @@ extern void IR_close_output(void)
 
 #define ir_chk_kids(m,n)   {if (m != n) ir_error("wrong number of kids"); }
 
-static void ir_error(char *s)
+static void ir_error(const char *s)
 {
   fprintf(stderr, "Error parsing ascii IR at line %d: %s.\n", ir_line, s);
   exit(RC_INTERNAL_ERROR);
@@ -560,6 +566,13 @@ extern void IR_Dwarf_Gen_File_Table (BOOL dump_filenames)
       incl_table[count] = name;
       count++;
     }
+#if defined(TARG_SL)
+  /* Wenbo/2007-04-29: Because we use incl_table's 0th entry for current
+     working dir. */
+  if (incl_table == NULL)
+    incl_table = (char **) malloc ((count + 2) * sizeof (char *));
+  incl_table[0] = "./";
+#endif
   
   ir_print_filename(dump_filenames); /* print the loc 0 0 heading */
 
@@ -697,9 +710,9 @@ print_source (SRCPOS srcpos)
 /*
  *  Find a new entry from the string in the operator table.
  */
-static BOOL ir_insert_hash(char *s, IR_OPCODE_TABLE *opcode_entry)
+static BOOL ir_insert_hash(const char *s, IR_OPCODE_TABLE *opcode_entry)
 {
-  char *p;
+  const char *p;
   UINT sum = 0;
   INT i;
 
@@ -746,7 +759,7 @@ static INT ir_lookup(char *s)
 /*
  *  Enter opcode into the IR table.
  */
-static void enter_opcode_table(char *name, OPCODE opc, INT opr)
+static void enter_opcode_table(const char *name, OPCODE opc, INT opr)
 {
     ir_opcode_table[opc].pr_name = name;
     if (!ir_insert_hash(ir_opcode_table[opc].pr_name, &ir_opcode_table[opc])) {
@@ -757,7 +770,7 @@ static void enter_opcode_table(char *name, OPCODE opc, INT opr)
 
 
 static inline
-void enter_opcode_table (char *name, OPC_EXTENDED opc, INT opr)
+void enter_opcode_table (const char *name, OPC_EXTENDED opc, INT opr)
 {
     enter_opcode_table (name, (OPCODE) opc, opr);
 }
@@ -943,7 +956,12 @@ static void ir_put_wn(WN * wn, INT indent)
 #endif /* BACK_END */
       fprintf(ir_ofile, " (kind=%d)",WN_region_kind(wn));
       break;
-
+#if defined(TARG_SL)
+    case OPR_LDA:
+    case OPR_ISTORE:
+      fprintf(ir_ofile, "im:%d", WN_is_internal_mem_ofst(wn)); 
+      break; 
+#endif
     case OPR_LDBITS:
     case OPR_ILDBITS:
     case OPR_STBITS:
@@ -977,8 +995,10 @@ static void ir_put_wn(WN * wn, INT indent)
 	    Is_True(OPCODE_operator(opcode) == OPR_INTRINSIC_OP ||
 		    OPCODE_operator(opcode) == OPR_INTRINSIC_CALL,
 		    ("ir_put_wn, expected an intrinsic"));
+#if defined(BACK_END) || defined(TARG_NVISA)
 	    fprintf(ir_ofile, " <%d,%s>", WN_intrinsic(wn),
 		    INTRINSIC_name((INTRINSIC) WN_intrinsic(wn)));
+#endif
 	    break;
 	}
     }
@@ -1013,7 +1033,7 @@ static void ir_put_wn(WN * wn, INT indent)
     if (OPCODE_has_ndim(opcode))
 	fprintf(ir_ofile, " %d", WN_num_dim(wn));
     if (OPCODE_has_esize(opcode))
-	fprintf(ir_ofile, " %lld", WN_element_size(wn));
+	fprintf(ir_ofile, " %" LL_FORMAT "d", WN_element_size(wn));
 
     if (OPCODE_has_num_entries(opcode))
 	fprintf(ir_ofile, " %d", WN_num_entries(wn));
@@ -1021,10 +1041,10 @@ static void ir_put_wn(WN * wn, INT indent)
 	fprintf(ir_ofile, " %d", WN_last_label(wn));
 
     if (OPCODE_has_value(opcode)) {
-	fprintf(ir_ofile, " %lld", WN_const_val(wn));
+	fprintf(ir_ofile, " %" LL_FORMAT "d", WN_const_val(wn));
 	/* Also print the hex value for INTCONSTs */
 	if (OPCODE_operator(opcode) == OPR_INTCONST || opcode == OPC_PRAGMA) {
-	    fprintf(ir_ofile, " (0x%llx)", WN_const_val(wn));
+	    fprintf(ir_ofile, " (0x%" LL_FORMAT "x)", WN_const_val(wn));
 	}
     }
 
@@ -1136,6 +1156,9 @@ static void ir_put_wn(WN * wn, INT indent)
 	INT flag =  WN_flag(wn);
 	fprintf(ir_ofile, " # ");
 	if (flag & WN_PARM_BY_REFERENCE) fprintf(ir_ofile, " by_reference ");
+#if defined(TARG_SL)
+	if (flag & WN_PARM_DEREFERENCE) fprintf(ir_ofile, " by_dereference ");
+#endif
 	if (flag & WN_PARM_BY_VALUE)     fprintf(ir_ofile, " by_value ");
 	if (flag & WN_PARM_OUT)          fprintf(ir_ofile, " out ");
 	if (flag & WN_PARM_DUMMY)        fprintf(ir_ofile, " dummy ");
@@ -1243,7 +1266,7 @@ static void ir_put_expr(WN * wn, INT indent)
 /*
  *  Write out a marker at the indentation level.
  */
-static void ir_put_marker(char *str, INT indent)
+static void ir_put_marker(const char *str, INT indent)
 {
   fprintf(ir_ofile, "%*s%s\n", indent, "", str);
 }
@@ -2049,7 +2072,7 @@ extern void fdump_dep_tree( FILE *f, WN *wn, struct ALIAS_MANAGER *alias)
 }
 #endif /* BACK_END */
 
-extern void Check_for_IR_Dump(INT phase, WN *pu, char *phase_name)
+extern void Check_for_IR_Dump(INT phase, WN *pu, const char *phase_name)
 {
     BOOL dump_ir;
     BOOL dump_symtab;

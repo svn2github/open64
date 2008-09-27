@@ -41,10 +41,10 @@
 /* ====================================================================
  *
  * Module: DaVinci.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/com_whirlview.cxx,v $
+ * $Revision: 1.6 $
+ * $Date: 05/12/05 08:59:12-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.com_whirlview.cxx $
  * ====================================================================
  */
 
@@ -309,9 +309,8 @@ dV_view_whirl(WN *wn, const char *title, BOOL show_expr, FILE *trace_fp)
     MEM_POOL_Initialize(&DV_wv_mempool, "DV_wv_mempool", FALSE);
     DV_wv_mempool_init = TRUE;
   }
- // DV = CXX_NEW(DaVinci(&DV_wv_mempool, trace_fp), &DV_wv_mempool);
 
-DV=&dv;
+  DV=&dv;
   const char *window_title = (title ? title : "com_whirlview tree display");
   DV->Title( window_title  );
   draw_whirl_tree( wn, show_expr );
@@ -320,7 +319,6 @@ DV=&dv;
   Callback callback;
   DV->Event_Loop( &callback );
 
-  //CXX_DELETE(DV, &DV_wv_mempool);
   DV      = NULL;
   Func_wn = NULL;
 

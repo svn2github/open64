@@ -186,7 +186,7 @@ public:
 static MRT mrt;
 
 
-static void Print_Register_Set( char* name, REGISTER_SET reg_set, ISA_REGISTER_CLASS cl )
+static void Print_Register_Set( const char* name, REGISTER_SET reg_set, ISA_REGISTER_CLASS cl )
 {
   if( REGISTER_SET_EmptyP( reg_set ) )
     return;

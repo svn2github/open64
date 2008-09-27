@@ -259,7 +259,8 @@ typedef enum
 {
   REORDER_DISABLE = 0,
   REORDER_BY_NODE_FREQ = 1,
-  REORDER_BY_EDGE_FREQ = 2
+  REORDER_BY_EDGE_FREQ = 2,
+  REORDER_BY_BFS = 3
 } PU_REORDER_SCHEME;
 
 extern PU_REORDER_SCHEME IPA_Enable_PU_Reorder; /* Procedure reordering */
@@ -340,6 +341,8 @@ extern char    *INLINE_Script_Name;
 extern BOOL   INLINE_Enable_Script;
 
 extern UINT32  IPA_Max_Density;
+
+extern BOOL IPA_Enable_Old_Type_Merge;
 
 extern BOOL IPA_Enable_Devirtualization;
 

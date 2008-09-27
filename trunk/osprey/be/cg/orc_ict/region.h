@@ -304,7 +304,7 @@ class REGIONAL_CFG_NODE {
    
 friend class REGIONAL_CFG;
 friend class SCHEDULER;
-friend BB *RGN_Divide_BB(BB *bb, OP *point);
+friend BB *RGN_Divide_BB(BB *bb, OP *point, BOOL force);
 private:    
     union source_node {
         REGION *r;
@@ -556,7 +556,7 @@ friend void RGN_Add_Regional_Cfg_Edge(BB *pred,BB *succ,REGIONAL_CFG *cfg);
 friend void RGN_Del_Regional_Cfg_Edge(BB *pred,BB *succ,REGIONAL_CFG *cfg);
 friend void Collect_Entry_BBs(REGION *rgn, BB_VECTOR *entries);
 friend void Collect_Exit_BBs(REGION *rgn, BB_VECTOR *exits);
-friend BB *RGN_Divide_BB(BB *bb, OP *point);
+friend BB *RGN_Divide_BB(BB *bb, OP *point, BOOL force);
 //------------------------------------
 // region verify functions as friends
 //------------------------------------

@@ -52,7 +52,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>                // ipl_summary.h needs it
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>                // ipl_summary.h needs it
+#endif /* defined(BUILD_OS_DARWIN) */
 
 #include "defs.h"
 #include "strtab.h"             // Current_Strtab
@@ -334,7 +338,7 @@ SUMMARY_FORMAL::Trace_array ( INT32 size ) const
 }
 
 
-char *
+const char *
 SUMMARY_ACTUAL::Pass_type_name (void) const
 {
     switch (Get_pass_type()) {
@@ -367,7 +371,7 @@ SUMMARY_ACTUAL::Print (FILE *f, INT32 id) const
 
     fprintf (f, " ty_idx = 0x%x, ", Get_ty());
 
-    char *p = Pass_type_name ();
+    const char *p = Pass_type_name ();
     if (p)
 	fprintf (f, " %s, ", p);
     else
@@ -392,7 +396,7 @@ SUMMARY_ACTUAL::Print_array (FILE *f, INT32 size) const
 
 
 
-char *
+const char *
 SUMMARY_VALUE::Const_type_name (void) const
 {
     switch (Get_const_type()) {
@@ -511,7 +515,7 @@ SUMMARY_VALUE::Print_const_value (FILE *f, const SUMMARY_SYMBOL* symbol) const
 void
 SUMMARY_VALUE::Print (FILE *f, INT32 id) const
 {
-    char *p;
+    const char *p;
     
     fprintf (f, "VALUE[%d] : ", id);
     p = Const_type_name ();
@@ -804,7 +808,7 @@ SUMMARY_CONTROL_DEPENDENCE::Print_array (FILE *f, INT32 size) const
 // ====================================================================
 // ====================================================================
 
-char *
+const char *
 SUMMARY_SYMBOL::Get_Name ( void ) const
 {
     // Sort out impossible situations:
@@ -917,7 +921,7 @@ SUMMARY_SYMBOL::Print(FILE *fp,
       cc += sprintf(Modref_Buf+cc, " CDREF-PREG-ONLY");
   }
   if (Is_addr_saved() || Is_addr_f90_target() || Is_addr_passed()) {
-      char *sep = "";
+      const char *sep = "";
       fputs (" ADDR_TAKEN_AND_", fp );
       cc += sprintf( Modref_Buf+cc, " ADDR_TAKEN_AND_ ");
       if (Is_addr_saved()) {
@@ -1251,5 +1255,37 @@ SUMMARY_STRUCT_ACCESS::Trace ( INT32 id ) const
     Print ( TFile, id );
 }
 
+#ifdef KEY
+void
+SUMMARY_TY_INFO::Print ( FILE *fp ) const
+{
+  fprintf ( fp, "TYPE [%d]: ", Get_ty() ); 
+  if (Is_ty_no_split()) fprintf ( fp, "no_split " );
+
+  fprintf ( fp, "\n");
+} // SUMMARY_TY_INFO::Print
+
+void
+SUMMARY_TY_INFO::Print_array (FILE* fp, INT32 size ) const
+{
+  fprintf ( fp, "%sStart type array\n%s", SBar, SBar );
+  for ( INT i=0; i<size; ++i ) {
+    this[i].Print ( fp );
+  }
+  fprintf ( fp, "%sEnd type array \n%s", SBar, SBar );
+}
+
+void
+SUMMARY_TY_INFO::Trace_array ( INT32 size ) const
+{
+  Print_array ( TFile, size );
+}
+
+void
+SUMMARY_TY_INFO::Trace ( void ) const
+{
+  Print ( TFile );
+}
+#endif
 
 

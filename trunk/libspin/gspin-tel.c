@@ -607,6 +607,9 @@ gs_flag_name (gs_code_t constructor, gs_int_t attribute, gs_count_t flag,
 	case GS_TYPE_LANG_SPECIFIC:	return "GS_TYPE_LANG_SPECIFIC";
         case GS_POINTER_TYPE_P:	        return "GS_POINTER_TYPE_P";
         case GS_AGGREGATE_VALUE_P:      return "GS_AGGREGATE_VALUE_P";
+        case GS_TYPE_BIG_ENDIAN:        return "GS_TYPE_BIG_ENDIAN";
+        case GS_TYPE_LITTLE_ENDIAN:     return "GS_TYPE_LITTLE_ENDIAN";
+        case GS_TYPE_EXPLICIT_ENDIAN:     return "GS_TYPE_EXPLICIT_ENDIAN";
       }
 
       // Differentiate the GS_...'s that share the same numerical ID.
@@ -853,7 +856,10 @@ gs_build_decl(gs_code_t code, gs_t node2)
   return res;
 }
 
-static inline gs_t
+#ifndef FE_GNU_4_2_0
+static inline
+#endif
+gs_t
 gs_build_2(gs_tree_code_class_t code_class, gs_code_t code, gs_t k0, gs_t k1)
 {
   gs_t root = gs_build_0(code_class, code);

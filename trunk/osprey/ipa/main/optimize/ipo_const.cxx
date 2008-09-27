@@ -391,7 +391,14 @@ Update_array_bounds (WN* pu)
             break;
           }
           // replace all LDIDs of the formal by the constant
-          else if (opr == OPR_LDID && WN_st(node) == st) {
+          else if (opr == OPR_LDID && WN_st(node) == st
+#ifdef KEY
+          // Bug 14197: Above, the STID was to the ST with offset 0, so
+          // we can only replace offset 0 LDIDs. Also note, there is really
+          // no check to limit this replacement to only formals.
+                   && WN_offset(node) == 0
+#endif
+		   ) {
             iter.Replace(WN_COPY_Tree(rhs));
           }
           ++iter;
@@ -770,6 +777,9 @@ Replace_Icall (TREE_ITER& iter, const WN* icall, ST* actual)
     for (INT i = 0; i < WN_kid_count (icall) - 1; ++i) {
 	WN_kid (call, i) = WN_kid (icall, i);
     }
+#ifdef KEY // bug 1050
+    WN_call_flag(call) = WN_call_flag(icall);
+#endif
     iter.Replace (call);
 } // Replace_Icall
 
@@ -1052,8 +1062,32 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
 			     w      /* current_pu */ ))
 	  continue;				  
 #endif
-	    // parameter passed by reference
-	    if (annot_node.Is_addr_of ()) {
+    //here we will met the recursive case, where in the following case
+    //   caller(){
+    //       x       = 0, y =0;
+    //       callee(x,y)//x, y both are by reference
+    //           }
+    //   callee(int p, int q){
+    //             p = 0;
+    //             q = 1
+    //            }
+    // since p and q are killed in callee, so it will cprop p,q in callee, but
+    // will cprop x, y in caller, will changed into
+    //   callee(0,0);
+    // this will introduce the problem in callee, where 0 are in rodata section,
+    // it try to modify the readonly section
+    // the safe fix here is just disable such optimization if we find this
+    // annot_node is passed by reference since we can't now if the callee have
+    // been cproped
+
+    //better fix is when the callee is done, if we can pass some information to
+    //the caller, then we will get better result.
+        
+    // parameter passed by reference
+//     if(annot_node.Is_addr_of ()){
+//       continue;
+//     }
+    if (annot_node.Is_addr_of ()) {
 		// "normal" case: we can peel off the LDA from the actual
 		const IPAA_NODE_INFO* mod_ref_info = node->Mod_Ref_Info ();
 		if (mod_ref_info &&
@@ -1221,30 +1255,6 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
     }
 #ifdef KEY
     Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
-#endif
-
-#ifndef KEY  // Not need it any more
-    if(k < i) {
-      // Need to Change function prototype
-      TY_IDX old_prototype = n->Get_PU().prototype;
-      TY_IDX new_prototype = Copy_TY( old_prototype );
-      TY& old_ty = Ty_Table[old_prototype];
-      TY& new_ty = Ty_Table[new_prototype];
-      TYLIST_IDX old_idx = old_ty.Tylist();
-      TYLIST_IDX new_idx;
-      New_TYLIST(new_idx) = Tylist_Table[old_idx++]; // For return type
-      new_ty.Set_tylist(new_idx);
-      for (i = 0; i < WN_num_formals(w); i++) {
-	WN* id = WN_kid(w,i);
-	if ((*cprop_annot)[i].Is_remove_param ())
-	  ++old_idx; // Skip this parameter
-        else
-	  New_TYLIST(new_idx) = Tylist_Table[old_idx++]; // For remained parameter
-      }
-      New_TYLIST(new_idx) = 0; // End of the list.
-
-      n->Get_PU().prototype = new_prototype;
-    }
 #endif
 
     if (n->Has_Aliased_Formal ()) {
@@ -1460,7 +1470,7 @@ IPO_propagate_globals(IPA_NODE *n)
     BOOL need_to_update_array_bounds = FALSE;
     WN* new_block = WN_CreateBlock();
     WN* pu = n->Whirl_Tree();
-#ifdef PATHSCALE_MERGE /* KEY */ // bug 12371
+#ifdef KEY // bug 12371
     LWN_Parentize(pu);
 #endif
     // ST_IDX_HASH_TABLE current_hash_table(8, &Temp_pool);

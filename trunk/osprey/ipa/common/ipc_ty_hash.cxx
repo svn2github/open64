@@ -86,6 +86,18 @@ Get_Kid_TY_IDX (TY_IDX ty_idx)
 // ======================================================================
 // Fast comparision of two TY's.  Correctness guaranteed by the assertion
 // at the beginning of Initialize_Type_Merging_Hash_Tables ()
+static inline BOOL
+operator== (const TY& ty1, const TY& ty2)
+{
+    const UINT64* p1 = reinterpret_cast<const UINT64*> (&ty1);
+    const UINT64* p2 = reinterpret_cast<const UINT64*> (&ty2);
+
+    return (p1 == p2 || (p1[0] == p2[0] &&
+			 p1[1] == p2[1] &&
+			 p1[2] == p2[2] &&
+			 ty1.Pu_flags() == ty2.Pu_flags()));
+}
+
 
 namespace
 {
@@ -104,15 +116,18 @@ namespace
 	size_t operator() (const TY& key) const {
 	    const UINT64 *p = reinterpret_cast<const UINT64*> (&key);
 	    UINT64 tmp;
-
-            // The alignment of TY_POINTER may be changed 
-            // after the pointed incomplete struct is upadted. 
-            // So add TY.u2 without last 3 bits.
-            tmp = (p[0] ^ p[1]) + p[2] + TY_IDX_without_attribute(key.Pu_flags());
-            // If TY is anonymous, do not add its name.
-            if (TY_anonymous(key))
-                tmp -= p[2];
-
+            if (IPA_Enable_Old_Type_Merge) {
+                tmp  = (p[0] ^ p[1]) + p[2] + key.Pu_flags();
+            }
+            else {
+                // The alignment of TY_POINTER may be changed 
+                // after the pointed incomplete struct is upadted. 
+                // So add TY.u2 without last 3 bits.
+                tmp = (p[0] ^ p[1]) + p[2] + TY_IDX_without_attribute(key.Pu_flags());
+                // If TY is anonymous, do not add its name.
+                if (TY_anonymous(key))
+                    tmp -= p[2];
+            }
 	    return (size_t) (tmp ^ (tmp >> 32));
 	}
     };
@@ -140,14 +155,25 @@ namespace
                         return FALSE;
                 }
             }
-            return k1.u2.etype == k2.u2.etype;
+            if (k1.u2.etype == k2.u2.etype)
+                return TRUE;
+            // The alignment of TY_POINTER may be changed
+            // after the pointed incomplete struct is upadted.
+            // So compare TY.u2 without last 3 bits if the TY is pointer.
+            return TY_kind(k1) == KIND_POINTER &&
+                   TY_IDX_without_attribute(k1.u2.pointed) 
+                   == TY_IDX_without_attribute(k2.u2.pointed);
         }
     };
 }
 
+// This type is used in old type merge phase, it should be removed when the old type merge is removed.
+typedef hashtable<TY_IDX, TY, TY_HASH, TY_EXTRACT_KEY, equal_to<TY>,
+		  mempool_allocator<TY_IDX> > TY_HASH_TABLE;
+
 // This is the new type hash table used in new type merge phase
 typedef hashtable<TY_IDX, TY, TY_HASH, TY_EXTRACT_KEY, TY_IS_EQUIVALENT,
-                  mempool_allocator<TY_IDX> > TY_HASH_TABLE;
+                  mempool_allocator<TY_IDX> > NEW_TY_HASH_TABLE;
 
 
 // We steal a bit from the XXX_IDX to distinguish between real IDX and the
@@ -190,25 +216,38 @@ namespace
 	    size_t value = 0;
 	    if (Is_File_Idx (key)) {
 		const FLD* fld = fld_table + Get_Idx (key);
-                do {
-                    TY_IDX mapped_ty_idx = Get_Kid_TY_IDX(fld->type);
-                    // Do not care the last 3 bits of a TY
-                    // because they may be changed
-                    value += TY_IDX_without_attribute(mapped_ty_idx);
-                    if (!FLD_is_anonymous(fld))
-                        value += (*str_map)[fld->name_idx];
-               } while ((fld++->flags & FLD_LAST_FIELD) == 0);
+                if (IPA_Enable_Old_Type_Merge) {
+                    do {
+                        value +=
+                        Get_Kid_TY_IDX (fld->type) + (*str_map)[fld->name_idx];
+                    } while ((fld++->flags & FLD_LAST_FIELD) == 0);
+                }
+                else {
+                    do {
+                        TY_IDX mapped_ty_idx = Get_Kid_TY_IDX(fld->type);
+                        // Do not care the last 3 bits of a TY
+                        // because they may be changed
+                        value += TY_IDX_without_attribute(mapped_ty_idx);
+                        if (!FLD_is_anonymous(fld))
+                            value += (*str_map)[fld->name_idx];
+                   } while ((fld++->flags & FLD_LAST_FIELD) == 0);
+                }
 		return value;
 	    } else {
 		FLD_HANDLE fld (key);
 		FLD_ITER fld_iter = Make_fld_iter (fld);
 		do {
 		    fld = fld_iter;
-                    // Do not care the last 3 bits of a TY
-                    // because they may be changed
-                    value += TY_IDX_without_attribute(FLD_type (fld));
-                    if (!FLD_is_anonymous(fld))
-                        value += FLD_name_idx(fld);
+                    if (IPA_Enable_Old_Type_Merge) {
+                        value += FLD_type (fld) + FLD_name_idx (fld);
+                    }
+                    else {
+                        // Do not care the last 3 bits of a TY
+                        // because they may be changed
+                        value += TY_IDX_without_attribute(FLD_type (fld));
+                        if (!FLD_is_anonymous(fld))
+                            value += FLD_name_idx(fld);
+                    }
 		    ++fld_iter;
 		} while (! FLD_last_field (fld));
 		return value;
@@ -247,16 +286,23 @@ namespace
 	    do {
 		merged_fld = fld_iter;
 
-                if (TY_IDX_without_attribute(FLD_type (merged_fld)) !=
-                    TY_IDX_without_attribute((*ty_map)[new_fld->type]))
-                    return FALSE;
-                if (FLD_is_anonymous(merged_fld) || FLD_is_anonymous((FLD *)new_fld)) {
-                    if (FLD_is_anonymous(merged_fld) != FLD_is_anonymous((FLD *)new_fld))
-                        return FALSE;
+                if (IPA_Enable_Old_Type_Merge) {
+                    if (FLD_type (merged_fld) != (*ty_map)[new_fld->type] ||
+		        FLD_name_idx (merged_fld) != (*str_map)[new_fld->name_idx])
+		        return FALSE;
                 }
                 else {
-                    if (FLD_name_idx (merged_fld) != (*str_map)[new_fld->name_idx])
+                    if (TY_IDX_without_attribute(FLD_type (merged_fld)) !=
+                        TY_IDX_without_attribute((*ty_map)[new_fld->type]))
                         return FALSE;
+                    if (FLD_is_anonymous(merged_fld) || FLD_is_anonymous((FLD *)new_fld)) {
+                        if (FLD_is_anonymous(merged_fld) != FLD_is_anonymous((FLD *)new_fld))
+                            return FALSE;
+                    }
+                    else {
+                        if (FLD_name_idx (merged_fld) != (*str_map)[new_fld->name_idx])
+                            return FALSE;
+                    }
                 }
 
 		const UINT64* p1 = reinterpret_cast<const UINT64*> (new_fld);
@@ -383,15 +429,31 @@ namespace
 	    size_t value = 0;
 	    if (Is_File_Idx (key)) {
 		const TYLIST* tylist = tylist_table + Get_Idx (key);
-                while (*tylist != 0) {
-                    value += TY_IDX_without_attribute(Get_Kid_TY_IDX(*tylist));
-                    ++tylist;
+                if (IPA_Enable_Old_Type_Merge) {
+                    while (*tylist != 0) {
+                        value += Get_Kid_TY_IDX (*tylist);
+                        ++tylist;
+                    }
+                }
+                else {
+                    while (*tylist != 0) {
+                        value += TY_IDX_without_attribute(Get_Kid_TY_IDX(*tylist));
+                        ++tylist;
+                    }
                 }
 	    } else {
 		TYLIST_ITER tylist_iter = Make_tylist_iter (key);
-                while (*tylist_iter != 0) {
-                    value += TY_IDX_without_attribute(*tylist_iter);;
-                    ++tylist_iter;
+                if (IPA_Enable_Old_Type_Merge) {
+                    while (*tylist_iter != 0) {
+                        value += *tylist_iter;
+                        ++tylist_iter;
+                    }
+                }
+                else {
+                    while (*tylist_iter != 0) {
+                        value += TY_IDX_without_attribute(*tylist_iter);;
+                        ++tylist_iter;
+                    }
                 }
 	    }
 	    return (~value);
@@ -425,16 +487,22 @@ namespace
 	    }
 
 	    while (*new_tylist != 0) {
-                // First, compare the TY without alignment
-                if (TY_IDX_without_attribute((*ty_map)[*new_tylist])
-                    != TY_IDX_without_attribute(*merged_tylist))
-                    return FALSE;
-                // If the alignments of the 2 TYs are different 
-                // and they are both larger than 1, the 2 TYLIST are different
-                if (TY_align((*ty_map)[*new_tylist]) != TY_align(*merged_tylist)
-                    && TY_align((*ty_map)[*new_tylist]) > 1
-                    && TY_align(*merged_tylist) > 1)
-                    return FALSE;
+                if (IPA_Enable_Old_Type_Merge) {
+		    if ((*ty_map)[*new_tylist] != *merged_tylist)
+		        return FALSE;
+                }
+                else {
+                    // First, compare the TY without alignment
+                    if (TY_IDX_without_attribute((*ty_map)[*new_tylist])
+                        != TY_IDX_without_attribute(*merged_tylist))
+                        return FALSE;
+                    // If the alignments of the 2 TYs are different 
+                    // and they are both larger than 1, the 2 TYLIST are different
+                    if (TY_align((*ty_map)[*new_tylist]) != TY_align(*merged_tylist)
+                        && TY_align((*ty_map)[*new_tylist]) > 1
+                        && TY_align(*merged_tylist) > 1)
+                        return FALSE;
+                }
 		++new_tylist;
 		++merged_tylist;
 	    }
@@ -495,14 +563,20 @@ Partial_Compare_Fld (FLD_HANDLE merged_fld, const FLD* new_fld)
     FLD_ITER fld_iter = Make_fld_iter (merged_fld);
 
     do {
-        if (FLD_is_anonymous(fld_iter) || FLD_is_anonymous(new_fld)) {
-            if (FLD_is_anonymous(fld_iter) != FLD_is_anonymous(new_fld))
-                return FALSE;
+        if (IPA_Enable_Old_Type_Merge) {
+	    if (FLD_name_idx (fld_iter) != (*str_map)[new_fld->name_idx])
+	        return FALSE;
         }
         else {
-            if (FLD_name_idx(fld_iter) != (*str_map)[new_fld->name_idx])
-                return FALSE;
-        }            
+            if (FLD_is_anonymous(fld_iter) || FLD_is_anonymous(new_fld)) {
+                if (FLD_is_anonymous(fld_iter) != FLD_is_anonymous(new_fld))
+                    return FALSE;
+            }
+            else {
+                if (FLD_name_idx(fld_iter) != (*str_map)[new_fld->name_idx])
+                    return FALSE;
+            }            
+        }
 
 	const UINT64* p1 = reinterpret_cast<const UINT64*> (&(*fld_iter));
 	const UINT64* p2 = reinterpret_cast<const UINT64*> (new_fld);
@@ -679,10 +753,103 @@ namespace
 
     struct partial_ty_hash {
 	size_t operator() (TY_INDEX idx) const {
+
+            if (!IPA_Enable_Old_Type_Merge) {
                 // Use the new hash function.
                 // The old one did not consider anonymous TYs and fields,
                 // changed pointer alignment, etc.
                 return recursive_ty_hash(idx);            
+            }
+
+	    const TY& ty = Is_File_Idx (idx) ?
+		ty_table[Get_Idx (idx)] : Ty_Table[make_TY_IDX (idx)];
+
+	    const UINT32* p = reinterpret_cast<const UINT32*> (&ty);
+	    size_t value = p[0] + p[1] + p[2];
+
+	    switch (TY_kind (ty)) {
+	    case KIND_SCALAR:
+	    case KIND_VOID:
+	    default:
+		Fail_FmtAssertion ("Unexpected TY_kind in recursive type %d\n",
+				   TY_kind (ty));
+
+	    case KIND_POINTER:
+		{
+		    const TY& pointed = Is_File_Idx (idx) ?
+			ty_table[TY_IDX_index (TY_pointed (ty))] :
+			Ty_Table[TY_pointed (ty)];
+		    p = reinterpret_cast<const UINT32*> (&pointed);
+		    return ~(value + (p[0] + p[1] + p[2]));
+		}
+		
+	    case KIND_ARRAY:
+		if (Is_File_Idx (idx)) {
+		    const ARB* arb = arb_table + ty.Arb ();
+		    UINT dim = arb->dimension;
+		    value = arb->flags + dim;
+		    for (UINT i = 0; i < dim; ++i) {
+		    value += (arb->Lbnd_val () + arb->Ubnd_val () +
+			      arb->Stride_val ()) << i;
+		    }
+		} else {
+		    ARB_ITER arb_iter = Make_arb_iter (TY_arb (ty));
+		    UINT dim = ARB_dimension (arb_iter);
+		    value = ARB_flags (arb_iter) + dim;
+		    for (UINT i = 0; i < dim; ++i) {
+			ARB_HANDLE arb (arb_iter);
+			++arb_iter;
+			value += (ARB_lbnd_val (arb) + ARB_ubnd_val (arb) +
+				  ARB_stride_val (arb)) << i;
+		    } 
+		}
+		return ~value;
+		
+		
+	    case KIND_STRUCT:
+		if (ty.Fld () == 0)
+		    return ~value;
+		
+		if (Is_File_Idx (idx)) {
+		    value += (*str_map)[TY_name_idx (ty)];
+		    const FLD* fld = fld_table + ty.Fld ();
+		    do {
+			value += (*str_map)[fld->name_idx];
+		    } while ((fld++->flags & FLD_LAST_FIELD) == 0);
+		} else {
+		    value += TY_name_idx (ty);
+		    FLD_ITER fld_iter = Make_fld_iter (TY_fld (ty));
+		    BOOL done = FALSE;
+		    do {
+			value += FLD_name_idx (fld_iter);
+			done = FLD_last_field (fld_iter);
+			++fld_iter;
+		    } while (!done);
+		}
+		return ~value;
+		    
+	    case KIND_FUNCTION:
+		if (Is_File_Idx (idx)) {
+		    value += (*str_map)[TY_name_idx (ty)];
+		    const TYLIST* tylist = tylist_table + TY_tylist (ty);
+		    while (*tylist != 0) {
+			const TY* parm_ty = ty_table + TY_IDX_index (*tylist);
+			p = reinterpret_cast<const UINT32*> (parm_ty);
+			value += (p[0] + p[1] + p[2]);
+			++tylist;
+		    }
+		} else {
+		    value += TY_name_idx (ty);
+		    TYLIST_ITER tylist = Make_tylist_iter (TY_tylist (ty));
+		    while (*tylist != 0) {
+			const TY& parm_ty = Ty_Table[*tylist];
+			p = reinterpret_cast<const UINT32*> (&parm_ty);
+			value += (p[0] + p[1] + p[2]);
+			++tylist;
+		    }
+		}
+		return ~value;
+	    }
 	}
     }; // partial_ty_hash
 
@@ -690,6 +857,60 @@ namespace
     struct ty_index_compare {
 	BOOL operator() (TY_INDEX idx1, TY_INDEX idx2) const {
 
+            if (IPA_Enable_Old_Type_Merge) {
+                if (idx1 == idx2)
+		    return TRUE;
+
+	        if (!Is_File_Idx (idx1) && !Is_File_Idx (idx2))
+		    return idx1 == idx2;
+
+	        Is_True (!Is_File_Idx (idx1) || !Is_File_Idx (idx2),
+		         ("Invalid TY_INDEX in recursive_ty_hash_table"));
+
+	        const TY& new_ty = Is_File_Idx (idx1) ? ty_table[Get_Idx (idx1)] :
+		    ty_table[Get_Idx (idx2)];
+	        const TY& merged_ty = Is_File_Idx (idx1) ?
+		    Ty_Table[make_TY_IDX (idx2)] : Ty_Table[make_TY_IDX (idx1)];
+
+	        if (TY_size (new_ty) != TY_size (merged_ty) ||
+		    (*str_map)[TY_name_idx (new_ty)] != TY_name_idx (merged_ty))
+		    return FALSE;
+
+	        const UINT32* p1 = reinterpret_cast<const UINT32*> (&new_ty);
+	        const UINT32* p2 = reinterpret_cast<const UINT32*> (&merged_ty);
+
+	        if (p1[2] != p2[2])
+		    return FALSE;
+	    
+	        switch (TY_kind (new_ty)) {
+	        case KIND_SCALAR:
+	        case KIND_VOID:
+	        default:
+		    Fail_FmtAssertion ("Unexpected TY_kind in recursive type %d\n",
+		                       TY_kind (new_ty));
+
+	        case KIND_POINTER:
+		    return (TY_IDX_Attributes (TY_pointed (new_ty)) ==
+		    	    TY_IDX_Attributes (TY_pointed (merged_ty)));
+		
+	        case KIND_ARRAY:
+		    if (TY_IDX_Attributes (TY_etype (new_ty)) !=
+		        TY_IDX_Attributes (TY_etype (merged_ty)))
+		        return FALSE;
+		    return Partial_Compare_Arb (TY_arb (merged_ty),
+					        arb_table + new_ty.Arb ());
+
+	        case KIND_STRUCT:
+		    if (new_ty.Fld () == 0 || merged_ty.Fld () == 0)
+		        return new_ty.Fld () == merged_ty.Fld ();
+		    return Partial_Compare_Fld (TY_fld (merged_ty),
+					        fld_table + new_ty.Fld ());
+		
+	        case KIND_FUNCTION:
+		    return (new_ty.Pu_flags () == merged_ty.Pu_flags ());
+	        }
+            }
+            else { // new type merge
                 if (idx1 == idx2)
                     return TRUE;
             
@@ -749,6 +970,7 @@ namespace
                     case KIND_FUNCTION:
                         return (ty1.Pu_flags () == ty2.Pu_flags ());
                 }
+            }
 	}
     }; // ty_index_compare
 } // namespace
@@ -760,7 +982,7 @@ typedef hash_multiset<TY_INDEX, partial_ty_hash, ty_index_compare,
 // ======================================================================
 
 
-static TY_HASH_TABLE* ty_hash_table;
+static NEW_TY_HASH_TABLE* ty_hash_table;
 static FLD_HASH_TABLE* fld_hash_table;
 static ARB_HASH_TABLE* arb_hash_table;
 static TYLIST_HASH_TABLE* tylist_hash_table;
@@ -768,6 +990,11 @@ static TYLIST_HASH_TABLE* tylist_hash_table;
 static RECURSIVE_TY_HASH_TABLE* recursive_table;
 
 typedef vector<TY_IDX, mempool_allocator<TY_IDX> > RECURSIVE_TYPE;
+
+// These 2 variables are only for old type merge, they should be removed when the old type merge is removed. 
+static RECURSIVE_TYPE *recursive_type;	// temp. record all TY_IDX of a
+					// newly inserted recursive type
+static UINT collecting_recursive_ty = 0;
 
 void
 Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
@@ -778,7 +1005,7 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
     
     // check if the assumption used by fast comparision of structs are valid
 #ifdef  __GNUC__
-#ifndef ARCH_MIPS
+#ifndef TARG_SL
     Is_True (sizeof(TY)  == 28 && __alignof__(TY)  == 4 &&
 	     sizeof(FLD) == 28 && __alignof__(FLD) == 4 &&
 	     sizeof(ARB) == 32 && __alignof__(ARB) == 4,
@@ -796,8 +1023,8 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 	      " TY sz %d al %d, FLD sz%d al %d, ARB sz %d al %d",
 	      sizeof(TY), __alignof__(TY), sizeof(FLD),
 	      __alignof__(FLD), sizeof(ARB), __alignof__(ARB)));
-#endif // ! TARG_MIPS
-#else
+#endif // ! TARG_SL
+#else // for SL as well as IRIX, this is guaranteed by compiler, except for packed data
     Is_True (sizeof(TY)  == 32 && __builtin_alignof(TY)  == 8 &&
 	     sizeof(FLD) == 32 && __builtin_alignof(FLD) == 8 &&
 	     sizeof(ARB) == 32 && __builtin_alignof(ARB) == 8,
@@ -807,7 +1034,7 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 	      __builtin_alignof(FLD), sizeof(ARB), __builtin_alignof(ARB)));
 #endif // __GNUC__
 #endif // 0
-    ty_hash_table = CXX_NEW (TY_HASH_TABLE (1000, TY_HASH (), TY_IS_EQUIVALENT(), 
+    ty_hash_table = CXX_NEW (NEW_TY_HASH_TABLE (1000, TY_HASH (), TY_IS_EQUIVALENT(), 
 					    TY_EXTRACT_KEY (), pool),
 			     pool);
     fld_hash_table = CXX_NEW (FLD_HASH_TABLE (100, FLD_HASH (),
@@ -831,6 +1058,9 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 
     for (UINT i = 1; i < TY_Table_Size (); ++i)
 	ty_hash_table->find_or_insert (make_TY_IDX (i));
+
+    if (IPA_Enable_Old_Type_Merge)
+        recursive_type = CXX_NEW (RECURSIVE_TYPE (pool), pool);
 
 } // Initialize_Type_Merging_Hash_Tables
 
@@ -934,6 +1164,10 @@ Insert_Unique_Ty (const TY& ty)
     TY_IDX& result = ty_hash_table->find_or_insert ((TY_IDX) -1);
     if (result == (TY_IDX) -1) {
         result = make_TY_IDX (Ty_tab.Insert (new_ty));
+        if (IPA_Enable_Old_Type_Merge) {
+            if (collecting_recursive_ty)
+	            recursive_type->push_back (result);
+        }
     }
     return result;
 }
@@ -946,9 +1180,13 @@ Insert_Allocated_Ty (TY& ty, TY_IDX ty_idx)
     ty_to_be_inserted = &ty;
     TY_IDX& result = ty_hash_table->find_or_insert ((TY_IDX) -1);
 
+    if (IPA_Enable_Old_Type_Merge)
+        Is_True (result == (TY_IDX) -1, ("Trying to insert duplicated TY"));
     result = ty_idx;
-    if (TY_kind(ty) == KIND_STRUCT)
-        struct_by_name_idx[ty.name_idx] = TY_IDX_index(ty_idx);
+    if (!IPA_Enable_Old_Type_Merge) {
+        if (TY_kind(ty) == KIND_STRUCT)
+            struct_by_name_idx[ty.name_idx] = TY_IDX_index(ty_idx);
+    }
 }
 
 
@@ -958,9 +1196,10 @@ Insert_Recursive_Type (TY_IDX ty_idx)
 {
     const TY& ty = Ty_Table[ty_idx];
 
-    if (TY_is_incomplete_struct(ty))
-        return;
-
+    if (!IPA_Enable_Old_Type_Merge) {
+        if (TY_is_incomplete_struct(ty))
+            return;
+    }
     switch (TY_kind (ty)) {
     case KIND_POINTER:
     case KIND_STRUCT:
@@ -968,6 +1207,39 @@ Insert_Recursive_Type (TY_IDX ty_idx)
 	recursive_table->insert (TY_IDX_index (ty_idx));
     }
 }
+
+// This function should be removed when the old type merge is removed.
+void
+Initialize_New_Recursive_Type (TY_IDX ty_idx)
+{
+    Is_True (collecting_recursive_ty || recursive_type->empty (),
+	     ("Found uninserted recursive types"));
+
+    ++collecting_recursive_ty;
+    recursive_type->push_back (ty_idx);
+} // Start_New_Recursive_Type
+
+
+void
+Finalize_New_Recursive_Type ()
+{
+    Is_True (collecting_recursive_ty, ("inconsistent recursive type"));
+
+    --collecting_recursive_ty;
+
+    if (collecting_recursive_ty != 0)
+	return;
+
+    for (RECURSIVE_TYPE::const_iterator i (recursive_type->begin ());
+	 i != recursive_type->end (); ++i) {
+
+	Insert_Recursive_Type (*i);
+    }
+    
+    recursive_type->erase (recursive_type->begin (), recursive_type->end ());
+    
+} // Finalize_New_Recursive_Type
+
 
 // go through the recursive hash table and find all the matching types
 void

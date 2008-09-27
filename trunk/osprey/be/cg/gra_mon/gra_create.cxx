@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -58,11 +54,11 @@
 //
 /////////////////////////////////////
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2005/10/21 19:00:00 $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_create.cxx,v $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_create.cxx,v $
+//  $Revision: 1.13 $
+//  $Date: 05/12/05 08:59:10-08:00 $
+//  $Author: bos@eng-24.pathscale.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_create.cxx $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_create.cxx $
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -70,11 +66,8 @@
 #pragma hdrstop
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_create.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_create.cxx $ $Revision: 1.13 $";
 #endif
-
-#include <list>
-#include <vector>
 
 #include "defs.h"
 #include "mempool.h"
@@ -98,14 +91,17 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_cflow.h"
 #include "gra_pref.h"
 #include "register.h"
-
+#ifdef TARG_SL2 //para_region_mgr
+#include "gra_para_region.h"
+#endif 
 #include "tracing.h"
 
 #define FREE(ptr) MEM_POOL_FREE(Malloc_Mem_Pool,ptr)
+
 INT GRA_non_preference_tn_id = -1;
 static BOOL gbb_needs_rename;   // Some local renaming required for a GBB
                                 // due to a cgprep failure.  DevWarn and
-                               // rename for robustness.
+                                // rename for robustness.
 
 #ifdef TARG_IA64
 BOOL fat_self_recursive = FALSE;
@@ -478,9 +474,19 @@ Create_GRA_BBs_And_Regions(void)
   for ( bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ) {
     GRA_REGION* region = gra_region_mgr.Get(BB_rid(bb));
     GRA_BB*     gbb    = gbb_mgr.Create(bb,region);
-
     region->Add_GBB(gbb);
     gra_loop_mgr.Set_GBB_Loop(gbb);
+
+#ifdef TARG_SL //minor_reg_mgr
+    RID * rid = BB_rid(bb);
+    GRA_PARA_REGION* para_region = gra_para_region_mgr.Get(rid);
+    if(rid && RID_TYPE_minor(rid)) {
+	gra_para_region_mgr.Add_Rid_Into_Minor_Vector(rid);
+    }	
+    if(para_region) 
+	para_region->Add_BB(bb);
+#endif
+
 
     if (!GRA_use_old_conflict) {
       GTN_SET*    needs_a_register = GTN_SET_Create(GTN_UNIVERSE_size,
@@ -584,7 +590,7 @@ Scan_Region_BB_For_Referenced_TNs( GRA_BB* gbb )
       Region_TN_Reference(tn,region);
     }
 #endif
-    
+
     OP *op;
     FOR_ALL_BB_OPs(bb, op) {
       for (INT j = 0; j < OP_opnds(op); j++) {
@@ -787,7 +793,6 @@ Create_LRANGEs(void)
 #ifdef TARG_IA64 
   Create_Global_Dedicated_TN_LRANGEs();
 #endif
-
   GRA_Trace_Memory("After Create_LRANGEs()");
 }
 
@@ -1455,7 +1460,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 #ifdef TARG_IA64
       Build_GTN_In_List(op_tn,gbb->Bb());
 #endif
-
     }
 
     for ( i = OP_results(xop) - 1; i >= 0; --i ) {
@@ -1482,17 +1486,16 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 	  }
       } 
 #else
-	if (OP_cond_def(xop)) {
-    if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
-      if (!lunit->Has_Def()) {
-	lunit->Has_Exposed_Use_Set();
-	gpl->Exposed_Use_Set(TRUE);
+      if (OP_cond_def(xop)) { // there is a hidden use
+        if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
+          if (!lunit->Has_Def()) {
+	    lunit->Has_Exposed_Use_Set();
+	    gpl->Exposed_Use_Set(TRUE);
+	  }
+        } else if (!gpl->Num_Defs()) {
+	  gpl->Exposed_Use_Set(TRUE);
+        }
       }
-    } else if (!gpl->Num_Defs()) {
-      
-      gpl->Exposed_Use_Set(TRUE);
-    }
-	}
 #endif // TARG_IA64
 
       gpl->Num_Defs_Set(gpl->Num_Defs() + 1);
@@ -1664,18 +1667,16 @@ Create_LUNITs(void)
 /////////////////////////////////////
 {
   GRA_REGION_GBB_ITER gbb_iter;
-  int i;
   GRA_Init_Trace_Memory();
 
   MEM_POOL_Push(&MEM_local_nz_pool);
   Initialize_Wired_LRANGEs();
-  
+
   for (gbb_iter.Init(gra_region_mgr.Complement_Region()); ! gbb_iter.Done();
        gbb_iter.Step() ) {
     GRA_BB* gbb = gbb_iter.Current();
     Scan_Complement_BB_For_Referenced_TNs(gbb);
   }
-
   MEM_POOL_Pop(&MEM_local_nz_pool);
   GRA_Trace_Memory("After Create_LUNITs()");
 }
@@ -1902,10 +1903,6 @@ Add_To_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
-
-if ( lrange==NULL ){
-  return;
-}
   LRANGE* lrange1;
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
@@ -1936,9 +1933,6 @@ Remove_From_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
-  if ( lrange==NULL ){
-    return;
-  }
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
   LRANGE_SET*         set = live_lrange_sets[rc];
@@ -2243,6 +2237,51 @@ Compute_GRA_Fat_Point(void) {
  
 }
 #endif // TARG_IA64
+
+#ifdef TARG_SL //minor_reg_alloc
+/* this function is used to mark flag for lrange which spans multi regions and 
+  * this flags is used to update exclude set for each parallel body in minor mode
+  */
+void 
+Mark_Lrange_For_Minor_Thread()
+{
+    ISA_REGISTER_CLASS rc;
+    GRA_REGION_RC_NL_LRANGE_ITER iter0;
+    GRA_REGION_GBB_ITER          gbb_iter;
+    GRA_REGION *region = gra_region_mgr.Complement_Region();
+
+//    FOR_ALL_ISA_REGISTER_CLASS( rc ) {
+      rc = ISA_REGISTER_CLASS_integer;
+      for (iter0.Init(region,rc); ! iter0.Done(); iter0.Step()) {
+	 LRANGE* lrange0 = iter0.Current();
+	 LRANGE_LIVE_GBB_ITER live_gbb_iter;
+	 LRANGE_LUNIT_ITER lunit_iter; 
+/*  for now we think the rid_count greater than 2 means the lrange spans multi-region, 
+  *  there only two parallel regions active at same time in minor mode
+  */ 
+        vector<INT> met_rid;
+        for (lunit_iter.Init(lrange0); !lunit_iter.Done(); lunit_iter.Step()) 
+        {
+            LUNIT* lunit = lunit_iter.Current();
+	     GRA_BB *live_gbb = lunit->Gbb();
+	     BB* bb = live_gbb->Bb();
+	     if(BB_rid(bb) && RID_TYPE_minor(BB_rid(bb))) {  // NULL for func_entry region 
+              if(find(met_rid.begin(), met_rid.end(), RID_id(BB_rid(bb))) == met_rid.end()) {
+                 met_rid.push_back(RID_id(BB_rid(bb)));
+              }		
+	     }
+	 }
+	 if(met_rid.size() > 1 && met_rid.size() < 3) 
+	 {
+	    lrange0->Spans_Multiregions_Set();
+	 }
+	 met_rid.clear();
+      }
+//}
+   
+}
+#endif 
+
 /////////////////////////////////////
 void
 GRA_Create(void)
@@ -2258,6 +2297,10 @@ GRA_Create(void)
 #ifdef TARG_IA64
   Compute_GRA_Fat_Point();
 #endif
+#ifdef TARG_SL //minor_reg_alloc
+  Mark_Lrange_For_Minor_Thread();
+#endif
+
 }
 
 

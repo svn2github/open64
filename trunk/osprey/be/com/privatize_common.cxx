@@ -40,10 +40,10 @@
 //-*-c++-*-
 /* ====================================================================
  * Module: privatize_common.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/privatize_common.cxx,v $
+ * $Revision: 1.22 $
+ * $Date: 06/02/01 15:18:44-08:00 $
+ * $Author: gautam@jacinth.keyresearch $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.privatize_common.cxx $
  *
  * Revision history:
  *  11-12-97 : First created by Dave Kohr
@@ -56,7 +56,11 @@
  * ==================================================================== */
 
 #include <alloca.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <stdio.h>
 
 #include "privatize_common.h"
@@ -579,8 +583,8 @@ Rename_Threadprivate_COMMON(WN* pu, WN* parent, WN *wn, RENAMING_STACK *stack, R
                                   WN_rtype(wn), 
                                   WN_desc(wn)),
                    ofst,
-                   Be_Type_Tbl(TY_mtype(ST_type(st))),
-                   Make_Pointer_Type(Be_Type_Tbl(TY_mtype(ST_type(st))),FALSE),
+                   ST_type(st),
+                   Make_Pointer_Type(ST_type(st),FALSE),
                    WN_CreateLdid(
                      OPCODE_make_op(OPR_LDID,
                                     TY_mtype(ST_type(new_st)),
@@ -597,7 +601,7 @@ Rename_Threadprivate_COMMON(WN* pu, WN* parent, WN *wn, RENAMING_STACK *stack, R
         new_wn = WN_CreateIstore(
                    OPCODE_make_op(OPR_ISTORE,WN_rtype(wn),WN_desc(wn)),
                    ofst,
-                   Make_Pointer_Type(Be_Type_Tbl(TY_mtype(ST_type(st))),FALSE),
+                   Make_Pointer_Type(ST_type(st),FALSE),
                    WN_COPY_Tree(WN_kid(wn,0)),
                    WN_CreateLdid(
                      OPCODE_make_op(OPR_LDID,

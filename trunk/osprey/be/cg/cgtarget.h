@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
- */
-
-/*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -346,9 +338,9 @@
  *        advanced or check load. Assumes that <memop> is a load operation.
  *  
  *	INT CGTARG_Analyze_Compare(OP *br,
- *				   TN **tn1, 
- *				   TN **tn2, 
- *				   OP **compare_op)
+ *				       TN **tn1, 
+ *				       TN **tn2, 
+ *				       OP **compare_op)
  *	  Analyze a branch to determine the condition of the branch and
  *	  TNs being compared. Where possible and appropriate if the branch
  *	  is based on the result of an slt instruction, take that in to
@@ -365,9 +357,7 @@
  *	  NOTES: Currently restricted to integer branches; also see
  *	  CGTARG_Analyze_Branch
  *
- *      INT CGTARG_Analyze_Branch(OP *br,
- *				  TN **tn1, 
- *				  TN **tn2)
+ *      VARIANT CGTARG_Analyze_Branch(OP *br, TN **tn1, TN **tn2)
  *	  Analyze a branch to determine the condition of the branch and
  *	  the operand TNs.
  * 
@@ -534,10 +524,10 @@
  */
 
 /* 
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cgtarget.h,v $
+ * $Revision: 1.15 $
+ * $Date: 05/12/05 08:59:06-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.cgtarget.h $
  */
 
 #ifndef CGTARGET_INCLUDED
@@ -562,7 +552,6 @@ extern UINT32 CGTARG_branch_taken_penalty;
 extern BOOL CGTARG_branch_taken_penalty_overridden;
 
 #include "cgtarget_arch.h"
-
 
 class CG_GROUPING; // Defined only for isa where it is used (e.g. IA-64).
 
@@ -817,7 +806,7 @@ extern void CGTARG_Init_Asm_Constraints (void);
 /* Given a constraint for an ASM parameter, and the load of the matching
  * argument passed to ASM (possibly NULL), choose an appropriate TN for it
  */
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
 extern TN* CGTARG_TN_For_Asm_Operand(const char* constraint, 
                                      const WN* load,
                                      TN* pref_tn,
@@ -836,7 +825,7 @@ extern void CGTARG_TN_And_Name_For_Asm_Constraint (char *constraint,
                                                    TYPE_ID rtype, 
                                                    TYPE_ID desc,
                                                    TN **tn, 
-                                                   char **name);
+                                                   const char **name);
 
 /* may have to clean up the asm string */
 extern void CGTARG_Postprocess_Asm_String (char* asm_string);
@@ -865,11 +854,14 @@ inline BOOL CGTARG_Use_Load_Latency(OP *pred_op, TN *tn)
 #endif
 }
 
+#if defined(TARG_IA64) || defined(TARG_X8664)
 /* return TRUE iff op is load with UNAT bit (IA64)*/
 extern BOOL CGTARG_Load_with_UNAT (OP* op); 
 
 /* return TRUE iff op is store with UNAT bit (IA64) */
 extern BOOL CGTARG_Store_With_UNAT (OP* op);
+
+#endif
 
 /* Returns TRUE if OP is a suitable candidate for HBF. */
 extern BOOL CGTARG_Check_OP_For_HB_Suitability(OP *op);

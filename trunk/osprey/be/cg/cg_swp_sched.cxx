@@ -100,10 +100,8 @@ void MinDist::Print(FILE *fp) const
 
 MinDist::MinDist(const SWP_OP_vector& v, INT start, INT stop, INT branch, INT ii)
 {
-  #if (!SWP_USE_STL)
   int n_ops = v.size();
   mindist_size = n_ops;
-  #endif
   
   INT step = ii;
   INT ii_lower = ii;

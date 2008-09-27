@@ -100,7 +100,7 @@
  * ====================================================================
  */
 
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 
 
 /* sgi includes */
@@ -1529,7 +1529,7 @@ fei_label_addr(INTPTR lbl_idx)
   WN *wn;
   INT32 *assign_id;
 
-  assign_id = cwh_auxst_assign_id(CURRENT_SYMTAB, cast_to_LB(lbl_idx));
+  assign_id = cwh_auxst_assign_id(CURRENT_SYMTAB, LABEL_IDX_index((LABEL_IDX)lbl_idx));
 
   if (*assign_id == -1)
      *assign_id = cwh_assign_label_id++;
@@ -2808,7 +2808,7 @@ cwh_stmt_return_scalar(ST *st, WN * rv, TY_IDX  rty, BOOL callee_return)
       }
       else {
 
-# ifdef linux
+# if (defined(linux) || defined(BUILD_OS_DARWIN))
         wn2 = cwh_addr_load_ST(st,0,0);
         wn = WN_CreateReturn_Val (OPR_RETURN_VAL, TY_mtype (rty), MTYPE_V, wn2);
 # else
@@ -3956,7 +3956,7 @@ fei_allocate(INT32 count)
    /* Fill in the temp */
    DevAssert((WN_opcode(ver) == OPC_I8INTCONST),("Expected I8INTCONST for allocate version."));
    if (Pointer_Size == 4) {
-# ifdef linux
+# if defined(linux) || defined(BUILD_OS_DARWIN)
       vernum = WN_const_val(ver) & (0xffffffff);
       cwh_block_append(cwh_addr_stid(temp_st,0,pty,
                                       WN_Intconst(Pointer_Mtype,vernum)));
@@ -4047,7 +4047,7 @@ cwh_stmt_add_parallel_pragmas(void)
  * value	Initial value for symbol
  */
 static void
-export_i4_sym(char *symname, int value) {
+export_i4_sym(const char *symname, int value) {
   TY_IDX int_ty_idx = MTYPE_To_TY(MTYPE_I4);
   ST *st = New_ST(GLOBAL_SYMTAB);
   cwh_auxst_clear(st);

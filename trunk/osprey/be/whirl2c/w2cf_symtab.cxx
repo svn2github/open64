@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: w2cf_symtab.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2c/w2cf_symtab.cxx,v $
+ * $Revision: 1.11 $
+ * $Date: 2006/10/09 20:11:01 $
+ * $Author: wychen $
+ * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/w2cf_symtab.cxx,v $
  *
  * Revision history:
  *  07-Oct-95 - Original Version
@@ -76,7 +76,8 @@
  * ====================================================================
  */
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2c/w2cf_symtab.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/w2cf_symtab.cxx,v $ $Revision: 1.11 $";
+
 #endif /* _KEEP_RCS_ID */
 
 #include <ctype.h>
@@ -255,7 +256,7 @@ static W2CF_SYMBOL       *Symbol_Free_List = NULL;
 static const char W2CF_Anonymous_Fld[] = "fld";
 static const char W2CF_Anonymous_Ty[] = "ty";
 static const char W2CF_Anonymous_St[] = "anon";
-static const char W2CF_Anonymous_Tempvar[] = "tmp";
+static const char W2CF_Anonymous_Tempvar[] = "_tmp";
 static const char W2CF_Anonymous_Preg[] = "reg";
 
 
@@ -416,6 +417,12 @@ W2CF_Avoid_Suffix(W2CF_SYMBOL *symbol )
 	avoid = TRUE;
     }
 #endif
+
+  // shouldn't suffixs  be avoided for TY entries???
+    if (W2CF_SYMBOL_kind(symbol) == SYMKIND_TY) {
+      avoid = TRUE;
+    }
+
   return avoid;
 }
 
@@ -876,18 +883,39 @@ W2CF_Symtab_Nameof_St(const ST *st)
    {
       valid_name = W2CF_Get_Ftn_St_Name(st, valid_name);
    }
+
+   // don't think there's any reason to rename function names
+   if (ST_sym_class(st) == CLASS_FUNC) {
+     return valid_name;
+   }
+
    symname = Get_Name_Buf_Slot(strlen(valid_name) + 32);
    W2CF_Get_Basename(valid_name, symname, &symid);
-   
+
    /* Get the associated symbol entry (with a possibly modified symid).
     */
    W2CF_SYMBOL_symid(&match_symbol) = symid;
    W2CF_SYMBOL_kind(&match_symbol)  = SYMKIND_ST;
    W2CF_SYMBOL_st(&match_symbol)    = st;
    W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, symname);
-   
+
+   //fprintf(stderr, "%s %s\n", W2CF_SYMBOL_name_string(symtab, symbol), ST_name(st));
+
+   char * name =  W2CF_SYMBOL_name_string(symtab, symbol);
+   if (!ST_is_temp_var(st) && strcmp(name, ST_name(st)) != 0) {
+     // An user variable's name has been mangled by whirl2c.  To avoid conflicts with other user variables,
+     // we add a "_w2c_" prefix to it.
+     // Note that this is safe because the content of buf has been copied (via Append_Token_String)
+     // before Nameof_St is invoked the next time
+     static char buf[256];
+     BZERO(buf, sizeof(buf));
+     strcpy(buf, "_w2c_");
+     strncat(buf, W2CF_SYMBOL_name_string(symtab, symbol), 248);
+     return buf;
+   }
    /* Return the resultant disambiguated name */
-   return W2CF_SYMBOL_name_string(symtab, symbol);
+   // return W2CF_SYMBOL_name_string(symtab, symbol);
+   return name;
    
 } /* W2CF_Symtab_Nameof_St */
 
@@ -953,6 +981,12 @@ W2CF_Symtab_Nameof_Ty(TY_IDX ty)
    W2CF_SYMBOL_kind(&match_symbol)  = SYMKIND_TY;
    W2CF_SYMBOL_ty(&match_symbol)    = ty;
    W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, symname);
+
+   // for structs, we output the valid_name directly
+   //(so different structs will have different names)
+   if (TY_kind(ty) == KIND_STRUCT) {
+     return valid_name;
+   }
    
    /* Return the resultant disambiguated name */
    return W2CF_SYMBOL_name_string(symtab, symbol);
@@ -982,7 +1016,11 @@ W2CF_Symtab_Nameof_Fld(FLD_HANDLE fld)
    }
    symname = Get_Name_Buf_Slot(strlen(valid_name) + 32);
    W2CF_Get_Basename(valid_name, symname, &symid);
-   
+
+     return valid_name;
+   // is this really necessary? I think there's no need to rename fields in a struct
+   //(How could you possibly get conflicts?)
+
    /* Get the associated symbol entry (with a possibly modified symid).
     */
    W2CF_SYMBOL_symid(&match_symbol) = symid;
@@ -1090,9 +1128,10 @@ W2CF_Symtab_Nameof_Preg(const TY_IDX preg_ty, PREG_NUM preg_num)
       sprintf(symname, "%s%d", W2CF_Anonymous_Preg, preg_num);
       valid_name = symname;
    }
+
    symname = Get_Name_Buf_Slot(strlen(valid_name) + 32);
    W2CF_Get_Basename(valid_name, symname, &symid);
-   
+
    /* Get the associated symbol entry (with a possibly modified symid).
     */
    W2CF_SYMBOL_symid(&match_symbol)    = symid;
@@ -1100,9 +1139,15 @@ W2CF_Symtab_Nameof_Preg(const TY_IDX preg_ty, PREG_NUM preg_num)
    W2CF_SYMBOL_preg_ty(&match_symbol)  = preg_ty;
    W2CF_SYMBOL_preg_num(&match_symbol) = preg_num;
    W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, symname);
+
+   static char buf[256];
+   BZERO(buf, sizeof(buf));
+   strcpy(buf, "_w2c_");
+   strncat(buf, W2CF_SYMBOL_name_string(symtab, symbol), 248);
    
    /* Return the resultant disambiguated name */
-   return W2CF_SYMBOL_name_string(symtab, symbol);
+   // return W2CF_SYMBOL_name_string(symtab, symbol);
+   return buf;
    
 } /* W2CF_Symtab_Nameof_Preg */
 

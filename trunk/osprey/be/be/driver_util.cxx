@@ -42,9 +42,9 @@
  *
  * Module: driver_util.c
  * $Revisionr: 1.34 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/be/driver_util.cxx,v $
+ * $Date: 06/02/28 20:37:41-08:00 $
+ * $Author: fchow@fluorspar.internal.keyresearch.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/be/SCCS/s.driver_util.cxx $
  *
  * Revision history:
  *  16-Feb-95 - Original Version
@@ -75,6 +75,8 @@
 #include "wn_fio.h"
 #include "wn_instrument.h"
 #include "driver_util.h"
+
+BOOL warnings_are_errors = FALSE;
 
 /* argc and argv for phase-specific flags */
 static UINT phase_argc[PHASE_COUNT];
@@ -200,6 +202,7 @@ Process_Command_Line (INT argc, char **argv)
 		continue;
 
 	    switch ( *cp++ ) {
+              
 #ifdef TARG_IA64         
 	    case 'I':       /* CG-specific */
 	                    /* -IPFEC: IPFEC related options */
@@ -256,6 +259,11 @@ Process_Command_Line (INT argc, char **argv)
 		    ErrMsg (EC_File_Name, *cp, argv[i]);
 		else {
 		    switch (*cp) {
+#if defined(TARG_NVISA)
+		    case 'c':	    /* whirl2c output file */
+			Whirl2C_File_Name = cp + 2;
+			break;
+#endif
 		    case 'f':
 			Feedback_File_Name = cp + 2;
 			break;
@@ -304,7 +312,7 @@ Process_Command_Line (INT argc, char **argv)
 #ifdef TARG_IA64
 		if (Debug_Level > 0 && !opt_set)
 #else
-		  if (Debug_Level > 1 && !opt_set)
+		if (Debug_Level > 1 && !opt_set)
 #endif
 		    Opt_Level = 0;
 		break;
@@ -367,6 +375,13 @@ Process_Command_Line (INT argc, char **argv)
 		    Show_Progress = TRUE;
 		    break;
 		}
+#if defined(TARG_SL)
+	    case 'i':
+		if (strcmp (cp, "pisr") == 0) {
+		    Run_ipisr = TRUE;
+		    break;
+		}
+#endif
 		/* else fall through */
 				    /* CG-specific flags */
 	    case 'a':		    /* -align(8,16,32,64) */
@@ -391,6 +406,11 @@ Process_Command_Line (INT argc, char **argv)
 		}
 		else {
 		    Min_Error_Severity = ES_ERROR;
+		}
+		break;
+	    case 'W':		    /* Suppress warnings */
+		if (strcmp(cp, "error") == 0) {
+		    warnings_are_errors = TRUE;
 		}
 		break;
 
@@ -496,7 +516,17 @@ Process_Command_Line (INT argc, char **argv)
 void
 Prepare_Source (void)
 {
-    char *fname = Last_Pathname_Component ( Src_File_Name );
+    /* In kernel building, we may generate several object files from 
+     * single .c file, the good way to name the related files should be
+     * according to the object file in the original user command. But the
+     * original object file is not transferred to the 'be', so I can use
+     * Irb_File_Name instead, which comes from the original object file
+     */
+    char *fname;
+    if( Irb_File_Name )
+      fname = Last_Pathname_Component ( Irb_File_Name );
+    else
+      fname = Last_Pathname_Component ( Src_File_Name );
     
     if (Err_File_Name && Err_File_Name[0] == 0)
 	Err_File_Name = New_Extension (fname, ERR_FILE_EXTENSION);

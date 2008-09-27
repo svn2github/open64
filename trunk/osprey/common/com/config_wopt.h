@@ -103,6 +103,10 @@ extern BOOL WOPT_Enable_Alias_Classification;
 extern BOOL WOPT_Enable_Aggressive_Alias_Classification;
 extern BOOL  WOPT_Enable_Disambiguate_Heap_Obj;
 extern BOOL WOPT_Enable_Alias_Class_Fortran_Rule;
+#if defined(TARG_SL)
+extern BOOL WOPT_Enable_Alias_Intrn;
+extern BOOL WOPT_Enable_Local_Clsc;
+#endif
 extern BOOL WOPT_Enable_Avoid_Rehash;	/* SSAPRE to try to minimize rehashing*/
 extern BOOL WOPT_Enable_Backedge_Placement; /* BB on critical backedge */
 extern BOOL WOPT_Enable_Bitwise_DCE;
@@ -120,6 +124,11 @@ extern BOOL WOPT_Enable_Combine_Operations;
 extern BOOL WOPT_Enable_Compare_Simp;
 extern BOOL WOPT_Enable_Const_PRE;
 extern INT32 WOPT_Enable_Const_PRE_Limit;
+#ifdef TARG_NVISA
+extern BOOL WOPT_Enable_Const_Var_PRE;  /* lpre of const_vars */
+extern BOOL WOPT_Enable_Const_Op_PRE;   /* epre of ops with const{var} kids */
+extern INT32 WOPT_Const_PRE_Float_Size; /* lpre of consts starting at this size */
+#endif
 extern BOOL WOPT_Enable_Copy_Propagate;
 extern BOOL WOPT_Enable_Copy_Prop_Bad_Ops;
 extern BOOL WOPT_Enable_Copy_Prop_LNO_Ops;
@@ -314,6 +323,18 @@ extern BOOL WOPT_Enable_Subword_Opt; // whether to replace 1- or 2-byte-sized
 extern BOOL WOPT_Enable_New_Vsym_Allocation;
 #endif
 extern BOOL  WOPT_Enable_WOVP; // For running write-once variable promotion
+extern struct option_list *WOPT_Unroll_Skip;    // Skip unroll list 
+extern struct skiplist *WOPT_Unroll_Skip_List;  // Preprocessed unroll skip l 
 extern BOOL WOPT_Enable_Loop_Multiver;
+#ifdef TARG_NVISA
+extern BOOL WOPT_Enable_Estr_Outer_Loop;  // strength reduce outer loops
+extern BOOL WOPT_Enable_Estr_Const_Opnds; // strength reduce ops with const kids
+extern BOOL WOPT_Enable_Estr_Used_Once;   // strength reduce ops used only once
+extern BOOL WOPT_Enable_Estr_Early_Exit;  // strength reduce early exit loops
+extern BOOL WOPT_Enable_Aggressive_Iload_CSE; // ignore potential iload vsym aliasing
+#endif
+
+extern BOOL WOPT_Enable_STR_Short;  // whether to assume 16bit IV can cross 16
+
 #endif /* config_wopt_INCLUDED */
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -1008,7 +1008,7 @@ main()
 			   TOP_bsr64,
 			   TOP_mov64_m,
 			   TOP_pmovmskb,
-                           TOP_pmovmskb128,  
+			   TOP_pmovmskb128,
 			   TOP_movi32_2m,
 			   TOP_movi64_2m,
 			   TOP_movm_2i32,
@@ -1426,19 +1426,31 @@ main()
   Operand(2);
   Operand(1);
   Instruction_Print_Group( rmw,
+			   TOP_lock_add8,
+			   TOP_lock_add16,
 			   TOP_lock_add32,
 			   TOP_lock_adc32,
 			   TOP_lock_add64,
+			   TOP_lock_and8,
+			   TOP_lock_and16,
 			   TOP_lock_and32,
 			   TOP_lock_and64,
+			   TOP_lock_or8,
+			   TOP_lock_or16,
 			   TOP_lock_or32,
 			   TOP_lock_or64,
-			   TOP_lock_xadd32,
-			   TOP_lock_xadd64,
+			   TOP_lock_xor8,
+			   TOP_lock_xor16,
 			   TOP_lock_xor32,
 			   TOP_lock_xor64,
+			   TOP_lock_sub8,
+			   TOP_lock_sub16,
 			   TOP_lock_sub32,
 			   TOP_lock_sub64,
+			   TOP_lock_xadd8,
+			   TOP_lock_xadd16,
+			   TOP_lock_xadd32,
+			   TOP_lock_xadd64,
 			   TOP_UNDEFINED );
 
   ISA_PRINT_TYPE cmpxchg =  ISA_Print_Type_Create("cmpxchg", "%s %s,%s%s(%s)");
@@ -1448,6 +1460,8 @@ main()
   Operand(3);
   Operand(2);
   Instruction_Print_Group( cmpxchg,
+			   TOP_lock_cmpxchg8,
+			   TOP_lock_cmpxchg16,
 			   TOP_lock_cmpxchg32,
 			   TOP_lock_cmpxchg64,
 			   TOP_UNDEFINED );
@@ -1522,6 +1536,8 @@ main()
 			   TOP_psrlq,
 			   TOP_psraw,
 			   TOP_psrad,
+                           TOP_extrq,
+                           TOP_insertq,
 			   TOP_psllw_mmx,
 			   TOP_pslld_mmx,
 			   TOP_psrlw_mmx,

@@ -51,6 +51,7 @@ extern "C" {
 #include "ir_reader.h"
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
+#include "wfe_pragma.h"
 #include "wfe_decl.h"
 #include "tree_symtab.h"
 #include "targ_sim.h"
@@ -606,7 +607,7 @@ Do_EH_Tables (void)
 			// Store the inito_idx in the PU
 			// 1. exc_ptr 2. filter : Set 3rd entry with inito_idx
 			INITV_IDX index = INITV_next (INITV_next (INITO_val (
-			               (INITO_IDX) Get_Current_PU().eh_info)));
+			               PU_misc_info (Get_Current_PU()))));
 			// INITV_Set_VAL resets the next field, so back it up
 			// and set it again.
 			INITV_IDX bkup = INITV_next (index);
@@ -642,7 +643,7 @@ Do_EH_Tables (void)
 		ST * eh_spec = Get_eh_spec_ST ();
 		id = New_INITO (ST_st_idx(eh_spec), start);
 		INITV_IDX index = INITV_next (INITV_next (INITV_next (
-			INITO_val ((INITO_IDX) Get_Current_PU().eh_info))));
+			INITO_val (PU_misc_info (Get_Current_PU())))));
 		// INITV_Set_VAL resets the next field, so back it up
 		// and set it again.
 		INITV_IDX bkup = INITV_next (index);
@@ -1521,6 +1522,9 @@ Wfe_Expand_Asm_Operands (tree  string,
 
 	WN *output_rvalue_wn = WFE_Lhs_Of_Modify_Expr (MODIFY_EXPR,
 						       TREE_VALUE (tail),
+#ifdef TARG_SL
+                                                       NULL,
+#endif
 						       plus_modifier,
 						       (TY_IDX) 0, // component type
 						       (INT64) 0,  // component offset
@@ -3554,7 +3558,7 @@ static void Generate_filter_cmp (int filter, LABEL_IDX goto_idx);
 static WN *
 Generate_cxa_call_unexpected (void)
 {
-  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
+  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (PU_misc_info (Get_Current_PU()))));
   ST exc_st = St_Table[exc_ptr_param];
   WN* parm_node = WN_Ldid (Pointer_Mtype, 0, &exc_st, ST_type (exc_st));
 
@@ -3577,7 +3581,7 @@ Generate_cxa_call_unexpected (void)
 static void
 Generate_unwind_resume (void)
 {
-  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
+  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (PU_misc_info (Get_Current_PU()))));
   ST exc_st = St_Table[exc_ptr_param];
   WN* parm_node = WN_Ldid (Pointer_Mtype, 0, &exc_st, ST_type (exc_st));
 
@@ -3631,7 +3635,7 @@ Generate_unwind_resume (void)
 static void
 Generate_filter_cmp (int filter, LABEL_IDX goto_idx)
 {
-  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().eh_info))));
+  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (PU_misc_info (Get_Current_PU())))));
   const TYPE_ID mtype = TARGET_64BIT ? MTYPE_U8 : MTYPE_U4;
   
   WN * wn_ldid = WN_Ldid (mtype, 0, &St_Table[filter_param],
@@ -3846,6 +3850,25 @@ WFE_Expand_Omp (tree stmt)
     case exec_freq_dir:
       WFE_Expand_Pragma (stmt);
       break;
+
+#ifdef TARG_SL  // fork_joint
+    case sl2_sections_cons_b:
+    case sl2_minor_sections_cons_b:		
+      expand_start_sl2_sections (stmt->omp.choice == sl2_minor_sections_cons_b);
+      break;
+    case sl2_sections_cons_e:
+      expand_end_sl2_sections ();
+      break;
+    case sl2_section_cons_b:
+    case sl2_minor_section_cons_b:		
+      expand_start_sl2_section (stmt->omp.choice == sl2_minor_section_cons_b);
+      break;
+    case sl2_section_cons_e:
+    case sl2_minor_section_cons_e:		
+      expand_end_sl2_section ();
+      break;
+#endif 
+
                                                                                 
     default:
       Fail_FmtAssertion ("Unexpected stmt node");

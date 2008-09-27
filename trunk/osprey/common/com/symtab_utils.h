@@ -93,7 +93,7 @@ inline BOOL
 ST_visible_outside_dso(const ST *s)	{ return ST_visible_outside_dso(*s); }
 
 ST *
-Gen_Intrinsic_Function(TY_IDX, char *function_name); // implementation
+Gen_Intrinsic_Function(TY_IDX, const char *function_name); // implementation
 						     // still
 						     // incomplete.
 
@@ -197,6 +197,25 @@ TY_are_equivalent (TY_IDX ty_id1,
 */
 TY_IDX
 TY_is_unique (TY_IDX);
+
+/* ty either is union or has union in one of its fields (called recursively) */
+BOOL TY_has_union (TY_IDX ty);
+
+#ifdef TARG_NVISA
+/* base ty (field ty) of vector */
+inline TY_IDX
+TY_vector_elem_ty (TY_IDX ty)
+{
+	return FLD_type(TY_fld(ty));
+}
+/* number of elements in the vector */
+UINT
+TY_vector_count (TY_IDX ty);
+#endif
+
+// return mtype associated with type and offset
+// (e.g. might be mtype of structure field)
+TYPE_ID Mtype_For_Type_Offset (TY_IDX ty, INT64 offset);
 
 //----------------------------------------------------------------------
 // PREG-related utilities
@@ -374,7 +393,8 @@ Make_arb_iter (ARB_HANDLE arb)
 inline LABEL_ITER
 Make_label_iter (LABEL_IDX label_idx)
 {
-    return LABEL_ITER (Scope_tab[CURRENT_SYMTAB].label_tab, label_idx);
+    return LABEL_ITER (Scope_tab[LABEL_IDX_level (label_idx)].label_tab, 
+		       LABEL_IDX_index (label_idx));
 }
 
 inline PREG_ITER

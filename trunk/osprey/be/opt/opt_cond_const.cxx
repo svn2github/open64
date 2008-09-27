@@ -221,6 +221,7 @@ static bool is_redundant_cmp(CODEREP *cmp, BB_NODE *bb, BB_NODE *pred,
       break;
     }
   }
+
   if (!found_succ) return false;
 
   COND_EVAL ce;

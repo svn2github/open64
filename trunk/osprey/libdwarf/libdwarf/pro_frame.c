@@ -1,8 +1,4 @@
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -65,7 +61,7 @@ static void _dwarf_pro_add_to_fde(Dwarf_P_Fde fde,
 --------------------------------------------------------------------------*/
 Dwarf_Unsigned
 dwarf_add_frame_cie(Dwarf_P_Debug dbg,
-		    char *augmenter,
+		    const char *augmenter,
 		    Dwarf_Small code_align,
 		    Dwarf_Small data_align,
 		    Dwarf_Small return_reg,
@@ -367,10 +363,9 @@ dwarf_add_fde_inst(Dwarf_P_Fde fde,
     }
 
     switch (op) {
-
-#ifdef KEY
-	// This does not seem specific to x8664, but I will leave it for now.
-	// The previous code here apparently assumed the labels for this "op"
+#if defined TARG_X8664
+    	// This does not seem specific to x8664, but I will leave it for now.
+ 	// The previous code here apparently assumed the labels for this "op"
 	// need to be encoded in 4 bytes --- that is not the case. This "op"
 	// limits to 4 bytes whatever follows it. And whatever follows it is
 	// the subtraction between the 2 labels, i.e., each label may need
@@ -379,18 +374,18 @@ dwarf_add_fde_inst(Dwarf_P_Fde fde,
 	// affects code in pro_section.c and dwf_section.c.
 	case DW_CFA_advance_loc4:
 	    du = val1;
-	    ptr = (char *) _dwarf_p_get_alloc(NULL, 2 * sizeof(Dwarf_Unsigned));
-	    if (ptr == NULL) {
-	      _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
-	      return((Dwarf_P_Fde)DW_DLV_BADADDR);
-	    }
-	    memcpy((void *)ptr, (const void *)&du, sizeof(Dwarf_Unsigned));
-	    du = val2;
-	    memcpy((void *)ptr + sizeof(Dwarf_Unsigned), (const void *)&du,
-                   sizeof(Dwarf_Unsigned));
-	    nbytes = 4;
-	    break;
-#endif // KEY
+    	    ptr = (char *) _dwarf_p_get_alloc(NULL, 2 * sizeof(Dwarf_Unsigned));
+    	    if (ptr == NULL) {
+    	      _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
+      	      return((Dwarf_P_Fde)DW_DLV_BADADDR);
+    	    }
+    	    memcpy((void *)ptr, (const void *)&du, sizeof(Dwarf_Unsigned));
+  	    du = val2;
+    	    memcpy((void *)ptr + sizeof(Dwarf_Unsigned), (const void *)&du,
+                       sizeof(Dwarf_Unsigned));
+      	    nbytes = 4;
+    	    break;
+#endif // TARG_X8664
     case DW_CFA_advance_loc:
 	if (val1 <= 0x3f) {
 	    db = val1;
@@ -546,6 +541,26 @@ dwarf_add_fde_inst(Dwarf_P_Fde fde,
 	}
 	memcpy(ptr, buff1, nbytes);
 	break;
+
+#ifdef TARG_SL
+    case DW_CFA_SL_gpr_reginfo:
+    case DW_CFA_SL_cr_reginfo:
+    case DW_CFA_SL_sr_reginfo:
+    nbytes = 4;
+	res = _dwarf_pro_encode_leb128_nm(val1, &nbytes,
+					  buff1, sizeof(buff1));
+	if (res != DW_DLV_OK) {
+	    _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
+	    return ((Dwarf_P_Fde) DW_DLV_BADADDR);
+	}
+	ptr = (char *) _dwarf_p_get_alloc(NULL, nbytes);
+	if (ptr == NULL) {
+	    _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
+	    return ((Dwarf_P_Fde) DW_DLV_BADADDR);
+	}
+	memcpy(ptr, buff1, nbytes);
+	break;
+#endif
 
     default:
 	break;

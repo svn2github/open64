@@ -193,7 +193,7 @@ endif
 ## C front end needs all the routines
 include $(BUILD_TOT)/libcsup/gen/gen.makeinclude
 
-ifeq ($(BUILD_OS), LINUX)
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
 CFILES += \
 	catgetmsg.c \
 	catmsgfmt.c 
@@ -238,7 +238,7 @@ exports: default
 ##endif
 
 install: default
-ifeq ($(BUILD_OS), LINUX)
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
 	$(STD_INSTALL) $(STD_INSTALL_READ_MASK) $(LIB_TARGETS)
 	$(INSTALL) $(STD_INSTALL_READ_MASK) -src $(MSGFILE) $(MSGFILE)
 	$(INSTALL) $(STD_INSTALL_READ_MASK) -src $(MSGFILE).m $(MSGFILE).m
@@ -284,9 +284,13 @@ endif
 
 ### Until hpc is built for linux or until library uses its own ###
 $(DSO): $(OBJECTS:%.o=%.pic.o)
+ifeq ($(BUILD_OS), DARWIN)
+	@echo "Skipping unneeded " $(DSO)
+else
 	$(ld) $(STD_DSO_LOADOPTS) -o $@ $^
+endif
 
-ifeq ($(BUILD_OS), LINUX)
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
 lib.i: $(BUILD_BASE)/errmsg/lib.msg numbers.h
 	/usr/bin/cpp -traditional -E -I. $(BUILD_BASE)/errmsg/lib.msg > lib.i
 else

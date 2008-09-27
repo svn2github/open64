@@ -106,6 +106,12 @@ static char *rcs_id = 	opt_emit_CXX"$Revision: 1.13 $";
 #include "opt_emit_template.h"
 
 extern WN_MAP Prompf_Id_Map;
+#if defined(TARG_NVISA)
+// To get better loop depth comments in the ptx file
+// Require better implement because opt is not supposed
+// to use global statics
+static INT cur_loop_depth = 0;
+#endif
 
 
 inline WN *
@@ -520,7 +526,11 @@ Build_new_loop_info( WN *do_loop, WN *old_info )
   }
   else {
     est_trips = 0;
+#if defined(TARG_NVISA)
+    depth = cur_loop_depth;
+#else
     depth = 0;
+#endif
     lflags = 0;
   }
 
@@ -726,6 +736,10 @@ Raise_doloop_stmt(EMITTER *emitter, BB_NODE **bb)
   FmtAssert(bb_body == bb_start->Loopbody(), ("Wrong body"));
   FmtAssert(bb_step == bb_start->Loopstep(), ("Wrong step"));
   FmtAssert(bb_merge == bb_start->Loopmerge(), ("Wrong merge"));
+
+#if defined(TARG_NVISA)
+  ++cur_loop_depth;
+#endif
   
   // generate code for the initialization block
   bb_start->Gen_wn(emitter);
@@ -852,6 +866,9 @@ Raise_doloop_stmt(EMITTER *emitter, BB_NODE **bb)
   // set *bb to merge_bb, so we advance to it
   *bb = bb_merge;
 
+#if defined(TARG_NVISA)
+  --cur_loop_depth;
+#endif
   return rwn;
 }
 
@@ -1020,6 +1037,10 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
   if ( goto_end != NULL)
     loopback->Remove_stmtrep( goto_end );
 
+#if defined(TARG_NVISA)
+  ++cur_loop_depth;
+#endif
+
   // generate code for the body of the loop
   WN *block_body = Create_block(emitter, loopbody, loopback);
   WN_Set_Linenum(block_body, header->Linenum());
@@ -1089,6 +1110,11 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
 
   if (WOPT_Enable_Add_Do_Loop_Info)
     WN_set_do_loop_info(rwn, Build_new_loop_info(rwn, NULL));
+
+#if defined(TARG_NVISA)
+  --cur_loop_depth;
+#endif
+
   return rwn;
 }
 
@@ -1338,7 +1364,11 @@ EMITTER::Gen_wn(BB_NODE *first_bb, BB_NODE *last_bb)
 	}
 	else if ( entry_opc == OPC_ALTENTRY ||
 		  (entry_opc == OPC_LABEL && 
-		   WN_Label_Is_Handler_Begin(bb->Entrywn())) )
+		   (WN_Label_Is_Handler_Begin(bb->Entrywn())
+#ifdef KEY
+		   || LABEL_target_of_goto_outer_block(WN_label_number(bb->Entrywn()))
+#endif
+		   )) )
 	{
 	  BOOL skip_curbb = Raise_altentry( bb );
 	  // Connect all WN nodes in the merged bb to the end of 'bb'
@@ -1374,7 +1404,10 @@ EMITTER::Gen_wn(BB_NODE *first_bb, BB_NODE *last_bb)
       // also emit any transparent region when Preopt is called from IPA or LNO
       if (RID_TYPE_mp(bb_region->Rid()) || RID_TYPE_eh(bb_region->Rid()) ||
 	  // kludge for 7.2, see pv 457243
-	  RID_TYPE_olimit(bb_region->Rid()) ||
+	  RID_TYPE_olimit(bb_region->Rid()) || 
+#if defined(TARG_SL) //region_type_for_major
+	  RID_TYPE_sl2_para(bb_region->Rid()) ||
+#endif 	  
 	  RID_TYPE_pragma(bb_region->Rid())) {
 
 	Is_True(bb_region->Region_start() == bb,
@@ -1564,6 +1597,7 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
 	  Opt_stab()->Last_preg(),
 	  ("EMITTER:Emit, incorrect last preg number"));
 
+#if !defined(TARG_NVISA)
   {
     BOOL tr = _trace || Get_Trace (TP_GLOBOPT, ALIAS_DUMP_FLAG);
     if (Opt_stab()->Phase() == PREOPT_LNO_PHASE) {
@@ -1575,6 +1609,7 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
     }
     WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr()->Set_active_mgr();  
   }
+#endif
 
   Verify(_opt_func);
   

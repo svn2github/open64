@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007. Pathscale, LLC.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -140,6 +140,7 @@ main()
     change_x87_cw,      /* Instruction changes the x87 control-word. */
     read_x87_cw,        /* Instruction reads the x87 control-word. */
     x86_style,          /* The first operand is also the result. */
+    prefix_lock,        /* Requires x86 "lock" instruction prefix. */
     vector_op,          /* Instruction is a vector or 128-bit operation */
     commutative,        /* The first and second opnds are commutative. */
     move_ext,           /* Move with sign/zero extension. */
@@ -371,21 +372,35 @@ main()
 		     TOP_zero64,
 		     TOP_fucomi,
 		     TOP_fucomip,
+		     TOP_lock_add8,
+		     TOP_lock_add16,
 		     TOP_lock_add32,
 		     TOP_lock_adc32,
 		     TOP_lock_add64,
+		     TOP_lock_and8,
+		     TOP_lock_and16,
 		     TOP_lock_and32,
 		     TOP_lock_and64,
+		     TOP_lock_or8,
+		     TOP_lock_or16,
 		     TOP_lock_or32,
 		     TOP_lock_or64,
-		     TOP_lock_xadd32,
-		     TOP_lock_xadd64,
+		     TOP_lock_xor8,
+		     TOP_lock_xor16,
 		     TOP_lock_xor32,
 		     TOP_lock_xor64,
+		     TOP_lock_sub8,
+		     TOP_lock_sub16,
 		     TOP_lock_sub32,
 		     TOP_lock_sub64,
+		     TOP_lock_cmpxchg8,
+		     TOP_lock_cmpxchg16,
 		     TOP_lock_cmpxchg32,
 		     TOP_lock_cmpxchg64,
+		     TOP_lock_xadd8,
+		     TOP_lock_xadd16,
+		     TOP_lock_xadd32,
+		     TOP_lock_xadd64,
 		     TOP_asm,
 		     TOP_bsf32,
 		     TOP_bsf64,
@@ -1062,37 +1077,61 @@ main()
 		     TOP_cvtps2dq_xxx,
 		     TOP_cvttps2dq_xxx,
 		     TOP_cvttpd2dq_xxx,
+		     TOP_lock_add8,
+		     TOP_lock_and8,
+		     TOP_lock_or8,
+		     TOP_lock_xor8,
+		     TOP_lock_sub8,
+		     TOP_lock_add16,
+		     TOP_lock_and16,
+		     TOP_lock_or16,
+		     TOP_lock_xor16,
+		     TOP_lock_sub16,
 		     TOP_lock_add32,
 		     TOP_lock_adc32,
 		     TOP_lock_and32,
 		     TOP_lock_or32,
-		     TOP_lock_xadd32,
 		     TOP_lock_xor32,
 		     TOP_lock_sub32,
 		     TOP_lock_add64,
 		     TOP_lock_and64,
 		     TOP_lock_or64,
-		     TOP_lock_xadd64,
 		     TOP_lock_xor64,
 		     TOP_lock_sub64,
+		     TOP_lock_xadd8,
+		     TOP_lock_xadd16,
+		     TOP_lock_xadd32,
+		     TOP_lock_xadd64,
                      TOP_UNDEFINED);
 
   /* ===== arith. operations with memory src and dest operand ====== */
   load_exe_store = ISA_Property_Create ("load_exe_store");
   Instruction_Group( load_exe_store,
+		     TOP_lock_add8,
+		     TOP_lock_and8,
+		     TOP_lock_or8,
+		     TOP_lock_xor8,
+		     TOP_lock_sub8,
+		     TOP_lock_add16,
+		     TOP_lock_and16,
+		     TOP_lock_or16,
+		     TOP_lock_xor16,
+		     TOP_lock_sub16,
 		     TOP_lock_add32,
 		     TOP_lock_adc32,
 		     TOP_lock_and32,
 		     TOP_lock_or32,
-		     TOP_lock_xadd32,
 		     TOP_lock_xor32,
 		     TOP_lock_sub32,
 		     TOP_lock_add64,
 		     TOP_lock_and64,
 		     TOP_lock_or64,
-		     TOP_lock_xadd64,
 		     TOP_lock_xor64,
 		     TOP_lock_sub64,
+		     TOP_lock_xadd8,
+		     TOP_lock_xadd16,
+		     TOP_lock_xadd32,
+		     TOP_lock_xadd64,
                      TOP_UNDEFINED);
 
   /* ===== Non-temporal memory store operator ====== */
@@ -2139,7 +2178,7 @@ main()
 		     TOP_storenti128,
 		     TOP_storelpd,
 		     TOP_pshufw64v16,
-                     TOP_pmovmskb128,
+		     TOP_pmovmskb128,
                      TOP_UNDEFINED);
 
   /* ===== FP add operator ====== */
@@ -3066,7 +3105,6 @@ main()
 		     TOP_pextrw,
 		     TOP_pinsrw,
 		     TOP_pmovmskb,
-                     TOP_pmovmskb128,
 		     TOP_movi32_2m,
 		     TOP_movi64_2m,
 		     TOP_movm_2i32,
@@ -3081,6 +3119,8 @@ main()
 		     TOP_maskmovdqu,
 		     TOP_maskmovq,
 		     TOP_storent64_fm,
+                     TOP_extrq,
+                     TOP_insertq,
 		     TOP_UNDEFINED );
 
   /* ==== x86 style instructions ==== */
@@ -3414,6 +3454,10 @@ main()
 		     TOP_xor64,
 		     TOP_xori32,
 		     TOP_xori64,
+		     TOP_lock_xadd8,
+		     TOP_lock_xadd16,
+		     TOP_lock_xadd32,
+		     TOP_lock_xadd64,
 		     TOP_addsd,
 		     TOP_addss,
 		     TOP_addxsd,
@@ -3680,10 +3724,18 @@ main()
 		     TOP_popq,
 		     TOP_stmxcsr,
 		     TOP_ldmxcsr,
+		     TOP_lock_cmpxchg8,
+		     TOP_lock_cmpxchg16,
+		     TOP_lock_cmpxchg32,
+		     TOP_lock_cmpxchg64,
+		     TOP_lock_xadd8,
+		     TOP_lock_xadd16,
+		     TOP_lock_xadd32,
+		     TOP_lock_xadd64,
 		     TOP_UNDEFINED);
 
   /* ===== Instructions with branch predictions ====== */
-  side_effects = ISA_Property_Create ("branch_predict");
+  branch_predict = ISA_Property_Create ("branch_predict");
   Instruction_Group (branch_predict,
 		     TOP_UNDEFINED);
 
@@ -3958,6 +4010,40 @@ main()
 		     TOP_cmppd,
 		     TOP_xzero128v64,
 		     TOP_movmskpd,
+		     TOP_UNDEFINED);
+
+  /* ===== Requires x86 "lock" instruction prefix. ====== */
+  prefix_lock = ISA_Property_Create ("prefix_lock");
+  Instruction_Group (prefix_lock,
+		     TOP_lock_add8,
+		     TOP_lock_add16,
+		     TOP_lock_add32,
+		     TOP_lock_adc32,
+		     TOP_lock_add64,
+		     TOP_lock_and8,
+		     TOP_lock_and16,
+		     TOP_lock_and32,
+		     TOP_lock_and64,
+		     TOP_lock_or8,
+		     TOP_lock_or16,
+		     TOP_lock_or32,
+		     TOP_lock_or64,
+		     TOP_lock_xor8,
+		     TOP_lock_xor16,
+		     TOP_lock_xor32,
+		     TOP_lock_xor64,
+		     TOP_lock_sub8,
+		     TOP_lock_sub16,
+		     TOP_lock_sub32,
+		     TOP_lock_sub64,
+		     TOP_lock_cmpxchg8,
+		     TOP_lock_cmpxchg16,
+		     TOP_lock_cmpxchg32,
+		     TOP_lock_cmpxchg64,
+		     TOP_lock_xadd8,
+		     TOP_lock_xadd16,
+		     TOP_lock_xadd32,
+		     TOP_lock_xadd64,
 		     TOP_UNDEFINED);
 
   ISA_Properties_End();

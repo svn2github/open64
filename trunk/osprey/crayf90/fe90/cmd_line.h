@@ -151,7 +151,7 @@ int	cft90_dash_e_t_option			= 0;	/* -dt */
 int	cft90_dash_e_u_option			= 0;	/* -du */
 int	cft90_dash_X_option			= 0;	/* -Xn */
 int	cft90_dash_a_dalign_option		= 0;	/* -a dalign */
-# elif (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# elif (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 int	cft90_dash_i_option			= 32;	/* -i 32 */
 int	cft90_dash_e_m_option			= 1;	/* -em */
 int	cft90_dash_e_t_option			= 0;	/* -dt */
@@ -175,7 +175,7 @@ int	cft90_dash_N_option			= 72;	/* -N 72 */
 
 /* the next four ... levels 0,1,2,3 */
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 int	cft90_dash_O_bl_option			= 0;
 int	cft90_dash_O_fastint_option		= 0;	/* -O fastint */
 int	cft90_dash_O_fusion_option		= 1;	/* -O fusion  */

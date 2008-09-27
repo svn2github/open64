@@ -50,7 +50,7 @@ compiler:
 
 messages: compiler
 	$(MAKE) -C $(compiler_dir)/crayf90/sgi cf95.cat
-	$(MAKE) -C $(compiler_dir)/arith arith.cat
+#	$(MAKE) -C $(compiler_dir)/arith arith.cat
 	$(MAKE) -C $(compiler_dir)/libu lib.cat
 
 cygnus:

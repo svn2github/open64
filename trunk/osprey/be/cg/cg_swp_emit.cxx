@@ -264,7 +264,6 @@ TN *SWP_REG_ASSIGNMENT::Get_Register_TN(TN *tn, INT adjustment)
   REGISTER r = CLASS_REG_PAIR_reg(rp);
   ISA_REGISTER_CLASS c = CLASS_REG_PAIR_rclass(rp);
 #ifndef TARG_IA64
-//#ifdef KEY
   c = ISA_REGISTER_CLASS_integer;
 #endif
     
@@ -279,9 +278,6 @@ TN *SWP_REG_ASSIGNMENT::Get_Register_TN(TN *tn, INT adjustment)
   // delay the modulo computation to a postpass (see SWP_Fixup).
   //
   r = r + adjustment + rotating_reg_base[c];
-  /*if (c == ISA_REGISTER_CLASS_predicate) {
-    r = r + 2;
-  }*/
 
   // workaround g++ bug:  Set_CLASS_REG_PAIR_reg(rp, r);
   Set_CLASS_REG_PAIR(rp, c, r);

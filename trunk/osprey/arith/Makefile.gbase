@@ -113,6 +113,11 @@ ARITH_SRC += \
 	native.c \
 	test_ar_intrin.c
 else
+ifeq ($(BUILD_TARGET), SL)
+ARITH_SRC += \
+	native.c \
+	test_ar_intrin.c
+else
 ifeq ($(BUILD_TARGET), X8664)
 ARITH_SRC += \
 	native.c \
@@ -120,6 +125,7 @@ ARITH_SRC += \
 else
 ARITH_SRC += \
 	simulate.c
+endif
 endif
 endif
 endif
@@ -158,6 +164,25 @@ FFILES= \
 	dummy_dc.f \
 	fintrin.f
 endif
+ifeq ($(BUILD_TARGET), SL)
+#
+# these files have the routines stubed out.
+# When we can fold these and compile with f90
+# we will use the regular files.
+#
+#FFILES= \
+#	fintrin_dc_irix.f \
+#	fintrin_irix.f
+FFILES= \
+	fintrin_dc_irix_tmp.f \
+	fintrin_irix_tmp.f
+endif
+ifeq ($(BUILD_TARGET), IA32)
+FFILES= \
+	dummy_dc.f \
+	fintrin.f
+endif
+
 ifeq ($(BUILD_TARGET), X8664)
 #
 # these files have the routines stubed out.

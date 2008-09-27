@@ -1162,8 +1162,10 @@ Synch_Pu_With_Pu (PU& merged_pu, const PU& original_pu)
 
     merged_pu.src_lang |= original_pu.src_lang;
 #ifdef KEY
-    if (!merged_pu.eh_info)
-    	merged_pu.eh_info = original_pu.eh_info; // EH information
+    if (!merged_pu.misc)
+    	merged_pu.misc = original_pu.misc; // EH/C nested function information
+
+    merged_pu.unused = original_pu.unused;
 #endif
 } // Synch_Pu_With_Pu
 
@@ -1206,7 +1208,7 @@ Synch_ST_flags (ST& merged_st, const ST& original_st)
 	ST_NOT_GPREL | ST_IS_NAMELIST | ST_IS_F90_TARGET |
 	ST_DECLARED_STATIC | ST_IS_THREAD_PRIVATE | ST_ADDR_SAVED |
 	ST_ADDR_PASSED | ST_INIT_VALUE_ZERO | ST_IS_INITIALIZED |
-    ST_HAS_NAMED_SECTION; 
+        ST_HAS_NAMED_SECTION; 
 
     UINT32 original_flags = original_st.flags;
     UINT32 merged_flags = merged_st.flags;
@@ -1307,7 +1309,14 @@ Enter_Original_St(const IPC_GLOBAL_TABS& original_tabs,
     } else {
 	Set_ST_name_idx(new_st, (*New_Symstr_Idx)[ST_name_idx(original_st)]);
 
-	if (ST_sym_class(original_st) == CLASS_FUNC) {
+	if (ST_sym_class(original_st) == CLASS_FUNC
+#ifdef KEY
+	    // Bug 14465: Merge the PU for a dummy function representing
+	    // a global-scope ASM, so that merged symbol table entries
+	    // get the updated PU idx.
+	    || ST_sym_class(original_st) == CLASS_NAME
+#endif
+	   ) {
 	    PU_IDX new_pu_idx = 
 		Merge_Global_Pu (ST_pu(original_st), original_tabs);
 
@@ -1333,7 +1342,8 @@ Enter_Original_St(const IPC_GLOBAL_TABS& original_tabs,
 	Merge_Global_St (ST_IDX_index (ST_raw_base_idx(original_st)),
 			 original_tabs);
     Set_ST_raw_base_idx(new_st, base_idx);
-#ifdef TARG_X8664
+
+#if defined(TARG_X8664) || defined(TARG_SL)
     if ( ST_sclass(new_st) != SCLASS_COMMON &&
 	 // Avoid Fortran Equivalenced arrays (to complete fix for bug 1988)
 	 !ST_is_equivalenced(new_st) &&
@@ -1523,7 +1533,7 @@ Merge_St_With_St(const IPC_GLOBAL_TABS &original_tabs,
     Synch_St_With_St (original_tabs, merged_st, original_st);
 
     (*New_St_Idx).set_map (ST_st_idx(original_st), ST_st_idx(merged_st));
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
     if ( ST_sclass(merged_st) != SCLASS_COMMON &&
 	 // Avoid Fortran Equivalenced arrays (to complete fix for bug 1988)
 	 !ST_is_equivalenced(merged_st) &&
@@ -1718,7 +1728,7 @@ Merge_Global_St(UINT                   idx,
     //
     char *st_name = &original_tabs.symstr_tab[ST_name_idx (original_st)];
 
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
     void *pext = ld_slookup_mext(st_name,
     	    	    	    	(ST_storage_class (original_st) == SCLASS_EXTERN));
 #else

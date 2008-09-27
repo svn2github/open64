@@ -235,6 +235,9 @@ extern void Result_Available_Time( int result_index, int time );
 extern void Store_Available_Time( int time );
 extern void Load_Access_Time( int time );
 extern void Last_Issue_Cycle( int time );
+#if defined(TARG_SL)
+extern void Alternative_Resource_Requirement(RESOURCE resource, int time); 
+#endif
 extern void Resource_Requirement( RESOURCE resource, int time );
 extern void Valid_Issue_Slot( ISSUE_SLOT slot );
 extern void Write_Write_Interlock();

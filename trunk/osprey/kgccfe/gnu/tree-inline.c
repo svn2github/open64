@@ -960,6 +960,19 @@ inlinable_function_p (fn, id)
   int currfn_insns;
   int max_inline_insns_single = MAX_INLINE_INSNS_SINGLE;
 
+#ifdef TARG_NVISA
+  if (flag_really_no_inline) {
+  	/* Ran into a gnu inlining bug missing a break,
+	 * and we have to run open64 inliner anyways to inline everything
+	 * (since no calling convention yet), so just turn off gnu inlining.
+	 * Open64 inliner provides better srcpos info, 
+	 * and easier to debug, even produces better code in one test.
+	 * Have to force early return else always_inline will trigger inlining.
+	 */
+  	return 0;
+  }
+#endif
+
   /* If we've already decided this function shouldn't be inlined,
      there's no need to check again.  */
   if (DECL_UNINLINABLE (fn))

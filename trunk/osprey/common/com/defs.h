@@ -124,6 +124,9 @@ extern "C" {
 #if HOST_WORD_SIZE == 8
 # define EIGHT_BYTE_WORDS
 #endif
+#if defined(BUILD_OS_DARWIN)
+# define BITSPERBYTE	CHAR_BIT
+#endif /* defined(BUILD_OS_DARWIN) */
 
 /* Map low indices to low-order bits in the bit vector package: */
 #define BV_LITTLE_ENDIAN_BIT_NUMBERING	1
@@ -206,6 +209,13 @@ extern "C" {
 #define inline static __inline
 #endif
 #endif
+#endif
+
+#ifdef __GNUC__
+/* gcc allows us to put attribute weak after a prototype */
+#define WEAK __attribute__((weak))
+#else
+#define WEAK
 #endif
 
 
@@ -371,11 +381,30 @@ typedef mUINT32 IDTYPE;
 #define MAX(a,b)	((a>=b)?a:b)
 #define MIN(a,b)	((a<=b)?a:b)
 
-inline INT Max(INT i, INT j)
+#ifdef KEY
+#ifdef Is_True_On
+static
+#else
+static __inline__ /* GNU 4.2 does not support non-static C99 inline functions. */
+#endif
+#else
+inline
+#endif
+INT Max(INT i, INT j)
 {
   return MAX(i,j);
 }
-inline INT Min(INT i, INT j)
+
+#ifdef KEY
+#ifdef Is_True_On
+static
+#else
+static __inline__ /* GNU 4.2 does not support non-static C99 inline functions. */
+#endif
+#else
+inline
+#endif
+INT Min(INT i, INT j)
 {
   return MIN(i,j);
 }
@@ -392,6 +421,14 @@ inline INT Min(INT i, INT j)
  * --------------------------------------------------------------------
  */
 #define VERY_BAD_PTR (0xfffffff)
+
+/* mingw uses %I64 to print a long long rather than %ll */
+#ifdef __MINGW32__
+#define LL_FORMAT "I64"
+#else
+#define LL_FORMAT "ll"
+#endif
+
 
 #ifdef __cplusplus
 }

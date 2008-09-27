@@ -622,6 +622,11 @@ EXP_WORKLST::Insert_exp_phi(ETABLE *etable)
       EXP_OCCURS *new_occ = etable->Append_phi_occurrence(Exp(), new_phi, this);
       etable->Set_exp_phi_bb(bb_phi, new_occ);
       bb_phi->Set_exp_phi(new_phi);
+#if defined(TARG_SL)
+    // set such phi not down-safe for that has predecessor from different parallel region 
+      if(bb_phi->SL2_para_region() && bb_phi->Preds_or_succs_from_different_region()) 
+        new_phi->Set_not_down_safe();
+#endif
     }
 
     // Build the phi-predecessor list

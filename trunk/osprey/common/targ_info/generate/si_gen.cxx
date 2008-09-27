@@ -71,7 +71,7 @@
 #include "targ_isa_properties.h"
 #include "targ_isa_subset.h"
 #include "targ_isa_operands.h"
-
+#include "gen_util.h"
 #include "si_gen.h"
 
 static ISA_SUBSET machine_isa;
@@ -308,9 +308,9 @@ void RES_WORD::Output_All(FILE* fd)
   else {
     // Important special case.  We don't need a vector of resource words at all
     // and can just use a scalar.
-    fprintf(fd,"const SI_RRW SI_RRW_initializer = 0x%llx;\n",
+    fprintf(fd,"const SI_RRW SI_RRW_initializer = 0x%" LL_FORMAT "x;\n",
                res_words.front()->initializer);
-    fprintf(fd,"const SI_RRW SI_RRW_overuse_mask = 0x%llx;\n",
+    fprintf(fd,"const SI_RRW SI_RRW_overuse_mask = 0x%" LL_FORMAT "x;\n",
                res_words.front()->overuse_mask);
   }
 }
@@ -708,7 +708,7 @@ void RES_REQ::Output(FILE* fd)
              max_res_cycle + 1);
 
   for ( i = 0; i <= max_res_cycle; ++i )
-    fprintf(fd,",\n  0x%llx",res_vec[i]);
+    fprintf(fd,",\n  0x%" LL_FORMAT "x",res_vec[i]);
 
   fprintf(fd,"\n};\n");
 
@@ -723,7 +723,7 @@ void RES_REQ::Output(FILE* fd)
   bool is_first = true;
   for ( i = 0; i <= max_res_cycle; ++i ) {
     Maybe_Print_Comma(fd,is_first);
-    fprintf(fd,"\n  0x%llx",res_used_set[i]);
+    fprintf(fd,"\n  0x%" LL_FORMAT "x",res_used_set[i]);
   }
 
   fprintf(fd,"\n};\n");
@@ -923,6 +923,9 @@ public:
   void Set_Last_Issue_Cycle( int time );
   void Set_Store_Available_Time( int time );
   void Add_Resource_Requirement(const RES* res, int cycle);
+#if defined(TARG_SL)
+  void Add_Alternative_Resource_Requirement(const RES*res, int cycle); 
+#endif 
   void Add_Valid_ISLOT(ISLOT* islot);
   void Set_Write_Write_Interlock();
 
@@ -937,6 +940,9 @@ private:
   GNAME gname;                          // Variable name in generated    
   char* const name;                     // User supplied name for documentation
   RES_REQ res_requirement;              // Required to issue
+#if defined(TARG_SL)
+  RES_REQ alternative_res_requirement;  // alternative resource if res_requirement can not be satisified. 
+#endif
 
   std::list<ISLOT*> valid_islots;            // If there are any issue slots at all
   GNAME islot_vec_gname;                // Variable name of above in generated
@@ -1043,6 +1049,18 @@ void INSTRUCTION_GROUP::Add_Resource_Requirement(const RES* res, int cycle)
     fprintf(stderr,"###    %s at cycle %d.\n",res->Name(),cycle);
   }
 }
+
+#if defined(TARG_SL)
+void INSTRUCTION_GROUP::Add_Alternative_Resource_Requirement(const RES* res, int cycle)
+{
+  if (! alternative_res_requirement.Add_Resource(res,cycle)) {
+    fprintf(stderr,"### ERROR: Impossible resource request for "
+                    "instruction group %s.\n",
+                    name);
+    fprintf(stderr,"###    %s at cycle %d.\n",res->Name(),cycle);
+  }
+}
+#endif
 
 void INSTRUCTION_GROUP::Add_Valid_ISLOT(ISLOT* islot)
 {
@@ -1182,6 +1200,10 @@ void INSTRUCTION_GROUP::Output(FILE* fd)
   fprintf(fd,"\n/* Instruction group %s */\n",name);
   res_requirement.Output(fd);
   res_requirement.Compute_Output_Resource_Count_Vec(fd);
+#if defined(TARG_SL)
+  alternative_res_requirement.Output(fd); 
+  alternative_res_requirement.Compute_Output_Resource_Count_Vec(fd);
+#endif
   Output_II_Info(fd);
   Output_Latency_Info(fd);
   Output_Issue_Slot_Info(fd);
@@ -1202,6 +1224,10 @@ void INSTRUCTION_GROUP::Output(FILE* fd)
              store_available_time);
   fprintf(fd,"  %-15s, /* resource requirement */\n",
              res_requirement.Gname());
+#if defined(TARG_SL)
+  fprintf(fd, "  %-15s, /* alternative resource requirement*/ \n", 
+             alternative_res_requirement.Gname()); 
+#endif
   fprintf(fd,"  %-15s, /* res id used set vec */\n",
              res_requirement.Res_Id_Set_Gname());
   fprintf(fd,"  %-15d, /* II info size */\n",
@@ -1212,12 +1238,12 @@ void INSTRUCTION_GROUP::Output(FILE* fd)
              ii_res_id_set_gname.Gname());
   fprintf(fd,"  {{");
   for ( i = 0; i < sizeof(bad_iis) / sizeof(bad_iis[0]); ++i ) {
-    fprintf(fd, "0x%llx", bad_iis[i]);
+    fprintf(fd, "0x%" LL_FORMAT "x", bad_iis[i]);
     if ( i < sizeof(bad_iis) / sizeof(bad_iis[0]) - 1 ) fprintf(fd, ",");
   }
   fprintf(fd, "}}    , /* Bad IIs */\n");
   fprintf(fd,"  %-15d, /* valid issue slots vec size */\n",
-             valid_islots.size());
+             (unsigned int) valid_islots.size());
   fprintf(fd,"  %-15s, /* valid issue slots vec */\n",
              islot_vec_gname.Gname());
   fprintf(fd,"  %-15d, /* resource count vec size */\n",
@@ -1430,6 +1456,13 @@ void Resource_Requirement( RESOURCE resource, int time )
 {
   current_instruction_group->Add_Resource_Requirement(resource,time);
 }
+
+#if defined(TARG_SL)
+void Alternative_Resource_Requirement( RESOURCE resource, int time )
+{
+  current_instruction_group->Add_Alternative_Resource_Requirement(resource,time);
+}
+#endif 
 
 void Valid_Issue_Slot( ISSUE_SLOT slot )
 {

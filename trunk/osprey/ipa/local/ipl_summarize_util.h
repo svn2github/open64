@@ -245,7 +245,7 @@ public:
 
     SUMMARY_ENTRY_CACHE (MEM_POOL *m) {
 	mem = m;
-	bzero (table, sizeof(table));
+	BZERO (table, sizeof(table));
     }
 
     void Insert (SUMMARY_TYPE type, INT idx) {
@@ -316,14 +316,14 @@ extern BOOL DoPreopt;
 // -----------------------------------------------------------------
 
 // OSP, remove the unnamed namespace to make GCC 4.1.x and above happy
-//namespace {
+// namespace {
     template <class X>
     struct ptr_hash {
 	size_t operator() (const X* s) const {
 	    return reinterpret_cast<size_t> (s);
 	}
     };
-//}
+// }
 
 typedef hash_map<CODEREP*, INT, ptr_hash<CODEREP>, std::equal_to<CODEREP*>,
     mempool_allocator<CODEREP*> > CHI_CR_TO_INT_MAP;

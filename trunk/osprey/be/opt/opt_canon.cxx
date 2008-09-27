@@ -105,13 +105,24 @@ CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
   if (Tree() && Scale() != 0) {
     return htable->Add_bin_node_and_fold
       (OPCODE_make_op(OPR_ADD, typ, MTYPE_V),
+#if defined(TARG_SL) || defined(TARG_NVISA)
+       Tree(), htable->Add_const(typ, Scale()));
+#else
        Tree(), htable->Add_const(MTYPE_I8, Scale()));
+#endif
   }
   if (Tree()) 
     return Tree();
 
   // return a CK_CONST node
+  // PathScale forced a I8 type here,
+  // but we want smaller type when don't have native I8,
+  // and this is what original code had.
+#if defined(TARG_SL) || defined(TARG_NVISA)
+  CODEREP *cr =  htable->Add_const(typ, Scale());
+#else
   CODEREP *cr =  htable->Add_const(MTYPE_I8, Scale());
+#endif
   return cr;
 }
 
@@ -134,8 +145,9 @@ CANON_CR::Trim_to_16bits(WN *wn, CODEMAP *htable)
   if (Tree() == NULL) {
     // iload of a constant cannot be canonicalized. Very likely
     // doing some memory mapped I/O.
-    Set_tree(htable->Add_const(typ, Scale()));
-    Set_scale(0);
+    multiple32K = ((Scale() + 0x8000) >> 16) << 16;
+    Set_tree(htable->Add_const(typ, multiple32K));
+    Set_scale(Scale()-multiple32K);
     return;
   }
   

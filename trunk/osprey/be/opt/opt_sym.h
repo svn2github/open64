@@ -214,7 +214,11 @@ public:
 
 
 enum OPT_VAR_TYPE {
+#ifdef __MINGW32__
+  VT_UNKNOWN_HACK  = 0,        // illegal value for error detection
+#else
   VT_UNKNOWN       = 0,        // illegal value for error detection
+#endif /* __MINGW32__ */
   VT_OTHER         = 0x1,      // a symbol (not scalar, not virtual)
   VT_NO_LDA_SCALAR = 0x2,      // scalar, not virtual
   VT_LDA_SCALAR    = 0x3,      // scalar,     lda-based virtual
@@ -422,7 +426,7 @@ public:
   INT32    Mclass(void) const         { return _mclass; }
   MTYPE	   Mtype(void) const	      { return _mtype; }
   ST	   *St(void) const	      { return st; }
-  char     *St_name(void);
+  const char     *St_name(void);
   mINT64   St_ofst(void) const        { return _st_ofst; }    // relative to the ST
   const char *Base_name(void) const   { return (Base() && ST_class(Base()) == CLASS_VAR)
 					  ? ST_name(Base()) : "null"; }
@@ -836,6 +840,7 @@ private:
   BOOL                      _is_varargs_func;
 #ifdef KEY
   BOOL                      _is_prototyped_func;
+  BOOL                      _has_nonlocal_goto_target;
 #endif
 
   // ------------------------------------------------------------------
@@ -979,6 +984,11 @@ private:
 
   // Misc 
   BOOL     Its_ret_val_of_malloc (VER_ID ver);
+#if defined(TARG_SL)
+  void     Generate_call_mu_chi_by_intrninfo(WN *wn, MU_LIST *mu, CHI_LIST *chi);
+  void     Refine_intrn_alias_info(WN *intrn);
+  void     Refine_intrn_mu_chi_list(WN *intrn);
+#endif
 
   // ------------------------------------------------------------------
 
@@ -989,7 +999,7 @@ public:
 
   void     Create(COMP_UNIT *, REGION_LEVEL);
   AUX_ID   Create_vsym(EXPR_KIND k);
-  AUX_ID   Create_preg(MTYPE preg_ty, char *name = NULL, WN *home_wn = NULL);
+  AUX_ID   Create_preg(MTYPE preg_ty, const char *name = NULL, WN *home_wn = NULL);
   AUX_ID   Find_vsym_with_base(ST *);
 #ifdef KEY
   AUX_ID   Find_vsym_with_st(ST *, BOOL, POINTS_TO * = NULL);
@@ -1016,6 +1026,7 @@ public:
   BOOL     Is_varargs_func(void) const   { return _is_varargs_func; }
 #ifdef KEY
   BOOL     Is_prototyped_func(void) const{ return _is_prototyped_func; }
+  BOOL     Has_nonlocal_goto_target(void) const   { return _has_nonlocal_goto_target; }
 #endif
   BOOL     Allow_sim_type(void) const    { return _allow_sim_type; }
   BOOL     Has_exc_handler(void) const   { return _has_exc_handler; }
@@ -1039,7 +1050,7 @@ public:
   INT64    St_ofst(AUX_ID var) const     { return aux_stab[var].St_ofst(); }
   ST	  *Base(AUX_ID var) const	 { return aux_stab[var].Base(); }
   ST      *St(AUX_ID var) const          { return aux_stab[var].St(); }
-  char    *St_name(AUX_ID var) const     { return aux_stab[var].St_name(); }
+  const char *St_name(AUX_ID var) const  { return aux_stab[var].St_name(); }
   BOOL     Unique_vsym(AUX_ID var) const { return aux_stab[var].Unique_vsym(); }
   void     Init_mp_attribute(void);
   BOOL     Mp_shared(AUX_ID var) const   { return aux_stab[var].Mp_shared(); }
@@ -1280,7 +1291,10 @@ public:
 
   //  Determine the base symbol using the use-def chain.
   void     Analyze_Base_Flow_Sensitive(POINTS_TO *, WN *);
-
+#if defined (TARG_SL)
+  void     Analyze_Base_Flow_Free_for_Intrn(POINTS_TO *pt, WN *wn);
+  void     Analyze_Base_Flow_Sensitive_for_Intrn(POINTS_TO *pt, WN *wn);
+#endif
   //  Update the default vsym after flow sensitive analysis.
   void     Update_iload_vsym(OCC_TAB_ENTRY *);
   void     Update_istore_vsym(OCC_TAB_ENTRY *);
@@ -1306,7 +1320,7 @@ public:
   // note: create_preg may return a preg that is not the last one
   // allocated because it may "pre-allocate" one, but not return it,
   // when the type is too large to fit in the target registers.
-  IDTYPE   Alloc_preg(TYPE_ID mtype, char *name = NULL, WN *home_wn = NULL)   
+  IDTYPE   Alloc_preg(TYPE_ID mtype, const char *name = NULL, WN *home_wn = NULL)   
     {
       IDTYPE preg = Create_Preg(mtype,name,home_wn);
       _last_preg_num = Get_Preg_Num(PREG_Table_Size (CURRENT_SYMTAB));

@@ -38,8 +38,8 @@
 
 
 
-static char *source_file = __FILE__;
-static char *rcs_id = "$Source: common/com/SCCS/s.dwarf_DST.cxx $ $Revision: 1.5 $";
+const static char *source_file = __FILE__;
+const static char *rcs_id = "$Source: common/com/SCCS/s.dwarf_DST.cxx $ $Revision: 1.5 $";
 
 #include "dwarf_DST.h"
 #include "errors.h"         /* in ../common/util */

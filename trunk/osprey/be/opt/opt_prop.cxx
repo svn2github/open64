@@ -420,6 +420,11 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
     if (OPERATOR_is_volatile(x->Opr()))
       return NOT_PROPAGATABLE;
 
+#ifdef TARG_SL
+    // temporary hack
+    if (x->Opr() == OPR_INTRINSIC_OP && x->Is_C3_Intrinsic())
+      return NOT_PROPAGATABLE;
+#endif
     // intrinsic op may by lowered into a call, so propagating it past the
     // def of a return preg is wrong
     if (Past_ret_reg_def() && (x->Opr() == OPR_INTRINSIC_OP
@@ -429,10 +434,36 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
        ))
       return NOT_PROPAGATABLE;
 
+#ifdef VENDOR_PSC
+    // These code comes from Pathscale 3.2
+    // They may cause compilation time out in 403.gcc on IA-64 and 64-bit compiler on x86_64
+    // Too aggressive copy propagation may increase the compilation time in later phases
+    if (icopy_phase) {
+      if (x->Is_isop_flag_set(ISOP_ICOPY_VISITED)) {
+	*height = 1;	// don't really know the height, so return 1
+        return (PROPAGATABILITY) (0x3 & x->Propagatability()); // to prevent sign extension
+      }
+      else {
+	x->Set_isop_flag(ISOP_ICOPY_VISITED);
+        Add_visited_node(x);
+      }
+    }
+    else {
+      if (x->Is_isop_flag_set(ISOP_COPY_VISITED)) {
+	*height = 1;	// don't really know the height, so return 1
+        return (PROPAGATABILITY) (0x3 & x->Propagatability()); // to prevent sign extension
+      }
+      else {
+	x->Set_isop_flag(ISOP_COPY_VISITED);
+        Add_visited_node(x);
+      }
+    }
+#else
     if (icopy_phase && !x->Is_isop_flag_set(ISOP_ICOPY_VISITED)) {
       x->Set_isop_flag(ISOP_ICOPY_VISITED);
       Add_visited_node(x);
     }
+#endif
 
     // determine if there are ops that we are not allowed to propagate 
     // into an array subscript
@@ -949,14 +980,18 @@ COPYPROP::Prop_const_init_scalar(CODEREP *x, AUX_ID var_aux_id)
   // is this variable a constant initialized scalar?
   BOOL const_initialized = 
     psym->Is_flag_const_init() &&
+#if defined(TARG_NVISA)
+    !psym->Is_volatile();
+#else
     !psym->Is_volatile() &&
     psym->St_ofst() == 0;  // a limitation for matching INITV or TCON
                            // should make it smarter to look into block of INITV.
+#endif
 
   if (const_initialized) {
     TCON init_tcon;
     ST *st = psym->St();
-    if (ST_is_const_initialized_scalar(st, init_tcon))
+    if (ST_is_const_initialized_scalar(st, psym->St_ofst(), init_tcon))
       {
 	// if the ST's initialized value can be represented with a TCON
 	// first convert the init value to the type of the variable
@@ -1376,6 +1411,8 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
     if (x->Opr() == OPR_MLOAD)
       expr2 = Copy_propagate_cr(x->Mload_size(), curbb, 
 				inside_cse, in_array);
+    else if (x->Opr() == OPR_ILOADX)
+      expr2 = Copy_propagate_cr(x->Index(), curbb, inside_cse, in_array);
     else
       expr2 = NULL;
     if (expr || expr2) { // need rehash
@@ -1390,7 +1427,7 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
 	cr->Set_mload_size(expr2);
       cr->Set_ivar_occ(x->Ivar_occ());
       x->DecUsecnt();
-      if (x->Opr() == OPR_MLOAD) {
+      if (x->Opr() == OPR_MLOAD || x->Opr() == OPR_ILOADX) {
 	expr = Htable()->Rehash(cr);
       } else {
 	expr = ftmp.Fold_Expr(cr);     
@@ -1438,17 +1475,20 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
 	  if ( i > 0 )
 	    in_array = TRUE;
 	}
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
         if (opr != OPR_ASM_INPUT ||
             (x->Opnd(i)->Kind() != CK_VAR && x->Opnd(i)->Kind() != CK_IVAR) )
 	  expr = Copy_propagate_cr(x->Opnd(i), curbb, inside_cse, in_array);
         else {
-		  // OSP_384
-		  if(opr == OPR_ASM_INPUT)
-			x->Opnd(i)->Set_flag(CF_DONT_PROP);
+	  // OSP_384
+	  if(opr == OPR_ASM_INPUT)
+	    x->Opnd(i)->Set_flag(CF_DONT_PROP);
           expr = NULL;
-		}
+	}
 #else
+	// for NVISA, the usage of asm is an array of const val,
+	// then was passing arr[3] and was seeing the array node
+	// rather than the const val under the asm_input
 	expr = Copy_propagate_cr(x->Opnd(i), curbb, inside_cse, in_array);
 #endif
 	if (expr) {
@@ -2146,7 +2186,11 @@ COPYPROP::Copy_propagate(BB_NODE *bb)
       Set_past_ret_reg_def();
     else if (stmt->Opr() == OPR_RETURN || 
 	     stmt->Opr() == OPR_RETURN_VAL ||
-	     stmt->Opr() == OPR_REGION)
+	     stmt->Opr() == OPR_REGION
+#ifdef KEY
+  	     || stmt->Opr() == OPR_GOTO_OUTER_BLOCK
+#endif
+	    )
       Reset_past_ret_reg_def();
 
     if (stmt->Has_chi() || OPERATOR_is_store(stmt->Opr()))

@@ -784,7 +784,7 @@ BOOL ALIAS_RULE::Aliased_Disjoint(const POINTS_TO *mem1, const POINTS_TO *mem2) 
 
 //  Same location
 //
-BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *mem1, const POINTS_TO *mem2)
+BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *mem1, const POINTS_TO *mem2) const
 {
   if (mem1->Same_base(mem2) &&
       mem1->Ofst_kind() == OFST_IS_FIXED &&
@@ -795,12 +795,21 @@ BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *me
        WN_object_size(wn1) == mem1->Byte_Size()) &&
       (WN_operator(wn2) == OPR_IDNAME ||
        WN_object_size(wn2) == mem2->Byte_Size())) {
-    
-    if (mem1->Bit_Size() == 0 || mem2->Bit_Size() == 0)
+    BOOL wn1_is_bit = (WN_operator(wn1) == OPR_LDBITS || WN_operator(wn1) == OPR_STBITS
+		 || WN_operator(wn1) == OPR_ILDBITS || WN_operator(wn1) == OPR_ISTBITS);
+    BOOL wn2_is_bit = (WN_operator(wn2) == OPR_LDBITS || WN_operator(wn2) == OPR_STBITS
+		 || WN_operator(wn2) == OPR_ILDBITS || WN_operator(wn2) == OPR_ISTBITS);
+    if (!wn1_is_bit && !wn2_is_bit) {
+      FmtAssert((mem1->Bit_Size() == 0 && mem2->Bit_Size() == 0), 
+	  	("ALIAS_RULE::Same_location: wrong bit size" ));
       return TRUE;
-    else
-      return (mem1->Bit_Ofst() == mem2->Bit_Ofst() &&
-	      mem1->Bit_Size() == mem2->Bit_Size());
+    } else if (wn1_is_bit && wn2_is_bit) {
+      if (WN_bit_size(wn1) == mem1->Bit_Size() && 
+          WN_bit_size(wn2) == mem2->Bit_Size() && 
+          mem1->Bit_Ofst() == mem2->Bit_Ofst() &&
+          mem1->Bit_Size() == mem2->Bit_Size())
+	return TRUE;
+    }
   }
   return FALSE;
 }

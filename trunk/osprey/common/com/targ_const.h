@@ -248,7 +248,7 @@ typedef struct TCON TCON;
 #ifdef really_call_bzero
 #define TCON_clear(c)	really_call_bzero (&c, sizeof(TCON))
 #else
-#define TCON_clear(c)	bzero (&c, sizeof(TCON))
+#define TCON_clear(c)	BZERO (&c, sizeof(TCON))
 #endif
 
 
@@ -353,7 +353,7 @@ extern TCON Extract_LongLong_Lo( TCON q);
  * passed includes the NULL.
  * Targ_String_Length always returns the "len" that was initially passed in.
  */
-extern TCON Host_To_Targ_String ( TYPE_ID ctype, char *cp, UINT32 len );
+extern TCON Host_To_Targ_String ( TYPE_ID ctype, const char *cp, UINT32 len );
 extern char *Targ_String_Address ( TCON cvalue );
 extern mUINT32 Targ_String_Length ( TCON cvalue );
 
@@ -361,7 +361,7 @@ extern mUINT32 Targ_String_Length ( TCON cvalue );
  * is a static string which gets recycled after 8 calls, so it must
  * be used immediately or copied:
  */
-extern char *Targ_Print ( char *fmt, TCON cvalue );
+extern char *Targ_Print (const char *fmt, TCON cvalue );
 
 /* Format the given string as a printable string, by replacing special
  * characters by the C source codes, e.g. "\n" for newline, "\003" for

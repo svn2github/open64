@@ -864,6 +864,14 @@ SSA::Create_CODEMAP(void)
     extern BOOL Simp_Canonicalize;
     BOOL save_simp_canon = Simp_Canonicalize;
     COPYPROP copyprop(_htable, _opt_stab, _cfg, loc_pool);
+#ifdef TARG_NVISA
+    // in first pass, only want to handle loops, not do optimization
+    // (which may cause performance issues because propagates into loop,
+    // emits whirl, then does mainopt which may not hoist if originates
+    // in loop, unless aggcm which we have turned off).
+    if (Htable()->Phase() == PREOPT_PHASE)
+      copyprop.Set_disabled();
+#endif
 
     //Simp_Canonicalize = FALSE;
     Value_number(_htable, _opt_stab, _cfg->Entry_bb(), &copyprop, _cfg->Exc());
@@ -884,6 +892,10 @@ SSA::Create_CODEMAP(void)
 	      _htable->Num_iloadfolds(), _htable->Num_istorefolds() );
     Opt_tlog( "INPUTPROP", 0, "%d copy propagations",
 	      Htable()->Num_inputprops() );
+#ifdef TARG_NVISA
+    if (Htable()->Phase() == PREOPT_PHASE)
+      copyprop.Reset_disabled();
+#endif
     Simp_Canonicalize = save_simp_canon;
   }
   
@@ -1081,6 +1093,7 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
       OPCODE opc = WN_opcode(ref_wn);
       rtype = OPCODE_rtype(opc);
       dtype = OPCODE_desc(opc);
+      Is_True(!(dtype==MTYPE_I2 && rtype== MTYPE_I2), ("Create illegal coderep i2i2"));
 
 #ifndef TARG_X8664
       // Fix 770676
@@ -1261,6 +1274,16 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
     // add new stmtrep with Wn set
     stmt = bb->Add_stmtnode(wn, mem_pool);
 
+#ifdef TARG_SL //fork_joint
+    if(WN_is_compgoto_para(wn)) 
+       stmt->Set_fork_stmt_flags(TRUE);
+    else if(WN_is_compgoto_for_minor(wn)) 
+	stmt -> Set_minor_fork_stmt_flags(TRUE);
+    // mark istore for vbuf automatic expansion 
+    if (WN_operator(wn) == OPR_ISTORE && WN_is_internal_mem_ofst(wn))
+      stmt->Set_SL2_internal_mem_ofst(TRUE); 
+#endif 
+
     stmt->Enter_rhs(htable, opt_stab, copyprop, exc);
     stmt->Enter_lhs(htable, opt_stab, copyprop);
 
@@ -1329,7 +1352,11 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
       MU_NODE *mnode;
 
       stmt->Set_mu_list( opt_stab->Get_stmt_mu_list(wn) );
-      if (stmt->Opr() == OPR_RETURN || stmt->Opr() == OPR_RETURN_VAL)
+      if (stmt->Opr() == OPR_RETURN || stmt->Opr() == OPR_RETURN_VAL
+#ifdef KEY
+	  || stmt->Opr() == OPR_GOTO_OUTER_BLOCK
+#endif
+	 )
 	stmt->Mu_list()->Delete_def_at_entry_mus(opt_stab);
       FOR_ALL_NODE( mnode, mu_iter, Init(stmt->Mu_list()) ) {
 	if (mnode->Opnd() != 0) {
@@ -1416,6 +1443,9 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
       copyprop->Set_past_ret_reg_def();
     else if (stmt->Opr() == OPR_RETURN || 
 	     stmt->Opr() == OPR_RETURN_VAL ||
+#ifdef KEY
+  	     stmt->Opr() ==  OPR_GOTO_OUTER_BLOCK ||
+#endif
 	     stmt->Opr() == OPR_REGION)
       copyprop->Reset_past_ret_reg_def();
 

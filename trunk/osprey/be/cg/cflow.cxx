@@ -291,7 +291,7 @@ static LISTVAR_COUNT *listvar_counts;
 
 void Print_BB_Info(BB *bb);
 #pragma mips_frequency_hint NEVER Print_BB_Info
-void Print_Cflow_Graph(char *banner);
+void Print_Cflow_Graph(const char *banner);
 #pragma mips_frequency_hint NEVER Print_Cflow_Graph
 
 #ifdef TARG_X8664
@@ -303,16 +303,25 @@ void Print_Cflow_Graph(char *banner);
  *
  * ====================================================================
  */
-static inline OP* BB_savexmms_op( BB *bb )
+static inline OP* 
+BB_savexmms_op( BB *bb )
 {
   OP* op = BB_last_op(bb);
   return ( (op != NULL) && (OP_code(op) == TOP_savexmms) ) ? op : NULL;
 }
 
-static inline bool BB_computes_got( BB* bb )
+static inline bool
+BB_first_OP_computes_got (BB* bb)
 {
-  OP* op = BB_first_op(bb);
-  return ( (op != NULL) && OP_computes_got(op) );
+  OP *first_op = BB_first_op(bb);
+  return ((first_op != NULL) && OP_computes_got(first_op));
+}
+
+static inline bool
+BB_last_OP_computes_got (BB* bb)
+{
+  OP *last_op = BB_last_op(bb);
+  return ((last_op != NULL) && OP_computes_got(last_op));
 }
 #endif
 
@@ -405,6 +414,16 @@ Print_BB_Info(BB *bb)
   case BBKIND_CALL:
     fprintf(TFile, "\nSuccessor:\t%s\n", Format_Succ(bb, 0));
     break;
+#if defined(TARG_SL)
+  case BBKIND_ZDL_BODY:
+    fprintf( TFile, "\nSuccessor 0:\t%s\n", Format_Succ(bb, 0));
+    fprintf( TFile, "Successor 1:\t%s\n", Format_Succ(bb, 1));
+    break;
+  case BBKIND_FORK:
+    fprintf( TFile, "\nSuccessor 0:\t%s\n", Format_Succ(bb, 0));
+    fprintf( TFile, "Successor 1:\t%s\n", Format_Succ(bb, 1));
+    break;
+#endif
   default:
     fprintf(TFile, "\n");
     break;
@@ -421,7 +440,7 @@ Print_BB_Info(BB *bb)
  * ====================================================================
  */
 void
-Print_Cflow_Graph(char *banner)
+Print_Cflow_Graph(const char *banner)
 {
   BB *bb;
 
@@ -553,14 +572,14 @@ static INT *ListVar_RefCount(ST *listvar)
  *
  * ====================================================================
  */
-#ifdef TARG_IA64
+#if defined (TARG_IA64) 
 static BOOL
 #else
 static void
 #endif
 Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
 {
-#ifdef TARG_IA64
+#if defined (TARG_IA64)
   if(IPFEC_Enable_Region_Formation && RGN_Formed) {
       if(Home_Region(bb)->Is_No_Further_Opt() ||
          Home_Region(old_succ)->Is_No_Further_Opt() ||
@@ -614,7 +633,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
 	      float old_prob = BBLIST_prob(old_edge);
 	      BBLIST_prob(old_edge) = prob > old_prob ? 0.0 : old_prob - prob;
       }
-#ifdef TARG_IA64
+#if defined (TARG_IA64)
       if(IPFEC_Enable_Region_Formation && RGN_Formed) {
         RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
 	      return TRUE;
@@ -628,13 +647,13 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
 #endif
     }
   }
-#ifdef TARG_IA64
+#if defined (TARG_IA64)
   if (IPFEC_Enable_Region_Formation && RGN_Formed) {
       RGN_Unlink_Pred_Succ(bb,old_succ);
-	    RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
+      RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
   } else {
       Unlink_Pred_Succ(bb, old_succ);
-#ifdef KEY
+#if defined(KEY) && defined(TARG_SL)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0, !prob_acced);
 #else
@@ -645,7 +664,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
   return TRUE;
 #else
   Unlink_Pred_Succ(bb, old_succ);
-#ifdef KEY
+#if defined(KEY) && defined(TARG_SL)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0);
 #else
@@ -738,7 +757,7 @@ Alloc_BB_Like(BB *model)
   }
   deleted_bbs = BB_next(new_bb);
   id = BB_id(new_bb);
-  bzero(new_bb, sizeof(*new_bb));
+  BZERO(new_bb, sizeof(*new_bb));
   new_bb->id = id;
   if (model) BB_rid(new_bb) = BB_rid(model);
   return new_bb;
@@ -1203,7 +1222,7 @@ Finalize_BB(BB *bp)
       if ((br == NULL) || OP_noop(br))// bug fix for OSP_104, OSP_105, OSP_192
       {
          br = BB_Last_chk_op(bp);
-	}
+      }
 #endif
       /* Get the fall through and the target BBs.
        */
@@ -1213,7 +1232,25 @@ Finalize_BB(BB *bp)
       target = BBINFO_succ_bb(bp, 0);
       target_offset = BBINFO_succ_offset(bp, 0);
       target_prob = BBINFO_succ_prob(bp, 0);
-
+#if defined(TARG_SL)
+      if (!CG_sl2) {
+	// SL1 has always taken policy
+        if (fall_through_prob > target_prob) {
+	  if (BBINFO_b_likely(bp)) {
+	    // ??
+	  } 
+	  else if (Negate_Branch(br)) {
+	    target = fall_through;
+	    target_offset = fall_through_offset;
+	    target_prob = fall_through_prob;
+	    fall_through = BBINFO_succ_bb(bp, 0);
+	    fall_through_offset = BBINFO_succ_offset(bp, 0);
+	    fall_through_prob = BBINFO_succ_prob(bp, 0);
+	  }
+	}
+      }
+      else
+#endif
       /* If the target is the start of the next BB or neither succ is
        * the next BB and the target probability is lower, negate the
        * branch condition so that we fall through to the next BB in
@@ -1273,6 +1310,21 @@ Finalize_BB(BB *bp)
     }
     break;
 
+#if defined(TARG_SL)
+  case BBKIND_ZDL_BODY:
+  case BBKIND_FORK:
+    {
+      INT64 fall_through_offset;
+      BB* fall_through;
+      fall_through = BBINFO_succ_bb(bp, 1);
+      fall_through_offset = BBINFO_succ_offset(bp, 1);
+      if (fall_through_offset != 0 || fall_through != BB_next(bp)) {
+	  Insert_Goto_BB(bp, fall_through, fall_through_offset, fill_delay_slots);
+      }
+    }
+    break;
+#endif
+
   case BBKIND_GOTO:
     if (BBINFO_nsuccs(bp)) {
       BB *succ_bb = BBINFO_succ_bb(bp, 0);
@@ -1283,12 +1335,16 @@ Finalize_BB(BB *bp)
       Is_True(BB_Find_Succ(bp, succ_bb),
 	      ("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
       Is_True(   !freqs_computed
+#if defined(TARG_SL)
+		 || BB_freq_unbalanced(bp)
+#endif
 		 || (BBLIST_prob(BB_Find_Succ(bp, succ_bb)) == 1.0),
 		 ("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
 
       if (   offset == 0
 	  && succ_bb == BB_next(bp) 
-	  && BBINFO_cold(bp) == BBINFO_cold(succ_bb))
+	  && BBINFO_cold(bp) == BBINFO_cold(succ_bb)
+	 )
       {
 
 	/* Fall through; remove terminating branch if there is one.
@@ -1733,6 +1789,10 @@ Initialize_BB_Info(void)
 #ifdef TARG_IA64
     case BBKIND_CHK: // bug fix for OSP_104, OSP_105, OSP_192
 #endif
+#if defined(TARG_SL)
+    case BBKIND_ZDL_BODY:
+    case BBKIND_FORK:
+#endif
       {
 	INT tfirst;
 	INT tcount;
@@ -1771,6 +1831,9 @@ Initialize_BB_Info(void)
 	bbinfo->succs[1].offset = 0;
 	bbinfo->succs[1].prob = BBLIST_prob(fall_through_edge);
 
+#if defined(TARG_SL)
+	if(br == NULL)  continue;
+#endif
 	CGTARG_Branch_Info(br, &tfirst, &tcount);
 	FmtAssert(tcount == 1, ("unexpected number of branch targets"));
 	lab_tn = OP_opnd(br, tfirst);
@@ -2153,6 +2216,19 @@ Redundant_Logif(BB *pred, BB *succ, BOOL *pnegated)
       && (pred_cmp != BB_branch_op(pred) || succ_cmp != BB_branch_op(succ))
   ) return FALSE;
 
+#ifdef TARG_NVISA
+  // can have differing cmp, same variant (P_TRUE),
+  // and both are branch_op cause couldn't find real source of compare.
+  // Check for one being negate of the other.
+  if (pred_cmp != succ_cmp) {
+    DevWarn("differing cmp ops");
+    if (OP_code(pred_cmp) == TOP_bra_p && OP_code(succ_cmp) == TOP_bra_np)
+      negated = TRUE;
+    else if (OP_code(pred_cmp) == TOP_bra_np && OP_code(succ_cmp) == TOP_bra_p)
+      negated = TRUE;
+  }
+#endif
+
 #ifdef KEY
   /* A BBINFO_condval could be re-defined by an op which is scheduled
      at the delay slot. */
@@ -2163,7 +2239,7 @@ Redundant_Logif(BB *pred, BB *succ, BOOL *pnegated)
 	TN* result = OP_result( last_op, i );
 	if( result == BBINFO_condval1(succ) ||
 	    result == BBINFO_condval2(succ) ){
-	  // Is_True( false, ("TN is re-defined more than once.\n") );
+	  // Is_True( false, ("TN is re-defined more than once.\n") );// 11657
 	  return FALSE;
 	}
       }
@@ -3155,7 +3231,7 @@ Optimize_Branches(void)
 #endif
  
   used_branch_around = (mBOOL *)alloca((PU_BB_Count + 2) * sizeof(*used_branch_around));
-  bzero(used_branch_around, (PU_BB_Count + 2) * sizeof(*used_branch_around));
+  BZERO(used_branch_around, (PU_BB_Count + 2) * sizeof(*used_branch_around));
   pass = 0;
   do {
     BB *bp;
@@ -3191,9 +3267,7 @@ Optimize_Branches(void)
 #ifdef TARG_IA64
             chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
 	  }
-          if (chan_succ) {
-            changed = TRUE;
-          }
+          changed = TRUE;          
         } else {
           if (freqs_computed) {
             edge_freq = BBINFO_succ_prob(bp, 0) * BB_freq(bp);
@@ -3613,6 +3687,10 @@ Merge_With_Pred ( BB *b, BB *pred )
 #ifdef TARG_IA64
   case BBKIND_CHK:// bug fix for OSP_104, OSP_105, OSP_192
 #endif
+#if defined(TARG_SL) 
+  case BBKIND_ZDL_BODY:
+  case BBKIND_FORK:
+#endif
     if (CFLOW_Trace_Merge) {
       #pragma mips_frequency_hint NEVER
       fprintf(TFile, "Merge_With_Pred rejecting merge of BB:%d into BB:%d (unsupported kind: %s)\n",
@@ -3855,6 +3933,28 @@ Can_Append_Succ(
     /* We handle these.
      */
     break;
+#if defined(TARG_SL) 
+  case BBKIND_ZDL_BODY:
+    {
+      if (trace) {
+        #pragma mips_frequency_hint NEVER
+        fprintf(TFile, "rejecting %s of BB:%d into BB:%d"
+		       " (BBKIND_ZDL must not be appended)\n",
+		       oper_name, BB_id(suc), BB_id(b));
+      }
+      return FALSE;
+    }
+  case BBKIND_FORK:
+    {
+      if (trace) {
+ 	  #pragma mips_frequency_hint NEVER
+	  fprintf(TFile, "rejecting %s of BB:%d into BB:%d"
+		       " (BBKIND_FORL can not be appended currently)\n",
+		       oper_name, BB_id(suc), BB_id(b));
+      }
+      return FALSE;
+    }
+#endif
   default:
     if (trace) {
       #pragma mips_frequency_hint NEVER
@@ -3863,6 +3963,28 @@ Can_Append_Succ(
     }
     return FALSE;
   }
+
+#if defined(TARG_SL)
+  if(BBINFO_kind(b) == BBKIND_ZDL_BODY) {
+    if (trace) {
+      #pragma mips_frequency_hint NEVER
+      fprintf(TFile, "rejecting %s of BB:%d into BB:%d"
+		       " (BBKIND_ZDL must not append other bb)\n",
+		       oper_name, BB_id(suc), BB_id(b));
+      }
+    return FALSE;
+  }
+
+  if(BBINFO_kind(b) == BBKIND_FORK) {
+    if(trace) {
+      #pragma mips_frequency_hint NEVER
+	fprintf(TFile, "rejecting %s of BB:%d into BB:%d"
+		       " (BBKIND_FORL can not append other bb currently)\n",
+		       oper_name, BB_id(suc), BB_id(b));
+    }
+    return FALSE;
+  }
+#endif
 
   /* Reject if BB has an asm.
    */
@@ -3879,6 +4001,11 @@ Can_Append_Succ(
 #ifdef TARG_X8664
   // merging would delete the label needed by this instr
   if( BB_savexmms_op(b) != NULL ){
+    return FALSE;
+  }
+
+  if (BB_last_OP_computes_got(b) ||		// bug 14452
+      BB_first_OP_computes_got(suc)) {
     return FALSE;
   }
 #endif
@@ -4478,7 +4605,8 @@ Merge_Blocks ( BOOL in_cgprep )
 	  break;
 	}
 
-	if( BB_computes_got(b) ){
+	if (BB_first_OP_computes_got(b) ||
+	    BB_last_OP_computes_got(b)) {	// bug 14452
 	  break;
 	}
 #endif
@@ -4912,7 +5040,7 @@ Init_Edges(EDGE *edges)
    * for given BB.
    */
   bb_preds = (EDGE **)alloca((PU_BB_Count + 2) * sizeof(EDGE *));
-  bzero(bb_preds, (PU_BB_Count + 2) * sizeof(EDGE *));
+  BZERO(bb_preds, (PU_BB_Count + 2) * sizeof(EDGE *));
 
   /* Visit all the BBs and create and initialize the edges.
    * On this pass the weighting only accounts for things we can
@@ -4924,6 +5052,10 @@ Init_Edges(EDGE *edges)
 
     switch (BBINFO_kind(bb)) {
     case BBKIND_LOGIF:
+#if defined(TARG_SL)
+    case BBKIND_ZDL_BODY:
+    case BBKIND_FORK:
+#endif
       {
         double prob0 = BBINFO_succ_prob(bb, 0);
 	double prob1 = BBINFO_succ_prob(bb, 1);
@@ -5767,7 +5899,11 @@ Order_Chains(BBCHAIN *unordered, BB_MAP chain_map)
    * has been defined, locate the appropriate chain and create
    * the cold region.
    */
+#if defined(TARG_SL)
+  if (CFLOW_cold_threshold &&  (current_flags & CFLOW_COLD_REGION)) {
+#else
   if (CFLOW_cold_threshold) {
+#endif
     BBCHAIN *ch = last_ordered;
 
     /* The cold region boundary is placed between chains to avoid
@@ -6198,6 +6334,10 @@ Dynamic_Branch_Cost(
     case BBKIND_RETURN:
     case BBKIND_TAIL_CALL:
     case BBKIND_REGION_EXIT:
+#if defined(TARG_SL)
+    case BBKIND_ZDL_BODY:
+    case BBKIND_FORK:
+#endif
       break;
     default:
       #pragma mips_frequency_hint NEVER
@@ -6254,6 +6394,15 @@ Freq_Order_Blocks(void)
     cost0 = Dynamic_Branch_Cost(REGION_First_BB, &stat_fall0);
   }
 
+#if defined(TARG_SL)
+  //delete the region info in the last pass cg
+  if ( !Compiling_Proper_REGION ) {
+    for (BB* bb = REGION_First_BB; bb; bb=BB_next(bb)) {
+      if(BBINFO_eh_rgn(bb) || BB_handler(bb)) continue;
+      BB_rid(bb) = BB_rid(REGION_First_BB);
+    }
+  }
+#endif
   /* Get the max number of succ edges and allocate that many edge structs.
    */
   n_succs = Count_Succ_Edges();
@@ -6399,7 +6548,7 @@ Estimate_Callee_Saves(void)
 
   MEM_POOL_Push(&MEM_local_pool);
 
-  bzero(callee_saves, sizeof(callee_saves));
+  BZERO(callee_saves, sizeof(callee_saves));
   for (bb = REGION_First_BB; bb; bb = BB_next(bb)) {
     INT tn_count[ISA_REGISTER_CLASS_MAX + 1];
     TN *tn;
@@ -6421,7 +6570,7 @@ Estimate_Callee_Saves(void)
     /* Count up the number of GTNs that need a register for each
      * register class.
      */
-    bzero(tn_count, sizeof(tn_count));
+    BZERO(tn_count, sizeof(tn_count));
     for (tn = GTN_SET_Choose(need_reg);
 	 tn && tn != GTN_SET_CHOOSE_FAILURE; // gra_live::live_init has brought in some virtual tn that may not there
 	 tn = GTN_SET_Choose_Next(need_reg, tn))
@@ -6493,7 +6642,7 @@ Estimate_BB_Length(BB *bb)
   if (!CG_localize_tns && (BB_exit(bb) || BB_entry(bb))) {
     INT callees_needed[ISA_REGISTER_CLASS_MAX + 1];
     OP *op;
-    bcopy(callee_saves, callees_needed, sizeof(callee_saves));
+    BCOPY(callee_saves, callees_needed, sizeof(callee_saves));
     FOR_ALL_BB_OPs(bb, op) {
       ISA_REGISTER_CLASS rc;
       TN *tn;
@@ -6534,7 +6683,7 @@ Create_Sched_Est(BB *bb, MEM_POOL *pool)
   if (!CG_localize_tns && (BB_entry(bb) || BB_exit(bb))) {
     INT callees_needed[ISA_REGISTER_CLASS_MAX + 1];
     OP *op;
-    bcopy(callee_saves, callees_needed, sizeof(callee_saves));
+    BCOPY(callee_saves, callees_needed, sizeof(callee_saves));
     FOR_ALL_BB_OPs(bb, op) {
       ISA_REGISTER_CLASS rc;
       TN *tn;
@@ -7024,6 +7173,10 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
   /* Get flag settings for this invocation.
    */
   current_flags = flags & ~disabled_flags;
+#if defined(TARG_SL)
+  if(((current_flags & CFLOW_COLD_REGION) && CFLOW_cold_threshold))
+    current_flags |= CFLOW_FREQ_ORDER;
+#endif
 
   if (CFLOW_Trace) {
     #pragma mips_frequency_hint NEVER
@@ -7050,6 +7203,10 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
 	    (current_flags & CFLOW_OPT_ALL_BR_TO_BCOND) ? "enabled" : "disabled");
     fprintf(TFile, "  fill delay slots:\t\t%s\n",
 	    (current_flags & CFLOW_FILL_DELAY_SLOTS) ? "enabled" : "disabled");
+#if defined (TARG_SL)
+    fprintf(TFile, "  cold region:\t\t%s\n",
+	    (current_flags & CFLOW_COLD_REGION) ? "enabled" : "disabled");
+#endif
 
     fprintf(TFile, "\n");
     Print_All_BBs();
@@ -7673,7 +7830,7 @@ CFLOW_Delete_Empty_BB(void)
 }
 #endif
 
-#if defined(KEY) && defined(TARG_MIPS)
+#if defined(KEY) && (defined(TARG_MIPS) && !defined(TARG_SL))
 
 
 // Fix for bugs 8748 and 11720:  Build a long jump using the jr instruction.
@@ -7788,8 +7945,17 @@ CFLOW_Fixup_Long_Branches()
       UINT32 targ_position = bb_position[BB_id(targ_bb)];
 
       // Estimate displacement in bytes.  Inflate estimate for safety.
-      INT64 disp
-        = (INT64)(((INT64)targ_position - (INT64)branch_position) * 4 * 1.1);
+      INT64 disp = (INT64) targ_position - (INT64) branch_position;
+      disp *= 4;
+      // 14212: Hardware workaround will inflate code.
+#if defined(TARG_SL) || !defined(TARG_MIPS)
+      if (CG_hw_round > 0 || CG_hw_stall > 0) {
+	disp = (INT64) (disp * 1.2);
+      } else {
+	disp = (INT64) (disp * 1.1);
+      }
+#endif
+
       if (!CGTARG_Can_Fit_Displacement_In_Branch_Instruction(disp)) {
         if (bb_kind == BBKIND_GOTO) {
           OPS ops = OPS_EMPTY;

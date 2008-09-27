@@ -35,7 +35,7 @@
 
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/util/file_util.c,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/util/file_util.c,v $ $Revision: 1.1 $";
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -208,8 +208,8 @@ Remove_Extension ( name )
   char *new;
   INT16 len, i;
   /* Allocate a new name string: */
-  len = strlen(name) + 1;
-  new = (char *) malloc ( len );
+  len = strlen(name);
+  new = (char *) malloc ( len + 1 );
   strcpy ( new, name );
   for ( i=len-1; i>=0; i-- ) {
     if ( new[i] == '.' ) {

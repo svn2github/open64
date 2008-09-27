@@ -1,8 +1,4 @@
 /*
- * Copyright 2006.  QLogic Corporation.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -67,10 +63,10 @@
 /////////////////////////////////////
 
 
-//  $Revision$
-//  $Date$
-//  $Author$
-//  $Source$
+//  $Revision: 1.2 $
+//  $Date: 02/11/07 23:41:30-00:00 $
+//  $Author: fchow@keyresearch.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_split.h $
 
 
 #ifndef GRA_SPLIT_INCLUDED
@@ -79,7 +75,7 @@
 #ifndef GRA_SPLIT_RCS_ID
 #define GRA_SPLIT_RCS_ID
 #ifdef _KEEP_RCS_ID
-static char *gra_split_rcs_id = "$Source$ $Revision$";
+static char *gra_split_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra_split.h $ $Revision: 1.2 $";
 #endif
 #endif
 

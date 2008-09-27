@@ -44,7 +44,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 
 #include "defs.h"
 #include "errors.h"
@@ -85,7 +89,7 @@ FILE* STDOUT = stdout;
 // FUNCTION: Dump the array sections to the file 'fp'.
 //-----------------------------------------------------------------------
 
-static void Print_Array_Sections(char buffer[])
+static void Print_Array_Sections(const char buffer[])
 {
   CG_BROWSER cgb_print;
   CGB_Initialize(&cgb_print, IPA_Call_Graph);
@@ -244,6 +248,7 @@ static void Perform_Inline_Script_Analysis(IPA_CALL_GRAPH* cg, MEM_POOL* pool, M
 }
 #endif /* KEY */
 
+extern void IPA_struct_opt_legality (void);
 
 //-------------------------------------------------------------------------
 // the main analysis phase at work! 
@@ -324,6 +329,20 @@ Perform_Interprocedural_Analysis ()
 	    fprintf (TFile, "\t<<<Call Graph Construction begins>>>\n");
 	
 	Build_Call_Graph ();
+
+	if(Get_Trace(TP_IPA, IPA_TRACE_TUNING)) // -tt19:0x40000
+	{
+  	  FILE *tmp_call_graph = fopen("cg_dump.log", "w");
+
+	  if(tmp_call_graph != NULL)
+	  {	  
+	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
+	    // KEY
+  	    IPA_Call_Graph->Print_vobose(tmp_call_graph);
+	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
+	  }
+	  fclose(tmp_call_graph);
+	}
 
 #ifdef KEY
         {
@@ -486,6 +505,11 @@ Perform_Interprocedural_Analysis ()
 
     if(IPA_Enable_Reorder && !merged_access->empty())
 		IPA_reorder_legality_process(); 	
+
+#ifdef KEY
+    if (IPA_Enable_Struct_Opt)
+        IPA_struct_opt_legality();
+#endif
 
     //  mark all unreachable nodes that are either EXPORT_LOCAL (file
     //  static) or EXPORT_INTERNAL *AND* do not have address taken as

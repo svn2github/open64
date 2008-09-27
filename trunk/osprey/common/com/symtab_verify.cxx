@@ -354,6 +354,10 @@ ST_Verify_Flags (const ST &s)
 
   if (ST_is_temp_var (s))
     Is_True(ST_sclass(s) == SCLASS_AUTO ||
+#if defined(TARG_NVISA)
+	    // may treat auto as pstatic
+            ST_sclass(s) == SCLASS_PSTATIC ||
+#endif
             ST_sclass(s) == SCLASS_FORMAL ||
             ST_sclass(s) == SCLASS_FORMAL_REF,
             (msg, "Storage class", Sclass_Name(ST_sclass(s)), 
@@ -364,7 +368,10 @@ ST_Verify_Flags (const ST &s)
             (msg, "Class", Class_Name(ST_sym_class(s)), "ST_IS_CONST_VAR")); 
 
     Is_True(ST_sclass(s) != SCLASS_AUTO   &&
+#if !defined(TARG_NVISA)
+            /* okay to have const formal in nvisa */
             ST_sclass(s) != SCLASS_FORMAL &&
+#endif
             ST_sclass(s) != SCLASS_FORMAL_REF,
             (msg, "Storage class", Sclass_Name(ST_sclass(s)), 
 	     "ST_IS_CONST_VAR")); 
@@ -434,7 +441,9 @@ ST_Verify_Fields(const ST &s)
 
   switch (ST_sym_class (s)) {
   case CLASS_FUNC:
+#ifndef KEY
     Is_True (ST_level (&s) == GLOBAL_SYMTAB, (msg, "sym_class"));
+#endif
     Is_True( 0 < ST_pu(s) && ST_pu(s) < PU_Table_Size (), (msg, "pu")); 
 
     // Verify the PU associated with this st
@@ -558,8 +567,10 @@ void INITO::Verify(UINT level) const
   Is_True(ST_IDX_index (st_idx) > 0 &&
 	  ST_IDX_index (st_idx) < ST_Table_Size (ST_IDX_level (st_idx)),
 	  ("Invalid st_idx for INITO"));
+#ifndef KEY // no longer true because INITO is used to link up nested functions
   Is_True(ST_is_initialized (St_Table[st_idx]),
 	   ("ST_IS_INITIALIZED not set"));
+#endif
   Is_True(0 <  val && val < INITV_Table_Size(),
            ("Invalid field for INITO: val"));
   Is_True(level == ST_IDX_level(st_idx),
@@ -1010,11 +1021,13 @@ void PU::Verify(UINT) const
 	   ("Invalid TY_IDX in PU::prototype"));
 
 #ifdef KEY
-// We are using 'eh_info' to store ST_IDXs of 2 special variables for
-// C++ exception handling.
-  if (!(src_lang & PU_CXX_LANG))
-#endif // !KEY
-  Is_True (eh_info == 0, ("eh_info fields must be zero"));
+// We are using 'misc' to store ST_IDXs of 2 special variables for
+// C++ exception handling, or for C nested functions.
+  if (!(src_lang & PU_CXX_LANG) && !(src_lang & PU_C_LANG))
+    Is_True (misc == 0, ("misc fields must be zero"));
+#endif // KEY
+
+  Is_True (unused == 0, ("unused fields must be zero"));
 
   // Verify flags
   static char msg[] = "Invalid PU flags: (%s)";

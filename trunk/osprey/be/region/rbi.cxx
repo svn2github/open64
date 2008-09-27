@@ -37,10 +37,10 @@
 //============================================================================
 //
 // Module: rbi.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/be/region/rbi.cxx,v $
+// $Revision: 1.2 $
+// $Date: 02/11/07 23:41:58-00:00 $
+// $Author: fchow@keyresearch.com $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/be/region/SCCS/s.rbi.cxx $
 //
 // Revision history:
 //  31-AUG-95 dahl - Original Version
@@ -71,7 +71,7 @@
 
 #define rbi_CXX	"rbi.cxx"
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = rbi_CXX"$Revision$";
+static char *rcs_id = rbi_CXX"$Revision: 1.2 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "opt_wn.h"

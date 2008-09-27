@@ -1,5 +1,8 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
+ */
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -868,6 +871,9 @@ union	global_attr_tbl_entry	{
 				 Uint		 	field6		: 16;
 				 Uint		 	field7		: 16;
 				 Uint		 	field8		: 32;
+#ifdef KEY /* Bug 14150 */
+				 const char		*binding_label;
+#endif /* KEY Bug 14150 */
 
 				} fld;
 
@@ -1219,7 +1225,11 @@ union	stor_blk_tbl_entry	{struct	{
 				 Uint		old_sb_type	:  5;
                                  boolean	pad_amount_set	:  1;
                                  boolean	equivalenced	:  1;
+#ifdef KEY /* Bug 14150 */
+                                 boolean	bind_attr   	:  1;
+#else /* defined(BUILD_OS_DARWIN) */
                                  boolean	UNUSED   	:  1;
+#endif /* KEY Bug 14150 */
                                  boolean	name_in_stone	:  1;
 				 Uint		last_attr_list	: 16;
 
@@ -1244,8 +1254,16 @@ union	stor_blk_tbl_entry	{struct	{
 				 boolean	flag35		:  1;
 				 Uint		cif_idx		: 24;
 
+#ifdef KEY /* Bug 14150 */
+/* The -apad option has never been supported at Pathscale, so we can use
+ * this space to implement F2003 "BIND(C, NAME=x)" for common blocks
+ * without making old .mod files incompatible. */
+				 Uint		ext_name_idx	: 24;
+				 Uint		ext_name_len	:  8;
+#else /* defined(BUILD_OS_DARWIN) */
 				 Uint		pad_amount	: 16;
 				 Uint		UNUSED3		: 16;
+#endif /* KEY Bug 14150 */
 				 fld_type	len_fld		:  8;
 				 Uint		len_idx		: 24;
 				} fld;
@@ -1389,6 +1407,9 @@ struct  intrin_map_entry       {
 extern	void		add_attr_to_local_list(int);
 extern	void		align_bit_length(size_offset_type *, int);
 extern	void		assign_offset(int);
+#ifdef KEY /* Bug 14150 */
+extern void assign_bind_c_offset(int, boolean);
+#endif /* KEY Bug 14150 */
 extern	void		assign_storage_blk(int);
 extern	attr_aux_tbl_type  *attr_aux_var_error(char *, int);
 extern	bounds_tbl_type *bd_var_error(char *, int);
@@ -1493,7 +1514,7 @@ extern	size_offset_type	stor_bit_size_of(int, boolean, boolean);
 extern	attr_tbl_type  *sytb_var_error(char *, int);
 extern	void		use_stmt_semantics(void);
 #ifdef KEY /* Bug 6204 */
-int decorate(char *identifier, int name_len, int underscores);
+int decorate(char *, int, int);
 #endif /* KEY Bug 6204 */
 
 
@@ -1791,3 +1812,6 @@ extern	char		        *pgm_unit_str[];
 # ifdef _DEBUG
 extern void print_so(size_offset_type);
 # endif
+#ifdef KEY /* Bug 14150 */
+extern char *file_and_line(int);
+#endif /* KEY Bug 14150 */

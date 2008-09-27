@@ -78,7 +78,7 @@ static void fiz_fuse_analysis_info(
   SRCPOS        srcpos1,
   SRCPOS        srcpos2,
   UINT32        level,
-  char*         message)
+  const char*         message)
 {
   switch (info_type) {
     case INFO:
@@ -113,7 +113,7 @@ static void fiz_fuse_tlog_info(
   SRCPOS        srcpos1,
   SRCPOS        srcpos2,
   UINT32        level,
-  char*         message)
+  const char*   message)
 {
   char tmp_string[300];
   sprintf(tmp_string,"%d %d %d %d",

@@ -3936,7 +3936,7 @@ static void	cvrt_ir_to_mif(int	scp_idx)
                               IR_FLD_L(ir_idx),
                               &baseattr, &fldattr, &typeix);
 
-# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET_OS_SOLARIS) || defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
             loc_offset_idx = IL_IDX(IL_NEXT_LIST_IDX(IR_IDX_R(ir_idx)));
 
 

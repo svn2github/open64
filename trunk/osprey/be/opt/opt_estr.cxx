@@ -175,8 +175,12 @@ BOOL
 STR_RED::Is_cvt_linear( const CODEREP *cr ) const
 {
   // screen out non-register size types
-  if (MTYPE_size_min(cr->Dsctyp()) < MTYPE_size_min(MTYPE_I4))
+  if (MTYPE_size_min(cr->Dsctyp()) < MTYPE_size_min(MTYPE_I4)) {
+    if (WOPT_Enable_STR_Short && (MTYPE_size_min(cr->Dsctyp()) == MTYPE_size_min(MTYPE_I2))) {
+      return TRUE;
+    }
     return FALSE;
+  }
 
   // e.g., disable str-red of I8I4CVT ... if do not allow wrap around opt
   if (! Allow_wrap_around_opt && 
@@ -208,7 +212,16 @@ STR_RED::Is_cvt_linear( const CODEREP *cr ) const
 #ifndef TARG_X8664
     Is_True(cr->Opnd(0)->Kind() == CK_VAR, 
 	    ("STR_RED::Is_cvt_linear:  invalid str red expr."));
+#ifdef TARG_NVISA
+    // MIPS had this check, but no one remembers why it would be a problem now;
+    // U8U4CVT is not a nop for nvisa, but we want to optimize these,
+    // so ifdef this out, but leave in for safety for other targets.
+    // output devwarn just in case later find problem with this.
+    if (Htable()->Opt_stab()->Aux_stab_entry(cr->Opnd(0)->Aux_id())->EPRE_temp())
+	DevWarn("previously would not allow strength reduction on this cvt");
+#else
     if (!Htable()->Opt_stab()->Aux_stab_entry(cr->Opnd(0)->Aux_id())->EPRE_temp())
+#endif
 #endif
       return TRUE;
   }
@@ -1002,10 +1015,71 @@ STR_RED::Candidate( const CODEREP *cr,
 		    CODEREP *use_opnd0, CODEREP *use_opnd1,
 		    BB_NODE *use_bb ) const
 {
+#ifdef TARG_NVISA
+  BB_LOOP *bb_loop = NULL;
+  Is_Trace(Tracing(), (TFile, "estr candidate Operation: "));
+  Is_Trace_cmd(Tracing(), cr->Print_node(0,TFile));
+  Is_Trace(Tracing(), (TFile, "\n"));
+  if ( def_bb != NULL ) {
+      bb_loop = def_bb->Innermost();
+      Is_Trace(Tracing(), (TFile, 
+	"Non-Null BB Node information and Loop Depth=%d\n", 
+	def_bb->Loopdepth()));
+  }
+  else {
+      Is_Trace(Tracing(), (TFile, "Null BB information\n"));
+  }
+
+  if ( bb_loop != NULL ) {
+      Is_Trace(Tracing(), (TFile, 
+	"Non-Null Loop information, Loop Depth=%d and Max Depth=%d\n", 
+	bb_loop->Depth(), bb_loop->Max_depth() ));
+      if ( ! WOPT_Enable_Estr_Early_Exit
+	&& bb_loop->Exit_early() && ! WOPT_Enable_Aggressive_Code_Motion) 
+      {
+	// If we don't do aggressive code motion, but do strength reduce
+	// a loop with an early exit, then we end up with worse code
+	// because it goes to the expense of extra regs for the address,
+	// but doesn't hoist the address computation out of the loop.
+	// For some (unknown) reason, the code for self-contained ifs 
+	// inside loops is good, it is only a problem with early exit loops.
+        DevWarn("early exit loop and not aggcm, so don't strength reduce?");
+	return FALSE;
+      }
+  } else {
+      Is_Trace(Tracing(), (TFile, "Null Loop information\n"));
+  }
+
+  if ( ! WOPT_Enable_Estr_Outer_Loop
+    && bb_loop != NULL && bb_loop->Depth() <= 1 && bb_loop->Max_depth() >=2 ) 
+  {
+      // Dont strength reduce the outermost loop in deeply nested loops
+      return FALSE; 
+  }
+#endif
+
   const OPERATOR opr = cr->Opr();
   switch ( opr ) {
     case OPR_ADD:
     case OPR_SUB:
+#ifdef TARG_NVISA
+	Is_Trace(Tracing(), (TFile, 
+	  "Number of uses of this add/sub operation=%d\n", cr->Usecnt()));
+	if ( ! WOPT_Enable_Estr_Const_Opnds
+	  && ( cr->Get_opnd(0)->Kind() == CK_CONST 
+	    || cr->Get_opnd(1)->Kind() == CK_CONST ) )
+	{
+	    // Don't Consider for strength reduction, if one operand is constant
+	    Is_Trace(Tracing(), (TFile, "At least one constant operand\n"));
+	    break; 
+	}
+	if ( ! WOPT_Enable_Estr_Used_Once && !(cr->Usecnt() > 1) ) {
+	    // Don't consider for strength reduction, 
+	    // if SR variable is not used in more than one place
+       	    break;
+	}
+	// else fallthru
+#endif
     case OPR_MPY:
       // i*k
       // i+k
@@ -1035,6 +1109,16 @@ STR_RED::Candidate( const CODEREP *cr,
       break;
 
     case OPR_NEG:
+	Is_Trace(Tracing(), (TFile, 
+          "Number of uses of this neg operation=%d\n", cr->Usecnt()));
+#ifdef TARG_NVISA
+	if ( ! WOPT_Enable_Estr_Used_Once && !(cr->Usecnt() > 1) ) {
+	    // Don't consider for strength reduction, 
+	    // if SR variable is not used in more than one place
+	    break;
+	}
+	// else fallthru
+#endif
 #ifdef TARG_X8664 // avoid U4 due to zero-extension to high-order 32 bits
       if (cr->Dtyp() == MTYPE_U4)
 	return FALSE;

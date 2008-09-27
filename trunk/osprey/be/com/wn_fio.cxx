@@ -47,7 +47,11 @@
 #include "be_com_pch.h"
 #endif /* USE_PCH */
 #pragma hdrstop
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <isam.h>
 #include "defs.h"
 #include "strtab.h"
@@ -726,9 +730,9 @@ typedef struct {
     FIOSTRUCT  last;
     INT16      size32;
     INT16      size64;
-    char       *name;
-    char       *name_ptr;
-    char       *name_local;
+    const char       *name;
+    const char       *name_ptr;
+    const char       *name_local;
 } FIOSTRUCTID_INFO;
 
 typedef struct {
@@ -737,7 +741,7 @@ typedef struct {
     INT16        offset64;
     INT16        type64;
     FIOSTRUCTID  iostruct;
-    char         *name;
+    const char  *name;
 } FIOSTRUCT_INFO;
 
 static ST * Make_IoRuntime_ST ( FIOOPER );
@@ -774,7 +778,7 @@ INT32 mp_io;
 
 /*  This table contains the external names of all I/O runtime routines.  */
 
-static char * fio_names [FIOOPER_LAST + 1] = {
+static const char * fio_names [FIOOPER_LAST + 1] = {
     "",			/* FIOOPER_NONE */
     "s_rsfe64",		/* FIO_EXT_READ_FORMAT_start */
     "s_rsue64",		/* FIO_EXT_READ_UNFORMAT_start */
@@ -1963,7 +1967,7 @@ Get_ARB_WN(const ARB_HANDLE arb, arb_enum whattoget)
 
 
 static TY_IDX
-Make_Simple_Array_Type (char *name, INT32 n_elems, TY_IDX elem_ty)
+Make_Simple_Array_Type (const char *name, INT32 n_elems, TY_IDX elem_ty)
 {
     TY_IDX ty_idx;
     TY& ty = New_TY (ty_idx);
@@ -2850,7 +2854,7 @@ static void Gen_Impld_Io_Calls ( WN * block, FIOFORMATTYPE form,
   char impld_name[48];
   ST *tmp_st;
   static ST * impld_fio_sts [FIOFORMATTYPE_LAST + 1];
-  static char *impld_fio_names [ FIOFORMATTYPE_LAST + 1] =
+  static const char *impld_fio_names [ FIOFORMATTYPE_LAST + 1] =
 	{ "", "do_fio64", "do_uio64", "do_Lio64" };
   INT32	nkids;
   TY_IDX aty;
@@ -3179,11 +3183,13 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
 	      WN_CreateExp1 ( OPC_I4F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
+#if defined(TARG_IA64)
       else if (vtype == MTYPE_F10)
         wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
               WN_CreateExp1 ( OPC_I4F10CVT,
               WN_CreateLdid ( OPC_F10F10LDID, WN_offset(wn), WN_st(wn),
                               Be_Type_Tbl(MTYPE_F10) )));
+#endif
       else if (vtype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	      WN_CreateExp1 ( OPC_I4FQCVT,
@@ -3211,11 +3217,13 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
 	      WN_CreateExp1 ( OPC_I8F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
+#if defined(TARG_IA64)
       else if (vtype == MTYPE_F10)
         wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
               WN_CreateExp1 ( OPC_I8F10CVT,
               WN_CreateLdid ( OPC_F10F10LDID, WN_offset(wn), WN_st(wn),
                               Be_Type_Tbl(MTYPE_F10) )));
+#endif
       else if (vtype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	      WN_CreateExp1 ( OPC_I8FQCVT,
@@ -8848,8 +8856,8 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
   /*  Clear all potential control items and then extract the ones specified.
       Do some partial pre-processing on specific items for efficiency.  */
 
-  bzero ( items,  sizeof(items)  );
-  bzero ( itemsx, sizeof(itemsx) );
+  BZERO ( items,  sizeof(items)  );
+  BZERO ( itemsx, sizeof(itemsx) );
 
   for (iolist=2; iolist<WN_kid_count(tree); iolist++) {
 

@@ -94,7 +94,7 @@ New_ST (SYMTAB_IDX level)
     ST& s = Scope_tab[level].st_tab->New_entry (idx);
     // Clear the random padding bits in ST.
     // Otherwise, these random paddings may make bcmp/memcmp mis-compare.
-    memset(&s, 0, sizeof(ST));
+    memset(&s, 0, sizeof(ST));  // bug 14141
     Set_ST_st_idx (s, make_ST_IDX (idx, level));
     return &s;
 }
@@ -116,6 +116,10 @@ ST_Init (ST* st, STR_IDX n, ST_CLASS sc, ST_SCLASS stc, ST_EXPORT exp,
     st->offset = 0;
     st->flags = 0;
     st->flags_ext = 0;
+#ifdef KEY
+    // bug 14141
+    st->pad = 0;
+#endif
 }
 
 inline void
@@ -253,9 +257,13 @@ PU_Init (PU& pu, TY_IDX prototype, SYMTAB_IDX level)
     Is_True (level > GLOBAL_SYMTAB, ("lexical level of a PU must be > 1"));
     pu.base_class = TY_IDX_ZERO;
     pu.lexical_level = level;
+#ifdef TARG_NVISA
+    pu.thread_limit = 0;
+    pu.block_limit  = 0;
+#endif
     pu.gp_group = 0;
     pu.src_lang = PU_UNKNOWN_LANG;
-    pu.eh_info = 0;
+    pu.misc = 0;
     pu.unused = 0;
     pu.flags = 0;
 }
@@ -478,6 +486,7 @@ New_LABEL (SYMTAB_IDX scope, LABEL_IDX& label_idx)
     Set_LABEL_name_idx (label, 0);
     Set_LABEL_KIND (label, LKIND_DEFAULT);
     label.flags = 0;
+    label_idx = make_LABEL_IDX(label_idx, scope);
     return label;
 }
 

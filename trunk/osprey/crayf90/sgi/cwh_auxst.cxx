@@ -71,7 +71,7 @@
  * ====================================================================
  */
 /*REFERENCED*/
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
 static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_auxst.cxx $ $Revision: 1.8 $";
@@ -452,7 +452,7 @@ cwh_auxst_add_item(ST * parent, ST *st, enum list_name list)
  ====================================================
 */
 extern ST *
-cwh_auxst_find_item(LIST *l, char * name)
+cwh_auxst_find_item(LIST *l, const char * name)
 {
   ITEM  *t ;
   ST    *st;

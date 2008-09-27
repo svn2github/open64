@@ -1,8 +1,4 @@
 /*
- * Copyright (C) 2007 Pathscale, LLC. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -46,10 +42,10 @@
 // ====================================================================
 //
 // Module: opt_cvtl_rule.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/opt_cvtl_rule.cxx,v $
+// $Revision: 1.15 $
+// $Date: 05/12/15 16:32:37-08:00 $
+// $Author: fchow@fluorspar.internal.keyresearch.com $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.opt_cvtl_rule.cxx $
 //
 // Description: Conversion rules
 //
@@ -79,6 +75,10 @@
 #define I8I1 {NEED_CVTL, OPC_I8CVTL}
 #define U8U2 {NEED_CVTL, OPC_U8CVTL}
 #define U8U1 {NEED_CVTL, OPC_U8CVTL}
+#define I8U2 {NEED_CVTL, OPC_I8CVTL}
+#define I8U1 {NEED_CVTL, OPC_I8CVTL}
+#define U8I2 {NEED_CVTL, OPC_U8CVTL}
+#define U8I1 {NEED_CVTL, OPC_U8CVTL}
 
 #define I1I4 {NEED_CVTL, OPC_I4CVTL}
 #define I2I4 {NEED_CVTL, OPC_I4CVTL}
@@ -112,6 +112,8 @@ static struct cvt_rule {
   { nop, nop,I8I1,I8I2, nop, nop, nop, nop,I8U4, nop},//to I8
 #elif defined(TARG_IA32)
   { nop, nop,I8I1,I8I2,I8I4, nop, nop, nop,I8U4, nop},//to I8
+#elif defined(TARG_NVISA)
+  { nop, I8B,I8I1,I8I2,I8I4, nop, I8U1,I8U2,I8U4, nop},//to I8
 #else
   { nop, I8B,I8I1,I8I2,I8I4, nop, nop, nop, nop, nop},//to I8
 #endif
@@ -122,6 +124,8 @@ static struct cvt_rule {
   { nop, nop, nop, nop, nop, nop,U8U1,U8U2,U8U4, nop} //to U8
 #elif defined(TARG_IA32)
   { nop, nop, nop, nop,U8I4, nop,U8U1,U8U2,U8U4, nop} //to U8
+#elif defined(TARG_NVISA)
+  { nop, U8B,U8I1,U8I2,U8I4, nop,U8U1,U8U2,U8U4, nop} //to U8
 #else
   { nop, U8B, nop, nop,U8I4, nop,U8U1,U8U2, nop, nop} //to U8
 #endif
@@ -236,8 +240,8 @@ INT Need_load_type_conversion(BOOL source_sign_extd, BOOL target_sign_extd,
 #ifdef TARG_MIPS
       *opc = (OPCODE) OPC_I4U8CVT;  // Bug 13308: MIPS treats I8I4CVT as NOP.
 #else
-      *opc = (OPCODE) OPC_I8I4CVT;  // But I4U8CVT hurts performance on x86
-#endif
+      *opc = (OPCODE) OPC_I8I4CVT;
+#endif // TARG_MIPS
 #endif
     }
     return NEED_CVT;

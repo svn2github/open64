@@ -139,6 +139,30 @@ ISA_SUBSET ISA_Subset_Create( ISA_SUBSET parent, const char* name )
   return result;
 }
 
+void ISA_Subset_Create_Only_One( const char* name )
+/////////////////////////////////////
+//  See interface description.
+/////////////////////////////////////
+{
+  ISA_SUBSET result = new isa_subset;
+
+  result->name = name;
+  result->index = isa_subset_count++;
+  result->superset = NULL;
+  result->members = std::vector<unsigned char>(bit_vector_sizeof,0);
+
+  subsets.push_front(result);
+
+  // put all the topcodes into this subset
+  int opcode;
+  for ( opcode = 0; opcode < TOP_count; ++opcode ) {
+    int byte_index = ((unsigned int) opcode) / 8;
+    int bit_index = ((unsigned int) opcode) % 8;
+    result->members[byte_index] |= (1 << bit_index);
+    opcode_subset[opcode] = result;
+  }
+}
+
 /////////////////////////////////////
 void Instruction_Group( ISA_SUBSET subset, ... )
 /////////////////////////////////////

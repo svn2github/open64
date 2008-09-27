@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: tracing.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/util/tracing.c,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:17:57 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/util/tracing.c,v $
  *
  * Revision history:
  *  08-Sep-89 - Original Version
@@ -60,7 +60,7 @@
  */
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/util/tracing.c,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/util/tracing.c,v $ $Revision: 1.1 $";
 
 #include <string.h>
 #include "defs.h"
@@ -160,7 +160,6 @@ static PDESC Phases[] = {
 
   /* Front end phases: */
   { TP_SEMANTICS,	"SEM",	"Semantic analyzer" },
-  { TP_WGEN,		"WGN",	"WGEN GIMPLE to WHIRL bridge" },
   { TP_IRB,		"IRB",	"IR (WHIRL) builder" },
 
   /* Intermediate/utility phases: */
@@ -205,7 +204,6 @@ static PDESC Phases[] = {
   { TP_PQS,		"PQS",	"Predicate query system" },
   { TP_CGPREP,		"PRP",	"Code generator scheduling prep" },
   { TP_CGLOOP,		"LOP",	"Code generator loop optimization" },
-  { TP_A_IFCONV, "IFC" "If Conversion" },
   { TP_SWPIPE,		"SWP",	"Software pipelining" },
   { TP_SRA,		"SRA",	"Software pipelining register allocation" },
   { TP_SCHED,		"SCH",	"Scheduling" },
@@ -217,6 +215,7 @@ static PDESC Phases[] = {
   { TP_EMIT,		"EMT",	"Code emission" },
 
   { TP_TEMP,		"TMP",	"Temporary use" },
+  { TP_IPISR,		"ISR",	"Interprocedural ISR register allocation" },
 
   /* This one must be last: */
   { TP_COUNT,		NULL,  NULL }

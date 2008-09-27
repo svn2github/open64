@@ -40,10 +40,10 @@
 /* ====================================================================
  *
  * Module: freq.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/freq.cxx,v $
+ * $Revision: 1.9 $
+ * $Date: 05/12/05 08:59:06-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.freq.cxx $
  *
  * Description:
  *
@@ -56,7 +56,6 @@
 
 #include <math.h>
 #include <alloca.h>
-#include <map>
 
 #include "defs.h"
 #include "config.h"
@@ -89,6 +88,7 @@
 #include "cg_flags.h"
 #include "ipfec_options.h"
 #endif
+
 /* ====================================================================
  * ====================================================================
  *
@@ -106,6 +106,9 @@ static BB_MAP  dfo_map;		// Depth-first order mapping
 static BB    **dfo_vec;		// Vector of BBs ordered depth-first
 static INT32   max_dfo_id;	// Max value in dfo_map
 static float   EH_Freq;		// Freq that exc hndlrs are executed
+#ifdef KEY
+static float   Non_Local_Target_Freq;	// Freq that non-local targs are exec'd.
+#endif
 static LOOP_DESCR *loop_list;	// Loop descriptors for the PU
 
 
@@ -206,9 +209,7 @@ typedef struct edge {
 
 #define EF_PROB_FB_BASED        0x0001
 #define EF_FB_PROPAGATED	0x0002
-#ifdef KEY /* bug 6693 */
-#define EF_PROB_HINT_BASED      0x0004
-#endif
+#define EF_PROB_HINT_BASED	0x0004    /* bug 6693 */
 
 /* Indicate if this edge probability is based on feedback.
  */
@@ -222,14 +223,11 @@ typedef struct edge {
 #define Set_EDGE_fb_propagated(e)   (EDGE_flags(e) |= EF_FB_PROPAGATED)
 #define Reset_EDGE_fb_propagated(e) (EDGE_flags(e) &= ~EF_FB_PROPAGATED)
 
-#ifdef KEY /* bug 6693 */
 /* Indicate if this edge probability is based on user hint, through
-   pragma or builtins.
- */
+  pragma or builtins. */
 #define EDGE_prob_hint_based(e)   (EDGE_flags(e) & EF_PROB_HINT_BASED)
 #define Set_EDGE_prob_hint_based(e)   (EDGE_flags(e) |= EF_PROB_HINT_BASED)
 #define Reset_EDGE_prob_hint_based(e) (EDGE_flags(e) &= ~EF_PROB_HINT_BASED)
-#endif
 
 /* Since we don't ever need to modify the CFG, we simply preallocate
  * a vector for chains of successor and predecessor edges, both indexed
@@ -335,13 +333,17 @@ Initialize_Freq_Edges(void)
       EDGE_slst(edge) = slst;
       EDGE_succ(edge) = succ;
       BB_succ_edges(bb) = edge;
-#ifdef KEY
-      if (BBLIST_prob(slst) != 0.0 &&
-          BBLIST_prob_hint_based(slst)) {
-        EDGE_prob(edge) = BBLIST_prob(slst);
-        Set_EDGE_prob_hint_based(edge);
-      }
+
+     if (BBLIST_prob(slst) != 0.0 
+#ifdef TARG_SL
+	 	&& BBLIST_prob_hint_based(slst)
+#endif	 	
+	 	) {
+       EDGE_prob(edge) = BBLIST_prob(slst);
+#ifdef TARG_SL
+       Set_EDGE_prob_hint_based(edge);
 #endif
+     }
 
       FOR_ALL_BB_PREDS(succ, plst) {
         if (BBLIST_item(plst) == bb) break;
@@ -438,7 +440,7 @@ Trace_Frequencies(void)
 
   for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
     INT n;
-    char *s;
+    const char *s;
     EDGE *edge;
 
     /* Predecessors...
@@ -458,10 +460,10 @@ Trace_Frequencies(void)
 
     /* The BB...
      */
-    fprintf(TFile, "\nBB:%d frequency = %#.2f%s",
+    fprintf(TFile, "\nBB:%d freq = %#.2f%s",
 	    BB_id(bb),
 	    BB_freq(bb),
-	    BB_freq_fb_based(bb) ? " (feedback based)" : "");
+	    BB_freq_fb_based(bb) ? " (fb based)" : "");
 
     /* And the successors.
      */
@@ -546,7 +548,7 @@ static const struct heuristic_info heuristic[] = {
   { Opcode_Heuristic,		"OH"  },
   { Pointer_Heuristic,		"PH"  },
   { Store_Heuristic,		"SH"  },
-#if (defined KEY && defined TARG_X8664)
+#ifdef KEY
   { Sequential_Branch_Heuristic, "SBH" },
 #endif
 };
@@ -661,6 +663,7 @@ BOOL WN_Is_Pointer(WN *wn)
     /*FALLTHROUGH*/
 
   case OPR_ILOAD:
+  case OPR_ILOADX:
     {
       TY_IDX ty = WN_ty(wn);
       if (TY_kind(ty) == KIND_POINTER) return TRUE;
@@ -1726,6 +1729,9 @@ Compute_Branch_Probabilities(void)
        * is common, and the probability can only be 1.0, we just
        * set it here and save a little bit of work.
        */
+#if defined (TARG_SL)     
+      if(!BB_freq_unbalanced(bb) || !CG_PU_Has_Feedback)
+#endif	  	
       EDGE_prob(BB_succ_edges(bb)) = 1.0;
     } else if (   (Frequent_BBs || Never_BBs)
 	       && Compute_BR_Prob_From_Hint(bb, n_succs)
@@ -1837,25 +1843,36 @@ Compute_Branch_Probabilities(void)
 	EDGE_prob(edge) = 1.0 / n_succs;
       }
     }
-#ifdef KEY
-    else if (EDGE_prob_hint_based(BB_succ_edges(bb)) &&
-             EDGE_prob_hint_based(EDGE_next_succ(BB_succ_edges(bb)))) {
+    else if (EDGE_prob_hint_based(BB_succ_edges(bb)) ||
+            EDGE_prob_hint_based(EDGE_next_succ(BB_succ_edges(bb)))) {
+#if defined(TARG_SL)
+      /* 2-way branch */
+      // builtin-expect handling (should not be target dependent)
+      EDGE *edge1 = BB_succ_edges(bb);
+      EDGE *edge2 = EDGE_next_succ(edge1);
+      if (!EDGE_prob_hint_based(edge1))  {
+          EDGE_prob(edge1) = 1-EDGE_prob(edge2);
+          Set_EDGE_prob_hint_based(edge1);
+      }
+      else if (!EDGE_prob_hint_based(edge2))  {
+          EDGE_prob(edge2) = 1-EDGE_prob(edge1);
+          Set_EDGE_prob_hint_based(edge2);
+      }
+#endif
       if (CFLOW_Trace_Freq) {
         #pragma mips_frequency_hint NEVER
         EDGE *edge1 = BB_succ_edges(bb);
         EDGE *edge2 = EDGE_next_succ(edge1);
         BB *succ1 = EDGE_succ(edge1);
         BB *succ2 = EDGE_succ(edge2);
-
+ 
         fprintf(TFile, "\n User builtin BB:%-3d -> BB:%-3d BB:%-3d -> BB:%-3d\n"
-                       "    ============================================\n",
-                       BB_id(bb), BB_id(succ1), BB_id(bb), BB_id(succ2));
+                      "    ============================================\n",
+                      BB_id(bb), BB_id(succ1), BB_id(bb), BB_id(succ2));
         fprintf(TFile, "     Combined  %.13f  %.13f\n",
-                       EDGE_prob(edge1), EDGE_prob(edge2));
+                      EDGE_prob(edge1), EDGE_prob(edge2));
       }
     }
-#endif
- 
     else {
 
       /* 2-way branch
@@ -1879,25 +1896,22 @@ Compute_Branch_Probabilities(void)
 	prob_succ2 = 1.0 - prob_succ1;
       } else {
 #ifdef TARG_IA64
-	 // prob_succ1 = 0.5;
-	 // prob_succ2 = 0.5;
-	
-	if (IPFEC_Enable_Random_Prob)
-	{
+	if (IPFEC_Enable_Random_Prob) {
 	  double freq_succ1 = (double)(random() + 1);
 	  double freq_succ2 = (double)(random() + 1);
 	  prob_succ1 = freq_succ1 / (freq_succ1 + freq_succ2);
           prob_succ2 = freq_succ2 / (freq_succ1 + freq_succ2);
-        }else
-        {
+        } 
+	else {
           prob_succ1 = 0.5;
           prob_succ2 = 0.5;
         }
 #else
 	prob_succ1 = 0.5;
 	prob_succ2 = 0.5;
-#endif  
-	
+
+#endif
+
 	/* Using "Dempster-Shafer" combine probabilities for each
 	 * heuristic that applies to this branch.
 	 */
@@ -2216,6 +2230,21 @@ Compute_Frequencies(void)
    */
   BB_SET_UniverseD(to_visit, PU_BB_Count + 2, NULL);
   BB_SET_ClearD(visited);
+
+#ifdef KEY
+  // Assign frequencies to non-local goto targets that don't have predecessor
+  // BBs.
+  if (PU_Has_Nonlocal_Goto_Target) {
+    for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+      if (!BB_entry(bb) &&
+	  BB_has_non_local_label(bb) &&
+	  BB_preds(bb) == NULL) {
+	Propagate_Freq(bb, bb, Non_Local_Target_Freq, to_visit, visited);
+      }
+    }
+  }
+#endif
+
   if (Compiling_Proper_REGION) {
 
     /* Region.
@@ -2659,9 +2688,9 @@ FREQ_Print_BB_Note(
 
   fprintf(file, "%s<freq>\n", prefix);
 
-  fprintf(file, "%s<freq> BB:%d frequency = %#.5f (%s)\n",
+  fprintf(file, "%s<freq> BB:%d freq = %#.5f (%s)\n",
 	  prefix, bb_id, BB_freq(bb),
-	  (BB_freq_fb_based(bb) ? "feedback" : "heuristic"));
+	  (BB_freq_fb_based(bb) ? "fb" : "heur"));
 
   /* Don't bother printing only one successor edge frequency; it's obvious
    * what it is and we don't need more clutter.
@@ -2670,7 +2699,7 @@ FREQ_Print_BB_Note(
     BBLIST *succ;
 
     FOR_ALL_BBLIST_ITEMS(bb_succs, succ) {
-      fprintf(file, "%s<freq> BB:%d => BB:%d probability = %#.5f\n",
+      fprintf(file, "%s<freq> BB:%d => BB:%d prob = %#.3f\n",
 	      prefix,
 	      bb_id,
 	      BB_id(BBLIST_item(succ)),
@@ -2698,11 +2727,26 @@ FREQ_Region_Initialize(void)
   if (!inited) {
     Frequent_Never_Ratio = atof(FREQ_frequent_never_ratio);
     EH_Freq = atof(FREQ_eh_freq);
+#ifdef KEY
+    Non_Local_Target_Freq = atof(FREQ_non_local_targ_freq);
+#endif
     inited = TRUE;
   }
   FREQ_freqs_computed = FALSE;
 }
 
+#if defined(TARG_SL)
+static void
+Initialize_Freq_BBs(void)
+{
+  for (BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb))  {
+    if(!BB_freq_fb_based(bb) && BB_freq(bb)!=0.0)
+      BB_freq(bb) = 0.0;
+  }
+  return;
+}
+
+#endif
 
 /* ====================================================================
  *
@@ -2724,6 +2768,13 @@ Initialize_Compute_BB_Frequencies(void)
   Initialize_Depth_First_Info(&MEM_local_pool);
 
   Initialize_Freq_Edges();
+
+#if defined(TARG_SL)
+  //initialize bb freq, because the freq of some bb in black regions
+  //  were computed by heuristic during the seperate compiling phase,
+  //  these values should be rest to zero
+  Initialize_Freq_BBs();
+#endif
 
   Find_Freq_Hint_Pragmas(&Never_BBs, &Frequent_BBs, &MEM_local_pool);
   if (CFLOW_Trace_Freq) {
@@ -3153,11 +3204,11 @@ FREQ_Incorporate_Feedback(const WN* entry)
 	      float freq_take = fb_take.Value();
 	      float freq_fall = fb_fall.Value();
 	      if (take_edge) {
-		EDGE_prob(take_edge) = freq_take / freq_bb;
+		EDGE_prob(take_edge) += freq_take / freq_bb;
 		Set_EDGE_prob_fb_based(take_edge);
 	      }
 	      if (fall_edge) {
-		EDGE_prob(fall_edge) = freq_fall / freq_bb;
+		EDGE_prob(fall_edge) += freq_fall / freq_bb;
 		Set_EDGE_prob_fb_based(fall_edge);
 	      }
 	    }
@@ -3206,7 +3257,7 @@ FREQ_Incorporate_Feedback(const WN* entry)
 		  FB_FREQ fb_case = Cur_PU_Feedback->Query(wn,
 							   FB_EDGE_SWITCH(i));
 		  float freq_case = FB_FREQ_Value(fb_case);
-		  EDGE_prob(edge) = freq_case / freq_bb;
+		  EDGE_prob(edge) += freq_case / freq_bb;
 		  Set_EDGE_prob_fb_based(edge);
 		}
 	      }
@@ -3214,6 +3265,32 @@ FREQ_Incorporate_Feedback(const WN* entry)
 	  }
 	}
 	break;
+
+#if defined (TARG_SL)	  
+      case  OPR_SL2_FORK_MAJOR:
+      case  OPR_SL2_FORK_MINOR:  
+      	{
+	   INT i;
+         FB_FREQ fb0 = Cur_PU_Feedback->Query(wn, FB_EDGE_SWITCH(0)); 
+         FB_FREQ fb1 = Cur_PU_Feedback->Query(wn, FB_EDGE_SWITCH(1));
+         if(fb0.Known() && fb1.Known())  {
+	      FmtAssert(fb0 == fb1, (" freq of forked two threads are not equal "));
+	      BB_freq(bb)=FB_FREQ_Value(fb0); 
+	      Set_BB_freq_fb_based(bb);
+  	      
+	      LABEL_IDX label = WN_label_number(wn);
+	      BB *take_bb = Get_Label_BB(label);
+	      EDGE *take_edge = BB_Find_Succ_Edge(bb, take_bb);
+	      EDGE *fall_edge = BB_Find_Succ_Edge(bb, BB_next(bb));
+	      EDGE_prob(take_edge) = 1.0;
+	      Set_EDGE_prob_fb_based(take_edge);
+	      EDGE_prob(fall_edge) = 1.0;
+	      Set_EDGE_prob_fb_based(fall_edge);		  
+	  }
+         Set_BB_freq_unbalanced(bb);
+      	}
+	break;
+#endif
       }
     }
     else if (BB_call(bb)) {
@@ -3244,6 +3321,9 @@ FREQ_Incorporate_Feedback(const WN* entry)
       /* Straight line code, set the outgoing edge probability to 1.0
        */
       EDGE *edge = BB_succ_edges(bb);
+#if defined(TARG_SL)
+      if(!BB_freq_unbalanced(bb))
+#endif
       if (edge) {
 	EDGE_prob(edge) = 1.0;
 	Set_EDGE_prob_fb_based(edge);
@@ -3347,7 +3427,7 @@ FREQ_Verify(const char *caller)
   BB     *bb, *succ;
   BBLIST *lst;
   float total_prob;
-  char *s;
+  const char *s;
 
   fprintf(TFile,"%s<freq> Freq_Verify after %s\n%s", DBar, caller, DBar);
 
@@ -3384,6 +3464,9 @@ FREQ_Verify(const char *caller)
 
     // Display a message if total outgoing probability is not 1.0
     if (! FREQ_Match(total_prob, 1.0) && BB_succs(bb)) {
+#if defined(TARG_SL)
+	if(!BB_freq_unbalanced(bb) && !CG_PU_Has_Feedback)
+#endif
       fprintf(TFile, "FAIL total_prob == %#.4f != 1.0\n", total_prob);
       all_ok = FALSE;
     }

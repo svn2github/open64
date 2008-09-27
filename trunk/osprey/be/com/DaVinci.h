@@ -41,10 +41,10 @@
 /* ====================================================================
  *
  * Module: DaVinci.h
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/DaVinci.h,v $
+ * $Revision: 1.8 $
+ * $Date: 05/12/05 08:59:12-08:00 $
+ * $Author: bos@eng-24.pathscale.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.DaVinci.h $
  *
  * Description:
  *	Interface to daVinci.  The DaVinci class, along with its
@@ -162,7 +162,14 @@
 #include <assert.h>
 #include <sys/types.h> 
 #include <queue>        // STL queue.
+#if (__GNUC__==2)
+#include <hash_map>
+using std::hash_map;
+#else
 #include <ext/hash_map>     // STL hash_map.
+using __gnu_cxx::hash_map;
+using __gnu_cxx::hash;
+#endif
 #include <set>          // STL set.
 
 #include "defs.h"
@@ -284,8 +291,8 @@ public:
 };
 
 struct MENU_INFO {
-  char      *id;                // id from/to DaVinci.
-  char      *label;             // displayed by DaVinci.
+  const char *id;               // id from/to DaVinci.
+  const char *label;            // displayed by DaVinci.
   bool       initially_active;  // active on startup ?
   INT        n_subitems;        // 0 => this is a leaf item.
   MENU_INFO *subitems;          // NULL => this is leaf item.
@@ -343,8 +350,8 @@ typedef enum {
   DM_UNKNOWN    // entry from menu select (using map domain as string pool).
 } Item_status;
 
-typedef __gnu_cxx::hash_map< const char *, Item_status,
-			     __gnu_cxx::hash<const char *>, Equal_obj > Item_info;
+typedef hash_map< const char *, Item_status,
+			     hash<const char *>, Equal_obj > Item_info;
 
 class Menu_info {
 private:
@@ -412,8 +419,7 @@ private:
   static CONTEX_TYPE          _contex_use_array[MAX_VIEW_NUM];
   static INT                  _current_contex ;
   static bool                 _use_socket;
-  
-  
+
   const char *Ft_Str(const FTAG ftag);
   void        Usage_Error(FTAG curr, FTAGS prereq);
 
@@ -445,7 +451,7 @@ private:
 			     INT *n_nodes, NODE_ID **node_ids);
 
   void Emit_Menu(INT n_items, const MENU_INFO *items);
-  void Emit_Attr(const NODE_TYPE& nt, char **comma);
+  void Emit_Attr(const NODE_TYPE& nt, const char **comma);
   void Emit_Attr(const EDGE_TYPE& et);
 
   void   Menu_Basic_Do( const char *label );
@@ -455,7 +461,6 @@ private:
 public:
   static bool enabled(bool msg) {
     bool is_enabled = ( getenv("DAVINCIHOME") != NULL );
-    _use_socket = false;
     if(!is_enabled) {
       _use_socket = true;
       is_enabled = (getenv("UDRAWIP") != NULL);

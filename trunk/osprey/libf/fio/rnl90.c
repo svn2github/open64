@@ -456,9 +456,25 @@ rrd:
 				if (c == endnmlchar) {
 
 					/* get END, if present. */
+#ifdef KEY /* Bug 14200 */
+					/* Correct erroneous assumption in
+					 * original code that a blank will
+					 * follow '&end'. */
+					char c_e, c_n, c_d;
+					MAINGT(c_e);
+					MAINGT(c_n);
+					MAINGT(c_d);
+					if (tolower(c_e) != 'e' ||
+					  tolower(c_n) != 'n' ||
+					  tolower(c_d) != 'd') {
+					  errn = FERDNLEF;
+					  ERROR1(errf, css, errn, buf);
+					}
+#else /* KEY Bug 14200 */
 					do {
 						MAINGT(c);
 					} while (!ISBLANK(c));
+#endif /* KEY Bug 14200 */
 					goto rrd;
 				}
 			}

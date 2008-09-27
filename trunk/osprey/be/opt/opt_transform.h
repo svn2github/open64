@@ -653,7 +653,7 @@ struct NULL_TRANSFORM {
 // substitue a CR with another
 //
 struct SUBSTITUE : public NULL_TRANSFORM {
-  char  *Name() const { return "Substitute"; }
+  const char  *Name() const { return "Substitute"; }
   CODEREP *_oldcr;
   CODEREP *_newcr;
   CODEREP *Apply_cr(CODEREP *cr, bool is_mu, STMTREP *stmt, BB_NODE *, CODEMAP *htable) const

@@ -417,7 +417,11 @@ ML_WHIRL_EMITTER::Emit(void)
       if ( bb->Kind() == BB_ENTRY && bb->Entrywn() &&
 	   (WN_opcode(bb->Entrywn()) == OPC_ALTENTRY ||
 	    (WN_opcode(bb->Entrywn()) == OPC_LABEL &&
-	     WN_Label_Is_Handler_Begin(bb->Entrywn()))) )
+	     (WN_Label_Is_Handler_Begin(bb->Entrywn())
+#ifdef KEY
+	      || LABEL_target_of_goto_outer_block(WN_label_number(bb->Entrywn()))
+#endif
+	     ))) )
       {
         Insert_wn( bb->Entrywn() );
 	// Update Feedback?

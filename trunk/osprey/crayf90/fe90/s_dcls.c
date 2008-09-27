@@ -1,5 +1,8 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
+ */
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -128,7 +131,7 @@ static	void	gen_word_align_byte_length_ir(opnd_type *);
 static	void	gen_multiple_automatic_allocate(int);
 # endif
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 # pragma inline create_equiv_stor_blk
 # else
 # pragma _CRI inline create_equiv_stor_blk
@@ -3316,7 +3319,7 @@ int	bound_semantics(int		attr_idx,
    save_sh_idx				= curr_stmt_sh_idx;
    curr_stmt_sh_idx			= bound_sh_idx;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
    if (ATD_TMP_HAS_CVRT_OPR(attr_idx)) {
 
@@ -3419,7 +3422,7 @@ int	bound_semantics(int		attr_idx,
       ATD_SYMBOLIC_CONSTANT(attr_idx) = expr_is_symbolic_constant(&opnd);
    }
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
    else if (ATD_TMP_HAS_CVRT_OPR(attr_idx)) {
       COPY_OPND(IR_OPND_L(IR_IDX_R(ATD_TMP_IDX(attr_idx))), opnd);
@@ -5076,6 +5079,21 @@ help_dealloc_array_of_struct(int line, int col, fld_type fld, int idx,
   post_gen_loops(placeholder_sh_idx, next_sh_idx);
 }
 /*
+ * cpnt_attr_idx	AT_Tbl_Idx for a structure component
+ * return true if the component is a structure containing allocatable
+ *			components, which therefore requires automatic
+ *			allocation and deallocation
+ */
+int
+allocatable_structure_component(int cpnt_attr_idx) {
+  if (ATD_POINTER(cpnt_attr_idx)) { /* Bug 14293 */
+    return 0;
+  }
+  int type_idx = ATD_TYPE_IDX(cpnt_attr_idx);
+  return Structure == TYP_TYPE(type_idx) &&
+    ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx));
+}
+/*
  * Recursively deallocate allocatables associated with a variable or component
  * whose data type is "structure"
  * line		Source line
@@ -5099,8 +5117,7 @@ help_dealloc_components(int line, int col, fld_type fld, int idx,
       int type_idx = ATD_TYPE_IDX(cpnt_attr_idx);
 
       if (ATD_ALLOCATABLE(cpnt_attr_idx) ||
-        (Structure == TYP_TYPE(type_idx) &&
-	  ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx)))) {
+        allocatable_structure_component(cpnt_attr_idx)) {
 	dealloc_allocatables(line, col, cpnt_attr_idx, IR_Tbl_Idx,
 	  do_make_struct_opr(line, col, idx, fld, cpnt_attr_idx), has_pe_ref,
 	  first);
@@ -5135,8 +5152,7 @@ dealloc_allocatables(int line, int col, int attr_idx, fld_type fld, int idx,
     }
   }
 
-  else if (Structure == TYP_TYPE(type_idx) &&
-    ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx))) {
+  else if (allocatable_structure_component(attr_idx)) {
     int line = SH_GLB_LINE(curr_stmt_sh_idx);
     int col = SH_COL_NUM(curr_stmt_sh_idx);
 
@@ -5211,6 +5227,39 @@ threadprivate_check(int attr_idx) {
   }
 }
 #endif /* KEY Bug 9029 */
+#ifdef KEY /* Bug 14255 */
+/*
+ * Given an attribute which has been marked as a dummy variable or procedure,
+ * report an error if it isn't really a dummy argument
+ *
+ * attr_idx	AT_Tbl_Idx for suspect attribute
+ */
+static void
+error_not_darg(int attr_idx) {
+  char *problem = 0;
+  int err_number = 352;
+  if (AT_IS_DARG(attr_idx)) {
+    return;
+  }
+  if (AT_OPTIONAL(attr_idx)) {
+    problem = "OPTIONAL";
+  }
+  else if (ATD_VALUE_ATTR(attr_idx)) {
+    problem = "VALUE";
+  }
+  else if (ATD_INTENT(attr_idx) > Intent_Unseen) {
+    problem = "INTENT";
+  }
+  else if (ATD_IGNORE_TKR(attr_idx)) {
+    problem = "IGNORE_TKR";
+    err_number = 1505;
+  }
+  AT_DCL_ERR(attr_idx) = TRUE;
+  PRINTMSG(AT_DEF_LINE(attr_idx), err_number, Error,
+	   AT_DEF_COLUMN(attr_idx),
+	   AT_OBJ_NAME_PTR(attr_idx), problem);
+}
+#endif /* KEY Bug 14255 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -5277,7 +5326,7 @@ static	void	attr_semantics(int	attr_idx,
    boolean		type_resolved;
    size_offset_type     storage_size;
 
-# if defined(_TARGET_OS_MAX) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET_OS_MAX) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    int			tmp_idx;
 # endif
 
@@ -5955,7 +6004,7 @@ static	void	attr_semantics(int	attr_idx,
                SH_P2_SKIP_ME(curr_stmt_sh_idx) = TRUE;
             }
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 # if 0
             if (! ATD_COPY_ASSUMED_SHAPE(attr_idx)) {
                /* copy the assumed shape dummy arg to a stack dope vector */
@@ -5996,7 +6045,7 @@ static	void	attr_semantics(int	attr_idx,
             }
 # endif /* 0 */
 
-# endif /* (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX)) */
+# endif /* (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)) */
          }
          else if (ATP_PGM_UNIT(pgm_attr_idx) != Blockdata &&
                   (ATD_CLASS(attr_idx) != Dummy_Argument ||
@@ -6128,7 +6177,13 @@ static	void	attr_semantics(int	attr_idx,
          if (ATD_IN_COMMON(attr_idx)) {
 
             if (TYP_TYPE(type_idx) == Structure &&
-                !ATT_SEQUENCE_SET(TYP_IDX(type_idx))) {
+#ifdef KEY /* Bug 14150 */
+                !(ATT_SEQUENCE_SET(TYP_IDX(type_idx)) ||
+		 AT_BIND_ATTR(TYP_IDX(type_idx)))
+#else /* KEY Bug 14150 */
+                !ATT_SEQUENCE_SET(TYP_IDX(type_idx))
+#endif /* KEY Bug 14150 */
+		) {
                 AT_DCL_ERR(attr_idx) = TRUE;
                 PRINTMSG(AT_DEF_LINE(attr_idx), 373, Error,
                          AT_DEF_COLUMN(attr_idx),
@@ -6251,25 +6306,9 @@ static	void	attr_semantics(int	attr_idx,
          }
 
          if (!AT_IS_DARG(attr_idx)) {
-
-            if (AT_OPTIONAL(attr_idx)) {
-               AT_DCL_ERR(attr_idx) = TRUE;
-               PRINTMSG(AT_DEF_LINE(attr_idx), 352, Error,
-                        AT_DEF_COLUMN(attr_idx),
-                        AT_OBJ_NAME_PTR(attr_idx), "OPTIONAL");
-            }
-            else if (ATD_INTENT(attr_idx) > Intent_Unseen) {
-               AT_DCL_ERR(attr_idx) = TRUE;
-               PRINTMSG(AT_DEF_LINE(attr_idx), 352, Error,
-                        AT_DEF_COLUMN(attr_idx),
-                        AT_OBJ_NAME_PTR(attr_idx), "INTENT");
-            }
-            else if (ATD_IGNORE_TKR(attr_idx)) {
-               AT_DCL_ERR(attr_idx) = TRUE;
-               PRINTMSG(AT_DEF_LINE(attr_idx), 1505, Error,
-                        AT_DEF_COLUMN(attr_idx),
-                        AT_OBJ_NAME_PTR(attr_idx), "IGNORE_TKR");
-            }
+#ifdef KEY /* Bug 14255 */
+           error_not_darg(attr_idx);
+#endif /* KEY Bug 14255 */
          }
          else if (TYP_TYPE(type_idx) == Structure &&
                   ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx)) &&
@@ -6282,6 +6321,15 @@ static	void	attr_semantics(int	attr_idx,
                      AT_OBJ_NAME_PTR(attr_idx),
                      AT_OBJ_NAME_PTR(TYP_IDX(type_idx)));
          }
+#ifdef KEY /* Bug 14150 */
+         else if (ATD_VALUE_ATTR(attr_idx) &&
+	   !length_type_param_is_one(attr_idx)) {
+           PRINTMSG(AT_DEF_LINE(attr_idx), 1695, Error, 
+	     AT_DEF_COLUMN(attr_idx), AT_OBJ_NAME_PTR(attr_idx));
+	 }
+         break;
+#endif /* KEY Bug 14150 */
+
          break;
 
       case CRI__Pointee:
@@ -6396,7 +6444,7 @@ static	void	attr_semantics(int	attr_idx,
             }
          }
 
-# elif defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# elif defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
 #ifdef KEY /* Bug 7299 */
 	 /* We want to use default pointer type for Cray pointers */
@@ -6681,7 +6729,7 @@ static	void	attr_semantics(int	attr_idx,
          AT_SEMANTICS_DONE(rslt_idx) = TRUE;
       }
 
-# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
       /* These return charcter results on the SPARC but not Cray. */
 
@@ -6699,7 +6747,7 @@ static	void	attr_semantics(int	attr_idx,
             goto EXIT;
          }
 
-# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
       }
       else {
          CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
@@ -7041,6 +7089,12 @@ static	void	attr_semantics(int	attr_idx,
       }
 
       if (ATP_PROC(attr_idx) == Dummy_Proc) {
+
+#ifdef KEY /* Bug 14255 */
+         if (!AT_IS_DARG(attr_idx)) {
+	   error_not_darg(attr_idx);
+	 }
+#endif /* KEY Bug 14255 */
 
          /* If this is an interface specific, pgm_attr_idx is set to the */
          /* specific.  The correct attr to check is the program unit     */
@@ -7547,6 +7601,9 @@ static	void	attr_semantics(int	attr_idx,
       gen_allocatable_ptr_ptee(attr_idx);
    }
 # endif
+#ifdef KEY /* Bug 14150 */
+   check_interoperable_constraints(attr_idx);
+#endif /* KEY Bug 14150 */
 
 EXIT:
 
@@ -10455,7 +10512,7 @@ static void gen_single_automatic_allocate(int	attr_idx)
    line			= AT_DEF_LINE(attr_idx);
    column		= AT_DEF_COLUMN(attr_idx);
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    if (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Character ||
        (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure &&
         ATT_CHAR_SEQ(TYP_IDX(ATD_TYPE_IDX(attr_idx))))) {

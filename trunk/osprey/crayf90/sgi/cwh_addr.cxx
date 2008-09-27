@@ -70,7 +70,7 @@
  * ====================================================================
  */
 
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 
 /* sgi includes */
 
@@ -1524,7 +1524,7 @@ cwh_addr_stid(ST *st, OFFSET_64 off, TY_IDX ty , WN * rhs)
     tl = ty;
     bt = TY_mtype(ty) ;
 
-# if ! defined (linux)
+# if ! (defined (linux) || defined(BUILD_OS_DARWIN))
     if (IS_ALTENTRY_TEMP(st)) {
       if (MTYPE_is_integral(bt)) {
 	  tl = cwh_stab_altentry_TY(st,TRUE);
@@ -1701,7 +1701,7 @@ cwh_addr_store_ST(ST * st, OFFSET_64 off, TY_IDX dty,  WN * rhs)
    	/* if CQ function result & shared entry temp */
    	/* store via the result address too          */
    	
-# if ! defined (linux)
+# if ! (defined (linux) || defined(BUILD_OS_DARWIN))
    	if (IS_ALTENTRY_TEMP(st)) {
    	  if (TY_mtype(ts) == MTYPE_CQ){
    	    if(!ST_auxst_altentry_shareTY(ST_base(st))) {

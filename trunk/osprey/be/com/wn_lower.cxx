@@ -1,9 +1,5 @@
 /*
- * Copyright 2007 (C) PathScale, LLC.  All Rights Reserved.
- */
-
-/*
- *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
+ *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -53,18 +49,30 @@
 #include "be_com_pch.h"
 #endif /* USE_PCH */
 #pragma hdrstop
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <isam.h>
 #include <alloca.h>
+#ifdef __MINGW32__
+#include <signal.h>
+#else
 #include <sys/signal.h>
+#endif /* __MINGW32__ */
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 
 #include "defs.h"
 #include "config.h"
 #include "config_asm.h"
 #include "config_debug.h"
 #include "config_opt.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "errors.h"
 #include "erglob.h"
 #include "tracing.h"
@@ -113,6 +121,10 @@
 
 #include "tls.h"
 
+#ifdef TARG_NVISA
+#define SHORTCIRCUIT_TO_LOGICAL_LIMIT 3
+#endif
+
 /* My changes are a hack till blessed by Steve. (suneel) */
 #define SHORTCIRCUIT_HACK 1
 #define MMCOPY_MULT 1.2 
@@ -143,11 +155,15 @@ extern TYPE_ID compute_copy_quantum(INT32 );
 
 extern WN *WN_I1const(TYPE_ID, INT64 con);
 
+extern void Set_addr_saved_expr(WN *wn, BOOL warn);
 /*
  * defined in config.c (should be in config.h)
  */
 extern INT32	MinStructCopyLoopSize;
 extern INT32	MinStructCopyMemIntrSize;
+
+INT32 Total_MLower_Count=0;
+INT32 Total_M_Count=0;
 
 /* ====================================================================
  *			 Imported Declarations
@@ -219,9 +235,9 @@ static WN *lower_intrinsic_op(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_if(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_stmt(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_entry(WN *, LOWER_ACTIONS);
-#ifdef KEY
+#ifdef LOW_LANDING_PAD
 static WN *lower_landing_pad_entry(WN *);
-#endif // KEY
+#endif 
 static WN *lower_eval(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_copy_tree(WN *, LOWER_ACTIONS);
 static WN *lower_emulation(WN *, WN *, LOWER_ACTIONS, BOOL &intrinsic_lowered);
@@ -240,6 +256,7 @@ static WN *lower_branch_condition(BOOL, LABEL_IDX, WN *, WN **, LOWER_ACTIONS);
 static WN *lower_conditional(WN *, WN *, LABEL_IDX, LABEL_IDX, BOOL,
 			     LOWER_ACTIONS);
 static WN *lower_tree_height(WN *, WN *, LOWER_ACTIONS);
+static void lower_madd_tree_height(WN *, WN *, LOWER_ACTIONS);
 
 static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
 static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
@@ -264,8 +281,10 @@ static void lower_tree_copy_maps(WN *, WN *, LOWER_ACTIONS);
 static INT32 compute_alignment(WN *, INT64);
 static TYPE_ID compute_next_copy_quantum(TYPE_ID , INT32);
 
-#ifdef KEY
+static WN *lower_mistore_by_type(WN *block, WN *mistore, LOWER_ACTIONS actions);
+#if defined(KEY) 
 static WN *lower_malloc_alg(WN *block, WN *tree, LOWER_ACTIONS actions);
+static ST_IDX find_trampoline(ST_IDX func_st_idx);
 #endif
 
 // return the WN* from which <derived> was derived
@@ -281,11 +300,12 @@ static char *current_preg_name;
 static UINT16 loop_nest_depth;
 static BOOL contains_a_loop;
 static struct ALIAS_MANAGER *alias_manager;
-#define PARITY_MAP_ARRAY_SIZE 32
-static WN_MAP parity_map_array[PARITY_MAP_ARRAY_SIZE];
-static WN_MAP lowering_parity_map = 0;
+#define NESTED_MAP_ARRAY_SIZE 32
+static WN_MAP parity_map_array[NESTED_MAP_ARRAY_SIZE];
+static WN_MAP derivation_map_array[NESTED_MAP_ARRAY_SIZE];
+static WN_MAP lowering_parity_map = WN_MAP_UNDEFINED;
 static WN_MAP wn_derivation_map = WN_MAP_UNDEFINED; 
-static INT32 parity_map_index = -1;
+static INT32 nested_map_index = -1;
 static LOWER_ACTIONS lowering_actions= 0;
 static BOOL save_Div_Split_Allowed ;
 static INT cur_memlib_idx        = 0;
@@ -384,7 +404,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_UNKNOWN,  /* MTYPE_C16 */
   MTYPE_UNKNOWN,  /* MTYPE_I16 */
   MTYPE_UNKNOWN,  /* MTYPE_U16 */
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(VECTOR_MTYPES)
   MTYPE_V16C4,    /* MTYPE_V16C4 */
   MTYPE_V16C8,    /* MTYPE_V16C8 */
   MTYPE_V16I1,    /* MTYPE_V16I1 */
@@ -397,11 +417,13 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_V8I2,     /* MTYPE_V8I2 */
   MTYPE_V8I4,     /* MTYPE_V8I4 */
   MTYPE_V8F4,     /* MTYPE_V8F4 */
+#if defined(TARG_X8664)
   MTYPE_M8I1,     /* MTYPE_M8I1 */
   MTYPE_M8I2,     /* MTYPE_M8I2 */
   MTYPE_M8I4,     /* MTYPE_M8I4 */
   MTYPE_M8F4      /* MTYPE_M8F4 */
 #endif // TARG_X8664
+#endif // (TARG_X8664) || (VECTOR_MTYPES)
 #endif // KEY
 };
 
@@ -473,6 +495,23 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
 #define ABS(x)			(((x)<0) ? -(x) : (x))
 #define IS_POWER_OF_2(val)      ((val != 0) && ((val & (val-1)) == 0))
 
+static ST *
+Standard_Preg_For_Mtype (TYPE_ID mtype)
+{
+#ifdef TARG_NVISA
+  // need specific-size preg
+  if (mtype == MTYPE_F8) 
+	return Float64_Preg;
+  else if (MTYPE_is_float(mtype)) 
+	return Float32_Preg;
+  else if (MTYPE_byte_size(mtype) == 8)
+	return Int64_Preg;
+  else
+	return Int32_Preg;
+#else
+  return MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+#endif
+}
 
 #ifdef KEY
 static void WN_copy_linenum (WN* src, WN* dest)
@@ -690,7 +729,7 @@ static WN_OFFSET coerceOFFSET(WN *tree, TYPE_ID realTY, WN_OFFSET offset)
  *
  * ==================================================================== */
 
-static void rename_preg(char *f, char *preg_class)
+static void rename_preg(const char *f, const char *preg_class)
 {
   static char name[41];
 
@@ -775,8 +814,8 @@ static LABEL_IDX NewLabel(void)
 
   // create label name
   char *name = (char *) alloca (strlen(".L..") + 8 + 8 + 1);
-  sprintf(name, ".L%s%d%s%d", Label_Name_Separator, Current_PU_Count(), 
-	Label_Name_Separator, label);
+  sprintf(name, "%s%s%d%s%d", LABEL_PREFIX, Label_Name_Separator, 
+	Current_PU_Count(), Label_Name_Separator, label);
   LABEL_Init (lab, Save_Str(name), LKIND_DEFAULT);
   return label;
 }
@@ -1367,11 +1406,20 @@ static PREG_NUM AssignPregExprPos(WN *block, WN *tree, TY_IDX ty,
 
   type = TY_mtype(Ty_Table[ty]);
   pregNo = Create_Preg(type, current_preg_name);
+#ifdef TARG_NVISA
+  // we need to track what memory is being accessed when storing
+  // an lda into a preg.  So if tree has an lda, or indirects to lda
+  // through another preg, put that in preg table.
+  WN *lda = Find_Lda (tree);
+  if (lda) Set_Preg_Lda (pregNo, lda);
+#endif
 
   {
     WN	*stBlock, *stid;
 
     stid = WN_Stid(type, pregNo, preg, ty, tree);
+
+    Set_addr_saved_expr(tree, TRUE);
 
     if (srcpos)
       WN_Set_Linenum (stid, srcpos);
@@ -1385,10 +1433,6 @@ static PREG_NUM AssignPregExprPos(WN *block, WN *tree, TY_IDX ty,
     if (actions)
       stid = lower_store(stBlock, stid, actions);
 
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, stid);
-#endif
     WN_INSERT_BlockLast(stBlock, stid);
 
     WN_INSERT_BlockLast(block, stBlock);
@@ -1420,6 +1464,9 @@ static BOOL WN_unconditional_goto(WN *tree)
   case OPR_REGION_EXIT:
   case OPR_RETURN:
   case OPR_RETURN_VAL:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     return TRUE;
   }
   return FALSE;
@@ -1443,7 +1490,7 @@ PARITY WN_parity(WN *tree)
   {
     INT32	map;
 
-    Is_True((lowering_parity_map != 0), ("parity map not initialized"));
+    Is_True((lowering_parity_map != WN_MAP_UNDEFINED), ("parity map not initialized"));
 #ifdef KEY
     // Node may be deleted in which case the corresponding vertex and the 
     // associated edges should be deleted in the dependence graph but there
@@ -1534,7 +1581,7 @@ static void lower_map(WN *tree, LOWER_ACTIONS actions)
 	  Copy_alias_info(alias_manager, orig, tree);
 	} else {
 	  Create_alias(alias_manager, tree);
-        }
+	}
       }
     }
   }
@@ -1563,7 +1610,7 @@ static void lower_copy_maps(WN *orig, WN *tree, LOWER_ACTIONS actions)
         if (alias_manager)
 	  Copy_alias_info(alias_manager, orig, tree);
       }
-      
+
       // maintain the annotation whenever possible
       WN_MEMOP_ANNOT_MGR* p = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr();
       if (p) {
@@ -2325,18 +2372,12 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 
 	  div =  WN_Div(type, Load_Leaf(xN), Load_Leaf(scaleN));
 	  stid = WN_StidIntoPreg(type, realpartN, preg, div);
-#ifdef KEY
-	  // Bug 1268 - copy linenumber when creating WNs.
-	  WN_copy_linenum(tree, stid);
-#endif
+	  WN_Set_Linenum(stid, current_srcpos);  // Bug 1268
 	  WN_INSERT_BlockLast(if_else, stid);
     
 	  div = WN_Neg(type,WN_Inverse(type, Load_Leaf(scaleN)));
 	  stid = WN_StidIntoPreg(type, imagpartN, preg, div);
-#ifdef KEY
-	  // Bug 1268 - copy linenumber when creating WNs.
-	  WN_copy_linenum(tree, stid);
-#endif
+	  WN_Set_Linenum(stid, current_srcpos);  // Bug 1268
 	  WN_INSERT_BlockLast(if_else, stid);
 	}
     
@@ -2521,10 +2562,7 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
     			    Load_Leaf(izN));
 	    div = WN_Div(type, numer, Load_Leaf(scaleN));
 	    stid = WN_StidIntoPreg(type, realpartN, preg, div);
-#ifdef KEY
-	    // Bug 1268 - copy linenumber when creating WNs.
-	    WN_copy_linenum(tree, stid);
-#endif
+	    WN_Set_Linenum(stid, current_srcpos);  // Bug 1268
 	    WN_INSERT_BlockLast(if_else, stid);
 	  }
 	  {
@@ -2539,10 +2577,7 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
     			   Load_Leaf(rzN));
 	    div = WN_Div(type, numer, Load_Leaf(scaleN));
 	    stid = WN_StidIntoPreg(type, imagpartN, preg, div);
-#ifdef KEY
-	    // Bug 1268 - copy linenumber when creating WNs.
-	    WN_copy_linenum(tree, stid);
-#endif
+	    WN_Set_Linenum(stid, current_srcpos);  // Bug 1268
 	    WN_INSERT_BlockLast(if_else, stid);
 	  }
 	}
@@ -3471,6 +3506,128 @@ static WN *lower_tree_height(WN *block, WN *wn, LOWER_ACTIONS actions)
 }
 
 
+#ifdef KEY
+/* ====================================================================
+ *
+ * WN *sum_madd_segments(WN **segments, INT low, INT high)
+ *
+ *  Sum the MADD chains.
+ *
+ * ==================================================================== */
+static WN *sum_madd_segments(WN **segments, INT low, INT high)
+{
+  WN *tree;
+
+  if (high == low) {
+    tree = segments[high];
+  } else if (high - low == 1) {
+    WN *opnd0 = segments[low];
+    WN *opnd1 = segments[high];
+    tree = WN_Add(WN_rtype(opnd0), opnd0, opnd1);
+  } else {
+    INT mid = (high + low) / 2;
+    WN *sum0 = sum_madd_segments(segments, low, mid);
+    WN *sum1 = sum_madd_segments(segments, mid + 1, high);
+    tree = WN_Add(WN_rtype(sum0), sum0, sum1);
+  }
+  return tree;
+}
+
+
+/* ====================================================================
+ *
+ * WN *lower_one_madd_tree_height(WN *block, WN *wn)
+ *
+ *  Reassociate MADD operator at this level 
+ *  (ie no recursion)
+ *
+ * ==================================================================== */
+
+static WN *lower_one_madd_tree_height(WN *block, WN *wn)
+{
+  // Tree is a MADD and potentially starts a MADD chain.
+  Is_True(WN_operator(wn) == OPR_MADD,
+	  ("lower_one_madd_tree_height: MADD operator not found"));
+
+  if (OPT_Madd_Height <= 0)
+    return wn;
+
+  // Count the MADDs in the chain.
+  INT madd_count = 0;
+  WN *this_wn;
+  for (this_wn = wn;
+       WN_operator(this_wn) == OPR_MADD;
+       this_wn = WN_kid0(this_wn)) {
+    madd_count++;
+  }
+
+  if (madd_count <= OPT_Madd_Height)
+    return wn;
+
+  INT segment_count = madd_count / OPT_Madd_Height + 1;
+  WN **segments = (WN **) alloca(segment_count * sizeof(WN *));
+  memset(segments, 0, segment_count * sizeof(WN *));
+
+  // Split up the MADD chain.
+  INT count = 0;
+  INT idx = 0;
+  WN *prev_wn = NULL;
+  this_wn = wn;
+  while (WN_operator(this_wn) == OPR_MADD) {
+    WN *next_wn = WN_kid0(this_wn);
+    count++;
+    if (count > OPT_Madd_Height) {
+      WN *mpy = WN_Mpy(WN_rtype(this_wn), WN_kid1(this_wn), WN_kid2(this_wn));
+      WN_kid0(prev_wn) = mpy;
+      WN_Delete(this_wn);
+      count = 0;
+    } else if (count == 1) {
+      segments[idx++] = this_wn;
+    }
+    prev_wn = this_wn;
+    this_wn = next_wn;
+  }
+
+  // If the last MADD in the chain was converted to a MPY, then its kid0 still
+  // needs to be summed.
+  if (count == 0) {
+    segments[idx++] = this_wn;
+  }
+
+  // Add the partial sums.
+  WN *tree = sum_madd_segments(segments, 0, idx - 1);
+  return tree;
+}
+
+
+/* ====================================================================
+ *
+ * WN *lower_madd_tree_height(WN *block, WN *tree)
+ *
+ *  Traverse tree to find subtrees that are MADD chains.  Lower the height
+ *  of these chains.
+ *
+ * ==================================================================== */
+
+static void lower_madd_tree_height(WN *block, WN *tree, LOWER_ACTIONS actions)
+{
+  if (NotAction(LOWER_TREEHEIGHT))
+    return;
+
+  if (WN_operator(tree) != OPR_MADD) {
+    INT16 i;
+    for (i = 0; i < WN_kid_count(tree); i++) {
+      WN *kid = WN_kid(tree, i);
+      if (WN_operator(kid) == OPR_MADD) {
+	// Kid potentially begins a MADD chain.  Reduce its height.
+	WN_kid(tree, i) = lower_one_madd_tree_height(block, kid);
+      } else {
+	lower_madd_tree_height(block, kid, actions);
+      }
+    }
+  }
+}
+#endif
 
 
 /* ====================================================================
@@ -3533,7 +3690,8 @@ static WN *lower_rsqrt(WN *block, WN *tree, LOWER_ACTIONS actions)
 #ifdef TARG_X8664	// bug 6123
   if (Rsqrt_Allowed == 0 ||
       // x86-64 rsqrt supports single-precision only.
-      !(type == MTYPE_F4 || type == MTYPE_V16F4))
+      !(type == MTYPE_F4 || type == MTYPE_V16F4) ||
+      !Is_Target_SSE2())
 #else
   if (Rsqrt_Allowed == FALSE || MTYPE_is_quad(type))
 #endif
@@ -3603,6 +3761,11 @@ static WN *lower_split_sym_addrs(WN *tree, INT64 offset, LOWER_ACTIONS actions)
   ST *sym  = WN_st(tree);
   ST *base = ST_base(sym);
   INT64	newoffset = 0;
+
+#ifdef TARG_NVISA
+  // want to preserve original symbol
+  return NULL;
+#endif
 
   if (traceSplitSymOff)
     return NULL;
@@ -3732,7 +3895,11 @@ static WN *lower_split_sym_addrs(WN *tree, INT64 offset, LOWER_ACTIONS actions)
       return NULL;
     }
 
+#ifdef TARG_SL2 
+    if(ST_gprel(sym) || WN_is_internal_mem_ofst(tree))
+#else 
     if (ST_gprel(sym))
+#endif 		
     {
       return NULL;
     }
@@ -4144,7 +4311,11 @@ static WN
     *       LDID (preg) <base> 
     *     ISTORE (offset)          
     */
-    deref = WN_Istore(WN_desc(tree), offset, addr_ty, addr, WN_kid0(tree));
+    deref = WN_Istore(WN_desc(tree), offset, addr_ty, addr, WN_kid0(tree)
+#ifdef KEY // bug 14036
+                      ,WN_field_id(tree)
+#endif
+                     );
     WN_Set_Linenum(deref, WN_Get_Linenum(tree));
     break;
   }	
@@ -4169,16 +4340,40 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
   TY_IDX   ty_idx  = WN_ty(tree);
   TY&      ty      = Ty_Table[ty_idx];
   TYPE_ID  mtype   = TY_mtype (ty);
+#ifdef TARG_X8664
+  BOOL sseregparm  = FALSE; // sseregparm attribute on called function?
+#endif
 
   Is_True((WN_operator(tree) == OPR_LDID),
 	  ("expected LDID node, not %s", OPCODE_name(WN_opcode(tree))));
+
+#ifdef TARG_X8664
+  if (Is_Target_32bit())
+  {
+    // Determine if the called function has the "sseregparm" attribute
+    WN * call = WN_last(block);
+    if (call && WN_operator(call) == OPR_CALL)
+    {
+      TY_IDX pu_ty = PU_prototype(Pu_Table[ST_pu(WN_st(call))]);
+      sseregparm = TY_has_sseregister_parm (pu_ty);
+    }
+  }
+#endif
 
   switch (mtype) {
 
     case MTYPE_I8:
     case MTYPE_U8:
+#if defined(TARG_X8664)
       WN_st_idx(tree) = ST_st_idx(MTYPE_To_PREG(mtype));
+#else
+      WN_st_idx(tree) = ST_st_idx(Int64_Preg);
+#endif
       WN_load_offset(tree) = First_Int_Preg_Return_Offset;
+#ifdef TARG_NVISA
+      // int64 are separate register class, so use unique preg num
+      WN_load_offset(tree) = First_Int64_Preg_Return_Offset;
+#endif
       return tree;
 
     case MTYPE_I1:
@@ -4187,7 +4382,11 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_U1:
     case MTYPE_U2:
     case MTYPE_U4:
+#ifdef TARG_NVISA
+      WN_st_idx(tree) = ST_st_idx(Int32_Preg);
+#else
       WN_st_idx(tree) = ST_st_idx(Int_Preg);
+#endif
       WN_load_offset(tree) = First_Int_Preg_Return_Offset;
       return tree;
 
@@ -4199,8 +4398,19 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_C8:
     case MTYPE_C10:
     case MTYPE_CQ:
+#ifdef TARG_NVISA
+      if (mtype == MTYPE_F8) {
+	// doubles are separate register class, so use unique preg num
+        WN_st_idx(tree) = ST_st_idx(Float64_Preg);
+        WN_load_offset(tree) = First_Float64_Preg_Return_Offset;
+      } else {
+        WN_st_idx(tree) = ST_st_idx(Float32_Preg);
+        WN_load_offset(tree) = First_Float_Preg_Return_Offset;
+      }
+#else
       WN_st_idx(tree) = ST_st_idx(Float_Preg);
       WN_load_offset(tree) = First_Float_Preg_Return_Offset;
+#endif
 #ifdef TARG_X8664 // MTYPE_C4 is returned in one SSE register
       if (Is_Target_64bit() && mtype == MTYPE_C4) {
 	WN_set_rtype(tree, MTYPE_F8);
@@ -4208,15 +4418,15 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
 	WN_set_ty(tree, MTYPE_To_TY(MTYPE_F8));
       }
 
-      if( Is_Target_32bit() && ! MTYPE_is_complex(mtype) ||
-	  MTYPE_is_quad(mtype) ){
+      if( Is_Target_32bit() && ! sseregparm && ! MTYPE_is_complex(mtype) ||
+    	      MTYPE_is_quad(mtype) ){
 	WN_st_idx(tree) = ST_st_idx( MTYPE_To_PREG(mtype) );
 	WN_load_offset(tree) = First_X87_Preg_Return_Offset;
       }
 #endif
       return tree;
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(VECTOR_MTYPES)
     case MTYPE_V16I1:
     case MTYPE_V16I2:
     case MTYPE_V16I4:
@@ -4226,15 +4436,16 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_V8I1:
     case MTYPE_V8I2:
     case MTYPE_V8I4:
-
+#ifdef TARG_X8664
     case MTYPE_M8I1:
     case MTYPE_M8I2:
     case MTYPE_M8I4:
     case MTYPE_M8F4:
+#endif
       WN_st_idx(tree) = ST_st_idx(MTYPE_To_PREG (mtype));
       WN_load_offset(tree) = First_Float_Preg_Return_Offset;
       return tree;
-#endif
+#endif // TARG_X8664 || VECTOR_MTYPES
 
     case MTYPE_M:
       Fail_FmtAssertion ("MLDID of Return_Val_Preg not allowed in middle"
@@ -4289,10 +4500,6 @@ static WN *lower_mldid(WN *block, WN *tree, LOWER_ACTIONS actions)
   wn  = WN_CreateMload(0, pty_idx, awn, swn);
   WN_set_field_id(wn, WN_field_id(tree));
   wn  = lower_expr(block, wn, actions);
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, wn);
-#endif
 
   WN_Delete(tree);
   return wn;
@@ -4324,12 +4531,7 @@ static WN *lower_miload(WN *block, WN *tree, LOWER_ACTIONS actions)
   wn  = WN_CreateMload (WN_offset(tree), pty_idx, WN_kid0(tree), swn);
   WN_set_field_id(wn, WN_field_id(tree));
   set_original_wn (wn, tree);
-
   wn  = lower_expr (block, wn, actions);
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, wn);
-#endif
 
   WN_Delete (tree);
   return wn;
@@ -4577,13 +4779,6 @@ static void lower_bit_field_id(WN *wn)
   Is_True(! fld.Is_Null(),
 	  ("invalid bit-field ID for %s", OPERATOR_name(opr)));
   TY_IDX fld_ty_idx = FLD_type(fld);
-  WN_set_ty (wn, (opr == OPR_ISTORE ?
-		  Make_Pointer_Type (fld_ty_idx, FALSE) :
-		  fld_ty_idx));
-#ifdef KEY // bug 12394
-  if (new_opr == OPR_ILDBITS)
-    WN_set_load_addr_ty(wn, Make_Pointer_Type(WN_ty(wn)));
-#endif
   
   Is_True(FLD_is_bit_field(fld),
 	  ("non-bit-field associated with bit-field access for  %s", OPERATOR_name(opr)));
@@ -4617,6 +4812,7 @@ static void lower_bit_field_id(WN *wn)
   }
   WN_load_offset(wn) = WN_load_offset(wn) + ofst; 
 
+  TYPE_ID mtype;
   if ((bsize & 7) == 0 && 		   // field size multiple of bytes
 #ifdef KEY // bug 11076
       bsize &&				   // field size non-zero
@@ -4630,7 +4826,8 @@ static void lower_bit_field_id(WN *wn)
       ) {
     // bit-field operation not needed; leave operator as previous one
     WN_set_field_id(wn, 0);
-    WN_set_desc(wn, Mtype_AlignmentClass(bsize >> 3, MTYPE_type_class(rtype)));
+    mtype = Mtype_AlignmentClass(bsize >> 3, MTYPE_type_class(rtype));
+    WN_set_desc(wn, mtype);
     WN_load_offset(wn) = WN_load_offset(wn) + (bofst >> 3);
   }
   else { // generate lowered-to bit-field operator
@@ -4647,8 +4844,7 @@ static void lower_bit_field_id(WN *wn)
     WN_set_operator(wn, new_opr);
 
 #ifdef KEY
-    const TYPE_ID mtype =
-      Mtype_AlignmentClass(bytes_accessed, MTYPE_type_class(rtype));
+    mtype = Mtype_AlignmentClass(bytes_accessed, MTYPE_type_class(rtype));
     Is_True( mtype != MTYPE_UNKNOWN, ("Unknown mtype encountered.") );
     WN_set_desc(wn, mtype);
 #else
@@ -4660,6 +4856,17 @@ static void lower_bit_field_id(WN *wn)
       WN_set_rtype(wn, WN_desc(wn));
     WN_set_bit_offset_size(wn, bofst, bsize);
   }
+
+  // fix the TYs
+  if (MTYPE_byte_size(mtype) > MTYPE_byte_size(TY_mtype(fld_ty_idx)))
+    fld_ty_idx = MTYPE_To_TY(mtype);
+  WN_set_ty (wn, (opr == OPR_ISTORE ?
+		  Make_Pointer_Type (fld_ty_idx, FALSE) :
+		  fld_ty_idx));
+#ifdef KEY // bug 12394
+  if (new_opr == OPR_ILDBITS)
+    WN_set_load_addr_ty(wn, Make_Pointer_Type(fld_ty_idx));
+#endif
 }
 
 static void lower_trapuv_alloca (WN *block, WN *tree, LOWER_ACTIONS actions
@@ -4713,10 +4920,7 @@ static void lower_trapuv_alloca (WN *block, WN *tree, LOWER_ACTIONS actions
 		WN_COPY_Tree(size) );
 #endif
   	mstore = lower_store (block, mstore, actions);
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(tree, mstore);
-#endif
+	WN_Set_Linenum(mstore, current_srcpos);  // Bug 1268
 	WN_INSERT_BlockLast(block, mstore);
 }
 
@@ -4739,6 +4943,9 @@ inline BOOL Should_Call_Divide(TYPE_ID rtype)
 #elif defined(EMULATE_LONGLONG)
   if (rtype == MTYPE_I8 || rtype == MTYPE_U8) return TRUE;
 #endif
+#ifdef TARG_SL //expand operator to function call
+  return TRUE;
+#endif 
   return FALSE;
 }
 
@@ -4826,7 +5033,7 @@ static WN* simp_remdiv( WN* block, WN* tree )
 			   WN_COPY_Tree( WN_kid(tree,0) ),
 			   value );
       WN* stid = WN_StidIntoPreg( type, result, MTYPE_To_PREG( type ), tmp );
-      WN_copy_linenum(tree, stid);
+      WN_Set_Linenum(stid, current_srcpos);
       WN_INSERT_BlockLast( if_then, stid );
     }
 	  
@@ -4837,7 +5044,7 @@ static WN* simp_remdiv( WN* block, WN* tree )
 			    WN_COPY_Tree( WN_kid(tree,1) ) );
       if( entry+1 == items ){
 	WN* stid = WN_StidIntoPreg( type, result, MTYPE_To_PREG( type ), div_tree );
-	WN_copy_linenum(tree, stid);
+	WN_Set_Linenum(stid, current_srcpos);
 	WN_INSERT_BlockLast( if_else, stid );
       }
     }
@@ -4852,7 +5059,7 @@ static WN* simp_remdiv( WN* block, WN* tree )
     Cur_PU_Feedback->Annot( if_tree, FB_EDGE_BRANCH_NOT_TAKEN,
 			    ( info.exe_counter - info.freq[entry] ) );
 	  
-    WN_copy_linenum(tree, if_tree);
+    WN_Set_Linenum(if_tree, current_srcpos);
     WN_INSERT_BlockLast( block, if_tree );
 	  
     WN_Delete( WN_kid(tree,0) );
@@ -4895,7 +5102,14 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
   */
   if (Action(LOWER_MADD)	&&
       Madd_Allowed		&&
-     (MTYPE_id(type) == MTYPE_F4 || MTYPE_id(type) == MTYPE_F8))
+     ((MTYPE_id(type) == MTYPE_F4 || MTYPE_id(type) == MTYPE_F8)
+#ifdef TARG_NVISA
+      // NVISA supports integer madds
+      || (Integer_Madd_Allowed &&
+       (MTYPE_id(type) == MTYPE_I4 || MTYPE_id(type) == MTYPE_U4
+        || MTYPE_id(type) == MTYPE_I8 || MTYPE_id(type) == MTYPE_U8))
+#endif
+      ))
   {
     tree = lower_nary_madd(block, tree, actions);
     tree = lower_madd(block, tree, actions);
@@ -4941,7 +5155,8 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
 
 #ifdef KEY
-    if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P ) {
+    if ( (INTRINSIC) WN_intrinsic (tree) == INTRN_CONSTANT_P
+         /* && Action (LOWER_TO_CG) */ ) {
       WN * old = tree;
       WN * parm = WN_kid0 (WN_kid0 (old)); // child of OPR_PARM
 
@@ -4956,10 +5171,10 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
         kids_lowered = TRUE;
         break;
       }
-      if ( Action (LOWER_TO_CG) ) {
+      else if ( Action (LOWER_TO_CG) ) {
 	// Still not constant, replace it by false
 	tree = WN_Intconst (MTYPE_I4, 0);
-	WN_copy_linenum (old, tree);
+        WN_copy_linenum (old, tree);
 	WN_Delete (old);
 	kids_lowered = TRUE;
         break;
@@ -5254,7 +5469,6 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       WN_Delete(tree);
       return local_ldid;
     }
-
     break;
 
   case OPR_ILDBITS:
@@ -5346,6 +5560,20 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       WN_Delete(tree);
       return local_ldid;
     }
+#ifdef KEY  // if taking address of a nested function, replace it by the address
+    // of the corresopnding trampoline
+    if (Action(LOWER_UPLEVEL) && WN_class(tree) == CLASS_FUNC) {
+      ST *sym = WN_st(tree);
+      PU &pu = Pu_Table[ST_pu(sym)];
+      if (PU_need_trampoline(pu)) {
+	Allocate_Object(sym); // because it may not appear again
+	ST_IDX tramp_st_idx = find_trampoline(ST_st_idx(sym));
+        WN_st_idx(tree) = tramp_st_idx;
+	return lower_expr(block, tree, actions | LOWER_UPLEVEL);
+      }
+    }
+#endif
+
     break;
 
   case OPR_CVT:
@@ -5694,10 +5922,6 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	WN *stid = WN_Stid(cdiv_mtype, 0, cdiv_st, cdiv_ty, tree);
       	WN_Set_Linenum (stid, current_srcpos);
 	stid = lower_store(block, stid, actions);
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(tree, stid);
-#endif
 	WN_INSERT_BlockLast(block, stid);
 	WN *ldid = WN_Ldid(cdiv_mtype, 0, cdiv_st, cdiv_ty);
 	return ldid;
@@ -5751,10 +5975,7 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 	if_else = WN_CreateBlock();
 	stid = WN_StidIntoPreg(type, tmpN, MTYPE_To_PREG(type), WN_kid2(tree));
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(tree, stid);
-#endif
+	WN_Set_Linenum(stid, current_srcpos);  // Bug 1268
 	WN_INSERT_BlockLast(if_else, stid);
 
 	if_tree = WN_CreateIf( WN_kid0(tree), if_then, if_else );
@@ -5807,9 +6028,9 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 			     WN_desc (tree),
 			     WN_kid_count (tree));
       WN_st_idx (call) = WN_st_idx (tree);
-      WN_copy_linenum (tree, call);
       for (int i=0; i<WN_kid_count (call); i++)
         WN_kid (call, i) = WN_kid (tree, i);
+      WN_Set_Linenum(call, current_srcpos);
 
       call = lower_call (block, call, actions);
       WN_INSERT_BlockLast (block, call);
@@ -5821,7 +6042,7 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       // stid return val into temporary
       ST * sym = Gen_Temp_Symbol (WN_ty (ldid), "pure_call_ret");
       WN * stid = WN_Stid (WN_rtype (ldid), 0, sym, WN_ty (ldid), ldid);
-      WN_copy_linenum (tree, stid);
+      WN_Set_Linenum(stid, current_srcpos);
       stid = lower_store (block, stid, actions);
       WN_INSERT_BlockLast (block, stid);
 
@@ -6069,10 +6290,6 @@ static WN *lower_return_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
     awn = lower_expr(block, awn, actions);
     WN *n_call = add_fake_parm(call, awn, WN_ty(awn));
     WN_DELETE_FromBlock(block, call);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, n_call);
-#endif
     WN_INSERT_BlockLast(block, n_call); 
 
     WN_DELETE_Tree(tree);
@@ -6083,10 +6300,6 @@ static WN *lower_return_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
     for (INT32 i = 0; i < RETURN_INFO_count(return_info); i++) {
       if (i != 0)
         WN_INSERT_BlockLast (block, wn); // insert the last STID created 
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(tree, wn);
-#endif
       mtype = RETURN_INFO_mtype(return_info, i);
       desc = mtype;
 #ifdef KEY
@@ -6096,7 +6309,7 @@ static WN *lower_return_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
 	  desc = Mtype_next_alignment(desc);
       }
 #endif
-      preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+      preg_st = Standard_Preg_For_Mtype(mtype);
       n_rhs = WN_CreateLdid(OPR_LDID, mtype, mtype, 
 			    RETURN_INFO_preg(return_info, i), preg_st,
 			    Be_Type_Tbl(mtype));
@@ -6109,7 +6322,7 @@ static WN *lower_return_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
 		         WN_store_offset(tree)+i*MTYPE_byte_size(mtype),
 			 WN_st_idx(tree), Be_Type_Tbl(desc), n_rhs);
       wn  = lower_store (block, wn, actions);
-      WN_Set_Linenum (wn, WN_Get_Linenum(tree));
+      WN_Set_Linenum(wn, current_srcpos);
     }
     WN_DELETE_Tree(tree);
     return wn;
@@ -6158,10 +6371,6 @@ static WN *lower_return_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
     awn = lower_expr(block, awn, actions);
     WN *n_call = add_fake_parm(call, awn, WN_ty(tree));
     WN_DELETE_FromBlock(block, call);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, n_call);
-#endif
     WN_INSERT_BlockLast(block, n_call); 
 
     WN_DELETE_Tree(tree);
@@ -6172,22 +6381,18 @@ static WN *lower_return_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
     for (INT32 i = 0; i < RETURN_INFO_count(return_info); i++) {
       if (i != 0)
         WN_INSERT_BlockLast (block, wn); // insert the last STID created 
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(tree, wn);
-#endif
       mtype = RETURN_INFO_mtype(return_info, i);
-      preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+      preg_st = Standard_Preg_For_Mtype(mtype);
       n_rhs = WN_CreateLdid(OPR_LDID, mtype, mtype, 
 			    RETURN_INFO_preg(return_info, i), preg_st,
 			    Be_Type_Tbl(mtype));
       base_expr = WN_COPY_Tree(WN_kid1(tree));
-
 // OSP-438: The type of Istore node should be a pointer to mtype.
 // (Previously, we just use Be_Type_Tbl(mtype) as the type of Istore).
       wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, mtype, 
 		           WN_store_offset(tree)+i*MTYPE_byte_size(mtype),
 			   Make_Pointer_Type(Be_Type_Tbl(mtype), FALSE), n_rhs, base_expr);
+      WN_Set_Linenum(wn, WN_Get_Linenum(tree));
       wn  = lower_store (block, wn, actions);
       WN_Set_Linenum (wn, WN_Get_Linenum(tree));
     }
@@ -6195,6 +6400,37 @@ static WN *lower_return_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
     return wn;
   }
 }
+
+#ifdef TARG_NVISA
+// lower struct copy of asm output, which goes downward from negative preg,
+// into sequence of ldid/stid. 
+static WN *lower_asm_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
+{
+  WN *wn;
+  WN *ldid;
+  INT field_id = 0;
+  TY_IDX vty = WN_ty(tree);
+  FmtAssert(TY_can_be_vector(vty), ("not a vector type"));
+  TY_IDX ety = TY_vector_elem_ty(vty);
+  PREG_NUM pnum = WN_load_offset(WN_kid0(tree)); // asm out preg
+  for (INT i = 0; i < TY_vector_count(vty); ++i) {
+      ldid = WN_CreateLdid(OPR_LDID, TY_mtype(ety), TY_mtype(ety), 
+		/* asm out pregs count downward */
+		pnum - i, 
+		MTYPE_To_PREG(TY_mtype(ety)), ety);
+      ++field_id;
+      wn = WN_CreateStid( OPR_STID, MTYPE_V, TY_mtype(ety),
+		/* increment by size of element */
+		i * MTYPE_byte_size(TY_mtype(ety)), 
+		WN_st(tree), vty, ldid, field_id);
+      wn  = lower_store (block, wn, actions);
+      WN_Set_Linenum (wn, WN_Get_Linenum(tree));
+      WN_INSERT_BlockLast (block, wn); // insert the last STID created 
+  }
+  WN_DELETE_Tree(tree);
+  return NULL; // original MSTID disappears
+}
+#endif // TARG_NVISA
 
 /* ====================================================================
  *
@@ -6243,7 +6479,7 @@ static WN *lower_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
 		      pty_idx, WN_st(tree));
   swn = WN_CreateIntconst (OPC_U4INTCONST, size);
   wn  = WN_CreateMstore (0, pty_idx, WN_kid0(tree), awn, swn);
-  WN_copy_linenum(tree, wn);
+  WN_Set_Linenum(wn, current_srcpos);
   WN_set_field_id(wn, WN_field_id(tree));
   wn  = lower_store (block, wn, actions);
 
@@ -6293,7 +6529,7 @@ static WN *lower_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
   WN* kid1 = WN_COPY_Tree(WN_kid1(tree));
   wn  = WN_CreateMstore(WN_offset(tree), pty_idx, kid0, kid1, swn);
 
-  WN_copy_linenum(tree, wn);
+  WN_Set_Linenum(wn, current_srcpos);
   WN_set_field_id(wn, WN_field_id(tree));
   set_original_wn (wn, tree);
   set_original_wn (kid0, WN_kid0(tree));
@@ -6336,6 +6572,21 @@ static BOOL has_call(WN *expr)
 }
 #endif
 
+static BOOL Is_small_struct(WN* wn)
+{
+  Is_True((WN_opcode(WN_kid0(wn)) == OPC_MMILOAD || 
+	   WN_opcode(WN_kid0(wn)) == OPC_MMLDID), ("Expected M type loads"));
+
+  if (TY_kind(WN_ty(WN_kid0(wn))) != KIND_STRUCT)
+    return FALSE;
+
+  if (TY_size(Ty_Table[WN_ty(WN_kid0(wn))]) < (Copy_Quantum_Ratio() * Pointer_Size +1)) {
+      return TRUE;
+  }
+  return FALSE;
+}
+
+
 /* ====================================================================
  *
  * WN *lower_store(block, WN *tree, LOWER_ACTIONS actions)
@@ -6372,7 +6623,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
   }
 
-#ifdef KEY // bug 11938
+#if defined(KEY) && !defined(TARG_SL) // bug 11938
   // If OPT_Float_Via_Int is on, and both rhs and lhs are indirect memory ops,
   // change to use integer type for the copy
   if (Action(LOWER_TO_CG) && OPT_Float_Via_Int && ! WN_has_sym(tree)) {
@@ -6439,6 +6690,13 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 
     if (Action(LOWER_MLDID_MSTID) && WN_desc(tree) == MTYPE_M)
       return lower_mistore(block, tree, actions);
+
+    if (Action(LOWER_EARLY_MLOAD) && WN_desc(tree) == MTYPE_M){
+      if ((WN_opcode(WN_kid0(tree)) == OPC_MMLDID || WN_opcode(WN_kid0(tree)) == OPC_MMILOAD) && Is_small_struct(tree)) {
+	WN *return_block = lower_mistore_by_type(block, tree, actions);
+	if (return_block) return return_block;
+      }
+    }
 
     if (Action(LOWER_RETURN_VAL) && WN_desc(tree) == MTYPE_M &&
        WN_opcode(WN_kid0(tree)) == OPC_MMLDID && 
@@ -6677,8 +6935,54 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	WN_kid1(tree) = WN_kid0(addr_kid);
 	WN_Delete(WN_kid1(addr_kid));
 	WN_Delete(addr_kid);
+	if (Action(LOWER_EARLY_MLOAD) && WN_desc(tree) == MTYPE_M){
+	  if ((WN_opcode(WN_kid0(tree)) == OPC_MMLDID || WN_opcode(WN_kid0(tree)) == OPC_MMILOAD) && Is_small_struct(tree)){
+	    WN *return_block = lower_mistore_by_type(block, tree, actions);
+	    if (return_block) return return_block;
+	  }
+	}
       }
 #endif
+#ifdef TARG_SL2
+     /*
+      * Fold
+      *         CONST (c1)
+      *         EXPR
+      *       ADD
+      *     ISTORE c2
+      * Into
+      *	      EXPR
+      *     ISTORE c1+c2
+      */
+      else if (WN_operator_is(addr_kid, OPR_ADD) &&
+	  foldConstOffset(WN_kid0(addr_kid), WN_store_offset(tree)))
+      {
+	WN_store_offset(tree) += WN_const_val(WN_kid0(addr_kid));
+	WN_kid1(tree) = WN_kid1(addr_kid);
+	WN_Delete(WN_kid0(addr_kid));
+	WN_Delete(addr_kid);
+      }
+
+     /*
+      * Fold
+      *         
+      *       LDID
+      *       CONST (c1)
+      *     ISTORE 0
+      * Into
+      *	 LDID
+      *       CONST 0
+      *     ISTORE c1
+      */
+      if (WN_operator_is(WN_kid1(tree), OPR_INTCONST) &&
+	  foldConstOffset(WN_kid1(tree), WN_store_offset(tree)) &&
+	  !mem_offset_must_be_split(WN_store_offset(tree) + WN_const_val(WN_kid1(tree))))
+      {
+	WN_store_offset(tree) += WN_const_val(WN_kid1(tree));
+	WN_const_val(WN_kid1(tree)) = 0;
+      }
+	 
+#endif // TARG_SL
     }
     break;
 
@@ -6698,6 +7002,18 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
     }
 
+#ifdef TARG_NVISA
+    if ( Action (LOWER_TO_CG)
+    &&   (WN_class(tree) == CLASS_PREG)
+    &&   (! Preg_Is_Dedicated (WN_store_offset (tree))))
+    {
+      // we need to track what memory is being accessed when storing
+      // an lda into a preg.  So if kid has an lda, put that in preg table.
+      WN *lda = Find_Lda (WN_kid0(tree));
+      if (lda) Set_Preg_Lda (WN_store_offset(tree), lda);
+    }
+#endif
+
     if (WN_StoreIsUnused(tree))
     {
       WN	*eval;
@@ -6712,11 +7028,27 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (Action(LOWER_MLDID_MSTID) && WN_desc(tree) == MTYPE_M)
       return lower_mstid(block, tree, actions);
 
+    if (Action(LOWER_EARLY_MLOAD) && WN_desc(tree) == MTYPE_M){
+      if ((WN_opcode(WN_kid0(tree)) == OPC_MMILOAD || WN_opcode(WN_kid0(tree)) == OPC_MMLDID) && Is_small_struct(tree)) {
+        WN *return_block = lower_mistore_by_type(block, tree, actions);
+        if (return_block) return return_block;
+      }
+    }
+
     if (Action(LOWER_RETURN_VAL) && WN_desc(tree) == MTYPE_M &&
        WN_opcode(WN_kid0(tree)) == OPC_MMLDID && 
        WN_st(WN_kid0(tree)) == Return_Val_Preg) {
        return lower_return_mstid(block, tree, actions);
     }
+#ifdef TARG_NVISA
+    if (Action(LOWER_RETURN_VAL) && WN_desc(tree) == MTYPE_M &&
+       WN_opcode(WN_kid0(tree)) == OPC_MMLDID && 
+       WN_class(WN_kid0(tree)) == CLASS_PREG &&
+       WN_load_offset(WN_kid0(tree)) < -1)
+    {
+       return lower_asm_mstid(block, tree, actions);
+    }
+#endif
 #ifdef TARG_X8664 // fortran complex treated as structs (bug 1664)
     if (Action(LOWER_RETURN_VAL) && MTYPE_is_complex(WN_desc(tree)) &&
        (Is_Target_32bit() || last_call_ff2c_abi || F2c_Abi) &&
@@ -6796,8 +7128,15 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 		 WN_desc(tree) == MTYPE_C4 &&
 		 WN_st(tree) == Float_Preg && 
 		 WN_load_offset(tree) == First_X87_Preg_Return_Offset &&
-		 ( PU_c_lang(Get_Current_PU()) ||
-		   PU_cxx_lang(Get_Current_PU()) ) ){
+		 ( 
+#if defined(BUILD_OS_DARWIN)
+		   /* Darwin -m32 returns Fortran SP complex in registers too */
+		   1
+#else /* defined(BUILD_OS_DARWIN) */
+		   PU_c_lang(Get_Current_PU()) ||
+		   PU_cxx_lang(Get_Current_PU()) 
+#endif /* defined(BUILD_OS_DARWIN) */
+		   ) ){
 	/* For C/C++ under -m32, if the return value is type
 	   "__complex__ float", the real part will be stored at %eax, and
 	   the imag part will be stored at %edx.  (bug#2842)
@@ -6808,14 +7147,13 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 	WN *realexp_copy = realexp;
 	WN *imagexp_copy = imagexp;
-        PREG_NUM realexpN, imagexpN;
 #ifdef KEY // bug 12787
         if (has_call(realexp)) {
-	  realexpN = AssignExpr(block, realexp, realTY);
+	  PREG_NUM realexpN = AssignExpr(block, realexp, realTY);
           realexp_copy = WN_LdidPreg(realTY, realexpN);
         }
         if (has_call(imagexp)) {
-	  imagexpN = AssignExpr(block, imagexp, realTY);
+	  PREG_NUM imagexpN = AssignExpr(block, imagexp, realTY);
           imagexp_copy = WN_LdidPreg(realTY, imagexpN);
         } 
 #endif
@@ -7042,6 +7380,10 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   }
 
+#ifndef TARG_NVISA
+  // NVISA does not vectorize, but may create selects in wopt 
+  // which we want to preserve.  Plus this copy of nodes creates
+  // a problem in RVI which is expecting the opt_stab to still be valid.
 #ifdef KEY
   // If VHO lowerer if-converts, we would be left with speculated scalar 
   // versions (possibly remainder or pre-peel loops after vectorization
@@ -7055,6 +7397,11 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
   //    end if
   if (VHO_Enable_Simple_If_Conv && 
       !Action(LOWER_RETURN_VAL) /* Lower after LNO */ &&
+      //bug 13853: these three lowers happen before lno, so should
+      //           not transform select back to if
+      !Action(LOWER_FAST_EXP)                         &&
+      !Action(LOWER_TREEHEIGHT)                       &&
+      !Action(LOWER_INLINE_INTRINSIC)                 &&
       OPCODE_is_store(WN_opcode(tree)) &&
       WN_operator(WN_kid0(tree)) == OPR_SELECT &&
       !MTYPE_is_vector(WN_desc(tree)) && MTYPE_is_float(WN_desc(tree))) {
@@ -7085,6 +7432,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     } 
   }
 #endif
+#endif // !TARG_NVISA
   /* Lower kids if not done already. */
   if (! kids_lowered)
   {
@@ -7128,10 +7476,7 @@ static WN *lower_eval(WN *block, WN *tree, LOWER_ACTIONS actions)
 
     realexp = lower_expr(block, realexp, actions);
     eval = WN_CreateEval(realexp);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, eval);
-#endif
+    WN_Set_Linenum(eval, current_srcpos);  // Bug 1268
     WN_INSERT_BlockLast(block, eval);
 
     child = imagexp;
@@ -7144,10 +7489,7 @@ static WN *lower_eval(WN *block, WN *tree, LOWER_ACTIONS actions)
 
     hi = lower_expr(block, hi, actions);
     eval = WN_CreateEval(hi);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, eval);
-#endif
+    WN_Set_Linenum(eval, current_srcpos);  // Bug 1268
     WN_INSERT_BlockLast(block, eval);
 
     child = lo;
@@ -7348,161 +7690,97 @@ struct_memop_type (TYPE_ID mtype, TY_IDX struct_type)
 
 static void
 copy_aggregate(WN *block, TY_IDX srcAlign, TY_IDX dstAlign, INT32 offset,
-	       INT32 size, TYPE_ID quantum, ST *preg, PREG_NUM srcPreg,
+	       INT32 size, TYPE_ID quantum, PREG_NUM srcPreg,
 	       PREG_NUM dstPreg, WN *origLoad, WN *origStore,
 	       INT32 copy_alignment, LOWER_ACTIONS actions)
 {
-  INT32	stride = MTYPE_RegisterSize(quantum);
-  INT32	nMoves = size / stride;
+  BOOL unweave = UnweaveCopyForStructs;
+  WN *storeBlock = unweave ? WN_CreateBlock() : block;
 
-  if (size <= 0)
-    return;
+  while (size > 0) {
 
-  if (nMoves>0)
-  {
-   /*
-    *  generate  unrolled load/store
-    */
-    while(nMoves--)
-    {
-     /*
-      *  semantics are similar to the following:
-      *      (quantum) *(dst + offset) =   (quantum) *(src + offset);
-      *		or
-      *      (quantum) *(dst + offset) =   srcPreg;
-      */
-      WN 	*value, *addr, *store;
+    INT32 stride = MTYPE_RegisterSize(quantum);
 
-      if (srcAlign)
-      {
-	value = WN_IloadLdid(quantum, offset,
-			     struct_memop_type (quantum, srcAlign),
-			     preg, srcPreg);  
+    for ( ; size >= stride; size -= stride, offset += stride) {
+      // Generate unrolled load/store with semantics similar to:
+      //   (quantum) *(dst + offset) = (quantum) *(src + offset);
+      //         or
+      //   (quantum) *(dst + offset) = srcPreg;
+      WN *wn_value, *wn_addr, *wn_store;
 
-	lower_copy_maps(origLoad, value, actions);
-      }
-      else
-      {
-	value = WN_LdidPreg(quantum, srcPreg);
+      rename_preg("mstore_tmp", NULL);
+      if (! srcAlign) {
+	wn_value = WN_LdidPreg(quantum, srcPreg);
+      } else {
+	TY_IDX ty_src = struct_memop_type(quantum, srcAlign);
+	wn_value = WN_LdidPreg(Pointer_type, srcPreg);
+	wn_value = WN_Iload(quantum, offset, ty_src, wn_value);
+	lower_copy_maps(origLoad, wn_value, actions);
+	if (unweave) {
+	  PREG_NUM preg = AssignExpr(block, wn_value, quantum);
+	  wn_value = WN_LdidPreg(quantum, preg);
+	}
       }
 
-      addr = WN_LdidPreg(Pointer_type, dstPreg);
+      wn_addr = WN_LdidPreg(Pointer_type, dstPreg);
+      TY_IDX ty_dst = struct_memop_type(quantum, dstAlign);
+      wn_store = WN_Istore(quantum, offset,
+			   Make_Pointer_Type(ty_dst), wn_addr, wn_value);
+      lower_copy_maps(origStore, wn_store, actions);
+      WN_Set_Linenum(wn_store, current_srcpos);  // Bug 1268
+      WN_INSERT_BlockLast(storeBlock, wn_store);
+    }
 
-      store = WN_Istore(quantum,
-			offset,
-			Make_Pointer_Type (struct_memop_type (quantum,
-							      dstAlign)),
-			addr,
-			value);
-      lower_copy_maps(origStore, store, actions);
-
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(origStore, store);
-#endif
-      WN_INSERT_BlockLast(block, store);
-
-      offset  += stride;
-      size -= stride;
+    // If there is a residue we must recompute a new, smaller quantum
+    // and generate a copy for that.
+    if (size > 0) {
+      quantum = compute_next_copy_quantum(quantum, copy_alignment);
     }
   }
-  if (size > 0)
-  {
-   /*
-    *  If there is a residue we must recompute a new quantum
-    *  and generate a copy for that.
-    */
-    quantum = compute_next_copy_quantum(quantum, copy_alignment);
 
-    copy_aggregate(block,
-		   srcAlign, dstAlign,
-		   offset,
-		   size,
-		   quantum,
-		   preg,
-		   srcPreg, dstPreg,
-		   origLoad, origStore,
-		   copy_alignment,
-		   actions);
-  }
+  if (unweave) WN_INSERT_BlockLast(block, storeBlock);
 }
 
 
-
+/* ====================================================================
+ *
+ * Auxillary routine used by copy_aggregate_loop_const and
+ * copy_aggregate_loop_n
+ *
+ * ==================================================================== */
 
 static void
 copy_element_and_increment(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
-			   PREG_NUM offsetN, TYPE_ID quantum, PREG_NUM srcPreg,
-			   PREG_NUM dstPreg, WN *origLoad, WN *origStore,
-			   LOWER_ACTIONS actions)
+			   INT32 offset, INT32 size, TYPE_ID quantum,
+			   PREG_NUM srcPreg, PREG_NUM dstPreg,
+			   WN *origLoad, WN *origStore,
+			   INT32 copy_alignment, LOWER_ACTIONS actions)
 {
- /*
-  *   (quantum) *(dst + offset) =   (quantum) *(src + offset);
-  *		or
-  *   (quantum) *(dst + offset) =   srcPreg;
-  *    		
-  *  and increment offset
-  *
-  *		offset		+=  stride;
-  */
-  INT32  stride = MTYPE_RegisterSize(quantum);
-  WN 	*value, *addr, *store, *add, *inc;
-  ST	*intPreg = MTYPE_To_PREG(Integer_type);
+  // Generate unrolled load/stores to perform copy
+  copy_aggregate(block, srcAlign, dstAlign, offset, size, quantum,
+		 srcPreg, dstPreg, origLoad, origStore,
+		 copy_alignment, actions);
 
-  if (srcAlign)
-  {
-    addr = WN_Add(Pointer_type,
-		  WN_LdidPreg(Pointer_type, srcPreg),
-		  WN_LdidPreg(Integer_type, offsetN));
-    value = WN_CreateIload (OPR_ILOAD, Mtype_comparison(quantum), quantum,
-			    0, struct_memop_type (quantum, srcAlign),
-#ifdef KEY // bug 12394
-			    Make_Pointer_Type(struct_memop_type(quantum, srcAlign)), 
-#else
-			    Make_Pointer_Type(srcAlign), 
-#endif
-			    addr);
-
-    lower_copy_maps(origLoad, value, actions);
-  }
-  else
-  {
-    value = WN_LdidPreg(quantum, srcPreg);
+  // Increment: src += size;
+  WN *wn;
+  ST *pointerPreg = MTYPE_To_PREG(Pointer_type);
+  if (srcAlign) {
+    wn = WN_Add(Pointer_type,
+		WN_LdidPreg(Pointer_type, srcPreg),
+		WN_Intconst(Integer_type, size));
+    wn = WN_StidIntoPreg(Pointer_type, srcPreg, pointerPreg, wn);
+    WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
+    WN_INSERT_BlockLast(block, wn);
   }
 
-  addr = WN_Add(Pointer_type,
-		WN_LdidPreg(Pointer_type, dstPreg),
-		WN_LdidPreg(Integer_type, offsetN));
-  store = WN_Istore(quantum,
-		    0,
-		    Make_Pointer_Type(struct_memop_type (quantum, dstAlign)),
-		    addr,
-		    value);
-
-  lower_copy_maps(origStore, store, actions);
-
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(origStore, store);
-#endif
-  WN_INSERT_BlockLast(block, store);
-
-  /*
-   *  offset += stride
-   */
-
-  add  = WN_Add(Integer_type,
- 		WN_LdidPreg(Integer_type, offsetN),
-  		WN_Intconst(Integer_type, stride));
-  inc = WN_StidIntoPreg(Integer_type, offsetN, intPreg, add);
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(origStore, inc);
-#endif
-  WN_INSERT_BlockLast(block, inc);
+  // Increment: dst += size;
+  wn = WN_Add(Pointer_type,
+	      WN_LdidPreg(Pointer_type, dstPreg),
+	      WN_Intconst(Integer_type, size));
+  wn = WN_StidIntoPreg(Pointer_type, dstPreg, pointerPreg, wn);
+  WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
+  WN_INSERT_BlockLast(block, wn);
 }
-
-
 
 
 /* ====================================================================
@@ -7515,135 +7793,101 @@ copy_element_and_increment(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 static void
 copy_aggregate_loop_const(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 			  INT32 offset, INT32 size, TYPE_ID quantum,
-			  PREG_NUM srcPreg, PREG_NUM dstPreg, WN *origLoad,
-			  WN *origStore, INT32 copy_alignment,
-			  LOWER_ACTIONS actions)
+			  PREG_NUM srcPregInit, PREG_NUM dstPregInit,
+			  WN *origLoad, WN *origStore,
+			  INT32 copy_alignment, LOWER_ACTIONS actions)
 {
- /*
-  *  generate the following
-  *    n = nMoves;
-  *    index = 0;
-  *    do
-  *    {
-  *	(quantum) *(dst + offset) =   (quantum) *(src + offset);
-  *	       n--;
-  *    } while(n>0);
-  *
-  * Try generating a DO loop instead of a WHILE loop
-  *
-  *	(TBD)	we should really build an array expression 
-  *		dst[offset] = src[offset]
-  */
-  PREG_NUM		offsetN;
-  ST		*intPreg = MTYPE_To_PREG(Integer_type);
-  INT32		stride   = MTYPE_RegisterSize(quantum);
-  INT64		nMoves   = size  / stride;
-  INT64		residue  = size - ( nMoves * stride );
+  // Generate the following loop:
+  //   src = srcInit + offset;
+  //   dst = dstInit + offset;
+  //   for (n = nMoves; n > 0; --n) {
+  //     (quantum) *(dst) = (quantum) *(src);
+  //     (quantum) *(dst + stride) = (quantum) *(src + stride);
+  //     ...
+  //     (quantum) *(dst + (k-1)* stride) = (quantum) *(src + (k-1)* stride);
+  //     src += bigstride;
+  //     dst += bigstride;
+  //   }
 
-  /*
-   *  Bail out if there is nothing to move and no residue
-   */
-  if ((nMoves <= 0) && residue == 0)
+  WN *wn;
+  ST   *intPreg = MTYPE_To_PREG(Integer_type);
+  INT32 stride  = MTYPE_RegisterSize(quantum);
+  INT32 bigstride = Aggregate_UnrollFactor * stride;
+  INT64 nMoves  = size / bigstride;
+  INT64 residue = size - ( nMoves * bigstride );
+  PREG_NUM srcPreg, dstPreg;
+
+  // Bail out if there is nothing to move and no residue
+  if (nMoves <= 0 && residue == 0)
     return;
 
-  offsetN = AssignExpr(block, WN_Intconst(Integer_type, offset), Integer_type);
+  // src = srcInit + offset;
+  rename_preg("mstore_src", NULL);
+  if (srcAlign == 0) {
+    // srcPreg is single value, not pointer to values
+    srcPreg = srcPregInit;
+  } else {
+    wn = WN_LdidPreg( Pointer_type, srcPregInit );
+    if (offset != 0) {
+      wn = WN_Add( Pointer_type, wn,
+		   WN_Intconst(Integer_type, offset) );
+    }
+    srcPreg = AssignExpr( block, wn, Pointer_type );
+  }
 
- /*
-  *	create loop count variable, traditionally called n
-  * 	offset is most likely zero
-  */
+  // dst = dstInit + offset;
+  rename_preg("mstore_dst", NULL);
+  wn = WN_LdidPreg( Pointer_type, dstPregInit );
+  if (offset != 0) {
+    wn = WN_Add( Pointer_type, wn,
+		 WN_Intconst(Integer_type, offset) );
+  }
+  dstPreg = AssignExpr( block, wn, Pointer_type );
+  rename_reset();
+
   if (nMoves > 0)
   {
-    PREG_NUM	n;
-    WN	 	*body;
-    WN          *incr;
-    WN          *start;
-    WN          *test;
-    WN	        *doLoop;
-
-    n = Create_Preg(Integer_type,"mstore_loopcount");
-    body= WN_CreateBlock();
+    // create loop count variable, traditionally called n
+    PREG_NUM n;
+    WN *body, *incr, *start, *test, *doLoop;
+    n = Create_Preg( Integer_type, "mstore_loopcount" );
+    body = WN_CreateBlock();
     start = WN_StidIntoPreg( Integer_type, n, intPreg,
-			     WN_Intconst(Integer_type, nMoves));
+			     WN_Intconst(Integer_type, nMoves) );
     incr  = WN_StidIntoPreg( Integer_type, n, intPreg,
 			     WN_Sub(Integer_type,
 				    WN_LdidPreg(Integer_type, n),
-				    WN_Intconst(Integer_type, 1)));
-    test = WN_GT(Integer_type,
-		 WN_LdidPreg(Integer_type, n),
-		 WN_Zerocon(Integer_type));
-    
-   /*
-    *   (quantum) *(dst + offset) =   (quantum) *(src + offset);
-    *		or
-    *   (quantum) *(dst + offset) =   srcPreg;
-    *   and increment offset
-    *			offset    +=  stride;
-    */
-    copy_element_and_increment(body,
-			       srcAlign, dstAlign,
-			       offsetN,
-			       quantum,
-			       srcPreg, dstPreg,
-			       origLoad, origStore,
-			       actions);
-    doLoop = WN_CreateDO(WN_CreateIdname(n, intPreg),
-			 start, test, incr, body, NULL);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(origStore, doLoop);
-#endif
+				    WN_Intconst(Integer_type, 1)) );
+    test = WN_GT( Integer_type,
+		  WN_LdidPreg(Integer_type, n),
+		  WN_Zerocon(Integer_type) );
+
+    // Generate body of loop
+    copy_element_and_increment( body, srcAlign, dstAlign, 0 /*offset*/,
+				bigstride, quantum,
+				srcPreg, dstPreg, origLoad, origStore,
+				copy_alignment, actions );
+
+    doLoop = WN_CreateDO( WN_CreateIdname(n, intPreg),
+			  start, test, incr, body, NULL );
+    WN_Set_Linenum(doLoop, current_srcpos);  // Bug 1268
     WN_INSERT_BlockLast(block, doLoop);
     if ( Cur_PU_Feedback && (origStore != NULL) )
       Cur_PU_Feedback->FB_lower_mstore_to_loop( origStore, doLoop, nMoves );
   }
 
- /*
-  *  If there is a residue we must recompute a new quantum
-  *  and generate a copy for that.
-  *
-  *	if (residue > 0)
-  *	{
-  *	    if (residue >= 4)
-  *	    {
-  *  		(int) *(dst + offset) =   (int) *(src + offset);
-  *		offset  += 4;
-  *		residue -= 4;
-  *	    }
-  *	    if (residue >= 2)
-  *	    {
-  *  		 (short) *(dst + offset) =   (short) *(src + offset);
-  *		offset  += 2;
-  *		residue -= 2;
-  *	    }
-  *	    etc.
-  *	}
-  */
-  if (residue)
-  {
-    WN	  *residue_block=  WN_CreateBlock();
-
-    while(residue>0)
-    {
-      quantum = compute_next_copy_quantum(quantum, copy_alignment);
-
-      while (residue >= MTYPE_alignment(quantum))
-      {
-	copy_element_and_increment(residue_block, srcAlign, dstAlign,
-				   offsetN, quantum, srcPreg, dstPreg,
-				   origLoad, origStore, actions);
-	residue -= MTYPE_alignment(quantum);
-      }
-    }
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(origStore, residue_block);
-#endif
+  // Generate code to copy any residue.  Example for residue of size 7:
+  //	(int) *(dst) = (int) *(src);
+  //	(short) *(dst + 4) = (short) *(src + 4);
+  //	(char) *(dst + 6) = (char) *(src + 6);
+  if (residue > 0) {
+    WN *residue_block = WN_CreateBlock();
+    copy_aggregate(residue_block, srcAlign, dstAlign, 0 /*offset*/,
+		   residue /*size*/, quantum, srcPreg, dstPreg,
+		   origLoad, origStore, copy_alignment, actions);
     WN_INSERT_BlockLast(block, residue_block);
   }
 }
-
-
 
 
 /* ====================================================================
@@ -7657,256 +7901,163 @@ copy_aggregate_loop_const(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 static void
 copy_aggregate_loop_n(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 		      INT32 offset, WN *size, TYPE_ID quantum,
-		      PREG_NUM srcPreg, PREG_NUM dstPreg, WN *origLoad,
-		      WN *origStore, INT32 copy_alignment,
-		      LOWER_ACTIONS actions)
+		      PREG_NUM srcPregInit, PREG_NUM dstPregInit,
+		      WN *origLoad, WN *origStore,
+		      INT32 copy_alignment, LOWER_ACTIONS actions)
 {
- /*
-  *  generate the following
-  *    n = nMoves;
-  *    index = 0;
-  *    while(n>0)
-  *    {
-  *	(quantum) *(dst + offset) =   (quantum) *(src + offset);
-  *	       n--;
-  *    }
-  *
-  *	(TBD)	we should really build an array expression 
-  *		dst[offset] = src[offset]
-  */
-  PREG_NUM	offsetN, nMovesN, residueN;
+  // Generate the following loop:
+  //   n = nMoves;
+  //   src = srcInit + offset;
+  //   dst = dstInit + offset;
+  //   while (n > 0) {
+  //     (quantum) *(dst) = (quantum) *(src);
+  //     src += stride;  dst += stride;
+  //	 n--;
+  //   }
+
+  WN       *wn;
+  PREG_NUM  nMovesN, residueN, srcPreg, dstPreg;
   ST		*intPreg = MTYPE_To_PREG(Integer_type);
   INT32		stride   = MTYPE_RegisterSize(quantum);
+  Is_True( (WN_operator(size) != OPR_INTCONST), ("unexpected const") );
 
-  Is_True((WN_operator(size)!=OPR_INTCONST),("unexpected const"));
-
- /*
-  *  Create the following expressions
-  *
-  *	nMovesn = ( size ) / stride
-  *
-  *	residue =   size - ( nMoves * stride )
-  */
-  {
-    WN  *nMoves, *residue;
-
-    nMoves   = WN_Div(Integer_type, WN_COPY_Tree(size),
-		      WN_Intconst(Integer_type, stride));
-
-    nMovesN  = AssignExpr(block, nMoves, Integer_type);
-
-    residue  = WN_Sub(Integer_type,
-		      WN_COPY_Tree(size),
-		      WN_Mpy(Integer_type,
-			     WN_LdidPreg(Integer_type, nMovesN),
-			     WN_Intconst(Integer_type, stride)));
-
-    residueN = AssignExpr(block, residue, Integer_type);
-  }
-
- /*
-  *	create loop count variable, traditionally called n
-  * 	offset is most likely zero
-  */
-#if 0
-  n = AssignExpr(block, WN_LdidPreg(Integer_type, nMovesN), Integer_type);
-
-  offsetN = AssignExpr(block, WN_Intconst(Integer_type, offset), Integer_type);
-
-  {
-    WN	*body, *sub, *dec, *test, *whileDo;
-
-    body = WN_CreateBlock();
-   /*
-    *	while(n>0)
-    *   {
-    *
-    *	  (quantum) *(dst + offset) =   (quantum) *(src + offset);
-    *		or
-    *	  (quantum) *(dst + offset) =   srcPreg;
-    *
-    *			offset    +=  stride;
-    *
-    * 			n --;
-    *   }
-    */
-    copy_element_and_increment(body,
-			       srcAlign, dstAlign,
-			       offsetN, quantum,
-			       srcPreg, dstPreg,
-			       origLoad, origStore,
-			       actions);
-
-    sub  = WN_Sub(Integer_type,
-		  WN_LdidPreg(Integer_type, n),
-		  WN_Intconst(Integer_type, 1));
-    dec  = WN_StidIntoPreg(Integer_type, n, intPreg, sub);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, dec);
-#endif
-    WN_INSERT_BlockLast(body, dec);
-
-
-    test = WN_GT(Integer_type,
-		 WN_LdidPreg(Integer_type, n),
-		 WN_Zerocon(Integer_type));
-  	
-    whileDo = WN_CreateWhileDo(test, body);
-    // ADD FEEDBACK INFO !!!
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, whileDo);
-#endif
-    WN_INSERT_BlockLast(block, whileDo);
-  }
-#else
-  {
-    PREG_NUM	n;
-    WN	 	*body;
-    WN          *incr;
-    WN          *start;
-    WN          *test;
-    WN	        *doLoop;
-
-    n = Create_Preg(Integer_type,"mstore_loopcount");
-    offsetN = AssignExpr(block, WN_Intconst(Integer_type, offset),
-			 Integer_type);
-
-    body= WN_CreateBlock();
-    start = WN_StidIntoPreg(Integer_type, n, intPreg,
-			    WN_LdidPreg(Integer_type, nMovesN));
-    incr  = WN_StidIntoPreg(Integer_type, n, intPreg,
-			    WN_Sub(Integer_type,
-				   WN_LdidPreg(Integer_type, n),
-				   WN_Intconst(Integer_type, 1)));
-    test = WN_GT(Integer_type,
-		 WN_LdidPreg(Integer_type, n),
-		 WN_Zerocon(Integer_type));
-    
-   /*
-    *   (quantum) *(dst + offset) =   (quantum) *(src + offset);
-    *		or
-    *   (quantum) *(dst + offset) =   srcPreg;
-    *   and increment offset
-    *			offset    +=  stride;
-    */
-    copy_element_and_increment(body,
-			       srcAlign, dstAlign,
-			       offsetN,
-			       quantum,
-			       srcPreg, dstPreg,
-			       origLoad, origStore,
-			       actions);
-    doLoop = WN_CreateDO(WN_CreateIdname(n,intPreg),start,test,incr,body,NULL);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(origStore, doLoop);
-#endif
-    WN_INSERT_BlockLast(block, doLoop);
-  }
-  
-#endif
-
-
-
-
-
- /*
-  *  If there is a residue we must recompute a new quantum
-  *  and generate a copy for that.
-  *
-  *	if (residue > 0)
-  *	{
-  *	    if (residue >= 4)
-  *	    {
-  *  		(int) *(dst + offset) =   (int) *(src + offset);
-  *		offset  += 4;
-  *		residue -= 4;
-  *	    }
-  *	    if (residue >= 2)
-  *	    {
-  *  		 (short) *(dst + offset) =   (short) *(src + offset);
-  *		offset  += 2;
-  *		residue -= 2;
-  *	    }
-  *	    etc.
-  *	}
-  *   We supply an incorrect alignment to compute_next_copy_quantum()
-  *   because we cant skip the unaligned halfword 
-  */
-  {
-    WN	*if_then, *unused, *cond, *IF;
-
-    if_then = WN_CreateBlock();
-    unused = WN_CreateBlock();	/* will be empty */
-
-    cond = WN_GT(Integer_type,
-		 WN_LdidPreg(Integer_type, residueN),
-		 WN_Zerocon(Integer_type));
-
-    IF = WN_CreateIf(cond, if_then, unused);
-    // ADD FEEDBACK INFO !!
-
-    quantum = compute_next_copy_quantum(quantum,
-					MTYPE_alignment(Max_Uint_Mtype));
-  	
-    while(MTYPE_alignment(quantum) > 0)
-    {
-      WN	*if_residue_block, *unused, *test, *IF_residue;
-
-
-      if_residue_block = WN_CreateBlock();
-      unused = WN_CreateBlock();
-
-      test = WN_GE(Integer_type,
-		   WN_LdidPreg(Integer_type, residueN),
-		   WN_Intconst(Integer_type, MTYPE_alignment(quantum)));
-
-      IF_residue = WN_CreateIf(test, if_residue_block, unused);
-      // ADD FEEDBACK INFO !!
-      lower_copy_maps(origStore, IF_residue, actions);
-	
-      copy_element_and_increment(if_residue_block, srcAlign, dstAlign,
-				 offsetN, quantum, srcPreg, dstPreg,
-				 origLoad, origStore, actions);
-
-     /*
-      *  residue -= stride
-      */
-      {
-	WN	*sub, *dec;
-
-	sub  = WN_Sub(Integer_type,
-		      WN_LdidPreg(Integer_type, residueN),
-		      WN_Intconst(Integer_type, MTYPE_alignment(quantum)));
-	dec = WN_StidIntoPreg(Integer_type, residueN, intPreg, sub);
-        lower_copy_maps(origStore, dec, actions);
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(origStore, dec);
-#endif
-	WN_INSERT_BlockLast(if_residue_block, dec);
-      }
-
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(origStore, IF_residue);
-#endif
-      WN_INSERT_BlockLast(if_then, IF_residue);
-
-      quantum = compute_next_copy_quantum(quantum,
-					  MTYPE_alignment(Max_Uint_Mtype));
+  // src = srcInit + offset;
+  rename_preg("mstore_src", NULL);
+  if (srcAlign == 0) {
+    // srcPreg is single value, not pointer to values
+    srcPreg = srcPregInit;
+  } else {
+    wn = WN_LdidPreg( Pointer_type, srcPregInit );
+    if (offset != 0) {
+      wn = WN_Add( Pointer_type, wn,
+		   WN_Intconst(Integer_type, offset) );
     }
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(origStore, IF);
-#endif
-    WN_INSERT_BlockLast(block, IF);
+    srcPreg = AssignExpr( block, wn, Pointer_type );
+    // TODO: Fix WN_linenum
   }
+
+  // dst = dstInit + offset;
+  rename_preg("mstore_dst", NULL);
+  wn = WN_LdidPreg( Pointer_type, dstPregInit );
+  if (offset != 0) {
+    wn = WN_Add( Pointer_type, wn,
+		 WN_Intconst(Integer_type, offset) );
+  }
+  dstPreg = AssignExpr( block, wn, Pointer_type );
+  // TODO: Fix WN_linenum
+  rename_reset();
+
+  // nMovesN = ( size ) / stride
+  wn = WN_Div( Integer_type, WN_COPY_Tree(size),
+	       WN_Intconst(Integer_type, stride) );
+  nMovesN = AssignExpr( block, wn, Integer_type );
+
+  // residueN = size - ( nMoves * stride )
+  wn = WN_Sub( Integer_type, WN_COPY_Tree(size),
+	       WN_Mpy( Integer_type,
+		       WN_LdidPreg(Integer_type, nMovesN),
+		       WN_Intconst(Integer_type, stride) ) );
+  residueN = AssignExpr( block, wn, Integer_type );
+
+  // create loop count variable, traditionally called n
+  PREG_NUM n = Create_Preg( Integer_type, "mstore_loopcount" );
+
+  WN *body, *incr, *start, *test, *doLoop;
+  body = WN_CreateBlock();
+  start = WN_StidIntoPreg( Integer_type, n, intPreg,
+			   WN_LdidPreg(Integer_type, nMovesN) );
+  incr  = WN_StidIntoPreg( Integer_type, n, intPreg,
+			   WN_Sub( Integer_type,
+				   WN_LdidPreg(Integer_type, n),
+				   WN_Intconst(Integer_type, 1) ) );
+  test = WN_GT( Integer_type,
+		WN_LdidPreg(Integer_type, n),
+		WN_Zerocon(Integer_type) );
+
+  // (quantum) *(dst) = (quantum) *(src);  OR  (quantum) *(dst) = src;
+  // then increment src and dst:  srcPreg += stride;  dstPreg += stride;
+  copy_element_and_increment( body, srcAlign, dstAlign, 0 /*offset*/,
+			      stride, quantum, srcPreg, dstPreg,
+			      origLoad, origStore,
+			      copy_alignment, actions);
+
+  doLoop = WN_CreateDO( WN_CreateIdname(n, intPreg),
+			start, test, incr, body, NULL );
+  WN_Set_Linenum(doLoop, current_srcpos);  // Bug 1268
+  WN_INSERT_BlockLast( block, doLoop );
+
+  // If there is a residue we must recompute a new quantum
+  // and generate a copy for that.
+  //
+  //	if (residue > 0) {
+  //	    if (residue >= 4) {
+  //		(int) *(dst) = (int) *(src);
+  //		dst += 4;  src += 4;
+  //		residue -= 4;
+  //	    }
+  //	    if (residue >= 2) {
+  //		(short) *(dst) = (short) *(src);
+  //		dst += 2;  src += 2;
+  //		residue -= 2;
+  //	    }
+  //	    if (residue >= 1) {
+  //		(short) *(dst) = (short) *(src);
+  //		dst += 1;  src += 1;
+  //		residue -= 1;
+  //	    }
+  //	}
+  //
+  // We supply an incorrect alignment to compute_next_copy_quantum()
+  // because we cant skip the unaligned halfword
+
+  // Collect residue checks into block_checks
+  WN *block_checks = WN_CreateBlock();
+  quantum = compute_next_copy_quantum( quantum,
+				       MTYPE_alignment(Max_Uint_Mtype) );
+  while (MTYPE_alignment(quantum) > 0) {
+
+    // Block for this residue load/store
+    WN *block_residue = WN_CreateBlock();
+
+    // (quantum) *(dst) = (quantum) *(src);  OR  (quantum) *(dst) = src;
+    // then increment src and dst:  srcPreg += stride;  dstPreg += stride;
+    INT32 stride = MTYPE_RegisterSize(quantum);
+    copy_element_and_increment( block_residue, srcAlign, dstAlign,
+				0 /*offset*/, stride, quantum,
+				srcPreg, dstPreg, origLoad, origStore,
+				copy_alignment, actions );
+
+    // residue -= stride
+    wn = WN_Sub( Integer_type,
+		 WN_LdidPreg( Integer_type, residueN ),
+		 WN_Intconst( Integer_type, MTYPE_alignment(quantum) ) );
+    wn = WN_StidIntoPreg( Integer_type, residueN, intPreg, wn );
+    lower_copy_maps( origStore, wn, actions );
+    WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
+    WN_INSERT_BlockLast( block_residue, wn );
+
+    // Wrap "if (residue >= quantum)" around residue_block
+    wn = WN_GE( Integer_type,
+		WN_LdidPreg( Integer_type, residueN ),
+		WN_Intconst( Integer_type, MTYPE_alignment(quantum) ) );
+    wn = WN_CreateIf( wn, block_residue, WN_CreateBlock() );
+    // ADD FEEDBACK INFO !!
+    lower_copy_maps( origStore, wn, actions );
+    WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
+    WN_INSERT_BlockLast( block_checks, wn );
+
+    quantum = compute_next_copy_quantum( quantum,
+					 MTYPE_alignment(Max_Uint_Mtype) );
+  }
+
+  // Wrap "if (residue >= 0)" around all residue checks
+  wn = WN_GT( Integer_type, WN_LdidPreg( Integer_type, residueN ),
+	      WN_Zerocon(Integer_type) );
+  wn = WN_CreateIf( wn, block_checks, WN_CreateBlock() );
+  // ADD FEEDBACK INFO !!
+  WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
+  WN_INSERT_BlockLast( block, wn );
 }
-
-
 
 
 /* ====================================================================
@@ -7926,7 +8077,7 @@ copy_aggregate_loop_n(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 
 static void
 copy_aggregate_loop(WN *block, TY_IDX srcTY, TY_IDX dstTY, INT32 offset,
-		    WN *size, TYPE_ID quantum, ST *preg, PREG_NUM srcPreg,
+		    WN *size, TYPE_ID quantum, PREG_NUM srcPreg,
 		    PREG_NUM dstPreg, WN *origLoad, WN *origStore,
 		    INT32 copy_alignment, LOWER_ACTIONS actions)
 {
@@ -7934,29 +8085,17 @@ copy_aggregate_loop(WN *block, TY_IDX srcTY, TY_IDX dstTY, INT32 offset,
   {
     if (WN_const_val(size)>0)
     {
-      copy_aggregate_loop_const(block,
-				srcTY, dstTY,
-				offset,
-				WN_const_val(size),
-				quantum,
-				srcPreg, dstPreg,
-				origLoad, origStore,
-				copy_alignment,
-				actions);
+      copy_aggregate_loop_const(block, srcTY, dstTY, offset,
+				WN_const_val(size), quantum,
+				srcPreg, dstPreg, origLoad, origStore,
+				copy_alignment, actions);
     }
   }
   else
   {
-    copy_aggregate_loop_n(block,
-			  srcTY, dstTY,
-			  offset,
-			  size,
-			  quantum,
-			  srcPreg,
-			  dstPreg,
-			  origLoad, origStore,
-			  copy_alignment,
-			  actions);
+    copy_aggregate_loop_n(block, srcTY, dstTY, offset, size, quantum,
+			  srcPreg, dstPreg, origLoad, origStore,
+			  copy_alignment, actions);
   }
 }
 
@@ -8025,11 +8164,7 @@ static void copy_aggregate_bzero(WN *block, TY_IDX dstTY, WN *dst, WN *size)
 			   WN_PARM_BY_VALUE);
 
   call=	WN_Generate_Intrinsic_Call(block, INTRN_BZERO, 2, parms);
-
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(dst, call);
-#endif
+  WN_Set_Linenum(call, current_srcpos);  // Bug 1268
   WN_INSERT_BlockLast(block, call);
 }
 
@@ -8043,10 +8178,13 @@ static void copy_aggregate_memset(WN *block, TY_IDX dstTY, WN *src, WN *dst,
 			   dst,
 			   dstTY,
 			   WN_PARM_BY_VALUE);
-
-  parms[1]=  WN_CreateParm(WN_rtype(src),
+  /*the second parms of intrinsic memset is a int, if we use WN_rtype(src),
+    and the size of src is 8 byts, its higher part will be treated as the
+    third parameter and then get wrong reslut.
+  */
+  parms[1]=  WN_CreateParm(MTYPE_I4,
 			   src,
-			   MTYPE_To_TY(WN_rtype(src)),
+			   MTYPE_To_TY(MTYPE_I4),
 			   WN_PARM_BY_VALUE);
 
   parms[2]=  WN_CreateParm(WN_rtype(size),
@@ -8055,11 +8193,7 @@ static void copy_aggregate_memset(WN *block, TY_IDX dstTY, WN *src, WN *dst,
 			   WN_PARM_BY_VALUE);
 
   call=	WN_Generate_Intrinsic_Call(block, INTRN_MEMSET, 3, parms);
-
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(dst, call);
-#endif
+  WN_Set_Linenum(call, current_srcpos);  // Bug 1268
   WN_INSERT_BlockLast(block, call);
 }
 
@@ -8093,11 +8227,7 @@ static void copy_aggregate_memcpy(WN *block, INT32 offset, TY_IDX srcTY,
                            WN_PARM_BY_VALUE);
   
   call= WN_Generate_Intrinsic_Call(block, INTRN_MEMCPY, 3, parms);
-  
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(dst, call);
-#endif
+  WN_Set_Linenum(call, current_srcpos);  // Bug 1268
   WN_INSERT_BlockLast(block, call);
 }
 			   
@@ -8132,11 +8262,7 @@ static void copy_aggregate_bcopy(WN *block, INT32 offset, TY_IDX srcTY,
 			   WN_PARM_BY_VALUE);
 
   call=	WN_Generate_Intrinsic_Call(block, INTRN_BCOPY, 3, parms);
-
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(dst, call);
-#endif
+  WN_Set_Linenum(call, current_srcpos);  // Bug 1268
   WN_INSERT_BlockLast(block, call);
 }
 
@@ -8191,6 +8317,13 @@ extern TYPE_ID compute_copy_quantum(INT32 alignment)
       return Max_Uint_Mtype;
   }
 
+#ifdef TARG_NVISA
+  if (alignment > 4) {
+    // until we get 64bit hw, need to copy 4 bytes at a time.
+DevWarn("for quantum change alignment from %d to 4", alignment);
+    alignment = 4;
+  }
+#endif
   return Mtype_AlignmentClass(alignment, MTYPE_CLASS_UNSIGNED_INTEGER);
 }
 
@@ -8496,58 +8629,37 @@ static WN *lower_mstore(WN * /*block*/, WN *mstore, LOWER_ACTIONS actions)
 
       case MSTORE_loop:
 #ifdef KEY // if the source and dest overlap, use smaller quantum
-        if (((WN_operator(expr) == OPR_LDA || WN_operator(expr) == OPR_ILDA)) &&
-	     WN_operator(expr) == WN_operator(addr) && 
-	     WN_st_idx(expr) == WN_st_idx(addr)) {
-	  if (abs(WN_lda_offset(expr) - WN_lda_offset(addr)) < MTYPE_byte_size(quantum) &&
-	      (WN_lda_offset(expr) - WN_lda_offset(addr)) != 0)
-  	    quantum = Mtype_AlignmentClass(abs(WN_lda_offset(expr) - WN_lda_offset(addr)), 
-	    				   MTYPE_CLASS_UNSIGNED_INTEGER);
+        if ((WN_operator(expr) == OPR_LDA || WN_operator(expr) == OPR_ILDA) &&
+	    WN_operator(expr) == WN_operator(addr) && 
+	    WN_st_idx(expr) == WN_st_idx(addr)) {
+	  WN_OFFSET diff = abs(WN_lda_offset(expr) - WN_lda_offset(addr));
+	  if (diff < MTYPE_byte_size(quantum) && diff != 0)
+  	    quantum = Mtype_AlignmentClass(diff, MTYPE_CLASS_UNSIGNED_INTEGER);
 	}
 #endif
         srcPreg = AssignExpr(newblock, expr, WN_rtype(expr));
         dstPreg = AssignExpr(newblock, addr, Pointer_type);
-	copy_aggregate_loop(newblock,
-			    srcTY,
-			    dstTY,
-			    0,
-			    size,
-			    quantum,
-			    preg,
-			    srcPreg,
-			    dstPreg,
-			    load,
-			    mstore,
-			    copy_alignment,
-			    actions);
+	copy_aggregate_loop(newblock, srcTY, dstTY, 0, size, quantum,
+			    srcPreg, dstPreg, load, mstore,
+			    copy_alignment, actions);
 	break;
 
       case MSTORE_aggregate:
 #ifdef KEY // if the source and dest overlap, use smaller quantum
-        if (((WN_operator(expr) == OPR_LDA || WN_operator(expr) == OPR_ILDA)) &&
-	     WN_operator(expr) == WN_operator(addr) && 
-	     WN_st_idx(expr) == WN_st_idx(addr)) {
-	  if (abs(WN_lda_offset(expr) - WN_lda_offset(addr)) < MTYPE_byte_size(quantum) &&
-	      (WN_lda_offset(expr) - WN_lda_offset(addr)) != 0)
-  	    quantum = Mtype_AlignmentClass(abs(WN_lda_offset(expr) - WN_lda_offset(addr)), 
-	    				   MTYPE_CLASS_UNSIGNED_INTEGER);
+        if (! UnweaveCopyForStructs &&
+	    (WN_operator(expr) == OPR_LDA || WN_operator(expr) == OPR_ILDA) &&
+	    WN_operator(expr) == WN_operator(addr) &&
+	    WN_st_idx(expr) == WN_st_idx(addr)) {
+	  WN_OFFSET diff = abs(WN_lda_offset(expr) - WN_lda_offset(addr));
+	  if (diff < MTYPE_byte_size(quantum) && diff != 0)
+  	    quantum = Mtype_AlignmentClass(diff, MTYPE_CLASS_UNSIGNED_INTEGER);
 	}
 #endif
         srcPreg = AssignExpr(newblock, expr, WN_rtype(expr));
         dstPreg = AssignExpr(newblock, addr, Pointer_type);
-	copy_aggregate(newblock,
-		       srcTY,
-		       dstTY,
-		       0,
-      		       WN_const_val(size),
-		       quantum,
-		       preg,
-		       srcPreg,
-		       dstPreg,
-		       load,
-		       mstore,
-		       copy_alignment,
-		       actions);
+	copy_aggregate(newblock, srcTY, dstTY, 0, WN_const_val(size),
+		       quantum, srcPreg, dstPreg, load, mstore,
+		       copy_alignment, actions);
 	break;
       }
     }
@@ -8562,6 +8674,213 @@ static WN *lower_mstore(WN * /*block*/, WN *mstore, LOWER_ACTIONS actions)
   return newblock;
 }
 
+
+static UINT64
+get_field_ofst (TY_IDX struct_type, UINT field_id)
+{
+  Is_True (TY_kind (struct_type) == KIND_STRUCT, ("expecting KIND_STRUCT"));
+  UINT cur_field_id = 0;
+  FLD_HANDLE fld = FLD_get_to_field (struct_type, field_id, cur_field_id);
+  Is_True (! fld.Is_Null(), ("Invalid field id %d for type 0x%x",
+			     field_id, struct_type));
+  return FLD_ofst (fld);
+}
+
+/*
+  Lower the MISTORE/MSTID node to ILOAD/ISTORE pairs
+*/
+static WN *lower_mistore_by_type(WN *block, WN *mistore, LOWER_ACTIONS actions)
+{
+  WN *load, *addr, *expr;
+  load = WN_kid0(mistore);
+  CURRENT_STATE	mstate = pushCurrentState(mistore, actions);
+  Total_M_Count++;
+
+  if (WN_kid_count(load) > 0)
+    WN_kid0(load) = lower_expr(block, WN_kid0(load), actions);
+  if (WN_kid_count(mistore) > 1)
+    WN_kid1(mistore) = lower_expr(block, WN_kid1(mistore), actions);
+  
+  WN       *base_expr;
+  INT32     copy_alignment;
+  PREG_NUM  srcPreg;
+  PREG_NUM  dstPreg;
+  
+  WN            *newblock;
+  newblock = WN_CreateBlock();
+  
+  TY_IDX  dstTY = (WN_kid_count(mistore) > 1) ? TY_pointed(Ty_Table[WN_ty(mistore)]) : WN_ty(mistore);
+  TY_IDX  srcTY = TY_IDX_ZERO;
+  ST        *preg=    MTYPE_To_PREG(Pointer_type);
+  INT32     initoffset=0;
+  INT32     storeoffset=0;
+  INT32     loadoffset=0;
+  
+  srcTY = WN_ty(load);
+  expr = (WN_kid_count(load) > 0) ? WN_kid0(load) : 0;
+  addr = (WN_kid_count(mistore) > 1) ? WN_kid1(mistore) : 0;
+
+  if (WN_field_id(load) != 0 || WN_field_id(mistore) !=0) {
+    WN_Delete(newblock);
+    return NULL;
+  }
+
+  loadoffset = WN_load_offset(load);
+    
+  if (WN_store_offset(mistore)){
+    storeoffset += WN_store_offset(mistore);
+  }
+  
+  copy_alignment = compute_copy_alignment(srcTY, dstTY,
+					  WN_store_offset(mistore));
+  
+  TYPE_ID   type;
+  TY_IDX ty_idx;
+  if (expr && !(WN_has_sym(expr))) {
+    srcPreg = AssignExpr(newblock, expr, WN_rtype(expr));
+  }
+  if (addr && !(WN_has_sym(addr))) {
+    dstPreg = AssignExpr(newblock, addr, WN_rtype(addr));
+  }
+
+  INT32 offset = 0;
+  INT32 size = TY_size(Ty_Table[srcTY]);
+  UINT i = 1;
+  UINT cur_field_id = 0;
+
+  FLD_ITER iter = Make_fld_iter (FLD_get_to_field (srcTY, i, cur_field_id));
+  do {
+    FLD fld = (*iter);
+    WN        *value, *address, *store;
+
+    ty_idx = fld.type;
+    if ((fld.flags & FLD_IS_BIT_FIELD) || TY_size(ty_idx)<=0) {
+      WN_Delete(newblock);
+      return NULL;
+    }
+    offset = fld.ofst;
+    type = TY_mtype(Ty_Table[ty_idx]);
+    if(type == MTYPE_UNKNOWN)
+      type = Fix_TY_mtype(ty_idx);
+    //Expand the Load
+
+    if (WN_opcode(load) == OPC_MMLDID) {
+      value = WN_Ldid(type, loadoffset+offset, WN_st(load), ty_idx);
+    }
+    else{
+      if (WN_has_sym(expr) && WN_operator(expr)) {
+	if (WN_operator(expr) == OPR_LDA) {
+	  value = WN_Ldid(type, WN_offset(expr)+loadoffset+offset, WN_st(expr), ty_idx, WN_field_id(expr));
+	}
+	else {
+	  if (TY_kind(ty_idx) == KIND_ARRAY || TY_kind(ty_idx) == KIND_STRUCT) {
+	    WN *ldid = WN_Ldid(Pointer_type,WN_offset(expr),WN_st(expr),WN_ty(expr), WN_field_id(expr));
+	    if(offset != 0)
+	      ldid = WN_Add(Pointer_type,
+			    ldid,
+			    WN_Intconst(Pointer_type, offset));
+	    
+	    value = WN_Iload(type, 
+			     loadoffset,
+			     ty_idx,
+			     ldid, 0);
+	    if (TY_kind(ty_idx) == KIND_STRUCT) FLD_get_to_field(ty_idx,999999,i);
+	  }
+	  else {
+	    WN *ldid = WN_Ldid(Pointer_type,WN_offset(expr),WN_st(expr),WN_ty(expr), WN_field_id(expr));
+	    
+	    value = WN_Iload(type, 
+			     loadoffset+offset,
+			     srcTY,
+			     ldid);
+	    WN_set_field_id(value,i);
+	    lower_copy_maps(load, value, actions);
+	  }
+	}
+      }
+      else{
+	if (TY_kind(ty_idx) == KIND_ARRAY || TY_kind(ty_idx) == KIND_STRUCT){
+	  value = WN_IloadLdid(type, loadoffset+offset,
+			       ty_idx,
+			       preg, srcPreg);
+	  if (TY_kind(ty_idx) == KIND_STRUCT) FLD_get_to_field(ty_idx,999999,i);
+	}
+	else{
+	  value = WN_IloadLdid(type, loadoffset+offset,
+			       srcTY,
+			       preg, srcPreg);
+	  WN_set_field_id(value,i);	
+	  lower_copy_maps(load, value, actions);
+	}
+      }
+    }
+    
+    //Expand the Store
+    
+    if (WN_kid_count(mistore) > 1) {
+      if (WN_has_sym(addr) && WN_operator(addr)){
+        if (WN_operator(addr) == OPR_LDA){
+          store = WN_Stid(type, WN_offset(addr)+storeoffset+offset, WN_st(addr), ty_idx, value);
+        }
+        else {
+	  address = WN_Ldid(Pointer_type, WN_offset(addr), WN_st(addr), WN_ty(addr), WN_field_id(addr));
+	  if (!(TY_kind(ty_idx) == KIND_ARRAY || TY_kind(ty_idx) == KIND_STRUCT)){
+	    store = WN_Istore(type,
+			      storeoffset + offset,
+			      Make_Pointer_Type (dstTY),
+			      address,
+			      value);
+	    WN_set_field_id(store,i);
+	  }
+	  else {
+	    store = WN_Istore(type,
+			      storeoffset + offset,
+			      Make_Pointer_Type (ty_idx),
+			      address,
+			      value);
+	  }
+	  lower_copy_maps(mistore, store, actions);
+	}
+      }
+      else {
+	address = WN_Ldid(Pointer_type, dstPreg, preg, ST_type(preg));
+	if(!(TY_kind(ty_idx) == KIND_ARRAY || TY_kind(ty_idx) == KIND_STRUCT)){
+	  store = WN_Istore(type,
+			    storeoffset + offset,
+			    Make_Pointer_Type (dstTY),
+			    address,
+			    value);
+	  WN_set_field_id(store,i);
+	}
+	else {
+	  store = WN_Istore(type,
+			    storeoffset + offset,
+			    Make_Pointer_Type (ty_idx),
+			    address,
+			    value);
+	}
+	lower_copy_maps(mistore, store, actions);
+      }
+    }
+    else {
+      store = WN_Stid(type,
+		      storeoffset + offset,
+		      WN_st(mistore),
+		      ty_idx,//Be_Type_Tbl(type),
+		      value);
+    }
+    
+    WN_copy_linenum(load, store);    
+    WN_INSERT_BlockLast(newblock, store);   
+    i++;
+  } while (!FLD_last_field (iter++));
+  
+  WN_Delete(mistore);
+  newblock = lower_block(newblock, actions);
+  Total_MLower_Count++;
+  popCurrentState(mstate);
+  return newblock;  
+}
 
 
 /* ====================================================================
@@ -8789,36 +9108,16 @@ static void lower_mload_actual (WN *block, WN *mload, PLOC ploc,
 	{
 	  con = WN_Intconst(Integer_type, todo);
 
-	  copy_aggregate_loop(block,
-			      srcTY,
-			      dstTY,
-			      mloadOffset,
-			      con,
-			      quantum,
-			      preg,
-			      addrN,
-			      dstPreg,
-			      mload,
-			      NULL,
-			      copy_alignment,
-			      actions);
+	  copy_aggregate_loop(block, srcTY, dstTY, mloadOffset, con,
+			      quantum, addrN, dstPreg, mload, NULL,
+			      copy_alignment, actions);
 	  WN_Delete(con);
 	}
 	else
 	{
-	  copy_aggregate(block,
-			 srcTY,
-			 dstTY,
-			 mloadOffset,
-			 todo,
-			 quantum,
-			 preg,
-			 addrN,
-			 dstPreg,
-			 mload,
-			 NULL,
-			 copy_alignment,
-			 actions);
+	  copy_aggregate(block, srcTY, dstTY, mloadOffset, todo,
+			 quantum, addrN, dstPreg, mload, NULL,
+			 copy_alignment, actions);
 	}
       }
       return;
@@ -8829,7 +9128,19 @@ static void lower_mload_actual (WN *block, WN *mload, PLOC ploc,
       *  copy structure element to register
       */
       PREG_NUM regNo = PLOC_reg(ploc);
+#ifdef TARG_NVISA
+      ST	*reg;
+      if (Preg_Offset_Is_Float32(regNo))
+	reg = Float32_Preg;
+      else if (Preg_Offset_Is_Float64(regNo))
+	reg = Float64_Preg;
+      else if (Preg_Offset_Is_Int64(regNo))
+	reg = Int64_Preg;
+      else
+	reg = Int32_Preg;
+#else
       ST	*reg = Preg_Offset_Is_Float(regNo) ? Float_Preg : Int_Preg;
+#endif
       TYPE_ID   type = TY_mtype(Ty_Table[ST_type(reg)]);
 
       {
@@ -8884,11 +9195,7 @@ static void lower_mload_actual (WN *block, WN *mload, PLOC ploc,
 	}
 
 	stid= WN_Stid(type, regNo, reg, ST_type(reg), load);
-
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(mload, stid);
-#endif
+	WN_Set_Linenum(stid, current_srcpos);  // Bug 1268
 	WN_INSERT_BlockLast(block, stid);
       }
     }
@@ -8933,7 +9240,19 @@ static void lower_mload_formal(WN *block, WN *mload, PLOC ploc,
       *	copy register to stack
       */
       PREG_NUM 	regNo =	PLOC_reg(ploc);
+#ifdef TARG_NVISA
+      ST	*reg;
+      if (Preg_Offset_Is_Float32(regNo))
+	reg = Float32_Preg;
+      else if (Preg_Offset_Is_Float64(regNo))
+	reg = Float64_Preg;
+      else if (Preg_Offset_Is_Int64(regNo))
+	reg = Int64_Preg;
+      else
+	reg = Int32_Preg;
+#else
       ST	*reg = Preg_Offset_Is_Float(regNo) ? Float_Preg : Int_Preg;
+#endif
       TYPE_ID   type = TY_mtype(ST_type(reg));
       INT32	todo = size - offset;
       {
@@ -8993,11 +9312,7 @@ static void lower_mload_formal(WN *block, WN *mload, PLOC ploc,
 			   ldid);   
 	}
 	lower_copy_maps(mload, store, actions);
-
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(mload, store);
-#endif
+	WN_Set_Linenum(store, current_srcpos);  // Bug 1268
         WN_INSERT_BlockLast(block, store);
       }
       offset += PLOC_size(ploc);
@@ -9073,7 +9388,7 @@ static void lower_complex_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
 static WN *lower_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
 			   BOOL & intrinsic_lowered)
 {
-  WN	*wn, *emBlock;
+  WN	*wn, *emBlock, *node;
   OPCODE op = WN_opcode(tree);
 
   intrinsic_lowered = FALSE;
@@ -9124,11 +9439,15 @@ static WN *lower_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
 
   if (wn)
   {
-    emBlock = lower_block(emBlock, actions);
 #ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, emBlock);
+    // Bug 1268: Emulate may generate statements without line numbers.
+    // Fix the linenumbers now.
+    for (node = WN_first(emBlock); node; node = WN_next(node)) {
+      WN_Set_Linenum(node, current_srcpos);
+    }
 #endif
+
+    emBlock = lower_block(emBlock, actions);
     WN_INSERT_BlockLast(block, emBlock);
 
     /*
@@ -9136,6 +9455,7 @@ static WN *lower_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
      */
     if (OPCODE_is_stmt(WN_opcode(wn)))
     {
+      WN_Set_Linenum(wn, current_srcpos);
       wn = lower_stmt(block, wn, actions);
     }
     else if (OPCODE_is_expression(WN_opcode(wn)))
@@ -9159,8 +9479,8 @@ static WN *lower_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
   return wn;
 }
 
-
-#ifdef linux
+#if defined(linux) || defined(__CYGWIN__) || defined(__MINGW32__)
+/* Note no sincos() on Darwin */
 /* ====================================================================
  *
  * WN *lower_cis_intrinsic(WN *block, WN *tree, LOWER_ACTIONS actions)
@@ -9220,24 +9540,13 @@ static WN *lower_cis_intrinsic(WN *block, WN *tree, LOWER_ACTIONS actions)
   parms[2] = WN_CreateParm(Pointer_type, acosx, MTYPE_To_TY(Pointer_type),
 			   WN_PARM_BY_VALUE);
   call = WN_Create_Intrinsic(OPC_VINTRINSIC_CALL, sincos_id, 3, parms);
+  WN_Set_Linenum(call, current_srcpos);  // Bug 1268
 #ifndef KEY // cannot delete because it needs to be around to be looked at after
   	    // call to lower_complex_expr in lower_store (bug 3048)
   WN_Delete(tree);
 #endif
 
-  callblock = WN_CreateBlock();
-  callblock = lower_block(callblock, actions);
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, callblock);
-#endif
-  WN_INSERT_BlockLast(block, callblock);
-
   call = lower_intrinsic_call(block, call, actions);
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, call);
-#endif
   WN_INSERT_BlockLast(block, call);
 
   WN *ldid = WN_Ldid(complex_mtyp, 0, return_sincos, complex_ty);
@@ -9274,7 +9583,7 @@ static WN *lower_intrinsic_op(WN *block, WN *tree, LOWER_ACTIONS actions)
   Is_True(OPCODE_is_intrinsic(op),
 	  ("expression is not intrinsic"));
 
-#ifdef linux
+#if !defined(IRIX)
   switch (id) {
   case INTRN_F4CIS:
   case INTRN_F8CIS:
@@ -9294,10 +9603,7 @@ static WN *lower_intrinsic_op(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   Is_True(OPCODE_is_call(WN_opcode(wn)), 
 	  ("lowered instrinsic op is not a call"));
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, wn);
-#endif
+  WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
   WN_INSERT_BlockLast(block, wn);
 
   {
@@ -9503,10 +9809,6 @@ static WN *lower_intrinsic(WN *block, WN *tree, LOWER_ACTIONS actions)
     call = intrinsic_runtime(callblock, tree);
 
     callblock = lower_block(callblock, actions);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, callblock);
-#endif
     WN_INSERT_BlockLast(block, callblock);
 
     if (Action(LOWER_TO_CG))
@@ -9553,11 +9855,16 @@ static WN *lower_actual(WN *block, WN *actual, TYPE_ID parmType, INT32 reg)
     }
     else
 #endif
+
+#if defined(TARG_NVISA)
+    regST = Standard_Preg_For_Mtype(parmType);
+#else
     if (Preg_Offset_Is_Int(reg)) 
 	regST = Int_Preg;
     else
     	// keep float size in preg
-	regST=	MTYPE_To_PREG(parmType);
+    	regST=	MTYPE_To_PREG(parmType);
+#endif
 
     TYPE_ID type = TY_mtype(ST_type(regST));
 
@@ -9703,9 +10010,13 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
   if( Action(LOWER_TO_CG) && 
       (TLS_model == TLS_MODEL_GLOBAL_DYNAMIC ||
        TLS_model == TLS_MODEL_LOCAL_DYNAMIC )) {
+#if !defined(TARG_SL)
     promote_tls_ldst = TRUE;
+#else
+    promote_tls_ldst = FALSE;
+#endif
   }
-  
+
   for (i = 0; i < WN_kid_count(tree); i++) {
 #ifdef KEY // handle actual parameter being a complex under LOWER_COMPLEX action
     if (WN_operator(WN_actual(tree,i)) == OPR_PARM &&
@@ -9730,7 +10041,7 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
     WN_actual(tree, i) = lower_expr(block, WN_actual(tree, i), actions);
   }
   promote_tls_ldst = FALSE;
-  
+
   /* Get the ST of the callee if available */
   if (WN_has_sym(tree)) {
     callee_st = WN_st(tree);
@@ -9830,10 +10141,7 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
   if (Gen_Profile)
   {
     WN  *profcall = lower_profile_call(block, tree, 0, actions);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, profcall);
-#endif
+    WN_Set_Linenum(profcall, current_srcpos);
     WN_INSERT_BlockLast (block, profcall);
   }
 
@@ -9900,6 +10208,8 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
 	 */
 	lower_compound_non_struct_actual (callblock, actual, ploc, actions);
     }
+#endif
+#ifndef TARG_X8664
     else if (MTYPE_is_complex(parmType) && PU_ftn_lang(Get_Current_PU()))
     {
      /*
@@ -9908,8 +10218,12 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
       * Note that GCC has complex type, which should go to
       * normal processing (like quads).
       */
+#ifdef TARG_IA64
       lower_compound_non_struct_actual (callblock, actual, ploc, actions);
-   }
+#else
+      lower_complex_actual (callblock, actual, ploc, actions);
+#endif
+    }
 #endif
   }
 
@@ -9931,12 +10245,14 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
     WN         *actual = WN_operator_is(parm, OPR_PARM) ? WN_kid0(parm) : parm;
     TY_IDX      ty;
 
-    ty = TY_Of_Parameter(parm);
-    ploc = Get_Output_Parameter_Location(ty);
+    ty =  TY_Of_Parameter(parm);
+    ploc = Get_Output_Parameter_Location( ty );
 
     if (MTYPE_is_m(parmType) ||
+#if defined(TARG_IA64)
 	(parmType == MTYPE_F10 &&
 	    (PLOC_on_stack(ploc) || Is_Int_Output_Preg(PLOC_reg(ploc)))) ||
+#endif
 	(MTYPE_is_complex(parmType) && PU_ftn_lang(Get_Current_PU())) )
     {
      /*
@@ -9955,15 +10271,15 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
      *  canonicalize [I,U][1,2] types (to [I,U]4
      */
     TYPE_ID  type = Mtype_comparison( Fix_TY_mtype(ty));
-
-    if (parmType != type)
-    {
-	DevWarn("lower_call(): line %d, parm #%d type mismatch (WN_rtype(parm)"
-		" = %s) (cannonical TY_mtype(parm))) %s)",
-		Srcpos_To_Line(WN_Get_Linenum(tree)), i,
-		Mtype_Name(parmType), Mtype_Name(type));
+    
+    if (parmType != type) {
+      DevWarn("lower_call(): line %d, parm #%d type mismatch (WN_rtype(parm)"
+      " = %s) (cannonical TY_mtype(parm))) %s)",
+      Srcpos_To_Line(WN_Get_Linenum(tree)), i,
+      Mtype_Name(parmType), Mtype_Name(type));
     }
-
+    
+      
 #ifdef TARG_X8664
     if (Preg_Offset_Is_Float(PLOC_reg(ploc))) 
       sse_args++;
@@ -10168,10 +10484,6 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
   Check_Actual_Stack_Size (tree);
 
   callblock = lower_block(callblock, actions);
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, callblock);
-#endif
   WN_INSERT_BlockLast (block, callblock);
 
   /******************************************************
@@ -10187,8 +10499,6 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   return tree;
 }
-
-
 
 
 /* ====================================================================
@@ -10283,10 +10593,6 @@ static WN *lower_compgoto(WN *block, WN *tree, LOWER_ACTIONS actions)
 		WN_Intconst(Pointer_type, num_entries));
 
     truebr = lower_truebr(WN_label_number(def), ge, &wn_truebr, actions);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, truebr);
-#endif
     WN_INSERT_BlockLast(block, truebr);
   }
 
@@ -10313,6 +10619,13 @@ static WN *lower_compgoto(WN *block, WN *tree, LOWER_ACTIONS actions)
     // Lower feedback info
     if ( Cur_PU_Feedback )
       Cur_PU_Feedback->FB_lower_compgoto( tree, xgoto, wn_truebr );
+
+#ifdef TARG_SL2 //fork_joint
+    if(WN_is_compgoto_para(tree)) 
+		WN_Set_is_compgoto_para(xgoto);
+    else if(WN_is_compgoto_for_minor(tree))
+		WN_Set_is_compgoto_for_minor(xgoto);
+#endif 
 
     return xgoto;
   }
@@ -10382,7 +10695,7 @@ static WN *lower_assert(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 	/* __C_runtime_error ( BRK_RANGE, PU_name, line_no, fmt, ...);
 	 */
-#ifndef linux 
+#if defined(IRIX)
 	kids[0] = WN_Intconst ( MTYPE_I4, BRK_RANGE );
 #else
 	fprintf(stderr, "Don't know how to do BRK_RANGE\n");
@@ -10407,7 +10720,7 @@ static WN *lower_assert(WN *block, WN *tree, LOWER_ACTIONS actions)
 	trap = WN_Create_Intrinsic ( OPC_VINTRINSIC_CALL,
 				     INTRN_RT_ERR, 4, kids );
       } else {
-#ifndef linux
+#if defined(IRIX)
 	trap = WN_CreateTrap ( BRK_RANGE );
 #else   
 	fprintf(stderr, "Don't know how to do BRK_RANGE\n");
@@ -10542,6 +10855,9 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
       else preg_st = (mtype==MTYPE_I8 || mtype==MTYPE_U8) ? 
 	  		MTYPE_To_PREG(mtype) : Int_Preg;
+#ifdef TARG_NVISA
+      preg_st = Standard_Preg_For_Mtype(mtype);
+#endif
 
 #ifdef TARG_X8664
       if( Is_Target_SSE2()         &&
@@ -10556,10 +10872,7 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
       wn  = WN_CreateStid (OPR_STID, MTYPE_V, Promoted_Mtype[mtype], 
 	  		   preg, preg_st, Be_Type_Tbl(mtype), WN_kid0(tree));
     }
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, wn);
-#endif
+    WN_Set_Linenum(wn, current_srcpos);
     WN_INSERT_BlockLast (block, wn);
   }
   else { // MTYPE_M; rhs is one of MLDID or MILOAD or MLOAD
@@ -10603,10 +10916,7 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 			      tidx);
       WN *swn = WN_CopyNode(WN_kid1(n_rhs));
       wn  = WN_CreateMstore (0, tidx, n_rhs, awn, swn);
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(tree, wn);
-#endif
+      WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
       WN_INSERT_BlockLast (block, wn);
     }
     else { // return in return registers
@@ -10624,24 +10934,21 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 	  mtype = RETURN_INFO_mtype(return_info, i);
 	  ty_idx_used = Be_Type_Tbl(mtype);
 	  Set_TY_align(ty_idx_used, algn);
-	  preg    = RETURN_INFO_preg (return_info, i);
-	  preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+          preg    = RETURN_INFO_preg (return_info, i);
+          preg_st = Standard_Preg_For_Mtype(mtype);
 #ifdef KEY // bug 12812
   	  if (WN_opcode(o_rhs) == OPC_MMLDID && WN_st(o_rhs) == Return_Val_Preg)
 	    n_rhs = WN_CreateLdid(OPR_LDID, mtype, mtype, preg, preg_st, 
 			          Be_Type_Tbl(mtype));
 	  else
 #endif
-	  n_rhs = WN_CreateLdid (OPR_LDID, mtype, mtype, 
-				 WN_load_offset(o_rhs)
+	    n_rhs = WN_CreateLdid (OPR_LDID, mtype, mtype, 
+				   WN_load_offset(o_rhs)
 				   + i * MTYPE_byte_size(mtype),
 				   WN_st_idx(o_rhs), ty_idx_used);
 	  wn = WN_CreateStid(OPR_STID, MTYPE_V, mtype, preg, preg_st, 
 			     Be_Type_Tbl(mtype), n_rhs);
-#ifdef KEY
-	  // Bug 1268 - copy linenumber when creating WNs.
-	  WN_copy_linenum(tree, wn);
-#endif
+	  WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
 	  WN_INSERT_BlockLast (block, wn);
 	}
       }
@@ -10664,13 +10971,10 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 				 Make_Pointer_Type(ty_idx_used), n_rhs);
 	  n_rhs = lower_expr(block, n_rhs, actions);
 	  preg    = RETURN_INFO_preg (return_info, i);
-          preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+          preg_st = Standard_Preg_For_Mtype(mtype);
 	  wn = WN_CreateStid(OPR_STID, MTYPE_V, mtype, preg, preg_st, 
 			     Be_Type_Tbl(mtype), n_rhs);
-#ifdef KEY
-	  // Bug 1268 - copy linenumber when creating WNs.
-	  WN_copy_linenum(tree, wn);
-#endif
+	  WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
 	  WN_INSERT_BlockLast (block, wn);
 	}
       }
@@ -10692,13 +10996,10 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 				 Make_Pointer_Type(ty_idx_used), n_rhs);
 	  n_rhs = lower_expr(block, n_rhs, actions);
 	  preg    = RETURN_INFO_preg (return_info, i);
-          preg_st = MTYPE_is_float(mtype) ? Float_Preg : Int_Preg;
+          preg_st = Standard_Preg_For_Mtype(mtype);
 	  wn = WN_CreateStid(OPR_STID, MTYPE_V, mtype, preg, preg_st, 
 			     Be_Type_Tbl(mtype), n_rhs);
-#ifdef KEY
-	  // Bug 1268 - copy linenumber when creating WNs.
-	  WN_copy_linenum(tree, wn);
-#endif
+	  WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
 	  WN_INSERT_BlockLast (block, wn);
 	}
       }
@@ -10708,10 +11009,7 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
   }
 
   WN *wn_return = WN_CreateReturn ();
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, wn_return);
-#endif
+  WN_Set_Linenum(wn_return, current_srcpos);  // Bug 1268
   if ( Cur_PU_Feedback )
     Cur_PU_Feedback->FB_lower_return_val( tree, wn_return );
   tree = wn_return;
@@ -10801,10 +11099,10 @@ static WN *lower_stmt(WN *block, WN *tree, LOWER_ACTIONS actions)
       info = lower_expr(infoblock, info, actions);
       WN_set_label_loop_info(tree, info);
     }
-#ifdef KEY
+#ifdef LOW_LANDING_PAD 
     if (Action(LOWER_ENTRY_EXIT) && WN_Label_Is_Handler_Begin (tree))
       tree = lower_landing_pad_entry (tree);
-#endif // KEY
+#endif
     break;
 
   case OPR_EXC_SCOPE_BEGIN:
@@ -10847,6 +11145,32 @@ static WN *lower_stmt(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
       break;
     }
+
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+    if (Action(LOWER_TO_CG)) { 
+      WN *wn;
+      LABEL_IDX label_idx = WN_label_number(tree);
+ 
+      // restore SP before the GOTO_OUTER_BLOCK
+      ST *spsave_sym = Find_SPSave_Symbol(LABEL_IDX_level(label_idx));
+      wn = WN_Ldid(Pointer_type, 0, spsave_sym, ST_type(spsave_sym));
+      wn = lower_expr(block, wn, actions); // expose the static link indirection
+      wn = WN_StidIntoPreg(Pointer_type, Stack_Pointer_Preg_Offset,
+			   MTYPE_To_PREG(Pointer_type), wn);
+      WN_Set_Linenum (wn, current_srcpos);
+      WN_INSERT_BlockLast(block, wn);
+
+      // restore FP before the GOTO_OUTER_BLOCK
+      ST *fpsave_sym = Find_FPSave_Symbol(LABEL_IDX_level(label_idx));
+      wn = WN_Ldid(Pointer_type, 0, fpsave_sym, ST_type(fpsave_sym));
+      wn = lower_expr(block, wn, actions); // expose the static link indirection
+      wn = WN_StidIntoPreg(Pointer_type, Frame_Pointer_Preg_Offset,
+			   MTYPE_To_PREG(Pointer_type), wn);
+      WN_Set_Linenum (wn, current_srcpos);
+      WN_INSERT_BlockLast(block, wn);
+      }
+#endif
 
   default: 
     {
@@ -11016,7 +11340,7 @@ static WN *lower_intrinsic_call(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (returnValueUnused && INTRN_has_no_side_effects(id))
     {
       DevWarn("lower_intrinsic_call(): function %s is void or unused and has"
-	      " no_side_effects. It will be removed", get_intrinsic_name(id));
+	      " no_side_effects. It will be removed", INTRINSIC_name(id));
 
       return newBlock;
     }
@@ -11170,6 +11494,14 @@ WN *lower_block(WN *tree, LOWER_ACTIONS actions)
     if (node == NULL) // lowering an MSTID of Return_Val_Preg can cause NULL
       continue;
 
+#ifdef KEY
+    if (Action(LOWER_MADD) &&
+	Madd_Allowed &&
+	Roundoff_Level >= ROUNDOFF_ASSOC) {
+      lower_madd_tree_height(out, node, actions);
+    }
+#endif
+
     WN_INSERT_BlockLast(out, node);
   
     // if STID(ALLOCA) and trapuv, insert a mstore
@@ -11226,6 +11558,13 @@ WN *lower_block(WN *tree, LOWER_ACTIONS actions)
 	    continue;
 	  else if (WN_operator_is(node, OPR_REGION_EXIT))
 	    continue;
+#ifdef TARG_SL2 //fork_joint
+/* need to check if we need insert this condition check  */ 
+          else if(WN_operator_is(node, OPR_FORWARD_BARRIER) || 
+		 	WN_operator_is(node, OPR_BACKWARD_BARRIER)) 
+            continue;		 	
+#endif 
+
 	  if (OPCODE_is_stmt(WN_opcode(node)))
 	  {
 	    WN_DELETE_FromBlock(out, node);
@@ -11276,18 +11615,21 @@ static WN *lower_speculate(WN *block, WN *tree, LOWER_ACTIONS actions)
     {
       if (WN_operator_is(tree, OPR_CAND))
       {
+	if (traceSpeculate) fprintf(TFile, "change CAND to LAND\n");
 	WN *land = WN_LAND( WN_kid0(tree), WN_kid1(tree) );
 	WN_Delete(tree);
 	return land;
       }
       else if (WN_operator_is(tree, OPR_CIOR))
       {
+	if (traceSpeculate) fprintf(TFile, "change CIOR to LIOR\n");
 	WN *lior = WN_LIOR( WN_kid0(tree), WN_kid1(tree) );
 	WN_Delete(tree);
 	return lior;
       }
       else if (WN_operator_is(tree, OPR_CSELECT))
       {
+	if (traceSpeculate) fprintf(TFile, "change CSELECT to SELECT\n");
 	WN *select = WN_Select(WN_rtype(tree), WN_kid0(tree), WN_kid1(tree),
 			       WN_kid2(tree));
   
@@ -11304,7 +11646,7 @@ static WN *lower_speculate(WN *block, WN *tree, LOWER_ACTIONS actions)
 /* ====================================================================
  *
  * WN *lower_conditional(WN *block, WN *tree, BOOL branchType,
- *                       LOWER_ACTIONS actions)
+ *               LOWER_ACTIONS actions)
  *
  * lower CAND/CIOR to scf
  *
@@ -11331,15 +11673,12 @@ lower_conditional(WN *block, WN *tree, LABEL_IDX trueLabel,
 
       lower_conditional(block, WN_kid0(tree), WN_label_number(shortcircuit),
 			falseLabel, FALSE, actions);
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(tree, shortcircuit);
-#endif
       WN_INSERT_BlockLast(block, shortcircuit);
     }
     else
     {
       left_branch = WN_Falsebr(falseLabel, WN_kid0(tree));
+      WN_Set_Linenum(left_branch, current_srcpos);  // Bug 1268
       WN_INSERT_BlockLast(block, left_branch);
     }
 
@@ -11355,13 +11694,13 @@ lower_conditional(WN *block, WN *tree, LABEL_IDX trueLabel,
     else {
       if ( branchType /*==TRUE*/ ) {
 	right_branch = WN_Truebr(trueLabel, WN_kid1(tree));
-	WN_INSERT_BlockLast(block, right_branch);
       }
       else {
 	/* branchType == FALSE */
 	right_branch = WN_Falsebr(falseLabel, WN_kid1(tree));
-	WN_INSERT_BlockLast(block, right_branch);
       }
+      WN_Set_Linenum(right_branch, current_srcpos);  // Bug 1268
+      WN_INSERT_BlockLast(block, right_branch);
     }
     if (Cur_PU_Feedback) {
       Cur_PU_Feedback->FB_lower_circuit( tree, left_branch, right_branch );
@@ -11380,15 +11719,12 @@ lower_conditional(WN *block, WN *tree, LABEL_IDX trueLabel,
 
       lower_conditional(block, WN_kid0(tree), trueLabel,
 			WN_label_number(shortcircuit), TRUE, actions);
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(tree, shortcircuit);
-#endif
       WN_INSERT_BlockLast(block, shortcircuit);
     }
     else
     {
       left_branch = WN_Truebr(trueLabel, WN_kid0(tree));
+      WN_Set_Linenum(left_branch, current_srcpos);  // Bug 1268
       WN_INSERT_BlockLast(block, left_branch);
     }
 
@@ -11404,13 +11740,13 @@ lower_conditional(WN *block, WN *tree, LABEL_IDX trueLabel,
     else {
       if ( branchType /*==TRUE*/ ) {
 	right_branch = WN_Truebr(trueLabel, WN_kid1(tree));
-	WN_INSERT_BlockLast(block, right_branch);
       }
       else {
 	/* branchType == FALSE */
 	right_branch = WN_Falsebr(falseLabel, WN_kid1(tree));
-	WN_INSERT_BlockLast(block, right_branch);
       }
+      WN_Set_Linenum(right_branch, current_srcpos);  // Bug 1268
+      WN_INSERT_BlockLast(block, right_branch);
     }
     if (Cur_PU_Feedback) {
       Cur_PU_Feedback->FB_lower_circuit( tree, left_branch, right_branch );
@@ -11430,7 +11766,9 @@ static WN *lower_branch_condition(BOOL branchType, LABEL_IDX label, WN *cond,
 {
   WN *condBlock = WN_CreateBlock();
 
+#ifndef TARG_NVISA // done instead at lower_if
   cond = lower_speculate(condBlock, cond, actions);
+#endif
 
   *branch = NULL;
 
@@ -11465,6 +11803,7 @@ static WN *lower_branch_condition(BOOL branchType, LABEL_IDX label, WN *cond,
 	*branch = WN_Truebr(label, cond);
       else
 	*branch = WN_Falsebr(label, cond);
+      WN_Set_Linenum(*branch, current_srcpos);  // Bug 1268
       WN_INSERT_BlockLast(condBlock, *branch);
     }
   }
@@ -11475,10 +11814,11 @@ static WN *lower_branch_condition(BOOL branchType, LABEL_IDX label, WN *cond,
 /* return TRUE if the expression <tree> has a CAND/CIOR that cannot
  * be converted into LAND/LIOR respectively.
  */
-static BOOL tree_has_cand_cior (WN *tree)
+static INT tree_has_cand_cior (WN *tree)
 {
   WN_ITER *wni;
   WN *wn;
+  INT count = 0;
 
   for (wni = WN_WALK_TreeIter (tree); 
        wni != NULL;
@@ -11489,9 +11829,9 @@ static BOOL tree_has_cand_cior (WN *tree)
     if (WN_operator_is(wn, OPR_CAND)	||
 	WN_operator_is(wn, OPR_CIOR)	||
 	WN_operator_is(wn, OPR_CSELECT))
-      return TRUE;
+	++count;
   }
-  return FALSE;
+  return count;
 }
 #endif
 
@@ -11507,12 +11847,31 @@ static BOOL tree_has_cand_cior (WN *tree)
 
 static WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions)
 {
+  INT cand_cior_count = 0;
+
   Is_True(WN_opcode(tree) == OPC_IF,
 	  ("expected IF node, not %s", OPCODE_name(WN_opcode(tree))));
 
   if (WN_Is_If_MpVersion(tree))
     return lower_block(lower_mp(block, tree, actions), actions);
 
+#ifdef TARG_NVISA
+  // want to only replace CAND/CIOR with LAND/LIOR not lower whole if-tree. 
+  // Branches are expensive for us and conversion to logical operators 
+  // should be profitable for most cases. The bound is arbitrary for now,
+  // the tests to measure and narrow performance do not exist
+  // We should fine tune the bound when there is a compelling case
+  if (Action(LOWER_SHORTCIRCUIT) && OPT_Lower_Speculate)
+  {
+      cand_cior_count = tree_has_cand_cior(WN_if_test(tree));
+      if ((cand_cior_count > 0)
+          && (cand_cior_count < SHORTCIRCUIT_TO_LOGICAL_LIMIT))
+      {
+          // lower_speculate doesn't use block, so can pass NULL
+          WN_if_test(tree) = lower_speculate(NULL, WN_if_test(tree), actions);
+      }
+  }
+#endif
 #ifndef SHORTCIRCUIT_HACK
   if (Action(LOWER_IF))
 #else
@@ -11554,34 +11913,23 @@ static WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 	WN *falsebr_block = lower_falsebr(else_lbl, WN_if_test(tree),
 					  &wn_branch, actions);
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(tree, falsebr_block);
-#endif
 	WN_INSERT_BlockFirst(body, falsebr_block);
 
 	setCurrentStateBlockLast(WN_then(tree), actions);
 	WN_INSERT_BlockLast(body, lower_block(WN_then(tree), actions));
 	WN *wn_goto = WN_Goto(cont_lbl);
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(tree, wn_goto);
-#endif
+	WN_Set_Linenum(wn_goto, current_srcpos);  // Bug 1268
 	WN_INSERT_BlockLast(body, wn_goto);
 
 	WN *wn_else_lbl = WN_Label(else_lbl);
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(tree, wn_else_lbl);
-#endif
+	setCurrentStateBlockLast(WN_else(tree), actions);
+	WN_Set_Linenum(wn_else_lbl, current_srcpos);  // Bug 1268
 	WN_INSERT_BlockLast(body, wn_else_lbl);
+
 	setCurrentStateBlockLast(WN_else(tree), actions);
 	WN_INSERT_BlockLast(body, lower_block(WN_else(tree), actions));
 	WN *wn_cont_lbl = WN_Label(cont_lbl);
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(tree, wn_cont_lbl);
-#endif
+	WN_Set_Linenum(wn_cont_lbl, current_srcpos);  // Bug 1268
 	WN_INSERT_BlockLast(body, wn_cont_lbl);
       } 
       else
@@ -11594,19 +11942,12 @@ static WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions)
         */
 	WN *falsebr_block = lower_falsebr(cont_lbl, WN_if_test(tree),
 					  &wn_branch, actions);
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(tree, falsebr_block);
-#endif
 	WN_INSERT_BlockFirst(body, falsebr_block);
 
 	setCurrentStateBlockLast(WN_then(tree), actions);
 	WN_INSERT_BlockLast(body, lower_block(WN_then(tree), actions));
 	WN *wn_cont_lbl = WN_Label(cont_lbl);
-#ifdef KEY
-	// Bug 1268 - copy linenumber when creating WNs.
-	WN_copy_linenum(tree, wn_cont_lbl);
-#endif
+	WN_Set_Linenum(wn_cont_lbl, current_srcpos);  // Bug 1268
 	WN_INSERT_BlockLast(body, wn_cont_lbl);
       }
 
@@ -11627,19 +11968,12 @@ static WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions)
       */
       WN *truebr_block = lower_truebr(cont_lbl, WN_if_test(tree),
 				      &wn_branch, actions);
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(tree, truebr_block);
-#endif
       WN_INSERT_BlockFirst(body, truebr_block);
 
       setCurrentStateBlockLast(WN_else(tree), actions);
       WN_INSERT_BlockLast(body, lower_block(WN_else(tree), actions));
       WN *wn_cont_lbl = WN_Label(cont_lbl);
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(tree, wn_cont_lbl);
-#endif
+      WN_Set_Linenum(wn_cont_lbl, current_srcpos);  // Bug 1268
       WN_INSERT_BlockLast(body, wn_cont_lbl);
 
       if (Cur_PU_Feedback) {
@@ -11898,7 +12232,7 @@ static WN* simplify_multiply ( WN* do_loop, LOWER_ACTIONS actions )
   // IEEE_Arithmetic should be set to IEEE_INEXACT for this optimization.
   // This is because we need to opimize away '* 0.0' and '1.0 *' by calling the
   // simplifier.
-  if ( IEEE_Arithmetic != IEEE_INEXACT )
+  if ( IEEE_Arithmetic < IEEE_INEXACT )
     return block;
     
   // If the loop iteration count is not high enough then we do not attempt to 
@@ -12066,10 +12400,7 @@ static WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
     top_lbl_idx = NewLabel();
 
     WN *top_lbl = WN_CreateLabel(ST_IDX_ZERO, top_lbl_idx, 0, loop_info);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, top_lbl);
-#endif
+    WN_Set_Linenum(top_lbl, current_srcpos);  // Bug 1268
     WN_INSERT_BlockLast(body, top_lbl);
 
     WN_INSERT_BlockLast(body, lower_block(WN_do_body(tree), actions));
@@ -12082,10 +12413,7 @@ static WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
     WN_INSERT_BlockLast(body, back_branch_block);
 
     if (nz_trip == FALSE) {
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(tree, cont_lbl);
-#endif
+      WN_Set_Linenum(cont_lbl, current_srcpos);  // Bug 1268
       WN_INSERT_BlockLast(body, cont_lbl);
     }
 
@@ -12162,10 +12490,8 @@ static WN *lower_do_while(WN *block, WN *tree, LOWER_ACTIONS actions)
     {
       actions = RemoveScfAction(actions);
     }
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, top_lbl);
-#endif
+
+    WN_Set_Linenum(top_lbl, current_srcpos);  // Bug 1268
     WN_INSERT_BlockFirst(body, top_lbl);
     WN_INSERT_BlockLast(body, lower_block(WN_while_body(tree), actions));
 
@@ -12189,10 +12515,6 @@ static WN *lower_do_while(WN *block, WN *tree, LOWER_ACTIONS actions)
 
     WN_while_test(tree) = lower_expr(testBlock, WN_while_test(tree), actions);
 
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, testBlock);
-#endif
     WN_INSERT_BlockLast(WN_while_body(tree), testBlock);
   }
 
@@ -12261,10 +12583,7 @@ static WN *lower_while_do(WN *block, WN *tree, LOWER_ACTIONS actions)
 
     setCurrentState(WN_while_body(tree), actions);
     WN *wn_top_lbl = WN_Label(top_lbl);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, wn_top_lbl);
-#endif
+    WN_Set_Linenum(wn_top_lbl, current_srcpos);  // Bug 1268
     WN_INSERT_BlockLast(body, wn_top_lbl);
 
     setCurrentStateBlockLast(WN_while_body(tree), actions);
@@ -12275,10 +12594,6 @@ static WN *lower_while_do(WN *block, WN *tree, LOWER_ACTIONS actions)
 					 &wn_back_branch, actions);
     WN_INSERT_BlockLast(body, back_branch_block);
     WN *wn_cont_lbl = WN_Label(cont_lbl);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, wn_cont_lbl);
-#endif
     WN_INSERT_BlockLast(body, wn_cont_lbl);
 
     if ( Cur_PU_Feedback )
@@ -12307,15 +12622,7 @@ static WN *lower_while_do(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (Cur_PU_Feedback)
       Cur_PU_Feedback->FB_clone_loop_test( testBlock, copytestBlock, tree );
 
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, copytestBlock);
-#endif
     WN_INSERT_BlockLast(block, copytestBlock);
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, testBlock);
-#endif
     WN_INSERT_BlockLast(WN_while_body(tree), testBlock);
   }
 
@@ -12448,6 +12755,14 @@ static PLOC lower_entry_formals(WN *block, WN *tree, LOWER_ACTIONS actions)
   PLOC	ploc;
   INT32	i, n;
 
+#ifdef TARG_NVISA
+  // if global entry, don't lower formals, just use named symbols
+  if (ST_in_global_mem(WN_st(tree))) {
+    PLOC_size(ploc) = 0; PLOC_offset(ploc) = 0; PLOC_reg(ploc) = 0;
+    return ploc;
+  }
+#endif
+
   ploc = Setup_Input_Parameter_Locations(ST_pu_type(WN_st(tree)));
 
   if (WN_opcode(tree) == OPC_ALTENTRY)
@@ -12555,7 +12870,7 @@ struct is_omp_slink
  * else return FALSE
  *
  * Since The OpenMP lower generates a call not compatible with
- * the one in original implementation, the OpenMP lower has generate
+ * the one in orginal implementation, the OpenMP lower has generate
  * the slink initialization code yet. The following call is used to
  * decide whether the current PU is a OpenMP lower generated PU.
  * the arg slink is not used indeed.
@@ -12575,6 +12890,147 @@ static BOOL Is_Omp_Gen_Slink( ST * slink )
                                                                                                                                                              
     return FALSE;
 }
+
+#ifdef KEY // for handling taking address of nested functions
+struct NESTED_FUNC_TRAMPOLINE_PAIR {
+  ST_IDX nested_func_st_idx;
+  ST_IDX trampoline_st_idx;
+  NESTED_FUNC_TRAMPOLINE_PAIR(void) {}
+  NESTED_FUNC_TRAMPOLINE_PAIR(ST_IDX nested_func, ST_IDX trampoline):
+	      nested_func_st_idx(nested_func), trampoline_st_idx(trampoline) {}
+};
+
+STACK<NESTED_FUNC_TRAMPOLINE_PAIR> nested_func_trampoline_map(Malloc_Mem_Pool);
+
+static ST_IDX find_trampoline(ST_IDX func_st_idx) {
+  INT i;
+  for (i = 0; i < nested_func_trampoline_map.Elements(); i++) {
+    if (nested_func_trampoline_map.Top_nth(i).nested_func_st_idx == func_st_idx)
+      return nested_func_trampoline_map.Top_nth(i).trampoline_st_idx;
+  }
+  Fail_FmtAssertion("cannot find trampoline for nested function (%s)",
+		    ST_name(func_st_idx));
+}
+
+static void generate_trampoline_symbol(ST *st) {
+  PU &pu = Pu_Table[ST_pu(st)];
+  if (PU_need_trampoline(pu)) {
+    ST *tramp_st = Gen_Temp_Symbol(
+				   MTYPE_To_TY(Is_Target_64bit() ? MTYPE_C10: MTYPE_F10), 
+				   ST_name(st));
+    Set_ST_addr_saved(tramp_st);
+    Set_ST_is_shared_auto(*tramp_st);
+    // remember the trampoline symbol generated for this nested function
+    nested_func_trampoline_map.Push(
+	NESTED_FUNC_TRAMPOLINE_PAIR(ST_st_idx(st), ST_st_idx(tramp_st)));
+  }
+}
+
+/* ====================================================================
+ *
+ * void allocate_trampoline_symbols(void)
+ *
+ * For each function nested within current function marked PU_NEED_TRAMPOLINE,
+ * generate a corresponding local symbol of size 20 bytes that contains the
+ * code for its trampoline that will be initialized at run-time
+ *
+ * ================================================================= */
+static void allocate_trampoline_symbols(void)
+{
+  // first, throw away nodes on the stack for trampolines in previous PUs
+  // at same level as current PU
+  while (! nested_func_trampoline_map.Is_Empty() &&
+	 PU_lexical_level(ST_pu(St_Table[nested_func_trampoline_map.Top().nested_func_st_idx]))
+	      >= CURRENT_SYMTAB+1)
+    nested_func_trampoline_map.Pop();
+
+  if (! PU_c_lang(Get_Current_PU())) // bug 14271
+    return;
+
+  if (PU_uplevel(Get_Current_PU())) {  
+    PU &pu = Get_Current_PU();
+    INITO_IDX pu_inito = PU_misc_info(pu);
+    INITV_IDX nested_fn_iv;
+    ST_IDX st_idx;
+    if (pu_inito != INITO_IDX_ZERO) {
+      nested_fn_iv = INITO_val(pu_inito);
+      do {
+	st_idx = INITV_st(nested_fn_iv);
+	generate_trampoline_symbol(&St_Table[st_idx]);
+	nested_fn_iv = INITV_next(nested_fn_iv);
+      } while (nested_fn_iv != INITV_IDX_ZERO);
+    }
+  }
+}
+
+BOOL PU_has_trampoline = FALSE; // for communicating to cgemit
+
+/* ====================================================================
+ *
+ * void generate_trampoline_code(void)
+ *
+ * For each trampoline allocated in current PU, generate the code
+ * sequence that initialize the code content of the trampoline at run time
+ * at the entry point of current PU
+ *
+ * ================================================================= */
+static void generate_trampoline_code(WN *block)
+{
+  INT i;
+  NESTED_FUNC_TRAMPOLINE_PAIR cur;
+  for (i = 0; i < nested_func_trampoline_map.Elements(); i++) {
+    cur = nested_func_trampoline_map.Top_nth(i);
+    if (PU_lexical_level(ST_pu(St_Table[cur.nested_func_st_idx])) != CURRENT_SYMTAB+1)
+      break;
+    // generate the runtime initialization code for this trampoline and
+    // insert at beginning of block
+    WN *stid, *link;
+    if (Is_Target_64bit()) {
+      stid = WN_CreateStid(OPC_I2STID, 0, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(MTYPE_I2), WN_Intconst(MTYPE_I4, -17599));
+      WN_INSERT_BlockFirst(block, stid);
+      stid = WN_CreateStid(OPC_I4STID, 2, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(MTYPE_I4), 
+		     WN_Lda(Pointer_Mtype, 0, &St_Table[cur.nested_func_st_idx]));
+      WN_INSERT_BlockFirst(block, stid);
+      stid = WN_CreateStid(OPC_I2STID, 6, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(MTYPE_I2), WN_Intconst(MTYPE_I4, -17847));
+      WN_INSERT_BlockFirst(block, stid);
+      link = WN_LdidPreg(Pointer_Mtype, Frame_Pointer_Preg_Offset);
+      stid = WN_CreateStid(OPC_U8STID, 8, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(Pointer_Mtype), link);
+      WN_INSERT_BlockFirst(block, stid);
+      stid = WN_CreateStid(OPC_I2STID, 16, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(MTYPE_I2), WN_Intconst(MTYPE_I4, -183));
+      WN_INSERT_BlockFirst(block, stid);
+      stid = WN_CreateStid(OPC_I1STID, 18, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(MTYPE_I1), WN_Intconst(MTYPE_I4, -29));
+      WN_INSERT_BlockFirst(block, stid);
+    }
+    else {
+      stid = WN_CreateStid(OPC_I1STID, 0, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(MTYPE_I1), WN_Intconst(MTYPE_I4, -71));
+      WN_INSERT_BlockFirst(block, stid);
+      link = WN_LdidPreg(Pointer_Mtype, Frame_Pointer_Preg_Offset);
+      stid = WN_CreateStid(OPC_U4STID, 1, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(Pointer_Mtype), link);
+      WN_INSERT_BlockFirst(block, stid);
+      stid = WN_CreateStid(OPC_I1STID, 5, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(MTYPE_I1), WN_Intconst(MTYPE_I4, -23));
+      WN_INSERT_BlockFirst(block, stid);
+      stid = WN_CreateStid(OPC_U4STID, 6, cur.trampoline_st_idx, 
+			   MTYPE_To_TY(Pointer_Mtype),
+			   WN_Sub(Pointer_Mtype,
+		   WN_Lda(Pointer_Mtype, 0, &St_Table[cur.nested_func_st_idx]),
+		   WN_Lda(Pointer_Mtype, 10, &St_Table[cur.trampoline_st_idx])));
+      WN_INSERT_BlockFirst(block, stid);
+    }
+
+    PU_has_trampoline = TRUE;
+  }
+}
+#endif
+
 
 /* ====================================================================
  *
@@ -12747,25 +13203,22 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
 
       trapuvBlock= lower_block(trapuvBlock, actions);
 
-#ifdef KEY
-      // Bug 1268 - copy linenumber when creating WNs.
-      WN_copy_linenum(tree, trapuvBlock);
-#endif
       WN_INSERT_BlockLast(block, trapuvBlock);
     }
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     /*
-     * Optimize the malloc algorithm.  For non-x8664 targets, silently ignore
-     * the -OPT:malloc_alg option since the driver would have warned already.
+     * Optimize the malloc algorithm.
      */
-    if (OPT_Malloc_Alg == 1 &&
-	(!strcmp(Cur_PU_Name, "main") ||
-	 !strcmp(Cur_PU_Name, "MAIN__"))) {
+    if (OPT_Malloc_Alg >= 1 &&
+       //bug 14196 : For m32, don't do this unless it is set by user
+       //or on em64t (Note: OPT_Malloc_Alg >0 iff set or implied by -OPT:Ofast)
+       (OPT_Malloc_Alg_Set || Is_Target_64bit() || Is_Target_EM64T()) &&
+        (!strcmp(Cur_PU_Name, "main") ||
+         !strcmp(Cur_PU_Name, "MAIN__"))) {
       WN *mallocBlock = WN_CreateBlock();
       mallocBlock = lower_malloc_alg(mallocBlock, tree, actions);
       mallocBlock = lower_block(mallocBlock, actions);
-      WN_copy_linenum(tree, mallocBlock);
       WN_INSERT_BlockLast(block, mallocBlock);
     }
 #endif
@@ -12822,6 +13275,25 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
          WN_INSERT_BlockFirst(block, wn);
       }
     }
+#ifdef KEY
+    if (PU_has_nonlocal_goto_label(Get_Current_PU())) {
+      // save the FP
+      ST *fpsave_sym = Create_FPSave_Symbol();
+      WN *fpld = WN_LdidPreg(Pointer_type, Frame_Pointer_Preg_Offset);
+      WN *fpsave = WN_Stid(Pointer_type, 0, fpsave_sym, ST_type(fpsave_sym), 
+      			   fpld);
+      WN_Set_Linenum (fpsave, current_srcpos);
+      WN_INSERT_BlockFirst(block, fpsave);
+
+      // save the SP
+      ST *spsave_sym = Create_SPSave_Symbol();
+      WN *spld = WN_LdidPreg(Pointer_type, Stack_Pointer_Preg_Offset);
+      WN *spsave = WN_Stid(Pointer_type, 0, spsave_sym, ST_type(spsave_sym), 
+      			   spld);
+      WN_Set_Linenum (spsave, current_srcpos);
+      WN_INSERT_BlockFirst(block, spsave);
+    }
+#endif
   }
 
   if (WN_opcode(tree) == OPC_FUNC_ENTRY)
@@ -12845,10 +13317,22 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
 	}
     }
 
+#ifdef KEY
+    if (Action(LOWER_RETURN_VAL))
+      allocate_trampoline_symbols();
+#endif
+
     WN_INSERT_BlockFirst(WN_func_body(tree), block);
 
     /* Lower statements in function body. */
     WN_func_body(tree) = lower_block(WN_func_body(tree), actions);
+#ifdef KEY
+    if (Action(LOWER_TO_CG)) {
+      block = WN_CreateBlock();
+      generate_trampoline_code(block);
+      WN_INSERT_BlockFirst(WN_func_body(tree), block);
+    }
+#endif
     return tree;
   }
   else
@@ -12859,44 +13343,55 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
   return block;
 }
 
+#ifdef LOW_LANDING_PAD
 // Figure out if we need anything similar for non-X8664
 static WN *lower_landing_pad_entry(WN *tree)
 {
   WN * block = WN_CreateBlock();
   WN_INSERT_BlockAfter (block, NULL, tree);
 
-  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().eh_info)));
+  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (PU_misc_info (Get_Current_PU()))));
   ST exc_ptr_st = St_Table[exc_ptr_param];
   // Store rax into exc_ptr variable
 #ifdef TARG_X8664
-  // Store rax into exc_ptr variable
   WN *exc_ptr_rax = WN_LdidPreg (Pointer_Mtype, RAX);
-#else 
+#elif defined(TARG_IA64)
   WN *exc_ptr_rax = WN_LdidPreg (Pointer_Mtype, 15); // 15, eh_reg(0) 
+#elif defined(TARG_MIPS)
+  // Store $4 into exc_ptr variable
+  WN *exc_ptr_rax = WN_LdidPreg (Pointer_Mtype, 4);
+#else
+#error ("TARG_IA64 not defined!")
 #endif
+
   WN *exc_ptr_stid = WN_Stid (Pointer_Mtype, 0, &exc_ptr_st, 
 			ST_type(exc_ptr_st), exc_ptr_rax);
 
-  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().eh_info))));
+  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (PU_misc_info (Get_Current_PU())))));
   ST filter_st = St_Table[filter_param];
   // Store rdx into filter variable
 #ifdef TARG_X8664
-  // Store rdx into filter variable
   WN *filter_rdx = WN_LdidPreg (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, RDX);
-#else
+#elif defined(TARG_IA64)
   WN *filter_rdx = WN_LdidPreg (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, 16); // 16, eh_reg(1) 
+#elif defined(TARG_MIPS)
+  // Store $5 into filter variable
+  WN *filter_rdx = WN_LdidPreg (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, 5);
+#else
+#error ("TARG_IA64 not defined!")
 #endif
+
   WN *filter_stid = WN_Stid (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, 0, &filter_st, 
 			ST_type(filter_st), filter_rdx);
 
   // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, exc_ptr_stid);
+  WN_Set_Linenum(exc_ptr_stid, current_srcpos);  // Bug 1268
   WN_INSERT_BlockLast (block, exc_ptr_stid);
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, filter_stid);
+  WN_Set_Linenum(filter_stid, current_srcpos);  // Bug 1268
   WN_INSERT_BlockLast (block, filter_stid);
   return block;
 }
+#endif // LOW_LANDING_PAD
 
 
 /* ====================================================================
@@ -13078,25 +13573,30 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
 	  Is_True((MTYPE_RegisterSize(btype) == size),
 		  ("bad size for scalar/pointer"));;
 
-#ifdef TARG_X8864
+#ifdef KEY
 	  if (DEBUG_Zero_Uv) {
+#if defined(TARG_X8664)
 	    if (MTYPE_is_vector(btype)) {
 	      con = Make_Const(Create_Simd_Const(btype,
 						 Host_To_Targ(MTYPE_I4, 0)));
 	    } else {
-	      if (MTYPE_is_integral(btype)) {
-		con = WN_Intconst(size < 4 ?
-				    Mtype_TransferSign(btype, MTYPE_I4) : btype,
-				  0);
-	      } else {
-		con = WN_Floatconst(btype, 0.0);
-	      }
+#endif
+	    if (MTYPE_is_integral(btype)) {
+	      con = WN_Intconst(size < 4 ?
+				  Mtype_TransferSign(btype, MTYPE_I4) : btype,
+				0);
+	    } else {
+	      con = WN_Floatconst(btype, 0.0);
 	    }
+#if defined(TARG_X8664)
+          }
+#endif
 	  } else
 #endif
 	  con = WN_UVConst(btype);
 
-#ifdef TARG_X8664
+
+#ifdef KEY
 	  // Load the constant using integer registers instead of floating
 	  // point registers, since storing NaN from x87 registers will trap.
 	  if (btype == MTYPE_FQ) {
@@ -13202,7 +13702,6 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 		lda = WN_Lda(Pointer_type, 0, st);
 		num = WN_Intconst(MTYPE_I4, nMoves * qSize);
-
 #ifdef KEY
 		// The number of bytes stored may or may not be a multiple of
 		// the struct size.  To prevent the WN verifier from
@@ -13210,6 +13709,7 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
 		TY_IDX byte_ptype = Make_Pointer_Type(MTYPE_To_TY(MTYPE_U1));
 		store = WN_CreateMstore(offset, byte_ptype, con, lda, num);
 #else
+
 		store = WN_CreateMstore(offset, ptype, con, lda, num);
 #endif
 
@@ -13271,7 +13771,7 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
   return block;
 }
 
-#ifdef KEY
+#if defined(KEY) && !(defined(TARG_SL)  || defined(TARG_NVISA))
 /* ====================================================================
  *
  * WN *lower_malloc_alg(WN *block, WN *tree, LOWER_ACTIONS actions)
@@ -13290,9 +13790,25 @@ lower_malloc_alg(WN *block, WN *tree, LOWER_ACTIONS actions)
   Set_PU_is_pure(Pu_Table[ST_pu(st)]);
 
   call = WN_Call(MTYPE_V, MTYPE_V, 1, st);      // bug 10736
-  WN_kid0(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, 1),
+  switch(OPT_Malloc_Alg) { //extend malloc_alg
+   case 1:
+      WN_kid0(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, 1),
                                 MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
-  WN_copy_linenum(tree, call);
+      break;
+   case 2:
+      WN_kid0(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, 2),
+                                MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
+      break;
+   case 3:
+      WN_kid0(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, 3),
+                                MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
+      break;
+   default:
+      FmtAssert(0, ("Lower_Malloc_Alg: -OPT:malloc_alg should be less than or equal to 3!"));
+      break;
+  }
+
+  WN_Set_Linenum(call, current_srcpos);
   call = lower_call(block, call, actions);
   WN_INSERT_BlockLast(block, call);
 
@@ -13396,7 +13912,7 @@ static const char * MSTORE_ACTIONS_name(MSTORE_ACTIONS actions)
 }
 
 
-void WN_Lower_Checkdump(char *msg, WN *tree, LOWER_ACTIONS actions)
+void WN_Lower_Checkdump(const char *msg, WN *tree, LOWER_ACTIONS actions)
 {
   traceAlignment   = Get_Trace(TP_LOWER, 0x004);
   traceSplitSymOff = Get_Trace(TP_LOWER, 0x010);
@@ -13514,7 +14030,7 @@ static LOWER_ACTIONS lower_actions(WN *pu, LOWER_ACTIONS actions)
     actions |=  lowering_actions ^ (LOWER_ENTRY_EXIT		|
 				    LOWER_ENTRY_FORMAL_REF	|
 				    LOWER_FORMAL_REF		|
-#ifndef KEY // move to below since need to be called multiple timers >= -O2
+#if !defined(TARG_SL) // move to below since need to be called multiple timers >= -O2
 				    LOWER_UPLEVEL		|
 #endif
 #if !defined(TARG_IA32) && !defined(TARG_X8664)
@@ -13608,53 +14124,39 @@ void Lower_Init(void)
     *  create map for marking parity
     */
    lowering_parity_map = WN_MAP32_Create(MEM_pu_pool_ptr);
-   if (wn_derivation_map != WN_MAP_UNDEFINED)
-     WN_MAP_Delete(wn_derivation_map);
    wn_derivation_map = WN_MAP_Create (MEM_pu_pool_ptr);
 
    lowering_actions = 0;
    current_state = current_state_NULL;
 
    // save parity_map in an array becuse it may change in nested PUs
-   parity_map_index++;
-   FmtAssert(0 <= parity_map_index && parity_map_index < PARITY_MAP_ARRAY_SIZE,
+   nested_map_index++;
+   FmtAssert(0 <= nested_map_index && nested_map_index < NESTED_MAP_ARRAY_SIZE,
              ("Lower_Init: Index into parity map array is out of range"));
-   parity_map_array[parity_map_index] = lowering_parity_map;
+   parity_map_array[nested_map_index] = lowering_parity_map;
+   derivation_map_array[nested_map_index] = wn_derivation_map;
 }
 
 void Lowering_Finalize(void)
 {
   /* free lowering_parity_map */
   WN_MAP_Delete(lowering_parity_map);
-  if (wn_derivation_map != WN_MAP_UNDEFINED) {
-    // Lowering_Finalize() can be called in a row without intervening 
-    // Lower_Init(). This will happens when a PU has child PUs as we 
-    // can see from the following piece of code excerpted from 
-    // Preorder_Process_PUs ().
-    // 
-    // Preorder_Process_PUs () { 
-    //  ...
-    //   pu = Preprocess_PU(current_pu); // call WN_Init();
-    //  
-    //   for (PU_Info *child = PU_Info_child(current_pu);
-    //     child != NULL;
-    //     child = PU_Info_next(child)) {
-    //     Preorder_Process_PUs(child);
-    //   }
-    // }
-    // Postprocess_PU (current_pu); // call Lowering_Finialize().
-    // 
-    WN_MAP_Delete(wn_derivation_map);
-    wn_derivation_map = WN_MAP_UNDEFINED;
-  }
-  parity_map_index--;
-  if (parity_map_index >= 0) {
+
+  /* free wn_derivation_map */
+  WN_MAP_Delete(wn_derivation_map);
+  
+  nested_map_index--;
+  if (nested_map_index >= 0) {
     // if there is a saved parity map, then restore it
-    lowering_parity_map = parity_map_array[parity_map_index];
+    lowering_parity_map = parity_map_array[nested_map_index];
+    // restore wn_derivation_map
+    wn_derivation_map = derivation_map_array[nested_map_index];
   }
   else {
     // otherwise, set it to undefined
     lowering_parity_map = WN_MAP_UNDEFINED;
+    // set wn_derivation_map to undefined
+    wn_derivation_map = WN_MAP_UNDEFINED;
   }
 }
 
@@ -13799,7 +14301,7 @@ static void vcast_complex_types(WN* tree)
  * ==================================================================== */
 
 WN *WN_Lower(WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias,
-	     char *msg)
+	     const char *msg)
 {
 #ifdef BACK_END
   Start_Timer(T_Lower_CU);
@@ -13886,9 +14388,13 @@ static WN  *Transform_To_Memset(WN *dst, INT32 offset, TY_IDX dstTY, WN *src, WN
                            dstTY ? dstTY : MTYPE_To_TY(WN_rtype(dst)),
                            WN_PARM_BY_VALUE);
 
-  parms[1]=  WN_CreateParm(WN_rtype(src),
+  /*the second parms of intrinsic memset is a int, if we use WN_rtype(src),
+    and the size of src is 8 byts, its higher part will be treated as the 
+    third parameter and then get wrong reslut.
+  */
+  parms[1]=  WN_CreateParm(MTYPE_I4,
                            src,
-                           MTYPE_To_TY(WN_rtype(src)),
+                           MTYPE_To_TY(MTYPE_I4),
                            WN_PARM_BY_VALUE);
 
   parms[2]=  WN_CreateParm(WN_rtype(size),
@@ -14067,6 +14573,7 @@ static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
   if (OPT_Enable_Lower_To_Memlib_Limit != -1 &&
       cur_memlib_idx >= OPT_Enable_Lower_To_Memlib_Limit) 
       return tree;
+  cur_memlib_idx ++;
 
   //Start a new round of optimziation
   Is_True(delete_num == 0, ("Some unclear deleted WN"));
@@ -14075,7 +14582,7 @@ static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
   delete_base = NULL;
 
   //Termination condition: function calls or block end
-#ifdef TARG_IA64 // I'm not sure to select which one when merge.
+#ifdef TARG_IA64
   while (stmt && WN_operator(stmt)!= OPR_CALL) {
 #else
   while (stmt && ! OPERATOR_is_endsbb(WN_operator(stmt)) &&
@@ -14233,7 +14740,7 @@ static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 #ifdef KEY // bug 11360
       if (Action(LOWER_CALL))
-	lower_call(return_block, wn_intrinsic, actions);
+	wn_intrinsic = lower_call(return_block, wn_intrinsic, actions);
 #endif
       WN_INSERT_BlockLast(return_block, wn_intrinsic);
       return  return_block;
@@ -14433,7 +14940,7 @@ static WN *Lower_STID_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 #ifdef KEY // bug 11360
       if (Action(LOWER_CALL))
-	lower_call(return_block, wn_intrinsic, actions);
+	wn_intrinsic = lower_call(return_block, wn_intrinsic, actions);
 #endif
       WN_INSERT_BlockLast(return_block, wn_intrinsic);
       return  return_block;
@@ -14449,7 +14956,7 @@ static int Find_Nums_Induction(WN *exp, WN *ind)
 
    if (OPCODE_is_leaf(WN_opcode(exp))) {
 
-        if (WN_operator(exp)==OPR_LDID  && WN_st(exp) == WN_st(ind))
+     if (WN_operator(exp)==OPR_LDID  && WN_same_id(exp,ind))
                 return 1;
         else return 0;
    }
@@ -14462,8 +14969,9 @@ static int Find_Nums_Induction(WN *exp, WN *ind)
 }
 static WN * Locate_Ind_Path(WN *exp, WN *ind, int &numMpy)
 {
-   int save_num, num;
-   WN *wn;
+   int save_num;
+   WN *wn = NULL;
+   WN *tmp;
    if (exp == NULL) return NULL;
    if (WN_operator(exp) == OPR_LDID && WN_same_id(exp,ind)) {
        //??   numMpy++; // update the number of multipliers
@@ -14477,11 +14985,12 @@ static WN * Locate_Ind_Path(WN *exp, WN *ind, int &numMpy)
      return NULL;
 
 
-
    save_num = numMpy;
    for (int i=0; i< WN_kid_count(exp); i++) {
-          num = save_num;
-          if (wn = Locate_Ind_Path(WN_kid(exp,i), ind, num)) return wn;
+          numMpy = save_num;
+          tmp = Locate_Ind_Path(WN_kid(exp,i), ind, numMpy);
+	  if (tmp)
+	    wn = tmp;
    }
 
    return wn;
@@ -14899,7 +15408,7 @@ static WN *Memset_MD_Array(WN *block, WN *tree, LOWER_ACTIONS actions)
      WN_Delete(current_wn);
 #ifdef KEY // bug 11360
      if (Action(LOWER_CALL))
-       lower_call(return_block, call, actions);
+       call = lower_call(return_block, call, actions);
 #endif
      WN_INSERT_BlockLast(return_block, call);
   }
@@ -15082,8 +15591,10 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
           }
           else length_wn = trip_count;
 
-	  if(Action(LOWER_ARRAY))
-	    length_wn = lower_expr(block, WN_COPY_Tree(length_wn), LOWER_ARRAY);
+	 // when 'trip_count' has operator of OPR_ARRAY, an assertion will 
+	 // be reported in coderep so lower 'trip_count' first 
+          if(Action(LOWER_ARRAY))
+               length_wn = lower_expr(block, WN_COPY_Tree(length_wn), LOWER_ARRAY);
 
           desc_idx = WN_ty(stmt); //initialization
 
@@ -15127,7 +15638,7 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
              WN_Delete(stmt);
 #ifdef KEY // bug 11360
 	     if (Action(LOWER_CALL))
-	       lower_call(return_block, call, actions);
+	       call = lower_call(return_block, call, actions);
 #endif
              WN_INSERT_BlockLast(return_block, call);
           }
@@ -15237,6 +15748,8 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
       else length_wn = trip_count;
 
+      if(Action(LOWER_ARRAY))
+	length_wn = lower_expr(block, WN_COPY_Tree(length_wn), LOWER_ARRAY);
 
       desc_idx = WN_ty(stmt); //initialization
       source_idx = WN_ty(stmt); //initialization
@@ -15281,7 +15794,7 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
       if (wn_intrinsic) {
 #ifdef KEY // bug 11360
 	 if (Action(LOWER_CALL))
-	   lower_call(return_block, wn_intrinsic, actions);
+	   wn_intrinsic = lower_call(return_block, wn_intrinsic, actions);
 #endif
          WN_INSERT_BlockLast(return_block, wn_intrinsic);
          WN_Delete(stmt); // Delete the statement that is transformed

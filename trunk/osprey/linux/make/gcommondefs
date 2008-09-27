@@ -70,18 +70,31 @@ COMMONTARGS= clobber clean rmtargets fluff tags
 # development systems to build the software.
 #
 
-AR	= ar
-AWK	= awk
-
 SIZEDEFS = -D_LONGLONG -D_MIPS_SZINT=32
+
+PTRSIZE = 32
+ifeq ($(BUILD_ABI), 64BIT)
+ PTRSIZE = 64
+endif
 ifeq ($(BUILD_ABI), I64BIT)
-  _MIPS_SZLONG := 64
-  SIZEDEFS += -D_MIPS_SZPTR=64 -D_MIPS_SZLONG=$(_MIPS_SZLONG) -D_LP64
+ PTRSIZE = 64
+endif
+ifeq ($(BUILD_ABI), W64BIT)
+ PTRSIZE = 64
+endif
+ifeq ($(PTRSIZE), 32)
+ SIZEDEFS += -D_MIPS_SZPTR=32 -D_MIPS_SZLONG=32
 else
-  SIZEDEFS += -D_MIPS_SZPTR=32 -D_MIPS_SZLONG=32
+ SIZEDEFS += -D_MIPS_SZPTR=64
+ ifeq ($(BUILD_ABI), W64BIT)
+  # W64BIT is win64, which has 64bit ptr but 32bit long
+  SIZEDEFS += -D_MIPS_SZLONG=32
+ else
+  SIZEDEFS += -D_MIPS_SZLONG=64 -D_LP64
+ endif
 endif
 
-ifeq ($(BUILD_OS), LINUX)
+ifneq ($(BUILD_ARCH), MIPS)
 ENDIAN = -D_MIPSEL
 else
 ENDIAN = -D_MIPSEB
@@ -100,6 +113,7 @@ ifeq ($(BUILD_COMPILER), GNU)
 
   ifeq ($(BUILD_TARGET), X8664)
     # only 64bit libraries set the BUILD_ARCH to X8664 
+    #
     CCNAME  += 
     C++NAME +=  
     F90 += -march=anyx86 
@@ -117,9 +131,24 @@ ifeq ($(BUILD_COMPILER), GNU)
     C++NAME +=  
     F90 += 
   endif
+  ifeq ($(BUILD_TARGET), NVISA)
+    ROOT_DIR := $(dir $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST)))/../../../..
+    ifneq ($(BUILD_OS), LINUX)
+      ifneq ($(BUILD_OS), DARWIN)
+        ifndef USE_NATIVE
+          USE_CYGWIN := 1
+        endif
+      endif
+    endif
+    include $(ROOT_DIR)/build/Platform.mk
+ 
+    CCNAME  = $(GCC_BIN)gcc
+    C++NAME = $(GCC_BIN)g++
+  endif
+
   AR      = ar
   F77 = $(F90)
-endif
+endif # GNU
 
 ifeq ($(BUILD_COMPILER), PSC)
   ASNAME = pathcc 
@@ -194,10 +223,25 @@ C++	= $(C++NAME) -D_SGI_SOURCE -D_LANGUAGE_C_PLUS_PLUS
 
 CC	= $(CCNAME) -D_SGI_SOURCE -D_LANGUAGE_C
 
-ifeq ($(BUILD_OS), LINUX)
 AS	+= -funsigned-char -D__GNU_BUG_WORKAROUND
 CC	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND
 C++	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND -D_NOTHREADS
+
+ifeq ($(BUILD_OS), MINGW)
+  CC	+= -mno-cygwin
+  C++	+= -mno-cygwin
+endif
+ifeq ($(BUILD_TARGET), NVISA)
+# FUTURE_SUPPORT is items that will not be enabled in current release
+  CC	+= $(GCC_OPTS) -DFUTURE_SUPPORT
+  C++	+= $(GXX_OPTS) -DFUTURE_SUPPORT
+ endif
+ ifeq ($(BUILD_ARCH), IA32)
+  ifeq ($(BUILD_ABI), I64BIT)
+   AS += -m64
+   CC += -m64
+   C++ += -m64
+  endif
 endif
 
 C++C	= $(C++)
@@ -207,17 +251,35 @@ FC	= $(F77)
 LEX	= flex
 LD	= $(CCNAME)
 
-RANLIB	= ranlib
-LINT	= glint
-NM	= nm
-SHELL	= sh
-SIZE	= size
-STRIP	= strip
-# TLINK	= lndir
-YACC	= yacc
+ifeq ($(BUILD_TARGET), NVISA)
+CSH	= $(TOOL_PREFIX)tcsh -f
+LINT	= $(TOOL_PREFIX)glint
+LN	= $(TOOL_PREFIX)ln
+MKDIR	= $(TOOL_PREFIX)mkdir
+NM	= $(TOOL_PREFIX)nm
+RANLIB	= $(TOOL_PREFIX)ranlib
+SIZE	= $(TOOL_PREFIX)size
+STRIP	= $(TOOL_PREFIX)strip
+YACC    = $(TOOL_PREFIX)yacc
+BISON   = $(TOOL_PREFIX)bison
+#BISON   = $(YACC)
 
+else
+CSH	= tcsh -f
+RANLIB  = ranlib
+LINT    = glint
+LN	= ln
+MKDIR	= mkdir
+NM      = nm
+SHELL   = sh
+SIZE    = size
+STRIP   = strip
+YACC    = yacc
+BISON   = bison
+endif # TARG_NVISA
+
+AR     = ar
 AWK	= awk
-ECHO	= echo
 M4	= m4
 
 #
@@ -339,7 +401,14 @@ GLDOPTS_64_M4 = -mips4 -64 $(LD_QUICKSTART_INFO) -nostdlib $(LSRCH_64_M4)
 #
 # LDFLAG layout
 #
-LDFLAGS	= $(LDOPTS) $(LDLIBS) $(ENDIAN)
+LDFLAGS=
+# must put library paths before LDLIBS
+ifeq ($(BUILD_COMPILER), GNU)
+ifeq ($(BUILD_TARGET), NVISA)
+ LDFLAGS += $(GCC_LINKOPTS)
+endif
+endif
+LDFLAGS	+= $(LDOPTS) $(LDLIBS) $(ENDIAN)
 LDOPTS	= $(VLDOPTS) $(LLDOPTS) $(GLDOPTS)
 LDLIBS	= $(VLDLIBS) $(LLDLIBS) $(GLDLIBS)
 
@@ -456,7 +525,7 @@ LEXMKDEPFLAGS=
 #
 # Include directory shorthands, used in CFLAGS and LDFLAGS components.
 #
-ifeq ($(BUILD_OS), LINUX)
+ifneq ($(BUILD_OS), IRIX)
 INCLDIR	= $(BUILD_AREA)/include
 else
 INCLDIR = $(ROOT)/usr/include
@@ -586,6 +655,9 @@ OBJECTS=$(ASOALL) $(CXXOALL) $(CFILES:.c=.o) $(EFILES:.e=.o) \
 #
 DIRT=$(GDIRT) $(VDIRT) $(LDIRT) $(XDIRT)
 GDIRT=Makedepend *.[douea] *.so *.so.[0-9] a.out core lex.yy.[co] y.tab.[cho] $(_FORCE) ar.tmp.*
+ifeq ($(BUILD_OS), MINGW)
+GDIRT += *.exe
+endif
 
 #
 #  This exitop should be used by those who are building the FTR database.

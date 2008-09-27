@@ -546,6 +546,62 @@ Set_ST_initv_in_other_st (ST* s)       { s->flags_ext |= ST_INITV_IN_OTHER_ST; }
 inline void
 Clear_ST_initv_in_other_st (ST* s)     { s->flags_ext &= ~ST_INITV_IN_OTHER_ST; }
 
+#ifdef TARG_SL
+inline BOOL
+ST_in_v1buf (const ST* s)     { return s->flags_ext & ST_IN_V1BUF; }
+inline void
+Set_ST_in_v1buf (ST *s)       { s->flags_ext |= ST_IN_V1BUF; }
+inline void
+Clear_ST_in_v1buf (ST *s)     { s->flags_ext &= ~ST_IN_V1BUF; }
+
+inline BOOL
+ST_in_v2buf (const ST* s)     { return s->flags_ext & ST_IN_V2BUF; }
+inline void
+Set_ST_in_v2buf (ST *s)       { s->flags_ext |= ST_IN_V2BUF; }
+inline void
+Clear_ST_in_v2buf (ST *s)     { s->flags_ext &= ~ST_IN_V2BUF; }
+
+inline BOOL
+ST_in_v4buf (const ST* s)     { return s->flags_ext & ST_IN_V4BUF; }
+inline void
+Set_ST_in_v4buf (ST *s)       { s->flags_ext |= ST_IN_V4BUF; }
+inline void
+Clear_ST_in_v4buf (ST *s)     { s->flags_ext &= ~ST_IN_V4BUF; }
+
+inline BOOL
+ST_in_vbuf (const ST *s) { 
+    return (ST_in_v1buf(s) || ST_in_v2buf(s) || ST_in_v4buf(s));
+}
+
+inline BOOL
+ST_in_sdram (const ST* s)     { return s->flags_ext & ST_IN_SDRAM; }
+inline void
+Set_ST_in_sdram (ST *s)       { s->flags_ext |= ST_IN_SDRAM; }
+inline void
+Clear_ST_in_sdram (ST *s)     { s->flags_ext &= ~ST_IN_SDRAM; }
+
+inline BOOL
+ST_in_sbuf (const ST* s)     { return s->flags_ext & ST_IN_SBUF; }
+inline void
+Set_ST_in_sbuf (ST *s)       { s->flags_ext |= ST_IN_SBUF; }
+inline void
+Clear_ST_in_sbuf (ST *s)     { s->flags_ext &= ~ST_IN_SBUF; }
+
+inline BOOL	
+ST_is_vbuf_ofst (const ST* s)     { return s->flags_ext & ST_IS_VBUF_OFFSET; }
+inline void
+Set_ST_is_vbuf_ofst (ST *s)       { s->flags_ext |= ST_IS_VBUF_OFFSET; }
+inline void
+Clear_ST_is_vbuf_ofst (ST *s)     { s->flags_ext &= ~ST_IS_VBUF_OFFSET; }
+
+inline BOOL
+ST_is_sbuf_ofst (const ST* s)     { return s->flags_ext & ST_IS_SBUF_OFFSET; }
+inline void
+Set_ST_is_sbuf_ofst (ST *s)       { s->flags_ext |= ST_IS_SBUF_OFFSET; }
+inline void
+Clear_ST_is_sbuf_ofst (ST *s)     { s->flags_ext &= ~ST_IS_SBUF_OFFSET; }
+#endif // TARG_SL
+
 inline BOOL
 ST_is_inintialized_in_f90 (const ST* s)     { return s->flags_ext & ST_IS_INITIALIZED_IN_F90; }
 inline void
@@ -556,32 +612,70 @@ Clear_ST_is_inintialized_in_f90 (ST *s)     { s->flags_ext &= ~ST_IS_INITIALIZED
 inline BOOL
 ST_is_method_func (const ST* s)	{ return s->flags_ext & ST_IS_METHOD_FUNC; }
 inline void
-Set_ST_is_method_func (ST* s) { s->flags_ext |= ST_IS_METHOD_FUNC; }
+Set_ST_is_method_func (ST* s)   { s->flags_ext |= ST_IS_METHOD_FUNC; }
 inline void
 Reset_ST_is_method_func (ST* s) { s->flags_ext &= ~ST_IS_METHOD_FUNC; }
 
 inline BOOL
-ST_is_this_ptr (const ST* s) { return s->flags_ext & ST_IS_THIS_PTR; }
+ST_is_this_ptr (const ST* s)  { return s->flags_ext & ST_IS_THIS_PTR; }
 inline void
-Set_ST_is_this_ptr (ST* s)  { s->flags_ext |= ST_IS_THIS_PTR; }
+Set_ST_is_this_ptr (ST* s)    { s->flags_ext |= ST_IS_THIS_PTR; }
 inline void
 Reset_ST_is_this_ptr (ST* s)  { s->flags_ext &= ~ST_IS_THIS_PTR; }
 
+#ifdef TARG_NVISA
 inline BOOL
-ST_is_pure_vfunc (const ST* s) { return s->flags_ext & ST_IS_PURE_VFUNC; }
+ST_in_global_mem (const ST* s)     { return (s->memory_space == MEMORY_GLOBAL); }
 inline void
-Set_ST_is_pure_vfunc (ST* s)  { s->flags_ext |= ST_IS_PURE_VFUNC; }
+Set_ST_in_global_mem (ST *s)       { s->memory_space = MEMORY_GLOBAL; }
+
+inline BOOL
+ST_in_local_mem (const ST* s)     { return (s->memory_space == MEMORY_LOCAL); }
+inline void
+Set_ST_in_local_mem (ST *s)       { s->memory_space = MEMORY_LOCAL; }
+
+inline BOOL
+ST_in_shared_mem (const ST* s)     { return (s->memory_space == MEMORY_SHARED); }
+inline void
+Set_ST_in_shared_mem (ST *s)       { s->memory_space = MEMORY_SHARED; }
+
+inline BOOL
+ST_in_constant_mem (const ST* s)     { return (s->memory_space == MEMORY_CONSTANT); }
+inline void
+Set_ST_in_constant_mem (ST *s)       { s->memory_space = MEMORY_CONSTANT; }
+
+inline BOOL
+ST_in_texture_mem (const ST* s)     { return (s->memory_space == MEMORY_TEXTURE); }
+inline void
+Set_ST_in_texture_mem (ST *s)       { s->memory_space = MEMORY_TEXTURE; }
+
+inline BOOL
+ST_in_param_mem (const ST* s)     { return (s->memory_space == MEMORY_PARAM); }
+inline void
+Set_ST_in_param_mem (ST *s)       { s->memory_space = MEMORY_PARAM; }
+#endif /* TARG_NVISA */
+
+inline BOOL
+ST_is_pure_vfunc (const ST* s)  { return s->flags_ext & ST_IS_PURE_VFUNC; }
+inline void
+Set_ST_is_pure_vfunc (ST* s)    { s->flags_ext |= ST_IS_PURE_VFUNC; }
 inline void
 Reset_ST_is_pure_vfunc (ST* s)  { s->flags_ext &= ~ST_IS_PURE_VFUNC; }
 
 inline BOOL
+ST_is_thread_local (const ST* s) { return s->flags_ext & ST_IS_THREAD_LOCAL;}
+inline void
+Set_ST_is_thread_local (ST* s)	 { s->flags_ext |= ST_IS_THREAD_LOCAL; }
+inline void
+Reset_ST_is_thread_local (ST* s) { s->flags_ext &= ~ST_IS_THREAD_LOCAL; }
+inline BOOL
 ST_is_thread_local (const ST& s) { return s.flags_ext & ST_IS_THREAD_LOCAL; }
 inline void
-Set_ST_is_thread_local (ST& s) { s.flags_ext |= ST_IS_THREAD_LOCAL; }
+Set_ST_is_thread_local (ST& s)   { s.flags_ext |= ST_IS_THREAD_LOCAL; }
 inline void
 Reset_ST_is_thread_local (ST& s) { s.flags_ext &= ~ST_IS_THREAD_LOCAL; }
 inline void
-Clear_ST_is_thread_local (ST* s)        { s->flags_ext &= ~ST_IS_THREAD_LOCAL; }
+Clear_ST_is_thread_local (ST* s) { s->flags_ext &= ~ST_IS_THREAD_LOCAL; }
 #endif /* KEY */
 
 //----------------------------------------------------------------------
@@ -608,10 +702,27 @@ PU_lexical_level (const PU& pu)		{ return pu.lexical_level; }
 inline void
 Set_PU_lexical_level (PU& pu, SYMTAB_IDX l) { pu.lexical_level = l; }
 
+inline INITO_IDX
+PU_misc_info (const PU& pu)		{ return pu.misc; }
+inline void
+Set_PU_misc_info (PU& pu, INITO_IDX i)	{ pu.misc = i; }
+
 inline TY_IDX 
 PU_base_class (const PU& pu) { return pu.base_class; } 
 inline void 
 Set_PU_base_class (PU& pu, TY_IDX ty_idx) { pu.base_class = ty_idx; } 
+
+#ifdef TARG_NVISA
+inline SYMTAB_IDX
+PU_thread_limit(const PU& pu)		{ return pu.thread_limit; }
+inline void
+Set_PU_thread_limit (PU& pu, int l) { pu.thread_limit = l; }
+
+inline SYMTAB_IDX
+PU_block_limit(const PU& pu)		{ return pu.block_limit; }
+inline void
+Set_PU_block_limit (PU& pu, int l) { pu.block_limit = l; }
+#endif /* TARG_NVISA */
 
 //----------------------------------------------------------------------
 // PU flags
@@ -898,6 +1009,13 @@ inline void
 Clear_PU_is_operator (PU& pu)    { pu.flags &= ~PU_IS_OPERATOR; }
 
 inline BOOL
+PU_is_malloc (const PU& pu)			{ return (pu.flags & PU_IS_MALLOC) != 0; } 
+inline void
+Set_PU_is_malloc (PU& pu)			{ pu.flags |= PU_IS_MALLOC; }
+inline void
+Clear_PU_is_malloc (PU& pu)			{ pu.flags &= ~PU_IS_MALLOC; }
+
+inline BOOL
 PU_has_attr_malloc (const PU& pu)      { return (pu.flags & PU_HAS_ATTR_MALLOC) != 0; } 
 inline void
 Set_PU_has_attr_malloc (PU& pu)        { pu.flags |= PU_HAS_ATTR_MALLOC; }
@@ -931,6 +1049,21 @@ inline void
 Set_PU_no_instrument (PU& pu)           { pu.flags |= PU_NO_INSTRUMENT; }
 inline void
 Clear_PU_no_instrument (PU& pu)         { pu.flags &= ~PU_NO_INSTRUMENT; }
+
+inline BOOL
+PU_need_trampoline (const PU& pu)	{ return (pu.flags & PU_NEED_TRAMPOLINE) != 0; }
+inline void
+Set_PU_need_trampoline (PU& pu)		{ pu.flags |= PU_NEED_TRAMPOLINE; }
+
+inline BOOL
+PU_has_nonlocal_goto_label (const PU& pu) { return (pu.flags & PU_HAS_NONLOCAL_GOTO_LABEL) != 0; }
+inline void
+Set_PU_has_nonlocal_goto_label (PU& pu)	{ pu.flags |= PU_HAS_NONLOCAL_GOTO_LABEL; }
+
+inline BOOL
+PU_has_goto_outer_block (const PU& pu) { return (pu.flags & PU_HAS_GOTO_OUTER_BLOCK) != 0; }
+inline void
+Set_PU_has_goto_outer_block (PU& pu)	{ pu.flags |= PU_HAS_GOTO_OUTER_BLOCK; }
 #endif
 
 #ifdef TARG_X8664
@@ -941,6 +1074,13 @@ Set_PU_ff2c_abi (PU& pu)		{ pu.flags |= PU_FF2C_ABI; }
 inline void
 Clear_PU_ff2c_abi (PU& pu)		{ pu.flags &= ~PU_FF2C_ABI; }
 #endif
+
+inline BOOL
+PU_is_cdecl (const PU_IDX pui)		{ return (Pu_Table[pui].flags & PU_IS_CDECL) != 0; }
+inline void
+Set_PU_is_cdecl (PU_IDX pui)		{ Pu_Table[pui].flags |= PU_IS_CDECL; }
+inline void
+Clear_PU_is_cdecl (PU_IDX pui)		{ Pu_Table[pui].flags &= ~PU_IS_CDECL; }
 
 inline UINT64
 PU_src_lang (const PU& pu)		{ return pu.src_lang; }
@@ -1173,6 +1313,13 @@ Set_TY_ptr_as_array (TY_IDX tyi)    { Set_TY_ptr_as_array(Ty_Table[tyi]); }
 inline void
 Clear_TY_ptr_as_array (TY_IDX tyi)  { Clear_TY_ptr_as_array(Ty_Table[tyi]); }
 
+#ifdef TARG_NVISA
+inline BOOL
+TY_can_be_vector (const TY_IDX tyi)	{ return (TY_flags(Ty_Table[tyi]) & TY_CAN_BE_VECTOR); }
+inline void
+Set_TY_can_be_vector (TY_IDX tyi)	{ Set_TY_flags(Ty_Table[tyi], TY_flags(Ty_Table[tyi]) | TY_CAN_BE_VECTOR); }
+#endif
+
 inline BOOL
 TY_anonymous (const TY& ty)		{ return ty.flags & TY_ANONYMOUS; }
 inline void
@@ -1289,6 +1436,19 @@ inline void
 Set_TY_is_incomplete (TY_IDX tyi)    { Set_TY_is_incomplete(Ty_Table[tyi]); }
 inline void
 Clear_TY_is_incomplete (TY_IDX tyi)  { Clear_TY_is_incomplete(Ty_Table[tyi]); }
+
+inline BOOL
+TY_no_split (const TY& ty)		{ return ty.flags & TY_NO_SPLIT; }
+inline void
+Set_TY_no_split (TY& ty)		{ ty.flags |= TY_NO_SPLIT; }
+inline void
+Clear_TY_no_split (TY& ty)		{ ty.flags &= ~TY_NO_SPLIT; }
+inline BOOL
+TY_no_split (const TY_IDX tyi)	{ return TY_no_split(Ty_Table[tyi]); }
+inline void
+Set_TY_no_split (TY_IDX tyi)    { Set_TY_no_split(Ty_Table[tyi]); }
+inline void
+Clear_TY_no_split (TY_IDX tyi)  { Clear_TY_no_split(Ty_Table[tyi]); }
 #endif
 
 // TY pu_flags
@@ -1336,6 +1496,58 @@ Clear_TY_has_prototype (TY_IDX tyi) {
 	Ty_Table[tyi].Clear_pu_flag (TY_HAS_PROTOTYPE);
 }
 
+#ifdef TARG_X8664
+inline BOOL
+TY_has_sseregister_parm (const TY& ty) {
+	return ty.Pu_flags () & TY_HAS_SSEREG_PARM;
+}
+inline void
+Set_TY_has_sseregister_parm (TY& ty) {
+	ty.Set_pu_flag (TY_HAS_SSEREG_PARM);
+}
+inline BOOL
+TY_has_sseregister_parm (const TY_IDX tyi) {
+	return TY_has_sseregister_parm(Ty_Table[tyi]);
+}
+inline void
+Set_TY_has_sseregister_parm (TY_IDX tyi) {
+	Set_TY_has_sseregister_parm(Ty_Table[tyi]);
+}
+
+inline INT
+TY_register_parm (const TY& ty)
+{
+	if ((ty.Pu_flags() & TY_HAS_1_REG_PARM) == 0 &&
+	    (ty.Pu_flags() & TY_HAS_2_REG_PARM) == 0)
+		return 0;
+	if ((ty.Pu_flags() & TY_HAS_1_REG_PARM) &&
+	    (ty.Pu_flags() & TY_HAS_2_REG_PARM))
+		return 3;
+	if (ty.Pu_flags() & TY_HAS_1_REG_PARM)
+		return 1;
+	if (ty.Pu_flags() & TY_HAS_2_REG_PARM)
+		return 2;
+}
+
+inline void
+Set_TY_register_parm (TY& ty, INT num)
+{
+	if (num == 0) return;
+	if (num == 1) ty.Set_pu_flag (TY_HAS_1_REG_PARM);
+	else if (num == 2) ty.Set_pu_flag (TY_HAS_2_REG_PARM);
+	else if (num == 3) ty.Set_pu_flag (TY_HAS_3_REG_PARM);
+}
+
+inline INT
+TY_register_parm (const TY_IDX tyi) {
+	return TY_register_parm (Ty_Table[tyi]);
+}
+
+inline void
+Set_TY_register_parm (TY_IDX tyi, INT num) {
+	Set_TY_register_parm (Ty_Table[tyi], num);
+}
+#endif
 
 //----------------------------------------------------------------------
 // access functions for FLD
@@ -1454,6 +1666,12 @@ TYLIST_type (TYLIST tylist)		{ return tylist; }
 inline void
 Set_TYLIST_type (TYLIST& tylist, TY_IDX ty) { tylist = ty; }
 
+// TYLIST_type doesn't do anything?
+// define TYLIST_ty to access indexed value
+inline TY_IDX
+TYLIST_ty (TYLIST_IDX tli)		{ return Tylist_Table[tli]; }
+inline void
+Set_TYLIST_ty (TYLIST_IDX tli, TY_IDX ty) { Tylist_Table[tli] = ty; }
 
 //----------------------------------------------------------------------
 // access functions for ARB
@@ -1705,8 +1923,6 @@ INITO_TABLE::operator() (SYMTAB_IDX level, UINT32 index) {
     Is_True (Scope_tab[level].inito_tab != NULL, ("Uninitialized INITO_TAB"));
     return Scope_tab[level].inito_tab->Entry (index);
 }
-#endif
-
 inline LABEL&
 LABEL_TABLE::operator[] (LABEL_IDX idx) {
     return Scope_tab[CURRENT_SYMTAB].label_tab->Entry (idx);
@@ -1716,6 +1932,7 @@ inline LABEL&
 LABEL_TABLE::operator() (SYMTAB_IDX level, LABEL_IDX idx) {
     return Scope_tab[level].label_tab->Entry (idx);
 }
+#endif
 
 inline PREG&
 PREG_TABLE::operator[] (PREG_IDX idx) {

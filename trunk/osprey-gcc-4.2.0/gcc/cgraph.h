@@ -321,6 +321,9 @@ struct cgraph_node *cgraph_function_versioning (struct cgraph_node *,
 						varray_type);
 void cgraph_analyze_function (struct cgraph_node *);
 struct cgraph_node *save_inline_function_body (struct cgraph_node *);
+#ifdef KEY
+void cgraph_output_pending_asms (void);
+#endif
 
 /* In ipa.c  */
 bool cgraph_remove_unreachable_nodes (bool, FILE *);

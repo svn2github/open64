@@ -77,10 +77,10 @@
  * ====================================================================
  *
  * Module: opt_goto.cxx  
- * $Revision$
- * $Date$
- * $Author$
- * $Source$
+ * $Revision: 1.21 $
+ * $Date: 2000/04/06 01:58:39 $
+ * $Author: mtibuild $
+ * $Source: /isms/cmplrs.src/osprey1.0/be/com/RCS/opt_goto.cxx,v $
  *
  * Revision history:
  *  1-31-95 - Original Version
@@ -108,7 +108,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_goto_CXX "opt_goto.cxx"
-static char *rcs_id = opt_goto_CXX" $Revision$";
+static char *rcs_id = opt_goto_CXX" $Revision: 1.21 $";
 #endif /* _KEEP_RCS_ID */
 
 

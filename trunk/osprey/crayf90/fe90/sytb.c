@@ -54,7 +54,9 @@ static char USMID[] = "\n@(#)5.0_pl/sources/sytb.c	5.25	10/27/99 16:59:36\n";
 # ifdef _ARITH_H
 # include "arith.h"
 # endif
-
+#ifdef KEY /* Mac port */
+#include <math.h> /* For "pow" */
+#endif /* KEY Mac port */
 # include "globals.m"
 # include "tokens.m"
 # include "sytb.m"  
@@ -1695,7 +1697,7 @@ int ntr_const_tbl (int		 type_idx,
 #if (defined(_HOST_OS_UNICOS)   &&  defined(_TARGET_OS_UNICOS))   ||           \
     (defined(_HOST_OS_MAX)      &&  defined(_TARGET_OS_MAX))      ||           \
     (defined(_HOST_OS_SOLARIS)  &&  defined(_TARGET_OS_SOLARIS))  ||           \
-    ((defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))      &&  (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX)))
+    ((defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))      &&  (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)))
 
    /* ASSUMPTION:  long and float occupy the same number of bits on PVP and   */
    /*              Solaris machines.  					      */
@@ -3398,8 +3400,13 @@ boolean	compare_derived_types(int	dt_idx1,
            !ATT_PRIVATE_CPNT(dt_idx2) &&
            (!AT_PRIVATE(dt_idx1) || AT_USE_ASSOCIATED(dt_idx1)) &&
            (!AT_PRIVATE(dt_idx2) || AT_USE_ASSOCIATED(dt_idx1)) &&
+#ifdef KEY /* Bug 14150 */
+	   ((ATT_SEQUENCE_SET(dt_idx1) && ATT_SEQUENCE_SET(dt_idx2)) ||
+	    (AT_BIND_ATTR(dt_idx1) && AT_BIND_ATTR(dt_idx2))) &&
+#else /* KEY Bug 14150 */
             ATT_SEQUENCE_SET(dt_idx1) &&
             ATT_SEQUENCE_SET(dt_idx2) &&
+#endif /* KEY Bug 14150 */
             ATT_NUM_CPNTS(dt_idx1) == ATT_NUM_CPNTS(dt_idx2));
 
    if (!same) {
@@ -4000,7 +4007,7 @@ size_offset_type	stor_bit_size_of(int		 attr_idx,
    size_offset_type	result;
    int			type_idx;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    long64		max_size;
 # endif
 
@@ -4148,7 +4155,7 @@ size_offset_type	stor_bit_size_of(int		 attr_idx,
                issue_msg		= FALSE;
                max_storage_size.fld	= NO_Tbl_Idx;
 
-#              if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#              if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
                   max_storage_size.type_idx	= Integer_8;
 
                   if (cmd_line_flags.s_pointer8) {
@@ -4185,7 +4192,7 @@ size_offset_type	stor_bit_size_of(int		 attr_idx,
 
                if (issue_msg) {
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
                   if (cmd_line_flags.s_pointer8) {
                      constant	= max_storage_size;
@@ -4919,7 +4926,7 @@ int	compare_names(long	*id1,
 
    TRACE (Func_Entry, "compare_names", NULL);
 
-# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 #  pragma _CRI shortloop
 # endif
 
@@ -5399,7 +5406,7 @@ int srch_linked_sn(char		*name,
       if (SN_NAME_LEN(*sn_idx) == length) {
          id1 = (long *) &(name_pool[SN_NAME_IDX(*sn_idx)]);
 
-# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 #        pragma _CRI shortloop
 # endif
 
@@ -5590,7 +5597,7 @@ boolean	validate_kind(basic_type_type	 type,
 # if defined(_TARGET_OS_MAX)
             PRINTMSG(line, 543, Warning, column, 16, 8);
             *linear_type = Real_8;
-# elif defined(_TARGET_OS_LINUX)
+# elif defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)
             PRINTMSG(line, 541, Error, column);
 # endif
             break;
@@ -5619,7 +5626,7 @@ boolean	validate_kind(basic_type_type	 type,
 # if defined(_TARGET_OS_MAX)
             PRINTMSG(line, 543, Warning, column, 16, 8);
             *linear_type = Complex_8;
-# elif defined(_TARGET_OS_LINUX)
+# elif defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)
             PRINTMSG(line, 541, Error, column);
 # endif
             break;
@@ -5780,7 +5787,7 @@ void assign_offset(int	attr_idx)
 
    if (ATD_IM_A_DOPE(attr_idx)) {
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
       align_bit_length(&offset, storage_bit_size_tbl[CRI_Ptr_8]);
 
       if (ATD_CLASS(attr_idx) == Struct_Component) {
@@ -5868,7 +5875,7 @@ void assign_offset(int	attr_idx)
 
 # endif
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
 # if 0
    else if (cmd_line_flags.align8) {
@@ -5956,7 +5963,7 @@ void assign_offset(int	attr_idx)
                                           result.constant);
             }
 
-# if ! (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if ! (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
             /* -a dalign is always on for IRIX and there is no way to shut */
             /* it off, so we do not need to issue this warning for IRIX.   */
@@ -6111,7 +6118,7 @@ void assign_offset(int	attr_idx)
 
 # endif  /* DALIGN_TEST_CONDTION */
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
    else if (TYP_TYPE(type_idx) == Structure &&
             ATT_ALIGNMENT(TYP_IDX(type_idx)) > WORD_ALIGN) {
@@ -6214,6 +6221,28 @@ void assign_offset(int	attr_idx)
    return;
 
 }  /* assign_offset */
+#ifdef KEY /* Bug 14150 */
+/*
+ * Like assign_offset(), but uses C alignment rules (which differ from Fortran
+ * alignment rules for X8664 -m32)
+ *
+ * attr_idx	AT_Tbl_Idx for Structure_Componeent or for Data_Obj in common
+ * bind_c	TRUE if the structure or common block has the bind(c) attr
+ */
+void
+assign_bind_c_offset(int attr_idx, boolean bind_c) {
+  boolean save_align32 = cmd_line_flags.align32;
+  boolean save_align64 = cmd_line_flags.align64;
+  if (is_x8664_n32() && bind_c) {
+    /* Not pretty, but apt to be bug-free */
+    cmd_line_flags.align32 = TRUE;
+    cmd_line_flags.align64 = FALSE;
+  }
+  assign_offset(attr_idx);
+  cmd_line_flags.align32 = save_align32;
+  cmd_line_flags.align64 = save_align64;
+}
+#endif /* KEY Bug 14150 */
 
 /******************************************************************************\
 |*									      *|
@@ -6602,6 +6631,44 @@ void	ntr_global_name_tbl(int		attr_idx,
 
 }  /* ntr_global_name_tbl */
 
+#ifdef KEY /* Bug 14150 */
+/*
+ * Format source file name and line for insertion in an error message
+ * def_line	global line number
+ * return 	dynamically allocated string containing formatted file name
+ *		and line; caller should free this
+ */
+char *
+file_and_line(int def_line) {
+  int gl_idx;
+  uint act_file_line;
+  GLOBAL_LINE_TO_FILE_LINE(def_line, gl_idx, act_file_line);
+  const char *file_name = GL_FILE_NAME_PTR(gl_idx);
+  char *alloc_str = malloc(strlen(file_name) + 32);
+  sprintf(alloc_str, "%d (%s)", act_file_line, file_name);
+  return alloc_str;
+  }
+
+/*
+ * Given the external name of a program unit or common block, add it to
+ * the global_attr_tbl entry as the binding label
+ * ga_idx	Index into global_attr_tbl
+ * name		ATP_EXT_NAME_PTR or SB_EXT_NAME_PTR
+ * name_len	ATP_EXT_NAME_LEN or SB_EXT_NAME_LEN
+ */
+static void
+make_ga_binding_label(int ga_idx, const char *name, int name_len) {
+  if (GA_BIND_ATTR(ga_idx)) {
+    char *result = memcpy(malloc(name_len + 1), name, name_len);
+    result[name_len] = 0;
+    GA_BINDING_LABEL(ga_idx) = result;
+  }
+  else {
+    GA_BINDING_LABEL(ga_idx) = 0;
+  }
+}
+#endif /* KEY Bug 14150 */
+
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
@@ -6678,6 +6745,9 @@ void	fill_in_global_attr_ntry(int	ga_idx,
 
       GAD_CLASS(ga_idx)		= ATD_CLASS(attr_idx);
       GAD_POINTER(ga_idx)	= ATD_POINTER(attr_idx);
+#ifdef KEY /* Bug 14110 */
+      GAD_VOLATILE(ga_idx)	= ATD_VOLATILE(attr_idx);
+#endif /* KEY Bug 14110 */
       GAD_TARGET(ga_idx)	= ATD_TARGET(attr_idx);
 
       if (ATD_ARRAY_IDX(attr_idx) != NULL_IDX) {
@@ -6705,6 +6775,9 @@ void	fill_in_global_attr_ntry(int	ga_idx,
          if (GAD_ASSUMED_SHAPE_ARRAY(ga_idx) ||
              GA_OPTIONAL(ga_idx) ||
              GAD_POINTER(ga_idx) ||
+#ifdef KEY /* Bug 14110 */
+             GAD_VOLATILE(ga_idx) ||
+#endif /* KEY Bug 14110 */
              GAD_TARGET(ga_idx)) {
             GAP_NEEDS_EXPL_ITRFC(ga_pgm_idx) = TRUE;
          }
@@ -6716,6 +6789,11 @@ void	fill_in_global_attr_ntry(int	ga_idx,
 
          if (GAD_RANK(ga_idx) != 0 || 
              GAD_POINTER(ga_idx) ||
+#ifdef KEY /* Bug 14110 */
+             /* Standard doesn't forbid volatile on fcn result, which is
+	      * strange, but also doesn't say that volatile fcn result
+	      * requires explicit interface, which is fortunate. */
+#endif /* KEY Bug 14110 */
              (GT_TYPE(GAD_TYPE_IDX(ga_idx)) == Character &&
               GT_CHAR_CLASS(GAD_TYPE_IDX(ga_idx)) == Var_Len_Char)) {
             GAP_NEEDS_EXPL_ITRFC(ga_pgm_idx) = TRUE;
@@ -6764,6 +6842,14 @@ void	fill_in_global_attr_ntry(int	ga_idx,
       GAP_RECURSIVE(ga_idx)		= ATP_RECURSIVE(attr_idx);
       GAP_VFUNCTION(ga_idx)		= ATP_VFUNCTION(attr_idx);
       ATP_GLOBAL_ATTR_IDX(attr_idx)	= ga_idx;
+#ifdef KEY /* Bug 14150 */
+      GA_BIND_ATTR(ga_idx)		= AT_BIND_ATTR(attr_idx);
+      if (GA_BIND_ATTR(ga_idx)) {
+         GAP_NEEDS_EXPL_ITRFC(ga_idx)	= TRUE;
+      }
+      make_ga_binding_label(ga_idx, ATP_EXT_NAME_PTR(attr_idx),
+	ATP_EXT_NAME_LEN(attr_idx));
+#endif /* KEY Bug 14150 */
 
       if (GAP_ELEMENTAL(ga_idx)) {
          GAP_NEEDS_EXPL_ITRFC(ga_idx)	= TRUE;
@@ -6899,6 +6985,12 @@ int	ntr_global_attr_tbl(int		attr_idx,
    CLEAR_TBL_NTRY(global_attr_tbl, global_attr_tbl_idx);
    ga_idx		= global_attr_tbl_idx;
 
+#ifdef KEY /* Bug 14150 */
+   /* Set these right away so that error messages can use them */
+   GA_DEF_LINE(ga_idx)		= AT_DEF_LINE(attr_idx);
+   GA_DEF_COLUMN(ga_idx)	= AT_DEF_COLUMN(attr_idx);	
+#endif /* KEY Bug 14150 */
+
    if (name_idx == NULL_IDX) {
 
       if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit &&
@@ -6948,8 +7040,10 @@ int	ntr_global_attr_tbl(int		attr_idx,
       }
    }
 
+#if ! defined(KEY) /* Bug 14150 */
    GA_DEF_LINE(ga_idx)		= AT_DEF_LINE(attr_idx);
    GA_DEF_COLUMN(ga_idx)	= AT_DEF_COLUMN(attr_idx);	
+#endif /* KEY Bug 14150 */
    GA_OBJ_CLASS(ga_idx)		= AT_OBJ_CLASS(attr_idx);
    GA_OPTIONAL(ga_idx)		= AT_OPTIONAL(attr_idx);
    GA_COMPILER_GEND(ga_idx)	= AT_COMPILER_GEND(attr_idx);
@@ -7004,6 +7098,11 @@ int	ntr_common_in_global_attr_tbl(int	sb_idx,
    GAC_SECTION_GP(ga_idx)	= SB_SECTION_GP(sb_idx);
    GAC_SECTION_NON_GP(ga_idx)	= SB_SECTION_NON_GP(sb_idx);
    GAC_CACHE_ALIGN(ga_idx)	= SB_CACHE_ALIGN(sb_idx);
+#ifdef KEY /* Bug 14150 */
+   GA_BIND_ATTR(ga_idx)		= SB_BIND_ATTR(sb_idx);
+   make_ga_binding_label(ga_idx, SB_EXT_NAME_PTR(sb_idx),
+     SB_EXT_NAME_LEN(sb_idx));
+#endif /* KEY Bug 14150 */
 
    /* Need to keep the common entries. */
 
@@ -7900,6 +7999,13 @@ void assign_storage_blk(int         attr_idx)
 
    TRACE (Func_Entry, "assign_storage_blk", NULL);
 
+#ifdef KEY /* Bug 14150 */
+   /* Don't overwrite value if already set by set_binding_label() */
+   if (ATD_STOR_BLK_IDX(attr_idx)) {
+     return;
+   }
+#endif /* KEY Bug 14150 */
+
    pgm_attr_idx		= SCP_ATTR_IDX(curr_scp_idx);
 #ifdef KEY /* Bug 6845 */
    int typ_idx = TYP_IDX(ATD_TYPE_IDX(attr_idx));
@@ -8729,6 +8835,94 @@ int decorate(char *identifier, int name_len, int underscores)
    return name_len;
 }
 #endif /* KEY Bug 6204 */
+#ifdef KEY /* Bug 14150 */
+/*
+ * Implement BIND(C, NAME=X)
+ * fld			AT_Tbl_Idx or SB_Tbl_Idx
+ * idx			Index of program, data object, or storage block
+ * new_binding_label	Binding label to use for that entity
+ */
+void set_binding_label(fld_type fld, int idx, token_type *new_binding_label) {
+  TRACE (Func_Entry, "set_binding_label", NULL);
+  int sb = (fld == SB_Tbl_Idx);
+  char *name = 0;
+  int previous = 0;
+  if (sb) {
+    if (SB_BIND_ATTR(idx)) {
+      name = SB_NAME_PTR(idx);
+      previous = SB_DEF_LINE(idx);
+    }
+    SB_BIND_ATTR(idx) = TRUE;
+  }
+  else {
+    if (AT_BIND_ATTR(idx)) {
+      name = AT_OBJ_NAME_PTR(idx);
+      previous = AT_DEF_LINE(idx);
+    }
+    AT_BIND_ATTR(idx) = TRUE;
+  }
+  if (previous) {
+    PRINTMSG(TOKEN_LINE(*new_binding_label), 1696, Error,
+      TOKEN_COLUMN(*new_binding_label), name, previous);
+  }
+
+  int len = 0;
+  id_str_type id;
+
+  /* The BIND(C) attribute had the optional NAME= clause */
+  if (BIND_SPECIFIES_NAME(*new_binding_label)) {
+    len = TOKEN_LEN(*new_binding_label);
+    /* Trim leading/trailing blanks but preserve case */
+    char *nonblank_p = TOKEN_STR(*new_binding_label);
+    for (; len > 0 && *nonblank_p == ' '; len -= 1, nonblank_p += 1) { }
+    for (; len > 0 && nonblank_p[len - 1] == ' '; len -= 1) { }
+    /* If NAME= appears but is empty, no binding label */
+    if (!len) {
+      return;
+    }
+    CREATE_ID(id, nonblank_p, len);
+  }
+
+  /* Optional NAME= clause missing, so variables and non-dummy procedures
+   * derive the binding label from the identifier */
+  else if (AT_OBJ_CLASS(idx) != Derived_Type &&
+    (AT_OBJ_CLASS(idx) != Pgm_Unit || ATP_PROC(idx) != Dummy_Proc)) {
+    /* Explicitly set the external name to match the lowercase internal name;
+     * otherwise, underscoring would take place */
+    len = sb ? SB_NAME_LEN(idx) : AT_NAME_LEN(idx);
+    CREATE_ID(id, (sb ? SB_NAME_PTR(idx) : AT_OBJ_NAME_PTR(idx)), len);
+    for (int j = 0; j < len; j += 1) {
+      id.string[j] = tolower(id.string[j]);
+    }
+  }
+
+  int name_idx;
+  NTR_NAME_POOL(id.words, len, name_idx);
+  if (sb) {
+    SB_EXT_NAME_IDX(idx) = name_idx;
+    SB_EXT_NAME_LEN(idx) = len;
+  }
+  else if (AT_OBJ_CLASS(idx) == Pgm_Unit) {
+    ATP_EXT_NAME_IDX(idx) = name_idx;
+    ATP_EXT_NAME_LEN(idx) = len;
+  }
+  else if (AT_OBJ_CLASS(idx) == Data_Obj) {
+    int sb_idx = ATD_STOR_BLK_IDX(idx) = ntr_stor_blk_tbl(id.string, len,
+      AT_DEF_LINE(idx), AT_DEF_COLUMN(idx), Static);
+    SB_FIRST_ATTR_IDX(sb_idx) = idx;
+    SB_MODULE(sb_idx) = TRUE;
+    SB_EXT_NAME_IDX(sb_idx) = SB_NAME_IDX(sb_idx); /* Defeat underscoring */
+    SB_EXT_NAME_LEN(sb_idx) = SB_NAME_LEN(sb_idx);
+  }
+#ifdef _DEBUG
+  else {
+    /* Not exactly what this procedure was meant for, but good enough */
+    sytb_var_error("binding label", idx);
+  }
+#endif /* _DEBUG */
+  TRACE (Func_Exit, "set_binding_label", NULL);
+}
+#endif /* KEY Bug 14150 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -8744,7 +8938,7 @@ int decorate(char *identifier, int name_len, int underscores)
 |*      NONE                                                                  *|
 |*                                                                            *|
 \******************************************************************************/
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
 void	make_external_name(int	attr_idx,
 			   int	name_idx,

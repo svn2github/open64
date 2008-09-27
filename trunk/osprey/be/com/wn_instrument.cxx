@@ -12,10 +12,10 @@
 // ====================================================================
 //
 // Module: wn_instrument.cxx
-// $Revision: 1.28 $
-// $Date: 05/12/02 16:59:45-08:00 $
-// $Author: fchow@fluorspar.internal.keyresearch.com $
-// $Source: be/com/SCCS/s.wn_instrument.cxx $
+// $Revision: 1.1.1.1 $
+// $Date: 2005/10/21 19:00:00 $
+// $Author: marcel $
+// $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/wn_instrument.cxx,v $
 //
 // ====================================================================
 //
@@ -466,7 +466,7 @@ public:
 
 
 WN *
-Gen_Call_Shell( char *name, TYPE_ID rtype, INT32 argc )
+Gen_Call_Shell( const char *name, TYPE_ID rtype, INT32 argc )
 {
   TY_IDX  ty = Make_Function_Type( MTYPE_To_TY( rtype ) );
   ST     *st = Gen_Intrinsic_Function( ty, name );
@@ -486,7 +486,7 @@ Gen_Call_Shell( char *name, TYPE_ID rtype, INT32 argc )
 
 
 WN *
-Gen_Call( char *name, TYPE_ID rtype = MTYPE_V )
+Gen_Call( const char *name, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 0 );
   return call;
@@ -502,7 +502,7 @@ Gen_Param( WN *arg, UINT32 flag )
 
 
 WN *
-Gen_Call( char *name, WN *arg1, TYPE_ID rtype = MTYPE_V )
+Gen_Call( const char *name, WN *arg1, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 1 );
   WN_actual( call, 0 ) = Gen_Param( arg1, WN_PARM_BY_VALUE );
@@ -511,7 +511,7 @@ Gen_Call( char *name, WN *arg1, TYPE_ID rtype = MTYPE_V )
 
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, TYPE_ID rtype = MTYPE_V )
+Gen_Call( const char *name, WN *arg1, WN *arg2, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 2 );
   WN_actual( call, 0 ) = Gen_Param( arg1, WN_PARM_BY_VALUE );
@@ -521,7 +521,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, TYPE_ID rtype = MTYPE_V )
 
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, TYPE_ID rtype = MTYPE_V )
+Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 3 );
   WN_actual( call, 0 ) = Gen_Param( arg1, WN_PARM_BY_VALUE );
@@ -532,7 +532,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, TYPE_ID rtype = MTYPE_V )
 
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
+Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 	  TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 4 );
@@ -545,7 +545,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
+Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 	  WN *arg5, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 5 );
@@ -559,7 +559,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
+Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 	  WN *arg5, WN *arg6, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 6 );
@@ -577,7 +577,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 
 
 WN *
-Gen_Call_ref3( char *name, WN *arg1, WN *arg2, WN *arg3, 
+Gen_Call_ref3( const char *name, WN *arg1, WN *arg2, WN *arg3, 
 	       TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 3 );
@@ -589,7 +589,7 @@ Gen_Call_ref3( char *name, WN *arg1, WN *arg2, WN *arg3,
 
 
 WN *
-Gen_Call_ref35( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
+Gen_Call_ref35( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4,
 		WN *arg5, TYPE_ID rtype = MTYPE_V )
 {
   WN *call = Gen_Call_Shell( name, rtype, 5 );
@@ -923,6 +923,7 @@ WN_INSTRUMENT_WALKER::Annotate_Branch(WN *wn, INT32 id)
   FB_Info_Branch info_branch( FB_FREQ_ZERO, FB_FREQ_ZERO );
   for (PU_PROFILE_ITERATOR i( handles.begin() ); i != handles.end(); ++i ) {
     FB_Info_Branch& info = Get_Branch_Profile( *i, id );
+    Is_True(&info, ("Branch id invalid"));
     info_branch.freq_taken += info.freq_taken;
     info_branch.freq_not_taken += info.freq_not_taken;
   }
@@ -1097,7 +1098,6 @@ WN_INSTRUMENT_WALKER::Instrument_Call( WN *wn, INT32 id, WN *block )
 		    wn, block );
 }
 
-
 void
 WN_INSTRUMENT_WALKER::Instrument_Icall( WN *wn, INT32 id, WN *block )
 {
@@ -1244,7 +1244,12 @@ void WN_INSTRUMENT_WALKER::Instrument_Value( WN *wn, INT32 id, WN *block )
   // Create comma for right branch (kid 1)
   WN *comma = Create_Comma_Kid( wn, 1 );
 
+#if defined(TARG_SL)
+  const TYPE_ID divisor_type = MTYPE_I4;
+#else
   const TYPE_ID divisor_type = MTYPE_I8;
+#endif
+
   const TYPE_ID to_type = Mtype_TransferSize( divisor_type,
 					      WN_rtype( WN_kid(comma,1) ) );
   WN* kid1 = WN_Type_Conversion( WN_kid(comma,1), to_type );
@@ -1434,7 +1439,12 @@ WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Switch( INT32 count )
   // Build case value array from vector.
   INT32 num_case_values = _switch_case_values.size();
 
+#if defined(TARG_SL)
+  arrayTY = Make_Array_Type( MTYPE_I4, 1, num_case_values );
+#else
   arrayTY = Make_Array_Type( MTYPE_I8, 1, num_case_values );
+#endif
+
   arrayST = New_ST( CURRENT_SYMTAB );
   ST_Init( arrayST, Save_Str( "switch_case_values" ),
 	   CLASS_VAR, SCLASS_PSTATIC, EXPORT_LOCAL, arrayTY );
@@ -1442,9 +1452,15 @@ WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Switch( INT32 count )
   // This should be only initialized once - instead of every time.
   // How to do this?
   for ( INT32 j = 0; j < num_case_values; j++ ) {
+#if defined(TARG_SL)
+    WN *st = WN_Stid( MTYPE_I4, j * MTYPE_RegisterSize( MTYPE_I4 ),
+		      arrayST, arrayTY,
+		      WN_Intconst( MTYPE_I4, _switch_case_values[j] ) );
+#else
     WN *st = WN_Stid( MTYPE_I8, j * MTYPE_RegisterSize( MTYPE_I8 ),
 		      arrayST, arrayTY,
 		      WN_Intconst( MTYPE_I8, _switch_case_values[j] ) );
+#endif
     Instrument_Entry( st );
   }
 
@@ -1682,13 +1698,13 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
       }
       else {
 #endif
-	PREG_NUM val = Create_Preg( val_type, "__call_comma" );
-	stid = WN_StidIntoPreg( val_type, val, MTYPE_To_PREG( val_type ),
-				ldidpreg );
-	WN_INSERT_BlockLast( WN_kid( wn, 0 ), stid );
-	
-	// Comma now returns value of preg
-	WN_kid( wn, 1 ) = WN_LdidPreg( val_type, val );
+      PREG_NUM val = Create_Preg( val_type, "__call_comma" );
+      stid = WN_StidIntoPreg( val_type, val, MTYPE_To_PREG( val_type ),
+				  ldidpreg );
+      WN_INSERT_BlockLast( WN_kid( wn, 0 ), stid );
+      
+      // Comma now returns value of preg
+      WN_kid( wn, 1 ) = WN_LdidPreg( val_type, val );
 #ifdef KEY // bug 12245
       }
 #endif
@@ -2141,9 +2157,10 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
       Initialize_Instrumenter_Compgoto( _count_compgoto );
 #ifdef KEY
       Initialize_Instrumenter_Value( _count_value );
+#if !defined(TARG_SL)
       Initialize_Instrumenter_Value_FP_Bin( _count_value_fp_bin );
 #endif
-
+#endif
       Pop_Entry_Pragma();
     }
 
@@ -2318,7 +2335,7 @@ Set_Instrumentation_File_Name( char *fname )
     // Instrumentation_File_Name = fname;
   } else {
     DevWarn( "Instrumenter Warning: Invalid instrumentation file name." );
-    Instrumentation_File_Name = "";
+    Instrumentation_File_Name = const_cast<char*>("");
   }
 }
 

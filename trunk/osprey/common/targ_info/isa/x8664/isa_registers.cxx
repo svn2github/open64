@@ -123,8 +123,8 @@ main (int argc, char** argv)
   ISA_REGISTER_CLASS rc_mmx     = ISA_Register_Class_Create( "mmx",     64,  true,  false );
   ISA_Register_Set( rc_integer, 0, 15, "%u", int_reg_names,  All_ISA_Mask() );
   ISA_Register_Set( rc_fp,      0, 15, "%u", xmm_reg_names,  All_ISA_Mask() );
-  ISA_Register_Set( rc_rflags,  0, 0,  "%rflags", NULL,      All_ISA_Mask() );
-  ISA_Register_Set( rc_rip,     0, 0,  "%rip",    NULL,      All_ISA_Mask() );
+  ISA_Register_Set( rc_rflags,  0, 0,  "%%rflags", NULL,      All_ISA_Mask() );
+  ISA_Register_Set( rc_rip,     0, 0,  "%%rip",    NULL,      All_ISA_Mask() );
   ISA_Register_Set( rc_x87,     0, 7,  "%u", x87_reg_names,  All_ISA_Mask() );
   ISA_Register_Set( rc_x87_cw,  0, 0,  "%%x87_cw",NULL,      All_ISA_Mask() );
   ISA_Register_Set( rc_mmx,     0, 7,  "%u", mmx_reg_names,  All_ISA_Mask() );

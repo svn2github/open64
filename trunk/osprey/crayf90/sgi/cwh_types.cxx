@@ -72,7 +72,7 @@
  * ====================================================================
  */
 
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
 static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_types.cxx $ $Revision: 1.7 $";
@@ -837,7 +837,7 @@ cwh_types_form_misaligned_TY(TY_IDX ty_idx, mUINT16 alignment)
   TY_IDX  tr_idx ;
   TY_IDX  tt_idx ;
   INT num ;
-  char *  const misstr = ".mis";
+  const char *  const misstr = ".mis";
 
   TY& ty = Ty_Table[ty_idx];
 
@@ -1040,8 +1040,8 @@ cwh_types_mk_logical_TY(INT32 size, mUINT16 alignment)
   TYPE_ID  bt ;  
   TY_IDX   ty_idx ;
   INT16    i  ;
-  char   * csz;
-  char   * aln;
+  const char   * csz;
+  const char   * aln;
   INT32 size_in_bytes;
 
   i = align_index(size) ;
@@ -1496,7 +1496,7 @@ cwh_types_formal_util(TY_IDX ty_idx)
  ====================================================
 */
 static TY_IDX
-cwh_types_mk_struct(INT64 size, INT32 align, FLD_HANDLE list, char *name)
+cwh_types_mk_struct(INT64 size, INT32 align, FLD_HANDLE list, const char *name)
 {
   TY_IDX ty_idx ;
 
@@ -1527,7 +1527,7 @@ cwh_types_mk_struct(INT64 size, INT32 align, FLD_HANDLE list, char *name)
  ====================================================
 */
 extern TY_IDX
-cwh_types_array_util(INT16 rank, TY_IDX ety_idx, INT32 align, INT64 size, char * name, BOOL alloc_arbs)
+cwh_types_array_util(INT16 rank, TY_IDX ety_idx, INT32 align, INT64 size, const char * name, BOOL alloc_arbs)
 {
   TY_IDX  ty_idx ;
   INT16 i ;
@@ -2054,7 +2054,7 @@ cwh_types_contains_dope(TY_IDX ty)
  ====================================================
 */
 static FLD_HANDLE
-cwh_types_fld_util(char* name_string, TY_IDX fld_ty,  OFFSET_64 offset, BOOL global)
+cwh_types_fld_util(const char* name_string, TY_IDX fld_ty,  OFFSET_64 offset, BOOL global)
 {
 
   FLD_HANDLE fld;
@@ -2400,7 +2400,7 @@ cwh_types_get_dope_info(
       *mask = 0;
    }
    if (shift != 0 || size != 0) {
-# ifdef linux
+# if defined(linux) || defined(BUILD_OS_DARWIN)
       *rshift = shift;
 # else
       *rshift = ty_size - shift - size;
@@ -2701,6 +2701,18 @@ cwh_types_mk_result_temp_TY(void)
 
   return ty;
 }
+#ifdef KEY /* Bug 14110 */
+/*
+ * t		i_cvrt.c representation of a TY_IDX
+ * return	same TY_IDX with "volatile" bit set
+ */
+extern unsigned
+fei_set_volatile(unsigned t) {
+  TY_IDX tmp = t;
+  Set_TY_is_volatile(tmp);
+  return tmp;
+}
+#endif /* KEY Bug 14110 */
 /*===================================================
  *
  * cwh_types_fill_type
@@ -2740,7 +2752,7 @@ cwh_types_fill_type(INT32 flag_bits, TYPE *t, TY_IDX ty)
 */
 
 extern char *
-cwh_types_mk_anon_name (char * nm)
+cwh_types_mk_anon_name (const char * nm)
 {
   static char anonymous_str [64] ;
   static INT32 anonymous_index = 0;

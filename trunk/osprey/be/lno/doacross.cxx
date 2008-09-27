@@ -1156,7 +1156,11 @@ extern void Doacross_Init(
     if (opc==OPC_FUNC_ENTRY || opc==OPC_ALTENTRY) {
       sync_offset_stid_stack->Push(wn);
       sync_length_stid_stack->Push(wn);
-    } else if (opc==OPC_RETURN) {
+    } else if (opc==OPC_RETURN
+#ifdef KEY
+  	       || opc==OPC_GOTO_OUTER_BLOCK
+#endif
+	       ) {
       sync_offset_ldid_stack->Push(wn);
       sync_length_ldid_stack->Push(wn);
     }

@@ -462,6 +462,7 @@ EXP_OCCURS::Bb(void) const
 
 // =====================================================================
 // Create a new WN to represent the home of a LPRE PREG
+// Returns NULL if home too complicated.
 // =====================================================================
 WN *
 CODEREP::Rvi_home_wn( OPT_STAB *opt_stab ) const
@@ -506,6 +507,42 @@ CODEREP::Rvi_home_wn( OPT_STAB *opt_stab ) const
   case CK_CONST:
     home_wn = WN_CreateIntconst (OPR_INTCONST, Dtyp(), MTYPE_V, Const_val());
     break;
+#ifdef TARG_NVISA // other targets don't know how to rematerialize these
+  case CK_OP:
+    // add ability to create preg home for expression,
+    // so can later still find the base of the temporary.
+    switch (Opr()) {
+    case OPR_ADD:
+    case OPR_SUB:
+    case OPR_MPY:
+	{
+	WN *kid0 = Opnd(0)->Rvi_home_wn(opt_stab);
+	WN *kid1 = Opnd(1)->Rvi_home_wn(opt_stab);
+	if (kid0 && kid1) {
+	  home_wn = WN_CreateExp2 (Opr(), Dtyp(), MTYPE_V, kid0, kid1);
+	}
+	}
+	break;
+    case OPR_CVT:
+	{
+	WN *kid = Opnd(0)->Rvi_home_wn(opt_stab);
+	if (kid) {
+	  home_wn = WN_CreateExp1 (Opr(), Dtyp(), Dsctyp(), kid);
+	}
+	}
+	break;
+    }
+    break;
+  case CK_IVAR:
+    if (Opr() == OPR_ILOAD && Ilod_base()) {
+      WN *kid0 = Ilod_base()->Rvi_home_wn(opt_stab);
+      if (kid0) {
+        home_wn = WN_CreateIload (Opr(), Dtyp(), Dsctyp(),
+          Offset(), Ilod_ty(), Ilod_base_ty(), kid0);
+      }
+    }
+    break;
+#endif
   default:
     Is_True(FALSE, ("CODEREP::Rvi_home_wn: unexpected CR kind"));
   }
@@ -539,7 +576,9 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
        Is_True(vsize >= 32, 
 	       ("Unexpected size of result type in EXP_OCCURS::Get_temp_cr"));
     }
-#if defined(TARG_IA32) || defined(TARG_X8664)
+// ia32,x86,ia64,nvisa all don't want to do this cause it can cause 
+// inconsistent sizes for the same symbol
+#if defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA)
 #if 0 // this can cause inconsistent sizes for the same symbol
     if (vsize <= 32 && dtyp == MTYPE_U8 && (signess & SIGN_0_EXTD)) 
       dtyp = MTYPE_U4;
@@ -553,13 +592,21 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
   }
   
   if (wk->Preg() == 0) {
+    WN *home_wn = NULL;
+#ifdef TARG_NVISA // only do for nvisa till other targets learn rematerialize
+    home_wn = exp->Rvi_home_wn(htable->Sym());
+#endif
     switch (wk->Pre_kind()) {
     case PK_VNFRE:
       {
 	 // This is similar to the EPRE case, but we do not set sign extension
 	 // specially for loads.
 	 // 
+#ifndef TARG_NVISA
         AUX_ID          id = htable->Sym()->Create_preg(dtyp);
+#else
+        AUX_ID id = htable->Sym()->Create_preg(dtyp, "vnfre_cst", home_wn);
+#endif
 	AUX_STAB_ENTRY *aux_preg = htable->Sym()->Aux_stab_entry(id);
 	ADDRESSABILITY  addressable = 
 	   exp->Check_if_result_is_address(htable->Sym());
@@ -581,7 +628,11 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 
     case PK_EPRE:
       {
+#ifndef TARG_NVISA
         AUX_ID id = htable->Sym()->Create_preg(dtyp);
+#else
+        AUX_ID id = htable->Sym()->Create_preg(dtyp, "epre_cst", home_wn);
+#endif
 	AUX_STAB_ENTRY *aux_preg = htable->Sym()->Aux_stab_entry(id);
 	ADDRESSABILITY addressable = Occurrence()->Check_if_result_is_address(htable->Sym());
         wk->Set_preg(id);
@@ -607,7 +658,9 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
       }
     case PK_LPRE:
       {
+#ifndef TARG_NVISA // done above
 	WN *home_wn = exp->Rvi_home_wn(htable->Sym());
+#endif
 	if (inCODEKIND(exp->Kind(), CK_LDA|CK_RCONST|CK_CONST)) {
 	  wk->Set_preg(htable->Sym()->Create_preg(dtyp, "lpre_cst", home_wn));
 	  AUX_STAB_ENTRY *aux_preg = htable->Sym()->Aux_stab_entry(wk->Preg());
@@ -623,7 +676,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 #endif
 	  // Set the home location for the preg
 	  AUX_ID aux_id = exp->Aux_id();
-	  char  *aux_name = htable->Sym()->Aux_stab_entry(aux_id)->St_name();
+	  const char *aux_name = htable->Sym()->Aux_stab_entry(aux_id)->St_name();
 	  wk->Set_preg(htable->Sym()->Create_preg(dtyp, aux_name, home_wn));
 	  
 	  // Note that the call to Create_preg() may realloc the AUX_STAB_ENTRY
@@ -673,7 +726,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 
 
 CODEREP	*
-ETABLE::New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable)
+ETABLE::New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable, CODEREP *rhs)
 {
    // Simplified version of EXP_OCCURS::Get_temp_cr(), which creates a
    // temporary of exactly the type specified, updates the htable, but
@@ -696,13 +749,20 @@ ETABLE::New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable)
    // call to this routine, and then set the worklist and version
    // attributes after the call.
    //
+   // Change:  pass rhs so can get preg home info.
+   //
    const INT32 init_version = EXP_OCCURS::ILLEGAL_E_VERSION + 1;
    INT32       vsize = MTYPE_size_min(dtype);
 
    Is_True(vsize >= 32, 
 	   ("Unexpected size of result type in EXP_OCCURS::New_temp_cr"));
 
+#ifdef TARG_NVISA
+   WN *home_wn = rhs->Rvi_home_wn(Htable()->Sym());
+   AUX_ID          id = Htable()->Sym()->Create_preg(dtype, "new_cst", home_wn);
+#else
    AUX_ID          id = Htable()->Sym()->Create_preg(dtype);
+#endif
    AUX_STAB_ENTRY *aux_preg = Htable()->Sym()->Aux_stab_entry(id);
 
    if (Pre_kind() == PK_LPRE || Pre_kind() == PK_VNFRE)
@@ -1520,8 +1580,14 @@ EXP_WORKLST::Is_the_same_as(const CODEREP *cr)
     if (Are_different(lcr, gcr))
       return FALSE;
 
-    if (cr->Offset() != Exp()->Offset())
-      return FALSE;	// offset not the same
+    if (cr->Opr() == OPR_ILOADX) {
+      if (Are_different(cr->Index(), Exp()->Index()))
+	return FALSE;
+    }
+    else {
+      if (cr->Offset() != Exp()->Offset())
+	return FALSE;	// offset not the same
+    }
     if (Get_mtype_class(cr->Dtyp()) != Get_mtype_class(Exp()->Dtyp()))
       return FALSE;	// type class not the same
     if (MTYPE_size_min(cr->Dsctyp()) != MTYPE_size_min(Exp()->Dsctyp()))
@@ -2698,6 +2764,38 @@ ETABLE::Check_lftr_non_candidate(STMTREP *stmt, CODEREP *cr, OPCODE opc)
   }
 }
 
+#ifdef TARG_SL2
+
+/* this function is used to decide if nth parameter in following intrinsic function can 
+  * be etable candiate. These parameter is address  expression and is offset from
+  * internal buffer start address.
+  */ 
+
+static BOOL 
+Is_Intrncall_Nth_Parm_Candidate(INTRINSIC id,  INT nth_parm ) {
+      switch(id) {
+        case INTRN_C2_LD_C_IMM:
+        case INTRN_C2_ST_C_IMM:				
+            if(nth_parm == 1) return TRUE;
+	     return FALSE;
+        case INTRN_C2_LD_V2G_IMM:
+        case INTRN_C2_ST_G2V_IMM:		
+        case INTRN_C2_LD_G_IMM:
+        case INTRN_C2_ST_G_IMM:			
+            if(nth_parm == 2) return TRUE;
+            return FALSE;
+        case INTRN_C2_ST_V_IMM:
+	     if(nth_parm == 3) return TRUE;
+	     return FALSE;
+        case INTRN_C2_LD_V_IMM:
+	     if(nth_parm == 4) return TRUE;
+	     return FALSE;
+         default:
+	     return FALSE;
+      }
+}
+#endif 
+
 // ===================================================================
 // Bottom-up traversal of CODEREP nodes in a statement to create
 // real occurrence list for Etable.
@@ -2740,6 +2838,11 @@ ETABLE::Bottom_up_stmt(STMTREP *stmt)
 
   if (OPCODE_is_fake(stmt->Op())) {
     for (INT32 i = 0; i < rhs->Kid_count(); i++) {
+#ifdef TARG_SL2
+           if(rhs->Opr()==OPR_INTRINSIC_CALL && Is_Intrncall_Nth_Parm_Candidate(rhs->Intrinsic(), i)) {
+                 continue;
+	    }
+#endif 
       New_temp_id();
       Bottom_up_cr(stmt, i, rhs->Opnd(i), FALSE, NOT_URGENT, 0, rhs->Op(), FALSE);
     }
@@ -2795,7 +2898,6 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 
   Is_Trace(Tracing(),(TFile, "ETABLE::Bottom_up_cr called on ----- cr -----\n"));
   Is_Trace_cmd(Tracing(),cr->Print(2,TFile));
-
   switch (cr->Kind()) {
     case CK_CONST:	// constant terminal, do nothing
     case CK_RCONST:
@@ -2814,7 +2916,11 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	}
 	if (cr->Opr() == OPR_ILOADX)
 	  Warn_todo("ETABLE::Bottom_up_cr: Indexed load.");
-
+#ifdef TARG_SL
+        if (cr->Dtyp() == MTYPE_I2 && cr->Dsctyp() == MTYPE_I2) {
+            cr->Set_dtyp(MTYPE_I4);
+        } 
+#endif        
 	if (!is_istore) {
 	  CODEREP *ivar_vsym = cr->Get_ivar_vsym();
 	  if (cr->Ilod_base()->Is_non_volatile_terminal(Opt_stab()) &&
@@ -2894,6 +3000,9 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	    Bottom_up_cr(stmt, stmt_kid_num, cr->Mstore_size(), FALSE, urgent,
 			 depth+1, cr->Op(), FALSE);
 	}
+	if ( ivar_opr == OPR_ILOADX)
+	  Bottom_up_cr(stmt, stmt_kid_num, cr->Index(), FALSE, urgent,
+		       depth+1, cr->Op(), FALSE);
       }
       break;
     case CK_OP:		// non-terminal
@@ -2952,6 +3061,46 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	    }
 	    else Check_lftr_non_candidate(stmt, kid, cr->Op());
 	  }
+#ifdef TARG_NVISA
+	  // check if all the kids are const (used below)
+	  BOOL all_kids_are_const = TRUE;
+	  switch (cr->Opr()) {
+	  case OPR_ADD:
+	  case OPR_SUB:
+	  case OPR_MPY:
+	  case OPR_DIV:
+	  case OPR_MOD:
+	  case OPR_REM:
+	  case OPR_SHL:
+	  case OPR_LSHR:
+	  case OPR_ASHR:
+	  case OPR_BAND:
+	  case OPR_BIOR:
+	  case OPR_BXOR:
+	  case OPR_BNOR:
+	  case OPR_BNOT:
+	  case OPR_NEG:
+		break;
+	  default:
+		all_kids_are_const = FALSE;
+		break;
+	  }
+	  for (i=0; i<cr->Kid_count(); i++)	{ 
+	    kid = cr->Opnd(i);
+  	    switch (kid->Kind()) {
+	    case CK_CONST: 
+		break;
+	    case CK_VAR:
+		if ( ! ST_is_const_var( Opt_stab()->St(kid->Aux_id())))
+			all_kids_are_const = FALSE;
+		break;
+	    default:
+		// TODO: handle depth > 1 
+		all_kids_are_const = FALSE;
+		break;
+	    }
+	  }
+#endif
 
 	  if (cr->Exp_has_e_num()) {
 	    if (all_kids_are_terminal) {
@@ -2972,6 +3121,13 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 			 (opr == OPR_EQ || opr == OPR_NE ||
 			  opr == OPR_LT || opr == OPR_LE || 
 			  opr == OPR_GT || opr == OPR_GE)) {
+		cr->Set_omitted();
+#endif
+#ifdef TARG_NVISA
+	      // if all kids are const or const_var, and op is arith, then omit
+	      } else if (!WOPT_Enable_Const_Op_PRE && all_kids_are_const) {
+		Is_Trace(Tracing(),
+			 (TFile,"omit from epre cause all kids are const\n"));
 		cr->Set_omitted();
 #endif
 	      } else if (!urgent) {
@@ -3045,7 +3201,7 @@ EXP_OCCURS::Load_use_cr(ETABLE *etable, CODEREP * old_cr, CODEREP *cr)
     break;
   }
 
-#ifndef TARG_X8664 // bug 12918: MIPS cannot use Fixup_type here
+#ifndef KEY
   if (Split_64_Bit_Int_Ops && MTYPE_size_min(cr->Dtyp()) == 32 &&
       MTYPE_size_min(old_cr->Dtyp()) == 64) {
     opc = MTYPE_signed(old_cr->Dtyp()) ? OPC_I8I4CVT : OPC_U8U4CVT;
@@ -3197,7 +3353,7 @@ private:
       // replacements here without conversion.
       //
       if (x->Dtyp() != TCON_ty(_tcon) &&
-	  x->Dtyp() != MTYPE_M)
+	  x->Dtyp() != MTYPE_M )
 	 tcon_idx = Enter_tcon(Targ_Conv(x->Dtyp(), _tcon));
       else
 	 tcon_idx = Enter_tcon(_tcon);
@@ -3378,6 +3534,16 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
       }
       else cr->Set_mload_size(x->Mload_size());
     }
+    else if (x->Opr() == OPR_ILOADX) {
+      // process the index expression
+      expr = Recursive_rehash_and_replace(x->Index(), occur, repl,
+					  FALSE, depth+1, x->Op());
+      if (expr) {
+        need_rehash = TRUE;
+        cr->Set_index(expr);
+      }
+      else cr->Set_index(x->Index());
+    }
     if (!need_rehash)
       return NULL;
     x->DecUsecnt();
@@ -3450,11 +3616,10 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
       cr->Copy(*x);	
       cr->Set_usecnt(0);
       for  (INT32 i = 0; i < x->Kid_count(); i++) {
-#ifdef KEY // bug 12471: __builtin_expect's first kid must be constant
+	// bug 12471: __builtin_expect's first kid must be constant
 	if (cr->Opr() == OPR_INTRINSIC_OP && cr->Intrinsic() == INTRN_EXPECT &&
 	    i == 1)
 	  continue;
-#endif
 	expr = Recursive_rehash_and_replace(x->Opnd(i), occur, repl,
 					    FALSE, depth+1, x->Op());
 	if (expr) {
@@ -3775,6 +3940,8 @@ ETABLE::No_replace(EXP_OCCURS *occur, BOOL dont_rehash)
     x->Ilod_base()->IncUsecnt();
     if (x->Opr() == OPR_MLOAD)
       x->Mload_size()->IncUsecnt();
+    else if (x->Opr() == OPR_ILOADX)
+      x->Index()->IncUsecnt();
   }
   else { // CK_OP
     for (INT32 i = 0; i < x->Kid_count(); i++)
@@ -3930,6 +4097,10 @@ ETABLE::Find_1st_order_exprs_with_temp(STMTREP *stmt, INT stmt_kid_num,
 	    Find_1st_order_exprs_with_temp(stmt, stmt_kid_num, cr->Mstore_size(),
 					 tempcr, FALSE, depth+1);
 	}
+	else if ( ivar_opr == OPR_ILOADX) {
+	  Find_1st_order_exprs_with_temp(stmt, stmt_kid_num, cr->Index(),
+				       tempcr, FALSE, depth+1);
+	}
       }
       break;
     case CK_OP:		// non-terminal
@@ -4043,6 +4214,11 @@ void
 EXP_WORKLST::Adjust_combined_types(CODEREP *cr)
 {
   Is_True(Exp()->Is_integral_load_store(), ("EXP_WORKLST::Adjust_combined_types: wrong cr"));
+#if defined(TARG_NVISA)
+  if ( (cr->Kind() == CK_VAR) && 
+       (MTYPE_size_min(cr->Dsctyp()) != MTYPE_size_min(Exp()->Dsctyp())))
+    Set_has_unequal_sizes();
+#endif
   Is_True(MTYPE_size_min(cr->Dsctyp()) == MTYPE_size_min(Exp()->Dsctyp()),
 	  ("EXP_WORKLST::Adjust_combined_types: mismatch Dsc types"));
 
@@ -4102,6 +4278,11 @@ ETABLE::Append_real_occurrence(CODEREP *cr, STMTREP *stmt, INT stmt_kid_num,
   if (is_istore)
     occurs->Set_occurs_as_lvalue();
 
+#if defined(TARG_SL) //PARA_EXTENSION
+  if( stmt && stmt->Bb() && stmt->Bb()->SL2_para_region())
+    occurs->Set_occ_in_para_region(); 
+#endif
+
   // call the WORKLST append
   worklist->Append_occurrence(occurs);
 }
@@ -4155,6 +4336,12 @@ ETABLE::Insert_real_occurrence(CODEREP *cr, STMTREP *stmt, INT stmt_kid_num,
   occurs->Set_enclose_stmt(stmt);
   occurs->Set_stmt_kid_num(stmt_kid_num);
   occurs->Set_rehash_cost(depth);
+
+#if defined(TARG_SL) //PARA_EXTENSION
+  if( stmt && stmt->Bb() && stmt->Bb()->SL2_para_region())
+    occurs->Set_occ_in_para_region(); 
+#endif 
+
   cr->Set_e_num(worklist->E_num());
   if (is_istore)
     occurs->Set_occurs_as_lvalue();
@@ -4972,9 +5159,14 @@ XTABLE::Lexically_identical(CODEREP *cr1, CODEREP *cr2) const
     CODEREP *base2 = cr2->Ilod_base() ? cr2->Ilod_base() : cr2->Istr_base();
     if (! Opnd_lex_identical(base1, base2)) 
       return FALSE;
-    if (cr1->Opr() == OPR_MLOAD)
+    if (cr1->Opr() == OPR_MLOAD) {
       if (! Opnd_lex_identical(cr1->Mload_size(), cr2->Mload_size())) 
 	return FALSE;
+    }
+    else if (cr1->Opr() == OPR_ILOADX) {
+      if (! Opnd_lex_identical(cr1->Index(), cr2->Index())) 
+	return FALSE;
+    }
   }
   else { // CK_OP
     if (cr1->Kid_count() != cr2->Kid_count()) return FALSE;
@@ -5044,6 +5236,9 @@ XTABLE::Is_compound(CODEREP *cr) const
   if (cr->Kind() == CK_IVAR) {  // cannot be PARM node
     if (cr->Opr() == OPR_MLOAD)
       return TRUE;
+    if (cr->Opr() == OPR_ILOADX)
+      if (! cr->Index()->Is_non_volatile_terminal(_opt_stab))
+	return TRUE;
     CODEREP *base = cr->Ilod_base() ? cr->Ilod_base() : cr->Istr_base();
     if (! base->Is_non_volatile_terminal(_opt_stab))
       return TRUE;
@@ -5124,6 +5319,8 @@ XTABLE::Bottom_up_cr(CODEREP *cr)
     else Bottom_up_cr(cr->Istr_base());
     if (ivar_opr == OPR_MLOAD)
       Bottom_up_cr(cr->Mload_size());
+    else if (ivar_opr == OPR_ILOADX)
+      Bottom_up_cr(cr->Index());
     Add_nonterm(cr);
     return;
     }

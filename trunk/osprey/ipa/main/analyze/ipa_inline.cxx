@@ -55,6 +55,9 @@
 // ====================================================================
 
 #define __STDC_LIMIT_MACROS
+#ifdef __MINGW32__
+#include <WINDOWS.h>
+#endif /* __MINGW32__ */
 #include <stdint.h>
 #include "defs.h"
 #include "tracing.h"			// trace flags
@@ -748,11 +751,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		return FALSE;
 #endif // _STANDALONE_INLINER
 	    }else{ // 1.
-#ifndef PATHSCALE_MERGE_ZHC
-                if (callee_weight > IPA_Small_Callee_Limit && cg->Num_In_Edges(callee) > 2) {
-#else
 		if (callee_weight > IPA_Small_Callee_Limit && cg->Num_In_Edges(callee) > 1) {
-#endif
                     /* We try to screen out callees that are too large, but
                      * accept those that have only one caller:
                      */
@@ -764,12 +763,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
                     }
                 }
 
-#ifndef PATHSCALE_MERGE_ZHC
-                if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 1 && 
-                    callee_weight > non_aggr_callee_limit) {
-#else
 		if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 0 && callee_weight > non_aggr_callee_limit) {
-#endif
                     /* Less aggressive inlining: don't inline unless it is
                      * either small, leaf, or called from a loop. 
                      */
@@ -994,14 +988,20 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	    TY_IDX formal = base_type_of_array (ty_formal);
 	    TYPE_ID actual_type = BASETYPE (ty_actual);
 	    TYPE_ID formal_type = BASETYPE (formal);
-	    if ((actual_type == MTYPE_C10 && formal_type == MTYPE_F10) ||
+	    if (
+#if defined(TARG_IA64)
+		(actual_type == MTYPE_C10 && formal_type == MTYPE_F10) ||
+#endif
 		(actual_type == MTYPE_C8 && formal_type == MTYPE_F8) ||
 		(actual_type == MTYPE_C4 && formal_type == MTYPE_F4))
 	      return TRUE;
 
 	    // Actual can be complex, and formal can be array of 1 formal or
 	    // of variable size where size should be 1.
-	    if ((actual_type == MTYPE_C10 && formal_type == MTYPE_C10) ||
+	    if (
+#if defined(TARG_IA64)
+		(actual_type == MTYPE_C10 && formal_type == MTYPE_C10) ||
+#endif
 		(actual_type == MTYPE_C8 && formal_type == MTYPE_C8) ||
 		(actual_type == MTYPE_C4 && formal_type == MTYPE_C4))
 	      return TRUE;
@@ -1036,8 +1036,11 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	if (INLINE_Check_Compatibility == RELAXED_CHECK)
 	{
 	  if (actual_is_array && formal_is_array &&
-	      ((actual_element_size==MTYPE_C10 &&
+	      (
+#if defined(TARG_IA64)
+	       (actual_element_size==MTYPE_C10 &&
 		formal_element_size==MTYPE_F10) ||
+#endif
 	       (actual_element_size==MTYPE_C8 &&
 		formal_element_size==MTYPE_F8) ||
 	       (actual_element_size==MTYPE_C4 && 
@@ -1049,8 +1052,11 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	  }
 	  // the other way
 	  if (actual_is_array && formal_is_array &&
-	      ((actual_element_size==MTYPE_F10 && 
+	      (
+#if defined(TARG_IA64)
+	       (actual_element_size==MTYPE_F10 && 
 	        formal_element_size==MTYPE_C10) ||
+#endif
 	       (actual_element_size==MTYPE_F8 && 
 	        formal_element_size==MTYPE_C8) ||
 	       (actual_element_size==MTYPE_F4 && 
@@ -1409,7 +1415,7 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	   IPA_NODE *callee, const IPA_CALL_GRAPH *cg)
 {
     BOOL result = TRUE;
-    char *reason = 0;
+    const char *reason = 0;
 
 #ifdef KEY
     if (cg->Graph()->Is_Recursive_Edge (ed->Edge_Index ())) {
@@ -1670,6 +1676,15 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
             ed->Set_reason_id (37);
     }
 #endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#ifdef KEY
+    else if (PU_is_nested_func(caller->Get_PU()) ||
+             PU_is_nested_func(callee->Get_PU()) ||
+             PU_uplevel(callee->Get_PU())) {
+            result = FALSE;
+            reason = "not inlining nested functions";
+            ed->Set_reason_id (38);
+    } 
+#endif
     // The following else-if must be last
     else if (!IPA_Enable_Lang) {
 	if ((callee->Summary_Proc()->Get_lang() == LANG_F77) || 

@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: flags.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/common/util/flags.c,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:17:57 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/common/util/flags.c,v $
  *
  * Revision history:
  *  17-Jun-91 - Original Version
@@ -55,7 +55,7 @@
 
 #ifdef _KEEP_RCS_ID
 static const char source_file[] = __FILE__;
-static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/util/flags.c,v $ $Revision: 1.1.1.1 $";
+static const char rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/util/flags.c,v $ $Revision: 1.1 $";
 #endif
 
 #include <string.h>
@@ -317,36 +317,66 @@ static INT
 Copy_option(OPTION_DESC *odesc, char *container, BOOL save)
 {
   void *var = ODESC_variable(odesc);
-  size_t sz = 0;
-
   Is_True(ODESC_can_change_by_pragma(odesc),
 	  ("Copy_option, trying to copy option that cannot change"));
 
-  switch (ODESC_kind(odesc)) {
-    case OVK_NONE:
-    case OVK_BOOL:
-      sz = sizeof(BOOL);
-      break;
-    case OVK_INT32:
-    case OVK_UINT32:
-      sz = sizeof(INT32);
-      break;
-    case OVK_INT64:
-    case OVK_UINT64:
-      sz = sizeof(INT64);
-    case OVK_NAME:
-    case OVK_SELF:
-    case OVK_LIST:
-      sz = sizeof(void *);
+  if (save) {
+    switch (ODESC_kind(odesc)) {
+      case OVK_NONE:
+      case OVK_BOOL:
+        *((BOOL *)container) = *((BOOL *)var);
+	return sizeof(BOOL);
+      case OVK_INT32:
+	*((INT32 *)container) = *((INT32 *)var);
+	return sizeof(INT32);
+      case OVK_UINT32:
+	*((UINT32 *)container) = *((UINT32 *)var);
+	return sizeof(UINT32);
+      case OVK_INT64:
+	*((INT64 *)container) = *((INT64 *)var);
+	return sizeof(INT64);
+      case OVK_UINT64:
+	*((UINT64 *)container) = *((UINT64 *)var);
+	return sizeof(UINT64);
+      case OVK_NAME:
+      case OVK_SELF:
+	*((char **)container) = *((char **)var);
+	return sizeof(char *);
+      case OVK_LIST:
+	*((OPTION_LIST **)container) = *((OPTION_LIST **)var);
+	return sizeof(OPTION_LIST *);
+      default: /* INVALID, OBSOLETE, REPLACED, UNIMPLEMENTED */
+	return 0;
+    }
+  } else { /* restore */
+    switch (ODESC_kind(odesc)) {
+      case OVK_NONE:
+      case OVK_BOOL:
+        *((BOOL *)var) = *((BOOL *)container);
+	return sizeof(BOOL);
+      case OVK_INT32:
+	*((INT32 *)var) = *((INT32 *)container);
+	return sizeof(INT32);
+      case OVK_UINT32:
+	*((UINT32 *)var) = *((UINT32 *)container);
+	return sizeof(UINT32);
+      case OVK_INT64:
+	*((INT64 *)var) = *((INT64 *)container);
+	return sizeof(INT64);
+      case OVK_UINT64:
+	*((UINT64 *)var) = *((UINT64 *)container);
+	return sizeof(UINT64);
+      case OVK_NAME:
+      case OVK_SELF:
+	*((char **)var) = *((char **)container);
+	return sizeof(char *);
+      case OVK_LIST:
+	*((OPTION_LIST **)var) = *((OPTION_LIST **)container);
+	return sizeof(OPTION_LIST *);
+      default: /* INVALID, OBSOLETE, REPLACED, UNIMPLEMENTED */
+	return 0;
+    }
   }
-
-  if (sz > 0) {
-    if (save)
-      memcpy(container, var, sz);
-    else
-      memcpy(var, container, sz);
-  }
-  return (sz);
 }
 
 
@@ -512,7 +542,7 @@ Initialize_Option_Group ( OPTION_GROUP *ogroup )
  */
 
 void
-Set_Option_Internal ( OPTION_GROUP *ogroup, char *name )
+Set_Option_Internal ( OPTION_GROUP *ogroup, const char *name )
 {
   if ( name == NULL ) {
     Set_OGA_internal ( OGROUP_aux (ogroup) );
@@ -709,8 +739,8 @@ Process_Command_Line_Group (char *flag, OPTION_GROUP *opt_groups)
        && ODESC_kind(odesc) != OVK_OLD_COUNT;
 	  odesc++)
     {
-      char *abbrev = ODESC_abbrev(odesc);
-      char *name = ODESC_name(odesc);
+      const char *abbrev = ODESC_abbrev(odesc);
+      const char *name = ODESC_name(odesc);
       Is_True ( abbrev == NULL
 	     || strncmp(abbrev, name, strlen(abbrev)) == 0,
 		( "Option group (%s) configuration error: "
@@ -1016,7 +1046,7 @@ Modified_Option ( OPTION_DESC *odesc )
  */
 
 void
-Print_Option_Group ( FILE *tf, OPTION_GROUP *og, char *prefix,
+Print_Option_Group ( FILE *tf, OPTION_GROUP *og, const char *prefix,
 		     BOOL internal, BOOL full, BOOL update )
 {
   OPTION_DESC *desc = OGROUP_options(og);
@@ -1120,12 +1150,12 @@ Print_Option_Group ( FILE *tf, OPTION_GROUP *og, char *prefix,
 	  || ODESC_primary(desc) == NULL  )
 	{
 #ifdef KEY /* bug 12020: The compiler may change the fprintf to fputs,
-              which cannot handle null. */
-          char ** var = (char **) ODESC_variable(desc);
-          if ( *var != NULL )
-            fprintf ( tf, "%s", *var);
+	      which cannot handle null. */
+	  char ** var = (char **) ODESC_variable(desc);
+	  if ( *var != NULL )
+	    fprintf ( tf, "%s", *var);
 #else
-          fprintf ( tf, "%s", *((char **) ODESC_variable(desc)));
+	  fprintf ( tf, "%s", *((char **) ODESC_variable(desc)));
 #endif
 	} else {
 	  fprintf ( tf, " (See '%s' above)",
@@ -1222,7 +1252,7 @@ Trace_Command_Line_Group ( FILE *tf, OPTION_GROUP *og )
  */
 
 void
-Print_Option_Groups ( FILE *tf, OPTION_GROUP *og, char *prefix,
+Print_Option_Groups ( FILE *tf, OPTION_GROUP *og, const char *prefix,
 		      BOOL internal, BOOL full, BOOL update )
 {
   while ( OGROUP_name(og) != NULL ) {
@@ -1251,7 +1281,7 @@ Trace_Option_Groups ( FILE *tf, OPTION_GROUP *og, BOOL full )
  */
 
 OPTION_GROUP *
-Get_Command_Line_Group ( OPTION_GROUP *og, char *name )
+Get_Command_Line_Group ( OPTION_GROUP *og, const char *name )
 {
   INT32 i;
 

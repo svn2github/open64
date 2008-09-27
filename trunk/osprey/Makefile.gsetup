@@ -55,19 +55,19 @@
 #                      (and almost always the source files)
 #     BUILD_ROOTS    = specifies which ROOT & TOOLROOT to use
 #     BUILD_ABI      = specifies ABI to build for (32BIT/N32BIT/64BIT/
-#                      I32BIT/I64BIT)
+#                      I32BIT/I64BIT/W64BIT)
 #     BUILD_ARCH     = specifies machine architecture for build 
-#			(MIPS1/MIPS2/MIPS3/MIPS4/IA32/IA64)
+#			(MIPS1/MIPS2/MIPS3/MIPS4/IA32/IA64SL/X8664)
 #     BUILD_TYPE     = specifies type of build (SHARED/NONSHARED)
 #     BUILD_OPTIMIZE = specifies default, debug or override optimization options
 #     BUILD_PCH      = specifies whether to use pre-compiled headers for build
 #     BUILD_VARIANT  = specifies special variant to be built
 #     BUILD_INSTALL  = specifies where to install components/libraries
-#     BUILD_TARGET   = specifies target machine for run (MIPS/IA64/IA32/X8664)
+#     BUILD_TARGET   = specifies target machine for run (MIPS/IA64/IA32/SL/X8664)
 #     BUILD_COMPILER = specifies which compiler to use for build (GNU/PSC)
 #     BUILD_CPU      = specifies cpu (R4000/R5000/R8000/R10000)
 #     BUILD_OS	     = specifies OS (LINUX only right now)
-#     BUILD_HOST     = specifies host that are building on (MIPS/IA32/IA64)
+#     BUILD_HOST     = specifies host that are building on (MIPS/IA32/IA64/SL)
 #			[defaults to $(BUILD_ARCH)].
 #
 #  All BUILD_* parameters must be specified, any that are missing will be
@@ -115,13 +115,21 @@
 #  Temporarily, allow no BUILD_COMPILER, which defaults to GNU.
 #
 
+ifeq ($(BUILD_OS), LINUX)
+BUILD_OS_LINUX_OR_DARWIN=TRUE
+endif
+ifeq ($(BUILD_OS), DARWIN)
+BUILD_OS_LINUX_OR_DARWIN=TRUE
+endif
 ifndef BUILD_COMPILER
   BUILD_COMPILER = GNU
 endif
 ifneq ($(BUILD_COMPILER), GNU)
 ifneq ($(BUILD_COMPILER), PSC)
 ifneq ($(BUILD_COMPILER), OSP)
+ifneq ($(BUILD_COMPILER), SLC)
   ABORT_BUILD = BUILD_COMPILER has bad value - $(BUILD_COMPILER)!
+endif
 endif
 endif
 endif
@@ -130,8 +138,8 @@ endif
 #  Verify that BUILD_AREA is defined if doing a build on Linux.
 #
 ifndef BUILD_AREA
-ifeq ($(BUILD_OS), LINUX)
-  ABORT_BUILD = BUILD_AREA must be defined when BUILD_OS is LINUX!
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
+  ABORT_BUILD = BUILD_AREA must be defined when BUILD_OS is LINUX or DARWIN!
 endif
 endif
 
@@ -175,7 +183,9 @@ ifdef BUILD_ABI
  ifneq ($(BUILD_ABI), 64BIT)
  ifneq ($(BUILD_ABI), I32BIT)
  ifneq ($(BUILD_ABI), I64BIT)
+ ifneq ($(BUILD_ABI), W64BIT)
    ABORT_BUILD = BUILD_ABI has bad value - $(BUILD_ABI)!
+ endif
  endif
  endif
  endif
@@ -195,7 +205,9 @@ ifdef BUILD_ARCH
  ifneq ($(BUILD_ARCH), IA32)
  ifneq ($(BUILD_ARCH), IA64)
  ifneq ($(BUILD_ARCH), X8664)
+ ifneq ($(BUILD_ARCH), SL)
    ABORT_BUILD = BUILD_ARCH has bad value - $(BUILD_ARCH)!
+ endif
  endif
  endif
  endif
@@ -248,10 +260,16 @@ endif
 
 ifdef BUILD_TARGET
  ifneq ($(BUILD_TARGET), MIPS)
+ ifneq ($(BUILD_TARGET), SL)
  ifneq ($(BUILD_TARGET), IA32)
  ifneq ($(BUILD_TARGET), IA64)
  ifneq ($(BUILD_TARGET), X8664)
+ ifneq ($(BUILD_TARGET), NVISA)
+ ifneq ($(BUILD_TARGET), SL)
    ABORT_BUILD = BUILD_TARGET has bad value - $(BUILD_TARGET)!
+ endif
+ endif
+ endif
  endif
  endif
  endif
@@ -261,7 +279,10 @@ else
 endif
 
 ifeq ($(BUILD_TARGET), MIPS)
-BUILD_TARGET_DIR = mips
+BUILD_TARGET_DIR = MIPS
+endif
+ifeq ($(BUILD_TARGET), SL)
+BUILD_TARGET_DIR = SL
 endif
 ifeq ($(BUILD_TARGET), IA32)
 BUILD_TARGET_DIR = ia32
@@ -271,6 +292,9 @@ BUILD_TARGET_DIR = ia64
 endif
 ifeq ($(BUILD_TARGET), X8664)
 BUILD_TARGET_DIR = x8664
+endif
+ifeq ($(BUILD_TARGET), NVISA)
+BUILD_TARGET_DIR = NVISA
 endif
 
 #
@@ -346,9 +370,16 @@ endif
 
 ifndef BUILD_OS
   BUILD_OS = LINUX
+  BUILD_OS_LINUX_OR_DARWIN=TRUE
 endif
 ifneq ($(BUILD_OS), LINUX)
+ifneq ($(BUILD_OS), MINGW)
+ifneq ($(BUILD_OS), CYGWIN)
+ifneq ($(BUILD_OS), DARWIN)
   ABORT_BUILD = BUILD_OS has bad value - $(BUILD_OS)!
+endif
+endif
+endif
 endif
 
 ifndef BUILD_HOST
@@ -406,8 +437,55 @@ ifndef ABORT_BUILD
   ABORT_BUILD = BUILD_ABI=I64BIT requires BUILD_ARCH=IA64
  endif
  endif
+ ifeq ($(BUILD_ABI), W64BIT)
+ ifneq ($(BUILD_ARCH), IA32)
+  ABORT_BUILD = BUILD_ABI=W64BIT requires BUILD_ARCH=IA32
+ endif
+ endif
+ ifeq ($(BUILD_ABI), SL )
+ ifneq ($(BUILD_ARCH), SL )
+  ABORT_BUILD = BUILD_ABI=SL  requires BUILD_ARCH=SL
+ endif
+ endif
 endif
 endif
+
+ifeq ($(BUILD_TARGET), SL)
+ifndef ABORT_BUILD
+ ifeq ($(BUILD_ABI), N32BIT)
+ ifneq ($(BUILD_ARCH), MIPS3)
+ ifneq ($(BUILD_ARCH), MIPS4)
+ ifneq ($(BUILD_ARCH), MIPS64)
+   ABORT_BUILD = N32BIT requires MIPS3 or MIPS4 or MIPS64!
+ endif
+ endif
+ endif
+ endif
+ ifeq ($(BUILD_ABI), 64BIT)
+ ifneq ($(BUILD_ARCH), MIPS3)
+ ifneq ($(BUILD_ARCH), MIPS4)
+   ABORT_BUILD = 64BIT requires MIPS3 or MIPS4!
+ endif
+ endif
+ endif
+ ifeq ($(BUILD_ABI), I32BIT)
+ ifneq ($(BUILD_ARCH), IA32)
+  ABORT_BUILD = BUILD_ABI=I32BIT requires BUILD_ARCH=IA32
+ endif
+ endif
+ ifeq ($(BUILD_ABI), I64BIT)
+ ifneq ($(BUILD_ARCH), IA64)
+  ABORT_BUILD = BUILD_ABI=I64BIT requires BUILD_ARCH=IA64
+ endif
+ endif
+ ifeq ($(BUILD_ABI), W64BIT)
+ ifneq ($(BUILD_ARCH), IA32)
+  ABORT_BUILD = BUILD_ABI=W64BIT requires BUILD_ARCH=IA32
+ endif
+ endif
+endif
+endif
+
 
 #
 #  Compute STD_COMPILE_OPTS as a usable set of compile options which reflect
@@ -422,21 +500,6 @@ else
   STD_COMPILE_OPTS += 
 endif
 
-ifeq ($(BUILD_ARCH), MIPS1)
-STD_COMPILE_OPTS += -mips1
-endif
-ifeq ($(BUILD_ARCH), MIPS2)
-STD_COMPILE_OPTS += -mips2
-endif
-ifeq ($(BUILD_ARCH), MIPS3)
-STD_COMPILE_OPTS += -mips3
-endif
-ifeq ($(BUILD_ARCH), MIPS4)
-STD_COMPILE_OPTS += -mips4
-endif
-ifeq ($(BUILD_ARCH), MIPS64)
-STD_COMPILE_OPTS += -mips64
-endif
 
 ifneq ($(BUILD_COMPILER), GNU)
  ifeq ($(BUILD_ABI), 32BIT)
@@ -461,12 +524,27 @@ ifeq ($(BUILD_TARGET), IA32)
 STD_COMPILE_OPTS += -DEMULATE_LONGLONG
 endif
 
+ifeq ($(BUILD_TARGET), SL)
+STD_COMPILE_OPTS += -DTARG_MIPS
+STD_COMPILE_OPTS += -DSHARED_BUILD -DVENDOR_SL
+STD_COMPILE_OPTS += -DTARG_SL
+STD_COMPILE_OPTS += -DTARG_SL2
+endif
+
 include ${BUILD_TOT}/../defs.mk
 
 STD_C_OPTS = -std=gnu99 -D_GNU_SOURCE
 ERROR_ON_WARNINGS = #-Werror
-STD_COMPILE_OPTS += -DKEY -DOSP_OPT -DSHARED_BUILD -DPATHSCALE_MERGE -DPSC_TO_OPEN64 $(LOCAL_CFLAGS) $(ERROR_ON_WARNINGS)
-
+# Many files use INTn_MAX/INTn_MIN
+STD_COMPILE_OPTS += -D__STDC_LIMIT_MACROS
+STD_COMPILE_OPTS += -DKEY -DOSP_OPT -DPATHSCALE_MERGE -DPSC_TO_OPEN64 $(LOCAL_CFLAGS) $(ERROR_ON_WARNINGS)
+ifneq ($(BUILD_TARGET), NVISA)
+STD_COMPILE_OPTS += -DSHARED_BUILD
+else
+ifeq ($(BUILD_TYPE), SHARED)
+STD_COMPILE_OPTS += -DSHARED_BUILD
+endif
+endif
 
 #
 #  Assign STD_C++_OPTS here
@@ -534,13 +612,20 @@ ifeq ($(BUILD_ABI), I64BIT)
  endif
 endif
 
+ifeq ($(BUILD_ABI), SL)
+ ifeq ($(BUILD_TYPE), SHARED)
+   STD_LOAD_OPTS += 
+ else
+   STD_LOAD_OPTS += 
+ endif
+endif
 
 #
 #  Compute STD_DSO_LOADOPTS as a usable set of dso load options which reflect
 #  BUILD_ABI.
 #
 
-ifeq ($(BUILD_OS), LINUX)
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
    STD_DSO_LOADOPTS = $(LDOPTS_I32) $(LDDSOOPTS_I32)
 else
 ifeq ($(BUILD_ABI), 64BIT)
@@ -677,6 +762,9 @@ endif
 ifeq ($(BUILD_TARGET), IA64)
 STD_MONGOOSE_LINUX_LOC = $(ROOT)/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0
 endif
+ifeq ($(BUILD_TARGET), SL)
+STD_MONGOOSE_LINUX_LOC = $(ROOT)/usr/sl-linux/lib/gcc-lib/sl-linux/slcc
+endif
 
 #
 #  Compute STD_INSTALL as a replacement for $(INSTALL) which reflects an
@@ -716,6 +804,7 @@ Abort .DEFAULT:
 
 else
 
+include $(BUILD_TOT)/Makefile.cross
 include $(BUILD_BASE)/Makefile.gbase
 endif
 

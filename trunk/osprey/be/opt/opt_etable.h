@@ -591,6 +591,9 @@ private:
 				 // if OCC_AS_L_VALUE is set, indicates the
 				 // sunk def; otherwise, indicates the first use
 				 // before which the sunk def is to be inserted
+#if defined(TARG_SL) // PARA_EXTENSION
+   OCC_IN_PARA_REGION  = 0x1000, // this occurrencse is enclosed in a sl2 parallel region (major or minor)
+#endif 
   };
 
   UINT32          _kind:3;          // the kind of occurence
@@ -639,6 +642,10 @@ private:
     BB_NODE      *_bb;              // for exit occurrence or phi pred
   } _enclosed_in;
 
+#if defined(TARG_SL) // PARA_EXTENSION
+  RID* _rid;         // record the region id which the expression occurrence locate in. 
+#endif 
+
                   EXP_OCCURS(const EXP_OCCURS&);
                   EXP_OCCURS& operator = (const EXP_OCCURS&);
 
@@ -663,6 +670,9 @@ public:
     OCC_COMP_OCCUR     = 3, // comparison occurrence for LFTR
     OCC_PHI_PRED_OCCUR = 4, // phi_pred
     OCC_EXIT_OCCUR     = 5, // exit
+#if defined(TARG_SL)
+    OCC_PI_OCCUR       = 6, // the occurrence enclosed in a parallel region
+#endif
   };
 
   enum E_VERSION_VALUE {
@@ -907,7 +917,16 @@ public:
 
   void            Reset_injured_occ(void)  { Reset_flag(OCC_INJURED); }
 
-  void		  Set_sunk_lvalue(void) { Set_flag(OCC_SUNK_L_VALUE); }
+#if defined(TARG_SL) // PARA_EXTENSION
+  BOOL Occ_in_para_region(void)            { Is_flag_set(OCC_IN_PARA_REGION); }
+  void Set_occ_in_para_region(void)        { Set_flag(OCC_IN_PARA_REGION);}
+  void Reset_occ_in_para_region(void)      { Reset_flag(OCC_IN_PARA_REGION); }
+#endif
+
+  void		  Set_sunk_lvalue(void)    { Set_flag(OCC_SUNK_L_VALUE); }
+#if defined(TARG_SL) // PARA_EXTENSION
+  void 	  	  Reset_sunk_lvalue(void)  { return Reset_flag(OCC_SUNK_L_VALUE);}
+#endif
 
   BOOL		  Mult_real(void) const	   { return Is_flag_set
 					       (OCC_MULT_REAL_OCCUR); }
@@ -1038,6 +1057,11 @@ public:
 
   BOOL            Stmt_order_less_or_equal(EXP_OCCURS *x) const
     { return Stmt()->Stmt_order_less_or_equal(x->Stmt()); }
+
+#if defined(TARG_SL)  // PARA_EXTENSION
+  RID*     Rid(void)      { return _rid; }
+  void Set_Rid(RID* rid)  { _rid = rid;}
+#endif
 
   BB_NODE        *Bb(void) const;          // return the BB that contains this.
 
@@ -1389,8 +1413,9 @@ public:
     EWF_HAS_LDA          = 0x80,// the expression contains LDA node
     EWF_LR_SHRINK_CAND   = 0x100,// live range shrinking candidate (LPRE only)
     EWF_IVC_CAND         = 0x200,// induction variable coalescing candidate
-    EWF_NO_LFTR          = 0x400 // no LFTR for this expression (hack
+    EWF_NO_LFTR          = 0x400,// no LFTR for this expression (hack
                                  // around 665964)
+    EWF_SIZE_DIFFERENT   = 0x800 // loads have different size in LPRE
   };
 
   enum EXP_PREG_VALUE {
@@ -1603,6 +1628,12 @@ public:
   // variable is a live range shrinking candidate (LPRE only)
   BOOL            LR_shrink_cand(void) const { return _flags & EWF_LR_SHRINK_CAND;}
   void            Set_LR_shrink_cand( void ) { _flags |= EWF_LR_SHRINK_CAND; }
+
+  // variable has loads of different sizes
+  BOOL            Has_unequal_sizes(void) const { 
+    return _flags & EWF_SIZE_DIFFERENT;}
+  void            Set_has_unequal_sizes(void) { 
+    _flags |= EWF_SIZE_DIFFERENT; }
 
   // variable is an induction variable coalesing candidate (VNFRE only)
   BOOL            Ivc_cand(void) const { return _flags & EWF_IVC_CAND;}
@@ -2023,7 +2054,8 @@ public:
                               BOOL     lookup_only = FALSE);
 
   // Generate a temporary register independently of any worklist.
-  CODEREP	 *New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable);
+  CODEREP	 *New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable, 
+				CODEREP *rhs);
 
   // used by EOCC, SR, LFTR
   void		  Check_lftr_non_candidate(STMTREP *stmt, CODEREP *cr, OPCODE opc);

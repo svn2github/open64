@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: oputil.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/oputil.cxx,v $
+ * $Revision: 1.28 $
+ * $Date: 06/03/14 14:38:58-08:00 $
+ * $Author: tkong@hyalite.keyresearch $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.oputil.cxx $
  *
  * Revision history:
  *  12-Oct-89 - Original Version
@@ -90,11 +90,9 @@
 #include "cg_loop.h"
 #include "cgtarget.h"
 #include "cg_spill.h"
-
 #ifdef TARG_IA64
 #include "targ_sim.h"
 #endif
-
 #include "wn.h"
 #include "whirl2ops.h"
 #include "cgexp.h"
@@ -103,7 +101,6 @@
 
 /* Allocate OPs for the duration of the PU. */
 #define OP_Alloc(size)  ((OP *)Pu_Alloc(size))
-
 
 /* OP mutators that are NOT to be made public */
 #define Set_OP_code(o,opc)	((o)->opr = (mTOP)(opc))
@@ -169,7 +166,17 @@ OP_def_ar_lc(OP *op)
   if(TN_is_constant(res_tn)) return FALSE;
   return TN_is_lc_reg(res_tn);
 }
-#endif
+
+static inline void
+Copy_GOT_Sym_Info (OP* new_op, OP* op) {
+  if (OP_load_GOT_entry(op)){
+     OP_MAP_Set (OP_Ld_GOT_2_Sym_Map, 
+                new_op, 
+		OP_MAP_Get (OP_Ld_GOT_2_Sym_Map, op));
+  }
+}
+
+#endif // TARG_IA64
 
 // ----------------------------------------
 // Copy ASM_OP_ANNOT when duplicating an OP
@@ -182,16 +189,6 @@ Copy_Asm_OP_Annot(OP* new_op, OP* op)
   }
 }
 
-#ifdef TARG_IA64
-static inline void
-Copy_GOT_Sym_Info (OP* new_op, OP* op) {
-  if (OP_load_GOT_entry(op)){
-     OP_MAP_Set (OP_Ld_GOT_2_Sym_Map, 
-                new_op, 
-		OP_MAP_Get (OP_Ld_GOT_2_Sym_Map, op));
-  }
-}
-#endif
 
 /* ====================================================================
  *
@@ -202,27 +199,24 @@ Copy_GOT_Sym_Info (OP* new_op, OP* op) {
  * ====================================================================
  */
 
+static OP *
 #ifdef TARG_IA64
-static OP *
 New_OP ( INT results, INT opnds, INT hidden_opnds)
-{ 
-  OP *op = OP_Alloc (OP_sizeof (results, opnds+hidden_opnds));
-  PU_OP_Cnt++;
-  Set_OP_opnds(op, opnds);
-  Set_OP_results(op, results);
-  return op;
-}
 #else
-static OP *
 New_OP ( INT results, INT opnds )
+#endif
 {
-  OP *op = OP_Alloc ( OP_sizeof(results, opnds) );
+  OP *op = OP_Alloc ( OP_sizeof(results, opnds
+#if defined(TARG_IA64)
+				+hidden_opnds
+#endif
+				) );
   PU_OP_Cnt++;
   Set_OP_opnds(op, opnds);
   Set_OP_results(op, results);
   return op;
 }
-#endif
+
 
 /* ====================================================================
  *
@@ -244,6 +238,7 @@ Dup_OP ( OP *op )
 #else
   OP *new_op = New_OP ( results, opnds );
 #endif
+
   memcpy(new_op, op, OP_sizeof(results, opnds));
   new_op->next = new_op->prev = NULL;
   new_op->bb = NULL;
@@ -254,29 +249,26 @@ Dup_OP ( OP *op )
     Copy_GOT_Sym_Info (new_op, op);
   }
 #endif
-
   if (OP_has_tag(op)) {
 	Set_OP_Tag (new_op, Gen_Tag());
   }
-
-
+  
 #ifdef TARG_X8664
   if ( TOP_is_vector_high_loadstore ( OP_code ( new_op ) ) )
     Set_OP_cond_def_kind(new_op, OP_ALWAYS_COND_DEF);
 #endif
-
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_NVISA)
   // If OP is a restore, increment the spill location's restore count.
   if (OP_load(op)) {
     ST *spill_loc = CGSPILL_OP_Spill_Location(op);
-    if (spill_loc != (ST *)0)           // It's a spill OP.
+    if (spill_loc != (ST *)0)		// It's a spill OP.
       CGSPILL_Inc_Restore_Count(spill_loc);
   }
 #endif
 
   return new_op;
 }
-
+
 /* =====================================================================
  *			      OPS stuff
  *		(see "op.h" for interface description)
@@ -634,7 +626,7 @@ void BB_Insert_Op(BB *bb, OP *point, OP *op, BOOL before)
   setup_ops(bb, op, op, 1);
 }
 
- 
+
 void BB_Insert_Op_Before(BB *bb, OP *point, OP *op)
 {
   Is_True(bb, ("can't insert in NULL BB"));
@@ -821,8 +813,55 @@ OP *BB_Remove_Branch(BB *bb)
 
 void BB_Remove_Op(BB *bb, OP *op)
 {
+  OP *orig_last_op = BB_last_op(bb);
+
+#if defined(TARG_SL)
+  LABEL_IDX tag_idx = 0;
+  if( CG_enable_zero_delay_loop ) {
+    if( BB_zdl_body(bb) ) {
+      orig_last_op = BB_last_op(bb);
+      BOOL noop_op = ( (orig_last_op->opr == TOP_noop) && 
+                       OP_has_tag(OP_prev(orig_last_op)) && 
+                       OP_16bit_op(OP_prev(orig_last_op)) );
+      Is_True( (OP_has_tag(orig_last_op) || noop_op), 
+               ("zdl loop body's last op is not tagged") );
+      if (orig_last_op->opr != TOP_noop)		
+        tag_idx = Get_OP_Tag( orig_last_op );
+    }
+  }
+
+  // if the bb has only one tagged OP, it cannot be deleted
+  // we use a nop instead of removing
+  if( orig_last_op && 
+      OP_has_tag(orig_last_op) && 
+      BB_length(bb) == 1 &&
+      op == orig_last_op ){
+    OPS_Remove_Op(&bb->ops, op);
+    op->bb = NULL;
+    OP *nop = Mk_OP( TOP_nop );
+    BB_Append_Op(bb, nop); 
+    Reset_OP_has_tag( orig_last_op );
+    Set_OP_Tag( nop, tag_idx );
+    return;
+  }
+
+#endif
+
   OPS_Remove_Op(&bb->ops, op);
   op->bb = NULL;
+
+#if defined(TARG_SL)
+  if( BB_zdl_body(bb) && (orig_last_op->opr != TOP_noop)) {
+    Is_True( tag_idx > 0, ("incorrect tag index") );
+    OP* last_op = BB_last_op(bb);
+    /* the last tagged OP is removed */
+    if( last_op && !OP_has_tag(last_op) ) {
+      Reset_OP_has_tag( orig_last_op );
+      Set_OP_Tag( last_op, tag_idx );
+    }
+  }
+#endif
+
 }
 
 
@@ -843,7 +882,7 @@ void BB_Remove_All(BB *bb)
   BB_Remove_Ops(bb, &bb->ops);
   BB_next_op_map_idx(bb) = 0;
 }
-
+
 /* ====================================================================
  *
  * Mk_OP / Mk_VarOP
@@ -950,6 +989,7 @@ Mk_VarOP(TOP opr, INT results, INT opnds, TN **res_tn, TN **opnd_tn)
 #else
   OP *op = New_OP(results, opnds);
 #endif
+
   Set_OP_code(op, opr);
 
   for (i = 0; i < results; ++i) Set_OP_result(op, i, res_tn[i]);
@@ -961,7 +1001,7 @@ Mk_VarOP(TOP opr, INT results, INT opnds, TN **res_tn, TN **opnd_tn)
 
   return op;
 }
-
+
 /* ====================================================================
  *
  * Print_OP / Print_OP_No_SrcLine / Print_OPs / Print_OPS
@@ -982,8 +1022,10 @@ void Print_OP_No_SrcLine(const OP *op)
   if (OP_start_bundle(op)) fprintf( TFile, " }\n{\n");
   fprintf (TFile, "[%3d] ", OP_map_idx(op));
   fprintf (TFile, "[%4d] ", Srcpos_To_Line(OP_srcpos(op)));
-#else
+#elif defined(TARG_X8664) 
   fprintf (TFile, "[%4d,%2d] ", Srcpos_To_Line(OP_srcpos(op)), OP_scycle(op) );
+#else
+  fprintf (TFile, "[%4d] ", Srcpos_To_Line(OP_srcpos(op)));
 #endif
   if (OP_has_tag(op)) {
 	LABEL_IDX tag = Get_OP_Tag(op);
@@ -1010,6 +1052,27 @@ void Print_OP_No_SrcLine(const OP *op)
     if (OP_Defs_TN(op, tn)) fprintf(TFile, "<defopnd>");
     fprintf(TFile, " ");
   }
+
+#ifdef TARG_SL
+  /* print out the extra operands, due to LUT */
+  TN_LIST *extra_opnds = op->extra_operand;
+  if( extra_opnds )
+    fprintf( TFile, " ExtraOpndList: ");
+  while( extra_opnds ){
+    TN* opnd_tn = TN_LIST_first( extra_opnds );
+    Print_TN( opnd_tn, FALSE );
+    extra_opnds = TN_LIST_rest( extra_opnds );
+  }
+
+  TN_LIST *extra_results = op->extra_result;
+  if( extra_results )
+    fprintf( TFile, " ExtraResultList: ");
+  while( extra_results ){
+    TN* res_tn = TN_LIST_first( extra_results );
+    Print_TN( res_tn, FALSE );
+    extra_results = TN_LIST_rest( extra_results );
+  }
+#endif
 
   fprintf(TFile, ";");
 
@@ -1083,7 +1146,7 @@ void Print_OPS_No_SrcLines( const OPS *ops )
     Print_OP_No_SrcLine(op);
 }
 
-
+
 
 /* ====================================================================
  *
@@ -1250,6 +1313,7 @@ OP_Real_Inst_Words( const OP *op )
   else if ( OP_simulated(op) ) {
     return Simulated_Op_Real_Inst_Words (op);
   }
+
   return OP_inst_words(op);
 }
 
@@ -1291,13 +1355,11 @@ Is_Delay_Slot_Op (OP *xfer_op, OP *op)
 {
   if (op == NULL || OP_xfer(op) || OP_Real_Ops(op) != 1) return FALSE;
 
-#ifndef KEY
   // R10k chip bug workaround: Avoid placing integer mult/div in delay 
   // slots of unconditional branches. (see pv516598) for more details.
   if (xfer_op && OP_uncond(xfer_op) &&
       (OP_imul(op) || OP_idiv(op))) return FALSE;
-#endif
-
+  
   // TODO: do we need the following restriction ?
   if (OP_has_hazard(op) || OP_has_implicit_interactions(op))
     return FALSE;
@@ -1307,7 +1369,7 @@ Is_Delay_Slot_Op (OP *xfer_op, OP *op)
 
 
 // Debugging routine
-void dump_op(const OP *op)
+void dump_op (const OP *op)
 {
    FILE *f;
    f = TFile;
@@ -1316,6 +1378,14 @@ void dump_op(const OP *op)
    Set_Trace_File_internal(f);
 }
 
+void dump_ops (const OPS *ops)
+{
+   FILE *f;
+   f = TFile;
+   Set_Trace_File_internal(stdout);
+   Print_OPS(ops);
+   Set_Trace_File_internal(f);
+}
 
 /* ====================================================================
  *
@@ -1329,7 +1399,7 @@ void dump_op(const OP *op)
 BOOL OP_cond_def(const OP *op) 
 {
   return OP_cond_def_kind(op) == OP_ALWAYS_COND_DEF ||
-    ((OP_cond_def_kind(op) == OP_PREDICATED_DEF) && 
+    ((OP_cond_def_kind(op) == OP_PREDICATED_DEF) &&
      !TN_is_true_pred(OP_opnd(op, OP_PREDICATE_OPND)));
 }
 
@@ -1384,20 +1454,63 @@ void OP_Base_Offset_TNs(OP *memop, TN **base_tn, TN **offset_tn)
   // instruction which sets the offset and matches the base_tn.
 
   if (offset_num < 0) {
-
-    DEF_KIND kind;
-    OP *defop = TN_Reaching_Value_At_Op(*base_tn, memop, &kind, TRUE);
-    if (defop && OP_iadd(defop) && kind == VAL_KNOWN) {
-      TN *defop_offset_tn = OP_opnd(defop, 1);
-      TN *defop_base_tn = OP_opnd(defop, 2);
-      if (defop_base_tn == *base_tn && TN_has_value(defop_base_tn)) {
-	*offset_tn = defop_offset_tn;
+    if( *base_tn ){
+      DEF_KIND kind;
+      OP *defop = TN_Reaching_Value_At_Op(*base_tn, memop, &kind, TRUE);
+      if (defop && OP_iadd(defop) && kind == VAL_KNOWN) {
+        TN *defop_offset_tn = OP_opnd(defop, 1);
+        TN *defop_base_tn = OP_opnd(defop, 2);
+        if (defop_base_tn == *base_tn && TN_has_value(defop_base_tn)) {
+          *offset_tn = defop_offset_tn;
+        }
       }
     }
   } else {
     *offset_tn = OP_opnd(memop, offset_num);
   }
 }
+
+
+/* Is <op> a copy from a callee-saves register into its save-TN?
+ */
+BOOL
+OP_Is_Copy_To_Save_TN(const OP* op)
+{
+  INT i;
+
+  for ( i = OP_results(op) - 1; i >= 0; --i ) {
+    TN* tn = OP_result(op,i);
+    if ( TN_is_save_reg(tn)) return TRUE;
+  }
+
+  return FALSE;
+}
+
+/*  Is <op> a copy to a callee-saves register from its save-TN?
+ */
+BOOL
+OP_Is_Copy_From_Save_TN( const OP* op )
+{
+  INT i;
+
+  // You'd think there'd be a better way than groveling through the operands,
+  // but short of marking these when we make them, this seems to be the most
+  // bullet-proof
+
+  for ( i = OP_results(op) - 1; i >= 0; --i ) {
+    if ( TN_is_dedicated(OP_result(op,i)) ) break;
+  }
+  if ( i < 0 ) return FALSE;
+
+  for ( i = OP_opnds(op) - 1; i >= 0; --i ) {
+    TN* tn = OP_opnd(op,i);
+    if ( TN_Is_Allocatable(tn) && TN_is_save_reg(tn))
+      return TRUE;
+  }
+
+  return FALSE;
+}
+
 
 #ifdef TARG_IA64
 /* ====================================================================
@@ -1490,6 +1603,7 @@ Add_Hidden_Operands (OP* op, const vector<TN*>& hopnds) {
 
 #endif // TARG_IA64
 
+
 #ifdef KEY
 /* ====================================================================
  *
@@ -1510,6 +1624,7 @@ TN_Pair_In_OP(OP* op, struct tn *tn_res, struct tn *tn_opnd)
     }
   }
   if (i == OP_results(op)) {
+    TN_size(tn_res);	// TK debug
     // If tn_res has an assigned register, check if it matches a result.  (This
     // changes the semantics of TN_Pair_In_OP, but that's ok since the only
     // user of TN_Pair_In_OP is LRA, which wants this check.)  Bug 9489.
@@ -1563,43 +1678,21 @@ TN_Resnum_In_OP (OP* op, struct tn *tn, BOOL match_assigned_reg)
 }
 #endif
 
-/* Is <op> a copy from a callee-saves register into its save-TN?
- */
-BOOL
-OP_Is_Copy_To_Save_TN(const OP* op)
+#if defined(TARG_SL) || defined(TARG_MIPS)
+#include "targ_sim.h"
+BOOL OP_def_return_value(OP* op)
 {
-  INT i;
+    for (INT i = OP_results(op) - 1 ; i >= 0 ; i--) {
+        mTN_NUM n = TN_number(OP_result(op,i));
+        if ((n >= First_Int_Preg_Return_Offset && 
+             n <= Last_Int_Preg_Return_Offset)       ||
+            (n >= First_Float_Preg_Return_Offset &&
+             n <= Last_Float_Preg_Return_Offset)) {
+            return TRUE;    
+        }
+    }         
+    return FALSE;
+}        
 
-  for ( i = OP_results(op) - 1; i >= 0; --i ) {
-    TN* tn = OP_result(op,i);
-    if ( TN_is_save_reg(tn)) return TRUE;
-  }
-
-  return FALSE;
-}
-
-/*  Is <op> a copy to a callee-saves register from its save-TN?
- */
-BOOL
-OP_Is_Copy_From_Save_TN( const OP* op )
-{
-  INT i;
-
-  // You'd think there'd be a better way than groveling through the operands,
-  // but short of marking these when we make them, this seems to be the most
-  // bullet-proof
-
-  for ( i = OP_results(op) - 1; i >= 0; --i ) {
-    if ( TN_is_dedicated(OP_result(op,i)) ) break;
-  }
-  if ( i < 0 ) return FALSE;
-
-  for ( i = OP_opnds(op) - 1; i >= 0; --i ) {
-    TN* tn = OP_opnd(op,i);
-    if ( TN_Is_Allocatable(tn) && TN_is_save_reg(tn))
-      return TRUE;
-  }
-
-  return FALSE;
-}
+#endif
 

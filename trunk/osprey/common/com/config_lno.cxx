@@ -214,9 +214,15 @@ static LNO_FLAGS Default_LNO = {
 #else
   NO_PREFETCH, FALSE,	/* Run_prefetch */
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
-  TRUE,        /*Prefetch Invariant (non-constant) Stride */
+#endif
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  TRUE,         /*Prefetch Invariant (non-constant) Stride */
   8,            /*Prefetch_Strides_Ahead*/
-  2,            /*Streaming Prefetch*/
+  TRUE,         /*Run_streaming_prefetch*/
+#else
+  TRUE,         /*Prefetch Invariant (non-constant) Stride */
+  8,            /*Prefetch_Strides_Ahead*/
+  FALSE,         /*Run_streaming_prefetch*/
 #endif
   2,		/* Prefetch_ahead */
 #ifdef TARG_IA64
@@ -258,6 +264,8 @@ static LNO_FLAGS Default_LNO = {
   FALSE,	/* Unswitch_Verbose */
   FALSE,	/* Prefetch_Verbose */
   FALSE,        /* Build_Scalar_Reductions */
+  TRUE,        /* Invariant Factorization */
+  FALSE,        /* Invar_Factor_Verbose*/
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
 #ifdef TARG_IA64
@@ -410,9 +418,15 @@ LNO_FLAGS Initial_LNO = {
 #else
   NO_PREFETCH, FALSE,   /* Run_prefetch */
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
+#endif
+#if defined(TARG_IA64) || defined(TARG_X8664)
   TRUE,        /* Prefetch Invariant Stride */
   8,            /* Prefetch_Strides_Ahead */
-  2,            /* Streaming Prefetch */
+  TRUE,            /* Streaming Prefetch */
+#else
+  TRUE,        /* Prefetch Invariant Stride */
+  8,            /* Prefetch_Strides_Ahead */
+  FALSE,            /* Streaming Prefetch */
 #endif
   2,		/* Prefetch_ahead */
 #ifdef TARG_IA64
@@ -454,6 +468,8 @@ LNO_FLAGS Initial_LNO = {
   FALSE,	/* Unswitch_Verbose */
   FALSE,	/* Prefetch_Verbose */
   FALSE,        /* Build_Scalar_Reductions */
+  TRUE,        /* Invariant Factorization */
+  FALSE,        /* Invar_Factor_Verbose */
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
 #ifdef TARG_IA64
@@ -747,9 +763,11 @@ static OPTION_DESC Options_LNO[] = {
 					Run_prefetch, Run_prefetch_set ),
   LNOPT_BOOL_SET ( "prefetch_stores",	NULL, 	Prefetch_stores,
   						Prefetch_stores_set ),
+#ifdef TARG_X8664
   LNOPT_BOOL( "pf_inv_stride",          NULL,   Prefetch_invariant_stride),
-  LNOPT_U32 ( "pf_stride_ahead",            NULL,   8,0,128, Prefetch_stride_ahead ),
-  LNOPT_U32 ( "stream_prefetch",            NULL,   2,0,128, Run_stream_prefetch ),
+  LNOPT_U32 ( "pf_stride_ahead",        NULL,   8,0,128, Prefetch_stride_ahead ),
+  LNOPT_BOOL( "stream_prefetch",        NULL,   Run_stream_prefetch ),
+#endif
   LNOPT_U32  ( "prefetch_ahead",	NULL,	2,0,50,	Prefetch_ahead ),
   LNOPT_U32  (   "pf_ahead",		NULL,	2,0,50,	Prefetch_ahead ),
 #ifdef TARG_IA64
@@ -816,6 +834,8 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "unswitch_verbose",	NULL,	Unswitch_Verbose ),
   LNOPT_BOOL ( "prefetch_verbose",	NULL,	Prefetch_Verbose ),
   LNOPT_BOOL ( "build_scalar_reductions",NULL,	Build_Scalar_Reductions ),
+  LNOPT_BOOL ( "invar_factorization","invar_factor",  Invariant_Factorization),
+  LNOPT_BOOL ( "invar_fact_verbose",   NULL,    Invar_Factor_Verbose),
 #endif /* KEY */  
   LNOPT_BOOL ( "oinvar",		NULL,	Run_oinvar ),
   LNOPT_U32  ( "doacross",		NULL,	1,0,4,Run_doacross),

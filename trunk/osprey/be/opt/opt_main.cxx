@@ -348,17 +348,23 @@
 #include "dep_graph.h"			/* for tracing Current_Dep_Graph */
 #include "wb_ipl.h"			/* whirl browser for ipl */ 
 
+#ifndef __MINGW32__
 #include "regex.h"                      // For regcomp and regexec
+#endif /* __MINGW32__ */
 #include "xstats.h"                     // For PU_WN_BB_Cnt
 #include "opt_wovp.h"     // for write once variable promotion
 #include "opt_misc.h"
 #include "opt_lmv.h"
+#include "opt_lmv_helper.h"
+#if defined(TARG_SL)
+#include "opt_lclsc.h"
+#endif
 
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 				 struct ALIAS_MANAGER *alias_mgr,
 				 EMITTER *emitter);
-#ifdef __linux__
+#if defined(__linux__) || defined(BUILD_OS_DARWIN) || !defined(SHARED_BUILD)
 extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 						  ALIAS_MANAGER*, void*);
 #define Perform_Procedure_Summary_Phase (*Perform_Procedure_Summary_Phase_p)
@@ -637,6 +643,17 @@ private:
 	WOPT_Enable_Zero_Version = FALSE;
 
       break; // end MAINOPT_PHASE
+
+#ifdef TARG_NVISA
+    case PREOPT_CMC_PHASE:
+      WOPT_Enable_Goto = TRUE;
+      WOPT_Enable_Call_Zero_Version = FALSE;
+      WOPT_Enable_Zero_Version = FALSE;
+      WOPT_Enable_DU_Full = TRUE;
+      WOPT_Enable_Copy_Propagate = TRUE;
+      break;
+#endif
+
     case PREOPT_LNO_PHASE: 
       if (Run_autopar && Current_LNO->IPA_Enabled
 #ifdef KEY // bug 6383
@@ -736,6 +753,14 @@ private:
       WOPT_Enable_LNO_Copy_Propagate  = _lno_copy;
       WOPT_Enable_Zero_Version   = _zero_version;
       break;
+#ifdef TARG_NVISA
+    case PREOPT_CMC_PHASE:
+      WOPT_Enable_Goto = _goto;
+      WOPT_Enable_Call_Zero_Version = _call_zero_version;
+      WOPT_Enable_Zero_Version = _zero_version;
+      WOPT_Enable_DU_Full = _du_full;
+      break;
+#endif
     case PREOPT_LNO_PHASE:
       if (Run_autopar && Current_LNO->IPA_Enabled) { 
         WOPT_Enable_Call_Zero_Version = _call_zero_version;
@@ -914,6 +939,7 @@ static BOOL Disable_opt(WN *wn_tree, ST *pu_st)
     sprintf(rgn_name,"region %d (function %s)",
 	    RID_id(REGION_get_rid(wn_tree)),pu_name);
 
+#ifndef __MINGW32__
   // skip the functions specified
   if (WOPT_Enable_Skip != NULL) {
     regex_t buf;
@@ -924,6 +950,7 @@ static BOOL Disable_opt(WN *wn_tree, ST *pu_st)
       return TRUE;
     }
   }
+#endif /* __MINGW32__ */
 
   // skip_equal, skip_before, skip_after function count specified
   if ( Query_Skiplist ( WOPT_Skip_List, Current_PU_Count() ) ) {
@@ -932,6 +959,7 @@ static BOOL Disable_opt(WN *wn_tree, ST *pu_st)
     return TRUE;
   }
 
+#ifndef __MINGW32__
   // process the functions specified
   if (WOPT_Enable_Process != NULL) {
     regex_t buf;
@@ -943,6 +971,7 @@ static BOOL Disable_opt(WN *wn_tree, ST *pu_st)
       return TRUE;
     }
   }
+#endif /* __MINGW32__ */
 
   return FALSE;
 }
@@ -1173,8 +1202,10 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
  
     wn_tree = WN_Lower(wn_orig, actions, alias_mgr, "Pre_Opt");
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_NVISA)
     BOOL target_64bit = Is_Target_64bit();
+#elif defined(TARG_SL)
+    BOOL target_64bit = FALSE;
 #else
     BOOL target_64bit = TRUE;
 #endif
@@ -1184,7 +1215,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       WN_retype_expr(wn_tree);
 #endif
 
-#if defined(KEY) && !defined(TARG_IA64)
+#if defined(KEY) && !(defined(TARG_IA64) || defined(TARG_SL))
     WN_unroll(wn_tree);
 #endif
 
@@ -1252,7 +1283,12 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
   // goto conversion
   if (WOPT_Enable_Goto &&
-      (phase == PREOPT_LNO_PHASE || phase == PREOPT_PHASE)) {
+      (phase == PREOPT_LNO_PHASE 
+       || phase == PREOPT_PHASE
+#ifdef TARG_NVISA
+       || phase == PREOPT_CMC_PHASE
+#endif
+       )) {
 #ifdef KEY
     // goto_skip_equal, goto_skip_before, goto_skip_after PU count specified
     if ( Query_Skiplist ( Goto_Skip_List, Current_PU_Count() ) ) {
@@ -1285,7 +1321,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   // check for inadvertent increase in size of data structures
   Is_True(sizeof(CODEREP) == 48,
     ("Size of CODEREP has been changed (is now %d)!",sizeof(CODEREP)));
-#ifdef linux
+#if defined(linux) || defined(BUILD_OS_DARWIN)
   Is_True(sizeof(STMTREP) == 60,
     ("Size of STMTREP has been changed (is now %d)!",sizeof(STMTREP)));
 #else
@@ -1449,6 +1485,12 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
   Is_True(comp_unit->Verify_IR(comp_unit->Cfg(), comp_unit->Htable(), 1),
 	  ("Verify CFG wrong after Htable"));
+
+#ifdef TARG_NVISA
+  // want to do partial preopt for unrolling, but not full preopt
+  // (need to create cfg for unroller, and codemap for emitter).
+  if (phase == MAINOPT_PHASE || phase == PREOPT_CMC_PHASE) {
+#endif
 
   // Do some redundancy elimination phases early, to expose second order
   // effects and deal with them in the subsequent phases (e.g. CVTLs).
@@ -1618,10 +1660,14 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
      wovp.Do_wovp();
   }
 
+#ifdef TARG_NVISA
+  } // MAINOPT_PHASE
+#endif
+
   // If this is the optimizer phase, we have more work to do
   WN *opt_wn;
   if ( phase == MAINOPT_PHASE ) {
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_NVISA)
     if (WHIRL_Mtype_B_On)
       comp_unit->Introduce_mtype_bool();
 #endif
@@ -1765,6 +1811,19 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
         SET_OPT_PHASE("Bitwise DCE");
         comp_unit->Do_bitwise_dce(TRUE /* copy propatage on */);
       }
+
+#if defined(TARG_SL)
+      SET_OPT_PHASE("LOCAL_CLSC");
+      if (WOPT_Enable_Local_Clsc && (!WOPT_Enable_RVI1)) {
+        LOCAL_CLSC lclsc(comp_unit->Cfg(), comp_unit->Opt_stab());
+        lclsc.Do_local_clsc();
+        if (Get_Trace(TP_GLOBOPT, CR_DUMP_FLAG)) {
+	  fprintf(TFile,"%sAfter lclsc\n%s", DBar, DBar);
+          comp_unit->Htable()->Print(TFile);
+	  comp_unit->Cfg()->Print(TFile);
+        }
+      }
+#endif
 
       if (WOPT_Enable_RVI) {
 	// Hacky invocation of new PRE RVI hooks for testing. TODO:
@@ -1935,5 +1994,8 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
   if (WN_opcode(opt_wn) == OPC_FUNC_ENTRY)
     Set_PU_Info_tree_ptr (Current_PU_Info, opt_wn);
+
+  WN_CopyMap(opt_wn, WN_MAP_FEEDBACK, wn_orig);
+
   return opt_wn;
 }

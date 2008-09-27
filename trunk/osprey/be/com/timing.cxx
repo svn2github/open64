@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: timing.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/timing.cxx,v $
+ * $Revision: 1.2 $
+ * $Date: 02/11/07 23:41:39-00:00 $
+ * $Author: fchow@keyresearch.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.timing.cxx $
  *
  * Revision history:
  *  06-Feb-90 - Original Version
@@ -315,7 +315,7 @@ Report_Delta_Time (
   FILE *file,
   INT Timer_ID )
 {
-  char *name;
+  const char *name;
   TIME_INFO *utime, *stime, *etime;
   RSTATE *r = Timer(Timer_ID);
   INT mem;

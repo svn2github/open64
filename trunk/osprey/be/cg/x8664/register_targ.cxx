@@ -36,7 +36,6 @@
 
 */
 
-
 #define INCLUDING_IN_REGISTER // we modify register classes and we're
 			      // really part of the register implementation
 

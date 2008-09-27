@@ -42,7 +42,7 @@
 
 
 
-static char *source_file = __FILE__;
+static const char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sgi_cmd_line.cxx,v $ $Revision: 1.1.1.1 $";
 
 #define __STDC_LIMIT_MACROS
@@ -236,7 +236,7 @@ identify_schedtype(char *text)
 } 
 
 
-void add_cray_args(char *arg)
+void add_cray_args(const char *arg)
 {
    /* Add a string to the Cray args */
 

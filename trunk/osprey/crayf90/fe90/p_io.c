@@ -3293,7 +3293,7 @@ static int create_format_tmp (int      const_idx)
    attr_idx                     = gen_compiler_tmp(stmt_start_line,
                                                    stmt_start_col,
                                                    Shared, TRUE);
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    ATD_TYPE_IDX(attr_idx)	= Integer_8;
 # else
    ATD_TYPE_IDX(attr_idx)	= CG_INTEGER_DEFAULT_TYPE;
@@ -3307,7 +3307,7 @@ static int create_format_tmp (int      const_idx)
    if (TYP_TYPE(CN_TYPE_IDX(const_idx)) == Character) {
       num_els = 1L + 
            TARGET_BYTES_TO_WORDS(CN_INT_TO_C(TYP_IDX(CN_TYPE_IDX(const_idx))));
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 # ifndef _WHIRL_HOST64_TARGET64
       num_els = (num_els + 1) / 2;
 # endif
@@ -3325,7 +3325,7 @@ static int create_format_tmp (int      const_idx)
 
       num_els = TARGET_BITS_TO_WORDS((long)TYP_BIT_LEN(CN_TYPE_IDX(const_idx)));
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 # ifndef _WHIRL_HOST64_TARGET64
       num_els = (num_els + 1) / 2;
 # endif

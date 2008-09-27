@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -46,7 +46,6 @@
 
 
 /* CGEXP routines for loads and stores */
-#define __STDC_LIMIT_MACROS
 #include <stdint.h> // for UINT64_MAX
 #include "elf_stuff.h"
 #include "defs.h"
@@ -55,7 +54,7 @@
 #include "ercg.h"
 #include "tracing.h"
 #include "config.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "config_debug.h"
 #include "xstats.h"
 #include "topcode.h"
@@ -766,7 +765,6 @@ Exp_Ldst (
       else if (! is_lda) {
 	FmtAssert( Is_Target_64bit(), ("NYI: 64-bit offset under -m32"));
 	TN* tmp_tn = Build_TN_Of_Mtype(Pointer_Mtype);
-	TN* result_tn = Build_TN_Like( base_tn );
 
 	Build_OP( TOP_ldc64, tmp_tn, Gen_Literal_TN(base_ofst,8), &newops);
 	// Preserve x86-style property for add64 because this OP can be created
@@ -774,7 +772,12 @@ Exp_Ldst (
 	// LRA has changed OPs to x86-style.  Bug 7304.
 	// We are not allowed to overwrite base_tn.  Instead, add to tmp_tn and
 	// call it base_tn.  Bug 9188.
-	Build_OP( TOP_add64, tmp_tn, tmp_tn, base_tn, &newops );
+
+	// Use "lea" instead of "add" in order not to modify rflags.  Register
+	// allocation can insert spill code between OPs that define and use
+	// rflags.  Bug 14104.
+	Build_OP(TOP_leax64, tmp_tn, base_tn, tmp_tn, Gen_Literal_TN(1, 4),
+		 Gen_Literal_TN(0, 4), &newops);
 	base_tn = tmp_tn;
 	ofst_tn = Gen_Literal_TN( 0, 4 );
       }

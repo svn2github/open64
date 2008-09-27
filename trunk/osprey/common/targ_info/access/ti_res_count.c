@@ -45,8 +45,9 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #include "mempool.h"
 #include "topcode.h"
 #include "ti_si.h"
-
+#include "bstring.h"
 #include "ti_res_count.h"
+
 
 /* Declare the TI_RES_COUNT opaque type (a context for resource counting):
  */
@@ -77,8 +78,8 @@ TI_RES_COUNT_Alloc(
   TI_RES_COUNT *counts = TYPE_MEM_POOL_ALLOC(TI_RES_COUNT, pool);
   counts->vec = TYPE_MEM_POOL_ALLOC_N(double, pool, SI_resource_count);
   if ( !MEM_POOL_Zeroed(pool) ) {
-    bzero(counts->vec, sizeof(double) * SI_resource_count);
-    bzero(counts->bad_ii, sizeof(counts->bad_ii));
+    BZERO(counts->vec, sizeof(double) * SI_resource_count);
+    BZERO(counts->bad_ii, sizeof(counts->bad_ii));
   }
   return counts;
 }

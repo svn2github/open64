@@ -227,7 +227,7 @@ RVI::Insert_statement( BB_NODE *bb, WN *wn, RVI_INSERT insert ) const
   }
 
   if ( Tracing() ) {
-    char *msg;
+    const char *msg;
     switch ( insert ) {
       case RVI_INS_TOP:         msg = "at top"; break;
       case RVI_INS_BEFORE_IREF: msg = "before iref"; break;
@@ -597,6 +597,10 @@ RVI::Is_lda_candidate( const WN *parent, const WN *lda, INT whichkid ) const
 		  Preg_Is_Dedicated(WN_offset(rhs))));
       }
       return TRUE;
+
+    case OPR_ILOADX:
+    case OPR_ISTOREX:
+      return FALSE;
 
     case OPR_CALL:
     case OPR_ICALL:

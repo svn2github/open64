@@ -294,6 +294,8 @@ PRUNE_BOUND::Useset_expr(CODEREP *cr)
       Useset_expr(cr->Ilod_base());
       if (cr->Opr() == OPR_MLOAD)
 	Useset_expr(cr->Mload_size());
+      else if (cr->Opr() == OPR_ILOADX)
+	Useset_expr(cr->Index());
       break;
 
     case CK_OP:

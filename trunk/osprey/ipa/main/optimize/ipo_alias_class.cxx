@@ -2229,7 +2229,7 @@ IP_ALIAS_CLASSIFICATION::Release_resources(void)
     (&_st_id_to_base_id_map)->~ID_MAP();
   }
 
-  MEM_POOL_Delete(_pool);
+  MEM_POOL_Pop(_pool);
   _mem_pool_valid = FALSE;
   _pool = NULL;
 }

@@ -56,7 +56,8 @@
 #include "opt_sym.h"
 #include "opt_util.h"
 
-#ifdef __linux__
+#ifdef SHARED_BUILD
+#if defined(__linux__) || defined(BUILD_OS_DARWIN)
 #ifdef SHARED_BUILD
 extern AUX_ID (*WN_aux_p) (const WN*);
 #define WN_aux (*WN_aux_p)
@@ -66,6 +67,7 @@ extern AUX_ID WN_aux (const WN*);
 #else
 #pragma weak WN_aux__GPC2WN
 #endif // __linux__
+#endif // SHARED_BUILD
 
 
 // ************************************************************************
@@ -114,6 +116,23 @@ base_action_tbl[MAX_BASE_KIND][MAX_BASE_KIND] = {
   {  NO_INFO, NO_INFO,	  NO_INFO,   NO_INFO}, // UNKNOWN
 };
   
+#if defined(TARG_SL)
+ST* POINTS_TO::Get_ST_base(ST* st) const
+{
+    if(st==NULL)
+        return NULL;
+    else {
+      ST *st_base=st;
+      ST* base=ST_base(st);
+      while(base!=NULL && st_base!=base)  {
+        st_base=base;
+        base=ST_base(st_base);
+      }
+      return st_base;
+    }
+}
+#endif
+
 
 //  TRUE:  base are the same
 //  FALSE: don't know
@@ -121,9 +140,16 @@ base_action_tbl[MAX_BASE_KIND][MAX_BASE_KIND] = {
 BOOL POINTS_TO::Same_base(const POINTS_TO *pt) const
 {
   BASE_ACTION a = base_action_tbl[this->Base_kind()][pt->Base_kind()];
-  if ((a == COMP_BASE || a == SAME_BASE) &&
-      this->Base() == pt->Base())
-    return TRUE;
+  if ((a == COMP_BASE || a == SAME_BASE)) {
+#if defined(TARG_SL)
+    if(this->Base_kind()==BASE_IS_FIXED && pt->Base_kind()==BASE_IS_FIXED) {
+      if(Get_ST_base(this->Base())==Get_ST_base(pt->Base()))
+        return TRUE;
+    }  else  
+#endif
+    if(this->Base() == pt->Base())
+      return TRUE;
+  }
   return FALSE;
 }
 
@@ -177,8 +203,15 @@ BOOL POINTS_TO::Different_base(const POINTS_TO *pt) const
   BASE_ACTION a = base_action_tbl[this->Base_kind()][pt->Base_kind()];
   if (a == DIFF) {
     return TRUE;
-  } else if (a == COMP_BASE && this->Base() != pt->Base()) {
-    return TRUE;
+  } else if (a == COMP_BASE) {
+#if defined(TARG_SL)
+    if (this->Base_kind() == BASE_IS_FIXED && pt->Base_kind() == BASE_IS_FIXED) {
+      if (Get_ST_base(this->Base()) != Get_ST_base(pt->Base()))
+        return TRUE;
+    } else 
+#endif
+    if(this->Base() != pt->Base())
+      return TRUE;
   }
   return FALSE;
 }
@@ -1027,7 +1060,7 @@ void POINTS_TO::Print(FILE *fp) const
 
   // print attributes
   fprintf(fp, "attr=");
-  char *pr_separator = "";
+  const char *pr_separator = "";
   if (Not_addr_saved()) {
     fprintf(fp, "%snot_addr_saved", pr_separator);
     pr_separator = "|";
@@ -1125,7 +1158,7 @@ void POINTS_TO::Print(FILE *fp) const
     fprintf(fp, ", based_sym=%s(%d)\n", (Based_sym() == UNDEFINED_PTR) ?
 	    "*UNDEFINED*" : ST_name(Based_sym()), Based_sym_depth());
   else
-    fprintf(fp, ", based_sym=null");
+    fprintf(fp, ", based_sym=null\n");
 
   if (Pointer_is_named_symbol () || Pointer_is_aux_id () || 
       Pointer_is_coderep_id ()) {

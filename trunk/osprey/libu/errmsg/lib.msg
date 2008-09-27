@@ -1,4 +1,11 @@
 $ USMID @(#) libu/errmsg/lib.msg	92.6	04/29/99 14:04:27
+$
+$  Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
+$
+
+$
+$  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+$
 
 $
 $
@@ -162,8 +169,13 @@ number is returned in the \*FIOSTAT\fR variable, if specified.
 .Ma UNRECOVERABLE
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
+#ifdef KEY /* F2003 */
+$msg FE__RDEMPT A READ operation tried to read an empty file.
+$nexp FE__RDEMPT
+#else /* KEY F2003 */
 $msg FERDEMPT A READ operation tried to read an empty file.
 $nexp FERDEMPT
+#endif /* KEY F2003 */
 A READ operation tried to read an empty file.
 .PP
 A Fortran \*FREAD\fR operation read an empty file, and neither
@@ -189,8 +201,13 @@ number is returned in the \*FIOSTAT\fR variable, if specified.
 .Ma UNRECOVERABLE
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
+#ifdef KEY /* F2003 */
+$msg FE__RDENDR A READ is invalid when a file is positioned after the end-of-file.
+$nexp FE__RDENDR
+#else /* KEY F2003 */
 $msg FERDENDR A READ is invalid when a file is positioned after the end-of-file.
 $nexp FERDENDR
+#endif /* KEY F2003 */
 A READ is invalid when a file is positioned after the end-of-file.
 .PP
 A Fortran \*FREAD\fR operation was initiated on a
@@ -212,8 +229,13 @@ number is returned in the \*FIOSTAT\fR variable, if specified.
 .Ma UNRECOVERABLE
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
+#ifdef KEY /* F2003 */
+$msg FE__RDNLEF A namelist READ operation tried to read past the end-of-file.
+$nexp FE__RDNLEF
+#else /* KEY F2003 */
 $msg FERDNLEF A namelist READ operation tried to read past the end-of-file.
 $nexp FERDNLEF
+#endif /* KEY F2003 */
 A namelist READ operation tried to read past the end-of-file.
 .PP
 A Fortran namelist \*FREAD\fR operation encountered the endfile record,
@@ -234,8 +256,13 @@ statement in your Fortran reference manual.
 .Ma UNRECOVERABLE
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
+#ifdef KEY /* F2003 */
+$msg FE__RDIEOF A READ operation on an internal file tried to read past the end-of-file.
+$nexp FE__RDIEOF
+#else /* KEY F2003 */
 $msg FERDIEOF A READ operation on an internal file tried to read past the end-of-file.
 $nexp FERDIEOF
+#endif /* KEY F2003 */
 A READ operation on an internal file tried to read past the end-of-file.
 .PP
 A Fortran \*FREAD\fR operation tried to read beyond the end of the internal
@@ -2714,15 +2741,15 @@ See the description of namelist I/O in your Fortran reference manual.
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
 $msg FENLLGNM Namelist variable name "%s" is longer\n\
-  than 31 characters.
+  than 63 characters.
 $nexp FENLLGNM
 Namelist variable name \&'\fIname\*C' is longer\
-than 31 characters.
+than 63 characters.
 .PP
 A namelist \*FREAD\fR statement encountered a variable name that
-was too long (greater than 31 characters).  If the name is part
+was too long (greater than 63 characters).  If the name is part
 of a derived type entity, each component name must be less
-than 32 characters.
+than 64 characters.
 .PP
 Check the namelist input file to ensure that the variable name
 is correct.
@@ -2889,12 +2916,12 @@ and the \*FNAMELIST\fR statement in your Fortran reference manual.
 .Ma UNRECOVERABLE
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
-$msg FENLLONG A namelist variable name must consist of fewer than 32 characters.
+$msg FENLLONG A namelist variable name must consist of fewer than 64 characters.
 $nexp FENLLONG
-A namelist variable name must consist of fewer than 32 characters.
+A namelist variable name must consist of fewer than 64 characters.
 .PP
 A namelist \*FREAD\fR statement encountered a variable name that was too
-long (greater than 31 characters).
+long (greater than 63 characters).
 .PP
 Check the namelist input file to ensure that the variable name is correct.
 .PP
@@ -6904,6 +6931,7 @@ reference manual.
 .Ma WARNING
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
+#ifdef KEY /* Bug 4260 */
 $msg FWFILENV The FILENV environment variable overrides compile-time switches\n\
 such as "-byteswap" or "-convert"
 $nexp FWFILENV
@@ -6921,6 +6949,8 @@ environment variable.
 .Ma WARNING
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
+#endif /* KEY Bug 4260 */
+#ifdef KEY /* Bug 7479 */
 $msg FWSTKNOMOD PSC_STACK_LIMIT is empty, so will not modify stack size limit
 $nexp FWSTKNOMOD
 PSC_STACK_LIMIT is empty, so will not modify stack size limit
@@ -7065,6 +7095,7 @@ effect
 .Ma WARNING
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
+#endif /* KEY Bug 7479 */
 $
 $	C Compiler-initiated run-time messages
 $

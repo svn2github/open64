@@ -388,7 +388,20 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
             }
           } 
           else{
+#ifdef TARG_NVISA
+            // Preserve initial types lest we lose alignment info
+            // (e.g. if U4U2LDID becomes I4I4LDID)
+            // This can happen if copyprop U4U2 into original I4I4).
+            // But make sure rtypes are compatible.
+            if (Mtype_TransferSign(WN_rtype(WN_kid(wn,i)), 
+                                   exp->Asm_input_rtype()) 
+               == WN_rtype(WN_kid(wn,i)))
+            {
+              continue; // skip following code
+            }
+#endif //TARG_NVISA
             WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
+	    // bug 13104
             if (! MTYPE_is_float(exp->Asm_input_rtype()) &&
 				(opnd->Kind() == CK_VAR || opnd->Kind() == CK_IVAR))
 			  // OSP_388 and OSP_390
@@ -568,7 +581,12 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       }
 #endif
       wn = WN_CreateParm(exp->Dtyp(), wn, exp->Ilod_ty(), exp->Offset());
+#if defined(TARG_SL)
+      // avoid cse of implicit aliases stuff, mostly in sl specific intrinsics
+      if (WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn)) {
+#else
       if (WN_Parm_By_Reference(wn)) {
+#endif
 	POINTS_TO *pt = exp->Points_to(emitter->Opt_stab());
 	Is_True(pt != NULL, ("Reference parameter has NULL POINTS_TO."));
 	emitter->Alias_Mgr()->Gen_alias_id(wn, pt);
@@ -633,6 +651,13 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
     {
       AUX_STAB_ENTRY *aux_entry = 
 	emitter->Opt_stab()->Aux_stab_entry(exp->Aux_id());
+#ifdef TARG_SL
+      if (exp->Dtyp() == MTYPE_I2 && exp->Dsctyp() == MTYPE_I2) {
+        wn = WN_Create((aux_entry->Bit_size() > 0 && aux_entry->Field_id() == 0)
+			? OPR_LDBITS : OPR_LDID,
+	   	        MTYPE_I4, exp->Dsctyp(), 0); 
+      } else
+#endif
       wn = WN_Create((aux_entry->Bit_size() > 0 && aux_entry->Field_id() == 0)
 			? OPR_LDBITS : OPR_LDID,
 		     exp->Dtyp(), exp->Dsctyp(), 0); 
@@ -645,11 +670,23 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       if (ST_class (st) == CLASS_PREG &&
           exp->Dsctyp() != MTYPE_M &&  // added to fix bug #567932
 	  TY_size (ty_idx) != MTYPE_byte_size (exp->Dsctyp())) {
-	DevWarn("PREG (%s) has mismatching MTYPE-size and TY-size; refer to bug #567932", 
-		ST_name(st));
-	Set_TY_IDX_index (ty_idx,
-			  TY_IDX_index(MTYPE_To_TY (exp->Dsctyp())));
-	field_id = 0;
+	BOOL reset_type = TRUE;
+	if (field_id != 0 && TY_kind(ty_idx) == KIND_STRUCT) {
+	  // check if is referring to struct field which does match size
+	  UINT cur_field_id = 0;
+	  FLD_HANDLE fld = FLD_get_to_field (ty_idx, field_id, cur_field_id);
+	  Is_True (! fld.Is_Null(), ("Invalid field id %d for type 0x%x",
+                          field_id, ty_idx));
+	  if (TY_size(FLD_type(fld)) == MTYPE_byte_size(exp->Dsctyp()))
+		reset_type = FALSE;
+	}
+	if (reset_type) {
+	  DevWarn("PREG (%s) has mismatching MTYPE-size and TY-size; refer to bug #567932", 
+		  ST_name(st));
+	  Set_TY_IDX_index (ty_idx,
+			    TY_IDX_index(MTYPE_To_TY (exp->Dsctyp())));
+	  field_id = 0;
+	}
       }
       WN_set_ty(wn, ty_idx);
       WN_st_idx(wn) = ST_st_idx(st);
@@ -713,6 +750,13 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
     Warn_todo("Gen_exp_wn: CODEKIND is not implemented yet");
     break;
   }
+
+#if defined(TARG_SL)
+  // set flag for vbuf offset wn node. 
+  if (exp->Is_flag_set(CF_INTERNAL_MEM_OFFSET)) {
+    WN_Set_is_internal_mem_ofst(wn);
+  }
+#endif 
 
   // connect up this cr and the resulting wn for def-use
   if ( emitter->Wn_to_cr_map() && connect_cr_to_wn )
@@ -806,6 +850,12 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       rhs_wn = Gen_exp_wn( srep->Rhs(), emitter );
       rwn = WN_CreateCompgoto(num_entries, rhs_wn, block_wn, default_wn, 0);
     }
+#ifdef TARG_SL //fork_joint
+     if (srep->Fork_stmt_flags())
+	 	WN_Set_is_compgoto_para(rwn);
+     else if(srep->Minor_fork_stmt_flags()) 
+	 	WN_Set_is_compgoto_for_minor(rwn);
+#endif 
     break;
 
   case OPR_ASM_STMT:
@@ -834,7 +884,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	else {
           // bug fix for OSP_87 and OSP_90
 	  prag = WN_CreateXpragma(WN_PRAGMA_ASM_CLOBBER,
-				  (ST_IDX) 0,
+				  (ST_IDX) p->clobber_string_idx,
 				  1);
 	  WN_kid0(prag) = WN_CreateIdname(p->preg_number,
 					  p->preg_st_idx);
@@ -996,13 +1046,15 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 			    TY_IDX_index(MTYPE_To_TY (lhs->Dsctyp())));
 	  field_id = 0;
 	}
+
 	if (lhs->Dsctyp() == MTYPE_B && WN_rtype(rhs_wn) != MTYPE_B) {
 	  Is_True(WN_operator(rhs_wn) == OPR_INTCONST,
 	        ("Gen_stmt_wn: non-boolean value stored to boolean variable"));
 	  WN_set_rtype(rhs_wn, MTYPE_B);
 	}
 #ifdef KEY
-	if (OPERATOR_is_load(WN_operator(rhs_wn))) {
+	if (OPERATOR_is_load(WN_operator(rhs_wn)) && 
+	    lhs->Dsctyp() != MTYPE_BS /* bug 14453 */) {
 	  if (MTYPE_byte_size(WN_rtype(rhs_wn)) < 
 	    			MTYPE_byte_size(lhs->Dsctyp())) { // bug 5224
 	    Is_True(MTYPE_is_integral(WN_rtype(rhs_wn)),
@@ -1068,7 +1120,8 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 #endif
 	   || rhs_cr->Opr() == OPR_CVTL ) &&
 	  MTYPE_is_integral( rhs_cr->Dtyp() ) && 
-	  MTYPE_is_integral( lhs->Dsctyp() )
+	  MTYPE_is_integral( lhs->Dsctyp() ) &&
+	  lhs->Dsctyp() != MTYPE_BS /* bug 14453 */
 	  ) {
 	MTYPE actual_type;
 	if (rhs_cr->Opr() == OPR_CVTL)
@@ -1100,16 +1153,23 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       WN_store_offset(rwn) = lhs->Offset();
       WN_set_ty(rwn, lhs->Ilod_base_ty());
       WN_set_field_id(rwn, lhs->I_field_id());
+#if defined(TARG_SL)
+      // support vbuf istore automatic expansion 
+      if(srep->SL2_internal_mem_ofst())
+        WN_Set_is_internal_mem_ofst(rwn); 
+#endif 
 #ifdef TARG_X8664 // bug 6910
       if (emitter->Htable()->Phase() != MAINOPT_PHASE &&
 	  WN_operator(rhs_wn) == OPR_INTCONST &&
-	  MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(lhs->Dsctyp()))
+	  MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(lhs->Dsctyp()) &&
+	  lhs->Dsctyp() != MTYPE_BS /* bug 14453 */)
 	WN_set_rtype(rhs_wn, Mtype_TransferSize(lhs->Dsctyp(), WN_rtype(rhs_wn)));
 #endif
 #ifdef TARG_X8664
       if (Is_Target_32bit() && MTYPE_byte_size(WN_rtype(rhs_wn)) == 8 &&
 	  WN_operator(rhs_wn) == OPR_INTCONST && 
-	  MTYPE_byte_size(lhs->Dsctyp()) < 8)
+	  MTYPE_byte_size(lhs->Dsctyp()) < 8 &&
+	  lhs->Dsctyp() != MTYPE_BS /* bug 14453 */)
 	WN_set_rtype(rhs_wn, Mtype_TransferSize(MTYPE_I4, WN_rtype(rhs_wn)));
 #endif
       emitter->Alias_Mgr()->
@@ -1219,6 +1279,9 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
   
   case OPR_RETURN:
   case OPR_PRAGMA:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
     rwn = WN_COPY_Tree_With_Map(srep->Orig_wn());
     if (OPCODE_has_aux(srep->Op()))
       WN_st_idx(rwn) = ST_st_idx(emitter->Opt_stab()->St(WN_aux(rwn)));

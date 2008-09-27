@@ -891,6 +891,9 @@ Found_aliasing_store_in_loop(POINTS_TO *pt, TY_IDX ty, BB_LOOP *loop,
     case OPR_EVAL:
     case OPR_PRAGMA:
     case OPR_XPRAGMA:
+#ifdef KEY
+    case OPR_GOTO_OUTER_BLOCK:
+#endif
       break;
 
     default:
@@ -1214,7 +1217,7 @@ Compute_dependence(STMTREP *stmt, BB_NODE *end_bb, STMTREP *after_this_stmt)
 //   ...
 
 #ifdef Is_True_On
-inline BOOL RAISE(BOOL r, char *msg)
+inline BOOL RAISE(BOOL r, const char *msg)
 {
   if (Get_Trace(TP_GLOBOPT, EMIT_DUMP_FLAG))
     if (!r)
@@ -1224,7 +1227,7 @@ inline BOOL RAISE(BOOL r, char *msg)
 }
 #else
 /* ARGSUSED */
-inline BOOL RAISE(BOOL r, char *msg) { return r; }
+inline BOOL RAISE(BOOL r, const char *msg) { return r; }
 #endif
 
 
@@ -1242,7 +1245,7 @@ Can_raise_to_doloop(BB_LOOP *loop, BOOL repair, CODEMAP *htable)
   // do not raise it to a DO loop.  MP loops can not have early exits,
   // so this is not an issue.  
 
-#ifndef OSP_OPT
+#if !defined(OSP_OPT) || !defined(TARG_IA64)
   if (loop->Exit_early()) return RAISE(FALSE, "loop exits early");
 #endif
   BB_NODE *header = loop->Header();

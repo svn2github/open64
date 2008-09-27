@@ -68,7 +68,11 @@ extern "C" {
 static char *config_asm_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia64/config_asm.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#define LABEL_PREFIX ".L"
+
 #define Label_Name_Separator "_"
+
+#define Temp_Symbol_Prefix Label_Name_Separator "temp" Label_Name_Separator
 
 /* to distinguish from register names: */
 #define Symbol_Name_Suffix "#"
@@ -77,6 +81,7 @@ static char *config_asm_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/com
  * from the BB id and the PU name:
  */
 #define BB_Label_Format	".BB%d_%s"
+#define END_Label_Format ".LDWend_%s"
 
 /* The following sprintf format is used to create a basic block label
  * from a user label name and the PU name:

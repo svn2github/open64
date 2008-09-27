@@ -1,12 +1,4 @@
 /*
- *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
- */
-
-/*
- *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -45,10 +37,10 @@
 
 /**
 *** Module: cxx_graph.cxx
-*** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/be/com/cxx_graph.cxx,v $
+*** $Revision: 1.2 $
+*** $Date: 02/11/07 23:41:35-00:00 $
+*** $Author: fchow@keyresearch.com $
+*** $Source: /scratch/mee/2.4-65/kpro64-pending/be/com/SCCS/s.cxx_graph.cxx $
 *** 
 *** Revision history:
 *** 
@@ -67,8 +59,8 @@
 #include "cxx_memory.h"
 #include "errors.h"
 
-const VINDEX16 INVALID_VINDEX16=0xffff; //increase from 0xffff for bug 13018
-VINDEX16 GRAPH16_CAPACITY = 0xfffe; //increase from 0xfffe for bug 13018
+const VINDEX16 INVALID_VINDEX16=0xffff;
+VINDEX16 GRAPH16_CAPACITY = 0xfffe;
 
 VERTEX16&
 VERTEX16::operator=(const VERTEX16& v) {

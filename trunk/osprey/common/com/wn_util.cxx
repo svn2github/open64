@@ -1441,6 +1441,29 @@ extern WN *WN_LOOP_TripCount(const WN *loop)
       OPCODE_operator(ub_compare) != OPR_LT)
     trip_cnt = WN_CreateExp2( OPCODE_make_op(OPR_ADD,trip_mtype,MTYPE_V),
 			      trip_cnt, WN_COPY_Tree(incr) );
+#ifdef TARG_NVISA_TODO
+  // If dividing by negative incr, if signed then neg/neg will be positive,
+  // but if unsigned then are dividing by large unsigned value => 0.
+  // So use absolute values.
+  // Example is for (unsigned i = 4; i > 1; --i)
+  // Problem is that U4 incr is 0x0ffffffff in 64bit value so looks positive
+  if (MTYPE_is_unsigned(trip_mtype)
+    && WN_operator(trip_cnt) == OPR_INTCONST
+    && WN_const_val(trip_cnt) < 0
+    && WN_operator(incr) == OPR_INTCONST)
+  {
+    INT64 incrval = WN_const_val(incr);
+    if (trip_mtype == MTYPE_U4) {
+      // convert to signed then sign-extend
+      incrval = (INT64)(INT32)(UINT32)incrval;
+    }
+    if (incrval < 0) {
+      incr = WN_Abs(MTYPE_complement(trip_mtype), WN_COPY_Tree(incr));
+      trip_cnt = WN_Abs(MTYPE_complement(trip_mtype), trip_cnt);
+    }
+  }
+#endif
+
   trip_cnt = WN_CreateExp2( OPCODE_make_op(OPR_DIV,trip_mtype,MTYPE_V),
 			    trip_cnt, WN_COPY_Tree(incr) );
 
@@ -1589,6 +1612,12 @@ TY_IDX
 WN_object_ty (const WN *wn)
 {
   if (OPCODE_is_load(WN_opcode(wn))) {
+    if (WN_operator(wn) == OPR_MLOAD) {
+      TY_IDX ptr_ty = WN_ty(wn);
+      Is_True (TY_kind(ptr_ty) == KIND_POINTER, ("TY of ISTORE is not KIND_POINTER."));
+      return TY_pointer(ptr_ty);
+    }
+
     if ((WN_operator(wn) == OPR_LDID 
 #ifdef KEY
 	 || WN_operator(wn) == OPR_ILOAD

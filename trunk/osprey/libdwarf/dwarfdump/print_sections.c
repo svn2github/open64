@@ -35,6 +35,10 @@ $Header: /proj/osprey/CVS/open64/osprey1.0/libdwarf/dwarfdump/print_sections.c,v
 #include "globals.h"
 #include "dwarf_names.h"
 
+#ifdef __MINGW32__
+#include "translatetypes.h"
+#endif /* __MINGW32__ */
+
 /*
  * Print line number information:
  * 	filename

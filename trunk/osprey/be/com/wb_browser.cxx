@@ -1,5 +1,9 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005-2007 NVIDIA Corporation.  All rights reserved.
+ */
+
+/*
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -45,7 +49,11 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 #include <sys/types.h>
+#if defined(BUILD_OS_DARWIN)
+#include "darwin_elf.h"
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <ctype.h>
 #include "wn.h"
 #include "wn_map.h"
@@ -65,27 +73,25 @@
 #include "wb_browser.h"
 #include "whirl2src.h"
 
-#ifndef __GNUC__ 
-#pragma weak Id__13ALIAS_MANAGERCGPC2WN
-#pragma weak Print__12ACCESS_ARRAYCGP8__file_si
-#pragma weak Print__17DO_LOOP_INFO_BASEGP8__file_si
-#pragma weak Print__7IF_INFOGP8__file_s
-#pragma weak Summary__10WB_BROWSERGP8__file_s
-#elif (__GNUC__ == 2)
-#pragma weak Print__17DO_LOOP_INFO_BASEP8_IO_FILEi
-#pragma weak Print__7IF_INFOP8_IO_FILE
-#pragma weak Print__C12ACCESS_ARRAYP8_IO_FILEi
-#pragma weak Print__C13ACCESS_VECTORP8_IO_FILEii
-#pragma weak Summary__10WB_BROWSERP8_IO_FILE
-#else	/* gcc3.2 */
-#pragma weak Id__13ALIAS_MANAGERCGPC2WN
-#pragma weak Print__12ACCESS_ARRAYCGP8__file_si
-#pragma weak _ZN17DO_LOOP_INFO_BASE5PrintEP8_IO_FILEi	
-#pragma weak Print__7IF_INFOGP8__file_s
-#pragma weak _ZN10WB_BROWSER7SummaryEP8_IO_FILE	
+#if defined(__linux__) || !defined(SHARED_BUILD)
+extern void (*Print_ACCESS_ARRAY_p)(FILE *fp, ACCESS_ARRAY *a);
+#define Print_ACCESS_ARRAY (*Print_ACCESS_ARRAY_p)
+extern void (*Print_IF_INFO_p)(FILE *fp, IF_INFO *i);
+#define Print_IF_INFO (*Print_IF_INFO_p)
+extern void (*WB_BROWSER_Summary_p)(FILE *fp, WB_BROWSER *wb);
+#define WB_BROWSER_Summary (*WB_BROWSER_Summary_p)
+extern void (*Print_DO_LOOP_INFO_BASE_p)(FILE *fp, DO_LOOP_INFO_BASE *b);
+#define Print_DO_LOOP_INFO_BASE (*Print_DO_LOOP_INFO_BASE_p)
+#else
+#pragma weak Print_ACCESS_ARRAY
+#pragma weak Print_IF_INFO
+#pragma weak Print_DO_LOOP_INFO_BASE
+#pragma weak WB_BROWSER_Summary
+#pragma weak WB_BROWSER_Summary_p
 #endif
 
-static char *operator_table[OPERATOR_LAST + 1] =
+
+static const char *operator_table[OPERATOR_LAST + 1] =
 {
   "UNKNOWN",
   "ABS",
@@ -457,7 +463,7 @@ void WB_BROWSER::Set_Node()
 {
   INT node;
   Buffer().Scan_HexInteger(&node);
-  Set_Cnode((WN*) (INTPTR)node);
+  Set_Cnode((WN*)(INTPTR) node);
   Print_This_Node(Cnode());
 }
 
@@ -842,7 +848,7 @@ void WB_BROWSER::Access_Array()
       = (ACCESS_ARRAY *) WN_MAP_Get(Access_Array_Map(), Cnode());
     if (array != NULL) {
       fprintf(stdout, "The access array is \n"); 
-      array->Print(stdout);
+      Print_ACCESS_ARRAY (stdout, array);
     } else {
       fprintf(stdout, "Null ACCESS_ARRAY\n");
     }
@@ -850,7 +856,7 @@ void WB_BROWSER::Access_Array()
     IF_INFO *info = (IF_INFO *) WN_MAP_Get(Access_Array_Map(), Cnode());
     if (info != NULL) {
       fprintf(stdout, "The if info is \n"); 
-      info->Print(stdout);
+      Print_IF_INFO(stdout, info);
     } else {
       fprintf(stdout, "Null IF_INFO\n");
     }
@@ -859,7 +865,7 @@ void WB_BROWSER::Access_Array()
       = (DO_LOOP_INFO_BASE*) WN_MAP_Get(Access_Array_Map(), Cnode());
     if (info != NULL) {
       fprintf(stdout, "The loop info is \n");
-      info->Print(stdout);
+      Print_DO_LOOP_INFO_BASE(stdout, info);	
     } else {
       fprintf(stdout, "NulleDO_LOOP_INFO_BASE\n");
     }
@@ -1786,7 +1792,7 @@ void WB_BROWSER::Invoke_Command(char ch)
     DaVinci_Toggle();
     break; 
   case '~': 
-    Summary(stdout);
+    WB_BROWSER_Summary(stdout, this);
     break;
   default: 
     fprintf(stdout, "Bad character: %c\n", ch);
@@ -1938,7 +1944,7 @@ void WB_BROWSER::Initialize_Keymap(char ch)
 //   in the compiler where you want to see the loops.
 //-----------------------------------------------------------------------
 
-void WB_BROWSER::Sdebug(char init_buffer[])
+void WB_BROWSER::Sdebug(const char init_buffer[])
 {
   char ch;
   BOOL reload;

@@ -39,6 +39,7 @@ const char *host_detect_local_cpu (int argc, const char **argv);
 #define bit_SSE2 (1 << 26)
 
 #define bit_SSE3 (1 << 0)
+#define bit_SSE4a (1 << 6)
 #define bit_CMPXCHG16B (1 << 13)
 
 #define bit_3DNOW (1 << 31)
@@ -67,7 +68,7 @@ const char *host_detect_local_cpu (int argc, const char **argv)
   unsigned int ext_level;
   unsigned char has_mmx = 0, has_3dnow = 0, has_3dnowp = 0, has_sse = 0;
   unsigned char has_sse2 = 0, has_sse3 = 0, has_cmov = 0;
-  unsigned char has_longmode = 0, has_cmpxchg8b = 0;
+  unsigned char has_longmode = 0, has_cmpxchg8b = 0, has_sse4a=0;
   unsigned char is_amd = 0;
   unsigned int family = 0;
   bool arch;
@@ -118,6 +119,7 @@ const char *host_detect_local_cpu (int argc, const char **argv)
       has_3dnow = !!(edx & bit_3DNOW);
       has_3dnowp = !!(edx & bit_3DNOWP);
       has_longmode = !!(edx & bit_LM);
+      has_sse4a = !!(ecx & bit_SSE4a);
     }
 
   is_amd = vendor == *(unsigned int*)"Auth";
@@ -130,6 +132,8 @@ const char *host_detect_local_cpu (int argc, const char **argv)
 	processor = PROCESSOR_ATHLON;
       if (has_sse2 || has_longmode)
 	processor = PROCESSOR_K8;
+      if (has_sse4a)
+        processor = PROCESSOR_AMDFAM10;
     }
   else
     {
@@ -262,6 +266,9 @@ const char *host_detect_local_cpu (int argc, const char **argv)
     case PROCESSOR_GENERIC32:
     case PROCESSOR_GENERIC64:
       cpu = "generic";
+      break;
+    case PROCESSOR_AMDFAM10:
+      cpu = "amdfam10";
       break;
     default:
       abort ();

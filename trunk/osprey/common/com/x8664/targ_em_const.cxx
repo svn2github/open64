@@ -373,6 +373,7 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 
       case MTYPE_FQ: {
         char *p = (char *) & TCON_R16(tc);
+	// OSP, laijx, for 64-bit compiler
         // Force the size of MTYPE_FQ to 16 for 64bit code and 12 for 32bit code
 	emit_bytes( fl, p, Is_Target_64bit() ? 16 : 12 /* sizeof(TCON_R16(tc)) */ );
 	fprintf(fl, "\t%s quad %#Lg\n", ASM_CMNT, TCON_R16(tc) );
@@ -395,7 +396,7 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 
       case MTYPE_STRING: {
 	INTSC count;
-#ifdef KEY	// Use .rept/.endr to reduce .s file size.  Bug 4620.
+#if defined(KEY) && ! defined(BUILD_OS_DARWIN)	// Use .rept/.endr to reduce .s file size.  Bug 4620.
 	if (rc > 1)
 	  fprintf(fl, ".rept %ld\n", rc);
 	char *p = Index_to_char_array (TCON_cp(tc));
@@ -880,6 +881,9 @@ Targ_Emit_EH_Const (FILE *fl,	    /* File to which to write */
 
 
 #if defined(BACK_END) || defined(QIKKI_BE)
+#if defined(BUILD_OS_DARWIN)
+void Em_Targ_Emit_Const (void *, TCON, BOOL, INTSC) {}
+#else /* defined(BUILD_OS_DARWIN) */
 /* ====================================================================
  *
  * Em_Targ_Emit_Const
@@ -1001,6 +1005,7 @@ Em_Targ_Emit_Const (void *scn,	    /* Section to which to write */
 			  Mtype_Name(TCON_ty(tc)) ) );
     }
 } /* Em_Targ_Emit_Const */
+#endif /* defined(BUILD_OS_DARWIN) */
 #endif /* BACK_END */
 
 #if !defined(MONGOOSE_BE) && !defined(QIKKI_BE)

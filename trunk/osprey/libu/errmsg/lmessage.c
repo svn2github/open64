@@ -36,7 +36,20 @@
   http://oss.sgi.com/projects/GenInfo/NoticeExplan
 
 */
-
+#ifdef KEY
+/* DON'T ADD ANY #include HERE */
+/* On Fedora Core 5, with gcc 4.1.1 installed, and "-D_XOPEN_SOURCE{,_EXTENDED}"
+ * on the command line, "pathcc -gnu40" gives an "implicit declaration" error
+ * for snprintf. Using -std=c99 fixes the problem, but applying that to the
+ * entire libu requires zillions of fixes to obsolete C idioms (e.g., implicit
+ * "int" typing of functions) plus a couple of FP-related changes that might
+ * break things. I have no idea why _XOPEN_SOURCE and _XOPEN_SOURCE_EXTENDED
+ * are required (perhaps stuff related to "struct timeval" in other source
+ * files?) but we don't want it here.
+ */
+#undef _XOPEN_SOURCE
+#undef _XOPEN_SOURCE_EXTENDED
+#endif /* KEY */
 
 #pragma ident "@(#) libu/errmsg/lmessage.c	92.4	10/14/99 17:05:30"
 #include <liberrno.h>

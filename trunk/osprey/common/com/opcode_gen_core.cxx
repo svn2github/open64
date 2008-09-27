@@ -1034,6 +1034,28 @@ struct OPERATOR_info_struct OPERATOR_info[OPERATOR_LAST+1] = {
    OPERATOR_PROPERTY_sym},
 #endif
 
+#if defined(TARG_SL) //fork_joint
+  {"OPR_SL2_FORK_MAJOR",
+   0 /* nkids */,
+   OPERATOR_MAPCAT_OSTMT /* mapcat */,
+   OPERATOR_PROPERTY_stmt                 |
+   OPERATOR_PROPERTY_leaf                 |
+   OPERATOR_PROPERTY_non_scf              |
+   OPERATOR_PROPERTY_endsbb               |
+   OPERATOR_PROPERTY_next_prev            |
+   OPERATOR_PROPERTY_label},
+  {"OPR_SL2_FORK_MINOR",
+   0 /* nkids */,
+   OPERATOR_MAPCAT_OSTMT /* mapcat */,
+   OPERATOR_PROPERTY_stmt                 |
+   OPERATOR_PROPERTY_leaf                 |
+   OPERATOR_PROPERTY_non_scf              |
+   OPERATOR_PROPERTY_endsbb               |
+   OPERATOR_PROPERTY_next_prev            |
+   OPERATOR_PROPERTY_label},
+   
+#endif 
+
 #ifdef TARG_X8664
   {"OPR_SHUFFLE",
    1 /* nkids */,
@@ -2587,6 +2609,10 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
         valid = Is_MTYPE_f_i_p_z [rtype] && desc == MTYPE_V;
         break;
 
+#if defined(TARG_SL) 	//fork_joint
+      case OPR_SL2_FORK_MAJOR:
+      case OPR_SL2_FORK_MINOR:
+#endif 
       case OPR_AGOTO:
       case OPR_ALTENTRY:
       case OPR_ASSERT:
@@ -2712,8 +2738,13 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 #endif
       case OPR_RND:
       case OPR_TRUNC:
+#ifdef FLOAT_ROUNDING_OPCODES
+        // [RTYPE] : f,i [DESC] : f
+        valid = Is_MTYPE_f_i [rtype] && Is_MTYPE_f [desc];
+#else
         // [RTYPE] : i [DESC] : f
         valid = Is_MTYPE_i [rtype] && Is_MTYPE_f [desc];
+#endif
         break;
 
       case OPR_COMMA:
@@ -2735,8 +2766,15 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       case OPR_CVT:
         // [RTYPE] : f,i,p [DESC] : f,i,p extra
         valid = Is_MTYPE_f_i_p [rtype] && 
+#ifdef TARG_SL
+                /* For SL, desc and rtype being the same is
+                 * allowed
+                 */
+		(Is_MTYPE_f_i_p [desc] || desc == MTYPE_B);
+#else
 		(Is_MTYPE_f_i_p [desc] || desc == MTYPE_B) &&
 		(rtype != desc);
+#endif
         break;
 
       case OPR_MPY:
@@ -2828,13 +2866,22 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 #endif /* TARG_X8664 */
         break;
 
-      case OPR_ILOADX:
-      case OPR_SECONDPART:
       case OPR_MADD:
       case OPR_MSUB:
       case OPR_NMADD:
       case OPR_NMSUB:
+#ifdef INT_MADD_OPCODES
+        // [RTYPE] : f,i [DESC] : V
+        valid = Is_MTYPE_f_i [rtype] && desc == MTYPE_V;
+#else
+        // [RTYPE] : f [DESC] : V
+        valid = Is_MTYPE_f [rtype] && desc == MTYPE_V;
+#endif //INT_MADD_OPCODES
+	break;
+
+      case OPR_ILOADX:
       case OPR_FIRSTPART:
+      case OPR_SECONDPART:
         // [RTYPE] : f [DESC] : V
         valid = Is_MTYPE_f [rtype] && desc == MTYPE_V;
         break;
@@ -3045,6 +3092,11 @@ OPCODE_name (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       // [RTYPE] : f,i,p,z [DESC] : V
       sprintf (buffer, "OPC_%s%s", MTYPE_name(rtype), &OPERATOR_info [opr]._name [4]);
       break;
+
+#if defined(TARG_SL) //fork_joint
+    case OPR_SL2_FORK_MAJOR:
+    case OPR_SL2_FORK_MINOR:		
+#endif 
 
     case OPR_AGOTO:
     case OPR_ALTENTRY:

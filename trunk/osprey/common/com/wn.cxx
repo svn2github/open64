@@ -81,6 +81,9 @@
 #if (defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) && !defined(FRONT_END_MFEF77)
 #include "wn_util.h"
 #endif /* (defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) && !defined(FRONT_END_MFEF77) */
+#if !defined(FRONT_END_C) && !defined(IR_TOOLS) && defined(TARG_SL)
+#include "intrn_info.h"
+#endif
 
 #ifdef KEEP_WHIRLSTATS
 INT32 whirl_num_allocated=0;
@@ -561,7 +564,7 @@ WN_Create (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
      */
     if (free_list && !WN_FREE_LIST_Empty(free_list)) {
 	wn = WN_FREE_LIST_Pop(free_list);
-	bzero(wn, size);
+	BZERO(wn, size);
     } else {
 	if (WN_mem_pool_ptr == &WN_mem_pool && !WN_mem_pool_initialized) {
 	    MEM_POOL_Initialize(WN_mem_pool_ptr, "WHIRL Nodes", TRUE);
@@ -569,7 +572,7 @@ WN_Create (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
 	    WN_mem_pool_initialized = TRUE;
 	}
 	wn = (WN *)MEM_POOL_Alloc(WN_mem_pool_ptr, size);
- 	bzero(wn, size);
+ 	BZERO(wn, size);
     }
 
     /* Some nodes have next and previous pointers grow off the bottom.
@@ -914,6 +917,16 @@ WN_CreateEntry (INT16 nkids, ST_IDX name, WN *body, WN *pragmas, WN *varrefs)
  * Create statement nodes
  *
  */
+
+#if defined(TARG_SL) //fork_joint
+WN *WN_CreateFork(INT32 label_number,  BOOL major)
+{
+  WN *wn;
+  wn = WN_Create(major ? OPC_SL2_FORK_MAJOR : OPC_SL2_FORK_MINOR , 0);
+  WN_label_number(wn) = label_number;
+  return(wn);
+}
+#endif 
 
 // no st anymore in goto
 WN *WN_CreateGoto(INT32 label_number)
@@ -1358,6 +1371,18 @@ WN_CreateStid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
     }
 
 #endif /* (defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) && !defined(FRONT_END_MFEF77) */
+#ifdef TARG_NVISA
+    if ((MTYPE_byte_size(desc) == 8 && MTYPE_byte_size(WN_rtype(value)) == 4)
+     || (MTYPE_byte_size(desc) == 4 && MTYPE_byte_size(WN_rtype(value)) == 8))
+    {
+        // Rather than create I8STID(I4*),
+        // create I8STID(I8I4CVT(I4*).
+        // We need explicit conversion
+        // because we use different registers for the two sizes,
+        DevWarn("insert cvt of stid, %d %d", desc, WN_rtype(value));
+        value = WN_Cvt(WN_rtype(value), desc, value);
+    }
+#endif
 
     wn = WN_Create(opc,1);
     WN_kid0(wn) = value;
@@ -1681,6 +1706,26 @@ WN_CreateIload (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
   
   wn = WN_SimplifyIload(opc,offset,ty,field_id,load_addr_ty,addr);
   if (!wn) {
+#ifdef TARG_NVISA
+     if ((MTYPE_byte_size(rtype) == 8 && MTYPE_byte_size(desc) == 4)
+      || (MTYPE_byte_size(rtype) == 4 && MTYPE_byte_size(desc) == 8))
+     {
+        // Rather than create I8I4ILOAD,
+        // create I8I4CVT(I4I4ILOAD).
+        // I8I4ILOAD can cause later problems with pregs,
+        // which have same rtype and desc, so wopt sometimes loses info
+        // about the implicit conversion, and we need explicit conversion
+        // because we use different registers for the two sizes,
+        DevWarn("insert cvt of iload, %d %d", rtype, desc);
+        wn = WN_CreateExp1(opr,desc,desc,addr);
+        WN_load_offset(wn) = offset;
+        WN_set_ty(wn,ty);
+        WN_set_load_addr_ty(wn,load_addr_ty);
+        WN_set_field_id(wn, field_id);
+        wn = WN_Cvt(desc, rtype, wn);
+        return wn;
+     }
+#endif
      wn = WN_CreateExp1(opr,rtype,desc,addr);
      WN_load_offset(wn) = offset;
      WN_set_ty(wn,ty);
@@ -1760,6 +1805,26 @@ WN_CreateLdid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 				 &St_Table [st] == Float64_Preg)),
 	     ("Preg offset 0 in WN_CreateLdid"));
 #endif /* FRONT_END */
+#ifdef TARG_NVISA
+    if ((MTYPE_byte_size(rtype) == 8 && MTYPE_byte_size(desc) == 4)
+     || (MTYPE_byte_size(rtype) == 4 && MTYPE_byte_size(desc) == 8))
+    {
+        // Rather than create I8I4LDID,
+        // create I8I4CVT(I4I4LDID).
+        // I8I4LDID can cause later problems with pregs,
+        // which have same rtype and desc, so wopt sometimes loses info
+        // about the implicit conversion, and we need explicit conversion
+        // because we use different registers for the two sizes,
+        DevWarn("insert cvt of ldid, %d %d", rtype, desc);
+        wn = WN_Create(opr,desc,desc,0);
+        WN_load_offset(wn) = offset;
+        WN_st_idx(wn) = st;
+        WN_set_ty(wn,ty);
+        WN_set_field_id(wn, field_id);
+        wn = WN_Cvt(desc, rtype, wn);
+        return wn;
+    }
+#endif
     wn = WN_Create(opr,rtype,desc,0);
     WN_load_offset(wn) = offset;
     WN_st_idx(wn) = st;
@@ -1936,7 +2001,7 @@ WN *WN_CreateAsm_Input (char   *constraint_string,
   return wn;
 }
 
-WN *WN_CreateComment (char *s)
+WN *WN_CreateComment (const char *s)
 {
   WN *wn;
   wn = WN_Create(OPC_COMMENT,0);
@@ -1969,6 +2034,17 @@ WN *WN_CopyNode (const WN* src_wn)
 
     WN_Copy_u1u2 (wn, src_wn);
     WN_Copy_u3 (wn, src_wn);
+#if defined(TARG_SL)
+    //vbuf_offset 
+    if(WN_is_internal_mem_ofst(src_wn)) 
+	  WN_Set_is_internal_mem_ofst(wn);
+    //fork_joint
+    if(WN_is_compgoto_para(src_wn))
+	WN_Set_is_compgoto_para(wn);
+    else if(WN_is_compgoto_for_minor(src_wn))
+	WN_Set_is_compgoto_for_minor(wn);
+#endif 
+
     WN_set_field_id(wn, WN_field_id(src_wn));
 
     if (opcode == OPC_REGION && WN_ereg_supp(src_wn) != (INITO_IDX) 0) {
@@ -2309,11 +2385,7 @@ WN *WN_Iload(TYPE_ID desc, WN_OFFSET offset, TY_IDX align, WN *addr,
 
 WN *
 WN_RIload (TYPE_ID rtype, TYPE_ID desc, WN_OFFSET offset, TY_IDX align,
-#ifndef KEY
-	   WN *addr)
-#else
            WN *addr, UINT field_id)
-#endif
 {
   TY_IDX palign;
   palign = Make_Pointer_Type(align);
@@ -2837,6 +2909,7 @@ WN_Type_Conversion( WN *wn, TYPE_ID to_type )
   //instruction queue for this CVT, can't optimization this
   if(MTYPE_is_vector(from_type))
     return wn;
+
   /* quickie check of no-op */
   if ( from_type == to_type )
     return wn;
@@ -2927,7 +3000,7 @@ WN *WN_Istorex(TYPE_ID desc, TY_IDX ty, WN *value, WN *base, WN *index)
   return WN_CreateIstorex(OPR_ISTOREX, MTYPE_V, desc, ty, value, base, index);
 }
 
-WN *WN_LdaString(char *str, WN_OFFSET ldaOffset, INT32 len)
+WN *WN_LdaString(const char *str, WN_OFFSET ldaOffset, INT32 len)
 {
   TCON	tc;
   ST	*st;
@@ -3359,3 +3432,14 @@ WN_Rrotate (TYPE_ID desc, WN *src, WN *cnt)
   Set_PU_has_very_high_whirl (Get_Current_PU ());
   return WN_CreateExp2 (OPR_RROTATE, Mtype_comparison (desc), desc, src, cnt);
 } /* WN_Rotate */
+
+#if !defined(FRONT_END_C)  &&  !defined(IR_TOOLS) && defined(TARG_SL)
+BOOL WN_Intrinsic_OP_Slave (WN *wn) {
+    if (WN_operator(wn) == OPR_INTRINSIC_OP) {
+	INTRINSIC ins = WN_intrinsic(wn);
+	 if (INTRN_is_slave(ins)) 
+	 	return TRUE;
+    }
+    return FALSE;	
+}
+#endif

@@ -134,6 +134,17 @@
 #ifdef KEY
 #include "cg_gcov.h"
 #endif
+#ifdef TARG_NVISA
+#include "dominate.h"
+#include "vector_loadstore.h"
+#endif
+#if defined(TARG_SL)
+#include "region.h"
+#include "region_update.h"
+#include "scheduler.h"
+#include "disp_instr.h"
+#endif
+
 MEM_POOL MEM_local_region_pool; /* allocations local to processing a region */
 MEM_POOL MEM_local_region_nz_pool;
 
@@ -154,11 +165,15 @@ BOOL EBO_data_spec;
 // Control assemly output on file number
 typedef mempool_allocator<INT> INT_ALLOC;
 typedef std::vector<INT, INT_ALLOC>  INT_CONTAINER;
-
+#endif
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 BOOL RGN_Formed = FALSE;
 #endif
+
 #ifdef KEY
 BOOL PU_Has_Exc_Handler;
+BOOL PU_Has_Nonlocal_Goto_Target;
+BOOL CG_file_scope_asm_seen = FALSE;
 #endif
 
 BOOL gra_pre_create = TRUE;
@@ -188,6 +203,10 @@ extern BOOL gra_self_recursive;
 extern BOOL fat_self_recursive;
 #endif
 
+#if defined(TARG_SL) || defined(TARG_MIPS)
+REGISTER_SET caller_saved_regs_used[ISA_REGISTER_CLASS_MAX+1];
+#endif
+
 /* Stuff that needs to be done at the start of each PU in cg. */
 void
 CG_PU_Initialize (WN *wn_pu)
@@ -201,17 +220,28 @@ CG_PU_Initialize (WN *wn_pu)
 
   PU_Has_Calls = FALSE;
   PU_References_GP = FALSE;
+
+#if defined(TARG_SL) || defined(TARG_MIPS)
+  ISA_REGISTER_CLASS rc;
+  FOR_ALL_ISA_REGISTER_CLASS(rc)
+    caller_saved_regs_used[rc] = REGISTER_SET_EMPTY_SET;
+#endif 
+
 #ifdef TARG_IA64
   GRA_optimize_restore_pr = TRUE;
   GRA_optimize_restore_b0_ar_pfs = TRUE;
   GRA_optimize_restore_ar_lc = TRUE;
   EBO_data_spec=FALSE;
 #endif
-#ifdef TARG_X8664
+
+#ifdef KEY
   PU_Has_Exc_Handler = FALSE;
+  PU_Has_Nonlocal_Goto_Target = PU_has_nonlocal_goto_label(Get_Current_PU());
+#endif
+
+#ifdef TARG_X8664
   if (! cg_load_execute_overridden) {
-    if ((Is_Target_EM64T() ||	// bug 10233
-	 Is_Target_Core()) &&
+    if ((Is_Target_EM64T() || Is_Target_Core() || Is_Target_Wolfdale()) &&
          PU_src_lang(Get_Current_PU()) != PU_C_LANG) {   // bug 10233
       CG_load_execute = 0;
     } else if (! Is_Target_32bit() &&
@@ -247,14 +277,46 @@ CG_PU_Initialize (WN *wn_pu)
     }
   }
 
+  if (PU_cxx_lang(Get_Current_PU()) && Is_Target_64bit()) {// C++ & m64
+    if (!GRA_prioritize_by_density_set)		// bug 14357
+      GRA_prioritize_by_density = TRUE;
+    if (!GRA_optimize_boundary_set)		// bug 14357
+      GRA_optimize_boundary = TRUE;
+  }
 #endif
 
   Regcopies_Translated = FALSE;
+#if defined(TARG_SL)
+  /* HD - Check whether the PU should be skipped for optimization
+   *      We need to consider the intersection parts
+   */
+  bool skip = false;
 
+  if( CG_skip_before > 0 ) {
+    if( CG_skip_after < INT32_MAX ) {
+      if( pu_num > CG_skip_after && pu_num < CG_skip_before )
+        skip = true;
+    } else if ( pu_num < CG_skip_before ){
+      skip = true;
+    }
+  } else {
+    if( CG_skip_after >= 0 ) 
+      if( pu_num > CG_skip_after )
+        skip = true;
+  }
+
+  if( CG_skip_equal >= 0 ) {
+    if( pu_num == CG_skip_equal )
+      skip = true;
+  }
+
+  CG_Configure_Opt_Level( skip ? 0 : Opt_Level);
+#else
   CG_Configure_Opt_Level((   pu_num < CG_skip_before
-              || pu_num > CG_skip_after
-              || pu_num == CG_skip_equal)
-             ? 0 : Opt_Level);
+			  || pu_num > CG_skip_after
+			  || pu_num == CG_skip_equal)
+			 ? 0 : Opt_Level);
+#endif // TARG_SL
   pu_num++;
 
   if (PU_has_syscall_linkage(Get_Current_PU())) {
@@ -276,11 +338,13 @@ CG_PU_Initialize (WN *wn_pu)
   REGION_MAP_Init();
 #endif
   OP_MAP_Init();
-  CGSPILL_Initialize_For_PU ();
   CFLOW_Initialize();
+#if !defined (TARG_NVISA)
+  CGSPILL_Initialize_For_PU ();
   CG_LOOP_Init();
   HB_Init();
   if (Enable_CG_Peephole) EBO_Init();
+#endif 
   Init_Label_Info();
 
 #ifdef EMULATE_LONGLONG
@@ -294,6 +358,7 @@ CG_PU_Initialize (WN *wn_pu)
   Init_Entry_Exit_Code (wn_pu);
   REGISTER_Reset_FP();  // in case $fp is used, must be after entry_exit init
 
+#ifndef TARG_NVISA
   /* Initialize global tn universe */
   GTN_UNIVERSE_Pu_Begin();
 
@@ -301,6 +366,7 @@ CG_PU_Initialize (WN *wn_pu)
     Get_Trace(TP_REGION, TT_REGION_BOUND_DEBUG );
 
   Init_gen_quad_preg(); // init statics to hold quad preg STs
+#endif
 
   /* data layout and lowering now happens earlier, in bedriver. */
   /* don't finalize stack frame until just before emit, after all spills. */
@@ -316,14 +382,16 @@ void
 CG_PU_Finalize(void)
 {
   TAG_Finish();
-  GTN_UNIVERSE_Pu_End ();
   OP_MAP_Finish();
+#ifndef TARG_NVISA
+  GTN_UNIVERSE_Pu_End ();
   CGSPILL_Finalize_For_PU();
   if (Enable_CG_Peephole) EBO_Finalize();
 
   if (PU_has_syscall_linkage(Get_Current_PU())) {
     Enable_SWP = Orig_Enable_SWP;
   }
+#endif
 
   /* TN_To_PREG_Map is allocated from MEM_pu_pool and so can't be popped
      but it can be put on the free list and cleared at the end of the PU */
@@ -351,10 +419,12 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
   MEM_POOL_Push (&MEM_local_region_pool);
   MEM_POOL_Push (&MEM_local_region_nz_pool);
   Init_CG_Expand ();
+#ifndef TARG_NVISA
   FREQ_Region_Initialize ();
   BB_REGION_Initialize ();
   LRA_Init();
   GRA_Initialize();
+#endif
   Init_TNs_For_REGION ();
   /*
    * Create Array to map PREGs into TNs
@@ -379,7 +449,9 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
 
   TN_CORRESPOND_Free(); /* remove correspondence between tns (ex. divrem) */
 
+#ifndef TARG_NVISA
   GTN_UNIVERSE_REGION_Begin();
+#endif
 
   Whirl2ops_Initialize(alias_mgr);
 
@@ -412,6 +484,7 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
 
   REGION_set_level(rid, RL_CGSCHED);
 
+#ifndef TARG_NVISA
   if (generate_glue_code) {
     /* region entry glue code */
     entry_fixup = CGRIN_entry_glue( cgrin );
@@ -435,12 +508,115 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
       WN_INSERT_BlockLast( result_after, exit_fixup );
     }
   }
+#endif
 
   Whirl2ops_Finalize();
 
   MEM_POOL_Pop (&MEM_local_region_pool);
   MEM_POOL_Pop (&MEM_local_region_nz_pool);
 }
+
+static int trace_count = 0;
+static void Check_for_Dump_ALL(INT32 pass, BB *bb, char *s )
+{
+  trace_count++;
+  char count_buf[20];
+  int count = sprintf(count_buf, "%d: ", trace_count);
+  char phase_buf[20+30]= "Tracing"; // Tracing%d
+  strcat(phase_buf, count_buf);
+  strcat(phase_buf, s);
+  Set_Error_Phase(phase_buf);
+  Check_for_Dump(pass, bb);
+}
+
+#if defined(TARG_SL)
+// check minor region is used to check if there is a call in minor region 
+// if a call exist, give an assertion
+
+void 
+Check_Minor_Region() 
+{
+  for(BB* bb = REGION_First_BB; bb; bb = BB_next(bb))
+  {
+    if(BB_rid(bb) && RID_TYPE_minor(BB_rid(bb)) && BB_call(bb))
+	Fail_FmtAssertion("An function call BB:%d in minor region", BB_id(bb)); 
+  }
+  return; 
+}
+#endif
+
+
+#if defined(TARG_SL)
+void 
+Collect_Simd_Register_Usage()
+{
+  if(!Get_Trace(TP_TEMP, 0x1))
+    return; 
+
+  vector < mTN_NUM > regs_read;
+  vector < mTN_NUM > regs_write; 
+  vector < mTN_NUM >::iterator iter; 
+  vector < ST* > callee_in_pu;  
+  vector < ST* >::iterator st_iter; 
+  BB *bb; 
+  OP *op; 
+  for(bb = REGION_First_BB; bb; bb = BB_next(bb))
+  {
+// collect function call for this PU
+
+    if(BB_call(bb)) 
+    {
+      ANNOTATION *callant = ANNOT_Get(BB_annotations(bb), ANNOT_CALLINFO);
+      CALLINFO *callinfo = ANNOT_callinfo(callant);
+      ST *st = CALLINFO_call_st(callinfo);
+      callee_in_pu.push_back(st); 
+    }
+    FOR_ALL_BB_OPs(bb, op)
+    {
+      for(INT i = 0; i < OP_results(op); i++) {
+        TN* tn = OP_result(op, i); 
+        if(TN_is_register(tn) && (TN_register_class(tn) == ISA_REGISTER_CLASS_cop_vreg))
+          regs_write.push_back((TN_register(tn) - 1)); 
+      }
+      for(INT i = 0; i < OP_opnds(op); i++) {
+        TN* tn = OP_opnd(op, i); 
+        if(TN_is_register(tn) && (TN_register_class(tn) == ISA_REGISTER_CLASS_cop_vreg))
+          regs_read.push_back((TN_register(tn) - 1)); 
+      }
+    }
+  }
+
+  fprintf(TFile, "%sFunction %s : \n", DBar, ST_name(Get_Current_PU_ST())); 
+
+  if(!regs_read.empty()) {
+    sort(regs_read.begin(), regs_read.end()); 
+    regs_read.erase(unique(regs_read.begin(), regs_read.end()), regs_read.end()); 
+    fprintf(TFile, "read_simd_reg: "); 
+    for(iter = regs_read.begin(); iter != regs_read.end(); iter++)
+      fprintf(TFile, "%d  ", *iter); 
+    fprintf(TFile, "\n"); 
+  }
+
+  if(!regs_write.empty()) {
+    sort(regs_write.begin(), regs_write.end()); 
+    regs_write.erase(unique(regs_write.begin(), regs_write.end()), regs_write.end()); 
+    fprintf(TFile, "write_simd_reg: "); 
+    for(iter = regs_write.begin(); iter != regs_write.end(); iter++) {
+      fprintf(TFile, "%d  ", *iter); 
+   }
+    fprintf(TFile, "\n"); 
+  }
+
+  fprintf(TFile, "callee:\n"); 
+  
+  for(st_iter = callee_in_pu.begin(); st_iter != callee_in_pu.end(); st_iter++)
+  {
+       fprintf(TFile,  "                %s\n", ST_name(*st_iter)); 
+  }
+  return; 
+}
+#endif 
+
 
 #ifdef TARG_IA64
 static void Config_Ipfec_Flags() {
@@ -570,10 +746,31 @@ CG_Generate_Code(
     FmtAssert(Assembly && !Object_Code,
 	      ("Cannot produce non-assembly output with file-scope asm"));
     fprintf(Asm_File, "\n%s\n", ST_name(WN_st(rwn)));
+#ifdef KEY
+    // Bug 14460: If the program has file-scope asm, it may have directly
+    // used the .section attribute to allocate objects. As a result the 
+    // compiler does not know the correct origin of objects to be allocated
+    // after it. In this scenario, don't emit .org. Also emit a
+    // proper .align based on the alignment of the symbol instead of
+    // .align 0.
+    if (LANG_Enable_Global_Asm)
+      CG_file_scope_asm_seen = TRUE;
+#endif
     return rwn;
   }
 
+#if defined (TARG_SL)
+  if(CG_stack_layout)
+    Pre_Allocate_Objects( rwn );
+#endif
+
   Convert_WHIRL_To_OPs ( rwn );
+
+#ifndef TARG_NVISA
+
+#if defined(TARG_SL)
+   Check_Minor_Region(); 
+#endif
 
 #ifdef TARG_X8664
   if (CG_x87_store) {
@@ -582,7 +779,7 @@ CG_Generate_Code(
   }
 #endif
 
-#ifdef CG_PATHSCALE_MERGE
+#if defined(KEY) && !defined(TARG_SL)
   extern BOOL profile_arcs;
   if (flag_test_coverage || profile_arcs)
 //    CG_Compute_Checksum();
@@ -620,7 +817,7 @@ CG_Generate_Code(
 
   EH_Prune_Range_List();
 
-#if defined(TARG_IA64) && defined(OSP_OPT)
+#if defined(TARG_IA64)
   // it's high time to compute pu_need_LSDA after EH_Prune_Range_List, 
   pu_need_LSDA = !PU_Need_Not_Create_LSDA ();
 #endif
@@ -635,6 +832,7 @@ CG_Generate_Code(
   }
 
   Optimize_Tail_Calls( Get_Current_PU_ST() );
+#endif // !TARG_NVISA
 
   Init_Callee_Saved_Regs_for_REGION( Get_Current_PU_ST(), region );
 #ifdef TARG_IA64
@@ -652,6 +850,8 @@ CG_Generate_Code(
 #endif
   Stop_Timer ( T_Expand_CU );
   Check_for_Dump ( TP_CGEXP, NULL );
+
+#ifndef TARG_NVISA	// nvisa just emits initial assembly
 
 #ifdef TARG_IA64
   if (IPFEC_Enable_Edge_Profile && can_invoke_profile_with_current_cg_opt_level )
@@ -765,10 +965,16 @@ CG_Generate_Code(
     // Perform all the optimizations that make things more simple.
     // Reordering doesn't have that property.
     CFLOW_Optimize(  (CFLOW_ALL_OPTS|CFLOW_IN_CGPREP)
+#if defined(TARG_SL)
+                   & ~(CFLOW_COLD_REGION)
+#endif
 		   & ~(CFLOW_FREQ_ORDER | CFLOW_REORDER),
 		   "CFLOW (first pass)");
     if (frequency_verify && CG_PU_Has_Feedback)
       FREQ_Verify("CFLOW (first pass)");
+#if defined(TARG_SL)
+    Check_for_Dump_ALL ( TP_CGEXP, NULL,"CFLOW 1" );
+#endif
   }
 
 #ifdef TARG_IA64
@@ -980,7 +1186,17 @@ CG_Generate_Code(
 
     /* Optimize control flow (second pass) */
     if (CFLOW_opt_after_cgprep) {
+#if defined (TARG_SL)
+    CFLOW_Optimize(  (CFLOW_ALL_OPTS|CFLOW_IN_CGPREP)
+                   & ~(CFLOW_COLD_REGION)
+                   & ~(CFLOW_FREQ_ORDER),
+		   "CFLOW (second pass)");
+#else
       CFLOW_Optimize(CFLOW_ALL_OPTS, "CFLOW (second pass)");
+#endif
+#if defined(TARG_SL)
+      Check_for_Dump_ALL ( TP_CGEXP, NULL,"CFLOW 1" );
+#endif
       if (frequency_verify)
         FREQ_Verify("CFLOW (second pass)");
 #ifdef TARG_IA64
@@ -1133,24 +1349,6 @@ CG_Generate_Code(
             CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST,FALSE,FALSE);
             value_profile_need_gra = TRUE;
         Stop_Timer( T_Ipfec_Profiling_CU );
-#if 0
-                if (CG_localize_tns) {
-                    /* turn all global TNs into local TNs */
-                    Set_Error_Phase ( "Localize" );
-                    Start_Timer ( T_Localize_CU );
-                    Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
-                    Stop_Timer ( T_Localize_CU );
-                    Check_for_Dump ( TP_LOCALIZE, NULL );
-                  } else {
-                    /* Initialize liveness info for new parts of the REGION */                    /* also compute global liveness for the REGION */
-                    Set_Error_Phase( "Global Live Range Analysis");
-                    Start_Timer( T_GLRA_CU );
-                    GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
-                    Stop_Timer ( T_GLRA_CU );
-                    Check_for_Dump ( TP_FIND_GLOB, NULL );
-                  }
-#endif
-
         }
         Check_for_Dump(TP_A_PROF, NULL);
 
@@ -1188,9 +1386,52 @@ CG_Generate_Code(
   //
   // (Also, earlier phase, like cflow, does not maintain GTN info if
   // -CG:localize is on.  Rebuild the consistency for GCM.  Bug 7219.)
+
+#ifdef TARG_SL //fork_joint
+  //only opt level greater than 1, we recaluculate liveness informatino
+  //otherwise it will reset GTN flag in glue code when compiling base on
+  // region. This will cause assertion. 
+  if(CG_opt_level > 1) {
+    GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);	
+    GRA_LIVE_Rename_TNs();
+  }
+
+  BOOL should_do_gcm;
+  should_do_gcm = GCM_Enable_Scheduling & RGN_Enable_All_Scheduling;
+
+  if(should_do_gcm && CG_opt_level > 1) {
+    IGLS_Schedule_Region( TRUE );
+  } 
+  Check_for_Dump_ALL ( TP_CGEXP, NULL, "GCM" );
+
+  if( RGN_Enable_All_Scheduling && 
+      CG_Enable_Regional_Local_Sched && 
+      LOCS_PRE_Enable_Scheduling &&
+      CG_opt_level > 1 ){
+    Local_Insn_Sched( TRUE );
+  }
+  Check_for_Dump_ALL ( TP_CGEXP, NULL, "Pre LIS" );
+
+  /* for now we don't turn on ebo, it causes that there are lots of 
+   * jump to jump not converted to direct jump implemented in 
+   * CFLOW_Optimize in EBO_Post_Process_Region so we call 
+   * CFLOW_Optimize once immediately before Local scheduling as 
+   * walkaround.  After ebo turn on, we need back to use original 
+   * function call in ebo.
+   */
+  if( CG_Enable_Regional_Global_Sched && 
+      CG_Enable_REGION_formation &&
+      CG_opt_level > 1) {
+     CFLOW_Optimize( CFLOW_BRANCH | CFLOW_UNREACHABLE | CFLOW_MERGE | 
+                      CFLOW_REORDER, "CFLOW (third pass)");
+  }
+
+  Check_for_Dump_ALL ( TP_CGEXP, NULL, "after Sched" );
+#else
   GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
   GRA_LIVE_Rename_TNs();
   IGLS_Schedule_Region (TRUE /* before register allocation */);
+#endif // TARG_SL
 #endif
 
 #ifdef TARG_IA64
@@ -1232,12 +1473,20 @@ CG_Generate_Code(
       GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
       Stop_Timer ( T_GLRA_CU );
       Check_for_Dump ( TP_FIND_GLOB, NULL );
+#if defined(TARG_SL)
+      Check_for_Dump_ALL ( TP_CGEXP, NULL, "GLRA" );
+#endif
     }
 
     GRA_Allocate_Global_Registers( region );
   }
 
   LRA_Allocate_Registers (!region);
+
+#if defined(TARG_SL)
+  if (Run_ipisr)
+    IPISR_Insert_Spills();
+#endif
 
 #ifdef TARG_IA64
   if (!CG_localize_tns || value_profile_need_gra) {
@@ -1249,7 +1498,7 @@ CG_Generate_Code(
     GRA_Finalize_Grants();
   }
 
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_SL)
   /* Optimize control flow (third pass).  Callapse empty GOTO BBs which GRA
      didn't find useful in placing spill code.  Bug 9063. */
   if (CFLOW_opt_after_cgprep &&
@@ -1272,6 +1521,9 @@ CG_Generate_Code(
     Adjust_Entry_Exit_Code ( Get_Current_PU_ST() );
   }
 
+#if defined(TARG_SL)
+  Check_for_Dump_ALL ( TP_CGEXP, NULL, "Adj Ent/exit" );
+#endif
 #ifdef TARG_IA64
   if (CG_opt_level > 0 && Enable_EBO_Post_Proc_Rgn) {
 #else
@@ -1328,7 +1580,52 @@ CG_Generate_Code(
   }
 #else  // TARG_IA64
 
+#if defined (TARG_SL)
+  if (!region) {
+    CFLOW_Optimize(CFLOW_FREQ_ORDER, "CFLOW (forth pass)");
+    CFLOW_Optimize(CFLOW_BRANCH | CFLOW_UNREACHABLE | CFLOW_COLD_REGION, "CFLOW (fifth pass)");  
+  }
+  
+  /*16-bit instr replaced*/
+  if (!region && CG_Gen_16bit ) {
+    Replace_Size16_Instr();
+    Check_for_Dump_ALL ( TP_CGEXP, NULL, "gen16bit op" );
+  }
+  
+  if (RGN_Enable_All_Scheduling) {
+    if( CG_Enable_Regional_Local_Sched && 
+	LOCS_POST_Enable_Scheduling &&
+	CG_opt_level > 1) {
+      Local_Insn_Sched(FALSE);
+      Check_for_Dump_ALL ( TP_CGEXP, NULL, "Post LIS" );
+    }
+  }
+
+  if (CG_Enable_Macro_Instr_Combine && CG_opt_level > 1)
+    Move_Macro_Insn_Together(); 
+
+  if (!region && CG_Gen_16bit)
+    Guarantee_Paired_instr16();
+  if (CG_check_quadword) {
+    Check_Br16(0);	
+  }
+
+#else 
   IGLS_Schedule_Region (FALSE /* after register allocation */);
+#endif
+
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+  // Rerun EBO to delete useless spills and restores.  A spill and restore can
+  // be deleted if the intervening instruction that writes to the register is
+  // moved away.
+  if (Enable_CG_Peephole) {
+    Set_Error_Phase("Extended Block Optimizer (after second insn scheduling)");
+    Start_Timer(T_EBO_CU);
+    EBO_Post_Process_Region_2 (region ? REGION_get_rid(rwn) : NULL);
+    Stop_Timer ( T_EBO_CU );
+    Check_for_Dump ( TP_EBO, NULL );
+  }
+#endif
 
 #ifdef TARG_X8664
   {
@@ -1348,15 +1645,98 @@ CG_Generate_Code(
   }
 #endif
 
-#if defined(KEY) && defined(TARG_MIPS)
+#if defined(KEY) && (defined(TARG_MIPS) && !defined(TARG_SL))
   CFLOW_Fixup_Long_Branches();
 #endif
 
   Reuse_Temp_TNs = orig_reuse_temp_tns;		/* restore */
 
 #endif // TARG_IA64
+
+#else // TARG_NVISA
+
+  // Optimize control flow (first pass)
+  if (CG_opt_level > 0 && CFLOW_opt_before_cgprep) {
+    // Perform all the optimizations that make things more simple.
+    // Reordering doesn't have that property.
+    CFLOW_Optimize(  (CFLOW_ALL_OPTS|CFLOW_IN_CGPREP)
+		   & ~(CFLOW_FREQ_ORDER | CFLOW_REORDER),
+		   "CFLOW (first pass)");
+  }
+
+  if (CG_opt_level > 0) {
+    // dominators needed for unique_defs and detect_loops passes.
+    // as long as we don't change bb flow, we don't need to recompute this.
+    Calculate_Dominators();
+
+    // following optimizations work better when unique-def (one_def),
+    // so try to create unique defs when possible.
+    Set_Error_Phase("Create Unique Defs");
+    Create_Unique_Defs_For_TNs();
+    Check_for_Dump ( TP_EBO, NULL );
+
+    // Do vector optimization before 16bit optimization
+    // because 16bit opt may hinder vectors
+    // if only some fields are converted to 16bit.
+    // 16bit opt may ignore vectors, but coalescing 
+    // is more important than 16bit opt if we have to choose.
+    if (CG_vector_loadstore) {
+      // do peephole-like vector load/store creation
+      Set_Error_Phase("Extended Block Optimizer - vectors");
+      Create_Vector_Load_Stores();
+      Check_for_Dump ( TP_EBO, NULL );
+    }
+
+    // by changing ops to 16bit before register allocation,
+    // we avoid wasting registers.
+    if (CG_use_16bit_ops) {
+      Set_Error_Phase("Use 16bit Ops");
+      Use_16bit_Ops();
+      Check_for_Dump ( TP_EBO, NULL );
+    }
+  }
+
+    // iterate thru code, assigning registers.
+    // also sets one_def property that following optimizations use
+    Set_Error_Phase ( "Register Allocation" );
+    Assign_Virtual_Registers();
+    Check_for_Dump (TP_ALLOC, NULL);
+
+  if (CG_opt_level > 0) {
+    // various nvisa-specific optimizations:
+    Start_Timer(T_EBO_CU);
+
+    // setup data structures for finding reaching defs
+    REG_LIVE_Analyze_Region();
+    (void) LOOP_DESCR_Detect_Loops (&MEM_local_pool);
+
+    if (CG_optimize_copies) {
+      // see if we can optimize away copies by avoiding later src uses
+      Set_Error_Phase("Optimize Copies");
+      Optimize_Copy_Usage();
+      Check_for_Dump ( TP_EBO, NULL );
+    }
+
+    if (CG_rematerialize_grf) {
+      // iterate thru code, see if can rematerialize GRF (shared memory)
+      // loads since they don't cost real memory and may save registers
+      // by reducing spill ranges.
+      Set_Error_Phase("Extended Block Optimizer - rematerialize");
+      Rematerialize_GRF();
+      Check_for_Dump ( TP_EBO, NULL );
+    }
+    REG_LIVE_Finish();
+    Free_Dominators_Memory();
+
+    Stop_Timer ( T_EBO_CU );
+  }
+#endif // TARG_NVISA
   
   if (region) {
+#ifdef TARG_NVISA
+    FmtAssert(FALSE, ("regions not supported"));
+    return rwn;
+#else
     /*--------------------------------------------------------------------*/
     /* old region: rwn, rid_orig                      */
     /* new region: rwn_new, rid_new (encloses old region)         */
@@ -1423,31 +1803,40 @@ CG_Generate_Code(
 #endif
 
     return rwn_new;
+#endif // TARG_NVISA
   } /* if (region */
 
+#if defined(TARG_IA64)
   else { /* PU */
     // dump EH entry info
     if (Get_Trace (TP_EH, 0x0001)) {
       Print_PU_EH_Entry(Get_Current_PU(), WN_st(rwn), TFile);
     }
     
-#if defined(TARG_IA64) && defined(OSP_OPT)
     /* Write the EH range table. 
      * if pu_need_LSDA is set for current PU, 
      * means no need to write EH range table
      */
     if (PU_has_exc_scopes(Get_Current_PU()) && 
         pu_need_LSDA ) {
-#else
-    if (PU_has_exc_scopes(Get_Current_PU())) {
-#endif
       EH_Write_Range_Table(rwn);
     }
-
     // dump LSDA of current PU
     if (Get_Trace (TP_EH, 0x0008)) {
       EH_Dump_LSDA (TFile);
     }
+#else
+  else { /* PU */
+#if !defined(TARG_NVISA)
+    if (PU_has_exc_scopes(Get_Current_PU())) {
+      EH_Write_Range_Table(rwn);
+    }
+#endif
+#endif //TARG_IA64 This is not a good merge compared to the code in trunk
+
+#if defined(TARG_SL)
+     Collect_Simd_Register_Usage();
+#endif 
 
     /* Emit the code for the PU. This may involve writing out the code to
      * an object file or to an assembly file or both. Additional tasks
@@ -1470,6 +1859,7 @@ CG_Generate_Code(
     Check_for_Dump (TP_EMIT, NULL);
     Stop_Timer ( T_Emit_CU );
 
+#ifndef TARG_NVISA
 #ifdef TARG_IA64
     if (ORC_Enable_Cache_Analysis) Cache_Analysis_End();
 #endif
@@ -1481,6 +1871,7 @@ CG_Generate_Code(
 
     GRA_LIVE_Finish_PU();
     PQSCG_term();
+#endif // TARG_NVISA
 
     /* List local symbols if desired: */
     if ( List_Symbols )
@@ -1639,6 +2030,15 @@ CG_Dump_Region(FILE *fd, WN *wn)
     }
   }
 }
+
+void 
+CG_Dump_Cur_Region()
+{
+  BB *bb;
+  for( bb=REGION_First_BB; bb; bb=BB_next(bb) ){
+    Print_BB( bb );
+  }
+} 
 
 /* just an externally-visible wrapper to cgemit function */
 extern void

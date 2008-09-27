@@ -159,6 +159,7 @@ do {									\
 %token ELLIPSIS
 
 %token PRAGMA_OPTIONS PRAGMA_EXEC_FREQ FREQ_NEVER FREQ_INIT FREQ_FREQUENT
+%token PRAGMA_UNROLL
 
 %token PRIVATE COPYPRIVATE FIRSTPRIVATE LASTPRIVATE SHARED DEFAULT NONE
 %token REDUCTION COPYIN DYNAMIC GUIDED RUNTIME ORDERED SCHEDULE
@@ -265,6 +266,7 @@ do {									\
 
 %type <ttype> options_directive pragma_directives exec_freq_directive
 %type <ttype> exec_freq_directive_ignore
+%type <ttype> unroll_directive
 
 %type <ttype> freq_hint
 
@@ -282,6 +284,11 @@ do {									\
 %type <single_clause_type> single_clause single_clause_list single_directive
 %type <parallel_for_clause_type> parallel_for_clause parallel_for_clause_list parallel_for_directive
 %type <parallel_sections_clause_type> parallel_sections_clause parallel_sections_clause_list parallel_sections_directive
+
+/* sl2 fork_joint */ 
+%token SL2_SECTIONS SL2_MINOR_SECTIONS SL2_SECTION PRAGMA_SL2 SL2_MINOR_SECTION 
+%type <ttype> sl2_sections_construct sl2_section_scope sl2_maybe_section_sequence
+%type <ttype> sl2_section_sequence sl2_maybe_structured_block sl2_section_construct 
 
 
 
@@ -2334,7 +2341,92 @@ openmp_construct:
         |  critical_construct
         |  atomic_construct
         |  ordered_construct
+        |  sl2_sections_construct
         ;
+
+sl2_sections_construct:
+        PRAGMA_SL2 SL2_SECTIONS '\n'
+	 {
+#ifdef TARG_SL
+           add_stmt(build_omp_stmt(sl2_sections_cons_b, NULL));
+#endif
+	 }
+
+	 sl2_section_scope
+	 { 
+#ifdef TARG_SL
+	   add_stmt(build_omp_stmt(sl2_sections_cons_e, NULL)); $$=NULL;
+#endif
+}
+	 | PRAGMA_SL2 SL2_MINOR_SECTIONS '\n'
+	 {
+#ifdef TARG_SL
+           add_stmt(build_omp_stmt(sl2_minor_sections_cons_b, NULL));
+#endif
+	 }
+	 sl2_section_scope
+	 { 
+#ifdef TARG_SL
+	   add_stmt(build_omp_stmt(sl2_sections_cons_e, NULL)); $$=NULL;
+#endif
+}
+	 	
+	 ;
+
+sl2_section_scope:
+        '{'
+        sl2_maybe_section_sequence 
+        '}'
+        ;
+
+sl2_maybe_section_sequence:
+	sl2_section_sequence
+      | sl2_maybe_structured_block
+      | sl2_maybe_structured_block sl2_section_sequence
+      ;
+
+sl2_maybe_structured_block:
+      structured_block
+	;
+
+sl2_section_sequence:
+	sl2_section_construct
+	| sl2_section_sequence sl2_section_construct
+	;
+
+sl2_section_construct:
+        PRAGMA_SL2 SL2_SECTION '\n'
+        {
+#ifdef TARG_SL
+	  if (!In_MP_Section)
+	    add_stmt (build_omp_stmt (sl2_section_cons_b, NULL));
+	  else
+	    In_MP_Section = false;
+#endif
+        }
+        structured_block
+        {
+#ifdef TARG_SL
+	  add_stmt (build_omp_stmt (sl2_section_cons_e, NULL));
+#endif
+        }
+      | PRAGMA_SL2 SL2_MINOR_SECTION '\n'
+        {
+#ifdef TARG_SL
+	  if (!In_MP_Section)
+	    add_stmt (build_omp_stmt (sl2_minor_section_cons_b, NULL));
+	  else
+	    In_MP_Section = false;
+#endif
+        }
+        structured_block
+        {
+#ifdef TARG_SL
+	  add_stmt (build_omp_stmt (sl2_minor_section_cons_e, NULL));
+#endif
+        }      	   
+        ;
+
                                                                                 
 pragma_directives:
         barrier_directive
@@ -2343,6 +2435,7 @@ pragma_directives:
         {}
         | options_directive
 	| exec_freq_directive
+	| unroll_directive
         ;
                                                                                 
 options_directive:
@@ -2369,6 +2462,13 @@ freq_hint:
         FREQ_NEVER { $$ = build_string (6, "never"); }
 	| FREQ_INIT { $$ = build_string (5, "init"); }
 	| FREQ_FREQUENT { $$ = build_string (9, "frequent"); }
+	;
+
+unroll_directive:
+	PRAGMA_UNROLL '\n'
+	{ add_stmt (build_omp_stmt (unroll_dir, NULL)); $$ = NULL; }
+	| PRAGMA_UNROLL CONSTANT '\n'
+	{ add_stmt (build_omp_stmt (unroll_dir, $2)); $$ = NULL; }
 	;
 
 structured_block:
@@ -3301,6 +3401,13 @@ static const struct resword reswords[] =
   { "long",		RID_LONG,	0 },
   { "register",		RID_REGISTER,	0 },
   { "restrict",		RID_RESTRICT,	D_C89 },
+#ifdef TARG_SL
+  { "__sbuf",           RID_SBUF,       0 },
+  { "__sdram",          RID_SDRAM,      0 },
+  { "__v1buf",          RID_V1BUF,      0 },
+  { "__v2buf",          RID_V2BUF,      0 },
+  { "__v4buf",          RID_V4BUF,      0 },
+#endif
   { "return",		RID_RETURN,	0 },
   { "short",		RID_SHORT,	0 },
   { "signed",		RID_SIGNED,	0 },
@@ -3336,6 +3443,14 @@ static const short rid_to_yy[RID_MAX] =
   /* RID_SIGNED */	TYPESPEC,
   /* RID_AUTO */	SCSPEC,
   /* RID_RESTRICT */	TYPE_QUAL,
+
+#ifdef TARG_SL
+  /* RID_SBUF */     TYPE_QUAL,
+  /* RID_SDRAM */    TYPE_QUAL,
+  /* RID_V1BUF */ TYPE_QUAL, 
+  /* RID_V2BUF */ TYPE_QUAL, 
+  /* RID_V4BUF */ TYPE_QUAL, 
+#endif
 
   /* C extensions */
   /* RID_BOUNDED */	TYPE_QUAL,
@@ -3603,7 +3718,10 @@ check_omp_string (char * s, bool * status)
 {
   *status = true;
 
-  if (!strcmp (s, "\n"))
+  /* Windows systems use \r\n not \n, so check for that
+   * but return \n since that is what grammar is checking for.
+   */
+  if (!strcmp (s, "\n") || !strcmp(s,"\r"))
   {
     in_omp_pragma = seen_omp_paren = FALSE;
     return '\n';
@@ -3619,6 +3737,8 @@ check_omp_string (char * s, bool * status)
     return FREQ_FREQUENT;
   if (!strcmp (s, "options") && !seen_omp_paren)
     return PRAGMA_OPTIONS;
+  if (!strcmp (s, "unroll") && !seen_omp_paren)
+    return PRAGMA_UNROLL;
   if (!strcmp (s, "private") && !seen_omp_paren)
     return PRIVATE;
   if (!strcmp (s, "parallel") && !seen_omp_paren)
@@ -3676,6 +3796,20 @@ check_omp_string (char * s, bool * status)
     return FLUSH;
   if (!strcmp (s, "threadprivate") && !seen_omp_paren)
     return THREADPRIVATE;
+
+#ifdef TARG_SL //fork_joint
+  if(!strcmp(s, "sl2") && !seen_omp_paren) 
+  return PRAGMA_SL2;
+  if(!strcmp(s, "sl2_major_sections") && !seen_omp_paren)
+  return SL2_SECTIONS;
+  if(!strcmp(s, "sl2_minor_sections") && !seen_omp_paren)
+  return SL2_MINOR_SECTIONS;
+  if(!strcmp(s, "sl2_major_section") && !seen_omp_paren)
+  return SL2_SECTION;
+  if(!strcmp(s, "sl2_minor_section") && !seen_omp_paren)
+  return SL2_MINOR_SECTION;
+#endif 
+
 
   // this must be last, return anything
   *status = false;
@@ -3753,10 +3887,12 @@ _yylex ()
 	  return yylexstring ();
 	else if (ret == IDENTIFIER && in_omp_pragma)
 	{
-          if (TREE_CODE (yylval.ttype) != IDENTIFIER_NODE) abort();
-	  char * omp_name = IDENTIFIER_POINTER (yylval.ttype);
+ 	  char *omp_name;
 	  bool valid = false;
-	  int code = check_omp_string (omp_name, &valid);
+	  int code;
+          if (TREE_CODE (yylval.ttype) != IDENTIFIER_NODE) abort();
+	  omp_name = IDENTIFIER_POINTER (yylval.ttype);
+	  code = check_omp_string (omp_name, &valid);
 	  if (valid) return code;
 	}
 	return ret;

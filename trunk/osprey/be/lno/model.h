@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -501,6 +505,8 @@ extern BOOL Is_Bad_Array(WN* wn_ref, INT nloops);
 #ifdef TARG_X8664
 extern BOOL Is_Vectorizable_Loop(WN* loop);
 extern BOOL Is_Vectorization_Beneficial(WN* loop);
+
+// bug 5880
 extern BOOL Is_Aggressive_Vintr_Loop(WN *loop);
 #endif
 

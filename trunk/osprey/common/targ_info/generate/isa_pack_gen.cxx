@@ -418,6 +418,34 @@ void Next_Word (void)
   }
 }
 
+/////////////////////////////////////
+void ISA_Pack_Is_Unused (void)
+/////////////////////////////////////
+//  See interface description.
+/////////////////////////////////////
+{
+  int i;
+  int top;
+  current_pack_desc = new isa_pack_type;
+  current_pack_desc->name = "dummy";
+  current_pack_desc->max_word = 0;
+  inst_words = 1;
+  all_packs.push_back (current_pack_desc);
+  for (top = 0; top < TOP_count; ++top) {
+    bool is_dummy = TOP_is_dummy((TOP)top);
+    bool is_simulated = TOP_is_simulated((TOP)top);
+    if (!is_dummy && !is_simulated) {
+      top_specified[top] = true;
+      op_assembly *op_pack = new op_assembly;
+      for (i = 0; i < MAX_WORDS; ++i) {
+        op_pack->opcode_mask[i] = 0;
+      }
+      op_packs_list.push_back(op_pack);
+      op_pack->desc = current_pack_desc;
+      op_packs[top] = op_pack;
+    }
+  }
+}
 
 /////////////////////////////////////
 static unsigned long long Mask(int width)
@@ -654,7 +682,7 @@ void ISA_Pack_End(void)
     op_assembly *op_pack = op_packs[top];
     fprintf(cfile, "  {");
     for (w = 0; w < inst_words; ++w) {
-      fprintf(cfile, " 0x%0*llxLL,",
+      fprintf(cfile, " 0x%0*" LL_FORMAT "xLL,",
 		     init_digits, op_pack ? op_pack->opcode_mask[w] : 0LL);
     }
     fprintf(cfile, " }, /* %s */\n", TOP_Name((TOP)top));
@@ -689,7 +717,11 @@ void ISA_Pack_End(void)
   fprintf(hfile, "\ninline INT ISA_PACK_Inst_Words(TOP topcode)\n"
 		 "{\n");
   if (inst_words == 1) {
+#if defined(TARG_SL)
+    fprintf(hfile, "  return TOP_is_dummy(topcode) ? 0 : (TOP_is_instr16(topcode) ? 1 : 2);\n"); // SL inst are by hword count
+#else
     fprintf(hfile, "  return TOP_is_dummy(topcode) ? 0 : 1;\n");
+#endif
   } else {
     fprintf(hfile, "  extern const mUINT8 ISA_PACK_inst_words[%d];\n"
 		   "  return ISA_PACK_inst_words[(INT)topcode];\n",

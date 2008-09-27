@@ -436,18 +436,6 @@ Can_Inline_Call (IPA_NODE* caller, IPA_NODE* callee, const IPA_EDGE* edge)
 {
   SCOPE_CONTEXT switch_scope(callee->Scope());
 
-#ifdef KEY
-  // Bug 110
-  // If the callee uses the formal parameter as a loop index variable then we 
-  // can not inline the call because we can not transform the IDNAME in a 
-  // meaningful way.
-  if ( Formal_Is_Loop_Index(callee, edge) ) {
-    Report_Reason ( callee, caller,
-                    "formal parameter is a loop index ", edge );
-    callee->Set_Noinline_Attrib();
-    return FALSE;
-  }
-#endif
   // if we end up linearizing certain references in fortran
   // then we should not inline
   if (! (edge->Has_Must_Inline_Attrib () ||
@@ -2146,7 +2134,7 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 			    !strcmp (func_name, "__cxa_get_exception_ptr")), 
 			   ("Function %s has one-per-pu paramter", func_name));
 	    	// Fixup parameter
-	    	INITV_IDX exc_ptr = INITO_val ((INITO_IDX) Get_Current_PU ().eh_info);
+	    	INITV_IDX exc_ptr = INITO_val ((INITO_IDX) PU_misc_info (Get_Current_PU ()));
 		WN_st_idx (kid0) = TCON_uval (INITV_tc_val (exc_ptr));
 	    }
 	}
@@ -2168,7 +2156,7 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 //
 	    // fix the first parameter, take the proper input from runtime
 	    // (1)
-	    INITV_IDX first = INITO_val ((INITO_IDX) Get_Current_PU ().eh_info);
+	    INITV_IDX first = INITO_val ((INITO_IDX) PU_misc_info (Get_Current_PU ()));
 	    WN_st_idx (WN_kid0 (wn)) = TCON_uval (INITV_tc_val (INITV_next (first)));
 	    // fix the 2nd parameter -- filter value
 	    int current_filter = WN_const_val (WN_kid1 (wn));
@@ -2180,7 +2168,7 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	    }
 	    Set_Tables (Callee_node());
 
-	    INITO_IDX ino = Pu_Table [ST_pu (Callee_node()->Func_ST())].eh_info;
+	    INITO_IDX ino = PU_misc_info (Pu_Table [ST_pu (Callee_node()->Func_ST())]);
 	    INITV_IDX tinfo = INITV_next (INITV_next (INITO_val (ino)));
 	    INITV_IDX ttable = INITO_val (TCON_uval (INITV_tc_val (tinfo)));
 	    int filter;
@@ -2399,8 +2387,8 @@ Disambiguate_Aliased_Actuals (PARM_ATTR_VEC& parm_attr, PU& pu)
     BOOL* aliased = (BOOL*) alloca (num_parm * sizeof(BOOL));
     BOOL* scalar = (BOOL*) alloca (num_parm * sizeof(BOOL));
 
-    bzero (aliased, sizeof(BOOL)*num_parm);
-    bzero (scalar, sizeof(BOOL)*num_parm);
+    BZERO (aliased, sizeof(BOOL)*num_parm);
+    BZERO (scalar, sizeof(BOOL)*num_parm);
 
     // record those ST that are aliased
     for (i = 0; i < num_parm; ++i) {
@@ -3595,8 +3583,11 @@ void
 IPO_INLINE::Merge_EH_Spec_Tables (void)
 {
     INITV_IDX start, blk;
+    if (!PU_cxx_lang (Callee_node()->Get_PU()))
+      return;
+
     // callee side
-    INITO_IDX tmp = Pu_Table [ST_pu (Callee_node()->Func_ST())].eh_info;
+    INITO_IDX tmp = PU_misc_info (Callee_node()->Get_PU());
     if (tmp)
     	start = INITO_val (tmp);
     else return;
@@ -3626,7 +3617,7 @@ IPO_INLINE::Merge_EH_Spec_Tables (void)
 
     // caller side, change tables temporarily
     Set_Tables (Caller_node());
-    start = INITO_val (Pu_Table [ST_pu (Caller_node()->Func_ST())].eh_info);
+    start = INITO_val (PU_misc_info (Pu_Table [ST_pu (Caller_node()->Func_ST())]));
     const INITO_IDX caller_spec = TCON_uval (INITV_tc_val (INITV_next (INITV_next (INITV_next (start)))));
     if (caller_spec)
     	blk = INITV_blk (INITO_val (caller_spec));
@@ -3691,8 +3682,10 @@ IPO_INLINE::Merge_EH_Typeinfo_Tables (void)
 {
     vector<ST_IDX> callee_typeinfos, caller_typeinfos;
     INITV_IDX start, blk, last_blk=0;
+    if (!PU_cxx_lang (Callee_node()->Get_PU()))
+      return;
     // callee side
-    INITO_IDX tmp = Pu_Table [ST_pu (Callee_node()->Func_ST())].eh_info;
+    INITO_IDX tmp = PU_misc_info (Callee_node()->Get_PU());
     if (tmp)
     	start = INITO_val (tmp);
     else
@@ -3713,7 +3706,7 @@ IPO_INLINE::Merge_EH_Typeinfo_Tables (void)
     // caller side
     // change tables temporarily
     Set_Tables (Caller_node());
-    start = INITO_val (Pu_Table [ST_pu (Caller_node()->Func_ST())].eh_info);
+    start = INITO_val (PU_misc_info (Pu_Table [ST_pu (Caller_node()->Func_ST())]));
     INITO_IDX caller_ttable = TCON_uval (INITV_tc_val (INITV_next (INITV_next (start))));
     if (caller_ttable) blk = INITO_val (caller_ttable);
     else blk = 0;

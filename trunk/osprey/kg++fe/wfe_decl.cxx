@@ -851,7 +851,7 @@ Setup_Entry_For_EH (void)
                                 0)), 1);
     Set_INITV_next (tinfo, eh_spec);
 
-    Get_Current_PU().eh_info = New_INITO (ST_st_idx (etable), exc_ptr_iv);
+    Set_PU_misc_info (Get_Current_PU(), New_INITO (ST_st_idx (etable), exc_ptr_iv));
 }
 
 // Generate WHIRL representing an asm at file scope (between functions).
@@ -1123,6 +1123,9 @@ WFE_Start_Function (tree fndecl)
     Set_PU_cxx_lang (Pu_Table [ST_pu (func_st)]);
 
 #ifdef KEY
+    if (lookup_attribute("used", DECL_ATTRIBUTES (fndecl)))  // bug 3697
+      Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
+
     if (DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fndecl))
       Set_PU_no_instrument (Pu_Table [ST_pu (func_st)]);  // Bug 750
     if (DECL_DECLARED_INLINE_P(fndecl))
@@ -1683,6 +1686,7 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 // KEY is already defined above, but this is just to keep what we had earlier
   int     buffer [4];
 #endif // KEY
+  INT32    rbuf_w[4]; // this is needed when long is 64-bit
   switch (size) {
     case 4:
       REAL_VALUE_TO_TARGET_SINGLE (real, t1);
@@ -1691,14 +1695,26 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
     case 8:
       REAL_VALUE_TO_TARGET_DOUBLE (real, buffer);
       WFE_Convert_To_Host_Order(buffer);
-      tc = Host_To_Targ_Float (MTYPE_F8, *(double *) &buffer);
+#if (SIZEOF_LONG != 4)
+      for (int i = 0; i < 4; i++)
+	rbuf_w[i] = buffer[i];
+      tc = Host_To_Targ_Float (MTYPE_F8, *(double *) rbuf_w);
+#else
+      tc = Host_To_Targ_Float (MTYPE_F8, *(double *) buffer);
+#endif
       break;
 #ifdef KEY
     case 12:
     case 16:
       REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, buffer);
       WFE_Convert_To_Host_Order(buffer);
-      tc = Host_To_Targ_Quad (*(long double *) &buffer);
+#if (SIZEOF_LONG != 4)
+      for (int i = 0; i < 4; i++)
+	rbuf_w[i] = buffer[i];
+      tc = Host_To_Targ_Quad (*(long double *) rbuf_w);
+#else
+      tc = Host_To_Targ_Quad (*(long double *) buffer);
+#endif
       break;
 #endif
     default:
@@ -2312,12 +2328,12 @@ Gen_Assign_Of_Init_Val (
 	// rather than directy copy assignment,
 	// so need special code.
 	UINT size = TY_size(ty);
-        // OSP, string size > ty_size, only init ty_size
-        // Replace TREE_STRING_LENGTH with load_size
-        // Althrough C++ prohibit str_lenth longer than ty_size,
-        //  we still change the code here. ( consistent with C part )
-        UINT load_size = ( size > TREE_STRING_LENGTH(init) ) ?
-                           TREE_STRING_LENGTH(init) : size;
+	// OSP, string size > ty_size, only init ty_size
+	// Replace TREE_STRING_LENGTH with load_size
+	// Althrough C++ prohibit str_lenth longer than ty_size,
+	// we still change the code here. ( consistent with C part )
+	UINT load_size = ( size > TREE_STRING_LENGTH(init) ) ?
+					TREE_STRING_LENGTH(init) : size;
 	TY_IDX ptr_ty = Make_Pointer_Type(ty);
 	WN *load_wn = WN_CreateMload (0, ptr_ty, init_wn,
 #ifdef KEY // bug 3188
@@ -2911,7 +2927,12 @@ Add_Inito_For_Tree (tree init, ST *st)
   case INTEGER_CST:
 	UINT64 val;
 	val = Get_Integer_Value (init);
-	if (val == 0) {
+#ifdef TARG_SL
+// we don't put vbuf variable, which is initialized with zero, into bss section
+	if (val == 0 && !ST_in_vbuf(st) && !ST_in_sbuf(st)) {
+#else 	
+	if (val == 0 ) {
+#endif 		
 		Set_ST_init_value_zero(st);
 		if (ST_sclass(st) == SCLASS_DGLOBAL)
 			Set_ST_sclass(st, SCLASS_UGLOBAL);

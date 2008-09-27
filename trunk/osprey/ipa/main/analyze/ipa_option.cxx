@@ -195,6 +195,18 @@ Process_IPA_Options ( INT argc, char **argv )
 	    IPA_Max_Output_File_Size / 100 * IPA_Output_File_Size;
     }
 
+#if defined(TARG_SL)
+    if (ld_ipa_opt[LD_IPA_IPISR].flag) {
+        if (IPA_Enable_PU_Reorder != REORDER_DISABLE) 
+            DevWarn("IPA_Enable_PU_Reorder is overrided by -ipisr option!"); 
+        IPA_Enable_PU_Reorder = REORDER_BY_BFS; 
+
+        if (IPA_Enable_Source_PU_Order) 
+            DevWarn("IPA_Enable_Source_PU_Order is overrided by -ipisr option!"); 
+        IPA_Enable_Source_PU_Order = FALSE;
+    }
+#endif
+
     if ( Get_Trace ( TKIND_ALLOC, TP_IPA ) ) {
 	IPA_Enable_Memtrace = TRUE;
 	MEM_Tracing_Enable ();
@@ -226,12 +238,12 @@ Process_IPA_Options ( INT argc, char **argv )
 
     /* Get IPAA summary file name if required: */
     if ( IPA_Enable_Simple_Alias && Ipa_File_Name == NULL ) {
-	Ipa_File_Name = concat_names ( outfilename, ".ipaa" );
+	Ipa_File_Name = concat_names ( outfilename, (const string)".ipaa" );
     }
 
     /* Set up for tracing -- file, timers, etc.: */
     if ( Tracing_Enabled ) {
-	char * cmd_file_name = concat_names ( outfilename, ".ipa.t" );
+	char * cmd_file_name = concat_names ( outfilename, (const string)".ipa.t" );
 
 	Set_Trace_File ( cmd_file_name );
 
@@ -253,7 +265,7 @@ Process_IPA_Options ( INT argc, char **argv )
 	 Get_Trace ( TP_PTRACE1, TP_PTRACE1_IPALNO)) {
 	if ( Tlog_File_Name == NULL ) {
 	    /* Replace source file extension to get trace file: */
-	    Tlog_File_Name =  concat_names ( outfilename, ".tlog" );
+	    Tlog_File_Name =  concat_names ( outfilename, (const string)".tlog" );
 	}
 	if ( (Tlog_File = fopen ( Tlog_File_Name, "w" ) ) == NULL ) {
 	    ErrMsg ( EC_Tlog_Open, Tlog_File_Name, errno );

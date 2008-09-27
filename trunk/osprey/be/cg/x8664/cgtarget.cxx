@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -67,7 +67,7 @@
 #include "defs.h"
 #include "util.h"
 #include "config.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "erglob.h"
 #include "tracing.h"
 #include "data_layout.h"
@@ -347,6 +347,7 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_ldxu8_64:
   case TOP_ldxxu8_64:
   case TOP_ld8_abs:
+  case TOP_lock_xadd8:
     return 1;
       
   case TOP_xor16:
@@ -385,6 +386,7 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_fldcw:
   case TOP_filds:
   case TOP_ld16_abs:
+  case TOP_lock_xadd16:
     return 2;
 
   case TOP_xorx32:
@@ -451,9 +453,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_lock_adc32:
   case TOP_lock_and32:
   case TOP_lock_or32:
-  case TOP_lock_xadd32:
   case TOP_lock_xor32:
   case TOP_lock_sub32:
+  case TOP_lock_xadd32:
     return 4;
 
   case TOP_xorx64:
@@ -527,9 +529,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_lock_add64:
   case TOP_lock_and64:
   case TOP_lock_or64:
-  case TOP_lock_xadd64:
   case TOP_lock_xor64:
   case TOP_lock_sub64:
+  case TOP_lock_xadd64:
   case TOP_fmovsldupx:
   case TOP_fmovshdupx:
   case TOP_fmovddupx:
@@ -834,7 +836,7 @@ CGTARG_Print_PRC_INFO(
   const char *suffix
 )
 {
-  char *s;
+  const char *s;
   INT madds_per_cycle[2];
   INT memrefs_per_cycle[2];
   INT flops_per_cycle[2];
@@ -1069,7 +1071,10 @@ CGTARG_Can_Be_Speculative( OP *op )
   /* don't speculate volatile memory references. */
   if (OP_volatile(op)) return FALSE;
 
-  if (TOP_Can_Be_Speculative(OP_code(op))) return TRUE;
+  // TOP_Can_Be_Speculative is a test for OPs that _cannot_ be speculated.
+  // Don't assume OP can be speculated just because TOP_Can_Be_Speculative
+  // returns TRUE.  Bug 13958.
+  if (!TOP_Can_Be_Speculative(OP_code(op))) return FALSE;
 
   if (!OP_load(op)) return FALSE;
 
@@ -2655,6 +2660,8 @@ BOOL Op_In_Working_Set ( OP* op )
  */
 void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 {
+  if(CG_movnti==0) return;
+
   UINT32 trip_count = 0;
   TN* trip_count_tn = CG_LOOP_Trip_Count(loop);
   BB* body = LOOP_DESCR_loophead(loop);
@@ -2803,7 +2810,8 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
     case TOP_store64:
     case TOP_storex64:
     case TOP_storexx64: {
-         if(Is_Target_SSE2())
+// Bug 14393 : TOP_is_vector_op restriction added
+         if(Is_Target_SSE2() && TOP_is_vector_op(OP_code(op)))
 	  new_top = Movnti_Top(OP_code(op));
          break;
        }
@@ -2900,6 +2908,8 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   {
     constraint++;
   }
+
+  const char* initial_constraint = constraint;
   
   // TODO: we should really look at multiple specified constraints
   // and the load in order to select the best TN, but for now we
@@ -2933,6 +2943,23 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       }
   }
 
+  // Bug 14409: In contrast to what the above comment says about
+  // preferring register to immediates, immediates should always be
+  // preferred if it is possible to generate one. Otherwise, if it
+  // is a constant, it is not easy to decode any type cast it may have,
+  // giving the possibility of a wrong register width.
+  // See if there is an immediate constraint.
+  const char * found_immediate = initial_constraint; // original constraint
+  while (!strchr(immediates, *found_immediate) && *(found_immediate+1)) 
+  {
+    found_immediate++;
+  }
+
+  // Is there an immediate constraint, and is the load a constant?
+  if (strchr(immediates, *found_immediate) &&
+      WN_operator(load) == OPR_INTCONST)
+    constraint = found_immediate; // generate an immediate
+
   TN* ret_tn;
   BOOL first = FALSE, second = FALSE, third = FALSE, fourth = FALSE;
   
@@ -2944,13 +2971,28 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       // immediate could have been put in preg by wopt
       load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
     }
-    FmtAssert(load && WN_operator(load) == OPR_INTCONST, 
+    FmtAssert(load && (WN_operator(load) == OPR_INTCONST ||
+                       (WN_operator(load) == OPR_LDA &&
+                        ST_sym_class(WN_st(load)) == CLASS_CONST)),
               ("Cannot find immediate operand for ASM"));
-    ret_tn = Gen_Literal_TN(WN_const_val(load), 
-                            MTYPE_bit_size(WN_rtype(load))/8);
-    // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
-    FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint), 
-     ("The value of immediate operand supplied is not within expected range."));
+    if (WN_operator(load) == OPR_INTCONST)
+    {
+      ret_tn = Gen_Literal_TN(WN_const_val(load), 
+                              MTYPE_bit_size(WN_rtype(load))/8);
+      // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
+      FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint), 
+       ("The value of immediate operand supplied is not within expected range."));
+    }
+    else
+    {
+      // Bug 14390: string constant with an immediate constraint
+      ST * base;
+      INT64 ofst;
+      // Allocate the string to the rodata section
+      Allocate_Object (WN_st(load));
+      Base_Symbol_And_Offset (WN_st(load), &base, &ofst);
+      ret_tn = Gen_Symbol_TN(base, ofst, 0);
+    }
   }
   // digit constraint means that we should reuse a previous operand
   else if (isdigit(*constraint))
@@ -2977,6 +3019,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 	   (*constraint == 'S') || (*constraint == 'D') || 
 	   (*constraint == 'A') || (*constraint == 'q') || 
 	   (*constraint == 'Q') || 
+	   (*constraint == 'Z') ||  // bug 14413: handle 'Z' similar to 'e'.
 	   (*constraint == 'e' && *(constraint+1) == 'r'))
   {
     TYPE_ID rtype;
@@ -2993,6 +3036,12 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 	default: FmtAssert(FALSE, ("NYI")); 
 	}
       }
+      else if (WN_operator(load) == OPR_CVT /* bug 14419 */ ||
+               // CVT may have been folded into the load, but the rtype
+               // cannot always be taken, for example, in U4U2LDID.
+               (WN_operator(load) == OPR_LDID &&
+                WN_desc(load) == MTYPE_U4)) // bug 14427
+        rtype = WN_rtype(load);
     } else {
       /* We can't figure out what type the operand is, probably because the
 	 optimizer deleted the references to it, so return some default type */      
@@ -3081,7 +3130,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 }
 
 
-static char *
+static const char *
 Get_TN_Assembly_Name (TN *tn)
 {
   return "moo";
@@ -3089,7 +3138,7 @@ Get_TN_Assembly_Name (TN *tn)
 
 void
 CGTARG_TN_And_Name_For_Asm_Constraint (char *constraint, TYPE_ID mtype,
-	TYPE_ID desc, TN **tn, char **name)
+	TYPE_ID desc, TN **tn, const char **name)
 {
 	INT i;
 	if (*constraint == '=') {

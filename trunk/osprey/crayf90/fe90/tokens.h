@@ -1,4 +1,11 @@
 /*
+ * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
+ */
+/*
+ *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -214,6 +221,9 @@ enum	token_values {
 		Tok_Kwd_Type,		/* TYPE	     ENDTYPE		      */
 		Tok_Kwd_Use,		/* USE				      */
 		Tok_Kwd_Undefined,	/* UNDEFINED			      */
+#ifdef KEY /* Bug 14150 */
+		Tok_Kwd_Value,	        /* VALUE   			      */
+#endif /* KEY Bug 14150 */
 		Tok_Kwd_Volatile,	/* VOLATILE			      */
 		Tok_Kwd_Where,		/* WHERE     ELSEWHERE, ENDWHERE      */
 		Tok_Kwd_While,		/* WHILE			      */

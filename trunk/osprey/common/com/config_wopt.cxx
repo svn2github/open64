@@ -90,7 +90,11 @@ BOOL  WOPT_Enable_Aggressive_Doloop_Promotion = FALSE;
 BOOL  WOPT_Enable_Aggressive_IVR = TRUE;
 BOOL  WOPT_Enable_Aggressive_Lftr = TRUE;
 BOOL  WOPT_Enable_Aggressive_Phi_Simp = TRUE;
+#if defined(TARG_X8664) || defined(TARG_IA32)
 INT32 WOPT_Enable_Autoaggstr_Reduction_Threshold = 11;
+#else
+INT32 WOPT_Enable_Autoaggstr_Reduction_Threshold = 24;
+#endif
 BOOL  WOPT_Enable_Alias_ANSI = TRUE;
 BOOL  WOPT_Enable_Alias_Classification = TRUE;
 BOOL  WOPT_Enable_Aggressive_Alias_Classification = TRUE;
@@ -98,6 +102,11 @@ BOOL  WOPT_Enable_Disambiguate_Heap_Obj = TRUE;
 BOOL  WOPT_Enable_Alias_Class_Fortran_Rule = TRUE;
 BOOL  WOPT_Enable_Alias_Qualifer = TRUE;
 BOOL  WOPT_Enable_Alias_Ragnarok_Unnamed = TRUE;
+#if defined(TARG_SL)
+BOOL  WOPT_Enable_Alias_Intrn = TRUE;
+BOOL WOPT_Enable_Local_Clsc = TRUE;  /* make local non-overlap live range */
+                                     /* vars to be the same variable */
+#endif
 BOOL  WOPT_Enable_Avoid_Rehash = FALSE; /* SSAPRE to minimize rehashing */
 BOOL  WOPT_Enable_Bitwise_DCE = TRUE;
 BOOL  WOPT_Enable_CSE_FP_comparison = TRUE;
@@ -109,6 +118,11 @@ BOOL  WOPT_Enable_Combine_Operations = TRUE;
 BOOL  WOPT_Enable_Compare_Simp = TRUE;  /* simplify comparisons */
 BOOL  WOPT_Enable_Const_PRE = TRUE;
 INT32 WOPT_Enable_Const_PRE_Limit = 0;
+#ifdef TARG_NVISA
+BOOL  WOPT_Enable_Const_Var_PRE = TRUE;
+BOOL  WOPT_Enable_Const_Op_PRE = TRUE;
+INT32 WOPT_Const_PRE_Float_Size = 128; /* float Consts >= this Size are const PRE candidates */
+#endif
 BOOL  WOPT_Enable_Copy_Propagate = TRUE;
 BOOL  WOPT_Enable_Copy_Prop_Bad_Ops = FALSE;  /* copy prop ops that strength-reduction can't handle */
 static BOOL WOPT_Enable_Copy_Prop_Bad_Ops_Set = FALSE;
@@ -178,7 +192,11 @@ INT32 WOPT_Enable_Load_PRE_Limit = -1;
 BOOL  WOPT_Enable_Loopinvarexp_Str_Reduction = TRUE;
 BOOL  WOPT_Enable_Lower_Short_Circuit = FALSE;
 BOOL  WOPT_Enable_Lower_Short_Circuit_Set = FALSE;
+#if defined(TARG_SL)
+BOOL  WOPT_Enable_MINMAX = FALSE; /* disallow minmax opcode */
+#else
 BOOL  WOPT_Enable_MINMAX = TRUE; /* allow minmax opcode */
+#endif
 BOOL  WOPT_Enable_Min_Type = TRUE; 
 BOOL  WOPT_Enable_Move_Intrinsicop = TRUE;
 BOOL  WOPT_Enable_MP_varref = TRUE;
@@ -223,6 +241,8 @@ BOOL  WOPT_Enable_Second_Order = TRUE;
 char *WOPT_Enable_Skip = NULL;		/* Name of function to skip */
 OPTION_LIST *WOPT_Skip = NULL;		/* Skip option list */
 SKIPLIST *WOPT_Skip_List = NULL;	/* Processed skiplist */
+OPTION_LIST *WOPT_Unroll_Skip = NULL;	/* Skip unroll option list */
+SKIPLIST *WOPT_Unroll_Skip_List = NULL;	/* Processed unroll skiplist */
 BOOL  WOPT_Enable_SLT = TRUE;
 BOOL  WOPT_Enable_Small_Br_Target = FALSE; /* propagation into branch BBs */
 INT32  WOPT_Enable_Simple_If_Conv = 1;   /* simple if-conversion at CFG build time: 0 - off, 1 - conservative, 2 - aggressive */
@@ -255,7 +275,7 @@ BOOL  WOPT_Enable_Iload_Prop = TRUE;
 BOOL  WOPT_Enable_VN_Full = TRUE;	/* full value number (for ivars) */
 BOOL  WOPT_Enable_Simp_Iload = TRUE;   /* simplifier folding iload */
 BOOL  WOPT_Enable_Canon_Uplevel=FALSE; /* canonicalize the up level ref */
-#ifdef TARG_X8664 // bug 12909
+#if defined(TARG_X8664) || (TARG_SL) // bug 12909
 BOOL  WOPT_Enable_Tail_Recur = TRUE;	/* tail recursion */
 #else
 BOOL  WOPT_Enable_Tail_Recur = FALSE;	/* tail recursion */
@@ -321,6 +341,18 @@ BOOL WOPT_Enable_New_Vsym_Allocation = FALSE;
 #endif
 BOOL  WOPT_Enable_WOVP = TRUE; // For running write-once variable promotion
 BOOL WOPT_Enable_Loop_Multiver = FALSE; // For loop multiversioning
+#if defined(TARG_SL)
+BOOL WOPT_Enable_STR_Short = FALSE; // multimedia apps are 16bit, the iv does not get > 16bits
+#else
+BOOL WOPT_Enable_STR_Short = FALSE; 
+#endif
+#if defined(TARG_NVISA)
+BOOL WOPT_Enable_Estr_Outer_Loop = TRUE;  // strength reduce outer loops
+BOOL WOPT_Enable_Estr_Const_Opnds = TRUE; // strength reduce ops with const kids
+BOOL WOPT_Enable_Estr_Used_Once = TRUE;   // strength reduce ops used only once
+BOOL WOPT_Enable_Estr_Early_Exit = FALSE; // strength reduce early exit loops
+BOOL WOPT_Enable_Aggressive_Iload_CSE = TRUE; // ignore potential iload vsym aliasing
+#endif
 
 /* ====================================================================
  *
@@ -364,6 +396,10 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,    &WOPT_Enable_Disambiguate_Heap_Obj, NULL },
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "ac_fortran", "",
     0, 0, 0,    &WOPT_Enable_Alias_Class_Fortran_Rule, NULL },
+#if defined(TARG_SL)
+  { OVK_BOOL,   OV_VISIBLE,	TRUE, "alias_intrn", "alias_intrn",
+    0, 0, 0,    &WOPT_Enable_Alias_Intrn, NULL },
+#endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "avoid_rehash",		"",
     0, 0, 0,	&WOPT_Enable_Avoid_Rehash, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "bdce",		"bdce",
@@ -390,6 +426,14 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Const_PRE, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "const_pre_limit",	"const_pre_limit",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_Const_PRE_Limit, NULL },
+#if defined(TARG_NVISA)
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "const_var_pre",          "",
+    0, 0, 0,    &WOPT_Enable_Const_Var_PRE, NULL },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "const_op_pre",           "",
+    0, 0, 0,    &WOPT_Enable_Const_Op_PRE, NULL },
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "const_pre_float_size",	"const_pre_float_size",
+    INT32_MAX, 0, INT32_MAX,	&WOPT_Const_PRE_Float_Size, NULL },
+#endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "divrem",		"divrem",
     0, 0, 0,	&WOPT_Enable_DIVREM, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "copy_propagate",	"copy",
@@ -553,6 +597,10 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 4096,	&WOPT_Enable_Rsv_Bits, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "rvi_enable",		"rvi",
     0, 0, 0,	&WOPT_Enable_RVI, NULL },
+#if defined(TARG_SL)
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "local_clsc",	"",
+    0, 0, 0,	&WOPT_Enable_Local_Clsc, NULL },
+#endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "rvi1",			"",
     0, 0, 0,	&WOPT_Enable_RVI1, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "rvi2",			"",
@@ -714,6 +762,12 @@ static OPTION_DESC Options_WOPT[] = {
 #else
   2, 0, 2,    &WOPT_Enable_WN_Unroll, NULL },
 #endif
+  { OVK_LIST,   OV_VISIBLE,     TRUE, "unroll_skip_after", "unroll_skip_a",
+    0, 0, 0,    &WOPT_Unroll_Skip,      NULL },
+  { OVK_LIST,   OV_VISIBLE,     TRUE, "unroll_skip_before", "unroll_skip_b",
+    0, 0, 0,    &WOPT_Unroll_Skip,      NULL },
+  { OVK_LIST,   OV_VISIBLE,     TRUE, "unroll_skip_equal", "unroll_skip_e",
+    0, 0, 0,    &WOPT_Unroll_Skip,       NULL },
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "ip_mod_ref", "ip_mod_ref",
     0, 0, 0,    &WOPT_Enable_IP_Mod_Ref, NULL },
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "invar_loop_bounds", "invar_loop_bounds",
@@ -734,5 +788,17 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,   &WOPT_Enable_Pt_Summary, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "loop_multiver",   NULL, 
     0, 0, 0,   &WOPT_Enable_Loop_Multiver, NULL },
+#ifdef TARG_NVISA
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "estr_outer_loop",        "",
+    0, 0, 0,    &WOPT_Enable_Estr_Outer_Loop, NULL },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "estr_const_opnds",       "",
+    0, 0, 0,    &WOPT_Enable_Estr_Const_Opnds, NULL },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "estr_used_once", "",
+    0, 0, 0,    &WOPT_Enable_Estr_Used_Once, NULL },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "estr_early_exit",        "",
+    0, 0, 0,    &WOPT_Enable_Estr_Early_Exit, NULL },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "aggr_iload_cse",        "",
+    0, 0, 0,    &WOPT_Enable_Aggressive_Iload_CSE, NULL },
+#endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };

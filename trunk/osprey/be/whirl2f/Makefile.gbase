@@ -71,8 +71,10 @@ include $(COMMONDEFS)
 #  Set environment variables
 #----------------------------------------------------------------------
 ifdef LOCAL_BE_DIR
+CVERSION  =  -xansi
 TARG_BE_DIR = $(TARGDIR)/$(LOCAL_BE_DIR)
 else
+CVERSION =
 TARG_BE_DIR = $(TARGDIR)/be
 endif
 
@@ -221,7 +223,11 @@ GLDOPTS = $(STD_LOAD_OPTS) $(LD_QUICKSTART_INFO)
 
 #DSOSTARTOPT = -update_registry $(TARGDIR)/be/so_locations -no_unresolved
 #DSOSTARTOPT = -no_unresolved
+ifeq ($(BUILD_OS), IRIX)
+DSOSTARTOPT = -check_registry $(TARGDIR)/be/so_locations -no_unresolved
+else
 DSOSTARTOPT = 
+endif
 DSOSTARTOPT_32 = -32 $(DSOSTARTOPT)
 DSOSTARTOPT_N32 = -n32 $(DSOSTARTOPT)
 
@@ -231,7 +237,11 @@ DSOSTARTOPT_N32 = -n32 $(DSOSTARTOPT)
 #----------------------------------------------------------------------
 # File containing the list of symbols exported outside of whirl2f.so
 #----------------------------------------------------------------------
+ifeq ($(BUILD_COMPILER), EDG)
+EXPORT_LIST = -exports_file $(BE_WHIRL2F_DIR)/Exported
+else
 EXPORT_LIST =
+endif
 
 #----------------------------------------------------------------------
 #  Define target
@@ -246,6 +256,9 @@ TARG_TARG_INFO_DIR = $(TARGDIR)/targ_info
 endif
 
 ifeq ($(BUILD_TARGET), MIPS)
+TARGET_SO = r10000.so
+endif
+ifeq ($(BUILD_TARGET), SL)
 TARGET_SO = r10000.so
 endif
 ifeq ($(BUILD_TARGET), IA64)
@@ -265,6 +278,9 @@ LDIRT += be be.so $(TARGET_SO) whirl2c_be
 #----------------------------------------------------------------------
 #  Variables describing additional sources, objects, and libraries
 #----------------------------------------------------------------------
+ifeq ($(BUILD_COMPILER), EDG)
+LLDLIBS	= -none -lc
+endif
 
 default: first $(TARGETS) last
 

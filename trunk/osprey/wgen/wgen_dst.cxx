@@ -85,7 +85,11 @@ extern "C"{
 #include "gspin-wgen-interface.h"
 }
 
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 
 #include "defs.h"
 #include "glob.h"
@@ -122,10 +126,16 @@ extern FILE *tree_dump_file; //for debugging only
 static BOOL dst_initialized = FALSE;
 
 
+#ifdef KEY
+static char *cwd_buffer = NULL;
+static char *current_working_dir = NULL;
+static char *current_host_dir = NULL;
+#else
 #define MAX_CWD_CHARS (256 - (MAXHOSTNAMELEN+1))
 static char  cwd_buffer[MAX_CWD_CHARS+MAXHOSTNAMELEN+1];
 static char *current_working_dir = &cwd_buffer[0];
 static char *current_host_dir = &cwd_buffer[0];
+#endif
 
 
 // A file-global current scope is not useful, as with gcc we see
@@ -547,7 +557,7 @@ DST_enter_static_data_mem(gs_t  parent_tree,
         mem_name,  // user typed name, not mangled
         fidx,        // user typed type name here (typedef type perhaps).
         0,           // offset (fortran uses non zero )
-        (void*)(INTPTR) base, // underlying type here, not typedef.
+        base, // underlying type here, not typedef.
         DST_INVALID_IDX,  // abstract origin
         TRUE,          // is_declaration=  decl only
         FALSE,         // is_automatic ?
@@ -694,7 +704,7 @@ DST_enter_member_function( gs_t parent_tree,
         basename,
         ret_dst,        	// return type
         DST_INVALID_IDX,        // Index to alias for weak is set later
-        (void*) 0,              // index to fe routine for st_idx
+        0,              // index to fe routine for st_idx
         inlin,                  // dwarf inline code.
         virtuality,     	// applies to C++, dwarf virt code
         vtable_elem_location,   // vtable_elem_location (vtable slot #
@@ -1402,7 +1412,7 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_name(var_st),
 			     type,    
 			     0,  
-			     (void*)(INTPTR) ST_st_idx(var_st), 
+			     ST_st_idx(var_st), 
 			     DST_INVALID_IDX,        
 			     FALSE,                  // is_declaration
 			     ST_sclass(var_st) == SCLASS_AUTO,
@@ -1425,7 +1435,7 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_name(var_st),
 			     type,    
 			     0,  
-			     (void*)(INTPTR) ST_st_idx(var_st), 
+			     ST_st_idx(var_st), 
 			     DST_INVALID_IDX,        
 			     FALSE,                  // is_declaration
 			     ST_sclass(var_st) == SCLASS_AUTO,
@@ -2431,7 +2441,7 @@ DST_Create_var(ST *var_st, gs_t decl)
 				field_name,
 				TYPE_DST_IDX(gs_tree_type(field)),
 				0,  // offset (fortran uses non zero )
-				(void*)(INTPTR) ST_st_idx(var_st), // underlying type here, not typedef.
+				ST_st_idx(var_st), // underlying type here, not typedef.
 				DST_INVALID_IDX,        // abstract origin
 				external_decl,          // is_declaration
 				FALSE,                  // is_automatic
@@ -2451,7 +2461,7 @@ DST_Create_var(ST *var_st, gs_t decl)
         field_name,
         type,    // user typed type name here (typedef type perhaps).
 	0,  // offset (fortran uses non zero )
-        (void*)(INTPTR) ST_st_idx(var_st), // underlying type here, not typedef.
+        ST_st_idx(var_st), // underlying type here, not typedef.
         DST_INVALID_IDX,        // abstract origin
         external_decl,          // is_declaration
         FALSE,                  // is_automatic
@@ -2573,7 +2583,7 @@ DST_enter_param_vars(gs_t fndecl,
 		src,
 		name,
 		type_idx,
-		(void* )(INTPTR)loc, // So backend can get location.
+		loc, // So backend can get location.
 			// For a formal in abstract root
 			// or a plain declaration (no def)
 			// there is no location.
@@ -2665,7 +2675,7 @@ DST_enter_param_vars(gs_t fndecl,
 		src,
 		name,
 		type_idx,
-		(void* )(INTPTR)loc, // So backend can get location.
+		loc, // So backend can get location.
 			// For a formal in abstract root
 			// or a plain declaration (no def)
 			// there is no location.
@@ -2829,7 +2839,7 @@ DST_Create_Subprogram (ST *func_st, gs_t fndecl)
         funcname,
         ret_dst,        	// return type
         DST_INVALID_IDX,        // Index to alias for weak is set later
-        (void*)(INTPTR) fstidx,         // index to fe routine for st_idx
+        fstidx,         // index to fe routine for st_idx
         DW_INL_not_inlined,     // applies to C++
         DW_VIRTUALITY_none,     // applies to C++
         0,                      // vtable_elem_location
@@ -2909,6 +2919,12 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
 	  char *copts[]) /* The array of option strings passed to fec(c) */
 {
    char         *src_path, *comp_info;
+#ifdef KEY
+   char         *cur_dir = Get_Current_Working_Directory();
+
+   current_working_dir = current_host_dir = cwd_buffer =
+                      (char *) malloc (strlen(cur_dir) + MAXHOSTNAMELEN + 10);
+#endif
 
    dst_initialized = TRUE;
 
@@ -2958,7 +2974,11 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
       current_host_dir = NULL;
       current_working_dir = &cwd_buffer[0];
    }
+#ifdef KEY
+   strcpy(current_working_dir, cur_dir);
+#else
    strcpy(current_working_dir, Get_Current_Working_Directory());
+#endif
    if (current_working_dir == NULL) {
       perror("getcwd");
       exit(2);

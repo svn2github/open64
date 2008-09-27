@@ -79,7 +79,7 @@
 #include "small_trips.h"
 #include "eliminate.h"
 #include "fb_whirl.h"
-#include "wn_simp.h"
+#include "wn_simp.h"       // for WN_Simplify_Tree
 
 extern WN* Find_SCF_Inside(WN* parent_wn, OPCODE opc); // in ff_utils.cxx
 
@@ -854,6 +854,10 @@ static void Delete_MP_Region (WN* do_wn,
            ("Delete_MP_Region: must be called with an MP do-loop"));
 
   WN *region=LWN_Get_Parent(LWN_Get_Parent(do_wn));
+#ifdef KEY
+  if (PU_cxx_lang(Get_Current_PU()) && Is_Eh_Or_Try_Region(region))
+    region=LWN_Get_Parent(LWN_Get_Parent(region));
+#endif
   WN *region_parent = LWN_Get_Parent(region);
   WN *body = WN_region_body(region);
   WN *tmp = WN_first(body);
@@ -1703,8 +1707,20 @@ static void STD_Traverse(WN* wn_tree)
   if (WN_opcode(wn_tree) == OPC_DO_LOOP && Do_Loop_Is_Unsigned(wn_tree))
     STD_Canonicalize_Upper_Bound(wn_tree);  
   if (WN_opcode(wn_tree) == OPC_BLOCK) {
+//bug 14148: Since STD_Canonicalize_Upper_Bound may condition a do_loop, we
+//should remember who is the next to traverse. Otherwise, all left wns in the
+//block will be skipped.
+#ifdef KEY
+   WN *wn = WN_first(wn_tree);
+   while(wn){
+     WN *next_wn = WN_next(wn);
+     STD_Traverse(wn);
+     wn = next_wn;
+   }
+#else
     for (WN* wn = WN_first(wn_tree); wn != NULL; wn = WN_next(wn))
       STD_Traverse(wn);
+#endif
   } else {
     for (INT i = 0; i < WN_kid_count(wn_tree); i++)
       STD_Traverse(WN_kid(wn_tree, i));
@@ -2354,9 +2370,6 @@ static BOOL Loop_Simple_Unswitch_InnerDo (WN * wn)
 
   if (WN_operator (stmt) != OPR_IF)
     return FALSE; // No if-statement to switch
-
-  if (! Is_Loop_Invariant_Exp (WN_if_test (stmt), wn))
-    return FALSE; // if-test not loop invariant
 
   if (!Is_Loop_Invariant_Exp(WN_if_test(stmt), wn)){
      Gen_Early_Exit(stmt,wn); //bug 12007

@@ -44,7 +44,11 @@
 #pragma hdrstop
 #include <unistd.h>		    /* for close(), etc. */
 #include <sys/stat.h>		    /* for fstat() */
+#ifdef __MINGW32__
+#include <WINDOWS.h>
+#else
 #include <sys/mman.h>		    /* for mmap() */
+#endif
 #include <fcntl.h>		    /* for open() */
 #include "elf_stuff.h"		    /* for all Elf stuff */
 #include <sys/elf_whirl.h>	    /* for WHIRL sections */
@@ -679,8 +683,13 @@ WN_massage_input (char *baseaddr, Elf64_Word size, char* file_revision)
 } /* WN_massage_input */
 
 
+#ifdef __MINGW32__
+static void *
+read_file (char *filename, off_t* mapped_size, char* file_revision, int *ret_fd, HANDLE *retMapHd)
+#else
 static void *
 read_file (char *filename, off_t* mapped_size, char* file_revision)
+#endif /* __MINGW32__ */
 {
     int fd;
     INT st;
@@ -694,17 +703,36 @@ read_file (char *filename, off_t* mapped_size, char* file_revision)
     if (fstat (fd, &stat_buf) != 0)
 	return (void *) (INTPTR) ERROR_RETURN;
 
+#ifdef __MINGW32__
+    *retMapHd = CreateFileMapping((HANDLE)_get_osfhandle(fd), NULL, 
+                                  PAGE_READONLY, 0, stat_buf.st_size, filename);
+    if (*retMapHd == NULL)
+	return (void *) (INTPTR)ERROR_RETURN;
+    map_addr = (char *)MapViewOfFileEx(*retMapHd, FILE_MAP_COPY,
+                                       0,0,stat_buf.st_size, 0);
+#else
     map_addr = (char *) mmap (0, stat_buf.st_size, PROT_READ|PROT_WRITE,
 			      MAP_PRIVATE, fd, 0);
+#endif
     if (map_addr == (char *)(INTPTR)(ERROR_VALUE)) {
 	close (fd);
 	return (void *) (INTPTR) ERROR_RETURN;
     }
 
+#ifdef __MINGW32__
+    CloseHandle((HANDLE)_get_osfhandle(fd));
+    if (ret_fd) *ret_fd = fd;
+#else
     close (fd);
+#endif /* __MINGW32__ */
 
     if ((st = WN_massage_input (map_addr, stat_buf.st_size,file_revision)) <= 0) {
+#ifdef __MINGW32__
+        UnmapViewOfFile(map_addr);
+        CloseHandle(*retMapHd);
+#else
 	munmap (map_addr, stat_buf.st_size);
+#endif /* __MINGW32__ */
 	return (void *) (INTPTR) (st);
     }
 
@@ -731,8 +759,13 @@ Get_Elf_Section_Size (void *handle, Elf64_Word type, Elf64_Word info)
  * Otherwise, it returns (void *) READER_ERROR and sets errno.
  */
 
+#ifdef __MINGW32__
+void *
+WN_open_input (char *filename, off_t *mapped_size, int *fd, HANDLE *mapHd)
+#else
 void *
 WN_open_input (char *filename, off_t *mapped_size)
+#endif /* __MINGW32__ */
 {
     if (filename == 0) {
 	errno = ENOENT;
@@ -741,7 +774,11 @@ WN_open_input (char *filename, off_t *mapped_size)
 
     errno = 0;
 
+#ifdef __MINGW32__
+    return read_file (filename, mapped_size, file_revision, fd, mapHd);
+#else
     return read_file (filename, mapped_size, file_revision);
+#endif /* __MINGW32__ */
     
 } /* WN_open_input */
 
@@ -750,8 +787,13 @@ WN_open_input (char *filename, off_t *mapped_size)
  * file inlining. Note, mapped file size is not saved in the
  * static variable.
  */
+#ifdef __MINGW32__
+extern void *
+WN_inline_open_file(char* file_name, off_t *mapped_size, char* file_revision, HANDLE *mapHd)
+#else
 extern void *
 WN_inline_open_file(char* file_name, off_t *mapped_size, char* file_revision)
+#endif /* __MINGW32__ */
 {
     if (file_name == 0) {
 	errno = ENOENT;
@@ -760,7 +802,11 @@ WN_inline_open_file(char* file_name, off_t *mapped_size, char* file_revision)
 
     errno = 0;
 
+#ifdef __MINGW32__
+    return read_file	 (file_name, mapped_size, file_revision, 0, mapHd);
+#else
     return read_file (file_name, mapped_size, file_revision);
+#endif /* __MINGW32__ */
       
 }
 
@@ -1092,7 +1138,7 @@ WN_get_prefetch (void *handle, PU_Info *pu)
 
 	if (node_offset == -1) break;
 
-	cur_addr = (char *)ir_b_align((off_t)cur_addr,
+	cur_addr = (char *)(INTPS)ir_b_align((off_t)(INTPS) cur_addr,
 #ifndef __GNUC__
 				      __builtin_alignof(PF_POINTER),
 #else
@@ -1243,7 +1289,7 @@ WN_read_generic_map(void           *handle,
       break;
 
     // Why do we align here but not for the WN offset? -- RK 980615
-    cur_addr = (char *) ir_b_align ((off_t) cur_addr,
+    cur_addr = (char *)(INTPS)ir_b_align ((off_t) (INTPS)cur_addr,
 				    sizeof(MAP_ENTRY_TYPE),
 				    0);
     map_value = * (MAP_ENTRY_TYPE *) cur_addr;
@@ -1293,13 +1339,23 @@ WN_get_voidptr_map(void    *handle,
  * pointers returned by WN_get_tree() will no longer be valid.
  */
 
+#ifdef __MINGW32__
+void
+WN_free_input (void *handle, HANDLE *mapHd, off_t mapped_size)
+#else
 void
 WN_free_input (void *handle, off_t mapped_size)
+#endif /* __MINGW32__ */
 {
     if (handle == 0 || handle == (void *)(-1))
 	return;
 
+#ifdef __MINGW32__
+    UnmapViewOfFile((char *)handle);
+    CloseHandle(*mapHd);
+#else
     munmap (handle, mapped_size);
+#endif /* __MINGW32__ */
 } /* WN_free_input */
 
 
@@ -1309,18 +1365,35 @@ WN_free_input (void *handle, off_t mapped_size)
  * These routines use the standard compiler error reporting mechanism.
  */
 
+#ifdef __MINGW32__
+static void *global_fhandle = NULL;	/* file handle */
+void *local_fhandle = NULL;	/* file handle */
+static HANDLE global_mapHandle = NULL;	/* file handle */
+static HANDLE local_mapHandle = NULL;	/* file handle */
+#else
 static void *global_fhandle;	/* file handle */
-static void *local_fhandle;	/* file handle */
+void *local_fhandle;	/* file handle, used in isr.cxx  */
+#endif /* __MINGW32__ */
 static char *global_ir_file;	/* name of ir input file */
 static char *local_ir_file;	/* name of ir input file */
 
+#ifdef __MINGW32__
+static void
+open_specified_input (char *input_file,
+	char **ir_input, void **fhandle, HANDLE * mapHd, off_t *mapped_size, int *fd = 0)
+#else
 static void
 open_specified_input (char *input_file, 
 	char **ir_input, void **fhandle, off_t *mapped_size)
+#endif /* __MINGW32__ */
 {
     Set_Error_Phase ( "Reading WHIRL file" );
     *ir_input = input_file;
+#ifdef __MINGW32__
+    *fhandle = WN_open_input (input_file, mapped_size, fd, mapHd);
+#else
     *fhandle = WN_open_input (input_file, mapped_size);
+#endif /* __MINGW32__ */
     if (*fhandle == (void*) REVISION_MISMATCH) {
 	ErrMsg ( EC_IR_Revision, file_revision, *ir_input);
     } else if (*fhandle == (void*) ABI_MISMATCH) {
@@ -1336,8 +1409,14 @@ open_specified_input (char *input_file,
 void *
 Open_Input_Info (char *input_file)
 {
+#ifdef __MINGW32__
+	open_specified_input (input_file,
+		&global_ir_file, &global_fhandle, &global_mapHandle, &global_mapped_size);
+	local_mapHandle = global_mapHandle;
+#else
 	open_specified_input (input_file, 
 		&global_ir_file, &global_fhandle, &global_mapped_size);
+#endif /* __MINGW32__ */
 	local_ir_file = global_ir_file;
 	local_fhandle = global_fhandle;
 	local_mapped_size = global_mapped_size;
@@ -1347,16 +1426,26 @@ Open_Input_Info (char *input_file)
 void *
 Open_Global_Input (char *input_file)
 {
+#ifdef __MINGW32__
+	open_specified_input (input_file,
+		&global_ir_file, &global_fhandle, &global_mapHandle, &global_mapped_size);
+#else
 	open_specified_input (input_file, 
 		&global_ir_file, &global_fhandle, &global_mapped_size);
+#endif /* __MINGW32__ */
 	return global_fhandle;
 }
 
 void *
 Open_Local_Input (char *input_file)
 {
+#ifdef __MINGW32__
+	open_specified_input (input_file,
+		&local_ir_file, &local_fhandle, &local_mapHandle, &local_mapped_size);
+#else
 	open_specified_input (input_file, 
 		&local_ir_file, &local_fhandle, &local_mapped_size);
+#endif /* __MINGW32__ */
 	return local_fhandle;
 }
 
@@ -1491,6 +1580,32 @@ Free_Dep_Graph (void)
 #endif /* BACK_END */
 } 
 
+#ifdef __MINGW32__
+void
+Free_Local_Input(void)
+{
+  WN_free_input(local_fhandle, &local_mapHandle, local_mapped_size);
+  //local_fhandle = 0;
+  //local_mapHandle = NULL;
+}
+
+void
+Free_Input_Info (void)
+{
+	WN_free_input(global_fhandle, &global_mapHandle, global_mapped_size);
+    if (global_fhandle != local_fhandle) {
+      Free_Local_Input();
+    }
+    else
+    {
+	    local_fhandle = 0;
+	    local_mapHandle = NULL;
+    }
+    global_fhandle = 0;
+	global_mapHandle = NULL;
+}
+
+#else
 void
 Free_Local_Input(void)
 {
@@ -1507,6 +1622,7 @@ Free_Input_Info (void)
     }
     global_fhandle = 0;
 }
+#endif /* __MINGW32__ */
 
 #endif	/* OWN_ERROR_PACKAGE */
 

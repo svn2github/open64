@@ -67,6 +67,12 @@ LCDEFS += -D_LIB_INTERNAL
 LCDEFS += -D_GNU_SOURCE
 LCDEFS += -U__mips
 endif
+ifeq ($(BUILD_HOST), MIPS)
+LCDEFS += -D_WORD32
+LCDEFS += -D_LIB_INTERNAL
+LCDEFS += -D_GNU_SOURCE
+LCDEFS += -U__mips
+endif
 
 LCINCS += -I$(BUILD_TOT)/clibroot
 ifeq ($(BUILD_ABI), N32BIT)
@@ -85,7 +91,9 @@ ifeq ($(BUILD_OPTIMIZE), NODEBUG)
 OPTIMIZER = -O3
 F90FLAGS =
 endif
-#CFLAGS += -fno-fast-stdlib
+ifneq ($(BUILD_COMPILER), GNU)
+CFLAGS += -fno-fast-stdlib
+endif
 
 # use the f90 compiler for fortran
 
@@ -103,6 +111,10 @@ endif
 ifeq ($(BUILD_TYPE), NONSHARED)
 TARGETS = $(LIBRARY)
 LINK_TARGET = $(LIBRARY)
+else
+ifeq ($(BUILD_OS),DARWIN)
+TARGETS = $(LIBRARY) $(PROF_LIB) $(DSO)
+LINK_TARGET = $(DSO) $(LIBRARY)
 else
 TARGETS = $(LIBRARY) $(PROF_LIB) $(DSO)
 LINK_TARGET = $(DSO)
@@ -157,4 +169,8 @@ $(PROF_LIB): $(OBJECTS:%.o=%.pg.o)
 	$(ranlib) $@
 
 $(DSO): $(OBJECTS:%.o=%.pic.o)
+ifeq ($(BUILD_OS), DARWIN)
+	@echo "Skipping unneeded " $(DSO)
+else
 	$(ld) $(STD_DSO_LOADOPTS) -o $@ $^
+endif

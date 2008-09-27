@@ -3735,6 +3735,25 @@ build_c_cast (type, expr)
       value = default_function_array_conversion (value);
       otype = TREE_TYPE (value);
 
+#if defined(TARG_SL)
+/* decide if memory type casting is legal */
+      if(TREE_CODE(type) == POINTER_TYPE 
+       &&TREE_CODE(otype) == POINTER_TYPE)
+       { 
+       	  tree in_type = type;
+       	  tree in_otype = otype;
+       do
+	    {
+	      in_otype = TREE_TYPE (in_otype);
+	      in_type = TREE_TYPE (in_type);
+          if (TYPE_VBUF_QUALS(in_type) & ~TYPE_VBUF_QUALS(in_otype))
+              warning(" different memory casting forbidden ");
+	    }
+	  while (TREE_CODE (in_type) == POINTER_TYPE
+		 && TREE_CODE (in_otype) == POINTER_TYPE);
+       }
+#endif // TARG_SL
+
       /* Optionally warn about potentially worrisome casts.  */
 
       if (warn_cast_qual
@@ -4253,6 +4272,17 @@ convert_for_assignment (type, rhs, errtype, fundecl, funname, parmnum)
 	  else if (TREE_CODE (ttr) != FUNCTION_TYPE
 		   && TREE_CODE (ttl) != FUNCTION_TYPE)
 	    {
+#if defined(TARG_SL)
+	    //decide if a pointer casting between vbuf type is legal
+	   /* for now there is pointer point to different vbuf address for sharing memory
+	    * , we give a warning for that now. In the future there will be enough memory 
+	    * and such usage will be forbidden. At that time we will give a error 
+	    */
+		 if(TYPE_VBUF_QUALS(ttl) & ~TYPE_VBUF_QUALS(ttr)) {
+		   warning( " incompatible pointer type assignment ");
+		 }
+		 else
+#endif // TARG_SL
 	      if (TYPE_QUALS (ttr) & ~TYPE_QUALS (ttl))
 		warn_for_assignment ("%s discards qualifiers from pointer target type",
 				     errtype, funname, parmnum);

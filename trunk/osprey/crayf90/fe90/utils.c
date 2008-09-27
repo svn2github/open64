@@ -80,7 +80,7 @@ static char USMID[] = "\n@(#)5.0_pl/sources/utils.c	5.9	10/14/99 12:53:57\n";
 
 # define STR_FMT "\"%s\""
 
-# if defined(_HOST_OS_LINUX)
+# if defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)
 #    define DBL_FMT "%Le"
 # elif defined(_HOST_OS_SOLARIS) || (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
 #    define DBL_FMT "%e"
@@ -348,7 +348,7 @@ char *	 convert_to_string (long_type	*the_constant,
          break;
 
       case Real_8 :
-# if defined(_HOST_OS_LINUX)
+# if defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)
          sprintf(result, FLT_FMT, *(double *)the_constant);
          break;
 # endif

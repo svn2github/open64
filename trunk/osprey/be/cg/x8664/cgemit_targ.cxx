@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -62,13 +62,15 @@
  */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "elf_stuff.h"
+#ifdef KEY /* Mac port */
+#include "dwarf_stuff.h"
+#endif /* KEY Mac port */
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "targ_const.h"
 #include "targ_const_private.h"
 #include "vstring.h"
@@ -139,11 +141,16 @@ CGEMIT_Prn_File_Dir_In_Asm(USRCPOS usrcpos,
                         const char *pathname,
                         const char *filename)
 {
+#if defined(BUILD_OS_DARWIN)
+  /* .file takes a single string arg in v1.38 as */
+  fprintf (Asm_File, "\t%s\t\"%s/%s\"\n", AS_FILE, pathname, filename);
+#else /* defined(BUILD_OS_DARWIN) */
   if (CG_emit_non_gas_syntax)
     fprintf (Asm_File, "\t%s\t%d\t\"%s/%s\"\n",
 	     AS_FILE, USRCPOS_filenum(usrcpos)-1, pathname, filename);
   else fprintf (Asm_File, "\t%s\t%d\t\"%s/%s\"\n",
 	   AS_FILE, USRCPOS_filenum(usrcpos), pathname, filename);
+#endif /* defined(BUILD_OS_DARWIN) */
 }
 
 extern void
@@ -152,6 +159,11 @@ CGEMIT_Prn_Line_Dir_In_Asm (USRCPOS usrcpos)
   if( !CG_emit_asm_dwarf) { 
     fprintf (Asm_File, " # "); //turn the rest into comment
   }
+#if defined(BUILD_OS_DARWIN)
+  /* Darwin as provides .line, not .loc */
+  fprintf (Asm_File, "\t.line\t%d\n", 
+	   USRCPOS_linenum(usrcpos));
+#else /* defined(BUILD_OS_DARWIN) */
   if (CG_emit_non_gas_syntax)
     fprintf (Asm_File, "\t.loc\t%d\t%d\t%d\n", 
 	     USRCPOS_filenum(usrcpos)-1,
@@ -162,6 +174,7 @@ CGEMIT_Prn_Line_Dir_In_Asm (USRCPOS usrcpos)
 	     USRCPOS_filenum(usrcpos),
 	     USRCPOS_linenum(usrcpos),
 	     USRCPOS_column(usrcpos));    
+#endif /* defined(BUILD_OS_DARWIN) */
   }
 
 
@@ -205,6 +218,12 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
     if (Non_Default_Text_Section(current_pu))
       fprintf (asm_file, "\t.end\tliteral_prefix\n");
   }
+#if defined(BUILD_OS_DARWIN)
+  /* Darwin uses ".lcomm", not ".bss" */
+  else if (0 == strcmp(scn_name, BSS_RAW_NAME)) {
+    return;
+  }
+#endif /* defined(BUILD_OS_DARWIN) */
   
   /* Handle .text, .data, and .literal specially. */
 
@@ -233,7 +252,11 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
     char scn_flags_string[5];
     char *p = &scn_flags_string[0];
     
+#if defined(BUILD_OS_DARWIN)
+    fprintf (asm_file, "\n\t%s %s", AS_SECTION, map_section_name(scn_name));
+#else /* defined(BUILD_OS_DARWIN) */
     fprintf (asm_file, "\n\t%s %s", AS_SECTION, scn_name);
+#endif /* defined(BUILD_OS_DARWIN) */
     if (CG_emit_non_gas_syntax && strcmp(scn_name, ".srdata") == 0) {
       static BOOL printed = FALSE;
       if (!printed) {
@@ -245,6 +268,8 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
 	printed = TRUE;
       }
     }
+#if ! defined(BUILD_OS_DARWIN)
+    /* Mach-O assembler section directives don't use this syntax */
     if (! CG_emit_non_gas_syntax) {
       if ((scn_flags & SHF_WRITE) &&
           !(scn_name && !strncmp(scn_name,".gnu.linkonce.r.",16)))
@@ -261,12 +286,17 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
       else if (scn_type == SHT_NOBITS)
         fprintf (asm_file, ",@nobits");
     }
+#endif /* defined(BUILD_OS_DARWIN) */
 #ifdef TARG_X8664
-    if (strcmp(scn_name, ".debug_frame") == 0) // bug 2463
+#if ! defined(BUILD_OS_DARWIN)
+    /* Mach-O linker rejects non-local labels in debug sections, but we are
+     * already generating a local label for each section elsewhere. */
+    if (strcmp(scn_name, DEBUG_FRAME_SECTNAME) == 0) // bug 2463
       fprintf(asm_file, "\n.LCIE:");
+#endif /* defined(BUILD_OS_DARWIN) */
 
     // Generate a label at the start of the .eh_frame CIE
-    if (!strcmp (scn_name, ".eh_frame")) // bug 2729
+    if (!strcmp (scn_name, EH_FRAME_SECTNAME)) // bug 2729
       fprintf (asm_file, "\n.LEHCIE:");
 #endif
   }
@@ -280,6 +310,11 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
 
   if (!CGEMIT_Align_Section_Once(scn_name))
     fprintf (asm_file, "\t%s\t%d\n", AS_ALIGN, scn_align);
+#if defined(BUILD_OS_DARWIN)
+  /* Darwin "as" doesn't automatically define the section name to be a symbol
+   * whose value is the origin of the section, so we must do it explicitly */
+  fprintf(asm_file, "%s:\n", scn_name);
+#endif /* defined(BUILD_OS_DARWIN) */
 }
 
 void
@@ -389,7 +424,8 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 	case TN_RELOC_IA32_GLOBAL_OFFSET_TABLE:
 	  {
 	    char* str = NULL;
-	    if (Is_Target_EM64T() ||
+	    if (Is_Target_EM64T()    ||
+                Is_Target_Wolfdale() ||
 		Is_Target_Core())
 	      asprintf( &str, "$_GLOBAL_OFFSET_TABLE_+[.-%s]", ST_name(st) );
 	    else
@@ -495,17 +531,7 @@ void
 CGEMIT_Weak_Alias (ST *sym, ST *strongsym) 
 {
   fprintf ( Asm_File, "\t%s\t%s\n", AS_WEAK, ST_name(sym));
-  fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
-  if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
-    // modelled after EMT_Write_Qualified_Name (bug 6899)
-    if (ST_level(strongsym) == GLOBAL_SYMTAB)
-      fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
-    else
-      fprintf ( Asm_File, "%s%d%s%d", Label_Name_Separator, 
-		ST_pu(Get_Current_PU_ST()),
-      		Label_Name_Separator, ST_index(strongsym));
-  }
-  fprintf ( Asm_File, "\n");
+  CGEMIT_Alias (sym, strongsym);
 }
 
 void CGEMIT_Write_Literal_TCON(ST *lit_st, TCON tcon)
@@ -572,7 +598,18 @@ void CGEMIT_Write_Literal_Symbol (ST *lit_st, ST *sym,
 
 void CGEMIT_Alias (ST *sym, ST *strongsym) 
 {
-  fprintf ( Asm_File, "\t%s = %s\n", ST_name(sym), ST_name(strongsym));
+  // bug 14491: alias statement should write out the qualified name
+  fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
+  if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
+    // modelled after EMT_Write_Qualified_Name (bug 6899)
+    if (ST_level(strongsym) == GLOBAL_SYMTAB)
+      fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
+    else
+      fprintf ( Asm_File, "%s%d%s%d", Label_Name_Separator, 
+		ST_pu(Get_Current_PU_ST()),
+      		Label_Name_Separator, ST_index(strongsym));
+  }
+  fprintf ( Asm_File, "\n");
 }
 
 
@@ -582,7 +619,7 @@ void CGEMIT_Alias (ST *sym, ST *strongsym)
 //
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static char* OP_Name[TOP_count];
+static const char* OP_Name[TOP_count];
 
 static void Init_OP_Name()
 {
@@ -1054,6 +1091,7 @@ static void Init_OP_Name()
   OP_Name[TOP_orxxx64] = "orq";
   OP_Name[TOP_ori32] = "orl";
   OP_Name[TOP_ori64] = "orq";
+  OP_Name[TOP_pmovmskb128] = "pmovmskb";
   OP_Name[TOP_ror8] = "rorb";
   OP_Name[TOP_ror16] = "rorw";
   OP_Name[TOP_ror32] = "rorl";
@@ -1336,6 +1374,7 @@ static void Init_OP_Name()
       !Is_Target_Pentium4() &&
       !Is_Target_EM64T() &&
       !Is_Target_Core() &&
+      !Is_Target_Wolfdale() &&
       !Is_Target_Barcelona()){// bug 10295
     // Use movlpd only for loads.  Bug 5809.
     OP_Name[TOP_ldsd] = "movlpd";
@@ -1361,32 +1400,47 @@ static void Init_OP_Name()
     OP_Name[TOP_storelpd] = "movsd";
     if (Is_Target_Barcelona() ||
 	Is_Target_EM64T()     || // em64t
+        Is_Target_Wolfdale()  ||
 	Is_Target_Core()) {	 // use movapd for woodcrest for bug 11548
       OP_Name[TOP_movsd] = "movapd";  
     }
   }
 
+  OP_Name[TOP_lock_add8] = "addb";
+  OP_Name[TOP_lock_add16] = "addw";
   OP_Name[TOP_lock_add32] = "addl";
   OP_Name[TOP_lock_adc32] = "adcl";
   OP_Name[TOP_lock_add64] = "addq";
 
+  OP_Name[TOP_lock_cmpxchg8] = "cmpxchgb";
+  OP_Name[TOP_lock_cmpxchg16] = "cmpxchgw";
   OP_Name[TOP_lock_cmpxchg32] = "cmpxchgl";
   OP_Name[TOP_lock_cmpxchg64] = "cmpxchgq";
 
+  OP_Name[TOP_lock_and8] = "andb";
+  OP_Name[TOP_lock_and16] = "andw";
   OP_Name[TOP_lock_and32] = "andl";
   OP_Name[TOP_lock_and64] = "andq";
 
+  OP_Name[TOP_lock_or8] = "orb";
+  OP_Name[TOP_lock_or16] = "orw";
   OP_Name[TOP_lock_or32] = "orl";
   OP_Name[TOP_lock_or64] = "orq";
 
-  OP_Name[TOP_lock_xadd32] = "xaddl";
-  OP_Name[TOP_lock_xadd64] = "xaddq";
-
+  OP_Name[TOP_lock_xor8] = "xorb";
+  OP_Name[TOP_lock_xor16] = "xorw";
   OP_Name[TOP_lock_xor32] = "xorl";
   OP_Name[TOP_lock_xor64] = "xorq";
 
+  OP_Name[TOP_lock_sub8] = "subb";
+  OP_Name[TOP_lock_sub16] = "subw";
   OP_Name[TOP_lock_sub32] = "subl";
   OP_Name[TOP_lock_sub64] = "subq";
+
+  OP_Name[TOP_lock_xadd8] = "xaddb";
+  OP_Name[TOP_lock_xadd16] = "xaddw";
+  OP_Name[TOP_lock_xadd32] = "xaddl";
+  OP_Name[TOP_lock_xadd64] = "xaddq";
 
   OP_Name[TOP_bsf32] = "bsfl";
   OP_Name[TOP_bsf64] = "bsfq";
@@ -1420,7 +1474,6 @@ static void Init_OP_Name()
   OP_Name[TOP_movi64_2m] = "movd";
   OP_Name[TOP_movm_2i32] = "movd";
   OP_Name[TOP_movm_2i64] = "movd";
-  OP_Name[TOP_pmovmskb128] = "pmovmskb";
   OP_Name[TOP_psrlq128v64] = "psrlq";
   OP_Name[TOP_storenti128] = "movntdq";
   OP_Name[TOP_pshufw64v16] = "pshufw";
@@ -1434,6 +1487,9 @@ static void Init_OP_Name()
   OP_Name[TOP_pandn_mmx] = "pandn";
   OP_Name[TOP_por_mmx] = "por";
   OP_Name[TOP_pxor_mmx] = "pxor";
+  OP_Name[TOP_extrq] = "extrq";
+  OP_Name[TOP_insertq] = "insertq";
+
   return;
 }
 
@@ -1549,6 +1605,9 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
 
   if( ISA_OPERAND_VALTYP_Is_Literal(vtype) ){
     // Bug 578
+#if defined(BUILD_OS_DARWIN)
+    // Mach-O linker evidently handles this automatically
+#else /* defined(BUILD_OS_DARWIN) */
     // Add a reference to the PLT under -fPIC compilation.
     if ( Gen_PIC_Shared &&  
 	 !TN_is_label( OP_opnd(op,0) ) &&
@@ -1559,6 +1618,7 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
       if ( function && !ST_is_export_local(function) )
         strcat( name, "@PLT" );
     }
+#endif /* defined(BUILD_OS_DARWIN) */
 
     if (name[0] != '$' &&   /* A '$' has been added by CGEMIT_Relocs_In_Asm() */
 	(opnd != OP_find_opnd_use(op,OU_offset) &&
@@ -1638,7 +1698,7 @@ INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f
 
   const char* p = OP_Name[topcode] == NULL ? TOP_Name(topcode) : OP_Name[topcode];
 
-  if( OP_prefix_lock( op ) )
+  if (OP_prefix_lock(op))
     sprintf( op_name, "lock %s", p );
   else
     strcpy( op_name, p );

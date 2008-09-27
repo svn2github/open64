@@ -158,6 +158,8 @@ typedef enum {
 	T_Ipfec_Speculation_Comp,
 	T_Ipfec_Multi_Branch_CU,	/* Ipfec Multiple branch */
 	T_Ipfec_Multi_Branch_Comp,
+     T_Ipfec_DAG_CU,
+     T_Ipfec_DAG_Comp,
 
 #ifdef SPECMT_LT
         T_SPECMT_BG,

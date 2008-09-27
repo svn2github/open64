@@ -86,7 +86,7 @@ endif
 #  List of directories, and source files of interest
 #----------------------------------------------------------------------
 
-ifeq ($(BUILD_OS), LINUX)
+ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
 FE90_INCLUDES           = $(BUILD_TOT)/linux/mfef90_includes
 endif
 
@@ -279,18 +279,18 @@ LIBRARIES =
 
 LLDLIBS +=
 
-install default: $(TARGETS) last
+#----------------------------------------------------------------------
+#  For parallel makes, makefile must satisfy:
+#  -> Submake for include/ finished before building any objects;
+#  -> All archive/library submakes finished before linking targets;
+#  -> All targets finished before make_deps or make_libdeps.
+#----------------------------------------------------------------------
+
+default: make_libdeps
+make_libdeps: $(TARGETS)
+.PHONY: default install make_libdeps
 
 #----------------------------------------------------------------------
-#  The commands in this section are done BEFORE any other target is
-#  built.
-#----------------------------------------------------------------------
-
-#----------------------------------------------------------------------
-#  The commands in this section are done AFTER every other target is
-#  built.
-#----------------------------------------------------------------------
-last: make_libdeps
 
 exports:
 

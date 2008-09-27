@@ -143,6 +143,7 @@ extern const struct processor_costs *ix86_cost;
 #define TARGET_GENERIC32 (ix86_tune == PROCESSOR_GENERIC32)
 #define TARGET_GENERIC64 (ix86_tune == PROCESSOR_GENERIC64)
 #define TARGET_GENERIC (TARGET_GENERIC32 || TARGET_GENERIC64)
+#define TARGET_AMDFAM10 (ix86_tune == PROCESSOR_AMDFAM10)
 
 #define TUNEMASK (1 << ix86_tune)
 extern const int x86_use_leave, x86_push_memory, x86_zero_extend_with_and;
@@ -397,6 +398,8 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
 	}							\
       else if (TARGET_K8)					\
 	builtin_define ("__tune_k8__");				\
+      else if (TARGET_AMDFAM10)                                 \
+       builtin_define ("__tune_amdfam10__");                    \
       else if (TARGET_PENTIUM4)					\
 	builtin_define ("__tune_pentium4__");			\
       else if (TARGET_NOCONA)					\
@@ -414,6 +417,8 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
 	builtin_define ("__SSE2__");				\
       if (TARGET_SSE3)						\
 	builtin_define ("__SSE3__");				\
+      if (TARGET_SSE4A)                                         \
+       builtin_define ("__SSE4A__");                            \
       if (TARGET_SSE_MATH && TARGET_SSE)			\
 	builtin_define ("__SSE_MATH__");			\
       if (TARGET_SSE_MATH && TARGET_SSE2)			\
@@ -464,6 +469,11 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
 	  builtin_define ("__k8");				\
 	  builtin_define ("__k8__");				\
 	}							\
+      else if (ix86_arch == PROCESSOR_AMDFAM10)                 \
+       {                                                        \
+         builtin_define ("__amdfam10");                         \
+         builtin_define ("__amdfam10__");                       \
+       }                                                        \
       else if (ix86_arch == PROCESSOR_PENTIUM4)			\
 	{							\
 	  builtin_define ("__pentium4");			\
@@ -495,13 +505,14 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
 #define TARGET_CPU_DEFAULT_prescott 15
 #define TARGET_CPU_DEFAULT_nocona 16
 #define TARGET_CPU_DEFAULT_generic 17
+#define TARGET_CPU_DEFAULT_amdfam10 18
 
 #define TARGET_CPU_DEFAULT_NAMES {"i386", "i486", "pentium", "pentium-mmx",\
 				  "pentiumpro", "pentium2", "pentium3", \
 				  "pentium4", "k6", "k6-2", "k6-3",\
 				  "athlon", "athlon-4", "k8", \
 				  "pentium-m", "prescott", "nocona", \
-				  "generic"}
+				  "generic", "amdfam10"}
 
 #ifndef CC1_SPEC
 #define CC1_SPEC "%(cc1_cpu) "
@@ -2143,6 +2154,13 @@ enum ix86_builtins
   IX86_BUILTIN_HSUBPD,
   IX86_BUILTIN_LDDQU,
 
+  IX86_BUILTIN_MOVNTSS,
+  IX86_BUILTIN_MOVNTSD,
+  IX86_BUILTIN_EXTRQI,
+  IX86_BUILTIN_EXTRQ,
+  IX86_BUILTIN_INSERTQI,
+  IX86_BUILTIN_INSERTQ,
+
   IX86_BUILTIN_MONITOR,
   IX86_BUILTIN_MWAIT,
 
@@ -2519,6 +2537,7 @@ enum processor_type
   PROCESSOR_NOCONA,
   PROCESSOR_GENERIC32,
   PROCESSOR_GENERIC64,
+  PROCESSOR_AMDFAM10,
   PROCESSOR_max
 };
 

@@ -42,10 +42,10 @@
 // ====================================================================
 //
 // Module: instr_reader.h
-// $Revision: 1.1.1.1 $
-// $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
-// $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/instr_reader.h,v $
+// $Revision: 1.9 $
+// $Date: 05/12/05 08:59:36-08:00 $
+// $Author: bos@eng-24.pathscale.com $
+// $Source: /scratch/mee/2.4-65/kpro64-pending/common/com/SCCS/s.instr_reader.h $
 //
 // Revision history:
 //  10-Aug-98 - Original Version
@@ -86,9 +86,20 @@
      if (fseek(_fd, _position, whence) != 0) \
            profile_error(_error_message, _error_arg);
 
+#if defined(BUILD_OS_DARWIN)
+/* fcntl TIOCFLUSH defines FREAD to set a bit that clears the input queue;
+ * we don't need that */
+#undef FREAD
+#endif /* defined(BUILD_OS_DARWIN) */
 #define FREAD(_buffer, _size, _nitems, _fp, _error_message, _error_arg) \
         if (fread((void *)_buffer, _size, _nitems, _fp) != _nitems) \
            profile_error(_error_message, _error_arg);
+
+#if defined(TARG_SL)
+#define FWRITE(_buffer, _size, _nitems, _fp, _error_message, _error_arg) \
+	if (fwrite((void *)_buffer, _size, _nitems, _fp) != _nitems) \
+	   profile_error(_error_message, _error_arg);
+#endif
 
 #ifdef _BUILD_INSTR
 

@@ -261,11 +261,23 @@ static char *config_rcs_id = "$Source: common/com/SCCS/s.config.h $ $Revision: 1
 
 #include "config_host.h"	/* in TARGET/com */
 #include "config_targ.h"	/* in TARGET/com */
-#ifndef linux
+
+#if defined(__MINGW32__) 
+/* some systems define these, some don't */
+#ifndef BIG_ENDIAN
+#define BIG_ENDIAN      4321
+#endif
+#ifndef LITTLE_ENDIAN
+#define LITTLE_ENDIAN   1234
+#endif
+#elif defined(BUILD_OS_DARWIN) || defined(__CYGWIN__) || defined(__APPLE__)
+#include <machine/endian.h>	/* for BIG_ENDIAN, LITTLE_ENDIAN */
+#elif !(defined(linux))
 #include <sys/endian.h>		/* for BIG_ENDIAN, LITTLE_ENDIAN */
 #else
 #include <endian.h>		/* for BIG_ENDIAN, LITTLE_ENDIAN */
 #endif
+
 #include "mempool.h"	/* Include the "fundamental" routines */
 #include "flags.h"
 
@@ -407,6 +419,7 @@ extern BOOL LANG_Symtab_Verify_Set;
 extern BOOL LANG_Formal_Deref_Unsafe;
 extern BOOL LANG_Math_Errno;
 extern BOOL LANG_Enable_CXX_Openmp;
+extern BOOL LANG_Enable_Global_Asm;
 #endif
 
 extern BOOL WHIRL_Mtype_A_On;
@@ -549,7 +562,7 @@ extern BOOL Simp_Unsafe_Relops;         /* Allow foldings which might cause erro
 extern BOOL Enable_NaryExpr;		/* Allow nary expr in the lowerer */
 extern BOOL Enable_NaryExpr_Set;	/* ... option seen? */
 
-#ifdef __linux__
+#if defined(__linux__) || defined(BUILD_OS_DARWIN)
 extern BOOL Enable_WFE_DFE;		/* frontend dead function elimination? */
 #endif /* __linux __ */
 
@@ -609,10 +622,13 @@ extern INT32 iolist_reuse_limit;
 
 /***** Misaligned memory reference control *****/
 extern INT32 Aggregate_Alignment; /* This alignment for aggregate layout */
+extern BOOL Aggregate_Alignment_Set;
+extern INT32 Aggregate_UnrollFactor;	/* When lowering aggregate copy into */
 
 extern BOOL Align_Object;	/* Try to improve the alignment of objects */
 extern BOOL Align_Padding;	/* Pad objects to their natural alignment */
 extern BOOL UseAlignedCopyForStructs;	/* always use aligned copy */
+extern BOOL UnweaveCopyForStructs;      /* clump loads before stores */
 
 /***** Miscellaneous code generation options *****/
 extern BOOL Gen_PIC_Call_Shared; /* CPIC */
@@ -641,7 +657,7 @@ extern BOOL Strings_Not_Gprelative;	/* don't make strings gp-relative */
 #define DEF_SDATA_ELT_SIZE	8
 extern BOOL Varargs_Prototypes;	/* Varargs have prototypes for FP? */
 extern BOOL Gen_Profile;
-extern char *Gen_Profile_Name;
+extern const char *Gen_Profile_Name;
 extern BOOL Call_Mcount;	/* generate a call to mcount in pu entry */
 extern BOOL GP_Is_Preserved;	/* GP is neither caller or callee-save */
 extern BOOL Constant_GP;	/* GP never changes */
@@ -657,6 +673,11 @@ extern char *Library_Name;              /* -TENV:io_library=xxx */
 extern BOOL Omit_UE_DESTROY_FRAME;  /* tmp close Epilogue overflow error */
 
 extern INT  target_io_library;
+
+#if defined (TARG_SL) 
+extern BOOL Sl2_Inibuf;
+extern char* Sl2_Ibuf_Name;
+#endif
 
 #ifdef TARG_X8664
 extern char* Mcmodel_Name;              /* -TENV:mcmodel=xxx */
@@ -720,6 +741,9 @@ extern char *W2F_Path;		    /* path to whirl2f.so */
 extern char *Prompf_Anl_Path;	    /* path to prompf_anl.so */
 extern char *Purple_Path;	    /* path to purple.so */
 extern char *Ipl_Path;		    /* path to ipl.so */
+#if defined(TARG_SL)
+extern BOOL Run_ipisr;  /* run ipisr register allocation */
+#endif
 #endif /* BACK_END */
 extern char *Inline_Path;           /* path to inline.so */
 #if defined(BACK_END) || defined(QIKKI_BE)
@@ -754,6 +778,9 @@ extern BOOL SIMD_ZMask;
 extern BOOL SIMD_OMask;
 extern BOOL SIMD_UMask;
 extern BOOL SIMD_PMask;
+
+extern BOOL Use_Sse_Reg_Parm;
+extern INT32 Use_Reg_Parm;
 #endif
 /* put each function in its own text section */
 extern BOOL Section_For_Each_Function;
@@ -769,12 +796,14 @@ extern INT32 Ipa_Ident_Number;
    compiler was run. */
 extern char *IPA_old_ld_library_path;
 
+/* Tell ipa_link which compiler to invoke. */
+extern char *IPA_cc_name;
+
 /* Tell ipa_link about the source language. */
 extern char *IPA_lang;
 #endif
 
-extern char *IPA_Object_Name;       /* for -shared -ipa compile */
-
+extern char *IPA_Object_Name;           /* for -shared -ipa compile */
 extern BOOL Scalar_Formal_Ref;		/* for fortran formal scalar refs */
 extern BOOL Non_Scalar_Formal_Ref;	/* for fortran formal non_scalar refs */
 
@@ -819,6 +848,7 @@ extern SKIPLIST *Optimization_Skip_List;     /* Processed list */
 extern SKIPLIST *Region_Skip_List;	     /* regions to skip, processed */
 #ifdef KEY
 extern SKIPLIST *Goto_Skip_List;     	     /* Processed list */
+extern SKIPLIST *DDB_Skip_List;     	     /* Processed list */
 #endif
 
 /* ====================================================================
@@ -852,7 +882,7 @@ extern BOOL Process_Trace_Option ( char *option );
 /***** List options to the given file *****/
 extern void List_Compile_Options (
   FILE *file,		/* File to which to write */
-  char *pfx,		/* Prefix output with this string */
+  const char *pfx,	/* Prefix output with this string */
   BOOL internal,	/* Internal or user listing? */
   BOOL full_list,	/* Groups (user)?  All options (internal)? */
   BOOL update );	/* Reset option changed/modified flags? */

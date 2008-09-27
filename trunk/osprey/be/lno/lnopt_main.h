@@ -100,6 +100,10 @@
 //
 //		Any calls inside this do loop
 //
+//      mBOOL Has_Nested_Calls
+//              
+//              Any calls to nested functions inside this do loop
+//
 //	mBOOL Has_Unsummarized_Calls
 //
 //		Any calls without IPA summary info inside this do loop
@@ -831,13 +835,14 @@ public:
   void Set_Est_Num_Iterations(DOLOOP_STACK *do_stack);
 
   mBOOL Has_Calls;
+#ifdef KEY //bug 14284
+  mBOOL Has_Nested_Calls;
+#endif
   mBOOL Has_Unsummarized_Calls;
   mBOOL Has_Unsummarized_Call_Cost; 
   mBOOL Has_Threadprivate; 
   mBOOL Has_Gotos;
-#ifdef PATHSCALE_MERGE
   mBOOL Has_Conditional;
-#endif
   mBOOL Has_Gotos_This_Level;
   mBOOL Has_Exits;
   mBOOL Is_Inner;
@@ -865,6 +870,7 @@ public:
   mBOOL Parallelizable; 
 #ifdef KEY
   mBOOL Vectorizable;
+  mBOOL Delay_Full_Unroll;
 #endif
   mBOOL Last_Value_Peeled; 
   mBOOL Not_Enough_Parallel_Work; 
@@ -973,13 +979,11 @@ inline BOOL Do_Loop_Has_Gotos (WN *wn)
   return(dli && dli->Has_Gotos);
 }
 
-#ifndef KEY
 inline BOOL Do_Loop_Has_Conditional( WN *wn)
 {
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
   return(dli && dli->Has_Conditional);
 }
-#endif
 
 inline BOOL Do_Loop_Has_Gotos_This_Level (WN *wn)
 {

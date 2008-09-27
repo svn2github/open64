@@ -217,7 +217,6 @@ struct SWP_OPTIONS {
     // Lower bound of feedback frequency
     FB_Freq = 100000;
 #endif
-
     // Max number of OPs which should be SWPed
     OPS_Limit = SWP_OPS_LIMIT;
   }

@@ -1,8 +1,4 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -45,9 +41,9 @@
 #include <stdio.h>		    /* for fprintf () */
 #include <stdlib.h>		    /* for getenv() */
 #include <unistd.h>		    /* for execv() */
-#include <string.h>		    /* for strcpy(),etc. */
-#include <linux/limits.h>	    /* for PATH_MAX */
-#include <errno.h>		    /* for errno, sys_errlist[] */
+#include <string.h>		    /* for strcpy(), strerror() */
+#include <limits.h>		    /* for PATH_MAX */
+#include <errno.h>		    /* for errno */
 #include <stdarg.h>
 #include <cmplrs/rcodes.h>
 #include "defs.h"
@@ -55,7 +51,14 @@
 
 char path[PATH_MAX];
 static const char *libpath[3] = 
-{"LD_LIBRARY_PATH",
+{
+#if defined (__MACH__) && defined(__APPLE__)
+  "DYLD_LIBRARY_PATH",
+#elif defined(_AIX)
+  "LIBPATH",
+#else 
+"LD_LIBRARY_PATH",
+#endif
  "LD_LIBRARYN32_PATH",
  "LD_LIBRARY64_PATH"
 };
@@ -167,6 +170,7 @@ Usage (const char *progname)
 } /* Usage */
 
 
+int
 main (INT argc,                   /* Number of command line arguments */
       const char *const argv[],   /* Array of command line arguments */
       const char *const envp[])   /* Array of environment pointers */
@@ -183,9 +187,9 @@ main (INT argc,                   /* Number of command line arguments */
     register INT         i, len;
     register INT         argidx;
     register BOOL        dash_fB_option = FALSE; /* Any -fB option? */
-    char                *newlibpath[3];//argv0 -> replace the argv[0]
-    char                *TOOLRR;//FOR get TOOTROOT 
-  
+    char                *newlibpath[3];
+    char                *TOOLRT;  // TOOTROOT 
+
     program_name = argv[0];
 
     if (argc == 1)
@@ -193,21 +197,14 @@ main (INT argc,                   /* Number of command line arguments */
        Usage(argv[0]);
        exit(RC_NORECOVER_USER_ERROR);
     }
-   
-    //Need to proc the no TOOLROOT's condition   
-
-    TOOLRR=getenv("TOOLROOT");
-    //printf("TOOLROOT:%s\n",TOOLRR);
- 
-    //printf("Enter cxx's path:%s\n",path);
-
-    strcpy (path, TOOLRR);
+#if defined(TARG_IA64)    
+    TOOLRT = getenv("TOOLROOT");
+    strcpy (path, TOOLRT);
     strcat (path, "/bin");
+#else
+    strcpy (path, argv[0]);
+#endif
 
-    //strcat (argv[0], "/NFS/xmr1/trunk_w2c/bin/whirl2c");
-    
-    //strcpy (path, argv[0]);
-    //printf("Enter cxx's 2 path:%s\n",path);
     if (p = strrchr(path, '/'))
 	p[0] = 0;
     else
@@ -244,7 +241,7 @@ main (INT argc,                   /* Number of command line arguments */
     /* Copy the argument list into a new list of strings, with a spare
      * element for a missing -fB option.
      */
-    new_argv = (char **)malloc((argc+2)*sizeof(char *));
+    new_argv = (char **)malloc((argc+3)*sizeof(char *));
     for (argidx = 0; argidx < argc; argidx++)
     {
        new_argv[argidx] = (char *)malloc(strlen(argv[argidx]) + 1);
@@ -290,30 +287,37 @@ main (INT argc,                   /* Number of command line arguments */
 	  argidx--;
        } /*while*/
     } /*if (!dash_fB_option)*/
-    new_argv[argc] = NULL;
-   
 
-    //printf ("the -1 newlibpath[%d]:%s\n",0,newlibpath[0]); 
+#if defined(__MACH__) && defined(__APPLE__) 
+    //force -run-w2c on all OSXes regardless of version
+    new_argv[argc] = (char *)malloc(20);
+    strcpy(new_argv[argc],"-run-w2c");
+    new_argv[argc+1] = NULL;
+# else
+    new_argv[argc] = NULL;
+#endif     
+
+#if defined(TARG_IA64)
     strcat (newlibpath[0],"/lib/gcc-lib/ia64-open64-linux/4.0/");
-    //printf ("the +1  newlibpath[%d]:%s\n",0,newlibpath[0]);    
-    //TOO Long to double 2
-    //strcpy (newlibpath[1],"LD_LIBRARYN32_PATH=/NFS/xmr1/trunk_w2c/bin");
-    //strcpy (newlibpath[2],"LD_LIBRARY64_PATH=/NFS/xmr1/trunk_w2c/bin");
+#endif
 
     for (i = 0; i<3; i++)
-    {
-      putenv (newlibpath[i]);
-     // printf ("the newlibpath[%d]:%s\n",i,newlibpath[i]);
-    } 
+       putenv (newlibpath[i]);
 
-   // printf("the last -1 path:%s\n",path);
-    strcat (path, "/bin/whirl2c_be");
-   // printf("the last 1 path:%s\n",path);
-    
+    strcat (path, "/whirl2c_be");
+
+
+#if defined(__MACH__) && defined(__APPLE__)
+    //bug1362: OSX 10.3 needs to have a real absolute path for
+    // execv(), otherwise subsequent dlopens may fail
+    char abspath[PATH_MAX];
+    if(!realpath(path,abspath)) perror("realpath");
+    new_argv[0] = abspath;
+    strcpy(path, abspath);
+#endif
+
     execv (path, new_argv);
-    //execv ("/NFS/xmr1/trunk_w2c/bin/whirl2c_be", new_argv);
-    error("%s: fail to execute %s: %s.\n", argv[0], path,
-	  strerror(errno));
+    error("%s: fail to execute %s: %s.\n", argv[0], new_argv[0], strerror(errno));
     exit(RC_SYSTEM_ERROR);
 } /* main */
 

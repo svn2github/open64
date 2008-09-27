@@ -80,9 +80,14 @@ extern Elf64_Word Get_Elf_Section_Size (void *handle, Elf64_Word type, Elf64_Wor
 extern void *WN_inline_open_file (char* file_name, off_t *mapped_size,
 				  char* file_revision); 
 
+#ifdef __MINGW32__
+#include <windows.h>
+void *
+WN_open_input (char *filename, off_t *mapped_size, int *fd, HANDLE *mapHd);
+#else
 extern void *
 WN_open_input (char *filename, off_t *mapped_size);
-
+#endif /* __MINGW32__ */
 
 /*
  * Read the PU subsection headers into a tree of PU_Info structures.
@@ -152,5 +157,7 @@ extern void Free_Local_Input(void);
 extern void Free_Input_Info (void);
 
 #endif
+
+extern void *local_fhandle;
 
 #endif /* __IR_BREAD_H__ */

@@ -6793,8 +6793,6 @@ finish_function (void)
   if (DECL_INITIAL (fndecl) && DECL_INITIAL (fndecl) != error_mark_node
       && !undef_nested_function)
     {
-      if (!decl_function_context (fndecl))
-	{
 #ifdef KEY
 	  // Translate to spin before calling c_genericize, which lowers the
 	  // tree and destroys high-level program info useful for program
@@ -6802,6 +6800,8 @@ finish_function (void)
 	  if (flag_spin_file)
 	    gspin (fndecl);
 #endif
+      if (!decl_function_context (fndecl))
+	{
 	  c_genericize (fndecl);
 	  c_gimple_diagnostics_recursively (fndecl);
 
@@ -6817,9 +6817,6 @@ finish_function (void)
 	}
       else
 	{
-#ifdef KEY /* bug 11761 */
-	  error ("Nested functions not supported");
-#endif
 	  /* Register this function with cgraph just far enough to get it
 	    added to our parent's nested function list.  Handy, since the
 	    C front end doesn't have such a list.  */
@@ -7973,6 +7970,10 @@ c_write_global_declarations (void)
 
 #ifdef KEY
   if (flag_spin_file) {
+    /* Bug 13913: above -O0, flag_unit_at_a_time causes a different
+       phase structure causing us to skip processing of global asm
+       statements. Output any such statements here. */
+    cgraph_output_pending_asms ();
     remove_asm_file ();
     if (!errorcount)
       exit (EXIT_SUCCESS);

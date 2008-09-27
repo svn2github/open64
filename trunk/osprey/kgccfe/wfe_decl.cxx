@@ -51,11 +51,18 @@
 
 // translate gnu decl trees to whirl
 
+#if defined(BUILD_OS_DARWIN)
+#include <limits.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h>
+#if ! defined(BUILD_OS_DARWIN)
 #include <elf.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include "defs.h"
 #include "errors.h"
+#include "erfe.h"
 extern "C" {
 #include "gnu_config.h"
 }
@@ -69,6 +76,9 @@ extern "C" {
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/toplev.h"
+#if defined(TARG_SL) || defined(TARG_MIPS)
+#include "function.h"
+#endif
 #include "c-pragma.h"
 }
 #if defined(TARG_IA32) || defined(TARG_X8664)
@@ -85,6 +95,9 @@ extern "C" {
 #endif /* TARG_MIPS */
 #endif /* KEY */
 
+#ifdef __MINGW32__
+#include "WINDOWS.h"
+#endif /* __MINGW32__ */
 #include "glob.h"
 #include "wn.h"
 #include "wn_util.h"
@@ -323,8 +336,12 @@ WFE_Start_Function (tree fndecl)
         DECL_ST2 (fndecl) = func_st;
 #ifdef KEY // bugs 2178, 2152
 	extern_inline = TRUE;
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+       eclass = EXPORT_LOCAL;
+#else       
+	eclass = EXPORT_PREEMPTIBLE; // bug 14367
+#endif	
 #endif // KEY
-        eclass = EXPORT_LOCAL;
       }
       else {
         // encountered second definition, the earlier one was extern inline
@@ -368,8 +385,62 @@ WFE_Start_Function (tree fndecl)
     }
 
     // bug 2395
-    if (DECL_NOINLINE_ATTRIB (fndecl))
+    if (DECL_NOINLINE_ATTRIB (fndecl)) {
 	Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
+#ifdef TARG_NVISA
+        TY_IDX func_ty = ST_pu_type(func_st);
+        if (!TY_has_prototype (func_ty)) {
+          // must have prototype
+          ErrMsg(EC_Inline_Prototype, ST_name(func_st));
+          Clear_PU_no_inline(ST_pu(func_st));
+          Set_PU_must_inline(ST_pu(func_st));
+        }
+
+        RETURN_INFO return_info = Get_Return_Info (TY_ret_type(func_ty), No_Simulated);
+        if (RETURN_INFO_return_via_first_arg(return_info)) {
+          // won't handle calls that return > 4 items.
+          ErrMsg(EC_Inline_Return_Values, ST_name(func_st));
+          Clear_PU_no_inline(ST_pu(func_st));
+          Set_PU_must_inline(ST_pu(func_st));
+        }
+
+        PLOC ploc = Setup_Input_Parameter_Locations (func_ty);
+        TYLIST_IDX tl = TY_parms(func_ty);
+        if (tl != (TYLIST_IDX) NULL) {
+          INT i = 0;
+          for (; TYLIST_ty(tl); tl = TYLIST_next(tl)) {
+            TY_IDX ty = TYLIST_ty(tl);
+            if (TY_kind(ty) == KIND_POINTER) {
+              // don't allow pointer params in non-inlined functions
+              // (cause need to know source of pointer).
+              ErrMsg(EC_Inline_Ptr, ST_name(func_st));
+              Clear_PU_no_inline(ST_pu(func_st));
+              Set_PU_must_inline(ST_pu(func_st));
+            }
+            ploc = Get_Input_Parameter_Location (ty);
+            ploc = First_Input_PLOC_Reg (ploc, ty);
+            while (PLOC_is_nonempty(ploc)) {
+              ++i;
+              if (PLOC_on_stack(ploc) || i > MAX_NUMBER_OF_REGISTER_PARAMETERS)
+              {
+                // won't handle more than 8 parameter registers
+                ErrMsg(EC_Inline_Parameters, ST_name(func_st));
+                Clear_PU_no_inline(ST_pu(func_st));
+                Set_PU_must_inline(ST_pu(func_st));
+                break;
+              }
+              ploc = Next_Input_PLOC_Reg (ploc);
+            }
+            // avoid repeating warning
+            if (!PU_no_inline(ST_pu(func_st))) break;
+          }
+        }
+    }
+    else if (!ST_in_global_mem(func_st)) {
+        // default is to inline everything except global funcs
+        Set_PU_must_inline (ST_pu (func_st));
+#endif
+    }
 
     // bug 2646
     // If there is an 'always_inline' attribute, and the function definition
@@ -386,6 +457,16 @@ WFE_Start_Function (tree fndecl)
     if (TREE_USED(fndecl)) /* support A_UNUSED attribute */
       Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
 #endif
+#endif
+
+#if !defined(TARG_NVISA)
+    if (lookup_attribute("used", DECL_ATTRIBUTES (fndecl)))  // bug 3697
+      Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
+#else
+    // TREE_USED means a reference somewhere, not attribute "used"
+    // so instead do below check of attribute.
+    if (lookup_attribute("global", DECL_ATTRIBUTES (fndecl)) != NULL)
+      Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
 #endif
 
     if (Show_Progress) {
@@ -590,7 +671,12 @@ WFE_Finish_Function (void)
     if (WN_last (wn) == NULL ||
         (WN_operator (WN_last (wn)) != OPR_RETURN &&
          WN_operator (WN_last (wn)) != OPR_RETURN_VAL)) {
-      WN_INSERT_BlockLast (wn, WN_CreateReturn ());
+      WN *ret_wn = WN_CreateReturn();
+#ifdef TARG_NVISA
+      // insert separate line# for return for debugger
+      WN_Set_Linenum (ret_wn, Get_Srcpos());
+#endif
+      WN_INSERT_BlockLast (wn, ret_wn);
     }
 
     WN *func_wn = WFE_Stmt_Pop (wfe_stmk_func_entry);
@@ -1338,10 +1424,10 @@ Gen_Assign_Of_Init_Val (ST *st, tree init, UINT offset, UINT array_elem_offset,
 	// rather than directy copy assignment,
 	// so need special code.
 	UINT size = TY_size(ty);
-        // OSP, string size > ty_size, only init ty_size
-        // Replace TREE_STRING_LENGTH with load_size
-        UINT load_size = ( size > TREE_STRING_LENGTH(init) ) ?
-                           TREE_STRING_LENGTH(init) : size;
+	// OSP, string size > ty_size, only init ty_size
+	// Replace TREE_STRING_LENGTH with load_size
+	UINT load_size = ( size > TREE_STRING_LENGTH(init) ) ?
+	  				TREE_STRING_LENGTH(init) : size;
 	TY_IDX ptr_ty = Make_Pointer_Type(ty);
 	WN *load_wn = WN_CreateMload (0, ptr_ty, init_wn,
 #ifdef KEY // bug 3188
@@ -1389,6 +1475,14 @@ Gen_Assign_Of_Init_Val (ST *st, tree init, UINT offset, UINT array_elem_offset,
 	else
 #endif
 	WFE_Stmt_Append(wn, Get_Srcpos());
+#ifdef TARG_SL
+       BOOL WN_Need_Append_Intrinsic(WN *rhs);
+       if(WN_kid0(wn) && WN_Need_Append_Intrinsic(WN_kid0(wn))) {
+          extern void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src);
+          WN *ldid_wn = WN_Ldid(mtype, ST_ofst(st)+offset, st, ty, field_id);
+          WFE_Stmt_Append_Extend_Intrinsic(wn, ldid_wn, Get_Srcpos());
+       }
+#endif        
 	if (! is_bit_field) 
 	  bytes += TY_size(ty);
 	else {
@@ -1642,12 +1736,24 @@ Traverse_Aggregate_Struct (
   tree       init;
   TY_IDX     fld_ty;
 
+#ifdef KEY
+  if (CONSTRUCTOR_ELTS(init_list))
+    ++field_id; // compute field_id for current field
+#endif
   for (init = CONSTRUCTOR_ELTS(init_list);
        init;
        init = TREE_CHAIN(init)) {
     // loop through each initializer specified
 
+#ifdef KEY
+    // Bug 14422: Do the first increment outside the loop. Then advance
+    // the field_id at the tail end of the loop before moving on to next
+    // field, taking into account any fields inside current struct field.
+    // The update at the tail end is done only if there is an iteration
+    // left.
+#else
     ++field_id; // compute field_id for current field
+#endif
 
     // if the initialization is not for the current field,
     // advance the fields till we find it
@@ -1744,6 +1850,14 @@ Traverse_Aggregate_Struct (
       }
     }
 
+#ifdef KEY
+    // Bug 14422:
+    // Count current field before moving to next field. The current field
+    // may be of struct type, in which case its fields need to be counted.
+    // We increment the field-id here instead of at the start of the loop.
+    if (TREE_CHAIN(init)) // only if there is an iteration left
+      field_id = Advance_Field_Id(fld, field_id);
+#endif
     // advance ot next field
     current_offset = current_offset_base + emitted_bytes;
     field = TREE_CHAIN(field);
@@ -1939,13 +2053,22 @@ Add_Inito_For_Tree (tree init, tree decl, ST *st)
   case INTEGER_CST:
 	UINT64 val;
 	val = Get_Integer_Value (init);
+#ifndef TARG_NVISA
+        // NVISA doesn't have global section initialized to zero,
+        // so want explict inito for it.
 	// if section-attribute, keep as dglobal inito
+#ifdef TARG_SL
+// we don't put vbuf variable, which is initialized with zero, into bss section
+	if (val == 0 && ! DECL_SECTION_NAME (decl) && !DECL_VBUF(decl) && !DECL_SBUF(decl)) {
+#else 	
 	if (val == 0 && ! DECL_SECTION_NAME (decl)) {
+#endif 		
 		Set_ST_init_value_zero(st);
 		if (ST_sclass(st) == SCLASS_DGLOBAL)
 			Set_ST_sclass(st, SCLASS_UGLOBAL);
 		return;
 	}
+#endif
 	aggregate_inito = New_INITO (st);
 	not_at_root = FALSE;
 	WFE_Add_Aggregate_Init_Integer (val, TY_size(ST_type(st)));
@@ -2127,7 +2250,11 @@ WFE_Generate_Temp_For_Initialized_Aggregate (tree init, char * name)
   TY_IDX ty_idx = Get_TY(TREE_TYPE(init));
   ST *temp = New_ST (CURRENT_SYMTAB);
   ST_Init (temp,
+#ifdef TARG_NVISA
+	Save_Str2 (name, "_init"),
+#else
 	Save_Str2 (name, ".init"),
+#endif
 	CLASS_VAR, SCLASS_PSTATIC, EXPORT_LOCAL,
 	ty_idx );
   if (TREE_CODE(init) == CONSTRUCTOR

@@ -438,7 +438,7 @@ public:
   ALIAS_CONTEXT Get_context(void)      { return _context; }
 
   //  Two memory operations are referencing the same location.
-  BOOL Same_location(const WN *, const WN *, const POINTS_TO *, const POINTS_TO *);
+  BOOL Same_location(const WN *, const WN *, const POINTS_TO *, const POINTS_TO *) const;
 
   //  Offset,size of two memop overlapped.
   ALIAS_KIND Aliased_Ofst_Rule(const POINTS_TO *, const POINTS_TO *) const;

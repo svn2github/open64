@@ -158,9 +158,7 @@ BOOL WOVP::Write_once_check(IDTYPE id, BB_LIST_CONTAINER *bb_queue)
             if(cnode->Aux_id()==id){
               if(def_stmt != NULL)
                 return FALSE;
-              // OSP begin - fix for bug #440
               def_stmt = it_stmt;
-              // OSP end - fix for bug #440
             }
           }
         }
@@ -274,12 +272,11 @@ void WOVP::Do_wovp()
   }
   if(!_wovp_loc.empty()) {
     Promote();
- // wovp optimization modified the symbol and need to canonicalize the coderep of cfg
+    // wovp optimization modified the symbol and need to canonicalize 
+    // the coderep of cfg
     _cfg->Htable()->Verify_hashing();
 
-  }
-
-  if(Get_Trace(TP_WOPT2, WOVP_DUMP_FLAG)){
+  }  if(Get_Trace(TP_WOPT2, WOVP_DUMP_FLAG)){
     fprintf(TFile, "%sAfter Write Once Variable Promotion\n%s", DBar, DBar);
     Print_wo_loc(Get_Trace_File());
     _cfg->Print(Get_Trace_File());

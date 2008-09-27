@@ -53,7 +53,7 @@
 #pragma hdrstop
 
 #define lu_mat_textra_CXX      "lu_mat_textra.cxx"
-static char *rcs_id =   lu_mat_textra_CXX "$Revision: 1.6 $";
+const static char *rcs_id =   lu_mat_textra_CXX "$Revision: 1.6 $";
 
 
 #include "lnopt_main.h"

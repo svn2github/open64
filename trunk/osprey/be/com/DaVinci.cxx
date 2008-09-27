@@ -62,7 +62,13 @@
 #include <sys/types.h>		    // for pid_t
 #include <unistd.h>		    // for fork(), pipe(), etc.
 #include <signal.h>		    // for SIGINT
+#ifndef __MINGW32__
+#if defined(BUILD_OS_DARWIN) || defined(__CYGWIN__) || defined(__APPLE__)
+#include <sys/wait.h>		    // for waitpid()
+#else 
 #include <wait.h>		    // for waitpid()
+#endif /* defined(BUILD_OS_DARWIN) */
+#endif /* __MINGW32__ */
 #include <stdarg.h>                 // for varargs.
 #include <time.h>
 #include <string.h>
@@ -92,7 +98,7 @@ DaVinci_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
 {
 #ifdef CALLBACK_DEBUG
   fprintf(stderr, "Node_Select([");
-  char *sep = " ";
+  const char *sep = " ";
   for (INT i = 0; i < n_ids; ++i) {
     fprintf(stderr, "%s%p", sep, id_array[i]);
     sep = ", ";
@@ -309,7 +315,7 @@ DaVinci::IO::In_Line()
 const char *
 DaVinci::Ft_Str(const FTAG ftag)
 {
-  char *s = "<<ft_str: unknown tag>>";
+  const char *s = "<<ft_str: unknown tag>>";
 
   switch ( ftag ) {
   case FT_DAVINCI:          s = "DaVinci";           break;
@@ -345,7 +351,7 @@ DaVinci::Usage_Error(FTAG curr, FTAGS prereq)
   } else {
     fprintf(stderr, "preceeding %s expected member of {", Ft_Str(_ftag_last));
     FTAGS fts   = prereq;
-    char *comma = "";
+    const char *comma = "";
     for (FTAGS ft = FT_DAVINCI; fts != 0; ft <<= 1) {
       if ( ft & fts ) {
 	fprintf(stderr, "%s %s", comma, Ft_Str(ft));
@@ -593,9 +599,9 @@ DaVinci::Emit_Menu(INT n_items, const MENU_INFO *items)
 }
 
 void
-DaVinci::Emit_Attr(const NODE_TYPE& nt, char **comma)
+DaVinci::Emit_Attr(const NODE_TYPE& nt, const char **comma)
 {
-  char *val = NULL;
+  const char *val = NULL;
 
   if ( nt._node_color[0] != '\0' ) {
     _io.Out_Fmt( ",a(\"COLOR\",\"%s\")", nt._node_color);
@@ -648,8 +654,8 @@ void
 DaVinci::Emit_Attr(const EDGE_TYPE& et)
 {
 
-  char *val   = NULL;
-  char *comma = "";
+  const char *val   = NULL;
+  const char *comma = "";
 
   if ( et._edge_color[0] != '\0' ) {
     _io.Out_Fmt( "a(\"EDGECOLOR\",\"%s\")", et._edge_color );
@@ -726,9 +732,11 @@ DaVinci::Kill_Davinci()
     INT stat;
     
     _display_ok = false;
+#ifndef __MINGW32__
     kill (_pid, SIGINT);
     waitpid (_pid, &stat, WNOHANG);  // capture any SIGCHLD so not to
 				    // confuse master.
+#endif /* __MINGW32__ */
     _io.Close();
 }
 
@@ -738,6 +746,7 @@ DaVinci::Kill_Davinci()
 DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
   _menu_state(m)
 {
+#ifndef __MINGW32__
   _m                = m;
   _basic_menu_added = false;
   _in_event_loop    = false;
@@ -901,6 +910,7 @@ DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
   Emit_Do( "set(gap_height(40))" );
   Emit_Do( "set(gap_width(20))" );
 #endif
+#endif /* __MINGW32__ */
 }
 
 DaVinci::~DaVinci()
@@ -1141,7 +1151,7 @@ DaVinci::Node_Begin(NODE_ID id, const char *label, const NODE_TYPE& node_type)
 	       id, node_type._type_name, label);
   _node_cnt += 1;
   _edge_cnt =  0;           // i.e., out edges for this node decl.
-  char *comma = ",";
+  const char *comma = ",";
   Emit_Attr( node_type, &comma );
   _io.Out_Fmt( "],[" );     // end node attributes, begin out_edges.
 
@@ -1203,7 +1213,7 @@ DaVinci::Change_Attr(const NODE_ID     id,
 {
   if ( ! Usage_Ok( FT_CHANGE_ATTR, BASE_SET ) ) return "Usage-error";
 
-  char *comma = "";
+  const char *comma = "";
 
   _io.Out_Fmt( "graph(change_attr([node(\"%p\",[", id);
 
@@ -1253,7 +1263,7 @@ DaVinci::New_Node(NODE_ID id, const char *label, const NODE_TYPE& nt )
   }
   _io.Out_Fmt( "%snew_node(\"%p\",[a(\"OBJECT\",\"%s\")",
 	       (_node_cnt > 0 ? "," : ""), id, label );
-  char *comma = ",";
+  const char *comma = ",";
   Emit_Attr( nt, &comma );
   _node_cnt += 1;
 }

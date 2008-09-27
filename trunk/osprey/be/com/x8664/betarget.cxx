@@ -85,6 +85,7 @@ OPCODE_To_TOP (OPCODE opcode)
   switch (opr) {
 
   case OPR_GOTO:
+  case OPR_GOTO_OUTER_BLOCK:
     return TOP_jmp;
 
   case OPR_FORWARD_BARRIER:

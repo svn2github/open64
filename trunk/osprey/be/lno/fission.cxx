@@ -107,7 +107,7 @@ static void fission_verbose_info(
   BOOL          ,   // success
   SRCPOS        srcpos,
   UINT32        fission_level,
-  char*         message)
+  const char*         message)
 {
   printf("#### Fission(%d:%d): %s\n",
     Srcpos_To_Line(srcpos), fission_level, message);
@@ -118,7 +118,7 @@ static void fission_analysis_info(
   BOOL          success,
   SRCPOS        srcpos,
   UINT32        fission_level,
-  char*         message)
+  const char*         message)
 {
   if (success)
     fprintf(LNO_Analysis,"( LNO_Fission_Success ");
@@ -133,7 +133,7 @@ static void fission_tlog_info(
   FISSION_FUSION_STATUS     status,
   WN*           loop,
   UINT32        level,
-  char*         message)
+  const char*         message)
 {
   char in_string[30];
   char out_string[30];
@@ -760,7 +760,11 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
     VINDEX16 v=sdg->Get_Vertex(stmt);
     if (v ==0) {
       OPCODE opc=WN_opcode(stmt);
-      if (opc!=OPC_LABEL && opc!=OPC_RETURN && opc!=OPC_GOTO) {
+      if (opc!=OPC_LABEL && opc!=OPC_RETURN && opc!=OPC_GOTO
+#ifdef KEY
+  	  && opc!=OPC_GOTO_OUTER_BLOCK
+#endif
+	 ) {
         // depends on everything else
         DevWarn("Statement dependence graph problem");
         INT m=loop.Newidx();

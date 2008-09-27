@@ -757,6 +757,11 @@ INTERNAL_CFLAGS = -DIN_GCC @CROSS@
 ALL_CFLAGS = -DKEY $(X_CFLAGS) $(T_CFLAGS) \
   $(CFLAGS) $(INTERNAL_CFLAGS) $(COVERAGE_FLAGS) $(WARN_CFLAGS) $(XCFLAGS) @DEFS@
 
+uname-s := $(shell uname -s)
+ifeq ($(uname-s),Darwin)
+ALL_CFLAGS += -DBUILD_OS_DARWIN
+endif
+
 # Likewise.  Put INCLUDES at the beginning: this way, if some autoconf macro
 # puts -I options in CPPFLAGS, our include files in the srcdir will always
 # win against random include files in /usr/include.

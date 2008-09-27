@@ -88,7 +88,11 @@ BOOL Show_OPT_Warnings = TRUE;          /* Display OPT warning messages */
 OPTION_LIST *Alias_Option = NULL;
 BOOL Alias_Pointer_Parms = TRUE;        /* Parms ptr indep? */
 BOOL Alias_Pointer_Cray = FALSE;        /* Cray pointer semantics? */
+#if defined(TARG_SL)
+BOOL Alias_Pointer_Types = TRUE;	/* Ptrs to distinct basic types indep? */
+#else
 BOOL Alias_Pointer_Types = FALSE;       /* Ptrs to distinct basic types indep? */
+#endif
 BOOL Alias_Not_In_Union  = FALSE;	/* Ptrs point to non-union types */
 BOOL Alias_Pointer_Strongly_Typed = FALSE; /* Ptrs to distinct types indep? */
 BOOL Alias_Pointer_Named_Data = FALSE;	/* No pointers to named data? */
@@ -100,7 +104,11 @@ BOOL Alias_Common_Scalar = FALSE;       /* Distinguish scalar from array */
  * for use in overriding the default -- not intended for user use.
  */
 static BOOL Alias_Pointer_Cckr = FALSE;	/* -cckr default rules? */
-static BOOL Alias_Pointer_Types_Set = FALSE;   /* alias=typed set? */
+#if defined(TARG_SL)
+static BOOL Alias_Pointer_Types_Set = TRUE;	/* alias=typed set? */
+#else
+static BOOL Alias_Pointer_Types_Set = FALSE;	/* alias=typed set? */
+#endif
 static BOOL Alias_Not_In_Union_Set  = FALSE;	/* alias=nounion set? */
 BOOL  Alias_F90_Pointer_Unaliased = FALSE;  /* Are F90 pointers unaliased? */
 
@@ -159,6 +167,11 @@ BOOL Enable_WN_Simp = TRUE;             /* Use the WHIRL simplifier */
 static BOOL Enable_WN_Simp_Set=FALSE;   /* ... option seen? */
 # ifdef KEY
 INT32 Enable_WN_Simp_Expr_Limit = -1;
+#if defined(TARG_SL) 
+INT32 OPT_Madd_Height = 0;
+#else
+INT32 OPT_Madd_Height = 4;
+#endif
 # endif
 BOOL GCM_Eager_Null_Ptr_Deref = FALSE; /* allow speculation past NULL ptr
 					  test. assumes page zero as
@@ -192,17 +205,25 @@ SKIPLIST *Region_Skip_List = NULL;		/* Processed list */
 #ifdef KEY
 static OPTION_LIST *Goto_Skip = NULL;		/* Raw list */
 SKIPLIST *Goto_Skip_List = NULL;		/* Processed list */
+#if defined(TARG_SL)
+static OPTION_LIST *DDB_Skip = NULL;            /* for delete dead branch */
+SKIPLIST *DDB_Skip_List = NULL;                 /* for delete dead branch */
+#endif // TARG_SL
 #endif
 
 /***** Miscellaneous -OPT: group options *****/
-BOOL Olegacy = FALSE;    /* -OPT:Olegacy to resume original default flag*/
 char *Ofast = NULL;		/* -OPT:Ofast platform name */
 BOOL OPT_Pad_Common = FALSE;	/* Do internal common block padding? */
 BOOL OPT_Reorg_Common = FALSE;	/* Do common block reorganization (split)? */
 BOOL OPT_Reorg_Common_Set = FALSE;	/* ... option seen? */
 BOOL OPT_Unroll_Analysis = TRUE;	/* Enable unroll limitations? */
 BOOL OPT_Unroll_Analysis_Set = FALSE;	/* ... option seen? */
+#if defined(TARG_NVISA)
+BOOL OPT_Lower_Speculate = TRUE;	/* speculate CAND/CIOR */
+#else
 BOOL OPT_Lower_Speculate = FALSE;	/* speculate CAND/CIOR */
+#endif
+BOOL OPT_Lower_Speculate_Set = FALSE;	/* ... option seen? */
 BOOL OPT_Lower_Treeheight = FALSE;	/* reassociate commutative ops */
 static BOOL OPT_Lower_Treeheight_Set = FALSE;
 BOOL OPT_Inline_Divide = TRUE;		/* inline divide sequences */
@@ -226,9 +247,13 @@ BOOL Section_For_Each_Function = FALSE;
 BOOL Inline_Intrinsics_Early=FALSE;    /* Inline intrinsics just after VHO */
 BOOL Enable_extract_bits=TRUE;     /* This is also forced off for MIPS and IA32 in
                                           config_targ.cxx */
+#if defined(TARG_SL)
+BOOL Enable_compose_bits=TRUE;
+#else
 BOOL Enable_compose_bits=FALSE;
+#endif
 
-#ifdef __linux__
+#if defined(__linux__) || defined(BUILD_OS_DARWIN)
 BOOL Enable_WFE_DFE = FALSE;
 #endif /* __linux __ */
 
@@ -283,7 +308,9 @@ static BOOL OPT_Funsafe_Math_Optimizations_Set = FALSE;
 BOOL    OPT_Float_Via_Int = FALSE; // when on, perform FP copies using int regs
 
 UINT32 OPT_Malloc_Alg = 0;	/* select malloc algorithm */
-BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO
+BOOL OPT_Malloc_Alg_Set = FALSE; 
+BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
+BOOL Early_Goto_Conversion_Set = FALSE;
 #endif	// KEY
 
 /***** Obsolete options *****/
@@ -416,11 +443,11 @@ static OPTION_DESC Options_OPT[] = {
     "perform floating-point memory copies using integer registers" },
 
   { OVK_UINT32, OV_VISIBLE,     TRUE,   "malloc_algorithm", "malloc_alg",
-    0, 0, 1, &OPT_Malloc_Alg, NULL,
+    0, 0, 3, &OPT_Malloc_Alg, &OPT_Malloc_Alg_Set,
     "Use alternate malloc algorithm" },
 
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",
-    0, 0, 0,    &Early_Goto_Conversion, NULL,
+    0, 0, 0,    &Early_Goto_Conversion, &Early_Goto_Conversion_Set,
     "Do GOTO conversion before VHO" },
 #endif
 
@@ -623,7 +650,7 @@ static OPTION_DESC Options_OPT[] = {
     "Bias optimizations to minimize code space" },
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "speculate",		"",
-    0, 0, 0,	&OPT_Lower_Speculate, NULL,
+    0, 0, 0,	&OPT_Lower_Speculate, &OPT_Lower_Speculate_Set,
     "Allow speculation for CAND/COR operators" },
 
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "speculative_null_ptr_deref","",
@@ -665,7 +692,7 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, INT32_MAX, &OPT_unroll_size, &OPT_unroll_size_overridden,
     "Maximum size of loops to be unrolled" },
 
-  { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll_times_max",	"unroll",
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll_times_max",	"unroll_times",
     0, 0, INT32_MAX, &OPT_unroll_times, &OPT_unroll_times_overridden,
     "Maximum number of times to unroll loops" },
 
@@ -687,6 +714,25 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_LIST,	OV_SHY,		FALSE, "goto_skip_after",	"goto_skip_a",
     0, 0, 4096,	&Goto_Skip,	NULL,
     "Skip goto conversion of subprograms after this one" },
+#if defined(TARG_SL)
+  // For delete-dead-branch
+  { OVK_LIST,	OV_SHY,		FALSE, "ddb_skip_equal",	"ddb_skip_e",
+    0, 0, 4096,	&DDB_Skip,	NULL,
+    "Skip ddb of this branch" },
+
+  { OVK_LIST,	OV_SHY,		FALSE, "ddb_skip_before",	"ddb_skip_b",
+    0, 0, 4096,	&DDB_Skip,	NULL,
+    "Skip ddb of branch before this one" },
+
+  { OVK_LIST,	OV_SHY,		FALSE, "ddb_skip_after",	"ddb_skip_a",
+    0, 0, 4096,	&DDB_Skip,	NULL,
+    "Skip ddb of branch after this one" },
+#endif
+#ifdef TARG_MIPS
+  { OVK_INT32,  OV_VISIBLE,    TRUE, "madd_height",    "",
+    4, 1, INT32_MAX,    &OPT_Madd_Height, NULL,
+    "Maximum length of MADD chain allowed before transforming it to sum of shorter MADD chains"},
+#endif
 #endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "wrap_around_unsafe_opt", "wrap_around_unsafe",
     0, 0, 0,	&Allow_wrap_around_opt,	&Allow_wrap_around_opt_Set,
@@ -764,11 +810,7 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,  &LANG_Ansi_Setjmp_On,   &LANG_Ansi_Setjmp_Set,
     "C/C++: enable optimization of functions with calls to setjmp" },
 
-  { OVK_BOOL,   OV_SHY,       FALSE, "Olegacy",    "Olegacy",
-    0, 0, 0,    &Olegacy,               NULL,
-    "default options for performance on shared and alias" },
-
-#ifdef __linux__
+#if defined(__linux__) || defined(BUILD_OS_DARWIN)
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wfe_dfe",	"wfe_dfe",
     0, 0, 0,	&Enable_WFE_DFE,	NULL,
     "Enable dead function elimination in the frontend" },

@@ -144,7 +144,7 @@ extern FILE* STDOUT;
 //   appropriate.
 //-----------------------------------------------------------------------
 
-static IPA_LNO_READ_FILE* IPA_LNO_Open_Input_File(char* input_file)
+static IPA_LNO_READ_FILE* IPA_LNO_Open_Input_File(const char* input_file)
 {
   Set_Error_Phase("Reading IPA LNO file");
   IPA_LNO_READ_FILE* IPA_LNO_Input_File =

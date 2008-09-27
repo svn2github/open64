@@ -79,8 +79,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-static char *source_file = __FILE__;
-static char *rcs_id = "$Source: ../../be/lno/SCCS/s.can.cxx $ $Revision: 1.25 $";
+static const char *source_file = __FILE__;
+static const char *rcs_id = "$Source: ../../be/lno/SCCS/s.can.cxx $ $Revision: 1.25 $";
 
 #include "call_info.h"
 #include "lnopt_main.h"
@@ -304,59 +304,6 @@ static WN* Dismantle_Nested_Doacross(WN* wn_region,
   return wn_outer_loop; 
 }
 
-#ifdef KEY
-//***********************************************************************
-// Bug 9482 : move the transformation of 2*b[i]->b[i]+b[i] to here instead
-// from within simd.cxx. It is costly there for rebuilding array dependence graph.
-// Without doing so, cse could not get array dependence distance correctly,
-// and leads to seg fault. Here Mark_Code happens before building array 
-// dependence graph.
-// This transformation is for vectorization.
-//************************************************************************
-static void MPY_To_ADD (WN * wn)
-{
-#ifdef TARG_X8664 // simd is only effectuve on TARG_X8664 now
-   WN *kid0 = WN_kid0(wn);
-   WN *kid1 = WN_kid1(wn);
-
-   // user doesn't want simd
-   if(LNO_Run_Simd==0 || LNO_Opt==0) return;
-    
-   if (WN_operator(kid0) == OPR_INTCONST && WN_const_val(kid0) == 2  &&
-      // Bug 9504: makes it only effective for 2*b[indx]
-      WN_operator(kid1) == OPR_ILOAD && WN_operator(WN_kid0(kid1)) == OPR_ARRAY)
-   { // replace kid 0 with kid1 and add
-      WN_set_opcode(wn, OPCODE_make_op(OPR_ADD, WN_rtype(wn), MTYPE_V));
-      LWN_Delete_Tree(kid0);
-      //Bug 9511: LNO_Info_Map (array_access_map) was not built yet
-      //Bug 10055: However, we still need to build array access for the newly copied array
-      kid0 = LWN_Copy_Tree(kid1);
-      LNO_Build_Access (kid0, &LNO_default_pool);
-      //kid0 = LWN_Copy_Tree(kid1, TRUE, LNO_Info_Map);
-      WN_kid0(wn) = kid0;
-      LWN_Copy_Frequency_Tree(kid0, kid1);
-      LWN_Set_Parent(kid0, wn);
-      LWN_Copy_Def_Use(kid1, kid0, Du_Mgr); 
-   }
-   else if (WN_operator(kid1) == OPR_INTCONST && WN_const_val(kid1) == 2 &&
-        //Bug 9504: makes it only effective for 2*b[indx]
-        WN_operator(kid0) == OPR_ILOAD && WN_operator(WN_kid0(kid0)) == OPR_ARRAY)
-   {
-      WN_set_opcode(wn, OPCODE_make_op(OPR_ADD, WN_rtype(wn), MTYPE_V));
-      LWN_Delete_Tree(kid1);
-      //Bug 9511: LNO_Info_Map (array_access_map) was not built yet
-      //Bug 10055: However, we still need to build array access for the newly copied array
-      kid1 = LWN_Copy_Tree(kid0);
-      LNO_Build_Access (kid1, &LNO_default_pool);
-      // kid1 = LWN_Copy_Tree(kid0, TRUE, LNO_Info_Map);
-      WN_kid1(wn) = kid1;
-      LWN_Copy_Frequency_Tree(kid1, kid0);
-      LWN_Set_Parent(kid1, wn);
-      LWN_Copy_Def_Use(kid0, kid1, Du_Mgr);
-   }
-#endif
-}
-#endif
 
 // func_nd is the pointer to the PU. This is used to move "PU-level"
 // pragma nodes (e.g. prefetch(manual) on/off) to the beginning of the PU.
@@ -417,13 +364,6 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
     *inner_depth = tmp;
     return;
   } 
-
-#ifdef KEY
-//Bug 9482: code transformation for simd
-  if (WN_operator(wn) == OPR_MPY && WN_rtype(wn) == MTYPE_I4 &&
-      WN_desc(LWN_Get_Parent(wn)) != MTYPE_I2)
-      MPY_To_ADD(wn);
-#endif
 
   if (!LNO_Ignore_Pragmas && 
 	   WN_operator(wn) == OPR_PRAGMA) {
@@ -569,6 +509,17 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
     for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
       dlistack->Bottom_nth(i)->Has_Calls = TRUE;
     }
+#ifdef KEY //bug 14284 : determine whether loop has calls to nested functions
+    ST *st = WN_has_sym(wn) ? WN_st(wn) : NULL;
+    if(st != NULL) { //bug 14288 -- assume nested function always has ST
+      PU &pu = Pu_Table[ST_pu(st)];
+      if(PU_is_nested_func(pu)){
+	for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
+	  dlistack->Bottom_nth(i)->Has_Nested_Calls = TRUE;
+	}
+      }
+    }
+#endif    
   } else if (OPCODE_operator(opcode) == OPR_ALLOCA ||
              OPCODE_operator(opcode) == OPR_DEALLOCA) {
 
@@ -669,7 +620,7 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
         }
 	INT i=0;
 	INT min = MIN(stack->Elements(),label_loops.Elements());
-#ifndef KEY 
+#ifndef KEY
 	if (stack->Elements() > 0 && stack->Elements() <= label_loops.Elements()) {
 	  dlistack->Top_nth(0)->Has_Gotos = TRUE;
 	  dlistack->Top_nth(0)->Has_Conditional = TRUE;
@@ -693,11 +644,11 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
 #ifndef KEY
     else if (opcode == OPC_RETURN){
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
-	dlistack->Bottom_nth(i)->Has_Exits = TRUE;
+				dlistack->Bottom_nth(i)->Has_Exits = TRUE;
       }
     }
 #endif
-    else {
+			else {
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
 #ifndef KEY
@@ -1510,8 +1461,8 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
 #endif
         case MTYPE_C8 : case MTYPE_FQ: 
 	  load_size = 16; break;
-#ifdef TARG_IA64
-	case MTYPE_C10:
+#if defined(TARG_IA64)
+        case MTYPE_C10:
 #endif
         case MTYPE_CQ :
 	  load_size = 32; break;

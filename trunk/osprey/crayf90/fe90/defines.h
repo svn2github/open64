@@ -506,7 +506,7 @@
 
 
 
-# ifdef _LINUX_LINUX
+# if defined(_LINUX_LINUX) || defined(_DARWIN_DARWIN)
 
 # if 0
 /*******************************************************/
@@ -536,8 +536,15 @@
 #	define _DOPE_VECTOR_32_OR_64		1
 #	define _TARGET_DOUBLE_ALIGN		1
 # endif /* _LP64 */
+#     if defined(_LINUX_LINUX)
 #	define _HOST_OS_LINUX			1
 #	define _TARGET_OS_LINUX			1
+#     elif defined(_DARWIN_DARWIN)
+#	define _HOST_OS_DARWIN			1
+#	define _TARGET_OS_DARWIN		1
+#     else /* _LINUX_LINUX */
+#	error "Define _HOST_OS_XXX and _TARGET_OS_XXX" /* Just in case */
+#     endif /* _LINUX_LINUX */
 /* 30Jan01[sos] commented out: #	define _HOST_OS_IRIX			1 */
 /* 30Jan01[sos] commented out: #	define _TARGET_OS_IRIX			1 */
 #	define _TARGET_IEEE			1

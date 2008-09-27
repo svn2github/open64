@@ -61,7 +61,7 @@
 // ====================================================================
 
 
-#ifdef __linux__
+#if defined(__linux__) || defined(BUILD_OS_DARWIN)
 
 #include "defs.h"
 #include "optimizer.h"

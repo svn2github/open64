@@ -84,6 +84,7 @@
 #ifdef KEY
 #include "be_symtab.h" // for Be_preg_tab
 #endif
+#include "intrn_info.h"
 
 #pragma weak New_Construct_Id
 
@@ -1531,6 +1532,9 @@ void Print_Def_Use(WN *wn, FILE *fp)
       case OPR_ISTORE:
       case OPR_IO:
       case OPR_RETURN:
+#ifdef KEY
+      case OPR_GOTO_OUTER_BLOCK:
+#endif
       case OPR_CALL:
       case OPR_ICALL:
       case OPR_INTRINSIC_CALL:
@@ -3011,6 +3015,7 @@ static void Du_Sanity_Check_r(
         opr==OPR_IO || OPCODE_is_call(opc) || opr==OPR_INTRINSIC_OP
 #ifdef KEY
         || opr==OPR_PURE_CALL_OP
+        || opr==OPR_GOTO_OUTER_BLOCK
 #endif
 	)
       h_table->Enter(wn,1);
@@ -3361,6 +3366,9 @@ BOOL Is_Loop_Invariant_Use(WN* wn,
   case OPR_ISTORE:
   case OPR_IO:
   case OPR_RETURN:
+#ifdef KEY
+  case OPR_GOTO_OUTER_BLOCK:
+#endif
   case OPR_CALL:
   case OPR_ICALL:
   case OPR_INTRINSIC_CALL:
@@ -3944,11 +3952,27 @@ extern BOOL Is_Mp_Region(WN *wn)
   return FALSE;
 }
 
+#ifdef KEY
+extern BOOL Is_Eh_Or_Try_Region(WN *wn)
+{
+  if (WN_opcode(wn) == OPC_REGION) {
+    RID *rid = REGION_get_rid(wn);
+    FmtAssert(rid != NULL, ("Is_Eh_Or_Try_Region(): Missing rid")); 
+    if (RID_TYPE_eh(rid) || RID_TYPE_try(rid)) return TRUE;
+  }
+  return FALSE;
+}
+#endif
+
 extern BOOL Do_Loop_Is_Mp(WN *wn)
 {
   if (LWN_Get_Parent(wn) == NULL)
     return FALSE;
   WN* wn_region = LWN_Get_Parent(LWN_Get_Parent(wn));
+#ifdef KEY
+  if (PU_cxx_lang(Get_Current_PU()) && Is_Eh_Or_Try_Region(wn_region))
+    wn_region = LWN_Get_Parent(LWN_Get_Parent(wn_region));
+#endif
   if (!Is_Mp_Region(wn_region))
     return FALSE; 
   WN* wn_pragma = WN_first(WN_region_pragmas(wn_region));  
@@ -4915,7 +4939,7 @@ extern WN* Messy_Subscript(WN* wn_array)
 
 extern void Replace_Index_Variable(WN* loop,
                                    WN* cp_loop,
-                                   char prefix[])
+                                   const char prefix[])
 {
   const INT  bufsz=128;
   char       buf[bufsz];

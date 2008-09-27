@@ -463,7 +463,11 @@ inline void topological_sort(Graph& in, Vertex_id root, Container& out)
 template <class Graph>
 void print_nodes(Graph& g, FILE *fp=stdout)
 {
+#ifdef KEY /* Mac port */
+  fprintf(fp, "number of nodes %ld: ", (long) g.size());
+#else /* KEY Mac port */
   fprintf(fp, "number of nodes %d: ", (INT)g.size());
+#endif /* KEY Mac port */
   for (typename Graph::cluster_iterator n = g.cluster_begin(); 
        n != g.cluster_end();
        ++n) {

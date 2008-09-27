@@ -1,8 +1,4 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
- */
-
-/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,7 +41,7 @@
  * ====================================================================
  *
  * Module: driver.cxx
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/be/driver.cxx,v $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/be/SCCS/s.driver.cxx $
  *
  * Revision history:
  *  13-Feb-95 - Original Version
@@ -58,20 +54,25 @@
  */
 
 #include <sys/types.h>
+#if ! defined(BUILD_OS_DARWIN)
 #include <elf.h>		    /* for wn.h */
+#endif /* ! defined(BUILD_OS_DARWIN) */
 #include <cmplrs/rcodes.h>
 #include <dirent.h>
+#ifndef __MINGW32__
 #include <libgen.h>
+#endif
 
 #include "defs.h"
+#if !defined(SHARED_BUILD)
+#define load_so(a,b,c)
+#else
 #include "dso.h"		    /* for load_so() */
+#endif
 #include "errors.h"		    /* Set_Error_Tables(), etc. */
-#include "erglob.h"		    /* for EC_ errmsg */
-//#ifdef TARG_IA64
-// For dynamic load wopt.so, cg.so, we need these symbols.
 #include "err_host.tab"		    /* load all the error messages */
+#include "erglob.h"		    /* for EC_ errmsg */
 #include "erauxdesc.h"		    /* for BE error messages */
-//#endif
 #include "mempool.h"		    /* for MEM_Initialze()  */
 #include "phase.h"		    /* for PHASE_CG */
 #include "be_util.h"                /* for Reset_Current_PU_Count(), etc */
@@ -97,12 +98,22 @@
 #include "optimizer.h"		    /* for alias manager, etc. */
 #include "ori.h"		    /* for Olimit_Region_Insertion */
 #include "wodriver.h"		    /* for wopt_main, etc. */
+#ifndef BUILD_SKIP_LNO
 #include "lnodriver.h"		    /* for lno_main, etc. */
 #include "ipl_driver.h"		    /* for ipl_main. etc. */
+#endif
+#ifndef BUILD_SKIP_WHIRL2C
 #include "w2c_driver.h"		    /* for W2C_Process_Command_Line, etc. */
+#endif
+#ifndef BUILD_SKIP_WHIRL2F
 #include "w2f_driver.h"		    /* for W2F_Process_Command_Line, etc. */
+#endif
+#ifndef BUILD_SKIP_PURPLE
 #include "prp_driver.h"		    /* for Prp_Process_Command_Line, etc. */
+#endif
+#ifndef BUILD_SKIP_PROMPF
 #include "anl_driver.h"		    /* for Anl_Process_Command_Line, etc. */
+#endif
 #include "region_util.h"	    /* for Regions_Around_Inner_Loops */
 #include "region_main.h"	    /* for REGION_* driver specific routines */
 #include "cg/cg.h"	            /* for CG PU-level routines */
@@ -132,11 +143,17 @@
 #include "config_ipa.h"    /*for IPA_Enable_Reorder*/
 #ifdef KEY
 #include "config_wopt.h"    // for WOPT_Enable_Simple_If_Conv
+#include "config_vho.h"     // for VHO_Struct_Opt
 #include "output_func_start_profiler.h"
 #include "goto_conv.h"
 #endif
-
 #include "be_memop_annot.h"
+#if defined(TARG_SL)  || defined(TARG_MIPS)
+#include <dlfcn.h>
+#include "topcode.h"
+#include "ti_si.h"
+#include "isr.h"
+#endif
 
 extern ERROR_DESC EDESC_BE[], EDESC_CG[];
 
@@ -151,9 +168,9 @@ extern void CYG_Instrument_Driver(WN *);
 extern void Initialize_Targ_Info(void);
 
 // symbols defined in cg.so
-#ifdef __linux__
-
-#ifdef KEY
+#if defined(SHARED_BUILD)
+#if defined(__linux__) || defined(BUILD_OS_DARWIN) || defined(__CYGWIN__) || defined(__MINGW32__)
+#if !defined(BUILD_FAST_BIN)
 extern void (*CG_Process_Command_Line_p) (INT, char **, INT, char **);
 #define CG_Process_Command_Line (*CG_Process_Command_Line_p)
 
@@ -186,7 +203,7 @@ extern void CG_PU_Initialize (WN*);
 extern void CG_PU_Finalize ();
 extern WN* CG_Generate_Code (WN*, ALIAS_MANAGER*, DST_IDX, BOOL);
 extern void EH_Generate_Range_List (WN *);
-#endif // KEY
+#endif //BUILD_FAST_BIN
 
 #else
 
@@ -200,11 +217,34 @@ extern void EH_Generate_Range_List (WN *);
 #pragma weak EH_Dump_INITOs
 
 #endif // __linux__
+#endif // SHARED_BUILD
+
+#if defined(TARG_SL)  || defined(TARG_MIPS)
+extern INT *SI_resource_count_p;
+#define SI_resource_count (*SI_resource_count_p)
+extern SI_RESOURCE* (*SI_resources_p)[];
+#define SI_resources (*SI_resources_p)
+extern SI* (*SI_top_si_p)[];
+#define SI_top_si (*SI_top_si_p)
+extern SI_RRW *SI_RRW_initializer_p;
+#define SI_RRW_initializer (*SI_RRW_initializer_p)
+extern SI_RRW *SI_RRW_overuse_mask_p;
+#define SI_RRW_overuse_mask (*SI_RRW_overuse_mask_p)
+extern INT *SI_issue_slot_count_p;
+#define SI_issue_slot_count (*SI_issue_slot_count_p)
+extern SI_ISSUE_SLOT *(*SI_issue_slots_p)[];
+#define SI_issue_slots (*SI_issue_slots_p)
+extern INT *SI_ID_count_p;
+#define SI_ID_count (*SI_ID_count_p)
+extern SI *(*SI_ID_si_p)[];
+#define SI_ID_si (*SI_ID_si_p)
+#endif // TARG_SL
 
 // symbols defined in wopt.so
-#ifdef __linux__
+#if defined(SHARED_BUILD)
+#if defined(__linux__) || defined(BUILD_OS_DARWIN)|| defined(__CYGWIN__) || defined(__MINGW32__)
 
-#ifdef KEY
+#if !defined(BUILD_FAST_BIN)
 extern void (*wopt_main_p) (INT argc, char **argv, INT, char **);
 #define wopt_main (*wopt_main_p)
 
@@ -241,8 +281,7 @@ extern WN* Pre_Optimizer (INT32, WN*, DU_MANAGER*, ALIAS_MANAGER*);
 extern DU_MANAGER* Create_Du_Manager (MEM_POOL *);
 extern void Delete_Du_Manager (DU_MANAGER *, MEM_POOL *);
 extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
-#endif // KEY
-
+#endif // BUILD_FAST_BIN
 #else
 
 #pragma weak wopt_main
@@ -256,9 +295,11 @@ extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
 #pragma weak Verify_alias
 
 #endif // __linux__
+#endif // SHARED_BUILD
 
 // symbols defined in lno.so
-#ifdef __linux__
+#ifndef BUILD_SKIP_LNO
+#if defined(__linux__) || defined(BUILD_OS_DARWIN)
 
 extern void (*lno_main_p) (INT, char**, INT, char**);
 #define lno_main (*lno_main_p)
@@ -283,7 +324,7 @@ extern WN* (*Perform_Loop_Nest_Optimization_p) (PU_Info*, WN*, WN*, BOOL);
 
 // symbols defined in ipl.so
 
-#ifdef __linux__
+#if defined(__linux__) || defined(BUILD_OS_DARWIN)
 
 extern void (*Ipl_Extra_Output_p) (Output_File *);
 #define Ipl_Extra_Output (*Ipl_Extra_Output_p)
@@ -315,17 +356,22 @@ extern void (*Preprocess_struct_access_p)(void);
 #pragma weak Perform_Procedure_Summary_Phase
 
 #endif // __linux__
+#endif // !BUILD_SKIP_LNO
 
 #include "w2c_weak.h"
 #include "w2f_weak.h"
 
+#if ! defined(BUILD_OS_DARWIN)
+#ifndef BUILD_SKIP_PURPLE
 #pragma weak Prp_Process_Command_Line
 #pragma weak Prp_Needs_Whirl2c
 #pragma weak Prp_Needs_Whirl2f
 #pragma weak Prp_Init
 #pragma weak Prp_Instrument_And_EmitSrc
 #pragma weak Prp_Fini
+#endif // !BUILD_SKIP_PURPLE
 
+#ifndef BUILD_SKIP_PROMPF
 #pragma weak Anl_Cleanup
 #pragma weak Anl_Process_Command_Line
 #pragma weak Anl_Needs_Whirl2c
@@ -334,7 +380,42 @@ extern void (*Preprocess_struct_access_p)(void);
 #pragma weak Anl_Init_Map
 #pragma weak Anl_Static_Analysis
 #pragma weak Anl_Fini
+#endif // !BUILD_SKIP_PROMPF
+#endif /* ! defined(BUILD_OS_DARWIN) */
 
+#ifdef BUILD_SKIP_LNO
+#define Lno_Init() Fail_FmtAssertion("lno not built")
+#define Lno_Fini() Fail_FmtAssertion("lno not built")
+#define lno_main(a,b,c,d) Fail_FmtAssertion("lno not built")
+#define Perform_Loop_Nest_Optimization(a,b,c,d) NULL
+#define Ipl_Init() Fail_FmtAssertion("lno not built")
+#define Ipl_Fini() Fail_FmtAssertion("lno not built")
+#define ipl_main(a,b) Fail_FmtAssertion("lno not built")
+#define Perform_Procedure_Summary_Phase(a,b,c,d) Fail_FmtAssertion("lno not built")
+#define Preprocess_struct_access() Fail_FmtAssertion("lno not built")
+#define Ipl_Extra_Output(a) Fail_FmtAssertion("lno not built")
+#endif // BUILD_SKIP_LNO
+
+#ifdef BUILD_SKIP_PURPLE
+#define Prp_Process_Command_Line(a,b,c,d) Fail_FmtAssertion("purple not built")
+#define Prp_Needs_Whirl2c() FALSE
+#define Prp_Needs_Whirl2f() FALSE
+#define Prp_Init() Fail_FmtAssertion("purple not built")
+#define Prp_Instrument_And_EmitSrc(a) Fail_FmtAssertion("purple not built")
+#define Prp_Fini() Fail_FmtAssertion("purple not built")
+#endif // BUILD_SKIP_PURPLE
+
+#ifdef BUILD_SKIP_PROMPF
+#define Anl_Process_Command_Line(a,b,c,d) Fail_FmtAssertion("prompf not built")
+#define Anl_Needs_Whirl2c() FALSE
+#define Anl_Needs_Whirl2f() FALSE
+#define Anl_Init() Fail_FmtAssertion("prompf not built")
+#define Anl_Fini() Fail_FmtAssertion("prompf not built")
+#define Anl_Init_Map(a) WN_MAP_UNDEFINED
+#define Anl_Static_Analysis(a,b) Fail_FmtAssertion("prompf not built")
+#define Prompf_Emit_Whirl_to_Source(a,b) Fail_FmtAssertion("prompf not built")
+
+#else
 #ifndef __GNUC__
 #pragma weak Prompf_Emit_Whirl_to_Source__GP7pu_infoP2WN
 #elif (__GNUC__ == 2)
@@ -344,6 +425,7 @@ extern void (*Preprocess_struct_access_p)(void);
 #endif
 
 extern void Prompf_Emit_Whirl_to_Source(PU_Info* current_pu, WN* func_nd);
+#endif // BUILD_SKIP_PROMPF
 
 static INT ecount = 0;
 static BOOL need_wopt_output = FALSE;
@@ -385,15 +467,15 @@ load_components (INT argc, char **argv)
     INT phase_argc;
     char **phase_argv;
 
-    if (Run_cg || Run_lno || Run_autopar) {
-      // initialize target-info before cg or lno
-      Initialize_Targ_Info();
-    }
-
     if (!(Run_lno || Run_wopt || Run_preopt || Run_cg || 
 	  Run_prompf || Run_purple || Run_w2c || Run_w2f 
           || Run_w2fc_early || Run_ipl))
       Run_cg = TRUE;		    /* if nothing is set, run CG */
+
+    if (Run_cg || Run_lno || Run_autopar) {
+      // initialize target-info before cg or lno
+      Initialize_Targ_Info();
+    }
 
     if (Run_ipl) {
       Run_lno = Run_wopt = Run_cg = Run_w2fc_early
@@ -406,13 +488,17 @@ load_components (INT argc, char **argv)
       load_so ("orc_ict.so", CG_Path, Show_Progress);
       load_so ("orc_intel.so", CG_Path, Show_Progress);
 #endif
+#if !defined(BUILD_FAST_BIN)
       load_so ("cg.so", CG_Path, Show_Progress);
+#endif
       CG_Process_Command_Line (phase_argc, phase_argv, argc, argv);
     }
 
     if (Run_wopt || Run_preopt || Run_lno || Run_autopar) {
       Get_Phase_Args (PHASE_WOPT, &phase_argc, &phase_argv);
+#if !defined(BUILD_FAST_BIN)
       load_so ("wopt.so", WOPT_Path, Show_Progress);
+#endif
       wopt_main (phase_argc, phase_argv, argc, argv);
       wopt_loaded = TRUE;
     }
@@ -472,7 +558,7 @@ load_components (INT argc, char **argv)
       Whirl2f_loaded = TRUE;
       if (Run_prompf)
 	W2F_Set_Prompf_Emission(&Prompf_Id_Map);
-      W2F_Process_Command_Line(phase_argc, phase_argv, argc, argv);
+      W2F_Process_Command_Line(phase_argc, (const char**)phase_argv, argc, (const char**)argv);
     }
 } /* load_components */
 
@@ -526,6 +612,11 @@ Phase_Init (void)
     if (Run_ipl) {
 	need_ipl_output = TRUE;
 	need_lno_output = need_wopt_output = FALSE;
+#ifdef KEY
+	// bug 11856: If VHO does struct transformations, then IPA cannot
+	// legally optimize struct accesses.
+	VHO_Struct_Opt = FALSE;
+#endif
     }
 
     if (output_file_name == 0) {
@@ -1120,6 +1211,7 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 	if (!Run_wopt ||
 	    // OSP 421, MLDID/MSTID is not lowered.
 	    Query_Skiplist (WOPT_Skip_List, Current_PU_Count()) ) {
+
       rwn = WN_Lower(rwn, LOWER_MLDID_MSTID, alias_mgr, 
                        "Lower MLDID/MSTID when not running WOPT");
 #ifdef KEY // bug 7298: this flag could have been set by LNO's preopt
@@ -1130,15 +1222,21 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 	rwn = WN_Lower(rwn, LOWER_TO_CG, alias_mgr, "Lowering to CG");
 #ifdef TARG_IA64
 	if (Only_Unsigned_64_Bit_Ops &&
-	    (!Run_wopt || Query_Skiplist (WOPT_Skip_List, Current_PU_Count()))) {
-	   U64_lower_wn(rwn, FALSE);
-	}
+	    (!Run_wopt || Query_Skiplist (WOPT_Skip_List, Current_PU_Count()))) 	  U64_lower_wn(rwn, FALSE);
 #endif
         WB_LWR_Terminate();
 	if (Get_Trace(TP_REGION,TT_REGION_ALL)) {
 	  fprintf(TFile,"===== driver, after lowering\n");
 	  RID_WN_Tree_Print(TFile,rwn);
 	}
+
+#ifdef TARG_NVISA
+        // we want up-to-date addr_saved info
+        // in case original addr_saved got optimized away,
+        // in which case cg can avoid using local memory.
+        Set_BE_ST_pu_needs_addr_flag_adjust(Get_Current_PU_ST());
+        PU_adjust_addr_flags(Get_Current_PU_ST(), rwn);
+#endif
 
 	if ( Cur_PU_Feedback ) {
 	  Cur_PU_Feedback->Verify("after LOWER_TO_CG");
@@ -1299,7 +1397,7 @@ static void Update_EHRegion_Inito (WN *pu) {
   }
 
   // now find INITO sts that are referenced in WHIRL,
-  // and mark them used. 
+  // and mark them used.
   // Not all the INITO sts referenced in WHIRL will be used.
   Update_EHRegion_Inito_Used (pu);
 }
@@ -1452,6 +1550,10 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 #endif
     Update_EHRegion_Inito (pu);
 
+#if defined(TARG_IA64)
+    /* Generate EH range table for PU.  The high and low labels are
+     * filled in during code generation.
+     */
     // trace the info of updated EH INITO      
     if (Get_Trace (TP_EH, 0x0004)) {
       fprintf (TFile, "=======================================================================\n");
@@ -1461,10 +1563,8 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
       fprintf (TFile, "=======================================================================\n");
       EH_Dump_INITOs (pu, TFile);
     }
+#endif
 
-    /* Generate EH range table for PU.  The high and low labels are
-     * filled in during code generation.
-     */
     if (Run_cg) 
 	EH_Generate_Range_List(pu);
 
@@ -1496,6 +1596,45 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
     WN_Reset_Num_Delete_Cleanup_Fns();
 #endif
 } /* Backend_Processing */
+
+#if defined(TARG_SL)
+BOOL Walk_And_Insert_Init_Buf(WN* wn, WN* block)
+{  
+  OPERATOR opr=WN_operator(wn);
+  if( opr == OPR_PRAGMA && WN_pragma( wn ) == WN_PRAGMA_PREAMBLE_END ) {
+    TY_IDX ty;
+    ST *st;
+
+    ty = Make_Function_Type( MTYPE_To_TY( MTYPE_V ) );
+    
+    if(Sl2_Ibuf_Name==NULL)		
+      st = Gen_Intrinsic_Function( ty, "cmp_init_sl_buf" );
+    else
+      st = Gen_Intrinsic_Function( ty, Sl2_Ibuf_Name );
+	
+    Clear_PU_no_side_effects( Pu_Table[ST_pu( st )] );
+    Clear_PU_is_pure( Pu_Table[ST_pu( st )] );
+    Set_PU_no_delete( Pu_Table[ST_pu( st )] );
+
+    WN *call_initbuf = WN_Call( MTYPE_V, MTYPE_V, 0, st );
+    WN_Set_Call_Default_Flags(call_initbuf );		
+    WN_INSERT_BlockBefore(block, wn, call_initbuf);
+    return TRUE;
+  }
+  else if(opr==OPR_BLOCK) {
+    for ( WN* stmt = WN_first( wn ); stmt; stmt = WN_next( wn) )
+      if(Walk_And_Insert_Init_Buf( stmt, wn ))
+        return TRUE;
+  }
+  else {
+    for ( INT32 i = 0; i < WN_kid_count( wn ); i++ )
+      if(Walk_And_Insert_Init_Buf( WN_kid( wn, i ), wn ))
+        return TRUE;
+  }
+  return FALSE;
+
+}
+#endif
 
 static WN *
 Preprocess_PU (PU_Info *current_pu)
@@ -1552,7 +1691,7 @@ Preprocess_PU (PU_Info *current_pu)
 			    *pu_hdr);
 	// turn off other feedback I/O
 	Instrumentation_Enabled = FALSE;
-	bzero (Feedback_Enabled, (PROFILE_PHASE_LAST-1) * sizeof(BOOL));
+	BZERO (Feedback_Enabled, (PROFILE_PHASE_LAST-1) * sizeof(BOOL));
     } else
 	Cur_PU_Feedback = NULL;
   } else {			    /* retrieve transferred maps */
@@ -1572,7 +1711,7 @@ Preprocess_PU (PU_Info *current_pu)
 	  Is_True(Cur_PU_Feedback, ("invalid PU_Info for feedback"));
               // turn off other feedback I/O
 	  Instrumentation_Enabled = FALSE;
-          bzero(Feedback_Enabled, (PROFILE_PHASE_LAST-1) * sizeof(BOOL));
+          BZERO(Feedback_Enabled, (PROFILE_PHASE_LAST-1) * sizeof(BOOL));
       } else
           Cur_PU_Feedback = NULL;
 #ifdef KEY
@@ -1665,11 +1804,29 @@ Preprocess_PU (PU_Info *current_pu)
   }
 
 #ifdef KEY
-  if (Early_Goto_Conversion)
+  if (Early_Goto_Conversion &&
+       // bug 14188: by default, disabled for fortran
+      (!PU_ftn_lang(Get_Current_PU()) || Early_Goto_Conversion_Set))
   {
       GTABLE goto_table( pu, MEM_pu_pool_ptr );
       goto_table.Remove_Gotos();
       // goto_table gets destructed here
+  }
+#endif
+
+#if defined (TARG_SL)
+  if(Sl2_Inibuf) {
+    if( strcmp( Cur_PU_Name, "MAIN__" ) == 0 ||
+	  strcmp( Cur_PU_Name, "main" ) == 0 ) {
+      WN* body=WN_func_body(pu);
+      WN* stmt=NULL;
+      for (stmt = WN_first( body ); stmt; stmt = WN_next( stmt ) ) {
+        if(Walk_And_Insert_Init_Buf( stmt, body ))	  
+          break;
+      }
+
+      FmtAssert(stmt!=NULL, ("Insert_Init_Buf failed\n")); 
+    }
   }
 #endif
 
@@ -1686,15 +1843,17 @@ Preprocess_PU (PU_Info *current_pu)
   } else if ( Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO] ) {
     WN_Annotate(pu, PROFILE_PHASE_BEFORE_VHO, &MEM_pu_pool);
   }
+
 #ifdef KEY
   /* Insert __cyg_profile_func_enter/exit instrumentation (Bug 570) */
   if ( OPT_Cyg_Instrument > 0 && ! Run_ipl &&
        ( ! PU_no_instrument(Get_Current_PU()) ||
-         PU_has_inlines(Get_Current_PU()) ) ) {
+	 PU_has_inlines(Get_Current_PU()) ) ) {
     Set_Error_Phase ( "CYG Instrumenting" );
     CYG_Instrument_Driver( pu );
   }
 #endif
+
   Set_Error_Phase ( "VHO Processing" );
   pu = VHO_Lower_Driver (current_pu, pu);
 
@@ -1786,7 +1945,11 @@ Preorder_Process_PUs (PU_Info *current_pu)
         Pu_Table [ST_pu (St_Table [PU_Info_proc_sym (current_pu)])];
 
     // C++ PU having exception regions, or with -g
-    if ((PU_cxx_lang (func) && PU_has_region (func)) || Debug_Level > 0)
+    if ((PU_cxx_lang (func) && PU_has_region (func)) || Debug_Level > 0
+#ifdef KEY
+        || PU_has_goto_outer_block(func)
+#endif
+       )
       Force_Frame_Pointer = true;
     else
       Force_Frame_Pointer = false;
@@ -1853,6 +2016,14 @@ Preorder_Process_PUs (PU_Info *current_pu)
 
   // Print miscellaneous statistics to trace file:
   Print_PU_Stats ();
+
+#ifdef KEY // nested functions are no longer in the global symtab
+  ST *st;
+  INT i;
+  FOREACH_SYMBOL (CURRENT_SYMTAB, st, i)
+    if (ST_class(st) == CLASS_FUNC)
+      Allocate_Object(st);
+#endif
 
   // Now recursively process the child PU's.
 
@@ -1948,23 +2119,92 @@ Process_Feedback_Options (OPTION_LIST* olist)
   }
 } // Process_Feedback_Options
 
+#ifdef TARG_SL
+// load target.so and initialize weak variable in target.so
+void init_ti_target(void *handle) {
+  char *soname;
+  if (Is_Target_Sl1_pcore()) {
+    soname = (char*)alloca( strlen("sl1_pcore.so")+1 );
+    strncpy( soname, "sl1_pcore.so", strlen("sl1_pcore.so")+1 );
+  } else if (Is_Target_Sl2_pcore()) {
+    soname = (char*)alloca( strlen("sl2_pcore.so")+1 );
+    strncpy( soname, "sl2_pcore.so", strlen("sl2_pcore.so")+1 );
+  } else if (Is_Target_Sl1_dsp()) {
+    soname = (char*)alloca( strlen("sl1_dsp.so")+1 );
+    strncpy( soname, "sl1_dsp.so", strlen("sl1_dsp.so")+1 );
+  }else if (Target == TARGET_UNDEF) {
+    Is_True(0, ("undefined target"));
+  }
+  handle = dlopen(soname, RTLD_LAZY);
+  if (!handle) {
+    fprintf (stderr, "Error loading %s: %s\n", soname, dlerror());
+    exit (RC_SYSTEM_ERROR);
+  }
+  SI_resource_count_p = (INT *)dlsym(handle, "SI_resource_count");
+  SI_resources_p = (SI_RESOURCE *(*)[])dlsym(handle, "SI_resources");
+  SI_top_si_p = (SI *(*)[])dlsym(handle, "SI_top_si");
+  SI_RRW_initializer_p = (SI_RRW *)dlsym(handle, "SI_RRW_initializer");
+  SI_RRW_overuse_mask_p = (SI_RRW *)dlsym(handle, "SI_RRW_overuse_mask");
+  SI_issue_slot_count_p = (INT *)dlsym(handle, "SI_issue_slot_count");
+  SI_issue_slots_p = (SI_ISSUE_SLOT *(*)[])dlsym(handle, "SI_issue_slots");
+  SI_ID_count_p = (INT *)dlsym(handle, "SI_ID_count");
+  SI_ID_si_p = (SI *(*)[])dlsym(handle, "SI_ID_si");
+  return;
+}
+#endif
+
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+// load target.so and initialize weak variable in target.so
+void init_ti_target(void *handle) {
+  char *soname;
+  soname = (char*)alloca( strlen("r10000.so")+1 );
+  strncpy( soname, "r10000.so", strlen("r10000.so")+1 );
+  handle = dlopen(soname, RTLD_LAZY);
+  if (!handle) {
+    fprintf (stderr, "Error loading %s: %s\n", soname, dlerror());
+    exit (RC_SYSTEM_ERROR);
+  }
+  SI_resource_count_p = (INT *)dlsym(handle, "SI_resource_count");
+  SI_resources_p = (SI_RESOURCE *(*)[])dlsym(handle, "SI_resources");
+  SI_top_si_p = (SI *(*)[])dlsym(handle, "SI_top_si");
+  SI_RRW_initializer_p = (SI_RRW *)dlsym(handle, "SI_RRW_initializer");
+  SI_RRW_overuse_mask_p = (SI_RRW *)dlsym(handle, "SI_RRW_overuse_mask");
+  SI_issue_slot_count_p = (INT *)dlsym(handle, "SI_issue_slot_count");
+  SI_issue_slots_p = (SI_ISSUE_SLOT *(*)[])dlsym(handle, "SI_issue_slots");
+  SI_ID_count_p = (INT *)dlsym(handle, "SI_ID_count");
+  SI_ID_si_p = (SI *(*)[])dlsym(handle, "SI_ID_si");
+  return;
+}
+
+#endif
 
 // Provide a place to stop after components are loaded
 extern "C" {
   void be_debug(void) {}
 }
+
 INT
 main (INT argc, char **argv)
 {
   INT local_ecount, local_wcount;
   PU_Info *pu_tree;
-  
+#if defined(TARG_SL)   || defined(TARG_MIPS)
+  void *handle;
+#endif  
+#ifdef __MINGW32__
+  setvbuf(stdout, (char *)NULL, _IOLBF, 0);
+  setvbuf(stderr, (char *)NULL, _IOLBF, 0);
+#else
   setlinebuf (stdout);
   setlinebuf (stderr);
+#endif
   Handle_Signals ();
   MEM_Initialize ();
   Cur_PU_Name = NULL;
   Init_Error_Handler ( 100 );
+#if !defined(SHARED_BUILD)
+  Set_Error_Tables ( Phases, host_errlist );
+#endif
   Set_Error_Line ( ERROR_LINE_UNKNOWN );
   Set_Error_File ( NULL );
   Set_Error_Phase ( "Back End Driver" );
@@ -1983,16 +2223,15 @@ main (INT argc, char **argv)
     MEM_Tracing_Enable();
   }
 #endif
-
-#ifndef KEY
   if ( List_Enabled ) {
     Prepare_Listing_File ();
     List_Compile_Options ( Lst_File, "", FALSE, List_All_Options, FALSE );
   }
-#endif
 
   Init_Operator_To_Opcode_Table();
-    
+#if defined(TARG_SL)   || defined(TARG_MIPS)
+  init_ti_target(handle);
+#endif
   /* decide which phase to call */
   load_components (argc, argv);
   be_debug();
@@ -2021,7 +2260,17 @@ main (INT argc, char **argv)
   }
   Initialize_Symbol_Tables (FALSE);
   New_Scope (GLOBAL_SYMTAB, Malloc_Mem_Pool, FALSE);
-  pu_tree = Read_Global_Info (NULL);
+
+  INT pu_num;
+  pu_tree = Read_Global_Info (&pu_num);
+
+#if defined(TARG_SL)
+  if (Run_ipisr) {
+    isr_cg = CXX_NEW_ARRAY(ISR_NODE, pu_num, &MEM_src_nz_pool);
+    Read_isr_cg(isr_cg, pu_num);
+  }
+#endif
+
   Stop_Timer (T_ReadIR_Comp);
 
   Initialize_Special_Global_Symbols ();
@@ -2120,11 +2369,32 @@ main (INT argc, char **argv)
       Output_Func_Start_Profiler.Fill_In_Func_Body();
   }
 #endif
+
+#if defined(TARG_SL)
+  if (!Run_ipisr) {
+    for (PU_Info *current_pu = pu_tree;
+         current_pu != NULL;
+         current_pu = PU_Info_next(current_pu)) {
+      Preorder_Process_PUs(current_pu);
+    }
+  } else {
+    INT i = 0;
+    for (PU_Info *current_pu = pu_tree;
+         current_pu != NULL;
+         current_pu = PU_Info_next(current_pu), i++) 
+    {
+       Merge_Parents_Regset(isr_cg[i]); 
+       Preorder_Process_PUs(current_pu);
+    }
+  }
+#else
   for (PU_Info *current_pu = pu_tree;
        current_pu != NULL;
        current_pu = PU_Info_next(current_pu)) {
     Preorder_Process_PUs(current_pu);
   }
+#endif
+
   /* Terminate stdout line if showing PUs: */
   if (Show_Progress) {
     fprintf (stderr, "\n");
@@ -2141,7 +2411,6 @@ main (INT argc, char **argv)
     List_Compile_Options ( Lst_File, "", FALSE, List_All_Options, FALSE );
   }
 #endif
-
 
   /* free the BE symtabs. w2cf requires BE_ST in Phase_Fini */
 
@@ -2205,9 +2474,12 @@ main (INT argc, char **argv)
     Terminate(Had_Internal_Error() ? RC_INTERNAL_ERROR : RC_NORECOVER_USER_ERROR) ;
   }
 
+  if (local_wcount && warnings_are_errors) {
+    Terminate(RC_USER_ERROR);
+  }
+
   /* Close and delete files as necessary: */
   Cleanup_Files ( TRUE, FALSE );
-
   exit ( RC_OKAY );
   /*NOTREACHED*/
 

@@ -1,4 +1,8 @@
 /*
+ *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006, 2007.  QLogic Corporation. All Rights Reserved.
  */
 
@@ -74,7 +78,7 @@ static const char source_file[] = __FILE__;
 
 #include <stdarg.h>
 #include "defs.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "errors.h"
 #include "mempool.h"
 #include "tracing.h"
@@ -693,13 +697,16 @@ delete_subset_mem_op(OP *op,
     return FALSE;
   }
 
-  if( size_succ == 1 &&
-      EBO_in_peep ){
-    const REGISTER reg = TN_register(pred_result);
-    const REGISTER_SET regs =
-      REGISTER_CLASS_eight_bit_regs(TN_register_class(pred_result));
-    if( !REGISTER_SET_MemberP( regs, reg ) )
-      return FALSE;
+  if (size_succ == 1 &&
+      EBO_in_peep){
+    // All integer registers are byteable under m64.
+    if (Is_Target_32bit()) {
+      const REGISTER reg = TN_register(pred_result);
+      const REGISTER_SET regs =
+	REGISTER_SUBCLASS_members(ISA_REGISTER_SUBCLASS_m32_8bit_regs);
+      if (!REGISTER_SET_MemberP(regs, reg))
+	return FALSE;
+    }
   }
 
   if (EBO_Trace_Optimization) {
@@ -1645,7 +1652,9 @@ static BOOL Convert_Imm_And( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
 	EBO_in_peep) {
       const REGISTER reg = TN_register(tn);
       const REGISTER_SET regs =
-	      REGISTER_CLASS_eight_bit_regs(TN_register_class(tn));
+	      REGISTER_SUBCLASS_members(ISA_REGISTER_SUBCLASS_m32_8bit_regs);
+      Is_True(TN_register_class(tn) == ISA_REGISTER_CLASS_integer,
+	      ("Convert_Imm_And: TN not integer register class"));
       if (!REGISTER_SET_MemberP(regs, reg))
         return FALSE;
     }
@@ -3032,6 +3041,10 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
 
   else if (top == TOP_shli32 ||
 	   top == TOP_shli64) {
+
+    if (EBO_in_peep)	// Can't break the x86-style property.  Bug 14424.
+      return FALSE;
+
     // Replace:
     //   movzbl			; zero-extend
     //   shift-left 31		; shift left 31 bits
@@ -3104,7 +3117,8 @@ void Redundancy_Elimination()
 		   ("Redundancy_Elimination: src/result not registers in EBO_in_peep (1)"));
 	
 	// do not delete assignment to result if result is live out
-	if (REG_LIVE_Outof_BB (TN_register_class(result), 
+	if (EBO_no_liveness_info_available ||
+	    REG_LIVE_Outof_BB (TN_register_class(result), 
 			       TN_register(result), bb)) {
 	  // see if the register is re-defined before block end
 	  // we can still delete the op if there is a re-definition
@@ -3223,7 +3237,8 @@ void Redundancy_Elimination()
       FmtAssert( false, ("Redundancy_Elimination: UNIMPLEMENTED (1)") );
 
       // do not delete assignment to result if result is live out
-      if (REG_LIVE_Outof_BB (TN_register_class(result), 
+      if (EBO_no_liveness_info_available ||
+	  REG_LIVE_Outof_BB (TN_register_class(result), 
 			     TN_register(result), bb)) {
 	// see if the register is re-defined before block end
 	// we can still delete the op if there is a re-definition
@@ -3655,6 +3670,16 @@ static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
 
   if( *offset == NULL ||
       !ISA_LC_Value_In_Class( TN_value(*offset), LC_simm32 ) )
+    return FALSE;
+
+  /* Bug 14488: under -mcmodel=kernel, if the offset is with
+     respect to a section name, check for a smaller offset size,
+     so that the final relocation produced by the linker using
+     possibly custom linker scripts can fit R_X86_64_32S. */
+  if (mcmodel == KERNEL &&
+      TN_is_symbol(*offset) &&
+      ST_sym_class(TN_var(*offset)) == CLASS_BLOCK &&
+      !ISA_LC_Value_In_Class(TN_offset(*offset), LC_simm16))
     return FALSE;
 
   if( *scale != NULL && !IS_VALID_SCALE( TN_value(*scale) ) ){
@@ -4239,7 +4264,8 @@ static BOOL Check_loadbw_execute( int ld_bytes, OP* ex_op )
 
 // What is the load-execute instruction corresponding to 
 // load "op" and execute "ex_op"
-static TOP Load_Execute_Format( OP* ld_op, OP* ex_op, ADDR_MODE mode )
+static TOP
+Load_Execute_Format (OP *ld_op, OP *ex_op, ADDR_MODE mode)
 {
   TOP new_top = OP_code( ex_op );
   const int ld_bytes = CGTARG_Mem_Ref_Bytes( ld_op );
@@ -4293,14 +4319,17 @@ static TOP Load_Execute_Format( OP* ld_op, OP* ex_op, ADDR_MODE mode )
 
   /* Not all the registers are 8-bit addressable under i386 target.
    */
-  if( Is_Target_32bit() &&
+  if (Is_Target_32bit() &&
       EBO_in_peep       &&
-      OP_opnd_size( fake_new_op, 0 ) == 8 ){
-    TN* opnd = OP_opnd( ex_op, 0 );
-    const ISA_REGISTER_CLASS cl = TN_register_class(opnd);
+      OP_opnd_size(fake_new_op, 0) == 8) {
+    TN *opnd = OP_opnd(ex_op, 0);
     const REGISTER reg = TN_register(opnd);
+    const REGISTER_SET regs =
+      REGISTER_SUBCLASS_members(ISA_REGISTER_SUBCLASS_m32_8bit_regs);
+    Is_True(TN_register_class(opnd) == ISA_REGISTER_CLASS_integer,
+	    ("Load_Execute_Format: opnd not integer register class"));
 
-    if( !REGISTER_SET_MemberP( REGISTER_CLASS_eight_bit_regs(cl), reg ) )
+    if (!REGISTER_SET_MemberP(regs, reg))
       new_top = TOP_UNDEFINED;
   }
 
@@ -4571,7 +4600,8 @@ void Init_Load_Exec_Map( BB* bb, MEM_POOL* pool )
     FOR_ALL_ISA_REGISTER_CLASS(cl) {
       for (REGISTER reg = 0; reg <= REGISTER_MAX; reg++) {
 	if (last_TN[cl][reg] &&
-	    REG_LIVE_Outof_BB(cl, reg, bb)) {
+	    (EBO_no_liveness_info_available ||
+	     REG_LIVE_Outof_BB(cl, reg, bb))) {
 	  hTN_MAP32_Set(_load_exec_map, last_TN[cl][reg], CG_load_execute + 2);
 	}
       }

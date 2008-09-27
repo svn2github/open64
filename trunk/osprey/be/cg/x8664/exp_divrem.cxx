@@ -43,7 +43,6 @@
 
 /* CGEXP routines for expanding divide and rem */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <signal.h>
 #include "defs.h"
@@ -52,7 +51,7 @@
 #include "ercg.h"
 #include "tracing.h"
 #include "config.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "config_debug.h"
 #include "mtypes.h"
 #include "tn.h"

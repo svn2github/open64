@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: variants.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/variants.cxx,v $
+ * $Revision: 1.2 $
+ * $Date: 02/11/07 23:41:28-00:00 $
+ * $Author: fchow@keyresearch.com $
+ * $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.variants.cxx $
  *
  * Description:
  *
@@ -51,7 +51,7 @@
  */
 
 #ifdef _KEEP_RCS_ID
-static const char rcs_id[] = "$Source$ $Revision$";
+static const char rcs_id[] = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/SCCS/s.variants.cxx $ $Revision: 1.2 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
@@ -156,6 +156,10 @@ Negate_BR_Variant(VARIANT variant)
   case V_BR_QGE:
   case V_BR_QLT:
   case V_BR_QLE:
+  case V_BR_FOR:
+  case V_BR_DOR:
+  case V_BR_DUO:
+  case V_BR_FUO:
     // changing the variant will effect the comparison if NaNs are
     // involved, so just flip the sense.
     is_false = !is_false;

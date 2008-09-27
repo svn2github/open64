@@ -43,7 +43,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h> 
 
 #ifdef KEY
@@ -72,6 +76,12 @@
 #include "ipo_alias_class.h"
 #include "ipo_defs.h"			// IPA_NODE_CONTEXT
 
+#include "ipo_main.h"           // for ipisr_cg
+
+#include <cmplrs/host.h>        // for typedef string
+#include "ld_ipa_option.h"      // For ld_ipa_opt 
+#include "ipc_weak.h"           
+
 #ifdef KEY
 #include "ipa_builtins.h"
 #include "ir_bcom.h"
@@ -82,7 +92,7 @@
 extern "C" void add_to_tmp_file_list (char*);
 #pragma weak add_to_tmp_file_list
 
-extern "C" char* create_unique_file (char*, char);
+extern "C" char* create_unique_file (const char*, char);
 #pragma weak create_unique_file
 
 extern "C" char* create_tmp_file (char*);
@@ -330,6 +340,7 @@ Write_Dummy_PUs (Output_File* output_file)
   return pu_tree;
 }
 
+
 extern void WN_free_input (void *handle, off_t mapped_size);
 
 // Free the resources associated with a pu tree.  There are two kinds
@@ -381,6 +392,8 @@ void free_pu_cg_resources(PU_Info* pu, Vector& file_hdr_list)
 	node->Mod_Ref_Info ()->Free_Ref_Sets ();
     MEM_POOL_Delete(node->Mem_Pool());
     node->File_Header().num_written++;
+    if (node->File_Header().num_written == IP_FILE_HDR_num_procs(node->File_Header()))
+      WN_free_input(IP_FILE_HDR_input_map_addr(node->File_Header()), node->File_Header().mapped_size);
     node->Clear_Mempool_Initialized();
     node->Set_Processed();
   }
@@ -634,6 +647,46 @@ void output_queue::push(PU_Info* pu) {
           
 }
 
+#ifdef KEY
+// Return the number of '\n' in pu_name.
+static int
+count_new_lines (const char * pu_name)
+{
+  int count = 0;
+
+  for (char c = *pu_name; c != '\0'; c = *(++pu_name))
+    if (c == '\n')
+      count++;
+
+  return count;
+}
+
+
+// BUF has '\n' characters, COUNT is the count of this PU_NAME.
+// After each new-line character, insert "## " so that each new
+// line starts with a comment character.
+static void
+fill_in_buffer (char * buf, int count, const char * pu_name)
+{
+  sprintf(buf, " %d: ", count);
+  buf = strchr(buf, '\0');
+
+  while (*pu_name != '\0')
+  {
+    *buf = *pu_name;
+    if (*pu_name == '\n')
+    {
+      *(++buf) = '#';
+      *(++buf) = '#';
+      *(++buf) = ' ';
+    }
+    buf++;
+    pu_name++;
+  }
+  *buf = '\0';
+}
+#endif
+
 size_t
 output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
 {
@@ -648,13 +701,29 @@ output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
     
     char* buf = 0;
     const size_t pu_len = strlen(pu_name);
-    if (pu_len + padding < bufsize)
+#ifdef KEY
+    // Bug 14465: Count new-lines.
+    int num_new_lines = count_new_lines(pu_name);
+    const int total_len = pu_len + padding + num_new_lines * 5;
+#else
+    const int total_len = pu_len + padding;
+#endif
+
+    if (total_len < bufsize)
       buf = static_buf;
     else {
-      buf = static_cast<char*>(malloc(pu_len + padding));
+      buf = static_cast<char*>(malloc(total_len));
       if (!buf)
         ErrMsg (EC_No_Mem, "pu_tree_add_comment"); 
     }
+
+#ifdef KEY
+    // Bug 14465: Update buffer with makefile comments in
+    // multiple names.
+    if (num_new_lines)
+      fill_in_buffer (buf, count++, pu_name);
+    else
+#endif
 
     sprintf(buf, " %lu: %s", (unsigned long)(count++), pu_name);
     ipacom_add_comment(index, buf);
@@ -690,6 +759,13 @@ void output_queue::flush() {
     DST_TYPE merged_dst = IPC_merge_DSTs(head, &pool);
     WN_write_PU_Infos(head, out_file);
     WN_write_dst(merged_dst, out_file);
+
+#if defined(TARG_SL)
+    // The ipisr cg section may be rewritten in Perform_Alias_Class_Annotation
+    if (ld_ipa_opt[LD_IPA_IPISR].flag)
+        WN_write_isr_cg(ipisr_cg, out_file);
+#endif // TARG_SL
+
     WN_write_revision(out_file);
 
     close_output_file();
@@ -809,6 +885,10 @@ extern "C" void IP_WRITE_pu (IP_FILE_HDR *s , INT pindex)
 	       CURRENT_SYMTAB,
 	       GLOBAL_SYMTAB + 1));
 
+#ifdef KEY
+      // Bug 14465: dummy function for global-scope ASM?
+      if (ST_class(St_Table[PU_Info_proc_sym(pu)]) != CLASS_NAME)
+#endif
       Ip_alias_class->Classify_memops(PU_Info_tree_ptr(pu));
 
       // Classify the initialized data after seeing the code so we get

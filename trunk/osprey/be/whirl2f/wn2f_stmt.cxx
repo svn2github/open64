@@ -41,10 +41,10 @@
  * ====================================================================
  *
  * Module: wn2f_stmt.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/wn2f_stmt.cxx,v $
+ * $Revision: 1.1 $
+ * $Date: 2005/07/27 02:13:43 $
+ * $Author: kevinlo $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/whirl2f/wn2f_stmt.cxx,v $
  *
  * Revision history:
  *  12-Apr-95 - Original Version
@@ -68,7 +68,7 @@
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/wn2f_stmt.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/be/whirl2f/wn2f_stmt.cxx,v $ $Revision: 1.1 $";
 #endif
 
 #include "whirl2f_common.h"
@@ -909,7 +909,7 @@ WN2F_Translate_DoLoop_Bound(TOKEN_BUFFER   tokens,
    TOKEN_BUFFER opnd1_expr;
    UINT         op_idx;
    BOOL         is_intrinsic;
-   char        *intrname;
+   const char  *intrname;
    char         opname;
    
    WN2F_translate(bound_expr, bound->opnd0, context);

@@ -44,7 +44,7 @@ static char USMID[] = "\n@(#)5.0_pl/sources/main.c	5.15	10/14/99 15:25:09\n";
 
 # include "defines.h"		/* Machine dependent ifdefs */
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))	/* Needed for timing information. */
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) || defined(_HOST_OS_DARWIN)	/* Needed for timing information. */
 # include <sys/time.h>
 # include <sys/resource.h>
 # endif
@@ -135,7 +135,7 @@ int main (int	 argc,
    char	       *msg_name;
    int		save_statement_number = 0;
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) || defined(_HOST_OS_DARWIN)
    		double		end_time;
    		double		start_time;
 		/* char		time[20]; */
@@ -205,7 +205,7 @@ int main (int	 argc,
    start_time = (float) time(NULL);
    clock();
 
-# elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) || defined(_HOST_OS_DARWIN)
 
    getrusage (RUSAGE_SELF, &ru);
    start_time = (double) ru.ru_utime.tv_sec +
@@ -395,7 +395,7 @@ PREPROCESS_ONLY_SKIP:
    end_time  = (float) time(NULL);
    end_clock = clock();
 
-# elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) || defined(_HOST_OS_DARWIN)
 
    getrusage(RUSAGE_SELF, &ru);
    end_time = (double) ru.ru_utime.tv_sec +
@@ -442,7 +442,7 @@ PREPROCESS_ONLY_SKIP:
                    end_clock,
                    (some_scp_in_err) ? -3 : max_field_len);
 
-# elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) 
+# elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) || defined(_HOST_OS_DARWIN)
 
                    (long) 0,
                    (some_scp_in_err) ? -3 : max_field_len/4);
@@ -483,7 +483,7 @@ PREPROCESS_ONLY_SKIP:
       PRINTMSG (0, 104, Log_Summary, 0, (double) end_clock/1000000.0);
       msg_name	= "cf90";
 
-# elif defined(_HOST_OS_LINUX)
+# elif defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)
 #ifdef PSC_TO_OPEN64
       msg_name	= OPEN64_NAME_PREFIX "f95";
 #endif
@@ -520,7 +520,7 @@ PREPROCESS_ONLY_SKIP:
 
       PRINTMSG (0, 105, Log_Summary, 0, max_field_len);
 
-# elif ! (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# elif ! (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 
       /* LRR  4/28/97  In an email message from Rich Shapiro to me, he stated */
       /* he did not want this line in the summary lines.		      */
@@ -532,7 +532,7 @@ PREPROCESS_ONLY_SKIP:
 
       /* Number of source lines compiled.				      */
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) && !defined(_TARGET_SV2)
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)) && !defined(_TARGET_SV2)
 
       PRINTMSG (0, 1401, Log_Summary, 0, --curr_glb_line);
 
@@ -545,7 +545,7 @@ PREPROCESS_ONLY_SKIP:
 
       /* Number of messages issued.					      */
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) && !defined(_TARGET_SV2)
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)) && !defined(_TARGET_SV2)
 
       PRINTMSG (0, 1403, Log_Summary, 0,
                 num_errors,
@@ -737,7 +737,7 @@ static void init_compiler (int	 argc,
 
    debug_file_name[0] = NULL_CHAR;
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
    /* sgi_cmd_line does some option manipulation, process SGI specific        */
    /* command line options, and strips out things that the front-end doesn't  */
    /* need to see.                                                            */
@@ -1291,7 +1291,7 @@ static	void	print_id_line(void)
    /*								              */
    /* The id line for other platforms may vary somewhat from this.            */
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) && !defined(_TARGET_SV2)
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)) && !defined(_TARGET_SV2)
    sprintf(version_string, "%s%s", fe_vers_ID(), fe_vers_number());
 # elif defined(_HOST_OS_SOLARIS)
    sprintf(version_string, "%s%s%s%s%s%s%s%s",
@@ -1308,7 +1308,7 @@ static	void	print_id_line(void)
 # endif
 
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX)) && (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)) && (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
    PRINTMSG (0, 1402, Log_Summary, 0,
              release_level,
@@ -1449,6 +1449,8 @@ static void set_compile_info_for_target (void)
    target_os = Target_Unicos;
 # elif defined(_TARGET_OS_LINUX)
    target_os = Target_Linux;
+# elif defined(_TARGET_OS_DARWIN)
+   target_os = Target_Darwin;
 # elif defined(_TARGET_OS_MAX)
    target_os = Target_Max;
 # elif (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
@@ -1582,7 +1584,7 @@ static void set_compile_info_for_target (void)
       max_character_length	= 2097151;		/* In byte size */
    }
 
-# elif (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# elif (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
    max_character_length		= 268435455;		/* (2**28) -1 chars */
 

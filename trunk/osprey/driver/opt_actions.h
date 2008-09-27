@@ -71,7 +71,8 @@ typedef enum {
   ABI_64,
   ABI_I32,
   ABI_I64,
-  ABI_IA32
+  ABI_IA32,
+  ABI_W64
 } ABI;
 typedef enum {
   ISA_NONE      = 0,
@@ -86,11 +87,17 @@ typedef enum {
   ISA_IA641     = 11,
   ISA_IA32      = 12,
   ISA_X8664     = 13,
+  ISA_COMPUTE_10 = 14,
+  ISA_COMPUTE_11 = 15,
+  ISA_COMPUTE_12 = 16,
+  ISA_COMPUTE_13 = 17
 } ISA;
 
 extern boolean debug;		/* debugging turned on */
 
 extern boolean nostdinc;	/* no standard include directory */
+
+extern boolean print_help;	/* print help message */
 
 extern char *help_pattern;	/* pattern string for help file */
 
@@ -163,6 +170,8 @@ extern void set_dsm_options (void);
 
 extern void Process_Mp (void);
 extern void Process_Cray_Mp (void);
+
+extern void toggle_inline_on (void);
 
 extern void print_file_path (char *, int);	/* print path to named file */
 

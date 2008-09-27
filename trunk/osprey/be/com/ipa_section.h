@@ -72,6 +72,7 @@
 
 #endif
 
+
 class IPA_LNO_READ_FILE; 
 
 extern BOOL Trace_Sections;
@@ -462,7 +463,7 @@ private:
 
 public:
   // constructors
-  LOOPINFO(MEM_POOL* m) { bzero(this, sizeof(LOOPINFO)); _mem_pool = m; }
+  LOOPINFO(MEM_POOL* m) { BZERO(this, sizeof(LOOPINFO)); _mem_pool = m; }
 
   LOOPINFO(MEM_POOL* m, INT32 cd_idx);
 
@@ -1087,7 +1088,7 @@ public:
 
   void Print(FILE *fp = stderr);
   void Print_file(FILE* fp = stderr);
-  void WB_Print(FILE* fp, INT region_index, char* name, char* func_name);
+  void WB_Print(FILE* fp, INT region_index, const char* name, const char* func_name);
 };
 
 typedef DYN_ARRAY<REGION_ARRAYS> ARRAY_OF_REGION_ARRAYS;
@@ -1163,7 +1164,7 @@ public:
 
   void Print_file(FILE *fp = stderr);
   void Print(FILE *fp = stderr) { Print_file(fp); };
-  void WB_Print(FILE* fp, INT scalar_index, char* name, char* func_name);
+  void WB_Print(FILE* fp, INT scalar_index, const char* name, const char* func_name);
 };
 
 typedef DYN_ARRAY<SCALAR_INFO> INT_ARRAY;
@@ -1279,7 +1280,7 @@ public:
   }
 
   void Init_Out () { 
-    bzero(this, sizeof(CFG_NODE_INFO));
+    BZERO(this, sizeof(CFG_NODE_INFO));
     _type = CFG_UNKNOWN;
   }
 
@@ -1427,7 +1428,7 @@ private:
   INT _sub_term_count;
 
 public:
-  TLOG_INFO() { bzero(this, sizeof(TLOG_INFO)); };
+  TLOG_INFO() { BZERO(this, sizeof(TLOG_INFO)); };
   INT& Get_cterm_count()  { return _cterm_count;};
   INT& Get_lterm_count()  { return _lterm_count;};
   INT& Get_iv_gterm_count()  { return _iv_g_term_count;};
@@ -1500,7 +1501,7 @@ public:
       _actual_count = actual_count;
       _callsite_start_idx = callsite_idx;
       _callsite_count = callsite_count;
-      bzero(_actual_scalar_info_map, sizeof(INT_IDS)*(actual_count+1));
+      BZERO(_actual_scalar_info_map, sizeof(INT_IDS)*(actual_count+1));
       if (cd_size)
 	_cd_map = (INT*)
 	  MEM_POOL_Alloc(&_write_pool, sizeof(INT)*cd_size);

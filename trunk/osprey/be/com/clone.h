@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -80,7 +80,6 @@
 #include "symtab.h"                     // for Scope_tab
 #include "wn.h"			        // includes wn_map.h
 
-
 // ======================================================================
 // IPO_SYMTAB class: encapsulates LOCAL symbol table info
 // Under the new symtab design, the local symbol table contains info on
@@ -137,7 +136,7 @@ public:
   IPO_ADDR_HASH (MEM_POOL *m) {
     mem = m;
     table_empty = TRUE;
-    bzero (table, sizeof(table));
+    BZERO (table, sizeof(table));
   };
 
   ~IPO_ADDR_HASH () {
@@ -157,7 +156,7 @@ public:
 
   void Clear (void) {
     if (!table_empty) {
-      bzero (table, sizeof(table));
+      BZERO (table, sizeof(table));
       table_empty = TRUE;
     }
   };
@@ -263,7 +262,7 @@ public:
   };
 
   ~IPO_SYMTAB (){
-    CXX_DELETE(_hash_maps,Malloc_Mem_Pool);
+    CXX_DELETE(_hash_maps, Malloc_Mem_Pool);
   }
 
   // Calls to do cloning for inlining
@@ -440,7 +439,7 @@ public:
              BOOL same_file=TRUE,
              mUINT16 filenum=0) :
     _orig_pu(NULL), _cloned_pu(NULL),
-#if (!(defined(linux) && defined(_LP64)))
+#if (!((defined(linux) || defined(BUILD_OS_DARWIN)) && defined(_LP64)))
     _sym(cloned_symtab? cloned_symtab : 
 	(callee_scope_tab == NULL? NULL : 
 				  CXX_NEW(IPO_SYMTAB(callee_scope_tab,
@@ -449,13 +448,13 @@ public:
 						    caller_symtab_idx, 
 						    Malloc_Mem_Pool, same_file),
  						    Malloc_Mem_Pool))),
-#endif /* (!(defined(linux) && defined(_LP64))) */
+#endif // (!((defined(linux) || defined(BUILD_OS_DARWIN)) && defined(_LP64)))
     _orig_map_tab (callee), _cloned_map_tab(caller), _parent_map(parent),
     _mem(map_pool),             // mem pool for map tables
     _cloned_node_file_id(filenum), 
     _same_file(same_file), _raw_buf_size (0)
   {
-#if defined(linux) && defined(_LP64)
+#if (defined(linux) || defined(BUILD_OS_DARWIN)) && defined(_LP64)
     if ((cloned_symtab == NULL) && (callee_scope_tab != NULL))
       _sym = CXX_NEW (IPO_SYMTAB (callee_scope_tab,
 				  caller_scope_tab, 
@@ -465,7 +464,7 @@ public:
 		      Malloc_Mem_Pool);
     else
       _sym = cloned_symtab;
-#endif /* defined(linux) && defined(_LP64) */
+#endif // (!((defined(linux) || defined(BUILD_OS_DARWIN)) && defined(_LP64)))
   };
 
   // 3. used only for cloning dynamic array bound expressions

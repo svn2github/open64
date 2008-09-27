@@ -83,6 +83,13 @@
 
 BOOL Trace_Exp = FALSE;	/* General code expansion trace */
 
+#ifdef TARG_NVISA
+// fp ops are same as int ops
+static BOOL Separate_FP_Expansion = FALSE;
+#else
+// fp ops go thru different path from int ops
+static BOOL Separate_FP_Expansion = TRUE;
+#endif
 
 /* ====================================================================
  *
@@ -109,6 +116,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Branch (op1, op2, op3, variant, ops);
 	break;
   case OPR_GOTO:
+  case OPR_GOTO_OUTER_BLOCK:
 	Expand_Branch (op1, op2, op3, V_BR_ALWAYS, ops);
 	break;
   case OPR_LDA:
@@ -118,19 +126,23 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Lda_Label (result, op1, ops);
 	break;
   case OPR_INTCONST:
+#ifdef TARG_NVISA
+	Expand_Mtype_Immediate (result, op1, rtype, ops);
+#else
 	Expand_Immediate (result, op1, TRUE /* is_signed */, ops);
+#endif
 	break;
   case OPR_CONST:
 	Expand_Const (result, op1, rtype, ops);
 	break;
   case OPR_ADD:
-	if (MTYPE_is_float(rtype))
+	if (MTYPE_is_float(rtype) && Separate_FP_Expansion)
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
 		Expand_Add (result, op1, op2, rtype, ops);
 	break;
   case OPR_SUB:
-	if (MTYPE_is_float(rtype))
+	if (MTYPE_is_float(rtype) && Separate_FP_Expansion)
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
 		Expand_Sub (result, op1, op2, rtype, ops);
@@ -152,6 +164,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Rrotate (result, op1, op2, rtype, desc, ops);
 	break;
 #endif
+  case OPR_ILOADX:
   case OPR_ILOAD:
   case OPR_LDID:
 	if ( V_align_all(variant) != 0 ) {
@@ -165,9 +178,14 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #endif
 	}
 	break;
+  case OPR_ISTOREX:
   case OPR_ISTORE:
   case OPR_STID:
 	if ( V_align_all(variant) != 0 ) {
+#if defined(TARG_SL)
+          if (CG_check_packed)
+  	    Is_True(0, ("SL does not handle unaligned store"));
+#endif
 		Expand_Misaligned_Store (desc, op1, op2, op3, variant, ops);
 	}
 	else {
@@ -185,7 +203,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #ifdef TARG_X8664
 	if (MTYPE_is_float(rtype) || MTYPE_is_mmx_vector(rtype))
 #else
-	if (MTYPE_is_float(rtype))
+	if (MTYPE_is_float(rtype) && Separate_FP_Expansion)
 #endif
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
@@ -307,7 +325,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_CVT:
 	Is_True(rtype != MTYPE_B, ("conversion to bool unsupported"));
 	if (MTYPE_is_float(rtype) && MTYPE_is_float(desc)) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS)
 		Expand_Float_To_Float (result, op1, rtype, desc, ops);
 #else
 		Expand_Float_To_Float (result, op1, rtype, ops);
@@ -339,6 +357,10 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   		// zero-extend when enlarging an unsigned value, or 
   		//   converting to smaller unsigned vlaue (e.g U4I8CVT)
 		// else sign-extend.
+#ifdef TARG_NVISA
+		// have to change register size, so not an in-place truncation
+		Expand_Convert (result, rtype, op1, desc, ops);
+#else
 		Expand_Convert_Length ( result, op1, op2, 
 			rtype, 
 			(MTYPE_is_signed(desc)
@@ -349,6 +371,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		|| (MTYPE_bit_size(desc) > MTYPE_bit_size(rtype) ) ),
 		     ops);
 #endif
+#endif // TARG_NVISA
 	}
 	break;
 #ifdef TARG_X8664
@@ -380,7 +403,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Float_To_Float_Floorf( result, op1, rtype, desc, ops );
       break;
     }	
-#elif defined (TARG_MIPS)
+#elif defined (TARG_MIPS) && !defined(TARG_SL)
         if (MTYPE_is_float (rtype)) {
 	  Expand_Float_To_Float_Floor (result, op1, rtype, desc, ops);
 	  break;

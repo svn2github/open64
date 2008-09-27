@@ -26,26 +26,25 @@
 #include "sections.h"
 #include "stblock.h"
 
-#define GCC_303
 #define ROUNDUP(val,align)       ( (-(INT64)align) & (INT64)(val+align-1) )
 static ST* Get_Section_ST(SECTION_IDX sec, UINT align, ST_SCLASS sclass);
 
-extern WN * Gen_Call( char *name, TYPE_ID rtype = MTYPE_V );
-extern WN * Gen_Call( char *name, WN *arg1, TYPE_ID rtype = MTYPE_V);
-extern WN * Gen_Call( char *name, WN *arg1, WN *arg2, TYPE_ID rtype = MTYPE_V  );
-extern WN * Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, TYPE_ID rtype= MTYPE_V);
-extern WN * Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4, TYPE_ID rtype = MTYPE_V);
-extern WN * Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4, WN *arg5, TYPE_ID rtype = MTYPE_V );
-extern WN * Gen_Call( char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4, WN *arg5, WN *arg6, TYPE_ID rtype = MTYPE_V );
+extern WN * Gen_Call( const char *name, TYPE_ID rtype = MTYPE_V );
+extern WN * Gen_Call( const char *name, WN *arg1, TYPE_ID rtype = MTYPE_V);
+extern WN * Gen_Call( const char *name, WN *arg1, WN *arg2, TYPE_ID rtype = MTYPE_V  );
+extern WN * Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, TYPE_ID rtype= MTYPE_V);
+extern WN * Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4, TYPE_ID rtype = MTYPE_V);
+extern WN * Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4, WN *arg5, TYPE_ID rtype = MTYPE_V );
+extern WN * Gen_Call( const char *name, WN *arg1, WN *arg2, WN *arg3, WN *arg4, WN *arg5, WN *arg6, TYPE_ID rtype = MTYPE_V );
 
 
-char* OUTPUT_FUNC_START_PROFILER::_prefix = "_GLOBAL__GCOV_";
+const char* OUTPUT_FUNC_START_PROFILER::_prefix = "_GLOBAL__GCOV_";
 #ifdef GCC_303
-char* OUTPUT_FUNC_START_PROFILER::_init_proc = "__gcov_init";
+const char* OUTPUT_FUNC_START_PROFILER::_init_proc = "__gcov_init";
 #else
-char* OUTPUT_FUNC_START_PROFILER::_init_proc = "__bb_init_func";
+const char* OUTPUT_FUNC_START_PROFILER::_init_proc = "__bb_init_func";
 #endif
-char* OUTPUT_FUNC_START_PROFILER::_lpbx_0 = "LPBX0";
+const char* OUTPUT_FUNC_START_PROFILER::_lpbx_0 = "LPBX0";
 
 OUTPUT_FUNC_START_PROFILER Output_Func_Start_Profiler;
 
@@ -60,7 +59,7 @@ OUTPUT_FUNC_START_PROFILER::OUTPUT_FUNC_START_PROFILER(const char* src_file_name
       _func_name(NULL) {}
 
 char*
-OUTPUT_FUNC_START_PROFILER::Construct_Func_Name(char *name)
+OUTPUT_FUNC_START_PROFILER::Construct_Func_Name(const char *name)
 {
     char* func_name = TYPE_MEM_POOL_ALLOC_N(char, &_mem_pool, strlen(name) + strlen(_file_name) + 1);
     sprintf(func_name, "%s%s", name, _file_name);

@@ -135,8 +135,16 @@ CODEREP::Same_bitpos(const CODEREP *cr) const
 	  lcr = cr->Istr_base();
 	if (!lcr->Same_bitpos(gcr))
 	  return FALSE;
-	if (Offset() != cr->Offset())
-	  return FALSE;
+	if (Opr() != OPR_ILOADX) {
+	  if (Offset() != cr->Offset())
+	    return FALSE;
+	}
+	else {
+	  gcr = Index();
+	  lcr = cr->Index();
+	  if (!lcr->Same_bitpos(gcr))
+	    return FALSE;
+	}
 	if (Get_mtype_class(Dtyp()) != Get_mtype_class(cr->Dtyp()))
 	  return FALSE;	// type class not the same
 	if (MTYPE_size_min(Dsctyp()) != MTYPE_size_min(cr->Dsctyp()))
@@ -299,6 +307,8 @@ CODEREP::Find_cr(const CODEREP *cr)
 	return retval;
       if (OPCODE_operator(Op()) == OPR_MLOAD)
 	return Mload_size()->Find_cr(cr);
+      else if (OPCODE_operator(Op()) == OPR_ILOADX)
+	return Index()->Find_cr(cr);
       break;
   }
   return retval;

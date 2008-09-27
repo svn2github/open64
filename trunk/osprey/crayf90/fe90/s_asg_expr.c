@@ -1,5 +1,8 @@
 /*
- *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright 2007, 2008. PathScale, LLC.  All Rights Reserved.
+ */
+/*
+ *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /*
@@ -132,7 +135,7 @@ static boolean expr_semantics_d (opnd_type *result_opnd,
 #endif /* KEY Bug 934 */
 
 
-# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
+# if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 # pragma inline uplus_opr_handler
 # pragma inline power_opr_handler
 # pragma inline mult_opr_handler
@@ -357,8 +360,7 @@ help_assign_cpnts(int line, int col, Uint type_idx,
 	line, col);
     }
 
-    else if (Structure == TYP_TYPE(ATD_TYPE_IDX(cpnt_attr_idx)) &&
-      ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(cpnt_attr_idx)))) {
+    else if (allocatable_structure_component(cpnt_attr_idx)) {
 
       /* Non-allocatable array whose element type is a structure having
        * allocatable components or subcomponents: no dope vector, so we can't
@@ -913,7 +915,12 @@ CK_WHERE:
       }
 #endif /* KEY Bug 572 */
 
+#ifdef KEY /* Bug 14150 */
+      ok &= check_for_legal_assignment_define(&l_opnd,
+        IR_OPR(ir_idx) == Ptr_Asg_Opr);
+#else /* KEY Bug 14150 */
       ok &= check_for_legal_define(&l_opnd);
+#endif /* KEY Bug 14150 */
 
       attr_idx = find_base_attr(&l_opnd, &line, &col);
 
@@ -1749,7 +1756,7 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
                attr_idx = ATD_SF_ARG_IDX(attr_idx);
                OPND_IDX((*result_opnd)) = attr_idx;
             }
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 # if 0
             else if (ATD_CLASS(attr_idx) == Dummy_Argument &&
                      ATD_ARRAY_IDX(attr_idx) &&

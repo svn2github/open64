@@ -39,7 +39,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/elf_whirl.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -213,7 +217,7 @@ INT32 remap_dst_entry(INT32 /* dummy */, DST_DW_tag tag, DST_flag flag,
 {
   Is_True(!DST_IS_NULL(attr) && !DST_IS_NULL(info_idx),
           ("remap_dst_entry: invalid DST index"));
-  Is_True(DST_INFO_attributes(DST_INFO_IDX_TO_PTR(info_idx)) == attr,
+  Is_True(DST_ARE_EQUAL(DST_INFO_attributes(DST_INFO_IDX_TO_PTR(info_idx)), attr),
           ("remap_dst_entry: DST_ATTR doesn't match DST_INFO"));
   Is_True(DST_INFO_tag(DST_INFO_IDX_TO_PTR(info_idx)) == tag,
           ("remap_dst_entry: tag doesn't match DST_INFO"));

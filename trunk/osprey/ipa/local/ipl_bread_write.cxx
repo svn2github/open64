@@ -41,7 +41,11 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#if defined(BUILD_OS_DARWIN)
+#include <darwin_elf.h>                        // Elf64_Word
+#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>                        // Elf64_Word
+#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/elf_whirl.h>              // WT_IPA_SUMMARY
 #include <sys/types.h>                  // ir_bwrite.h needs it
 
@@ -93,6 +97,9 @@ IPA_irb_write_summary(Output_File *fl)
     INT offset_stmt, offset_ctrl_dep, offset_global_stid;
     INT cur_sec_disp, offset_common, offset_common_shape;
     INT offset_struct_access;
+#ifdef KEY
+    INT offset_ty_info = 0;
+#endif
 
     Elf64_Word temp;
     offset_sym = offset_proc = offset_feedback = offset_call = 0;
@@ -266,6 +273,16 @@ IPA_irb_write_summary(Output_File *fl)
       
       offset_struct_access = offset_struct_access - cur_sec_disp;
     } 
+#ifdef KEY
+    if (Summary->Has_ty_info_entry ()) {
+      size = (Summary->Get_ty_info_idx () + 1) * sizeof(SUMMARY_TY_INFO);
+
+      offset_ty_info = (INT) ir_b_save_buf (Summary->Get_ty_info (0),
+                                            size, sizeof(INT64), 0, fl);
+
+      offset_ty_info = offset_ty_info - cur_sec_disp;
+    } 
+#endif
 
     if (Do_Par)
      Array_Summary_Output->Write_summary(fl, cur_sec_disp);
@@ -313,6 +330,9 @@ IPA_irb_write_summary(Output_File *fl)
     header_addr->Set_common_shape_offset(offset_common_shape);
     header_addr->Set_global_stid_offset(offset_global_stid);
     header_addr->Set_struct_access_offset(offset_struct_access);
+#ifdef KEY
+    header_addr->Set_ty_info_offset(offset_ty_info);
+#endif
 
     header_addr->Set_symbol_size(Summary->Get_symbol_idx() + 1);
     header_addr->Set_proc_size(Summary->Get_procedure_idx() + 1);
@@ -331,6 +351,9 @@ IPA_irb_write_summary(Output_File *fl)
     header_addr->Set_common_shape_size(Summary->Get_common_shape_idx() + 1);
     header_addr->Set_global_stid_size(Summary->Get_global_stid_idx() + 1);
  	header_addr->Set_struct_access_size(Summary->Get_struct_access_idx() + 1);
+#ifdef KEY
+    header_addr->Set_ty_info_size(Summary->Get_ty_info_idx() + 1);
+#endif
  
     header_addr->Set_symbol_entry_size(sizeof(SUMMARY_SYMBOL));
     header_addr->Set_proc_entry_size(sizeof(SUMMARY_PROCEDURE));
@@ -350,6 +373,9 @@ IPA_irb_write_summary(Output_File *fl)
     header_addr->Set_common_shape_entry_size(sizeof(SUMMARY_COMMON_SHAPE));
     header_addr->Set_global_stid_entry_size(sizeof(SUMMARY_STID));
     header_addr->Set_struct_access_entry_size(sizeof(SUMMARY_STRUCT_ACCESS));
+#ifdef KEY
+    header_addr->Set_ty_info_entry_size(sizeof(SUMMARY_TY_INFO));
+#endif
 }
 
 
@@ -378,6 +404,9 @@ IPA_Trace_Summary_Section (FILE *f,		// File to trace to
     SUMMARY_COMMON *common_array;
     SUMMARY_COMMON_SHAPE *common_shape_array;
     SUMMARY_STRUCT_ACCESS * struct_access_array;
+#ifdef KEY
+    SUMMARY_TY_INFO * ty_info_array;
+#endif
 
     ARRAY_SUMMARY_OUTPUT array_summary(Malloc_Mem_Pool);
 
@@ -597,6 +626,15 @@ IPA_Trace_Summary_Section (FILE *f,		// File to trace to
 		 file_header->Get_struct_access_size(),
 		 file_header->Get_struct_access_entry_size () *
 		 file_header->Get_struct_access_size ());
+#ifdef KEY
+    if (file_header->Get_ty_info_size () != 0)
+	fprintf (f, format, "TY_INFO",
+		 file_header->Get_ty_info_offset (),
+		 file_header->Get_ty_info_entry_size (),
+		 file_header->Get_ty_info_size(),
+		 file_header->Get_ty_info_entry_size () *
+		 file_header->Get_ty_info_size ());
+#endif
     
     if (file_header->Get_symbol_size() != 0) {
 	sym_array = (SUMMARY_SYMBOL *)
@@ -702,7 +740,14 @@ IPA_Trace_Summary_Section (FILE *f,		// File to trace to
 	struct_access_array =  (SUMMARY_STRUCT_ACCESS *)
 	    (section_base + file_header->Get_struct_access_offset());
 	struct_access_array->Print_array ( f, file_header->Get_struct_access_size() );
+    }    
+#ifdef KEY
+    if (file_header->Get_ty_info_size() != 0) {
+	ty_info_array =  (SUMMARY_TY_INFO *)
+	    (section_base + file_header->Get_ty_info_offset());
+	ty_info_array->Print_array ( f, file_header->Get_ty_info_size() );
     }
+#endif
     
     array_summary.Trace(f, sbase);
 }
@@ -805,6 +850,10 @@ SUMMARIZE<IPL>::Trace(FILE* fp)
     Get_common_shape(0)->Print_array(fp, Get_common_shape_idx()+1);
   if (Has_struct_access_entry())
     Get_struct_access(0)->Print_array(fp, Get_struct_access_idx()+1);
+#ifdef KEY
+  if (Has_ty_info_entry())
+    Get_ty_info(0)->Print_array(fp, Get_ty_info_idx()+1);
+#endif
   
 }
 

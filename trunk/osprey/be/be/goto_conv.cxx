@@ -717,6 +717,8 @@ static BOOL sanity_check_loop_body (WN * label_wn, WN * goto_wn)
   if (!PU_ftn_lang(Get_Current_PU()))
     return TRUE;
 
+  // Early goto-conversion is now OFF by default for fortran, so the above
+  // should always return true by default (bug 14188).
   INT label_num = WN_label_number(prev);
   WN * next_wn = NULL;
   for (WN *wn = label_wn; wn != goto_wn; wn = next_wn) {

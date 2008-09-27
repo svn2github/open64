@@ -418,8 +418,13 @@ extern const int * SI_resource_count_p;
 extern SI_RESOURCE * const * SI_resources_p;
 #define SI_resources SI_resources_p
 
-#else
+#elif defined(TARG_SL) || defined(TARG_MIPS)
+extern INT *SI_resource_count_p;
+#define SI_resource_count (*SI_resource_count_p)
+extern SI_RESOURCE* (*SI_resources_p)[];
+#define SI_resources (*SI_resources_p)
 
+#else
 extern const INT SI_resource_count;
 #pragma weak SI_resource_count
 
@@ -492,13 +497,23 @@ extern const SI_RRW * SI_RRW_initializer_p;
 extern const SI_RRW * SI_RRW_overuse_mask_p;
 #define SI_RRW_overuse_mask (*SI_RRW_overuse_mask_p)
 
+#elif defined(TARG_SL) || defined(TARG_MIPS)
+extern SI_RRW *SI_RRW_initializer_p;
+#define SI_RRW_initializer (*SI_RRW_initializer_p)
+extern SI_RRW *SI_RRW_overuse_mask_p;
+#define SI_RRW_overuse_mask (*SI_RRW_overuse_mask_p)
+
 #else
 
 extern const SI_RRW SI_RRW_initializer;
+#ifdef SHARED_BUILD
 #pragma weak SI_RRW_initializer
+#endif
 
 extern const SI_RRW SI_RRW_overuse_mask;
+#ifdef SHARED_BUILD
 #pragma weak SI_RRW_overuse_mask
+#endif
 
 #endif
 
@@ -548,13 +563,23 @@ extern const int * SI_issue_slot_count_p;
 extern SI_ISSUE_SLOT * const * SI_issue_slots_p;
 #define SI_issue_slots SI_issue_slots_p
 
+#elif defined(TARG_SL) || defined(TARG_MIPS)
+extern INT *SI_issue_slot_count_p;
+#define SI_issue_slot_count (*SI_issue_slot_count_p)
+
+extern SI_ISSUE_SLOT *(*SI_issue_slots_p)[];
+#define SI_issue_slots (*SI_issue_slots_p)
 #else
 
 extern const INT SI_issue_slot_count;
+#ifdef SHARED_BUILD
 #pragma weak SI_issue_slot_count
+#endif
 
 extern SI_ISSUE_SLOT* const SI_issue_slots[];
+#ifdef SHARED_BUILD
 #pragma weak SI_issue_slots
+#endif
 
 #endif
 
@@ -616,10 +641,15 @@ inline SI_RRW SI_RR_Cycle_RRW( SI_RR req, UINT cycle )
 extern SI * const * SI_top_si_p;
 #define SI_top_si SI_top_si_p
 
+#elif defined(TARG_SL) || defined(TARG_MIPS)
+extern SI* (*SI_top_si_p)[];
+#define SI_top_si (*SI_top_si_p)
 #else
 
 extern SI* const SI_top_si[];
+#ifdef SHARED_BUILD
 #pragma weak SI_top_si
+#endif
 
 #endif
 
@@ -667,6 +697,13 @@ inline SI_RR TSI_Resource_Requirement( TOP top )
 {
   return SI_top_si[(INT) top]->rr;
 }
+
+#if defined(TARG_SL)
+inline SI_RR TSI_Alternative_Resource_Requirement( TOP top )
+{
+  return SI_top_si[(INT) top]->alter_rr;
+}
+#endif 
 
 inline SI_BAD_II_SET TSI_Bad_IIs( TOP top )
 {
@@ -727,13 +764,24 @@ extern const int * SI_ID_count_p;
 extern SI * const * SI_ID_si_p;
 #define SI_ID_si SI_ID_si_p
 
+#elif defined(TARG_SL) || defined(TARG_MIPS)
+extern INT *SI_ID_count_p;
+#define SI_ID_count (*SI_ID_count_p)
+extern SI *(*SI_ID_si_p)[];
+#define SI_ID_si (*SI_ID_si_p)
+
+
 #else
 
 extern const INT SI_ID_count;
+#ifdef SHARED_BUILD
 #pragma weak SI_ID_count
+#endif
 
 extern SI* const SI_ID_si[];
+#ifdef SHARED_BUILD
 #pragma weak SI_ID_si
+#endif
 
 #endif
 

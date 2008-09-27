@@ -358,12 +358,12 @@ OPERATOR_is_scalar_store (OPERATOR opr)
 static inline BOOL
 OPERATOR_is_scalar_iload (OPERATOR opr)
 {
-    return (opr == OPR_ILOAD || opr == OPR_ILDBITS);
+    return (opr == OPR_ILOAD || opr == OPR_ILDBITS || opr == OPR_ILOADX);
 }
 static inline BOOL
 OPERATOR_is_scalar_istore (OPERATOR opr)
 {
-    return (opr == OPR_ISTORE || opr == OPR_ISTBITS);
+    return (opr == OPR_ISTORE || opr == OPR_ISTBITS || opr == OPR_ISTOREX);
 }
 
   WN * WN_copy(WN *wn);  // copy a WN node

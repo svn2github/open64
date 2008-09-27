@@ -216,6 +216,9 @@ private:
   CALLEE_STATE      *_callee_state;	// callee state
 
   PU_SIZE            _pu_size;		// estimated size of this PU
+#if defined(TARG_SL)
+  mINT32             _emit_id;          // emit id of the PU in the *.I, start from 0
+#endif // TARG_SL
 
 #ifdef KEY
   struct pu_info    *_builtin_pu_info;
@@ -246,7 +249,6 @@ private:
   INLINED_BODY_LIST  _inlined_list;     // Hold pts to all inlined callees
                                         // for this node
 #endif // _LIGHTWEIGHT_INLINER
-
 public:
 
   // Constructor
@@ -774,6 +776,11 @@ public:
 
 #endif // _LIGHTWEIGHT_INLINER
 
+#if defined(TARG_SL)
+  void Set_Emit_Id(mINT32 i) { _emit_id = i; }
+  mINT32 Emit_Id() const     { return _emit_id; }
+#endif // TARG_SL
+
 }; // IPA_NODE
 
 #ifdef KEY
@@ -1236,7 +1243,7 @@ public:
 	pool (m), edge_size (cg->Edge_Size()) {
 	UINT size = sizeof(EDGE) * edge_size;
 	data = (EDGE*) MEM_POOL_Alloc (pool, size);
-	bzero (data, size);
+	BZERO (data, size);
     }
 
     ~AUX_IPA_EDGE () { MEM_POOL_FREE (pool, data); }
@@ -1275,7 +1282,7 @@ public:
 	pool (m), node_size (cg->Node_Size()) {
 	UINT size = sizeof(NODE) * node_size;
 	data = (NODE*) MEM_POOL_Alloc (pool, size);
-	bzero (data, size);
+	BZERO (data, size);
     }
 
     ~AUX_IPA_NODE () { MEM_POOL_FREE (pool, data); }
@@ -1288,7 +1295,7 @@ public:
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
-	    bzero (((char *)data)+size, size);
+	    BZERO (((char *)data)+size, size);
         }
 #else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (node->Array_Index () < node_size, ("Subscript out of bound"));
@@ -1301,7 +1308,7 @@ public:
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
-	    bzero (data+size, size);
+	    BZERO (data+size, size);
         }
 #else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (node->Array_Index () < node_size, ("Subscript out of bound"));
@@ -1315,7 +1322,7 @@ public:
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
-	    bzero (data+size, size);
+	    BZERO (data+size, size);
         }
 #else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (n_idx < node_size, ("Subscript out of bound"));
@@ -1328,7 +1335,7 @@ public:
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
-	    bzero (data+size, size);
+	    BZERO (data+size, size);
 	}
 #else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (n_idx < node_size, ("Subscript out of bound"));

@@ -50,6 +50,9 @@
 #include "config_wopt.h"	// for WOPT_Alias_Class_Limit,
 				//     WOPT_Ip_Alias_Class_Limit
 #include "be_memop_annot.h"
+#if defined(TARG_SL)
+#include "intrn_info.h"
+#endif
 
 typedef struct bs BS;
 
@@ -228,9 +231,9 @@ enum PT_ATTR {
                                       // moved past stack pointer updates
   PT_ATTR_EXTENDED        = 0x400000, // used by alias manager to represent
                                       // a consecutive array of POINTS_TO
-  PT_ATTR_THIS_PTR        = 0x800000  // indirect access of "this" pointer
+  PT_ATTR_THIS_PTR        = 0x800000,  // indirect access of "this" pointer
 #ifdef KEY
-  ,PT_ATTR_FIELD          = 0x800000  // is a field in a struct
+  PT_ATTR_FIELD          = 0x1000000,  // is a field in a struct
 #endif
 
   // 24 of 32 bits used
@@ -268,7 +271,7 @@ friend class POINTS_TO;
 				   // gives the bit ofst/size within the
 				   // container 
   mUINT32	_iofst_kind :2;    // one of OFST_KIND. the kind of "offset" from _ptr. 
-  // the selector of union <u>
+  // the selector of the following union <u>
   mUINT32       _ptr_is_pointer:1;
   mUINT32       _ptr_is_aux_id :1;
   mUINT32       _ptr_is_coderep_id:1;
@@ -302,12 +305,10 @@ typedef enum {
   AR_NOT_ALIAS,
   AR_POSSIBLE_ALIAS,
   AR_DEFINITE_ALIAS,
-
   // memops access same bytes, not necessarily same bits
+  // aliased and with identical bytes can be dce'd
   AR_IDENTICAL_BYTES, 
-  
-  // access exactly the same bits.
-  AR_IDENTICAL,
+  AR_IDENTICAL,    // access exactly the same bits.
 } ALIAS_KIND_CODE ;
 
 class ALIAS_KIND {
@@ -612,6 +613,9 @@ public:
     Set_attr(PT_ATTR_NONE);
   }
 
+#if defined(TARG_SL)
+  ST* Get_ST_base(ST* st) const;
+#endif
   //  Return TRUE if bases are the same.   Return FALSE if don't know.
   BOOL Same_base(const POINTS_TO *) const;
   
@@ -900,12 +904,25 @@ WN *Find_addr_recur(WN *wn, const SYMTAB &stab)
 {
   if (wn == NULL) return NULL;
   switch (WN_operator(wn)) {
+#if defined(TARG_SL) 
+  case OPR_INTRINSIC_OP:
+    if(INTRN_copy_addr(WN_intrinsic(wn)))
+      return Find_addr_recur(WN_kid0(WN_kid0(wn)),stab);
+    return NULL;
+
   case OPR_PARM:
+    if ((WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn)) && WN_kid_count(wn))
+      return Find_addr_recur(WN_kid0(wn), stab);		
+    // otherwise, there is no address expression
+    return NULL;
+
+#else
     // if it is called by reference, LDID is a addr expr
     if (WN_Parm_By_Reference(wn) && WN_kid_count(wn))
       return Find_addr_recur(WN_kid0(wn), stab);
     // otherwise, there is no address expression
     return NULL;
+#endif
   case OPR_LDA:
     return wn;
   case OPR_LDID:

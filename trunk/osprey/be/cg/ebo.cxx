@@ -181,7 +181,12 @@ static BOOL Delete_Dead_LRA_Spill(OP *op, BS **bs);
 /* Global Data:								 */
 /* ===================================================================== */
 
+#if defined(TARG_SL)
+/* set ebo default level to 0 to workaround deposit bug */
+INT32 EBO_Opt_Level_Default = 0;
+#else 
 INT32 EBO_Opt_Level_Default = 5;
+#endif
 INT32 EBO_Opt_Level = 5;
 #ifdef KEY
 INT32 EBO_Opt_Mask = -1;
@@ -206,6 +211,16 @@ BOOL EBO_in_peep = FALSE;
 /* Are OMEGA entries present? */
 BOOL EBO_in_loop = FALSE;
 
+#ifdef KEY
+#if !defined(TARG_SL)
+BOOL EBO_can_delete_branch_delay_OP = TRUE;
+#else
+BOOL EBO_can_delete_branch_delay_OP = FALSE;
+#endif 
+BOOL EBO_no_liveness_info_available = FALSE;
+BOOL EBO_optimize_single_BB = FALSE;
+#endif
+
 TN_MAP EBO_tninfo_table;
 MEM_POOL EBO_pool;
 
@@ -214,7 +229,7 @@ INT EBO_tninfo_entries_reused = 0;
 INT EBO_num_opinfo_entries = 0;
 INT EBO_opinfo_entries_reused = 0;
 
-char *EBO_trace_pfx;
+const char *EBO_trace_pfx;
 BOOL EBO_Trace_Execution    = FALSE;
 BOOL EBO_Trace_Optimization = FALSE;
 BOOL EBO_Trace_Block_Flow   = FALSE;
@@ -259,6 +274,10 @@ typedef union {
 #define EBO_REG_ENTRY_def_count(re)		(re.s.def_count)
 #define EBO_REG_ENTRY_reg_assigned(re)		(re.s.reg_assigned)
 #define EBO_REG_ENTRY_last_use_OP_num(re)	(re.s.last_use_op_num)
+
+#ifdef KEY
+static void EBO_Adjust_Pred_Branch_Target (BB *bb);
+#endif
 
 // Determine the change in register pressure at each OP in the BB.  Based on
 // code in hb_sched.cxx.
@@ -589,6 +608,11 @@ BOOL TN_live_out_of(TN *tn, BB *bb)
     fprintf(TFile,"\n");
   }
 
+#ifdef KEY
+  if (EBO_no_liveness_info_available)
+    return TRUE;
+#endif
+
   if (EBO_in_peep) {
     if (EBO_Trace_Data_Flow) {
       #pragma mips_frequency_hint NEVER
@@ -763,7 +787,7 @@ static void EBO_Start()
     Regs_Delta_Map[cl] = OP_MAP32_Create();
   }
   
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || (defined(TARG_MIPS) && !defined(TARG_SL))
   EBO_Special_Start( &MEM_local_pool );
 #endif 
 }
@@ -1031,7 +1055,11 @@ merge_memory_offsets( OP *op,
   } else {
     adjust_sym = immed_sym;
     adjust_tn = immed_tn;
+#if defined(TARG_X8664)
+    adjust_offset = TN_value(additive_immed_tn);
+#else
     adjust_offset = TN_Value(additive_immed_tn);
+#endif
     if (OP_isub(index_op)) adjust_offset = -adjust_offset;
     adjust_offset += immed_offset;
   }
@@ -1138,7 +1166,7 @@ find_duplicate_mem_op (BB *bb,
     fprintf(TFile,"%sEnter find_duplicate_mem_op\n",EBO_trace_pfx);
   }
 
-#ifndef TARG_IA64 
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_MIPS)
   // Take OP_prefetch into account.
   if( OP_prefetch(op) ){
     return Combine_L1_L2_Prefetches( op, opnd_tn, opnd_tninfo );
@@ -1358,7 +1386,11 @@ find_duplicate_mem_op (BB *bb,
         }
       } else if (!OP_store(op) && !OP_store(pred_op)) {
         if ( (intervening_opinfo != NULL) &&
-            (OP_cond_def(pred_op) || (!EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
+            (
+#if defined(TARG_IA64)
+	     OP_cond_def(pred_op) || 
+#endif
+	     (!EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                      opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                      OP_opnd(op,OP_PREDICATE_OPND),
                                      actual_tninfo[OP_PREDICATE_OPND])))) {
@@ -1373,7 +1405,11 @@ find_duplicate_mem_op (BB *bb,
           hash_op_matches = FALSE;
           break;
         }
-        if ((OP_cond_def(pred_op) || !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
+        if ((
+#if defined(TARG_IA64)
+	     OP_cond_def(pred_op) || 
+#endif
+	     !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                      opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                      OP_opnd(op,OP_PREDICATE_OPND),
                                      actual_tninfo[OP_PREDICATE_OPND])) &&
@@ -1393,7 +1429,11 @@ find_duplicate_mem_op (BB *bb,
 
         }
       } else if (!OP_store(op) && OP_store(pred_op)) {
-        if ((OP_cond_def(pred_op)|| !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
+        if ((
+#if defined(TARG_IA64)
+	     OP_cond_def(pred_op) || 
+#endif
+	     !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                      opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                      OP_opnd(op,OP_PREDICATE_OPND),
                                      actual_tninfo[OP_PREDICATE_OPND])) &&
@@ -1628,7 +1668,9 @@ find_duplicate_mem_op (BB *bb,
       if (must_not_delete==FALSE) op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo);
 #else
     op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo
+#if defined(TARG_X8664)
 					   , actual_tninfo
+#endif
 		      );
 #endif // TARG_IA64
       }
@@ -1680,6 +1722,18 @@ do_next:
 }
 
 
+static BOOL
+OP_can_change(OP* op)
+{
+#if defined(TARG_SL)
+  if ((OP_code(op) == TOP_C3_mvtacc) 
+      || (OP_code(op) == TOP_c3_mvtacc)
+      || (OP_code(op) == TOP_c3_mvfacc)
+      || (OP_code(op) == TOP_C3_mvfacc))
+    return FALSE;
+#endif
+  return TRUE;
+}
 
 
 /* 
@@ -1782,6 +1836,7 @@ find_duplicate_op (BB *bb,
        */
                       && OP_bb(pred_op) != NULL
 #endif
+                      && OP_can_change(op) 
                       && (OP_results(op) == OP_results(pred_op))
 		      && (OP_opnds(op) == OP_opnds(pred_op))
 		      && (OP_results(op) == 2 || OP_code(op) == OP_code(pred_op));
@@ -1871,7 +1926,11 @@ find_duplicate_op (BB *bb,
 
     if (hash_op_matches && OP_has_predicate(op)) {
      /* Check predicates for safety. */
-        if ((OP_cond_def(pred_op) || !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
+        if ((
+#if defined(TARG_IA64)
+	     OP_cond_def(pred_op) || 
+#endif
+	     !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                      opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                      OP_opnd(op,OP_PREDICATE_OPND),
 	 		             actual_tninfo[OP_PREDICATE_OPND])) &&
@@ -2298,9 +2357,11 @@ Find_BB_TNs (BB *bb)
 	    TN_is_register(tn_replace) &&
 	    TN_register(tn_replace) != REGISTER_UNDEFINED &&
 	    OP_opnd_size( op, opndnum ) == 8 ){
-	  const ISA_REGISTER_CLASS cl = TN_register_class( tn );
-	  const REGISTER reg = TN_register( tn_replace );
-	  const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(cl);
+	  const REGISTER reg = TN_register(tn_replace);
+	  const REGISTER_SET regs =
+		 REGISTER_SUBCLASS_members(ISA_REGISTER_SUBCLASS_m32_8bit_regs);
+	  Is_True(TN_register_class(tn) == ISA_REGISTER_CLASS_integer,
+		  ("Find_BB_TNs: TN not integer register class"));
 
 	  if( !REGISTER_SET_MemberP( regs, reg ) )
 	    tn_replace = NULL;
@@ -2868,6 +2929,15 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
 #else
     // If op was replaced, then op->bb could be NULL. Just skip this op.
     if (op == NULL || op->bb == NULL) continue;
+    // Don't delete OP in the branch delay slot if EBO is run after delay slot
+    // filling.
+    if (!EBO_can_delete_branch_delay_OP &&
+	PROC_has_branch_delay_slot() &&
+	BB_last_op(bb) == op &&
+	OP_prev(op) != NULL &&
+	OP_xfer(OP_prev(op))) {
+      goto op_is_needed;
+    }
 #endif
 
     if (OP_bb(op) != bb) {
@@ -3018,6 +3088,14 @@ can_be_removed:
     if (opinfo->in_delay_slot) {
       OP_Change_To_Noop(op);
     } else {
+#ifdef KEY
+      // If deleting the first OP in the BB, make sure all predecessor BBs
+      // branch to the correct OP.
+      if (BB_first_op(bb) == op &&
+	  PROC_has_branch_delay_slot()) {
+	EBO_Adjust_Pred_Branch_Target(bb);
+      }
+#endif
       BB_Remove_Op(bb, op);
     }
     opinfo->in_op = NULL;
@@ -3057,7 +3135,10 @@ op_is_needed:
         BOOL is_may_def = tninfo->in_op?OP_cond_def(tninfo->in_op):FALSE ;
         
 	while (next_tninfo != NULL) {
-          if (is_may_def &&
+          if (
+#if defined(TARG_IA64)
+	      is_may_def &&
+#endif
               (!EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?tninfo->predicate_tninfo->local_tn:True_TN,
                                          tninfo->predicate_tninfo,
                                          (next_tninfo->predicate_tninfo != NULL)?
@@ -3124,7 +3205,11 @@ op_is_needed:
           if ((next_tninfo->in_op != NULL) &&
               (next_tninfo->omega == tninfo->omega)) {
             BOOL is_may_def = OP_cond_def(next_tninfo ->in_op) ;
-            if (!is_may_def && EBO_predicate_dominates((next_tninfo->predicate_tninfo != NULL)?
+            if (
+#if defined(TARG_IA64)
+		!is_may_def && 
+#endif
+		EBO_predicate_dominates((next_tninfo->predicate_tninfo != NULL)?
                                                next_tninfo->predicate_tninfo->local_tn:True_TN,
                                          next_tninfo->predicate_tninfo,
                                          (tninfo->predicate_tninfo != NULL)?tninfo->predicate_tninfo->local_tn:True_TN,
@@ -3212,6 +3297,14 @@ op_is_needed:
           Print_OP_No_SrcLine(op);
         }
 
+#ifdef KEY
+	// If deleting the first OP in the BB, make sure all predecessor BBs
+	// branch to the correct OP.
+	if (BB_first_op(bb) == op &&
+	    PROC_has_branch_delay_slot()) {
+	  EBO_Adjust_Pred_Branch_Target(bb);
+	}
+#endif
         BB_Remove_Op(bb, op);
 #ifdef TARG_IA64
         Reset_BB_scheduled(bb);
@@ -3264,6 +3357,9 @@ EBO_Add_BB_to_EB (BB * bb)
  /* Add this block to the current Extended Block (EB). */
   normal_conditions = Find_BB_TNs (bb);
   if (normal_conditions &&
+#ifdef KEY
+      !EBO_optimize_single_BB &&
+#endif
       !CG_localize_tns) {
    /* Walk through the successors, trying to grow the EB. */
     FOR_ALL_BB_SUCCS(bb, succ_list) { 
@@ -3293,7 +3389,9 @@ EBO_Add_BB_to_EB (BB * bb)
     fprintf(TFile,"%sEBO optimization at BB:%d\n",EBO_trace_pfx,BB_id(bb));
   }
 
+#if !defined(TARG_SL)
   EBO_Remove_Unused_Ops(bb, normal_conditions);
+#endif
 
  /* Remove information about TN's and OP's in this block. */
   backup_tninfo_list(save_last_tninfo);
@@ -3358,6 +3456,8 @@ EBO_Process ( BB *first_bb )
   if (EBO_in_peep) // Can do this once after all transformations
     Redundancy_Elimination();
 #endif
+
+#if !defined(TARG_SL)
   for (bb = first_bb; bb != NULL; bb = BB_next(bb)) {
     RID *bbrid;
     if (( bbrid = BB_rid( bb )) &&
@@ -3373,6 +3473,7 @@ EBO_Process ( BB *first_bb )
       if (EBO_in_loop) break;
     }
   }
+#endif
 
  /* Clear the bb flag, in case some other phase uses it. */
   clear_bb_flag (first_bb);
@@ -3444,6 +3545,14 @@ EBO_Pre_Process_Region ( RID *rid )
   EBO_in_peep = FALSE;
 
   EBO_in_loop = FALSE;
+#ifdef KEY
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+  EBO_can_delete_branch_delay_OP = TRUE;
+#endif
+  EBO_no_liveness_info_available = FALSE;
+  EBO_optimize_single_BB = FALSE;
+#endif
+
 
   if ((EBO_Opt_Level < 5) && ((EBO_Opt_Level > 0) || (EBO_Opt_Level != -5))) return;
 
@@ -3465,6 +3574,14 @@ EBO_before_unrolling(BB_REGION *bbr )
   EBO_in_peep = FALSE;
 
   EBO_in_loop = TRUE;
+
+#ifdef KEY
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+  EBO_can_delete_branch_delay_OP = TRUE;
+#endif
+  EBO_no_liveness_info_available = FALSE;
+  EBO_optimize_single_BB = FALSE;
+#endif
 
   if ((EBO_Opt_Level < 4) && ((EBO_Opt_Level > 0) || (EBO_Opt_Level != -4))) return;
 
@@ -3493,6 +3610,13 @@ EBO_after_unrolling(BB_REGION *bbr )
   EBO_in_after_unrolling = TRUE;
   EBO_in_peep = FALSE;
 
+#ifdef KEY
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+  EBO_can_delete_branch_delay_OP = TRUE;
+#endif
+  EBO_no_liveness_info_available = FALSE;
+  EBO_optimize_single_BB = FALSE;
+#endif
   EBO_in_loop = TRUE;
 
   if ((EBO_Opt_Level < 3) && ((EBO_Opt_Level > 0) || (EBO_Opt_Level != -3))) return;
@@ -3522,6 +3646,13 @@ EBO_Process_Region ( RID *rid )
   EBO_in_after_unrolling = FALSE;
   EBO_in_peep = FALSE;
 
+#ifdef KEY
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+  EBO_can_delete_branch_delay_OP = TRUE;
+#endif
+  EBO_no_liveness_info_available = FALSE;
+  EBO_optimize_single_BB = FALSE;
+#endif
   EBO_in_loop = FALSE;
 
   if ((EBO_Opt_Level < 2) && ((EBO_Opt_Level > 0) || (EBO_Opt_Level != -2))) return;
@@ -3544,6 +3675,13 @@ EBO_Post_Process_Region ( RID *rid )
   EBO_in_after_unrolling = FALSE;
   EBO_in_peep = TRUE;
 
+#ifdef KEY
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+  EBO_can_delete_branch_delay_OP = TRUE;
+#endif
+  EBO_no_liveness_info_available = FALSE;
+  EBO_optimize_single_BB = FALSE;
+#endif
   EBO_in_loop = FALSE;
 
   if ((EBO_Opt_Level < 1) && ((EBO_Opt_Level >= 0) || (EBO_Opt_Level != -1))) return;
@@ -3574,6 +3712,43 @@ EBO_Post_Process_Region ( RID *rid )
 }
 
 #ifdef KEY
+// Run EBO after second instruction scheduling phase (after register
+// allocation).
+void
+EBO_Post_Process_Region_2 ( RID *rid )
+{
+  BB *first_bb = (rid) ? CGRIN_first_bb(RID_cginfo( rid )) : REGION_First_BB;
+
+  EBO_in_pre  = FALSE;
+  EBO_in_before_unrolling = FALSE;
+  EBO_in_after_unrolling = FALSE;
+  EBO_in_peep = TRUE;
+
+  EBO_in_loop = FALSE;
+
+#if defined(TARG_MIPS) && !defined(TARG_SL)
+  EBO_can_delete_branch_delay_OP = TRUE;
+#endif
+
+  EBO_can_delete_branch_delay_OP = FALSE;
+  EBO_no_liveness_info_available = TRUE;
+  EBO_optimize_single_BB = TRUE;
+
+  if ((EBO_Opt_Level < 6) && ((EBO_Opt_Level >= 0) || (EBO_Opt_Level != -6)))
+    return;
+
+  /* compute live-in sets for physical registers */
+  MEM_POOL_Push(&MEM_local_pool);
+  REG_LIVE_Analyze_Region();
+
+  clear_bb_flag (first_bb);
+  removed_ops = 0;
+  EBO_Process (first_bb);
+  REG_LIVE_Finish();
+
+  MEM_POOL_Pop(&MEM_local_pool);
+}
+
 #ifdef TARG_X8664
 // If OP references a symbol called lra_spill_temp_xxx, return xxx; else return
 // -1.
@@ -3814,3 +3989,31 @@ delete_useless_store_op (EBO_OP_INFO *opinfo)
 }
 #endif
 #endif
+
+// For each of BB's predecessors, if it branches to any OP other than the first
+// OP in BB, retarget it to branch to one OP earlier.
+static void
+EBO_Adjust_Pred_Branch_Target (BB *bb)
+{
+  BB *fall_thru_pred = BB_Fall_Thru_Predecessor(bb);
+  BBLIST *edge;
+
+  FOR_ALL_BB_PREDS(bb, edge) {
+    BB *pred = BBLIST_item(edge);
+    if (pred != fall_thru_pred) {
+      OP *xfer_op = BB_last_op(pred);
+      if (!OP_xfer(xfer_op))
+	xfer_op = OP_prev(xfer_op);
+      Is_True(xfer_op != NULL && OP_xfer(xfer_op),
+	      ("EBO_Adjust_Pred_Branch_Target: cannot find xfer_op"));
+      for (int i = 0; i < OP_opnds(xfer_op); i++) {
+	TN *opnd_tn = OP_opnd(xfer_op, i);
+	if (TN_is_label(opnd_tn) &&
+	    TN_offset(opnd_tn) > 0) {
+	  TN *new_label_tn = Gen_Adjusted_TN(opnd_tn, -4);
+	  Set_OP_opnd(xfer_op, i, new_label_tn);
+	}
+      }
+    }
+  }
+}

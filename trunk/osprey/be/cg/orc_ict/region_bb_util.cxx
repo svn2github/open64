@@ -856,12 +856,16 @@ GTN_SET *Region_Def_Reach_In(REGION *rgn, MEM_POOL *pool){
 //
 //  Divide_BB: Divide one basic block into two, the boundary is indicated by point.
 //
+//  If force is TRUE, this routine will always create a new BB
+//      even if the point is the last op in the bb. -- added by jianxin.lai@hp
 //=============================================================================
-BB *RGN_Divide_BB(BB *bb, OP *point)
+BB *RGN_Divide_BB(BB *bb, OP *point, BOOL force)
 {
     Is_True( OP_bb(point) == bb, ("Divide_BB: op is not in bb!"));
     
-    if( point == BB_last_op(bb) )   return NULL;
+    // Alwayse create a new BB if force is ture 
+    //   even if the point is the last op
+    if( point == BB_last_op(bb) && ! force )   return NULL;
 
     BB* bottom_bb = RGN_Gen_And_Insert_BB_After(bb);
     if (BB_exit(bb)) {

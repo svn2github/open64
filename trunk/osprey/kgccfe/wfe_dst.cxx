@@ -73,7 +73,9 @@
 static char *rcs_id = "$Source: kgccfe/SCCS/s.wfe_dst.cxx $ $Revision: 1.49 $";
 #endif /* _KEEP_RCS_ID */
 
+#if ! defined(BUILD_OS_DARWIN)
 #include <values.h>
+#endif /* ! defined(BUILD_OS_DARWIN) */
 
 #include "defs.h"
 #include "glob.h"
@@ -118,8 +120,12 @@ extern FILE *tree_dump_file; //for debugging only
 
 static BOOL dst_initialized = FALSE;
 
+#ifdef __MINGW32__
+static char  cwd_buffer[MAXPATHLEN];
+#else
 #define MAX_CWD_CHARS (256 - (MAXHOSTNAMELEN+1))
 static char  cwd_buffer[MAX_CWD_CHARS+MAXHOSTNAMELEN+1];
+#endif
 static char *current_working_dir = &cwd_buffer[0];
 static char *current_host_dir = &cwd_buffer[0];
 
@@ -218,24 +224,14 @@ DST_get_context(tree intree)
     tree ltree = intree;
     struct mongoose_gcc_DST_IDX l_tree_idx;
     DST_INFO_IDX l_dst_idx;
-//#ifdef KEY
-//    BOOL continue_looping = TRUE;
-//    
-//    while(ltree && continue_looping) {
-//      continue_looping = FALSE;
-//#else
-    while(ltree) {
-//#endif /* KEY */
+
+    while (ltree) {
 	switch(TREE_CODE(ltree)) {
 	case BLOCK:
 	    // unclear when this will happen, as yet
 	    // FIX
             DevWarn("Unhandled BLOCK scope of decl/var");
 
-//#ifdef KEY
-//	    ltree = NULL;
-//#endif /* KEY */
-//	    break;
             return comp_unit_idx;
 	case FUNCTION_DECL:
 	    // This is a normal case!
@@ -254,7 +250,7 @@ DST_get_context(tree intree)
 	    // this incomplete type and the new type will have a new entry
 	    // in the DST table. To mimic whatever Gcc does, we are 
 	    // required to pass a valid DST index here.
-	    if (l_dst_idx == DST_INVALID_IDX)
+	    if (DST_IS_NULL(l_dst_idx))
 	        l_dst_idx.byte_idx = l_dst_idx.block_idx = 0;
 #endif
 	    return l_dst_idx;
@@ -309,6 +305,9 @@ DST_get_context(tree intree)
 static UINT
 Get_Dir_Dst_Info (char *name)
 {
+#ifdef TARG_SL
+	if (name == NULL) return 0;
+#endif
         std::vector< std::pair < char*, UINT > >::iterator found;
 	// assume linear search is okay cause list will be small?
         for (found = dir_dst_list.begin(); 
@@ -966,7 +965,7 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_name(var_st),
 			     type,    
 			     0,  
-			     (void*)(INTPTR) ST_st_idx(var_st), 
+			     ST_st_idx(var_st), 
 			     DST_INVALID_IDX,        
 			     FALSE,                  // is_declaration
 			     ST_sclass(var_st) == SCLASS_AUTO,
@@ -995,7 +994,7 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_name(var_st),
 			     type,    
 			     0,  
-			     (void*)(INTPTR) ST_st_idx(var_st), 
+			     ST_st_idx(var_st), 
 			     DST_INVALID_IDX,        
 			     FALSE,                  // is_declaration
 			     ST_sclass(var_st) == SCLASS_AUTO,
@@ -1373,7 +1372,11 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		  // not created yet, so create
 		  dst_idx = DST_mk_reference_type(
 		       	inner_dst,    // type ptd to
+#ifdef TARG_NVISA
+                        DW_ADDR_global_space, // default to global space
+#else
 			DW_ADDR_none, // no address class
+#endif
 			tsize);
                                 
                   DST_append_child(current_scope_idx,dst_idx);
@@ -1409,7 +1412,13 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		  cp_to_dst_from_tree(&inner_dst,&inner);
 		  dst_idx = DST_mk_pointer_type(
 		       	inner_dst,    // type ptd to
+#ifdef TARG_NVISA
+                        // we can't always know at this time what space
+                        // will be referred to, but default to global.
+                        DW_ADDR_global_space, // default to global space
+#else
 			DW_ADDR_none, // no address class
+#endif
 			tsize);
                                 
                   DST_append_child(current_scope_idx,dst_idx);
@@ -1809,7 +1818,7 @@ DST_Create_var(ST *var_st, tree decl)
         ST_name(var_st),
         type,    // user typed type name here (typedef type perhaps).
 	0,  // offset (fortran uses non zero )
-        (void*)(INTPTR) ST_st_idx(var_st), // underlying type here, not typedef.
+        ST_st_idx(var_st), // underlying type here, not typedef.
         DST_INVALID_IDX,        // abstract origin
         FALSE,                  // is_declaration
 #ifndef KEY
@@ -1883,7 +1892,7 @@ DST_enter_param_vars(tree fndecl,tree parameter_list)
 		src,
 		name,
 		type_idx,
-		(void* )(INTPTR)ST_st_idx(st), // so backend can get location
+		ST_st_idx(st), // so backend can get location
 		DST_INVALID_IDX, // not inlined
 		DST_INVALID_IDX, // only applies to C++ (value)
 		FALSE, // true if C++ optional param
@@ -1963,7 +1972,7 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
         ST_name(func_st),
         ret_dst,        	// return type
         DST_INVALID_IDX,        // Index to alias for weak is set later
-        (void*)(INTPTR) ST_st_idx(func_st),  // index to fe routine for st_idx
+        ST_st_idx(func_st),  // index to fe routine for st_idx
         DW_INL_not_inlined,     // applies to C++
         DW_VIRTUALITY_none,     // applies to C++
         0,                      // vtable_elem_location
@@ -1974,7 +1983,10 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
 #endif
         ! ST_is_export_local(func_st) );  // is_external
     // producer routines thinks we will set pc to fe ptr initially
+#if !defined(TARG_NVISA)
+    // Removing this should also be OK for other TARG.
     DST_RESET_assoc_fe (DST_INFO_flag(DST_INFO_IDX_TO_PTR(dst)));
+#endif
     DST_append_child (current_scope_idx, dst);
 
 
@@ -1994,7 +2006,8 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
     // For function declarations like 
     //   foo (i) int i; { ... }
     // isprotyped will be false but, we still want to generate DST info. 
-    if (fndecl) {
+    // However, void argument lists may occur, so ignore those.
+    if (fndecl && DECL_ARGUMENTS(fndecl)) {
 #endif /* KEY */
        tree parms = DECL_ARGUMENTS(fndecl);
        if(!parms) {
@@ -2051,6 +2064,7 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
       int host_name_length = 0;
       
       current_host_dir = &cwd_buffer[0];
+#ifndef __MINGW32__
       if (gethostname(current_host_dir, MAXHOSTNAMELEN) == 0)
       {
 	 /* Host name is ok */
@@ -2064,6 +2078,7 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
 	 }
       }
       current_host_dir[host_name_length++] = ':';  /* Prefix cwd with ':' */
+#endif /* !__MINGW32__ */
       current_working_dir = &cwd_buffer[host_name_length];
    }
    else /* No debugging */
@@ -2123,12 +2138,29 @@ WFE_Set_Line_And_File (UINT line, const char *file)
 	char buf[256];
 	if (file_name == file) {
 		// no path
+#ifdef TARG_SL
+		/* NOTE! Wenbo/2007-04-26: We do not want a explicit current
+		   working dir if no path specified and using default(compile
+		   unit's) current working dir can save some space. GAS and GDB
+		   expect that too. */
+		dir = NULL;
+	}
+#else
+#ifdef TARG_NVISA
+                dir = ".";
+#else
 		dir = current_working_dir;
+#endif
 	}
 	else if (strncmp(file, "./", 2) == 0) {
 		// current dir
+#ifdef TARG_NVISA
+                dir = ".";
+#else
 		dir = current_working_dir;
+#endif
 	}
+#endif //TARG_SL
 	else {
 		// copy specified path
 		strcpy (buf, file);

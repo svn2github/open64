@@ -43,10 +43,10 @@
 /////////////////////////////////////
 
 
-//  $Revision$
-//  $Date$
-//  $Author$
-//  $Source$
+//  $Revision: 1.2 $
+//  $Date: 02/11/07 23:41:29-00:00 $
+//  $Author: fchow@keyresearch.com $
+//  $Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra.cxx $
 
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -54,7 +54,7 @@
 #pragma hdrstop
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon/SCCS/s.gra.cxx $ $Revision: 1.2 $";
 #endif
 
 #include "defs.h"
@@ -75,6 +75,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_grant.h"
 #include "gra_cflow.h"
 #include "gra_trace.h"
+#ifdef TARG_SL2 //para_region_mgr
+#include "gra_para_region.h"
+#endif 
 
 
 static MEM_POOL  GRA_pool_struct;
@@ -85,12 +88,13 @@ INT GRA_pu_num = 0;
 float GRA_call_split_freq;
 float GRA_spill_count_factor;
 
-static BOOL gra_spill_around_save_tn_copies;
 #ifdef TARG_IA64
-//extern BOOL fat_self_recursive;
 BOOL gra_self_recursive = FALSE;
 extern char *Cur_PU_Name;
 #endif
+
+static BOOL gra_spill_around_save_tn_copies;
+
 
 /////////////////////////////////////
 void 
@@ -199,7 +203,6 @@ Initialize_Flags()
   GRA_call_split_freq = atof(GRA_call_split_freq_string);
   GRA_spill_count_factor = atof(GRA_spill_count_factor_string);
 }
-
 
 #ifdef TARG_IA64
 void 
@@ -361,7 +364,8 @@ void Print_GTN()
    fprintf(stdout,"**************End            GTN  ********\n" );
 }
 
-#endif
+#endif  // TARG_IA64
+
 /////////////////////////////////////
 void
 GRA_Allocate_Global_Registers( BOOL is_region )
@@ -379,6 +383,9 @@ GRA_Allocate_Global_Registers( BOOL is_region )
   lrange_mgr.Initialize();
   gbb_mgr.Initialize();
   gra_region_mgr.Initialize();
+#ifdef TARG_SL2 //para_region_mgr
+  gra_para_region_mgr.Initialize();
+#endif 
   GRA_Spill_Initialize();
   GRA_Trace_Initialize();
 #ifdef TARG_IA64
@@ -393,10 +400,16 @@ GRA_Allocate_Global_Registers( BOOL is_region )
   // Dump out OPs after GRA
   if (Get_Trace(TKIND_IR, TP_GRA, REGION_First_BB))
     Trace_IR(TP_GRA, "GRA0", NULL);
+
   GRA_Spill();      // Actually add the spills.
   GRA_Delete();
 
   GRA_GRANT_Unused_Caller_Saved();
+
+
+#if defined (TARG_SL) //minor_reg_alloc
+  gra_para_region_mgr.Set_Region_LRA_Budget();
+#endif 
 
   lrange_sub_mgr.Finalize();
   lrange_mgr.Finalize();
@@ -407,7 +420,6 @@ GRA_Allocate_Global_Registers( BOOL is_region )
 
 #ifdef TARG_IA64
   Gen_UNAT_Spills_Entry_And_Exit_BB();
-
   GRA_Optimize_Restore();
 #endif
 
