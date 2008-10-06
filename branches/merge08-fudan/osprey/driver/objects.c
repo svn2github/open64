@@ -173,7 +173,11 @@ find_crt_path (char *crtname)
          * not the fake objects built by ipl.  
          */
         ld_phase = determine_ld_phase (FALSE);
-        if (ld_phase == P_ldplus || ld_phase == P_ld) {
+        if (ld_phase == P_ldplus ||
+#if defined(VENDOR_FUDAN)
+            ld_phase == P_gcj ||
+#endif
+            ld_phase == P_ld) {
                 /* it is up to gcc or g++ to link objects, let gcc/g++ to 
                  * determine the path of crt 
                  */

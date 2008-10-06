@@ -589,7 +589,10 @@ Do_Handlers (INT cleanups)
      ) processing_handler = true;
 #endif
 #if defined(VENDOR_FUDAN)
-  try_monitor.Set_Index_Last();   
+  if(lang_cplus)
+    try_monitor.Set_Index_Last();   
+  if(lang_java)
+    try_monitor.Set_Index_First();
   while (!try_monitor.Empty()) {
 #else
   while (handler_info_i != -1) {
@@ -637,10 +640,19 @@ Do_Handlers (INT cleanups)
 #endif
 #ifdef KEY
 #if defined(VENDOR_FUDAN)
+  if(lang_cplus)
+  { 
     try_monitor.Set_Index_Prev();	
     try_monitor.PopBack();	
     if(try_monitor.LastIsCurrent())
-        break;
+      break;
+  }
+  if(lang_java)
+  { 
+    try_monitor.Set_Index_Next();
+    if(try_monitor.Index_At_End())
+      break;
+  } 
 #else
     handler_stack.pop();
 #endif
@@ -650,7 +662,8 @@ Do_Handlers (INT cleanups)
   processing_handler = false;
   Do_Cleanups_For_EH(cleanups);
 #if defined(VENDOR_FUDAN)
-//  try_monitor.Clean_Up();	
+  if(lang_java)  
+    try_monitor.Clean_Up();	
 #endif
   if (key_exceptions) 
     FmtAssert (cleanup_list_for_eh.size() == cleanups,

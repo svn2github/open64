@@ -1957,12 +1957,17 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
         ld_phase != P_gcj &&
 #endif
         ld_phase != P_ld && ld_phase != P_ldplus) {
-            if (invoked_lang == L_CC) {
-            add_library(args, "stdc++");
-            }
-        add_library (args, "gcc");
-        add_library (args, "c");
-        add_library(args, "gcc");
+      if (invoked_lang == L_CC) {
+        add_library(args, "stdc++");
+      }
+#if defined(VENDOR_FUDAN)
+      if (invoked_lang == L_java) {
+        add_library(args, "gcj");
+      }
+#endif
+      add_library (args, "gcc");
+      add_library (args, "c");
+      add_library (args, "gcc");
     }
 #else
 	if (ipa == TRUE) {
@@ -2853,6 +2858,11 @@ determine_ld_phase (boolean run_ipa) {
         else if (invoked_lang == L_cc) {
                 ldphase = P_ld;     // let gcc let care
         } 
+#if defined(VENDOR_FUDAN)
+        else if (invoked_lang == L_java) {
+                ldphase = P_gcj;
+        }
+#endif
         else {
                 // using ld directly so we have more control on the link-phase.
                 ldphase = P_collect;
