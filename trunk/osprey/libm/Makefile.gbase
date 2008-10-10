@@ -62,7 +62,13 @@ endif
 ifeq ($(BUILD_OPTIMIZE), NODEBUG)
 OPTIMIZER = -O3
 endif
-#CFLAGS += -fno-fast-stdlib
+
+ifeq ($(BUILD_COMPILER), OSP)
+OPTIMIZER += -fno-fast-stdlib
+endif
+ifeq ($(BUILD_COMPILER), PSC)
+OPTIMIZER += -fno-fast-stdlib
+endif
 
 ifeq ($(BUILD_VARIANT), LIBMV)
 LCDEFS += -D_SW_PIPELINE

@@ -91,8 +91,11 @@ ifeq ($(BUILD_OPTIMIZE), NODEBUG)
 OPTIMIZER = -O3
 F90FLAGS =
 endif
-ifneq ($(BUILD_COMPILER), GNU)
-CFLAGS += -fno-fast-stdlib
+ifeq ($(BUILD_COMPILER), OSP)
+OPTIMIZER += -fno-fast-stdlib
+endif
+ifeq ($(BUILD_COMPILER), PSC)
+OPTIMIZER += -fno-fast-stdlib
 endif
 
 # use the f90 compiler for fortran

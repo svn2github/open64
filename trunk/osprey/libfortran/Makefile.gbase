@@ -89,7 +89,13 @@ ifeq ($(BUILD_OPTIMIZE), NODEBUG)
 OPTIMIZER = -O3
 F90FLAGS =
 endif
-CFLAGS += -funwind-tables # -fno-fast-stdlib
+CFLAGS += -funwind-tables 
+ifeq ($(BUILD_COMPILER), OSP)
+OPTIMIZER += -fno-fast-stdlib
+endif
+ifeq ($(BUILD_COMPILER), PSC)
+OPTIMIZER += -fno-fast-stdlib
+endif
 
 FC = $(F90) -c -Wf,-eQ
 

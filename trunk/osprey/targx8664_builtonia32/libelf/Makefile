@@ -27,4 +27,10 @@ BUILD_HOST     = IA32
 include $(BUILD_TOT)/Makefile.gsetup
 
 LCFLAGS += -fpic
-OPTIMIZER = -O3 -fno-fast-stdlib
+OPTIMIZER = -O3 
+ifeq ($(BUILD_COMPILER), OSP)
+OPTIMIZER += -fno-fast-stdlib
+endif
+ifeq ($(BUILD_COMPILER), PSC)
+OPTIMIZER += -fno-fast-stdlib
+endif
