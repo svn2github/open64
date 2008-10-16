@@ -4972,35 +4972,11 @@ Add_CHK_Arcs(BB *bb)
       barrier = BB_first_op(bb);
     }
     
-    OP* sp_adj = NULL;
-    if (BB_exit(bb)) {
-       sp_adj = BB_exit_sp_adj_op (bb);
-    }
-
     for(OP* op = BB_first_op(bb); op; op = OP_next(op)){
         if(barrier == op) continue;
         if(barrier){
             if(OP_chk(barrier)){
-               INT32 latency = 0;
-               if (sp_adj == op) {
-                  /* We change the latency to be 1 so that the 
-                   * sp-adj and chk will not in the same 
-                   * instruction group. If they are in same 
-                   * instruction group, e.g  
-                   *    chk.a.clr 
-                   *    add sp=96,sp ;;
-                   *    ...
-                   * that the block that contain check will be 
-                   * splitted at the chk-cycle boundaries, and hence 
-                   * the sp-adjust will reside in an non-exit block.  
-                   * However, sp-adj is assumed to be in exit-block 
-                   * almost anywhere in the CG.
-                   */      
-                   latency = 1;
-                   break;
-                }
-                new_arc_with_latency (latency == 0 ? CG_DEP_POSTCHK : CG_DEP_MISC, 
-                                      barrier, op, latency, 0, 0, FALSE);
+                new_arc_with_latency (CG_DEP_POSTCHK , barrier, op, 0, 0, 0, FALSE);
             } else if(OP_xfer(barrier) || OP_call(barrier)){
                 new_arc_with_latency(CG_DEP_POSTBR, barrier, op, 0, 0, 0, FALSE);
             }else{
