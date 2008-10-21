@@ -1677,7 +1677,7 @@ if(red_manager){
 }
 
 DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
-	ACCESS_VECTOR *step, BOOL has_calls, BOOL has_unsummarized_calls,
+	ACCESS_VECTOR *step, BOOL has_calls, BOOL has_nested_calls, BOOL has_unsummarized_calls,
 	BOOL has_unsummarized_call_cost, BOOL has_gotos, BOOL has_exits, 
 	BOOL has_gotos_this_level,BOOL is_inner) {
     _pool = pool;
@@ -1685,6 +1685,7 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
     UB = ub;
     Step = step;
     Has_Calls = has_calls;
+    Has_Nested_Calls = has_nested_calls;
     Has_Unsummarized_Calls = has_unsummarized_calls;
     Has_Unsummarized_Call_Cost = has_unsummarized_call_cost;
     Has_Threadprivate = FALSE; 

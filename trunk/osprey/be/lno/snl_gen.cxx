@@ -2095,7 +2095,7 @@ extern SNL_REGION SNL_GEN_U_Ctiling(WN* wn_outer,
       }
 
       DO_LOOP_INFO* dli = CXX_NEW(DO_LOOP_INFO(&LNO_default_pool,
-        NULL, NULL, NULL, FALSE, FALSE,FALSE, FALSE,FALSE, FALSE, FALSE),
+        NULL, NULL, NULL, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
         &LNO_default_pool);
       Set_Do_Loop_Info(d[i], dli);
       Is_True(Get_Do_Loop_Info(d[i]) == dli, ("Big bug"));

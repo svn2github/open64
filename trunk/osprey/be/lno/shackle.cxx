@@ -1302,8 +1302,8 @@ Create_Simple_Shackle_Loops(WN                    *main_body,
 	dl->Set_loop_stmt (current_do);
 	DO_LOOP_INFO *dli = CXX_NEW (DO_LOOP_INFO (&LNO_default_pool,
 						   NULL, NULL, NULL,
-						   FALSE, FALSE, FALSE, FALSE,
-						   FALSE,FALSE, FALSE),
+						   FALSE, FALSE, FALSE, FALSE, FALSE,
+						   FALSE, FALSE, FALSE),
 				     &LNO_default_pool);
 	Set_Do_Loop_Info (current_do, dli);
 	sh->Set_Loop_Stmt (i, current_do);
