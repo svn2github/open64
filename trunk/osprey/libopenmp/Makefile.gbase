@@ -64,10 +64,9 @@ CFILES = \
 CXXFILES = \
 	omp_init.cxx
 
-# force using g++ to compile the C++ files and adding -fno-exceptions
-# to avoid EH related stuffs, which may cause undefined symbols in C program
-C++NAME = g++
-CXXFLAGS += -fno-exceptions
+# Adding -fno-exceptions to avoid EH related stuffs, 
+#  which may cause undefined symbols in C program
+CXXFLAGS += -fno-exceptions -nostdinc++
 
 default: first $(TARGETS) last
 
