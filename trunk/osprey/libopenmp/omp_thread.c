@@ -37,10 +37,6 @@
 #include <malloc.h>
 #include "omp_thread.h"
 
-/*To align with the Pathscale OMP lowering, CWG */
-int __ompc_sug_numthreads = 1;
-
-
 #define MAX_COUNTER  20000
 volatile int __omp_nested = OMP_NESTED_DEFAULT;          /* nested enable/disable */
 volatile int __omp_dynamic = OMP_DYNAMIC_DEFAULT;         /* dynamic enable/disable */
@@ -364,6 +360,7 @@ __ompc_init_rtl(int num_threads)
 
   /* parse OpenMP environment variables */
   __ompc_environment_variables();
+  __ompc_sug_numthreads = __omp_nthreads_var;
 
   /* register the finalize function*/
   atexit(__ompc_fini_rtl);
