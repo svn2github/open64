@@ -311,6 +311,7 @@ UINT32 OPT_Malloc_Alg = 0;	/* select malloc algorithm */
 BOOL OPT_Malloc_Alg_Set = FALSE; 
 BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
 BOOL Early_Goto_Conversion_Set = FALSE;
+BOOL Enable_Thread_Safety = FALSE;
 #endif	// KEY
 
 /***** Obsolete options *****/
@@ -449,6 +450,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",
     0, 0, 0,    &Early_Goto_Conversion, &Early_Goto_Conversion_Set,
     "Do GOTO conversion before VHO" },
+  
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "thread_safety", "",
+    0, 0, 0,    &Enable_Thread_Safety, NULL,
+    "Enable Thread Safety Annotation" },
 #endif
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "early_mp",		"early_mp",

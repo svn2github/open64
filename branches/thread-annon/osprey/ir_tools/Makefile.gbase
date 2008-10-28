@@ -114,6 +114,7 @@ COMMON_COM_CXX_SRC =	\
 	ir_bread.cxx	\
 	ir_bwrite.cxx	\
 	ir_reader.cxx	\
+	lock_map.cxx	\
 	irbdata.cxx	\
 	mtypes.cxx	\
 	opcode.cxx	\

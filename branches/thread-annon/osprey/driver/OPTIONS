@@ -1381,6 +1381,18 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn about functions that are candidates for 'noreturn' attribute"
 -Wno-missing-noreturn	;		Cc	f	self
 	"Do not warn about functions that are candidates for 'noreturn' attribute"
+-Wthread-safety	        ;		Cc	f	self "-OPT:thread_safety=on"
+	"Warn about potential thread safety issues when the code is annotated with thread safety attributes"
+-Wthread-unguarded-var	;		Cc	f	self
+	"Warn about shared variables not properly protected by locks specified in the attributes"
+-Wthread-unguarded-func	;		Cc	f	self
+	"Warn about function calls not properly protected by locks specified in the attributes"
+-Wthread-mismatched-lock-order	;	Cc	f	self
+	"Warn about lock acquisition order inconsistent with what specified in the attributes"
+-Wthread-mismatched-lock-acq-rel ;	Cc	f	self
+	"Warn about mismatched lock acquisition and release"
+-Wthread-reentrant-lock	;		Cc	f	self
+	"Warn about a lock being acquired recursively"
 -Wnonnull	;		Cc	f	self
 	"Warn when passing null to functions requiring non-null pointers"
 -Wmissing-prototypes	;		Cc	f	self

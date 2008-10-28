@@ -196,7 +196,7 @@ Is_fortran(void)
 #define LOOP_MULTVER_FLAG      0x80 /* Loop multiversioning */ 
 #define LOOP_NORM_FLAG   0x00000100 /* Trace Loop Normalization */
 #define LCLSC_TRACE_FLAG 0x00000200 /* trace stack shrink optimization */
-
+#define TSA_DUMP_FLAG 0x00000400
 
 /* Flags associated with value numbering scheme and the 
  * WOPT_Enable_Value_Numbering option.

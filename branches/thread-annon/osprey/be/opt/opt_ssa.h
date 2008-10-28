@@ -119,6 +119,7 @@ public:
   CODEREP  *Get_zero_version_CR(AUX_ID aux_id, OPT_STAB *, VER_ID);
   void      Pointer_Alias_Analysis(void);         
   void      Dead_store_elim(CFG *, OPT_STAB *, EXC *);
+  void      Thread_safety_analyze(CFG *, OPT_STAB *, EXC *);
   void	    Find_zero_versions();
   void      Create_CODEMAP(void);
   void      Value_number_mu_list(MU_LIST *mu_list);

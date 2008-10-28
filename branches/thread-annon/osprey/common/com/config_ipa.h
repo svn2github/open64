@@ -142,6 +142,7 @@ extern UINT32 IPA_Icall_Min_Freq;	// Min icall freq for icall opt
 extern BOOL IPA_Enable_Source_PU_Order;
 extern UINT32 IPA_Enable_Struct_Opt;
 extern UINT32 IPA_Update_Struct;
+extern BOOL IPA_Enable_Thread_Safety;
 #endif
 
 /* ===== Inlining heuristics: ===== */

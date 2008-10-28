@@ -278,6 +278,7 @@ UINT32 IPA_Update_Struct = 0;		/* temporary, should be removed */
 #else
 BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
 #endif
+BOOL IPA_Enable_Thread_Safety = TRUE;   /* Enable Thread Safety Annotation analysis in IPA */
 BOOL IPA_Enable_Linearization = FALSE;  /* Enable linearization of array */
 BOOL IPA_Use_Intrinsic = FALSE;		/* load intrinsic libraries */
 
@@ -608,6 +609,9 @@ static OPTION_DESC Options_IPA[] = {
 	  0, 0, UINT32_MAX, &IPA_Enable_Struct_Opt, NULL,
 #endif
 	  "Enable IPA struct optimizations"},
+    { OVK_BOOL, OV_INTERNAL,    FALSE, "thread_safety", "",
+      0, 0, 0,              &IPA_Enable_Thread_Safety, NULL,
+      "Thread Safety analysis phase"},
     /* The following option is temporary, and should be removed soon */
     { OVK_UINT32, OV_INTERNAL,	FALSE, "update_struct",	"",
 	  0, 0, UINT32_MAX, &IPA_Update_Struct, NULL,

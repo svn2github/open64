@@ -72,6 +72,7 @@
 #include "mempool.h"
 #include "wn.h"
 #include "wn_map.h"
+#include "lock_map.h"               /* for lock attribute*/
 #include "strtab.h"		    /* for strtab */
 #include "symtab.h"		    /* for symtab */
 #include "irbdata.h"		    /* for inito */
@@ -664,6 +665,7 @@ ir_b_write_global_symtab (off_t base_offset, Output_File *fl)
 
 } // ir_b_write_global_symtab
 
+
 off_t
 ir_b_write_local_symtab (const SCOPE& pu, off_t base_offset, Output_File *fl)
 {
@@ -817,3 +819,86 @@ IPA_irb_write_mod_ref_info(Output_File *fl)
     header_addr->entsize = sizeof(pu_mod_ref_info);
 }
 #endif
+
+
+// Write Lock Attribute information into file fl.
+// the Detailed layout of this Glocal section is as follows:
+// 
+void
+ir_b_write_lock_attribute(Output_File *fl)
+{
+  INT offset, header_loc;
+  Elf64_Word temp;
+  INT size = lock_attr_collect->Lock_Attribute_Entry_Table.Size();
+  INT cur_sec_disp = fl->file_size;
+
+  INT offset_lock_attr = 0;
+
+  //store the offset of the header structure in this field
+  //??? I don't know why we need to use this statement, the temp is unused variable
+  header_loc = (INT) ir_b_save_buf(&temp, sizeof(Elf64_Word),
+				   sizeof(INT64),0,fl);
+  //0th entry, store the offset_lock_attr
+  //when we store the lock_header, we can get the header_offset
+  //then we get the offset(header_offset - offset_lock_attr)
+  //and store into *(HEADER_ADDR(header_loc))
+  
+  //store the element1
+  offset_lock_attr = ir_b_save_buf(
+				   &(lock_attr_collect->Lock_Attribute_Entry_Table[0]._element1),
+				   sizeof(LOCK_ATTRIBUTE_ELEMENT),
+				   sizeof(INT64),
+				   0,
+				   fl);
+  //store the element1
+  ir_b_save_buf(&(lock_attr_collect->Lock_Attribute_Entry_Table[0]._element2),
+		sizeof(LOCK_ATTRIBUTE_ELEMENT),
+		0,
+		0,
+		fl);
+  //store the flags
+  ir_b_save_buf(&(lock_attr_collect->Lock_Attribute_Entry_Table[0]._flags),
+		sizeof(mINT32),
+		0,
+		0,
+		fl);
+  
+  for (INT i = 1; i < size; i++) 
+    {
+      ir_b_save_buf(&(lock_attr_collect->Lock_Attribute_Entry_Table[i]._element1),
+		    sizeof(LOCK_ATTRIBUTE_ELEMENT),
+		    0,
+		    0,
+		    fl);
+      //store the element1
+      ir_b_save_buf(&(lock_attr_collect->Lock_Attribute_Entry_Table[i]._element2),
+		    sizeof(LOCK_ATTRIBUTE_ELEMENT),
+		    0,
+		    0,
+		    fl);
+      //store the flags
+      ir_b_save_buf(&(lock_attr_collect->Lock_Attribute_Entry_Table[i]._flags),
+		    sizeof(mINT32),
+		    0,
+		    0,
+		    fl);
+    }
+
+  offset_lock_attr  = offset_lock_attr - cur_sec_disp;
+
+  LOCK_ATTRIBUTE_HEADER header;
+  offset = (INT)ir_b_save_buf(&header, sizeof(LOCK_ATTRIBUTE_HEADER),
+			      sizeof(INT64), 0, fl);
+  
+  *((Elf64_Word*)(fl->map_addr + header_loc)) = offset - cur_sec_disp;
+  LOCK_ATTRIBUTE_HEADER *header_addr =
+                      (LOCK_ATTRIBUTE_HEADER *)(fl->map_addr + offset);
+
+  header_addr->offset = offset_lock_attr;
+  header_addr->size = size;
+  header_addr->entsize = sizeof(LOCK_ATTRIBUTE_HEADER);  
+}
+
+
+
+

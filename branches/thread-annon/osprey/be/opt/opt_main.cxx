@@ -314,6 +314,7 @@
 #include "wn.h"
 #include "wn_simp.h"
 #include "wn_lower.h"
+#include "lock_map.h"
 // Remove the following line
 #include "wn_util.h"
 
@@ -375,6 +376,8 @@ extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 extern BOOL Enable_WN_Simp;
 extern void Simplify_bool_expr(COMP_UNIT *);
 extern void WN_unroll(WN *);
+
+LOCK_ATTRIBUTE_COLLECT * lock_attr_collect;
 
 static MEM_POOL  Opt_global_pool;
 static MEM_POOL  Opt_local_pool;
@@ -1470,6 +1473,16 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     comp_unit->Ssa()->Find_zero_versions();
   }
 
+  if(Enable_Thread_Safety){
+    SET_OPT_PHASE("Thread Safety Analysis Phase");
+    //Initilize the lock_attr_collect here, mainly 
+    //to set the map for annotation information
+    lock_attr_collect->Init();
+    comp_unit->Ssa()->Thread_safety_analyze(comp_unit->Cfg(),
+                                    comp_unit->Opt_stab(),
+                                    comp_unit->Exc());
+
+  }
   SET_OPT_PHASE("Create CODEMAP Representation");
   comp_unit->Ssa()->Create_CODEMAP();
 

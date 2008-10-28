@@ -1552,7 +1552,7 @@ SSA::Dead_store_elim( CFG *cfg, OPT_STAB *opt_stab, EXC *exc )
 
   { // scope so we destruct this item before popping the mem pool
     DSE dse( cfg, opt_stab, cfg->Loc_pool(), exc,
-	     Get_Trace( TP_GLOBOPT, DSE_DUMP_FLAG ) );
+	     Get_Trace( TP_WOPT2, DSE_DUMP_FLAG ) );
 
     // do it
     dse.Dead_store_elim();

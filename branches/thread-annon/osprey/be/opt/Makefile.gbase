@@ -172,6 +172,7 @@ BE_OPT_CXX_SRCS = \
   opt_dce.cxx		\
   opt_dom.cxx		\
   opt_dse.cxx		\
+  opt_tsa.cxx		\
   opt_du.cxx		\
   opt_eant.cxx		\
   opt_eavail.cxx        \

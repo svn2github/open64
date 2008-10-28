@@ -48,6 +48,9 @@
 #ifndef spin_symtab_INCLUDED
 #define spin_symtab_INCLUDED
 
+#include "lock_map.h"
+
+extern BOOL is_attribute(const char *, gs_t attrib);
 extern TY_IDX Create_TY_For_Tree (gs_t, TY_IDX idx = TY_IDX_ZERO);
 extern "C" ST* Create_ST_For_Tree (gs_t);
 extern "C" void Create_DST_For_Tree (gs_t, ST*);
@@ -145,6 +148,65 @@ struct find_st_attr_section_name {
         }
 };
 
+inline void Handle_guarded_by(LOCK_ATTRIBUTE_ENTRY* lock_attr_entry,gs_t lock_tree)
+{
+
+  lock_attr_entry->Set_element2_flags(ELEMENT_IS_VARIABLE);
+  gs_code_t code = gs_tree_code(lock_tree);
+
+  switch(code){
+    //here we handle the locks_encluded attribute;
+  case GS_CALL_EXPR:
+    FmtAssert(false,("can't handle GUARDED_BY((foo->get_lock())) now"));
+    break;
+  case GS_VAR_DECL:
+    {
+      ST * lock_st  = DECL_ST(lock_tree);
+      if(lock_st == NULL)
+	lock_st = Create_ST_For_Tree(lock_tree);
+      lock_attr_entry->Set_element2_st_idx(ST_st_idx(lock_st));
+      lock_attr_entry->Set_element2_is_st();
+      //FmtAssert(false, ("should handle guarded_by attribute for variable and lock"));
+    }
+    break;
+  case GS_ARRAY_REF:
+    FmtAssert(false,("should handle GS_ARRAY_REF kind lock"));
+    break;
+  case GS_COMPONENT_REF:
+    FmtAssert(false,("should handle GS_COMPONENT_REF kind lock"));
+    break;
+  default:
+    FmtAssert(false, ("should handle other attribute here"));
+  }
+}
+
+
+
+
+inline void Handle_guarded(LOCK_ATTRIBUTE_ENTRY* lock_attr_entry)
+{
+
+}
+
+inline void Handle_point_to_guarded_by(LOCK_ATTRIBUTE_ENTRY* lock_attr_entry,gs_t lock_tree)
+{
+
+  lock_attr_entry->Set_is_point_to_guarded_by();
+  //other, same as handle_guarded_by
+  Handle_guarded_by(lock_attr_entry,lock_tree);
+ }
+
+inline void Handle_point_to_guarded(LOCK_ATTRIBUTE_ENTRY* lock_attr_entry)
+{
+  lock_attr_entry->Set_is_point_to_guarded_var();
+}
+
+inline void Handle_acquired_after(LOCK_ATTRIBUTE_ENTRY* lock_attr_entry,gs_t lock_tree,BOOL is_after)
+{
+
+}
+
+
 /*
  * either return a previously created ST associated with a
  * var-decl/parm-decl/function_decl, or create a new one.
@@ -157,8 +219,93 @@ Get_ST (gs_t decl_tree)
 	/* If the st is null, we try to create it, so that we can handle its section name.
 	 * See OSP_133
 	 */
-	if (st == NULL)
+	if (st == NULL){
             st = Create_ST_For_Tree (decl_tree);
+	    //For any variable or function lock annotation, we set the ST attribute here
+	    if(Enable_Thread_Safety && st != NULL)
+	      {
+		//if this decl_tree is function declaration,
+		if(gs_tree_code(decl_tree) == GS_FUNCTION_DECL){
+		  
+		  if (gs_decl_attributes(decl_tree) &&
+		      gs_tree_code(gs_decl_attributes(decl_tree)) == GS_TREE_LIST) {
+		    gs_t nd;
+		    for (nd = gs_decl_attributes(decl_tree);
+			 nd; nd = gs_tree_chain(nd)) {
+		      gs_t attr = gs_tree_purpose(nd);
+		      
+		      if (gs_tree_code(attr) == GS_IDENTIFIER_NODE) {
+			if (is_attribute("unlock", attr))
+			  {
+			    Set_ST_is_unlock_function(st);
+			  }
+			else if (is_attribute("exclusive_lock", attr))
+			  {
+			    Set_ST_is_exclusive_lock_function(st);
+			  }
+			else
+			  FmtAssert(false,("unhandled function attributes"));
+		      }
+		    }
+		  }
+		} // FUNCTION_DECL
+
+		if(gs_tree_code(decl_tree) == GS_VAR_DECL){
+
+		  if (gs_decl_attributes(decl_tree) &&
+		      gs_tree_code(gs_decl_attributes(decl_tree)) == GS_TREE_LIST) {
+		    gs_t nd;
+		    for (nd = gs_decl_attributes(decl_tree);
+			 nd; nd = gs_tree_chain(nd)) {
+		      UINT32 index;
+		      LOCK_ATTRIBUTE_ENTRY *lock_attr_entry= lock_attr_collect->New_attr_entry(index);
+		      lock_attr_entry->Set_element1_is_st();
+		      lock_attr_entry->Set_element1_st_idx(ST_st_idx(st));
+		      lock_attr_entry->Set_element1_flags(ELEMENT_IS_VARIABLE);
+		      gs_t attr = gs_tree_purpose(nd);
+
+
+		      if (gs_tree_code(attr) == GS_IDENTIFIER_NODE) {
+			if (is_attribute("guarded_by", attr))
+			  {
+			    gs_t lock_tree = gs_tree_value(gs_tree_value(nd));
+
+			    lock_attr_entry->Set_is_guarded_by();
+			    Handle_guarded_by(lock_attr_entry,lock_tree);
+			  }
+			if (is_attribute("guarded", attr))
+			  {
+			    FmtAssert(false, ("should handle guarded attribute"));
+			    Handle_guarded(lock_attr_entry);
+			  }
+			if (is_attribute("point_to_guarded_by", attr))
+			  {
+			    gs_t lock_tree = gs_tree_value(gs_tree_value(nd));
+			    Handle_point_to_guarded_by(lock_attr_entry,lock_tree);
+			  }
+			if (is_attribute("point_to_guarded", attr))
+			  {
+			    Handle_point_to_guarded(lock_attr_entry);
+			  }
+			if (is_attribute("acquired_after", attr))
+			  {
+			    gs_t lock_tree = gs_tree_value(gs_tree_value(nd));
+			    FmtAssert(false,("should handle acquired_after"));
+			    Handle_acquired_after(lock_attr_entry,lock_tree,true);
+			  }
+			
+			if (is_attribute("acquired_before", attr))
+			  {
+			    gs_t lock_tree = gs_tree_value(gs_tree_value(nd));
+			    FmtAssert(false,("should acquired_before attribute"));
+			    Handle_acquired_after(lock_attr_entry,lock_tree,false);
+			  }
+		      }//GS_IDENTIFIER_NODE
+		    } //for loop
+		  } // TREE LIST
+		}
+	      } // thread-safety !=0
+	}//if st == NULL
 
         if (st != NULL) {
 		if (gs_tree_code(decl_tree) == GS_VAR_DECL &&

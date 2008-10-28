@@ -196,6 +196,9 @@ enum ST_FLAGS_EXT
     ST_IN_SBUF =  0x1000,                // ST is explcitly declared sbuf so 
     ST_IS_VBUF_OFFSET = 0x2000,  // represent this symbol means offset instead of a absolute address
     ST_IS_SBUF_OFFSET = 0x4000,  // same as above and will be deleted for we don't have sbuf in the future.
+#else
+    ST_IS_UNLOCK_FUNCTION = 0x100,
+    ST_IS_EXCLUSIVE_LOCK_FUNCTION = 0x200
 #endif     
 }; // ST_FLAGS_EXT
 #endif
@@ -214,7 +217,7 @@ public:
 #if defined(TARG_SL)
     mUINT16 flags_ext;			// more attributes
 #else
-    mUINT8 flags_ext;			// more attributes
+    mUINT16 flags_ext;			// more attributes
 #endif
 
     ST_CLASS sym_class : 8;		// class info
@@ -1028,7 +1031,8 @@ enum SHDR_TYPE
     SHDR_INITO	= 12,
     SHDR_INITV	= 13,
     SHDR_BLK 	= 14,
-    SHDR_ST_ATTR= 15
+    SHDR_ST_ATTR= 15,
+    SHDR_LOCK_MAP = 16
 }; // SHDR_TYPE
 
 

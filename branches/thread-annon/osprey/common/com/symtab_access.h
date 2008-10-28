@@ -676,6 +676,40 @@ inline void
 Reset_ST_is_thread_local (ST& s) { s.flags_ext &= ~ST_IS_THREAD_LOCAL; }
 inline void
 Clear_ST_is_thread_local (ST* s) { s->flags_ext &= ~ST_IS_THREAD_LOCAL; }
+
+
+inline BOOL
+ST_is_unlock_function (const ST* s) { return s->flags_ext & ST_IS_UNLOCK_FUNCTION;}
+inline void
+Set_ST_is_unlock_function (ST* s)	 { s->flags_ext |= ST_IS_UNLOCK_FUNCTION; }
+inline void
+Reset_ST_is_unlock_function (ST* s) { s->flags_ext &= ~ST_IS_UNLOCK_FUNCTION; }
+inline BOOL
+ST_is_unlock_function (const ST& s) { return s.flags_ext & ST_IS_UNLOCK_FUNCTION; }
+inline void
+Set_ST_is_unlock_function (ST& s)   { s.flags_ext |= ST_IS_UNLOCK_FUNCTION; }
+inline void
+Reset_ST_is_unlock_function (ST& s) { s.flags_ext &= ~ST_IS_UNLOCK_FUNCTION; }
+inline void
+Clear_ST_is_unlock_function (ST* s) { s->flags_ext &= ~ST_IS_UNLOCK_FUNCTION; }
+
+
+inline BOOL
+ST_is_exclusive_lock_function (const ST* s) { return s->flags_ext & ST_IS_EXCLUSIVE_LOCK_FUNCTION;}
+inline void
+Set_ST_is_exclusive_lock_function (ST* s)	 { s->flags_ext |= ST_IS_EXCLUSIVE_LOCK_FUNCTION; }
+inline void
+Reset_ST_is_exclusive_lock_function (ST* s) { s->flags_ext &= ~ST_IS_EXCLUSIVE_LOCK_FUNCTION; }
+inline BOOL
+ST_is_exclusive_lock_function (const ST& s) { return s.flags_ext & ST_IS_EXCLUSIVE_LOCK_FUNCTION; }
+inline void
+Set_ST_is_exclusive_lock_function (ST& s)   { s.flags_ext |= ST_IS_EXCLUSIVE_LOCK_FUNCTION; }
+inline void
+Reset_ST_is_exclusive_lock_function (ST& s) { s.flags_ext &= ~ST_IS_EXCLUSIVE_LOCK_FUNCTION; }
+inline void
+Clear_ST_is_exclusive_lock_function (ST* s) { s->flags_ext &= ~ST_IS_EXCLUSIVE_LOCK_FUNCTION; }
+
+
 #endif /* KEY */
 
 //----------------------------------------------------------------------

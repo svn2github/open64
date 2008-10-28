@@ -73,6 +73,7 @@ extern "C"{
 #include "wgen_misc.h"
 #include "wgen_dst.h"
 #include "ir_reader.h"
+#include "lock_map.h"
 #include "wgen_spin_symbol.h"
 #include "wgen_stmt.h"
 #include <map>
@@ -958,52 +959,140 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		// Assign IDs to real fields.  The vtable ptr field is already
 		// assigned ID 1.
 		for (field = get_first_real_field(type_tree); 
-			field;
-			field = next_real_field(type_tree, field) )
-		{
-			if (gs_tree_code(field) == GS_TYPE_DECL) {
-				continue;
-			}
-			if (gs_tree_code(field) == GS_CONST_DECL) {
-				DevWarn ("got CONST_DECL in field list");
-				continue;
-			}
-			if (gs_tree_code(field) == GS_VAR_DECL) {
-				continue;	
-			}
-			if (gs_tree_code(field) == GS_TEMPLATE_DECL) {
-				continue;
-			}
+		     field;
+		     field = next_real_field(type_tree, field) )
+		  {
+		    if (gs_tree_code(field) == GS_TYPE_DECL) {
+		      continue;
+		    }
+		    if (gs_tree_code(field) == GS_CONST_DECL) {
+		      DevWarn ("got CONST_DECL in field list");
+		      continue;
+		    }
+		    if (gs_tree_code(field) == GS_VAR_DECL) {
+		      continue;	
+		    }
+		    if (gs_tree_code(field) == GS_TEMPLATE_DECL) {
+		      continue;
+		    }
+		    
+		    // Either the DECL_FIELD_ID is not yet set, or is
+		    // already set to the same field ID.  The latter
+		    // happens when GCC 4 duplicates the type tree and the
+		    // same field node appears in both type nodes.
+		    Is_True(DECL_FIELD_ID(field) == 0 ||
+			    DECL_FIELD_ID(field) == next_field_id,
+			    ("Create_TY_For_Tree: field ID already set"));
 
-			// Either the DECL_FIELD_ID is not yet set, or is
-			// already set to the same field ID.  The latter
-			// happens when GCC 4 duplicates the type tree and the
-			// same field node appears in both type nodes.
-			Is_True(DECL_FIELD_ID(field) == 0 ||
-				DECL_FIELD_ID(field) == next_field_id,
-				("Create_TY_For_Tree: field ID already set"));
-
-			DECL_FIELD_ID(field) = next_field_id;
-			next_field_id += 
-			  TYPE_FIELD_IDS_USED(gs_tree_type(field)) + 1;
-			fld = New_FLD ();
-			FLD_Init (fld, Save_Str(Get_Name(gs_decl_name(field))), 
-				0, // type
-				gs_get_integer_value(gs_decl_field_offset(field)) +
-				gs_get_integer_value(gs_decl_field_bit_offset(field))
-					/ BITSPERBYTE);
-                        if (gs_decl_name(field) == NULL)
-                            Set_FLD_is_anonymous(fld);
-                        if (anonymous_base.find(gs_tree_type(field)) != anonymous_base.end())
-                            Set_FLD_is_base_class(fld); 
-		}
-
+		    DECL_FIELD_ID(field) = next_field_id;
+		    next_field_id += 
+		      TYPE_FIELD_IDS_USED(gs_tree_type(field)) + 1;
+		    fld = New_FLD ();
+		    FLD_Init (fld, Save_Str(Get_Name(gs_decl_name(field))), 
+			      0, // type
+			      gs_get_integer_value(gs_decl_field_offset(field)) +
+			      gs_get_integer_value(gs_decl_field_bit_offset(field))
+			      / BITSPERBYTE);
+		    if (gs_decl_name(field) == NULL)
+		      Set_FLD_is_anonymous(fld);
+		    if (anonymous_base.find(gs_tree_type(field)) != anonymous_base.end())
+		      Set_FLD_is_base_class(fld); 
+		  }
+		
 		TYPE_FIELD_IDS_USED(type_tree) = next_field_id - 1;
   		FLD_IDX last_field_idx = Fld_Table.Size () - 1;
 		if (last_field_idx >= first_field_idx) {
 			Set_TY_fld (ty, FLD_HANDLE (first_field_idx));
 			Set_FLD_last_field (FLD_HANDLE (last_field_idx));
 		}
+
+
+		for (field = get_first_real_field(type_tree); 
+		     field;
+		     field = next_real_field(type_tree, field) )
+		  {
+		    if (gs_tree_code(field) == GS_TYPE_DECL) {
+		      continue;
+		    }
+		    if (gs_tree_code(field) == GS_CONST_DECL) {
+		      DevWarn ("got CONST_DECL in field list");
+		      continue;
+		    }
+		    if (gs_tree_code(field) == GS_VAR_DECL) {
+		      continue;	
+		    }
+		    if (gs_tree_code(field) == GS_TEMPLATE_DECL) {
+		      continue;
+		    }
+		    
+		    // Either the DECL_FIELD_ID is not yet set, or is
+		    // already set to the same field ID.  The latter
+		    // happens when GCC 4 duplicates the type tree and the
+		    // same field node appears in both type nodes.
+		    Is_True(DECL_FIELD_ID(field) !=0,
+			    ("Create_TY_For_Tree: decl_field_id should be set already"));
+
+		    /*
+		      Here we apply the thread safety annotation for the field member in a class data structure, we 
+		      need to remember the relation between different fields
+		    */
+		    if(gs_tree_code(field) == GS_FIELD_DECL){
+		      if (gs_decl_attributes(field) &&
+			  gs_tree_code(gs_decl_attributes(field)) == GS_TREE_LIST) {
+			gs_t nd;
+			for (nd = gs_decl_attributes(field);
+			     nd; nd = gs_tree_chain(nd)) {
+			  UINT32 index;
+			  LOCK_ATTRIBUTE_ENTRY *lock_attr_entry= lock_attr_collect->New_attr_entry(index);
+			  lock_attr_entry->Set_element1_ty_idx(idx);
+			  lock_attr_entry->Set_element1_flags(ELEMENT_IS_TYPE);
+			  lock_attr_entry->Set_element1_field(DECL_FIELD_ID(field));
+			  gs_t attr = gs_tree_purpose(nd);
+			  			  
+			  if (gs_tree_code(attr) == GS_IDENTIFIER_NODE) {
+			    if (is_attribute("guarded_by", attr))
+			      {
+				gs_t lock_tree = gs_tree_value(gs_tree_value(nd));
+				FmtAssert(gs_tree_code(lock_tree) == GS_FIELD_DECL,
+					  ("Now we only support field_to_field lock attribute"));
+				lock_attr_entry->Set_is_guarded_by();
+				lock_attr_entry->Set_element2_ty_idx(idx);
+				lock_attr_entry->Set_element2_flags(ELEMENT_IS_TYPE);
+				lock_attr_entry->Set_element2_field(DECL_FIELD_ID(lock_tree));
+			      }
+			    if (is_attribute("guarded", attr))
+			      {
+				FmtAssert(false, ("should handle guarded attribute"));
+				Handle_guarded(lock_attr_entry);
+			      }
+			    if (is_attribute("point_to_guarded_by", attr))
+			      {
+				gs_t lock_tree = gs_tree_value(gs_tree_value(nd));
+				Handle_point_to_guarded_by(lock_attr_entry,lock_tree);
+			      }
+			    if (is_attribute("point_to_guarded", attr))
+			      {
+				Handle_point_to_guarded(lock_attr_entry);
+			      }
+			    if (is_attribute("acquired_after", attr))
+			      {
+				gs_t lock_tree = gs_tree_value(gs_tree_value(nd));
+				FmtAssert(false,("should handle acquired_after"));
+				Handle_acquired_after(lock_attr_entry,lock_tree,true);
+			      }
+			    
+			    if (is_attribute("acquired_before", attr))
+			      {
+				gs_t lock_tree = gs_tree_value(gs_tree_value(nd));
+				FmtAssert(false,("should acquired_before attribute"));
+				Handle_acquired_after(lock_attr_entry,lock_tree,false);
+			      }
+			  } //IDENTIFIED_NODE
+			} // for
+		      } //Tree_list
+		    }//GS_FIELD_DECL		    
+
+		  }
 
 		// now set the fld types.
 		fld = TY_fld(ty);
@@ -1149,6 +1238,8 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		}
 		}
 #endif	// KEY
+		//FmtAssert(false, ("handle the class type here"));
+
 		} //end record scope
 		break;
 	case GS_METHOD_TYPE:

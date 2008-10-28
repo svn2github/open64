@@ -90,6 +90,7 @@
 #include "wn_core.h"		    /* for WN */
 #include "wn.h"		    	    /* for max_region_id */
 #include "wn_map.h"		    /* for WN maps */
+#include "lock_map.h"               /* for lock attribute */
 #include "dwarf_DST_mem.h"	    /* for dst */
 #include "pu_info.h"
 #include "ir_elf.h"
@@ -761,6 +762,19 @@ WN_write_strtab (const void* strtab, UINT64 size, Output_File *fl)
     cur_section->shdr.sh_addralign = sizeof(char);
     
 } // WN_write_strtab
+
+void Write_lock_attribute(Output_File *fl)
+{
+  Section *cur_section = get_section (WT_LOCKATTR, MIPS_WHIRL_LOCKATTR, fl);
+
+  fl->file_size = ir_b_align (fl->file_size, sizeof(mINT64), 0);
+  cur_section->shdr.sh_offset = fl->file_size;
+  
+  (void) ir_b_write_lock_attribute (fl);
+    
+  cur_section->shdr.sh_size = fl->file_size - cur_section->shdr.sh_offset;
+  cur_section->shdr.sh_addralign = sizeof(mINT64);
+}
 
 
 /*
@@ -1502,6 +1516,8 @@ Write_Global_Info (PU_Info *pu_tree)
 
     WN_write_strtab(Index_To_Str (0), STR_Table_Size (), ir_output);
 
+    if(Enable_Thread_Safety)
+      Write_lock_attribute(ir_output);
 #if defined(KEY) && defined(BACK_END)
     if (Mod_Ref_Info_Table_Size() != 0) 
       IPA_write_summary (IPA_irb_write_mod_ref_info, ir_output);

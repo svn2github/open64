@@ -180,6 +180,8 @@ static BOOL Echo_Flag =	FALSE;	/* Echo command	lines */
 static BOOL Delete_IR_File = FALSE;	/* Delete SGIR file when done */
 
 
+LOCK_ATTRIBUTE_COLLECT * lock_attr_collect;
+
 /* ====================================================================
  *
  * Cleanup_Files
@@ -403,6 +405,12 @@ WGEN_Init (INT argc, char **argv, char **envp )
 #ifdef FE_GNU_4_2_0
   WGEN_Omp_Init ();
 #endif
+
+ 
+  if(Enable_Thread_Safety){
+    lock_attr_collect = CXX_NEW (LOCK_ATTRIBUTE_COLLECT(), Malloc_Mem_Pool);
+  }
+
   WGEN_Expr_Init (); 
   WHIRL_Mldid_Mstid_On = TRUE;
   WN_Simp_Fold_LDA = TRUE;  // fold (LDA offset) + const to LDA (offset+const)
@@ -422,6 +430,7 @@ WGEN_Init (INT argc, char **argv, char **envp )
 } /* WGEN_Init */
 
 void
+
 WGEN_File_Init (INT argc, char **argv)
 {
   /* Process each source file: */
@@ -438,11 +447,13 @@ WGEN_File_Init (INT argc, char **argv)
 void
 WGEN_File_Finish (void)
 {
-    Verify_SYMTAB (GLOBAL_SYMTAB);
-    Write_Global_Info (PU_Tree_Root);
-    Close_Output_Info ();
-    IR_reader_finish ();
-    MEM_POOL_Pop (&MEM_src_pool);
+  if(Enable_Thread_Safety && Get_Trace(TKIND_IR, TP_WGEN))
+    lock_attr_collect->Print();
+  Verify_SYMTAB (GLOBAL_SYMTAB);
+  Write_Global_Info (PU_Tree_Root);
+  Close_Output_Info ();
+  IR_reader_finish ();
+  MEM_POOL_Pop (&MEM_src_pool);
 }
 
 void

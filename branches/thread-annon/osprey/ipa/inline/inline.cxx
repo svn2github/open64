@@ -82,6 +82,7 @@
 #include "pu_info.h"		// PU_Info
 #include "ir_bread.h"		// Read_*_Info
 #include "ir_bwrite.h"	    // Write_*_Info
+#include "lock_map.h"
 #include "tracing.h"		// TFile, Get_Trace
 #include "glob.h"		    /* for [Tlog|Irb]_File_Name and Tim_File */
 #include "ipo_tlog_utils.h"     // for tlog info
@@ -164,7 +165,7 @@ static double result_times[LAST_PHASE] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 MEM_POOL *PU_pool;
 
 SUMMARY *Summary;
-
+LOCK_ATTRIBUTE_COLLECT * lock_attr_collect;
 extern MEM_POOL Ipo_mem_pool;
 extern WN_MAP Parent_Map;
 extern BOOL Debug_On;

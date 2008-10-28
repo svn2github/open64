@@ -94,6 +94,10 @@ ir_b_write_dst (DST_TYPE dst, off_t base_offset, Output_File *fl);
 extern off_t
 ir_b_write_global_symtab (off_t base_offset, Output_File *fl);
 
+
+extern void
+ir_b_write_lock_attribute (Output_File *fl);
+
 extern off_t
 ir_b_write_local_symtab (const SCOPE& pu, off_t base_offset, Output_File *fl);
 

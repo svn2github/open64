@@ -199,6 +199,7 @@ COMMON_COM_CXX_SRCS =   \
    symtab_verify.cxx    \
    ttype.cxx            \
    wn.cxx               \
+   lock_map.cxx		\
    wn_map.cxx           \
    wn_pragmas.cxx       \
    wn_simp.cxx          \

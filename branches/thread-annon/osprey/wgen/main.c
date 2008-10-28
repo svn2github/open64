@@ -74,6 +74,7 @@ extern void WGEN_Expand_Decl(gs_t, BOOL);
 extern void WGEN_Alias_Finish(void);
 #endif
 
+
 //*******************************************************
 // Process the command line arguments.
 //*******************************************************
@@ -348,7 +349,9 @@ main ( INT argc, char **argv, char **envp)
 	  WGEN_Alias_Finish();
 #endif
 	WGEN_Weak_Finish();
+
 	WGEN_File_Finish ();
+
 	WGEN_Finish ();
       }
       else

@@ -304,6 +304,7 @@ COMMON_COM_CXX_SRCS = \
   mtypes.cxx		\
   opcode.cxx		\
   opcode_core.cxx	\
+  lock_map.cxx		\
   wutil.cxx		\
   DaVinci.cxx           \
 

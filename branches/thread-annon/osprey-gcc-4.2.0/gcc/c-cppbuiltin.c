@@ -527,6 +527,13 @@ c_cpp_builtins (cpp_reader *pfile)
   if (c_dialect_cxx () && TYPE_UNSIGNED (wchar_type_node))
     cpp_define (pfile, "__WCHAR_UNSIGNED__");
 
+  
+  /* Define a macro indicating whether the thread safety attributes/analysis
+     is supported.  */
+  if (warn_thread_safety)
+    cpp_define (pfile, "__SUPPORT_TS_ANNOTATION__");
+
+
   /* Make the choice of ObjC runtime visible to source code.  */
   if (c_dialect_objc () && flag_next_runtime)
     cpp_define (pfile, "__NEXT_RUNTIME__");

@@ -78,6 +78,7 @@
 #include "config_debug.h"	    /* for ir_version_check */
 #include "config_elf_targ.h"
 #include "irbdata.h"		    /* for init_data */
+#include "lock_map.h"
 #include "wn_core.h"		    /* for WN */
 #include "wn.h"		            /* for max_region_id */
 #include "wn_map.h"		    /* for WN maps */
@@ -112,6 +113,7 @@ static off_t local_mapped_size;
 
 static char file_revision[80];	/* save revision string */
 
+LOCK_ATTRIBUTE_COLLECT* lock_attr_collect;			
 
 #define DOUBLE_ALIGNED(sz)	(((sz) % 8) == 0 ? (sz) : (sz)+(8-((sz)%8)))
 #define ERROR_VALUE -1
@@ -1221,6 +1223,42 @@ WN_get_mod_ref_table (void * handle)
 }
 #endif
 
+static void Read_lock_attribute (void * handle)
+{
+  OFFSET_AND_SIZE shdr = get_section (handle, SHT_MIPS_WHIRL, WT_LOCKATTR);
+
+  if (shdr.offset == 0)
+    return;
+
+  const char *base = (char *) handle + shdr.offset;
+
+  // First is the offset to the header
+  const LOCK_ATTRIBUTE_HEADER *header =
+    (LOCK_ATTRIBUTE_HEADER *) (base + *((Elf64_Word *)base));
+
+  const char *addr = base + header->offset;
+
+  const char * p = addr; // travelling pointer to data
+
+  lock_attr_collect = CXX_NEW (LOCK_ATTRIBUTE_COLLECT(), Malloc_Mem_Pool);
+
+  for (INT i=0; i<header->size; i++)
+  {
+    UINT32 index;
+    LOCK_ATTRIBUTE_ENTRY * lock_attr_entry = lock_attr_collect->New_attr_entry(index);
+
+    memcpy(&(lock_attr_entry->_element1),p,sizeof(LOCK_ATTRIBUTE_ELEMENT));
+    p += sizeof(LOCK_ATTRIBUTE_ELEMENT);
+
+    memcpy(&(lock_attr_entry->_element2),p,sizeof(LOCK_ATTRIBUTE_ELEMENT));
+    p += sizeof(LOCK_ATTRIBUTE_ELEMENT);
+
+    lock_attr_entry->_flags = *((mINT32*)p);
+    p += sizeof (mUINT32);
+
+  }
+}
+
 static inline void
 WN_MAP_put(WN_MAP wn_map, WN *wn, INT32 value)
 {
@@ -1474,6 +1512,8 @@ Read_Global_Info (INT32 *p_num_PUs)
     WN_get_mod_ref_table (global_fhandle);
 #endif
 
+    if(Enable_Thread_Safety)
+      Read_lock_attribute(global_fhandle);
     
     // for now, get dst from local file (later change to global)
     if (WN_get_dst(local_fhandle) == -1) {
