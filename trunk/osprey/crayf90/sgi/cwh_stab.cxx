@@ -553,8 +553,8 @@ fei_arith_con(TYPE type, SLONG *start)
   TYPE_ID bt;
   TCON    tcon;
   QUAD_TYPE q,q1 ;
-  float   * f ; 
-  double  * d ;
+  float   * f1, * f2 ; 
+  double  * d1, * d2 ;
 #ifdef KEY /* Bug 10177 */
   STB_pkt * r = 0;
 #else /* KEY Bug 10177 */
@@ -608,14 +608,18 @@ fei_arith_con(TYPE type, SLONG *start)
       tcon = Host_To_Targ_Quad(q);
       break ; 
 
-    case MTYPE_C4 :  
-      f  = (float *) start ;
-      tcon = Host_To_Targ_Complex_4 ( bt, *f, *(f + 1));
+    case MTYPE_C4 : 
+      // OSP_454 
+      f1  = (float *) start ;
+      f2  = (float *) (start + 1) ;
+      tcon = Host_To_Targ_Complex_4 ( bt, *f1, *f2 );
       break ;
 
     case MTYPE_C8 :  
-      d  = (double *) start ;
-      tcon = Host_To_Targ_Complex( bt, *d, *(d + 1));
+      // OSP_454
+      d1  = (double *) start ;
+      d2  = (double *) (start + 1) ;
+      tcon = Host_To_Targ_Complex( bt, *d1, *d2 );
       break ;
 
     case MTYPE_CQ :  
