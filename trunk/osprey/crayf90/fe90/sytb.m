@@ -153,6 +153,9 @@
 # endif
 
 # define SET_POINTER_SIZE	(cmd_line_flags.s_pointer8)
+/* OSP_456 */
+# define Is_Target_32bit()      (cmd_line_flags.s_pointer8 == 0)
+# define Is_Target_64bit()      (cmd_line_flags.s_pointer8 == 1)
 
 # if defined(_DOPE_VECTOR_32_OR_64)
 
