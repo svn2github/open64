@@ -1219,7 +1219,6 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
        }
       return FALSE;
 
-#endif
     case OPR_EXTRACT_BITS:
       //     U4U4LDID 72 <1,4,.preg_U4>
       //   U4EXTRACT_BITS <bofst:27 bsize:4>
@@ -1231,7 +1230,7 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
           return ! MTYPE_signed(dtyp);
       }
       return FALSE;
-#ifdef TARG_SL
+
     case OPR_INTRINSIC_OP:
       //  if INTRINSIC_OP type is I2, the computation based on 16 bit register and the CVTL could be deleted 
       if ((from_bit == 16) && (to_bit == 32)) {
