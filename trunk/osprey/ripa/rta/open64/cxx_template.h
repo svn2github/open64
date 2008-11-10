@@ -8,14 +8,14 @@
 
   This program is distributed in the hope that it would be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
   Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
+  free of the rightful claim of any third person regarding infringement
+  or the like.  Any license provided herein, whether implied or
+  otherwise, applies only to this software file.  Patent licenses, if
+  any, provided herein do not apply to combinations of this program with
+  other software, or any other product whatsoever.
 
   You should have received a copy of the GNU General Public License along
   with this program; if not, write the Free Software Foundation, Inc., 59
@@ -45,39 +45,39 @@
 ***
 *** Revision history:
 ***  8-SEP-94 shin - Original Version
-*** 
+***
 *** Description:
-*** 
+***
 *** This interface describes the DYN_ARRAY template for dynamic array and
 *** the STACK template which uses an dynamic array to implement the stack.
-*** 
+***
 *** The size of the array can grow dynamically.  The subscript operator is
 *** overloaded such that it appear to the user is the same as any ordinary
 *** array.  Internally, the subscript index must be less than the array
 *** size and less equal to the allocated index.  As the result, user must
 *** call Newidx to allocate an array element.  Once an index is allocated,
 *** it can be used with subscript operator.
-*** 
+***
 *** Reserver Prefixes:
-*** 
+***
 ***     None.
-*** 
+***
 *** Exported Types:
-*** 
+***
 ***     None.
-*** 
+***
 *** Exported Functions:
-*** 
+***
 ***     DYN_ARRAY(MEM_POOL *pool)
-*** 
+***
 ***         Construct a dynamic array using the MEM_POOL *pool. This
 ***         memory pool will be used in future allocation, reallocation
 ***         and free of this dynamic array.
-*** 
+***
 ***     ~DYN_ARRAY(void)
-*** 
+***
 ***         Destruct this dynamic array and free the space if necessary.
-*** 
+***
 ***     void    Set_Mem_Pool(MEM_POOL* mpool)
 ***
 ***         Set the memory pool for future memory allocation to be mpool.
@@ -85,82 +85,82 @@
 ***         cannot be used, e.g., array of dynamic arrays.
 ***
 ***     void    Alloc_array(mUINT32 arr_size)
-*** 
+***
 ***         Allocate an array of size max(arr_size, MIN_ARRAY_SIZE)
 ***
 ***	void	Force_Alloc_array(mUINT32 arr_size)
-*** 
+***
 ***         Allocate an array of size max(arr_size, 1)
-*** 
+***
 ***     void    Realloc_array(mUINT32 new_size)
-*** 
+***
 ***         Re-allocate array for size 'new_size'.
-*** 
+***
 ***     void    Free_array(void)
-*** 
+***
 ***         Free the space to the memory pool and re-set the index.
-*** 
+***
 ***     void    Bzero_array(void)
-*** 
+***
 ***         Clear (fill with 0) the array at its current size
-*** 
+***
 ***     DYN_ARRAY& operator = (const DYN_ARRAY& a)
-*** 
+***
 ***         The size and the index of the input dynamic array 'a' is
 ***         copied to the current array.  Using own memory pool, the
 ***         array re-allocate space in order to change to have the same
 ***         size as 'a'.
-*** 
+***
 ***     T&      operator[] (mUINT32 idx) const
 ***     T&      operator[] (mUINT32 idx)
 ***     T&      Get(mUINT32 idx) const
 ***     void    Set(mUINT32 idx, const T& val)
-***     
+***
 ***     void AddElement (const T& val)
 ***         Grow the array by 1 element and add val at the end of the array.
 ***
 ***     mUINT32 Elements () const
-***         Return the number of elements in the array, useful for iterating 
+***         Return the number of elements in the array, useful for iterating
 ***         over all the elements.
-*** 
+***
 ***         Access the element 'idx'.
-*** 
+***
 ***     mUINT32 Newidx(void)
-*** 
+***
 ***         Allocate a new index. It controls whether re-allocation is needed.
 ***         If an index is returned from Newidx(), it is sure to be valid.
 ***
 ***         Note: although the space is allocated for the returned
 ***         index, the data is NOT initialized.
-*** 
+***
 ***     void    Decidx(void)
-*** 
+***
 ***         Decrement the last index pointer by one which essentially makes the
 ***         last index available for Newidx() again.
-*** 
+***
 ***     void    Initidx(UINT32 idx)
-*** 
+***
 ***         Set the last index pointer to 'idx'. Allocate more space if
 ***         necessary but no copying is done.
-*** 
+***
 ***     void    Setidx(UINT32 idx)
-*** 
+***
 ***         Set the last index pointer to 'idx'. Allocate more space if
 ***         necessary and old contents are copied.
-*** 
+***
 ***     void    Resetidx(void)
-*** 
+***
 ***         Set the last index pointer to -1 and the whole array are available
 ***         starting from the first ('0'-th) element.
-*** 
+***
 ***     mUINT32 Sizeof(void)  const
-*** 
+***
 ***         Return the current size of the array.
-*** 
+***
 ***     mINT32  Lastidx(void) const
-*** 
+***
 ***         Return the current value of the last index pointer.
-*** 
+***
 *** ====================================================================
 *** ====================================================================
 **/
@@ -172,8 +172,8 @@
 static char *cxx_templatercs_id = cxx_template_INCLUDED"$Revision: 1.2 $";
 #endif /* _KEEP_RCS_ID */
 
-#if 0 // SC
 #include "mempool.h"
+#if 0 // SC
 #include "erglob.h"
 #include "errors.h"
 #include "opt_sys.h"    // for BZERO
@@ -235,66 +235,66 @@ public:
 };
 
 /**
-*** 
+***
 *** Description:
-*** 
+***
 ***     class STACK is a simple extension of DYN_ARRAY with stack specific methods.
-*** 
+***
 *** Reserved Prefix:
-*** 
+***
 ***     None.
-*** 
+***
 *** Exported Types:
-*** 
+***
 ***     None.
-*** 
+***
 *** Exported Funcitons:
-*** 
+***
 ***     STACK(MEM_POOL *pool)
-*** 
+***
 ***         Construct a stack using space from *pool.
-*** 
+***
 ***     ~STACK(void)
-*** 
+***
 ***         Destruct the stack.
-*** 
+***
 ***     void    Push(const T& val)
-*** 
+***
 ***     	Push a 'val' to the top of the stack.
-*** 
+***
 ***     void    Settop(const T& val)
-*** 
+***
 ***     	Set 'val' as the top of the stack (no push and pop involved)
 ***     	if the stack has allocated space (size >= 1).
-*** 
+***
 ***     T       Pop(void)
-*** 
+***
 ***     	Pop the stack.
-*** 
+***
 ***     T&      Top_nth(const INT32 n) const
-*** 
+***
 ***     	Get the top 'n'-th element of the stack. Stack top is Nth(0).
-*** 
+***
 ***     T&      Bottom_nth(const INT32 n) const
-*** 
+***
 ***     	Get the bottom 'n'-th element of the stack. Stack bottom is Nth(0).
-*** 
+***
 ***     T&      Top(void) const
-*** 
+***
 ***     	Same as Nth(0).
-*** 
+***
 ***     void    Clear(void)
-*** 
+***
 ***     	Wipe out the entire stack.
-*** 
+***
 ***     void    Alloc(const INT32 n)
-*** 
+***
 ***     	Allocate space for 'n' element in the stack.
 ***
 ***     mINT32   Elements() const
 ***
 ***		How many elements are on the stack.
-*** 
+***
 **/
 
 template <class T>
@@ -397,7 +397,7 @@ DYN_ARRAY<T>::Force_Alloc_array (mUINT32 arr_size)
     _size = arr_size > 1 ? arr_size : 1;
     _array = (T*)MEM_POOL_Alloc(_mpool, _size * sizeof(T));
     if ( _array == NULL ) ErrMsg ( EC_No_Mem, "DYN_ARRAY::Alloc_array" );
-} 
+}
 
 template <class T>
 void
@@ -490,7 +490,7 @@ template <class T>
 void STACK<T>::Settop(const T& val)
 {
   INT32 idx = _stack.Lastidx();
-  
+
   Is_True(idx >= 0, ("STACK::Settop(): Stack Empty"));
   _stack[idx] = val;
 }
@@ -500,7 +500,7 @@ template <class T>
 T& STACK<T>::Top_nth(const INT32 n) const
 {
   INT32 idx = _stack.Lastidx();
-  
+
   Is_True(idx >= n, ("STACK::Top_nth(): Access beyond stack bottom"));
   return _stack[idx - n];
 }
@@ -510,17 +510,17 @@ template <class T>
 T& STACK<T>::Bottom_nth(const INT32 n) const
 {
   INT32 idx = _stack.Lastidx();
-  
+
   Is_True(n <= idx, ("STACK::Bottom_nth(): Access beyond stack top"));
   return _stack[n];
 }
 
-    
+
 template <class T>
 T& STACK<T>::Top(void) const
 {
   INT32 idx = _stack.Lastidx();
-  
+
   Is_True(idx >= 0, ("STACK::Top(): Stack Empty"));
   return _stack[idx];
 }

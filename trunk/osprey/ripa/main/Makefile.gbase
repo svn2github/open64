@@ -39,7 +39,7 @@ LCDEFS += -D__MIPS_AND_IA64_ELF_H -DTARG_IA64
 LC++DEFS +=  $(LCDEFS)
 endif
 
-CFLAGS += -DOSP_OPT
+CFLAGS += -DOSP_OPT -g
 CXXFLAGS += -DOSP_OPT
 
 LCDEFS += $(STD_COMPILE_OPTS)
@@ -88,18 +88,18 @@ endif
 
 SRC_DIRS = \
   $(RIPA_DIR)/main \
-  $(RIPA_DIR)/rta
+  $(RIPA_DIR)/rta \
+  $(RIPA_DIR)/rta/open64
 
 HEADER_DIRS = \
   $(SRC_DIRS)		\
   $(BE_REGION_DIR)      \
   $(BE_OPT_DIR)		\
-  $(COMMON_COM_TARG_DIR)\
-  $(COMMON_UTIL_DIR)    \
   $(LD_COMMON_DIR)	\
   $(LD_DIR)		\
   $(TARGDIR)/be		\
   $(BUILD_TOT)/include \
+  $(BUILD_TOT)/rta/open64 \
   $(RIPA_DIR)/rta \
   $(BUILD_TOT)/libelf/lib \
   $(BUILD_TOT)/libelfutil
@@ -121,7 +121,14 @@ endif
 RIPA_LOCAL_SRCS =  \
 	ripa_main.cxx \
 	rta_scn.cxx \
-	messg.cxx
+	messg.cxx \
+	ripa_args.cxx \
+	memory.cxx \
+	timing.cxx \
+	ripa_phase.cxx \
+	ripa_phase_ctrl.cxx \
+	resource.cxx \
+	cxx_memory.cxx
 
 ELF_LIBS=-lelf -lelfutil
 RIPA_LOCAL_OBJS = $(RIPA_LOCAL_SRCS:.cxx=.o)
@@ -147,7 +154,7 @@ LDIRT =
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS) -DIs_True_On=1 -DMEM_STATS=1
 
 HOSTDEFS += -D_NEW_SYMTAB -D_MERGE_SUMMARY_ST_IDX_=1 -DBACK_END -fpic
 
@@ -218,3 +225,6 @@ install.pure: $(TARGETS_PURE)
 #  Include the usual commonrules
 #----------------------------------------------------------------------
 include $(COMMONRULES)
+
+DEPFILES_ALL=$(patsubst %.o,%.d,$(RIPA_ALL_OBJS))
+-include $(DEPFILES_ALL)

@@ -9,14 +9,14 @@
 
   This program is distributed in the hope that it would be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
   Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
+  free of the rightful claim of any third person regarding infringement
+  or the like.  Any license provided herein, whether implied or
+  otherwise, applies only to this software file.  Patent licenses, if
+  any, provided herein do not apply to combinations of this program with
+  other software, or any other product whatsoever.
 
   You should have received a copy of the GNU General Public License along
   with this program; if not, write the Free Software Foundation, Inc., 59
@@ -39,8 +39,8 @@
 #define UINT64 unsigned long long
 #define mINT32 INT32
 #define mUINT32 UINT32
-#define mINT8  char  
-#define mUINT8  unsigned char  
+#define mINT8  char
+#define mUINT8  unsigned char
 #define mUINT16 unsigned short
 #define mINT16 short
 #define mUINT64 UINT64
@@ -62,7 +62,7 @@ typedef mUINT32 TYLIST_IDX;             // idx to function parm. list table
 typedef mUINT32 PU_IDX;                 // idx to pu table
 typedef mUINT8  SYMTAB_IDX;             // idx to scope array
 typedef mUINT32 INITO_IDX;
-typedef INT32 PREG_NUM;  
+typedef INT32 PREG_NUM;
 typedef mUINT32 TCON_IDX;
 typedef unsigned long UINTPS;
 // One instance of the following class per compilation.
@@ -73,7 +73,15 @@ extern SCOPE		*Scope_tab;
 
 extern SYMBOL_TABLE   St_Table;
 
-typedef void * MEM_POOL;
+#ifndef NO_MEM_POOL_WORKAROUND
+//typedef void * MEM_POOL;
+//extern void *MEM_POOL_Alloc_P(MEM_POOL *pool, size_t s, int, char*);
+#endif
+
+#ifndef MEM_PTR
+typedef void * MEM_PTR;
+#endif
+
 #include <stdint.h>  // for INT_MIN etc
 #include <strings.h>  // for bzero
 
@@ -82,13 +90,21 @@ typedef unsigned char *WN;
 struct TY;
 struct TY_TAB;
 extern TY_TAB Ty_tab[];
-extern void *MEM_POOL_Alloc_P(MEM_POOL *pool, size_t s, int, char*);
 
-#define SBar "=="
+#define SBar "--"
+#define DBar "=="
 
 #define MIN(x,y)  (x < y ? x : y)
 #define MAX(x,y)  (x < y ? y : x)
 
+inline INT Max(INT i, INT j)
+{
+  return MAX(i,j);
+}
+inline INT Min(INT i, INT j)
+{
+  return MIN(i,j);
+}
 
 
 #if 0
@@ -103,6 +119,16 @@ typedef struct DST_idx
    DST_BYTE_IDX  byte_idx;
    DST_BLOCK_IDX block_idx;
 } DST_IDX;
+#endif
+
+typedef enum {
+	EC_No_Mem = -17,
+}Error_Code;
+
+#ifdef HAS_DEV_TRACE
+#define DEV_TRACE(fmt,...) printf(fmt,__VA_ARGS__)
+#else
+#define DEV_TRACE(fmt,...) NULL
 #endif
 
 #endif // _WORKAROUND_H_
