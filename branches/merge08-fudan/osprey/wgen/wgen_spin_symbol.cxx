@@ -1603,7 +1603,7 @@ Create_ST_For_Tree (gs_t decl_node)
 	  p = name;
 	else p  = gs_identifier_pointer (gs_decl_assembler_name (decl_node));
 #if defined(VENDOR_FUDAN)
-        if(Is_Java_Undeletable_Function(p))    
+        if(lang_java && Is_Java_Undeletable_Function(p))    
         {
           Set_PU_no_delete(pu);
         }
