@@ -7681,6 +7681,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
     }
   }
 #if defined(VENDOR_FUDAN)
+  if(class_strs.size())
   { /*generate .jcr section for java in .s file */
     fprintf ( Asm_File, "\t.section\t.jcr,\"aw\",@progbits\n");
 #ifdef TARG_X8664
