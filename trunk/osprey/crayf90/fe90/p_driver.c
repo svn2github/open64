@@ -2892,7 +2892,9 @@ static void init_const_tbl(void)
    }
 # endif
 
-   idx = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, TARGET_BITS_PER_WORD);
+   /* OSP_467, #3, set the right size of CG_INTEGER_DEFAULT_TYPE */
+   idx = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 
+                     storage_bit_size_tbl[CG_INTEGER_DEFAULT_TYPE]);
 
 # ifdef _DEBUG
    if (idx != CN_INTEGER_BITS_PER_WORD_IDX) {

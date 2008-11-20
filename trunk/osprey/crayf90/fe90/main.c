@@ -101,6 +101,11 @@ static void	make_table_changes (void);
 static void	print_id_line (void);
 static void	set_compile_info_for_target (void);
 
+# if defined(_WHIRL_HOST64_TARGET64) && defined(TARG_X8664)
+/* OSP_467, #5, fixup the stride_multi_unit_in_bits array */
+static void     fixup_unit_length_in_bits(void);
+# endif
+
 
 /******************************************************************************\
 |*									      *|
@@ -753,6 +758,14 @@ static void init_compiler (int	 argc,
 #endif /* KEY Bug 5089 */
 
 
+# if defined(_WHIRL_HOST64_TARGET64) && defined(TARG_X8664)
+  /* OSP_467, #5, fixup the stride_multi_unit_in_bits array */
+  if ( Is_Target_32bit() ) {
+    /* compile 32-bit application with 64-bit compiler */
+    fixup_unit_length_in_bits();
+  }
+# endif
+
 # if defined(_INTEGER_1_AND_2)
 
    if (on_off_flags.integer_1_and_2) {
@@ -879,6 +892,44 @@ static void init_compiler (int	 argc,
    return;
  
 }  /* init_compiler */
+
+
+/******************************************************************************\
+ * |*                                                                            *|
+ * |* Description:                                                               *|
+ * |*      fix up the unit length in bits, OSP_467                               *|
+ * |*      if we compile 32-bit application with 64bit compiler,                 *|
+ * |*      some unit length in bits is wrong because the default length is only  *|
+ * |*      right for building 64-bit applications                                *|
+ * |*                                                                            *|
+ * |* Input parameters:                                                          *|
+ * |*      NONE                                                                  *|
+ * |*                                                                            *|
+ * |* Output parameters:                                                         *|
+ * |*      NONE                                                                  *|
+ * |*                                                                            *|
+ * |* Returns:                                                                   *|
+ * |*      NOTHING                                                               *|
+ * |*                                                                            *|
+ * \******************************************************************************/
+# if defined(_WHIRL_HOST64_TARGET64) && defined(TARG_X8664)
+static void fixup_unit_length_in_bits()
+{
+   if ( Is_Target_32bit() ) {
+      /* These constants should be fixed up to build 32-bit apps */
+      stride_mult_unit_in_bits[Typeless_8]   = 32;
+      stride_mult_unit_in_bits[Integer_8]    = 32;
+      stride_mult_unit_in_bits[Real_8]       = 32;
+      stride_mult_unit_in_bits[Real_16]      = 32;
+      stride_mult_unit_in_bits[Complex_4]    = 32;
+      stride_mult_unit_in_bits[Complex_8]    = 32;
+      stride_mult_unit_in_bits[Complex_16]   = 32;
+      stride_mult_unit_in_bits[CRI_Ptr_8]    = 32;
+      stride_mult_unit_in_bits[Logical_8]    = 32;
+      stride_mult_unit_in_bits[CRI_Ch_Ptr_8] = 32;
+   }
+}
+# endif
 
 
 /******************************************************************************\

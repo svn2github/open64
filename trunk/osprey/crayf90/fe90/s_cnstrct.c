@@ -124,6 +124,7 @@ static boolean interpret_index_opr(int, expr_arg_type *, boolean, long64 *);
 extern int double_stride;
 #endif /* _WHIRL_HOST64_TARGET64 */
 
+#if 0 /* OSP_467, #1, We do not need these stuffs any more */
 /******************************************************************************\
  * |*                                                                            *|
  * |* Description:                                                               *|
@@ -179,6 +180,7 @@ void unpack_int64_to_int32(long_type opnd, long_type* results)
    results[1] = opnd & 0xffffffff;
 # endif /* _WHIRL_HOST64_TARGET64 */
 }
+#endif
 
 
 /******************************************************************************\
@@ -2224,7 +2226,8 @@ static void write_constant(int			type_idx)
       }
    }
    
-   
+# if 0  /* OSP_467, #1, We do not need these stuffs any more 
+	   since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */  
 # if defined(_TARGET64)
    if (TYP_LINEAR(type_idx) == Complex_4 &&   /* BRIANJ - ?? */
        bits == TARGET_BITS_PER_WORD) {
@@ -2234,12 +2237,14 @@ static void write_constant(int			type_idx)
       /* also, hard coded 32 here. Hope that's not a problem */
 
       cn_word_offset = the_cn_bit_offset/TARGET_BITS_PER_WORD;
-      // OSP_454
+      /* OSP_454, abandoned */
       CP_CONSTANT(CN_POOL_IDX(the_cn_idx)+cn_word_offset) = 
                   pack_int32_to_int64(result_value);
    }
    else 
 # endif
+# endif
+
    if (bits % TARGET_BITS_PER_WORD != 0) {
       if (bits < TARGET_BITS_PER_WORD) {
 
@@ -3931,6 +3936,16 @@ static boolean interpret_ref(opnd_type		*top_opnd,
 
                      sm_in_bits = 8;
                   }
+		  /* OSP_467, #2, we calculate the stride for these type differently
+		   * Refer long64 sm_unit_in_bits(int) in sytb.c */
+                  else if ( TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Integer ||
+                            TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Logical ||
+                            TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ptr ||
+                            TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ch_Ptr ||
+                            TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Real ||
+                            TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Complex ) {
+                     sm_in_bits = storage_bit_size_tbl[CG_INTEGER_DEFAULT_TYPE];
+                  }
                   else {
                      sm_in_bits = sm_unit_in_bits(ATD_TYPE_IDX(base_attr_idx));
                   }
@@ -4127,6 +4142,16 @@ static boolean interpret_ref(opnd_type		*top_opnd,
 
          sm_in_bits = 8;
       }
+      /* OSP_467, #2, we calculate the stride for these type differently
+       * Refer long64 sm_unit_in_bits(int) in sytb.c */
+      else if ( TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Integer ||
+                TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Logical ||
+                TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ptr ||
+                TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ch_Ptr ||
+                TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Real ||
+                TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Complex ) {
+         sm_in_bits = storage_bit_size_tbl[CG_INTEGER_DEFAULT_TYPE];
+      }
       else {
          sm_in_bits = sm_unit_in_bits(ATD_TYPE_IDX(base_attr_idx));
       }
@@ -4288,6 +4313,8 @@ ZERO_ARRAY:
          }
       }
       else {
+# if 0 /* OSP_467, #1, We do not need these stuffs any more
+          since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */
 # if defined(_TARGET64)
          if (exp_desc->linear_type == Complex_4 &&
              num_bits == TARGET_BITS_PER_WORD) {
@@ -4302,12 +4329,13 @@ ZERO_ARRAY:
             }
             else {
                word_offset = bit_offset/TARGET_BITS_PER_WORD;
-               // OSP_454
+               /* OSP_454, abandoned */
                unpack_int64_to_int32 (
                      CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + word_offset), result_value );
 	    }
          }
          else 
+# endif
 # endif
          if (single_value_const &&
              num_bits < TARGET_BITS_PER_WORD &&
@@ -4385,6 +4413,16 @@ ZERO_ARRAY:
                    ATT_CHAR_SEQ(TYP_IDX(ATD_TYPE_IDX(base_attr_idx)))) {
 
                   sm_in_bits = 8;
+               }
+	       /* OSP_467, #2, we calculate the stride for these type differently
+		* Refer long64 sm_unit_in_bits(int) in sytb.c */
+               else if ( TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Integer ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Logical ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ptr ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ch_Ptr ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Real ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Complex ) {
+                  sm_in_bits = storage_bit_size_tbl[CG_INTEGER_DEFAULT_TYPE];
                }
                else {
                   sm_in_bits = sm_unit_in_bits(ATD_TYPE_IDX(base_attr_idx));
@@ -4466,6 +4504,8 @@ ZERO_ARRAY:
          }
       }
       else {
+#if 0 /* OSP_467, #1, We do not need these stuffs any more
+         since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */
 # if defined(_TARGET64)
          if (exp_desc->linear_type == Complex_4 &&
              num_bits == TARGET_BITS_PER_WORD) {
@@ -4479,13 +4519,14 @@ ZERO_ARRAY:
                /* BHJ assumes these are word aligned.                   */
 
                word_offset = bit_offset/TARGET_BITS_PER_WORD;
-               // OSP_454
+               /* OSP_454, abandoned */
                unpack_int64_to_int32 (
                      CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + word_offset), result_value );
             }
          }
          else 
 # endif
+# endif		 
          if (single_value_const &&
              num_bits < TARGET_BITS_PER_WORD &&
              (exp_desc->type == Integer ||
@@ -4575,6 +4616,16 @@ ZERO_ARRAY:
                    ATT_CHAR_SEQ(TYP_IDX(ATD_TYPE_IDX(base_attr_idx)))) {
 
                   sm_in_bits = 8;
+               }
+	       /* OSP_467, #2, we calculate the stride for these type differently
+		* Refer long64 sm_unit_in_bits(int) in sytb.c */
+               else if ( TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Integer ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Logical ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ptr ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ch_Ptr ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Real ||
+                         TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Complex ) {
+                  sm_in_bits = storage_bit_size_tbl[CG_INTEGER_DEFAULT_TYPE];
                }
                else {
                   sm_in_bits = sm_unit_in_bits(ATD_TYPE_IDX(base_attr_idx));
@@ -4711,6 +4762,16 @@ ZERO_ARRAY:
 
             sm_in_bits = 8;
          }
+	 /* OSP_467, #2, we calculate the stride for these type differently
+	  * Refer long64 sm_unit_in_bits(int) in sytb.c */
+         else if ( TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Integer ||
+                   TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Logical ||
+                   TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ptr ||
+                   TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == CRI_Ch_Ptr ||
+                   TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Real ||
+                   TYP_TYPE(ATD_TYPE_IDX(base_attr_idx)) == Complex ) {
+            sm_in_bits = storage_bit_size_tbl[CG_INTEGER_DEFAULT_TYPE];
+         }
          else {
             sm_in_bits = sm_unit_in_bits(ATD_TYPE_IDX(base_attr_idx));
          }
@@ -4762,6 +4823,8 @@ ZERO_ARRAY:
                }
             }
             else {
+# if 0 /* OSP_467, #1, We do not need these stuffs any more
+          since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */
 # if defined(_TARGET64)
                if (exp_desc->linear_type == Complex_4 &&
                    num_bits == TARGET_BITS_PER_WORD) {
@@ -4775,13 +4838,14 @@ ZERO_ARRAY:
                      /* BHJ assumes these are word aligned.                   */
 
                      word_offset = bit_offset/TARGET_BITS_PER_WORD;
-                     // OSP_454
+                     /* OSP_454, abandoned */
                      unpack_int64_to_int32 (
                            CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + word_offset), result_value );
 		  }
                }
                else
 # endif
+# endif		       
                if (single_value_const &&
                    num_bits < TARGET_BITS_PER_WORD &&
                    (exp_desc->type == Integer ||
