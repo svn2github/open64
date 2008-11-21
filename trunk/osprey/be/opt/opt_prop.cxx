@@ -434,13 +434,14 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
        ))
       return NOT_PROPAGATABLE;
 
-#ifdef VENDOR_PSC
-    // These code comes from Pathscale 3.2
-    // They may cause compilation time out in 403.gcc on IA-64 and 64-bit compiler on x86_64
+#if !defined(TARG_IA64)
+    // These code are not applied on TARG_IA64 since it will cause compilation time out
+    // in RVI2 phase during building 403.gcc.
     // Too aggressive copy propagation may increase the compilation time in later phases
     if (icopy_phase) {
       if (x->Is_isop_flag_set(ISOP_ICOPY_VISITED)) {
 	*height = 1;	// don't really know the height, so return 1
+	*weight = 1;
         return (PROPAGATABILITY) (0x3 & x->Propagatability()); // to prevent sign extension
       }
       else {
@@ -451,6 +452,7 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
     else {
       if (x->Is_isop_flag_set(ISOP_COPY_VISITED)) {
 	*height = 1;	// don't really know the height, so return 1
+	*weight = 1;
         return (PROPAGATABILITY) (0x3 & x->Propagatability()); // to prevent sign extension
       }
       else {
@@ -459,9 +461,16 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
       }
     }
 #else
-    if (icopy_phase && !x->Is_isop_flag_set(ISOP_ICOPY_VISITED)) {
-      x->Set_isop_flag(ISOP_ICOPY_VISITED);
-      Add_visited_node(x);
+    if (icopy_phase) {
+      if (!x->Is_isop_flag_set(ISOP_ICOPY_VISITED)) {
+        x->Set_isop_flag(ISOP_ICOPY_VISITED);
+        Add_visited_node(x);
+      }
+    }
+    else {
+      if (!x->Is_isop_flag_set(ISOP_COPY_VISITED)) {
+        x->Set_isop_flag(ISOP_COPY_VISITED);
+        Add_visited_node(x);
     }
 #endif
 
