@@ -471,6 +471,7 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
       if (!x->Is_isop_flag_set(ISOP_COPY_VISITED)) {
         x->Set_isop_flag(ISOP_COPY_VISITED);
         Add_visited_node(x);
+      }
     }
 #endif
 
