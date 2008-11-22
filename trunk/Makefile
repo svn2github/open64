@@ -137,8 +137,6 @@ FIRST_COMPONENTS = \
 		$(NATIVE_BUILD_DIR)/libelfutil \
 		$(NATIVE_BUILD_DIR)/libdwarf \
 		$(NATIVE_BUILD_DIR)/libunwindP \
-		$(NATIVE_BUILD_DIR)/libspin \
-		$(NATIVE_BUILD_DIR)/libspin_4_2_0 \
 		$(NATIVE_BUILD_DIR)/libcif \
 		$(NATIVE_BUILD_DIR)/arith
 
@@ -186,12 +184,6 @@ libdwarf: include
 libunwindP: targ_info
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libunwindP
 
-libspin:
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin
-
-libspin_4_2_0:
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 
-
 libcif: include
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libcif
 
@@ -207,10 +199,10 @@ $(NATIVE_BUILD_DIR)/gccfe/gfec gfec: libiberty libcomutil libcmplrs
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc: libiberty libcomutil libcmplrs
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/g++fe
 
-$(NATIVE_BUILD_DIR)/wgen/wgen wgen: libiberty libcomutil libcmplrs libspin
+$(NATIVE_BUILD_DIR)/wgen/wgen wgen: libiberty libcomutil libcmplrs $(NATIVE_BUILD_DIR)/libspin/gspin
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen
 
-$(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 wgen42: libiberty libcomutil libcmplrs libspin_4_2_0
+$(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 wgen42: libiberty libcomutil libcmplrs $(NATIVE_BUILD_DIR)/libspin_4_2_0/gspin42
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen_4_2_0
 
 $(NATIVE_BUILD_DIR)/be/be be: be.so 
@@ -272,12 +264,18 @@ $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 $(NATIVE_BUILD_DIR_LD)/Makefile:  
 	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
 
+$(NATIVE_BUILD_DIR)/libspin/gspin:
+	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin
+
+$(NATIVE_BUILD_DIR)/libspin_4_2_0/gspin42:
+	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 
+
 # GNU 4.0.2 based FE
 $(GNUFE_BUILD_DIR)/gcc/cc1plus cc1plus: cc1
 $(GNUFE_BUILD_DIR)/gcc/cc1 cc1: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(MAKE) -C $(GNUFE_BUILD_DIR)
 
-$(GNUFE_BUILD_DIR)/Makefile: libspin
+$(GNUFE_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin/gspin
 	cd $(GNUFE_BUILD_DIR); ./CONFIGURE
 
 # GNU 4.2.0 based FE
@@ -285,7 +283,7 @@ $(GNUFE42_BUILD_DIR)/gcc/cc1plus42 cc1plus42: cc142
 $(GNUFE42_BUILD_DIR)/gcc/cc142 cc142: $(GNUFE42_BUILD_DIR)/Makefile Force
 	$(MAKE) -C $(GNUFE42_BUILD_DIR)
 
-$(GNUFE42_BUILD_DIR)/Makefile: libspin_4_2_0
+$(GNUFE42_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin_4_2_0/gspin42
 	cd $(GNUFE42_BUILD_DIR); ./CONFIGURE
 
 build: $(PHONY_TARGET)
