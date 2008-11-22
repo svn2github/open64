@@ -1728,7 +1728,11 @@ static VARIANT Memop_Variant(WN *memop)
 #endif
 
     if (align < required_alignment) {
+#ifdef TARG_IA64
+      Set_V_alignment(variant, ffs(align) - 1);
+#else
       Set_V_alignment(variant, align);
+#endif
      /*
       *	TODO
       *	When we have ST information we may be able to compute an
