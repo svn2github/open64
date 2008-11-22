@@ -7871,6 +7871,7 @@ WGEN_Expand_Expr (gs_t exp,
 	TY_IDX	   ap_addr_ty;
         ST        *ap_st;
         WN_OFFSET  ap_offset;
+        UINT32     ap_field_id = 0;
 
         if (WN_operator(ap_load) == OPR_LDID) {
 	  ap_st     = WN_st (ap_load);
@@ -7880,6 +7881,7 @@ WGEN_Expand_Expr (gs_t exp,
 	if (WN_operator(ap_load) == OPR_ILOAD) {
           ap_st     = NULL;
           ap_offset = WN_offset (ap_load);
+          ap_field_id = WN_field_id(ap_load);
           ap_addr   = WN_COPY_Tree (WN_kid0 (ap_load));
 	  ap_addr_ty = WN_load_addr_ty(ap_load);
           if (WN_has_side_effects (ap_addr))
@@ -7947,7 +7949,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  wn = WN_Stid (Pointer_Mtype, ap_offset, ap_st, ap_ty_idx, wn);
         else {
           wn = WN_CreateIstore (OPR_ISTORE, MTYPE_V, Pointer_Mtype, ap_offset,
-                                ap_addr_ty, wn, ap_addr, 0);
+                                ap_addr_ty, wn, ap_addr, ap_field_id);
         }
         WGEN_Stmt_Append (wn, Get_Srcpos ());
 #ifdef TARG_IA64
