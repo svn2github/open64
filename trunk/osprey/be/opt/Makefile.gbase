@@ -307,22 +307,29 @@ endif
 #  Variables describing additional sources, objects, and libraries
 #----------------------------------------------------------------------
 
-default: first $(TARGETS) last
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is
 #  built.
 #----------------------------------------------------------------------
 first:
+ifndef SKIP_DEP_BUILD
 ## verify that be.so is up to date
 	$(call submake,$(TARG_BE_DIR))
+endif
 ifeq ($(BUILD_OS), LINUX)
 	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 endif
-ifeq ($(BUILD_PCH), USE_PCH)
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_PCH), USE_PCH)
 ## build pch files first so that we can use precompiled headers
 	( $(MAKE) $(.MAKEFLAGS) BUILD_PCH=USE_PCH PCH_OPTS="-LANG:create_pch=opt_pch.pch" opt_pch.pch opt_pch.o )
 	( $(MAKE) $(.MAKEFLAGS) BUILD_PCH=USE_PCH BUILD_OPTIMIZE="$(BUILD_OPTIMIZE)" PCH_OPTS="-LANG:use_pch=opt_pch.pch" opt_pch_files )
+ endif
 endif
 
 #----------------------------------------------------------------------
@@ -350,6 +357,8 @@ else
  endif
  endif
 endif
+
+.PHONY: default first last install make_deps
 
 ifeq ($(BUILD_PCH), USE_PCH)
 

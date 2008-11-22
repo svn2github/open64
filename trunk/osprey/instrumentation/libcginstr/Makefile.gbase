@@ -194,9 +194,14 @@ LLDLIBS +=
 endif
 
 ifeq ($(BUILD_OS), IRIX)
-default: so_locations $(TARGETS) last
+default:
+	$(MAKE) so_locations
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 else
-default: $(TARGETS) last
+default:
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 endif
 
 #----------------------------------------------------------------------

@@ -317,7 +317,12 @@ TARGETS_PURE = ipa.so.pure
 #  -> All targets finished before make_deps or make_libdeps.
 #----------------------------------------------------------------------
 
-default: make_deps
+.PHONY: default first make_deps install
+
+default:
+	$(MAKE) first
+	$(MAKE) make_deps
+
 make_deps: $(TARGETS)
 .PHONY: default install make_deps
 
@@ -327,18 +332,17 @@ pure: $(TARGETS_PURE)
 #  Library prerequisites are updated via submake
 #----------------------------------------------------------------------
 
-.PHONY: force
-force: ;
-
-$(TARG_IPL_DIR)/ipl.so: force
-	$(call submake,$(TARG_IPL_DIR),ipl.so)
-$(TARG_BE_DIR)/be.so: force
-	$(call submake,$(TARG_BE_DIR),be.so)
-
-be.so: $(BE_BE_DIR)/so_locations $(TARG_BE_DIR)/be.so
+.PHONY: first
+first:
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_OS), LINUX)
+	$(call submake,$(BUILD_AREA)/include)
+ endif
+	$(call submake,$(TARG_IPL_DIR))
+endif
 	ln -sf $(TARG_BE_DIR)/be.so .
-ipl.so: $(TARG_IPL_DIR)/ipl.so
-	ln -sf $(TARG_IPL_DIR)/ipl.so
+	ln -sf $(TARG_IPL_DIR)/ipl.so .
+
 
 #----------------------------------------------------------------------
 #  Build and install 'ipa.so'

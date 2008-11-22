@@ -241,9 +241,7 @@ else
 # make dependencies be for library(foo.o) not for foo.o,
 # thus we don't need to preserve intermediate .o files.
 make_libdeps :
-	-@cat *.d > $(MKDEPFILE).tmp
-	-@sed -e "s/^.*\.o/$(LIBRARY)(&)/" $(MKDEPFILE).tmp > $(MKDEPFILE)
-	-@rm $(MKDEPFILE).tmp
+	-@cat *.d | sed -e "s/^.*\.o/$(LIBRARY)(&)/" > $(MKDEPFILE)
 endif
 
 #

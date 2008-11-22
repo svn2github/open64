@@ -629,40 +629,41 @@ LLDLIBS += $(TARG_LIBDWARF)/libdwarf.a \
 	-lm -lc
 endif
 
-default: first derived_files $(TARGETS) last
+.PHONY: default first last install
+
+default: 
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is
 #  built.
 #----------------------------------------------------------------------
 first: derived_files
-ifeq ($(BUILD_OS), LINUX)
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_OS), LINUX)
 	$(call submake,$(TARG_LIBELF))
 	$(call submake,$(TARG_LIBELFUTIL))
 	$(call submake,$(TARG_LIBDWARF))
- ifeq ($(BUILD_TARGET), IA64)
+  ifeq ($(BUILD_TARGET), IA64)
 	$(call submake,$(TARG_LIBUNWIND))
- endif
- ifeq ($(BUILD_TARGET), MIPS)
+  endif
+  ifeq ($(BUILD_TARGET), MIPS)
 	$(call submake,$(TARG_LIBUNWIND))
- endif
- ifeq ($(BUILD_TARGET), X8664)
+  endif
+  ifeq ($(BUILD_TARGET), X8664)
 	$(call submake,$(TARG_LIBUNWIND))
- endif
- ifeq ($(BUILD_TARGET), SL)
+  endif
+  ifeq ($(BUILD_TARGET), SL)
 	$(call submake,$(TARG_LIBUNWIND))
+  endif
  endif
-endif
-## verify that be.so is up to date
+ ## verify that be.so is up to date
 	$(call submake,$(TARG_BE))
-ifeq ($(BUILD_OS), LINUX)
-	if ! test -a be.so; then ln -sf $(TARG_BE)/be.so .; fi
-	if ! test -a be; then ln -sf $(TARG_BE)/be .; fi
-	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
-endif
-ifeq ($(BUILD_PCH), USE_PCH)
-## build pch files first so that we can use precompiled headers
-# TODO: how to build pch on irix
+ ifeq ($(BUILD_PCH), USE_PCH)
+ ## build pch files first so that we can use precompiled headers
+ # TODO: how to build pch on irix
 	( $(MAKE) \
 	PCH_OPTS="-LANG:create_pch=cg_pch.pch" cg_pch.pch cg_pch.o )
 	( $(MAKE) \
@@ -671,6 +672,12 @@ ifeq ($(BUILD_PCH), USE_PCH)
 	PCH_OPTS="-LANG:create_pch=cg_gra_pch.pch" cg_gra_pch.pch cg_gra_pch.o )
 	( $(MAKE) \
 	PCH_OPTS="-LANG:use_pch=cg_gra_pch.pch" cg_gra_pch_files )
+ endif
+endif
+ifeq ($(BUILD_OS), LINUX)
+	if ! test -a be.so; then ln -sf $(TARG_BE)/be.so .; fi
+	if ! test -a be; then ln -sf $(TARG_BE)/be .; fi
+	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
 endif
 
 #----------------------------------------------------------------------

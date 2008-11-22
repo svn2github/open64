@@ -81,6 +81,7 @@ ifeq ($(BUILD_VARIANT), GNU_4_2_0)
 CFLAGS += -DFE_GNU_4_2_0
 endif
 
+.PHONY: default
 default: $(TARGETS)
 
 devbuild: CFLAGS = -DIs_True_On -g -Wall
@@ -88,6 +89,7 @@ devbuild: $(TARGETS)
 
 $(LIBSPIN_OBJECTS): $(LIBSPIN_HEADERS)
 $(GSPIN_OBJECTS):   $(LIBSPIN_HEADERS)
+$(GSPIN): $(LIBSPIN)
 
 
 $(LIBSPIN): $(LIBSPIN_OBJECTS)

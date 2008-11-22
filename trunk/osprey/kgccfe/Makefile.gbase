@@ -313,7 +313,12 @@ endif
 LLDLIBS = $(GNU_OBJS) $(COMUTIL_OBJS) $(LIBIBERTY_OBJS)
 LLDLIBS += -lm $(CMPLRS_OBJS)
 
-default: first $(TARGETS) last
+.PHONY: default first last install
+
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is 
@@ -321,10 +326,12 @@ default: first $(TARGETS) last
 #----------------------------------------------------------------------
 first:
 	$(call submake,$(TARG_GNU_DIR))
-ifneq ($(BUILD_TARGET), NVISA)
+ifndef SKIP_DEP_BUILD
+ ifneq ($(BUILD_TARGET), NVISA)
 	$(call submake,$(TARG_CMPLRS_DIR))
-endif
+ endif
 	$(call submake,$(TARG_COMUTIL_DIR))
+endif
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is 

@@ -136,10 +136,20 @@ DUMP_OBJECTS := \
 #  -> All targets finished before make_deps or make_libdeps.
 #----------------------------------------------------------------------
 
-default: make_libdeps
+default:
+	$(MAKE) first
+	$(MAKE) make_libdeps
+
 make_libdeps: $(TARGETS)
 $(OBJECTS): $(BUILD_AREA)/include/pathscale_defs.h
-.PHONY: default install make_libdeps
+.PHONY: default install make_libdeps first 
+
+first:
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_OS), LINUX)
+	$(call submake,$(BUILD_AREA)/include)
+ endif
+endif
 
 #----------------------------------------------------------------------
 

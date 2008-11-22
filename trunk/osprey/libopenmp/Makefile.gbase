@@ -68,10 +68,15 @@ CXXFILES = \
 #  which may cause undefined symbols in C program
 CXXFLAGS += -fno-exceptions -nostdinc++
 
-default: first $(TARGETS) last
+default:
+	$(MAKE)  first
+	$(MAKE)  $(TARGETS)
+	$(MAKE)  last
 
 first : 
+ifndef SKIP_DEP_BUILD
 	$(call submake,$(BUILD_AREA)/include)
+endif
 
 last : make_libdeps
 

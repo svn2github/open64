@@ -354,7 +354,11 @@ LLDLIBS += $(TARG_LIBDWARF)/libdwarf.a \
         -lm -lc
 endif  
 
-default: first derived_files $(TARGETS) last
+default:
+	$(MAKE) first
+	$(MAKE) derived_files
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is
@@ -363,26 +367,20 @@ default: first derived_files $(TARGETS) last
 #  requested target.
 #----------------------------------------------------------------------
 first:
-ifeq ($(BUILD_OS), LINUX)
-	cd $(TARG_LIBELF) && $(MAKE)
-	cd $(TARG_LIBELFUTIL) && $(MAKE)
-	cd $(TARG_LIBDWARF) && $(MAKE)
- ifeq ($(BUILD_TARGET), IA64)
-	cd $(TARG_LIBUNWIND) && $(MAKE)
- endif
-endif
-## verify that cg.so is up to date
-	cd $(TARG_BE) && $(MAKE)
-#	cd $(TARG_CG) && $(MAKE)
-ifeq ($(BUILD_OS), LINUX)
-	if ! test -e be.so; then ln -sf $(TARG_BE)/be.so .; fi
-#	if ! test -e $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
-endif
-## verify that  if up to date
-ifeq ($(BUILD_PCH), USE_PCH)
-## build pch files first so that we can use precompiled headers
+ifndef SKIP_DEP_BUILD
+ ## verify that cg.so is up to date
+ #	cd $(TARG_BE) && $(MAKE)
+	cd $(TARG_CG) && $(MAKE)
+ ## verify that  if up to date
+ ifeq ($(BUILD_PCH), USE_PCH)
+ ## build pch files first so that we can use precompiled headers
 	( $(MAKE) $(.MAKEFLAGS) BUILD_PCH=USE_PCH PCH_OPTS="-LANG:create_pch=orc_pch.pch" orc_pch.pch orc_pch.o )
 	( $(MAKE) $(.MAKEFLAGS) BUILD_PCH=USE_PCH PCH_OPTS="-LANG:use_pch=orc_pch.pch" orc_pch_files )
+ endif
+endif
+ifeq ($(BUILD_OS), LINUX)
+	if ! test -e be.so; then ln -sf $(TARG_BE)/be.so .; fi
+	if ! test -e cg.so; then ln -sf $(TARG_CG)/cg.so .; fi
 endif
 
 #----------------------------------------------------------------------

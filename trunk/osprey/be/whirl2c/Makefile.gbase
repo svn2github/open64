@@ -258,16 +258,22 @@ ifeq ($(BUILD_COMPILER), EDG)
 LLDLIBS	= -none -lc
 endif
 
-default: first $(TARGETS) last
+.PHONY: default first last install
+
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is
 #  built.
 #----------------------------------------------------------------------
 first:
+ifndef SKIP_DEP_BUILD
 	$(call submake,$(TARGDIR)/be)
+endif
 ifeq ($(BUILD_OS), LINUX)
-	$(call submake,$(BUILD_AREA)/include)
 	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO_DIR)/$(TARGET_SO) .; fi
 endif
 
@@ -295,7 +301,7 @@ install:: default
 endif
 
 # extra files to be removed with make clobber
-LDIRT += be be.so whirl2c_dbg $(TARGET_SO)
+LDIRT += whirl2c_be whirl2c be be.so whirl2c_dbg $(TARGET_SO)
 
 whirl2c.so:  $(WHIRL2C_CXX_OBJS) $(BE_WHIRL2C_DIR)/Exported \
 		$(WHIRL2C_DSOS) $(BE_BE_DIR)/so_locations

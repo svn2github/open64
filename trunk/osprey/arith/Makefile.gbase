@@ -198,7 +198,9 @@ FFILES= \
 endif
 
 
-default: $(TARGETS) last
+default:
+	$(MAKE)  $(TARGETS)
+	$(MAKE)  last
 
 exports: default
 	$(INSTALL) $(STD_INSTALL_READ_MASK) -F $(STD_LIBRARY_LOC) $(TARGETS)

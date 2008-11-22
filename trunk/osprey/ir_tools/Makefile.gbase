@@ -141,13 +141,17 @@ CXXFILES =		\
 	$(COMMON_COM_CXX_SRC) \
 	$(COMMON_COM_TARG_CXX_SRCS)
 
-default: first $(TARGETS) last
+.PHONY: default first last install
+
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 first:
-ifeq ($(BUILD_OS), LINUX)
-	$(call submake,$(BUILD_AREA)/include)
-endif
+ifndef SKIP_DEP_BUILD
 	$(call submake,$(BUILD_AREA)/libcomutil)
+endif
 
 last: make_deps
 

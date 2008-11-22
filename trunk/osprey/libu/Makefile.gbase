@@ -218,13 +218,20 @@ SRC_DIRS += \
         $(BUILD_TOT)/libcsup/msgnew
 LCINCS += -I$(BUILD_TOT)/libcsup/include
 
+.PHONY: default first last install
+
 # for now don't build msg catalog
 # default: $(TARGETS) $(MSGFILE) $(EXPFILE)
-default: first $(TARGETS) last
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 first:
-ifeq ($(BUILD_OS), LINUX)
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_OS), LINUX)
 	$(call submake,$(BUILD_AREA)/include)
+ endif
 endif
 
 last : make_libdeps
