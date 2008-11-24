@@ -269,10 +269,12 @@ Recompute_addr_saved_stmt(WN *wn)
     // the RHS expr of any store is kid0
     // Any idea on how to assert?
     Set_addr_saved_expr(WN_kid0(wn), TRUE);
+#if defined (TARG_NVISA)
     if (OPCODE_operator(opc) == OPR_ISTORE) {
       // can be address on lhs too
       Set_addr_saved_expr(WN_kid1(wn), TRUE);
     }
+#endif
   }
   else if (OPCODE_operator(opc) == OPR_ASM_STMT) {
     // need to search input nodes

@@ -1419,7 +1419,9 @@ static PREG_NUM AssignPregExprPos(WN *block, WN *tree, TY_IDX ty,
 
     stid = WN_Stid(type, pregNo, preg, ty, tree);
 
+#ifdef TARG_NVISA
     Set_addr_saved_expr(tree, TRUE);
+#endif
 
     if (srcpos)
       WN_Set_Linenum (stid, srcpos);
