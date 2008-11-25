@@ -30,7 +30,7 @@
  *
  * Description:
  *
- * This module provides phase control functions for RIPA.
+ * This module provides phase control functions for DIPA.
  * It is based on the program-independent functionality provided by
  * resource.cxx (via resource.h).
  *
@@ -44,38 +44,38 @@
 #include <signal.h>
 
 #include "workaround.h"
-#include "ripa_errors.h"
+#include "dipa_errors.h"
 #include "resource.h"
 #include "timing.h"
 #include "tracing.h"
 #include "resource.h"
 #include "messg.h"
-#include "ripa_phase.h"
-#include "ripa_phase_ctrl.h"
-#include "ripa_args.h"
+#include "dipa_phase.h"
+#include "dipa_phase_ctrl.h"
+#include "dipa_args.h"
 #include "cxx_memory.h"
 
-INT RIPA_Phase_Manager::last_phase_id = T_RIPA_TIMER_FIRST;
-Phase_List RIPA_Phase_Manager::phase_list;
-RIPA_Phase *RIPA_Phase_Manager::cur_phase=NULL;
-MEM_POOL RIPA_Phase_Manager::MEM_ripa_pool;
-MEM_POOL RIPA_Phase_Manager::MEM_ripa_nz_pool;
-const char *RIPA_Phase_Manager::tfile_name=NULL;
-FILE *RIPA_Phase_Manager::tfile=NULL;
-CMD_ARGS RIPA_Phase_Manager::ripa_args;
-RIPA_Olist RIPA_Phase_Manager::ripa_olist;
+INT DIPA_Phase_Manager::last_phase_id = T_DIPA_TIMER_FIRST;
+Phase_List DIPA_Phase_Manager::phase_list;
+DIPA_Phase *DIPA_Phase_Manager::cur_phase=NULL;
+MEM_POOL DIPA_Phase_Manager::MEM_dipa_pool;
+MEM_POOL DIPA_Phase_Manager::MEM_dipa_nz_pool;
+const char *DIPA_Phase_Manager::tfile_name=NULL;
+FILE *DIPA_Phase_Manager::tfile=NULL;
+CMD_ARGS DIPA_Phase_Manager::dipa_args;
+DIPA_Olist DIPA_Phase_Manager::dipa_olist;
 
 /*
  * This function returns next available phase id. Currently phase id
  * is defined as timer id internally. The free phase id
- * are reserved in TIMER_ID from T_LAST_COMPILER to T_RIPA
+ * are reserved in TIMER_ID from T_LAST_COMPILER to T_DIPA
  * This function can't be called in multiple processes simultaneously.
  *
  * Will be changed later.
  */
-PHASE_ID RIPA_Phase_Manager::Register_Phase(const char *name, INT parentId, INT prevId)
+PHASE_ID DIPA_Phase_Manager::Register_Phase(const char *name, INT parentId, INT prevId)
 {
-	if ( last_phase_id >= T_RIPA_TIMER_LAST ) {
+	if ( last_phase_id >= T_DIPA_TIMER_LAST ) {
 		FmtAssert((false), ("Too many timers allocated\n"));
 	}
 	INT curId = last_phase_id++;
@@ -83,7 +83,7 @@ PHASE_ID RIPA_Phase_Manager::Register_Phase(const char *name, INT parentId, INT 
 	return (PHASE_ID)curId;
 }
 
-PHASE_ID RIPA_Phase_Manager::Register_Phase(RIPA_Phase *cur, RIPA_Phase *parent, RIPA_Phase *prev)
+PHASE_ID DIPA_Phase_Manager::Register_Phase(DIPA_Phase *cur, DIPA_Phase *parent, DIPA_Phase *prev)
 {
 	Phase_List* ph_list=NULL;
 	if (parent == NULL) {
@@ -114,14 +114,14 @@ PHASE_ID RIPA_Phase_Manager::Register_Phase(RIPA_Phase *cur, RIPA_Phase *parent,
 	 * \todo timer_id in timing.h is used as phase id for convenience at present. This
 	 * will be changed later.
 	 */
-	FmtAssert((last_phase_id < T_RIPA_TIMER_LAST), ("Too many timers allocated\n"));
+	FmtAssert((last_phase_id < T_DIPA_TIMER_LAST), ("Too many timers allocated\n"));
 
 	int32_t curId = last_phase_id++;
 	cur->Set_Id(curId);
 	Alloc_Phase (curId, cur->Get_Name(), (parent)?parent->Get_Id():INVALID_PHASE_ID);
 
 	// Receive command line options
-	Ripa_add_phase_opt((char *)cur->Get_Name(), cur->Get_Id());
+	Dipa_add_phase_opt((char *)cur->Get_Name(), cur->Get_Id());
 
 	// This phase is enabled by default after register
 	cur->Enable();
@@ -130,7 +130,7 @@ PHASE_ID RIPA_Phase_Manager::Register_Phase(RIPA_Phase *cur, RIPA_Phase *parent,
 	return 0;
 }
 
-void RIPA_Phase_Manager::Add_Global_Arg(const char *arg_name, const char *arg_val)
+void DIPA_Phase_Manager::Add_Global_Arg(const char *arg_name, const char *arg_val)
 {
 	CMD_ARG pair1;
 
@@ -138,20 +138,20 @@ void RIPA_Phase_Manager::Add_Global_Arg(const char *arg_name, const char *arg_va
 	pair1.second = NULL;
 	if (arg_val && arg_val[0])
 		pair1.second = arg_val;
-	ripa_args.push_back(pair1);
+	dipa_args.push_back(pair1);
 }
 
-void RIPA_Phase_Manager::Add_RIPA_File(char *fname)
+void DIPA_Phase_Manager::Add_DIPA_File(char *fname)
 {
-	RIPA_Obj *robj = CXX_NEW (RIPA_Obj(), Get_Nz_Mempool());	// Don't worry about new, it will be changed later
+	DIPA_Obj *robj = CXX_NEW (DIPA_Obj(), Get_Nz_Mempool());	// Don't worry about new, it will be changed later
 
-	FmtAssert((robj != NULL), ("Failed to allocate RIPA obj!\n"));
+	FmtAssert((robj != NULL), ("Failed to allocate DIPA obj!\n"));
 	robj->Set_Rfile(fname);
 
-	ripa_olist.push_back(robj);
+	dipa_olist.push_back(robj);
 }
 
-PHASE_ID RIPA_Phase_Manager::Get_Phase_ID (const char *name)
+PHASE_ID DIPA_Phase_Manager::Get_Phase_ID (const char *name)
 {
 	INT tid;
 	for (tid=0; tid<last_phase_id; tid++) {
@@ -162,7 +162,7 @@ PHASE_ID RIPA_Phase_Manager::Get_Phase_ID (const char *name)
 	return INVALID_PHASE_ID;
 }
 
-void RIPA_Phase_Manager::Dump_All_Stats(FILE *file)
+void DIPA_Phase_Manager::Dump_All_Stats(FILE *file)
 {
 	Phase_Iter it;
 
@@ -171,7 +171,7 @@ void RIPA_Phase_Manager::Dump_All_Stats(FILE *file)
 	}
 }
 
-void RIPA_Phase_Manager::Accum_All_Stats(void)
+void DIPA_Phase_Manager::Accum_All_Stats(void)
 {
 	Phase_Iter it;
 
@@ -182,7 +182,7 @@ void RIPA_Phase_Manager::Accum_All_Stats(void)
 	}
 }
 
-void RIPA_Phase_Manager::Dump_All_Phases(void)
+void DIPA_Phase_Manager::Dump_All_Phases(void)
 {
 	printf("\n---Dump all phases - total #:%d\n", phase_list.size());
 	for (Phase_Iter it=phase_list.begin(); it!=phase_list.end(); it++ ) {
@@ -190,7 +190,7 @@ void RIPA_Phase_Manager::Dump_All_Phases(void)
 	}
 	printf("\tDump global arguments\n");
 	CMD_ARGS_Iter iter;
-	for (iter=ripa_args.begin(); iter!=ripa_args.end(); iter++) {
+	for (iter=dipa_args.begin(); iter!=dipa_args.end(); iter++) {
 		if ((*iter).first != NULL) {
 			printf("\t\toption name [%s]: val %s\n", (*iter).first, (*iter).second);
 		} else {
@@ -205,7 +205,7 @@ void Catch_Signal(int sig)
 {
 	signal (sig, SIG_DFL);
 
-	const char *ph_name = RIPA_Phase_Manager::Get_Cur_Phase_Name();
+	const char *ph_name = DIPA_Phase_Manager::Get_Cur_Phase_Name();
 
 	fprintf (stderr, "SIGNAL: %s", strsignal(sig));
 	fprintf (stderr, " in %s phase.\n",  ph_name ? ph_name : "startup");
@@ -213,11 +213,11 @@ void Catch_Signal(int sig)
 
 	if ( SIGHUP == sig || SIGTERM == sig || SIGINT == sig) {
 		kill (getpid(), sig);
-		exit (RIPA_INTERNAL_ERROR);
+		exit (DIPA_INTERNAL_ERROR);
 	}
 
 	fprintf(stderr, "Signal %s not handled. Terminated.\n", strsignal(sig));
-	exit (RIPA_INTERNAL_ERROR);
+	exit (DIPA_INTERNAL_ERROR);
 }
 
 void setup_signal_handler(int sig)
@@ -239,25 +239,25 @@ void Init_Signal_Handlers(void)
 	setup_signal_handler (SIGTERM);
 }
 
-bool RIPA_Phase_Manager::Init_Memory(void)
+bool DIPA_Phase_Manager::Init_Memory(void)
 {
-	MEM_POOL_Initialize(&MEM_ripa_pool,"ripa",TRUE);
+	MEM_POOL_Initialize(&MEM_dipa_pool,"dipa",TRUE);
 
-	MEM_POOL_Push(&MEM_ripa_pool);
+	MEM_POOL_Push(&MEM_dipa_pool);
 
-	MEM_POOL_Initialize(&MEM_ripa_nz_pool,"ripa (nz)",FALSE);
+	MEM_POOL_Initialize(&MEM_dipa_nz_pool,"dipa (nz)",FALSE);
 
-	MEM_POOL_Push(&MEM_ripa_nz_pool);
+	MEM_POOL_Push(&MEM_dipa_nz_pool);
 
 	return true;
 }
 
-void RIPA_Phase_Manager::Set_Trace_File(const char *fname)
+void DIPA_Phase_Manager::Set_Trace_File(const char *fname)
 {
 	tfile_name = fname;
 }
 
-bool RIPA_Phase_Manager::Init_Trace_File(const char *fname)
+bool DIPA_Phase_Manager::Init_Trace_File(const char *fname)
 {
 	tfile_name = fname;
 	if (fname && fname[0]) {
@@ -269,7 +269,7 @@ bool RIPA_Phase_Manager::Init_Trace_File(const char *fname)
 	return false;
 }
 
-bool RIPA_Phase_Manager::Init_IPA(void)
+bool DIPA_Phase_Manager::Init_IPA(void)
 {
 	Init_Signal_Handlers();
 	Init_Memory();
@@ -280,7 +280,7 @@ bool RIPA_Phase_Manager::Init_IPA(void)
 	return true;
 }
 
-bool RIPA_Phase_Manager::Do_IPA(void)
+bool DIPA_Phase_Manager::Do_IPA(void)
 {
 	Reset_Timers();
 
@@ -293,7 +293,7 @@ bool RIPA_Phase_Manager::Do_IPA(void)
 		Start_Timer((*it)->Get_Id());
 
 		// execute phase actions one by one
-		(*it)->Start(&ripa_args, &ripa_olist);
+		(*it)->Start(&dipa_args, &dipa_olist);
 
 		Stop_Timer((*it)->Get_Id());
 	}
@@ -301,7 +301,7 @@ bool RIPA_Phase_Manager::Do_IPA(void)
 	return true;
 }
 
-bool RIPA_Phase_Manager::End_IPA(void)
+bool DIPA_Phase_Manager::End_IPA(void)
 {
 	// below should be guarded by command line options
 	Accum_All_Stats();
@@ -310,7 +310,7 @@ bool RIPA_Phase_Manager::End_IPA(void)
 	return true;
 }
 
-const char *RIPA_Phase_Manager::Get_Cur_Phase_Name(void)
+const char *DIPA_Phase_Manager::Get_Cur_Phase_Name(void)
 {
 	const char *p = (cur_phase)?cur_phase->Get_Name():NULL;
 	return p;
@@ -320,7 +320,7 @@ const char *RIPA_Phase_Manager::Get_Cur_Phase_Name(void)
  * Search the top phases only at this moment
  *
  */
-RIPA_Phase *RIPA_Phase_Manager::Get_Phase (PHASE_ID ph_id)
+DIPA_Phase *DIPA_Phase_Manager::Get_Phase (PHASE_ID ph_id)
 {
 	Phase_Iter it;
 	for (it = phase_list.begin(); it != phase_list.end(); it++) {
@@ -335,8 +335,8 @@ RIPA_Phase *RIPA_Phase_Manager::Get_Phase (PHASE_ID ph_id)
 extern "C" {
 #endif
 
-char *Get_Trace_File(void) { return (char *)RIPA_Phase_Manager::Get_Trace_File(); }
-FILE *Get_Trace_File_Desc(void) { return RIPA_Phase_Manager::Get_Trace_File_Desc(); }
+char *Get_Trace_File(void) { return (char *)DIPA_Phase_Manager::Get_Trace_File(); }
+FILE *Get_Trace_File_Desc(void) { return DIPA_Phase_Manager::Get_Trace_File_Desc(); }
 BOOL Get_Trace ( INT func, INT arg ) { return false; }
 
 #ifdef __cplusplus

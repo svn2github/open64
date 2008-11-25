@@ -48,7 +48,7 @@ LC++DEFS += $(STD_COMPILE_OPTS)
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
 #----------------------------------------------------------------------
-RIPA_DIR                = $(BUILD_TOT)/ripa
+DIPA_DIR                = $(BUILD_TOT)/dipa
 
 COMMON_DIR              = $(BUILD_TOT)/common
 COMMON_COM_DIR          = $(COMMON_DIR)/com
@@ -87,9 +87,9 @@ endif
 # These are the directories in which to look for source files.
 
 SRC_DIRS = \
-  $(RIPA_DIR)/main \
-  $(RIPA_DIR)/rta \
-  $(RIPA_DIR)/rta/open64
+  $(DIPA_DIR)/main \
+  $(DIPA_DIR)/rta \
+  $(DIPA_DIR)/rta/open64
 
 HEADER_DIRS = \
   $(SRC_DIRS)		\
@@ -100,15 +100,15 @@ HEADER_DIRS = \
   $(TARGDIR)/be		\
   $(BUILD_TOT)/include \
   $(BUILD_TOT)/rta/open64 \
-  $(RIPA_DIR)/rta \
+  $(DIPA_DIR)/rta \
   $(BUILD_TOT)/libelf/lib \
   $(BUILD_TOT)/libelfutil
 
 RTADUMP_DIRS = \
-  $(RIPA_DIR)/rta
+  $(DIPA_DIR)/rta
 
 RTADUMP_INC_DIRS = \
-  $(RIPA_DIR)/rta/open64
+  $(DIPA_DIR)/rta/open64
 
 ifeq ($(BUILD_OS), LINUX)
 HEADER_DIRS += $(TARGDIR)/include/libelf
@@ -118,23 +118,23 @@ endif
 #  List of source files.  Please keep them in alphabetical order.
 #----------------------------------------------------------------------
 
-RIPA_LOCAL_SRCS =  \
-	ripa_main.cxx \
+DIPA_LOCAL_SRCS =  \
+	dipa_main.cxx \
 	rta_scn.cxx \
 	messg.cxx \
-	ripa_args.cxx \
+	dipa_args.cxx \
 	memory.cxx \
 	timing.cxx \
-	ripa_phase.cxx \
-	ripa_phase_ctrl.cxx \
+	dipa_phase.cxx \
+	dipa_phase_ctrl.cxx \
 	resource.cxx \
 	cxx_memory.cxx
 
 ELF_LIBS=-lelf -lelfutil
-RIPA_LOCAL_OBJS = $(RIPA_LOCAL_SRCS:.cxx=.o)
-RIPA_CXX_OBJS = $(RIPA_CXX_SRCS:.cxx=.o) 
-RIPA_OBJS = $(RIPA_SRCS:.cxx=.o)
-RIPA_ALL_OBJS = $(RIPA_LOCAL_OBJS)
+DIPA_LOCAL_OBJS = $(DIPA_LOCAL_SRCS:.cxx=.o)
+DIPA_CXX_OBJS = $(DIPA_CXX_SRCS:.cxx=.o) 
+DIPA_OBJS = $(DIPA_SRCS:.cxx=.o)
+DIPA_ALL_OBJS = $(DIPA_LOCAL_OBJS)
 
 RTA_DUMP_SRCS = \
 	elf_reader64.cxx \
@@ -186,8 +186,8 @@ DSOSTARTOPT = -check_registry $(TARG_BE_DIR)/so_locations -show -Wl,-no_unresolv
 DSOSTARTOPT_32 = $(DSOSTARTOPT)
 DSOSTARTOPT_N32 = $(DSOSTARTOPT)
 
-TARGETS = ripa rtadump
-TARGETS_PURE = ripa.pure rtadump.pure
+TARGETS = dipa rtadump
+TARGETS_PURE = dipa.pure rtadump.pure
 
 default: first $(TARGETS) last
 pure: $(TARGETS_PURE)
@@ -208,8 +208,8 @@ first:
 
 last : make_deps
 
-ripa: $(RIPA_ALL_OBJS)
-	$(link.c++f) -L$(TARG_ELF_DIR) -L$(TARG_ELFUTIL_DIR) -o $@ $(RIPA_ALL_OBJS) $(ELF_LIBS)
+dipa: $(DIPA_ALL_OBJS)
+	$(link.c++f) -L$(TARG_ELF_DIR) -L$(TARG_ELFUTIL_DIR) -o $@ $(DIPA_ALL_OBJS) $(ELF_LIBS)
 
 wn_reader.o: LCINCS += -I$(RTADUMP_INC_DIRS)
 ipl_summary_print.o: LCINCS += -I$(RTADUMP_INC_DIRS)
@@ -226,5 +226,5 @@ install.pure: $(TARGETS_PURE)
 #----------------------------------------------------------------------
 include $(COMMONRULES)
 
-DEPFILES_ALL=$(patsubst %.o,%.d,$(RIPA_ALL_OBJS))
+DEPFILES_ALL=$(patsubst %.o,%.d,$(DIPA_ALL_OBJS))
 -include $(DEPFILES_ALL)

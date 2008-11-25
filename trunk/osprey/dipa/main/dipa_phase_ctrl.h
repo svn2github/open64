@@ -23,13 +23,13 @@
 
 */
 
-#ifndef ripa_phase_ctrl_INCLUDED
-#define ripa_phase_ctrl_INCLUDED
+#ifndef dipa_phase_ctrl_INCLUDED
+#define dipa_phase_ctrl_INCLUDED
 
 #include <list>
 
 #include "mempool.h"
-#include "ripa_phase.h"
+#include "dipa_phase.h"
 
 /* ====================================================================
  * ====================================================================
@@ -45,43 +45,43 @@
  */
 
 /*
- * RIPA phases should be registered in phase manager. The phase manager will call
- * RIPA functions.
+ * DIPA phases should be registered in phase manager. The phase manager will call
+ * DIPA functions.
  */
 
-class RIPA_Phase_Manager {
+class DIPA_Phase_Manager {
 private:
 	static int32_t last_phase_id;
 	static Phase_List phase_list;	// top level phases only
-	static RIPA_Phase *cur_phase;
-	static MEM_POOL MEM_ripa_pool;
-	static MEM_POOL MEM_ripa_nz_pool;
+	static DIPA_Phase *cur_phase;
+	static MEM_POOL MEM_dipa_pool;
+	static MEM_POOL MEM_dipa_nz_pool;
 	static const char *tfile_name;
 	static FILE *tfile;
 
-	static CMD_ARGS ripa_args;
-	static RIPA_Olist ripa_olist;
+	static CMD_ARGS dipa_args;
+	static DIPA_Olist dipa_olist;
 
 public:
 	static PHASE_ID Register_Phase(const char *name, int32_t parentId, int32_t prevId);
-	static PHASE_ID Register_Phase(RIPA_Phase *cur, RIPA_Phase *parent, RIPA_Phase *prev);
+	static PHASE_ID Register_Phase(DIPA_Phase *cur, DIPA_Phase *parent, DIPA_Phase *prev);
 
 	static void Add_Global_Arg(const char *arg_name, const char *arg_val);
-	static void Add_RIPA_File(char *fname);
+	static void Add_DIPA_File(char *fname);
 
 	static bool Init_IPA(void);
 	static bool Do_IPA(void);
 	static bool End_IPA(void);
 
 	static PHASE_ID Get_Phase_ID (const char *name);
-	static RIPA_Phase *Get_Phase (PHASE_ID ph_id);
+	static DIPA_Phase *Get_Phase (PHASE_ID ph_id);
 
-	static void Set_Cur_Phase(RIPA_Phase *_phase) { cur_phase = _phase; }
+	static void Set_Cur_Phase(DIPA_Phase *_phase) { cur_phase = _phase; }
 	static const char *Get_Cur_Phase_Name(void);
 
 	static bool Init_Memory(void);
-	static inline MEM_POOL *Get_Mempool(void) { return &MEM_ripa_pool; }
-	static inline MEM_POOL *Get_Nz_Mempool(void) { return &MEM_ripa_nz_pool; }
+	static inline MEM_POOL *Get_Mempool(void) { return &MEM_dipa_pool; }
+	static inline MEM_POOL *Get_Nz_Mempool(void) { return &MEM_dipa_nz_pool; }
 
 	static bool Init_Trace_File(const char *fname);
 	static void Set_Trace_File(const char *fname);
@@ -98,4 +98,4 @@ public:
 
 };
 
-#endif /* ripa_phase_ctrl_INCLUDED */
+#endif /* dipa_phase_ctrl_INCLUDED */

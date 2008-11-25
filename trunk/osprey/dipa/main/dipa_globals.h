@@ -24,17 +24,36 @@
 */
 
 /*!
-\file ripa_args.h
-\brief ripa command line option processing.
+\file dipa_globals.h
+\brief dipa global variable definitions.
 
 */
 
-#ifndef __RIPA_ARGS_H__
-#define __RIPA_ARGS_H__ 1
+#ifndef __DIPA_GLOBALS_H__
+#define __DIPA_GLOBALS_H__ 1
 
+typedef enum {
+	T_ANNOT=1,
+	T_DUMP=2,
+} TIMER_ID_t;
 
-void Ripa_add_phase_opt(char *ph_name, int32_t phase_id);
-void Ripa_Proc_Options ( int32_t argc, char *argv[]);
+namespace DIPA_NMSPC {
+
+}
+
+#if 0
+/* To be removed */
+extern MEM_POOL MEM_dipa_pool;
+extern MEM_POOL MEM_dipa_nz_pool;
+
+#define MEM_POOL_Initialize(x,y,z)
+#define MEM_POOL_Push(pool)
+#define MEM_POOL_Pop(pool)
+#define MEM_POOL_Alloc(pool,size) malloc(size)
+#define MEM_POOL_Free(pool,ptr) free(ptr)
+#define MEM_POOL_Delete(pool)
+#define MEM_POOL_Realloc(pool,oldblock,oldsize,newsize) realloc(oldblock,newsize)
+#endif
 
 #endif
 

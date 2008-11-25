@@ -24,17 +24,17 @@
 */
 
 /*!
-\file ripa_errors.h
-\brief ripa error codes and handling.
+\file dipa_errors.h
+\brief dipa error codes and handling.
 
 */
 
-#ifndef __RIPA_ERRORS_H__
-#define __RIPA_ERRORS_H__ 1
+#ifndef __DIPA_ERRORS_H__
+#define __DIPA_ERRORS_H__ 1
 
 typedef enum  {
-	RIPA_INTERNAL_ERROR = -2,
-} RIPA_Error_t;
+	DIPA_INTERNAL_ERROR = -2,
+} DIPA_Error_t;
 
 #endif
 

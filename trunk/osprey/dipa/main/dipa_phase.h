@@ -23,8 +23,8 @@
 
 */
 
-#ifndef ripa_phase_INCLUDED
-#define ripa_phase_INCLUDED
+#ifndef dipa_phase_INCLUDED
+#define dipa_phase_INCLUDED
 
 #include <list>
 #include <utility>
@@ -58,12 +58,12 @@ typedef int32_t PHASE_ID;
 extern void Add_Timer_To_Parent ( INT Timer_ID );
 
 class PHASE_STAT;
-class RIPA_Phase;
+class DIPA_Phase;
 
 /*
- * Please extend this class to handle RIPA object files
+ * Please extend this class to handle DIPA object files
  */
-class RIPA_Obj {
+class DIPA_Obj {
 private:
 	char *rfile;
 public:
@@ -75,8 +75,8 @@ public:
 //	}
 };
 
-typedef std::list<RIPA_Obj * > RIPA_Olist;
-typedef RIPA_Olist::iterator RIPA_Olist_Iter;
+typedef std::list<DIPA_Obj * > DIPA_Olist;
+typedef DIPA_Olist::iterator DIPA_Olist_Iter;
 
 
 typedef std::pair<const char *, const char * > CMD_ARG;
@@ -84,28 +84,28 @@ typedef std::pair<const char *, const char * > CMD_ARG;
 typedef std::list<CMD_ARG> CMD_ARGS;
 typedef CMD_ARGS::iterator CMD_ARGS_Iter;
 
-typedef std::list<RIPA_Phase *> Phase_List;
+typedef std::list<DIPA_Phase *> Phase_List;
 typedef Phase_List::iterator Phase_Iter;
 
-class RIPA_Phase {
+class DIPA_Phase {
 private:
-	RIPA_Phase *parent;	// parent phase if this is a sub function
+	DIPA_Phase *parent;	// parent phase if this is a sub function
 	Phase_List childs;	// double-linked list for all phases at the same level
 
 	CMD_ARGS arg_list;	// phase specific arguments
 	PHASE_ID phase_id;	// a unique integer ID
 	const char *phase_name;
 	PHASE_STAT *phase_stat;	// statistics information like cpu and memory usage
-	RIPA_Olist *rolist;	// Object files to be processed
+	DIPA_Olist *rolist;	// Object files to be processed
 	bool enabled;	// if this phase is enabled or not
 	bool tracing_enabled;	// enable tracing or not
 
 public:
-	RIPA_Phase(const char *_name);
-	~RIPA_Phase();
+	DIPA_Phase(const char *_name);
+	~DIPA_Phase();
 
 	void Add_Arg(char *arg);
-	virtual void Proc_Arg(CMD_ARGS *args, RIPA_Olist *olist);
+	virtual void Proc_Arg(CMD_ARGS *args, DIPA_Olist *olist);
 
 	const char *Get_Name(void) {return phase_name; }
 	void Set_Name(const char *_name) { phase_name = _name; }
@@ -125,14 +125,14 @@ public:
 
 	Phase_List *Get_Childs(void) { return &childs; }
 
-	virtual bool Start(CMD_ARGS *args, RIPA_Olist *olist);	/* Process IPA objects */
+	virtual bool Start(CMD_ARGS *args, DIPA_Olist *olist);	/* Process IPA objects */
 	virtual bool Stop(void) {}	/* Stop execution of a phase */
 	virtual bool Cleanup(void) {}	/* Phase cleanup */
 
 	virtual void Help(void);	/* Provide phase specific help message */
 
 	void Accum_Stats(void);
-	void Accum_Stats(RIPA_Phase *ph);
+	void Accum_Stats(DIPA_Phase *ph);
 
 	void Set_Resource_Limit(int32_t millisecs, int32_t kbytes);
 	void Dump_Time_Usage(FILE *file=NULL) {}
@@ -151,4 +151,4 @@ public:
 		}
 	}
 };
-#endif /* ripa_phase_INCLUDED */
+#endif /* dipa_phase_INCLUDED */

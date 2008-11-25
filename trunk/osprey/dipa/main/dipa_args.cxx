@@ -24,8 +24,8 @@
 */
 
 /*!
-\file ripa_args.cxx
-\brief ripa command line option processing.
+\file dipa_args.cxx
+\brief dipa command line option processing.
 
 */
 
@@ -37,11 +37,11 @@
 #include "workaround.h"
 #include "mempool.h"
 #include "messg.h"
-#include "ripa_args.h"
-#include "ripa_phase_ctrl.h"
+#include "dipa_args.h"
+#include "dipa_phase_ctrl.h"
 
-#define RIPA_VERSION "0.0.0.0"
-#define RIPA_FULLNAME "Open Runtime IPA"
+#define DIPA_VERSION "0.0.0.0"
+#define DIPA_FULLNAME "Open Runtime IPA"
 
 enum {
 	OPTID_HELP = 1000,
@@ -54,13 +54,13 @@ enum {
 };
 
 
-const char *ripa_usage_desc =
-"Usage: ripa [options] file...\n\
+const char *dipa_usage_desc =
+"Usage: dipa [options] file...\n\
 ";
 
-#define MAX_RIPA_OPTIONS 256
+#define MAX_DIPA_OPTIONS 256
 
-static struct option ripa_options[MAX_RIPA_OPTIONS] = {
+static struct option dipa_options[MAX_DIPA_OPTIONS] = {
 	{"help", 0, 0, OPTID_HELP},
 	{"wt", 1, 0, OPTID_TFILE},
 	{"O0", 0, 0, OPTID_OPT_LEVEL0},
@@ -71,26 +71,26 @@ static struct option ripa_options[MAX_RIPA_OPTIONS] = {
 	{0, 0, 0, 0}
 };
 
-void Ripa_Print_Version(void)
+void Dipa_Print_Version(void)
 {
-	fprintf(stderr, "%s Version %s\n", RIPA_FULLNAME, RIPA_VERSION);
+	fprintf(stderr, "%s Version %s\n", DIPA_FULLNAME, DIPA_VERSION);
 	exit (0);
 }
 
-void Ripa_Print_Usage(void)
+void Dipa_Print_Usage(void)
 {
-	fprintf(stderr, "%s Version %s\n", RIPA_FULLNAME, RIPA_VERSION);
-	fprintf(stderr, "%s", ripa_usage_desc);
+	fprintf(stderr, "%s Version %s\n", DIPA_FULLNAME, DIPA_VERSION);
+	fprintf(stderr, "%s", dipa_usage_desc);
 	exit (0);
 }
 
-void Ripa_add_phase_opt(char *ph_name, int32_t phase_id)
+void Dipa_add_phase_opt(char *ph_name, int32_t phase_id)
 {
 	int32_t i;
 	// a stupid algorithm that might be improved to find free slots
-	for (i=0; i<MAX_RIPA_OPTIONS-1; i++) {
-		if (ripa_options[i].name == NULL) {
-			struct option *ph_opt = &ripa_options[i];
+	for (i=0; i<MAX_DIPA_OPTIONS-1; i++) {
+		if (dipa_options[i].name == NULL) {
+			struct option *ph_opt = &dipa_options[i];
 			ph_opt->name = ph_name;
 			ph_opt->has_arg = 1; // no getopt-format parameters
 			ph_opt->flag = 0;	// return option value
@@ -105,10 +105,10 @@ void Ripa_add_phase_opt(char *ph_name, int32_t phase_id)
 			return;
 		}
 	}
-	FmtAssert((i < MAX_RIPA_OPTIONS), ("Too many phases\n"));
+	FmtAssert((i < MAX_DIPA_OPTIONS), ("Too many phases\n"));
 }
 
-/*!  \func int32_t Ripa_Proc_Options ( int32_t argc, char *argv[])
+/*!  \func int32_t Dipa_Proc_Options ( int32_t argc, char *argv[])
    \brief process command line options and return the index of first file.
 
    Please be noted that argvs might be permutated by getopt() functions.
@@ -117,24 +117,24 @@ void Ripa_add_phase_opt(char *ph_name, int32_t phase_id)
    \param argv	argument lists
    \return	none
 */
-void Ripa_Proc_Options ( int32_t argc, char *argv[])
+void Dipa_Proc_Options ( int32_t argc, char *argv[])
 {
 	int32_t opt_index, val;
 	while (1) {
 		opt_index = 0;
 
 		// Don't allow argument permutation
-		val = getopt_long_only(argc, argv, "-v", ripa_options, &opt_index);
+		val = getopt_long_only(argc, argv, "-v", dipa_options, &opt_index);
 		if (val == -1)
 			break;	// end of options
 
 		if (val >= OPTID_PHASE_BASE) {
 			// phase specific arguments will be passed to its owner directly
 			if (strcasecmp(optarg, "help") == 0) {
-				RIPA_Phase_Manager::Get_Phase(val-OPTID_PHASE_BASE)->Help();
+				DIPA_Phase_Manager::Get_Phase(val-OPTID_PHASE_BASE)->Help();
 				exit (0);
 			}
-			RIPA_Phase_Manager::Get_Phase(val-OPTID_PHASE_BASE)->Add_Arg(optarg);
+			DIPA_Phase_Manager::Get_Phase(val-OPTID_PHASE_BASE)->Add_Arg(optarg);
 			continue;
 		}
 
@@ -142,18 +142,18 @@ void Ripa_Proc_Options ( int32_t argc, char *argv[])
 		switch (val) {
 			case 1:
 				printf("Non-option:%s\n", optarg);
-				RIPA_Phase_Manager::Add_RIPA_File(optarg);
+				DIPA_Phase_Manager::Add_DIPA_File(optarg);
 			break;
 			// short options
 			case 'v':
-				Ripa_Print_Version();
+				Dipa_Print_Version();
 				break;
 			// Long options
 			case OPTID_HELP:
-				Ripa_Print_Usage();
+				Dipa_Print_Usage();
 				break;
 			case OPTID_TFILE:
-				RIPA_Phase_Manager::Init_Trace_File ( optarg );
+				DIPA_Phase_Manager::Init_Trace_File ( optarg );
 				break;
 			case OPTID_OPT_LEVEL0:
 			case OPTID_OPT_LEVEL1:
@@ -170,10 +170,10 @@ void Ripa_Proc_Options ( int32_t argc, char *argv[])
 
 		// The argument ordering will be strictly kept except for those phase specific arguments
 		if (val != 1) {
-			RIPA_Phase_Manager::Add_Global_Arg(ripa_options[opt_index].name, optarg);
+			DIPA_Phase_Manager::Add_Global_Arg(dipa_options[opt_index].name, optarg);
 		} else {
 			// files don't have name
-			RIPA_Phase_Manager::Add_Global_Arg(NULL, optarg);
+			DIPA_Phase_Manager::Add_Global_Arg(NULL, optarg);
 		}
 	} // end of while
 }

@@ -40,17 +40,17 @@
 #include <signal.h>
 
 #include "workaround.h"
-#include "ripa_errors.h"
+#include "dipa_errors.h"
 #include "resource.h"
 #include "timing.h"
 #include "tracing.h"
 #include "resource.h"
 #include "messg.h"
-#include "ripa_phase.h"
-#include "ripa_phase_ctrl.h"
-#include "ripa_args.h"
+#include "dipa_phase.h"
+#include "dipa_phase_ctrl.h"
+#include "dipa_args.h"
 
-RIPA_Phase::RIPA_Phase(const char *_name)
+DIPA_Phase::DIPA_Phase(const char *_name)
 {
 	phase_name = _name;
 	phase_id = INVALID_PHASE_ID;
@@ -66,7 +66,7 @@ RIPA_Phase::RIPA_Phase(const char *_name)
  * pair struct is used to store the options: "first" refers to option and "second"
  * refers to parameter.
  */
-void RIPA_Phase::Add_Arg(char *arg)
+void DIPA_Phase::Add_Arg(char *arg)
 {
 	char *p=arg;
 	CMD_ARG pair1;
@@ -92,7 +92,7 @@ void RIPA_Phase::Add_Arg(char *arg)
 /*
  * The default processing is to dump the global and phase specific options
  */
-void RIPA_Phase::Proc_Arg(CMD_ARGS *args, RIPA_Olist *olist)
+void DIPA_Phase::Proc_Arg(CMD_ARGS *args, DIPA_Olist *olist)
 {
 	// global options
 	if (args && !args->empty()) {
@@ -102,11 +102,11 @@ void RIPA_Phase::Proc_Arg(CMD_ARGS *args, RIPA_Olist *olist)
 		}
 	}
 
-	// RIPA object files
+	// DIPA object files
 	if (olist && !olist->empty()) {
-		RIPA_Olist_Iter iter;
+		DIPA_Olist_Iter iter;
 		for (iter = olist->begin(); iter != olist->end(); iter++) {
-			fprintf(stdout, "RIPA objects: %s\n", (*iter)->Get_Rfile());
+			fprintf(stdout, "DIPA objects: %s\n", (*iter)->Get_Rfile());
 		}
 	}
 
@@ -119,7 +119,7 @@ void RIPA_Phase::Proc_Arg(CMD_ARGS *args, RIPA_Olist *olist)
 	}
 }
 
-bool RIPA_Phase::Start(CMD_ARGS *args, RIPA_Olist *olist)
+bool DIPA_Phase::Start(CMD_ARGS *args, DIPA_Olist *olist)
 {
 	printf("Entering phase %s\n", Get_Name());
 	Pre_Dump_IR();
@@ -129,7 +129,7 @@ bool RIPA_Phase::Start(CMD_ARGS *args, RIPA_Olist *olist)
 	return true;
 }
 
-void RIPA_Phase::Pre_Dump_IR(FILE *file)
+void DIPA_Phase::Pre_Dump_IR(FILE *file)
 {
 	if (!Is_Tracing_Enabled()) return;
 
@@ -139,7 +139,7 @@ void RIPA_Phase::Pre_Dump_IR(FILE *file)
 	fprintf(f, "--End Dump before phase %s\n", Get_Name());
 }
 
-void RIPA_Phase::Post_Dump_IR(FILE *file)
+void DIPA_Phase::Post_Dump_IR(FILE *file)
 {
 	if (!Is_Tracing_Enabled()) return;
 
@@ -149,12 +149,12 @@ void RIPA_Phase::Post_Dump_IR(FILE *file)
 	fprintf(f, "--End Dump after phase %s\n", Get_Name());
 }
 
-void RIPA_Phase::Accum_Stats(void)
+void DIPA_Phase::Accum_Stats(void)
 {
 	Accum_Stats(this);
 }
 
-void RIPA_Phase::Accum_Stats(RIPA_Phase *ph)
+void DIPA_Phase::Accum_Stats(DIPA_Phase *ph)
 {
 	Phase_List *phList;
 
@@ -171,7 +171,7 @@ void RIPA_Phase::Accum_Stats(RIPA_Phase *ph)
 	}
 }
 
-void RIPA_Phase::Dump_Stats(FILE *file)
+void DIPA_Phase::Dump_Stats(FILE *file)
 {
 	if (!file) file = stdout;
 
@@ -179,7 +179,7 @@ void RIPA_Phase::Dump_Stats(FILE *file)
 	Resource_Report(file, RR_Report_Delta, Timer(Get_Id()), NULL);
 }
 
-void RIPA_Phase::Help(void)
+void DIPA_Phase::Help(void)
 {
 	fprintf(stderr, "Special help for phase %s:\n", Get_Name());
 	fprintf(stderr, "\tOverride this function to provide special help messages!\n", Get_Name());

@@ -154,8 +154,8 @@ typedef enum {
 	T_Ipfec_Multi_Branch_Comp,
 	T_Ipfec_DAG_CU,
 	T_Ipfec_DAG_Comp,
-	T_RIPA_TIMER_FIRST,	/* Last Timer ID for compiler */
-	T_RIPA_TIMER_LAST=T_RIPA_TIMER_FIRST+256,	/* reserve 256 timers for RIPA */
+	T_DIPA_TIMER_FIRST,	/* Last Timer ID for compiler */
+	T_DIPA_TIMER_LAST=T_DIPA_TIMER_FIRST+256,	/* reserve 256 timers for DIPA */
 	T_LAST
 /* Last index defined */
 } TIMER_ID;

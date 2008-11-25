@@ -22,7 +22,7 @@
 #
 
 #
-#  Makefile for ripa
+#  Makefile for dipa
 #
 
 #
@@ -30,7 +30,7 @@
 #
 BUILD_AREA     = ..
 BUILD_TOT      = ../..
-BUILD_BASE     = ../../ripa/main
+BUILD_BASE     = ../../dipa/main
 BUILD_ROOTS    = TARGET
 BUILD_ABI      = N32BIT
 BUILD_ARCH     = MIPS4
