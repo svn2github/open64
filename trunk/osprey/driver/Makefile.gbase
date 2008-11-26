@@ -101,7 +101,7 @@ ifeq ($(BUILD_ARCH), IA64)
 endif
 
 ifeq ($(BUILD_ARCH), IA32)
-  CFLAGS += -DBUILD_ARCH_IA32 
+  LCDEFS += -DBUILD_ARCH_IA32 
 endif 
 
 ifeq ($(BUILD_VARIANT), NOOPT)
