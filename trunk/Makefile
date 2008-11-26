@@ -199,10 +199,10 @@ $(NATIVE_BUILD_DIR)/gccfe/gfec gfec: libiberty libcomutil libcmplrs
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc: libiberty libcomutil libcmplrs
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/g++fe
 
-$(NATIVE_BUILD_DIR)/wgen/wgen wgen: libiberty libcomutil libcmplrs $(NATIVE_BUILD_DIR)/libspin/gspin
+$(NATIVE_BUILD_DIR)/wgen/wgen wgen: libiberty libcomutil libcmplrs $(NATIVE_BUILD_DIR)/libspin/libgspin.a
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen
 
-$(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 wgen42: libiberty libcomutil libcmplrs $(NATIVE_BUILD_DIR)/libspin_4_2_0/gspin42
+$(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 wgen42: libiberty libcomutil libcmplrs $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen_4_2_0
 
 $(NATIVE_BUILD_DIR)/be/be be: be.so 
@@ -257,17 +257,17 @@ $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95: libcomutil libcif arith
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90
 
 
-.PHONY: Force
+.PHONY: Force libspin libspin42 phony_targets first
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 	$(MAKE) -C $(NATIVE_BUILD_DIR_LD)
 
 $(NATIVE_BUILD_DIR_LD)/Makefile:  
 	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
 
-$(NATIVE_BUILD_DIR)/libspin/gspin:
+$(NATIVE_BUILD_DIR)/libspin/libgspin.a libspin:
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin
 
-$(NATIVE_BUILD_DIR)/libspin_4_2_0/gspin42:
+$(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a  libspin42:
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 
 
 # GNU 4.0.2 based FE
@@ -275,7 +275,7 @@ $(GNUFE_BUILD_DIR)/gcc/cc1plus cc1plus: cc1
 $(GNUFE_BUILD_DIR)/gcc/cc1 cc1: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(MAKE) -C $(GNUFE_BUILD_DIR)
 
-$(GNUFE_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin/gspin
+$(GNUFE_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin/libgspin.a
 	cd $(GNUFE_BUILD_DIR); ./CONFIGURE
 
 # GNU 4.2.0 based FE
@@ -283,12 +283,15 @@ $(GNUFE42_BUILD_DIR)/gcc/cc1plus42 cc1plus42: cc142
 $(GNUFE42_BUILD_DIR)/gcc/cc142 cc142: $(GNUFE42_BUILD_DIR)/Makefile Force
 	$(MAKE) -C $(GNUFE42_BUILD_DIR)
 
-$(GNUFE42_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin_4_2_0/gspin42
+$(GNUFE42_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a
 	cd $(GNUFE42_BUILD_DIR); ./CONFIGURE
 
-build: $(PHONY_TARGET)
+build:
+	$(MAKE) first
+	$(MAKE) phony_targets 
 
-
+first:libspin libspin42
+phony_targets: $(PHONY_TARGET)
 cross: NATIVE_BUILD_DIR = osprey/targia32_ia64_nodebug
 cross: NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_ia64
 cross: CROSS_BUILD = true

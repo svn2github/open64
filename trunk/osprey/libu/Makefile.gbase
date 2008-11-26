@@ -222,10 +222,21 @@ LCINCS += -I$(BUILD_TOT)/libcsup/include
 
 # for now don't build msg catalog
 # default: $(TARGETS) $(MSGFILE) $(EXPFILE)
+FC_COMPILER = $(shell echo $(FC) | awk '{print $$1}' )
+WHICH_FC = $(shell basename `which $(FC_COMPILER) 2>/dev/null` 2>/dev/null )
+
+ifneq (X$(WHICH_FC), X)
 default:
 	$(MAKE) first
 	$(MAKE) $(TARGETS)
 	$(MAKE) last
+else
+default:
+	@echo "--------------------------------------------"
+	@echo "Warning: libu is not build!"
+	@echo "  Can not find the $(FC_COMPILER)"
+	@echo "--------------------------------------------"
+endif
 
 first:
 ifndef SKIP_DEP_BUILD
