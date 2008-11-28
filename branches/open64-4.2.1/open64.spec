@@ -1,5 +1,5 @@
 %define open64_name    open64
-%define open64_version 4.2
+%define open64_version 4.2.1
 %define open64_release 0
 %define open64_prefix  /opt/open64
 %define open64_bin_dir %{open64_prefix}/bin
@@ -242,6 +242,8 @@ true
 %postun
 
 %changelog
+* Fri Nov 28 2008 laijx jianxin.lai@hp.com
+-Open64 4.2.1 release
 * Wed Apr 16 2008 laijx jianxin.lai@hp.com
 -Add barcelona.so, core.so for IA32/x86_64
 * Thu Mar 20 2008 laijx jianxin.lai@hp.com
