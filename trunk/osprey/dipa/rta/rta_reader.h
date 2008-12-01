@@ -24,6 +24,7 @@
 
 */
 
+#include <stdlib.h>
 using namespace std;
 
 typedef unsigned char * BITS;

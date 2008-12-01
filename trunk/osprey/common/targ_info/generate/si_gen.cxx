@@ -66,6 +66,7 @@
 #include <list>
 #include <map>
 #include <vector>
+#include <stdlib.h>
 
 #include "topcode.h"
 #include "targ_isa_properties.h"

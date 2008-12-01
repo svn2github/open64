@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <stdlib.h>
 
 #include "workaround.h"
 #include "dipa_errors.h"

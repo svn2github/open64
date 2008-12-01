@@ -29,6 +29,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <elf.h>
+#include <stdlib.h>
 #include "workaround.h"
 #include "messg.h"
 #include "rta.h"
@@ -41,7 +42,7 @@
 
 template <class T>
 inline T* ofs2ptr(T* p, char* base) {
-  return reinterpret_cast<T*>(base + reinterpret_cast<int *>(p));
+  return reinterpret_cast<T*>(base + reinterpret_cast<size_t>(p));
 }
 
 static inline void print(FILE *fp, int sz, unsigned char *stream)

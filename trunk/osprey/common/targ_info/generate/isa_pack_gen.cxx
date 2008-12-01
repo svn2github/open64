@@ -57,6 +57,7 @@
 #include <assert.h>
 #include <list>
 #include <vector>
+#include <string.h>
 #include "topcode.h"
 #include "targ_isa_properties.h"
 #include "gen_util.h"

@@ -27,6 +27,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <elf.h>
+#include <stdlib.h>
 #include "elf_reader.h"
 #include "elf_reader64.h"
 #include <string.h>
