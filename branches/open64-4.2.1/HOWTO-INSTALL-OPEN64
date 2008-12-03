@@ -70,7 +70,7 @@ There are two ways:
 
       Extract the source code and the prebuild binaries/libraries
         
-        tar xzf open64-4.2.tar.gz
+        tar jxf open64-4.2.1-0.tar.bz2
 
     * Obtain the Source Code from our Subversion Repository
       You can also obtain the latest version of our source code from the sub-

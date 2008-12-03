@@ -62,7 +62,7 @@ i386 )
     BUILD_HOST="ia32"
     TARG_HOST="x8664"
     PHASE_DIR_PREFIX="x86_64"
-    PREBUILD_INTERPOS="x8664-linux"
+    PREBUILD_INTERPOS="i386-linux"
     AREA="osprey/targia32_x8664"
     INSTALL_TYPE="x8664-native"
     ;;
