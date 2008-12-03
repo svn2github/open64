@@ -755,11 +755,11 @@ else
 endif
 
 preg_list.cxx : preg_list.h
-preg_list.h : $(COMMON_UTIL_DIR)/gen_x_list.csh                   \
-$(BE_COM_DIR)/gen_preg_list.csh
-	csh -f	$(BE_COM_DIR)/gen_preg_list.csh $(COMMON_UTIL_DIR)
-#preg_list.h : $(COMMON_UTIL_DIR)/gen_x_list.csh
-#       $(CSH) $(COMMON_UTIL_DIR)/gen_x_list.csh \
+preg_list.h : $(COMMON_UTIL_DIR)/gen_x_list.sh                   \
+$(BE_COM_DIR)/gen_preg_list.sh
+	sh 	$(BE_COM_DIR)/gen_preg_list.sh $(COMMON_UTIL_DIR)
+#preg_list.h : $(COMMON_UTIL_DIR)/gen_x_list.sh
+#       $(CSH) $(COMMON_UTIL_DIR)/gen_x_list.sh \
 #       PREG_NUM PREG preg_list.h
 
 # here's the target that gets made recursively

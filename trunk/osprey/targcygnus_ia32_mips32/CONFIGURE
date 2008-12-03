@@ -1,4 +1,4 @@
-#! /bin/csh -f
+#!/bin/sh
 #
 # Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
 #
@@ -26,14 +26,14 @@
 #
 
 
-setenv CFLAGS "-DTARG_SL -g"
+export CFLAGS="-DTARG_SL -g"
 
-set     SRC_DIR         = ../cygnus
-set     INSTALL_DIR     = $TOOLROOT/usr 
-set     CONFIGURE       = ${SRC_DIR}/configure
-set     HOST            = i686-gnu-linux
-set     BUILD           = i686-gnu-linux
-set     TARG            = mipsel-elf-linux 
+SRC_DIR=../cygnus
+INSTALL_DIR=$TOOLROOT/usr 
+CONFIGURE=${SRC_DIR}/configure
+HOST=i686-gnu-linux
+BUILD=i686-gnu-linux
+TARG=mipsel-elf-linux 
 
 ${CONFIGURE}                   \
     --srcdir=${SRC_DIR}        \

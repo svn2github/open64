@@ -1,4 +1,4 @@
-#! /bin/csh -f
+#!/bin/sh
 #
 # Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
 #
@@ -25,17 +25,17 @@
 #       ia32-host x86_64-target build area
 #
 
-setenv CFLAGS " -g -O2 -m32"
+export CFLAGS=" -g -O2 -m32"
 
 #set bk_root=`bk root`
 #${bk_root}/open64/process-defs csh - | source /dev/stdin
 
-set     SRC_DIR         = ../cygnus
-set	INSTALL_DIR	= /usr/x8664-linux #${OPEN64_INSTALL_PREFIX}
-set     CONFIGURE       = ${SRC_DIR}/configure
-set     HOST            = i686-open64-linux
-set     BUILD           = i686-open64-linux
-set     TARG            = x86_64-open64-linux #${OPEN64_TARGET}
+SRC_DIR=../cygnus
+INSTALL_DIR=/usr/x8664-linux #${OPEN64_INSTALL_PREFIX}
+CONFIGURE=${SRC_DIR}/configure
+HOST=i686-open64-linux
+BUILD=i686-open64-linux
+TARG=x86_64-open64-linux #${OPEN64_TARGET}
 
 ${CONFIGURE}                   \
     --srcdir=${SRC_DIR}        \
