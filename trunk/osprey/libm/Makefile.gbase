@@ -331,8 +331,8 @@ $(PROF_LIB): $(OBJECTS:%.o=%.pg.o)
 
 $(DSO): $(OBJECTS:%.o=%.pic.o)
 ifeq ($(BUILD_OS), DARWIN)
-	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -o $@ $^ -lm
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -o $@ $^ -lm -L.
 else
-	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -Wl,-soname=$(DSO) -Wl,--version-script=$(BUILD_BASE)/$(DSO:%.so.$(dso_version)=%.vs) -o $@ $^ -lm
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -Wl,-soname=$(DSO) -Wl,--version-script=$(BUILD_BASE)/$(DSO:%.so.$(dso_version)=%.vs) -o $@ $^ -lm -L.
 endif
 	$(ln) -sf $(DSO) $(basename $(DSO))

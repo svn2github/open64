@@ -105,9 +105,8 @@ ifeq ($(BUILD_COMPILER), GNU)
   ASNAME = gcc  
   CCNAME = gcc 
   C++NAME = g++ 
-  F90 = openf90
-  #F90 = gfortran
-  #F90_RTLIBS = -lgfortran
+  F90 = gfortran -fsecond-underscore
+  F90_RTLIBS = -lgfortran
   #F90 = ifort -assume 2underscores
   #F90_RTLIBS = $(INTEL_COMPILER_FC_HOME)/lib/libifcore.a $(INTEL_COMPILER_FC_HOME)/lib/libimf.a
 
@@ -116,14 +115,14 @@ ifeq ($(BUILD_COMPILER), GNU)
     #
     CCNAME  += 
     C++NAME +=  
-    F90 += -march=anyx86 
+    F90 +=
   endif
   ifeq ($(BUILD_TARGET), IA32)
     # only 64bit libraries set the BUILD_ARCH to X8664 
     CCNAME  +=
     C++NAME +=
     ASNAME +=
-    F90 += -march=anyx86 
+    F90 +=
   endif
   ifeq ($(BUILD_TARGET), IA64)
     # only 64bit libraries set the BUILD_ARCH to X8664 

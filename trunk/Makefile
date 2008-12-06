@@ -320,7 +320,9 @@ library lib clean-library clean-lib:
 	exit $$exit
 
 
-clobber clean: clean-lib
+clobber: clean 
+	rm -rf $(CROSSDIR) $(BOOTDIR)
+clean: clean-lib
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen clobber 
@@ -385,3 +387,29 @@ help:
 	@echo "    to build the open64 compiler"
 	@echo "  - V={0|1}"
 	@echo "    Display detailed compilation progress or not"
+.PHONY: bootstrap reboot boot cross_gcc
+
+BOOTDIR=$(PWD)/boot
+CROSSDIR=$(PWD)/cross_gcc
+bootstrap: reboot
+#build the reboot compiler
+reboot: boot
+	$(MAKE) clean
+	set +h; $(MAKE) all lib BUILD_COMPILER=OSP BUILD_OPTIMIZE=NODEBUG PATH=$(BOOTDIR)/bin:$(PATH)
+
+#build the boot compiler using the exist open64 compiler
+boot: cross_gcc
+	$(MAKE) clean
+	rm -rf $(BOOTDIR)
+	set +h; $(MAKE) all lib BUILD_COMPILER=OSP BUILD_OPTIMIZE=NODEBUG PATH=$(CROSSDIR)/bin:$(PATH)
+	$(MAKE) install TOOLROOT=$(BOOTDIR)
+
+#if opencc is not found use gcc to build the cross compiler
+cross_gcc: 
+	@rm -rf $(CROSSDIR); \
+	if ! opencc -V;  then  \
+	$(MAKE) all BUILD_OPTIMIZE=NODEBUG && \
+	$(MAKE) install TOOLROOT=$(CROSSDIR) && \
+	set +h; $(MAKE) lib BUILD_COMPILER=OSP BUILD_OPTIMIZE=NODEBUG PATH=$(CROSSDIR)/bin:$(PATH) && \
+	$(MAKE) install TOOLROOT=$(CROSSDIR) ;\
+	fi

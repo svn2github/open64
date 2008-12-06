@@ -127,20 +127,17 @@ endif
 
 .PHONY: default first last install
 
-FC_COMPILER = $(shell echo $(FC) | awk '{print $$1}' )
-WHICH_FC = $(shell basename `which $(FC_COMPILER) 2>/dev/null` 2>/dev/null )
-
-ifneq (X$(WHICH_FC), X)
+ifeq ($(BUILD_COMPILER), GNU)
+default:
+	@echo "--------------------------------------------"
+	@echo "Warning: libfortran is not build!"
+	@echo "build libfortran with GNU compiler is not supported" 
+	@echo "--------------------------------------------"
+else
 default:
 	$(MAKE) first
 	$(MAKE) $(TARGETS)
 	$(MAKE) last
-else
-default:
-	@echo "--------------------------------------------"
-	@echo "Warning: libfortran is not build!"
-	@echo "  Can not find the $(FC_COMPILER)"
-	@echo "--------------------------------------------"
 endif
 
 
