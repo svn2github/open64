@@ -44,10 +44,10 @@ private:
   friend class Rta_Manager;
   
   T * _base;    //!< pointer to base of the object array
-  int _index;   //!< index in the object array
-  int _size;    //!< size of the object array
+  INT _index;   //!< index in the object array
+  INT _size;    //!< size of the object array
 
-  Rta_Rnd_Iter(T * base, int size, int index = 0) : _base(base), _index(index), _size(size) { }
+  Rta_Rnd_Iter(T * base, INT size, INT index = 0) : _base(base), _index(index), _size(size) { }
 public:
   Rta_Rnd_Iter(const Rta_Rnd_Iter &iter)
       : _base(iter._base), _index(iter._index), _size(iter._size) { }
@@ -65,7 +65,7 @@ public:
     ++_index;
     return *this;
   }
-  Rta_Rnd_Iter   operator++(int) {
+  Rta_Rnd_Iter   operator++(INT) {
     FmtAssert(_index < _size, ("Iterator moves out of bound."));
     Rta_Rnd_Iter iter(*this);
     ++_index;
@@ -76,34 +76,34 @@ public:
     --_index;
     return *this;
   }
-  Rta_Rnd_Iter   operator--(int) {
+  Rta_Rnd_Iter   operator--(INT) {
     FmtAssert(_index > 0, ("Iterator moves out of bound."));
     Rta_Rnd_Iter iter(*this);
     --_index;
     return iter;
   }
-  Rta_Rnd_Iter & operator+=(int offset) {
+  Rta_Rnd_Iter & operator+=(INT offset) {
     _index += offset;
     FmtAssert(_index > 0 && _index <= _size, ("Iterator moves out of bound."));
     return *this;
   }
-  Rta_Rnd_Iter & operator-=(int offset) {
+  Rta_Rnd_Iter & operator-=(INT offset) {
     return *this += (-offset);
   }
-  Rta_Rnd_Iter operator+(int offset) const {
+  Rta_Rnd_Iter operator+(INT offset) const {
     Rta_Rnd_Iter iter(*this);
     iter._index += offset;
     FmtAssert(iter._index > 0 && iter._index <= _size, ("Iterator moves out of bound."));
     return iter;
   }
-  Rta_Rnd_Iter operator-(int offset) const {
+  Rta_Rnd_Iter operator-(INT offset) const {
     return *this + (-offset);
   }
 
-  bool operator==(const Rta_Rnd_Iter &iter) const {
+  BOOL operator==(const Rta_Rnd_Iter &iter) const {
     return _base == iter._base && _index == iter._index;
   }
-  bool operator!=(const Rta_Rnd_Iter &iter) const {
+  BOOL operator!=(const Rta_Rnd_Iter &iter) const {
     return !(*this == iter);
   }
 };
@@ -128,10 +128,10 @@ public:
   Rta_Hdr &     Hdr() const { return *(Rta_Hdr *)_start; }
 
   /* PU iterator functions */
-  int           num() const   { return Rta_hdr_pu_num(&Hdr()); }
+  INT           num() const   { return Rta_hdr_pu_num(&Hdr()); }
   Pu_Iter       begin() const { return Pu_Iter(ary(), num()); }
   Pu_Iter       end() const   { return Pu_Iter(ary(), num(), num());}
-  Rta_Pu &      Pu(int index) const {
+  Rta_Pu &      Pu(INT index) const {
     FmtAssert((index != 0), ("Index 0 is reserved. PUs are indexed from 1."));
     FmtAssert((index > 0) && (index <= num())
         , ("Index (%d) in PU header table is out of bound [%d, %d]"
@@ -140,7 +140,7 @@ public:
   }
 
   /* BB iterator functions */
-  int           num(const Pu_Iter & pi) const {
+  INT           num(const Pu_Iter & pi) const {
     return Rta_pu_bb_num(&*pi);
   }
   Bb_Iter       begin(const Pu_Iter & pi) const {
@@ -149,7 +149,7 @@ public:
   Bb_Iter       end(const Pu_Iter & pi) const {
     return Bb_Iter(ary(pi), num(pi), num(pi));
   }
-  Rta_Bb &      Bb(const Pu_Iter & pi, int index) const {
+  Rta_Bb &      Bb(const Pu_Iter & pi, INT index) const {
     FmtAssert((index != 0), ("Index 0 is reserved. BBs are indexed from 1."));
     FmtAssert((index >= Rta_pu_bb_begin(&*pi))
         && (index < Rta_pu_bb_begin(&*pi) + num(pi))
@@ -159,7 +159,7 @@ public:
   }
 
   /* OP iterator functions */
-  int           num(const Bb_Iter & bi) const {
+  INT           num(const Bb_Iter & bi) const {
     return Rta_bb_op_num(&*bi);
   }
   Op_Iter       begin(const Bb_Iter & bi) const {
@@ -168,7 +168,7 @@ public:
   Op_Iter       end(const Bb_Iter & bi) const {
     return Op_Iter(ary(bi), num(bi), num(bi));
   }
-  Rta_Op &      Op(const Bb_Iter & bi, int index) const {
+  Rta_Op &      Op(const Bb_Iter & bi, INT index) const {
     FmtAssert((index != 0), ("Index 0 is reserved. OPs are indexed from 1."));
     FmtAssert((index > 0), ("OP index (%d) is negative."));
     return ary(bi)[index - 1];

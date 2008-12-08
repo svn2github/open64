@@ -40,14 +40,14 @@
 /*!
  * \brief Testcase for Rta_Manager.
  */
-int main() {
-  const int PU_COUNT = 9;
-  const int BB_COUNT_PER_PU = 7;
-  const int GAP_AFTER_PU = 64;
+INT main() {
+  const INT PU_COUNT = 9;
+  const INT BB_COUNT_PER_PU = 7;
+  const INT GAP_AFTER_PU = 64;
 
   /* build up the memory image */
 
-  const int image_size = sizeof(Rta_Hdr)
+  const INT image_size = sizeof(Rta_Hdr)
                       + sizeof(Rta_Pu) * PU_COUNT
                       + GAP_AFTER_PU;
   void * image = malloc(image_size);
@@ -55,7 +55,7 @@ int main() {
   Rta_Hdr hdr = {V_1_0, RTA_STATIC, RTA_MIPS, 456, PU_COUNT, 0xFEDC};
   *(Rta_Hdr *)image = hdr;
 
-  for (int i = 0; i < PU_COUNT; i++) {
+  for (INT i = 0; i < PU_COUNT; i++) {
     Rta_Pu * pph = (Rta_Pu *)((char *)image + sizeof(Rta_Hdr)) + i;
     Rta_Bb * bh_arr = (Rta_Bb *)((char *)image + sizeof(Rta_Hdr)
                                             + sizeof(Rta_Pu) * PU_COUNT + GAP_AFTER_PU);
@@ -72,7 +72,7 @@ printf("sizeof(Rta_Bb)  = %d\n", sizeof(Rta_Bb));
 printf("image_size = %d\n", image_size);
 
   /* dump the binary image */
-  for (int i = 0; i < image_size; i++) {
+  for (INT i = 0; i < image_size; i++) {
     printf("0x%02hhx", ((char *)image)[i]);
     printf((i % 8 == 7) ? "\n" : ", ");
   }
@@ -83,7 +83,7 @@ printf("image_size = %d\n", image_size);
   
 
   Print_rta_hdr(NULL, &manager.Hdr(), NULL);
-  int j = 1;
+  INT j = 1;
   for (Rta_Manager::Pu_Iter i = manager.Pu_begin(); i != manager.Pu_end(); ++i, ++j) {
     char buf[10];
     sprintf(buf, "%d: ", j);

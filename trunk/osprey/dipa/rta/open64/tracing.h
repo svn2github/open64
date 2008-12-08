@@ -93,12 +93,12 @@ static char *tracing_rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/
 
 /* The following strings are useful in creating trace messages: */
 #ifndef SBar
-extern char *SBar;	/* Single-dash bar w/NL, full page width */
+extern char *SBar;    /* Single-dash bar w/NL, full page width */
 #endif
 #ifndef DBar
-extern char *DBar;	/* Double-dash bar w/NL, full page width */
+extern char *DBar;    /* Double-dash bar w/NL, full page width */
 #endif
-extern char *Sharps;	/* Sharps w/NL, full page width */
+extern char *Sharps;    /* Sharps w/NL, full page width */
 
 
 /* ====================================================================
@@ -111,32 +111,32 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
  * sheer volume which would result, or by the difficulty of setting it
  * up.)  The trace flag kinds supported are:
  *
- *  1)	INFO flags control general information about a compilation,
- *	e.g. timing, object code statistics, or failure tracing.
- *	They are represented by mask bits in a single word.
+ *  1)    INFO flags control general information about a compilation,
+ *    e.g. timing, object code statistics, or failure tracing.
+ *    They are represented by mask bits in a single word.
  *
- *  2)	DEBUG flags control options which affect the execution of the
- *	compiler for debugging purposes, e.g. to perform extra checks
- *	or to try alternate algorithms.  They are also represented by
- *	a word of mask bits.
+ *  2)    DEBUG flags control options which affect the execution of the
+ *    compiler for debugging purposes, e.g. to perform extra checks
+ *    or to try alternate algorithms.  They are also represented by
+ *    a word of mask bits.
  *
- *  3)	IR flags control the tracing of the current IR state after
- *	individual compiler phases.  They are represented by the phase
- *	number to which they apply.
+ *  3)    IR flags control the tracing of the current IR state after
+ *    individual compiler phases.  They are represented by the phase
+ *    number to which they apply.
  *
- *  4)	SYMTAB flags control the tracing of the current symbol table
- *	state after individual compiler phases.  They are represented
- *	by the phase number as well.
+ *  4)    SYMTAB flags control the tracing of the current symbol table
+ *    state after individual compiler phases.  They are represented
+ *    by the phase number as well.
  *
- *  5)	TN flags control the tracing of the current set of TNs after
- *	individual compiler phases.  They are represented by the phase
- *	number as well.
+ *  5)    TN flags control the tracing of the current set of TNs after
+ *    individual compiler phases.  They are represented by the phase
+ *    number as well.
  *
- *  6)	Phase-specific flags control the tracing in individual compiler
- *	components.  Each such unit has available a word of mask bits
- *	on which to base its tracing options, represented by the phase
- *	number and mask.  Note that the phase numbers used for this
- *	purpose are the same as are used for IR and SYMTAB traces.
+ *  6)    Phase-specific flags control the tracing in individual compiler
+ *    components.  Each such unit has available a word of mask bits
+ *    on which to base its tracing options, represented by the phase
+ *    number and mask.  Note that the phase numbers used for this
+ *    purpose are the same as are used for IR and SYMTAB traces.
  *
  * ====================================================================
  */
@@ -144,96 +144,96 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 /* Negative integers represent the INFO, DEBUG, IR, and SYMTAB traces,
  * as well as miscellaneous trace options:
  */
-#define TKIND_INFO	-1	/* Specify an information option */
-#define TKIND_DEBUG	-2	/* Specify a debug option */
-#define TKIND_IR	-3	/* Trace IR for the given pass */
-#define TKIND_SYMTAB	-4	/* Trace symbol table for given pass */
-#define TKIND_TN	-5	/* Trace TNs for given pass */
-#define TKIND_BB	-6	/* Specify a BB number for tracing */
-#define TKIND_XPHASE	-7	/* Specify final execution phase */
-#define TKIND_CTRL	-8	/* Specify a control option */
-#define TKIND_ALLOC	-9	/* Trace memory allocation */
-#define TKIND_MIN	-10	/* Smallest valid function number */
+#define TKIND_INFO    -1    /* Specify an information option */
+#define TKIND_DEBUG    -2    /* Specify a debug option */
+#define TKIND_IR    -3    /* Trace IR for the given pass */
+#define TKIND_SYMTAB    -4    /* Trace symbol table for given pass */
+#define TKIND_TN    -5    /* Trace TNs for given pass */
+#define TKIND_BB    -6    /* Specify a BB number for tracing */
+#define TKIND_XPHASE    -7    /* Specify final execution phase */
+#define TKIND_CTRL    -8    /* Specify a control option */
+#define TKIND_ALLOC    -9    /* Trace memory allocation */
+#define TKIND_MIN    -10    /* Smallest valid function number */
 
 /* Several predefined masks for TKIND_INFO cases: */
-#define TINFO_TIME	1	/* Timing/resource information */
-#define TINFO_CTIME	2	/* Compilation-only timing information */
-#define TINFO_STATS	8	/* Code size statistics */
-#define TINFO_SOURCE	32	/* Source line printing alongside IR dumps */
-#define TINFO_TFLAGS	64	/* Print available trace options */
-#define TINFO_PREFIXDUMP 128	/* Dump WHIRL trees in prefix order */
+#define TINFO_TIME    1    /* Timing/resource information */
+#define TINFO_CTIME    2    /* Compilation-only timing information */
+#define TINFO_STATS    8    /* Code size statistics */
+#define TINFO_SOURCE    32    /* Source line printing alongside IR dumps */
+#define TINFO_TFLAGS    64    /* Print available trace options */
+#define TINFO_PREFIXDUMP 128    /* Dump WHIRL trees in prefix order */
 
 /* Positive integers represent phase numbers for per-phase traces:
  * WARNING:  If you change this list (adding or deleting entries), you
  * must change the Phases table in tracing.c.
  */
-#define TP_MIN		1	/* Smallest valid phase number */
+#define TP_MIN        1    /* Smallest valid phase number */
 
 /* Miscellaneous "phases": */
 /* note: for TP_PTRACE[1|2]_flags, see below */
-#define TP_PTRACE1	1	/* Performance tracing */
-#define TP_PTRACE2	2	/* Performance tracing */
-#define TP_MISC		3	/* Miscellaneous */
+#define TP_PTRACE1    1    /* Performance tracing */
+#define TP_PTRACE2    2    /* Performance tracing */
+#define TP_MISC        3    /* Miscellaneous */
 
 /* Front end phases: */
-#define TP_SEMANTICS	8	/* Semantic analyzer */
-#define TP_IRB		10	/* IR (WHIRL) builder */
+#define TP_SEMANTICS    8    /* Semantic analyzer */
+#define TP_IRB        10    /* IR (WHIRL) builder */
 
 /* Intermediate utility phases: */
-#define TP_IR_READ	11	/* IR (WHIRL) reader/writer */
-#define TP_WHIRL2FC	12	/* WHIRL to Fortran/C */
-#define TP_WHIRLSIMP    13	/* WHIRL simplifier */
-#define TP_REGION	14	/* REGION related stuff */
-#define TP_ORI		15	/* Olimit Region Insertion phase */
-#define TP_FEEDBACK	16	/* Decorating WHIRL/CFG with feedback */
+#define TP_IR_READ    11    /* IR (WHIRL) reader/writer */
+#define TP_WHIRL2FC    12    /* WHIRL to Fortran/C */
+#define TP_WHIRLSIMP    13    /* WHIRL simplifier */
+#define TP_REGION    14    /* REGION related stuff */
+#define TP_ORI        15    /* Olimit Region Insertion phase */
+#define TP_FEEDBACK    16    /* Decorating WHIRL/CFG with feedback */
 
 /* IPA/inlining phases: */
-#define TP_INLINE	17	/* Inliner */
-#define TP_IPL		18	/* IPA local (summary) phase */
-#define TP_IPA		19	/* IPA main analysis phase */
-#define TP_IPO		20	/* IPA main optimization phase */
-#define TP_IPM		21	/* IPA miscellaneous */
+#define TP_INLINE    17    /* Inliner */
+#define TP_IPL        18    /* IPA local (summary) phase */
+#define TP_IPA        19    /* IPA main analysis phase */
+#define TP_IPO        20    /* IPA main optimization phase */
+#define TP_IPM        21    /* IPA miscellaneous */
 
 /* Global optimizer phases: */
-#define TP_ALIAS	24	/* Alias/mod/ref analysis */
-#define TP_WOPT1	25	/* Global optimization */
-#define TP_WOPT2	26	/* More global optimization */
-#define TP_WOPT3	27	/* Even more global optimization */
-#define TP_GLOBOPT	TP_WOPT1
+#define TP_ALIAS    24    /* Alias/mod/ref analysis */
+#define TP_WOPT1    25    /* Global optimization */
+#define TP_WOPT2    26    /* More global optimization */
+#define TP_WOPT3    27    /* Even more global optimization */
+#define TP_GLOBOPT    TP_WOPT1
 
 /* Loop nest optimizer phases: */
-#define TP_VECDD	30	/* Vector data dependency analysis */
-#define TP_LNOPT	31	/* Loop Nest Optimization */
-#define TP_LNOPT2	32	/* More Loop Nest Optimization */
-#define TP_LNOPT3	33	/* Even more Loop Nest Optimization */
+#define TP_VECDD    30    /* Vector data dependency analysis */
+#define TP_LNOPT    31    /* Loop Nest Optimization */
+#define TP_LNOPT2    32    /* More Loop Nest Optimization */
+#define TP_LNOPT3    33    /* Even more Loop Nest Optimization */
 
-#define TP_VHO_LOWER	36	/* VHO lowering */
-#define TP_LOWER	37	/* WHIRL lowering */
+#define TP_VHO_LOWER    36    /* VHO lowering */
+#define TP_LOWER    37    /* WHIRL lowering */
 #define TP_LOWER90      38      /* F90 Lowering */
 
 /* Code generator phases: */
-#define TP_DATALAYOUT	39	/* Data layout */
-#define TP_CG		40	/* Code generator miscellaneous */
-#define TP_CGEXP	41	/* Code generator expansion */
-#define TP_LOCALIZE	42	/* Localize TNs */
-#define TP_FIND_GLOB	43	/* Find global register live ranges */
-#define TP_EBO		44	/* Extended Block Optimizer */
-#define TP_CGPREP	45	/* Code generator scheduling prep */
-#define TP_FLOWOPT	47	/* Control flow optimization */
-#define TP_GCM		48	/* Global code motion */
-#define TP_CGLOOP	49	/* Code generator loop optimization */
-#define TP_SWPIPE	50	/* Software pipelining */
-#define TP_SRA		51	/* SWP register allocation */
-#define TP_SCHED	52	/* Scheduling */
-#define TP_GRA		53	/* Global register allocation */
-#define TP_ALLOC	54	/* Local register allocation */
-#define TP_PSGCM	55	/* Post Schedule Global code motion */
-#define TP_EMIT		56	/* Code emission */
-#define TP_HBF		57	/* Hyperblock formation */
-#define TP_PQS		58	/* Predicate query system */
-#define TP_THR		59	/* Tree-Height reduction */
+#define TP_DATALAYOUT    39    /* Data layout */
+#define TP_CG        40    /* Code generator miscellaneous */
+#define TP_CGEXP    41    /* Code generator expansion */
+#define TP_LOCALIZE    42    /* Localize TNs */
+#define TP_FIND_GLOB    43    /* Find global register live ranges */
+#define TP_EBO        44    /* Extended Block Optimizer */
+#define TP_CGPREP    45    /* Code generator scheduling prep */
+#define TP_FLOWOPT    47    /* Control flow optimization */
+#define TP_GCM        48    /* Global code motion */
+#define TP_CGLOOP    49    /* Code generator loop optimization */
+#define TP_SWPIPE    50    /* Software pipelining */
+#define TP_SRA        51    /* SWP register allocation */
+#define TP_SCHED    52    /* Scheduling */
+#define TP_GRA        53    /* Global register allocation */
+#define TP_ALLOC    54    /* Local register allocation */
+#define TP_PSGCM    55    /* Post Schedule Global code motion */
+#define TP_EMIT        56    /* Code emission */
+#define TP_HBF        57    /* Hyperblock formation */
+#define TP_PQS        58    /* Predicate query system */
+#define TP_THR        59    /* Tree-Height reduction */
 
-#define TP_TEMP		60	/* Temporary use */
+#define TP_TEMP        60    /* Temporary use */
 #define TP_A_REGION 61  /* REGION formation */
 #define TP_A_GSCHED 62  /* (ORC) global instruction scheduling */
 #define TP_A_LSCHED 63  /* (ORC) local instruction  */
@@ -242,8 +242,8 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 /* WARNING: TP_LAST must be at least as large as the largest phase
  * number above, and TP_COUNT must be at least one larger.
  */
-#define TP_LAST		64	/* Largest valid phase number */
-#define TP_COUNT	65	/* Number of valid phase numbers */
+#define TP_LAST        64    /* Largest valid phase number */
+#define TP_COUNT    65    /* Number of valid phase numbers */
 
 /* Extract the phase number from a trace option: */
 extern INT32 Get_Trace_Phase_Number ( char **cp, char *arg );
@@ -276,18 +276,18 @@ extern void List_Phase_Numbers ( void );
  */
 
 /* Set a trace flag specified by:
- *  Function		Argument	Resulting action
- *  --------		--------	----------------
- *  TKIND_INFO		flag mask	Enable masked traces
- *  TKIND_DEBUG		flag mask	Enable masked options
- *  TKIND_IR		phase number	Enable IR trace for phase
- *  TKIND_SYMTAB	phase number	Enable SYMTAB trace for phase
- *  TKIND_TN		phase number	Enable TN trace for phase
- *  TKIND_BB		BB number	Restrict tracing to BB
- *  TKIND_XPHASE	phase number	Stop execution after phase
- *  TKIND_CNTL		control number	Set control option identified
- *  TKIND_ALLOC		phase number	Enable mem allocation traces
- *  phase number	flag mask	Enable masked per-phase traces
+ *  Function        Argument    Resulting action
+ *  --------        --------    ----------------
+ *  TKIND_INFO        flag mask    Enable masked traces
+ *  TKIND_DEBUG        flag mask    Enable masked options
+ *  TKIND_IR        phase number    Enable IR trace for phase
+ *  TKIND_SYMTAB    phase number    Enable SYMTAB trace for phase
+ *  TKIND_TN        phase number    Enable TN trace for phase
+ *  TKIND_BB        BB number    Restrict tracing to BB
+ *  TKIND_XPHASE    phase number    Stop execution after phase
+ *  TKIND_CNTL        control number    Set control option identified
+ *  TKIND_ALLOC        phase number    Enable mem allocation traces
+ *  phase number    flag mask    Enable masked per-phase traces
  */
 extern void Set_Trace ( INT func, INT arg );
 

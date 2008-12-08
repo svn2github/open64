@@ -51,50 +51,50 @@
 
 class DIPA_Phase_Manager {
 private:
-	static int32_t last_phase_id;
-	static Phase_List phase_list;	// top level phases only
-	static DIPA_Phase *cur_phase;
-	static MEM_POOL MEM_dipa_pool;
-	static MEM_POOL MEM_dipa_nz_pool;
-	static const char *tfile_name;
-	static FILE *tfile;
+    static INT32 last_phase_id;
+    static Phase_List phase_list;    // top level phases only
+    static DIPA_Phase *cur_phase;
+    static MEM_POOL MEM_dipa_pool;
+    static MEM_POOL MEM_dipa_nz_pool;
+    static const char *tfile_name;
+    static FILE *tfile;
 
-	static CMD_ARGS dipa_args;
-	static DIPA_Olist dipa_olist;
+    static CMD_ARGS dipa_args;
+    static DIPA_Olist dipa_olist;
 
 public:
-	static PHASE_ID Register_Phase(const char *name, int32_t parentId, int32_t prevId);
-	static PHASE_ID Register_Phase(DIPA_Phase *cur, DIPA_Phase *parent, DIPA_Phase *prev);
+    static PHASE_ID Register_Phase(const char *name, INT32 parentId, INT32 prevId);
+    static PHASE_ID Register_Phase(DIPA_Phase *cur, DIPA_Phase *parent, DIPA_Phase *prev);
 
-	static void Add_Global_Arg(const char *arg_name, const char *arg_val);
-	static void Add_DIPA_File(char *fname);
+    static void Add_Global_Arg(const char *arg_name, const char *arg_val);
+    static void Add_DIPA_File(char *fname);
 
-	static bool Init_IPA(void);
-	static bool Do_IPA(void);
-	static bool End_IPA(void);
+    static BOOL Init_IPA(void);
+    static BOOL Do_IPA(void);
+    static BOOL End_IPA(void);
 
-	static PHASE_ID Get_Phase_ID (const char *name);
-	static DIPA_Phase *Get_Phase (PHASE_ID ph_id);
+    static PHASE_ID Get_Phase_ID (const char *name);
+    static DIPA_Phase *Get_Phase (PHASE_ID ph_id);
 
-	static void Set_Cur_Phase(DIPA_Phase *_phase) { cur_phase = _phase; }
-	static const char *Get_Cur_Phase_Name(void);
+    static void Set_Cur_Phase(DIPA_Phase *_phase) { cur_phase = _phase; }
+    static const char *Get_Cur_Phase_Name(void);
 
-	static bool Init_Memory(void);
-	static inline MEM_POOL *Get_Mempool(void) { return &MEM_dipa_pool; }
-	static inline MEM_POOL *Get_Nz_Mempool(void) { return &MEM_dipa_nz_pool; }
+    static BOOL Init_Memory(void);
+    static inline MEM_POOL *Get_Mempool(void) { return &MEM_dipa_pool; }
+    static inline MEM_POOL *Get_Nz_Mempool(void) { return &MEM_dipa_nz_pool; }
 
-	static bool Init_Trace_File(const char *fname);
-	static void Set_Trace_File(const char *fname);
-	static const char *Get_Trace_File(void) { return tfile_name; }
-	static FILE *Get_Trace_File_Desc(void) { if (tfile) return tfile; return stdout; }
+    static BOOL Init_Trace_File(const char *fname);
+    static void Set_Trace_File(const char *fname);
+    static const char *Get_Trace_File(void) { return tfile_name; }
+    static FILE *Get_Trace_File_Desc(void) { if (tfile) return tfile; return stdout; }
 
-	static void Dump_All_Stats(FILE *file);
-	static void Accum_All_Stats(void);
+    static void Dump_All_Stats(FILE *file);
+    static void Accum_All_Stats(void);
 
-	static void Set_Error_Line(int32_t);
-	static void Set_Error_File(const char *fname);
+    static void Set_Error_Line(INT32);
+    static void Set_Error_File(const char *fname);
 
-	static void Dump_All_Phases(void);
+    static void Dump_All_Phases(void);
 
 };
 

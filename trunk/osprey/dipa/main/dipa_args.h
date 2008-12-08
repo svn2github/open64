@@ -33,8 +33,8 @@
 #define __DIPA_ARGS_H__ 1
 
 
-void Dipa_add_phase_opt(char *ph_name, int32_t phase_id);
-void Dipa_Proc_Options ( int32_t argc, char *argv[]);
+void Dipa_add_phase_opt(char *ph_name, INT32 phase_id);
+void Dipa_Proc_Options ( INT32 argc, char *argv[]);
 
 #endif
 

@@ -34,47 +34,47 @@
 
 
 /**
-***		I/O, I/O Types, and I/O Flags
-***		-----------------------------
+***        I/O, I/O Types, and I/O Flags
+***        -----------------------------
 ***
 *** Description:
 ***
-***	This interface describes all the i/o names, operators, types
-***	associated with i/o, and properties associated with i/o.
+***    This interface describes all the i/o names, operators, types
+***    associated with i/o, and properties associated with i/o.
 ***
 *** Reserved Prefixes:
 ***
-***	IOS		for IOSTATEMENT members only.
+***    IOS        for IOSTATEMENT members only.
 ***
-***	IOU		for unit IOITEM members only.
-***	IOF		for format IOITEM members only.
-***	IOC		for control IOITEM members only.
-***	IOL		for list IOITEM members only.
+***    IOU        for unit IOITEM members only.
+***    IOF        for format IOITEM members only.
+***    IOC        for control IOITEM members only.
+***    IOL        for list IOITEM members only.
 ***
 *** Exported types:
 ***
-***	IOSTATEMENT
+***    IOSTATEMENT
 ***
-***	    An enumerated type.  The members are a complete set of all I/O
-***	    statements supported in Fortran 77.
+***        An enumerated type.  The members are a complete set of all I/O
+***        statements supported in Fortran 77.
 ***
-***	    All IOSTATEMENTs are prefixed with IOS.
+***        All IOSTATEMENTs are prefixed with IOS.
 ***
-***	IOITEM
+***    IOITEM
 ***
-***	    An enumerated type.  The members are a complete set of all item
-***	    types found in Fortran 77 I/O statements.  This includes all of
-***	    the unit, format, and control information items as well as the
-***	    i/o list items.
+***        An enumerated type.  The members are a complete set of all item
+***        types found in Fortran 77 I/O statements.  This includes all of
+***        the unit, format, and control information items as well as the
+***        i/o list items.
 ***
-***	    All unit IOITEMs are prefixed with IOU.
-***	    All format IOITEMs are prefixed with IOF.
-***	    All control IOITEMs are prefixed with IOC.
-***	    All list IOITEMs are prefixed with IOL.
+***        All unit IOITEMs are prefixed with IOU.
+***        All format IOITEMs are prefixed with IOF.
+***        All control IOITEMs are prefixed with IOC.
+***        All list IOITEMs are prefixed with IOL.
 ***
 *** Exported data:
 ***
-***	    none
+***        none
 ***
 **/
 
@@ -125,15 +125,15 @@ typedef enum {
 
     /* IOS coming out of the CRAY FE are already classified as formatted vs.
        unformatted and we need separate entries for those */
-    IOS_CR_FWU = 20, 	/* Write Unformatted */
-    IOS_CR_FRU = 21,	/* Read Unformatted */
-    IOS_CR_FWF = 22,	/* Write Formatted */
-    IOS_CR_FRF = 23,	/* Read Formatted */
-    IOS_CR_FWN = 24,	/* Write Namelist */
+    IOS_CR_FWU = 20,     /* Write Unformatted */
+    IOS_CR_FRU = 21,    /* Read Unformatted */
+    IOS_CR_FWF = 22,    /* Write Formatted */
+    IOS_CR_FRF = 23,    /* Read Formatted */
+    IOS_CR_FWN = 24,    /* Write Namelist */
     IOS_CR_FRN = 25,    /* Read Namelist */
     IOS_INQLENGTH = 26, /* Inquire IOlength */
-    IOS_CR_OPEN = 27,	/* Cray Open */
-    IOS_CR_CLOSE = 28,	/* Cray Close */
+    IOS_CR_OPEN = 27,    /* Cray Open */
+    IOS_CR_CLOSE = 28,    /* Cray Close */
     IOS_CR_ENDFILE = 29,/* Cray endfile */
     IOS_CR_REWIND = 30, /* Cray Rewind */
     IOS_CR_INQUIRE = 31,/* Cray Inquire */

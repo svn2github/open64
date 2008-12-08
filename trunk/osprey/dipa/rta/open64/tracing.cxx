@@ -91,31 +91,31 @@ extern FILE *Kqqgso();
 INT32 Progress_Flags = 0;
 
 /* Local static data: files */
-static BOOL Non_stdout_TFile = FALSE;	/* TFile other than stdout? */
-static char *TFile_Name = "stdout";	/* TFile name */
+static BOOL Non_stdout_TFile = FALSE;    /* TFile other than stdout? */
+static char *TFile_Name = "stdout";    /* TFile name */
 
 /* Local static data: flags */
-#define BB_COUNT	50		/* Number of traceable BBs */
-#define PU_COUNT	10		/* Number of traceable PUs */
-#define REGION_COUNT	10		/* Number of traceable REGIONs */
-#define CTRL_COUNT	50		/* Number of control options */
-static UINT TI_Mask;			/* Info mask */
-static UINT TD_Mask;			/* Debug option mask */
-static UINT TI_Phase[TP_COUNT];		/* IR trace flags */
-static UINT TS_Phase[TP_COUNT];		/* SYMTAB trace flags */
-static UINT TN_Phase[TP_COUNT];		/* TN trace flags */
-static UINT TA_Phase[TP_COUNT];		/* Memory Allocation Trace */
-static UINT TP_Mask[TP_COUNT];		/* Per-phase trace masks */
-static UINT TB_Enable[BB_COUNT];	/* BB enable list */
-static UINT BB_Cnt = 0;			/* Next BB traced */
-static UINT Xstop_Phase = TP_LAST;	/* Last phase to execute */
-static UINT TC_Enable[CTRL_COUNT];	/* Control option list */
-static char *PU_Enable[PU_COUNT];	/* PUs to trace */
-static INT PU_Num_Enable[PU_COUNT];	/* PUs to trace */
-static UINT PU_Cnt = 0;			/* Next PU traced */
-static UINT PU_NCnt = 0;		/* Next PU number traced */
+#define BB_COUNT    50        /* Number of traceable BBs */
+#define PU_COUNT    10        /* Number of traceable PUs */
+#define REGION_COUNT    10        /* Number of traceable REGIONs */
+#define CTRL_COUNT    50        /* Number of control options */
+static UINT TI_Mask;            /* Info mask */
+static UINT TD_Mask;            /* Debug option mask */
+static UINT TI_Phase[TP_COUNT];        /* IR trace flags */
+static UINT TS_Phase[TP_COUNT];        /* SYMTAB trace flags */
+static UINT TN_Phase[TP_COUNT];        /* TN trace flags */
+static UINT TA_Phase[TP_COUNT];        /* Memory Allocation Trace */
+static UINT TP_Mask[TP_COUNT];        /* Per-phase trace masks */
+static UINT TB_Enable[BB_COUNT];    /* BB enable list */
+static UINT BB_Cnt = 0;            /* Next BB traced */
+static UINT Xstop_Phase = TP_LAST;    /* Last phase to execute */
+static UINT TC_Enable[CTRL_COUNT];    /* Control option list */
+static char *PU_Enable[PU_COUNT];    /* PUs to trace */
+static INT PU_Num_Enable[PU_COUNT];    /* PUs to trace */
+static UINT PU_Cnt = 0;            /* Next PU traced */
+static UINT PU_NCnt = 0;        /* Next PU number traced */
 static INT Region_Num_Enable[REGION_COUNT]; /* Regions to trace */
-static UINT REGION_NCnt = 0;		/* Next REGION number traced */
+static UINT REGION_NCnt = 0;        /* Next REGION number traced */
 
 static char *Current_PU_Name = NULL;
 static INT Current_PU_Number = 0;
@@ -136,14 +136,14 @@ extern int trace_stack(int, int);
  */
 
 typedef struct {
-  INT32 num;	/* Phase number (TP_COUNT to terminate list) */
-  char *id;	/* 3-character ID for phase */
-  char *name;	/* Full descriptive name for phase */
+  INT32 num;    /* Phase number (TP_COUNT to terminate list) */
+  char *id;    /* 3-character ID for phase */
+  char *name;    /* Full descriptive name for phase */
 } PDESC;
 
-#define PD_num(p)	(p->num)
-#define PD_id(p)	(p->id)
-#define PD_name(p)	(p->name)
+#define PD_num(p)    (p->num)
+#define PD_id(p)    (p->id)
+#define PD_name(p)    (p->name)
 
 /* WARNING: The ID MUST BE a 3-character string, with the first
  * character alphabetic (or at least not a digit).  They are
@@ -154,71 +154,71 @@ typedef struct {
  */
 static PDESC Phases[] = {
   /* Miscellaneous "phases": */
-  { TP_PTRACE1,		"PT1",	"Performance #1" },
-  { TP_PTRACE2,		"PT2",	"Performance #2" },
-  { TP_MISC,		"MSC",	"Miscellaneous" },
+  { TP_PTRACE1,        "PT1",    "Performance #1" },
+  { TP_PTRACE2,        "PT2",    "Performance #2" },
+  { TP_MISC,        "MSC",    "Miscellaneous" },
 
   /* Front end phases: */
-  { TP_SEMANTICS,	"SEM",	"Semantic analyzer" },
-  { TP_IRB,		"IRB",	"IR (WHIRL) builder" },
+  { TP_SEMANTICS,    "SEM",    "Semantic analyzer" },
+  { TP_IRB,        "IRB",    "IR (WHIRL) builder" },
 
   /* Intermediate/utility phases: */
-  { TP_IR_READ,		"IRR",	"IR (WHIRL) reader/writer" },
-  { TP_WHIRL2FC,	"WH2",	"WHIRL to Fortran/C" },
-  { TP_WHIRLSIMP,   	"SMP",	"WHIRL simplifier" },
-  { TP_REGION,		"RGN",	"Region support" },
-  { TP_ORI,		"ORI",	"Olimit Region Insertion" },
-  { TP_FEEDBACK,	"FDB",	"Feedback support" },
-  { TP_VHO_LOWER,	"VHO",	"VHO lowering" },
-  { TP_LOWER,		"LOW",	"WHIRL lowering" },
-  { TP_LOWER90,		"L90",	"F90 WHIRL lowering" },
+  { TP_IR_READ,        "IRR",    "IR (WHIRL) reader/writer" },
+  { TP_WHIRL2FC,    "WH2",    "WHIRL to Fortran/C" },
+  { TP_WHIRLSIMP,       "SMP",    "WHIRL simplifier" },
+  { TP_REGION,        "RGN",    "Region support" },
+  { TP_ORI,        "ORI",    "Olimit Region Insertion" },
+  { TP_FEEDBACK,    "FDB",    "Feedback support" },
+  { TP_VHO_LOWER,    "VHO",    "VHO lowering" },
+  { TP_LOWER,        "LOW",    "WHIRL lowering" },
+  { TP_LOWER90,        "L90",    "F90 WHIRL lowering" },
 
   /* IPA/inlining phases: */
-  { TP_INLINE,		"INL",	"Inliner" },
-  { TP_IPL,		"IPL",	"IPA local summary phase" },
-  { TP_IPA,		"IPA",	"IPA analysis phase" },
-  { TP_IPO,		"IPO",	"IPA optimization phase" },
-  { TP_IPM,		"IPM",	"IPA miscellaneous" },
+  { TP_INLINE,        "INL",    "Inliner" },
+  { TP_IPL,        "IPL",    "IPA local summary phase" },
+  { TP_IPA,        "IPA",    "IPA analysis phase" },
+  { TP_IPO,        "IPO",    "IPA optimization phase" },
+  { TP_IPM,        "IPM",    "IPA miscellaneous" },
 
   /* Global optimizer: */
-  { TP_ALIAS,		"ALI",	"Alias/mod/ref analysis" },
-  { TP_WOPT1,		"OPT",	"Global optimization" },
-  { TP_WOPT2,		"OP2",	"More global optimization" },
-  { TP_WOPT3,		"OP3",	"Even more global optimization" },
+  { TP_ALIAS,        "ALI",    "Alias/mod/ref analysis" },
+  { TP_WOPT1,        "OPT",    "Global optimization" },
+  { TP_WOPT2,        "OP2",    "More global optimization" },
+  { TP_WOPT3,        "OP3",    "Even more global optimization" },
 
   /* Loop nest optimizer: */
-  { TP_VECDD,		"VDD",	"Vector data dependency analysis" },
-  { TP_LNOPT,		"LNO",	"Loop Nest Optimization" },
-  { TP_LNOPT2,		"LN2",	"More Loop Nest Optimization" },
-  { TP_LNOPT3,		"LN3",	"Even more Loop Nest Optimization" },
+  { TP_VECDD,        "VDD",    "Vector data dependency analysis" },
+  { TP_LNOPT,        "LNO",    "Loop Nest Optimization" },
+  { TP_LNOPT2,        "LN2",    "More Loop Nest Optimization" },
+  { TP_LNOPT3,        "LN3",    "Even more Loop Nest Optimization" },
 
   /* Code generator: */
-  { TP_CG,		"CGM",	"Code Generator miscellaneous" },
-  { TP_DATALAYOUT,	"LAY",	"Data layout" },
-  { TP_CGEXP,		"EXP",	"Code generator expansion" },
-  { TP_LOCALIZE,	"LOC",	"Localize TNs" },
-  { TP_FIND_GLOB,	"GLR",	"Find global register live ranges" },
-  { TP_EBO,		"EBO",	"Extended Block Optimizer" },
-  { TP_FLOWOPT,		"FLW",	"Control flow optimization" },
-  { TP_HBF,		"HBF",	"Hyperblock Formation" },
-  { TP_PQS,		"PQS",	"Predicate query system" },
-  { TP_CGPREP,		"PRP",	"Code generator scheduling prep" },
-  { TP_CGLOOP,		"LOP",	"Code generator loop optimization" },
-  { TP_SWPIPE,		"SWP",	"Software pipelining" },
-  { TP_SRA,		"SRA",	"Software pipelining register allocation" },
-  { TP_SCHED,		"SCH",	"Scheduling" },
-  { TP_GCM,		"GCM",	"Global code motion" },
-  { TP_GRA,		"GRA",	"Global register allocation" },
-  { TP_ALLOC,		"LRA",	"Local register allocation" },
-  { TP_PSGCM,		"PSG",	"Post Schedule Global code motion" },
-  { TP_THR,		"THR",	"Tree-Height Reduction" },
-  { TP_EMIT,		"EMT",	"Code emission" },
+  { TP_CG,        "CGM",    "Code Generator miscellaneous" },
+  { TP_DATALAYOUT,    "LAY",    "Data layout" },
+  { TP_CGEXP,        "EXP",    "Code generator expansion" },
+  { TP_LOCALIZE,    "LOC",    "Localize TNs" },
+  { TP_FIND_GLOB,    "GLR",    "Find global register live ranges" },
+  { TP_EBO,        "EBO",    "Extended Block Optimizer" },
+  { TP_FLOWOPT,        "FLW",    "Control flow optimization" },
+  { TP_HBF,        "HBF",    "Hyperblock Formation" },
+  { TP_PQS,        "PQS",    "Predicate query system" },
+  { TP_CGPREP,        "PRP",    "Code generator scheduling prep" },
+  { TP_CGLOOP,        "LOP",    "Code generator loop optimization" },
+  { TP_SWPIPE,        "SWP",    "Software pipelining" },
+  { TP_SRA,        "SRA",    "Software pipelining register allocation" },
+  { TP_SCHED,        "SCH",    "Scheduling" },
+  { TP_GCM,        "GCM",    "Global code motion" },
+  { TP_GRA,        "GRA",    "Global register allocation" },
+  { TP_ALLOC,        "LRA",    "Local register allocation" },
+  { TP_PSGCM,        "PSG",    "Post Schedule Global code motion" },
+  { TP_THR,        "THR",    "Tree-Height Reduction" },
+  { TP_EMIT,        "EMT",    "Code emission" },
 
-  { TP_TEMP,		"TMP",	"Temporary use" },
-  { TP_IPISR,		"ISR",	"Interprocedural ISR register allocation" },
+  { TP_TEMP,        "TMP",    "Temporary use" },
+  { TP_IPISR,        "ISR",    "Interprocedural ISR register allocation" },
 
   /* This one must be last: */
-  { TP_COUNT,		NULL,  NULL }
+  { TP_COUNT,        NULL,  NULL }
 };
 
 /* ====================================================================
@@ -236,8 +236,8 @@ static PDESC Phases[] = {
 
 INT32
 Get_Trace_Phase_Number (
-  char **cp,	/* Pointer to phase number string */
-  char *arg )	/* Pointer to argument for error messages */
+  char **cp,    /* Pointer to phase number string */
+  char *arg )    /* Pointer to argument for error messages */
 {
   /* First check whether the phase is given numerically: */
   if ( **cp >= '0' && **cp <= '9' ) {
@@ -249,8 +249,8 @@ Get_Trace_Phase_Number (
 
     while ( PD_num(phase) != TP_COUNT ) {
       if ( strncasecmp ( *cp, PD_id(phase), 3 ) == 0 ) {
-	*cp += 3;
-	return PD_num(phase);
+    *cp += 3;
+    return PD_num(phase);
       }
       ++phase;
     }
@@ -277,8 +277,8 @@ List_Phase_Numbers ( void )
             "Trace phase numbers supported and their values:\n" );
   while ( PD_num(phase) != TP_COUNT ) {
     fprintf ( Get_Trace_File(), "  %3s: -tt%02d:0x%08x (%s)\n",
-	      PD_id(phase), PD_num(phase), TP_Mask[PD_num(phase)],
-	      PD_name(phase) );
+          PD_id(phase), PD_num(phase), TP_Mask[PD_num(phase)],
+          PD_name(phase) );
     ++phase;
   }
 }
@@ -288,17 +288,17 @@ List_Phase_Numbers ( void )
  * Set_Trace
  *
  * Set a trace flag specified by:
- *  Function		Argument	Resulting action
- *  --------		--------	----------------
- *  TKIND_INFO		flag mask	Enable masked traces
- *  TKIND_DEBUG		flag mask	Enable masked options
- *  TKIND_IR		phase number	Enable IR trace for phase
- *  TKIND_SYMTAB	phase number	Enable SYMTAB trace for phase
- *  TKIND_TN		phase number	Enable TN trace for phase
- *  TKIND_BB		BB number	Restrict tracing to BB
- *  TKIND_XPHASE	phase number	Stop execution after phase
- *  TKIND_CTRL		control number	Enable control option
- *  phase number	flag mask	Enable masked per-phase traces
+ *  Function        Argument    Resulting action
+ *  --------        --------    ----------------
+ *  TKIND_INFO        flag mask    Enable masked traces
+ *  TKIND_DEBUG        flag mask    Enable masked options
+ *  TKIND_IR        phase number    Enable IR trace for phase
+ *  TKIND_SYMTAB    phase number    Enable SYMTAB trace for phase
+ *  TKIND_TN        phase number    Enable TN trace for phase
+ *  TKIND_BB        BB number    Restrict tracing to BB
+ *  TKIND_XPHASE    phase number    Stop execution after phase
+ *  TKIND_CTRL        control number    Enable control option
+ *  phase number    flag mask    Enable masked per-phase traces
  *
  * ====================================================================
  */
@@ -330,64 +330,64 @@ Set_Trace ( INT func, INT arg )
     /* IR phase: */
     case TKIND_IR:
       if ( arg != Check_Range (arg, TP_MIN, TP_LAST, 0) ) {
-	ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
+    ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
       } else {
-	TI_Phase[arg] = TRUE;
+    TI_Phase[arg] = TRUE;
       }
       return;
 
     /* SYMTAB phase: */
     case TKIND_SYMTAB:
       if ( arg != Check_Range (arg, TP_MIN, TP_LAST, 0) ) {
-	ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
+    ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
       } else {
-	TS_Phase[arg] = TRUE;
+    TS_Phase[arg] = TRUE;
       }
       return;
 
     /* TN phase: */
     case TKIND_TN:
       if ( arg != Check_Range (arg, TP_MIN, TP_LAST, 0) ) {
-	ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
+    ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
       } else {
-	TN_Phase[arg] = TRUE;
+    TN_Phase[arg] = TRUE;
       }
       return;
 
     /* Alloc phase: */
     case TKIND_ALLOC:
       if ( arg != Check_Range (arg, TP_MIN, TP_LAST, 0) ) {
-	ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
+    ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
       } else {
-	TA_Phase[arg] = TRUE;
+    TA_Phase[arg] = TRUE;
       }
       return;
 
     /* BB number: */
     case TKIND_BB:
       if ( ++BB_Cnt >= BB_COUNT ) {
-	ErrMsg ( EC_Trace_BBs, arg );
-	--BB_Cnt;
+    ErrMsg ( EC_Trace_BBs, arg );
+    --BB_Cnt;
       } else {
-	TB_Enable[BB_Cnt] = arg;
+    TB_Enable[BB_Cnt] = arg;
       }
       return;
 
     /* Stop execution after phase: */
     case TKIND_XPHASE:
       if ( arg != Check_Range (arg, TP_MIN, TP_LAST, 0) ) {
-	ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
+    ErrMsg ( EC_Trace_Phase, arg, TP_MIN, TP_LAST );
       } else {
-	Xstop_Phase = arg;
+    Xstop_Phase = arg;
       }
       return;
 
     /* Control option: */
     case TKIND_CTRL:
       if ( arg != Check_Range (arg, 0, CTRL_COUNT-1, 0) ) {
-	ErrMsg ( EC_Trace_Control, arg, CTRL_COUNT-1 );
+    ErrMsg ( EC_Trace_Control, arg, CTRL_COUNT-1 );
       } else {
-	TC_Enable[arg] = TRUE;
+    TC_Enable[arg] = TRUE;
       }
       return;
 
@@ -399,7 +399,7 @@ Set_Trace ( INT func, INT arg )
 }
 
 /* Set current PU for pu tracing */
-#define RID_CREATE_NEW_ID -1	/* see be/region/region_util.h */
+#define RID_CREATE_NEW_ID -1    /* see be/region/region_util.h */
 void
 Set_Current_PU_For_Trace ( char *name, INT number )
 {
@@ -565,7 +565,7 @@ Get_Trace ( INT func, INT arg )
   if ( result && PU_Cnt > 0 ) { /* trace for certain PUs, by name */
     for ( i = 1; i <= PU_Cnt; i++ ) {
       if ( strcmp(PU_Enable[i], Current_PU_Name) == 0 )
-	break;
+    break;
     }
     if (i > PU_Cnt)
       result = FALSE;
@@ -574,7 +574,7 @@ Get_Trace ( INT func, INT arg )
   if ( result && PU_NCnt > 0 ) { /* trace for certain PUs, by number */
     for ( i = 1; i <= PU_NCnt; i++ ) {
       if ( PU_Num_Enable[i] == Current_PU_Number )
-	break;
+    break;
     }
     if (i > PU_NCnt)
       result = FALSE;
@@ -583,7 +583,7 @@ Get_Trace ( INT func, INT arg )
   if (result && REGION_NCnt > 0) { /* trace for certain regions, by number */
     for ( i = 1; i <= REGION_NCnt; i++ ) {
       if ( Region_Num_Enable[i] == Current_Region_Number )
-	break;
+    break;
     }
     if ( i > REGION_NCnt )
       result = FALSE;
@@ -624,7 +624,7 @@ Stop_Execution ( INT phase )
 
 void
 Set_Trace_File ( 
-  char *filename )	/* Name of new trace file */
+  char *filename )    /* Name of new trace file */
 {
   if ( Non_stdout_TFile && TFile_internal != NULL ) {
 #ifndef FRONT_END_F77
@@ -637,7 +637,7 @@ Set_Trace_File (
 #ifdef FRONT_END_F77
     TFile_internal = Kqqgso();
 #else
-    TFile_internal = fopen ( filename, "w" );	/* Truncate */
+    TFile_internal = fopen ( filename, "w" );    /* Truncate */
 #endif
     if ( TFile_internal != NULL ) {
       TFile_Name = filename;

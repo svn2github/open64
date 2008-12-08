@@ -39,13 +39,13 @@ Not all of the functions are implemented or finalized. So code changes or comple
 rewritten is possible.
 
 Items:
-	.Memory management
-	.Memory usage monitor
-	.Timing
-	.Signal handling
-	.DIPA error handling
-	.Phase control
-	.Trace file
+    .Memory management
+    .Memory usage monitor
+    .Timing
+    .Signal handling
+    .DIPA error handling
+    .Phase control
+    .Trace file
 */
 
 #include <stdio.h>
@@ -69,36 +69,36 @@ Items:
 
 void usage(char *prog)
 {
-	printf("Usage: %s elf-file\n", prog);
-	exit(-1);
+    printf("Usage: %s elf-file\n", prog);
+    exit(-1);
 }
 
 
 class CDIPA_Phase_Pre:public DIPA_Phase {
 public:
-	CDIPA_Phase_Pre(const char *_name):DIPA_Phase(_name) {};
-	bool Start(CMD_ARGS *args, DIPA_Olist *olist) {
-		printf("Do nothing at pre phase\n");
-		return true;
-	}
+    CDIPA_Phase_Pre(const char *_name):DIPA_Phase(_name) {};
+    BOOL Start(CMD_ARGS *args, DIPA_Olist *olist) {
+        printf("Do nothing at pre phase\n");
+        return true;
+    }
 };
 
 class CDIPA_Phase_Phase1:public DIPA_Phase {
 public:
-	CDIPA_Phase_Phase1(const char *_name):DIPA_Phase(_name) {};
-	bool Start(CMD_ARGS *args, DIPA_Olist *olist) {
-		printf("Do nothing at %s\n", Get_Name());
-		return true;
-	}
+    CDIPA_Phase_Phase1(const char *_name):DIPA_Phase(_name) {};
+    BOOL Start(CMD_ARGS *args, DIPA_Olist *olist) {
+        printf("Do nothing at %s\n", Get_Name());
+        return true;
+    }
 };
 
 class CDIPA_Phase_Phase2:public DIPA_Phase {
 public:
-	CDIPA_Phase_Phase2(const char *_name):DIPA_Phase(_name) {};
-	bool Start(CMD_ARGS *args, DIPA_Olist *olist) {
-		printf("Do nothing at %s\n", Get_Name());
-		return true;
-	}
+    CDIPA_Phase_Phase2(const char *_name):DIPA_Phase(_name) {};
+    BOOL Start(CMD_ARGS *args, DIPA_Olist *olist) {
+        printf("Do nothing at %s\n", Get_Name());
+        return true;
+    }
 };
 
 
@@ -107,33 +107,33 @@ public:
  */
 int main(int argc, char *argv[])
 {
-	DIPA_Phase_Manager::Init_IPA();
+    DIPA_Phase_Manager::Init_IPA();
 
-	// create 3 top level phases
-	CDIPA_Phase_Pre *phase1 = new CDIPA_Phase_Pre ("pre");
-	CDIPA_Phase_Phase1 *phase2 = new CDIPA_Phase_Phase1 ("opt1");
-	CDIPA_Phase_Phase2 *phase3 = new CDIPA_Phase_Phase2 ("opt2");
+    // create 3 top level phases
+    CDIPA_Phase_Pre *phase1 = new CDIPA_Phase_Pre ("pre");
+    CDIPA_Phase_Phase1 *phase2 = new CDIPA_Phase_Phase1 ("opt1");
+    CDIPA_Phase_Phase2 *phase3 = new CDIPA_Phase_Phase2 ("opt2");
 
-	// create 2 subphases for phase 1. Just for example.
-	DIPA_Phase *subphase1 = new DIPA_Phase ("sub phase1");	// subphase 1 of phase2
-	DIPA_Phase *subphase2 = new DIPA_Phase ("sub phase2");	// subphase 2 of phase2
+    // create 2 subphases for phase 1. Just for example.
+    DIPA_Phase *subphase1 = new DIPA_Phase ("sub phase1");    // subphase 1 of phase2
+    DIPA_Phase *subphase2 = new DIPA_Phase ("sub phase2");    // subphase 2 of phase2
 
-	// register the top level phases
-	PHASE_ID phase1Id = DIPA_Phase_Manager::Register_Phase(phase1, NULL, NULL);
-	PHASE_ID phase2Id = DIPA_Phase_Manager::Register_Phase(phase2, NULL, phase1);
-	PHASE_ID phase3Id = DIPA_Phase_Manager::Register_Phase(phase3, NULL, phase1);
+    // register the top level phases
+    PHASE_ID phase1Id = DIPA_Phase_Manager::Register_Phase(phase1, NULL, NULL);
+    PHASE_ID phase2Id = DIPA_Phase_Manager::Register_Phase(phase2, NULL, phase1);
+    PHASE_ID phase3Id = DIPA_Phase_Manager::Register_Phase(phase3, NULL, phase1);
 
-	// register the 2 subphases for phase2
-	PHASE_ID subphase1Id = DIPA_Phase_Manager::Register_Phase(subphase1, phase2, NULL);
-	PHASE_ID subphase2Id = DIPA_Phase_Manager::Register_Phase(subphase2, phase2, subphase1);
+    // register the 2 subphases for phase2
+    PHASE_ID subphase1Id = DIPA_Phase_Manager::Register_Phase(subphase1, phase2, NULL);
+    PHASE_ID subphase2Id = DIPA_Phase_Manager::Register_Phase(subphase2, phase2, subphase1);
 
-	Dipa_Proc_Options(argc, argv);
+    Dipa_Proc_Options(argc, argv);
 
-	DIPA_Phase_Manager::Dump_All_Phases();
-	DIPA_Phase_Manager::Do_IPA();
-	DIPA_Phase_Manager::End_IPA();
+    DIPA_Phase_Manager::Dump_All_Phases();
+    DIPA_Phase_Manager::Do_IPA();
+    DIPA_Phase_Manager::End_IPA();
 
-	MEM_Trace();
+    MEM_Trace();
 
-	return 0;
+    return 0;
 }

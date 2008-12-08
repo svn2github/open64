@@ -79,11 +79,11 @@ static const char rcs_id[] = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/u
 
 /* The following structure may contain absolute or delta information: */
 struct resources {
-    TIME_INFO	utime;	/* User cpu time */
-    TIME_INFO	stime;	/* System cpu time */
-    TIME_INFO	etime;	/* Elapsed time */
-    INT memory;		/* Memory used (bytes) */
-    INT freemem;	/* Free memory allocated */
+    TIME_INFO    utime;    /* User cpu time */
+    TIME_INFO    stime;    /* System cpu time */
+    TIME_INFO    etime;    /* Elapsed time */
+    INT memory;        /* Memory used (bytes) */
+    INT freemem;    /* Free memory allocated */
 };
 
 /* The following structure contains the latest absolute and the
@@ -91,10 +91,10 @@ struct resources {
  * to the world, although they don't know it.
  */
 struct rstate {
-    RESOURCES cur;	/* The latest absolute information */
-    RESOURCES del;	/* The accumulated delta information */
-    struct rstate *dad;	/* The parent structure in hierarchy */
-    char *name;		/* The resource record name */
+    RESOURCES cur;    /* The latest absolute information */
+    RESOURCES del;    /* The accumulated delta information */
+    struct rstate *dad;    /* The parent structure in hierarchy */
+    char *name;        /* The resource record name */
 };
 
 static void Clear_Resource ( RESOURCES *r );
@@ -116,7 +116,7 @@ static RSTATE runtime;
 #if (1)
 static struct timeval start_time;
 #else
-static INT start_time;	/* Initial date/time */
+static INT start_time;    /* Initial date/time */
 #endif
 static INT initialized = 0;
 
@@ -140,8 +140,8 @@ Clear_Resource (
     r->stime.usecs = 0;
     r->etime.secs  = 0;
     r->etime.usecs = 0;
-    r->memory	   = 0;
-    r->freemem	   = 0;
+    r->memory       = 0;
+    r->freemem       = 0;
 }
 
 /* ====================================================================
@@ -221,16 +221,16 @@ Get_Resources (
 
 static void
 Get_Delta_Time (
-    TIME_INFO *current,	/* This is current time */
-    TIME_INFO *base,	/* Calculate delta from this base */
+    TIME_INFO *current,    /* This is current time */
+    TIME_INFO *base,    /* Calculate delta from this base */
     TIME_INFO *delta    /* Put delta here */
 )
 {
     delta->secs  = current->secs  - base->secs;
     delta->usecs = current->usecs - base->usecs;
     if ( delta->usecs < 0 ) {
-	delta->usecs += 1000000;
-	delta->secs --;
+    delta->usecs += 1000000;
+    delta->secs --;
     }
 }
 
@@ -246,9 +246,9 @@ Get_Delta_Time (
 
 static void
 Get_Delta_Resource (
-    RESOURCES *current,	/* Put current state here */
-    RESOURCES *base,	/* Calculate delta from this base */
-    RESOURCES *delta	/* Put delta here */
+    RESOURCES *current,    /* Put current state here */
+    RESOURCES *base,    /* Calculate delta from this base */
+    RESOURCES *delta    /* Put delta here */
 )
 {
     Get_Resources ( current );
@@ -271,15 +271,15 @@ Get_Delta_Resource (
 
 static void
 Accum_Delta_Time (
-    TIME_INFO *delta,	/* Add this delta ... */
-    TIME_INFO *summary	/* ... to this summary record */
+    TIME_INFO *delta,    /* Add this delta ... */
+    TIME_INFO *summary    /* ... to this summary record */
 )
 {
     summary->secs  += delta->secs;
     summary->usecs += delta->usecs;
     if ( summary->usecs >= 1000000 ) {
-	summary->usecs -= 1000000;
-	summary->secs ++;
+    summary->usecs -= 1000000;
+    summary->secs ++;
     }
 }
 
@@ -295,8 +295,8 @@ Accum_Delta_Time (
 
 static void
 Accum_Delta_Resource (
-    RESOURCES *delta,	/* Add this delta ... */
-    RESOURCES *summary	/* ... to this summary record */
+    RESOURCES *delta,    /* Add this delta ... */
+    RESOURCES *summary    /* ... to this summary record */
 )
 {
     Accum_Delta_Time ( &delta->utime, &summary->utime );
@@ -366,10 +366,10 @@ Resource_Alloc (
  * Resource_Accum
  *
  * Accumulate resource information.  Valid requests are:
- *   RR_Clear:	Clear the delta information.
- *   RR_Start:	Start a new delta period (i.e. set current state).
- *   RR_Stop:	Add a delta period to the summary.
- *   RR_End:	Accumulate delta information to parent and clear.
+ *   RR_Clear:    Clear the delta information.
+ *   RR_Start:    Start a new delta period (i.e. set current state).
+ *   RR_Stop:    Add a delta period to the summary.
+ *   RR_End:    Accumulate delta information to parent and clear.
  * The default for an unrecognized request is RR_Start.  Note that if
  * there is no parent, RR_End is equivalent to RR_Clear.  All of the
  * requests set current state.
@@ -390,16 +390,16 @@ Resource_Accum ( RSTATE *r, RES_REQUEST req )
 
     /* Do the right thing: */
     switch ( req ) {
-	case RR_Clear:	Clear_Resource ( &r->del );
-			break;
-	case RR_Start:	break;
-	case RR_Stop:	Accum_Delta_Resource ( &deltime, &r->del );
-			break;
-	case RR_End:	if ( r->dad ) {
-			    Accum_Delta_Resource ( &r->del, &r->dad->del );
-			    Clear_Resource ( &r->del );
-			}
-			break;
+    case RR_Clear:    Clear_Resource ( &r->del );
+            break;
+    case RR_Start:    break;
+    case RR_Stop:    Accum_Delta_Resource ( &deltime, &r->del );
+            break;
+    case RR_End:    if ( r->dad ) {
+                Accum_Delta_Resource ( &r->del, &r->dad->del );
+                Clear_Resource ( &r->del );
+            }
+            break;
     }
 
     /* Reset the current state: */
@@ -423,12 +423,12 @@ Get_Time (
 )
 {
     switch ( req ) {
-	case RR_Current_User:		return &(r->cur.utime);
-	case RR_Current_System:		return &(r->cur.stime);
-	case RR_Current_Elapsed:	return &(r->cur.etime);
-	case RR_Delta_User:		return &(r->del.utime);
-	case RR_Delta_System:		return &(r->del.stime);
-	case RR_Delta_Elapsed:		return &(r->del.etime);
+    case RR_Current_User:        return &(r->cur.utime);
+    case RR_Current_System:        return &(r->cur.stime);
+    case RR_Current_Elapsed:    return &(r->cur.etime);
+    case RR_Delta_User:        return &(r->del.utime);
+    case RR_Delta_System:        return &(r->del.stime);
+    case RR_Delta_Elapsed:        return &(r->del.etime);
     }
     return 0;
 }
@@ -467,8 +467,8 @@ Get_Memory (
 )
 {
     switch ( req ) {
-	case RR_Current_Memory:		return r->cur.memory;
-	case RR_Delta_Memory:		return r->del.memory;
+    case RR_Current_Memory:        return r->cur.memory;
+    case RR_Delta_Memory:        return r->del.memory;
     }
     return 0;
 }
@@ -496,18 +496,18 @@ Resource_Report (
 
     /* Deal with NULL r: */
     if ( ! r ) {
-	res = &curtime;
-	Get_Resources (res);
+    res = &curtime;
+    Get_Resources (res);
 
     /* Otherwise select reportable structure using func: */
     } else {
-	switch ( func ) {
-	    case RR_Report_Delta:	res = &(r->del);
-					break;
-	    case RR_Report_Current:
-	    default:			res = &(r->cur);
-					break;
-	}
+    switch ( func ) {
+        case RR_Report_Delta:    res = &(r->del);
+                    break;
+        case RR_Report_Current:
+        default:            res = &(r->cur);
+                    break;
+    }
     }
 
     /* Report: */
@@ -515,16 +515,16 @@ Resource_Report (
     fprintf ( file,
 #if (1)
       "\tuser:\t%4d.%06d\n\tsystem:\t%4d.%06d\n\telapsed: %4d.%06d\n",
-	      res->utime.secs, res->utime.usecs,
-	      res->stime.secs, res->stime.usecs,
-	      res->etime.secs, res->etime.usecs );
+          res->utime.secs, res->utime.usecs,
+          res->stime.secs, res->stime.usecs,
+          res->etime.secs, res->etime.usecs );
 #else
       "\tuser:\t%4d.%03d\n\tsystem:\t%4d.%03d\n\telapsed: %4d.%02d\n",
-	      res->utime.secs, res->utime.usecs/1000,
-	      res->stime.secs, res->stime.usecs/1000,
-	      res->etime.secs, res->etime.usecs/10000 );
+          res->utime.secs, res->utime.usecs/1000,
+          res->stime.secs, res->stime.usecs/1000,
+          res->etime.secs, res->etime.usecs/10000 );
 #endif
     fprintf ( file, "\tmemory:\t%8x\n\tfree:\t%8x\n",
-	      res->memory, res->freemem );
+          res->memory, res->freemem );
 }
 

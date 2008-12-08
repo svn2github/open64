@@ -73,29 +73,29 @@ extern "C" {
  * As a simple approximation, and to keep things to a single number,
  * just use 2*#bbs + #stmts
  */
-#define COMPUTE_OLIMIT(b,s)	(b + b + s)
-#define COMPUTE_PU_OLIMIT	\
-	PU_Olimit = COMPUTE_OLIMIT(PU_WN_BB_Cnt, PU_WN_Stmt_Cnt); \
-	Max_Src_Olimit = MAX(Max_Src_Olimit,PU_Olimit)
+#define COMPUTE_OLIMIT(b,s)    (b + b + s)
+#define COMPUTE_PU_OLIMIT    \
+    PU_Olimit = COMPUTE_OLIMIT(PU_WN_BB_Cnt, PU_WN_Stmt_Cnt); \
+    Max_Src_Olimit = MAX(Max_Src_Olimit,PU_Olimit)
 
-extern UINT32 PU_Olimit;	/* Olimit computed for PU */
-extern UINT32 Max_Src_Olimit;	/* Maximum Olimit needed for all PU's in file */
+extern UINT32 PU_Olimit;    /* Olimit computed for PU */
+extern UINT32 Max_Src_Olimit;    /* Maximum Olimit needed for all PU's in file */
 
 /* Counters of important data structures */
-extern INT32 PU_WN_Cnt;		/* number of whirl nodes in this PU */
-extern INT32 PU_WN_BB_Cnt;	/* number of whirl bbs in this PU */
-extern INT32 PU_WN_Stmt_Cnt;	/* number of whirl stmts in this PU */
-extern INT32 PU_WN_Call_Cnt;	/* number of whirl calls in this PU */
-extern INT32 PU_WN_Loop_Cnt;	/* number of whirl loops in this PU */
-extern INT32 PU_BB_Cnt;		/* number of cg basic-blocks in this PU */
-extern INT32 PU_OP_Cnt;		/* number of instructions in this PU */
-extern INT32 PU_Size;		/* number of bytes in this PU */
-extern INT32 PU_TN_Cnt;		/* number of TNs in this PU */
+extern INT32 PU_WN_Cnt;        /* number of whirl nodes in this PU */
+extern INT32 PU_WN_BB_Cnt;    /* number of whirl bbs in this PU */
+extern INT32 PU_WN_Stmt_Cnt;    /* number of whirl stmts in this PU */
+extern INT32 PU_WN_Call_Cnt;    /* number of whirl calls in this PU */
+extern INT32 PU_WN_Loop_Cnt;    /* number of whirl loops in this PU */
+extern INT32 PU_BB_Cnt;        /* number of cg basic-blocks in this PU */
+extern INT32 PU_OP_Cnt;        /* number of instructions in this PU */
+extern INT32 PU_Size;        /* number of bytes in this PU */
+extern INT32 PU_TN_Cnt;        /* number of TNs in this PU */
 
 /* Counters for back end: */
-extern INT32 Misaligned_Cnt;	/* Number of misaligned memrefs expanded */
-extern INT32 Temp_Var_Cnt;	/* Number of tempories created */
-extern INT32 Spill_Var_Cnt;	/* Number of spill temporaries created */
+extern INT32 Misaligned_Cnt;    /* Number of misaligned memrefs expanded */
+extern INT32 Temp_Var_Cnt;    /* Number of tempories created */
+extern INT32 Spill_Var_Cnt;    /* Number of spill temporaries created */
 
 #if 0 // SC
 /* Publicly visible functions */
@@ -109,12 +109,12 @@ extern void Print_Total_Stats(void);
  * the bbs and stmts parameters are incremented. */
 extern void Count_WN_Node (WN *node, INT32 *bbs, INT32 *stmts);
 extern void Count_WN_Operator (OPERATOR opr, TYPE_ID rtype, INT32& bbs,
-			       INT32& stmts, INT32& calls);
+                   INT32& stmts, INT32& calls);
 inline void
 Count_WN_Opcode (OPCODE opcode, INT32* bbs, INT32* stmts)
 {
     Count_WN_Operator (OPCODE_operator (opcode), OPCODE_rtype (opcode),
-		       *bbs, *stmts, PU_WN_Call_Cnt);
+               *bbs, *stmts, PU_WN_Call_Cnt);
 }
 #endif // SC
 

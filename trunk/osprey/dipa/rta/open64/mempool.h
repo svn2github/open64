@@ -87,24 +87,24 @@
  * Global Variables
  * ================
  *
- *	MEM_POOL *Malloc_Mem_Pool
+ *    MEM_POOL *Malloc_Mem_Pool
  *
- *	    If this MEM_POOL is passed as an argument to an alloc or free
- *	    routine, use malloc instead of the mempools.  
- *	    Note that it causes the use of malloc and not calloc.  Memory
- *	    from this pool will not be automatically zeroed.
+ *        If this MEM_POOL is passed as an argument to an alloc or free
+ *        routine, use malloc instead of the mempools.  
+ *        Note that it causes the use of malloc and not calloc.  Memory
+ *        from this pool will not be automatically zeroed.
  *
  *      MEM_POOL *Default_Mem_Pool
  *
- *	    Use the default MEM_POOL  
+ *        Use the default MEM_POOL  
  *
  *
  * Operations defined on MEM_POOLS
  * ===============================
  *
- *	void MEM_POOL_Set_Default(MEM_POOL *pool)
+ *    void MEM_POOL_Set_Default(MEM_POOL *pool)
  *
- *	    All subsequent uses of Default_Mem_Pool will refer to pool
+ *        All subsequent uses of Default_Mem_Pool will refer to pool
  *
  *      void MEM_POOL_Initialize(
  *          MEM_POOL *pool,
@@ -123,14 +123,14 @@
  *
  *          After a MEM_POOL has been initialized, it is important
  *          that the structure it points to at no point go out of
- *	    scope, so MEM_POOLs initialized this way should generally
- *	    statically allocated.
+ *        scope, so MEM_POOLs initialized this way should generally
+ *        statically allocated.
  *
  *
  *      BOOL MEM_POOL_Zeroed(MEM_POOL *pool)
  *
- *	    Returns TRUE iff <pool> zeroes newly allocated memory
- *	    (i.e., if <bz> argument was TRUE when pool was initialized).
+ *        Returns TRUE iff <pool> zeroes newly allocated memory
+ *        (i.e., if <bz> argument was TRUE when pool was initialized).
  *
  *
  *      void MEM_POOL_Push(
@@ -187,7 +187,7 @@
  *          This is a low level usage and is discouraged in favor of
  *          the TYPE_ forms below.
  *
- *	    If pool == Malloc_Mem_Pool this just calls the system malloc
+ *        If pool == Malloc_Mem_Pool this just calls the system malloc
  *
  *
  *      MEM_PTR MEM_POOL_Realloc(
@@ -223,25 +223,25 @@
  *          you should consider using a dedicated pool to hold the
  *          vector that you plan to realloc.
  *
- *	    If pool == Malloc_Mem_Pool this just calls the system realloc
+ *        If pool == Malloc_Mem_Pool this just calls the system realloc
  *
  *
  *      void MEM_POOL_FREE(
  *          MEM_POOL *pool,
- *	    void *data
+ *        void *data
  *      )
  *
- *	    Free the data from a MEM_POOL.  If pool == Malloc_Mem_Pool,
- *	    this calls the UNIX free.  Otherwise this is a no-op.
+ *        Free the data from a MEM_POOL.  If pool == Malloc_Mem_Pool,
+ *        this calls the UNIX free.  Otherwise this is a no-op.
  *
  *
- *	void MEM_POOL_Delete(MEM_POOL *pool)
+ *    void MEM_POOL_Delete(MEM_POOL *pool)
  *
- * 	    Free all the memory associated with <pool>.  Currently,
- *	    deleted pools are not reported by MEM_Trace (but this can
- *	    be changed).  Note that <*pool> itself is not freed.  A
- *	    deleted pool cannot be used unless it is first initialized
- *	    again with MEM_POOL_Initialize.
+ *         Free all the memory associated with <pool>.  Currently,
+ *        deleted pools are not reported by MEM_Trace (but this can
+ *        be changed).  Note that <*pool> itself is not freed.  A
+ *        deleted pool cannot be used unless it is first initialized
+ *        again with MEM_POOL_Initialize.
  *
  *
  *  Typed allocation macros
@@ -282,7 +282,7 @@
  *              pool        - is a pointer to the MEM_POOL to use,
  *              count       - How many objects (_N form only).
  *
- *	    If pool == Malloc_Mem_Pool this calls the system malloc/realloc
+ *        If pool == Malloc_Mem_Pool this calls the system malloc/realloc
  *
  *
  *      type * TYPE_MEM_POOL_REALLOC_N(
@@ -342,16 +342,16 @@
  *                        from this callsite than last time it was
  *                        executed.
  *
- *	void Trace_Memory_Allocation(
- *	    const INT phase,
- *	    const char *const pname
- *	)
+ *    void Trace_Memory_Allocation(
+ *        const INT phase,
+ *        const char *const pname
+ *    )
  *
- *	    Produce a memory allocation trace (via MEM_Trace) when
- *	    the trace switch -ta<m> is specified on the compile line.
+ *        Produce a memory allocation trace (via MEM_Trace) when
+ *        the trace switch -ta<m> is specified on the compile line.
  *
- *		phase - Phase after which we're printing
- *		pname - Print name for phase 
+ *        phase - Phase after which we're printing
+ *        pname - Print name for phase 
  *
  * Related Utilities
  * =================
@@ -369,7 +369,7 @@
  *      )
  *
  *          Allocate one or more objects of a particular type using
- *	    alloca and return a typed pointer.  The plain form allocates
+ *        alloca and return a typed pointer.  The plain form allocates
  *          a single object.  The _N for allocates a vector of such
  *          objects.
  *
@@ -768,7 +768,7 @@ public:
   MEM_POOL *operator()() { return &mem_pool; }
 
   CXX_MEM_POOL(char *name, BOOL do_bzero) {
-    mem_pool.magic_num = 0;		/* force it to be uninitialized */
+    mem_pool.magic_num = 0;        /* force it to be uninitialized */
     MEM_POOL_Initialize(&mem_pool, name, do_bzero);
     MEM_POOL_Push(&mem_pool);
   };
@@ -791,13 +791,13 @@ private:
 public:
 
     MEM_POOL_Constructor (MEM_POOL* p, char* name, BOOL zero) : pool (p) {
-	MEM_POOL_Initialize (pool, name, zero);
-	MEM_POOL_Push (pool);
+    MEM_POOL_Initialize (pool, name, zero);
+    MEM_POOL_Push (pool);
     }
 
     ~MEM_POOL_Constructor () {
-	MEM_POOL_Pop (pool);
-	MEM_POOL_Delete (pool);
+    MEM_POOL_Pop (pool);
+    MEM_POOL_Delete (pool);
     }
 
     MEM_POOL* Pool () const { return pool; };

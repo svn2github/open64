@@ -33,7 +33,7 @@
 #define __DIPA_ERRORS_H__ 1
 
 typedef enum  {
-	DIPA_INTERNAL_ERROR = -2,
+    DIPA_INTERNAL_ERROR = -2,
 } DIPA_Error_t;
 
 #endif

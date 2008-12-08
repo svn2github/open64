@@ -32,11 +32,17 @@
 #define UINT8 unsigned char
 #define INT16 short
 #define UINT16 unsigned short
-#define INT32 long
-#define UINT32 unsigned long
-#define UINT unsigned long
+#define INT32 int
+#define UINT32 unsigned int
+#define UINT unsigned int
 #define INT64 long long
 #define UINT64 unsigned long long
+#define BOOL bool
+
+#define TRUE 1
+#define FALSE 0
+
+//The following types mXXXX are expired
 #define mINT32 INT32
 #define mUINT32 UINT32
 #define mINT8  char
@@ -45,10 +51,8 @@
 #define mINT16 short
 #define mUINT64 UINT64
 #define mINT64 INT64
-#define BOOL bool
 #define mBOOL bool
-#define TRUE 1
-#define FALSE 0
+
 typedef char * STRING;
 typedef unsigned char *BITS;
 typedef mUINT16       mCLASS_INDEX;
@@ -69,7 +73,7 @@ typedef unsigned long UINTPS;
 
 struct SCOPE;
 struct SYMBOL_TABLE;
-extern SCOPE		*Scope_tab;
+extern SCOPE        *Scope_tab;
 
 extern SYMBOL_TABLE   St_Table;
 
@@ -122,7 +126,7 @@ typedef struct DST_idx
 #endif
 
 typedef enum {
-	EC_No_Mem = -17,
+    EC_No_Mem = -17,
 }Error_Code;
 
 #ifdef HAS_DEV_TRACE

@@ -54,15 +54,15 @@ typedef enum {
 
 typedef class {
  private:
-  uint64_t     pc;
-  unsigned int sz;
+  UINT64     pc;
+  UINT sz;
   BITS         bits;
  public:
-  void Size(unsigned int s) { sz = s; }
+  void Size(UINT s) { sz = s; }
   void Bits(BITS b)         { bits = b; }
-  void Pc(uint64_t p)       { pc = p; }
-  uint64_t Pc(void)         { return pc; }
-  unsigned int Size(void)   { return sz; }
+  void Pc(UINT64 p)       { pc = p; }
+  UINT64 Pc(void)         { return pc; }
+  UINT Size(void)   { return sz; }
   BITS Bits(void)           { return bits; }
 } RTABuf;
 
@@ -70,37 +70,37 @@ class PU_SectBin {
  private:
   SecHdr*         sect;
   SecHdr64*       sect64;
-  bool            is32bit;
-  int             num_sect;
+  BOOL            is32bit;
+  INT             num_sect;
   STRING          name;
   vector<RTABuf>  pu_sects;
-  uint64_t        start_pc;
-  unsigned int    sz;        // size of pu range
+  UINT64        start_pc;
+  UINT    sz;        // size of pu range
   
  public:
   void Name(const STRING s)     { name = s; }
-  void NumSect(const int n)     { num_sect = n; }
+  void NumSect(const INT n)     { num_sect = n; }
   void Sect(SecHdr* s)          { sect = s; }
   void Sect(SecHdr64* s)        { sect64 = s; }
   void PuSects(vector<RTABuf> p){ pu_sects = p; }
-  void Is32bit(bool b)          { is32bit = b; }
-  void StartPc(uint64_t p)      { start_pc = p; }
-  void SzPus(unsigned int s)    { sz = s; }
+  void Is32bit(BOOL b)          { is32bit = b; }
+  void StartPc(UINT64 p)      { start_pc = p; }
+  void SzPus(UINT s)    { sz = s; }
   STRING Name(void)             { return name; }
-  int Numsect(void)             { return num_sect; }
+  INT Numsect(void)             { return num_sect; }
   SecHdr* Sect(void)            { return sect; }
   SecHdr64* Sect64(void)        { return sect64; }
   vector<RTABuf> PuSects(void)  { return pu_sects; }
-  bool NumsectNone(void)        { return (Numsect() == 0); }
-  bool Is32bit(void)            { return is32bit; }
-  uint64_t StartPc(void)        { return start_pc; }
-  unsigned int SzPus(void)      { return sz; }
-  void PrintBits(FILE* fp, int i);
+  BOOL NumsectNone(void)        { return (Numsect() == 0); }
+  BOOL Is32bit(void)            { return is32bit; }
+  UINT64 StartPc(void)        { return start_pc; }
+  UINT SzPus(void)      { return sz; }
+  void PrintBits(FILE* fp, INT i);
   void PrintBits(FILE* fp);
-  bool QuickChk(FILE* fp, int i);
-  bool QuickChk(FILE* fp = stdout);
-  bool VerifyHdr(const Rta_Hdr *prta);
-  PU_SectBin(int n = 0)         { Name('\0'), NumSect(n), Sect((SecHdr*)0); Sect((SecHdr64*)0); }
+  BOOL QuickChk(FILE* fp, INT i);
+  BOOL QuickChk(FILE* fp = stdout);
+  BOOL VerifyHdr(const Rta_Hdr *prta);
+  PU_SectBin(INT n = 0)         { Name('\0'), NumSect(n), Sect((SecHdr*)0); Sect((SecHdr64*)0); }
   ~PU_SectBin() {}
 };
 
@@ -113,19 +113,19 @@ class SecHdrTable;
 
 typedef class {
   ELF_object*   _obj;
-  bool          _is32bit;
+  BOOL          _is32bit;
   ELF_object64* _obj64;
  public:
   ELF_object*    Obj(void)            { return _is32bit ? _obj :(ELF_object*)0;}
   SecHdr*        Sects(void)          { return Obj()->SecHdrTab()->SecTab(); }  
   ELF_object64*  Obj64(void)          { return _obj64; }
   SecHdr64*      Sects64(void)        { return Obj64()->SecHdrTab()->SecTab(); }
-  bool           Is32bit(void)        { return _is32bit; }
-  int            Sectnum(void)        { return _is32bit ? Obj()->SecHdrTab()->SecNum() : Obj64()->SecHdrTab()->SecNum(); }
+  BOOL           Is32bit(void)        { return _is32bit; }
+  INT            Sectnum(void)        { return _is32bit ? Obj()->SecHdrTab()->SecNum() : Obj64()->SecHdrTab()->SecNum(); }
  public:
   ANNOT_SCN_TYPE FilterByName(STRING);
   void createELFObj(char* elfFile);  // sets up all members, like a constructor
-  STRING         Sectname(int i);
+  STRING         Sectname(INT i);
   void           dumpBin(FILE *fp = stdout);
 } ELFBin;
 
@@ -166,19 +166,19 @@ void ELFBin::createELFObj(char* elfFile)
     if (_is32bit) {
       SecHdrTable* _secHdrTab = Obj()->SecHdrTab();
       if (_secHdrTab == 0)
-	throw(STRING("Empty section header"));
+    throw(STRING("Empty section header"));
       
       if (_obj->_elfHeader->e_shnum() == 0)
-	throw(STRING("number of sections is zero"));
+    throw(STRING("number of sections is zero"));
     }
     else {
       _obj64 = new ELF_object64(elfFile);
       SecHdrTable64* _secHdrTab = Obj64()->SecHdrTab();
       if (_secHdrTab == 0)
-	throw(STRING("Empty section header"));
+    throw(STRING("Empty section header"));
       
       if (Obj64()->_elfHeader->e_shnum() == 0)
-	throw(STRING("number of sections is zero"));
+    throw(STRING("number of sections is zero"));
     }
     return ;
   }
@@ -188,7 +188,7 @@ void ELFBin::createELFObj(char* elfFile)
 }
 
 
-STRING ELFBin::Sectname(int i) 
+STRING ELFBin::Sectname(INT i) 
 {
   if (Sectnum() == 0 )
     throw(STRING("sectHdr num null"));
@@ -208,79 +208,79 @@ STRING ELFBin::Sectname(int i)
 
 void ELFBin::dumpBin(FILE *fp)
 {
-  int sect_num = 0;
+  INT sect_num = 0;
   PU_SectBin pusbin_rta = PU_SectBin(0);
-  int p_ofs;
+  INT p_ofs;
   unsigned char* p_tmp;
-  unsigned int p_shsz;
+  UINT p_shsz;
   BITS p_annot_scn;
   vector<RTABuf> rta_buf;
   ANNOT_SCN_TYPE scntype, stype;
 
-  for (int k = 0; k < Sectnum(); k++) {
+  for (INT k = 0; k < Sectnum(); k++) {
     if ((stype = FilterByName(Sectname(k))) != RTA_SCN_UNKNOWN) {
 
       if (Is32bit()) {
-	p_tmp = (unsigned char *)Obj()->_elfHeader->_startAddr;
-	SecHdr* SecHdr = Sects();
-	p_ofs = SecHdr[k].sh_offset();
-	p_shsz = SecHdr[k].sh_size();
+    p_tmp = (unsigned char *)Obj()->_elfHeader->_startAddr;
+    SecHdr* SecHdr = Sects();
+    p_ofs = SecHdr[k].sh_offset();
+    p_shsz = SecHdr[k].sh_size();
       }
       else {
-	  p_tmp = (unsigned char *)Obj64()->_elfHeader->_startAddr;
-	  SecHdr64* SecHdr64 = Sects64();
-	  p_ofs = SecHdr64[k].sh_offset();
-	  p_shsz = SecHdr64[k].sh_size();
+      p_tmp = (unsigned char *)Obj64()->_elfHeader->_startAddr;
+      SecHdr64* SecHdr64 = Sects64();
+      p_ofs = SecHdr64[k].sh_offset();
+      p_shsz = SecHdr64[k].sh_size();
       }
 
       switch (stype) {
       case RTA_SCN_INDEX:
-	// RTA index section that has start, offset and size to data part
-	if (Is32bit()) {
-	  pusbin_rta.Sect(Sects());
-	}
-	else {
-	  pusbin_rta.Sect(Sects64());
-	}
-	scntype = stype;
-	sect_num = p_shsz/sizeof(Rta_Idx_Ent);
-	FmtAssert((p_shsz%sizeof(Rta_Idx_Ent) == 0), ("index sect not multplier of index class size"));
-	break;
+    // RTA index section that has start, offset and size to data part
+    if (Is32bit()) {
+      pusbin_rta.Sect(Sects());
+    }
+    else {
+      pusbin_rta.Sect(Sects64());
+    }
+    scntype = stype;
+    sect_num = p_shsz/sizeof(Rta_Idx_Ent);
+    FmtAssert((p_shsz%sizeof(Rta_Idx_Ent) == 0), ("index sect not multplier of index class size"));
+    break;
 
       case RTA_SCN_DATA:
-	scntype = stype;
-	p_annot_scn = (BITS)malloc(p_shsz);	
-	memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
-	break;
+    scntype = stype;
+    p_annot_scn = (BITS)malloc(p_shsz);    
+    memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
+    break;
 
       case WHIRL_SCN_PU:
-	p_annot_scn = (BITS)malloc(p_shsz);	
-	memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
-	Print_whirl_pu_from_bits(fp, p_annot_scn, p_shsz);
-	break;
+    p_annot_scn = (BITS)malloc(p_shsz);    
+    memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
+    Print_whirl_pu_from_bits(fp, p_annot_scn, p_shsz);
+    break;
 
       case WHIRL_SCN_GBL:
-	p_annot_scn = (BITS)malloc(p_shsz);	
-	memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
-	Print_whirl_global_from_bits(fp, p_annot_scn, p_shsz);
-	break;
+    p_annot_scn = (BITS)malloc(p_shsz);    
+    memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
+    Print_whirl_global_from_bits(fp, p_annot_scn, p_shsz);
+    break;
 
       case WHIRL_SCN_SUMMARY:
-	p_annot_scn = (BITS)malloc(p_shsz);	
-	memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
-	Print_whirl_summary_from_bits(fp, p_annot_scn, p_shsz);
-	break;
+    p_annot_scn = (BITS)malloc(p_shsz);    
+    memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
+    Print_whirl_summary_from_bits(fp, p_annot_scn, p_shsz);
+    break;
 
       case WHIRL_SCN_FLAGS:
-	p_annot_scn = (BITS)malloc(p_shsz);	
-	memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
-	Print_whirl_flags_from_bits(fp, p_annot_scn, p_shsz);
-	break;
+    p_annot_scn = (BITS)malloc(p_shsz);    
+    memcpy(p_annot_scn, p_tmp+p_ofs, p_shsz);
+    Print_whirl_flags_from_bits(fp, p_annot_scn, p_shsz);
+    break;
 
       case WHIRL_SCN_STRTAB:
       default:
-	FmtAssert(0, ("RTA/WHIRL scn type %d not handled", stype));
-	break;
+    FmtAssert(0, ("RTA/WHIRL scn type %d not handled", stype));
+    break;
       }
     }      
   }
@@ -290,7 +290,7 @@ void ELFBin::dumpBin(FILE *fp)
     // but not necessary in order
     Rta_Idx_Ent* rta_idx_array;
     rta_idx_array = (Rta_Idx_Ent*)((unsigned char *)p_tmp+p_ofs);
-    for (int j=0; j<sect_num; j++, rta_idx_array++) {
+    for (INT j=0; j<sect_num; j++, rta_idx_array++) {
       RTABuf rta_tmp;
       
       rta_tmp.Pc(Rta_idx_ent_start(rta_idx_array));
@@ -302,7 +302,7 @@ void ELFBin::dumpBin(FILE *fp)
     pusbin_rta.NumSect(sect_num);
     pusbin_rta.PuSects(rta_buf);
 #ifdef DEBUG
-    pusbin_rta.PrintBits(fp);	
+    pusbin_rta.PrintBits(fp);    
     pusbin_rta.QuickChk(fp);
 #endif // DEBUG
   }

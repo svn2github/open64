@@ -1,29 +1,29 @@
 /*
- * 	Copyright (c) 2006 Beijing SimpLight Nanoelectornics, Ltd.
- * 	All rights reserved.
+ *     Copyright (c) 2006 Beijing SimpLight Nanoelectornics, Ltd.
+ *     All rights reserved.
  */
 
 /*
-	Copyright (C) 2005, 2006.  Free Software Foundation, Inc.
+    Copyright (C) 2005, 2006.  Free Software Foundation, Inc.
 
-	This program is free software; you can redistribute it and/or modify it
-	under the terms of version 2 of the GNU General Public License as
-	published by the Free Software Foundation.
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of version 2 of the GNU General Public License as
+    published by the Free Software Foundation.
 
-	This program is distributed in the hope that it would be useful, but
-	WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+    This program is distributed in the hope that it would be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-	Further, this software is distributed without any warranty that it is
-	free of the rightful claim of any third person regarding infringement
-	or the like.  Any license provided herein, whether implied or
-	otherwise, applies only to this software file.  Patent licenses, if
-	any, provided herein do not apply to combinations of this program with
-	other software, or any other product whatsoever.
+    Further, this software is distributed without any warranty that it is
+    free of the rightful claim of any third person regarding infringement
+    or the like.  Any license provided herein, whether implied or
+    otherwise, applies only to this software file.  Patent licenses, if
+    any, provided herein do not apply to combinations of this program with
+    other software, or any other product whatsoever.
 
-	You should have received a copy of the GNU General Public License along
-	with this program; if not, write the Free Software Foundation, Inc., 59
-	Temple Place - Suite 330, Boston MA 02111-1307, USA.
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write the Free Software Foundation, Inc., 59
+    Temple Place - Suite 330, Boston MA 02111-1307, USA.
 */
 
 
@@ -56,9 +56,9 @@
 #include <ctype.h>
 
 #ifndef linux
-#define _LANGUAGE_C			/* work around system header bug */
+#define _LANGUAGE_C            /* work around system header bug */
 extern "C" {
-#include <sys/fpu.h>			/* we don't have a C++ sys/fpu.h */
+#include <sys/fpu.h>            /* we don't have a C++ sys/fpu.h */
 }
 #undef _LANGUAGE_C
 #include <sys/syssgi.h>
@@ -76,11 +76,11 @@ extern "C" {
 //
 
 /* Compiler error location: */
-static FILE *Msg_File = NULL;	           // I/O device for messages  
+static FILE *Msg_File = NULL;               // I/O device for messages  
 //static const char *Msg_File_Name = NULL;   // message file name
 
 /* Trace file support: */
-static FILE *Trace_File = NULL;		
+static FILE *Trace_File = NULL;        
 
 /* Binary file location: */
 //static char  *bin_file_name;
@@ -104,17 +104,17 @@ extern char *sys_siglist[];
 
 static void
 Emit_Message (
-  char *hmsg,		/* Header line of message */
-  char *emsg )		/* Error line of message */
+  char *hmsg,        /* Header line of message */
+  char *emsg )        /* Error line of message */
 {
   char msg[512];
   BOOL report_location = FALSE;
 
   /* Report the assertion failure location: */
   if ( Src_File != NULL ) {
-  	fflush(NULL);
+      fflush(NULL);
     sprintf ( msg, "\n### Assertion failure at line %d of %s:\n",
-	      Src_Line, Src_File );
+          Src_Line, Src_File );
     fputs ( msg, stderr );
     Src_File = NULL;
     report_location = TRUE;
@@ -195,60 +195,60 @@ ErrMsg_Report(Msg_Dsc *mdesc, INT line, const char *file, va_list vp )
       /* The following parameter kinds are standard and require no
        * host program-specific data structures to interpret:
        */
-      case MT_UNKNOWN:	mparm[pnum] = 0;
-			break;
+      case MT_UNKNOWN:    mparm[pnum] = 0;
+            break;
 
-      case MT_INT:	mparm[pnum] = (INT) va_arg ( vp, INT );
-			break;
+      case MT_INT:    mparm[pnum] = (INT) va_arg ( vp, INT );
+            break;
 
-      case MT_INT32:	mparm[pnum] = (INT) va_arg ( vp, INT32 );
-			break;
+      case MT_INT32:    mparm[pnum] = (INT) va_arg ( vp, INT32 );
+            break;
 
-      case MT_STRING:	mparm[pnum] = (size_t) va_arg ( vp, char * );
-			break;
+      case MT_STRING:    mparm[pnum] = (size_t) va_arg ( vp, char * );
+            break;
 
-      case MT_FLOAT:	result = &buf[++loc];
-			loc += sprintf ( &buf[loc], "%6e",
-					 *(va_arg(vp,float *)) );
-			mparm[pnum] = (size_t) result;
-			break;
+      case MT_FLOAT:    result = &buf[++loc];
+            loc += sprintf ( &buf[loc], "%6e",
+                     *(va_arg(vp,float *)) );
+            mparm[pnum] = (size_t) result;
+            break;
 
-      case MT_POINTER:	result = &buf[++loc];
-			loc += sprintf ( &buf[loc], "%#8lX",
-					 (unsigned long) va_arg(vp,char *) );
-			mparm[pnum] = (size_t) result;
-			break;
+      case MT_POINTER:    result = &buf[++loc];
+            loc += sprintf ( &buf[loc], "%#8lX",
+                     (UINT64) va_arg(vp,char *) );
+            mparm[pnum] = (size_t) result;
+            break;
 
-      case MT_SYSERR:	parm = (INT) va_arg(vp,int);
-      			if (parm < 0) {
-			  mparm[pnum] = (size_t) host_errlist[-parm];
+      case MT_SYSERR:    parm = (INT) va_arg(vp,INT);
+                  if (parm < 0) {
+              mparm[pnum] = (size_t) host_errlist[-parm];
 #if (__GNUC__ >= 3)
-			  SimFatal(0, ("Fix me"));
-			  //			} else if ( parm <= strerror ) {
-			  //			  mparm[pnum] = (INT) strerror_r[parm];
+              SimFatal(0, ("Fix me"));
+              //            } else if ( parm <= strerror ) {
+              //              mparm[pnum] = (INT) strerror_r[parm];
 #else
-			} else if ( parm <= sys_nerr ) {
-			  mparm[pnum] = (INT) sys_errlist[parm];
+            } else if ( parm <= sys_nerr ) {
+              mparm[pnum] = (INT) sys_errlist[parm];
 #endif // __GNUC__ == 3
-			} else {
-			  result = &buf[++loc];
-			  loc += sprintf ( &buf[loc],
-					   "Unix error %ld", (long)parm );
-			  mparm[pnum] = (size_t) result;
-			}
-			break;
+            } else {
+              result = &buf[++loc];
+              loc += sprintf ( &buf[loc],
+                       "Unix error %ld", (INT64)parm );
+              mparm[pnum] = (size_t) result;
+            }
+            break;
 #if 0
       /* The default case takes care of all host program-specific
        * parameter kinds, which must be pointers:
        */
-      default:	result = Host_Format_Parm ( kind, va_arg(vp,char *) );
-		/* Copy the string from the result into buffer: */
-		++loc;
-		strncpy ( &buf[loc], result, BUFLEN-loc );
-		result = &buf[loc];
-		loc += strlen (result);
-		mparm[pnum] = (INT) result;
-		break;
+      default:    result = Host_Format_Parm ( kind, va_arg(vp,char *) );
+        /* Copy the string from the result into buffer: */
+        ++loc;
+        strncpy ( &buf[loc], result, BUFLEN-loc );
+        result = &buf[loc];
+        loc += strlen (result);
+        mparm[pnum] = (INT) result;
+        break;
 #else
     default:
       FmtAssert(FALSE, ("default in Msg_Report not handled"));
@@ -288,7 +288,7 @@ ErrMsg_Report(Msg_Dsc *mdesc, INT line, const char *file, va_list vp )
   if ( mlevel >= ES_ERRABORT ) {
     fflush(NULL);
     Signal_Cleanup( 0 );
-    if ( ecode == EC_Signal )	kill ( getpid(), SIGILL );
+    if ( ecode == EC_Signal )    kill ( getpid(), SIGILL );
     exit(EC_NORECOVER_USER_ERROR);
   }
 #endif
@@ -413,17 +413,17 @@ Fail_App_Assertion ( const char *fmt, ... )
   Emit_Message ( hmsg, emsg );
 
 
-	// Gary: I have replaced the exit call by
-	// an interrupt to break in the debugger 
-	//
+    // Gary: I have replaced the exit call by
+    // an interrupt to break in the debugger 
+    //
 #ifdef NEED_LONG_JMP
-	checkLongJmp();
+    checkLongJmp();
 #endif
-	asm ("int $3"); // Gary added
-	/* Abort: */
-	//Signal_Cleanup( 0 );
-	
-	//exit(EC_INTERNAL_ERROR);  // Gary commented
+    asm ("int $3"); // Gary added
+    /* Abort: */
+    //Signal_Cleanup( 0 );
+    
+    //exit(EC_INTERNAL_ERROR);  // Gary commented
 }
 
 /* ====================================================================
@@ -456,14 +456,14 @@ Fail_FmtAssertion ( const char *fmt, ... )
   Emit_Message ( hmsg, emsg );
 
 
-	// Gary: I have replaced the exit call by
-	// an interrupt to break in the debugger 
-	//
-	asm ("int $3"); // Gary added
-	/* Abort: */
-	//Signal_Cleanup( 0 );
-	
-	//exit(EC_INTERNAL_ERROR);  // Gary commented
+    // Gary: I have replaced the exit call by
+    // an interrupt to break in the debugger 
+    //
+    asm ("int $3"); // Gary added
+    /* Abort: */
+    //Signal_Cleanup( 0 );
+    
+    //exit(EC_INTERNAL_ERROR);  // Gary commented
 }
 
 /* ====================================================================
@@ -478,15 +478,15 @@ Fail_FmtAssertion ( const char *fmt, ... )
 
 static void
 Emit_Verification_Messg (
-  char *hmsg,		/* Header line of message */
-  char *emsg )		/* Error line of message */
+  char *hmsg,        /* Header line of message */
+  char *emsg )        /* Error line of message */
 {
   char msg[512];
   BOOL report_location = FALSE;
 
   /* Report the assertion failure location: */
     sprintf ( msg, "\n### Verification failure at line %d of %s:\n",
-	      Src_Line, Src_File );
+          Src_Line, Src_File );
     fputs ( msg, stderr );
     Src_File = NULL;
     report_location = TRUE;
@@ -588,13 +588,13 @@ DevWarn( const char *fmt, ... )
  */
 typedef struct {
   const char *fname;
-  UINT	      line;
-  UINT	      count;
+  UINT          line;
+  UINT          count;
 } LIMIT_STRUCT;
 
 static LIMIT_STRUCT *
 DevWarn_limit_search(const char *const src_fname,
-		     const UINT        src_line)
+             const UINT        src_line)
 {
   static LIMIT_STRUCT *dw_ls_buf     = NULL;
   static UINT          dw_ls_buf_siz = 0;
@@ -604,8 +604,8 @@ DevWarn_limit_search(const char *const src_fname,
 
   for (i = 0; i < dw_ls_num; i++) {
     if (dw_ls_buf[i].line == src_line &&
-	(dw_ls_buf[i].fname == src_fname ||	/* speed hack */
-	 (strcmp(dw_ls_buf[i].fname, src_fname) == 0))) {
+    (dw_ls_buf[i].fname == src_fname ||    /* speed hack */
+     (strcmp(dw_ls_buf[i].fname, src_fname) == 0))) {
       return dw_ls_buf + i;
     }
   }
@@ -628,7 +628,7 @@ DevWarn_limit_search(const char *const src_fname,
       new_ls_buf_siz *= 2;
     }
     new_ls_buf = (LIMIT_STRUCT *)
-	realloc(dw_ls_buf, new_ls_buf_siz * sizeof(LIMIT_STRUCT));
+    realloc(dw_ls_buf, new_ls_buf_siz * sizeof(LIMIT_STRUCT));
     if (new_ls_buf != NULL) {
       dw_ls_buf     = new_ls_buf;
       dw_ls_buf_siz = new_ls_buf_siz;
@@ -659,8 +659,8 @@ DevWarn_limit_search(const char *const src_fname,
 
 extern BOOL
 Count_Limit_DevWarn(const char *const src_fname,
-		    const UINT        src_line,
-		    const UINT        limit)
+            const UINT        src_line,
+            const UINT        limit)
 {
   /* Check conditions used by DevWarn that result in output. If
    * DevWarn will not generate output, don't bother wasting time or
@@ -691,14 +691,14 @@ BOOL Had_Internal_Error (void)
  * Variables and methods for verbose mode
  * 
  */
-static int default_verbose_level = VERBOSE_4;
-int get_verbose_level(void) { return default_verbose_level; }
-int *get_verbose_level_ptr(void) { return &default_verbose_level; }
-void set_verbose_level(int level)
+static INT default_verbose_level = VERBOSE_4;
+INT get_verbose_level(void) { return default_verbose_level; }
+INT *get_verbose_level_ptr(void) { return &default_verbose_level; }
+void set_verbose_level(INT level)
 {
-	if (level < 0) level = 0;
-	else if (level > 7) level = 7;
-	default_verbose_level = level;
+    if (level < 0) level = 0;
+    else if (level > 7) level = 7;
+    default_verbose_level = level;
 }
 
 /* ====================================================================
@@ -709,11 +709,11 @@ void set_verbose_level(int level)
  * ====================================================================
  */
 extern void
-vmsg( int verbose_level, const char *fmt, ... )
+vmsg( INT verbose_level, const char *fmt, ... )
 {
   va_list args;
   if (verbose_level < get_verbose_level())
-  	return;
+      return;
   va_start ( args, fmt );
   vfprintf ( stdout, fmt, args );
   va_end(args);
@@ -738,21 +738,21 @@ catch_signal (INT sig, INT error_num)
     switch (sig) {
     case SIGBUS:
     case SIGSEGV:
-	if (error_num == ENXIO || error_num == ENOSPC)
-	    /* special case for I/O error on mmapped object: report as an
-	       ordinary fatal error */ 
-	    FatalMsg(EM_Objfile, (void *)sys_siglist[sig]);
+    if (error_num == ENXIO || error_num == ENOSPC)
+        /* special case for I/O error on mmapped object: report as an
+           ordinary fatal error */ 
+        FatalMsg(EM_Objfile, (void *)sys_siglist[sig]);
     }
     
     printf ( "Signal: %s", sys_siglist[sig] );
     fflush ( stdout );
     
-    //Signal_Cleanup ( sig );	    /* Must be provided in err_host */
+    //Signal_Cleanup ( sig );        /* Must be provided in err_host */
     if ( sig == SIGHUP ||  sig == SIGINT || sig == SIGTERM ) {
     fflush(NULL);
-	kill ( getpid(), sig);	/* pass signal on to driver */
-    	/*NOTREACHED*/
-	exit(EC_INTERNAL_ERROR);
+    kill ( getpid(), sig);    /* pass signal on to driver */
+        /*NOTREACHED*/
+    exit(EC_INTERNAL_ERROR);
     }
     fflush(NULL);
     signal ( SIGILL, SIG_DFL );
@@ -776,11 +776,11 @@ inline static void
 setup_signal_handler (INT s)
 {
   if (signal (s, SIG_IGN) != SIG_IGN)
-    signal (s,  reinterpret_cast <void (*)(int)> (catch_signal));
+    signal (s,  reinterpret_cast <void (*)(INT)> (catch_signal));
 }
 
 void Debug_Break(char* msg) {
-	printf("debug:%s\n", msg);
+    printf("debug:%s\n", msg);
 }
 
 void

@@ -40,7 +40,7 @@
 #ifndef pu_info_INCLUDED
 #define pu_info_INCLUDED
 
-#include <elf.h>		/* for Elf64_Word */
+#include <elf.h>        /* for Elf64_Word */
 
 #include "dwarf_DST_mem.h"
 
@@ -78,39 +78,39 @@
  * two bits per subsection type. See PU_Info_state() for details.
  */
 
-#define WT_SYMTAB	0x0		/* symbol table */
-#define WT_TREE		0x1		/* WHIRL tree nodes */
-#define WT_DEPGRAPH	0x2		/* dependence graph */
-#define WT_PREFETCH	0x3		/* prefetch pointers */
-#define WT_REGIONS	0x4		/* RID trees */
-#define WT_FEEDBACK	0x5		/* feedback data */
-#define WT_FREQ		0x6		/* obsolete */
-#define WT_AC_INTERNAL	0x7		/* alias classification temporary */
-#define WT_ALIAS_CLASS	0x8		/* alias classification */
+#define WT_SYMTAB    0x0        /* symbol table */
+#define WT_TREE        0x1        /* WHIRL tree nodes */
+#define WT_DEPGRAPH    0x2        /* dependence graph */
+#define WT_PREFETCH    0x3        /* prefetch pointers */
+#define WT_REGIONS    0x4        /* RID trees */
+#define WT_FEEDBACK    0x5        /* feedback data */
+#define WT_FREQ        0x6        /* obsolete */
+#define WT_AC_INTERNAL    0x7        /* alias classification temporary */
+#define WT_ALIAS_CLASS    0x8        /* alias classification */
 
-#define WT_SUBSECTIONS	0x9		/* number of subsection types */
+#define WT_SUBSECTIONS    0x9        /* number of subsection types */
 #define WT_LAST WT_SUBSECTIONS
-#define WT_PROC_SYM	-1		/* special value for proc sym state */
+#define WT_PROC_SYM    -1        /* special value for proc sym state */
 
 /*
  * These are the misc. flags associated to each PU
  */
-#define PU_HAS_GLOBALS	         0x1 /* has globals symbols in local symtab,
-				        i.e., ST_EXPORT != EXPORT_LOCAL */ 
+#define PU_HAS_GLOBALS             0x1 /* has globals symbols in local symtab,
+                        i.e., ST_EXPORT != EXPORT_LOCAL */ 
 #define PU_HAS_NESTED_PU         0x2 /* has other PU nested under this one */
 #define PU_IS_COMPILER_GENERATED 0x4 /* compiler_generated PU */
 #define PU_IS_DRA_CLONE          0x8 /* clone generated for reshaped arrays */
 #define PU_PREGS_RENUMBERED     0x10 /* Preopt for IPL has processed
-					this PU; used to decide
-					whether to repeat alias
-					classification within preopt
-					for LNO */
+                    this PU; used to decide
+                    whether to repeat alias
+                    classification within preopt
+                    for LNO */
 #ifdef KEY
 #define PU_IS_PROFILER          0x20
 #endif
 /* reserve the top 4 bits for internal use within IPA */
 #define PU_INTERNAL_MASK 0xf0000000
-#define PU_DELETED	0x10000000  /* only used internally within IPA */
+#define PU_DELETED    0x10000000  /* only used internally within IPA */
 
 /*
  * The WHIRL subsection header information is stored internally as a
@@ -129,23 +129,23 @@
  */
 
 typedef struct pu_info {
-    struct pu_info *next;		/* next PU_Info in the list */
-    struct pu_info *child;		/* first child (nested procedure) */
-    mINT32 state;			/* current state of each subsection */
+    struct pu_info *next;        /* next PU_Info in the list */
+    struct pu_info *child;        /* first child (nested procedure) */
+    mINT32 state;            /* current state of each subsection */
 
-    ST_IDX proc_sym;			/* ST_IDX of the function st */
-    mINT32 flags;			/* flags for any other attributes */
-    DST_IDX pu_dst;			/* index for the PU's DST entry */
-    DST_IDX cu_dst;			/* index for the compilation units
-					 * DST entry
-					 */
+    ST_IDX proc_sym;            /* ST_IDX of the function st */
+    mINT32 flags;            /* flags for any other attributes */
+    DST_IDX pu_dst;            /* index for the PU's DST entry */
+    DST_IDX cu_dst;            /* index for the compilation units
+                     * DST entry
+                     */
 
     struct {
-	Elf64_Word offset;		/* section offset */
-	union {
-	    Elf64_Word size;		/* subsection size */
-	    void *ptr;			/* pointer to structure in memory */
-	} u;
+    Elf64_Word offset;        /* section offset */
+    union {
+        Elf64_Word size;        /* subsection size */
+        void *ptr;            /* pointer to structure in memory */
+    } u;
     } subsect[WT_SUBSECTIONS];
 
     /* other information not stored in the binary files */
@@ -153,9 +153,9 @@ typedef struct pu_info {
 } PU_Info;
 
 
-#define PU_Info_proc_sym(pu)		(pu)->proc_sym
-#define PU_Info_proc_id(pu)		(pu)->proc_sym
-	
+#define PU_Info_proc_sym(pu)        (pu)->proc_sym
+#define PU_Info_proc_id(pu)        (pu)->proc_sym
+    
 #if 0
 #ifdef __cplusplus
   // convenience function
@@ -167,16 +167,16 @@ PU_Info_pu(PU_Info *ppui)
 #endif
 #endif
 
-#define PU_Info_subsect_offset(pu,scn)	(pu)->subsect[scn].offset
-#define PU_Info_subsect_size(pu,scn)	(pu)->subsect[scn].u.size
-#define PU_Info_subsect_ptr(pu,scn)	(pu)->subsect[scn].u.ptr
-#define PU_Info_flags(pu)		(pu)->flags
-#define PU_Info_pu_dst(pu)		(pu)->pu_dst
-#define PU_Info_cu_dst(pu)		(pu)->cu_dst
-#define PU_Info_cu_dst(pu)		(pu)->cu_dst
-#define PU_Info_maptab(pu)		(pu)->maptab
-#define PU_Info_next(pu)		(pu)->next
-#define PU_Info_child(pu)		(pu)->child
+#define PU_Info_subsect_offset(pu,scn)    (pu)->subsect[scn].offset
+#define PU_Info_subsect_size(pu,scn)    (pu)->subsect[scn].u.size
+#define PU_Info_subsect_ptr(pu,scn)    (pu)->subsect[scn].u.ptr
+#define PU_Info_flags(pu)        (pu)->flags
+#define PU_Info_pu_dst(pu)        (pu)->pu_dst
+#define PU_Info_cu_dst(pu)        (pu)->cu_dst
+#define PU_Info_cu_dst(pu)        (pu)->cu_dst
+#define PU_Info_maptab(pu)        (pu)->maptab
+#define PU_Info_next(pu)        (pu)->next
+#define PU_Info_child(pu)        (pu)->child
 
 #define Set_PU_Info_flags(pu,flag_value) (pu)->flags |= (flag_value)
 #define Clear_PU_Info_flags(pu,flag_value) (pu)->flags &= ~(flag_value)
@@ -194,10 +194,10 @@ PU_Info_pu(PU_Info *ppui)
  */
 
 typedef enum subsect_state {
-    Subsect_Missing = 0,		/* information not available */
-    Subsect_Exists = 1,			/* in the input file */
-    Subsect_InMem = 2,			/* currently in memory */
-    Subsect_Written = 3			/* in the output file */
+    Subsect_Missing = 0,        /* information not available */
+    Subsect_Exists = 1,            /* in the input file */
+    Subsect_InMem = 2,            /* currently in memory */
+    Subsect_Written = 3            /* in the output file */
 } Subsect_State;
 
 #define PU_Info_state(pu, ndx) \
@@ -245,9 +245,9 @@ typedef enum subsect_state {
      PU_Info_subsect_ptr((pu), WT_AC_INTERNAL) = (void *) (x)
 
 #define Set_PU_Info_pu_dst(pu, x) \
-	PU_Info_pu_dst(pu) = x;
+    PU_Info_pu_dst(pu) = x;
 #define Set_PU_Info_cu_dst(pu, x) \
-	PU_Info_cu_dst(pu) = x;
+    PU_Info_cu_dst(pu) = x;
 
 
 #ifdef __cplusplus

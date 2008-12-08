@@ -46,64 +46,64 @@
 #include "rta.h"
 #include "rta_scn.h"
 
-int Dump_Rta_Scns(const char *elfFile)
+INT Dump_Rta_Scns(const char *elfFile)
 {
-	int fd;
-	Elf *e;
-	char *name, *p, pc[4*sizeof(char)];
-	Elf_Scn *scn;
-	Elf_Data *data;
-	GElf_Shdr shdr;
-	GElf_Ehdr ehdr;
-	size_t n, shstrndx, sz;
-	int n_rtascn;
+    INT fd;
+    Elf *e;
+    char *name, *p, pc[4*sizeof(char)];
+    Elf_Scn *scn;
+    Elf_Data *data;
+    GElf_Shdr shdr;
+    GElf_Ehdr ehdr;
+    size_t n, shstrndx, sz;
+    INT n_rtascn;
 
-	if (elf_version(EV_CURRENT) == EV_NONE)
-		errx(EX_SOFTWARE, "ELF library initialization failed: %s",
-				elf_errmsg(-1));
+    if (elf_version(EV_CURRENT) == EV_NONE)
+        errx(EX_SOFTWARE, "ELF library initialization failed: %s",
+                elf_errmsg(-1));
 
-	if ((fd = open(elfFile, O_RDONLY, 0)) < 0)
-		err(EX_NOINPUT, "open \%s\" failed", elfFile);
+    if ((fd = open(elfFile, O_RDONLY, 0)) < 0)
+        err(EX_NOINPUT, "open \%s\" failed", elfFile);
 
-	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL)
-		errx(EX_SOFTWARE, "elf_begin() failed: %s.",
-				elf_errmsg(-1));
+    if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL)
+        errx(EX_SOFTWARE, "elf_begin() failed: %s.",
+                elf_errmsg(-1));
 
-	if (elf_kind(e) != ELF_K_ELF)
-		errx(EX_DATAERR, "%s is not an ELF object.", elfFile);
+    if (elf_kind(e) != ELF_K_ELF)
+        errx(EX_DATAERR, "%s is not an ELF object.", elfFile);
 
-	if (gelf_getehdr(e, &ehdr) == NULL)
-		errx(EX_SOFTWARE, "getehdr() failed: %s.",
-				elf_errmsg(-1));
+    if (gelf_getehdr(e, &ehdr) == NULL)
+        errx(EX_SOFTWARE, "getehdr() failed: %s.",
+                elf_errmsg(-1));
 
-	// Get string table section index
-	shstrndx = ehdr.e_shstrndx;
+    // Get string table section index
+    shstrndx = ehdr.e_shstrndx;
 
-	scn = NULL;
-	n_rtascn = 0;
-	// filter out rta sections
-	while ((scn = elf_nextscn(e, scn)) != NULL) {
-		if (gelf_getshdr(scn, &shdr) != &shdr)
-			errx(EX_SOFTWARE, "getshdr() failed: %s.",
-					elf_errmsg(-1));
+    scn = NULL;
+    n_rtascn = 0;
+    // filter out rta sections
+    while ((scn = elf_nextscn(e, scn)) != NULL) {
+        if (gelf_getshdr(scn, &shdr) != &shdr)
+            errx(EX_SOFTWARE, "getshdr() failed: %s.",
+                    elf_errmsg(-1));
 
-		if ((name = elf_strptr(e, shstrndx, shdr.sh_name)) == NULL)
-			errx(EX_SOFTWARE, "elf_strptr() failed: %s.",
-					elf_errmsg(-1));
-		
-		if (strncmp(name, RTA_SCN_NAME_PREFIX, RTA_SCN_NAME_PREFIX_LEN) !=0 )
-			continue;
+        if ((name = elf_strptr(e, shstrndx, shdr.sh_name)) == NULL)
+            errx(EX_SOFTWARE, "elf_strptr() failed: %s.",
+                    elf_errmsg(-1));
+        
+        if (strncmp(name, RTA_SCN_NAME_PREFIX, RTA_SCN_NAME_PREFIX_LEN) !=0 )
+            continue;
 
-		n_rtascn ++;
-		printf("Section %-4.4jd %s\n", (uintmax_t) elf_ndxscn(scn),
-					  name);
-		// add further dump functions here
-	}
+        n_rtascn ++;
+        printf("Section %-4.4jd %s\n", (uintmax_t) elf_ndxscn(scn),
+                      name);
+        // add further dump functions here
+    }
 
-	printf("RTA section number in file %s: %d\n", elfFile, n_rtascn);
+    printf("RTA section number in file %s: %d\n", elfFile, n_rtascn);
 
-	elf_end(e);
-	close(fd);
-	return 0;
+    elf_end(e);
+    close(fd);
+    return 0;
 }
 

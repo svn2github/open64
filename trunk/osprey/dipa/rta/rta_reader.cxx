@@ -40,10 +40,10 @@
 using namespace std;
 
 
-static inline void print(FILE *fp, int sz, unsigned char *stream)
+static inline void print(FILE *fp, INT sz, unsigned char *stream)
 {
 #if defined(DEBUG)
-  int j = 0;
+  INT j = 0;
   while (j < sz) {
     if ((j % 8) == 0)
       fprintf(fp, "\n");
@@ -56,7 +56,7 @@ static inline void print(FILE *fp, int sz, unsigned char *stream)
 #endif
 }
 
-void PU_SectBin::PrintBits(FILE *fp, int i)
+void PU_SectBin::PrintBits(FILE *fp, INT i)
 {
 #if defined(DEBUG)
   if (NumsectNone())
@@ -65,7 +65,7 @@ void PU_SectBin::PrintBits(FILE *fp, int i)
   FmtAssert((i <= Numsect()), ("index %s larger than number of sections %x", i, Numsect()));
   
   vector<RTABuf> ppu = PuSects();
-  int sz = ppu[i].Size();
+  INT sz = ppu[i].Size();
   fprintf(fp, "%d-th (pc=%llx), size is %x\n",i, ppu[i].Pc(), sz);
   BITS b = ppu[i].Bits();
   print(fp, sz, b);
@@ -77,14 +77,14 @@ void PU_SectBin::PrintBits(FILE *fp)
 #if defined(DEBUG)
   if (NumsectNone())
     return;
-  int i = Numsect();
+  INT i = Numsect();
   while (i-- > 0) {
     PrintBits(fp, i);
   }
 #endif
 }
 
-bool PU_SectBin::VerifyHdr(const Rta_Hdr *prta)
+BOOL PU_SectBin::VerifyHdr(const Rta_Hdr *prta)
 {
   if (Rta_hdr_magic(prta) != V_0_9 && Rta_hdr_magic(prta) != V_1_0)
     FmtAssert(0, ("Wrong magic"));
@@ -95,12 +95,12 @@ bool PU_SectBin::VerifyHdr(const Rta_Hdr *prta)
 
   if (Rta_hdr_pu_off(prta) == 0 && Rta_hdr_pu_num(prta) == 0)
     FmtAssert(0, ("Rta header inconsistent numb of pu %x, with pu offset 0",
-		  Rta_hdr_pu_off(prta)));
+          Rta_hdr_pu_off(prta)));
 
   return true;
 }
 
-bool PU_SectBin::QuickChk(FILE *fp, int i)
+BOOL PU_SectBin::QuickChk(FILE *fp, INT i)
 {
   if (NumsectNone()) {
     cout << i << "-th rta section does not exist\n";
@@ -110,8 +110,8 @@ bool PU_SectBin::QuickChk(FILE *fp, int i)
   FmtAssert(i <= Numsect(), ("index larger than number of sections"));
   
   vector<RTABuf> ppu = PuSects();
-  int sz = ppu[i].Size();
-  uint64_t pc = ppu[i].Pc();
+  INT sz = ppu[i].Size();
+  UINT64 pc = ppu[i].Pc();
 
   if (sz < sizeof(Rta_Hdr))
     FmtAssert(0, ("section size smaller than Rta_Hdr"));
@@ -125,7 +125,7 @@ bool PU_SectBin::QuickChk(FILE *fp, int i)
 
     Print_rta_bb_title(fp, " ");
     Rta_Manager::Bb_Iter itb = rta.begin(it);
-    for (int j=0 ; itb != rta.end(it); itb++, j++) {
+    for (INT j=0 ; itb != rta.end(it); itb++, j++) {
       Print_rta_bb(fp, pc, &(*itb), j, " ");
     }
 
@@ -134,12 +134,12 @@ bool PU_SectBin::QuickChk(FILE *fp, int i)
 }
 
 
-bool PU_SectBin::QuickChk(FILE *fp)
+BOOL PU_SectBin::QuickChk(FILE *fp)
 {
 #if defined(DEBUG)
   if (NumsectNone())
     return true;
-  int i = Numsect();
+  INT i = Numsect();
   while (i-- > 0) {
     QuickChk(fp, i);
   }

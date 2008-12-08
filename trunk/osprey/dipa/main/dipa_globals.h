@@ -33,8 +33,8 @@
 #define __DIPA_GLOBALS_H__ 1
 
 typedef enum {
-	T_ANNOT=1,
-	T_DUMP=2,
+    T_ANNOT=1,
+    T_DUMP=2,
 } TIMER_ID_t;
 
 namespace DIPA_NMSPC {

@@ -49,7 +49,7 @@
  * In current implementation, phase id is bound to timer id which is used to collect resource
  * usage statistics. It will be changed later.
  */
-typedef int32_t PHASE_ID;
+typedef INT32 PHASE_ID;
 
 #define INVALID_PHASE_ID (PHASE_ID)(-1)
 
@@ -65,14 +65,14 @@ class DIPA_Phase;
  */
 class DIPA_Obj {
 private:
-	char *rfile;
+    char *rfile;
 public:
-	void Set_Rfile(char *filename) { rfile = filename; }
-	char *Get_Rfile(void) { return rfile; }
+    void Set_Rfile(char *filename) { rfile = filename; }
+    char *Get_Rfile(void) { return rfile; }
 
-//	void *operator new (unsigned int num_bytes, MEM_POOL *pool) {
-//		return MEM_POOL_Alloc(pool, num_bytes);
-//	}
+//    void *operator new (UINT num_bytes, MEM_POOL *pool) {
+//        return MEM_POOL_Alloc(pool, num_bytes);
+//    }
 };
 
 typedef std::list<DIPA_Obj * > DIPA_Olist;
@@ -89,66 +89,66 @@ typedef Phase_List::iterator Phase_Iter;
 
 class DIPA_Phase {
 private:
-	DIPA_Phase *parent;	// parent phase if this is a sub function
-	Phase_List childs;	// double-linked list for all phases at the same level
+    DIPA_Phase *parent;    // parent phase if this is a sub function
+    Phase_List childs;    // double-linked list for all phases at the same level
 
-	CMD_ARGS arg_list;	// phase specific arguments
-	PHASE_ID phase_id;	// a unique integer ID
-	const char *phase_name;
-	PHASE_STAT *phase_stat;	// statistics information like cpu and memory usage
-	DIPA_Olist *rolist;	// Object files to be processed
-	bool enabled;	// if this phase is enabled or not
-	bool tracing_enabled;	// enable tracing or not
+    CMD_ARGS arg_list;    // phase specific arguments
+    PHASE_ID phase_id;    // a unique integer ID
+    const char *phase_name;
+    PHASE_STAT *phase_stat;    // statistics information like cpu and memory usage
+    DIPA_Olist *rolist;    // Object files to be processed
+    BOOL enabled;    // if this phase is enabled or not
+    BOOL tracing_enabled;    // enable tracing or not
 
 public:
-	DIPA_Phase(const char *_name);
-	~DIPA_Phase();
+    DIPA_Phase(const char *_name);
+    ~DIPA_Phase();
 
-	void Add_Arg(char *arg);
-	virtual void Proc_Arg(CMD_ARGS *args, DIPA_Olist *olist);
+    void Add_Arg(char *arg);
+    virtual void Proc_Arg(CMD_ARGS *args, DIPA_Olist *olist);
 
-	const char *Get_Name(void) {return phase_name; }
-	void Set_Name(const char *_name) { phase_name = _name; }
-	PHASE_ID Get_Id(void) { return phase_id; }
-	void Set_Id(PHASE_ID _id) { phase_id = _id; }
+    const char *Get_Name(void) {return phase_name; }
+    void Set_Name(const char *_name) { phase_name = _name; }
+    PHASE_ID Get_Id(void) { return phase_id; }
+    void Set_Id(PHASE_ID _id) { phase_id = _id; }
 
-	void Enable(void) { enabled = true; }
-	void Disable(void) { enabled = false; }
-	bool Is_Enabled(void) { return enabled; }
+    void Enable(void) { enabled = true; }
+    void Disable(void) { enabled = false; }
+    BOOL Is_Enabled(void) { return enabled; }
 
-	void Enable_Tracing(void) { tracing_enabled = true; }
-	void Disable_Tracing(void) { tracing_enabled = false; }
-	bool Is_Tracing_Enabled(void) { return tracing_enabled; }
+    void Enable_Tracing(void) { tracing_enabled = true; }
+    void Disable_Tracing(void) { tracing_enabled = false; }
+    BOOL Is_Tracing_Enabled(void) { return tracing_enabled; }
 
-	virtual void Pre_Dump_IR(FILE *file=NULL);
-	virtual void Post_Dump_IR(FILE *file=NULL);
+    virtual void Pre_Dump_IR(FILE *file=NULL);
+    virtual void Post_Dump_IR(FILE *file=NULL);
 
-	Phase_List *Get_Childs(void) { return &childs; }
+    Phase_List *Get_Childs(void) { return &childs; }
 
-	virtual bool Start(CMD_ARGS *args, DIPA_Olist *olist);	/* Process IPA objects */
-	virtual bool Stop(void) {}	/* Stop execution of a phase */
-	virtual bool Cleanup(void) {}	/* Phase cleanup */
+    virtual BOOL Start(CMD_ARGS *args, DIPA_Olist *olist);    /* Process IPA objects */
+    virtual BOOL Stop(void) {}    /* Stop execution of a phase */
+    virtual BOOL Cleanup(void) {}    /* Phase cleanup */
 
-	virtual void Help(void);	/* Provide phase specific help message */
+    virtual void Help(void);    /* Provide phase specific help message */
 
-	void Accum_Stats(void);
-	void Accum_Stats(DIPA_Phase *ph);
+    void Accum_Stats(void);
+    void Accum_Stats(DIPA_Phase *ph);
 
-	void Set_Resource_Limit(int32_t millisecs, int32_t kbytes);
-	void Dump_Time_Usage(FILE *file=NULL) {}
-	void Dump_Mem_Usage(FILE *file=NULL)  {}
-	void Dump_Mem_Prof(FILE *file=NULL)   {}
-	void Dump_Stats(FILE *file=NULL);
+    void Set_Resource_Limit(INT32 millisecs, INT32 kbytes);
+    void Dump_Time_Usage(FILE *file=NULL) {}
+    void Dump_Mem_Usage(FILE *file=NULL)  {}
+    void Dump_Mem_Prof(FILE *file=NULL)   {}
+    void Dump_Stats(FILE *file=NULL);
 
-	void Dump_Phase(int32_t level) {
-		for (int32_t i=0; i<level+1; i++)
-			printf("  ");
-		printf("phase name: [%s]\n", phase_name);
-		if (!childs.empty()) {
-			Phase_Iter it;
-			for (it = childs.begin(); it != childs.end(); it++)
-				(*it)->Dump_Phase(level+1);
-		}
-	}
+    void Dump_Phase(INT32 level) {
+        for (INT32 i=0; i<level+1; i++)
+            printf("  ");
+        printf("phase name: [%s]\n", phase_name);
+        if (!childs.empty()) {
+            Phase_Iter it;
+            for (it = childs.begin(); it != childs.end(); it++)
+                (*it)->Dump_Phase(level+1);
+        }
+    }
 };
 #endif /* dipa_phase_INCLUDED */

@@ -132,7 +132,7 @@ void Print_rta_bb_title(FILE *f, const char *indent) {
  *                Pass NULL for empty string.
  * \relatesalso   Rta_Bb
  */
-void Print_rta_bb(FILE *f, uint64_t pc, const Rta_Bb *bb, int i, const char *indent) {
+void Print_rta_bb(FILE *f, UINT64 pc, const Rta_Bb *bb, INT i, const char *indent) {
   if (!f) f = stdout;
   if (!indent) indent = "";
 
@@ -167,7 +167,7 @@ void Print_rta_idx_ent(FILE *f, const Rta_Idx_Ent *ent, const char *indent) {
 
 #ifdef RTA_TEST
 
-int main() {
+INT main() {
   // useful only on 32-bit machine
   printf("sizeof(Rta_Hdr) = %d\n", sizeof(Rta_Hdr));
   printf("sizeof(Rta_Pu) = %d\n", sizeof(Rta_Pu));

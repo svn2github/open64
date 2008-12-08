@@ -46,7 +46,7 @@
 #ifndef __SGI_STL_ALGO_H
 
 #if defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
-#undef short				// get around bogus type defs.
+#undef short                // get around bogus type defs.
 #undef int
 #undef long
 #endif // defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
@@ -62,7 +62,7 @@
 #ifndef __SGI_STL_VECTOR_H
 
 #if defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
-#undef short				// get around bogus type defs.
+#undef short                // get around bogus type defs.
 #undef int
 #undef long
 #endif // defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
@@ -78,7 +78,7 @@
 #ifndef __SGI_STL_SLIST_H
 
 #if defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
-#undef short				// get around bogus type defs.
+#undef short                // get around bogus type defs.
 #undef int
 #undef long
 #endif // defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
@@ -96,7 +96,7 @@
 #endif // mempool_INCLUDED
 
 #ifndef segmented_array_INCLUDED
-#include "segmented_array.h"	// for SEGMENTED_ARRAY_ITERATOR
+#include "segmented_array.h"    // for SEGMENTED_ARRAY_ITERATOR
 #endif // segmented_array_INCLUDED
 
 #ifndef mempool_allocator_INCLUDED
@@ -169,12 +169,12 @@ using __gnu_cxx::slist;
 
 class growing_table {
 protected:
-  UINT                  size;	// total number of elements present
+  UINT                  size;    // total number of elements present
 
 private:
   typedef slist<growing_table *> kids_type;
 
-  kids_type kids;	
+  kids_type kids;    
   
   virtual void Construct_new_entry(void) = 0;
   virtual void Construct_new_entry(UINT n) = 0;
@@ -190,8 +190,8 @@ protected:
   void Decrease_kids_size(void)
     {
       for (kids_type::iterator kid = kids.begin();
-	   kid != kids.end();
-	   ++kid) {
+       kid != kids.end();
+       ++kid) {
         (*kid)->Delete_last();
       }
     }
@@ -199,8 +199,8 @@ protected:
   void Decrease_kids_size(UINT n)
     {
       for (kids_type::iterator kid = kids.begin();
-	   kid != kids.end();
-	   ++kid) {
+       kid != kids.end();
+       ++kid) {
         (*kid)->Delete_last(n);
       }
     }
@@ -208,8 +208,8 @@ protected:
   void Increase_kids_size(void)
     {
       for (kids_type::iterator kid = kids.begin();
-	   kid != kids.end();
-	   ++kid) {
+       kid != kids.end();
+       ++kid) {
         (*kid)->Construct_new_entry();
       }
     }
@@ -217,8 +217,8 @@ protected:
   void Increase_kids_size(UINT n)
     {
       for (kids_type::iterator kid = kids.begin();
-	   kid != kids.end();
-	   ++kid) {
+       kid != kids.end();
+       ++kid) {
         (*kid)->Construct_new_entry(n);
       }
     }
@@ -231,11 +231,11 @@ public:
     {
       // Make sure the new kid is of the right size:
       FmtAssert(kid.size <= size,
-		("growing_table::Register: child must not be larger "
-		 "than parent"));
+        ("growing_table::Register: child must not be larger "
+         "than parent"));
       // TODO: Cheesy, inefficient method for now.
       while (kid.size < size) {
-	kid.Construct_new_entry();
+    kid.Construct_new_entry();
       }
 
       // Put the new kid into the list of kids:
@@ -249,8 +249,8 @@ public:
         kids.erase(kid_ptr);
       }
       else {
-	Fail_FmtAssertion("RELATED_SEGMENTED_ARRAY: Cannot un-register "
-			  "an unregistered kid");
+    Fail_FmtAssertion("RELATED_SEGMENTED_ARRAY: Cannot un-register "
+              "an unregistered kid");
       }
     }
 };
@@ -261,12 +261,12 @@ private:
     typedef std::pair<T *, BOOL> thingy;
     std::vector<thingy, mempool_allocator<thingy> > map;
     MEM_POOL *pool;
-    UINT max_size;			// total # of elements allocated
-    INT block_base;			// idx of the beginning of
-					// block (signed so we can set
-					// to -1, meaning no block allocated)
-    UINT next_block_size;		// size of block to be allocated
-    T *block;				// points to the last block
+    UINT max_size;            // total # of elements allocated
+    INT block_base;            // idx of the beginning of
+                    // block (signed so we can set
+                    // to -1, meaning no block allocated)
+    UINT next_block_size;        // size of block to be allocated
+    T *block;                // points to the last block
 
 private:
     
@@ -294,27 +294,27 @@ private:
 
     virtual void Construct_new_entry(void)
       {
-	if (size == max_size) Allocate();
-	Increase_kids_size();
-	new(&block[size++ - block_base]) T(); // T() makes sure the
-					      // default constructor
-					      // is called. T without
-					      // parens would not
-					      // ensure this.
+    if (size == max_size) Allocate();
+    Increase_kids_size();
+    new(&block[size++ - block_base]) T(); // T() makes sure the
+                          // default constructor
+                          // is called. T without
+                          // parens would not
+                          // ensure this.
       }
 
     virtual void Construct_new_entry(UINT n)
       {
-	// Cheesy implementation for now to get things working without
-	// the risk of having to think.
-	for (; n > 0; n--) {
-	  Construct_new_entry();
-	}
+    // Cheesy implementation for now to get things working without
+    // the risk of having to think.
+    for (; n > 0; n--) {
+      Construct_new_entry();
+    }
       }
 
     UINT Round_up (UINT s) {
-	UINT mask = block_size - 1;
-	return (s + mask) & ~mask;
+    UINT mask = block_size - 1;
+    return (s + mask) & ~mask;
     }
 
     void Update_Map (T *marker, UINT new_size, BOOL own_memory);
@@ -325,16 +325,16 @@ private:
     void Allocate ();
 
     T& New_entry () {
-	if (size == max_size) Allocate ();
-	Increase_kids_size();
-	return block[size++ - block_base];
+    if (size == max_size) Allocate ();
+    Increase_kids_size();
+    return block[size++ - block_base];
     }
     
     // copy n elements to current buffer, assume no overflow
     void Copy (const T* x, UINT n) {
-	std::copy(x, x + n, block + (size - block_base));
-	size += n;
-	Increase_kids_size(n);
+    std::copy(x, x + n, block + (size - block_base));
+    size += n;
+    Increase_kids_size(n);
     }
 
     // block_idx is an index into the map.  This function returns
@@ -360,19 +360,19 @@ public:
     // Free memory from blocks. Map memory gets freed when the map
     // vector is destructed.
     for (typename std::vector<thingy, mempool_allocator<thingy> >::iterator
-	   entry = map.begin();
-	 entry != map.end();
-	 ++entry) {
+       entry = map.begin();
+     entry != map.end();
+     ++entry) {
       // entry->second <==> this map entry owns the block's memory.
       if (entry->second) {
-	MEM_POOL_FREE(pool, entry->first);
+    MEM_POOL_FREE(pool, entry->first);
       }
     }
   }
 
-  UINT Block_size () const	{ return block_size; }
+  UINT Block_size () const    { return block_size; }
 
-  UINT Size () const		{ return growing_table::size; }
+  UINT Size () const        { return growing_table::size; }
 
   T& Entry (UINT idx) {
     Is_True (idx < size, ("Array subscript out of bound"));
@@ -394,7 +394,7 @@ public:
 
   iterator end () {
     return iterator (this, block + (size - block_base),
-		     block + (max_size - block_base), size);
+             block + (max_size - block_base), size);
   }
 
   const_iterator begin () const {
@@ -403,10 +403,10 @@ public:
 
   const_iterator end () const {
     return const_iterator (this, block + (size - block_base),
-			   block + (max_size - block_base), size);
+               block + (max_size - block_base), size);
   }
-	
-    T& New_entry (UINT& idx)	{ idx = size; return New_entry (); }
+    
+    T& New_entry (UINT& idx)    { idx = size; return New_entry (); }
 
     UINT Insert (const T& x);
 
@@ -414,7 +414,7 @@ public:
       size--;
       Decrease_kids_size();
       if (size == block_base)
-	Pop_Map ();
+    Pop_Map ();
     }
 
     virtual void Delete_last (UINT n);
@@ -427,9 +427,9 @@ public:
     
     // Reserve extra storage.  Actual allocation will be done when the
     // already allocated storage is filled.
-    void Reserve (UINT n_elemt)	{
-	if (max_size - size + next_block_size < n_elemt)
-	    next_block_size = n_elemt - (max_size - size);
+    void Reserve (UINT n_elemt)    {
+    if (max_size - size + next_block_size < n_elemt)
+        next_block_size = n_elemt - (max_size - size);
     }
 
     // return the number of element till the end of the block
@@ -462,15 +462,15 @@ public:
 template <class T, UINT block_size>
 inline void
 RELATED_SEGMENTED_ARRAY<T,block_size>::Update_Map(T    *marker,
-						  UINT  new_size,
-						  BOOL  own_memory)
+                          UINT  new_size,
+                          BOOL  own_memory)
 {
   do {
     map.push_back(pair<T*, BOOL>(marker, own_memory));
     new_size -= block_size;
     marker += block_size;
-    own_memory += false;	//Only the first entry can be freed for a block that
-				//is larger than block_size. By: Jon Hsu, 11 May 2001.
+    own_memory += false;    //Only the first entry can be freed for a block that
+                //is larger than block_size. By: Jon Hsu, 11 May 2001.
   } while (new_size);
 } // RELATED_SEGMENTED_ARRAY<T,block_size>::Update_Map
 
@@ -492,18 +492,18 @@ RELATED_SEGMENTED_ARRAY<T,block_size>::Pop_Map ()
     max_size = size;
     if (size > 0) {
       Is_True(size >= block_size,
-	      ("RELATED_SEGMENTED_ARRAY: size in limbo"));
+          ("RELATED_SEGMENTED_ARRAY: size in limbo"));
       block_base = size - block_size;
       UINT idx = block_base / block_size;
       block = map[idx].first;
       while (idx > 0 && map[idx - 1].first + block_size == block) {
-	block = map[--idx].first;
-	block_base -= block_size;
+    block = map[--idx].first;
+    block_base -= block_size;
       }
     }
     else {
       Is_True(map.begin() == map.end(),
-	      ("RELATED_SEGMENTED_ARRAY::Pop_Map: Map should be empty"));
+          ("RELATED_SEGMENTED_ARRAY::Pop_Map: Map should be empty"));
       block_base = -1;
       block = NULL;
     }
@@ -519,10 +519,10 @@ RELATED_SEGMENTED_ARRAY<T,block_size>::Allocate ()
     UINT new_size;
 
     if (next_block_size == 0)
-	new_size = block_size;
+    new_size = block_size;
     else {
-	new_size = Round_up (next_block_size);
-	next_block_size = 0;
+    new_size = Round_up (next_block_size);
+    next_block_size = 0;
     }
 
     block = (T *) MEM_POOL_Alloc (pool, new_size * sizeof(T));
@@ -565,8 +565,8 @@ RELATED_SEGMENTED_ARRAY<T,block_size>::Insert (const T* x, UINT n_elemt)
 {
     UINT result = size;
     if (size + n_elemt <= max_size) {
-	Copy (x, n_elemt);
-	return result;
+    Copy (x, n_elemt);
+    return result;
     }
 
     UINT space_left = max_size - size;
@@ -588,35 +588,35 @@ RELATED_SEGMENTED_ARRAY<T,block_size>::Transfer (T* x, UINT n_elemt)
     UINT result = size;
 
     if (size + n_elemt <= max_size) {
-	Copy (x, n_elemt);
-	return result;
+    Copy (x, n_elemt);
+    return result;
     }
 
     UINT space_left = max_size - size;
     if (space_left > 0) {
-	Copy (x, space_left);
-	n_elemt -= space_left;
-	x += space_left;
+    Copy (x, space_left);
+    n_elemt -= space_left;
+    x += space_left;
     }
 
     if (n_elemt >= block_size) {
-	UINT reused_size = n_elemt & ~(block_size - 1);
-	block = x;
-	Update_Map (block, reused_size, FALSE);
-	block_base = size;
-	size += reused_size;
-	max_size += reused_size;
-	n_elemt -= reused_size;
-	x += reused_size;
-	if (next_block_size > reused_size)
-	    next_block_size -= reused_size;
-	else
-	    next_block_size = 0;
+    UINT reused_size = n_elemt & ~(block_size - 1);
+    block = x;
+    Update_Map (block, reused_size, FALSE);
+    block_base = size;
+    size += reused_size;
+    max_size += reused_size;
+    n_elemt -= reused_size;
+    x += reused_size;
+    if (next_block_size > reused_size)
+        next_block_size -= reused_size;
+    else
+        next_block_size = 0;
     }
 
     if (n_elemt > 0) {
-	Allocate ();
-	Copy (x, n_elemt);
+    Allocate ();
+    Copy (x, n_elemt);
     }
 
     return result;
@@ -632,23 +632,23 @@ RELATED_SEGMENTED_ARRAY<T,block_size>::Clear(void)
     Delete_last(growing_table::size);
   }
   Is_True(map.begin() == map.end(),
-	  ("RELATED_SEGMENTED_ARRAY::Clear: Map should be empty"));
+      ("RELATED_SEGMENTED_ARRAY::Clear: Map should be empty"));
 }
 
 template <class T, UINT block_size, class OP>
 inline void
 For_all_entries (RELATED_SEGMENTED_ARRAY<T, block_size>& array,
                  const OP &op,
-		 UINT32 first = 0)
+         UINT32 first = 0)
 {
     UINT last = array.Size ();
 
     while (first < last) {
-	T *block = &array[first];
-	UINT size = array.Get_block_size (first);
-	for (UINT j = 0; j < size; ++j, ++block)
-	    op (first + j, block);
-	first += size;
+    T *block = &array[first];
+    UINT size = array.Get_block_size (first);
+    for (UINT j = 0; j < size; ++j, ++block)
+        op (first + j, block);
+    first += size;
     }
 }
 
@@ -661,16 +661,16 @@ template <class T, UINT block_size, class OP>
 inline void
 For_all_entries (const RELATED_SEGMENTED_ARRAY<T, block_size>& array,
                  const OP &op,
-		 UINT32 first = 0)
+         UINT32 first = 0)
 {
     UINT last = array.Size ();
 
     while (first < last) {
-	const T *block = &array[first];
-	UINT size = array.Get_block_size (first);
-	for (UINT j = 0; j < size; ++j, ++block)
-	    op (first + j, block);
-	first += size;
+    const T *block = &array[first];
+    UINT size = array.Get_block_size (first);
+    for (UINT j = 0; j < size; ++j, ++block)
+        op (first + j, block);
+    first += size;
     }
 }
 
@@ -684,10 +684,10 @@ For_all_blocks (RELATED_SEGMENTED_ARRAY<T, block_size>& array, const OP &op)
     UINT i = 0;
 
     while (i < max_size) {
-	T *block = &array[i];
-	UINT size = array.Get_block_size (i);
-	op (i, block, size);
-	i += size;
+    T *block = &array[i];
+    UINT size = array.Get_block_size (i);
+    op (i, block, size);
+    i += size;
     }
 }
 
@@ -697,17 +697,17 @@ For_all_blocks (RELATED_SEGMENTED_ARRAY<T, block_size>& array, const OP &op)
 template <class T, UINT block_size, class PREDICATE>
 inline UINT
 Find_entry_if (const RELATED_SEGMENTED_ARRAY<T, block_size>& array,
-	       const PREDICATE& pred, UINT i = 0)
+           const PREDICATE& pred, UINT i = 0)
 {
     UINT max_size = array.Size ();
 
     while (i < max_size) {
-	const T *block = &array[i];
-	UINT size = array.Get_block_size (i);
-	for (UINT j = 0; j < size; ++j, ++block)
-	    if (pred (i+j, block))
-		return i + j;
-	i += size;
+    const T *block = &array[i];
+    UINT size = array.Get_block_size (i);
+    for (UINT j = 0; j < size; ++j, ++block)
+        if (pred (i+j, block))
+        return i + j;
+    i += size;
     }
 
     return (UINT) NOT_FOUND;
@@ -720,11 +720,11 @@ Find_entry_if (const RELATED_SEGMENTED_ARRAY<T, block_size>& array,
 template <class T, UINT block_size>
 UINT32
 Copy_array_range (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
-		  RELATED_SEGMENTED_ARRAY<T, block_size>& to_array,
-		  UINT32 first_idx = 0, UINT32 last_idx = (UINT32) -1)
+          RELATED_SEGMENTED_ARRAY<T, block_size>& to_array,
+          UINT32 first_idx = 0, UINT32 last_idx = (UINT32) -1)
 {
     if (last_idx > from_array.Size ())
-	last_idx = from_array.Size ();
+    last_idx = from_array.Size ();
 
     Is_True (last_idx >= first_idx, ("Invalid copy range"));
 
@@ -733,13 +733,13 @@ Copy_array_range (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
     to_array.Reserve (entries);
 
     while (first_idx < last_idx) {
-	const T* block = &from_array[first_idx];
-	UINT32 size = from_array.Get_block_size (first_idx);
-	if (size > last_idx - first_idx)
-	    size = last_idx - first_idx;
+    const T* block = &from_array[first_idx];
+    UINT32 size = from_array.Get_block_size (first_idx);
+    if (size > last_idx - first_idx)
+        size = last_idx - first_idx;
 
-	to_array.Insert (block, size);
-	first_idx += size;
+    to_array.Insert (block, size);
+    first_idx += size;
     }
 
     return entries;
@@ -752,14 +752,14 @@ Copy_array_range (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
 template <class T, UINT block_size>
 void
 Delete_array_item (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
-		  RELATED_SEGMENTED_ARRAY<T, block_size>& to_array,
-		  UINT32 first_idx = 0, UINT32 last_idx = (UINT32) -1)
+          RELATED_SEGMENTED_ARRAY<T, block_size>& to_array,
+          UINT32 first_idx = 0, UINT32 last_idx = (UINT32) -1)
 {
   UINT32 index;
   index = to_array.Size() - from_array.Size();
  
   while ( index < to_array.Size()) {
-	T* block = &to_array[index];
+    T* block = &to_array[index];
         if (block->name_idx !=0 )
                 block->name_idx = 0;
         index ++;

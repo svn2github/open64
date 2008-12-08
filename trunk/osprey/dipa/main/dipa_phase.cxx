@@ -53,13 +53,13 @@
 
 DIPA_Phase::DIPA_Phase(const char *_name)
 {
-	phase_name = _name;
-	phase_id = INVALID_PHASE_ID;
-	phase_stat = NULL;
-	rolist = NULL;
-	enabled = false;
+    phase_name = _name;
+    phase_id = INVALID_PHASE_ID;
+    phase_stat = NULL;
+    rolist = NULL;
+    enabled = false;
 
-	arg_list.clear();
+    arg_list.clear();
 }
 
 /*
@@ -69,25 +69,25 @@ DIPA_Phase::DIPA_Phase(const char *_name)
  */
 void DIPA_Phase::Add_Arg(char *arg)
 {
-	char *p=arg;
-	CMD_ARG pair1;
+    char *p=arg;
+    CMD_ARG pair1;
 
-	pair1.first = arg;
-	pair1.second = NULL;
-	p = strchr(arg, '%');
-	// check if parameter is given
-	if (p) {
-		*p='\0';
-		p++;
-		if (*p) {
-			pair1.second = p;
-			p = strchr(p, '%');
-			FmtAssert((p!=NULL), ("Invalid option %s\n", arg));
-			*p = '\0';
-		}
-	}
-	arg_list.push_back(pair1);
-	DEV_TRACE("Phase %s - added an arg:%s %s\n", Get_Name(), pair1.first, pair1.second);
+    pair1.first = arg;
+    pair1.second = NULL;
+    p = strchr(arg, '%');
+    // check if parameter is given
+    if (p) {
+        *p='\0';
+        p++;
+        if (*p) {
+            pair1.second = p;
+            p = strchr(p, '%');
+            FmtAssert((p!=NULL), ("Invalid option %s\n", arg));
+            *p = '\0';
+        }
+    }
+    arg_list.push_back(pair1);
+    DEV_TRACE("Phase %s - added an arg:%s %s\n", Get_Name(), pair1.first, pair1.second);
 }
 
 /*
@@ -95,94 +95,94 @@ void DIPA_Phase::Add_Arg(char *arg)
  */
 void DIPA_Phase::Proc_Arg(CMD_ARGS *args, DIPA_Olist *olist)
 {
-	// global options
-	if (args && !args->empty()) {
-		CMD_ARGS_Iter it;
-		for (it = args->begin(); it != args->end(); it++) {
-			fprintf(stdout, "Global args: %s %s\n", (*it).first, (*it).second?(*it).second:"(no value)");
-		}
-	}
+    // global options
+    if (args && !args->empty()) {
+        CMD_ARGS_Iter it;
+        for (it = args->begin(); it != args->end(); it++) {
+            fprintf(stdout, "Global args: %s %s\n", (*it).first, (*it).second?(*it).second:"(no value)");
+        }
+    }
 
-	// DIPA object files
-	if (olist && !olist->empty()) {
-		DIPA_Olist_Iter iter;
-		for (iter = olist->begin(); iter != olist->end(); iter++) {
-			fprintf(stdout, "DIPA objects: %s\n", (*iter)->Get_Rfile());
-		}
-	}
+    // DIPA object files
+    if (olist && !olist->empty()) {
+        DIPA_Olist_Iter iter;
+        for (iter = olist->begin(); iter != olist->end(); iter++) {
+            fprintf(stdout, "DIPA objects: %s\n", (*iter)->Get_Rfile());
+        }
+    }
 
-	// Phase specific options
-	if (!arg_list.empty()) {
-		CMD_ARGS_Iter it;
-		for (it = arg_list.begin(); it != arg_list.end(); it++) {
-			fprintf(stdout, "Local args: %s %s\n", (*it).first, (*it).second?(*it).second:"(no value)");
-		}
-	}
+    // Phase specific options
+    if (!arg_list.empty()) {
+        CMD_ARGS_Iter it;
+        for (it = arg_list.begin(); it != arg_list.end(); it++) {
+            fprintf(stdout, "Local args: %s %s\n", (*it).first, (*it).second?(*it).second:"(no value)");
+        }
+    }
 }
 
-bool DIPA_Phase::Start(CMD_ARGS *args, DIPA_Olist *olist)
+BOOL DIPA_Phase::Start(CMD_ARGS *args, DIPA_Olist *olist)
 {
-	printf("Entering phase %s\n", Get_Name());
-	Pre_Dump_IR();
+    printf("Entering phase %s\n", Get_Name());
+    Pre_Dump_IR();
 
-	Post_Dump_IR();
+    Post_Dump_IR();
 
-	return true;
+    return true;
 }
 
 void DIPA_Phase::Pre_Dump_IR(FILE *file)
 {
-	if (!Is_Tracing_Enabled()) return;
+    if (!Is_Tracing_Enabled()) return;
 
-	FILE *f = (file)?file:stdout;
-	fprintf(f, "--Start Dump before phase %s\n", Get_Name());
-	// Todo: Dump IR or Annot
-	fprintf(f, "--End Dump before phase %s\n", Get_Name());
+    FILE *f = (file)?file:stdout;
+    fprintf(f, "--Start Dump before phase %s\n", Get_Name());
+    // Todo: Dump IR or Annot
+    fprintf(f, "--End Dump before phase %s\n", Get_Name());
 }
 
 void DIPA_Phase::Post_Dump_IR(FILE *file)
 {
-	if (!Is_Tracing_Enabled()) return;
+    if (!Is_Tracing_Enabled()) return;
 
-	FILE *f = (file)?file:stdout;
-	fprintf(f, "--Start Dump after phase %s\n", Get_Name());
-	// Todo: DUMP IR or Annot
-	fprintf(f, "--End Dump after phase %s\n", Get_Name());
+    FILE *f = (file)?file:stdout;
+    fprintf(f, "--Start Dump after phase %s\n", Get_Name());
+    // Todo: DUMP IR or Annot
+    fprintf(f, "--End Dump after phase %s\n", Get_Name());
 }
 
 void DIPA_Phase::Accum_Stats(void)
 {
-	Accum_Stats(this);
+    Accum_Stats(this);
 }
 
 void DIPA_Phase::Accum_Stats(DIPA_Phase *ph)
 {
-	Phase_List *phList;
+    Phase_List *phList;
 
-	phList = ph->Get_Childs();
-	if (!phList->empty()) {
-		Phase_Iter it;
+    phList = ph->Get_Childs();
+    if (!phList->empty()) {
+        Phase_Iter it;
 
-		for (it=phList->begin(); it!=phList->end(); it++) {
-			Accum_Stats(*it);
-		}
-	} else {
-		// will be changed later
-		Add_Timer_To_Parent(Get_Id());
-	}
+        for (it=phList->begin(); it!=phList->end(); it++) {
+            Accum_Stats(*it);
+        }
+    } else {
+        // will be changed later
+        Add_Timer_To_Parent(Get_Id());
+    }
 }
 
 void DIPA_Phase::Dump_Stats(FILE *file)
 {
-	if (!file) file = stdout;
+    if (!file) file = stdout;
 
-	fprintf(file, "Phase statistics - %s\n", Get_Name());
-	Resource_Report(file, RR_Report_Delta, Timer(Get_Id()), NULL);
+    fprintf(file, "Phase statistics - %s\n", Get_Name());
+    Resource_Report(file, RR_Report_Delta, Timer(Get_Id()), NULL);
 }
 
 void DIPA_Phase::Help(void)
 {
-	fprintf(stderr, "Special help for phase %s:\n", Get_Name());
-	fprintf(stderr, "\tOverride this function to provide special help messages!\n", Get_Name());
-	exit(0);
+    fprintf(stderr, "Special help for phase %s:\n", Get_Name());
+    fprintf(stderr, "\tOverride this function to provide special help messages!\n", Get_Name());
+    exit(0);
 }

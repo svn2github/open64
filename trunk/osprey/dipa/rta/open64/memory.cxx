@@ -143,17 +143,17 @@ struct mem_block {
  */
 typedef struct mem_large_block MEM_LARGE_BLOCK;
 struct mem_large_block {
-  MEM_LARGE_BLOCK *next;		/* doubly-linked list */
+  MEM_LARGE_BLOCK *next;        /* doubly-linked list */
   MEM_LARGE_BLOCK *prev;
-  MEM_POOL_BLOCKS *base;		/* points back to the head of list */
-  MEM_PTR ptr;				/* points to the user memory block */
+  MEM_POOL_BLOCKS *base;        /* points back to the head of list */
+  MEM_PTR ptr;                /* points to the user memory block */
 };
 
-#define MEM_LARGE_BLOCK_next(x)		((x)->next)
-#define MEM_LARGE_BLOCK_prev(x)		((x)->prev)
-#define MEM_LARGE_BLOCK_base(x)		((x)->base)
-#define MEM_LARGE_BLOCK_ptr(x)		((x)->ptr)
-#define MEM_LARGE_BLOCK_OVERHEAD	(PAD_TO_ALIGN(sizeof(MEM_LARGE_BLOCK)))
+#define MEM_LARGE_BLOCK_next(x)        ((x)->next)
+#define MEM_LARGE_BLOCK_prev(x)        ((x)->prev)
+#define MEM_LARGE_BLOCK_base(x)        ((x)->base)
+#define MEM_LARGE_BLOCK_ptr(x)        ((x)->ptr)
+#define MEM_LARGE_BLOCK_OVERHEAD    (PAD_TO_ALIGN(sizeof(MEM_LARGE_BLOCK)))
 
 /* When we free a large block we must also erase fields that identify it
  * as a valid large block.  Subsequent to being freed as a large block,
@@ -262,8 +262,8 @@ struct mem_stat {
                                  * current, pushed when the pool is
                                  * pushed.
                                  */
-  MEM_POOL *pool;		/* Pool the allocation is from.
-				 */
+  MEM_POOL *pool;        /* Pool the allocation is from.
+                 */
 };
 
 #define MEM_STAT_file(x)              ((x)->file)
@@ -279,7 +279,7 @@ struct mem_stat {
 #define MEM_STAT_hash_list_rest(x)    ((x)->hash_list_rest)
 #define MEM_STAT_pool_list_rest(x)    ((x)->pool_list_rest)
 #define MEM_STAT_saved_current(x)     ((x)->saved_current)
-#define MEM_STAT_pool(x)	      ((x)->pool)
+#define MEM_STAT_pool(x)          ((x)->pool)
 
 
 /* MEM_POOL_BLOCKS - This represents a particular level of allocation
@@ -288,19 +288,19 @@ struct mem_stat {
  * free'ing any used blocks.
  */
 struct mem_pool_blocks {
-  MEM_BLOCK *block;			/* list of memory blocks */
+  MEM_BLOCK *block;            /* list of memory blocks */
 
-  MEM_LARGE_BLOCK *large_block;		/* list of large memory blocks */
+  MEM_LARGE_BLOCK *large_block;        /* list of large memory blocks */
 
-  MEM_BLOCK *base_block;		/* points to the block when this is
-					   pushed */
+  MEM_BLOCK *base_block;        /* points to the block when this is
+                       pushed */
 
-  MEM_PTR *base_ptr;			/* MEM_BLOCK_ptr when this is pushed */
+  MEM_PTR *base_ptr;            /* MEM_BLOCK_ptr when this is pushed */
 
-  size_t base_avail;			/* MEM_BLOCK_avail when this is
-					   pushed */
+  size_t base_avail;            /* MEM_BLOCK_avail when this is
+                       pushed */
 
-  MEM_POOL_BLOCKS *rest;		/* When active, used to keep
+  MEM_POOL_BLOCKS *rest;        /* When active, used to keep
                                          * stack of allocation levels.
                                          * When inactive, used to keep
                                          * free list of these object.
@@ -380,7 +380,7 @@ static BOOL purify_pools_trace_x = FALSE;
  */
 #define MEM_POOL_name(x)            ((x)->name)
 #define MEM_POOL_blocks(x)          ((x)->blocks)
-#define MEM_POOL_bz(x)		    ((x)->bz)
+#define MEM_POOL_bz(x)            ((x)->bz)
 #define MEM_POOL_rest(x)            ((x)->rest)
 #define MEM_POOL_pure_stack(x)      ((x)->pure_stack)
 #define MEM_POOL_frozen(x)          ((x)->frozen)
@@ -389,15 +389,15 @@ static BOOL purify_pools_trace_x = FALSE;
 
 #define MEM_POOL_block(x)                                               \
         MEM_POOL_BLOCKS_block(MEM_POOL_blocks(x))
-#define MEM_POOL_large_block(x)						\
-	MEM_POOL_BLOCKS_large_block(MEM_POOL_blocks(x))
+#define MEM_POOL_large_block(x)                        \
+    MEM_POOL_BLOCKS_large_block(MEM_POOL_blocks(x))
 
 /* -----------------------------------------------------------------
  * Local variables
  * -----------------------------------------------------------------
  */
 static MEM_POOL_BLOCKS *free_mem_pool_blocks_list;
-				    /* Free list of MEM_PPOOL_BLOCKS
+                    /* Free list of MEM_PPOOL_BLOCKS
                                      */
 
 static MEM_POOL_BLOCKS  overhead_blocks;
@@ -500,7 +500,7 @@ Hash_Get(
   ) {
     if (    MEM_STAT_line(as) == line
          && strcmp(MEM_STAT_file(as),file) == 0
-	 && MEM_STAT_pool(as) == pool
+     && MEM_STAT_pool(as) == pool
     ) {
       return as;
     }
@@ -840,8 +840,8 @@ MEM_POOL_Report(
 
   fprintf(TFile,"++++ Allocated for %s pool: total=%d, max=%d, current=%d (%d%%used)\n",
                 MEM_POOL_name(pool),
-		total_allocated,
-		max_allocated,
+        total_allocated,
+        max_allocated,
                 total_current,
                 (INT)  (100.0 * (  ((double) total_current)
                                  / ((double) used_total))));
@@ -866,7 +866,7 @@ MEM_Trace(void)
   MEM_POOL *pool;
   struct    mallinfo mi = mallinfo();
   INT32     used_total = mi.usmblks + mi.uordblks;
-  INT32	    total_allocated = 0;
+  INT32        total_allocated = 0;
 
   fprintf(TFile,"arena    %10d\n",mi.arena);
   fprintf(TFile,"ordblks  %10d\n",mi.ordblks);
@@ -907,13 +907,13 @@ MEM_Trace(void)
  */
 void
 Trace_Memory_Allocation (
-  const INT phase,	/* Phase after which we're printing */
-  const char *const pname )	/* Print name for phase	*/
+  const INT phase,    /* Phase after which we're printing */
+  const char *const pname )    /* Print name for phase    */
 {
   if ( Get_Trace ( TKIND_ALLOC, phase ) ) {
     fprintf ( TFile,
               "\n%s%s\tMemory allocation information after %s\n%s%s\n",
-	      DBar, DBar, pname, DBar, DBar );
+          DBar, DBar, pname, DBar, DBar );
     MEM_Trace ();
   }
 }
@@ -968,7 +968,7 @@ Allocate_Block (MEM_POOL *pool)
 #ifdef ZAP_ON_FREE
   else
     memset(((char *) block), 0xa5,
-	   BLOCK_SIZE + PAD_TO_ALIGN(sizeof(MEM_BLOCK)));
+       BLOCK_SIZE + PAD_TO_ALIGN(sizeof(MEM_BLOCK)));
 #endif
 
   MEM_BLOCK_avail(block) = BLOCK_SIZE;
@@ -979,11 +979,11 @@ Allocate_Block (MEM_POOL *pool)
 #if Is_True_On
   if (special_address >= ((char *) MEM_BLOCK_ptr(block)) &&
       special_address < (((char *) MEM_BLOCK_ptr(block)) +
-			 MEM_BLOCK_avail(block))) {
+             MEM_BLOCK_avail(block))) {
     fprintf(TFile, "Pool %s given %llu bytes from 0x%p to 0x%p\n",
-	    MEM_POOL_name(pool), (UINT64)MEM_BLOCK_avail(block),
-	    (char *) MEM_BLOCK_ptr(block),
-	    ((char *) MEM_BLOCK_ptr(block)) + MEM_BLOCK_avail(block));
+        MEM_POOL_name(pool), (UINT64)MEM_BLOCK_avail(block),
+        (char *) MEM_BLOCK_ptr(block),
+        ((char *) MEM_BLOCK_ptr(block)) + MEM_BLOCK_avail(block));
     special_address_owner = MEM_POOL_name(pool);
   }
 #endif
@@ -998,7 +998,7 @@ Allocate_Block (MEM_POOL *pool)
  *  Allocate a new large block to a pool.
  *
  *  'pool'      Allocate a new block to this pool
- *  'size'	size of the new block
+ *  'size'    size of the new block
  *
  * ====================================================================
  */
@@ -1097,7 +1097,7 @@ MEM_POOL_Alloc_P
   if (pool == Malloc_Mem_Pool) {
       MEM_PTR p = malloc(size);
       if (p == NULL)
-	  ErrMsg (EC_No_Mem, "MEM_POOL_Alloc");
+      ErrMsg (EC_No_Mem, "MEM_POOL_Alloc");
       return p;
   }
 
@@ -1115,7 +1115,7 @@ MEM_POOL_Alloc_P
      */
     if (!MEM_POOL_blocks(pool)) {
       DevWarn("Allocation from %s before MEM_POOL_Push(%s)",
-	      MEM_POOL_name(pool), MEM_POOL_name(pool));
+          MEM_POOL_name(pool), MEM_POOL_name(pool));
       MEM_POOL_blocks(pool) = (MEM_POOL_BLOCKS *) TRUE;
     }
 
@@ -1127,8 +1127,8 @@ MEM_POOL_Alloc_P
     MEM_POOL_last_alloc(pool) = ret_val;
     if (purify_pools_trace)
       printf ("pool %s, alloc 0x%p, size %llu, (0x%p - 0x%p)\n",
-	      MEM_POOL_name(pool), (char *)ret_val+8, (UINT64)size,
-	      (char *)ret_val+8, (char *)ret_val+size);
+          MEM_POOL_name(pool), (char *)ret_val+8, (UINT64)size,
+          (char *)ret_val+8, (char *)ret_val+size);
     return ((MEM_PTR) ((size_t)ret_val+8));
   }
 
@@ -1172,7 +1172,7 @@ MEM_POOL_Realloc_P
   if (pool == Malloc_Mem_Pool) {
       MEM_PTR p = realloc(old_block,new_size);
       if (p == NULL)
-	   ErrMsg (EC_No_Mem, "MEM_POOL_Realloc");
+       ErrMsg (EC_No_Mem, "MEM_POOL_Realloc");
       return p;
   }
 
@@ -1197,7 +1197,7 @@ MEM_POOL_Realloc_P
 
     if (!MEM_POOL_blocks(pool)) {
       DevWarn("Realloc from %s before MEM_POOL_Push(%s)",
-	      MEM_POOL_name(pool), MEM_POOL_name(pool));
+          MEM_POOL_name(pool), MEM_POOL_name(pool));
       MEM_POOL_blocks(pool) = (MEM_POOL_BLOCKS *) TRUE;
     }
 
@@ -1235,13 +1235,13 @@ MEM_POOL_Realloc_P
     }
     else {
       /* either found it or old_block was null, so do a real realloc */
-	ret_val = (MEM_PTR)
-	    realloc((MEM_PTR) (old_block ? (size_t) old_block-8 : 0),
-			       new_size+8);
+    ret_val = (MEM_PTR)
+        realloc((MEM_PTR) (old_block ? (size_t) old_block-8 : 0),
+                   new_size+8);
 #ifdef KEY
-	if (purify_pools_trace)
-	  if (ret_val != old_block && old_block != 0)
-	    printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), old_block);
+    if (purify_pools_trace)
+      if (ret_val != old_block && old_block != 0)
+        printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), old_block);
 #endif
     }
     if (new_size > 0) {
@@ -1255,8 +1255,8 @@ MEM_POOL_Realloc_P
     }
     if (purify_pools_trace)
       printf ("pool %s, realloc 0x%p, new size %llu, (0x%p - 0x%p)\n",
-	      MEM_POOL_name(pool), ret_val, (UINT64)new_size,
-	      ret_val, (char *)ret_val + new_size - 8);
+          MEM_POOL_name(pool), ret_val, (UINT64)new_size,
+          ret_val, (char *)ret_val + new_size - 8);
     return ret_val;
   }
 
@@ -1281,10 +1281,10 @@ MEM_POOL_Realloc_P
 #ifdef Is_True_On
   if (new_size < old_size)
     DevWarn ("MEMORY: shrinking an object in (%s) from %d to %d bytes",
-	     MEM_POOL_name(pool), old_size, new_size);
+         MEM_POOL_name(pool), old_size, new_size);
   else if (new_size < old_size * 1.5 && old_size > 256)
     DevWarn ("MEMORY: small grow from %d to %d bytes (mempool: %s)",
-	     old_size, new_size, MEM_POOL_name(pool));
+         old_size, new_size, MEM_POOL_name(pool));
 #endif
 #endif
 
@@ -1300,49 +1300,49 @@ MEM_POOL_Realloc_P
     MEM_LARGE_BLOCK *large_block = (MEM_LARGE_BLOCK *)
       (((char *) old_block) - MEM_LARGE_BLOCK_OVERHEAD);
     if (MEM_LARGE_BLOCK_ptr(large_block) == (MEM_PTR) old_block &&
-	MEM_LARGE_BLOCK_base(large_block) == MEM_POOL_blocks(pool)) {
+    MEM_LARGE_BLOCK_base(large_block) == MEM_POOL_blocks(pool)) {
       /* this is a valid large block that we can reallocate */
       if (new_size <= MIN_LARGE_BLOCK_SIZE) {
-	result = Raw_Allocate (pool, new_size);
-	bcopy (old_block, result, new_size);
-	MEM_POOL_FREE (pool, old_block);
-	return result;
+    result = Raw_Allocate (pool, new_size);
+    bcopy (old_block, result, new_size);
+    MEM_POOL_FREE (pool, old_block);
+    return result;
       } else {
-	MEM_LARGE_BLOCK *p =
-	   (MEM_LARGE_BLOCK *)(((char *)old_block) - MEM_LARGE_BLOCK_OVERHEAD);
+    MEM_LARGE_BLOCK *p =
+       (MEM_LARGE_BLOCK *)(((char *)old_block) - MEM_LARGE_BLOCK_OVERHEAD);
 
-	large_block =
-	   MEM_LARGE_BLOCK_realloc(p, new_size + MEM_LARGE_BLOCK_OVERHEAD);
+    large_block =
+       MEM_LARGE_BLOCK_realloc(p, new_size + MEM_LARGE_BLOCK_OVERHEAD);
 #ifdef KEY
-	if (purify_pools_trace)
-	  if (p != large_block && p != 0)
-	    printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), p);
+    if (purify_pools_trace)
+      if (p != large_block && p != 0)
+        printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), p);
 #endif
 
-	if (large_block == NULL)
-	  ErrMsg (EC_No_Mem, "MEM_POOL_Realloc");
-	MEM_LARGE_BLOCK_ptr(large_block) = (MEM_PTR)
-	  (((char *)large_block) + MEM_LARGE_BLOCK_OVERHEAD);
-	if (MEM_POOL_bz(pool)) {
-	  bzero (((char *) MEM_LARGE_BLOCK_ptr(large_block)) + old_size,
-		 new_size - old_size);
-	}
-	p = MEM_LARGE_BLOCK_prev(large_block);
-	if (p == NULL)
-	  MEM_POOL_large_block(pool) = large_block;
-	else
-	  MEM_LARGE_BLOCK_next(p) = large_block;
-	p = MEM_LARGE_BLOCK_next(large_block);
-	if (p)
-	  MEM_LARGE_BLOCK_prev(p) = large_block;
-	return MEM_LARGE_BLOCK_ptr(large_block);
+    if (large_block == NULL)
+      ErrMsg (EC_No_Mem, "MEM_POOL_Realloc");
+    MEM_LARGE_BLOCK_ptr(large_block) = (MEM_PTR)
+      (((char *)large_block) + MEM_LARGE_BLOCK_OVERHEAD);
+    if (MEM_POOL_bz(pool)) {
+      bzero (((char *) MEM_LARGE_BLOCK_ptr(large_block)) + old_size,
+         new_size - old_size);
+    }
+    p = MEM_LARGE_BLOCK_prev(large_block);
+    if (p == NULL)
+      MEM_POOL_large_block(pool) = large_block;
+    else
+      MEM_LARGE_BLOCK_next(p) = large_block;
+    p = MEM_LARGE_BLOCK_next(large_block);
+    if (p)
+      MEM_LARGE_BLOCK_prev(p) = large_block;
+    return MEM_LARGE_BLOCK_ptr(large_block);
       }
     } else {
       result = Raw_Allocate (pool, new_size);
       if (new_size > old_size)
-	bcopy (old_block, result, old_size);
+    bcopy (old_block, result, old_size);
       else
-	bcopy (old_block, result, new_size);
+    bcopy (old_block, result, new_size);
       return result;
     }
   }
@@ -1390,11 +1390,11 @@ MEM_POOL_Push_P
     MEM_POOL_pure_stack(pool) = tmp;
     if (purify_pools_trace_x) {
       if (MEM_POOL_blocks(pool) == (MEM_POOL_BLOCKS *) MEM_POOL_INIT_IN_PROGRESS) {
-	(void) printf("MEM_POOL_Push %s 0x%p<-- free push (called by M_P_Initialize)\n",
-		      MEM_POOL_name(pool), pool);
+    (void) printf("MEM_POOL_Push %s 0x%p<-- free push (called by M_P_Initialize)\n",
+              MEM_POOL_name(pool), pool);
       }
       else {
-	(void) printf ("MEM_POOL_Push %s 0x%p\n", MEM_POOL_name(pool), pool);
+    (void) printf ("MEM_POOL_Push %s 0x%p\n", MEM_POOL_name(pool), pool);
       }
     }
 
@@ -1435,7 +1435,7 @@ MEM_POOL_Push_P
     if (MEM_POOL_BLOCKS_block(p)) {
       MEM_POOL_BLOCKS_base_ptr(pb) = (MEM_PTR*)MEM_BLOCK_ptr(MEM_POOL_BLOCKS_block(p));
       MEM_POOL_BLOCKS_base_avail(pb) =
-	MEM_BLOCK_avail(MEM_POOL_BLOCKS_block(p));
+    MEM_BLOCK_avail(MEM_POOL_BLOCKS_block(p));
     } else {
       MEM_POOL_BLOCKS_base_ptr(pb) = NULL;
       MEM_POOL_BLOCKS_base_avail(pb) = 0;
@@ -1514,7 +1514,7 @@ MEM_POOL_Pop_P
     MEM_PTR tmp = NULL;
     MEM_PTR next = NULL;
     Is_True (MEM_POOL_pure_stack(pool),
-	     ("Pop, but no push stack on %s", MEM_POOL_name(pool)));
+         ("Pop, but no push stack on %s", MEM_POOL_name(pool)));
     if (purify_pools_trace_x)
       printf ("MEM_POOL_Pop %s 0x%p\n", MEM_POOL_name(pool), pool);
     tmp = MEM_POOL_last_alloc(pool);
@@ -1545,15 +1545,15 @@ MEM_POOL_Pop_P
 
 #if Is_True_On
     if (special_address >= (char *) MEM_BLOCK_first_ptr(bp) &&
-	special_address < ((char *) MEM_BLOCK_ptr(bp) +
-			   MEM_BLOCK_avail(bp))) {
+    special_address < ((char *) MEM_BLOCK_ptr(bp) +
+               MEM_BLOCK_avail(bp))) {
       fprintf(TFile, "Pool %s freed %llu bytes from 0x%p to 0x%p\n",
-	      MEM_POOL_name(pool),
-	      (UINT64)(MEM_BLOCK_avail(bp) +
-	       (char *) MEM_BLOCK_ptr(bp) -
-	       (char *) MEM_BLOCK_first_ptr(bp)),
-	      (char *) MEM_BLOCK_first_ptr(bp),
-	      (char *) MEM_BLOCK_ptr(bp) + MEM_BLOCK_avail(bp));
+          MEM_POOL_name(pool),
+          (UINT64)(MEM_BLOCK_avail(bp) +
+           (char *) MEM_BLOCK_ptr(bp) -
+           (char *) MEM_BLOCK_first_ptr(bp)),
+          (char *) MEM_BLOCK_first_ptr(bp),
+          (char *) MEM_BLOCK_ptr(bp) + MEM_BLOCK_avail(bp));
       special_address_owner = "NOBODY";
     }
 #endif
@@ -1562,7 +1562,7 @@ MEM_POOL_Pop_P
       MEM_BLOCK_ptr(bp) = MEM_POOL_BLOCKS_base_ptr(bsp);
       MEM_BLOCK_avail(bp) = MEM_POOL_BLOCKS_base_avail(bsp);
       if (MEM_POOL_bz(pool))
-	bzero (MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
+    bzero (MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
       break;
     }
     free (bp);
@@ -1674,7 +1674,7 @@ void MEM_POOL_FREE(MEM_POOL *pool, void *data)
       /* free anyway, so that it shows up as a purify error */
       free (cur);
       FmtAssert(FALSE,("MEM_POOL_FREE: pool %s, could not find pointer 0x%p\n",
-		       MEM_POOL_name(pool), data));
+               MEM_POOL_name(pool), data));
     }
     free (cur);
     return;
@@ -1710,8 +1710,8 @@ trace_initialized_pool (char *msg, char *pname)
     MEM_POOL **listp = &initialized_pools;
     printf("<%s %s> initialized_pools: ", msg, pname);
     while (*listp != NULL) {
-	printf(", %s", MEM_POOL_name(*listp));
-	listp = &MEM_POOL_rest(*listp);
+    printf(", %s", MEM_POOL_name(*listp));
+    listp = &MEM_POOL_rest(*listp);
     }
     printf("\n");
 }
@@ -1736,23 +1736,23 @@ void MEM_POOL_Delete(MEM_POOL *pool)
     MEM_POOL **listp = &initialized_pools;
     /* trace_initialized_pool ("delete", MEM_POOL_name(pool)); */
     if (*listp == pool) {
-	initialized_pools = MEM_POOL_rest(pool);
+    initialized_pools = MEM_POOL_rest(pool);
     }
     else {
-	while (*listp && MEM_POOL_rest(*listp)) {
-		if (MEM_POOL_rest(*listp) == pool) break;
-		listp = &MEM_POOL_rest(*listp);
-	}
-	if (*listp && MEM_POOL_rest(*listp)) {
-		// found it
-		MEM_POOL_rest(*listp) = MEM_POOL_rest(pool);
-	}
-    	else {
-		DevWarn("didn't find pool %s in initialized_pools", MEM_POOL_name(pool));
-    	}
+    while (*listp && MEM_POOL_rest(*listp)) {
+        if (MEM_POOL_rest(*listp) == pool) break;
+        listp = &MEM_POOL_rest(*listp);
+    }
+    if (*listp && MEM_POOL_rest(*listp)) {
+        // found it
+        MEM_POOL_rest(*listp) = MEM_POOL_rest(pool);
+    }
+        else {
+        DevWarn("didn't find pool %s in initialized_pools", MEM_POOL_name(pool));
+        }
     }
     Is_True(!MEM_STAT_In_List( initialized_pools, pool ),
-	    ("Pool still in initialized list"));
+        ("Pool still in initialized list"));
   }
 #endif
 
@@ -1765,16 +1765,16 @@ void MEM_POOL_Delete(MEM_POOL *pool)
 #ifndef TODO_REMOVE_FREE_PUSH
     if (!MEM_POOL_pure_stack(pool)) {
       DevWarn("During MEM_POOL_Delete: Too many pops on %s.",
-	      MEM_POOL_name(pool));
+          MEM_POOL_name(pool));
     }
     else {
       MEM_POOL_Pop(pool);
 #endif
       if (MEM_POOL_pure_stack(pool)) {
-	DevWarn("During MEM_POOL_Delete: Too few pops on %s.",
-		MEM_POOL_name(pool));
-	while (MEM_POOL_pure_stack(pool))
-	  MEM_POOL_Pop(pool);
+    DevWarn("During MEM_POOL_Delete: Too few pops on %s.",
+        MEM_POOL_name(pool));
+    while (MEM_POOL_pure_stack(pool))
+      MEM_POOL_Pop(pool);
       }
 #ifndef TODO_REMOVE_FREE_PUSH
     }
@@ -1847,8 +1847,8 @@ MEM_POOL_Initialize_P
   if ( mem_tracing_enabled ) {
     if ( ! MEM_STAT_In_List( initialized_pools, pool ) ) {
         /* trace_initialized_pool ("initialize", MEM_POOL_name(pool)); */
-	MEM_POOL_rest(pool) = initialized_pools;
-	initialized_pools = pool;
+    MEM_POOL_rest(pool) = initialized_pools;
+    initialized_pools = pool;
     }
   }
 #endif
@@ -1897,14 +1897,14 @@ MEM_Initialize(void)
         if ((ppools[8] == '-') &&
             ((ppools[9] == 'X') || (ppools[9] == 'x'))) {
           purify_pools_trace_x = TRUE;
-	  if ((ppools[10] == '-') &&
-	    ((ppools[11] == 'O') || (ppools[11] == 'o')) &&
-	    ((ppools[12] == 'N') || (ppools[12] == 'n')) &&
-	    ((ppools[13] == 'L') || (ppools[13] == 'l')) &&
-	    ((ppools[14] == 'Y') || (ppools[14] == 'y'))) {
-	    purify_pools_trace = FALSE;
+      if ((ppools[10] == '-') &&
+        ((ppools[11] == 'O') || (ppools[11] == 'o')) &&
+        ((ppools[12] == 'N') || (ppools[12] == 'n')) &&
+        ((ppools[13] == 'L') || (ppools[13] == 'l')) &&
+        ((ppools[14] == 'Y') || (ppools[14] == 'y'))) {
+        purify_pools_trace = FALSE;
             DevWarn("Using purify memory pools, limited extended tracing ###");
-	  } else
+      } else
             DevWarn ("Using purify memory pools, with extended tracing ###");
         }
         else

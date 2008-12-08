@@ -87,11 +87,11 @@ extern const DST_IDX DST_INVALID_IDX;
 /* Use this macro to test for a NULL DST_IDX value
 */
 #define DST_IS_NULL(i) (((i).byte_idx == DST_INVALID_BYTE_IDX) ||\
-			((i).block_idx == DST_INVALID_BLOCK_IDX))
+            ((i).block_idx == DST_INVALID_BLOCK_IDX))
 
 /* Use this macro to test for a FOREIGN DST_IDX value */
-#define DST_IS_FOREIGN_OBJ(i)	(((i).byte_idx == DST_FOREIGN_BYTE_IDX) || \
-				 ((i).block_idx == DST_FOREIGN_BLOCK_IDX))
+#define DST_IS_FOREIGN_OBJ(i)    (((i).byte_idx == DST_FOREIGN_BYTE_IDX) || \
+                 ((i).block_idx == DST_FOREIGN_BLOCK_IDX))
 
 
 #ifdef __cplusplus
@@ -161,23 +161,23 @@ extern DST_TYPE Current_DST;
 #ifdef USE_DST_INTERNALS
 
 typedef struct block_header_struct {
-	DST_BLOCK_KIND kind;
-	mINT32 size;
-	mINT32 allocsize;
-	char *offset;
+    DST_BLOCK_KIND kind;
+    mINT32 size;
+    mINT32 allocsize;
+    char *offset;
 } block_header;
 
 typedef struct dst_rec {
-	block_header *dst_blocks;	/* array of block headers */
-	block_header *current_dst;	/* the current dst header */
-	DST_BLOCK_IDX last_block_header;
-	DST_BLOCK_IDX max_block_header;
-	DST_BLOCK_IDX current_block_header;
-	DST_BLOCK_IDX block_list[DST_noblock];
+    block_header *dst_blocks;    /* array of block headers */
+    block_header *current_dst;    /* the current dst header */
+    DST_BLOCK_IDX last_block_header;
+    DST_BLOCK_IDX max_block_header;
+    DST_BLOCK_IDX current_block_header;
+    DST_BLOCK_IDX block_list[DST_noblock];
 } DST_Type;
 
 #define FOREACH_DST_BLOCK(i) \
-	for (i = 0; i <= ((DST_Type *)Current_DST)->last_block_header; i++)
+    for (i = 0; i <= ((DST_Type *)Current_DST)->last_block_header; i++)
 
 #endif /* USE_DST_INTERNALS */
 

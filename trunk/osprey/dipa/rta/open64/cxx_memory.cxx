@@ -150,14 +150,14 @@ void* operator new (size_t sz)
   }
 
   ptr = (void *) MEM_POOL_Alloc_P(_dummy_new_mempool,
-				  sz+_dummy_pad,
+                  sz+_dummy_pad,
 #ifdef Is_True_On
-				  _alloc_callsite_line,
-				  _alloc_callsite_file);
+                  _alloc_callsite_line,
+                  _alloc_callsite_file);
   _alloc_callsite_file = NULL;
   _alloc_callsite_line = 0;
 #else
-				0, NULL);
+                0, NULL);
 #endif
   _dummy_new_mempool = (MEM_POOL*) -1;
   _dummy_pad = 0;

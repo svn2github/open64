@@ -50,8 +50,8 @@
 #include "mempool.h"
 #include "srcpos.h"
 
-#include "wn_core.h"		    /* core definitions of the tree node
-				       structures */
+#include "wn_core.h"            /* core definitions of the tree node
+                       structures */
 #include "wn_map.h"
 #include "wio.h"
 #include "wn_pragmas.h"
@@ -71,43 +71,43 @@
 ***
 ***
 ***     WN *WN_Create(
-***         OPERATOR	operator,
-***         TYPE_ID	rtype,
-***         TYPE_ID	desc,
-***         mINT16	kid_count
+***         OPERATOR    operator,
+***         TYPE_ID    rtype,
+***         TYPE_ID    desc,
+***         mINT16    kid_count
 ***     )
 ***
 ***         Creates and returns a WN with the given 'opcode'.  'Kid_count'
 ***         give the number of kids when this is not determined by the
 ***         'opcode' and is ignored otherwise.  The 'opcode', 
 ***         'kid_count', and 'map_id' fields are initialized.  
-***	    The initial values of all
+***        The initial values of all
 ***         other fields are undefined.
 ***
 ***    WN *WN_Create_Generic(
-***	    OPERATOR	operator,
-***	    TYPE_ID	rtype,
-***	    TYPE_ID	desc,
-***	    mINT16	kid_count,
-***	    WN 		*next,
-***	    WN		*prev,
-***	    ST		*st,
-***	    INT32	label_number,
-***	    INT32	num_entries,
-***	    TY		*ty,
-***	    TY		*load_addr_ty,
-***	    WN_OFFSET	offset,
-***	    INT16	cvtl_bits,
-***	    INT32	num_dim
-***	    WN_ESIZE    element_size
-***	    INT64	const_value,
-***         UINT32	flag,
-***         INTRINSIC	intrinsic)
+***        OPERATOR    operator,
+***        TYPE_ID    rtype,
+***        TYPE_ID    desc,
+***        mINT16    kid_count,
+***        WN         *next,
+***        WN        *prev,
+***        ST        *st,
+***        INT32    label_number,
+***        INT32    num_entries,
+***        TY        *ty,
+***        TY        *load_addr_ty,
+***        WN_OFFSET    offset,
+***        INT16    cvtl_bits,
+***        INT32    num_dim
+***        WN_ESIZE    element_size
+***        INT64    const_value,
+***         UINT32    flag,
+***         INTRINSIC    intrinsic)
 ***
-***	     Call WN_Create and then fill in all the fields relevant for opcode
+***         Call WN_Create and then fill in all the fields relevant for opcode
 ***
 ***
-***	Higher level Create routines.  
+***    Higher level Create routines.  
 ***
 ***     These are routines built on top of WN_Create
 ***     to allow one to create different types of nodes.  They include
@@ -118,116 +118,116 @@
 ***     operator specific create functions, but for most expressions,
 ***     we provide generic (based on number of kids) create routines.  
 ***
-***	    WN *WN_CreateBlock(void)
-***	    WN *WN_CreateDO(
+***        WN *WN_CreateBlock(void)
+***        WN *WN_CreateDO(
 ***                WN *index, WN *start, WN *end,
-***		   WN *step, WN *body)
-***	    WN *WN_CreateDoWhile(
+***           WN *step, WN *body)
+***        WN *WN_CreateDoWhile(
 ***                WN *test, WN *body)
-***	    WN *WN_CreateWhileDo(
+***        WN *WN_CreateWhileDo(
 ***                WN *test, WN *body)
-***	    WN *WN_CreateIf(
+***        WN *WN_CreateIf(
 ***                WN *test, WN *then, WN *else)
-***	    WN *WN_CreateRegion(
-***		   REGION_KIND kind, WN *body, WN *pragmas, WN *exits,
-***		   INT region_id, struct inito * ereg_sup)
-***	    WN *WN_CreateRegionExit(
+***        WN *WN_CreateRegion(
+***           REGION_KIND kind, WN *body, WN *pragmas, WN *exits,
+***           INT region_id, struct inito * ereg_sup)
+***        WN *WN_CreateRegionExit(
 ***                ST *st, INT32 label_number)
-***	    WN *WN_CreateGoto(
+***        WN *WN_CreateGoto(
 ***                ST *st, INT32 label_number)
-***	    WN *WN_CreateAgoto(
+***        WN *WN_CreateAgoto(
 ***                WN *addr)
-***	    WN *WN_CreateAltentry(
+***        WN *WN_CreateAltentry(
 ***                ST *entry)
-***	    WN *WN_CreateTruebr(
+***        WN *WN_CreateTruebr(
 ***                INT32 label_number, WN *exp)
-***	    WN *WN_CreateFalsebr(
+***        WN *WN_CreateFalsebr(
 ***                INT32 label_number, WN *exp)
-***	    WN *WN_CreateReturn(void)
-***	    WN *WN_CreateLabel(
+***        WN *WN_CreateReturn(void)
+***        WN *WN_CreateLabel(
 ***                ST *label, INT32 label_number, UINT32 label_flag,
-***		   WN *loop_info)
-***	    WN *WN_CreateCompgoto(
+***           WN *loop_info)
+***        WN *WN_CreateCompgoto(
 ***                INT32 num_entries, WN *value, WN *block, WN *deflt, 
-***		   INT32 last_label)
-***	    WN *WN_CreateSwitch(
+***           INT32 last_label)
+***        WN *WN_CreateSwitch(
 ***                INT32 num_entries, WN *value, WN *block, WN *deflt, 
-***		   INT32 last_label)
-***		   if last_label for Compgoto and Switch is 0,
-***		   then don't know last_label
-***		   (and regions can ignore switch heirarchy).
-***	    WN *WN_CreateCasegoto(
+***           INT32 last_label)
+***           if last_label for Compgoto and Switch is 0,
+***           then don't know last_label
+***           (and regions can ignore switch heirarchy).
+***        WN *WN_CreateCasegoto(
 ***                INT64 case_value, INT32 case_label_number)
-***	    WN *WN_CreateXgoto(
+***        WN *WN_CreateXgoto(
 ***                INT32 num_entries, WN *value, WN *block, ST *st)
-***	    WN *WN_CreateIstore(
+***        WN *WN_CreateIstore(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                WN_OFFSET offset, TY_IDX ty,WN *value, WN *addr,
-***		   UINT field_id)
-***	    WN *WN_CreateIstorex(
+***           UINT field_id)
+***        WN *WN_CreateIstorex(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                TY_IDX ty,WN *value, WN *addr1, WN *addr2)
-***	    WN *WN_CreateMstore(
+***        WN *WN_CreateMstore(
 ***                WN_OFFSET offset, TY_IDX ty,
-***		   WN *value, WN *addr,WN *num_bytes)
-***	    WN *WN_CreateStid(
+***           WN *value, WN *addr,WN *num_bytes)
+***        WN *WN_CreateStid(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                WN_OFFSET offset, ST *st, TY_IDX ty,WN *value, UINT field_id)
-***	    WN *WN_CreatePrefetch(WN_OFFSET offset, UINT32 flag, WN *addr)
-***	    WN *WN_CreatePrefetchx(UINT32 flag, WN *addr1, WN *addr2)
-***	    WN *WN_CreateIo(IOSTATEMENT iostatement, mINT16 kid_count)
-***	    WN *WN_CreateIoItem0(IOITEM ioitem, TY_IDX ty)
-***	    WN *WN_CreateIoItem1(IOITEM ioitem, WN *kid0, TY_IDX ty)
-***	    WN *WN_CreateIoItem2(IOITEM ioitem, WN *kid0, WN *kid1, TY_IDX ty)
-***	    WN *WN_CreateIoItem3(IOITEM ioitem, WN *kid0, WN *kid1, WN *kid2,
+***        WN *WN_CreatePrefetch(WN_OFFSET offset, UINT32 flag, WN *addr)
+***        WN *WN_CreatePrefetchx(UINT32 flag, WN *addr1, WN *addr2)
+***        WN *WN_CreateIo(IOSTATEMENT iostatement, mINT16 kid_count)
+***        WN *WN_CreateIoItem0(IOITEM ioitem, TY_IDX ty)
+***        WN *WN_CreateIoItem1(IOITEM ioitem, WN *kid0, TY_IDX ty)
+***        WN *WN_CreateIoItem2(IOITEM ioitem, WN *kid0, WN *kid1, TY_IDX ty)
+***        WN *WN_CreateIoItem3(IOITEM ioitem, WN *kid0, WN *kid1, WN *kid2,
 ***                              TY_IDX ty)
-***	    WN *WN_CreateIoItemN(IOITEM ioitem, mINT16 kid_count, TY_IDX ty)
-***	    WN *WN_CreateEval(
+***        WN *WN_CreateIoItemN(IOITEM ioitem, mINT16 kid_count, TY_IDX ty)
+***        WN *WN_CreateEval(
 ***                WN *exp)
-***	    WN *WN_CreatePragma(WN_PRAGMA_ID pragma_name, ST *st, 
-***	    	   INT64 const_val)
-***	    WN *WN_CreateExp0(
+***        WN *WN_CreatePragma(WN_PRAGMA_ID pragma_name, ST *st, 
+***               INT64 const_val)
+***        WN *WN_CreateExp0(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
-***	    WN *WN_CreateExp1(
+***        WN *WN_CreateExp1(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                WN *kid0)
-***	    WN *WN_CreateExp2(
+***        WN *WN_CreateExp2(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                WN *kid0, WN *kid1)
-***	    WN *WN_CreateExp3(
+***        WN *WN_CreateExp3(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                WN *kid0, WN *kid1, WN *kid2)
-***	    WN *WN_CreateCvtl(
+***        WN *WN_CreateCvtl(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                INT16 bits, WN *kid0)
-***	    WN *WN_CreateIload(
+***        WN *WN_CreateIload(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, WN_OFFSET offset,
-***		   TY_IDX ty, TY_IDX load_addr_ty,WN *addr, UINT field_id)
-***	    WN *WN_CreateIloadx(
-***		    OPCODE opr, TYPE_ID rtype, TYPE_ID desc, 
-***		    TY_IDX ty,TY_IDX load_addr_ty,WN *addr1, WN *addr2)
-***	    WN *WN_CreateMload(
+***           TY_IDX ty, TY_IDX load_addr_ty,WN *addr, UINT field_id)
+***        WN *WN_CreateIloadx(
+***            OPCODE opr, TYPE_ID rtype, TYPE_ID desc, 
+***            TY_IDX ty,TY_IDX load_addr_ty,WN *addr1, WN *addr2)
+***        WN *WN_CreateMload(
 ***                WN_OFFSET offset, TY_IDX ty,WN *addr, 
 ***                WN *num_bytes)
-***	    WN *WN_CreateLdid(
+***        WN *WN_CreateLdid(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                WN_OFFSET offset, ST *st, TY_IDX ty, UINT field_id)
-***	    WN *WN_CreateLda(
+***        WN *WN_CreateLda(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                WN_OFFSET offset, TY_IDX ty, ST *st, UINT field_id)
-***	    WN *WN_CreateIlda(
+***        WN *WN_CreateIlda(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 ***                WN_OFFSET offset, TY_IDX ty)
-***	    WN *WN_CreateIdname(
+***        WN *WN_CreateIdname(
 ***                WN_OFFSET offset,ST *st)
-***	    WN *WN_CreateConst(
+***        WN *WN_CreateConst(
 ***                OPERATOR opr, TYPE_ID rtype, TYPED_ID desc, ST *st )
-***	    WN *WN_CreateIntconst(
+***        WN *WN_CreateIntconst(
 ***                OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, INT64 const_val)
 ***
 ***
 ***     void IPA_WN_Delete(
-***	    WN_MAP_TAB	*maptab,
+***        WN_MAP_TAB    *maptab,
 ***         WN          *wn
 ***     )
 ***     void WN_Delete(
@@ -236,7 +236,7 @@
 ***
 ***         Delete the given 'wn' and make the node storage available for
 ***         reallocation.  Also add the map_id to the free list in the
-***	    map table.
+***        map table.
 ***     
 ***     
 ***     void IPA_WN_DELETE_Tree(
@@ -273,7 +273,7 @@
 ***
 ***
 ***     WN *WN_CopyNode (
-***	    const WN*	src_wn
+***        const WN*    src_wn
 ***     )
 ***
 ***         Return a copy of a given src_wn.
@@ -281,24 +281,24 @@
 ***         Pointers to next/prev or to kids are NOT copied.
 ***         Furthermore, no annotations are copied.
 ***
-***	 BOOL WN_Equiv(WN *wn1, WN *wn2)
+***     BOOL WN_Equiv(WN *wn1, WN *wn2)
 ***
 ***         Ignoring children and next-previous pointers, are wn1 and wn2
 ***         equivalent
 ***
 ***
-***	void IPA_WN_Move_Maps (
-***	    WN_MAP_TAB	*maptab,
-***	    WN		*dst,
-***	    WN		*src
-***	)
-***	void WN_Move_Maps (
-***	    WN		*dst,
-***	    WN		*src
-***	)
+***    void IPA_WN_Move_Maps (
+***        WN_MAP_TAB    *maptab,
+***        WN        *dst,
+***        WN        *src
+***    )
+***    void WN_Move_Maps (
+***        WN        *dst,
+***        WN        *src
+***    )
 ***
-***	    Move the information stored in the map table for one WN to
-***	    another WN.
+***        Move the information stored in the map table for one WN to
+***        another WN.
 ***
 ***     void IPA_WN_Move_Maps_PU(
 ***         WN_MAP_TAB      *src,
@@ -307,358 +307,358 @@
 ***
 ***     Move wn's mapping information from the source to the destination
 ***     table.  This is used when a WN is moved from one PU to another
-***	This assumes the destination table will contain the same
+***    This assumes the destination table will contain the same
 ***     WN_MAPs as the source.
 ***
 ***
 ***
-***	These are much needed higher level routines built on the WN_Create
-***	to build WN. Most of them determine the opcode based on type information
-***	supplied.
+***    These are much needed higher level routines built on the WN_Create
+***    to build WN. Most of them determine the opcode based on type information
+***    supplied.
 ***
 ***
-***	WN *WN_Intconst (
-***		TYPE_ID rtype,
-***		INT64 value
-***	)
-***		Return an integer constant node of value
+***    WN *WN_Intconst (
+***        TYPE_ID rtype,
+***        INT64 value
+***    )
+***        Return an integer constant node of value
 ***
-***	WN *WN_RotateIntconst(
-***		WN	*tree
-***		INT32	rotate
-***	)
-***		Rotate intconst bits right (rotate>0) or left (rotate<0)
+***    WN *WN_RotateIntconst(
+***        WN    *tree
+***        INT32    rotate
+***    )
+***        Rotate intconst bits right (rotate>0) or left (rotate<0)
 ***
-***	WN *WN_Inverse (
-***		TYPE_ID type,
-***		WN	*tree
-***	)
-***		Return a recip or divide base on type and flags
+***    WN *WN_Inverse (
+***        TYPE_ID type,
+***        WN    *tree
+***    )
+***        Return a recip or divide base on type and flags
 ***
-***	WN *WN_Floatconst (
-***		TYPE_ID rtype,
-***		double value
-***	)
-***		Return an floating point constant node of value
+***    WN *WN_Floatconst (
+***        TYPE_ID rtype,
+***        double value
+***    )
+***        Return an floating point constant node of value
 ***
-***	WN *WN_UVConst(
-***		TYPE_ID rtype,
-***	)
-***		Return the correct bit pattern for an uninitialized variable
+***    WN *WN_UVConst(
+***        TYPE_ID rtype,
+***    )
+***        Return the correct bit pattern for an uninitialized variable
 ***
-***	WN * WN_Zerocon (
-***		TYPE_ID ty
-***	)
-***		Return a zero of type ty 
+***    WN * WN_Zerocon (
+***        TYPE_ID ty
+***    )
+***        Return a zero of type ty 
 ***
-***	WN *WN_Ldid (
-***		TYPE_ID desc,
-***		WN_OFFSET offset,
-***		ST *sym,
-***		TY_IDX align,
-***		UINT field_id
-***	)
-***		Return a LDID (with offset) of type desc.
-***		The rtype is computed from ST.
-***		Alignment must be specified
+***    WN *WN_Ldid (
+***        TYPE_ID desc,
+***        WN_OFFSET offset,
+***        ST *sym,
+***        TY_IDX align,
+***        UINT field_id
+***    )
+***        Return a LDID (with offset) of type desc.
+***        The rtype is computed from ST.
+***        Alignment must be specified
 ***
-***	WN *WN_RLdid (
-***		TYPE_ID rtype,
-***		TYPE_ID desc,
-***		WN_OFFSET offset,
-***		ST *sym,
-***		TY_IDX align
-***	)
-***		Return a LDID (with offset) of type rtype, desc.
-***		Alignment must be specified
-***	
-***	WN *WN_LdidPreg (
-***		TYPE_ID desc,
-***		WN_OFFSET pregno
-***	)
-***		Return a LDID of a given preg.
-***	
-***	WN *WN_Stid (
-***		TYPE_ID desc,
-***		WN_OFFSET offset,
-***		ST *sym,
-***		TY_IDX align,
-***		WN *value,
-***		UINT field_id
-***	)
-***		STID (with offset) value into sym of type desc.
-***		Alignment must be specified
-***	
-***	WN *WN_StidIntoPreg(
-***		TYPE_ID desc,
-***		WN_OFFSET offset,
-***		ST *sym,
-***		WN *value
-***	)
-***		STID (with offset) value into sym of type desc.
-***		Alignment is inferred from sym
+***    WN *WN_RLdid (
+***        TYPE_ID rtype,
+***        TYPE_ID desc,
+***        WN_OFFSET offset,
+***        ST *sym,
+***        TY_IDX align
+***    )
+***        Return a LDID (with offset) of type rtype, desc.
+***        Alignment must be specified
+***    
+***    WN *WN_LdidPreg (
+***        TYPE_ID desc,
+***        WN_OFFSET pregno
+***    )
+***        Return a LDID of a given preg.
+***    
+***    WN *WN_Stid (
+***        TYPE_ID desc,
+***        WN_OFFSET offset,
+***        ST *sym,
+***        TY_IDX align,
+***        WN *value,
+***        UINT field_id
+***    )
+***        STID (with offset) value into sym of type desc.
+***        Alignment must be specified
+***    
+***    WN *WN_StidIntoPreg(
+***        TYPE_ID desc,
+***        WN_OFFSET offset,
+***        ST *sym,
+***        WN *value
+***    )
+***        STID (with offset) value into sym of type desc.
+***        Alignment is inferred from sym
 ***
-***	WN *WN_StidPreg(
-***		TYPE_ID desc,
-***		WN_OFFSET offset,
-***		WN *value
-***	)
-***		STID (with offset) value into sym of type desc.
-***		Alignment is inferred from sym
+***    WN *WN_StidPreg(
+***        TYPE_ID desc,
+***        WN_OFFSET offset,
+***        WN *value
+***    )
+***        STID (with offset) value into sym of type desc.
+***        Alignment is inferred from sym
 ***             This is a simplified interface to StidIntoPreg, where the preg sym
 ***             Is inferred from the type. 
-***	
-***	WN *WN_Iload (
-***		TYPE_ID desc,
-***		WN_OFFSET offset,
-***		TY_IDX align,
-***		WN *addr,
-***		UINT field_id
-***	)
-***		Return a ILOAD (with offset) of type desc.
-***		The rtype is computed from desc
-***		Alignment must be specified
-***	
-***	WN *WN_RIload (
-***		TYPE_ID rtype,
-***		TYPE_ID desc,
-***		WN_OFFSET offset,
-***		TY_IDX align,
-***		WN *addr
-***	)
-***		Return a ILOAD (with offset) of type rtype, desc.
-***		Alignment must be specified
+***    
+***    WN *WN_Iload (
+***        TYPE_ID desc,
+***        WN_OFFSET offset,
+***        TY_IDX align,
+***        WN *addr,
+***        UINT field_id
+***    )
+***        Return a ILOAD (with offset) of type desc.
+***        The rtype is computed from desc
+***        Alignment must be specified
+***    
+***    WN *WN_RIload (
+***        TYPE_ID rtype,
+***        TYPE_ID desc,
+***        WN_OFFSET offset,
+***        TY_IDX align,
+***        WN *addr
+***    )
+***        Return a ILOAD (with offset) of type rtype, desc.
+***        Alignment must be specified
 ***
-***	WN *WN_Istore (
-***		TYPE_ID desc,
-***		WN_OFFSET offset,
-***		TY_IDX align,
-***		WN *addr,
-***		WN *value,
-***		UINT field_id
-***	)
-***		Return a ISTORE (with offset) of type desc.
-***		Alignment must be specified
-***	
-***	WN *WN_Unary(
-***		OPERATOR opr,
-***		TYPE_ID rtype,
-***		WN *l
-***	)
-***		Return a unary operator opr with opcode of type rtype.
-***		The following macros use this as a common base
-***			WN_LNOT(WN *l)
-***			WN_Bnot(TYPE_ID type, WN *l)
-***			WN_Realpart(TYPE_ID rtype, WN *l)
-***			WN_Imagpart(TYPE_ID rtype, WN *l)
-***			WN_Paren(TYPE_ID rtype, WN *l)
-***	
-***	WN *WN_Binary (
-***		OPERATOR opr,
-***		TYPE_ID rtype,
-***		WN *l, WN *r
-***	)
-***		Return a binary operator opr with opcode of type rtype.
-***		The following macros use this as a common base
-***			WN_Add(TYPE_ID rtype, WN *l, WN *r)
-***			WN_Sub(TYPE_ID rtype, WN *l, WN *r)
-***			WN_Mpy(TYPE_ID rtype, WN *l, WN *r)
-***			WN_Div(TYPE_ID rtype, WN *l, WN *r)
+***    WN *WN_Istore (
+***        TYPE_ID desc,
+***        WN_OFFSET offset,
+***        TY_IDX align,
+***        WN *addr,
+***        WN *value,
+***        UINT field_id
+***    )
+***        Return a ISTORE (with offset) of type desc.
+***        Alignment must be specified
+***    
+***    WN *WN_Unary(
+***        OPERATOR opr,
+***        TYPE_ID rtype,
+***        WN *l
+***    )
+***        Return a unary operator opr with opcode of type rtype.
+***        The following macros use this as a common base
+***            WN_LNOT(WN *l)
+***            WN_Bnot(TYPE_ID type, WN *l)
+***            WN_Realpart(TYPE_ID rtype, WN *l)
+***            WN_Imagpart(TYPE_ID rtype, WN *l)
+***            WN_Paren(TYPE_ID rtype, WN *l)
+***    
+***    WN *WN_Binary (
+***        OPERATOR opr,
+***        TYPE_ID rtype,
+***        WN *l, WN *r
+***    )
+***        Return a binary operator opr with opcode of type rtype.
+***        The following macros use this as a common base
+***            WN_Add(TYPE_ID rtype, WN *l, WN *r)
+***            WN_Sub(TYPE_ID rtype, WN *l, WN *r)
+***            WN_Mpy(TYPE_ID rtype, WN *l, WN *r)
+***            WN_Div(TYPE_ID rtype, WN *l, WN *r)
 ***
-***			WN_LAND(WN *l, WN *r)
-***			WN_LIOR(WN *l, WN *r)
+***            WN_LAND(WN *l, WN *r)
+***            WN_LIOR(WN *l, WN *r)
 ***
-***			WN_Band(TYPE_ID rtype, WN *l, WN *r)
-***			WN_Bior(TYPE_ID rtype, WN *l, WN *r)
-***			WN_Bxor(TYPE_ID rtype, WN *l, WN *r)
+***            WN_Band(TYPE_ID rtype, WN *l, WN *r)
+***            WN_Bior(TYPE_ID rtype, WN *l, WN *r)
+***            WN_Bxor(TYPE_ID rtype, WN *l, WN *r)
 ***
-***			WN_Lshr(TYPE_ID rtype, WN *l, WN *r)
-***			WN_Ashr(TYPE_ID rtype, WN *l, WN *r)
-***			WN_Shl(TYPE_ID rtype, WN *l, WN *r)
+***            WN_Lshr(TYPE_ID rtype, WN *l, WN *r)
+***            WN_Ashr(TYPE_ID rtype, WN *l, WN *r)
+***            WN_Shl(TYPE_ID rtype, WN *l, WN *r)
 ***
-***			WN_Complex(TYPE_ID rtype, WN *l, WN *r)
-***	
-***	WN *WN_Ternary(
-***		OPERATOR opr,
-***		TYPE_ID rtype,
-***		WN *kid0, WN *kid1, WN *kid2
-***	)
-***		Return a ternary operator opr with opcode of type rtype.
-***		The following macros use this as a common base
-***			WN_Select(TYPE_ID rtype, WN *rel, WN *true, WN *false)
-***	
-***	WN *WN_IloadLdid (
-***		TYPE_ID desc,
-***		WN_OFFSET offset,
-***		TY_IDX align,
-***		ST *sym,
-***		WN_OFFSET symOffset
-***	)
-***		Return a ILOAD (with offset) of type desc with and address
-***		of LDID (with symOffset) of Pointer_type.
-***		Alignment must be specified
+***            WN_Complex(TYPE_ID rtype, WN *l, WN *r)
+***    
+***    WN *WN_Ternary(
+***        OPERATOR opr,
+***        TYPE_ID rtype,
+***        WN *kid0, WN *kid1, WN *kid2
+***    )
+***        Return a ternary operator opr with opcode of type rtype.
+***        The following macros use this as a common base
+***            WN_Select(TYPE_ID rtype, WN *rel, WN *true, WN *false)
+***    
+***    WN *WN_IloadLdid (
+***        TYPE_ID desc,
+***        WN_OFFSET offset,
+***        TY_IDX align,
+***        ST *sym,
+***        WN_OFFSET symOffset
+***    )
+***        Return a ILOAD (with offset) of type desc with and address
+***        of LDID (with symOffset) of Pointer_type.
+***        Alignment must be specified
 ***
-***	WN *WN_Cvt(
-***		TYPE_ID desc,
-***		TYPE_ID rtype,
-***		WN *l, WN *r
-***	)
-***		Return a cvt operator with opcode of type desc -> rtype,
-***	
-***	WN *WN_Trunc(
-***		TYPE_ID desc,
-***		TYPE_ID rtype,
-***		WN *l, WN *r
-***	)
-***		round to zero
-***		Return a trunc operator with opcode of type desc -> rtype,
-***	
-***	WN *WN_Rnd(
-***		TYPE_ID desc,
-***		TYPE_ID rtype,
-***		WN *l, WN *r
-***	)
-***		round to nearest int
-***		Return a rnd operator with opcode of type desc -> rtype
-***	
-***	WN *WN_Ceil(
-***		TYPE_ID desc,
-***		TYPE_ID rtype,
-***		WN *l, WN *r
-***	)
-***		round to +infinity
-***		Return a ceil operator with opcode of type desc -> rtype,
-***	
-***	WN *WN_Floor(
-***		TYPE_ID desc,
-***		TYPE_ID rtype,
-***		WN *l, WN *r
-***	)
-***		round to -infinity
-***		Return a floor operator with opcode of type desc -> rtype,
-***	
-***	WN * WN_Int_Type_Conversion( 
-***		WN *wn, 
-***		TYPE_ID to_type )
+***    WN *WN_Cvt(
+***        TYPE_ID desc,
+***        TYPE_ID rtype,
+***        WN *l, WN *r
+***    )
+***        Return a cvt operator with opcode of type desc -> rtype,
+***    
+***    WN *WN_Trunc(
+***        TYPE_ID desc,
+***        TYPE_ID rtype,
+***        WN *l, WN *r
+***    )
+***        round to zero
+***        Return a trunc operator with opcode of type desc -> rtype,
+***    
+***    WN *WN_Rnd(
+***        TYPE_ID desc,
+***        TYPE_ID rtype,
+***        WN *l, WN *r
+***    )
+***        round to nearest int
+***        Return a rnd operator with opcode of type desc -> rtype
+***    
+***    WN *WN_Ceil(
+***        TYPE_ID desc,
+***        TYPE_ID rtype,
+***        WN *l, WN *r
+***    )
+***        round to +infinity
+***        Return a ceil operator with opcode of type desc -> rtype,
+***    
+***    WN *WN_Floor(
+***        TYPE_ID desc,
+***        TYPE_ID rtype,
+***        WN *l, WN *r
+***    )
+***        round to -infinity
+***        Return a floor operator with opcode of type desc -> rtype,
+***    
+***    WN * WN_Int_Type_Conversion( 
+***        WN *wn, 
+***        TYPE_ID to_type )
 ***
-***		Return the integer-typed wn converted to the given
-***		integer to_type. (handles only int->int conversions)
+***        Return the integer-typed wn converted to the given
+***        integer to_type. (handles only int->int conversions)
 ***
-***	WN * WN_Float_Type_Conversion( 
-***		WN *wn, 
-***		TYPE_ID to_type )
+***    WN * WN_Float_Type_Conversion( 
+***        WN *wn, 
+***        TYPE_ID to_type )
 ***
-***		Return the float-typed wn converted to the given
-***		float to_type. (handles only float->float conversions)
+***        Return the float-typed wn converted to the given
+***        float to_type. (handles only float->float conversions)
 ***
-***	WN * WN_Type_Conversion( 
-***		WN *wn, 
-***		TYPE_ID to_type )
+***    WN * WN_Type_Conversion( 
+***        WN *wn, 
+***        TYPE_ID to_type )
 ***
-***		Return the int/float-typed wn converted to the given
-***		int/float to_type.  (handles int->float, float->int,
-***		int->int, and float->float conversions)
+***        Return the int/float-typed wn converted to the given
+***        int/float to_type.  (handles int->float, float->int,
+***        int->int, and float->float conversions)
 ***
-***	WN *WN_Relational(
-***		OPERATOR opr,
-***		TYPE_ID rtype,
-***		WN *l, WN *r
-***	)
-***		Return a relational operator opr with opcode of type rtype.
-***		The following macros use this as a common base
-***			WN_EQ(TYPE_ID rtype, WN *l, WN *r)
-***			WN_NE(TYPE_ID rtype, WN *l, WN *r)
-***			WN_LT(TYPE_ID rtype, WN *l, WN *r)
-***			WN_LE(TYPE_ID rtype, WN *l, WN *r)
-***			WN_GT(TYPE_ID rtype, WN *l, WN *r)
-***			WN_GE(TYPE_ID rtype, WN *l, WN *r)
+***    WN *WN_Relational(
+***        OPERATOR opr,
+***        TYPE_ID rtype,
+***        WN *l, WN *r
+***    )
+***        Return a relational operator opr with opcode of type rtype.
+***        The following macros use this as a common base
+***            WN_EQ(TYPE_ID rtype, WN *l, WN *r)
+***            WN_NE(TYPE_ID rtype, WN *l, WN *r)
+***            WN_LT(TYPE_ID rtype, WN *l, WN *r)
+***            WN_LE(TYPE_ID rtype, WN *l, WN *r)
+***            WN_GT(TYPE_ID rtype, WN *l, WN *r)
+***            WN_GE(TYPE_ID rtype, WN *l, WN *r)
 ***
-***	WN *WN_ConstPowerOf2(
-***		TYPE_ID rtype,
-***		INT32 n
-***	)
-***		Return a constant of type rtype that is 2**n (1<<(n-1))
+***    WN *WN_ConstPowerOf2(
+***        TYPE_ID rtype,
+***        INT32 n
+***    )
+***        Return a constant of type rtype that is 2**n (1<<(n-1))
 ***
-***	WN *WN_Lda(
-***		TYPE_ID rtype,
-***		WN_OFFSET ldaOffset,
-***		ST *sym,
-***		UINT field_id
-***	)
-***		Return  lda of type rtype of sym
+***    WN *WN_Lda(
+***        TYPE_ID rtype,
+***        WN_OFFSET ldaOffset,
+***        ST *sym,
+***        UINT field_id
+***    )
+***        Return  lda of type rtype of sym
 ***
-***	WN *WN_LdaString(const char *str,
-***		WN_OFFSET ldaOffset,
-***		INT32 len
-***	)
-***		Create an LDA of type string
+***    WN *WN_LdaString(const char *str,
+***        WN_OFFSET ldaOffset,
+***        INT32 len
+***    )
+***        Create an LDA of type string
 ***
-***	
-***	WN *WN_Icall(
-***		TYPE_ID rtype,
-***		TYPE_ID desc,
-***		INT32 n,
-***		TY_IDX ty
-***	)
-***		Return an icall node with n children and a TY
-***	
-***	WN *WN_Call(
-***		TYPE_ID rtype,
-***		TYPE_ID desc,
-***		INT32 n,
-***		ST *sym
-***	)
-***		Return an call node with n children and ST sym
-***		Uses generic WN_generic_call()
-***	
-***	WN *WN_Piccall(
-***		TYPE_ID rtype,
-***		TYPE_ID desc,
-***		INT32 n,
-***		ST *sym
-***	)
-***		Return an piccall node with n children and ST sym
-***		Uses generic WN_generic_call()
-***	
-***	WN *WN_Create_Intrinsic(
-***		OPERATOR opr,
-***		TYPE_ID rtype,
-***		TYPE_ID desc,
+***    
+***    WN *WN_Icall(
+***        TYPE_ID rtype,
+***        TYPE_ID desc,
+***        INT32 n,
+***        TY_IDX ty
+***    )
+***        Return an icall node with n children and a TY
+***    
+***    WN *WN_Call(
+***        TYPE_ID rtype,
+***        TYPE_ID desc,
+***        INT32 n,
+***        ST *sym
+***    )
+***        Return an call node with n children and ST sym
+***        Uses generic WN_generic_call()
+***    
+***    WN *WN_Piccall(
+***        TYPE_ID rtype,
+***        TYPE_ID desc,
+***        INT32 n,
+***        ST *sym
+***    )
+***        Return an piccall node with n children and ST sym
+***        Uses generic WN_generic_call()
+***    
+***    WN *WN_Create_Intrinsic(
+***        OPERATOR opr,
+***        TYPE_ID rtype,
+***        TYPE_ID desc,
 ***             INTRINSIC intrinsic,
-***		INT32 n,
-***		WN *kids[]
-***	)
-***		Return an intrinsic node with n children
-***	
+***        INT32 n,
+***        WN *kids[]
+***    )
+***        Return an intrinsic node with n children
+***    
 ***     WN *WN_CreateParm(TYPE_ID rtype,
 ***                WN *kid0,
-***		   TY_IDX ty,
-***		   UINT32 flag)
+***           TY_IDX ty,
+***           UINT32 flag)
 ***             Return a parameter node
 ***
-***	void WN_CopyMap(
-***		WN	*dst,
-***		WN_MAP	map,
-***		WN	*src
-***	)
-***		Copy the contents of map for src to dst.
-***		Uses Current_Map_Tab.
-***		Does nothing if map is WN_MAP_UNDEFINED.
-***	
+***    void WN_CopyMap(
+***        WN    *dst,
+***        WN_MAP    map,
+***        WN    *src
+***    )
+***        Copy the contents of map for src to dst.
+***        Uses Current_Map_Tab.
+***        Does nothing if map is WN_MAP_UNDEFINED.
+***    
 ***
-***	WN *WN_Tas(
-***		TYPE_ID rtype,
-***		TY_IDX  ty,
-***		WN	*l
-***	)
-***		Return an tas node with TY
+***    WN *WN_Tas(
+***        TYPE_ID rtype,
+***        TY_IDX  ty,
+***        WN    *l
+***    )
+***        Return an tas node with TY
 ***
 **/
 
 extern BOOL Types_Are_Compatible(TYPE_ID ltype, WN *wn);
 extern BOOL IPO_Types_Are_Compatible(TYPE_ID ltype, TYPE_ID rtype);
 extern BOOL Is_Const_Parm (WN *, INT );     /* for a call call_wn, 
-					     is arg j a const parm */
+                         is arg j a const parm */
 
 #ifdef KEY
 extern "C" INT32 New_Region_Id (void);
@@ -671,27 +671,27 @@ extern WN *WN_Create(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count
 inline WN *
 WN_Create(OPCODE opcode, mINT16 kid_count) {
   return WN_Create (OPCODE_operator(opcode), OPCODE_rtype(opcode),
-		    OPCODE_desc(opcode), kid_count);
+            OPCODE_desc(opcode), kid_count);
 }
 
 extern WN *
 WN_Create_Generic (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
-		   mINT16 kid_count, WN *next, WN *prev,
-		   ST_IDX st, INT32 label_number, INT32 num_entries,
-		   TY_IDX ty, TY_IDX load_addr_ty, WN_OFFSET  offset,
-		   INT16 cvtl_bits, INT32 num_dim, WN_ESIZE element_size,
-		   INT64 const_value, UINT32 flag, INTRINSIC intrinsic);  
+           mINT16 kid_count, WN *next, WN *prev,
+           ST_IDX st, INT32 label_number, INT32 num_entries,
+           TY_IDX ty, TY_IDX load_addr_ty, WN_OFFSET  offset,
+           INT16 cvtl_bits, INT32 num_dim, WN_ESIZE element_size,
+           INT64 const_value, UINT32 flag, INTRINSIC intrinsic);  
 inline WN *
 WN_Create_Generic (OPCODE opcode, mINT16 kid_count, WN *next, WN *prev,
-		   ST_IDX st, INT32 label_number, INT32 num_entries,
-		   TY_IDX ty, TY_IDX load_addr_ty, WN_OFFSET  offset,
-		   INT16 cvtl_bits, INT32 num_dim, WN_ESIZE element_size,
-		   INT64 const_value, UINT32 flag, INTRINSIC intrinsic) {
+           ST_IDX st, INT32 label_number, INT32 num_entries,
+           TY_IDX ty, TY_IDX load_addr_ty, WN_OFFSET  offset,
+           INT16 cvtl_bits, INT32 num_dim, WN_ESIZE element_size,
+           INT64 const_value, UINT32 flag, INTRINSIC intrinsic) {
   return WN_Create_Generic (OPCODE_operator(opcode), OPCODE_rtype(opcode),
-			    OPCODE_desc(opcode), kid_count, next, prev,
-			    st, label_number, num_entries,
-			    ty, load_addr_ty, offset, cvtl_bits, num_dim,
-			    element_size, const_value, flag, intrinsic);
+                OPCODE_desc(opcode), kid_count, next, prev,
+                st, label_number, num_entries,
+                ty, load_addr_ty, offset, cvtl_bits, num_dim,
+                element_size, const_value, flag, intrinsic);
 }
 
 extern void IPA_WN_Delete(WN_MAP_TAB *maptab, WN *wn);
@@ -714,31 +714,31 @@ extern  BOOL WN_Equiv(WN *wn1, WN *wn2);
 extern WN *WN_CreateBlock(void);
 
 extern WN *WN_CreateDO(WN *index,
-		       WN *start,
-		       WN *end,
-		       WN *step,
-		       WN *body,
-		       WN *loop_info);
+               WN *start,
+               WN *end,
+               WN *step,
+               WN *body,
+               WN *loop_info);
 
 extern WN *WN_CreateDoWhile(WN *test,
-			  WN *body);
+              WN *body);
 
 extern WN *WN_CreateWhileDo(WN *test,
-			  WN *body);
+              WN *body);
 
 extern WN *WN_CreateIf(WN *test,
-		       WN *if_then,
-		       WN *if_else);
+               WN *if_then,
+               WN *if_else);
 
 extern WN *WN_CreateEntry (INT16 nkids, ST_IDX name, WN *body, WN *pragmas,
-			   WN *varrefs);
+               WN *varrefs);
 
 extern WN *WN_CreateRegion(REGION_KIND kind,
-			   WN *body, 
-		    	   WN *pragmas,
-			   WN *exits, 
-			   INT region_id,
-			   INITO_IDX ereg_supp);
+               WN *body, 
+                   WN *pragmas,
+               WN *exits, 
+               INT region_id,
+               INITO_IDX ereg_supp);
 extern WN *WN_CreateRegionExit (INT32 label_number);
 
 /* set maximum region id seen so far;
@@ -770,61 +770,61 @@ WN_CreateReturn_Val (OPCODE opc, WN * val) {
 extern WN *WN_CreateLabel(INT32 label_number, UINT32 label_flag, WN *loop_info);
 
 extern WN *WN_CreateCompgoto(INT32 num_entries,
-		     	   WN *value, WN *block, WN *deflt, INT32 last_label);
+                    WN *value, WN *block, WN *deflt, INT32 last_label);
 
 extern WN *WN_CreateSwitch(INT32 num_entries,
-			   WN *value, WN *block, WN *deflt, INT32 last_label);
+               WN *value, WN *block, WN *deflt, INT32 last_label);
 
 extern WN *WN_CreateCasegoto(INT64 case_value, INT32 case_label_number);
 
 extern WN *WN_CreateXgoto (INT32 num_entries, WN *value, WN *block, ST_IDX st);
 
 extern WN *WN_CreateIstore(OPERATOR opr,
-			  TYPE_ID rtype, 
-			  TYPE_ID desc, 
-			  WN_OFFSET offset, 
-			  TY_IDX ty,
-			  WN *value, 
-			  WN *addr,
-			  UINT field_id = 0);
+              TYPE_ID rtype, 
+              TYPE_ID desc, 
+              WN_OFFSET offset, 
+              TY_IDX ty,
+              WN *value, 
+              WN *addr,
+              UINT field_id = 0);
 inline WN *
 WN_CreateIstore (OPCODE opc, WN_OFFSET offset, TY_IDX ty, WN *value, WN *addr,
-		 UINT field_id = 0) {
+         UINT field_id = 0) {
   return WN_CreateIstore (OPCODE_operator(opc), OPCODE_rtype(opc),
                           OPCODE_desc(opc), offset, ty, value, addr, field_id);
 }
 
 extern WN *WN_CreateIstorex(OPERATOR opr, 
-			  TYPE_ID rtype, 
-			  TYPE_ID desc, 
-		          TY_IDX ty,
-			  WN *value,
-			  WN *addr1,
-			  WN *addr2);
+              TYPE_ID rtype, 
+              TYPE_ID desc, 
+                  TY_IDX ty,
+              WN *value,
+              WN *addr1,
+              WN *addr2);
 inline WN *
 WN_CreateIstorex(OPCODE opc, TY_IDX ty, WN *value, WN *addr1, WN *addr2) {
   return WN_CreateIstorex (OPCODE_operator(opc), OPCODE_rtype(opc),
-			   OPCODE_desc(opc), ty, value, addr1, addr2);
+               OPCODE_desc(opc), ty, value, addr1, addr2);
 }
 
 extern WN *WN_CreateMstore(WN_OFFSET offset,
-			   TY_IDX ty,
-			   WN *value,
-			   WN *addr,
-			   WN *num_bytes);
+               TY_IDX ty,
+               WN *value,
+               WN *addr,
+               WN *num_bytes);
 
 extern WN *WN_CreateStid(OPERATOR opr,
-			 TYPE_ID rtype, 
-			 TYPE_ID desc, 
-			 WN_OFFSET offset, 
-			 ST *st, 
-			 TY_IDX ty, 
-			 WN *value,
-			 UINT field_id = 0);
+             TYPE_ID rtype, 
+             TYPE_ID desc, 
+             WN_OFFSET offset, 
+             ST *st, 
+             TY_IDX ty, 
+             WN *value,
+             UINT field_id = 0);
 inline WN *
 WN_CreateStid(OPCODE opc, WN_OFFSET offset, ST *st, TY_IDX ty, WN *value, UINT field_id = 0) {
   return WN_CreateStid (OPCODE_operator(opc), OPCODE_rtype(opc),
-			OPCODE_desc(opc), offset, st, ty, value, field_id);
+            OPCODE_desc(opc), offset, st, ty, value, field_id);
 }
 
 extern WN *WN_CreatePrefetch( WN_OFFSET offset,  UINT32 flag, WN *addr);
@@ -840,12 +840,12 @@ extern WN *WN_CreateIoItemN(IOITEM ioitem, mINT16 kid_count, TY_IDX ty);
 extern WN *WN_CreateEval(WN *exp);
 
 extern WN *WN_CreatePragma(WN_PRAGMA_ID pragma_name, ST_IDX st, 
-			   INT32 arg1, INT32 arg2);
+               INT32 arg1, INT32 arg2);
 extern WN *WN_CreatePragma(WN_PRAGMA_ID pragma_name, ST_IDX st, 
-			   INT32 arg1, PREG_NUM asm_copyout_preg,
-			   UINT32 asm_opnd_num);
+               INT32 arg1, PREG_NUM asm_copyout_preg,
+               UINT32 asm_opnd_num);
 extern WN *WN_CreateXpragma(WN_PRAGMA_ID pragma_name, ST_IDX st, 
-			    INT16 kid_count);
+                INT16 kid_count);
 
 extern WN *WN_CreateExp0(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc);
 inline WN *
@@ -855,9 +855,9 @@ WN_CreateExp0 (OPCODE opc) {
 }
 
 extern WN *WN_CreateExp1(OPERATOR opr,
-			 TYPE_ID rtype,
-			 TYPE_ID desc,
-			 WN *kid0);
+             TYPE_ID rtype,
+             TYPE_ID desc,
+             WN *kid0);
 inline WN *
 WN_CreateExp1 (OPCODE opc, WN *kid0) {
   return WN_CreateExp1 (OPCODE_operator(opc), OPCODE_rtype(opc),
@@ -865,10 +865,10 @@ WN_CreateExp1 (OPCODE opc, WN *kid0) {
 }
 
 extern WN *WN_CreateExp2(OPERATOR opr,
-			 TYPE_ID rtype,
-			 TYPE_ID desc,
-			 WN *kid0,
-			 WN *kid1);
+             TYPE_ID rtype,
+             TYPE_ID desc,
+             WN *kid0,
+             WN *kid1);
 inline WN*
 WN_CreateExp2 (OPCODE opc, WN *kid0, WN *kid1) {
   return WN_CreateExp2 (OPCODE_operator(opc), OPCODE_rtype(opc),
@@ -876,11 +876,11 @@ WN_CreateExp2 (OPCODE opc, WN *kid0, WN *kid1) {
 }
 
 extern WN *WN_CreateExp3(OPERATOR opr,
-			 TYPE_ID rtype,
-			 TYPE_ID desc,
-			 WN *kid0,
-			 WN *kid1,
-			 WN *kid2);
+             TYPE_ID rtype,
+             TYPE_ID desc,
+             WN *kid0,
+             WN *kid1,
+             WN *kid2);
 inline WN *
 WN_CreateExp3 (OPCODE opc, WN *kid0, WN *kid1, WN *kid2) {
   return WN_CreateExp3 (OPCODE_operator(opc), OPCODE_rtype(opc),
@@ -888,115 +888,115 @@ WN_CreateExp3 (OPCODE opc, WN *kid0, WN *kid1, WN *kid2) {
 }
 
 extern WN *WN_CreateIload(OPERATOR opr,
-			 TYPE_ID rtype,
-			 TYPE_ID desc,
-			 WN_OFFSET offset, 
-			 TY_IDX ty,
-			 TY_IDX load_addr_ty,
-			 WN *addr,
-			 UINT field_id = 0);
+             TYPE_ID rtype,
+             TYPE_ID desc,
+             WN_OFFSET offset, 
+             TY_IDX ty,
+             TY_IDX load_addr_ty,
+             WN *addr,
+             UINT field_id = 0);
 inline WN*
 WN_CreateIload (OPCODE opc, WN_OFFSET offset, TY_IDX ty,
-		TY_IDX load_addr_ty, WN *addr, UINT field_id = 0) {
+        TY_IDX load_addr_ty, WN *addr, UINT field_id = 0) {
   return WN_CreateIload (OPCODE_operator(opc), OPCODE_rtype(opc),
-			 OPCODE_desc(opc), offset, ty, load_addr_ty, addr,
-			 field_id);
+             OPCODE_desc(opc), offset, ty, load_addr_ty, addr,
+             field_id);
 }
 
 extern WN *WN_CreateIloadx(OPERATOR opr, 
-			 TYPE_ID rtype,
-			 TYPE_ID desc,
-			 TY_IDX ty,
-			 TY_IDX load_addr_ty,
-			 WN *addr1,
-			 WN *addr2);
+             TYPE_ID rtype,
+             TYPE_ID desc,
+             TY_IDX ty,
+             TY_IDX load_addr_ty,
+             WN *addr1,
+             WN *addr2);
 inline WN*
 WN_CreateIloadx (OPCODE opc, TY_IDX ty, TY_IDX load_addr_ty,
-		 WN *addr1, WN *addr2) {
+         WN *addr1, WN *addr2) {
   return WN_CreateIloadx (OPCODE_operator(opc), OPCODE_rtype(opc),
-			  OPCODE_desc(opc), ty, load_addr_ty, addr1, addr2);
+              OPCODE_desc(opc), ty, load_addr_ty, addr1, addr2);
 }
 
 extern WN *WN_CreateMload(WN_OFFSET offset, 
-			  TY_IDX ty,
-			  WN *addr,
-			  WN *num_bytes);
+              TY_IDX ty,
+              WN *addr,
+              WN *num_bytes);
 
 extern WN *WN_CreateLdid(OPERATOR opr,
-			 TYPE_ID rtype,
-			 TYPE_ID desc,
-			 WN_OFFSET offset,
-			 ST_IDX st,
-			 TY_IDX ty,
-			 UINT field_id = 0);
+             TYPE_ID rtype,
+             TYPE_ID desc,
+             WN_OFFSET offset,
+             ST_IDX st,
+             TY_IDX ty,
+             UINT field_id = 0);
 inline WN*
 WN_CreateLdid (OPCODE opc, WN_OFFSET offset, ST_IDX st, TY_IDX ty, UINT field_id = 0) {
   return WN_CreateLdid (OPCODE_operator(opc), OPCODE_rtype(opc),
-			OPCODE_desc(opc), offset, st, ty, field_id);
+            OPCODE_desc(opc), offset, st, ty, field_id);
 }
 
 extern WN *WN_CreateLda(OPERATOR opr, 
-			TYPE_ID rtype,
-			TYPE_ID desc,
-			WN_OFFSET offset,
-			TY_IDX ty,
-			ST_IDX st,
-			UINT field_id = 0);
+            TYPE_ID rtype,
+            TYPE_ID desc,
+            WN_OFFSET offset,
+            TY_IDX ty,
+            ST_IDX st,
+            UINT field_id = 0);
 inline WN*
 WN_CreateLda (OPCODE opc, WN_OFFSET offset, TY_IDX ty, ST_IDX st, 
-	      UINT field_id = 0) {
+          UINT field_id = 0) {
   return WN_CreateLda (OPCODE_operator(opc), OPCODE_rtype(opc),
-		       OPCODE_desc(opc), offset, ty, st, field_id);
+               OPCODE_desc(opc), offset, ty, st, field_id);
 }
 
 extern WN *WN_CreateIlda(OPERATOR opr, 
-			 TYPE_ID rtype,
-			 TYPE_ID desc,
-			 WN_OFFSET offset,
-			 TY_IDX ty);
+             TYPE_ID rtype,
+             TYPE_ID desc,
+             WN_OFFSET offset,
+             TY_IDX ty);
 
 extern WN *WN_CreateLdaLabel(OPERATOR opr,
-			     TYPE_ID rtype,
-			     TYPE_ID desc,
-			     mUINT32 label_number);
+                 TYPE_ID rtype,
+                 TYPE_ID desc,
+                 mUINT32 label_number);
 
 extern WN *WN_CreateIdname(WN_OFFSET offset,
-			   ST_IDX st);
+               ST_IDX st);
 
 extern WN *WN_CreateConst (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, ST_IDX st);
 inline WN*
 WN_CreateConst (OPCODE opc, ST_IDX st) {
   return WN_CreateConst (OPCODE_operator(opc), OPCODE_rtype(opc),
-			 OPCODE_desc(opc), st);
+             OPCODE_desc(opc), st);
 }
 
 extern WN *WN_CreateIntconst(OPERATOR opr, 
-			     TYPE_ID rtype,
-			     TYPE_ID desc,
-			     INT64 const_val);
+                 TYPE_ID rtype,
+                 TYPE_ID desc,
+                 INT64 const_val);
 inline WN *
 WN_CreateIntconst (OPCODE opc, INT64 const_val) {
   return WN_CreateIntconst (OPCODE_operator(opc), OPCODE_rtype(opc),
-			    OPCODE_desc(opc), const_val);
+                OPCODE_desc(opc), const_val);
 }
 
 extern WN *WN_CreateCvtl(OPERATOR opr,
-			 TYPE_ID rtype,
-			 TYPE_ID desc,
-			 INT16 cvtl_bits,
-			 WN *kid0);
+             TYPE_ID rtype,
+             TYPE_ID desc,
+             INT16 cvtl_bits,
+             WN *kid0);
 inline WN *
 WN_CreateCvtl (OPCODE opc, INT16 cvtl_bits, WN *kid0) {
   return WN_CreateCvtl (OPCODE_operator(opc), OPCODE_rtype(opc),
-			OPCODE_desc(opc), cvtl_bits, kid0);
+            OPCODE_desc(opc), cvtl_bits, kid0);
 }
 
 extern WN *WN_Create_Intrinsic(OPERATOR opr,
-			       TYPE_ID rtype,
-			       TYPE_ID desc,
-			       INTRINSIC intrinsic,
-			       INT32 n,
-			       WN *kids[]);
+                   TYPE_ID rtype,
+                   TYPE_ID desc,
+                   INTRINSIC intrinsic,
+                   INT32 n,
+                   WN *kids[]);
 inline WN *
 WN_Create_Intrinsic (OPCODE opc, INTRINSIC intrinsic, INT32 n, WN *kids[]) {
   return WN_Create_Intrinsic (OPCODE_operator(opc), OPCODE_rtype(opc),
@@ -1004,25 +1004,25 @@ WN_Create_Intrinsic (OPCODE opc, INTRINSIC intrinsic, INT32 n, WN *kids[]) {
 }
 
 extern WN *WN_CreateParm(TYPE_ID rtype,
-			 WN *parm_node,
-			 TY_IDX ty, 
-			 UINT32 flag);
+             WN *parm_node,
+             TY_IDX ty, 
+             UINT32 flag);
 
 extern WN *WN_CreateComma(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, WN *block, WN *value);
 inline WN *
 WN_CreateComma (OPCODE opc, WN *block, WN *value) {
   return WN_CreateComma (OPCODE_operator(opc), OPCODE_rtype(opc),
-			 OPCODE_desc(opc), block, value);
+             OPCODE_desc(opc), block, value);
 }
 
 extern WN *WN_CreateRcomma(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, WN *value, WN *block);
 inline WN *
 WN_CreateRcomma (OPCODE opc, WN *value, WN *block) {
   return WN_CreateRcomma (OPCODE_operator(opc), OPCODE_rtype(opc),
-			  OPCODE_desc(opc), value, block);
+              OPCODE_desc(opc), value, block);
 }
 
-extern WN *WN_CreateComment (const char *s);	/* create comment node */
+extern WN *WN_CreateComment (const char *s);    /* create comment node */
 extern STR_IDX WN_GetComment (const WN *wn);  /* get string idx from comment node */
 
 extern WN *WN_CreateAsm_Stmt (INT16 kid_count, char *asm_string);
@@ -1046,160 +1046,160 @@ extern void WN_Mem_Push(void);
 extern void WN_Mem_Pop(void);
 
 extern WN *WN_Ldid(TYPE_ID desc,
-		   WN_OFFSET offset,
-		   ST_IDX sym,
-		   TY_IDX align,
-		   UINT field_id = 0);
+           WN_OFFSET offset,
+           ST_IDX sym,
+           TY_IDX align,
+           UINT field_id = 0);
 
 extern WN *WN_RLdid(TYPE_ID rtype,
-		    TYPE_ID desc,
-		    WN_OFFSET offset,
-		    ST_IDX sym,
-		    TY_IDX align);
+            TYPE_ID desc,
+            WN_OFFSET offset,
+            ST_IDX sym,
+            TY_IDX align);
 
 extern WN *WN_LdidPreg(TYPE_ID desc,
-		       WN_OFFSET pregno);
+               WN_OFFSET pregno);
 
 extern WN *WN_Iload(TYPE_ID desc,
-		    WN_OFFSET offset,
-		    TY_IDX align,
-		    WN *addr,
-		    UINT field_id = 0);
+            WN_OFFSET offset,
+            TY_IDX align,
+            WN *addr,
+            UINT field_id = 0);
 
 extern WN *WN_RIload(TYPE_ID rtype,
-		     TYPE_ID desc,
-		     WN_OFFSET offset,
-		     TY_IDX align,
+             TYPE_ID desc,
+             WN_OFFSET offset,
+             TY_IDX align,
 #ifndef KEY
-		     WN *addr);
+             WN *addr);
 #else
                      WN *addri,
                      UINT field_id = 0);
 #endif
 
 extern WN *WN_IloadLdid(TYPE_ID desc,
-			WN_OFFSET offset,
-			TY_IDX align,
-			ST *sym,
-			WN_OFFSET symOffset);
+            WN_OFFSET offset,
+            TY_IDX align,
+            ST *sym,
+            WN_OFFSET symOffset);
 
 extern WN *WN_Istore(TYPE_ID desc,
-		     WN_OFFSET offset,
-		     TY_IDX align,
-		     WN *addr,
-		     WN *value,
-		     UINT field_id = 0);
+             WN_OFFSET offset,
+             TY_IDX align,
+             WN *addr,
+             WN *value,
+             UINT field_id = 0);
 
 extern WN *WN_Unary(OPERATOR opr,
-		    TYPE_ID rtype,
-		    WN *l);
+            TYPE_ID rtype,
+            WN *l);
 
 extern WN *WN_Binary(OPERATOR opr,
-		     TYPE_ID rtype,
-		     WN *l,
-		     WN *r);
+             TYPE_ID rtype,
+             WN *l,
+             WN *r);
 
 extern WN *WN_Ternary(OPERATOR opr,
-		      TYPE_ID rtype,
-		      WN *kid0,
-		      WN *kid1,
-		      WN *kid2);
+              TYPE_ID rtype,
+              WN *kid0,
+              WN *kid1,
+              WN *kid2);
 
 extern WN *WN_Stid(TYPE_ID desc,
-		   WN_OFFSET offset,
-		   ST *sym,
-		   TY_IDX align,
-		   WN *value,
-		   UINT field_id = 0);
+           WN_OFFSET offset,
+           ST *sym,
+           TY_IDX align,
+           WN *value,
+           UINT field_id = 0);
 
 extern WN *WN_StidIntoPreg(TYPE_ID desc,
-			   WN_OFFSET offset,
-			   ST *sym,
-			   WN *value);
+               WN_OFFSET offset,
+               ST *sym,
+               WN *value);
 
 #define WN_StidPreg(desc,pregno,value) WN_StidIntoPreg((desc),(pregno),MTYPE_To_PREG(desc),(value))
 
 extern WN *WN_Binary(OPERATOR opr,
-		     TYPE_ID rtype,
-		     WN *l,
-		     WN *r);
+             TYPE_ID rtype,
+             WN *l,
+             WN *r);
 
 extern WN *WN_Intconst(TYPE_ID rtype,
-		       INT64 value);
+               INT64 value);
 
 extern WN *WN_RotateIntconst(WN *tree,
-			     INT32 rotate);
+                 INT32 rotate);
 
 extern WN *WN_Inverse(TYPE_ID type,
-		      WN *tree);
+              WN *tree);
 
 extern WN *WN_Floatconst(TYPE_ID type,
-			 double value);
+             double value);
 
 extern WN *WN_UVConst(TYPE_ID type);
 
 extern WN * WN_Zerocon (TYPE_ID ty);
 
 extern WN *WN_Cvt(TYPE_ID desc,
-		  TYPE_ID rtype,
-		  WN *kid0);
+          TYPE_ID rtype,
+          WN *kid0);
 
 extern WN *WN_Trunc(TYPE_ID desc,
-		    TYPE_ID rtype,
-		    WN *kid0);
+            TYPE_ID rtype,
+            WN *kid0);
 
 extern WN *WN_Rnd(TYPE_ID desc,
-		  TYPE_ID rtype,
-		  WN *kid0);
+          TYPE_ID rtype,
+          WN *kid0);
 
 extern WN *WN_Ceil(TYPE_ID desc,
-		   TYPE_ID rtype,
-		   WN *kid0);
+           TYPE_ID rtype,
+           WN *kid0);
 
 extern WN *WN_Floor(TYPE_ID desc,
-		    TYPE_ID rtype,
-		    WN *kid0);
+            TYPE_ID rtype,
+            WN *kid0);
 
 extern WN *WN_Relational(OPERATOR opr,
-			 TYPE_ID desc,
-			 WN *kid0,
-			 WN *kid1);
+             TYPE_ID desc,
+             WN *kid0,
+             WN *kid1);
 
 extern WN *WN_ConstPowerOf2(TYPE_ID rtype,
-			    INT32 n);
+                INT32 n);
 
 extern WN *WN_Lda(TYPE_ID rtype,
-		  WN_OFFSET ldaOffset,
-		  ST *sym,
-		  UINT field_id = 0);
+          WN_OFFSET ldaOffset,
+          ST *sym,
+          UINT field_id = 0);
 
 
 extern WN *WN_LdaString(const char *str,
-			WN_OFFSET ldaOffset,
-			INT32 len);
+            WN_OFFSET ldaOffset,
+            INT32 len);
 
 extern WN *WN_LdaLabel(TYPE_ID rtype,
                        INT32   label_number);
 
 extern WN *WN_Icall(TYPE_ID rtype,
-		    TYPE_ID desc,
-		    INT32 n,
-		    TY_IDX ty);
+            TYPE_ID desc,
+            INT32 n,
+            TY_IDX ty);
 
 extern WN *WN_generic_call(OPERATOR opr,
-			   TYPE_ID rtype,
-			   TYPE_ID desc,
-			   INT32 n,
-			   ST_IDX sym);
+               TYPE_ID rtype,
+               TYPE_ID desc,
+               INT32 n,
+               ST_IDX sym);
 
 extern WN *WN_generic_intrinsic(OPERATOR opr,
-				TYPE_ID rtype,
-				TYPE_ID desc,
-				INT32 n,
-				INTRINSIC intrinsic);
+                TYPE_ID rtype,
+                TYPE_ID desc,
+                INT32 n,
+                INTRINSIC intrinsic);
 
-#define	WN_Call(type,desc,n,s)		WN_generic_call(OPR_CALL,type,desc,n,s)
-#define	WN_Piccall(type,desc,n,s)	WN_generic_call(OPR_PICCALL,type,desc,n,s)
+#define    WN_Call(type,desc,n,s)        WN_generic_call(OPR_CALL,type,desc,n,s)
+#define    WN_Piccall(type,desc,n,s)    WN_generic_call(OPR_PICCALL,type,desc,n,s)
 
 extern WN *WN_CreateLoopInfo (WN *induction, WN *trip, UINT16 trip_est, UINT16 depth, INT32 flags);
 
@@ -1213,25 +1213,25 @@ extern WN *WN_CreateTrap (INT32 value);
 
 extern WN *WN_CreateAssert (INT32 value, WN *condition);
 
-extern void WN_CopyMap( WN	    *dst,
-			WN_MAP	    map,
-			const WN    *src);
+extern void WN_CopyMap( WN        *dst,
+            WN_MAP        map,
+            const WN    *src);
 
 extern WN *WN_Tas(TYPE_ID rtype,
-		  TY_IDX ty,
-		  WN *l);
+          TY_IDX ty,
+          WN *l);
 
 extern WN *WN_Iloadx(TYPE_ID rtype,
-		     TY_IDX ty,
-		     TY_IDX addr_ty,
-		     WN *base,
-		     WN *index);
+             TY_IDX ty,
+             TY_IDX addr_ty,
+             WN *base,
+             WN *index);
 
 extern WN *WN_Istorex(TYPE_ID desc,
-		      TY_IDX ty,
-		      WN *value,
-		      WN *base,
-		      WN *index);
+              TY_IDX ty,
+              WN *value,
+              WN *base,
+              WN *index);
 
 #define WN_Neg(type,l)                  WN_Unary(OPR_NEG,type,l)
 #define WN_Abs(type,l)                  WN_Unary(OPR_ABS,type,l)
@@ -1241,7 +1241,7 @@ extern WN *WN_Istorex(TYPE_ID desc,
 #define WN_Paren(type,l)                WN_Unary(OPR_PAREN,type,l)
 
 #define WN_Select(type,rel,t,f)         WN_Ternary(OPR_SELECT,type,rel,t,f)
-#define WN_Cselect(type,rel,t,f)	WN_Ternary(OPR_CSELECT,type,rel,t,f)
+#define WN_Cselect(type,rel,t,f)    WN_Ternary(OPR_CSELECT,type,rel,t,f)
 #define WN_Add(type,l,r)                WN_Binary(OPR_ADD,type,l,r)
 #define WN_Sub(type,l,r)                WN_Binary(OPR_SUB,type,l,r)
 #define WN_Mpy(type,l,r)                WN_Binary(OPR_MPY,type,l,r)
@@ -1253,12 +1253,12 @@ extern WN *WN_Istorex(TYPE_ID desc,
 
 
 
-#define WN_EQ(type,l,r)			WN_Relational(OPR_EQ,type,l,r)
-#define WN_NE(type,l,r)			WN_Relational(OPR_NE,type,l,r)
-#define WN_LT(type,l,r)			WN_Relational(OPR_LT,type,l,r)
-#define WN_LE(type,l,r)			WN_Relational(OPR_LE,type,l,r)
-#define WN_GT(type,l,r)			WN_Relational(OPR_GT,type,l,r)
-#define WN_GE(type,l,r)			WN_Relational(OPR_GE,type,l,r)
+#define WN_EQ(type,l,r)            WN_Relational(OPR_EQ,type,l,r)
+#define WN_NE(type,l,r)            WN_Relational(OPR_NE,type,l,r)
+#define WN_LT(type,l,r)            WN_Relational(OPR_LT,type,l,r)
+#define WN_LE(type,l,r)            WN_Relational(OPR_LE,type,l,r)
+#define WN_GT(type,l,r)            WN_Relational(OPR_GT,type,l,r)
+#define WN_GE(type,l,r)            WN_Relational(OPR_GE,type,l,r)
 
 #define WN_LNOT(l)                      WN_Unary(OPR_LNOT,Boolean_type,l)
 #define WN_LAND(l,r)                    WN_Binary(OPR_LAND,Boolean_type,l,r)
@@ -1321,31 +1321,31 @@ extern BOOL WN_Rename_Duplicate_Labels (
 
 inline WN *
 WN_Create_Generic (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
-		   mINT16 kid_count, WN *next, WN *prev,
-		   ST *st, INT32 label_number, INT32 num_entries,
-		   TY_IDX ty, TY_IDX load_addr_ty, WN_OFFSET  offset,
-		   INT16 cvtl_bits, INT32 num_dim, WN_ESIZE element_size,
-		   INT64 const_value, UINT32 flag, INTRINSIC intrinsic)
+           mINT16 kid_count, WN *next, WN *prev,
+           ST *st, INT32 label_number, INT32 num_entries,
+           TY_IDX ty, TY_IDX load_addr_ty, WN_OFFSET  offset,
+           INT16 cvtl_bits, INT32 num_dim, WN_ESIZE element_size,
+           INT64 const_value, UINT32 flag, INTRINSIC intrinsic)
 {
     return WN_Create_Generic (opr, rtype, desc,
-			      kid_count, next, prev, ST_st_idx (st),
-			      label_number, num_entries, ty, load_addr_ty,
-			      offset, cvtl_bits, num_dim, element_size,
-			      const_value, flag, intrinsic);
+                  kid_count, next, prev, ST_st_idx (st),
+                  label_number, num_entries, ty, load_addr_ty,
+                  offset, cvtl_bits, num_dim, element_size,
+                  const_value, flag, intrinsic);
 } // WN_Create_Generic
 
 inline WN *
 WN_Create_Generic (OPCODE opcode, mINT16 kid_count, WN *next, WN *prev,
-		   ST *st, INT32 label_number, INT32 num_entries,
-		   TY_IDX ty, TY_IDX load_addr_ty, WN_OFFSET  offset,
-		   INT16 cvtl_bits, INT32 num_dim, WN_ESIZE element_size,
-		   INT64 const_value, UINT32 flag, INTRINSIC intrinsic)
+           ST *st, INT32 label_number, INT32 num_entries,
+           TY_IDX ty, TY_IDX load_addr_ty, WN_OFFSET  offset,
+           INT16 cvtl_bits, INT32 num_dim, WN_ESIZE element_size,
+           INT64 const_value, UINT32 flag, INTRINSIC intrinsic)
 {
     return WN_Create_Generic (OPCODE_operator(opcode), OPCODE_rtype(opcode),
-			      OPCODE_desc(opcode), kid_count, next, prev, st,
-			      label_number, num_entries, ty, load_addr_ty,
-			      offset, cvtl_bits, num_dim, element_size,
-			      const_value, flag, intrinsic);
+                  OPCODE_desc(opcode), kid_count, next, prev, st,
+                  label_number, num_entries, ty, load_addr_ty,
+                  offset, cvtl_bits, num_dim, element_size,
+                  const_value, flag, intrinsic);
 } // WN_Create_Generic
 
 inline WN *
@@ -1401,18 +1401,18 @@ WN_CreateXgoto (INT32 num_entries, WN *value, WN *block, ST *st)
 
 inline WN *
 WN_CreateStid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
-	       WN_OFFSET offset, ST_IDX st, TY_IDX ty, WN *value, 
-	       UINT field_id = 0)
+           WN_OFFSET offset, ST_IDX st, TY_IDX ty, WN *value, 
+           UINT field_id = 0)
 {
     return WN_CreateStid (opr, rtype, desc, offset, &St_Table[st], ty, value, field_id);
 }
 
 inline WN *
 WN_CreateStid (OPCODE opc, WN_OFFSET offset, ST_IDX st, TY_IDX ty, WN *value,
-	       UINT field_id = 0)
+           UINT field_id = 0)
 {
     return WN_CreateStid (OPCODE_operator(opc), OPCODE_rtype(opc),
-			  OPCODE_desc(opc), offset, st, ty, value, field_id);
+              OPCODE_desc(opc), offset, st, ty, value, field_id);
 }
 
 inline WN *
@@ -1423,13 +1423,13 @@ WN_CreatePragma (WN_PRAGMA_ID pragma_name, ST *st, INT32 arg1, INT32 arg2)
 
 inline WN *
 WN_CreatePragma (WN_PRAGMA_ID  pragma_name,
-		 ST           *st,
-		 INT32         arg1,
-		 PREG_NUM      asm_copyout_preg,
-		 UINT32        asm_opnd_num)
+         ST           *st,
+         INT32         arg1,
+         PREG_NUM      asm_copyout_preg,
+         UINT32        asm_opnd_num)
 {
     return WN_CreatePragma (pragma_name, ST_st_idx (st),
-			    arg1, asm_copyout_preg, asm_opnd_num);
+                arg1, asm_copyout_preg, asm_opnd_num);
 }
 
 inline WN *
@@ -1440,7 +1440,7 @@ WN_CreateXpragma (WN_PRAGMA_ID pragma_name, ST *st, INT16 kid_count)
 
 inline WN *
 WN_CreateLdid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
-	       WN_OFFSET offset, ST *st, TY_IDX ty, UINT field_id = 0)
+           WN_OFFSET offset, ST *st, TY_IDX ty, UINT field_id = 0)
 {
     return WN_CreateLdid (opr, rtype, desc, offset, ST_st_idx (st), ty, field_id);
 }
@@ -1449,12 +1449,12 @@ inline WN *
 WN_CreateLdid (OPCODE opc, WN_OFFSET offset, ST *st, TY_IDX ty, UINT field_id = 0)
 {
     return WN_CreateLdid (OPCODE_operator(opc), OPCODE_rtype(opc),
-			  OPCODE_desc(opc), offset, st, ty, field_id);
+              OPCODE_desc(opc), offset, st, ty, field_id);
 }
 
 inline WN *
 WN_CreateLda (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
-	      WN_OFFSET offset, TY_IDX ty, ST *st, UINT field_id = 0)
+          WN_OFFSET offset, TY_IDX ty, ST *st, UINT field_id = 0)
 {
     return WN_CreateLda(opr, rtype, desc, offset, ty, ST_st_idx (st), field_id);
 }
@@ -1463,7 +1463,7 @@ inline WN *
 WN_CreateLda (OPCODE opc, WN_OFFSET offset, TY_IDX ty, ST *st)
 {
     return WN_CreateLda (OPCODE_operator(opc), OPCODE_rtype(opc),
-			 OPCODE_desc(opc), offset, ty, st);
+             OPCODE_desc(opc), offset, ty, st);
 }
 
 inline WN *
@@ -1482,7 +1482,7 @@ inline WN *
 WN_CreateConst (OPCODE opc, ST *st )
 {
     return WN_CreateConst (OPCODE_operator(opc), OPCODE_rtype(opc),
-			   OPCODE_desc(opc), st);
+               OPCODE_desc(opc), st);
 }
 
 inline WN *

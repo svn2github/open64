@@ -88,7 +88,7 @@
 ***
 ***         Allocate an array of size max(arr_size, MIN_ARRAY_SIZE)
 ***
-***	void	Force_Alloc_array(mUINT32 arr_size)
+***    void    Force_Alloc_array(mUINT32 arr_size)
 ***
 ***         Allocate an array of size max(arr_size, 1)
 ***
@@ -167,7 +167,7 @@
 
 
 #ifndef cxx_template_INCLUDED
-#define cxx_template_INCLUDED	  "cxx_template.h"
+#define cxx_template_INCLUDED      "cxx_template.h"
 #ifdef _KEEP_RCS_ID
 static char *cxx_templatercs_id = cxx_template_INCLUDED"$Revision: 1.2 $";
 #endif /* _KEEP_RCS_ID */
@@ -260,40 +260,40 @@ public:
 ***
 ***     void    Push(const T& val)
 ***
-***     	Push a 'val' to the top of the stack.
+***         Push a 'val' to the top of the stack.
 ***
 ***     void    Settop(const T& val)
 ***
-***     	Set 'val' as the top of the stack (no push and pop involved)
-***     	if the stack has allocated space (size >= 1).
+***         Set 'val' as the top of the stack (no push and pop involved)
+***         if the stack has allocated space (size >= 1).
 ***
 ***     T       Pop(void)
 ***
-***     	Pop the stack.
+***         Pop the stack.
 ***
 ***     T&      Top_nth(const INT32 n) const
 ***
-***     	Get the top 'n'-th element of the stack. Stack top is Nth(0).
+***         Get the top 'n'-th element of the stack. Stack top is Nth(0).
 ***
 ***     T&      Bottom_nth(const INT32 n) const
 ***
-***     	Get the bottom 'n'-th element of the stack. Stack bottom is Nth(0).
+***         Get the bottom 'n'-th element of the stack. Stack bottom is Nth(0).
 ***
 ***     T&      Top(void) const
 ***
-***     	Same as Nth(0).
+***         Same as Nth(0).
 ***
 ***     void    Clear(void)
 ***
-***     	Wipe out the entire stack.
+***         Wipe out the entire stack.
 ***
 ***     void    Alloc(const INT32 n)
 ***
-***     	Allocate space for 'n' element in the stack.
+***         Allocate space for 'n' element in the stack.
 ***
 ***     mINT32   Elements() const
 ***
-***		How many elements are on the stack.
+***        How many elements are on the stack.
 ***
 **/
 
@@ -306,8 +306,8 @@ private:
           STACK& operator = (const STACK&);
 
 public:
-          STACK(MEM_POOL *pool):_stack(pool)	{}
-	  ~STACK(void)		                {}
+          STACK(MEM_POOL *pool):_stack(pool)    {}
+      ~STACK(void)                        {}
   void    Push(const T& val)                    { _stack[_stack.Newidx()]=val;}
   void    Settop(const T& val);
   INT32   Topidx(void)                          { return _stack.Lastidx(); }
@@ -327,7 +327,7 @@ public:
   void    Clear(void)                           { _stack.Resetidx(); }
   void    Free()                                { _stack.Free_array(); }
   void    Alloc(const INT32 n)                  { _stack.Alloc_array(n); }
-  mINT32  Elements() const			{ return(_stack.Lastidx() +1);}
+  mINT32  Elements() const            { return(_stack.Lastidx() +1);}
 };
 
 
@@ -404,9 +404,9 @@ void
 DYN_ARRAY<T>::Realloc_array(mUINT32 new_size)
 {
   _array = (T*)MEM_POOL_Realloc(_mpool,
-			       _array,
-			       sizeof(T) * _size,
-			       sizeof(T) * new_size);
+                   _array,
+                   sizeof(T) * _size,
+                   sizeof(T) * new_size);
   if ( _array == NULL ) ErrMsg ( EC_No_Mem, "DYN_ARRAY::Realloc_array" );
   _size = new_size;
 }
@@ -447,9 +447,9 @@ DYN_ARRAY<T>::Newidx()
   if (_lastidx >= _size) {
     // overflow the allocated array, resize the array
     if (_array == NULL) {
-	Alloc_array (MIN_ARRAY_SIZE); // Alloc_array guarantees non-zero size
+    Alloc_array (MIN_ARRAY_SIZE); // Alloc_array guarantees non-zero size
     } else {
-	Realloc_array (_size * 2);
+    Realloc_array (_size * 2);
     }
   }
   return _lastidx;
@@ -540,9 +540,9 @@ void Remove_if(CONTAINER& container, PREDICATE predicate)
     next = curr->Next();
     if (predicate(curr)) {
       if (prev == NULL)
-	container.Set_Head(next);
+    container.Set_Head(next);
       else
-	prev->Set_Next(next);
+    prev->Set_Next(next);
     } else {
       prev = curr;
     }

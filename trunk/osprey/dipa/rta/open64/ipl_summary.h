@@ -70,12 +70,12 @@
 
 #if 0 // SC
 #ifndef tracing_INCLUDED
-#include "tracing.h"			// for TFile
+#include "tracing.h"            // for TFile
 #endif // tracing_INCLUDED
 #endif
 
 #ifndef xstats_INCLUDED
-#include "xstats.h"			// for bb counts
+#include "xstats.h"            // for bb counts
 #endif // xstats_INCLUDED
 
 #ifndef cxx_template_INCLUDED
@@ -98,11 +98,11 @@
 
 // Tracing flags
 
-#define TT_IPL_IPA	0x01
+#define TT_IPL_IPA    0x01
 #define TT_IPL_MODREF   0x02
-#define TT_IPL_VERBOSE	0x04 
+#define TT_IPL_VERBOSE    0x04 
 #define TT_IPL_SECTION  0x08 
-#define TT_IPL_EXCOST	0x10 
+#define TT_IPL_EXCOST    0x10 
 #define TT_IPL_SIMPLIFY 0x20
 #define TT_IPL_SUMMARY  0x40
 
@@ -206,7 +206,7 @@ public:
   void Set_common_offset(Elf64_Word s) { _common_offset = s;};
   void Set_common_shape_offset(Elf64_Word s) { _common_shape_offset = s;};
   void Set_global_stid_offset(Elf64_Word s) { _global_stid_offset = s;};
-  void Set_struct_access_offset(Elf64_Word s) { _struct_access_offset =	 s;};
+  void Set_struct_access_offset(Elf64_Word s) { _struct_access_offset =     s;};
 #ifdef KEY
   void Set_ty_info_offset(Elf64_Word s) { _ty_info_offset = s;};
 #endif
@@ -308,20 +308,20 @@ s;};
   void Set_loopinfo_entry_size(mINT32 s)
     { _loopinfo_entry_size = s; };
 
-  Elf64_Word Get_symbol_offset() const	{ return _symbol_offset;};
-  Elf64_Word Get_proc_offset() const	{ return _proc_offset;};
+  Elf64_Word Get_symbol_offset() const    { return _symbol_offset;};
+  Elf64_Word Get_proc_offset() const    { return _proc_offset;};
   Elf64_Word Get_feedback_offset() const{ return _feedback_offset;};
   Elf64_Word Get_callsite_offset() const{ return _callsite_offset;};
-  Elf64_Word Get_stmt_offset() const	{ return _stmt_offset;};
+  Elf64_Word Get_stmt_offset() const    { return _stmt_offset;};
   Elf64_Word Get_ctrl_dep_offset() const{ return _ctrl_dep_offset;};
-  Elf64_Word Get_formal_offset() const	{ return _formal_offset;};
-  Elf64_Word Get_actual_offset() const	{ return _actual_offset;};
-  Elf64_Word Get_value_offset() const	{ return _value_offset;};
-  Elf64_Word Get_expr_offset() const	{ return _expr_offset;};
-  Elf64_Word Get_phi_offset() const	{ return _phi_offset;};
-  Elf64_Word Get_chi_offset() const	{ return _chi_offset;};
-  Elf64_Word Get_global_offset() const	{ return _global_offset;};
-  Elf64_Word Get_common_offset() const	{ return _common_offset;};
+  Elf64_Word Get_formal_offset() const    { return _formal_offset;};
+  Elf64_Word Get_actual_offset() const    { return _actual_offset;};
+  Elf64_Word Get_value_offset() const    { return _value_offset;};
+  Elf64_Word Get_expr_offset() const    { return _expr_offset;};
+  Elf64_Word Get_phi_offset() const    { return _phi_offset;};
+  Elf64_Word Get_chi_offset() const    { return _chi_offset;};
+  Elf64_Word Get_global_offset() const    { return _global_offset;};
+  Elf64_Word Get_common_offset() const    { return _common_offset;};
   Elf64_Word Get_common_shape_offset() const { return _common_shape_offset;};
   Elf64_Word Get_global_stid_offset() const { return _global_stid_offset;};
   Elf64_Word Get_struct_access_offset() const { return _struct_access_offset;};
@@ -350,25 +350,25 @@ s;};
   Elf64_Word Get_scalar_offset() const
       { return _scalar_node_offset; };
 
-  mINT32 Get_version_number() const	{ return _version_number;};
+  mINT32 Get_version_number() const    { return _version_number;};
   mINT32 Get_minor_version_number() const { return _minor_version_number;};
-  mINT32 Get_symbol_size() const	{ return _symbol_size;};
-  mINT32 Get_proc_size() const		{ return _proc_size;};
-  mINT32 Get_feedback_size() const	{ return _feedback_size;};
-  mINT32 Get_callsite_size() const	{ return _callsite_size;};
-  mINT32 Get_stmt_size() const		{ return _stmt_size;};
-  mINT32 Get_ctrl_dep_size() const	{ return _ctrl_dep_size;};
-  mINT32 Get_formal_size() const	{ return _formal_size;};
-  mINT32 Get_actual_size() const	{ return _actual_size;};
-  mINT32 Get_value_size() const		{ return _value_size;};
-  mINT32 Get_expr_size() const		{ return _expr_size;};
-  mINT32 Get_phi_size() const		{ return _phi_size;};
-  mINT32 Get_chi_size() const		{ return _chi_size;};
-  mINT32 Get_global_size() const	{ return _global_size;};
-  mINT32 Get_common_size() const	{ return _common_size;};
-  mINT32 Get_common_shape_size() const	{ return _common_shape_size;};
-  mINT32 Get_global_stid_size() const	{ return _global_stid_size;};
-  mINT32 Get_struct_access_size() const	{ return _struct_access_size;};
+  mINT32 Get_symbol_size() const    { return _symbol_size;};
+  mINT32 Get_proc_size() const        { return _proc_size;};
+  mINT32 Get_feedback_size() const    { return _feedback_size;};
+  mINT32 Get_callsite_size() const    { return _callsite_size;};
+  mINT32 Get_stmt_size() const        { return _stmt_size;};
+  mINT32 Get_ctrl_dep_size() const    { return _ctrl_dep_size;};
+  mINT32 Get_formal_size() const    { return _formal_size;};
+  mINT32 Get_actual_size() const    { return _actual_size;};
+  mINT32 Get_value_size() const        { return _value_size;};
+  mINT32 Get_expr_size() const        { return _expr_size;};
+  mINT32 Get_phi_size() const        { return _phi_size;};
+  mINT32 Get_chi_size() const        { return _chi_size;};
+  mINT32 Get_global_size() const    { return _global_size;};
+  mINT32 Get_common_size() const    { return _common_size;};
+  mINT32 Get_common_shape_size() const    { return _common_shape_size;};
+  mINT32 Get_global_stid_size() const    { return _global_stid_size;};
+  mINT32 Get_struct_access_size() const    { return _struct_access_size;};
 #ifdef KEY
   mINT32 Get_ty_info_size() const          { return _ty_info_size;};
 #endif
@@ -478,55 +478,55 @@ private:
     mUINT16 _common_count;
 
 // bit fields for _state 
-#define PROC_MAY_INLINE			0x00000001
-#define PROC_MUST_INLINE		0x00000002
-#define PROC_NO_INLINE		        0x00000004
-#define PROC_VARARGS		        0x00000008
-#define PROC_ALT_ENTRY		        0x00000010
-#define PROC_HAS_ALT_ENTRY	        0x00000020
+#define PROC_MAY_INLINE            0x00000001
+#define PROC_MUST_INLINE        0x00000002
+#define PROC_NO_INLINE                0x00000004
+#define PROC_VARARGS                0x00000008
+#define PROC_ALT_ENTRY                0x00000010
+#define PROC_HAS_ALT_ENTRY            0x00000020
 #define PROC_HAS_PSTATIC                0x00000040
 #define PROC_NO_DELETE                  0x00000080
 #define PROC_BLOCK_DATA                 0x00000100
 #define PROC_DMOD_DREF                  0x00000200
-#define PROC_EXC_SCOPE 	                0x00000400
+#define PROC_EXC_SCOPE                     0x00000400
 #define PROC_HAS_UNSTRUCTURED_CPROP     0x00000800
-#define PROC_HAS_ADDR_TAKEN_RESET	0x00001000
-#define PROC_HAS_PU_FREQ		0x00002000
+#define PROC_HAS_ADDR_TAKEN_RESET    0x00001000
+#define PROC_HAS_PU_FREQ        0x00002000
 #define PROC_HAS_FORMAL_PRAGMA          0x00004000
 #define PROC_HAS_PARALLEL_PRAGMA        0x00008000
 #define PROC_HAS_PARALLEL_REGION_PRAGMA 0x00010000
-#define PROC_HAS_FSTATIC		0x00020000
-#define PROC_USE_LOWERED_RETURN_PREG	0x00040000 // should be removed by 7.3
+#define PROC_HAS_FSTATIC        0x00020000
+#define PROC_USE_LOWERED_RETURN_PREG    0x00040000 // should be removed by 7.3
 #ifdef KEY
-#define PROC_HAS_SIDE_EFFECT		0x00080000
+#define PROC_HAS_SIDE_EFFECT        0x00080000
 #else
-// obsolete				0x00080000
+// obsolete                0x00080000
 #endif
-#define PROC_HAS_UNKNOWN_CALLS		0x00100000 // this PU has unknown calls
+#define PROC_HAS_UNKNOWN_CALLS        0x00100000 // this PU has unknown calls
 #define PROC_HAS_INCOMPLETE_ARRAY_INFO  0x00200000 
-#define PROC_HAS_MP_NEEDS_LNO		0x00400000 // this PU's local symtab has 
-						   // bit SYMTAB_mp_needs_lno set
-#define PROC_HAS_EXC_TRY_REGION		0x00800000 // does it have a try region?
+#define PROC_HAS_MP_NEEDS_LNO        0x00400000 // this PU's local symtab has 
+                           // bit SYMTAB_mp_needs_lno set
+#define PROC_HAS_EXC_TRY_REGION        0x00800000 // does it have a try region?
 #ifdef KEY
-#define PROC_HAS_PRAGMA_SIDE_EFFECT	0x01000000 // this PU's contains pragma 
+#define PROC_HAS_PRAGMA_SIDE_EFFECT    0x01000000 // this PU's contains pragma 
 #else
-#define PROC_HAS_SIDE_EFFECT		0x01000000 // this PU's contains pragma 
+#define PROC_HAS_SIDE_EFFECT        0x01000000 // this PU's contains pragma 
 #endif
                                                    // with side effect
-#define PROC_HAS_MESSY_REGIONS		0x02000000 // messy PROJECTED_REGIONs
-#define PROC_HAS_EARLY_RETURNS		0x04000000 // has RETURN stmts not
-						   // at the end of the PU
-#define PROC_HAS_VAR_DIM_ARRAY		0x08000000 // has variable-dimensioned
-						   // array as formals
+#define PROC_HAS_MESSY_REGIONS        0x02000000 // messy PROJECTED_REGIONs
+#define PROC_HAS_EARLY_RETURNS        0x04000000 // has RETURN stmts not
+                           // at the end of the PU
+#define PROC_HAS_VAR_DIM_ARRAY        0x08000000 // has variable-dimensioned
+                           // array as formals
 
 #define PROC_HAS_NOINLINE_PARALLEL_PRAGMA 0x10000000 // not inline PUs with 
-						   // WN_PRAGMA_PARALLEL_BEGIN
-						   // WN_PRAGMA_PARALLEL_DO
-						   // WN_PRAGMA_DOACROSS9
-						   // WN_PRAGMA_PARALLEL_SECTIONS
-#define PROC_HAS_PDO_PRAGMA 		0x20000000 // TY_is_non_pod set for
-						   // LOCAL pragma's st 
-#define PROC_NEVER_INVOKED 		0x40000000 // INLINING_TUNING
+                           // WN_PRAGMA_PARALLEL_BEGIN
+                           // WN_PRAGMA_PARALLEL_DO
+                           // WN_PRAGMA_DOACROSS9
+                           // WN_PRAGMA_PARALLEL_SECTIONS
+#define PROC_HAS_PDO_PRAGMA         0x20000000 // TY_is_non_pod set for
+                           // LOCAL pragma's st 
+#define PROC_NEVER_INVOKED         0x40000000 // INLINING_TUNING
     LANGUAGE _l;
 
 public:
@@ -534,149 +534,149 @@ public:
     /* access functions */
 
     void Set_size (UINT16 bb, UINT16 stmt, UINT16 call) {
-	_bb_count = bb;
-	_stmt_count = stmt;
-	_call_count = call;
+    _bb_count = bb;
+    _stmt_count = stmt;
+    _call_count = call;
     }
 
-    UINT16 Get_bb_count () const		{ return _bb_count; }
-    UINT16 Get_stmt_count () const		{ return _stmt_count; }
-    UINT16 Get_call_count () const		{ return _call_count; }
+    UINT16 Get_bb_count () const        { return _bb_count; }
+    UINT16 Get_stmt_count () const        { return _stmt_count; }
+    UINT16 Get_call_count () const        { return _call_count; }
 
-    void Set_altentry_count (mUINT16 a)		{ _alt_entry_count = a;}
-    mUINT16 Get_altentry_count () const		{ return _alt_entry_count;}
+    void Set_altentry_count (mUINT16 a)        { _alt_entry_count = a;}
+    mUINT16 Get_altentry_count () const        { return _alt_entry_count;}
 
 
-    void Set_symbol_index (INT32 s)		{ _symbol_index = s; }
-    INT32 Get_symbol_index () const		{ return _symbol_index; }
+    void Set_symbol_index (INT32 s)        { _symbol_index = s; }
+    INT32 Get_symbol_index () const        { return _symbol_index; }
 
 #ifdef KEY
-    void Set_bb_count (UINT16 bbs)		{ _bb_count = bbs; }
-    void Set_stmt_count (UINT16 stmts)		{ _stmt_count = stmts; }
-    void Set_call_count (UINT16 calls)		{ _call_count = calls; }
+    void Set_bb_count (UINT16 bbs)        { _bb_count = bbs; }
+    void Set_stmt_count (UINT16 stmts)        { _stmt_count = stmts; }
+    void Set_call_count (UINT16 calls)        { _call_count = calls; }
 
 // Use proper types of mINT32, otherwise the value gets truncated while
 // assigning.
-    void Set_callsite_index (mINT32 c)		{ _callsite_index = c;}
-    mINT32 Get_callsite_index () const		{ return _callsite_index;}
+    void Set_callsite_index (mINT32 c)        { _callsite_index = c;}
+    mINT32 Get_callsite_index () const        { return _callsite_index;}
 
-    void Set_ctrl_dep_index (mINT32 c)		{ _ctrl_dep_index = c;}
-    mINT32 Get_ctrl_dep_index () const		{ return _ctrl_dep_index;}
+    void Set_ctrl_dep_index (mINT32 c)        { _ctrl_dep_index = c;}
+    mINT32 Get_ctrl_dep_index () const        { return _ctrl_dep_index;}
 
-    void Set_formal_index (mINT32 f)		{ _formal_index = f;}
-    mINT32 Get_formal_index () const		{ return _formal_index;}
+    void Set_formal_index (mINT32 f)        { _formal_index = f;}
+    mINT32 Get_formal_index () const        { return _formal_index;}
 #else
-    void Set_callsite_index (mUINT16 c)		{ _callsite_index = c;}
-    mUINT16 Get_callsite_index () const		{ return _callsite_index;}
+    void Set_callsite_index (mUINT16 c)        { _callsite_index = c;}
+    mUINT16 Get_callsite_index () const        { return _callsite_index;}
 
-    void Set_ctrl_dep_index (mUINT16 c)		{ _ctrl_dep_index = c;}
-    mUINT16 Get_ctrl_dep_index () const		{ return _ctrl_dep_index;}
+    void Set_ctrl_dep_index (mUINT16 c)        { _ctrl_dep_index = c;}
+    mUINT16 Get_ctrl_dep_index () const        { return _ctrl_dep_index;}
 
-    void Set_formal_index (mUINT16 f)		{ _formal_index = f;}
-    mUINT16 Get_formal_index () const		{ return _formal_index;}
+    void Set_formal_index (mUINT16 f)        { _formal_index = f;}
+    mUINT16 Get_formal_index () const        { return _formal_index;}
 #endif
     
-    void Set_global_index (INT g)		{ _global_index = g;}
-    INT Get_global_index() const		{ return _global_index;}
+    void Set_global_index (INT g)        { _global_index = g;}
+    INT Get_global_index() const        { return _global_index;}
 
-    void Set_common_index (INT32 i)		{ _common_index = i;}
-    INT32 Get_common_index () const		{ return _common_index; }
+    void Set_common_index (INT32 i)        { _common_index = i;}
+    INT32 Get_common_index () const        { return _common_index; }
 
-    void Set_feedback_index (INT32 i)		{ _feedback_index = i; }
-    INT32 Get_feedback_index () const		{ return _feedback_index; }
+    void Set_feedback_index (INT32 i)        { _feedback_index = i; }
+    INT32 Get_feedback_index () const        { return _feedback_index; }
 
-    void Set_array_section_index (INT32 i)	{ _array_section_index = i;}
-    INT32 Get_array_section_index () const	{return _array_section_index; }
+    void Set_array_section_index (INT32 i)    { _array_section_index = i;}
+    INT32 Get_array_section_index () const    {return _array_section_index; }
 
-    void Set_callsite_count (mUINT16 c)		{ _callsite_count = c;}
-    UINT16 Get_callsite_count () const		{ return _callsite_count;}
+    void Set_callsite_count (mUINT16 c)        { _callsite_count = c;}
+    UINT16 Get_callsite_count () const        { return _callsite_count;}
 
-    void Set_ctrl_dep_count (mUINT16 c)		{ _ctrl_dep_count = c;}
-    UINT16 Get_ctrl_dep_count () const		{ return _ctrl_dep_count;}
+    void Set_ctrl_dep_count (mUINT16 c)        { _ctrl_dep_count = c;}
+    UINT16 Get_ctrl_dep_count () const        { return _ctrl_dep_count;}
 
-    void Set_formal_count (mUINT16 cnt)		{ _formal_count = cnt;}
-    mUINT16 Get_formal_count () const		{ return _formal_count;}
+    void Set_formal_count (mUINT16 cnt)        { _formal_count = cnt;}
+    mUINT16 Get_formal_count () const        { return _formal_count;}
 
-    void Set_global_count (INT g)		{ _global_count  = g;}
-    INT Get_global_count () const		{ return  _global_count;}
+    void Set_global_count (INT g)        { _global_count  = g;}
+    INT Get_global_count () const        { return  _global_count;}
 
-    void Set_common_count (INT32 i)		{ _common_count = i;}
-    INT32 Get_common_count () const		{ return _common_count;}
+    void Set_common_count (INT32 i)        { _common_count = i;}
+    INT32 Get_common_count () const        { return _common_count;}
 
-    void Set_array_section_count (INT32 i)	{ _array_section_count = i;}
-    INT32 Get_array_section_count () const	{ return
-						    _array_section_count;}
+    void Set_array_section_count (INT32 i)    { _array_section_count = i;}
+    INT32 Get_array_section_count () const    { return
+                            _array_section_count;}
 
-    INT32 Get_ex_value_index() const		{ return _ex_value_index;}
-    INT32 Get_ex_expr_index() const	 	{ return _ex_expr_index;}
-    void Set_ex_value_index(INT32 i) 		{ _ex_value_index = i;}
-    void Set_ex_expr_index(INT32 i) 		{ _ex_expr_index = i;}
+    INT32 Get_ex_value_index() const        { return _ex_value_index;}
+    INT32 Get_ex_expr_index() const         { return _ex_expr_index;}
+    void Set_ex_value_index(INT32 i)         { _ex_value_index = i;}
+    void Set_ex_expr_index(INT32 i)         { _ex_expr_index = i;}
 
-    INT32 Get_ex_value_count() const		{ return _ex_value_count;}
-    INT32 Get_ex_expr_count() const	 	{ return _ex_expr_count;}
-    void Set_ex_value_count(INT32 i) 		{ _ex_value_count = i;}
-    void Set_ex_expr_count(INT32 i) 		{ _ex_expr_count = i;}
+    INT32 Get_ex_value_count() const        { return _ex_value_count;}
+    INT32 Get_ex_expr_count() const         { return _ex_expr_count;}
+    void Set_ex_value_count(INT32 i)         { _ex_value_count = i;}
+    void Set_ex_expr_count(INT32 i)         { _ex_expr_count = i;}
 
-    UINT32 Get_state () const		{ return _state; }
+    UINT32 Get_state () const        { return _state; }
 
     void Set_has_unstructured_cflow()   { _state |=
-					    PROC_HAS_UNSTRUCTURED_CPROP; }
+                        PROC_HAS_UNSTRUCTURED_CPROP; }
     BOOL Has_unstructured_cflow() const { return (_state & 
-					    PROC_HAS_UNSTRUCTURED_CPROP); }
+                        PROC_HAS_UNSTRUCTURED_CPROP); }
 
-    void Set_may_inline ()		{ _state |= PROC_MAY_INLINE; }
-    BOOL Is_may_inline () const		{ return (_state & PROC_MAY_INLINE); }
+    void Set_may_inline ()        { _state |= PROC_MAY_INLINE; }
+    BOOL Is_may_inline () const        { return (_state & PROC_MAY_INLINE); }
 
-    void Set_must_inline ()		{ _state |= PROC_MUST_INLINE; }
-    BOOL Is_must_inline () const	{ return (_state & PROC_MUST_INLINE); }
+    void Set_must_inline ()        { _state |= PROC_MUST_INLINE; }
+    BOOL Is_must_inline () const    { return (_state & PROC_MUST_INLINE); }
 
-    void Set_no_inline ()		{ _state |= PROC_NO_INLINE;}
-    BOOL Is_no_inline() const		{ return (_state & PROC_NO_INLINE);}
+    void Set_no_inline ()        { _state |= PROC_NO_INLINE;}
+    BOOL Is_no_inline() const        { return (_state & PROC_NO_INLINE);}
 
-    void Set_is_varargs()		{ _state |= PROC_VARARGS;}
-    BOOL Is_varargs() const		{ return (_state & PROC_VARARGS);}
+    void Set_is_varargs()        { _state |= PROC_VARARGS;}
+    BOOL Is_varargs() const        { return (_state & PROC_VARARGS);}
 
-    void Set_alt_entry()		{ _state |= PROC_ALT_ENTRY;}
-    BOOL Is_alt_entry() const		{ return (_state & PROC_ALT_ENTRY);}
+    void Set_alt_entry()        { _state |= PROC_ALT_ENTRY;}
+    BOOL Is_alt_entry() const        { return (_state & PROC_ALT_ENTRY);}
 
-    void Set_has_alt_entry()		{ _state |= PROC_HAS_ALT_ENTRY;}
-    BOOL Has_alt_entry() const		{ return (_state & PROC_HAS_ALT_ENTRY);}
+    void Set_has_alt_entry()        { _state |= PROC_HAS_ALT_ENTRY;}
+    BOOL Has_alt_entry() const        { return (_state & PROC_HAS_ALT_ENTRY);}
 
-    void Set_has_pstatic()		{ _state |= PROC_HAS_PSTATIC;}
-    void Reset_has_pstatics()		{ _state &= ~PROC_HAS_PSTATIC; }
-    BOOL Has_pstatic() const		{ return (_state & PROC_HAS_PSTATIC);}
+    void Set_has_pstatic()        { _state |= PROC_HAS_PSTATIC;}
+    void Reset_has_pstatics()        { _state &= ~PROC_HAS_PSTATIC; }
+    BOOL Has_pstatic() const        { return (_state & PROC_HAS_PSTATIC);}
 
-    void Set_no_delete()		{ _state |= PROC_NO_DELETE;}
-    BOOL Is_no_delete() const		{ return (_state & PROC_NO_DELETE);}
+    void Set_no_delete()        { _state |= PROC_NO_DELETE;}
+    BOOL Is_no_delete() const        { return (_state & PROC_NO_DELETE);}
     
-    void Set_block_data()		{ _state |= PROC_BLOCK_DATA;}
-    BOOL Is_block_data() const		{ return (_state & PROC_BLOCK_DATA);}
-			   
-    void Set_direct_mod_ref()		{ _state |= PROC_DMOD_DREF; }
-    BOOL Is_direct_mod_ref() const	{ return _state & PROC_DMOD_DREF;}
+    void Set_block_data()        { _state |= PROC_BLOCK_DATA;}
+    BOOL Is_block_data() const        { return (_state & PROC_BLOCK_DATA);}
+               
+    void Set_direct_mod_ref()        { _state |= PROC_DMOD_DREF; }
+    BOOL Is_direct_mod_ref() const    { return _state & PROC_DMOD_DREF;}
 
-    void Set_exc_inline()		{ _state |= PROC_EXC_SCOPE;}
-    BOOL Is_exc_inline() const		{ return _state & PROC_EXC_SCOPE;}
+    void Set_exc_inline()        { _state |= PROC_EXC_SCOPE;}
+    BOOL Is_exc_inline() const        { return _state & PROC_EXC_SCOPE;}
 
-    void Set_has_addr_taken_reset()	{ _state |= PROC_HAS_ADDR_TAKEN_RESET; }
-    BOOL Has_addr_taken_reset() const	{ return (_state & PROC_HAS_ADDR_TAKEN_RESET); }
+    void Set_has_addr_taken_reset()    { _state |= PROC_HAS_ADDR_TAKEN_RESET; }
+    BOOL Has_addr_taken_reset() const    { return (_state & PROC_HAS_ADDR_TAKEN_RESET); }
 
-    void Set_has_PU_freq ()		{ _state |= PROC_HAS_PU_FREQ; }
-    BOOL Has_PU_freq () const		{ return _state & PROC_HAS_PU_FREQ; }
-    void Clear_has_PU_freq () 	 	{ _state &= ~PROC_HAS_PU_FREQ; }
+    void Set_has_PU_freq ()        { _state |= PROC_HAS_PU_FREQ; }
+    BOOL Has_PU_freq () const        { return _state & PROC_HAS_PU_FREQ; }
+    void Clear_has_PU_freq ()          { _state &= ~PROC_HAS_PU_FREQ; }
 
  
  // INLINING_TUNING^
-    void Set_Never_Invoked ()		{ _state |= PROC_NEVER_INVOKED; }
-    BOOL Is_Never_Invoked() const		{ return _state & PROC_NEVER_INVOKED; }
-    void Clear_Never_Invoked () 	 	{ _state &= ~PROC_HAS_PU_FREQ; }
+    void Set_Never_Invoked ()        { _state |= PROC_NEVER_INVOKED; }
+    BOOL Is_Never_Invoked() const        { return _state & PROC_NEVER_INVOKED; }
+    void Clear_Never_Invoked ()          { _state &= ~PROC_HAS_PU_FREQ; }
  // INLINING_TUNING$
-	
-    void Set_has_formal_pragma()	{ _state |= PROC_HAS_FORMAL_PRAGMA;}
-    BOOL Has_formal_pragma() const	{ return _state & PROC_HAS_FORMAL_PRAGMA;}
+    
+    void Set_has_formal_pragma()    { _state |= PROC_HAS_FORMAL_PRAGMA;}
+    BOOL Has_formal_pragma() const    { return _state & PROC_HAS_FORMAL_PRAGMA;}
 
-    void Set_has_parallel_pragma()	{ _state |= PROC_HAS_PARALLEL_PRAGMA;}
-    BOOL Has_parallel_pragma() const	{ return _state & PROC_HAS_PARALLEL_PRAGMA;}
+    void Set_has_parallel_pragma()    { _state |= PROC_HAS_PARALLEL_PRAGMA;}
+    BOOL Has_parallel_pragma() const    { return _state & PROC_HAS_PARALLEL_PRAGMA;}
 
     void Set_has_parallel_region_pragma() { _state |= PROC_HAS_PARALLEL_REGION_PRAGMA;}
     BOOL Has_parallel_region_pragma() const { return _state & PROC_HAS_PARALLEL_REGION_PRAGMA;}
@@ -684,19 +684,19 @@ public:
     void Set_has_noinline_parallel_pragma() { _state |= PROC_HAS_NOINLINE_PARALLEL_PRAGMA;}
     BOOL Has_noinline_parallel_pragma() const { return _state & PROC_HAS_NOINLINE_PARALLEL_PRAGMA;}
  
-    void Set_has_pdo_pragma() 		{ _state |= PROC_HAS_PDO_PRAGMA;}
-    BOOL Has_pdo_pragma() const 	{ return _state & PROC_HAS_PDO_PRAGMA;}
+    void Set_has_pdo_pragma()         { _state |= PROC_HAS_PDO_PRAGMA;}
+    BOOL Has_pdo_pragma() const     { return _state & PROC_HAS_PDO_PRAGMA;}
 
-    void Set_has_fstatic ()		{ _state |= PROC_HAS_FSTATIC; }
-    BOOL Has_fstatic() const		{ return (_state & PROC_HAS_FSTATIC); }
+    void Set_has_fstatic ()        { _state |= PROC_HAS_FSTATIC; }
+    BOOL Has_fstatic() const        { return (_state & PROC_HAS_FSTATIC); }
 
     void Set_use_lowered_return_preg () { _state |=
-					      PROC_USE_LOWERED_RETURN_PREG; 
+                          PROC_USE_LOWERED_RETURN_PREG; 
     }
     BOOL Use_lowered_return_preg () const { return _state & PROC_USE_LOWERED_RETURN_PREG; }
 
     void Set_has_unknown_calls ()       { _state |= PROC_HAS_UNKNOWN_CALLS; }
-    BOOL Has_unknown_calls () const	{ return _state & PROC_HAS_UNKNOWN_CALLS; }
+    BOOL Has_unknown_calls () const    { return _state & PROC_HAS_UNKNOWN_CALLS; }
 
     void Set_has_incomplete_array_info () 
       { _state |= PROC_HAS_INCOMPLETE_ARRAY_INFO; }
@@ -708,7 +708,7 @@ public:
 
     void Set_exc_try() { _state |= PROC_HAS_EXC_TRY_REGION;};
     BOOL Has_exc_try() const { return _state &
-				 PROC_HAS_EXC_TRY_REGION; };
+                 PROC_HAS_EXC_TRY_REGION; };
 
 #ifdef KEY
     void Set_has_pragma_side_effect ()  { _state |= PROC_HAS_PRAGMA_SIDE_EFFECT; }
@@ -720,35 +720,35 @@ public:
     void Set_has_messy_regions ()  { _state |= PROC_HAS_MESSY_REGIONS; }
     BOOL Has_messy_regions () const { return _state & PROC_HAS_MESSY_REGIONS; }
 
-    void Set_has_early_returns ()	{ _state |= PROC_HAS_EARLY_RETURNS; }
-    BOOL Has_early_returns() const	{ return (_state & PROC_HAS_EARLY_RETURNS); }
+    void Set_has_early_returns ()    { _state |= PROC_HAS_EARLY_RETURNS; }
+    BOOL Has_early_returns() const    { return (_state & PROC_HAS_EARLY_RETURNS); }
 
-    void Set_has_var_dim_array ()	{ _state |= PROC_HAS_VAR_DIM_ARRAY; }
-    BOOL Has_var_dim_array() const	{ return (_state & PROC_HAS_VAR_DIM_ARRAY); }
+    void Set_has_var_dim_array ()    { _state |= PROC_HAS_VAR_DIM_ARRAY; }
+    BOOL Has_var_dim_array() const    { return (_state & PROC_HAS_VAR_DIM_ARRAY); }
 
-    void Set_lang (LANGUAGE lang)	{ _l = lang; }
-    LANGUAGE Get_lang() const		{ return _l; }
+    void Set_lang (LANGUAGE lang)    { _l = lang; }
+    LANGUAGE Get_lang() const        { return _l; }
 
 
     /* operations */
 
     void Init (void) {
-	bzero (this, sizeof(SUMMARY_PROCEDURE));
-	_bb_count = MIN (PU_WN_BB_Cnt, UINT16_MAX);
-	_stmt_count = MIN (PU_WN_Stmt_Cnt, UINT16_MAX);
+    bzero (this, sizeof(SUMMARY_PROCEDURE));
+    _bb_count = MIN (PU_WN_BB_Cnt, UINT16_MAX);
+    _stmt_count = MIN (PU_WN_Stmt_Cnt, UINT16_MAX);
 
 #if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
-	PU_WN_BB_Cnt = 0;
-	PU_WN_Stmt_Cnt = 0;
+    PU_WN_BB_Cnt = 0;
+    PU_WN_Stmt_Cnt = 0;
 #endif // _STANDALONE_INLINER
     }
     
-    void Incr_altentry_count ()		{ _alt_entry_count++;}
-    void Incr_call_count ()		{ _call_count++; }
-    void Incr_callsite_count ()		{ _callsite_count++; }
+    void Incr_altentry_count ()        { _alt_entry_count++;}
+    void Incr_call_count ()        { _call_count++; }
+    void Incr_callsite_count ()        { _callsite_count++; }
 
-    void Decr_call_count ()		{ _call_count--; }
-    void Decr_callsite_count ()		{ _callsite_count--; }
+    void Decr_call_count ()        { _call_count--; }
+    void Decr_callsite_count ()        { _callsite_count--; }
 
     // Tracing:
     void Print ( FILE *fp, INT32 i ) const;
@@ -768,11 +768,11 @@ class SUMMARY_FEEDBACK
 private:
     
     FB_FREQ _cycle_count;
-    FB_FREQ _frequency;			// # of times this PU is invoked
-    mUINT16 _effective_bb_count;	// # of bb with non-zero freq.
-    mUINT16 _effective_stmt_count;	// # of stmt with non-zero freq.
-	UINT16	_wn_count;	//INLINING_TUNING
-	FB_FREQ	_cycle_count_2;	//INLINING_TUNING
+    FB_FREQ _frequency;            // # of times this PU is invoked
+    mUINT16 _effective_bb_count;    // # of bb with non-zero freq.
+    mUINT16 _effective_stmt_count;    // # of stmt with non-zero freq.
+    UINT16    _wn_count;    //INLINING_TUNING
+    FB_FREQ    _cycle_count_2;    //INLINING_TUNING
 #ifdef KEY
     UINT64  _func_runtime_addr;         // Function runtime addr used
                                         // by -IPA:icall_opt.
@@ -782,43 +782,43 @@ public:
 
     /* access functions */
 
-	//INLINING_TUNING^
-    void Set_wn_count (UINT16 count)	{ _wn_count = count;}
-    UINT16 Get_wn_count () const	{ return _wn_count; }
+    //INLINING_TUNING^
+    void Set_wn_count (UINT16 count)    { _wn_count = count;}
+    UINT16 Get_wn_count () const    { return _wn_count; }
     void Inc_wn_count (UINT16 count){ _wn_count += count;}
 
-    void Set_cycle_count_2 (FB_FREQ count)	{ _cycle_count_2 = count; };
-    FB_FREQ Get_cycle_count_2 () const		{ return _cycle_count_2; };
-    void Inc_cycle_count_2 (FB_FREQ count)	{ _cycle_count_2 += count; }
-	//INLINING_TUNING$
+    void Set_cycle_count_2 (FB_FREQ count)    { _cycle_count_2 = count; };
+    FB_FREQ Get_cycle_count_2 () const        { return _cycle_count_2; };
+    void Inc_cycle_count_2 (FB_FREQ count)    { _cycle_count_2 += count; }
+    //INLINING_TUNING$
 
-    void Set_cycle_count (FB_FREQ count)	{ _cycle_count = count; };
-    FB_FREQ Get_cycle_count () const		{ return _cycle_count; };
-    void Inc_cycle_count (FB_FREQ count)	{ _cycle_count += count; }
+    void Set_cycle_count (FB_FREQ count)    { _cycle_count = count; };
+    FB_FREQ Get_cycle_count () const        { return _cycle_count; };
+    void Inc_cycle_count (FB_FREQ count)    { _cycle_count += count; }
 
-    void Set_frequency_count (FB_FREQ freq )	{ _frequency = freq; };
-    FB_FREQ Get_frequency_count () const	{ return _frequency; };
+    void Set_frequency_count (FB_FREQ freq )    { _frequency = freq; };
+    FB_FREQ Get_frequency_count () const    { return _frequency; };
 
-    void Set_effective_bb_count (UINT16 count)	{ _effective_bb_count = count;}
-    UINT16 Get_effective_bb_count () const	{ return _effective_bb_count; }
+    void Set_effective_bb_count (UINT16 count)    { _effective_bb_count = count;}
+    UINT16 Get_effective_bb_count () const    { return _effective_bb_count; }
     void Inc_effective_bb_count (UINT16 count){ _effective_bb_count += count;}
 
     void Set_effective_stmt_count (UINT16 count) {
-	_effective_stmt_count = count;
+    _effective_stmt_count = count;
     }
     UINT16 Get_effective_stmt_count () const {
-	return _effective_stmt_count;
+    return _effective_stmt_count;
     }
     void Inc_effective_stmt_count (UINT16 count) {
-	_effective_stmt_count += count;
+    _effective_stmt_count += count;
     }
 
 #ifdef KEY
     void Set_func_runtime_addr (UINT64 addr) {
-	_func_runtime_addr = addr;
+    _func_runtime_addr = addr;
     }
     UINT64 Get_func_runtime_addr () const {
-	return _func_runtime_addr;
+    return _func_runtime_addr;
     }
 #endif
 
@@ -839,13 +839,13 @@ public:
 //-----------------------------------------------------------------
 class SUMMARY_CALLSITE
 {
-#define IPL_FUNC_PTR		0x01
-#define IPL_INTRINSIC_FUNC	0x02
-#define IPL_HAS_CALLSITE_FREQ	0x04
+#define IPL_FUNC_PTR        0x01
+#define IPL_INTRINSIC_FUNC    0x02
+#define IPL_HAS_CALLSITE_FREQ    0x04
 
     // for pragma support of inline/noinline
-#define IPL_CALL_MUST_INLINE	0x08
-#define IPL_CALL_NO_INLINE	0x10
+#define IPL_CALL_MUST_INLINE    0x08
+#define IPL_CALL_NO_INLINE    0x10
 
 #ifdef KEY
 #define IPL_ICALL_TARGET        0x20  
@@ -857,31 +857,31 @@ class SUMMARY_CALLSITE
 private:
 
     union {
-	WN* w;				// for the standalone inliner, we need
-					// the wn
-	mINT32 _map_id;			// map id corresponding to the whirl
-					// node
-	mUINT64 _targ_runtime_addr;	// used by icall-optimization
-					// IPL_ICALL_TARGET must be set.
+    WN* w;                // for the standalone inliner, we need
+                    // the wn
+    mINT32 _map_id;            // map id corresponding to the whirl
+                    // node
+    mUINT64 _targ_runtime_addr;    // used by icall-optimization
+                    // IPL_ICALL_TARGET must be set.
     } u1;
 
     union {
-	mINT32 _symbol_index;		// index into the symbols array
-	mINT32 _value_index;		// index into the value array
-					// used for function pointer
+    mINT32 _symbol_index;        // index into the symbols array
+    mINT32 _value_index;        // index into the value array
+                    // used for function pointer
     } u2;
 
-    mINT32 _actual_index;		// index into the array of const nodes
-    mUINT16 _par_count;			// number of parameters in the call
+    mINT32 _actual_index;        // index into the array of const nodes
+    mUINT16 _par_count;            // number of parameters in the call
 
-    mUINT16 _state;			// state information about the callsite
-    FB_FREQ _frequency;			// callsite frequency count;
-    mUINT16 _callsite_id;		// postorder number
-    mUINT16 _loopnest;			// 0 = not in loop, n = nth-level nested loop
+    mUINT16 _state;            // state information about the callsite
+    FB_FREQ _frequency;            // callsite frequency count;
+    mUINT16 _callsite_id;        // postorder number
+    mUINT16 _loopnest;            // 0 = not in loop, n = nth-level nested loop
 #ifdef KEY
-    float _probability;			// if inside a branch, probability of it being taken
+    float _probability;            // if inside a branch, probability of it being taken
 #endif
-    TYPE_ID _return_type;		// Return type of this CALL
+    TYPE_ID _return_type;        // Return type of this CALL
 
     TY_IDX _virtual_class;              // the class of the virtual function 
     mUINT32 _vtable_offset;             // virtual function position, the offset of the vtable 
@@ -891,85 +891,85 @@ public:
 
     /* access functions */
 
-    void Set_wn (WN* w)			{ u1.w = w;}
-    WN* Get_wn () const			{ return u1.w; }
+    void Set_wn (WN* w)            { u1.w = w;}
+    WN* Get_wn () const            { return u1.w; }
 
-    void Set_map_id (mINT32 map_id)	{ u1._map_id = map_id;}
-    INT32 Get_map_id () const		{ return u1._map_id;}
+    void Set_map_id (mINT32 map_id)    { u1._map_id = map_id;}
+    INT32 Get_map_id () const        { return u1._map_id;}
 
 #ifdef KEY
-    void Set_targ_runtime_addr (mUINT64 addr)	{ u1._targ_runtime_addr = addr;}
-    mUINT64 Get_targ_runtime_addr () const	{ return u1._targ_runtime_addr;}
+    void Set_targ_runtime_addr (mUINT64 addr)    { u1._targ_runtime_addr = addr;}
+    mUINT64 Get_targ_runtime_addr () const    { return u1._targ_runtime_addr;}
 #endif
 
     void Set_symbol_index (mINT32 s) {
-	Is_True (!Is_func_ptr (),
-		 ("Symbol index not allowed for indirect callsite"));
-	u2._symbol_index = s;
+    Is_True (!Is_func_ptr (),
+         ("Symbol index not allowed for indirect callsite"));
+    u2._symbol_index = s;
     }
     INT32 Get_symbol_index (void) const {
-	Is_True (!Is_func_ptr (),
-		 ("Symbol index not allowed for indirect callsite"));
-	return u2._symbol_index;
+    Is_True (!Is_func_ptr (),
+         ("Symbol index not allowed for indirect callsite"));
+    return u2._symbol_index;
     }
 
     void Set_value_index (INT32 s) {
-	Is_True (Is_func_ptr (),
-		 ("Value index for indirect callsite only"));
-	u2._value_index = s;
+    Is_True (Is_func_ptr (),
+         ("Value index for indirect callsite only"));
+    u2._value_index = s;
     }
     INT32 Get_value_index (void) const {
-	Is_True (Is_func_ptr (),
-		 ("Value index for indirect callsite only"));
-	return u2._value_index;
+    Is_True (Is_func_ptr (),
+         ("Value index for indirect callsite only"));
+    return u2._value_index;
     }
 
-    void Set_actual_index (mINT32 a)	{ _actual_index = a; }
-    INT Get_actual_index () const	{ return _actual_index; }
+    void Set_actual_index (mINT32 a)    { _actual_index = a; }
+    INT Get_actual_index () const    { return _actual_index; }
 
     void Set_param_count (mUINT16 par_count) { _par_count = par_count; }
-    mUINT16 Get_param_count () const	{ return _par_count;};
+    mUINT16 Get_param_count () const    { return _par_count;};
 
-    void Set_func_ptr ()		{ _state |= IPL_FUNC_PTR; }
-    BOOL Is_func_ptr () const		{ return (_state & IPL_FUNC_PTR); }
+    void Set_func_ptr ()        { _state |= IPL_FUNC_PTR; }
+    BOOL Is_func_ptr () const        { return (_state & IPL_FUNC_PTR); }
     void Reset_func_ptr ()              { _state &= ~IPL_FUNC_PTR; }
 
 #ifdef KEY
-    void Set_icall_target ()		{ _state |= IPL_ICALL_TARGET; }
-    void Reset_icall_target ()		{ _state &= ~IPL_ICALL_TARGET; }
-    BOOL Is_icall_target () const	{ return (_state & IPL_ICALL_TARGET); }
+    void Set_icall_target ()        { _state |= IPL_ICALL_TARGET; }
+    void Reset_icall_target ()        { _state &= ~IPL_ICALL_TARGET; }
+    BOOL Is_icall_target () const    { return (_state & IPL_ICALL_TARGET); }
 
-    void Set_probability (float p)	{ _probability = p; }
-    float Get_probability () const	{ return _probability; }
+    void Set_probability (float p)    { _probability = p; }
+    float Get_probability () const    { return _probability; }
 #endif
 
-    BOOL Is_in_case_clause (void) const	{ return (_state & IPL_IN_CASE_CLAUSE); }
-    void Set_in_case_clause (void)	{ _state |= IPL_IN_CASE_CLAUSE; }
+    BOOL Is_in_case_clause (void) const    { return (_state & IPL_IN_CASE_CLAUSE); }
+    void Set_in_case_clause (void)    { _state |= IPL_IN_CASE_CLAUSE; }
 
-    void Set_intrinsic()		{ _state |= IPL_INTRINSIC_FUNC; }
-    BOOL Is_intrinsic() const		{ return _state & IPL_INTRINSIC_FUNC; };
-    void Set_callsite_freq ()		{ _state |= IPL_HAS_CALLSITE_FREQ;}
-    BOOL Has_callsite_freq () const	{ return _state & IPL_HAS_CALLSITE_FREQ; }
-
-    // these are set due to user pragmas
-    void Set_must_inline ()		{ _state |= IPL_CALL_MUST_INLINE; }
-    BOOL Is_must_inline () const	{ return _state & IPL_CALL_MUST_INLINE;}
+    void Set_intrinsic()        { _state |= IPL_INTRINSIC_FUNC; }
+    BOOL Is_intrinsic() const        { return _state & IPL_INTRINSIC_FUNC; };
+    void Set_callsite_freq ()        { _state |= IPL_HAS_CALLSITE_FREQ;}
+    BOOL Has_callsite_freq () const    { return _state & IPL_HAS_CALLSITE_FREQ; }
 
     // these are set due to user pragmas
-    void Set_no_inline ()		{ _state |= IPL_CALL_NO_INLINE;}
-    BOOL Is_no_inline () const		{ return _state & IPL_CALL_NO_INLINE;}
+    void Set_must_inline ()        { _state |= IPL_CALL_MUST_INLINE; }
+    BOOL Is_must_inline () const    { return _state & IPL_CALL_MUST_INLINE;}
+
+    // these are set due to user pragmas
+    void Set_no_inline ()        { _state |= IPL_CALL_NO_INLINE;}
+    BOOL Is_no_inline () const        { return _state & IPL_CALL_NO_INLINE;}
 
     void Set_frequency_count (FB_FREQ freq) { _frequency = freq; }
     FB_FREQ Get_frequency_count () const { return _frequency; }
 
-    void Set_callsite_id (mUINT16 c)	{ _callsite_id = c; }
-    mUINT16 Get_callsite_id() const	{ return _callsite_id; }
+    void Set_callsite_id (mUINT16 c)    { _callsite_id = c; }
+    mUINT16 Get_callsite_id() const    { return _callsite_id; }
 
-    void Set_loopnest (UINT16 c)	{ _loopnest = c; }
-    mUINT16 Get_loopnest () const	{ return _loopnest; }
+    void Set_loopnest (UINT16 c)    { _loopnest = c; }
+    mUINT16 Get_loopnest () const    { return _loopnest; }
 
-    void Set_return_type (TYPE_ID return_type)	{ _return_type = return_type;}
-    TYPE_ID Get_return_type () const		{ return _return_type;}
+    void Set_return_type (TYPE_ID return_type)    { _return_type = return_type;}
+    TYPE_ID Get_return_type () const        { return _return_type;}
 
     void Set_virtual_class(TY_IDX func) { _virtual_class = func; } 
     TY_IDX Get_virtual_class() { return _virtual_class; } 
@@ -987,9 +987,9 @@ public:
 
 
     void Init () {
-	bzero (this, sizeof(SUMMARY_CALLSITE));
+    bzero (this, sizeof(SUMMARY_CALLSITE));
     }
-	
+    
     // Tracing:
     void Print ( FILE *fp ) const;
     void Trace ( void ) const;
@@ -1010,52 +1010,52 @@ private:
     mINT32 _symbol_index;
 
     // Attribute flags for a formal:
-#define IPL_FORMAL_REF_PARM		0x01 // if this is a reference argument
-#define IPL_FORMAL_VAR_DIM_ARRAY	0x02 // if this is a variable-dim array
+#define IPL_FORMAL_REF_PARM        0x01 // if this is a reference argument
+#define IPL_FORMAL_VAR_DIM_ARRAY    0x02 // if this is a variable-dim array
 #ifdef KEY
-#define IPL_FORMAL_LOOP_INDEX		0x04 // ref_parm used as a loop index,
-                            		     // REF_PARM must be also set.
+#define IPL_FORMAL_LOOP_INDEX        0x04 // ref_parm used as a loop index,
+                                         // REF_PARM must be also set.
 #endif
 
-    mINT16 _flags;    	
+    mINT16 _flags;        
 
-    mINT16 _position;	    // specify the position of the formal parameter 
+    mINT16 _position;        // specify the position of the formal parameter 
     mINT32 _region_index;   // index into projected region array 
                             //   describing dimensions (needed 
                             //   for array section analysis)
     mINT32 _machine_type;   // mtype of element of formal being passed 
-			    //   (NOT of the address being passed)
-    TY_IDX _ty;	    	    // Type info assoc. with this formal 
+                //   (NOT of the address being passed)
+    TY_IDX _ty;                // Type info assoc. with this formal 
 public:
 
     /* access functions */
 
-    void Set_symbol_index (INT32 s)	{ _symbol_index = s; }
-    mINT32 Get_symbol_index () const	{ return _symbol_index; }
+    void Set_symbol_index (INT32 s)    { _symbol_index = s; }
+    mINT32 Get_symbol_index () const    { return _symbol_index; }
 
     void Set_region_index(mINT32 region_index) { _region_index = region_index;}
     mINT32 Get_region_index() const    { return _region_index;}
 
-    void Set_is_ref_parm ()		{ _flags |= IPL_FORMAL_REF_PARM; }
-    BOOL Is_ref_parm () const		{ return (_flags & IPL_FORMAL_REF_PARM); }
+    void Set_is_ref_parm ()        { _flags |= IPL_FORMAL_REF_PARM; }
+    BOOL Is_ref_parm () const        { return (_flags & IPL_FORMAL_REF_PARM); }
 
-    void Set_is_var_dim_array ()	{ _flags |= IPL_FORMAL_VAR_DIM_ARRAY; }
-    BOOL Is_var_dim_array () const	{ return (_flags & IPL_FORMAL_VAR_DIM_ARRAY); }
+    void Set_is_var_dim_array ()    { _flags |= IPL_FORMAL_VAR_DIM_ARRAY; }
+    BOOL Is_var_dim_array () const    { return (_flags & IPL_FORMAL_VAR_DIM_ARRAY); }
 
 #ifdef KEY
-    void Set_is_loop_index ()		{ _flags |= IPL_FORMAL_LOOP_INDEX; }
-    BOOL Is_loop_index () const		{ return (_flags & IPL_FORMAL_LOOP_INDEX); }
+    void Set_is_loop_index ()        { _flags |= IPL_FORMAL_LOOP_INDEX; }
+    BOOL Is_loop_index () const        { return (_flags & IPL_FORMAL_LOOP_INDEX); }
 #endif
 
     void Set_position (mINT32 position) { _position = position;}
-    mINT32 Get_position () const	{ return _position;};
+    mINT32 Get_position () const    { return _position;};
 
     void Set_machine_type(TYPE_ID machine_type) 
       { _machine_type = machine_type;}
     TYPE_ID Get_machine_type() const {return _machine_type;}
 
-    void Set_ty(TY_IDX ty) 		{ _ty = ty;}
-    TY_IDX Get_ty() const  		{ return _ty;};
+    void Set_ty(TY_IDX ty)         { _ty = ty;}
+    TY_IDX Get_ty() const          { return _ty;};
 
     /* operations */
 
@@ -1079,7 +1079,7 @@ class SUMMARY_STID
 private:
   mINT32 _symbol_index;         // index of the lhs SUMMARY_SYMBOL 
   mUINT32 _array_subscript;     // constant-valued array subscript
-  mINT32 _value_index : 29;	// index of the rhs SUMMARY_VALUE
+  mINT32 _value_index : 29;    // index of the rhs SUMMARY_VALUE
   mUINT32 _always_executed : 1; // under func_entry control dep.
   mUINT32 _array_assignment : 1;// lhs is an array element
   mUINT32 _const_subscript : 1; // lhas array subscript is constant
@@ -1131,12 +1131,12 @@ public:
 // be passed as *p, p, or &p
 typedef enum ipa_pass_type
 {
-    PASS_UNKNOWN = 0,			// actual not a simiple variable,
-					// so pass type not applicable
-    PASS_LDID = 1,			// passed as p
-    PASS_LOAD = 2,			// passed as *p
-    PASS_MLOAD = 3,			// passed as *p for structures
-    PASS_LDA = 4,			// passed as &p 
+    PASS_UNKNOWN = 0,            // actual not a simiple variable,
+                    // so pass type not applicable
+    PASS_LDID = 1,            // passed as p
+    PASS_LOAD = 2,            // passed as *p
+    PASS_MLOAD = 3,            // passed as *p for structures
+    PASS_LDA = 4,            // passed as &p 
     PASS_ARRAY_SECTION = 5,             // passed array section
 #ifdef KEY
     PASS_ARRAY = 6,                     // passed as OPR_ARRAY
@@ -1150,10 +1150,10 @@ class SUMMARY_ACTUAL
 {
 private:
     mINT32 _symbol_index;
-    mINT32 _value_index : 24;		// index into SUMMARY_VALUE array
-    IPA_PASS_TYPE _pass_type : 8;	
+    mINT32 _value_index : 24;        // index into SUMMARY_VALUE array
+    IPA_PASS_TYPE _pass_type : 8;    
     mINT32 _index;  // index into REGION if type == PASS_ARRAY_SECTION
-		    // index into SCALAR_INFO for other types
+            // index into SCALAR_INFO for other types
     TY_IDX _ty;    // Type info assoc. with this actual 
     BOOL   _is_value_parm;  // whether this actual is passed by value
 
@@ -1161,33 +1161,33 @@ public:
 
     /* access functions */
 
-    void Set_symbol_index (INT32 s)	{ _symbol_index = s; }
-    INT32 Get_symbol_index () const	{ return _symbol_index; }
+    void Set_symbol_index (INT32 s)    { _symbol_index = s; }
+    INT32 Get_symbol_index () const    { return _symbol_index; }
 
-    void Set_value_index (INT32 v)	{ _value_index = v; }
-    INT32 Get_value_index () const	{ return _value_index; }
+    void Set_value_index (INT32 v)    { _value_index = v; }
+    INT32 Get_value_index () const    { return _value_index; }
 
     void Set_pass_type (IPA_PASS_TYPE p) { _pass_type = p; }
     IPA_PASS_TYPE Get_pass_type () const { return _pass_type; }
 
-    void Set_index(INT32 a) 		{ _index = a;}
-    INT32 Get_index() const 		{ return _index;}
+    void Set_index(INT32 a)         { _index = a;}
+    INT32 Get_index() const         { return _index;}
 
-    void Set_ty(TY_IDX ty) 		{ _ty = ty;}
-    TY_IDX Get_ty() const  		{ return _ty;}
+    void Set_ty(TY_IDX ty)         { _ty = ty;}
+    TY_IDX Get_ty() const          { return _ty;}
 
-    void Set_is_value_parm() 		{ _is_value_parm = TRUE;}
-    BOOL Is_value_parm() const		{ return _is_value_parm;}
+    void Set_is_value_parm()         { _is_value_parm = TRUE;}
+    BOOL Is_value_parm() const        { return _is_value_parm;}
 
     /* operations */
     
     void Init () {
-	_symbol_index = -1;
-	_value_index = -1;
-	_pass_type = PASS_UNKNOWN;
-	_index = -1;
-	_ty = 0;
-	_is_value_parm = FALSE;
+    _symbol_index = -1;
+    _value_index = -1;
+    _pass_type = PASS_UNKNOWN;
+    _index = -1;
+    _ty = 0;
+    _is_value_parm = FALSE;
     }
 
     // return the name of a IPA_PASS_TYPE
@@ -1198,33 +1198,33 @@ public:
     void Print_array (FILE *f, INT32 size) const;
 
 #if 0 // SC
-    void Trace (INT32 id) const		{ Print (TFile, id); }
+    void Trace (INT32 id) const        { Print (TFile, id); }
 #else
-    void Trace (INT32 id, FILE* f=stdout) const	 { Print (f, id); }
+    void Trace (INT32 id, FILE* f=stdout) const     { Print (f, id); }
 #endif
     void WB_Print(FILE* fp, INT actual_index, const char* name, const char* func_name);
 
 }; // SUMMARY_ACTUAL 
 
 
-class SUMMARY_SYMBOL;			// forward declaration
+class SUMMARY_SYMBOL;            // forward declaration
 
 enum IPA_CONST_TYPE {
 
-    VALUE_UNKNOWN = 0,			// initial state
-    VALUE_INT_CONST = 1,		// is an integer constant
-    VALUE_TWO_CONSTS = 2,		// is one of two constant values
-    VALUE_CONST = 3,			// is an st of CLASS_CONST
-    VALUE_FORMAL = 4,			// is a formal parameter
-    VALUE_GLOBAL = 5,			// is a global or static variable
-    VALUE_SYMBOL = 6,			// symbol of unknown type
-    VALUE_EXPR = 7,			// is a simple expression
-    VALUE_PHI = 8,			// is the value return by a phi func.
-    VALUE_CHI = 9,			// is const. if the chi function
-					// does not modify the value
-    VALUE_CALLSITE = 10, 		// used in expressions for 
-					//   execution cost of calls 
-    VALUE_NOT_CONST = 11,		// found to be *NOT* a constant
+    VALUE_UNKNOWN = 0,            // initial state
+    VALUE_INT_CONST = 1,        // is an integer constant
+    VALUE_TWO_CONSTS = 2,        // is one of two constant values
+    VALUE_CONST = 3,            // is an st of CLASS_CONST
+    VALUE_FORMAL = 4,            // is a formal parameter
+    VALUE_GLOBAL = 5,            // is a global or static variable
+    VALUE_SYMBOL = 6,            // symbol of unknown type
+    VALUE_EXPR = 7,            // is a simple expression
+    VALUE_PHI = 8,            // is the value return by a phi func.
+    VALUE_CHI = 9,            // is const. if the chi function
+                    // does not modify the value
+    VALUE_CALLSITE = 10,         // used in expressions for 
+                    //   execution cost of calls 
+    VALUE_NOT_CONST = 11,        // found to be *NOT* a constant
 };
 
 /* describe a (possibly) constant value */
@@ -1236,57 +1236,57 @@ class SUMMARY_VALUE
 private:
 
     union {
-	mINT64 _int_const;		// integer constant
+    mINT64 _int_const;        // integer constant
 
-	struct {			// two integer constants
-	    mINT32 val1;		// variable has one of these two values
-	    mINT32 val2;		// so (x != val1) implies x == val2
-	} _two_values;
+    struct {            // two integer constants
+        mINT32 val1;        // variable has one of these two values
+        mINT32 val2;        // so (x != val1) implies x == val2
+    } _two_values;
 
-	struct {
-	    ST_IDX _const_st_idx;	// CONST symbol (floating pt, string)
-	    TCON_IDX _tcon_idx;		// TCON IDX (used only in IPA)
-					// In IPA, it is possible that
-					// _const_st_idx is 0
-	} _const_st;
+    struct {
+        ST_IDX _const_st_idx;    // CONST symbol (floating pt, string)
+        TCON_IDX _tcon_idx;        // TCON IDX (used only in IPA)
+                    // In IPA, it is possible that
+                    // _const_st_idx is 0
+    } _const_st;
       
-	mINT32 _formal_index;		/* idx to SUMMARY_FORMAL array.
-					   For pass-through jump functions
-					   */  
+    mINT32 _formal_index;        /* idx to SUMMARY_FORMAL array.
+                       For pass-through jump functions
+                       */  
 
       
-	struct {
-	    mINT32 _global_index;	/* idx to SUMMARY_SYMBOL array for
-					   a static or global variable.
-					   Use only if IPA finds out that
-					   it is a constant. */  
+    struct {
+        mINT32 _global_index;    /* idx to SUMMARY_SYMBOL array for
+                       a static or global variable.
+                       Use only if IPA finds out that
+                       it is a constant. */  
  
-	    ST_IDX _global_st_idx;	// the ST_IDX of a global symbol
-					// during IPA's constant
-					// propagation phase.
-	} _global;
+        ST_IDX _global_st_idx;    // the ST_IDX of a global symbol
+                    // during IPA's constant
+                    // propagation phase.
+    } _global;
 
-	mINT32 _symbol_index;		/* idx to SUMMARY_SYMBOL array for
-					   a variable passed as actual
-					   parameter and has undetermined
-					   type */ 
+    mINT32 _symbol_index;        /* idx to SUMMARY_SYMBOL array for
+                       a variable passed as actual
+                       parameter and has undetermined
+                       type */ 
 
-	mINT32 _expr_index;		// index to SUMMARY_EXPR
+    mINT32 _expr_index;        // index to SUMMARY_EXPR
 
-	mINT32 _phi_index;		// index to SUMMARY_PHI
+    mINT32 _phi_index;        // index to SUMMARY_PHI
 
-	mINT32 _chi_index;		// index to SUMMARY_CHI
+    mINT32 _chi_index;        // index to SUMMARY_CHI
 
-	mINT32 _callsite_index;		// index to SUMMARY_CALLSITE
+    mINT32 _callsite_index;        // index to SUMMARY_CALLSITE
 
     } _const_value;
 
     /* 64-bit aligned at this point */
 
-    mTYPE_ID _mtype;			// result type
-    mTYPE_ID _target_mtype;		// used only when _addr_of is true: 
-					// specify the mtype of what this
-					// value points to
+    mTYPE_ID _mtype;            // result type
+    mTYPE_ID _target_mtype;        // used only when _addr_of is true: 
+                    // specify the mtype of what this
+                    // value points to
     
     // the following determine which of the above union is used.
     IPA_CONST_TYPE _const_type : 8;
@@ -1327,154 +1327,154 @@ public:
 
     /* access functions */
 
-    void Set_mtype (TYPE_ID m)	{ _mtype = m; }
-    TYPE_ID Get_mtype () const	{ return _mtype; }
+    void Set_mtype (TYPE_ID m)    { _mtype = m; }
+    TYPE_ID Get_mtype () const    { return _mtype; }
 
     void Set_target_mtype (TYPE_ID m) { _target_mtype = m; }
     TYPE_ID Target_mtype () const { return _target_mtype; }
 
     IPA_CONST_TYPE Get_const_type () const { return _const_type; }
 
-    void Set_unknown ()		{ _const_type = VALUE_UNKNOWN; }
-    BOOL Is_unknown () const	{ return _const_type == VALUE_UNKNOWN; }
+    void Set_unknown ()        { _const_type = VALUE_UNKNOWN; }
+    BOOL Is_unknown () const    { return _const_type == VALUE_UNKNOWN; }
     
-    void Set_int_const ()	{ _const_type = VALUE_INT_CONST; }
-    BOOL Is_int_const () const	{ return _const_type == VALUE_INT_CONST; }
+    void Set_int_const ()    { _const_type = VALUE_INT_CONST; }
+    BOOL Is_int_const () const    { return _const_type == VALUE_INT_CONST; }
     
-    void Set_two_consts ()	{ _const_type = VALUE_TWO_CONSTS; }
-    BOOL Is_two_consts () const	{ return _const_type == VALUE_TWO_CONSTS; }
+    void Set_two_consts ()    { _const_type = VALUE_TWO_CONSTS; }
+    BOOL Is_two_consts () const    { return _const_type == VALUE_TWO_CONSTS; }
 
-    void Set_const_st ()	{ _const_type = VALUE_CONST; }
-    BOOL Is_const_st () const	{ return _const_type == VALUE_CONST; }
+    void Set_const_st ()    { _const_type = VALUE_CONST; }
+    BOOL Is_const_st () const    { return _const_type == VALUE_CONST; }
 
-    void Set_formal ()		{ _const_type = VALUE_FORMAL; }
-    BOOL Is_formal () const	{ return _const_type == VALUE_FORMAL; }
+    void Set_formal ()        { _const_type = VALUE_FORMAL; }
+    BOOL Is_formal () const    { return _const_type == VALUE_FORMAL; }
 
-    void Set_global ()		{ _const_type = VALUE_GLOBAL; }
-    BOOL Is_global () const	{ return _const_type == VALUE_GLOBAL; }
+    void Set_global ()        { _const_type = VALUE_GLOBAL; }
+    BOOL Is_global () const    { return _const_type == VALUE_GLOBAL; }
     
-    void Set_symbol ()		{ _const_type = VALUE_SYMBOL; }
-    BOOL Is_symbol () const	{ return _const_type == VALUE_SYMBOL; }
+    void Set_symbol ()        { _const_type = VALUE_SYMBOL; }
+    BOOL Is_symbol () const    { return _const_type == VALUE_SYMBOL; }
     
-    void Set_expr ()		{ _const_type = VALUE_EXPR; }
-    BOOL Is_expr () const	{ return _const_type == VALUE_EXPR; }
+    void Set_expr ()        { _const_type = VALUE_EXPR; }
+    BOOL Is_expr () const    { return _const_type == VALUE_EXPR; }
     
-    void Set_phi ()		{ _const_type = VALUE_PHI; }
-    BOOL Is_phi () const	{ return _const_type == VALUE_PHI; }
+    void Set_phi ()        { _const_type = VALUE_PHI; }
+    BOOL Is_phi () const    { return _const_type == VALUE_PHI; }
     
-    void Set_chi ()		{ _const_type = VALUE_CHI; }
-    BOOL Is_chi () const	{ return _const_type == VALUE_CHI; }
+    void Set_chi ()        { _const_type = VALUE_CHI; }
+    BOOL Is_chi () const    { return _const_type == VALUE_CHI; }
 
-    void Set_not_const ()	{ _const_type = VALUE_NOT_CONST; }
-    BOOL Is_not_const () const	{ return _const_type == VALUE_NOT_CONST; }
+    void Set_not_const ()    { _const_type = VALUE_NOT_CONST; }
+    BOOL Is_not_const () const    { return _const_type == VALUE_NOT_CONST; }
 
-    void Set_callsite ()	{ _const_type = VALUE_CALLSITE; }
-    BOOL Is_callsite () const	{ return _const_type == VALUE_CALLSITE; }
+    void Set_callsite ()    { _const_type = VALUE_CALLSITE; }
+    BOOL Is_callsite () const    { return _const_type == VALUE_CALLSITE; }
 
     // Still a constant after propagation
-    BOOL Is_constant () const	{
-	switch (_const_type) {
-	case VALUE_INT_CONST:
-	case VALUE_CONST:
-	    return TRUE;
-	case VALUE_FORMAL:
-	case VALUE_GLOBAL:
-	case VALUE_SYMBOL:
-	    if (_addr_of)
-		return TRUE;
-	default:
-	    return FALSE;
-	}
+    BOOL Is_constant () const    {
+    switch (_const_type) {
+    case VALUE_INT_CONST:
+    case VALUE_CONST:
+        return TRUE;
+    case VALUE_FORMAL:
+    case VALUE_GLOBAL:
+    case VALUE_SYMBOL:
+        if (_addr_of)
+        return TRUE;
+    default:
+        return FALSE;
+    }
     }
 
     void Set_int_const_value (INT64 v) { _const_value._int_const = v; }
     INT64 Get_int_const_value () const { return _const_value._int_const; }
 
     void Set_two_values (INT32 val1, INT32 val2) {
-	_const_value._two_values.val1 = val1;
-	_const_value._two_values.val2 = val2;
+    _const_value._two_values.val1 = val1;
+    _const_value._two_values.val2 = val2;
     }
     INT32 Get_first_of_two_values () const {
-	return _const_value._two_values.val1;
+    return _const_value._two_values.val1;
     }
     INT32 Get_second_of_two_values () const {
-	return _const_value._two_values.val2;
+    return _const_value._two_values.val2;
     }
 
     void Set_const_st_idx (ST_IDX st_idx, TCON_IDX tcon_idx = 0) {
-	_const_value._const_st._const_st_idx = st_idx;
-	_const_value._const_st._tcon_idx = tcon_idx;
+    _const_value._const_st._const_st_idx = st_idx;
+    _const_value._const_st._tcon_idx = tcon_idx;
     }
     ST_IDX Get_const_st_idx () const {
-	return _const_value._const_st._const_st_idx;
+    return _const_value._const_st._const_st_idx;
     }
 
     void Set_tcon_idx (TCON_IDX tcon_idx) {
-	_const_value._const_st._const_st_idx = 0;
-	_const_value._const_st._tcon_idx = tcon_idx;
+    _const_value._const_st._const_st_idx = 0;
+    _const_value._const_st._tcon_idx = tcon_idx;
     }
     TCON_IDX Get_tcon_idx () const {
-	return _const_value._const_st._tcon_idx;
+    return _const_value._const_st._tcon_idx;
     }
 
     void Set_formal_index (INT32 _f) { _const_value._formal_index = _f; }
     INT32 Get_formal_index () const { return _const_value._formal_index; }
 
     void Set_global_index (INT32 _g) {
-	_const_value._global._global_index = _g;
+    _const_value._global._global_index = _g;
     }
     INT32 Get_global_index () const {
-	return _const_value._global._global_index;
+    return _const_value._global._global_index;
     }
 
     void Set_global_st_idx (ST_IDX _g) {
-	_const_value._global._global_st_idx = _g;
+    _const_value._global._global_st_idx = _g;
     }
     ST_IDX Get_global_st_idx () const {
-	return _const_value._global._global_st_idx;
+    return _const_value._global._global_st_idx;
     }
 
     void Set_symbol_index (INT32 _g) { _const_value._symbol_index = _g; }
     INT32 Get_symbol_index () const { return _const_value._symbol_index; }
 
-    void Set_expr_index (INT32 _e)	{ _const_value._expr_index = _e; }
-    INT32 Get_expr_index () const	{ return _const_value._expr_index; }
+    void Set_expr_index (INT32 _e)    { _const_value._expr_index = _e; }
+    INT32 Get_expr_index () const    { return _const_value._expr_index; }
 
-    void Set_phi_index (INT32 _p)	{ _const_value._phi_index = _p; }
-    INT32 Get_phi_index () const	{ return _const_value._phi_index; }
+    void Set_phi_index (INT32 _p)    { _const_value._phi_index = _p; }
+    INT32 Get_phi_index () const    { return _const_value._phi_index; }
     
-    void Set_chi_index (INT32 k)	{ _const_value._chi_index = k; }
-    INT32 Get_chi_index () const	{ return _const_value._chi_index; }
+    void Set_chi_index (INT32 k)    { _const_value._chi_index = k; }
+    INT32 Get_chi_index () const    { return _const_value._chi_index; }
 
-    void Set_callsite_index (INT32 k)	{ _const_value._callsite_index = k; }
-    INT32 Get_callsite_index () const	{ return _const_value._callsite_index; }
+    void Set_callsite_index (INT32 k)    { _const_value._callsite_index = k; }
+    INT32 Get_callsite_index () const    { return _const_value._callsite_index; }
 
     void Set_merged_const_st_idx ()      { _merged_const_st_idx = TRUE; }
     BOOL Is_merged_const_st_idx () const { return _merged_const_st_idx; }
 
-    void Remove_param ()		{ _remove_param = TRUE; }
-    void Reset_remove_param ()		{ _remove_param = FALSE; }
-    BOOL Is_remove_param () const	{ return _remove_param; }
+    void Remove_param ()        { _remove_param = TRUE; }
+    void Reset_remove_param ()        { _remove_param = FALSE; }
+    BOOL Is_remove_param () const    { return _remove_param; }
     
-    void Set_is_addr_of ()		{ _addr_of = TRUE; }
-    void Clear_is_addr_of ()		{ _addr_of = FALSE; }
-    BOOL Is_addr_of () const		{ return _addr_of; }
+    void Set_is_addr_of ()        { _addr_of = TRUE; }
+    void Clear_is_addr_of ()        { _addr_of = FALSE; }
+    BOOL Is_addr_of () const        { return _addr_of; }
 
-    void Set_convertible_to_global ()	{ _convertible_to_global = TRUE; }
-    void Clear_convertible_to_global ()	{ _convertible_to_global = FALSE; }
+    void Set_convertible_to_global ()    { _convertible_to_global = TRUE; }
+    void Clear_convertible_to_global ()    { _convertible_to_global = FALSE; }
     BOOL Is_convertible_to_global () const { return _convertible_to_global; }
 
-    BOOL Is_trip_count() const		{ return _is_trip_count; } 
-    void Clear_is_trip_count()		{ _is_trip_count = FALSE; } 
-    void Set_is_trip_count()		{ _is_trip_count = TRUE; } 
+    BOOL Is_trip_count() const        { return _is_trip_count; } 
+    void Clear_is_trip_count()        { _is_trip_count = FALSE; } 
+    void Set_is_trip_count()        { _is_trip_count = TRUE; } 
 
-    BOOL Is_global_st_idx() const	{ return _is_global_st_idx; } 
-    void Clear_is_global_st_idx()	{ _is_global_st_idx = FALSE; } 
-    void Set_is_global_st_idx()		{ _is_global_st_idx = TRUE; } 
+    BOOL Is_global_st_idx() const    { return _is_global_st_idx; } 
+    void Clear_is_global_st_idx()    { _is_global_st_idx = FALSE; } 
+    void Set_is_global_st_idx()        { _is_global_st_idx = TRUE; } 
 
     /* operations */
     
-    void Init ()		{ bzero (this, sizeof(SUMMARY_VALUE)); }
+    void Init ()        { bzero (this, sizeof(SUMMARY_VALUE)); }
 
     // print the constant value in ascii form
     void Print_const_value (FILE *f, const SUMMARY_SYMBOL* symbol = NULL) const;
@@ -1485,7 +1485,7 @@ public:
 #if 0 // SC
     void Trace (INT32 id) const { Print (TFile, id); }
 #else
-    void Trace (INT32 id, FILE* f=stdout) const	 { Print (f, id); }
+    void Trace (INT32 id, FILE* f=stdout) const     { Print (f, id); }
 #endif
     void WB_Print(FILE* fp, INT value_index);
     BOOL Equal(SUMMARY_VALUE* sv);
@@ -1498,19 +1498,19 @@ class SUMMARY_PHI
 {
 private:
     enum PHI_VALUE_TYPE {
-	PHI_UNKNOWN = 0,
-	PHI_VALUE = 1,			// points to a SUMMARY_VALUE 
-	PHI_EXPR = 2,			// points to an expression
-	PHI_PHI  = 3,			// points to another phi function
-	PHI_CHI = 4,			// points to an chi node
+    PHI_UNKNOWN = 0,
+    PHI_VALUE = 1,            // points to a SUMMARY_VALUE 
+    PHI_EXPR = 2,            // points to an expression
+    PHI_PHI  = 3,            // points to another phi function
+    PHI_CHI = 4,            // points to an chi node
     };
 
     struct {
-	mINT32 _cd_index : 24;		// control dependence
-	mBOOL _branch : 8;		// which branch am I on?
-	mINT32 _node_index : 24;	// idx to either SUMMARY_EXPR
-					// or another SUMMARY_PHI
-	PHI_VALUE_TYPE _type : 8;	// tell which array _node_index points
+    mINT32 _cd_index : 24;        // control dependence
+    mBOOL _branch : 8;        // which branch am I on?
+    mINT32 _node_index : 24;    // idx to either SUMMARY_EXPR
+                    // or another SUMMARY_PHI
+    PHI_VALUE_TYPE _type : 8;    // tell which array _node_index points
 
     } kids[2];
 
@@ -1518,30 +1518,30 @@ public:
 
     /* access functions */
 
-    void Set_value (INT kid)	{ kids[kid]._type = PHI_VALUE; }
+    void Set_value (INT kid)    { kids[kid]._type = PHI_VALUE; }
     BOOL Is_value (INT kid) const { return kids[kid]._type == PHI_VALUE; }
 
-    void Set_expr (INT kid)	{ kids[kid]._type = PHI_EXPR; }
+    void Set_expr (INT kid)    { kids[kid]._type = PHI_EXPR; }
     BOOL Is_expr (INT kid) const { return kids[kid]._type == PHI_EXPR; }
 
-    void Set_phi (INT kid)	{ kids[kid]._type = PHI_PHI; }
-    BOOL Is_phi (INT kid) const	{ return kids[kid]._type == PHI_PHI; }
+    void Set_phi (INT kid)    { kids[kid]._type = PHI_PHI; }
+    BOOL Is_phi (INT kid) const    { return kids[kid]._type == PHI_PHI; }
 
-    void Set_chi (INT kid)	{ kids[kid]._type = PHI_CHI; }
-    BOOL Is_chi (INT kid) const	{ return kids[kid]._type == PHI_CHI; }
+    void Set_chi (INT kid)    { kids[kid]._type = PHI_CHI; }
+    BOOL Is_chi (INT kid) const    { return kids[kid]._type == PHI_CHI; }
 
     void Set_ctrl_dep_index (INT kid, INT idx) { kids[kid]._cd_index = idx; }
     INT Get_ctrl_dep_index (INT kid) const { return kids[kid]._cd_index; }
 
-    void Set_branch (INT kid, BOOL br)	{ kids[kid]._branch = br; }
-    BOOL Get_branch (INT kid) const	{ return kids[kid]._branch; }
+    void Set_branch (INT kid, BOOL br)    { kids[kid]._branch = br; }
+    BOOL Get_branch (INT kid) const    { return kids[kid]._branch; }
 
     void Set_node_index (INT kid, INT idx){ kids[kid]._node_index = idx; }
-    INT Get_node_index (INT kid) const	{ return kids[kid]._node_index; }
+    INT Get_node_index (INT kid) const    { return kids[kid]._node_index; }
     
     /* operations */
 
-    void Init ()		{ bzero (this, sizeof(SUMMARY_PHI)); }
+    void Init ()        { bzero (this, sizeof(SUMMARY_PHI)); }
 
     /* print functions */
 
@@ -1556,53 +1556,53 @@ public:
 class SUMMARY_CHI
 {
 private:
-    mINT32 _call_index;			// index to SUMMARY_CALLSITE
-    mINT32 _symbol_index;		// symbol that might be modified
+    mINT32 _call_index;            // index to SUMMARY_CALLSITE
+    mINT32 _symbol_index;        // symbol that might be modified
 
     // describe which array _node_index is pointing to
     enum CHI_TYPE {
-	CHI_UNKNOWN = 0,
-	CHI_VALUE = 1,
-	CHI_PHI = 2,
-	CHI_EXPR = 3,
-	CHI_CHI = 4,
+    CHI_UNKNOWN = 0,
+    CHI_VALUE = 1,
+    CHI_PHI = 2,
+    CHI_EXPR = 3,
+    CHI_CHI = 4,
     };
-	
-    mINT32 _node_index : 24;		// index to one of SUMMARY_VALUE, etc.
-					// this describe the value should
-					// the call do not really modify
-					// the symbol
+    
+    mINT32 _node_index : 24;        // index to one of SUMMARY_VALUE, etc.
+                    // this describe the value should
+                    // the call do not really modify
+                    // the symbol
 
-    mINT32 _type : 8;			// specify type of _node_index
+    mINT32 _type : 8;            // specify type of _node_index
     
 public:
 
     /* access functions */
 
-    void Set_call_index (INT idx)	{ _call_index = idx; }
-    INT32 Get_call_index () const	{ return _call_index; }
+    void Set_call_index (INT idx)    { _call_index = idx; }
+    INT32 Get_call_index () const    { return _call_index; }
 
-    void Set_symbol_index (INT idx)	{ _symbol_index = idx; }
-    INT32 Get_symbol_index () const	{ return _symbol_index ; }
+    void Set_symbol_index (INT idx)    { _symbol_index = idx; }
+    INT32 Get_symbol_index () const    { return _symbol_index ; }
 
-    void Set_chi_value ()		{ _type = CHI_VALUE; }
-    BOOL Is_chi_value () const		{ return _type == CHI_VALUE; }
+    void Set_chi_value ()        { _type = CHI_VALUE; }
+    BOOL Is_chi_value () const        { return _type == CHI_VALUE; }
 
-    void Set_chi_phi ()			{ _type = CHI_PHI; }
-    BOOL Is_chi_phi () const		{ return _type == CHI_PHI; }
+    void Set_chi_phi ()            { _type = CHI_PHI; }
+    BOOL Is_chi_phi () const        { return _type == CHI_PHI; }
 
-    void Set_chi_expr ()		{ _type = CHI_EXPR; }
-    BOOL Is_chi_expr () const		{ return _type == CHI_EXPR; }
+    void Set_chi_expr ()        { _type = CHI_EXPR; }
+    BOOL Is_chi_expr () const        { return _type == CHI_EXPR; }
 
-    void Set_chi_chi ()			{ _type = CHI_CHI; }
-    BOOL Is_chi_chi () const		{ return _type == CHI_CHI; }
+    void Set_chi_chi ()            { _type = CHI_CHI; }
+    BOOL Is_chi_chi () const        { return _type == CHI_CHI; }
 
-    void Set_node_index (INT idx)	{ _node_index = idx; }
-    INT32 Get_node_index () const	{ return _node_index; }
+    void Set_node_index (INT idx)    { _node_index = idx; }
+    INT32 Get_node_index () const    { return _node_index; }
     
     /* operations */
 
-    void Init ()			{ _call_index = _symbol_index = -1; }
+    void Init ()            { _call_index = _symbol_index = -1; }
     
     void Print (FILE *f) const;
 
@@ -1620,156 +1620,156 @@ class SUMMARY_EXPR
 {
 private:
     enum IDX_TYPE {
-	EXPR_UNKNOWN = 0,
-	EXPR_VALUE = 1,			// describe which array
-	EXPR_PHI   = 2,			// _node_index is pointing to.
-	EXPR_EXPR  = 3,
-	EXPR_CHI   = 4,
+    EXPR_UNKNOWN = 0,
+    EXPR_VALUE = 1,            // describe which array
+    EXPR_PHI   = 2,            // _node_index is pointing to.
+    EXPR_EXPR  = 3,
+    EXPR_CHI   = 4,
     };
 
     union {
 
-	/* first case, one operand is constant, the other is not */
-	struct {
-	    mINT64 _const_value;	// integer constant value
+    /* first case, one operand is constant, the other is not */
+    struct {
+        mINT64 _const_value;    // integer constant value
 
-	    mINT32 _node_index : 24;	/* index to either a SUMMARY_VALUE,
-					   SUMMARY_PHI, or SUMMARY_EXPR. */
-	    IDX_TYPE _type : 6;
+        mINT32 _node_index : 24;    /* index to either a SUMMARY_VALUE,
+                       SUMMARY_PHI, or SUMMARY_EXPR. */
+        IDX_TYPE _type : 6;
 
-	    mINT32 _kid : 2;		// specify which kid the non-constant
-					// operand is.
-	} _s1;
+        mINT32 _kid : 2;        // specify which kid the non-constant
+                    // operand is.
+    } _s1;
 
-	/* second case, both operands are not integer constant */
-	struct {
-	    mINT32 _node_index : 24;	/* index to either a SUMMARY_VALUE,
-					   SUMMARY_PHI, or SUMMARY_EXPR. */
-	    IDX_TYPE _type : 8;
-	} _s2[2];
+    /* second case, both operands are not integer constant */
+    struct {
+        mINT32 _node_index : 24;    /* index to either a SUMMARY_VALUE,
+                       SUMMARY_PHI, or SUMMARY_EXPR. */
+        IDX_TYPE _type : 8;
+    } _s2[2];
     } _u;
 
     OPCODE _opcode : 20;
 
     mINT32 _pad    : 2;
 
-    mBOOL _is_trip_count : 1;	        // is a trip count (can be simplified) 
-    mBOOL _has_const_operand : 1;	// specify which struct in _u is used
+    mBOOL _is_trip_count : 1;            // is a trip count (can be simplified) 
+    mBOOL _has_const_operand : 1;    // specify which struct in _u is used
 
-    mTYPE_ID _mtype: 8;			// result type of this expression.
+    mTYPE_ID _mtype: 8;            // result type of this expression.
 
 public:
 
     /* access functions */
 
-    void Set_has_const_operand ()	{ _has_const_operand = TRUE; }
-    void Clear_has_const_operand ()	{ _has_const_operand = FALSE; }
-    BOOL Has_const_operand () const	{ return _has_const_operand; }
+    void Set_has_const_operand ()    { _has_const_operand = TRUE; }
+    void Clear_has_const_operand ()    { _has_const_operand = FALSE; }
+    BOOL Has_const_operand () const    { return _has_const_operand; }
 
-    BOOL Is_trip_count() const		{ return _is_trip_count; } 
-    void Clear_is_trip_count()		{ _is_trip_count = FALSE; } 
-    void Set_is_trip_count()		{ _is_trip_count = TRUE; } 
+    BOOL Is_trip_count() const        { return _is_trip_count; } 
+    void Clear_is_trip_count()        { _is_trip_count = FALSE; } 
+    void Set_is_trip_count()        { _is_trip_count = TRUE; } 
 
     void Set_kid (INT kid) {
-	if (_has_const_operand)
-	    _u._s1._kid = kid;
+    if (_has_const_operand)
+        _u._s1._kid = kid;
     }
     INT Get_kid () const {
-	if (_has_const_operand)
-	    return _u._s1._kid;
-	else
-	    return -1;
+    if (_has_const_operand)
+        return _u._s1._kid;
+    else
+        return -1;
     }
 
     void Set_expr_unknown () {
-	_has_const_operand = TRUE;
-	_u._s1._type = EXPR_UNKNOWN;
+    _has_const_operand = TRUE;
+    _u._s1._type = EXPR_UNKNOWN;
     }
     BOOL Is_expr_unknown () const {
-	return (_has_const_operand == TRUE && _u._s1._type == EXPR_UNKNOWN);
+    return (_has_const_operand == TRUE && _u._s1._type == EXPR_UNKNOWN);
     }
 
     void Set_expr_value (INT kid) {
-	if (_has_const_operand) {
-	    _u._s1._type = EXPR_VALUE;
-	    _u._s1._kid = kid;
-	} else
-	    _u._s2[kid]._type = EXPR_VALUE;
+    if (_has_const_operand) {
+        _u._s1._type = EXPR_VALUE;
+        _u._s1._kid = kid;
+    } else
+        _u._s2[kid]._type = EXPR_VALUE;
     }
     BOOL Is_expr_value (INT kid) const {
-	if (_has_const_operand)
-	    return _u._s1._type == EXPR_VALUE;
-	else
-	    return _u._s2[kid]._type == EXPR_VALUE;
+    if (_has_const_operand)
+        return _u._s1._type == EXPR_VALUE;
+    else
+        return _u._s2[kid]._type == EXPR_VALUE;
     }
 
     void Set_expr_phi (INT kid) {
-	if (_has_const_operand) {
-	    _u._s1._type = EXPR_PHI;
-	    _u._s1._kid = kid;
-	} else
-	    _u._s2[kid]._type = EXPR_PHI;
+    if (_has_const_operand) {
+        _u._s1._type = EXPR_PHI;
+        _u._s1._kid = kid;
+    } else
+        _u._s2[kid]._type = EXPR_PHI;
     }
     BOOL Is_expr_phi (INT kid) const {
-	if (_has_const_operand)
-	    return _u._s1._type == EXPR_PHI;
-	else
-	    return _u._s2[kid]._type == EXPR_PHI;
+    if (_has_const_operand)
+        return _u._s1._type == EXPR_PHI;
+    else
+        return _u._s2[kid]._type == EXPR_PHI;
     }
 
     void Set_expr_expr (INT kid) {
-	if (_has_const_operand) {
-	    _u._s1._type = EXPR_EXPR;
-	    _u._s1._kid = kid;
-	} else
-	    _u._s2[kid]._type = EXPR_EXPR;
+    if (_has_const_operand) {
+        _u._s1._type = EXPR_EXPR;
+        _u._s1._kid = kid;
+    } else
+        _u._s2[kid]._type = EXPR_EXPR;
     }
     BOOL Is_expr_expr (INT kid) const {
-	if (_has_const_operand)
-	    return _u._s1._type == EXPR_EXPR;
-	else
-	    return _u._s2[kid]._type == EXPR_EXPR;
+    if (_has_const_operand)
+        return _u._s1._type == EXPR_EXPR;
+    else
+        return _u._s2[kid]._type == EXPR_EXPR;
     }
 
     void Set_expr_chi (INT kid) {
-	if (_has_const_operand) {
-	    _u._s1._type = EXPR_CHI;
-	    _u._s1._kid = kid;
-	} else
-	    _u._s2[kid]._type = EXPR_CHI;
+    if (_has_const_operand) {
+        _u._s1._type = EXPR_CHI;
+        _u._s1._kid = kid;
+    } else
+        _u._s2[kid]._type = EXPR_CHI;
     }
     BOOL Is_expr_chi (INT kid) const {
-	if (_has_const_operand)
-	    return _u._s1._type == EXPR_CHI;
-	else
-	    return _u._s2[kid]._type == EXPR_CHI;
+    if (_has_const_operand)
+        return _u._s1._type == EXPR_CHI;
+    else
+        return _u._s2[kid]._type == EXPR_CHI;
     }
 
     void Set_const_value (INT64 _v) { _u._s1._const_value = _v; }
     INT64 Get_const_value () const { return _u._s1._const_value; }
 
     void Set_node_index (INT kid, INT32 _n) {
-	if (_has_const_operand)
-	    _u._s1._node_index = _n;
-	else
-	    _u._s2[kid]._node_index = _n;
+    if (_has_const_operand)
+        _u._s1._node_index = _n;
+    else
+        _u._s2[kid]._node_index = _n;
     }
     INT32 Get_node_index (INT kid) const {
-	if (_has_const_operand)
-	    return _u._s1._node_index;
-	else
-	    return _u._s2[kid]._node_index;
+    if (_has_const_operand)
+        return _u._s1._node_index;
+    else
+        return _u._s2[kid]._node_index;
     } 
 
     void Set_opcode (OPCODE _op) { _opcode = _op; }
-    OPCODE Get_opcode () const	{ return _opcode; }
+    OPCODE Get_opcode () const    { return _opcode; }
 
-    void Set_mtype (TYPE_ID _t)	{ _mtype = _t; }
-    TYPE_ID Get_mtype () const	{ return _mtype; }
+    void Set_mtype (TYPE_ID _t)    { _mtype = _t; }
+    TYPE_ID Get_mtype () const    { return _mtype; }
 
     /* operations */
 
-    void Init ()		{ bzero (this, sizeof(SUMMARY_EXPR)); }
+    void Init ()        { bzero (this, sizeof(SUMMARY_EXPR)); }
 
     void Print_node (FILE *f, INT kid = 0) const;
 
@@ -1793,21 +1793,21 @@ class SUMMARY_STMT
 private:
 
     union {
-	mINT32 _node_index;		// index to either SUMMARY_EXPR,
-					// SUMMARY_CALLSITE, or
-					// SUMMARY_SYMBOL_OFFSET_NODE.
-	WN *_wn;			// used for ARRAY_REF stmts
-	mINT32 _map_id;			// used for ARRAY_REF in file.
+    mINT32 _node_index;        // index to either SUMMARY_EXPR,
+                    // SUMMARY_CALLSITE, or
+                    // SUMMARY_SYMBOL_OFFSET_NODE.
+    WN *_wn;            // used for ARRAY_REF stmts
+    mINT32 _map_id;            // used for ARRAY_REF in file.
     } u1;
     
     enum {
-	STMT_EXPR = 1,			// simple expression
-	STMT_VAR  = 2,			// global/static variable
-	STMT_CALL = 3,			// function call
-	STMT_CD = 4,			// control dependence node
-	STMT_ARRAY_REF = 6,		// array reference
-	STMT_STID = 7,                  // direct assignment
-    } _stmt_type : 8;			// describe what _node_index points to
+    STMT_EXPR = 1,            // simple expression
+    STMT_VAR  = 2,            // global/static variable
+    STMT_CALL = 3,            // function call
+    STMT_CD = 4,            // control dependence node
+    STMT_ARRAY_REF = 6,        // array reference
+    STMT_STID = 7,                  // direct assignment
+    } _stmt_type : 8;            // describe what _node_index points to
 
     /* following used for STMT_VAR only */
     mUINT8 _ref_count;
@@ -1818,20 +1818,20 @@ public:
 
     /* access functions */
 
-    BOOL Is_expr () const	{ return _stmt_type == STMT_EXPR; }
-    BOOL Is_var () const	{ return _stmt_type == STMT_VAR; }
-    BOOL Is_call () const	{ return _stmt_type == STMT_CALL; }
-    BOOL Is_cond () const	{ return _stmt_type == STMT_CD; }
-    BOOL Is_array_ref () const	{ return _stmt_type == STMT_ARRAY_REF; }
+    BOOL Is_expr () const    { return _stmt_type == STMT_EXPR; }
+    BOOL Is_var () const    { return _stmt_type == STMT_VAR; }
+    BOOL Is_call () const    { return _stmt_type == STMT_CALL; }
+    BOOL Is_cond () const    { return _stmt_type == STMT_CD; }
+    BOOL Is_array_ref () const    { return _stmt_type == STMT_ARRAY_REF; }
     BOOL Is_stid() const        { return _stmt_type == STMT_STID;};
 
     void Set_expr_index (INT32 idx) {
-	_stmt_type = STMT_EXPR;
-	u1._node_index = idx;
+    _stmt_type = STMT_EXPR;
+    u1._node_index = idx;
     }
 
     INT32 Get_expr_index () const {
-	return !(_stmt_type == STMT_EXPR) ?  -1 : u1._node_index;
+    return !(_stmt_type == STMT_EXPR) ?  -1 : u1._node_index;
       }
 
     void Set_var_index (INT32 idx) {
@@ -1862,42 +1862,42 @@ public:
     }
 
     void Set_array_ref_wn (WN *w) {
-	_stmt_type = STMT_ARRAY_REF;
-	u1._wn = w;
+    _stmt_type = STMT_ARRAY_REF;
+    u1._wn = w;
     }
     WN *Get_array_ref_wn () const {
-	return !(_stmt_type == STMT_ARRAY_REF) ? 0 : u1._wn;
+    return !(_stmt_type == STMT_ARRAY_REF) ? 0 : u1._wn;
     }
 
     void Set_array_ref_map_id (mINT32 map_id) {
-	_stmt_type = STMT_ARRAY_REF;
-	u1._map_id = map_id;
+    _stmt_type = STMT_ARRAY_REF;
+    u1._map_id = map_id;
     }
     INT32 Get_array_ref_map_id () const {
-	return !(_stmt_type == STMT_ARRAY_REF) ? 0 : u1._map_id;
+    return !(_stmt_type == STMT_ARRAY_REF) ? 0 : u1._map_id;
     } 
 
     void Set_stid_index (INT32 idx) {
-	_stmt_type = STMT_STID;
-	u1._node_index = idx;
+    _stmt_type = STMT_STID;
+    u1._node_index = idx;
       }
 
     INT32 Get_stid_index () const {
       return !(_stmt_type == STMT_STID) ? -1 : u1._node_index;
     }
 
-    void Set_ref_count (UINT8 count)	{ _ref_count = count; }
-    UINT8 Get_ref_count () const	{ return _ref_count; }
+    void Set_ref_count (UINT8 count)    { _ref_count = count; }
+    UINT8 Get_ref_count () const    { return _ref_count; }
 
-    void Set_write_count (UINT8 count)	{ _write_count = count; }
-    UINT8 Get_write_count () const	{ return _write_count; }
+    void Set_write_count (UINT8 count)    { _write_count = count; }
+    UINT8 Get_write_count () const    { return _write_count; }
 
     void Set_addr_taken_count (UINT8 count) { _addr_taken_count = count; }
-    UINT8 Get_addr_taken_count () const	{ return _addr_taken_count; }
+    UINT8 Get_addr_taken_count () const    { return _addr_taken_count; }
 
     /* operations */
 
-    void Init ()	{ bzero (this, sizeof(SUMMARY_STMT)); }
+    void Init ()    { bzero (this, sizeof(SUMMARY_STMT)); }
 
     /* print functions */
 
@@ -1913,68 +1913,68 @@ class SUMMARY_CONTROL_DEPENDENCE
 private:
     
     union {
-	WN *_w;				// map to the corrresponding WHIRL
-	mINT32 _map_id;			// stmt.
+    WN *_w;                // map to the corrresponding WHIRL
+    mINT32 _map_id;            // stmt.
     } u1;
 
     union {
-	mINT32 _expr_index;		// index to SUMMARY_EXPR
-	mINT32 _do_loop_index;		// index to SUMMARY_DO_LOOP
+    mINT32 _expr_index;        // index to SUMMARY_EXPR
+    mINT32 _do_loop_index;        // index to SUMMARY_DO_LOOP
     } u2;
 
-    mINT32 _true_stmt_index;		/* list of reachable statements
-					   that IPA cares if expression is
-					   true.  Index to SUMMARY_STMT */
-    mINT32 _false_stmt_index : 24;	/* likewise for the false branch */
+    mINT32 _true_stmt_index;        /* list of reachable statements
+                       that IPA cares if expression is
+                       true.  Index to SUMMARY_STMT */
+    mINT32 _false_stmt_index : 24;    /* likewise for the false branch */
 
     enum {
-	CD_IF = 0,			// this is an if-then-else or equiv.
-	CD_DO_LOOP = 1,			// a fortran do loop
-	CD_ENTRY = 2,			// dummy node for procedure entry
+    CD_IF = 0,            // this is an if-then-else or equiv.
+    CD_DO_LOOP = 1,            // a fortran do loop
+    CD_ENTRY = 2,            // dummy node for procedure entry
     } _cd_type : 8;
 
-    mINT16 _true_count, _false_count;	// # of entries in SUMMARY_STMT array
-	
+    mINT16 _true_count, _false_count;    // # of entries in SUMMARY_STMT array
+    
 public:
 
     /* access functions */
 
-    void Set_wn (WN *w)			{ u1._w = w; }
-    WN *Get_wn () const			{ return u1._w; }
+    void Set_wn (WN *w)            { u1._w = w; }
+    WN *Get_wn () const            { return u1._w; }
 
     void Set_map_id (mINT32 map_id)     { u1._map_id = map_id; }
     INT32 Get_map_id () const           { return u1._map_id; }
 
-    void Set_expr_index (INT32 idx)	{ u2._expr_index = idx; }
-    INT32 Get_expr_index () const	{ return u2._expr_index; }
+    void Set_expr_index (INT32 idx)    { u2._expr_index = idx; }
+    INT32 Get_expr_index () const    { return u2._expr_index; }
 
-    void Set_do_loop_index (INT32 idx)	{ u2._do_loop_index = idx; }
-    INT32 Get_do_loop_index () const	{ return u2._do_loop_index; }
+    void Set_do_loop_index (INT32 idx)    { u2._do_loop_index = idx; }
+    INT32 Get_do_loop_index () const    { return u2._do_loop_index; }
 
     void Set_true_stmt_index (INT32 idx) { _true_stmt_index = idx; }
-    INT32 Get_true_stmt_index () const	{ return _true_stmt_index;}
+    INT32 Get_true_stmt_index () const    { return _true_stmt_index;}
 
     void Set_false_stmt_index (INT32 idx) { _false_stmt_index = idx; }
-    INT32 Get_false_stmt_index () const	{ return _false_stmt_index;}
+    INT32 Get_false_stmt_index () const    { return _false_stmt_index;}
 
-    void Set_if_stmt ()			{ _cd_type = CD_IF; }
-    BOOL Is_if_stmt () const		{ return _cd_type == CD_IF; }
+    void Set_if_stmt ()            { _cd_type = CD_IF; }
+    BOOL Is_if_stmt () const        { return _cd_type == CD_IF; }
 
-    void Set_do_loop ()			{ _cd_type = CD_DO_LOOP; }
-    BOOL Is_do_loop () const		{ return _cd_type == CD_DO_LOOP; }
+    void Set_do_loop ()            { _cd_type = CD_DO_LOOP; }
+    BOOL Is_do_loop () const        { return _cd_type == CD_DO_LOOP; }
 
-    void Set_entry ()			{ _cd_type = CD_ENTRY; }
-    BOOL Is_entry () const		{ return _cd_type == CD_ENTRY; }
+    void Set_entry ()            { _cd_type = CD_ENTRY; }
+    BOOL Is_entry () const        { return _cd_type == CD_ENTRY; }
     
-    void Set_true_count (INT32 count)	{ _true_count = count; }
-    INT32 Get_true_count () const	{ return _true_count; }
+    void Set_true_count (INT32 count)    { _true_count = count; }
+    INT32 Get_true_count () const    { return _true_count; }
 
-    void Set_false_count (INT32 count)	{ _false_count = count; }
-    INT32 Get_false_count () const	{ return _false_count; }
+    void Set_false_count (INT32 count)    { _false_count = count; }
+    INT32 Get_false_count () const    { return _false_count; }
 
     /* operations */
 
-    void Init ()	{ bzero (this, sizeof(SUMMARY_CONTROL_DEPENDENCE)); }
+    void Init ()    { bzero (this, sizeof(SUMMARY_CONTROL_DEPENDENCE)); }
 
     /* print functions */
     
@@ -1998,24 +1998,24 @@ class SUMMARY_SYMBOL
 private:
 
     union {
-	struct {
-	    mINT32 _findex;		// formal array idx
-	    mINT32 _addr_count;		// addr passed count for locals/formals
-	} s;
-	mINT64 _const_value;		// only use when IPL_CMOD bit
-					// is set
-	struct {                        // only used for common block
-	  mINT32 _common_index;         // elements
-	  mINT32 _common_shape_index;   
-	} c;
+    struct {
+        mINT32 _findex;        // formal array idx
+        mINT32 _addr_count;        // addr passed count for locals/formals
+    } s;
+    mINT64 _const_value;        // only use when IPL_CMOD bit
+                    // is set
+    struct {                        // only used for common block
+      mINT32 _common_index;         // elements
+      mINT32 _common_shape_index;   
+    } c;
     } u1;
 
     union {  
-      mINT32 _cur_addr_count;		// for formal/locals during inlining
-      ST_IDX _st_idx_func; 		// for locals 
+      mINT32 _cur_addr_count;        // for formal/locals during inlining
+      ST_IDX _st_idx_func;         // for locals 
     } u2; 
 
-    ST_IDX st_idx;			// id of the symbol in the symtab
+    ST_IDX st_idx;            // id of the symbol in the symtab
     
     mUINT32 _type   :  8;               // type information about the symbol
     mUINT32 _state  :  8;               // state of the symbol
@@ -2024,58 +2024,58 @@ private:
     
 public:
     /* access functions */
-    void Set_findex (INT findex)	{ u1.s._findex = findex;};
-    mINT32 Get_findex() const		{ return u1.s._findex;};
+    void Set_findex (INT findex)    { u1.s._findex = findex;};
+    mINT32 Get_findex() const        { return u1.s._findex;};
 
     void Set_common_index(INT index)    { u1.c._common_index = index;};
     mINT32 Get_common_index() const { return
-					u1.c._common_index;};
+                    u1.c._common_index;};
 
     void Set_common_shape_index(INT index) { u1.c._common_shape_index
-					       = index;};
+                           = index;};
     mINT32 Get_common_shape_index() const { return
-					      u1.c._common_shape_index;};
+                          u1.c._common_shape_index;};
 
     // addr passed count for locals and formals ONLY if their addr
     // taken and saved bit has not been set
-    void Incr_addr_count()		{ u1.s._addr_count++;};
-    mINT32 Get_addr_count() const	{ return u1.s._addr_count;};
+    void Incr_addr_count()        { u1.s._addr_count++;};
+    mINT32 Get_addr_count() const    { return u1.s._addr_count;};
 
-    void Set_const_value (INT64 value)	{ u1._const_value = value; };
-    void Clear_const_value ()		{ u1._const_value = 0; };
-    INT64 Get_const_value () const	{ return u1._const_value; };
+    void Set_const_value (INT64 value)    { u1._const_value = value; };
+    void Clear_const_value ()        { u1._const_value = 0; };
+    INT64 Get_const_value () const    { return u1._const_value; };
 
-    void Set_st_idx (ST_IDX stid)	{ st_idx = stid; }
-    ST_IDX St_idx () const		{ return st_idx; }
+    void Set_st_idx (ST_IDX stid)    { st_idx = stid; }
+    ST_IDX St_idx () const        { return st_idx; }
 
     // cur_addr_passed is used during the inlining process
-    void Reset_cur_addr_passed_count()	{ u2._cur_addr_count = 0;};
-    void Incr_cur_addr_passed_count()	{ u2._cur_addr_count++;};
+    void Reset_cur_addr_passed_count()    { u2._cur_addr_count = 0;};
+    void Incr_cur_addr_passed_count()    { u2._cur_addr_count++;};
     mINT32 Get_cur_addr_passed_count() const { return u2._cur_addr_count;};
 
     ST_IDX Get_st_idx_func() const      { return u2._st_idx_func;};
-    void Set_st_idx_func(ST_IDX st_idx)	{ u2._st_idx_func = st_idx;};
+    void Set_st_idx_func(ST_IDX st_idx)    { u2._st_idx_func = st_idx;};
 
     // Attribute flags for a symbol:
-#define IPL_LOCAL_SYMBOL	0x01
-#define IPL_STATIC_SYMBOL	0x02
+#define IPL_LOCAL_SYMBOL    0x01
+#define IPL_STATIC_SYMBOL    0x02
 #define IPL_FORMAL_SYMBOL       0x04
 #define IPL_COMMON_ELT_SYMBOL   0x08
-#define IPL_COMMON_BLOCK_SYMBOL	0x10 
-#define IPL_FUNCTION_SYMBOL	0x20
-#define IPL_OPTIONAL_SYMBOL	0x40
-#define IPL_ARRAY_SYMBOL	0x80
+#define IPL_COMMON_BLOCK_SYMBOL    0x10 
+#define IPL_FUNCTION_SYMBOL    0x20
+#define IPL_OPTIONAL_SYMBOL    0x40
+#define IPL_ARRAY_SYMBOL    0x80
 
     // Set/check scope attributes of the symbol:
-    void Set_local()		{ _type |= IPL_LOCAL_SYMBOL; }
-    BOOL Is_local() const	{ return _type & IPL_LOCAL_SYMBOL; }
-    BOOL Is_global() const	{ return (_type & IPL_LOCAL_SYMBOL) == 0; }
+    void Set_local()        { _type |= IPL_LOCAL_SYMBOL; }
+    BOOL Is_local() const    { return _type & IPL_LOCAL_SYMBOL; }
+    BOOL Is_global() const    { return (_type & IPL_LOCAL_SYMBOL) == 0; }
 
-    void Set_static()		{ _type |= IPL_STATIC_SYMBOL; }
-    BOOL Is_static() const	{ return _type & IPL_STATIC_SYMBOL; }
+    void Set_static()        { _type |= IPL_STATIC_SYMBOL; }
+    BOOL Is_static() const    { return _type & IPL_STATIC_SYMBOL; }
 
-    BOOL Is_formal() const	{ return _type & IPL_FORMAL_SYMBOL; }
-    void Set_formal()		{ _type |= IPL_FORMAL_SYMBOL; }
+    BOOL Is_formal() const    { return _type & IPL_FORMAL_SYMBOL; }
+    void Set_formal()        { _type |= IPL_FORMAL_SYMBOL; }
 
     BOOL Is_common() const      { return _type & IPL_COMMON_ELT_SYMBOL; }
     void Set_common()           { _type |= IPL_COMMON_ELT_SYMBOL;};
@@ -2083,37 +2083,37 @@ public:
     BOOL Is_common_block() const { return _type & IPL_COMMON_BLOCK_SYMBOL; }
     void Set_common_block()      { _type |= IPL_COMMON_BLOCK_SYMBOL;};
 
-    BOOL Is_function() const	{ return _type & IPL_FUNCTION_SYMBOL; }
-    void Set_function()		{ _type |= IPL_FUNCTION_SYMBOL; }
+    BOOL Is_function() const    { return _type & IPL_FUNCTION_SYMBOL; }
+    void Set_function()        { _type |= IPL_FUNCTION_SYMBOL; }
 
-    BOOL Is_optional() const	{ return _type & IPL_OPTIONAL_SYMBOL; }
-    void Set_optional()		{ _type |= IPL_OPTIONAL_SYMBOL; }
+    BOOL Is_optional() const    { return _type & IPL_OPTIONAL_SYMBOL; }
+    void Set_optional()        { _type |= IPL_OPTIONAL_SYMBOL; }
 
-    void Set_array()		{ _type |= IPL_ARRAY_SYMBOL; }
-    BOOL Is_array() const	{ return _type & IPL_ARRAY_SYMBOL; }
-    BOOL Is_scalar() const	{ return (_type & IPL_ARRAY_SYMBOL) == 0; }
+    void Set_array()        { _type |= IPL_ARRAY_SYMBOL; }
+    BOOL Is_array() const    { return _type & IPL_ARRAY_SYMBOL; }
+    BOOL Is_scalar() const    { return (_type & IPL_ARRAY_SYMBOL) == 0; }
 
 // address taken states
-#define IPL_ADDR_SAVED		0x01 // ST_addr_taken_and_saved
-#define IPL_ADDR_F90_TARGET	0x02 // ST_is_f90_target
-#define IPL_ADDR_PASSED		0x04 // ST_addr_taken_and_passed 
+#define IPL_ADDR_SAVED        0x01 // ST_addr_taken_and_saved
+#define IPL_ADDR_F90_TARGET    0x02 // ST_is_f90_target
+#define IPL_ADDR_PASSED        0x04 // ST_addr_taken_and_passed 
 #define IPL_ADDR_PASSED_INLINE  0x08 // the address passed for
-				     // locals/formals during inlining has
-				     // occured  
+                     // locals/formals during inlining has
+                     // occured  
 #define IPL_USED_IN_ARRAY_SECTION 0x10 // symbol used in array section summary
 #define IPL_COMMON_IO_NO_PAD      0x20 // common in i/o statement: don't pad
 #define IPL_COMMON_READ_NO_CPROP  0x40 // common read in: no common cprop
 
     // Set/check address-taken attributes:
-    void Set_addr_saved()	{ _state |= IPL_ADDR_SAVED; }
-    BOOL Is_addr_saved() const	{ return _state & IPL_ADDR_SAVED; }
+    void Set_addr_saved()    { _state |= IPL_ADDR_SAVED; }
+    BOOL Is_addr_saved() const    { return _state & IPL_ADDR_SAVED; }
 
-    void Set_addr_f90_target()	{ _state |= IPL_ADDR_F90_TARGET; }
+    void Set_addr_f90_target()    { _state |= IPL_ADDR_F90_TARGET; }
     BOOL Is_addr_f90_target() const { return _state & IPL_ADDR_F90_TARGET; }
     
-    void Set_addr_passed()	{ _state |= IPL_ADDR_PASSED; }
-    void Reset_addr_passed()	{ _state &= ~IPL_ADDR_PASSED; }
-    BOOL Is_addr_passed() const	{ return _state & IPL_ADDR_PASSED; }
+    void Set_addr_passed()    { _state |= IPL_ADDR_PASSED; }
+    void Reset_addr_passed()    { _state &= ~IPL_ADDR_PASSED; }
+    BOOL Is_addr_passed() const    { return _state & IPL_ADDR_PASSED; }
     
     void Set_addr_passed_inliner() { _state |= IPL_ADDR_PASSED_INLINE; }
     BOOL Is_addr_passed_inliner()  { return _state & IPL_ADDR_PASSED_INLINE; }
@@ -2128,73 +2128,73 @@ public:
     BOOL Common_read_no_cprop() const { return _state & IPL_COMMON_READ_NO_CPROP; }
 
     // mod/ref stats
-#define IPL_IMOD	1	  // 0x01 indirect mod, i.e. *p
-#define IPL_DMOD	2	  // 0x02 direct mod, i.e. p
-#define IPL_IREF	4	  // 0x04 indirect ref, i.e. *p
-#define IPL_DREF	8	  // 0x08 direct ref, i.e. p
-#define IPL_AREF	16        // 0x10 address ref, i.e. &p
-#define IPL_IKILL	32	  // 0x20 indirect kill, i.e. *p
-#define IPL_DKILL	64	  // 0x40 direct kill, i.e. p
-#define IPL_CMOD	128	  // 0x80 direct assignment of a constant
-#define IPL_MODCOUNT	256	  // 0x100 mod count is non-zero
+#define IPL_IMOD    1      // 0x01 indirect mod, i.e. *p
+#define IPL_DMOD    2      // 0x02 direct mod, i.e. p
+#define IPL_IREF    4      // 0x04 indirect ref, i.e. *p
+#define IPL_DREF    8      // 0x08 direct ref, i.e. p
+#define IPL_AREF    16        // 0x10 address ref, i.e. &p
+#define IPL_IKILL    32      // 0x20 indirect kill, i.e. *p
+#define IPL_DKILL    64      // 0x40 direct kill, i.e. p
+#define IPL_CMOD    128      // 0x80 direct assignment of a constant
+#define IPL_MODCOUNT    256      // 0x100 mod count is non-zero
 #define IPL_PARM        512       // 0x200 passed as a parameter to a
-				  // routine
+                  // routine
 #define IPL_COPY_REF    1024      // 0x400 ref types that will be used by
                                   // copy propagation
 #define IPL_CDREF_PREG_ONLY 2048  // 0x800 cref or dref only because the LDID
                                   // is under a STID return-preg
                                   // used by copy prop toreset addr passed bit
 
-#define IPL_REF		61	  // 0x3d any ref, i.e. p, *p, or &p
-				  //      including indirect mod, kill
-#define IPL_MODREF_ANY	127	  // 0x7f any mod or ref
+#define IPL_REF        61      // 0x3d any ref, i.e. p, *p, or &p
+                  //      including indirect mod, kill
+#define IPL_MODREF_ANY    127      // 0x7f any mod or ref
 
     // Set/test mod/ref flags:
-    void Set_imod()		{ _modref = _modref | IPL_IMOD;};
-    BOOL Is_imod() const	{ return _modref & IPL_IMOD;};
-    void Set_dmod()		{ _modref = _modref | IPL_DMOD;};
-    BOOL Is_dmod() const	{ return _modref & IPL_DMOD;};
-    void Set_iref()		{ _modref = _modref | IPL_IREF;};
-    BOOL Is_iref() const	{ return _modref & IPL_IREF;};
-    void Set_aref()		{ _modref = _modref | IPL_AREF;};
-    BOOL Is_aref() const	{ return _modref & IPL_AREF;};
-    void Set_dref()		{ _modref =  _modref | IPL_DREF;};
-    BOOL Is_dref() const	{ return _modref & IPL_DREF;};
-    void Set_cref()		{ _modref =  _modref | IPL_COPY_REF;};
-    BOOL Is_cref() const	{ return _modref & IPL_COPY_REF;};
+    void Set_imod()        { _modref = _modref | IPL_IMOD;};
+    BOOL Is_imod() const    { return _modref & IPL_IMOD;};
+    void Set_dmod()        { _modref = _modref | IPL_DMOD;};
+    BOOL Is_dmod() const    { return _modref & IPL_DMOD;};
+    void Set_iref()        { _modref = _modref | IPL_IREF;};
+    BOOL Is_iref() const    { return _modref & IPL_IREF;};
+    void Set_aref()        { _modref = _modref | IPL_AREF;};
+    BOOL Is_aref() const    { return _modref & IPL_AREF;};
+    void Set_dref()        { _modref =  _modref | IPL_DREF;};
+    BOOL Is_dref() const    { return _modref & IPL_DREF;};
+    void Set_cref()        { _modref =  _modref | IPL_COPY_REF;};
+    BOOL Is_cref() const    { return _modref & IPL_COPY_REF;};
     void Set_cdref_preg_only()  { _modref = _modref | IPL_CDREF_PREG_ONLY;}
     BOOL Is_cdref_preg_only() const   { return _modref & IPL_CDREF_PREG_ONLY;}
 
     // TODO:  Kill information is not currently set
-    void Set_ikill()		{ _modref = _modref | IPL_IKILL;};
-    BOOL Is_ikill() const	{ return _modref & IPL_IKILL;};
-    void Set_dkill()		{ _modref = _modref | IPL_DKILL;};
-    BOOL Is_dkill() const	{ return _modref & IPL_DKILL;};
+    void Set_ikill()        { _modref = _modref | IPL_IKILL;};
+    BOOL Is_ikill() const    { return _modref & IPL_IKILL;};
+    void Set_dkill()        { _modref = _modref | IPL_DKILL;};
+    BOOL Is_dkill() const    { return _modref & IPL_DKILL;};
 
-    void Set_cmod()		{ _modref |= IPL_CMOD; };
-    void Clear_cmod()		{ _modref &= ~IPL_CMOD; };
-    BOOL Is_cmod() const	{ return _modref & IPL_CMOD; };
+    void Set_cmod()        { _modref |= IPL_CMOD; };
+    void Clear_cmod()        { _modref &= ~IPL_CMOD; };
+    BOOL Is_cmod() const    { return _modref & IPL_CMOD; };
 
-    void Set_modcount()		{ _modref |= IPL_MODCOUNT; };
-    void Clear_modcount()	{ _modref &= ~IPL_MODCOUNT; };
-    BOOL Is_modcount() const	{ return _modref & IPL_MODCOUNT; };
+    void Set_modcount()        { _modref |= IPL_MODCOUNT; };
+    void Clear_modcount()    { _modref &= ~IPL_MODCOUNT; };
+    BOOL Is_modcount() const    { return _modref & IPL_MODCOUNT; };
 
     BOOL Is_parm() const        { return _modref & IPL_PARM;};
     void Set_parm()             { _modref |= IPL_PARM;};
     
     // Any reference, including indirect mod or kill:
-    BOOL Is_ref() const		{ return _modref & IPL_REF;};
+    BOOL Is_ref() const        { return _modref & IPL_REF;};
     // Any mod/ref at all:
-    BOOL Is_modref() const	{ return _modref & IPL_MODREF_ANY;};
+    BOOL Is_modref() const    { return _modref & IPL_MODREF_ANY;};
 
     
     void Set_btype (mTYPE_ID b) {  _btype = b;};
-    mTYPE_ID Get_btype() const	{ return _btype;};
+    mTYPE_ID Get_btype() const    { return _btype;};
 
 
     /* operations */
        
-    void Init ()		{ bzero (this, sizeof(SUMMARY_SYMBOL)); }
+    void Init ()        { bzero (this, sizeof(SUMMARY_SYMBOL)); }
 
     
     // Tracing:
@@ -2222,55 +2222,55 @@ class SUMMARY_GLOBAL {
 private:
 
     mINT32 _symbol_index;
-    mINT32 _refcount;			// # of times this symbol is read
-    mINT32 _modcount;			// # of times this symbol is written
-    mUINT16 _modref;			// mod/ref state information
+    mINT32 _refcount;            // # of times this symbol is read
+    mINT32 _modcount;            // # of times this symbol is written
+    mUINT16 _modref;            // mod/ref state information
 
 public:
 
     /* access functions */
 
-    void Set_symbol_index ( mINT32 s )	{ _symbol_index = s; };
-    INT32 Get_symbol_index () const	{ return _symbol_index; };
+    void Set_symbol_index ( mINT32 s )    { _symbol_index = s; };
+    INT32 Get_symbol_index () const    { return _symbol_index; };
 
-    void Inc_refcount ()		{ _refcount++; };
-    mINT32 Get_refcount () const	{ return _refcount; };
+    void Inc_refcount ()        { _refcount++; };
+    mINT32 Get_refcount () const    { return _refcount; };
 
-    void Inc_modcount ()		{ _modcount++; };
-    mINT32 Get_modcount () const	{ return _modcount; };
+    void Inc_modcount ()        { _modcount++; };
+    mINT32 Get_modcount () const    { return _modcount; };
     
-    void Set_imod ()			{ _modref |= IPL_IMOD;};
-    BOOL Is_imod() const		{ return _modref & IPL_IMOD;};
+    void Set_imod ()            { _modref |= IPL_IMOD;};
+    BOOL Is_imod() const        { return _modref & IPL_IMOD;};
 
-    void Set_dmod()			{ _modref |= IPL_DMOD;};
-    BOOL Is_dmod() const		{ return _modref & IPL_DMOD;};
+    void Set_dmod()            { _modref |= IPL_DMOD;};
+    BOOL Is_dmod() const        { return _modref & IPL_DMOD;};
 
-    void Set_iref()			{ _modref |= IPL_IREF;};
-    BOOL Is_iref() const		{ return _modref & IPL_IREF;};
+    void Set_iref()            { _modref |= IPL_IREF;};
+    BOOL Is_iref() const        { return _modref & IPL_IREF;};
     
-    void Set_dref()			{_modref |= IPL_DREF;};
-    BOOL Is_dref() const		{ return _modref & IPL_DREF;};  
+    void Set_dref()            {_modref |= IPL_DREF;};
+    BOOL Is_dref() const        { return _modref & IPL_DREF;};  
     
-    void Set_aref()			{ _modref |= IPL_AREF;};
-    BOOL Is_aref() const		{ return _modref & IPL_AREF;};
+    void Set_aref()            { _modref |= IPL_AREF;};
+    BOOL Is_aref() const        { return _modref & IPL_AREF;};
 
     // TODO:  Kill information is not currently set
-    void Set_ikill()			{ _modref |= IPL_IKILL;};
-    BOOL Is_ikill() const		{ return _modref & IPL_IKILL;};
+    void Set_ikill()            { _modref |= IPL_IKILL;};
+    BOOL Is_ikill() const        { return _modref & IPL_IKILL;};
 
-    void Set_dkill()			{ _modref |= IPL_DKILL;}
-    BOOL Is_dkill() const		{ return _modref & IPL_DKILL;};
+    void Set_dkill()            { _modref |= IPL_DKILL;}
+    BOOL Is_dkill() const        { return _modref & IPL_DKILL;};
 
     // Any reference, including indirect mod or kill:
-    BOOL Is_ref() const			{ return _modref & IPL_REF;};
+    BOOL Is_ref() const            { return _modref & IPL_REF;};
 
     // Any mod/ref at all:
-    BOOL Is_modref() const		{ return _modref & IPL_MODREF_ANY;};
+    BOOL Is_modref() const        { return _modref & IPL_MODREF_ANY;};
 
 
     /* operations */
 
-    void Init (void)		{ bzero (this, sizeof(SUMMARY_GLOBAL));}
+    void Init (void)        { bzero (this, sizeof(SUMMARY_GLOBAL));}
 
     // Tracing:
     void Print ( FILE *fp ) const;
@@ -2294,19 +2294,19 @@ class SUMMARY_COMMON
 {
 private:
   mINT32 _symbol_index;
-  mINT32 _common_shape_index;		// index into the first element
-  mUINT16 _common_shape_count;	// shape count is the number of
+  mINT32 _common_shape_index;        // index into the first element
+  mUINT16 _common_shape_count;    // shape count is the number of
                                 // elements in the common block
   mUINT16 _state;
 #define IPL_COMMON_BAD_EQUIV   0x1 // equivalences to common blocks
 #define IPL_COMMON_IS_INIT     0x2 // common has been initialized
 #define IPL_COMMON_BAD_SPLIT_EQUIV 0x4 // equivalences to common for
-				      // splitting
+                      // splitting
 #define IPL_COMMON_SPLIT       0x8    // during IPA phase set to true if we
-				      // are going to split the common.
+                      // are going to split the common.
 #define IPL_COMMON_CONSISTENT 16      // are the commons consistent?
 #define IPL_HAS_CONST_ARRAY 32        // has array elements that are
-				      // assigned constant values
+                      // assigned constant values
 #define IPL_IS_BOTTOM 64              // unknown values may be assigned to it
 
 // has unstructured flow and assignments to the common 
@@ -2319,8 +2319,8 @@ private:
 public:
 
   /* access functions */
-  void Set_symbol_index ( INT32 s )	{ _symbol_index = s; };
-  INT32 Get_symbol_index () const	{ return _symbol_index; };  
+  void Set_symbol_index ( INT32 s )    { _symbol_index = s; };
+  INT32 Get_symbol_index () const    { return _symbol_index; };  
 
   void Set_common_shape_index (mINT32 i) { _common_shape_index = i;};
   mINT32 Get_common_shape_index () const { return _common_shape_index;};
@@ -2328,10 +2328,10 @@ public:
   void Set_common_shape_count (mINT32 i) { _common_shape_count = i;};
   mINT32 Get_common_shape_count() const { return _common_shape_count;};
     
-  void Set_has_bad_equiv()	{ _state |= IPL_COMMON_BAD_EQUIV;};
+  void Set_has_bad_equiv()    { _state |= IPL_COMMON_BAD_EQUIV;};
   mBOOL Has_bad_equiv() const { return _state & IPL_COMMON_BAD_EQUIV;};
 
-  void Set_is_initialized()	{ _state |= IPL_COMMON_IS_INIT;};
+  void Set_is_initialized()    { _state |= IPL_COMMON_IS_INIT;};
   mBOOL Is_initialized() const {return _state & IPL_COMMON_IS_INIT;};
 
   void Set_has_bad_split_equiv() { _state |= IPL_COMMON_BAD_SPLIT_EQUIV;};
@@ -2339,17 +2339,17 @@ public:
 
   void Set_has_array_constants() { _state |= IPL_HAS_CONST_ARRAY;};
   mBOOL Has_array_constants () const { return _state &
-					   IPL_HAS_CONST_ARRAY; };
+                       IPL_HAS_CONST_ARRAY; };
  
   INT16  Is_bottom () const { return _state & IPL_IS_BOTTOM;};
   void Set_bottom() { _state |= IPL_IS_BOTTOM;};
 
   // used during main IPA
-  void Set_need_split()	{ _state |= IPL_COMMON_SPLIT;};
-  mBOOL Need_split() const	{ return _state & IPL_COMMON_SPLIT;};
+  void Set_need_split()    { _state |= IPL_COMMON_SPLIT;};
+  mBOOL Need_split() const    { return _state & IPL_COMMON_SPLIT;};
 
-  void Set_is_consistent()	{ _state |= IPL_COMMON_CONSISTENT;};
-  INT16 Is_consistent() const	{ return _state & IPL_COMMON_CONSISTENT;};
+  void Set_is_consistent()    { _state |= IPL_COMMON_CONSISTENT;};
+  INT16 Is_consistent() const    { return _state & IPL_COMMON_CONSISTENT;};
 
   void Set_has_unstructured_cflow() 
   { _state |= IPL_HAS_UNSTRUCTURED_FLOW_WITH_ASSIGN;};
@@ -2357,14 +2357,14 @@ public:
   INT16 Has_unstructured_cflow() const 
       { return _state & IPL_HAS_UNSTRUCTURED_FLOW_WITH_ASSIGN;};
 
-  void Set_imod()	{ _state |= IPL_HAS_IMOD;};
-  INT16 Is_imod() const	{ return _state & IPL_HAS_IMOD;};
+  void Set_imod()    { _state |= IPL_HAS_IMOD;};
+  INT16 Is_imod() const    { return _state & IPL_HAS_IMOD;};
 
-  void Set_has_equivalences()	 { _state |= IPL_HAS_EQUIVALENCES;};
+  void Set_has_equivalences()     { _state |= IPL_HAS_EQUIVALENCES;};
   INT16 Has_equivalences() const { return  _state & IPL_HAS_EQUIVALENCES;};
 
   /* operations */
-  void Init ()		{ bzero (this, sizeof(SUMMARY_COMMON)); }
+  void Init ()        { bzero (this, sizeof(SUMMARY_COMMON)); }
 
   void Print_array(FILE *fp, INT32 size) const;
   void Trace_array(INT32 size) const ;
@@ -2408,8 +2408,8 @@ private:
 
 public:
   /* access functions */
-  void Set_dim_count(INT32 i )	{ _dim_count = i;};
-  INT32 Get_dim_count() const	{ return _dim_count;};
+  void Set_dim_count(INT32 i )    { _dim_count = i;};
+  INT32 Get_dim_count() const    { return _dim_count;};
 
   INT32 Get_symbol_index() const { return _symbol_index; };
   void Set_symbol_index(INT32 i) { _symbol_index = i;};
@@ -2417,40 +2417,40 @@ public:
   void Set_upper (INT32 i)  { _u1._bounds._upper = i;};
   INT32 Get_upper() const   { return _u1._bounds._upper;};
 
-  void Set_lower(INT32 i)	{ _u1._bounds._lower = i;};
-  INT32 Get_lower() const	{ return _u1._bounds._lower;};
+  void Set_lower(INT32 i)    { _u1._bounds._lower = i;};
+  INT32 Get_lower() const    { return _u1._bounds._lower;};
 
-  void Set_stride(INT32 i)	{ _u2._stride = i;};
-  INT32 Get_stride() const	{ return _u2._stride;};
+  void Set_stride(INT32 i)    { _u2._stride = i;};
+  INT32 Get_stride() const    { return _u2._stride;};
  
-  void Set_value_index(INT32 i)	{ _u2._value_index = i;};
-  INT32 Get_value_index() const	{ return _u2._value_index;};
+  void Set_value_index(INT32 i)    { _u2._value_index = i;};
+  INT32 Get_value_index() const    { return _u2._value_index;};
 
   void Set_value(SUMMARY_VALUE* val) { _u2._value = val;};
   SUMMARY_VALUE *Get_value() const   { return _u2._value;};
 
   void Set_all_sizes (INT32 upper, INT32 lower, INT32 stride) {
-	_u1._bounds._upper = upper;
-	_u1._bounds._lower = lower;
-	_u2._stride = stride;
+    _u1._bounds._upper = upper;
+    _u1._bounds._lower = lower;
+    _u2._stride = stride;
   }
 
-  void Set_element_size (INT32 i)	{_element_size = i;};
-  INT32 Get_element_size() const	{ return _element_size;};
+  void Set_element_size (INT32 i)    {_element_size = i;};
+  INT32 Get_element_size() const    { return _element_size;};
 
   INT64 Get_offset()  const    { return _u1._offset;};
   void Set_offset(INT64  ofst) { _u1._offset = ofst; };
 
-  void Set_is_kind_array()	 { _state |= IPL_IS_KIND_ARRAY;};
+  void Set_is_kind_array()     { _state |= IPL_IS_KIND_ARRAY;};
   BOOL Is_kind_array() const { return _state & IPL_IS_KIND_ARRAY;};
     
-  void Set_is_kind_scalar()	  { _state |= IPL_IS_KIND_SCALAR;};
+  void Set_is_kind_scalar()      { _state |= IPL_IS_KIND_SCALAR;};
   BOOL Is_kind_scalar() const { return _state & IPL_IS_KIND_SCALAR;};
 
-  void Set_symbolic()		      { _state |= IPL_IS_SYMBOLIC_BOUNDS;};
+  void Set_symbolic()              { _state |= IPL_IS_SYMBOLIC_BOUNDS;};
   BOOL Is_symbolic_bounds() const { return _state & IPL_IS_SYMBOLIC_BOUNDS;};
 
-  void Set_has_const()	 { _state |= IPL_HAS_CONST_VALUE;};
+  void Set_has_const()     { _state |= IPL_HAS_CONST_VALUE;};
   void Reset_has_const() { _state &= ~IPL_HAS_CONST_VALUE;};
   BOOL Is_const() const  { return _state & IPL_HAS_CONST_VALUE;};
 
@@ -2459,7 +2459,7 @@ public:
   BOOL Is_not_const() const { return _state & IPL_NOT_CONST_VALUE;};
 
   /* operations */
-  void Init ()	{ 
+  void Init ()    { 
     bzero(this, sizeof(SUMMARY_COMMON_SHAPE)); 
     Set_symbol_index(-1); 
   }
@@ -2483,113 +2483,113 @@ public:
 //-----------------------------------------------------------------
 // summary information for a field_reorder parameter
 //-----------------------------------------------------------------
-	struct STRUCT_ACCESS{//UGLY, to put it outside of SUMMARY! BUT...
-	//should put into SUMMARY_STRUCT_ACCESS
-	//BUT I cannot make qsort() running with Cmp_FLD_COUNT1() as a member func
-	//qsort() cannot find it!!!!
-		mUINT32 field_id;
-		mUINT64 count;
-	};
-	/*assist function for Set_hot_fld()*/
-	inline INT Cmp_FLD_COUNT1(const void *p1,const void*p2){
-		STRUCT_ACCESS* t1,*t2;
-		t1=(STRUCT_ACCESS*)p1;
-		t2=(STRUCT_ACCESS*)p2;
-		  if ( t1->count <t2->count )
-		    return 1;
-		  else if ( t1->count >t2->count  )
-		    return -1;
-		  else
-		    return 0;
-	};
+    struct STRUCT_ACCESS{//UGLY, to put it outside of SUMMARY! BUT...
+    //should put into SUMMARY_STRUCT_ACCESS
+    //BUT I cannot make qsort() running with Cmp_FLD_COUNT1() as a member func
+    //qsort() cannot find it!!!!
+        mUINT32 field_id;
+        mUINT64 count;
+    };
+    /*assist function for Set_hot_fld()*/
+    inline INT Cmp_FLD_COUNT1(const void *p1,const void*p2){
+        STRUCT_ACCESS* t1,*t2;
+        t1=(STRUCT_ACCESS*)p1;
+        t2=(STRUCT_ACCESS*)p2;
+          if ( t1->count <t2->count )
+            return 1;
+          else if ( t1->count >t2->count  )
+            return -1;
+          else
+            return 0;
+    };
 
 
 class SUMMARY_STRUCT_ACCESS
 {
-	struct Cmp_FLD_COUNT{// no use now! we now use array instead of vector
-		bool operator() (const STRUCT_ACCESS &t1,const STRUCT_ACCESS &t2) const{
-			  if ( t1.count <t2.count )
-			    return 1;
-			  else if ( t1.count >t2.count  )
-			    return -1;
-			  else
-			    return 0;
-		};
-	};
-	#define max_hot_num 8
+    struct Cmp_FLD_COUNT{// no use now! we now use array instead of vector
+        bool operator() (const STRUCT_ACCESS &t1,const STRUCT_ACCESS &t2) const{
+              if ( t1.count <t2.count )
+                return 1;
+              else if ( t1.count >t2.count  )
+                return -1;
+              else
+                return 0;
+        };
+    };
+    #define max_hot_num 8
 private:
-	MEM_POOL *_mem;
-	mUINT32 _ty; //just struct_type
-	mUINT32 _flatten_flds;
-	union{
-	   	STRUCT_ACCESS hot_fld[max_hot_num];// just fld access of hot fields;
-	   	STRUCT_ACCESS* flds; // access count of all fld; field_id is just for sorting
-   	}_u;
+    MEM_POOL *_mem;
+    mUINT32 _ty; //just struct_type
+    mUINT32 _flatten_flds;
+    union{
+           STRUCT_ACCESS hot_fld[max_hot_num];// just fld access of hot fields;
+           STRUCT_ACCESS* flds; // access count of all fld; field_id is just for sorting
+       }_u;
 public:
 
     /* access functions */
 
-    void Set_ty(mUINT32 ty) {	_ty = ty; }		//set ty, and get flatten_flds, malloc flds[]
-    mUINT32 Get_ty() const  		{ return _ty;};
-    mUINT64 Get_hot_fld(mUINT32 hot_num)const	{return _u.hot_fld[hot_num].count;}
-    mUINT32 Get_hot_fld_id(mUINT32 hot_num)const	{return _u.hot_fld[hot_num].field_id;}
+    void Set_ty(mUINT32 ty) {    _ty = ty; }        //set ty, and get flatten_flds, malloc flds[]
+    mUINT32 Get_ty() const          { return _ty;};
+    mUINT64 Get_hot_fld(mUINT32 hot_num)const    {return _u.hot_fld[hot_num].count;}
+    mUINT32 Get_hot_fld_id(mUINT32 hot_num)const    {return _u.hot_fld[hot_num].field_id;}
 
     void Set_flatten_flds(mUINT32 flatten_flds) {_flatten_flds=flatten_flds;}
     mUINT32 Get_flatten_flds() const { return _flatten_flds;};
     void  Inc_fld_count(mUINT32 fld_id, mUINT64 add_count)
 #ifdef KEY // bug 5372
-    	{_u.flds[fld_id-1].count+=add_count;};
+        {_u.flds[fld_id-1].count+=add_count;};
 #else
-    	{_u.flds[fld_id].count+=add_count;};
+        {_u.flds[fld_id].count+=add_count;};
 #endif
 #if 0 // SC
     char* Get_ty_name (void) const { TY& ty=Ty_tab[_ty];
-		 return Index_To_Str(ty.name_idx); }
+         return Index_To_Str(ty.name_idx); }
 
     void Set_hot_fld (void) // get hottness sorting, put  to hot_fld[], dealloc flds[]
     {
-		mUINT32 flds;
-		UINT i,num=Get_flatten_flds();
-		FmtAssert(num>=1,
-		("in Set_hot_fld() type fld_num>=1!\n"));
+        mUINT32 flds;
+        UINT i,num=Get_flatten_flds();
+        FmtAssert(num>=1,
+        ("in Set_hot_fld() type fld_num>=1!\n"));
 
-		STRUCT_ACCESS *old,*hot;
-		old=_u.flds; //record flds[]
-		hot=_u.hot_fld;
-		for(i=0;i<num;i++)
-			old[i].field_id=i+1;
-		qsort( old,num, sizeof(STRUCT_ACCESS), Cmp_FLD_COUNT1);
-		//std::sort(old,old+num-1, Cmp_FLD_COUNT());
-		if(num>max_hot_num)
-			num=max_hot_num;
-		for(i=0;i<num;i++)
-			hot[i]=old[i];
-		return;
-	}
+        STRUCT_ACCESS *old,*hot;
+        old=_u.flds; //record flds[]
+        hot=_u.hot_fld;
+        for(i=0;i<num;i++)
+            old[i].field_id=i+1;
+        qsort( old,num, sizeof(STRUCT_ACCESS), Cmp_FLD_COUNT1);
+        //std::sort(old,old+num-1, Cmp_FLD_COUNT());
+        if(num>max_hot_num)
+            num=max_hot_num;
+        for(i=0;i<num;i++)
+            hot[i]=old[i];
+        return;
+    }
 
     void Set_hot_fld_array(INT32 size)
-    	{ INT i;
-		    for ( i=0; i<size; ++i ) 
-			this[i].Set_hot_fld ();
-	    }; //for all summary_entry, set hot_fld_access info
+        { INT i;
+            for ( i=0; i<size; ++i ) 
+            this[i].Set_hot_fld ();
+        }; //for all summary_entry, set hot_fld_access info
 #endif // SC
 
     /* operations */
 
     void Init (mUINT32 ty_index,mUINT32 flatten_flds,MEM_POOL * mem){ 
-	    bzero(this, sizeof(SUMMARY_STRUCT_ACCESS)); 
-	    _mem=mem;
-	    Set_ty(ty_index); 
-	    Set_flatten_flds(flatten_flds);
-	    _u.flds= (STRUCT_ACCESS*)MEM_POOL_Alloc_P(_mem,
-			sizeof(STRUCT_ACCESS)*flatten_flds,
-			TRUE,NULL);
+        bzero(this, sizeof(SUMMARY_STRUCT_ACCESS)); 
+        _mem=mem;
+        Set_ty(ty_index); 
+        Set_flatten_flds(flatten_flds);
+        _u.flds= (STRUCT_ACCESS*)MEM_POOL_Alloc_P(_mem,
+            sizeof(STRUCT_ACCESS)*flatten_flds,
+            TRUE,NULL);
 #ifndef KEY
-	    fprintf(stderr,"new summary: type%d, \n",ty_index);
+        fprintf(stderr,"new summary: type%d, \n",ty_index);
 #endif // !KEY
   }
 
-	/*assist subroutine*/
+    /*assist subroutine*/
 
 
     // Tracing:

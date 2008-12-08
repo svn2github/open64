@@ -76,245 +76,245 @@ DIPA_Olist DIPA_Phase_Manager::dipa_olist;
  */
 PHASE_ID DIPA_Phase_Manager::Register_Phase(const char *name, INT parentId, INT prevId)
 {
-	if ( last_phase_id >= T_DIPA_TIMER_LAST ) {
-		FmtAssert((false), ("Too many timers allocated\n"));
-	}
-	INT curId = last_phase_id++;
-	Alloc_Phase (curId, name, parentId);
-	return (PHASE_ID)curId;
+    if ( last_phase_id >= T_DIPA_TIMER_LAST ) {
+        FmtAssert((false), ("Too many timers allocated\n"));
+    }
+    INT curId = last_phase_id++;
+    Alloc_Phase (curId, name, parentId);
+    return (PHASE_ID)curId;
 }
 
 PHASE_ID DIPA_Phase_Manager::Register_Phase(DIPA_Phase *cur, DIPA_Phase *parent, DIPA_Phase *prev)
 {
-	Phase_List* ph_list=NULL;
-	if (parent == NULL) {
-		// top level phase, insert into top level phase list after prev phase
-		ph_list = &phase_list;
-	} else {
-		// insert in the parent's child list
-		ph_list = parent->Get_Childs();
-	}
+    Phase_List* ph_list=NULL;
+    if (parent == NULL) {
+        // top level phase, insert into top level phase list after prev phase
+        ph_list = &phase_list;
+    } else {
+        // insert in the parent's child list
+        ph_list = parent->Get_Childs();
+    }
 
-	if (prev) {
-		Phase_Iter it;
-		for (it = ph_list->begin(); it != ph_list->end(); it++) {
-			if ((*it) == prev) break;
-		}
-		// if not found
-		FmtAssert((it != ph_list->end()), ("Fatal error: phase %s not registered at the same level\n", prev->Get_Name()));
+    if (prev) {
+        Phase_Iter it;
+        for (it = ph_list->begin(); it != ph_list->end(); it++) {
+            if ((*it) == prev) break;
+        }
+        // if not found
+        FmtAssert((it != ph_list->end()), ("Fatal error: phase %s not registered at the same level\n", prev->Get_Name()));
 
-		it++;
-		ph_list->insert(it, cur);
-	} else {
-		// insert at the end
-		ph_list->push_back(cur);
-	}
+        it++;
+        ph_list->insert(it, cur);
+    } else {
+        // insert at the end
+        ph_list->push_back(cur);
+    }
 
-	// attach timer info
-	/*
-	 * \todo timer_id in timing.h is used as phase id for convenience at present. This
-	 * will be changed later.
-	 */
-	FmtAssert((last_phase_id < T_DIPA_TIMER_LAST), ("Too many timers allocated\n"));
+    // attach timer info
+    /*
+     * \todo timer_id in timing.h is used as phase id for convenience at present. This
+     * will be changed later.
+     */
+    FmtAssert((last_phase_id < T_DIPA_TIMER_LAST), ("Too many timers allocated\n"));
 
-	int32_t curId = last_phase_id++;
-	cur->Set_Id(curId);
-	Alloc_Phase (curId, cur->Get_Name(), (parent)?parent->Get_Id():INVALID_PHASE_ID);
+    INT32 curId = last_phase_id++;
+    cur->Set_Id(curId);
+    Alloc_Phase (curId, cur->Get_Name(), (parent)?parent->Get_Id():INVALID_PHASE_ID);
 
-	// Receive command line options
-	Dipa_add_phase_opt((char *)cur->Get_Name(), cur->Get_Id());
+    // Receive command line options
+    Dipa_add_phase_opt((char *)cur->Get_Name(), cur->Get_Id());
 
-	// This phase is enabled by default after register
-	cur->Enable();
-	cur->Enable_Tracing();
+    // This phase is enabled by default after register
+    cur->Enable();
+    cur->Enable_Tracing();
 
-	return 0;
+    return 0;
 }
 
 void DIPA_Phase_Manager::Add_Global_Arg(const char *arg_name, const char *arg_val)
 {
-	CMD_ARG pair1;
+    CMD_ARG pair1;
 
-	pair1.first = arg_name;
-	pair1.second = NULL;
-	if (arg_val && arg_val[0])
-		pair1.second = arg_val;
-	dipa_args.push_back(pair1);
+    pair1.first = arg_name;
+    pair1.second = NULL;
+    if (arg_val && arg_val[0])
+        pair1.second = arg_val;
+    dipa_args.push_back(pair1);
 }
 
 void DIPA_Phase_Manager::Add_DIPA_File(char *fname)
 {
-	DIPA_Obj *robj = CXX_NEW (DIPA_Obj(), Get_Nz_Mempool());	// Don't worry about new, it will be changed later
+    DIPA_Obj *robj = CXX_NEW (DIPA_Obj(), Get_Nz_Mempool());    // Don't worry about new, it will be changed later
 
-	FmtAssert((robj != NULL), ("Failed to allocate DIPA obj!\n"));
-	robj->Set_Rfile(fname);
+    FmtAssert((robj != NULL), ("Failed to allocate DIPA obj!\n"));
+    robj->Set_Rfile(fname);
 
-	dipa_olist.push_back(robj);
+    dipa_olist.push_back(robj);
 }
 
 PHASE_ID DIPA_Phase_Manager::Get_Phase_ID (const char *name)
 {
-	INT tid;
-	for (tid=0; tid<last_phase_id; tid++) {
-		if (strcmp(name, Get_Timer_Name(Timer(tid))) == 0) {
-			return (PHASE_ID)tid;
-		}
-	}
-	return INVALID_PHASE_ID;
+    INT tid;
+    for (tid=0; tid<last_phase_id; tid++) {
+        if (strcmp(name, Get_Timer_Name(Timer(tid))) == 0) {
+            return (PHASE_ID)tid;
+        }
+    }
+    return INVALID_PHASE_ID;
 }
 
 void DIPA_Phase_Manager::Dump_All_Stats(FILE *file)
 {
-	Phase_Iter it;
+    Phase_Iter it;
 
-	for (it = phase_list.begin(); it != phase_list.end(); it++) {
-		(*it)->Dump_Stats();
-	}
+    for (it = phase_list.begin(); it != phase_list.end(); it++) {
+        (*it)->Dump_Stats();
+    }
 }
 
 void DIPA_Phase_Manager::Accum_All_Stats(void)
 {
-	Phase_Iter it;
+    Phase_Iter it;
 
-	printf("entering Accum_All_Stats\n");
+    printf("entering Accum_All_Stats\n");
 
-	for (it = phase_list.begin(); it != phase_list.end(); it++) {
-		(*it)->Accum_Stats();
-	}
+    for (it = phase_list.begin(); it != phase_list.end(); it++) {
+        (*it)->Accum_Stats();
+    }
 }
 
 void DIPA_Phase_Manager::Dump_All_Phases(void)
 {
-	printf("\n---Dump all phases - total #:%d\n", phase_list.size());
-	for (Phase_Iter it=phase_list.begin(); it!=phase_list.end(); it++ ) {
-		(*it)->Dump_Phase(0);
-	}
-	printf("\tDump global arguments\n");
-	CMD_ARGS_Iter iter;
-	for (iter=dipa_args.begin(); iter!=dipa_args.end(); iter++) {
-		if ((*iter).first != NULL) {
-			printf("\t\toption name [%s]: val %s\n", (*iter).first, (*iter).second);
-		} else {
-			printf("\t\tfile: %s\n", (*iter).second);
-		}
-	}
-	printf("---Dump end\n\n");
+    printf("\n---Dump all phases - total #:%d\n", phase_list.size());
+    for (Phase_Iter it=phase_list.begin(); it!=phase_list.end(); it++ ) {
+        (*it)->Dump_Phase(0);
+    }
+    printf("\tDump global arguments\n");
+    CMD_ARGS_Iter iter;
+    for (iter=dipa_args.begin(); iter!=dipa_args.end(); iter++) {
+        if ((*iter).first != NULL) {
+            printf("\t\toption name [%s]: val %s\n", (*iter).first, (*iter).second);
+        } else {
+            printf("\t\tfile: %s\n", (*iter).second);
+        }
+    }
+    printf("---Dump end\n\n");
 }
 
 
-void Catch_Signal(int sig)
+void Catch_Signal(INT sig)
 {
-	signal (sig, SIG_DFL);
+    signal (sig, SIG_DFL);
 
-	const char *ph_name = DIPA_Phase_Manager::Get_Cur_Phase_Name();
+    const char *ph_name = DIPA_Phase_Manager::Get_Cur_Phase_Name();
 
-	fprintf (stderr, "SIGNAL: %s", strsignal(sig));
-	fprintf (stderr, " in %s phase.\n",  ph_name ? ph_name : "startup");
-	fflush (stderr);
+    fprintf (stderr, "SIGNAL: %s", strsignal(sig));
+    fprintf (stderr, " in %s phase.\n",  ph_name ? ph_name : "startup");
+    fflush (stderr);
 
-	if ( SIGHUP == sig || SIGTERM == sig || SIGINT == sig) {
-		kill (getpid(), sig);
-		exit (DIPA_INTERNAL_ERROR);
-	}
+    if ( SIGHUP == sig || SIGTERM == sig || SIGINT == sig) {
+        kill (getpid(), sig);
+        exit (DIPA_INTERNAL_ERROR);
+    }
 
-	fprintf(stderr, "Signal %s not handled. Terminated.\n", strsignal(sig));
-	exit (DIPA_INTERNAL_ERROR);
+    fprintf(stderr, "Signal %s not handled. Terminated.\n", strsignal(sig));
+    exit (DIPA_INTERNAL_ERROR);
 }
 
-void setup_signal_handler(int sig)
+void setup_signal_handler(INT sig)
 {
-	signal (sig, Catch_Signal);
+    signal (sig, Catch_Signal);
 }
 
 void Init_Signal_Handlers(void)
 {
-	setup_signal_handler (SIGHUP);
-	setup_signal_handler (SIGINT);
-	setup_signal_handler (SIGQUIT);
-	setup_signal_handler (SIGILL);
-	setup_signal_handler (SIGTRAP);
-	setup_signal_handler (SIGIOT);
-	setup_signal_handler (SIGFPE);
-	setup_signal_handler (SIGBUS);
-	setup_signal_handler (SIGSEGV);
-	setup_signal_handler (SIGTERM);
+    setup_signal_handler (SIGHUP);
+    setup_signal_handler (SIGINT);
+    setup_signal_handler (SIGQUIT);
+    setup_signal_handler (SIGILL);
+    setup_signal_handler (SIGTRAP);
+    setup_signal_handler (SIGIOT);
+    setup_signal_handler (SIGFPE);
+    setup_signal_handler (SIGBUS);
+    setup_signal_handler (SIGSEGV);
+    setup_signal_handler (SIGTERM);
 }
 
-bool DIPA_Phase_Manager::Init_Memory(void)
+BOOL DIPA_Phase_Manager::Init_Memory(void)
 {
-	MEM_POOL_Initialize(&MEM_dipa_pool,"dipa",TRUE);
+    MEM_POOL_Initialize(&MEM_dipa_pool,"dipa",TRUE);
 
-	MEM_POOL_Push(&MEM_dipa_pool);
+    MEM_POOL_Push(&MEM_dipa_pool);
 
-	MEM_POOL_Initialize(&MEM_dipa_nz_pool,"dipa (nz)",FALSE);
+    MEM_POOL_Initialize(&MEM_dipa_nz_pool,"dipa (nz)",FALSE);
 
-	MEM_POOL_Push(&MEM_dipa_nz_pool);
+    MEM_POOL_Push(&MEM_dipa_nz_pool);
 
-	return true;
+    return true;
 }
 
 void DIPA_Phase_Manager::Set_Trace_File(const char *fname)
 {
-	tfile_name = fname;
+    tfile_name = fname;
 }
 
-bool DIPA_Phase_Manager::Init_Trace_File(const char *fname)
+BOOL DIPA_Phase_Manager::Init_Trace_File(const char *fname)
 {
-	tfile_name = fname;
-	if (fname && fname[0]) {
-		tfile = fopen(fname, "wb");
-		FmtAssert((tfile!=NULL),("Can't create trace file %s\n", fname));
-		return true;
-	}
+    tfile_name = fname;
+    if (fname && fname[0]) {
+        tfile = fopen(fname, "wb");
+        FmtAssert((tfile!=NULL),("Can't create trace file %s\n", fname));
+        return true;
+    }
 
-	return false;
+    return false;
 }
 
-bool DIPA_Phase_Manager::Init_IPA(void)
+BOOL DIPA_Phase_Manager::Init_IPA(void)
 {
-	Init_Signal_Handlers();
-	Init_Memory();
+    Init_Signal_Handlers();
+    Init_Memory();
 
-	// This will be changed later.
-	Initialize_Timing (true);
+    // This will be changed later.
+    Initialize_Timing (true);
 
-	return true;
+    return true;
 }
 
-bool DIPA_Phase_Manager::Do_IPA(void)
+BOOL DIPA_Phase_Manager::Do_IPA(void)
 {
-	Reset_Timers();
+    Reset_Timers();
 
-	Phase_Iter it;
+    Phase_Iter it;
 
-	for (it = phase_list.begin(); it != phase_list.end(); it++) {
-		if ((*it)->Is_Enabled() == false ) continue;
+    for (it = phase_list.begin(); it != phase_list.end(); it++) {
+        if ((*it)->Is_Enabled() == false ) continue;
 
-		Set_Cur_Phase(*it);
-		Start_Timer((*it)->Get_Id());
+        Set_Cur_Phase(*it);
+        Start_Timer((*it)->Get_Id());
 
-		// execute phase actions one by one
-		(*it)->Start(&dipa_args, &dipa_olist);
+        // execute phase actions one by one
+        (*it)->Start(&dipa_args, &dipa_olist);
 
-		Stop_Timer((*it)->Get_Id());
-	}
+        Stop_Timer((*it)->Get_Id());
+    }
 
-	return true;
+    return true;
 }
 
-bool DIPA_Phase_Manager::End_IPA(void)
+BOOL DIPA_Phase_Manager::End_IPA(void)
 {
-	// below should be guarded by command line options
-	Accum_All_Stats();
-	Dump_All_Stats(Get_Trace_File_Desc());
+    // below should be guarded by command line options
+    Accum_All_Stats();
+    Dump_All_Stats(Get_Trace_File_Desc());
 
-	return true;
+    return true;
 }
 
 const char *DIPA_Phase_Manager::Get_Cur_Phase_Name(void)
 {
-	const char *p = (cur_phase)?cur_phase->Get_Name():NULL;
-	return p;
+    const char *p = (cur_phase)?cur_phase->Get_Name():NULL;
+    return p;
 }
 
 /*
@@ -323,12 +323,12 @@ const char *DIPA_Phase_Manager::Get_Cur_Phase_Name(void)
  */
 DIPA_Phase *DIPA_Phase_Manager::Get_Phase (PHASE_ID ph_id)
 {
-	Phase_Iter it;
-	for (it = phase_list.begin(); it != phase_list.end(); it++) {
-		if ((*it)->Get_Id() == ph_id)
-			return *it;
-	}
-	FmtAssert((false),("Can't find phase with id %d\n", ph_id));
+    Phase_Iter it;
+    for (it = phase_list.begin(); it != phase_list.end(); it++) {
+        if ((*it)->Get_Id() == ph_id)
+            return *it;
+    }
+    FmtAssert((false),("Can't find phase with id %d\n", ph_id));
 }
 
 // Workaround to provide trace functions for old timing/mem code

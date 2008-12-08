@@ -50,7 +50,7 @@ FILE* dump_file = 0;
 
 int main(int argc, char **argv)
 {
-  int i = 0;
+  INT i = 0;
   std::vector<Infile> infile;
   FILE* fdo;
 
@@ -64,8 +64,8 @@ int main(int argc, char **argv)
     if (strcmp(argv[i], "-m") == 0) {
       i++;
       if (i >= argc) {
-	std::cout << "missing file name after -m\n";
-	exit(1);
+    std::cout << "missing file name after -m\n";
+    exit(1);
       }
       ibin.name = argv[i];
       infile.push_back(ibin);
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
   }
 
   try {
-    for (int i=0; i<infile.size(); i++) {
+    for (INT i=0; i<infile.size(); i++) {
       ELFBin annot_obj;
       char* s = infile[i].name;
       annot_obj.createELFObj(s);

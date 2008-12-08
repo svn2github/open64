@@ -45,11 +45,11 @@ inline T* ofs2ptr(T* p, char* base) {
   return reinterpret_cast<T*>(base + reinterpret_cast<size_t>(p));
 }
 
-static inline void print(FILE *fp, int sz, unsigned char *stream)
+static inline void print(FILE *fp, INT sz, unsigned char *stream)
 {
 #if 0
 #if defined(DEBUG)
-  int j = 0;
+  INT j = 0;
   while (j < sz) {
     if ((j % 8) == 0)
       fprintf(fp, "\n");
@@ -63,7 +63,7 @@ static inline void print(FILE *fp, int sz, unsigned char *stream)
 #endif
 }
 
-void Build_wn_tree_from_bits(WN *node, unsigned int sz)
+void Build_wn_tree_from_bits(WN *node, UINT sz)
 {
   WN *wn;
 
@@ -109,7 +109,7 @@ static void Print(FILE *f, PU_Info* pu_info, const char *indent)
 const char* indent = "  ";
 
 
-void Print_whirl_global_from_bits(FILE *f, BITS b, unsigned int sz)
+void Print_whirl_global_from_bits(FILE *f, BITS b, UINT sz)
 {
   fprintf(f, "Global Table:\n");
   print(f, sz, b);
@@ -119,8 +119,8 @@ void Print_whirl_global_from_bits(FILE *f, BITS b, unsigned int sz)
 
 // we should rewrite this part of code. Taken from ipl_bread_write.cxx
 void
-IPA_Trace_Summary_Section (FILE *f,		
-			   const void *sbase)	
+IPA_Trace_Summary_Section (FILE *f,        
+               const void *sbase)    
 {
     SUMMARY_FILE_HEADER *file_header;
     SUMMARY_SYMBOL *sym_array;
@@ -149,10 +149,10 @@ IPA_Trace_Summary_Section (FILE *f,
     file_header = (SUMMARY_FILE_HEADER*)(section_base + *offset);
     
     if (file_header == 0)
-	return;
+    return;
 
     fprintf ( (FILE *)f, "IPA Summary Rev -- %d.%d \n\n", 
-		file_header->Get_version_number(), file_header->Get_minor_version_number() );
+        file_header->Get_version_number(), file_header->Get_minor_version_number() );
 
     fprintf ( (FILE*)f, "OLevel-- O%d \n", file_header->Get_opt_level() );
 
@@ -161,286 +161,286 @@ IPA_Trace_Summary_Section (FILE *f,
     const char * const format = "%-24s 0x%06x   0x%06x * %-5d\t= 0x%08x\n";
 
     if (file_header->Get_symbol_size () != 0)
-	fprintf (f, format, "SYMBOL",
-		 file_header->Get_symbol_offset (),
-		 file_header->Get_symbol_entry_size (),
-		 file_header->Get_symbol_size(),
-		 file_header->Get_symbol_entry_size () *
-		 file_header->Get_symbol_size ());
+    fprintf (f, format, "SYMBOL",
+         file_header->Get_symbol_offset (),
+         file_header->Get_symbol_entry_size (),
+         file_header->Get_symbol_size(),
+         file_header->Get_symbol_entry_size () *
+         file_header->Get_symbol_size ());
     
     if (file_header->Get_proc_size ())
-	fprintf (f, format, "PROCEDURE",
-		 file_header->Get_proc_offset (),
-		 file_header->Get_proc_entry_size (),
-		 file_header->Get_proc_size(),
-		 file_header->Get_proc_entry_size () *
-		 file_header->Get_proc_size ());
+    fprintf (f, format, "PROCEDURE",
+         file_header->Get_proc_offset (),
+         file_header->Get_proc_entry_size (),
+         file_header->Get_proc_size(),
+         file_header->Get_proc_entry_size () *
+         file_header->Get_proc_size ());
     
     if (file_header->Get_feedback_size ())
-	fprintf (f, format, "FEEDBACK",
-		 file_header->Get_feedback_offset (),
-		 file_header->Get_feedback_entry_size (),
-		 file_header->Get_feedback_size(),
-		 file_header->Get_feedback_entry_size () *
-		 file_header->Get_feedback_size ());
+    fprintf (f, format, "FEEDBACK",
+         file_header->Get_feedback_offset (),
+         file_header->Get_feedback_entry_size (),
+         file_header->Get_feedback_size(),
+         file_header->Get_feedback_entry_size () *
+         file_header->Get_feedback_size ());
     
     if (file_header->Get_callsite_size ())
-	fprintf (f, format, "CALLSITE",
-		 file_header->Get_callsite_offset (),
-		 file_header->Get_callsite_entry_size (),
-		 file_header->Get_callsite_size(),
-		 file_header->Get_callsite_entry_size () *
-		 file_header->Get_callsite_size ());
+    fprintf (f, format, "CALLSITE",
+         file_header->Get_callsite_offset (),
+         file_header->Get_callsite_entry_size (),
+         file_header->Get_callsite_size(),
+         file_header->Get_callsite_entry_size () *
+         file_header->Get_callsite_size ());
     
     if (file_header->Get_stmt_size ())
-	fprintf (f, format, "STMT",
-		 file_header->Get_stmt_offset (),
-		 file_header->Get_stmt_entry_size (),
-		 file_header->Get_stmt_size(),
-		 file_header->Get_stmt_entry_size () *
-		 file_header->Get_stmt_size ());
+    fprintf (f, format, "STMT",
+         file_header->Get_stmt_offset (),
+         file_header->Get_stmt_entry_size (),
+         file_header->Get_stmt_size(),
+         file_header->Get_stmt_entry_size () *
+         file_header->Get_stmt_size ());
     
     if (file_header->Get_ctrl_dep_size ())
-	fprintf (f, format, "CTRL_DEP",
-		 file_header->Get_ctrl_dep_offset (),
-		 file_header->Get_ctrl_dep_entry_size (),
-		 file_header->Get_ctrl_dep_size(),
-		 file_header->Get_ctrl_dep_entry_size () *
-		 file_header->Get_ctrl_dep_size ());
+    fprintf (f, format, "CTRL_DEP",
+         file_header->Get_ctrl_dep_offset (),
+         file_header->Get_ctrl_dep_entry_size (),
+         file_header->Get_ctrl_dep_size(),
+         file_header->Get_ctrl_dep_entry_size () *
+         file_header->Get_ctrl_dep_size ());
     
     if (file_header->Get_formal_size ())
-	fprintf (f, format, "FORMAL",
-		 file_header->Get_formal_offset (),
-		 file_header->Get_formal_entry_size (),
-		 file_header->Get_formal_size(),
-		 file_header->Get_formal_entry_size () *
-		 file_header->Get_formal_size ());
+    fprintf (f, format, "FORMAL",
+         file_header->Get_formal_offset (),
+         file_header->Get_formal_entry_size (),
+         file_header->Get_formal_size(),
+         file_header->Get_formal_entry_size () *
+         file_header->Get_formal_size ());
     
     if (file_header->Get_actual_size ())
-	fprintf (f, format, "ACTUAL",
-		 file_header->Get_actual_offset (),
-		 file_header->Get_actual_entry_size (),
-		 file_header->Get_actual_size(),
-		 file_header->Get_actual_entry_size () *
-		 file_header->Get_actual_size ());
+    fprintf (f, format, "ACTUAL",
+         file_header->Get_actual_offset (),
+         file_header->Get_actual_entry_size (),
+         file_header->Get_actual_size(),
+         file_header->Get_actual_entry_size () *
+         file_header->Get_actual_size ());
     
     if (file_header->Get_value_size ())
-	fprintf (f, format, "VALUE",
-		 file_header->Get_value_offset (),
-		 file_header->Get_value_entry_size (),
-		 file_header->Get_value_size(),
-		 file_header->Get_value_entry_size () *
-		 file_header->Get_value_size ());
+    fprintf (f, format, "VALUE",
+         file_header->Get_value_offset (),
+         file_header->Get_value_entry_size (),
+         file_header->Get_value_size(),
+         file_header->Get_value_entry_size () *
+         file_header->Get_value_size ());
     
     if (file_header->Get_expr_size ())
-	fprintf (f, format, "EXPR",
-		 file_header->Get_expr_offset (),
-		 file_header->Get_expr_entry_size (),
-		 file_header->Get_expr_size(),
-		 file_header->Get_expr_entry_size () *
-		 file_header->Get_expr_size ());
+    fprintf (f, format, "EXPR",
+         file_header->Get_expr_offset (),
+         file_header->Get_expr_entry_size (),
+         file_header->Get_expr_size(),
+         file_header->Get_expr_entry_size () *
+         file_header->Get_expr_size ());
     
     if (file_header->Get_phi_size ())
-	fprintf (f, format, "PHI",
-		 file_header->Get_phi_offset (),
-		 file_header->Get_phi_entry_size (),
-		 file_header->Get_phi_size(),
-		 file_header->Get_phi_entry_size () *
-		 file_header->Get_phi_size ());
+    fprintf (f, format, "PHI",
+         file_header->Get_phi_offset (),
+         file_header->Get_phi_entry_size (),
+         file_header->Get_phi_size(),
+         file_header->Get_phi_entry_size () *
+         file_header->Get_phi_size ());
     
     if (file_header->Get_chi_size ())
-	fprintf (f, format, "CHI",
-		 file_header->Get_chi_offset (),
-		 file_header->Get_chi_entry_size (),
-		 file_header->Get_chi_size(),
-		 file_header->Get_chi_entry_size () *
-		 file_header->Get_chi_size ());
+    fprintf (f, format, "CHI",
+         file_header->Get_chi_offset (),
+         file_header->Get_chi_entry_size (),
+         file_header->Get_chi_size(),
+         file_header->Get_chi_entry_size () *
+         file_header->Get_chi_size ());
     
     if (file_header->Get_global_size ())
-	fprintf (f, format, "GLOBAL",
-		 file_header->Get_global_offset (),
-		 file_header->Get_global_entry_size (),
-		 file_header->Get_global_size(),
-		 file_header->Get_global_entry_size () *
-		 file_header->Get_global_size ());
+    fprintf (f, format, "GLOBAL",
+         file_header->Get_global_offset (),
+         file_header->Get_global_entry_size (),
+         file_header->Get_global_size(),
+         file_header->Get_global_entry_size () *
+         file_header->Get_global_size ());
     
     if (file_header->Get_common_size ())
-	fprintf (f, format, "COMMON",
-		 file_header->Get_common_offset (),
-		 file_header->Get_common_entry_size (),
-		 file_header->Get_common_size(),
-		 file_header->Get_common_entry_size () *
-		 file_header->Get_common_size ());
+    fprintf (f, format, "COMMON",
+         file_header->Get_common_offset (),
+         file_header->Get_common_entry_size (),
+         file_header->Get_common_size(),
+         file_header->Get_common_entry_size () *
+         file_header->Get_common_size ());
     
     if (file_header->Get_common_shape_size ())
-	fprintf (f, format, "COMMON_SHAPE",
-		 file_header->Get_common_shape_offset (),
-		 file_header->Get_common_shape_entry_size (),
-		 file_header->Get_common_shape_size(),
-		 file_header->Get_common_shape_entry_size () *
-		 file_header->Get_common_shape_size ());
+    fprintf (f, format, "COMMON_SHAPE",
+         file_header->Get_common_shape_offset (),
+         file_header->Get_common_shape_entry_size (),
+         file_header->Get_common_shape_size(),
+         file_header->Get_common_shape_entry_size () *
+         file_header->Get_common_shape_size ());
 
     if (file_header->Get_global_stid_size ())
-	fprintf (f, format, "GLOBAL_STID",
-		 file_header->Get_global_stid_offset (),
-		 file_header->Get_global_stid_entry_size (),
-		 file_header->Get_global_stid_size(),
-		 file_header->Get_global_stid_entry_size () *
-		 file_header->Get_global_stid_size ());
+    fprintf (f, format, "GLOBAL_STID",
+         file_header->Get_global_stid_offset (),
+         file_header->Get_global_stid_entry_size (),
+         file_header->Get_global_stid_size(),
+         file_header->Get_global_stid_entry_size () *
+         file_header->Get_global_stid_size ());
     
     if (file_header->Get_scalar_node_size ())
-	fprintf (f, format, "SCALAR_NODE",
-		 file_header->Get_scalar_offset (),
-		 file_header->Get_scalar_node_entry_size (),
-		 file_header->Get_scalar_node_size(),
-		 file_header->Get_scalar_node_entry_size () *
-		 file_header->Get_scalar_node_size ());
+    fprintf (f, format, "SCALAR_NODE",
+         file_header->Get_scalar_offset (),
+         file_header->Get_scalar_node_entry_size (),
+         file_header->Get_scalar_node_size(),
+         file_header->Get_scalar_node_entry_size () *
+         file_header->Get_scalar_node_size ());
     
     if (file_header->Get_cfg_node_size ())
-	fprintf (f, format, "CFG_NODE",
-		 file_header->Get_cfg_node_offset (),
-		 file_header->Get_cfg_node_entry_size (),
-		 file_header->Get_cfg_node_size(),
-		 file_header->Get_cfg_node_entry_size () *
-		 file_header->Get_cfg_node_size ());
+    fprintf (f, format, "CFG_NODE",
+         file_header->Get_cfg_node_offset (),
+         file_header->Get_cfg_node_entry_size (),
+         file_header->Get_cfg_node_size(),
+         file_header->Get_cfg_node_entry_size () *
+         file_header->Get_cfg_node_size ());
         
     if (file_header->Get_ivar_size ())
-	fprintf (f, format, "IVAR",
-		 file_header->Get_ivar_offset (),
-		 file_header->Get_ivar_entry_size (),
-		 file_header->Get_ivar_size(),
-		 file_header->Get_ivar_entry_size () *
-		 file_header->Get_ivar_size ());
+    fprintf (f, format, "IVAR",
+         file_header->Get_ivar_offset (),
+         file_header->Get_ivar_entry_size (),
+         file_header->Get_ivar_size(),
+         file_header->Get_ivar_entry_size () *
+         file_header->Get_ivar_size ());
     
     if (file_header->Get_loopinfo_size ())
-	fprintf (f, format, "LOOPINFO",
-		 file_header->Get_loopinfo_offset (),
-		 file_header->Get_loopinfo_entry_size (),
-		 file_header->Get_loopinfo_size(),
-		 file_header->Get_loopinfo_entry_size () *
-		 file_header->Get_loopinfo_size ());
+    fprintf (f, format, "LOOPINFO",
+         file_header->Get_loopinfo_offset (),
+         file_header->Get_loopinfo_entry_size (),
+         file_header->Get_loopinfo_size(),
+         file_header->Get_loopinfo_entry_size () *
+         file_header->Get_loopinfo_size ());
     if (file_header->Get_struct_access_size () != 0)
-	fprintf (f, format, "FLD_ACCESS",
-		 file_header->Get_struct_access_offset (),
-		 file_header->Get_struct_access_entry_size (),
-		 file_header->Get_struct_access_size(),
-		 file_header->Get_struct_access_entry_size () *
-		 file_header->Get_struct_access_size ());
+    fprintf (f, format, "FLD_ACCESS",
+         file_header->Get_struct_access_offset (),
+         file_header->Get_struct_access_entry_size (),
+         file_header->Get_struct_access_size(),
+         file_header->Get_struct_access_entry_size () *
+         file_header->Get_struct_access_size ());
     
     if (file_header->Get_symbol_size() != 0) {
-	sym_array = (SUMMARY_SYMBOL *)
-	    (section_base + file_header->Get_symbol_offset());
-	Ipl_Summary_Symbol = sym_array;
-	fprintf(f, "function and symbol name NYI\n");
+    sym_array = (SUMMARY_SYMBOL *)
+        (section_base + file_header->Get_symbol_offset());
+    Ipl_Summary_Symbol = sym_array;
+    fprintf(f, "function and symbol name NYI\n");
 #if 0
-	sym_array->Print_array ( f, file_header->Get_symbol_size(),
+    sym_array->Print_array ( f, file_header->Get_symbol_size(),
           symbol_names, function_names );
 #endif
 
     }
 
     if (file_header->Get_proc_size() != 0) {
-	proc_array =  (SUMMARY_PROCEDURE *)
-	    (section_base + file_header->Get_proc_offset());
-	proc_array->Print_array ( f, file_header->Get_proc_size() );
+    proc_array =  (SUMMARY_PROCEDURE *)
+        (section_base + file_header->Get_proc_offset());
+    proc_array->Print_array ( f, file_header->Get_proc_size() );
     }
 
     if (file_header->Get_feedback_size() != 0) {
-	feedback_array =  (SUMMARY_FEEDBACK *)
-	    (section_base + file_header->Get_feedback_offset());
-	feedback_array->Print_array ( f, file_header->Get_feedback_size() );
+    feedback_array =  (SUMMARY_FEEDBACK *)
+        (section_base + file_header->Get_feedback_offset());
+    feedback_array->Print_array ( f, file_header->Get_feedback_size() );
     }
 
     if (file_header->Get_callsite_size() != 0) {
-	callsite_array = (SUMMARY_CALLSITE*)
-	    (section_base + file_header->Get_callsite_offset()); 
-	callsite_array->Print_array (f, file_header->Get_callsite_size());
+    callsite_array = (SUMMARY_CALLSITE*)
+        (section_base + file_header->Get_callsite_offset()); 
+    callsite_array->Print_array (f, file_header->Get_callsite_size());
     }
 
     if (file_header->Get_actual_size() != 0) {
-	actual_array = (SUMMARY_ACTUAL *)
-	    (section_base + file_header->Get_actual_offset());  
-	actual_array->Print_array ( f, file_header->Get_actual_size() );
+    actual_array = (SUMMARY_ACTUAL *)
+        (section_base + file_header->Get_actual_offset());  
+    actual_array->Print_array ( f, file_header->Get_actual_size() );
     }
 
     if (file_header->Get_value_size() != 0) {
-	value_array = (SUMMARY_VALUE *) (section_base +
-					 file_header->Get_value_offset());  
-	value_array->Print_array ( f, file_header->Get_value_size() );
+    value_array = (SUMMARY_VALUE *) (section_base +
+                     file_header->Get_value_offset());  
+    value_array->Print_array ( f, file_header->Get_value_size() );
     }
 
     if (file_header->Get_expr_size() != 0) {
-	expr_array = (SUMMARY_EXPR *) (section_base +
-				       file_header->Get_expr_offset());  
-	expr_array->Print_array ( f, file_header->Get_expr_size() );
+    expr_array = (SUMMARY_EXPR *) (section_base +
+                       file_header->Get_expr_offset());  
+    expr_array->Print_array ( f, file_header->Get_expr_size() );
     }
 
     if (file_header->Get_phi_size() != 0) {
-	phi_array = (SUMMARY_PHI *) (section_base +
-				     file_header->Get_phi_offset());  
-	phi_array->Print_array ( f, file_header->Get_phi_size() );
+    phi_array = (SUMMARY_PHI *) (section_base +
+                     file_header->Get_phi_offset());  
+    phi_array->Print_array ( f, file_header->Get_phi_size() );
     }
 
     if (file_header->Get_chi_size() != 0) {
-	chi_array = (SUMMARY_CHI *) (section_base +
-				     file_header->Get_chi_offset());  
-	chi_array->Print_array ( f, file_header->Get_chi_size() );
+    chi_array = (SUMMARY_CHI *) (section_base +
+                     file_header->Get_chi_offset());  
+    chi_array->Print_array ( f, file_header->Get_chi_size() );
     }
 
     if (file_header->Get_stmt_size() != 0) {
-	stmt_array = (SUMMARY_STMT *) (section_base +
-				       file_header->Get_stmt_offset());  
-	stmt_array->Print_array ( f, file_header->Get_stmt_size() );
+    stmt_array = (SUMMARY_STMT *) (section_base +
+                       file_header->Get_stmt_offset());  
+    stmt_array->Print_array ( f, file_header->Get_stmt_size() );
     }
 
     if (file_header->Get_ctrl_dep_size() != 0) {
-	ctrl_dep_array = (SUMMARY_CONTROL_DEPENDENCE *)
-	    (section_base + file_header->Get_ctrl_dep_offset());  
-	ctrl_dep_array->Print_array ( f, file_header->Get_ctrl_dep_size() );
+    ctrl_dep_array = (SUMMARY_CONTROL_DEPENDENCE *)
+        (section_base + file_header->Get_ctrl_dep_offset());  
+    ctrl_dep_array->Print_array ( f, file_header->Get_ctrl_dep_size() );
     }
 
     if (file_header->Get_formal_size() != 0) {
-	formal_array = (SUMMARY_FORMAL *) (section_base +
-					   file_header->Get_formal_offset()); 
-	formal_array->Print_array ( f, file_header->Get_formal_size() );
+    formal_array = (SUMMARY_FORMAL *) (section_base +
+                       file_header->Get_formal_offset()); 
+    formal_array->Print_array ( f, file_header->Get_formal_size() );
     }
 
     if (file_header->Get_global_size() != 0) {
-	global_array = (SUMMARY_GLOBAL *)
-	    (section_base + file_header->Get_global_offset());
-	global_array->Print_array ( f, file_header->Get_global_size() );
+    global_array = (SUMMARY_GLOBAL *)
+        (section_base + file_header->Get_global_offset());
+    global_array->Print_array ( f, file_header->Get_global_size() );
     }
 
     if (file_header->Get_global_stid_size() != 0) {
       global_stid_array = (SUMMARY_STID *)
-	(section_base + file_header->Get_global_stid_offset());
+    (section_base + file_header->Get_global_stid_offset());
       global_stid_array->Print_array ( f, file_header->Get_global_stid_size() );
     }
 
     if (file_header->Get_common_size() != 0) {
-	common_array = (SUMMARY_COMMON *)
-	    (section_base + file_header->Get_common_offset());
-	common_array->Print_array ( f, file_header->Get_common_size() );
+    common_array = (SUMMARY_COMMON *)
+        (section_base + file_header->Get_common_offset());
+    common_array->Print_array ( f, file_header->Get_common_size() );
     }
 
     if (file_header->Get_common_shape_size() != 0) {
-	common_shape_array = (SUMMARY_COMMON_SHAPE *)
-	    (section_base + file_header->Get_common_shape_offset());
-	common_shape_array->Print_array(f,
-					file_header->Get_common_shape_size() );
+    common_shape_array = (SUMMARY_COMMON_SHAPE *)
+        (section_base + file_header->Get_common_shape_offset());
+    common_shape_array->Print_array(f,
+                    file_header->Get_common_shape_size() );
 
     }
     if (file_header->Get_struct_access_size() != 0) {
-	struct_access_array =  (SUMMARY_STRUCT_ACCESS *)
-	    (section_base + file_header->Get_struct_access_offset());
-	struct_access_array->Print_array ( f, file_header->Get_struct_access_size() );
+    struct_access_array =  (SUMMARY_STRUCT_ACCESS *)
+        (section_base + file_header->Get_struct_access_offset());
+    struct_access_array->Print_array ( f, file_header->Get_struct_access_size() );
     }
     
     fprintf(f, "array_summary trace NYI\n");
     //    array_summary.Trace(f, sbase);
 }
 
-void Print_whirl_summary_from_bits(FILE *f, BITS b, unsigned int sz)
+void Print_whirl_summary_from_bits(FILE *f, BITS b, UINT sz)
 {
   Elf64_Word sum_bgn = readword64(b, b, sz);
   SUMMARY_FILE_HEADER *sum_hdr = (SUMMARY_FILE_HEADER* )(b + sum_bgn);
@@ -454,14 +454,14 @@ void Print_whirl_summary_from_bits(FILE *f, BITS b, unsigned int sz)
 }
 
 
-void Print_whirl_pu_from_bits(FILE *f, BITS b, unsigned int sz)
+void Print_whirl_pu_from_bits(FILE *f, BITS b, UINT sz)
 {
   fprintf(f, "Pu_Info:\n");
 
   // first word of this section is offset to PU header table
   // followed by number of PUs
   Elf64_Word pu_bgn = readword64(b, b, sz);
-  int ver_num = readword32(b+pu_bgn, b, sz);
+  INT ver_num = readword32(b+pu_bgn, b, sz);
   FmtAssert((ver_num == PU_HEADER_VERSION), ("wrong Summary info version"));
 
   BITS pb = b + pu_bgn + sizeof(mINT32);
@@ -470,10 +470,10 @@ void Print_whirl_pu_from_bits(FILE *f, BITS b, unsigned int sz)
 
   pb += sizeof(mINT32);
 
-  int prev;
+  INT prev;
   PU_Info* pu_hdr = (PU_Info *)(calloc(pu_num, sizeof(PU_Info)));
   PU_Info* pu = pu_hdr;
-  for (int i = 0; i < pu_num; i++, pu++) {
+  for (INT i = 0; i < pu_num; i++, pu++) {
     PU_Info_cu_dst(pu) = DST_INVALID_IDX;
     PU_Info_proc_id(pu) = readword32(pb, b, sz);
     PU_Info_flags(pu) = readword32(pb+sizeof(mINT32), b, sz);
@@ -485,17 +485,17 @@ void Print_whirl_pu_from_bits(FILE *f, BITS b, unsigned int sz)
     
     if (prev == -1) {
       if (i != 0)
-	PU_Info_child(&pu[i-1]) = pu;
+    PU_Info_child(&pu[i-1]) = pu;
     }
     else {
       PU_Info_next(&pu[prev]) = pu;
     }
   }
 
-  int subsec_num = readword32(pb, b, sz);
+  INT subsec_num = readword32(pb, b, sz);
   pb += sizeof(mINT32);
 
-  for (int i=0; i<subsec_num; i++) {
+  for (INT i=0; i<subsec_num; i++) {
     INT32 id = readword32(pb, b, sz);
     pb += sizeof(mINT32);
     if (id > WT_LAST) {
@@ -505,7 +505,7 @@ void Print_whirl_pu_from_bits(FILE *f, BITS b, unsigned int sz)
     }
 
     pu = pu_hdr;
-    for (int k=0; k<pu_num; k++, pu++) {
+    for (INT k=0; k<pu_num; k++, pu++) {
       PU_Info_subsect_offset(pu, id) = readword64(pb, b, sz);
       PU_Info_subsect_size(pu, id) = readword64(pb+sizeof(Elf64_Word), b, sz);
       pb += (sizeof(Elf64_Word) + sizeof(Elf64_Word));
@@ -513,13 +513,13 @@ void Print_whirl_pu_from_bits(FILE *f, BITS b, unsigned int sz)
   }
 
   Print_Pu_Info_Title(f, indent);
-  for (int i=0; i<pu_num; i++) {
+  for (INT i=0; i<pu_num; i++) {
     Print(f, &pu_hdr[i], indent);
   }
 }
 
 
-void Print_whirl_flags_from_bits(FILE *f, BITS b, unsigned int sz)
+void Print_whirl_flags_from_bits(FILE *f, BITS b, UINT sz)
 {
   fprintf(f, "%s Compile Flags:\n", SBar);
   

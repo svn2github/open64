@@ -42,42 +42,42 @@
 /**
 *** Description:
 ***
-***	C++ macro replacements for new and delete using memory pools.
-***	new and delete should never be used in the compiler;
-***	these should be used instead.
+***    C++ macro replacements for new and delete using memory pools.
+***    new and delete should never be used in the compiler;
+***    these should be used instead.
 ***
 *** Exported preprocessor macro
 ***
-***	CXX_USE_STANDARD_NEW_AND_DELETE
+***    CXX_USE_STANDARD_NEW_AND_DELETE
 ***
-***	    If this preprocessor macro is defined, then the macros below
-***	    just ignore the memory pools and call the normal new and delete.
+***        If this preprocessor macro is defined, then the macros below
+***        just ignore the memory pools and call the normal new and delete.
 ***
 *** Exported functions:
 ***
-***	CXX_NEW(constructor, MEM_POOL*)
+***    CXX_NEW(constructor, MEM_POOL*)
 ***
-***	    Use CXX_NEW instead of new.  E.g.
+***        Use CXX_NEW instead of new.  E.g.
 ***
-***		X* x = new X(3,4);
+***        X* x = new X(3,4);
 ***
-***	    should be replaced by
+***        should be replaced by
 ***
-***		X* x = CXX_NEW(X(3,4), malloc_pool);
+***        X* x = CXX_NEW(X(3,4), malloc_pool);
 ***
-***	    (or whatever appropriate pool name).
+***        (or whatever appropriate pool name).
 ***
-***	CXX_NEW_ARRAY(constructor, elements, MEM_POOL*)
+***    CXX_NEW_ARRAY(constructor, elements, MEM_POOL*)
 ***
-***	    Use CXX_NEW_ARRAY instead of new [].  E.g.
+***        Use CXX_NEW_ARRAY instead of new [].  E.g.
 ***
-***		X* x = new X[a*b];
+***        X* x = new X[a*b];
 ***
-***	    should be replaced by
+***        should be replaced by
 ***
-***		X* x = CXX_NEW_ARRAY(X, a*b, malloc_pool);
+***        X* x = CXX_NEW_ARRAY(X, a*b, malloc_pool);
 ***
-***	    (or whatever appropriate pool name).
+***        (or whatever appropriate pool name).
 ***
 *** CXX_NEW_VARIANT(constructor, pad, MEM_POOL*)
 ***
@@ -93,29 +93,29 @@
 *** 
 ***     standard new and delete.
 ***
-***	CXX_DELETE(pointer, MEM_POOL*)
+***    CXX_DELETE(pointer, MEM_POOL*)
 ***
-***	    Use CXX_DELETE instead of delete.  E.g.
+***        Use CXX_DELETE instead of delete.  E.g.
 ***
-***		delete p;
+***        delete p;
 ***
-***	    should be replaced by
+***        should be replaced by
 ***
-***		CXX_DELETE(p, malloc_pool);
+***        CXX_DELETE(p, malloc_pool);
 ***
-***	    (or whatever appropriate pool name).
+***        (or whatever appropriate pool name).
 ***
-***	CXX_DELETE_ARRAY(pointer, MEM_POOL*)
+***    CXX_DELETE_ARRAY(pointer, MEM_POOL*)
 ***
-***	    Use CXX_DELETE_ARRAY instead of delete[].  E.g.
+***        Use CXX_DELETE_ARRAY instead of delete[].  E.g.
 ***
-***		delete[] p;
+***        delete[] p;
 ***
-***	    should be replaced by
+***        should be replaced by
 ***
-***		CXX_DELETE_ARRAY(p, malloc_pool);
+***        CXX_DELETE_ARRAY(p, malloc_pool);
 ***
-***	    (or whatever appropriate pool name).
+***        (or whatever appropriate pool name).
 ***
 ***
 **/
@@ -135,17 +135,17 @@
 
 #ifdef CXX_USE_STANDARD_NEW_AND_DELETE
 
-#define CXX_NEW(constructor, mempool)			\
-	(new constructor)
+#define CXX_NEW(constructor, mempool)            \
+    (new constructor)
 
-#define CXX_NEW_ARRAY(constructor, elements, mempool)	\
-	(new constructor[elements])
+#define CXX_NEW_ARRAY(constructor, elements, mempool)    \
+    (new constructor[elements])
 
-#define CXX_DELETE(pointer, mempool)			\
-	(delete pointer)
+#define CXX_DELETE(pointer, mempool)            \
+    (delete pointer)
 
-#define CXX_DELETE_ARRAY(pointer, mempool)		\
-	(delete[] pointer)
+#define CXX_DELETE_ARRAY(pointer, mempool)        \
+    (delete[] pointer)
 
 #else
 
@@ -163,38 +163,38 @@ extern const char *_alloc_callsite_file;
 extern size_t _dummy_pad;
 
 #ifdef Is_True_On
-#define CXX_NEW(constructor, mempool)			\
-  (_dummy_new_mempool = mempool,			\
-   _alloc_callsite_line = __LINE__,			\
-   _alloc_callsite_file = __FILE__,			\
+#define CXX_NEW(constructor, mempool)            \
+  (_dummy_new_mempool = mempool,            \
+   _alloc_callsite_line = __LINE__,            \
+   _alloc_callsite_file = __FILE__,            \
    new constructor)
 
-#define CXX_NEW_ARRAY(constructor, elements, mempool)	\
-  (_dummy_new_mempool = mempool,			\
-   _alloc_callsite_line = __LINE__,			\
-   _alloc_callsite_file = __FILE__,			\
+#define CXX_NEW_ARRAY(constructor, elements, mempool)    \
+  (_dummy_new_mempool = mempool,            \
+   _alloc_callsite_line = __LINE__,            \
+   _alloc_callsite_file = __FILE__,            \
    new constructor [elements])
 
-#define CXX_NEW_VARIANT(constructor, pad, mempool)	\
-  (_dummy_new_mempool = mempool,			\
-   _alloc_callsite_line = __LINE__,			\
-   _alloc_callsite_file = __FILE__,			\
+#define CXX_NEW_VARIANT(constructor, pad, mempool)    \
+  (_dummy_new_mempool = mempool,            \
+   _alloc_callsite_line = __LINE__,            \
+   _alloc_callsite_file = __FILE__,            \
    _dummy_pad = pad, new constructor)
-#else	// Is_True_On
-#define CXX_NEW(constructor, mempool)			\
-  (_dummy_new_mempool = mempool,			\
+#else    // Is_True_On
+#define CXX_NEW(constructor, mempool)            \
+  (_dummy_new_mempool = mempool,            \
    new constructor)
 
-#define CXX_NEW_ARRAY(constructor, elements, mempool)	\
-  (_dummy_new_mempool = mempool,			\
+#define CXX_NEW_ARRAY(constructor, elements, mempool)    \
+  (_dummy_new_mempool = mempool,            \
    new constructor [elements])
 
-#define CXX_NEW_VARIANT(constructor, pad, mempool)	\
-  (_dummy_new_mempool = mempool,			\
+#define CXX_NEW_VARIANT(constructor, pad, mempool)    \
+  (_dummy_new_mempool = mempool,            \
    _dummy_pad = pad, new constructor)
 #endif
 
-#define CXX_DELETE(pointer, mempool)			\
+#define CXX_DELETE(pointer, mempool)            \
 do {   \
   MEM_POOL* save_mpool = _dummy_delete_mempool;     \
   _dummy_delete_mempool = mempool;  \
@@ -202,7 +202,7 @@ do {   \
   _dummy_delete_mempool = save_mpool;   \
   } while (0)
 
-#define CXX_DELETE_ARRAY(pointer, mempool)		\
+#define CXX_DELETE_ARRAY(pointer, mempool)        \
 do {   \
   MEM_POOL* save_mpool = _dummy_delete_mempool;     \
   _dummy_delete_mempool = mempool;  \

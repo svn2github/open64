@@ -48,20 +48,20 @@ static char *resource_rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common
 /* Request codes: */
 typedef INT RES_REQUEST;
 
-#define RR_Report_Current	1	/* Report current usage */
-#define RR_Report_Delta		2	/* Report delta usage */
-#define RR_Clear		3	/* Clear a delta summary */
-#define RR_Start		4	/* Start a delta */
-#define RR_Stop			5	/* Stop a delta */
-#define RR_End			6	/* Transfer a delta to parent */
-#define RR_Current_User		7	/* Return current user time */
-#define RR_Current_System	8	/* Return current system time */
-#define RR_Current_Elapsed	9	/* Return current elapsed time */
-#define RR_Current_Memory	10	/* Return current memory usage */
-#define RR_Delta_User		11	/* Return delta user time */
-#define RR_Delta_System		12	/* Return delta system time */
-#define RR_Delta_Elapsed	13	/* Return delta elapsed time */
-#define RR_Delta_Memory		14	/* Return delta memory usage */
+#define RR_Report_Current    1    /* Report current usage */
+#define RR_Report_Delta        2    /* Report delta usage */
+#define RR_Clear        3    /* Clear a delta summary */
+#define RR_Start        4    /* Start a delta */
+#define RR_Stop            5    /* Stop a delta */
+#define RR_End            6    /* Transfer a delta to parent */
+#define RR_Current_User        7    /* Return current user time */
+#define RR_Current_System    8    /* Return current system time */
+#define RR_Current_Elapsed    9    /* Return current elapsed time */
+#define RR_Current_Memory    10    /* Return current memory usage */
+#define RR_Delta_User        11    /* Return delta user time */
+#define RR_Delta_System        12    /* Return delta system time */
+#define RR_Delta_Elapsed    13    /* Return delta elapsed time */
+#define RR_Delta_Memory        14    /* Return delta memory usage */
 
 /* Typedefs */
 typedef struct resources RESOURCES;
@@ -71,8 +71,8 @@ typedef RSTATE *PSTATE;
 
 /* Time structure: */
 typedef struct time_info {
-    INT secs;	/* Full seconds */
-    INT usecs;	/* Fraction in microseconds */
+    INT secs;    /* Full seconds */
+    INT usecs;    /* Fraction in microseconds */
 } TIME_INFO;
 
 /* External routines: */

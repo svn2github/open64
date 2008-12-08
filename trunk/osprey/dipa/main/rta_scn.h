@@ -26,6 +26,6 @@
 #ifndef __RTA_SCH__
 #define __RTA_SCH__
 
-int Dump_Rta_Scns(const char *elfFile);
+INT Dump_Rta_Scns(const char *elfFile);
 
 #endif

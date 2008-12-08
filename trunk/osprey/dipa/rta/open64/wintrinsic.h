@@ -42,40 +42,40 @@
 
 
 /**
-***		Intrinsics, Intrinsic Types, and Intrinsic Flags
-***		------------------------------------------------
+***        Intrinsics, Intrinsic Types, and Intrinsic Flags
+***        ------------------------------------------------
 ***
 *** Description:
 ***
-***	This interface describes all the intrinsic names, operators,
-***	types associated with intrinsics, and properties associated with
-***	intrinsics.
+***    This interface describes all the intrinsic names, operators,
+***    types associated with intrinsics, and properties associated with
+***    intrinsics.
 ***
 *** Reserved Prefixes:
 ***
-***	INTRN		for INTRINSIC members only.
+***    INTRN        for INTRINSIC members only.
 ***
 *** Exported types:
 ***
-***	INTRINSIC
+***    INTRINSIC
 ***
-***	    An enumerated type.  The members are a partial set of all language
-***	    defined intrinsics.  Those language intrinsics not included in this
-***	    enumerated type are already present in WHIRL as OPC nodes.  There
-***	    are usually two separate flavors of each fortran intrinsic - one
-***	    named INTRN_XXX and one named INTRN_XXXe.  The former name
-***	    represents the version called directly by generated code and usually
-***	    has call by value semantics.  These intrinsics might eventually be
-***	    turned into calls, be inlined or have direct code generated for
-***	    them.  The INTRN_XXXe version is always an external routine with
-***	    call by reference semantics.  It is needed to support passing an
-***	    intrinsic function itself to another subprogram.
+***        An enumerated type.  The members are a partial set of all language
+***        defined intrinsics.  Those language intrinsics not included in this
+***        enumerated type are already present in WHIRL as OPC nodes.  There
+***        are usually two separate flavors of each fortran intrinsic - one
+***        named INTRN_XXX and one named INTRN_XXXe.  The former name
+***        represents the version called directly by generated code and usually
+***        has call by value semantics.  These intrinsics might eventually be
+***        turned into calls, be inlined or have direct code generated for
+***        them.  The INTRN_XXXe version is always an external routine with
+***        call by reference semantics.  It is needed to support passing an
+***        intrinsic function itself to another subprogram.
 ***
-***	    All INTRINSICs are prefixed with INTRN.
+***        All INTRINSICs are prefixed with INTRN.
 ***
 *** Exported data:
 ***
-***	    none
+***        none
 ***
 **/
 
@@ -93,29 +93,29 @@ typedef enum {
   INTRINSIC_FIRST = 1,
 
     /* F77 type conversions - INT, SHORT, LONG, REAL, FLOAT, SNGL, DBLE, CMPLX,
-			      CHAR, ZEXT, etc. */
+                  CHAR, ZEXT, etc. */
 
-	/* All of these are already represented by existing WHIRL nodes.  F77
-	   semantics preclude them from being passed, so external versions
-	   aren't needed. */
+    /* All of these are already represented by existing WHIRL nodes.  F77
+       semantics preclude them from being passed, so external versions
+       aren't needed. */
 
     /* F77 '**' expressions */
 
-	/* These functions are needed to support ** in expressions.  They are
-	   not directly callable, so external versions aren't needed.  F77
-	   semantic rules treat f**i specially.  Here are the details:
+    /* These functions are needed to support ** in expressions.  They are
+       not directly callable, so external versions aren't needed.  F77
+       semantic rules treat f**i specially.  Here are the details:
 
-	   a**b   \  b
-	         a \  I1,I2,I4  I8    F4   F8   FQ   C4   C8   CQ
-	            +--------------------------------------------
-	   I1,I2,I4 |    I4     I8    F4   F8   FQ   C4   C8   CQ
-		 I8 |    I8     I8    F4   F8   FQ   C4   C8   CQ
-		 F4 |   F4I4   F4I8   F4   F8   FQ   C4   C8   CQ
-		 F8 |   F8I4   F8I8   F8   F8   FQ   C8   C8   CQ
-		 FQ |   FQI4   FQI8   FQ   FQ   FQ   CQ   CQ   CQ
-		 C4 |   C4I4   C4I8   C4   C8   CQ   C4   C8   CQ
-		 C8 |   C8I4   C8I8   C8   C8   CQ   C8   C8   CQ
-		 CQ |   CQI4   CQI8   CQ   CQ   CQ   CQ   CQ   CQ   */
+       a**b   \  b
+             a \  I1,I2,I4  I8    F4   F8   FQ   C4   C8   CQ
+                +--------------------------------------------
+       I1,I2,I4 |    I4     I8    F4   F8   FQ   C4   C8   CQ
+         I8 |    I8     I8    F4   F8   FQ   C4   C8   CQ
+         F4 |   F4I4   F4I8   F4   F8   FQ   C4   C8   CQ
+         F8 |   F8I4   F8I8   F8   F8   FQ   C8   C8   CQ
+         FQ |   FQI4   FQI8   FQ   FQ   FQ   CQ   CQ   CQ
+         C4 |   C4I4   C4I8   C4   C8   CQ   C4   C8   CQ
+         C8 |   C8I4   C8I8   C8   C8   CQ   C8   C8   CQ
+         CQ |   CQI4   CQI8   CQ   CQ   CQ   CQ   CQ   CQ   */
 
   INTRN_I4EXPEXPR = INTRINSIC_FIRST,
   INTRN_I8EXPEXPR,
@@ -140,9 +140,9 @@ typedef enum {
 
     /* F77 character relational expressions */
 
-	/* These functions are needed to support character relational logical
-	   expressions.  They are not directly callable, so external versions
-	   aren't needed. */
+    /* These functions are needed to support character relational logical
+       expressions.  They are not directly callable, so external versions
+       aren't needed. */
 
   INTRN_CEQEXPR,
   INTRN_CNEEXPR,
@@ -153,42 +153,42 @@ typedef enum {
 
     /* F77 substring 'var(e1:e2)' expressions */
 
-	/* These functions are needed to support character substrings in
-	   expressions.  They are not directly callable, so external versions
-	   aren't needed.  */
+    /* These functions are needed to support character substrings in
+       expressions.  They are not directly callable, so external versions
+       aren't needed.  */
 
   INTRN_SUBSTRINGEXPR,
 
     /* F77 concat '//' expressions */
 
-	/* These functions are needed to support // in expressions.  They are
-	   not directly callable, so external versions aren't needed.  */
+    /* These functions are needed to support // in expressions.  They are
+       not directly callable, so external versions aren't needed.  */
 
   INTRN_CONCATEXPR,
 
     /* F77 character assignment statements */
 
-	/* These functions are needed to support character assignment
-	   statements.  The normal OPC_MLOAD and OPC_MSTORE don't handle the
-	   blank padding F77 requires.  They are not directly callable, so
-	   external versions aren't needed.  */
+    /* These functions are needed to support character assignment
+       statements.  The normal OPC_MLOAD and OPC_MSTORE don't handle the
+       blank padding F77 requires.  They are not directly callable, so
+       external versions aren't needed.  */
 
   INTRN_CASSIGNSTMT,
 
 
     /* F77 max/min intrinsics - MAX, AMAX, MIN, AMIN, etc. */
 
-	/* All of these differ from the existing WHIRL nodes in that they
-	   take an arbitrary number of arguments.  However; they can all be
-	   transformed into a cascaded set of WHIRL OPC_MAX/MIN nodes with (if
-	   needed) an OPC_CVT node on top.  F77 semantics preclude them from
-	   being passed, so external versions aren't needed. */
+    /* All of these differ from the existing WHIRL nodes in that they
+       take an arbitrary number of arguments.  However; they can all be
+       transformed into a cascaded set of WHIRL OPC_MAX/MIN nodes with (if
+       needed) an OPC_CVT node on top.  F77 semantics preclude them from
+       being passed, so external versions aren't needed. */
 
     /* F77 abs intrinsics - ABS, etc. */
 
-	/* All of these are already represented by existing WHIRL nodes.
-	   However; F77 semantics allow them to be passed, so external versions
-	   are needed. */
+    /* All of these are already represented by existing WHIRL nodes.
+       However; F77 semantics allow them to be passed, so external versions
+       are needed. */
 
   INTRN_I2ABSe,
   INTRN_I4ABSe,
@@ -205,9 +205,9 @@ typedef enum {
 
     /* F77 mod intrinsics - MOD, etc. */
 
-	/* The integer cases are already represented by existing WHIRL nodes.
-	   F77 semantics allow them to be passed, so external versions are
-	   needed. */
+    /* The integer cases are already represented by existing WHIRL nodes.
+       F77 semantics allow them to be passed, so external versions are
+       needed. */
 
   INTRN_I2MODe,
   INTRN_I4MODe,
@@ -221,9 +221,9 @@ typedef enum {
 
     /* F77 sqrt intrinsics - SQRT, etc. */
 
-	/* All of these are already represented by existing WHIRL nodes
-	   However; F77 semantics allow them to be passed, so external versions
-	   are needed. */
+    /* All of these are already represented by existing WHIRL nodes
+       However; F77 semantics allow them to be passed, so external versions
+       are needed. */
 
   INTRN_F4SQRTe,
   INTRN_F8SQRTe,
@@ -234,8 +234,8 @@ typedef enum {
 
     /* F77 misc. math intrinsics - CONJG, DIM, PROD, SIGN, etc. */
 
-	/* None of these have corresponding, single WHIRL nodes.  F77 semantics
-	   allow them to be passed, so external versions are needed. */
+    /* None of these have corresponding, single WHIRL nodes.  F77 semantics
+       allow them to be passed, so external versions are needed. */
 
   INTRN_C4CONJG,
   INTRN_C4CONJGe,
@@ -279,13 +279,13 @@ typedef enum {
 
     /* F77 misc. math intrinsics - AIMAG, AINT, ANINT, IDINT, NINT, etc. */
 
-	/* Some of these are already represented by existing WHIRL nodes.
-	   F77 semantics allow these to be passed, so external versions are
-	   needed.
-	   Note that some of these (e.g., IDINT) are explicitly disallowed
-	   as actual arguments by the F77 standard, but are allowed
-	   historically on our platform (as well as on others, e.g., DEC VAX).
-	   */
+    /* Some of these are already represented by existing WHIRL nodes.
+       F77 semantics allow these to be passed, so external versions are
+       needed.
+       Note that some of these (e.g., IDINT) are explicitly disallowed
+       as actual arguments by the F77 standard, but are allowed
+       historically on our platform (as well as on others, e.g., DEC VAX).
+       */
 
   INTRN_F4IMAGe,
   INTRN_F8IMAGe,
@@ -339,11 +339,11 @@ typedef enum {
   INTRN_FQANINTe,
 
     /* F77 bit intrisics - BNOT, BAND, BIOR, BXOR, BITS, BSET, BCLR, BTEST,
-			   MVBITS, etc. */
+               MVBITS, etc. */
 
-	/* Some of these are already represented by existing WHIRL nodes.
-	   F77 semantics allow them to be passed, so external versions are
-	   needed. */
+    /* Some of these are already represented by existing WHIRL nodes.
+       F77 semantics allow them to be passed, so external versions are
+       needed. */
 
   INTRN_I2BNOTe,
   INTRN_I4BNOTe,
@@ -400,9 +400,9 @@ typedef enum {
 
     /* Fortran shift intrinsics - LSHIFT, RSHIFT, SHIFT, SHIFTC, etc. */
 
-	/* Some of these are already represented by existing WHIRL nodes
-	   F77 semantics allow them to be passed, so external versions are
-	   needed. */
+    /* Some of these are already represented by existing WHIRL nodes
+       F77 semantics allow them to be passed, so external versions are
+       needed. */
 
   INTRN_I1SHL,
   INTRN_I2SHL,
@@ -428,8 +428,8 @@ typedef enum {
 
     /* F77 character intrinsics - LEN, INDEX, LGE, LGT, LLE, LLT, etc. */
 
-	/* None of these have corresponding, single WHIRL nodes.  F77 semantics
-	   allow them to be passed, so external versions are needed. */
+    /* None of these have corresponding, single WHIRL nodes.  F77 semantics
+       allow them to be passed, so external versions are needed. */
 
   INTRN_I4CLEN,
   INTRN_I4CLENe,
@@ -451,8 +451,8 @@ typedef enum {
 
     /* F77 transcendental intrinsics - EXP, LOG, LOG10, etc. */
 
-	/* None of these have corresponding, single WHIRL nodes.  F77 semantics
-	   allow them to be passed, so external versions are needed. */
+    /* None of these have corresponding, single WHIRL nodes.  F77 semantics
+       allow them to be passed, so external versions are needed. */
 
   INTRN_F4EXP,
   INTRN_F4EXPe,
@@ -488,11 +488,11 @@ typedef enum {
   INTRN_FQLOG10e,
 
     /* F77 trigonometic intrinsics - COS, SIN, CIS, TAN, COSD, SIND, TAND,
-				     COSH, SINH, TANH, ACOS, ASIN, ATAN, ACOSD,
-				     ASIND, ATAND, ATAN2, ATAN2D, etc. */
+                     COSH, SINH, TANH, ACOS, ASIN, ATAN, ACOSD,
+                     ASIND, ATAND, ATAN2, ATAN2D, etc. */
 
-	/* None of these have corresponding, single WHIRL nodes.  F77 semantics
-	   allow them to be passed, so external versions are needed. */
+    /* None of these have corresponding, single WHIRL nodes.  F77 semantics
+       allow them to be passed, so external versions are needed. */
 
   INTRN_F4COS,
   INTRN_F4COSe,
@@ -634,13 +634,13 @@ typedef enum {
 
     /* F77 sizeof intrinsic - SIZEOF, etc. */
 
-	/* All of these will have been converted to either constant nodes or
-	   the LEN intrinsic. */
+    /* All of these will have been converted to either constant nodes or
+       the LEN intrinsic. */
 
     /* F77 addressing intrinsics - %VAL, %REF, %LOC, etc. */
 
-	/* All of these will have been converted to corresponding WHIRL
-	   nodes. */
+    /* All of these will have been converted to corresponding WHIRL
+       nodes. */
 
     /* C misc. intrinsics - currently, just alloca(). */
 
@@ -648,11 +648,11 @@ typedef enum {
   INTRN_U8I8ALLOCA,
 
     /* F77 misc. intrinsics - MALLOC, FREE, DATE, ERRSNS, EXIT, TIME,
-			      SECNDS, etc. */
+                  SECNDS, etc. */
 
-	/* None of these have corresponding, single WHIRL nodes.  F77 semantics
-	   do not allow them to be passed, so external versions aren't
-	   needed. */
+    /* None of these have corresponding, single WHIRL nodes.  F77 semantics
+       do not allow them to be passed, so external versions aren't
+       needed. */
 
   INTRN_U4I4MALLOC,
   INTRN_U8I8MALLOC,
@@ -684,8 +684,8 @@ typedef enum {
 
     /* Fortran pause/stop statement - PAUSE, STOP, etc. */
 
-	/* These are made intrinsics so that the optimizer can make use of
-	   their special properties. */
+    /* These are made intrinsics so that the optimizer can make use of
+       their special properties. */
 
   INTRN_PAUSE,
   INTRN_STOP,
@@ -705,7 +705,7 @@ typedef enum {
 
     /* LNO generated intrinsics */
 
-	/* These additional intrinsics are potentially generated by LNO. */
+    /* These additional intrinsics are potentially generated by LNO. */
 
   INTRN_I4DIVFLOOR,
   INTRN_I8DIVFLOOR,
@@ -966,7 +966,7 @@ typedef enum {
   INTRN_OMP_GET_MAX_THREADS ,
   INTRN_OMP_GET_THREAD_NUM ,
   INTRN_OMP_GET_NUM_PROCS ,
-  INTRN_OMP_IN_PARALLEL	,
+  INTRN_OMP_IN_PARALLEL    ,
   INTRN_OMP_GET_DYNAMIC ,
   INTRN_OMP_GET_NESTED ,
 
@@ -1094,7 +1094,7 @@ typedef enum {
   INTRN_POPCOUNT       ,
   INTRN_PARITY         ,
   INTRN_CLZ            ,
-  INTRN_CTZ64		,
+  INTRN_CTZ64        ,
   INTRN_CLZ32          ,
   INTRN_CTZ            ,
 
@@ -1124,7 +1124,7 @@ typedef enum {
   INTRN_V16C8CONJG     ,
 
   /* GNU x8664 builtins */
-  INTRN_PADDSB	       ,
+  INTRN_PADDSB           ,
   INTRN_PADDSW         ,
   INTRN_PSUBSB         ,
   INTRN_PSUBSW         ,
@@ -1285,56 +1285,56 @@ typedef enum {
   INTRN_COMIGTSS,
   INTRN_COMIGESS,
   INTRN_COMINEQSS,
-  INTRN_COMIEQSD	,
-  INTRN_COMILTSD	,
-  INTRN_COMILESD	,
-  INTRN_COMIGTSD	,
-  INTRN_COMIGESD	,
-  INTRN_COMINEQSD	,
-  INTRN_CVTPI2PS	,
-  INTRN_CVTPS2PI	,
-  INTRN_CVTTPS2PI	,
-  INTRN_CVTPI2PD	,
-  INTRN_CVTPD2PI	,
-  INTRN_CVTTPD2PI	,
-  INTRN_CVTSI2SS	,
-  INTRN_CVTSI642SS	,
-  INTRN_CVTSS2SI	,
-  INTRN_CVTSS2SI64	,
-  INTRN_CVTTSS2SI	,
-  INTRN_CVTTSS2SI64	,
-  INTRN_CVTSI2SD	,
-  INTRN_CVTSI642SD	,
-  INTRN_CVTSD2SI	,
-  INTRN_CVTSD2SI64	,
-  INTRN_CVTTSD2SI	,
-  INTRN_CVTTSD2SI64	,
-  INTRN_CVTDQ2PS	,
-  INTRN_CVTPS2DQ	,
-  INTRN_CVTTPS2DQ	,
-  INTRN_CVTDQ2PD	,
-  INTRN_CVTPD2DQ	,
-  INTRN_CVTTPD2DQ	,
-  INTRN_CVTPD2PS	,
-  INTRN_CVTPS2PD	,
-  INTRN_CVTSD2SS	,
-  INTRN_CVTSS2SD	,
-  INTRN_LOADUPS		,
-  INTRN_STOREUPS	,
-  INTRN_LOADUPD		,
-  INTRN_STOREUPD	,
-  INTRN_LOADHPS		,
-  INTRN_STOREHPS	,
-  INTRN_LOADLPS		,
-  INTRN_STORELPS	,
-  INTRN_MOVMSKPS	,
-  INTRN_MOVMSKPD	,
-  INTRN_MASKMOVDQU	,
-  INTRN_MASKMOVQ	,
-  INTRN_MOVNTPD		,
-  INTRN_MOVNTI		,
-  INTRN_STMXCSR		,
-  INTRN_LDMXCSR		,
+  INTRN_COMIEQSD    ,
+  INTRN_COMILTSD    ,
+  INTRN_COMILESD    ,
+  INTRN_COMIGTSD    ,
+  INTRN_COMIGESD    ,
+  INTRN_COMINEQSD    ,
+  INTRN_CVTPI2PS    ,
+  INTRN_CVTPS2PI    ,
+  INTRN_CVTTPS2PI    ,
+  INTRN_CVTPI2PD    ,
+  INTRN_CVTPD2PI    ,
+  INTRN_CVTTPD2PI    ,
+  INTRN_CVTSI2SS    ,
+  INTRN_CVTSI642SS    ,
+  INTRN_CVTSS2SI    ,
+  INTRN_CVTSS2SI64    ,
+  INTRN_CVTTSS2SI    ,
+  INTRN_CVTTSS2SI64    ,
+  INTRN_CVTSI2SD    ,
+  INTRN_CVTSI642SD    ,
+  INTRN_CVTSD2SI    ,
+  INTRN_CVTSD2SI64    ,
+  INTRN_CVTTSD2SI    ,
+  INTRN_CVTTSD2SI64    ,
+  INTRN_CVTDQ2PS    ,
+  INTRN_CVTPS2DQ    ,
+  INTRN_CVTTPS2DQ    ,
+  INTRN_CVTDQ2PD    ,
+  INTRN_CVTPD2DQ    ,
+  INTRN_CVTTPD2DQ    ,
+  INTRN_CVTPD2PS    ,
+  INTRN_CVTPS2PD    ,
+  INTRN_CVTSD2SS    ,
+  INTRN_CVTSS2SD    ,
+  INTRN_LOADUPS        ,
+  INTRN_STOREUPS    ,
+  INTRN_LOADUPD        ,
+  INTRN_STOREUPD    ,
+  INTRN_LOADHPS        ,
+  INTRN_STOREHPS    ,
+  INTRN_LOADLPS        ,
+  INTRN_STORELPS    ,
+  INTRN_MOVMSKPS    ,
+  INTRN_MOVMSKPD    ,
+  INTRN_MASKMOVDQU    ,
+  INTRN_MASKMOVQ    ,
+  INTRN_MOVNTPD        ,
+  INTRN_MOVNTI        ,
+  INTRN_STMXCSR        ,
+  INTRN_LDMXCSR        ,
   INTRN_MOVSD           ,
   INTRN_PSHUFLW         ,
   INTRN_PSHUFHW         ,
@@ -1687,8 +1687,8 @@ typedef enum {
   INTRN_F4F4I4EXPEXPR   ,
   INTRN_FQFQI4EXPEXPR   ,
   INTRN_EXPECT        ,
-  INTRN_FLOOR	      ,
-  INTRN_FLOORF	      ,
+  INTRN_FLOOR          ,
+  INTRN_FLOORF          ,
 
   INTRN_CTYPE_B_LOC      ,
   INTRN_CTYPE_TOUPPER_LOC,

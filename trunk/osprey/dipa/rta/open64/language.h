@@ -71,11 +71,11 @@ typedef enum {
   LANG_UNKNOWN,
   LANG_F77,
   LANG_F90,
-  LANG_KR_C,	/* Kernighan & Richie C */
-  LANG_ANSI_C,	/* ANSI standard C */
-  LANG_CPLUS,	/* simple C++ */
-  LANG_DELTA,	/* Delta C++ */
-  LANG_COUNT	/* Must be last */
+  LANG_KR_C,    /* Kernighan & Richie C */
+  LANG_ANSI_C,    /* ANSI standard C */
+  LANG_CPLUS,    /* simple C++ */
+  LANG_DELTA,    /* Delta C++ */
+  LANG_COUNT    /* Must be last */
 } LANGUAGE;
 
 #ifdef __cplusplus

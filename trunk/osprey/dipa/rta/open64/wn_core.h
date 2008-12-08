@@ -103,18 +103,18 @@
 ***                 common to nodes of a particular kind is derived from
 ***                 this.  For example, we could tell we were looking at a
 ***                 32 bit multiply by looking at its opcode.  
-***		    Because multiplies are known to have two operands, 
-***		    we know that this node has two operands.
+***            Because multiplies are known to have two operands, 
+***            we know that this node has two operands.
 ***
 ***             mINT16     kid_count
 ***
 ***                 For every node except OPR_BLOCK, this
-***		    gives the number of kids of the node.  For OPR_BLOCK,
-***		    the value of this field is undefined.  This field is zero
-***		    for leaf nodes. 
+***            gives the number of kids of the node.  For OPR_BLOCK,
+***            the value of this field is undefined.  This field is zero
+***            for leaf nodes. 
 ***
 ***         Depending on the type of the opcode field, one or more
-***	    of the following fields is present:
+***        of the following fields is present:
 ***
 ***             For non-leaf expressions excluding OPR_BLOCK:
 ***
@@ -151,59 +151,59 @@
 ***                     Last element of the list of WNs or NULL if the
 ***                     list is empty
 ***
-***		For all statements:
+***        For all statements:
 ***
-***		    WN    *next
-***			If a staement is a child of a OPR_BLOCK, this
-***			points to the next statement under the OPR_BLOCK.
-***			Otherwise, this is NULL.
+***            WN    *next
+***            If a staement is a child of a OPR_BLOCK, this
+***            points to the next statement under the OPR_BLOCK.
+***            Otherwise, this is NULL.
 ***
-***		    WN    *prev
-***			If a staement is a child of a OPR_BLOCK, this
-***			points to the previous statement under the OPR_BLOCK.
-***			Otherwise, this is NULL.
+***            WN    *prev
+***            If a staement is a child of a OPR_BLOCK, this
+***            points to the previous statement under the OPR_BLOCK.
+***            Otherwise, this is NULL.
 ***
 ***             For all loads
 ***
 ***                 WN_OFFSET              load_offset
 ***
 ***                     A constant offset.  offset can also be used (instead
-***			of load_offset), but it might be less efficient.
+***            of load_offset), but it might be less efficient.
 ***
-***		For OPR_LDA
+***        For OPR_LDA
 ***
-***		    WN_OFFSET		   lda_offset
+***            WN_OFFSET           lda_offset
 ***
 ***                     A constant offset.  offset can also be used (instead
-***			of lda_offset), but it might be less efficient.
+***            of lda_offset), but it might be less efficient.
 ***
 ***             For all stores
 ***
 ***                 WN_OFFSET              store_offset
 ***
 ***                     A constant offset.  offset can also be used (instead
-***			of store_offset), but it might be less efficient.
+***            of store_offset), but it might be less efficient.
 ***
-***		For OPR_IDNAME
+***        For OPR_IDNAME
 ***
-***		    WN_OFFSET		    idname_offset
+***            WN_OFFSET            idname_offset
 ***
 ***                     A constant offset.  offset can also be used (instead
-***			of idname_offset), but it might be less efficient.
+***            of idname_offset), but it might be less efficient.
 ***
-***		For OPR_LABEL, OPR_TRUEBR, OPR_FALSEBR, OPR_GOTO
+***        For OPR_LABEL, OPR_TRUEBR, OPR_FALSEBR, OPR_GOTO
 ***
-***		    INT32		    label_number
+***            INT32            label_number
 ***
-***		For OPR_LABEL, OPC_PREFETCH, OPC_PREFETCHX
-***			OPR_INTRINSIC_CALL and OPR_INTRINSIC_OP
+***        For OPR_LABEL, OPC_PREFETCH, OPC_PREFETCHX
+***            OPR_INTRINSIC_CALL and OPR_INTRINSIC_OP
 ***
-***		    UINT32		    flag		      
+***            UINT32            flag              
 ***
-***		For OPR_INTRINSIC_CALL, OPR_INTRINSIC_OP, OPR_IO and
-***			OPR_IO_ITEM
+***        For OPR_INTRINSIC_CALL, OPR_INTRINSIC_OP, OPR_IO and
+***            OPR_IO_ITEM
 ***
-***		    INTRINSIC		intrinsic
+***            INTRINSIC        intrinsic
 ***
 ***             For OPR_INTCONST, OPR_PRAGMA
 ***
@@ -212,67 +212,67 @@
 ***                     A constant offset.  
 ***
 ***
-***		For OPR_ILOAD, OPR_MLOAD, OPR_ILOADX, OPR_LDID, OPR_ICALL,
-***			OPR_ISTORE,OPR_MSTORE,OPR_ISTOREX,OPR_STID,OPR_TAS,
-***			OPR_IO_ITEM
-***		    
-***		    struct ty 		*WN_ty(const WN *wn)
+***        For OPR_ILOAD, OPR_MLOAD, OPR_ILOADX, OPR_LDID, OPR_ICALL,
+***            OPR_ISTORE,OPR_MSTORE,OPR_ISTOREX,OPR_STID,OPR_TAS,
+***            OPR_IO_ITEM
+***            
+***            struct ty         *WN_ty(const WN *wn)
 ***
-***			The high level type.  This is a function
-***			To set the type enter WN_set_ty(WN *wn, TY *ty)
+***            The high level type.  This is a function
+***            To set the type enter WN_set_ty(WN *wn, TY *ty)
 ***
-***		FOR OPR_ILOAD, OPR_ILOADX
+***        FOR OPR_ILOAD, OPR_ILOADX
 ***
-***		    struct ty	  	*WN_load_addr_ty
+***            struct ty          *WN_load_addr_ty
 ***
-***		For OPR_CVTL
+***        For OPR_CVTL
 ***
-***		    INT16		cvtl_bits
+***            INT16        cvtl_bits
 ***
-***			The number of bits.
+***            The number of bits.
 ***
 ***
-***		For OPR_LDID, OPR_LDA, OPR_IDNAME, OPR_STID, OPR_GOTO, 
-***	            OPR_ALTENOPRY, OPR_LABEL, OPR_FUNC_ENOPRY, 
-***		    OPR_CALL, OPR_CONST, OPR_PICCALL:
+***        For OPR_LDID, OPR_LDA, OPR_IDNAME, OPR_STID, OPR_GOTO, 
+***                OPR_ALTENOPRY, OPR_LABEL, OPR_FUNC_ENOPRY, 
+***            OPR_CALL, OPR_CONST, OPR_PICCALL:
 ***
 ***                 ST                 st
 ***
 ***                     A symbol table index.  For the load and
-***			store operators, this is the symbol being loaded or
-***			stored.  For OPR_GOTO
-***			this is the name of the label if the label is user 
-***			defined and null otherwise.
-***			For OPR_FUNC_ENTRY and OPR_CALL this is
-***			the name of the function.  For OPR_CONST, this points
-***			to the value of the literal.
+***            store operators, this is the symbol being loaded or
+***            stored.  For OPR_GOTO
+***            this is the name of the label if the label is user 
+***            defined and null otherwise.
+***            For OPR_FUNC_ENTRY and OPR_CALL this is
+***            the name of the function.  For OPR_CONST, this points
+***            to the value of the literal.
 ***
 ***
-***	        For OPR_COMP_GOTO:
+***            For OPR_COMP_GOTO:
 ***
-***		    INT32	num_entries
-***			
-***			How many entries in the computed goto table.
-***			A region created after structured control flow is 
-***			lowered will also need a branch table to keep track 
-***			of all the possible exits.
+***            INT32    num_entries
+***            
+***            How many entries in the computed goto table.
+***            A region created after structured control flow is 
+***            lowered will also need a branch table to keep track 
+***            of all the possible exits.
 ***
 ***             For OPR_ARRAY
 ***
-***		    INT32  	num_dim
+***            INT32      num_dim
 ***
-***			How many dimensions are in this array.
+***            How many dimensions are in this array.
 ***
-***		    WN_ESIZE	element_size
+***            WN_ESIZE    element_size
 ***
-***			How big (in bytes) is each element
+***            How big (in bytes) is each element
 ***
-***		For OPR_FUNC_ENTRY:
+***        For OPR_FUNC_ENTRY:
 ***
-***		    WN		*next_func, *prev_func
+***            WN        *next_func, *prev_func
 ***
-***			The next and previous function in a list
-***			of functions
+***            The next and previous function in a list
+***            of functions
 ***
 ***
 ***
@@ -289,30 +289,30 @@
 ***                 WN              *formal(i)
 ***                     The 'i'-th formal parameter
 ***
-***		    INT16	    num_formals
-***			The number of formal parameters
+***            INT16        num_formals
+***            The number of formal parameters
 ***
-***		    WN		    *func_pragmas
-***			List of pragmas for the function
+***            WN            *func_pragmas
+***            List of pragmas for the function
 ***
-***		    WN		    *func_varrefs
-***			List of uplevel var refs for the function
+***            WN            *func_varrefs
+***            List of uplevel var refs for the function
 ***
-***		    WN		    *func_body
-***			The OPR_BLOCK that represents all the code in the body
+***            WN            *func_body
+***            The OPR_BLOCK that represents all the code in the body
 ***
-***		    WN		    *entry_first,entry_last
-***			The first and last statement in the OPR_BLOCK that 
-***			represents all the code in the body.  This is aliased
-***			to indirect through func_body
+***            WN            *entry_first,entry_last
+***            The first and last statement in the OPR_BLOCK that 
+***            represents all the code in the body.  This is aliased
+***            to indirect through func_body
 ***
 ***             For OPR_[I]CALL:
 ***
 ***                 WN              *actual(i)
 ***                     The 'i'-th actual parameter
 ***
-***		    INT16	    num_actuals
-***			The number of actual parameters
+***            INT16        num_actuals
+***            The number of actual parameters
 ***
 ***             For OPR_DO_LOOP:
 ***
@@ -338,22 +338,22 @@
 ***                 WN              *then
 ***                 WN              *else
 ***
-***		For OPR_REGION:
+***        For OPR_REGION:
 ***
-***		    WN		    *region_body
-***		    UINT32	    flag
-***			Regions use the call_flag to track compilation level info
+***            WN            *region_body
+***            UINT32        flag
+***            Regions use the call_flag to track compilation level info
 ***
-***		For OPR_ARRAY
+***        For OPR_ARRAY
 ***
-***		    WN		    *array_index(i)
-***			The i'th indexing dimension (i starts at 0)
+***            WN            *array_index(i)
+***            The i'th indexing dimension (i starts at 0)
 ***
-***		    WN		    *array_dim(i)
-***			The i'th dimension size (i starts at 0)
+***            WN            *array_dim(i)
+***            The i'th dimension size (i starts at 0)
 ***
-***		    WN		    *array_base
-***			The base of the array.
+***            WN            *array_base
+***            The base of the array.
 ***
 ***
 ***
@@ -367,33 +367,33 @@
 ***
 ***
 ***     INT32 WN_Size(
-***	    WN *wn
+***        WN *wn
 ***     )
 ***     
-*** 	    Return the size in bytes of this wn structure
+***         Return the size in bytes of this wn structure
 ***
 ***     void *WN_StartAddress(WN *wn)
 ***
-***	   Return the starting address of wn
+***       Return the starting address of wn
 ***        This is not necessarily &wn as we grow wns backwards to minimize
 ***        size
 ***
 ***     WN_Is_If_Guard(WN *if_wn) 
-***		is the if statement a one-trip guard for a do loop
+***        is the if statement a one-trip guard for a do loop
 ***     WN_Set_If_Guard(WN *if_wn) 
-***		the if statement is a one-trip guard for a do loop
+***        the if statement is a one-trip guard for a do loop
 ***     WN_Reset_If_Guard(WN *if_wn) 
-***		the if statement is not a one-trip guard for a do loop
+***        the if statement is not a one-trip guard for a do loop
 ***
-***	WN_Label_Is_Break(x)
-***		is the label the label for a break from a case statement
+***    WN_Label_Is_Break(x)
+***        is the label the label for a break from a case statement
 ***     WN_Set_Label_Is_Break(x)
-***		the label is the label for a break from a case statement
-***	WN_Reset_Label_Is_Break(x)
-***		the label is not the label for a break from a case statement
+***        the label is the label for a break from a case statement
+***    WN_Reset_Label_Is_Break(x)
+***        the label is not the label for a break from a case statement
 ***
-***	WN_Is_Volatile_Mem(const WN *wn)
-***	        Is <wn> a reference to a volatile memory location?
+***    WN_Is_Volatile_Mem(const WN *wn)
+***            Is <wn> a reference to a volatile memory location?
 **/
 
 #define MAX_FIELD_ID 0x3ffe
@@ -404,19 +404,19 @@ class STMT_WN;
 
 typedef INT32           WN_OFFSET;
 typedef INT64           WN_ESIZE;
-typedef INT32 		WN_MAP_ID;
+typedef INT32         WN_MAP_ID;
 
 typedef enum REGION_KIND {
   REGION_KIND_PRAGMA     = 0x0,
   REGION_KIND_FUNC_ENTRY = 0x1,
-  REGION_KIND_LOOP	 = 0x2,
-  REGION_KIND_OLIMIT	 = 0x3,
-  REGION_KIND_MP	 = 0x4,
-  REGION_KIND_RPI	 = 0x5,
-  REGION_KIND_COLD	 = 0x6,
-  REGION_KIND_SWP	 = 0x7,
+  REGION_KIND_LOOP     = 0x2,
+  REGION_KIND_OLIMIT     = 0x3,
+  REGION_KIND_MP     = 0x4,
+  REGION_KIND_RPI     = 0x5,
+  REGION_KIND_COLD     = 0x6,
+  REGION_KIND_SWP     = 0x7,
 
-  REGION_KIND_EH         = 0x8,	/* any kind with bit 3 set is EH */
+  REGION_KIND_EH         = 0x8,    /* any kind with bit 3 set is EH */
   REGION_KIND_TRY        = 0x8,
   REGION_KIND_CLEANUP    = 0x9,
   REGION_KIND_EXC_SPEC   = 0xa,
@@ -437,29 +437,29 @@ class WN {
 public:
    union {
       struct {
-	 union {
-	    WN_OFFSET	    load_offset; 
-	    WN_OFFSET	    lda_offset; 
-	    WN_OFFSET	    store_offset;
-	    WN_OFFSET	    idname_offset;
-	    INT32   	    num_entries; /* used by computed goto statements; may be used by regions */
-	    TY_IDX	    loadx_addr_ty; /* for OPR_ILOADX */
-	    INT16	    cvtl_bits;
-	    INT32	    label_number;
-	    UINT32	    call_flag;
-	    UINT32	    if_flag;
-	    UINT32	    io_flag;
-	    UINT32	    asm_flag;
-	    UINT32          asm_operand_num;
-	    struct {
-		mUINT16	    trip_est;
-		mUINT16	    loop_depth;
-	    } li;
+     union {
+        WN_OFFSET        load_offset; 
+        WN_OFFSET        lda_offset; 
+        WN_OFFSET        store_offset;
+        WN_OFFSET        idname_offset;
+        INT32           num_entries; /* used by computed goto statements; may be used by regions */
+        TY_IDX        loadx_addr_ty; /* for OPR_ILOADX */
+        INT16        cvtl_bits;
+        INT32        label_number;
+        UINT32        call_flag;
+        UINT32        if_flag;
+        UINT32        io_flag;
+        UINT32        asm_flag;
+        UINT32          asm_operand_num;
+        struct {
+        mUINT16        trip_est;
+        mUINT16        loop_depth;
+        } li;
             struct {
                 mUINT16     pragma_flags;
                 mUINT16     pragma_id;
             } pragma;
-	    TY_IDX	    io_item_ty;  /* for IO_ITEM */
+        TY_IDX        io_item_ty;  /* for IO_ITEM */
             struct {
 #if defined(TARG_SL)
                 REGION_KIND region_kind: 7;
@@ -469,23 +469,23 @@ public:
                 mUINT32     region_id  :28;
 #endif 
             } region;
-	 } ua;
-	 union {
-	    ST_IDX	    st_idx;	/* for ldid/stid/lda */
-	    TY_IDX          ty;		/* for all types except lda,ldid,stid */
-					/*  and io_item */
-	    INT32  	    id;
-	    INTRINSIC	    intrinsic;
-	    IOSTATEMENT	    iostatement;
-	    IOITEM	    ioitem;
-	    UINT32	    prefetch_flag;
-	    UINT32	    loop_flag;
-	    INT32	    last_label;	/* end of switch */
-	    INITO_IDX	    ereg_supp;
+     } ua;
+     union {
+        ST_IDX        st_idx;    /* for ldid/stid/lda */
+        TY_IDX          ty;        /* for all types except lda,ldid,stid */
+                    /*  and io_item */
+        INT32          id;
+        INTRINSIC        intrinsic;
+        IOSTATEMENT        iostatement;
+        IOITEM        ioitem;
+        UINT32        prefetch_flag;
+        UINT32        loop_flag;
+        INT32        last_label;    /* end of switch */
+        INITO_IDX        ereg_supp;
             UINT32          label_level; /* nest level for target of goto_outer_block */
-	 } ub;
+     } ub;
       } uu;
-      WN_ESIZE	    element_size;
+      WN_ESIZE        element_size;
    } u1u2;
 
    // the following layout was used to minimize aliasing as 
@@ -502,12 +502,12 @@ public:
    union {
      struct {
        WN          *dummy1;
-       TY_IDX       ty;		/* ty used for lda,ldid,stid,iload */
+       TY_IDX       ty;        /* ty used for lda,ldid,stid,iload */
      } ty_fields;
-     WN	           *kids[2];
-     INT64	    const_val;
+     WN               *kids[2];
+     INT64        const_val;
      struct {
-       UINT32	    num_inputs;
+       UINT32        num_inputs;
        UINT32       num_clobbers;
      } asm_fields;
      struct {
@@ -523,13 +523,13 @@ public:
         INT64       pragma_arg64;
         struct {
            INT32    pragma_arg1;
-	   union {
-	     INT32    pragma_arg2;
-	     struct {
-	       mUINT32  pragma_asm_opnd_num : 8;
-	       PREG_NUM pragma_asm_copyout_preg : 24;
-	     } asm_pragma;
-	   };
+       union {
+         INT32    pragma_arg2;
+         struct {
+           mUINT32  pragma_asm_opnd_num : 8;
+           PREG_NUM pragma_asm_copyout_preg : 24;
+         } asm_pragma;
+       };
         } up1;
         struct {
            mINT16   pragma_pad1;
@@ -647,8 +647,8 @@ public:
   friend inline INTRINSIC&  WN_intrinsic (WN *);
   friend inline IOSTATEMENT WN_io_statement(const WN *);
   friend inline IOSTATEMENT&  WN_io_statement(WN *);
-  friend inline IOITEM	    WN_io_item(const WN *);
-  friend inline IOITEM&	    WN_io_item(WN *);
+  friend inline IOITEM        WN_io_item(const WN *);
+  friend inline IOITEM&        WN_io_item(WN *);
 //friend inline INT32       WN_num_dim (const WN *);
 //friend inline INT32&      WN_num_dim (WN *);
   friend inline UINT32      WN_prefetch_flag (const WN *);
@@ -808,11 +808,11 @@ inline TYPE_ID    WN_rtype (const WN* wn) { return wn->common.rtype; }
 inline void       WN_set_rtype (WN* wn, TYPE_ID ty) { wn->common.rtype = ty; }
 inline INT        WN_kid_count (const WN* wn) { return OPERATOR_nkids(WN_operator(wn)) == -1 ? wn->common.kid_count : OPERATOR_nkids(WN_operator(wn)); }
 inline void       WN_set_kid_count (WN* wn, UINT n) { if (OPERATOR_nkids(WN_operator(wn)) == -1) wn->common.kid_count = n; }
-inline UINT32  	  WN_field_id (const WN* wn) { return wn->common.kid_count; }
-inline void	  WN_set_field_id (WN* wn, UINT n) { wn->common.kid_count = (n > MAX_FIELD_ID) ? UNKNOWN_FIELD_ID : n; }
-inline UINT	  WN_bit_offset (const WN* wn) { return wn->common.kid_count >> 7; }
-inline UINT	  WN_bit_size (const WN* wn) { return wn->common.kid_count & 0x7f; }
-inline void	  WN_set_bit_offset_size (WN* wn, UINT ofst, UINT siz) { wn->common.kid_count = ((ofst << 7) + siz); }
+inline UINT32        WN_field_id (const WN* wn) { return wn->common.kid_count; }
+inline void      WN_set_field_id (WN* wn, UINT n) { wn->common.kid_count = (n > MAX_FIELD_ID) ? UNKNOWN_FIELD_ID : n; }
+inline UINT      WN_bit_offset (const WN* wn) { return wn->common.kid_count >> 7; }
+inline UINT      WN_bit_size (const WN* wn) { return wn->common.kid_count & 0x7f; }
+inline void      WN_set_bit_offset_size (WN* wn, UINT ofst, UINT siz) { wn->common.kid_count = ((ofst << 7) + siz); }
 inline TYPE_ID    WN_desc (const WN* wn) { return wn->common.desc; }
 inline void       WN_set_desc (WN* wn, TYPE_ID ty) { wn->common.desc = ty; }
 inline INT32      WN_map_id (const WN* wn) { return wn->common.map_id; }
@@ -872,7 +872,7 @@ inline void WN_Copy_sl_ext(WN* dst,  const WN* src)  { dst->sl_ext = src->sl_ext
 #define WN_lda_offset(x)        ((x)->u1u2.uu.ua.lda_offset)
 #define WN_store_offset(x)      ((x)->u1u2.uu.ua.store_offset)
 #define WN_idname_offset(x)     ((x)->u1u2.uu.ua.idname_offset)
-#define WN_offset(x)  	        ((x)->u1u2.uu.ua.idname_offset)
+#define WN_offset(x)              ((x)->u1u2.uu.ua.idname_offset)
 #define WN_num_entries(x)       ((x)->u1u2.uu.ua.num_entries)
 #define WN_cvtl_bits(x)         ((x)->u1u2.uu.ua.cvtl_bits)
 #define WN_label_number(x)      ((x)->u1u2.uu.ua.label_number)
@@ -885,21 +885,21 @@ inline void WN_Copy_sl_ext(WN* dst,  const WN* src)  { dst->sl_ext = src->sl_ext
 #define WN_loop_trip_est(x)     ((x)->u1u2.uu.ua.li.trip_est)
 #define WN_loop_depth(x)        ((x)->u1u2.uu.ua.li.loop_depth)
 #define WN_pragma_flags(x)      ((x)->u1u2.uu.ua.pragma.pragma_flags)
-#define WN_pragma(x)  	        ((x)->u1u2.uu.ua.pragma.pragma_id)
+#define WN_pragma(x)              ((x)->u1u2.uu.ua.pragma.pragma_id)
 #define WN_pragma_asm_constraint(x) (ST_name(&St_Table[(ST_IDX) WN_pragma_arg1(wn)]))
 #define WN_pragma_asm_copyout_preg(x) ((PREG_NUM) (x)->u3.pragma.up1.asm_pragma.pragma_asm_copyout_preg)
 #define WN_pragma_asm_opnd_num(x) ((x)->u3.pragma.up1.asm_pragma.pragma_asm_opnd_num)
 #define WN_region_kind(x)       ((REGION_KIND)((x)->u1u2.uu.ua.region.region_kind))
 #define WN_set_region_kind(x,y) ((x)->u1u2.uu.ua.region.region_kind = y)
-#define WN_region_id(x)	        ((mUINT32)((x)->u1u2.uu.ua.region.region_id))
-#define WN_st_idx(x)	        ((x)->u1u2.uu.ub.st_idx)
+#define WN_region_id(x)            ((mUINT32)((x)->u1u2.uu.ua.region.region_id))
+#define WN_st_idx(x)            ((x)->u1u2.uu.ub.st_idx)
 #define WN_intrinsic(x)         ((x)->u1u2.uu.ub.intrinsic)
 #define WN_io_statement(x)      ((x)->u1u2.uu.ub.iostatement)
 #define WN_io_item(x)           ((x)->u1u2.uu.ub.ioitem)
 #define WN_prefetch_flag(x)     ((x)->u1u2.uu.ub.prefetch_flag)
-#define WN_loop_flag(x)	        ((x)->u1u2.uu.ub.loop_flag)
+#define WN_loop_flag(x)            ((x)->u1u2.uu.ub.loop_flag)
 #define WN_last_label(x)        ((x)->u1u2.uu.ub.last_label)
-#define WN_ereg_supp(x)	        ((x)->u1u2.uu.ub.ereg_supp)
+#define WN_ereg_supp(x)            ((x)->u1u2.uu.ub.ereg_supp)
 
 #define WN_asm_num_inputs(x)    ((x)->u3.asm_fields.num_inputs)
 #define WN_asm_num_clobbers(x)  ((x)->u3.asm_fields.num_clobbers)
@@ -914,10 +914,10 @@ inline void WN_Copy_sl_ext(WN* dst,  const WN* src)  { dst->sl_ext = src->sl_ext
 #define WN_set_rtype(x,y)       ((x)->common.rtype = y)
 #define WN_kid_count(x)         (OPERATOR_nkids(WN_operator(x)) == -1 ? (x)->common.kid_count : OPERATOR_nkids(WN_operator(x)))
 #define WN_set_kid_count(x,y)   if (OPERATOR_nkids(WN_operator(x)) == -1) (x)->common.kid_count = y; else
-#define WN_field_id(x)		((x)->common.kid_count)
-#define WN_set_field_id(x,y)	((x)->common.kid_count = (y > MAX_FIELD_ID) ? UNKNOWN_FIELD_ID : y)
-#define WN_bit_offset(x)	((x)->common.kid_count >> 7)
-#define WN_bit_size(x)		((x)->common.kid_count & 0x7f)
+#define WN_field_id(x)        ((x)->common.kid_count)
+#define WN_set_field_id(x,y)    ((x)->common.kid_count = (y > MAX_FIELD_ID) ? UNKNOWN_FIELD_ID : y)
+#define WN_bit_offset(x)    ((x)->common.kid_count >> 7)
+#define WN_bit_size(x)        ((x)->common.kid_count & 0x7f)
 #define WN_set_bit_offset_size(x,y,z) ((x)->common.kid_count = ((y << 7) + z))
 #define WN_desc(x)              ((TYPE_ID) (x)->common.desc)
 #define WN_set_desc(x,y)        ((x)->common.desc = y)
@@ -946,14 +946,14 @@ inline void WN_Copy_sl_ext(WN* dst,  const WN* src)  { dst->sl_ext = src->sl_ext
 
 #define WN_num_dim(x)           (WN_kid_count(x)>>1)
 
-#define WN_asm_clobbers(x)	(WN_kid0(x))
-#define WN_asm_constraints(x)	(WN_kid1(x))
+#define WN_asm_clobbers(x)    (WN_kid0(x))
+#define WN_asm_constraints(x)    (WN_kid1(x))
 
 inline OPCODE
 WN_opcode (const WN *wn) {
    return OPCODE_make_op (wn->common.wn_operator,
-			  wn->common.rtype,
-			  wn->common.desc);
+              wn->common.rtype,
+              wn->common.desc);
 }
 
 inline void
@@ -1023,11 +1023,11 @@ WN_st (const WN *x)
   {
     Is_True(WN_has_sym(x), ("WN_st: wn doesn't have ST field"));
     Is_True(ST_IDX_index(WN_st_idx(x)) != 0 ||
-	    WN_st_idx(x) == 0,
-	    ("WN_st: zero index in nonzero level disallowed"));
+        WN_st_idx(x) == 0,
+        ("WN_st: zero index in nonzero level disallowed"));
     return (WN_st_idx(x) != 0 ?
-	    &St_Table[WN_st_idx(x)] :
-	    NULL);
+        &St_Table[WN_st_idx(x)] :
+        NULL);
   }
 
 #ifndef WN_NO_ACCESSOR_FUNCTIONS
@@ -1037,8 +1037,8 @@ inline char * WN_asm_input_constraint(const WN *wn) { return ST_name(WN_st(wn));
 
 #define WN_parm_flag(x)     WN_call_flag(x)
 #define WN_region_is_EH(x)  (WN_region_kind(x) & REGION_KIND_EH)
-#define WN_label_loop_info(x)	\
-		(WN_kid_count(x)>0 ? WN_kid((x),0) : NULL)
+#define WN_label_loop_info(x)    \
+        (WN_kid_count(x)>0 ? WN_kid((x),0) : NULL)
 #define WN_set_label_loop_info(x,li) (WN_kid0(x) = (li))
 
 /* for pragma flags */
@@ -1058,7 +1058,7 @@ inline char * WN_asm_input_constraint(const WN *wn) { return ST_name(WN_st(wn));
 #define WN_num_formals(x)   (WN_kid_count(x)-3)
 #define WN_func_pragmas(x)  WN_kid((x),WN_kid_count(x)-3)
 #define WN_func_varrefs(x)  WN_kid((x),WN_kid_count(x)-2)
-#define WN_func_body(x)	    WN_kid((x),WN_kid_count(x)-1)
+#define WN_func_body(x)        WN_kid((x),WN_kid_count(x)-1)
 #define WN_entry_first(x)   WN_first(WN_func_body(x))
 #define WN_entry_last(x)    WN_last(WN_func_body(x))
 #define WN_actual(x,i)      WN_kid((x),i)
@@ -1070,7 +1070,7 @@ inline char * WN_asm_input_constraint(const WN *wn) { return ST_name(WN_st(wn));
 #define WN_step(x)          WN_kid((x),3)
 #define WN_do_body(x)       WN_kid((x),4)
 #define WN_do_loop_info(x)  \
-		(WN_kid_count(x)>5 ? WN_kid((x),5) : NULL)
+        (WN_kid_count(x)>5 ? WN_kid((x),5) : NULL)
 #define WN_set_do_loop_info(x,li)  (WN_kid((x),5) = (li))
 
 #define WN_while_test(x)    WN_kid((x),0)
@@ -1091,16 +1091,16 @@ inline char * WN_asm_input_constraint(const WN *wn) { return ST_name(WN_st(wn));
 
 /* for LOOP_INFO: */
 #define WN_loop_induction(x)\
-		(WN_kid_count(x)>0 ? WN_kid((x),0) : NULL)
+        (WN_kid_count(x)>0 ? WN_kid((x),0) : NULL)
 #define WN_set_loop_induction(x,ind) (WN_kid((x),0) = (ind))
-#define WN_loop_trip(x)	    \
-		(WN_kid_count(x)>1 ? WN_kid((x),1) : NULL)
+#define WN_loop_trip(x)        \
+        (WN_kid_count(x)>1 ? WN_kid((x),1) : NULL)
 #define WN_set_loop_trip(x,trip) (WN_kid((x),1) = (trip))
 
 /* for SWITCH: */
-#define WN_switch_test(x)	WN_kid((x),0)
-#define WN_switch_table(x)	WN_kid((x),1)
-#define WN_switch_default(x)	WN_kid((x),2)
+#define WN_switch_test(x)    WN_kid((x),0)
+#define WN_switch_table(x)    WN_kid((x),1)
+#define WN_switch_default(x)    WN_kid((x),2)
 
 #ifndef KEY
 #if defined(_LP64) && !defined(_SGI_COMPILER_VERSION)
@@ -1138,28 +1138,28 @@ inline char * WN_asm_input_constraint(const WN *wn) { return ST_name(WN_st(wn));
 
 /* WN_opcode() compound */
 /*
-#define WN_operator(x)		(OPCODE_operator(WN_opcode(x)))
-#define WN_rtype(x)		(OPCODE_rtype(WN_opcode(x)))
-#define WN_desc(x)		(OPCODE_desc(WN_opcode(x)))
+#define WN_operator(x)        (OPCODE_operator(WN_opcode(x)))
+#define WN_rtype(x)        (OPCODE_rtype(WN_opcode(x)))
+#define WN_desc(x)        (OPCODE_desc(WN_opcode(x)))
 */
-#define WN_operator_is(x,y)	(WN_operator(x)==(y))
+#define WN_operator_is(x,y)    (WN_operator(x)==(y))
 
 /* WN_st() compound */
-#define WN_class(x)		(ST_class(WN_st(x)))
-#define WN_sclass(x)		(ST_sclass(WN_st(x)))
-#define WN_type(x)		(ST_type(WN_st(x)))
+#define WN_class(x)        (ST_class(WN_st(x)))
+#define WN_sclass(x)        (ST_sclass(WN_st(x)))
+#define WN_type(x)        (ST_type(WN_st(x)))
 /*REFERENCED*/
 inline TCON&
-WN_val (const WN *x)		{ return ST_tcon_val (WN_st(x)); }
+WN_val (const WN *x)        { return ST_tcon_val (WN_st(x)); }
 /*REFERENCED*/
 inline TYPE_ID
-WN_val_type (const WN *x)	{ return TCON_ty (WN_val (x)); }
+WN_val_type (const WN *x)    { return TCON_ty (WN_val (x)); }
 
 
 #define WN_has_map_id(x)        (WN_map_id(x)!= -1)
 
-#define WN_block_empty(x)	(WN_first(x) == NULL)
-#define WN_block_nonempty(x)	(WN_first(x) != NULL)
+#define WN_block_empty(x)    (WN_first(x) == NULL)
+#define WN_block_nonempty(x)    (WN_first(x) != NULL)
 
 
 
@@ -1322,7 +1322,7 @@ inline INT32 WN_Size(WN *wn)
 inline void WN_Set_Linenum(WN *wn, INT64 ln)
 {
   Is_True(OPCODE_has_next_prev(WN_opcode(wn)),
-	("can only set line numbers for statements"));
+    ("can only set line numbers for statements"));
   WN_linenum(wn) = ln;
 }
 
@@ -1343,16 +1343,16 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
   OPCODE opc = WN_opcode(wn);
   if (OPCODE_has_1ty(opc) || OPCODE_has_2ty(opc)) {
     if (OPCODE_operator(opc) == OPR_ISTORE ||
-	OPCODE_operator(opc) == OPR_MSTORE) {
+    OPCODE_operator(opc) == OPR_MSTORE) {
       TY_IDX pointed = TY_pointed (Ty_Table[WN_ty (wn)]);
       DevAssert(pointed, ("TY_pointed of ISTORE/MSTORE type is NULL"));
       return TY_is_volatile(pointed);
     } else {
       return TY_is_volatile(WN_ty(wn)) ||
-#ifdef KEY	// bug 12404
-	OPCODE_has_2ty(opc) && TY_is_volatile(TY_pointed(WN_load_addr_ty(wn)));
+#ifdef KEY    // bug 12404
+    OPCODE_has_2ty(opc) && TY_is_volatile(TY_pointed(WN_load_addr_ty(wn)));
 #else
-	OPCODE_has_2ty(opc) && TY_is_volatile(WN_load_addr_ty(wn));
+    OPCODE_has_2ty(opc) && TY_is_volatile(WN_load_addr_ty(wn));
 #endif
     }
   }
@@ -1361,19 +1361,19 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 
 
 #define WN_IF_IS_GUARD 0x1
-#define WN_Is_If_Guard(x)	(WN_if_flag(x) & WN_IF_IS_GUARD)	
-#define WN_Set_If_Guard(x)	(WN_if_flag(x) |= WN_IF_IS_GUARD)	
-#define WN_Reset_If_Guard(x)	(WN_if_flag(x) &= ~(WN_IF_IS_GUARD))	
+#define WN_Is_If_Guard(x)    (WN_if_flag(x) & WN_IF_IS_GUARD)    
+#define WN_Set_If_Guard(x)    (WN_if_flag(x) |= WN_IF_IS_GUARD)    
+#define WN_Reset_If_Guard(x)    (WN_if_flag(x) &= ~(WN_IF_IS_GUARD))    
 
 #define WN_IF_IS_MPVERSION 0x2
-#define WN_Is_If_MpVersion(x)	 (WN_if_flag(x) & WN_IF_IS_MPVERSION)	
-#define WN_Set_If_MpVersion(x)	 (WN_if_flag(x) |= WN_IF_IS_MPVERSION)	
-#define WN_Reset_If_MpVersion(x) (WN_if_flag(x) &= ~(WN_IF_IS_MPVERSION))	
+#define WN_Is_If_MpVersion(x)     (WN_if_flag(x) & WN_IF_IS_MPVERSION)    
+#define WN_Set_If_MpVersion(x)     (WN_if_flag(x) |= WN_IF_IS_MPVERSION)    
+#define WN_Reset_If_MpVersion(x) (WN_if_flag(x) &= ~(WN_IF_IS_MPVERSION))    
 
 #define WN_LABEL_BREAK 0x1
-#define WN_Label_Is_Break(x)		(WN_label_flag(x) & WN_LABEL_BREAK)
-#define WN_Set_Label_Is_Break(x)	(WN_label_flag(x) |= WN_LABEL_BREAK)
-#define WN_Reset_Label_Is_Break(x)	(WN_label_flag(x) &= ~(WN_LABEL_BREAK))
+#define WN_Label_Is_Break(x)        (WN_label_flag(x) & WN_LABEL_BREAK)
+#define WN_Set_Label_Is_Break(x)    (WN_label_flag(x) |= WN_LABEL_BREAK)
+#define WN_Reset_Label_Is_Break(x)    (WN_label_flag(x) &= ~(WN_LABEL_BREAK))
 
 /* WN_loop_flag stuff */
 
@@ -1387,13 +1387,13 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_LOOP_SYMB_TRIP 0x20
 
 /* Is the loop an innermost loop */
-#define WN_Loop_Innermost(x)		(WN_loop_flag(x) & WN_LOOP_INNERMOST)
-#define WN_Set_Loop_Innermost(x)	(WN_loop_flag(x) |= WN_LOOP_INNERMOST)
-#define WN_Reset_Loop_Innermost(x)	(WN_loop_flag(x) &= ~WN_LOOP_INNERMOST)
+#define WN_Loop_Innermost(x)        (WN_loop_flag(x) & WN_LOOP_INNERMOST)
+#define WN_Set_Loop_Innermost(x)    (WN_loop_flag(x) |= WN_LOOP_INNERMOST)
+#define WN_Reset_Loop_Innermost(x)    (WN_loop_flag(x) &= ~WN_LOOP_INNERMOST)
 
 /* does this loop arise because it is part of register winddown 
    from outer unrolling (and therefore its importance is less) */
-#define WN_Loop_Winddown_Reg(x)	      (WN_loop_flag(x) & WN_LOOP_WINDDOWN_REG)
+#define WN_Loop_Winddown_Reg(x)          (WN_loop_flag(x) & WN_LOOP_WINDDOWN_REG)
 #define WN_Set_Loop_Winddown_Reg(x)   (WN_loop_flag(x) |= WN_LOOP_WINDDOWN_REG)
 #define WN_Reset_Loop_Winddown_Reg(x) \
   (WN_loop_flag(x) &= ~WN_LOOP_WINDDOWN_REG)
@@ -1433,40 +1433,40 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_Reset_Loop_Symb_Trip(x)   (WN_loop_flag(x) &= ~WN_LOOP_SYMB_TRIP)
 
 #define WN_LABEL_HANDLER_BEGIN 0x2
-#define WN_Label_Is_Handler_Begin(x)	   (WN_label_flag(x) & \
-					    WN_LABEL_HANDLER_BEGIN)
+#define WN_Label_Is_Handler_Begin(x)       (WN_label_flag(x) & \
+                        WN_LABEL_HANDLER_BEGIN)
 #define WN_Set_Label_Is_Handler_Begin(x)   (WN_label_flag(x) |= \
-					    WN_LABEL_HANDLER_BEGIN)
+                        WN_LABEL_HANDLER_BEGIN)
 #define WN_Reset_Label_Is_Handler_Begin(x) (WN_label_flag(x) &= \
-					  ~(WN_LABEL_HANDLER_BEGIN))
+                      ~(WN_LABEL_HANDLER_BEGIN))
 
 #ifdef KEY
 #define WN_LABEL_NOT_USED 0x4
 #define WN_Label_Is_Not_Used(x)       (WN_label_flag(x) & \
-					    WN_LABEL_NOT_USED)
+                        WN_LABEL_NOT_USED)
 #define WN_Set_Label_Is_Not_Used(x)   (WN_label_flag(x) |= \
-					    WN_LABEL_NOT_USED)
+                        WN_LABEL_NOT_USED)
 #define WN_Reset_Label_Is_Not_Used(x) (WN_label_flag(x) &= \
-					  ~(WN_LABEL_NOT_USED))
+                      ~(WN_LABEL_NOT_USED))
 #endif
 
 #define WN_Set_IO_Library(x,y)  (WN_io_flag(x) = (y))
 #define WN_IO_Library(x)        ((IOLIB) WN_io_flag(x))
 
-#define WN_PARM_BY_REFERENCE	    0x01
-#define WN_PARM_BY_VALUE	    0x02
-#define WN_PARM_IN		    WN_PARM_BY_VALUE
-#define WN_PARM_OUT		    0x04
-#define WN_PARM_DUMMY		    0x08
+#define WN_PARM_BY_REFERENCE        0x01
+#define WN_PARM_BY_VALUE        0x02
+#define WN_PARM_IN            WN_PARM_BY_VALUE
+#define WN_PARM_OUT            0x04
+#define WN_PARM_DUMMY            0x08
 /* The next two WN_PARM_READ_ONLY, WN_PARM_PASSED_NOT_SAVED only for C/C++ */
 #define WN_PARM_READ_ONLY           0x10 /* parm is only referenced, not
-					    modified by the callee */ 
+                        modified by the callee */ 
 #define WN_PARM_PASSED_NOT_SAVED    0x20 /* parm is passed to callee,
-					    however, the callee does not
-					    save the address of the parm */
+                        however, the callee does not
+                        save the address of the parm */
 #define WN_PARM_NOT_EXPOSED_USE   0x40  /* there is no exposed use */
 #define WN_PARM_IS_KILLED   0x80        /* the parameter is killed, for
-					   pass by reference */
+                       pass by reference */
 
 #if defined(TARG_SL)
 #define WN_PARM_DEREFERENCE  0x100
@@ -1474,40 +1474,40 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_Set_Parm_Dereference(x)   (WN_parm_flag(x) |= WN_PARM_DEREFERENCE)
 #endif // TARG_SL
 
-#define WN_Parm_By_Reference(x)		(WN_parm_flag(x) & WN_PARM_BY_REFERENCE)
-#define WN_Set_Parm_By_Reference(x)	(WN_parm_flag(x) |= WN_PARM_BY_REFERENCE)
-#define WN_Parm_By_Value(x)		(WN_parm_flag(x) & WN_PARM_BY_VALUE)
-#define WN_Set_Parm_By_Value(x)		(WN_parm_flag(x) |= WN_PARM_BY_VALUE)
-#define WN_Parm_In(x)			(WN_parm_flag(x) & WN_PARM_IN)
-#define WN_Set_Parm_In(x)		(WN_parm_flag(x) |= WN_PARM_IN)
-#define WN_Parm_Out(x)			(WN_parm_flag(x) & WN_PARM_OUT)
-#define WN_Set_Parm_Out(x)		(WN_parm_flag(x) |= WN_PARM_OUT)
-#define WN_Parm_Dummy(x)		(WN_parm_flag(x) & WN_PARM_DUMMY)
-#define WN_Set_Parm_Dummy(x)		(WN_parm_flag(x) |= WN_PARM_DUMMY)
-#define WN_Parm_Read_Only(x)		(WN_parm_flag(x) & WN_PARM_READ_ONLY)
-#define WN_Set_Parm_Read_Only(x)	(WN_parm_flag(x) |= WN_PARM_READ_ONLY)
-#define WN_Parm_Passed_Not_Saved(x)	(WN_parm_flag(x) & WN_PARM_PASSED_NOT_SAVED)
-#define WN_Set_Parm_Passed_Not_Saved(x)	(WN_parm_flag(x) |= WN_PARM_PASSED_NOT_SAVED)
+#define WN_Parm_By_Reference(x)        (WN_parm_flag(x) & WN_PARM_BY_REFERENCE)
+#define WN_Set_Parm_By_Reference(x)    (WN_parm_flag(x) |= WN_PARM_BY_REFERENCE)
+#define WN_Parm_By_Value(x)        (WN_parm_flag(x) & WN_PARM_BY_VALUE)
+#define WN_Set_Parm_By_Value(x)        (WN_parm_flag(x) |= WN_PARM_BY_VALUE)
+#define WN_Parm_In(x)            (WN_parm_flag(x) & WN_PARM_IN)
+#define WN_Set_Parm_In(x)        (WN_parm_flag(x) |= WN_PARM_IN)
+#define WN_Parm_Out(x)            (WN_parm_flag(x) & WN_PARM_OUT)
+#define WN_Set_Parm_Out(x)        (WN_parm_flag(x) |= WN_PARM_OUT)
+#define WN_Parm_Dummy(x)        (WN_parm_flag(x) & WN_PARM_DUMMY)
+#define WN_Set_Parm_Dummy(x)        (WN_parm_flag(x) |= WN_PARM_DUMMY)
+#define WN_Parm_Read_Only(x)        (WN_parm_flag(x) & WN_PARM_READ_ONLY)
+#define WN_Set_Parm_Read_Only(x)    (WN_parm_flag(x) |= WN_PARM_READ_ONLY)
+#define WN_Parm_Passed_Not_Saved(x)    (WN_parm_flag(x) & WN_PARM_PASSED_NOT_SAVED)
+#define WN_Set_Parm_Passed_Not_Saved(x)    (WN_parm_flag(x) |= WN_PARM_PASSED_NOT_SAVED)
 #define WN_Set_Parm_Not_Exposed_Use(x)  (WN_parm_flag(x) |= WN_PARM_NOT_EXPOSED_USE)
 #define WN_Parm_Not_Exposed_Use(x)      (WN_parm_flag(x) & WN_PARM_NOT_EXPOSED_USE)
 #define WN_Set_Parm_Is_Killed(x)        (WN_parm_flag(x) |= WN_PARM_IS_KILLED)
 #define WN_Parm_Is_Killed(x)            (WN_parm_flag(x) & WN_PARM_IS_KILLED)
 
-#define WN_CALL_NEVER_RETURN	0x01 /* call will never return */
-#define WN_CALL_NON_DATA_MOD	0x02 /* modifies data not present in program */
-#define WN_CALL_NON_PARM_MOD	0x04 /* modifies data whose address is not passed as parameter */
-#define WN_CALL_PARM_MOD	0x08 /* modifies data whose address is passed as parameter */
-#define WN_CALL_NON_DATA_REF	0x10 /* references data not present in program */
-#define WN_CALL_NON_PARM_REF	0x20 /* references data whose address is not passed as parameter */
-#define WN_CALL_PARM_REF	0x40 /* references data whose address is passed as parameter */
-#define WN_CALL_INLINE		0x80 /* marked for IPA to attempt to inline */
-#define WN_CALL_DONT_INLINE	0x100	/* marked for IPA to not inline */
-#define WN_CALL_DOES_MEM_ALLOC	0x200	/* malloc_like function */
-#define WN_CALL_DOES_MEM_FREE	0x400	/* free_like function */
+#define WN_CALL_NEVER_RETURN    0x01 /* call will never return */
+#define WN_CALL_NON_DATA_MOD    0x02 /* modifies data not present in program */
+#define WN_CALL_NON_PARM_MOD    0x04 /* modifies data whose address is not passed as parameter */
+#define WN_CALL_PARM_MOD    0x08 /* modifies data whose address is passed as parameter */
+#define WN_CALL_NON_DATA_REF    0x10 /* references data not present in program */
+#define WN_CALL_NON_PARM_REF    0x20 /* references data whose address is not passed as parameter */
+#define WN_CALL_PARM_REF    0x40 /* references data whose address is passed as parameter */
+#define WN_CALL_INLINE        0x80 /* marked for IPA to attempt to inline */
+#define WN_CALL_DONT_INLINE    0x100    /* marked for IPA to not inline */
+#define WN_CALL_DOES_MEM_ALLOC    0x200    /* malloc_like function */
+#define WN_CALL_DOES_MEM_FREE    0x400    /* free_like function */
 #define WN_CALL_FORTRAN_POINTER_RULE 0x800 /* call obeys fortran semantics as
-					      regards points-to
-					      relationships */
-#define WN_CALL_REPLACE_BY_JUMP 0x1000	/* replace call by jump in thunks */
+                          regards points-to
+                          relationships */
+#define WN_CALL_REPLACE_BY_JUMP 0x1000    /* replace call by jump in thunks */
 #define WN_CALL_IS_VIRTUAL      0x2000  /* it is a virtual function call */
 
      /* Some flags make promises when they're clear, and others when
@@ -1516,57 +1516,57 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
       * WN_CALL_* flag.
       */
 #define WN_CALL_CONSERVATIVE    (WN_CALL_NON_DATA_MOD | \
-				 WN_CALL_NON_PARM_MOD | \
-				 WN_CALL_PARM_MOD     | \
-				 WN_CALL_NON_DATA_REF | \
-				 WN_CALL_NON_PARM_REF | \
-				 WN_CALL_PARM_REF)
+                 WN_CALL_NON_PARM_MOD | \
+                 WN_CALL_PARM_MOD     | \
+                 WN_CALL_NON_DATA_REF | \
+                 WN_CALL_NON_PARM_REF | \
+                 WN_CALL_PARM_REF)
 
-#define WN_Call_Never_Return(x)		(WN_call_flag(x) & WN_CALL_NEVER_RETURN)
-#define WN_Set_Call_Never_Return(x)	(WN_call_flag(x) |= WN_CALL_NEVER_RETURN)
-#define WN_Reset_Call_Never_Return(x)	(WN_call_flag(x) &= ~WN_CALL_NEVER_RETURN)
-#define WN_Call_Non_Data_Mod(x)		(WN_call_flag(x) & WN_CALL_NON_DATA_MOD)
-#define WN_Set_Call_Non_Data_Mod(x)	(WN_call_flag(x) |= WN_CALL_NON_DATA_MOD)
-#define WN_Reset_Call_Non_Data_Mod(x)	(WN_call_flag(x) &= ~WN_CALL_NON_DATA_MOD)
-#define WN_Call_Non_Data_Ref(x)		(WN_call_flag(x) & WN_CALL_NON_DATA_REF)
-#define WN_Set_Call_Non_Data_Ref(x)	(WN_call_flag(x) |= WN_CALL_NON_DATA_REF)
-#define WN_Reset_Call_Non_Data_Ref(x)	(WN_call_flag(x) &= ~WN_CALL_NON_DATA_REF)
-#define WN_Call_Non_Parm_Mod(x)		(WN_call_flag(x) & WN_CALL_NON_PARM_MOD)
-#define WN_Set_Call_Non_Parm_Mod(x)	(WN_call_flag(x) |= WN_CALL_NON_PARM_MOD)
-#define WN_Reset_Call_Non_Parm_Mod(x)	(WN_call_flag(x) &= ~WN_CALL_NON_PARM_MOD)
-#define WN_Call_Non_Parm_Ref(x)		(WN_call_flag(x) & WN_CALL_NON_PARM_REF)
-#define WN_Set_Call_Non_Parm_Ref(x)	(WN_call_flag(x) |= WN_CALL_NON_PARM_REF)
-#define WN_Reset_Call_Non_Parm_Ref(x)	(WN_call_flag(x) &= ~WN_CALL_NON_PARM_REF)
-#define WN_Call_Parm_Mod(x)		(WN_call_flag(x) & WN_CALL_PARM_MOD)
-#define WN_Set_Call_Parm_Mod(x)		(WN_call_flag(x) |= WN_CALL_PARM_MOD)
-#define WN_Reset_Call_Parm_Mod(x)	(WN_call_flag(x) &= ~WN_CALL_PARM_MOD)
-#define WN_Call_Parm_Ref(x)		(WN_call_flag(x) & WN_CALL_PARM_REF)
-#define WN_Set_Call_Parm_Ref(x)		(WN_call_flag(x) |= WN_CALL_PARM_REF)
-#define WN_Reset_Call_Parm_Ref(x)	(WN_call_flag(x) &= ~WN_CALL_PARM_REF)
-#define WN_Call_Inline(x)		(WN_call_flag(x) & WN_CALL_INLINE)
-#define WN_Set_Call_Inline(x)		(WN_call_flag(x) |= WN_CALL_INLINE)
-#define WN_Reset_Call_Inline(x)		(WN_call_flag(x) &= ~WN_CALL_INLINE)
-#define WN_Call_Dont_Inline(x)		(WN_call_flag(x) & WN_CALL_DONT_INLINE)
-#define WN_Set_Call_Dont_Inline(x)	(WN_call_flag(x) |= WN_CALL_DONT_INLINE)
-#define WN_Reset_Call_Dont_Inline(x)	(WN_call_flag(x) &= ~WN_CALL_DONT_INLINE)
-#define WN_Call_Does_Mem_Alloc(x)	(WN_call_flag(x) & WN_CALL_DOES_MEM_ALLOC)
-#define WN_Set_Call_Does_Mem_Alloc(x)	(WN_call_flag(x) |= WN_CALL_DOES_MEM_ALLOC)
-#define WN_Reset_Call_Does_Mem_Alloc(x)	(WN_call_flag(x) &= ~WN_CALL_DOES_MEM_ALLOC)
-#define WN_Call_Does_Mem_Free(x)	(WN_call_flag(x) & WN_CALL_DOES_MEM_FREE)
-#define WN_Set_Call_Does_Mem_Free(x)	(WN_call_flag(x) |= WN_CALL_DOES_MEM_FREE)
-#define WN_Reset_Call_Does_Mem_Free(x)	(WN_call_flag(x) &= ~WN_CALL_DOES_MEM_FREE)
+#define WN_Call_Never_Return(x)        (WN_call_flag(x) & WN_CALL_NEVER_RETURN)
+#define WN_Set_Call_Never_Return(x)    (WN_call_flag(x) |= WN_CALL_NEVER_RETURN)
+#define WN_Reset_Call_Never_Return(x)    (WN_call_flag(x) &= ~WN_CALL_NEVER_RETURN)
+#define WN_Call_Non_Data_Mod(x)        (WN_call_flag(x) & WN_CALL_NON_DATA_MOD)
+#define WN_Set_Call_Non_Data_Mod(x)    (WN_call_flag(x) |= WN_CALL_NON_DATA_MOD)
+#define WN_Reset_Call_Non_Data_Mod(x)    (WN_call_flag(x) &= ~WN_CALL_NON_DATA_MOD)
+#define WN_Call_Non_Data_Ref(x)        (WN_call_flag(x) & WN_CALL_NON_DATA_REF)
+#define WN_Set_Call_Non_Data_Ref(x)    (WN_call_flag(x) |= WN_CALL_NON_DATA_REF)
+#define WN_Reset_Call_Non_Data_Ref(x)    (WN_call_flag(x) &= ~WN_CALL_NON_DATA_REF)
+#define WN_Call_Non_Parm_Mod(x)        (WN_call_flag(x) & WN_CALL_NON_PARM_MOD)
+#define WN_Set_Call_Non_Parm_Mod(x)    (WN_call_flag(x) |= WN_CALL_NON_PARM_MOD)
+#define WN_Reset_Call_Non_Parm_Mod(x)    (WN_call_flag(x) &= ~WN_CALL_NON_PARM_MOD)
+#define WN_Call_Non_Parm_Ref(x)        (WN_call_flag(x) & WN_CALL_NON_PARM_REF)
+#define WN_Set_Call_Non_Parm_Ref(x)    (WN_call_flag(x) |= WN_CALL_NON_PARM_REF)
+#define WN_Reset_Call_Non_Parm_Ref(x)    (WN_call_flag(x) &= ~WN_CALL_NON_PARM_REF)
+#define WN_Call_Parm_Mod(x)        (WN_call_flag(x) & WN_CALL_PARM_MOD)
+#define WN_Set_Call_Parm_Mod(x)        (WN_call_flag(x) |= WN_CALL_PARM_MOD)
+#define WN_Reset_Call_Parm_Mod(x)    (WN_call_flag(x) &= ~WN_CALL_PARM_MOD)
+#define WN_Call_Parm_Ref(x)        (WN_call_flag(x) & WN_CALL_PARM_REF)
+#define WN_Set_Call_Parm_Ref(x)        (WN_call_flag(x) |= WN_CALL_PARM_REF)
+#define WN_Reset_Call_Parm_Ref(x)    (WN_call_flag(x) &= ~WN_CALL_PARM_REF)
+#define WN_Call_Inline(x)        (WN_call_flag(x) & WN_CALL_INLINE)
+#define WN_Set_Call_Inline(x)        (WN_call_flag(x) |= WN_CALL_INLINE)
+#define WN_Reset_Call_Inline(x)        (WN_call_flag(x) &= ~WN_CALL_INLINE)
+#define WN_Call_Dont_Inline(x)        (WN_call_flag(x) & WN_CALL_DONT_INLINE)
+#define WN_Set_Call_Dont_Inline(x)    (WN_call_flag(x) |= WN_CALL_DONT_INLINE)
+#define WN_Reset_Call_Dont_Inline(x)    (WN_call_flag(x) &= ~WN_CALL_DONT_INLINE)
+#define WN_Call_Does_Mem_Alloc(x)    (WN_call_flag(x) & WN_CALL_DOES_MEM_ALLOC)
+#define WN_Set_Call_Does_Mem_Alloc(x)    (WN_call_flag(x) |= WN_CALL_DOES_MEM_ALLOC)
+#define WN_Reset_Call_Does_Mem_Alloc(x)    (WN_call_flag(x) &= ~WN_CALL_DOES_MEM_ALLOC)
+#define WN_Call_Does_Mem_Free(x)    (WN_call_flag(x) & WN_CALL_DOES_MEM_FREE)
+#define WN_Set_Call_Does_Mem_Free(x)    (WN_call_flag(x) |= WN_CALL_DOES_MEM_FREE)
+#define WN_Reset_Call_Does_Mem_Free(x)    (WN_call_flag(x) &= ~WN_CALL_DOES_MEM_FREE)
 #define WN_Call_Fortran_Pointer_Rule(x) (WN_call_flag(x) & WN_CALL_FORTRAN_POINTER_RULE)
 #define WN_Set_Call_Fortran_Pointer_Rule(x) \
-					(WN_call_flag(x) |= WN_CALL_FORTRAN_POINTER_RULE)
+                    (WN_call_flag(x) |= WN_CALL_FORTRAN_POINTER_RULE)
 #define WN_Reset_Call_Fortran_Pointer_Rule(x) \
-					(WN_call_flag(x) &= ~WN_CALL_FORTRAN_POINTER_RULE)
-#define WN_Call_Replace_By_Jump(x)	(WN_call_flag(x) & WN_CALL_REPLACE_BY_JUMP)
-#define WN_Set_Call_Replace_By_Jump(x)	(WN_call_flag(x) |= WN_CALL_REPLACE_BY_JUMP)
+                    (WN_call_flag(x) &= ~WN_CALL_FORTRAN_POINTER_RULE)
+#define WN_Call_Replace_By_Jump(x)    (WN_call_flag(x) & WN_CALL_REPLACE_BY_JUMP)
+#define WN_Set_Call_Replace_By_Jump(x)    (WN_call_flag(x) |= WN_CALL_REPLACE_BY_JUMP)
 #define WN_Reset_Call_Replace_By_Jump(x) (WN_call_flag(x) &= ~WN_CALL_REPLACE_BY_JUMP)
 
-#define WN_Set_Call_Default_Flags(x)	(WN_call_flag(x) |= WN_CALL_CONSERVATIVE)
-#define WN_Call_No_Side_Effect(x)	((WN_call_flag(x) & (WN_CALL_NON_DATA_MOD | WN_CALL_NON_PARM_MOD | WN_CALL_PARM_MOD)) == 0)
-#define WN_Call_Pure(x)			((WN_call_flag(x) & (WN_CALL_NON_DATA_MOD | WN_CALL_NON_PARM_MOD | WN_CALL_PARM_MOD | WN_CALL_NON_DATA_REF | WN_CALL_NON_PARM_REF)) == 0)
+#define WN_Set_Call_Default_Flags(x)    (WN_call_flag(x) |= WN_CALL_CONSERVATIVE)
+#define WN_Call_No_Side_Effect(x)    ((WN_call_flag(x) & (WN_CALL_NON_DATA_MOD | WN_CALL_NON_PARM_MOD | WN_CALL_PARM_MOD)) == 0)
+#define WN_Call_Pure(x)            ((WN_call_flag(x) & (WN_CALL_NON_DATA_MOD | WN_CALL_NON_PARM_MOD | WN_CALL_PARM_MOD | WN_CALL_NON_DATA_REF | WN_CALL_NON_PARM_REF)) == 0)
 
 #define WN_Call_Is_Virtual(x)        (WN_call_flag(x) & WN_CALL_IS_VIRTUAL)
 #define WN_Set_Call_Is_Virtual(x)    (WN_call_flag(x) |= WN_CALL_IS_VIRTUAL)
@@ -1578,15 +1578,15 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_ASM_CLOBBERS_MEM     0x0002
 #define WN_ASM_CLOBBERS_CC      0x0004
 
-#define WN_Asm_Volatile(x)		(WN_asm_flag(x) & WN_ASM_VOLATILE)
-#define WN_Set_Asm_Volatile(x)		(WN_asm_flag(x) |= WN_ASM_VOLATILE)
-#define WN_Reset_Asm_Volatile(x)	(WN_asm_flag(x) &= ~WN_ASM_VOLATILE)
-#define WN_Asm_Clobbers_Mem(x)		(WN_asm_flag(x) & WN_ASM_CLOBBERS_MEM)
-#define WN_Set_Asm_Clobbers_Mem(x)	(WN_asm_flag(x) |= WN_ASM_CLOBBERS_MEM)
-#define WN_Reset_Asm_Clobbers_Mem(x)	(WN_asm_flag(x) &= ~WN_ASM_CLOBBERS_MEM)
-#define WN_Asm_Clobbers_Cc(x)		(WN_asm_flag(x) & WN_ASM_CLOBBERS_CC)
-#define WN_Set_Asm_Clobbers_Cc(x)	(WN_asm_flag(x) |= WN_ASM_CLOBBERS_CC)
-#define WN_Reset_Asm_Clobbers_Cc(x)	(WN_asm_flag(x) &= ~WN_ASM_CLOBBERS_CC)
+#define WN_Asm_Volatile(x)        (WN_asm_flag(x) & WN_ASM_VOLATILE)
+#define WN_Set_Asm_Volatile(x)        (WN_asm_flag(x) |= WN_ASM_VOLATILE)
+#define WN_Reset_Asm_Volatile(x)    (WN_asm_flag(x) &= ~WN_ASM_VOLATILE)
+#define WN_Asm_Clobbers_Mem(x)        (WN_asm_flag(x) & WN_ASM_CLOBBERS_MEM)
+#define WN_Set_Asm_Clobbers_Mem(x)    (WN_asm_flag(x) |= WN_ASM_CLOBBERS_MEM)
+#define WN_Reset_Asm_Clobbers_Mem(x)    (WN_asm_flag(x) &= ~WN_ASM_CLOBBERS_MEM)
+#define WN_Asm_Clobbers_Cc(x)        (WN_asm_flag(x) & WN_ASM_CLOBBERS_CC)
+#define WN_Set_Asm_Clobbers_Cc(x)    (WN_asm_flag(x) |= WN_ASM_CLOBBERS_CC)
+#define WN_Reset_Asm_Clobbers_Cc(x)    (WN_asm_flag(x) &= ~WN_ASM_CLOBBERS_CC)
 
 /*
  *  Changed to inline function for compatibility.
@@ -1594,13 +1594,13 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
  *  as dummy node are created to encapsulate variables used/modified by 
  *  the routine.
  *
- *	#define WN_num_actuals(x)   (WN_kid_count(x))
+ *    #define WN_num_actuals(x)   (WN_kid_count(x))
  */
 /*REFERENCED*/
 inline mINT16 WN_num_actuals(const WN *wn)
 {
-  INT32	n= WN_kid_count(wn);
-  INT32	i;
+  INT32    n= WN_kid_count(wn);
+  INT32    i;
   OPERATOR opr = WN_operator(wn);
 
   /* for indirect calls, the last kid is the address of the procedure 

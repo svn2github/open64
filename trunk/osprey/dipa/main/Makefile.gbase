@@ -87,6 +87,7 @@ endif
 # These are the directories in which to look for source files.
 
 SRC_DIRS = \
+  $(DIPA_DIR)/common \
   $(DIPA_DIR)/main \
   $(DIPA_DIR)/rta \
   $(DIPA_DIR)/rta/open64

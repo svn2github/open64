@@ -158,20 +158,20 @@ class ProgHdr64
   BOOL is_ldExec(void) { 
     // is loadable and has exec permission
     return (is_loadable() &&
-	    (p_flags() % 2));
+        (p_flags() % 2));
   };
   BOOL is_ldReadWrite(void) {
     // is loadable and has read-write permission
     return (is_loadable() &&
-	    ((PF_R | PF_W) == (p_flags() & (PF_R | PF_W)))
-	    );
+        ((PF_R | PF_W) == (p_flags() & (PF_R | PF_W)))
+        );
   };
 
   BOOL is_ldReadOnly(void) {
     // is loadable and has readonly permission
     return (is_loadable() &&
-	  ((p_flags()&PF_R) && ((p_flags()&PF_W)==0) && ((p_flags()&PF_X)==0))
-	    	);
+      ((p_flags()&PF_R) && ((p_flags()&PF_W)==0) && ((p_flags()&PF_X)==0))
+            );
   };
 
   void Print(FILE* stream = stdout);
@@ -187,43 +187,43 @@ class ProgHdrTable64
   unsigned char* _fileStartAddr;  // the starting address of the file
   ProgHdr64* _progHdrs; // array of program headers
   Elf64_Half _numEntries;
-  unsigned int _numExecSeg; // keep number of loadable segments with exec permission
-  std::vector<int> _execSegNdx;  // index of loadable exec segment (for fast retrieval)
-  std::vector<int> _BssSegNdx;   // index of loadable bss segment (for fast retrieval)
-  unsigned int _numBssSeg; // number of loadable Read only segments
-  unsigned int _numRWSeg; // number of loadable Read-Write segments
-  std::vector<int> _RWSegNdx;  // index of loadable read-write segment (for fast retrieval)
-  std::vector<int> _RSegNdx;   // index of loadable read only segment (for fast retrieval)
-  unsigned int _numRSeg; // number of loadable Read only segments
-  int _ReginfoNdx;
+  UINT _numExecSeg; // keep number of loadable segments with exec permission
+  std::vector<INT> _execSegNdx;  // index of loadable exec segment (for fast retrieval)
+  std::vector<INT> _BssSegNdx;   // index of loadable bss segment (for fast retrieval)
+  UINT _numBssSeg; // number of loadable Read only segments
+  UINT _numRWSeg; // number of loadable Read-Write segments
+  std::vector<INT> _RWSegNdx;  // index of loadable read-write segment (for fast retrieval)
+  std::vector<INT> _RSegNdx;   // index of loadable read only segment (for fast retrieval)
+  UINT _numRSeg; // number of loadable Read only segments
+  INT _ReginfoNdx;
 
  private: // private utility functions
-  void _print_one(FILE* stream,ProgHdr64* phdr,unsigned int phNum);
+  void _print_one(FILE* stream,ProgHdr64* phdr,UINT phNum);
   
  public: // Constructors
   ProgHdrTable64(unsigned char* address,ELFHdr64* eh);
 
  public:
-  ProgHdr64* getPHdrByIndex(unsigned int phNum);
+  ProgHdr64* getPHdrByIndex(UINT phNum);
 #if 0
-  Elf64_Off textSegPAddr(int);
-  Elf64_Off textSegVAddr(int);
-  Elf64_Off textSegFAddr(int);
-  Elf64_Word textSegFSize(int);
-  Elf64_Word textSegMSize(int);
-  Elf64_Off dataSegPAddr(int);
-  Elf64_Off dataSegVAddr(int);
-  Elf64_Off dataSegFAddr(int);
-  Elf64_Word dataSegFSize(int);
-  Elf64_Word dataSegMSize(int);
-  Elf64_Off rodataSegPAddr(int);
-  Elf64_Off rodataSegVAddr(int);
-  Elf64_Off rodataSegFAddr(int);
-  Elf64_Word rodataSegFSize(int);
-  Elf64_Word rodataSegMSize(int);
-  Elf64_Off bssSegVAddr(int);
-  Elf64_Off bssSegFAddr(int);
-  Elf64_Word bssSegMSize(int);
+  Elf64_Off textSegPAddr(INT);
+  Elf64_Off textSegVAddr(INT);
+  Elf64_Off textSegFAddr(INT);
+  Elf64_Word textSegFSize(INT);
+  Elf64_Word textSegMSize(INT);
+  Elf64_Off dataSegPAddr(INT);
+  Elf64_Off dataSegVAddr(INT);
+  Elf64_Off dataSegFAddr(INT);
+  Elf64_Word dataSegFSize(INT);
+  Elf64_Word dataSegMSize(INT);
+  Elf64_Off rodataSegPAddr(INT);
+  Elf64_Off rodataSegVAddr(INT);
+  Elf64_Off rodataSegFAddr(INT);
+  Elf64_Word rodataSegFSize(INT);
+  Elf64_Word rodataSegMSize(INT);
+  Elf64_Off bssSegVAddr(INT);
+  Elf64_Off bssSegFAddr(INT);
+  Elf64_Word bssSegMSize(INT);
 #endif
   ProgHdr64* begin(void) { return _progHdrs; };
   ProgHdr64* end(void) { return &_progHdrs[_numEntries]; };
@@ -233,7 +233,7 @@ class ProgHdrTable64
   INT32 numRWSeg(void) { return _RWSegNdx.size(); }
   INT32 numBssSeg(void) { return _BssSegNdx.size(); }
 
-  void Print(FILE* stream = stdout,int phNum = -1);
+  void Print(FILE* stream = stdout,INT phNum = -1);
 
 }; // class ProgHdrTable
 
@@ -278,21 +278,21 @@ class SecHdrTable64
   Elf64_Half _shstrndx;
 
  private: // private utility functions
-  void _print_one(FILE* stream,SecHdr64* shdr,unsigned int secNum);
+  void _print_one(FILE* stream,SecHdr64* shdr,UINT secNum);
   
  public: // Constructors
   SecHdrTable64(unsigned char* address,ELFHdr64* eh);
 
  public:
   SecHdr64* SecTab(void) { return _secHdrs; }
-  int     SecNum(void)      { return _numEntries; }
+  INT     SecNum(void)      { return _numEntries; }
   SecHdr64* getSHdrByName(char* secName);
-  SecHdr64* getSHdrByIndex(unsigned int secNum);
+  SecHdr64* getSHdrByIndex(UINT secNum);
 
   SecHdr64* begin(void) { return _secHdrs; };
   SecHdr64* end(void){ return &_secHdrs[_numEntries]; };
 
-  void Print(FILE* stream = stdout,int secNum = -1);
+  void Print(FILE* stream = stdout,INT secNum = -1);
 
 }; // class SecHdrTable
 
@@ -316,10 +316,10 @@ class ElfSymbol
   Elf32_Word st_size(void) { return NDN(_startAddr->st_size); };
   unsigned char st_info(void) { return NDN(_startAddr->st_info); };
   unsigned char st_other(void) { return NDN(_startAddr->st_other); };
-  bool st_is_code(void) { return (ELF32_ST_TYPE(NDN(_startAddr->st_info)) == STT_FUNC); }
-  bool st_is_data(void) { return ((ELF32_ST_TYPE(NDN(_startAddr->st_info)) == STT_OBJECT) || (ELF32_ST_TYPE(NDN(_startAddr->st_info)) == STT_TLS)) ; }
-  bool st_is_bss(void) { return (ELF32_ST_TYPE(NDN(_startAddr->st_info)) == STT_COMMON); }
-  bool st_is_weak(void) { return (ELF32_ST_BIND(_startAddr->st_info)) == STB_WEAK; }
+  BOOL st_is_code(void) { return (ELF32_ST_TYPE(NDN(_startAddr->st_info)) == STT_FUNC); }
+  BOOL st_is_data(void) { return ((ELF32_ST_TYPE(NDN(_startAddr->st_info)) == STT_OBJECT) || (ELF32_ST_TYPE(NDN(_startAddr->st_info)) == STT_TLS)) ; }
+  BOOL st_is_bss(void) { return (ELF32_ST_TYPE(NDN(_startAddr->st_info)) == STT_COMMON); }
+  BOOL st_is_weak(void) { return (ELF32_ST_BIND(_startAddr->st_info)) == STB_WEAK; }
 
  public: // general utility functions
   char* symName(void);
@@ -327,7 +327,7 @@ class ElfSymbol
   const unsigned char* decode_st_bind(void);
   const unsigned char* decode_sec_index(void);
   char* symNameIsSpecial(ElfSymtab*);
-  bool  symNameIsSpecial(void) { return this->st_shndx() == 0; }
+  BOOL  symNameIsSpecial(void) { return this->st_shndx() == 0; }
 
 }; // class ElfSymbol
 
@@ -344,21 +344,21 @@ class ElfSymtab
   Elf32_Half _sizeOfEntry;
 
  private: // private utility functions
-  void _print_one(FILE* stream, ElfSymbol* sym, unsigned int symNum);
+  void _print_one(FILE* stream, ElfSymbol* sym, UINT symNum);
 
  public:
   ElfSymtab(unsigned char* address, SecHdrTable* sh);
 
   ElfSymbol* getSymByName(char* symName);
-  ElfSymbol* getSymByIndex(unsigned int symNum);
+  ElfSymbol* getSymByIndex(UINT symNum);
   ElfSymbol* begin(void) { return _symbols; };
   ElfSymbol* end(void) { return &_symbols[_numEntries]; }
-  ElfSymbol* Entry(int i) { return &_symbols[i]; }
-  int Size(void) { return (int)_numEntries; }
-  void Print(FILE* stream = stdout,int symNum = -1);
+  ElfSymbol* Entry(INT i) { return &_symbols[i]; }
+  INT Size(void) { return (INT)_numEntries; }
+  void Print(FILE* stream = stdout,INT symNum = -1);
   
 #ifdef _SL1_VERSION_CHECK  
-  void setSymVersionNumber(unsigned version);
+  void setSymVersionNumber(UINT version);
 #endif
 
   // print function
@@ -405,24 +405,24 @@ class ELF_object64
   };
   
   ElfSymtab* Table(void) { return _symTable; }
-  Elf32_Off textSegPAddr(int);
-  Elf32_Off textSegVAddr(int);
-  Elf32_Off textSegFAddr(int);
-  Elf32_Word textSegFSize(int);
-  Elf32_Word textSegMSize(int);
-  Elf32_Off dataSegPAddr(int);
-  Elf32_Off dataSegVAddr(int);
-  Elf32_Off dataSegFAddr(int);
-  Elf32_Word dataSegFSize(int);
-  Elf32_Word dataSegMSize(int);
-  Elf32_Off rodataSegPAddr(int);
-  Elf32_Off rodataSegVAddr(int);
-  Elf32_Off rodataSegFAddr(int);
-  Elf32_Word rodataSegFSize(int);
-  Elf32_Word rodataSegMSize(int);
-  Elf32_Off bssSegVAddr(int);
-  Elf32_Off bssSegFAddr(int);
-  Elf32_Word bssSegMSize(int);
+  Elf32_Off textSegPAddr(INT);
+  Elf32_Off textSegVAddr(INT);
+  Elf32_Off textSegFAddr(INT);
+  Elf32_Word textSegFSize(INT);
+  Elf32_Word textSegMSize(INT);
+  Elf32_Off dataSegPAddr(INT);
+  Elf32_Off dataSegVAddr(INT);
+  Elf32_Off dataSegFAddr(INT);
+  Elf32_Word dataSegFSize(INT);
+  Elf32_Word dataSegMSize(INT);
+  Elf32_Off rodataSegPAddr(INT);
+  Elf32_Off rodataSegVAddr(INT);
+  Elf32_Off rodataSegFAddr(INT);
+  Elf32_Word rodataSegFSize(INT);
+  Elf32_Word rodataSegMSize(INT);
+  Elf32_Off bssSegVAddr(INT);
+  Elf32_Off bssSegFAddr(INT);
+  Elf32_Word bssSegMSize(INT);
 #endif
   ProgHdrTable64*  progHdrs(void) { return _progHdrs; }
 #ifdef _SL1_VERSION_CHECK  
