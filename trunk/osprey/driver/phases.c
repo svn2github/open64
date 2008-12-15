@@ -1552,7 +1552,7 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, outfile);
         	}
 		if (ftz_crt) {
-			add_string(args, find_crt_path("ftz.o"));
+			add_string(args, find_obj_path("ftz.o"));
 		}
 		break;
 	case P_collect:
@@ -1594,7 +1594,7 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, find_crt_path("crti.o"));
 			add_string(args, find_crt_path("crtbegin.o"));
 			if (ftz_crt) {
-				add_string(args, find_crt_path("ftz.o"));
+				add_string(args, find_obj_path("ftz.o"));
 			}
 		}
                 if (outfile != NULL) {
