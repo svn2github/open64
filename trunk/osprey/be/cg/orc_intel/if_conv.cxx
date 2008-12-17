@@ -4279,10 +4279,11 @@ IF_CONVERTOR::Merge_Blocks(BB *bb_first,
 // 
 //*****************************************************************************
 
-void
+BOOL
 IF_CONVERTOR::Convert_Candidates(AREA_CONTAINER&  areas)
 {    
     AREA_CONTAINER:: iterator iter;
+    BOOL converted = FALSE;
     for ( iter = areas.begin(); 
     iter != areas.end(); 
     iter++) 
@@ -4295,6 +4296,7 @@ IF_CONVERTOR::Convert_Candidates(AREA_CONTAINER&  areas)
         if ( area -> Conv_Type() != FULLY_IF_CONV)
             continue;
 
+        converted = TRUE;
         char if_conversion_key[6] = "";
         char input_string[100] = "";
         char output_string[60] = "";
@@ -4364,6 +4366,7 @@ IF_CONVERTOR::Convert_Candidates(AREA_CONTAINER&  areas)
             area -> Print_IR(TFile);
         }
     }
+    return converted;
 }
 
 //*****************************************************************************
@@ -4400,6 +4403,7 @@ IF_CONVERTOR::IF_CONVERTOR(REGION_TREE *region_tree)
         draw_global_cfg();
     }
 
+    BOOL changed = TRUE;
     for (INNERMOST_REGION_FIRST_ITER iter(region_tree);
          iter != 0; 
          ++iter)
@@ -4427,7 +4431,10 @@ IF_CONVERTOR::IF_CONVERTOR(REGION_TREE *region_tree)
         if (region->Region_Type () == IMPROPER) 
             continue;
 
-        Calculate_Dominators();
+        // Calculate_Dominators is time comsumption, only recalculate
+        // when the cfg changed
+        if( changed )
+            Calculate_Dominators();
   
         // do something to initialize 
         IF_CONV_ALLOC temp_alloc(&_m);
@@ -4465,7 +4472,7 @@ IF_CONVERTOR::IF_CONVERTOR(REGION_TREE *region_tree)
             fprintf(TFile, " \n Start to convert candidates!\n");
         }
         //convert the if-conversion candidates to predicated code
-        Convert_Candidates(areas);
+        changed = Convert_Candidates(areas);
         
         if (Get_Trace(TP_A_IFCONV, TT_IF_CONV_GRAPHIC)) 
         {
@@ -4473,9 +4480,11 @@ IF_CONVERTOR::IF_CONVERTOR(REGION_TREE *region_tree)
         }
 
         CXX_DELETE(&areas, &_m);
-        Free_Dominators_Memory();
+        if( changed )
+            Free_Dominators_Memory();
     }
-    
+    if(!changed)
+        Free_Dominators_Memory();
 
     if (Get_Trace(TP_A_IFCONV, TT_IF_CONV_GRAPHIC))
     { 

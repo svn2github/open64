@@ -367,7 +367,7 @@ private:
     BOOL     Insert_Predicate(IF_CONV_AREA *area);
 
     // merge basic blocks
-    void     Convert_Candidates(AREA_CONTAINER& areas);
+    BOOL     Convert_Candidates(AREA_CONTAINER& areas);
     BB_MERGE_TYPE 
              Classify_BB(BB *,IF_CONV_AREA *);
     void     Merge_Blocks(BB *, BB *);
