@@ -178,7 +178,7 @@ libelf: include
 libelfutil: include
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libelfutil
 
-libdwarf: include
+libdwarf: libelf
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libdwarf
 
 libunwindP: targ_info
