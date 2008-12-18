@@ -7486,7 +7486,11 @@ WGEN_Expand_Expr (gs_t exp,
               // then check if the field of the TY is a virtual pointer
               kid_cur_fld = 0;
               kid_fld_handle = FLD_get_to_field(kid_ty_idx, kid_field_id, kid_cur_fld);
-              if (!strncmp (&Str_Table[FLD_name_idx(kid_fld_handle)], "_vptr.", 6))
+              if (!strncmp (&Str_Table[FLD_name_idx(kid_fld_handle)], "_vptr.", 6)
+#if defined(VENDOR_FUDAN)
+                  || !strncmp (&Str_Table[FLD_name_idx(kid_fld_handle)], "vtable", 6)
+#endif
+                  )
                   WN_Set_Call_Is_Virtual(call_wn);
           }
 	}
