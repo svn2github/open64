@@ -1,0 +1,7 @@
+The initial files for RIPA project.
+
+* License issues
+
+Current license is still GPLv2. But we might move to another open source license like GPLv3. Source files from Open64 or GNU under separate directories for temporary use. We shall cleanup them later.
+
+--End--
