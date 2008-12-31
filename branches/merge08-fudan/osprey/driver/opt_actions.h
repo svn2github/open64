@@ -93,7 +93,7 @@ typedef enum {
   ISA_COMPUTE_13 = 17
 } ISA;
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 extern char *main_method;
 extern char *generated_main_file;
 #endif

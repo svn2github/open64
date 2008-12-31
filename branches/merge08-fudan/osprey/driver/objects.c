@@ -174,7 +174,7 @@ find_crt_path (char *crtname)
          */
         ld_phase = determine_ld_phase (FALSE);
         if (ld_phase == P_ldplus ||
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
             ld_phase == P_gcj ||
 #endif
             ld_phase == P_ld) {
@@ -413,7 +413,7 @@ add_object (int flag, char *arg)
 	       break;
 	case O_WlC:
 	       if (ld_phase == P_ld || ld_phase == P_ldplus
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
                    || ld_phase == P_gcj
 #endif
                   ) {
@@ -433,7 +433,7 @@ add_object (int flag, char *arg)
 	       break;
 	case O__whole_archive:
 	       if (ld_phase == P_ld || ld_phase == P_ldplus
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
                    || ld_phase == P_gcj
 #endif
                   ) {
@@ -444,7 +444,7 @@ add_object (int flag, char *arg)
 	       break;
 	case O__no_whole_archive:
 	       if (ld_phase == P_ld || ld_phase == P_ldplus
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
                    || ld_phase == P_gcj
 #endif
                   ) {

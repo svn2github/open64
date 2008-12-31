@@ -144,7 +144,7 @@ static TN * Expand_Expr (WN *expr, WN *parent, TN *result);
 static void initialize_region_stack(WN *);
 static RID *region_stack_pop(void);
 static void region_stack_push(RID *value);
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 void region_stack_eh_set_has_call(void);
 #else
 static void region_stack_eh_set_has_call(void);
@@ -606,7 +606,7 @@ static void region_stack_push(RID *value)
  *
  * =======================================================================
  */
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 void region_stack_eh_set_has_call(void)
 #else
 static void region_stack_eh_set_has_call(void)
@@ -2294,7 +2294,7 @@ Handle_ILOAD (WN *iload, TN *result, OPCODE opcode)
   }
   Set_OP_To_WN_Map(iload);
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   if(Current_pu->src_lang == PU_JAVA_LANG)
     region_stack_eh_set_has_call();
 #endif

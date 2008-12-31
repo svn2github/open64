@@ -120,7 +120,7 @@ static Dwarf_Error dw_error;
 static BOOL Disable_DST = FALSE;
 static DST_INFO_IDX cu_idx;
 static Elf64_Word cur_text_index;
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 DST_language Dwarf_Language;
 #else
 static DST_language Dwarf_Language;
@@ -2605,7 +2605,7 @@ Cg_Dwarf_Begin (BOOL is_64bit)
 			  Cg_Dwarf_Enter_Elfsym);
   else
 #endif
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf,
                            Dwarf_Language,
                           Cg_Dwarf_Enter_Elfsym);

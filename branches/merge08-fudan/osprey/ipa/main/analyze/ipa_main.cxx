@@ -371,7 +371,7 @@ Perform_Interprocedural_Analysis ()
 			PU caller_pu = Pu_Table[ST_pu((caller)->Func_ST())];
 			if (IPA_Enable_EH_Region_Removal &&
 			    node->PU_Can_Throw() &&
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 			    (PU_src_lang (caller_pu) & PU_CXX_LANG ||
 			     PU_src_lang (caller_pu) & PU_JAVA_LANG))
 #else

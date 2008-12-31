@@ -189,6 +189,7 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc142 ${PHASEPATH}/cc142
     INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc1plus42 ${PHASEPATH}/cc1plus42
     INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/jc142 ${PHASEPATH}/jc142
+    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/jvgenmain ${PHASEPATH}/jvgenmain
 
     if [ -f ${AREA}/crayf90/sgi/mfef95 ] ; then 
       INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95

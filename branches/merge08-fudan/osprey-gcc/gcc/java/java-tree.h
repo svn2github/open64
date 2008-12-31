@@ -1253,7 +1253,7 @@ extern void load_class (tree, int);
 
 extern tree check_for_builtin (tree, tree);
 extern void initialize_builtins (void);
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 extern tree check_for_builtin2 (tree, tree);
 #endif
 

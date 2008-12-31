@@ -363,7 +363,7 @@ ipa_compile_init ()
 		  } else if (!strcmp(IPA_lang, "CC")) {
 		    compiler_name_suffix = "CC";
 		  } 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
                   else if (!strcmp(IPA_lang, "java")) {  
 		    compiler_name_suffix = "java";
 		  }

@@ -219,7 +219,7 @@ static const char * vho_lower_cand_cior_name = "__cand_cior";
 static const char * vho_lower_cselect_name   = "__cselect";
 static const char * vho_lower_rcomma_name    = "__rcomma";
 static const char * vho_lower_comma_name     = "__comma";
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 static const char * vho_lower_iload_name = "__iload";
 #endif
 
@@ -4291,21 +4291,6 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
           wn = wn1;
         }
       }
-#if defined(VENDOR_FUDAN)
-      if(PU_java_lang (Get_Current_PU())) {
-  	TYPE_ID rtype  = WN_rtype (wn);
-	TY_IDX  ty_idx = WN_ty (wn);
-	UINT32 field_id = WN_field_id(wn);
-	PREG_NUM preg    = Create_Preg (rtype, vho_lower_iload_name);
-	ST*      preg_st = MTYPE_To_PREG (rtype);
-	OPCODE   opcode  = OPCODE_make_op (OPR_STID, MTYPE_V, rtype);
-	WN*  store = WN_CreateStid (opcode, preg, preg_st, ty_idx, wn, field_id);
-	WN_Set_Linenum ( store, VHO_Srcpos );
-	WN_INSERT_BlockLast (block, store);
-	opcode = OPCODE_make_op (OPR_LDID, rtype, rtype);
-	wn = WN_CreateLdid (opcode, preg, preg_st, ty_idx, field_id);
-      }
-#endif
       break;
 
     case OPR_ILOADX:

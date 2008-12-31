@@ -43,7 +43,7 @@ static tree java_gimplify_modify_expr (tree);
 
 static void dump_java_tree (enum tree_dump_index, tree);
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 static tree lookup_tmp_var (tree val, bool is_formal);
 extern tree transform_statement(tree);
 extern tree Replace_Left_with_temp(tree left);   
@@ -263,7 +263,7 @@ java_gimplify_block (tree java_block)
   tree decls = BLOCK_VARS (java_block);
   tree body = BLOCK_EXPR_BODY (java_block);
   tree outer = NULL;
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   if( !flag_spin_file )
 #endif
   //   do not need to recorde 'outer'
@@ -287,7 +287,7 @@ java_gimplify_block (tree java_block)
   /* The TREE_USED flag on a block determines whether the debug ouput
      routines generate info for the variables in that block.  */
   TREE_USED (block) = 1;
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
       if( !flag_spin_file )
 #endif
 	if (outer != NULL_TREE)
@@ -380,7 +380,7 @@ dump_java_tree (enum tree_dump_index phase, tree t)
     }
 }
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 static tree transform_builtin(tree statement)
 {
   tree caller_addr;

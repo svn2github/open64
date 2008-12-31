@@ -75,8 +75,8 @@ typedef enum {
   LANG_ANSI_C,	/* ANSI standard C */
   LANG_CPLUS,	/* simple C++ */
   LANG_DELTA,	/* Delta C++ */
-#if defined(VENDOR_FUDAN)
-  LANG_JAVA,   /*JAVA*/
+#if defined(LANG_JAVA)
+  LANGUAGE_JAVA,   /*JAVA*/
 #endif
   LANG_COUNT	/* Must be last */
 } LANGUAGE;

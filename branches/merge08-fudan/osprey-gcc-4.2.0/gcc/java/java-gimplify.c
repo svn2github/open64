@@ -44,7 +44,7 @@ static enum gimplify_status java_gimplify_component_ref (tree*, tree*, tree *);
 static enum gimplify_status java_gimplify_self_mod_expr (tree*, tree*, tree *);
 
 static void dump_java_tree (enum tree_dump_index, tree);
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 extern tree transform_statement(tree);
 extern tree Replace_Left_with_temp(tree left);   
 #endif
@@ -382,7 +382,7 @@ java_gimplify_block (tree java_block)
   tree decls = BLOCK_VARS (java_block);
   tree body = BLOCK_EXPR_BODY (java_block);
   tree outer = NULL;
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   if( !flag_spin_file )
 #endif 
 // we do not need to recorde 'outer'
@@ -405,7 +405,7 @@ java_gimplify_block (tree java_block)
      routines generate info for the variables in that block.  */
   TREE_USED (block) = 1;
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   if( !flag_spin_file )
 #endif
   if (outer != NULL_TREE)
@@ -500,7 +500,7 @@ dump_java_tree (enum tree_dump_index phase, tree t)
     }
 }
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 static tree transform_builtin(tree statement)
 {
   tree caller_addr;

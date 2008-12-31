@@ -667,18 +667,18 @@ declare_vars (tree vars, tree scope, bool debug_info)
       /* C99 mode puts the default 'return 0;' for main outside the outer
 	 braces.  So drill down until we find an actual scope.  */
       while (TREE_CODE (scope) == COMPOUND_EXPR)
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
         if(flag_spin_file && !strcmp("GNU Java", lang_hooks.name))       
           scope = TREE_OPERAND (scope, 1);
         else
 #endif
 	  scope = TREE_OPERAND (scope, 0);
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 	if(TREE_CODE(scope) == TRY_FINALLY_EXPR)
           scope = TREE_OPERAND(scope, 0);
 #endif
       gcc_assert (TREE_CODE (scope) == BIND_EXPR
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 		|| TREE_CODE (scope) == BLOCK
 #endif
       );
@@ -686,7 +686,7 @@ declare_vars (tree vars, tree scope, bool debug_info)
       temps = nreverse (last);
 
       block = BIND_EXPR_BLOCK (scope);
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
       if(TREE_CODE (scope) == BLOCK) {
    	TREE_CHAIN (last) = BLOCK_VARS (scope);
   	BLOCK_VARS (scope) = temps;
@@ -6495,7 +6495,7 @@ force_gimple_operand_bsi (block_stmt_iterator *bsi, tree expr,
   return expr;
 }
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 tree 
 Replace_Left_with_temp(tree left)   
 {

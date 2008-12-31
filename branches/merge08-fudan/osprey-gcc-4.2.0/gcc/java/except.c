@@ -395,6 +395,11 @@ prepare_eh_table_type (tree type)
       buf = alloca (strlen (name) + 5);
       sprintf (buf, "%s_ref", name);
       decl = build_decl (VAR_DECL, get_identifier (buf), ptr_type_node);
+#if defined(LANG_JAVA)
+     //to make exception object DGLOBAL and XPREEMITIBLE
+      TREE_PUBLIC(decl) = 1;
+      DECL_WEAK (decl) = 1;			
+#endif
       TREE_STATIC (decl) = 1;
       DECL_ARTIFICIAL (decl) = 1;
       DECL_IGNORED_P (decl) = 1;

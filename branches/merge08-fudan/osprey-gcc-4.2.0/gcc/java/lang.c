@@ -224,7 +224,7 @@ struct language_function GTY(())
 #undef LANG_HOOKS_ATTRIBUTE_TABLE
 #define LANG_HOOKS_ATTRIBUTE_TABLE java_attribute_table
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 #undef LANG_HOOKS_JAVA_MANGLE_DECL
 #define LANG_HOOKS_JAVA_MANGLE_DECL java_mangle_decl
 #endif

@@ -442,7 +442,7 @@ struct lang_hooks
   tree (*simplify_aggr_init_exprs_r) (tree *t, int *i, void *p);
 #endif
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   tree (*java_mangle_decl)(struct obstack *obstack, tree decl);
 #endif
 

@@ -3584,7 +3584,7 @@ IPO_INLINE::Merge_EH_Spec_Tables (void)
 {
     INITV_IDX start, blk;
     if (
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
         !PU_java_lang (Callee_node()->Get_PU())&&
 #endif
         !PU_cxx_lang (Callee_node()->Get_PU()))
@@ -3687,7 +3687,7 @@ IPO_INLINE::Merge_EH_Typeinfo_Tables (void)
     vector<ST_IDX> callee_typeinfos, caller_typeinfos;
     INITV_IDX start, blk, last_blk=0;
     if (
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
         !PU_java_lang (Callee_node()->Get_PU()) &&
 #endif
         !PU_cxx_lang (Callee_node()->Get_PU()))

@@ -7817,7 +7817,7 @@ enum language { C, CPP,JAVA};
 enum language language = C;
 #define CPR() (language == CPP)
 #define CR()  (language == C)
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 #define JAVAR() (language == JAVA)
 #endif
 
@@ -9339,7 +9339,7 @@ gspin_init(void)
   if (strcmp ("GNU C++", lang_hooks.name) == 0) {
     language = CPP;
   }
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   else if (strcmp ("GNU Java", lang_hooks.name) == 0) {
           language = JAVA;
   }
@@ -9422,7 +9422,7 @@ gspin_init_global_trees_list(void)
 
   global_trees_list = __gs (EMPTY);
   for (i = TI_MAX - 1; i >= TI_ERROR_MARK; i--) {
-#if !defined (VENDOR_FUDAN)
+#if !defined (LANG_JAVA)
     GS_ASSERT((global_trees[i] != NULL) ||
               (
 #ifdef TARG_X8664
@@ -9539,7 +9539,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // "translate_this_func_decl" set, it means this is the proper time
       // to expand this function, and it may now have a function body --
       // whatever is the state of the function_decl, we want to get it now.
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     if ((CPR() || JAVAR())
 #else
     if (CPR() 
@@ -9677,7 +9677,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       if (!DECL_BUILT_IN(t))
 	return GS_NODE(t);
     }
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     else if (JAVAR()){                //JAVA
       if(DECL_SAVED_TREE(t))
 	return GS_NODE(t);
@@ -9948,7 +9948,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // file
       if (gs_operand((gs_t) GS_NODE(t), GS_DECL_SOURCE_FILE) == NULL)
       {
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
         if (DECL_SOURCE_FILE (t) != NULL)
         {
 #endif
@@ -9956,7 +9956,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         _gs_s (file, (gs_string_t) DECL_SOURCE_FILE (t),
 	       1 + strlen (DECL_SOURCE_FILE (t)));
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_SOURCE_FILE, file);
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
         }
 #endif
       }

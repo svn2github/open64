@@ -450,6 +450,13 @@ BOOL GTABLE::Is_Truebr(const GDESCRIPTOR *gd) const
          WN_operator(WN_next(grand_parent)) == OPR_LABEL &&
          WN_label_number(stmt) == WN_label_number(WN_next(grand_parent)))
        ;
+#if defined(LANG_JAVA)
+     if (PU_java_lang(Get_Current_PU()) &&
+	  stmt == WN_last(wn_else) &&
+         wn != stmt &&
+         WN_operator(stmt) == OPR_EVAL ) 
+       ;
+#endif
      else
      return FALSE;
   }

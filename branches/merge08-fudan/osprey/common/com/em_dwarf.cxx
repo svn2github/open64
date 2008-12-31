@@ -262,7 +262,7 @@ Em_Dwarf_Add_File (
 #endif // KEY
 extern "C" void Assign_ST_To_Named_Section (ST *, STR_IDX);
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 Dwarf_P_Debug 
 Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace,DST_language dst_lang,
                 symbol_index_recorder record_symidx)
@@ -301,7 +301,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 
   // Most of the following have been introduced at KEY, somehow the macro
   // got removed.
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   if (dst_lang == DW_LANG_C_plus_plus)
 #else
   if (is_cplus)	/* may have eh info */
@@ -339,7 +339,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 	                                  ST_ATTR_section_name (st_attr));
 	}
   }
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   else if (dst_lang == DW_LANG_Java)/* may have eh info */	
   {
    	if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
@@ -419,7 +419,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 
 #if defined(KEY) && !defined(TARG_SL) && !defined(TARG_MIPS)
   // Generate a CIE for .eh_frame only if it is C++ or if -DEBUG:eh_frame=on
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   if ((dst_lang == DW_LANG_C_plus_plus) || (dst_lang == DW_LANG_Java) || DEBUG_Emit_Ehframe)
 #else
   if (is_cplus || DEBUG_Emit_Ehframe)
@@ -446,7 +446,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 }
 
 extern "C" Dwarf_P_Debug
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, DST_language dst_lang)
 {
   return Em_Dwarf_Begin(is_64bit, dwarf_trace, dst_lang, NULL);

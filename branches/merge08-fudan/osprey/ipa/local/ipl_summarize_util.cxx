@@ -258,9 +258,9 @@ Set_lang (SUMMARY_PROCEDURE *proc)
 	proc->Set_lang (LANG_F90);
 	break;
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     case PU_JAVA_LANG:
- 	proc->Set_lang (LANG_JAVA);
+ 	proc->Set_lang (LANGUAGE_JAVA);
 	break;
 #endif
     }

@@ -133,7 +133,7 @@ extern gs_t first_in_compound_expr(gs_t);
 #endif /* __cplusplus */
 
 #endif
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 extern void WGEN_Expand_Try_Catch (gs_t stmt);	
 extern void WGEN_Expand_Try_Finally(gs_t stmt);	
 #endif

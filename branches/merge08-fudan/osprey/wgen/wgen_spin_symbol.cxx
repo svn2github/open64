@@ -219,7 +219,7 @@ get_first_real_or_virtual_field (gs_t type_tree)
   // return vfield only if the type contains fields (bug 10787)
   // bug 11227: C_TYPE_INCOMPLETE_VARS for C is the same as TYPE_VFIELD,
   //            make sure we do not use it for C.
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     if ((lang_cplus || lang_java)&& gs_type_fields(type_tree) && gs_type_vfield(type_tree))
 #else  
     if (lang_cplus && gs_type_fields(type_tree) && gs_type_vfield(type_tree))
@@ -235,7 +235,7 @@ get_virtual_field (gs_t type_tree)
   gs_t vfield;
 
   // return vfield only if the type contains fields (bug 10787)
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   if ((lang_cplus || lang_java) &&
 #else
   if (lang_cplus &&
@@ -258,7 +258,7 @@ get_first_real_field (gs_t type_tree)
   // first field.
   if (field == gs_type_vfield(type_tree))
   {
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     Is_True ((lang_cplus || lang_java), ("get_first_real_field: TYPE_VFIELD used for C"));
 #else
     Is_True (lang_cplus, ("get_first_real_field: TYPE_VFIELD used for C"));
@@ -501,7 +501,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  Set_TY_align (idx, align);
 		break;
 	case GS_CHAR_TYPE:
-#if defined(VENDOR_FUDAN) // the char type for java is 16 bits
+#if defined(LANG_JAVA) // the char type for java is 16 bits
 		if(lang_java) 
                   mtype = (gs_decl_unsigned(type_tree) ? MTYPE_U2 : MTYPE_I2);
                 else
@@ -896,13 +896,13 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		if (vfield) {
 		  Is_True(gs_tree_code(vfield) == GS_FIELD_DECL,
 			  ("Create_TY_For_Tree: bad vfield code"));
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
                   if(lang_cplus)
 #endif
 		    Is_True(gs_decl_name(vfield) &&
 			  !strncmp(Get_Name(gs_decl_name(vfield)),"_vptr", 5),
 			  ("Create_TY_For_Tree: bad vfield name"));
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 		  if(lang_java)
   	            Is_True(gs_decl_name(vfield) &&
                           !strncmp(Get_Name(gs_decl_name(vfield)),"vtable", 6),
@@ -1478,7 +1478,7 @@ Has_label_decl(gs_t init)
 }
 #endif
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 bool Is_Java_Undeletable_Function(char* name_str)
 {
   if(strncmp(name_str, "_ZN", 3) == 0)
@@ -1602,7 +1602,7 @@ Create_ST_For_Tree (gs_t decl_node)
 	if (gs_decl_assembler_name(decl_node) == NULL)
 	  p = name;
 	else p  = gs_identifier_pointer (gs_decl_assembler_name (decl_node));
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
         if(lang_java && Is_Java_Undeletable_Function(p))    
         {
           Set_PU_no_delete(pu);
@@ -1676,7 +1676,7 @@ Create_ST_For_Tree (gs_t decl_node)
           if (gs_decl_context (decl_node) == 0 			     ||
 	      gs_tree_code (gs_decl_context (decl_node)) == GS_NAMESPACE_DECL ||
  	      gs_tree_code (gs_decl_context (decl_node)) == GS_RECORD_TYPE ) {
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
             level = GLOBAL_SYMTAB;
 #endif
             if (gs_tree_public (decl_node)) {
@@ -1706,7 +1706,7 @@ Create_ST_For_Tree (gs_t decl_node)
               eclass = EXPORT_PREEMPTIBLE;
             }
             else {
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
               if (gs_decl_external(decl_node) ||
                   (gs_decl_lang_specific(decl_node) &&
                    gs_decl_really_extern(decl_node))){
@@ -1730,7 +1730,7 @@ Create_ST_For_Tree (gs_t decl_node)
                 eclass = EXPORT_LOCAL;
 #endif
             }
-#if !defined(VENDOR_FUDAN)
+#if !defined(LANG_JAVA)
             level = GLOBAL_SYMTAB;
 #endif
           }

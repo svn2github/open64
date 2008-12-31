@@ -752,7 +752,7 @@ void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
       else {
         gs_t body = gs_decl_saved_tree(decl);
         if (body != NULL &&
-#if defined (VENDOR_FUDAN)
+#if defined (LANG_JAVA)
              ((lang_cplus || lang_java) && !gs_decl_external(decl) ||   
               !(lang_cplus || lang_java) && (!c_omit_external || !gs_decl_external(decl) || gs_decl_declared_inline_p(decl))) &&
 #else 
@@ -855,7 +855,7 @@ void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
       // should process a type when it is part of a DECL_EXPR statement,
       // because it may have side-effects.
       if (!can_skip || gs_tree_side_effects(decl) 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
         || lang_java
 #endif
          )
@@ -1292,7 +1292,7 @@ WGEN_Start_Function(gs_t fndecl)
     // inline can still be externally accessible. Rely on GNU's "needed"
     // flag.
     if (lang_cplus 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
         || lang_java
 #endif
        ) {
@@ -1368,7 +1368,7 @@ WGEN_Start_Function(gs_t fndecl)
     Set_PU_lexical_level (Pu_Table [ST_pu (func_st)], CURRENT_SYMTAB);
     if (lang_cplus)
       Set_PU_cxx_lang (Pu_Table [ST_pu (func_st)]);
-#if defined (VENDOR_FUDAN)
+#if defined (LANG_JAVA)
     else if(lang_java)
       Set_PU_java_lang (Pu_Table [ST_pu (func_st)]);
 #endif
@@ -1388,7 +1388,7 @@ WGEN_Start_Function(gs_t fndecl)
     if (extern_inline)
     {
 	if (!lang_cplus
-#if defined (VENDOR_FUDAN)          
+#if defined (LANG_JAVA)          
           && !lang_java
 #endif
            )
@@ -1811,7 +1811,7 @@ WGEN_Finish_Function (gs_t fndecl)
     }
 #endif
 
-#if defined (VENDOR_FUDAN)
+#if defined (LANG_JAVA)
     if (lang_cplus || lang_java) {
 #else
     if (lang_cplus) {
@@ -2211,7 +2211,7 @@ AGGINIT::WGEN_Add_Aggregate_Init_Address (gs_t init)
   case GS_VAR_DECL:
   case GS_FUNCTION_DECL:
 	{
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
         if (gs_decl_alias_target(init)) 
           st = WGEN_Assemble_Alias(init, gs_decl_alias_target(init));
         else
@@ -2967,14 +2967,14 @@ AGGINIT::Traverse_Aggregate_Array (
     // calls WFE_Add_Aggregate_Init_Padding appropriately.
     // We do not want to modify the Gnu front-end (c-typeck.c) and instead
     // hack it inside our front-end.
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     INT lindex = 0, hindex = 0;
 #else
     INT lindex, hindex;
 #endif
     // wgen bug 10919: need to handle the new RANGE_EXPR for TREE_PURPOSE
     //  while preserving the fix for bug 2373
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
    if(element_index)
    {
 #endif
@@ -2995,7 +2995,7 @@ AGGINIT::Traverse_Aggregate_Array (
       current_offset += (lindex - emitted_bytes/esize)*esize;
       emitted_bytes += (lindex - emitted_bytes/esize)*esize;
     }	
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     }
 #endif
     gs_t tree_value = gs_operand(curr_value_elem, 0);
@@ -3084,14 +3084,14 @@ AGGINIT::Traverse_Aggregate_Array (
     // calls WFE_Add_Aggregate_Init_Padding appropriately.
     // We do not want to modify the Gnu front-end (c-typeck.c) and instead
     // hack it inside our front-end.
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     INT lindex=0, hindex=0;
 #else
     INT lindex, hindex;
 #endif
     // wgen bug 10919: need to handle the new RANGE_EXPR for TREE_PURPOSE
     //  while preserving the fix for bug 2373
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
    if(gs_tree_purpose(init))
    {
 #endif
@@ -3112,7 +3112,7 @@ AGGINIT::Traverse_Aggregate_Array (
       current_offset += (lindex - emitted_bytes/esize)*esize;
       emitted_bytes += (lindex - emitted_bytes/esize)*esize;
     }	
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
    }
 #endif
     gs_t tree_value = gs_tree_value(init);
@@ -4311,7 +4311,7 @@ WGEN_Initialize_Decl (gs_t decl)
 #ifdef KEY
       && !lang_cplus
 #endif
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
       && !lang_java
 #endif
      ) {
@@ -4506,7 +4506,7 @@ void WGEN_Process_Function_Decl (gs_t);
 void WGEN_Process_Namespace_Decl (gs_t);
 void WGEN_Process_Decl (gs_t);
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 ST*
 WGEN_Assemble_Alias (gs_t decl, gs_t target)
 #else
@@ -4520,18 +4520,18 @@ WGEN_Assemble_Alias (gs_t decl, gs_t target)
   // sclass to base_st's sclass.  This may take more than one iteration since
   // the target can be an alias to another target.  Bug 4393.
   if (!expanded_decl(base_decl) && (lang_cplus
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     || lang_java
 #endif
     || !finish_alias))
   {
     if (!lang_cplus
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
          && !lang_java
 #endif
        ) // KEY bug 12778
       alias_vector.push_back (std::make_pair (decl, target));
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     return 0;
 #else
     return FALSE; // bugs 12602, 12704
@@ -4558,7 +4558,7 @@ WGEN_Assemble_Alias (gs_t decl, gs_t target)
   }
 #ifdef KEY
   if (!lang_cplus
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
     && !lang_java
 #endif
      )
@@ -4571,7 +4571,7 @@ WGEN_Assemble_Alias (gs_t decl, gs_t target)
     if (ST_sym_class (base_st) == CLASS_FUNC)
       Set_PU_no_delete (Pu_Table [ST_pu (base_st)]);
   }
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
   return st;
 #else
   return TRUE;
@@ -4998,7 +4998,7 @@ WGEN_Process_Namespace_Decl (gs_t namespace_decl)
   }
 #endif
 } /* WGEN_Process_Namespace_Decl */
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 extern "C"
 void
 WGEN_Expand_Emitted_Decl()
@@ -5149,7 +5149,7 @@ WGEN_Expand_Top_Level_Decl (gs_t top_level_decl)
 	  if (gs_decl_thunk_p(decl))
 	    WGEN_Generate_Thunk(decl);
 	  else if (gs_decl_alias_target(decl))	// Bug 4393.
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
             changed |= WGEN_Assemble_Alias(decl, gs_decl_alias_target(decl)) ? TRUE : FALSE;
 #else
 	    changed |= WGEN_Assemble_Alias(decl, gs_decl_alias_target(decl));

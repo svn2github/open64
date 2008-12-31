@@ -399,7 +399,7 @@ struct tree_common GTY(())
   unsigned long translated_gs_node;             /* KEY */
   HOST_WIDE_INT gs_sequence_num;                /* KEY */
 
-  unsigned long transformed_statment_node;  /*VENDOR_FUDAN*/
+  unsigned long transformed_statment_node;  /*LANG_JAVA*/
 
 };
 
@@ -2078,7 +2078,7 @@ struct tree_block GTY(())
 #define FULLY_TRANSLATED_TO_GS(NODE) ((NODE)->common.fully_translated_to_gs)
 #define GS_SEQUENCE_NUM(NODE) ((NODE)->common.gs_sequence_num)
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 #define GS_TRANSFORMED_NODE(NODE) ((NODE)->common.transformed_statment_node)
 #endif
 

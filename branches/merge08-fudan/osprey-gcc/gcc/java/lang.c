@@ -221,7 +221,7 @@ struct language_function GTY(())
 #undef LANG_HOOKS_CLEAR_BINDING_STACK
 #define LANG_HOOKS_CLEAR_BINDING_STACK java_clear_binding_stack
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 #undef LANG_HOOKS_JAVA_MANGLE_DECL
 #define LANG_HOOKS_JAVA_MANGLE_DECL java_mangle_decl
 #endif

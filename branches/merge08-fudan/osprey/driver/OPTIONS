@@ -108,7 +108,7 @@
 #define CC	C
 #define Cc	cc,CC
 #define f77	f
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 #define java    j
 #endif
 % f90 used in option name, so use F90 for define
@@ -347,7 +347,7 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 -directives-only ; ALL NONE ""
              "ignored by open64"
 
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 -fno-store-check  ;  java  f  "-fno-store-check"
          ""
 -fno-bounds-check ;  java  f  "-fno-bounds-check"
@@ -696,7 +696,7 @@ I-object		;	ALL	ld	""
 % -noas says to skip the assembler phase
 -noas	toggle(&skip_as,TRUE);		ALL	NONE	""
 	""
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 -usejavaf       ;               j       NONE    "-INTERNAL:return_val=on -INTERNAL:mldid_mstid=on -INTERNAL:return_info=on"
         ""
 #endif
@@ -2222,7 +2222,7 @@ I-u%s		;		Cc	ld	"-u %s"
 -comic	;		Cc	NONE	"-multicore -PHASE:clist -CLIST:=ON"
 	""
 #endif
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 -main=%s        save_name(&main_method,optargs);        java    NONE    ""
         ""
 #endif

@@ -183,7 +183,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
     ST* st = WN_st(w);
 
     if (
-#if defined(VENDOR_FUDAN)
+#if defined(LANG_JAVA)
 	PU_src_lang(pu) == PU_JAVA_LANG ||
 #endif
 	PU_src_lang(pu) == PU_CXX_LANG) {
