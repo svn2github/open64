@@ -1,4 +1,5 @@
 #
+#  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -33,72 +34,30 @@
 #
 
 #
-#  Makefile for targia32_ia64_nodebug
+#  Makefile for wgen
 #
 
 #
-#  These directories must be "built" first because they generate header files
-#  which other directories depend on.
+#  Define build parameters
 #
-INCLUDE_SUBDIRS := \
-	include \
-	targ_info
-
-#
-#  Next, all of the libraries are built because the tools depend on them.
-#
-LIBRARY_SUBDIRS := \
-	libcmplrs \
-	libcomutil \
-	libdwarf \
-	libelf \
-	libelfutil \
-	libiberty  \
-	libunwindP libspin_4_2_0 libspin 
+BUILD_AREA     = ..
+BUILD_TOT      = ../..
+BUILD_BASE     = ../../wgen
+BUILD_ROOTS    = TARGET
+BUILD_ABI      = N32BIT
+BUILD_ARCH     = MIPS4
+BUILD_TYPE     = SHARED
+BUILD_OPTIMIZE = NODEBUG
+BUILD_VARIANT  = FE_GNU_4_2_0
+BUILD_INSTALL  = DEFAULT
+BUILD_TARGET   = SL
+BUILD_COMPILER = GNU
+BUILD_OS       = LINUX
 
 
-#
-#  Finally, the compiler tools (components) are built.
-#
-#  Note that be_driver must come last since it depends on other components
-#  being built first.
-#
-TOOL_SUBDIRS := \
-	be \
-	cg \
-	ipa \
-	driver \
-	ipl \
-	ir_tools \
-	lw_inline \
-	whirl2c \
-	whirl2f \
-	wopt \
-	be_driver \
-	gccfe \
-	g++fe  \
-	wgen	\
-	wgen_4_2_0   
-#	libinstr
-#	lno \
-#	gccfe \
-#       g++fe \
-#	crayf90 
+#  Include (optional) parameter override file
+-include $(BUILD_AREA)/Makefile.override
 
+#  Include setup file which will then include Makefile.base
+include $(BUILD_TOT)/Makefile.gsetup
 
-SUBDIRS := $(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
-
-default clean clobber:
-	+@for d in $(SUBDIRS); do \
-	    echo "MAKE   $@ in $(PWD)/$$d"; \
-	    $(MAKE) $(if $V,,--no-print-directory) -C $$d $@; \
-	    retval=$$?; \
-	    if [ $$retval != 0 ]; then \
-		if grep -q k <<<'$(MAKEFLAGS)'; then \
-		    exit=$$retval; \
-		else \
-		    exit $$retval; \
-		fi; \
-	    fi; \
-	done; \
-	exit $$exit
