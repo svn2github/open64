@@ -492,10 +492,13 @@ Process_Targ_Group ( char *targ_args )
 	  if ( strncasecmp ( cp+4, "n32", 3 ) == 0 ) {
 	    add_option_seen ( O_n32 );
 	    toggle ( &abi, ABI_N32 );
-	  } else if ( strncasecmp ( cp+4, "64", 2 ) == 0 ) {
+	  }
+#ifndef TARG_SL 
+          else if ( strncasecmp ( cp+4, "64", 2 ) == 0 ) {
 	    add_option_seen ( O_m64 );
 	    toggle ( &abi, ABI_64 );
 	  }
+#endif
 #endif
 #ifdef TARG_X8664
 	  // The driver needs to handle all the -TARG options that it gives to
@@ -563,6 +566,7 @@ Process_Targ_Group ( char *targ_args )
 	if ( strncasecmp ( cp, "mips", 4 ) == 0 ) {
 	  if ( '1' <= *(cp+4) && *(cp+4) <= '6' ) {
 	    toggle ( &isa, *(cp+4) - '0' );
+#ifndef TARG_SL
 	    switch ( isa ) {
 	      case 1:	add_option_seen ( O_mips1 );
 			break;
@@ -575,6 +579,7 @@ Process_Targ_Group ( char *targ_args )
 	      default:	error ( "invalid ISA: %s", cp );
 			break;
 	    }
+#endif
 	  }
 	}
 #endif
@@ -657,6 +662,9 @@ Check_Target ( void )
 #elif TARG_IA32
 	toggle(&abi, ABI_IA32);
     	add_option_seen ( O_ia32 );
+#elif TARG_SL
+        toggle(&abi, ABI_N32);
+        add_option_seen ( O_n32 );
 #elif TARG_MIPS
 	toggle(&abi, ABI_64);
     	add_option_seen ( O_64 );
@@ -702,7 +710,7 @@ Check_Target ( void )
   /* Check ABI against ISA: */
   if ( isa != UNDEFINED ) {
     switch ( abi ) {
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) && !defined(TARG_SL)
       case ABI_N32:
 	if ( isa < ISA_MIPS3 ) {
 	  add_option_seen ( O_mips3 );
@@ -745,7 +753,16 @@ Check_Target ( void )
     /* ISA is undefined, so derive it from ABI and possibly processor: */
 
     switch ( abi ) {
-#ifdef TARG_MIPS
+#ifdef TARG_SL
+      case ABI_N32:
+      case ABI_64:
+        opt_val = ISA_MIPS4;
+        opt_id = O_mips4;
+        toggle ( &isa, opt_val );
+        add_option_seen ( opt_id );
+        option_name = get_option_name ( opt_id );
+        break;
+#elif TARG_MIPS
       case ABI_N32:
       case ABI_64:
         if (default_isa == ISA_MIPS3) {
@@ -799,6 +816,7 @@ Check_Target ( void )
 #ifdef TARG_MIPS
       case ABI_N32:
       case ABI_64:
+#ifndef TARG_SL
 	if ( proc < PROC_R4K ) {
 	  warning ( "ABI specification %s conflicts with processor "
 		    "specification %s: defaulting processor to r10000",
@@ -809,6 +827,7 @@ Check_Target ( void )
 	  add_option_seen ( O_r10000 );
 	  toggle ( &proc, PROC_R10K );
 	}
+#endif
 	break;
 #endif
     }
@@ -817,7 +836,7 @@ Check_Target ( void )
   /* Check ISA against processor: */
   if ( proc != UNDEFINED ) {
     switch ( isa ) {
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) && !defined(TARG_SL)
       case ISA_MIPS1:
 	/* Anything works: */
 	break;
@@ -854,7 +873,7 @@ Check_Target ( void )
   else if (default_proc != UNDEFINED) {
 	/* set proc if compatible */
 	opt_id = 0;
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) && !defined(TARG_SL)
 	switch (default_proc) {
 	case PROC_R4K:
 		if (isa <= ISA_MIPS3) {

@@ -156,7 +156,6 @@ typedef enum {
 	P_include,
 	P_library,
 	P_alt_library,	/* alternate library path */
-
 	P_LAST
 } phases_t;
 

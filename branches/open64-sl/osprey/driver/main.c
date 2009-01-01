@@ -185,8 +185,9 @@ main (int argc, char *argv[])
 
 	/* Try to find where the compiler is located and set the phase
 	   and library directories appropriately. */
+#if !defined(TARG_SL)
 	set_executable_dir();
-
+#endif
 	// "-o -" will set this to TRUE.
 	dump_outfile_to_stdout = FALSE;
 

@@ -90,7 +90,8 @@ typedef enum {
   ISA_COMPUTE_10 = 14,
   ISA_COMPUTE_11 = 15,
   ISA_COMPUTE_12 = 16,
-  ISA_COMPUTE_13 = 17
+  ISA_COMPUTE_13 = 17,
+  ISA_SL         = 18
 } ISA;
 
 extern boolean debug;		/* debugging turned on */

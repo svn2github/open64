@@ -111,7 +111,7 @@ INSTALL_DRIVER () {
     [ ! -e ${BIN_DIR}/slcc ] && ln -sf driver ${BIN_DIR}/slcc
     [ ! -e ${BIN_DIR}/mipsf90 ] && ln -sf driver ${BIN_DIR}/mipsf90
     [ ! -e ${ROOT}/usr/lib/ldscripts ] && mkdir -p ${ROOT}/usr/lib/ldscripts
-    cp -rf osprey/ldscripts/* ${ROOT}/usr/lib/ldscripts/
+    [ -d  osprey/targia32_sl1/ldscripts ] && cp -rf osprey/targia32_sl1/ldscripts/* ${ROOT}/usr/lib/ldscripts/
 #   [ ! -e ${ROOT}/usr/libsl2/ldscripts ] && mkdir -p ${ROOT}/usr/libsl2/ldscripts
 #   cp -rf osprey/ldscripts/sl2-h264* ${ROOT}/usr/libsl2/ldscripts/
 #   [ ! -e ${ROOT}/usr/libsl2/h264enc ] && mkdir -p ${ROOT}/usr/libsl2/h264enc

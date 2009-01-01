@@ -54,6 +54,7 @@ extern "C" {
 #define INCLUDE_STAMP "1.2"
 
 #elif defined(TARG_SL)
+#include "pathscale_defs.h"
 #define	MS_STAMP 1
 #define	LS_STAMP 0
 #define INCLUDE_STAMP "1.0"
