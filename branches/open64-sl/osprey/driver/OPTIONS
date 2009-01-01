@@ -1150,6 +1150,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Pass -m args to linker"
 -m*elf_x86_64	;	LINK	ld	""
 	"Pass -m args to linker"
+#ifdef SL
+-m%s            ;               ALL     NONE    "-m %s"
+        "Pass -m args to as"
+#endif
 %-m	run_m4=TRUE;		f77	NONE	""
 %	"run m4 on each RATFOR source"
 -framepointer	warn_no_longer_supported2(option_name,"-TENV:large_stack");  ALL	NONE ""
@@ -1873,8 +1877,13 @@ I-u%s		;		Cc	ld	"-u %s"
 #endif
 -fhandle-exceptions	;	Cc	cpp,cfe	self
 	"Enable exception handling"
+#ifndef SL
 -fno-exceptions	;	Cc	CPP,cfe	"-fno-exceptions -fno-gnu-exceptions"
 	"Disable exception handling"
+#else
+-fno-exceptions	;	Cc	CPP,cfe	"-fno-exceptions"
+	"Disable exception handling"
+#endif
 -fno-optimize-regions	;	Cc	cfe	self
 	"Enable optimization of EH regions formation"
 -fno-handle-exceptions	;	Cc	cfe	self
