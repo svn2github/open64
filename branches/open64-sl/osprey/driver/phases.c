@@ -1631,9 +1631,11 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 #elif defined(TARG_MIPS)
 		if( abi == ABI_N32 ) {
+#ifndef TARG_SL
 		  add_string(args, "-mabi=n32");
 		  add_string(args, "-m");
 		  add_string(args, "elf32ltsmipn32");
+#endif
 		}
 		else {
 		  add_string(args, "-mabi=64");
@@ -1986,7 +1988,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
         add_library (args, "c");
         add_library(args, "gcc");
     }
-#else
+#elif !defined(TARG_SL)
 	if (ipa == TRUE) {
 	    	if (invoked_lang == L_CC) {
 			add_library(args, "stdc++");
@@ -2060,7 +2062,9 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	if (ipa == TRUE) {
 	  if (shared != DSO_SHARED && shared != RELOCATABLE) {
 	    add_string(args, find_crt_path("crtend.o"));
+#ifndef TARG_SL
 	    add_string(args, find_crt_path("crtn.o"));
+#endif
 	  }
 	}
 #endif
@@ -2985,10 +2989,10 @@ run_ld (void)
 	add_instr_archive (args);
 
     add_final_ld_args (args,ldphase);
+#ifndef TARG_SL
     if ( ldphase == P_ipa_link ) {
       specify_ipa_dyn_linker(args);
     }
-#ifndef TARG_SL
 	postprocess_ld_args (args);
 #endif
 

@@ -8182,7 +8182,7 @@ WFE_Expand_Expr (tree exp,
         else {
           wn = WN_CreateIstore (OPR_ISTORE, MTYPE_V, Pointer_Mtype, ap_offset,
 #if defined(TARG_SL)
-                                 Make_Pointer_Type(MTYPE_To_TY(MTYPE_U4)), wn, ap_addr, ap_field_id);
+                                ap_addr_ty, wn, ap_addr, ap_field_id);
 	  DevWarn("Forcing var-arg istore to aligned");
 #else
                                 ap_addr_ty, wn, ap_addr, ap_field_id);
