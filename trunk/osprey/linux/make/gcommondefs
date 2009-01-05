@@ -88,7 +88,7 @@ else
  SIZEDEFS += -D_MIPS_SZPTR=64
  ifeq ($(BUILD_ABI), W64BIT)
   # W64BIT is win64, which has 64bit ptr but 32bit long
-  SIZEDEFS += -D_MIPS_SZLONG=32
+  SIZEDEFS += -D_MIPS_SZLONG=32 -DWIN64
  else
   SIZEDEFS += -D_MIPS_SZLONG=64 -D_LP64
  endif
