@@ -6225,9 +6225,9 @@ BOOL SL_Intrinsic_Has_ReturnP(TOP opcode) {
       case  TOP_c2_med:
       case  TOP_c2_gsums:
       case  TOP_c3_mvtacc:
-      case  TOP_c3_mvtadd:	 
+      case  TOP_c3_mvtaddr:	 
       case  TOP_c3_mvfacc:
-      case  TOP_c3_mvfadd:	  	 
+      case  TOP_c3_mvfaddr:	  	 
         return TRUE;
       default:
         return FALSE;

@@ -460,6 +460,11 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
 #ifdef TARG_X8664
   Expand_Start();
 #endif
+#if defined(TARG_SL)
+  extern void Initial_var2spe();
+  Initial_var2spe();
+#endif
+
 }
 
 /*

@@ -148,53 +148,27 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       return 1;
     case TOP_lduh16_rs:
       return 2;
-
-    case TOP_c3_ld:
-    case TOP_c3_st:
-    case TOP_c3_dmac_a:
-    case TOP_c3_dmacn_a:
-    case TOP_c3_dmula_a:
-    case TOP_c3_dmulan_a:
-    case TOP_c3_mac_a:
-    case TOP_c3_mac_ar:
-    case TOP_c3_macn_a:
-    case TOP_c3_macn_ar:
-    case TOP_c3_mula_a:
-    case TOP_c3_mula_ar:
-    case TOP_c3_saadd_a:
-    case TOP_c3_saaddh_a:
-    case TOP_c3_saddha_a:
-    case TOP_c3_samulh_a:
-    case TOP_c3_sasub_a:
-    case TOP_c3_sasubh_a:
-    case TOP_c3_viterbi:
-    case TOP_c3_trback:
-    case TOP_c3_fft:
-    case TOP_c3_fftld:
-    case TOP_c3_fftst:
-    // new C3   
-    case TOP_C3_dmac_a:            
-    case TOP_C3_dmacn_a:           
-    case TOP_C3_dmula_a:           
-    case TOP_C3_dmulan_a:          
-    case TOP_C3_ffe:               
-    case TOP_C3_fftld:             
-    case TOP_C3_ld:                
-    case TOP_C3_fftst:             
-    case TOP_C3_st:                
-    case TOP_C3_mac_a:             
-    case TOP_C3_macn_a:            
-    case TOP_C3_mac_ar:            
-    case TOP_C3_macn_ar:           
-    case TOP_C3_mula_a:            
-    case TOP_C3_mula_ar:           
-    case TOP_C3_saadd_a:           
-    case TOP_C3_sasub_a:           
-    case TOP_C3_saaddh_a:          
-    case TOP_C3_sasubh_a:          
-    case TOP_C3_sadda_a:           
-    case TOP_C3_samulh_a:          
-    // end 
+    case TOP_c3_dmac_a:            
+    case TOP_c3_dmacn_a:           
+    case TOP_c3_dmula_a:           
+    case TOP_c3_dmulan_a:          
+    case TOP_c3_ffe:               
+    case TOP_c3_fftld:             
+    case TOP_c3_ld:                
+    case TOP_c3_fftst:             
+    case TOP_c3_st:                
+    case TOP_c3_mac_a:             
+    case TOP_c3_macn_a:            
+    case TOP_c3_mac_ar:            
+    case TOP_c3_macn_ar:           
+    case TOP_c3_mula_a:            
+    case TOP_c3_mula_ar:           
+    case TOP_c3_saadd_a:           
+    case TOP_c3_sasub_a:           
+    case TOP_c3_saaddh_a:          
+    case TOP_c3_sasubh_a:          
+    case TOP_c3_sadda_a:           
+    case TOP_c3_samulh_a:          
       return 4;
 #endif
 

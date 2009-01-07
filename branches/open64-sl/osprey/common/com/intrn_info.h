@@ -98,8 +98,8 @@ typedef enum INTRN_RETKIND {
 #define NOT_ACTUAL	FALSE
 #define CGINTRINSIC	TRUE
 #define NOT_CGINTRINSIC	FALSE
-#define NOT_SLAVE       CGINTRINSIC
-#define SLAVE           NOT_CGINTRINSIC
+#define NOT_SLAVE       FALSE 
+#define SLAVE           TRUE 
 
 // the info we store for each intrinsic
 typedef struct intrn_info_t {
@@ -220,32 +220,10 @@ typedef struct  {
 } sl_intrn_meminfo_t; 
 
 #define INVALID_PID -1
-#define SL_INTRN_MEMINFO_LAST 48
+#define SL_INTRN_MEMINFO_LAST 27 
 static sl_intrn_meminfo_t sl_intrn_meminfo_tab[SL_INTRN_MEMINFO_LAST] = {
-  //c3 intrinsics
-  INTRN_C3_MAC_A,	FALSE, FALSE, 2, {2, 4}, {0} ,
-  INTRN_C3_MACN_A,	FALSE, FALSE, 2, {2, 4}, {0},	
-  INTRN_C3_MAC_AR, 	FALSE, FALSE, 1, {3, INVALID_PID}, {0},
-  INTRN_C3_MACN_AR, 	FALSE, FALSE, 1, {3, INVALID_PID}, {0},
-  INTRN_C3_MULA_AR, 	FALSE, FALSE, 1, {3, INVALID_PID}, {0},
-  INTRN_C3_DMAC_A, 	FALSE, FALSE, 2, {2, 4}, {0},
-  INTRN_C3_DMACN_A, 	FALSE, FALSE, 2, {2, 4}, {0},
-  INTRN_C3_SAADDH_A, 	FALSE, FALSE, 2, {0, 2}, {0},
-  INTRN_C3_SASUBH_A, 	FALSE, FALSE, 2, {0, 2}, {0},
-  INTRN_C3_MULA_A, 	FALSE, FALSE, 2, {2, 4}, {0},
-  INTRN_C3_SAMULH_A, 	FALSE, FALSE, 2, {0, 2}, {0},
-  INTRN_C3_DMULT_A, 	FALSE, FALSE, 2, {2, 4}, {0},
-  INTRN_C3_DMULTN_A, 	FALSE, FALSE, 2, {2, 4}, {0},
-  INTRN_C3_SAADD_A, 	FALSE, FALSE, 2, {0, 2}, {0},
-  INTRN_C3_SAADDHA_A, 	FALSE, FALSE, 1, {2, INVALID_PID}, {0},
-  INTRN_C3_SASUB_A, 	FALSE, FALSE, 2, {0, 2}, {0},
-  INTRN_C3_LOAD, 	FALSE, FALSE, 1, {0, INVALID_PID}, {0},
-  INTRN_C3_STORE, 	FALSE, TRUE,  1, {1, INVALID_PID}, {0},
-  INTRN_C3_FFTLD, 	FALSE, FALSE, 1, {0, INVALID_PID}, {0},
-  INTRN_C3_FFTST, 	FALSE, TRUE,  1, {1, INVALID_PID}, {0},
-  INTRN_SET_CIRCBUF, 	FALSE, FALSE, 2, {3, 4}, {0},
-  INTRN_RESET_CIRCBUF, 	FALSE, FALSE, 2, {3, 4}, {0},
   // new C3 intrinsics
+  INTRN_C3_SET_CIRCBUF, FALSE, FALSE, 2, {3, 4}, {0},
   INTRN_C3DMAC_A, 	FALSE, FALSE, 2, {2, 4}, {0},
   INTRN_C3DMULA_A, 	FALSE, FALSE, 1, {2, INVALID_PID}, {0},
   INTRN_C3LD, 		FALSE, FALSE, 1, {0, INVALID_PID}, {0},

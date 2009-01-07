@@ -358,6 +358,241 @@ Operator_From_Tree_node (gs_code_t code) {
 }
 #endif
 
+#ifdef TARG_SL
+/*
+  *  some side-effect intrinsic op need to be extended
+  */
+typedef enum EXTEND_PARM_POS {
+ P0,   // no extend
+ P1,
+ P2,
+ P3,
+ P4,
+ P0_P2,
+ P1_P3,
+ P2_P4,
+ P3_P4,
+}EXTEND_PARM_POS;
+
+typedef struct intrinsicop_attr_extended {
+  INTRINSIC id;
+  BOOL need_extend; //
+  int extend_kid;
+  EXTEND_PARM_POS pos;
+  INTRINSIC aux_id;   // extend intrinsic opr
+} INTRN_ATTR_EXTEND;
+
+#define INTRN_EATTR_LAST 13
+static INTRN_ATTR_EXTEND intrn_eattr[INTRN_EATTR_LAST] = {
+  INTRN_C3DMAC_A, TRUE, 2, P2_P4, INTRN_C3_PTR,
+  INTRN_C3DMULA_A, TRUE, 1, P2, INTRN_C3_PTR,
+  INTRN_C3LD, TRUE, 1, P0, INTRN_C3_PTR,
+  INTRN_C3ST, TRUE, 1, P1, INTRN_C3_PTR,
+  INTRN_C3MAC_A, TRUE, 2, P2_P4, INTRN_C3_PTR,
+  INTRN_C3MAC_AR, TRUE, 1, P3, INTRN_C3_PTR,
+  INTRN_C3MULA_A, TRUE, 1, P2_P4, INTRN_C3_PTR,
+  INTRN_C3MULA_AR, TRUE, 1, P3, INTRN_C3_PTR,
+  INTRN_C3SAADD_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
+  INTRN_C3SAADDH_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
+  INTRN_C3SADDA_A, TRUE, 1, P2, INTRN_C3_PTR,
+  INTRN_C3SAMULH_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
+  INTRN_C3_SET_CIRCBUF, FALSE, 2, P3_P4, INTRN_C3_PTR,
+};
+
+static BOOL intrinsic_op_need_extend (INTRINSIC id) {
+  INTRN_ATTR_EXTEND *p = &intrn_eattr[0];
+  int i=0;
+  while (p && (i<INTRN_EATTR_LAST)) {
+        if (p->id == id ) {
+                return p->need_extend;
+        }
+        i++;
+        p++;
+  }
+  return FALSE;
+}
+
+static BOOL intrinsic_need_deref (INTRINSIC id) {
+  INTRN_ATTR_EXTEND *p = &intrn_eattr[0];
+  int i=0;
+  while (p && (i<INTRN_EATTR_LAST)) {
+        if (p->id == id ) {
+                return TRUE;
+        }
+        i++;
+        p++;
+  }
+  return FALSE;
+}
+
+static INTRN_ATTR_EXTEND *Get_intrinsic_op_Eattr (INTRINSIC id) {
+  INTRN_ATTR_EXTEND *p = &intrn_eattr[0];
+  int i =0;
+  while (p && (i<INTRN_EATTR_LAST)) {
+        if (p->id == id ) {
+                return p;
+        }
+        p++;
+        i++;
+  }
+  return NULL;
+}
+
+static void WN_Set_Deref_If_Needed(WN *wn) {
+  INTRINSIC intrn=WN_intrinsic(wn);
+  if (intrinsic_need_deref(intrn)) {
+    INTRN_ATTR_EXTEND *p=Get_intrinsic_op_Eattr(intrn);
+
+    switch (p->pos) {
+      case P0:
+        WN_Set_Parm_Dereference(WN_kid(wn,0));  break;
+      case P1:
+        WN_Set_Parm_Dereference(WN_kid(wn,1));  break;
+      case P2:
+        WN_Set_Parm_Dereference(WN_kid(wn,2));  break;
+      case P3:
+        WN_Set_Parm_Dereference(WN_kid(wn,3));  break;
+      case P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,4));  break;
+      case P0_P2:
+        WN_Set_Parm_Dereference(WN_kid(wn,0)); WN_Set_Parm_Dereference(WN_kid(wn,2)); break;
+      case P1_P3:
+        WN_Set_Parm_Dereference(WN_kid(wn,1)); WN_Set_Parm_Dereference(WN_kid(wn,3)); break;
+      case P2_P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,2)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
+      case P3_P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,3)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
+      default:
+        Is_True(0, ("intrinsic has no extended attribution"));
+    }
+  }
+        return;
+}
+
+static int intrinsic_op_extend_kid (int index) {
+   return intrn_eattr[index].extend_kid;
+}
+
+static EXTEND_PARM_POS intrinsic_op_parm_pos (int index) {
+   return intrn_eattr[index].pos;
+}
+
+BOOL WN_Need_Append_Intrinsic(WN *rhs) {
+   OPERATOR opr=WN_operator(rhs);
+   if (opr == OPR_INTRINSIC_OP || opr == OPR_INTRINSIC_CALL) {
+        INTRINSIC inid = WN_intrinsic(rhs);
+        if (intrinsic_op_need_extend(inid)) {
+                return TRUE;
+        }
+  } else  if (opr == OPR_CVTL) {
+        WN *tmp = WN_kid0(rhs);
+        OPERATOR kid_opr=WN_operator(tmp);
+        if (kid_opr == OPR_INTRINSIC_OP || kid_opr == OPR_INTRINSIC_CALL) {
+          INTRINSIC inid = WN_intrinsic(tmp);
+          if (intrinsic_op_need_extend(inid)) {
+                return TRUE;
+          }
+        }
+  }
+  return FALSE;
+}
+
+/*
+ *  given a side effect intrinsic op:  sum = intrinsic_c3_mac_a(sum, p, 1, q, 1, 0) which doing sum=; p++; q++
+ *  we need extend it to
+ *   sum = intrinsic_c3_mac_a(sum, p, 1, q, 1, 0)
+ *   p = intrinsic_c3_ptr(p, sum);  <-slave intrinsic op
+ *   q = intrinsic_c3_ptr(q, sum);
+*/
+void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src) {
+   WN *kid1s[5];
+   WN *op1;
+   int aux_kid = -1;  // parameter numbers of slave intrinsic op
+   int extend_num = -1;
+   int pos[5]= {-1, -1, -1, -1, -1};
+   WN *tmp_wn;
+   INTRN_ATTR_EXTEND *p;
+
+   if (WN_kid0(master_variable) && WN_operator(master_variable) == OPR_CVT) {
+      master_variable = WN_kid0(master_variable);
+   }
+   if (WN_operator(WN_kid0(wn)) == OPR_INTRINSIC_OP) {
+     p = Get_intrinsic_op_Eattr(WN_intrinsic(WN_kid0(wn)));
+     tmp_wn = wn;
+   } else if (WN_operator(WN_kid0(wn)) == OPR_CVTL && WN_operator(WN_kid0(WN_kid0(wn))) == OPR_INTRINSIC_OP ) {
+     p = Get_intrinsic_op_Eattr(WN_intrinsic(WN_kid0(WN_kid0(wn))));
+     tmp_wn = WN_kid0(wn);
+   } else if (WN_operator(wn) == OPR_INTRINSIC_CALL) {
+     p = Get_intrinsic_op_Eattr(WN_intrinsic(wn));
+     tmp_wn = wn;
+   }
+   if (p) {
+        extend_num = p->extend_kid;
+        switch (p->aux_id) {
+           case INTRN_C3_PTR:  aux_kid = 2; break;
+           default:
+                Is_True(0, ("unsupport internal intrinsic op"));
+       }
+       switch (p->pos) {
+         case P0:
+               pos[0] = 0; break;
+         case P1:
+               pos[0] = 1; break;
+           case P2:
+               pos[0] = 2;  break;
+          case P3:
+               pos[0] = 3;  break;
+          case P0_P2:
+               pos[0] = 0; pos[1] = 2; break;
+          case P1_P3:
+               pos[0] = 1; pos[1] = 3; break;
+          case P2_P4:
+               pos[0] = 2; pos[1] = 4; break;
+          case P3_P4:
+               pos[0] = 3; pos[1] = 4; break;
+          default:
+               Is_True(0, ("intrinsic has no extended attribution"));
+       }
+   } else {
+     Is_True(0, ("intrinsic has no extended attribution"));
+   }
+  if (WN_operator(master_variable) == OPR_INTCONST) {
+     // c3.st/c3.fftst first variable could be immediate
+     Is_True(WN_opcode(master_variable) ==  OPC_I4INTCONST,("should be 32-bit immediate"));
+     master_variable = WN_CreateParm(MTYPE_I4, master_variable, Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE);
+   } else {
+     TY_IDX  ti2 = WN_ty(master_variable);
+     TYPE_ID tm2 = TY_mtype(ti2);
+     master_variable = WN_CreateParm (Mtype_comparison (tm2), master_variable,
+                                      ti2, WN_PARM_BY_VALUE);
+   }
+   kid1s[0]= master_variable;
+   for (int i =0; i < extend_num; i++) {
+     WN *op1;
+     if (WN_operator(wn) == OPR_INTRINSIC_CALL) {
+       op1 = WN_kid0(WN_kid(tmp_wn, pos[i]));
+     } else {
+       op1 = WN_kid0(WN_kid(WN_kid0(tmp_wn), pos[i]));
+     }
+     ST *st1;
+     if (WN_has_sym(op1)) {
+       st1 = WN_st(op1);
+     } else {
+       // parameter is an expression, don't extend it
+       continue;
+     }
+     TY_IDX  ti1 = WN_ty(op1);
+     TYPE_ID tm1 = TY_mtype(ti1);
+     op1 = WN_CreateParm (Mtype_comparison (tm1), op1,
+                          ti1, WN_PARM_BY_VALUE);
+     kid1s[1]= op1;
+     WN *app1 = WN_Create_Intrinsic(OPR_INTRINSIC_OP,TY_mtype(ST_type(st1)), MTYPE_V, p->aux_id, aux_kid, kid1s);
+     WN *stmt1 = WN_Stid(TY_mtype(ST_type(st1)), ST_ofst(st1), st1, ST_type(st1), app1, 0);
+     WGEN_Stmt_Append(stmt1, src);
+   }
+}
+#endif
+
 // KEY bug 11288: support for anonymous unions:
 // ---------------------------------------------
 // GNU3 based front-end:
@@ -1114,8 +1349,15 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
   PREG_NUM lhs_preg_num = 0;
   gs_code_t code = gs_tree_code (lhs);
   BOOL volt = FALSE;
+#ifdef TARG_SL
+  BOOL need_append = FALSE;
+#endif
+
   if (rhs_wn != NULL) {
     WGEN_Set_ST_Addr_Saved (rhs_wn);
+#ifdef TARG_SL
+    need_append = WN_Need_Append_Intrinsic(rhs_wn);
+#endif
   }
 
   TRACE_EXPAND_GS(lhs);
@@ -1386,6 +1628,19 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         wn = WN_Stid (desc, ST_ofst(st) + component_offset + lhs_preg_num, st,
 		      hi_ty_idx, rhs_wn, field_id);
         WGEN_Stmt_Append(wn, Get_Srcpos());
+#if defined(TARG_SL)
+        if (need_append) {
+          WN *ldid_wn;
+          if (! result_in_temp)
+            ldid_wn =  WN_CreateLdid(OPR_LDID, rtype, desc,
+                                     ST_ofst(st) + component_offset, st, hi_ty_idx,
+                                     field_id);
+          else
+            ldid_wn =  WN_Ldid(rtype, result_preg, result_preg_st, desc_ty_idx, 0);
+
+          WFE_Stmt_Append_Extend_Intrinsic(wn, ldid_wn, Get_Srcpos());
+        }
+#endif
       }
       if (need_result) {
         if (! result_in_temp)
@@ -1637,6 +1892,21 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
 			     Make_Pointer_Type (hi_ty_idx, FALSE),
 			     rhs_wn, addr_wn, field_id);
         WGEN_Stmt_Append(wn, Get_Srcpos());
+#if defined(TARG_SL)
+        if (need_append) {
+          WN *ldid_wn;
+          if (! result_in_temp)
+            ldid_wn = WN_CreateIload(OPR_ILOAD, rtype, desc, component_offset,
+                                     field_id != 0 ? hi_ty_idx : desc_ty_idx,
+                                     Make_Pointer_Type (hi_ty_idx, FALSE),
+                                     WN_COPY_Tree (addr_wn),
+                                     field_id);
+          else
+            ldid_wn = WN_Ldid(rtype, result_preg, result_preg_st, desc_ty_idx, 0);
+
+        WFE_Stmt_Append_Extend_Intrinsic(wn, ldid_wn, Get_Srcpos());
+      }
+#endif
         if (need_result) {
 	  if (! result_in_temp)
             wn = WN_CreateIload(OPR_ILOAD, rtype, desc, component_offset,
@@ -1805,6 +2075,20 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
 			     Make_Pointer_Type(elem_ty_idx, FALSE), rhs_wn,
 			     addr_wn, field_id);
         WGEN_Stmt_Append(wn, Get_Srcpos());
+#ifdef TARG_SL
+        if (need_append) {
+          WN *iload;
+          if (!result_in_temp)
+            iload = WN_CreateIload (OPR_ILOAD, rtype, desc, component_offset,
+                                      field_id != 0 ? elem_ty_idx : desc_ty_idx,
+                                      Make_Pointer_Type (elem_ty_idx, FALSE),
+                                      WN_COPY_Tree (addr_wn),
+                                      field_id);
+          else
+            iload = WN_Ldid(rtype, result_preg, result_preg_st, desc_ty_idx, 0);
+          WFE_Stmt_Append_Extend_Intrinsic(wn, iload, Get_Srcpos());
+        }
+#endif
         if (need_result) {
           if (! result_in_temp)
 	    wn = WN_CreateIload (OPR_ILOAD, rtype, desc, component_offset,
@@ -7219,7 +7503,197 @@ WGEN_Expand_Expr (gs_t exp,
                 break;
 #endif // FE_GNU_4_2_0
 #endif
-
+#ifdef TARG_SL
+              case GSBI_BUILT_IN_C3AADDA:
+                iopc = INTRN_C3AADDA;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3NEGA:
+                iopc = INTRN_C3NEGA;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3BITR:
+                iopc = INTRN_C3BITR;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3CS:
+                iopc = INTRN_C3CS;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3DADD:
+                iopc = INTRN_C3DADD;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3DMAC:
+                iopc = INTRN_C3DMAC;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3DMACA:
+                iopc = INTRN_C3DMAC_A;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3DMULA:
+                iopc = INTRN_C3DMULA;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3DMULAA:
+                iopc = INTRN_C3DMULA_A;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3DSHLLI:
+                iopc = INTRN_C3DSHLL_I;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3FFE:
+                iopc = INTRN_C3FFE;
+                break;
+              case GSBI_BUILT_IN_C3LD:
+                iopc = INTRN_C3LD;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3ST:
+                iopc = INTRN_C3ST;
+                break;
+              case GSBI_BUILT_IN_C3LEAD:
+                iopc = INTRN_C3LEAD;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MAC:
+                iopc = INTRN_C3MAC;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MACA:
+                iopc = INTRN_C3MAC_A;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MACAR:
+                iopc = INTRN_C3MAC_AR;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MACI:
+                iopc = INTRN_C3MAC_I;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MULA:
+                iopc = INTRN_C3MULA;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MULAA:
+                iopc = INTRN_C3MULA_A;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MULAAR:
+                iopc = INTRN_C3MULA_AR;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MULAI:
+                iopc = INTRN_C3MULA_I;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MULS:
+                iopc = INTRN_C3MULS;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3MULUS:
+                iopc = INTRN_C3MULUS;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3REVB:
+                iopc = INTRN_C3REVB;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3ROUND:
+                iopc = INTRN_C3ROUND;
+                intrinsic_op = TRUE;
+                break;
+               case GSBI_BUILT_IN_C3SAADDA:
+                iopc = INTRN_C3SAADD_A;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SAADDHA:
+                iopc = INTRN_C3SAADDH_A;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SAADDS:
+                iopc = INTRN_C3SAADDS;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SAADDSH:
+                iopc = INTRN_C3SAADDSH;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SADDA:
+                iopc = INTRN_C3SADDA;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SADDAA:
+                iopc = INTRN_C3SADDA_A;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SAMULHA:
+                iopc = INTRN_C3SAMULH_A;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SAMULSH:
+                iopc = INTRN_C3SAMULSH;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SHAV:
+                iopc = INTRN_C3SHAV;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SHLAFAI:
+                iopc = INTRN_C3SHLAFA_I;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SHLATAI:
+                iopc = INTRN_C3SHLATA_I;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SHLAI:
+                iopc = INTRN_C3SHLA_I;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3SUBC:
+                iopc = INTRN_C3SUBC;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_INIT_HI:
+                iopc = INTRN_INIT_HI;
+                break;
+              case GSBI_BUILT_IN_COPY_HI:
+                iopc = INTRN_COPY_HI;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_C3_INIT_ACC:
+                iopc = INTRN_C3_INIT_ACC;
+                break;
+              case GSBI_BUILT_IN_C3_SAVE_ACC:
+                iopc = INTRN_C3_SAVE_ACC;
+                break;
+              case GSBI_BUILT_IN_C3_INIT_DACC:
+                iopc = INTRN_C3_INIT_DACC;
+                break;
+              case GSBI_BUILT_IN_C3_SAVE_DACC:
+                iopc = INTRN_C3_SAVE_DACC;
+                break;
+              case GSBI_BUILT_IN_C3_INIT_ADDR:
+                iopc = INTRN_C3_INIT_ADDR;
+                break;
+              case GSBI_BUILT_IN_C3_SAVE_ADDR:
+                iopc = INTRN_C3_SAVE_ADDR;
+                break;
+              case GSBI_BUILT_IN_C3_MVFS:
+                iopc = INTRN_C3_MVFS;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_SET_ADDR:
+                iopc = INTRN_C3_SET_ADDR;
+                break;
+              case GSBI_BUILT_IN_SET_CIRCBUF:
+                iopc = INTRN_C3_SET_CIRCBUF;
+                break;
+#endif
 	      default:
 		DevWarn ("Encountered BUILT_IN: %d at line %d\n",
 			 gs_decl_function_code (func), lineno);
@@ -7277,6 +7751,9 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 	    wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, ret_mtype, MTYPE_V,
 				      iopc, num_args, ikids);
+#if defined(TARG_SL)
+            WN_Set_Deref_If_Needed(wn);
+#endif
 #ifdef KEY
 	    if (cvt_to != MTYPE_UNKNOWN) // bug 8251
               wn = WN_Cvt (ret_mtype, cvt_to, wn);
@@ -7528,6 +8005,9 @@ WGEN_Expand_Expr (gs_t exp,
 	}
 #endif // KEY
 
+#ifdef TARG_SL
+        WN_Set_Deref_If_Needed(call_wn);
+#endif
         if (ret_mtype == MTYPE_V
 #ifdef KEY
 	   // If the result is already put into the preferred symbol, then emit
@@ -7536,6 +8016,12 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 	   ) {
 	  WGEN_Stmt_Append (call_wn, Get_Srcpos());
+#ifdef TARG_SL
+          // c3_store, c3_fftst
+          if (WN_Need_Append_Intrinsic(call_wn)) {
+            WFE_Stmt_Append_Extend_Intrinsic(call_wn, WN_kid0(WN_kid0(call_wn)), Get_Srcpos());
+          }
+#endif
         }
 
 	else {

@@ -1491,138 +1491,6 @@ TN *Expand_Mul_Shift (WN *intrncall, TN *result, OPS *ops, BOOL highpart=FALSE) 
 TN *Build_C3_Intrinsic_OP( INTRINSIC id, WN* intrncall, OPS *ops, TN* result ) 
  {
       switch(id)  {
-   	 case INTRN_MUL_SHIFT_HI:
-   	 case INTRN_MUL_SHIFT_HI_U:
-             return Expand_Mul_Shift(intrncall, result, ops, TRUE);
-         case INTRN_MUL_SHIFT:
-         case INTRN_MUL_SHIFT_U:
-	      return Expand_Mul_Shift(intrncall, result, ops, FALSE);
-         case INTRN_C3_MAC:
-	      return Expand_C3_MAC(intrncall, result, ops);	 
-	 case INTRN_C3_MACN:
-	      return Expand_C3_MAC(intrncall, result, ops, FALSE);	 
-         case INTRN_C3_SAADDS:
-	      return Expand_C3_SAADDS(intrncall, result, ops);
-	 case INTRN_C3_SASUBS:
-	      return Expand_C3_SAADDS(intrncall, result, ops, FALSE);
-         case INTRN_C3_ROUND:
-             return Expand_C3_ROUND(intrncall, result, ops);
-         case INTRN_C3_MULA:
-             return Expand_C3_MULA(intrncall, result, ops);		
-	 case INTRN_C3_INIT_ACC:
-	      return Expand_C3_INIT_ACC(intrncall, result, ops);
-         case INTRN_C3_SAVE_ACC:
-             return Expand_C3_SAVE_ACC(intrncall, result, ops);	
-	 case INTRN_MPY_32_16:
-	     return Expand_MPY_32_16(intrncall, result, ops);
-         case INTRN_C3_MACD:
-	     return Expand_C3_MACD(intrncall, result, ops);
-	 case INTRN_C3_MVFS:
-	     return Expand_C3_MVFS(intrncall, result, ops);
-  	 case INTRN_C3_SAADDSH:
-	     return Expand_C3_SAADDSH(intrncall, result, ops);
-	 case INTRN_C3_SASUBSH:
-	     return Expand_C3_SAADDSH(intrncall, result, ops, FALSE);
-         case INTRN_C3_INIT_ADDR:
-	     return Expand_INIT_ADDR(intrncall, result, ops);
-         case INTRN_C3_SAVE_ADDR:
-             return Expand_SAVE_ADDR(intrncall, result, ops); 
-         case INTRN_C3_MAC_A:
-             return Expand_C3_MAC_A(intrncall, result, ops);	
-         case INTRN_C3_MACN_A:
-             return Expand_C3_MAC_A(intrncall, result, ops, FALSE);	
-         case INTRN_C3_INIT_DACC:
-             return Expand_C3_INIT_DACC(intrncall, result, ops);
-         case INTRN_C3_SAVE_DACC:
-             return Expand_C3_SAVE_DACC(intrncall, result, ops);
-         case INTRN_C3_DMAC_A:
-             return Expand_C3_DMAC_A(intrncall, result, ops);
-         case INTRN_C3_DMACN_A:
-             return Expand_C3_DMAC_A(intrncall, result, ops, FALSE);
-         case INTRN_C3_SAADDH_A:
-             return Expand_C3_SAADDH_A(intrncall, result, ops);
-         case INTRN_C3_SASUBH_A:
-             return Expand_C3_SAADDH_A(intrncall, result, ops, FALSE);
-         case INTRN_C3_SAMULSH:
-             return Expand_C3_SAMULSH(intrncall, result, ops);
-         case INTRN_C3_MULA_A:
-             return Expand_C3_MULA_A(intrncall, result, ops);
-         case INTRN_C3_SAMULH_A:
-             return Expand_C3_SAMULH_A(intrncall, result, ops);
-         case INTRN_C3_LEAD:
-             return Expand_C3_LEAD(intrncall, result, ops);
-         case INTRN_C3_PTR:
-             return Expand_C3_PTR(intrncall, result, ops);	 
-         case INTRN_C3_MAC_AR:
-             return Expand_C3_MAC_AR(intrncall, result, ops);	
-         case INTRN_C3_MACN_AR:
-             return Expand_C3_MAC_AR(intrncall, result, ops, FALSE);
-         case INTRN_C3_MULA_AR:
-             return Expand_C3_MULA_AR(intrncall, result, ops);
-         case INTRN_C3_INIT_PTR:
-             return Build_C3_INIT_PTR(intrncall, result, ops);
-         case INTRN_C3_TRBACK:
-             return Build_C3_TRBACK(intrncall, result, ops);
-         case INTRN_C3_VITERBI:
-             return Build_C3_VITERBI(intrncall, result, ops);
-         case INTRN_C3_DMULT_A:
-             return Expand_C3_DMULT_A(intrncall, result, ops);
-         case INTRN_C3_DMULTN_A:
-             return Expand_C3_DMULT_A(intrncall, result, ops, FALSE);
-         case INTRN_C3_DMULT:
-             return Expand_C3_DMULA(intrncall, result, ops);
-         case INTRN_C3_DMULTN:
-             return Expand_C3_DMULA(intrncall, result, ops, FALSE);
-         case INTRN_SET_CIRCBUF:
-             return Expand_Set_CircBuf(intrncall, result, ops);
-         case INTRN_C3_DADD:
-             return Expand_C3_DADD(intrncall, result, ops);
-         case INTRN_C3_DSUB:
-             return Expand_C3_DADD(intrncall, result, ops, FALSE);
-         case INTRN_C3_FFT:
-             return Build_C3_FFT(intrncall, result, ops);
-         case INTRN_C3_FFTLD:
-             return Expand_C3_FFTLD(intrncall, result, ops);
-         case INTRN_C3_FFTST:
-             return Expand_C3_FFTST(intrncall, result, ops);
-         case INTRN_DEPOSIT:
-             return Expand_Deposit(intrncall, result,ops);
-         case INTRN_EXTRACT:
-             return Expand_Extract(intrncall, result, ops);
-	 case INTRN_C3_LOAD:
-             return Expand_C3_LD(intrncall, result, ops);
-         case INTRN_C3_STORE:
-	     return Expand_C3_ST(intrncall, result, ops);
-	 case INTRN_C3_DMAC:
-	     return Expand_C3_DMAC(intrncall, result, ops);
-	 case INTRN_C3_DMACN:
-	     return Expand_C3_DMAC(intrncall, result, ops, FALSE);
-         case INTRN_C3_BITR:
-             return Expand_C3_BITR(intrncall, result, ops);
-         case INTRN_C3_REVB:
-             return Expand_C3_REVB(intrncall, result, ops);
-         case INTRN_C3_DSHL_I:
-             return Expand_C3_DSHIFT_I(intrncall, result, ops); 
-         case INTRN_C3_DSHR_I:
-             return Expand_C3_DSHIFT_I(intrncall, result, ops, FALSE);
-         case INTRN_C3_MAC_I:
-             return Expand_C3_MAC_I(intrncall, result, ops);
-         case INTRN_C3_MACN_I:
-             return Expand_C3_MAC_I(intrncall, result, ops, FALSE);
-         case INTRN_C3_MULA_I:
-             return Expand_C3_MULA_I(intrncall, result, ops);
-         case INTRN_C3_SAADD_A:
-             return Expand_C3_SAADD_A(intrncall, result, ops);
-         case INTRN_C3_SASUB_A:
-             return Expand_C3_SAADD_A(intrncall, result, ops, FALSE);
-         case INTRN_C3_SADDHA:
-             return Expand_C3_SADDHA(intrncall, result, ops);
-         case INTRN_C3_SAADDHA_A:
-             return Expand_C3_SADDHA_A(intrncall, result, ops);
-         case INTRN_C3_COPY_ADDR:
-             return Expand_COPY_ADDR(intrncall, result, ops);
-         case INTRN_C3_SET_ADDR:
-             return Expand_SET_ADDRSIZE(intrncall, result, ops);
          case INTRN_CVT64_HIGH:
          case INTRN_CVT64_LOW:
              return Expand_Float64_Const(intrncall, result, id == INTRN_CVT64_HIGH, ops); 
@@ -1630,93 +1498,109 @@ TN *Build_C3_Intrinsic_OP( INTRINSIC id, WN* intrncall, OPS *ops, TN* result )
          case INTRN_LONGLONG_CVT64_LOW:
              return Expand_LONGLONG_Const(intrncall, result, id == INTRN_LONGLONG_CVT64_HIGH, ops); 
          case INTRN_CVT32:
-             return Expand_Float32_Const(intrncall, result, ops);            
-         case INTRN_EXTRACTU: 
-             return Expand_Unsigned_Extract(intrncall, result, ops);
-         // new C3                                                 
-         case INTRN_C3AADDA:                                                          
-             return Expand_C3_aadda(intrncall, result, ops);                          
-         case INTRN_C3BITR:                                                           
-             return Expand_C3_bitr(intrncall, result, ops);                           
-         case INTRN_C3CS:                                                             
-             return Expand_C3_cs(intrncall, result, ops);                             
-         case INTRN_C3DADD:                                                           
-             return Expand_C3_Mode0(TOP_C3_dadd, intrncall, result, 0, ops, TRUE);    
-         case INTRN_C3SAADDS:                                                         
-             return Expand_C3_Mode0(TOP_C3_saadds, intrncall, result, 1, ops, TRUE);  
-         case INTRN_C3SAADDSH:                                                        
-             return Expand_C3_Mode0(TOP_C3_saaddsh, intrncall, result, 1, ops, TRUE); 
-         case INTRN_C3SAMULSH:                                                        
-             return Expand_C3_Mode0(TOP_C3_samulsh, intrncall, result, 1, ops, FALSE);
-         case INTRN_C3FFE:                                                            
-             return Expand_C3_FFE(intrncall, result, ops);                            
-         case INTRN_C3DMAC:                                                           
-             return Expand_C3_Mode2(TOP_C3_dmac, intrncall, result, 3, ops);          
-         case INTRN_C3DMULA:                                                          
-             return Expand_C3_Mode2(TOP_C3_dmula, intrncall, result, 2, ops);         
-         case INTRN_C3MAC:                                                            
-             return Expand_C3_Mode1(TOP_C3_mac, intrncall, result, 1, ops);           
-         case INTRN_C3MULA:                                                           
-             return Expand_C3_Mode1(TOP_C3_mula, intrncall, result, 0, ops);          
-         case INTRN_C3MAC_A:                                                          
-             return Expand_C3_Mode3(TOP_C3_mac_a, intrncall, result, 1, ops, TRUE);   
-         case INTRN_C3MULA_A:                                                         
-             return Expand_C3_Mode3(TOP_C3_mula_a, intrncall, result, 0, ops, FALSE); 
-         case INTRN_C3MAC_AR:                                                         
-             return Expand_C3_Mode4(TOP_C3_mac_ar, intrncall, result, 1, ops, TRUE);  
-         case INTRN_C3MULA_AR:                                                        
-             return Expand_C3_Mode4(TOP_C3_mula_ar, intrncall, result, 0, ops, FALSE);
-         case INTRN_C3MAC_I:                                                           
-             return Expand_C3_Mode5(TOP_C3_mac_i, intrncall, result, 2, ops, TRUE);    
-         case INTRN_C3SADDA:                                                           
-             return Expand_C3_Mode5(TOP_C3_sadda, intrncall, result, 4, ops, FALSE);   
-         case INTRN_C3SHAV:                                                            
-             return Expand_C3_Mode5(TOP_C3_shav, intrncall, result, 1, ops, FALSE);    
-         case INTRN_C3MULA_I:                                                          
-             return Expand_C3_Mode5(TOP_C3_mula_i, intrncall, result, 1, ops, FALSE);  
-         case INTRN_C3SHLATA_I:                                                        
-             return Expand_C3_Mode5(TOP_C3_shlata_i, intrncall, result, 2, ops, TRUE); 
-         case INTRN_C3ROUND:                                                           
-             return Expand_C3_Mode6(TOP_C3_round, intrncall, result, 2, ops, FALSE);   
-         case INTRN_C3SHLA_I:                                                          
-             return Expand_C3_Mode6(TOP_C3_shla_i, intrncall, result, 2, ops, TRUE);   
-         case INTRN_C3SAADD_A:                                                         
-             return Expand_C3_Mode7(TOP_C3_saadd_a, intrncall, result, 0, ops, TRUE);  
-         case INTRN_C3SAADDH_A:                                                        
-             return Expand_C3_Mode7(TOP_C3_saaddh_a, intrncall, result, 0, ops, TRUE); 
-         case INTRN_C3SAMULH_A:                                                        
-             return Expand_C3_Mode7(TOP_C3_samulh_a, intrncall, result, 0, ops, FALSE);
-         case INTRN_C3DMAC_A:                                                          
-             return Expand_C3_Mode8(TOP_C3_dmac_a, intrncall, result, 2, ops, TRUE);   
-         case INTRN_C3DMULA_A:                                                         
-             return Expand_C3_Mode8(TOP_C3_dmula_a, intrncall, result, 1, ops, TRUE);  
-         case INTRN_C3DSHLL_I:                                                         
-             return Expand_C3_Mode9(TOP_C3_dshll_i, intrncall, result, 2, ops, TRUE);  
-         case INTRN_C3REVB:                                                            
-             return Expand_C3_Mode9(TOP_C3_revb, intrncall, result, 1, ops, FALSE);    
-         case INTRN_C3LD:                                                              
-             return Expand_C3_Mode10(TOP_C3_ld, intrncall, result, 0, ops, TRUE);      
-         case INTRN_C3ST:                                                              
-             return Expand_C3_Mode11(TOP_C3_st, intrncall, result, 0, ops, TRUE);      
-         case INTRN_C3LEAD:                                                            
-             return Expand_C3_lead(intrncall, result, ops);                            
-         case INTRN_C3SHLAFA_I:                                                        
-             return Expand_C3_shlafa_i(intrncall, result, ops);   
-         case INTRN_C3SADDA_A:                                                               
-             return Expand_C3_saadda_a(intrncall, result, ops);         
-         case INTRN_C3SUBC:                                             
-             return Expand_C3_subc(intrncall, result, ops);             
-         case INTRN_C3NEGA:                                             
-             return Expand_C3_nega(intrncall, result, ops);             
-         case INTRN_C3MULS:                                             
-             return Expand_C3_mul(TOP_c3_muls, intrncall, result, ops); 
-         case INTRN_C3MULUS:                                            
-             return Expand_C3_mul(TOP_C3_mulus, intrncall, result, ops);
-         case INTRN_INIT_HI:                                            
-             return Expand_Init_HI(intrncall, result, ops);             
-         case INTRN_COPY_HI:                                            
-             return Expand_Copy_HI(intrncall, result, ops);              
-         // end
+             return Expand_Float32_Const(intrncall, result, ops);
+         case INTRN_C3_INIT_ACC:
+              return Expand_C3_INIT_ACC(intrncall, result, ops);
+         case INTRN_C3_SAVE_ACC:
+             return Expand_C3_SAVE_ACC(intrncall, result, ops);
+         case INTRN_C3_MVFS:
+             return Expand_C3_MVFS(intrncall, result, ops);
+         case INTRN_C3_INIT_ADDR:
+             return Expand_INIT_ADDR(intrncall, result, ops);
+         case INTRN_C3_SAVE_ADDR:
+             return Expand_SAVE_ADDR(intrncall, result, ops);
+         case INTRN_C3_INIT_DACC:
+             return Expand_C3_INIT_DACC(intrncall, result, ops);
+         case INTRN_C3_SAVE_DACC:
+             return Expand_C3_SAVE_DACC(intrncall, result, ops);
+         case INTRN_C3_PTR:
+             return Expand_C3_PTR(intrncall, result, ops);
+         case INTRN_C3_SET_ADDR:
+             return Expand_SET_ADDRSIZE(intrncall, result, ops);
+         case INTRN_C3_SET_CIRCBUF:
+             return Expand_Set_CircBuf(intrncall, result, ops);
+         case INTRN_C3AADDA:
+             return Expand_C3_aadda(intrncall, result, ops);
+         case INTRN_C3BITR:
+             return Expand_C3_bitr(intrncall, result, ops);
+         case INTRN_C3CS:
+             return Expand_C3_cs(intrncall, result, ops);
+         case INTRN_C3DADD:
+             return Expand_C3_Mode0(TOP_c3_dadd, intrncall, result, 0, ops, TRUE);
+         case INTRN_C3SAADDS:
+             return Expand_C3_Mode0(TOP_c3_saadds, intrncall, result, 1, ops, TRUE);
+         case INTRN_C3SAADDSH:
+             return Expand_C3_Mode0(TOP_c3_saaddsh, intrncall, result, 1, ops, TRUE);
+         case INTRN_C3SAMULSH:
+             return Expand_C3_Mode0(TOP_c3_samulsh, intrncall, result, 1, ops, FALSE);
+         case INTRN_C3FFE:
+             return Expand_C3_FFE(intrncall, result, ops);
+         case INTRN_C3DMAC:
+             return Expand_C3_Mode2(TOP_c3_dmac, intrncall, result, 3, ops);
+         case INTRN_C3DMULA:
+             return Expand_C3_Mode2(TOP_c3_dmula, intrncall, result, 2, ops);
+         case INTRN_C3MAC:
+             return Expand_C3_Mode1(TOP_c3_mac, intrncall, result, 1, ops);
+         case INTRN_C3MULA:
+             return Expand_C3_Mode1(TOP_c3_mula, intrncall, result, 0, ops);
+         case INTRN_C3MAC_A:
+             return Expand_C3_Mode3(TOP_c3_mac_a, intrncall, result, 1, ops, TRUE);
+         case INTRN_C3MULA_A:
+             return Expand_C3_Mode3(TOP_c3_mula_a, intrncall, result, 0, ops, FALSE);
+         case INTRN_C3MAC_AR:
+             return Expand_C3_Mode4(TOP_c3_mac_ar, intrncall, result, 1, ops, TRUE);
+         case INTRN_C3MULA_AR:
+             return Expand_C3_Mode4(TOP_c3_mula_ar, intrncall, result, 0, ops, FALSE);
+         case INTRN_C3MAC_I:
+             return Expand_C3_Mode5(TOP_c3_mac_i, intrncall, result, 2, ops, TRUE);
+         case INTRN_C3SADDA:
+             return Expand_C3_Mode5(TOP_c3_sadda, intrncall, result, 4, ops, FALSE);
+         case INTRN_C3SHAV:
+             return Expand_C3_Mode5(TOP_c3_shav, intrncall, result, 1, ops, FALSE);
+         case INTRN_C3MULA_I:
+             return Expand_C3_Mode5(TOP_c3_mula_i, intrncall, result, 1, ops, FALSE);
+         case INTRN_C3SHLATA_I:
+             return Expand_C3_Mode5(TOP_c3_shlata_i, intrncall, result, 2, ops, TRUE);
+         case INTRN_C3ROUND:
+             return Expand_C3_Mode6(TOP_c3_round, intrncall, result, 2, ops, FALSE);
+         case INTRN_C3SHLA_I:
+             return Expand_C3_Mode6(TOP_c3_shla_i, intrncall, result, 2, ops, TRUE);
+         case INTRN_C3SAADD_A:
+             return Expand_C3_Mode7(TOP_c3_saadd_a, intrncall, result, 0, ops, TRUE);
+         case INTRN_C3SAADDH_A:
+             return Expand_C3_Mode7(TOP_c3_saaddh_a, intrncall, result, 0, ops, TRUE);
+         case INTRN_C3SAMULH_A:
+             return Expand_C3_Mode7(TOP_c3_samulh_a, intrncall, result, 0, ops, FALSE);
+	 case INTRN_C3DMAC_A:
+             return Expand_C3_Mode8(TOP_c3_dmac_a, intrncall, result, 2, ops, TRUE);
+         case INTRN_C3DMULA_A:
+             return Expand_C3_Mode8(TOP_c3_dmula_a, intrncall, result, 1, ops, TRUE);
+         case INTRN_C3DSHLL_I:
+             return Expand_C3_Mode9(TOP_c3_dshll_i, intrncall, result, 2, ops, TRUE);
+         case INTRN_C3REVB:
+             return Expand_C3_Mode9(TOP_c3_revb, intrncall, result, 1, ops, FALSE);
+         case INTRN_C3LD:
+             return Expand_C3_Mode10(TOP_c3_ld, intrncall, result, 0, ops, TRUE);
+         case INTRN_C3ST:
+             return Expand_C3_Mode11(TOP_c3_st, intrncall, result, 0, ops, TRUE);
+         case INTRN_C3LEAD:
+             return Expand_C3_lead(intrncall, result, ops);
+         case INTRN_C3SHLAFA_I:
+             return Expand_C3_shlafa_i(intrncall, result, ops);
+         case INTRN_C3SADDA_A:
+             return Expand_C3_saadda_a(intrncall, result, ops);
+         case INTRN_C3SUBC:
+             return Expand_C3_subc(intrncall, result, ops);
+         case INTRN_C3NEGA:
+             return Expand_C3_nega(intrncall, result, ops);
+         case INTRN_C3MULS:
+             return Expand_C3_mul(TOP_c3_muls, intrncall, result, ops);
+         case INTRN_C3MULUS:
+             return Expand_C3_mul(TOP_c3_mulus, intrncall, result, ops);
+         case INTRN_INIT_HI:
+             return Expand_Init_HI(intrncall, result, ops);
+         case INTRN_COPY_HI:
+             return Expand_Copy_HI(intrncall, result, ops);
          default:
 	     Is_True(0, ("Build_C3_Intrinsic_OP:: no such c3 intrinsic function"));
 	}
@@ -2208,9 +2092,10 @@ extern void Exp_2inst_MC_Zero (
     default:
       FmtAssert(FALSE, ("Unknown opcode %s", mc_op));
   }
+  TN *flag_tn = Gen_Literal_TN(unsignedflag, 4);
+  Build_OP(mc_op, dest_tn, cond_tn, true_tn, flag_tn, dest_tn, ops);
+  Build_OP(op2, dest_tn, cond_tn, false_tn, flag_tn, dest_tn, ops);
 
-  Build_MC_OP(mc_op, dest_tn, cond_tn, true_tn, unsignedflag, ops, OP_ALWAYS_UNC_DEF);
-  Build_MC_OP(op2, dest_tn, cond_tn, false_tn, unsignedflag, ops, OP_ALWAYS_UNC_DEF);	 
   return;
 }
 
@@ -2310,7 +2195,7 @@ static TOP Get_MC_ZERO_TOP(OPERATOR opr, BOOL result_eq_true = TRUE)
       break;
     case OPR_NE:
       if (result_eq_true)	
-        mcz = TOP_mc_z_gt;
+        mcz = TOP_mc_z_eq;
       else
         mcz = TOP_mc_z_ne;
       break;
@@ -3636,14 +3521,14 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops)
     else if (src_rc == ISA_REGISTER_CLASS_addr) {
 	 if (src_rc == tgt_rc) {
         TN *tmp_tn = Gen_Register_TN (ISA_REGISTER_CLASS_integer, 4);
-          Build_OP(TOP_c3_mvfadd, tmp_tn, src_tn, ops);
-          Build_OP(TOP_c3_mvtadd, tgt_tn, tmp_tn, ops);
+          Build_OP(TOP_c3_mvfaddr, tmp_tn, src_tn, ops);
+          Build_OP(TOP_c3_mvtaddr, tgt_tn, tmp_tn, ops);
       } else if (tgt_rc == ISA_REGISTER_CLASS_integer) {
-          Build_OP(TOP_c3_mvfadd, tgt_tn, src_tn, ops);
+          Build_OP(TOP_c3_mvfaddr, tgt_tn, src_tn, ops);
       }	
     } else if (tgt_rc == ISA_REGISTER_CLASS_addr) {
         Is_True(src_rc == ISA_REGISTER_CLASS_integer, ("not supported reg class save"));
-        Build_OP(TOP_c3_mvtadd, tgt_tn, src_tn, ops); 
+        Build_OP(TOP_c3_mvtaddr, tgt_tn, src_tn, ops); 
     }	
 #endif
 

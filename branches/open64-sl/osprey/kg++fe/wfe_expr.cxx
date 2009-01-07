@@ -390,30 +390,8 @@ typedef struct intrinsicop_attr_extended {
   INTRINSIC aux_id;   // extend intrinsic opr
 } INTRN_ATTR_EXTEND; 
 
-#define INTRN_EATTR_LAST 48	
+#define INTRN_EATTR_LAST 27	
 static INTRN_ATTR_EXTEND intrn_eattr[INTRN_EATTR_LAST] = {
-  INTRN_C3_MAC_A,  TRUE,   2,  P2_P4, INTRN_C3_PTR,
-  INTRN_C3_MACN_A, TRUE,  2,  P2_P4,  INTRN_C3_PTR,	
-  INTRN_C3_MAC_AR,  TRUE, 1,  P3,       INTRN_C3_PTR,
-  INTRN_C3_MACN_AR, TRUE, 1, P3,       INTRN_C3_PTR,
-  INTRN_C3_MULA_AR,  TRUE, 1, P3,       INTRN_C3_PTR,
-  INTRN_C3_DMAC_A, TRUE,  2,  P2_P4,   INTRN_C3_PTR,
-  INTRN_C3_DMACN_A, TRUE,  2,  P2_P4,   INTRN_C3_PTR,
-  INTRN_C3_SAADDH_A, TRUE, 2, P0_P2 , INTRN_C3_PTR,
-  INTRN_C3_SASUBH_A,  TRUE, 2, P0_P2,  INTRN_C3_PTR,
-  INTRN_C3_MULA_A,      TRUE,  2, P2_P4, INTRN_C3_PTR,
-  INTRN_C3_SAMULH_A,   TRUE, 2, P0_P2, INTRN_C3_PTR,
-  INTRN_C3_DMULT_A,      TRUE,  2, P2_P4, INTRN_C3_PTR,
-  INTRN_C3_DMULTN_A,      TRUE,  2, P2_P4, INTRN_C3_PTR,
-  INTRN_C3_SAADD_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
-  INTRN_C3_SAADDHA_A, TRUE, 1, P2, INTRN_C3_PTR,
-  INTRN_C3_SASUB_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
-  INTRN_C3_LOAD, TRUE, 1, P0, INTRN_C3_PTR,
-  INTRN_C3_STORE, TRUE, 1, P1, INTRN_C3_PTR,
-  INTRN_C3_FFTLD, TRUE, 1, P0, INTRN_C3_PTR,
-  INTRN_C3_FFTST, TRUE, 1, P1, INTRN_C3_PTR,
-  INTRN_SET_CIRCBUF, FALSE, 2, P3_P4, INTRN_C3_PTR,
-  INTRN_RESET_CIRCBUF, FALSE, 2, P3_P4, INTRN_C3_PTR,
   INTRN_C2_LD_V,  FALSE, 1, P1,INTRN_C3_PTR,
   INTRN_C2_LD_G,    FALSE, 1, P0,INTRN_C3_PTR,
   INTRN_C2_LD_V2G,   FALSE, 1, P0,INTRN_C3_PTR,
@@ -441,6 +419,7 @@ static INTRN_ATTR_EXTEND intrn_eattr[INTRN_EATTR_LAST] = {
   INTRN_C3SAADDH_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
   INTRN_C3SADDA_A, TRUE, 1, P2, INTRN_C3_PTR,
   INTRN_C3SAMULH_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
+  INTRN_C3_SET_CIRCBUF, FALSE, 2, P3_P4, INTRN_C3_PTR,
 };
 
 static BOOL intrinsic_op_need_extend (INTRINSIC id) {
@@ -6755,264 +6734,6 @@ WFE_Expand_Expr (tree exp,
 	      iopc = INTRN_SBUF_OFFSET;
 	      intrinsic_op = TRUE;
 	      break;
-            case BUILT_IN_MUL_SHIFT_HI:
-              iopc = INTRN_MUL_SHIFT_HI;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_MUL_SHIFT_HI_UNSIGNED:
-              iopc = INTRN_MUL_SHIFT_HI_U;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_MUL_SHIFT:
-              iopc = INTRN_MUL_SHIFT;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_MUL_SHIFT_UNSIGNED:
-              iopc = INTRN_MUL_SHIFT_U;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_LEAD:
-              iopc = INTRN_C3_LEAD;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MAC:
-              iopc = INTRN_C3_MAC;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MACN:
-              iopc = INTRN_C3_MACN;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_ROUND:
-              iopc = INTRN_C3_ROUND;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SAADDS:
-              iopc = INTRN_C3_SAADDS;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SASUBS:
-              iopc = INTRN_C3_SASUBS;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MULA:
-              iopc = INTRN_C3_MULA;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_INIT_ACC:
-              iopc = INTRN_C3_INIT_ACC;
-              break;
-            case BUILT_IN_C3_SAVE_ACC:
-              iopc = INTRN_C3_SAVE_ACC;
-              break;
-            case BUILT_IN_MPY_32_16:
-              iopc = INTRN_MPY_32_16;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MACD:
-              iopc = INTRN_C3_MACD;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SAADDSH:
-              iopc = INTRN_C3_SAADDSH;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SASUBSH:
-              iopc = INTRN_C3_SASUBSH;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MVFS:
-              iopc = INTRN_C3_MVFS;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_INIT_ADDR:
-              iopc = INTRN_C3_INIT_ADDR;
-              break;
-            case BUILT_IN_C3_SAVE_ADDR:
-              iopc = INTRN_C3_SAVE_ADDR;
-              break;
-            case BUILT_IN_C3_MAC_A:
-                iopc = INTRN_C3_MAC_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_MACN_A:
-                iopc = INTRN_C3_MACN_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DMAC_A:
-                iopc = INTRN_C3_DMAC_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DMACN_A:
-                iopc = INTRN_C3_DMACN_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_INIT_DACC:
-                iopc = INTRN_C3_INIT_DACC;
-                break;
-            case BUILT_IN_C3_SAVE_DACC:
-                iopc = INTRN_C3_SAVE_DACC;
-                break;
-            case BUILT_IN_C3_SAADDH_A:
-                iopc = INTRN_C3_SAADDH_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_SASUBH_A:
-                iopc = INTRN_C3_SASUBH_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_SAMULSH:
-                iopc = INTRN_C3_SAMULSH;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_MULA_A:
-                iopc = INTRN_C3_MULA_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_SAMULH_A:
-                iopc = INTRN_C3_SAMULH_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_PTR:
-                iopc = INTRN_C3_PTR;
-                intrinsic_op =  TRUE;
-                break;
-            case BUILT_IN_C3_MAC_AR:
-                iopc = INTRN_C3_MAC_AR;
-                intrinsic_op =  TRUE;
-                break;
-            case BUILT_IN_C3_MACN_AR:
-                iopc = INTRN_C3_MACN_AR;
-                intrinsic_op =  TRUE;
-                break;
-            case BUILT_IN_C3_MULA_AR:
-                iopc = INTRN_C3_MULA_AR;
-                intrinsic_op =  TRUE;
-                break;
-            case BUILT_IN_C3_INIT_PTR:
-                iopc = INTRN_C3_INIT_PTR;
-                break;
-            case BUILT_IN_C3_TRBACK:
-                iopc = INTRN_C3_TRBACK;
-                break;
-            case BUILT_IN_C3_VITERBI:
-                iopc = INTRN_C3_VITERBI;
-                break;
-            case BUILT_IN_C3_DMULT:
-                iopc = INTRN_C3_DMULT;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DMULT_A:
-                iopc = INTRN_C3_DMULT_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DMULTN:
-                iopc = INTRN_C3_DMULTN;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DMULTN_A:
-                iopc = INTRN_C3_DMULTN_A;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_SET_CIRCBUF:
-                iopc = INTRN_SET_CIRCBUF;
-                break;
-            case BUILT_IN_RESET_CIRCBUF:
-                iopc = INTRN_SET_CIRCBUF;
-                break;
-            case BUILT_IN_C3_DADD:
-                iopc = INTRN_C3_DADD;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DSUB:
-                iopc = INTRN_C3_DSUB;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_FFT:
-                iopc = INTRN_C3_FFT;
-                break;
-            case BUILT_IN_C3_FFTLD:
-                iopc = INTRN_C3_FFTLD;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_FFTST:
-                iopc = INTRN_C3_FFTST;
-                break;
-            case BUILT_IN_DEPOSIT:
-                iopc = INTRN_DEPOSIT;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_EXTRACT:
-                iopc = INTRN_EXTRACT;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_EXTRACT_UNSIGNED:
-                iopc = INTRN_EXTRACTU;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_BITR:
-                iopc = INTRN_C3_BITR;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DMAC:
-                iopc = INTRN_C3_DMAC;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DMACN:
-                iopc = INTRN_C3_DMACN;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_LOAD:
-                iopc = INTRN_C3_LOAD;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_STORE:
-                iopc = INTRN_C3_STORE;
-                break;
-            case BUILT_IN_C3_REVB:
-                iopc = INTRN_C3_REVB;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DSHL_I:
-                iopc = INTRN_C3_DSHL_I;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_DSHR_I:
-                iopc = INTRN_C3_DSHR_I;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_MAC_I:
-                iopc = INTRN_C3_MAC_I;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_MACN_I:
-                iopc = INTRN_C3_MACN_I;
-                intrinsic_op = TRUE;
-                break;
-            case BUILT_IN_C3_MULA_I:
-                iopc = INTRN_C3_MULA_I;
-                intrinsic_op = TRUE;
-                break;
-           case BUILT_IN_C3_SAADD_A:
-                iopc = INTRN_C3_SAADD_A;
-                intrinsic_op = TRUE;
-                break;
-           case BUILT_IN_C3_SADDHA:
-                iopc = INTRN_C3_SADDHA;
-                intrinsic_op = TRUE;
-                break;
-           case BUILT_IN_C3_SAADDHA_A:
-                iopc = INTRN_C3_SAADDHA_A;
-                intrinsic_op = TRUE;
-                break;
-           case BUILT_IN_C3_SASUB_A:
-                iopc = INTRN_C3_SASUB_A;
-                intrinsic_op = TRUE;
-                break;
-           case BUILT_IN_COPY_ADDR:
-                iopc = INTRN_C3_COPY_ADDR;
-                intrinsic_op = TRUE;
-                break;
            case  BUILT_IN_CVT64_HIGH:
                 iopc = INTRN_CVT64_HIGH;
                 intrinsic_op = TRUE;
@@ -7033,172 +6754,195 @@ WFE_Expand_Expr (tree exp,
                 iopc = INTRN_LONGLONG_CVT64_LOW;
                 intrinsic_op = TRUE;
                 break;
-            case BUILT_IN_SET_ADDR:
-              iopc = INTRN_C3_SET_ADDR;
-              break;
-            // new C3
-            case BUILT_IN_C3AADDA:
-              iopc = INTRN_C3AADDA;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3BITR:
-              iopc = INTRN_C3BITR;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3CS:
-              iopc = INTRN_C3CS;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3DADD:
-              iopc = INTRN_C3DADD;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3DMAC:
-              iopc = INTRN_C3DMAC;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3DMACA:
-              iopc = INTRN_C3DMAC_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3DMULA:
-              iopc = INTRN_C3DMULA;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3DMULAA:
-              iopc = INTRN_C3DMULA_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3DSHLLI:
-              iopc = INTRN_C3DSHLL_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3FFE:
-              iopc = INTRN_C3FFE;
-            break;
-            case BUILT_IN_C3LD:
-              iopc = INTRN_C3LD;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3ST:
-              iopc = INTRN_C3ST;
-              break;
-            case BUILT_IN_C3LEAD:
-              iopc = INTRN_C3LEAD;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MAC:
-              iopc = INTRN_C3MAC;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MACA:
-              iopc = INTRN_C3MAC_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MACAR:
-              iopc = INTRN_C3MAC_AR;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MACI:
-              iopc = INTRN_C3MAC_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MULA:
-              iopc = INTRN_C3MULA;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MULAA:
-              iopc = INTRN_C3MULA_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MULAAR:
-              iopc = INTRN_C3MULA_AR;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MULAI:
-              iopc = INTRN_C3MULA_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MULS:
-              iopc = INTRN_C3MULS;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3MULUS:
-              iopc = INTRN_C3MULUS;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3REVB:
-              iopc = INTRN_C3REVB;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3ROUND:
-              iopc = INTRN_C3ROUND;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SAADDA:
-              iopc = INTRN_C3SAADD_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SAADDHA:
-              iopc = INTRN_C3SAADDH_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SAADDS:
-              iopc = INTRN_C3SAADDS;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SAADDSH:
-              iopc = INTRN_C3SAADDSH;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SADDA:
-              iopc = INTRN_C3SADDA;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SADDAA:
-              iopc = INTRN_C3SADDA_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SAMULHA:
-              iopc = INTRN_C3SAMULH_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SAMULSH:
-              iopc = INTRN_C3SAMULSH;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SHAV:
-              iopc = INTRN_C3SHAV;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SHLAFAI:
-              iopc = INTRN_C3SHLAFA_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SHLATAI:
-              iopc = INTRN_C3SHLATA_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SHLAI:
-              iopc = INTRN_C3SHLA_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3SUBC:
-              iopc = INTRN_C3SUBC;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3NEGA:
-              iopc = INTRN_C3NEGA;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_INIT_HI:
-              iopc = INTRN_INIT_HI;
-              break;
-            case BUILT_IN_COPY_HI:
-              iopc = INTRN_COPY_HI;
-              intrinsic_op = TRUE;
-              break;
-            // end
+           case BUILT_IN_C3_INIT_ACC:
+                iopc = INTRN_C3_INIT_ACC;
+                break;
+           case BUILT_IN_C3_SAVE_ACC:
+                iopc = INTRN_C3_SAVE_ACC;
+                break;
+           case BUILT_IN_C3_INIT_ADDR:
+                iopc = INTRN_C3_INIT_ADDR;
+                break;
+           case BUILT_IN_C3_SAVE_ADDR:
+                iopc = INTRN_C3_SAVE_ADDR;
+                break;
+           case BUILT_IN_C3_INIT_DACC:
+                iopc = INTRN_C3_INIT_DACC;
+                break;
+           case BUILT_IN_C3_SAVE_DACC:
+                iopc = INTRN_C3_SAVE_DACC;
+                break;
+           case BUILT_IN_C3_MVFS:
+                iopc = INTRN_C3_MVFS;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_SET_ADDR:
+                iopc = INTRN_C3_SET_ADDR;
+                break;
+           case BUILT_IN_SET_CIRCBUF:
+                iopc = INTRN_C3_SET_CIRCBUF;
+                break;
+           case BUILT_IN_C3AADDA:
+                iopc = INTRN_C3AADDA;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3BITR:
+                iopc = INTRN_C3BITR;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3CS:
+                iopc = INTRN_C3CS;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3DADD:
+                iopc = INTRN_C3DADD;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3DMAC:
+                iopc = INTRN_C3DMAC;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3DMACA:
+                iopc = INTRN_C3DMAC_A;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3DMULA:
+                iopc = INTRN_C3DMULA;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3DMULAA:
+                iopc = INTRN_C3DMULA_A;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3DSHLLI:
+                iopc = INTRN_C3DSHLL_I;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3FFE:
+                iopc = INTRN_C3FFE;
+                break;
+           case BUILT_IN_C3LD:
+                iopc = INTRN_C3LD;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3ST:
+                iopc = INTRN_C3ST;
+                break;
+           case BUILT_IN_C3LEAD:
+                iopc = INTRN_C3LEAD;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MAC:
+                iopc = INTRN_C3MAC;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MACA:
+                iopc = INTRN_C3MAC_A;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MACAR:
+                iopc = INTRN_C3MAC_AR;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MACI:
+                iopc = INTRN_C3MAC_I;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MULA:
+                iopc = INTRN_C3MULA;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MULAA:
+                iopc = INTRN_C3MULA_A;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MULAAR:
+                iopc = INTRN_C3MULA_AR;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MULAI:
+                iopc = INTRN_C3MULA_I;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MULS:
+                iopc = INTRN_C3MULS;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3MULUS:
+                iopc = INTRN_C3MULUS;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3REVB:
+                iopc = INTRN_C3REVB;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3ROUND:
+                iopc = INTRN_C3ROUND;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SAADDA:
+                iopc = INTRN_C3SAADD_A;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SAADDHA:
+                iopc = INTRN_C3SAADDH_A;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SAADDS:
+                iopc = INTRN_C3SAADDS;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SAADDSH:
+                iopc = INTRN_C3SAADDSH;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SADDA:
+                iopc = INTRN_C3SADDA;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SADDAA:
+                iopc = INTRN_C3SADDA_A;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SAMULHA:
+                iopc = INTRN_C3SAMULH_A;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SAMULSH:
+                iopc = INTRN_C3SAMULSH;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SHAV:
+                iopc = INTRN_C3SHAV;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SHLAFAI:
+                iopc = INTRN_C3SHLAFA_I;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SHLATAI:
+                iopc = INTRN_C3SHLATA_I;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SHLAI:
+                iopc = INTRN_C3SHLA_I;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3SUBC:
+                iopc = INTRN_C3SUBC;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_C3NEGA:
+                iopc = INTRN_C3NEGA;
+                intrinsic_op = TRUE;
+                break;
+           case BUILT_IN_INIT_HI:
+                iopc = INTRN_INIT_HI;
+                break;
+           case BUILT_IN_COPY_HI:
+                iopc = INTRN_COPY_HI;
+                intrinsic_op = TRUE;
+                break;
            case BUILT_IN_C2_MVGR_R2G:
                 iopc = INTRN_C2_MVGR_R2G;
 	        break;
