@@ -4411,6 +4411,21 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   ST *st;
   ANNOTATION *ant;
   RID *rid = BB_rid(bb);
+
+#ifdef TARG_SL
+  if (BB_zdl_body(bb)) {
+    FmtAssert(BB_has_tag(bb), ("zdl body has no tag"));
+    LABEL_IDX tag = Get_BB_Tag(bb);
+    FmtAssert(tag!=0, ("EMT_Assemble_BB: zdl body tag is 0"));
+    OP *last_op=BB_last_op(bb);
+    while(last_op && OP_dummy(last_op)) {
+      last_op=OP_prev(last_op);
+    }
+    FmtAssert(last_op, ("cannot find op to carry tag"));
+    Set_OP_Tag(last_op, tag);
+  }
+#endif
+
 #ifdef TARG_IA64
   INT bb_cycle_count = 0;
   ROTATING_KERNEL_INFO *info ;

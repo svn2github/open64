@@ -3433,14 +3433,6 @@ SCHEDULER::Schedule_BB (void) {
       Commit_Schedule(*cand);
 
 #if defined(TARG_SL)	
-      if (CG_enable_zero_delay_loop && BB_zdl_body(_target_bb)) {
-        if (OP_has_tag(cand->Op())) {
-          Is_True((Get_OP_Tag(cand->Op()) > 0) , ("unvalid zero delay loop tag"));
-	  _heur_mgr.Set_ZDL_Last_OP_Tag(Get_OP_Tag(cand->Op()));
-	  Reset_OP_has_tag(cand->Op());
-        }
-      }
-			
       if(_heur_mgr.Sched_For_Codesize_Spec()) {
         if (!_heur_mgr.Prev_unpaired_16bit() && OP_16bit_op(cand->Op())) 
           _heur_mgr.Set_prev_unpaired_16bit();
@@ -3464,7 +3456,7 @@ SCHEDULER::Schedule_BB (void) {
 
 #if defined(TARG_SL) || defined(TARG_SL2)
       if(CG_bb_sched_op_num_max) { 
-        if(moved_op_num == CG_bb_sched_op_num_max && _target_bb->id == 3) { 
+        if(moved_op_num == CG_bb_sched_op_num_max) { 
           last_op_sched = TRUE; 
           fprintf(TFile, "last moved op is \n"); 
 	  Print_OP_No_SrcLine(cand->Op());
@@ -3487,14 +3479,6 @@ SCHEDULER::Schedule_BB (void) {
 
     /* Inform machine model the beginning of a new basic block.  */
 
-#if defined(TARG_SL)
-  if (CG_enable_zero_delay_loop && BB_zdl_body(_target_bb))  {
-    Is_True(_heur_mgr.Get_ZDL_Op_Tag() > 0 || OP_has_tag(BB_last_op(_target_bb)),
-                    ("unvalid zero delay loop tag"));
-    if(_heur_mgr.Get_ZDL_Op_Tag() > 0)
-      Set_OP_Tag(BB_last_op(_target_bb), _heur_mgr.Get_ZDL_Op_Tag());
-  }
-#endif
   return; 
 }
 

@@ -815,53 +815,15 @@ void BB_Remove_Op(BB *bb, OP *op)
 {
   OP *orig_last_op = BB_last_op(bb);
 
-#if defined(TARG_SL)
-  LABEL_IDX tag_idx = 0;
-  if( CG_enable_zero_delay_loop ) {
-    if( BB_zdl_body(bb) ) {
-      orig_last_op = BB_last_op(bb);
-      BOOL noop_op = ( (orig_last_op->opr == TOP_noop) && 
-                       OP_has_tag(OP_prev(orig_last_op)) && 
-                       OP_16bit_op(OP_prev(orig_last_op)) );
-      Is_True( (OP_has_tag(orig_last_op) || noop_op), 
-               ("zdl loop body's last op is not tagged") );
-      if (orig_last_op->opr != TOP_noop)		
-        tag_idx = Get_OP_Tag( orig_last_op );
-    }
-  }
-
-  // if the bb has only one tagged OP, it cannot be deleted
-  // we use a nop instead of removing
-  if( orig_last_op && 
-      OP_has_tag(orig_last_op) && 
-      BB_length(bb) == 1 &&
-      op == orig_last_op ){
-    OPS_Remove_Op(&bb->ops, op);
-    op->bb = NULL;
-    OP *nop = Mk_OP( TOP_nop );
-    BB_Append_Op(bb, nop); 
-    Reset_OP_has_tag( orig_last_op );
-    Set_OP_Tag( nop, tag_idx );
-    return;
-  }
-
-#endif
-
   OPS_Remove_Op(&bb->ops, op);
   op->bb = NULL;
 
-#if defined(TARG_SL)
-  if( BB_zdl_body(bb) && (orig_last_op->opr != TOP_noop)) {
-    Is_True( tag_idx > 0, ("incorrect tag index") );
-    OP* last_op = BB_last_op(bb);
-    /* the last tagged OP is removed */
-    if( last_op && !OP_has_tag(last_op) ) {
-      Reset_OP_has_tag( orig_last_op );
-      Set_OP_Tag( last_op, tag_idx );
-    }
+#ifdef TARG_SL
+  if (BB_has_tag(bb) && BB_length(bb)==0) {
+    OP *nop = Mk_OP( TOP_nop );
+    BB_Append_Op(bb, nop);
   }
 #endif
-
 }
 
 

@@ -1363,18 +1363,6 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
 	before_point = OP_prev(before_point);
     }
   }
-#if defined (TARG_SL)
-  else if( BB_zdl_body(bb) ) {
-    orig_last_op = BB_last_op(bb);
-    Is_True( OP_has_tag(orig_last_op), ("the last op of zdl body has no tag") );
-    Is_True( !OP_xfer(orig_last_op) && 
-             OP_code(orig_last_op) != TOP_c2_joint &&
-             OP_code(orig_last_op) != TOP_loop, 
-             ("bad opcode of a tagged op, in zdl") );
-    after_tagged_op = TRUE;
-    tag_idx = Get_OP_Tag( orig_last_op );
-  }
-#endif
   else {
     OP *last_op;
 
@@ -1410,17 +1398,6 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
     BB_Insert_Ops_Before (bb, before_point, ops);
   }
    else {
-#if defined(TARG_SL)
-    new_last_op = ops->last;
-    if( new_last_op && after_tagged_op ){
-      Is_True( !OP_xfer(new_last_op) && 
-               OP_code(new_last_op) != TOP_c2_joint &&
-               OP_code(new_last_op) != TOP_loop, 
-               ("bad opcode of a tagged op, in zdl") );
-      Set_OP_Tag( new_last_op, tag_idx );
-      Reset_OP_has_tag( orig_last_op );
-    }
-#endif
     BB_Append_Ops (bb, ops);
   }
   Reset_BB_scheduled (bb);

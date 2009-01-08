@@ -3760,20 +3760,7 @@ static BOOL Append_Op_To_BB(OP *cand_op, BB *cand_bb, BB *src_bb,
                ("cand_op modifies rflags") );
   }
 #endif
-#if defined(TARG_SL)
-  if ( !limit_op && BB_zdl_body(cand_bb) ) {
-    OP* last_op = BB_last_op(cand_bb);
-    Is_True( last_op && OP_has_tag(last_op), ("zdl tail bb should have tag") );
-
-    /* Append the cand_op to cand_bb, and re-assign the tag */
-    BB_Append_Op (cand_bb, cand_op);
-    LABEL_IDX tag_idx = 0;
-    tag_idx = Get_OP_Tag( last_op );
-    Is_True( tag_idx > 0, ("incorrect tag index") );
-    Reset_OP_has_tag( last_op );
-    Set_OP_Tag( cand_op, tag_idx );
-  } else 
-#endif
+  
   {
     if( limit_op ){
       BB_Insert_Op_Before (cand_bb, limit_op, cand_op);
@@ -3781,7 +3768,7 @@ static BOOL Append_Op_To_BB(OP *cand_op, BB *cand_bb, BB *src_bb,
       // I still insert OP before limit_op even if they have dependence. But I
       // return it FALSE. This way we can use the 'should_skip' variable, and 
       // un-do this insertion in a normalized way.
-      if( Dependent_Between_OPs(limit_op, cand_op) )
+      if(Dependent_Between_OPs(limit_op, cand_op))
         succeed = FALSE;
 #endif
     } else
