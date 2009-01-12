@@ -433,7 +433,7 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
       ac |= IBM_DISJOINT_RULE;
 
     break;
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   case PU_JAVA_LANG:   
     ac |= DEFAULT_C_RULES;
     ac |= DEFAULT_CXX_RULES;

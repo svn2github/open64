@@ -258,9 +258,9 @@ Set_lang (SUMMARY_PROCEDURE *proc)
 	proc->Set_lang (LANG_F90);
 	break;
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
     case PU_JAVA_LANG:
- 	proc->Set_lang (LANGUAGE_JAVA);
+ 	proc->Set_lang (LANG_JAVA);
 	break;
 #endif
     }

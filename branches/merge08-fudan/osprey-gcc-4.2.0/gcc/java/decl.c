@@ -50,7 +50,7 @@ The Free Software Foundation is independent of Sun Microsystems, Inc.  */
 #include "version.h"
 #include "tree-iterator.h"
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 #include <assert.h>
 extern tree transform_statement(tree);
 #endif
@@ -1242,7 +1242,7 @@ pushdecl (tree x)
   struct binding_level *b = current_binding_level;
   
   if (TREE_CODE (x) != TYPE_DECL
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
       && !flag_spin_file
 #endif
       )
@@ -1920,7 +1920,7 @@ build_result_decl (tree fndecl)
   return result;
 }
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 tree
 build_indirect_ref (tree ptr, const char *errorstring)
 {
@@ -2068,7 +2068,7 @@ finish_method (tree fndecl)
       *tp = build2 (COMPOUND_EXPR, TREE_TYPE (*tp), init, *tp);
     }
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
    /* Translate to spin before calling java_genericize, which lowers the
      tree and destroys high-level program info useful for program optimizatioN */
     if (flag_spin_file) 

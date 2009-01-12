@@ -74,7 +74,7 @@ static char *rcs_id = "$Source: driver/SCCS/s.main.c $ $Revision: 1.109 $";
 #include "objects.h"
 #include "version.h"
 
-#if defined(LANG_JAVA) 
+#if defined(LANGUAGE_JAVA ) 
 char *main_method = NULL;
 char *generated_main_file;
 #endif
@@ -553,7 +553,7 @@ main (int argc, char *argv[])
 	       source_lang == L_CC) &&
 	      option_was_seen(O_mp) &&	// bug 11896
 	      gnu_minor_version < 2)
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
               || source_kind == S_java
 #endif
              ) {
@@ -623,7 +623,7 @@ main (int argc, char *argv[])
 		last_phase = P_any_as;
 		add_minus_c_option();	/* for .ii file */
 	}
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         else if (invoked_lang == L_java &&
                  ((last_phase == P_any_ld) && (shared != RELOCATABLE)) ||
                   (last_phase == P_pixie)) {
@@ -696,7 +696,7 @@ main (int argc, char *argv[])
 		run_compiler(argc, argv);
 		if (multiple_source_files) cleanup();
 	}
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         if (invoked_lang == L_java && main_method != NULL)
         {
           run_jvgenmain();
@@ -1025,7 +1025,7 @@ static struct explicit_lang {
 	{ "f95-cpp-input", S_i, L_f90, },
 	{ "none", S_NONE, L_NONE, },
 	{ "ratfor", S_r, L_f77, },
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         { "JAVA", S_java, L_java, },
 #endif
 	{ NULL, S_NONE, L_NONE, },

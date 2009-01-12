@@ -272,7 +272,7 @@ copy_phase_options (string_list_t *phase_list, phases_t phase)
 		FOREACH_IMPLIED_OPTION(iflag, flag) {
 			boolean matches_phase = FALSE;
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                        // disable -O* in jc1 and   in jvgenmain
 			if (!strncmp("-O", get_option_name(iflag),2)
 			     && (phase == P_spin_jc1 || phase == P_jvgenmain))
@@ -292,7 +292,7 @@ copy_phase_options (string_list_t *phase_list, phases_t phase)
 			    !strcmp("-OPT:", get_option_name(iflag))) {
 			  if (phase == P_spin_cc1 ||
 			      phase == P_spin_cc1plus
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 			      || phase == P_spin_jc1
 #endif
 			     )
@@ -354,7 +354,7 @@ add_language_option ( string_list_t *args )
     case L_CC:
 	add_string ( args, "-LANG:=cplus" );
 	break;
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
     case L_java:
         add_string ( args, "-LANG:=java" );
         break;
@@ -753,7 +753,7 @@ add_file_args (string_list_t *args, phases_t index)
 	string_item_t *p;
 	char *count_file_name;
 	char *the_file = fix_name_by_phase(source_file, index);
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         char *jvgenmain_class;
         char *jvgenmain_file;
         char *delim = ".";
@@ -1186,7 +1186,7 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 
 		break;
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         case P_spin_jc1: 
                 {
                   int flag;
@@ -1256,13 +1256,13 @@ add_file_args (string_list_t *args, phases_t index)
 #endif
 
 		if (!option_was_seen(O_fpreprocessed) &&
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                     index !=P_spin_jc1 &&
 #endif
 		    !option_was_seen(O_fno_preprocessed)) {
 		  add_string(args, "-fpreprocessed");
 		}
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                 if (index ==P_spin_jc1)
                 {  
                   add_string(args, "-fhash-synchronization");
@@ -1279,7 +1279,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, "-fbuiltin" );
 		else
 		  add_string(args, "-fno-builtin" );
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                 }
 #endif
 		if( fmath_errno == 0 )
@@ -1302,7 +1302,7 @@ add_file_args (string_list_t *args, phases_t index)
 #ifdef KEY
 		if (index == P_spin_cc1 ||
 		    index == P_spin_cc1plus
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                     || index==P_spin_jc1
 #endif
                    ) {
@@ -1499,7 +1499,7 @@ add_file_args (string_list_t *args, phases_t index)
 		        if (outfile != NULL
 					&& last_phase == current_phase
 	 				&& !multiple_source_files
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                                         && !main_method 
 #endif
 #ifndef KEY	// -dsm no longer supported.  Bug 4406.
@@ -1588,7 +1588,7 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 	case P_ld:
 	case P_ldplus:
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         case P_gcj:
 #endif
 		/* For C/C++:
@@ -1929,7 +1929,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	    if (option_was_seen(O_pthread) ||
 		option_was_seen(O_mp) ||
 		option_was_seen(O_fopenmp) ||
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                 invoked_lang == L_java ||
 #endif
 		option_was_seen(O_apo)) {	// bug 6334
@@ -1953,14 +1953,14 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
      * lib{stdc++,gcc,c,etc}.{so,a} are taken care by gcc/g++ itself.
      */
     if (shared != DSO_SHARED && shared != RELOCATABLE &&
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         ld_phase != P_gcj &&
 #endif
         ld_phase != P_ld && ld_phase != P_ldplus) {
       if (invoked_lang == L_CC) {
         add_library(args, "stdc++");
       }
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
       if (invoked_lang == L_java) {
         add_library(args, "gcj");
       }
@@ -1979,7 +1979,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		}
 		add_library (args, "gcc");
 		add_library (args, "c");
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                 if(0) //FUDAN
 		{
                 if (invoked_lang == L_CC && !option_was_seen(O_static))
@@ -2007,7 +2007,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	}
 #ifdef TARG_IA64
     if (shared != DSO_SHARED && shared != RELOCATABLE &&
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         ld_phase != P_gcj &&
 #endif
         ld_phase != P_ld && ld_phase != P_ldplus) {
@@ -2041,7 +2041,7 @@ add_rpath_link_option (string_list_t *args) {
 
     phases_t ld_phase = determine_ld_phase (FALSE);
     if (ld_phase == P_ld || ld_phase == P_ldplus
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         || ld_phase != P_gcj
 #endif
        ) {
@@ -2252,7 +2252,7 @@ determine_phase_order (void)
 	   }
 #endif
 	}
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         else if (source_lang == L_java)
         {
           cpp_phase = P_spin_jc1;
@@ -2306,7 +2306,7 @@ determine_phase_order (void)
 		    next_phase = (source_lang == L_CC ? cplus_fe : c_fe);
 		}
 		break;
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         case S_java:
                 next_phase = P_spin_jc1;
                 break;
@@ -2403,7 +2403,7 @@ determine_phase_order (void)
 #ifdef KEY
 		case P_spin_cc1:
 		case P_spin_cc1plus:
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                 case P_spin_jc1:
 #endif
 			add_phase(next_phase);
@@ -2470,7 +2470,7 @@ determine_phase_order (void)
 		case P_ld:
 		case P_ldplus:
 		case P_collect:
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                 case P_gcj:
 #endif
 		case P_ipa_link:
@@ -2487,7 +2487,7 @@ determine_phase_order (void)
 			add_phase(P_NONE);
 			next_phase = P_NONE;
 			break;
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                 case P_jvgenmain:
                         add_phase(next_phase);
                         next_phase = P_NONE;
@@ -2794,7 +2794,7 @@ init_phase_names (void)
   for (i = P_LAST-1; i >= (int) P_NONE; i--) {
     char *phase_name = get_phase_name(i);
     if (strcmp(phase_name, "gcc") == 0 ||
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         strcmp(phase_name, "gcj") == 0 ||
 #endif
         strcmp(phase_name, "g++") == 0) {
@@ -2816,7 +2816,7 @@ init_frontend_phase_names (int gnu_major_version, int gnu_minor_version)
       case 2:
         set_phase_name(P_spin_cc1, "cc142");
         set_phase_name(P_spin_cc1plus, "cc1plus42");
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         set_phase_name(P_spin_jc1, "jc142");
 #endif
 	set_phase_name(P_wgen, "wgen42");
@@ -2858,7 +2858,7 @@ determine_ld_phase (boolean run_ipa) {
         else if (invoked_lang == L_cc) {
                 ldphase = P_ld;     // let gcc let care
         } 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         else if (invoked_lang == L_java) {
                 ldphase = P_gcj;
         }
@@ -2876,7 +2876,7 @@ determine_ld_phase (boolean run_ipa) {
         return ldphase;
 }
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 void
 run_jvgenmain(void)
 {
@@ -2912,7 +2912,7 @@ run_ld (void)
 	else if (invoked_lang == L_CC) {
 		ldphase = P_ldplus;
 	}
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         else if (invoked_lang == L_java) {
                 ldphase = P_gcj;
         }
@@ -2963,7 +2963,7 @@ run_ld (void)
 	      case L_f90:	str = "F90";	break;
 	      case L_cc:	str = "C";	break;
 	      case L_CC:	str = "CC";	break;
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	      case L_java:      str = "java";   break;
 #endif
 	      default:		internal_error("run_ld: unknown language\n");
@@ -3175,7 +3175,7 @@ run_compiler (int argc, char *argv[])
 			    phase_order[i] != P_spin_cc1plus &&
 			    phase_order[i] != P_wgen &&
 #endif
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 		  	    phase_order[i] != P_spin_jc1 &&
 #endif
 			    phase_order[i] < P_any_fe)

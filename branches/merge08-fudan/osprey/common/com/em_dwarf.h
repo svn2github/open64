@@ -44,14 +44,14 @@
 #include "srcpos.h"
 #include "targ_em_dwarf.h"
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 #include "dwarf_DST.h"
 #endif
 
 #if defined(__cplusplus)
 extern Dwarf_P_Debug Em_Dwarf_Begin (BOOL is_64bit,
 				     BOOL dwarf_trace,
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                                      DST_language dst_lang,
 #else
 				     BOOL is_cplus,
@@ -62,7 +62,7 @@ extern void Em_Dwarf_Write_Scns (Cg_Dwarf_Sym_To_Elfsym_Ofst translate_elfsym = 
 #else
 extern Dwarf_P_Debug Em_Dwarf_Begin (BOOL is_64bit,
 				     BOOL dwarf_trace,
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                                      DST_language dst_lang
 #else
                                      BOOL is_cplus

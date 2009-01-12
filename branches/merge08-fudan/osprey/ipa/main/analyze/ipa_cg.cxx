@@ -344,7 +344,7 @@ void
 IPA_update_ehinfo_in_pu (IPA_NODE *node)
 {
 	if (
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	    !(PU_src_lang (node->Get_PU()) & PU_JAVA_LANG) &&
 #endif
 	    !(PU_src_lang (node->Get_PU()) & PU_CXX_LANG) ||
@@ -1115,7 +1115,7 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 		// If we have no WHIRL, we assume any C++ PU can throw
 		if (IPA_Enable_EH_Region_Removal &&
 		    (
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 		     PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & PU_JAVA_LANG ||
 #endif
 		     PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & 

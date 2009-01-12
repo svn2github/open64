@@ -181,7 +181,7 @@ extern void EETARG_Emit_IP_Calc_Func(void);
 #endif
 
 extern void Early_Terminate (INT status);
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 extern DST_language Dwarf_Language;
 #endif
 
@@ -7000,7 +7000,7 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
 #define LSDA_CS_END		"thu_LSDA_CS_End_"
 
   fprintf(Asm_File, ".%s%d:\n", LSDA_HANDLER_START, nRangeTable);
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   if(Dwarf_Language == DW_LANG_Java)			
     fprintf(Asm_File, "\t.personality\t__gcj_personality_v0#\n");  
   if(Dwarf_Language == DW_LANG_C_plus_plus)
@@ -7136,7 +7136,7 @@ Write_INITO (
   INITO* inop,		/* Constant to emit */
   INT scn_idx,		/* Section to emit it into */
   Elf64_Xword scn_ofst	/* Section offset to emit it at */
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   ,
   std::vector<std::string>* class_strs = NULL  /*generate .jc1 section for java*/
 #endif  
@@ -7180,7 +7180,7 @@ Write_INITO (
     sym = INITO_st(ino);
     if (Assembly) {
         char *name = ST_name(sym);
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
        //recode the name of java class for generationg .jcr section 
         if(strcmp(name + strlen(name) - 8, "6class$E") == 0) /*"6class$E is the suffix of javaclass name"*/
         {
@@ -7569,7 +7569,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
   // Print_ST_List(st_list, "SORTED BY OFFSET");
   stable_sort (st_list.begin(), st_list.end(), section_lt);
   // Print_ST_List(st_list, "SORTED BY SECTION");
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   std::vector<std::string> class_strs;
 #endif
   
@@ -7630,7 +7630,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
       fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
 #endif
       Write_INITO (ino, STB_scninfo_idx(base), ofst
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         ,&class_strs /*recode the class name*/
 #endif
         );
@@ -7680,7 +7680,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
 #endif
     }
   }
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   if(class_strs.size())
   { /*generate .jcr section for java in .s file */
     fprintf ( Asm_File, "\t.section\t.jcr,\"aw\",@progbits\n");
@@ -7699,7 +7699,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
 #endif
   // if needed, we will generate jcr section for other platform. 
   }
-#endif //LANG_JAVA
+#endif //LANGUAGE_JAVA 
 }
 
 
@@ -8470,7 +8470,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
     if (CG_p2align) 
       fputs ("\t.p2align 4,,15\n", Asm_File);
     else if (
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
              PU_src_lang (Get_Current_PU()) & PU_JAVA_LANG ||
 #endif
              PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) {

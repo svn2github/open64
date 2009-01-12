@@ -72,7 +72,7 @@ extern int flag_spin_file;
 #endif
 
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 enum language { C, CPP, JAVA };
 extern enum language language;
 #endif
@@ -1816,7 +1816,7 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
       gs_set_flag_value (DECL_ASSEMBLER_NAME(decl),
                          GS_TREE_SYMBOL_REFERENCED, 1); // bug 11006
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
    if (language == JAVA) {
      tree chain = TREE_CHAIN(decl);
      TREE_CHAIN(decl) = NULL;

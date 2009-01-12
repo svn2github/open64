@@ -262,7 +262,7 @@ extern tree lhd_make_node (enum tree_code);
 #define LANG_HOOKS_SIMPLIFY_AGGR_INIT_EXPRS_R	NULL
 #endif
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 #define LANG_HOOKS_JAVA_MANGLE_DECL     NULL
 #endif
 
@@ -323,7 +323,7 @@ extern tree lhd_make_node (enum tree_code);
   LANG_HOOKS_MANGLE_DECL,		/* KEY */ \
   LANG_HOOKS_CP_GENERICIZE,		/* KEY */ \
   LANG_HOOKS_SIMPLIFY_AGGR_INIT_EXPRS_R,/* KEY */ \
-  LANG_HOOKS_JAVA_MANGLE_DECL,    /*LANG_JAVA*/   \
+  LANG_HOOKS_JAVA_MANGLE_DECL,    /*LANGUAGE_JAVA */   \
 }
 
 #endif /* GCC_LANG_HOOKS_DEF_H */

@@ -442,7 +442,7 @@ struct lang_hooks
   tree (*simplify_aggr_init_exprs_r) (tree *t, int *i, void *p);
 #endif
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   tree (*java_mangle_decl)(struct obstack *obstack, tree decl);
 #endif
 

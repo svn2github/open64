@@ -6467,7 +6467,7 @@ enum language { C, CPP, JAVA };
 enum language language = C;
 #define CPR() (language == CPP)
 #define CR()  (language == C)
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 #define JAVAR() (language == JAVA)
 #endif
 
@@ -7630,7 +7630,7 @@ static gs_t program   = (gs_t) NULL,
 // dot to insert new declaration tree
 static gs_t program_decls_dot = (gs_t) NULL;
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 struct obstack gspin_obstack;
 #endif
 
@@ -7700,7 +7700,7 @@ gspin_init(void)
   if (strcmp ("GNU C++", lang_hooks.name) == 0) {
     language = CPP;
   }
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   else if (strcmp ("GNU Java", lang_hooks.name) == 0) {
     language = JAVA;
   }
@@ -7774,7 +7774,7 @@ gspin_init(void)
   if ((atexit (gspin_write)) != 0) 
     fprintf (stderr, "gspin_write registration with atexit (3) failed.\n");
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
    //for mangle-name
   gcc_obstack_init (&gspin_obstack);
 #endif
@@ -7789,7 +7789,7 @@ gspin_init_global_trees_list(void)
 
   global_trees_list = __gs (EMPTY);
   for (i = TI_MAX - 1; i >= TI_ERROR_MARK; i--) {
-#if !defined (LANG_JAVA)
+#if !defined (LANGUAGE_JAVA )
     GS_ASSERT(global_trees[i] != NULL,
 	      ("gspin_init_global_trees_list: global_tree not initialized"));
 #endif
@@ -7900,7 +7900,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // "translate_this_func_decl" set, it means this is the proper time
       // to expand this function, and it may now have a function body --
       // whatever is the state of the function_decl, we want to get it now.
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
     if ((CPR() || JAVAR())
 #else
     if (CPR() 
@@ -8011,7 +8011,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     _gs_bv (flags, GS_TREE_PUBLIC, TREE_PUBLIC (t));
     _gs_bv (flags, GS_DECL_WEAK, DECL_WEAK (t));
   }
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
    if (JAVAR() &&
 		TREE_CODE(t) == FUNCTION_DECL) {
 	  if (!DECL_ASSEMBLER_NAME_SET_P(t) &&
@@ -8044,7 +8044,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       if (!DECL_BUILT_IN(t))
 	return GS_NODE(t);
     } 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
     else if (JAVAR()){			 
       if(DECL_SAVED_TREE(t))
         return GS_NODE(t);
@@ -8302,7 +8302,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       // file
       if (gs_operand((gs_t) GS_NODE(t), GS_DECL_SOURCE_FILE) == NULL)
       {
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	if (DECL_SOURCE_FILE (t) != NULL)
 	{
 #endif
@@ -8310,7 +8310,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         _gs_s (file, (gs_string_t) DECL_SOURCE_FILE (t),
 	       1 + strlen (DECL_SOURCE_FILE (t)));
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_SOURCE_FILE, file);
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         }
 #endif   
       }

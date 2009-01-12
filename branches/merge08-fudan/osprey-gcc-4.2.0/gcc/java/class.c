@@ -824,7 +824,7 @@ set_constant_value (tree field, tree constant)
 	  && ! (TREE_TYPE (constant) == int_type_node
 		&& INTEGRAL_TYPE_P (TREE_TYPE (field))
 		&& TYPE_PRECISION (TREE_TYPE (field)) <= 32)
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
           && ! (TREE_CODE(TREE_TYPE (constant)) == POINTER_TYPE
                 && TREE_TYPE (field) == string_ptr_type_node)
 #else
@@ -914,7 +914,7 @@ build_utf8_ref (tree name)
   /* Generate a unique-enough identifier.  */
   sprintf(buf, "_Utf%d", ++utf8_count);
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   //the original type of utf8 instance is of the type utf8const_type,
   //the utf8const_type's size is too short for open64
   if (flag_spin_file)
@@ -935,7 +935,7 @@ build_utf8_ref (tree name)
   if (HAVE_GAS_SHF_MERGE)
     {
       int decl_size;
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
       if (flag_spin_file)
         {
           decl_size = (name_len + 5 + TYPE_ALIGN_UNIT (ctype) - 1)
@@ -964,7 +964,7 @@ build_utf8_ref (tree name)
   cgraph_varpool_mark_needed_node (cgraph_varpool_node (decl));
   utf8_decl_list = decl;
   
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   if (flag_spin_file)
   {
     tree ptr_ctype = build_pointer_type(ctype);
@@ -2829,7 +2829,7 @@ emit_catch_table (tree this_class)
   DECL_INITIAL (table) = 
     build_constructor_from_list (array_type, TYPE_CATCH_CLASSES (this_class));
   TREE_STATIC (table) = 1;
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   if(flag_spin_file)
     TREE_READONLY (table) = 0;
   else

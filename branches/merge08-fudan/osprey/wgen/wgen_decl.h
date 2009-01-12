@@ -92,7 +92,7 @@ extern ST *WGEN_Generate_Initialized_Aggregate(WN *target, gs_t init);
 #endif
 
 /* handle __attribute__ ((alias)) */
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 extern ST *WGEN_Assemble_Alias (gs_t decl, gs_t target);
 #else
 extern BOOL WGEN_Assemble_Alias (gs_t decl, gs_t target);

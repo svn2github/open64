@@ -1547,7 +1547,7 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 
 #ifdef KEY
     if (PU_cxx_lang (Get_Current_PU())
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
       || PU_java_lang (Get_Current_PU())
 #endif
       )
@@ -1949,7 +1949,7 @@ Preorder_Process_PUs (PU_Info *current_pu)
         Pu_Table [ST_pu (St_Table [PU_Info_proc_sym (current_pu)])];
 
     // C++ PU having exception regions, or with -g
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
     if (((PU_cxx_lang (func)||PU_java_lang (func)) && PU_has_region (func)) || Debug_Level > 0
 #else
     if ((PU_cxx_lang (func) && PU_has_region (func)) || Debug_Level > 0

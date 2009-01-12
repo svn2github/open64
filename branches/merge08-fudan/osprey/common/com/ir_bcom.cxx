@@ -454,7 +454,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 	// Note: Don't set EHinfo_Updated here, as we are not yet done with
 	// the entire PU.
 	Is_True (
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                  PU_src_lang (cg_node->Get_PU()) & PU_JAVA_LANG || 
 #endif
                  PU_src_lang (cg_node->Get_PU()) & PU_CXX_LANG, 

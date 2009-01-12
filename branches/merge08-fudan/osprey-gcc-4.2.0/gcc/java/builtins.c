@@ -310,7 +310,7 @@ check_for_builtin (tree method, tree call)
 
 //check for builtin functions in java and replace the builtin calls with a builtin expression
 // This version carries no optimize flag, so it will be done even if optimization level of jc1 is -O0
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 tree
 check_for_builtin2 (tree method, tree call)
 {

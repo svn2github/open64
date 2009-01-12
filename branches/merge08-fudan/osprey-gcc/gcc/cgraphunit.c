@@ -1868,7 +1868,7 @@ cgraph_build_static_cdtor (char which, tree body, int priority)
   DECL_IGNORED_P (decl) = 1;
   DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (decl) = 1;
   DECL_SAVED_TREE (decl) = body;
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   TREE_PUBLIC (decl) = flag_spin_file ? 1 : ! targetm.have_ctors_dtors;
 #else
   TREE_PUBLIC (decl) = ! targetm.have_ctors_dtors;
@@ -1892,7 +1892,7 @@ cgraph_build_static_cdtor (char which, tree body, int priority)
     default:
       gcc_unreachable ();
     }
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   if(!flag_spin_file)
 #endif
   gimplify_function_tree (decl);

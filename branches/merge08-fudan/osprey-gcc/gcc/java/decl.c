@@ -53,7 +53,7 @@ The Free Software Foundation is independent of Sun Microsystems, Inc.  */
 extern void indent (void);
 #endif
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 extern tree transform_statement(tree);
 #endif
 
@@ -1291,7 +1291,7 @@ pushdecl (tree x)
   struct binding_level *b = current_binding_level;
  
   if (TREE_CODE (x) != TYPE_DECL
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
      &&!flag_spin_file
 #endif
       )
@@ -2103,7 +2103,7 @@ finish_method (tree fndecl)
       *tp = build2 (COMPOUND_EXPR, TREE_TYPE (*tp), init, *tp);
     }
   
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
   if (flag_spin_file) {
     tree oldfn = current_function_decl;
     current_function_decl = fndecl;

@@ -754,7 +754,7 @@ INTERNAL_CFLAGS = -DIN_GCC @CROSS@
 
 # This is the variable actually used when we compile. If you change this,
 # you probably want to update BUILD_CFLAGS in configure.ac
-ALL_CFLAGS = -DKEY -DLANG_JAVA $(X_CFLAGS) $(T_CFLAGS) \
+ALL_CFLAGS = -DKEY -DLANGUAGE_JAVA $(X_CFLAGS) $(T_CFLAGS) \
   $(CFLAGS) $(INTERNAL_CFLAGS) $(COVERAGE_FLAGS) $(WARN_CFLAGS) $(XCFLAGS) @DEFS@
 
 uname-s := $(shell uname -s)

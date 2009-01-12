@@ -114,7 +114,7 @@ set_defaults (void)
 #endif
 #endif
 	}
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	prepend_option_seen(O_usejavaf);
 #endif
 	prepend_option_seen(O_usegfe);
@@ -289,7 +289,7 @@ add_special_options (void)
 		add_phase_for_option(O_traditional, P_spin_cc1);
 		add_phase_for_option(O_traditional, P_spin_cc1plus);
 #endif
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                 add_phase_for_option(O_traditional, P_spin_jc1);
 #endif
 	}

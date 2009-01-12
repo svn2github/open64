@@ -58,7 +58,7 @@ typedef enum {
 	L_f90,
 	L_as,
 	L_ld,
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	L_java,
 #endif
 	L_internal,	/* pseudo-language to mark internal options */
@@ -84,7 +84,7 @@ typedef enum {
 	S_N,
 	S_O,
 	S_o,
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	S_java,
 #endif
 	S_LAST
@@ -126,7 +126,7 @@ typedef enum {
 	P_spin_cc1plus,	/* gnu gcc4 C++ fe */
 	P_wgen,		/* wgen */
 #endif
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	P_spin_jc1,
 	P_jvgenmain,
 #endif
@@ -155,7 +155,7 @@ typedef enum {
 	P_collect,	/* gnu linker wrapper */
 	P_ld,		/* loader */
 	P_ldplus,	/* loader for c++ */
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	P_gcj,
 #endif
 	P_any_ld,	/* generic union of all ld's */

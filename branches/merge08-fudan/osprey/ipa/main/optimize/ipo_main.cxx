@@ -501,7 +501,7 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     {
       PU p = caller->Get_PU();
       if ((
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	    PU_src_lang (p) & PU_JAVA_LANG ||
 #endif
 	    PU_src_lang (p) & PU_CXX_LANG) && PU_has_region (p))
@@ -512,7 +512,7 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     {
       PU p = callee->Get_PU();
       if ((
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
             PU_src_lang (p) & PU_JAVA_LANG ||
 #endif
 	    PU_src_lang (p) & PU_CXX_LANG) && PU_has_region (p))
@@ -646,7 +646,7 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
 
 #ifdef KEY
   if (
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	PU_src_lang (node->Get_PU()) & PU_JAVA_LANG ||
 #endif
 	PU_src_lang (node->Get_PU()) & PU_CXX_LANG)
@@ -770,7 +770,7 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
     }
 
     if (IPA_Enable_DCE && edge->Is_Deletable ()
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         && !(PU_src_lang(caller->Get_PU()) & PU_JAVA_LANG)
 #endif
        )
@@ -1724,7 +1724,7 @@ IPA_Remove_Regions (IPA_NODE_VECTOR v, IPA_CALL_GRAPH * cg)
       PU pu = Pu_Table[ST_pu((*node)->Func_ST())];
 
       if (
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
           !(PU_src_lang (pu) & PU_JAVA_LANG) &&
 #endif
 	  !(PU_src_lang (pu) & PU_CXX_LANG) || !PU_has_region (pu))

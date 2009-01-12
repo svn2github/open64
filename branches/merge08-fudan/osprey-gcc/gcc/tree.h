@@ -306,7 +306,7 @@ struct tree_common GTY(())
 
   unsigned long translated_gs_node;		/* KEY */
   HOST_WIDE_INT	gs_sequence_num;		/* KEY */
-  unsigned long transformed_statment_node;  /*LANG_JAVA*/
+  unsigned long transformed_statment_node;  /*LANGUAGE_JAVA */
 };
 
 /* The following table lists the uses of each of the above flags and
@@ -1670,7 +1670,7 @@ struct tree_block GTY(())
 #define GS_SEQUENCE_NUM(NODE) ((NODE)->common.gs_sequence_num)
 #endif
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 #define GS_TRANSFORMED_NODE(NODE) ((NODE)->common.transformed_statment_node)
 #endif
 

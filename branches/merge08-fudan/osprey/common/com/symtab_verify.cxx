@@ -1024,7 +1024,7 @@ void PU::Verify(UINT) const
 // We are using 'misc' to store ST_IDXs of 2 special variables for
 // C++ exception handling, or for C nested functions.
   if (!(src_lang & PU_CXX_LANG) && !(src_lang & PU_C_LANG)
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
       && !(src_lang & PU_JAVA_LANG)
 #endif
 )
@@ -1046,7 +1046,7 @@ void PU::Verify(UINT) const
 
   if ( PU_has_exc_scopes (*this))
     Is_True( PU_cxx_lang (*this)
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
              || PU_java_lang (*this)
 #endif
           ,(msg, "exception scopes can only be set for a C++ language pu"));
@@ -1161,7 +1161,7 @@ void  Verify_LOCAL_SYMTAB (const SCOPE& scope, SYMTAB_IDX level)
 #endif // Is_True_On
 }
 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 template <class T>
 struct  mycheck_op
 {
@@ -1212,7 +1212,7 @@ void  Verify_GLOBAL_SYMTAB()
 
   // Verify TABLES: ST and INITO (LABEL, PREG, are empty)
   if ( ST_Table_Size (GLOBAL_SYMTAB)) {
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
     PU_SRC_LANG_FLAGS lang_kind = PU_UNKNOWN_LANG;
     for(int i = 0; i < PU_Table_Size(); i++)
     {

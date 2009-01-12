@@ -4151,7 +4151,7 @@ output_compile_unit_die (arg)
   else if (strcmp (language_string, "GNU Pascal") == 0)
     language_attribute (LANG_PASCAL83);
   else if (strcmp (language_string, "GNU Java") == 0)
-    language_attribute (LANG_JAVA);
+    language_attribute (LANG_JAVA );
   else
     language_attribute (LANG_C89);
   low_pc_attribute (TEXT_BEGIN_LABEL);

@@ -2309,7 +2309,7 @@ static void Delete_Unused_Labels (HASH_TABLE<INT32, WN*> *label_hash,
   while (iter.Step (&label, &wn)) {
 #ifdef KEY
     if (
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
         (PU_java_lang (Get_Current_PU()) || !LABEL_addr_saved(label)) &&
 #else
         !LABEL_addr_saved(label) && 

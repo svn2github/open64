@@ -2323,7 +2323,7 @@ SUMMARIZE<program>:: Record_mod (WN* w)
     switch (PU_src_lang (Get_Current_PU ())) {
     case PU_C_LANG:
     case PU_CXX_LANG:
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
     case PU_JAVA_LANG:
 #endif
 

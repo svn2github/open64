@@ -219,7 +219,7 @@ static const char * vho_lower_cand_cior_name = "__cand_cior";
 static const char * vho_lower_cselect_name   = "__cselect";
 static const char * vho_lower_rcomma_name    = "__rcomma";
 static const char * vho_lower_comma_name     = "__comma";
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 static const char * vho_lower_iload_name = "__iload";
 #endif
 

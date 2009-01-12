@@ -953,7 +953,7 @@ void
 SUMMARIZE<program>::Process_eh_globals (void)
 {
     if (
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
 	!(PU_src_lang (Get_Current_PU()) & PU_JAVA_LANG) &&
 #endif
 	!(PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) || 
@@ -2424,7 +2424,7 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
                 WN *vptr = WN_kid0(last); 
                 FmtAssert(WN_operator_is(vptr, OPR_ILOAD) || WN_operator_is(vptr, OPR_LDID), 
                           ("Virtual function call does not use ILOAD or LDID.")); 
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                 //handle java virtual call
 		if(PU_src_lang(Get_Current_PU()) == PU_JAVA_LANG)
 		{

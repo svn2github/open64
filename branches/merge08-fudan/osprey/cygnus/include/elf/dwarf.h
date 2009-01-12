@@ -302,7 +302,7 @@ enum dwarf_source_language {
     /* GNU extensions */
 
     LANG_CHILL		= 0x00009af3,	/* random value for GNU Chill */
-    LANG_JAVA		= 0x00009af4    /* random value + 1 for GNU Java */
+    LANG_JAVA 		= 0x00009af4    /* random value + 1 for GNU Java */
 };
 
 #define LANG_lo_user	0x00008000  /* implementation-defined range start */

@@ -106,7 +106,7 @@ static void my_execv(const char *name, char *const argv[])
     int passthru = len > 4 && name[len - 4] == '/' &&
 	(strcmp(name + len - 3, "gcc") == 0 ||
 	 strcmp(name + len - 3, "g++") == 0
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
          || strcmp(name + len - 3, "gcj") == 0
 #endif
         );
@@ -627,7 +627,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				    phase == P_spin_cc1plus ||
 				    status == RC_GCC_INTERNAL_ERROR ||  //bug 9637
 #endif
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                                     phase == P_gcj ||
                                     phase == P_spin_jc1 ||
 #endif
@@ -652,7 +652,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				    || phase == P_spin_cc1
 				    || phase == P_spin_cc1plus
 #endif
-#if defined(LANG_JAVA)
+#if defined(LANGUAGE_JAVA )
                                     || phase == P_spin_jc1
 #endif
 				   ) {
