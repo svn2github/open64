@@ -491,6 +491,7 @@ INSTALL_MISC () {
         INSTALL_EXEC_SUB ${AREA}/targ_info/opteron.so ${PHASEPATH}/opteron.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/em64t.so ${PHASEPATH}/em64t.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/core.so ${PHASEPATH}/core.so
+        INSTALL_EXEC_SUB ${AREA}/targ_info/wolfdale.so ${PHASEPATH}/wolfdale.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/barcelona.so ${PHASEPATH}/barcelona.so
     fi
 #    if [ ! -z "$ROOT" ] ; then
