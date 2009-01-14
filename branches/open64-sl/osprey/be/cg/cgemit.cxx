@@ -3541,31 +3541,27 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
       }
       // distinguish the instruction
       for(i = 0; i < 3; i++) {
-        if (!strncmp(skip_string[i], instr, strlen(skip_string[i]))) {
+        if (!strncmp(skip_string[i], instr, strlen(skip_string[i])) && (strlen(instr) == strlen(skip_string[i]))) { 
           p = p+strlen(skip_string[i]);
           flag = 1;
           break;
         }
       }
-      if (flag == 1)
-        continue;
-      for (i = 0; i < 5; i++) {
+      for (i = 0; (i < 5) && (!flag); i++) {
         if (!strncmp(general_macro_string[i].str, instr, strlen(general_macro_string[i].str))) {
-          if (emit_phase)
+          if (emit_phase) {
             PC = PC_Incr_N(PC, general_macro_string[i].expand_num);
+            Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, general_macro_string[i].expand_num);
+          }
           else
             words += general_macro_string[i].expand_num;
           p = p + strlen(general_macro_string[i].str);
-#ifdef TARG_SL
           if (trace_pc)
             fprintf(TFile, "%s\n", general_macro_string[i].str);
-#endif
           flag == 1;
         }
       }
-      if (flag == 1)
-        continue;
-      if (!strncmp("li", instr, 2)) {
+      if ((!flag) && (!strncmp("li", instr, 2))) {
         char *k = q;
         char digit[10];
         int j =0;
@@ -3578,37 +3574,35 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
         digit[j] = '\0';
         j = atoi(digit);
         if (((j) &~ 0x7fff) == 0 || (((j) &~ 0x7fff) == ~ 0x7fff) || (j >= 0 && j < 65536)) {
-#ifdef TARG_SL
           if (trace_pc)
             fprintf(TFile, "one instruction li: digit  %d\n", j);
-#endif
-          if (emit_phase)
+          if (emit_phase) {
             PC = PC_Incr_N(PC, 2);
+            Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, 2);
+          }
           else
             words += 2;
         } else {
-#ifdef TARG_SL
           if (trace_pc)
             fprintf(TFile, "two instruction li :digit  %d\n", j);
-#endif
-          if (emit_phase)
+          if (emit_phase) {
             PC = PC_Incr_N(PC, 4);
+            Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, 2);
+          }
           else
             words += 4;
         }
         p = k;
         continue;
-      } else {
+      } else if (!flag) {
         int j;
         int len;
         for (j = 0; j<= TOP_count; j++) {
           const char *opname = TOP_Name((topcode)j);
           len = strlen(opname);
           if (!strncmp(opname, instr, len))  {
-#ifdef TARG_SL
             if (trace_pc)
               fprintf(TFile, "asm: \t %d  %s\n", PC, instr);
-#endif
             p = p+len;
             // continue to next instruction
             while (*p && (*p != '\n') && (*p != ';')) {
@@ -3619,6 +3613,7 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
                 PC = PC_Incr_N(PC, 1);
               else
                 PC = PC_Incr_N(PC, 2);
+              Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, 2);
             }
             else {
               if (TOP_is_instr16(j))
