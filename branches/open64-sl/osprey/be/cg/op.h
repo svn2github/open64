@@ -532,6 +532,7 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_C2_BR_OP      0x00400000
 #define OP_MASK_16bit_OP      0x00400000  /* Is OP rechanged as 16-bit OP*/
 #define OP_MASK_PAIRED_OP     0x00800000  /* Is OP paired: 2 continus 16-bit OP */ 
+#define OP_MASK_ARdep_OP      0x01000000  /* Is OP dep with normal memory OP */
 #define OP_bc2_op(op)		(OP_flags(op) & OP_MASK_BC2_OP)
 #define Set_OP_bc2_op(o)	(OP_flags(o) |= OP_MASK_BC2_OP)
 #define Reset_OP_bc2_op(o)	(OP_flags(o) &= ~OP_MASK_BC2_OP)
@@ -541,9 +542,12 @@ enum OP_COND_DEF_KIND {
 #define OP_Paired_op(op)       (OP_flags(op) & OP_MASK_PAIRED_OP)
 #define Set_OP_Paired_op(o)    (OP_flags(o) |= OP_MASK_PAIRED_OP)
 #define Reset_OP_Paired_op(o)  (OP_flags(o) &= ~OP_MASK_PAIRED_OP)
-# define OP_c2_br_op(op)		(OP_flags(op) & OP_MASK_C2_BR_OP)
-# define Set_OP_c2_br_op(o)	(OP_flags(o) |= OP_MASK_C2_BR_OP)
-# define Reset_OP_c2_br_op(o)	(OP_flags(o) &= ~OP_MASK_C2_BR_OP)
+#define OP_c2_br_op(op)		(OP_flags(op) & OP_MASK_C2_BR_OP)
+#define Set_OP_c2_br_op(o)	(OP_flags(o) |= OP_MASK_C2_BR_OP)
+#define Reset_OP_c2_br_op(o)	(OP_flags(o) &= ~OP_MASK_C2_BR_OP)
+#define OP_ARdep(o)           (OP_flags(o) & OP_MASK_ARdep_OP)
+#define Set_OP_ARdep(o)       (OP_flags(o) |= OP_MASK_ARdep_OP)
+#define Reset_OP_ARdep(o)     (OP_flags(o) &= ~OP_MASK_ARdep_OP)
 #endif //TARG_SL
 #endif 
 
@@ -760,6 +764,8 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_has_immediate(o)	(OP_immediate_opnd(o) >= 0)
 #define OP_inst_words(o)	(ISA_PACK_Inst_Words(OP_code(o)))
 #define OP_find_opnd_use(o,u)	(TOP_Find_Operand_Use(OP_code(o),(u)))
+#define OP_memtrap(o)           (TOP_is_memtrap(OP_code(o))) /* memory operation*/
+
 #ifdef TARG_SL
 #define OP_no_peephole(o)       (TOP_is_npeep(OP_code(o)))
 #endif

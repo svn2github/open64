@@ -106,7 +106,9 @@
 #include "gtn_universe.h"
 #include "gtn_set.h"
 #endif
-
+#ifdef TARG_SL
+#include "config_debug.h"    // insert break op in debug mode
+#endif
 
 INT64 Frame_Len;
 extern BOOL IPFEC_Enable_Edge_Profile;
@@ -614,6 +616,15 @@ Generate_Entry (BB *bb, BOOL gra_run )
     }
     ENTRYINFO_sp_adj(ent_info) = OPS_last(&ops);
 #endif //ABI_PROPERTY_stack_ptr
+
+#ifdef TARG_SL
+    // insert break after sp adjust
+    if (DEBUG_Stack_Check & STACK_ENTRY_CHECK) {
+      Build_OP(TOP_break, &ops);
+      Set_OP_no_move_before_gra(OPS_last(&ops));
+      Set_OP_volatile(OPS_last(&ops));
+    }
+#endif
 
 #if defined(KEY) && !defined(TARG_NVISA)
     // bug 4583: save callee-saved registers that may get clobbered 
@@ -1740,6 +1751,15 @@ Generate_Exit (
     Exp_COPY (FP_TN, Caller_FP_TN, &ops);
     Set_OP_no_move_before_gra(OPS_last(&ops));
   }
+#endif
+
+#ifdef TARG_SL
+    // insert "break16" before exit
+    if (DEBUG_Stack_Check & STACK_EXIT_CHECK) {
+      Build_OP(TOP_break, &ops);
+      Set_OP_no_move_before_gra(OPS_last(&ops));
+      Set_OP_volatile(OPS_last(&ops));
+    }
 #endif
 
   /* Generate the return instruction, unless is this a tail call

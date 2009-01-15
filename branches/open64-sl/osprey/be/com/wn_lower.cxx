@@ -12497,6 +12497,7 @@ static WN *lower_do_while(WN *block, WN *tree, LOWER_ACTIONS actions)
     WN_INSERT_BlockFirst(body, top_lbl);
     WN_INSERT_BlockLast(body, lower_block(WN_while_body(tree), actions));
 
+    setCurrentState(tree, actions);
     WN *wn_back_branch = NULL;
     WN *back_branch_block
       = lower_truebr(WN_label_number(top_lbl), WN_while_test(tree),
@@ -13297,6 +13298,23 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
     }
 #endif
   }
+
+#ifdef TARG_SL
+  if (Action(LOWER_RETURN_VAL) && (WN_operator(tree) == OPR_FUNC_ENTRY) && (DEBUG_Stack_Check & STACK_FUNC_CHECK)) {
+        char * PU_name = ST_name(&St_Table[PU_Info_proc_sym(Current_PU_Info)]);
+        if (strcmp(PU_name, "__stackcheck") != 0) {
+          TY_IDX ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V ));
+          ST *st = Gen_Intrinsic_Function(ty, "__stackcheck" );
+          Clear_PU_no_side_effects(Pu_Table[ST_pu(st)]);
+          Clear_PU_is_pure(Pu_Table[ST_pu(st)]);
+          Set_PU_no_delete(Pu_Table[ST_pu(st)]);
+          WN *wn_call = WN_Call(MTYPE_V, MTYPE_V, 0, st );
+          WN_Set_Call_Default_Flags(wn_call);
+          WN_Set_Linenum (wn_call, current_srcpos);
+          WN_INSERT_BlockLast(block, wn_call);
+        }
+  }
+#endif
 
   if (WN_opcode(tree) == OPC_FUNC_ENTRY)
   {

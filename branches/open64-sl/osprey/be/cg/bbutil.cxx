@@ -106,9 +106,6 @@
 #include <vector>
 #include "if_conv.h"
 #endif
-#ifdef TARG_SL
-#include "tag.h"
-#endif
 /* Allocate basic blocks for the duration of the PU. */
 #define BB_Alloc()  TYPE_PU_ALLOC(BB)
 #define BB_Alloc_N(n) TYPE_PU_ALLOC_N(BB, n)
@@ -1138,13 +1135,6 @@ Print_BB_Header ( BB *bp, BOOL flow_info_only, BOOL print_tn_info )
     }
     fprintf(TFile, "\n");
   }
-
-#ifdef TARG_SL
-  if (BB_has_tag(bp)) {
-    LABEL_IDX tag = Get_BB_Tag(bp);
-    fprintf (TFile, "tag %s \n", LABEL_name(tag));
-  }
-#endif
 
   if ( flow_info_only ) return;
 

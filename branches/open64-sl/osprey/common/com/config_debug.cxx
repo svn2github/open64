@@ -118,7 +118,9 @@ static DEBUG_FLAGS Default_DEBUG = {
   TRUE,                         /* emit .eh_frame for backtrace */
   FALSE,	FALSE,		/* zero_uv */
 #endif
-
+#ifdef TARG_SL
+  FALSE,                        /* stack_check for SL*/
+#endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
 
@@ -160,7 +162,9 @@ DEBUG_FLAGS Initial_DEBUG = {
   TRUE,                         /* emit .eh_frame for backtrace */
   FALSE,	FALSE,		/* zero_uv */
 #endif
-
+#ifdef TARG_SL
+  FALSE,                        /* stack_check for SL */
+#endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
 
@@ -323,6 +327,12 @@ static OPTION_DESC Options_DEBUG[] = {
     { OVK_BOOL, OV_VISIBLE,	FALSE, "eh_frame",	"",
       0, 0, 0, &ID.emit_ehframe,	NULL,
 	"Emit .eh_frame section even for non-C++ programs if this flag is set" },
+#endif
+
+#ifdef TARG_SL
+    { OVK_INT32, OV_VISIBLE, TRUE, "stack_check", "",
+      0, 0, 4, &ID.stack_check, NULL,
+      "stack overflow check"   },
 #endif
 
     { OVK_COUNT }		    /* List terminator -- must be last */

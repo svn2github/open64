@@ -1869,6 +1869,65 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
 #endif
 }
 
+/* ===================================================================
+ * CGTARG_Mem_AR_Dep
+ *   Set OP is ARDEP when there is dependence between C3-MEM and Normal MEM
+ * ===================================================================
+ */
+void
+CGTARG_Mem_AR_Dep(OP *pred_op, OP *succ_op, CG_DEP_KIND kind)
+{
+  //  1) insert nop when C3 mem op points to same address with normal memory op in same BB
+  //     now implement version is based on sl0mpw
+  switch (kind) {
+    case CG_DEP_MEMIN:
+    {
+       /* case 1:  stw
+                   c3.mac.a
+          case 2:  c3.st      <- SL1 HW could identify kind 2-5 of memory dep
+                   c3.mac.a      sl0mpw didn't identify 1 and 2
+          case 3:  c3.st
+                   c3.ld
+          case 4:  c3.st
+                   ldw
+          case 5:  stw
+                   ldw
+       */
+       BOOL mac_load = OP_c3_load(succ_op) && (!OP_memtrap(succ_op));
+
+       if (OP_store(pred_op) && mac_load) {
+         Set_OP_ARdep(succ_op);
+       }
+       break;
+     }
+     case CG_DEP_MEMANTI:
+     {
+       //  if bb is loop body, MEMANTI will cause same problem as MEMIN
+       /* case 1: c3.mac.a
+                  stw
+          case 2: c3.mac.a   <- SL1 HW could identify kind 2-5 of memory dep
+                  c3.st         sl0mpw didn't identify 1 and 2
+          case 3: c3.ld
+                  c3.st
+          case 4: ldw
+                  c3.st
+          case 5: ldw
+                  stw
+       */
+       if ((BB_zdl_body(OP_bb(pred_op)) || BB_loophead(OP_bb(pred_op)))) {
+         BOOL mac_load = OP_c3_load(pred_op) && (!OP_memtrap(pred_op));
+         if (mac_load && OP_store(succ_op)) {
+           Set_OP_ARdep(pred_op);
+         }
+        }
+        break;
+    }
+    default:
+      break;
+  }
+  return;
+}
+
 /* ====================================================================
  *
  * CGTARG_Generate_Remainder_Branch

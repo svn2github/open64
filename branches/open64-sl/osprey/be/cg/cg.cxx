@@ -1612,7 +1612,7 @@ CG_Generate_Code(
   if (!region && CG_Gen_16bit)
     Guarantee_Paired_instr16();
   if (CG_check_quadword) {
-    Check_Br16(0);	
+    Check_Br16();	
   }
 
 #else 
@@ -1841,6 +1841,10 @@ CG_Generate_Code(
 
 #if defined(TARG_SL)
      Collect_Simd_Register_Usage();
+     // SL1 Hardware walkaround
+     if (Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp()) {
+       SL1_patch();
+     }
 #endif 
 
     /* Emit the code for the PU. This may involve writing out the code to
