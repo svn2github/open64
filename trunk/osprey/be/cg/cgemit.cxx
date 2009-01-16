@@ -890,8 +890,13 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 		// so add suffix to help .s file distinguish names.
 		// assume that statics in mult. pu's will 
 		// get moved to global symtab, so don't need pu-num
-		if (ST_level(st) == GLOBAL_SYMTAB)
-		    fprintf (f, "%s%d", Label_Name_Separator, ST_index(st));
+                if (ST_level(st) == GLOBAL_SYMTAB) {
+#ifdef KEY
+                    // bug 14517, OSP 490
+                    if (Emit_Global_Data || ST_sclass(st) == SCLASS_PSTATIC)
+#endif
+                        fprintf (f, "%s%d", Label_Name_Separator, ST_index(st));
+                }
 		else
 		    fprintf (f, "%s%d%s%d", Label_Name_Separator, 
 			ST_pu(Get_Current_PU_ST()),
