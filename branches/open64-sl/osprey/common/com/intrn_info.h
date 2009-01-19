@@ -188,9 +188,7 @@ inline BOOL INTRN_is_sl (const INTRINSIC i)
 
 inline BOOL INTRN_is_slave (const INTRINSIC i)
 {
-  if (i == INTRN_C3_PTR)
-    return TRUE;
-  return FALSE;
+  return intrn_info[i].slave;
 }
 
 inline BOOL INTRN_copy_addr(const INTRINSIC i)
