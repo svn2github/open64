@@ -1149,6 +1149,12 @@ static void Insert_Goto_BB(
   lab = Gen_Label_For_BB(targ_bb);
   lab_tn = Gen_Label_TN(lab, targ_offset);
   Exp_OP1(OPC_GOTO, NULL, lab_tn, &ops);
+
+  // make up line info of GOTO instruction
+  if (BB_last_op(bb) && (OP_srcpos(BB_last_op(bb)) != 0)) {
+    OP_srcpos(OPS_last(&ops)) = OP_srcpos(BB_last_op(bb));
+  }
+
   if (   PROC_has_branch_delay_slot()
       && (fill_delay_slots || region_is_scheduled))
   {
