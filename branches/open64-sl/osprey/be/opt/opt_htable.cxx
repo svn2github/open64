@@ -5973,7 +5973,6 @@ MEMOP_ANNOT_CR_SR_MGR::Discard_offline_annot
   (WN* root, const ALIAS_MANAGER* am, BOOL trace) {
 
   WN_MEMOP_ANNOT_MGR* wn_annot_mgr = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr(); 
-  Is_True (wn_annot_mgr == NULL, ("Annotation manager is supposed to be NULL"));
 
   if (trace) {
     fprintf (TFile, "Discard offline annotations:\n");
