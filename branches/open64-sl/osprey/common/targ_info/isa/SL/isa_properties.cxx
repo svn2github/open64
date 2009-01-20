@@ -167,26 +167,6 @@ main()
 /* ===== Move operator ====== */
   move = ISA_Property_Create ("move");
   Instruction_Group (move,
-#if defined(TARG_SL)  	
-                     TOP_mc_z_eq,
-                     TOP_mc_z_ne,
-		     TOP_mc_z_gt,
-		     TOP_mc_z_ge,
-		     TOP_mc_z_lt,
-		     TOP_mc_z_le,
-		     TOP_mc_zn_eq,
-		     TOP_mc_zn_ne,
-		     TOP_mc_zn_gt,
-		     TOP_mc_zn_ge,
-		     TOP_mc_zn_lt,
-		     TOP_mc_zn_le,
-		     TOP_mc_r_eq,
-		     TOP_mc_r_ne,
-		     TOP_mc_r_gt,
-		     TOP_mc_r_ge,
-		     TOP_mc_r_lt,
-		     TOP_mc_r_le,
-#endif		    
 		     TOP_movf,
 		     TOP_movn,
 		     TOP_movt,
@@ -903,14 +883,6 @@ main()
 /* ===== Result def is conditional ====== */
   cond_move = ISA_Property_Create ("cond_move");
   Instruction_Group (cond_move,
-#if defined(TARG_SL)  
-                     TOP_mc_z_eq,
-		     TOP_mc_z_ne,
-		     TOP_mc_z_gt,
-		     TOP_mc_z_ge,
-		     TOP_mc_z_lt,
-		     TOP_mc_z_le,
-#endif                     
 		     TOP_movf,
 		     TOP_movn,
 		     TOP_movt,
@@ -1018,6 +990,11 @@ main()
 		      TOP_daddi,
 		      TOP_daddiu,
 		      TOP_daddu,
+#ifdef TARG_SL
+                      TOP_add16,
+                      TOP_add16_i,
+                      TOP_add16_sp,
+#endif
                      TOP_UNDEFINED);
 
 /* ===== Integer subtract operator ====== */
@@ -1027,6 +1004,10 @@ main()
 		     TOP_subu,
 		     TOP_dsub,
 		     TOP_dsubu,
+#ifdef TARG_SL
+                     TOP_sub16,
+                     TOP_sub16_i,
+#endif
                      TOP_UNDEFINED);
 
 /* ===== Integer multiply operator ====== */
