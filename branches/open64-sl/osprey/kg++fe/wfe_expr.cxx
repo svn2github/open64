@@ -7844,10 +7844,32 @@ WFE_Expand_Expr (tree exp,
 	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
 			  WN_Intconst (Pointer_Mtype, ty_size));
 #endif
-	}
-        else
-	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
-		  WN_Intconst (Pointer_Mtype, ty_size));
+  } else
+#if defined(TARG_SL)
+#if (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT))
+    if ((mtype == MTYPE_F8) || (mtype == MTYPE_I8) || (mtype == MTYPE_U8)
+        || (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
+          && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)) {
+
+      /* Force 8byte align, ((offset + 15) << 3) >> 3 */
+      wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+          WN_Intconst (Pointer_Mtype, 8*2-1));
+
+      wn = WN_Binary (OPR_LSHR, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
+      wn = WN_Binary (OPR_SHL, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
+      if (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
+          && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)
+        wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, ty_size-8));
+    } else
+#endif
+    {
+      wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+ 		WN_Intconst (Pointer_Mtype, ty_size));
+    }
+#else
+      wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+              WN_Intconst (Pointer_Mtype, ty_size));
+#endif
 
 #ifdef TARG_X8664 // bug 12118: pad since under -m32, vector types are 8-byte aligned
 	if (MTYPE_is_vector(mtype) && ! TARGET_64BIT) {

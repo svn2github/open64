@@ -193,7 +193,11 @@ extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TYPE_I
 
 /* Expand TN(const) into a sequence of ops (used in prolog)
  */
+#ifdef TARG_SL
+extern void Exp_Immediate (TN *dest, TN *src, TYPE_ID rtype, OPS *);
+#else
 extern void Exp_Immediate (TN *dest, TN *src, BOOL is_signed, OPS *);
+#endif
 
 /* create add/sub/mpy op of given mtype */
 #define Exp_ADD(mtype,dest,src1,src2,ops)	\
@@ -221,17 +225,21 @@ extern void Exp_Select_And_VLdid (
 #endif
 
 /* create select and condition for select */
+#if defined(TARG_SL)
+extern void Exp_Select_And_Condition (
+        WN* wn_select, OPCODE select, TN *result, TN *true_tn, TN *false_tn,
+        OPCODE compare, TN *cmp_kid1, TN *cmp_kid2, VARIANT variant, OPS *ops);
+#else
 extern void Exp_Select_And_Condition (
         OPCODE select, TN *result, TN *true_tn, TN *false_tn,
         OPCODE compare, TN *cmp_kid1, TN *cmp_kid2, VARIANT variant, OPS *ops);
+#endif
 
 #if defined(TARG_SL)
 extern BOOL Exp_Opt_Select_And_Condition (WN * select, TN * result, TN * true_tn,
         TN * false_tn, TN * cmp_kid1, TN * cmp_kid2, OPS * ops);
 extern void Exp_2inst_MC_Zero (TOP mc_op, TN* dest_tn, TN* true_tn, TN* false_tn, 
-        TN* cond_tn, int unsignedflag, OPS* ops );
-extern void Build_MC_OP (TOP mc_op, TN *result, TN *rs1, TN *rs2, int unsignedflag,
-        OPS *ops, OP_COND_DEF_KIND kind);
+        TN* cond_tn, TYPE_ID true_type, TYPE_ID false_type, INT unsignedflag, OPS* ops );
 #endif
 
 #if defined(TARG_SL)
@@ -356,6 +364,9 @@ extern TN * Expand_Expr (WN *expr, WN *parent, TN *result, INTRINSIC intrn_id = 
 // On IA-64, Expand_Expr is static in whirl2ops.cxx
 //#elif defined(TARG_IA64)
 //extern TN * Expand_Expr (WN *expr, WN *parent, TN *result);
+/*  for 64bit expand */
+extern void Expand_Start();
+extern void Expand_Finish();
 #endif 
 
 #ifdef TARG_X8664

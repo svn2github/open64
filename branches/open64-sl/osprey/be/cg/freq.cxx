@@ -786,6 +786,11 @@ Pointer_Heuristic(
   if (br_opc != OPC_FALSEBR && br_opc != OPC_TRUEBR) return FALSE;
 
   cond_wn = WN_kid0(br_wn);
+
+#if defined(TARG_SL)
+  if (cond_wn == 0)  return FALSE;
+#endif
+
   cond_oper = WN_operator(cond_wn);
   if (cond_oper != OPR_NE && cond_oper != OPR_EQ) return FALSE;
 
@@ -882,6 +887,9 @@ Opcode_Heuristic(
   WN *br_wn = BB_branch_wn(bb);
   if (br_wn) {
     WN *cond_wn = WN_kid0(br_wn);
+#if defined(TARG_SL)
+    if (!cond_wn) return FALSE;
+#endif    
     OPERATOR cond_oper = WN_operator(cond_wn);
     if (OPERATOR_is_compare(cond_oper)) {
       if (WN_Is_Pointer(WN_kid0(cond_wn)) || WN_Is_Pointer(WN_kid1(cond_wn))) {

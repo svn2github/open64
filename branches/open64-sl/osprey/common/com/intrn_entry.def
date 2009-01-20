@@ -4800,6 +4800,222 @@ DEF_INTRN_ENTRY(INTRN_INIT_HI, "INIT_HI", BYVAL, PURE, SIDEEFFECTS,
 DEF_INTRN_ENTRY(INTRN_COPY_HI, "COPY_HI", BYVAL, PURE, NO_SIDEEFFECTS,
                 DOES_RETURN, NOT_ACTUAL, CGINTRINSIC, NOT_SLAVE,
                 IRETURN_I4, "copy_hi", "COPY_HI", NULL)
+               
+// BEGIN emulate for long long type
+DEF_INTRN_ENTRY(INTRN_LLE_FLOAT_TO_LL, "float32_to_int64_round_to_zero", BYVAL, PURE, NO_SIDEEFFECTS, 
+				DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+				IRETURN_I8, "float32_to_int64_round_to_zero", "float32_to_int64_round_to_zero", "float32_to_int64_round_to_zero")
+				
+DEF_INTRN_ENTRY(INTRN_LLE_DOUBLE_TO_LL, "float64_to_int64_round_to_zero",
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_I8, "float64_to_int64_round_to_zero", "float64_to_int64_round_to_zero", "float64_to_int64_round_to_zero")
+
+DEF_INTRN_ENTRY(INTRN_LLE_LL_TO_FLOAT, "int64_to_float32", 
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_F4, "int64_to_float32", "int64_to_float32", "int64_to_float32")
+
+DEF_INTRN_ENTRY(INTRN_LLE_LL_TO_DOUBLE, "int64_to_float64",
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_F8, "int64_to_float64", "int64_to_float64", "int64_to_float64")
+	
+DEF_INTRN_ENTRY(INTRN_LLE_FLOAT_TO_ULL, "float32_to_uint64_round_to_zero",
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_U8, "float32_to_uint64_round_to_zero", "float32_to_uint64_round_to_zero", "float32_to_uint64_round_to_zero")
+	
+DEF_INTRN_ENTRY(INTRN_LLE_DOUBLE_TO_ULL, "float64_to_uint64_round_to_zero",
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_U8, "float64_to_uint64_round_to_zero", "float64_to_uint64_round_to_zero", "float64_to_uint64_round_to_zero")
+	
+DEF_INTRN_ENTRY(INTRN_LLE_ULL_TO_FLOAT, "uint64_to_float32",
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_F4, "uint64_to_float32", "uint64_to_float32", "uint64_to_float32")
+	
+DEF_INTRN_ENTRY(INTRN_LLE_ULL_TO_DOUBLE, "uint64_to_float64",
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_F8, "uint64_to_float64", "uint64_to_float64", "uint64_to_float64")
+
+DEF_INTRN_ENTRY(INTRN_LLE_LL_ABS, "int64_abs", 
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_F8, "int64_abs", "int64_abs", "int64_abs")
+
+
+DEF_INTRN_ENTRY(INTRN_LLE_LSHR_LL, "int64_lrightshift", 
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_I8, "int64_lrightshift", "int64_lrightshift", "int64_lrightshift")
+	   
+DEF_INTRN_ENTRY(INTRN_LLE_ASHL_LL, "int64_leftshift",
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_I8, "int64_leftshift", "int64_leftshift", "int64_leftshift")
+
+DEF_INTRN_ENTRY(INTRN_LLE_ASHR_LL, "int64_rightshift",
+	BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+	IRETURN_I8, "int64_rightshift", "int64_rightshift", "int64_rightshift")
+// END emulate for long long type
+
+// begin emulate for float/double type
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_ADD, "float32_add", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "float32_add", "float32_add", "float32_add")
+    
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_SUB, "float32_sub", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "float32_sub", "float32_sub", "float32_sub")	
+
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_MUL, "float32_mul",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "float32_mul", "float32_mul", "float32_mul")
+ 		
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_DIV, "float32_div", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "float32_div", "float32_div", "float32_div")
+    
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_REM, "float32_rem",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "float32_rem", "float32_rem", "float32_rem")
+
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_SQRT, "float32_sqrt",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "float32_sqrt", "float32_sqrt", "float32_sqrt")		
+
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_ABS, "float32_abs", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "float32_abs", "float32_abs", "float32_abs")	
+    
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_NEG, "float32_neg",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "float32_neg", "float32_neg", "float32_neg")	
+
+    
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_LT, "float32_lt", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float32_lt", "float32_lt", "float32_lt")
+    			
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_LE, "float32_le", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float32_le", "float32_le", "float32_le")	
+    		
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_EQ, "float32_eq", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float32_eq", "float32_eq", "float32_eq")  	
+    		
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_NE, "float32_ne", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float32_ne", "float32_ne", "float32_ne")  	
+    		
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_GE, "float32_ge", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float32_ge", "float32_ge", "float32_ge")  			
+    
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_GT, "float32_gt",  
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float32_gt", "float32_gt", "float32_gt")  			
+
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_TO_INT32, "float32_to_int32_round_to_zero", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float32_to_int32_round_to_zero", "float32_to_int32_round_to_zero", "float32_to_int32_round_to_zero")  	
+    		
+DEF_INTRN_ENTRY(INTRN_FPE_INT32_TO_FLOAT, "int32_to_float32",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "int32_to_float32", "int32_to_float32", "int32_to_float32")  	
+    
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_TO_UINT32, "float32_to_uint32_round_to_zero",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_U4, "float32_to_uint32_round_to_zero", "float32_to_uint32_round_to_zero", "float32_to_uint32_round_to_zero")  
+    			
+DEF_INTRN_ENTRY(INTRN_FPE_UINT32_TO_FLOAT, "uint32_to_float32",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "uint32_to_float32", "uint32_to_float32", "uint32_to_float32")  
+    
+    
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_TO_DOUBLE, "float32_to_float64", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "float32_to_float64", "float32_to_float64", "float32_to_float64")  
+    
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_TO_FLOAT, "float64_to_float32", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F4, "float64_to_float32", "float64_to_float32", "float64_to_float32")  
+  
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_ADD, "float64_add", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "float64_add", "float64_add", "float64_add")  
+    
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_SUB, "float64_sub", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "float64_sub", "float64_sub", "float64_sub")  	
+    
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_MUL, "float64_mul", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "float64_mul", "float64_mul", "float64_mul")  	
+    
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_DIV, "float64_div", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "float64_div", "float64_div", "float64_div")  	
+    
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_REM, "float64_rem", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "float64_rem", "float64_rem", "float64_rem")  	
+    
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_SQRT, "float64_sqrt", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "float64_sqrt", "float64_sqrt", "float64_sqrt")  
+    
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_ABS, "float64_abs",     
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "float64_abs", "float64_abs", "float64_abs")      
+    
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_NEG, "float64_neg",     
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "float64_neg", "float64_neg", "float64_neg")    
+      
+
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_LT, "float64_lt", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float64_lt", "float64_lt", "float64_lt")  	
+    			
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_LE, "float64_le", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float64_le", "float64_le", "float64_le")  	
+    				
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_EQ, "float64_eq", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float64_eq", "float64_eq", "float64_eq")  		
+    			
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_NE, "float64_ne", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float64_ne", "float64_ne", "float64_ne")  	
+    				
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_GE, "float64_ge", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float64_ge", "float64_ge", "float64_ge")  	
+    				
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_GT, "float64_gt", 
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float64_gt", "float64_gt", "float64_gt")  				
+
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_TO_INT32, "float64_to_int32_round_to_zero",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float64_to_int32_round_to_zero", "float64_to_int32_round_to_zero", "float64_to_int32_round_to_zero")  	
+    			
+DEF_INTRN_ENTRY(INTRN_FPE_INT32_TO_DOUBLE, "int32_to_float64",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "int32_to_float64", "int32_to_float64", "int32_to_float64")  	
+
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_TO_UINT32, "float64_to_uint32_round_to_zero",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_U4, "float64_to_uint32_round_to_zero", "float64_to_uint32_round_to_zero", "float64_to_uint32_round_to_zero")  		
+    		
+DEF_INTRN_ENTRY(INTRN_FPE_UINT32_TO_DOUBLE, "uint32_to_float64",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_F8, "uint32_to_float64", "uint32_to_float64", "uint32_to_float64")  
+
+DEF_INTRN_ENTRY(INTRN_FPE_FLOAT_TO_INT32_TRUNC, "float32_to_int32_round_to_zero",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float32_to_int32_round_to_zero", "float32_to_int32_round_to_zero", "float32_to_int32_round_to_zero")  
+    
+DEF_INTRN_ENTRY(INTRN_FPE_DOUBLE_TO_INT32_TRUNC, "float64_to_int32_round_to_zero",
+    BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE,
+    IRETURN_I4, "float64_to_int32_round_to_zero", "float64_to_int32_round_to_zero", "float64_to_int32_round_to_zero")  
+                   
 #endif // TARG_SL
 
 #if defined(TARG_NVISA)

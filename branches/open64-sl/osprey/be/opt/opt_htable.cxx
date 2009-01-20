@@ -2208,7 +2208,7 @@ CODEMAP::Canon_cvt(WN       *wn,
   }
 #endif
 
-#ifdef TARG_MIPS
+#if defined (TARG_MIPS) && !defined (TARG_SL)
   // U8I4CVT and I8I4CVT are nops so return kid, MIPS III and above
   // since U8I4CVT is required to preserve the type of its type for
   // Fix_var_type at emitter time, we do not delete U8I4CVT #329096
@@ -2223,8 +2223,12 @@ CODEMAP::Canon_cvt(WN       *wn,
       MTYPE_size_min(OPCODE_rtype(op)) == MTYPE_size_min(OPCODE_desc(op))) 
     return propagated;
 
+#ifdef TARG_SL
+  extern BOOL Is_Target_32bit();
+#endif
+
   if ( WOPT_Enable_Cvt_Folding && 
-#if defined(TARG_X8664) || defined(TARG_NVISA) // bug 5851
+#if defined(TARG_X8664) || defined(TARG_NVISA) || defined (TARG_SL) // bug 5851
        ! Is_Target_32bit() &&
 #endif
       (op == OPC_I8U4CVT || op == OPC_U8U4CVT) && 

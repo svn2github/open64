@@ -38,110 +38,6 @@ extern INT32 CG_Max_Addreg;
 UINT16 prev_alloc_AccIndex = 0;
 UINT16 prev_alloc_AddrIndex = 0;
 
-TN* Expand_Float64_Const(WN* intrncall, TN* result,  BOOL Is_high,  OPS *ops)
-{
-// check if the value has been stored into a preg.
-// check if the parameter is a const. give a assertion if not.
-// following format is expected
-//      F8CONST/F8LDID
-//    F8PARM
-//  I4INTRINSIC_OP
-  WN* kid0 = WN_kid0(intrncall);
-  if(!kid0) {
-     Print_Src_Line(current_srcpos, stderr);
-     Fail_FmtAssertion("line %d: Parameter is NULL when handling CVT64",  SRCPOS_linenum(current_srcpos));
-  }
-
-  WN* const_val = WN_kid0(kid0);
-
-  if(WN_operator(const_val) != OPR_CONST) {
-     Print_Src_Line(current_srcpos, stderr);
-     Fail_FmtAssertion("line %d: constant expected when handling CVT64",  SRCPOS_linenum(current_srcpos));
-  }
-  ST* sym = WN_st(const_val);
-  TCON tcon = STC_val(sym);
-  INTRINSIC id = WN_intrinsic(intrncall);
-  INT32 val  = (id == INTRN_CVT64_LOW) ?  TCON_v0(tcon) : TCON_v1(tcon);
-  if(val == 0)
-     Exp_COPY(result, Zero_TN, ops);
-  else {
-     Build_OP (TOP_lui, result, Gen_Literal_TN((val >> 16)&0xffff, 4), ops);
-     Build_OP(TOP_ori, result, result, Gen_Literal_TN(val & 0xffff, 4), ops);
-  }
-
-  return result;
-
-}
-
-
-TN* Expand_LONGLONG_Const(WN* intrncall, TN* result,  BOOL Is_high,  OPS *ops)
-{
-// check if the value has been stored into a preg.
-// check if the parameter is a const. give a assertion if not. 
-// following format is expected
-//      I8CONST
-//    I8PARM
-//  I4INTRINSIC_OP
-  WN* kid0 = WN_kid0(intrncall); 
-  if(!kid0) {
-     Print_Src_Line(current_srcpos, stderr); 
-     Fail_FmtAssertion("line %d: Parameter is NULL when handling LONLONG CVT64",  SRCPOS_linenum(current_srcpos)); 
-  }
-  
-  WN* const_val = WN_kid0(kid0); 
-  
-  if(WN_operator(const_val) != OPR_INTCONST) {
-     Print_Src_Line(current_srcpos, stderr); 
-     Fail_FmtAssertion("line %d: constant expected when handling CVT64",  SRCPOS_linenum(current_srcpos)); 
-  }
-  
-  INTRINSIC id = WN_intrinsic(intrncall); 
-  INT32 val  = (id == INTRN_LONGLONG_CVT64_LOW) ? (WN_const_val(const_val) & 0xffffffff) :( (WN_const_val(const_val) >> 32) & 0xffffffff);  
-  if(val == 0) 
-     Exp_COPY(result, Zero_TN, ops); 
-  else {
-     Build_OP (TOP_lui, result, Gen_Literal_TN((val >> 16)&0xffff, 4), ops);
-     Build_OP(TOP_ori, result, result, Gen_Literal_TN(val & 0xffff, 4), ops);
-  }
-  return result; 
-}
-
-
-TN* Expand_Float32_Const(WN* intrncall, TN* result,  OPS *ops)
-{
-// check if the value has been stored into a preg.
-// check if the parameter is a const. give a assertion if not. 
-// following format is expected
-//      F4CONST
-//    F4PARM
-//  I4INTRINSIC_OP
-  WN* kid0 = WN_kid0(intrncall); 
-  if(!kid0) {
-     Print_Src_Line(current_srcpos, stderr); 
-     Fail_FmtAssertion("line %d:  Parameter is NULL when handling CVT64", SRCPOS_linenum(current_srcpos)); 
-  }
-
-  WN* const_val = WN_kid0(kid0); 
-  
-  if(WN_operator(const_val) != OPR_CONST) {
-     Print_Src_Line(current_srcpos, stderr); 
-     Fail_FmtAssertion("line %d: constant expected when handling CVT32",  SRCPOS_linenum(current_srcpos)); 
-  }
-
-  ST* sym = WN_st(const_val); 
-  TCON tcon = STC_val(sym);
-  INTRINSIC id = WN_intrinsic(intrncall); 
-  INT32 val  = TCON_v0(tcon);  
-  if(val == 0) 
-     Exp_COPY(result, Zero_TN, ops); 
-  else {
-     Build_OP (TOP_lui, result, Gen_Literal_TN((val >> 16)&0xffff, 4), ops);
-     Build_OP(TOP_ori, result, result, Gen_Literal_TN(val & 0xffff, 4), ops);
-  }
-  return result; 
-}
-
-// c3 intrinsic
 /*Given an acc tn, print the variable map to acc special register */
 void Print_Acc (TN *acctn) {
   typedef std::map<INT32, TN*> Var2Acc;
@@ -995,6 +891,170 @@ TN *Expand_Set_CircBuf(WN *intrncall, TN *result, OPS *ops) {
   Set_OP_volatile(OPS_last(ops));
   Build_OP(TOP_sw, src_end, end_addr, value0, ops);
   Set_OP_volatile(OPS_last(ops));
+}
+
+
+TN* Expand_Float64_Const(WN* intrncall, TN* result,  BOOL Is_high,  OPS *ops)
+{
+// check if the value has been stored into a preg.
+// check if the parameter is a const. give a assertion if not. 
+// following format is expected
+//      F8CONST/F8LDID
+//    F8PARM
+//  I4INTRINSIC_OP
+  WN* kid0 = WN_kid0(intrncall); 
+  if(!kid0) {
+     Print_Src_Line(current_srcpos, stderr); 
+     Fail_FmtAssertion("line %d: Parameter is NULL when handling CVT64",  SRCPOS_linenum(current_srcpos)); 
+  }
+
+  WN* const_val = WN_kid0(kid0);
+  
+#ifdef EMULATE_FLOAT_POINT
+
+  FmtAssert(WN_rtype(const_val) == MTYPE_F8, ("Expand_Float64_Const: Unexpected Type"));
+
+  TN * const_tn = Expand_Expr(const_val, kid0, NULL);
+  
+  INTRINSIC id = WN_intrinsic(intrncall); 
+  if (id == INTRN_CVT64_LOW)
+  {
+  	Exp_COPY(result, const_tn, ops); 
+  }
+  else
+  {
+    extern TN* Get_TN_Pair(TN* key);
+
+	  TN * const_tn_high = Get_TN_Pair(const_tn);
+	  FmtAssert(const_tn_high, ("Expand_Float64_Const: Get const Tn high failed"));
+
+	  Exp_COPY(result, const_tn_high, ops); 
+  }
+
+#else
+
+  if(WN_operator(const_val) != OPR_CONST) {
+     Print_Src_Line(current_srcpos, stderr); 
+     Fail_FmtAssertion("line %d: constant expected when handling CVT64",  SRCPOS_linenum(current_srcpos)); 
+  }
+  ST* sym = WN_st(const_val); 
+  TCON tcon = STC_val(sym);
+  INTRINSIC id = WN_intrinsic(intrncall); 
+  INT32 val  = (id == INTRN_CVT64_LOW) ?  TCON_v0(tcon) : TCON_v1(tcon);  
+  if(val == 0) 
+     Exp_COPY(result, Zero_TN, ops); 
+  else {
+     Build_OP (TOP_lui, result, Gen_Literal_TN((val >> 16)&0xffff, 4), ops);
+     Build_OP(TOP_ori, result, result, Gen_Literal_TN(val & 0xffff, 4), ops);
+  }
+  
+#endif
+  
+  return result; 
+
+}
+
+
+TN* Expand_LONGLONG_Const(WN* intrncall, TN* result,  BOOL Is_high,  OPS *ops)
+{
+// check if the value has been stored into a preg.
+// check if the parameter is a const. give a assertion if not. 
+// following format is expected
+//      I8CONST/I8LDID
+//    I8PARM
+//  I4INTRINSIC_OP
+  WN* kid0 = WN_kid0(intrncall); 
+  if(!kid0) {
+     Print_Src_Line(current_srcpos, stderr); 
+     Fail_FmtAssertion("line %d: Parameter is NULL when handling LONLONG CVT64",  SRCPOS_linenum(current_srcpos)); 
+  }
+  
+  WN* const_val = WN_kid0(kid0); 
+
+#ifdef EMULATE_LONGLONG
+
+  FmtAssert((WN_rtype(const_val) == MTYPE_I8) || (WN_rtype(const_val) == MTYPE_U8), 
+  ("Expand_LONGLONG_Const: Unexpected Type"));
+
+  TN * const_tn = Expand_Expr(const_val, kid0, NULL);
+  
+  INTRINSIC id = WN_intrinsic(intrncall); 
+  if (id == INTRN_LONGLONG_CVT64_LOW)
+  {
+  	Exp_COPY(result, const_tn, ops); 
+  }
+  else
+  {
+    extern TN* Get_TN_Pair(TN* key);
+
+	  TN * const_tn_high = Get_TN_Pair(const_tn);
+	  FmtAssert(const_tn_high, ("Expand_LONGLONG_Const: Get const Tn high failed"));
+
+	  Exp_COPY(result, const_tn_high, ops); 
+  }
+  
+#else
+  if(WN_operator(const_val) != OPR_INTCONST) {
+     Print_Src_Line(current_srcpos, stderr); 
+     Fail_FmtAssertion("line %d: constant expected when handling CVT64",  SRCPOS_linenum(current_srcpos)); 
+  }
+  
+  INTRINSIC id = WN_intrinsic(intrncall); 
+  INT32 val  = (id == INTRN_LONGLONG_CVT64_LOW) ? (WN_const_val(const_val) & 0xffffffff) :( (WN_const_val(const_val) >> 32) & 0xffffffff);  
+  if(val == 0) 
+     Exp_COPY(result, Zero_TN, ops); 
+  else {
+     Build_OP (TOP_lui, result, Gen_Literal_TN((val >> 16)&0xffff, 4), ops);
+     Build_OP(TOP_ori, result, result, Gen_Literal_TN(val & 0xffff, 4), ops);
+  }
+#endif
+
+  return result; 
+}
+
+
+TN* Expand_Float32_Const(WN* intrncall, TN* result,  OPS *ops)
+{
+// check if the value has been stored into a preg.
+// check if the parameter is a const. give a assertion if not. 
+// following format is expected
+//      F4CONST/F4LDID
+//    F4PARM
+//  I4INTRINSIC_OP
+  WN* kid0 = WN_kid0(intrncall); 
+  if(!kid0) {
+     Print_Src_Line(current_srcpos, stderr); 
+     Fail_FmtAssertion("line %d:  Parameter is NULL when handling CVT64", SRCPOS_linenum(current_srcpos)); 
+  }
+
+  WN* const_val = WN_kid0(kid0); 
+  
+#ifdef EMULATE_FLOAT_POINT
+
+  FmtAssert(WN_rtype(const_val) == MTYPE_F4, ("Expand_Float32_Const: Unexpected Type"));
+  TN * const_tn = Expand_Expr(const_val, kid0, NULL);
+  Exp_COPY(result, const_tn, ops);
+
+#else
+
+  if(WN_operator(const_val) != OPR_CONST) {
+     Print_Src_Line(current_srcpos, stderr); 
+     Fail_FmtAssertion("line %d: constant expected when handling CVT32",  SRCPOS_linenum(current_srcpos)); 
+  }
+
+  ST* sym = WN_st(const_val); 
+  TCON tcon = STC_val(sym);
+  INTRINSIC id = WN_intrinsic(intrncall); 
+  INT32 val  = TCON_v0(tcon);  
+  if(val == 0) 
+     Exp_COPY(result, Zero_TN, ops); 
+  else {
+     Build_OP (TOP_lui, result, Gen_Literal_TN((val >> 16)&0xffff, 4), ops);
+     Build_OP(TOP_ori, result, result, Gen_Literal_TN(val & 0xffff, 4), ops);
+  }
+#endif
+
+  return result; 
 }
 
 TN *Expand_C3_aadda(WN *intrncall, TN *result, OPS *ops) {

@@ -459,6 +459,7 @@ I-fini%s		;		CC	ld	"-fini %s"
 -profile	;	ALL	ld	self "-lm" "-TENV:call_mcount"
 	""
 #ifdef SL
+% sl specific flags
 -march=%s	;  ALL     as      ""
         "Set CPU type"
 -n32    toggle(&abi,ABI_N32);   ALL     PFA     "-n32" "-TARG:abi=n32"
@@ -471,6 +472,10 @@ I-fini%s		;		CC	ld	"-fini %s"
 	""
 -sl1_pcore toggle(&use_sl1,TRUE);	ALL     NONE    "-TARG:processor=sl1_pcore -march=sl1"
 	""
+-mlong-long      Long_Long_Support=TRUE;   Cc,cpp f self
+	"Supporting 64bit Long Long for SL"
+-msoft-float    Float_Point_Support=TRUE;  Cc,cpp f self
+	"Supporting Float Point Emulation for SL"
 #endif
 #ifdef X8664 /* Bug #381, here the MACRO is X8664/IA64, no 'TARG_' prefix */
 -m32	toggle(&abi,ABI_N32);	ALL	be	"-TARG:abi=n32" 
@@ -1208,10 +1213,12 @@ I-u%s		;		Cc	ld	"-u %s"
 %%% C language options
 -flang-isoc9x	;		Cc	f	self
 	""
+#ifndef SL
 -msoft-float	warn_ignored(option_name);	ALL	NONE	""
 	""
 -mno-soft-float	warn_ignored(option_name);	ALL	NONE	""
 	""
+#endif
 -fcond-mismatch	;		Cc	f	self
 	""
 #ifdef KEY

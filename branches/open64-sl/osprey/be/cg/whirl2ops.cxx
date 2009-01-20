@@ -111,7 +111,7 @@
 #include "be_util.h"
 #include "config_asm.h"
 
- #if defined(TARG_X8664) || defined(TARG_NVISA)
+#if defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_SL)
 #include "cgexp_internals.h"
 #else
 #define OP_NEED_PAIR(t) (0)
@@ -122,11 +122,9 @@
 #endif
 
 #ifdef EMULATE_LONGLONG
-#ifndef TARG_SL
 extern void Add_TN_Pair (TN*, TN*);
 extern TN *If_Get_TN_Pair(TN*);
 extern TN *Gen_Literal_TN_Pair(UINT64);
-#endif
 #endif
 
 BOOL Compiling_Proper_REGION;
@@ -926,6 +924,34 @@ Process_OPs_For_Stmt (void)
 static TN *
 Allocate_Result_TN (WN *wn, TN **opnd_tn)
 {
+#ifdef TARG_SL
+
+#ifdef EMULATE_LONGLONG
+  TYPE_ID mtype = WN_rtype(wn);
+  if (MTYPE_is_longlong(mtype)) {
+    TYPE_ID new_mtype = (mtype == MTYPE_I8 ? MTYPE_I4 : MTYPE_U4);
+    TN *tn  = Build_TN_Of_Mtype (new_mtype);
+    TN *tn2 = Build_TN_Of_Mtype (new_mtype);
+    Add_TN_Pair (tn, tn2);
+    return tn;
+  }
+#endif
+
+#ifdef EMULATE_FLOAT_POINT
+  if (mtype == MTYPE_F8) {
+    TN *tn   = Build_TN_Of_Mtype(MTYPE_U4);
+    TN *pair = Build_TN_Of_Mtype(MTYPE_U4);
+    Add_TN_Pair (tn, pair);
+    return tn;
+  } else if (mtype = MTYPE_F4) {
+    return Build_TN_Of_Mtype(MTYPE_U4);
+  }
+#endif 
+
+  return Build_TN_Of_Mtype (mtype);
+
+#else // !defined(TARG_SL)
+
 #ifdef EMULATE_LONGLONG
 
   TYPE_ID mtype = WN_rtype(wn);
@@ -947,6 +973,8 @@ Allocate_Result_TN (WN *wn, TN **opnd_tn)
   else
 #endif
   return Build_TN_Of_Mtype (WN_rtype(wn));
+
+#endif // defined(TARG_SL)
 #endif
 }
 
@@ -1132,6 +1160,7 @@ TN *
 PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
 {
   TN *tn;
+  TYPE_ID mtype = TY_mtype(preg_ty);
 
 #ifdef TARG_NVISA
   // allow this to be called for dedicated regs in global scope
@@ -1190,6 +1219,18 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
 	}
 #endif
       	tn = Build_Dedicated_TN(rclass, reg, TY_size(preg_ty));
+#if defined(TARG_SL) && defined(EMULATE_LONGLONG) 
+      if (mtype == MTYPE_I8 || mtype == MTYPE_U8) {
+        TN* pair = Build_Dedicated_TN(rclass, reg+1, TY_size(preg_ty));
+        Add_TN_Pair(tn, pair);
+      }
+#endif
+#if defined(TARG_SL) && defined(EMULATE_FLOAT_POINT) 
+      if (mtype == MTYPE_F8) {
+        TN* pair = Build_Dedicated_TN(rclass, reg+1, TY_size(preg_ty));
+        Add_TN_Pair(tn, pair);
+      } 
+#endif
 
 #ifdef TARG_X8664
 	if( reg == First_Int_Preg_Return_Offset &&
@@ -1238,7 +1279,7 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
       }
 #endif
 
-#if defined(EMULATE_LONGLONG) 
+#if defined(EMULATE_LONGLONG) && !defined (TARG_SL)
       if (mtype == MTYPE_I8 || mtype == MTYPE_U8) {
         mtype = (mtype == MTYPE_I8 ? MTYPE_I4 : MTYPE_U4);
         tn = Build_TN_Of_Mtype(mtype);
@@ -1246,6 +1287,27 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
       } else {
         tn = Build_TN_Of_Mtype (mtype);
       }
+#elif defined(TARG_SL)
+
+#ifdef EMULATE_LONGLONG
+      if (mtype == MTYPE_I8 || mtype == MTYPE_U8) {
+        mtype = (mtype == MTYPE_I8 ? MTYPE_I4 : MTYPE_U4);
+        tn = Build_TN_Of_Mtype(mtype);
+        Add_TN_Pair(tn, Build_TN_Of_Mtype(mtype));
+      } else 
+#endif      
+
+#ifdef EMULATE_FLOAT_POINT 
+      if (mtype == MTYPE_F8) {
+        TN* pair = Build_TN_Of_Mtype(MTYPE_U4);
+        tn = Build_TN_Of_Mtype(MTYPE_U4);
+        Add_TN_Pair(tn, pair);
+      } else if (mtype == MTYPE_F4) {
+        tn = Build_TN_Of_Mtype(MTYPE_U4);
+      } else       
+#endif
+    	tn = Build_TN_Of_Mtype (mtype);
+
 #else
 #ifdef TARG_X8664
       if( OP_NEED_PAIR(mtype) ){
@@ -1316,6 +1378,14 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
       tn = Build_Dedicated_TN (TN_register_class(tn),
                                TN_register(tn),
                                TY_size(preg_ty));
+
+#if defined(TARG_SL) && defined(EMULATE_FLOAT_POINT)
+      if ((mtype == MTYPE_F8) && (!Get_TN_Pair(tn))) {
+        TN* pair = Build_Dedicated_TN(TN_register_class(tn), 
+            TN_register(tn) + 1, TY_size(preg_ty));
+        Add_TN_Pair(tn, pair);
+      } 
+#endif
     }
 #ifdef KEY
     // Do the same for integer class; we have separate set of dedicated TNs
@@ -1326,9 +1396,22 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
 	&& Is_Target_64bit()
 #endif // TARG_X8664
        ) {
+#if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT)) 
+      if (mtype != MTYPE_I8 && mtype != MTYPE_U8 && mtype != MTYPE_F8) 
+#endif        
       tn = Build_Dedicated_TN (TN_register_class(tn),
                                TN_register(tn),
                                TY_size(preg_ty));
+    }
+#endif
+#if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT))
+    // for dedicated TN, tn is the high part, we should return the low part
+    if (mtype == MTYPE_I8 || mtype == MTYPE_U8 || mtype == MTYPE_F8) {      
+      if (!Get_TN_Pair(tn)) {
+        TN* pair = Build_Dedicated_TN (TN_register_class(tn),
+                   TN_register(tn) + 1, TY_size(preg_ty));
+        Add_TN_Pair(tn, pair);
+      }
     }
 #endif
   }
@@ -1679,7 +1762,7 @@ static VARIANT Memop_Variant(WN *memop)
        */
       offset = WN_load_offset(memop);
       ty_align = ST_alignment(WN_st(memop));
-#ifdef TARG_X8664 // bug 8198: in absence of pointed-to type's alignment, need this
+#if defined(TARG_X8664) || defined(TARG_SL) // bug 8198: in absence of pointed-to type's alignment, need this
       if (offset) {
 	INT offset_align = offset % required_alignment;
 	if (offset_align) ty_align = MIN(ty_align, offset_align);
@@ -1836,6 +1919,7 @@ Find_PREG_For_Symbol (const ST *st)
     return ST_ATTR_reg_id(St_Attr_Table(ST_IDX_level (idx), d));
 } 
 
+extern void Expand_Copy_Extension (TN *result, TN *src, TYPE_ID mtype, BOOL signed_extension, OPS *ops);
 
 static TN *
 Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
@@ -1850,7 +1934,22 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
    */
   if (WN_class(ldid) == CLASS_PREG)
   {
-#ifdef TARG_NVISA
+#ifdef TARG_SL
+    TYPE_ID mtype =  ST_mtype(WN_st(ldid));
+    TN *ldid_result = PREG_To_TN (WN_st(ldid), WN_load_offset(ldid));
+        
+#ifdef EMULATE_LONGLONG
+      if (MTYPE_is_longlong(mtype)) {
+        FmtAssert(Get_TN_Pair(ldid_result), ("Handle_LDID: TN pair should be setup"));
+      }
+#endif
+#ifdef EMULATE_FLOAT_POINT
+      if (mtype == MTYPE_F8) {
+        FmtAssert(Get_TN_Pair(ldid_result), ("Handle_LDID: TN pair should be setup"));
+      }
+#endif
+
+#elif defined(TARG_NVISA)
     TN *ldid_result;
     if (Is_Simple_Type(WN_ty(ldid))) {
         // pass more exact ty rather than st so know to create 
@@ -1879,10 +1978,16 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
       result = ldid_result;
     }
     else {
-#ifdef EMULATE_LONGLONG
+#if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT)) 
+      if (Get_TN_Pair(result)) {
+        Expand_Copy_Extension(result, ldid_result, WN_rtype(ldid), MTYPE_signed(WN_desc(ldid)), &New_OPs);
+      }
+      else {
+        Exp_COPY(result, ldid_result, &New_OPs);
+      } 
+#elif defined(EMULATE_LONGLONG)
       {
-        extern void
-          Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
+        extern void Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
         TYPE_ID mtype =  ST_mtype(WN_st(ldid));
         if (mtype == MTYPE_I8 || mtype == MTYPE_U8) {
           Expand_Copy (result, ldid_result, mtype, &New_OPs);
@@ -2399,6 +2504,14 @@ Handle_STID (WN *stid, OPCODE opcode)
       if (OPERATOR_is_boolean(WN_operator(kid))) {
 	Set_TN_is_boolean(result);
       }
+#elif defined(TARG_SL)
+      if (Is_Simple_Type(WN_ty(stid))) {
+        // pass more exact ty rather than st so know to create 
+        // exact-sized register.
+        result = PREG_To_TN (WN_ty(stid), WN_store_offset(stid));
+      } else {
+        result = PREG_To_TN (WN_st(stid), WN_store_offset(stid));
+      }
 #else
       result = PREG_To_TN (WN_st(stid), WN_store_offset(stid));
 #endif
@@ -2448,6 +2561,34 @@ Handle_STID (WN *stid, OPCODE opcode)
         Expand_Expr (kid, stid, result);
       }
 #else
+
+#if defined(TARG_SL) && defined(EMULATE_LONGLONG)
+      if(MTYPE_is_longlong(OPCODE_desc(opcode)) && !Get_TN_Pair(result)) {	
+        FmtAssert(FALSE, ("Handle_STID: Get_TN_Pair Failed"));       
+      }
+
+      TYPE_ID stid_type = OPCODE_desc(opcode);
+      TYPE_ID kid0_type = WN_rtype(WN_kid0(stid));
+	  
+      if (MTYPE_is_longlong(kid0_type)  // I4 <- I8
+      && (MTYPE_byte_size(kid0_type) > MTYPE_byte_size(stid_type))) {
+        TN * rett = Expand_Expr(kid, stid, NULL);
+        if (result) 
+          Expand_Copy(result, rett, stid_type, &New_OPs);
+        else 
+          result = rett;
+      }
+      else if (MTYPE_is_longlong(stid_type) && Get_TN_Pair(result)  // I8 <- I4
+           && (MTYPE_byte_size(kid0_type) < MTYPE_byte_size(stid_type))) {   
+        TN* tn =  Expand_Expr(kid, stid, NULL);
+        Expand_Copy_Extension(result, tn, stid_type, MTYPE_signed(kid0_type), &New_OPs);
+      }
+      else { // I8 <- I8 || I4 <- I4
+        Expand_Expr(kid, stid, result);
+      }
+      
+#else   // TARG_SL && EMULATE_LONGLONG 
+
 #ifdef TARG_X8664 // bug 11088
         if(OPCODE_is_compare(WN_opcode(kid)) && 
                   MTYPE_is_vector(WN_desc(kid))){
@@ -2475,6 +2616,7 @@ Handle_STID (WN *stid, OPCODE opcode)
 	Exp_COPY(old_result, result, &New_OPs);
       }
 #endif
+#endif  // TARG_SL && EMULATE_LONGLONG
 
 #ifdef TARG_X8664
       const TYPE_ID stid_type = OPCODE_desc(opcode);
@@ -2611,10 +2753,16 @@ Handle_COMPOSE_BITS (WN *compbits, TN *result, OPCODE opcode)
 		 result, kid0_tn, &New_OPs);
   else
 #endif
+#ifdef TARG_SL
+  Exp_Deposit_Bits(OPCODE_rtype(opcode), WN_rtype(WN_kid1(compbits)), 
+		   WN_bit_offset(compbits), WN_bit_size(compbits), 
+		   result, kid0_tn, kid1_tn, &New_OPs);
+#else
   Exp_Deposit_Bits(OPCODE_rtype(opcode), OPCODE_rtype(opcode), 
 		   WN_bit_offset(compbits), WN_bit_size(compbits), 
 		   result, kid0_tn, kid1_tn, &New_OPs);
 
+#endif //TARG_SL
   return result;
 }
 
@@ -2627,7 +2775,7 @@ Handle_ISTORE (WN *istore, OPCODE opcode)
   TN *kid0_tn = Expand_Expr (WN_kid0(istore), istore, NULL);
   ST *st;
 
-#ifdef EMULATE_LONGLONG
+#if defined(EMULATE_LONGLONG) && !defined(TARG_SL)
   {
     // long long check: If the LHS is an I/U8, and the RHS is I4,
     // then assert that RHS must be a boolean.
@@ -2854,11 +3002,14 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
     	op1 = Expand_Expr (WN_kid0(compare), compare, NULL);
     	op2 = Expand_Expr (WN_kid1(compare), compare, NULL);
 #if defined(TARG_SL)
-      if (!Exp_Opt_Select_And_Condition(select, result, trueop, falseop, op1, op2, &New_OPs))
-#endif
+        if (!(CG_enable_opt_condmv && Exp_Opt_Select_And_Condition(select, result, trueop, falseop, op1, op2, &New_OPs)))
+  	  Exp_Select_And_Condition (select, opcode, result, trueop, falseop, 	
+				    WN_opcode(compare), op1, op2, variant, &New_OPs);
+#else
   	Exp_Select_And_Condition (opcode, result, trueop, falseop, 
 				  WN_opcode(compare), op1, op2, variant, 
 				  &New_OPs);
+#endif
   }
 
   return result;
@@ -3072,6 +3223,11 @@ Is_CVT_Noop(WN *cvt, WN *parent)
      /*
       *  if 32-bit ints are sign-extended to 64-bit, then is a nop.
       */
+
+#ifdef TARG_SL
+      return FALSE;
+#endif
+
       if ( ! Split_64_Bit_Int_Ops && ! Only_Unsigned_64_Bit_Ops)
       {
 #ifdef TARG_X8664
@@ -3529,10 +3685,10 @@ Preproc_Divmodsi3_To_udivremsi4(WN* expr) {
          &New_OPs );
        Build_OP(TOP_addu, tmp_a, Zero_TN, tmp_a, &New_OPs);
      }
-     Build_MC_OP(TOP_mc_zc_lt, neg, tmp_a, tmp, 0, &New_OPs, OP_ALWAYS_UNC_DEF);
+     Build_OP(TOP_mc_zc_lt, neg, tmp_a, tmp, Gen_Literal_TN(0, 4), &New_OPs);
    }
    else {
-     Build_MC_OP(TOP_mc_zc_lt, neg, tn_a, tmp,  0, &New_OPs, OP_ALWAYS_UNC_DEF);
+     Build_OP(TOP_mc_zc_lt, neg, tn_a, tmp, Gen_Literal_TN(0, 4), &New_OPs);
    }
    
    /* a =  ( a < 0 ) ? (-a) : (a) */
@@ -3743,22 +3899,22 @@ Expand_SL_DivRem_Op( WN* expr, const char* func_name, OPCODE opcode, PREG_NUM pr
          }
          //Build_OP(TOP_addiu, tmp_b, Zero_TN, Gen_Literal_TN(TN_value(tn_b), 4), &New_OPs);
          TN* neg_a1 = Build_TN_Of_Mtype(MTYPE_I4);
-         Build_MC_OP(TOP_mc_zc_lt, neg_a1, tmp_b, tmp, 0, &New_OPs,OP_ALWAYS_UNC_DEF);
+         Build_OP(TOP_mc_zc_lt, neg_a1, tmp_b, tmp, Gen_Literal_TN(0, 4), &New_OPs);
          Build_OP(TOP_xor, neg, neg, neg_a1, &New_OPs);
        }
        else {
          TN* neg_a1 = Build_TN_Of_Mtype(MTYPE_I4);
-         Build_MC_OP(TOP_mc_zc_lt,  neg_a1, tn_b, tmp, 0, &New_OPs, OP_ALWAYS_UNC_DEF);
+         Build_OP(TOP_mc_zc_lt,  neg_a1, tn_b, tmp, Gen_Literal_TN(0, 4), &New_OPs);
          Build_OP(TOP_xor, neg, neg, neg_a1, &New_OPs);
        }
      }
-     Build_MC_OP(TOP_mc_zn_eq, res, neg, res, 0, &New_OPs,OP_ALWAYS_UNC_DEF);
+     Build_OP(TOP_mc_zn_eq, res, neg, res, Gen_Literal_TN(0, 4), &New_OPs);
 
      if(!TN_is_constant(tn_a)) {
-      Build_MC_OP(TOP_mc_zn_eq, tn_a, neg, tn_a, 0, &New_OPs, OP_ALWAYS_UNC_DEF);
+      Build_OP(TOP_mc_zn_eq, tn_a, neg, tn_a, Gen_Literal_TN(0, 4), &New_OPs);
      }
      if(!TN_is_constant(tn_b)) {
-      Build_MC_OP(TOP_mc_zn_eq, tn_b, neg, tn_b, 0, &New_OPs, OP_ALWAYS_UNC_DEF);
+      Build_OP(TOP_mc_zn_eq, tn_b, neg, tn_b, Gen_Literal_TN(0, 4), &New_OPs);
      }
   // restore registers which div clobber 
        if(WN_div_in_actual(expr)) {
@@ -4308,7 +4464,7 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
     switch (opcode) {
     case OPC_I8INTCONST:
     case OPC_U8INTCONST:
-#ifdef EMULATE_LONGLONG
+#if defined(EMULATE_LONGLONG) && !defined(TARG_SL)
       const_tn = Gen_Literal_TN_Pair((UINT64) WN_const_val(expr));
 #else
       const_tn = Gen_Literal_TN (WN_const_val(expr), 8);
@@ -4368,7 +4524,9 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 
 	/* If the constant is integer 0, it is always available in $0.
 	 */
+#if !(defined(TARG_SL) && defined(EMULATE_LONGLONG))
 	if (Zero_TN && WN_const_val(expr) == 0) return Zero_TN;
+#endif
       }
     }
 

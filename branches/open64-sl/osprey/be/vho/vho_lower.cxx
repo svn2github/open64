@@ -3532,7 +3532,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 	 * to an intrinsic 
 	 * x =  (y >= 0x8000) ? y - 0x8000 : 0; 
 	 */
-#if defined(TARG_X8664) || defined(TARG_SL)	
+#if defined(TARG_X8664) 
 	if ( WN_operator(test) == OPR_GT &&
 	     WN_rtype(test) == MTYPE_I4 &&
 	     WN_desc(test) == MTYPE_U4 &&
@@ -3569,7 +3569,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 	  return wn;
 	  
 	}
-#endif // TARG_X7664 || TARG_SL
+#endif // TARG_X7664 
 #endif
 
         /* x > 0 ? x : -x => abs(x) */
@@ -3604,7 +3604,11 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
         if (    (    WN_operator(test) == OPR_GT
                   || WN_operator(test) == OPR_GE )
              && WN_Simp_Compare_Trees ( WN_kid0(test), lwn ) == 0
-             && WN_Simp_Compare_Trees ( WN_kid1(test), rwn ) == 0 ) {
+             && WN_Simp_Compare_Trees ( WN_kid1(test), rwn ) == 0 
+#if defined(TARG_SL)
+             && MTYPE_is_integral(WN_desc(test))
+#endif
+	 ) {
 
           DevWarn ( "%s: %s %s\n",
                     OPCODE_name(WN_opcode(wn)),
@@ -3626,7 +3630,11 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
         if (    (    WN_operator(test) == OPR_LT
                   || WN_operator(test) == OPR_LE )
              && WN_Simp_Compare_Trees ( WN_kid0(test), lwn ) == 0
-             && WN_Simp_Compare_Trees ( WN_kid1(test), rwn ) == 0 ) {
+             && WN_Simp_Compare_Trees ( WN_kid1(test), rwn ) == 0 
+#if defined(TARG_SL)
+             && MTYPE_is_integral(WN_desc(test))
+#endif			 
+	 ) {
 
           DevWarn ( "%s: %s %s\n",
                     OPCODE_name(WN_opcode(wn)),
@@ -7681,7 +7689,7 @@ vho_lower_if ( WN * wn, WN *block )
    */
 
   WN* test = WN_if_test(wn);  
-#if defined(TARG_X8664) || defined(TARG_SL)
+#if defined(TARG_X8664) 
   if ( WN_operator(test) == OPR_GT &&
        WN_rtype(test) == MTYPE_I4 &&
        WN_desc(test) == MTYPE_U4 &&
@@ -7730,7 +7738,7 @@ vho_lower_if ( WN * wn, WN *block )
       return wn;
     }
   }
-#endif // TARG_X8664 || TARG_SL
+#endif // TARG_X8664 
 
   // If-Convert:
   //   if <compare>

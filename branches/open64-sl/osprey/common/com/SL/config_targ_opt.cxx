@@ -89,7 +89,7 @@ BOOL Flush_To_Zero = FALSE;		/* suppress fp underflow */
 
 /* Miscellaneous target instruction features: */
 #if defined(TARG_SL)
-BOOL Madd_Allowed = TRUE;		/* Generate madd instructions? */
+BOOL Madd_Allowed = FALSE;		/* Generate madd instructions? */
 #else
 BOOL Madd_Allowed = TRUE;		/* Generate madd instructions? */
 #endif

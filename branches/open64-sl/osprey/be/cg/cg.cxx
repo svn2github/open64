@@ -410,6 +410,9 @@ CG_PU_Finalize(void)
   MEM_POOL_Pop ( &MEM_local_nz_pool );
   MEM_POOL_Pop ( &MEM_phase_pool );
   MEM_POOL_Pop ( &MEM_phase_nz_pool );
+#ifdef TARG_SL
+  Expand_Finish();
+#endif
 }
 
 /* Stuff that needs to be done at the start of each REGION in cg. */
@@ -460,9 +463,11 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
 #ifdef TARG_X8664
   Expand_Start();
 #endif
+
 #if defined(TARG_SL)
   extern void Initial_var2spe();
   Initial_var2spe();
+  Expand_Start();
 #endif
 
 }
@@ -1592,7 +1597,7 @@ CG_Generate_Code(
   }
   
   /*16-bit instr replaced*/
-  if (!region && CG_Gen_16bit ) {
+  if (!region && CG_Gen_16bit && (CG_opt_level > 1)) {
     Replace_Size16_Instr();
     Check_for_Dump_ALL ( TP_CGEXP, NULL, "gen16bit op" );
   }

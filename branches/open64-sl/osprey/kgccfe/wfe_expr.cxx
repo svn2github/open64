@@ -4352,7 +4352,11 @@ WFE_Expand_Expr (tree exp,
     case REALPART_EXPR:
     case IMAGPART_EXPR:
       {
+#ifdef TARG_SL
+        wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0), Get_TY(TREE_TYPE(exp)));
+#else
         wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
+#endif
         wn  = WN_Unary (Operator_From_Tree [code].opr,
                         Widen_Mtype(TY_mtype(Get_TY(TREE_TYPE(exp)))), wn0);
 #ifdef KEY // bug 2648
@@ -4896,7 +4900,12 @@ WFE_Expand_Expr (tree exp,
 			   Widen_Mtype(mtyp0), wn0, wn1);
 #endif
 #ifdef KEY
+#ifdef TARG_SL // 32bit target
+      if ( (Widen_Mtype(mtyp) != Boolean_type) && 
+	  	   (!MTYPE_is_size_double(mtyp)))	  	        
+#else
         if (Widen_Mtype(mtyp) != Boolean_type)
+#endif	
 	  wn = WN_Cvt(Boolean_type, Widen_Mtype(mtyp), wn);
 #endif
       }
@@ -5023,6 +5032,7 @@ WFE_Expand_Expr (tree exp,
             && WN_operator(WN_kid0(wn)) != OPR_LDA
             && WN_operator(WN_kid0(wn)) != OPR_LDID
             && WN_operator(WN_kid0(wn)) != OPR_LDBITS
+            && WN_operator(WN_kid0(wn)) != OPR_ILOAD 
 #endif
 	)
 	    { // We do not need the CVT
@@ -7904,8 +7914,27 @@ WFE_Expand_Expr (tree exp,
             WN_Intconst (Pointer_Mtype, rounded_size));
 	    } else
             /* Compute new value for AP.  */
-            wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-            WN_Intconst (Pointer_Mtype, rounded_size));
+#if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT))
+        if ((mtype == MTYPE_F8) || (mtype == MTYPE_I8) || (mtype == MTYPE_U8)
+            || (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
+              && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)) {
+
+          /* Force 8byte align, ((offset + 15) << 3) >> 3 */
+          wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+              WN_Intconst (Pointer_Mtype, 8*2-1));
+
+          wn = WN_Binary (OPR_LSHR, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
+          wn = WN_Binary (OPR_SHL, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
+          if (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
+              && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)
+            wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, rounded_size-8));
+        } else
+#endif
+        {
+          wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+              WN_Intconst (Pointer_Mtype, rounded_size));
+        }
+
 #ifdef TARG_X8664 // bug 12118: pad since under -m32, vector types are 8-byte aligned
 	if (MTYPE_is_vector(mtype) && ! TARGET_64BIT) {
 	  wn = WN_Add(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 7));

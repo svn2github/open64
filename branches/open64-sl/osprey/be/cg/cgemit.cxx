@@ -694,6 +694,12 @@ Init_Section (ST *st)
 		else
 			Set_STB_align(st, CGTARG_Text_Alignment());
 	}
+#ifdef TARG_SL
+        // align all text-like section in SL1
+        else if (STB_exec(st) && (ST_sclass(st) == SCLASS_TEXT)) {
+          Set_STB_align(st, CGTARG_Text_Alignment());
+        }
+#endif
 
 	em_scn[last_scn].sym = st;	/* save symbol for later reference */
 	/* assume st is CLASS_BLOCK */
@@ -3440,10 +3446,7 @@ static void Check_QuadWord_Alignment(OP *op, BB *bb, ISA_BUNDLE *bundle)
 	      BB *cur_bb = OP_bb(op);
 	      if (cur_bb) {
 	        int num =  (quadword_size - (quadword_pc&0xf));// 4 is sizeof intruction op
-	        if (num % 4 ==0)
-	          num = num/4;
-		else
-		  num = (num/4)+1;
+		  num = (num + 3) >> 2;
                 for (int j =0; j< num ; j++) {
 		  OP *op1 = Mk_OP(TOP_nop16);
 		  OP *op2 = Mk_OP(TOP_nop16);
@@ -3471,10 +3474,7 @@ static void Check_QuadWord_Alignment(OP *op, BB *bb, ISA_BUNDLE *bundle)
             BB *cur_bb = OP_bb(op);
 	      if (cur_bb) {
 	        int num =  (quadword_size - (quadword_pc&0xf));// 4 is sizeof intruction op
-	        if (num % 4 ==0)
-	          num = num/4;
-		else
-		  num = (num/4)+1;
+		  num = (num + 3) >> 2;
                 for (int j =0; j< num ; j++) {
 		  OP *op1 = Mk_OP(TOP_nop16);
 		  OP *op2 = Mk_OP(TOP_nop16);

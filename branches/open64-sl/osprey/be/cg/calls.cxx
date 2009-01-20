@@ -1382,6 +1382,36 @@ Target_Unique_Exit (
 	  OP_srcpos(OPS_last(&ops)) = EXITINFO_srcpos(exit_info);
 	  BB_Prepend_Ops(unique_exit_bb, &ops);
 	}
+
+#if defined(TARG_SL)
+/*
+ * Fix bug in _load_inttype.c in uclibc with O2
+ *
+ *   if (return type is int)
+ *     return int_a ($2)
+ *   else if(return type is long long) 
+ *     return long_long_a ($2, $3 (shra.i $3, $2, 31))
+ *
+ * In the original code, $2 is copied to a new_tn, 
+ * But the use of $2 in next top (shra.i $3, $2, 31) is not changed.
+ */
+  OP * opaf = OP_next(op);
+  while (opaf != NULL) {
+    for (int j = OP_opnds(opaf) - 1; j >= 0; --j) {
+      TN * tnop = OP_opnd(opaf, j);
+      if (tnop == tn) {
+        if (Trace_EE) {
+          #pragma mips_frequency_hint NEVER
+          fprintf(TFile, "\nReplace TN %d with %d in Target_Unique_Exit line %d\n",
+              TN_number(tnop), TN_number(new_tn), __LINE__);
+        }			
+        Set_OP_opnd(opaf, j, new_tn);
+      }
+    }	
+    opaf = OP_next(opaf);
+  }
+#endif
+	
       }
     }
 

@@ -870,7 +870,7 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
       switch (opcode) {
       case OPC_I8INTCONST:
       case OPC_U8INTCONST:
-#ifdef EMULATE_LONGLONG
+#if defined(EMULATE_LONGLONG) && !defined(TARG_SL)
         {
           extern TN *Gen_Literal_TN_Pair(UINT64);
           const_tn = Gen_Literal_TN_Pair((UINT64) WN_const_val(home));
@@ -1362,8 +1362,7 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
     if (OP_prev(before_point) != NULL && OP_xfer(OP_prev(before_point))) {
 	before_point = OP_prev(before_point);
     }
-  }
-  else {
+  }  else {
     OP *last_op;
 
     if (PROC_has_branch_delay_slot())

@@ -119,6 +119,8 @@ char *orig_program_name = NULL;
 char *old_ld_library_path = NULL;
 #ifdef TARG_SL
 boolean ldscript_file = FALSE;
+boolean Long_Long_Support = FALSE;
+boolean Float_Point_Support = FALSE;
 #endif
 
 extern void turn_down_opt_level (int new_olevel, char *msg);
@@ -805,10 +807,16 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, "-m32");
 		}
 #elif defined(TARG_SL)
-                add_string(args, "-D__JAVI__");
-                add_string(args, "-D__SL__");
-                add_string(args, "-D__MIPSEL__");
-                add_string(args, "-DRAND32");
+		add_string(args, "-D__JAVI__");
+		add_string(args, "-D__SL__");
+		add_string(args, "-D__MIPSEL__");
+		add_string(args, "-DRAND32");
+		/* add uclibc micro */
+		if (Float_Point_Support == TRUE)
+		{
+		  add_string(args, "-D__UCLIBC_HAS_FLOATS__");
+		  add_string(args, "-D__HAS_FPU__");
+		}
 #elif defined(TARG_MIPS)
 		if( abi == ABI_N32 )
 		  add_string(args, "-mabi=n32");
@@ -1917,9 +1925,15 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
               add_string(args, cmd_path);
             } 
           }
-	  return;
+		/* add soft math libray: libsl1m.a */
+		if ((Long_Long_Support == TRUE) || (Float_Point_Support == TRUE))
+		{
+			add_string(args, "-lsl1m");
+		}
+#endif // SL
+            return;
         }
-#endif	
+        
 	if (shared != RELOCATABLE) {
 	    if (invoked_lang == L_f90) {
         /*
@@ -2018,8 +2032,20 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 #else
             if (invoked_lang == L_CC)
               add_string(args, "-lstdc++");
-	    add_string(args, "-lc");
-            
+            if ((Long_Long_Support == TRUE) || (Float_Point_Support == TRUE))
+            {
+              /* add uclibc libray with float/double/long long supporting: libcx.a */
+              add_string(args, "-lcx");
+		          
+              /* add soft math libray: libsl1m.a */
+              add_string(args, "-lsl1m");
+            }
+            else
+            {
+              /* add uclibc libray without float/double/long long supporting: libc.a */
+              add_string(args, "-lc");
+            }
+
 	    // link script for various SL systems
             char *cmd_path;
             char *cmp_tgt_root = NULL;
