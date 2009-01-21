@@ -1,0 +1,27 @@
+#Common definitions for SL1 simulators
+
+TIME = $(shell echo `date '+%m.%d.%y-%H:%M'`)
+
+#Put common include directories here
+INC_DIRS = 
+
+#Put common compilation flags related to compiler itself here
+CFLAGS = -c
+
+#Put common extra compilation flags here
+EXTRA_CFLAGS = -D_TIME="'$(TIME)'"
+
+#Put common linker flags here
+LD_FLAGS =
+
+#Put common library searching directories here
+LIB_DIRS = -L/usr/X11R6/lib -lpthread -lX11
+
+#Tool definition
+CC = gcc -m32
+CPP = g++ -m32
+LINK = g++ -m32
+AR = ar
+
+#Commands for automatic dependency generation
+GEN_DEP = $(CPP) -MM -MG -P -w

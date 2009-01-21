@@ -1,0 +1,34 @@
+FSIM compilation flag:
+// 20090120 (WWD)
+// These options for source are too old. Will update later.
+
+1. _SIMULATE_LCD : simluates LCD in fsim
+enable = 1
+disable = 0
+reqiure header: X11
+require lib: pthread, X11 (/usr/X11R6/lib)
+
+2. _SIMULATE_INTERRUPT : simluate interrupt in fsim
+enable = 1
+disable = 0
+require lib: rt
+
+3. _INCLUDE_REG_DETAIL : include register index detials
+enable = 1
+disable = 0
+
+4. _WARN_LAYOUT : display memory layout warning
+enable = 1
+disable = 0
+
+5. _WARN_SHELL : display shell warning
+enable = 1
+disable = 0
+
+6. Is_True_On : enable assertion
+enable = 1
+disable = 0
+
+soc_sl1_fast:
+
+This is a stripped version for soc_sl1. The profile and trace macros are disabled as much as possible to enable fast simulation.
