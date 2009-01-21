@@ -440,7 +440,12 @@ add_object (int flag, char *arg)
 	       break;
 	case O_WlC:
 	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+#ifdef TARG_SL
+                 // ld didn't support -Wl in SL
+                 add_string(objects, arg);
+#else
 	         add_string(objects, concat_strings("-Wl,", arg));
+#endif
 	       } else {
 	         /* the arg would look like "-F,arg1,arg2,argn", 
 	          * each token delimited by comma should be passed 
