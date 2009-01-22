@@ -3976,15 +3976,6 @@ Can_Append_Succ(
   }
 
 #if defined(TARG_SL)
-  if (BB_zdl_prolog(suc)) {
-    if (trace) {
-      #pragma mips_frequency_hint NEVER
-      fprintf(TFile, "rejecting %s of BB:%d into BB:%d"
-                     " (ZDL prolog BB has risk to append other bb)\n",
-                     oper_name, BB_id(suc), BB_id(b));
-    }
-    return FALSE;
-  }
   if(BBINFO_kind(b) == BBKIND_ZDL_BODY) {
     if (trace) {
       #pragma mips_frequency_hint NEVER
