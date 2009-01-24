@@ -1551,6 +1551,7 @@ INT REGION_Initialize(WN *wn, BOOL has_rgns)
   MEM_POOL_Push(&REGION_mem_pool);
 
   RID_map = WN_MAP_Create(&REGION_mem_pool);
+  WN_MAP_Set_dont_copy(RID_map, TRUE);
 
   // save RID_map in an array becuse it may change in nested PUs
   region_map_index++;
