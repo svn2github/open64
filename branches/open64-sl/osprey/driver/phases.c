@@ -1930,10 +1930,10 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		{
 			add_string(args, "-lsl1m");
 		}
-#endif // SL
-            return;
-        }
-        
+    return;
+  }
+#endif // SL 
+
 	if (shared != RELOCATABLE) {
 	    if (invoked_lang == L_f90) {
         /*
