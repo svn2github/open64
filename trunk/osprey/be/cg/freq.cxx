@@ -335,14 +335,10 @@ Initialize_Freq_Edges(void)
       BB_succ_edges(bb) = edge;
 
      if (BBLIST_prob(slst) != 0.0 
-#ifdef TARG_SL
 	 	&& BBLIST_prob_hint_based(slst)
-#endif	 	
 	 	) {
        EDGE_prob(edge) = BBLIST_prob(slst);
-#ifdef TARG_SL
        Set_EDGE_prob_hint_based(edge);
-#endif
      }
 
       FOR_ALL_BB_PREDS(succ, plst) {
@@ -1843,22 +1839,8 @@ Compute_Branch_Probabilities(void)
 	EDGE_prob(edge) = 1.0 / n_succs;
       }
     }
-    else if (EDGE_prob_hint_based(BB_succ_edges(bb)) ||
+    else if (EDGE_prob_hint_based(BB_succ_edges(bb)) &&
             EDGE_prob_hint_based(EDGE_next_succ(BB_succ_edges(bb)))) {
-#if defined(TARG_SL)
-      /* 2-way branch */
-      // builtin-expect handling (should not be target dependent)
-      EDGE *edge1 = BB_succ_edges(bb);
-      EDGE *edge2 = EDGE_next_succ(edge1);
-      if (!EDGE_prob_hint_based(edge1))  {
-          EDGE_prob(edge1) = 1-EDGE_prob(edge2);
-          Set_EDGE_prob_hint_based(edge1);
-      }
-      else if (!EDGE_prob_hint_based(edge2))  {
-          EDGE_prob(edge2) = 1-EDGE_prob(edge1);
-          Set_EDGE_prob_hint_based(edge2);
-      }
-#endif
       if (CFLOW_Trace_Freq) {
         #pragma mips_frequency_hint NEVER
         EDGE *edge1 = BB_succ_edges(bb);
