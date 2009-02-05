@@ -1643,7 +1643,7 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Improve FP speed by violating ANSI & IEEE rules"
 -fno-unsafe-math-optimizations	;	Cc	f	"-OPT:funsafe_math_optimizations=OFF -fmath-errno"
 	"Conform to ANSI & IEEE math rules at the expense of speed"
-#ifdef MIPS
+#if defined(MIPS) && !defined(SL)
 -ffloat-store	warn_ignored(option_name);	Cc,FTN	NONE	""
 #else
 -ffloat-store	;	Cc,FTN	be	"-CG:x87_store=1:min_spill_loc_size=1"
