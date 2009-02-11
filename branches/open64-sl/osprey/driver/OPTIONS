@@ -476,6 +476,8 @@ I-fini%s		;		CC	ld	"-fini %s"
 	"Supporting 64bit Long Long for SL"
 -msoft-float    Float_Point_Support=TRUE;  Cc,cpp f self
 	"Supporting Float Point Emulation for SL"
+-ldscript ldscript_file=TRUE; ALL ld  "" 
+  "Using appointed link file"
 #endif
 #ifdef X8664 /* Bug #381, here the MACRO is X8664/IA64, no 'TARG_' prefix */
 -m32	toggle(&abi,ABI_N32);	ALL	be	"-TARG:abi=n32" 

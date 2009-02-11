@@ -60,6 +60,7 @@ extern char *fb_type;          /* type for -fb_type */
 extern char *coco_setfile;  /* setfile for -fcoco */
 #endif
 #ifdef TARG_SL
+extern boolean ldscript_file;
 extern boolean Long_Long_Support;
 extern boolean Float_Point_Support;
 #endif
