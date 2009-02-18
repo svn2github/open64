@@ -107,7 +107,7 @@
 #ifdef KEY
 #include <float.h> // needed to pick up FLT_MAX at PathScale
 #endif
-#if defined(TARG_IA64)
+#ifdef TARG_IA64
 #include "region.h"
 #include "region_bb_util.h"
 #include "vt_region.h"
@@ -579,7 +579,7 @@ static void
 #endif
 Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
 {
-#if defined (TARG_IA64) 
+#if defined (TARG_IA64)
   if(IPFEC_Enable_Region_Formation && RGN_Formed) {
       if(Home_Region(bb)->Is_No_Further_Opt() ||
          Home_Region(old_succ)->Is_No_Further_Opt() ||
@@ -653,7 +653,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
       RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
   } else {
       Unlink_Pred_Succ(bb, old_succ);
-#if defined(KEY) && defined(TARG_SL)
+#if defined(KEY)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0, !prob_acced);
 #else
@@ -664,7 +664,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
   return TRUE;
 #else
   Unlink_Pred_Succ(bb, old_succ);
-#if defined(KEY) && defined(TARG_SL)
+#if defined(KEY)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0);
 #else
@@ -1150,10 +1150,12 @@ static void Insert_Goto_BB(
   lab_tn = Gen_Label_TN(lab, targ_offset);
   Exp_OP1(OPC_GOTO, NULL, lab_tn, &ops);
 
+#ifdef TARG_SL
   // make up line info of GOTO instruction
   if (BB_last_op(bb) && (OP_srcpos(BB_last_op(bb)) != 0)) {
     OP_srcpos(OPS_last(&ops)) = OP_srcpos(BB_last_op(bb));
   }
+#endif
 
   if (   PROC_has_branch_delay_slot()
       && (fill_delay_slots || region_is_scheduled))
@@ -3669,7 +3671,7 @@ Merge_With_Pred ( BB *b, BB *pred )
   UINT32 i;
   BB *merged_pred;
 
-#if defined(TARG_IA64)
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed ) {
       if(Regional_Cfg_Node(pred)->Is_Entry())
           return FALSE;
@@ -3843,7 +3845,7 @@ Merge_With_Pred ( BB *b, BB *pred )
 
   /* Update BB successor info if necessary.
    */
-#if defined(TARG_IA64)
+#ifdef TARG_IA64
   if (IPFEC_Enable_Region_Formation && RGN_Formed ) {
     RGN_Unlink_Pred_Succ(pred,b);
   } else {
@@ -3980,8 +3982,8 @@ Can_Append_Succ(
     if (trace) {
       #pragma mips_frequency_hint NEVER
       fprintf(TFile, "rejecting %s of BB:%d into BB:%d"
-                       " (BBKIND_ZDL must not append other bb)\n",
-                       oper_name, BB_id(suc), BB_id(b));
+		       " (BBKIND_ZDL must not append other bb)\n",
+		       oper_name, BB_id(suc), BB_id(b));
       }
     return FALSE;
   }

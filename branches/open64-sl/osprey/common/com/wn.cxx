@@ -2124,7 +2124,7 @@ void IPA_WN_Move_Maps_PU (WN_MAP_TAB *src, WN_MAP_TAB *dst, WN *wn)
      we start processing the child PU (Preopt and LNO are not run
      on the child again to recreate the maps so we save them here.) */
   for (i = 0; i < WN_MAP_MAX; i++) {
-    if (src->_is_used[i]) {
+    if (src->_is_used[i] && !WN_MAP_Get_dont_copy(i)) {
 
       if (!dst->_is_used[i]) { /* Create the destination */
         dst->_is_used[i] = TRUE;

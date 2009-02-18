@@ -685,10 +685,10 @@ extern int x86_prefetch_sse;
 #define SHORT_TYPE_SIZE 16
 #define INT_TYPE_SIZE 32
 #define FLOAT_TYPE_SIZE 32
-#ifdef _MIPS_SZLONG
+#ifdef WIN64
 /* For win64 we have 32 bit long but 64bit pointer,
  * which doesn't fit existing m32/m64 model, so hack it here 
- * and use _MIPS_SZLONG which is defined in gcommondefs.
+ * and use WIN64 which is defined in gcommondefs.
  */
 #define LONG_TYPE_SIZE _MIPS_SZLONG
 #else

@@ -158,7 +158,10 @@ CGEMIT_Use_Base_ST_For_Reloc (INT reloc, ST *st)
 	if (reloc == TN_RELOC_IA_LTOFF_FPTR) 
 		// gas doesn't like addends
 		return FALSE;
-	else 
+        // OSP 490
+        else if (ST_is_thread_local(st))
+                return FALSE;
+        else 
 		return ST_is_export_local(st);
 }
 
@@ -342,10 +345,13 @@ CGEMIT_Alias (ST *sym, ST *strongsym)
 	fprintf ( Asm_File, "\t.set %s#, ", ST_name(sym));
 	if ( ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
 		// file scope local symbol
-		if (ST_level(strongsym) == GLOBAL_SYMTAB)
-			fprintf (Asm_File, "%s%s%d#\n",
-			    ST_name(strongsym), Label_Name_Separator, ST_index(strongsym));
-		else
+		if (ST_level(strongsym) == GLOBAL_SYMTAB) {
+                        // OSP 490
+                        if (Emit_Global_Data || ST_sclass(strongsym) == SCLASS_PSTATIC)
+			        fprintf (Asm_File, "%s%s%d#\n",
+			            ST_name(strongsym), Label_Name_Separator, ST_index(strongsym));
+                }
+                else
 			Is_True(0, ("Impossible alias to a PU scope variable"));
 	}
 	else // global export symbol

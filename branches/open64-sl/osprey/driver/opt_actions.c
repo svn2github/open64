@@ -1636,6 +1636,7 @@ static struct
   { "xeon",	"xeon",			ABI_N32,	TRUE,	FALSE, FALSE},
   { "em64t",	"em64t",		ABI_64,		TRUE,	TRUE,  FALSE},
   { "core",	"core",			ABI_64,		TRUE,	TRUE,  FALSE},
+  { "wolfdale", "wolfdale",		ABI_64,		TRUE,	TRUE, FALSE},
   { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE, TRUE},
   { NULL,	NULL, },
 };
@@ -1784,6 +1785,9 @@ get_auto_cpu_name ()
 	    return "i386";
 
 	case 6:			// P6, Core, ...
+          if (model == 23)
+            return "wolfdale"; 
+
 	  if (model == 15)
 	    return "core";
 

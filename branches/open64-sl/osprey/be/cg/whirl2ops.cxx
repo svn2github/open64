@@ -1919,7 +1919,9 @@ Find_PREG_For_Symbol (const ST *st)
     return ST_ATTR_reg_id(St_Attr_Table(ST_IDX_level (idx), d));
 } 
 
+#ifdef TARG_SL
 extern void Expand_Copy_Extension (TN *result, TN *src, TYPE_ID mtype, BOOL signed_extension, OPS *ops);
+#endif
 
 static TN *
 Handle_LDID (WN *ldid, TN *result, OPCODE opcode)

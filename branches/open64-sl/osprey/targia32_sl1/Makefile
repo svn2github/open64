@@ -54,7 +54,9 @@ LIBRARY_SUBDIRS := \
 	libelf \
 	libelfutil \
 	libiberty  \
-	libunwindP libspin_4_2_0 libspin 
+	libunwindP \ 
+	libspin_4_2_0 \
+	libspin 
 
 
 #

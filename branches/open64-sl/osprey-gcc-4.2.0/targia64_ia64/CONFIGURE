@@ -34,4 +34,4 @@ ln -s -f ../../osprey/targia64_ia64_nodebug/libspin_4_2_0/libgspin42.a libgspin4
 cp -f ../../libspin/*.h ../gcc/
 
 # configure the osprey-gcc
-CC='gcc -DTARG_IA64' ../configure --prefix=/usr  --program-prefix=osprey- --program-suffix=-4.2.0 --with-gnu-as --with-gnu-ld --enable-languages=c,c++ --disable-bootstrap --disable-shared --disable-multilib --disable-libmudflap --disable-libssp --enable-threads=posix --disable-checking --with-system-zlib --enable-__cxa_atexit
+CC='gcc -DTARG_IA64' ../configure --prefix=/usr  --program-prefix=open64- --program-suffix=-4.2.0 --with-gnu-as --with-gnu-ld --enable-languages=c,c++ --disable-bootstrap --disable-shared --disable-multilib --disable-libmudflap --disable-libssp --enable-threads=posix --disable-checking --enable-tls --with-system-zlib --enable-__cxa_atexit

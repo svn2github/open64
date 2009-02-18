@@ -37,7 +37,7 @@
 #include "omp_rtl.h"
 
 /* a system level lock, used for malloc in __ompc_get_thdprv ,by Liao*/
-omp_lock_t _ompc_thread_lock;
+ompc_lock_t _ompc_thread_lock;
 
 /* RTL API related with schedule */
 

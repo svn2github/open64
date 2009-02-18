@@ -98,8 +98,14 @@ typedef enum INTRN_RETKIND {
 #define NOT_ACTUAL	FALSE
 #define CGINTRINSIC	TRUE
 #define NOT_CGINTRINSIC	FALSE
+
+#ifdef TARG_SL
 #define NOT_SLAVE       FALSE 
 #define SLAVE           TRUE 
+#else
+#define NOT_SLAVE       CGINTRINSIC
+#define SLAVE           NOT_CGINTRINSIC
+#endif
 
 // the info we store for each intrinsic
 typedef struct intrn_info_t {

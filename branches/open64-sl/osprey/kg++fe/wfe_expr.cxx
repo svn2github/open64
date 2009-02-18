@@ -7699,7 +7699,10 @@ WFE_Expand_Expr (tree exp,
 	    else {
 	      Is_True(OPCODE_is_load(WN_opcode(ap_wn)),
 		      ("WFE_Expand_Expr: unexpected VA_ARG_EXPR argument"));
-	      ap_wn = WN_kid0(ap_wn);
+	      if ( WN_offset(ap_wn) == 0 )
+		ap_wn = WN_kid0(ap_wn);
+	      else
+		ap_wn = WN_Add(Pointer_Mtype, WN_kid0(ap_wn), WN_Intconst(Pointer_Mtype, WN_offset(ap_wn)));
 	    }
 	  }
 	  TY_IDX ty_idx = Get_TY (TREE_TYPE(exp));

@@ -845,14 +845,19 @@ Exp_Immediate_Int (TN *dest, TN *src, TYPE_ID rtype, OPS *ops)
 #endif	
   }
   else if ((UINT64)val <= UINT32_MAX) {
-    if (TN_size(dest) == 4)
-      Build_OP (TOP_lui, tmp, Gen_Literal_TN((val >> 16) & 0xffff, 4), ops);
-    else {
-      Build_OP (TOP_ori, tmp, Zero_TN, 
-		Gen_Literal_TN((val >> 16) & 0xffff, 4), ops);
-      Build_OP (TOP_dsll, tmp, tmp, Gen_Literal_TN(16, 4), ops);
+    if (TN_size(dest) == 4) {
+      if ((val & 0xffff) == 0) {
+        Build_OP (TOP_lui, dest, Gen_Literal_TN((val >> 16) & 0xffff, 4), ops);
+      } else {
+        Build_OP (TOP_lui, tmp, Gen_Literal_TN((val >> 16) & 0xffff, 4), ops);
+        Build_OP (TOP_ori, dest, tmp, Gen_Literal_TN(val & 0xffff, 4), ops);
+      }      
     }
-    Build_OP (TOP_ori, dest, tmp, Gen_Literal_TN(val & 0xffff, 4), ops);
+    else {
+      Build_OP (TOP_ori, tmp, Zero_TN, Gen_Literal_TN((val >> 16) & 0xffff, 4), ops);
+      Build_OP (TOP_dsll, tmp, tmp, Gen_Literal_TN(16, 4), ops);
+      Build_OP (TOP_ori, dest, tmp, Gen_Literal_TN(val & 0xffff, 4), ops);
+    }
   }
   else {
     TCON tcon = Host_To_Targ (MTYPE_I8, val);
@@ -1066,11 +1071,26 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       ("Expand_Neg: illegal result size\n"));
   
   BOOL is_64bit = MTYPE_bit_size(mtype) == 64;
-  if (MTYPE_is_longlong(mtype)) {
-    FmtAssert(Get_TN_Pair(result), ("Expand_Neg: result tn pair not setup"));
-    Expand_64Bit_Unary_OP(OPR_NEG, mtype, result, src, ops );   
+  if (MTYPE_is_float(mtype)) {
+    if (MTYPE_is_double(mtype)) {
+      TN* result_h = Get_TN_Pair(result);
+      TN* src_h = Get_TN_Pair(src);
+      FmtAssert(result_h && src_h, ("Expand_Neg: result_tn pair or src_tn pair not setup"));
+      TN* imm_tn= Expand_Immediate_Into_Register(Gen_Literal_TN(0x80000000, 4), FALSE, ops);
+      Build_OP(TOP_xor, result_h, src_h, imm_tn, ops);
+      Build_OP(TOP_or, result, src, Zero_TN, ops); 
+      
+    } else {
+      TN* imm_tn= Expand_Immediate_Into_Register(Gen_Literal_TN(0x80000000, 4), FALSE, ops);
+      Build_OP(TOP_xor, result, src, imm_tn, ops);
+    }    
   } else {
-    Build_OP(TOP_subu, result, Zero_TN, src, ops);
+    if (MTYPE_is_longlong(mtype)) {
+      FmtAssert(Get_TN_Pair(result), ("Expand_Neg: result tn pair not setup"));
+      Expand_64Bit_Unary_OP(OPR_NEG, mtype, result, src, ops );   
+    } else { 
+      Build_OP(TOP_subu, result, Zero_TN, src, ops);
+    }
   }
 }
 
@@ -1088,14 +1108,21 @@ Expand_Abs (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
     }
   }
   else { // float_type
-    FmtAssert(FALSE, ("Expand_Abs: Float type is unexpected"));
-    TN *p1 = Build_TN_Of_Mtype(MTYPE_I4);
-    BOOL is_signed = MTYPE_is_signed(mtype);
-    TN *tmp = Build_TN_Of_Mtype(mtype);
-    Build_OP(is_double ? TOP_dsubu : TOP_subu, tmp, Zero_TN, src, ops);
-    Build_OP(is_signed?TOP_slt:TOP_sltu, p1, src, Zero_TN, ops);
-    Build_OP(TOP_movn, dest, tmp, p1, ops);
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF); 
+    if (MTYPE_is_double(mtype)) {
+      TN* dest_h = Get_TN_Pair(dest);
+      TN* src_h = Get_TN_Pair(src);
+      FmtAssert(dest_h && src_h, ("Expand_Abs: dest_tn pair or src_tn pair not setup"));
+     // TN* imm_tn= Expand_Immediate_Into_Register(Gen_Literal_TN(0x7fffffff, 4), FALSE, ops);
+     // Build_OP(TOP_and, dest_h, src_h, imm_tn, ops);
+
+      Build_OP(TOP_extrbu, dest_h, src_h, Gen_Literal_TN(30, 4), Gen_Literal_TN(31, 4), ops);
+      Build_OP(TOP_or, dest, src, Zero_TN, ops); 
+      
+    } else {
+     //     TN* imm_tn= Expand_Immediate_Into_Register(Gen_Literal_TN(0x7fffffff, 4), FALSE, ops);
+     // Build_OP(TOP_and, dest, src, imm_tn, ops);
+      Build_OP(TOP_extrbu, dest, src, Gen_Literal_TN(30, 4), Gen_Literal_TN(31, 4), ops);
+    }
   }
 }
 

@@ -4285,6 +4285,7 @@ static simpnode cancel_in_relop(OPCODE opc, TYPE_ID ty, simpnode k0, simpnode k1
    }
 
    if (!Enable_Cfold_Aggressive) return (r);
+   if (!Allow_wrap_around_opt) return (r);
    if (SIMP_IS_TYPE_FLOATING(ty) &&
        (!Enable_Cfold_Reassociate || Force_IEEE_Comparisons
 	|| Roundoff_Level < ROUNDOFF_ANY)) return(r);

@@ -6352,9 +6352,12 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
         }
         break;
 
+     case OPR_NEG:
       case OPR_ABS:
-      case OPR_SQRT:	  
-      case OPR_NEG:
+        /* Expanded in lowering to CG phase */
+        break;
+      
+      case OPR_SQRT:
         if (MTYPE_is_float(type)) {
           return lower_float_unary(block, tree, actions);
         }
@@ -14486,6 +14489,9 @@ void Lower_Init(void)
     */
    lowering_parity_map = WN_MAP32_Create(MEM_pu_pool_ptr);
    wn_derivation_map = WN_MAP_Create (MEM_pu_pool_ptr);
+ 
+   WN_MAP_Set_dont_copy(lowering_parity_map, TRUE);
+   WN_MAP_Set_dont_copy(wn_derivation_map, TRUE);
 
    lowering_actions = 0;
    current_state = current_state_NULL;

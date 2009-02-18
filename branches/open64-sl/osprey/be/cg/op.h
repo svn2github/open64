@@ -764,11 +764,12 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_has_immediate(o)	(OP_immediate_opnd(o) >= 0)
 #define OP_inst_words(o)	(ISA_PACK_Inst_Words(OP_code(o)))
 #define OP_find_opnd_use(o,u)	(TOP_Find_Operand_Use(OP_code(o),(u)))
-#define OP_memtrap(o)           (TOP_is_memtrap(OP_code(o))) /* memory operation*/
 
 #ifdef TARG_SL
+#define OP_memtrap(o)           (TOP_is_memtrap(OP_code(o))) /* memory operation*/
 #define OP_no_peephole(o)       (TOP_is_npeep(OP_code(o)))
 #endif
+
 #ifdef TARG_IA64
 // bug fix for OSP_87 and OSP_88
 #define OP_asm(o)              (OP_code(o)==TOP_asm)

@@ -100,17 +100,9 @@ OPCODE_To_TOP (OPCODE opcode)
     else                  return TOP_UNDEFINED;
 
   case OPR_NEG:
-    if (rtype == MTYPE_F4)
-      return TOP_neg_s;
-    if (rtype == MTYPE_F8)
-      return TOP_neg_d;
     return TOP_UNDEFINED;
 
   case OPR_ABS:
-    if (rtype == MTYPE_F4)
-      return TOP_abs_s;
-    if (rtype == MTYPE_F8)
-      return TOP_abs_d;
     return TOP_UNDEFINED;
 
   case OPR_PAREN:

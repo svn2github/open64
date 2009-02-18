@@ -106,6 +106,7 @@
 #include <vector>
 #include "if_conv.h"
 #endif
+
 /* Allocate basic blocks for the duration of the PU. */
 #define BB_Alloc()  TYPE_PU_ALLOC(BB)
 #define BB_Alloc_N(n) TYPE_PU_ALLOC_N(BB, n)

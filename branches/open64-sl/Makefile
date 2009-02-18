@@ -395,21 +395,21 @@ bootstrap: reboot
 #build the reboot compiler
 reboot: boot
 	$(MAKE) clean
-	set +h; $(MAKE) all lib BUILD_COMPILER=OSP BUILD_OPTIMIZE=NODEBUG PATH=$(BOOTDIR)/bin:$(PATH)
+	set +h; $(MAKE) all lib BUILD_COMPILER=OSP PATH=$(BOOTDIR)/bin:$(PATH)
 
 #build the boot compiler using the exist open64 compiler
-boot: cross_gcc
+boot:
+#if opencc is not found use gcc to build the cross compiler
+	if ! opencc -v >/dev/null 2>&1; then $(MAKE) cross_gcc; fi
 	$(MAKE) clean
 	rm -rf $(BOOTDIR)
-	set +h; $(MAKE) all lib BUILD_COMPILER=OSP BUILD_OPTIMIZE=NODEBUG PATH=$(CROSSDIR)/bin:$(PATH)
+	set +h; $(MAKE) all lib BUILD_COMPILER=OSP PATH=$(CROSSDIR)/bin:$(PATH)
 	$(MAKE) install TOOLROOT=$(BOOTDIR)
 
-#if opencc is not found use gcc to build the cross compiler
 cross_gcc: 
-	@rm -rf $(CROSSDIR); \
-	if ! opencc -V;  then  \
-	$(MAKE) all BUILD_OPTIMIZE=NODEBUG && \
-	$(MAKE) install TOOLROOT=$(CROSSDIR) && \
-	set +h; $(MAKE) lib BUILD_COMPILER=OSP BUILD_OPTIMIZE=NODEBUG PATH=$(CROSSDIR)/bin:$(PATH) && \
-	$(MAKE) install TOOLROOT=$(CROSSDIR) ;\
-	fi
+	$(MAKE) clean
+	@rm -rf $(CROSSDIR)
+	$(MAKE) all BUILD_COMPILER=GNU
+	$(MAKE) install TOOLROOT=$(CROSSDIR)
+	set +h; $(MAKE) lib BUILD_COMPILER=OSP PATH=$(CROSSDIR)/bin:$(PATH)
+	$(MAKE) install TOOLROOT=$(CROSSDIR)

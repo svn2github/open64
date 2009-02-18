@@ -1092,6 +1092,7 @@ BB_Predecessor_Compiled_Region( INT *exit_num, BB *start )
   return NULL;
 }
 
+#ifdef TARG_SL
 /* Is Tn defined in Local BB before end_op */
 static BOOL 
 TN_Def_Local(BB * bb, OP * end_op, TN * ded_tn)
@@ -1111,6 +1112,7 @@ TN_Def_Local(BB * bb, OP * end_op, TN * ded_tn)
 
   return FALSE;
 }
+#endif
 
 /* =======================================================================
  *

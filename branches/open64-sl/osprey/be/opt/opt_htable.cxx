@@ -2062,8 +2062,17 @@ CODEMAP::Canon_add_sub(WN       *wn,
     if (opr == OPR_ADD)
       ccr->Set_tree(kid1.Tree());
     else
+#ifdef KEY // bug 14605: force to signed because generating negate
       ccr->Set_tree(Add_unary_node(
-           OPCODE_make_op(OPR_NEG, OPCODE_rtype(op), MTYPE_V), kid1.Tree()));
+                      OPCODE_make_op(OPR_NEG,
+                        Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(op)),
+                        MTYPE_V),
+                      kid1.Tree()));
+#else
+      ccr->Set_tree(Add_unary_node(
+                        OPCODE_make_op(OPR_NEG, OPCODE_rtype(op), MTYPE_V), 
+                        kid1.Tree()));
+#endif
     return propagated;
   }
   if (kid1.Tree() == NULL) {
