@@ -1225,7 +1225,7 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
         return (MTYPE_signed(dtyp) == sign_xtd);
       }
       return FALSE;  
-#endif
+
     case OPR_EXTRACT_BITS:
       //     U4U4LDID 72 <1,4,.preg_U4>
       //   U4EXTRACT_BITS <bofst:27 bsize:4>
@@ -1237,6 +1237,7 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
           return ! MTYPE_signed(dtyp);
       }
       return FALSE;
+#endif
     default: ;
     }
     return FALSE;
